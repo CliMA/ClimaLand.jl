@@ -4,6 +4,8 @@ using DocStringExtensions
 
 import ClimaCore: Meshes, Spaces, Topologies, Geometry
 
+### General type and methods all model domains will need
+
 """
     AbstractDomain{FT <:AbstractFloat}
 
@@ -12,16 +14,56 @@ An abstract type for domains.
 abstract type AbstractDomain{FT <: AbstractFloat} end
 
 """
+    coordinates(domain::AbstractDomain)
+
+Method which returns the coordinates appropriate for a given domain.
+"""
+function coordinates(domain::AbstractDomain) end
+
+### Example of component specific domain
+"""
+    AbstractPlantDomain{FT} <: AbstractDomain{FT}
+
+An abstract type for vegetation specific domains.
+"""
+abstract type AbstractPlantDomain{FT} <: AbstractDomain{FT} end
+
+
+"""
+   RootDomain{FT} <: AbstractPlantDomain{FT}
+
+Domain for a single bulk plant with roots of varying depths. The user needs
+to specify the depths of the root tips as wel as the heights of the
+compartments to be modeled within the plant. The compartment heights
+are expected to be sorted in ascending order.
+"""
+struct RootDomain{FT} <: AbstractPlantDomain{FT}
+    "The depth of the root tips, in meters"
+    root_depths::Vector{FT}
+    "The height of the stem, leaf compartments, in meters"
+    compartment_heights::Vector{FT}
+end
+
+function coordinates(domain::RootDomain{FT}) where {FT}
+    return domain.compartment_heights
+end
+
+
+### Another example, but a ClimaCore FD Column space/domain may be general enough
+### that we keep it as a concrete type of AbstractDomain, rather than an AbstractSoilDomain
+
+"""
     Column{FT} <: AbstractDomain{FT}
+
 A struct holding the necessary information 
 to construct a domain, a mesh, a center and face
-space, etc. For use when a finite difference in
-1D is suitable.
+space, etc. for use when a finite difference in
+1D is suitable, as for a soil column model.
 # Fields
 $(DocStringExtensions.FIELDS)
 """
 struct Column{FT} <: AbstractDomain{FT}
-    "Domain interval limits, (zmin, zmax)"
+    "Domain interval limits, (zmin, zmax), in meters"
     zlim::Tuple{FT, FT}
     "Number of elements used to discretize the interval"
     nelements::Int32
@@ -75,48 +117,13 @@ This is a required function for each concrete type of domain.
     """
 function coordinates(domain::Column{FT}) where {FT}
     cs, _ = make_function_space(domain)
-    cc = ClimaCore.Fields.coordinate_field(cs)
+    cc = ClimaCore.Fields.coordinate_field(cs).z
     return cc
 end
 
-"""
-    empty_state(coordinates::ClimaCore.Fields.Field)
-
-Returns an empy field with the same underlying space as 
-`coordinates`.
-
-This is a required function for each concrete type of coordinates.
-"""
-function empty_state(coordinates::ClimaCore.Fields.Field)
-    return similar(coordinates.z)
-end
-
-
-"""
-   RootDomain{FT} <: AbstractDomain{FT}
-
-Domain for a single bulk plant with roots of varying depths. The user needs
-to specify the depths of the root tips as wel as the heights of the
-compartments to be modeled within the plant. The compartment heights
-are expected to be sorted in ascending order.
-"""
-struct RootDomain{FT} <: AbstractDomain{FT}
-    root_depths::Vector{FT}
-    compartment_heights::Vector{FT}
-end
-
-function coordinates(domain::RootDomain{FT}) where {FT}
-    return domain.compartment_heights
-end
-
-function empty_state(coordinates::Vector{FT}) where {FT}
-    return similar(coordinates)
-end
-
-
-export AbstractDomain
+export AbstractDomain, AbstractPlantDomain
 export Column, RootDomain
-export coordinates, empty_state
+export coordinates
 
 
 end

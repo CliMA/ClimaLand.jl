@@ -20,16 +20,13 @@ export RichardsModel
 
 A standin for a model used to simulate water flow in soil via Richards equation.
 """
-struct RichardsModel{FT, ps, d} <: AbstractModel{FT}
-    param_set::ps
-    domain::d
+struct RichardsModel{FT, PS, D} <: AbstractModel{FT}
+    param_set::PS
+    domain::D
     model_name::Symbol
 end
 
-function RichardsModel{FT}(;
-    param_set = param_set,
-    domain = domain <: AbstractDomain{FT},
-) where {FT}
+function RichardsModel{FT}(; param_set, domain::AbstractDomain{FT}) where {FT}
     return RichardsModel{FT, typeof(param_set), typeof(domain)}(
         param_set,
         domain,

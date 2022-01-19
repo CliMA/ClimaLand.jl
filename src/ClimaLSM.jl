@@ -1,9 +1,11 @@
 module ClimaLSM
-
+using UnPack
 using ClimaCore
 import ClimaCore: Fields
 include("Domains.jl")
 using .Domains
+include("ComponentExchanges.jl")
+using .ComponentExchanges
 
 export AbstractModel,
     make_rhs,
@@ -77,7 +79,7 @@ end
     initialize_prognostic(model::AbstractModel, state::Union{ClimaCore.Fields.Field, Vector{FT}, FT})
 
 Returns a FieldVector of prognostic variables for `model` with the required
-structure, with values equal to `state`. This assumes that all prognostic
+structure, with values equal to `similar(state)`. This assumes that all prognostic
 variables are defined over the entire domain. 
 
 The default is a model with no prognostic variables, in which case 
@@ -106,7 +108,7 @@ end
     initialize_auxiliary(model::AbstractModel,state::Union{ClimaCore.Fields.Field, Vector{FT}, FT})
 
 Returns a FieldVector of auxiliary variables for `model` with the required
-structure, with values equal to `state`. This assumes that all auxiliary
+structure, with values equal to `similar(state)`. This assumes that all auxiliary
 variables are defined over the entire domain. 
 
 The default is a model with no auxiliary variables, in which case 
@@ -140,24 +142,23 @@ We may need to consider this default more as we add diverse components and
 """
 function initialize(model::AbstractModel)
     coords = coordinates(model.domain)
-    state = empty_state(coords)
-    Y = initialize_prognostic(model, state)
-    p = initialize_auxiliary(model, state)
+    Y = initialize_prognostic(model, coords)
+    p = initialize_auxiliary(model, coords)
     return Y, p, coords
 end
 
 #### LandModel Specific
 
 """
-    struct LandModel{FT, sm <: AbstractModel{FT}, rm <: AbstractModel{FT}} <: AbstractModel{FT}
+    struct LandModel{FT, SM <: AbstractModel{FT}, RM <: AbstractModel{FT}} <: AbstractModel{FT}
 
 A concrete type of `AbstractModel` for use in land surface modeling. Each component model of the
 `LandModel` is itself an `AbstractModel`.
 """
-struct LandModel{FT, sm <: AbstractModel{FT}, rm <: AbstractModel{FT}} <:
+struct LandModel{FT, SM <: AbstractModel{FT}, RM <: AbstractModel{FT}} <:
        AbstractModel{FT}
-    soil::sm
-    roots::rm
+    soil::SM
+    roots::RM
 end
 
 function initialize(land::LandModel)
