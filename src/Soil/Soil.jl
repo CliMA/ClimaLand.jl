@@ -292,7 +292,8 @@ This has been written so as to work with Differential Equations.jl.
 function make_rhs(model::RichardsModel)
     function rhs!(dY, Y, p, t)
         @unpack ν, vg_α, vg_n, vg_m, Ksat, S_s, θ_r = model.param_set
-        top_flux_bc, bot_flux_bc = boundary_fluxes(model.boundary_conditions, t)
+        top_flux_bc, bot_flux_bc =
+            boundary_fluxes(model.boundary_conditions, p, t)
         z = model.coordinates
         interpc2f = Operators.InterpolateC2F()
         gradc2f_water = Operators.GradientC2F()
