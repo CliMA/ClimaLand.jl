@@ -1,5 +1,9 @@
 soil_domain = Column(FT, zlim = (-1.0, 0.0), nelements = 10)
-soil = Soil.RichardsModel{FT}(; param_set = nothing, domain = soil_domain)
+soil = Soil.RichardsModel{FT}(;
+    param_set = nothing,
+    domain = soil_domain,
+    boundary_exchanges = nothing,
+)
 
 root_domain = RootDomain{FT}([-0.5], [0.0, 1.0])
 roots = Roots.RootsModel{FT}(;

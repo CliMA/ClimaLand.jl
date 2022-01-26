@@ -1,9 +1,11 @@
 module ClimaLSM
+
 using UnPack
 using ClimaCore
 import ClimaCore: Fields
 include("Domains.jl")
 using .Domains
+import .Domains: coordinates
 include("ComponentExchanges.jl")
 using .ComponentExchanges
 
@@ -141,11 +143,13 @@ We may need to consider this default more as we add diverse components and
 `Simulations`.
 """
 function initialize(model::AbstractModel)
-    coords = coordinates(model.domain)
+    coords = coordinates(model)
     Y = initialize_prognostic(model, coords)
     p = initialize_auxiliary(model, coords)
     return Y, p, coords
 end
+
+Domains.coordinates(model::AbstractModel) = Domains.coordinates(model.domain)
 
 #### LandModel Specific
 
