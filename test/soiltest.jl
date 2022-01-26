@@ -1,16 +1,3 @@
-using Test
-
-using UnPack
-using ClimaLSM
-using ClimaLSM.Domains: Column, coordinates, make_function_space
-using ClimaLSM.Soil
-using ClimaCore
-
-using OrdinaryDiffEq:
-    ODEProblem, solve, Rosenbrock23, KenCarp4, ImplicitEuler, Euler
-
-FT = Float64
-
 const ν = FT(0.495);
 const Ksat = FT(0.0443 / 3600 / 100); # m/s
 const S_s = FT(1e-3); #inverse meters
@@ -59,8 +46,17 @@ soil_ode! = make_ode_function(soil)
 t0 = FT(0);
 tf = FT(60);
 dt = FT(1);
-
+cb = SavingCallback((u, t, integrator) -> integrator.p, saved_values)
 prob = ODEProblem(soil_ode!, Y, (t0, tf), p);
+sol = solve(prob, Euler(); dt = dt, callback = cb);
 
-sol = solve(prob, Euler(); dt = dt);
 @test sum(parent(sol.u[end]) .== parent(Y.soil.ϑ_l)) == nelems
+# Testing that ψ +z is constant - > hydrostatic equilibrium
+@test mean(parent(p.soil.ψ .+ coords)[:] .- (-10.0)) < eps(FT)
+# should be at every layer, at each step too:
+@test mean(
+    sum([
+        parent(saved_values.saveval[k].soil.ψ .+ coords)[:] .+ 10.0 for
+        k in 1:1:50
+    ]),
+) < 1e-14
