@@ -4,10 +4,10 @@ using ClimaLSM
 using ClimaCore
 import ClimaCore: Fields, Operators, Geometry
 import ClimaLSM.Domains: coordinates
-import ClimaLSM:
-    AbstractModel, make_update_aux, make_rhs, prognostic_vars, auxiliary_vars
+using ClimaLSM.ComponentExchanges: LSMExchange, AbstractComponentExchange
+import ClimaLSM: AbstractModel, make_update_aux, make_rhs, prognostic_vars, auxiliary_vars
 using UnPack
-export RichardsModel, RichardsParameters
+export RichardsModel, RichardsParameters, FluxBC
 
 """
     RichardsModel
@@ -98,10 +98,31 @@ function hydraulic_conductivity(Ksat::FT, m::FT, S::FT) where {FT}
     return K * Ksat
 end
 
+struct FluxBC{FT} <: AbstractComponentExchange{FT}
+    top_flux_bc::FT
+    bot_flux_bc::FT
+end
+
+function compute_boundary_fluxes(be::FluxBC, _...)
+    return be.top_flux_bc, be.bot_flux_bc
+end
+
+function compute_boundary_fluxes(be::LSMExchange{FT}, t) where {FT}
+    return be.P(t), FT(0.0)
+end
+
+function compute_source(be::FluxBC{FT}) where {FT}
+    return FT(0.0)
+end
+
+function compute_source(be::LSMExchange{FT}) where {FT}
+    return FT(0.0)
+end
+
 function make_rhs(model::RichardsModel)
     function rhs!(dY, Y, p, t)
         @unpack ν, vg_α, vg_n, vg_m, Ksat, S_s, θ_r = model.param_set
-        @unpack top_flux_bc, bot_flux_bc = model.boundary_exchanges
+        top_flux_bc, bot_flux_bc = compute_boundary_fluxes(model.boundary_exchanges, t)
         z = model.coordinates
         interpc2f = Operators.InterpolateC2F()
         gradc2f_water = Operators.GradientC2F()
@@ -111,6 +132,7 @@ function make_rhs(model::RichardsModel)
         )
         @. dY.soil.ϑ_l =
             -(divf2c_water(-interpc2f(p.soil.K) * gradc2f_water(p.soil.ψ + z)))
+        dY.soil.ϑ_l .+= compute_source(model.boundary_exchanges)
     end
     return rhs!
 end

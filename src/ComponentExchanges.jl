@@ -1,6 +1,6 @@
 module ComponentExchanges
 
-export AbstractComponentExchange
+export AbstractComponentExchange, LSMExchange
 """
 
     AbstractComponentExchange{FT <: AbstractFloat}
@@ -23,5 +23,14 @@ when computing necessary exchange/flux/flow quantities.
 
 """
 abstract type AbstractComponentExchange{FT <: AbstractFloat} end
+
+
+Base.@kwdef struct LSMExchange{FT} <: AbstractComponentExchange{FT}
+    "Time dependent transpiration, given in moles/sec"
+    T::Function = (t) -> FT(0.0)
+    "Time dependent precipitation, given in m/s"
+    P::Function = (t) -> FT(0.0)
+end
+
 
 end

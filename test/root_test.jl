@@ -37,7 +37,7 @@ function transpiration(t::ft) where {ft}
 end
 
 const p_soil0 = [FT(-0.02)]
-boundary_exchanges = Roots.RootsPrescribedExchange{FT}(
+boundary_exchanges = Roots.RootsStandaloneExchange{FT}(
     (t::FT) -> transpiration(t),
     (t::FT) -> p_soil0,
 )

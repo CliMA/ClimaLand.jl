@@ -3,7 +3,7 @@ using ClimaLSM
 using ClimaCore
 using UnPack
 import ClimaCore: Fields
-using ClimaLSM.ComponentExchanges: AbstractComponentExchange
+using ClimaLSM.ComponentExchanges: AbstractComponentExchange, LSMExchange
 using ClimaLSM.Domains: AbstractPlantDomain, RootDomain
 
 import ClimaLSM:
@@ -20,7 +20,7 @@ export RootsModel,
     compute_flow,
     theta_to_p,
     p_to_theta,
-    RootsPrescribedExchange,
+    RootsStandaloneExchange,
     RootsParameters
 
 """
@@ -58,7 +58,7 @@ along a stem, to a leaf, and ultimately being lost from the system by
 transpiration. 
 
 This model can be used in standalone mode by prescribing the transpiration rate
-and soil pressure at the root tips (boundary_exchanges of type `RootsPrescribedExchange`),
+and soil pressure at the root tips (boundary_exchanges of type `RootsStandaloneExchange`),
 or with a dynamic soil model (boundary exchanges of type TBD).
 
 The RootModel domain must be of type `AbstractPlantDomain`.
@@ -92,7 +92,7 @@ end
 
 
 """
-    RootsPrescribedExchange{FT} <: AbstractComponentExchange{FT}
+    RootsStandaloneExchange{FT} <: AbstractComponentExchange{FT}
 
 The component exchange type to be used for the Root model in standalone mode.
 
@@ -102,7 +102,7 @@ vector of soil pressures (MPa). The different elements of
 this vector hold the soil pressure at the root tips, with depths indicated by
 the different elements of the `root_depths` vector of `RootDomain`. 
 """
-struct RootsPrescribedExchange{FT} <: AbstractComponentExchange{FT}
+struct RootsStandaloneExchange{FT} <: AbstractComponentExchange{FT}
     "Time dependent transpiration, given in moles/sec"
     T::Function
     "Time dependent soil pressure at root tips, given in MPa"
@@ -136,10 +136,16 @@ function compute_flow(
     a::FT,
     b::FT,
     Kmax::FT,
-) where {FT}
-    u_do, u_up, A, B, flow_approx =
+)::FT where {FT}
+    if abs(p_up - p_do)/p_do < FT(1e-5)
+        rhog_MPa = FT(0.0098)
+        flow = -rhog_MPa * (z_up-z_do)*Kmax*(a+FT(1))/a*exp(b*p_do)/(FT(1)+a*exp(b*p_do))
+    else
+        u_do, u_up, A, B, flow_approx =
         vc_integral_approx(z_do, z_up, p_do, p_up, a, b, Kmax)
-    flow::FT = vc_integral(u_do, u_up, A, B, flow_approx)
+        flow = vc_integral(u_do, u_up, A, B, flow_approx)
+    end
+    
     return flow
 end
 
@@ -169,9 +175,9 @@ function vc_integral_approx(
     rhog_MPa = FT(0.0098)
     u_do = a * exp(b * p_do)
     u_up = a * exp(b * p_up)
-    num_do = log(u_do + FT(10))
-    num_up = log(u_up + FT(10))
-    c = Kmax * (a + FT(10)) / a
+    num_do = log(u_do + FT(1))
+    num_up = log(u_up + FT(1))
+    c = Kmax * (a + FT(1)) / a
     d = rhog_MPa * (z_up - z_do)
     flow_approx = -c / b * (num_up - num_do) * (p_up - p_do + d) / (p_up - p_do) # this is NaN if p_up = p_do
     A = c * d + flow_approx
@@ -204,10 +210,18 @@ end
 """
     theta_to_p(theta::FT) where {FT}
 
-Computes the volumetric water content (theta) given pressure (p)
+Computes the volumetric water content (moles/moles) given pressure (p).
+Currently this is using appropriate vG parameters for loamy type soil.
+First the head (m) is computed, and then converted to a pressure in MPa.
 """
 function theta_to_p(theta::FT) where {FT}
-    p = (theta - FT(1)) * FT(5)
+    α = FT(5.0) # inverse meters
+    n = FT(2.0)
+    m = FT(0.5)
+    rhog_MPa = FT(0.0098) #MPa/m
+
+    p = -((theta^(-FT(1) / m) - FT(1)) * α^(-n))^(FT(1) / n)*rhog_MPa
+    #p = (theta - FT(1)) * FT(5)
     return p
 end
 
@@ -216,9 +230,17 @@ end
     p_to_theta(p::FT) where {FT}
 
 Computes the pressure (p)  given the volumetric water content (theta).
+Currently this is using appropriate vG parameters for loamy type soil.
+The pressure (MPa)  must be converted to meters (head) for use in the
+van Genuchten formula.
 """
 function p_to_theta(p::FT) where {FT}
-    theta = p / FT(5) + FT(1)
+    α = FT(5.0) # inverse meters
+    n = FT(2.0)
+    m = FT(0.5)
+    rhog_MPa = FT(0.0098) #MPa/m
+    theta = ((-α*(p/rhog_MPa))^n+FT(1.0))^(-m)
+    #theta = p / FT(5) + FT(1)
     return theta
 end
 
@@ -271,7 +293,7 @@ end
 
 """
     function compute_flow_out_roots(
-        boundary_exchanges::RootsPrescribedExchange{FT},
+        boundary_exchanges::RootsStandaloneExchange{FT},
         model::RootsModel{FT},
         Y::ClimaCore.Fields.FieldVector,
         p::ClimaCore.Fields.FieldVector,
@@ -285,7 +307,7 @@ at the root tips.
 This assumes that the stem compartment is the first element of `Y.roots.rwc`.
 """
 function compute_flow_out_roots(
-    boundary_exchanges::RootsPrescribedExchange{FT},
+    boundary_exchanges::RootsStandaloneExchange{FT},
     model::RootsModel{FT},
     Y::ClimaCore.Fields.FieldVector,
     p::ClimaCore.Fields.FieldVector,
@@ -309,8 +331,19 @@ function compute_flow_out_roots(
 end
 
 
+
+function compute_flow_out_roots(
+    boundary_exchanges::LSMExchange{FT},
+    model::RootsModel{FT},
+    Y::ClimaCore.Fields.FieldVector,
+    p::ClimaCore.Fields.FieldVector,
+    t::FT,
+    )::Vector{FT} where {FT}
+    return  FT(0.0) .+ similar(Y.roots.rwc)
+end
+
 """
-    compute_transpiration(boundary_exchanges::RootsPrescribedExchange{FT},
+    compute_transpiration(boundary_exchanges::RootsStandaloneExchange{FT},
         Y::ClimaCore.Fields.FieldVector,
         p::ClimaCore.Fields.FieldVector,
         t::FT)::FT where {FT}
@@ -320,7 +353,7 @@ and the atmosphere,
 in the case of a standalone root model with prescribed transpiration rate.
 """
 function compute_transpiration(
-    boundary_exchanges::RootsPrescribedExchange{FT},
+    boundary_exchanges::RootsStandaloneExchange{FT},
     Y::ClimaCore.Fields.FieldVector,
     p::ClimaCore.Fields.FieldVector,
     t::FT,
@@ -329,7 +362,14 @@ function compute_transpiration(
 end
 
 
-
+function compute_transpiration(
+    boundary_exchanges::LSMExchange{FT},
+    Y::ClimaCore.Fields.FieldVector,
+    p::ClimaCore.Fields.FieldVector,
+    t::FT,
+)::FT where {FT}
+    return boundary_exchanges.T(t)
+end
 
 
 

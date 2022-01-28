@@ -152,12 +152,17 @@ end
 Domains.coordinates(model::AbstractModel) = Domains.coordinates(model.domain)
 
 #### LandModel Specific
-
+include("Soil.jl")
+include("Roots.jl")
+using .Roots
 """
     struct LandModel{FT, SM <: AbstractModel{FT}, RM <: AbstractModel{FT}} <: AbstractModel{FT}
 
 A concrete type of `AbstractModel` for use in land surface modeling. Each component model of the
 `LandModel` is itself an `AbstractModel`.
+
+If a user wants to run in standalone, would they use this interface?
+No, but should it work ?
 """
 struct LandModel{FT, SM <: AbstractModel{FT}, RM <: AbstractModel{FT}} <:
        AbstractModel{FT}
@@ -165,31 +170,71 @@ struct LandModel{FT, SM <: AbstractModel{FT}, RM <: AbstractModel{FT}} <:
     roots::RM
 end
 
+function LandModel{FT}(; domain::NamedTuple,
+                       parameters::NamedTuple,
+                       ) where {FT}
+    
+    boundary_exchanges = LSMExchange{FT}()
+    soil = Soil.RichardsModel{FT}(;param_set = parameters.soil,
+                             domain = domain.soil,
+                             boundary_exchanges =  boundary_exchanges)
+    roots = Roots.RootsModel{FT}(;param_set = parameters.roots,
+                          domain = domain.roots,
+                          boundary_exchanges = boundary_exchanges)
+    args = (soil, roots)
+    return LandModel{FT, typeof.(args)...}(args...)
+end
+
+
+auxiliary_vars(land::LandModel) = (:root_extraction,)
+
 function initialize(land::LandModel)
     Y_soil, p_soil, coords_soil = initialize(land.soil)
     Y_roots, p_roots, coords_roots = initialize(land.roots)
+    # Do we just hardwire all of the interactions? This is so hardcoded, how would
+    # we do this for other combos of components?
     Y = ClimaCore.Fields.FieldVector(;
-        soil = Y_soil.soil,
-        roots = Y_roots.roots,
-    )
+                                     soil = Y_soil.soil,
+                                     roots = Y_roots.roots,
+                                     )
     p = ClimaCore.Fields.FieldVector(;
-        soil = p_soil.soil,
-        roots = p_roots.roots,
-    )
+                                     root_extraction = similar(Y_soil.soil.ϑ_l),
+                                     soil = p_soil.soil,
+                                     roots = p_roots.roots,
+                                     )
     coords =
         ClimaCore.Fields.FieldVector(; soil = coords_soil, roots = coords_roots)
     return Y, p, coords
 end
 
 function make_update_aux(land::LandModel)
+    interactions_update_aux! = make_interactions_update_aux(land)
     soil_update_aux! = make_update_aux(land.soil)
     roots_update_aux! = make_update_aux(land.roots)
     function update_aux!(p, Y, t)
+        interactions_update_aux!(p, Y, t)
         soil_update_aux!(p, Y, t)
         roots_update_aux!(p, Y, t)
     end
     return update_aux!
 end
+
+function make_interactions_update_aux(land::LandModel{FT}) where {FT}
+    function update_aux!(p, Y, t)
+        root_params = land.roots.param_set
+        z = coordinates(land.soil)
+        z_up = land.roots.domain.compartment_heights[1]
+        rhog_MPa = FT(0.0098)
+        ψ = FT(0.0)
+        @unpack a_root,
+        b_root,
+        K_max_root_moles =  land.roots.param_set
+        ρm = FT(1e6/18) # moles/m^3
+        @. p.root_extraction = compute_flow(z, z_up, rhog_MPa * ψ, Y.roots.rwc[1], a_root, b_root, K_max_root_moles) / ρm # m^3/s need to convert to θ̇...
+    end
+    return update_aux!
+end
+
 
 function make_ode_function(land::LandModel)
     rhs_soil! = make_rhs(land.soil)
@@ -197,13 +242,10 @@ function make_ode_function(land::LandModel)
     update_aux! = make_update_aux(land)
     function ode_function!(dY, Y, p, t)
         update_aux!(p, Y, t)
-        rhs_soil!(dY.soil, Y.soil, p, t)
-        rhs_roots!(dY.roots, Y.roots, p, t)
+        rhs_soil!(dY, Y, p, t)
+        rhs_roots!(dY, Y, p, t)
     end
     return ode_function!
 end
-
-include("Soil.jl")
-include("Roots.jl")
 
 end # module

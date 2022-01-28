@@ -9,7 +9,7 @@ root_domain = RootDomain{FT}([-0.5], [0.0, 1.0])
 roots = Roots.RootsModel{FT}(;
     domain = root_domain,
     param_set = nothing,
-    boundary_exchanges = RootsPrescribedExchange{FT}(
+    boundary_exchanges = RootsStandaloneExchange{FT}(
         () -> nothing,
         () -> nothing,
     ),
