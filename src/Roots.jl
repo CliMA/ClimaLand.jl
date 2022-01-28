@@ -17,12 +17,13 @@ import ClimaLSM:
     initialize,
     initialize_auxiliary
 export RootsModel,
+    AbstractVegetationModel,
     compute_flow,
     theta_to_p,
     p_to_theta,
     RootsConfiguration,
     RootsParameters
-
+abstract type AbstractVegetationModel{FT} <: AbstractModel{FT} end
 """
     RootsParameters{FT <: AbstractFloat}
 
@@ -63,7 +64,7 @@ or with a dynamic soil model (boundary exchanges of type TBD).
 
 The RootModel domain must be of type `AbstractPlantDomain`.
 """
-struct RootsModel{FT, PS, D, B} <: AbstractModel{FT}
+struct RootsModel{FT, PS, D, B} <: AbstractVegetationModel{FT}
     param_set::PS
     domain::D
     configuration::B
@@ -137,15 +138,9 @@ function compute_flow(
     b::FT,
     Kmax::FT,
 )::FT where {FT}
-    #if abs(p_up - p_do)/p_do < FT(1e-5)
-    #    rhog_MPa = FT(0.0098)
-    #    flow = -rhog_MPa * (z_up-z_do)*Kmax*(a+FT(1))/a*exp(b*p_do)/(FT(1)+a*exp(b*p_do))
-    #else
-        u_do, u_up, A, B, flow_approx =
+    u_do, u_up, A, B, flow_approx =
         vc_integral_approx(z_do, z_up, p_do, p_up, a, b, Kmax)
-        flow = vc_integral(u_do, u_up, A, B, flow_approx)
-    #end
-    
+    flow = vc_integral(u_do, u_up, A, B, flow_approx)
     return flow
 end
 
@@ -220,8 +215,8 @@ function theta_to_p(theta::FT) where {FT}
     m = FT(0.5)
     rhog_MPa = FT(0.0098) #MPa/m
 
-    p = -((theta^(-FT(1) / m) - FT(1)) * α^(-n))^(FT(1) / n)*rhog_MPa
-    #p = (theta - FT(1)) * FT(5)
+    p = -((theta^(-FT(1) / m) - FT(1)) * α^(-n))^(FT(1) / n) * rhog_MPa
+
     return p
 end
 
@@ -239,8 +234,7 @@ function p_to_theta(p::FT) where {FT}
     n = FT(2.0)
     m = FT(0.5)
     rhog_MPa = FT(0.0098) #MPa/m
-    theta = ((-α*(p/rhog_MPa))^n+FT(1.0))^(-m)
-    #theta = p / FT(5) + FT(1)
+    theta = ((-α * (p / rhog_MPa))^n + FT(1.0))^(-m)
     return theta
 end
 
@@ -284,8 +278,7 @@ function make_rhs(model::RootsModel)
 
         dY.vegetation.rwc[1] = flow_out_roots - flow_out_stem
         dY.vegetation.rwc[2] =
-            flow_out_stem -
-            compute_transpiration(model.configuration,t)
+            flow_out_stem - compute_transpiration(model.configuration, t)
     end
     return rhs!
 end
@@ -316,8 +309,8 @@ function compute_flow_out_roots(
         model.param_set
     p_stem = theta_to_p(Y.vegetation.rwc[1] / size_reservoir_stem_moles)
 
-    flow =
-        sum(compute_flow.(
+    flow = sum(
+        compute_flow.(
             model.domain.root_depths,
             model.domain.compartment_heights[1],
             configuration.p_soil(t),
@@ -325,10 +318,10 @@ function compute_flow_out_roots(
             a_root,
             b_root,
             K_max_root_moles,
-        ))
+        ),
+    )
     return flow
 end
-
 
 
 function compute_flow_out_roots(
@@ -338,7 +331,7 @@ function compute_flow_out_roots(
     p::ClimaCore.Fields.FieldVector,
     t::FT,
 )::FT where {FT}
-    return  sum(p.root_extraction)#FT(0.0) .+ similar(Y.vegetation.rwc) # look in p
+    return sum(p.root_extraction)
 end
 
 """
@@ -349,9 +342,10 @@ and the atmosphere,
 in the case of a standalone root model with prescribed transpiration rate.
 """
 function compute_transpiration(
-    configuration::AbstractConfiguration{FT}, t::FT)::FT where {FT}
+    configuration::AbstractConfiguration{FT},
+    t::FT,
+)::FT where {FT}
     return configuration.T(t)
 end
-
 
 end

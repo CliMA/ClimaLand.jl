@@ -138,7 +138,7 @@ end
 
 
 # Check that the final state is in the new equilibrium
-soln = nlsolve(f2!, [-1.0, -0.9];ftol = 1e-10)
+soln = nlsolve(f2!, [-1.0, -0.9]; ftol = 1e-10)
 p_stem_f = soln.zero[1]
 p_leaf_f = soln.zero[2]
 @test abs(p_stem_f - p_stem[end]) < 1e-10

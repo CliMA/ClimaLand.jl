@@ -5,16 +5,19 @@ using ClimaCore
 import ClimaCore: Fields, Operators, Geometry
 import ClimaLSM.Domains: coordinates
 using ClimaLSM.Configurations: RootSoilConfiguration, AbstractConfiguration
-import ClimaLSM: AbstractModel, make_update_aux, make_rhs, prognostic_vars, auxiliary_vars
+import ClimaLSM:
+    AbstractModel, make_update_aux, make_rhs, prognostic_vars, auxiliary_vars
 using UnPack
-export RichardsModel, RichardsParameters, FluxBC
+export AbstractSoilModel, RichardsModel, RichardsParameters, FluxBC
 
+
+abstract type AbstractSoilModel{FT} <: AbstractModel{FT} end
 """
     RichardsModel
 
 A model for simulating the flow of water in a soil column.
 """
-struct RichardsModel{FT, PS, D, C, B} <: AbstractModel{FT}
+struct RichardsModel{FT, PS, D, C, B} <: AbstractSoilModel{FT}
     param_set::PS
     domain::D
     coordinates::C
@@ -113,13 +116,13 @@ function compute_boundary_fluxes(be::RootSoilConfiguration{FT}, t) where {FT}
     return be.P(t), FT(0.0)
 end
 
-function compute_source(be::FluxBC{FT},_...) where {FT}
+function compute_source(be::FluxBC{FT}, _...) where {FT}
     return FT(0.0)
 end
 
-function compute_source(be::RootSoilConfiguration{FT},Y,p) where {FT}
-    V_layer = FT(1.0*0.15) # hardcoded
-    ρm = FT(1e6/18) # moles/m^3
+function compute_source(be::RootSoilConfiguration{FT}, Y, p) where {FT}
+    V_layer = FT(1.0 * 0.15) # hardcoded
+    ρm = FT(1e6 / 18) # moles/m^3
     return p.root_extraction ./ ρm ./ V_layer # Field
 end
 
@@ -127,7 +130,8 @@ end
 function make_rhs(model::RichardsModel)
     function rhs!(dY, Y, p, t)
         @unpack ν, vg_α, vg_n, vg_m, Ksat, S_s, θ_r = model.param_set
-        top_flux_bc, bot_flux_bc = compute_boundary_fluxes(model.configuration, t)
+        top_flux_bc, bot_flux_bc =
+            compute_boundary_fluxes(model.configuration, t)
         z = model.coordinates
         interpc2f = Operators.InterpolateC2F()
         gradc2f_water = Operators.GradientC2F()
