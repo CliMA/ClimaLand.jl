@@ -4,12 +4,11 @@ using ClimaLSM
 using ClimaCore
 import ClimaCore: Fields, Operators, Geometry
 import ClimaLSM.Domains: coordinates
-import ClimaLSM: AbstractModel, make_update_aux, make_rhs, prognostic_vars
+import ClimaLSM:
+    AbstractModel, make_update_aux, make_rhs, prognostic_vars, auxiliary_vars
 using UnPack
 export RichardsModel, RichardsParameters
 
-# Model for Richards equation alone, with only ϑ_l
-# Store everything necessary to define the eqs
 """
     RichardsModel
 
@@ -110,21 +109,26 @@ function make_rhs(model::RichardsModel)
             top = Operators.SetValue(Geometry.WVector(top_flux_bc)),
             bottom = Operators.SetValue(Geometry.WVector(bot_flux_bc)),
         )
-        @. dY.soil.ϑ_l = -(divf2c_water(
-            -interpc2f(
-                hydraulic_conductivity(
-                    Ksat,
-                    vg_m,
-                    effective_saturation(ν, Y.soil.ϑ_l, θ_r),
-                ),
-            ) * gradc2f_water(
-                pressure_head(vg_α, vg_n, vg_m, θ_r, Y.soil.ϑ_l, ν, S_s) + z,
-            ),
-        ))
+        @. dY.soil.ϑ_l =
+            -(divf2c_water(-interpc2f(p.soil.K) * gradc2f_water(p.soil.ψ + z)))
     end
     return rhs!
 end
 
 prognostic_vars(soil::RichardsModel) = (:ϑ_l,)
+auxiliary_vars(soil::RichardsModel) = (:K, :ψ)
+
+function make_update_aux(model::RichardsModel)
+    function update_aux!(p, Y, t)
+        @unpack ν, vg_α, vg_n, vg_m, Ksat, S_s, θ_r = model.param_set
+        @. p.soil.K = hydraulic_conductivity(
+            Ksat,
+            vg_m,
+            effective_saturation(ν, Y.soil.ϑ_l, θ_r),
+        )
+        @. p.soil.ψ = pressure_head(vg_α, vg_n, vg_m, θ_r, Y.soil.ϑ_l, ν, S_s)
+        return update_aux!
+    end
+end
 
 end
