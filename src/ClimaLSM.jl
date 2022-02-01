@@ -191,8 +191,11 @@ auxiliary_vars(land::LandModel) = (:root_extraction,)
 function initialize(land::LandModel)
     Y_soil, p_soil, coords_soil = initialize(land.soil)
     Y_roots, p_roots, coords_roots = initialize(land.roots)
+
     # Do we just hardwire all of the interactions? This is so hardcoded, how would
     # we do this for other combos of components?
+    # Each interaction will have a different domain as well
+    # do these need coordinates??
     Y = ClimaCore.Fields.FieldVector(;
                                      soil = Y_soil.soil,
                                      roots = Y_roots.roots,
@@ -232,7 +235,12 @@ function make_interactions_update_aux(land::LandModel{FT}) where {FT}
         ρm = FT(1e6/18) # moles/m^3
         p_soil = p.soil.ψ .*rhog_MPa
         p_stem = theta_to_p(Y.roots.rwc[1] / size_reservoir_stem_moles)
+        # computing root extraction as if there was a root in each layer
+        # multiply by mask (P(root in that layer)?)
         @. p.root_extraction = compute_flow(z, z_up, p_soil, p_stem, a_root, b_root, K_max_root_moles) / ρm # m^3/s need to convert to θ̇...
+
+        ## we should: flow/ρm/Δz* (bio count of roots per area = M_r/M_R) OR
+        ## flow/ρm *n(z) -> number density of roots per unit volume (z)
     end
     return update_aux!
 end
