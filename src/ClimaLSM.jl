@@ -225,12 +225,14 @@ function make_interactions_update_aux(land::LandModel{FT}) where {FT}
         z = coordinates(land.soil)
         z_up = land.roots.domain.compartment_heights[1]
         rhog_MPa = FT(0.0098)
-        ψ = FT(0.0)
         @unpack a_root,
         b_root,
-        K_max_root_moles =  land.roots.param_set
+        K_max_root_moles,
+        size_reservoir_stem_moles =  land.roots.param_set
         ρm = FT(1e6/18) # moles/m^3
-        @. p.root_extraction = compute_flow(z, z_up, rhog_MPa * ψ, Y.roots.rwc[1], a_root, b_root, K_max_root_moles) / ρm # m^3/s need to convert to θ̇...
+        p_soil = p.soil.ψ .*rhog_MPa
+        p_stem = theta_to_p(Y.roots.rwc[1] / size_reservoir_stem_moles)
+        @. p.root_extraction = compute_flow(z, z_up, p_soil, p_stem, a_root, b_root, K_max_root_moles) / ρm # m^3/s need to convert to θ̇...
     end
     return update_aux!
 end

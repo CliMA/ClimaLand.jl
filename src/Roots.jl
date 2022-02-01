@@ -137,14 +137,14 @@ function compute_flow(
     b::FT,
     Kmax::FT,
 )::FT where {FT}
-    if abs(p_up - p_do)/p_do < FT(1e-5)
-        rhog_MPa = FT(0.0098)
-        flow = -rhog_MPa * (z_up-z_do)*Kmax*(a+FT(1))/a*exp(b*p_do)/(FT(1)+a*exp(b*p_do))
-    else
+    #if abs(p_up - p_do)/p_do < FT(1e-5)
+    #    rhog_MPa = FT(0.0098)
+    #    flow = -rhog_MPa * (z_up-z_do)*Kmax*(a+FT(1))/a*exp(b*p_do)/(FT(1)+a*exp(b*p_do))
+    #else
         u_do, u_up, A, B, flow_approx =
         vc_integral_approx(z_do, z_up, p_do, p_up, a, b, Kmax)
         flow = vc_integral(u_do, u_up, A, B, flow_approx)
-    end
+    #end
     
     return flow
 end

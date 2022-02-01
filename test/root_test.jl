@@ -99,7 +99,7 @@ sol = solve(prob, Euler(), dt = dt);
 
 dY = similar(Y)
 root_ode!(dY, Y, p, 0.0)
-@test sqrt(sum(dY.roots.rwc .^ 2.0)) < 1e-10 # starts in equilibrium
+@test sqrt(mean(dY.roots.rwc .^ 2.0)) < 1e-8 # starts in equilibrium
 
 
 y_1 = reduce(hcat, sol.u)[1, :]

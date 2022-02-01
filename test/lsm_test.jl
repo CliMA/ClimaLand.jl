@@ -1,12 +1,17 @@
 using Test
+using UnPack
+using NLsolve
+using OrdinaryDiffEq: ODEProblem, solve, Euler
+
+if !("." in LOAD_PATH) # for ease of include
+    push!(LOAD_PATH, ".")
+end
 
 using ClimaLSM
 using ClimaLSM.Domains: Column, RootDomain
 using ClimaLSM.Soil
 using ClimaLSM.Roots
-using UnPack
-using NLsolve
-using OrdinaryDiffEq: ODEProblem, solve, Euler
+
 
 
 FT = Float64
