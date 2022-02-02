@@ -3,7 +3,7 @@ using ClimaLSM
 using ClimaCore
 using UnPack
 import ClimaCore: Fields
-using ClimaLSM.ComponentExchanges: AbstractComponentExchange, LSMExchange
+using ClimaLSM.Configurations: AbstractConfiguration, LSMConfiguration
 using ClimaLSM.Domains: AbstractPlantDomain, RootDomain
 
 import ClimaLSM:
@@ -20,7 +20,7 @@ export RootsModel,
     compute_flow,
     theta_to_p,
     p_to_theta,
-    RootsStandaloneExchange,
+    RootsConfiguration,
     RootsParameters
 
 """
@@ -58,7 +58,7 @@ along a stem, to a leaf, and ultimately being lost from the system by
 transpiration. 
 
 This model can be used in standalone mode by prescribing the transpiration rate
-and soil pressure at the root tips (boundary_exchanges of type `RootsStandaloneExchange`),
+and soil pressure at the root tips (configuration of type `RootsConfiguration`),
 or with a dynamic soil model (boundary exchanges of type TBD).
 
 The RootModel domain must be of type `AbstractPlantDomain`.
@@ -66,25 +66,25 @@ The RootModel domain must be of type `AbstractPlantDomain`.
 struct RootsModel{FT, PS, D, B} <: AbstractModel{FT}
     param_set::PS
     domain::D
-    boundary_exchanges::B
+    configuration::B
     model_name::Symbol
 end
 
 function RootsModel{FT}(;
     param_set,
     domain::AbstractPlantDomain{FT},
-    boundary_exchanges::AbstractComponentExchange{FT},
+    configuration::AbstractConfiguration{FT},
 ) where {FT}
     return RootsModel{
         FT,
         typeof(param_set),
         typeof(domain),
-        typeof(boundary_exchanges),
+        typeof(configuration),
     }(
         param_set,
         domain,
-        boundary_exchanges,
-        :roots,
+        configuration,
+        :vegetation,
     )
 end
 
@@ -92,7 +92,7 @@ end
 
 
 """
-    RootsStandaloneExchange{FT} <: AbstractComponentExchange{FT}
+    RootsConfiguration{FT} <: AbstractConfiguration{FT}
 
 The component exchange type to be used for the Root model in standalone mode.
 
@@ -265,12 +265,12 @@ function make_rhs(model::RootsModel)
 
         z_stem, z_leaf = model.domain.compartment_heights
 
-        p_stem = theta_to_p(Y.roots.rwc[1] / size_reservoir_stem_moles)
-        p_leaf = theta_to_p(Y.roots.rwc[2] / size_reservoir_leaf_moles)
+        p_stem = theta_to_p(Y.vegetation.rwc[1] / size_reservoir_stem_moles)
+        p_leaf = theta_to_p(Y.vegetation.rwc[2] / size_reservoir_leaf_moles)
 
         # Flows are in moles/second
         flow_out_roots =
-            compute_flow_out_roots(model.boundary_exchanges, model, Y, p, t)
+            compute_flow_out_roots(model.configuration, model, Y, p, t)
 
         flow_in_stem = sum(flow_out_roots)
         flow_out_stem = compute_flow(
@@ -283,17 +283,17 @@ function make_rhs(model::RootsModel)
             K_max_stem_moles,
         )
 
-        dY.roots.rwc[1] = flow_in_stem - flow_out_stem
-        dY.roots.rwc[2] =
+        dY.vegetation.rwc[1] = flow_in_stem - flow_out_stem
+        dY.vegetation.rwc[2] =
             flow_out_stem -
-            compute_transpiration(model.boundary_exchanges, Y, p, t)
+            compute_transpiration(model.configuration, Y, p, t)
     end
     return rhs!
 end
 
 """
     function compute_flow_out_roots(
-        boundary_exchanges::RootsStandaloneExchange{FT},
+        configuration::RootsConfiguration{FT},
         model::RootsModel{FT},
         Y::ClimaCore.Fields.FieldVector,
         p::ClimaCore.Fields.FieldVector,
@@ -307,7 +307,7 @@ at the root tips.
 This assumes that the stem compartment is the first element of `Y.roots.rwc`.
 """
 function compute_flow_out_roots(
-    boundary_exchanges::RootsStandaloneExchange{FT},
+    configuration::RootsConfiguration{FT},
     model::RootsModel{FT},
     Y::ClimaCore.Fields.FieldVector,
     p::ClimaCore.Fields.FieldVector,
@@ -315,13 +315,13 @@ function compute_flow_out_roots(
 )::Vector{FT} where {FT}
     @unpack a_root, b_root, K_max_root_moles, size_reservoir_stem_moles =
         model.param_set
-    p_stem = theta_to_p(Y.roots.rwc[1] / size_reservoir_stem_moles)
+    p_stem = theta_to_p(Y.vegetation.rwc[1] / size_reservoir_stem_moles)
 
     flow =
         compute_flow.(
             model.domain.root_depths,
             model.domain.compartment_heights[1],
-            boundary_exchanges.p_soil(t),
+            configuration.p_soil(t),
             p_stem,
             a_root,
             b_root,
@@ -333,17 +333,17 @@ end
 
 
 function compute_flow_out_roots(
-    boundary_exchanges::LSMExchange{FT},
+    configuration::LSMConfiguration{FT},
     model::RootsModel{FT},
     Y::ClimaCore.Fields.FieldVector,
     p::ClimaCore.Fields.FieldVector,
     t::FT,
 )::Vector{FT} where {FT}
-    return  FT(0.0) .+ similar(Y.roots.rwc) # look in p
+    return  FT(0.0) .+ similar(Y.vegetation.rwc) # look in p
 end
 
 """
-    compute_transpiration(boundary_exchanges::RootsStandaloneExchange{FT},
+    compute_transpiration(configuration::RootsConfiguration{FT},
         Y::ClimaCore.Fields.FieldVector,
         p::ClimaCore.Fields.FieldVector,
         t::FT)::FT where {FT}
@@ -353,22 +353,22 @@ and the atmosphere,
 in the case of a standalone root model with prescribed transpiration rate.
 """
 function compute_transpiration(
-    boundary_exchanges::RootsStandaloneExchange{FT},
+    configuration::RootsConfiguration{FT},
     Y::ClimaCore.Fields.FieldVector,
     p::ClimaCore.Fields.FieldVector,
     t::FT,
 )::FT where {FT}
-    return boundary_exchanges.T(t)
+    return configuration.T(t)
 end
 
 
 function compute_transpiration(
-    boundary_exchanges::LSMExchange{FT},
+    configuration::LSMConfiguration{FT},
     Y::ClimaCore.Fields.FieldVector,
     p::ClimaCore.Fields.FieldVector,
     t::FT,
 )::FT where {FT}
-    return boundary_exchanges.T(t)
+    return configuration.T(t)
 end
 
 

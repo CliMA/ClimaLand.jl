@@ -1,4 +1,4 @@
-module ComponentExchanges
+module Configurations
 
 export AbstractConfiguration, LSMConfiguration
 """
@@ -31,4 +31,5 @@ Base.@kwdef struct LSMConfiguration{FT} <: AbstractConfiguration{FT}
     "Time dependent precipitation, given in m/s"
     P::Function = (t) -> FT(0.0)
 
+end
 end

@@ -18,7 +18,7 @@ params = Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, Ksat, S_s, θ_r);
 soil = Soil.RichardsModel{FT}(;
     param_set = params,
     domain = soil_domain,
-    boundary_exchanges = boundary_fluxes,
+    configuration = boundary_fluxes,
 )
 
 Y, p, coords = initialize(soil)

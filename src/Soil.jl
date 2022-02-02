@@ -4,7 +4,7 @@ using ClimaLSM
 using ClimaCore
 import ClimaCore: Fields, Operators, Geometry
 import ClimaLSM.Domains: coordinates
-using ClimaLSM.ComponentExchanges: LSMExchange, AbstractComponentExchange
+using ClimaLSM.Configurations: LSMConfiguration, AbstractConfiguration
 import ClimaLSM: AbstractModel, make_update_aux, make_rhs, prognostic_vars, auxiliary_vars
 using UnPack
 export RichardsModel, RichardsParameters, FluxBC
@@ -18,18 +18,18 @@ struct RichardsModel{FT, PS, D, C, B} <: AbstractModel{FT}
     param_set::PS
     domain::D
     coordinates::C
-    boundary_exchanges::B
+    configuration::B
     model_name::Symbol
 end
 
-function RichardsModel{FT}(; param_set, domain, boundary_exchanges) where {FT}
+function RichardsModel{FT}(; param_set, domain, configuration) where {FT}
     coords = coordinates(domain)
-    args = (param_set, domain, coords, boundary_exchanges)
+    args = (param_set, domain, coords, configuration)
     RichardsModel{FT, typeof.(args)...}(
         param_set,
         domain,
         coords,
-        boundary_exchanges,
+        configuration,
         :soil,
     )
 end
@@ -98,7 +98,8 @@ function hydraulic_conductivity(Ksat::FT, m::FT, S::FT) where {FT}
     return K * Ksat
 end
 
-struct FluxBC{FT} <: AbstractComponentExchange{FT}
+abstract type AbstractSoilConfiguration{FT} <: AbstractConfiguration{FT} end
+struct FluxBC{FT} <: AbstractSoilConfiguration{FT}
     top_flux_bc::FT
     bot_flux_bc::FT
 end
@@ -112,7 +113,7 @@ function compute_boundary_fluxes(be::FluxBC, _...)
     return be.top_flux_bc, be.bot_flux_bc
 end
 
-function compute_boundary_fluxes(be::LSMExchange{FT}, t) where {FT}
+function compute_boundary_fluxes(be::LSMConfiguration{FT}, t) where {FT}
     return be.P(t), FT(0.0)
 end
 
@@ -120,18 +121,18 @@ function compute_source(be::FluxBC{FT},_...) where {FT}
     return FT(0.0)
 end
 
-function compute_source(be::LSMExchange{FT},Y,p) where {FT}
-    return p.soil.root_extraction # Field
+function compute_source(be::LSMConfiguration{FT},Y,p) where {FT}
+    return p.root_extraction # Field
 end
 
-p.soil.top_flux_bc
+#p.soil.top_flux_bc
 
 # p.roots.flow_in_from_roots # single number 
 
 function make_rhs(model::RichardsModel)
     function rhs!(dY, Y, p, t)
         @unpack ν, vg_α, vg_n, vg_m, Ksat, S_s, θ_r = model.param_set
-        top_flux_bc, bot_flux_bc = compute_boundary_fluxes(model.boundary_exchanges, t)
+        top_flux_bc, bot_flux_bc = compute_boundary_fluxes(model.configuration, t)
         z = model.coordinates
         interpc2f = Operators.InterpolateC2F()
         gradc2f_water = Operators.GradientC2F()
@@ -141,7 +142,7 @@ function make_rhs(model::RichardsModel)
         )
         @. dY.soil.ϑ_l =
             -(divf2c_water(-interpc2f(p.soil.K) * gradc2f_water(p.soil.ψ + z)))
-        dY.soil.ϑ_l .+= compute_source(model.boundary_exchanges, Y, p)
+        dY.soil.ϑ_l .+= compute_source(model.configuration, Y, p)
     end
     return rhs!
 end

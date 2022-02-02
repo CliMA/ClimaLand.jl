@@ -37,14 +37,14 @@ function transpiration(t::ft) where {ft}
 end
 
 const p_soil0 = [FT(-0.02)]
-boundary_exchanges = Roots.RootsStandaloneExchange{FT}(
+configuration = Roots.RootsConfiguration{FT}(
     (t::FT) -> transpiration(t),
     (t::FT) -> p_soil0,
 )
 roots = Roots.RootsModel{FT}(;
     domain = root_domain,
     param_set = param_set,
-    boundary_exchanges = boundary_exchanges,
+    configuration = configuration,
 )
 
 # Set system to equilibrium state by setting LHS of both ODEs to 0
@@ -86,7 +86,7 @@ y1_0 = FT(theta_stem_0 * size_reservoir_stem_moles)
 y2_0 = FT(theta_leaf_0 * size_reservoir_leaf_moles)
 y0 = [y1_0, y2_0]
 Y, p, coords = initialize(roots)
-Y.roots.rwc .= y0
+Y.vegetation.rwc .= y0
 
 root_ode! = make_ode_function(roots)
 
@@ -99,7 +99,7 @@ sol = solve(prob, Euler(), dt = dt);
 
 dY = similar(Y)
 root_ode!(dY, Y, p, 0.0)
-@test sqrt(mean(dY.roots.rwc .^ 2.0)) < 1e-8 # starts in equilibrium
+@test sqrt(mean(dY.vegetation.rwc .^ 2.0)) < 1e-8 # starts in equilibrium
 
 
 y_1 = reduce(hcat, sol.u)[1, :]
@@ -138,7 +138,7 @@ end
 
 
 # Check that the final state is in the new equilibrium
-soln = nlsolve(f2!, [-1.0, -0.9])
+soln = nlsolve(f2!, [-1.0, -0.9];ftol = 1e-10)
 p_stem_f = soln.zero[1]
 p_leaf_f = soln.zero[2]
 @test abs(p_stem_f - p_stem[end]) < 1e-10

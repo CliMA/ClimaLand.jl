@@ -51,9 +51,9 @@ const vg_m = FT(1) - FT(1) / vg_n;
 const θ_r = FT(0);
 soil_ps = Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, Ksat, S_s, θ_r);
 
-params = (soil = soil_ps, roots = roots_ps)
-domain = (soil = soil_domain, roots = roots_domain)
-land = LandModel{FT}(; domain = domain, parameters = params)
+soil_args = (domain= soil_domain, param_set = soil_ps)
+root_args = (domain = roots_domain, param_set = roots_ps)
+land = LandModel{FT}(; soil_args = soil_args, vegetation_args = root_args)
 Y, p, coords = initialize(land)
 # specify ICs
 function init_soil!(Ysoil, z, params)
@@ -84,7 +84,7 @@ theta_leaf_0 = p_to_theta(p_leaf_ini)
 y1_0 = FT(theta_stem_0 * size_reservoir_stem_moles)
 y2_0 = FT(theta_leaf_0 * size_reservoir_leaf_moles)
 y0 = [y1_0, y2_0]
-Y.roots.rwc .= y0
+Y.vegetation.rwc .= y0
 
 ode! = make_ode_function(land)
 t0 = FT(0);
