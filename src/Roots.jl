@@ -102,7 +102,7 @@ vector of soil pressures (MPa). The different elements of
 this vector hold the soil pressure at the root tips, with depths indicated by
 the different elements of the `root_depths` vector of `RootDomain`. 
 """
-struct RootsStandaloneExchange{FT} <: AbstractComponentExchange{FT}
+struct RootsConfiguration{FT} <: AbstractConfiguration{FT}
     "Time dependent transpiration, given in moles/sec"
     T::Function
     "Time dependent soil pressure at root tips, given in MPa"
@@ -338,8 +338,8 @@ function compute_flow_out_roots(
     Y::ClimaCore.Fields.FieldVector,
     p::ClimaCore.Fields.FieldVector,
     t::FT,
-    )::Vector{FT} where {FT}
-    return  FT(0.0) .+ similar(Y.roots.rwc)
+)::Vector{FT} where {FT}
+    return  FT(0.0) .+ similar(Y.roots.rwc) # look in p
 end
 
 """

@@ -30,7 +30,5 @@ Base.@kwdef struct LSMExchange{FT} <: AbstractComponentExchange{FT}
     T::Function = (t) -> FT(0.0)
     "Time dependent precipitation, given in m/s"
     P::Function = (t) -> FT(0.0)
-end
-
 
 end

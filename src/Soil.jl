@@ -103,6 +103,11 @@ struct FluxBC{FT} <: AbstractComponentExchange{FT}
     bot_flux_bc::FT
 end
 
+####What if exchange terms always live in p.soil, p.roots?
+### and we set p.soil.root_extraction = root source
+### p.roots.flow_from_roots = root flow in?
+### We'd need an LSM update aux that does both.
+
 function compute_boundary_fluxes(be::FluxBC, _...)
     return be.top_flux_bc, be.bot_flux_bc
 end
@@ -111,13 +116,17 @@ function compute_boundary_fluxes(be::LSMExchange{FT}, t) where {FT}
     return be.P(t), FT(0.0)
 end
 
-function compute_source(be::FluxBC{FT}) where {FT}
+function compute_source(be::FluxBC{FT},_...) where {FT}
     return FT(0.0)
 end
 
-function compute_source(be::LSMExchange{FT}) where {FT}
-    return FT(0.0)
+function compute_source(be::LSMExchange{FT},Y,p) where {FT}
+    return p.soil.root_extraction # Field
 end
+
+p.soil.top_flux_bc
+
+# p.roots.flow_in_from_roots # single number 
 
 function make_rhs(model::RichardsModel)
     function rhs!(dY, Y, p, t)
@@ -132,7 +141,7 @@ function make_rhs(model::RichardsModel)
         )
         @. dY.soil.ϑ_l =
             -(divf2c_water(-interpc2f(p.soil.K) * gradc2f_water(p.soil.ψ + z)))
-        dY.soil.ϑ_l .+= compute_source(model.boundary_exchanges)
+        dY.soil.ϑ_l .+= compute_source(model.boundary_exchanges, Y, p)
     end
     return rhs!
 end

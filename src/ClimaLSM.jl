@@ -153,6 +153,7 @@ Domains.coordinates(model::AbstractModel) = Domains.coordinates(model.domain)
 
 #### LandModel Specific
 include("Soil.jl")
+using .Soil
 include("Roots.jl")
 using .Roots
 """
@@ -164,34 +165,47 @@ A concrete type of `AbstractModel` for use in land surface modeling. Each compon
 If a user wants to run in standalone, would they use this interface?
 No, but should it work ?
 """
-struct LandModel{FT, SM <: AbstractModel{FT}, RM <: AbstractModel{FT}} <:
+struct LandModel{FT, SM <: AbstractModel{FT}, RM <: AbstractModel{FT}, SMT <:AbstractModel{FT}} <:
        AbstractModel{FT}
     soil::SM
     roots::RM
+    submodel::SMT
 end
 
+struct NotIncluded{FT} <: AbstractModel{FT} end
+
+#function LandModel{FT}(; soil_args = Nothing, roots_args = Nothing, river_args = Nothing)
+
 function LandModel{FT}(; domain::NamedTuple,
-                       parameters::NamedTuple,
+                       parameters::NamedTuple
                        ) where {FT}
     
     boundary_exchanges = LSMExchange{FT}()
     soil = Soil.RichardsModel{FT}(;param_set = parameters.soil,
-                             domain = domain.soil,
-                             boundary_exchanges =  boundary_exchanges)
+                                  domain = domain.soil,
+                                  boundary_exchanges =  boundary_exchanges)
     roots = Roots.RootsModel{FT}(;param_set = parameters.roots,
-                          domain = domain.roots,
-                          boundary_exchanges = boundary_exchanges)
+                                 domain = domain.roots,
+                                 boundary_exchanges = boundary_exchanges)
+    
     args = (soil, roots)
     return LandModel{FT, typeof.(args)...}(args...)
 end
 
 
-auxiliary_vars(land::LandModel) = (:root_extraction,)
-
+auxiliary_vars(land::LandModel{FT, RichardsModel{FT}, RootsModel{FT}}) where {FT} = (:root_extraction,)
+#=
+function initialize_interactions(
+    land::LandModel{{FT, RichardsModel{FT}, RootsModel{FT}}
+                    Y::ClimaCore.Fields.FieldVector
+                    ) where {FT}
+p.exchanges.variable?
+    return 
+=#
 function initialize(land::LandModel)
     Y_soil, p_soil, coords_soil = initialize(land.soil)
     Y_roots, p_roots, coords_roots = initialize(land.roots)
-
+    p_interactions  = initialize_interactions(land)?
     # Do we just hardwire all of the interactions? This is so hardcoded, how would
     # we do this for other combos of components?
     # Each interaction will have a different domain as well
@@ -224,6 +238,9 @@ end
 
 function make_interactions_update_aux(land::LandModel{FT}) where {FT}
     function update_aux!(p, Y, t)
+
+        @. p.root_extraction = FT(0.0)
+        #=
         root_params = land.roots.param_set
         z = coordinates(land.soil)
         z_up = land.roots.domain.compartment_heights[1]
@@ -237,10 +254,14 @@ function make_interactions_update_aux(land::LandModel{FT}) where {FT}
         p_stem = theta_to_p(Y.roots.rwc[1] / size_reservoir_stem_moles)
         # computing root extraction as if there was a root in each layer
         # multiply by mask (P(root in that layer)?)
+        # shouldnt do each step
+        mask = zeros(length(parent(z)))
+        map(x -> mask[argmin(parent(abs.(z .- x)))] = 1.0, z_root_depths)
         @. p.root_extraction = compute_flow(z, z_up, p_soil, p_stem, a_root, b_root, K_max_root_moles) / ρm # m^3/s need to convert to θ̇...
 
         ## we should: flow/ρm/Δz* (bio count of roots per area = M_r/M_R) OR
         ## flow/ρm *n(z) -> number density of roots per unit volume (z)
+=#
     end
     return update_aux!
 end
