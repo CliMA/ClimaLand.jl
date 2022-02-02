@@ -2,7 +2,8 @@ using Test
 using UnPack
 using NLsolve
 using OrdinaryDiffEq: ODEProblem, solve, Euler
-
+using DifferentialEquations
+using ClimaCore
 if !("." in LOAD_PATH) # for ease of include
     push!(LOAD_PATH, ".")
 end
@@ -15,6 +16,7 @@ using ClimaLSM.Roots
 
 
 FT = Float64
+saved_values = SavedValues(FT, ClimaCore.Fields.FieldVector)
 
 const a_root = FT(13192)
 const a_stem = FT(515.5605)
@@ -25,7 +27,9 @@ const size_reservoir_stem_moles = FT(11000.8837)
 const K_max_root_moles = FT(12.9216)
 const K_max_stem_moles = FT(3.4415)
 const z_leaf = FT(12) # height of leaf
-const z_root_depths = [FT(-1.0)] # m, rooting depth
+# currently hardcoded to match the soil coordinates. this has to
+# be fixed eventually.
+const z_root_depths = - Array(1:1:20.0)./20.0*3.0 .+ 0.15/2.0
 const z_bottom_stem = FT(0.0)
 roots_domain = RootDomain{FT}(z_root_depths, [z_bottom_stem, z_leaf])
 roots_ps = Roots.RootsParameters{FT}(
@@ -38,6 +42,7 @@ roots_ps = Roots.RootsParameters{FT}(
     K_max_root_moles,
     K_max_stem_moles,
 )
+
 zmin = FT(-3.0)
 zmax = FT(0.0)
 nelements = 20
@@ -88,8 +93,8 @@ Y.vegetation.rwc .= y0
 
 ode! = make_ode_function(land)
 t0 = FT(0);
-tf = FT(1)
+tf = FT(2)
 dt = FT(1);
-
+cb = SavingCallback((u, t, integrator) -> integrator.p, saved_values)
 prob = ODEProblem(ode!, Y, (t0, tf), p);
-sol = solve(prob, Euler(), dt = dt);
+sol = solve(prob, Euler(), dt = dt, callback = cb);

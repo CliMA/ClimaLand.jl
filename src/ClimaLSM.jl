@@ -278,7 +278,7 @@ end
 function make_interactions_update_aux(land::LandModel{FT}) where {FT}
     function update_aux!(p, Y, t)
 
-       # @. p.root_extraction = FT(0.0)
+        #@. p.root_extraction = FT(0.0)
         #=
         root_params = land.vegetation.param_set
         z = coordinates(land.soil)
@@ -288,19 +288,15 @@ function make_interactions_update_aux(land::LandModel{FT}) where {FT}
         b_root,
         K_max_root_moles,
         size_reservoir_stem_moles =  land.vegetation.param_set
-        ρm = FT(1e6/18) # moles/m^3
+
         p_soil = p.soil.ψ .*rhog_MPa
         p_stem = theta_to_p(Y.vegetation.rwc[1] / size_reservoir_stem_moles)
         # computing root extraction as if there was a root in each layer
         # multiply by mask (P(root in that layer)?)
-        # shouldnt do each step
-        mask = zeros(length(parent(z)))
-        map(x -> mask[argmin(parent(abs.(z .- x)))] = 1.0, z_root_depths)
-        @. p.root_extraction = compute_flow(z, z_up, p_soil, p_stem, a_root, b_root, K_max_root_moles) / ρm # m^3/s need to convert to θ̇...
-
+        @. p.root_extraction = compute_flow(z, z_up, p_soil, p_stem, a_root, b_root, K_max_root_moles)
+=#
         ## we should: flow/ρm/Δz* (bio count of vegetation per area = M_r/M_R) OR
         ## flow/ρm *n(z) -> number density of vegetation per unit volume (z)
-        =#
     end
     return update_aux!
 end

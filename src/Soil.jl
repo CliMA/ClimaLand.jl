@@ -122,7 +122,9 @@ function compute_source(be::FluxBC{FT},_...) where {FT}
 end
 
 function compute_source(be::LSMConfiguration{FT},Y,p) where {FT}
-    return p.root_extraction # Field
+    V_layer = FT(1.0*0.15) # hardcorded
+    ρm = FT(1e6/18) # moles/m^3
+    return p.root_extraction ./ ρm ./ V_layer # Field
 end
 
 #p.soil.top_flux_bc
@@ -142,7 +144,7 @@ function make_rhs(model::RichardsModel)
         )
         @. dY.soil.ϑ_l =
             -(divf2c_water(-interpc2f(p.soil.K) * gradc2f_water(p.soil.ψ + z)))
-        dY.soil.ϑ_l .+= compute_source(model.configuration, Y, p)
+        dY.soil.ϑ_l .= compute_source(model.configuration, Y, p)
     end
     return rhs!
 end

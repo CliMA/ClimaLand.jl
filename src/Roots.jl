@@ -272,7 +272,6 @@ function make_rhs(model::RootsModel)
         flow_out_roots =
             compute_flow_out_roots(model.configuration, model, Y, p, t)
 
-        flow_in_stem = sum(flow_out_roots)
         flow_out_stem = compute_flow(
             z_stem,
             z_leaf,
@@ -283,7 +282,7 @@ function make_rhs(model::RootsModel)
             K_max_stem_moles,
         )
 
-        dY.vegetation.rwc[1] = flow_in_stem - flow_out_stem
+        dY.vegetation.rwc[1] = flow_out_roots - flow_out_stem
         dY.vegetation.rwc[2] =
             flow_out_stem -
             compute_transpiration(model.configuration, Y, p, t)
@@ -298,7 +297,7 @@ end
         Y::ClimaCore.Fields.FieldVector,
         p::ClimaCore.Fields.FieldVector,
         t::FT,
-    )::Vector{FT} where {FT}
+    )::FT where {FT}
 
 A method which computes the flow between the soil and the stem, via the roots,
 in the case of a standalone root model with prescribed soil pressure (in MPa)
@@ -312,13 +311,13 @@ function compute_flow_out_roots(
     Y::ClimaCore.Fields.FieldVector,
     p::ClimaCore.Fields.FieldVector,
     t::FT,
-)::Vector{FT} where {FT}
+)::FT where {FT}
     @unpack a_root, b_root, K_max_root_moles, size_reservoir_stem_moles =
         model.param_set
     p_stem = theta_to_p(Y.vegetation.rwc[1] / size_reservoir_stem_moles)
 
     flow =
-        compute_flow.(
+        sum(compute_flow.(
             model.domain.root_depths,
             model.domain.compartment_heights[1],
             configuration.p_soil(t),
@@ -326,7 +325,7 @@ function compute_flow_out_roots(
             a_root,
             b_root,
             K_max_root_moles,
-        )
+        ))
     return flow
 end
 
@@ -338,8 +337,8 @@ function compute_flow_out_roots(
     Y::ClimaCore.Fields.FieldVector,
     p::ClimaCore.Fields.FieldVector,
     t::FT,
-)::Vector{FT} where {FT}
-    return  FT(0.0) .+ similar(Y.vegetation.rwc) # look in p
+)::FT where {FT}
+    return  sum(p.root_extraction)#FT(0.0) .+ similar(Y.vegetation.rwc) # look in p
 end
 
 """
