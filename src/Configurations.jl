@@ -1,6 +1,6 @@
 module Configurations
 
-export AbstractConfiguration, LSMConfiguration
+export AbstractConfiguration, RootSoilConfiguration
 """
 
     AbstractComponentExchange{FT <: AbstractFloat}
@@ -24,8 +24,12 @@ when computing necessary exchange/flux/flow quantities.
 """
 abstract type AbstractConfiguration{FT <: AbstractFloat} end
 
+"""
+    RootSoilConfiguration{FT} <: AbstractConfiguration{FT}
 
-Base.@kwdef struct LSMConfiguration{FT} <: AbstractConfiguration{FT}
+Root-soil configuration. 
+"""
+Base.@kwdef struct RootSoilConfiguration{FT} <: AbstractConfiguration{FT}
     "Time dependent transpiration, given in moles/sec"
     T::Function = (t) -> FT(0.0)
     "Time dependent precipitation, given in m/s"

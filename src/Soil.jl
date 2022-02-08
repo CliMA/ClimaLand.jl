@@ -4,7 +4,7 @@ using ClimaLSM
 using ClimaCore
 import ClimaCore: Fields, Operators, Geometry
 import ClimaLSM.Domains: coordinates
-using ClimaLSM.Configurations: LSMConfiguration, AbstractConfiguration
+using ClimaLSM.Configurations: RootSoilConfiguration, AbstractConfiguration
 import ClimaLSM: AbstractModel, make_update_aux, make_rhs, prognostic_vars, auxiliary_vars
 using UnPack
 export RichardsModel, RichardsParameters, FluxBC
@@ -99,21 +99,17 @@ function hydraulic_conductivity(Ksat::FT, m::FT, S::FT) where {FT}
 end
 
 abstract type AbstractSoilConfiguration{FT} <: AbstractConfiguration{FT} end
+# Eventually would support other types of BC
 struct FluxBC{FT} <: AbstractSoilConfiguration{FT}
     top_flux_bc::FT
     bot_flux_bc::FT
 end
 
-####What if exchange terms always live in p.soil, p.roots?
-### and we set p.soil.root_extraction = root source
-### p.roots.flow_from_roots = root flow in?
-### We'd need an LSM update aux that does both.
-
 function compute_boundary_fluxes(be::FluxBC, _...)
     return be.top_flux_bc, be.bot_flux_bc
 end
 
-function compute_boundary_fluxes(be::LSMConfiguration{FT}, t) where {FT}
+function compute_boundary_fluxes(be::RootSoilConfiguration{FT}, t) where {FT}
     return be.P(t), FT(0.0)
 end
 
@@ -121,15 +117,12 @@ function compute_source(be::FluxBC{FT},_...) where {FT}
     return FT(0.0)
 end
 
-function compute_source(be::LSMConfiguration{FT},Y,p) where {FT}
-    V_layer = FT(1.0*0.15) # hardcorded
+function compute_source(be::RootSoilConfiguration{FT},Y,p) where {FT}
+    V_layer = FT(1.0*0.15) # hardcoded
     ρm = FT(1e6/18) # moles/m^3
     return p.root_extraction ./ ρm ./ V_layer # Field
 end
 
-#p.soil.top_flux_bc
-
-# p.roots.flow_in_from_roots # single number 
 
 function make_rhs(model::RichardsModel)
     function rhs!(dY, Y, p, t)

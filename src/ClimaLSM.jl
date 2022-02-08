@@ -9,6 +9,7 @@ import .Domains: coordinates
 include("Configurations.jl")
 using .Configurations
 
+
 export AbstractModel,
     make_rhs,
     make_ode_function,
@@ -19,6 +20,7 @@ export AbstractModel,
     LandModel,
     prognostic_vars,
     auxiliary_vars
+
 ## Default methods for all models - to be in a seperate module at some point.
 
 abstract type AbstractModel{FT <: AbstractFloat} end
@@ -154,9 +156,16 @@ function initialize(model::AbstractModel)
     p = initialize_auxiliary(model, coords)
     return Y, p, coords
 end
+
 initialize(model::NotIncluded{FT}) where {FT} = (;model.model_name => FT[]), (;model.model_name => FT[]), (;model.model_name => FT[])
 
 Domains.coordinates(model::AbstractModel) = Domains.coordinates(model.domain)
+
+
+
+
+
+
 #### LandModel Specific
 include("Soil.jl")
 using .Soil
@@ -173,12 +182,14 @@ No, but should it work ?
 """
 struct LandModel{
     FT,
+    CT <: AbstractConfiguration{FT},
     SM <: AbstractModel{FT},
     VM <: AbstractModel{FT},
     RM <: AbstractModel{FT},
     SNM <: AbstractModel{FT},
     CM <: AbstractModel{FT},
 } <: AbstractModel{FT}
+    configuration::CT
     soil::SM
     vegetation::VM
     river::RM
@@ -193,8 +204,8 @@ function LandModel{FT}(;
     snow_args::NamedTuple = (;),
     carbon_args::NamedTuple = (;),
 ) where {FT}
-
-    configuration = LSMConfiguration{FT}()
+    
+    configuration = RootSoilConfiguration{FT}() 
     soil =
         isempty(soil_args) ? NotIncluded{FT}(:soil) :
         Soil.RichardsModel{FT}(; configuration = configuration, soil_args...)
@@ -207,32 +218,24 @@ function LandModel{FT}(;
     river = NotIncluded{FT}(:river)
     snow = NotIncluded{FT}(:snow)
     carbon = NotIncluded{FT}(:carbon)
-    args = (soil, vegetation, river, snow, carbon)
+    args = (configuration, soil, vegetation, river, snow, carbon)
     return LandModel{FT, typeof.(args)...}(args...)
 end
 
-auxiliary_vars(
-    land::LandModel{FT, RichardsModel{FT}, RootsModel{FT}},
-) where {FT} = (:root_extraction,)
-#=
 function initialize_interactions(
-    land::LandModel{{FT, RichardsModel{FT}, RootsModel{FT}}
-                    Y::ClimaCore.Fields.FieldVector
-                    ) where {FT}
-p.exchanges.variable?
-    return 
-=#
+    land::LandModel{FT, RootSoilConfiguration{FT}}) where {FT}
+    soil_coords = land.soil.coordinates
+    return (root_extraction = similar(soil_coords),)
+end
+
 function initialize(land::LandModel)
     Y_soil, p_soil, coords_soil = initialize(land.soil)
     Y_vegetation, p_vegetation, coords_vegetation = initialize(land.vegetation)
     Y_river, p_river, coords_river = initialize(land.river)
     Y_snow, p_snow, coords_snow = initialize(land.snow)
     Y_carbon, p_carbon, coords_carbon = initialize(land.carbon)
-    #p_interactions  = initialize_interactions(land{})
-    # Do we just hardwire all of the interactions? This is so hardcoded, how would
-    # we do this for other combos of components?
-    # Each interaction will have a different domain as well
-    # do these need coordinates??
+    p_interactions  = initialize_interactions(land)
+
     Y = ClimaCore.Fields.FieldVector(;
                                      soil = Y_soil.soil,
                                      vegetation = Y_vegetation.vegetation,
@@ -241,7 +244,7 @@ function initialize(land::LandModel)
                                      carbon = Y_carbon.carbon
     )
     p = ClimaCore.Fields.FieldVector(;
-                                     #root_extraction = similar(Y_soil.soil.ϑ_l),
+                                     p_interactions..., # for consistency, should this be p.interactions.root_extraction?
                                      soil = p_soil.soil,
                                      vegetation = p_vegetation.vegetation,
                                      river = p_river.river,
@@ -275,10 +278,12 @@ function make_update_aux(land::LandModel)
     return update_aux!
 end
 
-function make_interactions_update_aux(land::LandModel{FT}) where {FT}
+# Written for each Configuration
+function make_interactions_update_aux(land::LandModel{FT, RootSoilConfiguration{FT}}) where {FT}
     function update_aux!(p, Y, t)
 
-        #@. p.root_extraction = FT(0.0)
+        @. p.root_extraction = FT(0.0)
+        ##Science
         #=
         root_params = land.vegetation.param_set
         z = coordinates(land.soil)

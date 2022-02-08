@@ -3,7 +3,7 @@ using ClimaLSM
 using ClimaCore
 using UnPack
 import ClimaCore: Fields
-using ClimaLSM.Configurations: AbstractConfiguration, LSMConfiguration
+using ClimaLSM.Configurations: AbstractConfiguration, RootSoilConfiguration
 using ClimaLSM.Domains: AbstractPlantDomain, RootDomain
 
 import ClimaLSM:
@@ -285,7 +285,7 @@ function make_rhs(model::RootsModel)
         dY.vegetation.rwc[1] = flow_out_roots - flow_out_stem
         dY.vegetation.rwc[2] =
             flow_out_stem -
-            compute_transpiration(model.configuration, Y, p, t)
+            compute_transpiration(model.configuration,t)
     end
     return rhs!
 end
@@ -332,7 +332,7 @@ end
 
 
 function compute_flow_out_roots(
-    configuration::LSMConfiguration{FT},
+    configuration::RootSoilConfiguration{FT},
     model::RootsModel{FT},
     Y::ClimaCore.Fields.FieldVector,
     p::ClimaCore.Fields.FieldVector,
@@ -342,34 +342,16 @@ function compute_flow_out_roots(
 end
 
 """
-    compute_transpiration(configuration::RootsConfiguration{FT},
-        Y::ClimaCore.Fields.FieldVector,
-        p::ClimaCore.Fields.FieldVector,
-        t::FT)::FT where {FT}
+    compute_transpiration(configuration::RootsConfiguration{FT})::FT where {FT}
 
 A method which computes the transpiration in moles/sec between the leaf
 and the atmosphere,
 in the case of a standalone root model with prescribed transpiration rate.
 """
 function compute_transpiration(
-    configuration::RootsConfiguration{FT},
-    Y::ClimaCore.Fields.FieldVector,
-    p::ClimaCore.Fields.FieldVector,
-    t::FT,
-)::FT where {FT}
+    configuration::AbstractConfiguration{FT}, t::FT)::FT where {FT}
     return configuration.T(t)
 end
-
-
-function compute_transpiration(
-    configuration::LSMConfiguration{FT},
-    Y::ClimaCore.Fields.FieldVector,
-    p::ClimaCore.Fields.FieldVector,
-    t::FT,
-)::FT where {FT}
-    return configuration.T(t)
-end
-
 
 
 end
