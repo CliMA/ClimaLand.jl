@@ -8,6 +8,7 @@ export AbstractModel,
     prognostic_vars,
     auxiliary_vars
 
+import .Domains: coordinates
 ## Default methods for all models - to be in a seperate module at some point.
 
 abstract type AbstractModel{FT <: AbstractFloat} end

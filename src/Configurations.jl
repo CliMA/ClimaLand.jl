@@ -1,38 +1,28 @@
 module Configurations
-export AbstractConfiguration, RootSoilConfiguration
+
 """
 
-    AbstractComponentExchange{FT <: AbstractFloat}
+    AbstractConfiguration{FT <: AbstractFloat}
 
-A general abstract type for any type of exchange between components of the 
-Land Surface Model, either in standalone or integrated modes.
+An abstract type for land surface and component simulation configurations.
 
-This encompasses true boundary conditions (e.g. Dirichlet or Neumann, 
-at the boundary of the soil domain), source/sink terms (e.g. transpiration 
-of leaves within the canopy airspace), and more general flows (e.g. a prescribed
-soil pressure leading to root extraction of water from soil).
+Configuration types for each component hold the necessary information for
+setting up the right hand side, including boundary conditions, source terms,
+and forcing terms. 
 
-This is to be used both for standalone component runs, in which case exchanges 
-are computed using only the component state and the prescribed quantities driving
-the system, or for Land Surface Models, in which case exchanges are computed using
-the entire land surface state and atmospheric quantities, which drive the system.
+Each component has the freedom to define the attributes
+of the configuration for that component as it makes sense for that 
+component. In general, these attributes will be of a type which can be used
+for multiple dispatch, such that the RHS functions call different methods
+as appropriate.
 
-The user must define a concrete type for dispatching on
-when computing necessary exchange/flux/flow quantities.
+For example, a `apply_boundary_conditions(bc)` function, appearing in
+the right hand side of a discretized PDE, will execute different methods if
+the boundary condition `bc` is of type `Dirichlet` or `Neumann`. A 
+`compute_source(source)` function will execute different methods
+depending on the type of the `source` argument.
 
 """
 abstract type AbstractConfiguration{FT <: AbstractFloat} end
 
-"""
-    RootSoilConfiguration{FT} <: AbstractConfiguration{FT}
-
-Root-soil configuration. 
-"""
-Base.@kwdef struct RootSoilConfiguration{FT} <: AbstractConfiguration{FT}
-    "Time dependent transpiration, given in moles/sec"
-    T::Function = (t) -> FT(0.0)
-    "Time dependent precipitation, given in m/s"
-    P::Function = (t) -> FT(0.0)
-
-end
 end

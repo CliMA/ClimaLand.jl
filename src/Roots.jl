@@ -3,9 +3,7 @@ using ClimaLSM
 using ClimaCore
 using UnPack
 import ClimaCore: Fields
-using ClimaLSM.Configurations: AbstractConfiguration, RootSoilConfiguration
 using ClimaLSM.Domains: AbstractPlantDomain, RootDomain
-
 import ClimaLSM:
     AbstractModel,
     initialize_prognostic,
@@ -18,12 +16,21 @@ import ClimaLSM:
     initialize_auxiliary
 export RootsModel,
     AbstractVegetationModel,
-    compute_flow,
+    flow,
     theta_to_p,
     p_to_theta,
-    RootsConfiguration,
-    RootsParameters
+    RootsParameters,
+    PrescribedSoilPressure,
+    PrescribedTranspiration,
+    AbstractRootExtraction
+
 abstract type AbstractVegetationModel{FT} <: AbstractModel{FT} end
+
+abstract type AbstractRootExtraction{FT <: AbstractFloat} end
+
+abstract type AbstractTranspiration{FT <: AbstractFloat} end
+
+
 """
     RootsParameters{FT <: AbstractFloat}
 
@@ -49,9 +56,8 @@ struct RootsParameters{FT <: AbstractFloat}
     K_max_stem_moles::FT
 end
 
-
 """
-    RootsModel
+    RootsModel{FT, PS, D, RE, T, B} <: AbstractModel{FT}
 
 Defines, and constructs instances of, the RootsModel type, which is used
 for simulation flow of water to/from soil, along roots of different depths,
@@ -59,62 +65,32 @@ along a stem, to a leaf, and ultimately being lost from the system by
 transpiration. 
 
 This model can be used in standalone mode by prescribing the transpiration rate
-and soil pressure at the root tips (configuration of type `RootsConfiguration`),
-or with a dynamic soil model (boundary exchanges of type TBD).
+and soil pressure at the root tips, or with a dynamic soil model.
 
 The RootModel domain must be of type `AbstractPlantDomain`.
 """
-struct RootsModel{FT, PS, D, B} <: AbstractVegetationModel{FT}
+struct RootsModel{FT, PS, D, RE, T} <: AbstractVegetationModel{FT}
     param_set::PS
     domain::D
-    configuration::B
+    root_extraction::RE
+    transpiration::T
     model_name::Symbol
 end
 
 function RootsModel{FT}(;
     param_set,
     domain::AbstractPlantDomain{FT},
-    configuration::AbstractConfiguration{FT},
+    root_extraction::AbstractRootExtraction{FT},
+    transpiration::AbstractTranspiration{FT},
 ) where {FT}
-    return RootsModel{
-        FT,
-        typeof(param_set),
-        typeof(domain),
-        typeof(configuration),
-    }(
-        param_set,
-        domain,
-        configuration,
-        :vegetation,
-    )
+    args = (param_set, domain, root_extraction, transpiration)
+    return RootsModel{FT, typeof.(args)...}(args..., :vegetation)
 end
-
-
-
-
-"""
-    RootsConfiguration{FT} <: AbstractConfiguration{FT}
-
-The component exchange type to be used for the Root model in standalone mode.
-
-The user provides a function of time returning the transpiration rate (moles/sec),
- and a function of time returning a 
-vector of soil pressures (MPa). The different elements of
-this vector hold the soil pressure at the root tips, with depths indicated by
-the different elements of the `root_depths` vector of `RootDomain`. 
-"""
-struct RootsConfiguration{FT} <: AbstractConfiguration{FT}
-    "Time dependent transpiration, given in moles/sec"
-    T::Function
-    "Time dependent soil pressure at root tips, given in MPa"
-    p_soil::Function
-end
-
 
 prognostic_vars(model::RootsModel) = (:rwc,)
 
 """
-    function compute_flow(
+    function flow(
         z_do::FT,
         z_up::FT,
         p_do::FT,
@@ -129,7 +105,7 @@ at two points, `do` and `up`. Here, `a`, `b, and `Kmax` are parameters
 which parameterize the hydraulic conductance of the pathway along which
 the flow occurs.
 """
-function compute_flow(
+function flow(
     z_do::FT,
     z_up::FT,
     p_do::FT,
@@ -214,9 +190,7 @@ function theta_to_p(theta::FT) where {FT}
     n = FT(2.0)
     m = FT(0.5)
     rhog_MPa = FT(0.0098) #MPa/m
-
     p = -((theta^(-FT(1) / m) - FT(1)) * α^(-n))^(FT(1) / n) * rhog_MPa
-
     return p
 end
 
@@ -263,10 +237,9 @@ function make_rhs(model::RootsModel)
         p_leaf = theta_to_p(Y.vegetation.rwc[2] / size_reservoir_leaf_moles)
 
         # Flows are in moles/second
-        flow_out_roots =
-            compute_flow_out_roots(model.configuration, model, Y, p, t)
+        flow_in_stem = flow_out_roots(model.root_extraction, model, Y, p, t)
 
-        flow_out_stem = compute_flow(
+        flow_out_stem = flow(
             z_stem,
             z_leaf,
             p_stem,
@@ -276,16 +249,25 @@ function make_rhs(model::RootsModel)
             K_max_stem_moles,
         )
 
-        dY.vegetation.rwc[1] = flow_out_roots - flow_out_stem
+        dY.vegetation.rwc[1] = flow_in_stem - flow_out_stem
         dY.vegetation.rwc[2] =
-            flow_out_stem - compute_transpiration(model.configuration, t)
+            flow_out_stem - transpiration(model.transpiration, t)
     end
     return rhs!
 end
 
+
+struct PrescribedSoilPressure{FT} <: AbstractRootExtraction{FT}
+    p_soil::Function
+end
+
+struct PrescribedTranspiration{FT} <: AbstractTranspiration{FT}
+    T::Function
+end
+
 """
-    function compute_flow_out_roots(
-        configuration::RootsConfiguration{FT},
+    function flow_out_roots(
+        re::PrescribedSoilPressure{FT},
         model::RootsModel{FT},
         Y::ClimaCore.Fields.FieldVector,
         p::ClimaCore.Fields.FieldVector,
@@ -298,8 +280,8 @@ at the root tips.
 
 This assumes that the stem compartment is the first element of `Y.roots.rwc`.
 """
-function compute_flow_out_roots(
-    configuration::RootsConfiguration{FT},
+function flow_out_roots(
+    re::PrescribedSoilPressure{FT},
     model::RootsModel{FT},
     Y::ClimaCore.Fields.FieldVector,
     p::ClimaCore.Fields.FieldVector,
@@ -308,44 +290,34 @@ function compute_flow_out_roots(
     @unpack a_root, b_root, K_max_root_moles, size_reservoir_stem_moles =
         model.param_set
     p_stem = theta_to_p(Y.vegetation.rwc[1] / size_reservoir_stem_moles)
-
-    flow = sum(
-        compute_flow.(
+    return sum(
+        flow.(
             model.domain.root_depths,
             model.domain.compartment_heights[1],
-            configuration.p_soil(t),
+            re.p_soil(t),
             p_stem,
             a_root,
             b_root,
             K_max_root_moles,
         ),
     )
-    return flow
-end
-
-
-function compute_flow_out_roots(
-    configuration::RootSoilConfiguration{FT},
-    model::RootsModel{FT},
-    Y::ClimaCore.Fields.FieldVector,
-    p::ClimaCore.Fields.FieldVector,
-    t::FT,
-)::FT where {FT}
-    return sum(p.root_extraction)
 end
 
 """
-    compute_transpiration(configuration::RootsConfiguration{FT})::FT where {FT}
+    transpiration(
+        transpiration::PrescribedTranspiration{FT},
+        t::FT,
+    )::FT where {FT}
 
 A method which computes the transpiration in moles/sec between the leaf
 and the atmosphere,
 in the case of a standalone root model with prescribed transpiration rate.
 """
-function compute_transpiration(
-    configuration::AbstractConfiguration{FT},
+function transpiration(
+    transpiration::PrescribedTranspiration{FT},
     t::FT,
 )::FT where {FT}
-    return configuration.T(t)
+    return transpiration.T(t)
 end
 
 end

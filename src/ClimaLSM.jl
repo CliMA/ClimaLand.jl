@@ -1,23 +1,20 @@
 module ClimaLSM
-###What is the role of configurations here?
 using UnPack
 using ClimaCore
 import ClimaCore: Fields
 include("Domains.jl")
 using .Domains
-include("Configurations.jl")
-using .Configurations
 include("models.jl")
 include("Soil.jl")
 using .Soil
+import .Soil: source
 include("Roots.jl")
 using .Roots
+import .Roots: flow_out_roots
 
 export RootSoilModel
 
-
 abstract type AbstractLandModel{FT} <: AbstractModel{FT} end
-
 
 """
     struct RootSoilModel{FT, SM <: AbstractModel{FT}, RM <: AbstractModel{FT}} <: AbstractLandModel{FT}
@@ -30,11 +27,9 @@ No, but should it work ?
 """
 struct RootSoilModel{
     FT,
-    CT <: AbstractConfiguration{FT},
     SM <: AbstractSoilModel{FT},
     VM <: AbstractVegetationModel{FT},
 } <: AbstractLandModel{FT}
-    configuration::CT
     soil::SM
     vegetation::VM
 end
@@ -45,24 +40,31 @@ function RootSoilModel{FT}(;
     vegetation_model_type::Type{VM},
     vegetation_args::NamedTuple = (;),
 ) where {FT, SM <: AbstractSoilModel{FT}, VM <: AbstractVegetationModel{FT}}
-    #configuration may depend on the versions of the soil and root models too
-    configuration = Configurations.RootSoilConfiguration{FT}()
-    soil = soil_model_type(; configuration = configuration, soil_args...)
+    sources = (RootExtraction{FT}(),)
+    boundary_fluxes = FluxBC{FT}(FT(0.0), FT(0.0))
+    transpiration = PrescribedTranspiration{FT}((t::FT) -> FT(0.0))
+    root_extraction = PrognosticSoilPressure{FT}()
+    soil = soil_model_type(;
+        boundary_conditions = boundary_fluxes,
+        sources = sources,
+        soil_args...,
+    )
     vegetation = vegetation_model_type(;
-        configuration = configuration,
+        root_extraction = root_extraction,
+        transpiration = transpiration,
         vegetation_args...,
     )
-    args = (configuration, soil, vegetation)
+    args = (soil, vegetation)
     return RootSoilModel{FT, typeof.(args)...}(args...)
 end
 
 function initialize_interactions(
-    land::RootSoilModel{FT, RootSoilConfiguration{FT}},
-) where {FT}
+    land::RootSoilModel{FT, SM, RM},
+) where {FT, SM <: Soil.RichardsModel{FT}, RM <: Roots.RootsModel{FT}}
+
     soil_coords = land.soil.coordinates
     return (root_extraction = similar(soil_coords),)
 end
-
 
 land_components(land::RootSoilModel) = (:soil, :vegetation)
 
@@ -125,14 +127,37 @@ function make_ode_function(land::AbstractLandModel)
     return ode_function!
 end
 
-# Written for each Configuration
 function make_interactions_update_aux(
-    land::RootSoilModel{FT, RootSoilConfiguration{FT}},
-) where {FT}
+    land::RootSoilModel{FT, SM, RM},
+) where {FT, SM <: Soil.RichardsModel{FT}, RM <: Roots.RootsModel{FT}}
     function update_aux!(p, Y, t)
         @. p.root_extraction = FT(0.0)
+        ##Science goes here
     end
     return update_aux!
+end
+
+
+## Extending methods of the Roots and Soil Model
+struct PrognosticSoilPressure{FT} <: Roots.AbstractRootExtraction{FT} end
+
+function Roots.flow_out_roots(
+    re::PrognosticSoilPressure{FT},
+    model::Roots.RootsModel{FT},
+    Y::ClimaCore.Fields.FieldVector,
+    p::ClimaCore.Fields.FieldVector,
+    t::FT,
+)::FT where {FT}
+    return sum(p.root_extraction)
+end
+
+
+struct RootExtraction{FT} <: Soil.AbstractSoilSource{FT} end
+
+function Soil.source(src::RootExtraction{FT}, Y, p) where {FT}
+    V_layer = FT(1.0 * 0.15) # hardcoded
+    ρm = FT(1e6 / 18) # moles/m^3
+    return p.root_extraction ./ ρm ./ V_layer # Field
 end
 
 end # module
