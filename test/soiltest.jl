@@ -12,7 +12,7 @@ const nelems = 50;
 soil_domain = Column(FT, zlim = (zmin, zmax), nelements = nelems);
 top_flux_bc = FT(0.0);
 bot_flux_bc = FT(0.0);
-boundary_fluxes = FluxBC{FT}(top_flux_bc,bot_flux_bc)
+boundary_fluxes = FluxBC{FT}(top_flux_bc, bot_flux_bc)
 params = Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, Ksat, S_s, θ_r);
 
 soil = Soil.RichardsModel{FT}(;
@@ -46,17 +46,15 @@ soil_ode! = make_ode_function(soil)
 t0 = FT(0);
 tf = FT(60);
 dt = FT(1);
-cb = SavingCallback((u, t, integrator) -> integrator.p, saved_values)
+cb = SavingCallback((u, t, integrator) -> copy(integrator.p), saved_values)
 prob = ODEProblem(soil_ode!, Y, (t0, tf), p);
 sol = solve(prob, Euler(); dt = dt, callback = cb);
 
 @test sum(parent(sol.u[end]) .== parent(Y.soil.ϑ_l)) == nelems
-# Testing that ψ +z is constant - > hydrostatic equilibrium
-@test mean(parent(p.soil.ψ .+ coords)[:] .- (-10.0)) < eps(FT)
-# should be at every layer, at each step too:
+# should be hydrostatic equilibrium at every layer, at each step:
 @test mean(
     sum([
         parent(saved_values.saveval[k].soil.ψ .+ coords)[:] .+ 10.0 for
-        k in 1:1:50
+        k in 2:1:50
     ]),
-) < 1e-14
+) < 1e-10

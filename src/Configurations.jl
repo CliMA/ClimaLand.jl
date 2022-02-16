@@ -1,5 +1,4 @@
 module Configurations
-
 export AbstractConfiguration, RootSoilConfiguration
 """
 

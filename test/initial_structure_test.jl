@@ -9,10 +9,7 @@ root_domain = RootDomain{FT}([-0.5], [0.0, 1.0])
 roots = Roots.RootsModel{FT}(;
     domain = root_domain,
     param_set = nothing,
-    configuration = RootsConfiguration{FT}(
-        () -> nothing,
-        () -> nothing,
-    ),
+    configuration = RootsConfiguration{FT}(() -> nothing, () -> nothing),
 )
 # In the future, the user would call initialize and get back coordinates and the state
 # structure (empty). They then would initialize Y =Y0 using their IC function(coords)

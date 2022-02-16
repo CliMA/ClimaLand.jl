@@ -1,178 +1,26 @@
 module ClimaLSM
-
+###What is the role of configurations here?
 using UnPack
 using ClimaCore
 import ClimaCore: Fields
 include("Domains.jl")
 using .Domains
-import .Domains: coordinates
 include("Configurations.jl")
 using .Configurations
-
-
-export AbstractModel,
-    make_rhs,
-    make_ode_function,
-    make_update_aux,
-    initialize_prognostic,
-    initialize_auxiliary,
-    initialize,
-    LandModel,
-    prognostic_vars,
-    auxiliary_vars
-
-## Default methods for all models - to be in a seperate module at some point.
-
-abstract type AbstractModel{FT <: AbstractFloat} end
-
-struct NotIncluded{FT}<: AbstractModel{FT}
-    model_name::Symbol
-end
-
-
-
-"""
-   prognostic_vars(m::AbstractModel)
-
-Returns the prognostic variable symbols for the model in the form of a tuple.
-"""
-prognostic_vars(m::AbstractModel) = ()
-
-"""
-   auxiliary_vars(m::AbstractModel)
-
-Returns the auxiliary variable symbols for the model in the form of a tuple.
-"""
-auxiliary_vars(m::AbstractModel) = ()
-
-"""
-    make_rhs(model::AbstractModel)
-
-Return a `rhs!` function that updates state variables.
-
-`rhs!` should be compatible with OrdinaryDiffEq.jl solvers.
-"""
-function make_rhs(model::AbstractModel)
-    function rhs!(dY, Y, p, t) end
-    return rhs!
-end
-
-"""
-    make_update_aux(model::AbstractModel)
-
-Return an `update_aux!` function that updates auxiliary parameters `p`.
-"""
-function make_update_aux(model::AbstractModel)
-    function update_aux!(p, Y, t) end
-    return update_aux!
-end
-
-"""
-    make_ode_function(model::AbstractModel)
-
-Returns an `ode_function` that updates auxiliary variables and
-updates the prognostic state.
-
-`ode_function!` should be compatible with OrdinaryDiffEq.jl solvers.
-"""
-function make_ode_function(model::AbstractModel)
-    rhs! = make_rhs(model)
-    update_aux! = make_update_aux(model)
-    function ode_function!(dY, Y, p, t)
-        update_aux!(p, Y, t)
-        rhs!(dY, Y, p, t)
-    end
-    return ode_function!
-end
-
-"""
-    initialize_prognostic(model::AbstractModel, state::Union{ClimaCore.Fields.Field, Vector{FT}, FT})
-
-Returns a FieldVector of prognostic variables for `model` with the required
-structure, with values equal to `similar(state)`. This assumes that all prognostic
-variables are defined over the entire domain. 
-
-The default is a model with no prognostic variables, in which case 
-the returned FieldVector contains only an empty array.
-
-Adjustments to this - for example because different prognostic variables
-have different dimensions - require defining a new method.
-"""
-function initialize_prognostic(
-    model::AbstractModel{FT},
-    state::Union{ClimaCore.Fields.Field, Vector{FT}, FT},
-) where {FT}
-    keys = prognostic_vars(model)
-    if length(keys) == 0
-        return ClimaCore.Fields.FieldVector(; model.model_name => FT[])
-    else
-        values = map((x) -> similar(state), keys)
-        return ClimaCore.Fields.FieldVector(;
-            model.model_name => (; zip(keys, values)...),
-        )
-    end
-
-end
-
-"""
-    initialize_auxiliary(model::AbstractModel,state::Union{ClimaCore.Fields.Field, Vector{FT}, FT})
-
-Returns a FieldVector of auxiliary variables for `model` with the required
-structure, with values equal to `similar(state)`. This assumes that all auxiliary
-variables are defined over the entire domain. 
-
-The default is a model with no auxiliary variables, in which case 
-the returned FieldVector contains only an empty array.
-
-Adjustments to this - for example because different auxiliary variables
-have different dimensions - require defining a new method.
-"""
-function initialize_auxiliary(
-    model::AbstractModel{FT},
-    state::Union{ClimaCore.Fields.Field, Vector{FT}, FT},
-) where {FT}
-    keys = auxiliary_vars(model)
-    if length(keys) == 0
-        return ClimaCore.Fields.FieldVector(; model.model_name => FT[])
-    else
-        values = map((x) -> similar(state), keys)
-        return ClimaCore.Fields.FieldVector(;
-            model.model_name => (; zip(keys, values)...),
-        )
-    end
-end
-
-"""
-    initialize(model::AbstractModel)
-
-Creates the prognostic and auxiliary states structures, but with unset values
-not set; constructs and returns the coordinates for the `model` domain.
-We may need to consider this default more as we add diverse components and 
-`Simulations`.
-"""
-function initialize(model::AbstractModel)
-    coords = coordinates(model)
-    Y = initialize_prognostic(model, coords)
-    p = initialize_auxiliary(model, coords)
-    return Y, p, coords
-end
-
-initialize(model::NotIncluded{FT}) where {FT} = (;model.model_name => FT[]), (;model.model_name => FT[]), (;model.model_name => FT[])
-
-Domains.coordinates(model::AbstractModel) = Domains.coordinates(model.domain)
-
-
-
-
-
-
-#### LandModel Specific
+include("models.jl")
 include("Soil.jl")
 using .Soil
 include("Roots.jl")
 using .Roots
+
+export RootSoilModel
+
+
+abstract type AbstractLandModel{FT} <: AbstractModel{FT} end
+
+
 """
-    struct LandModel{FT, SM <: AbstractModel{FT}, RM <: AbstractModel{FT}} <: AbstractModel{FT}
+    struct RootSoilModel{FT, SM <: AbstractModel{FT}, RM <: AbstractModel{FT}} <: AbstractLandModel{FT}
 
 A concrete type of `AbstractModel` for use in land surface modeling. Each component model of the
 `LandModel` is itself an `AbstractModel`.
@@ -180,150 +28,111 @@ A concrete type of `AbstractModel` for use in land surface modeling. Each compon
 If a user wants to run in standalone, would they use this interface?
 No, but should it work ?
 """
-struct LandModel{
+struct RootSoilModel{
     FT,
     CT <: AbstractConfiguration{FT},
-    SM <: AbstractModel{FT},
-    VM <: AbstractModel{FT},
-    RM <: AbstractModel{FT},
-    SNM <: AbstractModel{FT},
-    CM <: AbstractModel{FT},
-} <: AbstractModel{FT}
+    SM <: AbstractSoilModel{FT},
+    VM <: AbstractVegetationModel{FT},
+} <: AbstractLandModel{FT}
     configuration::CT
     soil::SM
     vegetation::VM
-    river::RM
-    snow::SNM
-    carbon::CM
 end
 
-function LandModel{FT}(;
+function RootSoilModel{FT}(;
+    soil_model_type::Type{SM},
     soil_args::NamedTuple = (;),
+    vegetation_model_type::Type{VM},
     vegetation_args::NamedTuple = (;),
-    river_args::NamedTuple = (;),
-    snow_args::NamedTuple = (;),
-    carbon_args::NamedTuple = (;),
-) where {FT}
-    
-    configuration = RootSoilConfiguration{FT}() 
-    soil =
-        isempty(soil_args) ? NotIncluded{FT}(:soil) :
-        Soil.RichardsModel{FT}(; configuration = configuration, soil_args...)
-    vegetation =
-        isempty(vegetation_args) ? NotIncluded{FT}(:vegetation) :
-        Roots.RootsModel{FT}(;
-            configuration = configuration,
-            vegetation_args...,
-        )
-    river = NotIncluded{FT}(:river)
-    snow = NotIncluded{FT}(:snow)
-    carbon = NotIncluded{FT}(:carbon)
-    args = (configuration, soil, vegetation, river, snow, carbon)
-    return LandModel{FT, typeof.(args)...}(args...)
+) where {FT, SM <: AbstractSoilModel{FT}, VM <: AbstractVegetationModel{FT}}
+    #configuration may depend on the versions of the soil and root models too
+    configuration = Configurations.RootSoilConfiguration{FT}()
+    soil = soil_model_type(; configuration = configuration, soil_args...)
+    vegetation = vegetation_model_type(;
+        configuration = configuration,
+        vegetation_args...,
+    )
+    args = (configuration, soil, vegetation)
+    return RootSoilModel{FT, typeof.(args)...}(args...)
 end
 
 function initialize_interactions(
-    land::LandModel{FT, RootSoilConfiguration{FT}}) where {FT}
+    land::RootSoilModel{FT, RootSoilConfiguration{FT}},
+) where {FT}
     soil_coords = land.soil.coordinates
     return (root_extraction = similar(soil_coords),)
 end
 
-function initialize(land::LandModel)
-    Y_soil, p_soil, coords_soil = initialize(land.soil)
-    Y_vegetation, p_vegetation, coords_vegetation = initialize(land.vegetation)
-    Y_river, p_river, coords_river = initialize(land.river)
-    Y_snow, p_snow, coords_snow = initialize(land.snow)
-    Y_carbon, p_carbon, coords_carbon = initialize(land.carbon)
-    p_interactions  = initialize_interactions(land)
+
+land_components(land::RootSoilModel) = (:soil, :vegetation)
+
+function initialize(land::AbstractLandModel)
+    components = land_components(land)
+    coords_list = map(components) do (component)
+        Domains.coordinates(getproperty(land, component))
+    end
+    Y_state_list = map(zip(components, coords_list)) do (component, coords)
+        getproperty(
+            initialize_prognostic(getproperty(land, component), coords),
+            component,
+        )
+    end
+    p_state_list = map(zip(components, coords_list)) do (component, coords)
+        getproperty(
+            initialize_auxiliary(getproperty(land, component), coords),
+            component,
+        )
+    end
+    p_interactions = initialize_interactions(land)
 
     Y = ClimaCore.Fields.FieldVector(;
-                                     soil = Y_soil.soil,
-                                     vegetation = Y_vegetation.vegetation,
-                                     river = Y_river.river,
-                                     snow = Y_snow.snow,
-                                     carbon = Y_carbon.carbon
+        NamedTuple(zip(components, Y_state_list))...,
     )
     p = ClimaCore.Fields.FieldVector(;
-                                     p_interactions..., # for consistency, should this be p.interactions.root_extraction?
-                                     soil = p_soil.soil,
-                                     vegetation = p_vegetation.vegetation,
-                                     river = p_river.river,
-                                     snow = p_snow.snow,
-                                     carbon = p_carbon.carbon,
+        p_interactions...,
+        NamedTuple(zip(components, p_state_list))...,
     )
-    coords =
-        ClimaCore.Fields.FieldVector(; soil = coords_soil,
-                                     vegetation = coords_vegetation,
-                                     river = coords_river,
-                                     snow = coords_snow,
-                                     carbon = coords_carbon)
+    coords = ClimaCore.Fields.FieldVector(;
+        NamedTuple(zip(components, coords_list))...,
+    )
     return Y, p, coords
 end
 
-function make_update_aux(land::LandModel)
+function make_update_aux(land::AbstractLandModel)
     interactions_update_aux! = make_interactions_update_aux(land)
-    soil_update_aux! = make_update_aux(land.soil)
-    vegetation_update_aux! = make_update_aux(land.vegetation)
-    river_update_aux! = make_update_aux(land.river)
-    snow_update_aux! = make_update_aux(land.snow)
-    carbon_update_aux! = make_update_aux(land.carbon)
+    components = land_components(land)
+    update_aux_function_list =
+        map(x -> make_update_aux(getproperty(land, x)), components)
     function update_aux!(p, Y, t)
         interactions_update_aux!(p, Y, t)
-        soil_update_aux!(p, Y, t)
-        vegetation_update_aux!(p, Y, t)
-        river_update_aux!(p, Y, t)
-        snow_update_aux!(p, Y, t)
-        carbon_update_aux!(p, Y, t)
+        for f! in update_aux_function_list
+            f!(p, Y, t)
+        end
     end
     return update_aux!
 end
 
-# Written for each Configuration
-function make_interactions_update_aux(land::LandModel{FT, RootSoilConfiguration{FT}}) where {FT}
-    function update_aux!(p, Y, t)
-
-        @. p.root_extraction = FT(0.0)
-        ##Science
-        #=
-        root_params = land.vegetation.param_set
-        z = coordinates(land.soil)
-        z_up = land.vegetation.domain.compartment_heights[1]
-        rhog_MPa = FT(0.0098)
-        @unpack a_root,
-        b_root,
-        K_max_root_moles,
-        size_reservoir_stem_moles =  land.vegetation.param_set
-
-        p_soil = p.soil.ψ .*rhog_MPa
-        p_stem = theta_to_p(Y.vegetation.rwc[1] / size_reservoir_stem_moles)
-        # computing root extraction as if there was a root in each layer
-        # multiply by mask (P(root in that layer)?)
-        @. p.root_extraction = compute_flow(z, z_up, p_soil, p_stem, a_root, b_root, K_max_root_moles)
-=#
-        ## we should: flow/ρm/Δz* (bio count of vegetation per area = M_r/M_R) OR
-        ## flow/ρm *n(z) -> number density of vegetation per unit volume (z)
-    end
-    return update_aux!
-end
-
-
-function make_ode_function(land::LandModel)
-    rhs_soil! = make_rhs(land.soil)
-    rhs_vegetation! = make_rhs(land.vegetation)
-    rhs_river! = make_rhs(land.river)
-    rhs_carbon! = make_rhs(land.carbon)
-    rhs_snow! = make_rhs(land.snow)
-    
+function make_ode_function(land::AbstractLandModel)
+    components = land_components(land)
+    rhs_function_list = map(x -> make_rhs(getproperty(land, x)), components)
     update_aux! = make_update_aux(land)
     function ode_function!(dY, Y, p, t)
         update_aux!(p, Y, t)
-        rhs_soil!(dY, Y, p, t)
-        rhs_vegetation!(dY, Y, p, t)
-        rhs_river!(dY, Y, p, t)
-        rhs_snow!(dY, Y, p, t)
-        rhs_carbon!(dY, Y, p, t)
+        for f! in rhs_function_list
+            f!(dY, Y, p, t)
+        end
     end
     return ode_function!
+end
+
+# Written for each Configuration
+function make_interactions_update_aux(
+    land::RootSoilModel{FT, RootSoilConfiguration{FT}},
+) where {FT}
+    function update_aux!(p, Y, t)
+        @. p.root_extraction = FT(0.0)
+    end
+    return update_aux!
 end
 
 end # module
