@@ -1,3 +1,7 @@
+### Where will Domains.jl live eventually? Perhaps with Models.jl, as standalone
+### models need to create domains of their own, and we dont want a copy of Domains
+### in each component repo? Or maybe there does not need to be shared functionality,
+### and each component can define their own domain as needed?
 module Domains
 using ClimaCore
 using DocStringExtensions
@@ -22,22 +26,22 @@ function coordinates(domain::AbstractDomain) end
 
 ### Example of component specific domain
 """
-    AbstractPlantDomain{FT} <: AbstractDomain{FT}
+    AbstractVegetationDomain{FT} <: AbstractDomain{FT}
 
 An abstract type for vegetation specific domains.
 """
-abstract type AbstractPlantDomain{FT} <: AbstractDomain{FT} end
+abstract type AbstractVegetationDomain{FT} <: AbstractDomain{FT} end
 
 
 """
-   RootDomain{FT} <: AbstractPlantDomain{FT}
+   RootDomain{FT} <: AbstractVegetationDomain{FT}
 
 Domain for a single bulk plant with roots of varying depths. The user needs
 to specify the depths of the root tips as wel as the heights of the
 compartments to be modeled within the plant. The compartment heights
 are expected to be sorted in ascending order.
 """
-struct RootDomain{FT} <: AbstractPlantDomain{FT}
+struct RootDomain{FT} <: AbstractVegetationDomain{FT}
     "The depth of the root tips, in meters"
     root_depths::Vector{FT}
     "The height of the stem, leaf compartments, in meters"
@@ -121,7 +125,7 @@ function coordinates(domain::Column{FT}) where {FT}
     return cc
 end
 
-export AbstractDomain, AbstractPlantDomain
+export AbstractDomain, AbstractVegetationDomain
 export Column, RootDomain
 export coordinates
 

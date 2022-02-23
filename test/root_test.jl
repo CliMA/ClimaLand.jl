@@ -22,7 +22,7 @@ param_set = Roots.RootsParameters{FT}(
     K_max_stem_moles,
 )
 
-function transpiration(t::ft) where {ft}
+function leaf_transpiration(t::ft) where {ft}
     mass_mole_water = ft(0.018)
     T = ft(0.0)
     T_0 = ft(0.01 / mass_mole_water)
@@ -37,14 +37,13 @@ function transpiration(t::ft) where {ft}
 end
 
 const p_soil0 = [FT(-0.02)]
-boundary_exchanges = Roots.RootsPrescribedExchange{FT}(
-    (t::FT) -> transpiration(t),
-    (t::FT) -> p_soil0,
-)
+transpiration = PrescribedTranspiration{FT}((t::FT) -> leaf_transpiration(t))
+root_extraction = PrescribedSoilPressure{FT}((t::FT) -> p_soil0)
 roots = Roots.RootsModel{FT}(;
     domain = root_domain,
     param_set = param_set,
-    boundary_exchanges = boundary_exchanges,
+    root_extraction = root_extraction,
+    transpiration = transpiration,
 )
 
 # Set system to equilibrium state by setting LHS of both ODEs to 0
@@ -53,7 +52,7 @@ roots = Roots.RootsModel{FT}(;
 function f!(F, Y)
     T0 = 0.01 / 0.018
     flow_in_stem = sum(
-        compute_flow.(
+        flow.(
             z_root_depths,
             z_bottom_stem,
             p_soil0,
@@ -63,7 +62,7 @@ function f!(F, Y)
             K_max_root_moles,
         ),
     )
-    flow_out_stem = compute_flow(
+    flow_out_stem = flow(
         z_bottom_stem,
         z_leaf,
         Y[1],
@@ -86,7 +85,7 @@ y1_0 = FT(theta_stem_0 * size_reservoir_stem_moles)
 y2_0 = FT(theta_leaf_0 * size_reservoir_leaf_moles)
 y0 = [y1_0, y2_0]
 Y, p, coords = initialize(roots)
-Y.roots.rwc .= y0
+Y.vegetation.rwc .= y0
 
 root_ode! = make_ode_function(roots)
 
@@ -99,7 +98,7 @@ sol = solve(prob, Euler(), dt = dt);
 
 dY = similar(Y)
 root_ode!(dY, Y, p, 0.0)
-@test sqrt(sum(dY.roots.rwc .^ 2.0)) < 1e-10 # starts in equilibrium
+@test sqrt(mean(dY.vegetation.rwc .^ 2.0)) < 1e-8 # starts in equilibrium
 
 
 y_1 = reduce(hcat, sol.u)[1, :]
@@ -113,7 +112,7 @@ function f2!(F, Y)
     p_soilf = p_soil0
     Tf = 0.01 / 0.018 .* 3.0
     flow_in_stem = sum(
-        compute_flow.(
+        flow.(
             z_root_depths,
             z_bottom_stem,
             p_soilf,
@@ -123,7 +122,7 @@ function f2!(F, Y)
             K_max_root_moles,
         ),
     )
-    flow_out_stem = compute_flow(
+    flow_out_stem = flow(
         z_bottom_stem,
         z_leaf,
         Y[1],
@@ -138,7 +137,7 @@ end
 
 
 # Check that the final state is in the new equilibrium
-soln = nlsolve(f2!, [-1.0, -0.9])
+soln = nlsolve(f2!, [-1.0, -0.9]; ftol = 1e-10)
 p_stem_f = soln.zero[1]
 p_leaf_f = soln.zero[2]
 @test abs(p_stem_f - p_stem[end]) < 1e-10
