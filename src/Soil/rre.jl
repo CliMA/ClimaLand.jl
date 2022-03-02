@@ -56,7 +56,7 @@ end
     RichardsModel{FT}(;
         parameters::RichardsParameters{FT},
         domain::D,
-        boundary_conditions::RREBoundaryConditions{FT},
+        boundary_conditions::NamedTuple,
         sources::Tuple,
     ) where {FT, D}
 

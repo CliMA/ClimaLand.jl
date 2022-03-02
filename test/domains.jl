@@ -222,6 +222,16 @@ end
         @test testing.compartment_midpoints == comp_points
         @test testing.compartment_surfaces == top_of_compartments
         @test testing.compartment_labels == comp_labels
+        # Check that root depth array is monotonic and increasing 
+        @test(
+            (
+                (
+                    testing.root_depths[i + 1] - testing.root_depths[i] for
+                    i in 1:(length(testing.root_depths) - 1)
+                ) .> FT(0)
+            ) == Bool.(ones(length(testing.root_depths) - 1))
+        )
+
         for i in 1:5
             @test test_tuple[testing.compartment_labels[i]] == 2
         end

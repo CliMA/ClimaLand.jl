@@ -27,6 +27,7 @@ end
 
 """
     SoilPlantHydrologyModel{FT}(;
+                      land_args::NamedTuple = (;),
                       soil_model_type::Type{SM},
                       soil_args::NamedTuple = (;),
                       vegetation_model_type::Type{VM},
@@ -34,7 +35,6 @@ end
                       ) where {FT,
                                SM <: Soil.AbstractSoilModel{FT},
                                VM <: PlantHydraulics.AbstractVegetationModel{FT}}
-
 A constructor for the `SoilPlantHydrologyModel`, which takes in the concrete model
 type and required arguments for each component, constructs those models,
 and constructs the `SoilPlantHydrologyModel` from them.
@@ -44,6 +44,7 @@ forward in time, including boundary conditions, source terms, and interaction
 terms.
 """
 function SoilPlantHydrologyModel{FT}(;
+    land_args::NamedTuple = (;),
     soil_model_type::Type{SM},
     soil_args::NamedTuple = (;),
     vegetation_model_type::Type{VM},
@@ -54,26 +55,33 @@ function SoilPlantHydrologyModel{FT}(;
     VM <: PlantHydraulics.AbstractVegetationModel{FT},
 }
 
-    #These may be passed in, or set, depending on use scenario
-    top_flux_bc = FluxBC((p, t) -> eltype(t)(0.0))
-    bot_flux_bc = FluxBC((p, t) -> eltype(t)(0.0))
-    boundary_fluxes = (; water = (top = top_flux_bc, bottom = bot_flux_bc))
-    transpiration = PrescribedTranspiration{FT}((t::FT) -> eltype(t)(0.0))
+    # These may be passed in, or set, depending on use scenario.
+    @unpack precipitation, transpiration = land_args
+    T = PrescribedTranspiration{FT}(transpiration)
 
-    ##These should always be set by the constructor.
+    # These should always be set by the constructor.
     sources = (RootExtraction{FT}(),)
     root_extraction = PrognosticSoilPressure{FT}()
 
+    boundary_conditions = (;
+        water = (
+            top = FluxBC((p, t) -> eltype(t)(precipitation(t))),
+            bottom = Soil.FreeDrainage{FT}(),
+        )
+    )
+
     soil = soil_model_type(;
-        boundary_conditions = boundary_fluxes,
+        boundary_conditions = boundary_conditions,
         sources = sources,
         soil_args...,
     )
+
     vegetation = vegetation_model_type(;
         root_extraction = root_extraction,
-        transpiration = transpiration,
+        transpiration = T,
         vegetation_args...,
     )
+
     args = (soil, vegetation)
     return SoilPlantHydrologyModel{FT, typeof.(args)...}(args...)
 end
@@ -96,7 +104,7 @@ term (runoff) for the surface water model.
 
 This function is called each ode function evaluation.
 """
-function make_interactions_update_aux(#Do we want defaults, for land::AbstractLandModel?
+function make_interactions_update_aux(
     land::SoilPlantHydrologyModel{FT, SM, RM},
 ) where {
     FT,
@@ -104,8 +112,33 @@ function make_interactions_update_aux(#Do we want defaults, for land::AbstractLa
     RM <: PlantHydraulics.PlantHydraulicsModel{FT},
 }
     function update_aux!(p, Y, t)
-        @. p.root_extraction = FT(0.0)
-        ##Science goes here
+        z = ClimaCore.Fields.coordinate_field(land.soil.domain.space).z
+        @unpack vg_α, vg_n, vg_m, ν, S_s, K_sat, area_index =
+            land.vegetation.parameters
+        @. p.root_extraction =
+            area_index[:root] .* PlantHydraulics.flux(
+                z,
+                land.vegetation.domain.compartment_midpoints[1],
+                p.soil.ψ,
+                PlantHydraulics.water_retention_curve(
+                    vg_α,
+                    vg_n,
+                    vg_m,
+                    PlantHydraulics.effective_saturation(
+                        ν,
+                        Y.vegetation.ϑ_l[1],
+                    ),
+                    ν,
+                    S_s,
+                ),
+                vg_α,
+                vg_n,
+                vg_m,
+                ν,
+                S_s,
+                K_sat[:root],
+                K_sat[:stem],
+            ) .* (land.vegetation.parameters.root_distribution.(z))
     end
     return update_aux!
 end
@@ -222,5 +255,6 @@ function ClimaLSM.source!(
     p::ClimaCore.Fields.FieldVector,
     _...,
 )::ClimaCore.Fields.Field where {FT}
-    return dY.soil.ϑ_l .+= p.root_extraction
+    return dY.soil.ϑ_l .+= -FT(1.0) .* p.root_extraction
+    # if flow is negative, towards soil -> soil water increases, add in sign here.
 end

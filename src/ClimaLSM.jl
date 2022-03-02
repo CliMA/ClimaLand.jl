@@ -15,9 +15,8 @@ include("SharedUtilities/models.jl")
 include("SharedUtilities/boundary_conditions.jl")
 include("SharedUtilities/sources.jl")
 include("Bucket/Bucket.jl")
-
+export make_interactions_update_aux
 export domain
-
 """
      AbstractLandModel{FT} <: AbstractModel{FT} 
 
@@ -135,7 +134,7 @@ function make_update_aux(land::AbstractLandModel)
         for f! in update_aux_function_list
             f!(p, Y, t)
         end
-        interactions_update_aux!(p, Y, t) # this has to come last if it uses p.component.value!!
+        interactions_update_aux!(p, Y, t) # this has to come last.
     end
     return update_aux!
 end
@@ -234,7 +233,6 @@ using .Soil
 include("Vegetation/PlantHydraulics.jl")
 using .PlantHydraulics
 import .PlantHydraulics: flux_out_roots
-
 ### Concrete types of AbstractLandModels
 ### and associated methods
 include("./soil_plant_hydrology_model.jl")
