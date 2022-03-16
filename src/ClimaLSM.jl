@@ -101,7 +101,7 @@ using .Pond
 import .Pond: surface_runoff
 include("Soil/Soil.jl")
 using .Soil
-import .Soil: source, boundary_fluxes
+import .Soil: source!, boundary_fluxes
 include("Vegetation/Roots.jl")
 using .Roots
 import .Roots: flow_out_roots
