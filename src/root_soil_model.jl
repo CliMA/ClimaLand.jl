@@ -100,8 +100,8 @@ function initialize_interactions(#Do we want defaults, for land::AbstractLandMod
     land::RootSoilModel{FT, SM, RM},
 ) where {FT, SM <: Soil.RichardsModel{FT}, RM <: Roots.RootsModel{FT}}
 
-    soil_coords = land.soil.coordinates
-    return (root_extraction = similar(soil_coords),)
+    zero_state = map(_ -> zero(FT), land.soil.coordinates)
+    return (root_extraction = similar(zero_state),)
 end
 
 """

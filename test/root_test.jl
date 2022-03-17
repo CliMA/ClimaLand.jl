@@ -1,14 +1,14 @@
-const a_root = FT(13192)
-const a_stem = FT(515.5605)
-const b_root = FT(2.1079)
-const b_stem = FT(0.9631)
-const size_reservoir_leaf_moles = FT(16766.2790)
-const size_reservoir_stem_moles = FT(11000.8837)
-const K_max_root_moles = FT(12.9216)
-const K_max_stem_moles = FT(3.4415)
-const z_leaf = FT(12) # height of leaf
-const z_root_depths = [FT(-1.0)] # m, rooting depth
-const z_bottom_stem = FT(0.0)
+a_root = FT(13192)
+a_stem = FT(515.5605)
+b_root = FT(2.1079)
+b_stem = FT(0.9631)
+size_reservoir_leaf_moles = FT(16766.2790)
+size_reservoir_stem_moles = FT(11000.8837)
+K_max_root_moles = FT(12.9216)
+K_max_stem_moles = FT(3.4415)
+z_leaf = FT(12) # height of leaf
+z_root_depths = [FT(-1.0)] # m, rooting depth
+z_bottom_stem = FT(0.0)
 
 root_domain = RootDomain{FT}(z_root_depths, [z_bottom_stem, z_leaf])
 param_set = Roots.RootsParameters{FT}(
@@ -36,7 +36,7 @@ function leaf_transpiration(t::ft) where {ft}
     return T
 end
 
-const p_soil0 = [FT(-0.02)]
+p_soil0 = [FT(-0.02)]
 transpiration = PrescribedTranspiration{FT}((t::FT) -> leaf_transpiration(t))
 root_extraction = PrescribedSoilPressure{FT}((t::FT) -> p_soil0)
 roots = Roots.RootsModel{FT}(;

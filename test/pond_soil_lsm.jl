@@ -6,16 +6,16 @@ function precipitation(t::ft) where {ft}
     end
     return precip
 end
-const ν = FT(0.495);
-const Ksat = FT(0.0443 / 3600 / 100); # m/s
-const S_s = FT(1e-3); #inverse meters
-const vg_n = FT(2.0);
-const vg_α = FT(2.6); # inverse meters
-const vg_m = FT(1) - FT(1) / vg_n;
-const θ_r = FT(0);
-const zmax = FT(0);
-const zmin = FT(-1);
-const nelems = 20;
+ν = FT(0.495);
+Ksat = FT(0.0443 / 3600 / 100); # m/s
+S_s = FT(1e-3); #inverse meters
+vg_n = FT(2.0);
+vg_α = FT(2.6); # inverse meters
+vg_m = FT(1) - FT(1) / vg_n;
+θ_r = FT(0);
+zmax = FT(0);
+zmin = FT(-1);
+nelems = 20;
 
 soil_domain = Column(FT, zlim = (zmin, zmax), nelements = nelems);
 soil_ps = Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, Ksat, S_s, θ_r);
@@ -29,7 +29,7 @@ land = LandHydrology{FT}(;
     surface_water_model_type = Pond.PondModel{FT},
 )
 Y, p, coords = initialize(land)
-function init_soil!(Ysoil, z, params)
+function init_soil!(Ysoil, coords, params)
     function hydrostatic_profile(
         z::FT,
         params::RichardsParameters{FT},
@@ -41,7 +41,7 @@ function init_soil!(Ysoil, z, params)
         ϑ_l = S * (ν - θ_r) + θ_r
         return FT(ϑ_l)
     end
-    Ysoil.soil.ϑ_l .= hydrostatic_profile.(z, Ref(params))
+    Ysoil.soil.ϑ_l .= hydrostatic_profile.(coords.z, Ref(params))
 end
 init_soil!(Y, coords.soil, land.soil.param_set)
 # initialize the pond height to zero

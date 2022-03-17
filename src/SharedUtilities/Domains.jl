@@ -4,6 +4,7 @@
 ### and each component can define their own domain as needed?
 module Domains
 using ClimaCore
+using IntervalSets
 using DocStringExtensions
 
 import ClimaCore: Meshes, Spaces, Topologies, Geometry
@@ -16,11 +17,13 @@ import ClimaCore: Meshes, Spaces, Topologies, Geometry
 An abstract type for domains.
 """
 abstract type AbstractDomain{FT <: AbstractFloat} end
-
+Base.eltype(::AbstractDomain{FT}) where {FT} = FT
 """
     coordinates(domain::AbstractDomain)
 
 Method which returns the coordinates appropriate for a given domain.
+
+The coordinates can be Fields or Vectors.
 """
 function coordinates(domain::AbstractDomain) end
 
@@ -52,10 +55,6 @@ function coordinates(domain::RootDomain{FT}) where {FT}
     return domain.compartment_heights
 end
 
-
-### Another example, but a ClimaCore FD Column space/domain may be general enough
-### that we keep it as a concrete type of AbstractDomain, rather than an AbstractSoilDomain
-
 """
     Column{FT} <: AbstractDomain{FT}
 
@@ -83,6 +82,7 @@ Base.size(domain::Column) = length(domain)
 
 """
     function Column(FT::DataType = Float64; zlim, nelements)
+
 Outer constructor for the `Column` type.
 The `boundary_tags` field values are used to label the boundary faces 
 at the top and bottom of the domain.
@@ -112,22 +112,162 @@ function make_function_space(domain::Column{FT}) where {FT}
 end
 
 """
-    coordinates(domain::Column{FT}) where {FT}
-        
-Get the center coordinates from the `Column` domain. Face coordinates will be
-added if necessary. Note that this function can only be called one time
-for coordinates derived from ClimaCore.Spaces.
-This is a required function for each concrete type of domain.
-    """
-function coordinates(domain::Column{FT}) where {FT}
+    Plane{FT} <: AbstractDomain{FT}
+
+A struct holding the necessary information 
+to construct a domain, a mesh, a 2d spectral
+element space, and the resulting coordinate field.
+
+Note that only periodic domains are currently supported.
+$(DocStringExtensions.FIELDS)
+"""
+struct Plane{FT} <: AbstractDomain{FT}
+    xlim::Tuple{FT, FT}
+    ylim::Tuple{FT, FT}
+    nelements::Tuple{Int, Int}
+    periodic::Tuple{Bool, Bool}
+    npolynomial::Int
+end
+
+function Plane(
+    FT::DataType = Float64;
+    xlim,
+    ylim,
+    nelements,
+    periodic,
+    npolynomial,
+)
+    @assert xlim[1] < xlim[2]
+    @assert ylim[1] < ylim[2]
+    @assert periodic == (true, true)
+    return Plane{FT}(xlim, ylim, nelements, periodic, npolynomial)
+end
+
+
+"""
+    make_function_space(domain::Plane)
+
+Returns the 2d spectral element space of the
+desired periodicity, nodal point type, and polynomial order.
+
+Note that only periodic boundaries are supported.
+"""
+function make_function_space(domain::Plane{FT}) where {FT}
+    domain_x = ClimaCore.Domains.IntervalDomain(
+        Geometry.XPoint(domain.xlim[1]),
+        Geometry.XPoint(domain.xlim[2]);
+        periodic = domain.periodic[1],
+    )
+    domain_y = ClimaCore.Domains.IntervalDomain(
+        Geometry.YPoint(domain.ylim[1]),
+        Geometry.YPoint(domain.ylim[2]);
+        periodic = domain.periodic[2],
+    )
+    plane = ClimaCore.Domains.RectangleDomain(domain_x, domain_y)
+
+    mesh =
+        Meshes.RectilinearMesh(plane, domain.nelements[1], domain.nelements[2])
+    grid_topology = Topologies.Topology2D(mesh)
+    if domain.npolynomial == 0
+        quad = Spaces.Quadratures.GL{domain.npolynomial + 1}()
+    else
+        quad = Spaces.Quadratures.GLL{domain.npolynomial + 1}()
+    end
+    space = Spaces.SpectralElementSpace2D(grid_topology, quad)
+
+    return space, nothing
+end
+
+
+
+# # # 3D hybrid domain
+struct HybridBox{FT} <: AbstractDomain{FT}
+    xlim::Tuple{FT, FT}
+    ylim::Tuple{FT, FT}
+    zlim::Tuple{FT, FT}
+    nelements::Tuple{Int, Int, Int}
+    npolynomial::Int
+    periodic::Tuple{Bool, Bool}
+end
+"""
+    HybridBox([FT = Float64]; xlim, ylim, zlim, nelements, npolynomial, periodic = (true, true).
+
+Construct a domain of type `FT` that represents an xz-plane with limits `xlim` `ylim`
+and `zlim` (where `xlim[1] < xlim[2]`,`ylim[1] < ylim[2]`, and `zlim[1] < zlim[2]`), `nelements`
+elements of polynomial order `npolynomial`, (x,y)-axis periodicity = (true, true).
+
+`nelements` must be a tuple with two values, with the first value corresponding
+to the x-axis, the second corresponding to the y-axis, and the third corresponding to the z-axis. 
+
+This domain is not periodic along the z-axis. Note that only periodic domains are supported
+in the horizontal.
+"""
+function HybridBox(
+    ::Type{FT} = Float64;
+    xlim,
+    ylim,
+    zlim,
+    nelements,
+    npolynomial,
+    periodic = (true, true),
+) where {FT}
+    @assert xlim[1] < xlim[2]
+    @assert ylim[1] < ylim[2]
+    @assert zlim[1] < zlim[2]
+    @assert periodic == (true, true)
+    return HybridBox{FT}(xlim, ylim, zlim, nelements, npolynomial, periodic)
+end
+
+"""
+    make_function_space(domain::HybridBox)
+
+Returns the extruded finite difference center and face
+finite spaces of the
+desired periodicity, nodal point type, and polynomial order
+in the horizontal.
+
+Note that only periodic boundaries are supported. 
+"""
+function make_function_space(domain::HybridBox{FT}) where {FT}
+    vertdomain = ClimaCore.Domains.IntervalDomain(
+        Geometry.ZPoint(domain.zlim[1]),
+        Geometry.ZPoint(domain.zlim[2]);
+        boundary_tags = (:bottom, :top),
+    )
+    vertmesh = Meshes.IntervalMesh(vertdomain, nelems = domain.nelements[3])
+    vert_center_space = Spaces.CenterFiniteDifferenceSpace(vertmesh)
+
+    horzdomain = Plane{FT}(
+        domain.xlim,
+        domain.ylim,
+        domain.nelements[1:2],
+        domain.periodic,
+        domain.npolynomial,
+    )
+    horzspace, _ = make_function_space(horzdomain)
+
+    hv_center_space =
+        Spaces.ExtrudedFiniteDifferenceSpace(horzspace, vert_center_space)
+    hv_face_space = Spaces.FaceExtrudedFiniteDifferenceSpace(hv_center_space)
+
+    return hv_center_space, hv_face_space
+end
+
+"""
+   coordinate(domain::Union{Column{FT}, Plane{FT}, HybridBox{FT}}) where {FT}
+
+Returns the coordinate field for the domain.
+"""
+function coordinates(
+    domain::Union{Column{FT}, Plane{FT}, HybridBox{FT}},
+) where {FT}
     cs, _ = make_function_space(domain)
-    cc = ClimaCore.Fields.coordinate_field(cs).z
+    cc = ClimaCore.Fields.coordinate_field(cs)
     return cc
 end
 
 export AbstractDomain, AbstractVegetationDomain
-export Column, RootDomain
+export Column, Plane, HybridBox, RootDomain
 export coordinates
-
 
 end

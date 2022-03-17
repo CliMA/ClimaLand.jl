@@ -1,14 +1,14 @@
 saved_values = SavedValues(FT, ClimaCore.Fields.FieldVector)
-const ν = FT(0.495);
-const Ksat = FT(0.0443 / 3600 / 100); # m/s
-const S_s = FT(1e-3); #inverse meters
-const vg_n = FT(2.0);
-const vg_α = FT(2.6); # inverse meters
-const vg_m = FT(1) - FT(1) / vg_n;
-const θ_r = FT(0);
-const zmax = FT(0);
-const zmin = FT(-10);
-const nelems = 50;
+ν = FT(0.495);
+Ksat = FT(0.0443 / 3600 / 100); # m/s
+S_s = FT(1e-3); #inverse meters
+vg_n = FT(2.0);
+vg_α = FT(2.6); # inverse meters
+vg_m = FT(1) - FT(1) / vg_n;
+θ_r = FT(0);
+zmax = FT(0);
+zmin = FT(-10);
+nelems = 50;
 
 soil_domain = Column(FT, zlim = (zmin, zmax), nelements = nelems);
 top_flux_bc = FT(0.0);
@@ -42,7 +42,7 @@ function init_soil!(Ysoil, z, params)
     Ysoil.soil.ϑ_l .= hydrostatic_profile.(z, Ref(params))
 end
 
-init_soil!(Y, coords, soil.param_set)
+init_soil!(Y, coords.z, soil.param_set)
 
 soil_ode! = make_ode_function(soil)
 
@@ -57,7 +57,7 @@ sol = solve(prob, Euler(); dt = dt, callback = cb);
 # should be hydrostatic equilibrium at every layer, at each step:
 @test mean(
     sum([
-        parent(saved_values.saveval[k].soil.ψ .+ coords)[:] .+ 10.0 for
+        parent(saved_values.saveval[k].soil.ψ .+ coords.z)[:] .+ 10.0 for
         k in 2:1:50
     ]),
 ) < 1e-10

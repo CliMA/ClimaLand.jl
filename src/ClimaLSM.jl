@@ -31,20 +31,22 @@ and the versions of these component models being used.
 abstract type AbstractLandModel{FT} <: AbstractModel{FT} end
 
 
-function initialize(land::AbstractLandModel)
+function initialize(land::AbstractLandModel{FT}) where {FT}
     components = land_components(land)
     coords_list = map(components) do (component)
         Domains.coordinates(getproperty(land, component))
     end
     Y_state_list = map(zip(components, coords_list)) do (component, coords)
+        zero_state = map(_ -> zero(FT), coords)
         getproperty(
-            initialize_prognostic(getproperty(land, component), coords),
+            initialize_prognostic(getproperty(land, component), zero_state),
             component,
         )
     end
     p_state_list = map(zip(components, coords_list)) do (component, coords)
+        zero_state = map(_ -> zero(FT), coords)
         getproperty(
-            initialize_auxiliary(getproperty(land, component), coords),
+            initialize_auxiliary(getproperty(land, component), zero_state),
             component,
         )
     end

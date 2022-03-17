@@ -1,18 +1,18 @@
 saved_values = SavedValues(FT, ClimaCore.Fields.FieldVector)
 
-const a_root = FT(13192)
-const a_stem = FT(515.5605)
-const b_root = FT(2.1079)
-const b_stem = FT(0.9631)
-const size_reservoir_leaf_moles = FT(16766.2790)
-const size_reservoir_stem_moles = FT(11000.8837)
-const K_max_root_moles = FT(12.9216)
-const K_max_stem_moles = FT(3.4415)
-const z_leaf = FT(12) # height of leaf
+a_root = FT(13192)
+a_stem = FT(515.5605)
+b_root = FT(2.1079)
+b_stem = FT(0.9631)
+size_reservoir_leaf_moles = FT(16766.2790)
+size_reservoir_stem_moles = FT(11000.8837)
+K_max_root_moles = FT(12.9216)
+K_max_stem_moles = FT(3.4415)
+z_leaf = FT(12) # height of leaf
 # currently hardcoded to match the soil coordinates. this has to
 # be fixed eventually.
-const z_root_depths = -Array(1:1:20.0) ./ 20.0 * 3.0 .+ 0.15 / 2.0
-const z_bottom_stem = FT(0.0)
+z_root_depths = -Array(1:1:20.0) ./ 20.0 * 3.0 .+ 0.15 / 2.0
+z_bottom_stem = FT(0.0)
 roots_domain = RootDomain{FT}(z_root_depths, [z_bottom_stem, z_leaf])
 roots_ps = Roots.RootsParameters{FT}(
     a_root,
@@ -29,13 +29,13 @@ zmin = FT(-3.0)
 zmax = FT(0.0)
 nelements = 20
 soil_domain = Column(FT, zlim = (zmin, zmax), nelements = nelements);
-const ν = FT(0.495);
-const Ksat = FT(0.0443 / 3600 / 100); # m/s
-const S_s = FT(1e-3); #inverse meters
-const vg_n = FT(2.0);
-const vg_α = FT(2.6); # inverse meters
-const vg_m = FT(1) - FT(1) / vg_n;
-const θ_r = FT(0);
+ν = FT(0.495);
+Ksat = FT(0.0443 / 3600 / 100); # m/s
+S_s = FT(1e-3); #inverse meters
+vg_n = FT(2.0);
+vg_α = FT(2.6); # inverse meters
+vg_m = FT(1) - FT(1) / vg_n;
+θ_r = FT(0);
 soil_ps = Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, Ksat, S_s, θ_r);
 
 soil_args = (domain = soil_domain, param_set = soil_ps)
@@ -62,7 +62,7 @@ function init_soil!(Ysoil, z, params)
     end
     Ysoil.soil.ϑ_l .= hydrostatic_profile.(z, Ref(params))
 end
-init_soil!(Y, coords.soil, land.soil.param_set)
+init_soil!(Y, coords.soil.z, land.soil.param_set)
 
 ## soil is at total ψ+z = -3.0 #m
 ## Want ρgΨ_plant = ρg(-3) - ρg z_plant & convert to MPa

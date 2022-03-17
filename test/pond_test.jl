@@ -26,7 +26,7 @@ sol = solve(prob, Euler(), dt = dt);
 η = [sol.u[k].surface_water.η[1] for k in 1:1:length(sol.t)]
 t = sol.t[1:end]
 
-function expected(t)
+function expected_pond_height(t)
     if t < 20
         return 1e-8 * t
     elseif t < 100
@@ -35,4 +35,4 @@ function expected(t)
         return (20 * (1e-8) + 80 * (5e-5))
     end
 end
-@test sum(abs.(expected.(t) .- η)) < 1e-14
+@test sum(abs.(expected_pond_height.(t) .- η)) < 1e-14
