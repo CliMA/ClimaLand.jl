@@ -1,5 +1,38 @@
 # ClimaLSM
-an in-progress prototype interface for the land model
+an in-progress prototype interface for running land models in integrated (multi-
+component) or standalone (single component) modes.
+
+## Models
+```
+Model <: AbstractModel
+```
+
+All models have the same abstract supertype, and have shared functionality.
+There is the the option to define new methods particular to your model, or to
+fall back on defaults. The functions each new Model type can define are:
+- make_rhs()
+- make_update_aux()
+- initialize_prognostic()
+- initialize_auxiliary()
+- initialize()
+- prognostic_vars()
+- auxiliary_vars()
+    
+Each model will also have some notion of a domain with coordinates, parameter sets,
+and boundary conditions or other prescribed drivers.
+
+Examples:
+
+Component Models:
+RichardsModel <: AbstractSoilModel <: AbstractModel [runnable w/o LandModel wrapper as well]
+
+RootsModel <: AbstractVegetationModel <: AbstractModel  [runnable w/o LandModel wrapper as well]
+
+PondModel <: AbstractSurfaceWaterModel  <: AbstractModel  [runnable w/o LandModel wrapper as well]
+
+Combined Models:
+
+RootSoilModel <: AbstractModel (constructs the individual ComponentModels based on arguments)
 
 |||
 |---------------------:|:----------------------------------------------|

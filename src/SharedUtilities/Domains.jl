@@ -95,6 +95,7 @@ end
 
 """
     make_function_space(domain::Column)
+
 Returns the center and face space of the column domain.
 """
 function make_function_space(domain::Column{FT}) where {FT}
@@ -116,7 +117,6 @@ end
 Get the center coordinates from the `Column` domain. Face coordinates will be
 added if necessary. Note that this function can only be called one time
 for coordinates derived from ClimaCore.Spaces.
-
 This is a required function for each concrete type of domain.
     """
 function coordinates(domain::Column{FT}) where {FT}

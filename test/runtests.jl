@@ -13,9 +13,11 @@ using ClimaLSM
 using ClimaLSM.Domains: Column, RootDomain
 using ClimaLSM.Soil
 using ClimaLSM.Roots
-
+using ClimaLSM.Pond
 
 FT = Float64
 include("./root_test.jl")
 include("./soiltest.jl")
 include("./lsm_test.jl")
+include("./pond_test.jl")
+include("./pond_soil_lsm.jl")

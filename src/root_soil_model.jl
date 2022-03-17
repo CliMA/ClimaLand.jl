@@ -1,10 +1,3 @@
-include("Soil/Soil.jl")
-using .Soil
-import .Soil: source
-include("Vegetation/Roots.jl")
-using .Roots
-import .Roots: flow_out_roots
-
 export RootSoilModel
 """
     struct RootSoilModel{

@@ -69,11 +69,13 @@ function make_update_aux(land::AbstractLandModel)
     update_aux_function_list =
         map(x -> make_update_aux(getproperty(land, x)), components)
     function update_aux!(p, Y, t)
-        interactions_update_aux!(p, Y, t)
         for f! in update_aux_function_list
             f!(p, Y, t)
         end
+        interactions_update_aux!(p, Y, t) # this has to come last if it uses p.component.value!!
     end
+
+
     return update_aux!
 end
 
@@ -90,8 +92,20 @@ function make_ode_function(land::AbstractLandModel)
     return ode_function!
 end
 
+
+# Methods extended by the LSM models we support
+include("SurfaceWater/Pond.jl")
+using .Pond
+import .Pond: surface_runoff
+include("Soil/Soil.jl")
+using .Soil
+import .Soil: source, boundary_fluxes
+include("Vegetation/Roots.jl")
+using .Roots
+import .Roots: flow_out_roots
+
 ### Concrete types of AbstractLandModels
 ### and associated methods
 include("./root_soil_model.jl")
-
+include("./pond_soil_model.jl")
 end

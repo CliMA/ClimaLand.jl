@@ -1,21 +1,3 @@
-using Test
-using UnPack
-using NLsolve
-using OrdinaryDiffEq: ODEProblem, solve, Euler
-using DifferentialEquations
-using ClimaCore
-if !("." in LOAD_PATH) # for ease of include
-    push!(LOAD_PATH, ".")
-end
-
-using ClimaLSM
-using ClimaLSM.Domains: Column, RootDomain
-using ClimaLSM.Soil
-using ClimaLSM.Roots
-
-
-
-FT = Float64
 saved_values = SavedValues(FT, ClimaCore.Fields.FieldVector)
 
 const a_root = FT(13192)
