@@ -27,6 +27,21 @@ The coordinates can be Fields or Vectors.
 """
 function coordinates(domain::AbstractDomain) end
 
+"""
+    Point{FT} <: AbstractDomain{FT}
+
+A domain for single column surface variables.
+
+For models such as ponds, snow, roots, etc. Enables consistency 
+in variable initialization across all domains.
+"""
+struct Point{FT} <: AbstractDomain{FT}
+    # surface elevation relative to a reference
+    z_sfc::FT
+end
+
+coordinates(domain::Point) = [domain.z_sfc]
+
 ### Example of component specific domain
 """
     AbstractVegetationDomain{FT} <: AbstractDomain{FT}
@@ -267,7 +282,7 @@ function coordinates(
 end
 
 export AbstractDomain, AbstractVegetationDomain
-export Column, Plane, HybridBox, RootDomain
+export Column, Plane, HybridBox, RootDomain, Point
 export coordinates
 
 end
