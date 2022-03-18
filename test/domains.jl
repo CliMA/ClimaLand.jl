@@ -1,7 +1,13 @@
+using ClimaCore
+using Test
+if !("." in LOAD_PATH)
+    push!(LOAD_PATH, ".")
+end
+using ClimaLSM
 using ClimaLSM.Domains: Column, RootDomain, HybridBox, Plane, Point
 using ClimaLSM.Domains: coordinates
-using ClimaCore
 
+FT = Float64
 zmin = FT(1.0)
 zmax = FT(2.0)
 xlim = (0.0, 10.0)
