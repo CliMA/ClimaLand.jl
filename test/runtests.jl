@@ -10,7 +10,7 @@ if !("." in LOAD_PATH) # for ease of include
     push!(LOAD_PATH, ".")
 end
 using ClimaLSM
-using ClimaLSM.Domains: Column, RootDomain, HybridBox, Plane
+using ClimaLSM.Domains: Column, RootDomain, HybridBox, Plane, Point
 using ClimaLSM.Soil
 using ClimaLSM.Roots
 using ClimaLSM.Pond
