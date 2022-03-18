@@ -61,9 +61,9 @@ using ClimaLSM
 using UnPack
 using DocStringExtensions
 using ClimaCore
-import ClimaCore: Fields, Operators, Geometry
+import ClimaCore: Fields, Operators, Geometry, Spaces
 
-import ClimaLSM.Domains: coordinates
+import ClimaLSM.Domains: coordinates, Column, HybridBox
 import ClimaLSM:
     AbstractModel,
     make_update_aux,
@@ -294,7 +294,7 @@ function make_rhs(model::RichardsModel)
         @unpack ν, vg_α, vg_n, vg_m, Ksat, S_s, θ_r = model.param_set
         top_flux_bc, bot_flux_bc =
             boundary_fluxes(model.boundary_conditions, p, t)
-        z = model.coordinates
+        z = model.coordinates.z
         interpc2f = Operators.InterpolateC2F()
         gradc2f_water = Operators.GradientC2F()
         divf2c_water = Operators.DivergenceF2C(
@@ -303,13 +303,67 @@ function make_rhs(model::RichardsModel)
         )
         @. dY.soil.ϑ_l =
             -(divf2c_water(-interpc2f(p.soil.K) * gradc2f_water(p.soil.ψ + z)))
+
+        # Horizontal contributions
+        horizontal_components!(dY, model.domain, Y, p, z)
+
         for src in model.sources
             dY.soil.ϑ_l .+= source(src, Y, p)
         end
-
+        # This has to come last
+        dss!(dY, model.domain)
     end
     return rhs!
 end
+
+"""
+   horizontal_components!(dY, domain::Column, _...)
+
+Updates dY in place by adding in the tendency terms resulting from
+- ∇_h ⋅ (-K∇_h(ψ+z)), where ∇_h = (∂/∂_x, ∂/∂_y, 0).
+
+In the case of a column domain, there are no horizontal
+contributions to the right hand side.
+"""
+function horizontal_components!(dY, domain::Column, _...) end
+
+"""
+   dss!(dY,domain::Column, _...)
+
+Computes the appropriate weighted direct stiffness summation based on
+the domain type.
+
+For column domains, no dss is needed.
+"""
+function dss!(dY, domain::Column, _...) end
+
+"""
+   horizontal_components!(dY, domain::HybridBox, _...)
+
+Updates dY in place by adding in the tendency terms resulting from
+- ∇_h ⋅ (-K∇_h(ψ+z)), where ∇_h = (∂/∂_x, ∂/∂_y, 0).
+
+In the case of a hybrid box domain, the horizontal contributions are
+computed using the WeakDivergence and Gradient operators.
+"""
+function horizontal_components!(dY, domain::HybridBox, Y, p, z)
+    hdiv = Operators.WeakDivergence()
+    hgrad = Operators.Gradient()
+    @. dY.soil.ϑ_l += -hdiv(-p.soil.K * hgrad(p.soil.ψ + z))
+end
+
+"""
+   dss!(dY,domain::HybridBox, _...)
+
+Computes the appropriate weighted direct stiffness summation based on
+the domain type.
+
+For the hybrid box domain, a weighted dss is used.
+"""
+function dss!(dY, domain::HybridBox, _...)
+    Spaces.weighted_dss!(dY.soil.ϑ_l)
+end
+
 
 """
     prognostic_vars(soil::RichardsModel)

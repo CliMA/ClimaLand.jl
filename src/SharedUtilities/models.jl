@@ -137,6 +137,8 @@ function initialize_auxiliary(
     end
 end
 
+Domains.coordinates(model::AbstractModel) = Domains.coordinates(model.domain)
+
 """
     initialize(model::AbstractModel)
 
@@ -145,11 +147,10 @@ values; constructs and returns the coordinates for the `model` domain.
 We may need to consider this default more as we add diverse components and 
 `Simulations`.
 """
-function initialize(model::AbstractModel)
-    coords = coordinates(model)
-    Y = initialize_prognostic(model, coords)
-    p = initialize_auxiliary(model, coords)
+function initialize(model::AbstractModel{FT}) where {FT}
+    coords = Domains.coordinates(model)
+    zero_state = map(_ -> zero(FT), coords)
+    Y = initialize_prognostic(model, zero_state)
+    p = initialize_auxiliary(model, zero_state)
     return Y, p, coords
 end
-
-Domains.coordinates(model::AbstractModel) = Domains.coordinates(model.domain)
