@@ -42,34 +42,6 @@ end
 
 coordinates(domain::Point) = [domain.z_sfc]
 
-### Example of component specific domain
-"""
-    AbstractVegetationDomain{FT} <: AbstractDomain{FT}
-
-An abstract type for vegetation specific domains.
-"""
-abstract type AbstractVegetationDomain{FT} <: AbstractDomain{FT} end
-
-
-"""
-   RootDomain{FT} <: AbstractVegetationDomain{FT}
-
-Domain for a single bulk plant with roots of varying depths. The user needs
-to specify the depths of the root tips as wel as the heights of the
-compartments to be modeled within the plant. The compartment heights
-are expected to be sorted in ascending order.
-"""
-struct RootDomain{FT} <: AbstractVegetationDomain{FT}
-    "The depth of the root tips, in meters"
-    root_depths::Vector{FT}
-    "The height of the stem, leaf compartments, in meters"
-    compartment_heights::Vector{FT}
-end
-
-function coordinates(domain::RootDomain{FT}) where {FT}
-    return domain.compartment_heights
-end
-
 """
     Column{FT} <: AbstractDomain{FT}
 
@@ -281,8 +253,65 @@ function coordinates(
     return cc
 end
 
+
+### Example of component specific domain
+"""
+    AbstractVegetationDomain{FT} <: AbstractDomain{FT}
+
+An abstract type for vegetation specific domains.
+"""
+abstract type AbstractVegetationDomain{FT} <: AbstractDomain{FT} end
+
+
+"""
+   RootDomain{FT} <: AbstractVegetationDomain{FT}
+
+Domain for a single bulk plant with roots of varying depths. The user needs
+to specify the depths of the root tips as wel as the heights of the
+compartments to be modeled within the plant. The compartment heights
+are expected to be sorted in ascending order.
+"""
+struct RootDomain{FT} <: AbstractVegetationDomain{FT}
+    "The depth of the root tips, in meters"
+    root_depths::Vector{FT}
+    "The height of the stem, leaf compartments, in meters"
+    compartment_heights::Vector{FT}
+end
+
+function coordinates(domain::RootDomain{FT}) where {FT}
+    return domain.compartment_heights
+end
+
+
+struct SingleColumnLSM{FT} <: AbstractDomain{FT}
+    subsurface::Column{FT}
+    surface::Point{FT}
+end
+
+function SingleColumnLSM(
+    FT::DataType = Float64;
+    zlim::Tuple{G, G},
+    nelements::Int,
+) where {G <: AbstractFloat}
+    @assert zlim[1] < zlim[2]
+    surface_domain = Point{FT}(FT(zlim[2]))
+    boundary_tags = (:bottom, :top)
+    subsurface_domain = Column{FT}(FT.(zlim), nelements, boundary_tags)
+    return SingleColumnLSM{FT}(subsurface_domain, surface_domain)
+end
+
+function coordinates(domain::SingleColumnLSM{FT}) where {FT}
+    return (
+        subsurface = coordinates(domain.subsurface),
+        surface = coordinates(domain.surface),
+    )
+end
+
+
+
 export AbstractDomain, AbstractVegetationDomain
 export Column, Plane, HybridBox, RootDomain, Point
+export SingleColumnLSM
 export coordinates
 
 end

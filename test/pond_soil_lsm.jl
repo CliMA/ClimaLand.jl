@@ -17,16 +17,18 @@ zmax = FT(0);
 zmin = FT(-1);
 nelems = 20;
 
-soil_domain = Column(FT, zlim = (zmin, zmax), nelements = nelems);
-soil_ps = Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, Ksat, S_s, θ_r);
-soil_args = (domain = soil_domain, param_set = soil_ps)
+lsm_domain = SingleColumnLSM(FT, zlim = (zmin, zmax), nelements = nelems)
 land_args = (precip = precipitation,)
 
+soil_ps = Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, Ksat, S_s, θ_r);
+soil_args = (param_set = soil_ps, domain = lsm_domain.subsurface)
+surface_water_args = (domain = lsm_domain.surface,)
 land = LandHydrology{FT}(;
     land_args = land_args,
     soil_model_type = Soil.RichardsModel{FT},
     soil_args = soil_args,
     surface_water_model_type = Pond.PondModel{FT},
+    surface_water_args = surface_water_args,
 )
 Y, p, coords = initialize(land)
 function init_soil!(Ysoil, coords, params)

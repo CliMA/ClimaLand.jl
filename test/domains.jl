@@ -55,3 +55,24 @@ end
     @test point.z_sfc == zlim[1]
     @test coordinates(point) == [zlim[1]]
 end
+
+
+@testset "SingleColumnLSM Domain" begin
+    domain = SingleColumnLSM(FT, zlim = zlim, nelements = nelements[3])
+
+    point = domain.surface
+    column = domain.subsurface
+
+    @test typeof(column) == Column{FT}
+    @test typeof(point) == Point{FT}
+    @test point.z_sfc == zlim[2]
+    @test coordinates(point) == [zlim[2]]
+    @test coordinates(point) == coordinates(domain).surface
+
+    column_coords = coordinates(column)
+    @test column.zlim == FT.(zlim)
+    @test column.nelements == nelements[3]
+    @test eltype(column_coords) == ClimaCore.Geometry.ZPoint{FT}
+    @test typeof(column_coords) <: ClimaCore.Fields.Field
+    @test parent(coordinates(domain).subsurface) == parent(column_coords)
+end
