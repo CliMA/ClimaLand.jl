@@ -56,7 +56,7 @@ FT = Float64
                 S = FT((FT(1) + (vg_α * (z - z_∇))^vg_n)^(-vg_m))
                 ϑ_l = S * (ν - θ_r) + θ_r
             else
-                ϑ_l = -S_s * (z - z_∇) + (ν - θ_r)
+                ϑ_l = -S_s * (z - z_∇) + ν
             end
             return FT(ϑ_l)
         end
@@ -200,4 +200,79 @@ FT = Float64
         )
         @test maximum(abs.(dYX .- expected)) < 1e-8
     end
+end
+
+
+@testset "Soil energy+hydrology horizontal operators" begin
+    ν = FT(0.495)
+    Ksat = FT(0.0443 / 3600 / 100) # m/s
+    S_s = FT(1e-3) #inverse meters
+    vg_n = FT(2.0)
+    vg_α = FT(2.6) # inverse meters
+    vg_m = FT(1) - FT(1) / vg_n
+    θ_r = FT(0.1)
+    rre_params =
+        Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, Ksat, S_s, θ_r)
+    κ = FT(10.0)
+    ρc_s = FT(3e6)
+    heat_params = Soil.HeatParameters{FT}(κ, ρc_s)
+
+    zmax = FT(0)
+    zmin = FT(-1)
+    xmax = FT(1.0)
+    soil_domain = HybridBox(
+        Float64;
+        xlim = (0.0, xmax),
+        ylim = (0.0, 1.0),
+        zlim = (zmin, zmax),
+        nelements = (500, 2, 500),
+        npolynomial = 3,
+    )
+    top_flux_bc = FT(0.0)
+    bot_flux_bc = FT(0.0)
+
+    sources = ()
+    boundary_fluxes = Soil.FluxBC{FT}(top_flux_bc, bot_flux_bc)
+    soil = Soil.SoilEnergyHydrology{FT}(;
+        rre_param_set = rre_params,
+        heat_param_set = heat_params,
+        domain = soil_domain,
+        rre_boundary_conditions = boundary_fluxes,
+        heat_boundary_conditions = boundary_fluxes,
+        sources = sources,
+    )
+
+    Y, p, coords = initialize(soil)
+
+    # specify ICs
+    function init_soil!(Ysoil, z, rre_params, heat_params)
+        function hydrostatic_profile(
+            z::FT,
+            params::RichardsParameters{FT},
+        ) where {FT}
+            @unpack ν, vg_α, vg_n, vg_m, θ_r, S_s = params
+            z_∇ = FT(zmin / 2.0)
+            if z > z_∇
+                S = FT((FT(1) + (vg_α * (z - z_∇))^vg_n)^(-vg_m))
+                ϑ_l = S * (ν - θ_r) + θ_r
+            else
+                ϑ_l = -S_s * (z - z_∇) + ν
+            end
+            return FT(ϑ_l)
+        end
+        Ysoil.soil.ϑ_l .= hydrostatic_profile.(z, Ref(rre_params))
+        Ysoil.soil.θ_i .= ClimaCore.Fields.zeros(FT, axes(Ysoil.soil.θ_i))
+        Ysoil.soil.ρe_int .=
+            ClimaCore.Fields.zeros(FT, axes(Ysoil.soil.ρe_int)) .+
+            volumetric_internal_energy(0.0, heat_params.ρc_s, 280.0)
+    end
+
+    init_soil!(Y, coords.z, soil.rre_param_set, soil.heat_param_set)
+    soil_ode! = make_ode_function(soil)
+    dY = similar(Y)
+    soil_ode!(dY, Y, p, 0.0)
+    ## dY should be zero. Look at dY/Y. Not sure why energy is a bit worse error...
+    @test maximum(abs.(parent(dY.soil.ϑ_l))) / ν < 1e-14
+    @test maximum(abs.(parent(dY.soil.θ_i)))ν < 1e-14
+    @test maximum(abs.(parent(dY.soil.ρe_int))) ./ 2.052e7 < 5e-13
 end

@@ -28,9 +28,8 @@ evaluation. An example would be the temperature, which is computed
 from the prognostic variables of water content and internal
 energy.
 
-Currently, only Richards equation is supported, but there
-are immediate plans to add in a model with coupled water and
-energy, including phase changes.
+Currently, both the Richardson Richards Equation (RRE; hydrology alone)
+and an integrated soil energy and hydrology model are supported.
 
 Addition of additional versions of soil
 models requires defining a model type (of super type 
@@ -73,11 +72,12 @@ import ClimaLSM:
     name
 export RichardsModel,
     RichardsParameters,
+    boundary_fluxes,
     FluxBC,
     RootExtraction,
     AbstractSoilModel,
     AbstractSoilSource,
-    source
+    source!
 
 """
     AbstractSoilBoundaryConditions{FT <: AbstractFloat}
@@ -106,80 +106,16 @@ abstract type AbstractSoilSource{FT <: AbstractFloat} end
 The abstract type for all soil models.
 
 Currently, we only have plans to support a RichardsModel, simulating
-the flow of liquid water through soil, and a fully integrated soil heat
+the flow of liquid water through soil via the Richardson-Richards equation,
+ and a fully integrated soil heat
 and water model, with phase change.
 """
-abstract type AbstractSoilModel{FT} <: AbstractModel{FT} end
+abstract type AbstractSoilModel{FT} <: ClimaLSM.AbstractModel{FT} end
 
 ClimaLSM.name(::AbstractSoilModel) = :soil
 
 """
-    RichardsParameters{FT <: AbstractFloat}
-
-A struct for storing parameters of the `RichardModel`.
-$(DocStringExtensions.FIELDS)
-"""
-struct RichardsParameters{FT <: AbstractFloat}
-    "The porosity of the soil (m^3/m^3)"
-    ν::FT
-    "The van Genuchten parameter α (1/m)"
-    vg_α::FT
-    "The van Genuchten parameter n"
-    vg_n::FT
-    "The van Genuchten parameter m"
-    vg_m::FT
-    "The saturated hydraulic conductivity (m/s)"
-    Ksat::FT
-    "The specific storativity (1/m)"
-    S_s::FT
-    "The residual water fraction (m^3/m^3"
-    θ_r::FT
-end
-
-"""
-    RichardsModel
-
-A model for simulating the flow of water in a porous medium
-by solving the Richardson-Richards Equation.
-
-$(DocStringExtensions.FIELDS)
-"""
-struct RichardsModel{FT, PS, D, C, BC, S} <: AbstractSoilModel{FT}
-    "the parameter set"
-    param_set::PS
-    "the soil domain, using ClimaCore.Domains"
-    domain::D
-    "the domain coordinates"
-    coordinates::C
-    "the boundary conditions, of type AbstractSoilBoundaryConditions"
-    boundary_conditions::BC
-    "A tuple of sources, each of type AbstractSoilSource"
-    sources::S
-end
-
-"""
-    RichardsModel{FT}(;
-        param_set::RichardsParameters{FT},
-        domain::D,
-        boundary_conditions::AbstractSoilBoundaryConditions{FT},
-        sources::Tuple,
-    ) where {FT, D}
-
-A constructor for a `RichardsModel`.
-"""
-function RichardsModel{FT}(;
-    param_set::RichardsParameters{FT},
-    domain::D,
-    boundary_conditions::AbstractSoilBoundaryConditions{FT},
-    sources::Tuple,
-) where {FT, D}
-    coords = coordinates(domain)
-    args = (param_set, domain, coords, boundary_conditions, sources)
-    RichardsModel{FT, typeof.(args)...}(args...)
-end
-
-"""
-    coordinates(model::RichardsModel)
+    coordinates(model::AbstractSoilModel)
 
 A extension of the `coordinates` function, which returns the coordinates
 of a model domain. 
@@ -187,228 +123,47 @@ of a model domain.
 The coordinates are stored in the model because they are required in
 computing the right hand side. 
 """
-coordinates(model::RichardsModel) = model.coordinates
+ClimaLSM.Domains.coordinates(model::AbstractSoilModel) = model.coordinates
 
 """
-    volumetric_liquid_fraction(ϑ_l::FT, ν_eff::FT) where {FT}
-
-A pointwise function returning the volumetric liquid fraction
-given the augmented liquid fraction and the effective porosity.
-"""
-function volumetric_liquid_fraction(ϑ_l::FT, ν_eff::FT) where {FT}
-    if ϑ_l < ν_eff
-        θ_l = ϑ_l
-    else
-        θ_l = ν_eff
-    end
-    return θ_l
-end
-
-
-"""
-     matric_potential(α::FT, n::FT, m::FT, S::FT) where {FT}
-
-A point-wise function returning the matric potential, using the
-van Genuchten formulation.
-"""
-function matric_potential(α::FT, n::FT, m::FT, S::FT) where {FT}
-    ψ_m = -((S^(-FT(1) / m) - FT(1)) * α^(-n))^(FT(1) / n)
-    return ψ_m
-end
-
-"""
-    effective_saturation(porosity::FT, ϑ_l::FT, θr::FT) where {FT}
-
-A point-wise function computing the effective saturation.
-"""
-function effective_saturation(porosity::FT, ϑ_l::FT, θr::FT) where {FT}
-    ϑ_l_safe = max(ϑ_l, θr + eps(FT))
-    S_l = (ϑ_l_safe - θr) / (porosity - θr)
-    return S_l
-end
-
-"""
-    pressure_head(
-        α::FT,
-        n::FT,
-        m::FT,
-        θ_r::FT,
-        ϑ_l::FT,
-        ν_eff::FT,
-        S_s::FT,
-    ) where {FT}
-
-A point-wise function returning the pressure head in
-variably saturated soil, using the van Genuchten formulation
-for matric potential if the soil is not saturated, and
-an approximation of the positive pressure in the soil if the
-soil is saturated.
-"""
-function pressure_head(
-    α::FT,
-    n::FT,
-    m::FT,
-    θ_r::FT,
-    ϑ_l::FT,
-    ν_eff::FT,
-    S_s::FT,
-) where {FT}
-    S_l_eff = effective_saturation(ν_eff, ϑ_l, θ_r)
-    if S_l_eff <= FT(1.0)
-        ψ = matric_potential(α, n, m, S_l_eff)
-    else
-        ψ = (ϑ_l - ν_eff) / S_s
-    end
-    return ψ
-end
-
-"""
-     hydraulic_conductivity(Ksat::FT, m::FT, S::FT) where {FT}
-
-A point-wise function returning the hydraulic conductivity, using the
-van Genuchten formulation.
-"""
-function hydraulic_conductivity(Ksat::FT, m::FT, S::FT) where {FT}
-    if S < FT(1)
-        K = sqrt(S) * (FT(1) - (FT(1) - S^(FT(1) / m))^m)^FT(2)
-    else
-        K = FT(1)
-    end
-    return K * Ksat
-end
-
-"""
-    make_rhs(model::RichardsModel)
-
-An extension of the function `make_rhs`, for the Richardson-
-Richards equation. 
-
-This function creates and returns a function which computes the entire
-right hand side of the PDE for `ϑ_l`, and updates `dY.soil.ϑ_l` in place
-with that value.
-
-This has been written so as to work with Differential Equations.jl.
-"""
-function make_rhs(model::RichardsModel)
-    function rhs!(dY, Y, p, t)
-        @unpack ν, vg_α, vg_n, vg_m, Ksat, S_s, θ_r = model.param_set
-        top_flux_bc, bot_flux_bc =
-            boundary_fluxes(model.boundary_conditions, p, t)
-        z = model.coordinates.z
-        interpc2f = Operators.InterpolateC2F()
-        gradc2f_water = Operators.GradientC2F()
-        divf2c_water = Operators.DivergenceF2C(
-            top = Operators.SetValue(Geometry.WVector(top_flux_bc)),
-            bottom = Operators.SetValue(Geometry.WVector(bot_flux_bc)),
-        )
-        @. dY.soil.ϑ_l =
-            -(divf2c_water(-interpc2f(p.soil.K) * gradc2f_water(p.soil.ψ + z)))
-
-        # Horizontal contributions
-        horizontal_components!(dY, model.domain, Y, p, z)
-
-        for src in model.sources
-            dY.soil.ϑ_l .+= source(src, Y, p)
-        end
-        # This has to come last
-        dss!(dY, model.domain)
-    end
-    return rhs!
-end
-
-"""
-   horizontal_components!(dY, domain::Column, _...)
-
+   horizontal_components!(dY::ClimaCore.Fields.FieldVector,
+                          domain::Column, _...)
 Updates dY in place by adding in the tendency terms resulting from
-- ∇_h ⋅ (-K∇_h(ψ+z)), where ∇_h = (∂/∂_x, ∂/∂_y, 0).
+horizontal derivative operators.
 
 In the case of a column domain, there are no horizontal
 contributions to the right hand side.
 """
-function horizontal_components!(dY, domain::Column, _...) end
+function horizontal_components!(
+    dY::ClimaCore.Fields.FieldVector,
+    domain::Column,
+    _...,
+) end
 
 """
-   dss!(dY,domain::Column, _...)
+   dss!(dY::ClimaCore.Fields.FieldVector,domain::Column)
 
 Computes the appropriate weighted direct stiffness summation based on
-the domain type.
+the domain type, updates `dY` in place.
 
 For column domains, no dss is needed.
 """
-function dss!(dY, domain::Column, _...) end
+function dss!(dY::ClimaCore.Fields.FieldVector, domain::Column) end
 
 """
-   horizontal_components!(dY, domain::HybridBox, _...)
-
-Updates dY in place by adding in the tendency terms resulting from
-- ∇_h ⋅ (-K∇_h(ψ+z)), where ∇_h = (∂/∂_x, ∂/∂_y, 0).
-
-In the case of a hybrid box domain, the horizontal contributions are
-computed using the WeakDivergence and Gradient operators.
-"""
-function horizontal_components!(dY, domain::HybridBox, Y, p, z)
-    hdiv = Operators.WeakDivergence()
-    hgrad = Operators.Gradient()
-    @. dY.soil.ϑ_l += -hdiv(-p.soil.K * hgrad(p.soil.ψ + z))
-end
-
-"""
-   dss!(dY,domain::HybridBox, _...)
+   dss!(dY::ClimaCore.Fields.FieldVector,domain::HybridBox)
 
 Computes the appropriate weighted direct stiffness summation based on
-the domain type.
+the domain type, updates `dY` in place.
 
-For the hybrid box domain, a weighted dss is used.
+For the Hybrid box domain, a weighted dss is needed for each variable.
 """
-function dss!(dY, domain::HybridBox, _...)
-    Spaces.weighted_dss!(dY.soil.ϑ_l)
-end
-
-
-"""
-    prognostic_vars(soil::RichardsModel)
-
-A function which returns the names of the prognostic variables
-of `RichardsModel`.
-"""
-prognostic_vars(soil::RichardsModel) = (:ϑ_l,)
-
-"""
-    auxiliary_vars(soil::RichardsModel)
-
-A function which returns the names of the auxiliary variables 
-of `RichardsModel`.
-
-Note that auxiliary variables are not needed for such a simple model.
-We could instead compute the conductivity and matric potential within the
-rhs function explicitly, rather than compute and store them in the 
-auxiliary vector `p`. We did so in this case as a demonstration.
-"""
-auxiliary_vars(soil::RichardsModel) = (:K, :ψ)
-
-"""
-    make_update_aux(model::RichardsModel)
-
-An extension of the function `make_update_aux`, for the Richardson-
-Richards equation. 
-
-This function creates and returns a function which updates the auxiliary
-variables `p.soil.variable` in place.
-
-This has been written so as to work with Differential Equations.jl.
-"""
-function make_update_aux(model::RichardsModel)
-    function update_aux!(p, Y, t)
-        @unpack ν, vg_α, vg_n, vg_m, Ksat, S_s, θ_r = model.param_set
-        @. p.soil.K = hydraulic_conductivity(
-            Ksat,
-            vg_m,
-            effective_saturation(ν, Y.soil.ϑ_l, θ_r),
-        )
-        @. p.soil.ψ = pressure_head(vg_α, vg_n, vg_m, θ_r, Y.soil.ϑ_l, ν, S_s)
+function dss!(dY::ClimaCore.Fields.FieldVector, domain::HybridBox)
+    for key in propertynames(dY.soil)
+        Spaces.weighted_dss!(getproperty(dY.soil, key))
     end
-    return update_aux!
 end
+
 
 """
    FluxBC{FT} <: AbstractSoilBoundaryConditions{FT}
@@ -436,13 +191,29 @@ function boundary_fluxes(bc::FluxBC, _...)
 end
 
 """
-    source(src::AbstractSoilSource, _...) end
+     source!(dY::ClimaCore.Fields.FieldVector,
+             src::AbstractSoilSource,
+             Y::ClimaCore.Fields.FieldVector,
+             p::ClimaCore.Fields.FieldVector
+             )::ClimaCore.Field.Field
 
 A stub function, which is extended by ClimaLSM.
 
 Once we have the freeze thaw source function, we do not need this
-stub anymore
+stub anymore.
 """
-function source(src::AbstractSoilSource, _...) end
+function source!(
+    dY::ClimaCore.Fields.FieldVector,
+    src::AbstractSoilSource,
+    Y::ClimaCore.Fields.FieldVector,
+    p::ClimaCore.Fields.FieldVector,
+)::ClimaCore.Field.Field end
+
+
+include("./soil_hydrology_parameterizations.jl")
+include("./soil_heat_parameterizations.jl")
+include("./rre.jl")
+include("./energy_hydrology.jl")
+
 
 end
