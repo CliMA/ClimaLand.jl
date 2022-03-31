@@ -11,7 +11,11 @@ export AbstractModel,
 
 import .Domains: coordinates
 ## Default methods for all models - to be in a seperate module at some point.
+"""
+    abstract type AbstractModel{FT <: AbstractFloat}
 
+An abstract type for all models.
+"""
 abstract type AbstractModel{FT <: AbstractFloat} end
 
 """

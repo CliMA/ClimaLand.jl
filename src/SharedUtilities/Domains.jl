@@ -57,7 +57,7 @@ abstract type AbstractVegetationDomain{FT} <: AbstractDomain{FT} end
 Domain for a single bulk plant with roots of varying depths. The user needs
 to specify the depths of the root tips as wel as the heights of the
 compartments to be modeled within the plant. The compartment heights
-are expected to be sorted in ascending order.
+and root levels are expected to be sorted in ascending order.
 """
 struct RootDomain{FT} <: AbstractVegetationDomain{FT}
     "The depth of the root tips, in meters"
@@ -137,10 +137,15 @@ Note that only periodic domains are currently supported.
 $(DocStringExtensions.FIELDS)
 """
 struct Plane{FT} <: AbstractDomain{FT}
+    "Domain interval limits along x axis, in meters"
     xlim::Tuple{FT, FT}
+    "Domain interval limits along y axis, in meters"
     ylim::Tuple{FT, FT}
+    "Number of elements to discretize interval, (nx, ny)"
     nelements::Tuple{Int, Int}
+    "Flags for periodic boundaries; only true is supported"
     periodic::Tuple{Bool, Bool}
+    "Polynomial order for both x and y"
     npolynomial::Int
 end
 
@@ -195,28 +200,40 @@ end
 
 
 
-# # # 3D hybrid domain
+"""
+    struct HybridBox{FT} <: AbstractDomain{FT}
+        xlim::Tuple{FT, FT}
+        ylim::Tuple{FT, FT}
+        zlim::Tuple{FT, FT}
+        nelements::Tuple{Int, Int, Int}
+        npolynomial::Int
+        periodic::Tuple{Bool, Bool}
+    end
+
+A struct holding the necessary information to construct a domain, a mesh, 
+a 2d spectral element space (horizontal) x a 1d finite difference space
+ (vertical), and the resulting coordinate field.
+
+This domain is not periodic along the z-axis. Note that 
+only periodic domains are supported
+in the horizontal.
+$(DocStringExtensions.FIELDS)
+"""
 struct HybridBox{FT} <: AbstractDomain{FT}
+    "Domain interval limits along x axis, in meters"
     xlim::Tuple{FT, FT}
+    "Domain interval limits along y axis, in meters"
     ylim::Tuple{FT, FT}
+    "Domain interval limits along z axis, in meters"
     zlim::Tuple{FT, FT}
+    "Number of elements to discretize interval, (nx, ny,nz)"
     nelements::Tuple{Int, Int, Int}
+    " Polynomial order for the horizontal directions"
     npolynomial::Int
+    "Flag indicating periodic boundaries in horizontal. only true is supported"
     periodic::Tuple{Bool, Bool}
 end
-"""
-    HybridBox([FT = Float64]; xlim, ylim, zlim, nelements, npolynomial, periodic = (true, true).
 
-Construct a domain of type `FT` that represents an xz-plane with limits `xlim` `ylim`
-and `zlim` (where `xlim[1] < xlim[2]`,`ylim[1] < ylim[2]`, and `zlim[1] < zlim[2]`), `nelements`
-elements of polynomial order `npolynomial`, (x,y)-axis periodicity = (true, true).
-
-`nelements` must be a tuple with two values, with the first value corresponding
-to the x-axis, the second corresponding to the y-axis, and the third corresponding to the z-axis. 
-
-This domain is not periodic along the z-axis. Note that only periodic domains are supported
-in the horizontal.
-"""
 function HybridBox(
     ::Type{FT} = Float64;
     xlim,
@@ -269,7 +286,7 @@ function make_function_space(domain::HybridBox{FT}) where {FT}
 end
 
 """
-   coordinate(domain::Union{Column{FT}, Plane{FT}, HybridBox{FT}}) where {FT}
+   coordinates(domain::Union{Column{FT}, Plane{FT}, HybridBox{FT}}) where {FT}
 
 Returns the coordinate field for the domain.
 """

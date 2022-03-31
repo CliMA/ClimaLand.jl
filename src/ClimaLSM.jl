@@ -94,6 +94,42 @@ function make_ode_function(land::AbstractLandModel)
     return ode_function!
 end
 
+"""
+    land_components(land::AbstractLandModel)
+
+Returns the component names of the `land` model, by calling
+`propertynames(land)`.
+"""
+land_components(land::AbstractLandModel) = propertynames(land)
+
+"""
+    initialize_interactions(land::AbstractLandModel) end
+
+Initializes interaction variables, which are a type of auxiliary
+variable, to empty objects of the correct type
+for the model. 
+
+This function should be called during `initialize_auxiliary`,
+and the method will change depending on the type of land model,
+and potentially due to the type of the component models. 
+
+This is a stub which is extended to concrete LSM models.
+
+"""
+function initialize_interactions(land::AbstractLandModel) end
+
+"""
+    make_interactions_update_aux(land::AbstractLandModel) end
+
+Makes and returns a function which updates the interaction variables, 
+which are a type of auxiliary variable.
+
+The `update_aux!` function returned is evaluted during the right hand
+side evaluation.
+
+This is a stub which concrete types of LSMs extend.
+"""
+function make_interactions_update_aux(land::AbstractLandModel) end
 
 # Methods extended by the LSM models we support
 include("SurfaceWater/Pond.jl")
