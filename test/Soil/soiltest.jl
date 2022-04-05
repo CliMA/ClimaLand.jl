@@ -33,7 +33,7 @@ end
     zmin = FT(-10)
     nelems = 50
 
-    soil_domain = Column(FT, zlim = (zmin, zmax), nelements = nelems)
+    soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems)
     top_flux_bc = FT(0.0)
     bot_flux_bc = FT(0.0)
     sources = ()
@@ -110,7 +110,7 @@ end
     zmin = FT(-1)
     nelems = 200
     Δz = 0.005
-    soil_domain = Column(FT, zlim = (zmin, zmax), nelements = nelems)
+    soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems)
     top_flux_bc = FT(0.0)
     bot_flux_bc = FT(0.0)
 

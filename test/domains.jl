@@ -4,7 +4,8 @@ if !("." in LOAD_PATH)
     push!(LOAD_PATH, ".")
 end
 using ClimaLSM
-using ClimaLSM.Domains: Column, RootDomain, HybridBox, Plane, Point
+using ClimaLSM.Domains:
+    Column, RootDomain, HybridBox, Plane, Point, LSMSingleColumnDomain
 using ClimaLSM.Domains: coordinates
 
 FT = Float64
@@ -16,8 +17,7 @@ zlim = (zmin, zmax)
 nelements = (1, 1, 5)
 
 @testset "Box Domain" begin
-    xyz_column_box = HybridBox(
-        Float64;
+    xyz_column_box = HybridBox(;
         xlim = xlim,
         ylim = ylim,
         zlim = zlim,
@@ -36,7 +36,13 @@ nelements = (1, 1, 5)
 end
 
 @testset "Plane Domain" begin
-    xy_plane = Plane{FT}(xlim, ylim, nelements[1:2], (true, true), 0)
+    xy_plane = Plane(;
+        xlim = xlim,
+        ylim = ylim,
+        nelements = nelements[1:2],
+        periodic = (true, true),
+        npolynomial = 0,
+    )
     plane_coords = coordinates(xy_plane)
     @test eltype(plane_coords) == ClimaCore.Geometry.XYPoint{FT}
     @test typeof(plane_coords) <: ClimaCore.Fields.Field
@@ -48,16 +54,28 @@ end
 end
 
 @testset "Column Domain" begin
-    z_column = Column(FT, zlim = zlim, nelements = nelements[3])
+    z_column = Column(; zlim = zlim, nelements = nelements[3])
     column_coords = coordinates(z_column)
     @test z_column.zlim == FT.(zlim)
-    @test z_column.nelements == nelements[3]
+    @test z_column.nelements[1] == nelements[3]
     @test eltype(column_coords) == ClimaCore.Geometry.ZPoint{FT}
     @test typeof(column_coords) <: ClimaCore.Fields.Field
 end
 
 @testset "Point Domain" begin
-    point = Point(zlim[1])
+    point = Point(; z_sfc = zlim[1])
     @test point.z_sfc == zlim[1]
     @test coordinates(point) == [zlim[1]]
+end
+
+
+@testset "LSMSingleColumnDomain" begin
+    domain = LSMSingleColumnDomain(; zlim = zlim, nelements = nelements[3])
+    point = domain.surface
+    column = domain.subsurface
+
+    @test typeof(column) == Column{FT}
+    @test typeof(point) == Point{FT}
+    @test coordinates(point) == coordinates(domain).surface
+    @test parent(coordinates(domain).subsurface) == parent(coordinates(column))
 end

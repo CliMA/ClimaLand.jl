@@ -10,11 +10,11 @@ using ClimaLSM.Pond
 
 FT = Float64
 @testset "Pond integration tests" begin
-    function precipitation(t::ft) where {ft}
-        if t < ft(20)
-            precip = -ft(1e-8)
+    function precipitation(t::T) where {T}
+        if t < T(20)
+            precip = -T(1e-8)
         else
-            precip = t < ft(100) ? -ft(5e-5) : ft(0.0)
+            precip = t < T(100) ? T(-5e-5) : T(0.0)
         end
         return precip
     end

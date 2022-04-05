@@ -5,12 +5,12 @@ Pull Requests (PRs). Please do not hesitate to ask questions.
 
 ## Some useful tips
 - When you start working on a new feature branch, make sure you start from
-  master by running: `git checkout master`.
+  main by running: `git checkout main`.
 - Make sure you add tests
   for your code in `test/` and appropriate documentation in the code and/or
   in `docs/`. All exported functions and structs must be documented.
 - When your PR is ready for review, clean up your commit history by squashing
-  and make sure your code is current with `ClimateMachine` master by rebasing.
+  and make sure your code is current with `ClimateMachine` main by rebasing.
 
 ## Continuous integration
 
@@ -33,4 +33,4 @@ We use [`bors`](https://bors.tech/) to manage merging PR's in the the `ClimaLSM`
 If you're a collaborator and have the necessary permissions, you can type
 `bors try` in a comment on a PR to have integration test suite run on that
 PR, or `bors r+` to try and merge the code.  Bors ensures that all integration tests
-for a given PR always pass before merging into `master`.
+for a given PR always pass before merging into `main`.

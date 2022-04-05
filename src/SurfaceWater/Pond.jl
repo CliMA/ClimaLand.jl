@@ -13,7 +13,7 @@ export PondModel, PrescribedRunoff, surface_runoff
 abstract type AbstractSurfaceWaterModel{FT} <: AbstractModel{FT} end
 abstract type AbstractSurfaceRunoff{FT <: AbstractFloat} end
 """
-    PondModel{FT, R} <: AbstractSurfaceWaterModel{FT}
+    PondModel{FT, D, R} <: AbstractSurfaceWaterModel{FT}
 
 A stand-in model for models like the snow or river model. In 
 standalone mode, a prescribed soil infiltration rate
@@ -23,13 +23,22 @@ control the rate of change of the pond height variable `η` via an ODE.
 In integrated LSM mode, the infiltration into the soil will be computed
 via a different method, and also be applied as a flux boundary condition
 for the soil model. 
+$(DocStringExtensions.FIELDS)
 """
-struct PondModel{FT, R} <: AbstractSurfaceWaterModel{FT}
+struct PondModel{FT, D, R} <: AbstractSurfaceWaterModel{FT}
+    "The domain for the pond model"
+    domain::D
+    "The runoff model for the pond model"
     runoff::R
 end
 
-function PondModel{FT}(; runoff::AbstractSurfaceRunoff{FT}) where {FT}
-    return PondModel{FT, typeof(runoff)}(runoff)
+function PondModel{FT}(;
+    domain::ClimaLSM.Domains.AbstractDomain{FT} = ClimaLSM.Domains.Point{FT}(
+        0.0,
+    ),
+    runoff::AbstractSurfaceRunoff{FT},
+) where {FT}
+    return PondModel{FT, typeof(domain), typeof(runoff)}(domain, runoff)
 end
 
 
@@ -49,7 +58,6 @@ end
 
 ClimaLSM.prognostic_vars(model::PondModel) = (:η,)
 ClimaLSM.name(::AbstractSurfaceWaterModel) = :surface_water
-ClimaLSM.Domains.coordinates(model::PondModel{FT}) where {FT} = FT.([0.0])
 
 function ClimaLSM.make_rhs(model::PondModel)
     function rhs!(dY, Y, p, t)
