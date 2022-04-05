@@ -14,7 +14,7 @@ using ClimaLSM.Soil
 using ClimaLSM.Roots
 
 FT = Float64
-@testset "Root soil LSM interation test" begin
+@testset "Root soil LSM integration test" begin
     saved_values = SavedValues(FT, ClimaCore.Fields.FieldVector)
 
     a_root = FT(13192)
@@ -45,7 +45,7 @@ FT = Float64
     zmin = FT(-3.0)
     zmax = FT(0.0)
     nelements = 20
-    soil_domain = Column(FT, zlim = (zmin, zmax), nelements = nelements)
+    soil_domain = Column(; zlim = (zmin, zmax), nelements = nelements)
     ν = FT(0.495)
     Ksat = FT(0.0443 / 3600 / 100) # m/s
     S_s = FT(1e-3) #inverse meters

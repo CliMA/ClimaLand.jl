@@ -13,6 +13,7 @@ ClimaLSM.Domains.HybridBox
 ClimaLSM.Domains.Column
 ClimaLSM.Domains.Plane
 ClimaLSM.Domains.Point
+ClimaLSM.Domains.LSMSingleColumnDomain
 ClimaLSM.Domains.coordinates
 ```
 

@@ -8,12 +8,12 @@ if !("." in LOAD_PATH)
     push!(LOAD_PATH, ".")
 end
 using ClimaLSM
-using ClimaLSM.Domains: Column
+using ClimaLSM.Domains: LSMSingleColumnDomain
 using ClimaLSM.Soil
 using ClimaLSM.Pond
 
 FT = Float64
-@testset "Pond soil LSM integretation test" begin
+@testset "Pond soil LSM integration test" begin
 
     function precipitation(t::ft) where {ft}
         if t < ft(20)
@@ -33,10 +33,14 @@ FT = Float64
     zmax = FT(0)
     zmin = FT(-1)
     nelems = 20
+    lsm_domain =
+        LSMSingleColumnDomain(; zlim = (zmin, zmax), nelements = nelems)
 
-    soil_domain = Column(FT, zlim = (zmin, zmax), nelements = nelems)
+    soil_domain = lsm_domain.subsurface
     soil_ps = Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, Ksat, S_s, θ_r)
     soil_args = (domain = soil_domain, param_set = soil_ps)
+    surface_water_args = (domain = lsm_domain.surface,)
+
     land_args = (precip = precipitation,)
 
     land = LandHydrology{FT}(;
@@ -44,6 +48,7 @@ FT = Float64
         soil_model_type = Soil.RichardsModel{FT},
         soil_args = soil_args,
         surface_water_model_type = Pond.PondModel{FT},
+        surface_water_args = surface_water_args,
     )
     Y, p, coords = initialize(land)
     function init_soil!(Ysoil, coords, params)

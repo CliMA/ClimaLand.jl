@@ -6,7 +6,12 @@ using Distributed
 @everywhere using Literate
 using ClimaLSM
 include("pages_helper.jl")
-tutorials = ["Using AbstractModel functionality" => "model_tutorial.jl"]
+tutorials = [
+    "For model developers" => [
+        "Using AbstractModel functionality" => "model_tutorial.jl",
+        "Intro to multi-component models" => "LSM_single_column_tutorial.jl",
+    ],
+]
 @everywhere const clima_dir = dirname(dirname(pathof(ClimaLSM)));
 @everywhere source_dir = joinpath(@__DIR__, "src")
 @everywhere GENERATED_DIR = joinpath(source_dir, "generated") # generated files directory

@@ -22,8 +22,7 @@ FT = Float64
     zmax = FT(0)
     zmin = FT(-1)
     xmax = FT(1.0)
-    soil_domain = HybridBox(
-        Float64;
+    soil_domain = HybridBox(;
         xlim = (0.0, xmax),
         ylim = (0.0, 1.0),
         zlim = (zmin, zmax),
@@ -220,8 +219,7 @@ end
     zmax = FT(0)
     zmin = FT(-1)
     xmax = FT(1.0)
-    soil_domain = HybridBox(
-        Float64;
+    soil_domain = HybridBox(;
         xlim = (0.0, xmax),
         ylim = (0.0, 1.0),
         zlim = (zmin, zmax),
