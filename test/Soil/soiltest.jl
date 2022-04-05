@@ -3,6 +3,9 @@ using UnPack
 using Statistics
 using DifferentialEquations
 using ClimaCore
+using CLIMAParameters: AbstractEarthParameterSet
+struct EarthParameterSet <: AbstractEarthParameterSet end
+earth_param_set = EarthParameterSet()
 
 if !("." in LOAD_PATH)
     push!(LOAD_PATH, ".")
@@ -41,11 +44,12 @@ end
     params = Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, Ksat, S_s, θ_r)
 
     soil = Soil.RichardsModel{FT}(;
-        param_set = params,
-        domain = soil_domain,
-        boundary_conditions = boundary_fluxes,
-        sources = sources,
-    )
+                                  hydrology_param_set = params,
+                                  earth_param_set = earth_param_set,
+                                  domain = soil_domain,
+                                  boundary_conditions = boundary_fluxes,
+                                  sources = sources,
+                                  )
 
     Y, p, coords = initialize(soil)
 
@@ -65,7 +69,7 @@ end
         Ysoil.soil.ϑ_l .= hydrostatic_profile.(z, Ref(params))
     end
 
-    init_soil!(Y, coords.z, soil.param_set)
+    init_soil!(Y, coords.z, soil.hydrology_param_set)
 
     soil_ode! = make_ode_function(soil)
 
@@ -96,15 +100,15 @@ end
     vg_α = FT(2.6) # inverse meters
     vg_m = FT(1) - FT(1) / vg_n
     θ_r = FT(0.1)
-    rre_params_on =
+    hydrology_params_on =
         Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, Ksat, S_s, θ_r)
-    rre_params_off =
+    hydrology_params_off =
         Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, 0.0, S_s, θ_r)
 
     κ = FT(10.0)
     ρc_s = FT(3e6)
-    heat_params_on = Soil.HeatParameters{FT}(κ, ρc_s)
-    heat_params_off = Soil.HeatParameters{FT}(0.0, ρc_s)
+    thermal_params_on = Soil.HeatParameters{FT}(κ, ρc_s)
+    thermal_params_off = Soil.HeatParameters{FT}(0.0, ρc_s)
 
     zmax = FT(0)
     zmin = FT(-1)
@@ -120,31 +124,33 @@ end
 
     # Test with only heat on, (hydraulic K = 0)
     soil_heat_on = Soil.SoilEnergyHydrology{FT}(;
-        rre_param_set = rre_params_off,
-        heat_param_set = heat_params_on,
-        domain = soil_domain,
-        rre_boundary_conditions = boundary_fluxes,
-        heat_boundary_conditions = boundary_fluxes,
-        sources = sources,
-    )
-
+                                                hydrology_param_set = hydrology_params_off,
+                                                thermal_param_set = thermal_params_on,
+                                                earth_param_set = earth_param_set,
+                                                domain = soil_domain,
+                                                hydrology_boundary_conditions = boundary_fluxes,
+        thermal_boundary_conditions = boundary_fluxes,
+                                                sources = sources,
+                                                )
+    
     Y, p, coords = initialize(soil_heat_on)
 
     # specify ICs
-    function init_soil_heat!(Ysoil, z, rre_params, heat_params)
-        ν = rre_params.ν
+    function init_soil_heat!(Ysoil, z, hydrology_params, thermal_params, earth_params)
+        ν = hydrology_params.ν
         Ysoil.soil.ϑ_l .= ν / 2.0
         Ysoil.soil.θ_i .= 0.0
         T = 280.0 .+ 0.5 .* (z .+ 0.5) .^ 2.0
         @. Ysoil.soil.ρe_int =
-            volumetric_internal_energy(0.0, heat_params.ρc_s, T)
+            volumetric_internal_energy(0.0, thermal_params.ρc_s, T, Ref(earth_params))
     end
 
     init_soil_heat!(
         Y,
         coords.z,
-        soil_heat_on.rre_param_set,
-        soil_heat_on.heat_param_set,
+        soil_heat_on.hydrology_param_set,
+        soil_heat_on.thermal_param_set,
+        soil_heat_on.earth_param_set,
     )
     soil_ode! = make_ode_function(soil_heat_on)
     dY = similar(Y)
@@ -164,30 +170,32 @@ end
 
     # Test with water on (but κ = 0 for heat)
     soil_water_on = Soil.SoilEnergyHydrology{FT}(;
-        rre_param_set = rre_params_on,
-        heat_param_set = heat_params_off,
-        domain = soil_domain,
-        rre_boundary_conditions = boundary_fluxes,
-        heat_boundary_conditions = boundary_fluxes,
-        sources = sources,
-    )
+                                                 hydrology_param_set = hydrology_params_on,
+                                                 thermal_param_set = thermal_params_off,
+                                                 earth_param_set = earth_param_set,
+                                                 domain = soil_domain,
+                                                 hydrology_boundary_conditions = boundary_fluxes,
+                                                 thermal_boundary_conditions = boundary_fluxes,
+                                                 sources = sources,
+                                                 )
 
     Y, p, coords = initialize(soil_water_on)
 
     # specify ICs
-    function init_soil_water!(Ysoil, z, rre_params, heat_params)
-        ν = rre_params.ν
+    function init_soil_water!(Ysoil, z, hydrology_params, thermal_params, earth_params)
+        ν = hydrology_params.ν
         Ysoil.soil.ϑ_l .= ν / 2.0 .+ ν / 4.0 .* (z .+ 0.5) .^ 2.0
         Ysoil.soil.θ_i .= 0.0
         @. Ysoil.soil.ρe_int =
-            volumetric_internal_energy(0.0, heat_params.ρc_s, 280.0)
+            volumetric_internal_energy(0.0, thermal_params.ρc_s, 280.0, Ref(earth_params))
     end
 
     init_soil_water!(
         Y,
         coords.z,
-        soil_water_on.rre_param_set,
-        soil_water_on.heat_param_set,
+        soil_water_on.hydrology_param_set,
+        soil_water_on.thermal_param_set,
+        soil_water_on.earth_param_set,
     )
     soil_ode! = make_ode_function(soil_water_on)
     dY = similar(Y)
@@ -275,31 +283,33 @@ end
 
     ### Test with both off
     soil_both_off = Soil.SoilEnergyHydrology{FT}(;
-        rre_param_set = rre_params_off,
-        heat_param_set = heat_params_off,
+        hydrology_param_set = hydrology_params_off,
+                                                 thermal_param_set = thermal_params_off,
+                                                                                                  earth_param_set = earth_param_set,
         domain = soil_domain,
-        rre_boundary_conditions = boundary_fluxes,
-        heat_boundary_conditions = boundary_fluxes,
+        hydrology_boundary_conditions = boundary_fluxes,
+        thermal_boundary_conditions = boundary_fluxes,
         sources = sources,
     )
 
     Y, p, coords = initialize(soil_both_off)
 
     # specify ICs
-    function init_soil_off!(Ysoil, z, rre_params, heat_params)
-        ν = rre_params.ν
+    function init_soil_off!(Ysoil, z, hydrology_params, thermal_params, earth_params)
+        ν = hydrology_params.ν
         Ysoil.soil.ϑ_l .= ν / 2.0
         Ysoil.soil.θ_i .= 0.0
         T = 280.0 .+ 0.5 .* (z .+ 0.5) .^ 2.0
         @. Ysoil.soil.ρe_int =
-            volumetric_internal_energy(0.0, heat_params.ρc_s, T)
+            volumetric_internal_energy(0.0, thermal_params.ρc_s, T, Ref(earth_params))
     end
 
     init_soil_off!(
         Y,
         coords.z,
-        soil_both_off.rre_param_set,
-        soil_both_off.heat_param_set,
+        soil_both_off.hydrology_param_set,
+        soil_both_off.thermal_param_set,
+        soil_both_off.earth_param_set,
     )
     soil_ode! = make_ode_function(soil_both_off)
     dY = similar(Y)
@@ -313,32 +323,34 @@ end
 
 
     soil_both_on = Soil.SoilEnergyHydrology{FT}(;
-        rre_param_set = rre_params_on,
-        heat_param_set = heat_params_on,
+        hydrology_param_set = hydrology_params_on,
+                                                thermal_param_set = thermal_params_on,
+                                                                                                 earth_param_set = earth_param_set,
         domain = soil_domain,
-        rre_boundary_conditions = boundary_fluxes,
-        heat_boundary_conditions = boundary_fluxes,
+        hydrology_boundary_conditions = boundary_fluxes,
+        thermal_boundary_conditions = boundary_fluxes,
         sources = sources,
     )
 
     Y, p, coords = initialize(soil_both_on)
 
     # specify ICs
-    function init_soil_on!(Ysoil, z, rre_params, heat_params)
-        ν = rre_params.ν
+    function init_soil_on!(Ysoil, z, hydrology_params, thermal_params, earth_params)
+        ν = hydrology_params.ν
         Ysoil.soil.ϑ_l .= ν / 2.0 .+ ν / 4.0 .* (z .+ 0.5) .^ 2.0
         Ysoil.soil.θ_i .= 0.0
         T = 280.0 .+ 0.5 .* (z .+ 0.5) .^ 2.0
 
         @. Ysoil.soil.ρe_int =
-            volumetric_internal_energy(0.0, heat_params.ρc_s, T)
+            volumetric_internal_energy(0.0, thermal_params.ρc_s, T, Ref(earth_params))
     end
 
     init_soil_on!(
         Y,
         coords.z,
-        soil_both_on.rre_param_set,
-        soil_both_on.heat_param_set,
+        soil_both_on.hydrology_param_set,
+        soil_both_on.thermal_param_set,
+        soil_both_on.earth_param_set,
     )
     soil_ode! = make_ode_function(soil_both_on)
     dY = similar(Y)

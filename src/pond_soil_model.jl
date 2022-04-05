@@ -56,20 +56,21 @@ function LandHydrology{FT}(;
     SW <: Pond.AbstractSurfaceWaterModel{FT},
 }
 
-    @unpack precip = land_args
+    @unpack precip, earth_param_set = land_args
 
     sources = ()
     surface_runoff = PrognosticRunoff{FT}(precip)
     boundary_conditions = RunoffBC{FT}()
-
+    
     soil = soil_model_type(;
-        boundary_conditions = RunoffBC{FT}(),
-        sources = sources,
-        soil_args...,
-    )
+                           boundary_conditions = RunoffBC{FT}(),
+                           sources = sources,
+                           earth_param_set = earth_param_set,
+                           soil_args...,
+                           )
     surface_water = surface_water_model_type(;
-        runoff = surface_runoff,
-        surface_water_args...,
+                                             runoff = surface_runoff,
+                                             surface_water_args...,
     )
     args = (soil, surface_water)
     return LandHydrology{FT, typeof.(args)...}(args...)

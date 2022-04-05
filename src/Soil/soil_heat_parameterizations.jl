@@ -1,4 +1,5 @@
-## To do: use clima parameters; remove hardwired parameters
+using CLIMAParameters.Planet: ρ_cloud_liq, ρ_cloud_ice, cp_l, cp_i, T_0, LH_f0
+using CLIMAParameters.Atmos.Microphysics: K_therm
 export volumetric_internal_energy,
     temperature_from_ρe_int,
     volumetric_internal_energy_liq,
@@ -8,14 +9,15 @@ export volumetric_internal_energy,
     ksat_frozen,
     thermal_conductivity,
     relative_saturation,
-    kersten_number
+    kersten_number,
+    k_dry
 
 """
     volumetric_heat_capacity(
         θ_l::FT,
         θ_i::FT,
         ρc_ds::FT,
-        param_set::AbstractParameterSet
+        param_set::AbstractEarthParameterSet
     ) where {FT}
 Compute the expression for volumetric heat capacity.
 """
@@ -23,7 +25,7 @@ function volumetric_heat_capacity(
     θ_l::FT,
     θ_i::FT,
     ρc_ds::FT,
-    param_set::AbstractParameterSet,
+    param_set::AbstractEarthParameterSet,
 ) where {FT}
     _ρ_i = FT(ρ_cloud_ice(param_set))
     ρcp_i = FT(cp_i(param_set) * _ρ_i)
@@ -36,14 +38,14 @@ function volumetric_heat_capacity(
 end
 """
     temperature_from_ρe_int(ρe_int::FT, θ_i::FT, ρc_s::FT
-                            param_set::AbstractParameterSet) where {FT}
+                            param_set::AbstractEarthParameterSet) where {FT}
 
 A pointwise function for computing the temperature from the volumetric
 internal energy, volumetric ice content, and volumetric heat capacity of
 the soil.
 """
-function temperature_from_ρe_int(ρe_int::FT, θ_i::FT, ρc_s::FT
-                                 param_set::AbstractParameterSet) where {FT}
+function temperature_from_ρe_int(ρe_int::FT, θ_i::FT, ρc_s::FT,
+                                 param_set::AbstractEarthParameterSet) where {FT}
     _ρ_i = FT(ρ_cloud_ice(param_set))
     _T_ref = FT(T_0(param_set))
     _LH_f0 = FT(LH_f0(param_set))
@@ -53,13 +55,13 @@ end
 
 """
     volumetric_internal_energy(θ_i::FT, ρc_s::FT, T::FT,
-                               param_set::AbstractParameterSet) where {FT}
+                               param_set::AbstractEarthParameterSet) where {FT}
 
 A pointwise function for computing the volumetric internal energy of the soil,
 given the volumetric ice content, volumetric heat capacity, and temperature.
 """
-function volumetric_internal_energy(θ_i::FT, ρc_s::FT, T::FT
-                                    param_set::AbstractParameterSet) where {FT}
+function volumetric_internal_energy(θ_i::FT, ρc_s::FT, T::FT,
+                                    param_set::AbstractEarthParameterSet) where {FT}
     _ρ_i = FT(ρ_cloud_ice(param_set))
     _LH_f0 = FT(LH_f0(param_set))
     _T_ref = FT(T_0(param_set))
@@ -68,12 +70,12 @@ function volumetric_internal_energy(θ_i::FT, ρc_s::FT, T::FT
 end
 
 """
-    volumetric_internal_energy_liq(T::FT, param_set::AbstractParameterSet) where {FT}
+    volumetric_internal_energy_liq(T::FT, param_set::AbstractEarthParameterSet) where {FT}
 
 A pointwise function for computing the volumetric internal energy
 of the liquid water in the soil, given the temperature T.
 """
-function volumetric_internal_energy_liq(T::FT, param_set::AbstractParameterSet) where {FT}
+function volumetric_internal_energy_liq(T::FT, param_set::AbstractEarthParameterSet) where {FT}
     _T_ref = FT(T_0(param_set))
     _ρ_l = FT(ρ_cloud_liq(param_set))
     ρcp_l = FT(cp_l(param_set) * _ρ_l)
@@ -85,7 +87,7 @@ end
 
 """
     function k_solid(
-        soil_composition::PS,
+        soil_heat_params::PS,
         κ_quartz::FT,
         κ_minerals::FT,
         κ_om::FT,
@@ -96,16 +98,16 @@ components are referred to the soil solid components, not including the pore
 space.
 """
 function k_solid(
-    soil_composition::PS
+    soil_heat_params::PS,
     κ_quartz::FT,
     κ_minerals::FT,
     κ_om::FT,
     ) where {PS,FT}
-    return κ_om^soil_composition.ν_ss_om *
-           κ_quartz^soil_composition.ν_ss_quartz *
+    return κ_om^soil_heat_params.ν_ss_om *
+           κ_quartz^soil_heat_params.ν_ss_quartz *
            κ_minerals^(FT(1) -
-           soil_composition.ν_ss_om -
-           soil_composition.ν_ss_quartz)
+           soil_heat_params.ν_ss_om -
+           soil_heat_params.ν_ss_quartz)
 end
 
 
@@ -192,25 +194,25 @@ end
         soil_param_functions::PS
     ) where {FT, PS}
 
-Compute the expression for the Kersten number.
+Compute the expression for the Kersten number, using the Balland
+and Arp model.
 """
 function kersten_number(
     θ_i::FT,
     S_r::FT,
-    soil_composition::PS,
-    soil_heat_params::PS2
-) where {FT, PS,PS2}
-    a = soil_heat_params.a
-    b = soil_heat_params.b
-    ν_ss_om = soil_composition.ν_ss_om
-    ν_ss_quartz = soil_composition.ν_ss_quartz
-    ν_ss_gravel = soil_composition.ν_ss_gravel
+    soil_heat_params::PS
+) where {FT, PS}
+    α = soil_heat_params.α
+    β = soil_heat_params.β
+    ν_ss_om = soil_heat_params.ν_ss_om
+    ν_ss_quartz = soil_heat_params.ν_ss_quartz
+    ν_ss_gravel = soil_heat_params.ν_ss_gravel
 
     if θ_i < eps(FT)
         K_e =
-            S_r^((FT(1) + ν_ss_om - a * ν_ss_quartz - ν_ss_gravel) / FT(2)) *
+            S_r^((FT(1) + ν_ss_om - α * ν_ss_quartz - ν_ss_gravel) / FT(2)) *
             (
-                (FT(1) + exp(-b * S_r))^(-FT(3)) -
+                (FT(1) + exp(-β * S_r))^(-FT(3)) -
                 ((FT(1) - S_r) / FT(2))^FT(3)
             )^(FT(1) - ν_ss_om)
     else
@@ -221,27 +223,33 @@ end
 
 
 """
-    function k_dry(
-        param_set::AbstractParameterSet
-        soil_composition::PS,
-        soil_heat_params::PS2
-    ) where {PS,PS2}
+    function k_dry(ρp::FT,
+        param_set::AbstractEarthParameterSet
+        soil_heat_params::PS; a::FT = 0.053)
+    ) where {PS, FT}
 
-Computes the thermal conductivity of dry soil.
+Computes the thermal conductivity of dry soil according
+to the model of Balland and Arp.
 """
-function k_dry(
-    param_set::AbstractParameterSet,
-    soil_composition::PS,
-    soil_heat_params::PS2
-) where {PS,PS2}
-    κ_dry_parameter = soil_heat_params.κ_dry_parameter
-    FT = typeof(κ_dry_parameter)
-    porosity = soil_composition.ν
-    ρp = soil_composition.ρp
+function k_dry(ρp::FT,
+               param_set::AbstractEarthParameterSet,
+               soil_heat_params::PS; a::FT = 0.053
+               ) where {PS, FT}
+    ν = soil_heat_params.ν
     κ_solid = soil_heat_params.κ_solid
     κ_air = FT(K_therm(param_set))
-    ρb_val = ρb_ss(porosity, ρp)
-    numerator = (κ_dry_parameter * κ_solid - κ_air) * ρb_val + κ_air * ρp
-    denom = ρp - (FT(1.0) - κ_dry_parameter) * ρb_val
+    ρb_dry = ρb_dry(ν, ρp)
+    numerator = (a * κ_solid - κ_air) * ρb_dry + κ_air * ρp
+    denom = ρp - (FT(1.0) - a) * ρb_dry
     return numerator / denom
+end
+
+"""
+    function ρb_dry(porosity::FT, ρp::FT) where {FT}
+
+Computes the dry soil bulk density from the dry soil particle
+density.
+"""
+function ρb_dry(porosity::FT, ρp::FT) where {FT}
+    return (FT(1.0) - porosity) * ρp
 end

@@ -44,34 +44,40 @@ forward in time, including boundary conditions, source terms, and interaction
 terms.
 """
 function RootSoilModel{FT}(;
-    soil_model_type::Type{SM},
-    soil_args::NamedTuple = (;),
-    vegetation_model_type::Type{VM},
-    vegetation_args::NamedTuple = (;),
-) where {
-    FT,
-    SM <: Soil.AbstractSoilModel{FT},
-    VM <: Roots.AbstractVegetationModel{FT},
-}
-
+                           land_args::NamedTuple = (;),
+                           soil_model_type::Type{SM},
+                           soil_args::NamedTuple = (;),
+                           vegetation_model_type::Type{VM},
+                           vegetation_args::NamedTuple = (;),
+                           ) where {
+                               FT,
+                               SM <: Soil.AbstractSoilModel{FT},
+                               VM <: Roots.AbstractVegetationModel{FT},
+                           }
+    
     #These may be passed in, or set, depending on use scenario
     boundary_fluxes = FluxBC{FT}(FT(0.0), FT(0.0))
     transpiration = PrescribedTranspiration{FT}((t::FT) -> FT(0.0))
 
+    @unpack earth_param_set = land_args
+
+    
     ##These should always be set by the constructor.
     sources = (RootExtraction{FT}(),)
     root_extraction = PrognosticSoilPressure{FT}()
-
+    
     soil = soil_model_type(;
-        boundary_conditions = boundary_fluxes,
-        sources = sources,
-        soil_args...,
-    )
+                           boundary_conditions = boundary_fluxes,
+                           sources = sources,
+                           earth_param_set = earth_param_set,
+                           soil_args...,
+                           )
     vegetation = vegetation_model_type(;
-        root_extraction = root_extraction,
-        transpiration = transpiration,
-        vegetation_args...,
-    )
+                                       root_extraction = root_extraction,
+                                       transpiration = transpiration,
+                                       earth_param_set = earth_param_set,
+                                       vegetation_args...,
+                                       )
     args = (soil, vegetation)
     return RootSoilModel{FT, typeof.(args)...}(args...)
 end

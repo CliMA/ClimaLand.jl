@@ -60,7 +60,7 @@ using ClimaCore
 using UnPack
 using DocStringExtensions
 import ClimaCore: Fields
-
+using CLIMAParameters: AbstractEarthParameterSet
 using ClimaLSM.Domains: AbstractVegetationDomain, RootDomain
 import ClimaLSM:
     AbstractModel,
@@ -160,9 +160,11 @@ and soil pressure at the root tips, or with a dynamic soil model using `ClimaLSM
 
 $(DocStringExtensions.FIELDS)
 """
-struct RootsModel{FT, PS, D, RE, T} <: AbstractVegetationModel{FT}
+struct RootsModel{FT, PS, PS2, D, RE, T} <: AbstractVegetationModel{FT}
     "Parameters required by the root model"
-    param_set::PS
+    root_param_set::PS
+    "Physical constants"
+    earth_param_set::PS2
     "The root model domain, of type `AbstractVegetationDomain`"
     domain::D
     "The root extraction model, of type `AbstractRootExtraction`"
@@ -172,12 +174,13 @@ struct RootsModel{FT, PS, D, RE, T} <: AbstractVegetationModel{FT}
 end
 
 function RootsModel{FT}(;
-    param_set,
-    domain::AbstractVegetationDomain{FT},
-    root_extraction::AbstractRootExtraction{FT},
-    transpiration::AbstractTranspiration{FT},
-) where {FT}
-    args = (param_set, domain, root_extraction, transpiration)
+                        root_param_set::RootsParameters{FT},
+                        earth_param_set::AbstractEarthParameterSet,
+                        domain::AbstractVegetationDomain{FT},
+                        root_extraction::AbstractRootExtraction{FT},
+                        transpiration::AbstractTranspiration{FT},
+                        ) where {FT}
+    args = (root_param_set, earth_param_set, domain, root_extraction, transpiration)
     return RootsModel{FT, typeof.(args)...}(args...)
 end
 
@@ -318,7 +321,7 @@ function make_rhs(model::RootsModel)
         a_stem,
         b_stem,
         K_max_stem_moles,
-        size_reservoir_leaf_moles = model.param_set
+        size_reservoir_leaf_moles = model.root_param_set
 
         z_stem, z_leaf = model.domain.compartment_heights
 
@@ -388,7 +391,7 @@ function flow_out_roots(
     t::FT,
 )::FT where {FT}
     @unpack a_root, b_root, K_max_root_moles, size_reservoir_stem_moles =
-        model.param_set
+        model.root_param_set
     p_stem = theta_to_p(Y.vegetation.rwc[1] / size_reservoir_stem_moles)
     return sum(
         flow.(

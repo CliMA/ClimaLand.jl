@@ -22,52 +22,57 @@ and the heat equation, including terms for phase change.
 
 $(DocStringExtensions.FIELDS)
 """
-struct SoilEnergyHydrology{FT, PSR, PSH, D, C, BCR, BCH, S} <:
+struct SoilEnergyHydrology{FT, PSR, PSH, PS, D, C, BCR, BCH, S} <:
        AbstractSoilModel{FT}
     "the parameter set for RR equation"
-    rre_param_set::PSR
+    hydrology_param_set::PSR
     "the heat equation parameter set"
-    heat_param_set::PSH
+    thermal_param_set::PSH
+    "Physical constants"
+    earth_param_set::PS
     "the soil domain, using ClimaCore.Domains"
     domain::D
     "the domain coordinates"
     coordinates::C
     "the boundary conditions for RRE, of type AbstractSoilBoundaryConditions"
-    rre_boundary_conditions::BCR
+    hydrology_boundary_conditions::BCR
     "the boundary conditions for heat equation, of type AbstractSoilBoundaryConditions"
-    heat_boundary_conditions::BCH
+    thermal_boundary_conditions::BCH
     "A tuple of sources, each of type AbstractSoilSource"
     sources::S
 end
 
 """
     SoilEnergyHydrology{FT}(;
-        rre_param_set::PSR,
-        heat_param_set::PSH,
+        hydrology_param_set::PSR,
+        thermal_param_set::PSH,
+        earth_param_set::AbstractEarthParameterSet,
         domain::D,
-        rre_boundary_conditions::AbstractSoilBoundaryConditions{FT},
-        heat_boundary_conditions::AbstractSoilBoundaryConditions{FT},
+        hydrology_boundary_conditions::AbstractSoilBoundaryConditions{FT},
+        thermal_boundary_conditions::AbstractSoilBoundaryConditions{FT},
         sources::Tuple,
     ) where {FT, PSR, PSH, D}
 
 A constructor for a `SoilEnergyHydrology` model.
 """
 function SoilEnergyHydrology{FT}(;
-    rre_param_set::RichardsParameters{FT},
-    heat_param_set::HeatParameters{FT},
-    domain::D,
-    rre_boundary_conditions::AbstractSoilBoundaryConditions{FT},
-    heat_boundary_conditions::AbstractSoilBoundaryConditions{FT},
-    sources::Tuple,
-) where {FT, D}
+                                 hydrology_param_set::RichardsParameters{FT},
+                                 thermal_param_set::HeatParameters{FT},
+                                 earth_param_set::AbstractEarthParameterSet,
+                                 domain::D,
+                                 hydrology_boundary_conditions::AbstractSoilBoundaryConditions{FT},
+                                 thermal_boundary_conditions::AbstractSoilBoundaryConditions{FT},
+                                 sources::Tuple,
+                                 ) where {FT, D}
     coords = coordinates(domain)
     args = (
-        rre_param_set,
-        heat_param_set,
+        hydrology_param_set,
+        thermal_param_set,
+        earth_param_set,
         domain,
         coords,
-        rre_boundary_conditions,
-        heat_boundary_conditions,
+        hydrology_boundary_conditions,
+        thermal_boundary_conditions,
         sources,
     )
     SoilEnergyHydrology{FT, typeof.(args)...}(args...)
@@ -87,24 +92,24 @@ This has been written so as to work with Differential Equations.jl.
 """
 function ClimaLSM.make_rhs(model::SoilEnergyHydrology{FT}) where {FT}
     function rhs!(dY, Y, p, t)
-        @unpack ν, vg_α, vg_n, vg_m, Ksat, S_s, θ_r = model.rre_param_set
-        @unpack κ = model.heat_param_set
-        ρe_int_l = volumetric_internal_energy_liq.(p.soil.T)
+        @unpack ν, vg_α, vg_n, vg_m, Ksat, S_s, θ_r = model.hydrology_param_set
+        @unpack κ = model.thermal_param_set
+        ρe_int_l = volumetric_internal_energy_liq.(p.soil.T, Ref(model.earth_param_set))
         z = model.coordinates.z
 
 
-        rre_top_flux_bc, rre_bot_flux_bc =
-            boundary_fluxes(model.rre_boundary_conditions, p, t)
-        heat_top_flux_bc, heat_bot_flux_bc =
-            boundary_fluxes(model.heat_boundary_conditions, p, t)
+        hydrology_top_flux_bc, hydrology_bot_flux_bc =
+            boundary_fluxes(model.hydrology_boundary_conditions, p, t)
+        thermal_top_flux_bc, thermal_bot_flux_bc =
+            boundary_fluxes(model.thermal_boundary_conditions, p, t)
 
         interpc2f = Operators.InterpolateC2F()
         gradc2f = Operators.GradientC2F()
         # Richards-Richardson RHS:
 
         divf2c_rre = Operators.DivergenceF2C(
-            top = Operators.SetValue(Geometry.WVector(rre_top_flux_bc)),
-            bottom = Operators.SetValue(Geometry.WVector(rre_bot_flux_bc)),
+            top = Operators.SetValue(Geometry.WVector(hydrology_top_flux_bc)),
+            bottom = Operators.SetValue(Geometry.WVector(hydrology_bot_flux_bc)),
         )
         @. dY.soil.ϑ_l =
             -(divf2c_rre(-interpc2f(p.soil.K) * gradc2f(p.soil.ψ + z)))
@@ -112,8 +117,8 @@ function ClimaLSM.make_rhs(model::SoilEnergyHydrology{FT}) where {FT}
 
         # Heat equation RHS
         divf2c_heat = Operators.DivergenceF2C(
-            top = Operators.SetValue(Geometry.WVector(heat_top_flux_bc)),
-            bottom = Operators.SetValue(Geometry.WVector(heat_bot_flux_bc)),
+            top = Operators.SetValue(Geometry.WVector(thermal_top_flux_bc)),
+            bottom = Operators.SetValue(Geometry.WVector(thermal_bot_flux_bc)),
         )
         @. dY.soil.ρe_int =
             -divf2c_heat(
@@ -151,8 +156,8 @@ function horizontal_components!(
     model::SoilEnergyHydrology,
     p::ClimaCore.Fields.FieldVector,
 )
-    κ = model.heat_param_set.κ
-    ρe_int_l = volumetric_internal_energy_liq.(p.soil.T)
+    κ = model.thermal_param_set.κ
+    ρe_int_l = volumetric_internal_energy_liq.(p.soil.T, Ref(model.earth_param_set))
 
     hdiv = Operators.WeakDivergence()
     hgrad = Operators.Gradient()
@@ -194,15 +199,15 @@ This has been written so as to work with Differential Equations.jl.
 """
 function ClimaLSM.make_update_aux(model::SoilEnergyHydrology)
     function update_aux!(p, Y, t)
-        @unpack ν, vg_α, vg_n, vg_m, Ksat, S_s, θ_r = model.rre_param_set
-        @unpack ρc_s = model.heat_param_set
+        @unpack ν, vg_α, vg_n, vg_m, Ksat, S_s, θ_r = model.hydrology_param_set
+        @unpack ρc_s = model.thermal_param_set
         @. p.soil.K = hydraulic_conductivity(
             Ksat,
             vg_m,
             effective_saturation(ν, Y.soil.ϑ_l, θ_r),
         )
         @. p.soil.ψ = pressure_head(vg_α, vg_n, vg_m, θ_r, Y.soil.ϑ_l, ν, S_s)
-        @. p.soil.T = temperature_from_ρe_int(Y.soil.ρe_int, Y.soil.θ_i, ρc_s)
+        @. p.soil.T = temperature_from_ρe_int(Y.soil.ρe_int, Y.soil.θ_i, ρc_s, model.earth_param_set)
     end
     return update_aux!
 end

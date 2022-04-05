@@ -3,6 +3,8 @@ using UnPack
 using DifferentialEquations
 using OrdinaryDiffEq: ODEProblem, solve, Euler
 using ClimaCore
+using CLIMAParameters: AbstractEarthParameterSet
+struct EarthParameterSet <: AbstractEarthParameterSet end
 
 if !("." in LOAD_PATH)
     push!(LOAD_PATH, ".")
@@ -14,6 +16,7 @@ using ClimaLSM.Pond
 
 FT = Float64
 @testset "Pond soil LSM integretation test" begin
+    earth_param_set = EarthParameterSet()
 
     function precipitation(t::ft) where {ft}
         if t < ft(20)
@@ -36,8 +39,8 @@ FT = Float64
 
     soil_domain = Column(FT, zlim = (zmin, zmax), nelements = nelems)
     soil_ps = Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, Ksat, S_s, θ_r)
-    soil_args = (domain = soil_domain, param_set = soil_ps)
-    land_args = (precip = precipitation,)
+    soil_args = (domain = soil_domain, hydrology_param_set = soil_ps)
+    land_args = (precip = precipitation,earth_param_set = earth_param_set)
 
     land = LandHydrology{FT}(;
         land_args = land_args,
@@ -60,7 +63,7 @@ FT = Float64
         end
         Ysoil.soil.ϑ_l .= hydrostatic_profile.(coords.z, Ref(params))
     end
-    init_soil!(Y, coords.soil, land.soil.param_set)
+    init_soil!(Y, coords.soil, land.soil.hydrology_param_set)
     # initialize the pond height to zero
     Y.surface_water.η .= 0.0
 

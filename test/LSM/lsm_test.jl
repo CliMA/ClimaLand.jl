@@ -3,6 +3,8 @@ using DifferentialEquations
 using UnPack
 using OrdinaryDiffEq: ODEProblem, solve, Euler
 using ClimaCore
+using CLIMAParameters: AbstractEarthParameterSet
+struct EarthParameterSet <: AbstractEarthParameterSet end
 
 if !("." in LOAD_PATH)
     push!(LOAD_PATH, ".")
@@ -15,6 +17,8 @@ using ClimaLSM.Roots
 
 FT = Float64
 @testset "Root soil LSM interation test" begin
+    earth_param_set = EarthParameterSet()
+    
     saved_values = SavedValues(FT, ClimaCore.Fields.FieldVector)
 
     a_root = FT(13192)
@@ -54,15 +58,16 @@ FT = Float64
     vg_m = FT(1) - FT(1) / vg_n
     θ_r = FT(0)
     soil_ps = Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, Ksat, S_s, θ_r)
-
-    soil_args = (domain = soil_domain, param_set = soil_ps)
-    root_args = (domain = roots_domain, param_set = roots_ps)
+    land_args = (earth_param_set = earth_param_set,)
+    soil_args = (domain = soil_domain, hydrology_param_set = soil_ps)
+    root_args = (domain = roots_domain, root_param_set = roots_ps)
     land = RootSoilModel{FT}(;
-        soil_model_type = Soil.RichardsModel{FT},
-        soil_args = soil_args,
-        vegetation_model_type = Roots.RootsModel{FT},
-        vegetation_args = root_args,
-    )
+                             land_args = land_args,
+                             soil_model_type = Soil.RichardsModel{FT},
+                             soil_args = soil_args,
+                             vegetation_model_type = Roots.RootsModel{FT},
+                             vegetation_args = root_args,
+                             )
     Y, p, coords = initialize(land)
     # specify ICs
     function init_soil!(Ysoil, z, params)
@@ -79,7 +84,7 @@ FT = Float64
         end
         Ysoil.soil.ϑ_l .= hydrostatic_profile.(z, Ref(params))
     end
-    init_soil!(Y, coords.soil.z, land.soil.param_set)
+    init_soil!(Y, coords.soil.z, land.soil.hydrology_param_set)
 
     ## soil is at total ψ+z = -3.0 #m
     ## Want ρgΨ_plant = ρg(-3) - ρg z_plant & convert to MPa
