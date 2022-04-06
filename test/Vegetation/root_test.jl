@@ -3,6 +3,7 @@ using Statistics
 using NLsolve
 using OrdinaryDiffEq: ODEProblem, solve, Euler
 using ClimaCore
+using CLIMAParameters: AbstractEarthParameterSet
 
 if !("." in LOAD_PATH)
     push!(LOAD_PATH, ".")
@@ -25,9 +26,10 @@ FT = Float64
     z_leaf = FT(12) # height of leaf
     z_root_depths = [FT(-1.0)] # m, rooting depth
     z_bottom_stem = FT(0.0)
-
+    struct EarthParameterSet <: AbstractEarthParameterSet end
+    earth_param_set = EarthParameterSet()
     root_domain = RootDomain{FT}(z_root_depths, [z_bottom_stem, z_leaf])
-    param_set = Roots.RootsParameters{FT}(
+    param_set = Roots.RootsParameters{FT, typeof(earth_param_set)}(
         a_root,
         b_root,
         a_stem,
@@ -36,6 +38,7 @@ FT = Float64
         size_reservoir_leaf_moles,
         K_max_root_moles,
         K_max_stem_moles,
+        earth_param_set,
     )
 
     function leaf_transpiration(t::ft) where {ft}
@@ -58,7 +61,7 @@ FT = Float64
     root_extraction = PrescribedSoilPressure{FT}((t::FT) -> p_soil0)
     roots = Roots.RootsModel{FT}(;
         domain = root_domain,
-        param_set = param_set,
+        parameters = param_set,
         root_extraction = root_extraction,
         transpiration = transpiration,
     )

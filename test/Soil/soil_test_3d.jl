@@ -1,6 +1,7 @@
 using Test
 using UnPack
 using ClimaCore
+using CLIMAParameters: AbstractEarthParameterSet
 
 if !("." in LOAD_PATH)
     push!(LOAD_PATH, ".")
@@ -36,7 +37,7 @@ FT = Float64
     params = Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, Ksat, S_s, θ_r)
 
     soil = Soil.RichardsModel{FT}(;
-        param_set = params,
+        parameters = params,
         domain = soil_domain,
         boundary_conditions = boundary_fluxes,
         sources = sources,
@@ -63,7 +64,7 @@ FT = Float64
     end
     soil_ode! = make_ode_function(soil)
     Y, p, coords = initialize(soil)
-    init_soil!(Y, coords.x, coords.z, soil.param_set)
+    init_soil!(Y, coords.x, coords.z, soil.parameters)
     dY = similar(Y)
     soil_ode!(dY, Y, p, 0.0)
 
@@ -203,6 +204,8 @@ end
 
 
 @testset "Soil energy+hydrology horizontal operators" begin
+    struct EarthParameterSet <: AbstractEarthParameterSet end
+    earth_param_set = EarthParameterSet()
     ν = FT(0.495)
     Ksat = FT(0.0443 / 3600 / 100) # m/s
     S_s = FT(1e-3) #inverse meters
@@ -210,12 +213,18 @@ end
     vg_α = FT(2.6) # inverse meters
     vg_m = FT(1) - FT(1) / vg_n
     θ_r = FT(0.1)
-    rre_params =
-        Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, Ksat, S_s, θ_r)
-    κ = FT(10.0)
-    ρc_s = FT(3e6)
-    heat_params = Soil.HeatParameters{FT}(κ, ρc_s)
-
+    parameters = Soil.EnergyHydrologyParameters{FT, typeof(earth_param_set)}(
+        10.0,
+        3e6,
+        ν,
+        vg_α,
+        vg_n,
+        vg_m,
+        Ksat,
+        S_s,
+        θ_r,
+        earth_param_set,
+    )
     zmax = FT(0)
     zmin = FT(-1)
     xmax = FT(1.0)
@@ -231,9 +240,8 @@ end
 
     sources = ()
     boundary_fluxes = Soil.FluxBC{FT}(top_flux_bc, bot_flux_bc)
-    soil = Soil.SoilEnergyHydrology{FT}(;
-        rre_param_set = rre_params,
-        heat_param_set = heat_params,
+    soil = Soil.EnergyHydrology{FT}(;
+        parameters = parameters,
         domain = soil_domain,
         rre_boundary_conditions = boundary_fluxes,
         heat_boundary_conditions = boundary_fluxes,
@@ -243,10 +251,10 @@ end
     Y, p, coords = initialize(soil)
 
     # specify ICs
-    function init_soil!(Ysoil, z, rre_params, heat_params)
+    function init_soil!(Ysoil, z, params)
         function hydrostatic_profile(
             z::FT,
-            params::RichardsParameters{FT},
+            params::EnergyHydrologyParameters,
         ) where {FT}
             @unpack ν, vg_α, vg_n, vg_m, θ_r, S_s = params
             z_∇ = FT(zmin / 2.0)
@@ -258,14 +266,14 @@ end
             end
             return FT(ϑ_l)
         end
-        Ysoil.soil.ϑ_l .= hydrostatic_profile.(z, Ref(rre_params))
+        Ysoil.soil.ϑ_l .= hydrostatic_profile.(z, Ref(params))
         Ysoil.soil.θ_i .= ClimaCore.Fields.zeros(FT, axes(Ysoil.soil.θ_i))
         Ysoil.soil.ρe_int .=
             ClimaCore.Fields.zeros(FT, axes(Ysoil.soil.ρe_int)) .+
-            volumetric_internal_energy(0.0, heat_params.ρc_s, 280.0)
+            volumetric_internal_energy(0.0, params.ρc_s, 280.0)
     end
 
-    init_soil!(Y, coords.z, soil.rre_param_set, soil.heat_param_set)
+    init_soil!(Y, coords.z, soil.parameters)
     soil_ode! = make_ode_function(soil)
     dY = similar(Y)
     soil_ode!(dY, Y, p, 0.0)

@@ -1,4 +1,5 @@
 [deps]
+CLIMAParameters = "6eacf6c3-8458-43b9-ae03-caf5306d3d53"
 ClimaCore = "d414da3d-4745-48bb-8d80-42e94e092884"
 DifferentialEquations = "0c46a032-eb83-5123-abaf-570d42b7fbaa"
 NLsolve = "2774e3e8-f4cf-5e23-947b-6d7e65073b56"

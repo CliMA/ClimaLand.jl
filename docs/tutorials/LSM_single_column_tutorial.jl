@@ -98,7 +98,7 @@ boundary_fluxes = FluxBC{FT}(top_flux_bc, bot_flux_bc);
 
 # With this information, we can make our model:
 soil = Soil.RichardsModel{FT}(;
-    param_set = soil_ps,
+    parameters = soil_ps,
     domain = soil_domain,
     boundary_conditions = boundary_fluxes,
     sources = sources,
@@ -254,7 +254,7 @@ lsm_domain.subsurface
 # Let's now collect the needed arguments for the soil and pond
 # models:
 
-soil_args = (param_set = soil_ps, domain = lsm_domain.subsurface, sources = ());
+soil_args = (parameters = soil_ps, domain = lsm_domain.subsurface, sources = ());
 surface_water_args = (domain = lsm_domain.surface,);
 # Atmospheric drivers don't "belong" to either component alone:
 land_args = (precip = precipitation,);

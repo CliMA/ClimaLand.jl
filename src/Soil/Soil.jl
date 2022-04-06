@@ -61,6 +61,7 @@ using UnPack
 using DocStringExtensions
 using ClimaCore
 import ClimaCore: Fields, Operators, Geometry, Spaces
+using CLIMAParameters: AbstractEarthParameterSet
 
 import ClimaLSM.Domains: coordinates, Column, HybridBox
 import ClimaLSM:
@@ -74,6 +75,8 @@ import ClimaLSM:
     auxiliary_types
 export RichardsModel,
     RichardsParameters,
+    EnergyHydrologyModel,
+    EnergyHydrologyParameters,
     boundary_fluxes,
     FluxBC,
     RootExtraction,

@@ -31,7 +31,7 @@ $(DocStringExtensions.FIELDS)
 """
 struct RichardsModel{FT, PS, D, C, BC, S} <: AbstractSoilModel{FT}
     "the parameter set"
-    param_set::PS
+    parameters::PS
     "the soil domain, using ClimaCore.Domains"
     domain::D
     "the domain coordinates"
@@ -44,7 +44,7 @@ end
 
 """
     RichardsModel{FT}(;
-        param_set::RichardsParameters{FT},
+        parameters::RichardsParameters{FT},
         domain::D,
         boundary_conditions::AbstractSoilBoundaryConditions{FT},
         sources::Tuple,
@@ -53,13 +53,13 @@ end
 A constructor for a `RichardsModel`.
 """
 function RichardsModel{FT}(;
-    param_set::RichardsParameters{FT},
+    parameters::RichardsParameters{FT},
     domain::D,
     boundary_conditions::AbstractSoilBoundaryConditions{FT},
     sources::Tuple,
 ) where {FT, D}
     coords = coordinates(domain)
-    args = (param_set, domain, coords, boundary_conditions, sources)
+    args = (parameters, domain, coords, boundary_conditions, sources)
     RichardsModel{FT, typeof.(args)...}(args...)
 end
 
@@ -78,7 +78,7 @@ This has been written so as to work with Differential Equations.jl.
 """
 function ClimaLSM.make_rhs(model::RichardsModel)
     function rhs!(dY, Y, p, t)
-        @unpack ν, vg_α, vg_n, vg_m, Ksat, S_s, θ_r = model.param_set
+        @unpack ν, vg_α, vg_n, vg_m, Ksat, S_s, θ_r = model.parameters
         top_flux_bc, bot_flux_bc =
             boundary_fluxes(model.boundary_conditions, p, t)
         z = model.coordinates.z
@@ -161,7 +161,7 @@ This has been written so as to work with Differential Equations.jl.
 """
 function ClimaLSM.make_update_aux(model::RichardsModel)
     function update_aux!(p, Y, t)
-        @unpack ν, vg_α, vg_n, vg_m, Ksat, S_s, θ_r = model.param_set
+        @unpack ν, vg_α, vg_n, vg_m, Ksat, S_s, θ_r = model.parameters
         @. p.soil.K = hydraulic_conductivity(
             Ksat,
             vg_m,
