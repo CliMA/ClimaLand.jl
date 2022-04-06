@@ -76,13 +76,25 @@ function RootSoilModel{FT}(;
     return RootSoilModel{FT, typeof.(args)...}(args...)
 end
 
+"""
+    land_components(land::RootSoilModel)
+
+Returns the component names of the `RootSoilModel`.
+"""
+land_components(land::RootSoilModel) = (:soil, :vegetation)
 
 """
     initialize_interactions(
         land::RootSoilModel{FT, SM, RM},
     ) where {FT, SM <: Soil.RichardsModel{FT}, RM <: Roots.RootsModel{FT}}
 
-Initializes the interaction auxiliary variable `p.root_extraction`.
+Initializes interaction variables, which are a type of auxiliary
+variable, to empty objects of the correct type
+for the model. 
+
+This function should be called during `initialize_auxiliary`,
+and the method will change depending on the type of land model,
+and potentially due to the type of the component models. 
 """
 function initialize_interactions(#Do we want defaults, for land::AbstractLandModel?
     land::RootSoilModel{FT, SM, RM},
@@ -97,12 +109,11 @@ end
         land::RootSoilModel{FT, SM, RM},
     ) where {FT, SM <: Soil.RichardsModel{FT}, RM <: Roots.RootsModel{FT}}
 
-A method which makes a function; the returned function 
-updates the auxiliary variable `p.root_extraction`, which
-is needed for both the boundary condition for the soil model and the source
-term (runoff) for the surface water model.
+Makes and returns a function which updates the interaction variables, 
+which are a type of auxiliary variable.
 
-This function is called each ode function evaluation.
+The `update_aux!` function returned is evaluted during the right hand
+side evaluation.
 """
 function make_interactions_update_aux(#Do we want defaults, for land::AbstractLandModel?
     land::RootSoilModel{FT, SM, RM},
@@ -120,13 +131,13 @@ end
 """
    PrognosticSoilPressure{FT} <: Roots.AbstractRootExtraction{FT}
 
-Concrete type of Roots.AbstractRootExtraction, used for dispatch 
-in an LSM with both soil and plant hydraulic components.
+The concrete type of root extraction model, used for dispatch when computing
+the right hand side of the vegetation model when soil is also modeled
+prognostically.
 
-This is paired with the source term `Soil.RootExtraction`:both 
-are used at the same time,
-ensuring that the water flow into the roots is extracted correctly
-from the soil.
+This is paired with the source term `RootExtraction`, which returns 
+the flow of water between roots and soil in units of 1/sec, 
+rather than moles/sec, as needed by the soil model.
 """
 struct PrognosticSoilPressure{FT} <: Roots.AbstractRootExtraction{FT} end
 
@@ -139,11 +150,10 @@ struct PrognosticSoilPressure{FT} <: Roots.AbstractRootExtraction{FT} end
         t::FT,
     )::FT where {FT}
 
-An extension of the `Roots.flow_out_roots` function,
- which returns the
+An extension of the function which returns the
 net flow of water between the
 roots and the soil, when both soil and plant
-hydraulics are modeled prognostically. This is for use in an LSM.
+hydraulics are modeled prognostically.
 
 It is computed by summing the flow of water between
 roots and soil at each soil layer.
@@ -161,32 +171,23 @@ end
 """
     RootExtraction{FT} <: Soil.AbstractSoilSource{FT}
 
-Concrete type of Soil.AbstractSoilSource, used for dispatch 
-in an LSM with both soil and plant hydraulic components.
+The concrete type of root extraction model, used for dispatch when computing
+the flow of water between soil and the roots as a source term for the
+soil model (1/s).
 
-This is paired with the source term `Roots.PrognosticSoilPressure`:both 
-are used at the same time,
-ensuring that the water flow into the roots is extracted correctly
-from the soil.
+This is paired with the root model type `PrognosticSoilPressure`, which 
+returns the flow of water between roots and soil in units of moles/sec, 
+as needed by the root model.
 """
 struct RootExtraction{FT} <: Soil.AbstractSoilSource{FT} end
 
 """
-    Soil.source!(dY::ClimaCore.Fields.FieldVector,
-                          src::RootExtraction{FT},
-                          Y::ClimaCore.Fields.FieldVector,
-                          p::ClimaCore.Fields.FieldVector)::ClimaCore.Fields.Field  where {FT}
+    Soil.source(src::RootExtraction{FT}, Y, p) where {FT}
 
-An extension of the `Soil.source!` function,
- which computes source terms for the 
+An extension of the function which computes source terms for the 
 soil model; this method returns the water loss or gain due
 to roots when a plant hydraulic prognostic model is included.
 """
-function Soil.source!(
-    dY::ClimaCore.Fields.FieldVector,
-    src::RootExtraction{FT},
-    Y::ClimaCore.Fields.FieldVector,
-    p::ClimaCore.Fields.FieldVector,
-)::ClimaCore.Fields.Field where {FT}
-    return dY.soil.ϑ_l .+= p.root_extraction
+function Soil.source(src::RootExtraction{FT}, Y, p) where {FT}
+    return p.root_extraction
 end

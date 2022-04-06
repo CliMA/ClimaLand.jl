@@ -1,5 +1,3 @@
-### Long term plan: many of these domains will live in Models.jl repo, with
-### the models.jl code as well. But LSM domains will live in ClimaLSM.
 module Domains
 using ClimaCore
 using IntervalSets
@@ -32,25 +30,41 @@ A domain for single column surface variables.
 
 For models such as ponds, snow, roots, etc. Enables consistency 
 in variable initialization across all domains.
-# Fields
-$(DocStringExtensions.FIELDS)
 """
 struct Point{FT} <: AbstractDomain{FT}
-    "Surface elevation relative to a reference (m)"
+    # surface elevation relative to a reference
     z_sfc::FT
 end
 
-"""
-    Point(;z_sfc::FT) where {FT}
+coordinates(domain::Point) = [domain.z_sfc]
 
-Constructor for the `Point` domain using keyword arguments.
+### Example of component specific domain - future PR to remove
 """
-function Point(; z_sfc::FT) where {FT}
-    return Point{FT}(z_sfc)
+    AbstractVegetationDomain{FT} <: AbstractDomain{FT}
+
+An abstract type for vegetation specific domains.
+"""
+abstract type AbstractVegetationDomain{FT} <: AbstractDomain{FT} end
+
+
+"""
+   RootDomain{FT} <: AbstractVegetationDomain{FT}
+
+Domain for a single bulk plant with roots of varying depths. The user needs
+to specify the depths of the root tips as wel as the heights of the
+compartments to be modeled within the plant. The compartment heights
+are expected to be sorted in ascending order.
+"""
+struct RootDomain{FT} <: AbstractVegetationDomain{FT}
+    "The depth of the root tips, in meters"
+    root_depths::Vector{FT}
+    "The height of the stem, leaf compartments, in meters"
+    compartment_heights::Vector{FT}
 end
 
-
-coordinates(domain::Point) = [domain.z_sfc]
+function coordinates(domain::RootDomain{FT}) where {FT}
+    return domain.compartment_heights
+end
 
 """
     Column{FT} <: AbstractDomain{FT}
@@ -66,7 +80,7 @@ struct Column{FT} <: AbstractDomain{FT}
     "Domain interval limits, (zmin, zmax), in meters"
     zlim::Tuple{FT, FT}
     "Number of elements used to discretize the interval"
-    nelements::Tuple{Int}
+    nelements::Int32
     "Boundary face identifiers"
     boundary_tags::Tuple{Symbol, Symbol}
 end
@@ -78,19 +92,16 @@ Base.length(domain::Column) = domain.zlim[2] - domain.zlim[1]
 Base.size(domain::Column) = length(domain)
 
 """
-    Column(;
-        zlim::Tuple{FT, FT},
-        nelements::Int) where {FT}
+    function Column(FT::DataType = Float64; zlim, nelements)
 
 Outer constructor for the `Column` type.
-
 The `boundary_tags` field values are used to label the boundary faces 
 at the top and bottom of the domain.
 """
-function Column(; zlim::Tuple{FT, FT}, nelements::Int) where {FT}
+function Column(FT::DataType = Float64; zlim, nelements)
     @assert zlim[1] < zlim[2]
     boundary_tags = (:bottom, :top)
-    return Column{FT}(zlim, (nelements,), boundary_tags)
+    return Column{FT}(zlim, nelements, boundary_tags)
 end
 
 """
@@ -104,7 +115,7 @@ function make_function_space(domain::Column{FT}) where {FT}
         ClimaCore.Geometry.ZPoint{FT}(domain.zlim[2]);
         boundary_tags = domain.boundary_tags,
     )
-    mesh = Meshes.IntervalMesh(column; nelems = domain.nelements[1])
+    mesh = Meshes.IntervalMesh(column; nelems = domain.nelements)
     center_space = Spaces.CenterFiniteDifferenceSpace(mesh)
     face_space = Spaces.FaceFiniteDifferenceSpace(center_space)
 
@@ -119,40 +130,24 @@ to construct a domain, a mesh, a 2d spectral
 element space, and the resulting coordinate field.
 
 Note that only periodic domains are currently supported.
-# Fields
 $(DocStringExtensions.FIELDS)
 """
 struct Plane{FT} <: AbstractDomain{FT}
-    "Domain interval limits along x axis, in meters"
     xlim::Tuple{FT, FT}
-    "Domain interval limits along y axis, in meters"
     ylim::Tuple{FT, FT}
-    "Number of elements to discretize interval, (nx, ny)"
     nelements::Tuple{Int, Int}
-    "Flags for periodic boundaries; only true is supported"
     periodic::Tuple{Bool, Bool}
-    "Polynomial order for both x and y"
     npolynomial::Int
 end
 
-"""
-    Plane(;
-        xlim::Tuple{FT,FT},
-        ylim::Tuple{FT,FT},
-        nelements::Tuple{Int,Int},
-        periodic::Tuple{Bool,Bool},
-        npolynomial::Int
-        ) where {FT}
-
-Outer constructor for the `Plane` domain, using keyword arguments.
-"""
-function Plane(;
-    xlim::Tuple{FT, FT},
-    ylim::Tuple{FT, FT},
-    nelements::Tuple{Int, Int},
-    periodic::Tuple{Bool, Bool} = (true, true),
-    npolynomial::Int,
-) where {FT}
+function Plane(
+    FT::DataType = Float64;
+    xlim,
+    ylim,
+    nelements,
+    periodic,
+    npolynomial,
+)
     @assert xlim[1] < xlim[2]
     @assert ylim[1] < ylim[2]
     @assert periodic == (true, true)
@@ -196,68 +191,35 @@ end
 
 
 
-"""
-    struct HybridBox{FT} <: AbstractDomain{FT}
-        xlim::Tuple{FT, FT}
-        ylim::Tuple{FT, FT}
-        zlim::Tuple{FT, FT}
-        nelements::Tuple{Int, Int, Int}
-        npolynomial::Int
-        periodic::Tuple{Bool, Bool}
-    end
-
-A struct holding the necessary information to construct a domain, a mesh, 
-a 2d spectral element space (horizontal) x a 1d finite difference space
- (vertical), and the resulting coordinate field.
-
-This domain is not periodic along the z-axis. Note that 
-only periodic domains are supported
-in the horizontal.
-# Fields
-$(DocStringExtensions.FIELDS)
-"""
+# # # 3D hybrid domain
 struct HybridBox{FT} <: AbstractDomain{FT}
-    "Domain interval limits along x axis, in meters"
     xlim::Tuple{FT, FT}
-    "Domain interval limits along y axis, in meters"
     ylim::Tuple{FT, FT}
-    "Domain interval limits along z axis, in meters"
     zlim::Tuple{FT, FT}
-    "Number of elements to discretize interval, (nx, ny,nz)"
     nelements::Tuple{Int, Int, Int}
-    " Polynomial order for the horizontal directions"
     npolynomial::Int
-    "Flag indicating periodic boundaries in horizontal. only true is supported"
     periodic::Tuple{Bool, Bool}
 end
-
 """
-    HybridBox(;
-        xlim::Tuple{FT, FT},
-        ylim::Tuple{FT, FT},
-        zlim::Tuple{FT, FT},
-        nelements::Tuple{Int, Int, Int},
-        npolynomial::Int,
-        periodic = (true, true),
-    ) where {FT}
+    HybridBox([FT = Float64]; xlim, ylim, zlim, nelements, npolynomial, periodic = (true, true).
 
-Constructs the `HybridBox` domain
- with limits `xlim` `ylim` and `zlim` 
-(where `xlim[1] < xlim[2]`,`ylim[1] < ylim[2]`, and `zlim[1] < zlim[2]`), 
+Construct a domain of type `FT` that represents an xz-plane with limits `xlim` `ylim`
+and `zlim` (where `xlim[1] < xlim[2]`,`ylim[1] < ylim[2]`, and `zlim[1] < zlim[2]`), `nelements`
+elements of polynomial order `npolynomial`, (x,y)-axis periodicity = (true, true).
 
-`nelements` must be a tuple with three values, with the first 
-value corresponding
-to the x-axis, the second corresponding to the y-axis, and the third 
-corresponding to the z-axis. The domain is periodic at the (xy) boundaries,
-and the function space is of polynomial order `npolynomial` in the
-horizontal directions.
+`nelements` must be a tuple with two values, with the first value corresponding
+to the x-axis, the second corresponding to the y-axis, and the third corresponding to the z-axis. 
+
+This domain is not periodic along the z-axis. Note that only periodic domains are supported
+in the horizontal.
 """
-function HybridBox(;
-    xlim::Tuple{FT, FT},
-    ylim::Tuple{FT, FT},
-    zlim::Tuple{FT, FT},
-    nelements::Tuple{Int, Int, Int},
-    npolynomial::Int,
+function HybridBox(
+    ::Type{FT} = Float64;
+    xlim,
+    ylim,
+    zlim,
+    nelements,
+    npolynomial,
     periodic = (true, true),
 ) where {FT}
     @assert xlim[1] < xlim[2]
@@ -303,7 +265,7 @@ function make_function_space(domain::HybridBox{FT}) where {FT}
 end
 
 """
-   coordinates(domain::Union{Column{FT}, Plane{FT}, HybridBox{FT}}) where {FT}
+   coordinate(domain::Union{Column{FT}, Plane{FT}, HybridBox{FT}}) where {FT}
 
 Returns the coordinate field for the domain.
 """
@@ -315,90 +277,8 @@ function coordinates(
     return cc
 end
 
-
-### Example of component specific domain
-"""
-    AbstractVegetationDomain{FT} <: AbstractDomain{FT}
-
-An abstract type for vegetation specific domains.
-"""
-abstract type AbstractVegetationDomain{FT} <: AbstractDomain{FT} end
-
-
-"""
-   RootDomain{FT} <: AbstractVegetationDomain{FT}
-
-Domain for a single bulk plant with roots of varying depths. The user needs
-to specify the depths of the root tips as wel as the heights of the
-compartments to be modeled within the plant. The compartment heights
-are expected to be sorted in ascending order.
-"""
-struct RootDomain{FT} <: AbstractVegetationDomain{FT}
-    "The depth of the root tips, in meters"
-    root_depths::Vector{FT}
-    "The height of the stem, leaf compartments, in meters"
-    compartment_heights::Vector{FT}
-end
-
-function coordinates(domain::RootDomain{FT}) where {FT}
-    return domain.compartment_heights
-end
-
-"""
-    LSMSingleColumnDomain{FT} <: AbstractDomain{FT}
-
-A mixed domain, consisting of a column domain with z-coordinates at the
-finite difference cell centers, and a point domain, with a single z
-coordinate at the top boundary of the column domain.
-
-For use in LSM modeling, where a subsurface finite difference space 
-(for modeling soil hydrology and energy) and a surface space are both
-needed.
-
-# Fields
-$(DocStringExtensions.FIELDS)
-"""
-struct LSMSingleColumnDomain{FT} <: AbstractDomain{FT}
-    "The subsurface Column domain"
-    subsurface::Column{FT}
-    "The surface Point domain"
-    surface::Point{FT}
-end
-
-"""
-    LSMSingleColumnDomain(;
-        zlim::Tuple{FT, FT},
-        nelements::Int,
-    ) where {FT}
-
-A constructor for the LSMSingleColumnDomain.
-"""
-function LSMSingleColumnDomain(; zlim::Tuple{FT, FT}, nelements::Int) where {FT}
-    @assert zlim[1] < zlim[2]
-    surface_domain = Point{FT}(FT(zlim[2]))
-    boundary_tags = (:bottom, :top)
-    subsurface_domain = Column{FT}(FT.(zlim), (nelements,), boundary_tags)
-    return LSMSingleColumnDomain{FT}(subsurface_domain, surface_domain)
-end
-
-"""
-    coordinates(domain::LSMSingleColumnDomain{FT}) where {FT}
-
-Returns the coordinates of the LSMSingleColumnDomain as a named tuple,
-with keys of `subsurface` and `surface`.
-"""
-function coordinates(domain::LSMSingleColumnDomain{FT}) where {FT}
-    return (
-        subsurface = coordinates(domain.subsurface),
-        surface = coordinates(domain.surface),
-    )
-end
-
-
-
-export AbstractDomain, AbstractVegetationDomain
-export Column, Plane, HybridBox, RootDomain, Point
-export LSMSingleColumnDomain
+export AbstractDomain, AbstractVegetationDomain, RootDomain
+export Column, Plane, HybridBox, Point
 export coordinates
 
 end

@@ -6,12 +6,7 @@ using Distributed
 @everywhere using Literate
 using ClimaLSM
 include("pages_helper.jl")
-tutorials = [
-    "For model developers" => [
-        "Using AbstractModel functionality" => "model_tutorial.jl",
-        "Intro to multi-component models" => "LSM_single_column_tutorial.jl",
-    ],
-]
+tutorials = ["Using AbstractModel functionality" => "model_tutorial.jl"]
 @everywhere const clima_dir = dirname(dirname(pathof(ClimaLSM)));
 @everywhere source_dir = joinpath(@__DIR__, "src")
 @everywhere GENERATED_DIR = joinpath(source_dir, "generated") # generated files directory
@@ -50,10 +45,8 @@ pmap(t -> generate_tutorial(tutorials_dir, t), tutorials_jl)
 # update list of rendered markdown tutorial output for mkdocs
 ext_jl2md(x) = joinpath(basename(GENERATED_DIR), replace(x, ".jl" => ".md"))
 tutorials = transform_second(x -> ext_jl2md(x), tutorials)
-include("list_of_apis.jl")
 pages = Any[
     "Home" => "index.md",
-    "APIs" => apis,
     "Contribution guide" => "Contributing.md",
     "Tutorials" => tutorials,
 ]

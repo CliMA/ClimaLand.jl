@@ -4,32 +4,24 @@
 module Roots
 #=
     Roots
-
 This module contains everything needed to run a vegetation model
 in standalone mode.
-
 The vegetation model is assumed to have a set of prognostic `Y` and
 auxiliary `p` variables, which describe the state of the
 vegetation system. The system is evolved in time by solving 
 equations of the form
-
 ```
-
 \frac{d Y}{d t} = f(Y, t, p(Y, t; \ldots);\ldots),
-
 ```
-
 i.e. ordinary differential equations depending on state `Y`,
 auxiliary functions of the state `p`, and other parameters 
 represented by the ellipses. For example, `p` may represent
 the transpiration rate, which must be computed each time step
 based on the vegetation prognostic state, functions of time, 
 like the atmosphere state, and other parameters.
-
 Currently, only a simple plant hydraulics model is supported,
 but our plan is to include much more complex representations
 of the vegetation.
-
 Addition of additional versions of vegetation
 models requires defining a model type (of super type 
 `AbstractVegetationModel`), and extending the methods
@@ -37,18 +29,15 @@ imported by Models.jl, as needed, for computing the
 right hand side functions of the ordinary differential equations
 and the functions which update auxiliary variables whenever
 the right hand side is evaluated.
-
 This code base assumes that DifferentialEquations.jl
 will be used for evolving the system in time,
 and that the array-like objected being stepped forward
 is a `ClimaCore.Fields.FieldVector`. 
-
 While a simple array may be sufficient for vegetation models,
 the `FieldVector` type is used in order to make use of 
 `ClimaCore` functionality when solving PDEs (required for
 other components of Land Surface Models) and for ease of
 handling multi-column models.
-
 To simulated land surfaces with multiple components (vegetation,
 soil, rivers, etc), the ClimaLSM.jl package should be used.
 That package will use the methods of this function for advancing
@@ -69,6 +58,7 @@ import ClimaLSM:
     make_rhs,
     make_ode_function,
     prognostic_vars,
+    prognostic_types,
     auxiliary_vars,
     initialize,
     initialize_auxiliary,
@@ -86,9 +76,7 @@ export RootsModel,
 
 """
     AbstractVegetationModel{FT} <: AbstractModel{FT}
-
 An abstract type for vegetation models.
-
 Concrete types include a plant hydraulics model, but future types will
 include multi-layer canopy models and possibly a big leaf model.
 """
@@ -98,24 +86,19 @@ ClimaLSM.name(::AbstractVegetationModel) = :vegetation
 
 """
     AbstractRootExtraction{FT <: AbstractFloat}
-
 An abstract type for types representing different models of
 water exchange between soil and plants.
-
 Currently, only a prescribed soil pressure is supported for
 standalone plant hydraulics. Use within an LSM requires
 types defined within ClimaLSM, and include a prognostic
 soil pressure for models with both soil and roots.
-
 """
 abstract type AbstractRootExtraction{FT <: AbstractFloat} end
 
 """
     AbstractTranspiration{FT <: AbstractFloat}
-
 An abstract type for types representing different models of
 transpiration.
-
 Currently, only a PrescribedTranspiration is supported.
 """
 abstract type AbstractTranspiration{FT <: AbstractFloat} end
@@ -123,8 +106,6 @@ abstract type AbstractTranspiration{FT <: AbstractFloat} end
 
 """
     RootsParameters{FT <: AbstractFloat}
-
-
 A struct for holding parameters of the Root Model. Eventually to be used with ClimaParameters.
 $(DocStringExtensions.FIELDS)
 """
@@ -149,15 +130,12 @@ end
 
 """
     RootsModel{FT, PS, D, RE, T, B} <: AbstractVegetationModel{FT}
-
 Defines, and constructs instances of, the RootsModel type, which is used
 for simulation flow of water to/from soil, along roots of different depths,
 along a stem, to a leaf, and ultimately being lost from the system by
 transpiration. 
-
 This model can be used in standalone mode by prescribing the transpiration rate
 and soil pressure at the root tips, or with a dynamic soil model using `ClimaLSM`.
-
 $(DocStringExtensions.FIELDS)
 """
 struct RootsModel{FT, PS, D, RE, T} <: AbstractVegetationModel{FT}
@@ -183,12 +161,11 @@ end
 
 """
     prognostic_vars(model::RootsModel)
-
 A function which returns the names of the prognostic 
 variables of the `RootsModel`.
 """
 prognostic_vars(model::RootsModel) = (:rwc,)
-
+prognostic_types(model::RootsModel{FT}) where {FT} = (FT,)
 """
     function flow(
         z1::FT,
@@ -199,7 +176,6 @@ prognostic_vars(model::RootsModel) = (:rwc,)
         b::FT,
         Kmax::FT,
     ) where {FT}
-
 Computes the flow of water (moles/sec)  given the height and pressures
 at two points. Here, `a`, `b, and `Kmax` are parameters
 which parameterize the hydraulic conductance of the pathway along which
@@ -229,7 +205,6 @@ end
         b::FT,
         Kmax::FT,
     ) where {FT}
-
 Approximates the vc integral given the height and pressures
 at two points. Here, `a`, `b, and `Kmax` are parameters
 which parameterize the hydraulic conductance of the pathway along which
@@ -259,7 +234,6 @@ end
 
 """
     vc_integral(u1::FT, u2::FT, A::FT, B::FT, flow_approx::FT) where {FT}
-
 Computes the vc integral given the approximate flow.
 """
 function vc_integral(u1::FT, u2::FT, A::FT, B::FT, flow_approx::FT) where {FT}
@@ -269,7 +243,6 @@ end
 
 """
     theta_to_p(theta::FT) where {FT}
-
 Computes the volumetric water content (moles/moles) given pressure (p).
 Currently this is using appropriate vG parameters for loamy type soil.
 First the head (m) is computed, and then converted to a pressure in MPa.
@@ -286,7 +259,6 @@ end
 
 """
     p_to_theta(p::FT) where {FT}
-
 Computes the pressure (p)  given the volumetric water content (theta).
 Currently this is using appropriate vG parameters for loamy type soil.
 The pressure (MPa)  must be converted to meters (head) for use in the
@@ -304,9 +276,7 @@ end
 
 """
     make_rhs(model::RootsModel)
-
 A function which creates the rhs! function for the RootsModel.
-
 The rhs! function must comply with a rhs function of OrdinaryDiffEq.jl.
 """
 function make_rhs(model::RootsModel)
@@ -347,7 +317,6 @@ end
 
 """
     PrescribedSoilPressure{FT} <: AbstractRootExtraction{FT}
-
 A concrete type used for dispatch when computing the `flow_out_roots`,
 in the case where the soil pressure at each root layer is prescribed.
 """
@@ -357,7 +326,6 @@ end
 
 """
     PrescribedTranspiration{FT} <: AbstractTranspiration{FT}
-
 A concrete type used for dispatch when computing the transpiration
 from the leaves, in the case where transpiration is prescribed.
 """
@@ -373,11 +341,9 @@ end
         p::ClimaCore.Fields.FieldVector,
         t::FT,
     )::FT where {FT}
-
 A method which computes the flow between the soil and the stem, via the roots,
 in the case of a standalone root model with prescribed soil pressure (in MPa)
 at the root tips.
-
 This assumes that the stem compartment is the first element of `Y.roots.rwc`.
 """
 function flow_out_roots(
@@ -408,7 +374,6 @@ end
         transpiration::PrescribedTranspiration{FT},
         t::FT,
     )::FT where {FT}
-
 A method which computes the transpiration in moles/sec between the leaf
 and the atmosphere,
 in the case of a standalone root model with prescribed transpiration rate.

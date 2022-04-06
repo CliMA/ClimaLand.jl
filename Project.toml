@@ -7,6 +7,7 @@ version = "0.1.0"
 ClimaCore = "d414da3d-4745-48bb-8d80-42e94e092884"
 DocStringExtensions = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
 IntervalSets = "8197267c-284f-5f27-9208-e0e47529a953"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 UnPack = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
 
 [compat]
