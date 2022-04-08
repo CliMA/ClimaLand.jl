@@ -4,9 +4,12 @@ export AbstractModel,
     make_update_aux,
     initialize_prognostic,
     initialize_auxiliary,
+    initialize_vars,
     initialize,
     prognostic_vars,
     auxiliary_vars,
+    prognostic_types,
+    auxiliary_types,
     name
 
 import .Domains: coordinates
@@ -34,11 +37,44 @@ Returns the prognostic variable symbols for the model in the form of a tuple.
 prognostic_vars(m::AbstractModel) = ()
 
 """
+   prognostic_types(m::AbstractModel{FT}) where {FT}
+
+Returns the prognostic variable types for the model in the form of a tuple.
+
+Types provided must have `zero(T::DataType)` defined. Common examples
+ include
+- Float64, Float32 for scalar variables (a scalar value at each 
+coordinate point)
+- SVector{k,Float64} for a mutable but statically sized array of
+ length `k` at each coordinate point.
+
+Here, the coordinate points are those returned by coordinates(model).
+"""
+prognostic_types(m::AbstractModel) = ()
+"""
    auxiliary_vars(m::AbstractModel)
 
 Returns the auxiliary variable symbols for the model in the form of a tuple.
 """
 auxiliary_vars(m::AbstractModel) = ()
+
+
+"""
+   auxiliary_types(m::AbstractModel{FT}) where {FT}
+
+Returns the auxiliary variable types for the model in the form of a tuple.
+
+Types provided must have `zero(T::DataType)` defined. Common examples
+ include
+- Float64, Float32 for scalar variables (a scalar value at each 
+coordinate point)
+- SVector{k,Float64} for a mutable but statically sized array of
+ length `k` at each coordinate point.
+- Note that Arrays, MVectors are not isbits and cannot be used.
+
+Here, the coordinate points are those returned by coordinates(model).
+"""
+auxiliary_types(m::AbstractModel) = ()
 
 """
     make_rhs(model::AbstractModel)
@@ -81,7 +117,7 @@ function make_ode_function(model::AbstractModel)
 end
 
 """
-    initialize_prognostic(model::AbstractModel, state::Union{ClimaCore.Fields.Field, Vector{FT}, FT})
+    initialize_prognostic(model::AbstractModel, state::Union{ClimaCore.Fields.Field, Vector{FT}})
 
 Returns a FieldVector of prognostic variables for `model` with the required
 structure, with values equal to `similar(state)`. This assumes that all 
@@ -96,23 +132,18 @@ have different dimensions - require defining a new method.
 """
 function initialize_prognostic(
     model::AbstractModel{FT},
-    state::Union{ClimaCore.Fields.Field, Vector{FT}, FT},
+    state::Union{ClimaCore.Fields.Field, Vector{FT}},
 ) where {FT}
-    model_name = name(model)
-    keys = prognostic_vars(model)
-    if length(keys) == 0
-        return ClimaCore.Fields.FieldVector(; model_name => FT[])
-    else
-        values = map((x) -> similar(state), keys)
-        return ClimaCore.Fields.FieldVector(;
-            model_name => (; zip(keys, values)...),
-        )
-    end
-
+    initialize_vars(
+        prognostic_vars(model),
+        prognostic_types(model),
+        state,
+        name(model),
+    )
 end
 
 """
-    initialize_auxiliary(model::AbstractModel,state::Union{ClimaCore.Fields.Field, Vector{FT}, FT})
+    initialize_auxiliary(model::AbstractModel,state::Union{ClimaCore.Fields.Field, Vector{FT}})
 
 Returns a FieldVector of auxiliary variables for `model` with the required
 structure, with values equal to `similar(state)`. This assumes that all
@@ -127,16 +158,27 @@ have different dimensions - require defining a new method.
 """
 function initialize_auxiliary(
     model::AbstractModel{FT},
-    state::Union{ClimaCore.Fields.Field, Vector{FT}, FT},
+    state::Union{ClimaCore.Fields.Field, Vector{FT}},
 ) where {FT}
-    model_name = name(model)
-    keys = auxiliary_vars(model)
+    initialize_vars(
+        auxiliary_vars(model),
+        auxiliary_types(model),
+        state,
+        name(model),
+    )
+end
+
+function initialize_vars(keys, types, state, model_name)
+    FT = eltype(state)
     if length(keys) == 0
         return ClimaCore.Fields.FieldVector(; model_name => FT[])
     else
-        values = map((x) -> similar(state), keys)
+        zero_states = map(types) do (T)
+            zero_instance = zero(T)
+            map(_ -> zero_instance, state)
+        end
         return ClimaCore.Fields.FieldVector(;
-            model_name => (; zip(keys, values)...),
+            model_name => (; zip(keys, zero_states)...),
         )
     end
 end
@@ -153,8 +195,12 @@ We may need to consider this default more as we add diverse components and
 """
 function initialize(model::AbstractModel{FT}) where {FT}
     coords = Domains.coordinates(model)
-    zero_state = map(_ -> zero(FT), coords)
-    Y = initialize_prognostic(model, zero_state)
-    p = initialize_auxiliary(model, zero_state)
+
+    # Q: do we need separate initialize_prognostic and initialize_auxiliary methods?
+    # A: yes - code is the same other than call to auxiliary_vars or prognostic_vars
+    # however we do need to build separate FieldVectors => shared initialize_vars() method?
+    # auxiliary_types, auxiliary_spaces, prognostic_types, prognostic_spaces
+    Y = initialize_prognostic(model, coords)
+    p = initialize_auxiliary(model, coords)
     return Y, p, coords
 end

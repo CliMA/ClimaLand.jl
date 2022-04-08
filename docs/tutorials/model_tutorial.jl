@@ -126,7 +126,7 @@ using ClimaLSM
 using ClimaLSM.Domains
 
 # Import the functions we are extending for our model:
-import ClimaLSM: name, make_rhs, prognostic_vars
+import ClimaLSM: name, make_rhs, prognostic_vars, prognostic_types
 import ClimaLSM.Domains: coordinates
 
 # There is only one free parameter in the model, `λ`, so our model structure
@@ -205,21 +205,12 @@ ClimaLSM.prognostic_vars(::HenonHeiles) = (:x, :m);
 
 # Lastly, we need to tell the interface something about the variables. What are they? `Array`s? `ClimaCore`
 # `Field`s? We have made the assumption that all variables are tied to a domain, or a set of coordinates.
-# If a variable is solved for using an n-dimensional PDE,
-# it is defined on an n-dimensional
-# coordinate field, and the ODE system should have a number of prognostic variables equal to the number of
-# unique coordinate points. If the variable is solved for using an ODE system to start with, the variables
-# are most likely still tied in a way to a coordinate system. For example, a model solving for the behavior
-# of snow water equivalent, using a simple single-layer model, only needs an ODE for SWE. But that variable
-# exists across the entire surface of your domain, and hence should have a 2-d coordinate field, and be defined at
-# each point on that discretized surface domain.
-# In this case, our coordinates are 2-d, but on a continuous domain. Hence our coordinates are given by
-# a vector with 2 elements. This is hard to explain, which is likely an indication that we should work on
-# our code design more :)
 
-
+# In this case, our coordinates are 2-d. Hence our coordinates are given by
+# a vector with 2 elements. For each coordinate, both `m` and `x` are scalars with type `FT`:
 ClimaLSM.Domains.coordinates(model::HenonHeiles{FT}) where {FT} =
     FT.([0.0, 0.0]);
+ClimaLSM.prognostic_types(::HenonHeiles{FT}) where {FT} = (FT, FT);
 
 # OK, let's try running a simulation now.
 # Create a model instance, with λ = 1:

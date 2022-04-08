@@ -134,7 +134,7 @@ A function which returns the names of the prognostic variables
 of `RichardsModel`.
 """
 ClimaLSM.prognostic_vars(soil::RichardsModel) = (:ϑ_l,)
-
+ClimaLSM.prognostic_types(soil::RichardsModel{FT}) where {FT} = (FT,)
 """
     auxiliary_vars(soil::RichardsModel)
 
@@ -147,7 +147,7 @@ rhs function explicitly, rather than compute and store them in the
 auxiliary vector `p`. We did so in this case as a demonstration.
 """
 ClimaLSM.auxiliary_vars(soil::RichardsModel) = (:K, :ψ)
-
+ClimaLSM.auxiliary_types(soil::RichardsModel{FT}) where {FT} = (FT, FT)
 """
     make_update_aux(model::RichardsModel)
 

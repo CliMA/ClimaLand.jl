@@ -5,7 +5,8 @@ using UnPack
 using DocStringExtensions
 import ClimaCore: Fields
 
-import ClimaLSM: AbstractModel, make_rhs, prognostic_vars, name
+import ClimaLSM:
+    AbstractModel, make_rhs, prognostic_vars, name, prognostic_types
 using ClimaLSM.Domains
 import ClimaLSM.Domains: coordinates
 export PondModel, PrescribedRunoff, surface_runoff
@@ -19,7 +20,6 @@ A stand-in model for models like the snow or river model. In
 standalone mode, a prescribed soil infiltration rate
  and precipitation rate
 control the rate of change of the pond height variable `η` via an ODE.
-
 In integrated LSM mode, the infiltration into the soil will be computed
 via a different method, and also be applied as a flux boundary condition
 for the soil model. 
@@ -57,6 +57,7 @@ struct PrescribedRunoff{FT} <: AbstractSurfaceRunoff{FT}
 end
 
 ClimaLSM.prognostic_vars(model::PondModel) = (:η,)
+ClimaLSM.prognostic_types(model::PondModel{FT}) where {FT} = (FT,)
 ClimaLSM.name(::AbstractSurfaceWaterModel) = :surface_water
 
 function ClimaLSM.make_rhs(model::PondModel)
