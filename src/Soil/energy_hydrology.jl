@@ -171,7 +171,8 @@ A function which returns the names of the prognostic variables
 of `SoilEnergyHydrology`.
 """
 ClimaLSM.prognostic_vars(soil::SoilEnergyHydrology) = (:ϑ_l, :θ_i, :ρe_int)
-
+ClimaLSM.prognostic_types(soil::SoilEnergyHydrology{FT}) where {FT} =
+    (FT, FT, FT)
 """
     auxiliary_vars(soil::SoilEnergyHydrology)
 
@@ -179,7 +180,8 @@ A function which returns the names of the auxiliary variables
 of `SoilEnergyHydrology`.
 """
 ClimaLSM.auxiliary_vars(soil::SoilEnergyHydrology) = (:K, :ψ, :T)
-
+ClimaLSM.auxiliary_types(soil::SoilEnergyHydrology{FT}) where {FT} =
+    (FT, FT, FT)
 
 """
     make_update_aux(model::SoilEnergyHydrology)

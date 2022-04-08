@@ -69,7 +69,9 @@ import ClimaLSM:
     make_rhs,
     prognostic_vars,
     auxiliary_vars,
-    name
+    name,
+    prognostic_types,
+    auxiliary_types
 export RichardsModel,
     RichardsParameters,
     boundary_fluxes,
@@ -155,8 +157,6 @@ function dss!(dY::ClimaCore.Fields.FieldVector, domain::Column) end
 
 Computes the appropriate weighted direct stiffness summation based on
 the domain type, updates `dY` in place.
-
-For the Hybrid box domain, a weighted dss is needed for each variable.
 """
 function dss!(dY::ClimaCore.Fields.FieldVector, domain::HybridBox)
     for key in propertynames(dY.soil)
