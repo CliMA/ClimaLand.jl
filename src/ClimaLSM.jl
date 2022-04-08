@@ -31,6 +31,7 @@ and the versions of these component models being used.
 """
 abstract type AbstractLandModel{FT} <: AbstractModel{FT} end
 
+ClimaLSM.name(::AbstractLandModel) = :land
 
 function initialize(land::AbstractLandModel{FT}) where {FT}
     components = land_components(land)
