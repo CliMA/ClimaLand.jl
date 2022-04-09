@@ -21,9 +21,17 @@ using ClimaLSM.Domains
     end
 
     Y.carbon.pool = init_carbon.(coords.z)
+
+
+    function init_carbon(c)
+        return SVector{2,Float64}([600.0,1500.0])
+    end
+
     =#
+    parent(Y.carbon.pool) .= [600.0 1500.0; 600.0 1500; 600.0 1500.0]
     ode_function! = make_ode_function(carbon)
     dY = similar(Y)
     ode_function!(dY, Y, p, 0.0)
-    @test parent(dY.carbon.pool) == [60.0 0.0; 60.0 0.0; 60.0 0.0]
+    @test sum(abs.(parent(dY.carbon.pool) .- [0.0 0.0; 0.0 0.0; 0.0 0.0])) <
+          1e-14
 end
