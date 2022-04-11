@@ -24,7 +24,7 @@ FT = Float64
         return precip
     end
     ν = FT(0.495)
-    Ksat = FT(0.0443 / 3600 / 100) # m/s
+    K_sat = FT(0.0443 / 3600 / 100) # m/s
     S_s = FT(1e-3) #inverse meters
     vg_n = FT(2.0)
     vg_α = FT(2.6) # inverse meters
@@ -37,7 +37,7 @@ FT = Float64
         LSMSingleColumnDomain(; zlim = (zmin, zmax), nelements = nelems)
 
     soil_domain = lsm_domain.subsurface
-    soil_ps = Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, Ksat, S_s, θ_r)
+    soil_ps = Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r)
     soil_args = (domain = soil_domain, parameters = soil_ps)
     surface_water_args = (domain = lsm_domain.surface,)
 

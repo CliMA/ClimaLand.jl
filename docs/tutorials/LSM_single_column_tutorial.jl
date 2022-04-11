@@ -76,13 +76,13 @@ FT = Float64;
 
 # For the RR equation, we can create this as follows. First, we specify parameters:
 ν = FT(0.495);
-Ksat = FT(0.0443 / 3600 / 100); # m/s
+K_sat = FT(0.0443 / 3600 / 100); # m/s
 S_s = FT(1e-3); #inverse meters
 vg_n = FT(2.0);
 vg_α = FT(2.6); # inverse meters
 vg_m = FT(1) - FT(1) / vg_n;
 θ_r = FT(0);
-soil_ps = Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, Ksat, S_s, θ_r);
+soil_ps = Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r);
 
 # Next, let's define the spatial domain and discretization:
 zmax = FT(0);
