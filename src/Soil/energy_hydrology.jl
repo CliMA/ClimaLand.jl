@@ -1,20 +1,40 @@
 """
-    HeatParameters{FT <: AbstractFloat}
+    EnergyHydrologyParameters{FT <: AbstractFloat}
 
-A parameter structure for the heat equation. In this simplest
+A parameter structure for the integrated soil water and energy
+ equation system. In this simplest
 form, we assume the conductivity and volumetric heat capacity
 of the soil are constant.
 $(DocStringExtensions.FIELDS)
 """
-struct HeatParameters{FT <: AbstractFloat}
+struct EnergyHydrologyParameters{
+    FT <: AbstractFloat,
+    PSE <: AbstractEarthParameterSet,
+}
     "The thermal conductivity, W/m/K"
     κ::FT
     "The volumetric heat capacity, J/m^3/K"
     ρc_s::FT
+    "The porosity of the soil (m^3/m^3)"
+    ν::FT
+    "The van Genuchten parameter α (1/m)"
+    vg_α::FT
+    "The van Genuchten parameter n"
+    vg_n::FT
+    "The van Genuchten parameter m"
+    vg_m::FT
+    "The saturated hydraulic conductivity (m/s)"
+    Ksat::FT
+    "The specific storativity (1/m)"
+    S_s::FT
+    "The residual water fraction (m^3/m^3"
+    θ_r::FT
+    "Physical constants and clima-wide parameters"
+    earth_param_set::PSE
 end
 
 """
-    SoilEnergyHydrology <: AbstractSoilModel
+    EnergyHydrology <: AbstractSoilModel
 
 A model for simulating the flow of water and heat 
 in a porous medium by solving the Richardson-Richards equation
@@ -22,12 +42,9 @@ and the heat equation, including terms for phase change.
 
 $(DocStringExtensions.FIELDS)
 """
-struct SoilEnergyHydrology{FT, PSR, PSH, D, C, BCR, BCH, S} <:
-       AbstractSoilModel{FT}
-    "the parameter set for RR equation"
-    rre_param_set::PSR
-    "the heat equation parameter set"
-    heat_param_set::PSH
+struct EnergyHydrology{FT, PS, D, C, BCR, BCH, S} <: AbstractSoilModel{FT}
+    "The parameter sets"
+    parameters::PS
     "the soil domain, using ClimaCore.Domains"
     domain::D
     "the domain coordinates"
@@ -41,40 +58,37 @@ struct SoilEnergyHydrology{FT, PSR, PSH, D, C, BCR, BCH, S} <:
 end
 
 """
-    SoilEnergyHydrology{FT}(;
-        rre_param_set::PSR,
-        heat_param_set::PSH,
+    EnergyHydrology{FT}(;
+        parameters::PS
         domain::D,
         rre_boundary_conditions::AbstractSoilBoundaryConditions{FT},
         heat_boundary_conditions::AbstractSoilBoundaryConditions{FT},
         sources::Tuple,
-    ) where {FT, PSR, PSH, D}
+    ) where {FT, D, PS}
 
-A constructor for a `SoilEnergyHydrology` model.
+A constructor for a `EnergyHydrology` model.
 """
-function SoilEnergyHydrology{FT}(;
-    rre_param_set::RichardsParameters{FT},
-    heat_param_set::HeatParameters{FT},
+function EnergyHydrology{FT}(;
+    parameters::EnergyHydrologyParameters{FT, PSE},
     domain::D,
     rre_boundary_conditions::AbstractSoilBoundaryConditions{FT},
     heat_boundary_conditions::AbstractSoilBoundaryConditions{FT},
     sources::Tuple,
-) where {FT, D}
+) where {FT, D, PSE}
     coords = coordinates(domain)
     args = (
-        rre_param_set,
-        heat_param_set,
+        parameters,
         domain,
         coords,
         rre_boundary_conditions,
         heat_boundary_conditions,
         sources,
     )
-    SoilEnergyHydrology{FT, typeof.(args)...}(args...)
+    EnergyHydrology{FT, typeof.(args)...}(args...)
 end
 
 """
-    make_rhs(model::SoilEnergyHydrology)
+    make_rhs(model::EnergyHydrology)
 
 An extension of the function `make_rhs`, for the integrated soil
 energy and heat equations, including phase change.
@@ -85,10 +99,9 @@ and updates `dY.soil` in place with those values.
 
 This has been written so as to work with Differential Equations.jl.
 """
-function ClimaLSM.make_rhs(model::SoilEnergyHydrology{FT}) where {FT}
+function ClimaLSM.make_rhs(model::EnergyHydrology{FT}) where {FT}
     function rhs!(dY, Y, p, t)
-        @unpack ν, vg_α, vg_n, vg_m, Ksat, S_s, θ_r = model.rre_param_set
-        @unpack κ = model.heat_param_set
+        @unpack κ, ν, vg_α, vg_n, vg_m, Ksat, S_s, θ_r = model.parameters
         ρe_int_l = volumetric_internal_energy_liq.(p.soil.T)
         z = model.coordinates.z
 
@@ -136,7 +149,7 @@ end
 """
    horizontal_components!(dY::ClimaCore.Fields.FieldVector,
                           domain::HybridBox,
-                          model::SoilEnergyHydrology,
+                          model::EnergyHydrology,
                           p::ClimaCore.Fields.FieldVector)
 
 Updates dY in place by adding in the tendency terms resulting from
@@ -148,10 +161,10 @@ computed using the WeakDivergence and Gradient operators.
 function horizontal_components!(
     dY::ClimaCore.Fields.FieldVector,
     domain::HybridBox,
-    model::SoilEnergyHydrology,
+    model::EnergyHydrology,
     p::ClimaCore.Fields.FieldVector,
 )
-    κ = model.heat_param_set.κ
+    κ = model.parameters.κ
     ρe_int_l = volumetric_internal_energy_liq.(p.soil.T)
 
     hdiv = Operators.WeakDivergence()
@@ -165,26 +178,38 @@ function horizontal_components!(
 end
 
 """
-    prognostic_vars(soil::SoilEnergyHydrology)
+    prognostic_vars(soil::EnergyHydrology)
 
 A function which returns the names of the prognostic variables
-of `SoilEnergyHydrology`.
+of `EnergyHydrology`.
 """
-ClimaLSM.prognostic_vars(soil::SoilEnergyHydrology) = (:ϑ_l, :θ_i, :ρe_int)
-ClimaLSM.prognostic_types(soil::SoilEnergyHydrology{FT}) where {FT} =
-    (FT, FT, FT)
+ClimaLSM.prognostic_vars(soil::EnergyHydrology) = (:ϑ_l, :θ_i, :ρe_int)
+
 """
-    auxiliary_vars(soil::SoilEnergyHydrology)
+    prognostic_types(soil::EnergyHydrology{FT}) where {FT}
+
+A function which returns the types of the prognostic variables
+of `EnergyHydrology`.
+"""
+ClimaLSM.prognostic_types(soil::EnergyHydrology{FT}) where {FT} = (FT, FT, FT)
+"""
+    auxiliary_vars(soil::EnergyHydrology)
 
 A function which returns the names of the auxiliary variables
-of `SoilEnergyHydrology`.
+of `EnergyHydrology`.
 """
-ClimaLSM.auxiliary_vars(soil::SoilEnergyHydrology) = (:K, :ψ, :T)
-ClimaLSM.auxiliary_types(soil::SoilEnergyHydrology{FT}) where {FT} =
-    (FT, FT, FT)
+ClimaLSM.auxiliary_vars(soil::EnergyHydrology) = (:K, :ψ, :T)
 
 """
-    make_update_aux(model::SoilEnergyHydrology)
+    auxiliary_types(soil::EnergyHydrology{FT}) where {FT}
+
+A function which returns the types of the auxiliary variables
+of `EnergyHydrology`.
+"""
+ClimaLSM.auxiliary_types(soil::EnergyHydrology{FT}) where {FT} = (FT, FT, FT)
+
+"""
+    make_update_aux(model::EnergyHydrology)
 
 An extension of the function `make_update_aux`, for the integrated
 soil hydrology and energy model.
@@ -194,10 +219,9 @@ variables `p.soil.variable` in place.
 
 This has been written so as to work with Differential Equations.jl.
 """
-function ClimaLSM.make_update_aux(model::SoilEnergyHydrology)
+function ClimaLSM.make_update_aux(model::EnergyHydrology)
     function update_aux!(p, Y, t)
-        @unpack ν, vg_α, vg_n, vg_m, Ksat, S_s, θ_r = model.rre_param_set
-        @unpack ρc_s = model.heat_param_set
+        @unpack ρc_s, ν, vg_α, vg_n, vg_m, Ksat, S_s, θ_r = model.parameters
         @. p.soil.K = hydraulic_conductivity(
             Ksat,
             vg_m,

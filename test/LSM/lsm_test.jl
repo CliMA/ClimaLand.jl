@@ -3,6 +3,7 @@ using DifferentialEquations
 using UnPack
 using OrdinaryDiffEq: ODEProblem, solve, Euler
 using ClimaCore
+using CLIMAParameters: AbstractEarthParameterSet
 
 if !("." in LOAD_PATH)
     push!(LOAD_PATH, ".")
@@ -16,7 +17,8 @@ using ClimaLSM.Roots
 FT = Float64
 @testset "Root soil LSM integration test" begin
     saved_values = SavedValues(FT, ClimaCore.Fields.FieldVector)
-
+    struct EarthParameterSet <: AbstractEarthParameterSet end
+    earth_param_set = EarthParameterSet()
     a_root = FT(13192)
     a_stem = FT(515.5605)
     b_root = FT(2.1079)
@@ -31,7 +33,7 @@ FT = Float64
     z_root_depths = -Array(1:1:20.0) ./ 20.0 * 3.0 .+ 0.15 / 2.0
     z_bottom_stem = FT(0.0)
     roots_domain = RootDomain{FT}(z_root_depths, [z_bottom_stem, z_leaf])
-    roots_ps = Roots.RootsParameters{FT}(
+    roots_ps = Roots.RootsParameters{FT, typeof(earth_param_set)}(
         a_root,
         b_root,
         a_stem,
@@ -40,6 +42,7 @@ FT = Float64
         size_reservoir_leaf_moles,
         K_max_root_moles,
         K_max_stem_moles,
+        earth_param_set,
     )
 
     zmin = FT(-3.0)
@@ -54,9 +57,8 @@ FT = Float64
     vg_m = FT(1) - FT(1) / vg_n
     θ_r = FT(0)
     soil_ps = Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, Ksat, S_s, θ_r)
-
-    soil_args = (domain = soil_domain, param_set = soil_ps)
-    root_args = (domain = roots_domain, param_set = roots_ps)
+    soil_args = (domain = soil_domain, parameters = soil_ps)
+    root_args = (domain = roots_domain, parameters = roots_ps)
     land = RootSoilModel{FT}(;
         soil_model_type = Soil.RichardsModel{FT},
         soil_args = soil_args,
@@ -79,7 +81,7 @@ FT = Float64
         end
         Ysoil.soil.ϑ_l .= hydrostatic_profile.(z, Ref(params))
     end
-    init_soil!(Y, coords.soil.z, land.soil.param_set)
+    init_soil!(Y, coords.soil.z, land.soil.parameters)
 
     ## soil is at total ψ+z = -3.0 #m
     ## Want ρgΨ_plant = ρg(-3) - ρg z_plant & convert to MPa

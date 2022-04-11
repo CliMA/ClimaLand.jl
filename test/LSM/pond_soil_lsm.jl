@@ -38,7 +38,7 @@ FT = Float64
 
     soil_domain = lsm_domain.subsurface
     soil_ps = Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, Ksat, S_s, θ_r)
-    soil_args = (domain = soil_domain, param_set = soil_ps)
+    soil_args = (domain = soil_domain, parameters = soil_ps)
     surface_water_args = (domain = lsm_domain.surface,)
 
     land_args = (precip = precipitation,)
@@ -65,7 +65,7 @@ FT = Float64
         end
         Ysoil.soil.ϑ_l .= hydrostatic_profile.(coords.z, Ref(params))
     end
-    init_soil!(Y, coords.soil, land.soil.param_set)
+    init_soil!(Y, coords.soil, land.soil.parameters)
     # initialize the pond height to zero
     Y.surface_water.η .= 0.0
 

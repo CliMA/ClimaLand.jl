@@ -8,7 +8,7 @@ CurrentModule = ClimaLSM.Soil
 ```@docs
 ClimaLSM.Soil.AbstractSoilModel
 ClimaLSM.Soil.RichardsModel
-ClimaLSM.Soil.SoilEnergyHydrology
+ClimaLSM.Soil.EnergyHydrology
 ```
 
 ## Soil Diagnostic Variables
@@ -24,7 +24,7 @@ ClimaLSM.Soil.temperature_from_ρe_int
 
 ```@docs
 ClimaLSM.Soil.RichardsParameters
-ClimaLSM.Soil.HeatParameters
+ClimaLSM.Soil.EnergyHydrologyParameters
 ```
 
 ## Soil Methods and Types
