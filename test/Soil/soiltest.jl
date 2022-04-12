@@ -14,17 +14,12 @@ using ClimaLSM.Soil
 
 FT = Float64
 
-@testset "Hydraulic functions" begin
-    @test volumetric_liquid_fraction(0.1, 0.2) == 0.1
-    @test volumetric_liquid_fraction(0.2, 0.1) == 0.1
-end
-
 
 @testset "Richards equation" begin
 
     saved_values = SavedValues(FT, ClimaCore.Fields.FieldVector)
     ν = FT(0.495)
-    Ksat = FT(0.0443 / 3600 / 100) # m/s
+    K_sat = FT(0.0443 / 3600 / 100) # m/s
     S_s = FT(1e-3) #inverse meters
     vg_n = FT(2.0)
     vg_α = FT(2.6) # inverse meters
@@ -39,7 +34,7 @@ end
     bot_flux_bc = FT(0.0)
     sources = ()
     boundary_fluxes = FluxBC{FT}(top_flux_bc, bot_flux_bc)
-    params = Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, Ksat, S_s, θ_r)
+    params = Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r)
 
     soil = Soil.RichardsModel{FT}(;
         parameters = params,
@@ -93,65 +88,27 @@ end
     struct EarthParameterSet <: AbstractEarthParameterSet end
     earth_param_set = EarthParameterSet()
     ν = FT(0.495)
-    Ksat = FT(0.0443 / 3600 / 100) # m/s
+    K_sat = FT(0.0443 / 3600 / 100) # m/s
     S_s = FT(1e-3) #inverse meters
     vg_n = FT(2.0)
     vg_α = FT(2.6) # inverse meters
     vg_m = FT(1) - FT(1) / vg_n
     θ_r = FT(0.1)
-    κ = FT(10.0)
-    ρc_s = FT(3e6)
-
-    hyd_on_en_on = Soil.EnergyHydrologyParameters{FT, typeof(earth_param_set)}(
-        κ,
-        ρc_s,
-        ν,
-        vg_α,
-        vg_n,
-        vg_m,
-        Ksat,
-        S_s,
-        θ_r,
-        earth_param_set,
-    )
-    hyd_on_en_off = Soil.EnergyHydrologyParameters{FT, typeof(earth_param_set)}(
-        0.0,
-        ρc_s,
-        ν,
-        vg_α,
-        vg_n,
-        vg_m,
-        Ksat,
-        S_s,
-        θ_r,
-        earth_param_set,
-    )
-    hyd_off_en_on = Soil.EnergyHydrologyParameters{FT, typeof(earth_param_set)}(
-        κ,
-        ρc_s,
-        ν,
-        vg_α,
-        vg_n,
-        vg_m,
-        0.0,
-        S_s,
-        θ_r,
-        earth_param_set,
-    )
-    hyd_off_en_off =
-        Soil.EnergyHydrologyParameters{FT, typeof(earth_param_set)}(
-            0.0,
-            ρc_s,
-            ν,
-            vg_α,
-            vg_n,
-            vg_m,
-            0.0,
-            S_s,
-            θ_r,
-            earth_param_set,
-        )
-
+    ν_ss_om = FT(0.0)
+    ν_ss_quartz = FT(1.0)
+    ν_ss_gravel = FT(0.0)
+    κ_minerals = FT(2.5)
+    κ_om = FT(0.25)
+    κ_quartz = FT(8.0)
+    κ_air = FT(0.025)
+    κ_ice = FT(2.21)
+    κ_liq = FT(0.57)
+    ρp = FT(2.66 / 1e3 * 1e6)
+    ρc_ds = FT(2e6 * (1.0 - ν))
+    κ_solid = Soil.κ_solid(ν_ss_om, ν_ss_quartz, κ_om, κ_quartz, κ_minerals)
+    κ_dry = Soil.κ_dry(ρp, ν, κ_solid, κ_air)
+    κ_sat_frozen = Soil.κ_sat_frozen(κ_solid, ν, κ_ice)
+    κ_sat_unfrozen = Soil.κ_sat_unfrozen(κ_solid, ν, κ_liq)
     zmax = FT(0)
     zmin = FT(-1)
     nelems = 200
@@ -164,7 +121,23 @@ end
     boundary_fluxes = Soil.FluxBC{FT}(top_flux_bc, bot_flux_bc)
 
 
-    # Test with only heat on, (hydraulic K = 0)
+    ###
+    hyd_off_en_on = Soil.EnergyHydrologyParameters(;
+        κ_dry = κ_dry,
+        κ_sat_frozen = κ_sat_frozen,
+        κ_sat_unfrozen = κ_sat_unfrozen,
+        ρc_ds = ρc_ds,
+        ν = ν,
+        ν_ss_om = ν_ss_om,
+        ν_ss_quartz = ν_ss_quartz,
+        ν_ss_gravel = ν_ss_gravel,
+        vg_α = vg_α,
+        vg_n = vg_n,
+        K_sat = 0.0,
+        S_s = S_s,
+        θ_r = θ_r,
+        earth_param_set = earth_param_set,
+    )
     soil_heat_on = Soil.EnergyHydrology{FT}(;
         parameters = hyd_off_en_on,
         domain = soil_domain,
@@ -181,7 +154,9 @@ end
         Ysoil.soil.ϑ_l .= ν / 2.0
         Ysoil.soil.θ_i .= 0.0
         T = 280.0 .+ 0.5 .* (z .+ 0.5) .^ 2.0
-        @. Ysoil.soil.ρe_int = volumetric_internal_energy(0.0, params.ρc_s, T)
+        ρc_s = Soil.volumetric_heat_capacity(ν / 2.0, 0.0, params)
+        Ysoil.soil.ρe_int =
+            Soil.volumetric_internal_energy.(0.0, ρc_s, T, Ref(params))
     end
 
     init_soil_heat!(Y, coords.z, soil_heat_on.parameters)
@@ -189,19 +164,36 @@ end
     dY = similar(Y)
     soil_ode!(dY, Y, p, 0.0)
     F_face = 0.0
-    F_below = -κ * (-Δz + 0.5)
+    κ = parent(p.soil.κ)
+    F_below = -0.5 * (κ[end] + κ[end - 1]) * (-Δz + 0.5)
     dY_top = -(F_face - F_below) / Δz
-    F_top = -κ * ((-1.0 + Δz) + 0.5)
+    F_top = -0.5 * (κ[2] + κ[1]) * ((-1.0 + Δz) + 0.5)
     dY_bot = -(F_top - F_face) / Δz
-    expected = zeros(nelems) .+ κ
+    expected = parent(p.soil.κ)
     expected[1] = dY_bot
     expected[end] = dY_top
-    @test mean(abs.(expected .- parent(dY.soil.ρe_int))) / 1e7 < 1e-13 # to put on same scale as water
-    @test mean(abs.(parent(dY.soil.ϑ_l))) < 1e-14
-    @test mean(abs.(parent(dY.soil.θ_i))) < 1e-14
+    @test mean(abs.(expected .- parent(dY.soil.ρe_int))) /
+          median(parent(Y.soil.ρe_int)) < 1e-13
+    @test maximum(abs.(parent(dY.soil.ϑ_l))) == 0.0
+    @test maximum(abs.(parent(dY.soil.θ_i))) == 0.0
 
-
-    # Test with water on (but κ = 0 for heat)
+    ###
+    hyd_on_en_off = Soil.EnergyHydrologyParameters(
+        κ_dry = 0.0,
+        κ_sat_frozen = 0.0,
+        κ_sat_unfrozen = 0.0,
+        ρc_ds = ρc_ds,
+        ν = ν,
+        ν_ss_om = ν_ss_om,
+        ν_ss_quartz = ν_ss_quartz,
+        ν_ss_gravel = ν_ss_gravel,
+        vg_α = vg_α,
+        vg_n = vg_n,
+        K_sat = K_sat,
+        S_s = S_s,
+        θ_r = θ_r,
+        earth_param_set = earth_param_set,
+    )
     soil_water_on = Soil.EnergyHydrology{FT}(;
         parameters = hyd_on_en_off,
         domain = soil_domain,
@@ -217,8 +209,10 @@ end
         ν = params.ν
         Ysoil.soil.ϑ_l .= ν / 2.0 .+ ν / 4.0 .* (z .+ 0.5) .^ 2.0
         Ysoil.soil.θ_i .= 0.0
-        @. Ysoil.soil.ρe_int =
-            volumetric_internal_energy(0.0, params.ρc_s, 280.0)
+        ρc_s = Soil.volumetric_heat_capacity.(Y.soil.ϑ_l, 0.0, Ref(params))
+
+        Ysoil.soil.ρe_int =
+            volumetric_internal_energy.(0.0, ρc_s, 288.0, Ref(params))
     end
 
     init_soil_water!(Y, coords.z, soil_water_on.parameters)
@@ -232,7 +226,7 @@ end
             f1::FT = f^2.0 / 2.0 / S^0.5
             f2::FT =
                 2 * S^(1 / vg_m - 1 / 2) * f / (1 - S^(1 / vg_m))^(1.0 - vg_m)
-            return (f1 + f2) * Ksat / (ν - θ_r)
+            return (f1 + f2) * K_sat / (ν - θ_r)
         else
             return 0.0
         end
@@ -272,9 +266,9 @@ end
         S = (θ - θ_r) / (ν - θ_r)
         if S < 1
             f = 1.0 - (1.0 - S^(1.0 / vg_m))^vg_m
-            return Ksat * f^2.0 * sqrt(S)
+            return K_sat * f^2.0 * sqrt(S)
         else
-            return Ksat
+            return K_sat
         end
 
     end
@@ -288,25 +282,52 @@ end
         return ν / 2.0
     end
 
-    θ = parent(Y.soil.ϑ_l)
+    θ = parent(Y.soil.ϑ_l)# on the center
+    θ_face = 0.5 * (θ[2:end] + θ[1:(end - 1)])
     Z = parent(coords.z)
-    flux_c = (@. -K(θ) * (1.0 + dψdθ(θ) * dθdz(Z)))
-    flux_f = (flux_c[2:end] .+ flux_c[1:(end - 1)]) ./ 2.0
-    flux_f = vcat([0.0], flux_f, [0.0])
-    expected = -(flux_f[2:end] - flux_f[1:(end - 1)]) ./ Δz
-    @test mean(abs.(expected .- parent(dY.soil.ϑ_l))) < 1e-13
-    @test mean(abs.(parent(dY.soil.θ_i))) < 1e-14
+    Z_face = 0.5 * (Z[2:end] + Z[1:(end - 1)])
+    K_face = 0.5 .* (K.(θ[2:end]) .+ K.(θ[1:(end - 1)]))
+    flux_interior = (@. -K_face * (1.0 + dψdθ(θ_face) * dθdz(Z_face)))
+    flux = vcat([0.0], flux_interior, [0.0])
 
-    ρe_int_l = volumetric_internal_energy_liq(280.0)
-    flux_c = (@. -K(θ) * ρe_int_l * (1.0 + dψdθ(θ) * dθdz(Z)))
-    flux_f = (flux_c[2:end] .+ flux_c[1:(end - 1)]) ./ 2.0
-    flux_f = vcat([0.0], flux_f, [0.0])
-    expected = -(flux_f[2:end] - flux_f[1:(end - 1)]) ./ Δz
+    expected = -(flux[2:end] - flux[1:(end - 1)]) ./ Δz
+    @test mean(abs.(expected .- parent(dY.soil.ϑ_l))) / ν < 1e-13
+    @test maximum(abs.(parent(dY.soil.θ_i))) == 0.0
 
-    @test mean(abs.(expected .- parent(dY.soil.ρe_int))) < 1e-6
+    ρe_int_l = parent(
+        Soil.volumetric_internal_energy_liq.(
+            p.soil.T,
+            Ref(soil_water_on.parameters),
+        ),
+    )
+    ρe_int_l_face = 0.5 * (ρe_int_l[2:end] + ρe_int_l[1:(end - 1)])
+    flux_interior =
+        (@. -K_face * ρe_int_l_face * (1.0 + dψdθ(θ_face) * dθdz(Z_face)))
+    flux = vcat([0.0], flux_interior, [0.0])
+    expected = -(flux[2:end] - flux[1:(end - 1)]) ./ Δz
 
+    @test mean(abs.(expected .- parent(dY.soil.ρe_int))) /
+          median(parent(Y.soil.ρe_int)) < 1e-13
 
-    ### Test with both off
+    ###
+
+    hyd_off_en_off = Soil.EnergyHydrologyParameters(;
+        κ_dry = 0.0,
+        κ_sat_frozen = 0.0,
+        κ_sat_unfrozen = 0.0,
+        ρc_ds = ρc_ds,
+        ν = ν,
+        ν_ss_om = ν_ss_om,
+        ν_ss_quartz = ν_ss_quartz,
+        ν_ss_gravel = ν_ss_gravel,
+        vg_α = vg_α,
+        vg_n = vg_n,
+        K_sat = 0.0,
+        S_s = S_s,
+        θ_r = θ_r,
+        earth_param_set = earth_param_set,
+    )
+
     soil_both_off = Soil.EnergyHydrology{FT}(;
         parameters = hyd_off_en_off,
         domain = soil_domain,
@@ -323,20 +344,38 @@ end
         Ysoil.soil.ϑ_l .= ν / 2.0
         Ysoil.soil.θ_i .= 0.0
         T = 280.0 .+ 0.5 .* (z .+ 0.5) .^ 2.0
-        @. Ysoil.soil.ρe_int = volumetric_internal_energy(0.0, params.ρc_s, T)
+        ρc_s = Soil.volumetric_heat_capacity(ν / 2.0, 0.0, params)
+        Ysoil.soil.ρe_int =
+            Soil.volumetric_internal_energy.(0.0, ρc_s, T, Ref(params))
     end
 
     init_soil_off!(Y, coords.z, soil_both_off.parameters)
     soil_ode! = make_ode_function(soil_both_off)
     dY = similar(Y)
     soil_ode!(dY, Y, p, 0.0)
-    @test mean(abs.(parent(dY.soil.ρe_int))) < 1e-14
-    @test mean(abs.(parent(dY.soil.ϑ_l))) < 1e-14
-    @test mean(abs.(parent(dY.soil.θ_i))) < 1e-14
+    @test maximum(abs.(parent(dY.soil.ρe_int))) == 0.0
+    @test maximum(abs.(parent(dY.soil.ϑ_l))) == 0.0
+    @test maximum(abs.(parent(dY.soil.θ_i))) == 0.0
 
 
     ### Test with both on
 
+    hyd_on_en_on = Soil.EnergyHydrologyParameters(;
+        κ_dry = κ_dry,
+        κ_sat_frozen = κ_sat_frozen,
+        κ_sat_unfrozen = κ_sat_unfrozen,
+        ρc_ds = ρc_ds,
+        ν = ν,
+        ν_ss_om = ν_ss_om,
+        ν_ss_quartz = ν_ss_quartz,
+        ν_ss_gravel = ν_ss_gravel,
+        vg_α = vg_α,
+        vg_n = vg_n,
+        K_sat = K_sat,
+        S_s = S_s,
+        θ_r = θ_r,
+        earth_param_set = earth_param_set,
+    )
 
     soil_both_on = Soil.EnergyHydrology{FT}(;
         parameters = hyd_on_en_on,
@@ -354,41 +393,55 @@ end
         Ysoil.soil.ϑ_l .= ν / 2.0 .+ ν / 4.0 .* (z .+ 0.5) .^ 2.0
         Ysoil.soil.θ_i .= 0.0
         T = 280.0 .+ 0.5 .* (z .+ 0.5) .^ 2.0
-
-        @. Ysoil.soil.ρe_int = volumetric_internal_energy(0.0, params.ρc_s, T)
+        ρc_s = Soil.volumetric_heat_capacity.(Y.soil.ϑ_l, 0.0, Ref(params))
+        Ysoil.soil.ρe_int =
+            volumetric_internal_energy.(0.0, ρc_s, T, Ref(params))
     end
 
     init_soil_on!(Y, coords.z, soil_both_on.parameters)
     soil_ode! = make_ode_function(soil_both_on)
     dY = similar(Y)
     soil_ode!(dY, Y, p, 0.0)
-    @test mean(abs.(parent(dY.soil.θ_i))) < 1e-14
+    @test maximum(abs.(parent(dY.soil.θ_i))) == 0.0
 
-    θ = parent(Y.soil.ϑ_l)
+    θ = parent(Y.soil.ϑ_l)# on the center
+    θ_face = 0.5 * (θ[2:end] + θ[1:(end - 1)])
     Z = parent(coords.z)
-    flux_c = (@. -K(θ) * (1.0 + dψdθ(θ) * dθdz(Z)))
-    flux_f = (flux_c[2:end] .+ flux_c[1:(end - 1)]) ./ 2.0
-    flux_f = vcat([0.0], flux_f, [0.0])
-    expected = -(flux_f[2:end] - flux_f[1:(end - 1)]) ./ Δz
-    @test mean(abs.(expected .- parent(dY.soil.ϑ_l))) < 1e-13
+    Z_face = 0.5 * (Z[2:end] + Z[1:(end - 1)])
+    K_face = 0.5 .* (K.(θ[2:end]) .+ K.(θ[1:(end - 1)]))
+    vf = parent(
+        Soil.viscosity_factor.(p.soil.T, hyd_on_en_on.γ, hyd_on_en_on.γT_ref),
+    )
+    vf_face = 0.5 .* (vf[2:end] .+ vf[1:(end - 1)])
 
-    temp = 280.0 .+ 0.5 .* (Z .+ 0.5) .^ 2.0
-    ρe_int_l = volumetric_internal_energy_liq.(temp)
-    flux_c = (@. -K(θ) * ρe_int_l * (1.0 + dψdθ(θ) * dθdz(Z)))
-    flux_f = (flux_c[2:end] .+ flux_c[1:(end - 1)]) ./ 2.0
-    flux_f = vcat([0.0], flux_f, [0.0])
-    part_one = -(flux_f[2:end] - flux_f[1:(end - 1)]) ./ Δz
+    flux_interior = (@. -K_face * vf_face * (1.0 + dψdθ(θ_face) * dθdz(Z_face)))
+    flux = vcat([0.0], flux_interior, [0.0])
 
-    F_face = 0.0
-    F_below = -κ * (-Δz + 0.5)
-    dY_top = -(F_face - F_below) / Δz
-    F_top = -κ * ((-1.0 + Δz) + 0.5)
-    dY_bot = -(F_top - F_face) / Δz
-    part_two = zeros(nelems) .+ κ
-    part_two[1] = dY_bot
-    part_two[end] = dY_top
+    expected = -(flux[2:end] - flux[1:(end - 1)]) ./ Δz
+    @test mean(abs.(expected .- parent(dY.soil.ϑ_l))) / ν < 1e-13
 
-    expected = part_one + part_two
-    @test mean(abs.(expected .- parent(dY.soil.ρe_int))) < 1e-6
+    ρe_int_l = parent(
+        Soil.volumetric_internal_energy_liq.(
+            p.soil.T,
+            Ref(soil_both_on.parameters),
+        ),
+    )
+    ρe_int_l_face = 0.5 * (ρe_int_l[2:end] + ρe_int_l[1:(end - 1)])
+    κ = parent(p.soil.κ)
+    κ_face = 0.5 * (κ[2:end] + κ[1:(end - 1)])
+
+
+    flux_interior = (@. -K_face *
+        vf_face *
+        ρe_int_l_face *
+        (1.0 + dψdθ(θ_face) * dθdz(Z_face)))
+    flux_one = vcat([0.0], flux_interior, [0.0])
+    flux_interior = (@. -κ_face * (Z_face + 0.5))
+    flux_two = vcat([0.0], flux_interior, [0.0])
+    flux = flux_one .+ flux_two
+    expected = -(flux[2:end] - flux[1:(end - 1)]) ./ Δz
+
+    @test mean(abs.(expected .- parent(dY.soil.ρe_int))) /
+          median(parent(Y.soil.ρe_int)) < 1e-13
 
 end

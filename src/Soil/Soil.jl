@@ -213,10 +213,10 @@ function source!(
 )::ClimaCore.Field.Field end
 
 
-include("./soil_hydrology_parameterizations.jl")
-include("./soil_heat_parameterizations.jl")
 include("./rre.jl")
 include("./energy_hydrology.jl")
+include("./soil_hydrology_parameterizations.jl")
+include("./soil_heat_parameterizations.jl")
 
 
 end

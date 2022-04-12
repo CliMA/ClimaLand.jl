@@ -11,12 +11,26 @@ struct EnergyHydrologyParameters{
     FT <: AbstractFloat,
     PSE <: AbstractEarthParameterSet,
 }
-    "The thermal conductivity, W/m/K"
-    κ::FT
-    "The volumetric heat capacity, J/m^3/K"
-    ρc_s::FT
+    "The dry soil thermal conductivity, W/m/K"
+    κ_dry::FT
+    "The saturated thermal conductivity of frozen soil, W/m/K"
+    κ_sat_frozen::FT
+    "The saturated thermal conductivity of unfrozen soil, W/m/K"
+    κ_sat_unfrozen::FT
+    "The volumetric heat capacity of dry soil, J/m^3/K"
+    ρc_ds::FT
     "The porosity of the soil (m^3/m^3)"
     ν::FT
+    "The volumetric fraction of the soil solids in organic matter (m^3/m^3)"
+    ν_ss_om::FT
+    "The volumetric fraction of the soil solids in quartz (m^3/m^3)"
+    ν_ss_quartz::FT
+    "The volumetric fraction of the soil solids in gravel (m^3/m^3)"
+    ν_ss_gravel::FT
+    "The parameter α used in computing Kersten number, unitless"
+    α::FT
+    "The parameter β used in computing Kersten number, unitless"
+    β::FT
     "The van Genuchten parameter α (1/m)"
     vg_α::FT
     "The van Genuchten parameter n"
@@ -24,14 +38,72 @@ struct EnergyHydrologyParameters{
     "The van Genuchten parameter m"
     vg_m::FT
     "The saturated hydraulic conductivity (m/s)"
-    Ksat::FT
+    K_sat::FT
     "The specific storativity (1/m)"
     S_s::FT
     "The residual water fraction (m^3/m^3"
     θ_r::FT
+    "Ice impedance factor for the hydraulic conductivity"
+    Ω::FT
+    "Coefficient of viscosity factor for the hydraulic conductivity"
+    γ::FT
+    "Reference temperature for the viscosity factor"
+    γT_ref::FT
     "Physical constants and clima-wide parameters"
     earth_param_set::PSE
 end
+
+function EnergyHydrologyParameters(;
+    κ_dry::FT,
+    κ_sat_frozen::FT,
+    κ_sat_unfrozen::FT,
+    ρc_ds::FT,
+    ν::FT,
+    ν_ss_om::FT,
+    ν_ss_quartz::FT,
+    ν_ss_gravel::FT,
+    vg_α::FT,
+    vg_n::FT,
+    K_sat::FT,
+    S_s::FT,
+    θ_r::FT,
+    earth_param_set::PSE,
+) where {FT, PSE}
+    vg_m = FT(1.0 - 1.0 / vg_n)
+    # These were determined in the Balland and Arp paper, from 2003.
+    α = FT(0.24)
+    β = FT(18.3)
+    # Lundin paper
+    Ω = FT(7)
+    # Unclear where these are from (design doc)
+    γ = FT(2.64e-2)
+    γT_ref = FT(288)
+    return EnergyHydrologyParameters{FT, PSE}(
+        κ_dry,
+        κ_sat_frozen,
+        κ_sat_unfrozen,
+        ρc_ds,
+        ν,
+        ν_ss_om,
+        ν_ss_quartz,
+        ν_ss_gravel,
+        α,
+        β,
+        vg_α,
+        vg_n,
+        vg_m,
+        K_sat,
+        S_s,
+        θ_r,
+        Ω,
+        γ,
+        γT_ref,
+        earth_param_set,
+    )
+end
+
+
+
 
 """
     EnergyHydrology <: AbstractSoilModel
@@ -101,11 +173,6 @@ This has been written so as to work with Differential Equations.jl.
 """
 function ClimaLSM.make_rhs(model::EnergyHydrology{FT}) where {FT}
     function rhs!(dY, Y, p, t)
-        @unpack κ, ν, vg_α, vg_n, vg_m, Ksat, S_s, θ_r = model.parameters
-        ρe_int_l = volumetric_internal_energy_liq.(p.soil.T)
-        z = model.coordinates.z
-
-
         rre_top_flux_bc, rre_bot_flux_bc =
             boundary_fluxes(model.rre_boundary_conditions, p, t)
         heat_top_flux_bc, heat_bot_flux_bc =
@@ -119,8 +186,9 @@ function ClimaLSM.make_rhs(model::EnergyHydrology{FT}) where {FT}
             top = Operators.SetValue(Geometry.WVector(rre_top_flux_bc)),
             bottom = Operators.SetValue(Geometry.WVector(rre_bot_flux_bc)),
         )
-        @. dY.soil.ϑ_l =
-            -(divf2c_rre(-interpc2f(p.soil.K) * gradc2f(p.soil.ψ + z)))
+        @. dY.soil.ϑ_l = -(divf2c_rre(
+            -interpc2f(p.soil.K) * gradc2f(p.soil.ψ + model.coordinates.z),
+        ))
         dY.soil.θ_i .= ClimaCore.Fields.zeros(FT, axes(Y.soil.θ_i))
 
         # Heat equation RHS
@@ -128,10 +196,14 @@ function ClimaLSM.make_rhs(model::EnergyHydrology{FT}) where {FT}
             top = Operators.SetValue(Geometry.WVector(heat_top_flux_bc)),
             bottom = Operators.SetValue(Geometry.WVector(heat_bot_flux_bc)),
         )
+        ρe_int_l =
+            volumetric_internal_energy_liq.(p.soil.T, Ref(model.parameters))
+
         @. dY.soil.ρe_int =
             -divf2c_heat(
-                -κ * gradc2f(p.soil.T) -
-                interpc2f(ρe_int_l * p.soil.K) * gradc2f(p.soil.ψ + z),
+                -interpc2f(p.soil.κ) * gradc2f(p.soil.T) -
+                interpc2f(ρe_int_l * p.soil.K) *
+                gradc2f(p.soil.ψ + model.coordinates.z),
             )
         # Horizontal contributions
         horizontal_components!(dY, model.domain, model, p)
@@ -164,15 +236,13 @@ function horizontal_components!(
     model::EnergyHydrology,
     p::ClimaCore.Fields.FieldVector,
 )
-    κ = model.parameters.κ
-    ρe_int_l = volumetric_internal_energy_liq.(p.soil.T)
-
     hdiv = Operators.WeakDivergence()
     hgrad = Operators.Gradient()
     @. dY.soil.ϑ_l += -hdiv(-p.soil.K * hgrad(p.soil.ψ + model.coordinates.z))
+    ρe_int_l = volumetric_internal_energy_liq.(p.soil.T, Ref(model.parameters))
     @. dY.soil.ρe_int +=
         -hdiv(
-            -κ * hgrad(p.soil.T) -
+            -p.soil.κ * hgrad(p.soil.T) -
             p.soil.K * ρe_int_l * hgrad(p.soil.ψ + model.coordinates.z),
         )
 end
@@ -198,7 +268,7 @@ ClimaLSM.prognostic_types(soil::EnergyHydrology{FT}) where {FT} = (FT, FT, FT)
 A function which returns the names of the auxiliary variables
 of `EnergyHydrology`.
 """
-ClimaLSM.auxiliary_vars(soil::EnergyHydrology) = (:K, :ψ, :T)
+ClimaLSM.auxiliary_vars(soil::EnergyHydrology) = (:K, :ψ, :T, :κ)
 
 """
     auxiliary_types(soil::EnergyHydrology{FT}) where {FT}
@@ -206,7 +276,8 @@ ClimaLSM.auxiliary_vars(soil::EnergyHydrology) = (:K, :ψ, :T)
 A function which returns the types of the auxiliary variables
 of `EnergyHydrology`.
 """
-ClimaLSM.auxiliary_types(soil::EnergyHydrology{FT}) where {FT} = (FT, FT, FT)
+ClimaLSM.auxiliary_types(soil::EnergyHydrology{FT}) where {FT} =
+    (FT, FT, FT, FT)
 
 """
     make_update_aux(model::EnergyHydrology)
@@ -221,14 +292,53 @@ This has been written so as to work with Differential Equations.jl.
 """
 function ClimaLSM.make_update_aux(model::EnergyHydrology)
     function update_aux!(p, Y, t)
-        @unpack ρc_s, ν, vg_α, vg_n, vg_m, Ksat, S_s, θ_r = model.parameters
-        @. p.soil.K = hydraulic_conductivity(
-            Ksat,
-            vg_m,
-            effective_saturation(ν, Y.soil.ϑ_l, θ_r),
-        )
+        @unpack ν,
+        vg_α,
+        vg_n,
+        vg_m,
+        K_sat,
+        S_s,
+        θ_r,
+        Ω,
+        γ,
+        γT_ref,
+        κ_sat_frozen,
+        κ_sat_unfrozen = model.parameters
+
+        θ_l = volumetric_liquid_fraction.(Y.soil.ϑ_l, ν)
+        p.soil.κ =
+            thermal_conductivity.(
+                model.parameters.κ_dry,
+                kersten_number.(
+                    Y.soil.θ_i,
+                    relative_saturation.(θ_l, Y.soil.θ_i, ν),
+                    Ref(model.parameters),
+                ),
+                κ_sat.(θ_l, Y.soil.θ_i, κ_sat_unfrozen, κ_sat_frozen),
+            )
+
+        p.soil.T =
+            temperature_from_ρe_int.(
+                Y.soil.ρe_int,
+                Y.soil.θ_i,
+                volumetric_heat_capacity.(
+                    θ_l,
+                    Y.soil.θ_i,
+                    Ref(model.parameters),
+                ),
+                Ref(model.parameters),
+            )
+
+        @. p.soil.K =
+            impedance_factor(Y.soil.θ_i / (θ_l + Y.soil.θ_i), Ω) *
+            viscosity_factor(p.soil.T, γ, γT_ref) *
+            hydraulic_conductivity(
+                K_sat,
+                vg_m,
+                effective_saturation(ν, Y.soil.ϑ_l, θ_r),
+            )
         @. p.soil.ψ = pressure_head(vg_α, vg_n, vg_m, θ_r, Y.soil.ϑ_l, ν, S_s)
-        @. p.soil.T = temperature_from_ρe_int(Y.soil.ρe_int, Y.soil.θ_i, ρc_s)
+
     end
     return update_aux!
 end

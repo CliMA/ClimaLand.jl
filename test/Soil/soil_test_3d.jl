@@ -14,7 +14,7 @@ FT = Float64
 
 @testset "Soil horizontal operators unit tests" begin
     ν = FT(0.495)
-    Ksat = FT(1)#0.0443 / 3600 / 100); # m/s
+    K_sat = FT(1)#0.0443 / 3600 / 100); # m/s
     S_s = FT(1)#e-3); #inverse meters
     vg_n = FT(2.0)
     vg_α = FT(2.6) # inverse meters
@@ -34,7 +34,7 @@ FT = Float64
     bot_flux_bc = FT(0.0)
     sources = ()
     boundary_fluxes = FluxBC{FT}(top_flux_bc, bot_flux_bc)
-    params = Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, Ksat, S_s, θ_r)
+    params = Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r)
 
     soil = Soil.RichardsModel{FT}(;
         parameters = params,
@@ -124,7 +124,7 @@ FT = Float64
             f = 1.0 - (1.0 - S^(1.0 / vg_m))^vg_m
             f1 = f^2.0 / 2.0 / S^0.5
             f2 = 2 * S^(1 / vg_m - 1 / 2) * f / (1 - S^(1 / vg_m))^(1.0 - vg_m)
-            return (f1 + f2) * Ksat / (ν - θ_r)
+            return (f1 + f2) * K_sat / (ν - θ_r)
         else
             return 0.0
         end
@@ -164,9 +164,9 @@ FT = Float64
         S = (θ - θ_r) / (ν - θ_r)
         if S < 1
             f = 1.0 - (1.0 - S^(1.0 / vg_m))^vg_m
-            return Ksat * f^2.0 * sqrt(S)
+            return K_sat * f^2.0 * sqrt(S)
         else
-            return Ksat
+            return K_sat
         end
 
     end
@@ -206,24 +206,43 @@ end
 @testset "Soil energy+hydrology horizontal operators" begin
     struct EarthParameterSet <: AbstractEarthParameterSet end
     earth_param_set = EarthParameterSet()
-    ν = FT(0.495)
-    Ksat = FT(0.0443 / 3600 / 100) # m/s
+    ν = FT(0.44)
+    K_sat = FT(29.7 / 3600 / 100) # m/s
     S_s = FT(1e-3) #inverse meters
-    vg_n = FT(2.0)
-    vg_α = FT(2.6) # inverse meters
+    vg_n = FT(2.68)
+    vg_α = FT(14.5) # inverse meters
     vg_m = FT(1) - FT(1) / vg_n
-    θ_r = FT(0.1)
-    parameters = Soil.EnergyHydrologyParameters{FT, typeof(earth_param_set)}(
-        10.0,
-        3e6,
-        ν,
-        vg_α,
-        vg_n,
-        vg_m,
-        Ksat,
-        S_s,
-        θ_r,
-        earth_param_set,
+    θ_r = FT(0.045)
+    ν_ss_om = FT(0.0)
+    ν_ss_quartz = FT(1.0)
+    ν_ss_gravel = FT(0.0)
+    κ_minerals = FT(2.5)
+    κ_om = FT(0.25)
+    κ_quartz = FT(8.0)
+    κ_air = FT(0.025)
+    κ_ice = FT(2.21)
+    κ_liq = FT(0.57)
+    ρp = FT(2.66 / 1e3 * 1e6)
+    ρc_ds = FT(2e6)
+    κ_solid = Soil.κ_solid(ν_ss_om, ν_ss_quartz, κ_om, κ_quartz, κ_minerals)
+    κ_dry = Soil.κ_dry(ρp, ν, κ_solid, κ_air)
+    κ_sat_frozen = Soil.κ_sat_frozen(κ_solid, ν, κ_ice)
+    κ_sat_unfrozen = Soil.κ_sat_unfrozen(κ_solid, ν, κ_liq)
+    parameters = Soil.EnergyHydrologyParameters(
+        κ_dry = κ_dry,
+        κ_sat_frozen = κ_sat_frozen,
+        κ_sat_unfrozen = κ_sat_unfrozen,
+        ρc_ds = ρc_ds,
+        ν = ν,
+        ν_ss_om = ν_ss_om,
+        ν_ss_quartz = ν_ss_quartz,
+        ν_ss_gravel = ν_ss_gravel,
+        vg_α = vg_α,
+        vg_n = vg_n,
+        K_sat = K_sat,
+        S_s = S_s,
+        θ_r = θ_r,
+        earth_param_set = earth_param_set,
     )
     zmax = FT(0)
     zmin = FT(-1)
@@ -268,17 +287,29 @@ end
         end
         Ysoil.soil.ϑ_l .= hydrostatic_profile.(z, Ref(params))
         Ysoil.soil.θ_i .= ClimaCore.Fields.zeros(FT, axes(Ysoil.soil.θ_i))
-        Ysoil.soil.ρe_int .=
-            ClimaCore.Fields.zeros(FT, axes(Ysoil.soil.ρe_int)) .+
-            volumetric_internal_energy(0.0, params.ρc_s, 280.0)
     end
-
     init_soil!(Y, coords.z, soil.parameters)
+
+
+    θ_l = Soil.volumetric_liquid_fraction.(Y.soil.ϑ_l, ν)
+    volumetric_heat_capacity =
+        Soil.volumetric_heat_capacity.(θ_l, Y.soil.θ_i, Ref(parameters))
+    Y.soil.ρe_int .=
+        ClimaCore.Fields.zeros(FT, axes(Y.soil.ρe_int)) .+
+        volumetric_internal_energy.(
+            0.0,
+            volumetric_heat_capacity,
+            280.0,
+            Ref(parameters),
+        )
+
+
+
     soil_ode! = make_ode_function(soil)
     dY = similar(Y)
     soil_ode!(dY, Y, p, 0.0)
-    ## dY should be zero. Look at dY/Y. Not sure why energy is a bit worse error...
-    @test maximum(abs.(parent(dY.soil.ϑ_l))) / ν < 1e-14
-    @test maximum(abs.(parent(dY.soil.θ_i)))ν < 1e-14
-    @test maximum(abs.(parent(dY.soil.ρe_int))) ./ 2.052e7 < 5e-13
+    ## dY should be zero. Look at dY/Y. 
+    @test maximum(abs.(parent(dY.soil.ϑ_l))) / ν < 5e-12
+    @test maximum(abs.(parent(dY.soil.θ_i))) / ν < 5e-12
+    @test maximum(abs.(parent(dY.soil.ρe_int))) ./ 2.052e7 < 5e-12
 end
