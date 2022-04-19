@@ -63,7 +63,7 @@ using ClimaCore
 import ClimaCore: Fields, Operators, Geometry, Spaces
 using CLIMAParameters: AbstractEarthParameterSet
 
-import ClimaLSM.Domains: coordinates, Column, HybridBox
+import ClimaLSM.Domains: coordinates, Column, HybridBox, SphericalShell
 import ClimaLSM:
     AbstractModel,
     make_update_aux,
@@ -154,14 +154,21 @@ the domain type, updates `dY` in place.
 For column domains, no dss is needed.
 """
 function dss!(dY::ClimaCore.Fields.FieldVector, domain::Column) end
-
+# Todo: consider if we should introduce an AbstractHybridDomain so as 
+# to avoid listing with Union. Possibly not worth it at this point, but if
+# other domains
+# are added or if we end up doing this often, it might be nice. But it may
+# also be nice to be explicit.
 """
-   dss!(dY::ClimaCore.Fields.FieldVector,domain::HybridBox)
+   dss!(dY::ClimaCore.Fields.FieldVector,domain::Union{HybridBox, SphericalShell})
 
 Computes the appropriate weighted direct stiffness summation based on
 the domain type, updates `dY` in place.
 """
-function dss!(dY::ClimaCore.Fields.FieldVector, domain::HybridBox)
+function dss!(
+    dY::ClimaCore.Fields.FieldVector,
+    domain::Union{HybridBox, SphericalShell},
+)
     for key in propertynames(dY.soil)
         Spaces.weighted_dss!(getproperty(dY.soil, key))
     end
@@ -172,7 +179,7 @@ end
    FluxBC{FT} <: AbstractSoilBoundaryConditions{FT}
 
 A simple concrete type of boundary condition, which enforces
-constant fluxes at the top and bottom of the domain.
+constant normal fluxes at the top and bottom of the domain.
 """
 struct FluxBC{FT} <: AbstractSoilBoundaryConditions{FT}
     top_flux_bc::FT

@@ -92,14 +92,29 @@ function ClimaLSM.make_rhs(model::RichardsModel)
     function rhs!(dY, Y, p, t)
         @unpack ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r = model.parameters
         top_flux_bc, bot_flux_bc =
-            boundary_fluxes(model.boundary_conditions, p, t)
+            boundary_fluxes(model.boundary_conditions, p, t) # these are floats
         z = model.coordinates.z
         interpc2f = Operators.InterpolateC2F()
         gradc2f_water = Operators.GradientC2F()
+
+        # We are setting a boundary value on a flux, which is a gradient of a scalar
+        # Therefore, we should set boundary conditions in terms of a covariant vector
+        # We set the third component first - supply a Covariant3Vector
+
+        # Without topography only
+        # In Cartesian coordinates, W (z^) = Cov3 (z^)= Contra3 (n^ = z^)
+        # In spherical coordinates, W (r^) = Cov3 (r^) = Contra3 (n^ = r^)
+
+        # It appears that the WVector is converted internally to a Covariant3Vector for the gradient value
+        # at the boundary. Offline tests indicate that you get the same thing if
+        # the bc is WVector(F) or Covariant3Vector(F*Δr) or Contravariant3Vector(F/Δr)
+
         divf2c_water = Operators.DivergenceF2C(
             top = Operators.SetValue(Geometry.WVector(top_flux_bc)),
             bottom = Operators.SetValue(Geometry.WVector(bot_flux_bc)),
         )
+
+        # GradC2F returns a Covariant3Vector, so no need to convert.
         @. dY.soil.ϑ_l =
             -(divf2c_water(-interpc2f(p.soil.K) * gradc2f_water(p.soil.ψ + z)))
         # Horizontal contributions
@@ -130,12 +145,13 @@ computed using the WeakDivergence and Gradient operators.
 """
 function horizontal_components!(
     dY::ClimaCore.Fields.FieldVector,
-    domain::HybridBox,
+    domain::Union{HybridBox, SphericalShell},
     model::RichardsModel,
     p::ClimaCore.Fields.FieldVector,
 )
     hdiv = Operators.WeakDivergence()
     hgrad = Operators.Gradient()
+    # The flux is already covariant, from hgrad, so no need to convert.
     @. dY.soil.ϑ_l += -hdiv(-p.soil.K * hgrad(p.soil.ψ + model.coordinates.z))
 end
 

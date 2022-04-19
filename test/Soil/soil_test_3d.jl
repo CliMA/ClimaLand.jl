@@ -7,7 +7,7 @@ if !("." in LOAD_PATH)
     push!(LOAD_PATH, ".")
 end
 using ClimaLSM
-using ClimaLSM.Domains: HybridBox
+using ClimaLSM.Domains: HybridBox, SphericalShell
 using ClimaLSM.Soil
 
 FT = Float64
@@ -312,4 +312,78 @@ end
     @test maximum(abs.(parent(dY.soil.ϑ_l))) / ν < 5e-12
     @test maximum(abs.(parent(dY.soil.θ_i))) / ν < 5e-12
     @test maximum(abs.(parent(dY.soil.ρe_int))) ./ 2.052e7 < 5e-12
+end
+
+
+@testset "Soil hydrology RHS on sphere" begin
+    ν = FT(0.44)
+    K_sat = FT(1.0)
+    S_s = FT(1e-3) #inverse meters
+    vg_n = FT(2.68)
+    vg_α = FT(14.5) # inverse meters
+    vg_m = FT(1) - FT(1) / vg_n
+    θ_r = FT(0.045)
+
+    parameters = Soil.RichardsParameters(
+        ν = ν,
+        vg_α = vg_α,
+        vg_n = vg_n,
+        vg_m = vg_m,
+        K_sat = K_sat,
+        S_s = S_s,
+        θ_r = θ_r,
+    )
+
+    soil_domain = SphericalShell(;
+        radius = FT(100.0),
+        height = FT(1.0),
+        nelements = (1, 30),
+        npolynomial = 3,
+    )
+    top_flux_bc = FT(K_sat)
+    bot_flux_bc = FT(K_sat)
+
+    sources = ()
+    boundary_fluxes = Soil.FluxBC{FT}(top_flux_bc, bot_flux_bc)
+    soil = Soil.RichardsModel{FT}(;
+        parameters = parameters,
+        domain = soil_domain,
+        boundary_conditions = boundary_fluxes,
+        sources = sources,
+    )
+
+    Y, p, coords = initialize(soil)
+
+    # specify ICs
+    function init_soil!(Ysoil, z, params)
+        function hydrostatic_profile(
+            z::FT,
+            params::RichardsParameters,
+        ) where {FT}
+            @unpack ν, vg_α, vg_n, vg_m, θ_r, S_s = params
+            z_∇ = FT(0.5)
+            if z > z_∇
+                S = FT((FT(1) + (vg_α * (z - z_∇))^vg_n)^(-vg_m))
+                ϑ_l = S * (ν - θ_r) + θ_r
+            else
+                ϑ_l = -S_s * (z - z_∇) + ν
+            end
+            return FT(ϑ_l)
+        end
+        Ysoil.soil.ϑ_l .= hydrostatic_profile.(z, Ref(params))
+    end
+    init_soil!(Y, coords.z, soil.parameters)
+    soil_ode! = make_ode_function(soil)
+    dY = similar(Y)
+    soil_ode!(dY, Y, p, 0.0)
+    ## dY should be zero except at the boundary, where it should be ±30.
+    @test (mean(unique(parent(ClimaCore.level(dY.soil.ϑ_l, 1)))) - 30.0) / ν <
+          1e-11
+    @test (mean(unique(parent(ClimaCore.level(dY.soil.ϑ_l, 30)))) + 30.0) / ν <
+          1e-11
+    @test mean([
+        maximum(abs.(unique(parent(ClimaCore.level(dY.soil.ϑ_l, k))))) for
+        k in 2:29
+    ]) / ν < 1e-11
+
 end

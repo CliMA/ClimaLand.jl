@@ -6,7 +6,7 @@ using IntervalSets
 using DocStringExtensions
 
 import ClimaCore: Meshes, Spaces, Topologies, Geometry
-
+import ClimaCore.Meshes: Uniform
 ### General type and methods all model domains will need
 
 """
@@ -302,14 +302,93 @@ function make_function_space(domain::HybridBox{FT}) where {FT}
     return hv_center_space, hv_face_space
 end
 
+
 """
-   coordinates(domain::Union{Column{FT}, Plane{FT}, HybridBox{FT}}) where {FT}
+    struct SphericalShell{FT} <: AbstractDomain{FT}
+        radius::FT
+        height::FT
+        nelements::Tuple{Int, Int}
+        npolynomial::Int
+    end
+
+A struct holding the necessary information to construct a domain, a mesh, 
+a 2d spectral element space (non-radial directions) 
+x a 1d finite difference space (radial direction),
+ and the resulting coordinate field.
+# Fields
+$(DocStringExtensions.FIELDS)
+"""
+struct SphericalShell{FT} <: AbstractDomain{FT}
+    "The radius of the shell"
+    radius::FT
+    "The radial extent of the shell"
+    height::FT
+    "The number of elements to be used in the non-radial and radial directions"
+    nelements::Tuple{Int, Int}
+    "The polynomial order to be used in the non-radial directions"
+    npolynomial::Int
+end
+
+"""
+    SphericalShell(;
+        radius::FT,
+        height::FT,
+        nelements::Tuple{Int, Int},
+        npolynomial::Int,
+    ) where {FT}
+
+Outer constructor for the `SphericalShell` domain, using keyword arguments.
+"""
+function SphericalShell(;
+    radius::FT,
+    height::FT,
+    nelements::Tuple{Int, Int},
+    npolynomial::Int,
+) where {FT}
+    @assert 0 < radius
+    @assert 0 < height
+    return SphericalShell{FT}(radius, height, nelements, npolynomial)
+end
+
+
+"""
+    make_function_space(domain::SphericalShell)
+
+Returns the extruded finite difference center and face
+finite spaces of the
+desired periodicity, nodal point type, and polynomial order
+in the non-radial directions.
+"""
+function make_function_space(domain::SphericalShell{FT}) where {FT}
+    vertdomain = ClimaCore.Domains.IntervalDomain(
+        Geometry.ZPoint(FT(0)),
+        Geometry.ZPoint(FT(domain.height));
+        boundary_tags = (:bottom, :top),
+    )
+
+    vertmesh =
+        Meshes.IntervalMesh(vertdomain, Uniform(), nelems = domain.nelements[2])
+    vert_center_space = Spaces.CenterFiniteDifferenceSpace(vertmesh)
+
+    horzdomain = ClimaCore.Domains.SphereDomain(domain.radius)
+    horzmesh = Meshes.EquiangularCubedSphere(horzdomain, domain.nelements[1])
+    horztopology = Topologies.Topology2D(horzmesh)
+    quad = Spaces.Quadratures.GLL{domain.npolynomial + 1}()
+    horzspace = Spaces.SpectralElementSpace2D(horztopology, quad)
+
+    hv_center_space =
+        Spaces.ExtrudedFiniteDifferenceSpace(horzspace, vert_center_space)
+    hv_face_space = Spaces.FaceExtrudedFiniteDifferenceSpace(hv_center_space)
+
+    return hv_center_space, hv_face_space
+end
+
+"""
+   coordinates(domain::Union{Column{FT}, Plane{FT}, HybridBox{FT}, SphericalShell{FT}}) where {FT}
 
 Returns the coordinate field for the domain.
 """
-function coordinates(
-    domain::Union{Column{FT}, Plane{FT}, HybridBox{FT}},
-) where {FT}
+function coordinates(domain::AbstractDomain)
     cs, _ = make_function_space(domain)
     cc = ClimaCore.Fields.coordinate_field(cs)
     return cc
@@ -397,7 +476,7 @@ end
 
 
 export AbstractDomain, AbstractVegetationDomain
-export Column, Plane, HybridBox, RootDomain, Point
+export Column, Plane, HybridBox, RootDomain, Point, SphericalShell
 export LSMSingleColumnDomain
 export coordinates
 
