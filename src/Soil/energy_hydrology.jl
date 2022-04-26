@@ -178,14 +178,24 @@ function ClimaLSM.make_rhs(model::EnergyHydrology{FT}) where {FT}
         heat_top_flux_bc, heat_bot_flux_bc =
             boundary_fluxes(model.heat_boundary_conditions, p, t)
 
+
+
         interpc2f = Operators.InterpolateC2F()
         gradc2f = Operators.GradientC2F()
+
+        # Without topography only
+        # In Cartesian coordinates, W (z^) = Cov3 (z^)= Contra3 (n^ = z^)
+        # In spherical coordinates, W (r^) = Cov3 (r^) = Contra3 (n^ = r^)
+        # Passing WVector to gradient BC is passing a normal flux.
+
+
         # Richards-Richardson RHS:
 
         divf2c_rre = Operators.DivergenceF2C(
             top = Operators.SetValue(Geometry.WVector(rre_top_flux_bc)),
             bottom = Operators.SetValue(Geometry.WVector(rre_bot_flux_bc)),
         )
+        # GradC2F returns a Covariant3Vector, so no need to convert.
         @. dY.soil.ϑ_l = -(divf2c_rre(
             -interpc2f(p.soil.K) * gradc2f(p.soil.ψ + model.coordinates.z),
         ))
@@ -199,6 +209,7 @@ function ClimaLSM.make_rhs(model::EnergyHydrology{FT}) where {FT}
         ρe_int_l =
             volumetric_internal_energy_liq.(p.soil.T, Ref(model.parameters))
 
+        # GradC2F returns a Covariant3Vector, so no need to convert.
         @. dY.soil.ρe_int =
             -divf2c_heat(
                 -interpc2f(p.soil.κ) * gradc2f(p.soil.T) -
@@ -232,12 +243,13 @@ computed using the WeakDivergence and Gradient operators.
 """
 function horizontal_components!(
     dY::ClimaCore.Fields.FieldVector,
-    domain::HybridBox,
+    domain::Union{HybridBox, SphericalShell},
     model::EnergyHydrology,
     p::ClimaCore.Fields.FieldVector,
 )
     hdiv = Operators.WeakDivergence()
     hgrad = Operators.Gradient()
+    # The flux is already covariant, from hgrad, so no need to convert.
     @. dY.soil.ϑ_l += -hdiv(-p.soil.K * hgrad(p.soil.ψ + model.coordinates.z))
     ρe_int_l = volumetric_internal_energy_liq.(p.soil.T, Ref(model.parameters))
     @. dY.soil.ρe_int +=
