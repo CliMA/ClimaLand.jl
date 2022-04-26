@@ -91,14 +91,14 @@ function Wfact!(W, Y, p, dtγ, t)
     ∂Tt∂T.diagonal .= parent(diags)[:,2]
 end
 
-domain = HybridBox(;
-                   zlim = (0.0,1.0),
-                   xlim = (0.0,100.0),
-                   ylim = (0.0,100.0),
-                   nelements = (10,10,10),
-                   npolynomial = 1,
-                   periodic = (true,true)
-                   )
+#domain = HybridBox(;
+#                   zlim = (0.0,1.0),
+#                   xlim = (0.0,100.0),
+#                   ylim = (0.0,100.0),
+#                   nelements = (10,10,10),
+#                   npolynomial = 1,
+#                   periodic = (true,true)
+#                   )
 domain = Column(; zlim = (0.0,1.0), nelements = 10)
 cc, fc = ClimaLSM.Domains.coordinates(domain)
 T0 = coords.z.^2.0
@@ -117,7 +117,8 @@ function linsolve!(::Type{Val{:init}}, f, u0; kwargs...)
         dtγ = dtγ_ref[]
     end
 end
-
+# copied code for running, eventually
+#=
 jac_kwargs = (; jac_prototype = W, Wfact = Wfact!)
 max_newton_iters = 2
 alg_kwargs = (; linsolve = linsolve!)
@@ -134,3 +135,4 @@ problem = SplitODEProblem(
     tspan,
     p,
 )
+=#
