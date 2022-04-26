@@ -41,10 +41,14 @@ grad_op = Operators.GradientC2F(
 )
 grad_stencil = Operators.Operator2Stencil(grad_op)
 div_op = Operators.DivergenceF2C(
-    top = Operators.SetValue(Geometry.Contravariant3Vector(FT(0))),
-    bottom = Operators.SetValue(Geometry.Contravariant3Vector(FT(0))),
+    top = Operators.SetValue(Geometry.Covariant3Vector(FT(0))),
+    bottom = Operators.SetValue(Geometry.Covariant3Vector(FT(0))),
 )
 div_stencil = Operators.Operator2Stencil(div_op)
+interpc2f = Operators.InterpolateC2F(
+    bottom = Operators.Extrapolate(),
+    top = Operators.Extrapolate(),
+)
 
 struct TridiagonalJacobian{R, J1}
     # reference to dtγ, which is specified by the ODE solver
@@ -52,43 +56,24 @@ struct TridiagonalJacobian{R, J1}
     ∂Tt∂T::J1
 end
 
-struct DiagonalValues{FT}
-    upper_diagonal::Array{FT}
-    diagonal::Array{FT}
-    lower_diagonal::Array{FT}
-end
-
-
 function TridiagonalJacobian(Y)
     FT = eltype(Y.T)
     dtγ_ref = Ref(zero(FT))
     space = axes(Y.T)
-    N = Spaces.nlevels(space)
-    J = DiagonalValues{FT}(
-        Array{FT}(undef, N - 1),
-        Array{FT}(undef, N),
-        Array{FT}(undef, N - 1),
-    )
+    Jtype = Operators.StencilCoefs{-1, 1, NTuple{3, FT}}
+    J = Fields.Field(Jtype, space)
     args = (dtγ_ref,J)
     return TridiagonalJacobian{typeof.(args)...}(args...)
 end
 Base.similar(w::TridiagonalJacobian) = w
 to_scalar_coefs(vector_coefs) =
-    map(vector_coef_-> vector_coef.u₃, vector_coefs)
+    map(vector_coef-> vector_coef.u₃, vector_coefs)
 function Wfact!(W, Y, p, dtγ, t)
     (; dtγ_ref, ∂Tt∂T) = W
     dtγ_ref[] = dtγ
     # ∂T∂t = Tt = div(grad(T))
-    # well this is a little painful
-    cov = map(_ -> Geometry.Covariant3Vector(1.0), zero(Y.T))
-    W = Geometry.WVector.(cov)
-    scale_factor =  (parent(W)./parent(cov))[1]
-    @. diags = compose(div_stencil(grad_op(Y.T)/norm(grad_op(Y.T))),
-                       to_scalar_coefs.(grad_stencil(zero(Y.T)+scale_factor))
-                       )
-    ∂Tt∂T.upper_diagonal .= parent(diags)[1:end-1,3]
-    ∂Tt∂T.lower_diagonal .= parent(diags)[2:end,1]
-    ∂Tt∂T.diagonal .= parent(diags)[:,2]
+    @. ∂Tt∂t = compose(div_stencil(one.(grad_op.(Y.T))), to_scalar_coefs(grad_stencil(one.(Y.T))))
+
 end
 
 #domain = HybridBox(;
@@ -100,8 +85,8 @@ end
 #                   periodic = (true,true)
 #                   )
 domain = Column(; zlim = (0.0,1.0), nelements = 10)
-cc, fc = ClimaLSM.Domains.coordinates(domain)
-T0 = coords.z.^2.0
+cc = ClimaLSM.Domains.coordinates(domain)
+T0 = cc.z.^2.0
                    
 tspan = (0, 10)
 Y = Fields.FieldVector(;:T => T0,);
