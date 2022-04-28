@@ -1,3 +1,4 @@
+include("./Bucket/bucket_test.jl")
 include("./Vegetation/root_test.jl")
 include("./LSM/lsm_test.jl")
 include("./domains.jl")
