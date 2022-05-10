@@ -31,3 +31,13 @@ ClimaLSM.RunoffBC
 ClimaLSM.PrognosticSoilPressure
 ClimaLSM.RootExtraction
 ```
+
+## BucketModel
+
+```@docs
+ClimaLSM.BucketModelParameters
+ClimaLSM.PrescribedAtmosphere
+ClimaLSM.PrescribedRadiation
+ClimaLSM.CoupledAtmosphere
+ClimaLSM.CoupledRadiation
+ClimaLSM.BucketModel
