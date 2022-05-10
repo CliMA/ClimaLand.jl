@@ -75,20 +75,11 @@ function LandHydrology{FT}(;
     return LandHydrology{FT, typeof.(args)...}(args...)
 end
 
-"""
-    function initialize_interactions(
-        land::LandHydrology{FT, SM, SW},
-    ) where {FT, SM <: Soil.RichardsModel{FT}, SW <: Pond.PondModel{FT}}
+interaction_vars(m::LandHydrology) = (:soil_infiltration,)
 
-Initializes the interaction auxiliary variable `p.soil_infiltration`.
-"""
-function initialize_interactions(
-    land::LandHydrology{FT, SM, SW},
-) where {FT, SM <: Soil.RichardsModel{FT}, SW <: Pond.PondModel{FT}}
+interaction_types(m::LandHydrology{FT}) where {FT} = (FT,)
 
-    surface_coords = coordinates(land.surface_water)#In non-column case, would this be level(soil_coords)?
-    return (soil_infiltration = similar(surface_coords),)
-end
+interaction_domains(m::LandHydrology) = (:surface_water,)
 
 #=
 If there is a pond present, flux BC should be -i_c
@@ -242,5 +233,5 @@ function Soil.boundary_fluxes(
     p::ClimaCore.Fields.FieldVector,
     t::FT,
 ) where {FT}
-    return p.soil_infiltration[1], FT(0.0)
+    return p.soil_infiltration, FT(0.0)
 end

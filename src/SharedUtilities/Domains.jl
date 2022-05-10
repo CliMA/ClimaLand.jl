@@ -16,14 +16,17 @@ An abstract type for domains.
 """
 abstract type AbstractDomain{FT <: AbstractFloat} end
 Base.eltype(::AbstractDomain{FT}) where {FT} = FT
+
 """
     coordinates(domain::AbstractDomain)
 
-Method which returns the coordinates appropriate for a given domain.
-
-The coordinates can be Fields or Vectors.
+Returns the coordinate field for the domain.
 """
-function coordinates(domain::AbstractDomain) end
+function coordinates(domain::AbstractDomain)
+    cs, _ = make_function_space(domain)
+    cc = ClimaCore.Fields.coordinate_field(cs)
+    return cc
+end
 
 """
     Point{FT} <: AbstractDomain{FT}
@@ -49,8 +52,11 @@ function Point(; z_sfc::FT) where {FT}
     return Point{FT}(z_sfc)
 end
 
-
-coordinates(domain::Point) = [domain.z_sfc]
+function make_function_space(domain::Point{FT}) where {FT}
+    coord = ClimaCore.Geometry.ZPoint(domain.z_sfc)
+    space = ClimaCore.Spaces.PointSpace(coord)
+    return space, nothing
+end
 
 """
     Column{FT} <: AbstractDomain{FT}
@@ -382,18 +388,6 @@ function make_function_space(domain::SphericalShell{FT}) where {FT}
 
     return hv_center_space, hv_face_space
 end
-
-"""
-   coordinates(domain::Union{Column{FT}, Plane{FT}, HybridBox{FT}, SphericalShell{FT}}) where {FT}
-
-Returns the coordinate field for the domain.
-"""
-function coordinates(domain::AbstractDomain)
-    cs, _ = make_function_space(domain)
-    cc = ClimaCore.Fields.coordinate_field(cs)
-    return cc
-end
-
 
 ### Example of component specific domain
 """

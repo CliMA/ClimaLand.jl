@@ -35,7 +35,7 @@ FT = Float64
     sol = solve(prob, Euler(), dt = dt)
 
 
-    η = [sol.u[k].surface_water.η[1] for k in 1:1:length(sol.t)]
+    η = [sol.u[k].surface_water.η[] for k in 1:1:length(sol.t)]
     t = sol.t[1:end]
 
     function expected_pond_height(t)

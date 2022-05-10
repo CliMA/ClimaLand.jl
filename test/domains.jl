@@ -4,6 +4,7 @@ if !("." in LOAD_PATH)
     push!(LOAD_PATH, ".")
 end
 using ClimaLSM
+using ClimaLSM: Domains
 using ClimaLSM.Domains:
     Column,
     RootDomain,
@@ -11,8 +12,8 @@ using ClimaLSM.Domains:
     Plane,
     Point,
     LSMSingleColumnDomain,
-    SphericalShell
-using ClimaLSM.Domains: coordinates
+    SphericalShell,
+    coordinates
 
 TestFloatTypes = (Float32, Float64)
 
@@ -85,11 +86,15 @@ end
 @testset "Point Domain" begin
     for FT in TestFloatTypes
         zmin = FT(1.0)
-        zmax = FT(2.0)
-        zlim = FT.((zmin, zmax))
-        point = Point(; z_sfc = zlim[1])
-        @test point.z_sfc == zlim[1]
-        @test coordinates(point) == [zlim[1]]
+        point = Point(; z_sfc = zmin)
+        @test point.z_sfc == zmin
+        point_space, _ = Domains.make_function_space(point)
+        @test point_space isa ClimaCore.Spaces.PointSpace
+        coords = coordinates(point)
+        @test coords isa ClimaCore.Fields.Field
+        @test eltype(coords) == ClimaCore.Geometry.ZPoint{FT}
+        @test ClimaCore.Fields.field_values(coords)[] ==
+              ClimaCore.Geometry.ZPoint(zmin)
     end
 end
 
@@ -106,7 +111,7 @@ end
 
         @test typeof(column) == Column{FT}
         @test typeof(point) == Point{FT}
-        @test coordinates(point) == coordinates(domain).surface
+        @test parent(coordinates(point)) == parent(coordinates(domain).surface)
         @test parent(coordinates(domain).subsurface) ==
               parent(coordinates(column))
     end

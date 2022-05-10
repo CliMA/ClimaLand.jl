@@ -33,8 +33,8 @@ struct PondModel{FT, D, R} <: AbstractSurfaceWaterModel{FT}
 end
 
 function PondModel{FT}(;
-    domain::ClimaLSM.Domains.AbstractDomain{FT} = ClimaLSM.Domains.Point{FT}(
-        0.0,
+    domain::ClimaLSM.Domains.AbstractDomain{FT} = ClimaLSM.Domains.Point(
+        z_sfc = 0.0,
     ),
     runoff::AbstractSurfaceRunoff{FT},
 ) where {FT}
