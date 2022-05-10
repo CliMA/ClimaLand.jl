@@ -110,8 +110,8 @@ function ClimaLSM.make_rhs(model::RichardsModel)
         # the bc is WVector(F) or Covariant3Vector(F*Δr) or Contravariant3Vector(F/Δr)
 
         divf2c_water = Operators.DivergenceF2C(
-            top = Operators.SetValue(Geometry.WVector(top_flux_bc)),
-            bottom = Operators.SetValue(Geometry.WVector(bot_flux_bc)),
+            top = Operators.SetValue(Geometry.WVector.(top_flux_bc)),
+            bottom = Operators.SetValue(Geometry.WVector.(bot_flux_bc)),
         )
 
         # GradC2F returns a Covariant3Vector, so no need to convert.

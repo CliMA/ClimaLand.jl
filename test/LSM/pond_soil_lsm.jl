@@ -15,11 +15,11 @@ using ClimaLSM.Pond
 FT = Float64
 @testset "Pond soil LSM integration test" begin
 
-    function precipitation(t::ft) where {ft}
-        if t < ft(20)
-            precip = -ft(1e-8)
+    function precipitation(t::FT) where {FT}
+        if t < FT(20)
+            precip = -FT(1e-8)
         else
-            precip = t < ft(100) ? -ft(5e-5) : ft(0.0)
+            precip = t < FT(100) ? -FT(5e-5) : FT(0.0)
         end
         return precip
     end
@@ -86,4 +86,27 @@ FT = Float64
     P = [3.0, -1.0, 3.0, -3.0, 1.0, 3.0]
     iap = [2.0, -1.0, -2.0, -3.0, 2.0, 2.0]
     @test infiltration_at_point.(η, i_c, P) ≈ iap
+
+    land_prognostic_vars = prognostic_vars(land)
+    land_prognostic_types = prognostic_types(land)
+    land_auxiliary_vars = auxiliary_vars(land)
+    land_auxiliary_types = auxiliary_types(land)
+    # prognostic vars
+    @test land_prognostic_vars.soil == prognostic_vars(land.soil)
+    @test land_prognostic_vars.surface_water ==
+          prognostic_vars(land.surface_water)
+    # auxiliary vars
+    @test land_auxiliary_vars.soil == auxiliary_vars(land.soil)
+    @test land_auxiliary_vars.surface_water ==
+          auxiliary_vars(land.surface_water)
+    @test land_auxiliary_vars.interactions == ClimaLSM.interaction_vars(land)
+    # prognostic types
+    @test land_prognostic_types.soil == prognostic_types(land.soil)
+    @test land_prognostic_types.surface_water ==
+          prognostic_types(land.surface_water)
+    # auxiliary types
+    @test land_auxiliary_types.soil == auxiliary_types(land.soil)
+    @test land_auxiliary_types.surface_water ==
+          auxiliary_types(land.surface_water)
+    @test land_auxiliary_types.interactions == ClimaLSM.interaction_types(land)
 end

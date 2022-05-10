@@ -51,7 +51,8 @@ function initialize(land::AbstractLandModel{FT}) where {FT}
             component,
         )
     end
-    p_interactions = initialize_interactions(land)
+    p_interactions =
+        initialize_interactions(land, NamedTuple{components}(coords_list))
 
     Y = ClimaCore.Fields.FieldVector(;
         NamedTuple(zip(components, Y_state_list))...,
@@ -103,22 +104,92 @@ Returns the component names of the `land` model, by calling
 """
 land_components(land::AbstractLandModel) = propertynames(land)
 
+function prognostic_vars(land::AbstractLandModel)
+    components = land_components(land)
+    prognostic_list = map(components) do model
+        prognostic_vars(getproperty(land, model))
+    end
+    return NamedTuple{components}(prognostic_list)
+end
+
+function prognostic_types(land::AbstractLandModel)
+    components = land_components(land)
+    prognostic_list = map(components) do model
+        prognostic_types(getproperty(land, model))
+    end
+    return NamedTuple{components}(prognostic_list)
+end
+
+function auxiliary_vars(land::AbstractLandModel)
+    components = land_components(land)
+    auxiliary_list = map(components) do model
+        auxiliary_vars(getproperty(land, model))
+    end
+    return NamedTuple{(components..., :interactions)}((
+        auxiliary_list...,
+        interaction_vars(land),
+    ))
+end
+
+function auxiliary_types(land::AbstractLandModel)
+    components = land_components(land)
+    auxiliary_list = map(components) do model
+        auxiliary_types(getproperty(land, model))
+    end
+    return NamedTuple{(components..., :interactions)}((
+        auxiliary_list...,
+        interaction_types(land),
+    ))
+end
+
+"""
+   interaction_vars(m::AbstractModel)
+
+Returns the interaction variable symbols for the model in the form of a tuple.
+"""
+interactios_vars(m::AbstractLandModel) = ()
+
+"""
+   interaction_types(m::AbstractModel)
+
+Returns the shared interaction variable types for the model in the form of a tuple.
+"""
+interaction_types(m::AbstractLandModel) = ()
+
+"""
+   interaction_domains(m::AbstractModel)
+
+Returns the interaction domain symbols in the form of a tuple.
+
+For example, for a boundary interaction term, one would specify a model with a
+domain consisting of the boundary space. Most commonly, these are surface models.
+This is only required for variables shared between land submodels, and only needed
+for multi-component models, not standalone components. Component-specific variables
+should be listed as prognostic or auxiliary variables.
+"""
+interaction_domains(m::AbstractLandModel) = ()
+
 """
     initialize_interactions(land::AbstractLandModel) end
 
 Initializes interaction variables, which are a type of auxiliary
-variable, to empty objects of the correct type
-for the model. 
+variable, to empty objects of the correct type for the model. 
 
-This function should be called during `initialize_auxiliary`,
-and the method will change depending on the type of land model,
-and potentially due to the type of the component models. 
-
-This is a stub which is extended to concrete LSM models.
-
+Interaction variables are specified by `interaction_vars`, their types
+by `interaction_types`, and their spaces by `interaction_spaces`. 
+This function should be called during `initialize_auxiliary` step.
 """
-function initialize_interactions(land::AbstractLandModel) end
+function initialize_interactions(land::AbstractLandModel, land_coords)
+    vars = interaction_vars(land)
+    types = interaction_types(land)
+    domains = interaction_domains(land)
+    interactions = map(zip(types, domains)) do (T, domain)
+        zero_instance = zero(T)
+        map(_ -> zero_instance, getproperty(land_coords, domain))
+    end
 
+    return NamedTuple{vars}(interactions)
+end
 """
     make_interactions_update_aux(land::AbstractLandModel) end
 

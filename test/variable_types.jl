@@ -46,8 +46,8 @@ end
     point = Point(; z_sfc = zlim[1])
     m = Model{FT, typeof(point)}(point)
     Y, p, coords = initialize(m)
-    @test Y.foo.a == [0.0]
-    @test Y.foo.b == [zero(SVector{2, FT})]
-    @test p.foo.d == [0.0]
-    @test p.foo.e == [zero(SVector{2, FT})]
+    @test Y.foo.a[] == 0.0
+    @test Y.foo.b[] == zero(SVector{2, FT})
+    @test p.foo.d[] == 0.0
+    @test p.foo.e[] == zero(SVector{2, FT})
 end

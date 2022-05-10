@@ -76,21 +76,11 @@ function RootSoilModel{FT}(;
     return RootSoilModel{FT, typeof.(args)...}(args...)
 end
 
+interaction_vars(m::RootSoilModel) = (:root_extraction,)
 
-"""
-    initialize_interactions(
-        land::RootSoilModel{FT, SM, RM},
-    ) where {FT, SM <: Soil.RichardsModel{FT}, RM <: Roots.RootsModel{FT}}
+interaction_types(m::RootSoilModel{FT}) where {FT} = (FT,)
 
-Initializes the interaction auxiliary variable `p.root_extraction`.
-"""
-function initialize_interactions(#Do we want defaults, for land::AbstractLandModel?
-    land::RootSoilModel{FT, SM, RM},
-) where {FT, SM <: Soil.RichardsModel{FT}, RM <: Roots.RootsModel{FT}}
-
-    zero_state = map(_ -> zero(FT), land.soil.coordinates)
-    return (root_extraction = similar(zero_state),)
-end
+interaction_domains(m::RootSoilModel) = (:soil,)
 
 """
     make_interactions_update_aux(
