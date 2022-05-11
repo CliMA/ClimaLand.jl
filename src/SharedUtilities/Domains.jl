@@ -16,7 +16,6 @@ An abstract type for domains.
 """
 abstract type AbstractDomain{FT <: AbstractFloat} end
 Base.eltype(::AbstractDomain{FT}) where {FT} = FT
-
 """
     coordinates(domain::AbstractDomain)
 

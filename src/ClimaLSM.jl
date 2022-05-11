@@ -6,7 +6,7 @@ import ClimaCore: Fields
 include("SharedUtilities/Domains.jl")
 using .Domains
 include("SharedUtilities/models.jl")
-
+include("Bucket/Bucket.jl")
 
 """
      AbstractLandModel{FT} <: AbstractModel{FT} 
