@@ -32,39 +32,44 @@ abstract type AbstractLandModel{FT} <: AbstractModel{FT} end
 
 ClimaLSM.name(::AbstractLandModel) = :land
 
-function initialize(land::AbstractLandModel{FT}) where {FT}
-    components = land_components(land)
+function Domains.coordinates(model::AbstractLandModel)
+    components = land_components(model)
     coords_list = map(components) do (component)
-        Domains.coordinates(getproperty(land, component))
+        Domains.coordinates(getproperty(model, component))
     end
-    Y_state_list = map(zip(components, coords_list)) do (component, coords)
-        zero_state = map(_ -> zero(FT), coords)
-        getproperty(
-            initialize_prognostic(getproperty(land, component), zero_state),
-            component,
-        )
-    end
-    p_state_list = map(zip(components, coords_list)) do (component, coords)
-        zero_state = map(_ -> zero(FT), coords)
-        getproperty(
-            initialize_auxiliary(getproperty(land, component), zero_state),
-            component,
-        )
-    end
-    p_interactions =
-        initialize_interactions(land, NamedTuple{components}(coords_list))
+    coords =
+        ClimaCore.Fields.FieldVector(; NamedTuple{components}(coords_list)...)
+    return coords
+end
 
-    Y = ClimaCore.Fields.FieldVector(;
-        NamedTuple(zip(components, Y_state_list))...,
-    )
+function initialize_prognostic(model::AbstractLandModel{FT}, coords) where {FT}
+    components = propertynames(coords)
+    Y_state_list = map(components) do (component)
+        zero_state = map(_ -> zero(FT), getproperty(coords, component))
+        getproperty(
+            initialize_prognostic(getproperty(model, component), zero_state),
+            component,
+        )
+    end
+    Y = ClimaCore.Fields.FieldVector(; NamedTuple{components}(Y_state_list)...)
+    return Y
+end
+
+function initialize_auxiliary(model::AbstractLandModel{FT}, coords) where {FT}
+    components = propertynames(coords)
+    p_state_list = map(components) do (component)
+        zero_state = map(_ -> zero(FT), getproperty(coords, component))
+        getproperty(
+            initialize_auxiliary(getproperty(model, component), zero_state),
+            component,
+        )
+    end
+    p_interactions = initialize_interactions(model, coords)
     p = ClimaCore.Fields.FieldVector(;
         p_interactions...,
-        NamedTuple(zip(components, p_state_list))...,
+        NamedTuple{components}(p_state_list)...,
     )
-    coords = ClimaCore.Fields.FieldVector(;
-        NamedTuple(zip(components, coords_list))...,
-    )
-    return Y, p, coords
+    return p
 end
 
 function make_update_aux(land::AbstractLandModel)
@@ -147,7 +152,7 @@ end
 
 Returns the interaction variable symbols for the model in the form of a tuple.
 """
-interactios_vars(m::AbstractLandModel) = ()
+interaction_vars(m::AbstractLandModel) = ()
 
 """
    interaction_types(m::AbstractModel)
@@ -176,7 +181,7 @@ Initializes interaction variables, which are a type of auxiliary
 variable, to empty objects of the correct type for the model. 
 
 Interaction variables are specified by `interaction_vars`, their types
-by `interaction_types`, and their spaces by `interaction_spaces`. 
+by `interaction_types`, and their domains by `interaction_domains`. 
 This function should be called during `initialize_auxiliary` step.
 """
 function initialize_interactions(land::AbstractLandModel, land_coords)
