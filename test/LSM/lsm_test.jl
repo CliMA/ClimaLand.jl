@@ -81,7 +81,7 @@ FT = Float64
         end
         Ysoil.soil.ϑ_l .= hydrostatic_profile.(z, Ref(params))
     end
-    init_soil!(Y, coords.soil.z, land.soil.parameters)
+    init_soil!(Y, coords.subsurface.z, land.soil.parameters)
 
     ## soil is at total ψ+z = -3.0 #m
     ## Want ρgΨ_plant = ρg(-3) - ρg z_plant & convert to MPa

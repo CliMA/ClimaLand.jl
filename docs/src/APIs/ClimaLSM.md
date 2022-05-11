@@ -14,6 +14,7 @@ ClimaLSM.land_components
 ClimaLSM.interaction_vars
 ClimaLSM.interaction_types
 ClimaLSM.interaction_domains
+ClimaLSM.domain
 ```
 
 ## Land Hydrology

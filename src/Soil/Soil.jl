@@ -118,6 +118,7 @@ and water model, with phase change.
 abstract type AbstractSoilModel{FT} <: ClimaLSM.AbstractModel{FT} end
 
 ClimaLSM.name(::AbstractSoilModel) = :soil
+ClimaLSM.domain(::AbstractSoilModel) = :subsurface
 
 """
     coordinates(model::AbstractSoilModel)

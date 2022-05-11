@@ -360,9 +360,9 @@ propertynames(p.surface_water)
 # and the shared interaction term
 propertynames(p)
 # and finally, coordinates - useful for visualization of solutions:
-coords.soil
+coords.subsurface
 # and the coordinates of the surface variables:
-coords.surface_water
+coords.surface
 
 # And we can make the ode function as before:
 land_ode! = make_ode_function(land);
