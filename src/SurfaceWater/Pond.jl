@@ -59,6 +59,7 @@ end
 ClimaLSM.prognostic_vars(model::PondModel) = (:η,)
 ClimaLSM.prognostic_types(model::PondModel{FT}) where {FT} = (FT,)
 ClimaLSM.name(::AbstractSurfaceWaterModel) = :surface_water
+ClimaLSM.domain(::AbstractSurfaceWaterModel) = :surface
 
 function ClimaLSM.make_rhs(model::PondModel)
     function rhs!(dY, Y, p, t)

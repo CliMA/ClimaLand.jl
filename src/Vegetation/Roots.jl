@@ -84,6 +84,7 @@ include multi-layer canopy models and possibly a big leaf model.
 abstract type AbstractVegetationModel{FT} <: AbstractModel{FT} end
 
 ClimaLSM.name(::AbstractVegetationModel) = :vegetation
+ClimaLSM.domain(::AbstractVegetationModel) = :surface
 
 """
     AbstractRootExtraction{FT <: AbstractFloat}

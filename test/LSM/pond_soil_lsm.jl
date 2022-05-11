@@ -65,7 +65,7 @@ FT = Float64
         end
         Ysoil.soil.ϑ_l .= hydrostatic_profile.(coords.z, Ref(params))
     end
-    init_soil!(Y, coords.soil, land.soil.parameters)
+    init_soil!(Y, coords.subsurface, land.soil.parameters)
     # initialize the pond height to zero
     Y.surface_water.η .= 0.0
 

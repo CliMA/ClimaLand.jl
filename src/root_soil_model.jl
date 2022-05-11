@@ -80,7 +80,7 @@ interaction_vars(m::RootSoilModel) = (:root_extraction,)
 
 interaction_types(m::RootSoilModel{FT}) where {FT} = (FT,)
 
-interaction_domains(m::RootSoilModel) = (:soil,)
+interaction_domains(m::RootSoilModel) = (:subsurface,)
 
 """
     make_interactions_update_aux(
