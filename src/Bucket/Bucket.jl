@@ -344,8 +344,13 @@ function surface_fluxes(
     PA <: CoupledAtmosphere{FT},
     PR <: CoupledRadiativeFluxes{FT},
 }
-    # coupler does its thing here
-    return (R_n = FT(0.0), LHF = FT(0.0), SHF = FT(0.0), E = FT(0.0))
+    # coupler has done its thing behind the scenes already
+    return (
+        R_n = p.bucket.R_n,
+        LHF = p.bucket.LHF,
+        SHF = p.bucket.SHF,
+        E = p.bucket.E,
+    )
 end
 
 
