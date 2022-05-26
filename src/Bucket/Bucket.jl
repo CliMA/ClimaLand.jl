@@ -29,9 +29,11 @@ export BucketModelParameters,
     PrescribedAtmosphere,
     PrescribedRadiation,
     BucketModel,
-    CoupledRadiation,
-    CoupledAtmosphere,
-    surface_fluxes
+    AbstractAtmosphericDrivers,
+    AbstractRadiativeDrivers,
+    surface_fluxes,
+    surface_air_density,
+    liquid_precipitation
 include("./bucket_parameterizations.jl")
 
 abstract type AbstractBucketModel{FT} <: AbstractModel{FT} end
@@ -148,14 +150,6 @@ function PrescribedAtmosphere(
 end
 
 
-"""
-    CoupledAtmosphere{FT} <: AbstractAtmosphericDrivers{FT}
-
-To be used when coupling to an atmosphere model; internally, used for
-multiple dispatch on `surface_fluxes`.
-"""
-struct CoupledAtmosphere{FT} <: AbstractAtmosphericDrivers{FT} end
-
 
 """
     PrescribedRadiativeFluxes{FT, SW, LW} <: AbstractRadiativeDrivers{FT}
@@ -174,13 +168,6 @@ end
 PrescribedRadiativeFluxes(FT, SW_d, LW_d) =
     PrescribedRadiativeFluxes{FT, typeof(SW_d), typeof(LW_d)}(SW_d, LW_d)
 
-"""
-    CoupledRadiativeFluxes{FT} <: AbstractRadiativeDrivers{FT}
-
-To be used when coupling to an atmosphere model; internally, used for
-multiple dispatch on `surface_fluxes`.
-"""
-struct CoupledRadiativeFluxes{FT} <: AbstractRadiativeDrivers{FT} end
 
 """
 
@@ -230,9 +217,7 @@ auxiliary_types(::BucketModel{FT}) where {FT} = (FT, FT, FT, FT, FT)
 auxiliary_vars(::BucketModel) = (:q_sfc, :E, :LHF, :SHF, :R_n)
 
 """
-    surface_fluxes( T_sfc::FT,
-                    q_sfc::FT,
-                    S::FT
+    surface_fluxes(Y,p,
                     t::FT,
                     parameters::P,
                     atmos::PA,
@@ -252,6 +237,31 @@ humidity.
 Currently, we only support soil covered surfaces.
 """
 function surface_fluxes(
+    Y,
+    p,
+    t::FT,
+    parameters::P,
+    atmos::PA,
+    radiation::PR,
+) where {
+    FT <: AbstractFloat,
+    P <: BucketModelParameters{FT},
+    PA <: PrescribedAtmosphere{FT},
+    PR <: PrescribedRadiativeFluxes{FT},
+}
+
+    return surface_fluxes_at_a_point.(
+        Y.bucket.T_sfc,
+        p.bucket.q_sfc,
+        Y.bucket.S,
+        t,
+        Ref(parameters),
+        Ref(atmos),
+        Ref(radiation),
+    )
+end
+
+function surface_fluxes_at_a_point(
     T_sfc::FT,
     q_sfc::FT,
     S::FT,
@@ -313,47 +323,6 @@ function surface_fluxes(
 end
 
 
-"""
-    surface_fluxes( T_sfc::FT,
-                    q_sfc::FT,
-                    S::FT
-                    t::FT,
-                    parameters::P,
-                    atmos::PA,
-                    radiation::PR,
-                    ) where {FT <: AbstractFloat, P <: BucketModelParameters{FT},  PA <: CoupledAtmosphere{FT}, PR <: CoupledRadiativeFluxes{FT}}
-
-Computes the surface flux terms at the ground for a coupled simulation:
-net radiation,  SHF,  LHF,
-as well as the water vapor flux (in units of m^3/m^2/s of water).
-Positive fluxes indicate flow from the ground to the atmosphere.
-
-Currently, we only support soil covered surfaces.
-"""
-function surface_fluxes(
-    T_sfc::FT,
-    q_sfc::FT,
-    S::FT,
-    t::FT,
-    parameters::P,
-    atmos::PA,
-    radiation::PR,
-) where {
-    FT <: AbstractFloat,
-    P <: BucketModelParameters{FT},
-    PA <: CoupledAtmosphere{FT},
-    PR <: CoupledRadiativeFluxes{FT},
-}
-    # coupler has done its thing behind the scenes already
-    return (
-        R_n = p.bucket.R_n,
-        LHF = p.bucket.LHF,
-        SHF = p.bucket.SHF,
-        E = p.bucket.E,
-    )
-end
-
-
 
 """
     make_rhs(model::BucketModel{FT}) where {FT}
@@ -364,18 +333,18 @@ function make_rhs(model::BucketModel{FT}) where {FT}
     function rhs!(dY, Y, p, t)
         @unpack d_soil, T0, κ_soil, ρc_soil, S_c, W_f = model.parameters
         # Always positive
-        liquid_precip = model.atmos.liquid_precip(t)
+        liquid_precip = liquid_precipitation(p, model.atmos, t)
         @unpack SHF, LHF, R_n, E = p.bucket
-
         F_surf_soil = @. (R_n + LHF + SHF) # Eqn 16. TODO: modify for snow
 
         F_bot_soil = @. -κ_soil / (d_soil) * (Y.bucket.T_sfc - T0) # Equation (16)
 
-        E_surf_soil = @. (1.0 - heaviside(Y.bucket.S)) * E # Equation (11) assuming E is volume flux
+        E_surf_soil = @. (FT(1.0) - heaviside(Y.bucket.S)) * E # Equation (11) assuming E is volume flux
         space = axes(Y.bucket.S)
 
         # Always positive
-        snow_melt = zeros(axes(Y.bucket.S)) .* (1.0 .- heaviside.(Y.bucket.S)) # Equation (8)
+        snow_melt =
+            zeros(axes(Y.bucket.S)) .* (FT(1.0) .- heaviside.(Y.bucket.S)) # Equation (8)
 
         infiltration =
             infiltration_at_point.(
@@ -396,6 +365,13 @@ function make_rhs(model::BucketModel{FT}) where {FT}
     end
     return rhs!
 end
+function liquid_precipitation(p, atmos::PrescribedAtmosphere, t)
+    return atmos.liquid_precip(t)
+end
+
+function surface_air_density(p, atmos::PrescribedAtmosphere)
+    return atmos.ρ_sfc
+end
 
 """
     make_update_aux(model::BucketModel{FT}) where {FT}
@@ -404,32 +380,23 @@ Creates the update_aux! function for the BucketModel.
 """
 function make_update_aux(model::BucketModel{FT}) where {FT}
     function update_aux!(p, Y, t)
+        ρ_sfc = surface_air_density(p, model.atmos)
         p.bucket.q_sfc .=
             β.(Y.bucket.W, model.parameters.W_f) .*
-            q_sat.(
-                Y.bucket.T_sfc,
-                Y.bucket.S,
-                model.atmos.ρ_sfc,
-                Ref(model.parameters),
-            )
+            q_sat.(Y.bucket.T_sfc, Y.bucket.S, ρ_sfc, Ref(model.parameters))
 
-
-        fluxes =
-            surface_fluxes.(
-                Y.bucket.T_sfc,
-                p.bucket.q_sfc,
-                Y.bucket.S,
-                t,
-                Ref(model.parameters),
-                Ref(model.atmos),
-                Ref(model.radiation),
-            )
+        fluxes = surface_fluxes(
+            Y,
+            p,
+            t,
+            model.parameters,
+            model.atmos,
+            model.radiation,
+        )
 
         @. p.bucket.SHF = fluxes.SHF
-        @. p.bucket.LHF = fluxes.LHF
         @. p.bucket.R_n = fluxes.R_n
         @. p.bucket.E = fluxes.E
-
     end
     return update_aux!
 end

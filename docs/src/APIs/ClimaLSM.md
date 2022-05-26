@@ -39,6 +39,9 @@ ClimaLSM.RootExtraction
 ClimaLSM.BucketModelParameters
 ClimaLSM.PrescribedAtmosphere
 ClimaLSM.PrescribedRadiation
-ClimaLSM.CoupledAtmosphere
-ClimaLSM.CoupledRadiation
+ClimaLSM.AbstractAtmosphericDrivers
+ClimaLSM.AbstractRadiativeDrivers
 ClimaLSM.BucketModel
+ClimaLSM.surface_fluxes
+ClimaLSM.surface_air_density
+ClimaLSM.liquid_precipitation
