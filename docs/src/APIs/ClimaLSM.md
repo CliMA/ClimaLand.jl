@@ -41,7 +41,9 @@ ClimaLSM.PrescribedAtmosphere
 ClimaLSM.PrescribedRadiation
 ClimaLSM.AbstractAtmosphericDrivers
 ClimaLSM.AbstractRadiativeDrivers
+ClimaLSM.BulkAlbedo
 ClimaLSM.BucketModel
 ClimaLSM.surface_fluxes
 ClimaLSM.surface_air_density
 ClimaLSM.liquid_precipitation
+ClimaLSM.surface_albedo
