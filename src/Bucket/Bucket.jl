@@ -13,7 +13,7 @@ using SurfaceFluxes
 using SurfaceFluxes.UniversalFunctions
 using Thermodynamics
 using StaticArrays
-
+using ClimaCore.Fields: coordinate_field
 using ClimaLSM
 import ClimaLSM.Domains: coordinates, Plane
 import ClimaLSM:
@@ -33,12 +33,30 @@ export BucketModelParameters,
     AbstractRadiativeDrivers,
     surface_fluxes,
     surface_air_density,
-    liquid_precipitation
-include("./bucket_parameterizations.jl")
+    liquid_precipitation,
+    BulkAlbedo,
+    surface_albedo
 
 abstract type AbstractBucketModel{FT} <: AbstractModel{FT} end
 abstract type AbstractAtmosphericDrivers{FT <: AbstractFloat} end
 abstract type AbstractRadiativeDrivers{FT <: AbstractFloat} end
+abstract type AbstractLandAlbedoModel{FT <: AbstractFloat} end
+
+"""
+    BulkAlbedo{FT} <: AbstractLandAlbedoModel
+
+An albedo model where the albedo of different surface types
+is specified. Snow albedo is treated as constant across snow
+location and across wavelength. Soil albedo is specified as a function
+of latitude and longitude, but is also treated as constant across
+wavelength.
+"""
+struct BulkAlbedo{FT} <: AbstractLandAlbedoModel{FT}
+    α_snow::FT
+    α_soil::Function
+end
+
+
 
 ClimaLSM.name(::AbstractBucketModel) = :bucket
 
@@ -54,6 +72,7 @@ $(DocStringExtensions.FIELDS)
 """
 struct BucketModelParameters{
     FT <: AbstractFloat,
+    AAM <: AbstractLandAlbedoModel,
     PSE <: AbstractEarthParameterSet,
 }
     "Depth of the soil column (m) used in heat equation"
@@ -64,10 +83,8 @@ struct BucketModelParameters{
     κ_soil::FT
     "Volumetric heat capacity of the soil (J/m^3/K); constant"
     ρc_soil::FT
-    "Shortwave soil albedo; constant"
-    α_soil::FT
-    "Shortwave snow albedo; constant"
-    α_snow::FT
+    "Albedo Model"
+    albedo::AAM
     "Critical SWE amount (m) where surface transitions from soil to snow"
     S_c::FT
     "Capacity of the land bucket (m)"
@@ -85,20 +102,18 @@ BucketModelParameters(
     T0::FT,
     κ_soil::FT,
     ρc_soil::FT,
-    α_soil::FT,
-    α_snow::FT,
+    albedo::AAM,
     S_c::FT,
     W_f::FT,
     z_0m::FT,
     z_0b::FT,
     earth_param_set::PSE,
-) where {FT, PSE} = BucketModelParameters{FT, PSE}(
+) where {FT, AAM, PSE} = BucketModelParameters{FT, AAM, PSE}(
     d_soil,
     T0,
     κ_soil,
     ρc_soil,
-    α_soil,
-    α_snow,
+    albedo,
     S_c,
     W_f,
     z_0m,
@@ -254,6 +269,7 @@ function surface_fluxes(
         Y.bucket.T_sfc,
         p.bucket.q_sfc,
         Y.bucket.S,
+        coordinate_field(Y.bucket.S),
         t,
         Ref(parameters),
         Ref(atmos),
@@ -265,6 +281,7 @@ function surface_fluxes_at_a_point(
     T_sfc::FT,
     q_sfc::FT,
     S::FT,
+    coords,
     t::FT,
     parameters::P,
     atmos::PA,
@@ -276,7 +293,7 @@ function surface_fluxes_at_a_point(
     PR <: PrescribedRadiativeFluxes{FT},
 }
     @unpack ρ_atmos, T_atmos, u_atmos, q_atmos, h_atmos, ρ_sfc = atmos
-    @unpack α_soil, α_snow, z_0m, z_0b, S_c, earth_param_set = parameters
+    @unpack albedo, z_0m, z_0b, S_c, earth_param_set = parameters
     @unpack LW_d, SW_d = radiation
     _σ = Stefan()
     _ρ_liq = ρ_cloud_liq(earth_param_set)
@@ -312,7 +329,7 @@ function surface_fluxes_at_a_point(
         SurfaceFluxes.UniversalFunctions.Businger(),
     )
 
-    α = surface_albedo(α_soil, α_snow, S, S_c)
+    α = surface_albedo(albedo, coords, S, S_c)
     # Recall that the user passed the LW and SW downwelling radiation,
     # where positive values indicate toward surface, so we need a negative sign out front
     # in order to inidicate positive R_n  = towards atmos.
@@ -400,6 +417,7 @@ function make_update_aux(model::BucketModel{FT}) where {FT}
     end
     return update_aux!
 end
+include("./bucket_parameterizations.jl")
 
 
 end

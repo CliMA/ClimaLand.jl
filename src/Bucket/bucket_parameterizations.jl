@@ -12,22 +12,24 @@ function heaviside(x::FT)::FT where {FT}
 end
 
 """
-    surface_albedo(α_soil::FT, α_snow::FT, S::FT, S_c::FT)::FT where {FT <: AbstractFloat}
+    surface_albedo(albedo::BulkAlbedo{FT}, coords, S::FT, S_c::FT)::FT where {FT <: AbstractFloat}
 
-Returns the surface albedo, linearly interpolating between the albedo
+Returns the bulk surface albedo, linearly interpolating between the albedo
 of snow and of soil, based on the snow water equivalent S relative to
 the parameter S_c.
 
-This is taken from Lague et al 2019.
+The linear interpolation is taken from Lague et al 2019.
 """
 function surface_albedo(
-    α_soil::FT,
-    α_snow::FT,
+    albedo::BulkAlbedo{FT},
+    coords,
     S::FT,
     S_c::FT,
 )::FT where {FT <: AbstractFloat}
+    (; α_snow, α_soil) = albedo
+    α_soil_values = α_soil(coords)
     safe_S::FT = max(S, eps(FT))
-    return (FT(1.0) - S / (S + S_c)) * α_soil + S / (S + S_c) * α_snow
+    return (FT(1.0) - S / (S + S_c)) * α_soil_values + S / (S + S_c) * α_snow
 end
 
 """

@@ -12,7 +12,8 @@ using ClimaLSM.Bucket:
     BucketModel,
     BucketModelParameters,
     PrescribedAtmosphere,
-    PrescribedRadiativeFluxes
+    PrescribedRadiativeFluxes,
+    BulkAlbedo
 using ClimaLSM.Domains: coordinates, Plane
 using ClimaLSM: initialize, make_update_aux, make_ode_function
 
@@ -22,8 +23,9 @@ FT = Float64
 # Bucket model parameters
 struct EarthParameterSet <: AbstractEarthParameterSet end
 const earth_param_set = EarthParameterSet()
-α_soil = FT(0.2) # soil albedo
+α_soil = (coordinate_point) -> FT(0.2) # soil albedo, spatially constant
 α_snow = FT(0.8) # snow albedo
+albedo = BulkAlbedo{FT}(α_snow, α_soil)
 S_c = FT(0.2)
 W_f = FT(0.15)
 d_soil = FT(100.0) # soil depth
@@ -37,8 +39,7 @@ bucket_parameters = BucketModelParameters(
     T0,
     κ_soil,
     ρc_soil,
-    α_soil,
-    α_snow,
+    albedo,
     S_c,
     W_f,
     z_0m,
