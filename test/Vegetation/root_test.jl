@@ -3,7 +3,7 @@ using Statistics
 using NLsolve
 using OrdinaryDiffEq: ODEProblem, solve, Euler
 using ClimaCore
-using CLIMAParameters: AbstractEarthParameterSet
+import CLIMAParameters as CP
 
 if !("." in LOAD_PATH)
     push!(LOAD_PATH, ".")
@@ -11,6 +11,8 @@ end
 using ClimaLSM
 using ClimaLSM.Domains: RootDomain
 using ClimaLSM.Roots
+import ClimaLSM
+include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
 
 FT = Float64
 
@@ -26,8 +28,8 @@ FT = Float64
     z_leaf = FT(12) # height of leaf
     z_root_depths = [FT(-1.0)] # m, rooting depth
     z_bottom_stem = FT(0.0)
-    struct EarthParameterSet <: AbstractEarthParameterSet end
-    earth_param_set = EarthParameterSet()
+    earth_param_set = create_lsm_parameters(FT)
+
     root_domain = RootDomain{FT}(z_root_depths, [z_bottom_stem, z_leaf])
     param_set = Roots.RootsParameters{FT, typeof(earth_param_set)}(
         a_root,

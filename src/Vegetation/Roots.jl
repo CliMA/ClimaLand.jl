@@ -1,6 +1,7 @@
-# To do: convert all units to SI, move constants out of code and use ClimaParameters,
-# convert from a single plant to a bulk plant (units change, required input changes).
-# we should also change the name to Vegetation or biophysics as appropriate.
+# To do: convert all units to SI, move constants out of src/ code and pass through,
+# via structs. convert from a single plant to a bulk plant (units change, required
+# input changes). we should also change the name to Vegetation or biophysics as
+# appropriate.
 module Roots
 #=
     Roots
@@ -49,7 +50,6 @@ using ClimaCore
 using UnPack
 using DocStringExtensions
 import ClimaCore: Fields
-using CLIMAParameters: AbstractEarthParameterSet
 
 using ClimaLSM.Domains: AbstractVegetationDomain, RootDomain
 import ClimaLSM:
@@ -108,10 +108,10 @@ abstract type AbstractTranspiration{FT <: AbstractFloat} end
 
 """
     RootsParameters{FT <: AbstractFloat}
-A struct for holding parameters of the Root Model. Eventually to be used with ClimaParameters.
+A struct for holding parameters of the Root Model.
 $(DocStringExtensions.FIELDS)
 """
-struct RootsParameters{FT <: AbstractFloat, PSE <: AbstractEarthParameterSet}
+struct RootsParameters{FT <: AbstractFloat, PSE}
     "controls the shape and steepness of conductance vs. pressure curve, for roots: unitless"
     a_root::FT
     "controls the steepness of the relative conductance vs. pressure curve, for roots: inverse MPa"

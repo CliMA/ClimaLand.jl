@@ -3,7 +3,7 @@ using UnPack
 using Statistics
 using DifferentialEquations
 using ClimaCore
-using CLIMAParameters: AbstractEarthParameterSet
+import CLIMAParameters as CP
 
 if !("." in LOAD_PATH)
     push!(LOAD_PATH, ".")
@@ -11,6 +11,9 @@ end
 using ClimaLSM
 using ClimaLSM.Domains: Column
 using ClimaLSM.Soil
+
+import ClimaLSM
+include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
 
 FT = Float64
 
@@ -85,8 +88,7 @@ end
 
 
 @testset "Soil Energy and Water RHS unit tests" begin
-    struct EarthParameterSet <: AbstractEarthParameterSet end
-    earth_param_set = EarthParameterSet()
+    earth_param_set = create_lsm_parameters(FT)
     ν = FT(0.495)
     K_sat = FT(0.0443 / 3600 / 100) # m/s
     S_s = FT(1e-3) #inverse meters

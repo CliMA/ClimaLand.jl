@@ -84,14 +84,15 @@ Computes the saturation specific humidity for the land surface, over ice
 if snow is present (S>0), and over water for a snow-free surface.
 """
 function q_sat(T::FT, S::FT, ρ_sfc::FT, parameters::PE)::FT where {FT, PE}
+    thermo_params = LSMP.thermodynamic_parameters(parameters.earth_param_set)
     return (FT(1.0) - heaviside(S)) * Thermodynamics.q_vap_saturation_generic(
-        parameters.earth_param_set,
+        thermo_params,
         T,
         ρ_sfc,
         Thermodynamics.Liquid(),
     )
     +heaviside(S) * Thermodynamics.q_vap_saturation_generic(
-        parameters.earth_param_set,
+        thermo_params,
         T,
         ρ_sfc,
         Thermodynamics.Ice(),

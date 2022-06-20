@@ -1,5 +1,4 @@
-using CLIMAParameters.Planet: ρ_cloud_liq, ρ_cloud_ice, cp_l, cp_i, T_0, LH_f0
-using CLIMAParameters.Atmos.Microphysics: K_therm
+
 using UnPack
 export volumetric_internal_energy,
     temperature_from_ρe_int,
@@ -28,11 +27,11 @@ function volumetric_heat_capacity(
     θ_i::FT,
     parameters::EnergyHydrologyParameters{FT},
 ) where {FT}
-    _ρ_i = FT(ρ_cloud_ice(parameters.earth_param_set))
-    ρcp_i = FT(cp_i(parameters.earth_param_set) * _ρ_i)
+    _ρ_i = FT(LSMP.ρ_cloud_ice(parameters.earth_param_set))
+    ρcp_i = FT(LSMP.cp_i(parameters.earth_param_set) * _ρ_i)
 
-    _ρ_l = FT(ρ_cloud_liq(parameters.earth_param_set))
-    ρcp_l = FT(cp_l(parameters.earth_param_set) * _ρ_l)
+    _ρ_l = FT(LSMP.ρ_cloud_liq(parameters.earth_param_set))
+    ρcp_l = FT(LSMP.cp_l(parameters.earth_param_set) * _ρ_l)
 
     ρc_s = parameters.ρc_ds + θ_l * ρcp_l + θ_i * ρcp_i
     return ρc_s
@@ -52,9 +51,9 @@ function temperature_from_ρe_int(
     parameters::EnergyHydrologyParameters{FT},
 ) where {FT}
 
-    _ρ_i = FT(ρ_cloud_ice(parameters.earth_param_set))
-    _T_ref = FT(T_0(parameters.earth_param_set))
-    _LH_f0 = FT(LH_f0(parameters.earth_param_set))
+    _ρ_i = FT(LSMP.ρ_cloud_ice(parameters.earth_param_set))
+    _T_ref = FT(LSMP.T_0(parameters.earth_param_set))
+    _LH_f0 = FT(LSMP.LH_f0(parameters.earth_param_set))
     T = _T_ref + (ρe_int + θ_i * _ρ_i * _LH_f0) / ρc_s
     return T
 end
@@ -72,9 +71,9 @@ function volumetric_internal_energy(
     T::FT,
     parameters::EnergyHydrologyParameters{FT},
 ) where {FT}
-    _ρ_i = FT(ρ_cloud_ice(parameters.earth_param_set))
-    _LH_f0 = FT(LH_f0(parameters.earth_param_set))
-    _T_ref = FT(T_0(parameters.earth_param_set))
+    _ρ_i = FT(LSMP.ρ_cloud_ice(parameters.earth_param_set))
+    _LH_f0 = FT(LSMP.LH_f0(parameters.earth_param_set))
+    _T_ref = FT(LSMP.T_0(parameters.earth_param_set))
     ρe_int = ρc_s * (T - _T_ref) - θ_i * _ρ_i * _LH_f0
     return ρe_int
 end
@@ -91,9 +90,9 @@ function volumetric_internal_energy_liq(
     parameters::EnergyHydrologyParameters{FT},
 ) where {FT}
 
-    _T_ref = FT(T_0(parameters.earth_param_set))
-    _ρ_l = FT(ρ_cloud_liq(parameters.earth_param_set))
-    ρcp_l = FT(cp_l(parameters.earth_param_set) * _ρ_l)
+    _T_ref = FT(LSMP.T_0(parameters.earth_param_set))
+    _ρ_l = FT(LSMP.ρ_cloud_liq(parameters.earth_param_set))
+    ρcp_l = FT(LSMP.cp_l(parameters.earth_param_set) * _ρ_l)
     ρe_int_l = ρcp_l * (T - _T_ref)
     return ρe_int_l
 end

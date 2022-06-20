@@ -3,7 +3,7 @@ using DifferentialEquations
 using UnPack
 using OrdinaryDiffEq: ODEProblem, solve, Euler
 using ClimaCore
-using CLIMAParameters: AbstractEarthParameterSet
+import CLIMAParameters as CP
 
 if !("." in LOAD_PATH)
     push!(LOAD_PATH, ".")
@@ -13,12 +13,13 @@ using ClimaLSM
 using ClimaLSM.Domains: Column, RootDomain
 using ClimaLSM.Soil
 using ClimaLSM.Roots
+import ClimaLSM
+include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
 
 FT = Float64
 @testset "Root soil LSM integration test" begin
     saved_values = SavedValues(FT, ClimaCore.Fields.FieldVector)
-    struct EarthParameterSet <: AbstractEarthParameterSet end
-    earth_param_set = EarthParameterSet()
+    earth_param_set = create_lsm_parameters(FT)
     a_root = FT(13192)
     a_stem = FT(515.5605)
     b_root = FT(2.1079)

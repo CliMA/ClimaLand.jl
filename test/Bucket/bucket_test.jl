@@ -3,7 +3,7 @@ using Test
 using OrdinaryDiffEq: ODEProblem, solve, RK4, Euler
 using DifferentialEquations
 using ClimaCore
-using CLIMAParameters: AbstractEarthParameterSet
+import CLIMAParameters as CP
 
 if !("." in LOAD_PATH)
     push!(LOAD_PATH, ".")
@@ -21,8 +21,10 @@ using ClimaLSM: initialize, make_update_aux, make_ode_function
 FT = Float64
 
 # Bucket model parameters
-struct EarthParameterSet <: AbstractEarthParameterSet end
-const earth_param_set = EarthParameterSet()
+import ClimaLSM
+include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
+earth_param_set = create_lsm_parameters(FT)
+
 α_soil = (coordinate_point) -> FT(0.2) # soil albedo, spatially constant
 α_snow = FT(0.8) # snow albedo
 albedo = BulkAlbedo{FT}(α_snow, α_soil)

@@ -5,16 +5,13 @@ module Bucket
 # (3) Look at allocations & performance...
 using UnPack
 using DocStringExtensions
-using CLIMAParameters: AbstractEarthParameterSet
-using CLIMAParameters: Stefan
-using CLIMAParameters.Planet:
-    LH_v0, LH_s0, LH_f0, ρ_cloud_liq, T_freeze, T_0, R_d, cp_d, grav, cp_v
 using SurfaceFluxes
 using SurfaceFluxes.UniversalFunctions
 using Thermodynamics
 using StaticArrays
 using ClimaCore.Fields: coordinate_field
 using ClimaLSM
+import ..Parameters as LSMP
 import ClimaLSM.Domains: coordinates, Plane
 import ClimaLSM:
     AbstractModel,
@@ -63,7 +60,7 @@ ClimaLSM.name(::AbstractBucketModel) = :bucket
 """
     struct BucketModelParameters{
         FT <: AbstractFloat,
-        PSE <: AbstractEarthParameterSet,
+        PSE,
     }
 
 Container for holding the parameters of the bucket model.
@@ -73,7 +70,7 @@ $(DocStringExtensions.FIELDS)
 struct BucketModelParameters{
     FT <: AbstractFloat,
     AAM <: AbstractLandAlbedoModel,
-    PSE <: AbstractEarthParameterSet,
+    PSE,
 }
     "Depth of the soil column (m) used in heat equation"
     d_soil::FT
@@ -295,13 +292,15 @@ function surface_fluxes_at_a_point(
     @unpack ρ_atmos, T_atmos, u_atmos, q_atmos, h_atmos, ρ_sfc = atmos
     @unpack albedo, z_0m, z_0b, S_c, earth_param_set = parameters
     @unpack LW_d, SW_d = radiation
-    _σ = Stefan()
-    _ρ_liq = ρ_cloud_liq(earth_param_set)
+    _σ = LSMP.Stefan(earth_param_set)
+    _ρ_liq = LSMP.ρ_cloud_liq(earth_param_set)
+
+    thermo_params = LSMP.thermodynamic_parameters(earth_param_set)
 
     # call surface fluxes for E, SHF, LHF
-    ts_sfc = Thermodynamics.PhaseEquil_ρTq(earth_param_set, ρ_sfc, T_sfc, q_sfc)
+    ts_sfc = Thermodynamics.PhaseEquil_ρTq(thermo_params, ρ_sfc, T_sfc, q_sfc)
     ts_in = Thermodynamics.PhaseEquil_ρTq(
-        earth_param_set,
+        thermo_params,
         ρ_atmos(t),
         T_atmos(t),
         q_atmos(t),
@@ -322,12 +321,8 @@ function surface_fluxes_at_a_point(
         z0m = z_0m,
         z0b = z_0b,
     )
-
-    conditions = SurfaceFluxes.surface_conditions(
-        earth_param_set,
-        sc,
-        SurfaceFluxes.UniversalFunctions.Businger(),
-    )
+    surface_flux_params = LSMP.surface_fluxes_parameters(earth_param_set)
+    conditions = SurfaceFluxes.surface_conditions(surface_flux_params, sc)
 
     α = surface_albedo(albedo, coords, S, S_c)
     # Recall that the user passed the LW and SW downwelling radiation,
@@ -335,7 +330,9 @@ function surface_fluxes_at_a_point(
     # in order to inidicate positive R_n  = towards atmos.
     R_n = -((FT(1) - α) * SW_d(t) + LW_d(t) - _σ * T_sfc^FT(4.0))
     # Land needs a volume flux of water, not mass flux
-    E = SurfaceFluxes.evaporation(sc, earth_param_set, conditions.Ch) / _ρ_liq
+    E =
+        SurfaceFluxes.evaporation(sc, surface_flux_params, conditions.Ch) /
+        _ρ_liq
     return (R_n = R_n, LHF = conditions.lhf, SHF = conditions.shf, E = E)
 end
 
