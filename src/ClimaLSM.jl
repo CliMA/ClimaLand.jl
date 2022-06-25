@@ -1,8 +1,13 @@
 module ClimaLSM
 using UnPack
 using DocStringExtensions
+
 using ClimaCore
 import ClimaCore: Fields
+
+include("Parameters.jl")
+import .Parameters as LSMP
+
 include("SharedUtilities/Domains.jl")
 using .Domains
 include("SharedUtilities/models.jl")

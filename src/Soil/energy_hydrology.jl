@@ -7,10 +7,7 @@ form, we assume the conductivity and volumetric heat capacity
 of the soil are constant.
 $(DocStringExtensions.FIELDS)
 """
-struct EnergyHydrologyParameters{
-    FT <: AbstractFloat,
-    PSE <: AbstractEarthParameterSet,
-}
+struct EnergyHydrologyParameters{FT <: AbstractFloat, PSE}
     "The dry soil thermal conductivity, W/m/K"
     κ_dry::FT
     "The saturated thermal conductivity of frozen soil, W/m/K"

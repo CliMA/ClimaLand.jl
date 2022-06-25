@@ -1,32 +1,32 @@
 using Test
 using UnPack
-using CLIMAParameters.Planet: ρ_cloud_liq, ρ_cloud_ice, cp_l, cp_i, T_0, LH_f0
-using CLIMAParameters.Atmos.Microphysics: K_therm
-using CLIMAParameters: AbstractEarthParameterSet
+import CLIMAParameters as CP
 if !("." in LOAD_PATH)
     push!(LOAD_PATH, ".")
 end
 using ClimaLSM.Soil
+import ClimaLSM
+import ClimaLSM.Parameters as LSMP
+include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
 
 @testset "Integrated Energy and Hydrology Parameterizations" begin
     FT = Float64
-    struct EarthParameterSet <: AbstractEarthParameterSet end
-    param_set = EarthParameterSet()
+    param_set = create_lsm_parameters(FT)
 
     # Density of liquid water (kg/m``^3``)
-    _ρ_l = FT(ρ_cloud_liq(param_set))
+    _ρ_l = FT(LSMP.ρ_cloud_liq(param_set))
     # Density of ice water (kg/m``^3``)
-    _ρ_i = FT(ρ_cloud_ice(param_set))
+    _ρ_i = FT(LSMP.ρ_cloud_ice(param_set))
     # Volum. isobaric heat capacity liquid water (J/m3/K)
-    _ρcp_l = FT(cp_l(param_set) * _ρ_l)
+    _ρcp_l = FT(LSMP.cp_l(param_set) * _ρ_l)
     # Volumetric isobaric heat capacity ice (J/m3/K)
-    _ρcp_i = FT(cp_i(param_set) * _ρ_i)
+    _ρcp_i = FT(LSMP.cp_i(param_set) * _ρ_i)
     # Reference temperature (K)
-    _T_ref = FT(T_0(param_set))
+    _T_ref = FT(LSMP.T_0(param_set))
     # Latent heat of fusion at ``T_0`` (J/kg)
-    _LH_f0 = FT(LH_f0(param_set))
+    _LH_f0 = FT(LSMP.LH_f0(param_set))
     # Thermal conductivity of dry air
-    κ_air = FT(K_therm(param_set))
+    κ_air = FT(LSMP.K_therm(param_set))
 
     ν = 0.2
     S_s = 1e-3
