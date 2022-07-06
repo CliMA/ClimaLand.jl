@@ -19,7 +19,10 @@ ClimaLSM.Bucket.BucketModel
 
 ```@docs
 ClimaLSM.Bucket.surface_fluxes
+ClimaLSM.Bucket.net_radiation
 ClimaLSM.Bucket.surface_air_density
 ClimaLSM.Bucket.liquid_precipitation
+ClimaLSM.Bucket.snow_precipitation
 ClimaLSM.Bucket.surface_albedo
+ClimaLSM.Bucket.partition_surface_fluxes
 ```

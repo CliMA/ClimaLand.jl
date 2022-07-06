@@ -28,8 +28,12 @@ steps:
   - group: "Unit tests"
     steps:
 
-      - label: "bucket_test"
-        command: "julia --color=yes --project=test test/Bucket/bucket_test.jl"
+      - label: "soil_bucket_tests"
+        command: "julia --color=yes --project=test test/Bucket/soil_bucket_tests.jl"
+        artifact_paths: "bucket_test/"
+
+      - label: "snow_bucket_tests"
+        command: "julia --color=yes --project=test test/Bucket/snow_bucket_tests.jl"
         artifact_paths: "bucket_test/"
 
       - label: "root_test"
@@ -73,4 +77,3 @@ steps:
       - label: "soil_bc"
         command: "julia --color=yes --project=test test/Soil/soil_bc.jl"
         artifact_paths: "soil_bc/"
-
