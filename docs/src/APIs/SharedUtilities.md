@@ -9,6 +9,7 @@ CurrentModule = ClimaLSM
 ClimaLSM.Domains.AbstractDomain
 ClimaLSM.Domains.RootDomain
 ClimaLSM.Domains.AbstractVegetationDomain
+ClimaLSM.Domains.SphericalShell
 ClimaLSM.Domains.HybridBox
 ClimaLSM.Domains.Column
 ClimaLSM.Domains.Plane
@@ -25,7 +26,9 @@ ClimaLSM.make_ode_function
 ClimaLSM.make_rhs
 ClimaLSM.make_update_aux
 ClimaLSM.prognostic_vars
+ClimaLSM.prognostic_types
 ClimaLSM.auxiliary_vars
+ClimaLSM.auxiliary_types
 ClimaLSM.initialize_prognostic
 ClimaLSM.initialize_auxiliary
 ClimaLSM.initialize
