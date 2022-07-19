@@ -24,7 +24,7 @@ import ClimaLSM:
     auxiliary_types
 export BucketModelParameters,
     PrescribedAtmosphere,
-    PrescribedRadiation,
+    PrescribedRadiativeFluxes,
     BucketModel,
     AbstractAtmosphericDrivers,
     AbstractRadiativeDrivers,
@@ -35,7 +35,19 @@ export BucketModelParameters,
     surface_albedo
 
 abstract type AbstractBucketModel{FT} <: AbstractModel{FT} end
+
+"""
+     AbstractAtmosphericDrivers{FT <: AbstractFloat}
+
+An abstract type of atmospheric drivers of the bucket model.
+"""
 abstract type AbstractAtmosphericDrivers{FT <: AbstractFloat} end
+
+"""
+     AbstractRadiativeDrivers{FT <: AbstractFloat}
+
+An abstract type of radiative drivers of the bucket model.
+"""
 abstract type AbstractRadiativeDrivers{FT <: AbstractFloat} end
 abstract type AbstractLandAlbedoModel{FT <: AbstractFloat} end
 
@@ -379,10 +391,21 @@ function make_rhs(model::BucketModel{FT}) where {FT}
     end
     return rhs!
 end
+
+"""
+    liquid_precipitation(p, atmos::PrescribedAtmosphere, t)
+
+Returns the liquid precipitation (m/s) at the surface.
+"""
 function liquid_precipitation(p, atmos::PrescribedAtmosphere, t)
     return atmos.liquid_precip(t)
 end
 
+"""
+    surface_air_density(p, atmos::PrescribedAtmosphere)
+
+Returns the air density (kg/m^3) at the surface.
+"""
 function surface_air_density(p, atmos::PrescribedAtmosphere)
     return atmos.ρ_sfc
 end
@@ -407,7 +430,7 @@ function make_update_aux(model::BucketModel{FT}) where {FT}
             model.atmos,
             model.radiation,
         )
-
+        @. p.bucket.LHF = fluxes.LHF
         @. p.bucket.SHF = fluxes.SHF
         @. p.bucket.R_n = fluxes.R_n
         @. p.bucket.E = fluxes.E

@@ -116,9 +116,9 @@
 
 # Let's first import some needed packages.
 using OrdinaryDiffEq: ODEProblem, solve, RK4
+using SciMLBase
 using Plots
 using ClimaCore
-using DifferentialEquations
 if !("." in LOAD_PATH)
     push!(LOAD_PATH, ".")
 end
