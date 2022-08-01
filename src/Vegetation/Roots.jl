@@ -1,6 +1,16 @@
-# To do: convert all units to SI, move constants out of code and use ClimaParameters,
-# convert from a single plant to a bulk plant (units change, required input changes).
-# we should also change the name to Vegetation or biophysics as appropriate.
+# To do: 
+
+# 1) update Roots file on main branch
+# 2) update 2 roots tests on root_extraction branch
+# 3) make the number of state variables n on separate branch 
+
+# Update
+# convert all units to SI
+# move constants out of code and use ClimaParameters
+# convert from a single plant to a bulk plant (units change, required input changes)
+# we should also change the name to Vegetation or biophysics as appropriate
+
+
 module Roots
 #=
     Roots
