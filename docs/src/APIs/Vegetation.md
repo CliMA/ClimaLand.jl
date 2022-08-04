@@ -28,7 +28,6 @@ ClimaLSM.Roots.RootsParameters
 ## Roots Methods and Types
 
 ```@docs
-ClimaLSM.Roots.flow_out_roots
 ClimaLSM.Roots.PrescribedSoilPressure
 ClimaLSM.Roots.PrescribedTranspiration
 ClimaLSM.Roots.AbstractRootExtraction

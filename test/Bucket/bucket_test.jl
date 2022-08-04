@@ -69,7 +69,7 @@ bucket_domain = Plane(;
     T_atmos = (t) -> eltype(t)(280.0)
     u_atmos = (t) -> eltype(t)(1.0)
     q_atmos = (t) -> eltype(t)(0.0) # no atmos water
-    h_atmos = FT(30)
+    h_atmos = FT(1e-8)
     ρ_atmos = (t) -> eltype(t)(1.13)
     ρ_sfc = FT(1.15)
     bucket_atmos = PrescribedAtmosphere(
@@ -109,7 +109,7 @@ end
 
 @testset "Energy Only Equilibrium" begin
     # Energy: P = E = W = 0 (no moisture)
-    # Set u_atmos = 0.0 so there are no turbulent fluxes
+    # Set h_atmos = 0.0 so there are no turbulent fluxes
     # Set downward radiation = 300 W / m2
     # RHS of heat equation is -1/d(R↓-σT^4 +κ/d *(T-T_0))
     # can solve for fixed point = 255.69458073555182
@@ -120,9 +120,9 @@ end
     # Atmosphere with no precipitation
     precip = (t) -> eltype(t)(0) # no precipitation
     T_atmos = (t) -> eltype(t)(298.0)
-    u_atmos = (t) -> eltype(t)(0.0) # no turbulent fluxes
+    u_atmos = (t) -> eltype(t)(1.0)
     q_atmos = (t) -> eltype(t)(0.0) # no atmos water
-    h_atmos = FT(30)
+    h_atmos = FT(1e-12)
     ρ_atmos = (t) -> eltype(t)(1.13)
     ρ_sfc = FT(1.15)
     bucket_atmos = PrescribedAtmosphere(
@@ -174,9 +174,9 @@ end
     # Atmosphere with no precipitation
     precip = (t) -> eltype(t)(1e-2)
     T_atmos = (t) -> eltype(t)(298.0)
-    u_atmos = (t) -> eltype(t)(0.0) # no turbulent fluxes
+    u_atmos = (t) -> eltype(t)(1.0)
     q_atmos = (t) -> eltype(t)(0.0) # no atmos water
-    h_atmos = FT(30)
+    h_atmos = FT(1e-8)
     ρ_atmos = (t) -> eltype(t)(1.13)
     ρ_sfc = FT(1.15)
     bucket_atmos = PrescribedAtmosphere(
