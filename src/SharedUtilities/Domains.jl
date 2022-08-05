@@ -396,7 +396,6 @@ An abstract type for vegetation specific domains.
 """
 abstract type AbstractVegetationDomain{FT} <: AbstractDomain{FT} end
 
-
 """
    RootDomain{FT} <: AbstractVegetationDomain{FT}
 
@@ -409,13 +408,16 @@ struct RootDomain{FT} <: AbstractVegetationDomain{FT}
     "The depth of the root tips, in meters"
     root_depths::Vector{FT}
     "The height of the stem, leaf compartments, in meters"
-    compartment_heights::Vector{FT}
+    compartment_surfaces::Vector{FT}
+    "The height of the midpoint of the stem, leaf compartments, in meters"
+    compartment_midpoints::Vector{FT}
 end
 
 function coordinates(domain::RootDomain{FT}) where {FT}
-    return domain.compartment_heights
+    return domain.compartment_midpoints # array of centers here
 end
 
+# loop over coordinates, when initialize
 """
     LSMSingleColumnDomain{FT} <: AbstractDomain{FT}
 

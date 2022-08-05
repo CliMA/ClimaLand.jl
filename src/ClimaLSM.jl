@@ -231,7 +231,7 @@ using .Soil
 import .Soil: source!, boundary_fluxes
 include("Vegetation/Roots.jl")
 using .Roots
-import .Roots: flow_out_roots
+import .Roots: flux_out_roots
 
 ### Concrete types of AbstractLandModels
 ### and associated methods

@@ -121,7 +121,7 @@ from the soil.
 struct PrognosticSoilPressure{FT} <: Roots.AbstractRootExtraction{FT} end
 
 """
-    Roots.flow_out_roots(
+    Roots.flux_out_roots(
         re::PrognosticSoilPressure{FT},
         model::Roots.RootsModel{FT},
         Y::ClimaCore.Fields.FieldVector,
@@ -129,7 +129,7 @@ struct PrognosticSoilPressure{FT} <: Roots.AbstractRootExtraction{FT} end
         t::FT,
     )::FT where {FT}
 
-An extension of the `Roots.flow_out_roots` function,
+An extension of the `Roots.flux_out_roots` function,
  which returns the
 net flow of water between the
 roots and the soil, when both soil and plant
@@ -138,7 +138,7 @@ hydraulics are modeled prognostically. This is for use in an LSM.
 It is computed by summing the flow of water between
 roots and soil at each soil layer.
 """
-function Roots.flow_out_roots(
+function Roots.flux_out_roots(
     re::PrognosticSoilPressure{FT},
     model::Roots.RootsModel{FT},
     Y::ClimaCore.Fields.FieldVector,
