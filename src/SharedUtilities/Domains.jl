@@ -11,14 +11,12 @@ import ClimaCore.Meshes: Uniform
 
 """
     AbstractDomain{FT <:AbstractFloat}
-
 An abstract type for domains.
 """
 abstract type AbstractDomain{FT <: AbstractFloat} end
 Base.eltype(::AbstractDomain{FT}) where {FT} = FT
 """
     coordinates(domain::AbstractDomain)
-
 Returns the coordinate field for the domain.
 """
 function coordinates(domain::AbstractDomain)
@@ -28,9 +26,7 @@ end
 
 """
     Point{FT} <: AbstractDomain{FT}
-
 A domain for single column surface variables.
-
 For models such as ponds, snow, roots, etc. Enables consistency 
 in variable initialization across all domains.
 # Fields
@@ -45,7 +41,6 @@ end
 
 """
     Point(;z_sfc::FT) where {FT}
-
 Constructor for the `Point` domain using keyword arguments.
 """
 function Point(; z_sfc::FT) where {FT}
@@ -56,7 +51,6 @@ end
 
 """
     Column{FT} <: AbstractDomain{FT}
-
 A struct holding the necessary information 
 to construct a domain, a mesh, a center and face
 space, etc. for use when a finite difference in
@@ -79,9 +73,7 @@ end
     Column(;
         zlim::Tuple{FT, FT},
         nelements::Int) where {FT}
-
 Outer constructor for the `Column` type.
-
 The `boundary_tags` field values are used to label the boundary faces 
 at the top and bottom of the domain.
 """
@@ -105,11 +97,9 @@ end
 
 """
     Plane{FT} <: AbstractDomain{FT}
-
 A struct holding the necessary information 
 to construct a domain, a mesh, a 2d spectral
 element space, and the resulting coordinate field.
-
 Note that only periodic domains are currently supported.
 # Fields
 $(DocStringExtensions.FIELDS)
@@ -137,7 +127,6 @@ end
         periodic::Tuple{Bool,Bool},
         npolynomial::Int
         ) where {FT}
-
 Outer constructor for the `Plane` domain, using keyword arguments.
 """
 function Plane(;
@@ -189,11 +178,9 @@ end
         npolynomial::Int
         periodic::Tuple{Bool, Bool}
     end
-
 A struct holding the necessary information to construct a domain, a mesh, 
 a 2d spectral element space (horizontal) x a 1d finite difference space
  (vertical), and the resulting coordinate field.
-
 This domain is not periodic along the z-axis. Note that 
 only periodic domains are supported
 in the horizontal.
@@ -226,11 +213,9 @@ end
         npolynomial::Int,
         periodic = (true, true),
     ) where {FT}
-
 Constructs the `HybridBox` domain
  with limits `xlim` `ylim` and `zlim` 
 (where `xlim[1] < xlim[2]`,`ylim[1] < ylim[2]`, and `zlim[1] < zlim[2]`), 
-
 `nelements` must be a tuple with three values, with the first 
 value corresponding
 to the x-axis, the second corresponding to the y-axis, and the third 
@@ -289,7 +274,6 @@ end
         nelements::Tuple{Int, Int}
         npolynomial::Int
     end
-
 A struct holding the necessary information to construct a domain, a mesh, 
 a 2d spectral element space (non-radial directions) 
 x a 1d finite difference space (radial direction),
@@ -317,7 +301,6 @@ end
         nelements::Tuple{Int, Int},
         npolynomial::Int,
     ) where {FT}
-
 Outer constructor for the `SphericalShell` domain, using keyword arguments.
 """
 function SphericalShell(;
@@ -367,7 +350,6 @@ end
         nelements::Tuple{Int, Int}
         npolynomial::Int
     end
-
 A struct holding the necessary information to construct a domain, a mesh, 
 a 2d spectral element space (non-radial directions) and the resulting coordinate field.
 # Fields
@@ -390,7 +372,6 @@ end
         nelements::Int
         npolynomial::Int,
     ) where {FT}
-
 Outer constructor for the `SphericalSurface` domain, using keyword arguments.
 """
 function SphericalSurface(;
@@ -416,7 +397,6 @@ end
 abstract type AbstractVegetationDomain{FT} <: AbstractDomain{FT} end
 """
    RootDomain{FT} <: AbstractVegetationDomain{FT}
-
 Domain for a single bulk plant with roots ofvarying depths. The user needs
 to specify the depths of the root tips as wel as the heights of the
 compartments to be modeled within the plant. The compartment heights
@@ -435,7 +415,6 @@ end
 
 """
     AbstractLSMDomain{FT} <: AbstractDomain{FT}
-
 An abstract type for LSMDomains, which have two components: a surface
 and a subsurface.
 """
@@ -443,15 +422,12 @@ abstract type AbstractLSMDomain{FT} <: AbstractDomain{FT} end
 
 """
     LSMSingleColumnDomain{FT} <: AbstractLSMDomain{FT}
-
 A mixed domain, consisting of a column domain with z-coordinates at the
 finite difference cell centers, and a point domain, with a single z
 coordinate at the top boundary of the column domain.
-
 For use in LSM modeling, where a subsurface finite difference space 
 (for modeling soil hydrology and energy) and a surface space are both
 needed.
-
 # Fields
 $(DocStringExtensions.FIELDS)
 """
@@ -467,7 +443,6 @@ end
         zlim::Tuple{FT, FT},
         nelements::Int,
     ) where {FT}
-
 A constructor for the LSMSingleColumnDomain.
 """
 function LSMSingleColumnDomain(; zlim::Tuple{FT, FT}, nelements::Int) where {FT}
@@ -502,7 +477,6 @@ end
         npolynomial::Int
         periodic::Tuple{Bool, Bool}
     ) where {FT}
-
 A constructor for the LSMSingleColumnDomain.
 """
 function LSMMultiColumnDomain(;
@@ -546,7 +520,6 @@ end
 
 """
     coordinates(domain::AbstractLSMDomain{FT}) where {FT}
-
 Returns the coordinates of the AbstractLSMDomain as a named tuple,
 with keys of `subsurface` and `surface`.
 """
@@ -559,7 +532,6 @@ end
 
 """
     obtain_face_space(cs::ClimaCore.Spaces.AbstractSpace)
-
 Returns the face space, if applicable, for the center space `cs`.
 """
 obtain_face_space(cs::ClimaCore.Spaces.AbstractSpace) =
@@ -567,7 +539,6 @@ obtain_face_space(cs::ClimaCore.Spaces.AbstractSpace) =
 
 """
     obtain_surface_space(cs::ClimaCore.Spaces.AbstractSpace)
-
 Returns the surface space, if applicable, for the center space `cs`.
 """
 obtain_surface_space(cs::ClimaCore.Spaces.AbstractSpace) =
@@ -575,7 +546,6 @@ obtain_surface_space(cs::ClimaCore.Spaces.AbstractSpace) =
 
 """
     obtain_face_space(cs::ClimaCore.Spaces.CenterExtrudedFiniteDifferenceSpace)
-
 Returns the face space for the CenterExtrudedFiniteDifferenceSpace `cs`.
 """
 function obtain_face_space(
@@ -586,7 +556,6 @@ end
 
 """
     obtain_face_space(cs::ClimaCore.Spaces.CenterFiniteDifferenceSpace)
-
 Returns the face space corresponding to the CenterFiniteDifferenceSpace `cs`.
 """
 function obtain_face_space(cs::ClimaCore.Spaces.CenterFiniteDifferenceSpace)
@@ -595,7 +564,6 @@ end
 
 """
     obtain_surface_space(cs::ClimaCore.Spaces.CenterExtrudedFiniteDifferenceSpace)
-
 Returns the horizontal space for the CenterExtrudedFiniteDifferenceSpace `cs`.
 """
 function obtain_surface_space(
@@ -606,7 +574,6 @@ end
 
 """
     obtain_surface_space(cs::ClimaCore.Spaces.CenterFiniteDifferenceSpace)
-
 Returns the top level of the face space corresponding to the CenterFiniteDifferenceSpace `cs`.
 """
 function obtain_surface_space(cs::ClimaCore.Spaces.CenterFiniteDifferenceSpace)

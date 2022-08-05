@@ -15,7 +15,7 @@ using ClimaLSM.Bucket:
     PrescribedAtmosphere,
     PrescribedRadiativeFluxes,
     BulkAlbedo
-using ClimaLSM.Domains: coordinates, Plane
+using ClimaLSM.Domains: coordinates, LSMSingleColumnDomain
 using ClimaLSM: initialize, make_update_aux, make_ode_function
 
 
@@ -31,15 +31,11 @@ earth_param_set = create_lsm_parameters(FT)
 albedo = BulkAlbedo{FT}(α_snow, α_soil)
 S_c = FT(0.2)
 W_f = FT(0.15)
-d_soil = FT(100.0) # soil depth
-T0 = FT(280.0)
 z_0m = FT(1e-2)
 z_0b = FT(1e-3)
 κ_soil = FT(1.5)
 ρc_soil = FT(2e6)
 bucket_parameters = BucketModelParameters(
-    d_soil,
-    T0,
     κ_soil,
     ρc_soil,
     albedo,
@@ -51,20 +47,14 @@ bucket_parameters = BucketModelParameters(
 )
 
 # Model domain
-bucket_domain = Plane(;
-    xlim = (0.0, 1.0),
-    ylim = (0.0, 1.0),
-    nelements = (1, 1),
-    periodic = (true, true),
-    npolynomial = 1,
-)
+bucket_domain = LSMSingleColumnDomain(; zlim = (-100.0, 0.0), nelements = 10)
 
 @testset "Zero flux RHS" begin
-    "Radiation"
+    # Radiation
     SW_d = (t) -> eltype(t)(0.0)
     LW_d = (t) -> eltype(t)(5.67e-8 * 280.0^4.0)
     bucket_rad = PrescribedRadiativeFluxes(FT, SW_d, LW_d)
-    "Atmos"
+    # Atmos
     precip = (t) -> eltype(t)(0) # no precipitation
     T_atmos = (t) -> eltype(t)(280.0)
     u_atmos = (t) -> eltype(t)(1.0)
@@ -90,7 +80,7 @@ bucket_domain = Plane(;
     )
     # Initial conditions with no moisture
     Y, p, coords = initialize(model)
-    Y.bucket.T_sfc .= 280.0
+    Y.bucket.T .= 280.0
     Y.bucket.W .= 0.0 # no moisture
     Y.bucket.Ws .= 0.0 # no runoff
     Y.bucket.S .= 0.0
@@ -98,11 +88,11 @@ bucket_domain = Plane(;
     ode_function! = make_ode_function(model)
     dY = similar(Y)
     # init to nonzero numbers
-    dY.bucket.T_sfc .= 1.0
+    dY.bucket.T .= 1.0
     dY.bucket.W .= 1.0
     dY.bucket.Ws .= 1.0
     ode_function!(dY, Y, p, 0.0)
-    @test sum(parent(dY.bucket.T_sfc)) < eps(FT)
+    @test sum(parent(dY.bucket.T)) < eps(FT)
     @test sum(parent(dY.bucket.W)) < eps(FT)
     @test sum(parent(dY.bucket.Ws)) < eps(FT)
 end
@@ -144,14 +134,15 @@ end
 
     # Initial conditions with no moisture
     Y, p, coords = initialize(model)
-    Y.bucket.T_sfc .= 255.69458073555182
+    p.bucket.T_sfc .= 255.69458073555182
+    Y.bucket.T .= 255.69458073555182
     Y.bucket.W .= 0.0 # no moisture
     Y.bucket.Ws .= 0.0 # no runoff
     Y.bucket.S .= 0.0
     ode_function! = make_ode_function(model)
     dY = similar(Y)
     ode_function!(dY, Y, p, 0.0)
-    @test sum(parent(dY.bucket.T_sfc)) < eps(FT)
+    @test sum(parent(dY.bucket.T)) < eps(FT)
     @test sum(parent(dY.bucket.W)) < eps(FT)
     @test sum(parent(dY.bucket.Ws)) < eps(FT)
     @test sum(
@@ -165,7 +156,7 @@ end
 end
 
 @testset "Moisture Conservation" begin
-    # Ensure no heat fluxes (no evaporation too, so no LHF)
+    # Ensure no heat fluxes
     # and check that runoff+soil water balance precip.
     "Radiation"
     SW_d = (t) -> eltype(t)(0.0)
@@ -198,7 +189,7 @@ end
 
     # Initial conditions with no moisture
     Y, p, coords = initialize(model)
-    Y.bucket.T_sfc .= 280.0
+    Y.bucket.T .= 280.0
     Y.bucket.W .= 0.14 # no moisture
     Y.bucket.Ws .= 0.0 # no runoff
     Y.bucket.S .= 0.0
@@ -256,7 +247,7 @@ end
 
     # Initial conditions with no moisture
     Y, p, coords = initialize(model)
-    Y.bucket.T_sfc .= 280.0
+    Y.bucket.T .= 280.0
     Y.bucket.W .= 0.149
     Y.bucket.Ws .= 0.0
     Y.bucket.S .= 0.0
@@ -277,39 +268,36 @@ end
     # net soil water
     W = [unique(parent(sol.u[k].bucket.W))[1] for k in 1:length(sol.t)]
     Ws = [unique(parent(sol.u[k].bucket.Ws))[1] for k in 1:length(sol.t)]
-    T_sfc = [unique(parent(sol.u[k].bucket.T_sfc))[1] for k in 1:length(sol.t)]
+    T_sfc = [
+        unique(parent(saved_values.saveval[k].bucket.T_sfc))[1] for
+        k in 1:length(sol.t)
+    ]
     R_n = [
         unique(parent(saved_values.saveval[k].bucket.R_n))[1] for
         k in 1:length(sol.t)
     ]
-    SHF = [
-        unique(parent(saved_values.saveval[k].bucket.SHF))[1] for
-        k in 1:length(sol.t)
+    turbulent_energy_flux = [
+        unique(parent(saved_values.saveval[k].bucket.turbulent_energy_flux))[1] for k in 1:length(sol.t)
     ]
-    LHF = [
-        unique(parent(saved_values.saveval[k].bucket.LHF))[1] for
-        k in 1:length(sol.t)
-    ]
-    E = [
-        unique(parent(saved_values.saveval[k].bucket.E))[1] for
+    evaporation = [
+        unique(parent(saved_values.saveval[k].bucket.evaporation))[1] for
         k in 1:length(sol.t)
     ]
 
-    F_g = -κ_soil .* (T_sfc .- 280.0) ./ d_soil
-    F_sfc = LHF .+ SHF .+ R_n
+    F_sfc = turbulent_energy_flux .+ R_n
 
     # dY(t+dt) = Y(t+dt) - W(t) = RHS|_t * dt for Euler stepping
     # First element of `p` not filled in, so start at 2.
     # If we call update aux before the simulation, it should be.
 
-
     # Look at fractional error
-    dE_land = ρc_soil * (T_sfc[end] - T_sfc[2])
-    dE_expected = -1 / d_soil * sum(F_sfc[2:(end - 1)] .- F_g[2:(end - 1)]) * Δt
-    @test (dE_land - dE_expected) ./ (ρc_soil * sum(T_sfc) ./ length(sol.t)) <
-          1e-14
+    dE_land = ρc_soil * (sum(sol.u[end].bucket.T) - sum(sol.u[2].bucket.T))
+    dE_expected = -sum(F_sfc[2:(end - 1)]) * Δt
+    @test (dE_land - dE_expected) ./
+          (ρc_soil * sum(sol.u[2].bucket.T) ./ length(sol.t)) < 1e-14
     dW_land = W[end] + Ws[end] - W[2] - Ws[2]
-    dW_expected = sum(precip.(sol.t[2:(end - 1)]) .- E[2:(end - 1)]) * Δt
+    dW_expected =
+        sum(precip.(sol.t[2:(end - 1)]) .- evaporation[2:(end - 1)]) * Δt
 
     @test (dW_land - dW_expected) ./ 0.15 < 1e-14
 
