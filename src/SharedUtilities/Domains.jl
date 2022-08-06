@@ -4,9 +4,11 @@ module Domains
 using ClimaCore
 using IntervalSets
 using DocStringExtensions
+using ClimaCore.Utilities: half
 
 import ClimaCore: Meshes, Spaces, Topologies, Geometry
 import ClimaCore.Meshes: Uniform
+
 ### General type and methods all model domains will need
 
 """
@@ -308,6 +310,7 @@ function make_function_space(domain::HybridBox{FT}) where {FT}
 end
 
 
+
 """
     struct SphericalShell{FT} <: AbstractDomain{FT}
         radius::FT
@@ -416,6 +419,7 @@ function coordinates(domain::RootDomain{FT}) where {FT}
     return domain.compartment_heights
 end
 
+
 """
     LSMSingleColumnDomain{FT} <: AbstractDomain{FT}
 
@@ -431,10 +435,12 @@ needed.
 $(DocStringExtensions.FIELDS)
 """
 struct LSMSingleColumnDomain{FT} <: AbstractDomain{FT}
-    "The subsurface Column domain"
-    subsurface::Column{FT}
-    "The surface Point domain"
-    surface::Point{FT}
+    "Domain interval limits, (zmin, zmax), in meters"
+    zlim::Tuple{FT, FT}
+    "Number of elements used to discretize the interval"
+    nelements::Tuple{Int64}
+    "Boundary face identifiers"
+    boundary_tags::Tuple{Symbol, Symbol}
 end
 
 """
@@ -447,22 +453,26 @@ A constructor for the LSMSingleColumnDomain.
 """
 function LSMSingleColumnDomain(; zlim::Tuple{FT, FT}, nelements::Int) where {FT}
     @assert zlim[1] < zlim[2]
-    surface_domain = Point{FT}(FT(zlim[2]))
     boundary_tags = (:bottom, :top)
-    subsurface_domain = Column{FT}(FT.(zlim), (nelements,), boundary_tags)
-    return LSMSingleColumnDomain{FT}(subsurface_domain, surface_domain)
+    return LSMSingleColumnDomain{FT}(zlim, (nelements,), boundary_tags)
 end
+
 
 """
     coordinates(domain::LSMSingleColumnDomain{FT}) where {FT}
 
-Returns the coordinates of the LSMSingleColumnDomain as a named tuple,
+Returns the coordinates of the domain::LSMSingleColumnDomain as a named tuple,
 with keys of `subsurface` and `surface`.
 """
 function coordinates(domain::LSMSingleColumnDomain{FT}) where {FT}
+    subsurface_domain = Column{FT}(domain.zlim, domain.nelements, domain.boundary_tags)
+    center_space, face_space = make_function_space(subsurface_domain)
+    subsurface_coordinates = ClimaCore.Fields.coordinate_field(center_space)
+    surface_space = ClimaCore.Spaces.level(face_space, ClimaCore.Spaces.nlevels(face_space))
+    surface_coordinates = ClimaCore.Fields.coordinate_field(surface_space)
     return (
-        subsurface = coordinates(domain.subsurface),
-        surface = coordinates(domain.surface),
+        subsurface = subsurface_coordinates,
+        surface = surface_coordinates
     )
 end
 
