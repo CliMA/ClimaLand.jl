@@ -12,8 +12,12 @@ using ClimaLSM.Domains:
     Plane,
     Point,
     LSMSingleColumnDomain,
+    LSMMultiColumnDomain,
     SphericalShell,
-    coordinates
+    SphericalSurface,
+    coordinates,
+    obtain_surface_space,
+    obtain_face_space
 
 TestFloatTypes = (Float32, Float64)
 
@@ -38,6 +42,26 @@ TestFloatTypes = (Float32, Float64)
         shell_coords = coordinates(shell)
         @test eltype(shell_coords) == ClimaCore.Geometry.LatLongZPoint{FT}
         @test typeof(shell_coords) <: ClimaCore.Fields.Field
+        @test typeof(shell.space.horizontal_space) <:
+              ClimaCore.Spaces.SpectralElementSpace2D
+        @test typeof(shell.space) <:
+              ClimaCore.Spaces.CenterExtrudedFiniteDifferenceSpace
+
+
+        shell_surface = SphericalSurface(;
+            radius = FT(100.0),
+            nelements = 6,
+            npolynomial = 3,
+        )
+        @test shell_surface.radius == FT(100)
+        @test shell_surface.nelements == 6
+        @test shell_surface.npolynomial == 3
+        shell_surface_coords = coordinates(shell_surface)
+        @test eltype(shell_surface_coords) ==
+              ClimaCore.Geometry.LatLongPoint{FT}
+        @test typeof(shell_surface_coords) <: ClimaCore.Fields.Field
+        @test typeof(shell_surface.space) <:
+              ClimaCore.Spaces.SpectralElementSpace2D
 
 
         xyz_column_box = HybridBox(;
@@ -56,6 +80,10 @@ TestFloatTypes = (Float32, Float64)
         @test xyz_column_box.nelements == nelements
         @test xyz_column_box.npolynomial == 0
         @test xyz_column_box.periodic == (true, true)
+        @test typeof(xyz_column_box.space.horizontal_space) <:
+              ClimaCore.Spaces.SpectralElementSpace2D
+        @test typeof(xyz_column_box.space) <:
+              ClimaCore.Spaces.CenterExtrudedFiniteDifferenceSpace
 
         xy_plane = Plane(;
             xlim = xlim,
@@ -72,6 +100,7 @@ TestFloatTypes = (Float32, Float64)
         @test xy_plane.nelements == nelements[1:2]
         @test xy_plane.npolynomial == 0
         @test xy_plane.periodic == (true, true)
+        @test typeof(xy_plane.space) <: ClimaCore.Spaces.SpectralElementSpace2D
 
         z_column = Column(; zlim = zlim, nelements = nelements[3])
         column_coords = coordinates(z_column)
@@ -79,6 +108,9 @@ TestFloatTypes = (Float32, Float64)
         @test z_column.nelements[1] == nelements[3]
         @test eltype(column_coords) == ClimaCore.Geometry.ZPoint{FT}
         @test typeof(column_coords) <: ClimaCore.Fields.Field
+        @test typeof(z_column.space) <:
+              ClimaCore.Spaces.CenterFiniteDifferenceSpace
+
     end
 end
 
@@ -88,7 +120,7 @@ end
         zmin = FT(1.0)
         point = Point(; z_sfc = zmin)
         @test point.z_sfc == zmin
-        point_space, _ = Domains.make_function_space(point)
+        point_space = point.space
         @test point_space isa ClimaCore.Spaces.PointSpace
         coords = coordinates(point)
         @test coords isa ClimaCore.Fields.Field
@@ -109,10 +141,40 @@ end
         point = domain.surface
         column = domain.subsurface
 
-        @test typeof(column) == Column{FT}
-        @test typeof(point) == Point{FT}
-        @test parent(coordinates(point)) == parent(coordinates(domain).surface)
-        @test parent(coordinates(domain).subsurface) ==
-              parent(coordinates(column))
+        @test typeof(column) == Column{FT, typeof(column.space)}
+        @test typeof(point) == Point{FT, typeof(point.space)}
+        @test coordinates(point) === coordinates(domain).surface
+        @test coordinates(domain).subsurface === coordinates(column)
+        @test obtain_surface_space(column.space) === point.space
+    end
+end
+
+
+@testset "LSMMultiColumnDomain" begin
+    for FT in TestFloatTypes
+        zmin = FT(1.0)
+        zmax = FT(2.0)
+        zlim = FT.((zmin, zmax))
+        xlim = FT.((0.0, 10.0))
+        ylim = FT.((0.0, 1.0))
+        zlim = FT.((zmin, zmax))
+        nelements = (1, 1, 5)
+        npolynomial = 2
+        domain = LSMMultiColumnDomain(;
+            xlim = xlim,
+            ylim = ylim,
+            zlim = zlim,
+            nelements = nelements,
+            periodic = (true, true),
+            npolynomial = npolynomial,
+        )
+        plane = domain.surface
+        box = domain.subsurface
+
+        @test typeof(box) == HybridBox{FT, typeof(box.space)}
+        @test typeof(plane) == Plane{FT, typeof(plane.space)}
+        @test coordinates(plane) === coordinates(domain).surface
+        @test coordinates(domain).subsurface === coordinates(box)
+        @test obtain_surface_space(box.space) === plane.space
     end
 end

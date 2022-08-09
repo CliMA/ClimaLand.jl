@@ -63,7 +63,7 @@ using ClimaCore
 import ..Parameters as LSMP
 import ClimaCore: Fields, Operators, Geometry, Spaces
 
-import ClimaLSM.Domains: coordinates, Column, HybridBox, SphericalShell
+import ClimaLSM.Domains: Column, HybridBox, SphericalShell
 import ClimaLSM:
     AbstractModel,
     make_update_aux,
@@ -120,16 +120,6 @@ abstract type AbstractSoilModel{FT} <: ClimaLSM.AbstractModel{FT} end
 ClimaLSM.name(::AbstractSoilModel) = :soil
 ClimaLSM.domain(::AbstractSoilModel) = :subsurface
 
-"""
-    coordinates(model::AbstractSoilModel)
-
-A extension of the `coordinates` function, which returns the coordinates
-of a model domain. 
-
-The coordinates are stored in the model because they are required in
-computing the right hand side. 
-"""
-ClimaLSM.Domains.coordinates(model::AbstractSoilModel) = model.coordinates
 
 """
    horizontal_components!(dY::ClimaCore.Fields.FieldVector,

@@ -41,24 +41,19 @@ so that
 A domain represents a region of space. In ClimaLSM, domains are simply
 structs containing parameters that define these regions - for example an
 x-range and y-range that define a plane. In addition, ClimaLSM domains store
-some extra information needed to build a ClimaCore function space on the
-physical domain, such as the number of elements of a discretization of the
-region.
-
-There are two key methods which take a ClimaLSM domain as an argument.
-
-- `make_function_space(domain)`: when solving partial differential equations, the spatial 
+the ClimaCore function space on the
+physical domain. When solving partial differential equations, the spatial 
 discretization is tied to a set of basis functions you wish to use to represent the prognostic
 variable as a function of space. The nodal points - the locations in space where the variable 
-is solved for - are arranged in space in a manner which depends on these basis functions. The method
-`make_function_space(domain)` takes in the information stored in the domain (the spatial extent, resolution, etc)
-and creates the underlying space. Note that this is only needed for domains of variables satisfying PDEs,
-but it is defined for all domains[^1]. This method is not exported.
+is solved for - are arranged in `space` in a manner which depends on these basis functions.
 
+ Note that this is only needed for domains of variables satisfying PDEs,
+but it is defined for all domains[^1].
 
-- [` coordinates(domain)`](https://clima.github.io/ClimaLSM.jl/dev/APIs/SharedUtilities/#ClimaLSM.Domains.coordinates): under the hood, this function (1) 
-creates the function space and then (2) uses
-the function space to create the coordinate field. This returns the coordinates as a ClimaCore.Fields.Field object.
+There is a single key method which take a ClimaLSM domain as an argument.
+
+- [` coordinates(domain)`](https://clima.github.io/ClimaLSM.jl/dev/APIs/SharedUtilities/#ClimaLSM.Domains.coordinates): under the hood, this function  uses
+the function space (domain.space) to create the coordinate field. This returns the coordinates as a ClimaCore.Fields.Field object.
 Depending on the domain, the returned coordinate field will have elements of different names and types. For example,
 the SphericalShell domain has coordinates of latitude, longitude, and height, while a Plane domain has coordinates
 of x and y, and a Point domain only has a coordinate z_sfc.
@@ -71,7 +66,7 @@ A variety of concrete domain types are supported:
 
 - 0D: [`Domains.Point`](https://clima.github.io/ClimaLSM.jl/dev/APIs/SharedUtilities/#ClimaLSM.Domains.Point)
 - 1D: [`Domains.Column`](https://clima.github.io/ClimaLSM.jl/dev/APIs/SharedUtilities/#ClimaLSM.Domains.Column)
-- 2D: [`Domains.Plane`](https://clima.github.io/ClimaLSM.jl/dev/APIs/SharedUtilities/#ClimaLSM.Domains.Plane), `Domains.SphericalSurface`
+- 2D: [`Domains.Plane`](https://clima.github.io/ClimaLSM.jl/dev/APIs/SharedUtilities/#ClimaLSM.Domains.Plane), [`Domains.SphericalSurface`](https://clima.github.io/ClimaLSM.jl/dev/APIs/SharedUtilities/#ClimaLSM.Domains.SphericalSurface)
 - 3D: [`Domains.HybridBox`](https://clima.github.io/ClimaLSM.jl/dev/APIs/SharedUtilities/#ClimaLSM.Domains.HybridBox), [`Domains.SphericalShell`](https://clima.github.io/ClimaLSM.jl/dev/APIs/SharedUtilities/#ClimaLSM.Domains.SphericalShell).
 
 Single component models (soil, snow, vegetation, canopy airspace...) will be solved on 
