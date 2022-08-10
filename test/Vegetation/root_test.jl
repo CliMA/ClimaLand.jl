@@ -1,4 +1,10 @@
 #ideas: plot transpiration(t); theta(t); p(t) see if looks normal
+#still getting a negative water content with certain biophysics
+#add in katherine's max()
+#13:25:30 From katherinedeck to Everyone:
+#	safe_theta = max(theta, 0)
+#13:25:36 From katherinedeck to Everyone:
+#	then compute pressure using safe_theta
 
 
 using Test
@@ -62,7 +68,7 @@ FT = Float64
     )
 
     function leaf_transpiration(t::FT) where {FT}
-        T = FT(0.0)
+        T = FT(0)
         #=
         T_0 = FT(1e-7) 
         if t < FT(500)
@@ -76,10 +82,12 @@ FT = Float64
         return T
     end
 
-    p_soil0 = [FT(-2)]
+    #p_soil0 = [FT(-2)]
+    rootflux = FT(0)
     transpiration =
         PrescribedTranspiration{FT}((t::FT) -> leaf_transpiration(t))
-    root_extraction = PrescribedSoilPressure{FT}((t::FT) -> p_soil0)
+    #root_extraction = PrescribedSoilPressure{FT}((t::FT) -> p_soil0)
+    root_extraction = PrescribedRootFlux{FT}((t::FT) -> rootflux)
     roots = Roots.RootsModel{FT}(;
         domain = root_domain,
         parameters = param_set,
@@ -140,9 +148,11 @@ FT = Float64
 
     root_ode! = make_ode_function(roots)
 
+    hour = FT(60^2)
+    day = FT(24*60^2)
     t0 = FT(0)
-    tf = FT(60 * 60.0 * 30)
-    dt = FT(1)
+    tf = FT(hour*24*36)
+    dt = FT(10)
 
     prob = ODEProblem(root_ode!, Y, (t0, tf), p)
     sol = solve(prob, Euler(), dt = dt)
@@ -154,22 +164,29 @@ FT = Float64
     ϑ_l_stem = reduce(hcat, sol.u)[1, :]
     ϑ_l_leaf = reduce(hcat, sol.u)[2, :]
 
-    ϑ_l_of_t = plot(0:dt:tf,ϑ_l_stem)
-    plot!(0:dt:tf,ϑ_l_leaf)
+    ϑ_l = [ϑ_l_stem, ϑ_l_leaf]
+    ϑ_l_of_z = plot(sol.u[1,:],[z_stem_midpoint,z_leaf_midpoint],legend=:bottomleft,dpi=300,ylabel="Stem height [m]",xlabel="ϑ_l [m3 m-3]")
+    for i in 2:Int64(day*5/dt):length(ϑ_l_stem)
+        plot!(ϑ_l_of_z,sol.u[i,:],[z_stem_midpoint,z_leaf_midpoint])
+    end
+
+    ϑ_l_of_t = plot((0:dt:tf)./hour,ϑ_l_stem,legend=:bottomleft,dpi=300,ylabel="ϑ_l [m3 m-3]",xlabel="t [h]")
+    plot!((0:dt:tf)./hour,ϑ_l_leaf)
 
     p_stem = ϑ_l_to_absolute_pressure.(vg_α,vg_n,vg_m,ϑ_l_stem,ν,S_s)
     p_leaf = ϑ_l_to_absolute_pressure.(vg_α,vg_n,vg_m,ϑ_l_leaf,ν,S_s)
 
-    p_of_t = plot(0:dt:tf,p_stem)
-    plot!(p_of_t,0:dt:tf,p_leaf)
+    p_of_t = plot((0:dt:tf)./hour,p_stem,legend=:bottomleft,dpi=300,ylabel="Absolute pressure [m]",xlabel="time [h]")
+    plot!(p_of_t,(0:dt:tf)./hour,p_leaf)
 
-    flux_in_stem = flux.(root_depths,z_stem_midpoint,p_soil0,p_stem,a_root,a_stem,b_root,b_stem,K_sat_root,K_sat_stem)
+    #flux_in_stem = flux.(root_depths,z_stem_midpoint,p_soil0,p_stem,a_root,a_stem,b_root,b_stem,K_sat_root,K_sat_stem)
     flux_out_stem = flux.(z_stem_midpoint,z_leaf_midpoint,p_stem,p_leaf,a_stem,a_leaf,b_stem,b_leaf,K_sat_stem,K_sat_leaf)
-
-    flux_of_t = plot(0:dt:tf,flux_in_stem)
-    plot!(flux_of_t,0:dt:tf,flux_out_stem)
+    flux_of_t = plot((0:dt:tf)./hour, flux_out_stem, legend=:bottomleft,dpi=300,ylabel="Flux [m s-1]",xlabel="time [h]")
+    plot!(flux_of_t, (0:dt:tf)./hour, leaf_transpiration(1.0)*ones(length(ϑ_l_stem)))
+    #plot!(flux_of_t,0:dt:tf,flux_out_stem)
 
     savefig(ϑ_l_of_t,"ϑ_l_of_t.png")
+    savefig(ϑ_l_of_z,"ϑ_l_of_z.png")
     savefig(p_of_t,"p_of_t.png")
     savefig(flux_of_t,"flux_of_t.png")
 

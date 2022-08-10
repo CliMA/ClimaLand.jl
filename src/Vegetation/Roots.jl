@@ -76,6 +76,7 @@ export RootsModel,
     flux_out_roots,
     RootsParameters,
     PrescribedSoilPressure,
+    PrescribedRootFlux,
     PrescribedTranspiration,
     AbstractRootExtraction
 
@@ -362,7 +363,9 @@ function make_rhs(model::RootsModel)
         # @show(p_leaf)
 
         # Fluxes are in meters/second
-        flux_in_stem = flux_out_roots(model.root_extraction, model, Y, p, t)
+        # flux_in_stem = flux_out_roots(model.root_extraction, model, Y, p, t)
+        
+        flux_in_stem = flux_out_roots(model.root_extraction,t)
         #@show(flux_in_stem)
 
         flux_out_stem = flux(
@@ -392,6 +395,15 @@ in the case where the soil pressure at each root layer is prescribed.
 """
 struct PrescribedSoilPressure{FT} <: AbstractRootExtraction{FT}
     p_soil::Function
+end
+
+"""
+    PrescribedRootFlux{FT} <: AbstractRootExtraction{FT}
+A concrete type used for dispatch when computing the `flux_out_roots`,
+in the case where the soil pressure at each root layer is prescribed.
+"""
+struct PrescribedRootFlux{FT} <: AbstractRootExtraction{FT}
+    RF::Function
 end
 
 """
@@ -447,6 +459,19 @@ function flux_out_roots(
         K_sat_root, 
         K_sat_stem),
     )
+end
+
+"""
+    flux_out_roots(
+        flux_out_roots::PrescribedRootFlux{FT},
+        t::FT,
+    )::FT where {FT}
+"""
+function flux_out_roots(
+    flux_out_roots::PrescribedRootFlux{FT},
+    t::FT,
+)::FT where {FT}
+    return flux_out_roots.RF(t)
 end
 
 """
