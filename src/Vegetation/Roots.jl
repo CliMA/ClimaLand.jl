@@ -224,11 +224,11 @@ function flux(
         term1 = -c1 / b1 * (num2 - num1) /(z2 - z1)
 
         c2 = K_sat2 * (a2 + FT(1)) / a2
-        term2_up = -c2 * (FT(1) - FT(1) / (FT(1) + a2*exp(b2 * p2)))
-        term2_do = -c1 * (FT(1) - FT(1) / (FT(1) + a1*exp(b1 * p1)))
-        term2 = (term2_up + term2_do)/2
+        term2_up = c2 * (FT(1) - FT(1) / (FT(1) + a2*exp(b2 * p2)))
+        term2_do = c1 * (FT(1) - FT(1) / (FT(1) + a1*exp(b1 * p1)))
+        term2 = -(term2_up - term2_do)/2
         flux = term1 + term2  
-    return flux  # units of [m s-1]
+    return flux # units of [m s-1]
 end
 
 """
@@ -359,14 +359,11 @@ function make_rhs(model::RootsModel)
 
         p_stem = ϑ_l_to_absolute_pressure.(vg_α,vg_n,vg_m,Y.vegetation.ϑ_l[1],ν,S_s)
         p_leaf = ϑ_l_to_absolute_pressure.(vg_α,vg_n,vg_m,Y.vegetation.ϑ_l[2],ν,S_s)
-        # @show(p_stem)
-        # @show(p_leaf)
 
         # Fluxes are in meters/second
-        # flux_in_stem = flux_out_roots(model.root_extraction, model, Y, p, t)
+        flux_in_stem = flux_out_roots(model.root_extraction, model, Y, p, t)
         
-        flux_in_stem = flux_out_roots(model.root_extraction,t)
-        #@show(flux_in_stem)
+        #flux_in_stem = flux_out_roots(model.root_extraction,t)
 
         flux_out_stem = flux(
             z_stem_midpoint,
@@ -379,7 +376,6 @@ function make_rhs(model::RootsModel)
             b_stem, 
             K_sat_root, 
             K_sat_stem)
-        #@show(flux_out_stem)
 
             dY.vegetation.ϑ_l[1] = 1/(z_stem_top-z_ground)*(flux_in_stem - flux_out_stem)            
             dY.vegetation.ϑ_l[2] =
