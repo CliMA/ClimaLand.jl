@@ -1,9 +1,9 @@
-export RootSoilModel
+export VegetationSoilModel
 """
-    struct RootSoilModel{
+    struct VegetationSoilModel{
         FT,
         SM <: Soil.AbstractSoilModel{FT},
-        VM <: Roots.AbstractVegetationModel{FT},
+        VM <: Vegetation.AbstractVegetationModel{FT},
     } <: AbstractLandModel{FT}
         soil::SM
         vegetation::VM
@@ -13,10 +13,10 @@ A concrete type of land model used for simulating systems with a
 vegetation and a soil component.
 $(DocStringExtensions.FIELDS)
 """
-struct RootSoilModel{
+struct VegetationSoilModel{
     FT,
     SM <: Soil.AbstractSoilModel{FT},
-    VM <: Roots.AbstractVegetationModel{FT},
+    VM <: Vegetation.AbstractVegetationModel{FT},
 } <: AbstractLandModel{FT}
     "The soil model to be used"
     soil::SM
@@ -26,24 +26,24 @@ end
 
 
 """
-    RootSoilModel{FT}(;
+    VegetationSoilModel{FT}(;
                       soil_model_type::Type{SM},
                       soil_args::NamedTuple = (;),
                       vegetation_model_type::Type{VM},
                       vegetation_args::NamedTuple = (;),
                       ) where {FT,
                                SM <: Soil.AbstractSoilModel{FT},
-                               VM <: Roots.AbstractVegetationModel{FT}}
+                               VM <: Vegetation.AbstractVegetationModel{FT}}
 
-A constructor for the `RootSoilModel`, which takes in the concrete model
+A constructor for the `VegetationSoilModel`, which takes in the concrete model
 type and required arguments for each component, constructs those models,
-and constructs the `RootSoilModel` from them.
+and constructs the `VegetationSoilModel` from them.
 
 Each component model is constructed with everything it needs to be stepped
 forward in time, including boundary conditions, source terms, and interaction
 terms.
 """
-function RootSoilModel{FT}(;
+function VegetationSoilModel{FT}(;
     soil_model_type::Type{SM},
     soil_args::NamedTuple = (;),
     vegetation_model_type::Type{VM},
@@ -51,7 +51,7 @@ function RootSoilModel{FT}(;
 ) where {
     FT,
     SM <: Soil.AbstractSoilModel{FT},
-    VM <: Roots.AbstractVegetationModel{FT},
+    VM <: Vegetation.AbstractVegetationModel{FT},
 }
 
     #These may be passed in, or set, depending on use scenario
@@ -73,19 +73,19 @@ function RootSoilModel{FT}(;
         vegetation_args...,
     )
     args = (soil, vegetation)
-    return RootSoilModel{FT, typeof.(args)...}(args...)
+    return VegetationSoilModel{FT, typeof.(args)...}(args...)
 end
 
-interaction_vars(m::RootSoilModel) = (:root_extraction,)
+interaction_vars(m::VegetationSoilModel) = (:root_extraction,)
 
-interaction_types(m::RootSoilModel{FT}) where {FT} = (FT,)
+interaction_types(m::VegetationSoilModel{FT}) where {FT} = (FT,)
 
-interaction_domains(m::RootSoilModel) = (:subsurface,)
+interaction_domains(m::VegetationSoilModel) = (:subsurface,)
 
 """
     make_interactions_update_aux(
-        land::RootSoilModel{FT, SM, RM},
-    ) where {FT, SM <: Soil.RichardsModel{FT}, RM <: Roots.RootsModel{FT}}
+        land::VegetationSoilModel{FT, SM, RM},
+    ) where {FT, SM <: Soil.RichardsModel{FT}, RM <: Vegetation.VegetationModel{FT}}
 
 A method which makes a function; the returned function 
 updates the auxiliary variable `p.root_extraction`, which
@@ -95,8 +95,8 @@ term (runoff) for the surface water model.
 This function is called each ode function evaluation.
 """
 function make_interactions_update_aux(#Do we want defaults, for land::AbstractLandModel?
-    land::RootSoilModel{FT, SM, RM},
-) where {FT, SM <: Soil.RichardsModel{FT}, RM <: Roots.RootsModel{FT}}
+    land::VegetationSoilModel{FT, SM, RM},
+) where {FT, SM <: Soil.RichardsModel{FT}, RM <: Vegetation.VegetationModel{FT}}
     function update_aux!(p, Y, t)
         @. p.root_extraction = FT(0.0)
         ##Science goes here
@@ -105,42 +105,42 @@ function make_interactions_update_aux(#Do we want defaults, for land::AbstractLa
 end
 
 
-## Extending methods of the Roots and Soil Model
+## Extending methods of the Vegetation and Soil Model
 ## TBD if these should be linked more explicitly.
 """
-   PrognosticSoilPressure{FT} <: Roots.AbstractRootExtraction{FT}
+   PrognosticSoilPressure{FT} <: Vegetation.AbstractRootExtraction{FT}
 
-Concrete type of Roots.AbstractRootExtraction, used for dispatch 
+Concrete type of Vegetation.AbstractRootExtraction, used for dispatch 
 in an LSM with both soil and plant hydraulic components.
 
 This is paired with the source term `Soil.RootExtraction`:both 
 are used at the same time,
-ensuring that the water flow into the roots is extracted correctly
+ensuring that the water flux into the roots is extracted correctly
 from the soil.
 """
-struct PrognosticSoilPressure{FT} <: Roots.AbstractRootExtraction{FT} end
+struct PrognosticSoilPressure{FT} <: Vegetation.AbstractRootExtraction{FT} end
 
 """
-    Roots.flux_out_roots(
+    Vegetation.flux_out_roots(
         re::PrognosticSoilPressure{FT},
-        model::Roots.RootsModel{FT},
+        model::Vegetation.VegetationModel{FT},
         Y::ClimaCore.Fields.FieldVector,
         p::ClimaCore.Fields.FieldVector,
         t::FT,
     )::FT where {FT}
 
-An extension of the `Roots.flux_out_roots` function,
+An extension of the `Vegetation.flux_out_roots` function,
  which returns the
-net flow of water between the
+net flux of water between the
 roots and the soil, when both soil and plant
 hydraulics are modeled prognostically. This is for use in an LSM.
 
-It is computed by summing the flow of water between
+It is computed by summing the flux of water between
 roots and soil at each soil layer.
 """
-function Roots.flux_out_roots(
+function Vegetation.flux_out_roots(
     re::PrognosticSoilPressure{FT},
-    model::Roots.RootsModel{FT},
+    model::Vegetation.VegetationModel{FT},
     Y::ClimaCore.Fields.FieldVector,
     p::ClimaCore.Fields.FieldVector,
     t::FT,
@@ -154,9 +154,9 @@ end
 Concrete type of Soil.AbstractSoilSource, used for dispatch 
 in an LSM with both soil and plant hydraulic components.
 
-This is paired with the source term `Roots.PrognosticSoilPressure`:both 
+This is paired with the source term `Vegetation.PrognosticSoilPressure`:both 
 are used at the same time,
-ensuring that the water flow into the roots is extracted correctly
+ensuring that the water flux into the roots is extracted correctly
 from the soil.
 """
 struct RootExtraction{FT} <: Soil.AbstractSoilSource{FT} end

@@ -1,10 +1,9 @@
-# To do: convert all units to SI, move constants out of src/ code and pass through,
-# via structs. convert from a single plant to a bulk plant (units change, required
-# input changes). we should also change the name to Vegetation or biophysics as
-# appropriate.
-module Roots
+# To do: move constants out of src/ code and pass through,via structs. 
+# Convert from a single plant to a bulk plant (units change, required
+# input changes). 
+module Vegetation
 #=
-    Roots
+    Vegetation
 This module contains everything needed to run a vegetation model
 in standalone mode.
 The vegetation model is assumed to have a set of prognostic `Y` and
@@ -51,7 +50,7 @@ using UnPack
 using DocStringExtensions
 import ClimaCore: Fields
 
-using ClimaLSM.Domains: AbstractVegetationDomain, RootDomain
+using ClimaLSM.Domains: AbstractVegetationDomain, VegetationDomain
 import ClimaLSM:
     AbstractModel,
     initialize_prognostic,
@@ -64,17 +63,17 @@ import ClimaLSM:
     initialize,
     initialize_auxiliary,
     name
-export RootsModel,
+export VegetationModel,
     AbstractVegetationModel,
     flux,
     effective_saturation,
     augmented_liquid_fraction,
-    van_genuchten_volume_to_pressure,
-    van_genuchten_pressure_to_volume,
-    ϑ_l_to_absolute_pressure,
-    absolute_pressure_to_ϑ_l,
+    van_Genuchten_volume_to_pressure,
+    van_Genuchten_pressure_to_volume,
+    volume_to_pressure,
+    pressure_to_volume,
     flux_out_roots,
-    RootsParameters,
+    VegetationParameters,
     PrescribedSoilPressure,
     PrescribedRootFlux,
     PrescribedTranspiration,
@@ -112,28 +111,28 @@ abstract type AbstractTranspiration{FT <: AbstractFloat} end
 
 
 """
-    RootsParameters{FT <: AbstractFloat}
-A struct for holding parameters of the Root Model.
+    VegetationParameters{FT <: AbstractFloat}
+A struct for holding parameters of the Vegetation Model.
 $(DocStringExtensions.FIELDS)
 """
-struct RootsParameters{FT <: AbstractFloat, PSE}
-    "controls the shape and steepness of conductance vs. pressure curve, for roots: unitless"
+struct VegetationParameters{FT <: AbstractFloat, PSE}
+    "controls the shape and steepness of conductivity vs. absolute pressure curve, for roots: unitless"
     a_root::FT
-    "controls the steepness of the relative conductance vs. pressure curve, for roots: inverse m"
+    "controls the steepness of the relative conductivity vs. absolute pressure curve, for roots: inverse m"
     b_root::FT
-    "controls the shape and steepness of relative conductance vs. pressure curve, for stems: unitless"
+    "controls the shape and steepness of relative conductivity vs. absolute pressure curve, for stems: unitless"
     a_stem::FT
-    "controls the steepness of the conductance vs. pressure curve, for stems: inverse m"
+    "controls the steepness of the conductivity vs. pressure curve, for stems: inverse m"
     b_stem::FT
-    "controls the shape and steepness of relative conductance vs. pressure curve, for leaves: unitless"
+    "controls the shape and steepness of relative conductivity vs. pressure curve, for leaves: unitless"
     a_leaf::FT
-    "controls the steepness of the conductance vs. pressure curve, for leaves: inverse m"
+    "controls the steepness of the conductivity vs. pressure curve, for leaves: inverse m"
     b_leaf::FT
     "water conductivity in roots (m/s) when pressure is zero, a maximum"
     K_sat_root::FT
-    "water conductance in stems (m/s) when pressure is zero, a maximum"
+    "water conductivity in stems (m/s) when pressure is zero, a maximum"
     K_sat_stem::FT
-    "van Genuchten parameter"
+    "water conductivity in leaves (m/s) when pressure is zero, a maximum"
     K_sat_leaf::FT
     "van Genuchten parameter"
     vg_α::FT
@@ -145,24 +144,25 @@ struct RootsParameters{FT <: AbstractFloat, PSE}
     ν::FT
     "storativity"
     S_s::FT
-    "Physical Constants and other clima-wide parameters"
+    "Physical Constants and other Clima-wide parameters"
     earth_param_set::PSE
 end
 
 """
-    RootsModel{FT, PS, D, RE, T, B} <: AbstractVegetationModel{FT}
-Defines, and constructs instances of, the RootsModel type, which is used
+    VegetationModel{FT, PS, D, RE, T, B} <: AbstractVegetationModel{FT}
+Defines, and constructs instances of, the VegetationModel type, which is used
 for simulation flux of water to/from soil, along roots of different depths,
 along a stem, to a leaf, and ultimately being lost from the system by
 transpiration. 
 This model can be used in standalone mode by prescribing the transpiration rate
-and soil pressure at the root tips, or with a dynamic soil model using `ClimaLSM`.
+and soil pressure at the root tips or flux in the roots, or with a 
+dynamic soil model using `ClimaLSM`.
 $(DocStringExtensions.FIELDS)
 """
-struct RootsModel{FT, PS, D, RE, T} <: AbstractVegetationModel{FT}
-    "Parameters required by the root model"
+struct VegetationModel{FT, PS, D, RE, T} <: AbstractVegetationModel{FT}
+    "Parameters required by the vegetation model"
     parameters::PS
-    "The root model domain, of type `AbstractVegetationDomain`"
+    "The vegetation model domain, of type `AbstractVegetationDomain`"
     domain::D
     "The root extraction model, of type `AbstractRootExtraction`"
     root_extraction::RE
@@ -170,23 +170,23 @@ struct RootsModel{FT, PS, D, RE, T} <: AbstractVegetationModel{FT}
     transpiration::T
 end
 
-function RootsModel{FT}(;
-    parameters::RootsParameters{FT, PSE},
+function VegetationModel{FT}(;
+    parameters::VegetationParameters{FT, PSE},
     domain::AbstractVegetationDomain{FT},
     root_extraction::AbstractRootExtraction{FT},
     transpiration::AbstractTranspiration{FT},
 ) where {FT, PSE}
     args = (parameters, domain, root_extraction, transpiration)
-    return RootsModel{FT, typeof.(args)...}(args...)
+    return VegetationModel{FT, typeof.(args)...}(args...)
 end
 
 """
-    prognostic_vars(model::RootsModel)
+    prognostic_vars(model::VegetationModel)
 A function which returns the names of the prognostic 
-variables of the `RootsModel`.
+variables of the `VegetationModel`.
 """
-prognostic_vars(model::RootsModel) = (:ϑ_l,)
-prognostic_types(model::RootsModel{FT}) where {FT} = (FT,)
+prognostic_vars(model::VegetationModel) = (:ϑ_l,)
+prognostic_types(model::VegetationModel{FT}) where {FT} = (FT,)
 
 """
     flux(
@@ -200,10 +200,14 @@ prognostic_types(model::RootsModel{FT}) where {FT} = (FT,)
         b2::FT, 
         K_sat1::FT, 
         K_sat2::FT) where {FT} 
-Computes the pressure (p)  given the volumetric water content (theta).
-Currently this is using appropriate vG parameters for loamy type soil.
-The pressure (MPa)  must be converted to meters (head) for use in the
-van Genuchten formula.
+Computes the water flux given 1) the absolute pressure at two points located
+at z1 and z2, corresponding here to the middle of each compartment 
+(for eg. a stem or leaf compartment), and 2) the maximum conductivity along 
+the flow path between these two points, assuming an arithmetic 
+mean for mean K_sat between the two points (Bonan, 2019; Zhu, 2008) 
+to take into account the change in K_sat halfway 
+betwwen z1 and z2. The expression is given in full in the Clima docs
+in section 6.4 "Bulk plant hydraulics model".
 """
 function flux(
     z1::FT,
@@ -232,37 +236,46 @@ function flux(
 end
 
 """
-    effective_saturation(
-        ν::FT, 
-        ϑ_l::FT) where {FT}
-"""
-function effective_saturation(
-    ν::FT, 
-    ϑ_l::FT) where {FT}
-    S_l = ϑ_l / ν # S_l can be > 1
-    return S_l # units of [m3 m-3]
-end
-
-"""
     augmented_liquid_fraction(
         ν::FT, 
         S_l::FT) where {FT}
+Computes the augmented liquid fraction from porosity and
+effective saturation. Augmented liquid fraction allows for
+oversaturation: an expansion of the volume of space
+available for storage in a plant compartment.
 """
 function augmented_liquid_fraction(
     ν::FT, 
     S_l::FT) where {FT}
     ϑ_l = S_l * ν 
-    return ϑ_l # units of [m3 m-3]
+    safe_ϑ_l = max(ϑ_l, 0)
+    return safe_ϑ_l # units of [m3 m-3]
 end
 
 """
-    van_genuchten_volume_to_pressure(
+    effective_saturation(
+        ν::FT, 
+        ϑ_l::FT) where {FT}
+Computes the effective saturation (volumetric water content relative to
+porosity).
+"""
+function effective_saturation(
+    ν::FT, 
+    ϑ_l::FT) where {FT}
+    S_l = ϑ_l / ν # S_l can be > 1
+    safe_S_l = max(S_l, 0)
+    return safe_S_l # units of [m3 m-3]
+end
+
+"""
+    van_Genuchten_volume_to_pressure(
         α::FT, 
         n::FT, 
         m::FT, 
         S_l::FT) where {FT}
+Converts effective saturation to absolute pressure, in unsaturated case.
 """
-function van_genuchten_volume_to_pressure(
+function van_Genuchten_volume_to_pressure(
         α::FT, 
         n::FT, 
         m::FT, 
@@ -272,62 +285,66 @@ function van_genuchten_volume_to_pressure(
 end
 
 """
-    van_genuchten_pressure_to_volume(
+    van_Genuchten_pressure_to_volume(
         α::FT, 
         n::FT, 
         m::FT, 
         p::FT) where {FT}
+Converts absolute pressure to effective saturation, in unsaturated case.
 """
-function van_genuchten_pressure_to_volume(
+function van_Genuchten_pressure_to_volume(
         α::FT, 
         n::FT, 
         m::FT,
         p::FT) where {FT}
         S_l = ((-α * p)^n + FT(1.0))^(-m)
-    return S_l # units of [m]
+    return S_l # units of [m3 m-3]
 end
 
 """
-    ϑ_l_to_absolute_pressure(
-        α::FT,
-        n::FT,
-        m::FT,
+    volume_to_pressure(
+        vg_α::FT,
+        vg_n::FT,
+        vg_m::FT,
         ϑ_l::FT,
         ν::FT,
         S_s::FT) where {FT}
+Converts augmented liquid fraction to effective saturation, 
+and then effective saturation to pressure, for both the 
+the unsaturated and saturated regimes. Currently this is using 
+vG parameters for loamy type soil (change in future pr).
 """
-function ϑ_l_to_absolute_pressure(
-            α::FT,
-            n::FT,
-            m::FT,
+function volume_to_pressure(
+            vg_α::FT,
+            vg_n::FT,
+            vg_m::FT,
             ϑ_l::FT,
             ν::FT,
             S_s::FT) where {FT}
     S_l = effective_saturation(ν, ϑ_l)
     if S_l <= FT(1.0)
-        p = van_genuchten_volume_to_pressure(α, n, m, S_l)
+        p = van_Genuchten_volume_to_pressure(vg_α, vg_n, vg_m, S_l)
     else
         p = (ϑ_l - ν) / S_s
     end
-    return p # units of [m]
+    return p # units of (m)
 end
 
 """
-    absolute_pressure_to_ϑ_l(p::FT) where {FT}
-Computes the pressure (p)  given the volumetric water content (theta).
-Currently this is using appropriate vG parameters for loamy type soil.
-The pressure (MPa)  must be converted to meters (head) for use in the
-van Genuchten formula.
+    pressure_to_volume(p::FT) where {FT}
+Computes the pressure (p)  given the augmented liquid fraction (ϑ_l).
+Currently this is using vG parameters for loamy type soil 
+(change in future pr).
 """
-function absolute_pressure_to_ϑ_l(
-    α::FT,
-    n::FT,
-    m::FT,
+function pressure_to_volume(
+    vg_α::FT,
+    vg_n::FT,
+    vg_m::FT,
     p::FT,
     ν::FT,
     S_s::FT) where {FT}    
     if p <= FT(0.0)
-        S_l = van_genuchten_pressure_to_volume(α, n, m, p)
+        S_l = van_Genuchten_pressure_to_volume(vg_α, vg_n, vg_m, p)
     else
         S_l = p * S_s + ν 
     end
@@ -336,11 +353,11 @@ function absolute_pressure_to_ϑ_l(
 end
 
 """
-    make_rhs(model::RootsModel)
-A function which creates the rhs! function for the RootsModel.
+    make_rhs(model::VegetationModel)
+A function which creates the rhs! function for the VegetationModel.
 The rhs! function must comply with a rhs function of OrdinaryDiffEq.jl.
 """
-function make_rhs(model::RootsModel)
+function make_rhs(model::VegetationModel)
     function rhs!(dY, Y, p, t)
         @unpack a_root,
         a_stem,
@@ -357,13 +374,11 @@ function make_rhs(model::RootsModel)
         z_ground, z_stem_top, z_leaf_top = model.domain.compartment_surfaces
         z_stem_midpoint, z_leaf_midpoint = model.domain.compartment_midpoints
 
-        p_stem = ϑ_l_to_absolute_pressure.(vg_α,vg_n,vg_m,Y.vegetation.ϑ_l[1],ν,S_s)
-        p_leaf = ϑ_l_to_absolute_pressure.(vg_α,vg_n,vg_m,Y.vegetation.ϑ_l[2],ν,S_s)
+        p_stem = volume_to_pressure.(vg_α,vg_n,vg_m,Y.vegetation.ϑ_l[1],ν,S_s)
+        p_leaf = volume_to_pressure.(vg_α,vg_n,vg_m,Y.vegetation.ϑ_l[2],ν,S_s)
 
         # Fluxes are in meters/second
         flux_in_stem = flux_out_roots(model.root_extraction, model, Y, p, t)
-        
-        #flux_in_stem = flux_out_roots(model.root_extraction,t)
 
         flux_out_stem = flux(
             z_stem_midpoint,
@@ -396,7 +411,7 @@ end
 """
     PrescribedRootFlux{FT} <: AbstractRootExtraction{FT}
 A concrete type used for dispatch when computing the `flux_out_roots`,
-in the case where the soil pressure at each root layer is prescribed.
+in the case where the total flux from all the roots prescribed.
 """
 struct PrescribedRootFlux{FT} <: AbstractRootExtraction{FT}
     RF::Function
@@ -414,19 +429,19 @@ end
 """
     flux_out_roots(
         re::PrescribedSoilPressure{FT},
-        model::RootsModel{FT},
+        model::VegetationModel{FT},
         Y::ClimaCore.Fields.FieldVector,
         p::ClimaCore.Fields.FieldVector,
         t::FT,
     )::FT where {FT}
 A method which computes the flux between the soil and the stem, via the roots,
-in the case of a standalone root model with prescribed soil pressure (in MPa)
+in the case of a standalone vegetation model with prescribed soil pressure (in m)
 at the root tips.
-This assumes that the stem compartment is the first element of `Y.roots.ϑ_l`.
+This assumes that the stem compartment is the first element of `Y.vegetation.ϑ_l`.
 """
 function flux_out_roots(
     re::PrescribedSoilPressure{FT},
-    model::RootsModel{FT},
+    model::VegetationModel{FT},
     Y::ClimaCore.Fields.FieldVector,
     p::ClimaCore.Fields.FieldVector,
     t::FT,
@@ -442,7 +457,7 @@ function flux_out_roots(
     b_stem, 
     K_sat_root, 
     K_sat_stem = model.parameters
-    p_stem = ϑ_l_to_absolute_pressure.(vg_α,vg_n,vg_m,Y.vegetation.ϑ_l[1],ν,S_s)
+    p_stem = volume_to_pressure.(vg_α,vg_n,vg_m,Y.vegetation.ϑ_l[1],ν,S_s)
     return sum(
         flux.(model.domain.root_depths,
         model.domain.compartment_midpoints[1], 
@@ -462,6 +477,9 @@ end
         flux_out_roots::PrescribedRootFlux{FT},
         t::FT,
     )::FT where {FT}
+A method which prescribes the flux between the soil and the stem, via the roots,
+in the case of a standalone vegetation model. This assumes that the 
+stem compartment is the first element of `Y.vegetation.ϑ_l`.
 """
 function flux_out_roots(
     flux_out_roots::PrescribedRootFlux{FT},
@@ -475,9 +493,10 @@ end
         transpiration::PrescribedTranspiration{FT},
         t::FT,
     )::FT where {FT}
-A method which computes the transpiration in moles/sec between the leaf
+A method which computes the transpiration in meters/sec between the leaf
 and the atmosphere,
-in the case of a standalone root model with prescribed transpiration rate.
+in the case of a standalone vegetation model with prescribed
+transpiration rate.
 """
 function transpiration(
     transpiration::PrescribedTranspiration{FT},

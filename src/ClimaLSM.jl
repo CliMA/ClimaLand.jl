@@ -229,9 +229,9 @@ import .Pond: surface_runoff
 include("Soil/Soil.jl")
 using .Soil
 import .Soil: source!, boundary_fluxes
-include("Vegetation/Roots.jl")
-using .Roots
-import .Roots: flux_out_roots
+include("Vegetation/Vegetation.jl")
+using .Vegetation
+import .Vegetation: flux_out_roots
 
 ### Concrete types of AbstractLandModels
 ### and associated methods

@@ -4,6 +4,7 @@ using NLsolve
 using OrdinaryDiffEq: ODEProblem, solve, Euler
 using ClimaCore
 import CLIMAParameters as CP
+using Plots
 
 if !("." in LOAD_PATH)
     push!(LOAD_PATH, ".")
@@ -145,9 +146,28 @@ FT = Float64
     ϑ_l_leaf = reduce(hcat, sol.u)[2, :]
 
     ϑ_l = [ϑ_l_stem, ϑ_l_leaf]
+    ϑ_l_of_z = plot(sol.u[1,:],[z_stem_midpoint,z_leaf_midpoint],legend=:bottomleft,dpi=300,ylabel="Stem height [m]",xlabel="ϑ_l [m3 m-3]")
+    for i in 2:Int64(4*hour/dt):length(ϑ_l_stem)
+        plot!(ϑ_l_of_z,sol.u[i,:],[z_stem_midpoint,z_leaf_midpoint])
+    end
+
+    ϑ_l_of_t = plot((0:dt:tf)./hour,ϑ_l_stem,legend=:topright,dpi=300,ylabel="ϑ_l [m3 m-3]",xlabel="t [h]",label="stem")
+    plot!((0:dt:tf)./hour,ϑ_l_leaf,label="leaf")
 
     p_stem = volume_to_pressure.(vg_α,vg_n,vg_m,ϑ_l_stem,ν,S_s)
     p_leaf = volume_to_pressure.(vg_α,vg_n,vg_m,ϑ_l_leaf,ν,S_s)
+
+    p_of_t = plot((0:dt:tf)./hour,p_stem,legend=:topright,dpi=300,ylabel="Absolute pressure [m]",xlabel="time [h]",label="stem")
+    plot!(p_of_t,(0:dt:tf)./hour,p_leaf,label="leaf")
+
+    flux_out_stem = flux.(z_stem_midpoint,z_leaf_midpoint,p_stem,p_leaf,a_stem,a_leaf,b_stem,b_leaf,K_sat_stem,K_sat_leaf)
+    flux_of_t = plot((0:dt:tf)./hour, flux_out_stem, legend=:topright,dpi=300,ylabel="Flux [m s-1]",xlabel="time [h]",label="stem to leaf")
+    plot!(flux_of_t, (0:dt:tf)./hour, leaf_transpiration.(0:dt:tf), label="leaf to atmos")
+
+    savefig(ϑ_l_of_t,"ϑ_l_of_t.png")
+    savefig(ϑ_l_of_z,"ϑ_l_of_z.png")
+    savefig(p_of_t,"p_of_t.png")
+    savefig(flux_of_t,"flux_of_t.png")
 
     function f2!(F, Y)
         p_soilf = p_soil0

@@ -32,7 +32,7 @@ end
 
 A domain for single column surface variables.
 
-For models such as ponds, snow, roots, etc. Enables consistency 
+For models such as ponds, snow, vegetation, etc. Enables consistency 
 in variable initialization across all domains.
 # Fields
 $(DocStringExtensions.FIELDS)
@@ -397,14 +397,14 @@ An abstract type for vegetation specific domains.
 abstract type AbstractVegetationDomain{FT} <: AbstractDomain{FT} end
 
 """
-   RootDomain{FT} <: AbstractVegetationDomain{FT}
+   VegetationDomain{FT} <: AbstractVegetationDomain{FT}
 
 Domain for a single bulk plant with roots of varying depths. The user needs
 to specify the depths of the root tips as wel as the heights of the
 compartments to be modeled within the plant. The compartment heights
 are expected to be sorted in ascending order.
 """
-struct RootDomain{FT} <: AbstractVegetationDomain{FT}
+struct VegetationDomain{FT} <: AbstractVegetationDomain{FT}
     "The depth of the root tips, in meters"
     root_depths::Vector{FT}
     "The height of the stem, leaf compartments, in meters"
@@ -413,7 +413,7 @@ struct RootDomain{FT} <: AbstractVegetationDomain{FT}
     compartment_midpoints::Vector{FT}
 end
 
-function coordinates(domain::RootDomain{FT}) where {FT}
+function coordinates(domain::VegetationDomain{FT}) where {FT}
     return domain.compartment_midpoints # array of centers here
 end
 
@@ -471,7 +471,7 @@ end
 
 
 export AbstractDomain, AbstractVegetationDomain
-export Column, Plane, HybridBox, RootDomain, Point, SphericalShell
+export Column, Plane, HybridBox, VegetationDomain, Point, SphericalShell
 export LSMSingleColumnDomain
 export coordinates
 

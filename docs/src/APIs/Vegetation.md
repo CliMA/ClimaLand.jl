@@ -1,40 +1,40 @@
 # Vegetation
 
 ```@meta
-CurrentModule = ClimaLSM.Roots
+CurrentModule = ClimaLSM.Vegetation
 ```
 ## Models
 
 ```@docs
-ClimaLSM.Roots.AbstractVegetationModel
-ClimaLSM.Roots.RootsModel
+ClimaLSM.Vegetation.AbstractVegetationModel
+ClimaLSM.Vegetation.VegetationModel
 ```
 
-## Roots Diagnostic Variables
+## Vegetation Diagnostic Variables
 
 ```@docs
 flux,
-ClimaLSM.Roots.effective_saturation
-ClimaLSM.Roots.augmented_liquid_fraction
-ClimaLSM.Roots.van_genuchten_volume_to_pressure
-ClimaLSM.Roots.van_genuchten_pressure_to_volume
-ClimaLSM.Roots.ϑ_l_to_absolute_pressure
-ClimaLSM.Roots.absolute_pressure_to_ϑ_l
-ClimaLSM.Roots.flux_out_roots
+ClimaLSM.Vegetation.effective_saturation
+ClimaLSM.Vegetation.augmented_liquid_fraction
+ClimaLSM.Vegetation.van_Genuchten_volume_to_pressure
+ClimaLSM.Vegetation.van_Genuchten_pressure_to_volume
+ClimaLSM.Vegetation.volume_to_pressure
+ClimaLSM.Vegetation.pressure_to_volume
+ClimaLSM.Vegetation.flux_out_roots
 ```
 
-## Roots Parameters
+## Vegetation Parameters
 
 ```@docs
-ClimaLSM.Roots.RootsParameters
+ClimaLSM.Vegetation.VegetationParameters
 ```
 
-## Roots Methods and Types
+## Vegetation Methods and Types
 
 ```@docs
-ClimaLSM.Roots.flux_out_roots
-ClimaLSM.Roots.PrescribedSoilPressure
-ClimaLSM.Roots.PrescribedRootFlux
-ClimaLSM.Roots.PrescribedTranspiration
-ClimaLSM.Roots.AbstractRootExtraction
+ClimaLSM.Vegetation.flux_out_roots
+ClimaLSM.Vegetation.PrescribedSoilPressure
+ClimaLSM.Vegetation.PrescribedRootFlux
+ClimaLSM.Vegetation.PrescribedTranspiration
+ClimaLSM.Vegetation.AbstractRootExtraction
 ```
