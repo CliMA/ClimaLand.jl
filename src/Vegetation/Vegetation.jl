@@ -140,7 +140,7 @@ struct VegetationParameters{FT <: AbstractFloat, PSE}
     vg_n::FT
     "van Genuchten parameter"
     vg_m::FT
-    "porosity"    
+    "porosity"
     ν::FT
     "storativity"
     S_s::FT
@@ -211,27 +211,28 @@ in section 6.4 "Bulk plant hydraulics model".
 """
 function flux(
     z1::FT,
-    z2::FT, 
-    p1::FT, 
-    p2::FT, 
-    a1::FT, 
-    a2::FT, 
-    b1::FT, 
-    b2::FT, 
-    K_sat1::FT, 
-    K_sat2::FT) where {FT}  
-        u1 = a1 * exp(b1 * p1) 
-        u2 = a1 * exp(b1 * p2) 
-        num1 = log(u1 + FT(1))
-        num2 = log(u2 + FT(1))
-        c1 = K_sat1 * (a1 + FT(1)) / a1
-        term1 = -c1 / b1 * (num2 - num1) /(z2 - z1)
+    z2::FT,
+    p1::FT,
+    p2::FT,
+    a1::FT,
+    a2::FT,
+    b1::FT,
+    b2::FT,
+    K_sat1::FT,
+    K_sat2::FT,
+) where {FT}
+    u1 = a1 * exp(b1 * p1)
+    u2 = a1 * exp(b1 * p2)
+    num1 = log(u1 + FT(1))
+    num2 = log(u2 + FT(1))
+    c1 = K_sat1 * (a1 + FT(1)) / a1
+    term1 = -c1 / b1 * (num2 - num1) / (z2 - z1)
 
-        c2 = K_sat2 * (a2 + FT(1)) / a2
-        term2_up = c2 * (FT(1) - FT(1) / (FT(1) + a2*exp(b2 * p2)))
-        term2_do = c1 * (FT(1) - FT(1) / (FT(1) + a1*exp(b1 * p1)))
-        term2 = -(term2_up - term2_do)/2
-        flux = term1 + term2  
+    c2 = K_sat2 * (a2 + FT(1)) / a2
+    term2_up = c2 * (FT(1) - FT(1) / (FT(1) + a2 * exp(b2 * p2)))
+    term2_do = c1 * (FT(1) - FT(1) / (FT(1) + a1 * exp(b1 * p1)))
+    term2 = -(term2_up - term2_do) / 2
+    flux = term1 + term2
     return flux # units of [m s-1]
 end
 
@@ -244,10 +245,8 @@ effective saturation. Augmented liquid fraction allows for
 oversaturation: an expansion of the volume of space
 available for storage in a plant compartment.
 """
-function augmented_liquid_fraction(
-    ν::FT, 
-    S_l::FT) where {FT}
-    ϑ_l = S_l * ν 
+function augmented_liquid_fraction(ν::FT, S_l::FT) where {FT}
+    ϑ_l = S_l * ν
     safe_ϑ_l = max(ϑ_l, 0)
     return safe_ϑ_l # units of [m3 m-3]
 end
@@ -259,9 +258,7 @@ end
 Computes the effective saturation (volumetric water content relative to
 porosity).
 """
-function effective_saturation(
-    ν::FT, 
-    ϑ_l::FT) where {FT}
+function effective_saturation(ν::FT, ϑ_l::FT) where {FT}
     S_l = ϑ_l / ν # S_l can be > 1
     safe_S_l = max(S_l, 0)
     return safe_S_l # units of [m3 m-3]
@@ -276,11 +273,12 @@ end
 Converts effective saturation to absolute pressure, in unsaturated case.
 """
 function van_Genuchten_volume_to_pressure(
-        α::FT, 
-        n::FT, 
-        m::FT, 
-        S_l::FT) where {FT}
-        p = -((S_l^(-FT(1) / m) - FT(1)) * α^(-n))^(FT(1) / n) 
+    α::FT,
+    n::FT,
+    m::FT,
+    S_l::FT,
+) where {FT}
+    p = -((S_l^(-FT(1) / m) - FT(1)) * α^(-n))^(FT(1) / n)
     return p # units of [m]
 end
 
@@ -292,12 +290,8 @@ end
         p::FT) where {FT}
 Converts absolute pressure to effective saturation, in unsaturated case.
 """
-function van_Genuchten_pressure_to_volume(
-        α::FT, 
-        n::FT, 
-        m::FT,
-        p::FT) where {FT}
-        S_l = ((-α * p)^n + FT(1.0))^(-m)
+function van_Genuchten_pressure_to_volume(α::FT, n::FT, m::FT, p::FT) where {FT}
+    S_l = ((-α * p)^n + FT(1.0))^(-m)
     return S_l # units of [m3 m-3]
 end
 
@@ -315,12 +309,13 @@ the unsaturated and saturated regimes. Currently this is using
 vG parameters for loamy type soil (change in future pr).
 """
 function volume_to_pressure(
-            vg_α::FT,
-            vg_n::FT,
-            vg_m::FT,
-            ϑ_l::FT,
-            ν::FT,
-            S_s::FT) where {FT}
+    vg_α::FT,
+    vg_n::FT,
+    vg_m::FT,
+    ϑ_l::FT,
+    ν::FT,
+    S_s::FT,
+) where {FT}
     S_l = effective_saturation(ν, ϑ_l)
     if S_l <= FT(1.0)
         p = van_Genuchten_volume_to_pressure(vg_α, vg_n, vg_m, S_l)
@@ -342,13 +337,14 @@ function pressure_to_volume(
     vg_m::FT,
     p::FT,
     ν::FT,
-    S_s::FT) where {FT}    
+    S_s::FT,
+) where {FT}
     if p <= FT(0.0)
         S_l = van_Genuchten_pressure_to_volume(vg_α, vg_n, vg_m, p)
     else
-        S_l = p * S_s + ν 
+        S_l = p * S_s + ν
     end
-        ϑ_l = augmented_liquid_fraction(ν, S_l)   
+    ϑ_l = augmented_liquid_fraction(ν, S_l)
     return ϑ_l
 end
 
@@ -364,7 +360,7 @@ function make_rhs(model::VegetationModel)
         b_root,
         b_stem,
         K_sat_root,
-        K_sat_stem, 
+        K_sat_stem,
         vg_α,
         vg_n,
         vg_m,
@@ -374,27 +370,32 @@ function make_rhs(model::VegetationModel)
         z_ground, z_stem_top, z_leaf_top = model.domain.compartment_surfaces
         z_stem_midpoint, z_leaf_midpoint = model.domain.compartment_midpoints
 
-        p_stem = volume_to_pressure.(vg_α,vg_n,vg_m,Y.vegetation.ϑ_l[1],ν,S_s)
-        p_leaf = volume_to_pressure.(vg_α,vg_n,vg_m,Y.vegetation.ϑ_l[2],ν,S_s)
+        p_stem =
+            volume_to_pressure.(vg_α, vg_n, vg_m, Y.vegetation.ϑ_l[1], ν, S_s)
+        p_leaf =
+            volume_to_pressure.(vg_α, vg_n, vg_m, Y.vegetation.ϑ_l[2], ν, S_s)
 
         # Fluxes are in meters/second
         flux_in_stem = flux_out_roots(model.root_extraction, model, Y, p, t)
 
         flux_out_stem = flux(
             z_stem_midpoint,
-            z_leaf_midpoint, 
-            p_stem, 
-            p_leaf, 
-            a_root, 
-            a_stem, 
-            b_root, 
-            b_stem, 
-            K_sat_root, 
-            K_sat_stem)
+            z_leaf_midpoint,
+            p_stem,
+            p_leaf,
+            a_root,
+            a_stem,
+            b_root,
+            b_stem,
+            K_sat_root,
+            K_sat_stem,
+        )
 
-            dY.vegetation.ϑ_l[1] = 1/(z_stem_top-z_ground)*(flux_in_stem - flux_out_stem)            
-            dY.vegetation.ϑ_l[2] =
-            1/(z_leaf_top-z_stem_top)*(flux_out_stem - transpiration(model.transpiration, t))
+        dY.vegetation.ϑ_l[1] =
+            1 / (z_stem_top - z_ground) * (flux_in_stem - flux_out_stem)
+        dY.vegetation.ϑ_l[2] =
+            1 / (z_leaf_top - z_stem_top) *
+            (flux_out_stem - transpiration(model.transpiration, t))
     end
     return rhs!
 end
@@ -446,29 +447,31 @@ function flux_out_roots(
     p::ClimaCore.Fields.FieldVector,
     t::FT,
 )::FT where {FT}
-    @unpack vg_α, 
-    vg_n, 
-    vg_m, 
-    ν, 
-    S_s, 
-    a_root, 
-    a_stem, 
-    b_root, 
-    b_stem, 
-    K_sat_root, 
+    @unpack vg_α,
+    vg_n,
+    vg_m,
+    ν,
+    S_s,
+    a_root,
+    a_stem,
+    b_root,
+    b_stem,
+    K_sat_root,
     K_sat_stem = model.parameters
-    p_stem = volume_to_pressure.(vg_α,vg_n,vg_m,Y.vegetation.ϑ_l[1],ν,S_s)
+    p_stem = volume_to_pressure.(vg_α, vg_n, vg_m, Y.vegetation.ϑ_l[1], ν, S_s)
     return sum(
-        flux.(model.domain.root_depths,
-        model.domain.compartment_midpoints[1], 
-        re.p_soil(t), 
-        p_stem, 
-        a_root, 
-        a_stem, 
-        b_root, 
-        b_stem, 
-        K_sat_root, 
-        K_sat_stem),
+        flux.(
+            model.domain.root_depths,
+            model.domain.compartment_midpoints[1],
+            re.p_soil(t),
+            p_stem,
+            a_root,
+            a_stem,
+            b_root,
+            b_stem,
+            K_sat_root,
+            K_sat_stem,
+        ),
     )
 end
 

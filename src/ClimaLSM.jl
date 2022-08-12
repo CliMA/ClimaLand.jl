@@ -235,6 +235,6 @@ import .Vegetation: flux_out_roots
 
 ### Concrete types of AbstractLandModels
 ### and associated methods
-include("./root_soil_model.jl")
-include("./pond_soil_model.jl")
+include("./vegetation_soil_model.jl")
+include("./vegetation_soil_model.jl")
 end

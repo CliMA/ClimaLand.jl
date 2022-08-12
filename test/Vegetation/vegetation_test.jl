@@ -24,13 +24,13 @@ FT = Float64
     a_leaf = FT(0.397) # modified logistic function parameters fitted to VG, for vg_α = 2.6 and vg_n = 2 
     b_leaf = FT(7.692)
     K_sat_root = FT(0.0443 / 360)
-    K_sat_stem = FT(0.0443 / 360) 
+    K_sat_stem = FT(0.0443 / 360)
     K_sat_leaf = FT(0.0443 / 360)
-    vg_α = FT(2.6) 
+    vg_α = FT(2.6)
     vg_n = FT(2) # can yield imaginary number w VG theta to P?
     vg_m = FT(1) - FT(1) / vg_n
     ν = FT(0.495)
-    S_s = FT(1e-3) 
+    S_s = FT(1e-3)
     root_depths = [FT(-1.0)] # m, rooting depth
     z_ground = FT(0.0)
     z_stem_top = FT(5.0)
@@ -38,7 +38,11 @@ FT = Float64
     z_stem_midpoint = FT(2.5)
     z_leaf_midpoint = FT(7.5)
     earth_param_set = create_lsm_parameters(FT)
-    vegetation_domain = VegetationDomain{FT}(root_depths, [z_ground, z_stem_top, z_leaf_top], [z_stem_midpoint, z_leaf_midpoint])
+    vegetation_domain = VegetationDomain{FT}(
+        root_depths,
+        [z_ground, z_stem_top, z_leaf_top],
+        [z_stem_midpoint, z_leaf_midpoint],
+    )
     param_set = Vegetation.VegetationParameters{FT, typeof(earth_param_set)}(
         a_root,
         b_root,
@@ -72,7 +76,7 @@ FT = Float64
 
     p_soil0 = [FT(0.0)]
     transpiration =
-       PrescribedTranspiration{FT}((t::FT) -> leaf_transpiration(t))
+        PrescribedTranspiration{FT}((t::FT) -> leaf_transpiration(t))
     root_extraction = PrescribedSoilPressure{FT}((t::FT) -> p_soil0)
     vegetation = Vegetation.VegetationModel{FT}(;
         domain = vegetation_domain,
@@ -90,23 +94,24 @@ FT = Float64
                 z_stem_midpoint,
                 p_soil0,
                 Y[1],
-                a_root, 
-                a_stem, 
-                b_root, 
-                b_stem, 
-                K_sat_root, 
-                K_sat_stem),
+                a_root,
+                a_stem,
+                b_root,
+                b_stem,
+                K_sat_root,
+                K_sat_stem,
+            ),
         )
         flux_out_stem = flux(
             z_stem_midpoint,
             z_leaf_midpoint,
             Y[1],
             Y[2],
-            a_stem, 
-            a_leaf, 
-            b_stem, 
-            b_leaf, 
-            K_sat_stem, 
+            a_stem,
+            a_leaf,
+            b_stem,
+            b_leaf,
+            K_sat_stem,
             K_sat_leaf,
         )
 
@@ -114,13 +119,13 @@ FT = Float64
         F[2] = flux_out_stem - T0
     end
 
-    soln = nlsolve(f!, [-0.03,-0.02])
+    soln = nlsolve(f!, [-0.03, -0.02])
     p_stem_0 = soln.zero[1]
     p_leaf_0 = soln.zero[2]
 
-    ϑ_l_stem_0 = pressure_to_volume(vg_α,vg_n,vg_m,p_stem_0,ν,S_s)
-    ϑ_l_leaf_0 = pressure_to_volume(vg_α,vg_n,vg_m,p_leaf_0,ν,S_s)
-   
+    ϑ_l_stem_0 = pressure_to_volume(vg_α, vg_n, vg_m, p_stem_0, ν, S_s)
+    ϑ_l_leaf_0 = pressure_to_volume(vg_α, vg_n, vg_m, p_leaf_0, ν, S_s)
+
     ϑ_l_0 = [ϑ_l_stem_0, ϑ_l_leaf_0]
     Y, p, coords = initialize(vegetation)
 
@@ -129,9 +134,9 @@ FT = Float64
     vegetation_ode! = make_ode_function(vegetation)
 
     hour = FT(60^2)
-    day = FT(24*60^2)
+    day = FT(24 * 60^2)
     t0 = FT(0)
-    tf = FT(hour*24)
+    tf = FT(hour * 24)
     dt = FT(1)
 
     prob = ODEProblem(vegetation_ode!, Y, (t0, tf), p)
@@ -146,8 +151,8 @@ FT = Float64
 
     ϑ_l = [ϑ_l_stem, ϑ_l_leaf]
 
-    p_stem = volume_to_pressure.(vg_α,vg_n,vg_m,ϑ_l_stem,ν,S_s)
-    p_leaf = volume_to_pressure.(vg_α,vg_n,vg_m,ϑ_l_leaf,ν,S_s)
+    p_stem = volume_to_pressure.(vg_α, vg_n, vg_m, ϑ_l_stem, ν, S_s)
+    p_leaf = volume_to_pressure.(vg_α, vg_n, vg_m, ϑ_l_leaf, ν, S_s)
 
     function f2!(F, Y)
         p_soilf = p_soil0
@@ -164,7 +169,7 @@ FT = Float64
                 b_stem,
                 K_sat_root,
                 K_sat_stem,
-            ),        
+            ),
         )
         flux_out_stem = flux(
             z_stem_midpoint,
