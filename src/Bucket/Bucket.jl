@@ -343,7 +343,7 @@ function surface_fluxes_at_a_point(
     R_n = -((FT(1) - α) * SW_d(t) + LW_d(t) - _σ * T_sfc^FT(4.0))
     # Land needs a volume flux of water, not mass flux
     E =
-        SurfaceFluxes.evaporation(sc, surface_flux_params, conditions.Ch) /
+        SurfaceFluxes.evaporation(surface_flux_params, sc, conditions.Ch) /
         _ρ_liq
     return (R_n = R_n, LHF = conditions.lhf, SHF = conditions.shf, E = E)
 end
