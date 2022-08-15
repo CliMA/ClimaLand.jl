@@ -6,7 +6,7 @@ CurrentModule = ClimaLSM
 ## LSM Model Types and methods
 
 ```@docs
-ClimaLSM.RootSoilModel
+ClimaLSM.SoilPlantHydrologyModel
 ClimaLSM.LandHydrology
 ClimaLSM.make_interactions_update_aux
 ClimaLSM.initialize_interactions
@@ -26,7 +26,7 @@ ClimaLSM.PrognosticRunoff
 ClimaLSM.RunoffBC
 ```
 
-## RootSoilModel
+## SoilPlantHydrologyModel
 
 ```@docs
 ClimaLSM.PrognosticSoilPressure

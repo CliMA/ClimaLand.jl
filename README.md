@@ -26,13 +26,13 @@ Examples:
 Component Models:
 RichardsModel <: AbstractSoilModel <: AbstractModel [runnable w/o LandModel wrapper as well]
 
-RootsModel <: AbstractVegetationModel <: AbstractModel  [runnable w/o LandModel wrapper as well]
+PlantHydraulicsModel <: AbstractVegetationModel <: AbstractModel  [runnable w/o LandModel wrapper as well]
 
 PondModel <: AbstractSurfaceWaterModel  <: AbstractModel  [runnable w/o LandModel wrapper as well]
 
 Combined Models:
 
-RootSoilModel <: AbstractModel (constructs the individual ComponentModels based on arguments)
+SoilPlantHydrologyModel <: AbstractModel (constructs the individual ComponentModels based on arguments)
 
 |||
 |---------------------:|:----------------------------------------------|

@@ -1,6 +1,6 @@
 include("./Bucket/soil_bucket_tests.jl")
 include("./Bucket/snow_bucket_tests.jl")
-include("./Vegetation/root_test.jl")
+include("./Vegetation/plant_hydraulics_test.jl")
 include("./LSM/lsm_test.jl")
 include("./domains.jl")
 include("./variable_types.jl")

@@ -1,34 +1,36 @@
 # Vegetation
 
 ```@meta
-CurrentModule = ClimaLSM.Roots
+CurrentModule = ClimaLSM.Vegetation
 ```
 ## Models
 
 ```@docs
-ClimaLSM.Roots.AbstractVegetationModel
-ClimaLSM.Roots.RootsModel
+ClimaLSM.PlantHydraulics.AbstractVegetationModel
+ClimaLSM.PlantHydraulics.PlantHydraulicsModel
 ```
 
-## Roots Diagnostic Variables
+## Plan Hydraulics Diagnostic Variables
 
 ```@docs
-ClimaLSM.Roots.p_to_theta
-ClimaLSM.Roots.theta_to_p
-ClimaLSM.Roots.flow
-ClimaLSM.Roots.flow_out_roots
+ClimaLSM.PlantHydraulics.effective_saturation
+ClimaLSM.PlantHydraulics.augmented_liquid_fraction
+ClimaLSM.PlantHydraulics.water_retention_curve
+ClimaLSM.PlantHydraulics.inverse_water_retention_curve
+ClimaLSM.PlantHydraulics.flux_out_roots
 ```
 
-## Roots Parameters
+## Plan Hydraulics Parameters
 
 ```@docs
-ClimaLSM.Roots.RootsParameters
+ClimaLSM.PlantHydraulics.PlantHydraulicsParameters
 ```
 
-## Roots Methods and Types
+## Plan Hydraulics Methods and Types
 
 ```@docs
-ClimaLSM.Roots.PrescribedSoilPressure
-ClimaLSM.Roots.PrescribedTranspiration
-ClimaLSM.Roots.AbstractRootExtraction
+ClimaLSM.PlantHydraulics.PrescribedSoilPressure
+ClimaLSM.PlantHydraulics.PrescribedRootFlux
+ClimaLSM.PlantHydraulics.PrescribedTranspiration
+ClimaLSM.PlantHydraulics.AbstractRootExtraction
 ```

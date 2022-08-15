@@ -10,41 +10,49 @@ if !("." in LOAD_PATH)
 end
 
 using ClimaLSM
-using ClimaLSM.Domains: Column, RootDomain
+using ClimaLSM.Domains: Column, PlantHydraulicsDomain
 using ClimaLSM.Soil
-using ClimaLSM.Roots
+using ClimaLSM.PlantHydraulics
 import ClimaLSM
 include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
 
 FT = Float64
-@testset "Root soil LSM integration test" begin
+@testset " Soil plant hydrology LSM integration test" begin
     saved_values = SavedValues(FT, ClimaCore.Fields.FieldVector)
     earth_param_set = create_lsm_parameters(FT)
-    a_root = FT(13192)
-    a_stem = FT(515.5605)
-    b_root = FT(2.1079)
-    b_stem = FT(0.9631)
-    size_reservoir_leaf_moles = FT(16766.2790)
-    size_reservoir_stem_moles = FT(11000.8837)
-    K_max_root_moles = FT(12.9216)
-    K_max_stem_moles = FT(3.4415)
-    z_leaf = FT(12) # height of leaf
+    K_sat_root = FT(1e-5) # Pierre's database (1e-6) (https://github.com/yalingliu-cu/plant-strategies/blob/master/Product%20details.pdf)
+    K_sat_stem = FT(1e-3)
+    K_sat_leaf = FT(1e-3)
+    vg_α = FT(0.24)
+    vg_n = FT(2)
+    vg_m = FT(1) - FT(1) / vg_n
+    ν = FT(0.495)
+    S_s = FT(1e-3)
+    z_root_depths = -Array(1:1:20.0) ./ 20.0 * 3.0 .+ 0.15 / 2.0
+    z_ground = FT(0.0)
+    z_stem_top = FT(6.0)
+    z_leaf_top = FT(12) # height of leaf
     # currently hardcoded to match the soil coordinates. this has to
     # be fixed eventually.
-    z_root_depths = -Array(1:1:20.0) ./ 20.0 * 3.0 .+ 0.15 / 2.0
-    z_bottom_stem = FT(0.0)
-    roots_domain = RootDomain{FT}(z_root_depths, [z_bottom_stem, z_leaf])
-    roots_ps = Roots.RootsParameters{FT, typeof(earth_param_set)}(
-        a_root,
-        b_root,
-        a_stem,
-        b_stem,
-        size_reservoir_stem_moles,
-        size_reservoir_leaf_moles,
-        K_max_root_moles,
-        K_max_stem_moles,
-        earth_param_set,
+    z_stem_midpoint = FT(3)
+    z_leaf_midpoint = FT(9)
+    plant_hydraulics_domain = PlantHydraulicsDomain{FT}(
+        z_root_depths,
+        [z_ground, z_stem_top, z_leaf_top],
+        [z_stem_midpoint, z_leaf_midpoint],
     )
+    plant_hydraulics_ps =
+        PlantHydraulics.PlantHydraulicsParameters{FT, typeof(earth_param_set)}(
+            K_sat_root,
+            K_sat_stem,
+            K_sat_leaf,
+            vg_α,
+            vg_n,
+            vg_m,
+            ν,
+            S_s,
+            earth_param_set,
+        )
 
     zmin = FT(-3.0)
     zmax = FT(0.0)
@@ -59,12 +67,13 @@ FT = Float64
     θ_r = FT(0)
     soil_ps = Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r)
     soil_args = (domain = soil_domain, parameters = soil_ps)
-    root_args = (domain = roots_domain, parameters = roots_ps)
-    land = RootSoilModel{FT}(;
+    plant_hydraulics_args =
+        (domain = plant_hydraulics_domain, parameters = plant_hydraulics_ps)
+    land = SoilPlantHydrologyModel{FT}(;
         soil_model_type = Soil.RichardsModel{FT},
         soil_args = soil_args,
-        vegetation_model_type = Roots.RootsModel{FT},
-        vegetation_args = root_args,
+        vegetation_model_type = PlantHydraulics.PlantHydraulicsModel{FT},
+        vegetation_args = plant_hydraulics_args,
     )
     Y, p, coords = initialize(land)
     # specify ICs
@@ -85,18 +94,17 @@ FT = Float64
     init_soil!(Y, coords.subsurface.z, land.soil.parameters)
 
     ## soil is at total ψ+z = -3.0 #m
-    ## Want ρgΨ_plant = ρg(-3) - ρg z_plant & convert to MPa
-    # we should standardize the units! and not ahve to convert every time.
-    # convert parameters once up front and then not each RHS
-    p_stem_ini = (-3.0 - z_bottom_stem) * 9.8 * 1000.0 / 1000000.0
-    p_leaf_ini = (-3.0 - z_leaf) * 9.8 * 1000.0 / 1000000.0
+    ## Want (ψ+z)_plant = (ψ+z)_soil 
+    p_stem_0 = (-3.0 - z_ground)
+    p_leaf_0 = (-3.0 - z_leaf_top)
 
-    theta_stem_0 = p_to_theta(p_stem_ini)
-    theta_leaf_0 = p_to_theta(p_leaf_ini)
-    y1_0 = FT(theta_stem_0 * size_reservoir_stem_moles)
-    y2_0 = FT(theta_leaf_0 * size_reservoir_leaf_moles)
-    y0 = [y1_0, y2_0]
-    Y.vegetation.rwc .= y0
+    ϑ_l_stem_0 =
+        inverse_water_retention_curve(vg_α, vg_n, vg_m, p_stem_0, ν, S_s)
+    ϑ_l_leaf_0 =
+        inverse_water_retention_curve(vg_α, vg_n, vg_m, p_leaf_0, ν, S_s)
+    ϑ_l_0 = [ϑ_l_stem_0, ϑ_l_leaf_0]
+
+    Y.vegetation.ϑ_l .= ϑ_l_0
 
     ode! = make_ode_function(land)
     t0 = FT(0)
