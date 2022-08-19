@@ -1,7 +1,6 @@
-# To do: convert all units to SI, move constants out of src/ code and pass through,
-# via structs. convert from a single plant to a bulk plant (units change, required
-# input changes). we should also change the name to Vegetation or biophysics as
-# appropriate.
+# To do: convert all units to SI, move constants out of code and use ClimaParameters,
+# convert from a single plant to a bulk plant (units change, required input changes).
+# we should also change the name to Vegetation or biophysics as appropriate.
 module Roots
 #=
     Roots
@@ -9,22 +8,22 @@ This module contains everything needed to run a vegetation model
 in standalone mode.
 The vegetation model is assumed to have a set of prognostic `Y` and
 auxiliary `p` variables, which describe the state of the
-vegetation system. The system is evolved in time by solving 
+vegetation system. The system is evolved in time by solving
 equations of the form
 ```
 \frac{d Y}{d t} = f(Y, t, p(Y, t; \ldots);\ldots),
 ```
 i.e. ordinary differential equations depending on state `Y`,
-auxiliary functions of the state `p`, and other parameters 
+auxiliary functions of the state `p`, and other parameters
 represented by the ellipses. For example, `p` may represent
 the transpiration rate, which must be computed each time step
-based on the vegetation prognostic state, functions of time, 
+based on the vegetation prognostic state, functions of time,
 like the atmosphere state, and other parameters.
 Currently, only a simple plant hydraulics model is supported,
 but our plan is to include much more complex representations
 of the vegetation.
 Addition of additional versions of vegetation
-models requires defining a model type (of super type 
+models requires defining a model type (of super type
 `AbstractVegetationModel`), and extending the methods
 imported by Models.jl, as needed, for computing the
 right hand side functions of the ordinary differential equations
@@ -33,9 +32,9 @@ the right hand side is evaluated.
 This code base assumes that DifferentialEquations.jl
 will be used for evolving the system in time,
 and that the array-like objected being stepped forward
-is a `ClimaCore.Fields.FieldVector`. 
+is a `ClimaCore.Fields.FieldVector`.
 While a simple array may be sufficient for vegetation models,
-the `FieldVector` type is used in order to make use of 
+the `FieldVector` type is used in order to make use of
 `ClimaCore` functionality when solving PDEs (required for
 other components of Land Surface Models) and for ease of
 handling multi-column models.
@@ -50,6 +49,7 @@ using ClimaCore
 using UnPack
 using DocStringExtensions
 import ClimaCore: Fields
+using CLIMAParameters: AbstractEarthParameterSet
 
 using ClimaLSM.Domains: AbstractVegetationDomain, RootDomain
 import ClimaLSM:
@@ -108,26 +108,18 @@ abstract type AbstractTranspiration{FT <: AbstractFloat} end
 
 """
     RootsParameters{FT <: AbstractFloat}
-A struct for holding parameters of the Root Model.
+A struct for holding parameters of the Root Model. Eventually to be used with ClimaParameters.
 $(DocStringExtensions.FIELDS)
 """
 struct RootsParameters{FT <: AbstractFloat, PSE}
-    "controls the shape and steepness of conductance vs. pressure curve, for roots: unitless"
-    a_root::FT
-    "controls the steepness of the relative conductance vs. pressure curve, for roots: inverse MPa"
-    b_root::FT
-    "controls the shape and steepness of relative conductance vs. pressure curve, for stems: unitless"
-    a_stem::FT
-    "controls the steepness of the conductance vs. pressure curve, for stems: inverse MPa"
-    b_stem::FT
-    "the physical size of the stem, in moles"
-    size_reservoir_stem_moles::FT
-    "the physical size of the leaves, in moles"
-    size_reservoir_leaf_moles::FT
-    "water conductance in roots (moles/s/MPa) when pressure is zero, a maximum"
-    K_max_root_moles::FT
-    "water conductance in stems (moles/s/MPa) when pressure is zero, a maximum"
-    K_max_stem_moles::FT
+    "controls the shape and steepness of conductance vs. pressure curve, for roots, stem compartments, and leaf compartments: unitless"
+    a_variables::NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}}
+    "controls the steepness of the relative conductance vs. pressure curve, for roots, stem compartments, and leaf compartments: inverse MPa"
+    b_variables::NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}}
+    "the physical size of the stem and leaves, in moles"
+    size_reservoir_moles::NamedTuple{(:stem, :leaf), Tuple{FT, FT}}
+    "water conductance in roots, stems, and leaves (moles/s/MPa) when pressure is zero, a maximum"
+    K_max_moles::NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}}
     "Physical Constants and other clima-wide parameters"
     earth_param_set::PSE
 end
@@ -137,7 +129,7 @@ end
 Defines, and constructs instances of, the RootsModel type, which is used
 for simulation flow of water to/from soil, along roots of different depths,
 along a stem, to a leaf, and ultimately being lost from the system by
-transpiration. 
+transpiration.
 This model can be used in standalone mode by prescribing the transpiration rate
 and soil pressure at the root tips, or with a dynamic soil model using `ClimaLSM`.
 $(DocStringExtensions.FIELDS)
@@ -165,7 +157,7 @@ end
 
 """
     prognostic_vars(model::RootsModel)
-A function which returns the names of the prognostic 
+A function which returns the names of the prognostic
 variables of the `RootsModel`.
 """
 prognostic_vars(model::RootsModel) = (:rwc,)
@@ -285,36 +277,53 @@ The rhs! function must comply with a rhs function of OrdinaryDiffEq.jl.
 """
 function make_rhs(model::RootsModel)
     function rhs!(dY, Y, p, t)
-        @unpack a_root,
-        b_root,
-        K_max_root_moles,
-        size_reservoir_stem_moles,
-        a_stem,
-        b_stem,
-        K_max_stem_moles,
-        size_reservoir_leaf_moles = model.parameters
+        @unpack a_variables, b_variables, K_max_moles, size_reservoir_moles =
+            model.parameters
 
-        z_stem, z_leaf = model.domain.compartment_heights
+        n_stem = model.domain.n_stem
+        n_leaf = model.domain.n_leaf
 
-        p_stem = theta_to_p(Y.vegetation.rwc[1] / size_reservoir_stem_moles)
-        p_leaf = theta_to_p(Y.vegetation.rwc[2] / size_reservoir_leaf_moles)
+        pressure = zeros(n_stem + n_leaf)
+        # pressure = @.(theta_to_p(Y.vegetation.rwc/getproperty.(Ref(size_reservoir_moles), model.domain.compartment_labels)))
+        for i in 1:(n_stem + n_leaf)
+            pressure[i] = theta_to_p(
+                Y.vegetation.rwc[i] /
+                size_reservoir_moles[model.domain.compartment_labels[i]],
+            )
+        end
 
-        # Flows are in moles/second
-        flow_in_stem = flow_out_roots(model.root_extraction, model, Y, p, t)
+        for i in 1:(n_stem + n_leaf)
+            if i == 1
+                flow_in = flow_out_roots(model.root_extraction, model, Y, p, t)
+            else
+                flow_in = flow(
+                    model.domain.compartment_heights[i - 1],
+                    model.domain.compartment_heights[i],
+                    pressure[i - 1],
+                    pressure[i],
+                    a_variables[model.domain.compartment_labels[i]],
+                    b_variables[model.domain.compartment_labels[i]],
+                    K_max_moles[model.domain.compartment_labels[i]],
+                )
+            end
 
-        flow_out_stem = flow(
-            z_stem,
-            z_leaf,
-            p_stem,
-            p_leaf,
-            a_stem,
-            b_stem,
-            K_max_stem_moles,
-        )
+            if i == (n_stem + n_leaf)
+                flow_out = transpiration(model.transpiration, t)
+            else
+                flow_out = flow(
+                    model.domain.compartment_heights[i],
+                    model.domain.compartment_heights[i + 1],
+                    pressure[i],
+                    pressure[i + 1],
+                    a_variables[model.domain.compartment_labels[i + 1]],
+                    b_variables[model.domain.compartment_labels[i + 1]],
+                    K_max_moles[model.domain.compartment_labels[i + 1]],
+                )
+            end
 
-        dY.vegetation.rwc[1] = flow_in_stem - flow_out_stem
-        dY.vegetation.rwc[2] =
-            flow_out_stem - transpiration(model.transpiration, t)
+            dY.vegetation.rwc[i] = flow_in - flow_out
+        end
+        # Flows are in moles/second        
     end
     return rhs!
 end
@@ -357,18 +366,18 @@ function flow_out_roots(
     p::ClimaCore.Fields.FieldVector,
     t::FT,
 )::FT where {FT}
-    @unpack a_root, b_root, K_max_root_moles, size_reservoir_stem_moles =
+    @unpack a_variables, b_variables, K_max_moles, size_reservoir_moles =
         model.parameters
-    p_stem = theta_to_p(Y.vegetation.rwc[1] / size_reservoir_stem_moles)
+    p_stem = theta_to_p(Y.vegetation.rwc[1] / size_reservoir_moles[:stem])
     return sum(
         flow.(
             model.domain.root_depths,
             model.domain.compartment_heights[1],
             re.p_soil(t),
             p_stem,
-            a_root,
-            b_root,
-            K_max_root_moles,
+            a_variables[:root],
+            b_variables[:root],
+            K_max_moles[:root],
         ),
     )
 end

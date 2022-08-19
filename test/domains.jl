@@ -116,3 +116,63 @@ end
               parent(coordinates(column))
     end
 end
+
+TestFloatTypes = (Float32, Float64)
+@testset "RootDomain" begin
+    for FT in TestFloatTypes
+        d_z = 1.0
+        roots = [1.0, 2.0, 3.0]
+        stem = Int64(5)
+        leaves = Int64(4)
+        comp_heights = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0]
+        comp_labels =
+            [:stem, :stem, :stem, :stem, :stem, :leaf, :leaf, :leaf, :leaf]
+        test_tuple = (root = 1, stem = 2, leaf = 3)
+        @test test_tuple[:root] == 1
+
+        testing = RootDomain(roots, stem, leaves, d_z)
+        @test testing.root_depths == [1.0, 2.0, 3.0]
+        @test testing.n_stem == 5
+        @test testing.n_leaf == 4
+        @test testing.compartment_heights == comp_heights
+        @test testing.compartment_labels == comp_labels
+        for i in 1:5
+            @test test_tuple[testing.compartment_labels[i]] == 2
+        end
+        for i in 6:9
+            @test test_tuple[testing.compartment_labels[i]] == 3
+        end
+
+        testing2 = RootDomain(roots, stem, leaves, comp_heights)
+        @test testing2.root_depths == [1.0, 2.0, 3.0]
+        @test testing2.n_stem == 5
+        @test testing2.n_leaf == 4
+        @test testing2.compartment_heights ==
+              [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0]
+        @test testing2.compartment_labels == comp_labels
+        for i in 1:5
+            @test test_tuple[testing2.compartment_labels[i]] == 2
+        end
+        for i in 6:9
+            @test test_tuple[testing2.compartment_labels[i]] == 3
+        end
+
+        testing3 = RootDomain(roots, stem, leaves, comp_heights, comp_labels)
+        @test testing3.root_depths == [1.0, 2.0, 3.0]
+        @test testing3.n_stem == 5
+        @test testing3.n_leaf == 4
+        @test testing3.compartment_heights ==
+              [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0]
+        @test testing3.compartment_labels ==
+              [:stem, :stem, :stem, :stem, :stem, :leaf, :leaf, :leaf, :leaf]
+        for i in 1:5
+            @test test_tuple[testing3.compartment_labels[i]] == 2
+        end
+        for i in 6:9
+            @test test_tuple[testing3.compartment_labels[i]] == 3
+        end
+
+        coords = coordinates(testing)
+        @test coords == comp_heights
+    end
+end

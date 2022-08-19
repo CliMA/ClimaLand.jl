@@ -408,13 +408,95 @@ are expected to be sorted in ascending order.
 struct RootDomain{FT} <: AbstractVegetationDomain{FT}
     "The depth of the root tips, in meters"
     root_depths::Vector{FT}
+    "The number of stem compartments for the plant"
+    n_stem::Int64
+    "The number of leaf compartments for the plant"
+    n_leaf::Int64
     "The height of the stem, leaf compartments, in meters"
     compartment_heights::Vector{FT}
+    "The type (stem or leaf) each compartment is"
+    compartment_labels::Vector{Symbol}
+
+    function RootDomain(
+        root_depths::Vector{FT},
+        n_stem::Int64,
+        n_leaf::Int64,
+        delta_z::FT,
+    ) where {FT}
+        @assert n_leaf != 0
+        compartment_heights = Vector{FT}(undef, n_stem + n_leaf)
+        compartment_heights = range(
+            start = delta_z,
+            step = delta_z,
+            stop = delta_z * (n_stem + n_leaf),
+        )
+        compartment_labels = Vector{Symbol}(undef, n_stem + n_leaf)
+        for i in 1:(n_stem + n_leaf)
+            if i <= n_stem
+                compartment_labels[i] = :stem
+            else
+                compartment_labels[i] = :leaf
+            end
+        end
+        new{FT}(
+            root_depths,
+            n_stem,
+            n_leaf,
+            compartment_heights,
+            compartment_labels,
+        )
+    end
+
+    function RootDomain(
+        root_depths::Vector{FT},
+        n_stem::Int64,
+        n_leaf::Int64,
+        compartment_heights::Vector{FT},
+    ) where {FT}
+        @assert n_leaf != 0
+        @assert (n_leaf + n_stem) == length(compartment_heights)
+        compartment_labels = Vector{Symbol}(undef, n_stem + n_leaf)
+        for i in 1:(n_stem + n_leaf)
+            if i <= n_stem
+                compartment_labels[i] = :stem
+            else
+                compartment_labels[i] = :leaf
+            end
+        end
+        new{FT}(
+            root_depths,
+            n_stem,
+            n_leaf,
+            compartment_heights,
+            compartment_labels,
+        )
+    end
+
+    function RootDomain(
+        root_depths::Vector{FT},
+        n_stem::Int64,
+        n_leaf::Int64,
+        compartment_heights::Vector{FT},
+        compartment_labels::Vector{Symbol},
+    ) where {FT}
+        @assert n_leaf != 0
+        @assert (n_leaf + n_stem) == length(compartment_heights)
+        @assert length(compartment_heights) == length(compartment_labels)
+        new{FT}(
+            root_depths,
+            n_stem,
+            n_leaf,
+            compartment_heights,
+            compartment_labels,
+        )
+    end
+
 end
 
 function coordinates(domain::RootDomain{FT}) where {FT}
     return domain.compartment_heights
 end
+
 
 """
     LSMSingleColumnDomain{FT} <: AbstractDomain{FT}
