@@ -112,12 +112,8 @@ A struct for holding parameters of the PlantHydraulics Model.
 $(DocStringExtensions.FIELDS)
 """
 struct PlantHydraulicsParameters{FT <: AbstractFloat, PSE}
-    "water conductivity in roots (m/s) when pressure is zero, a maximum"
-    K_sat_root::FT
-    "water conductivity in stems (m/s) when pressure is zero, a maximum"
-    K_sat_stem::FT
-    "water conductivity in leaves (m/s) when pressure is zero, a maximum"
-    K_sat_leaf::FT
+    "water conductivity in the different plant compartments (m/s) when pressure is zero, a maximum"
+    K_sat::NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}}
     "van Genuchten parameter"
     vg_α::FT
     "van Genuchten parameter"
@@ -328,41 +324,57 @@ The rhs! function must comply with a rhs function of OrdinaryDiffEq.jl.
 """
 function make_rhs(model::PlantHydraulicsModel)
     function rhs!(dY, Y, p, t)
-        @unpack vg_α, vg_n, vg_m, S_s, ν, K_sat_stem, K_sat_leaf =
-            model.parameters
+        @unpack vg_α, vg_n, vg_m, S_s, ν, K_sat = model.parameters
 
-        z_ground, z_stem_top, z_leaf_top = model.domain.compartment_surfaces
-        z_stem_midpoint, z_leaf_midpoint = model.domain.compartment_midpoints
+        n_stem = model.domain.n_stem
+        n_leaf = model.domain.n_leaf
 
-        # Fluxes are in meters/second
-        flux_in_stem = flux_out_roots(model.root_extraction, model, Y, p, t)
+        S_l = effective_saturation.(ν, Y.vegetation.ϑ_l)
+        pressure = water_retention_curve.(vg_α, vg_n, vg_m, S_l, ν, S_s)
+        for i in 1:(n_stem + n_leaf)
+            if i == 1
+                flux_in = flux_out_roots(model.root_extraction, model, Y, p, t)
+            else
+                flux_in = flux(
+                    model.domain.compartment_midpoints[i - 1],
+                    model.domain.compartment_midpoints[i],
+                    pressure[i - 1],
+                    pressure[i],
+                    vg_α,
+                    vg_n,
+                    vg_m,
+                    ν,
+                    S_s,
+                    K_sat[model.domain.compartment_labels[i - 1]],
+                    K_sat[model.domain.compartment_labels[i]],
+                )
+            end
 
-        S_l_stem = effective_saturation.(ν, Y.vegetation.ϑ_l[1])
-        S_l_leaf = effective_saturation.(ν, Y.vegetation.ϑ_l[2])
-
-        p_stem = water_retention_curve(vg_α, vg_n, vg_m, S_l_stem, ν, S_s)
-        p_leaf = water_retention_curve(vg_α, vg_n, vg_m, S_l_leaf, ν, S_s)
-
-        flux_out_stem = flux(
-            z_stem_midpoint,
-            z_leaf_midpoint,
-            p_stem,
-            p_leaf,
-            vg_α,
-            vg_n,
-            vg_m,
-            ν,
-            S_s,
-            K_sat_stem,
-            K_sat_leaf,
-        )
-
-        dY.vegetation.ϑ_l[1] =
-            1 / (z_stem_top - z_ground) * (flux_in_stem - flux_out_stem)
-        dY.vegetation.ϑ_l[2] =
-            1 / (z_leaf_top - z_stem_top) *
-            (flux_out_stem - transpiration(model.transpiration, t))
+            if i == (n_stem + n_leaf)
+                flux_out = transpiration(model.transpiration, t)
+            else
+                flux_out = flux(
+                    model.domain.compartment_midpoints[i],
+                    model.domain.compartment_midpoints[i + 1],
+                    pressure[i],
+                    pressure[i + 1],
+                    vg_α,
+                    vg_n,
+                    vg_m,
+                    ν,
+                    S_s,
+                    K_sat[model.domain.compartment_labels[i]],
+                    K_sat[model.domain.compartment_labels[i + 1]],
+                )
+            end
+            dY.vegetation.ϑ_l[i] =
+                1 / (
+                    model.domain.compartment_surfaces[i + 1] -
+                    model.domain.compartment_surfaces[i]
+                ) * (flux_in - flux_out)
+        end
     end
+
     return rhs!
 end
 
@@ -404,9 +416,12 @@ function flux_out_roots(
     p::ClimaCore.Fields.FieldVector,
     t::FT,
 )::FT where {FT}
-    @unpack vg_α, vg_n, vg_m, ν, S_s, K_sat_root, K_sat_stem = model.parameters
+    @unpack vg_α, vg_n, vg_m, ν, S_s, K_sat = model.parameters
 
     S_l_stem = effective_saturation(ν, Y.vegetation.ϑ_l[1])
+
+    #How to ungeneralize
+
     p_stem = water_retention_curve.(vg_α, vg_n, vg_m, S_l_stem, ν, S_s)
     return sum(
         flux.(
@@ -419,8 +434,8 @@ function flux_out_roots(
             vg_m,
             ν,
             S_s,
-            K_sat_root,
-            K_sat_stem,
+            K_sat[:root],
+            K_sat[model.domain.compartment_labels[1]],
         ),
     )
 end

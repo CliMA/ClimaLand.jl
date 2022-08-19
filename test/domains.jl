@@ -200,3 +200,58 @@ end
         @test obtain_surface_space(shell.space) === surf.space
     end
 end
+
+
+@testset "PlantHydraulicsDomain" begin
+    for FT in TestFloatTypes
+        Δz = 1.0
+        roots = [FT(1.0), FT(2.0), FT(3.0)]
+        stem = Int64(5)
+        leaves = Int64(4)
+        comp_points = Vector(FT(0.5):FT(1.0):FT(8.5))
+        top_of_compartments = Vector(FT(0.0):FT(1.0):FT(9.0))
+        comp_labels =
+            [:stem, :stem, :stem, :stem, :stem, :leaf, :leaf, :leaf, :leaf]
+        test_tuple = (root = 1, stem = 2, leaf = 3)
+        @test test_tuple[:root] == 1
+
+        testing = PlantHydraulicsDomain(roots, stem, leaves, FT(Δz))
+        @test testing.root_depths == [1.0, 2.0, 3.0]
+        @test testing.n_stem == 5
+        @test testing.n_leaf == 4
+        @test testing.compartment_midpoints == comp_points
+        @test testing.compartment_surfaces == top_of_compartments
+        @test testing.compartment_labels == comp_labels
+        for i in 1:5
+            @test test_tuple[testing.compartment_labels[i]] == 2
+        end
+        for i in 6:9
+            @test test_tuple[testing.compartment_labels[i]] == 3
+        end
+
+        testing2 = PlantHydraulicsDomain(
+            roots,
+            stem,
+            leaves,
+            comp_points,
+            top_of_compartments,
+        )
+        @test testing2.root_depths == [1.0, 2.0, 3.0]
+        @test testing2.n_stem == 5
+        @test testing2.n_leaf == 4
+        @test testing2.compartment_midpoints ==
+              [0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5]
+        @test testing2.compartment_surfaces ==
+              [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0]
+        @test testing2.compartment_labels == comp_labels
+        for i in 1:5
+            @test test_tuple[testing2.compartment_labels[i]] == 2
+        end
+        for i in 6:9
+            @test test_tuple[testing2.compartment_labels[i]] == 3
+        end
+
+        coords = coordinates(testing)
+        @test coords == comp_points
+    end
+end
