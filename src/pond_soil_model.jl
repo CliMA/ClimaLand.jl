@@ -120,20 +120,47 @@ soil characteristics, moisture levels, and pond height.
 Defined such that positive means into soil.
 """
 function infiltration_capacity(
-    model::Soil.AbstractSoilModel{FT},
     Y::ClimaCore.Fields.FieldVector,
     p::ClimaCore.Fields.FieldVector,
 ) where {FT}
-    N = length(axes(p.ψ).center_local_geometry)
-    Δz = last(axes(p.ψ).face_local_geometry.WJ)
-    z_surf = Δz + last(parent(model.coordinates))
-    ψ, K =
-        ClimaCore.Operators.getidx.(
-            [p.ψ, p.K],
-            Ref(ClimaCore.Operators.Interior()),
-            N,
-        )
-    return @. (K * (max(0.0, Y.surface_water.η) - ψ + Δz) / Δz)
+    face_space = ClimaLSM.Domains.obtain_face_space(axes(Y.soil.ϑ_l))
+    N = ClimaCore.Spaces.nlevels(face_space)
+    space = axes(Y.surface_water.η)
+    z = ClimaCore.Fields.coordinate_field(axes(Y.soil.ϑ_l)).z
+
+    z_center = ClimaCore.Fields.Field(
+        ClimaCore.Fields.field_values(ClimaCore.Fields.level(z, N - 1)),
+        space,
+    )
+    ψ_center = ClimaCore.Fields.Field(
+        ClimaCore.Fields.field_values(ClimaCore.Fields.level(p.ψ, N - 1)),
+        space,
+    )
+    K_center = ClimaCore.Fields.Field(
+        ClimaCore.Fields.field_values(ClimaCore.Fields.level(p.K, N - 1)),
+        space,
+    )
+    z_face = ClimaCore.Fields.Field(
+        ClimaCore.Fields.field_values(
+            ClimaCore.Fields.level(
+                ClimaCore.Fields.coordinate_field(face_space).z,
+                N - ClimaCore.Utilities.half,
+            ),
+        ),
+        space,
+    )
+    ψ_face = max.(0.0, Y.surface_water.η)
+
+    # gradc2f = ClimaCore.Operators.GradientC2F(top = ClimaCore.Operators.SetValue(ψ_face), bottom = ClimaCore.Operators.SetValue(0.0))
+    # interpc2f = ClimaCore.Operators.InterpolateC2F(top = ClimaCore.Operators.Extrapolate(), bottom = ClimaCore.Operators.Extrapolate())
+    # K∂ψ∂z = @.interpc2f(p.K) *gradc2f(p.ψ)
+    # return ClimaCore.Fields.level(K∂ψ∂z,ClimaCore.Utilities.PlusHalf(N-1))
+
+
+    return @. (
+        K_center * (ψ_face + z_face - (ψ_center + z_center)) /
+        (z_face - z_center)
+    )
 end
 
 """
@@ -152,7 +179,7 @@ function make_interactions_update_aux(
     land::LandHydrology{FT, SM, SW},
 ) where {FT, SM <: Soil.RichardsModel{FT}, SW <: Pond.PondModel{FT}}
     function update_aux!(p, Y, t)
-        i_c = infiltration_capacity(land.soil, Y, p.soil)
+        i_c = infiltration_capacity(Y, p.soil)
         @. p.soil_infiltration =
             -infiltration_at_point(
                 Y.surface_water.η,

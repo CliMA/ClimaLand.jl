@@ -41,13 +41,11 @@ by solving the Richardson-Richards Equation.
 
 $(DocStringExtensions.FIELDS)
 """
-struct RichardsModel{FT, PS, D, C, BC, S} <: AbstractSoilModel{FT}
+struct RichardsModel{FT, PS, D, BC, S} <: AbstractSoilModel{FT}
     "the parameter set"
     parameters::PS
     "the soil domain, using ClimaCore.Domains"
     domain::D
-    "the domain coordinates"
-    coordinates::C
     "the boundary conditions, of type AbstractSoilBoundaryConditions"
     boundary_conditions::BC
     "A tuple of sources, each of type AbstractSoilSource"
@@ -70,8 +68,7 @@ function RichardsModel{FT}(;
     boundary_conditions::AbstractSoilBoundaryConditions{FT},
     sources::Tuple,
 ) where {FT, D}
-    coords = coordinates(domain)
-    args = (parameters, domain, coords, boundary_conditions, sources)
+    args = (parameters, domain, boundary_conditions, sources)
     RichardsModel{FT, typeof.(args)...}(args...)
 end
 
@@ -92,8 +89,8 @@ function ClimaLSM.make_rhs(model::RichardsModel)
     function rhs!(dY, Y, p, t)
         @unpack ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r = model.parameters
         top_flux_bc, bot_flux_bc =
-            boundary_fluxes(model.boundary_conditions, p, t) # these are floats
-        z = model.coordinates.z
+            boundary_fluxes(model.boundary_conditions, p, t)
+        z = ClimaCore.Fields.coordinate_field(model.domain.space).z
         interpc2f = Operators.InterpolateC2F()
         gradc2f_water = Operators.GradientC2F()
 
@@ -118,7 +115,7 @@ function ClimaLSM.make_rhs(model::RichardsModel)
         @. dY.soil.ϑ_l =
             -(divf2c_water(-interpc2f(p.soil.K) * gradc2f_water(p.soil.ψ + z)))
         # Horizontal contributions
-        horizontal_components!(dY, model.domain, model, p)
+        horizontal_components!(dY, model.domain, model, p, z)
 
         # Source terms
         for src in model.sources
@@ -148,11 +145,12 @@ function horizontal_components!(
     domain::Union{HybridBox, SphericalShell},
     model::RichardsModel,
     p::ClimaCore.Fields.FieldVector,
+    z::ClimaCore.Fields.Field,
 )
     hdiv = Operators.WeakDivergence()
     hgrad = Operators.Gradient()
     # The flux is already covariant, from hgrad, so no need to convert.
-    @. dY.soil.ϑ_l += -hdiv(-p.soil.K * hgrad(p.soil.ψ + model.coordinates.z))
+    @. dY.soil.ϑ_l += -hdiv(-p.soil.K * hgrad(p.soil.ψ + z))
 end
 
 """

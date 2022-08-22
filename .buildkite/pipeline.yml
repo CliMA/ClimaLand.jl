@@ -22,15 +22,11 @@ steps:
       - "julia --project=test -e 'using Pkg; Pkg.instantiate(;verbose=true)'"
       - "julia --project=test -e 'using Pkg; Pkg.precompile()'"
       - "julia --project=test -e 'using Pkg; Pkg.status()'"
-
+      
   - wait
 
   - group: "Unit tests"
     steps:
-
-      # - label: "Unit tests"
-      #   command: "julia --color=yes --project=test test/runtests.jl"
-      #   artifact_paths: "test/*"
 
       - label: "bucket_test"
         command: "julia --color=yes --project=test test/Bucket/bucket_test.jl"

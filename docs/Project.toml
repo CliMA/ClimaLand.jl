@@ -14,3 +14,11 @@ Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 SurfaceFluxes = "49b00bb7-8bd4-4f2b-b78c-51cd0450215f"
 Thermodynamics = "b60c26fb-14c3-4610-9d3e-2d17fe7ff00c"
+
+[compat]
+CLIMAParameters = "0.6.5"
+ClimaCore = "0.10.9"
+DiffEqBase = "~6.81.3"
+SurfaceFluxes = "0.4.3"
+Thermodynamics = "0.9.2"
+julia = "1.7"

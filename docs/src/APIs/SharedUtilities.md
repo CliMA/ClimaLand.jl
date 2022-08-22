@@ -7,15 +7,19 @@ CurrentModule = ClimaLSM
 
 ```@docs
 ClimaLSM.Domains.AbstractDomain
+ClimaLSM.Domains.AbstractLSMDomain
 ClimaLSM.Domains.RootDomain
 ClimaLSM.Domains.AbstractVegetationDomain
 ClimaLSM.Domains.SphericalShell
+ClimaLSM.Domains.SphericalSurface
 ClimaLSM.Domains.HybridBox
 ClimaLSM.Domains.Column
 ClimaLSM.Domains.Plane
 ClimaLSM.Domains.Point
 ClimaLSM.Domains.LSMSingleColumnDomain
 ClimaLSM.Domains.coordinates
+ClimaLSM.Domains.obtain_face_space
+ClimaLSM.Domains.obtain_surface_space
 ```
 
 ## Models

@@ -111,13 +111,11 @@ and the heat equation, including terms for phase change.
 
 $(DocStringExtensions.FIELDS)
 """
-struct EnergyHydrology{FT, PS, D, C, BCR, BCH, S} <: AbstractSoilModel{FT}
+struct EnergyHydrology{FT, PS, D, BCR, BCH, S} <: AbstractSoilModel{FT}
     "The parameter sets"
     parameters::PS
     "the soil domain, using ClimaCore.Domains"
     domain::D
-    "the domain coordinates"
-    coordinates::C
     "the boundary conditions for RRE, of type AbstractSoilBoundaryConditions"
     rre_boundary_conditions::BCR
     "the boundary conditions for heat equation, of type AbstractSoilBoundaryConditions"
@@ -144,11 +142,9 @@ function EnergyHydrology{FT}(;
     heat_boundary_conditions::AbstractSoilBoundaryConditions{FT},
     sources::Tuple,
 ) where {FT, D, PSE}
-    coords = coordinates(domain)
     args = (
         parameters,
         domain,
-        coords,
         rre_boundary_conditions,
         heat_boundary_conditions,
         sources,
@@ -187,15 +183,14 @@ function ClimaLSM.make_rhs(model::EnergyHydrology{FT}) where {FT}
 
 
         # Richards-Richardson RHS:
-
+        z = ClimaCore.Fields.coordinate_field(model.domain.space).z
         divf2c_rre = Operators.DivergenceF2C(
             top = Operators.SetValue(Geometry.WVector(rre_top_flux_bc)),
             bottom = Operators.SetValue(Geometry.WVector(rre_bot_flux_bc)),
         )
         # GradC2F returns a Covariant3Vector, so no need to convert.
-        @. dY.soil.ϑ_l = -(divf2c_rre(
-            -interpc2f(p.soil.K) * gradc2f(p.soil.ψ + model.coordinates.z),
-        ))
+        @. dY.soil.ϑ_l =
+            -(divf2c_rre(-interpc2f(p.soil.K) * gradc2f(p.soil.ψ + z)))
         dY.soil.θ_i .= ClimaCore.Fields.zeros(FT, axes(Y.soil.θ_i))
 
         # Heat equation RHS
@@ -210,11 +205,10 @@ function ClimaLSM.make_rhs(model::EnergyHydrology{FT}) where {FT}
         @. dY.soil.ρe_int =
             -divf2c_heat(
                 -interpc2f(p.soil.κ) * gradc2f(p.soil.T) -
-                interpc2f(ρe_int_l * p.soil.K) *
-                gradc2f(p.soil.ψ + model.coordinates.z),
+                interpc2f(ρe_int_l * p.soil.K) * gradc2f(p.soil.ψ + z),
             )
         # Horizontal contributions
-        horizontal_components!(dY, model.domain, model, p)
+        horizontal_components!(dY, model.domain, model, p, z)
 
         for src in model.sources
             source!(dY, src, Y, p)
@@ -243,16 +237,17 @@ function horizontal_components!(
     domain::Union{HybridBox, SphericalShell},
     model::EnergyHydrology,
     p::ClimaCore.Fields.FieldVector,
+    z::ClimaCore.Fields.Field,
 )
     hdiv = Operators.WeakDivergence()
     hgrad = Operators.Gradient()
     # The flux is already covariant, from hgrad, so no need to convert.
-    @. dY.soil.ϑ_l += -hdiv(-p.soil.K * hgrad(p.soil.ψ + model.coordinates.z))
+    @. dY.soil.ϑ_l += -hdiv(-p.soil.K * hgrad(p.soil.ψ + z))
     ρe_int_l = volumetric_internal_energy_liq.(p.soil.T, Ref(model.parameters))
     @. dY.soil.ρe_int +=
         -hdiv(
             -p.soil.κ * hgrad(p.soil.T) -
-            p.soil.K * ρe_int_l * hgrad(p.soil.ψ + model.coordinates.z),
+            p.soil.K * ρe_int_l * hgrad(p.soil.ψ + z),
         )
 end
 
