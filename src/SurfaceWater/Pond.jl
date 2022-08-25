@@ -8,7 +8,6 @@ import ClimaCore: Fields
 import ClimaLSM:
     AbstractModel, make_rhs, prognostic_vars, name, prognostic_types
 using ClimaLSM.Domains
-import ClimaLSM.Domains: coordinates
 export PondModel, PrescribedRunoff, surface_runoff
 
 abstract type AbstractSurfaceWaterModel{FT} <: AbstractModel{FT} end

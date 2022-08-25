@@ -30,7 +30,7 @@ FT = Float64
         xlim = (0.0, xmax),
         ylim = (0.0, 1.0),
         zlim = (zmin, zmax),
-        nelements = (500, 2, 500),
+        nelements = (100, 2, 100),
         npolynomial = 3,
     )
     top_flux_bc = FT(0.0)
@@ -182,7 +182,7 @@ FT = Float64
     #5.517176201418359e-9 max error with horizontal terms off
 
     # Test in unsaturated zone
-    for N in [150, 350]
+    for N in [25, 75]
         myXslice = parent(X)[N, 1, 1, 1, :]
         myθslice = parent(Y.soil.ϑ_l)[N, 1, 1, 1, :]
         mydYslice = parent(dY.soil.ϑ_l)[N, 1, 1, 1, :]
@@ -201,7 +201,7 @@ FT = Float64
             K(θX) * dψdθ(θX) * d2θdx2(XX, myZ) +
             K(θX) * dθdx(XX, myZ)^2.0 * d2ψdθ2(θX)
         )
-        @test maximum(abs.(dYX .- expected)) < 1e-8
+        @test maximum(abs.(dYX .- expected)) < 1e-5
     end
 end
 
@@ -253,7 +253,7 @@ end
         xlim = (0.0, xmax),
         ylim = (0.0, 1.0),
         zlim = (zmin, zmax),
-        nelements = (500, 2, 500),
+        nelements = (100, 2, 100),
         npolynomial = 3,
     )
     top_flux_bc = FT(0.0)

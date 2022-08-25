@@ -1,18 +1,19 @@
 module Bucket
-# (1) Add snow - is there a better way to handle timesteps where only
-# some of the surface energy is used to melt all of the snow?
-# (2) Make atmos functions a function of space (lat lon? x y? coords?)
-# (3) Look at allocations & performance...
 using UnPack
 using DocStringExtensions
 using SurfaceFluxes
 using SurfaceFluxes.UniversalFunctions
 using Thermodynamics
-using StaticArrays
-using ClimaCore.Fields: coordinate_field
+
+using ClimaCore
+using ClimaCore.Fields: coordinate_field, level, FieldVector
+using ClimaCore.Operators: InterpolateC2F, DivergenceF2C, GradientC2F, SetValue
+using ClimaCore.Geometry: WVector
+using StaticArrays: SVector
+
 using ClimaLSM
 import ..Parameters as LSMP
-import ClimaLSM.Domains: coordinates, Plane
+import ClimaLSM.Domains: coordinates
 import ClimaLSM:
     AbstractModel,
     make_update_aux,
@@ -21,7 +22,10 @@ import ClimaLSM:
     auxiliary_vars,
     name,
     prognostic_types,
-    auxiliary_types
+    auxiliary_types,
+    initialize_vars,
+    initialize,
+    initialize_auxiliary
 export BucketModelParameters,
     PrescribedAtmosphere,
     PrescribedRadiativeFluxes,
@@ -84,10 +88,6 @@ struct BucketModelParameters{
     AAM <: AbstractLandAlbedoModel,
     PSE,
 }
-    "Depth of the soil column (m) used in heat equation"
-    d_soil::FT
-    "Temperature at the bottom of the soil column (K); constant"
-    T0::FT
     "Conductivity of the soil (W/K/m); constant"
     κ_soil::FT
     "Volumetric heat capacity of the soil (J/m^3/K); constant"
@@ -107,8 +107,6 @@ struct BucketModelParameters{
 end
 
 BucketModelParameters(
-    d_soil::FT,
-    T0::FT,
     κ_soil::FT,
     ρc_soil::FT,
     albedo::AAM,
@@ -118,8 +116,6 @@ BucketModelParameters(
     z_0b::FT,
     earth_param_set::PSE,
 ) where {FT, AAM, PSE} = BucketModelParameters{FT, AAM, PSE}(
-    d_soil,
-    T0,
     κ_soil,
     ρc_soil,
     albedo,
@@ -227,7 +223,7 @@ end
 
 function BucketModel(;
     parameters::BucketModelParameters{FT, PSE},
-    domain::ClimaLSM.Domains.AbstractDomain,
+    domain::ClimaLSM.Domains.AbstractLSMDomain,
     atmosphere::ATM,
     radiation::RAD,
 ) where {FT, PSE, ATM, RAD}
@@ -235,10 +231,56 @@ function BucketModel(;
     BucketModel{FT, typeof.(args)...}(args...)
 end
 
+
+
 prognostic_types(::BucketModel{FT}) where {FT} = (FT, FT, FT, FT)
-prognostic_vars(::BucketModel) = (:W, :T_sfc, :Ws, :S)
+prognostic_vars(::BucketModel) = (:W, :T, :Ws, :S)
 auxiliary_types(::BucketModel{FT}) where {FT} = (FT, FT, FT, FT, FT)
-auxiliary_vars(::BucketModel) = (:q_sfc, :E, :LHF, :SHF, :R_n)
+auxiliary_vars(::BucketModel) =
+    (:q_sfc, :evaporation, :turbulent_energy_flux, :R_n, :T_sfc)
+
+"""
+    ClimaLSM.initialize(model::BucketModel{FT}) where {FT}
+
+Initializes the variables for the `BucketModel`.
+
+Note that the `BucketModel` has prognostic variables that are defined on different
+subsets of the domain. Because of that, we have to treat them independently.
+In LSM models which are combinations of standalone component models, this is not 
+needed, and we can use the default `initialize`. Here, however, we need to do some
+hardcoding specific to this model.
+"""
+function ClimaLSM.initialize(model::BucketModel{FT}) where {FT}
+    model_name = name(model)
+    subsurface_coords, surface_coords =
+        ClimaLSM.Domains.coordinates(model.domain)
+    # Temperature `T` is the only prognostic variable on the subsurface.
+    subsurface_prog =
+        ClimaLSM.initialize_vars((:T,), (FT,), subsurface_coords, model_name)
+
+    # Surface variables:
+    surface_keys = [key for key in prognostic_vars(model) if key != :T]
+    surface_types = [FT for _ in surface_keys]
+    surface_prog = ClimaLSM.initialize_vars(
+        surface_keys,
+        surface_types,
+        surface_coords,
+        model_name,
+    )
+    surface_prog_states = map(surface_keys) do (key)
+        getproperty(surface_prog.bucket, key)
+    end
+
+    values = (surface_prog_states..., subsurface_prog.bucket.T)
+    keys = (surface_keys..., :T)
+
+    Y = ClimaCore.Fields.FieldVector(; model_name => (; zip(keys, values)...))
+
+    # All aux variables for this model live on the surface
+    p = initialize_auxiliary(model, surface_coords)
+    return Y, p, ClimaLSM.Domains.coordinates(model.domain)
+end
+
 
 """
     surface_fluxes(Y,p,
@@ -249,7 +291,7 @@ auxiliary_vars(::BucketModel) = (:q_sfc, :E, :LHF, :SHF, :R_n)
                     ) where {FT <: AbstractFloat, P <: BucketModelParameters{FT},  PA <: PrescribedAtmosphere{FT}, PR <: PrescribedRadiativeFluxes{FT}}
 
 Computes the surface flux terms at the ground for a standalone simulation:
-net radiation,  SHF,  LHF,
+net radiation,  turbulent energy fluxes,
 as well as the water vapor flux (in units of m^3/m^2/s of water).
 Positive fluxes indicate flow from the ground to the atmosphere.
 
@@ -275,7 +317,7 @@ function surface_fluxes(
 }
 
     return surface_fluxes_at_a_point.(
-        Y.bucket.T_sfc,
+        p.bucket.T_sfc,
         p.bucket.q_sfc,
         Y.bucket.S,
         coordinate_field(Y.bucket.S),
@@ -309,7 +351,7 @@ function surface_fluxes_at_a_point(
 
     thermo_params = LSMP.thermodynamic_parameters(earth_param_set)
 
-    # call surface fluxes for E, SHF, LHF
+    # call surface fluxes for E, energy fluxes
     ts_sfc = Thermodynamics.PhaseEquil_ρTq(thermo_params, ρ_sfc, T_sfc, q_sfc)
     ts_in = Thermodynamics.PhaseEquil_ρTq(
         thermo_params,
@@ -342,10 +384,14 @@ function surface_fluxes_at_a_point(
     # in order to inidicate positive R_n  = towards atmos.
     R_n = -((FT(1) - α) * SW_d(t) + LW_d(t) - _σ * T_sfc^FT(4.0))
     # Land needs a volume flux of water, not mass flux
-    E =
+    evaporation =
         SurfaceFluxes.evaporation(surface_flux_params, sc, conditions.Ch) /
         _ρ_liq
-    return (R_n = R_n, LHF = conditions.lhf, SHF = conditions.shf, E = E)
+    return (
+        R_n = R_n,
+        turbulent_energy_flux = conditions.lhf .+ conditions.shf,
+        evaporation = evaporation,
+    )
 end
 
 
@@ -357,15 +403,13 @@ Creates the rhs! function for the bucket model.
 """
 function make_rhs(model::BucketModel{FT}) where {FT}
     function rhs!(dY, Y, p, t)
-        @unpack d_soil, T0, κ_soil, ρc_soil, S_c, W_f = model.parameters
+        @unpack κ_soil, ρc_soil, S_c, W_f = model.parameters
         # Always positive
         liquid_precip = liquid_precipitation(p, model.atmos, t)
-        @unpack SHF, LHF, R_n, E = p.bucket
-        F_surf_soil = @. (R_n + LHF + SHF) # Eqn 16. TODO: modify for snow
+        @unpack turbulent_energy_flux, R_n, evaporation = p.bucket
+        F_surf_soil = @. (R_n + turbulent_energy_flux) # Eqn 16. TODO: modify for snow
 
-        F_bot_soil = @. -κ_soil / (d_soil) * (Y.bucket.T_sfc - T0) # Equation (16)
-
-        E_surf_soil = @. (FT(1.0) - heaviside(Y.bucket.S)) * E # Equation (11) assuming E is volume flux
+        E_surf_soil = @. (FT(1.0) - heaviside(Y.bucket.S)) * evaporation # Equation (11) assuming E is volume flux
         space = axes(Y.bucket.S)
 
         # Always positive
@@ -386,8 +430,17 @@ function make_rhs(model::BucketModel{FT}) where {FT}
             (liquid_precip .+ snow_melt .- E_surf_soil) .- infiltration # Equation (5) of the text
         dY.bucket.S .= zeros(space) # To be equation (6)
 
-        @. dY.bucket.T_sfc =
-            -FT(1.0) / ρc_soil / d_soil * (F_surf_soil - F_bot_soil) # Eq 16
+        gradc2f = ClimaCore.Operators.GradientC2F()
+        divf2c = ClimaCore.Operators.DivergenceF2C(
+            top = ClimaCore.Operators.SetValue(
+                ClimaCore.Geometry.WVector.(F_surf_soil),
+            ),
+            bottom = ClimaCore.Operators.SetValue(
+                ClimaCore.Geometry.WVector.(FT(0.0)),
+            ),
+        )
+        @. dY.bucket.T =
+            -FT(1.0) / ρc_soil * (divf2c(-κ_soil * gradc2f(Y.bucket.T))) # Simple heat equation
     end
     return rhs!
 end
@@ -417,10 +470,27 @@ Creates the update_aux! function for the BucketModel.
 """
 function make_update_aux(model::BucketModel{FT}) where {FT}
     function update_aux!(p, Y, t)
+        face_space =
+            ClimaLSM.Domains.obtain_face_space(model.domain.subsurface.space)
+        N = ClimaCore.Spaces.nlevels(face_space)
+        interp_c2f = ClimaCore.Operators.InterpolateC2F(
+            top = ClimaCore.Operators.Extrapolate(),
+            bottom = ClimaCore.Operators.Extrapolate(),
+        )
+        surface_space = model.domain.surface.space
+        p.bucket.T_sfc .= ClimaCore.Fields.Field(
+            ClimaCore.Fields.field_values(
+                ClimaCore.Fields.level(
+                    interp_c2f.(Y.bucket.T),
+                    ClimaCore.Utilities.PlusHalf(N - 1),
+                ),
+            ),
+            surface_space,
+        )
         ρ_sfc = surface_air_density(p, model.atmos)
         p.bucket.q_sfc .=
             β.(Y.bucket.W, model.parameters.W_f) .*
-            q_sat.(Y.bucket.T_sfc, Y.bucket.S, ρ_sfc, Ref(model.parameters))
+            q_sat.(p.bucket.T_sfc, Y.bucket.S, ρ_sfc, Ref(model.parameters))
 
         fluxes = surface_fluxes(
             Y,
@@ -430,10 +500,9 @@ function make_update_aux(model::BucketModel{FT}) where {FT}
             model.atmos,
             model.radiation,
         )
-        @. p.bucket.LHF = fluxes.LHF
-        @. p.bucket.SHF = fluxes.SHF
+        @. p.bucket.turbulent_energy_flux = fluxes.turbulent_energy_flux
         @. p.bucket.R_n = fluxes.R_n
-        @. p.bucket.E = fluxes.E
+        @. p.bucket.evaporation = fluxes.evaporation
     end
     return update_aux!
 end

@@ -25,7 +25,7 @@
 # simulation, using the land surface properties
 # as well as the prescribed atmospheric properties, according to Monin-Obukhov theory.
 # These fluxes, as well as the net radiation, are stored in the `auxiliary` state
-# of the bucket model: `p.bucket.SHF`, `p.bucket.LHF`, `p.bucket.E`, `p.bucket.R_n`, where they are accessible
+# of the bucket model: `p.bucket.turbulent_energy_flux`, `p.bucket.evaporation`, `p.bucket.R_n`, where they are accessible
 # when boundary conditions are required in the ODE functions (right hand side) of the
 # prognostic equations.
 
@@ -41,8 +41,8 @@
 
 # In our current setup, "passed back to the land model via the coupler" means that the coupler
 # accesses the auxiliary state of the land model and modifies it, at each step in the simulation, so that
-# it holds the current net radiation, precipitation, and turbulent surface fluxes (`p.bucket.SHF`, `p.bucket.LHF`,
-# `p.bucket.E`, `p.bucket.R_n`, `p.bucket.P_liq`). These quantities are then still available in the ODE functions
+# it holds the current net radiation, precipitation, and turbulent surface fluxes (`p.bucket.turbulent_energy_flux`,
+# `p.bucket.evaporation`, `p.bucket.R_n`, `p.bucket.P_liq`). These quantities are then still available in the ODE functions
 # of the prognostic equations for the bucket model, as in the standalone case.
 
 # In order for the land model to be able to run both in standalone mode, and a coupled mode,
@@ -94,9 +94,8 @@ function ClimaLSM.Bucket.surface_fluxes(
 ) where {FT <: AbstractFloat}
     return (
         R_n = p.bucket.R_n,
-        LHF = p.bucket.LHF,
-        SHF = p.bucket.SHF,
-        E = p.bucket.E,
+        turbulent_energy_flux = p.bucket.turbulent_energy_flux,
+        evaporation = p.bucket.evaporation,
     )
 end
 
