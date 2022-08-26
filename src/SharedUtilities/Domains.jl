@@ -460,11 +460,23 @@ function LSMSingleColumnDomain(; zlim::Tuple{FT, FT}, nelements::Int) where {FT}
     )
 end
 
+"""
+    LSMMultiColumnDomain{FT} <: AbstractLSMDomain{FT}
 
+A mixed domain, consisting of a hybdrid box domain with z-coordinates at the
+finite difference cell centers, and a plane domain, coinciding with the surface
+of the box.
+
+For use in LSM modeling, where a subsurface finite difference space 
+(for modeling soil hydrology and energy) and a surface space are both
+needed.
+# Fields
+$(DocStringExtensions.FIELDS)
+"""
 struct LSMMultiColumnDomain{FT, S1, S2} <: AbstractLSMDomain{FT}
-    "The subsurface Column domain"
+    "The subsurface box domain"
     subsurface::HybridBox{FT, S1}
-    "The surface Point domain"
+    "The surface plane domain"
     surface::Plane{FT, S2}
 end
 
@@ -477,7 +489,7 @@ end
         npolynomial::Int
         periodic::Tuple{Bool, Bool}
     ) where {FT}
-A constructor for the LSMSingleColumnDomain.
+A constructor for the LSMMultiColumnDomain.
 """
 function LSMMultiColumnDomain(;
     xlim::Tuple{FT, FT},
@@ -509,6 +521,67 @@ function LSMMultiColumnDomain(;
         surface_space,
     )
     return LSMMultiColumnDomain{
+        FT,
+        typeof(subsurface.space),
+        typeof(surface.space),
+    }(
+        subsurface,
+        surface,
+    )
+end
+
+
+"""
+    LSMSphericalShellDomain{FT} <: AbstractLSMDomain{FT}
+
+A mixed domain, consisting of a spherical shell domain with z-coordinates at the
+finite difference cell centers, and a spherical surface domain, coinciding with 
+the surface of the shell.
+
+For use in LSM modeling, where a subsurface finite difference space 
+(for modeling soil hydrology and energy) and a surface space are both
+needed.
+# Fields
+$(DocStringExtensions.FIELDS)
+"""
+struct LSMSphericalShellDomain{FT, S1, S2} <: AbstractLSMDomain{FT}
+    "The subsurface shell domain"
+    subsurface::SphericalShell{FT, S1}
+    "The surface domain"
+    surface::SphericalSurface{FT, S2}
+end
+
+"""
+    LSMSphericalShellDomain(;
+        radius::FT,
+        height::FT,
+        nelements::Tuple{Int, Int},
+        npolynomial::Int,
+    ) where {FT}
+A constructor for the LSMSphericalShellDomain.
+"""
+function LSMSphericalShellDomain(;
+    radius::FT,
+    height::FT,
+    nelements::Tuple{Int, Int},
+    npolynomial::Int,
+) where {FT}
+    @assert radius > FT(0)
+    @assert height > FT(0)
+    subsurface = SphericalShell(;
+        radius = radius,
+        height = height,
+        nelements = nelements,
+        npolynomial = npolynomial,
+    )
+    surface_space = obtain_surface_space(subsurface.space)
+    surface = SphericalSurface{FT, typeof(surface_space)}(
+        radius,
+        nelements[1],
+        npolynomial,
+        surface_space,
+    )
+    return LSMSphericalShellDomain{
         FT,
         typeof(subsurface.space),
         typeof(surface.space),
@@ -590,7 +663,7 @@ end
 export AbstractDomain, AbstractVegetationDomain, AbstractLSMDomain
 export Column,
     Plane, HybridBox, RootDomain, Point, SphericalShell, SphericalSurface
-export LSMSingleColumnDomain, LSMMultiColumnDomain
+export LSMSingleColumnDomain, LSMMultiColumnDomain, LSMSphericalShellDomain
 export coordinates, obtain_face_space, obtain_surface_space
 
 end

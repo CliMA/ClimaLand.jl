@@ -16,7 +16,11 @@ using ClimaLSM.Bucket:
     PrescribedAtmosphere,
     PrescribedRadiativeFluxes,
     BulkAlbedo
-using ClimaLSM.Domains: coordinates, LSMSingleColumnDomain, LSMMultiColumnDomain
+using ClimaLSM.Domains:
+    coordinates,
+    LSMSingleColumnDomain,
+    LSMMultiColumnDomain,
+    LSMSphericalShellDomain
 using ClimaLSM: initialize, make_update_aux, make_ode_function
 
 
@@ -47,6 +51,12 @@ bucket_domains = [
         nelements = (2, 2, 10),
         npolynomial = 1,
         periodic = (true, true),
+    ),
+    LSMSphericalShellDomain(;
+        radius = 100.0,
+        height = 3.5,
+        nelements = (1, 10),
+        npolynomial = 1,
     ),
 ]
 init_temp(z::FT, value::FT) where {FT} = FT(value)
