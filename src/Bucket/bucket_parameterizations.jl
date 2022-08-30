@@ -11,6 +11,48 @@ function heaviside(x::FT)::FT where {FT}
     end
 end
 
+
+"""
+    partition_surface_fluxes(
+        σS::FT,
+        T_sfc::FT,
+        τ::FT,
+        snow_cover_fraction::FT,
+        E::FT,
+        F_sfc::FT,
+        _LH_f0::FT,
+        _T_freeze::FT,
+    ) where{FT}
+
+Partitions the surface fluxes in a flux for melting snow, a flux for sublimating snow,
+and a ground heat flux. 
+
+All fluxes are positive if they are in the direction from land towards
+the atmosphere.
+"""
+function partition_surface_fluxes(
+    σS::FT,
+    T_sfc::FT,
+    τ::FT,
+    snow_cover_fraction::FT,
+    E::FT,
+    F_sfc::FT,
+    _LH_f0::FT,
+    _T_freeze::FT,
+) where {FT}
+    F_available_to_melt = F_sfc + _LH_f0 * E # Eqn (20), negative as towards ground
+    if σS > -F_available_to_melt * τ / _LH_f0 # Eqn (21)
+        F_melt = F_available_to_melt
+    else
+        F_melt = -σS * _LH_f0 / τ
+    end
+    F_melt =
+        F_melt * heaviside(T_sfc - _T_freeze) * heaviside(-F_available_to_melt)
+    F_into_snow = -_LH_f0 * E * snow_cover_fraction + F_melt # F_melt is already multiplied by σ
+    G = (F_sfc - F_into_snow) # Eqn 20
+    return (; F_melt = F_melt, F_into_snow = F_into_snow, G = G)
+end
+
 """
     surface_albedo(albedo::BulkAlbedo{FT}, coords, S::FT, S_c::FT)::FT where {FT <: AbstractFloat}
 
@@ -23,13 +65,14 @@ The linear interpolation is taken from Lague et al 2019.
 function surface_albedo(
     albedo::BulkAlbedo{FT},
     coords,
-    S::FT,
-    S_c::FT,
+    σS::FT,
+    σS_c::FT,
 )::FT where {FT <: AbstractFloat}
     (; α_snow, α_soil) = albedo
     α_soil_values = α_soil(coords)
-    safe_S::FT = max(S, eps(FT))
-    return (FT(1.0) - S / (S + S_c)) * α_soil_values + S / (S + S_c) * α_snow
+    safe_σS::FT = max(σS, eps(FT))
+    return (FT(1.0) - σS / (σS + σS_c)) * α_soil_values +
+           σS / (σS + σS_c) * α_snow
 end
 
 """
@@ -78,20 +121,26 @@ function β(W::FT, W_f::FT) where {FT}
 end
 
 """
-    q_sat(T::FT, S::FT, ρ_sfc::FT, parameters::PE)::FT where {FT, PE}
+    saturation_specific_humidity(T::FT, σS::FT, ρ_sfc::FT, parameters::PE)::FT where {FT, PE}
 
 Computes the saturation specific humidity for the land surface, over ice
-if snow is present (S>0), and over water for a snow-free surface.
+if snow is present (σS>0), and over water for a snow-free surface.
 """
-function q_sat(T::FT, S::FT, ρ_sfc::FT, parameters::PE)::FT where {FT, PE}
+function saturation_specific_humidity(
+    T::FT,
+    σS::FT,
+    ρ_sfc::FT,
+    parameters::PE,
+)::FT where {FT, PE}
     thermo_params = LSMP.thermodynamic_parameters(parameters.earth_param_set)
-    return (FT(1.0) - heaviside(S)) * Thermodynamics.q_vap_saturation_generic(
+    return (FT(1.0) - heaviside(σS)) *
+           Thermodynamics.q_vap_saturation_generic(
         thermo_params,
         T,
         ρ_sfc,
         Thermodynamics.Liquid(),
-    )
-    +heaviside(S) * Thermodynamics.q_vap_saturation_generic(
+    ) +
+           heaviside(σS) * Thermodynamics.q_vap_saturation_generic(
         thermo_params,
         T,
         ρ_sfc,

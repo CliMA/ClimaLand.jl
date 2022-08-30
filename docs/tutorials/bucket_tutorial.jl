@@ -128,7 +128,7 @@ earth_param_set = create_lsm_parameters(FT);
 albedo = BulkAlbedo{FT}(α_snow, α_soil);
 # The critical snow level setting the scale for when we interpolate between
 # snow and soil albedo
-S_c = FT(0.2);
+σS_c = FT(0.2);
 # The field capacity of the soil
 W_f = FT(0.15);
 # Roughness lengths (meters)
@@ -137,14 +137,17 @@ z_0b = FT(1e-3);
 # Thermal parameters of soil
 κ_soil = FT(0.7);
 ρc_soil = FT(2e6);
+Δt = FT(1000.0);
+
 bucket_parameters = BucketModelParameters(
     κ_soil,
     ρc_soil,
     albedo,
-    S_c,
+    σS_c,
     W_f,
     z_0m,
     z_0b,
+    Δt,
     earth_param_set,
 );
 
@@ -197,6 +200,7 @@ h_atmos = FT(10);
 ρ_sfc = FT(1.15);
 bucket_atmos = PrescribedAtmosphere(
     precip,
+    (t) -> eltype(t)(0.0),
     T_atmos,
     u_atmos,
     q_atmos,
@@ -236,7 +240,7 @@ p.bucket |> propertynames
 Y.bucket.T .= FT(286.5);
 Y.bucket.W .= FT(0.1);
 Y.bucket.Ws .= FT(0.0);
-Y.bucket.S .= FT(0.0);
+Y.bucket.σS .= FT(0.0);
 
 # Then to create the entire right hand side function for the system
 # of ordinary differential equations:
@@ -246,7 +250,6 @@ ode_function! = make_ode_function(model);
 t0 = FT(0.0);
 tf = FT(3 * 86400);
 prob = ODEProblem(ode_function!, Y, (t0, tf), p);
-Δt = FT(1000.0);
 # We need a callback to get and store the auxiliary fields, as they
 # are not stored by default.
 saved_values = SavedValues(FT, ClimaCore.Fields.FieldVector);

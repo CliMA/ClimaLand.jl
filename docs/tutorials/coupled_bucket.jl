@@ -57,7 +57,10 @@ using ClimaLSM.Bucket:
     AbstractRadiativeDrivers
 
 import ClimaLSM.Bucket:
-    surface_fluxes, surface_air_density, liquid_precipitation
+    surface_fluxes,
+    surface_air_density,
+    liquid_precipitation,
+    snow_precipitation
 
 FT = Float64;
 # # Turbulent Surface Fluxes and Radiation
@@ -71,11 +74,10 @@ FT = Float64;
 
 # These are stored in the [BucketModel](https://clima.github.io/ClimaLSM.jl/dev/APIs/Bucket/#ClimaLSM.Bucket.BucketModel) object,
 # along with [BucketParameters](https://clima.github.io/ClimaLSM.jl/dev/APIs/Bucket/#ClimaLSM.Bucket.BucketParameters).
-# In order to compute surface fluxes, we call [surface_fluxes](https://clima.github.io/ClimaLSM.jl/dev/APIs/Bucket/#ClimaLSM.Bucket.surface_fluxes),
-# with arguments including `prescribed_atmosphere` and `prescribed_radiation`. Since these are of the type `PrescribedAtmosphere` and
-# `PrescribedRadiativeFluxes`, the method of `surface_fluxes` which is executed is one which computes the turbulent surface fluxes
-# using MOST and which computes the net radiation based on the prescribed downwelling radiative fluxes, stored in
-# `prescribed_radiation`.
+# In order to compute turbulent surface fluxes, we call [surface_fluxes](https://clima.github.io/ClimaLSM.jl/dev/APIs/Bucket/#ClimaLSM.Bucket.surface_fluxes),
+# with arguments including `prescribed_atmosphere`. Since this argument is of the type `PrescribedAtmosphere`, the method of `surface_fluxes` which is executed is one which computes the turbulent surface fluxes
+# using MOST. We have a similar function for [net_radiation](https://clima.github.io/ClimaLSM.jl/dev/APIs/Bucket/#ClimaLSM.Bucket.net_radiation) and which computes the net radiation based on the prescribed downwelling radiative fluxes, stored in an argument
+# `prescribed_radiation`, which is of type `PrescribedRadiation`.
 
 # In the coupled case, we want different behavior. Inside coupler source code, we define new ``coupled`` types to
 # use instead of the "prescribed" types:
@@ -83,32 +85,41 @@ FT = Float64;
 struct CoupledAtmosphere{FT} <: AbstractAtmosphericDrivers{FT} end
 struct CoupledRadiativeFluxes{FT} <: AbstractRadiativeDrivers{FT} end
 
-# Then, we define a new method for `surface_fluxes` which dispatches for these types:
+# Then, we define a new method for `surface_fluxes` and `net_radiation` which dispatch for these types:
 function ClimaLSM.Bucket.surface_fluxes(
     Y,
     p,
     t,
     parameters,
     atmos::CoupledAtmosphere{FT},
-    radiation::CoupledRadiativeFluxes{FT},
 ) where {FT <: AbstractFloat}
     return (
-        R_n = p.bucket.R_n,
         turbulent_energy_flux = p.bucket.turbulent_energy_flux,
         evaporation = p.bucket.evaporation,
     )
 end
 
-# Essentially, this method simply returns the values stored in the auxiliary state `p`. Importantly, this function is
+
+function ClimaLSM.Bucket.net_radiation(
+    Y,
+    p,
+    t,
+    parameters,
+    radiation::CoupledRadiativeFluxes{FT},
+) where {FT <: AbstractFloat}
+    return p.bucket.R_n
+end
+# Essentially, these methods simply returns the values stored in the auxiliary state `p`. Importantly, these functions are
 # called by the bucket model 
 # each time step **after** the coupler has already computed these values
 # (or extracted them from another model) and modifed `p`!
 
 # # Precipitation and surface air density
-# Within the right hand side/ODE function calls for the bucket model, we need both the liquid precipitation
+# Within the right hand side/ODE function calls for the bucket model, we need both the liquid/snow precipitation
 # and the surface air density (for computing specific humidity at the surface). In standalone runs,
-# we call the functions [`surface_air_density`](https://clima.github.io/ClimaLSM.jl/dev/APIs/Bucket/#ClimaLSM.Bucket.surface_air_density)
-# and [`liquid_precipitation`](https://clima.github.io/ClimaLSM.jl/dev/APIs/Bucket/#ClimaLSM.Bucket.liquid_precipitation).
+# we call the functions [`surface_air_density`](https://clima.github.io/ClimaLSM.jl/dev/APIs/Bucket/#ClimaLSM.Bucket.surface_air_density),
+#  [`liquid_precipitation`](https://clima.github.io/ClimaLSM.jl/dev/APIs/Bucket/#ClimaLSM.Bucket.liquid_precipitation), and
+# [`snow_precipitation`](https://clima.github.io/ClimaLSM.jl/dev/APIs/Bucket/#ClimaLSM.Bucket.snow_precipitation).
 # When the `atmos` type is `PrescribedAtmosphere`, these
 # return the prescribed values for these quantities.
 
@@ -121,11 +132,15 @@ function ClimaLSM.Bucket.liquid_precipitation(p, atmos::CoupledAtmosphere, t)
     return p.bucket.P_liq
 end
 
+function ClimaLSM.Bucket.snow_precipitation(p, atmos::CoupledAtmosphere, t)
+    return p.bucket.P_snow
+end
+
 # Again, these functions are called in the ODE function of the bucket model *after* the coupler
 # has updated the values of `p` with the correct values at that timestep.
 
 # Two other notes: (1) the coupler code actually extends the auxiliary state `p` of the bucket model,
-# adding in the fields `P_liq` and `ρ_sfc`. These fields do not exist in `p` if the standalone
+# adding in the fields `P_liq`, `P_snow`, and `ρ_sfc`. These fields do not exist in `p` if the standalone
 # bucket model, and (2) the surface air density is computed assuming an ideal gas and hydrostatic balance
 # and by extrapolating from the air density at the lowest level of the atmosphere, which is why it is
 # handled by the coupler.
