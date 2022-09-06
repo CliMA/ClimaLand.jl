@@ -130,6 +130,8 @@ for bucket_domain in bucket_domains
         )
 
         _LH_f0 = LSMP.LH_f0(model.parameters.earth_param_set)
+        _ρ_liq = LSMP.ρ_cloud_liq(model.parameters.earth_param_set)
+        _ρLH_f0 = _ρ_liq * _LH_f0 # Latent heat per unit volume
         _T_freeze = LSMP.T_freeze(model.parameters.earth_param_set)
         snow_cover_fraction(σS) = σS > eps(FT) ? FT(1.0) : FT(0.0)
 
@@ -157,7 +159,7 @@ for bucket_domain in bucket_domains
                 saved_values.saveval[k].bucket.evaporation,
                 saved_values.saveval[k].bucket.turbulent_energy_flux .+
                 saved_values.saveval[k].bucket.R_n,
-                _LH_f0,
+                _ρLH_f0,
                 _T_freeze,
             ) for k in 1:length(sol.t)
         ]
@@ -188,7 +190,7 @@ for bucket_domain in bucket_domains
 
         # compute total energy and water contents
         e_soil = [sum(sol.u[k].bucket.T) for k in 1:length(sol.t)] .* ρc_soil
-        Isnow = -_LH_f0 * σS
+        Isnow = -_ρLH_f0 * σS
         WL = W .+ σS .+ Ws
         IL = Isnow .+ e_soil
 

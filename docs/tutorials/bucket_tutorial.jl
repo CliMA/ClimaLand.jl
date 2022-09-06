@@ -11,8 +11,10 @@
 
 # At each coordinate point on the surface, we solve ordinary differential
 # equations for the subsurface water storage
-# of land (`W`, m), the temperature profile of the land (`T`, K) as a function of depth,
-# and the surface water content of land (`Ws`, m). This tutorial will
+# of land (`W`, m), the snow water equivalent multiplied by the snow cover fraction (`σS`, m),
+# and the surface water content of land (`Ws`, m).
+# We additionally solve a partial differential equation for the land
+# temperature as a function of dept (`T`, K). This tutorial will
 # be modified in the future to 
 # explain simulations involving snow water equivalent, though we have set
 # some of the groundwork for that in the code already (e.g. with albedo).
@@ -20,11 +22,15 @@
 # We have:
 
 # ``
-# \frac{d W}{dt} = I(W, P_{liq}, E),
+# \frac{d W}{dt} = I,
 # ``
 
 # ``
-# \frac{d Ws}{dt} = P_{liq} - E - I(W, P_{liq}, E),
+# \frac{d Ws}{dt} = P_{liq} + σM - (1-σ) E_{soil} - I,
+# ``
+
+# ``
+# \frac{d σS}{dt} = P_{snow} - σ(E_{snow} + M),
 # ``
 
 # ``
@@ -36,22 +42,42 @@
 # ``
 
 # ``
-# F_{sfc} = R_n+ SHF + LHF = -κ_{soil} \frac{\partial T}{\partial z}|_{z = z_{sfc}}
+# (1-σ) (R_n+ SHF + LHF)_{soil} + σG_{undersnow} = -κ_{soil} \frac{\partial T}{\partial z}|_{z = z_{sfc}}
 # ``
 
 # ``
-# R_n = -(1-α)*SW↓ -LW↓ + σT_{sfc}^4
+# G_{undersnow} = (R_n+ SHF + LHF)_{snow} - F_{intosnow} 
 # ``
 
-# where `I` is the infiltration as defined in [1], `P_liq` (m/s) is the
-# water volume flux of precipitation, `E` (m/s) is the water volume flux
-# in evaporation, `ρc` is the volumetric
-# heat capacity of the land,  `R_n` is the net radiation, `SHF` the sensible
-# heat flux, `LHF` the latent heat flux, `α(lat, lon)` is the
-# surface albedo, `σ` the Stefan-Boltzmann constant,  and `κ_{soil}` is the thermal
+# ``
+# F_{intosnow} = -ρ_l L_{f,0} (M+E_{snow})
+# ``
+
+
+# ``
+# R_n = -(1-α)*SW↓ -LW↓ + σ_{SB} T_{sfc}^4
+# ``
+
+# where the water fluxes are : `I` the infiltration as defined in [1], `P_liq` (m/s) he
+# water volume flux of precipitation, `P_snow` (m/s) the water
+# volume flux in the form of snow, `(1-σ)E_soil` (m/s) the water volume flux
+# in evaporation,
+# `σE_snow` the water volume flux in sublimation from snow, and
+# `σM` (m/s) the water volume flux in melting of snow. The melt rate is
+# defined via the net surface flux when surface temperatures are above freezing.
+
+# For heat fluxes, we have `R_n` the net radiation, `SHF` the sensible
+# heat flux, `LHF` the latent heat flux, `G_undersnow` the heat flux into snow-covered soil, and `F_intosnow` the heat flux into the snowpack itself. Note that the water balance equation for snow is equivalent to the heat balance
+# equation, since we neglect the sensible heat contribution and only track the
+# latent heat contribution.
+
+# Finally, we have `α(lat, lon)` the
+# surface albedo, `ρc` the volumetric
+# heat capacity of the land, `σ_SB` the Stefan-Boltzmann constant,  and `κ_soil` the thermal
 # conductivity. The albedo is a linear interpolation between the albedo of soil and
 # snow, as decribed in [3]. The surface temperature is taken to be equal to the temperature
-# T at the first grid point.
+# T at the first grid point, assumed to be the same for soil and snow. At present the snow cover fraction is a heaviside function, and only one set
+# of surface fluxes is computed per grid point.
 
 # Turbulent surface fluxes of sensible heat, latent heat, and water vapor
 # (`SHF, LHF, E`) are computed using Monin-Obukhov theory; `SW↓` and `LW↓`
@@ -64,10 +90,16 @@
 # evaporation, we use
 
 # ``
-# q_{sfc} = β(W, W_f) q_{sat}(T_{sfc}, ρ_{sfc}),
+# q_{sfc, soil} = β(W, W_f) q_{sat}(T_{sfc}, ρ_{sfc}),
 # ``
 
-# where β is the factor used in [1] which accounts for the land water content when it is below the saturated value. This makes use of the field
+# or
+
+# ``
+# q_{sfc, snow} = q_{sat}(T_{sfc}, ρ_{sfc}),
+# ``
+
+# where β is the factor used in [1] which accounts for the soil water content when it is below the saturated value. This makes use of the field
 # capacity parameter `W_f`. This is different from other bucket models in that
 # we modify `q_sfc` directly
 # to account for the bucket being below saturation, rather than modify the
@@ -80,7 +112,7 @@
 # for the timestepping, and [DiffEqCallbacks.jl](https://github.com/SciML/DiffEqCallbacks.jl)
 # is used as described below,
 # for accessing the solver state during the integration.
-using OrdinaryDiffEq: ODEProblem, solve, Euler
+using OrdinaryDiffEq: ODEProblem, solve, Midpoint
 using DiffEqCallbacks
 # We use [ClimaCore](https://github.com/CliMA/ClimaCore.jl)
 # for setting up the domain/coordinate points. While
@@ -137,7 +169,7 @@ z_0b = FT(1e-3);
 # Thermal parameters of soil
 κ_soil = FT(0.7);
 ρc_soil = FT(2e6);
-Δt = FT(1000.0);
+Δt = FT(3600.0);
 
 bucket_parameters = BucketModelParameters(
     κ_soil,
@@ -166,7 +198,7 @@ bucket_domain =
 
 # To drive the system in standalone mode,
 # the user must provide
-# prescribed functions of time for the water volume flux in precipitation
+# prescribed functions of time for the water volume flux in precipitation,
 #  for the net downward shortwave and longwave
 # radiative energy fluxes (`SW↓, LW↓`, W/m^2),
 # for the atmospheric temperature `T_a`,
@@ -176,31 +208,26 @@ bucket_domain =
 # at the surface of the earth.
 
 # Here we define the model drivers, starting with downward radiation.
-SW_d =
-    (t) -> eltype(t)(
-        sin(2.0 * π * t / 86400) > 0 ? 300.0 * sin(2.0 * π * t / 86400) : 0.0,
-    );
-LW_d =
-    (t) -> eltype(t)(
-        sin(2.0 * π * t / 86400) > 0 ? 300.0 * sin(2.0 * π * t / 86400) : 0.0,
-    );
+SW_d = (t) -> eltype(t)(300);
+LW_d = (t) -> eltype(t)(300);
 bucket_rad = PrescribedRadiativeFluxes(FT, SW_d, LW_d);
 
 # Prescribed atmospheric variables
 
 # Stochastic precipitation:
-precip = (t) -> eltype(t)(5e-7 * rand() * (rand() > 0.97));
+precip = (t) -> eltype(t)(0);
+snow_precip = (t) -> eltype(t)(5e-7 * (t > 3 * 86400) * (t < 4 * 86400));
 # Diurnal temperature variations:
-T_atmos = (t) -> eltype(t)(300.0 + 5.0 * sin(2.0 * π * t / 86400 + 7200));
+T_atmos = (t) -> eltype(t)(275.0 + 5.0 * sin(2.0 * π * t / 86400 + 7200));
 # Constant otherwise:
 u_atmos = (t) -> eltype(t)(3.0);
 q_atmos = (t) -> eltype(t)(0.005);
-h_atmos = FT(10);
+h_atmos = FT(2);
 ρ_atmos = (t) -> eltype(t)(1.13);
 ρ_sfc = FT(1.15);
 bucket_atmos = PrescribedAtmosphere(
     precip,
-    (t) -> eltype(t)(0.0),
+    snow_precip,
     T_atmos,
     u_atmos,
     q_atmos,
@@ -237,10 +264,10 @@ p.bucket |> propertynames
 
 
 # Next is to set initial conditions. 
-Y.bucket.T .= FT(286.5);
-Y.bucket.W .= FT(0.1);
+Y.bucket.T .= FT(270);
+Y.bucket.W .= FT(0.05);
 Y.bucket.Ws .= FT(0.0);
-Y.bucket.σS .= FT(0.0);
+Y.bucket.σS .= FT(0.08);
 
 # Then to create the entire right hand side function for the system
 # of ordinary differential equations:
@@ -248,7 +275,7 @@ ode_function! = make_ode_function(model);
 
 # Then set up the simulation
 t0 = FT(0.0);
-tf = FT(3 * 86400);
+tf = FT(7 * 86400);
 prob = ODEProblem(ode_function!, Y, (t0, tf), p);
 # We need a callback to get and store the auxiliary fields, as they
 # are not stored by default.
@@ -259,7 +286,7 @@ cb = SavingCallback(
     saveat = 0:Δt:tf,
 );
 
-sol = solve(prob, Euler(); dt = Δt, saveat = 0:Δt:tf, callback = cb);
+sol = solve(prob, Midpoint(); dt = Δt, saveat = 0:Δt:tf, callback = cb);
 
 # Extracting the solution from what is returned by the ODE.jl commands
 # is a bit clunky right now, but we are working on hiding some of this.
@@ -268,10 +295,14 @@ sol = solve(prob, Euler(); dt = Δt, saveat = 0:Δt:tf, callback = cb);
 # and we loop over the solution `sol` because of how the data is stored
 # within solutions returned by ODE.jl - indexed by timestep.
 W = [parent(sol.u[k].bucket.W)[1] for k in 1:length(sol.t)];
-
-T = [parent(sol.u[k].bucket.T)[:] for k in 1:length(sol.t)];
-q_sfc =
-    [parent(saved_values.saveval[k].bucket.q_sfc)[1] for k in 1:length(sol.t)];
+Ws = [parent(sol.u[k].bucket.Ws)[1] for k in 1:length(sol.t)];
+σS = [parent(sol.u[k].bucket.σS)[1] for k in 1:length(sol.t)];
+T_sfc =
+    [parent(saved_values.saveval[k].bucket.T_sfc)[1] for k in 1:length(sol.t)];
+evaporation = [
+    parent(saved_values.saveval[k].bucket.evaporation)[1] for
+    k in 1:length(sol.t)
+];
 R_n = [parent(saved_values.saveval[k].bucket.R_n)[1] for k in 1:length(sol.t)];
 # The turbulent energy flux is the sum of latent and sensible heat fluxes.
 turbulent_energy_flux = [
@@ -280,24 +311,51 @@ turbulent_energy_flux = [
 ];
 
 
-plot(sol.t ./ 86400, W, label = "W", xlabel = "time (days)", ylabel = "W (m)")
+plot(
+    sol.t ./ 86400,
+    W,
+    label = "",
+    xlabel = "time (days)",
+    ylabel = "W (m)",
+    title = "Land water storage (m)",
+)
 savefig("w.png")
 # ![](w.png)
 
 plot(
-    T[1],
-    parent(coords.subsurface.z)[:],
-    label = "t=0",
-    xlabel = "z (m)",
-    ylabel = "T (K)",
+    sol.t ./ 86400,
+    σS,
+    label = "",
+    xlabel = "time (days)",
+    ylabel = "σS (m)",
+    title = "Snow water equivalent (m) ",
 )
-plot!(
-    T[end],
-    parent(coords.subsurface.z)[:],
-    label = "t = t_end",
-    xlabel = "z (m)",
-    ylabel = "T (K)",
+savefig("swe.png")
+# ![](swe.png)
+
+plot(
+    sol.t ./ 86400,
+    -snow_precip.(sol.t),
+    label = "Net precipitation",
+    xlabel = "time (days)",
+    ylabel = "Flux (m/s)",
+    title = "Surface water fluxes",
+    legend = :bottomright,
 )
+plot!(sol.t ./ 86400, evaporation, label = "Sublimation/Evaporation")
+savefig("water_f.png")
+# ![](water_f.png)
+
+plot(
+    sol.t ./ 86400,
+    T_sfc,
+    title = "Surface Temperatures",
+    label = "Ground temperature",
+    xlabel = "time (days)",
+    ylabel = "T_sfc (K)",
+    legend = :bottomright,
+)
+plot!(sol.t ./ 86400, T_atmos.(sol.t), label = "Atmospheric Temperature")
 savefig("t.png")
 # ![](t.png)
 plot(
@@ -306,10 +364,13 @@ plot(
     label = "Net radiative flux",
     xlabel = "time (days)",
     ylabel = "Flux (W/m^2)",
+    title = "Surface energy fluxes",
+    legend = :bottomright,
 )
-plot!(sol.t ./ 86400, turbulent_energy_flux, label = "Turbulent energy flux")
-savefig("f.png")
-# ![](f.png)
+plot!(sol.t ./ 86400, turbulent_energy_flux, label = "Turbulent fluxes")
+plot!(sol.t ./ 86400, R_n .+ turbulent_energy_flux, label = "Net flux")
+savefig("energy_f.png")
+# ![](energy_f.png)
 
 # # References
 # [1] Manabe, S. (1969) CLIMATE AND THE OCEAN CIRCULATION I: The

@@ -37,18 +37,18 @@ function partition_surface_fluxes(
     snow_cover_fraction::FT,
     E::FT,
     F_sfc::FT,
-    _LH_f0::FT,
+    _ρLH_f0::FT,
     _T_freeze::FT,
 ) where {FT}
-    F_available_to_melt = F_sfc + _LH_f0 * E # Eqn (20), negative as towards ground
-    if σS > -F_available_to_melt * τ / _LH_f0 # Eqn (21)
+    F_available_to_melt = F_sfc + _ρLH_f0 * E # Eqn (20), negative as towards ground
+    if σS > -F_available_to_melt * τ / _ρLH_f0 # Eqn (21)
         F_melt = F_available_to_melt
     else
-        F_melt = -σS * _LH_f0 / τ
+        F_melt = -σS * _ρLH_f0 / τ
     end
     F_melt =
         F_melt * heaviside(T_sfc - _T_freeze) * heaviside(-F_available_to_melt)
-    F_into_snow = -_LH_f0 * E * snow_cover_fraction + F_melt # F_melt is already multiplied by σ
+    F_into_snow = -_ρLH_f0 * E * snow_cover_fraction + F_melt # F_melt is already multiplied by σ
     G = (F_sfc - F_into_snow) # Eqn 20
     return (; F_melt = F_melt, F_into_snow = F_into_snow, G = G)
 end

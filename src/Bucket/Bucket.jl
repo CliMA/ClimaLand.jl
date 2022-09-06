@@ -475,7 +475,8 @@ function make_rhs(model::BucketModel{FT}) where {FT}
 
         _T_freeze = LSMP.T_freeze(model.parameters.earth_param_set)
         _LH_f0 = LSMP.LH_f0(model.parameters.earth_param_set)
-
+        _ρ_liq = LSMP.ρ_cloud_liq(model.parameters.earth_param_set)
+        _ρLH_f0 = _ρ_liq * _LH_f0 # Latent heat per unti volume.
         # partition energy fluxes
         partitioned_fluxes =
             partition_surface_fluxes.(
@@ -485,7 +486,7 @@ function make_rhs(model::BucketModel{FT}) where {FT}
                 snow_cover_fraction,
                 evaporation,
                 F_sfc,
-                _LH_f0,
+                _ρLH_f0,
                 _T_freeze,
             )
         (; F_melt, F_into_snow, G) = partitioned_fluxes
@@ -506,7 +507,7 @@ function make_rhs(model::BucketModel{FT}) where {FT}
         liquid_precip = liquid_precipitation(p, model.atmos, t) # always positive
         snow_precip = snow_precipitation(p, model.atmos, t) # always positive
         # Always positive; F_melt at present already has σ factor in it.
-        snow_melt = @. (-F_melt / _LH_f0) # Equation (20)
+        snow_melt = @. (-F_melt / _ρLH_f0) # Equation (20)
 
         infiltration = @. infiltration_at_point(
             Y.bucket.W,
