@@ -13,6 +13,7 @@ using ClimaLSM.Domains:
     Point,
     LSMSingleColumnDomain,
     LSMMultiColumnDomain,
+    LSMSphericalShellDomain,
     SphericalShell,
     SphericalSurface,
     coordinates,
@@ -176,5 +177,26 @@ end
         @test coordinates(plane) === coordinates(domain).surface
         @test coordinates(domain).subsurface === coordinates(box)
         @test obtain_surface_space(box.space) === plane.space
+    end
+end
+
+
+
+@testset "LSMSphericalShellDomain" begin
+    for FT in TestFloatTypes
+        domain = LSMSphericalShellDomain(;
+            radius = FT(100.0),
+            height = FT(30.0),
+            nelements = (6, 20),
+            npolynomial = 3,
+        )
+        surf = domain.surface
+        shell = domain.subsurface
+
+        @test typeof(shell) == SphericalShell{FT, typeof(shell.space)}
+        @test typeof(surf) == SphericalSurface{FT, typeof(surf.space)}
+        @test coordinates(surf) === coordinates(domain).surface
+        @test coordinates(domain).subsurface === coordinates(shell)
+        @test obtain_surface_space(shell.space) === surf.space
     end
 end

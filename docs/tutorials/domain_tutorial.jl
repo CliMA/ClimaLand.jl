@@ -84,7 +84,7 @@ domain being modeled:
 | :---         |     :---:      |          ---: |
 | [LSMSingleColumnDomain](https://clima.github.io/ClimaLSM.jl/dev/APIs/SharedUtilities/#ClimaLSM.Domains.LSMSingleColumnDomain)   | Point    | Column    |
 | LSMCartesianBoxDomain    | Plane[^3]       | HybridBox      |
-| LSMSphericalShellDomain    | SphericalSurface[^3][^4]       | SphericalShell      |
+| LSMSphericalShellDomain    | SphericalSurface[^3]       | SphericalShell      |
 
 It is important to note that the horizontal domain used for the surface and subsurface 
 domains are identical in LSM simulations. This ensures that we can use the same indexing
@@ -108,7 +108,7 @@ function (which calls both
  and [`initialize_auxiliary`](https://clima.github.io/ClimaLSM.jl/dev/APIs/SharedUtilities/#ClimaLSM.initialize_auxiliary))
 creates the prognostic state vector `Y` (a ClimaCore.Fields.FieldVector). Each field (ClimaCore.Fields.Field) stored within
 the field vector corresponds to a prognostic variable (identified with the symbol specified). If the prognostic type for that variable
-is a float, the field will be a field of float values (a scalar field)[^5].
+is a float, the field will be a field of float values (a scalar field)[^4].
 
 How do domains tie into this? The field of prognostic variables corresponds in a 1-1 fashion with the coordinate field created from the
 domain. That is, if you coordinate field has points (x,y) in [(1,1), (1,2); (2,1), (2,2)], your prognostic variable field (for variable `θ`,
@@ -131,7 +131,5 @@ In this case, right hand side functions will need to be aware of the domain.
 
 [^3]: We are not sure yet if the surface domain should be associated with a 2d space or if it should be a 3d space but with only one point in the vertical. Both would result in the same number of surface coordinate points, but they would have different underlying representations. The latter may be helpful because we can use the `column` function in the exact same way to extract the same column from the surface and subsurface domains.  In that case, the surface domain would be a HybdridBox (with one vertical element) instead of a Plane, and a SphericalShell (with one vertical element) instead of a Spherical Surface. Regardless, the two domains will share the same instance of the horizontal domain.
 
-[^4]: Note that this is not created as a separate object, yet. It is only made in the process of making the SphericalShell domain.
-
-[^5]: We also will support having an array-like type of variable (perhaps an NTuple; this is TBD).  This is to be used for the multi-layer canopy model.
+[^4]: We also will support having an array-like type of variable (perhaps an NTuple; this is TBD).  This is to be used for the multi-layer canopy model.
 =#

@@ -17,6 +17,8 @@ ClimaLSM.Domains.Column
 ClimaLSM.Domains.Plane
 ClimaLSM.Domains.Point
 ClimaLSM.Domains.LSMSingleColumnDomain
+ClimaLSM.Domains.LSMMultiColumnDomain
+ClimaLSM.Domains.LSMSphericalShellDomain
 ClimaLSM.Domains.coordinates
 ClimaLSM.Domains.obtain_face_space
 ClimaLSM.Domains.obtain_surface_space
