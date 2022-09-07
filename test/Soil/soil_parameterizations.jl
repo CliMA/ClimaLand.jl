@@ -147,7 +147,7 @@ end
     )
     # Effective _saturation
     θ = FT.([0.3, 0.4, 0.5])
-    S = effective_saturation.(ν, θ, θ_r)
+    S = Soil.effective_saturation.(ν, θ, θ_r)
     @test S ≈ [0.5, 1.0, 1.5]
     @test eltype(S) == FT
 

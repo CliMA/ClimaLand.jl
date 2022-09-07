@@ -8,7 +8,7 @@ CurrentModule = ClimaLSM
 ```@docs
 ClimaLSM.Domains.AbstractDomain
 ClimaLSM.Domains.AbstractLSMDomain
-ClimaLSM.Domains.RootDomain
+ClimaLSM.Domains.PlantHydraulicsDomain
 ClimaLSM.Domains.AbstractVegetationDomain
 ClimaLSM.Domains.SphericalShell
 ClimaLSM.Domains.SphericalSurface

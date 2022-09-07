@@ -7,7 +7,7 @@ using ClimaLSM
 using ClimaLSM: Domains
 using ClimaLSM.Domains:
     Column,
-    RootDomain,
+    PlantHydraulicsDomain,
     HybridBox,
     Plane,
     Point,

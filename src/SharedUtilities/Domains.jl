@@ -27,7 +27,7 @@ end
 """
     Point{FT} <: AbstractDomain{FT}
 A domain for single column surface variables.
-For models such as ponds, snow, roots, etc. Enables consistency 
+For models such as ponds, snow, plant hydraulics, etc. Enables consistency 
 in variable initialization across all domains.
 # Fields
 $(DocStringExtensions.FIELDS)
@@ -393,26 +393,30 @@ function SphericalSurface(;
     )
 end
 
-
 abstract type AbstractVegetationDomain{FT} <: AbstractDomain{FT} end
+
 """
-   RootDomain{FT} <: AbstractVegetationDomain{FT}
-Domain for a single bulk plant with roots ofvarying depths. The user needs
+   PlantHydraulicsDomain{FT} <: AbstractVegetationDomain{FT}
+
+Domain for a single bulk plant with roots of varying depths. The user needs
 to specify the depths of the root tips as wel as the heights of the
 compartments to be modeled within the plant. The compartment heights
 are expected to be sorted in ascending order.
 """
-struct RootDomain{FT} <: AbstractVegetationDomain{FT}
+struct PlantHydraulicsDomain{FT} <: AbstractVegetationDomain{FT}
     "The depth of the root tips, in meters"
     root_depths::Vector{FT}
-    "The height of the stem, leaf compartments, in meters"
-    compartment_heights::Vector{FT}
+    "The height of the stem and leaf compartments, in meters"
+    compartment_surfaces::Vector{FT}
+    "The height of the midpoint of the stem and leaf compartments, in meters"
+    compartment_midpoints::Vector{FT}
 end
 
-function coordinates(domain::RootDomain{FT}) where {FT}
-    return domain.compartment_heights
+function coordinates(domain::PlantHydraulicsDomain{FT}) where {FT}
+    return domain.compartment_midpoints # array of centers here
 end
 
+# loop over coordinates, when initialize
 """
     AbstractLSMDomain{FT} <: AbstractDomain{FT}
 An abstract type for LSMDomains, which have two components: a surface
@@ -657,12 +661,14 @@ function obtain_surface_space(cs::ClimaCore.Spaces.CenterFiniteDifferenceSpace)
     )
 end
 
-
-
-
 export AbstractDomain, AbstractVegetationDomain, AbstractLSMDomain
 export Column,
-    Plane, HybridBox, RootDomain, Point, SphericalShell, SphericalSurface
+    Plane,
+    HybridBox,
+    PlantHydraulicsDomain,
+    Point,
+    SphericalShell,
+    SphericalSurface
 export LSMSingleColumnDomain, LSMMultiColumnDomain, LSMSphericalShellDomain
 export coordinates, obtain_face_space, obtain_surface_space
 

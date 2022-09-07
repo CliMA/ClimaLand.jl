@@ -36,9 +36,9 @@ steps:
         command: "julia --color=yes --project=test test/Bucket/snow_bucket_tests.jl"
         artifact_paths: "bucket_test/"
 
-      - label: "root_test"
-        command: "julia --color=yes --project=test test/Vegetation/root_test.jl"
-        artifact_paths: "root_test/"
+      - label: "plant_hydraulics_test"
+        command: "julia --color=yes --project=test test/Vegetation/plant_hydraulics_test.jl"
+        artifact_paths: "plant_hydraulics_test/"
 
       - label: "lsm_test"
         command: "julia --color=yes --project=test test/LSM/lsm_test.jl"
