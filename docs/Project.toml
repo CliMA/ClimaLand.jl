@@ -17,8 +17,8 @@ Thermodynamics = "b60c26fb-14c3-4610-9d3e-2d17fe7ff00c"
 
 [compat]
 CLIMAParameters = "0.6.5"
-ClimaCore = "0.10.9"
+ClimaCore = "0.10.12"
 SciMLBase = "~1.48.1"
-SurfaceFluxes = "0.4.3"
+SurfaceFluxes = "0.4.5, 0.4.6"
 Thermodynamics = "0.9.2"
-julia = "1.7"
+julia = "1.8"
