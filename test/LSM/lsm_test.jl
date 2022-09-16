@@ -20,9 +20,7 @@ FT = Float64
 @testset " Soil plant hydrology LSM integration test" begin
     saved_values = SavedValues(FT, ClimaCore.Fields.FieldVector)
     earth_param_set = create_lsm_parameters(FT)
-    K_sat_root = FT(1e-5) # Pierre's database (1e-6) (https://github.com/yalingliu-cu/plant-strategies/blob/master/Product%20details.pdf)
-    K_sat_stem = FT(1e-3)
-    K_sat_leaf = FT(1e-3)
+    K_sat = (root = FT(1e-5), stem = FT(1e-3), leaf = FT(1e-3))
     vg_α = FT(0.24)
     vg_n = FT(2)
     vg_m = FT(1) - FT(1) / vg_n
@@ -36,16 +34,19 @@ FT = Float64
     # be fixed eventually.
     z_stem_midpoint = FT(3)
     z_leaf_midpoint = FT(9)
-    plant_hydraulics_domain = PlantHydraulicsDomain{FT}(
+    n_stem = Int64(1)
+    n_leaf = Int64(1)
+    plant_hydraulics_domain = PlantHydraulicsDomain(
         z_root_depths,
-        [z_ground, z_stem_top, z_leaf_top],
+        n_stem,
+        n_leaf,
         [z_stem_midpoint, z_leaf_midpoint],
+        [z_ground, z_stem_top, z_leaf_top],
     )
+
     plant_hydraulics_ps =
         PlantHydraulics.PlantHydraulicsParameters{FT, typeof(earth_param_set)}(
-            K_sat_root,
-            K_sat_stem,
-            K_sat_leaf,
+            K_sat,
             vg_α,
             vg_n,
             vg_m,
@@ -105,7 +106,6 @@ FT = Float64
     ϑ_l_0 = [ϑ_l_stem_0, ϑ_l_leaf_0]
 
     Y.vegetation.ϑ_l .= ϑ_l_0
-
     ode! = make_ode_function(land)
     t0 = FT(0)
     tf = FT(2)
