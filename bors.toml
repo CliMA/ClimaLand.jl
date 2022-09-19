@@ -1,7 +1,7 @@
 status = [
   "buildkite/climalsm-ci",
-  "ci 1.7.0 - ubuntu-latest",
-  "ci 1.7.0 - macOS-latest",
+  "ci 1.8 - ubuntu-latest",
+  "ci 1.8 - macOS-latest",
   "docbuild",
   "format",
 ]
