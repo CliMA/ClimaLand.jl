@@ -33,6 +33,8 @@ ClimaLSM.Soil.volumetric_internal_energy
 ClimaLSM.Soil.volumetric_internal_energy_liq
 ClimaLSM.Soil.temperature_from_ρe_int
 ClimaLSM.Soil.thermal_conductivity
+ClimaLSM.Soil.diffusive_flux
+ClimaLSM.Soil.get_Δz
 ```
 
 ## Soil Parameters
@@ -45,8 +47,14 @@ ClimaLSM.Soil.EnergyHydrologyParameters
 ## Soil Methods and Types
 
 ```@docs
-ClimaLSM.Soil.boundary_fluxes
+ClimaLSM.Soil.AbstractBC
+ClimaLSM.Soil.StateBC
 ClimaLSM.Soil.FluxBC
 ClimaLSM.Soil.AbstractSoilSource
 ClimaLSM.Soil.source!
+ClimaLSM.Soil.RootExtraction
+ClimaLSM.Soil.AbstractBoundary
+ClimaLSM.Soil.TopBoundary
+ClimaLSM.Soil.BottomBoundary
+ClimaLSM.Soil.boundary_flux
 ```

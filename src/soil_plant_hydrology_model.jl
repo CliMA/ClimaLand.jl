@@ -55,7 +55,9 @@ function SoilPlantHydrologyModel{FT}(;
 }
 
     #These may be passed in, or set, depending on use scenario
-    boundary_fluxes = FluxBC{FT}(FT(0.0), FT(0.0))
+    top_flux_bc = FluxBC(FT(0.0))
+    bot_flux_bc = FluxBC(FT(0.0))
+    boundary_fluxes = (; water = (top = top_flux_bc, bottom = bot_flux_bc))
     transpiration = PrescribedTranspiration{FT}((t::FT) -> FT(0.0))
 
     ##These should always be set by the constructor.

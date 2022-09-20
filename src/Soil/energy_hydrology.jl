@@ -111,15 +111,13 @@ and the heat equation, including terms for phase change.
 
 $(DocStringExtensions.FIELDS)
 """
-struct EnergyHydrology{FT, PS, D, BCR, BCH, S} <: AbstractSoilModel{FT}
+struct EnergyHydrology{FT, PS, D, BCRH, S} <: AbstractSoilModel{FT}
     "The parameter sets"
     parameters::PS
     "the soil domain, using ClimaCore.Domains"
     domain::D
-    "the boundary conditions for RRE, of type AbstractSoilBoundaryConditions"
-    rre_boundary_conditions::BCR
-    "the boundary conditions for heat equation, of type AbstractSoilBoundaryConditions"
-    heat_boundary_conditions::BCH
+    "the boundary conditions for RRE and heat, of type AbstractSoilBoundaryConditions"
+    boundary_conditions::BCRH
     "A tuple of sources, each of type AbstractSoilSource"
     sources::S
 end
@@ -128,8 +126,7 @@ end
     EnergyHydrology{FT}(;
         parameters::PS
         domain::D,
-        rre_boundary_conditions::AbstractSoilBoundaryConditions{FT},
-        heat_boundary_conditions::AbstractSoilBoundaryConditions{FT},
+        rre_heat_boundary_conditions::RREHeatBoundaryConditions{FT},
         sources::Tuple,
     ) where {FT, D, PS}
 
@@ -138,17 +135,10 @@ A constructor for a `EnergyHydrology` model.
 function EnergyHydrology{FT}(;
     parameters::EnergyHydrologyParameters{FT, PSE},
     domain::D,
-    rre_boundary_conditions::AbstractSoilBoundaryConditions{FT},
-    heat_boundary_conditions::AbstractSoilBoundaryConditions{FT},
+    boundary_conditions::NamedTuple,
     sources::Tuple,
 ) where {FT, D, PSE}
-    args = (
-        parameters,
-        domain,
-        rre_boundary_conditions,
-        heat_boundary_conditions,
-        sources,
-    )
+    args = (parameters, domain, boundary_conditions, sources)
     EnergyHydrology{FT, typeof.(args)...}(args...)
 end
 
@@ -166,12 +156,37 @@ This has been written so as to work with Differential Equations.jl.
 """
 function ClimaLSM.make_rhs(model::EnergyHydrology{FT}) where {FT}
     function rhs!(dY, Y, p, t)
-        rre_top_flux_bc, rre_bot_flux_bc =
-            boundary_fluxes(model.rre_boundary_conditions, p, t)
-        heat_top_flux_bc, heat_bot_flux_bc =
-            boundary_fluxes(model.heat_boundary_conditions, p, t)
+        z = ClimaCore.Fields.coordinate_field(model.domain.space).z
+        Δz_top, Δz_bottom = get_Δz(z)
 
+        # Convert all boundary conditions to FluxBCs
+        rre_top_flux_bc = boundary_flux(
+            model.boundary_conditions.water.top,
+            TopBoundary(),
+            Δz_top,
+            p,
+            model.parameters,
+        )
+        rre_bot_flux_bc = boundary_flux(
+            model.boundary_conditions.water.bottom,
+            BottomBoundary(),
+            Δz_bottom,
+            p,
+            model.parameters,
+        )
 
+        heat_top_flux_bc = boundary_flux(
+            model.boundary_conditions.heat.top,
+            TopBoundary(),
+            Δz_top,
+            p,
+        )
+        heat_bot_flux_bc = boundary_flux(
+            model.boundary_conditions.heat.bottom,
+            BottomBoundary(),
+            Δz_bottom,
+            p,
+        )
 
         interpc2f = Operators.InterpolateC2F()
         gradc2f = Operators.GradientC2F()
@@ -185,8 +200,8 @@ function ClimaLSM.make_rhs(model::EnergyHydrology{FT}) where {FT}
         # Richards-Richardson RHS:
         z = ClimaCore.Fields.coordinate_field(model.domain.space).z
         divf2c_rre = Operators.DivergenceF2C(
-            top = Operators.SetValue(Geometry.WVector(rre_top_flux_bc)),
-            bottom = Operators.SetValue(Geometry.WVector(rre_bot_flux_bc)),
+            top = Operators.SetValue(Geometry.WVector.(rre_top_flux_bc)),
+            bottom = Operators.SetValue(Geometry.WVector.(rre_bot_flux_bc)),
         )
         # GradC2F returns a Covariant3Vector, so no need to convert.
         @. dY.soil.ϑ_l =
@@ -195,8 +210,8 @@ function ClimaLSM.make_rhs(model::EnergyHydrology{FT}) where {FT}
 
         # Heat equation RHS
         divf2c_heat = Operators.DivergenceF2C(
-            top = Operators.SetValue(Geometry.WVector(heat_top_flux_bc)),
-            bottom = Operators.SetValue(Geometry.WVector(heat_bot_flux_bc)),
+            top = Operators.SetValue(Geometry.WVector.(heat_top_flux_bc)),
+            bottom = Operators.SetValue(Geometry.WVector.(heat_bot_flux_bc)),
         )
         ρe_int_l =
             volumetric_internal_energy_liq.(p.soil.T, Ref(model.parameters))

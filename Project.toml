@@ -15,11 +15,11 @@ UnPack = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
 
 [compat]
 CLIMAParameters = "0.6.5"
-ClimaCore = "0.10.12"
+ClimaCore = "0.10.18"
 DocStringExtensions = "0.8, 0.9"
 IntervalSets = "0.5, 0.6, 0.7"
 StaticArrays = "1"
-SurfaceFluxes = "0.4.5, 0.4.6"
+SurfaceFluxes = "0.4.5 - 0.4.7"
 Thermodynamics = "0.9.2"
 UnPack = "1"
 julia = "1.8"
