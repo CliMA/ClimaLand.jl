@@ -16,7 +16,7 @@ SurfaceFluxes = "49b00bb7-8bd4-4f2b-b78c-51cd0450215f"
 Thermodynamics = "b60c26fb-14c3-4610-9d3e-2d17fe7ff00c"
 
 [compat]
-CLIMAParameters = "0.6.5"
+CLIMAParameters = "0.6.5, 0.7"
 ClimaCore = "0.10.12"
 SciMLBase = "~1.48.1"
 SurfaceFluxes = "0.4.5, 0.4.6"
