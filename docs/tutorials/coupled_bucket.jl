@@ -42,7 +42,7 @@
 # In our current setup, "passed back to the land model via the coupler" means that the coupler
 # accesses the auxiliary state of the land model and modifies it, at each step in the simulation, so that
 # it holds the current net radiation, precipitation, and turbulent surface fluxes (`p.bucket.turbulent_energy_flux`,
-# `p.bucket.evaporation`, `p.bucket.R_n`, `p.bucket.P_liq`). These quantities are then still available in the ODE functions
+# `p.bucket.evaporation`, `p.bucket.R_n`, `p.bucket.P_liq`, `p.bucket.P_snow`). These quantities are then still available in the ODE functions
 # of the prognostic equations for the bucket model, as in the standalone case.
 
 # In order for the land model to be able to run both in standalone mode, and a coupled mode,
