@@ -20,7 +20,12 @@ FT = Float64
 @testset " Soil plant hydrology LSM integration test" begin
     saved_values = SavedValues(FT, ClimaCore.Fields.FieldVector)
     earth_param_set = create_lsm_parameters(FT)
-    K_sat = (root = FT(1e-5), stem = FT(1e-3), leaf = FT(1e-3))
+    SAI = FT(0.00242) # Basal area per ground area
+    LAI = FT(4.2) # from Yujie's paper
+    f_root_to_shoot = FT(1.0 / 5.0) # guess
+    RAI = SAI * f_root_to_shoot # following CLM
+    area_index = (root = RAI, stem = SAI, leaf = LAI)
+    K_sat = (root = FT(1e-5), stem = FT(1e-3), leaf = FT(1e-3))# (accelerated) see Kumar, 2008 and
     vg_α = FT(0.24)
     vg_n = FT(2)
     vg_m = FT(1) - FT(1) / vg_n
@@ -46,6 +51,7 @@ FT = Float64
 
     plant_hydraulics_ps =
         PlantHydraulics.PlantHydraulicsParameters{FT, typeof(earth_param_set)}(
+            area_index,
             K_sat,
             vg_α,
             vg_n,

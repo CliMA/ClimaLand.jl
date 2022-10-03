@@ -112,6 +112,8 @@ A struct for holding parameters of the PlantHydraulics Model.
 $(DocStringExtensions.FIELDS)
 """
 struct PlantHydraulicsParameters{FT <: AbstractFloat, PSE}
+    "RAI, SAI, LAI in [m2 m-2]"
+    area_index::NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}}
     "water conductivity in the different plant compartments (m/s) when pressure is zero, a maximum"
     K_sat::NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}}
     "van Genuchten parameter"
@@ -324,7 +326,7 @@ The rhs! function must comply with a rhs function of OrdinaryDiffEq.jl.
 """
 function make_rhs(model::PlantHydraulicsModel)
     function rhs!(dY, Y, p, t)
-        @unpack vg_α, vg_n, vg_m, S_s, ν, K_sat = model.parameters
+        @unpack vg_α, vg_n, vg_m, S_s, ν, K_sat, area_index = model.parameters
 
         n_stem = model.domain.n_stem
         n_leaf = model.domain.n_leaf
@@ -334,6 +336,7 @@ function make_rhs(model::PlantHydraulicsModel)
         for i in 1:(n_stem + n_leaf)
             if i == 1
                 flux_in = flux_out_roots(model.root_extraction, model, Y, p, t)
+                area_index_in = area_index[:root]
             else
                 flux_in = flux(
                     model.domain.compartment_midpoints[i - 1],
@@ -348,10 +351,16 @@ function make_rhs(model::PlantHydraulicsModel)
                     K_sat[model.domain.compartment_labels[i - 1]],
                     K_sat[model.domain.compartment_labels[i]],
                 )
+                area_index_in =
+                    (
+                        area_index[model.domain.compartment_labels[i - 1]] +
+                        area_index[model.domain.compartment_labels[i]]
+                    ) / 2
             end
 
             if i == (n_stem + n_leaf)
                 flux_out = transpiration(model.transpiration, t)
+                area_index_out = area_index[:leaf] # assuming at least 1 leaf compartment
             else
                 flux_out = flux(
                     model.domain.compartment_midpoints[i],
@@ -366,12 +375,19 @@ function make_rhs(model::PlantHydraulicsModel)
                     K_sat[model.domain.compartment_labels[i]],
                     K_sat[model.domain.compartment_labels[i + 1]],
                 )
+                area_index_out =
+                    (
+                        area_index[model.domain.compartment_labels[i]] +
+                        area_index[model.domain.compartment_labels[i + 1]]
+                    ) / 2
             end
             dY.vegetation.ϑ_l[i] =
                 1 / (
-                    model.domain.compartment_surfaces[i + 1] -
-                    model.domain.compartment_surfaces[i]
-                ) * (flux_in - flux_out)
+                    area_index[model.domain.compartment_labels[i]] * (
+                        model.domain.compartment_surfaces[i + 1] -
+                        model.domain.compartment_surfaces[i]
+                    )
+                ) * (flux_in * area_index_in - flux_out * area_index_out)
         end
     end
 
