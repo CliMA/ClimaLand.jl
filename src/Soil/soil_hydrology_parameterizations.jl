@@ -1,6 +1,7 @@
 export volumetric_liquid_fraction,
     effective_saturation,
     matric_potential,
+    inverse_matric_potential,
     pressure_head,
     hydraulic_conductivity,
     impedance_factor,
@@ -29,8 +30,21 @@ A point-wise function returning the matric potential, using the
 van Genuchten formulation.
 """
 function matric_potential(α::FT, n::FT, m::FT, S::FT) where {FT}
-    ψ_m = -((S^(-FT(1) / m) - FT(1)) * α^(-n))^(FT(1) / n)
-    return ψ_m
+    ψ = -((S^(-FT(1) / m) - FT(1)) * α^(-n))^(FT(1) / n)
+    return ψ
+end
+
+"""
+     inverse_matric_potential(α::FT, n::FT, m::FT, ψ::FT) where {FT}
+
+A point-wise function returning the effective saturation, given
+the matric potential, using the
+van Genuchten formulation.
+"""
+function inverse_matric_potential(α::FT, n::FT, m::FT, ψ::FT) where {FT}
+    ψ > 0 && error("Matric potential is positive")
+    S = (FT(1) + (α * abs(ψ))^n)^(-m)
+    return S
 end
 
 """

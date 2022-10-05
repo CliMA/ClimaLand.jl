@@ -11,7 +11,65 @@ export volumetric_internal_energy,
     relative_saturation,
     κ_sat,
     kersten_number,
-    κ_dry
+    κ_dry,
+    thermal_time,
+    phase_change_source
+
+"""
+    thermal_time(ρc::FT, Δz::FT, κ::FT) where {FT}
+
+Returns the thermal timescale for temperature differences across
+a typical thickness Δz to equilibrate.
+"""
+function thermal_time(ρc::FT, Δz::FT, κ::FT) where {FT}
+    return ρc * Δz^2 / κ
+end
+
+"""
+    phase_change_source(
+        θ_l::FT,
+        θ_i::FT,
+        T::FT,
+        τ::FT,
+        params::EnergyHydrologyParameters{FT},
+    ) where {FT}
+
+Returns the source term (1/s) used for converting liquid water
+and ice into each other during phase changes. Note that
+there are unitless prefactors multiplying this term in the 
+equations.
+
+Note that these equations match what is in Dall'Amico (for θstar,
+ψ(T), ψw0). We should double check them in the case where we have
+ϑ_l > θ_l, but they should be very close to the form we want regardless.
+"""
+function phase_change_source(
+    θ_l::FT,
+    θ_i::FT,
+    T::FT,
+    τ::FT,
+    params::EnergyHydrologyParameters{FT},
+) where {FT}
+    @unpack ν, vg_α, vg_n, vg_m, θ_r, earth_param_set = params
+    _ρ_i = FT(LSMP.ρ_cloud_ice(earth_param_set))
+    _ρ_l = FT(LSMP.ρ_cloud_liq(earth_param_set))
+    _LH_f0 = FT(LSMP.LH_f0(earth_param_set))
+    _T_freeze = FT(LSMP.T_freeze(earth_param_set))
+    _grav = FT(LSMP.grav(earth_param_set))
+    # According to Dall'Amico (text above equation 1), ψw0 corresponds
+    # to the matric potential corresponding to the total water content (liquid and ice).
+    θtot = min(_ρ_i / _ρ_l * θ_i + θ_l, ν)
+    # This is consistent with Equation (22) of Dall'Amico
+    ψw0 = matric_potential(vg_α, vg_n, vg_m, effective_saturation(ν, θtot, θ_r))
+
+    ψT = _LH_f0 / _T_freeze / _grav * (T - _T_freeze) * heaviside(_T_freeze - T)
+    # Equation (23) of Dall'Amico
+    θstar =
+        inverse_matric_potential(vg_α, vg_n, vg_m, ψw0 + ψT) * (ν - θ_r) + θ_r
+
+    return (θ_l - θstar) / τ
+end
+
 
 """
     volumetric_heat_capacity(

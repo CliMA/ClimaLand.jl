@@ -154,6 +154,7 @@ end
     # Matric Potential and inverse
     va = -((S[1]^(-FT(1) / vg_m) - FT(1)) * vg_α^(-vg_n))^(FT(1) / vg_n)
     ψ = matric_potential.(vg_α, vg_n, vg_m, S[1:2])
+    @test inverse_matric_potential.(vg_α, vg_n, vg_m, ψ) ≈ S[1:2]
     @test ψ ≈ [va, 0.0]
     @test eltype(ψ) == FT
 
@@ -173,4 +174,152 @@ end
     # Volumetric Liquid Fraction
     vlf = volumetric_liquid_fraction.(FT.([0.25, 0.5, 0.75]), FT(0.5))
     @test vlf ≈ FT.([0.25, 0.5, 0.5])
+end
+
+@testset "Freezing and Thawing" begin
+    FT = Float64
+    param_set = create_lsm_parameters(FT)
+
+    # Density of liquid water (kg/m``^3``)
+    _ρ_l = FT(LSMP.ρ_cloud_liq(param_set))
+    # Density of ice water (kg/m``^3``)
+    _ρ_i = FT(LSMP.ρ_cloud_ice(param_set))
+    # Volum. isobaric heat capacity liquid water (J/m3/K)
+    _ρcp_l = FT(LSMP.cp_l(param_set) * _ρ_l)
+    # Volumetric isobaric heat capacity ice (J/m3/K)
+    _ρcp_i = FT(LSMP.cp_i(param_set) * _ρ_i)
+    # Reference temperature (K)
+    _T_ref = FT(LSMP.T_0(param_set))
+    # Latent heat of fusion at ``T_0`` (J/kg)
+    _LH_f0 = FT(LSMP.LH_f0(param_set))
+    # Gravitational acceleration
+    _grav = FT(LSMP.grav(param_set))
+    # T freeze
+    _T_freeze = FT(LSMP.T_freeze(param_set))
+
+    # Thermal conductivity of dry air
+    κ_air = FT(LSMP.K_therm(param_set))
+
+    ν = 0.2
+    S_s = 1e-3
+    θ_r = 0.1
+    vg_α = 2.0
+    vg_n = 1.4
+    vg_m = FT(1.0 - 1.0 / vg_n)
+
+    K_sat = 1e-5
+    ν_ss_om = 0.1
+    ν_ss_gravel = 0.1
+    ν_ss_quartz = 0.1
+    ρc_ds = 1e6
+    κ_solid = 0.1
+    ρp = 1.0
+    κ_sat_unfrozen = 0.0
+    κ_sat_frozen = 0.0
+    κ_dry = Soil.κ_dry(ρp, ν, κ_solid, κ_air)
+    parameters = EnergyHydrologyParameters(;
+        κ_dry = κ_dry,
+        κ_sat_frozen = κ_sat_frozen,
+        κ_sat_unfrozen = κ_sat_unfrozen,
+        ρc_ds = ρc_ds,
+        ν = ν,
+        ν_ss_om = ν_ss_om,
+        ν_ss_quartz = ν_ss_quartz,
+        ν_ss_gravel = ν_ss_gravel,
+        vg_α = vg_α,
+        vg_n = vg_n,
+        K_sat = K_sat,
+        S_s = S_s,
+        θ_r = θ_r,
+        earth_param_set = param_set,
+    )
+
+    Δz = FT(1.0)
+    @test thermal_time(ρc_ds, Δz, κ_dry) == ρc_ds * Δz^2 / κ_dry
+    θ_l = FT.([0.11, 0.15, ν])
+    θ_i = FT(0.0)
+    T = FT(273)
+    θtot = @.(_ρ_i / _ρ_l * θ_i + θ_l)
+    ψ0 = @. matric_potential(
+        vg_α,
+        vg_n,
+        vg_m,
+        Soil.effective_saturation(ν, θtot, θ_r),
+    )
+    ψT = @.(_LH_f0 / _T_freeze / _grav * (T - _T_freeze))
+    θ_star =
+        @. inverse_matric_potential(vg_α, vg_n, vg_m, ψ0 + ψT) * (ν - θ_r) + θ_r
+    @test (
+        phase_change_source.(θ_l, θ_i, T, FT(1.0), Ref(parameters)) ≈
+        θ_l .- θ_star
+    )
+    @test sum(
+        phase_change_source.(θ_l, θ_i, T, FT(1.0), Ref(parameters)) .> 0.0,
+    ) == 3
+    # try θ_l = 0.1
+
+    θ_l = FT.([0.11, 0.15, ν])
+    θ_i = FT(0.0)
+    T = FT(274)
+    θtot = @.(_ρ_i / _ρ_l * θ_i + θ_l)
+    ψ0 = @. matric_potential(
+        vg_α,
+        vg_n,
+        vg_m,
+        Soil.effective_saturation(ν, θtot, θ_r),
+    )
+    ψT = FT(0.0)
+    θ_star =
+        @. inverse_matric_potential(vg_α, vg_n, vg_m, ψ0 + ψT) * (ν - θ_r) + θ_r
+    @test (
+        phase_change_source.(θ_l, θ_i, T, FT(1.0), Ref(parameters)) ≈
+        zeros(FT, 3)
+    )
+    @test (θ_star ≈ θ_l)
+
+
+
+    θ_l = FT(0.01)
+    θ_i = FT.([0.05, 0.08])
+    T = FT(274)
+    θtot = @.(_ρ_i / _ρ_l * θ_i + θ_l)
+    ψ0 = @. matric_potential(
+        vg_α,
+        vg_n,
+        vg_m,
+        Soil.effective_saturation(ν, θtot, θ_r),
+    )
+    ψT = FT(0.0)
+    θ_star =
+        @. inverse_matric_potential(vg_α, vg_n, vg_m, ψ0 + ψT) * (ν - θ_r) + θ_r
+    @test (
+        phase_change_source.(θ_l, θ_i, T, FT(1.0), Ref(parameters)) ≈
+        θ_l .- θ_star
+    )
+    @test sum(
+        phase_change_source.(θ_l, θ_i, T, FT(1.0), Ref(parameters)) .< 0.0,
+    ) == 2
+
+
+    θ_l = FT(0.11)
+    θ_i = FT.([0.05, 0.08])
+    T = FT(260)
+    θtot = @.(_ρ_i / _ρ_l * θ_i + θ_l)
+    ψ0 = @. matric_potential(
+        vg_α,
+        vg_n,
+        vg_m,
+        Soil.effective_saturation(ν, θtot, θ_r),
+    )
+    ψT = @.(_LH_f0 / _T_freeze / _grav * (T - _T_freeze))
+    θ_star =
+        @. inverse_matric_potential(vg_α, vg_n, vg_m, ψ0 + ψT) * (ν - θ_r) + θ_r
+    @test (
+        phase_change_source.(θ_l, θ_i, T, FT(1.0), Ref(parameters)) ≈
+        θ_l .- θ_star
+    )
+    @test sum(
+        phase_change_source.(θ_l, θ_i, T, FT(1.0), Ref(parameters)) .> 0.0,
+    ) == 2
+
 end
