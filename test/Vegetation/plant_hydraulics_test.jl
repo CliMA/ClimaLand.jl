@@ -17,6 +17,11 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
 FT = Float64
 
 @testset "Plant hydraulics model integration tests" begin
+    SAI = FT(0.00242) # Basal area per ground area
+    LAI = FT(4.2) # from Yujie's paper
+    f_root_to_shoot = FT(1.0 / 5.0) # guess
+    RAI = SAI * f_root_to_shoot # following CLM
+    area_index = (root = RAI, stem = SAI, leaf = LAI)
     K_sat = (root = FT(1e-5), stem = FT(1e-3), leaf = FT(1e-3))# (accelerated) see Kumar, 2008 and
     # Pierre's database for total global plant conductance (1/resistance) 
     # (https://github.com/yalingliu-cu/plant-strategies/blob/master/Product%20details.pdf)
@@ -35,6 +40,7 @@ FT = Float64
         PlantHydraulicsDomain(z_root_depths, n_stem, n_leaf, Δz)
     param_set =
         PlantHydraulics.PlantHydraulicsParameters{FT, typeof(earth_param_set)}(
+            area_index,
             K_sat,
             vg_α,
             vg_n,
