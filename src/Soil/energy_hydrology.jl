@@ -309,7 +309,7 @@ function ClimaLSM.make_update_aux(model::EnergyHydrology)
         κ_sat_frozen,
         κ_sat_unfrozen = model.parameters
 
-        θ_l = volumetric_liquid_fraction.(Y.soil.ϑ_l, ν)
+        θ_l = volumetric_liquid_fraction.(Y.soil.ϑ_l, ν .- Y.soil.θ_i)
         p.soil.κ =
             thermal_conductivity.(
                 model.parameters.κ_dry,
@@ -341,8 +341,55 @@ function ClimaLSM.make_update_aux(model::EnergyHydrology)
                 vg_m,
                 effective_saturation(ν, Y.soil.ϑ_l, θ_r),
             )
-        @. p.soil.ψ = pressure_head(vg_α, vg_n, vg_m, θ_r, Y.soil.ϑ_l, ν, S_s)
+        @. p.soil.ψ = pressure_head(
+            vg_α,
+            vg_n,
+            vg_m,
+            θ_r,
+            Y.soil.ϑ_l,
+            ν - Y.soil.θ_i,
+            S_s,
+        )
 
     end
     return update_aux!
+end
+
+"""
+    PhaseChange{FT} <: AbstractSoilSource{FT}
+
+PhaseChange source type.
+"""
+struct PhaseChange{FT} <: AbstractSoilSource{FT}
+    Δz::FT
+end
+
+"""
+     source!(dY::ClimaCore.Fields.FieldVector,
+             src::PhaseChange{FT},
+             Y::ClimaCore.Fields.FieldVector,
+             p::ClimaCore.Fields.FieldVector
+             )
+
+Computes the source terms for phase change.
+
+"""
+function source!(
+    dY::ClimaCore.Fields.FieldVector,
+    src::PhaseChange{FT},
+    Y::ClimaCore.Fields.FieldVector,
+    p::ClimaCore.Fields.FieldVector,
+    params,
+) where {FT}
+    @unpack ν, earth_param_set = params
+    _ρ_l = FT(LSMP.ρ_cloud_liq(earth_param_set))
+    _ρ_i = FT(LSMP.ρ_cloud_ice(earth_param_set))
+    θ_l = @. volumetric_liquid_fraction(Y.soil.ϑ_l, ν - Y.soil.θ_i)
+    ρc = volumetric_heat_capacity.(θ_l, Y.soil.θ_i, Ref(params))
+    τ = thermal_time.(ρc, src.Δz, p.soil.κ)
+
+    liquid_source =
+        phase_change_source.(θ_l, Y.soil.θ_i, p.soil.T, τ, Ref(params))
+    @. dY.soil.ϑ_l += -liquid_source
+    @. dY.soil.θ_i += (_ρ_l / _ρ_i) * liquid_source
 end

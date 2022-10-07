@@ -14,6 +14,8 @@ using ClimaLSM.Domains: Column
 using ClimaLSM.Soil
 
 import ClimaLSM
+import ClimaLSM.Parameters as LSMP
+
 include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
 
 FT = Float64
@@ -447,4 +449,89 @@ end
     @test mean(abs.(expected .- parent(dY.soil.ρe_int))) /
           median(parent(Y.soil.ρe_int)) < 1e-13
 
+end
+
+@testset begin
+    "Phase change source term"
+    earth_param_set = create_lsm_parameters(FT)
+    ν = FT(0.495)
+    K_sat = FT(0.0) # m/s
+    S_s = FT(1e-3) #inverse meters
+    vg_n = FT(2.0)
+    vg_α = FT(2.6) # inverse meters
+    vg_m = FT(1) - FT(1) / vg_n
+    θ_r = FT(0.1)
+    ν_ss_om = FT(0.0)
+    ν_ss_quartz = FT(1.0)
+    ν_ss_gravel = FT(0.0)
+    κ_minerals = FT(2.5)
+    κ_om = FT(0.25)
+    κ_quartz = FT(8.0)
+    κ_air = FT(0.025)
+    κ_ice = FT(2.21)
+    κ_liq = FT(0.57)
+    ρp = FT(2.66 / 1e3 * 1e6)
+    ρc_ds = FT(2e6 * (1.0 - ν))
+    κ_solid = Soil.κ_solid(ν_ss_om, ν_ss_quartz, κ_om, κ_quartz, κ_minerals)
+    κ_dry = Soil.κ_dry(ρp, ν, κ_solid, κ_air)
+    κ_sat_frozen = Soil.κ_sat_frozen(κ_solid, ν, κ_ice)
+    κ_sat_unfrozen = Soil.κ_sat_unfrozen(κ_solid, ν, κ_liq)
+    zmax = FT(0)
+    zmin = FT(-1)
+    nelems = 200
+    Δz = 0.005
+    soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems)
+    top_flux_bc = FT(0.0)
+    bot_flux_bc = FT(0.0)
+
+    sources = (PhaseChange{FT}(Δz),)
+    boundary_fluxes = Soil.FluxBC{FT}(top_flux_bc, bot_flux_bc)
+
+
+    ###
+    hyd_off_en_on = Soil.EnergyHydrologyParameters(;
+        κ_dry = κ_dry,
+        κ_sat_frozen = κ_sat_frozen,
+        κ_sat_unfrozen = κ_sat_unfrozen,
+        ρc_ds = ρc_ds,
+        ν = ν,
+        ν_ss_om = ν_ss_om,
+        ν_ss_quartz = ν_ss_quartz,
+        ν_ss_gravel = ν_ss_gravel,
+        vg_α = vg_α,
+        vg_n = vg_n,
+        K_sat = 0.0,
+        S_s = S_s,
+        θ_r = θ_r,
+        earth_param_set = earth_param_set,
+    )
+    soil_heat_on = Soil.EnergyHydrology{FT}(;
+        parameters = hyd_off_en_on,
+        domain = soil_domain,
+        rre_boundary_conditions = boundary_fluxes,
+        heat_boundary_conditions = boundary_fluxes,
+        sources = sources,
+    )
+
+    Y, p, coords = initialize(soil_heat_on)
+
+    # specify ICs
+    function init_soil_heat!(Ysoil, z, params)
+        ν = params.ν
+        Ysoil.soil.ϑ_l .= ν / 2.0
+        Ysoil.soil.θ_i .= 0.0
+        T = 270.0
+        ρc_s = Soil.volumetric_heat_capacity(ν / 2.0, 0.0, params)
+        Ysoil.soil.ρe_int =
+            Soil.volumetric_internal_energy.(0.0, ρc_s, T, Ref(params))
+    end
+
+    init_soil_heat!(Y, coords.z, soil_heat_on.parameters)
+    soil_ode! = make_ode_function(soil_heat_on)
+    dY = similar(Y)
+    dY .= FT(0.0)
+    source!(dY, sources[1], Y, p, soil_heat_on.parameters)
+    _ρ_l = FT(LSMP.ρ_cloud_liq(soil_heat_on.parameters.earth_param_set))
+    _ρ_i = FT(LSMP.ρ_cloud_ice(soil_heat_on.parameters.earth_param_set))
+    @test parent(dY.soil.ϑ_l) ≈ -(_ρ_i / _ρ_l) .* parent(dY.soil.θ_i)
 end

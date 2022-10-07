@@ -82,7 +82,8 @@ export RichardsModel,
     RootExtraction,
     AbstractSoilModel,
     AbstractSoilSource,
-    source!
+    source!,
+    PhaseChange
 
 """
     AbstractSoilBoundaryConditions{FT <: AbstractFloat}
@@ -196,21 +197,30 @@ end
              src::AbstractSoilSource,
              Y::ClimaCore.Fields.FieldVector,
              p::ClimaCore.Fields.FieldVector
-             )::ClimaCore.Field.Field
+             )
 
 A stub function, which is extended by ClimaLSM.
 
-Once we have the freeze thaw source function, we do not need this
-stub anymore.
 """
 function source!(
     dY::ClimaCore.Fields.FieldVector,
     src::AbstractSoilSource,
     Y::ClimaCore.Fields.FieldVector,
     p::ClimaCore.Fields.FieldVector,
-)::ClimaCore.Field.Field end
+) end
 
+"""
+     heaviside(x::FT)::FT where {FT}
 
+Computes the heaviside function.
+"""
+function heaviside(x::FT)::FT where {FT}
+    if x > eps(FT)
+        return FT(1.0)
+    else
+        return FT(0.0)
+    end
+end
 include("./rre.jl")
 include("./energy_hydrology.jl")
 include("./soil_hydrology_parameterizations.jl")
