@@ -75,25 +75,32 @@ import ClimaLSM:
     auxiliary_types
 export RichardsModel,
     RichardsParameters,
-    EnergyHydrologyModel,
+    EnergyHydrology,
     EnergyHydrologyParameters,
-    boundary_fluxes,
+    boundary_flux,
+    AbstractBC,
     FluxBC,
+    StateBC,
     RootExtraction,
     AbstractSoilModel,
     AbstractSoilSource,
     source!,
+    AbstractBoundary,
+    TopBoundary,
+    BottomBoundary,
+    diffusive_flux,
+    get_Δz,
     PhaseChange
 
 """
-    AbstractSoilBoundaryConditions{FT <: AbstractFloat}
+    AbstractBC{FT <: AbstractFloat}
 
 An abstract type for types of boundary conditions, which will include
 prescribed functions of space and time as Dirichlet conditions or
 Neumann conditions, in addition to other 
 convenient soil-specific conditions, like free drainage.
 """
-abstract type AbstractSoilBoundaryConditions{FT <: AbstractFloat} end
+abstract type AbstractBC{FT <: AbstractFloat} end
 
 """
     AbstractSoilSource{FT <: AbstractFloat}
@@ -113,14 +120,21 @@ The abstract type for all soil models.
 
 Currently, we only have plans to support a RichardsModel, simulating
 the flow of liquid water through soil via the Richardson-Richards equation,
- and a fully integrated soil heat
-and water model, with phase change.
+and a fully integrated soil heat and water model, with phase change.
 """
 abstract type AbstractSoilModel{FT} <: ClimaLSM.AbstractModel{FT} end
 
 ClimaLSM.name(::AbstractSoilModel) = :soil
 ClimaLSM.domain(::AbstractSoilModel) = :subsurface
 
+"""
+    AbstractBoundary{}
+
+An abstract type to indicate which boundary we are doing calculations for.
+Currently, we support the top boundary (TopBoundary)
+and bottom boundary (BottomBoundary).
+"""
+abstract type AbstractBoundary{} end
 
 """
    horizontal_components!(dY::ClimaCore.Fields.FieldVector,
@@ -166,30 +180,137 @@ function dss!(
     end
 end
 
-
 """
-   FluxBC{FT} <: AbstractSoilBoundaryConditions{FT}
+   StateBC{FT} <: AbstractBC{FT}
 
-A simple concrete type of boundary condition, which enforces
-constant normal fluxes at the top and bottom of the domain.
+A simple concrete type of boundary condition, which enforces a
+constant normal state at either the top or bottom of the domain.
 """
-struct FluxBC{FT} <: AbstractSoilBoundaryConditions{FT}
-    top_flux_bc::FT
-    bot_flux_bc::FT
+struct StateBC{FT} <: AbstractBC{FT}
+    bc::FT
 end
 
 """
-    boundary_fluxes(bc::FluxBC, _...)
+   FluxBC{FT} <: AbstractBC{FT}
 
-A function which returns the correct boundary flux
-given the boundary condition type `FluxBC`.
-
-This is a trivial example, but a more complex one would be e.g.
-Dirichlet conditions on the state, which then must be converted into
-a flux before being applied as a boundary condition.
+A simple concrete type of boundary condition, which enforces a
+constant normal flux at either the top or bottom of the domain.
 """
-function boundary_fluxes(bc::FluxBC, _...)
-    return bc.top_flux_bc, bc.bot_flux_bc
+struct FluxBC{FT} <: AbstractBC{FT}
+    bc::FT
+end
+
+"""
+    TopBoundary{} <: AbstractBoundary{}
+
+A simple object which should be passed into a function to
+indicate that we are considering the top boundary of the soil.
+"""
+struct TopBoundary <: AbstractBoundary end
+
+"""
+    BottomBoundary{} <: AbstractBoundary{}
+
+A simple object which should be passed into a function to
+indicate that we are considering the bottom boundary of the soil.
+"""
+struct BottomBoundary <: AbstractBoundary end
+
+"""
+    get_Δz(z)
+
+A function to return a tuple containing the distance between the top boundary
+and its closest center, and the bottom boundary and its closest center, 
+both as Fields.
+"""
+function get_Δz(z)
+    # Extract the differences between levels of the face space
+    fs = ClimaLSM.Domains.obtain_face_space(axes(z))
+    z_face = ClimaCore.Fields.coordinate_field(fs).z
+    Δz = ClimaCore.Fields.Δz_field(z_face)
+
+    Δz_top = Fields.level(
+        Δz,
+        ClimaCore.Utilities.PlusHalf(ClimaCore.Spaces.nlevels(fs) - 1),
+    )
+    Δz_bottom = Fields.level(Δz, ClimaCore.Utilities.PlusHalf(0))
+    return Δz_top ./ 2, Δz_bottom ./ 2
+end
+
+"""
+    diffusive_flux(K, x_2, x_1, Δz)
+
+Calculates the diffusive flux of a quantity x (water content, temp, etc).
+Here, x_2 = x(z + Δz) and x_1 = x(z), so x_2 is at a larger z by convention.
+"""
+function diffusive_flux(K, x_2, x_1, Δz)
+    return @. -K * (x_2 - x_1) / Δz
+end
+
+"""
+    boundary_flux(bc::AbstractBC, bound_type::AbstractBoundary, Δz::FT, _...)
+
+A function which returns the correct boundary flux (of type FluxBC) given
+    any boundary condition (BC) of type `FluxBC` or `StateBC`.
+A StateBC must be converted into a flux value before being returned.
+"""
+function boundary_flux end
+
+# A flux BC requires no conversion calculations
+function boundary_flux(bc::FluxBC, _, Δz, _...)
+    return bc.bc .+ ClimaCore.Fields.zeros(axes(Δz))
+end
+
+# Convert water state to flux at top boundary
+function boundary_flux(rre_bc::StateBC, ::TopBoundary, Δz, p, params)
+    # Approximate K_bc ≈ K_c, ψ_bc ≈ ψ_c (center closest to the boundary)
+    p_len = Spaces.nlevels(axes(p.soil.K))
+    K_c = Fields.level(p.soil.K, p_len)
+    ψ_c = Fields.level(p.soil.ψ, p_len)
+
+    # Calculate pressure head using boundary condition
+    @unpack vg_α, vg_n, vg_m, θ_r, ν, S_s = params
+    ψ_bc = @. pressure_head(vg_α, vg_n, vg_m, θ_r, rre_bc.bc, ν, S_s)
+
+    # Pass in (ψ_bc .+ Δz) as x_2 to account for contribution of gravity in RRE
+    return diffusive_flux(K_c, ψ_bc .+ Δz, ψ_c, Δz)
+end
+
+# Convert water state to flux at bottom boundary
+function boundary_flux(rre_bc::StateBC, ::BottomBoundary, Δz, p, params)
+    # Approximate K_bc ≈ K_c, ψ_bc ≈ ψ_c (center closest to the boundary)
+    K_c = Fields.level(p.soil.K, 1)
+    ψ_c = Fields.level(p.soil.ψ, 1)
+
+    # Calculate pressure head using boundary condition
+    @unpack vg_α, vg_n, vg_m, θ_r, ν, S_s = params
+    ψ_bc = @. pressure_head(vg_α, vg_n, vg_m, θ_r, rre_bc.bc, ν, S_s)
+
+    # At the bottom boundary, ψ_c is at larger z than ψ_bc
+    #  so we swap their order in the derivative calc
+    # Pass in (ψ_c .+ Δz) as x_2 to account for contribution of gravity in RRE
+    return diffusive_flux(K_c, ψ_c .+ Δz, ψ_bc, Δz)
+end
+
+# Convert heat state to flux at top boundary
+function boundary_flux(heat_bc::StateBC, ::TopBoundary, Δz, p)
+    # Approximate κ_bc ≈ κ_c (center closest to the boundary)
+    p_len = Spaces.nlevels(axes(p.soil.T))
+    T_c = Fields.level(p.soil.T, p_len)
+    κ_c = Fields.level(p.soil.κ, p_len)
+
+    return diffusive_flux(κ_c, heat_bc.bc, T_c, Δz)
+end
+
+# Convert heat state to flux at bottom boundary
+function boundary_flux(heat_bc::StateBC, ::BottomBoundary, Δz, p)
+    # Approximate κ_bc ≈ κ_c (center closest to the boundary)
+    T_c = Fields.level(p.soil.T, 1)
+    κ_c = Fields.level(p.soil.κ, 1)
+
+    # At the bottom boundary, T_c is at larger z than T_bc
+    #  so we swap their order in the derivative calc
+    return diffusive_flux(κ_c, T_c, heat_bc.bc, Δz)
 end
 
 """
@@ -225,6 +346,5 @@ include("./rre.jl")
 include("./energy_hydrology.jl")
 include("./soil_hydrology_parameterizations.jl")
 include("./soil_heat_parameterizations.jl")
-
 
 end

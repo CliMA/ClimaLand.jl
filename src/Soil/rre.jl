@@ -56,7 +56,7 @@ end
     RichardsModel{FT}(;
         parameters::RichardsParameters{FT},
         domain::D,
-        boundary_conditions::AbstractSoilBoundaryConditions{FT},
+        boundary_conditions::RREBoundaryConditions{FT},
         sources::Tuple,
     ) where {FT, D}
 
@@ -65,7 +65,7 @@ A constructor for a `RichardsModel`.
 function RichardsModel{FT}(;
     parameters::RichardsParameters{FT},
     domain::D,
-    boundary_conditions::AbstractSoilBoundaryConditions{FT},
+    boundary_conditions::NamedTuple,
     sources::Tuple,
 ) where {FT, D}
     args = (parameters, domain, boundary_conditions, sources)
@@ -88,9 +88,24 @@ This has been written so as to work with Differential Equations.jl.
 function ClimaLSM.make_rhs(model::RichardsModel)
     function rhs!(dY, Y, p, t)
         @unpack ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r = model.parameters
-        top_flux_bc, bot_flux_bc =
-            boundary_fluxes(model.boundary_conditions, p, t)
         z = ClimaCore.Fields.coordinate_field(model.domain.space).z
+        Δz_top, Δz_bottom = get_Δz(z)
+
+        top_flux_bc = boundary_flux(
+            model.boundary_conditions.water.top,
+            TopBoundary(),
+            Δz_top,
+            p,
+            model.parameters,
+        )
+        bot_flux_bc = boundary_flux(
+            model.boundary_conditions.water.bottom,
+            BottomBoundary(),
+            Δz_bottom,
+            p,
+            model.parameters,
+        )
+
         interpc2f = Operators.InterpolateC2F()
         gradc2f_water = Operators.GradientC2F()
 
@@ -99,7 +114,7 @@ function ClimaLSM.make_rhs(model::RichardsModel)
         # We set the third component first - supply a Covariant3Vector
 
         # Without topography only
-        # In Cartesian coordinates, W (z^) = Cov3 (z^)= Contra3 (n^ = z^)
+        # In Cartesian coordinates, W (z^) = Cov3 (z^) = Contra3 (n^ = z^)
         # In spherical coordinates, W (r^) = Cov3 (r^) = Contra3 (n^ = r^)
 
         # It appears that the WVector is converted internally to a Covariant3Vector for the gradient value

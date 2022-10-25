@@ -60,10 +60,11 @@ function LandHydrology{FT}(;
 
     sources = ()
     surface_runoff = PrognosticRunoff{FT}(precip)
-    boundary_conditions = RunoffBC{FT}()
+    boundary_conditions =
+        (; water = (top = RunoffBC{FT}(), bottom = FluxBC(FT(0.0))))
 
     soil = soil_model_type(;
-        boundary_conditions = RunoffBC{FT}(),
+        boundary_conditions = boundary_conditions,
         sources = sources,
         soil_args...,
     )
@@ -227,9 +228,9 @@ function Pond.surface_runoff(
 end
 
 """
-    RunoffBC{FT} <: Soil.AbstractSoilBoundaryConditions{FT}
+    RunoffBC{FT} <: Soil.AbstractBC{FT}
 
-Concrete type of `Soil.AbstractSoilBoundaryConditions` for use in LSM models,
+Concrete type of `Soil.AbstractBC` for use in LSM models,
 where precipitation is passed in, but infiltration is computed
 prognostically. This infiltration is then used to set an upper
 boundary condition for the soil.
@@ -240,25 +241,35 @@ time,
 ensuring that the infiltration used for the boundary condition of soil
 is also used to compute the runoff for the surface water.
 """
-struct RunoffBC{FT} <: Soil.AbstractSoilBoundaryConditions{FT} end
+struct RunoffBC{FT} <: Soil.AbstractBC{FT} end
 
 """
-    function Soil.boundary_fluxes(
+    function boundary_flux(
         bc::RunoffBC{FT},
+        _::TopBoundary,
         p::ClimaCore.Fields.FieldVector,
         t::FT,
     ) where {FT}
 
-Extension of the `Soil.boundary_fluxes` function, which
- returns the water volume boundary flux for the soil, by
-returning the soil infiltration (computed each step and stored in
-`p.soil_infiltration`) as a top flux, and 
-assuming no flux at the bottom of the soil. This is for use in an LSM.
+Extension of the `Soil.boundary_flux` function, which returns the water volume
+boundary flux for the soil.
+At the top boundary, return the soil infiltration (computed each step and
+stored in `p.soil_infiltration`).
+At the bottom boundary, assume no flux.
 """
-function Soil.boundary_fluxes(
-    bc::RunoffBC{FT},
+function Soil.boundary_flux(
+    _::RunoffBC{FT},
+    _::TopBoundary,
+    _,
     p::ClimaCore.Fields.FieldVector,
-    t::FT,
+    _...,
 ) where {FT}
-    return p.soil_infiltration, FT(0.0)
+    return p.soil_infiltration
+end
+
+"""
+
+"""
+function boundary_flux(_::RunoffBC{FT}, _::BottomBoundary, _...) where {FT}
+    return FT(0)
 end
