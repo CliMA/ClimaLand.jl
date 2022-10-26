@@ -2,6 +2,7 @@ export source!, AbstractSource
 
 """
     AbstractSource{FT <: AbstractFloat}
+
 An abstract type for types of source terms.
 """
 abstract type AbstractSource{FT <: AbstractFloat} end
@@ -12,6 +13,7 @@ abstract type AbstractSource{FT <: AbstractFloat} end
              Y::ClimaCore.Fields.FieldVector,
              p::ClimaCore.Fields.FieldVector
              )::ClimaCore.Fields.Field
+
 A stub function, which is extended by ClimaLSM.
 """
 function source!(

@@ -151,13 +151,6 @@ function infiltration_capacity(
         space,
     )
     ψ_face = max.(0.0, Y.surface_water.η)
-
-    # gradc2f = ClimaCore.Operators.GradientC2F(top = ClimaCore.Operators.SetValue(ψ_face), bottom = ClimaCore.Operators.SetValue(0.0))
-    # interpc2f = ClimaCore.Operators.InterpolateC2F(top = ClimaCore.Operators.Extrapolate(), bottom = ClimaCore.Operators.Extrapolate())
-    # K∂ψ∂z = @.interpc2f(p.K) *gradc2f(p.ψ)
-    # return ClimaCore.Fields.level(K∂ψ∂z,ClimaCore.Utilities.PlusHalf(N-1))
-
-
     return @. (
         K_center * (ψ_face + z_face - (ψ_center + z_center)) /
         (z_face - z_center)
@@ -246,23 +239,25 @@ struct RunoffBC{FT} <: Soil.AbstractSoilBC{FT} end
 """
     function ClimaLSM.boundary_flux(
         bc::RunoffBC{FT},
-        _::TopBoundary,
+        ::TopBoundary,
+        Δz::FT,
         p::ClimaCore.Fields.FieldVector,
         t::FT,
-    ) where {FT}
+        params,
+    )::ClimaCore.Fields.Field where {FT}
 
 Extension of the `ClimaLSM.boundary_flux` function, which returns the water volume
 boundary flux for the soil.
 At the top boundary, return the soil infiltration (computed each step and
 stored in `p.soil_infiltration`).
-At the bottom boundary, assume no flux.
 """
 function ClimaLSM.boundary_flux(
-    _::RunoffBC{FT},
-    _::TopBoundary,
-    _,
+    bc::RunoffBC{FT},
+    ::TopBoundary,
+    Δz::ClimaCore.Fields.Field,
     p::ClimaCore.Fields.FieldVector,
-    _...,
-) where {FT}
+    t::FT,
+    params,
+)::ClimaCore.Fields.Field where {FT}
     return p.soil_infiltration
 end

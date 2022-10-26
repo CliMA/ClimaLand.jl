@@ -96,6 +96,7 @@ function ClimaLSM.make_rhs(model::RichardsModel)
             TopBoundary(),
             Δz_top,
             p,
+            t,
             model.parameters,
         )
         bot_flux_bc = boundary_flux(
@@ -103,6 +104,7 @@ function ClimaLSM.make_rhs(model::RichardsModel)
             BottomBoundary(),
             Δz_bottom,
             p,
+            t,
             model.parameters,
         )
 
@@ -134,7 +136,7 @@ function ClimaLSM.make_rhs(model::RichardsModel)
 
         # Source terms
         for src in model.sources
-            ClimaLSM.source!(dY, src, Y, p)
+            ClimaLSM.source!(dY, src, Y, p, model.parameters)
         end
 
         # This has to come last
