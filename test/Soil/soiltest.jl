@@ -141,8 +141,8 @@ end
     nelems = 50
 
     soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems)
-    top_flux_bc = FluxBC(FT(0.0))
-    bot_flux_bc = FluxBC(FT(0.0))
+    top_flux_bc = FluxBC((p, t) -> eltype(t)(0.0))
+    bot_flux_bc = FluxBC((p, t) -> eltype(t)(0.0))
     sources = ()
     boundary_fluxes = (; water = (top = top_flux_bc, bottom = bot_flux_bc))
     params = Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r)
@@ -207,8 +207,8 @@ end
     nelems = 50
 
     soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems)
-    top_state_bc = StateBC(FT(ν / 2))
-    bot_state_bc = StateBC(FT(ν))
+    top_state_bc = StateBC((p, t) -> eltype(t)(ν / 2))
+    bot_state_bc = StateBC((p, t) -> eltype(t)(ν))
     sources = ()
     boundary_states = (; water = (top = top_state_bc, bottom = bot_state_bc))
     params = Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r)
@@ -264,8 +264,8 @@ end
     nelems = 50
 
     soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems)
-    top_flux_bc = FluxBC(FT(ν / 3))
-    bot_state_bc = StateBC(FT(ν / 2))
+    top_flux_bc = FluxBC((p, t) -> eltype(t)(0))
+    bot_state_bc = StateBC((p, t) -> eltype(t)(ν / 2))
     sources = ()
     boundary_conditions = (; water = (top = top_flux_bc, bottom = bot_state_bc))
     params = Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r)
@@ -336,8 +336,8 @@ end
     nelems = 200
     Δz = abs(zmax - zmin) / nelems
     soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems)
-    top_flux_bc = FluxBC(FT(0.0))
-    bot_flux_bc = FluxBC(FT(0.0))
+    top_flux_bc = FluxBC((p, t) -> eltype(t)(0.0))
+    bot_flux_bc = FluxBC((p, t) -> eltype(t)(0.0))
     sources = ()
     # Use the same BCs for RRE and heat
     boundary_fluxes = (;
@@ -511,7 +511,11 @@ end
     Z_face = 0.5 * (Z[2:end] + Z[1:(end - 1)])
     K_face = 0.5 .* (K.(θ[2:end]) .+ K.(θ[1:(end - 1)]))
     flux_interior = (@. -K_face * (1.0 + dψdθ(θ_face) * dθdz(Z_face)))
-    flux = vcat([top_flux_bc.bc], flux_interior, [bot_flux_bc.bc])
+    flux = vcat(
+        [top_flux_bc.bc(p, FT(0.0))],
+        flux_interior,
+        [bot_flux_bc.bc(p, FT(0.0))],
+    )
 
     expected = -(flux[2:end] - flux[1:(end - 1)]) ./ Δz
     @test mean(abs.(expected .- parent(dY.soil.ϑ_l))) / ν < 1e-13
@@ -526,7 +530,11 @@ end
     ρe_int_l_face = 0.5 * (ρe_int_l[2:end] + ρe_int_l[1:(end - 1)])
     flux_interior =
         (@. -K_face * ρe_int_l_face * (1.0 + dψdθ(θ_face) * dθdz(Z_face)))
-    flux = vcat([top_flux_bc.bc], flux_interior, [bot_flux_bc.bc])
+    flux = vcat(
+        [top_flux_bc.bc(p, FT(0.0))],
+        flux_interior,
+        [bot_flux_bc.bc(p, FT(0.0))],
+    )
     expected = -(flux[2:end] - flux[1:(end - 1)]) ./ Δz
 
     @test mean(abs.(expected .- parent(dY.soil.ρe_int))) /
@@ -635,7 +643,11 @@ end
     vf_face = 0.5 .* (vf[2:end] .+ vf[1:(end - 1)])
 
     flux_interior = (@. -K_face * vf_face * (1.0 + dψdθ(θ_face) * dθdz(Z_face)))
-    flux = vcat([top_flux_bc.bc], flux_interior, [bot_flux_bc.bc])
+    flux = vcat(
+        [top_flux_bc.bc(p, FT(0.0))],
+        flux_interior,
+        [bot_flux_bc.bc(p, FT(0.0))],
+    )
 
     expected = -(flux[2:end] - flux[1:(end - 1)]) ./ Δz
     @test mean(abs.(expected .- parent(dY.soil.ϑ_l))) / ν < 1e-13
@@ -655,9 +667,17 @@ end
         vf_face *
         ρe_int_l_face *
         (1.0 + dψdθ(θ_face) * dθdz(Z_face)))
-    flux_one = vcat([top_flux_bc.bc], flux_interior, [bot_flux_bc.bc])
+    flux_one = vcat(
+        [top_flux_bc.bc(p, FT(0.0))],
+        flux_interior,
+        [bot_flux_bc.bc(p, FT(0.0))],
+    )
     flux_interior = (@. -κ_face * (Z_face + 0.5))
-    flux_two = vcat([top_flux_bc.bc], flux_interior, [bot_flux_bc.bc])
+    flux_two = vcat(
+        [top_flux_bc.bc(p, FT(0.0))],
+        flux_interior,
+        [bot_flux_bc.bc(p, FT(0.0))],
+    )
     flux = flux_one .+ flux_two
     expected = -(flux[2:end] - flux[1:(end - 1)]) ./ Δz
 
@@ -696,8 +716,8 @@ end
     nelems = 200
     Δz = 0.005
     soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems)
-    top_flux_bc = FluxBC(FT(0.0))
-    bot_flux_bc = FluxBC(FT(0.0))
+    top_flux_bc = FluxBC((p, t) -> eltype(t)(0.0))
+    bot_flux_bc = FluxBC((p, t) -> eltype(t)(0.0))
     boundary_fluxes = (;
         water = (top = top_flux_bc, bottom = bot_flux_bc),
         heat = (top = top_flux_bc, bottom = bot_flux_bc),

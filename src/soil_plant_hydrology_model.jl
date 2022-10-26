@@ -55,10 +55,10 @@ function SoilPlantHydrologyModel{FT}(;
 }
 
     #These may be passed in, or set, depending on use scenario
-    top_flux_bc = FluxBC(FT(0.0))
-    bot_flux_bc = FluxBC(FT(0.0))
+    top_flux_bc = FluxBC((p, t) -> eltype(t)(0.0))
+    bot_flux_bc = FluxBC((p, t) -> eltype(t)(0.0))
     boundary_fluxes = (; water = (top = top_flux_bc, bottom = bot_flux_bc))
-    transpiration = PrescribedTranspiration{FT}((t::FT) -> FT(0.0))
+    transpiration = PrescribedTranspiration{FT}((t::FT) -> eltype(t)(0.0))
 
     ##These should always be set by the constructor.
     sources = (RootExtraction{FT}(),)
@@ -207,7 +207,8 @@ struct RootExtraction{FT} <: Soil.AbstractSoilSource{FT} end
     ClimaLSM.source!(dY::ClimaCore.Fields.FieldVector,
                           src::RootExtraction{FT},
                           Y::ClimaCore.Fields.FieldVector,
-                          p::ClimaCore.Fields.FieldVector)::ClimaCore.Fields.Field  where {FT}
+                          p::ClimaCore.Fields.FieldVector
+                          params)::ClimaCore.Fields.Field  where {FT}
 
 An extension of the `ClimaLSM.source!` function,
  which computes source terms for the 
@@ -219,6 +220,7 @@ function ClimaLSM.source!(
     src::RootExtraction{FT},
     Y::ClimaCore.Fields.FieldVector,
     p::ClimaCore.Fields.FieldVector,
+    _...,
 )::ClimaCore.Fields.Field where {FT}
     return dY.soil.ϑ_l .+= p.root_extraction
 end

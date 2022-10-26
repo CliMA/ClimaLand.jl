@@ -165,6 +165,7 @@ function ClimaLSM.make_rhs(model::EnergyHydrology{FT}) where {FT}
             TopBoundary(),
             Δz_top,
             p,
+            t,
             model.parameters,
         )
         rre_bot_flux_bc = boundary_flux(
@@ -172,6 +173,7 @@ function ClimaLSM.make_rhs(model::EnergyHydrology{FT}) where {FT}
             BottomBoundary(),
             Δz_bottom,
             p,
+            t,
             model.parameters,
         )
 
@@ -180,12 +182,14 @@ function ClimaLSM.make_rhs(model::EnergyHydrology{FT}) where {FT}
             TopBoundary(),
             Δz_top,
             p,
+            t,
         )
         heat_bot_flux_bc = boundary_flux(
             model.boundary_conditions.heat.bottom,
             BottomBoundary(),
             Δz_bottom,
             p,
+            t,
         )
 
         interpc2f = Operators.InterpolateC2F()
@@ -226,7 +230,8 @@ function ClimaLSM.make_rhs(model::EnergyHydrology{FT}) where {FT}
         horizontal_components!(dY, model.domain, model, p, z)
 
         for src in model.sources
-            ClimaLSM.source!(dY, src, Y, p)
+
+            ClimaLSM.source!(dY, src, Y, p, model.parameters)
         end
 
         # This has to come last
@@ -349,7 +354,7 @@ function ClimaLSM.make_update_aux(model::EnergyHydrology)
             )
 
         @. p.soil.K =
-            impedance_factor(Y.soil.θ_i / (θ_l + Y.soil.θ_i), Ω) *
+            impedance_factor(Y.soil.θ_i / (θ_l + Y.soil.θ_i - θ_r), Ω) *
             viscosity_factor(p.soil.T, γ, γT_ref) *
             hydraulic_conductivity(
                 K_sat,

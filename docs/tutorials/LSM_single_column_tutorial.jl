@@ -91,8 +91,8 @@ nelems = 20;
 soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems);
 
 # And boundary conditions and source terms (none currently):
-top_flux_bc = FluxBC(FT(0.0))
-bot_flux_bc = FluxBC(FT(0.0))
+top_flux_bc = FluxBC((p, t) -> eltype(t)(0.0))
+bot_flux_bc = FluxBC((p, t) -> eltype(t)(0.0))
 sources = ()
 boundary_fluxes = (; water = (top = top_flux_bc, bottom = bot_flux_bc))
 
