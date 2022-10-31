@@ -24,18 +24,6 @@ include("./DETECTModel_auxiliary.jl")
 A struct for storing parameters of the `DETECTModel`.
 """
 struct DETECTParameters{FT <: AbstractFloat}
-  # parameters (drivers?) that vary with depth and time
-  #  "Soil moisture (m³ m⁻³) - vary in time and depth"
-  #  θ::FT # driver?
-  #  "Soil temperature (Kelvin) - vary in time and depth"
-  #  Tₛ::FT # driver?
-  #  "Antecedent soil moisture for root - vary in time and depth"
-  #  θₐᵣ::FT # ?
-  #  "Antecedent soil moisture for microbe - vary in time and depth"
-  #  θₐₘ::FT
-  #  "Antecedent soil temperature - vary in time and depth"
-  #  Tₛₐ::FT
-
   # parameters that vary with depth
     "Pressure (kPa)"
     Pz::FT
@@ -159,9 +147,9 @@ struct DETECTModel{FT, PS, D, BC, S, DT} <: AbstractModel{FT}
     parameters::PS # in constructor you could enforce that it is ::DETECTParameters{FT}
     "the soil domain, using ClimaCore.Domains"
     domain::D
-    "the boundary conditions, of type AbstractSoilBoundaryConditions"
+    "the boundary conditions, of type AbstractBoundaryConditions"
     boundary_conditions::BC # maybe also have an FT
-    "A tuple of sources, each of type AbstractSoilSource"
+    "A tuple of sources, each of type AbstractSource"
     sources::S
     " Drivers"
     driver::DT
