@@ -1,9 +1,19 @@
 # code to run DETECTModel
-using DETECT
-path = pkgdir(DETECT)
+using UnPack
+using DiffEqCallbacks
+using OrdinaryDiffEq: ODEProblem, solve, RK4
+#import CLIMAParameters as CP
+using ClimaCore
+using ClimaLSM
+using ClimaLSM.Domains: Column
+using ClimaLSM.DETECT: DETECTModel, DETECTParameters, RootProduction, MicrobeProduction, PrescribedSoil, FluxBC
+
+#import ClimaLSM
+#import ClimaLSM.Parameters as LSMP
+#include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
+
 FT = Float32
-include(joinpath(path,"src/DETECTModel.jl"))
-include(joinpath(path, "src/DETECTModel_params.jl"))
+include("./DETECTModel_params.jl")
 nelems = 50 # number of layers in the vertical
 zmin = FT(-5)
 zmax = FT(0.0)
@@ -21,8 +31,7 @@ Tₛ(t, z) = FT(273)#exp(-z)*sin(t) #
 Tₛₐ(t,z) = FT(273)#exp(-z)*sin(t)*100 + 273
 
 soil_drivers = PrescribedSoil(Tₛ, θ,Tₛₐ,θₐᵣ,θₐₘ)
-args = (params, soil_domain, bc, sources, soil_drivers)
-model = DETECTModel{FT, typeof.(args)...}(args...)
+model = DETECTModel{FT}(; parameters = params, domain = soil_domain, sources = sources, boundary_conditions= bc, drivers = soil_drivers)
 
 Y, p, coords = initialize(model)
 
@@ -46,8 +55,10 @@ DETECT_ode! = make_ode_function(model)
 t0 = FT(0)
 tf = FT(60) # why not
 dt = FT(1)
+saved_values = SavedValues(FT, ClimaCore.Fields.FieldVector)
 cb = SavingCallback((u, t, integrator) -> copy(integrator.p), saved_values) #?
 prob = ODEProblem(DETECT_ode!, Y, (t0, tf), p)
-sol = solve(prob, Euler(); dt = dt, callback = cb) # do we want Euler or another algorithm for this?
+sol = solve(prob, RK4(); dt = dt, callback = cb) # do we want Euler or another algorithm for this?
+# dx/dt = f(x,t) -> Δx = f(x,t)Δt + O(Δt^2) #O(Δt^5)
 
-
+#parent(sol.u[end].DETECT.C)

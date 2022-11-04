@@ -223,6 +223,8 @@ initialize.
 interaction_domains(m::AbstractLandModel) = ()
 
 # Methods extended by the LSM models we support
+include("SoilCO2/DETECT.jl")
+using .DETECT
 include("SurfaceWater/Pond.jl")
 using .Pond
 import .Pond: surface_runoff

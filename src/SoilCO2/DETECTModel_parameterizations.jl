@@ -135,7 +135,7 @@ end
 
 CO₂ production in the soil by microbes, in depth and time.
 """
-function microbe_source(Vmax::FT, Csol::FT, Km::FT, Cmic::FT, CUE::FT) where {FT}
+function microbe_source(Vmax::FT, Csol::FT, Kₘ::FT, Cmic::FT, CUE::FT) where {FT}
 	Sₘ = Vmax * Csol/(Kₘ + Csol) * Cmic * (FT(1) - CUE)
 	return Sₘ
 end
