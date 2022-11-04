@@ -204,17 +204,17 @@ from the soil.
 struct RootExtraction{FT} <: Soil.AbstractSoilSource{FT} end
 
 """
-    Soil.source!(dY::ClimaCore.Fields.FieldVector,
+    ClimaLSM.source!(dY::ClimaCore.Fields.FieldVector,
                           src::RootExtraction{FT},
                           Y::ClimaCore.Fields.FieldVector,
                           p::ClimaCore.Fields.FieldVector)::ClimaCore.Fields.Field  where {FT}
 
-An extension of the `Soil.source!` function,
+An extension of the `ClimaLSM.source!` function,
  which computes source terms for the 
 soil model; this method returns the water loss or gain due
 to roots when a plant hydraulic prognostic model is included.
 """
-function Soil.source!(
+function ClimaLSM.source!(
     dY::ClimaCore.Fields.FieldVector,
     src::RootExtraction{FT},
     Y::ClimaCore.Fields.FieldVector,
