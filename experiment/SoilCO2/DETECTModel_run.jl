@@ -18,19 +18,19 @@ nelems = 50 # number of layers in the vertical
 zmin = FT(-5)
 zmax = FT(0.0)
 soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems)
-top_bc = (t) -> FT(0.0)#765.0) # atm CO2 in mg m-3
-bot_bc = (t) -> FT(0.0)#765.0) # let's just assume starting condition vertically homogeneous for now 
-sources = (RootProduction(),MicrobeProduction()) # is S a source? Do I need to code differently?
+top_bc = (t) -> FT(0.0)
+bot_bc = (t) -> FT(0.0) 
+sources = (RootProduction(),MicrobeProduction()) 
 bc = FluxBC(top_bc, bot_bc)
 params = DETECTParameters{FT}(Pz, Cᵣ, Csom, Cmic, Rᵦ, α₁ᵣ, α₂ᵣ, α₃ᵣ, Sᶜ, Mᶜ, Vᵦ, α₁ₘ, α₂ₘ, α₃ₘ, Kₘ, CUE, pf, Dₗᵢ, E₀ₛ, T₀, α₄, Tᵣₑ,	α₅, BD, ϕ₁₀₀, PD, Dstp, P₀, b)
 
-θ(t, z) = FT(0.3)#exp(-z)*sin(t)*100 # for now
-Tₛ(t, z) = FT(273)#exp(-z)*sin(t) #
-θₐᵣ(t,z) = FT(0.3)#exp(-z)*sin(t) #
-θₐₘ(t,z) = FT(0.3)#exp(-z)*sin(t) #
-Tₛₐ(t,z) = FT(273)#exp(-z)*sin(t)*100 + 273
+θ(t, z) = FT(0.3) #exp(-z)*sin(t)*100 # for now
+Tₛ(t, z) = FT(303) #exp(-z)*sin(t) #
+θₐᵣ(t,z) = FT(0.3) #exp(-z)*sin(t) #
+θₐₘ(t,z) = FT(0.3) #exp(-z)*sin(t) #
+Tₛₐ(t,z) = FT(303) #exp(-z)*sin(t)*100 + 273
 
-soil_drivers = PrescribedSoil(Tₛ, θ,Tₛₐ,θₐᵣ,θₐₘ)
+soil_drivers = PrescribedSoil(Tₛ, θ, Tₛₐ, θₐᵣ, θₐₘ)
 model = DETECTModel{FT}(; parameters = params, domain = soil_domain, sources = sources, boundary_conditions= bc, drivers = soil_drivers)
 
 Y, p, coords = initialize(model)
@@ -42,7 +42,7 @@ function init_DETECT!(Y, z, params)
 		params::DETECTParameters{FT},
 	) where {FT}
 		@unpack Pz, Cᵣ, Csom, Cmic, Rᵦ, α₁ᵣ, α₂ᵣ, α₃ᵣ, Sᶜ, Mᶜ, Vᵦ, α₁ₘ, α₂ₘ, α₃ₘ, Kₘ, CUE, pf, Dₗᵢ, E₀ₛ, T₀, α₄, Tᵣₑ, α₅, BD, ϕ₁₀₀, PD, Dstp, P₀, b = params
-		C = FT(765.0) # should be f(z)	
+		C = FT(3000.0) # should be f(z)	
 		return FT(C)
 	end
 	Y.DETECT.C .= CO2_profile.(z, Ref(params))
@@ -53,7 +53,7 @@ init_DETECT!(Y, coords.z, model.parameters)
 DETECT_ode! = make_ode_function(model)
 
 t0 = FT(0)
-tf = FT(60) # why not
+tf = FT(100) # why not
 dt = FT(1)
 saved_values = SavedValues(FT, ClimaCore.Fields.FieldVector)
 cb = SavingCallback((u, t, integrator) -> copy(integrator.p), saved_values) #?
