@@ -226,7 +226,7 @@ function ClimaLSM.make_rhs(model::EnergyHydrology{FT}) where {FT}
         horizontal_components!(dY, model.domain, model, p, z)
 
         for src in model.sources
-            source!(dY, src, Y, p)
+            ClimaLSM.source!(dY, src, Y, p)
         end
 
         # This has to come last
@@ -389,7 +389,7 @@ end
 Computes the source terms for phase change.
 
 """
-function source!(
+function ClimaLSM.source!(
     dY::ClimaCore.Fields.FieldVector,
     src::PhaseChange{FT},
     Y::ClimaCore.Fields.FieldVector,

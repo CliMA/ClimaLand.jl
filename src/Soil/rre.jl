@@ -134,7 +134,7 @@ function ClimaLSM.make_rhs(model::RichardsModel)
 
         # Source terms
         for src in model.sources
-            source!(dY, src, Y, p)
+            ClimaLSM.source!(dY, src, Y, p)
         end
 
         # This has to come last

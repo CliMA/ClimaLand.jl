@@ -11,6 +11,8 @@ import .Parameters as LSMP
 include("SharedUtilities/Domains.jl")
 using .Domains
 include("SharedUtilities/models.jl")
+include("SharedUtilities/boundary_conditions.jl")
+include("SharedUtilities/sources.jl")
 include("Bucket/Bucket.jl")
 
 export domain
@@ -228,7 +230,6 @@ using .Pond
 import .Pond: surface_runoff
 include("Soil/Soil.jl")
 using .Soil
-import .Soil: source!, boundary_flux
 include("Vegetation/PlantHydraulics.jl")
 using .PlantHydraulics
 import .PlantHydraulics: flux_out_roots
