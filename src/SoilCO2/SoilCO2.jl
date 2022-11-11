@@ -27,11 +27,11 @@ struct DETECTParameters{FT <: AbstractFloat}
   # parameters that vary with depth
     "Pressure (kPa)"
     Pz::FT
-    "Root biomass carbon at depth z (!! should be a function of z) (mg C cm⁻²)"
+    "Root biomass carbon at depth z (!! should be a function of z) (mg C cm⁻³)"
     Cᵣ::FT
-    "Soil organic C content at depth z (!! should be a function of z) (mg C cm⁻²)"
+    "Soil organic C content at depth z (!! should be a function of z) (mg C cm⁻³)"
     Csom::FT
-    "Microbial C pool at depth z (!! should be a function of z) (mg C cm⁻²)"
+    "Microbial C pool at depth z (!! should be a function of z) (mg C cm⁻³)"
     Cmic::FT
 #Cmic(z) = exp(-z/a)
 #function microbial_carbon(params, z)
@@ -89,7 +89,7 @@ struct DETECTParameters{FT <: AbstractFloat}
     BD::FT
     "Air-filled porosity at soil water potential of -100 cm H₂O (~ 10 kPa) (%)"
     ϕ₁₀₀::FT
-    "Particle density"
+    "Particle density (g cm⁻³)"
     PD::FT
     "Diffusion coefficient for CO₂ in air at standard temperature and pressure (m² s⁻¹)"
     Dstp::FT
