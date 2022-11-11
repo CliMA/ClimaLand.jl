@@ -25,11 +25,11 @@ A struct for storing parameters of the `DETECTModel`.
 struct DETECTParameters{FT <: AbstractFloat}
     "Pressure (kPa)"
     Pz::FT
-    "Root biomass carbon at depth z (!! should be a function of z) (mg C cm⁻²)"
+    "Root biomass carbon at depth z (!! should be a function of z) (mg C cm⁻³)"
     Cᵣ::FT
-    "Soil organic C content at depth z (!! should be a function of z) (mg C cm⁻²)"
+    "Soil organic C content at depth z (!! should be a function of z) (mg C cm⁻³)"
     Csom::FT
-    "Microbial C pool at depth z (!! should be a function of z) (mg C cm⁻²)"
+    "Microbial C pool at depth z (!! should be a function of z) (mg C cm⁻³)"
     Cmic::FT
     "Root mass-base respiration rate at 10°C and mean environmental conditions (mg C cm⁻³ h⁻¹)"
     Rᵦ::FT
@@ -73,7 +73,7 @@ struct DETECTParameters{FT <: AbstractFloat}
     BD::FT
     "Air-filled porosity at soil water potential of -100 cm H₂O (~ 10 kPa) (%)"
     ϕ₁₀₀::FT
-    "Particle density"
+    "Particle density (g cm⁻³)"
     PD::FT
     "Diffusion coefficient for CO₂ in air at standard temperature and pressure (m² s⁻¹)"
     Dstp::FT
