@@ -42,7 +42,7 @@ function init_DETECT!(Y, z, params)
 		params::DETECTParameters{FT},
 	) where {FT}
 		@unpack Pz, Cᵣ, Csom, Cmic, Rᵦ, α₁ᵣ, α₂ᵣ, α₃ᵣ, Sᶜ, Mᶜ, Vᵦ, α₁ₘ, α₂ₘ, α₃ₘ, Kₘ, CUE, pf, Dₗᵢ, E₀ₛ, T₀, α₄, Tᵣₑ, α₅, BD, ϕ₁₀₀, PD, Dstp, P₀, b = params
-		C = FT(3000.0) # should be f(z)	
+		C = FT(2900.0)*(z+FT(5))/FT(5) + 100 
 		return FT(C)
 	end
 	Y.DETECT.C .= CO2_profile.(z, Ref(params))
@@ -59,6 +59,12 @@ saved_values = SavedValues(FT, ClimaCore.Fields.FieldVector)
 cb = SavingCallback((u, t, integrator) -> copy(integrator.p), saved_values) #?
 prob = ODEProblem(DETECT_ode!, Y, (t0, tf), p)
 sol = solve(prob, RK4(); dt = dt, callback = cb) # do we want Euler or another algorithm for this?
-# dx/dt = f(x,t) -> Δx = f(x,t)Δt + O(Δt^2) #O(Δt^5)
 
-#parent(sol.u[end].DETECT.C)
+t = sol.t
+state = [parent(sol.u[k].DETECT.C) for k in 1:length(sol.t)]
+source_r = [parent(saved_values.saveval[k].DETECT.Sᵣ) for k in 1:length(sol.t)]
+diffusivity = [parent(saved_values.saveval[k].DETECT.D) for k in 1:length(sol.t)]
+# one idea for estimating flux
+Δz_srf = -parent(z)[end]
+estimated_surface_flux = - diffusivity .* (c_atm.(t) .- state) ./ Δz_srf # top of soil to atmosphere carbon at surface of soil
+

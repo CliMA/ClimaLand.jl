@@ -28,7 +28,7 @@ Tᵣₑ = FT(283.0) # 22 [Kelvin] ref temperature for other param e.g., Rᵦ
 
 α₅ = FT(4.547) # 23 [-]
 BD = FT(1.12) # 24 [g cm-3] soil bulk density
-ϕ₁₀₀ = FT(18.46) # 25 [%] air filled porosity at soil water potential of -100 cm H2O (~ 10 kPa)
+ϕ₁₀₀ = FT(0.1846) # 25 air filled porosity at soil water potential of -100 cm H2O (~ 10 kPa)
 PD = FT(2.52) # 26 [g cm-3] soil particle density
 Dstp = FT(1.39e-5) # 27 [m2 s-1] diffusion coefficient for CO2 in air at standard T and P
 P₀ = FT(101.325) # 28 [kPa] standard pressure

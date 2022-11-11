@@ -56,7 +56,7 @@ end
 
 Soil moisture scaling function for roots, accounting for antecedent conditions. 
 """
-function root_θ_adj(α₁ᵣ::FT, α₂ᵣ::FT, α₃ᵣ::FT, θ::FT, θₐᵣ::FT) where {FT}
+function root_θ_adj(θ::FT, θₐᵣ::FT,α₁ᵣ::FT, α₂ᵣ::FT, α₃ᵣ::FT) where {FT}
 	fᵣ = exp(α₁ᵣ*θ + α₂ᵣ*θₐᵣ + α₃ᵣ*θ*θₐᵣ)
 	return fᵣ
 end
