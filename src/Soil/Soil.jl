@@ -83,26 +83,22 @@ export RichardsModel,
     FluxBC,
     StateBC,
     FreeDrainage,
-    RootExtraction,
     AbstractSoilModel,
     AbstractSoilSource,
-    source!,
-    AbstractBoundary,
-    TopBoundary,
-    BottomBoundary,
-    diffusive_flux,
-    get_Δz,
+    FluxBC,
+    StateBC,
+    FreeDrainage,
     PhaseChange
 
 """
-    AbstractSoilBC{FT} <: ClimaLSM. AbstractBC{FT}
+    AbstractSoilBC <: ClimaLSM. AbstractBC
 
 An abstract type for soil-specific types of boundary conditions, like free drainage.
 """
-abstract type AbstractSoilBC{FT} <: ClimaLSM.AbstractBC{FT} end
+abstract type AbstractSoilBC <: ClimaLSM.AbstractBC end
 
 """
-    AbstractSoilSource{FT <: AbstractFloat}
+    AbstractSoilSource{FT} <:  ClimaLSM.AbstractSource{FT}
 
 An abstract type for types of source terms for the soil equations.
 
@@ -167,33 +163,32 @@ function dss!(
 end
 
 """
-   StateBC{FT} <: AbstractSoilBC{FT}
+   StateBC <: AbstractSoilBC
 
 A simple concrete type of boundary condition, which enforces a
-constant normal state at either the top or bottom of the domain.
+state boundary condition f(p,t) at either the top or bottom of the domain.
 """
-struct StateBC{FT} <: AbstractSoilBC{FT}
-    bc::FT
+struct StateBC <: AbstractSoilBC
+    bc::Function
 end
 
 """
-   FluxBC{FT} <: AbstractSoilBC{FT}
+   FluxBC <: AbstractSoilBC
 
 A simple concrete type of boundary condition, which enforces a
-constant normal flux at either the top or bottom of the domain.
+normal flux boundary condition f(p,t) at either the top or bottom of the domain.
 """
-struct FluxBC{FT} <: AbstractSoilBC{FT}
-    bc::FT
+struct FluxBC <: AbstractSoilBC
+    bc::Function
 end
 
 """
-    FreeDrainage{FT} <: AbstractSoilBC{FT}
-
+    FreeDrainage{FT} <: AbstractSoilBC
 A concrete type of soil boundary condition, for use at 
 the BottomBoundary only, where the flux is set to be
 `F = -K∇h = -K`.
 """
-struct FreeDrainage{FT} <: AbstractSoilBC{FT} end
+struct FreeDrainage{FT} <: AbstractSoilBC end
 
 """
     ClimaLSM.boundary_flux(bc::FluxBC, _, Δz, _...)::ClimaCore.Fields.Field
@@ -204,17 +199,19 @@ We add a field of zeros in order to convert the bc (float) into
 a field.
 """
 function ClimaLSM.boundary_flux(
-    bc::FluxBC{FT},
+    bc::FluxBC,
     boundary::ClimaLSM.AbstractBoundary,
-    Δz,
-    p,
+    Δz::ClimaCore.Fields.Field,
+    p::ClimaCore.Fields.FieldVector,
+    t::FT,
     _...,
 )::ClimaCore.Fields.Field where {FT}
-    return bc.bc .+ ClimaCore.Fields.zeros(axes(Δz))
+    return bc.bc(p, t) .+ ClimaCore.Fields.zeros(axes(Δz))
 end
 
+
 """
-    ClimaLSM.boundary_flux(rre_bc::StateBC, ::ClimaLSM.TopBoundary, Δz, p, params)::ClimaCore.Fields.Field
+    ClimaLSM.boundary_flux(rre_bc::StateBC, ::ClimaLSM.TopBoundary, Δz, p, t, params)::ClimaCore.Fields.Field
 
 A method of boundary fluxes which converts a state boundary condition on θ_l at the top of the
 domain into a flux of liquid water.
@@ -224,6 +221,7 @@ function ClimaLSM.boundary_flux(
     ::ClimaLSM.TopBoundary,
     Δz,
     p,
+    t,
     params,
 )::ClimaCore.Fields.Field
     # Approximate K_bc ≈ K_c, ψ_bc ≈ ψ_c (center closest to the boundary)
@@ -233,14 +231,15 @@ function ClimaLSM.boundary_flux(
 
     # Calculate pressure head using boundary condition
     @unpack vg_α, vg_n, vg_m, θ_r, ν, S_s = params
-    ψ_bc = @. pressure_head(vg_α, vg_n, vg_m, θ_r, rre_bc.bc, ν, S_s)
+    θ_bc = rre_bc.bc(p, t)
+    ψ_bc = @. pressure_head(vg_α, vg_n, vg_m, θ_r, θ_bc, ν, S_s)
 
     # Pass in (ψ_bc .+ Δz) as x_2 to account for contribution of gravity in RRE
     return ClimaLSM.diffusive_flux(K_c, ψ_bc .+ Δz, ψ_c, Δz)
 end
 
 """
-    ClimaLSM.boundary_flux(rre_bc::StateBC, ::ClimaLSM.BottomBoundary, Δz, p, params)::ClimaCore.Fields.Field
+    ClimaLSM.boundary_flux(rre_bc::StateBC, ::ClimaLSM.BottomBoundary, Δz, p, t, params)::ClimaCore.Fields.Field
 
 A method of boundary fluxes which converts a state boundary condition on θ_l at the bottom of the
 domain into a flux of liquid water.
@@ -250,6 +249,7 @@ function ClimaLSM.boundary_flux(
     ::ClimaLSM.BottomBoundary,
     Δz,
     p,
+    t,
     params,
 )::ClimaCore.Fields.Field
     # Approximate K_bc ≈ K_c, ψ_bc ≈ ψ_c (center closest to the boundary)
@@ -258,7 +258,8 @@ function ClimaLSM.boundary_flux(
 
     # Calculate pressure head using boundary condition
     @unpack vg_α, vg_n, vg_m, θ_r, ν, S_s = params
-    ψ_bc = @. pressure_head(vg_α, vg_n, vg_m, θ_r, rre_bc.bc, ν, S_s)
+    θ_bc = rre_bc.bc(p, t)
+    ψ_bc = @. pressure_head(vg_α, vg_n, vg_m, θ_r, θ_bc, ν, S_s)
 
     # At the bottom boundary, ψ_c is at larger z than ψ_bc
     #  so we swap their order in the derivative calc
@@ -266,10 +267,11 @@ function ClimaLSM.boundary_flux(
     return ClimaLSM.diffusive_flux(K_c, ψ_c .+ Δz, ψ_bc, Δz)
 end
 
-"""
-    ClimaLSM.boundary_flux(heat_bc_bc::StateBC, ::ClimaLSM.TopBoundary, Δz, p, params)::ClimaCore.Fields.Field
 
-A method of boundary fluxes which converts a state boundary condition on temperatture at the top of the
+"""
+    ClimaLSM.boundary_flux(heat_bc::StateBC, ::ClimaLSM.TopBoundary, Δz, p, t)::ClimaCore.Fields.Field
+
+A method of boundary fluxes which converts a state boundary condition on temperature at the top of the
 domain into a flux of energy.
 """
 function ClimaLSM.boundary_flux(
@@ -277,17 +279,19 @@ function ClimaLSM.boundary_flux(
     ::ClimaLSM.TopBoundary,
     Δz,
     p,
+    t,
 )::ClimaCore.Fields.Field
     # Approximate κ_bc ≈ κ_c (center closest to the boundary)
     p_len = Spaces.nlevels(axes(p.soil.T))
     T_c = Fields.level(p.soil.T, p_len)
     κ_c = Fields.level(p.soil.κ, p_len)
 
-    return ClimaLSM.diffusive_flux(κ_c, heat_bc.bc, T_c, Δz)
+    T_bc = heat_bc.bc(p, t)
+    return ClimaLSM.diffusive_flux(κ_c, T_bc, T_c, Δz)
 end
 
 """
-    ClimaLSM.boundary_flux(heat_bc_bc::StateBC, ::ClimaLSM.BottomBoundary, Δz, p, params)::ClimaCore.Fields.FieldVector
+    ClimaLSM.boundary_flux(heat_bc::StateBC, ::ClimaLSM.BottomBoundary, Δz, p, t)::ClimaCore.Fields.Field
 
 A method of boundary fluxes which converts a state boundary condition on temperature at the bottom of the
 domain into a flux of energy.
@@ -297,18 +301,19 @@ function ClimaLSM.boundary_flux(
     ::ClimaLSM.BottomBoundary,
     Δz,
     p,
+    t,
 )::ClimaCore.Fields.Field
     # Approximate κ_bc ≈ κ_c (center closest to the boundary)
     T_c = Fields.level(p.soil.T, 1)
     κ_c = Fields.level(p.soil.κ, 1)
 
-    # At the bottom boundary, T_c is at larger z than T_bc
-    #  so we swap their order in the derivative calc
-    return ClimaLSM.diffusive_flux(κ_c, T_c, heat_bc.bc, Δz)
+    T_bc = heat_bc.bc(p, t)
+    return ClimaLSM.diffusive_flux(κ_c, T_c, T_bc, Δz)
 end
 
+
 """
-    ClimaLSM.boundary_flux(bc::FreeDrainage{FT}, ::ClimaLSM.BottomBoundary, Δz, p, params)::ClimaCore.Fields.Field
+    ClimaLSM.boundary_flux(bc::FreeDrainage{FT}, ::ClimaLSM.BottomBoundary, Δz, p, t)::ClimaCore.Fields.Field
 
 A method of boundary fluxes which enforces free drainage at the bottom
 of the domain.
@@ -318,11 +323,13 @@ function ClimaLSM.boundary_flux(
     boundary::ClimaLSM.BottomBoundary,
     Δz,
     p,
-    _...,
+    t,
+    params,
 )::ClimaCore.Fields.Field where {FT}
     K_c = Fields.level(p.soil.K, 1)
     return -1 .* K_c
 end
+
 """
      heaviside(x::FT)::FT where {FT}
 
