@@ -279,48 +279,46 @@ This has been written so as to work with Differential Equations.jl.
 """
 function ClimaLSM.make_update_aux(model::DETECTModel)
     function update_aux!(p, Y, t) 
-        @unpack Pz, Cᵣ, Csom, Cmic, Rᵦ, α₁ᵣ, α₂ᵣ, α₃ᵣ, Sᶜ, Mᶜ, Vᵦ, α₁ₘ, α₂ₘ, α₃ₘ, Kₘ, CUE, pf, Dₗᵢ, E₀ₛ, T₀, α₄, α₅, BD, ϕ₁₀₀, PD, Dstp, P₀, b = model.parameters
+        @unpack Pz, Cᵣ, Csom, Cmic, Rᵦ, α₁ᵣ, α₂ᵣ, α₃ᵣ, Sᶜ, Mᶜ, Vᵦ, α₁ₘ, α₂ₘ, α₃ₘ, Kₘ, CUE, pf, Dₗᵢ, E₀ₛ, T₀, α₄, Tᵣₑ, α₅, BD, ϕ₁₀₀, PD, Dstp, P₀, b = model.parameters
         z = ClimaCore.Fields.coordinate_field(model.domain.space).z
-        Tₛ = soil_temperature(model.driver, p, Y, t, z)
+        Tₛ = soil_temperature(model.driver, p, Y, t, z) 
 	    θ = soil_moisture(model.driver, p, Y, t, z)
         θₐᵣ = antecedent_soil_moisture_roots(model.driver, p, Y, t, z)
         θₐₘ = antecedent_soil_moisture_microbes(model.driver, p, Y, t, z)
         Tₛₐ = antecedent_soil_temperature(model.driver, p, Y, t, z)
 
-	@. p.DETECT.D = CO2_diffusivity(
+	@. p.DETECT.D = CO2_diffusivity(diffusion_coefficient(Dstp, Tₛ, T₀, P₀, Pz),
 					ϕ₁₀₀,
-					b,
-					diffusion_coefficient(Dstp, Tₛ, T₀, P₀, Pz
-                ),
-					air_filled_soil_porosity(BD, PD, θ),
-					) 
+                                        air_filled_soil_porosity(BD, PD, θ),
+					b)
 
 	@. p.DETECT.Sᵣ = root_source(
 				     Rᵦ,
 				     Cᵣ,
 				     root_θ_adj(θ, θₐᵣ, α₁ᵣ, α₂ᵣ, α₃ᵣ), # fᵣ
 				     temp_adj( # g
+                                              energy_act(E₀ₛ, α₄, Tₛₐ), # E₀
 					      Tᵣₑ,
 					      T₀,
 					      Tₛ,
-				              energy_act(E₀ₛ, α₄, Tₛₐ), # E₀
 					      ),
     				     )
+
 	@. p.DETECT.Sₘ = microbe_source(
-					Kₘ,
-					Cmic,
-					CUE,
 					fVmax( # Vmax
 					     Vᵦ,
-					     microbe_θ_adj(θ, θₐₘ, α₁ₘ, α₂ₘ, α₃ₘ), # fₘ
+					     microbe_θ_adj(α₁ₘ, α₂ₘ, α₃ₘ, θ, θₐₘ), # fₘ
 					     temp_adj( # g
+                                  energy_act(E₀ₛ, α₄, Tₛₐ), # E0
 					              Tᵣₑ,
 					              T₀,
 					              Tₛ,
-				                      energy_act(E₀ₛ, α₄, Tₛₐ), # E₀
 					              ),
 					       ),
 					fCsol(Csom, Dₗᵢ, θ, pf), # Csol
+                    Kₘ,
+					Cmic,
+					CUE,
 					)
 
     end

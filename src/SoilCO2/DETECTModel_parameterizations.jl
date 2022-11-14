@@ -8,8 +8,8 @@ export diffusion_coefficient,
        energy_act,
        root_source,
        microbe_θ_adj,
-       Vmax,
-       Csol,
+       fVmax,
+       fCsol,
        microbe_source,
        S
 
@@ -45,7 +45,7 @@ end
 
 The diffusivity of CO₂ within the soil (Dgs).
 """
-function CO2_diffusivity(Dg₀::FT, ϕ₁₀₀::FT, ϕ::FT, b::FT) where {FT}
+function CO₂_diffusivity(Dg₀::FT, ϕ₁₀₀::FT, ϕ::FT, b::FT) where {FT}
 	Dgs = Dg₀ * (FT(2)ϕ₁₀₀^FT(3) + FT(0.04)ϕ₁₀₀) * (ϕ/ϕ₁₀₀)^(FT(2) + FT(3)/b)
 	return Dgs
 end

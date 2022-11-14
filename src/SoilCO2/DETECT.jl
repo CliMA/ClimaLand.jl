@@ -270,7 +270,7 @@ function ClimaLSM.make_update_aux(model::DETECTModel)
         θₐₘ = antecedent_soil_moisture_microbes(model.driver, p, Y, t, z)
         Tₛₐ = antecedent_soil_temperature(model.driver, p, Y, t, z)
 
-	@. p.DETECT.D = CO2_diffusivity(diffusion_coefficient(Dstp, Tₛ, T₀, P₀, Pz),
+	@. p.DETECT.D = CO₂_diffusivity(diffusion_coefficient(Dstp, Tₛ, T₀, P₀, Pz),
 					ϕ₁₀₀,
                     air_filled_soil_porosity(BD, PD, θ),
 					b)
@@ -280,10 +280,10 @@ function ClimaLSM.make_update_aux(model::DETECTModel)
 				     Cᵣ,
 				     root_θ_adj(θ, θₐᵣ, α₁ᵣ, α₂ᵣ, α₃ᵣ), # fᵣ
 				     temp_adj( # g
+                                              energy_act(E₀ₛ, α₄, Tₛₐ), # E₀
 					      Tᵣₑ,
 					      T₀,
 					      Tₛ,
-				              energy_act(E₀ₛ, α₄, Tₛₐ), # E₀
 					      ),
     				     )
 
@@ -292,14 +292,14 @@ function ClimaLSM.make_update_aux(model::DETECTModel)
 					     Vᵦ,
 					     microbe_θ_adj(α₁ₘ, α₂ₘ, α₃ₘ, θ, θₐₘ), # fₘ
 					     temp_adj( # g
-                                  energy_act(E₀ₛ, α₄, Tₛₐ), # E0
+                                                      energy_act(E₀ₛ, α₄, Tₛₐ), # E0
 					              Tᵣₑ,
 					              T₀,
 					              Tₛ,
 					              ),
 					       ),
 					fCsol(Csom, Dₗᵢ, θ, pf), # Csol
-                    Kₘ,
+                                        Kₘ,
 					Cmic,
 					CUE,
 					)
