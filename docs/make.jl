@@ -8,12 +8,19 @@ using ClimaLSM
 include("pages_helper.jl")
 tutorials = [
     "For model developers" => [
-        "Using AbstractModel functionality" => "model_tutorial.jl",
-        "Intro to multi-component models" => "LSM_single_column_tutorial.jl",
-        "Intro to ClimaLSM Domains" => "domain_tutorial.jl",
+        "Using AbstractModel functionality" => "Usage/model_tutorial.jl",
+        "Intro to multi-component models" => "Usage/LSM_single_column_tutorial.jl",
+        "Intro to ClimaLSM Domains" => "Usage/domain_tutorial.jl",
     ],
-    "Running simulations" =>
-        ["The bucket LSM" => ["bucket_tutorial.jl", "coupled_bucket.jl"]],
+    "Running simulations" => [
+        "Soil modeling" => [
+            "Richards Equation" => "Soil/richards_equation.jl",
+            "Energy and Hydrology" => "Soil/soil_energy_hydrology.jl",
+            "Phase Changes" => "Soil/freezing_front.jl",
+        ],
+        "Bucket LSM" =>
+            ["Bucket/bucket_tutorial.jl", "Bucket/coupled_bucket.jl"],
+    ],
 ]
 @everywhere const clima_dir = dirname(dirname(pathof(ClimaLSM)));
 @everywhere source_dir = joinpath(@__DIR__, "src")
@@ -31,7 +38,7 @@ mkpath(GENERATED_DIR)
         path = relpath(clima_dir, pwd())
         content = """
                 # ```@meta
-                    # EditURL = "https://github.com/CliMA/ClimateMachine.jl/$(path)"
+                    # EditURL = "https://github.com/CliMA/ClimaLSM.jl/$(path)"
                     # ```
                 """
         mdpre(str) = content * str

@@ -86,7 +86,6 @@ export RichardsModel,
     AbstractSoilModel,
     AbstractSoilSource,
     FluxBC,
-    StateBC,
     FreeDrainage,
     PhaseChange
 

@@ -21,6 +21,7 @@ ClimaLSM.Soil.impedance_factor
 ClimaLSM.Soil.viscosity_factor
 ClimaLSM.Soil.effective_saturation
 ClimaLSM.Soil.matric_potential
+ClimaLSM.Soil.inverse_matric_potential
 ClimaLSM.Soil.volumetric_heat_capacity
 ClimaLSM.Soil.κ_solid
 ClimaLSM.Soil.κ_sat_frozen
@@ -33,8 +34,8 @@ ClimaLSM.Soil.volumetric_internal_energy
 ClimaLSM.Soil.volumetric_internal_energy_liq
 ClimaLSM.Soil.temperature_from_ρe_int
 ClimaLSM.Soil.thermal_conductivity
-ClimaLSM.Soil.diffusive_flux
-ClimaLSM.Soil.get_Δz
+ClimaLSM.Soil.phase_change_source
+ClimaLSM.Soil.thermal_time
 ```
 
 ## Soil Parameters
@@ -44,17 +45,14 @@ ClimaLSM.Soil.RichardsParameters
 ClimaLSM.Soil.EnergyHydrologyParameters
 ```
 
-## Soil Methods and Types
+## Soil BC and Source Methods and Types
 
 ```@docs
-ClimaLSM.Soil.AbstractBC
+ClimaLSM.Soil.AbstractSoilBC
 ClimaLSM.Soil.StateBC
 ClimaLSM.Soil.FluxBC
+ClimaLSM.Soil.StateBC
+ClimaLSM.Soil.FreeDrainage
 ClimaLSM.Soil.AbstractSoilSource
-ClimaLSM.Soil.source!
-ClimaLSM.Soil.RootExtraction
-ClimaLSM.Soil.AbstractBoundary
-ClimaLSM.Soil.TopBoundary
-ClimaLSM.Soil.BottomBoundary
-ClimaLSM.Soil.boundary_flux
+ClimaLSM.Soil.PhaseChange
 ```

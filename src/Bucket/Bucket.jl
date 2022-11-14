@@ -557,7 +557,6 @@ end
 
 Returns the air density (kg/m^3) at the surface.
 """
-
 function surface_air_density(p, atmos::PrescribedAtmosphere)
     return atmos.ρ_sfc
 end
