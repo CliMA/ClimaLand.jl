@@ -15,8 +15,12 @@ import ClimaLSM:
     auxiliary_vars,
     name,
     prognostic_types,
-    auxiliary_types
-export DETECTParameters, DETECTModel, PrescribedSoil, RootProduction, MicrobeProduction, FluxBC
+    auxiliary_types,
+    TopBoundary,
+    BottomBoundary,
+    boundary_flux,
+    AbstractBC
+export DETECTParameters, DETECTModel, PrescribedSoil, RootProduction, MicrobeProduction, SoilCO2FluxBC, SoilCO2StateBC
 include("./DETECTModel_parameterizations.jl")
 """
     DETECTParameters{FT <: AbstractFloat}
@@ -183,12 +187,28 @@ This has been written so as to work with Differential Equations.jl.
 """
 function ClimaLSM.make_rhs(model::DETECTModel)
     function rhs!(dY, Y, p, t)
-        
-	top_flux_bc, bot_flux_bc =
-            boundary_fluxes(model.boundary_conditions, p, t)
+        z = ClimaCore.Fields.coordinate_field(model.domain.space).z
+        Δz_top, Δz_bottom = get_Δz(z)
+
+        top_flux_bc = boundary_flux(
+            model.boundary_conditions.CO2.top,
+            TopBoundary(),
+            Δz_top,
+            Y,
+            p,
+            t,
+        )
+        bot_flux_bc = boundary_flux(
+            model.boundary_conditions.CO2.bottom,
+            BottomBoundary(),
+            Δz_bottom,
+            Y,
+            p,
+            t,
+        )
 
         interpc2f = ClimaCore.Operators.InterpolateC2F()
-        gradc2f_C = ClimaCore.Operators.GradientC2F()
+        gradc2f_C = ClimaCore.Operators.GradientC2F() # set a BC on state
         divf2c_C = ClimaCore.Operators.DivergenceF2C(
             top = ClimaCore.Operators.SetValue(ClimaCore.Geometry.WVector.(top_flux_bc)),
             bottom = ClimaCore.Operators.SetValue(ClimaCore.Geometry.WVector.(bot_flux_bc)),
@@ -307,16 +327,63 @@ function ClimaLSM.make_update_aux(model::DETECTModel)
     end
     return update_aux!
 end
+"""
+    AbstractSoilCO2BC{FT} <: ClimaLSM. AbstractBC{FT}
+
+An abstract type for co2-specific types of boundary conditions.
+"""
+abstract type AbstractSoilCO2BC{FT} <: ClimaLSM.AbstractBC{FT} end
 
 
-struct FluxBC
-    top::Function
-    bottom::Function
+struct SoilCO2FluxBC{FT} <: AbstractSoilCO2BC{FT}
+    bc::Function
+end
+"""
+ClimaLSM.boundary_flux
+
+test
+"""
+function ClimaLSM.boundary_flux(
+    bc::SoilCO2FluxBC{FT},
+    boundary::ClimaLSM.AbstractBoundary,
+    Δz::ClimaCore.Fields.Field,
+    Y::ClimaCore.Fields.FieldVector,
+    p::ClimaCore.Fields.FieldVector,
+    t::FT,
+)::ClimaCore.Fields.Field where {FT}
+    return bc.bc(p, t) .+ ClimaCore.Fields.zeros(axes(Δz))
 end
 
-function boundary_fluxes(f::FluxBC, p, t)
-    return f.top(t), f.bottom(t)
+struct SoilCO2StateBC{FT} <: AbstractSoilCO2BC{FT}
+    bc::Function
+end
+function ClimaLSM.boundary_flux(
+    bc::SoilCO2StateBC,
+    ::ClimaLSM.TopBoundary,
+    Δz,
+    Y,
+    p,
+    t,
+)::ClimaCore.Fields.Field
+    p_len = Spaces.nlevels(axes(p.DETECT.D))
+    D_c = Fields.level(p.DETECT.D, p_len)
+    C_c = Fields.level(Y.DETECT.C, p_len)
+    C_bc = bc.bc(p, t)
+    return ClimaLSM.diffusive_flux(D_c, C_bc, C_c, Δz)
 end
 
+function ClimaLSM.boundary_flux(
+    bc::SoilCO2StateBC,
+    ::ClimaLSM.BottomBoundary,
+    Δz,
+    Y,
+    p,
+    t,
+)::ClimaCore.Fields.Field
+    D_c = Fields.level(p.DETECT.D, 1)
+    C_c = Fields.level(Y.DETECT.C, 1)
+    C_bc = bc.bc(p, t)
+    return ClimaLSM.diffusive_flux(D_c, C_c, C_bc, Δz)
+end
 
 end

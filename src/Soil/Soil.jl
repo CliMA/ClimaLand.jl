@@ -80,8 +80,6 @@ export RichardsModel,
     RichardsParameters,
     EnergyHydrology,
     EnergyHydrologyParameters,
-    FluxBC,
-    StateBC,
     FreeDrainage,
     AbstractSoilModel,
     AbstractSoilSource,
@@ -233,7 +231,7 @@ function ClimaLSM.boundary_flux(
     @unpack vg_α, vg_n, vg_m, θ_r, ν, S_s = params
     θ_bc = rre_bc.bc(p, t)
     ψ_bc = @. pressure_head(vg_α, vg_n, vg_m, θ_r, θ_bc, ν, S_s)
-
+    # Estimating flux -K ∇(ψ+z) = -K_c (Ψ_bc +Δz - Ψ_c )/Δz
     # Pass in (ψ_bc .+ Δz) as x_2 to account for contribution of gravity in RRE
     return ClimaLSM.diffusive_flux(K_c, ψ_bc .+ Δz, ψ_c, Δz)
 end
