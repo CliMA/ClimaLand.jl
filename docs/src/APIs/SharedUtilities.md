@@ -39,4 +39,13 @@ ClimaLSM.initialize_prognostic
 ClimaLSM.initialize_auxiliary
 ClimaLSM.initialize
 ClimaLSM.name
+ClimaLSM.AbstractBC
+ClimaLSM.AbstractSource
+ClimaLSM.source!
+ClimaLSM.AbstractBoundary
+ClimaLSM.TopBoundary
+ClimaLSM.BottomBoundary
+ClimaLSM.boundary_flux
+ClimaLSM.diffusive_flux
+ClimaLSM.get_Δz
 ```

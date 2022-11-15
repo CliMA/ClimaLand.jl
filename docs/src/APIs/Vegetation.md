@@ -1,7 +1,7 @@
 # Vegetation
 
 ```@meta
-CurrentModule = ClimaLSM.Vegetation
+CurrentModule = ClimaLSM.PlantHydraulics
 ```
 ## Models
 
@@ -18,6 +18,7 @@ ClimaLSM.PlantHydraulics.augmented_liquid_fraction
 ClimaLSM.PlantHydraulics.water_retention_curve
 ClimaLSM.PlantHydraulics.inverse_water_retention_curve
 ClimaLSM.PlantHydraulics.flux_out_roots
+ClimaLSM.PlantHydraulics.flux
 ```
 
 ## Plan Hydraulics Parameters
@@ -30,7 +31,6 @@ ClimaLSM.PlantHydraulics.PlantHydraulicsParameters
 
 ```@docs
 ClimaLSM.PlantHydraulics.PrescribedSoilPressure
-ClimaLSM.PlantHydraulics.PrescribedRootFlux
 ClimaLSM.PlantHydraulics.PrescribedTranspiration
 ClimaLSM.PlantHydraulics.AbstractRootExtraction
 ```

@@ -70,7 +70,6 @@ export PlantHydraulicsModel,
     flux_out_roots,
     PlantHydraulicsParameters,
     PrescribedSoilPressure,
-    PrescribedRootFlux,
     PrescribedTranspiration,
     AbstractRootExtraction
 

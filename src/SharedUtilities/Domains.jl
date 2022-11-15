@@ -393,6 +393,11 @@ function SphericalSurface(;
     )
 end
 
+"""
+    AbstractVegetationDomain{FT} <: AbstractDomain{FT}
+
+TBD if this needed longer term.
+"""
 abstract type AbstractVegetationDomain{FT} <: AbstractDomain{FT} end
 
 """
