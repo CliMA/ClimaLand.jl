@@ -1,7 +1,7 @@
 name = "ClimaLSM"
 uuid = "7884a58f-fab6-4fd0-82bb-ecfedb2d8430"
 authors = ["Clima Land Team"]
-version = "0.2.0"
+version = "0.2.1"
 
 [deps]
 CLIMAParameters = "6eacf6c3-8458-43b9-ae03-caf5306d3d53"
