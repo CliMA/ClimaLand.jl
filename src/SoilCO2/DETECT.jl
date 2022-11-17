@@ -29,12 +29,12 @@ A struct for storing parameters of the `DETECTModel`.
 struct DETECTParameters{FT <: AbstractFloat}
     "Pressure (kPa)"
     Pz::FT
-    "Root biomass carbon at depth z (!! should be a function of z) (mg C cm⁻³)"
-    Cᵣ::FT
-    "Soil organic C content at depth z (!! should be a function of z) (mg C cm⁻³)"
-    Csom::FT
-    "Microbial C pool at depth z (!! should be a function of z) (mg C cm⁻³)"
-    Cmic::FT
+    #"Root biomass carbon at depth z (!! should be a function of z) (mg C cm⁻³)"
+    #Cᵣ::FT
+    #"Soil organic C content at depth z (!! should be a function of z) (mg C cm⁻³)"
+    #Csom::FT
+    #"Microbial C pool at depth z (!! should be a function of z) (mg C cm⁻³)"
+    #Cmic::FT
     "Root mass-base respiration rate at 10°C and mean environmental conditions (mg C cm⁻³ h⁻¹)"
     Rᵦ::FT
     "The effect of soil water content (θ) on root respiration (unitless)"
@@ -89,9 +89,9 @@ end
 
 function DETECTParameters(;
     Pz::FT,
-    Cᵣ::FT,
-    Csom::FT,
-    Cmic::FT,
+    #Cᵣ::FT,
+    #Csom::FT,
+    #Cmic::FT,
     Rᵦ::FT,
     α₁ᵣ::FT,
     α₂ᵣ::FT,
@@ -118,7 +118,7 @@ function DETECTParameters(;
     P₀::FT,
     b::FT,
 ) where {FT}
-    return DETECTParameters{FT}(Pz, Cᵣ, Csom, Cmic, Rᵦ, α₁ᵣ, α₂ᵣ, α₃ᵣ, Sᶜ, Mᶜ, Vᵦ, α₁ₘ, α₂ₘ, α₃ₘ, Kₘ, CUE, pf, Dₗᵢ, E₀ₛ, T₀, α₄,Tᵣₑ, α₅, BD, ϕ₁₀₀, PD, Dstp, P₀, b)
+    return DETECTParameters{FT}(Pz, Rᵦ, α₁ᵣ, α₂ᵣ, α₃ᵣ, Sᶜ, Mᶜ, Vᵦ, α₁ₘ, α₂ₘ, α₃ₘ, Kₘ, CUE, pf, Dₗᵢ, E₀ₛ, T₀, α₄,Tᵣₑ, α₅, BD, ϕ₁₀₀, PD, Dstp, P₀, b)
 end
 
 """
@@ -242,12 +242,17 @@ end
 abstract type AbstractSoilDriver end
 
 struct PrescribedSoil <: AbstractSoilDriver
+    # functions of z and t
     temperature::Function # (t,z) -> exp(-z)*sin(t), or e.g. a spline fit to data
     volumetric_liquid_fraction::Function
     antecedent_temperature::Function
     antecedent_volumetric_liquid_fraction_m::Function
     antecedent_volumetric_liquid_fraction_r::Function
 
+    # functions of z only (also t in the future)
+    rootC::Function
+    SOMC::Function
+    microbeC::Function
 end
 
 function antecedent_soil_temperature(driver::PrescribedSoil, p, Y, t, z)
@@ -270,6 +275,17 @@ function soil_moisture(driver::PrescribedSoil, p, Y, t, z)
     return driver.volumetric_liquid_fraction(t, z)
 end
 
+function soil_rootC(driver::PrescribedSoil, p, Y, t, z)
+    return driver.rootC(t, z) # for now, z only, but in time, z and t
+end
+
+function soil_SOMC(driver::PrescribedSoil, p, Y, t, z)
+    return driver.SOMC(t, z)
+end
+
+function soil_microbeC(driver::PrescribedSoil, p, Y, t, z)
+    return driver.microbeC(t, z)
+end
 
 """
     make_update_aux(model::DETECTModel)
@@ -282,13 +298,17 @@ This has been written so as to work with Differential Equations.jl.
 """
 function ClimaLSM.make_update_aux(model::DETECTModel)
     function update_aux!(p, Y, t) 
-        @unpack Pz, Cᵣ, Csom, Cmic, Rᵦ, α₁ᵣ, α₂ᵣ, α₃ᵣ, Sᶜ, Mᶜ, Vᵦ, α₁ₘ, α₂ₘ, α₃ₘ, Kₘ, CUE, pf, Dₗᵢ, E₀ₛ, T₀, α₄, Tᵣₑ, α₅, BD, ϕ₁₀₀, PD, Dstp, P₀, b = model.parameters
+        @unpack Pz, Rᵦ, α₁ᵣ, α₂ᵣ, α₃ᵣ, Sᶜ, Mᶜ, Vᵦ, α₁ₘ, α₂ₘ, α₃ₘ, Kₘ, CUE, pf, Dₗᵢ, E₀ₛ, T₀, α₄, Tᵣₑ, α₅, BD, ϕ₁₀₀, PD, Dstp, P₀, b = model.parameters
         z = ClimaCore.Fields.coordinate_field(model.domain.space).z
         Tₛ = soil_temperature(model.driver, p, Y, t, z) 
-	    θ = soil_moisture(model.driver, p, Y, t, z)
+	θ = soil_moisture(model.driver, p, Y, t, z)
         θₐᵣ = antecedent_soil_moisture_roots(model.driver, p, Y, t, z)
         θₐₘ = antecedent_soil_moisture_microbes(model.driver, p, Y, t, z)
         Tₛₐ = antecedent_soil_temperature(model.driver, p, Y, t, z)
+
+	Cᵣ = soil_rootC(model.driver, p, Y, t, z)
+	Csom = soil_SOMC(model.driver, p, Y, t, z)
+	Cmic = soil_microbeC(model.driver, p, Y, t, z)
 
 	@. p.DETECT.D = CO₂_diffusivity(diffusion_coefficient(Dstp, Tₛ, T₀, P₀, Pz),
 					ϕ₁₀₀,

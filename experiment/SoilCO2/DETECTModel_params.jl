@@ -1,9 +1,9 @@
 # example of parameter value, from https://gmd.copernicus.org/articles/11/1909/2018/#&gid=1&pid=1
 
 Pz = FT(101.0) # 1 [kPa] pressure just above the soil surface at time t
-Cᵣ = FT(10.0) # 2 [mg C cm-3] Cᵣ is root biomass carbon, see figure S5
-Csom = FT(5.0) # 3 [mg C cm-3] soil organic C content at depth z
-Cmic = FT(1.0) # 4 [mg C cm-3] Microbial C pool, ~ 1 % of Csom at DETECT site
+#Cᵣ = FT(10.0) # 2 [mg C cm-3] Cᵣ is root biomass carbon, see figure S5
+#Csom = FT(5.0) # 3 [mg C cm-3] soil organic C content at depth z
+#Cmic = FT(1.0) # 4 [mg C cm-3] Microbial C pool, ~ 1 % of Csom at DETECT site
 
 Rᵦ = FT(6e-5) # 5 [mg C cm-2] total root biomass C in a 1 m deep by 1 cm2 soil column
 α₁ᵣ = FT(11.65) # 6 [-]
