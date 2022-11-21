@@ -18,26 +18,21 @@ nelems = 50 # number of layers in the vertical
 zmin = FT(-1) # 0 to 1 m depth
 zmax = FT(0.0)
 soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems)
-top_bc = SoilCO2StateBC{FT}((p, t) -> FT(3000.0))
-bot_bc = SoilCO2StateBC{FT}((p, t) -> FT(100.0))
+top_bc = SoilCO2StateBC{FT}((p, t) -> eltype(t)(3000.0))
+bot_bc = SoilCO2StateBC{FT}((p, t) -> eltype(t)(100.0))
 sources = (RootProduction(),MicrobeProduction()) 
 boundary_conditions = (; CO2 = (top = top_bc, bottom = bot_bc))
 params = DETECTParameters{FT}(Pz, Rᵦ, α₁ᵣ, α₂ᵣ, α₃ᵣ, Sᶜ, Mᶜ, Vᵦ, α₁ₘ, α₂ₘ, α₃ₘ, Kₘ, CUE, pf, Dₗᵢ, E₀ₛ, T₀, α₄, Tᵣₑ,	α₅, BD, ϕ₁₀₀, PD, Dstp, P₀, b)
 
 
-θ(t, z) = FT(0.3) # exp(-z)*sin(t)*100 # for now
-
-# plt = lineplot([cos, sin], -π/2, 2π)
-# Tₛ(t) = 10*sin(.0001t) + 290
-# plt = lineplot(Tₛ, 0, 86400) # 86400 seconds in a day...
-
-Tₛ(t, z) = FT(303.0) #exp(-z)*sin(t) #
-θₐᵣ(t, z) = FT(0.3) #exp(-z)*sin(t) #
-θₐₘ(t, z) = FT(0.3) #exp(-z)*sin(t) #
-Tₛₐ(t, z) = FT(303.0) #exp(-z)*sin(t)*100 + 273
-Cᵣ(t, z) = FT(15.0) # FT(15.0*(z+1)/1)
-Csom(t, z) = FT(25.0) # FT(25.0*(z+1)/1)
-Cmic(t, z) = FT(1.0) # FT(1.0*(z+1)/1)
+θ(z, t) = eltype(z)(0.3)
+Tₛ(z, t) = eltype(z)(303.0) #exp(-z)*sin(t) #
+θₐᵣ(z, t) = eltype(z)(0.3) #exp(-z)*sin(t) #
+θₐₘ(z, t) = eltype(z)(0.3) #exp(-z)*sin(t) #
+Tₛₐ(z, t) = eltype(z)(303.0) #exp(-z)*sin(t)*100 + 273
+Cᵣ(z, t) = eltype(z)(15*(z+1)/1)
+Csom(z, t) = eltype(z)(25*(z+1)/1)
+Cmic(z, t) = eltype(z)(1.0) # FT(1.0*(z+1)/1)
 
 soil_drivers = PrescribedSoil(Tₛ, θ, Tₛₐ, θₐᵣ, θₐₘ, Cᵣ, Csom, Cmic)
 model = DETECTModel{FT}(; parameters = params, domain = soil_domain, sources = sources, boundary_conditions= boundary_conditions, drivers = soil_drivers)

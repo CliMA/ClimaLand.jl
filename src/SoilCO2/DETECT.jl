@@ -256,35 +256,35 @@ struct PrescribedSoil <: AbstractSoilDriver
 end
 
 function antecedent_soil_temperature(driver::PrescribedSoil, p, Y, t, z)
-    return driver.antecedent_temperature(t, z)
+    return driver.antecedent_temperature.(z, t)
 end
 
 function antecedent_soil_moisture_microbes(driver::PrescribedSoil, p, Y, t, z)
-    return driver.antecedent_volumetric_liquid_fraction_m(t, z)
+    return driver.antecedent_volumetric_liquid_fraction_m.(z, t)
 end
 
 function antecedent_soil_moisture_roots(driver::PrescribedSoil, p, Y, t, z)
-    return driver.antecedent_volumetric_liquid_fraction_r(t, z)
+    return driver.antecedent_volumetric_liquid_fraction_r.(z, t)
 end
 
 function soil_temperature(driver::PrescribedSoil, p, Y, t, z)
-    return driver.temperature(t, z)
+    return driver.temperature.(z, t)
 end
 
 function soil_moisture(driver::PrescribedSoil, p, Y, t, z)
-    return driver.volumetric_liquid_fraction(t, z)
+    return driver.volumetric_liquid_fraction.(z, t)
 end
 
 function soil_rootC(driver::PrescribedSoil, p, Y, t, z)
-    return driver.rootC(t, z) # for now, z only, but in time, z and t
+    return driver.rootC.(z, t) # for now, z only, but in time, z and t
 end
 
 function soil_SOMC(driver::PrescribedSoil, p, Y, t, z)
-    return driver.SOMC(t, z)
+    return driver.SOMC.(z, t)
 end
 
 function soil_microbeC(driver::PrescribedSoil, p, Y, t, z)
-    return driver.microbeC(t, z)
+    return driver.microbeC.(z, t)
 end
 
 """
