@@ -22,9 +22,9 @@ pf = FT(0.004) # 17 [-] fraction of soil organic C that is soluble
 Dₗᵢ = FT(3.17) # 18 [-] Diffusivity of soil C substrate in liquid
 
 E₀ₛ = FT(324.6) # 19 [Kelvin] temperature sensitivity parameter
-T₀ = FT(227.5) # 20 [Kelvin] temperature sensitivity-related parameter
+T₀ = FT(273.15) # 20 [Kelvin] temperature sensitivity-related parameter
 α₄ = FT(4.7) # 21 [-]
-Tᵣₑ = FT(283.0) # 22 [Kelvin] ref temperature for other param e.g., Rᵦ
+Tᵣₑ = FT(283.15) # 22 [Kelvin] ref temperature for other param e.g., Rᵦ
 
 α₅ = FT(4.547) # 23 [-]
 BD = FT(1.12) # 24 [g cm-3] soil bulk density
