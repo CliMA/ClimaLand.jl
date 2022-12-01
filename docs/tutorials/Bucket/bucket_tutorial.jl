@@ -14,10 +14,8 @@
 # of land (`W`, m), the snow water equivalent multiplied by the snow cover fraction (`σS`, m),
 # and the surface water content of land (`Ws`, m).
 # We additionally solve a partial differential equation for the land
-# temperature as a function of dept (`T`, K). This tutorial will
-# be modified in the future to 
-# explain simulations involving snow water equivalent, though we have set
-# some of the groundwork for that in the code already (e.g. with albedo).
+# temperature as a function of depth (`T`, K). The snow cover fraction
+# is given by a heaviside function in the current code.
 
 # We have:
 
@@ -58,7 +56,7 @@
 # R_n = -(1-α)*SW↓ -LW↓ + σ_{SB} T_{sfc}^4
 # ``
 
-# where the water fluxes are : `I` the infiltration as defined in [1], `P_liq` (m/s) he
+# where the water fluxes are : `I` the infiltration as defined in [1], `P_liq` (m/s) the
 # water volume flux of precipitation, `P_snow` (m/s) the water
 # volume flux in the form of snow, `(1-σ)E_soil` (m/s) the water volume flux
 # in evaporation,
@@ -81,30 +79,27 @@
 
 # Turbulent surface fluxes of sensible heat, latent heat, and water vapor
 # (`SHF, LHF, E`) are computed using Monin-Obukhov theory; `SW↓` and `LW↓`
-# are the downward fluxes in short and long wavelength bands.
+# are the downward fluxes in short and long wavelength bands. We use the same
+# roughness lengths for snow and soil. 
 # Note that with the exception of precipitation and downwelling radiation,
 # all fluxes are defined
 # such that positive is towards the atmosphere.
 
-# When computing
-# evaporation, we use
+# As the temperature at the surface of the soil and snow is the same, only the evaporation
+# changes between the two surface coverage types. We have
 
 # ``
-# q_{sfc, soil} = β(W, W_f) q_{sat}(T_{sfc}, ρ_{sfc}),
+# E_{soil} =  β(W, W_f) E(q_{sat}(T_{sfc}, ρ_{sfc}; liquid),
 # ``
 
-# or
+# where β is the factor used in [1] which accounts for the fact that soil does not evaporate at the potential
+# rate when it is not saturated. This makes use of the field
+# capacity parameter `W_f`.
+# We also have
 
 # ``
-# q_{sfc, snow} = q_{sat}(T_{sfc}, ρ_{sfc}),
+# E_{snow} = E(q_{sat}(T_{sfc}, ρ_{sfc}; ice).
 # ``
-
-# where β is the factor used in [1] which accounts for the soil water content when it is below the saturated value. This makes use of the field
-# capacity parameter `W_f`. This is different from other bucket models in that
-# we modify `q_sfc` directly
-# to account for the bucket being below saturation, rather than modify the
-# potential evaporation rate itself via a resistance term.
-
 
 # # Simulating a standalone bucket model
 
@@ -328,7 +323,7 @@ plot(
     label = "",
     xlabel = "time (days)",
     ylabel = "σS (m)",
-    title = "Snow water equivalent (m) ",
+    title = "Area weighted SWE (m) ",
 )
 savefig("swe.png")
 # ![](swe.png)
