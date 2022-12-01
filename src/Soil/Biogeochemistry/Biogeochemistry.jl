@@ -1,7 +1,27 @@
 module Biogeochemistry
 using ClimaLSM
+using UnPack
 using DocStringExtensions
-export DETECTModelParameters
+using ClimaCore
+import ..Parameters as LSMP
+import ClimaCore: Fields, Operators, Geometry, Spaces
+
+import ClimaLSM.Domains: AbstractDomain
+import ClimaLSM:
+    AbstractModel,
+    make_update_aux,
+    make_rhs,
+    prognostic_vars,
+    auxiliary_vars,
+    name,
+    prognostic_types,
+    auxiliary_types,
+    TopBoundary,
+    BottomBoundary,
+    boundary_flux,
+    AbstractBC
+export DETECTParameters, DETECTModel, PrescribedSoil, RootProduction, MicrobeProduction, SoilCO2FluxBC, SoilCO2StateBC
+
 """
     DETECTParameters{FT <: AbstractFloat}
 
