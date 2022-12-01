@@ -45,11 +45,10 @@ air content and `θ_a100` is the volumetric air content at a soil water potentia
 """
 function co2_diffusivity(
     T_soil::FT,
-    P_sfc::FT,
     θ_w::FT,
     params::DETECTModelParameters{FT},
 ) where {FT}
-    @unpack D_ref, T_ref, P_ref, θ_a100, b, ν = params
+    @unpack P_sfc, D_ref, T_ref, P_ref, θ_a100, b, ν = params
     θ_a = volumetric_air_content(θ_w, params)
     D0 = D_ref * (T_soil / T_ref)^FT(1.75) * (P_ref / P_sfc)
     D =
