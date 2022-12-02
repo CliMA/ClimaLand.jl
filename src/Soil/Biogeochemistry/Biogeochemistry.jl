@@ -22,7 +22,7 @@ import ClimaLSM:
     AbstractBC,
     AbstractSource,
     source!
-export soilco2Parameters, SoilCO2Model, PrescribedSoil, RootProduction, MicrobeProduction, SoilCO2FluxBC, SoilCO2StateBC
+export SoilCO2ModelParameters, SoilCO2Model, PrescribedSoil, RootProduction, MicrobeProduction, SoilCO2FluxBC, SoilCO2StateBC
 
 """
     soilco2Parameters{FT <: AbstractFloat}
@@ -191,7 +191,7 @@ end
 
 """
 SoilCO2Model{FT}(;
-        parameters::soilco2Parameters{FT},
+        parameters::SoilCO2ModelParameters{FT},
         domain::ClimaLSM.AbstractDomain,
         boundary_conditions::NamedTuple,
         sources::Tuple,
@@ -200,7 +200,7 @@ SoilCO2Model{FT}(;
 A constructor for `SoilCO2Model`.
 """
 function SoilCO2Model{FT}(;
-    parameters::soilco2Parameters{FT},
+    parameters::SoilCO2ModelParameters{FT},
     domain::ClimaLSM.AbstractDomain,
     boundary_conditions::BC,
     sources::Tuple,
@@ -273,28 +273,28 @@ function ClimaLSM.make_rhs(model::SoilCO2Model)
 end
 
 """
-    AbstractCarbonSource
+    AbstractCarbonSource{FT} <: ClimaLSM.AbstractSource{FT}
 
 An abstract type for soil CO2 sources. There are two sources:
 roots and microbes, in struct RootProduction and MicrobeProduction.
 """
-abstract type AbstractCarbonSource <: ClimaLSM.AbstractSource end
+abstract type AbstractCarbonSource{FT} <: ClimaLSM.AbstractSource{FT} end
 
 """
-    RootProduction <: AbstractCarbonSource
+    RootProduction{FT} <: AbstractCarbonSource{FT}
 
 Struct for the root production of CO2, which appears as a source
 term in the differential equation.
 """
-struct RootProduction <: AbstractCarbonSource end
+struct RootProduction{FT} <: AbstractCarbonSource{FT} end
 
 """
-    MicrobeProduction <: AbstractCarbonSource
+    MicrobeProduction{FT} <: AbstractCarbonSource{FT}
 
 Struct for the microbe production of CO2, appearing as a source
 term in the differential equation.
 """
-struct MicrobeProduction <: AbstractCarbonSource end
+struct MicrobeProduction{FT} <: AbstractCarbonSource{FT} end
 
 """
     ClimaLSM.source!(dY, src::RootProduction, Y, p, params)
@@ -459,7 +459,7 @@ function ClimaLSM.make_update_aux(model::SoilCO2Model)
 	Cr = soil_root_carbon(model.driver, p, Y, t, z)
 	Csom = soil_SOM_C(model.driver, p, Y, t, z)
 	Cmic = soil_microbe_carbon(model.driver, p, Y, t, z)
-
+    θ_w = θ_l
 	@. p.soilco2.D = co2_diffusivity(
                                         T_soil,
                                         θ_w,
@@ -489,26 +489,26 @@ function ClimaLSM.make_update_aux(model::SoilCO2Model)
 end
 
 """
-    AbstractSoilCO2BC{FT} <: ClimaLSM. AbstractBC{FT}
+    AbstractSoilCO2BC <: ClimaLSM. AbstractBC
 
 An abstract type for co2-specific types of boundary conditions.
 """
-abstract type AbstractSoilCO2BC{FT} <: ClimaLSM.AbstractBC{FT} end
+abstract type AbstractSoilCO2BC <: ClimaLSM.AbstractBC end
 
 """
-    SoilCO2FluxBC{FT} <: AbstractSoilCO2BC{FT}
+    SoilCO2FluxBC <: AbstractSoilCO2BC
 
 A container holding the CO2 flux boundary condition,
 which is a function `f(p,t)`, where `p` is the auxiliary state
 vector.
 """
-struct SoilCO2FluxBC{FT} <: AbstractSoilCO2BC{FT}
+struct SoilCO2FluxBC <: AbstractSoilCO2BC
     bc::Function
 end
 
 """
     ClimaLSM.boundary_flux(
-        bc::SoilCO2FluxBC{FT},
+        bc::SoilCO2FluxBC,
         boundary::ClimaLSM.AbstractBoundary,
         Δz::ClimaCore.Fields.Field,
         Y::ClimaCore.Fields.FieldVector,
@@ -521,7 +521,7 @@ flux (kg CO2 /m^2/s) in the case of a prescribed flux BC at either the top
 or bottom of the domain.
 """
 function ClimaLSM.boundary_flux(
-    bc::SoilCO2FluxBC{FT},
+    bc::SoilCO2FluxBC,
     boundary::ClimaLSM.AbstractBoundary,
     Δz::ClimaCore.Fields.Field,
     Y::ClimaCore.Fields.FieldVector,
@@ -532,19 +532,19 @@ function ClimaLSM.boundary_flux(
 end
 
 """
-    SoilCO2StateBC{FT} <: AbstractSoilCO2BC{FT}
+    SoilCO2StateBC <: AbstractSoilCO2BC
 
 A container holding the CO2 state boundary condition (kg CO2 m−3),
 which is a function `f(p,t)`, where `p` is the auxiliary state
 vector. 
 """
-struct SoilCO2StateBC{FT} <: AbstractSoilCO2BC{FT}
+struct SoilCO2StateBC <: AbstractSoilCO2BC
     bc::Function
 end
 
 """
     ClimaLSM.boundary_flux(
-    bc::SoilCO2StateBC{FT},
+    bc::SoilCO2StateBC,
     boundary::ClimaLSM.TopBoundary,
     Δz::ClimaCore.Fields.Field,
     Y::ClimaCore.Fields.FieldVector,
@@ -557,7 +557,7 @@ flux in the case of a prescribed state BC at
  top of the domain.
 """
 function ClimaLSM.boundary_flux(
-    bc::SoilCO2StateBC{FT},
+    bc::SoilCO2StateBC,
     boundary::ClimaLSM.TopBoundary,
     Δz::ClimaCore.Fields.Field,
     Y::ClimaCore.Fields.FieldVector,
@@ -573,7 +573,7 @@ end
 
 """
     ClimaLSM.boundary_flux(
-        bc::SoilCO2StateBC{FT},
+        bc::SoilCO2StateBC,
         boundary::ClimaLSM.BottomBoundary,
         Δz::ClimaCore.Fields.Field,
         Y::ClimaCore.Fields.FieldVector,

@@ -12,7 +12,7 @@ export volumetric_air_content,
     microbe_source
 
 """
-    volumetric_air_content(θ_w::FT, params::DETECTModelParameters{FT}) where {FT}
+    volumetric_air_content(θ_w::FT, params::SoilCO2ModelParameters{FT}) where {FT}
     
 Computes the volumetric air content (`θ_a`) in the soil, 
 which is related to the total soil porosity (`ν`) and 
@@ -20,7 +20,7 @@ volumetric soil water content (`θ_w = θ_l+θ_i`).
 """
 function volumetric_air_content(
     θ_w::FT,
-    params::DETECTModelParameters{FT},
+    params::SoilCO2ModelParameters{FT},
 ) where {FT}
     θ_a = params.ν - θ_w
     return θ_a
@@ -32,7 +32,7 @@ end
                     T_soil::FT,
                     P_sfc::FT,
                     θ_a::FT,
-                    params::DETECTModelParameters{FT}
+                    params::SoilCO2ModelParameters{FT}
                     ) where {FT}
 
 Computes the diffusivity of CO₂ within the soil (D).
@@ -46,7 +46,7 @@ air content and `θ_a100` is the volumetric air content at a soil water potentia
 function co2_diffusivity(
     T_soil::FT,
     θ_w::FT,
-    params::DETECTModelParameters{FT},
+    params::SoilCO2ModelParameters{FT},
 ) where {FT}
     @unpack P_sfc, D_ref, T_ref, P_ref, θ_a100, b, ν = params
     θ_a = volumetric_air_content(θ_w, params)
@@ -63,7 +63,7 @@ end
     root_source_moisture_coeff(
                                θ_l::FT,
                                θ_ant_roots::FT,
-                               params::DETECTModelParameters{FT}
+                               params::SoilCO2ModelParameters{FT}
                                ) where {FT}    
 
 Returns the scaling coefficient/adjustment factor for the root co2 source term, 
@@ -72,7 +72,7 @@ accounting for antecedent "ant" conditions of soil moisture `θ_l`.
 function root_source_moisture_coeff(
     θ_l::FT,
     θ_ant_roots::FT,
-    params::DETECTModelParameters{FT},
+    params::SoilCO2ModelParameters{FT},
 ) where {FT}
     @unpack α1r, α2r, α3r = params
     coeff = exp(α1r * θ_l + α2r * θ_ant_roots + α3r * θ_l * θ_ant_roots)
@@ -82,7 +82,7 @@ end
 # For microbe and root source terms
 
 """
-    energy_activation(T_ant_soil::FT, params::DETECTModelParameters{FT}) where {FT}
+    energy_activation(T_ant_soil::FT, params::SoilCO2ModelParameters{FT}) where {FT}
     
 Computes the energy activation temperature based on the antecendent soil temperature `T_ant_soil`.
 
@@ -91,7 +91,7 @@ temperature sensitivity of the root and microbe source term.
 """
 function energy_activation(
     T_ant_soil::FT,
-    params::DETECTModelParameters{FT},
+    params::SoilCO2ModelParameters{FT},
 ) where {FT}
     @unpack α4, Estar = params
     E0 = Estar + α4 * T_ant_soil
@@ -103,7 +103,7 @@ end
     source_temperature_coeff(
         T_soil::FT,
         T_ant_soil::FT,
-        params::DETECTModelParameters{FT},
+        params::SoilCO2ModelParameters{FT},
     ) where {FT}
     
 Computes the temperature scaling factor function (unitless), which is motivated by Lloyd and Taylor (1994).
@@ -111,7 +111,7 @@ Computes the temperature scaling factor function (unitless), which is motivated 
 function source_temperature_coeff(
     T_soil::FT,
     T_ant_soil::FT,
-    params::DETECTModelParameters{FT},
+    params::SoilCO2ModelParameters{FT},
 ) where {FT}
     @unpack T_ref, T_ref_soil = params
     E0 = energy_activation(T_ant_soil, params)
@@ -127,7 +127,7 @@ end
                 θ_l::FT,
                 θ_ant_roots::FT,
                 Cr::FT,
-                params::DETECTModelParameters{FT}
+                params::SoilCO2ModelParameters{FT}
                 ) where {FT}
                 
 Computes the CO₂ production in the soil by roots, in depth and time (kg C / m^3/s).
@@ -138,7 +138,7 @@ function root_source(
     θ_l::FT,
     θ_ant_roots::FT,
     Cr::FT,
-    params::DETECTModelParameters{FT},
+    params::SoilCO2ModelParameters{FT},
 ) where {FT}
     g = source_temperature_coeff(T_soil, T_ant_soil, params)
     coeff = root_source_moisture_coeff(θ_l, θ_ant_roots, params)
@@ -151,7 +151,7 @@ end
     microbe_source_moisture_coeff(
                                   θ_l::FT,
                                   θ_ant_microbe::FT,
-                                  params::DETECTModelParameters{FT}
+                                  params::SoilCO2ModelParameters{FT}
                                   ) where {FT}    
 
 Returns the scaling coefficient/adjustment factor for the microbe co2 source term, 
@@ -160,7 +160,7 @@ accounting for antecedent "ant" conditions of soil moisture `θ_l`.
 function microbe_source_moisture_coeff(
     θ_l::FT,
     θ_ant_microbe::FT,
-    params::DETECTModelParameters{FT},
+    params::SoilCO2ModelParameters{FT},
 ) where {FT}
     @unpack α1m, α2m, α3m = params
     coeff = exp(α1m * θ_l + α2m * θ_ant_microbe + α3m * θ_l * θ_ant_microbe)
@@ -174,7 +174,7 @@ end
                             T_ant_soil::FT,
                             θ_l::FT,
                             θ_ant_microbe::FT,
-                            params::DETECTModelParameters{FT}
+                            params::SoilCO2ModelParameters{FT}
                             ) where {FT}
 
 Computes the maximum potential decomposition rate (kg C/m^3/s). 
@@ -184,7 +184,7 @@ function decomposition_potential(
     T_ant_soil::FT,
     θ_l::FT,
     θ_ant_microbe::FT,
-    params::DETECTModelParameters{FT},
+    params::SoilCO2ModelParameters{FT},
 ) where {FT}
     g = source_temperature_coeff(T_soil, T_ant_soil, params)
     fm = microbe_source_moisture_coeff(θ_l, θ_ant_microbe, params)
@@ -197,14 +197,14 @@ end
     soluble_soil_carbon(
                         θ_l::FT,
                         Csom::FT,
-                        params::DETECTModelParameters{FT}
+                        params::SoilCO2ModelParameters{FT}
                         ) where {FT}        
 Computes the soluble soil-C pool (kg C/m^3).
 """
 function soluble_soil_carbon(
     θ_l::FT,
     Csom::FT,
-    params::DETECTModelParameters{FT},
+    params::SoilCO2ModelParameters{FT},
 ) where {FT}
     @unpack soluble_fraction, D_liq = params
     Csol = Csom * soluble_fraction * θ_l^FT(3) * D_liq
@@ -220,7 +220,7 @@ end
                    θ_ant_microbe::FT,
                    Csom::FT,
                    Cmic::FT,
-                   params::DETECTModelParameters{FT},
+                   params::SoilCO2ModelParameters{FT},
                    ) where {FT}
 
 Computes the CO₂ production in the soil by microbes, in depth and time (kg C / m^3/s).
@@ -232,7 +232,7 @@ function microbe_source(
     θ_ant_microbe::FT,
     Csom::FT,
     Cmic::FT,
-    params::DETECTModelParameters{FT},
+    params::SoilCO2ModelParameters{FT},
 ) where {FT}
     @unpack CUE, Km = params
     Vmax =

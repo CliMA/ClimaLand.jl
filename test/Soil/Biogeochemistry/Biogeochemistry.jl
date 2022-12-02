@@ -10,7 +10,7 @@ using ClimaLSM
 using ClimaLSM.Domains: Column
 using ClimaLSM.Soil.Biogeochemistry
 
-@testset "Soil co2 biogeochemistry module" begin
+@testset "Soil co2 biogeochemistry rhs" begin
     FT = Float32
 
     # Parameters should be supplied in m/kg/s (Pa... etc)
@@ -39,18 +39,17 @@ using ClimaLSM.Soil.Biogeochemistry
     b = FT(4.547) # 29 [-] parameter related to pore size distribution
 
     # Prognostic variables
-    T_soil = FT(303)
-    θ_l = FT(0.3)
-    θ_i = FT(0.0)
-    θ_w = θ_l + θ_i
-    θ_ant_roots = FT(0.3)
-    θ_ant_microbe = FT(0.3)
-    T_ant_soil = FT(303)
-    Cr = FT(10.0) # 2 [kg C m-3] Cr is root biomass carbon, see figure S5
-    Csom = FT(5.0) # 3 [kg C m-3] soil organic C content at depth z
-    Cmic = FT(1.0) # 4 [kg C m-3] Microbial C pool, ~ 1 % of Csom at DETECT site
+    T_soil = (t,z) -> eltype(t)(303)
+    θ_l = (t,z) -> eltype(t)(0.3)
+    θ_i = (t,z) -> eltype(t)(0.0)
+    θ_ant_roots = (t,z) -> eltype(t)(0.3)
+    θ_ant_microbe = (t,z) -> eltype(t)(0.3)
+    T_ant_soil = (t,z) -> eltype(t)(303)
+    Cr = (t,z) -> eltype(t)(10.0) # 2 [kg C m-3] Cr is root biomass carbon, see figure S5
+    Csom = (t,z) -> eltype(t)(5.0) # 3 [kg C m-3] soil organic C content at depth z
+    Cmic = (t,z) -> eltype(t)(1.0) # 4 [kg C m-3] Microbial C pool, ~ 1 % of Csom at DETECT site
 
-    parameters = DETECTModelParameters(;
+    parameters = SoilCO2ModelParameters(;
         P_sfc = P_sfc,
         Rb = Rb,
         α1r = α1r,
@@ -80,14 +79,17 @@ using ClimaLSM.Soil.Biogeochemistry
     zmin = FT(-1) # 0 to 1 m depth
     zmax = FT(0.0)
     soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems)
-    top_bc = SoilCO2StateBC{FT}((p, t) -> eltype(t)(3000.0))
-    bot_bc = SoilCO2StateBC{FT}((p, t) -> eltype(t)(100.0))
-    sources = (RootProduction(),MicrobeProduction()) 
+    top_bc = SoilCO2StateBC((p, t) -> eltype(t)(3000.0))
+    bot_bc = SoilCO2StateBC((p, t) -> eltype(t)(100.0))
+    sources = (RootProduction{FT}(),MicrobeProduction{FT}()) 
     boundary_conditions = (; CO2 = (top = top_bc, bottom = bot_bc))
 
     soil_drivers = PrescribedSoil(T_soil, θ_l, T_ant_soil, θ_ant_microbe, θ_ant_roots, Cr, Csom, Cmic)
-    model = DETECTModel{FT}(; parameters = parameters, domain = soil_domain, sources = sources, boundary_conditions= boundary_conditions, drivers = soil_drivers)
+    model = SoilCO2Model{FT}(; parameters = parameters, domain = soil_domain, sources = sources, boundary_conditions= boundary_conditions, drivers = soil_drivers)
 
     Y, p, coords = initialize(model)
+    dY  = similar(Y)
+    ode! = make_ode_function!(model)
+    
 
 end
