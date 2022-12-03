@@ -12,7 +12,9 @@ export volumetric_air_content,
     microbe_source
 
 """
-    volumetric_air_content(θ_w::FT, params::SoilCO2ModelParameters{FT}) where {FT}
+    volumetric_air_content(θ_w::FT,
+                           params::SoilCO2ModelParameters{FT}
+                           ) where {FT}
     
 Computes the volumetric air content (`θ_a`) in the soil, 
 which is related to the total soil porosity (`ν`) and 
@@ -39,8 +41,9 @@ Computes the diffusivity of CO₂ within the soil (D).
 
 First, D0 is computed using the temperature within the soil (`T_soil` in K) and 
 pressure at the surface of the soil (`P_sfc` in Pa), using reference
-values of `T_ref` and `P_ref` (273 K and 101325 Pa). Here, `θ_a` is the Volumetric
-air content and `θ_a100` is the volumetric air content at a soil water potential of 
+values of `T_ref` and `P_ref` (273 K and 101325 Pa). Here, `θ_a` is the 
+volumetric air content and `θ_a100` is the volumetric air content 
+at a soil water potential of 
 100cm, and b is the pore size distribution of the soil.
 """
 function co2_diffusivity(
@@ -79,8 +82,6 @@ function root_source_moisture_coeff(
     return coeff
 end
 
-# For microbe and root source terms
-
 """
     energy_activation(T_ant_soil::FT, params::SoilCO2ModelParameters{FT}) where {FT}
     
@@ -115,7 +116,7 @@ function source_temperature_coeff(
 ) where {FT}
     @unpack T_ref, T_ref_soil = params
     E0 = energy_activation(T_ant_soil, params)
-    g = exp(E0 * (FT(1) / (T_ref_soil - T_ref - FT(1) / (T_soil - T_ref))))
+    g = exp(E0 * (FT(1) / (T_ref_soil - T_ref) - FT(1) / (T_soil - T_ref)))
     return g
 end
 
@@ -146,7 +147,6 @@ function root_source(
     return source
 end
 
-# 2.2 CO2 source: microbe
 """
     microbe_source_moisture_coeff(
                                   θ_l::FT,
@@ -188,7 +188,7 @@ function decomposition_potential(
 ) where {FT}
     g = source_temperature_coeff(T_soil, T_ant_soil, params)
     fm = microbe_source_moisture_coeff(θ_l, θ_ant_microbe, params)
-    Vmax = params.Vb * fm * g # g defined in 2.1
+    Vmax = params.Vb * fm * g
     return Vmax
 end
 

@@ -3,7 +3,7 @@ using ClimaLSM
 using UnPack
 using DocStringExtensions
 using ClimaCore
-import ..Parameters as LSMP
+import ...Parameters as LSMP
 import ClimaCore: Fields, Operators, Geometry, Spaces
 
 import ClimaLSM.Domains: AbstractDomain
@@ -22,7 +22,14 @@ import ClimaLSM:
     AbstractBC,
     AbstractSource,
     source!
-export SoilCO2ModelParameters, SoilCO2Model, PrescribedSoil, RootProduction, MicrobeProduction, SoilCO2FluxBC, SoilCO2StateBC
+export SoilCO2ModelParameters,
+    SoilCO2Model,
+    PrescribedSoil,
+    RootProduction,
+    MicrobeProduction,
+    SoilCO2FluxBC,
+    SoilCO2StateBC,
+    AbstractSoilDriver
 
 """
     soilco2Parameters{FT <: AbstractFloat}
@@ -175,13 +182,14 @@ A model for simulating the production and transport of CO₂ in the soil with dy
 source and diffusion terms.
 $(DocStringExtensions.FIELDS)
 """
-struct SoilCO2Model{FT, PS, D, BC, S, DT} <: AbstractSoilBiogeochemistryModel{FT}
+struct SoilCO2Model{FT, PS, D, BC, S, DT} <:
+       AbstractSoilBiogeochemistryModel{FT}
     "the parameter set"
-    parameters::PS 
+    parameters::PS
     "the soil domain, using ClimaCore.Domains"
     domain::D
     "the boundary conditions, of type AbstractBoundaryConditions"
-    boundary_conditions::BC 
+    boundary_conditions::BC
     "A tuple of sources, each of type AbstractSource"
     sources::S
     " Drivers"
@@ -204,24 +212,21 @@ function SoilCO2Model{FT}(;
     domain::ClimaLSM.AbstractDomain,
     boundary_conditions::BC,
     sources::Tuple,
-    drivers::DT
-) where {FT,BC, DT}
+    drivers::DT,
+) where {FT, BC, DT}
     args = (parameters, domain, boundary_conditions, sources, drivers)
     SoilCO2Model{FT, typeof.(args)...}(args...)
 end
 
-ClimaLSM.name(model::SoilCO2Model) = :soilco2;
+ClimaLSM.name(model::SoilCO2Model) = :soilco2
 ClimaLSM.domain(model::SoilCO2Model) = :subsurface
 
-# 3. Prognostic and Auxiliary variables 
 
-ClimaLSM.prognostic_vars(::SoilCO2Model) = (:C,) # pCO2 in soil, [ppm] # stored in Y.soilco2.C
+ClimaLSM.prognostic_vars(::SoilCO2Model) = (:C,)
 ClimaLSM.prognostic_types(::SoilCO2Model{FT}) where {FT} = (FT,)
-ClimaLSM.auxiliary_vars(::SoilCO2Model) = (:D, :Sₘ, :Sᵣ) # Diffusivity, Source (microbe + root) # stored in p.soilco2.D
+ClimaLSM.auxiliary_vars(::SoilCO2Model) = (:D, :Sm, :Sr)
 ClimaLSM.auxiliary_types(::SoilCO2Model{FT}) where {FT} = (FT, FT, FT)
 
-
-# 4. RHS
 
 """
     make_rhs(model::SoilCO2Model)
@@ -255,13 +260,17 @@ function ClimaLSM.make_rhs(model::SoilCO2Model)
         )
 
         interpc2f = ClimaCore.Operators.InterpolateC2F()
-        gradc2f_C = ClimaCore.Operators.GradientC2F() # set a BC on state
+        gradc2f_C = ClimaCore.Operators.GradientC2F()
         divf2c_C = ClimaCore.Operators.DivergenceF2C(
-            top = ClimaCore.Operators.SetValue(ClimaCore.Geometry.WVector.(top_flux_bc)),
-            bottom = ClimaCore.Operators.SetValue(ClimaCore.Geometry.WVector.(bot_flux_bc)),
+            top = ClimaCore.Operators.SetValue(
+                ClimaCore.Geometry.WVector.(top_flux_bc),
+            ),
+            bottom = ClimaCore.Operators.SetValue(
+                ClimaCore.Geometry.WVector.(bot_flux_bc),
+            ),
         ) # -∇ ⋅ (-D∇C), where -D∇C is a flux of C02. ∇C point in direction of increasing C, so the flux is - this.
         @. dY.soilco2.C =
-	                 -divf2c_C(-interpc2f(p.soilco2.D)*gradc2f_C(Y.soilco2.C))
+            -divf2c_C(-interpc2f(p.soilco2.D) * gradc2f_C(Y.soilco2.C))
 
         # Source terms are added in here
         for src in model.sources
@@ -274,7 +283,7 @@ end
 
 """
     AbstractCarbonSource{FT} <: ClimaLSM.AbstractSource{FT}
-
+    
 An abstract type for soil CO2 sources. There are two sources:
 roots and microbes, in struct RootProduction and MicrobeProduction.
 """
@@ -297,26 +306,44 @@ term in the differential equation.
 struct MicrobeProduction{FT} <: AbstractCarbonSource{FT} end
 
 """
-    ClimaLSM.source!(dY, src::RootProduction, Y, p, params)
+    ClimaLSM.source!(dY::ClimaCore.Fields.FieldVector,
+                     src::RootProduction,
+                     Y::ClimaCore.Fields.FieldVector,
+                     p::ClimaCore.Fields.FieldVector,
+                     params)
 
 A method which extends the ClimaLSM source! function for the 
 case of root production of CO2 in soil.
 """
-function ClimaLSM.source!(dY, src::RootProduction, Y, p, params)
-    dY.soilco2.C .+= p.soilco2.Sᵣ
+function ClimaLSM.source!(
+    dY::ClimaCore.Fields.FieldVector,
+    src::RootProduction,
+    Y::ClimaCore.Fields.FieldVector,
+    p::ClimaCore.Fields.FieldVector,
+    params,
+)
+    dY.soilco2.C .+= p.soilco2.Sr
 end
 
 """
-    ClimaLSM.source!(dY, src::MicrobeProduction, Y, p, params)
+    ClimaLSM.source!(dY::ClimaCore.Fields.FieldVector,
+                          src::MicrobeProduction,
+                          Y::ClimaCore.Fields.FieldVector,
+                          p::ClimaCore.Fields.FieldVector,
+                          params)
    
 A method which extends the ClimaLSM source! function for the
 case of microbe production of CO2 in soil.
 """
-function ClimaLSM.source!(dY, src::MicrobeProduction, Y, p, params)
-    dY.soilco2.C .+= p.soilco2.Sₘ
+function ClimaLSM.source!(
+    dY::ClimaCore.Fields.FieldVector,
+    src::MicrobeProduction,
+    Y::ClimaCore.Fields.FieldVector,
+    p::ClimaCore.Fields.FieldVector,
+    params,
+)
+    dY.soilco2.C .+= p.soilco2.Sm
 end
-
-# 5. Auxiliary variables
 
 """
     AbstractSoilDriver
@@ -340,21 +367,21 @@ without a prognostic soil model.
 $(DocStringExtensions.FIELDS)
 """
 struct PrescribedSoil <: AbstractSoilDriver
-    "The temperature of the soil, of the form f(t::FT,z::FT) where {FT <: AbstractFloat}"
-    temperature::Function 
-    "Soil moisture, of the form f(t::FT,z::FT) where {FT <: AbstractFloat}"
+    "The temperature of the soil, of the form f(z::FT,t::FT) where {FT <: AbstractFloat}"
+    temperature::Function
+    "Soil moisture, of the form f(z::FT,t::FT) where {FT <: AbstractFloat}"
     volumetric_liquid_fraction::Function
-    "Antecedant soil temperature, of the form f(t::FT,z::FT) where {FT <: AbstractFloat}"
+    "Antecedant soil temperature, of the form f(z::FT,t::FT) where {FT <: AbstractFloat}"
     antecedent_temperature::Function
-    "Antecedant soil moisture acting on microbe, of the form f(t::FT,z::FT) where {FT <: AbstractFloat}"
+    "Antecedant soil moisture acting on microbe, of the form f(z::FT,t::FT) where {FT <: AbstractFloat}"
     antecedent_volumetric_liquid_fraction_m::Function
-    "Antecedant soil moisture acting on roots, of the form f(t::FT,z::FT) where {FT <: AbstractFloat}"
+    "Antecedant soil moisture acting on roots, of the form f(z::FT,t::FT) where {FT <: AbstractFloat}"
     antecedent_volumetric_liquid_fraction_r::Function
-    "Carbon content of root in soil, of the form f(t::FT,z::FT) where {FT <: AbstractFloat}"
+    "Carbon content of root in soil, of the form f(z::FT,t::FT) where {FT <: AbstractFloat}"
     root_carbon::Function
-    "Carbon content of soil organic matter, of the form f(t::FT,z::FT) where {FT <: AbstractFloat}"
+    "Carbon content of soil organic matter, of the form f(z::FT,t::FT) where {FT <: AbstractFloat}"
     soil_organic_carbon::Function
-    "Carbon content of microbes in soil, of the form f(t::FT,z::FT) where {FT <: AbstractFloat}"
+    "Carbon content of microbes in soil, of the form f(z::FT,t::FT) where {FT <: AbstractFloat}"
     microbe_carbon::Function
 end
 
@@ -415,7 +442,7 @@ Returns the soil root carbon at location (z) and time (t) for the prescribed
 soil case.
 """
 function soil_root_carbon(driver::PrescribedSoil, p, Y, t, z)
-    return driver.root_carbon.(z, t) # for now, z only, but in time, z and t
+    return driver.root_carbon.(z, t)
 end
 
 """
@@ -447,43 +474,35 @@ variables `p.soil.variable` in place.
 This has been written so as to work with Differential Equations.jl.
 """
 function ClimaLSM.make_update_aux(model::SoilCO2Model)
-    function update_aux!(p, Y, t) 
-    params = model.parameters 
-    z = ClimaCore.Fields.coordinate_field(model.domain.space).z
-    T_soil = soil_temperature(model.driver, p, Y, t, z) 
-	θ_l = soil_moisture(model.driver, p, Y, t, z)
-    θ_ant_roots = antecedent_soil_moisture_roots(model.driver, p, Y, t, z)
-    θ_ant_microbe = antecedent_soil_moisture_microbes(model.driver, p, Y, t, z)
-    T_ant_soil = antecedent_soil_temperature(model.driver, p, Y, t, z)
+    function update_aux!(p, Y, t)
+        params = model.parameters
+        z = ClimaCore.Fields.coordinate_field(model.domain.space).z
+        T_soil = soil_temperature(model.driver, p, Y, t, z)
+        θ_l = soil_moisture(model.driver, p, Y, t, z)
+        θ_ant_roots = antecedent_soil_moisture_roots(model.driver, p, Y, t, z)
+        θ_ant_microbe =
+            antecedent_soil_moisture_microbes(model.driver, p, Y, t, z)
+        T_ant_soil = antecedent_soil_temperature(model.driver, p, Y, t, z)
 
-	Cr = soil_root_carbon(model.driver, p, Y, t, z)
-	Csom = soil_SOM_C(model.driver, p, Y, t, z)
-	Cmic = soil_microbe_carbon(model.driver, p, Y, t, z)
-    θ_w = θ_l
-	@. p.soilco2.D = co2_diffusivity(
-                                        T_soil,
-                                        θ_w,
-                                        params,
-                                        )
+        Cr = soil_root_carbon(model.driver, p, Y, t, z)
+        Csom = soil_SOM_C(model.driver, p, Y, t, z)
+        Cmic = soil_microbe_carbon(model.driver, p, Y, t, z)
+        θ_w = θ_l
+        p.soilco2.D = co2_diffusivity.(T_soil, θ_w, Ref(params))
 
-	@. p.soilco2.Sᵣ = root_source(
-                                     T_soil,
-                                     T_ant_soil,
-                                     θ_l,
-                                     θ_ant_roots,
-                                     Cr,
-                                     params,
-                                     ) 
+        p.soilco2.Sr =
+            root_source.(T_soil, T_ant_soil, θ_l, θ_ant_roots, Cr, Ref(params))
 
-	@. p.soilco2.Sₘ = microbe_source(
-                                        T_soil,
-                                        T_ant_soil,
-                                        θ_l,
-                                        θ_ant_microbe,
-                                        Csom,
-                                        Cmic,
-                                        params,
-                                        )
+        p.soilco2.Sm =
+            microbe_source.(
+                T_soil,
+                T_ant_soil,
+                θ_l,
+                θ_ant_microbe,
+                Csom,
+                Cmic,
+                Ref(params),
+            )
     end
     return update_aux!
 end
@@ -588,11 +607,11 @@ bottom of the domain.
 function ClimaLSM.boundary_flux(
     bc::SoilCO2StateBC,
     ::ClimaLSM.BottomBoundary,
-    Δz,
-    Y,
-    p,
-    t,
-)::ClimaCore.Fields.Field
+    Δz::ClimaCore.Fields.Field,
+    Y::ClimaCore.Fields.FieldVector,
+    p::ClimaCore.Fields.FieldVector,
+    t::FT,
+)::ClimaCore.Fields.Field where {FT}
     D_c = Fields.level(p.soilco2.D, 1)
     C_c = Fields.level(Y.soilco2.C, 1)
     C_bc = bc.bc(p, t)
