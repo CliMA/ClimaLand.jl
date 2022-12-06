@@ -17,6 +17,13 @@
 # temperature as a function of depth (`T`, K). The snow cover fraction
 # is given by a heaviside function in the current code.
 
+# In what follows,
+# surface fluxes over `soil` generally indicate fluxes
+# over non-snow-covered
+# regions. The exception
+# is the albedo of vegetated and non-vegetated surfaces, for which
+# we use the symbol `α_sfc`.
+
 # We have:
 
 # ``
@@ -65,14 +72,16 @@
 # defined via the net surface flux when surface temperatures are above freezing.
 
 # For heat fluxes, we have `R_n` the net radiation, `SHF` the sensible
-# heat flux, `LHF` the latent heat flux, `G_undersnow` the heat flux into snow-covered soil, and `F_intosnow` the heat flux into the snowpack itself. Note that the water balance equation for snow is equivalent to the heat balance
+# heat flux, `LHF` the latent heat flux, `G_undersnow` the heat flux into snow-covered soil,
+# and `F_intosnow` the heat flux into the snowpack itself. Note that the water balance
+# equation for snow is equivalent to the heat balance
 # equation, since we neglect the sensible heat contribution and only track the
 # latent heat contribution.
 
-# Finally, we have `α(lat, lon)` the
-# surface albedo, `ρc` the volumetric
+# Finally, we have `α_sfc(lat, lon)` the
+# (snow-free) surface albedo, `ρc` the volumetric
 # heat capacity of the land, `σ_SB` the Stefan-Boltzmann constant,  and `κ_soil` the thermal
-# conductivity. The albedo is a linear interpolation between the albedo of soil and
+# conductivity. The albedo is a linear interpolation between the albedo of surface and
 # snow, as decribed in [3]. The surface temperature is taken to be equal to the temperature
 # T at the first grid point, assumed to be the same for soil and snow. At present the snow cover fraction is a heaviside function, and only one set
 # of surface fluxes is computed per grid point.
@@ -129,9 +138,10 @@ using ClimaLSM.Bucket:
     BucketModelParameters,
     PrescribedAtmosphere,
     PrescribedRadiativeFluxes,
-    BulkAlbedo
+    BulkAlbedoFunction
 using ClimaLSM.Domains: coordinates, LSMSingleColumnDomain
-using ClimaLSM: initialize, make_update_aux, make_ode_function
+using ClimaLSM:
+    initialize, make_update_aux, make_ode_function, make_set_initial_aux_state
 # We also want to plot the solution
 using Plots
 
@@ -146,15 +156,17 @@ import ClimaLSM
 include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"));
 earth_param_set = create_lsm_parameters(FT);
 
-# Define our `BulkAlbedo` model using a constant soil and snow albedo:
-# The soil albedo is a function of coordinates, which would be
-# (x,y) on a plane, and (lat,lon) on a sphere. In the future, we
-# will support other albedo models.
-α_soil = (coordinate_point) -> FT(0.2);
+# Define our `BulkAlbedoFunction` model using a constant surface and snow albedo:
+# The surface albedo is a function of coordinates, which would be
+# (x,y) on a plane, and (lat,lon) on a sphere. Another albedo
+# option is to specify a `BulkAlbedoMap`, which uses a NetCDF
+# file to read in surface albedo. This option only applies when coordinates
+# are (lat,lon).
+α_sfc = (coordinate_point) -> FT(0.2);
 α_snow = FT(0.8);
-albedo = BulkAlbedo{FT}(α_snow, α_soil);
+albedo = BulkAlbedoFunction{FT}(α_snow, α_sfc);
 # The critical snow level setting the scale for when we interpolate between
-# snow and soil albedo
+# snow and surface albedo
 σS_c = FT(0.2);
 # The field capacity of the soil
 W_f = FT(0.15);
@@ -264,12 +276,16 @@ Y.bucket.W .= FT(0.05);
 Y.bucket.Ws .= FT(0.0);
 Y.bucket.σS .= FT(0.08);
 
+# We also initialize the auxiliary state here:
+t0 = FT(0.0);
+set_initial_aux_state! = make_set_initial_aux_state(model);
+set_initial_aux_state!(p, Y, t0);
+
 # Then to create the entire right hand side function for the system
 # of ordinary differential equations:
 ode_function! = make_ode_function(model);
 
-# Then set up the simulation
-t0 = FT(0.0);
+# Then we can set up the simulation and solve it:
 tf = FT(7 * 86400);
 prob = ODEProblem(ode_function!, Y, (t0, tf), p);
 # We need a callback to get and store the auxiliary fields, as they

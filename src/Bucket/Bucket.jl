@@ -9,11 +9,13 @@ using ClimaCore
 using ClimaCore.Fields: coordinate_field, level, FieldVector
 using ClimaCore.Operators: InterpolateC2F, DivergenceF2C, GradientC2F, SetValue
 using ClimaCore.Geometry: WVector
+using ClimaComms
 using StaticArrays: SVector
 
 using ClimaLSM
+using ClimaLSM.Regridder: MapInfo, regrid_netcdf_to_field
 import ..Parameters as LSMP
-import ClimaLSM.Domains: coordinates
+import ClimaLSM.Domains: coordinates, LSMSphericalShellDomain
 import ClimaLSM:
     AbstractModel,
     make_update_aux,
@@ -25,7 +27,8 @@ import ClimaLSM:
     auxiliary_types,
     initialize_vars,
     initialize,
-    initialize_auxiliary
+    initialize_auxiliary,
+    make_set_initial_aux_state
 export BucketModelParameters,
     PrescribedAtmosphere,
     PrescribedRadiativeFluxes,
@@ -37,9 +40,12 @@ export BucketModelParameters,
     surface_air_density,
     liquid_precipitation,
     snow_precipitation,
-    BulkAlbedo,
+    BulkAlbedoFunction,
+    BulkAlbedoMap,
     surface_albedo,
     partition_surface_fluxes
+
+include(joinpath(pkgdir(ClimaLSM), "src/Bucket/artifacts/artifacts.jl"))
 
 abstract type AbstractBucketModel{FT} <: AbstractModel{FT} end
 
@@ -59,18 +65,55 @@ abstract type AbstractRadiativeDrivers{FT <: AbstractFloat} end
 abstract type AbstractLandAlbedoModel{FT <: AbstractFloat} end
 
 """
-    BulkAlbedo{FT} <: AbstractLandAlbedoModel
+    BulkAlbedoFunction{FT} <: AbstractLandAlbedoModel
 
 An albedo model where the albedo of different surface types
 is specified. Snow albedo is treated as constant across snow
-location and across wavelength. Soil albedo is specified as a function
+location and across wavelength. Surface albedo (sfc) 
+is specified as a function
 of latitude and longitude, but is also treated as constant across
-wavelength.
+wavelength; surface is this context refers to soil and vegetation.
 """
-struct BulkAlbedo{FT} <: AbstractLandAlbedoModel{FT}
+struct BulkAlbedoFunction{FT} <: AbstractLandAlbedoModel{FT}
     α_snow::FT
-    α_soil::Function
+    α_sfc::Function
 end
+
+"""
+    BulkAlbedoMap{FT} <: AbstractLandAlbedoModel
+
+An albedo model where the albedo of different surface types
+is specified. Snow albedo is treated as constant across snow
+location and across wavelength. Surface albedo is specified via a
+NetCDF file, which can be a function of time, but is treated
+as constant across wavelengths; surface is this context refers 
+to soil and vegetation.
+
+Note that this option should only be used with global simulations,
+i.e. with a `ClimaLSM.LSMSphericalShellDomain.`
+"""
+struct BulkAlbedoMap{FT} <: AbstractLandAlbedoModel{FT}
+    α_snow::FT
+    α_sfc::MapInfo
+end
+
+"""
+    BulkAlbedoMap{FT}(regrid_dirpath;α_snow = FT(0.8), comms = ClimaComms.SingletonCommsContext()) where {FT}
+
+Constructor for the BulkAlbedoMap that implements a default albedo map, `comms` context, and value for `α_snow`.
+The `varname` must correspond to the name of the variable in the NetCDF file specified by `path`.
+"""
+function BulkAlbedoMap{FT}(
+    regrid_dirpath;
+    α_snow = FT(0.8),
+    comms = ClimaComms.SingletonCommsContext(),
+    path = bareground_albedo_dataset_path(),
+    varname = "sw_alb",
+) where {FT}
+    α_sfc = MapInfo(path, varname, regrid_dirpath, comms)
+    return BulkAlbedoMap{FT}(α_snow, α_sfc)
+end
+
 
 
 
@@ -97,7 +140,7 @@ struct BucketModelParameters{
     ρc_soil::FT
     "Albedo Model"
     albedo::AAM
-    "Critical σSWE amount (m) where surface transitions from soil to snow"
+    "Critical σSWE amount (m) where surface transitions from to snow-covered"
     σS_c::FT
     "Capacity of the land bucket (m)"
     W_f::FT
@@ -238,6 +281,11 @@ function BucketModel(;
     atmosphere::ATM,
     radiation::RAD,
 ) where {FT, PSE, ATM, RAD}
+    if parameters.albedo isa BulkAlbedoMap
+        typeof(domain) <: LSMSphericalShellDomain ? nothing :
+        error("Using an albedo map requires a global run.")
+    end
+
     args = (parameters, atmosphere, radiation, domain)
     BucketModel{FT, typeof.(args)...}(args...)
 end
@@ -246,9 +294,9 @@ end
 
 prognostic_types(::BucketModel{FT}) where {FT} = (FT, FT, FT, FT)
 prognostic_vars(::BucketModel) = (:W, :T, :Ws, :σS)
-auxiliary_types(::BucketModel{FT}) where {FT} = (FT, FT, FT, FT, FT)
+auxiliary_types(::BucketModel{FT}) where {FT} = (FT, FT, FT, FT, FT, FT)
 auxiliary_vars(::BucketModel) =
-    (:q_sfc, :evaporation, :turbulent_energy_flux, :R_n, :T_sfc)
+    (:q_sfc, :evaporation, :turbulent_energy_flux, :R_n, :T_sfc, :α_sfc)
 
 """
     ClimaLSM.initialize(model::BucketModel{FT}) where {FT}
@@ -289,8 +337,86 @@ function ClimaLSM.initialize(model::BucketModel{FT}) where {FT}
 
     # All aux variables for this model live on the surface
     p = initialize_auxiliary(model, surface_coords)
+
     return Y, p, ClimaLSM.Domains.coordinates(model.domain)
 end
+
+"""
+    ClimaLSM.make_set_initial_aux_state(model::BucketModel{FT}) where{FT}
+
+Returns the set_initial_aux_state! function, which updates the auxiliary
+state `p` in place with the initial values corresponding to Y(t=t0) = Y0.
+
+In this case, we also use this method to update the initial values for the
+spatially varying parameter fields, read in from data files.
+"""
+function ClimaLSM.make_set_initial_aux_state(model::BucketModel)
+    update_aux! = make_update_aux(model)
+    function set_initial_aux_state!(p, Y0, t0)
+        set_initial_parameter_field!(
+            model.parameters.albedo,
+            p,
+            ClimaCore.Fields.coordinate_field(model.domain.surface.space),
+        )
+        update_aux!(p, Y0, t0)
+    end
+    return set_initial_aux_state!
+end
+
+"""
+    function set_initial_parameter_field!(
+        albedo::BulkAlbedoFunction{FT},
+        p,
+        surface_coords,
+    ) where {FT}
+
+Updates the spatially-varying but constant in time surface
+ albedo stored in the
+auxiliary vector `p` in place,  according to the
+passed function of latitute and longitude stored in `albedo.α_sfc`.
+"""
+function set_initial_parameter_field!(
+    albedo::BulkAlbedoFunction{FT},
+    p,
+    surface_coords,
+) where {FT}
+    (; α_sfc) = albedo
+    @. p.bucket.α_sfc = α_sfc(surface_coords)
+end
+
+"""
+    function set_initial_parameter_field!(
+        albedo::BulkAlbedoMap{FT},
+        p,
+        surface_coords,
+    ) where {FT}
+
+Updates spatially-varying surface albedo stored in the
+auxiliary vector `p` in place, according to a
+NetCDF file. This data file is encapsulated in an object of
+type `ClimaLSM.Regridder.MapInfo` in the field albedo.α_sfc.
+
+The NetCDF file is read in, regridded, and projected onto 
+the surface space of the LSM using ClimaCoreTempestRemap. The result
+is a ClimaCore.Fields.Field of albedo values.
+"""
+function set_initial_parameter_field!(
+    albedo::BulkAlbedoMap{FT},
+    p,
+    surface_coords,
+) where {FT}
+    α_sfc = albedo.α_sfc
+    (; comms, varname, path, regrid_dirpath) = α_sfc
+    p.bucket.α_sfc .= regrid_netcdf_to_field(
+        FT,
+        regrid_dirpath,
+        comms,
+        path,
+        varname,
+        axes(surface_coords),
+    )
+end
+
 
 
 """
@@ -421,8 +547,8 @@ function net_radiation(
 }
     return radiative_fluxes_at_a_point.(
         p.bucket.T_sfc,
+        p.bucket.α_sfc,
         Y.bucket.σS,
-        coordinate_field(Y.bucket.σS),
         t,
         Ref(parameters),
         Ref(radiation),
@@ -431,8 +557,8 @@ end
 
 function radiative_fluxes_at_a_point(
     T_sfc::FT,
+    α_sfc::FT,
     σS::FT,
-    coords,
     t::FT,
     parameters::P,
     radiation::PR,
@@ -441,10 +567,11 @@ function radiative_fluxes_at_a_point(
     P <: BucketModelParameters{FT},
     PR <: PrescribedRadiativeFluxes{FT},
 }
-    @unpack albedo, σS_c, earth_param_set = parameters
+    @unpack albedo, earth_param_set, σS_c = parameters
     @unpack LW_d, SW_d = radiation
     _σ = LSMP.Stefan(earth_param_set)
-    α = surface_albedo(albedo, coords, σS, σS_c)
+    (; α_snow) = albedo
+    α = surface_albedo(α_sfc, α_snow, σS, σS_c)
     # Recall that the user passed the LW and SW downwelling radiation,
     # where positive values indicate toward surface, so we need a negative sign out front
     # in order to inidicate positive R_n  = towards atmos.
@@ -463,15 +590,15 @@ function make_rhs(model::BucketModel{FT}) where {FT}
         @unpack κ_soil, ρc_soil, σS_c, W_f = model.parameters
 
         #Currently, the entire surface is assumed to be
-        # snow covered or soil covered.
+        # snow covered entirely or not at all.
         snow_cover_fraction = heaviside.(Y.bucket.σS)
 
         # In this case, there is just one set of surface fluxes to compute.
         # Since q_sfc itself has already been modified to account for
-        # soil vs snow covered regions, and since the surface temperature is
-        # assumed to be the same for snow and underlying soil,
+        # snow covered regions, and since the surface temperature is
+        # assumed to be the same for snow and underlying land,
         # the returned fluxes are computed correctly for the cell
-        # in either the soil or snow covered case.
+        # regardless of snow-coverage.
 
         # The below is NOT CORRECT if we want the snow
         # cover fraction to be intermediate between 0 and 1.

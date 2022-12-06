@@ -54,34 +54,31 @@ function partition_surface_fluxes(
 end
 
 """
-    surface_albedo(albedo::BulkAlbedo{FT}, coords, S::FT, S_c::FT)::FT where {FT <: AbstractFloat}
+    surface_albedo(α_sfc::FT, α_snow::FT, σS::FT, σS_c::FT)::FT where {FT <: AbstractFloat}
 
 Returns the bulk surface albedo, linearly interpolating between the albedo
-of snow and of soil, based on the snow water equivalent S relative to
+of snow and of the surface, based on the snow water equivalent S relative to
 the parameter S_c.
 
 The linear interpolation is taken from Lague et al 2019.
 """
 function surface_albedo(
-    albedo::BulkAlbedo{FT},
-    coords,
+    α_sfc::FT,
+    α_snow::FT,
     σS::FT,
     σS_c::FT,
 )::FT where {FT <: AbstractFloat}
-    (; α_snow, α_soil) = albedo
-    α_soil_values = α_soil(coords)
     safe_σS::FT = max(σS, eps(FT))
-    return (FT(1.0) - σS / (σS + σS_c)) * α_soil_values +
-           σS / (σS + σS_c) * α_snow
+    return (1 - σS / (σS + σS_c)) * α_sfc + σS / (σS + σS_c) * α_snow
 end
 
 """
     infiltration_at_point(W::FT, M::FT, P::FT, E::FT, W_f::FT)::FT where {FT <: AbstractFloat}
 
-Returns the soil infiltration given the current water content of the bucket W, 
+Returns the infiltration given the current water content of the bucket W, 
 the snow melt volume flux M, the precipitation volume flux P, the liquid evaporative volume
 flux E, and the bucket capacity W_f. Positive values indicate increasing
-soil moisture; the soil infiltration is the magnitude of the water
+soil moisture; the infiltration is the magnitude of the water
 flux into the soil.
 
 Extra inflow when the bucket is at capacity runs off.
@@ -112,7 +109,7 @@ levels, which is then used
 true specific humidity of the soil surface <= q_sat.
 """
 function β(W::FT, W_f::FT) where {FT}
-    safe_W = max(FT(0.0), W)
+    safe_W = max(0, W)
     if safe_W < FT(0.75) * W_f
         safe_W / (FT(0.75) * W_f)
     else
@@ -133,8 +130,7 @@ function saturation_specific_humidity(
     parameters::PE,
 )::FT where {FT, PE}
     thermo_params = LSMP.thermodynamic_parameters(parameters.earth_param_set)
-    return (FT(1.0) - heaviside(σS)) *
-           Thermodynamics.q_vap_saturation_generic(
+    return (1 - heaviside(σS)) * Thermodynamics.q_vap_saturation_generic(
         thermo_params,
         T,
         ρ_sfc,

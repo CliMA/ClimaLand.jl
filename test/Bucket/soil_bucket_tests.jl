@@ -15,13 +15,14 @@ using ClimaLSM.Bucket:
     BucketModelParameters,
     PrescribedAtmosphere,
     PrescribedRadiativeFluxes,
-    BulkAlbedo
+    BulkAlbedoFunction
 using ClimaLSM.Domains:
     coordinates,
     LSMSingleColumnDomain,
     LSMMultiColumnDomain,
     LSMSphericalShellDomain
-using ClimaLSM: initialize, make_update_aux, make_ode_function
+using ClimaLSM:
+    initialize, make_update_aux, make_ode_function, make_set_initial_aux_state
 
 
 FT = Float64
@@ -31,9 +32,9 @@ import ClimaLSM
 include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
 earth_param_set = create_lsm_parameters(FT)
 
-α_soil = (coordinate_point) -> FT(0.2) # soil albedo, spatially constant
+α_sfc = (coordinate_point) -> FT(0.2) # surface albedo, spatially constant
 α_snow = FT(0.8) # snow albedo
-albedo = BulkAlbedo{FT}(α_snow, α_soil)
+albedo = BulkAlbedoFunction{FT}(α_snow, α_sfc)
 σS_c = FT(0.2)
 W_f = FT(0.15)
 z_0m = FT(1e-2)
@@ -111,6 +112,8 @@ for bucket_domain in bucket_domains
         Y.bucket.σS .= 0.0
 
         ode_function! = make_ode_function(model)
+        set_initial_aux_state! = make_set_initial_aux_state(model)
+        set_initial_aux_state!(p, Y, 0.0)
         dY = similar(Y)
         # init to nonzero numbers
         dY.bucket.T .= init_temp.(coords.subsurface.z, 1.0)
@@ -174,9 +177,12 @@ for bucket_domain in bucket_domains
         Y.bucket.Ws .= 0.0
         Y.bucket.σS .= 0.0
         ode_function! = make_ode_function(model)
-
         t0 = 0.0
         tf = 10000.0
+
+        set_initial_aux_state! = make_set_initial_aux_state(model)
+        set_initial_aux_state!(p, Y, t0)
+
         prob = ODEProblem(ode_function!, Y, (t0, tf), p)
 
         # need a callback to get and store `p`

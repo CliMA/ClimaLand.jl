@@ -31,6 +31,7 @@ ClimaLSM.AbstractModel
 ClimaLSM.make_ode_function
 ClimaLSM.make_rhs
 ClimaLSM.make_update_aux
+ClimaLSM.make_set_initial_aux_state
 ClimaLSM.prognostic_vars
 ClimaLSM.prognostic_types
 ClimaLSM.auxiliary_vars
