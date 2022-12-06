@@ -32,12 +32,12 @@ export SoilCO2ModelParameters,
     AbstractSoilDriver
 
 """
-    soilco2Parameters{FT <: AbstractFloat}
+    SoilCO2ModelParameters{FT <: AbstractFloat}
 
 A struct for storing parameters of the `SoilCO2Model`.
 $(DocStringExtensions.FIELDS)
 """
-struct SoilCO2ModelParameters{FT <: AbstractFloat}
+struct SoilCO2ModelParameters{FT <: AbstractFloat, PSE}
     "Pressure at the surface of the soil (Pa)"
     P_sfc::FT
     "Root mass-base respiration rate at 10°C and mean environmental conditions (kg C m⁻³ s⁻¹)"
@@ -66,29 +66,25 @@ struct SoilCO2ModelParameters{FT <: AbstractFloat}
     D_liq::FT
     "Temperature sensitivity parameter, somewhat analogous to an energy activation (Kelvin)"
     Estar::FT
-    "Temperature sensitivity-related parameter (Kelvin)"
-    T_ref::FT
     "The effect of antecedent soil temperature on root and microbial respiration (unitless)"
     α4::FT
     "Reference temperature (Kelvin)"
     T_ref_soil::FT
-    "Absolute value of the slope of the line relating log(ψ) versus log(θ) (unitless)"
-    α5::FT
     "Soil porosity (m³ m⁻³)"
     ν::FT
     "Air-filled porosity at soil water potential of -100 cm H₂O (~ 10 Pa)"
     θ_a100::FT
     "Diffusion coefficient for CO₂ in air at standard temperature and pressure (m² s⁻¹)"
     D_ref::FT
-    "Standard pressure (Pa)"
-    P_ref::FT
-    "Parameter related to the pore size distribution of the soil (unitless)"
+    "Absolute value of the slope of the line relating log(ψ) versus log(θ) (unitless)"
     b::FT
+    "Physical constants used Clima-wide"
+    earth_param_set::PSE
 end
 
 """
     SoilCO2ModelParameters(;
-                           P_sfc::FT,
+                           P_sfc::FT
                            Rb::FT,
                            Vb::FT,
                            α1r::FT,
@@ -98,50 +94,46 @@ end
                            α2m::FT,
                            α3m::FT,
                            α4::FT,
-                           α5::FT,
                            ν::FT,
                            b::FT, 
                            θ_a100::FT,
                            D_ref::FT,
-                           P_ref::FT,
-                           T_ref::FT,
                            T_ref_soil::FT
                            Km::FT,
                            CUE::FT,
                            Estar::FT,
                            D_liq::FT,
                            soluble_fraction::FT
-                           ) where {FT}
+                           earth_param_set::PSE
+                           ) where {FT, PSE}
 
 An outer constructor for creating the parameter struct of the `SoilCO2Model`,
     based on keyword arguments.
 """
 function SoilCO2ModelParameters(;
-    P_sfc::FT,
-    Rb::FT,
-    Vb::FT,
-    α1r::FT,
-    α2r::FT,
-    α3r::FT,
-    α1m::FT,
-    α2m::FT,
-    α3m::FT,
-    α4::FT,
-    α5::FT,
-    ν::FT,
-    b::FT,
-    θ_a100::FT,
-    D_ref::FT,
-    P_ref::FT,
-    T_ref::FT,
-    T_ref_soil::FT,
-    Km::FT,
-    CUE::FT,
-    Estar::FT,
-    D_liq::FT,
-    soluble_fraction::FT,
-) where {FT}
-    return SoilCO2ModelParameters{FT}(
+    P_sfc::FT= 101e3,
+    ν::FT = 0.556,
+    θ_a100::FT = 0.1816,
+    D_ref::FT = 1.39e-5,
+    Rb::FT =1.67e-8,
+    Vb::FT = 4.167e-7,
+    α1r::FT = 11.65,
+    α2r::FT = 20.7,
+    α3r::FT = -164.2,
+    α1m::FT = 14.05,
+    α2m::FT = 11.05,
+    α3m::FT = -87.6,
+    α4::FT = -4.7,
+    b::FT = 4.547,
+    T_ref_soil::FT = 283.15,
+    Km::FT = 2.78e-9,
+    CUE::FT = 0.8,
+    Estar::FT = 324.6,
+    D_liq::FT = 3.17,
+    soluble_fraction::FT = 0.004,
+    earth_param_set::PSE
+) where {FT, PSE}
+    return SoilCO2ModelParameters{FT, PSE}(
         P_sfc,
         Rb,
         α1r,
@@ -156,15 +148,13 @@ function SoilCO2ModelParameters(;
         soluble_fraction,
         D_liq,
         Estar,
-        T_ref,
         α4,
         T_ref_soil,
-        α5,
         ν,
         θ_a100,
         D_ref,
-        P_ref,
         b,
+        earth_param_set
     )
 end
 

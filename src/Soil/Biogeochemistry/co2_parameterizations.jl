@@ -32,8 +32,7 @@ end
 """
     co2_diffusivity(
                     T_soil::FT,
-                    P_sfc::FT,
-                    θ_a::FT,
+                    θ_w::FT,
                     params::SoilCO2ModelParameters{FT}
                     ) where {FT}
 
@@ -51,7 +50,9 @@ function co2_diffusivity(
     θ_w::FT,
     params::SoilCO2ModelParameters{FT},
 ) where {FT}
-    @unpack P_sfc, D_ref, T_ref, P_ref, θ_a100, b, ν = params
+    @unpack P_sfc, D_ref, θ_a100, b, ν, earth_param_set = params
+    T_ref = FT(LSMP.T_0(earth_param_set))
+    P_ref = FT(LSMP.P_ref(earth_param_set))
     θ_a = volumetric_air_content(θ_w, params)
     D0 = D_ref * (T_soil / T_ref)^FT(1.75) * (P_ref / P_sfc)
     D =
@@ -114,7 +115,8 @@ function source_temperature_coeff(
     T_ant_soil::FT,
     params::SoilCO2ModelParameters{FT},
 ) where {FT}
-    @unpack T_ref, T_ref_soil = params
+    @unpack T_ref_soil, earth_param_set = params
+    T_ref = FT(LSMP.T_0(earth_param_set))
     E0 = energy_activation(T_ant_soil, params)
     g = exp(E0 * (FT(1) / (T_ref_soil - T_ref) - FT(1) / (T_soil - T_ref)))
     return g

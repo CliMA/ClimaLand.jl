@@ -1,13 +1,20 @@
 using Test
 using UnPack
+import CLIMAParameters as CP
+
 if !("." in LOAD_PATH)
     push!(LOAD_PATH, ".")
 end
 using ClimaLSM.Soil.Biogeochemistry
 
+import ClimaLSM
+import ClimaLSM.Parameters as LSMP
+
+include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
+
 @testset "Soil CO2 production and transport" begin
     FT = Float32
-
+    earth_param_set = create_lsm_parameters(FT)
     # Parameters should be supplied in m/kg/s (Pa... etc)
     P_sfc = FT(101e3) # 1 [Pa] pressure just above the soil surface at time t
     Rb = FT(6e-5) # 5 [kg m^3] total root biomass C in soil column
@@ -23,10 +30,9 @@ using ClimaLSM.Soil.Biogeochemistry
     soluble_fraction = FT(0.004) # 17 [-] fraction of soil organic C that is soluble
     D_liq = FT(3.17) # 18 [-] Diffusivity of soil C substrate in liquid
     Estar = FT(324.6) # 19 [Kelvin] temperature sensitivity parameter
-    T_ref = FT(273.15) # 20 [Kelvin] temperature sensitivity-related parameter
+    T_ref = FT(273.16) # 20 [Kelvin] temperature sensitivity-related parameter
     α4 = FT(4.7) # 21 [-]
     T_ref_soil = FT(283.15) # 22 [Kelvin] ref temperature for other param e.g., Rb
-    α5 = FT(4.547) # 23 [-]
     ν = FT(0.556) # 26 [m3 m-3] soil porosity
     θ_a100 = FT(0.1846) # 25 air filled porosity at soil water potential of -100 cm H2O
     D_ref = FT(1.39e-5) # 27 [m2 s-1] diffusion coefficient for CO2 in air at standard T and P
@@ -45,7 +51,7 @@ using ClimaLSM.Soil.Biogeochemistry
     Csom = FT(5.0) # 3 [kg C m-3] soil organic C content at depth z
     Cmic = FT(1.0) # 4 [kg C m-3] Microbial C pool, ~ 1 % of Csom at DETECT site
 
-    parameters = DETECTModelParameters(;
+    parameters = SoilCO2ModelParameters(;
         P_sfc = P_sfc,
         Rb = Rb,
         α1r = α1r,
@@ -60,15 +66,13 @@ using ClimaLSM.Soil.Biogeochemistry
         soluble_fraction = soluble_fraction,
         D_liq = D_liq,
         Estar = Estar,
-        T_ref = T_ref,
         α4 = α4,
         T_ref_soil = T_ref_soil,
-        α5 = α5,
         ν = ν,
         θ_a100 = θ_a100,
         D_ref = D_ref,
-        P_ref = P_ref,
         b = b,
+        earth_param_set = earth_param_set
     )
 
     # Test that parameterizations functions are working properly
@@ -76,12 +80,12 @@ using ClimaLSM.Soil.Biogeochemistry
     @test θ_a == parameters.ν - θ_w
     @test typeof(θ_a) == FT
 
-    D = co2_diffusivity(T_soil, P_sfc, θ_w, parameters)
+    D = co2_diffusivity(T_soil, θ_w, parameters)
     @test D ==
           (
               parameters.D_ref *
               (T_soil / T_ref)^FT(1.75) *
-              (parameters.P_ref / parameters.P_sfc)
+              (FT(LSMP.P_ref(parameters.earth_param_set)) / parameters.P_sfc)
           ) *
           (FT(2)parameters.θ_a100^FT(3) + FT(0.04)parameters.θ_a100) *
           (θ_a / parameters.θ_a100)^(FT(2) + FT(3) / parameters.b)
