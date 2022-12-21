@@ -326,6 +326,7 @@ function surface_fluxes(
         p.bucket.T_sfc,
         p.bucket.q_sfc,
         Y.bucket.σS,
+        Y.bucket.W,
         coordinate_field(Y.bucket.σS),
         t,
         Ref(parameters),
@@ -337,6 +338,7 @@ function surface_fluxes_at_a_point(
     T_sfc::FT,
     q_sfc::FT,
     σS::FT,
+    W::FT,
     coords,
     t::FT,
     parameters::P,
@@ -347,7 +349,7 @@ function surface_fluxes_at_a_point(
     PA <: PrescribedAtmosphere{FT},
 }
     @unpack ρ_atmos, T_atmos, u_atmos, q_atmos, h_atmos, ρ_sfc = atmos
-    @unpack z_0m, z_0b, σS_c, earth_param_set = parameters
+    @unpack z_0m, z_0b, σS_c, W_f, earth_param_set = parameters
     _ρ_liq = LSMP.ρ_cloud_liq(earth_param_set)
 
     thermo_params = LSMP.thermodynamic_parameters(earth_param_set)
@@ -369,12 +371,15 @@ function surface_fluxes_at_a_point(
         ts_in,
     )
 
+    snow_cover_fraction = heaviside(σS)
     # State containers
     sc = SurfaceFluxes.ValuesOnly{FT}(;
         state_in,
         state_sfc,
         z0m = z_0m,
         z0b = z_0b,
+        beta = FT(1 - snow_cover_fraction) * β(W, W_f) +
+               snow_cover_fraction * 1,
     )
     surface_flux_params = LSMP.surface_fluxes_parameters(earth_param_set)
     conditions = SurfaceFluxes.surface_conditions(surface_flux_params, sc)
@@ -443,7 +448,7 @@ function radiative_fluxes_at_a_point(
     # Recall that the user passed the LW and SW downwelling radiation,
     # where positive values indicate toward surface, so we need a negative sign out front
     # in order to inidicate positive R_n  = towards atmos.
-    R_n = -(FT(1) - α) * SW_d(t) - LW_d(t) + _σ * T_sfc^FT(4.0)
+    R_n = -(1 - α) * SW_d(t) - LW_d(t) + _σ * T_sfc^4
     return R_n
 end
 
@@ -499,8 +504,7 @@ function make_rhs(model::BucketModel{FT}) where {FT}
                 ClimaCore.Geometry.WVector.(FT(0.0)),
             ),
         )
-        @. dY.bucket.T =
-            -FT(1.0) / ρc_soil * (divf2c(-κ_soil * gradc2f(Y.bucket.T))) # Simple heat equation, Eq 6
+        @. dY.bucket.T = -1 / ρc_soil * (divf2c(-κ_soil * gradc2f(Y.bucket.T))) # Simple heat equation, Eq 6
 
 
         # Partition water fluxes
@@ -513,7 +517,7 @@ function make_rhs(model::BucketModel{FT}) where {FT}
             Y.bucket.W,
             snow_melt, # snow melt already multipied by snow_cover_fraction
             liquid_precip,
-            (FT(1.0) - snow_cover_fraction) * evaporation,
+            (1 - snow_cover_fraction) * evaporation,
             W_f,
         ) # Equation (4b) of the text.
 
@@ -523,7 +527,7 @@ function make_rhs(model::BucketModel{FT}) where {FT}
         dY.bucket.Ws = @. (
             (
                 liquid_precip + snow_melt -
-                (FT(1.0) - snow_cover_fraction) * evaporation
+                (1 - snow_cover_fraction) * evaporation
             ) - infiltration
         ) # Equation (5) of the text, snow melt already multipied by snow_cover_fraction
 
@@ -587,22 +591,16 @@ function make_update_aux(model::BucketModel{FT}) where {FT}
         )
         ρ_sfc = surface_air_density(p, model.atmos)
 
-        snow_cover_fraction = heaviside.(Y.bucket.σS)
-        q_sat =
+        # This relies on the surface specific humidity being computed
+        # entirely over snow or over soil. i.e. the snow cover fraction must be a heaviside
+        # here, otherwise we would need two values of q_sfc!
+        p.bucket.q_sfc .=
             saturation_specific_humidity.(
                 p.bucket.T_sfc,
                 Y.bucket.σS,
                 ρ_sfc,
                 Ref(model.parameters),
             )
-        # This relies on the surface specific humidity being computed
-        # entirely over snow or over soil. i.e. the snow cover fraction must be a heaviside
-        # here, otherwise we would need two values of q_sfc!
-        p.bucket.q_sfc = @. (
-            (FT(1.0) - snow_cover_fraction) *
-            β(Y.bucket.W, model.parameters.W_f) *
-            q_sat + snow_cover_fraction * q_sat
-        )
 
         turbulent_fluxes =
             surface_fluxes(Y, p, t, model.parameters, model.atmos)
