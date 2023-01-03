@@ -32,7 +32,7 @@ export SoilCO2ModelParameters,
     AbstractSoilDriver
 
 """
-    SoilCO2ModelParameters{FT <: AbstractFloat}
+    SoilCO2ModelParameters{FT <: AbstractFloat, PSE}
 
 A struct for storing parameters of the `SoilCO2Model`.
 $(DocStringExtensions.FIELDS)
@@ -83,29 +83,30 @@ struct SoilCO2ModelParameters{FT <: AbstractFloat, PSE}
 end
 
 """
-    SoilCO2ModelParameters(;
-                           P_sfc::FT
-                           Rb::FT,
-                           Vb::FT,
-                           α1r::FT,
-                           α2r::FT,
-                           α3r::FT,
-                           α1m::FT,
-                           α2m::FT,
-                           α3m::FT,
-                           α4::FT,
-                           ν::FT,
-                           b::FT, 
-                           θ_a100::FT,
-                           D_ref::FT,
-                           T_ref_soil::FT
-                           Km::FT,
-                           CUE::FT,
-                           Estar::FT,
-                           D_liq::FT,
-                           soluble_fraction::FT
-                           earth_param_set::PSE
-                           ) where {FT, PSE}
+    SoilCO2ModelParameters{FT}(;
+                                P_sfc = FT(101e3),
+                                ν = FT(0.556),
+                                θ_a100 = FT(0.1816),
+                                D_ref = FT(1.39e-5),
+                                Rb = FT(1.67e-8),
+                                Vb = FT(4.167e-7),
+                                α1r = FT(11.65),
+                                α2r = FT(20.7),
+                                α3r = FT(-164.2),
+                                α1m = FT(14.05),
+                                α2m = FT(11.05),
+                                α3m = FT(-87.6),
+                                α4 = FT(-4.7),
+                                b = FT(4.547),
+                                T_ref_soil = FT(283.15),
+                                Km = FT(2.78e-9),
+                                CUE = FT(0.8),
+                                Estar = FT(324.6),
+                                D_liq = FT(3.17),
+                                soluble_fraction = FT(0.004),
+                                earth_param_set::PSE
+                               ) where {FT, PSE}
+
 
 An outer constructor for creating the parameter struct of the `SoilCO2Model`,
     based on keyword arguments.
