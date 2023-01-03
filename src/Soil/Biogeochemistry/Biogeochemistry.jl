@@ -110,7 +110,7 @@ end
 An outer constructor for creating the parameter struct of the `SoilCO2Model`,
     based on keyword arguments.
 """
-function SoilCO2ModelParameters(;
+function SoilCO2ModelParameters{FT}(;
     P_sfc = FT(101e3),
     ν = FT(0.556),
     θ_a100 = FT(0.1816),

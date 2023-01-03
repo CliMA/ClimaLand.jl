@@ -30,7 +30,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     Csom = (z, t) -> eltype(t)(5.0) # 3 [kg C m-3] soil organic C content at depth z
     Cmic = (z, t) -> eltype(t)(1.0) # 4 [kg C m-3] Microbial C pool, ~ 1 % of Csom at DETECT site
     D_ref = FT(0.0)
-    parameters = SoilCO2ModelParameters(;D_ref = D_ref, earth_param_set = earth_param_set)
+    parameters = SoilCO2ModelParameters{FT}(;D_ref = D_ref, earth_param_set = earth_param_set)
 
     nelems = 50 # number of layers in the vertical
     zmin = FT(-1) # 0 to 1 m depth
@@ -82,7 +82,7 @@ end
     Csom = (z, t) -> eltype(t)(5.0) # 3 [kg C m-3] soil organic C content at depth z
     Cmic = (z, t) -> eltype(t)(1.0) # 4 [kg C m-3] Microbial C pool, ~ 1 % of Csom at DETECT site
 
-    parameters = SoilCO2ModelParameters(;earth_param_set = earth_param_set)
+    parameters = SoilCO2ModelParameters{FT}(;earth_param_set = earth_param_set)
     C = FT(4)
     nelems = 50 # number of layers in the vertical
     zmin = FT(-1) # 0 to 1 m depth
