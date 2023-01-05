@@ -10,6 +10,7 @@ export AbstractModel,
     auxiliary_vars,
     prognostic_types,
     auxiliary_types,
+    make_set_initial_aux_state,
     name
 
 import .Domains: coordinates
@@ -115,6 +116,33 @@ function make_ode_function(model::AbstractModel)
     end
     return ode_function!
 end
+
+"""
+    make_set_initial_aux_state(model::AbstractModel)
+
+Returns the set_initial_aux_state! function, which updates the auxiliary
+state `p` in place with the initial values corresponding to Y(t=t0) = Y0.
+
+In principle, this function is not needed, because in the very first evaluation
+of the `ode_function`, at t=t0, the auxiliary state is updated using the initial
+conditions for Y=Y0. However,
+without setting the initial `p` state prior to running the simulation,
+ the value of `p` in the saved output at t=t0 will be unset.
+
+Furthermore, specific methods of this function may be useful for models
+which store time indepedent spatially varying parameter fields in 
+the auxiliary state. In this case, `update_aux!` does not need to do
+anything, but they do need to be set with the initial (constant) values
+before the simulation can be carried out.
+"""
+function make_set_initial_aux_state(model::AbstractModel)
+    update_aux! = make_update_aux(model)
+    function set_initial_aux_state!(p, Y0, t0)
+        update_aux!(p, Y0, t0)
+    end
+    return set_initial_aux_state!
+end
+
 
 """
     initialize_prognostic(model::AbstractModel, state::Union{ClimaCore.Fields.Field, Vector{FT}})

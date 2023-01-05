@@ -11,7 +11,8 @@ ClimaLSM.Bucket.PrescribedAtmosphere
 ClimaLSM.Bucket.PrescribedRadiativeFluxes
 ClimaLSM.Bucket.AbstractAtmosphericDrivers
 ClimaLSM.Bucket.AbstractRadiativeDrivers
-ClimaLSM.Bucket.BulkAlbedo
+ClimaLSM.Bucket.BulkAlbedoMap
+ClimaLSM.Bucket.BulkAlbedoFunction
 ClimaLSM.Bucket.BucketModel
 ```
 
@@ -25,4 +26,17 @@ ClimaLSM.Bucket.liquid_precipitation
 ClimaLSM.Bucket.snow_precipitation
 ClimaLSM.Bucket.surface_albedo
 ClimaLSM.Bucket.partition_surface_fluxes
+```
+
+## Methods for handling parameters read in from NetCDF files
+
+```@docs
+ClimaLSM.Bucket.set_initial_parameter_field!
+ClimaLSM.Bucket.update_soil_albedo
+```
+
+## Artifact Path Functions
+
+```@docs
+ClimaLSM.Bucket.cesm2_land_albedo_dataset_path
 ```
