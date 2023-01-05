@@ -15,12 +15,14 @@ Base.@kwdef struct LSMParameters{FT, TP, SFP} <: ALSMP
     Stefan::FT
     T_freeze::FT
     grav::FT
+    MSLP::FT
+    gas_constant::FT
     thermo_params::TP
     surf_flux_params::SFP
 end
 
 # wrapper methods:
-
+P_ref(ps::ALSMP) = ps.MSLP
 K_therm(ps::ALSMP) = ps.K_therm
 ρ_cloud_liq(ps::ALSMP) = ps.ρ_cloud_liq
 ρ_cloud_ice(ps::ALSMP) = ps.ρ_cloud_ice
@@ -32,6 +34,7 @@ LH_s0(ps::ALSMP) = ps.LH_s0
 Stefan(ps::ALSMP) = ps.Stefan
 T_freeze(ps::ALSMP) = ps.T_freeze
 grav(ps::ALSMP) = ps.grav
+gas_constant(ps::ALSMP) = ps.gas_constant
 # Derived parameters
 LH_f0(ps::ALSMP) = LH_s0(ps) - LH_v0(ps)
 
