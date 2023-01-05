@@ -78,6 +78,15 @@ struct SoilCO2ModelParameters{FT <: AbstractFloat, PSE}
     D_ref::FT
     "Absolute value of the slope of the line relating log(ψ) versus log(θ) (unitless)"
     b::FT
+    # DAMM
+    "Pre-exponential factor (mgC cm-3 h-1)"
+    α_sx::FT
+    "Activation energy (kJ mol-1)"
+    Ea_sx::FT
+    "Michaelis constant (gC cm-3)"
+    kM_sx::FT
+    "Michaelis constant for O2 (L L-1)"
+    kM_o2::FT
     "Physical constants used Clima-wide"
     earth_param_set::PSE
 end
@@ -104,6 +113,11 @@ end
                                 Estar = FT(324.6),
                                 D_liq = FT(3.17),
                                 soluble_fraction = FT(0.004),
+                                # DAMM
+                                α_sx = FT(7e8),
+                                Ea_sx = FT(61),
+                                kM_sx = FT(5e-6),
+                                kM_o2 = FT(0.004),
                                 earth_param_set::PSE
                                ) where {FT, PSE}
 
@@ -132,6 +146,11 @@ function SoilCO2ModelParameters{FT}(;
     Estar = FT(324.6),
     D_liq = FT(3.17),
     soluble_fraction = FT(0.004),
+    # DAMM
+    α_sx = FT(7e8),
+    Ea_sx = FT(61),
+    kM_sx = FT(5e-6),
+    kM_o2 = FT(0.004),
     earth_param_set::PSE
 ) where {FT, PSE}
     return SoilCO2ModelParameters{FT, PSE}(
@@ -155,6 +174,11 @@ function SoilCO2ModelParameters{FT}(;
         θ_a100,
         D_ref,
         b,
+        # DAMM
+        α_sx,
+        Ea_sx,
+        kM_sx,
+        kM_o2,
         earth_param_set
     )
 end

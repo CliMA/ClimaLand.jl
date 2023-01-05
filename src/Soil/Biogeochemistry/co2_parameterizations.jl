@@ -243,3 +243,46 @@ function microbe_source(
     Sm = Vmax * Csol / (Km + Csol) * Cmic * (FT(1) - CUE)
     return Sm
 end
+
+
+
+
+# Microbe sourcee: Dual Arrhenius Michaelis Menten (Davidson et al., 2012)
+
+# These are constants used, do we have them? add them to earth_param_set?
+# const O2_a = 0.209 # Volume of O₂ in the air
+
+# NOTE: might not want this one as a constant, as O2 in soil air if a function of depth and time...
+
+# const D_li = 3.17 # Diffusion coefficient of substrate in liquid phase, dimensionless
+# const D_oa = 1.67 # Diffusion coefficient of oxygen in air, dimensionless
+# const p_sx = 0.024 # Fraction of soil carbon that is considered soluble
+# const R = 8.314472e-3 # gas constant, kJ K-1 mol-1
+
+function microbe_source(
+    T_soil::FT,
+    θ_l::FT,
+    Csom::FT.
+    params::SoilCO2ModelParameters{FT},
+) where {FT}
+    @unpack α_sx, Ea_sx, kM_sx, kM_o2, ν, earth_param_set = params
+
+    # TO DO: get constants from earth_param_set here 
+
+    Vmax = α_sx * exp(-Ea_sx/(R * T_soil)) # Maximum potential rate of respiration
+    Sx = p_sx * Csom * D_li * θ_l^3 # All soluble substrate, gC cm⁻³
+    MM_sx = Sx / (kM_sx + Sx) # Availability of substrate factor, 0-1 
+    # ν_a = ν - θ_l # Air filled porosity
+    # ν_a[ν_a < 0.0] = NaN # Moisture cannot be greater than porosity
+    O2 = D_oa * O2_a * ((ν - θ_l)^(4/3)) # Oxygen concentration
+    MM_o2 = O2 / (kM_o2 + O2) # Oxygen limitation factor, 0-1
+    R_sm = Vmax * MM_sx * MM_o2 # Respiration, mg C cm⁻³ hr⁻¹
+    return R_sm
+end
+
+
+
+
+
+
+
