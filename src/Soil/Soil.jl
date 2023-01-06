@@ -86,8 +86,9 @@ export RichardsModel,
     AbstractSoilModel,
     AbstractSoilSource,
     FluxBC,
-    FreeDrainage,
     PhaseChange
+#PrecipFreeDrainage,
+#boundary_fluxes,
 
 """
     AbstractSoilBC <: ClimaLSM. AbstractBC
@@ -208,7 +209,6 @@ function ClimaLSM.boundary_flux(
     return bc.bc(p, t) .+ ClimaCore.Fields.zeros(axes(Δz))
 end
 
-
 """
     ClimaLSM.boundary_flux(rre_bc::StateBC, ::ClimaLSM.TopBoundary, Δz, p, t, params)::ClimaCore.Fields.Field
 
@@ -305,7 +305,6 @@ function ClimaLSM.boundary_flux(
     # Approximate κ_bc ≈ κ_c (center closest to the boundary)
     T_c = Fields.level(p.soil.T, 1)
     κ_c = Fields.level(p.soil.κ, 1)
-
     T_bc = heat_bc.bc(p, t)
     return ClimaLSM.diffusive_flux(κ_c, T_c, T_bc, Δz)
 end

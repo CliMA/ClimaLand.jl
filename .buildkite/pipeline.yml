@@ -22,6 +22,10 @@ steps:
       - "julia --project=test -e 'using Pkg; Pkg.instantiate(;verbose=true)'"
       - "julia --project=test -e 'using Pkg; Pkg.precompile()'"
       - "julia --project=test -e 'using Pkg; Pkg.status()'"
+
+      - "julia --project=experiments -e 'using Pkg; Pkg.instantiate(;verbose=true)'"
+      - "julia --project=experiments -e 'using Pkg; Pkg.precompile()'"
+      - "julia --project=experiments -e 'using Pkg; Pkg.status()'"
       
   - wait
 
@@ -48,9 +52,9 @@ steps:
         command: "julia --color=yes --project=test test/Vegetation/plant_hydraulics_test.jl"
         artifact_paths: "plant_hydraulics_test/"
 
-      - label: "lsm_test"
-        command: "julia --color=yes --project=test test/LSM/lsm_test.jl"
-        artifact_paths: "lsm_test/"
+      - label: "ozark_test"
+        command: "julia --color=yes --project=experiments experiments/LSM/ozark_test.jl"
+        artifact_paths: "ozark_test/"
 
       - label: "domains"
         command: "julia --color=yes --project=test test/domains.jl"
