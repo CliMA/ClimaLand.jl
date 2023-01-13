@@ -1,0 +1,36 @@
+# Notes 01/12/23
+#
+# Why do this little web dashboard?
+# Help with debugging
+# Communication (to funders, between scientists, to public, etc.)
+# Web = super accessible (just open an URL), e.g., instant in a meeting if subject randomly comes up
+# Web = super accessible (can be integrated in a slidev presentation in 1 line of code)
+# etc...
+#
+# To do: 
+# 1. Deal with the porosity issue, again... when soil moisture > porosity, crashes
+# 2. Separate the script into functions, write the module
+# 3. Register package to Julia registry
+# 4. Better layout (can we group multiple block, e.g., SliderGrid and its Label)
+# 5. What arguments should be entered by user: AbstractModel, Driver, Driver limit, ... ? 
+# 6. Parameters should change dynamically with menu (model) selection
+# 7. Little tweaks: better colors, maybe straight lines, output value, datainspector
+# 8. Eventually if complete App, 2 menu, 1 to chose AbstractModel, 1 to chose parameterization function
+# 9. Currently prototype with SoilCO2Model, need to test if work with others
+# 10. Where to host? ClimaCoreMakie? ClimaLSM? New repo?
+# 11. Deal with cases where a parameterization function only depends on 1 driver (thus no 3D axis to be done)
+# 12. Deal with function that do not use earth_param_set (can use multiple dispatch or if)
+# 13. When defining functions, need a fixed driver if more than 2. (e.g., SOM here) This needs to be automatised
+# 14. Add units - of parameters and output (soil co2 production)
+#
+# Questions for Kat:
+# 1. Why do we need to do using ClimaLSM.Soil.Biogeochemistry specifically?
+# 2. We have 3 drivers explicitely declared with SoilCO2: temperature, moisture, SOM (prescribed for now)
+#    Do all AbstractModel declare some drivers? Are they always distinct from parameters? 
+#    Are constant parameters always somehow disctinct from variable parameters in their declaration? (e.g., using earth_param_set)
+# 3. Can we somehow retrieve the name of parameterization functions of an AbstractModel? My understanding is that we currently have 3 parameterisation functions for SoilCO2, but they don't seem to be contained in anything, so we can't list them somehow
+# 4. What automated range of parameters seems to be a good idea? (min:step:max, initial_value), note that it helps to have default values like we did for this (otherwise user would have to provide it) 
+# 5. Do you know a better/simpler way to do the mat function below? (compute function on a grid to generate matrix)
+# 6. Should drivers have a default value too? (if not, user can enter it)
+
+
