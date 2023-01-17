@@ -2,7 +2,6 @@
 ArtifactWrappers = "a14bc488-3040-4b00-9dc1-f6467924858a"
 CLIMAParameters = "6eacf6c3-8458-43b9-ae03-caf5306d3d53"
 ClimaCore = "d414da3d-4745-48bb-8d80-42e94e092884"
-ClimaLSM = "7884a58f-fab6-4fd0-82bb-ecfedb2d8430"
 DiffEqBase = "2b5f629d-d688-5b77-993f-72d75c75574e"
 DiffEqCallbacks = "459566f4-90b8-5000-8ac3-15dfb0a30def"
 Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
@@ -18,8 +17,8 @@ Thermodynamics = "b60c26fb-14c3-4610-9d3e-2d17fe7ff00c"
 
 [compat]
 CLIMAParameters = "0.7.0"
-ClimaCore = "0.10.18"
+ClimaCore = "0.10.24"
 SciMLBase = "<1.51"
-SurfaceFluxes = "0.5.0"
+SurfaceFluxes = "0.5"
 Thermodynamics = "0.9.2, 0.10"
 julia = "1.8"
