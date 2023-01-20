@@ -5,7 +5,7 @@ using ClimaLSM, ClimaLSM.Soil.Biogeochemistry
 model_parameters = SoilCO2ModelParameters
 model_functions = Dict("CO2 production" => (d1, d2, p) -> microbe_source(d1, d2, 5.0, p),
                        "CO2 diffusivity" => co2_diffusivity)
-drivers_name = ["Soil temperature [K]", "Soil moisture [m³ m⁻³]"]
+drivers_name = ["T_soil", "M_soil"]
 drivers_limit = ([273, 303], [0.0, 0.5])
 
 param_dashboard(model_parameters, model_functions, drivers_name, drivers_limit)
@@ -21,7 +21,7 @@ function param_dashboard(model_parameters, model_functions, drivers_name, driver
   fig = Figure(resolution = (1200, 1200))
   menu_opt = collect(keys(model_functions)) 
   menu = Menu(fig[1,1:2], options = menu_opt); m = menu.selection
-  ax3D = Axis3(fig[2,1], xlabel = drivers_name[1], ylabel = drivers_name[2])
+  ax3D = Axis3(fig[2,2], xlabel = drivers_name[1], ylabel = drivers_name[2])
   ax_d1 = Axis(fig[3,1], xlabel = drivers_name[1])
   ax_d2 = Axis(fig[3,2], xlabel = drivers_name[2])
 
@@ -41,10 +41,10 @@ function param_dashboard(model_parameters, model_functions, drivers_name, driver
   # Layouting sliders
   s_layout = GridLayout()
   param_title = s_layout[1,1] = Label(fig, "Parameters")
-  sg = s_layout[2,1] = SliderGrid(fig, sliders..., width = 450)
-  param_title_d = s_layout[3,1] = Label(fig, "Drivers")
-  sg_d = s_layout[4,1] = SliderGrid(fig, sliders_d..., width = 450)
-  fig.layout[2,2] = s_layout
+  sg = s_layout[2,1] = SliderGrid(fig, sliders..., width = 250)
+  param_title_d = s_layout[1,2] = Label(fig, "Drivers")
+  sg_d = s_layout[2,2] = SliderGrid(fig, sliders_d..., width = 220)
+  fig.layout[2,1] = s_layout
 
   # Get Observable and their values from SliderGrid
   sd = Dict(i => sg.sliders[i].value for i in 1:length(sliders))
@@ -62,7 +62,7 @@ function param_dashboard(model_parameters, model_functions, drivers_name, driver
   x = @lift(mat(drivers_limit[1], drivers_limit[2], 30, model_functions[$m], $parameters)[1]) 
   y = @lift(mat(drivers_limit[1], drivers_limit[2], 30, model_functions[$m], $parameters)[2])
   z = @lift(mat(drivers_limit[1], drivers_limit[2], 30, model_functions[$m], $parameters)[3])
-  surface!(ax3D, x, y, z)
+  surface!(ax3D, x, y, z, colormap = Reverse(:Spectral), transparency = true, alpha = 0.2, shading = false)
 
   # Plot 2D lines of model(drivers, params)
   x_d1 = collect(range(drivers_limit[1][1], drivers_limit[1][2], 31)) 
@@ -102,6 +102,7 @@ function param_dashboard(model_parameters, model_functions, drivers_name, driver
     autolimits!(ax_d2)
   end
 
+  DataInspector(fig)
   return fig
 end
 
