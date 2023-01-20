@@ -5,6 +5,7 @@ FT = Float64 # not sure why this is needed, but bug if I don't
 using WGLMakie
 using JSServe
 using SparseArrays
+using Statistics
 
 using ClimaLSM # needed because of create_parameters.jl 
 using ClimaLSM.Soil.Biogeochemistry # how can I avoid this deps?
