@@ -21,9 +21,9 @@ function param_dashboard(model_parameters, model_functions, drivers_name, driver
   fig = Figure(resolution = (1200, 1200))
   menu_opt = collect(keys(model_functions)) 
   menu = Menu(fig[1,1:2], options = menu_opt); m = menu.selection
-  ax3D = Axis3(fig[2,2], xlabel = drivers_name[1], ylabel = drivers_name[2])
-  ax_d1 = Axis(fig[3,1], xlabel = drivers_name[1])
-  ax_d2 = Axis(fig[3,2], xlabel = drivers_name[2])
+  ax3D = Axis3(fig[2,2], xlabel = drivers_name[1], ylabel = drivers_name[2])#, alignmode = Outside(50))
+  ax_d1 = Axis(fig[3,1], xlabel = drivers_name[1])#, alignmode = Outside(50))
+  ax_d2 = Axis(fig[3,2], xlabel = drivers_name[2])#, alignmode = Outside(50))
 
   # Get SliderGrid args for parameters
   FT = Float64 
@@ -35,7 +35,7 @@ function param_dashboard(model_parameters, model_functions, drivers_name, driver
 
   # Get SliderGrid args for drivers
   startval_d = [mean(drivers_limit[1]), mean(drivers_limit[2])]  
-  ranges_d = [(val/2 : val/4: val*2, val) for val in startval_d]
+  ranges_d = [(range(drivers_limit[i][1], drivers_limit[i][2], 31), startval_d[i]) for i in 1:2]
   sliders_d = [(label = label, range = range, startvalue = startvalue) for (label, (range, startvalue)) in zip(drivers_name, ranges_d)]
   
   # Layouting sliders
@@ -102,7 +102,11 @@ function param_dashboard(model_parameters, model_functions, drivers_name, driver
     autolimits!(ax_d2)
   end
 
+  colsize!(fig.layout, 1, Relative(1/2))
+  rowsize!(fig.layout, 3, Relative(1/3))
+
   DataInspector(fig)
+
   return fig
 end
 
