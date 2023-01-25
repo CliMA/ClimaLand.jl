@@ -242,6 +242,8 @@ using .Soil
 import .Soil.Biogeochemistry: soil_temperature, soil_moisture
 include("Snow/Snow.jl")
 using .Snow
+include("Vegetation/Canopy.jl")
+using .Canopy
 include("Vegetation/PlantHydraulics.jl")
 using .PlantHydraulics
 import .PlantHydraulics: flux_out_roots

@@ -62,7 +62,6 @@ function LandSoilBiogeochemistry{FT}(;
         )
     end
 
-    @assert soil_args.parameters.ν == soilco2_args.parameters.ν
     args = (soil, soilco2)
     return LandSoilBiogeochemistry{FT, typeof.(args)...}(args...)
 end
@@ -79,6 +78,7 @@ end
 
 """
     soil_moisture(driver::PrognosticSoil, p, Y, t, z)
+
 Returns the volumetric liquid fraction, computed by the soil
 model from the prognostic liquid and ice fractions.
 """
