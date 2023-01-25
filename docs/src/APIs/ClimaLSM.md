@@ -7,6 +7,7 @@ CurrentModule = ClimaLSM
 
 ```@docs
 ClimaLSM.SoilPlantHydrologyModel
+ClimaLSM.LandSoilBiogeochemistry
 ClimaLSM.LandHydrology
 ClimaLSM.make_interactions_update_aux
 ClimaLSM.initialize_interactions
@@ -31,4 +32,10 @@ ClimaLSM.RunoffBC
 ```@docs
 ClimaLSM.PrognosticSoilPressure
 ClimaLSM.RootExtraction
+```
+
+## LandSoilBiogeochemistry
+
+```@docs
+ClimaLSM.PrognosticMet
 ```

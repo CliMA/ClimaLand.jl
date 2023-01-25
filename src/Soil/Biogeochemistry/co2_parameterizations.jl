@@ -1,15 +1,6 @@
 using UnPack
 
-export volumetric_air_content,
-    co2_diffusivity,
-    root_source_moisture_coeff,
-    source_temperature_coeff,
-    energy_activation,
-    root_source,
-    microbe_source_moisture_coeff,
-    decomposition_potential,
-    soluble_soil_carbon,
-    microbe_source
+export volumetric_air_content, co2_diffusivity, microbe_source
 
 
 """

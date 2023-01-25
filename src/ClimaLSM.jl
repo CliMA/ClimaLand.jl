@@ -61,8 +61,9 @@ function Domains.coordinates(model::AbstractLandModel)
     domains_list = map(components) do (component)
         domain(getproperty(model, component))
     end
-    coords =
-        ClimaCore.Fields.FieldVector(; NamedTuple{domains_list}(coords_list)...)
+    coords = ClimaCore.Fields.FieldVector(;
+        NamedTuple{Tuple(unique(domains_list))}(Tuple(unique(coords_list)))...,
+    )
     return coords
 end
 
@@ -153,7 +154,12 @@ side evaluation.
 
 This is a stub which concrete types of LSMs extend.
 """
-function make_interactions_update_aux(land::AbstractLandModel) end
+function make_interactions_update_aux(land::AbstractLandModel)
+    function interactions_update_aux!(p, Y, t)
+        nothing
+    end
+    return interactions_update_aux!
+end
 
 """
     land_components(land::AbstractLandModel)
@@ -233,6 +239,7 @@ using .Pond
 import .Pond: surface_runoff
 include("Soil/Soil.jl")
 using .Soil
+import .Soil.Biogeochemistry: soil_temperature, soil_moisture
 include("Snow/Snow.jl")
 using .Snow
 include("Vegetation/PlantHydraulics.jl")
@@ -240,6 +247,7 @@ using .PlantHydraulics
 import .PlantHydraulics: flux_out_roots
 ### Concrete types of AbstractLandModels
 ### and associated methods
+include("./soil_energy_hydrology_biogeochemistry.jl")
 include("./soil_plant_hydrology_model.jl")
 include("./pond_soil_model.jl")
 end
