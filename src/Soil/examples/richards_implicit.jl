@@ -341,22 +341,53 @@ Adapted from https://github.com/CliMA/ClimaLSM.jl/blob/f41c497a12f91725ff23a9cd7
 function make_explicit_tendency(model::Soil.RichardsModel)
     function explicit_tendency!(dY, Y, p, t)
         @unpack ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r = model.parameters
+        (; K, ψ) = p.soil
 
-        @. p.soil.K = hydraulic_conductivity(
+        @. K = hydraulic_conductivity(
             K_sat,
             vg_m,
             effective_saturation(ν, Y.soil.ϑ_l, θ_r),
         )
-        @. p.soil.ψ = pressure_head(vg_α, vg_n, vg_m, θ_r, Y.soil.ϑ_l, ν, S_s)
-        hdiv = Operators.WeakDivergence()
-        hgrad = Operators.Gradient()
+        @. ψ = pressure_head(vg_α, vg_n, vg_m, θ_r, Y.soil.ϑ_l, ν, S_s)
 
         z = ClimaCore.Fields.coordinate_field(model.domain.space).z
-        # TODO dispatch on domain type to allow column
-        @. dY.soil.ϑ_l += -hdiv(-p.soil.K * hgrad(p.soil.ψ + z))
-        Spaces.weighted_dss!(dY.soil.ϑ_l)
+        horizontal_components!(dY, model.domain, model, p, z)
     end
     return explicit_tendency!
+end
+
+"""
+   horizontal_components!(dY::ClimaCore.Fields.FieldVector,
+                          domain::Union{HybridBox, SphericalShell},
+                          model::Soil.RichardsModel,
+                          p::ClimaCore.Fields.FieldVector)
+Updates dY in place by adding in the tendency terms resulting from
+horizontal derivative operators.
+
+In the case of a hybrid box domain, the horizontal contributions are
+computed using the WeakDivergence and Gradient operators.
+"""
+function horizontal_components!(
+    dY::ClimaCore.Fields.FieldVector,
+    domain::Union{HybridBox, SphericalShell},
+    model::Soil.RichardsModel,
+    p::ClimaCore.Fields.FieldVector,
+    z::ClimaCore.Fields.Field,
+)
+    hdiv = Operators.WeakDivergence()
+    hgrad = Operators.Gradient()
+    # The flux is already covariant, from hgrad, so no need to convert.
+    @. dY.soil.ϑ_l += -hdiv(-p.soil.K * hgrad(p.soil.ψ + z))
+    Spaces.weighted_dss!(dY.soil.ϑ_l)
+end
+
+"""
+    horizontal_components!(_, domain::Column, _, _, _)
+
+In the case of a single column domain, there are no horizontal components.
+"""
+function horizontal_components!(_, domain::Column, _, _, _)
+    nothing
 end
 
 is_imex_CTS_algo(::CTS.IMEXAlgorithm) = true
@@ -386,14 +417,16 @@ zmax = FT(0)
 zmin = FT(-10)
 nelems = 50
 
-soil_domain = HybridBox(;
-    zlim = (-10.0, 0.0),
-    xlim = (0.0, 100.0),
-    ylim = (0.0, 100.0),
-    nelements = (10, 10, 10),
-    npolynomial = 1,
-    periodic = (true, true),
-)
+# soil_domain = HybridBox(;
+#     zlim = (-10.0, 0.0),
+#     xlim = (0.0, 100.0),
+#     ylim = (0.0, 100.0),
+#     nelements = (10, 10, 10),
+#     npolynomial = 1,
+#     periodic = (true, true),
+# )
+soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems);
+
 top_flux_bc = FluxBC((p, t) -> eltype(t)(0.0))
 bot_flux_bc = FluxBC((p, t) -> eltype(t)(0.0))
 sources = ()
