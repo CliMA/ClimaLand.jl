@@ -119,9 +119,7 @@ In the case of the Picard method, where W = -I, we don't update
 W when Wfact! is called.
 """
 function Wfact!(W::IdentityW, _, _, dtγ, _)
-    @show typeof(W.dtγ_ref)
     (; dtγ_ref) = W
-    @show typeof(dtγ_ref)
     dtγ_ref[] = dtγ
 end
 
@@ -135,9 +133,9 @@ function Wfact!(W::TridiagonalW, Y, p, dtγ, t)
     (; dtγ_ref, ∂ϑₜ∂ϑ) = W
     dtγ_ref[] = dtγ
 
-    if axes(p.soil.K) isa Spaces.CenterFiniteDifferenceSpace
+    if axes(Y.soil.ϑ_l) isa Spaces.CenterFiniteDifferenceSpace
         face_space = Spaces.FaceFiniteDifferenceSpace(axes(Y.soil.ϑ_l))
-    elseif axes(p.soil.K) isa Spaces.CenterExtrudedFiniteDifferenceSpace
+    elseif axes(Y.soil.ϑ_l) isa Spaces.CenterExtrudedFiniteDifferenceSpace
         face_space = Spaces.FaceExtrudedFiniteDifferenceSpace(axes(Y.soil.ϑ_l))
     else
         error("invalid model space")
@@ -289,16 +287,11 @@ Construct the tendency function for the implicit terms of the RHS.
 Adapted from https://github.com/CliMA/ClimaLSM.jl/blob/f41c497a12f91725ff23a9cd7ba8d563285f3bd8/examples/richards_implicit.jl#L173
 """
 function make_implicit_tendency(model::Soil.RichardsModel)
+    update_aux! = make_update_aux(model)
     function implicit_tendency!(dY, Y, p, t)
-        @unpack ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r = model.parameters
-        (; K, ψ) = p.soil
+        update_aux!(p, Y, t)
 
-        @. K = hydraulic_conductivity(
-            K_sat,
-            vg_m,
-            effective_saturation(ν, Y.soil.ϑ_l, θ_r),
-        )
-        @. ψ = pressure_head(vg_α, vg_n, vg_m, θ_r, Y.soil.ϑ_l, ν, S_s)
+        @unpack ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r = model.parameters
 
         z = ClimaCore.Fields.coordinate_field(model.domain.space).z
         Δz_top, Δz_bottom = get_Δz(z)
@@ -327,7 +320,11 @@ function make_implicit_tendency(model::Soil.RichardsModel)
             bottom = Operators.SetValue(Geometry.WVector.(bot_flux_bc)),
         )
 
-        @. dY.soil.ϑ_l = -(divf2c_water(-interpc2f(K) * gradc2f_water(ψ + z)))
+        @. dY.soil.ϑ_l =
+            -(divf2c_water(-interpc2f(p.soil.K) * gradc2f_water(p.soil.ψ + z)))
+
+        # This has to come last - TODO check
+        ClimaLSM.Soil.dss!(dY, model.domain)
     end
     return implicit_tendency!
 end
@@ -339,19 +336,20 @@ Construct the tendency function for the explicit terms of the RHS.
 Adapted from https://github.com/CliMA/ClimaLSM.jl/blob/f41c497a12f91725ff23a9cd7ba8d563285f3bd8/examples/richards_implicit.jl#L204
 """
 function make_explicit_tendency(model::Soil.RichardsModel)
+    update_aux! = make_update_aux(model)
     function explicit_tendency!(dY, Y, p, t)
-        @unpack ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r = model.parameters
-        (; K, ψ) = p.soil
-
-        @. K = hydraulic_conductivity(
-            K_sat,
-            vg_m,
-            effective_saturation(ν, Y.soil.ϑ_l, θ_r),
-        )
-        @. ψ = pressure_head(vg_α, vg_n, vg_m, θ_r, Y.soil.ϑ_l, ν, S_s)
+        update_aux!(p, Y, t)
 
         z = ClimaCore.Fields.coordinate_field(model.domain.space).z
         horizontal_components!(dY, model.domain, model, p, z)
+
+        # Source terms
+        for src in model.sources
+            ClimaLSM.source!(dY, src, Y, p, model.parameters)
+        end
+
+        # This has to come last - TODO check
+        ClimaLSM.Soil.dss!(dY, model.domain)
     end
     return explicit_tendency!
 end
@@ -378,7 +376,6 @@ function horizontal_components!(
     hgrad = Operators.Gradient()
     # The flux is already covariant, from hgrad, so no need to convert.
     @. dY.soil.ϑ_l += -hdiv(-p.soil.K * hgrad(p.soil.ψ + z))
-    Spaces.weighted_dss!(dY.soil.ϑ_l)
 end
 
 """
@@ -389,6 +386,31 @@ In the case of a single column domain, there are no horizontal components.
 function horizontal_components!(_, domain::Column, _, _, _)
     nothing
 end
+
+"""
+    make_update_aux(model::RichardsModel)
+
+An extension of the function `make_update_aux`, for the Richardson-
+Richards equation. 
+
+This function creates and returns a function which updates the auxiliary
+variables `p.soil.variable` in place.
+
+This has been written so as to work with Differential Equations.jl.
+"""
+function ClimaLSM.make_update_aux(model::RichardsModel)
+    function update_aux!(p, Y, t)
+        @unpack ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r = model.parameters
+        @. p.soil.K = hydraulic_conductivity(
+            K_sat,
+            vg_m,
+            effective_saturation(ν, Y.soil.ϑ_l, θ_r),
+        )
+        @. p.soil.ψ = pressure_head(vg_α, vg_n, vg_m, θ_r, Y.soil.ϑ_l, ν, S_s)
+    end
+    return update_aux!
+end
+
 
 is_imex_CTS_algo(::CTS.IMEXAlgorithm) = true
 is_imex_CTS_algo(::DiffEqBase.AbstractODEAlgorithm) = false
@@ -402,6 +424,7 @@ is_rosenbrock(::ODE.Rosenbrock32) = true
 is_rosenbrock(::DiffEqBase.AbstractODEAlgorithm) = false
 use_transform(ode_algo) =
     !(is_imex_CTS_algo(ode_algo) || is_rosenbrock(ode_algo))
+
 
 # Setup largely taken from ClimaLSM.jl/test/Soil/soiltest.jl
 is_true_picard = true
@@ -463,9 +486,6 @@ init_soil!(Y, coords.z, soil.parameters)
 t_start = 0.0
 t_end = 100.0
 dt = 10.0
-
-update_aux! = make_update_aux(soil)
-update_aux!(p, Y, t_start)
 
 alg_kwargs = (; linsolve = linsolve!)
 
