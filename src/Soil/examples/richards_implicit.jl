@@ -33,6 +33,21 @@ interpc2f_stencil = Operators.Operator2Stencil(interpc2f_op)
 compose = Operators.ComposeStencils()
 to_scalar_coefs(vector_coefs) = map(vector_coef -> vector_coef.u₃, vector_coefs)
 
+"""
+    IdentityW{R}
+
+Jacobian representation used for the true Picard method.
+Here, J = 0 and W = -I, so there is no need to store ∂ϑₜ∂ϑ.
+W_column_arrays would contain -I for each column, so we can
+avoid storing them and instead set x .= b in ldiv for this case.
+"""
+struct IdentityW{R}
+    # reference to dtγ, which is specified by the ODE solver
+    dtγ_ref::R
+
+    # whether this struct is used to compute Wfact_t or Wfact
+    transform::Bool
+end
 
 """
     TridiagonalW{R, J, W, T}
@@ -42,7 +57,11 @@ Jacobian representation used for the modified Picard method.
 struct TridiagonalW{R, J, W, T}
     # reference to dtγ, which is specified by the ODE solver
     dtγ_ref::R
+
+    # derivative of tendency - used to fill Jacobian
     ∂ϑₜ∂ϑ::J
+
+    # array of tridiagonal matrices containing W for each column
     W_column_arrays::W
 
     # caches used to evaluate ldiv!
@@ -53,23 +72,22 @@ struct TridiagonalW{R, J, W, T}
     transform::Bool
 end
 
-# TODO add IdentityW struct
-
 """
-    TridiagonalW(Y, transform)
+    TridiagonalW(Y, transform::Bool)
 
 Constructor for the TridiagonalW struct, used for modified Picard.
 Uses the space information from Y to allocate space for the
 necessary fields.
 """
-function TridiagonalW(Y, transform)
+function TridiagonalW(Y, transform::Bool)
     FT = eltype(Y.soil.ϑ_l)
     space = axes(Y.soil.ϑ_l)
     N = Spaces.nlevels(space)
 
     tridiag_type = Operators.StencilCoefs{-1, 1, NTuple{3, FT}}
-    J = Fields.Field(tridiag_type, space)
-    J_column_array = [
+    ∂ϑₜ∂ϑ = Fields.Field(tridiag_type, space)
+
+    W_column_arrays = [
         LinearAlgebra.Tridiagonal(
             Array{FT}(undef, N - 1),
             Array{FT}(undef, N),
@@ -80,8 +98,8 @@ function TridiagonalW(Y, transform)
 
     return TridiagonalW(
         dtγ_ref,
-        J,
-        J_column_array,
+        ∂ϑₜ∂ϑ,
+        W_column_arrays,
         similar(Y),
         similar(Y),
         transform,
@@ -91,7 +109,21 @@ end
 # We only use Wfact, but the implicit/IMEX solvers require us to pass
 # jac_prototype, then call similar(jac_prototype) to obtain J and Wfact. Here
 # is a temporary workaround to avoid unnecessary allocations.
+Base.similar(w::IdentityW) = w
 Base.similar(w::TridiagonalW) = w
+
+"""
+    Wfact!(W::IdentityW, _, _, dtγ, _)
+
+In the case of the Picard method, where W = -I, we don't update
+W when Wfact! is called.
+"""
+function Wfact!(W::IdentityW, _, _, dtγ, _)
+    @show typeof(W.dtγ_ref)
+    (; dtγ_ref) = W
+    @show typeof(dtγ_ref)
+    dtγ_ref[] = dtγ
+end
 
 """
     Wfact!(W::TridiagonalW, Y, p, dtγ, t)
@@ -99,7 +131,6 @@ Base.similar(w::TridiagonalW) = w
 Compute the entries of the Jacobian and overwrite W with them.
 See overleaf for Jacobian derivation: https://www.overleaf.com/project/63be02f455f84a77642ef485
 """
-# TODO add Wfact! method for identity input
 function Wfact!(W::TridiagonalW, Y, p, dtγ, t)
     (; dtγ_ref, ∂ϑₜ∂ϑ) = W
     dtγ_ref[] = dtγ
@@ -126,16 +157,6 @@ function Wfact!(W::TridiagonalW, Y, p, dtγ, t)
     )
 end
 
-"""
-    Wfact!(W::UniformScaling{T}, x...) where T
-
-In the case of the Picard method, where W = -I, we do not want to update
-W when Wfact! is called.
-"""
-function Wfact!(W::UniformScaling{T}, x...) where {T}
-    nothing
-end
-
 # Copied from https://github.com/CliMA/ClimaLSM.jl/blob/f41c497a12f91725ff23a9cd7ba8d563285f3bd8/examples/richards_implicit.jl#L152
 # Checked against soiltest https://github.com/CliMA/ClimaLSM.jl/blob/e7eaf2e6fffaf64b2d824e9c5755d2f60fa17a69/test/Soil/soiltest.jl#L459
 function dψdθ(θ, ν, θ_r, vg_α, vg_n, vg_m, S_s)
@@ -152,6 +173,26 @@ end
 linsolve!(::Type{Val{:init}}, f, u0; kwargs...) = _linsolve!
 _linsolve!(x, A, b, update_matrix = false; kwargs...) =
     LinearAlgebra.ldiv!(x, A, b)
+
+"""
+    LinearAlgebra.ldiv!(x, A::IdentityW, b)
+
+In the case of true picard, we have x = W*b where W = -I, 
+so we can set x = -b.
+"""
+function LinearAlgebra.ldiv!(x, A::IdentityW, b)
+    (; dtγ_ref, transform) = A
+    dtγ = dtγ_ref[]
+
+    x .= -b
+
+    # Apply transform (if needed)
+    if transform
+        Fields.bycolumn(axes(x.soil.ϑ_l)) do colidx
+            x.soil.ϑ_l[colidx] .*= dtγ
+        end
+    end
+end
 
 # Function required by Krylov.jl (x and b can be AbstractVectors)
 # See https://github.com/JuliaSmoothOptimizers/Krylov.jl/issues/605 for a
@@ -171,7 +212,6 @@ function LinearAlgebra.ldiv!(
     dtγ = dtγ_ref[]
 
     NVTX.@range "linsolve" color = Colors.colorant"lime" begin
-        # Compute Schur complement
         Fields.bycolumn(axes(x.soil.ϑ_l)) do colidx
             _ldiv_serial!(
                 x.soil.ϑ_l[colidx],
@@ -248,7 +288,6 @@ end
 Construct the tendency function for the implicit terms of the RHS.
 Adapted from https://github.com/CliMA/ClimaLSM.jl/blob/f41c497a12f91725ff23a9cd7ba8d563285f3bd8/examples/richards_implicit.jl#L173
 """
-# compared math to make_rhs https://github.com/CliMA/ClimaLSM.jl/blob/main/src/Soil/rre.jl#L88
 function make_implicit_tendency(model::Soil.RichardsModel)
     function implicit_tendency!(dY, Y, p, t)
         @unpack ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r = model.parameters
@@ -299,7 +338,6 @@ end
 Construct the tendency function for the explicit terms of the RHS.
 Adapted from https://github.com/CliMA/ClimaLSM.jl/blob/f41c497a12f91725ff23a9cd7ba8d563285f3bd8/examples/richards_implicit.jl#L204
 """
-# compared math to make_rhs https://github.com/CliMA/ClimaLSM.jl/blob/main/src/Soil/rre.jl#L88
 function make_explicit_tendency(model::Soil.RichardsModel)
     function explicit_tendency!(dY, Y, p, t)
         @unpack ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r = model.parameters
@@ -314,6 +352,7 @@ function make_explicit_tendency(model::Soil.RichardsModel)
         hgrad = Operators.Gradient()
 
         z = ClimaCore.Fields.coordinate_field(model.domain.space).z
+        # TODO dispatch on domain type to allow column
         @. dY.soil.ϑ_l += -hdiv(-p.soil.K * hgrad(p.soil.ψ + z))
         Spaces.weighted_dss!(dY.soil.ϑ_l)
     end
@@ -334,7 +373,7 @@ use_transform(ode_algo) =
     !(is_imex_CTS_algo(ode_algo) || is_rosenbrock(ode_algo))
 
 # Setup largely taken from ClimaLSM.jl/test/Soil/soiltest.jl
-is_true_picard = false
+is_true_picard = true
 
 ν = FT(0.495)
 K_sat = FT(0.0443 / 3600 / 100) # m/s
@@ -400,7 +439,9 @@ alg_kwargs = (; linsolve = linsolve!)
 ode_algo = ODE.Rosenbrock23(; alg_kwargs...)
 transform = use_transform(ode_algo)
 
-W = is_true_picard ? -I : TridiagonalW(Y, transform)
+W =
+    is_true_picard ? IdentityW(Ref(zero(FT)), transform) :
+    TridiagonalW(Y, transform)
 
 jac_kwargs = if use_transform(ode_algo)
     (; jac_prototype = W, Wfact_t = Wfact!)
