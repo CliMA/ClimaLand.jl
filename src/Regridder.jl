@@ -48,15 +48,12 @@ function reshape_cgll_sparse_to_field!(
     end
 
     # broadcast to the redundant nodes using unweighted dss
-    topology = ClimaCore.Spaces.topology(axes(field))
-    ClimaCore.Spaces.dss_interior_faces!(
-        topology,
-        ClimaCore.Fields.field_values(field),
-    )
-    ClimaCore.Spaces.dss_local_vertices!(
-        topology,
-        ClimaCore.Fields.field_values(field),
-    )
+    space = axes(field)
+    topology = ClimaCore.Spaces.topology(space)
+    hspace = ClimaCore.Spaces.horizontal_space(space)
+    target = ClimaCore.Fields.field_values(field)
+
+    ClimaCore.Spaces.dss2!(target, topology, hspace.quadrature_style)
 end
 
 """

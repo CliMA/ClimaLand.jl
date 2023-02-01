@@ -17,7 +17,7 @@ UnPack = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
 [compat]
 CLIMAParameters = "0.7.0"
 ClimaComms = "0.3"
-ClimaCore = "0.10.24"
+ClimaCore = "0.10.25"
 NLsolve = "4.5"
 SciMLBase = "<1.51"
 StaticArrays = "1.5"
