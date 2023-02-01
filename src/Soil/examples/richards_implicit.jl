@@ -21,16 +21,7 @@ include("../../SharedUtilities/boundary_conditions.jl")
 include("../rre.jl")
 
 FT = Float64
-divf2c_op = Operators.DivergenceF2C(
-    top = Operators.SetValue(FT(0.0)),
-    bottom = Operators.SetValue(FT(0.0)),
-)
-divf2c_stencil = Operators.Operator2Stencil(divf2c_op)
-gradc2f_op = Operators.GradientC2F()
-gradc2f_stencil = Operators.Operator2Stencil(gradc2f_op)
-interpc2f_op = Operators.InterpolateC2F()
-interpc2f_stencil = Operators.Operator2Stencil(interpc2f_op)
-compose = Operators.ComposeStencils()
+
 to_scalar_coefs(vector_coefs) = map(vector_coef -> vector_coef.u₃, vector_coefs)
 
 """
@@ -291,40 +282,10 @@ function make_implicit_tendency(model::Soil.RichardsModel)
     function implicit_tendency!(dY, Y, p, t)
         update_aux!(p, Y, t)
 
-        @unpack ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r = model.parameters
-
         z = ClimaCore.Fields.coordinate_field(model.domain.space).z
-        Δz_top, Δz_bottom = get_Δz(z)
-
-        top_flux_bc = ClimaLSM.boundary_flux(
-            model.boundary_conditions.water.top,
-            ClimaLSM.TopBoundary(),
-            Δz_top,
-            p,
-            t,
-            model.parameters,
-        )
-        bot_flux_bc = ClimaLSM.boundary_flux(
-            model.boundary_conditions.water.bottom,
-            ClimaLSM.BottomBoundary(),
-            Δz_bottom,
-            p,
-            t,
-            model.parameters,
-        )
-
-        interpc2f = Operators.InterpolateC2F()
-        gradc2f_water = Operators.GradientC2F()
-        divf2c_water = Operators.DivergenceF2C(
-            top = Operators.SetValue(Geometry.WVector.(top_flux_bc)),
-            bottom = Operators.SetValue(Geometry.WVector.(bot_flux_bc)),
-        )
 
         @. dY.soil.ϑ_l =
-            -(divf2c_water(-interpc2f(p.soil.K) * gradc2f_water(p.soil.ψ + z)))
-
-        # This has to come last - TODO check
-        ClimaLSM.Soil.dss!(dY, model.domain)
+            -(divf2c_op(-interpc2f_op(p.soil.K) * gradc2f_op(p.soil.ψ + z)))
     end
     return implicit_tendency!
 end
@@ -347,9 +308,6 @@ function make_explicit_tendency(model::Soil.RichardsModel)
         for src in model.sources
             ClimaLSM.source!(dY, src, Y, p, model.parameters)
         end
-
-        # This has to come last - TODO check
-        ClimaLSM.Soil.dss!(dY, model.domain)
     end
     return explicit_tendency!
 end
@@ -456,6 +414,22 @@ sources = ()
 boundary_fluxes = (; water = (top = top_flux_bc, bottom = bot_flux_bc))
 params = Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r)
 
+# TODO move operators from global scope?
+divf2c_op = Operators.DivergenceF2C(
+    top = Operators.SetValue(FT(0.0)),
+    bottom = Operators.SetValue(FT(0.0)),
+)
+# divf2c_op = Operators.DivergenceF2C(
+#     top = Operators.SetValue(Geometry.WVector.(top_flux_bc)),
+#     bottom = Operators.SetValue(Geometry.WVector.(bot_flux_bc)),
+# )
+divf2c_stencil = Operators.Operator2Stencil(divf2c_op)
+gradc2f_op = Operators.GradientC2F()
+gradc2f_stencil = Operators.Operator2Stencil(gradc2f_op)
+interpc2f_op = Operators.InterpolateC2F()
+interpc2f_stencil = Operators.Operator2Stencil(interpc2f_op)
+compose = Operators.ComposeStencils()
+
 soil = Soil.RichardsModel{FT}(;
     parameters = params,
     domain = soil_domain,
@@ -489,6 +463,7 @@ dt = 10.0
 
 alg_kwargs = (; linsolve = linsolve!)
 
+# TODO change alg to CTS.SSP333
 ode_algo = ODE.Rosenbrock23(; alg_kwargs...)
 transform = use_transform(ode_algo)
 
@@ -505,6 +480,7 @@ end
 implicit_tendency! = make_implicit_tendency(soil)
 explicit_tendency! = make_explicit_tendency(soil)
 
+# TODO pass ClimaLSM.Soil.dss! to ODEFunction (after ClimaTimeSteppers release)
 problem = SplitODEProblem(
     ODEFunction(
         implicit_tendency!;
