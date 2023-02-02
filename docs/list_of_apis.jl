@@ -12,5 +12,6 @@ apis = [
         "Vegetation Models" => "APIs/Vegetation.md",
         "Surface Water Models" => "APIs/SurfaceWater.md",
         "Bucket Model" => "APIs/Bucket.md",
+        "Snow Model" => "APIs/Snow.md",
     ],
 ]

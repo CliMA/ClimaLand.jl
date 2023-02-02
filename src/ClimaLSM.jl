@@ -230,6 +230,8 @@ using .Pond
 import .Pond: surface_runoff
 include("Soil/Soil.jl")
 using .Soil
+include("Snow/Snow.jl")
+using .Snow
 include("Vegetation/PlantHydraulics.jl")
 using .PlantHydraulics
 import .PlantHydraulics: flux_out_roots
