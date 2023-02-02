@@ -393,131 +393,7 @@ function SphericalSurface(;
     )
 end
 
-"""
-    AbstractVegetationDomain{FT} <: AbstractDomain{FT}
 
-TBD if this needed longer term.
-"""
-abstract type AbstractVegetationDomain{FT} <: AbstractDomain{FT} end
-
-"""
-   PlantHydraulicsDomain{FT} <: AbstractVegetationDomain{FT}
-
-Domain for a single bulk plant with roots of varying depths. The user needs
-to specify the depths of the root tips as wel as the heights of the
-compartments to be modeled within the plant. The compartment heights
-are expected to be sorted in ascending order. The number of stem and leaf
-compartments the plant should be divided into must be specified as well.
-"""
-struct PlantHydraulicsDomain{FT} <: AbstractVegetationDomain{FT}
-    "The depth of the root tips, in meters"
-    root_depths::Vector{FT}
-    "The number of stem compartments for the plant"
-    n_stem::Int64
-    "The number of leaf compartments for the plant"
-    n_leaf::Int64
-    "The height of the center of each leaf compartment/stem compartment, in meters"
-    compartment_midpoints::Vector{FT}
-    "The height of the compartments' top faces, in meters"
-    compartment_surfaces::Vector{FT}
-    "The label (:stem or :leaf) of each compartment"
-    compartment_labels::Vector{Symbol}
-
-    """
-        function PlantHydraulicsDomain(
-            root_depths::Vector{FT},
-            n_stem::Int64,
-            n_leaf::Int64,
-            Δz::FT,
-            ) where {FT}
-
-    Creates an object of the PlantHydraulicsDomain struct type where every plant compartment is
-    the same length.
-    """
-    function PlantHydraulicsDomain(
-        root_depths::Vector{FT},
-        n_stem::Int64,
-        n_leaf::Int64,
-        Δz::FT,
-    ) where {FT}
-        @assert n_leaf != 0
-        compartment_midpoints = Vector{FT}(undef, n_stem + n_leaf)
-        compartment_midpoints = range(
-            start = Δz / 2,
-            step = Δz,
-            stop = Δz * (n_stem + n_leaf) - (Δz / 2),
-        )
-        compartment_labels = Vector{Symbol}(undef, n_stem + n_leaf)
-        for i in 1:(n_stem + n_leaf)
-            if i <= n_stem
-                compartment_labels[i] = :stem
-            else
-                compartment_labels[i] = :leaf
-            end
-        end
-        compartment_surfaces =
-            range(start = 0.0, step = Δz, stop = Δz * (n_stem + n_leaf))
-        new{FT}(
-            root_depths,
-            n_stem,
-            n_leaf,
-            compartment_midpoints,
-            compartment_surfaces,
-            compartment_labels,
-        )
-    end
-
-    """
-        function PlantHydraulicsDomain(
-            root_depths::Vector{FT},
-            n_stem::Int64,
-            n_leaf::Int64,
-            compartment_midpoints::Vector{FT},
-            compartment_surfaces::Vector{FT},
-            ) where {FT}
-
-    Creates an object of the PlantHydraulicsDomain struct type where every plant compartment 
-    may not be the same length. Compartment midpoint heights and the height each compartment's
-    top is at are directly given so that the compartment lengths can vary if desired.
-    """
-    function PlantHydraulicsDomain(
-        root_depths::Vector{FT},
-        n_stem::Int64,
-        n_leaf::Int64,
-        compartment_midpoints::Vector{FT},
-        compartment_surfaces::Vector{FT},
-    ) where {FT}
-        @assert n_leaf != 0
-        @assert (n_leaf + n_stem) == length(compartment_midpoints)
-        @assert (n_leaf + n_stem) + 1 == length(compartment_surfaces)
-        for i in 1:length(compartment_midpoints)
-            @assert compartment_midpoints[i] ==
-                    (
-                (compartment_surfaces[i + 1] - compartment_surfaces[i]) / 2
-            ) + compartment_surfaces[i]
-        end
-        compartment_labels = Vector{Symbol}(undef, n_stem + n_leaf)
-        for i in 1:(n_stem + n_leaf)
-            if i <= n_stem
-                compartment_labels[i] = :stem
-            else
-                compartment_labels[i] = :leaf
-            end
-        end
-        new{FT}(
-            root_depths,
-            n_stem,
-            n_leaf,
-            compartment_midpoints,
-            compartment_surfaces,
-            compartment_labels,
-        )
-    end
-end
-
-function coordinates(domain::PlantHydraulicsDomain{FT}) where {FT}
-    return domain.compartment_midpoints
-end
 
 """
     AbstractLSMDomain{FT} <: AbstractDomain{FT}
@@ -763,14 +639,8 @@ function obtain_surface_space(cs::ClimaCore.Spaces.CenterFiniteDifferenceSpace)
     )
 end
 
-export AbstractDomain, AbstractVegetationDomain, AbstractLSMDomain
-export Column,
-    Plane,
-    HybridBox,
-    PlantHydraulicsDomain,
-    Point,
-    SphericalShell,
-    SphericalSurface
+export AbstractDomain, AbstractLSMDomain
+export Column, Plane, HybridBox, Point, SphericalShell, SphericalSurface
 export LSMSingleColumnDomain, LSMMultiColumnDomain, LSMSphericalShellDomain
 export coordinates, obtain_face_space, obtain_surface_space
 

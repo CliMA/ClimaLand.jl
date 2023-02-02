@@ -223,11 +223,6 @@ We may need to consider this default more as we add diverse components and
 """
 function initialize(model::AbstractModel{FT}) where {FT}
     coords = Domains.coordinates(model)
-
-    # Q: do we need separate initialize_prognostic and initialize_auxiliary methods?
-    # A: yes - code is the same other than call to auxiliary_vars or prognostic_vars
-    # however we do need to build separate FieldVectors => shared initialize_vars() method?
-    # auxiliary_types, auxiliary_spaces, prognostic_types, prognostic_spaces
     Y = initialize_prognostic(model, coords)
     p = initialize_auxiliary(model, coords)
     return Y, p, coords

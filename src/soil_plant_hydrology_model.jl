@@ -62,6 +62,9 @@ function SoilPlantHydrologyModel{FT}(;
     # These should always be set by the constructor.
     sources = (RootExtraction{FT}(),)
     root_extraction = PrognosticSoilPressure{FT}()
+    root_depths = sort(
+        unique(parent(ClimaLSM.Domains.coordinates(soil_args.domain).z)[:]),
+    )
 
     boundary_conditions = (;
         water = (
@@ -79,6 +82,7 @@ function SoilPlantHydrologyModel{FT}(;
     vegetation = vegetation_model_type(;
         root_extraction = root_extraction,
         transpiration = T,
+        root_depths = root_depths,
         vegetation_args...,
     )
 
@@ -116,9 +120,10 @@ function make_interactions_update_aux(
         @unpack vg_α, vg_n, vg_m, ν, S_s, K_sat, area_index =
             land.vegetation.parameters
         @. p.root_extraction =
-            area_index[:root] .* PlantHydraulics.flux(
+            area_index[:root] *
+            PlantHydraulics.flux(
                 z,
-                land.vegetation.domain.compartment_midpoints[1],
+                land.vegetation.compartment_midpoints[1],
                 p.soil.ψ,
                 PlantHydraulics.water_retention_curve(
                     vg_α,
@@ -138,7 +143,8 @@ function make_interactions_update_aux(
                 S_s,
                 K_sat[:root],
                 K_sat[:stem],
-            ) .* (land.vegetation.parameters.root_distribution.(z))
+            ) *
+            (land.vegetation.parameters.root_distribution(z))
     end
     return update_aux!
 end

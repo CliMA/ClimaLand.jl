@@ -47,7 +47,7 @@ using UnPack
 using DocStringExtensions
 import ClimaCore: Fields
 
-using ClimaLSM.Domains: AbstractVegetationDomain, PlantHydraulicsDomain
+using ClimaLSM.Domains: AbstractDomain
 import ClimaLSM:
     AbstractModel,
     initialize_prognostic,
@@ -71,10 +71,12 @@ export PlantHydraulicsModel,
     PlantHydraulicsParameters,
     PrescribedSoilPressure,
     PrescribedTranspiration,
-    AbstractRootExtraction
+    AbstractRootExtraction,
+    Layers
 
 """
     AbstractVegetationModel{FT} <: AbstractModel{FT}
+
 An abstract type for vegetation models.
 Concrete types include a plant hydraulics model, but future types will
 include multi-layer canopy models and possibly a big leaf model.
@@ -86,6 +88,7 @@ ClimaLSM.domain(::AbstractVegetationModel) = :surface
 
 """
     AbstractRootExtraction{FT <: AbstractFloat}
+
 An abstract type for types representing different models of
 water exchange between soil and plants.
 Currently, prescribed soil matric potential and prescribed flux models 
@@ -98,6 +101,7 @@ abstract type AbstractRootExtraction{FT <: AbstractFloat} end
 
 """
     AbstractTranspiration{FT <: AbstractFloat}
+
 An abstract type for types representing different models of
 transpiration.
 Currently, only a PrescribedTranspiration is supported.
@@ -107,6 +111,7 @@ abstract type AbstractTranspiration{FT <: AbstractFloat} end
 
 """
     PlantHydraulicsParameters{FT <: AbstractFloat}
+
 A struct for holding parameters of the PlantHydraulics Model.
 $(DocStringExtensions.FIELDS)
 """
@@ -133,19 +138,33 @@ end
 
 """
     PlantHydraulicsModel{FT, PS, D, RE, T, B} <: AbstractVegetationModel{FT}
+
 Defines, and constructs instances of, the PlantHydraulicsModel type, which is used
 for simulation flux of water to/from soil, along roots of different depths,
 along a stem, to a leaf, and ultimately being lost from the system by
 transpiration. 
+
 This model can be used in standalone mode by prescribing the transpiration rate
 and soil matric potential at the root tips or flux in the roots, or with a 
 dynamic soil model using `ClimaLSM`.
 $(DocStringExtensions.FIELDS)
 """
 struct PlantHydraulicsModel{FT, PS, D, RE, T} <: AbstractVegetationModel{FT}
+    "The number of stem compartments for the plant"
+    n_stem::Int64
+    "The number of leaf compartments for the plant"
+    n_leaf::Int64
+    "The depth of the root tips, in meters"
+    root_depths::Vector{FT}
+    "The height of the center of each leaf compartment/stem compartment, in meters"
+    compartment_midpoints::Vector{FT}
+    "The height of the compartments' top faces, in meters"
+    compartment_surfaces::Vector{FT}
+    "The label (:stem or :leaf) of each compartment"
+    compartment_labels::Vector{Symbol}
     "Parameters required by the Plant Hydraulics model"
     parameters::PS
-    "The plant hydraulics model domain, of type `AbstractVegetationDomain`"
+    "The plant hydraulics model domain, of type `AbstractDomain`"
     domain::D
     "The root extraction model, of type `AbstractRootExtraction`"
     root_extraction::RE
@@ -154,22 +173,120 @@ struct PlantHydraulicsModel{FT, PS, D, RE, T} <: AbstractVegetationModel{FT}
 end
 
 function PlantHydraulicsModel{FT}(;
+    root_depths::Vector{FT},
+    n_stem::Int64,
+    n_leaf::Int64,
+    compartment_midpoints::Vector{FT},
+    compartment_surfaces::Vector{FT},
     parameters::PlantHydraulicsParameters{FT, PSE},
-    domain::AbstractVegetationDomain{FT},
+    domain::AbstractDomain{FT},
     root_extraction::AbstractRootExtraction{FT},
     transpiration::AbstractTranspiration{FT},
 ) where {FT, PSE}
     args = (parameters, domain, root_extraction, transpiration)
-    return PlantHydraulicsModel{FT, typeof.(args)...}(args...)
+    @assert n_leaf != 0
+    @assert (n_leaf + n_stem) == length(compartment_midpoints)
+    @assert (n_leaf + n_stem) + 1 == length(compartment_surfaces)
+    for i in 1:length(compartment_midpoints)
+        @assert compartment_midpoints[i] ==
+                ((compartment_surfaces[i + 1] - compartment_surfaces[i]) / 2) +
+                compartment_surfaces[i]
+    end
+    compartment_labels = Vector{Symbol}(undef, n_stem + n_leaf)
+    for i in 1:(n_stem + n_leaf)
+        if i <= n_stem
+            compartment_labels[i] = :stem
+        else
+            compartment_labels[i] = :leaf
+        end
+    end
+    return PlantHydraulicsModel{FT, typeof.(args)...}(
+        n_stem,
+        n_leaf,
+        root_depths,
+        compartment_midpoints,
+        compartment_surfaces,
+        compartment_labels,
+        args...,
+    )
 end
 
 """
     prognostic_vars(model::PlantHydraulicsModel)
+
 A function which returns the names of the prognostic 
 variables of the `PlantHydraulicsModel`.
 """
 prognostic_vars(model::PlantHydraulicsModel) = (:ϑ_l,)
-prognostic_types(model::PlantHydraulicsModel{FT}) where {FT} = (FT,)
+
+"""
+    auxiliary_vars(model::PlantHydraulicsModel)
+
+A function which returns the names of the auxiliary 
+variables of the `PlantHydraulicsModel`, 
+the water potential (m) and volume flux*cross section `fa` (1/s),
+where the cross section can be represented by an area index.
+"""
+auxiliary_vars(model::PlantHydraulicsModel) = (:ψ, :fa)
+
+"""
+    Base.zero(x::Type{NTuple{N, FT}}) where {N, FT}
+
+A `zero` method for NTuples of floats. 
+
+Used when initializing the state vector, when it consists
+of an NTuple at each coordinate point.
+"""
+function Base.zero(x::Type{NTuple{N, FT}}) where {N, FT}
+    ntuple(i -> FT(0), N)
+end
+
+"""
+
+    Copied over from EDMF. This lets us index into ClimaCore
+Fields of NTuples.
+"""
+Base.@propagate_inbounds Base.getindex(
+    field::ClimaCore.Fields.Field,
+    i::Integer,
+) = Base.getproperty(field, i)
+
+"""
+    Copied over from EDMF. This is a helper struct which
+lets us set indices of ClimaCore
+Fields of Ntuples by indexing.
+"""
+struct Cent{I <: Integer}
+    i::I
+end
+
+"""
+    Copied over from EDMF. This lets us set components of ClimaCore
+Fields of NTuples by indexing.
+"""
+Base.@propagate_inbounds Base.setindex!(
+    field::ClimaCore.Fields.Field,
+    v,
+    i::Cent,
+) = Base.setindex!(ClimaCore.Fields.field_values(field), v, i.i)
+
+"""
+    ClimaLSM.prognostic_types(model::PlantHydraulicsModel{FT}) where {FT} 
+
+Defines the prognostic types for the PlantHydraulicsModel.
+"""
+ClimaLSM.prognostic_types(model::PlantHydraulicsModel{FT}) where {FT} =
+    (NTuple{model.n_stem + model.n_leaf, FT},)
+
+"""
+    ClimaLSM.auxiliary_types(model::PlantHydraulicsModel{FT}) where {FT} 
+
+Defines the auxiliary types for the PlantHydraulicsModel.
+"""
+ClimaLSM.auxiliary_types(model::PlantHydraulicsModel{FT}) where {FT} = (
+    NTuple{model.n_stem + model.n_leaf, FT},
+    NTuple{model.n_stem + model.n_leaf, FT},
+)
 
 """
     flux(
@@ -185,6 +302,7 @@ prognostic_types(model::PlantHydraulicsModel{FT}) where {FT} = (FT,)
         K_sat1,
         K_sat2,
 ) where {FT} 
+
 Computes the water flux given 1) the absolute pressure (represented by corresponding
 water column height) at two points located at z1 and z2, 
 corresponding here to the middle of each compartment 
@@ -195,19 +313,7 @@ to take into account the change in K_sat halfway
 between z1 and z2. The expression is given in full in the Clima docs
 in section 6.4 "Bulk plant hydraulics model".
 """
-function flux(
-    z1,
-    z2,
-    ψ1,
-    ψ2,
-    vg_α,
-    vg_n,
-    vg_m,
-    ν,
-    S_s,
-    K_sat1,
-    K_sat2,
-) where {FT}
+function flux(z1, z2, ψ1, ψ2, vg_α, vg_n, vg_m, ν, S_s, K_sat1, K_sat2)
 
     S_l1 = inverse_water_retention_curve(vg_α, vg_n, vg_m, ψ1, ν, S_s)
     S_l2 = inverse_water_retention_curve(vg_α, vg_n, vg_m, ψ2, ν, S_s)
@@ -239,6 +345,7 @@ end
     augmented_liquid_fraction(
         ν::FT, 
         S_l::FT) where {FT}
+
 Computes the augmented liquid fraction from porosity and
 effective saturation. Augmented liquid fraction allows for
 oversaturation: an expansion of the volume of space
@@ -255,6 +362,7 @@ end
     effective_saturation(
         ν::FT, 
         ϑ_l::FT) where {FT}
+
 Computes the effective saturation (volumetric water content relative to
 porosity).
 """
@@ -272,6 +380,7 @@ end
         S_l::FT,
         ν::FT,
         S_s::FT) where {FT}
+
 Converts augmented liquid fraction (ϑ_l) to effective saturation 
 (S_l), and then effective saturation to absolute pressure, represented by
 the height (ψ) of the water column that would give rise to this pressure.
@@ -303,6 +412,7 @@ end
         ψ::FT,
         ν::FT,
         S_s::FT) where {FT}
+
 Converts absolute pressure, represented by the height (ψ)
 of the water column that would give rise to this pressure,
 to effective saturation (S_l).
@@ -326,72 +436,90 @@ end
 
 """
     make_rhs(model::VegetationModel)
+
 A function which creates the rhs! function for the PlantHydraulicsModel.
 The rhs! function must comply with a rhs function of OrdinaryDiffEq.jl.
+
+Note that this rhs function updates the auxiliary variables as well. We chose to
+do so here because it reduces to a single loop over the layers, instead of looping
+over them in the auxiliary function as well. 
+
+Below, `fa` denotes a flux multiplied by the relevant cross section (per unit area ground).
 """
 function make_rhs(model::PlantHydraulicsModel)
     function rhs!(dY, Y, p, t)
         @unpack vg_α, vg_n, vg_m, S_s, ν, K_sat, area_index = model.parameters
-        n_stem = model.domain.n_stem
-        n_leaf = model.domain.n_leaf
+        n_stem = model.n_stem
+        n_leaf = model.n_leaf
 
-        S_l = effective_saturation.(ν, Y.vegetation.ϑ_l)
-        ψ = water_retention_curve.(vg_α, vg_n, vg_m, S_l, ν, S_s)
-        for i in 1:(n_stem + n_leaf)
+        ψ = p.vegetation.ψ
+        ϑ_l = Y.vegetation.ϑ_l
+        fa = p.vegetation.fa
+
+        # boundary flux * cross section at the bottom
+        fa0 =
+            flux_out_roots(model.root_extraction, model, Y, p, t) .*
+            area_index[:root]
+
+        # initialize first index
+        @inbounds @. ψ[1] = water_retention_curve(
+            vg_α,
+            vg_n,
+            vg_m,
+            effective_saturation(ν, ϑ_l[1]),
+            ν,
+            S_s,
+        )
+
+        @inbounds for i in 1:(n_stem + n_leaf)
+            AIdz =
+                area_index[model.compartment_labels[i]] * (
+                    model.compartment_surfaces[i + 1] -
+                    model.compartment_surfaces[i]
+                )
+
+            # If we arent at the top compartment, compute the flux*area
+            # between the current compartment and the one above it
+            if i != (n_stem + n_leaf)
+                # Compute potential in compartment above - the potential in current
+                # compartment was already computed during the last iteration.
+                @. ψ[i + 1] = water_retention_curve(
+                    vg_α,
+                    vg_n,
+                    vg_m,
+                    effective_saturation(ν, ϑ_l[i + 1]),
+                    ν,
+                    S_s,
+                )
+                # Compute the flux*area between the current compartment `i`
+                # and the compartment above.
+                @. fa[i] =
+                    flux(
+                        model.compartment_midpoints[i],
+                        model.compartment_midpoints[i + 1],
+                        ψ[i],
+                        ψ[i + 1],
+                        vg_α,
+                        vg_n,
+                        vg_m,
+                        ν,
+                        S_s,
+                        K_sat[model.compartment_labels[i]],
+                        K_sat[model.compartment_labels[i + 1]],
+                    ) * (
+                        area_index[model.compartment_labels[i]] +
+                        area_index[model.compartment_labels[i + 1]]
+                    ) / 2
+            else  # Apply upper boundary condition * area index
+                fa[i] .=
+                    transpiration(model.transpiration, t) .* area_index[:leaf]
+            end
+
             if i == 1
-                flux_in = flux_out_roots(model.root_extraction, model, Y, p, t)
-                area_index_in = area_index[:root]
+                @. dY.vegetation.ϑ_l[i] = 1 / AIdz * (fa0 - fa[i])
             else
-                flux_in = flux(
-                    model.domain.compartment_midpoints[i - 1],
-                    model.domain.compartment_midpoints[i],
-                    ψ[i - 1],
-                    ψ[i],
-                    vg_α,
-                    vg_n,
-                    vg_m,
-                    ν,
-                    S_s,
-                    K_sat[model.domain.compartment_labels[i - 1]],
-                    K_sat[model.domain.compartment_labels[i]],
-                )
-                area_index_in =
-                    (
-                        area_index[model.domain.compartment_labels[i - 1]] +
-                        area_index[model.domain.compartment_labels[i]]
-                    ) / 2
+                @. dY.vegetation.ϑ_l[i] = 1 / AIdz * (fa[i - 1] - fa[i])
             end
-
-            if i == (n_stem + n_leaf)
-                flux_out = transpiration(model.transpiration, t)
-                area_index_out = area_index[:leaf] # assuming at least 1 leaf compartment
-            else
-                flux_out = flux(
-                    model.domain.compartment_midpoints[i],
-                    model.domain.compartment_midpoints[i + 1],
-                    ψ[i],
-                    ψ[i + 1],
-                    vg_α,
-                    vg_n,
-                    vg_m,
-                    ν,
-                    S_s,
-                    K_sat[model.domain.compartment_labels[i]],
-                    K_sat[model.domain.compartment_labels[i + 1]],
-                )
-                area_index_out =
-                    (
-                        area_index[model.domain.compartment_labels[i]] +
-                        area_index[model.domain.compartment_labels[i + 1]]
-                    ) / 2
-            end
-            dY.vegetation.ϑ_l[i] =
-                1 / (
-                    area_index[model.domain.compartment_labels[i]] * (
-                        model.domain.compartment_surfaces[i + 1] -
-                        model.domain.compartment_surfaces[i]
-                    )
-                ) * (flux_in * area_index_in - flux_out * area_index_out)
         end
     end
 
@@ -400,6 +528,7 @@ end
 
 """
     PrescribedSoilPressure{FT} <: AbstractRootExtraction{FT}
+
 A concrete type used for dispatch when computing the `flux_out_roots`,
 in the case where the soil matric potential at each root layer is prescribed.
 """
@@ -409,6 +538,7 @@ end
 
 """
     PrescribedTranspiration{FT} <: AbstractTranspiration{FT}
+
 A concrete type used for dispatch when computing the transpiration
 from the leaves, in the case where transpiration is prescribed.
 """
@@ -424,6 +554,7 @@ end
         p::ClimaCore.Fields.FieldVector,
         t::FT,
     )::FT where {FT}
+
 A method which computes the flux between the soil and the stem, via the roots,
 in the case of a standalone plant hydraulics model with prescribed soil pressure (in m)
 at the root tips.
@@ -435,29 +566,36 @@ function flux_out_roots(
     Y::ClimaCore.Fields.FieldVector,
     p::ClimaCore.Fields.FieldVector,
     t::FT,
-)::FT where {FT}
+)::ClimaCore.Fields.Field where {FT}
     @unpack vg_α, vg_n, vg_m, ν, S_s, K_sat, root_distribution =
         model.parameters
-    S_l_stem = effective_saturation(ν, Y.vegetation.ϑ_l[1])
-    ψ_stem = water_retention_curve.(vg_α, vg_n, vg_m, S_l_stem, ν, S_s)
-    sum_flux_out_roots = sum(
-        flux.(
-            model.domain.root_depths,
-            model.domain.compartment_midpoints[1],
-            re.ψ_soil(t),
-            ψ_stem,
-            vg_α,
-            vg_n,
-            vg_m,
-            ν,
-            S_s,
-            K_sat[:root],
-            K_sat[:stem],
-        ) .* root_distribution.(model.domain.root_depths) .* (
-            vcat(model.domain.root_depths, [0.0])[2:end] -
-            vcat(model.domain.root_depths, [0.0])[1:(end - 1)]
-        ),
-    ) # m/s
+    ψ_stem = p.vegetation.ψ[1]
+    n_root_layers = length(model.root_depths)
+    sum_flux_out_roots = similar(ψ_stem)
+    dz_roots = (
+        vcat(model.root_depths, [0.0])[2:end] -
+        vcat(model.root_depths, [0.0])[1:(end - 1)]
+    )
+    ψ_soil = re.ψ_soil(t)
+    @inbounds for i in 1:n_root_layers
+        @. sum_flux_out_roots +=
+            flux(
+                model.root_depths[i],
+                model.compartment_midpoints[1],
+                ψ_soil,
+                ψ_stem,
+                vg_α,
+                vg_n,
+                vg_m,
+                ν,
+                S_s,
+                K_sat[:root],
+                K_sat[:stem],
+            ) *
+            root_distribution(model.root_depths[i]) *
+            dz_roots[i]
+    end
+
     return sum_flux_out_roots
 end
 
@@ -466,6 +604,7 @@ end
         transpiration::PrescribedTranspiration{FT},
         t::FT,
     )::FT where {FT}
+
 A method which computes the transpiration in meters/sec between the leaf
 and the atmosphere,
 in the case of a standalone plant hydraulics model with prescribed
