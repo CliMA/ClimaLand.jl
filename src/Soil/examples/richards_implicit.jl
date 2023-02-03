@@ -159,6 +159,7 @@ function dψdθ(θ, ν, θ_r, vg_α, vg_n, vg_m, S_s)
     end
 end
 
+# Keep linsolve! function for compatibility with OrdinaryDiffEq
 linsolve!(::Type{Val{:init}}, f, u0; kwargs...) = _linsolve!
 _linsolve!(x, A, b, update_matrix = false; kwargs...) =
     LinearAlgebra.ldiv!(x, A, b)
@@ -414,22 +415,6 @@ sources = ()
 boundary_fluxes = (; water = (top = top_flux_bc, bottom = bot_flux_bc))
 params = Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r)
 
-# TODO move operators from global scope?
-divf2c_op = Operators.DivergenceF2C(
-    top = Operators.SetValue(FT(0.0)),
-    bottom = Operators.SetValue(FT(0.0)),
-)
-# divf2c_op = Operators.DivergenceF2C(
-#     top = Operators.SetValue(Geometry.WVector.(top_flux_bc)),
-#     bottom = Operators.SetValue(Geometry.WVector.(bot_flux_bc)),
-# )
-divf2c_stencil = Operators.Operator2Stencil(divf2c_op)
-gradc2f_op = Operators.GradientC2F()
-gradc2f_stencil = Operators.Operator2Stencil(gradc2f_op)
-interpc2f_op = Operators.InterpolateC2F()
-interpc2f_stencil = Operators.Operator2Stencil(interpc2f_op)
-compose = Operators.ComposeStencils()
-
 soil = Soil.RichardsModel{FT}(;
     parameters = params,
     domain = soil_domain,
@@ -461,10 +446,45 @@ t_start = 0.0
 t_end = 100.0
 dt = 10.0
 
-alg_kwargs = (; linsolve = linsolve!)
 
-# TODO change alg to CTS.SSP333
-ode_algo = ODE.Rosenbrock23(; alg_kwargs...)
+z = ClimaCore.Fields.coordinate_field(soil.domain.space).z
+Δz_top, Δz_bottom = get_Δz(z)
+
+top_flux_bc = ClimaLSM.boundary_flux(
+    soil.boundary_conditions.water.top,
+    ClimaLSM.TopBoundary(),
+    Δz_top,
+    p,
+    t_start,
+    soil.parameters,
+)
+bot_flux_bc = ClimaLSM.boundary_flux(
+    soil.boundary_conditions.water.bottom,
+    ClimaLSM.BottomBoundary(),
+    Δz_bottom,
+    p,
+    t_start,
+    soil.parameters,
+)
+
+
+divf2c_op = Operators.DivergenceF2C(
+    top = Operators.SetValue(Geometry.WVector.(top_flux_bc)),
+    bottom = Operators.SetValue(Geometry.WVector.(bot_flux_bc)),
+)
+divf2c_stencil = Operators.Operator2Stencil(divf2c_op)
+gradc2f_op = Operators.GradientC2F()
+gradc2f_stencil = Operators.Operator2Stencil(gradc2f_op)
+interpc2f_op = Operators.InterpolateC2F()
+interpc2f_stencil = Operators.Operator2Stencil(interpc2f_op)
+compose = Operators.ComposeStencils()
+
+
+# use for Rosenbrock23 (keep to check compatibility with OrdinaryDiffEq)
+# alg_kwargs = (; linsolve = linsolve!)
+# ode_algo = ODE.Rosenbrock23(; alg_kwargs...)
+
+ode_algo = CTS.IMEXAlgorithm(CTS.SSP333(), CTS.NewtonsMethod())
 transform = use_transform(ode_algo)
 
 W =
@@ -480,14 +500,29 @@ end
 implicit_tendency! = make_implicit_tendency(soil)
 explicit_tendency! = make_explicit_tendency(soil)
 
-# TODO pass ClimaLSM.Soil.dss! to ODEFunction (after ClimaTimeSteppers release)
-problem = SplitODEProblem(
-    ODEFunction(
-        implicit_tendency!;
-        jac_kwargs...,
-        tgrad = (∂Y∂t, Y, p, t) -> (∂Y∂t .= FT(0)),
+# use for Rosenbrock23 (keep to check compatibility with OrdinaryDiffEq)
+# problem = SplitODEProblem(
+#      ODEFunction(
+#          implicit_tendency!;
+#          jac_kwargs...,
+#          tgrad = (∂Y∂t, Y, p, t) -> (∂Y∂t .= FT(0)),
+#      ),
+#      explicit_tendency!,
+#      Y,
+#      (t_start, t_end),
+#      p,
+#  )
+
+problem = ODEProblem(
+    CTS.ClimaODEFunction(
+        T_exp! = explicit_tendency!,
+        T_imp! = ODEFunction(
+            implicit_tendency!;
+            jac_kwargs...,
+            tgrad = (∂Y∂t, Y, p, t) -> (∂Y∂t .= FT(0)),
+        ),
+        dss! = ClimaLSM.Soil.dss!,
     ),
-    explicit_tendency!,
     Y,
     (t_start, t_end),
     p,

@@ -141,12 +141,16 @@ the domain type, updates `dY` in place.
 For column domains, no dss is needed.
 """
 function dss!(dY::ClimaCore.Fields.FieldVector, domain::Column) end
+function dss!(
+    Y::ClimaCore.Fields.FieldVector,
+    space::Spaces.CenterFiniteDifferenceSpace,
+) end
 
 """
    dss!(dY::ClimaCore.Fields.FieldVector,domain::Union{HybridBox, SphericalShell})
 
 Computes the appropriate weighted direct stiffness summation based on
-the domain type, updates `dY` in place.
+the domain type, updates `YdY` in place.
 """
 function dss!(
     dY::ClimaCore.Fields.FieldVector,
@@ -156,6 +160,24 @@ function dss!(
         Spaces.weighted_dss!(getproperty(dY.soil, key))
     end
 end
+function dss!(
+    Y::ClimaCore.Fields.FieldVector,
+    space::Spaces.CenterExtrudedFiniteDifferenceSpace,
+)
+    for key in propertynames(Y.soil)
+        Spaces.weighted_dss!(getproperty(Y.soil, key))
+    end
+end
+
+
+"""
+    dss!(Y, p, t)
+
+This is a wrapper for the `dss!` functions above.
+ClimaODEFunction requires a `dss!` function of this type signature.
+"""
+dss!(Y, p, t) = dss!(Y, axes(Y.soil.ϑ_l))
+
 
 
 
