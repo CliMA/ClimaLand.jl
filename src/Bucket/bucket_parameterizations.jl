@@ -1,18 +1,6 @@
 """
-     heaviside(x::FT)::FT where {FT}
-
-Computes the heaviside function.
-"""
-function heaviside(x::FT)::FT where {FT}
-    if x > eps(FT)
-        return FT(1.0)
-    else
-        return FT(0.0)
-    end
-end
-
-"""
     beta_factor(W::FT, σS::FT, W_f::FT) where {FT}
+
 Computes the beta factor which scales the evaporation from the potential
 rate.
 """

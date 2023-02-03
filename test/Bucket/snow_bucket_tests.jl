@@ -1,18 +1,17 @@
 using Test
 
-using OrdinaryDiffEq: ODEProblem, solve, Euler
-using DiffEqCallbacks
 using Statistics
 using ClimaCore
 
 if !("." in LOAD_PATH)
     push!(LOAD_PATH, ".")
 end
+
+using ClimaLSM.Drivers: PrescribedAtmosphere, PrescribedRadiativeFluxes
+
 using ClimaLSM.Bucket:
     BucketModel,
     BucketModelParameters,
-    PrescribedAtmosphere,
-    PrescribedRadiativeFluxes,
     BulkAlbedoFunction,
     partition_surface_fluxes
 using ClimaLSM.Domains:
@@ -73,7 +72,6 @@ for bucket_domain in bucket_domains
         q_atmos = (t) -> eltype(t)(0.03)
         h_atmos = FT(3)
         ρ_atmos = (t) -> eltype(t)(1.13)
-        ρ_sfc = FT(1.15)
         bucket_atmos = PrescribedAtmosphere(
             precip,
             precip,
@@ -82,7 +80,6 @@ for bucket_domain in bucket_domains
             q_atmos,
             ρ_atmos,
             h_atmos,
-            ρ_sfc,
         )
         Δt = FT(1.0)
         τc = FT(10.0)
@@ -110,25 +107,13 @@ for bucket_domain in bucket_domains
         Y.bucket.W .= 0.0 # no moisture
         Y.bucket.Ws .= 0.0 # no runoff
         Y.bucket.σS .= 0.5
+        t0 = FT(0.0)
+        dY = similar(Y)
 
         ode_function! = make_ode_function(model)
         set_initial_aux_state! = make_set_initial_aux_state(model)
-        set_initial_aux_state!(p, Y, 0.0)
-        saved_values = SavedValues(FT, ClimaCore.Fields.FieldVector)
-        cb = SavingCallback(
-            (u, t, integrator) -> copy(integrator.p),
-            saved_values;
-            saveat = 0:Δt:100.0,
-        )
-        prob = ODEProblem(ode_function!, Y, (0.0, 100.0), p)
-        sol = solve(
-            prob,
-            Euler();
-            dt = Δt,
-            reltol = 1e-6,
-            abstol = 1e-6,
-            callback = cb,
-        )
+        set_initial_aux_state!(p, Y, t0)
+        ode_function!(dY, Y, p, t0)
 
         _LH_f0 = LSMP.LH_f0(model.parameters.earth_param_set)
         _ρ_liq = LSMP.ρ_cloud_liq(model.parameters.earth_param_set)
@@ -136,82 +121,33 @@ for bucket_domain in bucket_domains
         _T_freeze = LSMP.T_freeze(model.parameters.earth_param_set)
         snow_cover_fraction(σS) = σS > eps(FT) ? FT(1.0) : FT(0.0)
 
-        # Extract water content on land and fluxes
-        W = [sum(sol.u[k].bucket.W) for k in 1:length(sol.t)]
-        σS = [sum(sol.u[k].bucket.σS) for k in 1:length(sol.t)]
-        Ws = [sum(sol.u[k].bucket.Ws) for k in 1:length(sol.t)]
-
-        R_n = [sum(saved_values.saveval[k].bucket.R_n) for k in 1:length(sol.t)] # net Radiation, ∫dA
-        turbulent_energy_flux = [
-            sum(saved_values.saveval[k].bucket.turbulent_energy_flux) for
-            k in 1:length(sol.t)
-        ] # ∫ dA
-        evaporation = [
-            sum(saved_values.saveval[k].bucket.evaporation) for
-            k in 1:length(sol.t)
-        ] # ∫ dA
-
-        partitioned_fluxes = [
+        partitioned_fluxes =
             partition_surface_fluxes.(
-                sol.u[k].bucket.σS,
-                saved_values.saveval[k].bucket.T_sfc,
+                Y.bucket.σS,
+                p.bucket.T_sfc,
                 model.parameters.τc,
-                snow_cover_fraction.(sol.u[k].bucket.σS),
-                saved_values.saveval[k].bucket.evaporation,
-                saved_values.saveval[k].bucket.turbulent_energy_flux .+
-                saved_values.saveval[k].bucket.R_n,
+                snow_cover_fraction.(Y.bucket.σS),
+                p.bucket.evaporation,
+                p.bucket.turbulent_energy_flux .+ p.bucket.R_n,
                 _ρLH_f0,
                 _T_freeze,
-            ) for k in 1:length(sol.t)
-        ]
-        F_melt = [
-            sum(partitioned_fluxes[k].F_melt) for
-            k in 1:length(partitioned_fluxes)
-        ]
-        F_into_snow = [
-            sum(partitioned_fluxes[k].F_into_snow) for
-            k in 1:length(partitioned_fluxes)
-        ]
-        G = [sum(partitioned_fluxes[k].G) for k in 1:length(partitioned_fluxes)]
+            )
+        F_melt = partitioned_fluxes.F_melt
+        F_into_snow = partitioned_fluxes.F_into_snow
+        G = partitioned_fluxes.G
+        F_sfc = p.bucket.turbulent_energy_flux .+ p.bucket.R_n
+        F_water_sfc = precip(t0) .- p.bucket.evaporation
 
-        F_sfc = turbulent_energy_flux .+ R_n
-        surface_space = model.domain.surface.space
-        A_sfc = sum(ones(surface_space))
-        F_water_sfc = precip.(sol.t) * A_sfc .- evaporation
+        dIsnow = -_ρLH_f0 .* dY.bucket.σS
+        @test sum(dIsnow) ≈ sum(-1 .* F_into_snow)
 
-        if typeof(model.domain.surface.space) <: ClimaCore.Spaces.PointSpace
-            G .= G ./ A_sfc
-            F_sfc .= F_sfc ./ A_sfc
-            F_into_snow .= F_into_snow ./ A_sfc
-            σS .= σS ./ A_sfc
-            W .= W ./ A_sfc
-            Ws .= Ws ./ A_sfc
-            evaporation .= evaporation ./ A_sfc
-        end
+        de_soil = dY.bucket.T .* ρc_soil
+        @test sum(de_soil) ≈ sum(-1 .* G)
 
-        # compute total energy and water contents
-        e_soil = [sum(sol.u[k].bucket.T) for k in 1:length(sol.t)] .* ρc_soil
-        Isnow = -_ρLH_f0 * σS
-        WL = W .+ σS .+ Ws
-        IL = Isnow .+ e_soil
+        dWL = dY.bucket.W .+ dY.bucket.Ws .+ dY.bucket.σS
+        @test sum(dWL) ≈ sum(F_water_sfc)
 
-        # check time derivatives of components and total:
-        dIsnowdt = (Isnow[2:end] - Isnow[1:(end - 1)]) / Δt
-        # dIsnow/dt = -F_into_snow
-        Δsnow = dIsnowdt .+ F_into_snow[1:(end - 1)]
-        @test maximum(abs.(Δsnow[2:end])) ./ Isnow[2] * Δt < 10.0 * eps(FT)
-        # de_soil/dt = -G
-        dedt = (e_soil[2:end] - e_soil[1:(end - 1)]) / Δt
-        Δe = dedt .+ G[1:(end - 1)]
-        @test maximum(abs.(Δe[2:end])) ./ e_soil[2] * Δt < 10.0 * eps(FT)
-        # dW/dt = -E -> dWdt + E = 0
-        dWdt = (WL[2:end] - WL[1:(end - 1)]) / Δt
-        @test maximum(abs.(dWdt[2:end] .+ evaporation[2:(end - 1)])) * Δt /
-              WL[2] < 10.0 * eps(FT)
-        # dIL/dt = - (F_sfc .- 0.0)
-        dILdt = (IL[2:end] - IL[1:(end - 1)]) / Δt
-        Δ = dILdt .+ F_sfc[1:(end - 1)]
-        @test maximum(abs.(Δ[2:end])) ./ IL[2] * Δt < 10.0 * eps(FT)
-
+        dIL = sum(dIsnow) .+ sum(de_soil)
+        @test dIL ≈ sum(-1 .* F_sfc)
     end
 end

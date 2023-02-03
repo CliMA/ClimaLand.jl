@@ -7,23 +7,14 @@ CurrentModule = ClimaLSM.Bucket
 
 ```@docs
 ClimaLSM.Bucket.BucketModelParameters
-ClimaLSM.Bucket.PrescribedAtmosphere
-ClimaLSM.Bucket.PrescribedRadiativeFluxes
-ClimaLSM.Bucket.AbstractAtmosphericDrivers
-ClimaLSM.Bucket.AbstractRadiativeDrivers
 ClimaLSM.Bucket.BulkAlbedoMap
 ClimaLSM.Bucket.BulkAlbedoFunction
 ClimaLSM.Bucket.BucketModel
 ```
 
-## Extendible Methods
+## Misc Functions
 
 ```@docs
-ClimaLSM.Bucket.surface_fluxes
-ClimaLSM.Bucket.net_radiation
-ClimaLSM.Bucket.surface_air_density
-ClimaLSM.Bucket.liquid_precipitation
-ClimaLSM.Bucket.snow_precipitation
 ClimaLSM.Bucket.surface_albedo
 ClimaLSM.Bucket.beta_factor
 ```

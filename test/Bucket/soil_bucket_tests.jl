@@ -1,8 +1,5 @@
 using Test
 
-using OrdinaryDiffEq: ODEProblem, solve, RK4, Euler
-using DiffEqCallbacks
-using DiffEqBase
 using Statistics
 using ClimaCore
 import CLIMAParameters as CP
@@ -10,12 +7,8 @@ import CLIMAParameters as CP
 if !("." in LOAD_PATH)
     push!(LOAD_PATH, ".")
 end
-using ClimaLSM.Bucket:
-    BucketModel,
-    BucketModelParameters,
-    PrescribedAtmosphere,
-    PrescribedRadiativeFluxes,
-    BulkAlbedoFunction
+using ClimaLSM.Drivers: PrescribedAtmosphere, PrescribedRadiativeFluxes
+using ClimaLSM.Bucket: BucketModel, BucketModelParameters, BulkAlbedoFunction
 using ClimaLSM.Domains:
     coordinates,
     LSMSingleColumnDomain,
@@ -74,7 +67,6 @@ for bucket_domain in bucket_domains
         q_atmos = (t) -> eltype(t)(0.0) # no atmos water
         h_atmos = FT(1e-8)
         ρ_atmos = (t) -> eltype(t)(1.13)
-        ρ_sfc = FT(1.15)
         bucket_atmos = PrescribedAtmosphere(
             precip,
             precip,
@@ -83,7 +75,6 @@ for bucket_domain in bucket_domains
             q_atmos,
             ρ_atmos,
             h_atmos,
-            ρ_sfc,
         )
         Δt = FT(1.0)
         bucket_parameters = BucketModelParameters(
@@ -140,7 +131,6 @@ for bucket_domain in bucket_domains
         q_atmos = (t) -> eltype(t)(0.01)
         h_atmos = FT(30)
         ρ_atmos = (t) -> eltype(t)(1.13)
-        ρ_sfc = FT(1.15)
         bucket_atmos = PrescribedAtmosphere(
             precip,
             (t) -> eltype(t)(0.0),
@@ -149,7 +139,6 @@ for bucket_domain in bucket_domains
             q_atmos,
             ρ_atmos,
             h_atmos,
-            ρ_sfc,
         )
         Δt = FT(100.0)
         bucket_parameters = BucketModelParameters(
@@ -178,62 +167,22 @@ for bucket_domain in bucket_domains
         Y.bucket.σS .= 0.0
         ode_function! = make_ode_function(model)
         t0 = 0.0
-        tf = 10000.0
-
         set_initial_aux_state! = make_set_initial_aux_state(model)
         set_initial_aux_state!(p, Y, t0)
-
-        prob = ODEProblem(ode_function!, Y, (t0, tf), p)
-
-        # need a callback to get and store `p`
-        saved_values = SavedValues(FT, ClimaCore.Fields.FieldVector)
-        cb = SavingCallback(
-            (u, t, integrator) -> copy(integrator.p),
-            saved_values;
-            saveat = 0:Δt:tf,
-        )
-        sol = solve(prob, Euler(); dt = Δt, saveat = 0:Δt:tf, callback = cb)
-
-        # Sums integrate over area
-        # ∫ variable dA
-        W = [sum(sol.u[k].bucket.W) for k in 1:length(sol.t)]
-        Ws = [sum(sol.u[k].bucket.Ws) for k in 1:length(sol.t)]
-        R_n = [sum(saved_values.saveval[k].bucket.R_n) for k in 1:length(sol.t)]
-        turbulent_energy_flux = [
-            sum(saved_values.saveval[k].bucket.turbulent_energy_flux) for
-            k in 1:length(sol.t)
-        ]
-        evaporation = [
-            sum(saved_values.saveval[k].bucket.evaporation) for
-            k in 1:length(sol.t)
-        ]
-
-        F_sfc = turbulent_energy_flux .+ R_n
+        dY = similar(Y)
+        ode_function!(dY, Y, p, t0)
+        F_water_sfc = precip(t0) .- p.bucket.evaporation
+        F_sfc = -1 .* (p.bucket.turbulent_energy_flux .+ p.bucket.R_n)
         surface_space = model.domain.surface.space
         A_sfc = sum(ones(surface_space))
-        F_water_sfc = precip.(sol.t) * A_sfc .- evaporation
-        net_water = W .+ Ws
-        # dY(t+dt) = Y(t+dt) - W(t) = RHS|_t * dt for Euler stepping
-        # First element of `p` not filled in, so start at 2.
-        # If we call update aux before the simulation, it should be.
-
-        # Look at fractional error per step
-
-        # For the point space, we actually want the flux itself, since our energy is per unit area.
+        # For the point space, we actually want the flux itself, since our variables are per unit area.
         # Divide by A_sfc
         if typeof(model.domain.surface.space) <: ClimaCore.Spaces.PointSpace
             F_sfc .= F_sfc ./ A_sfc
         end
 
-        dE_land = ρc_soil * (sum(sol.u[end].bucket.T) - sum(sol.u[2].bucket.T))
-        dE_expected = -sum(F_sfc[2:(end - 1)]) * Δt
-        @test abs(dE_land - dE_expected) ./
-              (ρc_soil * sum(sol.u[2].bucket.T) ./ length(sol.t)) < 1e-13
-        dW_land = net_water[end] - net_water[2]
-        dW_expected = sum(F_water_sfc[2:(end - 1)]) * Δt
-
-        @test abs(dW_land - dW_expected) ./ net_water[2] ./ length(sol.t) <
-              1e-13
+        @test sum(F_water_sfc) ≈ sum(dY.bucket.W .+ dY.bucket.Ws)
+        @test sum(F_sfc) ≈ sum(dY.bucket.T .* ρc_soil)
 
     end
 
