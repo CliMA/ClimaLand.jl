@@ -55,10 +55,9 @@
 
 using OrdinaryDiffEq: ODEProblem, solve, RK4
 using Plots
-# - Load CLIMAParameters and ClimaLSM modules
+# - Load Clima modules
 
 using ClimaCore
-import CLIMAParameters as CP
 
 if !("." in LOAD_PATH)
     push!(LOAD_PATH, ".")

@@ -3,7 +3,6 @@ using ArtifactWrappers
 using NLsolve
 using OrdinaryDiffEq: ODEProblem, solve, Euler, RK4
 using ClimaCore
-import CLIMAParameters as CP
 using DelimitedFiles
 using Dierckx
 using Plots

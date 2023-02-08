@@ -2,7 +2,6 @@ using Test
 using UnPack
 using Statistics
 using ClimaCore
-import CLIMAParameters as CP
 
 if !("." in LOAD_PATH)
     push!(LOAD_PATH, ".")

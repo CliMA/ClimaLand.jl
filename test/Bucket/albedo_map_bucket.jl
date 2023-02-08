@@ -2,7 +2,6 @@ using Test
 
 using ClimaCore
 using ClimaComms
-import CLIMAParameters as CP
 
 if !("." in LOAD_PATH)
     push!(LOAD_PATH, ".")

@@ -126,10 +126,6 @@ using DiffEqCallbacks
 # in advance for running distributed simulations.
 using ClimaCore
 
-# We also use CLIMAParameters, which strives to ensure a common set of
-# parameters across all Clima models, and to make parameter estimation
-# more seamless.
-import CLIMAParameters as CP
 
 # Lastly, let's bring in the bucket model types (from ClimaLSM) that we
 # will need access to.
@@ -147,7 +143,7 @@ using Plots
 
 FT = Float64;
 
-# As mentioned we use CLIMAParameters for earth parameters that are
+# We use CLIMAParameters for Earth parameters that are
 # required across models (e.g. the density of water and ice, the latent
 # heat of fusion at a reference temperature, etc). The land model requires
 # additional parameters as described in the text above. These two sets

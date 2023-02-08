@@ -83,9 +83,8 @@ using DiffEqCallbacks
 using Statistics
 using Plots
 
-# ClimaLSM and CLIMAParameters modules
+# Clima modules
 using ClimaCore
-import CLIMAParameters as CP
 using ClimaLSM
 using ClimaLSM.Domains: Column
 using ClimaLSM.Soil
