@@ -11,6 +11,15 @@ function heaviside(x::FT)::FT where {FT}
     end
 end
 
+"""
+    beta_factor(W::FT, σS::FT, W_f::FT) where {FT}
+Computes the beta factor which scales the evaporation from the potential
+rate.
+"""
+function beta_factor(W::FT, σS::FT, W_f::FT) where {FT}
+    snow_cover_fraction = heaviside(σS)
+    return (1 - snow_cover_fraction) * β(W, W_f) + snow_cover_fraction * 1
+end
 
 """
     partition_surface_fluxes(
