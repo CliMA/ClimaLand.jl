@@ -25,7 +25,7 @@ ClimaLSM.Bucket.surface_air_density
 ClimaLSM.Bucket.liquid_precipitation
 ClimaLSM.Bucket.snow_precipitation
 ClimaLSM.Bucket.surface_albedo
-ClimaLSM.Bucket.partition_surface_fluxes
+ClimaLSM.Bucket.beta_factor
 ```
 
 ## Methods for handling parameters read in from NetCDF files
