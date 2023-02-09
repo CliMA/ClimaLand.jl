@@ -447,14 +447,12 @@ function surface_fluxes(
     P <: BucketModelParameters{FT},
     PA <: PrescribedAtmosphere{FT},
 }
-
+    β_sfc = beta_factor.(Y.bucket.W, Y.bucket.σS, parameters.W_f)
     return surface_fluxes_at_a_point.(
         p.bucket.T_sfc,
         p.bucket.q_sfc,
-        Y.bucket.σS,
-        Y.bucket.W,
-        coordinate_field(Y.bucket.σS),
         t,
+        β_sfc,
         Ref(parameters),
         Ref(atmos),
     )
@@ -463,10 +461,8 @@ end
 function surface_fluxes_at_a_point(
     T_sfc::FT,
     q_sfc::FT,
-    σS::FT,
-    W::FT,
-    coords,
     t::FT,
+    β_sfc::FT,
     parameters::P,
     atmos::PA,
 ) where {
@@ -475,7 +471,7 @@ function surface_fluxes_at_a_point(
     PA <: PrescribedAtmosphere{FT},
 }
     @unpack ρ_atmos, T_atmos, u_atmos, q_atmos, h_atmos, ρ_sfc = atmos
-    @unpack z_0m, z_0b, σS_c, W_f, earth_param_set = parameters
+    @unpack z_0m, z_0b, earth_param_set = parameters
     _ρ_liq = LSMP.ρ_cloud_liq(earth_param_set)
 
     thermo_params = LSMP.thermodynamic_parameters(earth_param_set)
@@ -497,15 +493,13 @@ function surface_fluxes_at_a_point(
         ts_in,
     )
 
-    snow_cover_fraction = heaviside(σS)
     # State containers
     sc = SurfaceFluxes.ValuesOnly{FT}(;
         state_in,
         state_sfc,
         z0m = z_0m,
         z0b = z_0b,
-        beta = FT(1 - snow_cover_fraction) * β(W, W_f) +
-               snow_cover_fraction * 1,
+        beta = β_sfc,
     )
     surface_flux_params = LSMP.surface_fluxes_parameters(earth_param_set)
     conditions = SurfaceFluxes.surface_conditions(surface_flux_params, sc)
