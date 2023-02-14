@@ -75,7 +75,8 @@ import ClimaLSM:
     AbstractSource,
     AbstractBC,
     source!,
-    boundary_flux
+    boundary_flux,
+    heaviside
 export RichardsModel,
     RichardsParameters,
     EnergyHydrology,
@@ -328,18 +329,6 @@ function ClimaLSM.boundary_flux(
     return -1 .* K_c
 end
 
-"""
-     heaviside(x::FT)::FT where {FT}
-
-Computes the heaviside function.
-"""
-function heaviside(x::FT)::FT where {FT}
-    if x > eps(FT)
-        return FT(1.0)
-    else
-        return FT(0.0)
-    end
-end
 include("./rre.jl")
 include("./energy_hydrology.jl")
 include("./soil_hydrology_parameterizations.jl")

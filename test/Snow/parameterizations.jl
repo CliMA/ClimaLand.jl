@@ -17,10 +17,8 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     _ρ_l = FT(LSMP.ρ_cloud_liq(param_set))
     # Density of ice water (kg/m``^3``)
     _ρ_i = FT(LSMP.ρ_cloud_ice(param_set))
-    # Volum. isobaric heat capacity liquid water (J/m3/K)
-    _ρcp_l = FT(LSMP.cp_l(param_set) * _ρ_l)
-    # Volumetric isobaric heat capacity ice (J/m3/K)
-    _ρcp_i = FT(LSMP.cp_i(param_set) * _ρ_i)
+    _cp_l = FT(LSMP.cp_l(param_set))
+    _cp_i = FT(LSMP.cp_i(param_set))
     # Reference temperature (K)
     _T_ref = FT(LSMP.T_0(param_set))
     # Freezing temperature (K)
@@ -31,25 +29,21 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     κ_air = FT(LSMP.K_therm(param_set))
 
     ρ_snow = FT(200)
-    z0_m = FT(0.0024)
-    z0_b = FT(0.00024)
-    d = FT(0.0)
+    z_0m = FT(0.0024)
+    z_0b = FT(0.00024)
     α_snow = FT(0.8)
     ϵ_snow = FT(0.99)
     θ_r = FT(0.08)
     Ksat = FT(1e-3)
-    fS_c = FT(0.2)
     κ_ice = FT(2.21)
     Δt = FT(180.0)
     parameters = SnowParameters{FT}(Δt; earth_param_set = param_set)
     @test parameters.ρ_snow == ρ_snow
     @test typeof(parameters.ρ_snow) == FT
-    @test parameters.z0_m == z0_m
-    @test typeof(parameters.z0_m) == FT
-    @test parameters.z0_b == z0_b
-    @test typeof(parameters.z0_b) == FT
-    @test parameters.d == d
-    @test typeof(parameters.d) == FT
+    @test parameters.z_0m == z_0m
+    @test typeof(parameters.z_0m) == FT
+    @test parameters.z_0b == z_0b
+    @test typeof(parameters.z_0b) == FT
     @test parameters.α_snow == α_snow
     @test typeof(parameters.α_snow) == FT
     @test parameters.ϵ_snow == ϵ_snow
@@ -58,8 +52,6 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     @test typeof(parameters.Ksat) == FT
     @test parameters.θ_r == θ_r
     @test typeof(parameters.θ_r) == FT
-    @test parameters.fS_c == fS_c
-    @test typeof(parameters.fS_c) == FT
     @test parameters.κ_ice == κ_ice
     @test typeof(parameters.κ_ice) == FT
 
@@ -75,10 +67,8 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     SWE = cat(FT.(rand(100) .+ 0.2), FT(0), dims = 1)
     z = snow_depth.(SWE, ρ_snow, _ρ_l)
     @test all(z .== SWE * _ρ_l ./ ρ_snow)
-    @test specific_heat_capacity(FT(1.0), parameters) ==
-          FT(LSMP.cp_l(parameters.earth_param_set))
-    @test specific_heat_capacity(FT(0.0), parameters) ==
-          FT(LSMP.cp_i(parameters.earth_param_set))
+    @test specific_heat_capacity(FT(1.0), parameters) == _cp_l
+    @test specific_heat_capacity(FT(0.0), parameters) == _cp_i
     @test snow_thermal_conductivity(ρ_snow, parameters) ==
           κ_air +
           (FT(7.75e-5) * ρ_snow + FT(1.105e-6) * ρ_snow^2) * (κ_ice - κ_air)

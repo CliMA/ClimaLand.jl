@@ -133,12 +133,9 @@ import CLIMAParameters as CP
 
 # Lastly, let's bring in the bucket model types (from ClimaLSM) that we
 # will need access to.
-using ClimaLSM.Bucket:
-    BucketModel,
-    BucketModelParameters,
-    PrescribedAtmosphere,
-    PrescribedRadiativeFluxes,
-    BulkAlbedoFunction
+using ClimaLSM.Drivers: PrescribedAtmosphere, PrescribedRadiativeFluxes
+
+using ClimaLSM.Bucket: BucketModel, BucketModelParameters, BulkAlbedoFunction
 using ClimaLSM.Domains: coordinates, LSMSingleColumnDomain
 using ClimaLSM:
     initialize, make_update_aux, make_ode_function, make_set_initial_aux_state
@@ -210,9 +207,7 @@ bucket_domain =
 # radiative energy fluxes (`SW↓, LW↓`, W/m^2),
 # for the atmospheric temperature `T_a`,
 # wind speed `u_a` (m/s), specific humidity `q_a`, and air density
-# `ρ_a` (kg/m^3) at a reference height `h_a` (m),
-# as well as for the air density `ρ_sfc` (kg/m^3)
-# at the surface of the earth.
+# `ρ_a` (kg/m^3) at a reference height `h_a` (m).
 
 # Here we define the model drivers, starting with downward radiation.
 SW_d = (t) -> eltype(t)(300);
@@ -231,7 +226,6 @@ u_atmos = (t) -> eltype(t)(3.0);
 q_atmos = (t) -> eltype(t)(0.005);
 h_atmos = FT(2);
 ρ_atmos = (t) -> eltype(t)(1.13);
-ρ_sfc = FT(1.15);
 bucket_atmos = PrescribedAtmosphere(
     precip,
     snow_precip,
@@ -240,7 +234,6 @@ bucket_atmos = PrescribedAtmosphere(
     q_atmos,
     ρ_atmos,
     h_atmos,
-    ρ_sfc,
 );
 
 # Then, we create the model object, which contains the drivers, parameters,

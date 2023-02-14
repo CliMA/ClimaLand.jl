@@ -7,7 +7,6 @@ export SnowParameters
 
 """
     SnowParameters{FT <: AbstractFloat, PSE}
-
 A struct for storing parameters of the `SnowModel`.
 $(DocStringExtensions.FIELDS)
 """
@@ -15,11 +14,9 @@ struct SnowParameters{FT <: AbstractFloat, PSE}
     "Density of snow (kg/m^3)"
     ρ_snow::FT
     "Roughness length over snow for momentum (m)"
-    z0_m::FT
+    z_0m::FT
     "Roughness length over snow for scalars (m)"
-    z0_b::FT
-    "Displacement height over snow (m)"
-    d::FT
+    z_0b::FT
     "Albedo of snow (unitless)"
     α_snow::FT
     "Emissivity of snow (unitless)"
@@ -41,9 +38,8 @@ end
 """
    SnowParameters{FT}(Δt::FT;
                       ρ_snow = FT(200),
-                      z0_m = FT(0.0024),
-                      z0_b = FT(0.00024),
-                      d = FT(0),
+                      z_0m = FT(0.0024),
+                      z_0b = FT(0.00024),
                       α_snow = FT(0.8),
                       ϵ_snow = FT(0.99),
                       θ_r = FT(0.08),
@@ -58,9 +54,8 @@ all arguments but `earth_param_set`.
 function SnowParameters{FT}(
     Δt::FT;
     ρ_snow = FT(200),
-    z0_m = FT(0.0024),
-    z0_b = FT(0.00024),
-    d = FT(0),
+    z_0m = FT(0.0024),
+    z_0b = FT(0.00024),
     α_snow = FT(0.8),
     ϵ_snow = FT(0.99),
     θ_r = FT(0.08),
@@ -71,9 +66,8 @@ function SnowParameters{FT}(
 ) where {FT, PSE}
     return SnowParameters{FT, PSE}(
         ρ_snow,
-        z0_m,
-        z0_b,
-        d,
+        z_0m,
+        z_0b,
         α_snow,
         ϵ_snow,
         θ_r,

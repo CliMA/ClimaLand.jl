@@ -17,9 +17,7 @@
 # radiative energy fluxes,
 # for the atmospheric temperature `T_a`,
 # wind speed `u_a` (m/s), specific humidity `q_a`, and air density
-# `ρ_a` (kg/m^3) at a reference height `h_a` (m),
-# as well as for the air density `ρ_sfc` (kg/m^3)
-# at the surface of the earth.
+# `ρ_a` (kg/m^3) at a reference height `h_a` (m).
 
 # Turbulent surface fluxes are computed by the bucket model at each step of the
 # simulation, using the land surface properties
@@ -50,11 +48,8 @@
 
 # To begin, let's import some necessary abstract and concrete types, as well as methods.
 using ClimaLSM
-using ClimaLSM.Bucket:
-    BucketModel,
-    BucketModelParameters,
-    AbstractAtmosphericDrivers,
-    AbstractRadiativeDrivers
+using ClimaLSM.Drivers: AbstractAtmosphericDrivers, AbstractRadiativeDrivers
+using ClimaLSM.Bucket: BucketModel, BucketModelParameters
 
 import ClimaLSM.Bucket:
     surface_fluxes,
@@ -87,11 +82,10 @@ struct CoupledRadiativeFluxes{FT} <: AbstractRadiativeDrivers{FT} end
 
 # Then, we define a new method for `surface_fluxes` and `net_radiation` which dispatch for these types:
 function ClimaLSM.Bucket.surface_fluxes(
-    Y,
+    atmos::CoupledAtmosphere{FT},
     p,
     t,
-    parameters,
-    atmos::CoupledAtmosphere{FT},
+    _...,
 ) where {FT <: AbstractFloat}
     return (
         turbulent_energy_flux = p.bucket.turbulent_energy_flux,
@@ -101,11 +95,10 @@ end
 
 
 function ClimaLSM.Bucket.net_radiation(
-    Y,
+    radiation::CoupledRadiativeFluxes{FT},
     p,
     t,
-    parameters,
-    radiation::CoupledRadiativeFluxes{FT},
+    _...,
 ) where {FT <: AbstractFloat}
     return p.bucket.R_n
 end
@@ -124,15 +117,15 @@ end
 # return the prescribed values for these quantities.
 
 # In the coupled case, we need to extend these functions with a `CoupledAtmosphere` method:
-function ClimaLSM.Bucket.surface_air_density(p, atmos::CoupledAtmosphere)
+function ClimaLSM.Bucket.surface_air_density(atmos::CoupledAtmosphere, p, _...)
     return p.bucket.ρ_sfc
 end
 
-function ClimaLSM.Bucket.liquid_precipitation(p, atmos::CoupledAtmosphere, t)
+function ClimaLSM.Bucket.liquid_precipitation(atmos::CoupledAtmosphere, p, _)
     return p.bucket.P_liq
 end
 
-function ClimaLSM.Bucket.snow_precipitation(p, atmos::CoupledAtmosphere, t)
+function ClimaLSM.Bucket.snow_precipitation(atmos::CoupledAtmosphere, p, _)
     return p.bucket.P_snow
 end
 

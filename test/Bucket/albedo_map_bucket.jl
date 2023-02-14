@@ -7,12 +7,12 @@ import CLIMAParameters as CP
 if !("." in LOAD_PATH)
     push!(LOAD_PATH, ".")
 end
+using ClimaLSM.Drivers: PrescribedAtmosphere, PrescribedRadiativeFluxes
+
 using ClimaLSM.Regridder: MapInfo, regrid_netcdf_to_field
 using ClimaLSM.Bucket:
     BucketModel,
     BucketModelParameters,
-    PrescribedAtmosphere,
-    PrescribedRadiativeFluxes,
     BulkAlbedoMap,
     bareground_albedo_dataset_path
 using ClimaLSM.Domains:
@@ -66,7 +66,6 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
         q_atmos = (t) -> eltype(t)(0.0) # no atmos water
         h_atmos = FT(1e-8)
         ρ_atmos = (t) -> eltype(t)(1.13)
-        ρ_sfc = FT(1.15)
         bucket_atmos = PrescribedAtmosphere(
             precip,
             precip,
@@ -75,7 +74,6 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
             q_atmos,
             ρ_atmos,
             h_atmos,
-            ρ_sfc,
         )
         Δt = FT(1.0)
         bucket_parameters = BucketModelParameters(
