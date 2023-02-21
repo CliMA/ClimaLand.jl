@@ -40,52 +40,9 @@ steps:
         command: "julia --color=yes --project=test test/Bucket/albedo_map_bucket.jl"
         artifact_paths: "albedo_map/"
 
-      - label: "soil_bucket_tests"
-        command: "julia --color=yes --project=test test/Bucket/soil_bucket_tests.jl"
-        artifact_paths: "bucket_test/"
-
-      - label: "snow_bucket_tests"
-        command: "julia --color=yes --project=test test/Bucket/snow_bucket_tests.jl"
-        artifact_paths: "bucket_test/"
-
-      - label: "plant_hydraulics_test"
-        command: "julia --color=yes --project=test test/Vegetation/plant_hydraulics_test.jl"
-        artifact_paths: "plant_hydraulics_test/"
-
       - label: "ozark_test"
         command: "julia --color=yes --project=experiments experiments/LSM/ozark_test.jl"
         artifact_paths: "ozark_test/"
 
-      - label: "domains"
-        command: "julia --color=yes --project=test test/domains.jl"
-        artifact_paths: "domains/"
-
-      - label: "variable_types"
-        command: "julia --color=yes --project=test test/variable_types.jl"
-        artifact_paths: "variable_types/"
-
-      - label: "pond_test"
-        command: "julia --color=yes --project=test test/SurfaceWater/pond_test.jl"
-        artifact_paths: "pond_test/"
-
-      - label: "pond_soil_lsm"
-        command: "julia --color=yes --project=test test/LSM/pond_soil_lsm.jl"
-        artifact_paths: "pond_soil_lsm/"
-
-      - label: "soil_test_3d"
-        command: "julia --color=yes --project=test test/Soil/soil_test_3d.jl"
-        artifact_paths: "soil_test_3d/"
-        agents:
-          slurm_mem_per_cpu: 8G
-
-      - label: "soiltest"
-        command: "julia --color=yes --project=test test/Soil/soiltest.jl"
-        artifact_paths: "soiltest/"
-
-      - label: "soil_parameterizations"
-        command: "julia --color=yes --project=test test/Soil/soil_parameterizations.jl"
-        artifact_paths: "soil_parameterizations/"
-
-      - label: "soil_bc"
-        command: "julia --color=yes --project=test test/Soil/soil_bc.jl"
-        artifact_paths: "soil_bc/"
+      - label: "Soilbiogeochem"
+        command: "julia --color=yes --project=experiments experiments/Biogeochemistry/experiment.jl"

@@ -24,11 +24,13 @@ import ClimaLSM:
     source!
 export SoilCO2ModelParameters,
     SoilCO2Model,
-    PrescribedSoil,
+    PrescribedMet,
+    PrescribedSOC,
     MicrobeProduction,
     SoilCO2FluxBC,
     SoilCO2StateBC,
-    AbstractSoilDriver
+    AbstractSoilDriver,
+    SoilDrivers
 
 """
     SoilCO2ModelParameters{FT <: AbstractFloat, PSE}
@@ -287,7 +289,23 @@ All varying in space (horizontally and vertically) and time.
 abstract type AbstractSoilDriver end
 
 """
-    PrescribedSoil <: AbstractSoilDriver
+    SoilDrivers
+
+A container which passes in the soil drivers to the biogeochemistry
+model. These drivers are either of type Prescribed (for standalone mode)
+or Prognostic (for running with a prognostic model for soil temp and moisture).
+
+$(DocStringExtensions.FIELDS)
+"""
+struct SoilDrivers
+    "Soil temperature and moisture drivers - Prescribed or Prognostic"
+    met::AbstractSoilDriver
+    "Soil SOM driver - Prescribed only"
+    soc::AbstractSoilDriver
+end
+
+"""
+    PrescribedMet <: AbstractSoilDriver
 
 A container which holds the prescribed functions for soil temperature
 and moisture. 
@@ -297,42 +315,55 @@ without a prognostic soil model.
 
 $(DocStringExtensions.FIELDS)
 """
-struct PrescribedSoil <: AbstractSoilDriver
-    "The temperature of the soil, of the form f(z::FT,t::FT) where {FT <: AbstractFloat}"
+struct PrescribedMet <: AbstractSoilDriver
+    "The temperature of the soil, of the form f(z::FT,t::FT) where FT <: AbstractFloat"
     temperature::Function
-    "Soil moisture, of the form f(z::FT,t::FT) where {FT <: AbstractFloat}"
+    "Soil moisture, of the form f(z::FT,t::FT) FT <: AbstractFloat"
     volumetric_liquid_fraction::Function
-    "Carbon content of soil organic matter, of the form f(z::FT,t::FT) where {FT <: AbstractFloat}"
+end
+
+"""
+    PrescribedSOC <: AbstractSoilDriver
+
+A container which holds the prescribed function for soil organic carbon
+
+This is meant for use when running the biogeochemistry model without a soil
+organic carbon model.
+
+$(DocStringExtensions.FIELDS)
+"""
+struct PrescribedSOC <: AbstractSoilDriver
+    "Carbon content of soil organic matter, of the form f(z::FT,t::FT) where FT <: AbstractFloat"
     soil_organic_carbon::Function
 end
 
 """
-    soil_temperature(driver::PrescribedSoil, p, Y, t, z)
+    soil_temperature(driver::PrescribedMet, p, Y, t, z)
 
 Returns the soil temperature at location (z) and time (t) for the prescribed
 soil case.
 """
-function soil_temperature(driver::PrescribedSoil, p, Y, t, z)
+function soil_temperature(driver::PrescribedMet, p, Y, t, z)
     return driver.temperature.(z, t)
 end
 
 """
-    soil_moisture(driver::PrescribedSoil, p, Y, t, z)
+    soil_moisture(driver::PrescribedMet, p, Y, t, z)
 
 Returns the soil moisture at location (z) and time (t) for the prescribed
 soil case.
 """
-function soil_moisture(driver::PrescribedSoil, p, Y, t, z)
+function soil_moisture(driver::PrescribedMet, p, Y, t, z)
     return driver.volumetric_liquid_fraction.(z, t)
 end
 
 """
-    soil_som_C(driver::PrescribedSoil, p, Y, t, z)
+    soil_som_C(driver::PrescribedSOC, p, Y, t, z)
 
 Returns the carbon soil organic matter (SOM) at location (z) and time (t) for the prescribed
 soil case.
 """
-function soil_SOM_C(driver::PrescribedSoil, p, Y, t, z)
+function soil_SOM_C(driver::PrescribedSOC, p, Y, t, z)
     return driver.soil_organic_carbon.(z, t)
 end
 
@@ -348,9 +379,9 @@ function ClimaLSM.make_update_aux(model::SoilCO2Model)
     function update_aux!(p, Y, t)
         params = model.parameters
         z = ClimaCore.Fields.coordinate_field(model.domain.space).z
-        T_soil = soil_temperature(model.driver, p, Y, t, z)
-        θ_l = soil_moisture(model.driver, p, Y, t, z)
-        Csom = soil_SOM_C(model.driver, p, Y, t, z)
+        T_soil = soil_temperature(model.driver.met, p, Y, t, z)
+        θ_l = soil_moisture(model.driver.met, p, Y, t, z)
+        Csom = soil_SOM_C(model.driver.soc, p, Y, t, z)
         θ_w = θ_l
         p.soilco2.D = co2_diffusivity.(T_soil, θ_w, Ref(params))
         p.soilco2.Sm = microbe_source.(T_soil, θ_l, Csom, Ref(params))

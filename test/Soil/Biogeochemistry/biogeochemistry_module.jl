@@ -39,7 +39,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     sources = (MicrobeProduction{FT}(),)
     boundary_conditions = (; CO2 = (top = top_bc, bottom = bot_bc))
 
-    soil_drivers = PrescribedSoil(T_soil, θ_l, Csom)
+    soil_drivers = SoilDrivers(PrescribedMet(T_soil, θ_l), PrescribedSOC(Csom))
     model = SoilCO2Model{FT}(;
         parameters = parameters,
         domain = soil_domain,
@@ -77,7 +77,7 @@ end
     sources = ()
     boundary_conditions = (; CO2 = (top = top_bc, bottom = bot_bc))
 
-    soil_drivers = PrescribedSoil(T_soil, θ_l, Csom)
+    soil_drivers = SoilDrivers(PrescribedMet(T_soil, θ_l), PrescribedSOC(Csom))
     model = SoilCO2Model{FT}(;
         parameters = parameters,
         domain = soil_domain,
