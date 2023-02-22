@@ -35,10 +35,11 @@ FT = Float64
     soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems)
     z = ClimaCore.Fields.coordinate_field(soil_domain.space).z
 
-    top_state_bc = StateBC((p, t) -> eltype(t)(ν - 1e-3))
-    bot_flux_bc = FreeDrainage{FT}()
+    top_state_bc = MoistureStateBC((p, t) -> eltype(t)(ν - 1e-3))
+    bot_flux_bc = FreeDrainage()
     sources = ()
-    boundary_states = (; water = (top = top_state_bc, bottom = bot_flux_bc))
+    boundary_states =
+        (; top = (water = top_state_bc,), bottom = (water = bot_flux_bc,))
     params = Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r)
 
     soil = Soil.RichardsModel{FT}(;
@@ -97,10 +98,12 @@ end
     soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems)
     z = ClimaCore.Fields.coordinate_field(soil_domain.space).z
 
-    top_state_bc = StateBC((p, t) -> eltype(t)(0.267))
-    bot_flux_bc = FreeDrainage{FT}()
+    top_state_bc = MoistureStateBC((p, t) -> eltype(t)(0.267))
+    bot_flux_bc = FreeDrainage()
     sources = ()
-    boundary_states = (; water = (top = top_state_bc, bottom = bot_flux_bc))
+    boundary_states =
+        (; top = (water = top_state_bc,), bottom = (water = bot_flux_bc,))
+
     params = Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r)
 
     soil = Soil.RichardsModel{FT}(;

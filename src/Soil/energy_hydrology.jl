@@ -126,7 +126,7 @@ end
     EnergyHydrology{FT}(;
         parameters::PS
         domain::D,
-        rre_heat_boundary_conditions::RREHeatBoundaryConditions{FT},
+        boundary_conditions::NamedTuple,
         sources::Tuple,
     ) where {FT, D, PS}
 
@@ -160,36 +160,21 @@ function ClimaLSM.make_rhs(model::EnergyHydrology{FT}) where {FT}
         Δz_top, Δz_bottom = get_Δz(z)
 
         # Convert all boundary conditions to FluxBCs
-        rre_top_flux_bc = boundary_flux(
-            model.boundary_conditions.water.top,
+        rre_top_flux_bc, heat_top_flux_bc = soil_boundary_fluxes(
+            model.boundary_conditions.top,
             TopBoundary(),
             Δz_top,
             p,
             t,
             model.parameters,
         )
-        rre_bot_flux_bc = boundary_flux(
-            model.boundary_conditions.water.bottom,
+        rre_bot_flux_bc, heat_bot_flux_bc = soil_boundary_fluxes(
+            model.boundary_conditions.bottom,
             BottomBoundary(),
             Δz_bottom,
             p,
             t,
             model.parameters,
-        )
-
-        heat_top_flux_bc = boundary_flux(
-            model.boundary_conditions.heat.top,
-            TopBoundary(),
-            Δz_top,
-            p,
-            t,
-        )
-        heat_bot_flux_bc = boundary_flux(
-            model.boundary_conditions.heat.bottom,
-            BottomBoundary(),
-            Δz_bottom,
-            p,
-            t,
         )
 
         interpc2f = Operators.InterpolateC2F()

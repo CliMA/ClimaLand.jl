@@ -61,7 +61,7 @@ function LandHydrology{FT}(;
     sources = ()
     surface_runoff = PrognosticRunoff{FT}(precip)
     boundary_conditions =
-        (; water = (top = RunoffBC(), bottom = Soil.FreeDrainage{FT}()))
+        (; top = (water = RunoffBC(),), bottom = (water = Soil.FreeDrainage(),))
 
     soil = soil_model_type(;
         boundary_conditions = boundary_conditions,
