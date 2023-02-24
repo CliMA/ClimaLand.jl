@@ -16,7 +16,7 @@ if !("." in LOAD_PATH)
 end
 
 using ClimaLSM
-using ClimaLSM.Domains: Column, PlantHydraulicsDomain
+using ClimaLSM.Domains: Column
 using ClimaLSM.Soil
 using ClimaLSM.PlantHydraulics
 import ClimaLSM
@@ -151,20 +151,17 @@ plant_vg_n = FT(4.2) # unitless, matches Natan (fitted vG to Weibull)
 plant_vg_m = FT(1) - FT(1) / plant_vg_n
 plant_ν = FT(0.7) # guess, m3/m3
 plant_S_s = FT(1e-2 * 0.0098) # m3/m3/MPa to m3/m3/m
-root_depths = -Array(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0 # 1st element is the deepest root depth
 
 # 0.5 is from Natan
 function root_distribution(z::T) where {T}
     return T(1.0 / 0.5) * exp(z / T(0.5)) # 1/m
 end
 earth_param_set = create_lsm_parameters(FT)
-plant_hydraulics_domain = PlantHydraulicsDomain(
-    root_depths,
-    n_stem,
-    n_leaf,
-    compartment_midpoints,
-    compartment_surfaces,
-)
+zmin = FT(-2.0)
+zmax = FT(0.0)
+
+plant_hydraulics_domain = ClimaLSM.Domains.Point(; z_sfc = zmax)
+
 plant_hydraulics_ps =
     PlantHydraulics.PlantHydraulicsParameters{FT, typeof(earth_param_set)}(
         area_index,
@@ -180,11 +177,15 @@ plant_hydraulics_ps =
 
 transpiration =
     PrescribedTranspiration{FT}((t::FT) -> transpiration_function(t))
-plant_hydraulics_args =
-    (domain = plant_hydraulics_domain, parameters = plant_hydraulics_ps)
+plant_hydraulics_args = (
+    domain = plant_hydraulics_domain,
+    parameters = plant_hydraulics_ps,
+    n_stem = n_stem,
+    n_leaf = n_leaf,
+    compartment_midpoints = compartment_midpoints,
+    compartment_surfaces = compartment_surfaces,
+)
 
-zmin = FT(-2.0)
-zmax = FT(0.0)
 nelements = 10
 soil_domain = Column(; zlim = (zmin, zmax), nelements = nelements)
 soil_ν = FT(0.55) # m3/m3, guess 
@@ -235,6 +236,8 @@ ic = [
     0.344708,
     0.343398,
 ]
+root_depths =
+    sort(unique(parent(ClimaLSM.Domains.coordinates(soil_args.domain).z)[:]))
 ic_spline = Spline1D(root_depths, ic)
 Y.soil.ϑ_l = ic_spline.(cds.subsurface.z)
 
@@ -251,7 +254,10 @@ S_l_ini =
         plant_S_s,
     )
 
-Y.vegetation.ϑ_l .= augmented_liquid_fraction.(plant_ν, S_l_ini)
+for i in 1:2
+    Y.vegetation.ϑ_l[i] .= augmented_liquid_fraction.(plant_ν, S_l_ini[i])
+end
+
 update_aux! = make_update_aux(land)
 update_aux!(p, Y, 0.0)
 
@@ -271,8 +277,8 @@ sol =
     solve(prob, RK4(); dt = dt, saveat = daily, callback = cb, adaptive = false)
 
 # Diagnostics
-ϑ_stem = [sol.u[k].vegetation.ϑ_l[1] for k in 1:1:length(sol.t)] # m3 m-3
-ϑ_leaf = [sol.u[k].vegetation.ϑ_l[2] for k in 1:1:length(sol.t)] # m3 m-3
+ϑ_stem = [parent(sol.u[k].vegetation.ϑ_l[1])[1] for k in 1:1:length(sol.t)] # m3 m-3
+ϑ_leaf = [parent(sol.u[k].vegetation.ϑ_l[2])[1] for k in 1:1:length(sol.t)] # m3 m-3
 S_l_stem = PlantHydraulics.effective_saturation.(plant_ν, ϑ_stem) # m3 m-3
 S_l_leaf = PlantHydraulics.effective_saturation.(plant_ν, ϑ_leaf) # m3 m-3
 p_stem =
@@ -293,9 +299,7 @@ p_leaf =
         plant_ν,
         plant_S_s,
     ) .* 0.0098 # m to MPa
-w_stem = ϑ_stem .* (SAI * h_stem) * 1e3 # (augmented liquid fraction) * (absolute stem volume per m2 of ground area) =
-# (m3 / m3) * (m3 / m2) = m, which we convert to mm hence the * 1e3
-w_leaf = ϑ_leaf .* (LAI * h_leaf) * 1e3 # idem for leaf
+
 ψ_soil_10_cm = [parent(sv.saveval[k].soil.ψ)[end] for k in 1:1:length(sol.t)] # m3 m-3
 ψ_soil_20_cm =
     [parent(sv.saveval[k].soil.ψ)[end - 1] for k in 1:1:length(sol.t)] # m3 m-3
