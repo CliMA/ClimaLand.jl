@@ -9,20 +9,23 @@ using ClimaCore.Geometry: WVector
 using ClimaComms
 
 using ClimaLSM
-using ClimaLSM.Drivers:
-    AbstractAtmosphericDrivers,
-    AbstractRadiativeDrivers,
-    surface_air_density,
-    liquid_precipitation,
-    snow_precipitation,
-    surface_fluxes,
-    net_radiation
 
 using ClimaLSM.Regridder: MapInfo, regrid_netcdf_to_field
 import ..Parameters as LSMP
 import ClimaLSM.Domains: coordinates, LSMSphericalShellDomain
-import ClimaLSM:
+using ClimaLSM:
+    AbstractAtmosphericDrivers,
+    AbstractRadiativeDrivers,
+    liquid_precipitation,
+    snow_precipitation,
+    surface_fluxes,
+    net_radiation,
+    construct_atmos_ts,
+    compute_ρ_sfc,
     AbstractModel,
+    heaviside,
+    PrescribedAtmosphere
+import ClimaLSM:
     make_update_aux,
     make_rhs,
     prognostic_vars,
@@ -34,7 +37,12 @@ import ClimaLSM:
     initialize,
     initialize_auxiliary,
     make_set_initial_aux_state,
-    heaviside
+    surface_temperature,
+    surface_air_density,
+    surface_specific_humidity,
+    surface_evaporative_scaling,
+    surface_albedo,
+    surface_emissivity
 export BucketModelParameters,
     BucketModel,
     BulkAlbedoFunction,
@@ -445,13 +453,9 @@ function make_update_aux(model::BucketModel{FT}) where {FT}
             ),
             surface_space,
         )
-        p.bucket.ρ_sfc .= surface_air_density(
-            model.atmos,
-            p,
-            t,
-            name(model),
-            model.parameters.earth_param_set,
-        )
+        p.bucket.ρ_sfc .=
+            surface_air_density(model.atmos, model, Y, p, t, p.bucket.T_sfc)
+
         # This relies on the surface specific humidity being computed
         # entirely over snow or over soil. i.e. the snow cover fraction must be a heaviside
         # here, otherwise we would need two values of q_sfc!
@@ -464,46 +468,17 @@ function make_update_aux(model::BucketModel{FT}) where {FT}
             )
 
         # Compute turbulent surface fluxes
-        snow_cover_fraction = heaviside.(Y.bucket.σS)
-        beta = @.(
-            (1 - snow_cover_fraction) * β(Y.bucket.W, model.parameters.W_f) + snow_cover_fraction * 1
-        )
 
-
-        turbulent_fluxes = surface_fluxes(
-            model.atmos,
-            p,
-            t,
-            name(model),
-            model.parameters;
-            β_sfc = beta,
-        )
+        turbulent_fluxes = surface_fluxes(model.atmos, model, Y, p, t)
         p.bucket.turbulent_energy_flux .= turbulent_fluxes.turbulent_energy_flux
         p.bucket.evaporation .= turbulent_fluxes.evaporation
 
         # Radiative fluxes
-        (; α_snow) = model.parameters.albedo
-        α =
-            surface_albedo.(
-                p.bucket.α_sfc,
-                α_snow,
-                Y.bucket.σS,
-                model.parameters.σS_c,
-            )
-        p.bucket.R_n .= net_radiation(
-            model.radiation,
-            p,
-            t,
-            name(model),
-            α,
-            FT(1.0),
-            model.parameters.earth_param_set,
-        )
-
+        p.bucket.R_n .= net_radiation(model.radiation, model, Y, p, t)
     end
     return update_aux!
 end
-include("./bucket_parameterizations.jl")
 
+include("./bucket_parameterizations.jl")
 
 end

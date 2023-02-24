@@ -133,12 +133,16 @@ import CLIMAParameters as CP
 
 # Lastly, let's bring in the bucket model types (from ClimaLSM) that we
 # will need access to.
-using ClimaLSM.Drivers: PrescribedAtmosphere, PrescribedRadiativeFluxes
 
 using ClimaLSM.Bucket: BucketModel, BucketModelParameters, BulkAlbedoFunction
 using ClimaLSM.Domains: coordinates, LSMSingleColumnDomain
 using ClimaLSM:
-    initialize, make_update_aux, make_ode_function, make_set_initial_aux_state
+    initialize,
+    make_update_aux,
+    make_ode_function,
+    make_set_initial_aux_state,
+    PrescribedAtmosphere,
+    PrescribedRadiativeFluxes
 # We also want to plot the solution
 using Plots
 

@@ -7,8 +7,6 @@ import CLIMAParameters as CP
 if !("." in LOAD_PATH)
     push!(LOAD_PATH, ".")
 end
-using ClimaLSM.Drivers: PrescribedAtmosphere, PrescribedRadiativeFluxes
-
 using ClimaLSM.Regridder: MapInfo, regrid_netcdf_to_field
 using ClimaLSM.Bucket:
     BucketModel,
@@ -18,7 +16,14 @@ using ClimaLSM.Bucket:
 using ClimaLSM.Domains:
     coordinates, LSMSingleColumnDomain, LSMSphericalShellDomain
 using ClimaLSM:
-    initialize, make_update_aux, make_ode_function, make_set_initial_aux_state
+    initialize,
+    make_update_aux,
+    make_ode_function,
+    make_set_initial_aux_state,
+    PrescribedAtmosphere,
+    PrescribedRadiativeFluxes
+
+
 
 # Bucket model parameters
 import ClimaLSM

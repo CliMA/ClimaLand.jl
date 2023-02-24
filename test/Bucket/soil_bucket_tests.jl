@@ -7,7 +7,7 @@ import CLIMAParameters as CP
 if !("." in LOAD_PATH)
     push!(LOAD_PATH, ".")
 end
-using ClimaLSM.Drivers: PrescribedAtmosphere, PrescribedRadiativeFluxes
+
 using ClimaLSM.Bucket: BucketModel, BucketModelParameters, BulkAlbedoFunction
 using ClimaLSM.Domains:
     coordinates,
@@ -15,7 +15,12 @@ using ClimaLSM.Domains:
     LSMMultiColumnDomain,
     LSMSphericalShellDomain
 using ClimaLSM:
-    initialize, make_update_aux, make_ode_function, make_set_initial_aux_state
+    initialize,
+    make_update_aux,
+    make_ode_function,
+    make_set_initial_aux_state,
+    PrescribedAtmosphere,
+    PrescribedRadiativeFluxes
 
 
 FT = Float64
