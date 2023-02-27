@@ -1,5 +1,7 @@
 module Canopy
+using SurfaceFluxes
 using ClimaLSM
+using ClimaLSM: PrescribedAtmosphere, PrescribedRadiativeFluxes
 using DocStringExtensions
 export SharedCanopyParameters,
     BeerLambertParameters, FarquharParameters, MedlynConductanceParameters
@@ -91,9 +93,18 @@ $(DocStringExtensions.FIELDS)
 struct SharedCanopyParameters{FT <: AbstractFloat, PSE}
     "Leaf Area Index"
     LAI::FT
+   # "Canopy height"
+   # h_c::FT
+   #"Rate of change of roughness length for momentum with canopy height"
+   # ω_m::FT
+    "Roughness length for momentum"
+    z_0m::FT
+    "Roughness length for scalars"
+    z_0b::FT
     "Earth param set"
     earth_param_set::PSE
 end
+
 
 """
     function BeerLambertParameters{FT}(;

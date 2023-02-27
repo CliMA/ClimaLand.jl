@@ -40,7 +40,7 @@ information needed for computing turbulent surface fluxes when
 driving the bucket model in standalone mode.
 $(DocStringExtensions.FIELDS)
 """
-struct PrescribedAtmosphere{FT, LP, SP, TA, UA, QA, RA} <:
+struct PrescribedAtmosphere{FT, LP, SP, TA, UA, QA, RA, CA} <:
        AbstractAtmosphericDrivers{FT}
     "Precipitation (m/s) function of time: positive by definition"
     liquid_precip::LP
@@ -54,10 +54,12 @@ struct PrescribedAtmosphere{FT, LP, SP, TA, UA, QA, RA} <:
     q::QA
     "Prescribed air density (function of time)  at the reference height (kg/m^3)"
     ρ::RA
+    "Prescribed CO2 concentration (function of time) in the atmosphere at the reference height (mol/mol)"
+    c_a::CA
     "Reference height, relative to surface elevation(m)"
     h::FT
-    function PrescribedAtmosphere(liquid_precip, snow_precip, T, u, q, ρ, h)
-        args = (liquid_precip, snow_precip, T, u, q, ρ)
+    function PrescribedAtmosphere(liquid_precip, snow_precip, T, u, q, ρ, c_a, h)
+        args = (liquid_precip, snow_precip, T, u, q, ρ, c_a)
         return new{typeof(h), typeof.(args)...}(args..., h)
     end
 
@@ -214,7 +216,7 @@ function surface_fluxes_at_a_point(
         _ρ_liq
     return (
         turbulent_energy_flux = conditions.lhf .+ conditions.shf,
-        evaporation = evaporation,
+        evaporation = evaporation, C_h = conditions.C_h
     )
 end
 

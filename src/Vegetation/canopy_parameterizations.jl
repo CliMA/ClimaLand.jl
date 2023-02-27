@@ -1,6 +1,9 @@
-export plant_absorbed_ppfd,
+export 
+    canopy_surface_fluxes,    
+    plant_absorbed_ppfd,
     extinction_coeff,
-    arrhenius_function,
+    bulk_SW_albedo,
+    canopy_emissivity,
     intercellular_co2,
     co2_compensation,
     rubisco_assimilation,
@@ -18,6 +21,28 @@ export plant_absorbed_ppfd,
     compute_Vcmax,
     medlyn_term,
     medlyn_conductance
+
+
+function canopy_surface_fluxes(atmos::PrescribedAtmosphere{FT},
+                               p::ClimaCore.Fields.FieldVector,
+                               t::FT,
+                               name::Symbol,
+                               parameters;
+                               β_sfc = FT(1.0),
+                               r_sfc = FT(0.0)) where {FT}
+    # in the long run, we should pass r_sfc to surface_fluxes
+    # where it would be handle internally.
+    # but it doesn't do that, so we need to hack together something after
+    # the fact
+    base_transpiration, turbulent_energy_flux, C_h = surface_fluxes(atmos, p, t, name, parameters; β_sfc = β_sfc)
+    # here is where we adjust evaporation for stomatal conductance = 1/r_sfc
+    r_ae = 1/(C_h * abs(atmos.u(t)))
+    r_eff = r_ae + r_sfc
+    transpiration = base_transpiration*r_ae/r_eff
+    return transpiration, turbulent_energy_flux
+end
+
+
 
 # 1. Radiative transfer
 
@@ -58,6 +83,45 @@ of the sun zenith angle (`θs`), and the leaf angle distribution (`ld`).
 function extinction_coeff(ld::FT, θs::FT) where {FT}
     K = ld / cos(θs)
     return K
+end
+
+
+"""
+    bulk_SW_albedo(SW::FT,
+                   ρ_leaf::FT,
+                   K::FT,
+                   LAI::FT,
+                   Ω::FT) where {FT}
+
+Computes the bulk SW albedo in terms 
+of mol photons per m^2 per second (`α_SW`).
+
+This assumes the Beer-Lambert law, which is a function of shortwave radiation 
+at the top of the canopy (`SW_d`; moles of photons/m^2/),
+SW canopy reflectance (`ρ_leaf_sw`), SW soil reflectance (`α_soil`), the extinction
+coefficient (`K`), leaf area index (`LAI`) and the clumping index (`Ω`).
+"""
+function bulk_SW_albedo(
+    ρ_leaf_sw::FT,
+    α_soil::FT,
+    K::FT,
+    LAI::FT,
+    Ω::FT,
+) where {FT}
+    α_SW = α_soil * exp(-K * LAI * Ω) + ρ_leaf_sw * (1 - exp(-K * LAI * Ω))
+    return α_SW 
+end
+
+
+function canopy_emissivity(
+    ρ_leaf_sw::FT,
+    α_soil::FT,
+    K::FT,
+    LAI::FT,
+    Ω::FT,
+) where {FT}
+    α_SW = α_soil * exp(-K * LAI * Ω) + ρ_leaf_sw * (1 - exp(-K * LAI * Ω))
+    return α_SW 
 end
 
 # 2. Photosynthesis, Farquhar model
