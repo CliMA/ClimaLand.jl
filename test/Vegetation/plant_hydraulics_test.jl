@@ -10,7 +10,8 @@ if !("." in LOAD_PATH)
 end
 using ClimaLSM
 using ClimaLSM.Domains: Point, Plane
-using ClimaLSM.PlantHydraulics
+using ClimaLSM.Canopy
+using ClimaLSM.Canopy.PlantHydraulics
 import ClimaLSM
 include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
 
@@ -98,6 +99,7 @@ domains = [
             compartment_surfaces = compartment_surfaces,
             compartment_midpoints = compartment_midpoints,
         )
+        model = CanopyModel{FT}(plant_hydraulics)
 
         # Set system to hydrostatic equilibrium state by setting fluxes to zero, and setting LHS of both ODEs to 0
         function initial_rhs!(F, Y)
@@ -160,24 +162,42 @@ domains = [
 
         ϑ_l_0 = augmented_liquid_fraction.(plant_ν, S_l)
 
-        Y, p, coords = initialize(plant_hydraulics)
+        Y, p, coords = initialize(model)
         for i in 1:(n_stem + n_leaf)
-            Y.vegetation.ϑ_l[i] .= ϑ_l_0[i]
-            p.vegetation.ψ[i] .= FT(-1.0)
-            p.vegetation.fa[i] .= FT(-1.0)
+            Y.canopy.hydraulics.ϑ_l[i] .= ϑ_l_0[i]
+            p.canopy.hydraulics.ψ[i] .= FT(-1.0)
+            p.canopy.hydraulics.fa[i] .= FT(-1.0)
         end
 
 
-        plant_hydraulics_ode! = make_ode_function(plant_hydraulics)
+        plant_hydraulics_ode! = make_ode_function(model)
 
         dY = similar(Y)
+        dY2 = copy(dY)
         plant_hydraulics_ode!(dY, Y, p, 0.0)
-        m = similar(dY.vegetation.ϑ_l[1]) .+ FT(0.0)
+        # test that it has changed
+        @test sum(sum(dY.canopy.hydraulics.ϑ_l .- dY2.canopy.hydraulics.ϑ_l)) !=
+              0.0
+        m = similar(dY.canopy.hydraulics.ϑ_l[1]) .+ FT(0.0)
         for i in 1:(n_stem + n_leaf)
-            @. m += dY.vegetation.ϑ_l[i]^2.0 ./ (n_stem + n_leaf)
+            @. m += dY.canopy.hydraulics.ϑ_l[i]^2.0 ./ (n_stem + n_leaf)
         end
-
-
         @test mean(parent(sqrt.(m))) < 1e-8 # starts in equilibrium
+
+
+        # repeat using the plant hydraulics model directly
+        # make sure it agrees with what we get when use the canopy model ODE
+        Y, p, coords = initialize(model)
+        for i in 1:(n_stem + n_leaf)
+            Y.canopy.hydraulics.ϑ_l[i] .= ϑ_l_0[i]
+            p.canopy.hydraulics.ψ[i] .= FT(-1.0)
+            p.canopy.hydraulics.fa[i] .= FT(-1.0)
+        end
+        standalone_ode! = make_ode_function(model.hydraulics)
+        standalone_dY = similar(Y)
+        standalone_ode!(standalone_dY, Y, p, 0.0)
+        @test standalone_dY == dY
+
+
     end
 end

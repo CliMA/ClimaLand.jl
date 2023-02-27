@@ -3,25 +3,25 @@ export SoilPlantHydrologyModel
     struct SoilPlantHydrologyModel{
         FT,
         SM <: Soil.AbstractSoilModel{FT},
-        VM <: PlantHydraulics.AbstractVegetationModel{FT},
+        VM <: Canopy.CanopyModel{FT},
     } <: AbstractLandModel{FT}
         soil::SM
-        vegetation::VM
+        canopy::VM
     end
 
 A concrete type of land model used for simulating systems with a 
-vegetation and a soil component.
+canopy and a soil component.
 $(DocStringExtensions.FIELDS)
 """
 struct SoilPlantHydrologyModel{
     FT,
     SM <: Soil.AbstractSoilModel{FT},
-    VM <: PlantHydraulics.AbstractVegetationModel{FT},
+    VM <: Canopy.CanopyModel{FT},
 } <: AbstractLandModel{FT}
     "The soil model to be used"
     soil::SM
-    "The vegetation model to be used"
-    vegetation::VM
+    "The canopy model to be used"
+    canopy::VM
 end
 
 
@@ -30,11 +30,11 @@ end
                       land_args::NamedTuple = (;),
                       soil_model_type::Type{SM},
                       soil_args::NamedTuple = (;),
-                      vegetation_model_type::Type{VM},
-                      vegetation_args::NamedTuple = (;),
+                      canopy_model_type::Type{VM},
+                      canopy_args::NamedTuple = (;),
                       ) where {FT,
                                SM <: Soil.AbstractSoilModel{FT},
-                               VM <: PlantHydraulics.AbstractVegetationModel{FT}}
+                               VM <: PlantHydraulics.AbstractPlantHydraulicsModel{FT}}
 A constructor for the `SoilPlantHydrologyModel`, which takes in the concrete model
 type and required arguments for each component, constructs those models,
 and constructs the `SoilPlantHydrologyModel` from them.
@@ -47,13 +47,9 @@ function SoilPlantHydrologyModel{FT}(;
     land_args::NamedTuple = (;),
     soil_model_type::Type{SM},
     soil_args::NamedTuple = (;),
-    vegetation_model_type::Type{VM},
-    vegetation_args::NamedTuple = (;),
-) where {
-    FT,
-    SM <: Soil.AbstractSoilModel{FT},
-    VM <: PlantHydraulics.AbstractVegetationModel{FT},
-}
+    canopy_model_type::Type{VM},
+    canopy_args::NamedTuple = (;),
+) where {FT, SM <: Soil.AbstractSoilModel{FT}, VM <: Canopy.CanopyModel{FT}}
 
     # These may be passed in, or set, depending on use scenario.
     @unpack precipitation, transpiration = land_args
@@ -77,14 +73,16 @@ function SoilPlantHydrologyModel{FT}(;
         soil_args...,
     )
 
-    vegetation = vegetation_model_type(;
-        root_extraction = root_extraction,
-        transpiration = T,
-        root_depths = root_depths,
-        vegetation_args...,
+    canopy = canopy_model_type(
+        Canopy.PlantHydraulics.PlantHydraulicsModel{FT}(;
+            root_extraction = root_extraction,
+            transpiration = T,
+            root_depths = root_depths,
+            canopy_args.hydraulics...,
+        ),
     )
 
-    args = (soil, vegetation)
+    args = (soil, canopy)
     return SoilPlantHydrologyModel{FT, typeof.(args)...}(args...)
 end
 
@@ -97,7 +95,7 @@ interaction_domains(m::SoilPlantHydrologyModel) = (:subsurface,)
 """
     make_interactions_update_aux(
         land::SoilPlantHydrologyModel{FT, SM, RM},
-    ) where {FT, SM <: Soil.RichardsModel{FT}, RM <: PlantHydraulics.PlantHydraulicsModel{FT}}
+    ) where {FT, SM <: Soil.RichardsModel{FT}, RM <: Canopy.CanopyModel{FT}}
 
 A method which makes a function; the returned function 
 updates the auxiliary variable `p.root_extraction`, which
@@ -108,20 +106,16 @@ This function is called each ode function evaluation.
 """
 function make_interactions_update_aux(
     land::SoilPlantHydrologyModel{FT, SM, RM},
-) where {
-    FT,
-    SM <: Soil.RichardsModel{FT},
-    RM <: PlantHydraulics.PlantHydraulicsModel{FT},
-}
+) where {FT, SM <: Soil.RichardsModel{FT}, RM <: Canopy.CanopyModel{FT}}
     function update_aux!(p, Y, t)
         z = ClimaCore.Fields.coordinate_field(land.soil.domain.space).z
         @unpack vg_α, vg_n, vg_m, ν, S_s, K_sat, area_index =
-            land.vegetation.parameters
+            land.canopy.hydraulics.parameters
         @. p.root_extraction =
             area_index[:root] *
             PlantHydraulics.flux(
                 z,
-                land.vegetation.compartment_midpoints[1],
+                land.canopy.hydraulics.compartment_midpoints[1],
                 p.soil.ψ,
                 PlantHydraulics.water_retention_curve(
                     vg_α,
@@ -129,7 +123,7 @@ function make_interactions_update_aux(
                     vg_m,
                     PlantHydraulics.effective_saturation(
                         ν,
-                        Y.vegetation.ϑ_l[1],
+                        Y.canopy.hydraulics.ϑ_l[1],
                     ),
                     ν,
                     S_s,
@@ -142,7 +136,7 @@ function make_interactions_update_aux(
                 K_sat[:root],
                 K_sat[:stem],
             ) *
-            (land.vegetation.parameters.root_distribution(z))
+            (land.canopy.hydraulics.parameters.root_distribution(z))
     end
     return update_aux!
 end
@@ -161,12 +155,13 @@ are used at the same time,
 ensuring that the water flux into the roots is extracted correctly
 from the soil.
 """
-struct PrognosticSoilPressure{FT} <: PlantHydraulics.AbstractRootExtraction{FT} end
+struct PrognosticSoilPressure{FT} <:
+       Canopy.PlantHydraulics.AbstractRootExtraction{FT} end
 
 """
     PlantHydraulics.flux_out_roots(
         re::PrognosticSoilPressure{FT},
-        model::PlantHydraulics.PlantHydraulicsModel{FT},
+        model::Canopy.PlantHydraulics.PlantHydraulicsModel{FT},
         Y::ClimaCore.Fields.FieldVector,
         p::ClimaCore.Fields.FieldVector,
         t::FT,
@@ -183,7 +178,7 @@ roots and soil at each soil layer.
 """
 function PlantHydraulics.flux_out_roots(
     re::PrognosticSoilPressure{FT},
-    model::PlantHydraulics.PlantHydraulicsModel{FT},
+    model::Canopy.PlantHydraulics.PlantHydraulicsModel{FT},
     Y::ClimaCore.Fields.FieldVector,
     p::ClimaCore.Fields.FieldVector,
     t::FT,
@@ -203,10 +198,11 @@ are used at the same time,
 ensuring that the water flux into the roots is extracted correctly
 from the soil.
 """
-struct PrognosticRootFlux{FT} <: PlantHydraulics.AbstractRootExtraction{FT} end
+struct PrognosticRootFlux{FT} <:
+       Canopy.PlantHydraulics.AbstractRootExtraction{FT} end
 
 """
-    PlantHydraulics.flux_out_roots(
+    Canopy.PlantHydraulics.flux_out_roots(
         re::PrognosticRootFlux{FT},
         t::FT,
     )::FT where {FT}
@@ -220,7 +216,7 @@ hydraulics are modeled prognostically. This is for use in an LSM.
 It is computed by summing the flux of water between
 roots and soil at each soil layer.
 """
-function PlantHydraulics.flux_out_roots(
+function Canopy.PlantHydraulics.flux_out_roots(
     re::PrognosticRootFlux{FT},
 )::FT where {FT}
     return re
@@ -233,7 +229,7 @@ end
 Concrete type of Soil.AbstractSoilSource, used for dispatch 
 in an LSM with both soil and plant hydraulic components.
 
-This is paired with the source term `Vegetation.PrognosticSoilPressure`:both 
+This is paired with the source term `Canopy.PlantHydraulics.PrognosticSoilPressure`:both 
 are used at the same time,
 ensuring that the water flux into the roots is extracted correctly
 from the soil.

@@ -1,46 +1,4 @@
 module PlantHydraulics
-#=
-    PlantHydraulics
-This module contains everything needed to run a vegetation model
-in standalone mode.
-The vegetation model is assumed to have a set of prognostic `Y` and
-auxiliary `p` variables, which describe the state of the
-vegetation system. The system is evolved in time by solving 
-equations of the form
-```
-\frac{d Y}{d t} = f(Y, t, p(Y, t; \ldots);\ldots),
-```
-i.e. ordinary differential equations depending on state `Y`,
-auxiliary functions of the state `p`, and other parameters 
-represented by the ellipses. For example, `p` may represent
-the transpiration rate, which must be computed each time step
-based on the vegetation prognostic state, functions of time, 
-like the atmosphere state, and other parameters.
-Currently, only a simple plant hydraulics model is supported,
-but our plan is to include much more complex representations
-of the vegetation.
-Addition of additional versions of vegetation
-models requires defining a model type (of super type 
-`AbstractVegetationModel`), and extending the methods
-imported by Models.jl, as needed, for computing the
-right hand side functions of the ordinary differential equations
-and the functions which update auxiliary variables whenever
-the right hand side is evaluated.
-This code base assumes that DifferentialEquations.jl
-will be used for evolving the system in time,
-and that the array-like object being stepped forward
-is a `ClimaCore.Fields.FieldVector`. 
-While a simple array may be sufficient for vegetation models,
-the `FieldVector` type is used in order to make use of 
-`ClimaCore` functionality when solving PDEs (required for
-other components of Land Surface Models) and for ease of
-handling multi-column models.
-To simulate land surfaces with multiple components (vegetation,
-soil, rivers, etc), the ClimaLSM.jl package should be used.
-That package will use the methods of this function for advancing
-the system forward in time, extending methods as needed to account
-for interactions between components.
-=#
 using ClimaLSM
 using ClimaCore
 using UnPack
@@ -61,7 +19,7 @@ import ClimaLSM:
     initialize_auxiliary,
     name
 export PlantHydraulicsModel,
-    AbstractVegetationModel,
+    AbstractPlantHydraulicsModel,
     flux,
     effective_saturation,
     augmented_liquid_fraction,
@@ -75,16 +33,16 @@ export PlantHydraulicsModel,
     Layers
 
 """
-    AbstractVegetationModel{FT} <: AbstractModel{FT}
+    AbstractPlantHydraulicsModel{FT} <: AbstractModel{FT}
 
-An abstract type for vegetation models.
+An abstract type for plant hydraulics models.
 Concrete types include a plant hydraulics model, but future types will
 include multi-layer canopy models and possibly a big leaf model.
 """
-abstract type AbstractVegetationModel{FT} <: AbstractModel{FT} end
+abstract type AbstractPlantHydraulicsModel{FT} <: AbstractModel{FT} end
 
-ClimaLSM.name(::AbstractVegetationModel) = :vegetation
-ClimaLSM.domain(::AbstractVegetationModel) = :surface
+ClimaLSM.name(::AbstractPlantHydraulicsModel) = :hydraulics
+ClimaLSM.domain(::AbstractPlantHydraulicsModel) = :surface
 
 """
     AbstractRootExtraction{FT <: AbstractFloat}
@@ -137,7 +95,7 @@ struct PlantHydraulicsParameters{FT <: AbstractFloat, PSE}
 end
 
 """
-    PlantHydraulicsModel{FT, PS, D, RE, T, B} <: AbstractVegetationModel{FT}
+    PlantHydraulicsModel{FT, PS, D, RE, T, B} <: AbstractPlantHydraulicsModel{FT}
 
 Defines, and constructs instances of, the PlantHydraulicsModel type, which is used
 for simulation flux of water to/from soil, along roots of different depths,
@@ -149,7 +107,8 @@ and soil matric potential at the root tips or flux in the roots, or with a
 dynamic soil model using `ClimaLSM`.
 $(DocStringExtensions.FIELDS)
 """
-struct PlantHydraulicsModel{FT, PS, D, RE, T} <: AbstractVegetationModel{FT}
+struct PlantHydraulicsModel{FT, PS, D, RE, T} <:
+       AbstractPlantHydraulicsModel{FT}
     "The number of stem compartments for the plant"
     n_stem::Int64
     "The number of leaf compartments for the plant"
@@ -435,7 +394,7 @@ function inverse_water_retention_curve(
 end
 
 """
-    make_rhs(model::VegetationModel)
+    make_rhs(model::PlantHydraulicsModel)
 
 A function which creates the rhs! function for the PlantHydraulicsModel.
 The rhs! function must comply with a rhs function of OrdinaryDiffEq.jl.
@@ -452,9 +411,9 @@ function make_rhs(model::PlantHydraulicsModel)
         n_stem = model.n_stem
         n_leaf = model.n_leaf
 
-        ψ = p.vegetation.ψ
-        ϑ_l = Y.vegetation.ϑ_l
-        fa = p.vegetation.fa
+        ψ = p.canopy.hydraulics.ψ
+        ϑ_l = Y.canopy.hydraulics.ϑ_l
+        fa = p.canopy.hydraulics.fa
 
         # initialize first index
         @inbounds @. ψ[1] = water_retention_curve(
@@ -511,13 +470,14 @@ function make_rhs(model::PlantHydraulicsModel)
                     ) / 2
             else  # Apply upper boundary condition * area index
                 fa[i] .=
-                    transpiration(model.transpiration, t) .* area_index[:leaf]
+                    transpiration(model.transpiration, Y, p, t) .*
+                    area_index[:leaf]
             end
 
             if i == 1
-                @. dY.vegetation.ϑ_l[i] = 1 / AIdz * (fa0 - fa[i])
+                @. dY.canopy.hydraulics.ϑ_l[i] = 1 / AIdz * (fa0 - fa[i])
             else
-                @. dY.vegetation.ϑ_l[i] = 1 / AIdz * (fa[i - 1] - fa[i])
+                @. dY.canopy.hydraulics.ϑ_l[i] = 1 / AIdz * (fa[i - 1] - fa[i])
             end
         end
     end
@@ -557,7 +517,7 @@ end
 A method which computes the flux between the soil and the stem, via the roots,
 in the case of a standalone plant hydraulics model with prescribed soil pressure (in m)
 at the root tips.
-This assumes that the stem compartment is the first element of `Y.vegetation.ϑ_l`.
+This assumes that the stem compartment is the first element of `Y.canopy.hydraulics.ϑ_l`.
 """
 function flux_out_roots(
     re::PrescribedSoilPressure{FT},
@@ -568,7 +528,7 @@ function flux_out_roots(
 )::ClimaCore.Fields.Field where {FT}
     @unpack vg_α, vg_n, vg_m, ν, S_s, K_sat, root_distribution =
         model.parameters
-    ψ_stem = p.vegetation.ψ[1]
+    ψ_stem = p.canopy.hydraulics.ψ[1]
     n_root_layers = length(model.root_depths)
     sum_flux_out_roots = similar(ψ_stem)
     dz_roots = (
@@ -601,6 +561,8 @@ end
 """
     transpiration(
         transpiration::PrescribedTranspiration{FT},
+        Y,
+        p,
         t::FT,
     )::FT where {FT}
 
@@ -611,6 +573,8 @@ transpiration rate.
 """
 function transpiration(
     transpiration::PrescribedTranspiration{FT},
+    _,
+    _,
     t::FT,
 )::FT where {FT}
     return transpiration.T(t) # (m/s)

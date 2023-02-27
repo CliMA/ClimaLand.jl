@@ -15,4 +15,6 @@ ClimaLSM.Canopy.MedlynConductanceParameters
 ```@docs
 ClimaLSM.Canopy.medlyn_term
 ClimaLSM.Canopy.medlyn_conductance
+ClimaLSM.Canopy.upscale_leaf_conductance
+ClimaLSM.Canopy.penman_monteith
 ```

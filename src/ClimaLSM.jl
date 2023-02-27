@@ -243,9 +243,8 @@ include("Snow/Snow.jl")
 using .Snow
 include("Vegetation/Canopy.jl")
 using .Canopy
-include("Vegetation/PlantHydraulics.jl")
-using .PlantHydraulics
-import .PlantHydraulics: flux_out_roots
+using .Canopy.PlantHydraulics
+import .Canopy.PlantHydraulics: flux_out_roots
 ### Concrete types of AbstractLandModels
 ### and associated methods
 include("./soil_energy_hydrology_biogeochemistry.jl")

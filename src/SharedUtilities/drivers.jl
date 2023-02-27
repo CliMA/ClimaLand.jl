@@ -58,7 +58,7 @@ struct PrescribedAtmosphere{FT, LP, SP, TA, UA, QA, RA, CA} <:
     P::RA
     "CO2 concentration in atmosphere (mol/mol)"
     c_co2::CA
-    "Reference height (m)"
+    "Reference height (m), relative to surface elevation"
     h::FT
     function PrescribedAtmosphere(
         liquid_precip,
@@ -249,9 +249,6 @@ struct PrescribedRadiativeFluxes{FT, SW, LW, T} <: AbstractRadiativeDrivers{FT}
         return new{FT, typeof.(args)...}(args...)
     end
 end
-
-
-
 
 """
     net_radiation(radiation::PrescribedRadiativeFluxes{FT},

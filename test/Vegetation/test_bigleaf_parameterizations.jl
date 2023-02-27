@@ -12,6 +12,7 @@ import ClimaLSM.Parameters as LSMP
 include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
 FT = Float32
 earth_param_set = create_lsm_parameters(FT)
+
 @testset "Big Leaf Parameterizations" begin
     # Test with defaults
     RTparams = BeerLambertParameters{FT}()
@@ -27,7 +28,8 @@ earth_param_set = create_lsm_parameters(FT)
     energy_per_photon = h * c / λ
 
     # Drivers
-    T = FT(290) # K 
+    T = FT(290) # K
+    P = FT(101250) #Pa
     VPD = FT(6e3) # Pa
     ψ_l = FT(-2e6) # Pa
     ca = FT(4.11e-4) # mol/mol
@@ -35,12 +37,12 @@ earth_param_set = create_lsm_parameters(FT)
     θs = FT.(Array(0:0.1:(π / 2)))
     SW(θs) = cos.(θs) * FT.(500) # W/m^2
     PAR = SW(θs) ./ (energy_per_photon * N_a) # convert 500 W/m^2 to mol of photons per m^2/s
-    K = extinction_coeff.(RTparams.ld, θs)
-    @test all(K .≈ RTparams.ld ./ cos.(θs))
-    APAR = plant_absorbed_ppfd.(PAR, RTparams.ρ_leaf, K, LAI, RTparams.Ω)
+    K_c = extinction_coeff.(RTparams.ld, θs)
+    @test all(K_c .≈ RTparams.ld ./ cos.(θs))
+    APAR = plant_absorbed_ppfd.(PAR, RTparams.ρ_leaf, K_c, LAI, RTparams.Ω)
     @test all(
         APAR .≈
-        PAR .* (1 - RTparams.ρ_leaf) .* (1 .- exp.(-K .* LAI .* RTparams.Ω)),
+        PAR .* (1 - RTparams.ρ_leaf) .* (1 .- exp.(-K_c .* LAI .* RTparams.Ω)),
     )
     To = photosynthesisparams.To
     Vcmax =
@@ -65,12 +67,12 @@ earth_param_set = create_lsm_parameters(FT)
     @test photosynthesisparams.Vcmax25 *
           arrhenius_function(T, To, R, photosynthesisparams.ΔHVcmax) ≈ Vcmax
 
-    m = medlyn_term(stomatal_g_params.g1, VPD)
+    m_t = medlyn_term(stomatal_g_params.g1, VPD)
 
-    @test m == 1 + stomatal_g_params.g1 / sqrt(VPD)
-    ci = intercellular_co2(ca, Γstar, m)
-    @test ci == ca * (1 - 1 / m)
-    @test intercellular_co2(ca, FT(1), m) == FT(1)
+    @test m_t == 1 + stomatal_g_params.g1 / sqrt(VPD)
+    ci = intercellular_co2(ca, Γstar, m_t)
+    @test ci == ca * (1 - 1 / m_t)
+    @test intercellular_co2(ca, FT(1), m_t) == FT(1)
 
     Ac = rubisco_assimilation(
         photosynthesisparams.mechanism,
@@ -146,16 +148,23 @@ earth_param_set = create_lsm_parameters(FT)
         medlyn_conductance.(
             stomatal_g_params.g0,
             stomatal_g_params.Drel,
-            m,
+            m_t,
             An,
             ca,
         )
     @test all(
         @.(
             stomatal_conductance ≈
-            stomatal_g_params.g0 + stomatal_g_params.Drel * m * (An / ca)
+            stomatal_g_params.g0 + stomatal_g_params.Drel * m_t * (An / ca)
         )
     )
-    GPP = compute_GPP.(An, K, LAI, RTparams.Ω) # mol m-2 s-1
-    @test all(@.(GPP ≈ An * (1 - exp(-K * LAI * RTparams.Ω)) / K))
-end # testset
+    GPP = compute_GPP.(An, K_c, LAI, RTparams.Ω) # mol m-2 s-1
+    @test all(@.(GPP ≈ An * (1 - exp(-K_c * LAI * RTparams.Ω)) / K_c))
+
+    @test all(
+        @.(
+            upscale_leaf_conductance(stomatal_conductance, LAI, T, R, P) ≈
+            stomatal_conductance * LAI * R * T / P
+        )
+    )
+end
