@@ -5,8 +5,6 @@ export plant_absorbed_ppfd,
     co2_compensation,
     rubisco_assimilation,
     light_assimilation,
-    C3,
-    C4,
     max_electron_transport,
     electron_transport,
     net_photosynthesis,
@@ -17,7 +15,10 @@ export plant_absorbed_ppfd,
     MM_Ko,
     compute_Vcmax,
     medlyn_term,
-    medlyn_conductance
+    medlyn_conductance,
+    canopy_surface_fluxes,
+    upscale_leaf_conductance,
+    penman_monteith
 
 # 1. Radiative transfer
 
@@ -43,7 +44,6 @@ function plant_absorbed_ppfd(
     LAI::FT,
     Ω::FT,
 ) where {FT}
-
     APAR = PAR * (1 - ρ_leaf) * (1 - exp(-K * LAI * Ω))
     return APAR
 end
@@ -56,7 +56,7 @@ Computes the vegetation extinction coefficient (`K`), as a function
 of the sun zenith angle (`θs`), and the leaf angle distribution (`ld`).
 """
 function extinction_coeff(ld::FT, θs::FT) where {FT}
-    K = ld / cos(θs)
+    K = ld / max(cos(θs), eps(FT))
     return K
 end
 
@@ -100,22 +100,6 @@ function co2_compensation(
     Γstar = Γstar25 * arrhenius_function(T, To, R, ΔHΓstar)
     return Γstar
 end
-
-abstract type AbstractPhotosynthesisMechanism end
-"""
-    C3 <: AbstractPhotosynthesisMechanism
-
-Helper struct for dispatching between C3 and C4 photosynthesis.
-"""
-struct C3 <: AbstractPhotosynthesisMechanism end
-
-"""
-    C4 <: AbstractPhotosynthesisMechanism
-
-Helper struct for dispatching between C3 and C4 photosynthesis.
-"""
-struct C4 <: AbstractPhotosynthesisMechanism end
-
 
 """
     rubisco_assimilation(::C3,
@@ -324,8 +308,32 @@ function compute_GPP(An::FT, K::FT, LAI::FT, Ω::FT) where {FT}
     return GPP
 end
 
+
 """
-   arrhenius_function(T::FT, To::FT, R::FT, ΔH::FT)
+    upscale_leaf_conductance(gs::FT, LAI::FT, T::FT, R::FT, P::FT) where {FT}
+
+This currently takes a leaf conductance (moles per leaf area per second)
+and (1) converts it to m/s, (2) upscales to the entire canopy, by assuming
+the leaves in the canopy are in parallel and hence multiplying
+by LAI.
+
+TODO: Check what CLM does, and check if we can use the same function 
+for GPP from An, and make more general.
+"""
+function upscale_leaf_conductance(
+    gs::FT,
+    LAI::FT,
+    T::FT,
+    R::FT,
+    P::FT,
+) where {FT}
+    canopy_conductance = gs * LAI
+    canopy_conductance = canopy_conductance * (R * T) / P # convert to m s-1
+    return canopy_conductance
+end
+
+"""
+    arrhenius_function(T::FT, To::FT, R::FT, ΔH::FT)
 
 Computes the Arrhenius function at temperature `T` given
 the reference temperature `To=298.15K`, the universal 
@@ -444,4 +452,36 @@ function medlyn_conductance(
 ) where {FT}
     gs = g0 + Drel * medlyn_term * (An / ca)
     return gs
+end
+
+"""
+    penman_monteith(
+        Δ::FT, # Rate of change of saturation vapor pressure with air temperature. (Pa K−1)  
+        Rn::FT, # Net irradiance (W m−2)
+        G::FT, # Ground heat flux (W m−2)
+        ρa::FT, # Dry air density (kg m−3)
+        cp::FT, # Specific heat capacity of air (J kg−1 K−1) 
+        VPD::FT, # vapor pressure deficit (Pa)
+        ga::FT, # atmospheric conductance (m s−1)
+        γ::FT, # Psychrometric constant (γ ≈ 66 Pa K−1)
+        gs::FT, # surface or stomatal conductance (m s−1)
+        Lv::FT, # Volumetric latent heat of vaporization (J m-3)
+        ) where {FT}
+
+Computes the evapotranspiration in m/s using the Penman-Monteith equation.       
+"""
+function penman_monteith(
+    Δ::FT,
+    Rn::FT,
+    G::FT,
+    ρa::FT,
+    cp::FT,
+    VPD::FT,
+    ga::FT,
+    γ::FT,
+    gs::FT,
+    Lv::FT,
+) where {FT}
+    ET = (Δ * (Rn - G) + ρa * cp * VPD * ga) / ((Δ + γ * (1 + ga / gs)) * Lv)
+    return ET
 end

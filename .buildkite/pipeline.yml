@@ -46,7 +46,7 @@ steps:
 
       - label: "ozark_test"
         command: "julia --color=yes --project=experiments experiments/LSM/ozark_test.jl"
-        artifact_paths: "experiments/LSM/"
+        artifact_paths: "experiments/LSM/integrated*png"
 
       - label: "Soilbiogeochem"
         command: "julia --color=yes --project=experiments experiments/Biogeochemistry/experiment.jl"

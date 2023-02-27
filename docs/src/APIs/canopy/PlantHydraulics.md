@@ -1,4 +1,4 @@
-# Vegetation
+# PlantHydraulics
 
 ```@meta
 CurrentModule = ClimaLSM.PlantHydraulics
@@ -6,11 +6,10 @@ CurrentModule = ClimaLSM.PlantHydraulics
 ## Models
 
 ```@docs
-ClimaLSM.PlantHydraulics.AbstractVegetationModel
 ClimaLSM.PlantHydraulics.PlantHydraulicsModel
 ```
 
-## Plan Hydraulics Diagnostic Variables
+## Plant Hydraulics Diagnostic Variables
 
 ```@docs
 ClimaLSM.PlantHydraulics.effective_saturation
@@ -21,13 +20,13 @@ ClimaLSM.PlantHydraulics.flux_out_roots
 ClimaLSM.PlantHydraulics.flux
 ```
 
-## Plan Hydraulics Parameters
+## Plant Hydraulics Parameters
 
 ```@docs
 ClimaLSM.PlantHydraulics.PlantHydraulicsParameters
 ```
 
-## Plan Hydraulics Methods and Types
+## Plant Hydraulics Methods and Types
 
 ```@docs
 ClimaLSM.PlantHydraulics.PrescribedSoilPressure
