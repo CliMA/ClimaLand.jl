@@ -1,13 +1,10 @@
 module PlantHydraulics
 using ClimaLSM
+using ..ClimaLSM.Canopy: AbstractCanopyComponent
 using ClimaCore
-using UnPack
 using DocStringExtensions
-import ClimaCore: Fields
 
-using ClimaLSM.Domains: AbstractDomain
 import ClimaLSM:
-    AbstractModel,
     initialize_prognostic,
     make_update_aux,
     make_rhs,
@@ -29,20 +26,18 @@ export PlantHydraulicsModel,
     PlantHydraulicsParameters,
     PrescribedSoilPressure,
     PrescribedTranspiration,
+    DiagnosticTranspiration,
     AbstractRootExtraction,
     Layers
 
 """
-    AbstractPlantHydraulicsModel{FT} <: AbstractModel{FT}
+    AbstractPlantHydraulicsModel{FT} <: AbstractCanopyComponent{FT}
 
 An abstract type for plant hydraulics models.
-Concrete types include a plant hydraulics model, but future types will
-include multi-layer canopy models and possibly a big leaf model.
 """
-abstract type AbstractPlantHydraulicsModel{FT} <: AbstractModel{FT} end
+abstract type AbstractPlantHydraulicsModel{FT} <: AbstractCanopyComponent{FT} end
 
 ClimaLSM.name(::AbstractPlantHydraulicsModel) = :hydraulics
-ClimaLSM.domain(::AbstractPlantHydraulicsModel) = :surface
 
 """
     AbstractRootExtraction{FT <: AbstractFloat}
@@ -61,8 +56,7 @@ abstract type AbstractRootExtraction{FT <: AbstractFloat} end
     AbstractTranspiration{FT <: AbstractFloat}
 
 An abstract type for types representing different models of
-transpiration.
-Currently, only a PrescribedTranspiration is supported.
+transpiration (Prescribed or Diagnostic)
 """
 abstract type AbstractTranspiration{FT <: AbstractFloat} end
 
@@ -73,7 +67,7 @@ abstract type AbstractTranspiration{FT <: AbstractFloat} end
 A struct for holding parameters of the PlantHydraulics Model.
 $(DocStringExtensions.FIELDS)
 """
-struct PlantHydraulicsParameters{FT <: AbstractFloat, PSE}
+struct PlantHydraulicsParameters{FT <: AbstractFloat}
     "RAI, SAI, LAI in [m2 m-2]"
     area_index::NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}}
     "water conductivity in the above-ground plant compartments (m/s) when pressure is zero, a maximum"
@@ -90,12 +84,10 @@ struct PlantHydraulicsParameters{FT <: AbstractFloat, PSE}
     S_s::FT
     "Root distribution function P(z)"
     root_distribution::Function
-    "Physical Constants and other Clima-wide parameters"
-    earth_param_set::PSE
 end
 
 """
-    PlantHydraulicsModel{FT, PS, D, RE, T, B} <: AbstractPlantHydraulicsModel{FT}
+    PlantHydraulicsModel{FT, PS, RE, T, B} <: AbstractPlantHydraulicsModel{FT}
 
 Defines, and constructs instances of, the PlantHydraulicsModel type, which is used
 for simulation flux of water to/from soil, along roots of different depths,
@@ -107,8 +99,7 @@ and soil matric potential at the root tips or flux in the roots, or with a
 dynamic soil model using `ClimaLSM`.
 $(DocStringExtensions.FIELDS)
 """
-struct PlantHydraulicsModel{FT, PS, D, RE, T} <:
-       AbstractPlantHydraulicsModel{FT}
+struct PlantHydraulicsModel{FT, PS, RE, T} <: AbstractPlantHydraulicsModel{FT}
     "The number of stem compartments for the plant"
     n_stem::Int64
     "The number of leaf compartments for the plant"
@@ -123,8 +114,6 @@ struct PlantHydraulicsModel{FT, PS, D, RE, T} <:
     compartment_labels::Vector{Symbol}
     "Parameters required by the Plant Hydraulics model"
     parameters::PS
-    "The plant hydraulics model domain, of type `AbstractDomain`"
-    domain::D
     "The root extraction model, of type `AbstractRootExtraction`"
     root_extraction::RE
     "The transpiration model, of type `AbstractTranspiration`"
@@ -137,12 +126,11 @@ function PlantHydraulicsModel{FT}(;
     n_leaf::Int64,
     compartment_midpoints::Vector{FT},
     compartment_surfaces::Vector{FT},
-    parameters::PlantHydraulicsParameters{FT, PSE},
-    domain::AbstractDomain{FT},
+    parameters::PlantHydraulicsParameters{FT},
     root_extraction::AbstractRootExtraction{FT},
-    transpiration::AbstractTranspiration{FT},
-) where {FT, PSE}
-    args = (parameters, domain, root_extraction, transpiration)
+    transpiration::AbstractTranspiration{FT} = DiagnosticTranspiration{FT}(),
+) where {FT}
+    args = (parameters, root_extraction, transpiration)
     @assert n_leaf != 0
     @assert (n_leaf + n_stem) == length(compartment_midpoints)
     @assert (n_leaf + n_stem) + 1 == length(compartment_surfaces)
@@ -394,20 +382,16 @@ function inverse_water_retention_curve(
 end
 
 """
-    make_rhs(model::PlantHydraulicsModel)
+    make_rhs(model::PlantHydraulicsModel, _)
 
 A function which creates the rhs! function for the PlantHydraulicsModel.
 The rhs! function must comply with a rhs function of OrdinaryDiffEq.jl.
 
-Note that this rhs function updates the auxiliary variables as well. We chose to
-do so here because it reduces to a single loop over the layers, instead of looping
-over them in the auxiliary function as well. 
-
 Below, `fa` denotes a flux multiplied by the relevant cross section (per unit area ground).
 """
-function make_rhs(model::PlantHydraulicsModel)
+function make_rhs(model::PlantHydraulicsModel, _)
     function rhs!(dY, Y, p, t)
-        @unpack vg_α, vg_n, vg_m, S_s, ν, K_sat, area_index = model.parameters
+        (; vg_α, vg_n, vg_m, S_s, ν, K_sat, area_index) = model.parameters
         n_stem = model.n_stem
         n_leaf = model.n_leaf
 
@@ -481,9 +465,9 @@ function make_rhs(model::PlantHydraulicsModel)
             end
         end
     end
-
     return rhs!
 end
+
 
 """
     PrescribedSoilPressure{FT} <: AbstractRootExtraction{FT}
@@ -493,16 +477,6 @@ in the case where the soil matric potential at each root layer is prescribed.
 """
 struct PrescribedSoilPressure{FT} <: AbstractRootExtraction{FT}
     ψ_soil::Function
-end
-
-"""
-    PrescribedTranspiration{FT} <: AbstractTranspiration{FT}
-
-A concrete type used for dispatch when computing the transpiration
-from the leaves, in the case where transpiration is prescribed.
-"""
-struct PrescribedTranspiration{FT} <: AbstractTranspiration{FT}
-    T::Function
 end
 
 """
@@ -526,11 +500,10 @@ function flux_out_roots(
     p::ClimaCore.Fields.FieldVector,
     t::FT,
 )::ClimaCore.Fields.Field where {FT}
-    @unpack vg_α, vg_n, vg_m, ν, S_s, K_sat, root_distribution =
-        model.parameters
-    ψ_stem = p.canopy.hydraulics.ψ[1]
+    (; vg_α, vg_n, vg_m, ν, S_s, K_sat, root_distribution) = model.parameters
+    ψ_base = p.canopy.hydraulics.ψ[1]
     n_root_layers = length(model.root_depths)
-    sum_flux_out_roots = similar(ψ_stem)
+    sum_flux_out_roots = similar(ψ_base)
     dz_roots = (
         vcat(model.root_depths, [0.0])[2:end] -
         vcat(model.root_depths, [0.0])[1:(end - 1)]
@@ -542,20 +515,31 @@ function flux_out_roots(
                 model.root_depths[i],
                 model.compartment_midpoints[1],
                 ψ_soil,
-                ψ_stem,
+                ψ_base,
                 vg_α,
                 vg_n,
                 vg_m,
                 ν,
                 S_s,
                 K_sat[:root],
-                K_sat[:stem],
+                K_sat[model.compartment_labels[1]],
             ) *
             root_distribution(model.root_depths[i]) *
             dz_roots[i]
     end
 
     return sum_flux_out_roots
+end
+
+
+"""
+    PrescribedTranspiration{FT} <: AbstractTranspiration{FT}
+
+A concrete type used for dispatch when computing the transpiration
+from the leaves, in the case where transpiration is prescribed.
+"""
+struct PrescribedTranspiration{FT} <: AbstractTranspiration{FT}
+    T::Function
 end
 
 """
@@ -578,6 +562,27 @@ function transpiration(
     t::FT,
 )::FT where {FT}
     return transpiration.T(t) # (m/s)
+end
+
+"""
+    DiagnosticTranspiration{FT} <: AbstractTranspiration{FT}
+
+A concrete type used for dispatch when computing the transpiration
+from the leaves, in the case where transpiration is computed
+diagnostically, as a function of prognostic variables and parameters,
+and stored in `p` during the `update_aux!` step.
+"""
+struct DiagnosticTranspiration{FT} <: AbstractTranspiration{FT} end
+
+"""
+    transpiration(transpiration::DiagnosticTranspiration, Y, p, t)
+
+Returns the transpiration computed diagnostically using local conditions.
+In this case, it just returns the value which was computed and stored in 
+the `aux` state during the update_aux! step.
+"""
+function transpiration(transpiration::DiagnosticTranspiration, Y, p, t)
+    @inbounds return p.canopy.conductance.transpiration
 end
 
 end

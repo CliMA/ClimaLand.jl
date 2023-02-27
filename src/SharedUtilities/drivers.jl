@@ -20,14 +20,14 @@ export AbstractAtmosphericDrivers,
 """
      AbstractAtmosphericDrivers{FT <: AbstractFloat}
 
-An abstract type of atmospheric drivers of the bucket model.
+An abstract type of atmospheric drivers of land models.
 """
 abstract type AbstractAtmosphericDrivers{FT <: AbstractFloat} end
 
 """
      AbstractRadiativeDrivers{FT <: AbstractFloat}
 
-An abstract type of radiative drivers of the bucket model.
+An abstract type of radiative drivers of land models.
 """
 abstract type AbstractRadiativeDrivers{FT <: AbstractFloat} end
 
@@ -36,7 +36,7 @@ abstract type AbstractRadiativeDrivers{FT <: AbstractFloat} end
 
 Container for holding prescribed atmospheric drivers and other
 information needed for computing turbulent surface fluxes when
-driving the bucket model in standalone mode.
+driving land models in standalone mode.
 
 Since not all models require co2 concentration, the default for that
 is `nothing`.
@@ -233,8 +233,7 @@ end
 """
     PrescribedRadiativeFluxes{FT, SW, LW, T} <: AbstractRadiativeDrivers{FT}
 
-Container for the prescribed radiation functions needed to drive the
-bucket model in standalone mode.
+Container for the prescribed radiation functions needed to drive land models in standalone mode.
 $(DocStringExtensions.FIELDS)
 """
 struct PrescribedRadiativeFluxes{FT, SW, LW, T} <: AbstractRadiativeDrivers{FT}

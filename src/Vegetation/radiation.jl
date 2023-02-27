@@ -1,6 +1,6 @@
 export BeerLambertParameters, BeerLambertModel
 
-abstract type AbstractRadiationModel{FT} <: AbstractModel{FT} end
+abstract type AbstractRadiationModel{FT} <: AbstractCanopyComponent{FT} end
 
 """
     BeerLambertParameters{FT <: AbstractFloat}

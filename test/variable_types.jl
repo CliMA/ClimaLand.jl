@@ -10,6 +10,22 @@ import ClimaLSM:
 using ClimaLSM.Domains: HybridBox, Column, Point
 using ClimaLSM.Domains: coordinates
 
+@testset "Default model" begin
+    struct DefaultModel{FT} <: AbstractModel{FT} end
+    dm = DefaultModel{Float32}()
+    @test ClimaLSM.prognostic_vars(dm) == ()
+    @test ClimaLSM.prognostic_types(dm) == ()
+    @test ClimaLSM.auxiliary_vars(dm) == ()
+    @test ClimaLSM.auxiliary_types(dm) == ()
+    dm_rhs! = make_rhs(dm)
+    x = [0, 1, 2, 3]
+    @test dm_rhs!(x[1], x[2], x[3], x[4]) == nothing
+    @test x == [0, 1, 2, 3]
+    dm_update_aux! = make_update_aux(dm)
+    @test dm_update_aux!(x[1], x[2], x[3]) == nothing
+    @test x == [0, 1, 2, 3]
+end
+
 struct Model{FT, D} <: AbstractModel{FT}
     domain::D
 end
@@ -21,18 +37,13 @@ ClimaLSM.prognostic_types(m::Model{FT}) where {FT} = (FT, SVector{2, FT})
 
 ClimaLSM.auxiliary_types(m::Model{FT}) where {FT} = (FT, SVector{2, FT})
 
-
-
-
-FT = Float64
-zmin = FT(1.0)
-zmax = FT(2.0)
-zlim = (zmin, zmax)
-nelements = 5
-
-
-
 @testset "Column Domain Vars" begin
+    FT = Float64
+    zmin = FT(1.0)
+    zmax = FT(2.0)
+    zlim = (zmin, zmax)
+    nelements = 5
+
     column = Column(; zlim = zlim, nelements = nelements)
     m = Model{FT, typeof(column)}(column)
     Y, p, coords = initialize(m)
@@ -43,6 +54,12 @@ nelements = 5
 end
 
 @testset "Point Domain Vars" begin
+    FT = Float64
+    zmin = FT(1.0)
+    zmax = FT(2.0)
+    zlim = (zmin, zmax)
+    nelements = 5
+
     point = Point(; z_sfc = zlim[1])
     m = Model{FT, typeof(point)}(point)
     Y, p, coords = initialize(m)
