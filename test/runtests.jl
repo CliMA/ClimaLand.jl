@@ -1,4 +1,5 @@
 include("./Snow/parameterizations.jl")
+include("./Vegetation/test_bigleaf_parameterizations.jl")
 include("./Soil/Biogeochemistry/co2_parameterizations.jl")
 include("./Soil/Biogeochemistry/biogeochemistry_module.jl")
 include("./Bucket/soil_bucket_tests.jl")

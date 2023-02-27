@@ -17,6 +17,10 @@ Base.@kwdef struct LSMParameters{FT, TP, SFP} <: ALSMP
     grav::FT
     MSLP::FT
     gas_constant::FT
+    molmass_water::FT
+    h_Planck::FT
+    light_speed::FT
+    avogad::FT
     thermo_params::TP
     surf_flux_params::SFP
 end
@@ -35,9 +39,13 @@ Stefan(ps::ALSMP) = ps.Stefan
 T_freeze(ps::ALSMP) = ps.T_freeze
 grav(ps::ALSMP) = ps.grav
 gas_constant(ps::ALSMP) = ps.gas_constant
+molar_mass_water(ps::ALSMP) = ps.molmass_water
+planck_constant(ps::ALSMP) = ps.h_Planck
+avogadro_constant(ps::ALSMP) = ps.avogad
+light_speed(ps::ALSMP) = ps.light_speed
 # Derived parameters
 LH_f0(ps::ALSMP) = LH_s0(ps) - LH_v0(ps)
-
+ρ_m_liq(ps::ALSMP) = ρ_cloud_liq(ps) / molar_mass_water(ps)
 # Dependency parameter wrappers
 thermodynamic_parameters(ps::ALSMP) = ps.thermo_params
 surface_fluxes_parameters(ps::ALSMP) = ps.surf_flux_params
