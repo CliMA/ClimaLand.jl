@@ -48,7 +48,7 @@
 
 # To begin, let's import some necessary abstract and concrete types, as well as methods.
 using ClimaLSM
-using ClimaLSM.Drivers: AbstractAtmosphericDrivers, AbstractRadiativeDrivers
+using ClimaLSM: AbstractAtmosphericDrivers, AbstractRadiativeDrivers
 using ClimaLSM.Bucket: BucketModel, BucketModelParameters
 
 import ClimaLSM.Bucket:
@@ -83,8 +83,8 @@ struct CoupledRadiativeFluxes{FT} <: AbstractRadiativeDrivers{FT} end
 # Then, we define a new method for `surface_fluxes` and `net_radiation` which dispatch for these types:
 function ClimaLSM.Bucket.surface_fluxes(
     atmos::CoupledAtmosphere{FT},
+    model::BucketModel{FT},
     p,
-    t,
     _...,
 ) where {FT <: AbstractFloat}
     return (
@@ -96,8 +96,8 @@ end
 
 function ClimaLSM.Bucket.net_radiation(
     radiation::CoupledRadiativeFluxes{FT},
+    model::BucketModel{FT},
     p,
-    t,
     _...,
 ) where {FT <: AbstractFloat}
     return p.bucket.R_n
@@ -117,7 +117,13 @@ end
 # return the prescribed values for these quantities.
 
 # In the coupled case, we need to extend these functions with a `CoupledAtmosphere` method:
-function ClimaLSM.Bucket.surface_air_density(atmos::CoupledAtmosphere, p, _...)
+function ClimaLSM.surface_air_density(
+    atmos::CoupledAtmosphere,
+    model::BucketModel,
+    Y,
+    p,
+    _...,
+)
     return p.bucket.ρ_sfc
 end
 

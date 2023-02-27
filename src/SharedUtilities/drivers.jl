@@ -1,4 +1,3 @@
-module Drivers
 using Thermodynamics
 using ClimaCore
 using DocStringExtensions
@@ -12,11 +11,11 @@ export AbstractAtmosphericDrivers,
     PrescribedRadiativeFluxes,
     compute_ρ_sfc,
     construct_atmos_ts,
+    surface_fluxes,
+    net_radiation,
     surface_fluxes_at_a_point,
-    radiative_fluxes_at_a_point,
     liquid_precipitation,
-    snow_precipitation,
-    surface_air_density
+    snow_precipitation
 
 """
      AbstractAtmosphericDrivers{FT <: AbstractFloat}
@@ -110,14 +109,12 @@ end
 
 
 """
-    surface_fluxes(
-        atmos::PrescribedAtmosphere{FT},
-        p::ClimaCore.Fields.FieldVector,
-        t::FT,
-        name::Symbol
-        parameters;
-        β_sfc = FT(1.0)
-    ) where {FT <: AbstractFloat}
+    surface_fluxes(atmos::PrescribedAtmosphere{FT},
+                   model::AbstractModel{FT},
+                   Y::ClimaCore.Fields.FieldVector,
+                   p::ClimaCore.Fields.FieldVector,
+                   t::FT
+                   ) where {FT <: AbstractFloat}
 
 Computes the turbulent surface flux terms at the ground for a standalone simulation,
 including turbulent energy fluxes as well as the water vapor flux 
@@ -125,43 +122,39 @@ including turbulent energy fluxes as well as the water vapor flux
 Positive fluxes indicate flow from the ground to the atmosphere.
 
 It solves for these given atmospheric conditions, stored in `atmos`,
-model parameters, and the surface conditions which
-are stored in the `aux` state at p.name.T_sfc, p.name.q_sfc,
-and p.name.ρ_sfc. 
-
-β_sfc is a factor which scales the evaporation away from the potential
-rate and has a default value of one. We may eventually store this in the aux
-state as well.
+model parameters, and the surface conditions.
 """
 function surface_fluxes(
     atmos::PrescribedAtmosphere{FT},
+    model::AbstractModel{FT},
+    Y::ClimaCore.Fields.FieldVector,
     p::ClimaCore.Fields.FieldVector,
     t::FT,
-    name::Symbol,
-    parameters;
-    β_sfc = FT(1.0),
 ) where {FT <: AbstractFloat}
+    T_sfc = surface_temperature(model, Y, p)
+    ρ_sfc = surface_air_density(atmos, model, Y, p, t, T_sfc)
+    q_sfc = surface_specific_humidity(model, Y, p, T_sfc, ρ_sfc)
+    β_sfc = surface_evaporative_scaling(model, Y, p)
     return surface_fluxes_at_a_point.(
-        getproperty(p, name).T_sfc,
-        getproperty(p, name).q_sfc,
-        getproperty(p, name).ρ_sfc,
-        t,
+        T_sfc,
+        q_sfc,
+        ρ_sfc,
         β_sfc,
-        Ref(parameters),
+        t,
+        Ref(model.parameters),
         Ref(atmos),
     )
 end
 
 """
-    surface_fluxes_at_a_point(
-        T_sfc::FT,
-        q_sfc::FT,
-        ρ_sfc::FT,
-        t::FT,
-        β_sfc::FT,
-        parameters,
-        atmos::PA,
-) where {FT <: AbstractFloat, PA <: PrescribedAtmosphere{FT}}
+    surface_fluxes_at_a_point(T_sfc::FT,
+                              q_sfc::FT,
+                              ρ_sfc::FT,
+                              t::FT,
+                              β_sfc::FT,
+                              parameters,
+                              atmos::PA,
+                              ) where {FT <: AbstractFloat, PA <: PrescribedAtmosphere{FT}}
 
 Computes turbulent surface fluxes at a point on a surface given
 (1) the surface temperature, specific humidity, and air density,
@@ -178,8 +171,8 @@ function surface_fluxes_at_a_point(
     T_sfc::FT,
     q_sfc::FT,
     ρ_sfc::FT,
-    t::FT,
     β_sfc::FT,
+    t::FT,
     parameters::P,
     atmos::PA,
 ) where {FT <: AbstractFloat, P, PA <: PrescribedAtmosphere{FT}}
@@ -238,46 +231,38 @@ PrescribedRadiativeFluxes(FT, SW_d, LW_d) =
 
 
 """
-    net_radiation(
-        radiation::PrescribedRadiativeFluxes{FT},
-        p::ClimaCore.Fields.FieldVector,
-        t::FT,
-        name::Symbol,
-        α,
-        ϵ,
-        earth_param_set,
-    ) where {FT <: AbstractFloat}
+    net_radiation(radiation::PrescribedRadiativeFluxes{FT},
+                  model::AbstractModel{FT},
+                  Y::ClimaCore.Fields.FieldVector,
+                  p::ClimaCore.Fields.FieldVector,
+                  t::FT
+                  ) where {FT <: AbstractFloat}
 
-Computes net radiative fluxes at the surface given
-(1) the aux state, which stores T_sfc
-(2) the albedo and emissivity - TODO: store in aux
-(3) the time at which the fluxes are needed,
-(4) the `earth_param_set`
-(5) the prescribed radiation state, stored in `radiation`.
+Computes net radiative fluxes for a prescribed incoming
+longwave and shortwave radiation.
 
 This returns an energy flux.
 """
 function net_radiation(
     radiation::PrescribedRadiativeFluxes{FT},
+    model::AbstractModel{FT},
+    Y::ClimaCore.Fields.FieldVector,
     p::ClimaCore.Fields.FieldVector,
     t::FT,
-    name::Symbol,
-    α,
-    ϵ,
-    earth_param_set,
 ) where {FT <: AbstractFloat}
     LW_d::FT = radiation.LW_d(t)
     SW_d::FT = radiation.SW_d(t)
+    earth_param_set = model.parameters.earth_param_set
     _σ = LSMP.Stefan(earth_param_set)
-    T_sfc = getproperty(p, name).T_sfc
+    T_sfc = surface_temperature(model, Y, p)
+    α_sfc = surface_albedo(model, Y, p)
+    ϵ_sfc = surface_emissivity(model, Y, p)
     # Recall that the user passed the LW and SW downwelling radiation,
     # where positive values indicate toward surface, so we need a negative sign out front
     # in order to inidicate positive R_n  = towards atmos.
-    R_n = @.(-(1 - α) * SW_d - ϵ * (LW_d - _σ * T_sfc^4))
+    R_n = @.(-(1 - α_sfc) * SW_d - ϵ_sfc * (LW_d - _σ * T_sfc^4))
     return R_n
 end
-
-
 
 """
     liquid_precipitation(atmos::PrescribedAtmosphere, p, t)
@@ -298,26 +283,97 @@ function snow_precipitation(atmos::PrescribedAtmosphere, p, t)
 end
 
 """
-    surface_air_density(atmos::PrescribedAtmosphere,
+    surface_temperature(model::AbstractModel, Y, p)
+
+A helper function which returns the surface temperature for a given
+model, needed because different models compute and store surface temperature in
+different ways and places.
+
+Extending this function for your model is only necessary if you need to
+compute surface fluxes and radiative fluxes at the surface using
+the functions in this file.
+"""
+function surface_temperature(model::AbstractModel, Y, p) end
+
+"""
+    surface_air_density(
+                        atmos::AbstractAtmosphericDrivers,
+                        model::AbstractModel,
+                        Y,
                         p,
                         t,
-                        name::Symbol,
-                        earth_param_set,
+                        T_sfc,
                         )
 
-Returns the air density (kg/m^3) at the surface.
+A helper function which returns the surface air density for a given
+model, needed because different models compute and store surface air density
+ in different ways and places.
+
+We additionally include the `atmos` type as an argument because
+the surface air density computation may change between a coupled simulation
+and a prescibed atmos simulation.
+
+Extending this function for your model is only necessary if you need to
+compute surface fluxes and radiative fluxes at the surface using
+the functions in this file.
 """
 function surface_air_density(
-    atmos::PrescribedAtmosphere,
+    atmos::AbstractAtmosphericDrivers,
+    model::AbstractModel,
+    Y,
     p,
     t,
-    name::Symbol,
-    earth_param_set,
-)
-    thermo_params = LSMP.thermodynamic_parameters(earth_param_set)
-    ts_in = construct_atmos_ts(atmos, t, thermo_params)
-    compute_ρ_sfc.(Ref(thermo_params), Ref(ts_in), getproperty(p, name).T_sfc)
-end
+    T_sfc,
+) end
 
+"""
+    surface_specific_humidity(model::AbstractModel, Y, p, T_sfc, ρ_sfc)
 
-end
+A helper function which returns the surface specific humidity for a given
+model, needed because different models compute and store q_sfc in
+different ways and places.
+
+Extending this function for your model is only necessary if you need to
+compute surface fluxes and radiative fluxes at the surface using
+the functions in this file.
+"""
+function surface_specific_humidity(model::AbstractModel, Y, p, T_sfc, ρ_sfc) end
+
+"""
+    surface_evaporative_scaling(model::AbstractModel, Y, p)
+
+A helper function which returns the surface evaporative scaling factor
+ for a given model, needed because different models compute and store β_sfc in
+different ways and places.
+
+Extending this function for your model is only necessary if you need to
+compute surface fluxes and radiative fluxes at the surface using
+the functions in this file.
+"""
+function surface_evaporative_scaling(model::AbstractModel, Y, p) end
+
+"""
+    surface_albedo(model::AbstractModel, Y, p)
+
+A helper function which returns the surface albedo
+ for a given model, needed because different models compute and store α_sfc in
+different ways and places.
+
+Extending this function for your model is only necessary if you need to
+compute surface fluxes and radiative fluxes at the surface using
+the functions in this file.
+"""
+function surface_albedo(model::AbstractModel, Y, p) end
+
+"""
+    surface_emissivity(model::AbstractModel, Y, p)
+
+A helper function which returns the surface emissivity
+ for a given model, needed because different models compute and store ϵ_sfc in
+different ways and places.
+
+Extending this function for your model is only necessary if you need to
+compute surface fluxes and radiative fluxes at the surface using
+the functions in this file.
+"""
+function surface_emissivity(model::AbstractModel, Y, p) end

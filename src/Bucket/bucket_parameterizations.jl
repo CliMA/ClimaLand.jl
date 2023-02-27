@@ -1,3 +1,84 @@
+## Surface characteristics functions
+"""
+    surface_albedo(model::BucketModel, Y, p)
+
+A helper function which computes and returns the bulk surface albedo, 
+linearly interpolating between the albedo
+of snow and of the surface, based on the snow water equivalent S relative to
+the parameter S_c.
+
+The linear interpolation is taken from Lague et al 2019.
+"""
+function ClimaLSM.surface_albedo(model::BucketModel{FT}, Y, p) where {FT}
+    (; α_snow) = model.parameters.albedo
+    (; σS_c) = model.parameters
+    α_sfc = p.bucket.α_sfc
+    σS = Y.bucket.σS
+    safe_σS = max.(σS, eps(FT))
+    return @. ((1 - σS / (σS + σS_c)) * α_sfc + σS / (σS + σS_c) * α_snow)
+end
+
+"""
+   ClimaLSM.surface_emissivity(model::BucketModel{FT}, Y, p)
+
+Returns the emissivity for the bucket model (1.0).
+"""
+function ClimaLSM.surface_emissivity(model::BucketModel{FT}, Y, p) where {FT}
+    return FT(1)
+end
+
+"""
+    ClimaLSM.surface_temperature(model::BucketModel, Y, p)
+
+a helper function which returns the surface temperature for the bucket 
+model, which is stored in the aux state.
+"""
+function ClimaLSM.surface_temperature(model::BucketModel, Y, p)
+    return p.bucket.T_sfc
+end
+
+"""
+    ClimaLSM.surface_temperature(model::BucketModel, Y, p)
+
+a helper function which returns the surface specific humidity for the bucket 
+model, which is stored in the aux state.
+"""
+function ClimaLSM.surface_specific_humidity(model::BucketModel, Y, p, _...)
+    return p.bucket.q_sfc
+end
+
+"""
+    ClimaLSM.surface_temperature(model::BucketModel, Y, p)
+
+a helper function which computes and returns the surface air density for the bucket 
+model.
+"""
+function ClimaLSM.surface_air_density(
+    atmos::PrescribedAtmosphere,
+    model::BucketModel,
+    Y,
+    p,
+    t,
+    T_sfc,
+)
+    thermo_params =
+        LSMP.thermodynamic_parameters(model.parameters.earth_param_set)
+    ts_in = construct_atmos_ts(atmos, t, thermo_params)
+    return compute_ρ_sfc.(Ref(thermo_params), Ref(ts_in), T_sfc)
+end
+
+"""
+    ClimaLSM.surface_temperature(model::BucketModel, Y, p)
+
+a helper function which computes and returns the surface evaporative scaling
+ factor for the bucket model.
+"""
+function ClimaLSM.surface_evaporative_scaling(model::BucketModel, Y, p)
+    beta = beta_factor.(Y.bucket.W, Y.bucket.σS, model.parameters.W_f)
+    return beta
+end
+
+
 """
     beta_factor(W::FT, σS::FT, W_f::FT) where {FT}
 
@@ -50,24 +131,6 @@ function partition_surface_fluxes(
     return (; F_melt = F_melt, F_into_snow = F_into_snow, G = G)
 end
 
-"""
-    surface_albedo(α_sfc::FT, α_snow::FT, σS::FT, σS_c::FT)::FT where {FT <: AbstractFloat}
-
-Returns the bulk surface albedo, linearly interpolating between the albedo
-of snow and of the surface, based on the snow water equivalent S relative to
-the parameter S_c.
-
-The linear interpolation is taken from Lague et al 2019.
-"""
-function surface_albedo(
-    α_sfc::FT,
-    α_snow::FT,
-    σS::FT,
-    σS_c::FT,
-)::FT where {FT <: AbstractFloat}
-    safe_σS::FT = max(σS, eps(FT))
-    return (1 - σS / (σS + σS_c)) * α_sfc + σS / (σS + σS_c) * α_snow
-end
 
 """
     infiltration_at_point(W::FT, M::FT, P::FT, E::FT, W_f::FT)::FT where {FT <: AbstractFloat}
@@ -104,7 +167,7 @@ specific humidity at the surface based on the bucket water
 levels, which is then used
  to obtain the
 true specific humidity of the soil surface <= q_sat.
-"""
+    """
 function β(W::FT, W_f::FT) where {FT}
     safe_W = max(0, W)
     if safe_W < FT(0.75) * W_f
