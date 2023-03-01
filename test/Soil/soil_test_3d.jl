@@ -36,7 +36,8 @@ FT = Float64
     top_flux_bc = FluxBC((p, t) -> eltype(t)(0.0))
     bot_flux_bc = FluxBC((p, t) -> eltype(t)(0.0))
     sources = ()
-    boundary_fluxes = (; water = (top = top_flux_bc, bottom = bot_flux_bc))
+    boundary_fluxes =
+        (; top = (water = top_flux_bc,), bottom = (water = bot_flux_bc,))
     params = Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r)
 
     soil = Soil.RichardsModel{FT}(;
@@ -260,8 +261,8 @@ end
     top_flux_bc = FluxBC((p, t) -> eltype(t)(0.0))
     bot_flux_bc = FluxBC((p, t) -> eltype(t)(0.0))
     boundary_fluxes = (;
-        water = (top = top_flux_bc, bottom = bot_flux_bc),
-        heat = (top = top_flux_bc, bottom = bot_flux_bc),
+        top = (water = top_flux_bc, heat = top_flux_bc),
+        bottom = (water = bot_flux_bc, heat = bot_flux_bc),
     )
     sources = ()
 
@@ -348,7 +349,8 @@ end
     top_flux_bc = FluxBC((p, t) -> eltype(t)(K_sat))
     bot_flux_bc = FluxBC((p, t) -> eltype(t)(K_sat))
     sources = ()
-    boundary_fluxes = (; water = (top = top_flux_bc, bottom = bot_flux_bc))
+    boundary_fluxes =
+        (; top = (water = top_flux_bc,), bottom = (water = bot_flux_bc,))
 
     soil = Soil.RichardsModel{FT}(;
         parameters = parameters,

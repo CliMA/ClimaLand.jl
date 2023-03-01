@@ -49,9 +49,9 @@ ClimaLSM.Soil.EnergyHydrologyParameters
 
 ```@docs
 ClimaLSM.Soil.AbstractSoilBC
-ClimaLSM.Soil.StateBC
+ClimaLSM.Soil.MoistureStateBC
 ClimaLSM.Soil.FluxBC
-ClimaLSM.Soil.StateBC
+ClimaLSM.Soil.TemperatureStateBC
 ClimaLSM.Soil.FreeDrainage
 ClimaLSM.Soil.AbstractSoilSource
 ClimaLSM.Soil.PhaseChange

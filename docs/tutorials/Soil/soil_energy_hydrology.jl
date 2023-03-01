@@ -179,8 +179,8 @@ bottom_heat_flux = FluxBC((p, t) -> eltype(t)(0.0));
 
 # We wrap up all of those in a NamedTuple:
 boundary_fluxes = (;
-    water = (top = surface_water_flux, bottom = bottom_water_flux),
-    heat = (top = surface_heat_flux, bottom = bottom_heat_flux),
+    top = (water = surface_water_flux, heat = surface_heat_flux),
+    bottom = (water = bottom_water_flux, heat = bottom_water_flux),
 );
 
 

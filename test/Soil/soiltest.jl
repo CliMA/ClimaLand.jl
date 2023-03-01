@@ -144,7 +144,8 @@ end
     top_flux_bc = FluxBC((p, t) -> eltype(t)(0.0))
     bot_flux_bc = FluxBC((p, t) -> eltype(t)(0.0))
     sources = ()
-    boundary_fluxes = (; water = (top = top_flux_bc, bottom = bot_flux_bc))
+    boundary_fluxes =
+        (; top = (water = top_flux_bc,), bottom = (water = bot_flux_bc,))
     params = Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r)
 
     soil = Soil.RichardsModel{FT}(;
@@ -207,10 +208,11 @@ end
     nelems = 50
 
     soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems)
-    top_state_bc = StateBC((p, t) -> eltype(t)(ν / 2))
-    bot_state_bc = StateBC((p, t) -> eltype(t)(ν))
+    top_state_bc = MoistureStateBC((p, t) -> eltype(t)(ν / 2))
+    bot_state_bc = MoistureStateBC((p, t) -> eltype(t)(ν))
     sources = ()
-    boundary_states = (; water = (top = top_state_bc, bottom = bot_state_bc))
+    boundary_states =
+        (; top = (water = top_state_bc,), bottom = (water = bot_state_bc,))
     params = Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r)
 
     soil = Soil.RichardsModel{FT}(;
@@ -265,9 +267,10 @@ end
 
     soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems)
     top_flux_bc = FluxBC((p, t) -> eltype(t)(0))
-    bot_state_bc = StateBC((p, t) -> eltype(t)(ν / 2))
+    bot_state_bc = MoistureStateBC((p, t) -> eltype(t)(ν / 2))
     sources = ()
-    boundary_conditions = (; water = (top = top_flux_bc, bottom = bot_state_bc))
+    boundary_conditions =
+        (; top = (water = top_flux_bc,), bottom = (water = bot_state_bc,))
     params = Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r)
 
     soil = Soil.RichardsModel{FT}(;
@@ -341,8 +344,8 @@ end
     sources = ()
     # Use the same BCs for RRE and heat
     boundary_fluxes = (;
-        water = (top = top_flux_bc, bottom = bot_flux_bc),
-        heat = (top = top_flux_bc, bottom = bot_flux_bc),
+        top = (water = top_flux_bc, heat = top_flux_bc),
+        bottom = (water = bot_flux_bc, heat = bot_flux_bc),
     )
 
 
@@ -719,8 +722,8 @@ end
     top_flux_bc = FluxBC((p, t) -> eltype(t)(0.0))
     bot_flux_bc = FluxBC((p, t) -> eltype(t)(0.0))
     boundary_fluxes = (;
-        water = (top = top_flux_bc, bottom = bot_flux_bc),
-        heat = (top = top_flux_bc, bottom = bot_flux_bc),
+        top = (water = top_flux_bc, heat = top_flux_bc),
+        bottom = (water = bot_flux_bc, heat = bot_flux_bc),
     )
 
     sources = (PhaseChange{FT}(Δz),)

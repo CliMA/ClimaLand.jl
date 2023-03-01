@@ -204,7 +204,7 @@ function ClimaLSM.make_rhs(model::SoilCO2Model)
         Δz_top, Δz_bottom = get_Δz(z)
 
         top_flux_bc = boundary_flux(
-            model.boundary_conditions.CO2.top,
+            model.boundary_conditions.top.CO2,
             TopBoundary(),
             Δz_top,
             Y,
@@ -212,7 +212,7 @@ function ClimaLSM.make_rhs(model::SoilCO2Model)
             t,
         )
         bot_flux_bc = boundary_flux(
-            model.boundary_conditions.CO2.bottom,
+            model.boundary_conditions.bottom.CO2,
             BottomBoundary(),
             Δz_bottom,
             Y,

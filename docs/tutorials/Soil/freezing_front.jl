@@ -152,8 +152,8 @@ function top_heat_flux(p, t)
 end
 top_heat_flux_bc = FluxBC(top_heat_flux)
 boundary_fluxes = (;
-    water = (top = zero_flux_bc, bottom = zero_flux_bc),
-    heat = (top = top_heat_flux_bc, bottom = zero_flux_bc),
+    top = (water = zero_flux_bc, heat = top_heat_flux_bc),
+    bottom = (water = zero_flux_bc, heat = zero_flux_bc),
 );
 
 # Create the source term instance. Our phase change model requires

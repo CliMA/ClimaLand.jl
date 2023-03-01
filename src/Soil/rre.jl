@@ -92,7 +92,7 @@ function ClimaLSM.make_rhs(model::RichardsModel)
         Δz_top, Δz_bottom = get_Δz(z)
 
         top_flux_bc = boundary_flux(
-            model.boundary_conditions.water.top,
+            model.boundary_conditions.top.water,
             TopBoundary(),
             Δz_top,
             p,
@@ -100,7 +100,7 @@ function ClimaLSM.make_rhs(model::RichardsModel)
             model.parameters,
         )
         bot_flux_bc = boundary_flux(
-            model.boundary_conditions.water.bottom,
+            model.boundary_conditions.bottom.water,
             BottomBoundary(),
             Δz_bottom,
             p,

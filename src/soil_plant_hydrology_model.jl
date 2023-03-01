@@ -67,10 +67,8 @@ function SoilPlantHydrologyModel{FT}(;
     )
 
     boundary_conditions = (;
-        water = (
-            top = FluxBC((p, t) -> eltype(t)(precipitation(t))),
-            bottom = Soil.FreeDrainage{FT}(),
-        )
+        top = (water = FluxBC((p, t) -> eltype(t)(precipitation(t))),),
+        bottom = (water = Soil.FreeDrainage(),),
     )
 
     soil = soil_model_type(;
