@@ -77,7 +77,7 @@ end
     make_rhs(model::RichardsModel)
 
 An extension of the function `make_rhs`, for the Richardson-
-Richards equation. 
+Richards equation.
 
 This function creates and returns a function which computes the entire
 right hand side of the PDE for `ϑ_l`, and updates `dY.soil.ϑ_l` in place
@@ -139,8 +139,9 @@ function ClimaLSM.make_rhs(model::RichardsModel)
             ClimaLSM.source!(dY, src, Y, p, model.parameters)
         end
 
+        # TODO revisit later
         # This has to come last
-        dss!(dY, model.domain)
+        # dss!(dY, model.domain)
     end
     return rhs!
 end
@@ -181,12 +182,12 @@ ClimaLSM.prognostic_types(soil::RichardsModel{FT}) where {FT} = (FT,)
 """
     auxiliary_vars(soil::RichardsModel)
 
-A function which returns the names of the auxiliary variables 
+A function which returns the names of the auxiliary variables
 of `RichardsModel`.
 
 Note that auxiliary variables are not needed for such a simple model.
 We could instead compute the conductivity and matric potential within the
-rhs function explicitly, rather than compute and store them in the 
+rhs function explicitly, rather than compute and store them in the
 auxiliary vector `p`. We did so in this case as a demonstration.
 """
 ClimaLSM.auxiliary_vars(soil::RichardsModel) = (:K, :ψ)
@@ -195,7 +196,7 @@ ClimaLSM.auxiliary_types(soil::RichardsModel{FT}) where {FT} = (FT, FT)
     make_update_aux(model::RichardsModel)
 
 An extension of the function `make_update_aux`, for the Richardson-
-Richards equation. 
+Richards equation.
 
 This function creates and returns a function which updates the auxiliary
 variables `p.soil.variable` in place.

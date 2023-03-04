@@ -371,112 +371,6 @@ function make_explicit_tendency(model::Soil.RichardsModel)
     return explicit_tendency!
 end
 
-"""
-Used for the explicit tendency when using an explicit-only solver.
-"""
-function make_ode_function(model::RichardsModel)
-    update_aux! = make_update_aux(model)
-    function ode_function!(dY, Y, p, t)
-        update_aux!(p, Y, t)
-
-        z = ClimaCore.Fields.coordinate_field(model.domain.space).z
-        Δz_top, Δz_bottom = get_Δz(z)
-
-        top_flux_bc = ClimaLSM.boundary_flux(
-            soil.boundary_conditions.water.top,
-            ClimaLSM.TopBoundary(),
-            Δz_top,
-            p,
-            t,
-            soil.parameters,
-        )
-        bot_flux_bc = ClimaLSM.boundary_flux(
-            soil.boundary_conditions.water.bottom,
-            ClimaLSM.BottomBoundary(),
-            Δz_bottom,
-            p,
-            t,
-            soil.parameters,
-        )
-
-        divf2c_op = Operators.DivergenceF2C(
-            top = Operators.SetValue(Geometry.WVector.(top_flux_bc)),
-            bottom = Operators.SetValue(Geometry.WVector.(bot_flux_bc)),
-        )
-        gradc2f_op = Operators.GradientC2F()
-        interpc2f_op = Operators.InterpolateC2F()
-
-
-        @. dY.soil.ϑ_l =
-            -(divf2c_op(-interpc2f_op(p.soil.K) * gradc2f_op(p.soil.ψ + z)))
-
-        horizontal_components!(dY, model.domain, model, p, z)
-
-        # Source terms
-        for src in model.sources
-            ClimaLSM.source!(dY, src, Y, p, model.parameters)
-        end
-    end
-    return ode_function!
-end
-
-"""
-   horizontal_components!(dY::ClimaCore.Fields.FieldVector,
-                          domain::Union{HybridBox, SphericalShell},
-                          model::Soil.RichardsModel,
-                          p::ClimaCore.Fields.FieldVector)
-Updates dY in place by adding in the tendency terms resulting from
-horizontal derivative operators.
-
-In the case of a hybrid box domain, the horizontal contributions are
-computed using the WeakDivergence and Gradient operators.
-"""
-function horizontal_components!(
-    dY::ClimaCore.Fields.FieldVector,
-    domain::Union{HybridBox, SphericalShell},
-    model::Soil.RichardsModel,
-    p::ClimaCore.Fields.FieldVector,
-    z::ClimaCore.Fields.Field,
-)
-    hdiv = Operators.WeakDivergence()
-    hgrad = Operators.Gradient()
-    # The flux is already covariant, from hgrad, so no need to convert.
-    @. dY.soil.ϑ_l += -hdiv(-p.soil.K * hgrad(p.soil.ψ + z))
-end
-
-"""
-    horizontal_components!(_, domain::Column, _, _, _)
-
-In the case of a single column domain, there are no horizontal components.
-"""
-function horizontal_components!(_, domain::Column, _, _, _)
-    nothing
-end
-
-"""
-    make_update_aux(model::RichardsModel)
-
-An extension of the function `make_update_aux`, for the Richardson-
-Richards equation.
-
-This function creates and returns a function which updates the auxiliary
-variables `p.soil.variable` in place.
-
-This has been written so as to work with Differential Equations.jl.
-"""
-function ClimaLSM.make_update_aux(model::RichardsModel)
-    function update_aux!(p, Y, t)
-        @unpack ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r = model.parameters
-        @. p.soil.K = hydraulic_conductivity(
-            K_sat,
-            vg_m,
-            effective_saturation(ν, Y.soil.ϑ_l, θ_r),
-        )
-        @. p.soil.ψ = pressure_head(vg_α, vg_n, vg_m, θ_r, Y.soil.ϑ_l, ν, S_s)
-    end
-    return update_aux!
-end
-
 
 is_imex_CTS_algo(::CTS.IMEXAlgorithm) = true
 is_imex_CTS_algo(::DiffEqBase.AbstractODEAlgorithm) = false
@@ -493,30 +387,24 @@ use_transform(ode_algo) =
 
 
 # Setup largely taken from ClimaLSM.jl/test/Soil/soiltest.jl
-is_true_picard = (ARGS[2] == "true_picard")
-# is_true_picard = true
-
-# parameters for sand from Bonan 2019 table 8.3 van Genuchten
-# ν = FT(0.495)
-# K_sat = FT(0.0443 / 3600 / 100) # m/s
-# S_s = FT(1e-3) #inverse meters
-# vg_n = FT(2.0)
-# vg_α = FT(2.6) # inverse meters
-# vg_m = FT(1) - FT(1) / vg_n
-# θ_r = FT(0)
+if isinteractive()
+    is_true_picard = true
+else
+    is_true_picard = (ARGS[2] == "true_picard")
+end
 
 # parameters for clay from Bonan 2019 supplemental program 8.2
 ν = FT(0.495)
-K_sat = FT(0.443 / 3600 / 100) # m/s
+K_sat = FT(0.0443 / 3600 / 100) # m/s
 vg_n = FT(1.43)
-vg_α = FT(2.6) # inverse meters
+vg_α = FT(0.026 * 100) # inverse meters
+vg_m = FT(1) - FT(1) / vg_n
 θ_r = FT(0.124)
-vg_m = FT(0.3)
 S_s = FT(1e-3) #inverse meters
 
 zmax = FT(0)
-zmin = FT(-1)
-nelems = 100
+zmin = FT(-1.5)
+nelems = 150
 
 # soil_domain = HybridBox(;
 #     zlim = (-10.0, 0.0),
@@ -528,8 +416,8 @@ nelems = 100
 # )
 soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems);
 
-top_bc = StateBC((p, t) -> eltype(t)(ν))
-bot_bc = FluxBC((p, t) -> eltype(t)(0.0))
+top_bc = StateBC((p, t) -> eltype(t)(ν - 1e-3))
+bot_bc = FreeDrainage{FT}()
 sources = ()
 boundary_fluxes = (; water = (top = top_bc, bottom = bot_bc))
 params = Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r)
@@ -542,46 +430,41 @@ soil = Soil.RichardsModel{FT}(;
 )
 
 Y, p, coords = initialize(soil)
-
-# specify ICs
-function init_soil!(Ysoil, z, params)
-    function hydrostatic_profile(
-        z::FT,
-        params::Soil.RichardsParameters{FT},
-    ) where {FT}
-        @unpack ν, vg_α, vg_n, vg_m, θ_r = params
-        #unsaturated zone only, assumes water table starts at z_∇
-        # z_∇ = FT(-1)# matches zmin
-        # S = FT((FT(1) + (vg_α * (z - z_∇))^vg_n)^(-vg_m))
-        # ϑ_l = S * (ν - θ_r) + θ_r
-        ϑ_l = 0.24 # value from Bonan supplemental program 8.2
-        return FT(ϑ_l)
-    end
-    Ysoil.soil.ϑ_l .= hydrostatic_profile.(z, Ref(params))
-end
-
-init_soil!(Y, coords.z, soil.parameters)
+Y.soil.ϑ_l = FT(0.24)
 
 t_start = FT(0)
-t_end = FT(60 * 60 * 28)
-# dt = FT(1e-2)
-dt = parse(FT, ARGS[4][4:end])
-# num_timesteps = parse(Int64, ARGS[4][11:end])
-# dt = FT((t_end - t_start) / num_timesteps)
+t_end = FT(1e6)
 
-max_iters = parse(Int64, ARGS[3][7:end])
-# max_iters = 2
+if isinteractive()
+    dt = FT(0.25)
+else
+    dt = parse(FT, ARGS[4][4:end])
+end
+
+if isinteractive()
+    max_iters = 4
+else
+    max_iters = parse(Int64, ARGS[3][7:end])
+end
+
 convergence_cond = CTS.MaximumRelativeError(1e-4)
 conv_checker = CTS.ConvergenceChecker(component_condition=convergence_cond)
-ode_algo = CTS.IMEXAlgorithm(CTS.ARS222(), CTS.NewtonsMethod(max_iters=max_iters))#, convergence_checker=conv_checker))
-transform = use_transform(ode_algo)
+ode_algo = CTS.IMEXAlgorithm(CTS.ARS222(), CTS.NewtonsMethod(max_iters=max_iters, update_j = CTS.UpdateEvery(CTS.NewNewtonIteration), convergence_checker=conv_checker))
 
-W =
-    is_true_picard ? IdentityW(Ref(zero(FT)), transform) :
-    TridiagonalW(Y, transform)
+if isinteractive()
+    is_imp = false
+else
+    is_imp = ARGS[1] == "imp"
+end
 
 # mixed implicit/explicit case
-if ARGS[1] == "imp"
+if is_imp
+    transform = use_transform(ode_algo)
+
+    W =
+        is_true_picard ? IdentityW(Ref(zero(FT)), transform) :
+        TridiagonalW(Y, transform)
+
     implicit_tendency! = make_implicit_tendency(soil)
     explicit_tendency! = make_explicit_tendency(soil)
 
@@ -627,7 +510,7 @@ integrator = init(
     dt = dt,
     adaptive = false,
     progress = true,
-    saveat = t_start:dt:t_end,
+    saveat = t_start:1:t_end,
 )
 
 sol = ODE.solve!(integrator)
@@ -635,68 +518,27 @@ sol = ODE.solve!(integrator)
 sol_vals = parent(sol.u[end].soil.ϑ_l)
 zs = parent(Fields.coordinate_field(axes(sol.u[end].soil.ϑ_l)))
 
-
-
-init_soil!(Y, coords.z, soil.parameters)
-# mixed implicit/explicit case
-if ARGS[1] == "imp"
-    implicit_tendency! = make_implicit_tendency(soil)
-    explicit_tendency! = make_explicit_tendency(soil)
-
-    jac_kwargs = if use_transform(ode_algo)
-        (; jac_prototype = W, Wfact_t = Wfact!)
-    else
-        (; jac_prototype = W, Wfact = Wfact!)
-    end
-
-    problem = ODEProblem(
-        CTS.ClimaODEFunction(
-            T_exp! = explicit_tendency!,
-            T_imp! = ODEFunction(
-                implicit_tendency!;
-                jac_kwargs...,
-                tgrad = (∂Y∂t, Y, p, t) -> (∂Y∂t .= FT(0)),
-            ),
-            dss! = ClimaLSM.Soil.dss!,
-        ),
-        Y,
-        (t_start, t_end),
-        p,
-    )
-# explicit-only case
-else
-    ode_function! = make_ode_function(soil)
-
-    problem = ODE.ODEProblem(
-        CTS.ClimaODEFunction(
-            T_exp! = ode_function!,
-            T_imp! = nothing,
-            dss! = ClimaLSM.Soil.dss!,
-        ),
-        Y,
-        (t_start, t_end),
-        p,
-    )
-end
-integrator = init(
-    problem,
-    ode_algo;
-    dt = dt,
-    adaptive = false,
-    progress = true,
-    progress_steps = 1,
-)
-b = @benchmark ODE.solve!(integrator)
-
-# or display count(x -> x < ν * 1.03, sol_vals)
-@assert all(x -> x > θ_r, sol_vals)
-@assert all(x -> x < ν * 1.03, sol_vals)
-
 isdir("tmp") ? nothing : mkpath("tmp")
 filename = "tmp/rre_sol"
 for a in ARGS
     global filename *= "-" * string(a)
 end
+
+using Plots
+plot(parent(sol.u[1].soil.ϑ_l)[51:150], zs[51:150], xlims=(0.2, 0.5), xticks=0.2:0.05:0.5, yticks=-1.0:0.2:0.0, title="explicit sol'n with dt=$dt at t=0", xlabel="vol. water content (m^3 m^-3)", ylabel="depth (m)")
+savefig(filename * "-start")
+
+t_end = Int(t_end)
+plot(parent(sol.u[end].soil.ϑ_l)[51:150], zs[51:150], xlims=(0.2, 0.5), xticks=0.2:0.05:0.5, yticks=-1.0:0.2:0.0, title="explicit sol'n with dt=$dt at t=$t_end s", xlabel="vol. water content (m^3 m^-3)", ylabel="depth (m)")
+savefig(filename * "-$t_end")
+
+
+b = @benchmark ODE.solve!(integrator)
+
+# # or display count(x -> x < ν * 1.03, sol_vals)
+@assert all(x -> x > θ_r, sol_vals)
+@assert all(x -> x < ν * 1.03, sol_vals)
+
 filename *= ".jld2"
 
 jldsave(
@@ -706,7 +548,3 @@ jldsave(
     benchmark = b
 )
 @show filename
-
-# jldopen(filename, "r") do file
-#     @show file["benchmark"]
-# end
