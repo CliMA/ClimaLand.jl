@@ -456,11 +456,6 @@ function make_rhs(model::PlantHydraulicsModel)
         ϑ_l = Y.vegetation.ϑ_l
         fa = p.vegetation.fa
 
-        # boundary flux * cross section at the bottom
-        fa0 =
-            flux_out_roots(model.root_extraction, model, Y, p, t) .*
-            area_index[:root]
-
         # initialize first index
         @inbounds @. ψ[1] = water_retention_curve(
             vg_α,
@@ -470,6 +465,10 @@ function make_rhs(model::PlantHydraulicsModel)
             ν,
             S_s,
         )
+        # boundary flux * cross section at the bottom
+        fa0 =
+            flux_out_roots(model.root_extraction, model, Y, p, t) .*
+            area_index[:root]
 
         @inbounds for i in 1:(n_stem + n_leaf)
             AIdz =
