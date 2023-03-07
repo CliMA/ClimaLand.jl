@@ -480,7 +480,7 @@ compose = Operators.ComposeStencils()
 # alg_kwargs = (; linsolve = linsolve!)
 # ode_algo = ODE.Rosenbrock23(; alg_kwargs...)
 
-ode_algo = CTS.IMEXAlgorithm(CTS.SSP333(), CTS.NewtonsMethod(max_iters=5))
+ode_algo = CTS.IMEXAlgorithm(CTS.SSP333(), CTS.NewtonsMethod(max_iters = 5))
 transform = use_transform(ode_algo)
 
 W =

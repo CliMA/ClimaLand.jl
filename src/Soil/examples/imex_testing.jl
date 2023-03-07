@@ -8,6 +8,7 @@ using Colors
 using DiffEqBase
 using BenchmarkTools
 using JLD2
+using Plots
 
 import OrdinaryDiffEq as ODE
 import ClimaTimeSteppers as CTS
@@ -137,7 +138,7 @@ function Wfact!(W::TridiagonalW, Y, p, dtγ, t)
     Δz_top, Δz_bottom = get_Δz(z)
 
     top_flux_bc = ClimaLSM.boundary_flux(
-        soil.boundary_conditions.water.top,
+        soil.boundary_conditions.water.top, # TODO can't use soil here, can't change Wfact! signature either
         ClimaLSM.TopBoundary(),
         Δz_top,
         p,
@@ -319,20 +320,20 @@ function make_implicit_tendency(model::Soil.RichardsModel)
         Δz_top, Δz_bottom = get_Δz(z)
 
         top_flux_bc = ClimaLSM.boundary_flux(
-            soil.boundary_conditions.water.top,
+            model.boundary_conditions.water.top,
             ClimaLSM.TopBoundary(),
             Δz_top,
             p,
             t,
-            soil.parameters,
+            model.parameters,
         )
         bot_flux_bc = ClimaLSM.boundary_flux(
-            soil.boundary_conditions.water.bottom,
+            model.boundary_conditions.water.bottom,
             ClimaLSM.BottomBoundary(),
             Δz_bottom,
             p,
             t,
-            soil.parameters,
+            model.parameters,
         )
 
         divf2c_op = Operators.DivergenceF2C(
@@ -361,7 +362,7 @@ function make_explicit_tendency(model::Soil.RichardsModel)
         update_aux!(p, Y, t)
 
         z = ClimaCore.Fields.coordinate_field(model.domain.space).z
-        horizontal_components!(dY, model.domain, model, p, z)
+        ClimaLSM.Soil.horizontal_components!(dY, model.domain, model, p, z)
 
         # Source terms
         for src in model.sources
@@ -436,23 +437,35 @@ t_start = FT(0)
 t_end = FT(1e6)
 
 if isinteractive()
-    dt = FT(0.25)
+    dt = FT(256)
 else
-    dt = parse(FT, ARGS[4][4:end])
+    dt = parse(FT, replace(ARGS[4][4:end], "p" => "."))
 end
 
 if isinteractive()
-    max_iters = 4
+    max_iters = 2
 else
     max_iters = parse(Int64, ARGS[3][7:end])
 end
 
-convergence_cond = CTS.MaximumRelativeError(1e-4)
-conv_checker = CTS.ConvergenceChecker(component_condition=convergence_cond)
-ode_algo = CTS.IMEXAlgorithm(CTS.ARS222(), CTS.NewtonsMethod(max_iters=max_iters, update_j = CTS.UpdateEvery(CTS.NewNewtonIteration), convergence_checker=conv_checker))
+if isinteractive()
+    convergence_cond = CTS.MaximumRelativeError(1e-4)
+else
+    convergence_cond = CTS.MaximumRelativeError(parse(FT, ARGS[5][13:end]))
+end
+
+conv_checker = CTS.ConvergenceChecker(component_condition = convergence_cond)
+ode_algo = CTS.IMEXAlgorithm(
+    CTS.ARS222(),
+    CTS.NewtonsMethod(
+        max_iters = max_iters,
+        update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
+        convergence_checker = conv_checker,
+    ),
+)
 
 if isinteractive()
-    is_imp = false
+    is_imp = true
 else
     is_imp = ARGS[1] == "imp"
 end
@@ -477,18 +490,14 @@ if is_imp
     problem = ODEProblem(
         CTS.ClimaODEFunction(
             T_exp! = explicit_tendency!,
-            T_imp! = ODEFunction(
-                implicit_tendency!;
-                jac_kwargs...,
-                tgrad = (∂Y∂t, Y, p, t) -> (∂Y∂t .= FT(0)),
-            ),
+            T_imp! = ODEFunction(implicit_tendency!; jac_kwargs...),
             dss! = ClimaLSM.Soil.dss!,
         ),
         Y,
         (t_start, t_end),
         p,
     )
-# explicit-only case
+    # explicit-only case
 else
     ode_function! = make_ode_function(soil)
 
@@ -518,18 +527,37 @@ sol = ODE.solve!(integrator)
 sol_vals = parent(sol.u[end].soil.ϑ_l)
 zs = parent(Fields.coordinate_field(axes(sol.u[end].soil.ϑ_l)))
 
-isdir("tmp") ? nothing : mkpath("tmp")
-filename = "tmp/rre_sol"
+isdir("imp-res") ? nothing : mkpath("imp-res")
+filename = "imp-res/rre_sol"
 for a in ARGS
+    a = string(a)
+    replace(a, "." => "p")
     global filename *= "-" * string(a)
 end
 
-using Plots
-plot(parent(sol.u[1].soil.ϑ_l)[51:150], zs[51:150], xlims=(0.2, 0.5), xticks=0.2:0.05:0.5, yticks=-1.0:0.2:0.0, title="explicit sol'n with dt=$dt at t=0", xlabel="vol. water content (m^3 m^-3)", ylabel="depth (m)")
+plot(
+    parent(sol.u[1].soil.ϑ_l)[51:150],
+    zs[51:150],
+    xlims = (0.2, 0.5),
+    xticks = 0.2:0.05:0.5,
+    yticks = -1.0:0.2:0.0,
+    title = "implicit sol'n with dt=$dt at t=0",
+    xlabel = "vol. water content (m^3 m^-3)",
+    ylabel = "depth (m)",
+)
 savefig(filename * "-start")
 
 t_end = Int(t_end)
-plot(parent(sol.u[end].soil.ϑ_l)[51:150], zs[51:150], xlims=(0.2, 0.5), xticks=0.2:0.05:0.5, yticks=-1.0:0.2:0.0, title="explicit sol'n with dt=$dt at t=$t_end s", xlabel="vol. water content (m^3 m^-3)", ylabel="depth (m)")
+plot(
+    parent(sol.u[end].soil.ϑ_l)[51:150],
+    zs[51:150],
+    xlims = (0.2, 0.5),
+    xticks = 0.2:0.05:0.5,
+    yticks = -1.0:0.2:0.0,
+    title = "implicit sol'n with dt=$dt at t=$t_end s",
+    xlabel = "vol. water content (m^3 m^-3)",
+    ylabel = "depth (m)",
+)
 savefig(filename * "-$t_end")
 
 
@@ -541,10 +569,5 @@ b = @benchmark ODE.solve!(integrator)
 
 filename *= ".jld2"
 
-jldsave(
-    filename;
-    ϑ_l = sol_vals,
-    z = zs,
-    benchmark = b
-)
+jldsave(filename; ϑ_l = sol_vals, z = zs, benchmark = b)
 @show filename
