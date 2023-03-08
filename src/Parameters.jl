@@ -3,7 +3,7 @@ module Parameters
 abstract type AbstractLSMParameters end
 const ALSMP = AbstractLSMParameters
 
-Base.@kwdef struct LSMParameters{FT, TP, SFP} <: ALSMP
+Base.@kwdef struct LSMParameters{FT, TP, SFP, IP} <: ALSMP
     K_therm::FT
     ρ_cloud_liq::FT
     ρ_cloud_ice::FT
@@ -23,6 +23,7 @@ Base.@kwdef struct LSMParameters{FT, TP, SFP} <: ALSMP
     avogad::FT
     thermo_params::TP
     surf_flux_params::SFP
+    insol_params::IP
 end
 
 # wrapper methods:
@@ -49,5 +50,6 @@ LH_f0(ps::ALSMP) = LH_s0(ps) - LH_v0(ps)
 # Dependency parameter wrappers
 thermodynamic_parameters(ps::ALSMP) = ps.thermo_params
 surface_fluxes_parameters(ps::ALSMP) = ps.surf_flux_params
+insolation_parameters(ps::ALSMP) = ps.insol_params
 
 end # module

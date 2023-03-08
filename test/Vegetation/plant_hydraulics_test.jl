@@ -163,6 +163,8 @@ domains = [
         Y, p, coords = initialize(plant_hydraulics)
         for i in 1:(n_stem + n_leaf)
             Y.vegetation.ϑ_l[i] .= ϑ_l_0[i]
+            p.vegetation.ψ[i] .= FT(-1.0)
+            p.vegetation.fa[i] .= FT(-1.0)
         end
 
 
@@ -170,7 +172,7 @@ domains = [
 
         dY = similar(Y)
         plant_hydraulics_ode!(dY, Y, p, 0.0)
-        m = similar(dY.vegetation.ϑ_l[1])
+        m = similar(dY.vegetation.ϑ_l[1]) .+ FT(0.0)
         for i in 1:(n_stem + n_leaf)
             @. m += dY.vegetation.ϑ_l[i]^2.0 ./ (n_stem + n_leaf)
         end
