@@ -32,14 +32,17 @@ An abstract type of radiative drivers of the bucket model.
 abstract type AbstractRadiativeDrivers{FT <: AbstractFloat} end
 
 """
-    PrescribedAtmosphere{FT, LP, SP, TA, UA, QA, RA} <: AbstractAtmosphericDrivers{FT}
+    PrescribedAtmosphere{FT, LP, SP, TA, UA, QA, RA, CA} <: AbstractAtmosphericDrivers{FT}
 
 Container for holding prescribed atmospheric drivers and other
 information needed for computing turbulent surface fluxes when
 driving the bucket model in standalone mode.
+
+Since not all models require co2 concentration, the default for that
+is `nothing`.
 $(DocStringExtensions.FIELDS)
 """
-struct PrescribedAtmosphere{FT, LP, SP, TA, UA, QA, RA} <:
+struct PrescribedAtmosphere{FT, LP, SP, TA, UA, QA, RA, CA} <:
        AbstractAtmosphericDrivers{FT}
     "Precipitation (m/s) function of time: positive by definition"
     liquid_precip::LP
@@ -51,12 +54,23 @@ struct PrescribedAtmosphere{FT, LP, SP, TA, UA, QA, RA} <:
     u::UA
     "Prescribed specific humidity (function of time)  at the reference height (_)"
     q::QA
-    "Prescribed air density (function of time)  at the reference height (kg/m^3)"
-    ρ::RA
-    "Reference height, relative to surface elevation(m)"
+    "Prescribed air pressure (function of time)  at the reference height (Pa)"
+    P::RA
+    "CO2 concentration in atmosphere (mol/mol)"
+    c_co2::CA
+    "Reference height (m)"
     h::FT
-    function PrescribedAtmosphere(liquid_precip, snow_precip, T, u, q, ρ, h)
-        args = (liquid_precip, snow_precip, T, u, q, ρ)
+    function PrescribedAtmosphere(
+        liquid_precip,
+        snow_precip,
+        T,
+        u,
+        q,
+        P,
+        h;
+        c_co2 = nothing,
+    )
+        args = (liquid_precip, snow_precip, T, u, q, P, c_co2)
         return new{typeof(h), typeof.(args)...}(args..., h)
     end
 
@@ -100,10 +114,10 @@ function construct_atmos_ts(
     t::FT,
     thermo_params,
 ) where {FT}
-    ρ::FT = atmos.ρ(t)
+    P::FT = atmos.P(t)
     T::FT = atmos.T(t)
     q::FT = atmos.q(t)
-    ts_in = Thermodynamics.PhaseEquil_ρTq(thermo_params, ρ, T, q)
+    ts_in = Thermodynamics.PhaseEquil_pTq(thermo_params, P, T, q)
     return ts_in
 end
 
@@ -131,15 +145,17 @@ function surface_fluxes(
     p::ClimaCore.Fields.FieldVector,
     t::FT,
 ) where {FT <: AbstractFloat}
-    T_sfc = surface_temperature(model, Y, p)
+    T_sfc = surface_temperature(model, Y, p, t)
     ρ_sfc = surface_air_density(atmos, model, Y, p, t, T_sfc)
     q_sfc = surface_specific_humidity(model, Y, p, T_sfc, ρ_sfc)
     β_sfc = surface_evaporative_scaling(model, Y, p)
+    h_sfc = surface_height(model, Y, p)
     return surface_fluxes_at_a_point.(
         T_sfc,
         q_sfc,
         ρ_sfc,
         β_sfc,
+        h_sfc,
         t,
         Ref(model.parameters),
         Ref(atmos),
@@ -150,8 +166,9 @@ end
     surface_fluxes_at_a_point(T_sfc::FT,
                               q_sfc::FT,
                               ρ_sfc::FT,
-                              t::FT,
                               β_sfc::FT,
+                              h_sfc::FT,
+                              t::FT,
                               parameters,
                               atmos::PA,
                               ) where {FT <: AbstractFloat, PA <: PrescribedAtmosphere{FT}}
@@ -172,6 +189,7 @@ function surface_fluxes_at_a_point(
     q_sfc::FT,
     ρ_sfc::FT,
     β_sfc::FT,
+    h_sfc::FT,
     t::FT,
     parameters::P,
     atmos::PA,
@@ -186,8 +204,7 @@ function surface_fluxes_at_a_point(
     ts_in = construct_atmos_ts(atmos, t, thermo_params)
     ts_sfc = Thermodynamics.PhaseEquil_ρTq(thermo_params, ρ_sfc, T_sfc, q_sfc)
 
-    # h is relative to surface height, so we can set surface height to zero.
-    state_sfc = SurfaceFluxes.SurfaceValues(FT(0), SVector{2, FT}(0, 0), ts_sfc)
+    state_sfc = SurfaceFluxes.SurfaceValues(h_sfc, SVector{2, FT}(0, 0), ts_sfc)
     state_in = SurfaceFluxes.InteriorValues(h, SVector{2, FT}(u, 0), ts_in)
 
     # State containers
@@ -202,31 +219,37 @@ function surface_fluxes_at_a_point(
     conditions = SurfaceFluxes.surface_conditions(surface_flux_params, sc)
 
     # Land needs a volume flux of water, not mass flux
-    evaporation =
+    vapor_flux =
         SurfaceFluxes.evaporation(surface_flux_params, sc, conditions.Ch) /
         _ρ_liq
     return (
-        turbulent_energy_flux = conditions.lhf .+ conditions.shf,
-        evaporation = evaporation,
+        lhf = conditions.lhf,
+        shf = conditions.shf,
+        Ch = conditions.Ch,
+        vapor_flux = vapor_flux,
     )
 end
 
 """
-    PrescribedRadiativeFluxes{FT, SW, LW} <: AbstractRadiativeDrivers{FT}
+    PrescribedRadiativeFluxes{FT, SW, LW, T} <: AbstractRadiativeDrivers{FT}
 
 Container for the prescribed radiation functions needed to drive the
 bucket model in standalone mode.
 $(DocStringExtensions.FIELDS)
 """
-struct PrescribedRadiativeFluxes{FT, SW, LW} <: AbstractRadiativeDrivers{FT}
+struct PrescribedRadiativeFluxes{FT, SW, LW, T} <: AbstractRadiativeDrivers{FT}
     "Downward shortwave radiation function of time (W/m^2): positive indicates towards surface"
     SW_d::SW
     "Downward longwave radiation function of time (W/m^2): positive indicates towards surface"
     LW_d::LW
+    "Sun zenith angle, in radians"
+    θs::T
+    function PrescribedRadiativeFluxes(FT, SW_d, LW_d; θs = nothing)
+        args = (SW_d, LW_d, θs)
+        return new{FT, typeof.(args)...}(args...)
+    end
 end
 
-PrescribedRadiativeFluxes(FT, SW_d, LW_d) =
-    PrescribedRadiativeFluxes{FT, typeof(SW_d), typeof(LW_d)}(SW_d, LW_d)
 
 
 
@@ -254,7 +277,7 @@ function net_radiation(
     SW_d::FT = radiation.SW_d(t)
     earth_param_set = model.parameters.earth_param_set
     _σ = LSMP.Stefan(earth_param_set)
-    T_sfc = surface_temperature(model, Y, p)
+    T_sfc = surface_temperature(model, Y, p, t)
     α_sfc = surface_albedo(model, Y, p)
     ϵ_sfc = surface_emissivity(model, Y, p)
     # Recall that the user passed the LW and SW downwelling radiation,
@@ -283,7 +306,7 @@ function snow_precipitation(atmos::PrescribedAtmosphere, p, t)
 end
 
 """
-    surface_temperature(model::AbstractModel, Y, p)
+    surface_temperature(model::AbstractModel, Y, p, t)
 
 A helper function which returns the surface temperature for a given
 model, needed because different models compute and store surface temperature in
@@ -293,7 +316,7 @@ Extending this function for your model is only necessary if you need to
 compute surface fluxes and radiative fluxes at the surface using
 the functions in this file.
 """
-function surface_temperature(model::AbstractModel, Y, p) end
+function surface_temperature(model::AbstractModel, Y, p, t) end
 
 """
     surface_air_density(
@@ -377,3 +400,17 @@ compute surface fluxes and radiative fluxes at the surface using
 the functions in this file.
 """
 function surface_emissivity(model::AbstractModel, Y, p) end
+
+
+"""
+    surface_height(model::AbstractModel, Y, p)
+
+A helper function which returns the surface height (canopy height+elevation)
+ for a given model, needed because different models compute and store h_sfc in
+different ways and places.
+
+Extending this function for your model is only necessary if you need to
+compute surface fluxes and radiative fluxes at the surface using
+the functions in this file.
+"""
+function surface_height(model::AbstractModel, Y, p) end

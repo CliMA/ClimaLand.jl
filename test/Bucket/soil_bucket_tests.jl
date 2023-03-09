@@ -71,14 +71,14 @@ for bucket_domain in bucket_domains
         u_atmos = (t) -> eltype(t)(1.0)
         q_atmos = (t) -> eltype(t)(0.0) # no atmos water
         h_atmos = FT(1e-8)
-        ρ_atmos = (t) -> eltype(t)(1.13)
+        P_atmos = (t) -> eltype(t)(101325)
         bucket_atmos = PrescribedAtmosphere(
             precip,
             precip,
             T_atmos,
             u_atmos,
             q_atmos,
-            ρ_atmos,
+            P_atmos,
             h_atmos,
         )
         Δt = FT(1.0)
@@ -135,14 +135,14 @@ for bucket_domain in bucket_domains
         u_atmos = (t) -> eltype(t)(4.0)
         q_atmos = (t) -> eltype(t)(0.01)
         h_atmos = FT(30)
-        ρ_atmos = (t) -> eltype(t)(1.13)
+        P_atmos = (t) -> eltype(t)(101325)
         bucket_atmos = PrescribedAtmosphere(
             precip,
             (t) -> eltype(t)(0.0),
             T_atmos,
             u_atmos,
             q_atmos,
-            ρ_atmos,
+            P_atmos,
             h_atmos,
         )
         Δt = FT(100.0)

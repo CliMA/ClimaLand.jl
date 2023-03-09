@@ -42,7 +42,8 @@ import ClimaLSM:
     surface_specific_humidity,
     surface_evaporative_scaling,
     surface_albedo,
-    surface_emissivity
+    surface_emissivity,
+    surface_height
 export BucketModelParameters,
     BucketModel,
     BulkAlbedoFunction,
@@ -469,9 +470,9 @@ function make_update_aux(model::BucketModel{FT}) where {FT}
 
         # Compute turbulent surface fluxes
 
-        turbulent_fluxes = surface_fluxes(model.atmos, model, Y, p, t)
-        p.bucket.turbulent_energy_flux .= turbulent_fluxes.turbulent_energy_flux
-        p.bucket.evaporation .= turbulent_fluxes.evaporation
+        conditions = surface_fluxes(model.atmos, model, Y, p, t)
+        p.bucket.turbulent_energy_flux .= conditions.lhf .+ conditions.shf
+        p.bucket.evaporation .= conditions.vapor_flux
 
         # Radiative fluxes
         p.bucket.R_n .= net_radiation(model.radiation, model, Y, p, t)
