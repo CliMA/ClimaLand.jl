@@ -312,7 +312,7 @@ Used for the implicit tendency when running a mixed implicit/explicit solver.
 Adapted from https://github.com/CliMA/ClimaLSM.jl/blob/f41c497a12f91725ff23a9cd7ba8d563285f3bd8/examples/richards_implicit.jl#L173
 """
 function make_implicit_tendency(model::Soil.RichardsModel)
-    update_aux! = make_update_aux(model)
+    update_aux! = ClimaLSM.make_update_aux(model)
     function implicit_tendency!(dY, Y, p, t)
         update_aux!(p, Y, t)
 
@@ -357,8 +357,11 @@ Used for the explicit tendency when running a mixed implicit/explicit solver.
 Adapted from https://github.com/CliMA/ClimaLSM.jl/blob/f41c497a12f91725ff23a9cd7ba8d563285f3bd8/examples/richards_implicit.jl#L204
 """
 function make_explicit_tendency(model::Soil.RichardsModel)
-    update_aux! = make_update_aux(model)
+    update_aux! = ClimaLSM.make_update_aux(model)
     function explicit_tendency!(dY, Y, p, t)
+        # set dY before updating it
+        dY .= FT(0)
+
         update_aux!(p, Y, t)
 
         z = ClimaCore.Fields.coordinate_field(model.domain.space).z
@@ -433,28 +436,28 @@ soil = Soil.RichardsModel{FT}(;
 Y, p, coords = initialize(soil)
 Y.soil.ϑ_l = FT(0.24)
 
-t_start = FT(0)
-t_end = FT(1e6)
-
 if isinteractive()
-    dt = FT(256)
+    dt = FT(64)
 else
     dt = parse(FT, replace(ARGS[4][4:end], "p" => "."))
 end
 
+t_start = FT(0)
+t_end = FT(1e6) #FT(256)
+
 if isinteractive()
-    max_iters = 2
+    max_iters = 1
 else
     max_iters = parse(Int64, ARGS[3][7:end])
 end
 
-if isinteractive()
-    convergence_cond = CTS.MaximumRelativeError(1e-4)
-else
-    convergence_cond = CTS.MaximumRelativeError(parse(FT, ARGS[5][13:end]))
-end
+# if isinteractive()
+#     convergence_cond = CTS.MaximumRelativeError(1e-10)
+# else
+#     convergence_cond = CTS.MaximumRelativeError(parse(FT, ARGS[5][13:end]))
+# end
 
-conv_checker = CTS.ConvergenceChecker(component_condition = convergence_cond)
+conv_checker = nothing #CTS.ConvergenceChecker(component_condition = convergence_cond)
 ode_algo = CTS.IMEXAlgorithm(
     CTS.ARS222(),
     CTS.NewtonsMethod(
@@ -470,8 +473,7 @@ else
     is_imp = ARGS[1] == "imp"
 end
 
-# mixed implicit/explicit case
-if is_imp
+if is_imp # mixed implicit/explicit case
     transform = use_transform(ode_algo)
 
     W =
@@ -497,8 +499,7 @@ if is_imp
         (t_start, t_end),
         p,
     )
-    # explicit-only case
-else
+else # explicit-only case
     ode_function! = make_ode_function(soil)
 
     problem = ODE.ODEProblem(
@@ -569,5 +570,5 @@ b = @benchmark ODE.solve!(integrator)
 
 filename *= ".jld2"
 
-jldsave(filename; ϑ_l = sol_vals, z = zs, benchmark = b)
+jldsave(filename; ϑ_l = sol_vals, z = zs, benchmark = b, dt = dt)
 @show filename
