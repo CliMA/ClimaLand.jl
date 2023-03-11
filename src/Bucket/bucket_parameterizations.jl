@@ -33,12 +33,12 @@ end
 a helper function which returns the surface temperature for the bucket 
 model, which is stored in the aux state.
 """
-function ClimaLSM.surface_temperature(model::BucketModel, Y, p)
+function ClimaLSM.surface_temperature(model::BucketModel, Y, p, t)
     return p.bucket.T_sfc
 end
 
 """
-    ClimaLSM.surface_temperature(model::BucketModel, Y, p)
+    ClimaLSM.surface_specific_humidity(model::BucketModel, Y, p)
 
 a helper function which returns the surface specific humidity for the bucket 
 model, which is stored in the aux state.
@@ -48,7 +48,17 @@ function ClimaLSM.surface_specific_humidity(model::BucketModel, Y, p, _...)
 end
 
 """
-    ClimaLSM.surface_temperature(model::BucketModel, Y, p)
+    ClimaLSM.surface_height(model::BucketModel, Y, p)
+
+a helper function which returns the surface height for the bucket 
+model, which is zero currently.
+"""
+function ClimaLSM.surface_height(model::BucketModel{FT}, Y, p) where {FT}
+    return FT(0)
+end
+
+"""
+    ClimaLSM.surface_air_density(model::BucketModel, Y, p)
 
 a helper function which computes and returns the surface air density for the bucket 
 model.

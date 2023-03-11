@@ -229,14 +229,14 @@ T_atmos = (t) -> eltype(t)(275.0 + 5.0 * sin(2.0 * π * t / 86400 + 7200));
 u_atmos = (t) -> eltype(t)(3.0);
 q_atmos = (t) -> eltype(t)(0.005);
 h_atmos = FT(2);
-ρ_atmos = (t) -> eltype(t)(1.13);
+P_atmos = (t) -> eltype(t)(101325);
 bucket_atmos = PrescribedAtmosphere(
     precip,
     snow_precip,
     T_atmos,
     u_atmos,
     q_atmos,
-    ρ_atmos,
+    P_atmos,
     h_atmos,
 );
 

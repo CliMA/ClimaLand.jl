@@ -75,14 +75,14 @@ for bucket_domain in bucket_domains
         u_atmos = (t) -> eltype(t)(10.0)
         q_atmos = (t) -> eltype(t)(0.03)
         h_atmos = FT(3)
-        ρ_atmos = (t) -> eltype(t)(1.13)
+        P_atmos = (t) -> eltype(t)(101325) # Pa
         bucket_atmos = PrescribedAtmosphere(
             precip,
             precip,
             T_atmos,
             u_atmos,
             q_atmos,
-            ρ_atmos,
+            P_atmos,
             h_atmos,
         )
         Δt = FT(1.0)
