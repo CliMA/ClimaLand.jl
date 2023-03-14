@@ -123,6 +123,7 @@ Used for the modified Picard method.
 See overleaf for Jacobian derivation: https://www.overleaf.com/project/63be02f455f84a77642ef485
 """
 function Wfact!(W::TridiagonalW, Y, p, dtγ, t)
+    # TODO extract values from params (currently global)
     (; dtγ_ref, ∂ϑₜ∂ϑ) = W
     dtγ_ref[] = dtγ
 
@@ -159,7 +160,10 @@ function Wfact!(W::TridiagonalW, Y, p, dtγ, t)
         bottom = Operators.SetValue(Geometry.WVector.(bot_flux_bc)),
     )
     divf2c_stencil = Operators.Operator2Stencil(divf2c_op)
-    gradc2f_op = Operators.GradientC2F()
+    gradc2f_op = Operators.GradientC2F(
+        top = Operators.SetGradient(Geometry.WVector.(FT(0))),
+        bottom = Operators.SetGradient(Geometry.WVector.(FT(0))),
+    )
     gradc2f_stencil = Operators.Operator2Stencil(gradc2f_op)
     interpc2f_op = Operators.InterpolateC2F()
     compose = Operators.ComposeStencils()
@@ -208,7 +212,7 @@ function LinearAlgebra.ldiv!(x, A::IdentityW, b)
 
     x .= -b
 
-    # Apply transform (if needed)
+    # Apply transform (if needed) - used with ODE
     if transform
         Fields.bycolumn(axes(x.soil.ϑ_l)) do colidx
             x.soil.ϑ_l[colidx] .*= dtγ
@@ -230,6 +234,36 @@ function LinearAlgebra.ldiv!(
     A::TridiagonalW,
     b::Fields.FieldVector,
 )
+    _ldiv!(x, A, b, axes(x.soil.ϑ_l))
+end
+
+# 2D space - only one column
+function _ldiv!(
+    x::Fields.FieldVector,
+    A::TridiagonalW,
+    b::Fields.FieldVector,
+    space::ClimaCore.Spaces.FiniteDifferenceSpace,
+)
+    (; dtγ_ref, ∂ϑₜ∂ϑ, W_column_arrays, transform) = A
+    dtγ = dtγ_ref[]
+
+    _ldiv_serial!(
+        x.soil.ϑ_l,
+        b.soil.ϑ_l,
+        dtγ,
+        transform,
+        ∂ϑₜ∂ϑ,
+        W_column_arrays[Threads.threadid()], # can / should this be colidx?
+    )
+end
+
+# 3D space - iterate over columns
+function _ldiv!(
+    x::Fields.FieldVector,
+    A::TridiagonalW,
+    b::Fields.FieldVector,
+    space::ClimaCore.Spaces.ExtrudedFiniteDifferenceSpace,
+)
     (; dtγ_ref, ∂ϑₜ∂ϑ, W_column_arrays, transform) = A
     dtγ = dtγ_ref[]
 
@@ -246,6 +280,7 @@ function LinearAlgebra.ldiv!(
         end
     end
 end
+
 
 function _ldiv_serial!(
     x_column,
@@ -392,7 +427,7 @@ use_transform(ode_algo) =
 
 # Setup largely taken from ClimaLSM.jl/test/Soil/soiltest.jl
 if isinteractive()
-    is_true_picard = true
+    is_true_picard = false
 else
     is_true_picard = (ARGS[2] == "true_picard")
 end

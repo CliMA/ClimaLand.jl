@@ -7,9 +7,10 @@ using JLD2
 using Statistics
 using DelimitedFiles
 
-rmse(v1, v2) = sqrt(mean((v1 .- v2).^2))
+rmse(v1, v2) = sqrt(mean((v1 .- v2) .^ 2))
 
-files = ["exp_res/rre_sol-exp-true_picard-iters_2-dt_0p25.jld2",
+files = [
+    "exp_res/rre_sol-exp-true_picard-iters_2-dt_0p25.jld2",
     "imp_res-iters_2/rre_sol-imp-true_picard-iters_2-dt_0p25.jld2",
     "imp_res-iters_2/rre_sol-imp-true_picard-iters_2-dt_1.jld2",
     "imp_res-iters_2/rre_sol-imp-true_picard-iters_2-dt_4.jld2",
@@ -19,7 +20,7 @@ files = ["exp_res/rre_sol-exp-true_picard-iters_2-dt_0p25.jld2",
     "imp_res-iters_2/rre_sol-imp-true_picard-iters_2-dt_96.jld2",
     "imp_res-iters_2/rre_sol-imp-true_picard-iters_2-dt_112.jld2",
     "imp_res-iters_2/rre_sol-imp-true_picard-iters_2-dt_120.jld2",
-    ]
+]
 
 # dts for iters_2, iters_10:
 dts = [0.25; 0.25; 1; 4; 16; 64; 82; 96; 112; 120]
