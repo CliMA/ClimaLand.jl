@@ -1,6 +1,5 @@
 using Test
 using Statistics
-using UnPack
 using NLsolve
 using ClimaCore
 import CLIMAParameters as CP
@@ -179,11 +178,11 @@ domains = [
         # test that it has changed
         @test sum(sum(dY.canopy.hydraulics.ϑ_l .- dY2.canopy.hydraulics.ϑ_l)) !=
               0.0
-        m = similar(dY.canopy.hydraulics.ϑ_l[1]) .+ FT(0.0)
+        m = similar(dY.canopy.hydraulics.ϑ_l[1]) .* FT(0.0)
         for i in 1:(n_stem + n_leaf)
-            @. m += dY.canopy.hydraulics.ϑ_l[i]^2.0 ./ (n_stem + n_leaf)
+            @. m += sqrt(dY.canopy.hydraulics.ϑ_l[i]^2.0)
         end
-        @test mean(parent(sqrt.(m))) < 1e-8 # starts in equilibrium
+        @test mean(parent(m)) < 1e-8 # starts in equilibrium
 
 
         # repeat using the plant hydraulics model directly

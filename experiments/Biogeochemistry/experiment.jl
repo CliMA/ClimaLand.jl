@@ -41,7 +41,7 @@ vg_m = FT(1) - FT(1) / vg_n
 κ_sat_frozen = Soil.κ_sat_frozen(κ_solid, ν, κ_ice)
 κ_sat_unfrozen = Soil.κ_sat_unfrozen(κ_solid, ν, κ_liq)
 
-soil_ps = Soil.EnergyHydrologyParameters(;
+soil_ps = Soil.EnergyHydrologyParameters{FT}(;
     κ_dry = κ_dry,
     κ_sat_frozen = κ_sat_frozen,
     κ_sat_unfrozen = κ_sat_unfrozen,

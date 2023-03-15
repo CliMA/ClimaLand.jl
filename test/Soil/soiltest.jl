@@ -82,7 +82,7 @@ end
     κ_sat_frozen = Soil.κ_sat_frozen(κ_solid, ν, κ_ice)
     κ_sat_unfrozen = Soil.κ_sat_unfrozen(κ_solid, ν, κ_liq)
 
-    hyd_on_en_on = Soil.EnergyHydrologyParameters(;
+    hyd_on_en_on = Soil.EnergyHydrologyParameters{FT}(;
         κ_dry = κ_dry,
         κ_sat_frozen = κ_sat_frozen,
         κ_sat_unfrozen = κ_sat_unfrozen,
@@ -350,7 +350,7 @@ end
 
 
     ###
-    hyd_off_en_on = Soil.EnergyHydrologyParameters(;
+    hyd_off_en_on = Soil.EnergyHydrologyParameters{FT}(;
         κ_dry = κ_dry,
         κ_sat_frozen = κ_sat_frozen,
         κ_sat_unfrozen = κ_sat_unfrozen,
@@ -405,7 +405,7 @@ end
     @test maximum(abs.(parent(dY.soil.θ_i))) == 0.0
 
     ###
-    hyd_on_en_off = Soil.EnergyHydrologyParameters(
+    hyd_on_en_off = Soil.EnergyHydrologyParameters{FT}(
         κ_dry = 0.0,
         κ_sat_frozen = 0.0,
         κ_sat_unfrozen = 0.0,
@@ -545,7 +545,7 @@ end
 
     ###
 
-    hyd_off_en_off = Soil.EnergyHydrologyParameters(;
+    hyd_off_en_off = Soil.EnergyHydrologyParameters{FT}(;
         κ_dry = 0.0,
         κ_sat_frozen = 0.0,
         κ_sat_unfrozen = 0.0,
@@ -592,7 +592,7 @@ end
 
 
     ### Test with both energy and hydrology on
-    hyd_on_en_on = Soil.EnergyHydrologyParameters(;
+    hyd_on_en_on = Soil.EnergyHydrologyParameters{FT}(;
         κ_dry = κ_dry,
         κ_sat_frozen = κ_sat_frozen,
         κ_sat_unfrozen = κ_sat_unfrozen,
@@ -729,7 +729,7 @@ end
     sources = (PhaseChange{FT}(Δz),)
 
     ###
-    hyd_off_en_on = Soil.EnergyHydrologyParameters(;
+    hyd_off_en_on = Soil.EnergyHydrologyParameters{FT}(;
         κ_dry = κ_dry,
         κ_sat_frozen = κ_sat_frozen,
         κ_sat_unfrozen = κ_sat_unfrozen,
@@ -769,7 +769,7 @@ end
     soil_ode! = make_ode_function(soil_heat_on)
     dY = similar(Y)
     dY .= FT(0.0)
-    source!(dY, sources[1], Y, p, soil_heat_on.parameters)
+    source!(dY, sources[1], Y, p, soil_heat_on)
     _ρ_l = FT(LSMP.ρ_cloud_liq(soil_heat_on.parameters.earth_param_set))
     _ρ_i = FT(LSMP.ρ_cloud_ice(soil_heat_on.parameters.earth_param_set))
     @test parent(dY.soil.ϑ_l) ≈ -(_ρ_i / _ρ_l) .* parent(dY.soil.θ_i)

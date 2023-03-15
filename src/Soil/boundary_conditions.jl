@@ -1,5 +1,6 @@
 import ClimaLSM: AbstractBC, boundary_flux
-export TemperatureStateBC, MoistureStateBC, FreeDrainage, FluxBC
+export TemperatureStateBC,
+    MoistureStateBC, FreeDrainage, FluxBC, AtmosDrivenFluxBC
 
 """
     AbstractSoilBC <: ClimaLSM. AbstractBC
@@ -36,6 +37,78 @@ normal flux boundary condition f(p,t) at either the top or bottom of the domain.
 """
 struct FluxBC <: AbstractSoilBC
     bc::Function
+end
+
+"""
+    AtmosDrivenFluxBC{
+        A <: AbstractAtmosphericDrivers,
+        B <: AbstractRadiativeDrivers,
+    } <: AbstractSoilBC
+
+A concrete type of soil boundary condition for use at the top
+of the domain. This holds the conditions for the atmosphere
+`AbstractAtmosphericDrivers` and for the radiation state 
+`AbstractRadiativeDrivers`.
+
+This choice indicates the Monin-Obukhov Surface Theory will
+be used to compute the sensible and latent heat fluxes, as 
+well as evaporation, and that the net radiation and precipitation
+will also be computed. The net energy and water fluxes
+are used as boundary conditions.
+"""
+struct AtmosDrivenFluxBC{
+    A <: AbstractAtmosphericDrivers,
+    B <: AbstractRadiativeDrivers,
+} <: AbstractSoilBC
+    atmos::A
+    radiation::B
+end
+
+"""
+    soil_boundary_fluxes(
+        bc::AtmosDrivenFluxBC{
+            <:PrescribedAtmosphere,
+            <:PrescribedRadiativeFluxes,
+        },
+        boundary::ClimaLSM.TopBoundary,
+        model::EnergyHydrology{FT},
+        Y,
+        Δz,
+        p,
+        t,
+    ) where {FT}
+
+Returns the net volumetric water flux (m/s) and net energy 
+flux (W/m^2) for the soil `EnergyHydrology` model at the top 
+of the soil domain.
+
+This  method of `soil_boundary_fluxes` is for use with
+a  `PrescribedAtmosphere` and `PrescribedRadiativeFluxes`
+struct; for example, this is to be used when driving
+the soil model with reanalysis data.
+
+This function calls the `surface_fluxes` and `net_radiation`
+functions, which use the soil surface conditions as well as 
+the prescribed atmos and radiation conditions in order to
+compute the surface fluxes.
+"""
+function soil_boundary_fluxes(
+    bc::AtmosDrivenFluxBC{<:PrescribedAtmosphere, <:PrescribedRadiativeFluxes},
+    boundary::ClimaLSM.TopBoundary,
+    model::EnergyHydrology{FT},
+    Y,
+    Δz,
+    p,
+    t,
+) where {FT}
+
+    conditions = surface_fluxes(bc.atmos, model, Y, p, t)
+    R_n = net_radiation(bc.radiation, model, Y, p, t)
+    # We are ignoring sublimation for now, as well as g_soil
+    net_water_flux = @. bc.atmos.liquid_precip(t) + conditions.vapor_flux
+    net_energy_flux = @. R_n + conditions.lhf + conditions.shf
+    return net_water_flux, net_energy_flux
+
 end
 
 
@@ -188,11 +261,12 @@ function ClimaLSM.boundary_flux(
 end
 
 """
-    soil_boundary_fluxes(bc::NamedTuple, boundary, Δz, p, t, params)
+    soil_boundary_fluxes(bc::NamedTuple, boundary, model, Y, Δz, p, t)
 
 Returns the boundary fluxes for ϑ_l and ρe_int, in that order.
 """
-function soil_boundary_fluxes(bc::NamedTuple, boundary, Δz, p, t, params)
+function soil_boundary_fluxes(bc::NamedTuple, boundary, model, Y, Δz, p, t)
+    params = model.parameters
     return ClimaLSM.boundary_flux(bc.water, boundary, Δz, p, t, params),
     ClimaLSM.boundary_flux(bc.heat, boundary, Δz, p, t, params)
 end

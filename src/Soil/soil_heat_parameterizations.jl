@@ -307,7 +307,7 @@ end
 Computes the thermal conductivity of dry soil according
 to the model of Balland and Arp.
 """
-function κ_dry(ρp::FT, ν::FT, κ_solid::FT, κ_air::FT; a::FT = 0.053) where {FT}
+function κ_dry(ρp::FT, ν::FT, κ_solid::FT, κ_air::FT; a = FT(0.053)) where {FT}
     # compute the dry soil bulk density from particle density
     ρb_dry = (FT(1.0) - ν) * ρp
     numerator = (a * κ_solid - κ_air) * ρb_dry + κ_air * ρp
