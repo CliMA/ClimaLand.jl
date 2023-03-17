@@ -1,3 +1,19 @@
+"""
+Usage:
+    Run this file using julia with the following args after the file name:
+1. "imp" or "exp" - use the implicit or explicit solver
+2. "true_picard" or "mod_picard" - specify the method for the solver to use
+3. "iters_n" - use NewtonsMethod with `max_iters = n`
+4. "dt_n" - use a timestep of `n` seconds
+
+Ex: to run the implicit solver using modified Picard with 1 iteration at each
+timestep, and a timestep of 1 second, run:
+julia --project src/Soil/examples/imex_testing.jl imp mod_picard iters_1 dt_1
+
+Note that when using the explicit solver, the second and third
+arguments are irrelevant.
+"""
+
 using ClimaCore
 using ClimaCore: Operators, Spaces, Fields, Geometry
 using UnPack
@@ -123,9 +139,10 @@ Used for the modified Picard method.
 See overleaf for Jacobian derivation: https://www.overleaf.com/project/63be02f455f84a77642ef485
 """
 function Wfact!(W::TridiagonalW, Y, p, dtγ, t)
-    # TODO extract values from params (currently global)
     (; dtγ_ref, ∂ϑₜ∂ϑ) = W
     dtγ_ref[] = dtγ
+    # TODO add parameters and BCs to TridiagonalW so we don't access global vars here
+    (; ν, vg_α, vg_n, vg_m, S_s, θ_r) = soil.parameters
 
     if axes(Y.soil.ϑ_l) isa Spaces.CenterFiniteDifferenceSpace
         face_space = Spaces.FaceFiniteDifferenceSpace(axes(Y.soil.ϑ_l))
@@ -139,7 +156,7 @@ function Wfact!(W::TridiagonalW, Y, p, dtγ, t)
     Δz_top, Δz_bottom = get_Δz(z)
 
     top_flux_bc = ClimaLSM.boundary_flux(
-        soil.boundary_conditions.water.top, # TODO can't use soil here, can't change Wfact! signature either
+        soil.boundary_conditions.top.water,
         ClimaLSM.TopBoundary(),
         Δz_top,
         p,
@@ -147,7 +164,7 @@ function Wfact!(W::TridiagonalW, Y, p, dtγ, t)
         soil.parameters,
     )
     bot_flux_bc = ClimaLSM.boundary_flux(
-        soil.boundary_conditions.water.bottom,
+        soil.boundary_conditions.bottom.water,
         ClimaLSM.BottomBoundary(),
         Δz_bottom,
         p,
@@ -185,7 +202,7 @@ end
 # Copied from https://github.com/CliMA/ClimaLSM.jl/blob/f41c497a12f91725ff23a9cd7ba8d563285f3bd8/examples/richards_implicit.jl#L152
 # Checked against soiltest https://github.com/CliMA/ClimaLSM.jl/blob/e7eaf2e6fffaf64b2d824e9c5755d2f60fa17a69/test/Soil/soiltest.jl#L459
 function dψdθ(θ, ν, θ_r, vg_α, vg_n, vg_m, S_s)
-    S = (θ - θ_r) / (ν - θ_r)
+    S = (θ - θ_r) / (ν - θ_r) # TODO use effective_saturation
     if S < 1.0
         return 1.0 / (vg_α * vg_m * vg_n) / (ν - θ_r) *
                (S^(-1 / vg_m) - 1)^(1 / vg_n - 1) *
@@ -355,7 +372,7 @@ function make_implicit_tendency(model::Soil.RichardsModel)
         Δz_top, Δz_bottom = get_Δz(z)
 
         top_flux_bc = ClimaLSM.boundary_flux(
-            model.boundary_conditions.water.top,
+            model.boundary_conditions.top.water,
             ClimaLSM.TopBoundary(),
             Δz_top,
             p,
@@ -363,7 +380,7 @@ function make_implicit_tendency(model::Soil.RichardsModel)
             model.parameters,
         )
         bot_flux_bc = ClimaLSM.boundary_flux(
-            model.boundary_conditions.water.bottom,
+            model.boundary_conditions.bottom.water,
             ClimaLSM.BottomBoundary(),
             Δz_bottom,
             p,
@@ -455,10 +472,10 @@ nelems = 150
 # )
 soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems);
 
-top_bc = StateBC((p, t) -> eltype(t)(ν - 1e-3))
-bot_bc = FreeDrainage{FT}()
+top_bc = Soil.MoistureStateBC((p, t) -> eltype(t)(ν - 1e-3))
+bot_bc = Soil.FreeDrainage()
 sources = ()
-boundary_fluxes = (; water = (top = top_bc, bottom = bot_bc))
+boundary_fluxes = (; top = (water = top_bc,), bottom = (water = bot_bc,))
 params = Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r)
 
 soil = Soil.RichardsModel{FT}(;
@@ -492,9 +509,12 @@ end
 #     convergence_cond = CTS.MaximumRelativeError(parse(FT, ARGS[5][13:end]))
 # end
 
-conv_checker = nothing #CTS.ConvergenceChecker(component_condition = convergence_cond)
+# TODO when conv_checker was used before, the solver thought it had converged
+#  when it hadn't. For now, don't use a conv checker, but maybe try again later
+# conv_checker = CTS.ConvergenceChecker(component_condition = convergence_cond)
+conv_checker = nothing
 ode_algo = CTS.IMEXAlgorithm(
-    CTS.ARS222(),
+    CTS.ARS343(),
     CTS.NewtonsMethod(
         max_iters = max_iters,
         update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
@@ -563,8 +583,8 @@ sol = ODE.solve!(integrator)
 sol_vals = parent(sol.u[end].soil.ϑ_l)
 zs = parent(Fields.coordinate_field(axes(sol.u[end].soil.ϑ_l)))
 
-isdir("imp-res") ? nothing : mkpath("imp-res")
-filename = "imp-res/rre_sol"
+isdir("imex-res") ? nothing : mkpath("imex-res")
+filename = "imex-res/rre_sol"
 for a in ARGS
     a = string(a)
     replace(a, "." => "p")
@@ -599,11 +619,10 @@ savefig(filename * "-$t_end")
 
 b = @benchmark ODE.solve!(integrator)
 
-# # or display count(x -> x < ν * 1.03, sol_vals)
-@assert all(x -> x > θ_r, sol_vals)
-@assert all(x -> x < ν * 1.03, sol_vals)
-
 filename *= ".jld2"
 
 jldsave(filename; ϑ_l = sol_vals, z = zs, benchmark = b, dt = dt)
 @show filename
+
+@assert all(x -> x > θ_r, sol_vals)
+@assert all(x -> x < ν * 1.03, sol_vals)
