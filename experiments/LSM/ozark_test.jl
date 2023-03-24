@@ -18,7 +18,8 @@ end
 using ClimaLSM
 using ClimaLSM.Domains: Column
 using ClimaLSM.Soil
-using ClimaLSM.PlantHydraulics
+using ClimaLSM.Canopy
+using ClimaLSM.Canopy.PlantHydraulics
 import ClimaLSM
 include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
 
@@ -217,8 +218,8 @@ land = SoilPlantHydrologyModel{FT}(;
     land_args = land_args,
     soil_model_type = Soil.RichardsModel{FT},
     soil_args = soil_args,
-    vegetation_model_type = PlantHydraulics.PlantHydraulicsModel{FT},
-    vegetation_args = plant_hydraulics_args,
+    canopy_model_type = Canopy.CanopyModel{FT},
+    canopy_args = (hydraulics = plant_hydraulics_args,),
 )
 Y, p, cds = initialize(land)
 ode! = make_ode_function(land)
@@ -255,7 +256,8 @@ S_l_ini =
     )
 
 for i in 1:2
-    Y.vegetation.ϑ_l[i] .= augmented_liquid_fraction.(plant_ν, S_l_ini[i])
+    Y.canopy.hydraulics.ϑ_l[i] .=
+        augmented_liquid_fraction.(plant_ν, S_l_ini[i])
 end
 
 update_aux! = make_update_aux(land)
@@ -277,8 +279,10 @@ sol =
     solve(prob, RK4(); dt = dt, saveat = daily, callback = cb, adaptive = false)
 
 # Diagnostics
-ϑ_stem = [parent(sol.u[k].vegetation.ϑ_l[1])[1] for k in 1:1:length(sol.t)] # m3 m-3
-ϑ_leaf = [parent(sol.u[k].vegetation.ϑ_l[2])[1] for k in 1:1:length(sol.t)] # m3 m-3
+ϑ_stem =
+    [parent(sol.u[k].canopy.hydraulics.ϑ_l[1])[1] for k in 1:1:length(sol.t)] # m3 m-3
+ϑ_leaf =
+    [parent(sol.u[k].canopy.hydraulics.ϑ_l[2])[1] for k in 1:1:length(sol.t)] # m3 m-3
 S_l_stem = PlantHydraulics.effective_saturation.(plant_ν, ϑ_stem) # m3 m-3
 S_l_leaf = PlantHydraulics.effective_saturation.(plant_ν, ϑ_leaf) # m3 m-3
 p_stem =
@@ -499,7 +503,7 @@ plot5 = plot(
 
 plot!(xlabel = "t (days)", ylabel = "Precipitation (mm/day)")
 plot(plot1, plot2, plot3, plot4, plot5, layout = 6)
-savefig("./experiments/LSM/coupled_plant_soil_diagnostics_1.png")
+savefig("./experiments/LSM/integrated_plant_soil_diagnostics_1.png")
 
 # Transpiration
 plot6 = plot(
@@ -616,7 +620,7 @@ plot11 = plot(
 )
 
 plot(plot6, plot7, plot8, plot9, plot10, plot11, layout = 6)
-savefig("./experiments/LSM/coupled_plant_soil_diagnostics_2.png")
+savefig("./experiments/LSM/integrated_plant_soil_diagnostics_2.png")
 
 # K(p)
 function weibull(K_max::FT, b::FT, c::FT, p::FT) where {FT}
@@ -703,4 +707,4 @@ plot14 = plot(
 )
 
 plot(plot12, plot13, plot14, layout = 6)
-savefig("./experiments/LSM/coupled_plant_soil_diagnostics_3.png")
+savefig("./experiments/LSM/integrated_plant_soil_diagnostics_3.png")
