@@ -1,4 +1,3 @@
-
 using UnPack
 export volumetric_internal_energy,
     temperature_from_ρe_int,
@@ -53,16 +52,17 @@ function phase_change_source(
     @unpack ν, vg_α, vg_n, vg_m, θ_r, earth_param_set = params
     _ρ_i = FT(LSMP.ρ_cloud_ice(earth_param_set))
     _ρ_l = FT(LSMP.ρ_cloud_liq(earth_param_set))
-    _LH_f0 = FT(LSMP.LH_f0(earth_param_set))
     _T_freeze = FT(LSMP.T_freeze(earth_param_set))
     _grav = FT(LSMP.grav(earth_param_set))
+    thermo_params = LSMP.thermodynamic_parameters(earth_param_set)
+    _LH_fT = Thermodynamics.latent_heat_fusion(thermo_params, T)
     # According to Dall'Amico (text above equation 1), ψw0 corresponds
     # to the matric potential corresponding to the total water content (liquid and ice).
     θtot = min(_ρ_i / _ρ_l * θ_i + θ_l, ν)
     # This is consistent with Equation (22) of Dall'Amico
     ψw0 = matric_potential(vg_α, vg_n, vg_m, effective_saturation(ν, θtot, θ_r))
 
-    ψT = _LH_f0 / _T_freeze / _grav * (T - _T_freeze) * heaviside(_T_freeze - T)
+    ψT = _LH_fT / _T_freeze / _grav * (T - _T_freeze) * heaviside(_T_freeze - T)
     # Equation (23) of Dall'Amico
     θstar =
         inverse_matric_potential(vg_α, vg_n, vg_m, ψw0 + ψT) * (ν - θ_r) + θ_r

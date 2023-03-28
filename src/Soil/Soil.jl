@@ -59,6 +59,7 @@ using ClimaLSM
 using UnPack
 using DocStringExtensions
 using ClimaCore
+using Thermodynamics
 import ..Parameters as LSMP
 import ClimaCore: Fields, Operators, Geometry, Spaces
 
