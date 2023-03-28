@@ -46,11 +46,19 @@ struct EnergyHydrologyParameters{FT <: AbstractFloat, PSE}
     γ::FT
     "Reference temperature for the viscosity factor"
     γT_ref::FT
+    "Soil Albedo"
+    albedo::FT
+    "Soil Emissivity"
+    emissivity::FT
+    "Roughness length for momentum"
+    z_0m::FT
+    "Roughness length for scalars"
+    z_0b::FT
     "Physical constants and clima-wide parameters"
     earth_param_set::PSE
 end
 
-function EnergyHydrologyParameters(;
+function EnergyHydrologyParameters{FT}(;
     κ_dry::FT,
     κ_sat_frozen::FT,
     κ_sat_unfrozen::FT,
@@ -64,6 +72,10 @@ function EnergyHydrologyParameters(;
     K_sat::FT,
     S_s::FT,
     θ_r::FT,
+    albedo = FT(0.2),
+    emissivity = FT(1),
+    z_0m = FT(0.01),
+    z_0b = FT(0.01),
     earth_param_set::PSE,
 ) where {FT, PSE}
     vg_m = FT(1.0 - 1.0 / vg_n)
@@ -95,6 +107,10 @@ function EnergyHydrologyParameters(;
         Ω,
         γ,
         γT_ref,
+        albedo,
+        emissivity,
+        z_0m,
+        z_0b,
         earth_param_set,
     )
 end
@@ -163,18 +179,20 @@ function ClimaLSM.make_rhs(model::EnergyHydrology{FT}) where {FT}
         rre_top_flux_bc, heat_top_flux_bc = soil_boundary_fluxes(
             model.boundary_conditions.top,
             TopBoundary(),
+            model,
+            Y,
             Δz_top,
             p,
             t,
-            model.parameters,
         )
         rre_bot_flux_bc, heat_bot_flux_bc = soil_boundary_fluxes(
             model.boundary_conditions.bottom,
             BottomBoundary(),
+            model,
+            Y,
             Δz_bottom,
             p,
             t,
-            model.parameters,
         )
 
         interpc2f = Operators.InterpolateC2F()
@@ -187,7 +205,6 @@ function ClimaLSM.make_rhs(model::EnergyHydrology{FT}) where {FT}
 
 
         # Richards-Richardson RHS:
-        z = ClimaCore.Fields.coordinate_field(model.domain.space).z
         divf2c_rre = Operators.DivergenceF2C(
             top = Operators.SetValue(Geometry.WVector.(rre_top_flux_bc)),
             bottom = Operators.SetValue(Geometry.WVector.(rre_bot_flux_bc)),
@@ -216,7 +233,7 @@ function ClimaLSM.make_rhs(model::EnergyHydrology{FT}) where {FT}
 
         for src in model.sources
 
-            ClimaLSM.source!(dY, src, Y, p, model.parameters)
+            ClimaLSM.source!(dY, src, Y, p, model)
         end
 
         # This has to come last
@@ -369,11 +386,13 @@ struct PhaseChange{FT} <: AbstractSoilSource{FT}
     Δz::FT
 end
 
+
 """
      source!(dY::ClimaCore.Fields.FieldVector,
              src::PhaseChange{FT},
              Y::ClimaCore.Fields.FieldVector,
-             p::ClimaCore.Fields.FieldVector
+             p::ClimaCore.Fields.FieldVector,
+             model
              )
 
 Computes the source terms for phase change.
@@ -384,8 +403,9 @@ function ClimaLSM.source!(
     src::PhaseChange{FT},
     Y::ClimaCore.Fields.FieldVector,
     p::ClimaCore.Fields.FieldVector,
-    params,
+    model,
 ) where {FT}
+    params = model.parameters
     @unpack ν, earth_param_set = params
     _ρ_l = FT(LSMP.ρ_cloud_liq(earth_param_set))
     _ρ_i = FT(LSMP.ρ_cloud_ice(earth_param_set))
@@ -396,4 +416,206 @@ function ClimaLSM.source!(
         phase_change_source.(p.soil.θ_l, Y.soil.θ_i, p.soil.T, τ, Ref(params))
     @. dY.soil.ϑ_l += -liquid_source
     @. dY.soil.θ_i += (_ρ_l / _ρ_i) * liquid_source
+end
+
+
+
+## The functions below are required to be defined
+## for use with the `AtmosDrivenFluxBC` upper
+## boundary conditions. They return the
+## surface conditions necessary for computing
+## radiative, sensible and latent heat fluxes
+## as well as evaporation.
+
+
+"""
+    ClimaLSM.surface_temperature(
+        model::EnergyHydrology{FT},
+        Y,
+        p,
+        t,
+    ) where {FT}
+
+Returns the surface temperature field of the 
+`EnergyHydrology` soil model.
+
+The assumption is that the soil surface temperature
+is the same as the temperature at the center of the
+first soil layer.
+"""
+function ClimaLSM.surface_temperature(
+    model::EnergyHydrology{FT},
+    Y,
+    p,
+    t,
+) where {FT}
+    face_space = ClimaLSM.Domains.obtain_face_space(model.domain.space)
+    N = ClimaCore.Spaces.nlevels(face_space)
+    interp_c2f = ClimaCore.Operators.InterpolateC2F(
+        top = ClimaCore.Operators.Extrapolate(),
+        bottom = ClimaCore.Operators.Extrapolate(),
+    )
+    surface_space = ClimaLSM.Domains.obtain_surface_space(model.domain.space)
+    return ClimaCore.Fields.Field(
+        ClimaCore.Fields.field_values(
+            ClimaCore.Fields.level(
+                interp_c2f.(p.soil.T),
+                ClimaCore.Utilities.PlusHalf(N - 1),
+            ),
+        ),
+        surface_space,
+    )
+end
+
+"""
+    ClimaLSM.surface_emissivity(
+        model::EnergyHydrology{FT},
+        Y,
+        p,
+    ) where {FT}
+
+Returns the surface emissivity field of the 
+`EnergyHydrology` soil model.
+"""
+function ClimaLSM.surface_emissivity(
+    model::EnergyHydrology{FT},
+    Y,
+    p,
+) where {FT}
+    return model.parameters.emissivity
+end
+
+"""
+    ClimaLSM.surface_albedo(
+        model::EnergyHydrology{FT},
+        Y,
+        p,
+    ) where {FT}
+
+Returns the surface albedo field of the 
+`EnergyHydrology` soil model.
+"""
+function ClimaLSM.surface_albedo(model::EnergyHydrology{FT}, Y, p) where {FT}
+    return model.parameters.albedo
+end
+
+"""
+    ClimaLSM.surface_air_density(
+        atmos::PrescribedAtmosphere{FT},
+        model::EnergyHydrology{FT},
+        Y,
+        p,
+        t,
+        T_sfc
+    ) where {FT}
+
+Returns the surface air density field of the 
+`EnergyHydrology` soil model for the 
+`PrescribedAtmosphere` case.
+
+This assumes the ideal gas law and hydrostatic
+balance to estimate the air density at the surface
+from the values of surface temperature and the atmospheric
+thermodynamic state, 
+because the surface air density is not a prognostic
+variable of the soil model.
+"""
+function ClimaLSM.surface_air_density(
+    atmos::PrescribedAtmosphere{FT},
+    model::EnergyHydrology{FT},
+    Y,
+    p,
+    t,
+    T_sfc,
+) where {FT}
+
+    thermo_params =
+        LSMP.thermodynamic_parameters(model.parameters.earth_param_set)
+    ts_in = construct_atmos_ts(atmos, t, thermo_params)
+    return compute_ρ_sfc.(Ref(thermo_params), Ref(ts_in), T_sfc)
+end
+
+"""
+    ClimaLSM.surface_specific_humidity(
+        model::EnergyHydrology{FT},
+        Y,
+        p,
+        T_sfc,
+        ρ_sfc
+    ) where {FT}
+
+Returns the surface specific humidity field of the 
+`EnergyHydrology` soil model.
+
+This models the surface specific humidity as
+the saturated value multiplied by
+the factor `exp(ψ_sfc g M_w/(RT_sfc))` in accordance
+with the Clausius-Clapeyron equation,
+where `ψ_sfc` is the matric potential at the surface,
+`T_sfc` the surface temperature, `g` the gravitational
+acceleration on the surface of the Earth, `M_w` the molar
+mass of water, and `R` the universal gas constant.
+"""
+function ClimaLSM.surface_specific_humidity(
+    model::EnergyHydrology{FT},
+    Y,
+    p,
+    T_sfc,
+    ρ_sfc,
+) where {FT}
+    g = LSMP.grav(model.parameters.earth_param_set)
+    R = LSMP.gas_constant(model.parameters.earth_param_set)
+    M_w = LSMP.molar_mass_water(model.parameters.earth_param_set)
+    thermo_params =
+        LSMP.thermodynamic_parameters(model.parameters.earth_param_set)
+    face_space = ClimaLSM.Domains.obtain_face_space(model.domain.space)
+    N = ClimaCore.Spaces.nlevels(face_space)
+    interp_c2f = ClimaCore.Operators.InterpolateC2F(
+        top = ClimaCore.Operators.Extrapolate(),
+        bottom = ClimaCore.Operators.Extrapolate(),
+    )
+    surface_space = ClimaLSM.Domains.obtain_surface_space(model.domain.space)
+    ψ_sfc = ClimaCore.Fields.Field(
+        ClimaCore.Fields.field_values(
+            ClimaCore.Fields.level(
+                interp_c2f.(p.soil.ψ),
+                ClimaCore.Utilities.PlusHalf(N - 1),
+            ),
+        ),
+        surface_space,
+    )
+    q_sat =
+        Thermodynamics.q_vap_saturation_generic.(
+            Ref(thermo_params),
+            T_sfc,
+            ρ_sfc,
+            Ref(Thermodynamics.Liquid()),
+        )
+    return @. (q_sat * exp(g * ψ_sfc * M_w / (R * T_sfc)))
+
+end
+
+"""
+    ClimaLSM.surface_height(
+        model::EnergyHydrology{FT},
+        Y,
+        p,
+    ) where {FT}
+
+Returns the surface height of the `EnergyHydrology` model.
+"""
+function ClimaLSM.surface_height(model::EnergyHydrology{FT}, Y, p) where {FT}
+    face_space = ClimaLSM.Domains.obtain_face_space(model.domain.space)
+    N = ClimaCore.Spaces.nlevels(face_space)
+    surface_space = ClimaLSM.Domains.obtain_surface_space(model.domain.space)
+    z_sfc = ClimaCore.Fields.Field(
+        ClimaCore.Fields.field_values(
+            ClimaCore.Fields.level(
+                ClimaCore.Fields.coordinate_field(face_space).z,
+                ClimaCore.Utilities.PlusHalf(N - 1),
+            ),
+        ),
+        surface_space,
+    )
+    return z_sfc
 end

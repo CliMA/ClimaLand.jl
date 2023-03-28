@@ -61,6 +61,7 @@ using DocStringExtensions
 using ClimaCore
 import ..Parameters as LSMP
 import ClimaCore: Fields, Operators, Geometry, Spaces
+using Thermodynamics
 
 import ClimaLSM.Domains: Column, HybridBox, SphericalShell
 import ClimaLSM:
@@ -74,7 +75,13 @@ import ClimaLSM:
     auxiliary_types,
     AbstractSource,
     source!,
-    heaviside
+    heaviside,
+    surface_temperature,
+    surface_specific_humidity,
+    surface_albedo,
+    surface_emissivity,
+    surface_air_density,
+    surface_height
 export RichardsModel,
     RichardsParameters,
     EnergyHydrology,
@@ -152,9 +159,9 @@ end
 
 
 
-include("./boundary_conditions.jl")
 include("./rre.jl")
 include("./energy_hydrology.jl")
+include("./boundary_conditions.jl")
 include("./soil_hydrology_parameterizations.jl")
 include("./soil_heat_parameterizations.jl")
 include("Biogeochemistry/Biogeochemistry.jl")

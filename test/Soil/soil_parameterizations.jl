@@ -43,7 +43,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     κ_sat_unfrozen = 0.0
     κ_sat_frozen = 0.0
     κ_dry = Soil.κ_dry(ρp, ν, κ_solid, κ_air)
-    parameters = EnergyHydrologyParameters(;
+    parameters = EnergyHydrologyParameters{FT}(;
         κ_dry = κ_dry,
         κ_sat_frozen = κ_sat_frozen,
         κ_sat_unfrozen = κ_sat_unfrozen,
@@ -217,7 +217,7 @@ end
     κ_sat_unfrozen = 0.0
     κ_sat_frozen = 0.0
     κ_dry = Soil.κ_dry(ρp, ν, κ_solid, κ_air)
-    parameters = EnergyHydrologyParameters(;
+    parameters = EnergyHydrologyParameters{FT}(;
         κ_dry = κ_dry,
         κ_sat_frozen = κ_sat_frozen,
         κ_sat_unfrozen = κ_sat_unfrozen,

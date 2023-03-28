@@ -231,7 +231,7 @@ end
     κ_dry = Soil.κ_dry(ρp, ν, κ_solid, κ_air)
     κ_sat_frozen = Soil.κ_sat_frozen(κ_solid, ν, κ_ice)
     κ_sat_unfrozen = Soil.κ_sat_unfrozen(κ_solid, ν, κ_liq)
-    parameters = Soil.EnergyHydrologyParameters(
+    parameters = Soil.EnergyHydrologyParameters{FT}(
         κ_dry = κ_dry,
         κ_sat_frozen = κ_sat_frozen,
         κ_sat_unfrozen = κ_sat_unfrozen,

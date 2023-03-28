@@ -53,6 +53,7 @@ ClimaLSM.Soil.MoistureStateBC
 ClimaLSM.Soil.FluxBC
 ClimaLSM.Soil.TemperatureStateBC
 ClimaLSM.Soil.FreeDrainage
+ClimaLSM.Soil.AtmosDrivenFluxBC
 ClimaLSM.Soil.AbstractSoilSource
 ClimaLSM.Soil.PhaseChange
 ```

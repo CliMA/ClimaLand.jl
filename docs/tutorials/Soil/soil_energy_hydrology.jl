@@ -137,7 +137,7 @@ vg_α = FT(7.5) # inverse meters
 # Next, we calculate the volumetric heat capacity of dry soil. Dry soil
 # refers to soil that has no water content.
 ρc_ds = FT((1 - ν) * 1.926e06); # J/m^3/K
-params = Soil.EnergyHydrologyParameters(;
+params = Soil.EnergyHydrologyParameters{FT}(;
     κ_dry = κ_dry,
     κ_sat_frozen = κ_sat_frozen,
     κ_sat_unfrozen = κ_sat_unfrozen,

@@ -360,17 +360,21 @@ the functions in this file.
 function surface_specific_humidity(model::AbstractModel, Y, p, T_sfc, ρ_sfc) end
 
 """
-    surface_evaporative_scaling(model::AbstractModel, Y, p)
+    surface_evaporative_scaling(model::AbstractModel{FT}, Y, p) where {FT}
 
 A helper function which returns the surface evaporative scaling factor
  for a given model, needed because different models compute and store β_sfc in
-different ways and places.
+different ways and places. Currently, this factor is 1 for all models
+besides the bucket model, so we have chosen a default of 1.
 
 Extending this function for your model is only necessary if you need to
 compute surface fluxes and radiative fluxes at the surface using
 the functions in this file.
 """
-function surface_evaporative_scaling(model::AbstractModel, Y, p) end
+function surface_evaporative_scaling(model::AbstractModel{FT}, Y, p) where {FT}
+    return FT(1)
+end
+
 
 """
     surface_albedo(model::AbstractModel, Y, p)
