@@ -349,7 +349,7 @@ ode_algo = CTS.IMEXAlgorithm(
     ),
 )
 
-function main(ode_algo, t_end::Float64, dt::Float64)
+function main(ode_algo, t_end::Float64, dt::Float64; explicit=false)
     FT = Float64
     # parameters for clay from Bonan 2019 supplemental program 8.2
     ν = FT(0.495)
@@ -384,38 +384,64 @@ function main(ode_algo, t_end::Float64, dt::Float64)
     update_aux! = make_update_aux(soil)
     t_start = FT(0)
     update_aux!(p, Y, t_start)
-    
-    transform = use_transform(ode_algo)
-    
-    W = TridiagonalW(Y, transform)
-    
-    implicit_tendency! = make_implicit_tendency(soil)
-    Wfact! = make_Wfact!(soil)
-    jac_kwargs = if use_transform(ode_algo)
-        (; jac_prototype = W, Wfact_t = Wfact!)
+    if !explicit
+        transform = use_transform(ode_algo)
+        
+        W = TridiagonalW(Y, transform)
+        
+        implicit_tendency! = make_implicit_tendency(soil)
+        Wfact! = make_Wfact!(soil)
+        Wfact!(W, Y, p, dt, t_start)
+        jac_kwargs = if use_transform(ode_algo)
+            (; jac_prototype = W, Wfact_t = Wfact!)
+        else
+            (; jac_prototype = W, Wfact = Wfact!)
+        end
+        
+        implicit_problem = ODEProblem(
+            CTS.ClimaODEFunction(
+                T_exp! = explicit_tendency!,
+                T_imp! = ODEFunction(implicit_tendency!; jac_kwargs...),
+                dss! = ClimaLSM.Soil.dss!,
+            ),
+            Y,
+            (t_start, t_end),
+            p,
+        )    
+        
+        integrator = init(
+            implicit_problem,
+            ode_algo;
+            dt = dt,
+            adaptive = false,
+            progress = true,
+            saveat = t_start:1:t_end,
+        )
     else
-        (; jac_prototype = W, Wfact = Wfact!)
+        implicit_tendency! = make_implicit_tendency(soil)
+        W = TridiagonalW(Y, false)
+        
+        Wfact! = make_Wfact!(soil)
+        explicit_problem = ODE.ODEProblem(
+            CTS.ClimaODEFunction(
+                T_exp! = implicit_tendency!,
+                T_imp! = nothing,
+               dss! = ClimaLSM.Soil.dss!,
+            ),
+            Y,
+            (t_start, t_end),
+            p,
+        )
+        integrator = init(
+            explicit_problem,
+            ode_algo;
+            dt = dt,
+            adaptive = false,
+            progress = true,
+           saveat = t_start:1000:t_end,
+        )
     end
     
-    implicit_problem = ODEProblem(
-        CTS.ClimaODEFunction(
-            T_exp! = explicit_tendency!,
-            T_imp! = ODEFunction(implicit_tendency!; jac_kwargs...),
-            dss! = ClimaLSM.Soil.dss!,
-        ),
-        Y,
-        (t_start, t_end),
-        p,
-    )    
-    
-    implicit_integrator = init(
-        implicit_problem,
-        ode_algo;
-        dt = dt,
-        adaptive = false,
-        progress = true,
-        saveat = t_start:1:t_end,
-    )
-    sol = ODE.solve!(implicit_integrator)
+    sol = ODE.solve!(integrator)
     
 end
