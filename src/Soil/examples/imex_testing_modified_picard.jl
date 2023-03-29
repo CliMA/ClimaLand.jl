@@ -22,8 +22,6 @@ using DocStringExtensions
 using NVTX
 using Colors
 using DiffEqBase
-using BenchmarkTools
-using JLD2
 using Plots
 
 import OrdinaryDiffEq as ODE
@@ -37,41 +35,22 @@ using ClimaLSM.Soil
 using ClimaLSM.Domains: HybridBox, SphericalShell, Column
 
 
-FT = Float64
-
 to_scalar_coefs(vector_coefs) = map(vector_coef -> vector_coef.u₃, vector_coefs)
 
-
-"""
-    TridiagonalW{R, J, W, T}
-
-Jacobian representation used for the modified Picard method.
-"""
 struct TridiagonalW{R, J, W, T}
     # reference to dtγ, which is specified by the ODE solver
     dtγ_ref::R
-
     # derivative of tendency - used to fill Jacobian
     ∂ϑₜ∂ϑ::J
-
     # array of tridiagonal matrices containing W for each column
     W_column_arrays::W
-
     # caches used to evaluate ldiv!
     temp1::T
     temp2::T
-
     # whether this struct is used to compute Wfact_t or Wfact
     transform::Bool
 end
 
-"""
-    TridiagonalW(Y, transform::Bool)
-
-Constructor for the TridiagonalW struct, used for modified Picard.
-Uses the space information from Y to allocate space for the
-necessary fields.
-"""
 function TridiagonalW(Y, transform::Bool)
     FT = eltype(Y.soil.ϑ_l)
     space = axes(Y.soil.ϑ_l)
@@ -99,25 +78,16 @@ function TridiagonalW(Y, transform::Bool)
     )
 end
 
-# We only use Wfact, but the implicit/IMEX solvers require us to pass
-# jac_prototype, then call similar(jac_prototype) to obtain J and Wfact. Here
-# is a temporary workaround to avoid unnecessary allocations.
 Base.similar(w::TridiagonalW) = w
 
-"""
-    Wfact!(W::TridiagonalW, Y, p, dtγ, t)
-
-Compute the entries of the Jacobian and overwrite W with them.
-Used for the modified Picard method.
-See overleaf for Jacobian derivation: https://www.overleaf.com/project/63be02f455f84a77642ef485
-"""
 function make_Wfact!(model::RichardsModel)
     update_aux! = make_update_aux(model)
     function Wfact!(W::TridiagonalW, Y, p, dtγ, t)
+            FT = eltype(Y.soil.ϑ_l)
         (; dtγ_ref, ∂ϑₜ∂ϑ) = W
         dtγ_ref[] = dtγ
         # TODO add parameters and BCs to TridiagonalW so we don't access global vars here
-        (; ν, vg_α, vg_n, vg_m, S_s, θ_r) = soil.parameters
+        (; ν, vg_α, vg_n, vg_m, S_s, θ_r) = model.parameters
         update_aux!(p,Y,t)
         if axes(Y.soil.ϑ_l) isa Spaces.CenterFiniteDifferenceSpace
             face_space = Spaces.FaceFiniteDifferenceSpace(axes(Y.soil.ϑ_l))
@@ -131,20 +101,20 @@ function make_Wfact!(model::RichardsModel)
         Δz_top, Δz_bottom = get_Δz(z)
         
         top_flux_bc = ClimaLSM.boundary_flux(
-            soil.boundary_conditions.top.water,
+            model.boundary_conditions.top.water,
             ClimaLSM.TopBoundary(),
             Δz_top,
             p,
             t,
-            soil.parameters,
+            model.parameters,
         )
         bot_flux_bc = ClimaLSM.boundary_flux(
-            soil.boundary_conditions.bottom.water,
+            model.boundary_conditions.bottom.water,
             ClimaLSM.BottomBoundary(),
             Δz_bottom,
             p,
             t,
-            soil.parameters,
+            model.parameters,
         )
         
         divf2c_op = Operators.DivergenceF2C(
@@ -172,15 +142,16 @@ function make_Wfact!(model::RichardsModel)
                 )
             ),
         )
+#        println("in Wfact!")
+#        @show Y.soil.ϑ_l
+#        @show t
+
     end
     return Wfact!
 end
 
-
-# Copied from https://github.com/CliMA/ClimaLSM.jl/blob/f41c497a12f91725ff23a9cd7ba8d563285f3bd8/examples/richards_implicit.jl#L152
-# Checked against soiltest https://github.com/CliMA/ClimaLSM.jl/blob/e7eaf2e6fffaf64b2d824e9c5755d2f60fa17a69/test/Soil/soiltest.jl#L459
 function dψdθ(θ, ν, θ_r, vg_α, vg_n, vg_m, S_s)
-    S = (θ - θ_r) / (ν - θ_r) # TODO use effective_saturation
+    S = Soil.effective_saturation(ν, θ, θ_r)
     if S < 1.0
         return 1.0 / (vg_α * vg_m * vg_n) / (ν - θ_r) *
                (S^(-1 / vg_m) - 1)^(1 / vg_n - 1) *
@@ -190,15 +161,11 @@ function dψdθ(θ, ν, θ_r, vg_α, vg_n, vg_m, S_s)
     end
 end
 
-# Keep linsolve! function for compatibility with OrdinaryDiffEq
 linsolve!(::Type{Val{:init}}, f, u0; kwargs...) = _linsolve!
 _linsolve!(x, A, b, update_matrix = false; kwargs...) =
     LinearAlgebra.ldiv!(x, A, b)
 
 
-# Function required by Krylov.jl (x and b can be AbstractVectors)
-# See https://github.com/JuliaSmoothOptimizers/Krylov.jl/issues/605 for a
-# related issue that requires the same workaround.
 function LinearAlgebra.ldiv!(x, A::TridiagonalW, b)
     A.temp1 .= b
     LinearAlgebra.ldiv!(A.temp2, A, A.temp1)
@@ -315,13 +282,6 @@ function thomas_algorithm!(A, b)
     return nothing
 end
 
-"""
-    make_implicit_tendency(model::Soil.RichardsModel)
-
-Construct the tendency function for the implicit terms of the RHS.
-Used for the implicit tendency when running a mixed implicit/explicit solver.
-Adapted from https://github.com/CliMA/ClimaLSM.jl/blob/f41c497a12f91725ff23a9cd7ba8d563285f3bd8/examples/richards_implicit.jl#L173
-"""
 function make_implicit_tendency(model::Soil.RichardsModel)
     update_aux! = ClimaLSM.make_update_aux(model)
     function implicit_tendency!(dY, Y, p, t)
@@ -356,21 +316,11 @@ function make_implicit_tendency(model::Soil.RichardsModel)
 
         @. dY.soil.ϑ_l =
             -(divf2c_op(-interpc2f_op(p.soil.K) * gradc2f_op(p.soil.ψ + z)))
-        @show Y.soil.ϑ_l
-        @show t
     end
     return implicit_tendency!
 end
 
-"""
-    make_explicit_tendency(model::Soil.RichardsModel)
-
-Construct the tendency function for the explicit terms of the RHS.
-Used for the explicit tendency when running a mixed implicit/explicit solver.
-Adapted from https://github.com/CliMA/ClimaLSM.jl/blob/f41c497a12f91725ff23a9cd7ba8d563285f3bd8/examples/richards_implicit.jl#L204
-"""
-function explicit_tendency!(dY,Y,p,t)
-end
+function explicit_tendency!(dY,Y,p,t) end
 
 
 is_imex_CTS_algo(::CTS.IMEXAlgorithm) = true
@@ -385,156 +335,87 @@ is_rosenbrock(::ODE.Rosenbrock32) = true
 is_rosenbrock(::DiffEqBase.AbstractODEAlgorithm) = false
 use_transform(ode_algo) =
     !(is_imex_CTS_algo(ode_algo) || is_rosenbrock(ode_algo))
-
-
-# parameters for clay from Bonan 2019 supplemental program 8.2
-ν = FT(0.495)
-K_sat = FT(0.0443 / 3600 / 100) # m/s
-vg_n = FT(1.43)
-vg_α = FT(0.026 * 100) # inverse meters
-vg_m = FT(1) - FT(1) / vg_n
-θ_r = FT(0.124)
-S_s = FT(1e-3) #inverse meters
-
-zmax = FT(0)
-zmin = FT(-1.5)
-nelems = 150
-
-# soil_domain = HybridBox(;
-#     zlim = (-10.0, 0.0),
-#     xlim = (0.0, 100.0),
-#     ylim = (0.0, 100.0),
-#     nelements = (10, 10, 10),
-#     npolynomial = 1,
-#     periodic = (true, true),
-# )
-soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems);
-
-top_bc = Soil.MoistureStateBC((p, t) -> eltype(t)(ν - 1e-3))
-bot_bc = Soil.FreeDrainage()
-sources = ()
-boundary_fluxes = (; top = (water = top_bc,), bottom = (water = bot_bc,))
-params = Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r)
-
-soil = Soil.RichardsModel{FT}(;
-    parameters = params,
-    domain = soil_domain,
-    boundary_conditions = boundary_fluxes,
-    sources = sources,
+stepper = CTS.ARS111()
+norm_condition = CTS.MaximumRelativeError(
+    Float64(1e-6),
 )
-
-Y, p, coords = initialize(soil)
-Y.soil.ϑ_l = FT(0.24)
-
-dt = FT(1000)
-
-t_start = FT(0)
-t_end = FT(121000.0)#FT(1e6) #FT(256)
-nsteps = Int((t_end - t_start)/dt)
-max_iters = 1
-
-# if isinteractive()
-#     convergence_cond = CTS.MaximumRelativeError(1e-10)
-# else
-#     convergence_cond = CTS.MaximumRelativeError(parse(FT, ARGS[5][13:end]))
-# end
-
-# TODO when conv_checker was used before, the solver thought it had converged
-#  when it hadn't. For now, don't use a conv checker, but maybe try again later
-# conv_checker = CTS.ConvergenceChecker(component_condition = convergence_cond)
-conv_checker = nothing
+conv_checker = CTS.ConvergenceChecker(; norm_condition)
 ode_algo = CTS.IMEXAlgorithm(
-    CTS.ARS121(),
+    stepper,
     CTS.NewtonsMethod(
-        max_iters = max_iters,
-        update_j = CTS.UpdateEvery(CTS.NewTimeStep),
+        max_iters = 50,
+        update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
         convergence_checker = conv_checker,
     ),
 )
 
-transform = use_transform(ode_algo)
+function main(ode_algo, t_end::Float64, dt::Float64)
+    FT = Float64
+    # parameters for clay from Bonan 2019 supplemental program 8.2
+    ν = FT(0.495)
+    K_sat = FT(0.0443 / 3600 / 100) # m/s
+    vg_n = FT(1.43)
+    vg_α = FT(0.026 * 100) # inverse meters
+    vg_m = FT(1) - FT(1) / vg_n
+    θ_r = FT(0.124)
+    S_s = FT(1e-3) #inverse meters
+    
+    zmax = FT(0)
+    zmin = FT(-1.5)
+    nelems = 150
+    
+    soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems);
 
-W = TridiagonalW(Y, transform)
-
-implicit_tendency! = make_implicit_tendency(soil)
-Wfact! = make_Wfact!(soil)
-jac_kwargs = if use_transform(ode_algo)
-    (; jac_prototype = W, Wfact_t = Wfact!)
-else
-    (; jac_prototype = W, Wfact = Wfact!)
+    top_bc = Soil.MoistureStateBC((p, t) -> eltype(t)(ν - 1e-3))
+    bot_bc = Soil.FreeDrainage()
+    sources = ()
+    boundary_fluxes = (; top = (water = top_bc,), bottom = (water = bot_bc,))
+    params = Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r)
+    
+    soil = Soil.RichardsModel{FT}(;
+                                  parameters = params,
+                                  domain = soil_domain,
+                                  boundary_conditions = boundary_fluxes,
+                                  sources = sources,
+                                  )
+    
+    Y, p, coords = initialize(soil)
+    Y.soil.ϑ_l = FT(0.24)
+    update_aux! = make_update_aux(soil)
+    t_start = FT(0)
+    update_aux!(p, Y, t_start)
+    
+    transform = use_transform(ode_algo)
+    
+    W = TridiagonalW(Y, transform)
+    
+    implicit_tendency! = make_implicit_tendency(soil)
+    Wfact! = make_Wfact!(soil)
+    jac_kwargs = if use_transform(ode_algo)
+        (; jac_prototype = W, Wfact_t = Wfact!)
+    else
+        (; jac_prototype = W, Wfact = Wfact!)
+    end
+    
+    implicit_problem = ODEProblem(
+        CTS.ClimaODEFunction(
+            T_exp! = explicit_tendency!,
+            T_imp! = ODEFunction(implicit_tendency!; jac_kwargs...),
+            dss! = ClimaLSM.Soil.dss!,
+        ),
+        Y,
+        (t_start, t_end),
+        p,
+    )    
+    
+    implicit_integrator = init(
+        implicit_problem,
+        ode_algo;
+        dt = dt,
+        adaptive = false,
+        progress = true,
+        saveat = t_start:1:t_end,
+    )
+    sol = ODE.solve!(implicit_integrator)
+    
 end
-
-problem = ODEProblem(
-    CTS.ClimaODEFunction(
-        T_exp! = explicit_tendency!,
-        T_imp! = ODEFunction(implicit_tendency!; jac_kwargs...),
-        dss! = ClimaLSM.Soil.dss!,
-    ),
-    Y,
-    (t_start, t_end),
-    p,
-)
-
-integrator = init(
-    problem,
-    ode_algo;
-    dt = dt,
-    adaptive = false,
-    progress = true,
-    saveat = t_start:1:t_end,
-)
-
-#sol = ODE.solve!(integrator)
-for step in 1:nsteps
-    ODE.step!(integrator)
-end
-
-
-#=
-sol_vals = parent(sol.u[end].soil.ϑ_l)
-zs = parent(Fields.coordinate_field(axes(sol.u[end].soil.ϑ_l)))
-
-isdir("imex-res") ? nothing : mkpath("imex-res")
-filename = "imex-res/rre_sol"
-for a in ARGS
-    a = string(a)
-    replace(a, "." => "p")
-    global filename *= "-" * string(a)
-end
-
-plot(
-    parent(sol.u[1].soil.ϑ_l)[51:150],
-    zs[51:150],
-    xlims = (0.2, 0.5),
-    xticks = 0.2:0.05:0.5,
-    yticks = -1.0:0.2:0.0,
-    title = "implicit sol'n with dt=$dt at t=0",
-    xlabel = "vol. water content (m^3 m^-3)",
-    ylabel = "depth (m)",
-)
-savefig(filename * "-start")
-
-t_end = Int(t_end)
-plot(
-    parent(sol.u[end].soil.ϑ_l)[51:150],
-    zs[51:150],
-    xlims = (0.2, 0.5),
-    xticks = 0.2:0.05:0.5,
-    yticks = -1.0:0.2:0.0,
-    title = "implicit sol'n with dt=$dt at t=$t_end s",
-    xlabel = "vol. water content (m^3 m^-3)",
-    ylabel = "depth (m)",
-)
-savefig(filename * "-$t_end")
-
-
-b = @benchmark ODE.solve!(integrator)
-
-filename *= ".jld2"
-
-jldsave(filename; ϑ_l = sol_vals, z = zs, benchmark = b, dt = dt)
-@show filename
-
-@assert all(x -> x > θ_r, sol_vals)
-@assert all(x -> x < ν * 1.03, sol_vals)
-=#
