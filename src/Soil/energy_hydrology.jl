@@ -449,22 +449,7 @@ function ClimaLSM.surface_temperature(
     p,
     t,
 ) where {FT}
-    face_space = ClimaLSM.Domains.obtain_face_space(model.domain.space)
-    N = ClimaCore.Spaces.nlevels(face_space)
-    interp_c2f = ClimaCore.Operators.InterpolateC2F(
-        top = ClimaCore.Operators.Extrapolate(),
-        bottom = ClimaCore.Operators.Extrapolate(),
-    )
-    surface_space = ClimaLSM.Domains.obtain_surface_space(model.domain.space)
-    return ClimaCore.Fields.Field(
-        ClimaCore.Fields.field_values(
-            ClimaCore.Fields.level(
-                interp_c2f.(p.soil.T),
-                ClimaCore.Utilities.PlusHalf(N - 1),
-            ),
-        ),
-        surface_space,
-    )
+    return ClimaLSM.Domains.top_center_to_surface(p.soil.T)
 end
 
 """
@@ -568,22 +553,7 @@ function ClimaLSM.surface_specific_humidity(
     M_w = LSMP.molar_mass_water(model.parameters.earth_param_set)
     thermo_params =
         LSMP.thermodynamic_parameters(model.parameters.earth_param_set)
-    face_space = ClimaLSM.Domains.obtain_face_space(model.domain.space)
-    N = ClimaCore.Spaces.nlevels(face_space)
-    interp_c2f = ClimaCore.Operators.InterpolateC2F(
-        top = ClimaCore.Operators.Extrapolate(),
-        bottom = ClimaCore.Operators.Extrapolate(),
-    )
-    surface_space = ClimaLSM.Domains.obtain_surface_space(model.domain.space)
-    ψ_sfc = ClimaCore.Fields.Field(
-        ClimaCore.Fields.field_values(
-            ClimaCore.Fields.level(
-                interp_c2f.(p.soil.ψ),
-                ClimaCore.Utilities.PlusHalf(N - 1),
-            ),
-        ),
-        surface_space,
-    )
+    ψ_sfc = ClimaLSM.Domains.top_center_to_surface(p.soil.ψ)
     q_sat =
         Thermodynamics.q_vap_saturation_generic.(
             Ref(thermo_params),

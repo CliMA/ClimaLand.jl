@@ -437,23 +437,7 @@ Creates the update_aux! function for the BucketModel.
 """
 function make_update_aux(model::BucketModel{FT}) where {FT}
     function update_aux!(p, Y, t)
-        face_space =
-            ClimaLSM.Domains.obtain_face_space(model.domain.subsurface.space)
-        N = ClimaCore.Spaces.nlevels(face_space)
-        interp_c2f = ClimaCore.Operators.InterpolateC2F(
-            top = ClimaCore.Operators.Extrapolate(),
-            bottom = ClimaCore.Operators.Extrapolate(),
-        )
-        surface_space = model.domain.surface.space
-        p.bucket.T_sfc .= ClimaCore.Fields.Field(
-            ClimaCore.Fields.field_values(
-                ClimaCore.Fields.level(
-                    interp_c2f.(Y.bucket.T),
-                    ClimaCore.Utilities.PlusHalf(N - 1),
-                ),
-            ),
-            surface_space,
-        )
+        p.bucket.T_sfc .= ClimaLSM.Domains.top_center_to_surface(Y.bucket.T)
         p.bucket.ρ_sfc .=
             surface_air_density(model.atmos, model, Y, p, t, p.bucket.T_sfc)
 

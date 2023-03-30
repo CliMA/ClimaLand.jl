@@ -20,6 +20,7 @@ ClimaLSM.Domains.LSMSphericalShellDomain
 ClimaLSM.Domains.coordinates
 ClimaLSM.Domains.obtain_face_space
 ClimaLSM.Domains.obtain_surface_space
+ClimaLSM.Domains.top_center_to_surface
 ```
 
 ## Models

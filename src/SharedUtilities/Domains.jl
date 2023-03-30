@@ -639,9 +639,46 @@ function obtain_surface_space(cs::ClimaCore.Spaces.CenterFiniteDifferenceSpace)
     )
 end
 
+"""
+    top_center_to_surface(center_field::ClimaCore.Fields.Field)
+
+Creates and returns a ClimaCore.Fields.Field defined on the space
+corresponding to the surface of the space on which `center_field` 
+is defined, with values equal to the those at the level of the top 
+center.
+
+For example, given a `center_field` defined on 1D center finite difference space,
+this would return a field defined on the Point space of the surface of
+the column. The value would be the value of the oroginal `center_field` 
+at the topmost location. Given a `center_field` defined on a 3D
+extruded center finite difference space, this would return a 2D field
+corresponding to the surface, with values equal to the topmost level.
+"""
+function top_center_to_surface(center_field::ClimaCore.Fields.Field)
+    cs = axes(center_field)
+    face_space = obtain_face_space(cs)
+    N = ClimaCore.Spaces.nlevels(face_space)
+    interp_c2f = ClimaCore.Operators.InterpolateC2F(
+        top = ClimaCore.Operators.Extrapolate(),
+        bottom = ClimaCore.Operators.Extrapolate(),
+    )
+    surface_space = obtain_surface_space(cs)
+    return ClimaCore.Fields.Field(
+        ClimaCore.Fields.field_values(
+            ClimaCore.Fields.level(
+                interp_c2f.(center_field),
+                ClimaCore.Utilities.PlusHalf(N - 1),
+            ),
+        ),
+        surface_space,
+    )
+end
+
+
 export AbstractDomain, AbstractLSMDomain
 export Column, Plane, HybridBox, Point, SphericalShell, SphericalSurface
 export LSMSingleColumnDomain, LSMMultiColumnDomain, LSMSphericalShellDomain
-export coordinates, obtain_face_space, obtain_surface_space
+export coordinates,
+    obtain_face_space, obtain_surface_space, top_center_to_surface
 
 end
