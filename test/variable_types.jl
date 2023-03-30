@@ -1,9 +1,6 @@
 using ClimaCore
 using Test
 using StaticArrays
-if !("." in LOAD_PATH)
-    push!(LOAD_PATH, ".")
-end
 using ClimaLSM
 import ClimaLSM:
     prognostic_vars, prognostic_types, auxiliary_vars, auxiliary_types, name

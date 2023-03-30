@@ -408,18 +408,7 @@ function make_rhs(model::PlantHydraulicsModel, _)
             ν,
             S_s,
         )
-        # boundary flux * cross section at the bottom
-        fa0 =
-            flux_out_roots(model.root_extraction, model, Y, p, t) .*
-            area_index[:root]
-
         @inbounds for i in 1:(n_stem + n_leaf)
-            AIdz =
-                area_index[model.compartment_labels[i]] * (
-                    model.compartment_surfaces[i + 1] -
-                    model.compartment_surfaces[i]
-                )
-
             # If we arent at the top compartment, compute the flux*area
             # between the current compartment and the one above it
             if i != (n_stem + n_leaf)
@@ -458,10 +447,21 @@ function make_rhs(model::PlantHydraulicsModel, _)
                     area_index[:leaf]
             end
 
+            AIdz =
+                area_index[model.compartment_labels[i]] * (
+                    model.compartment_surfaces[i + 1] -
+                    model.compartment_surfaces[i]
+                )
+
             if i == 1
-                @. dY.canopy.hydraulics.ϑ_l[i] = 1 / AIdz * (fa0 - fa[i])
+                fa0 =
+                    flux_out_roots(model.root_extraction, model, Y, p, t) .*
+                    area_index[:root]
+                @inbounds @. dY.canopy.hydraulics.ϑ_l[i] =
+                    1 / AIdz * (fa0 - fa[i])
             else
-                @. dY.canopy.hydraulics.ϑ_l[i] = 1 / AIdz * (fa[i - 1] - fa[i])
+                @inbounds @. dY.canopy.hydraulics.ϑ_l[i] =
+                    1 / AIdz * (fa[i - 1] - fa[i])
             end
         end
     end

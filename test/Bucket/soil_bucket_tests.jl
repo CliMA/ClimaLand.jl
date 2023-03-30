@@ -3,11 +3,6 @@ using Test
 using Statistics
 using ClimaCore
 import CLIMAParameters as CP
-
-if !("." in LOAD_PATH)
-    push!(LOAD_PATH, ".")
-end
-
 using ClimaLSM.Bucket: BucketModel, BucketModelParameters, BulkAlbedoFunction
 using ClimaLSM.Domains:
     coordinates,

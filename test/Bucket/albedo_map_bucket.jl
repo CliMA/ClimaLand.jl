@@ -3,10 +3,6 @@ using Test
 using ClimaCore
 using ClimaComms
 import CLIMAParameters as CP
-
-if !("." in LOAD_PATH)
-    push!(LOAD_PATH, ".")
-end
 using ClimaLSM.Regridder: MapInfo, regrid_netcdf_to_field
 using ClimaLSM.Bucket:
     BucketModel,

@@ -4,9 +4,7 @@ using ClimaCore
 using Thermodynamics
 using Insolation
 using Dates
-if !("." in LOAD_PATH)
-    push!(LOAD_PATH, ".")
-end
+using ClimaLSM.Canopy
 using ClimaLSM
 using ClimaLSM: PrescribedAtmosphere, PrescribedRadiativeFluxes
 using ClimaLSM.Canopy

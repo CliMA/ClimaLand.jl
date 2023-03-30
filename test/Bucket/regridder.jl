@@ -1,6 +1,3 @@
-if !("." in LOAD_PATH)
-    push!(LOAD_PATH, ".")
-end
 using ClimaLSM.Regridder: MapInfo, regrid_netcdf_to_field
 using ClimaLSM.Bucket:
     BulkAlbedoMap, bareground_albedo_dataset_path, set_initial_parameter_field!

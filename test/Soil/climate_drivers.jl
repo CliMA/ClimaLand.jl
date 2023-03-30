@@ -2,10 +2,6 @@ using Test
 using ClimaCore
 import CLIMAParameters as CP
 using Thermodynamics
-
-if !("." in LOAD_PATH)
-    push!(LOAD_PATH, ".")
-end
 using ClimaLSM
 using ClimaLSM.Soil
 import ClimaLSM

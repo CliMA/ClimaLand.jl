@@ -2,12 +2,6 @@ using Test
 
 using Statistics
 using ClimaCore
-
-if !("." in LOAD_PATH)
-    push!(LOAD_PATH, ".")
-end
-
-
 using ClimaLSM.Bucket:
     BucketModel,
     BucketModelParameters,
