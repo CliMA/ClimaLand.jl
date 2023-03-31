@@ -7,13 +7,6 @@ using Dates
 if !("." in LOAD_PATH)
     push!(LOAD_PATH, ".")
 end
-
-using ClimaLSM.Canopy
-
-
-if !("." in LOAD_PATH)
-    push!(LOAD_PATH, ".")
-end
 using ClimaLSM
 using ClimaLSM: PrescribedAtmosphere, PrescribedRadiativeFluxes
 using ClimaLSM.Canopy
@@ -146,28 +139,23 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
             )
         )
 
-    plant_hydraulics_domain = domain
-    param_set =
-        PlantHydraulics.PlantHydraulicsParameters{FT, typeof(earth_param_set)}(
-            area_index,
-            K_sat,
-            plant_vg_α,
-            plant_vg_n,
-            plant_vg_m,
-            plant_ν,
-            plant_S_s,
-            root_distribution,
-            earth_param_set,
-        )
+    param_set = PlantHydraulics.PlantHydraulicsParameters{FT}(
+        area_index,
+        K_sat,
+        plant_vg_α,
+        plant_vg_n,
+        plant_vg_m,
+        plant_ν,
+        plant_S_s,
+        root_distribution,
+    )
 
     ψ_soil0 = FT(0.0)
     root_extraction = PrescribedSoilPressure{FT}((t::FT) -> ψ_soil0)
 
     plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
-        domain = plant_hydraulics_domain,
         parameters = param_set,
         root_extraction = root_extraction,
-        transpiration = DiagnosticTranspiration{FT}(),
         root_depths = root_depths,
         n_stem = n_stem,
         n_leaf = n_leaf,
@@ -202,14 +190,14 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
               prognostic_types(getproperty(canopy, component))
     end
     Y.canopy.hydraulics[1] = plant_ν
-    update_aux! = make_update_aux(canopy)
+    ode! = make_ode_function(canopy)
     t0 = FT(0.0)
-    update_aux!(p, Y, t0)
+    dY = similar(Y)
+    ode!(dY, Y, p, t0)
     (evapotranspiration, shf, lhf) =
         canopy_surface_fluxes(canopy.atmos, canopy, Y, p, t0)
 
-    @test p.canopy.hydraulics.fa[1] ≈ (evapotranspiration ./ LAI)
-
+    @test p.canopy.hydraulics.fa[1] ≈ evapotranspiration
 
     # Penman-monteith
     Δ = FT(100 * (0.444017302 + (290 - 273.15) * 0.0286064092))

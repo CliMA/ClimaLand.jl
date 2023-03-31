@@ -15,8 +15,7 @@ Helper struct for dispatching between C3 and C4 photosynthesis.
 """
 struct C4 <: AbstractPhotosynthesisMechanism end
 
-abstract type AbstractPhotosynthesisModel{FT} <: AbstractModel{FT} end
-
+abstract type AbstractPhotosynthesisModel{FT} <: AbstractCanopyComponent{FT} end
 """
     FarquharParameters{FT<:AbstractFloat}
 

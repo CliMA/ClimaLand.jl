@@ -27,14 +27,13 @@ end
 
 """
     SoilPlantHydrologyModel{FT}(;
-                      land_args::NamedTuple = (;),
-                      soil_model_type::Type{SM},
-                      soil_args::NamedTuple = (;),
-                      canopy_model_type::Type{VM},
-                      canopy_args::NamedTuple = (;),
-                      ) where {FT,
-                               SM <: Soil.AbstractSoilModel{FT},
-                               VM <: PlantHydraulics.AbstractPlantHydraulicsModel{FT}}
+                                 land_args::NamedTuple = (;),
+                                 soil_model_type::Type{SM},
+                                 soil_args::NamedTuple = (;),
+                                 canopy_component_types::NamedTuple = (;),
+                                 canopy_component_args::NamedTuple = (;),
+                                 canopy_model_args::NamedTuple = (;),
+                                 ) where {FT, SM <: Soil.AbstractSoilModel{FT}}
 A constructor for the `SoilPlantHydrologyModel`, which takes in the concrete model
 type and required arguments for each component, constructs those models,
 and constructs the `SoilPlantHydrologyModel` from them.
@@ -47,14 +46,14 @@ function SoilPlantHydrologyModel{FT}(;
     land_args::NamedTuple = (;),
     soil_model_type::Type{SM},
     soil_args::NamedTuple = (;),
-    canopy_model_type::Type{VM},
-    canopy_args::NamedTuple = (;),
-) where {FT, SM <: Soil.AbstractSoilModel{FT}, VM <: Canopy.CanopyModel{FT}}
+    canopy_component_types::NamedTuple = (;),
+    canopy_component_args::NamedTuple = (;),
+    canopy_model_args::NamedTuple = (;),
+) where {FT, SM <: Soil.AbstractSoilModel{FT}}
 
     # These may be passed in, or set, depending on use scenario.
-    @unpack precipitation, transpiration = land_args
-    T = PrescribedTranspiration{FT}(transpiration)
-
+    (; atmos, radiation) = land_args
+    precipitation = atmos.liquid_precip
     # These should always be set by the constructor.
     sources = (RootExtraction{FT}(),)
     root_extraction = PrognosticSoilPressure{FT}()
@@ -73,17 +72,37 @@ function SoilPlantHydrologyModel{FT}(;
         soil_args...,
     )
 
-    canopy = canopy_model_type(
-        Canopy.PlantHydraulics.PlantHydraulicsModel{FT}(;
-            root_extraction = root_extraction,
-            transpiration = T,
-            root_depths = root_depths,
-            canopy_args.hydraulics...,
+    if :transpiration in propertynames(land_args)
+        transpiration = land_args.transpiration
+    else
+        transpiration = Canopy.PlantHydraulics.DiagnosticTranspiration{FT}()
+    end
+
+    canopy = Canopy.CanopyModel{FT}(;
+        radiative_transfer = canopy_component_types.radiative_transfer(
+            canopy_component_args.radiative_transfer...,
         ),
+        photosynthesis = canopy_component_types.photosynthesis(
+            canopy_component_args.photosynthesis...,
+        ),
+        conductance = canopy_component_types.conductance(
+            canopy_component_args.conductance...,
+        ),
+        hydraulics = canopy_component_types.hydraulics(;
+            root_extraction = root_extraction,
+            transpiration = transpiration,
+            root_depths = root_depths,
+            canopy_component_args.hydraulics...,
+        ),
+        atmos = atmos,
+        radiation = radiation,
+        canopy_model_args...,
     )
 
-    args = (soil, canopy)
-    return SoilPlantHydrologyModel{FT, typeof.(args)...}(args...)
+    return SoilPlantHydrologyModel{FT, typeof(soil), typeof(canopy)}(
+        soil,
+        canopy,
+    )
 end
 
 interaction_vars(m::SoilPlantHydrologyModel) = (:root_extraction,)

@@ -1,6 +1,7 @@
 export MedlynConductanceParameters, MedlynConductanceModel
 
-abstract type AbstractStomatalConductanceModel{FT} <: AbstractModel{FT} end
+abstract type AbstractStomatalConductanceModel{FT} <:
+              AbstractCanopyComponent{FT} end
 
 """
     MedlynConductanceParameters{FT <: AbstractFloat}
@@ -41,6 +42,7 @@ struct MedlynConductanceModel{FT} <: AbstractStomatalConductanceModel{FT}
 end
 
 ClimaLSM.name(model::AbstractStomatalConductanceModel) = :conductance
-ClimaLSM.auxiliary_vars(model::MedlynConductanceModel) = (:medlyn_term, :gs)
+ClimaLSM.auxiliary_vars(model::MedlynConductanceModel) =
+    (:medlyn_term, :gs, :transpiration)
 ClimaLSM.auxiliary_types(model::MedlynConductanceModel{FT}) where {FT} =
-    (FT, FT)
+    (FT, FT, FT)

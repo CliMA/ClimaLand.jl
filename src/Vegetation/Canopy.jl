@@ -1,4 +1,5 @@
 module Canopy
+using DocStringExtensions
 using Thermodynamics
 using ClimaLSM
 using ClimaCore
@@ -24,11 +25,10 @@ import ClimaLSM:
     surface_height
 
 using ClimaLSM.Domains: Point, Plane, SphericalSurface
-using DocStringExtensions
-export SharedCanopyParameters, CanopyModel, DiagnosticTranspiration
+export SharedCanopyParameters, CanopyModel
+include("./component_models.jl")
 include("./PlantHydraulics.jl")
 using .PlantHydraulics
-import .PlantHydraulics: transpiration, AbstractTranspiration
 include("./stomatalconductance.jl")
 include("./photosynthesis.jl")
 include("./radiation.jl")
@@ -138,13 +138,6 @@ function CanopyModel{FT}(;
         ClimaLSM.Domains.SphericalSurface,
     },
 ) where {FT, PSE}
-    if hydraulics.domain != domain
-        throw(
-            AssertionError(
-                "The provided canopy model domain must be the same as the hydraulics model domain.",
-            ),
-        )
-    end
     if parameters.LAI != hydraulics.parameters.area_index[:leaf]
         throw(
             AssertionError(
@@ -161,28 +154,6 @@ function CanopyModel{FT}(;
         radiation,
         parameters,
         domain,
-    )
-    return CanopyModel{FT, typeof.(args)...}(args...)
-end
-
-"""
-    CanopyModel{FT}(hydraulics::PlantHydraulicsModel{FT}) where {FT}
-
-An outer constructor for the CanopyModel which reduces to the standalone
-PlantHydraulicsModel.
-
-For testing purposes.
-"""
-function CanopyModel{FT}(hydraulics::PlantHydraulicsModel{FT}) where {FT}
-    args = (
-        nothing,
-        nothing,
-        nothing,
-        hydraulics,
-        nothing,
-        nothing,
-        nothing,
-        hydraulics.domain,
     )
     return CanopyModel{FT, typeof.(args)...}(args...)
 end
@@ -291,12 +262,8 @@ function initialize_prognostic(
     components = canopy_components(model)
     Y_state_list = map(components) do (component)
         submodel = getproperty(model, component)
-        if submodel isa Nothing
-            FT[]
-        else
-            zero_state = map(_ -> zero(FT), coords)
-            getproperty(initialize_prognostic(submodel, zero_state), component)
-        end
+        zero_state = map(_ -> zero(FT), coords)
+        getproperty(initialize_prognostic(submodel, zero_state), component)
     end
     Y = ClimaCore.Fields.FieldVector(;
         name(model) => NamedTuple{components}(Y_state_list),
@@ -324,12 +291,8 @@ function initialize_auxiliary(
     components = canopy_components(model)
     p_state_list = map(components) do (component)
         submodel = getproperty(model, component)
-        if submodel isa Nothing
-            FT[]
-        else
-            zero_state = map(_ -> zero(FT), coords)
-            getproperty(initialize_auxiliary(submodel, zero_state), component)
-        end
+        zero_state = map(_ -> zero(FT), coords)
+        getproperty(initialize_auxiliary(submodel, zero_state), component)
     end
     p = ClimaCore.Fields.FieldVector(;
         name(model) => NamedTuple{components}(p_state_list),
@@ -352,12 +315,10 @@ are of the type in the parametric type signature: `BeerLambertModel`,
 Please note that the plant hydraulics model has auxiliary variables
 that are updated in its prognostic `rhs!` function. While confusing, this
 is better for performance as it saves looping over the state vector
-multiple times. As such, there is no plant hydraulics update_aux! function
-ever defined or used here.
+multiple times.
 
-The other sub-components rely heavily on each other and will never be run in
-standalone fashion, so they do not have separate `update_aux!` functions,
-but rather, the version of the `CanopyModel` with these subcomponents 
+The other sub-components rely heavily on each other,
+so the version of the `CanopyModel` with these subcomponents 
 has a single update_aux! function, given here.
 """
 function ClimaLSM.make_update_aux(
@@ -371,12 +332,25 @@ function ClimaLSM.make_update_aux(
 ) where {FT}
     function update_aux!(p, Y, t)
         earth_param_set = canopy.parameters.earth_param_set
-        R = FT(LSMP.gas_constant(earth_param_set))
+        # update radiation
+        APAR = p.canopy.radiative_transfer.apar
         c = FT(LSMP.light_speed(earth_param_set))
         h = FT(LSMP.planck_constant(earth_param_set))
         N_a = FT(LSMP.avogadro_constant(earth_param_set))
-        thermo_params = canopy.parameters.earth_param_set.thermo_params
+        (; ld, Ω, ρ_leaf, λ_γ) = canopy.radiative_transfer.parameters
+        (; LAI) = canopy.parameters
+        energy_per_photon = h * c / λ_γ
+        SW_d::FT = canopy.radiation.SW_d(t)
+        LW_d::FT = canopy.radiation.LW_d(t)
+        θs::FT = canopy.radiation.θs(t)
+        PAR = @.(SW_d / (energy_per_photon * N_a) / 2)
+        K = extinction_coeff.(ld, θs)
+        APAR .= plant_absorbed_ppfd.(PAR, ρ_leaf, K, LAI, Ω)
 
+        # update photosynthesis and stomatal conductance
+        # unpack parameters
+        R = FT(LSMP.gas_constant(earth_param_set))
+        thermo_params = canopy.parameters.earth_param_set.thermo_params
         (;
             Vcmax25,
             Γstar25,
@@ -398,21 +372,34 @@ function ClimaLSM.make_update_aux(
             ΔHko,
         ) = canopy.photosynthesis.parameters
         (; g1, g0, Drel) = canopy.conductance.parameters
-        (; ld, Ω, ρ_leaf, λ_γ) = canopy.radiative_transfer.parameters
-        (; LAI) = canopy.parameters
-        energy_per_photon = h * c / λ_γ
 
-        top_index = canopy.hydraulics.n_stem + canopy.hydraulics.n_leaf
+        # Compute the current atmosphere conditions
         c_co2::FT = canopy.atmos.c_co2(t)
         P::FT = canopy.atmos.P(t)
         u::FT = canopy.atmos.u(t)
         T::FT = canopy.atmos.T(t)
         h::FT = canopy.atmos.h
         q::FT = canopy.atmos.q(t)
-        SW_d::FT = canopy.radiation.SW_d(t)
-        LW_d::FT = canopy.radiation.LW_d(t)
-        θs::FT = canopy.radiation.θs(t)
 
+        #For efficiency (a single loop over plant layers),
+        # the plant hydraulics aux variables are updated in that components's
+        # RHS function. To use the current leaf water potential,
+        # update that here.
+
+        top_index = canopy.hydraulics.n_stem + canopy.hydraulics.n_leaf
+        (; vg_α, vg_n, vg_m, S_s, ν, K_sat, area_index) =
+            canopy.hydraulics.parameters
+        @inbounds @. p.canopy.hydraulics.ψ[top_index] = water_retention_curve(
+            vg_α,
+            vg_n,
+            vg_m,
+            PlantHydraulics.effective_saturation(
+                ν,
+                Y.canopy.hydraulics.ϑ_l[top_index],
+            ),
+            ν,
+            S_s,
+        )
         # compute VPD
         es =
             Thermodynamics.saturation_vapor_pressure.(
@@ -427,34 +414,33 @@ function ClimaLSM.make_update_aux(
                 Thermodynamics.PhasePartition.(q),
             )
         VPD = es .- ea
-        PAR = @.(SW_d / (energy_per_photon * N_a) / 2)
-
-        K = extinction_coeff.(ld, θs)
-        APAR = plant_absorbed_ppfd.(PAR, ρ_leaf, K, LAI, Ω)
+        p.canopy.conductance.medlyn_term .= medlyn_term.(g1, VPD)
         β = moisture_stress.(p.canopy.hydraulics.ψ[top_index], sc, ψc)
         Jmax = max_electron_transport.(Vcmax25, ΔHJmax, T, To, R)
         J = electron_transport.(APAR, Jmax, θj, ϕ)
         Vcmax = compute_Vcmax.(Vcmax25, T, To, R, ΔHVcmax)
         Γstar = co2_compensation.(Γstar25, ΔHΓstar, T, To, R)
-        m = medlyn_term.(g1, VPD)
-        ci = intercellular_co2.(c_co2, Γstar, m)
+        ci = intercellular_co2.(c_co2, Γstar, p.canopy.conductance.medlyn_term)
         Aj = light_assimilation.(Ref(mechanism), J, ci, Γstar)
         Kc = MM_Kc.(Kc25, ΔHkc, T, To, R)
         Ko = MM_Ko.(Ko25, ΔHko, T, To, R)
         Ac = rubisco_assimilation.(Ref(mechanism), Vcmax, ci, Γstar, Kc, Ko, oi)
         Rd = dark_respiration.(Vcmax25, β, f, ΔHRd, T, To, R)
-
-        p.canopy.radiative_transfer.apar .= APAR
         p.canopy.photosynthesis.An .= net_photosynthesis.(Ac, Aj, Rd, β)
         p.canopy.photosynthesis.GPP .=
             compute_GPP.(p.canopy.photosynthesis.An, K, LAI, Ω)
         p.canopy.conductance.gs .=
-            medlyn_conductance.(g0, Drel, m, p.canopy.photosynthesis.An, c_co2)
-        p.canopy.conductance.medlyn_term .= m
+            medlyn_conductance.(
+                g0,
+                Drel,
+                p.canopy.conductance.medlyn_term,
+                p.canopy.photosynthesis.An,
+                c_co2,
+            )
+
         (evapotranspiration, shf, lhf) =
             canopy_surface_fluxes(canopy.atmos, canopy, Y, p, t)
-        p.canopy.hydraulics.fa[top_index] .= evapotranspiration ./ LAI # this should be per leaf area
-        # note, somewhat confusingly, that the other aux variables for plant hydraulics are updated in the RHS
+        p.canopy.conductance.transpiration .= evapotranspiration ./ LAI # this should be per leaf area
     end
     return update_aux!
 end
@@ -470,11 +456,7 @@ function make_rhs(canopy::CanopyModel)
     components = canopy_components(canopy)
     rhs_function_list = map(components) do (component)
         submodel = getproperty(canopy, component)
-        if submodel isa Nothing
-            (dY, Y, p, t) -> nothing
-        else
-            make_rhs(submodel)
-        end
+        make_rhs(submodel, canopy)
     end
     function rhs!(dY, Y, p, t)
         for f! in rhs_function_list
@@ -612,32 +594,5 @@ function ClimaLSM.surface_evaporative_scaling(
     beta = FT(1.0)
     return beta
 end
-
-
-
-"""
-    DiagnosticTranspiration{FT} <: AbstractTranspiration{FT}
-
-A concrete type used for dispatch when computing the transpiration
-from the leaves, in the case where transpiration is computed
-diagnostically, as a function of prognostic variables and parameters,
-and stored in `p` during the `update_aux!` step.
-"""
-struct DiagnosticTranspiration{FT} <: AbstractTranspiration{FT} end
-
-"""
-    transpiration(transpiration::DiagnosticTranspiration, Y, p, t)
-
-Returns the transpiration computed diagnostically using local conditions.
-In this case, it just returns the value which was computed and stored in 
-the `aux` state during the update_aux! step.
-"""
-function transpiration(transpiration::DiagnosticTranspiration, Y, p, t)
-
-    @inbounds return p.canopy.hydraulics.fa[length(
-        propertynames(p.canopy.hydraulics.fa),
-    )]
-end
-
 
 end

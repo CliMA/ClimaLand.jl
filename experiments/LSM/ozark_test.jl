@@ -1,16 +1,12 @@
 using DiffEqCallbacks
-using ArtifactWrappers
 using NLsolve
 using OrdinaryDiffEq: ODEProblem, solve, Euler, RK4
 using ClimaCore
 import CLIMAParameters as CP
-using DelimitedFiles
-using Dierckx
 using Plots
 using Statistics
 using Dates
-
-
+using Insolation
 if !("." in LOAD_PATH)
     push!(LOAD_PATH, ".")
 end
@@ -21,173 +17,19 @@ using ClimaLSM.Soil
 using ClimaLSM.Canopy
 using ClimaLSM.Canopy.PlantHydraulics
 import ClimaLSM
+import ClimaLSM.Parameters as LSMP
 include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
-
 const FT = Float64
-
-# Fluxnet driver data (precipitation, ET) and test data for comparison (soil moisture, leaf water potential)
-af = ArtifactFile(
-    url = "https://caltech.box.com/shared/static/3d03opwwczvxia0fks38uxr62qne57f0.csv",
-    filename = "Ozark_test_param_set.csv",
-)
-dataset = ArtifactWrapper(@__DIR__, "driver", ArtifactFile[af]);
-dataset_path = get_data_folder(dataset);
-data = joinpath(dataset_path, "Ozark_test_param_set.csv")
-driver_data = readdlm(data, ',', skipstart = 1)
-
-# Natan's model output data for comparison
-af2 = ArtifactFile(
-    url = "https://caltech.box.com/shared/static/qkm7lrqaphlehe6p5hvccldhie6gxo0v.csv",
-    filename = "holtzman_clima_output_april1.csv",
-)
-dataset2 = ArtifactWrapper(@__DIR__, "Natan", ArtifactFile[af2]);
-dataset_path2 = get_data_folder(dataset2);
-data2 = joinpath(dataset_path2, "holtzman_clima_output_april1.csv")
-Natan_data = readdlm(data2, ',', skipstart = 1)
-
-# 2005 data
-precip_flux = driver_data[17569:2:35088, 5] # m/s
-et_flux = driver_data[17569:2:35088, 7] # m/s
-tree_species = driver_data[125:440, 15] # names of species
-observed_predawn_lwp_2005 = driver_data[125:440, 16] # MPa
-white_oak = observed_predawn_lwp_2005[tree_species .== "white oak"] # MPa
-black_oak = observed_predawn_lwp_2005[tree_species .== "black oak"] # MPa
-eastern_redcedar =
-    observed_predawn_lwp_2005[tree_species .== "eastern redcedar"] # MPa
-shagbark_hickory =
-    observed_predawn_lwp_2005[tree_species .== "shagbark hickory"] # MPa
-sugar_maple = observed_predawn_lwp_2005[tree_species .== "sugar maple"] # MPa
-white_ash = observed_predawn_lwp_2005[tree_species .== "white ash"] # MPa
-day_of_year_of_observed_predawn_lwp_2005 = driver_data[125:440, 14] # unitless, number of day in year
-tree_observation_date_white_oak =
-    day_of_year_of_observed_predawn_lwp_2005[tree_species .== "white oak"] # MPa
-tree_observation_date_black_oak =
-    day_of_year_of_observed_predawn_lwp_2005[tree_species .== "black oak"] # MPa
-tree_observation_date_eastern_redcedar =
-    day_of_year_of_observed_predawn_lwp_2005[tree_species .== "eastern redcedar"] # MPa
-tree_observation_date_shagbark_hickory =
-    day_of_year_of_observed_predawn_lwp_2005[tree_species .== "shagbark hickory"] # MPa
-tree_observation_date_sugar_maple =
-    day_of_year_of_observed_predawn_lwp_2005[tree_species .== "sugar maple"] # MPa
-tree_observation_date_white_ash =
-    day_of_year_of_observed_predawn_lwp_2005[tree_species .== "white ash"] # MPa
-unique_tree_observation_date_white_oak = unique(tree_observation_date_white_oak) #  unitless, number of day in year
-mean_white_oak = [
-    mean(
-        white_oak[tree_observation_date_white_oak .== unique_tree_observation_date_white_oak[k]],
-    ) for k in 1:1:length(unique_tree_observation_date_white_oak)
-]
-
-t = Array(0:(60 * 60):((length(precip_flux) - 1) * 60 * 60)) # s
-p_spline = Spline1D(t, -precip_flux) # m/s
-et_spline = Spline1D(t, et_flux) # m/s
-
-# Natan's data
-natan_et = Natan_data[2:end, 15] .* 18 / 1e3 / 1e3 # m^3/m^2/s
-swc_column = Natan_data[2:end, 20] # m^3/m^3
-swc_surface = Natan_data[2:end, 19] # m^3/m^3
-swc_obs_surface = Natan_data[2:end, 12] # m^3/m^3
-lwp = Natan_data[2:end, 18] # MPa
-dates = Natan_data[2:end, 1]
-Natan_data = nothing
-dates_julia = tryparse.(DateTime, dates)
-our_year = dates_julia[Dates.year.(dates_julia) .== 2005]
-seconds = Dates.value.(our_year .- our_year[1]) ./ 1000
-our_year_swc_column = FT.(swc_column[Dates.year.(dates_julia) .== 2005])
-our_year_swc_surface = FT.(swc_surface[Dates.year.(dates_julia) .== 2005])
-our_year_swc_obs_surface =
-    FT.(swc_obs_surface[Dates.year.(dates_julia) .== 2005])
-our_year_lwp = FT.(lwp[Dates.year.(dates_julia) .== 2005])
-our_year_et = FT.(natan_et[Dates.year.(dates_julia) .== 2005])
-natan_et_spline = Spline1D(seconds, our_year_et)
-
-# Pressure head takes in S_l; so assuming our_year_swc_obs_surface approx = ϑ_soil
-soil_ν = FT(0.55) # guess, m3/m3
-soil_K_sat = FT(4e-7) # m/s, matches Natan
-soil_S_s = FT(1e-3 * 0.0098) # 1/MPa to 1/m, Range is 0.001/MPa -> 1/MPa. Range from: Christoffersen 2016, Fig. S2.3, Scholz 2007; TRY, Xylem Functional Traits (XFT) Database, datasetID 241, traitID 1098. Calculated from from stem stem water capacitance/water density.
-soil_vg_n = FT(1.5) # unitless
-soil_vg_α = FT(0.10682) # 1/m, from Natan (10.9/MPa)
-soil_vg_m = FT(1) - FT(1) / soil_vg_n
-θ_r = FT(0) # m3/m3
-ψ_observation =
-    pressure_head.(
-        soil_vg_α,
-        soil_vg_n,
-        soil_vg_m,
-        θ_r,
-        our_year_swc_obs_surface,
-        soil_ν,
-        soil_S_s,
-    ) # m
-sp_spline = Spline1D(seconds, ψ_observation) # m
-
-precipitation_function(t::FT) where {FT} = p_spline(t) < 0.0 ? p_spline(t) : 0.0 # m/s
-transpiration_function(t::FT) where {FT} = et_spline(t) # m/s
-prescribed_soil_pressure_function(t::FT) where {FT} = sp_spline(t) # m/s
-
-saved_values = SavedValues(FT, ClimaCore.Fields.FieldVector)
 earth_param_set = create_lsm_parameters(FT)
+# This reads in the data from the flux tower site and creates
+# the atmospheric and radiative driver structs for the model
+include("./ozark_drivers_from_data.jl")
 
-# Plant hydraulics params
-# Two compartments of equal volume and height to begin
-RAI = FT(2) # m2/m2
-SAI = FT(1) # m2/m2
-LAI = FT(2) # m2/m2
-h_stem = FT(10) # m, average full grown white oaks are ~20 m in height
-h_leaf = FT(10) # m
-area_index = (root = RAI, stem = SAI, leaf = LAI)
-
-# Number of stem and leaf compartments. Leaf compartments are stacked on top of stem compartments
-n_stem = Int64(1)
-n_leaf = Int64(1)
-compartment_midpoints = [h_stem / 2, h_stem + h_leaf / 2]
-compartment_surfaces = [FT(0.0), h_stem, h_stem + h_leaf]
-K_sat_plant = 1.8e-8 # m/s, guess, close to Natan
-K_sat_root = FT(K_sat_plant) # m/s
-K_sat_stem = FT(K_sat_plant)
-K_sat_leaf = FT(K_sat_plant)
-K_sat = (root = K_sat_root, stem = K_sat_stem, leaf = K_sat_leaf)
-plant_vg_α = FT(0.002) # 1/m, matches Natan (fitted vG to Weibull)
-plant_vg_n = FT(4.2) # unitless, matches Natan (fitted vG to Weibull)
-plant_vg_m = FT(1) - FT(1) / plant_vg_n
-plant_ν = FT(0.7) # guess, m3/m3
-plant_S_s = FT(1e-2 * 0.0098) # m3/m3/MPa to m3/m3/m
-
-# 0.5 is from Natan
-function root_distribution(z::T) where {T}
-    return T(1.0 / 0.5) * exp(z / T(0.5)) # 1/m
-end
-earth_param_set = create_lsm_parameters(FT)
-zmin = FT(-2.0)
-zmax = FT(0.0)
-
-plant_hydraulics_domain = ClimaLSM.Domains.Point(; z_sfc = zmax)
-
-plant_hydraulics_ps =
-    PlantHydraulics.PlantHydraulicsParameters{FT, typeof(earth_param_set)}(
-        area_index,
-        K_sat,
-        plant_vg_α,
-        plant_vg_n,
-        plant_vg_m,
-        plant_ν,
-        plant_S_s,
-        root_distribution,
-        earth_param_set,
-    )
-
-transpiration =
-    PrescribedTranspiration{FT}((t::FT) -> transpiration_function(t))
-plant_hydraulics_args = (
-    domain = plant_hydraulics_domain,
-    parameters = plant_hydraulics_ps,
-    n_stem = n_stem,
-    n_leaf = n_leaf,
-    compartment_midpoints = compartment_midpoints,
-    compartment_surfaces = compartment_surfaces,
-)
-
+# Now we set up the model. For the soil model, we pick
+# a model type and model args:
 nelements = 10
+zmin = FT(-2)
+zmax = FT(0)
 soil_domain = Column(; zlim = (zmin, zmax), nelements = nelements)
 soil_ν = FT(0.55) # m3/m3, guess 
 soil_K_sat = FT(4e-7) # m/s, matches Natan
@@ -207,41 +49,110 @@ soil_ps = Soil.RichardsParameters{FT}(
 )
 
 soil_args = (domain = soil_domain, parameters = soil_ps)
+soil_model_type = Soil.RichardsModel{FT}
 
-# Integrated plant hydraulics and soil model
-land_args = (
-    precipitation = precipitation_function,
-    transpiration = transpiration_function,
+# Now we set up the canopy model, which we set up by component:
+# Component Types
+canopy_component_types = (;
+    radiative_transfer = Canopy.BeerLambertModel{FT},
+    photosynthesis = Canopy.FarquharModel{FT},
+    conductance = Canopy.MedlynConductanceModel{FT},
+    hydraulics = Canopy.PlantHydraulicsModel{FT},
+)
+# Individual Component arguments
+# Set up radiative transfer
+radiative_transfer_args = (; parameters = BeerLambertParameters{FT}())
+# Set up conductance
+conductance_args = (; parameters = MedlynConductanceParameters{FT}())
+# Set up photosynthesis
+photosynthesis_args = (; parameters = FarquharParameters{FT}(Canopy.C3()))
+# Set up plant hydraulics
+RAI = FT(2) # m2/m2
+SAI = FT(1) # m2/m2
+LAI = FT(2) # m2/m2
+h_stem = FT(10) # m, average full grown white oaks are ~20 m in height
+h_leaf = FT(10) # m
+area_index = (root = RAI, stem = SAI, leaf = LAI)
+# Number of stem and leaf compartments. Leaf compartments are stacked on top of stem compartments
+n_stem = Int64(1)
+n_leaf = Int64(1)
+compartment_midpoints = [h_stem / 2, h_stem + h_leaf / 2]
+compartment_surfaces = [FT(0.0), h_stem, h_stem + h_leaf]
+K_sat_plant = 1.8e-8 # m/s, guess, close to Natan
+K_sat_root = FT(K_sat_plant) # m/s
+K_sat_stem = FT(K_sat_plant)
+K_sat_leaf = FT(K_sat_plant)
+K_sat = (root = K_sat_root, stem = K_sat_stem, leaf = K_sat_leaf)
+plant_vg_α = FT(0.002) # 1/m, matches Natan (fitted vG to Weibull)
+plant_vg_n = FT(4.2) # unitless, matches Natan (fitted vG to Weibull)
+plant_vg_m = FT(1) - FT(1) / plant_vg_n
+plant_ν = FT(0.7) # guess, m3/m3
+plant_S_s = FT(1e-2 * 0.0098) # m3/m3/MPa to m3/m3/m
+rooting_depth = FT(0.5)
+
+# 0.5 is from Natan
+function root_distribution(z::T; rooting_depth = rooting_depth) where {T}
+    return T(1.0 / rooting_depth) * exp(z / T(rooting_depth)) # 1/m
+end
+
+plant_hydraulics_ps = PlantHydraulics.PlantHydraulicsParameters{FT}(
+    area_index,
+    K_sat,
+    plant_vg_α,
+    plant_vg_n,
+    plant_vg_m,
+    plant_ν,
+    plant_S_s,
+    root_distribution,
 )
 
+plant_hydraulics_args = (
+    parameters = plant_hydraulics_ps,
+    n_stem = n_stem,
+    n_leaf = n_leaf,
+    compartment_midpoints = compartment_midpoints,
+    compartment_surfaces = compartment_surfaces,
+)
+
+# Canopy component args
+canopy_component_args = (;
+    radiative_transfer = radiative_transfer_args,
+    photosynthesis = photosynthesis_args,
+    conductance = conductance_args,
+    hydraulics = plant_hydraulics_args,
+)
+# Other info needed                         
+z0_m = h_stem + h_leaf + FT(10)
+z0_b = h_stem + h_leaf + FT(10)
+shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
+    LAI,
+    h_stem + h_leaf,
+    z0_m,
+    z0_b,
+    earth_param_set,
+)
+
+canopy_model_args =
+    (; parameters = shared_params, domain = ClimaLSM.Point(; z_sfc = FT(0)))
+
+# Integrated plant hydraulics and soil model
+# The default is diagnostics transpiration. In this case, we are testing with prescribed
+# but will change that soon.
+land_input =
+    (transpiration = transpiration, atmos = atmos, radiation = radiation)
 land = SoilPlantHydrologyModel{FT}(;
-    land_args = land_args,
-    soil_model_type = Soil.RichardsModel{FT},
+    land_args = land_input,
+    soil_model_type = soil_model_type,
     soil_args = soil_args,
-    canopy_model_type = Canopy.CanopyModel{FT},
-    canopy_args = (hydraulics = plant_hydraulics_args,),
+    canopy_component_types = canopy_component_types,
+    canopy_component_args = canopy_component_args,
+    canopy_model_args = canopy_model_args,
 )
 Y, p, cds = initialize(land)
 ode! = make_ode_function(land)
 
-# IC from equilibrium run
-ic = [
-    0.355686,
-    0.354263,
-    0.352855,
-    0.351462,
-    0.350083,
-    0.348718,
-    0.347368,
-    0.346031,
-    0.344708,
-    0.343398,
-]
-root_depths =
-    sort(unique(parent(ClimaLSM.Domains.coordinates(soil_args.domain).z)[:]))
-ic_spline = Spline1D(root_depths, ic)
-Y.soil.ϑ_l = ic_spline.(cds.subsurface.z)
-
+#Initial conditions
+Y.soil.ϑ_l = FT(0.3)
 p_stem_0 = FT(-0.001e6 / 9800)
 p_leaf_0 = FT(-0.002e6 / 9800)
 
@@ -263,7 +174,7 @@ end
 update_aux! = make_update_aux(land)
 update_aux!(p, Y, 0.0)
 
-# Sim
+# Simulation
 t0 = FT(0);
 N_days = 365
 tf = FT(3600 * 24 * N_days)
@@ -279,6 +190,7 @@ sol =
     solve(prob, RK4(); dt = dt, saveat = daily, callback = cb, adaptive = false)
 
 # Diagnostics
+root_depths = parent(cds.subsurface.z)[:]
 ϑ_stem =
     [parent(sol.u[k].canopy.hydraulics.ϑ_l[1])[1] for k in 1:1:length(sol.t)] # m3 m-3
 ϑ_leaf =
