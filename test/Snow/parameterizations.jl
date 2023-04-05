@@ -1,9 +1,5 @@
 using Test
-using UnPack
 import CLIMAParameters as CP
-if !("." in LOAD_PATH)
-    push!(LOAD_PATH, ".")
-end
 using ClimaLSM.Snow
 import ClimaLSM
 import ClimaLSM.Parameters as LSMP

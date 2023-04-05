@@ -1,12 +1,5 @@
 using Test
-using UnPack
-using DiffEqCallbacks
-using OrdinaryDiffEq: ODEProblem, solve, Euler
 using ClimaCore
-
-if !("." in LOAD_PATH)
-    push!(LOAD_PATH, ".")
-end
 using ClimaLSM
 using ClimaLSM.Domains: LSMMultiColumnDomain, LSMSingleColumnDomain
 using ClimaLSM.Soil
@@ -60,7 +53,7 @@ FT = Float64
             z::FT,
             params::RichardsParameters{FT},
         ) where {FT}
-            @unpack ν, vg_α, vg_n, vg_m, θ_r = params
+            (; ν, vg_α, vg_n, vg_m, θ_r) = params
             #unsaturated zone only, assumes water table starts at z_∇
             z_∇ = FT(-1)# matches zmin
             S = FT((FT(1) + (vg_α * (z - z_∇))^vg_n)^(-vg_m))
@@ -72,15 +65,16 @@ FT = Float64
     init_soil!(Y, coords.subsurface, land.soil.parameters)
     # initialize the pond height to zero
     Y.surface_water.η .= 0.0
+    dY = similar(Y)
 
-    saved_values = SavedValues(FT, ClimaCore.Fields.FieldVector)
     ode! = make_ode_function(land)
-    t0 = FT(0)
-    tf = FT(10)
+    t = FT(0)
     dt = FT(1)
-    cb = SavingCallback((u, t, integrator) -> integrator.p, saved_values)
-    prob = ODEProblem(ode!, Y, (t0, tf), p)
-    sol = solve(prob, Euler(), dt = dt, callback = cb)
+    for step in 1:10
+        ode!(dY, Y, p, t)
+        t = t + dt
+        @. Y.surface_water.η = dY.surface_water.η * dt + Y.surface_water.η
+    end
     # it running is the test
 
     # Infiltration at point test
@@ -158,7 +152,7 @@ end
             z::FT,
             params::RichardsParameters{FT},
         ) where {FT}
-            @unpack ν, vg_α, vg_n, vg_m, θ_r = params
+            (; ν, vg_α, vg_n, vg_m, θ_r) = params
             #unsaturated zone only, assumes water table starts at z_∇
             z_∇ = FT(-1)# matches zmin
             S = FT((FT(1) + (vg_α * (z - z_∇))^vg_n)^(-vg_m))
@@ -170,14 +164,15 @@ end
     init_soil!(Y, coords.subsurface, land.soil.parameters)
     # initialize the pond height to zero
     Y.surface_water.η .= 0.0
-
-    saved_values = SavedValues(FT, ClimaCore.Fields.FieldVector)
+    dY = similar(Y)
     ode! = make_ode_function(land)
-    t0 = FT(0)
-    tf = FT(10)
+    t = FT(0)
     dt = FT(1)
-    cb = SavingCallback((u, t, integrator) -> integrator.p, saved_values)
-    prob = ODEProblem(ode!, Y, (t0, tf), p)
-    sol = solve(prob, Euler(), dt = dt, callback = cb)
+    for step in 1:10
+        ode!(dY, Y, p, t)
+        t = t + dt
+        @. Y.surface_water.η = dY.surface_water.η * dt + Y.surface_water.η
+    end
+
     # it running is the test
 end

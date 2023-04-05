@@ -1,12 +1,7 @@
 using Test
-using UnPack
 using Statistics
 using ClimaCore
 import CLIMAParameters as CP
-
-if !("." in LOAD_PATH)
-    push!(LOAD_PATH, ".")
-end
 using ClimaLSM
 using ClimaLSM.Domains: HybridBox, SphericalShell
 using ClimaLSM.Soil
@@ -54,7 +49,7 @@ FT = Float64
             z::FT,
             params::RichardsParameters{FT},
         ) where {FT}
-            @unpack ν, vg_α, vg_n, vg_m, θ_r, S_s = params
+            (; ν, vg_α, vg_n, vg_m, θ_r, S_s) = params
             z_∇ = FT(zmin / 2.0 + (zmax - zmin) / 10.0 * sin(π * 2 * x / xmax))
             if z > z_∇
                 S = FT((FT(1) + (vg_α * (z - z_∇))^vg_n)^(-vg_m))
@@ -281,7 +276,7 @@ end
             z::FT,
             params::EnergyHydrologyParameters,
         ) where {FT}
-            @unpack ν, vg_α, vg_n, vg_m, θ_r, S_s = params
+            (; ν, vg_α, vg_n, vg_m, θ_r, S_s) = params
             z_∇ = FT(zmin / 2.0)
             if z > z_∇
                 S = FT((FT(1) + (vg_α * (z - z_∇))^vg_n)^(-vg_m))
@@ -367,7 +362,7 @@ end
             z::FT,
             params::RichardsParameters,
         ) where {FT}
-            @unpack ν, vg_α, vg_n, vg_m, θ_r, S_s = params
+            (; ν, vg_α, vg_n, vg_m, θ_r, S_s) = params
             z_∇ = FT(0.5)
             if z > z_∇
                 S = FT((FT(1) + (vg_α * (z - z_∇))^vg_n)^(-vg_m))

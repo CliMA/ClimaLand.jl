@@ -1,9 +1,5 @@
 using Test
-using UnPack
 import CLIMAParameters as CP
-if !("." in LOAD_PATH)
-    push!(LOAD_PATH, ".")
-end
 using ClimaLSM.Soil
 import ClimaLSM
 import ClimaLSM.Parameters as LSMP
@@ -60,7 +56,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
         earth_param_set = param_set,
     )
     # Test that the preset params are set properly
-    @unpack α, β, Ω, γ, vg_m, γT_ref = parameters
+    (; α, β, Ω, γ, vg_m, γT_ref) = parameters
     @test α == 0.24
     @test β == 18.3
     @test γ == 2.64e-2

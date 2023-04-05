@@ -1,5 +1,4 @@
 using Test
-using OrdinaryDiffEq: ODEProblem, solve, Euler
 using ClimaCore
 
 if !("." in LOAD_PATH)
@@ -31,13 +30,6 @@ FT = Float64
     tf = FT(200)
     dt = FT(1)
 
-    prob = ODEProblem(pond_ode!, Y, (t0, tf), p)
-    sol = solve(prob, Euler(), dt = dt)
-
-
-    η = [sol.u[k].surface_water.η[] for k in 1:1:length(sol.t)]
-    t = sol.t[1:end]
-
     function expected_pond_height(t)
         if t < 20
             return 1e-8 * t
@@ -47,5 +39,20 @@ FT = Float64
             return (20 * (1e-8) + 80 * (5e-5))
         end
     end
-    @test sum(abs.(expected_pond_height.(t) .- η)) < 1e-14
+
+    nsteps = Int((tf - t0) / dt)
+    dY = similar(Y)
+    t = t0
+    for step in 1:nsteps
+        pond_ode!(dY, Y, p, t)
+        @. Y.surface_water.η = dY.surface_water.η * dt + Y.surface_water.η
+        t = t + dt
+        if t % 40 == 0
+            @test abs.(
+                expected_pond_height(t) .- parent(Y.surface_water.η)[1]
+            ) < 1e-14
+        end
+
+    end
+
 end

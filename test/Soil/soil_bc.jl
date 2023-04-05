@@ -1,8 +1,5 @@
 using Test
 using ClimaCore
-if !("." in LOAD_PATH)
-    push!(LOAD_PATH, ".")
-end
 using ClimaLSM
 
 using ClimaLSM.Domains: HybridBox, SphericalShell

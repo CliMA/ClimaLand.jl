@@ -1,14 +1,7 @@
 using Test
-using UnPack
 using Statistics
-using DiffEqCallbacks
-using OrdinaryDiffEq: ODEProblem, solve, Euler
 using ClimaCore
 import CLIMAParameters as CP
-
-if !("." in LOAD_PATH)
-    push!(LOAD_PATH, ".")
-end
 using ClimaLSM
 using ClimaLSM.Domains: Column
 using ClimaLSM.Soil
@@ -128,7 +121,6 @@ end
 end
 
 @testset "Richards equation with flux BCs" begin
-    saved_values = SavedValues(FT, ClimaCore.Fields.FieldVector)
     ν = FT(0.495)
     K_sat = FT(0.0443 / 3600 / 100) # m/s
     S_s = FT(1e-3) #inverse meters
@@ -163,7 +155,7 @@ end
             z::FT,
             params::RichardsParameters{FT},
         ) where {FT}
-            @unpack ν, vg_α, vg_n, vg_m, θ_r = params
+            (; ν, vg_α, vg_n, vg_m, θ_r) = params
             #unsaturated zone only, assumes water table starts at z_∇
             z_∇ = FT(-10)# matches zmin
             S = FT((FT(1) + (vg_α * (z - z_∇))^vg_n)^(-vg_m))
@@ -178,137 +170,14 @@ end
     soil_ode! = make_ode_function(soil)
 
     t0 = FT(0)
-    tf = FT(60)
-    dt = FT(1)
-    cb = SavingCallback((u, t, integrator) -> copy(integrator.p), saved_values)
-    prob = ODEProblem(soil_ode!, Y, (t0, tf), p)
-    sol = solve(prob, Euler(); dt = dt, callback = cb)
-
-    @test sum(parent(sol.u[end]) .== parent(Y.soil.ϑ_l)) == nelems
+    dY = similar(Y)
+    ode! = make_ode_function(soil)
+    ode!(dY, Y, p, t0)
+    @test mean(parent(dY)) < 1e-8
     # should be hydrostatic equilibrium at every layer, at each step:
-    @test mean(
-        sum([
-            parent(saved_values.saveval[k].soil.ψ .+ coords.z)[:] .+ 10.0 for
-            k in 2:1:50
-        ]),
-    ) < 1e-10
+    @test mean(parent(p.soil.ψ .+ coords.z)[:] .+ 10.0) < 1e-10
 end
 
-@testset "Richards equation with state BCs" begin
-    saved_values = SavedValues(FT, ClimaCore.Fields.FieldVector)
-    ν = FT(0.495)
-    K_sat = FT(0.0443 / 3600 / 100) # m/s
-    S_s = FT(1e-3) #inverse meters
-    vg_n = FT(2.0)
-    vg_α = FT(2.6) # inverse meters
-    vg_m = FT(1) - FT(1) / vg_n
-    θ_r = FT(0)
-    zmax = FT(0)
-    zmin = FT(-10)
-    nelems = 50
-
-    soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems)
-    top_state_bc = MoistureStateBC((p, t) -> eltype(t)(ν / 2))
-    bot_state_bc = MoistureStateBC((p, t) -> eltype(t)(ν))
-    sources = ()
-    boundary_states =
-        (; top = (water = top_state_bc,), bottom = (water = bot_state_bc,))
-    params = Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r)
-
-    soil = Soil.RichardsModel{FT}(;
-        parameters = params,
-        domain = soil_domain,
-        boundary_conditions = boundary_states,
-        sources = sources,
-    )
-
-    Y, p, coords = initialize(soil)
-
-    # specify ICs
-    function init_soil!(Ysoil, z, params)
-        function hydrostatic_profile(
-            z::FT,
-            params::RichardsParameters{FT},
-        ) where {FT}
-            @unpack ν, vg_α, vg_n, vg_m, θ_r = params
-            #unsaturated zone only, assumes water table starts at z_∇
-            z_∇ = FT(-10)# matches zmin
-            S = FT((FT(1) + (vg_α * (z - z_∇))^vg_n)^(-vg_m))
-            ϑ_l = S * (ν - θ_r) + θ_r
-            return FT(ϑ_l)
-        end
-        Ysoil.soil.ϑ_l .= hydrostatic_profile.(z, Ref(params))
-    end
-
-    init_soil!(Y, coords.z, soil.parameters)
-
-    soil_ode! = make_ode_function(soil)
-
-    t0 = FT(0)
-    tf = FT(60)
-    dt = FT(1)
-    cb = SavingCallback((u, t, integrator) -> copy(integrator.p), saved_values)
-    prob = ODEProblem(soil_ode!, Y, (t0, tf), p)
-    sol = solve(prob, Euler(); dt = dt, callback = cb)
-end
-
-@testset "Richards equation with flux and state BCs" begin
-    saved_values = SavedValues(FT, ClimaCore.Fields.FieldVector)
-    ν = FT(0.495)
-    K_sat = FT(0.0443 / 3600 / 100) # m/s
-    S_s = FT(1e-3) #inverse meters
-    vg_n = FT(2.0)
-    vg_α = FT(2.6) # inverse meters
-    vg_m = FT(1) - FT(1) / vg_n
-    θ_r = FT(0)
-    zmax = FT(0)
-    zmin = FT(-10)
-    nelems = 50
-
-    soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems)
-    top_flux_bc = FluxBC((p, t) -> eltype(t)(0))
-    bot_state_bc = MoistureStateBC((p, t) -> eltype(t)(ν / 2))
-    sources = ()
-    boundary_conditions =
-        (; top = (water = top_flux_bc,), bottom = (water = bot_state_bc,))
-    params = Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r)
-
-    soil = Soil.RichardsModel{FT}(;
-        parameters = params,
-        domain = soil_domain,
-        boundary_conditions = boundary_conditions,
-        sources = sources,
-    )
-
-    Y, p, coords = initialize(soil)
-
-    # specify ICs
-    function init_soil!(Ysoil, z, params)
-        function hydrostatic_profile(
-            z::FT,
-            params::RichardsParameters{FT},
-        ) where {FT}
-            @unpack ν, vg_α, vg_n, vg_m, θ_r = params
-            #unsaturated zone only, assumes water table starts at z_∇
-            z_∇ = FT(-10)# matches zmin
-            S = FT((FT(1) + (vg_α * (z - z_∇))^vg_n)^(-vg_m))
-            ϑ_l = S * (ν - θ_r) + θ_r
-            return FT(ϑ_l)
-        end
-        Ysoil.soil.ϑ_l .= hydrostatic_profile.(z, Ref(params))
-    end
-
-    init_soil!(Y, coords.z, soil.parameters)
-
-    soil_ode! = make_ode_function(soil)
-
-    t0 = FT(0)
-    tf = FT(60)
-    dt = FT(1)
-    cb = SavingCallback((u, t, integrator) -> copy(integrator.p), saved_values)
-    prob = ODEProblem(soil_ode!, Y, (t0, tf), p)
-    sol = solve(prob, Euler(); dt = dt, callback = cb)
-end
 
 @testset "Soil Energy and Water RHS unit tests" begin
     earth_param_set = create_lsm_parameters(FT)

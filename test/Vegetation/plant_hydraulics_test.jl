@@ -3,10 +3,6 @@ using Statistics
 using NLsolve
 using ClimaCore
 import CLIMAParameters as CP
-
-if !("." in LOAD_PATH)
-    push!(LOAD_PATH, ".")
-end
 using ClimaLSM
 using ClimaLSM.Domains: Point, Plane
 using ClimaLSM.Canopy
