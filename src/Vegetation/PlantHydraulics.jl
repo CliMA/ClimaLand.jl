@@ -301,6 +301,51 @@ function hydraulic_conductivity(K_sat::FT, vg_m::FT, S::FT) where {FT}
 end
 
 """
+     hydraulic_conductivity(K_sat::FT,ψ::FT,ψ50::FT,c::FT) where {FT}
+
+A point-wise function returning the hydraulic conductivity, using the
+a Weibull function.
+"""
+function hydraulic_conductivity(K_sat::FT, ψ::FT, ψ50::FT, c::FT) where {FT}
+    if ψ < FT(0)
+        K = exp(-(ψ/ψ50)^c)
+    else
+        K = FT(1)
+    end
+    return K * K_sat # (m/s)
+end
+
+"""
+     hydraulic_conductivity(K_sat::FT,ψ::FT,ψ50::FT,c::FT) where {FT}
+
+A point-wise function returning the hydraulic conductivity, using the
+a logistic function.
+"""
+function hydraulic_conductivity(K_sat::FT, a::FT, b::FT, ψ::FT, ψ50::FT) where {FT}
+    if ψ < FT(0)
+        K = (a+1)/a * (1 - 1/(1 + exp(g(ψ - ψ50))))
+    else
+        K = FT(1)
+    end
+    return K * K_sat # (m/s)
+end
+
+"""
+     hydraulic_conductivity(K_sat::FT,ψ::FT,ψ50::FT,c::FT) where {FT}
+
+A point-wise function returning the hydraulic conductivity, using the
+a modified logistic function.
+"""
+function hydraulic_conductivity(K_sat::FT, a::FT, b::FT, ψ::FT, ψ50::FT) where {FT}
+    if ψ < FT(0)
+        K = (a+1)/a * (1 - 1/(1 + a*exp(b*ψ)))
+    else
+        K = FT(1)
+    end
+    return K * K_sat # (m/s)
+end
+
+"""
     augmented_liquid_fraction(
         ν::FT, 
         S_l::FT) where {FT}
