@@ -42,12 +42,12 @@ steps:
         artifact_paths: "albedo_map/"
 
       - label: "Richards comparison to Bonan"
-        command: "julia --color=yes --project=experiments experiments/Soil/richards_comparison.jl"
-        artifact_paths: "experiments/Soil/*png"
+        command: "julia --color=yes --project=experiments experiments/Standalone/Soil/richards_comparison.jl"
+        artifact_paths: "experiments/Standalone/Soil/*png"
 
       - label: "ozark_test"
-        command: "julia --color=yes --project=experiments experiments/LSM/ozark_test.jl"
-        artifact_paths: "experiments/LSM/integrated*png"
+        command: "julia --color=yes --project=experiments experiments/LSM/ozark/ozark.jl"
+        artifact_paths: "experiments/LSM/ozark/*png"
 
       - label: "Soilbiogeochem"
-        command: "julia --color=yes --project=experiments experiments/Biogeochemistry/experiment.jl"
+        command: "julia --color=yes --project=experiments experiments/Standalone/Biogeochemistry/experiment.jl"
