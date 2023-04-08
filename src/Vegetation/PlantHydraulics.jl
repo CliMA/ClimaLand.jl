@@ -301,14 +301,14 @@ function hydraulic_conductivity(K_sat::FT, vg_m::FT, S::FT) where {FT}
 end
 
 """
-     hydraulic_conductivity(K_sat::FT,ψ::FT,ψ50::FT,c::FT) where {FT}
+     hydraulic_conductivity(K_sat::FT, ψ::FT, ψ50::FT, c::FT) where {FT}
 
-A point-wise function returning the hydraulic conductivity, using the
+A point-wise function returning the hydraulic conductivity, using
 a Weibull function.
 """
-function hydraulic_conductivity(K_sat::FT, ψ::FT, ψ50::FT, c::FT) where {FT}
-    if ψ < FT(0)
-        K = exp(-(ψ/ψ50)^c)
+function hydraulic_conductivity(K_sat::FT, ψ::FT, ψ50::FT, c::FT, S::FT) where {FT}
+    if S < FT(1)
+        K = exp(-(ψ / ψ50)^c) 
     else
         K = FT(1)
     end
@@ -316,14 +316,29 @@ function hydraulic_conductivity(K_sat::FT, ψ::FT, ψ50::FT, c::FT) where {FT}
 end
 
 """
-     hydraulic_conductivity(K_sat::FT,ψ::FT,ψ50::FT,c::FT) where {FT}
+     hydraulic_conductivity(K_sat::FT, a::FT, ψ::FT, ψ50::FT) where {FT}
 
-A point-wise function returning the hydraulic conductivity, using the
+A point-wise function returning the hydraulic conductivity, using 
 a logistic function.
 """
-function hydraulic_conductivity(K_sat::FT, a::FT, b::FT, ψ::FT, ψ50::FT) where {FT}
-    if ψ < FT(0)
-        K = (a+1)/a * (1 - 1/(1 + exp(g(ψ - ψ50))))
+function hydraulic_conductivity(K_sat::FT, g::FT, ψ::FT, ψ50::FT, S::FT) where {FT}
+    if S < FT(1)
+        K = 1 - 1/(1 + exp(-g(ψ - ψ50)))
+    else
+        K = FT(1)
+    end
+    return K * K_sat # (m/s)
+end
+
+"""
+     hydraulic_conductivity(K_sat::FT, ψ::FT, ψ50::FT, c::FT) where {FT}
+
+A point-wise function returning the hydraulic conductivity, using 
+a modified logistic function (see Clima docs).
+"""
+function hydraulic_conductivity(K_sat::FT, a::FT, b::FT, ψ::FT,S::FT) where {FT}
+    if S < FT(1)
+        K = (a+1)/a * (1 - 1/(1 + a*exp(b*ψ)))
     else
         K = FT(1)
     end
@@ -334,11 +349,11 @@ end
      hydraulic_conductivity(K_sat::FT,ψ::FT,ψ50::FT,c::FT) where {FT}
 
 A point-wise function returning the hydraulic conductivity, using the
-a modified logistic function.
+the Brooks and Corey formulation.
 """
 function hydraulic_conductivity(K_sat::FT, a::FT, b::FT, ψ::FT, ψ50::FT) where {FT}
     if ψ < FT(0)
-        K = (a+1)/a * (1 - 1/(1 + a*exp(b*ψ)))
+        K = (ψ/ψ_sat)^(2*b+3)
     else
         K = FT(1)
     end
@@ -431,6 +446,123 @@ function inverse_water_retention_curve(
 ) where {FT}
     if ψ <= FT(0.0)
         S_l = ((-vg_α * ψ)^vg_n + FT(1.0))^(-vg_m)
+    else
+        ϑ_l = ψ * S_s + ν
+        S_l = effective_saturation(ν, ϑ_l)
+    end
+    return S_l
+end
+
+# Pressure-volume curve that is linear with a slope of 0.05 MPa^-1
+"""
+    water_retention_curve(
+        vg_α::FT,
+        vg_n::FT,
+        vg_m::FT,
+        S_l::FT,
+        ν::FT,
+        S_s::FT) where {FT}
+
+Converts augmented liquid fraction (ϑ_l) to effective saturation 
+(S_l), and then effective saturation to absolute pressure, represented by
+the height (ψ) of the water column that would give rise to this pressure.
+Pressure for both the unsaturated and saturated regimes are calculated.
+Units are in meters. 
+"""
+function water_retention_curve(
+    vg_α::FT,
+    vg_n::FT,
+    vg_m::FT,
+    S_l::FT,
+    ν::FT,
+    S_s::FT,
+) where {FT}
+    if S_l <= FT(1.0)
+        ψ = -((S_l^(-FT(1) / vg_m) - FT(1)) * vg_α^(-vg_n))^(FT(1) / vg_n)
+    else
+        ϑ_l = augmented_liquid_fraction(ν, S_l)
+        ψ = (ϑ_l - ν) / S_s
+    end
+    return ψ # (m)
+end
+
+"""
+    inverse_water_retention_curve(
+        vg_α::FT,
+        vg_n::FT,
+        vg_m::FT,
+        ψ::FT,
+        ν::FT,
+        S_s::FT) where {FT}
+
+Converts absolute pressure, represented by the height (ψ)
+of the water column that would give rise to this pressure,
+to effective saturation (S_l).
+"""
+function inverse_water_retention_curve(
+    ψ::FT,
+    ν::FT,
+    S_s::FT,
+) where {FT}
+    if ψ <= FT(0.0)
+        S_l = ψ * 0.05 * 0.0098 # MPa^-1 to m^-1
+        #S_l = ((-vg_α * ψ)^vg_n + FT(1.0))^(-vg_m)
+    else
+        ϑ_l = ψ * S_s + ν
+        S_l = effective_saturation(ν, ϑ_l)
+    end
+    return S_l
+end
+
+"""
+    water_retention_curve(
+        vg_α::FT,
+        vg_n::FT,
+        vg_m::FT,
+        S_l::FT,
+        ν::FT,
+        S_s::FT) where {FT}
+
+Converts augmented liquid fraction (ϑ_l) to effective saturation 
+(S_l), and then effective saturation to absolute pressure, represented by
+the height (ψ) of the water column that would give rise to this pressure 
+using the Brooks and Corey formulation. Pressure for both the unsaturated 
+and saturated regimes are calculated. Units are in meters. 
+"""
+function water_retention_curve(
+    S_l::FT,
+    ν::FT,
+    S_s::FT,
+) where {FT}
+    if S_l <= FT(1.0)
+        ψ = S_l^(-b) * ψ_sat
+    else
+        ϑ_l = augmented_liquid_fraction(ν, S_l)
+        ψ = (ϑ_l - ν) / S_s
+    end
+    return ψ # (m)
+end
+
+"""
+    inverse_water_retention_curve(
+        vg_α::FT,
+        vg_n::FT,
+        vg_m::FT,
+        ψ::FT,
+        ν::FT,
+        S_s::FT) where {FT}
+
+Converts absolute pressure, represented by the height (ψ)
+of the water column that would give rise to this pressure,
+to effective saturation (S_l), with the Brooks and Corey formulation.
+"""
+function inverse_water_retention_curve(
+    ψ::FT,
+    ν::FT,
+    S_s::FT,
+) where {FT}
+    if ψ <= FT(0.0)
+        S_l = (-ψ/ψ_b)^(-1/b) # ψ_b is air entry potential, > 0 m
     else
         ϑ_l = ψ * S_s + ν
         S_l = effective_saturation(ν, ϑ_l)
