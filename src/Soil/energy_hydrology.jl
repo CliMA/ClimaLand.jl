@@ -54,6 +54,8 @@ struct EnergyHydrologyParameters{FT <: AbstractFloat, PSE}
     z_0m::FT
     "Roughness length for scalars"
     z_0b::FT
+    "Maximum dry soil layer thickness under evaporation (m)"
+    d_ds::FT
     "Physical constants and clima-wide parameters"
     earth_param_set::PSE
 end
@@ -76,6 +78,7 @@ function EnergyHydrologyParameters{FT}(;
     emissivity = FT(1),
     z_0m = FT(0.01),
     z_0b = FT(0.01),
+    d_ds = FT(0.015),
     earth_param_set::PSE,
 ) where {FT, PSE}
     vg_m = FT(1.0 - 1.0 / vg_n)
@@ -111,6 +114,7 @@ function EnergyHydrologyParameters{FT}(;
         emissivity,
         z_0m,
         z_0b,
+        d_ds,
         earth_param_set,
     )
 end
@@ -333,8 +337,10 @@ function ClimaLSM.make_update_aux(model::EnergyHydrology)
             κ_sat_unfrozen,
         ) = model.parameters
 
-        p.soil.θ_l = volumetric_liquid_fraction.(Y.soil.ϑ_l, ν .- Y.soil.θ_i)
-        p.soil.κ =
+        @. p.soil.θ_l =
+            volumetric_liquid_fraction(Y.soil.ϑ_l, ν - Y.soil.θ_i, θ_r)
+
+        p.soil.κ .=
             thermal_conductivity.(
                 model.parameters.κ_dry,
                 kersten_number.(
@@ -345,7 +351,7 @@ function ClimaLSM.make_update_aux(model::EnergyHydrology)
                 κ_sat.(p.soil.θ_l, Y.soil.θ_i, κ_sat_unfrozen, κ_sat_frozen),
             )
 
-        p.soil.T =
+        p.soil.T .=
             temperature_from_ρe_int.(
                 Y.soil.ρe_int,
                 Y.soil.θ_i,
@@ -374,7 +380,6 @@ function ClimaLSM.make_update_aux(model::EnergyHydrology)
             ν - Y.soil.θ_i,
             S_s,
         )
-
     end
     return update_aux!
 end

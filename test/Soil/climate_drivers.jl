@@ -30,6 +30,12 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     vg_α = FT(2.6) # inverse meters
     vg_m = FT(1) - FT(1) / vg_n
     θ_r = FT(0.1)
+    S_c::FT = (1 + (1 - 1 / vg_n)^(1 - 2 * vg_n))^(-vg_m)
+    @test Soil.dry_soil_layer_thickness(FT(1), S_c, FT(1)) == FT(0)
+    @test Soil.dry_soil_layer_thickness(FT(0), S_c, FT(1)) == FT(1)
+
+
+
     ν_ss_om = FT(0.0)
     ν_ss_quartz = FT(1.0)
     ν_ss_gravel = FT(0.0)
@@ -196,10 +202,25 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
                 t,
             )
 
-        expected_water_flux = atmos.liquid_precip(t) .+ conditions.vapor_flux
+        (; ν, vg_m, vg_n, θ_r, d_ds) = model.parameters
+        _D_vapor = FT(LSMP.D_vapor(model.parameters.earth_param_set))
+        S_l_sfc = ClimaLSM.Domains.top_center_to_surface(
+            Soil.effective_saturation.(ν, Y.soil.ϑ_l, θ_r),
+        )
+        τ_a = ClimaLSM.Domains.top_center_to_surface(
+            @. (ν - p.soil.θ_l - Y.soil.θ_i)^(FT(5 / 2)) / ν
+        )
+        dsl = Soil.dry_soil_layer_thickness.(S_l_sfc, S_c, d_ds)
+        r_soil = @. dsl / (_D_vapor * τ_a) # [s\m]
+        r_ae = @. 1 /
+           (conditions.Ch * abs(model.boundary_conditions.top.atmos.u(t))) # [s/m]
+        expected_water_flux = @. atmos.liquid_precip(t) .+
+           conditions.vapor_flux * r_ae / (r_soil + r_ae)
         @test computed_water_flux == expected_water_flux
-        expected_energy_flux = @. R_n + conditions.lhf + conditions.shf
+        expected_energy_flux =
+            @. R_n + conditions.lhf * r_ae / (r_soil + r_ae) + conditions.shf
         @test computed_energy_flux == expected_energy_flux
+
     end
 
 end

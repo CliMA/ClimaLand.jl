@@ -43,7 +43,11 @@ steps:
 
       - label: "Richards comparison to Bonan"
         command: "julia --color=yes --project=experiments experiments/Standalone/Soil/richards_comparison.jl"
-        artifact_paths: "experiments/Standalone/Soil/*png"
+        artifact_paths: "experiments/Standalone/Soil/comparison*png"
+
+      - label: "Evaporation from sand"
+        command: "julia --color=yes --project=experiments experiments/Standalone/Soil/evaporation.jl"
+        artifact_paths: "experiments/Standalone/Soil/evaporation*png"
 
       - label: "ozark_test"
         command: "julia --color=yes --project=experiments experiments/LSM/ozark/ozark.jl"

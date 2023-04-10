@@ -26,14 +26,15 @@ function dψdϑ(ϑ, ν, θ_r, vg_α, vg_n, vg_m, S_s)
 end
 
 """
-    volumetric_liquid_fraction(ϑ_l::FT, ν_eff::FT) where {FT}
+    volumetric_liquid_fraction(ϑ_l::FT, ν_eff::FT, θ_r::FT) where {FT}
 
 A pointwise function returning the volumetric liquid fraction
 given the augmented liquid fraction and the effective porosity.
 """
-function volumetric_liquid_fraction(ϑ_l::FT, ν_eff::FT) where {FT}
-    if ϑ_l < ν_eff
-        θ_l = ϑ_l
+function volumetric_liquid_fraction(ϑ_l::FT, ν_eff::FT, θ_r::FT) where {FT}
+    ϑ_l_safe = max(ϑ_l, θ_r + eps(FT))
+    if ϑ_l_safe < ν_eff
+        θ_l = ϑ_l_safe
     else
         θ_l = ν_eff
     end

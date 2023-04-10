@@ -3,6 +3,7 @@ using ClimaCore
 using DocStringExtensions
 using UnPack
 using SurfaceFluxes
+import SurfaceFluxes.Parameters as SFP
 using StaticArrays
 import ..Parameters as LSMP
 export AbstractAtmosphericDrivers,
@@ -216,8 +217,11 @@ function surface_fluxes_at_a_point(
         beta = β_sfc,
     )
     surface_flux_params = LSMP.surface_fluxes_parameters(earth_param_set)
-    conditions = SurfaceFluxes.surface_conditions(surface_flux_params, sc)
-
+    conditions = SurfaceFluxes.surface_conditions(
+        surface_flux_params,
+        sc;
+        tol_neutral = SFP.cp_d(surface_flux_params) / 100000,
+    )
     # Land needs a volume flux of water, not mass flux
     vapor_flux =
         SurfaceFluxes.evaporation(surface_flux_params, sc, conditions.Ch) /

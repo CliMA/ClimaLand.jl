@@ -292,7 +292,7 @@ end
     init_soil!(Y, coords.z, soil.parameters)
 
 
-    θ_l = Soil.volumetric_liquid_fraction.(Y.soil.ϑ_l, ν)
+    θ_l = Soil.volumetric_liquid_fraction.(Y.soil.ϑ_l, ν, θ_r)
     volumetric_heat_capacity =
         Soil.volumetric_heat_capacity.(θ_l, Y.soil.θ_i, Ref(parameters))
     Y.soil.ρe_int .=
