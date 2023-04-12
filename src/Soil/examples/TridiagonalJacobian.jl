@@ -32,21 +32,33 @@ function TridiagonalW(Y, transform::Bool)
     tridiag_type = Operators.StencilCoefs{-1, 1, NTuple{3, FT}}
     ∂ϑₜ∂ϑ = Fields.Field(tridiag_type, space)
 
+    ∂ϑₜ∂ϑ.coefs[1] .= FT(NaN)
+    ∂ϑₜ∂ϑ.coefs[2] .= FT(NaN)
+    ∂ϑₜ∂ϑ.coefs[3] .= FT(NaN)
+
+    arr1 = Array{FT}(undef, N - 1)
+
     W_column_arrays = [
         LinearAlgebra.Tridiagonal(
-            Array{FT}(undef, N - 1),
-            Array{FT}(undef, N),
-            Array{FT}(undef, N - 1),
+            zeros(FT,N-1) .+ FT(NaN),
+            zeros(FT,N) .+ FT(NaN),
+            zeros(FT,N-1) .+ FT(NaN),
         ) for _ in 1:Threads.nthreads()
     ]
-    dtγ_ref = Ref(zero(FT))
+    # dtγ_ref = Ref(zero(FT))
+    dtγ_ref = Ref(FT(NaN))
+
+    temp1 = similar(Y)
+    @. temp1.soil.ϑ_l = FT(NaN)
+    temp2 = similar(Y)
+    @. temp2.soil.ϑ_l = FT(NaN)
 
     return TridiagonalW(
         dtγ_ref,
         ∂ϑₜ∂ϑ,
         W_column_arrays,
-        similar(Y),
-        similar(Y),
+        temp1,
+        temp2,
         transform,
     )
 end
@@ -58,12 +70,23 @@ Base.similar(w::TridiagonalW) = w
 function make_Wfact(model::RichardsModel)
     update_aux! = make_update_aux(model)
     function Wfact!(W::TridiagonalW, Y, p, dtγ, t)
+
         FT = eltype(Y.soil.ϑ_l)
         (; dtγ_ref, ∂ϑₜ∂ϑ) = W
         dtγ_ref[] = dtγ
+
+        #@show "start Wfact"
+        #@show Y.soil.ϑ_l
+        #@show p.soil.K
+        #@show p.soil.ψ
+        #@show dtγ
+        #@show dtγ_ref
+        #@show ∂ϑₜ∂ϑ
+
         # TODO add parameters and BCs to TridiagonalW so we don't access global vars here
         (; ν, vg_α, vg_n, vg_m, S_s, θ_r) = model.parameters
         update_aux!(p,Y,t)
+
         if axes(Y.soil.ϑ_l) isa Spaces.CenterFiniteDifferenceSpace
             face_space = Spaces.FaceFiniteDifferenceSpace(axes(Y.soil.ϑ_l))
         elseif axes(Y.soil.ϑ_l) isa Spaces.CenterExtrudedFiniteDifferenceSpace
@@ -71,10 +94,10 @@ function make_Wfact(model::RichardsModel)
         else
             error("invalid model space")
         end
-        
+
         z = Fields.coordinate_field(axes(Y.soil.ϑ_l)).z
         Δz_top, Δz_bottom = get_Δz(z)
-        
+
         top_flux_bc = ClimaLSM.boundary_flux(
             model.boundary_conditions.top.water,
             ClimaLSM.TopBoundary(),
@@ -91,7 +114,7 @@ function make_Wfact(model::RichardsModel)
             t,
             model.parameters,
         )
-        
+
         divf2c_op = Operators.DivergenceF2C(
             top = Operators.SetValue(Geometry.WVector.(top_flux_bc)),
             bottom = Operators.SetValue(Geometry.WVector.(bot_flux_bc)),
@@ -104,7 +127,7 @@ function make_Wfact(model::RichardsModel)
         gradc2f_stencil = Operators.Operator2Stencil(gradc2f_op)
         interpc2f_op = Operators.InterpolateC2F()
         compose = Operators.ComposeStencils()
-        
+
         # TODO create field of ones on faces once and store in W to reduce allocations
         ones_face_space = ones(face_space)
         @. ∂ϑₜ∂ϑ = compose(
@@ -117,9 +140,14 @@ function make_Wfact(model::RichardsModel)
                 )
             ),
         )
-#        println("in Wfact!")
-#        @show Y.soil.ϑ_l
-#        @show t
+
+        #@show "end Wfact"
+        #@show Y.soil.ϑ_l
+        #@show p.soil.K
+        #@show p.soil.ψ
+        #@show dtγ
+        #@show dtγ_ref
+        #@show ∂ϑₜ∂ϑ
 
     end
     return Wfact!
@@ -136,11 +164,14 @@ function dψdθ(θ, ν, θ_r, vg_α, vg_n, vg_m, S_s)
     end
 end
 
+# Function required by OrdinaryDiffEq.jl
 linsolve!(::Type{Val{:init}}, f, u0; kwargs...) = _linsolve!
 _linsolve!(x, A, b, update_matrix = false; kwargs...) =
     LinearAlgebra.ldiv!(x, A, b)
 
-
+# Function required by Krylov.jl (x and b can be AbstractVectors)
+# See https://github.com/JuliaSmoothOptimizers/Krylov.jl/issues/605 for a
+# related issue that requires the same workaround.
 function LinearAlgebra.ldiv!(x, A::TridiagonalW, b)
     A.temp1 .= b
     LinearAlgebra.ldiv!(A.temp2, A, A.temp1)
@@ -157,13 +188,17 @@ end
 
 # 2D space - only one column
 function _ldiv!(
-    x::Fields.FieldVector,
-    A::TridiagonalW,
-    b::Fields.FieldVector,
+    x::Fields.FieldVector, # Δx
+    A::TridiagonalW, # f'(x)
+    b::Fields.FieldVector, # -f(x)
     space::Spaces.FiniteDifferenceSpace,
 )
     (; dtγ_ref, ∂ϑₜ∂ϑ, W_column_arrays, transform) = A
     dtγ = dtγ_ref[]
+
+    #@show "in _ldiv!"
+    #@show ∂ϑₜ∂ϑ
+    #@show b.soil.ϑ_l
 
     _ldiv_serial!(
         x.soil.ϑ_l,
@@ -171,7 +206,7 @@ function _ldiv!(
         dtγ,
         transform,
         ∂ϑₜ∂ϑ,
-        W_column_arrays[Threads.threadid()], # can / should this be colidx?
+        W_column_arrays[Threads.threadid()], # can / should this be colidx? TODO do we need this in single-column case
     )
 end
 
@@ -186,7 +221,7 @@ function _ldiv!(
     dtγ = dtγ_ref[]
 
     NVTX.@range "linsolve" color = Colors.colorant"lime" begin
-        Fields.bycolumn(axes(x.soil.ϑ_l)) do colidx
+        Fields.bycolumn(space) do colidx
             _ldiv_serial!(
                 x.soil.ϑ_l[colidx],
                 b.soil.ϑ_l[colidx],
@@ -261,6 +296,13 @@ end
 function make_implicit_tendency(model::Soil.RichardsModel)
     update_aux! = ClimaLSM.make_update_aux(model)
     function implicit_tendency!(dY, Y, p, t)
+
+        #@show "start implicit tendency"
+        #@show Y.soil.ϑ_l
+        #@show p.soil.K
+        #@show p.soil.ψ
+        #@show dY.soil.ϑ_l
+
         update_aux!(p, Y, t)
 
         z = Fields.coordinate_field(model.domain.space).z
@@ -292,6 +334,12 @@ function make_implicit_tendency(model::Soil.RichardsModel)
 
         @. dY.soil.ϑ_l =
             -(divf2c_op(-interpc2f_op(p.soil.K) * gradc2f_op(p.soil.ψ + z)))
+
+        #@show "end implicit tendency"
+        #@show Y.soil.ϑ_l
+        #@show p.soil.K
+        #@show p.soil.ψ
+        #@show dY.soil.ϑ_l
     end
     return implicit_tendency!
 end
