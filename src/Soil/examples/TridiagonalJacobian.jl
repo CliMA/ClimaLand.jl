@@ -40,9 +40,9 @@ function TridiagonalW(Y, transform::Bool)
 
     W_column_arrays = [
         LinearAlgebra.Tridiagonal(
-            zeros(FT,N-1) .+ FT(NaN),
-            zeros(FT,N) .+ FT(NaN),
-            zeros(FT,N-1) .+ FT(NaN),
+            zeros(FT, N - 1) .+ FT(NaN),
+            zeros(FT, N) .+ FT(NaN),
+            zeros(FT, N - 1) .+ FT(NaN),
         ) for _ in 1:Threads.nthreads()
     ]
     # dtγ_ref = Ref(zero(FT))
@@ -85,12 +85,13 @@ function make_Wfact(model::RichardsModel)
 
         # TODO add parameters and BCs to TridiagonalW so we don't access global vars here
         (; ν, vg_α, vg_n, vg_m, S_s, θ_r) = model.parameters
-        update_aux!(p,Y,t)
+        update_aux!(p, Y, t)
 
         if axes(Y.soil.ϑ_l) isa Spaces.CenterFiniteDifferenceSpace
             face_space = Spaces.FaceFiniteDifferenceSpace(axes(Y.soil.ϑ_l))
         elseif axes(Y.soil.ϑ_l) isa Spaces.CenterExtrudedFiniteDifferenceSpace
-            face_space = Spaces.FaceExtrudedFiniteDifferenceSpace(axes(Y.soil.ϑ_l))
+            face_space =
+                Spaces.FaceExtrudedFiniteDifferenceSpace(axes(Y.soil.ϑ_l))
         else
             error("invalid model space")
         end
@@ -344,6 +345,6 @@ function make_implicit_tendency(model::Soil.RichardsModel)
     return implicit_tendency!
 end
 
-function explicit_tendency!(dY,Y,p,t) end
+function explicit_tendency!(dY, Y, p, t) end
 
 end

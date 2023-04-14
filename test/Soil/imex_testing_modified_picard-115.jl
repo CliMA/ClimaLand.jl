@@ -16,7 +16,8 @@ using ClimaLSM
 using ClimaLSM.Soil
 using ClimaLSM.Domains: Column
 include("../../src/Soil/examples/TridiagonalJacobian.jl")
-using .TridiagonalJacobian: TridiagonalW, make_Wfact, make_implicit_tendency, explicit_tendency!
+using .TridiagonalJacobian:
+    TridiagonalW, make_Wfact, make_implicit_tendency, explicit_tendency!
 
 is_imex_CTS_algo(::CTS.IMEXAlgorithm) = true
 is_imex_CTS_algo(::DiffEqBase.AbstractODEAlgorithm) = false
@@ -31,9 +32,7 @@ is_rosenbrock(::DiffEqBase.AbstractODEAlgorithm) = false
 use_transform(ode_algo) =
     !(is_imex_CTS_algo(ode_algo) || is_rosenbrock(ode_algo))
 stepper = CTS.ARS111()
-norm_condition = CTS.MaximumError(
-    Float64(1e-6),
-)
+norm_condition = CTS.MaximumError(Float64(1e-6))
 conv_checker = CTS.ConvergenceChecker(; norm_condition)
 ode_algo = CTS.IMEXAlgorithm(
     stepper,
@@ -73,11 +72,11 @@ boundary_fluxes = (; top = (water = top_bc,), bottom = (water = bot_bc,))
 params = Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r)
 
 soil = Soil.RichardsModel{FT}(;
-                                parameters = params,
-                                domain = soil_domain,
-                                boundary_conditions = boundary_fluxes,
-                                sources = sources,
-                                )
+    parameters = params,
+    domain = soil_domain,
+    boundary_conditions = boundary_fluxes,
+    sources = sources,
+)
 
 Y, p, coords = initialize(soil)
 @. Y.soil.ϑ_l = FT(0.24)
