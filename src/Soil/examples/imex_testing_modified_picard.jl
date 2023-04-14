@@ -1,6 +1,5 @@
 using ClimaCore
 using DiffEqBase
-using Plots
 import OrdinaryDiffEq as ODE
 import ClimaTimeSteppers as CTS
 

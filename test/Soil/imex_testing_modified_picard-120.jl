@@ -6,7 +6,6 @@
 
 using ClimaCore
 using DiffEqBase
-using Plots
 import OrdinaryDiffEq as ODE
 import ClimaTimeSteppers as CTS
 
@@ -16,7 +15,7 @@ end
 using ClimaLSM
 using ClimaLSM.Soil
 using ClimaLSM.Domains: Column
-include("./TridiagonalJacobian.jl")
+include("../../src/Soil/examples/TridiagonalJacobian.jl")
 using .TridiagonalJacobian: TridiagonalW, make_Wfact, make_implicit_tendency, explicit_tendency!
 
 is_imex_CTS_algo(::CTS.IMEXAlgorithm) = true
@@ -42,7 +41,7 @@ ode_algo = CTS.IMEXAlgorithm(
         max_iters = 500,
         update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
         convergence_checker = conv_checker,
-        verbose = CTS.Verbose(),
+        verbose = CTS.Silent(),
     ),
 )
 
