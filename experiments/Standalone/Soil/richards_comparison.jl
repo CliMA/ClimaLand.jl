@@ -6,10 +6,6 @@ using ArtifactWrappers
 using OrdinaryDiffEq: ODEProblem, solve, RK4
 using ClimaCore
 import CLIMAParameters as CP
-
-if !("." in LOAD_PATH)
-    push!(LOAD_PATH, ".")
-end
 using ClimaLSM
 using ClimaLSM.Domains: Column
 using ClimaLSM.Soil
@@ -79,7 +75,7 @@ FT = Float64
     @test sqrt.(mean((bonan_moisture .- ϑ_l) .^ 2.0)) < FT(1e-3)
     plot(ϑ_l, parent(z), label = "Clima")
     plot!(bonan_moisture, bonan_z, label = "Bonan's Matlab code")
-    savefig("./experiments/Soil/clay_comparison_bonan_matlab.png")
+    savefig("./experiments/Standalone/Soil/clay_comparison_bonan_matlab.png")
 
 end
 
@@ -143,6 +139,6 @@ end
     @test sqrt.(mean((bonan_moisture .- ϑ_l) .^ 2.0)) < FT(1e-3)
     plot(ϑ_l, parent(z), label = "Clima")
     plot!(bonan_moisture, bonan_z, label = "Bonan's Matlab code")
-    savefig("./experiments/Soil/sand_comparison_bonan_matlab.png")
+    savefig("./experiments/Standalone/Soil/sand_comparison_bonan_matlab.png")
 
 end

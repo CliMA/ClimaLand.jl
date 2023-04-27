@@ -1,10 +1,6 @@
 using DiffEqCallbacks
 using OrdinaryDiffEq: ODEProblem, solve, Euler
 using ClimaCore
-
-if !("." in LOAD_PATH)
-    push!(LOAD_PATH, ".")
-end
 using ClimaLSM
 using ClimaLSM.Domains: LSMSingleColumnDomain
 using ClimaLSM.Soil
