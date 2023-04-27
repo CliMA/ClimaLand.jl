@@ -1,5 +1,5 @@
-t0 = FT(0)
-N_days = 365
+t0 = FT(140 * 3600 * 24)
+N_days = 140
 tf = t0 + FT(3600 * 24 * N_days)
 dt = FT(225)
 n = 16
