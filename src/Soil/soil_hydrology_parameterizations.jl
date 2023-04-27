@@ -104,8 +104,13 @@ function hydraulic_conductivity(K_sat::FT, m::FT, S::FT) where {FT}
         K = sqrt(S) * (FT(1) - (FT(1) - S^(FT(1) / m))^m)^FT(2)
     else
         K = FT(1)
+        # S_e = (ϑ - θ_res) / (θ_sat - θ_res)
+        # m = 1 - (1 / n)
+        # f = 1 - (1 - (S_e)^(1/m))^(m)
+        # dKdϑ = (K_sat / (θ_sat - θ_res)) * ((f ^ 2 / (2 * S_e ^ (1/2))) + ((2 * f * S_e ^ (1/m - 1/2)) / ((1 - S_e ^ (1/m)) ^ (1-m))))
     end
-    return K * K_sat
+    # @show K * K_sat
+    return K * K_sat + FT(1e-12)
 end
 
 
@@ -114,7 +119,7 @@ end
         f_i::FT,
         Ω::FT
     ) where {FT}
-Returns the multiplicative factor reducing conductivity when 
+Returns the multiplicative factor reducing conductivity when
 a fraction of ice `f_i` is present.
 
 Only for use with the `EnergyHydrology` model.

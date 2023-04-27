@@ -2,6 +2,7 @@ using ClimaCore
 using DiffEqBase
 import OrdinaryDiffEq as ODE
 import ClimaTimeSteppers as CTS
+using StaticArrays
 
 if !("." in LOAD_PATH)
     push!(LOAD_PATH, ".")
@@ -12,6 +13,8 @@ using ClimaLSM.Domains: Column
 include("./TridiagonalJacobian.jl")
 using .TridiagonalJacobian:
     TridiagonalW, make_Wfact, make_implicit_tendency, explicit_tendency!
+
+FT = Float64
 
 is_imex_CTS_algo(::CTS.IMEXAlgorithm) = true
 is_imex_CTS_algo(::DiffEqBase.AbstractODEAlgorithm) = false
@@ -28,19 +31,35 @@ use_transform(ode_algo) =
 stepper = CTS.ARS111()
 norm_condition = CTS.MaximumError(Float64(1e-6))
 conv_checker = CTS.ConvergenceChecker(; norm_condition)
+jac_free_jvp = CTS.ForwardDiffJVP()
+krylov_method = CTS.KrylovMethod(jacobian_free_jvp = CTS.ForwardDiffJVP())
+# backeuler_cn_tableau = CTS.IMEXTableau(;
+#     a_exp = @SArray([0 0; 1 0]), # not being used (no exp tendency)
+#     a_imp = @SArray([1 0; 0 0]),
+#     b_imp = @SArray([1/2, 1/2]),
+#     c_imp = @SArray([1, 0])
+# )
+
+# ode_algo = CTS.IMEXAlgorithm(
+#     backeuler_cn_tableau,
+#     CTS.NewtonsMethod(
+#         max_iters = 500,
+#         update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
+#         convergence_checker = conv_checker,
+#         verbose = CTS.Verbose()
+#     ),
+# )
 ode_algo = CTS.IMEXAlgorithm(
     stepper,
     CTS.NewtonsMethod(
         max_iters = 500,
         update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
         convergence_checker = conv_checker,
-        verbose = CTS.Verbose(),
+        # verbose = CTS.Verbose()
     ),
 )
 
 #function main(ode_algo, t_end::Float64, dt::Float64; explicit=false)
-
-FT = Float64
 
 
 t_end = FT(130000)
@@ -172,8 +191,8 @@ end
 #@show p.soil.K
 #@show p.soil.ψ
 #@show integrator.sol.u[1].soil.ϑ_l
-for step in 1:118
-    #@show step
+for step in 1:120
+    @show step
     ODE.step!(integrator)
     #@show "end of step $step"
     #@show integrator.sol.u[1].soil.ϑ_l
