@@ -1,3 +1,4 @@
+using Emerald
 using DiffEqCallbacks
 using OrdinaryDiffEq: ODEProblem, solve, Euler, RK4
 using ClimaCore
