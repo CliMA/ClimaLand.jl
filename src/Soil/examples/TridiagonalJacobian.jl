@@ -75,15 +75,6 @@ function make_Wfact(model::RichardsModel)
         (; dtγ_ref, ∂ϑₜ∂ϑ) = W
         dtγ_ref[] = dtγ
 
-        #@show "start Wfact"
-        #@show Y.soil.ϑ_l
-        #@show p.soil.K
-        #@show p.soil.ψ
-        #@show dtγ
-        #@show dtγ_ref
-        #@show ∂ϑₜ∂ϑ
-
-        # TODO add parameters and BCs to TridiagonalW so we don't access global vars here
         (; ν, vg_α, vg_n, vg_m, S_s, θ_r) = model.parameters
         update_aux!(p, Y, t)
 
@@ -144,14 +135,6 @@ function make_Wfact(model::RichardsModel)
             ),
         )
 
-        #@show "end Wfact"
-        #@show Y.soil.ϑ_l
-        #@show p.soil.K
-        #@show p.soil.ψ
-        #@show dtγ
-        #@show dtγ_ref
-        #@show ∂ϑₜ∂ϑ
-
     end
     return Wfact!
 end
@@ -198,10 +181,6 @@ function _ldiv!(
 )
     (; dtγ_ref, ∂ϑₜ∂ϑ, W_column_arrays, transform) = A
     dtγ = dtγ_ref[]
-
-    #@show "in _ldiv!"
-    #@show ∂ϑₜ∂ϑ
-    #@show b.soil.ϑ_l
 
     _ldiv_serial!(
         x.soil.ϑ_l,
@@ -299,13 +278,6 @@ end
 function make_implicit_tendency(model::Soil.RichardsModel)
     update_aux! = ClimaLSM.make_update_aux(model)
     function implicit_tendency!(dY, Y, p, t)
-
-        #@show "start implicit tendency"
-        #@show Y.soil.ϑ_l
-        #@show p.soil.K
-        #@show p.soil.ψ
-        #@show dY.soil.ϑ_l
-
         update_aux!(p, Y, t)
 
         z = Fields.coordinate_field(model.domain.space).z
@@ -337,12 +309,6 @@ function make_implicit_tendency(model::Soil.RichardsModel)
 
         @. dY.soil.ϑ_l =
             -(divf2c_op(-interpc2f_op(p.soil.K) * gradc2f_op(p.soil.ψ + z)))
-
-        #@show "end implicit tendency"
-        #@show Y.soil.ϑ_l
-        #@show p.soil.K
-        #@show p.soil.ψ
-        #@show dY.soil.ϑ_l
     end
     return implicit_tendency!
 end

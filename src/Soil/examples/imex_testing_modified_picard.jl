@@ -31,8 +31,6 @@ use_transform(ode_algo) =
 stepper = CTS.ARS111()
 norm_condition = CTS.MaximumError(Float64(1e-6))
 conv_checker = CTS.ConvergenceChecker(; norm_condition)
-# jac_free_jvp = CTS.ForwardDiffJVP()
-# krylov_method = CTS.KrylovMethod(jacobian_free_jvp = CTS.ForwardDiffJVP())
 # backeuler_cn_tableau = CTS.IMEXTableau(;
 #     a_exp = @SArray([0 0; 1 0]), # not being used (no exp tendency)
 #     a_imp = @SArray([1 0; 0 0]),
@@ -105,30 +103,14 @@ t_start = FT(0)
 @. p.soil.ψ = FT(NaN)
 
 if !explicit
-    #@show "in if statement"
-    #@show Y.soil.ϑ_l
-    #@show p.soil.K
-    #@show p.soil.ψ
-    # #@show W.temp1
-    # #@show W.temp2
-
     transform = use_transform(ode_algo)
 
     W = TridiagonalW(Y, transform)
-    #@show "after TridiagonalW"
-    #@show Y.soil.ϑ_l
-    #@show p.soil.K
-    #@show p.soil.ψ
-    #@show W.temp1
-    #@show W.temp2
 
     implicit_tendency! = make_implicit_tendency(soil)
     Wfact! = make_Wfact(soil)
     Wfact!(W, Y, p, dt, t_start)
-    #@show "after init Wfact!"
-    #@show Y.soil.ϑ_l
-    #@show p.soil.K
-    #@show p.soil.ψ
+
     jac_kwargs = if use_transform(ode_algo)
         (; jac_prototype = W, Wfact_t = Wfact!)
     else
@@ -146,13 +128,6 @@ if !explicit
         p,
     )
 
-    #@show "after implicit problem"
-    #@show Y.soil.ϑ_l
-    #@show p.soil.K
-    #@show p.soil.ψ
-    #@show implicit_problem.p
-    #@show implicit_problem.u0.soil.ϑ_l
-
     integrator = init(
         implicit_problem,
         ode_algo;
@@ -161,11 +136,6 @@ if !explicit
         progress = true,
         saveat = t_start:1:t_end,
     )
-    #@show "after integrator init"
-    #@show Y.soil.ϑ_l
-    #@show p.soil.K
-    #@show p.soil.ψ
-    #@show integrator.sol.u[1].soil.ϑ_l
 else
     implicit_tendency! = make_implicit_tendency(soil)
     explicit_problem = ODE.ODEProblem(
@@ -187,19 +157,11 @@ else
         saveat = t_start:1000:t_end,
     )
 end
-#@show "before stepping loop"
-#@show Y.soil.ϑ_l
-#@show p.soil.K
-#@show p.soil.ψ
-#@show integrator.sol.u[1].soil.ϑ_l
+
 for step in 1:250
     @show step
     ODE.step!(integrator)
-    #@show "end of step $step"
-    #@show integrator.sol.u[1].soil.ϑ_l
 end
 # ODE.solve!(integrator)
-
-# sol = ODE.solve(implicit_problem, ode_algo; dt = dt, adaptive = false)
 
 #end
