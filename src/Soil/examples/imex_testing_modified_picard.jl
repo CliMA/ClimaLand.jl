@@ -31,8 +31,8 @@ use_transform(ode_algo) =
 stepper = CTS.ARS111()
 norm_condition = CTS.MaximumError(Float64(1e-6))
 conv_checker = CTS.ConvergenceChecker(; norm_condition)
-jac_free_jvp = CTS.ForwardDiffJVP()
-krylov_method = CTS.KrylovMethod(jacobian_free_jvp = CTS.ForwardDiffJVP())
+# jac_free_jvp = CTS.ForwardDiffJVP()
+# krylov_method = CTS.KrylovMethod(jacobian_free_jvp = CTS.ForwardDiffJVP())
 # backeuler_cn_tableau = CTS.IMEXTableau(;
 #     a_exp = @SArray([0 0; 1 0]), # not being used (no exp tendency)
 #     a_imp = @SArray([1 0; 0 0]),
@@ -52,9 +52,9 @@ krylov_method = CTS.KrylovMethod(jacobian_free_jvp = CTS.ForwardDiffJVP())
 ode_algo = CTS.IMEXAlgorithm(
     stepper,
     CTS.NewtonsMethod(
-        max_iters = 500,
+        max_iters = 50,
         update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
-        convergence_checker = conv_checker,
+        # convergence_checker = conv_checker,
         # verbose = CTS.Verbose()
     ),
 )
@@ -62,10 +62,9 @@ ode_algo = CTS.IMEXAlgorithm(
 #function main(ode_algo, t_end::Float64, dt::Float64; explicit=false)
 
 
-t_end = FT(130000)
-dt = FT(1000)
-# t_end = 1 * dt
-explicit = false
+# t_end = FT(1e6)
+dt = FT(50)
+explicit = true
 # parameters for clay from Bonan 2019 supplemental program 8.2
 ν = FT(0.495)
 K_sat = FT(0.0443 / 3600 / 100) # m/s
@@ -81,7 +80,9 @@ nelems = 150
 
 soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems);
 
-top_bc = Soil.MoistureStateBC((p, t) -> eltype(t)(ν - 1e-3))
+#top_bc = Soil.MoistureStateBC((p, t) -> eltype(t)(ν - 1e-3))
+top_bc = Soil.FluxBC((p, t) -> eltype(t)(-1.23e-7))
+
 bot_bc = Soil.FreeDrainage()
 sources = ()
 boundary_fluxes = (; top = (water = top_bc,), bottom = (water = bot_bc,))
@@ -191,7 +192,7 @@ end
 #@show p.soil.K
 #@show p.soil.ψ
 #@show integrator.sol.u[1].soil.ϑ_l
-for step in 1:120
+for step in 1:250
     @show step
     ODE.step!(integrator)
     #@show "end of step $step"

@@ -116,6 +116,8 @@ function make_Wfact(model::RichardsModel)
             model.parameters,
         )
 
+        # TODO boundary condition of operator should depend on theta: flux is psi(nu - 1e-3) - psi(theta_1)
+        #  but operator boundary condition is independent of theta (not supported by Operators)
         divf2c_op = Operators.DivergenceF2C(
             top = Operators.SetValue(Geometry.WVector.(top_flux_bc)),
             bottom = Operators.SetValue(Geometry.WVector.(bot_flux_bc)),
@@ -132,7 +134,7 @@ function make_Wfact(model::RichardsModel)
         # TODO create field of ones on faces once and store in W to reduce allocations
         ones_face_space = ones(face_space)
         @. ∂ϑₜ∂ϑ = compose(
-            divf2c_stencil(Geometry.WVector(ones_face_space)),
+            divf2c_stencil(Geometry.Covariant3Vector(ones_face_space)),
             (
                 interpc2f_op(p.soil.K) * to_scalar_coefs(
                     gradc2f_stencil(
