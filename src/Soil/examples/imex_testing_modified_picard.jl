@@ -29,7 +29,7 @@ is_rosenbrock(::DiffEqBase.AbstractODEAlgorithm) = false
 use_transform(ode_algo) =
     !(is_imex_CTS_algo(ode_algo) || is_rosenbrock(ode_algo))
 stepper = CTS.ARS111()
-norm_condition = CTS.MaximumError(Float64(1e-6))
+norm_condition = CTS.MaximumError(Float64(1e-8))
 conv_checker = CTS.ConvergenceChecker(; norm_condition)
 # backeuler_cn_tableau = CTS.IMEXTableau(;
 #     a_exp = @SArray([0 0; 1 0]), # not being used (no exp tendency)
@@ -50,19 +50,19 @@ conv_checker = CTS.ConvergenceChecker(; norm_condition)
 ode_algo = CTS.IMEXAlgorithm(
     stepper,
     CTS.NewtonsMethod(
-        max_iters = 50,
+        max_iters = 1,
         update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
-        # convergence_checker = conv_checker,
-        # verbose = CTS.Verbose()
+       # convergence_checker = conv_checker,
+       # verbose = CTS.Verbose()
     ),
 )
 
 #function main(ode_algo, t_end::Float64, dt::Float64; explicit=false)
 
 
-# t_end = FT(1e6)
-dt = FT(50)
-explicit = true
+t_end = FT(1e6)
+dt = FT(1800)
+explicit = false
 # parameters for clay from Bonan 2019 supplemental program 8.2
 ν = FT(0.495)
 K_sat = FT(0.0443 / 3600 / 100) # m/s
@@ -78,8 +78,8 @@ nelems = 150
 
 soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems);
 
-#top_bc = Soil.MoistureStateBC((p, t) -> eltype(t)(ν - 1e-3))
-top_bc = Soil.FluxBC((p, t) -> eltype(t)(-1.23e-7))
+top_bc = Soil.MoistureStateBC((p, t) -> eltype(t)(ν - 1e-3))
+#top_bc = Soil.FluxBC((p, t) -> eltype(t)(-1.23e-7))
 
 bot_bc = Soil.FreeDrainage()
 sources = ()
@@ -158,10 +158,10 @@ else
     )
 end
 
-for step in 1:250
-    @show step
-    ODE.step!(integrator)
-end
-# ODE.solve!(integrator)
-
+#for step in 1:250
+#    @show step
+#    ODE.step!(integrator)
+#end
+ODE.solve!(integrator)
+plot(parent(integrator.sol.u[end].soil.ϑ_l), parent(coords.z))
 #end

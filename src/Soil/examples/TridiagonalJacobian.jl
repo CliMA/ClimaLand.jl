@@ -107,11 +107,11 @@ function make_Wfact(model::RichardsModel)
             model.parameters,
         )
 
-        # TODO boundary condition of operator should depend on theta: flux is psi(nu - 1e-3) - psi(theta_1)
-        #  but operator boundary condition is independent of theta (not supported by Operators)
+        ∂T_bc∂ϑN = ClimaLSM.Soil.∂tendency_bc_∂ϑN(model.boundary_conditions.top.water, ClimaLSM.TopBoundary(), Δz_top, Y, p, t, model.parameters)
+            
         divf2c_op = Operators.DivergenceF2C(
-            top = Operators.SetValue(Geometry.WVector.(top_flux_bc)),
-            bottom = Operators.SetValue(Geometry.WVector.(bot_flux_bc)),
+        top = Operators.SetValue(Geometry.WVector.(FT(0))),
+        bottom = Operators.SetValue(Geometry.WVector.(FT(0)))
         )
         divf2c_stencil = Operators.Operator2Stencil(divf2c_op)
         gradc2f_op = Operators.GradientC2F(
@@ -129,25 +129,17 @@ function make_Wfact(model::RichardsModel)
             (
                 interpc2f_op(p.soil.K) * to_scalar_coefs(
                     gradc2f_stencil(
-                        dψdθ(Y.soil.ϑ_l, ν, θ_r, vg_α, vg_n, vg_m, S_s),
+                        ClimaLSM.Soil.dψdθ(Y.soil.ϑ_l, ν, θ_r, vg_α, vg_n, vg_m, S_s),
                     ),
                 )
             ),
         )
+        #TODO: fix, right now it is hardcoded for a single column
+
+        parent(∂ϑₜ∂ϑ.coefs.:2)[end] = parent(ClimaLSM.Domains.top_center_to_surface(∂ϑₜ∂ϑ.coefs.:2) .+ ∂T_bc∂ϑN)[1]
 
     end
     return Wfact!
-end
-
-function dψdθ(θ, ν, θ_r, vg_α, vg_n, vg_m, S_s)
-    S = Soil.effective_saturation(ν, θ, θ_r)
-    if S < 1.0
-        return 1.0 / (vg_α * vg_m * vg_n) / (ν - θ_r) *
-               (S^(-1 / vg_m) - 1)^(1 / vg_n - 1) *
-               S^(-1 / vg_m - 1)
-    else
-        return 1.0 / S_s
-    end
 end
 
 # Function required by OrdinaryDiffEq.jl
@@ -233,7 +225,6 @@ function _ldiv_serial!(
     W_column_array.d .= -1 .+ dtγ .* parent(∂ϑₜ∂ϑ_column.coefs.:2)
     @views W_column_array.du .=
         dtγ .* parent(∂ϑₜ∂ϑ_column.coefs.:3)[1:(end - 1)]
-
     thomas_algorithm!(W_column_array, x_column_view)
 
     # Apply transform (if needed)

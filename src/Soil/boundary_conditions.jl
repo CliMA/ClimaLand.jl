@@ -270,3 +270,15 @@ function soil_boundary_fluxes(bc::NamedTuple, boundary, model, Y, Δz, p, t)
     return ClimaLSM.boundary_flux(bc.water, boundary, Δz, p, t, params),
     ClimaLSM.boundary_flux(bc.heat, boundary, Δz, p, t, params)
 end
+
+# TODO: generalize for atmos BC and for heat equation.
+function ∂tendency_bc_∂ϑN(::MoistureStateBC, boundary::ClimaLSM.TopBoundary, Δz, Y, p, t, params)
+    (; ν, vg_α, vg_n, vg_m, S_s, θ_r) = params
+    K = ClimaLSM.Domains.top_center_to_surface(p.soil.K)
+    ϑ_l = ClimaLSM.Domains.top_center_to_surface(Y.soil.ϑ_l)
+    return @. -K/Δz *dψdθ(ϑ_l, ν, θ_r, vg_α, vg_n, vg_m, S_s)/ (2*Δz)
+end
+
+function ∂tendency_bc_∂ϑN(::AbstractSoilBC, boundary::ClimaLSM.TopBoundary, Δz, Y, p, t, params)
+    return ClimaLSM.Domains.top_center_to_surface(zeros(axes(Y.soil.ϑ_l)))
+end

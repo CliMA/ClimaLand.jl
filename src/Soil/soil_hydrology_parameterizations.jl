@@ -5,7 +5,20 @@ export volumetric_liquid_fraction,
     pressure_head,
     hydraulic_conductivity,
     impedance_factor,
-    viscosity_factor
+    viscosity_factor,
+    dψdθ
+
+
+function dψdθ(θ, ν, θ_r, vg_α, vg_n, vg_m, S_s)
+    S = Soil.effective_saturation(ν, θ, θ_r)
+    if S < 1.0
+        return 1.0 / (vg_α * vg_m * vg_n) / (ν - θ_r) *
+               (S^(-1 / vg_m) - 1)^(1 / vg_n - 1) *
+               S^(-1 / vg_m - 1)
+    else
+        return 1.0 / S_s
+    end
+end
 
 """
     volumetric_liquid_fraction(ϑ_l::FT, ν_eff::FT) where {FT}
@@ -110,7 +123,7 @@ function hydraulic_conductivity(K_sat::FT, m::FT, S::FT) where {FT}
         # dKdϑ = (K_sat / (θ_sat - θ_res)) * ((f ^ 2 / (2 * S_e ^ (1/2))) + ((2 * f * S_e ^ (1/m - 1/2)) / ((1 - S_e ^ (1/m)) ^ (1-m))))
     end
     # @show K * K_sat
-    return K * K_sat + FT(1e-12)
+    return K * K_sat
 end
 
 
