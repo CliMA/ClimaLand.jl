@@ -250,4 +250,6 @@ import .Canopy.PlantHydraulics: flux_out_roots
 include("./soil_energy_hydrology_biogeochemistry.jl")
 include("./soil_plant_hydrology_model.jl")
 include("./pond_soil_model.jl")
+include("DALEC/DALEC.jl")
+using .DALEC
 end
