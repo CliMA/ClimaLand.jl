@@ -28,11 +28,7 @@ end
 Return trainable parameter names for the dalec 811 model.
 """
 function dalec_811_parnames()
-   parnames = (:decomposition_rate, :f_gpp, :f_fol, :f_root, :leaf_lifespan, :tor_wood, :tor_root,
-   :tor_litter, :tor_som, :Q10, :canopy_efficiency, :Bday, :f_lab, :clab_release_period,
-    :Fday, :leaf_fall_period, :LMCA, :Clab, :Cfol, :Croot, :Cwood, :Clitter, :Csom,
-     :IWUE, :runoff_focal_point, :wilting_point, :initial_water, :foliar_cf, :ligneous_cf,
-      :dom_cf, :resilience, :lab_lifespan, :moisture_factor)
+   parnames = fieldnames(DALEC811Parameters)
    return parnames
 end
 
