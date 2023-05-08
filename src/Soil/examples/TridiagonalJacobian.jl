@@ -1,3 +1,4 @@
+# This Jacobian used for modified picard approximation
 module TridiagonalJacobian
 using ClimaCore: Operators, Spaces, Fields, Geometry
 using LinearAlgebra

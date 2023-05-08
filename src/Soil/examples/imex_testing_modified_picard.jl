@@ -19,9 +19,9 @@ FT = Float64
 is_imex_CTS_algo(::CTS.IMEXAlgorithm) = true
 is_imex_CTS_algo(::DiffEqBase.AbstractODEAlgorithm) = false
 
-is_implicit(::ODE.OrdinaryDiffEqImplicitAlgorithm) = true
-is_implicit(::ODE.OrdinaryDiffEqAdaptiveImplicitAlgorithm) = true
-is_implicit(ode_algo) = is_imex_CTS_algo(ode_algo)
+# is_implicit(::ODE.OrdinaryDiffEqImplicitAlgorithm) = true
+# is_implicit(::ODE.OrdinaryDiffEqAdaptiveImplicitAlgorithm) = true
+# is_implicit(ode_algo) = is_imex_CTS_algo(ode_algo)
 
 is_rosenbrock(::ODE.Rosenbrock23) = true
 is_rosenbrock(::ODE.Rosenbrock32) = true
@@ -59,11 +59,12 @@ ode_algo = CTS.IMEXAlgorithm(
 
 #function main(ode_algo, t_end::Float64, dt::Float64; explicit=false)
 
-
+t_start = FT(0)
 t_end = FT(1e6)
-dt = FT(1800)
+dt = FT(1e5) #1000 = 1e3, 10000 = 1e4
 explicit = false
-# parameters for clay from Bonan 2019 supplemental program 8.2
+
+# van Genuchten parameters for clay (from Bonan 2019 supplemental program 8.2)
 ν = FT(0.495)
 K_sat = FT(0.0443 / 3600 / 100) # m/s
 vg_n = FT(1.43)
@@ -81,7 +82,23 @@ soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems);
 top_bc = Soil.MoistureStateBC((p, t) -> eltype(t)(ν - 1e-3))
 #top_bc = Soil.FluxBC((p, t) -> eltype(t)(-1.23e-7))
 
-bot_bc = Soil.FreeDrainage()
+# function flux_function(p, t::T) where {T}
+#     if t < 1e5
+#         return -T(1e-6) # TODO find cutoff time
+#     else
+#         return T(0)
+#     end
+# end
+# top_bc = Soil.FluxBC(flux_function)
+top_bc = Soil.MoistureStateBC((p, t) -> eltype(t)(ν - 1e-3))
+flux_in = FT(-1e-7)
+#top_bc = Soil.FluxBC((p, t) -> eltype(t)(flux_in))
+
+
+# bot_bc = Soil.FreeDrainage()
+flux_out = FT(0)
+bot_bc = Soil.FluxBC((p, t) -> eltype(t)(flux_out))
+
 sources = ()
 boundary_fluxes = (; top = (water = top_bc,), bottom = (water = bot_bc,))
 params = Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r)
@@ -95,12 +112,6 @@ soil = Soil.RichardsModel{FT}(;
 
 Y, p, coords = initialize(soil)
 @. Y.soil.ϑ_l = FT(0.24)
-# update_aux! = make_update_aux(soil)
-t_start = FT(0)
-# update_aux!(p, Y, t_start)
-
-@. p.soil.K = FT(NaN)
-@. p.soil.ψ = FT(NaN)
 
 if !explicit
     transform = use_transform(ode_algo)
@@ -158,10 +169,26 @@ else
     )
 end
 
-#for step in 1:250
-#    @show step
-#    ODE.step!(integrator)
-#end
-ODE.solve!(integrator)
+
+
 plot(parent(integrator.sol.u[end].soil.ϑ_l), parent(coords.z))
-#end
+
+# for step in 1:t_end
+#     @show step
+#     ODE.step!(integrator)
+# end
+ODE.solve!(integrator)
+
+plot(parent(integrator.sol.u[end].soil.ϑ_l), parent(coords.z))
+
+# calculate water mass balance over entire simulation
+mass_end = sum(integrator.sol.u[end].soil.ϑ_l)
+mass_start = sum(integrator.sol.u[1].soil.ϑ_l)
+t_sim = integrator.sol.t[end] - integrator.sol.t[1]
+# flux changes water content every timestep (assumes constant flux_in, flux_out)
+mass_change_exp = -(flux_in - flux_out) * t_sim
+mass_change_actual = mass_end - mass_start
+relerr = abs(mass_change_actual - mass_change_exp) / mass_change_exp * 100 # %
+
+@show relerr
+@show integrator.sol.u[end]
