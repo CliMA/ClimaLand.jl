@@ -56,18 +56,20 @@ for interactions between components.
 =#
 
 using ClimaLSM
-using UnPack
 using DocStringExtensions
+using LinearAlgebra
 using ClimaCore
 import ..Parameters as LSMP
 import ClimaCore: Fields, Operators, Geometry, Spaces
 using Thermodynamics
 
 import ClimaLSM.Domains: Column, HybridBox, SphericalShell
+using ClimaLSM: AbstractTridiagonalW
 import ClimaLSM:
     AbstractModel,
     make_update_aux,
     make_rhs,
+    make_update_jacobian,
     prognostic_vars,
     auxiliary_vars,
     name,
@@ -84,6 +86,7 @@ import ClimaLSM:
     surface_height
 export RichardsModel,
     RichardsParameters,
+    RichardsTridiagonalW,
     EnergyHydrology,
     EnergyHydrologyParameters,
     AbstractSoilModel,

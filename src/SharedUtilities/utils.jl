@@ -10,3 +10,10 @@ function heaviside(x::FT)::FT where {FT}
         return FT(0.0)
     end
 end
+
+"""
+    to_scalar_coefs(vector_coefs)
+
+Helper function used in computing tendencies of vertical diffusion terms.
+"""
+to_scalar_coefs(vector_coefs) = map(vector_coef -> vector_coef.u₃, vector_coefs)

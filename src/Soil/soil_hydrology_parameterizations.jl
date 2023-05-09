@@ -5,7 +5,25 @@ export volumetric_liquid_fraction,
     pressure_head,
     hydraulic_conductivity,
     impedance_factor,
-    viscosity_factor
+    viscosity_factor,
+    dψdϑ
+
+"""
+   dψdϑ(ϑ, ν, θ_r, vg_α, vg_n, vg_m, S_s)
+
+Computes and returns the derivative of the pressure head 
+with respect to ϑ for the van Genuchten formulation.
+"""
+function dψdϑ(ϑ, ν, θ_r, vg_α, vg_n, vg_m, S_s)
+    S = effective_saturation(ν, ϑ, θ_r)
+    if S < 1.0
+        return 1.0 / (vg_α * vg_m * vg_n) / (ν - θ_r) *
+               (S^(-1 / vg_m) - 1)^(1 / vg_n - 1) *
+               S^(-1 / vg_m - 1)
+    else
+        return 1.0 / S_s
+    end
+end
 
 """
     volumetric_liquid_fraction(ϑ_l::FT, ν_eff::FT) where {FT}

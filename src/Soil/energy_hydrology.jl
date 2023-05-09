@@ -318,18 +318,20 @@ This has been written so as to work with Differential Equations.jl.
 """
 function ClimaLSM.make_update_aux(model::EnergyHydrology)
     function update_aux!(p, Y, t)
-        @unpack ν,
-        vg_α,
-        vg_n,
-        vg_m,
-        K_sat,
-        S_s,
-        θ_r,
-        Ω,
-        γ,
-        γT_ref,
-        κ_sat_frozen,
-        κ_sat_unfrozen = model.parameters
+        (;
+            ν,
+            vg_α,
+            vg_n,
+            vg_m,
+            K_sat,
+            S_s,
+            θ_r,
+            Ω,
+            γ,
+            γT_ref,
+            κ_sat_frozen,
+            κ_sat_unfrozen,
+        ) = model.parameters
 
         p.soil.θ_l = volumetric_liquid_fraction.(Y.soil.ϑ_l, ν .- Y.soil.θ_i)
         p.soil.κ =
@@ -406,7 +408,7 @@ function ClimaLSM.source!(
     model,
 ) where {FT}
     params = model.parameters
-    @unpack ν, earth_param_set = params
+    (; ν, earth_param_set) = params
     _ρ_l = FT(LSMP.ρ_cloud_liq(earth_param_set))
     _ρ_i = FT(LSMP.ρ_cloud_ice(earth_param_set))
     ρc = volumetric_heat_capacity.(p.soil.θ_l, Y.soil.θ_i, Ref(params))
