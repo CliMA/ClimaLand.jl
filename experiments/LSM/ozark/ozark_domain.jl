@@ -1,7 +1,7 @@
 # Domain setup
 # For soil column
-nelements = 10
-zmin = FT(-2)
+nelements = 30
+zmin = FT(-10) # 10 m depth 
 zmax = FT(0)
 
 
