@@ -27,8 +27,12 @@ ClimaLSM.Domains.top_center_to_surface
 
 ```@docs
 ClimaLSM.AbstractModel
-ClimaLSM.make_ode_function
-ClimaLSM.make_rhs
+ClimaLSM.AbstractImExModel
+ClimaLSM.AbstractExpModel
+ClimaLSM.make_exp_tendency
+ClimaLSM.make_imp_tendency
+ClimaLSM.make_compute_exp_tendency
+ClimaLSM.make_compute_imp_tendency
 ClimaLSM.make_update_aux
 ClimaLSM.make_set_initial_aux_state
 ClimaLSM.prognostic_vars

@@ -12,7 +12,7 @@ using ClimaLSM.Domains:
 using ClimaLSM:
     initialize,
     make_update_aux,
-    make_ode_function,
+    make_exp_tendency,
     make_set_initial_aux_state,
     PrescribedAtmosphere,
     PrescribedRadiativeFluxes
@@ -56,7 +56,7 @@ bucket_domains = [
 orbital_data = Insolation.OrbitalData(joinpath(pkgdir(ClimaLSM), "artifacts"))
 init_temp(z::FT, value::FT) where {FT} = FT(value)
 for bucket_domain in bucket_domains
-    @testset "Zero flux RHS" begin
+    @testset "Zero flux tendency" begin
         # Radiation
         SW_d = (t) -> eltype(t)(0.0)
         LW_d = (t) -> eltype(t)(5.67e-8 * 280.0^4.0)
@@ -103,7 +103,7 @@ for bucket_domain in bucket_domains
         Y.bucket.Ws .= 0.0 # no runoff
         Y.bucket.σS .= 0.0
 
-        ode_function! = make_ode_function(model)
+        exp_tendency! = make_exp_tendency(model)
         set_initial_aux_state! = make_set_initial_aux_state(model)
         set_initial_aux_state!(p, Y, 0.0)
         dY = similar(Y)
@@ -112,7 +112,7 @@ for bucket_domain in bucket_domains
         dY.bucket.W .= 1.0
         dY.bucket.Ws .= 1.0
         dY.bucket.σS .= 0.0
-        ode_function!(dY, Y, p, 0.0)
+        exp_tendency!(dY, Y, p, 0.0)
         @test mean(parent(dY.bucket.T)) < eps(FT)
         @test mean(parent(dY.bucket.W)) < eps(FT)
         @test mean(parent(dY.bucket.Ws)) < eps(FT)
@@ -166,12 +166,12 @@ for bucket_domain in bucket_domains
         Y.bucket.W .= 0.149
         Y.bucket.Ws .= 0.0
         Y.bucket.σS .= 0.0
-        ode_function! = make_ode_function(model)
+        exp_tendency! = make_exp_tendency(model)
         t0 = 0.0
         set_initial_aux_state! = make_set_initial_aux_state(model)
         set_initial_aux_state!(p, Y, t0)
         dY = similar(Y)
-        ode_function!(dY, Y, p, t0)
+        exp_tendency!(dY, Y, p, t0)
         F_water_sfc = precip(t0) .- p.bucket.evaporation
         F_sfc = -1 .* (p.bucket.turbulent_energy_flux .+ p.bucket.R_n)
         surface_space = model.domain.surface.space

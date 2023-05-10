@@ -74,10 +74,10 @@ end
 
 
 """
-    make_rhs(model::RichardsModel)
+    make_compute_exp_tendency(model::RichardsModel)
 
-An extension of the function `make_rhs`, for the Richardson-
-Richards equation. 
+An extension of the function `make_compute_exp_tendency`, for the Richardson-
+Richards equation.
 
 This function creates and returns a function which computes the entire
 right hand side of the PDE for `ϑ_l`, and updates `dY.soil.ϑ_l` in place
@@ -85,8 +85,8 @@ with that value.
 
 This has been written so as to work with Differential Equations.jl.
 """
-function ClimaLSM.make_rhs(model::RichardsModel)
-    function rhs!(dY, Y, p, t)
+function ClimaLSM.make_compute_exp_tendency(model::RichardsModel)
+    function compute_exp_tendency!(dY, Y, p, t)
         (; ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r) = model.parameters
         z = ClimaCore.Fields.coordinate_field(model.domain.space).z
         Δz_top, Δz_bottom = get_Δz(z)
@@ -142,7 +142,7 @@ function ClimaLSM.make_rhs(model::RichardsModel)
         # This has to come last
         dss!(dY, model.domain)
     end
-    return rhs!
+    return compute_exp_tendency!
 end
 
 
@@ -181,12 +181,12 @@ ClimaLSM.prognostic_types(soil::RichardsModel{FT}) where {FT} = (FT,)
 """
     auxiliary_vars(soil::RichardsModel)
 
-A function which returns the names of the auxiliary variables 
+A function which returns the names of the auxiliary variables
 of `RichardsModel`.
 
 Note that auxiliary variables are not needed for such a simple model.
 We could instead compute the conductivity and matric potential within the
-rhs function explicitly, rather than compute and store them in the 
+tendency function explicitly, rather than compute and store them in the
 auxiliary vector `p`. We did so in this case as a demonstration.
 """
 ClimaLSM.auxiliary_vars(soil::RichardsModel) = (:K, :ψ)
@@ -195,7 +195,7 @@ ClimaLSM.auxiliary_types(soil::RichardsModel{FT}) where {FT} = (FT, FT)
     make_update_aux(model::RichardsModel)
 
 An extension of the function `make_update_aux`, for the Richardson-
-Richards equation. 
+Richards equation.
 
 This function creates and returns a function which updates the auxiliary
 variables `p.soil.variable` in place.
@@ -251,7 +251,7 @@ end
 )
 
 Outer constructor for the RichardsTridiagonalW Jacobian
-matrix struct. 
+matrix struct.
 
 Initializes all variables to zeros.
 """

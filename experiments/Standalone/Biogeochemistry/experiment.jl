@@ -139,13 +139,13 @@ t0 = FT(0.0)
 update_aux! = make_update_aux(model)
 update_aux!(p, Y, t0)
 
-Soil_bio_ode! = make_ode_function(model)
+Soil_bio_exp_tendency! = make_exp_tendency(model)
 tf = FT(10000)
 dt = FT(10)
 saved_values = SavedValues(FT, ClimaCore.Fields.FieldVector)
 
 cb = SavingCallback((u, t, integrator) -> copy(integrator.p), saved_values)
-prob = ODEProblem(Soil_bio_ode!, Y, (t0, tf), p)
+prob = ODEProblem(Soil_bio_exp_tendency!, Y, (t0, tf), p)
 sol = solve(prob, Euler(); dt = dt, callback = cb)
 
 # Animation

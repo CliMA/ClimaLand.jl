@@ -43,9 +43,9 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
 
     Y, p, coords = initialize(model)
     dY = similar(Y)
-    ode! = make_ode_function(model)
+    exp_tendency! = make_exp_tendency(model)
     t = FT(1)
-    ode!(dY, Y, p, t)
+    exp_tendency!(dY, Y, p, t)
     @test dY.soilco2.C ≈ p.soilco2.Sm
 end
 
@@ -81,9 +81,9 @@ end
 
     Y, p, coords = initialize(model)
     dY = similar(Y)
-    ode! = make_ode_function(model)
+    exp_tendency! = make_exp_tendency(model)
     t = FT(1)
     Y.soilco2.C .= FT(C)
-    ode!(dY, Y, p, t)
+    exp_tendency!(dY, Y, p, t)
     @test sum(dY.soilco2.C) ≈ FT(0.0)
 end

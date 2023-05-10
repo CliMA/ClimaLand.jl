@@ -25,7 +25,7 @@ FT = Float64
     Y, p, coords = initialize(pond_model)
     Y.surface_water.η .= FT(0.0)
 
-    pond_ode! = make_ode_function(pond_model)
+    exp_tendency! = make_exp_tendency(pond_model)
     t0 = FT(0)
     tf = FT(200)
     dt = FT(1)
@@ -44,7 +44,7 @@ FT = Float64
     dY = similar(Y)
     t = t0
     for step in 1:nsteps
-        pond_ode!(dY, Y, p, t)
+        exp_tendency!(dY, Y, p, t)
         @. Y.surface_water.η = dY.surface_water.η * dt + Y.surface_water.η
         t = t + dt
         if t % 40 == 0

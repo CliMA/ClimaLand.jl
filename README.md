@@ -10,29 +10,38 @@ Model <: AbstractModel
 All models have the same abstract supertype, and have shared functionality.
 There is the the option to define new methods particular to your model, or to
 fall back on defaults. The functions each new Model type can define are:
-- make_rhs()
+- make_compute_exp_tendency()
+- make_compute_imp_tendency()
 - make_update_aux()
+- make_exp_tendency()
+- make_imp_tendency()
 - initialize_prognostic()
 - initialize_auxiliary()
 - initialize()
 - prognostic_vars()
 - auxiliary_vars()
-    
+
 Each model will also have some notion of a domain with coordinates, parameter sets,
 and boundary conditions or other prescribed drivers.
+
+The AbstractModel type is extended by the types AbstractImExModel, which allows for
+mixed implicit and explicit timestepping, and AbstractExpModel, which only allows
+for explicit timestepping.
+AbstractModel is also extended by AbstractLandModel, which contains component
+models of type AbstractModel.
 
 Examples:
 
 Component Models:
-RichardsModel <: AbstractSoilModel <: AbstractModel [runnable w/o LandModel wrapper as well]
+RichardsModel <: AbstractSoilModel <: AbstractImExModel <: AbstractModel [runnable w/o LandModel wrapper as well]
 
-PlantHydraulicsModel <: AbstractVegetationModel <: AbstractModel  [runnable w/o LandModel wrapper as well]
+PlantHydraulicsModel <: AbstractVegetationModel <: AbstractExpModel <: AbstractModel  [runnable w/o LandModel wrapper as well]
 
-PondModel <: AbstractSurfaceWaterModel  <: AbstractModel  [runnable w/o LandModel wrapper as well]
+PondModel <: AbstractSurfaceWaterModel  <: AbstractExpModel <: AbstractModel  [runnable w/o LandModel wrapper as well]
 
 Combined Models:
 
-SoilPlantHydrologyModel <: AbstractModel (constructs the individual ComponentModels based on arguments)
+SoilPlantHydrologyModel <: AbstractLandModel <: AbstractModel (constructs the individual ComponentModels based on arguments)
 
 |||
 |---------------------:|:----------------------------------------------|

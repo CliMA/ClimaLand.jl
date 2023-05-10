@@ -49,12 +49,12 @@ FT = Float64
 
     # specify ICs
     Y.soil.ϑ_l .= FT(0.24)
-    soil_ode! = make_ode_function(soil)
+    soil_exp_tendency! = make_exp_tendency(soil)
 
     t0 = FT(0)
     tf = FT(1e6)
     dt = FT(0.25)
-    prob = ODEProblem(soil_ode!, Y, (t0, tf), p)
+    prob = ODEProblem(soil_exp_tendency!, Y, (t0, tf), p)
     sol = solve(prob, RK4(); dt = dt, saveat = 10000)
 
     N = length(sol.t)
@@ -112,12 +112,12 @@ end
 
     # specify ICs
     Y.soil.ϑ_l .= FT(0.1)
-    soil_ode! = make_ode_function(soil)
+    soil_exp_tendency! = make_exp_tendency(soil)
 
     t0 = FT(0)
     tf = FT(60 * 60 * 0.8)
     dt = FT(0.25)
-    prob = ODEProblem(soil_ode!, Y, (t0, tf), p)
+    prob = ODEProblem(soil_exp_tendency!, Y, (t0, tf), p)
     sol = solve(prob, RK4(); dt = dt, saveat = 60 * dt)
 
     N = length(sol.t)

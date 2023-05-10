@@ -7,8 +7,7 @@ using DocStringExtensions
 import ClimaLSM:
     initialize_prognostic,
     make_update_aux,
-    make_rhs,
-    make_ode_function,
+    make_compute_exp_tendency,
     prognostic_vars,
     prognostic_types,
     auxiliary_vars,
@@ -44,9 +43,9 @@ ClimaLSM.name(::AbstractPlantHydraulicsModel) = :hydraulics
 
 An abstract type for types representing different models of
 water exchange between soil and plants.
-Currently, prescribed soil matric potential and prescribed flux models 
-are supported for standalone plant hydraulics. 
-Use within an LSM requires types defined within ClimaLSM, 
+Currently, prescribed soil matric potential and prescribed flux models
+are supported for standalone plant hydraulics.
+Use within an LSM requires types defined within ClimaLSM,
 and include a prognostic soil pressure for models with
 both soil and roots.
 """
@@ -92,10 +91,10 @@ end
 Defines, and constructs instances of, the PlantHydraulicsModel type, which is used
 for simulation flux of water to/from soil, along roots of different depths,
 along a stem, to a leaf, and ultimately being lost from the system by
-transpiration. 
+transpiration.
 
 This model can be used in standalone mode by prescribing the transpiration rate
-and soil matric potential at the root tips or flux in the roots, or with a 
+and soil matric potential at the root tips or flux in the roots, or with a
 dynamic soil model using `ClimaLSM`.
 $(DocStringExtensions.FIELDS)
 """
@@ -161,7 +160,7 @@ end
 """
     prognostic_vars(model::PlantHydraulicsModel)
 
-A function which returns the names of the prognostic 
+A function which returns the names of the prognostic
 variables of the `PlantHydraulicsModel`.
 """
 prognostic_vars(model::PlantHydraulicsModel) = (:ϑ_l,)
@@ -169,8 +168,8 @@ prognostic_vars(model::PlantHydraulicsModel) = (:ϑ_l,)
 """
     auxiliary_vars(model::PlantHydraulicsModel)
 
-A function which returns the names of the auxiliary 
-variables of the `PlantHydraulicsModel`, 
+A function which returns the names of the auxiliary
+variables of the `PlantHydraulicsModel`,
 the water potential (m) and volume flux*cross section `fa` (1/s),
 where the cross section can be represented by an area index.
 """
@@ -179,7 +178,7 @@ auxiliary_vars(model::PlantHydraulicsModel) = (:ψ, :fa)
 """
     Base.zero(x::Type{NTuple{N, FT}}) where {N, FT}
 
-A `zero` method for NTuples of floats. 
+A `zero` method for NTuples of floats.
 
 Used when initializing the state vector, when it consists
 of an NTuple at each coordinate point.
@@ -218,7 +217,7 @@ Base.@propagate_inbounds Base.setindex!(
 ) = Base.setindex!(ClimaCore.Fields.field_values(field), v, i.i)
 
 """
-    ClimaLSM.prognostic_types(model::PlantHydraulicsModel{FT}) where {FT} 
+    ClimaLSM.prognostic_types(model::PlantHydraulicsModel{FT}) where {FT}
 
 Defines the prognostic types for the PlantHydraulicsModel.
 """
@@ -226,7 +225,7 @@ ClimaLSM.prognostic_types(model::PlantHydraulicsModel{FT}) where {FT} =
     (NTuple{model.n_stem + model.n_leaf, FT},)
 
 """
-    ClimaLSM.auxiliary_types(model::PlantHydraulicsModel{FT}) where {FT} 
+    ClimaLSM.auxiliary_types(model::PlantHydraulicsModel{FT}) where {FT}
 
 Defines the auxiliary types for the PlantHydraulicsModel.
 """
@@ -248,15 +247,15 @@ ClimaLSM.auxiliary_types(model::PlantHydraulicsModel{FT}) where {FT} = (
         S_s,
         K_sat1,
         K_sat2,
-) where {FT} 
+) where {FT}
 
 Computes the water flux given 1) the absolute pressure (represented by corresponding
-water column height) at two points located at z1 and z2, 
-corresponding here to the middle of each compartment 
-(for eg. a stem or leaf compartment), and 2) the maximum conductivity along 
-the flow path between these two points, assuming an arithmetic 
-mean for mean K_sat between the two points (Bonan, 2019; Zhu, 2008) 
-to take into account the change in K_sat halfway 
+water column height) at two points located at z1 and z2,
+corresponding here to the middle of each compartment
+(for eg. a stem or leaf compartment), and 2) the maximum conductivity along
+the flow path between these two points, assuming an arithmetic
+mean for mean K_sat between the two points (Bonan, 2019; Zhu, 2008)
+to take into account the change in K_sat halfway
 between z1 and z2. The expression is given in full in the Clima docs
 in section 6.4 "Bulk plant hydraulics model".
 """
@@ -290,7 +289,7 @@ end
 
 """
     augmented_liquid_fraction(
-        ν::FT, 
+        ν::FT,
         S_l::FT) where {FT}
 
 Computes the augmented liquid fraction from porosity and
@@ -307,7 +306,7 @@ end
 
 """
     effective_saturation(
-        ν::FT, 
+        ν::FT,
         ϑ_l::FT) where {FT}
 
 Computes the effective saturation (volumetric water content relative to
@@ -328,11 +327,11 @@ end
         ν::FT,
         S_s::FT) where {FT}
 
-Converts augmented liquid fraction (ϑ_l) to effective saturation 
+Converts augmented liquid fraction (ϑ_l) to effective saturation
 (S_l), and then effective saturation to absolute pressure, represented by
 the height (ψ) of the water column that would give rise to this pressure.
 Pressure for both the unsaturated and saturated regimes are calculated.
-Units are in meters. 
+Units are in meters.
 """
 function water_retention_curve(
     vg_α::FT,
@@ -382,15 +381,15 @@ function inverse_water_retention_curve(
 end
 
 """
-    make_rhs(model::PlantHydraulicsModel, _)
+    make_compute_exp_tendency(model::PlantHydraulicsModel, _)
 
-A function which creates the rhs! function for the PlantHydraulicsModel.
-The rhs! function must comply with a rhs function of OrdinaryDiffEq.jl.
+A function which creates the compute_exp_tendency! function for the PlantHydraulicsModel.
+The compute_exp_tendency! function must comply with a rhs function of OrdinaryDiffEq.jl.
 
 Below, `fa` denotes a flux multiplied by the relevant cross section (per unit area ground).
 """
-function make_rhs(model::PlantHydraulicsModel, _)
-    function rhs!(dY, Y, p, t)
+function make_compute_exp_tendency(model::PlantHydraulicsModel, _)
+    function compute_exp_tendency!(dY, Y, p, t)
         (; vg_α, vg_n, vg_m, S_s, ν, K_sat, area_index) = model.parameters
         n_stem = model.n_stem
         n_leaf = model.n_leaf
@@ -465,7 +464,7 @@ function make_rhs(model::PlantHydraulicsModel, _)
             end
         end
     end
-    return rhs!
+    return compute_exp_tendency!
 end
 
 
@@ -578,7 +577,7 @@ struct DiagnosticTranspiration{FT} <: AbstractTranspiration{FT} end
     transpiration(transpiration::DiagnosticTranspiration, Y, p, t)
 
 Returns the transpiration computed diagnostically using local conditions.
-In this case, it just returns the value which was computed and stored in 
+In this case, it just returns the value which was computed and stored in
 the `aux` state during the update_aux! step.
 """
 function transpiration(transpiration::DiagnosticTranspiration, Y, p, t)

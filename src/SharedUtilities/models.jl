@@ -1,6 +1,10 @@
 export AbstractModel,
-    make_rhs,
-    make_ode_function,
+    AbstractImExModel,
+    AbstractExpModel,
+    make_imp_tendency,
+    make_exp_tendency,
+    make_compute_imp_tendency,
+    make_compute_exp_tendency,
     make_update_aux,
     initialize_prognostic,
     initialize_auxiliary,
@@ -21,6 +25,25 @@ import .Domains: coordinates
 An abstract type for all models.
 """
 abstract type AbstractModel{FT <: AbstractFloat} end
+
+"""
+    AbstractImExModel{FT} <: AbstractModel{FT}
+
+An abstract type for models which must be treated implicitly (and which may
+also have tendency terms that can be treated explicitly).
+This inherits all the default function definitions from AbstractModel, as well
+as `make_imp_tendency` and `make_compute_imp_tendency` defaults.
+"""
+abstract type AbstractImExModel{FT} <: AbstractModel{FT} end
+
+"""
+    AbstractExpModel{FT} <: AbstractModel{FT}
+
+An abstract type for models which must be treated explicitly.
+This inherits all the default function definitions from AbstractModel, as well
+as a `make_imp_tendency` default.
+"""
+abstract type AbstractExpModel{FT} <: AbstractModel{FT} end
 
 """
     name(model::AbstractModel)
@@ -44,7 +67,7 @@ Returns the prognostic variable types for the model in the form of a tuple.
 
 Types provided must have `zero(T::DataType)` defined. Common examples
  include
-- Float64, Float32 for scalar variables (a scalar value at each 
+- Float64, Float32 for scalar variables (a scalar value at each
 coordinate point)
 - SVector{k,Float64} for a mutable but statically sized array of
  length `k` at each coordinate point.
@@ -67,7 +90,7 @@ Returns the auxiliary variable types for the model in the form of a tuple.
 
 Types provided must have `zero(T::DataType)` defined. Common examples
  include
-- Float64, Float32 for scalar variables (a scalar value at each 
+- Float64, Float32 for scalar variables (a scalar value at each
 coordinate point)
 - SVector{k,Float64} for a mutable but statically sized array of
  length `k` at each coordinate point.
@@ -76,18 +99,6 @@ coordinate point)
 Here, the coordinate points are those returned by coordinates(model).
 """
 auxiliary_types(m::AbstractModel) = ()
-
-"""
-    make_rhs(model::AbstractModel)
-
-Return a `rhs!` function that updates state variables.
-
-`rhs!` should be compatible with OrdinaryDiffEq.jl solvers.
-"""
-function make_rhs(model::AbstractModel)
-    function rhs!(dY, Y, p, t) end
-    return rhs!
-end
 
 """
     make_update_aux(model::AbstractModel)
@@ -100,21 +111,75 @@ function make_update_aux(model::AbstractModel)
 end
 
 """
-    make_ode_function(model::AbstractModel)
+    make_imp_tendency(model::AbstractImExModel)
 
-Returns an `ode_function` that updates auxiliary variables and
-updates the prognostic state.
+Returns an `imp_tendency` that updates auxiliary variables and
+updates the prognostic state of variables that are stepped implicitly.
 
-`ode_function!` should be compatible with OrdinaryDiffEq.jl solvers.
+`compute_imp_tendency!` should be compatible with OrdinaryDiffEq.jl solvers.
 """
-function make_ode_function(model::AbstractModel)
-    rhs! = make_rhs(model)
+function make_imp_tendency(model::AbstractImExModel)
+    compute_imp_tendency! = make_compute_imp_tendency(model)
     update_aux! = make_update_aux(model)
-    function ode_function!(dY, Y, p, t)
+    function imp_tendency!(dY, Y, p, t)
         update_aux!(p, Y, t)
-        rhs!(dY, Y, p, t)
+        compute_imp_tendency!(dY, Y, p, t)
     end
-    return ode_function!
+    return imp_tendency!
+end
+
+"""
+    make_imp_tendency(model::AbstractModel)
+
+Returns an `imp_tendency` that does nothing. This model type is not
+stepped explicity.
+"""
+function make_imp_tendency(model::AbstractModel)
+    function imp_tendency!(dY, Y, p, t) end
+end
+
+"""
+    make_exp_tendency(model::AbstractModel)
+
+Returns an `exp_tendency` that updates auxiliary variables and
+updates the prognostic state of variables that are stepped explicitly.
+
+`compute_exp_tendency!` should be compatible with OrdinaryDiffEq.jl solvers.
+"""
+function make_exp_tendency(model::AbstractModel)
+    compute_exp_tendency! = make_compute_exp_tendency(model)
+    update_aux! = make_update_aux(model)
+    function exp_tendency!(dY, Y, p, t)
+        update_aux!(p, Y, t)
+        compute_exp_tendency!(dY, Y, p, t)
+    end
+    return exp_tendency!
+end
+
+"""
+    make_compute_imp_tendency(model::AbstractModel)
+
+Return a `compute_imp_tendency!` function that updates state variables
+that we will be stepped implicitly.
+
+`compute_imp_tendency!` should be compatible with OrdinaryDiffEq.jl solvers.
+"""
+function make_compute_imp_tendency(model::AbstractModel)
+    function compute_imp_tendency!(dY, Y, p, t) end
+    return compute_imp_tendency!
+end
+
+"""
+    make_compute_exp_tendency(model::AbstractModel)
+
+Return a `compute_exp_tendency!` function that updates state variables
+that we will be stepped explicitly.
+
+`compute_exp_tendency!` should be compatible with OrdinaryDiffEq.jl solvers.
+"""
+function make_compute_exp_tendency(model::AbstractModel)
+    function compute_exp_tendency!(dY, Y, p, t) end
+    return compute_exp_tendency!
 end
 
 """
@@ -124,13 +189,13 @@ Returns the set_initial_aux_state! function, which updates the auxiliary
 state `p` in place with the initial values corresponding to Y(t=t0) = Y0.
 
 In principle, this function is not needed, because in the very first evaluation
-of the `ode_function`, at t=t0, the auxiliary state is updated using the initial
-conditions for Y=Y0. However,
+of either `explicit_tendency` or `implicit_tendency`, at t=t0, the auxiliary
+state is updated using the initial conditions for Y=Y0. However,
 without setting the initial `p` state prior to running the simulation,
- the value of `p` in the saved output at t=t0 will be unset.
+the value of `p` in the saved output at t=t0 will be unset.
 
 Furthermore, specific methods of this function may be useful for models
-which store time indepedent spatially varying parameter fields in 
+which store time indepedent spatially varying parameter fields in
 the auxiliary state. In this case, `update_aux!` does not need to do
 anything, but they do need to be set with the initial (constant) values
 before the simulation can be carried out.
@@ -143,12 +208,11 @@ function make_set_initial_aux_state(model::AbstractModel)
     return set_initial_aux_state!
 end
 
-
 """
     initialize_prognostic(model::AbstractModel, state::Union{ClimaCore.Fields.Field, Vector{FT}})
 
 Returns a FieldVector of prognostic variables for `model` with the required
-structure, with values equal to `similar(state)`. This assumes that all 
+structure, with values equal to `similar(state)`. This assumes that all
 prognostic variables are defined over the entire domain,
 and that all prognostic variables have the same dimension and type.
 
@@ -216,9 +280,9 @@ Domains.coordinates(model::AbstractModel) = Domains.coordinates(model.domain)
 """
     initialize(model::AbstractModel)
 
-Creates the prognostic and auxiliary states structures, but with unset 
+Creates the prognostic and auxiliary states structures, but with unset
 values; constructs and returns the coordinates for the `model` domain.
-We may need to consider this default more as we add diverse components and 
+We may need to consider this default more as we add diverse components and
 `Simulations`.
 """
 function initialize(model::AbstractModel{FT}) where {FT}
