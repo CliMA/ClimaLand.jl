@@ -19,5 +19,6 @@ Thermodynamics = "b60c26fb-14c3-4610-9d3e-2d17fe7ff00c"
 
 [compat]
 ClimaCore = "0.10"
+Insolation = "0.3, 0.4"
 SciMLBase = "<1.51"
 julia = "1.8"
