@@ -114,7 +114,15 @@ function zenith_angle(
 ) where {FT}
     # This should be time in UTC
     dt = DateTime("2004-01-01-06", "yyyy-mm-dd-HH") + Dates.Second(t)
-    FT(instantaneous_zenith_angle(dt, longitude, latitude, insol_params)[1])
+    FT(
+        instantaneous_zenith_angle(
+            dt,
+            Insolation.OrbitalData(),
+            longitude,
+            latitude,
+            insol_params,
+        )[1],
+    )
 end
 
 
