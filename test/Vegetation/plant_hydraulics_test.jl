@@ -8,6 +8,7 @@ using ClimaLSM.Domains: Point, Plane
 using ClimaLSM.Canopy
 using ClimaLSM.Canopy.PlantHydraulics
 import ClimaLSM
+using Insolation
 include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
 
 FT = Float64
