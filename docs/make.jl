@@ -61,7 +61,7 @@ pmap(t -> generate_tutorial(tutorials_dir, t), tutorials_jl)
 ext_jl2md(x) = joinpath(basename(GENERATED_DIR), replace(x, ".jl" => ".md"))
 tutorials = transform_second(x -> ext_jl2md(x), tutorials)
 include("list_of_apis.jl")
-incluse("list_dynamicdocs.jl")
+include("list_dynamicdocs.jl")
 pages = Any[
     "Home" => "index.md",
     "APIs" => apis,
