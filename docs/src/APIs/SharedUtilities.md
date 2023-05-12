@@ -48,6 +48,10 @@ ClimaLSM.BottomBoundary
 ClimaLSM.boundary_flux
 ClimaLSM.diffusive_flux
 ClimaLSM.get_Δz
+ClimaLSM.make_tendency_jacobian
+ClimaLSM.make_update_jacobian
+ClimaLSM.∂tendencyBC∂Y
+ClimaLSM.AbstractTridiagonalW
 ```
 
 ## Drivers

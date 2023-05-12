@@ -87,7 +87,7 @@ This has been written so as to work with Differential Equations.jl.
 """
 function ClimaLSM.make_rhs(model::RichardsModel)
     function rhs!(dY, Y, p, t)
-        @unpack ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r = model.parameters
+        (; ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r) = model.parameters
         z = ClimaCore.Fields.coordinate_field(model.domain.space).z
         Δz_top, Δz_bottom = get_Δz(z)
 
@@ -204,7 +204,7 @@ This has been written so as to work with Differential Equations.jl.
 """
 function ClimaLSM.make_update_aux(model::RichardsModel)
     function update_aux!(p, Y, t)
-        @unpack ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r = model.parameters
+        (; ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r) = model.parameters
         @. p.soil.K = hydraulic_conductivity(
             K_sat,
             vg_m,
@@ -213,4 +213,158 @@ function ClimaLSM.make_update_aux(model::RichardsModel)
         @. p.soil.ψ = pressure_head(vg_α, vg_n, vg_m, θ_r, Y.soil.ϑ_l, ν, S_s)
     end
     return update_aux!
+end
+
+
+"""
+    RichardsTridiagonalW{R, J, W, T} <: ClimaLSM.AbstractTridiagonalW
+
+A struct containing the necessary information for constructing a tridiagonal
+Jacobian matrix (`W`) for solving Richards equation, treating only the vertical
+diffusion term implicitly.
+
+Note that the diagonal, upper diagonal, and lower diagonal entry values
+are stored in this struct and updated in place.
+$(DocStringExtensions.FIELDS)
+"""
+struct RichardsTridiagonalW{R, J, JA, T, A} <: ClimaLSM.AbstractTridiagonalW
+    "Reference to dtγ, which is specified by the ODE solver"
+    dtγ_ref::R
+    "Diagonal entries of the Jacobian stored as a ClimaCore.Fields.Field"
+    ∂ϑₜ∂ϑ::J
+    "Array of tridiagonal matrices containing W for each column"
+    W_column_arrays::JA
+    "An allocated cache used to evaluate ldiv!"
+    temp1::T
+    "An allocated cache used to evaluate ldiv!"
+    temp2::T
+    "A flag indicating whether this struct is used to compute Wfact_t or Wfact"
+    transform::Bool
+    "A pre-allocated cache storing ones on the face space"
+    ones_face_space::A
+end
+
+"""
+    RichardsTridiagonalW(
+        Y::ClimaCore.Fields.FieldVector;
+        transform::Bool = false
+)
+
+Outer constructor for the RichardsTridiagonalW Jacobian
+matrix struct. 
+
+Initializes all variables to zeros.
+"""
+function RichardsTridiagonalW(
+    Y::ClimaCore.Fields.FieldVector;
+    transform::Bool = false,
+)
+    FT = eltype(Y.soil.ϑ_l)
+    center_space = axes(Y.soil.ϑ_l)
+    N = Spaces.nlevels(center_space)
+
+    tridiag_type = Operators.StencilCoefs{-1, 1, NTuple{3, FT}}
+    ∂ϑₜ∂ϑ = Fields.Field(tridiag_type, center_space)
+
+    ∂ϑₜ∂ϑ.coefs[1] .= FT(0)
+    ∂ϑₜ∂ϑ.coefs[2] .= FT(0)
+    ∂ϑₜ∂ϑ.coefs[3] .= FT(0)
+
+    W_column_arrays = [
+        LinearAlgebra.Tridiagonal(
+            zeros(FT, N - 1) .+ FT(0),
+            zeros(FT, N) .+ FT(0),
+            zeros(FT, N - 1) .+ FT(0),
+        ) for _ in 1:Threads.nthreads()
+    ]
+    dtγ_ref = Ref(FT(0))
+    temp1 = similar(Y.soil.ϑ_l)
+    temp1 .= FT(0)
+    temp2 = similar(Y.soil.ϑ_l)
+    temp2 .= FT(0)
+
+    face_space = ClimaLSM.Domains.obtain_face_space(center_space)
+    ones_face_space = ones(face_space)
+
+    return RichardsTridiagonalW(
+        dtγ_ref,
+        ∂ϑₜ∂ϑ,
+        W_column_arrays,
+        temp1,
+        temp2,
+        transform,
+        ones_face_space,
+    )
+end
+
+
+"""
+    ClimaLSM.make_update_jacobian(model::RichardsModel)
+
+Creates and returns the update_jacobian! function for RichardsModel.
+
+Using this Jacobian with a backwards Euler timestepper is equivalent
+to using the modified Picard scheme of Celia et al. (1990).
+"""
+function ClimaLSM.make_update_jacobian(model::RichardsModel)
+    function update_jacobian!(W::RichardsTridiagonalW, Y, p, dtγ, t)
+        FT = eltype(Y.soil.ϑ_l)
+        (; dtγ_ref, ∂ϑₜ∂ϑ) = W
+        dtγ_ref[] = dtγ
+        (; ν, vg_α, vg_n, vg_m, S_s, θ_r) = model.parameters
+
+        divf2c_op = Operators.DivergenceF2C(
+            top = Operators.SetValue(Geometry.WVector.(FT(0))),
+            bottom = Operators.SetValue(Geometry.WVector.(FT(0))),
+        )
+        divf2c_stencil = Operators.Operator2Stencil(divf2c_op)
+        gradc2f_op = Operators.GradientC2F(
+            top = Operators.SetGradient(Geometry.WVector.(FT(0))),
+            bottom = Operators.SetGradient(Geometry.WVector.(FT(0))),
+        )
+        gradc2f_stencil = Operators.Operator2Stencil(gradc2f_op)
+        interpc2f_op = Operators.InterpolateC2F(
+            bottom = Operators.Extrapolate(),
+            top = Operators.Extrapolate(),
+        )
+        compose = Operators.ComposeStencils()
+
+        @. ∂ϑₜ∂ϑ = compose(
+            divf2c_stencil(Geometry.Covariant3Vector(W.ones_face_space)),
+            (
+                interpc2f_op(p.soil.K) * ClimaLSM.to_scalar_coefs(
+                    gradc2f_stencil(
+                        ClimaLSM.Soil.dψdϑ(
+                            Y.soil.ϑ_l,
+                            ν,
+                            θ_r,
+                            vg_α,
+                            vg_n,
+                            vg_m,
+                            S_s,
+                        ),
+                    ),
+                )
+            ),
+        )
+        # Hardcoded for single column: FIX!
+        z = Fields.coordinate_field(axes(Y.soil.ϑ_l)).z
+        Δz_top, Δz_bottom = get_Δz(z)
+        ∂T_bc∂YN = ClimaLSM.∂tendencyBC∂Y(
+            model,
+            model.boundary_conditions.top.water,
+            ClimaLSM.TopBoundary(),
+            Δz_top,
+            Y,
+            p,
+            t,
+        )
+        #TODO: allocate space in W? See how final implementation of stencils with boundaries works out
+        N = ClimaCore.Spaces.nlevels(axes(Y.soil.ϑ_l))
+        parent(ClimaCore.Fields.level(∂ϑₜ∂ϑ.coefs.:2, N)) .=
+            parent(ClimaCore.Fields.level(∂ϑₜ∂ϑ.coefs.:2, N)) .+
+            parent(∂T_bc∂YN.soil.ϑ_l)
+
+    end
+    return update_jacobian!
 end

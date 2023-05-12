@@ -159,7 +159,7 @@ function ClimaLSM.boundary_flux(
     ψ_c = Fields.level(p.soil.ψ, p_len)
 
     # Calculate pressure head using boundary condition
-    @unpack vg_α, vg_n, vg_m, θ_r, ν, S_s = params
+    (; vg_α, vg_n, vg_m, θ_r, ν, S_s) = params
     θ_bc = rre_bc.bc(p, t)
     ψ_bc = @. pressure_head(vg_α, vg_n, vg_m, θ_r, θ_bc, ν, S_s)
 
@@ -186,7 +186,7 @@ function ClimaLSM.boundary_flux(
     ψ_c = Fields.level(p.soil.ψ, 1)
 
     # Calculate pressure head using boundary condition
-    @unpack vg_α, vg_n, vg_m, θ_r, ν, S_s = params
+    (; vg_α, vg_n, vg_m, θ_r, ν, S_s) = params
     θ_bc = rre_bc.bc(p, t)
     ψ_bc = @. pressure_head(vg_α, vg_n, vg_m, θ_r, θ_bc, ν, S_s)
 
@@ -269,4 +269,86 @@ function soil_boundary_fluxes(bc::NamedTuple, boundary, model, Y, Δz, p, t)
     params = model.parameters
     return ClimaLSM.boundary_flux(bc.water, boundary, Δz, p, t, params),
     ClimaLSM.boundary_flux(bc.heat, boundary, Δz, p, t, params)
+end
+
+"""
+    ClimaLSM.∂tendencyBC∂Y(
+        model::RichardsModel,
+        ::MoistureStateBC,
+        boundary::ClimaLSM.TopBoundary,
+        Δz,
+        Y,
+        p,
+        t,
+)
+
+Computes and returns the derivative of the part of the
+implicit tendency in the top layer, due to the boundary
+condition, with respect to the state variable in the top layer.
+
+For a diffusion equation like Richards equation with a single state
+variable, this is given by
+`∂T_N∂Y_N = [-∂/∂z(∂F_bc/∂Y_N)]_N`, where `N` indicates the top 
+layer cell index.
+"""
+function ClimaLSM.∂tendencyBC∂Y(
+    model::RichardsModel,
+    ::MoistureStateBC,
+    boundary::ClimaLSM.TopBoundary,
+    Δz,
+    Y,
+    p,
+    t,
+)
+    (; ν, vg_α, vg_n, vg_m, S_s, θ_r) = model.parameters
+    fs = ClimaLSM.Domains.obtain_face_space(model.domain.space)
+    face_len = ClimaCore.Utilities.PlusHalf(ClimaCore.Spaces.nlevels(fs) - 1)
+    interpc2f_op = Operators.InterpolateC2F(
+        bottom = Operators.Extrapolate(),
+        top = Operators.Extrapolate(),
+    )
+    K = Fields.level(interpc2f_op.(p.soil.K), face_len)
+    ϑ_l = Fields.level(interpc2f_op.(Y.soil.ϑ_l), face_len)
+    return ClimaCore.Fields.FieldVector(;
+        :soil => (;
+            :ϑ_l => @. -K / Δz * dψdϑ(ϑ_l, ν, θ_r, vg_α, vg_n, vg_m, S_s) /
+               (2 * Δz)
+        ),
+    )
+end
+
+"""
+    ClimaLSM.∂tendencyBC∂Y(
+        ::AbstractSoilModel,
+        ::AbstractSoilBC,
+        boundary::ClimaLSM.TopBoundary,
+        Δz,
+        Y,
+        p,
+        t,
+)
+
+A default method which computes and returns the zero for the 
+derivative of the part of the
+implicit tendency in the top layer, due to the boundary
+condition, with respect to the state variable in the top layer.
+
+For a diffusion equation like Richards equation with a single state
+variable, this is given by
+`∂T_N∂Y_N = [-∂/∂z(∂F_bc/∂Y_N)]_N`, where `N` indicates the top 
+layer cell index.
+
+If `F_bc` can be approximated as independent of `Y_N`, the derivative 
+is zero.
+"""
+function ClimaLSM.∂tendencyBC∂Y(
+    ::AbstractSoilModel,
+    ::AbstractSoilBC,
+    boundary::ClimaLSM.TopBoundary,
+    Δz,
+    Y,
+    p,
+    t,
+)
+    return ClimaCore.Fields.FieldVector(; :soil => (; :ϑ_l => zeros(axes(Δz))))
 end
