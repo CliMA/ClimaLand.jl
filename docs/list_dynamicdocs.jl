@@ -1,7 +1,3 @@
 dynamicdocs = [
-                "test" => "dynamicdocs/test.md"
-
-
-
-
+                "test" => "dynamicdocs/test.md",
               ]
