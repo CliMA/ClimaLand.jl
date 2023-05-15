@@ -1,6 +1,7 @@
 using Test
 
 using Statistics
+using Insolation
 using ClimaCore
 using ClimaLSM.Bucket:
     BucketModel,
@@ -60,11 +61,11 @@ orbital_data = Insolation.OrbitalData()
 for bucket_domain in bucket_domains
 
     @testset "Conservation of water and energy" begin
-        "Radiation"
+        # Radiation
         SW_d = (t) -> eltype(t)(20.0)
         LW_d = (t) -> eltype(t)(20.0)
         bucket_rad = PrescribedRadiativeFluxes(FT, SW_d, LW_d; orbital_data)
-        "Atmos"
+        # Atmos
         precip = (t) -> eltype(t)(0) # no precipitation
         T_atmos = (t) -> eltype(t)(280.0)
         u_atmos = (t) -> eltype(t)(10.0)

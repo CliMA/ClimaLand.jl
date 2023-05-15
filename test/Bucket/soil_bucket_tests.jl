@@ -1,6 +1,7 @@
 using Test
 
 using Statistics
+using Insolation
 using ClimaCore
 import CLIMAParameters as CP
 using ClimaLSM.Bucket: BucketModel, BucketModelParameters, BulkAlbedoFunction
@@ -121,11 +122,11 @@ for bucket_domain in bucket_domains
 
 
     @testset "Energy + Moisture Conservation" begin
-        "Radiation"
+        # Radiation
         SW_d = (t) -> eltype(t)(10.0)
         LW_d = (t) -> eltype(t)(300.0)
         bucket_rad = PrescribedRadiativeFluxes(FT, SW_d, LW_d; orbital_data)
-        "Atmos"
+        # Atmos
         precip = (t) -> eltype(t)(1e-6)
         T_atmos = (t) -> eltype(t)(298.0)
         u_atmos = (t) -> eltype(t)(4.0)

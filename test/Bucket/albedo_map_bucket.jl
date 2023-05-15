@@ -2,6 +2,7 @@ using Test
 
 using ClimaCore
 using ClimaComms
+using Insolation
 import CLIMAParameters as CP
 using ClimaLSM.Regridder: MapInfo, regrid_netcdf_to_field
 using ClimaLSM.Bucket:

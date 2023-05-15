@@ -2,6 +2,7 @@ using Test
 using ClimaCore
 import CLIMAParameters as CP
 using Thermodynamics
+using Insolation
 using ClimaLSM
 using ClimaLSM.Soil
 import ClimaLSM
