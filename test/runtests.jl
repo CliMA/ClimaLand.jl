@@ -1,7 +1,4 @@
-using Insolation
-ins_src = pkgdir(Insolation)
-print(join(readlines(joinpath(pkgdir(Insolation), "src", "Insolation.jl")), "\n"))
-println("-------")
+
 include("./Snow/parameterizations.jl")
 include("./implicit_timestepping/richards_model.jl")
 include("./Vegetation/test_bigleaf_parameterizations.jl")

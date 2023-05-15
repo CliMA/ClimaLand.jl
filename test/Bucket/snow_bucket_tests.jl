@@ -56,13 +56,14 @@ bucket_domains = [
     ),
 ]
 init_temp(z::FT, value::FT) where {FT} = FT(value)
+orbital_data = Insolation.OrbitalData()
 for bucket_domain in bucket_domains
 
     @testset "Conservation of water and energy" begin
         "Radiation"
         SW_d = (t) -> eltype(t)(20.0)
         LW_d = (t) -> eltype(t)(20.0)
-        bucket_rad = PrescribedRadiativeFluxes(FT, SW_d, LW_d)
+        bucket_rad = PrescribedRadiativeFluxes(FT, SW_d, LW_d; orbital_data)
         "Atmos"
         precip = (t) -> eltype(t)(0) # no precipitation
         T_atmos = (t) -> eltype(t)(280.0)

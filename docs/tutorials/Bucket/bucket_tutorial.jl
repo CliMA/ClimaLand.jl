@@ -216,7 +216,7 @@ bucket_domain =
 # Here we define the model drivers, starting with downward radiation.
 SW_d = (t) -> eltype(t)(300);
 LW_d = (t) -> eltype(t)(300);
-bucket_rad = PrescribedRadiativeFluxes(FT, SW_d, LW_d);
+bucket_rad = PrescribedRadiativeFluxes(FT, SW_d, LW_d; orbital_data=Insolation.OrbitalData());
 
 # Prescribed atmospheric variables
 
