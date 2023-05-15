@@ -234,7 +234,7 @@ function init_soil!(Y, z, params)
 
     T = @.(T_min + (T_max - T_min) * exp(-(z - zmax) / (zmin - zmax) * c))
 
-    θ_l = Soil.volumetric_liquid_fraction.(Y.soil.ϑ_l, ν)
+    θ_l = Soil.volumetric_liquid_fraction.(Y.soil.ϑ_l, ν, θ_r)
     ρc_s = Soil.volumetric_heat_capacity.(θ_l, Y.soil.θ_i, Ref(params))
     Y.soil.ρe_int .=
         Soil.volumetric_internal_energy.(Y.soil.θ_i, ρc_s, T, Ref(params))

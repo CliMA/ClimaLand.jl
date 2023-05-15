@@ -75,8 +75,7 @@ FT = Float64
     @test sqrt.(mean((bonan_moisture .- ϑ_l) .^ 2.0)) < FT(1e-3)
     plot(ϑ_l, parent(z), label = "Clima")
     plot!(bonan_moisture, bonan_z, label = "Bonan's Matlab code")
-    savefig("./experiments/Standalone/Soil/clay_comparison_bonan_matlab.png")
-
+    savefig("./experiments/Standalone/Soil/comparison_clay_bonan_matlab.png")
 end
 
 
@@ -139,6 +138,6 @@ end
     @test sqrt.(mean((bonan_moisture .- ϑ_l) .^ 2.0)) < FT(1e-3)
     plot(ϑ_l, parent(z), label = "Clima")
     plot!(bonan_moisture, bonan_z, label = "Bonan's Matlab code")
-    savefig("./experiments/Standalone/Soil/sand_comparison_bonan_matlab.png")
+    savefig("./experiments/Standalone/Soil/comparison_sand_bonan_matlab.png")
 
 end

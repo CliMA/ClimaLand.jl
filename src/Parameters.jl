@@ -16,6 +16,7 @@ Base.@kwdef struct LSMParameters{FT, TP, SFP, IP} <: ALSMP
     T_freeze::FT
     grav::FT
     MSLP::FT
+    D_vapor::FT
     gas_constant::FT
     molmass_water::FT
     h_Planck::FT
@@ -39,6 +40,7 @@ LH_s0(ps::ALSMP) = ps.LH_s0
 Stefan(ps::ALSMP) = ps.Stefan
 T_freeze(ps::ALSMP) = ps.T_freeze
 grav(ps::ALSMP) = ps.grav
+D_vapor(ps::ALSMP) = ps.D_vapor
 gas_constant(ps::ALSMP) = ps.gas_constant
 molar_mass_water(ps::ALSMP) = ps.molmass_water
 planck_constant(ps::ALSMP) = ps.h_Planck

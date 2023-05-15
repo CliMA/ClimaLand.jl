@@ -302,7 +302,7 @@ end
                    ν::FT,
                    κ_solid::FT,
                    κ_air::FT;
-                   a::FT = 0.053) where {FT}
+                   a = FT(0.053)) where {FT}
 
 Computes the thermal conductivity of dry soil according
 to the model of Balland and Arp.
