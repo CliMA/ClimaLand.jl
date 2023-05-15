@@ -1,5 +1,5 @@
 # Test with ClimaLSM Farquhar An
-# using local ClimaLSM 
+# using local ClimaLSM, or ClimaLSM#main 
 using ParamViz
 
 drivers = Drivers(("PAR (W m-2)", "T (K)"), (1, 1), ([-5, 5], [-5, 5]))
@@ -61,12 +61,10 @@ constants = Constants(("θs", # Sun zenith angle
                        0.209, # oi
                        0.015, # f
                       )) 
-
 inputs = Inputs(drivers, parameters, constants)
-
-output = Output("output", [-12, 12])
-
-function leaf_photosynthesis(PAR, T, β, LAI, θs, ld, p_leaf, Ω, )   
+output = Output("output", [0, 20])
+function leaf_photosynthesis(PAR, T, β, LAI, ca, VPD, θs, ld, p_leaf, Ω, Rstar25, ΔHΓstar,
+                             To, R, Vcmax25, ΔHJmax, θj, ϕ, ΔHVcmax, g1, Kc25, ΔHkc, Ko25, ΔHko, oi, f)   
 
   mechanism = Canopy.C3()
 
