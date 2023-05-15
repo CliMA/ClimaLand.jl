@@ -58,7 +58,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     # Radiation
     SW_d = (t) -> eltype(t)(500)
     LW_d = (t) -> eltype(t)(5.67e-8 * 280.0^4.0)
-    radiation = PrescribedRadiativeFluxes(FT, SW_d, LW_d)
+    radiation = PrescribedRadiativeFluxes(FT, SW_d, LW_d; orbital_data=Insolation.OrbitalData())
     # Atmos
     precip = (t) -> eltype(t)(1e-8)
     T_atmos = (t) -> eltype(t)(285.0)

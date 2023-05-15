@@ -45,7 +45,8 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     long = FT(-180) # degree
 
     function zenith_angle(
-        t::FT;
+        t::FT,
+        orbital_data;
         latitude = lat,
         longitude = long,
         insol_params = earth_param_set.insol_params,
@@ -53,7 +54,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
         return FT(
             instantaneous_zenith_angle(
                 DateTime(t),
-                Insolation.OrbitalData(),
+                orbital_data,
                 longitude,
                 latitude,
                 insol_params,
@@ -98,6 +99,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
         shortwave_radiation,
         longwave_radiation;
         θs = zenith_angle,
+        orbital_data = Insolation.OrbitalData(),
     )
 
     # Plant Hydraulics
