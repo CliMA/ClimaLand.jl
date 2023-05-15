@@ -1,4 +1,5 @@
 using SafeTestsets
+#! format: off
 @safetestset "parameterizations" begin @time include("./Snow/parameterizations.jl") end
 @safetestset "richards_model" begin @time include("./implicit_timestepping/richards_model.jl") end
 @safetestset "test_bigleaf_parameterizations" begin @time include("./Vegetation/test_bigleaf_parameterizations.jl") end
@@ -20,3 +21,4 @@ using SafeTestsets
 @safetestset "soiltest" begin @time include("./Soil/soiltest.jl") end
 @safetestset "soil_parameterizations" begin @time include("./Soil/soil_parameterizations.jl") end
 @safetestset "soil_bc" begin @time include("./Soil/soil_bc.jl") end
+#! format: on
