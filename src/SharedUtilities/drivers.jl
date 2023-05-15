@@ -240,13 +240,15 @@ end
 Container for the prescribed radiation functions needed to drive land models in standalone mode.
 $(DocStringExtensions.FIELDS)
 """
-struct PrescribedRadiativeFluxes{FT, SW, LW, T} <: AbstractRadiativeDrivers{FT}
+struct PrescribedRadiativeFluxes{FT, SW, LW, T, OD} <: AbstractRadiativeDrivers{FT}
     "Downward shortwave radiation function of time (W/m^2): positive indicates towards surface"
     SW_d::SW
     "Downward longwave radiation function of time (W/m^2): positive indicates towards surface"
     LW_d::LW
     "Sun zenith angle, in radians"
     θs::T
+    "Orbital Data for Insolation.jl"
+    orbital_data::OD
     function PrescribedRadiativeFluxes(FT, SW_d, LW_d; θs = nothing, orbital_data)
         args = (SW_d, LW_d, θs, orbital_data)
         @assert !isnothing(orbital_data)
