@@ -1,6 +1,6 @@
 name = "ClimaLSM"
 uuid = "7884a58f-fab6-4fd0-82bb-ecfedb2d8430"
-authors = ["Clima Land Team"]
+authors = ["CliMA Contributors <clima-software@caltech.edu>"]
 version = "0.2.3"
 
 [deps]
