@@ -247,8 +247,9 @@ struct PrescribedRadiativeFluxes{FT, SW, LW, T} <: AbstractRadiativeDrivers{FT}
     LW_d::LW
     "Sun zenith angle, in radians"
     θs::T
-    function PrescribedRadiativeFluxes(FT, SW_d, LW_d; θs = nothing)
-        args = (SW_d, LW_d, θs)
+    function PrescribedRadiativeFluxes(FT, SW_d, LW_d; θs = nothing, orbital_data)
+        args = (SW_d, LW_d, θs, orbital_data)
+        @assert !isnothing(orbital_data)
         return new{FT, typeof.(args)...}(args...)
     end
 end

@@ -342,7 +342,7 @@ function ClimaLSM.make_update_aux(
         energy_per_photon = h * c / λ_γ
         SW_d::FT = canopy.radiation.SW_d(t)
         LW_d::FT = canopy.radiation.LW_d(t)
-        θs::FT = canopy.radiation.θs(t)
+        θs::FT = canopy.radiation.θs(t, canopy.radiation.orbital_data)
         PAR = @.(SW_d / (energy_per_photon * N_a) / 2)
         K = extinction_coeff.(ld, θs)
         APAR .= plant_absorbed_ppfd.(PAR, ρ_leaf, K, LAI, Ω)

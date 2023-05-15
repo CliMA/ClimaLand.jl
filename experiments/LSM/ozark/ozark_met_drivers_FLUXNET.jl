@@ -107,7 +107,8 @@ lat = FT(38.7441) # degree
 long = FT(-92.2000) # degree
 
 function zenith_angle(
-    t::FT;
+    t::FT,
+    orbital_data;
     latitude = lat,
     longitude = long,
     insol_params = earth_param_set.insol_params,
@@ -117,7 +118,7 @@ function zenith_angle(
     FT(
         instantaneous_zenith_angle(
             dt,
-            Insolation.OrbitalData(),
+            orbital_data,
             longitude,
             latitude,
             insol_params,
@@ -131,6 +132,7 @@ radiation = ClimaLSM.PrescribedRadiativeFluxes(
     SW_IN_spline,
     LW_IN_spline;
     θs = zenith_angle,
+    orbital_data = Insolation.OrbitalData(),
 )
 
 transpiration = DiagnosticTranspiration{FT}()

@@ -49,7 +49,8 @@ domains = [
     long = FT(-180) # degree
 
     function zenith_angle(
-        t::FT;
+        t::FT,
+        orbital_data;
         latitude = lat,
         longitude = long,
         insol_params = earth_param_set.insol_params,
@@ -57,7 +58,7 @@ domains = [
         return FT(
             instantaneous_zenith_angle(
                 DateTime(t),
-                Insolation.OrbitalData(),
+                orbital_data,
                 longitude,
                 latitude,
                 insol_params,
@@ -102,6 +103,7 @@ domains = [
         shortwave_radiation,
         longwave_radiation;
         θs = zenith_angle,
+        orbital_data = Insolation.OrbitalData(),
     )
     for domain in domains
         # Parameters are the same as the ones used in the Ozark tutorial
