@@ -6,21 +6,21 @@ using ClimaLSM.Canopy
 
 FT = Float64
 
-drivers = Drivers(("PAR (W m-2)", "T (K)"), FT.((500, 283)), (FT.([0, 1500]), FT.([263, 303])))
+drivers = Drivers(("PAR (W m-2)", "T (K)"), FT.((100, 283)), (FT.([0, 300]), FT.([263, 303])))
 
-parameters = Parameters(("Moisture stress, β (unit)",
-                         "Leaf area index, LAI (m² m⁻²)",
-                         "CO2 concentration, ca (ppm)", # ppm?
+parameters = Parameters(("Moisture stress, B (unit)",
+                         "Leaf area index, LAI (m2 m-2)",
+                         "CO2 concentration, ca (ppm)", 
                          "Vapor pressure deficit, VPD (Pa)"),
                         (FT(1.0), # β
                          FT(1.0), # LAI
-                         FT(400), # ca
-                         FT(100), # VPD, Pa
+                         FT(400 * 1e-6), # ca, from μmol to mol
+                         FT(1000), # VPD, Pa
                          ),
                         (FT.([5, 15]), # β
                          FT.([5, 15]), # LAI
-                         FT.([300, 500]), # ca
-                         FT.([50, 200]), # VPD
+                         FT.([300 * 1e-6, 500 * 1e-6]), # ca
+                         FT.([500, 10000]), # VPD, Pa
                          ))
 
 constants = Constants(("θs", # Sun zenith angle
