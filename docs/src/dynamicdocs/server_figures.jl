@@ -2,29 +2,32 @@
 # using local ClimaLSM, or ClimaLSM#main 
 using ParamViz
 using ClimaLSM
+using ClimaLSM.Canopy
 
-drivers = Drivers(("PAR (W m-2)", "T (K)"), (500, 283), ([0, 1500], [263, 303]))
+FT = Float64
+
+drivers = Drivers(("PAR (W m-2)", "T (K)"), FT.((500, 283)), (FT.([0, 1500]), FT.([263, 303])))
 
 parameters = Parameters(("Moisture stress, β (unit)",
                          "Leaf area index, LAI (m² m⁻²)",
                          "CO2 concentration, ca (ppm)", # ppm?
                          "Vapor pressure deficit, VPD (Pa)"),
-                        (1.0, # β
-                         1.0, # LAI
-                         400, # ca
-                         100, # VPD, Pa
+                        (FT(1.0), # β
+                         FT(1.0), # LAI
+                         FT(400), # ca
+                         FT(100), # VPD, Pa
                          ),
-                        ([-5, 5], # β
-                         [-5, 5], # LAI
-                         [300, 500], # ca
-                         [50, 200], # VPD
+                        (FT.([-5, 5]), # β
+                         FT.([-5, 5]), # LAI
+                         FT.([300, 500]), # ca
+                         FT.([50, 200]), # VPD
                          ))
 
 constants = Constants(("θs", # Sun zenith angle
                        "ld", # Leaf angle distribution
-                       "p_leaf", # PAR canopy reflectance
+                       "ρ_leaf", # PAR canopy reflectance
                        "Ω", # Clumping index
-                       "Rstar25", # co2 compensation at 25c
+                       "Γstar25", # co2 compensation at 25c
                        "ΔHΓstar", # a constant energy of activation
                        "To", # a standard temperature 
                        "R", # the universal gas constant
@@ -40,38 +43,37 @@ constants = Constants(("θs", # Sun zenith angle
                        "ΔHko", # a constant
                        "oi", # an empirical parameter
                        "f", # an empirical factor
+                       "ΔHRd",
                         ),
-                      (1.0, # θs
-                       0.5, # ld
-                       0.1, # p_leaf
-                       1, # Ω
-                       4.275e-5, # Rstar25
-                       37830, # ΔHΓstar
-                       298.15, # To
-                       8.314, # R, J/mol
-                       5e-5, # Vcmax25
-                       43540, # ΔHJmax
-                       0.9, # θj
-                       0.6, # ϕ
-                       58520, # ΔHVcmax
-                       141, # g1
-                       4.049e-4, # Kc25
-                       79430, # ΔHkc
-                       0.2874, # Ko25
-                       36380, # ΔHko
-                       0.209, # oi
-                       0.015, # f
+                      (FT(1.0), # θs
+                       FT(0.5), # ld
+                       FT(0.1), # ρ_leaf
+                       FT(1), # Ω
+                       FT(4.275e-5), # Γstar25
+                       FT(37830), # ΔHΓstar
+                       FT(298.15), # To
+                       FT(8.314), # R, J/mol
+                       FT(5e-5), # Vcmax25
+                       FT(43540), # ΔHJmax
+                       FT(0.9), # θj
+                       FT(0.6), # ϕ
+                       FT(58520), # ΔHVcmax
+                       FT(141), # g1
+                       FT(4.049e-4), # Kc25
+                       FT(79430), # ΔHkc
+                       FT(0.2874), # Ko25
+                       FT(36380), # ΔHko
+                       FT(0.209), # oi
+                       FT(0.015), # f
+                       FT(43390), # ΔHRd
                       )) 
 
 inputs = Inputs(drivers, parameters, constants)
 
-output = Output("output", [0, 20])
+output = Output("Leaf photosynthesis", [0, 20])
 
-function leaf_photosynthesis(PAR, T, β, LAI, ca, VPD, θs, ld, p_leaf, Ω, Rstar25, ΔHΓstar,
-                             To, R, Vcmax25, ΔHJmax, θj, ϕ, ΔHVcmax, g1, Kc25, ΔHkc, Ko25, ΔHko, oi, f)   
-
-  mechanism = Canopy.C3()
-
+function leaf_photosynthesis(PAR, T, β, LAI, ca, VPD, θs, ld, ρ_leaf, Ω, Γstar25, ΔHΓstar,
+                             To, R, Vcmax25, ΔHJmax, θj, ϕ, ΔHVcmax, g1, Kc25, ΔHkc, Ko25, ΔHko, oi, f, ΔHRd)   
   K = extinction_coeff(ld, θs)
   APAR = plant_absorbed_ppfd(PAR, ρ_leaf, K, LAI, Ω)
   Jmax = max_electron_transport(Vcmax25, ΔHJmax, T, To, R)
@@ -80,10 +82,10 @@ function leaf_photosynthesis(PAR, T, β, LAI, ca, VPD, θs, ld, p_leaf, Ω, Rsta
   Γstar = co2_compensation(Γstar25, ΔHΓstar, T, To, R)
   medlynt = medlyn_term(g1, VPD)
   ci = intercellular_co2(ca, Γstar, medlynt)
-  Aj = light_assimilation(Ref(mechanism), J, ci, Γstar)
+  Aj = light_assimilation(Canopy.C3(), J, ci, Γstar)
   Kc = MM_Kc(Kc25, ΔHkc, T, To, R)
   Ko = MM_Ko(Ko25, ΔHko, T, To, R)
-  Ac = rubisco_assimilation(Ref(mechanism), Vcmax, ci, Γstar, Kc, Ko, oi)
+  Ac = rubisco_assimilation(Canopy.C3(), Vcmax, ci, Γstar, Kc, Ko, oi)
   Rd = dark_respiration(Vcmax25, β, f, ΔHRd, T, To, R)
   An = net_photosynthesis(Ac, Aj, Rd, β)
   return An
@@ -92,19 +94,19 @@ end
 function leaf_photosynthesis(inputs)
     PAR, T = inputs.drivers.values[1], inputs.drivers.values[2] 
     β, LAI, ca, VPD = [inputs.parameters.values[i] for i in 1:4]
-    θs, ld, p_leaf, Ω, Rstar25, ΔHΓstar, To, R, Vcmax25, ΔHJmax, θj,
-      ϕ, ΔHVcmax, g1, Kc25, ΔHkc, Ko25, ΔHko, oi, f = [inputs.constants.values[i] for i in 1:length(constants.values)]
-    return leaf_photosynthesis(PAR, T, β, LAI, ca, VPD, θs, ld, p_leaf, Ω, Rstar25, ΔHΓstar,
-                               To, R, Vcmax25, ΔHJmax, θj, ϕ, ΔHVcmax, g1, Kc25, ΔHkc, Ko25, ΔHko, oi, f)
+    θs, ld, ρ_leaf, Ω, Γstar25, ΔHΓstar, To, R, Vcmax25, ΔHJmax, θj,
+      ϕ, ΔHVcmax, g1, Kc25, ΔHkc, Ko25, ΔHko, oi, f, ΔHRd = [inputs.constants.values[i] for i in 1:21]
+    return leaf_photosynthesis(PAR, T, β, LAI, ca, VPD, θs, ld, ρ_leaf, Ω, Γstar25, ΔHΓstar,
+                               To, R, Vcmax25, ΔHJmax, θj, ϕ, ΔHVcmax, g1, Kc25, ΔHkc, Ko25, ΔHko, oi, f, ΔHRd)
 end
 
 function leaf_photosynthesis(drivers, parameters, constants)
   PAR, T = drivers[1], drivers[2]
   β, LAI, ca, VPD = [parameters[i] for i in 1:4]
-  θs, ld, p_leaf, Ω, Rstar25, ΔHΓstar, To, R, Vcmax25, ΔHJmax, θj,
-  ϕ, ΔHVcmax, g1, Kc25, ΔHkc, Ko25, ΔHko, oi, f = [constants[i] for i in 1:length(constants.values)]
-  return leaf_photosynthesis(PAR, T, β, LAI, ca, VPD, θs, ld, p_leaf, Ω, Rstar25, ΔHΓstar,
-                             To, R, Vcmax25, ΔHJmax, θj, ϕ, ΔHVcmax, g1, Kc25, ΔHkc, Ko25, ΔHko, oi, f)
+  θs, ld, ρ_leaf, Ω, Γstar25, ΔHΓstar, To, R, Vcmax25, ΔHJmax, θj,
+  ϕ, ΔHVcmax, g1, Kc25, ΔHkc, Ko25, ΔHko, oi, f, ΔHRd = [constants[i] for i in 1:21]
+  return leaf_photosynthesis(PAR, T, β, LAI, ca, VPD, θs, ld, ρ_leaf, Ω, Γstar25, ΔHΓstar,
+                             To, R, Vcmax25, ΔHJmax, θj, ϕ, ΔHVcmax, g1, Kc25, ΔHkc, Ko25, ΔHko, oi, f, ΔHRd)
 end
 
 
