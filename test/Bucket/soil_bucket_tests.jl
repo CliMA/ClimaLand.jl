@@ -53,7 +53,7 @@ bucket_domains = [
         npolynomial = 1,
     ),
 ]
-orbital_data=Insolation.OrbitalData()
+orbital_data = Insolation.OrbitalData(joinpath(pkgdir(ClimaLSM), "artifacts"))
 init_temp(z::FT, value::FT) where {FT} = FT(value)
 for bucket_domain in bucket_domains
     @testset "Zero flux RHS" begin

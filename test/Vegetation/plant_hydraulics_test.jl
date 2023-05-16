@@ -103,7 +103,9 @@ domains = [
         shortwave_radiation,
         longwave_radiation;
         θs = zenith_angle,
-        orbital_data = Insolation.OrbitalData(),
+        orbital_data = Insolation.OrbitalData(
+            joinpath(pkgdir(ClimaLSM), "artifacts"),
+        ),
     )
     for domain in domains
         # Parameters are the same as the ones used in the Ozark tutorial

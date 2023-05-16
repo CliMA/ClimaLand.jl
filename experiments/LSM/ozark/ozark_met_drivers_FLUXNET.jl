@@ -132,7 +132,9 @@ radiation = ClimaLSM.PrescribedRadiativeFluxes(
     SW_IN_spline,
     LW_IN_spline;
     θs = zenith_angle,
-    orbital_data = Insolation.OrbitalData(),
+    orbital_data = Insolation.OrbitalData(
+        joinpath(pkgdir(ClimaLSM), "artifacts"),
+    ),
 )
 
 transpiration = DiagnosticTranspiration{FT}()

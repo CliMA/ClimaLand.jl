@@ -3,6 +3,7 @@ using Test
 using ClimaCore
 using ClimaComms
 import CLIMAParameters as CP
+using Insolation
 using ClimaLSM.Regridder: MapInfo, regrid_netcdf_to_field
 using ClimaLSM.Bucket:
     BucketModel,
@@ -51,7 +52,8 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
             npolynomial = 2,
         ),
     ]
-    orbital_data=Insolation.OrbitalData()
+    orbital_data =
+        Insolation.OrbitalData(joinpath(pkgdir(ClimaLSM), "artifacts"))
 
 
     for bucket_domain in bucket_domains
