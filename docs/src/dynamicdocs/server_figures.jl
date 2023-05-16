@@ -17,8 +17,8 @@ parameters = Parameters(("Moisture stress, β (unit)",
                          FT(400), # ca
                          FT(100), # VPD, Pa
                          ),
-                        (FT.([-5, 5]), # β
-                         FT.([-5, 5]), # LAI
+                        (FT.([5, 15]), # β
+                         FT.([5, 15]), # LAI
                          FT.([300, 500]), # ca
                          FT.([50, 200]), # VPD
                          ))
@@ -70,7 +70,7 @@ constants = Constants(("θs", # Sun zenith angle
 
 inputs = Inputs(drivers, parameters, constants)
 
-output = Output("Leaf photosynthesis", [0, 20])
+output = Output("Leaf photosynthesis", [0, 40])
 
 function leaf_photosynthesis(PAR, T, β, LAI, ca, VPD, θs, ld, ρ_leaf, Ω, Γstar25, ΔHΓstar,
                              To, R, Vcmax25, ΔHJmax, θj, ϕ, ΔHVcmax, g1, Kc25, ΔHkc, Ko25, ΔHko, oi, f, ΔHRd)   
@@ -87,7 +87,7 @@ function leaf_photosynthesis(PAR, T, β, LAI, ca, VPD, θs, ld, ρ_leaf, Ω, Γs
   Ko = MM_Ko(Ko25, ΔHko, T, To, R)
   Ac = rubisco_assimilation(Canopy.C3(), Vcmax, ci, Γstar, Kc, Ko, oi)
   Rd = dark_respiration(Vcmax25, β, f, ΔHRd, T, To, R)
-  An = net_photosynthesis(Ac, Aj, Rd, β)
+  An = net_photosynthesis(Ac, Aj, Rd, β) * 1e6 # from mol to umol 
   return An
 end
 
