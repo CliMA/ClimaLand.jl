@@ -1,8 +1,9 @@
 # Test with ClimaLSM Farquhar An
 # using local ClimaLSM, or ClimaLSM#main 
 using ParamViz
+using ClimaLSM
 
-drivers = Drivers(("PAR (W m-2)", "T (K)"), (1, 1), ([-5, 5], [-5, 5]))
+drivers = Drivers(("PAR (W m-2)", "T (K)"), (500, 283), ([0, 1500], [263, 303]))
 
 parameters = Parameters(("Moisture stress, β (unit)",
                          "Leaf area index, LAI (m² m⁻²)",
@@ -61,8 +62,11 @@ constants = Constants(("θs", # Sun zenith angle
                        0.209, # oi
                        0.015, # f
                       )) 
+
 inputs = Inputs(drivers, parameters, constants)
+
 output = Output("output", [0, 20])
+
 function leaf_photosynthesis(PAR, T, β, LAI, ca, VPD, θs, ld, p_leaf, Ω, Rstar25, ΔHΓstar,
                              To, R, Vcmax25, ΔHJmax, θj, ϕ, ΔHVcmax, g1, Kc25, ΔHkc, Ko25, ΔHko, oi, f)   
 
@@ -85,10 +89,26 @@ function leaf_photosynthesis(PAR, T, β, LAI, ca, VPD, θs, ld, p_leaf, Ω, Rsta
   return An
 end
 
+function leaf_photosynthesis(inputs)
+    PAR, T = inputs.drivers.values[1], inputs.drivers.values[2] 
+    β, LAI, ca, VPD = [inputs.parameters.values[i] for i in 1:4]
+    θs, ld, p_leaf, Ω, Rstar25, ΔHΓstar, To, R, Vcmax25, ΔHJmax, θj,
+      ϕ, ΔHVcmax, g1, Kc25, ΔHkc, Ko25, ΔHko, oi, f = [inputs.constants.values[i] for i in 1:length(constants.values)]
+    return leaf_photosynthesis(PAR, T, β, LAI, ca, VPD, θs, ld, p_leaf, Ω, Rstar25, ΔHΓstar,
+                               To, R, Vcmax25, ΔHJmax, θj, ϕ, ΔHVcmax, g1, Kc25, ΔHkc, Ko25, ΔHko, oi, f)
+end
+
+function leaf_photosynthesis(drivers, parameters, constants)
+  PAR, T = drivers[1], drivers[2]
+  β, LAI, ca, VPD = [parameters[i] for i in 1:4]
+  θs, ld, p_leaf, Ω, Rstar25, ΔHΓstar, To, R, Vcmax25, ΔHJmax, θj,
+  ϕ, ΔHVcmax, g1, Kc25, ΔHkc, Ko25, ΔHko, oi, f = [constants[i] for i in 1:length(constants.values)]
+  return leaf_photosynthesis(PAR, T, β, LAI, ca, VPD, θs, ld, p_leaf, Ω, Rstar25, ΔHΓstar,
+                             To, R, Vcmax25, ΔHJmax, θj, ϕ, ΔHVcmax, g1, Kc25, ΔHkc, Ko25, ΔHko, oi, f)
+end
 
 
-
-
+webapp(leaf_photosynthesis, inputs, output)
 
 
 

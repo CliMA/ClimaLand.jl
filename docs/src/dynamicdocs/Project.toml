@@ -1,2 +1,3 @@
 [deps]
+ClimaLSM = "7884a58f-fab6-4fd0-82bb-ecfedb2d8430"
 ParamViz = "9706fb73-1de9-418d-83da-fef8cd99bb4a"
