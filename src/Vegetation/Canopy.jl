@@ -56,11 +56,11 @@ end
 """
      CanopyModel{FT, RM, PM, SM, PHM, A, R, PS, D} <: AbstractModel{FT}
 
-The model struct for the canopy, which contains 
+The model struct for the canopy, which contains
 - the canopy model domain (a point for site-level simulations, or
 an extended surface (plane/spherical surface) for regional or global simulations.
 - subcomponent model type for radiative transfer. This is of type
-`AbstractRadiationModel` and currently only the `BeerLambertModel` is 
+`AbstractRadiationModel` and currently only the `BeerLambertModel` is
 supported.
 - subcomponent model type for photosynthesis. This is of type
 `AbstractPhotosynthesisModel`, and currently only the `FarquharModel`
@@ -74,10 +74,10 @@ prognostically solves Richards equation in the plant is available.
 - canopy model parameters, which include parameters that are shared
 between canopy model components or those needed to compute boundary
 fluxes.
-- The atmospheric conditions, which are either prescribed 
+- The atmospheric conditions, which are either prescribed
 (of type `PrescribedAtmosphere`) or computed via a coupled simulation
 (of type `CoupledAtmosphere`).
-- The radiative flux conditions, which are either prescribed 
+- The radiative flux conditions, which are either prescribed
 (of type `PrescribedRadiativeFluxes`) or computed via a coupled simulation
 (of type `CoupledRadiativeFluxes`).
 
@@ -318,7 +318,7 @@ is better for performance as it saves looping over the state vector
 multiple times.
 
 The other sub-components rely heavily on each other,
-so the version of the `CanopyModel` with these subcomponents 
+so the version of the `CanopyModel` with these subcomponents
 has a single update_aux! function, given here.
 """
 function ClimaLSM.make_update_aux(
@@ -342,7 +342,7 @@ function ClimaLSM.make_update_aux(
         energy_per_photon = h * c / λ_γ
         SW_d::FT = canopy.radiation.SW_d(t)
         LW_d::FT = canopy.radiation.LW_d(t)
-        θs::FT = canopy.radiation.θs(t)
+        θs::FT = canopy.radiation.θs(t, canopy.radiation.orbital_data)
         PAR = @.(SW_d / (energy_per_photon * N_a) / 2)
         K = extinction_coeff.(ld, θs)
         APAR .= plant_absorbed_ppfd.(PAR, ρ_leaf, K, LAI, Ω)
@@ -448,7 +448,7 @@ end
 """
     make_rhs(canopy::CanopyModel)
 
-Creates and returns the rhs! for the `CanopyModel`. 
+Creates and returns the rhs! for the `CanopyModel`.
 
 This allows for prognostic variables in each canopy component.
 """
@@ -476,7 +476,7 @@ end
 Computes canopy transpiration using Monin-Obukhov Surface Theory,
 the prescribed atmospheric conditions, and the canopy conductance.
 
-Please note that in the future the SurfaceFluxes.jl code will compute 
+Please note that in the future the SurfaceFluxes.jl code will compute
 fluxes taking into account the canopy conductance, so that
 what is returned by `surface_fluxes` is correct. At present, it does not,
 so we are adjusting for it after the fact here in both ET and LHF.
@@ -520,7 +520,7 @@ end
 """
     ClimaLSM.surface_temperature(model::CanopyModel, Y, p, t)
 
-A helper function which returns the surface temperature for the canopy 
+A helper function which returns the surface temperature for the canopy
 model, which is stored in the aux state.
 """
 function ClimaLSM.surface_temperature(model::CanopyModel, Y, p, t)
@@ -530,7 +530,7 @@ end
 """
     ClimaLSM.surface_height(model::CanopyModel, Y, _...)
 
-A helper function which returns the surface height for the canopy 
+A helper function which returns the surface height for the canopy
 model, which is stored in the parameter struct.
 """
 function ClimaLSM.surface_height(model::CanopyModel, _...)
@@ -540,7 +540,7 @@ end
 """
     ClimaLSM.surface_specific_humidity(model::CanopyModel, Y, p)
 
-A helper function which returns the surface specific humidity for the canopy 
+A helper function which returns the surface specific humidity for the canopy
 model, which is stored in the aux state.
 """
 function ClimaLSM.surface_specific_humidity(
@@ -562,8 +562,8 @@ end
 
 """
     ClimaLSM.surface_air_density(model::CanopyModel, Y, p)
-    
-A helper function which computes and returns the surface air density for the canopy 
+
+A helper function which computes and returns the surface air density for the canopy
 model.
 """
 function ClimaLSM.surface_air_density(

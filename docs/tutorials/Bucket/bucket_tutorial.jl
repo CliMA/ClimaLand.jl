@@ -51,7 +51,7 @@
 # ``
 
 # ``
-# G_{undersnow} = (R_n+ SHF + LHF)_{snow} - F_{intosnow} 
+# G_{undersnow} = (R_n+ SHF + LHF)_{snow} - F_{intosnow}
 # ``
 
 # ``
@@ -89,7 +89,7 @@
 # Turbulent surface fluxes of sensible heat, latent heat, and water vapor
 # (`SHF, LHF, E`) are computed using Monin-Obukhov theory; `SW↓` and `LW↓`
 # are the downward fluxes in short and long wavelength bands. We use the same
-# roughness lengths for snow and soil. 
+# roughness lengths for snow and soil.
 # Note that with the exception of precipitation and downwelling radiation,
 # all fluxes are defined
 # such that positive is towards the atmosphere.
@@ -130,6 +130,9 @@ using ClimaCore
 # parameters across all Clima models, and to make parameter estimation
 # more seamless.
 import CLIMAParameters as CP
+
+# We also use Insolation to calculate solar zenith angle and solar insolation.
+using Insolation
 
 # Lastly, let's bring in the bucket model types (from ClimaLSM) that we
 # will need access to.
@@ -216,7 +219,14 @@ bucket_domain =
 # Here we define the model drivers, starting with downward radiation.
 SW_d = (t) -> eltype(t)(300);
 LW_d = (t) -> eltype(t)(300);
-bucket_rad = PrescribedRadiativeFluxes(FT, SW_d, LW_d);
+bucket_rad = PrescribedRadiativeFluxes(
+    FT,
+    SW_d,
+    LW_d;
+    orbital_data = Insolation.OrbitalData(
+        joinpath(pkgdir(ClimaLSM), "artifacts"),
+    ),
+);
 
 # Prescribed atmospheric variables
 
@@ -267,7 +277,7 @@ ClimaLSM.auxiliary_vars(model)
 p.bucket |> propertynames
 
 
-# Next is to set initial conditions. 
+# Next is to set initial conditions.
 Y.bucket.T .= FT(270);
 Y.bucket.W .= FT(0.05);
 Y.bucket.Ws .= FT(0.0);

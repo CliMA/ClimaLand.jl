@@ -32,7 +32,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     z_0m = FT(2.0) # m, Roughness length for momentum - value from tall forest ChatGPT
     z_0b = FT(0.1) # m, Roughness length for scalars - value from tall forest ChatGPT
     h_c = FT(20.0) # m, canopy height
-    h_sfc = FT(20.0) # m, canopy height 
+    h_sfc = FT(20.0) # m, canopy height
     h_int = FT(30.0) # m, "where measurements would be taken at a typical flux tower of a 20m canopy"
     shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
         LAI,
@@ -45,7 +45,8 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     long = FT(-180) # degree
 
     function zenith_angle(
-        t::FT;
+        t::FT,
+        orbital_data;
         latitude = lat,
         longitude = long,
         insol_params = earth_param_set.insol_params,
@@ -53,6 +54,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
         return FT(
             instantaneous_zenith_angle(
                 DateTime(t),
+                orbital_data,
                 longitude,
                 latitude,
                 insol_params,
@@ -97,6 +99,9 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
         shortwave_radiation,
         longwave_radiation;
         θs = zenith_angle,
+        orbital_data = Insolation.OrbitalData(
+            joinpath(pkgdir(ClimaLSM), "artifacts"),
+        ),
     )
 
     # Plant Hydraulics
@@ -113,7 +118,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     plant_vg_m = FT(1) - FT(1) / plant_vg_n
     plant_ν = FT(0.7) # m3/m3
     plant_S_s = FT(1e-2 * 0.0098) # m3/m3/MPa to m3/m3/m
-    root_depths = FT.(-Array(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0) # 1st element is the deepest root depth 
+    root_depths = FT.(-Array(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0) # 1st element is the deepest root depth
     function root_distribution(z::T) where {T}
         return T(1.0 / 0.5) * exp(z / T(0.5)) # (1/m)
     end
@@ -239,11 +244,11 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     Lv = FT(2453e6) #J/m^3
 
     ET = penman_monteith(
-        Δ, # Rate of change of saturation specific humidity with air temperature. (Pa K−1)  
+        Δ, # Rate of change of saturation specific humidity with air temperature. (Pa K−1)
         Rn, # Net irradiance (W m−2), the external source of energy flux
         G, # Ground heat flux (W m−2)
         ρa, # Dry air density (kg m−3)
-        cp, # Specific heat capacity of air (J kg−1 K−1) 
+        cp, # Specific heat capacity of air (J kg−1 K−1)
         VPD, # vapor pressure deficit (Pa)
         ga, # Conductivity of air, atmospheric conductance (m s−1)
         γ, # Psychrometric constant (γ ≈ 66 Pa K−1)
