@@ -6,7 +6,9 @@ using ClimaLSM.Canopy
 
 FT = Float64
 
-drivers = Drivers(("PAR (W m-2)", "T (K)"), FT.((100, 283)), (FT.([0, 300]), FT.([263, 303])))
+# PAR 150 W m-2 over 30 minutes is ~ 2000 umol m-2 s-1 PPFD
+# Ta from 0 to 50 °C ~ 273 to 323 K
+drivers = Drivers(("PAR (W m-2)", "T (K)"), FT.((10, 283)), (FT.([0, 150]), FT.([273, 323])))
 
 parameters = Parameters(("Moisture stress, B (unit)",
                          "Leaf area index, LAI (m2 m-2)",
@@ -17,8 +19,8 @@ parameters = Parameters(("Moisture stress, B (unit)",
                          FT(400 * 1e-6), # ca, from μmol to mol
                          FT(1000), # VPD, Pa
                          ),
-                        (FT.([5, 15]), # β
-                         FT.([5, 15]), # LAI
+                        (FT.([0, 1]), # β
+                         FT.([1, 10]), # LAI, m2 m-2
                          FT.([300 * 1e-6, 500 * 1e-6]), # ca
                          FT.([500, 10000]), # VPD, Pa
                          ))
@@ -45,32 +47,32 @@ constants = Constants(("θs", # Sun zenith angle
                        "f", # an empirical factor
                        "ΔHRd",
                         ),
-                      (FT(1.0), # θs
-                       FT(0.5), # ld
-                       FT(0.1), # ρ_leaf
-                       FT(1), # Ω
-                       FT(4.275e-5), # Γstar25
-                       FT(37830), # ΔHΓstar
-                       FT(298.15), # To
-                       FT(8.314), # R, J/mol
-                       FT(5e-5), # Vcmax25
-                       FT(43540), # ΔHJmax
-                       FT(0.9), # θj
-                       FT(0.6), # ϕ
-                       FT(58520), # ΔHVcmax
-                       FT(141), # g1
-                       FT(4.049e-4), # Kc25
-                       FT(79430), # ΔHkc
-                       FT(0.2874), # Ko25
-                       FT(36380), # ΔHko
-                       FT(0.209), # oi
-                       FT(0.015), # f
-                       FT(43390), # ΔHRd
+                      (FT(0.6), # θs - is that a good value? in radian, right? --------
+                       FT(0.5), # ld - ozark val
+                       FT(0.1), # ρ_leaf - ozark val
+                       FT(0.69), # Ω - ozark val
+                       FT(4.275e-5), # Γstar25 - ozark val
+                       FT(37830), # ΔHΓstar - ozark val
+                       FT(298.15), # To - ozark vak
+                       FT(8.314), # R, J/mol - FT(LSMP.gas_constant(earth_param_set))
+                       FT(5e-5), # Vcmax25 - ozark model
+                       FT(43540), # ΔHJmax - ozark model
+                       FT(0.9), # θj - ozark model
+                       FT(0.6), # ϕ - ozark model
+                       FT(58520), # ΔHVcmax - ozark model
+                       FT(141), # g1 - ozark model
+                       FT(4.049e-4), # Kc25 - ozark model
+                       FT(79430), # ΔHkc - ozark model
+                       FT(0.2874), # Ko25 - ozark model
+                       FT(36380), # ΔHko - ozark model
+                       FT(0.209), # oi - ozark model
+                       FT(0.015), # f - ozark model
+                       FT(43390), # ΔHRd - ozark model
                       )) 
 
 inputs = Inputs(drivers, parameters, constants)
 
-output = Output("Leaf photosynthesis", [0, 40])
+output = Output("Leaf photosynthesis", [0, 20])
 
 function leaf_photosynthesis(PAR, T, β, LAI, ca, VPD, θs, ld, ρ_leaf, Ω, Γstar25, ΔHΓstar,
                              To, R, Vcmax25, ΔHJmax, θj, ϕ, ΔHVcmax, g1, Kc25, ΔHkc, Ko25, ΔHko, oi, f, ΔHRd)   
