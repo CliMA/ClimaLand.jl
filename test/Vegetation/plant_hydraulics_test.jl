@@ -9,20 +9,22 @@ using ClimaLSM.Canopy
 using ClimaLSM.Canopy.PlantHydraulics
 import ClimaLSM
 using Insolation
+using Dates
+
 include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
 
-FT = Float64
-domains = [
-    Point(; z_sfc = FT(0.0)),
-    Plane(;
-        xlim = (0.0, 1.0),
-        ylim = (0.0, 1.0),
-        nelements = (2, 2),
-        periodic = (true, true),
-        npolynomial = 1,
-    ),
-]
 @testset "Plant hydraulics model integration tests" begin
+    FT = Float64
+    domains = [
+        Point(; z_sfc = FT(0.0)),
+        Plane(;
+            xlim = (0.0, 1.0),
+            ylim = (0.0, 1.0),
+            nelements = (2, 2),
+            periodic = (true, true),
+            npolynomial = 1,
+        ),
+    ]
     RTparams = BeerLambertParameters{FT}()
     photosynthesis_params = FarquharParameters{FT}(C3();)
     stomatal_g_params = MedlynConductanceParameters{FT}()
@@ -289,7 +291,6 @@ domains = [
                 )^2.0,
             )
         end
-
         @test sum(parent(m)) < eps(FT)
     end
 end
