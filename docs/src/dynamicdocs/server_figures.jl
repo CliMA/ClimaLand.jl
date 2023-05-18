@@ -7,8 +7,9 @@ using ClimaLSM.Canopy
 FT = Float64
 
 # PAR 150 W m-2 over 30 minutes is ~ 2000 umol m-2 s-1 PPFD
+# PAR is in mol m-2 s-1?
 # Ta from 0 to 50 °C ~ 273 to 323 K
-drivers = Drivers(("PAR (W m-2)", "T (K)"), FT.((10, 283)), (FT.([0, 150]), FT.([273, 323])))
+drivers = Drivers(("PAR (mol m-2 s-1)", "T (K)"), FT.((500 * 1e-6, 283)), (FT.([0, 1500 * 1e-6]), FT.([273, 323])))
 
 parameters = Parameters(("Moisture stress, B (unit)",
                          "Leaf area index, LAI (m2 m-2)",
