@@ -74,9 +74,9 @@ end
 
 
 """
-    make_compute_exp_tendency(model::RichardsModel)
+    make_compute_imp_tendency(model::RichardsModel)
 
-An extension of the function `make_compute_exp_tendency`, for the Richardson-
+An extension of the function `make_compute_imp_tendency`, for the Richardson-
 Richards equation.
 
 This function creates and returns a function which computes the entire
@@ -85,8 +85,8 @@ with that value.
 
 This has been written so as to work with Differential Equations.jl.
 """
-function ClimaLSM.make_compute_exp_tendency(model::RichardsModel)
-    function compute_exp_tendency!(dY, Y, p, t)
+function ClimaLSM.make_compute_imp_tendency(model::RichardsModel)
+    function compute_imp_tendency!(dY, Y, p, t)
         (; ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r) = model.parameters
         z = ClimaCore.Fields.coordinate_field(model.domain.space).z
         Δz_top, Δz_bottom = get_Δz(z)
@@ -138,13 +138,34 @@ function ClimaLSM.make_compute_exp_tendency(model::RichardsModel)
         for src in model.sources
             ClimaLSM.source!(dY, src, Y, p, model.parameters)
         end
+    end
+    return compute_imp_tendency!
+end
 
-        # This has to come last
-        dss!(dY, model.domain)
+
+"""
+    make_explicit_tendency(model::Soil.RichardsModel)
+
+An extension of the function `make_compute_imp_tendency`, for the Richardson-
+Richards equation.
+Construct the tendency computation function for the explicit terms of the RHS,
+which are horizontal components and source/sink terms.
+"""
+function ClimaLSM.make_compute_exp_tendency(model::Soil.RichardsModel)
+    function compute_exp_tendency!(dY, Y, p, t::FT) where {FT}
+        # set dY before updating it
+        dY .= FT(0)
+
+        z = ClimaCore.Fields.coordinate_field(model.domain.space).z
+        ClimaLSM.Soil.horizontal_components!(dY, model.domain, model, p, z)
+
+        # Source terms
+        for src in model.sources
+            ClimaLSM.source!(dY, src, Y, p, model.parameters)
+        end
     end
     return compute_exp_tendency!
 end
-
 
 """
    horizontal_components!(dY::ClimaCore.Fields.FieldVector,

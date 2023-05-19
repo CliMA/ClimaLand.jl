@@ -53,7 +53,7 @@ function reshape_cgll_sparse_to_field!(
     hspace = ClimaCore.Spaces.horizontal_space(space)
     target = ClimaCore.Fields.field_values(field)
 
-    ClimaCore.Spaces.dss2!(target, topology, hspace.quadrature_style)
+    ClimaCore.Spaces.dss!(target, topology, hspace.quadrature_style)
 end
 
 """
@@ -93,7 +93,7 @@ end
 
 
 """
-    write_to_hdf5(REGRID_DIR, hd_outfile_root, time, field, varname, 
+    write_to_hdf5(REGRID_DIR, hd_outfile_root, time, field, varname,
         comms_ctx = ClimaComms.SingletonCommsContext())
 Function to save individual HDF5 files after remapping.
 If a CommsContext other than SingletonCommsContext is used for `comms_ctx`,
@@ -141,11 +141,11 @@ end
         mono = false,
     )
 Reads and regrids data of the `varname` variable from an input NetCDF file and
-saves it as another NetCDF file using Tempest Remap. 
-The input NetCDF fileneeds to be `Exodus` formatted, and can contain 
-time-dependent data. The output NetCDF file is then read back, the output 
-arrays converted into Fields and saved as HDF5 files (one per time slice). 
-This function should be called by the root process. 
+saves it as another NetCDF file using Tempest Remap.
+The input NetCDF fileneeds to be `Exodus` formatted, and can contain
+time-dependent data. The output NetCDF file is then read back, the output
+arrays converted into Fields and saved as HDF5 files (one per time slice).
+This function should be called by the root process.
 The saved regridded HDF5 output is readable by multiple MPI processes.
 
 Code taken from ClimaCoupler.Regridder.
@@ -201,7 +201,7 @@ function hdwrite_regridfile_rll_to_cgll(
         # write lat-lon mesh
         rll_mesh(meshfile_rll; nlat = nlat, nlon = nlon)
 
-        # write cgll mesh, overlap mesh and weight file 
+        # write cgll mesh, overlap mesh and weight file
         write_exodus(meshfile_cgll, topology)
         overlap_mesh(meshfile_overlap, meshfile_rll, meshfile_cgll)
 

@@ -53,7 +53,9 @@
 
 # - Load external packages
 
-using OrdinaryDiffEq: ODEProblem, solve, RK4
+# using OrdinaryDiffEq: ODEProblem, ODEFunction, solve
+import OrdinaryDiffEq as ODE
+import ClimaTimeSteppers as CTS
 using Plots
 # - Load CLIMAParameters and ClimaLSM modules
 
@@ -126,7 +128,9 @@ soil = Soil.RichardsModel{FT}(;
     boundary_conditions = boundary_conditions,
     sources = sources,
 );
-exp_tendency! = make_exp_tendency(soil);
+imp_tendency! = ClimaLSM.make_imp_tendency(soil);
+exp_tendency! = ClimaLSM.make_exp_tendency(soil);
+update_jacobian! = ClimaLSM.make_update_jacobian(soil);
 
 # # Set up the simulation
 # We can now initialize the prognostic and auxiliary variable vectors, and take
@@ -148,9 +152,35 @@ t0 = FT(0)
 timeend = FT(60 * 60 * 24 * 36)
 dt = FT(100);
 
+# Now, we choose the timestepping algorithm we want to use.
+# We'll use the ARS111 algorithm with a maximum of 1 Newton iteration
+# per timestep.
+stepper = CTS.ARS111()
+ode_algo = CTS.IMEXAlgorithm(
+    stepper,
+    CTS.NewtonsMethod(
+        max_iters = 1,
+        update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
+    ),
+)
+
+# Here we set up the data structure and information used for our Jacobian.
+W = RichardsTridiagonalW(Y)
+jac_kwargs = (; jac_prototype = W, Wfact = update_jacobian!)
+
 # And then we can solve the system of equations, using [OrdinaryDiffEq.jl](https://github.com/SciML/OrdinaryDiffEq.jl):
-prob = ODEProblem(exp_tendency!, Y, (t0, timeend), p)
-sol = solve(prob, RK4(); dt = dt, adaptive = false);
+# prob = ODEProblem(exp_tendency!, Y, (t0, timeend), p)
+prob = ODE.ODEProblem(
+    CTS.ClimaODEFunction(
+        T_exp! = exp_tendency!,
+        T_imp! = ODE.ODEFunction(imp_tendency!; jac_kwargs...),
+        dss! = ClimaLSM.dss!,
+    ),
+    Y,
+    (t0, timeend),
+    p,
+)
+sol = ODE.solve(prob, ode_algo; dt = dt, adaptive = false);
 
 # # Create some plots
 # We'll plot the moisture content vs depth in the soil, as well as

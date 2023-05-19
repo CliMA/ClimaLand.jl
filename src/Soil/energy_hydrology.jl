@@ -244,7 +244,7 @@ function ClimaLSM.make_compute_exp_tendency(
         end
 
         # This has to come last
-        dss!(dY, model.domain)
+        ClimaLSM.dss!(Y, p, t)
     end
     return compute_exp_tendency!
 end

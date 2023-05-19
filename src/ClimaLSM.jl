@@ -17,9 +17,11 @@ include("SharedUtilities/utils.jl")
 include("SharedUtilities/boundary_conditions.jl")
 include("SharedUtilities/sources.jl")
 include("SharedUtilities/implicit_tendencies.jl")
+include("SharedUtilities/implicit_functions.jl")
 include("Bucket/Bucket.jl")
-export make_interactions_update_aux
-export domain
+export make_interactions_update_aux,
+    domain, make_imp_tendency, make_exp_tendency
+
 """
      AbstractLandModel{FT} <: AbstractModel{FT}
 

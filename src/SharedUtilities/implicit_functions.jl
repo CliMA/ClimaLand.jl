@@ -1,6 +1,10 @@
-### These functions are here for now, but will soon be moved to ClimaCore
-export linsolve!, ldiv!, thomas_algorithm!
+### These functions are here for now, but linsolve!, ldiv!, and
+### thomas_algorithm! will soon be moved to ClimaCore.
 
+import LinearAlgebra
+import ClimaCore: Spaces
+
+export linsolve!, ldiv!, thomas_algorithm!
 
 # Function required by OrdinaryDiffEq.jl
 linsolve!(::Type{Val{:init}}, f, u0; kwargs...) = _linsolve!
@@ -10,7 +14,7 @@ _linsolve!(x, A, b, update_matrix = false; kwargs...) =
 # Function required by Krylov.jl (x and b can be AbstractVectors)
 # See https://github.com/JuliaSmoothOptimizers/Krylov.jl/issues/605 for a
 # related issue that requires the same workaround.
-function LinearAlgebra.ldiv!(x, A::TridiagonalW, b)
+function LinearAlgebra.ldiv!(x, A::AbstractTridiagonalW, b)
     A.temp1 .= b
     LinearAlgebra.ldiv!(A.temp2, A, A.temp1)
     x .= A.temp2
@@ -18,7 +22,7 @@ end
 
 function LinearAlgebra.ldiv!(
     x::Fields.FieldVector,
-    A::TridiagonalW,
+    A::AbstractTridiagonalW,
     b::Fields.FieldVector,
 )
     _ldiv!(x, A, b, axes(x.soil.ϑ_l))
@@ -27,7 +31,7 @@ end
 # 2D space - only one column
 function _ldiv!(
     x::Fields.FieldVector, # Δx
-    A::TridiagonalW, # f'(x)
+    A::AbstractTridiagonalW, # f'(x)
     b::Fields.FieldVector, # -f(x)
     space::Spaces.FiniteDifferenceSpace,
 )
@@ -47,27 +51,24 @@ end
 # 3D space - iterate over columns
 function _ldiv!(
     x::Fields.FieldVector,
-    A::TridiagonalW,
+    A::AbstractTridiagonalW,
     b::Fields.FieldVector,
     space::Spaces.ExtrudedFiniteDifferenceSpace,
 )
     (; dtγ_ref, ∂ϑₜ∂ϑ, W_column_arrays, transform) = A
     dtγ = dtγ_ref[]
 
-    NVTX.@range "linsolve" color = Colors.colorant"lime" begin
-        Fields.bycolumn(space) do colidx
-            _ldiv_serial!(
-                x.soil.ϑ_l[colidx],
-                b.soil.ϑ_l[colidx],
-                dtγ,
-                transform,
-                ∂ϑₜ∂ϑ[colidx],
-                W_column_arrays[Threads.threadid()], # can / should this be colidx?
-            )
-        end
+    Fields.bycolumn(space) do colidx
+        _ldiv_serial!(
+            x.soil.ϑ_l[colidx],
+            b.soil.ϑ_l[colidx],
+            dtγ,
+            transform,
+            ∂ϑₜ∂ϑ[colidx],
+            W_column_arrays[Threads.threadid()], # can / should this be colidx?
+        )
     end
 end
-
 
 function _ldiv_serial!(
     x_column,
@@ -101,8 +102,6 @@ Thomas algorithm for solving a linear system A x = b,
 where A is a tri-diagonal matrix.
 A and b are overwritten, solution is written to b.
 Pass this as linsolve to ODEFunction.
-
-Copied directly from https://github.com/CliMA/ClimaAtmos.jl/blob/99e44f4cd97307c4e8f760a16e7958d66d67e6e8/src/tendencies/implicit/schur_complement_W.jl#L410
 """
 function thomas_algorithm!(A, b)
     nrows = size(A, 1)
