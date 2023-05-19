@@ -201,7 +201,7 @@ soil = Soil.EnergyHydrology{FT}(;
     sources = sources,
 );
 
-soil_ode! = make_ode_function(soil);
+exp_tendency! = make_exp_tendency(soil);
 # # Set up the simulation
 # We can now initialize the prognostic and auxiliary variable vectors, and take
 # a peek at what those variables are:
@@ -242,7 +242,7 @@ end
 
 init_soil!(Y, coords.z, soil.parameters);
 # Updating the auxiliary to the initial state is not necessary, because
-# the first step of the ode_function is to update the auxiliary state.
+# the first step of the tendency function is to update the auxiliary state.
 # However, we want to plot the initial state in this tutorial, so
 # we update it here.
 update_aux! = make_update_aux(soil)
@@ -261,7 +261,7 @@ cb = SavingCallback(
     saved_values;
     saveat = 0:43200:timeend,
 )
-prob = ODEProblem(soil_ode!, Y, (t0, timeend), p);
+prob = ODEProblem(exp_tendency!, Y, (t0, timeend), p);
 sol = solve(prob, RK4(); dt = dt, saveat = 0:43200:timeend, callback = cb);
 
 # Extract output

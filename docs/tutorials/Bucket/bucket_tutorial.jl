@@ -142,7 +142,7 @@ using ClimaLSM.Domains: coordinates, LSMSingleColumnDomain
 using ClimaLSM:
     initialize,
     make_update_aux,
-    make_ode_function,
+    make_exp_tendency,
     make_set_initial_aux_state,
     PrescribedAtmosphere,
     PrescribedRadiativeFluxes
@@ -288,13 +288,13 @@ t0 = FT(0.0);
 set_initial_aux_state! = make_set_initial_aux_state(model);
 set_initial_aux_state!(p, Y, t0);
 
-# Then to create the entire right hand side function for the system
+# Then to create the entire right hand side (tendency) function for the system
 # of ordinary differential equations:
-ode_function! = make_ode_function(model);
+exp_tendency! = make_exp_tendency(model);
 
 # Then we can set up the simulation and solve it:
 tf = FT(7 * 86400);
-prob = ODEProblem(ode_function!, Y, (t0, tf), p);
+prob = ODEProblem(exp_tendency!, Y, (t0, tf), p);
 # We need a callback to get and store the auxiliary fields, as they
 # are not stored by default.
 saved_values = SavedValues(FT, ClimaCore.Fields.FieldVector);

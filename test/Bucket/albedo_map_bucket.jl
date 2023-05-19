@@ -15,7 +15,6 @@ using ClimaLSM.Domains:
 using ClimaLSM:
     initialize,
     make_update_aux,
-    make_ode_function,
     make_set_initial_aux_state,
     PrescribedAtmosphere,
     PrescribedRadiativeFluxes

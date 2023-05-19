@@ -6,7 +6,7 @@ using ClimaLSM.Domains: HybridBox, SphericalShell
 FT = Float64
 
 @testset "WVector usage in gradient" begin
-    # In our RHS, we want to set a boundary condition on flux, which is a gradient
+    # In our tendency, we want to set a boundary condition on flux, which is a gradient
     # of a scalar. This should be a covariant vector. In the case of no topography,
     # the Wvector points in the same direction as the covariant vector.
 

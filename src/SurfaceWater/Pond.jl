@@ -6,22 +6,26 @@ using DocStringExtensions
 import ClimaCore: Fields
 
 import ClimaLSM:
-    AbstractModel, make_rhs, prognostic_vars, name, prognostic_types
+    AbstractExpModel,
+    make_compute_exp_tendency,
+    prognostic_vars,
+    name,
+    prognostic_types
 using ClimaLSM.Domains
 export PondModel, PrescribedRunoff, surface_runoff
 
-abstract type AbstractSurfaceWaterModel{FT} <: AbstractModel{FT} end
+abstract type AbstractSurfaceWaterModel{FT} <: AbstractExpModel{FT} end
 abstract type AbstractSurfaceRunoff{FT <: AbstractFloat} end
 """
     PondModel{FT, D, R} <: AbstractSurfaceWaterModel{FT}
 
-A stand-in model for models like the snow or river model. In 
+A stand-in model for models like the snow or river model. In
 standalone mode, a prescribed soil infiltration rate
  and precipitation rate
 control the rate of change of the pond height variable `η` via an ODE.
 In integrated LSM mode, the infiltration into the soil will be computed
 via a different method, and also be applied as a flux boundary condition
-for the soil model. 
+for the soil model.
 $(DocStringExtensions.FIELDS)
 """
 struct PondModel{FT, D, R} <: AbstractSurfaceWaterModel{FT}
@@ -60,12 +64,12 @@ ClimaLSM.prognostic_types(model::PondModel{FT}) where {FT} = (FT,)
 ClimaLSM.name(::AbstractSurfaceWaterModel) = :surface_water
 ClimaLSM.domain(::AbstractSurfaceWaterModel) = :surface
 
-function ClimaLSM.make_rhs(model::PondModel)
-    function rhs!(dY, Y, p, t)
+function ClimaLSM.make_compute_exp_tendency(model::PondModel)
+    function compute_exp_tendency!(dY, Y, p, t)
         runoff = surface_runoff(model.runoff, Y, p, t)
         @. dY.surface_water.η = runoff
     end
-    return rhs!
+    return compute_exp_tendency!
 end
 
 # Runoff > 0 -> into river system.

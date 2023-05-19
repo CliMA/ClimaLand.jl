@@ -193,10 +193,10 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
               prognostic_types(getproperty(canopy, component))
     end
     Y.canopy.hydraulics[1] = plant_ν
-    ode! = make_ode_function(canopy)
+    exp_tendency! = make_exp_tendency(canopy)
     t0 = FT(0.0)
     dY = similar(Y)
-    ode!(dY, Y, p, t0)
+    exp_tendency!(dY, Y, p, t0)
     (evapotranspiration, shf, lhf) =
         canopy_surface_fluxes(canopy.atmos, canopy, Y, p, t0)
 

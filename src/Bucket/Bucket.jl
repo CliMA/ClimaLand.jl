@@ -22,12 +22,12 @@ using ClimaLSM:
     net_radiation,
     construct_atmos_ts,
     compute_ρ_sfc,
-    AbstractModel,
+    AbstractExpModel,
     heaviside,
     PrescribedAtmosphere
 import ClimaLSM:
     make_update_aux,
-    make_rhs,
+    make_compute_exp_tendency,
     prognostic_vars,
     auxiliary_vars,
     name,
@@ -53,7 +53,7 @@ export BucketModelParameters,
 
 include(joinpath(pkgdir(ClimaLSM), "src/Bucket/artifacts/artifacts.jl"))
 
-abstract type AbstractBucketModel{FT} <: AbstractModel{FT} end
+abstract type AbstractBucketModel{FT} <: AbstractExpModel{FT} end
 
 abstract type AbstractLandAlbedoModel{FT <: AbstractFloat} end
 
@@ -62,7 +62,7 @@ abstract type AbstractLandAlbedoModel{FT <: AbstractFloat} end
 
 An albedo model where the albedo of different surface types
 is specified. Snow albedo is treated as constant across snow
-location and across wavelength. Surface albedo (sfc) 
+location and across wavelength. Surface albedo (sfc)
 is specified as a function
 of latitude and longitude, but is also treated as constant across
 wavelength; surface is this context refers to soil and vegetation.
@@ -79,7 +79,7 @@ An albedo model where the albedo of different surface types
 is specified. Snow albedo is treated as constant across snow
 location and across wavelength. Surface albedo is specified via a
 NetCDF file, which can be a function of time, but is treated
-as constant across wavelengths; surface is this context refers 
+as constant across wavelengths; surface is this context refers
 to soil and vegetation.
 
 Note that this option should only be used with global simulations,
@@ -232,7 +232,7 @@ Initializes the variables for the `BucketModel`.
 
 Note that the `BucketModel` has prognostic variables that are defined on different
 subsets of the domain. Because of that, we have to treat them independently.
-In LSM models which are combinations of standalone component models, this is not 
+In LSM models which are combinations of standalone component models, this is not
 needed, and we can use the default `initialize`. Here, however, we need to do some
 hardcoding specific to this model.
 """
@@ -323,7 +323,7 @@ auxiliary vector `p` in place, according to a
 NetCDF file. This data file is encapsulated in an object of
 type `ClimaLSM.Regridder.MapInfo` in the field albedo.α_sfc.
 
-The NetCDF file is read in, regridded, and projected onto 
+The NetCDF file is read in, regridded, and projected onto
 the surface space of the LSM using ClimaCoreTempestRemap. The result
 is a ClimaCore.Fields.Field of albedo values.
 """
@@ -346,12 +346,12 @@ end
 
 
 """
-    make_rhs(model::BucketModel{FT}) where {FT}
+    make_compute_exp_tendency(model::BucketModel{FT}) where {FT}
 
-Creates the rhs! function for the bucket model.
+Creates the compute_exp_tendency! function for the bucket model.
 """
-function make_rhs(model::BucketModel{FT}) where {FT}
-    function rhs!(dY, Y, p, t)
+function make_compute_exp_tendency(model::BucketModel{FT}) where {FT}
+    function compute_exp_tendency!(dY, Y, p, t)
         @unpack κ_soil, ρc_soil, σS_c, W_f = model.parameters
 
         #Currently, the entire surface is assumed to be
@@ -388,7 +388,7 @@ function make_rhs(model::BucketModel{FT}) where {FT}
             )
         (; F_melt, F_into_snow, G) = partitioned_fluxes
 
-        # Temperature profile of soil. 
+        # Temperature profile of soil.
         gradc2f = ClimaCore.Operators.GradientC2F()
         divf2c = ClimaCore.Operators.DivergenceF2C(
             top = ClimaCore.Operators.SetValue(ClimaCore.Geometry.WVector.(G)),
@@ -427,7 +427,7 @@ function make_rhs(model::BucketModel{FT}) where {FT}
         dY.bucket.σS =
             @. (snow_precip - snow_cover_fraction * evaporation - snow_melt) # Equation (11)
     end
-    return rhs!
+    return compute_exp_tendency!
 end
 
 """

@@ -11,7 +11,10 @@
 # running multi-component land surface models. For a developer of a new
 # land model component, using `AbstractModel`s as shown
 # below is the first step towards building a model which
-# can be run in standalone or with `ClimaLSM.jl`. 
+# can be run in standalone or with `ClimaLSM.jl`.
+# Note that a model requiring implicit timestepping would
+# not follow this approach, and would instead use an
+# `AbstractImExModel` framework.
 
 
 # This tutorial introduces some of the functionality of the
@@ -26,7 +29,7 @@
 
 # Future tutorials (TBD where)
 # will show to define simple land component models and run them
-# together using `ClimaLSM.jl`. 
+# together using `ClimaLSM.jl`.
 
 # # General setup
 # We assume you are solving a system of the form
@@ -61,7 +64,7 @@
 # It may be that there are quantities, which depend on the state vector `` \vec{Y} ``,
 # location, time, and other parameters, which are expensive to compute (e.g.
 # requiring solving an implicit equation) and also needed multiple times in the
-# right hand side functions. 
+# right hand side functions.
 
 # Denoting these variables as `` \vec{p} ``,
 # your equations may be rewritten as:
@@ -126,7 +129,12 @@ using ClimaLSM
 using ClimaLSM.Domains
 
 # Import the functions we are extending for our model:
-import ClimaLSM: name, make_rhs, prognostic_vars, prognostic_types
+import ClimaLSM:
+    name,
+    make_exp_tendency,
+    make_compute_exp_tendency,
+    prognostic_vars,
+    prognostic_types
 import ClimaLSM.Domains: coordinates
 
 # There is only one free parameter in the model, `λ`, so our model structure
@@ -167,16 +175,16 @@ ClimaLSM.name(model::HenonHeiles) = :hh;
 # minus the gradient of the potential function (the aforementioned cubic); they are derived
 # by taking the appropriate derivatives of the Hamiltonian (in this case, total energy) function.
 
-# We now create the function which makes the `rhs!` function:
+# We now create the function which makes the `compute_exp_tendency!` function:
 
-function ClimaLSM.make_rhs(model::HenonHeiles{FT}) where {FT}
-    function rhs!(dY, Y, p, t)
+function ClimaLSM.make_compute_exp_tendency(model::HenonHeiles{FT}) where {FT}
+    function compute_exp_tendency!(dY, Y, p, t)
         dY.hh.x[1] = Y.hh.m[1]
         dY.hh.x[2] = Y.hh.m[2]
         dY.hh.m[1] = -Y.hh.x[1] - FT(2) * model.λ * Y.hh.x[1] * Y.hh.x[2]
         dY.hh.m[2] = -Y.hh.x[2] - model.λ * (Y.hh.x[1]^FT(2) - Y.hh.x[2]^FT(2))
     end
-    return rhs!
+    return compute_exp_tendency!
 end;
 
 # A couple of notes: the vector `` \vec{dY} `` contains the evaluation of the right hand side function
@@ -186,10 +194,10 @@ end;
 # We use the symbol returned by `name(model)` to create this hierarchy. There
 # will ever only be one level to the hierarchy.
 
-# The arguments of `rhs!` are determined by the `OrdinaryDiffEq` interface, but should be fairly
-# generic for any time-stepping algorithm. The `rhs!` function is
-# only created once. If there are time-varying forcing terms appearing, for example, the forcing
-# functions must be stored in `model` and passed in that way.
+# The arguments of `compute_exp_tendency!` are determined by the `OrdinaryDiffEq` interface for the `rhs!`
+# function, but should be fairly generic for any time-stepping algorithm. The `compute_exp_tendency!`
+# function is only created once. If there are time-varying forcing terms appearing, for example, the
+# forcing functions must be stored in `model` and passed in that way.
 
 # # The state vectors `` \vec{Y} `` and `` \vec{p} ``
 
@@ -219,7 +227,7 @@ hh = HenonHeiles{Float64}(1.0);
 # Create the initial state structure, using the default method:
 Y, p, _ = initialize(hh);
 
-# Note that `Y` has the structure we planned on in our `rhs!` function, for `x`,
+# Note that `Y` has the structure we planned on in our `compute_exp_tendency!` function, for `x`,
 Y.hh.x
 # and for `m`
 Y.hh.m
@@ -237,11 +245,11 @@ Y.hh.m[2] = 0.0;
 
 # # Running the simulation
 
-# Create the `ode_function`. In our case, since we don't have
+# Create the `exp_tendency!`. In our case, since we don't have
 # any auxiliary variables to update each timestep, this is
-# equivalent to the `rhs!` function, but in other models, it
-# might involve an `update_aux!` step as well.
-ode_function! = make_ode_function(hh);
+# equivalent to the `compute_exp_tendency!` function, but in
+# other models, it might involve an `update_aux!` step as well.
+exp_tendency! = make_exp_tendency(hh);
 
 # From here on out, we are just using `OrdinaryDiffEq.jl` functions
 # to integrate the system forward in time.
@@ -253,11 +261,11 @@ tf = 600.0;
 dt = 1.0;
 
 # ODE.jl problem statement:
-prob = ODEProblem(ode_function!, Y, (t0, tf), p);
+prob = ODEProblem(exp_tendency!, Y, (t0, tf), p);
 
 # Solve command - we are using a fourth order Runge-Kutta timestepping
 # scheme. ODE.jl uses adaptive timestepping, but we can still pass in
-# a suggested timestep `dt`. 
+# a suggested timestep `dt`.
 sol = solve(prob, RK4(); dt = dt, reltol = 1e-6, abstol = 1e-6);
 
 # Get the solution back, and make a plot.
@@ -288,7 +296,7 @@ savefig("orbits.png");
 # out the state of the system, which uniquely defines the orbit we are looking at.
 
 # The functions below creates these initial conditions, given a value for E, λ, and y
-# (setting `` m_y = 0 `` arbitrarily): 
+# (setting `` m_y = 0 `` arbitrarily):
 
 function set_ic_via_y!(Y, E, λ, y; my = 0.0, x = 0.0)
     twiceV = λ * (x^2 + y^2 + 2 * x^2 * y - 2 / 3 * y^3)
@@ -327,7 +335,7 @@ function map(Y, pl)
         nothing,
         save_positions = (true, false),
     )
-    prob = ODEProblem(ode_function!, Y, (t0, tf), p)
+    prob = ODEProblem(exp_tendency!, Y, (t0, tf), p)
     sol = solve(
         prob,
         RK4();

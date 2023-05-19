@@ -141,9 +141,9 @@ tf = FT(24 * 3600 * 15)
 dt = FT(100)
 
 init_soil!(Y, cds.z, soil.parameters)
-soil_ode! = make_ode_function(soil)
+soil_exp_tendency! = make_exp_tendency(soil)
 
-prob = ODEProblem(soil_ode!, Y, (t0, tf), p)
+prob = ODEProblem(soil_exp_tendency!, Y, (t0, tf), p)
 sol = solve(prob, RK4(); dt = dt, saveat = 3600);
 
 (; ν, vg_m, vg_n, θ_r, d_ds) = soil.parameters

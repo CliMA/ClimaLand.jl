@@ -1,6 +1,6 @@
 # # Modeling a freezing front in unsaturated soil
 
-# Before reading this tutorial, 
+# Before reading this tutorial,
 # we recommend that you look over the coupled energy
 # and water [tutorial](@ref Soil/soil_energy_hydrology.md).
 # That tutorial showed how to solve the heat equation for soil volumetric
@@ -201,12 +201,12 @@ init_soil!(Y, coords.z, soil.parameters);
 
 # Create the ode function for the [OrdinaryDiffEq.jl](https://github.com/SciML/OrdinaryDiffEq.jl)
 # ODEProblem, and choose a timestep, integration timespan, etc:
-ode! = make_ode_function(soil)
+exp_tendency! = make_exp_tendency(soil)
 t0 = FT(0)
 dt = FT(60)
 tf = FT(3600 * 50)
 
-prob = ODEProblem(ode!, Y, (t0, tf), p);
+prob = ODEProblem(exp_tendency!, Y, (t0, tf), p);
 
 # Now we can solve the problem. Here we use an RK4 timestepper:
 sol = solve(prob, RK4(); dt = dt, saveat = 0:3600:tf);

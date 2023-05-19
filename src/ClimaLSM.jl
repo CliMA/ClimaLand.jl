@@ -21,7 +21,7 @@ include("Bucket/Bucket.jl")
 export make_interactions_update_aux
 export domain
 """
-     AbstractLandModel{FT} <: AbstractModel{FT} 
+     AbstractLandModel{FT} <: AbstractModel{FT}
 
 An abstract type for all land model types, which are used
 to simulated multiple land surface components as
@@ -29,15 +29,16 @@ a single system. Standalone component runs do not require
 this interface and it should not be used for that purpose.
 
 Many methods taking an argument of type `AbstractLandModel` are
-extensions of functions defined for `AbstractModel`s. 
+extensions of functions defined for `AbstractModel`s.
 There are default methods that apply for all `AbstractLandModel`s,
-including `make_update_aux`, `make_ode_function, `make_rhs`, 
+including `make_update_aux`, `make_exp_tendency`, `make_imp_tendency`,
+`make_compute_exp_tendency`, `make_compute_imp_tendency`,
 `initialize_prognostic`, `initialize_auxiliary`, `initialize`,
 and `coordinates`.
 
 Methods which dispatch on a specific type of AbstractLandModel
 include any function involving interactions between components,
-as these interactions depend on the components in the land model 
+as these interactions depend on the components in the land model
 and the versions of these component models being used.
 """
 abstract type AbstractLandModel{FT} <: AbstractModel{FT} end
@@ -99,10 +100,10 @@ end
     initialize_interactions(land::AbstractLandModel) end
 
 Initializes interaction variables, which are a type of auxiliary
-variable, to empty objects of the correct type for the model. 
+variable, to empty objects of the correct type for the model.
 
 Interaction variables are specified by `interaction_vars`, their types
-by `interaction_types`, and their spaces by `interaction_spaces`. 
+by `interaction_types`, and their spaces by `interaction_spaces`.
 This function should be called during `initialize_auxiliary` step.
 """
 function initialize_interactions(land::AbstractLandModel, land_coords)
@@ -116,17 +117,40 @@ function initialize_interactions(land::AbstractLandModel, land_coords)
     return NamedTuple{vars}(interactions)
 end
 
-function make_ode_function(land::AbstractLandModel)
+function make_imp_tendency(land::AbstractLandModel)
     components = land_components(land)
-    rhs_function_list = map(x -> make_rhs(getproperty(land, x)), components)
+
+    # If all component models are stepped explicitly, do nothing in imp_tendency!
+    if all(c -> typeof(c) .<: AbstractExpModel, components)
+        function imp_tendency!(dY, Y, p, t) end
+    else
+        compute_imp_tendency_list = map(
+            x -> make_compute_imp_tendency(getproperty(land, x)),
+            components,
+        )
+        update_aux! = make_update_aux(land)
+        function imp_tendency!(dY, Y, p, t)
+            update_aux!(p, Y, t)
+            for f! in compute_imp_tendency_list
+                f!(dY, Y, p, t)
+            end
+        end
+    end
+    return imp_tendency!
+end
+
+function make_exp_tendency(land::AbstractLandModel)
+    components = land_components(land)
+    compute_exp_tendency_list =
+        map(x -> make_compute_exp_tendency(getproperty(land, x)), components)
     update_aux! = make_update_aux(land)
-    function ode_function!(dY, Y, p, t)
+    function exp_tendency!(dY, Y, p, t)
         update_aux!(p, Y, t)
-        for f! in rhs_function_list
+        for f! in compute_exp_tendency_list
             f!(dY, Y, p, t)
         end
     end
-    return ode_function!
+    return exp_tendency!
 end
 
 function make_update_aux(land::AbstractLandModel)
@@ -146,7 +170,7 @@ end
 """
     make_interactions_update_aux(land::AbstractLandModel) end
 
-Makes and returns a function which updates the interaction variables, 
+Makes and returns a function which updates the interaction variables,
 which are a type of auxiliary variable.
 
 The `update_aux!` function returned is evaluted during the right hand
@@ -208,21 +232,21 @@ function auxiliary_types(land::AbstractLandModel)
 end
 
 """
-   interaction_vars(m::AbstractModel)
+   interaction_vars(m::AbstractLandModel)
 
 Returns the interaction variable symbols for the model in the form of a tuple.
 """
 interaction_vars(m::AbstractLandModel) = ()
 
 """
-   interaction_types(m::AbstractModel)
+   interaction_types(m::AbstractLandModel)
 
 Returns the shared interaction variable types for the model in the form of a tuple.
 """
 interaction_types(m::AbstractLandModel) = ()
 
 """
-   interaction_domains(m::AbstractModel)
+   interaction_domains(m::AbstractLandModel)
 
 Returns the interaction domain symbols in the form of a tuple e.g. :surface or :subsurface.
 

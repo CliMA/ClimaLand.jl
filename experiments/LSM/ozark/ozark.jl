@@ -132,7 +132,7 @@ canopy_component_args = (;
     conductance = conductance_args,
     hydraulics = plant_hydraulics_args,
 )
-# Other info needed                         
+# Other info needed
 shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
     LAI,
     h_stem + h_leaf,
@@ -158,7 +158,7 @@ land = SoilPlantHydrologyModel{FT}(;
     canopy_model_args = canopy_model_args,
 )
 Y, p, cds = initialize(land)
-ode! = make_ode_function(land)
+exp_tendency! = make_exp_tendency(land)
 
 #Initial conditions
 Y.soil.ϑ_l = FT(0.35)
@@ -185,7 +185,7 @@ update_aux!(p, Y, 0.0)
 
 # Simulation
 sv = SavedValues(FT, ClimaCore.Fields.FieldVector)
-prob = ODEProblem(ode!, Y, (t0, tf), p);
+prob = ODEProblem(exp_tendency!, Y, (t0, tf), p);
 cb = SavingCallback(
     (u, t, integrator) -> copy(integrator.p),
     sv;

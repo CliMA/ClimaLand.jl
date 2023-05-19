@@ -3,11 +3,11 @@ using DocStringExtensions
 using Thermodynamics
 using ClimaLSM
 using ClimaCore
-using ClimaLSM:
-    AbstractModel, AbstractRadiativeDrivers, AbstractAtmosphericDrivers
+using ClimaLSM: AbstractRadiativeDrivers, AbstractAtmosphericDrivers
 import ..Parameters as LSMP
 
 import ClimaLSM:
+    AbstractExpModel,
     name,
     domain,
     prognostic_vars,
@@ -17,7 +17,7 @@ import ClimaLSM:
     initialize_prognostic,
     initialize_auxiliary,
     make_update_aux,
-    make_rhs,
+    make_compute_exp_tendency,
     surface_temperature,
     surface_specific_humidity,
     surface_air_density,
@@ -54,7 +54,7 @@ struct SharedCanopyParameters{FT <: AbstractFloat, PSE}
 end
 
 """
-     CanopyModel{FT, RM, PM, SM, PHM, A, R, PS, D} <: AbstractModel{FT}
+     CanopyModel{FT, RM, PM, SM, PHM, A, R, PS, D} <: AbstractExpModel{FT}
 
 The model struct for the canopy, which contains
 - the canopy model domain (a point for site-level simulations, or
@@ -83,7 +83,7 @@ fluxes.
 
 $(DocStringExtensions.FIELDS)
 """
-struct CanopyModel{FT, RM, PM, SM, PHM, A, R, PS, D} <: AbstractModel{FT}
+struct CanopyModel{FT, RM, PM, SM, PHM, A, R, PS, D} <: AbstractExpModel{FT}
     "Radiative transfer model, a canopy component model"
     radiative_transfer::RM
     "Photosynthesis model, a canopy component model"
@@ -313,9 +313,9 @@ are of the type in the parametric type signature: `BeerLambertModel`,
 `FarquharModel`, `MedlynConductanceModel`, and `PlantHydraulicsModel`.
 
 Please note that the plant hydraulics model has auxiliary variables
-that are updated in its prognostic `rhs!` function. While confusing, this
-is better for performance as it saves looping over the state vector
-multiple times.
+that are updated in its prognostic `compute_exp_tendency!` function.
+While confusing, this is better for performance as it saves looping
+over the state vector multiple times.
 
 The other sub-components rely heavily on each other,
 so the version of the `CanopyModel` with these subcomponents
@@ -383,7 +383,7 @@ function ClimaLSM.make_update_aux(
 
         #For efficiency (a single loop over plant layers),
         # the plant hydraulics aux variables are updated in that components's
-        # RHS function. To use the current leaf water potential,
+        # `compute_exp_tendency`` function. To use the current leaf water potential,
         # update that here.
 
         top_index = canopy.hydraulics.n_stem + canopy.hydraulics.n_leaf
@@ -446,24 +446,26 @@ function ClimaLSM.make_update_aux(
 end
 
 """
-    make_rhs(canopy::CanopyModel)
+    make_compute_exp_tendency(canopy::CanopyModel)
 
-Creates and returns the rhs! for the `CanopyModel`.
+Creates and returns the compute_exp_tendency! for the `CanopyModel`.
 
-This allows for prognostic variables in each canopy component.
+This allows for prognostic variables in each canopy component, and
+specifies that they will be stepped explicitly.
 """
-function make_rhs(canopy::CanopyModel)
+function make_compute_exp_tendency(canopy::CanopyModel)
     components = canopy_components(canopy)
-    rhs_function_list = map(components) do (component)
-        submodel = getproperty(canopy, component)
-        make_rhs(submodel, canopy)
-    end
-    function rhs!(dY, Y, p, t)
-        for f! in rhs_function_list
+    compute_exp_tendency_list = map(
+        x -> make_compute_exp_tendency(getproperty(canopy, x), canopy),
+        components,
+    )
+    function compute_exp_tendency!(dY, Y, p, t)
+        # aux vars are updated in `compute_exp_tendency` functions
+        for f! in compute_exp_tendency_list
             f!(dY, Y, p, t)
         end
     end
-    return rhs!
+    return compute_exp_tendency!
 end
 
 """

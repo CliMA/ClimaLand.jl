@@ -61,11 +61,11 @@ FT = Float64
         end
         Ysoil.soil.ϑ_l .= hydrostatic_profile.(x, z, Ref(params))
     end
-    soil_ode! = make_ode_function(soil)
+    exp_tendency! = make_exp_tendency(soil)
     Y, p, coords = initialize(soil)
     init_soil!(Y, coords.x, coords.z, soil.parameters)
     dY = similar(Y)
-    soil_ode!(dY, Y, p, 0.0)
+    exp_tendency!(dY, Y, p, 0.0)
 
     function dθdx(x, z)
         z_∇ = zmin / 2.0 + (zmax - zmin) / 10.0 * sin(π * 2 * x / xmax)
@@ -306,17 +306,17 @@ end
 
 
 
-    soil_ode! = make_ode_function(soil)
+    exp_tendency! = make_exp_tendency(soil)
     dY = similar(Y)
-    soil_ode!(dY, Y, p, 0.0)
-    ## dY should be zero. Look at dY/Y. 
+    exp_tendency!(dY, Y, p, 0.0)
+    ## dY should be zero. Look at dY/Y.
     @test maximum(abs.(parent(dY.soil.ϑ_l))) / ν < 5e-12
     @test maximum(abs.(parent(dY.soil.θ_i))) / ν < 5e-12
     @test maximum(abs.(parent(dY.soil.ρe_int))) ./ 2.052e7 < 5e-12
 end
 
 
-@testset "Soil hydrology RHS on sphere" begin
+@testset "Soil hydrology tendency on sphere" begin
     ν = FT(0.44)
     K_sat = FT(1.0)
     S_s = FT(1e-3) #inverse meters
@@ -375,9 +375,9 @@ end
         Ysoil.soil.ϑ_l .= hydrostatic_profile.(z, Ref(params))
     end
     init_soil!(Y, coords.z, soil.parameters)
-    soil_ode! = make_ode_function(soil)
+    exp_tendency! = make_exp_tendency(soil)
     dY = similar(Y)
-    soil_ode!(dY, Y, p, 0.0)
+    exp_tendency!(dY, Y, p, 0.0)
     ## dY should be zero except at the boundary, where it should be ±30.
     @test (mean(unique(parent(ClimaCore.level(dY.soil.ϑ_l, 1)))) - 30.0) / ν <
           1e-11

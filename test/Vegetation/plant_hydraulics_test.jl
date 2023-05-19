@@ -182,7 +182,7 @@ domains = [
             radiation = radiation,
         )
         # Set system to hydrostatic equilibrium state by setting fluxes to zero, and setting LHS of both ODEs to 0
-        function initial_rhs!(F, Y)
+        function initial_compute_exp_tendency!(F, Y)
             T0A = FT(1e-8) * area_index[:leaf]
             for i in 1:(n_leaf + n_stem)
                 if i == 1
@@ -228,7 +228,11 @@ domains = [
             end
         end
 
-        soln = nlsolve(initial_rhs!, Vector(-0.03:0.01:0.07); ftol = 1e-11)
+        soln = nlsolve(
+            initial_compute_exp_tendency!,
+            Vector(-0.03:0.01:0.07);
+            ftol = 1e-11,
+        )
 
         S_l =
             inverse_water_retention_curve.(
@@ -250,8 +254,8 @@ domains = [
             p.canopy.hydraulics.fa[i] .= NaN
             dY.canopy.hydraulics.ϑ_l[i] .= NaN
         end
-        canopy_rhs! = make_rhs(model)
-        canopy_rhs!(dY, Y, p, 0.0)
+        canopy_compute_exp_tendency! = make_compute_exp_tendency(model)
+        canopy_compute_exp_tendency!(dY, Y, p, 0.0)
 
         m = similar(dY.canopy.hydraulics.ϑ_l[1])
         m .= FT(0)
@@ -271,8 +275,9 @@ domains = [
             p.canopy.hydraulics.fa[i] .= NaN
             standalone_dY.canopy.hydraulics.ϑ_l[i] .= NaN
         end
-        standalone_rhs! = make_rhs(model.hydraulics, nothing)
-        standalone_rhs!(standalone_dY, Y, p, 0.0)
+        standalone_compute_exp_tendency! =
+            make_compute_exp_tendency(model.hydraulics, nothing)
+        standalone_compute_exp_tendency!(standalone_dY, Y, p, 0.0)
 
         m = similar(dY.canopy.hydraulics.ϑ_l[1])
         m .= FT(0)

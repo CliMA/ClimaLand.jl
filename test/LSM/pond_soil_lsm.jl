@@ -67,11 +67,11 @@ FT = Float64
     Y.surface_water.η .= 0.0
     dY = similar(Y)
 
-    ode! = make_ode_function(land)
+    exp_tendency! = make_exp_tendency(land)
     t = FT(0)
     dt = FT(1)
     for step in 1:10
-        ode!(dY, Y, p, t)
+        exp_tendency!(dY, Y, p, t)
         t = t + dt
         @. Y.surface_water.η = dY.surface_water.η * dt + Y.surface_water.η
     end
@@ -165,11 +165,11 @@ end
     # initialize the pond height to zero
     Y.surface_water.η .= 0.0
     dY = similar(Y)
-    ode! = make_ode_function(land)
+    exp_tendency! = make_exp_tendency(land)
     t = FT(0)
     dt = FT(1)
     for step in 1:10
-        ode!(dY, Y, p, t)
+        exp_tendency!(dY, Y, p, t)
         t = t + dt
         @. Y.surface_water.η = dY.surface_water.η * dt + Y.surface_water.η
     end
