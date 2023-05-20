@@ -34,7 +34,6 @@ Many methods taking an argument of type `AbstractLandModel` are
 extensions of functions defined for `AbstractModel`s.
 There are default methods that apply for all `AbstractLandModel`s,
 including `make_update_aux`, `make_exp_tendency`, `make_imp_tendency`,
-`make_compute_exp_tendency`, `make_compute_imp_tendency`,
 `initialize_prognostic`, `initialize_auxiliary`, `initialize`,
 and `coordinates`.
 

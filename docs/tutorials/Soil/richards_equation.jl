@@ -53,7 +53,6 @@
 
 # - Load external packages
 
-# using OrdinaryDiffEq: ODEProblem, ODEFunction, solve
 import OrdinaryDiffEq as ODE
 import ClimaTimeSteppers as CTS
 using Plots
@@ -169,7 +168,6 @@ W = RichardsTridiagonalW(Y)
 jac_kwargs = (; jac_prototype = W, Wfact = update_jacobian!)
 
 # And then we can solve the system of equations, using [OrdinaryDiffEq.jl](https://github.com/SciML/OrdinaryDiffEq.jl):
-# prob = ODEProblem(exp_tendency!, Y, (t0, timeend), p)
 prob = ODE.ODEProblem(
     CTS.ClimaODEFunction(
         T_exp! = exp_tendency!,

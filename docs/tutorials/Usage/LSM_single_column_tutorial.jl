@@ -43,6 +43,9 @@ using ClimaLSM.Domains: LSMSingleColumnDomain, Column
 using ClimaLSM.Soil
 using ClimaLSM.Pond
 
+import OrdinaryDiffEq as ODE
+import ClimaTimeSteppers as CTS
+
 FT = Float64;
 
 # # The individual component models I - Soil Hydrology
@@ -108,8 +111,10 @@ soil = Soil.RichardsModel{FT}(;
 # We also can create the soil prognostic and auxiliary
 # `ClimaCore.Field.FieldVector`s using the default method for `initialize`,
 Y_soil, p_soil, coords_soil = initialize(soil);
-# and we can set up the tendency function using the default as well,
-soil_ode! = make_exp_tendency(soil);
+# and we can set up the tendency functions using the default as well,
+soil_imp_tendency! = ClimaLSM.make_imp_tendency(soil);
+soil_exp_tendency! = ClimaLSM.make_exp_tendency(soil);
+soil_update_jacobian! = ClimaLSM.make_update_jacobian(soil);
 # which computes, for the column domain,
 
 # ``
@@ -123,28 +128,34 @@ soil_ode! = make_exp_tendency(soil);
 # head `ψ` in the auxiliary vector, so the fields `p_soil.soil.K` and
 # `p_soil.soil.ψ`
 # are present. These are automatically updated first in each call
-# to `soil_ode!`, as follows:
+# to `exp_tendency!` and `imp_tendency!`, as follows:
 # ```julia
-# function soil_ode!(dY, Y, p, t)
-#          update_aux!(p,Y,t)
-#          compute_exp_tendency!(dY, Y, p, t)
+# function imp_tendency!(dY, Y, p, t)
+#     update_aux!(p, Y, t)
+#     compute_imp_tendency!(dY, Y, p, t)
+# end
+# function exp_tendency!(dY, Y, p, t)
+#     update_aux!(p, Y, t)
+#     compute_exp_tendency!(dY, Y, p, t)
 # end
 # ```
 
 # where `update_aux!` updates `K`, and `ψ`, in `p`, in place,
-# and `compute_exp_tendency!` computes the divergence of the Darcy flux,
-# using the updated `p`, and then updates `dY` in place with the computed values.
+# `compute_imp_tendency!` computes the divergence of the Darcy flux,
+# using the updated `p`, then updates `dY` in place with the computed values,
+# and `compute_exp_tendency!` updates changes in `dY` due to horizontal
+# derivatives and sources/sinks.
 # For this reason,
 # the `p` vector does not need to be set to
 # some initial condition consistent
 # with Y_soil.soil.ϑ(t=0) before starting a simulation, though initial
 # conditions must be given for `Y`.
 
-# Note also that we have defined methods `make_compute_exp_tendency` and
+# Note also that we have defined methods `make_compute_exp_tendency`,
+# `make_compute_imp_tendency` and
 # `make_update_aux`, which only take the `model` as argument, and which return
-# the functions `compute_exp_tendency!` and `update_aux!`,
-# [here](https://github.com/CliMA/ClimaLSM.jl/blob/9e2b8df6d8d5b7f878a5b0f02e2bf80fa66aec33/src/Soil/Soil.jl#L292)
-# and [here](https://github.com/CliMA/ClimaLSM.jl/blob/9e2b8df6d8d5b7f878a5b0f02e2bf80fa66aec33/src/Soil/Soil.jl#L400).
+# the functions `compute_exp_tendency!`, `compute_imp_tendency!`, and `update_aux!`.
+# TODO add updated links to these functions
 
 # Lastly, the coordinates returned by `initialize` contain
 # the z-coordinates of the centers of the finite difference layers used
@@ -184,11 +195,12 @@ Y_pond, p_pond, coords_pond = initialize(pond_model);
 
 # We can make the tendency function in the same way, for
 # stepping the state forward in time:
-pond_ode! = make_exp_tendency(pond_model);
+pond_exp_tendency! = make_exp_tendency(pond_model);
 
-# The `pond_ode!` function works in the same way as for the soil model:
+# The `pond_exp_tendency!` function works in the same way as
+# the explicit tendency for the soil model:
 # ```julia
-# function pond_ode!(dY, Y, p, t)
+# function pond_exp_tendency!(dY, Y, p, t)
 #          update_aux!(p,Y,t)
 #          compute_exp_tendency!(dY, Y, p, t)
 # end
@@ -315,30 +327,39 @@ land = LandHydrology{FT}(;
 # end
 # ```
 
-# and similarily for the `compute_exp_tendency!` functions:
+# and similarily for the `exp_tendency!` functions:
 # ```julia
-# function make_compute_exp_tendency(land)
-#          soil_compute_exp_tendency! = make_update_aux(land.soil)
-#          surface_compute_exp_tendency! = make_update_aux(land.surface_water)
-#          function compute_exp_tendency!(dY,Y,p,t)
-#                   surface_compute_exp_tendency!(dY,Y,p, t), # computes dY.surface.η
+# function make_exp_tendency(land)
+#          soil_compute_exp_tendency! = make_compute_exp_tendency(land.soil)
+#          surface_compute_exp_tendency! = make_compute_exp_tendency(land.surface_water)
+#          update_aux! = make_update_aux(land)
+#          function exp_tendency!(dY,Y,p,t)
+#                   update_aux!(p, Y, t)
 #                   soil_compute_exp_tendency!(dY,Y,p,t) # computes dY.soil.ϑ
+#                   surface_compute_exp_tendency!(dY,Y,p, t), # computes dY.surface.η
 #          end
-#          return compute_exp_tendency!
+#          return exp_tendency!
 # end
 # ```
 
-# The `exp_tendency!` for the
-# land model is then again just
+# and `imp_tendency!` functions:
 # ```julia
-# function exp_tendency!(dY, Y, p, t)
-#          update_aux!(p,Y,t)
-#          compute_exp_tendency!(dY, Y, p, t)
+# function make_imp_tendency(land)
+#          soil_compute_imp_tendency! = make_compute_imp_tendency(land.soil)
+#          surface_compute_imp_tendency! = make_compute_imp_tendency(land.surface_water)
+#          update_aux! = make_update_aux(land)
+#          function imp_tendency!(dY,Y,p,t)
+#                   update_aux!(p, Y, t)
+#                   soil_compute_imp_tendency!(dY,Y,p,t) # computes dY.soil.ϑ
+#                   surface_compute_imp_tendency!(dY,Y,p, t), # does nothing (surface model is explicit)
+#          end
+#          return imp_tendency!
 # end
 # ```
 
 # In the above, we showed explicitly what occurs by hardcoding the
-# `compute_exp_tendency!`, `update_aux!` with names for `soil` and
+# `update_aux!`, `compute_exp_tendency!`,
+# and `compute_imp_tendency!` with names for `soil` and
 # `surface_water`. In reality, this is done by
 # looping over the components of the land model, meaning that we can
 # use the same code internally for land models with different components.
@@ -367,7 +388,8 @@ coords.subsurface
 coords.surface
 
 # And we can make the tendency function as before:
-land_ode! = make_exp_tendency(land);
+land_exp_tendency! = make_exp_tendency(land);
+land_imp_tendency! = make_exp_tendency(land);
 
 # Next up would be to set initial conditions, choose a timestepping scheme, and
 # run your simulation.
@@ -375,9 +397,8 @@ land_ode! = make_exp_tendency(land);
 # # Advantages and disadvantages
 
 # Some advantages to our interface design are as follows:
-# - a developer only needs to learn a few concepts (`compute_exp_tendency!`, prognostic vs. aux variables, `update_aux!`, `initialize`, domains) to make a model which can be run in standalone or work with other components.
+# - a developer only needs to learn a few concepts (`compute_exp_tendency!`, `compute_imp_tendency!`, prognostic vs. aux variables, `update_aux!`, `initialize`, domains) to make a model which can be run in standalone or work with other components.
 # - likewise, a user only needs to learn one interface to run all models, regardless of if they are standalone components or LSMs with multiple componnents.
-# - the `exp_tendency! `is completely seperate from the timestepping scheme used, so any scheme can be used (with the exception of mixed implicit/explicit schemes, which we can't handle yet).
 # - although we wrote it here in a ``hardwired`` fashion for surface water and soil, the `update_aux!`, `compute_exp_tendency!`, etc. many methods for LSM models generalize to any number and mix of components. One just needs to write a new model type (e.g. `BiophysicsModel <: AbstractModel` for a vegetation and carbon component model) and the appropriate `interaction` methods for that model.
 # - the order in which the components are treated in the tendency or in update aux does not matter. What matters is that auxiliary/cache variables are updated first, and within this update, interactions are updated last. We assume that the tendency function for a component only needs the entire `p` and `Y.component` in making this statement. Similarily, updating the aux variables of a single component does not require interaction variables. Yhis is also the same as saying they can be run in *standalone* mode.
 # - the code is also modular in terms of swapping out a simple component model for a more complex version.
@@ -386,3 +407,4 @@ land_ode! = make_exp_tendency(land);
 # - Even in standalone model, variables are accessed in a nested way: Y.soil, p.soil, etc, which is excessive.
 # - To accomodate the fact that some components involve PDEs, a developer for purely ODE based component does need to at least handle `ClimaCore.Field.FieldVector`s.
 # - standalone models need to play by the rules of `AbstractModel`s, and LSMs need to play by the rules of `ClimaLSM.jl`.
+# - each model is hard-coded in the sense that which components are stepped implicitly vs explicitly cannot easily be changed.
