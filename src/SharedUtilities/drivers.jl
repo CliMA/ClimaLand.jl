@@ -16,7 +16,8 @@ export AbstractAtmosphericDrivers,
     net_radiation,
     surface_fluxes_at_a_point,
     liquid_precipitation,
-    snow_precipitation
+    snow_precipitation,
+    vapor_pressure_deficit
 
 """
      AbstractAtmosphericDrivers{FT <: AbstractFloat}
@@ -428,3 +429,24 @@ compute surface fluxes and radiative fluxes at the surface using
 the functions in this file.
 """
 function surface_height(model::AbstractModel, Y, p) end
+
+"""
+    vapor_pressure_deficit(T_air, P_air, q_air, thermo_params)
+
+Computes the vapor pressure deficit for air with temperature T_air,
+pressure P_air, and specific humidity q_air, using thermo_params,
+a Thermodynamics.jl param set.
+"""
+function vapor_pressure_deficit(T_air, P_air, q_air, thermo_params)
+    es = Thermodynamics.saturation_vapor_pressure(
+        thermo_params,
+        T_air,
+        Thermodynamics.Liquid(),
+    )
+    ea = Thermodynamics.partial_pressure_vapor(
+        thermo_params,
+        P_air,
+        Thermodynamics.PhasePartition(q_air),
+    )
+    return es - ea
+end

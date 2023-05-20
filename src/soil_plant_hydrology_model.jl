@@ -122,6 +122,9 @@ is needed for both the boundary condition for the soil model and the source
 term (runoff) for the surface water model.
 
 This function is called each ode function evaluation.
+
+Root extraction is in units of 1/s and is equivalent to:
+RAI * flux per cross section of roots * root distribution (z).
 """
 function make_interactions_update_aux(
     land::SoilPlantHydrologyModel{FT, SM, RM},
@@ -178,69 +181,35 @@ struct PrognosticSoilPressure{FT} <:
        Canopy.PlantHydraulics.AbstractRootExtraction{FT} end
 
 """
-    PlantHydraulics.flux_out_roots(
+    PlantHydraulics.root_flux_per_ground_area!(
+        fa::ClimaCore.Fields.Field,
         re::PrognosticSoilPressure{FT},
         model::Canopy.PlantHydraulics.PlantHydraulicsModel{FT},
         Y::ClimaCore.Fields.FieldVector,
         p::ClimaCore.Fields.FieldVector,
         t::FT,
-    )::FT where {FT}
+    ) where {FT}
 
-An extension of the `PlantHydraulics.flux_out_roots` function,
+An extension of the `PlantHydraulics.root_flux_per_ground_area!` function,
  which returns the
 net flux of water between the
-roots and the soil, when both soil and plant
+roots and the soil, per unti ground area, 
+when both soil and plant
 hydraulics are modeled prognostically. This is for use in an LSM.
 
-It is computed by summing the flux of water between
+It is computed by summing the flux of water per ground area between
 roots and soil at each soil layer.
 """
-function PlantHydraulics.flux_out_roots(
+function PlantHydraulics.root_flux_per_ground_area!(
+    fa::ClimaCore.Fields.Field,
     re::PrognosticSoilPressure{FT},
     model::Canopy.PlantHydraulics.PlantHydraulicsModel{FT},
     Y::ClimaCore.Fields.FieldVector,
     p::ClimaCore.Fields.FieldVector,
     t::FT,
-)::FT where {FT}
-    return sum(p.root_extraction)
+) where {FT}
+    fa .= sum(p.root_extraction)
 end
-
-
-"""
-   PrognosticRootFlux{FT} <: PlantHydraulics.AbstractRootExtraction{FT}
-
-Concrete type of PlantHydraulics.AbstractRootExtraction, used for dispatch 
-in an LSM with both soil and plant hydraulic components.
-
-This is paired with the source term `Soil.RootExtraction`:both 
-are used at the same time,
-ensuring that the water flux into the roots is extracted correctly
-from the soil.
-"""
-struct PrognosticRootFlux{FT} <:
-       Canopy.PlantHydraulics.AbstractRootExtraction{FT} end
-
-"""
-    Canopy.PlantHydraulics.flux_out_roots(
-        re::PrognosticRootFlux{FT},
-        t::FT,
-    )::FT where {FT}
-
-An extension of the `PlantHydraulics.flux_out_roots` function,
- which returns the
-net flux of water between the
-roots and the soil, when both soil and plant
-hydraulics are modeled prognostically. This is for use in an LSM.
-
-It is computed by summing the flux of water between
-roots and soil at each soil layer.
-"""
-function Canopy.PlantHydraulics.flux_out_roots(
-    re::PrognosticRootFlux{FT},
-)::FT where {FT}
-    return re
-end
-
 
 """
     RootExtraction{FT} <: Soil.AbstractSoilSource{FT}
@@ -257,10 +226,10 @@ struct RootExtraction{FT} <: Soil.AbstractSoilSource{FT} end
 
 """
     ClimaLSM.source!(dY::ClimaCore.Fields.FieldVector,
-                          src::RootExtraction{FT},
-                          Y::ClimaCore.Fields.FieldVector,
-                          p::ClimaCore.Fields.FieldVector
-                          params)::ClimaCore.Fields.Field  where {FT}
+                     src::RootExtraction,
+                     Y::ClimaCore.Fields.FieldVector,
+                     p::ClimaCore.Fields.FieldVector
+                     params)
 
 An extension of the `ClimaLSM.source!` function,
  which computes source terms for the 
@@ -269,11 +238,11 @@ to roots when a plant hydraulic prognostic model is included.
 """
 function ClimaLSM.source!(
     dY::ClimaCore.Fields.FieldVector,
-    src::RootExtraction{FT},
+    src::RootExtraction,
     Y::ClimaCore.Fields.FieldVector,
     p::ClimaCore.Fields.FieldVector,
     _...,
-)::ClimaCore.Fields.Field where {FT}
-    return dY.soil.ϑ_l .+= -FT(1.0) .* p.root_extraction
+)
+    @. dY.soil.ϑ_l += -1 * p.root_extraction
     # if flow is negative, towards soil -> soil water increases, add in sign here.
 end
