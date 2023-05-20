@@ -3,7 +3,8 @@ using Plots
 using DelimitedFiles
 using Statistics
 using ArtifactWrappers
-using OrdinaryDiffEq: ODEProblem, solve, RK4
+import OrdinaryDiffEq as ODE
+import ClimaTimeSteppers as CTS
 using ClimaCore
 import CLIMAParameters as CP
 using ClimaLSM
@@ -50,12 +51,39 @@ FT = Float64
     # specify ICs
     Y.soil.ϑ_l .= FT(0.24)
     soil_exp_tendency! = make_exp_tendency(soil)
+    soil_imp_tendency! = make_imp_tendency(soil)
+    soil_update_jacobian! = make_update_jacobian(soil)
+
+    # set up timestepper and jacobian
+    stepper = CTS.ARS111()
+    ode_algo = CTS.IMEXAlgorithm(
+        stepper,
+        CTS.NewtonsMethod(
+            max_iters = 1,
+            update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
+        ),
+    )
+    jac_kwargs = (;
+        jac_prototype = RichardsTridiagonalW(Y),
+        Wfact = soil_update_jacobian!,
+    )
 
     t0 = FT(0)
     tf = FT(1e6)
     dt = FT(0.25)
-    prob = ODEProblem(soil_exp_tendency!, Y, (t0, tf), p)
-    sol = solve(prob, RK4(); dt = dt, saveat = 10000)
+
+    prob = ODE.ODEProblem(
+        CTS.ClimaODEFunction(
+            T_exp! = soil_exp_tendency!,
+            T_imp! = ODE.ODEFunction(soil_imp_tendency!; jac_kwargs...),
+            dss! = ClimaLSM.dss!,
+        ),
+        Y,
+        (t0, tf),
+        p,
+    )
+    sol = ODE.solve(prob, ode_algo; dt = dt, adaptive = false, saveat = 10000)
+
 
     N = length(sol.t)
     ϑ_l = parent(sol.u[N].soil.ϑ_l)

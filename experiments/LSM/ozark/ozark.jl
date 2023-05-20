@@ -1,5 +1,6 @@
 using DiffEqCallbacks
-using OrdinaryDiffEq: ODEProblem, solve, Euler, RK4
+import OrdinaryDiffEq as ODE
+import ClimaTimeSteppers as CTS
 using ClimaCore
 import CLIMAParameters as CP
 using Plots
@@ -159,8 +160,9 @@ land = SoilPlantHydrologyModel{FT}(;
 )
 Y, p, cds = initialize(land)
 exp_tendency! = make_exp_tendency(land)
+imp_tendency! = make_imp_tendency(land) # TODO make_imp_tendency says `imp_tendency! not defined`
 
-#Initial conditions
+# Initial conditions
 Y.soil.ϑ_l = FT(0.35)
 p_stem_0 = FT(-1e6 / 9800)
 p_leaf_0 = FT(-2e6 / 9800)
@@ -183,17 +185,42 @@ end
 update_aux! = make_update_aux(land)
 update_aux!(p, Y, 0.0)
 
+# Set up timestepper and jacobian for soil
+update_jacobian! = ClimaLSM.make_update_jacobian(land.soil);
+
+ode_algo = CTS.IMEXAlgorithm(
+    timestepper,
+    CTS.NewtonsMethod(
+        max_iters = 1,
+        update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
+    ),
+)
+
+W = RichardsTridiagonalW(Y)
+jac_kwargs = (; jac_prototype = W, Wfact = update_jacobian!)
+
+
 # Simulation
 sv = SavedValues(FT, ClimaCore.Fields.FieldVector)
-prob = ODEProblem(exp_tendency!, Y, (t0, tf), p);
+prob = ODE.ODEProblem(
+    CTS.ClimaODEFunction(
+        T_exp! = exp_tendency!,
+        T_imp! = ODE.ODEFunction(imp_tendency!; jac_kwargs...),
+        dss! = ClimaLSM.dss!,
+    ),
+    Y,
+    (t0, tf),
+    p,
+)
+# prob = ODEProblem(exp_tendency!, Y, (t0, tf), p);
 cb = SavingCallback(
     (u, t, integrator) -> copy(integrator.p),
     sv;
     saveat = halfhourly,
 )
-sol = solve(
+sol = ODE.solve(
     prob,
-    timestepper;
+    ode_algo;
     dt = dt,
     callback = cb,
     adaptive = false,

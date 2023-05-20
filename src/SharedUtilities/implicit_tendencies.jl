@@ -6,7 +6,7 @@ export make_tendency_jacobian,
    make_tendency_jacobian(model::AbstractModel)
 
 Creates and returns a function which updates the auxiliary
-variables `p` in place and then updates the entries of the 
+variables `p` in place and then updates the entries of the
 Jacobian matrix `W` for the `model` in place.
 
 The default is that no updates are required, no implicit tendency is
@@ -31,9 +31,9 @@ end
 Creates and returns a function which updates the entries
 of the Jacobian matrix `W` in place.
 
-If the implicit tendency function is given by 
-`T!(dY, Y, p, t) = make_implicit_tendency(model)`, the Jacobian 
-should be given by `W_{i,j}! = ∂T!_i/∂Y_j`, where `Y_j` is the 
+If the implicit tendency function is given by
+`T!(dY, Y, p, t) = make_imp_tendency(model)`, the Jacobian
+should be given by `W_{i,j}! = ∂T!_i/∂Y_j`, where `Y_j` is the
 `j-th` state variable
 and `T!_i` is the implicit tendency of the `i-th` state variable.
 

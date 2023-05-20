@@ -154,18 +154,18 @@ dt = FT(100);
 # Now, we choose the timestepping algorithm we want to use.
 # We'll use the ARS111 algorithm with a maximum of 1 Newton iteration
 # per timestep.
-stepper = CTS.ARS111()
+stepper = CTS.ARS111();
 ode_algo = CTS.IMEXAlgorithm(
     stepper,
     CTS.NewtonsMethod(
         max_iters = 1,
         update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
     ),
-)
+);
 
 # Here we set up the data structure and information used for our Jacobian.
-W = RichardsTridiagonalW(Y)
-jac_kwargs = (; jac_prototype = W, Wfact = update_jacobian!)
+jac_kwargs =
+    (; jac_prototype = RichardsTridiagonalW(Y), Wfact = update_jacobian!);
 
 # And then we can solve the system of equations, using [OrdinaryDiffEq.jl](https://github.com/SciML/OrdinaryDiffEq.jl):
 prob = ODE.ODEProblem(
@@ -177,7 +177,7 @@ prob = ODE.ODEProblem(
     Y,
     (t0, timeend),
     p,
-)
+);
 sol = ODE.solve(prob, ode_algo; dt = dt, adaptive = false);
 
 # # Create some plots
