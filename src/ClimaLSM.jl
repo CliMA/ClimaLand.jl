@@ -122,7 +122,8 @@ function make_imp_tendency(land::AbstractLandModel)
 
     # If all component models are stepped explicitly, do nothing in imp_tendency!
     if all(c -> typeof(c) .<: AbstractExpModel, components)
-        function imp_tendency!(dY, Y, p, t) end
+        function do_nothing_imp_tendency!(dY, Y, p, t) end
+        return do_nothing_imp_tendency!
     else
         compute_imp_tendency_list = map(
             x -> make_compute_imp_tendency(getproperty(land, x)),
@@ -135,8 +136,8 @@ function make_imp_tendency(land::AbstractLandModel)
                 f!(dY, Y, p, t)
             end
         end
+        return imp_tendency!
     end
-    return imp_tendency!
 end
 
 function make_exp_tendency(land::AbstractLandModel)
