@@ -223,9 +223,7 @@ bucket_rad = PrescribedRadiativeFluxes(
     FT,
     SW_d,
     LW_d;
-    orbital_data = Insolation.OrbitalData(
-        joinpath(pkgdir(ClimaLSM), "artifacts"),
-    ),
+    orbital_data = Insolation.OrbitalData(),
 );
 
 # Prescribed atmospheric variables

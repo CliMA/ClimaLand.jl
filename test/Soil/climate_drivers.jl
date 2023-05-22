@@ -62,9 +62,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
         FT,
         SW_d,
         LW_d;
-        orbital_data = Insolation.OrbitalData(
-            joinpath(pkgdir(ClimaLSM), "artifacts"),
-        ),
+        orbital_data = Insolation.OrbitalData(),
     )
     # Atmos
     precip = (t) -> eltype(t)(1e-8)
