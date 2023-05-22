@@ -242,7 +242,7 @@ Plots.plot!(
     xtickfontsize = 5,
     ytickfontsize = 5,
     xlim = [minimum(hours), maximum(hours)],
-    ylim = [0.2, 0.5],
+    ylim = [θ_r, soil_ν],
     xlabel = "Hours",
     ylabel = "SWC [m/m]",
 )

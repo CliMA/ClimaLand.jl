@@ -327,8 +327,7 @@ function upscale_leaf_conductance(
     R::FT,
     P::FT,
 ) where {FT}
-    canopy_conductance = gs * LAI
-    canopy_conductance = canopy_conductance * (R * T) / P # convert to m s-1
+    canopy_conductance = gs * LAI * (R * T) / P # convert to m s-1
     return canopy_conductance
 end
 
@@ -410,19 +409,29 @@ function compute_Vcmax(
     R::FT,
     ΔHVcmax::FT,
 ) where {FT}
-    Vcmax = Vcmax25 * arrhenius_function(T, To, R, ΔHVcmax)#*exp(ep5*(Ta-To))/(R*Ta)
+    Vcmax = Vcmax25 * arrhenius_function(T, To, R, ΔHVcmax)
     return Vcmax
 end
 
 # 3. Stomatal conductance model
 """
-    medlyn_term(g1::FT, VPD::FT) where {FT}
+    medlyn_term(g1::FT, T_air::FT, P_air::FT, q_air::FT, thermo_params) where {FT}
 
 Computes the Medlyn term, equal to `1+g1/sqrt(VPD)`,
+by first computing the `VPD`,
 where `VPD` is the vapor pressure deficit in the atmosphere
 (Pa), and `g_1` is a constant with units of `sqrt(Pa)`.
+
+`thermo_params` is the Thermodynamics.jl parameter set.
 """
-function medlyn_term(g1::FT, VPD::FT) where {FT}
+function medlyn_term(
+    g1::FT,
+    T_air::FT,
+    P_air::FT,
+    q_air::FT,
+    thermo_params,
+) where {FT}
+    VPD = ClimaLSM.vapor_pressure_deficit(T_air, P_air, q_air, thermo_params)
     return 1 + g1 / sqrt(VPD)
 end
 

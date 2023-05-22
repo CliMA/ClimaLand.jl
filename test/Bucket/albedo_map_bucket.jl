@@ -131,4 +131,5 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
             end
         end
     end
+    rm(regrid_dirpath, recursive = true)
 end

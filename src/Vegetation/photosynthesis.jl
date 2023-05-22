@@ -133,3 +133,62 @@ end
 ClimaLSM.name(model::AbstractPhotosynthesisModel) = :photosynthesis
 ClimaLSM.auxiliary_vars(model::FarquharModel) = (:An, :GPP)
 ClimaLSM.auxiliary_types(model::FarquharModel{FT}) where {FT} = (FT, FT)
+
+"""
+    compute_photosynthesis(
+        model::FarquharModel,
+        T,
+        medlyn_factor,
+        APAR,
+        c_co2,
+        β,
+        R,
+    )
+
+Computes the net photosynthesis rate for the Farquhar model,
+given the canopy leaf temperature `T`, Medlyn factor, `APAR` in
+photons per m^2 per second, CO2 concentration in the atmosphere,
+moisture stress factor `beta` (unitless), and the universal gas constant
+`R`.
+"""
+function compute_photosynthesis(
+    model::FarquharModel,
+    T,
+    medlyn_factor,
+    APAR,
+    c_co2,
+    β,
+    R,
+)
+    (;
+        Vcmax25,
+        Γstar25,
+        ΔHJmax,
+        ΔHVcmax,
+        ΔHΓstar,
+        f,
+        ΔHRd,
+        To,
+        θj,
+        ϕ,
+        mechanism,
+        sc,
+        ψc,
+        oi,
+        Kc25,
+        Ko25,
+        ΔHkc,
+        ΔHko,
+    ) = model.parameters
+    Jmax = max_electron_transport(Vcmax25, ΔHJmax, T, To, R)
+    J = electron_transport(APAR, Jmax, θj, ϕ)
+    Vcmax = compute_Vcmax(Vcmax25, T, To, R, ΔHVcmax)
+    Γstar = co2_compensation(Γstar25, ΔHΓstar, T, To, R)
+    ci = intercellular_co2(c_co2, Γstar, medlyn_factor)
+    Aj = light_assimilation(mechanism, J, ci, Γstar)
+    Kc = MM_Kc(Kc25, ΔHkc, T, To, R)
+    Ko = MM_Ko(Ko25, ΔHko, T, To, R)
+    Ac = rubisco_assimilation(mechanism, Vcmax, ci, Γstar, Kc, Ko, oi)
+    Rd = dark_respiration(Vcmax25, β, f, ΔHRd, T, To, R)
+    return net_photosynthesis(Ac, Aj, Rd, β)
+end

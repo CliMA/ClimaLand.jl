@@ -252,8 +252,8 @@ domains = [
             p.canopy.hydraulics.fa[i] .= NaN
             dY.canopy.hydraulics.ϑ_l[i] .= NaN
         end
-        canopy_compute_exp_tendency! = make_compute_exp_tendency(model)
-        canopy_compute_exp_tendency!(dY, Y, p, 0.0)
+        canopy_exp_tendency! = make_exp_tendency(model)
+        canopy_exp_tendency!(dY, Y, p, 0.0)
 
         m = similar(dY.canopy.hydraulics.ϑ_l[1])
         m .= FT(0)
@@ -273,9 +273,11 @@ domains = [
             p.canopy.hydraulics.fa[i] .= NaN
             standalone_dY.canopy.hydraulics.ϑ_l[i] .= NaN
         end
-        standalone_compute_exp_tendency! =
+        update_aux! = make_update_aux(model)
+        standalone_exp_tendency! =
             make_compute_exp_tendency(model.hydraulics, nothing)
-        standalone_compute_exp_tendency!(standalone_dY, Y, p, 0.0)
+        update_aux!(p, Y, 0.0)
+        standalone_exp_tendency!(standalone_dY, Y, p, 0.0)
 
         m = similar(dY.canopy.hydraulics.ϑ_l[1])
         m .= FT(0)

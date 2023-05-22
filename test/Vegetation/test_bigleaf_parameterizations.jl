@@ -10,17 +10,16 @@ import ClimaLSM
 import ClimaLSM.Parameters as LSMP
 
 include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
-FT = Float32
-earth_param_set = create_lsm_parameters(FT)
-
 @testset "Big Leaf Parameterizations" begin
+    FT = Float32
+    earth_param_set = create_lsm_parameters(FT)
     # Test with defaults
     RTparams = BeerLambertParameters{FT}()
     photosynthesisparams = FarquharParameters{FT}(C3();)
     stomatal_g_params = MedlynConductanceParameters{FT}()
 
     LAI = FT(5.0) # m2 (leaf) m-2 (ground)
-
+    thermo_params = LSMP.thermodynamic_parameters(earth_param_set)
     c = FT(LSMP.light_speed(earth_param_set))
     h = FT(LSMP.planck_constant(earth_param_set))
     N_a = FT(LSMP.avogadro_constant(earth_param_set))
@@ -30,7 +29,8 @@ earth_param_set = create_lsm_parameters(FT)
     # Drivers
     T = FT(290) # K
     P = FT(101250) #Pa
-    VPD = FT(6e3) # Pa
+    q = FT(0.02)
+    VPD = ClimaLSM.vapor_pressure_deficit(T, P, q, thermo_params)#Pa
     ψ_l = FT(-2e6) # Pa
     ca = FT(4.11e-4) # mol/mol
     R = FT(LSMP.gas_constant(earth_param_set))
@@ -67,7 +67,7 @@ earth_param_set = create_lsm_parameters(FT)
     @test photosynthesisparams.Vcmax25 *
           arrhenius_function(T, To, R, photosynthesisparams.ΔHVcmax) ≈ Vcmax
 
-    m_t = medlyn_term(stomatal_g_params.g1, VPD)
+    m_t = medlyn_term(stomatal_g_params.g1, T, P, q, thermo_params)
 
     @test m_t == 1 + stomatal_g_params.g1 / sqrt(VPD)
     ci = intercellular_co2(ca, Γstar, m_t)
