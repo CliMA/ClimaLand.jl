@@ -105,7 +105,8 @@ function soil_boundary_fluxes(
     conditions = surface_fluxes(bc.atmos, model, Y, p, t)
     R_n = net_radiation(bc.radiation, model, Y, p, t)
     # We are ignoring sublimation for now
-    (; ν, vg_m, vg_n, θ_r, d_ds) = model.parameters
+    (; ν, hydrology_cm, θ_r, d_ds) = model.parameters
+    (; S_c) = hydrology_cm
     _D_vapor = FT(LSMP.D_vapor(model.parameters.earth_param_set))
     S_l_sfc = ClimaLSM.Domains.top_center_to_surface(
         effective_saturation.(ν, Y.soil.ϑ_l, θ_r),
@@ -113,7 +114,6 @@ function soil_boundary_fluxes(
     τ_a = ClimaLSM.Domains.top_center_to_surface(
         @. max(eps(FT), (ν - p.soil.θ_l - Y.soil.θ_i)^(FT(5 / 2)) / ν)
     )
-    S_c::FT = (1 + ((vg_n - 1) / vg_n)^(1 - 2 * vg_n))^(-vg_m)
     dsl = dry_soil_layer_thickness.(S_l_sfc, S_c, d_ds)
     r_soil = @. dsl / (_D_vapor * τ_a) # [s\m]
     r_ae = conditions.r_ae
@@ -184,9 +184,9 @@ function ClimaLSM.boundary_flux(
     ψ_c = Fields.level(p.soil.ψ, p_len)
 
     # Calculate pressure head using boundary condition
-    (; vg_α, vg_n, vg_m, θ_r, ν, S_s) = params
+    (; hydrology_cm, θ_r, ν, S_s) = params
     θ_bc = rre_bc.bc(p, t)
-    ψ_bc = @. pressure_head(vg_α, vg_n, vg_m, θ_r, θ_bc, ν, S_s)
+    ψ_bc = @. pressure_head(hydrology_cm, θ_r, θ_bc, ν, S_s)
 
     # Pass in (ψ_bc .+ Δz) as x_2 to account for contribution of gravity in RRE
     return ClimaLSM.diffusive_flux(K_c, ψ_bc .+ Δz, ψ_c, Δz)
@@ -211,9 +211,9 @@ function ClimaLSM.boundary_flux(
     ψ_c = Fields.level(p.soil.ψ, 1)
 
     # Calculate pressure head using boundary condition
-    (; vg_α, vg_n, vg_m, θ_r, ν, S_s) = params
+    (; hydrology_cm, θ_r, ν, S_s) = params
     θ_bc = rre_bc.bc(p, t)
-    ψ_bc = @. pressure_head(vg_α, vg_n, vg_m, θ_r, θ_bc, ν, S_s)
+    ψ_bc = @. pressure_head(hydrology_cm, θ_r, θ_bc, ν, S_s)
 
     # At the bottom boundary, ψ_c is at larger z than ψ_bc
     #  so we swap their order in the derivative calc
@@ -325,7 +325,7 @@ function ClimaLSM.∂tendencyBC∂Y(
     p,
     t,
 )
-    (; ν, vg_α, vg_n, vg_m, S_s, θ_r) = model.parameters
+    (; ν, hydrology_cm, S_s, θ_r) = model.parameters
     fs = ClimaLSM.Domains.obtain_face_space(model.domain.space)
     face_len = ClimaCore.Utilities.PlusHalf(ClimaCore.Spaces.nlevels(fs) - 1)
     interpc2f_op = Operators.InterpolateC2F(
@@ -336,7 +336,7 @@ function ClimaLSM.∂tendencyBC∂Y(
     ϑ_l = Fields.level(interpc2f_op.(Y.soil.ϑ_l), face_len)
     return ClimaCore.Fields.FieldVector(;
         :soil => (;
-            :ϑ_l => @. -K / Δz * dψdϑ(ϑ_l, ν, θ_r, vg_α, vg_n, vg_m, S_s) /
+            :ϑ_l => @. -K / Δz * dψdϑ(hydrology_cm, ϑ_l, ν, θ_r, S_s) /
                (2 * Δz)
         ),
     )

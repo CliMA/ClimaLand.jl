@@ -16,7 +16,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     S_s = FT(1e-3) #inverse meters
     vg_n = FT(2.0)
     vg_α = FT(2.6) # inverse meters
-    vg_m = FT(1) - FT(1) / vg_n
+    hcm = vanGenuchten(; α = vg_α, n = vg_n)
     θ_r = FT(0.1)
     ν_ss_om = FT(0.0)
     ν_ss_quartz = FT(1.0)
@@ -43,9 +43,8 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
         ν_ss_om = ν_ss_om,
         ν_ss_quartz = ν_ss_quartz,
         ν_ss_gravel = ν_ss_gravel,
-        vg_α = vg_α,
-        vg_n = vg_n,
         K_sat = K_sat,
+        hydrology_cm = hcm,
         S_s = S_s,
         θ_r = θ_r,
         earth_param_set = earth_param_set,

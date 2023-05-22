@@ -118,6 +118,7 @@ Ksat = FT(4.42 / 3600 / 100) # m/s
 S_s = FT(1e-3) #inverse meters
 vg_n = FT(1.89)
 vg_α = FT(7.5) # inverse meters
+hcm = vanGenuchten(; α = vg_α, n = vg_n);
 θ_r = FT(0.0);
 # Other constants needed:
 κ_quartz = FT(7.7) # W/m/K
@@ -147,8 +148,7 @@ params = Soil.EnergyHydrologyParameters{FT}(;
     ν_ss_om = ν_ss_om,
     ν_ss_quartz = ν_ss_quartz,
     ν_ss_gravel = ν_ss_gravel,
-    vg_α = vg_α,
-    vg_n = vg_n,
+    hydrology_cm = hcm,
     K_sat = Ksat,
     S_s = S_s,
     θ_r = θ_r,

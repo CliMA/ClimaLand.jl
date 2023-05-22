@@ -101,7 +101,11 @@ K_sat = FT(3.2e-6) # m/s
 S_s = FT(1e-3) #inverse meters
 vg_n = FT(1.48)
 vg_α = FT(1.11) # inverse meters
-vg_m = FT(1) - FT(1) / vg_n
+hcm = vanGenuchten(; α = vg_α, n = vg_n);
+# You could also try the Brooks and Corey model:
+#ψb = FT(-0.6)
+#c = FT(0.43)
+#hcm = BrooksCorey(;ψb = ψb, c = c);
 θ_r = FT(0.05)
 ν_ss_om = FT(0.3)
 ν_ss_quartz = FT(0.7)
@@ -127,8 +131,7 @@ params = Soil.EnergyHydrologyParameters{FT}(;
     ν_ss_om = ν_ss_om,
     ν_ss_quartz = ν_ss_quartz,
     ν_ss_gravel = ν_ss_gravel,
-    vg_α = vg_α,
-    vg_n = vg_n,
+    hydrology_cm = hcm,
     K_sat = K_sat,
     S_s = S_s,
     θ_r = θ_r,

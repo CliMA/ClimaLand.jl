@@ -6,7 +6,7 @@ using ClimaLSM
 using ClimaLSM.Soil
 import ClimaLSM
 import ClimaLSM.Parameters as LSMP
-
+using Insolation
 include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
 @testset "Surface fluxes and radiation for soil" begin
     FT = Float32
@@ -29,8 +29,9 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     vg_n = FT(2.0)
     vg_α = FT(2.6) # inverse meters
     vg_m = FT(1) - FT(1) / vg_n
+    hcm = vanGenuchten(; α = vg_α, n = vg_n)
     θ_r = FT(0.1)
-    S_c::FT = (1 + (1 - 1 / vg_n)^(1 - 2 * vg_n))^(-vg_m)
+    S_c = hcm.S_c
     @test Soil.dry_soil_layer_thickness(FT(1), S_c, FT(1)) == FT(0)
     @test Soil.dry_soil_layer_thickness(FT(0), S_c, FT(1)) == FT(1)
 
@@ -94,8 +95,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
         ν_ss_om = ν_ss_om,
         ν_ss_quartz = ν_ss_quartz,
         ν_ss_gravel = ν_ss_gravel,
-        vg_α = vg_α,
-        vg_n = vg_n,
+        hydrology_cm = hcm,
         K_sat = K_sat,
         S_s = S_s,
         θ_r = θ_r,
@@ -207,7 +207,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
                 t,
             )
 
-        (; ν, vg_m, vg_n, θ_r, d_ds) = model.parameters
+        (; ν, θ_r, d_ds) = model.parameters
         _D_vapor = FT(LSMP.D_vapor(model.parameters.earth_param_set))
         S_l_sfc = ClimaLSM.Domains.top_center_to_surface(
             Soil.effective_saturation.(ν, Y.soil.ϑ_l, θ_r),

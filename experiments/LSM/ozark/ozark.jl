@@ -34,11 +34,9 @@ include(joinpath(climalsm_dir, "experiments/LSM/ozark/ozark_simulation.jl"))
 # Now we set up the model. For the soil model, we pick
 # a model type and model args:
 soil_domain = land_domain.subsurface
-soil_ps = Soil.RichardsParameters{FT}(
+soil_ps = Soil.RichardsParameters{FT, vanGenuchten{FT}}(
     soil_ν,
-    soil_vg_α,
-    soil_vg_n,
-    soil_vg_m,
+    vanGenuchten(; α = soil_vg_α, n = soil_vg_n),
     soil_K_sat,
     soil_S_s,
     θ_r,

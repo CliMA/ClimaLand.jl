@@ -29,6 +29,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     θ_r = 0.1
     vg_α = 2.0
     vg_n = 1.4
+    hcm = vanGenuchten(; α = vg_α, n = vg_n)
     K_sat = 1e-5
     ν_ss_om = 0.1
     ν_ss_gravel = 0.1
@@ -48,22 +49,24 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
         ν_ss_om = ν_ss_om,
         ν_ss_quartz = ν_ss_quartz,
         ν_ss_gravel = ν_ss_gravel,
-        vg_α = vg_α,
-        vg_n = vg_n,
+        hydrology_cm = hcm,
         K_sat = K_sat,
         S_s = S_s,
         θ_r = θ_r,
         earth_param_set = param_set,
     )
     # Test that the preset params are set properly
-    (; α, β, Ω, γ, vg_m, γT_ref) = parameters
+    (; α, β, Ω, hydrology_cm, γ, γT_ref) = parameters
     @test α == 0.24
     @test β == 18.3
     @test γ == 2.64e-2
     @test Ω == 7.0
     @test γT_ref == 288.0
-    @test vg_m == 1.0 - 1.0 / vg_n
-    @test typeof.([α, β, γ, Ω, vg_m, γT_ref]) == [FT, FT, FT, FT, FT, FT]
+    # Test derived parameters
+    @test hydrology_cm.m == 1.0 - 1.0 / vg_n
+    @test hydrology_cm.S_c ==
+          (1 + ((vg_n - 1) / vg_n)^(1 - 2 * vg_n))^(-hydrology_cm.m)
+    @test typeof.([α, β, γ, Ω, γT_ref]) == [FT, FT, FT, FT, FT]
 
     @test temperature_from_ρe_int(5.4e7, 0.05, 2.1415e6, parameters) ==
           FT(_T_ref + (5.4e7 + 0.05 * _ρ_i * _LH_f0) / 2.1415e6)
@@ -122,6 +125,43 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
           exp.(parameters.γ .* (T .- parameters.γT_ref))
 
 end
+@testset "Brooks and Corey closure" begin
+    FT = Float32
+    hcm = BrooksCorey(; ψb = FT(-0.09), c = FT(0.228))
+    # Test derived parameter
+    @test hcm.S_c == (1 + 1 / FT(0.228))^(-FT(0.228))
+
+    S = FT.([0.5, 1.0, 1.5])
+    θ = FT.([0.3, 0.4, 0.5])
+    θ_r = FT(0.2)
+    ν = FT(0.4)
+    K_sat = FT(2.9e-7)
+    S_s = FT(1e-2)
+
+    # Matric Potential and inverse
+    va = S[1]^(-1 / hcm.c) * hcm.ψb
+    ψ = matric_potential.(hcm, S[1:2])
+    @test inverse_matric_potential.(hcm, ψ) ≈ S[1:2]
+    @test ψ ≈ [va, hcm.ψb]
+    @test eltype(ψ) == FT
+
+    #Pressure head
+    p = pressure_head.(hcm, θ_r, θ, ν, S_s)
+    @test p ≈ push!(ψ, FT(0.1 / 1e-2 + hcm.ψb))
+    @test eltype(p) == FT
+    # Derivative
+    dψ = dψdϑ.(hcm, θ, ν, θ_r, S_s)
+    va = @. -hcm.ψb / (hcm.c * (ν - θ_r)) * S^(-(1 + 1 / hcm.c))
+    @test dψ ≈ [va[1], 1 / S_s, 1 / S_s]
+
+    # Hydraulic K
+    k = @. hydraulic_conductivity.(hcm, K_sat, S)
+    va = S[1]^(2 / hcm.c + 3) * K_sat
+    @test k ≈ [va, K_sat, K_sat]
+    @test eltype(k) == FT
+
+
+end
 
 @testset "Richards equation and van Genuchten closures" begin
     FT = Float32
@@ -130,13 +170,12 @@ end
     S_s = FT(1e-2)
     vg_α = FT(3.6)
     vg_n = FT(1.56)
+    hcm = vanGenuchten(; α = vg_α, n = vg_n)
     K_sat = FT(2.9e-7)
     vg_m = FT(1.0 - 1.0 / vg_n)
     richards_parameters = RichardsParameters(;
         ν = ν,
-        vg_α = vg_α,
-        vg_n = vg_n,
-        vg_m = vg_m,
+        hydrology_cm = hcm,
         K_sat = K_sat,
         S_s = S_s,
         θ_r = θ_r,
@@ -149,18 +188,25 @@ end
 
     # Matric Potential and inverse
     va = -((S[1]^(-FT(1) / vg_m) - FT(1)) * vg_α^(-vg_n))^(FT(1) / vg_n)
-    ψ = matric_potential.(vg_α, vg_n, vg_m, S[1:2])
-    @test inverse_matric_potential.(vg_α, vg_n, vg_m, ψ) ≈ S[1:2]
+    ψ = matric_potential.(hcm, S[1:2])
+    @test inverse_matric_potential.(hcm, ψ) ≈ S[1:2]
     @test ψ ≈ [va, 0.0]
     @test eltype(ψ) == FT
-
+    # Derivative
+    dψ = dψdϑ.(hcm, θ, ν, θ_r, S_s)
+    va = FT(
+        1.0 / (vg_α * vg_m * vg_n) / (ν - θ_r) *
+        (S[1]^(-1 / vg_m) - 1)^(1 / vg_n - 1) *
+        S[1]^(-1 / vg_m - 1),
+    )
+    @test dψ ≈ [va, 1 / S_s, 1 / S_s]
     #Pressure head
-    p = pressure_head.(vg_α, vg_n, vg_m, θ_r, θ, ν, S_s)
+    p = pressure_head.(hcm, θ_r, θ, ν, S_s)
     @test p ≈ push!(ψ, FT(10.0))
     @test eltype(p) == FT
 
     # Hydraulic K
-    k = hydraulic_conductivity.(K_sat, vg_m, S)
+    k = hydraulic_conductivity.(hcm, K_sat, S)
     va =
         (sqrt(S[1]) * (FT(1) - (FT(1) - S[1]^(FT(1) / vg_m))^vg_m)^FT(2)) *
         K_sat
@@ -201,7 +247,7 @@ end
     θ_r = 0.1
     vg_α = 2.0
     vg_n = 1.4
-    vg_m = FT(1.0 - 1.0 / vg_n)
+    hcm = vanGenuchten(; α = vg_α, n = vg_n)
 
     K_sat = 1e-5
     ν_ss_om = 0.1
@@ -222,8 +268,7 @@ end
         ν_ss_om = ν_ss_om,
         ν_ss_quartz = ν_ss_quartz,
         ν_ss_gravel = ν_ss_gravel,
-        vg_α = vg_α,
-        vg_n = vg_n,
+        hydrology_cm = hcm,
         K_sat = K_sat,
         S_s = S_s,
         θ_r = θ_r,
@@ -236,15 +281,9 @@ end
     θ_i = FT(0.0)
     T = FT(273)
     θtot = @.(_ρ_i / _ρ_l * θ_i + θ_l)
-    ψ0 = @. matric_potential(
-        vg_α,
-        vg_n,
-        vg_m,
-        Soil.effective_saturation(ν, θtot, θ_r),
-    )
+    ψ0 = @. matric_potential(hcm, Soil.effective_saturation(ν, θtot, θ_r))
     ψT = @.(_LH_f0 / _T_freeze / _grav * (T - _T_freeze))
-    θ_star =
-        @. inverse_matric_potential(vg_α, vg_n, vg_m, ψ0 + ψT) * (ν - θ_r) + θ_r
+    θ_star = @. inverse_matric_potential(hcm, ψ0 + ψT) * (ν - θ_r) + θ_r
     @test (
         phase_change_source.(θ_l, θ_i, T, FT(1.0), Ref(parameters)) ≈
         θ_l .- θ_star
@@ -258,15 +297,9 @@ end
     θ_i = FT(0.0)
     T = FT(274)
     θtot = @.(_ρ_i / _ρ_l * θ_i + θ_l)
-    ψ0 = @. matric_potential(
-        vg_α,
-        vg_n,
-        vg_m,
-        Soil.effective_saturation(ν, θtot, θ_r),
-    )
+    ψ0 = @. matric_potential(hcm, Soil.effective_saturation(ν, θtot, θ_r))
     ψT = FT(0.0)
-    θ_star =
-        @. inverse_matric_potential(vg_α, vg_n, vg_m, ψ0 + ψT) * (ν - θ_r) + θ_r
+    θ_star = @. inverse_matric_potential(hcm, ψ0 + ψT) * (ν - θ_r) + θ_r
     @test (
         phase_change_source.(θ_l, θ_i, T, FT(1.0), Ref(parameters)) ≈
         zeros(FT, 3)
@@ -279,15 +312,9 @@ end
     θ_i = FT.([0.05, 0.08])
     T = FT(274)
     θtot = @.(_ρ_i / _ρ_l * θ_i + θ_l)
-    ψ0 = @. matric_potential(
-        vg_α,
-        vg_n,
-        vg_m,
-        Soil.effective_saturation(ν, θtot, θ_r),
-    )
+    ψ0 = @. matric_potential(hcm, Soil.effective_saturation(ν, θtot, θ_r))
     ψT = FT(0.0)
-    θ_star =
-        @. inverse_matric_potential(vg_α, vg_n, vg_m, ψ0 + ψT) * (ν - θ_r) + θ_r
+    θ_star = @. inverse_matric_potential(hcm, ψ0 + ψT) * (ν - θ_r) + θ_r
     @test (
         phase_change_source.(θ_l, θ_i, T, FT(1.0), Ref(parameters)) ≈
         θ_l .- θ_star
@@ -301,15 +328,9 @@ end
     θ_i = FT.([0.05, 0.08])
     T = FT(260)
     θtot = @.(_ρ_i / _ρ_l * θ_i + θ_l)
-    ψ0 = @. matric_potential(
-        vg_α,
-        vg_n,
-        vg_m,
-        Soil.effective_saturation(ν, θtot, θ_r),
-    )
+    ψ0 = @. matric_potential(hcm, Soil.effective_saturation(ν, θtot, θ_r))
     ψT = @.(_LH_f0 / _T_freeze / _grav * (T - _T_freeze))
-    θ_star =
-        @. inverse_matric_potential(vg_α, vg_n, vg_m, ψ0 + ψT) * (ν - θ_r) + θ_r
+    θ_star = @. inverse_matric_potential(hcm, ψ0 + ψT) * (ν - θ_r) + θ_r
     @test (
         phase_change_source.(θ_l, θ_i, T, FT(1.0), Ref(parameters)) ≈
         θ_l .- θ_star

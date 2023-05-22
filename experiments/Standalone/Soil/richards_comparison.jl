@@ -24,7 +24,7 @@ FT = Float64
     S_s = FT(1e-3) #inverse meters
     vg_n = FT(1.43)
     vg_α = FT(2.6) # inverse meters
-    vg_m = FT(1) - FT(1) / vg_n
+    hcm = vanGenuchten(; α = vg_α, n = vg_n)
     θ_r = FT(0.124)
     zmax = FT(0)
     zmin = FT(-1.5)
@@ -37,7 +37,7 @@ FT = Float64
     sources = ()
     boundary_states =
         (; top = (water = top_state_bc,), bottom = (water = bot_flux_bc,))
-    params = Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r)
+    params = Soil.RichardsParameters{FT, typeof(hcm)}(ν, hcm, K_sat, S_s, θ_r)
 
     soil = Soil.RichardsModel{FT}(;
         parameters = params,
@@ -95,7 +95,7 @@ end
     S_s = FT(1e-3) #inverse meters
     vg_n = FT(3.96)
     vg_α = FT(2.7) # inverse meters
-    vg_m = FT(1) - FT(1) / vg_n
+    hcm = vanGenuchten(; α = vg_α, n = vg_n)
     θ_r = FT(0.075)
     zmax = FT(0)
     zmin = FT(-1.5)
@@ -109,7 +109,7 @@ end
     boundary_states =
         (; top = (water = top_state_bc,), bottom = (water = bot_flux_bc,))
 
-    params = Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r)
+    params = Soil.RichardsParameters{FT, typeof(hcm)}(ν, hcm, K_sat, S_s, θ_r)
 
     soil = Soil.RichardsModel{FT}(;
         parameters = params,

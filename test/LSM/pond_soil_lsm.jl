@@ -5,9 +5,8 @@ using ClimaLSM.Domains: LSMMultiColumnDomain, LSMSingleColumnDomain
 using ClimaLSM.Soil
 using ClimaLSM.Pond
 
-FT = Float64
 @testset "Pond soil Multi Column LSM integration test" begin
-
+    FT = Float64
     function precipitation(t::FT) where {FT}
         if t < FT(20)
             precip = -FT(1e-8)
@@ -21,7 +20,7 @@ FT = Float64
     S_s = FT(1e-3) #inverse meters
     vg_n = FT(2.0)
     vg_α = FT(2.6) # inverse meters
-    vg_m = FT(1) - FT(1) / vg_n
+    hcm = vanGenuchten(; α = vg_α, n = vg_n)
     θ_r = FT(0)
     zmax = FT(0)
     zmin = FT(-1)
@@ -34,7 +33,7 @@ FT = Float64
         npolynomial = 1,
         periodic = (true, true),
     )
-    soil_ps = Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r)
+    soil_ps = Soil.RichardsParameters{FT, typeof(hcm)}(ν, hcm, K_sat, S_s, θ_r)
     soil_args = (; domain = lsm_domain.subsurface, parameters = soil_ps)
     surface_water_args = (; domain = lsm_domain.surface)
 
@@ -53,10 +52,12 @@ FT = Float64
             z::FT,
             params::RichardsParameters{FT},
         ) where {FT}
-            (; ν, vg_α, vg_n, vg_m, θ_r) = params
+            (; ν, hydrology_cm, θ_r) = params
+            (; α, n) = hydrology_cm
+            m = 1 - 1 / n
             #unsaturated zone only, assumes water table starts at z_∇
             z_∇ = FT(-1)# matches zmin
-            S = FT((FT(1) + (vg_α * (z - z_∇))^vg_n)^(-vg_m))
+            S = FT((FT(1) + (α * (z - z_∇))^n)^(-m))
             ϑ_l = S * (ν - θ_r) + θ_r
             return FT(ϑ_l)
         end
@@ -111,7 +112,7 @@ end
 
 
 @testset "Pond soil Single Column LSM integration test" begin
-
+    FT = Float64
     function precipitation(t::FT) where {FT}
         if t < FT(20)
             precip = -FT(1e-8)
@@ -125,7 +126,7 @@ end
     S_s = FT(1e-3) #inverse meters
     vg_n = FT(2.0)
     vg_α = FT(2.6) # inverse meters
-    vg_m = FT(1) - FT(1) / vg_n
+    hcm = vanGenuchten(; α = vg_α, n = vg_n)
     θ_r = FT(0)
     zmax = FT(0)
     zmin = FT(-1)
@@ -133,7 +134,7 @@ end
     lsm_domain =
         LSMSingleColumnDomain(; zlim = (zmin, zmax), nelements = nelems)
 
-    soil_ps = Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r)
+    soil_ps = Soil.RichardsParameters{FT, typeof(hcm)}(ν, hcm, K_sat, S_s, θ_r)
     soil_args = (; domain = lsm_domain.subsurface, parameters = soil_ps)
     surface_water_args = (; domain = lsm_domain.surface)
 
@@ -152,10 +153,12 @@ end
             z::FT,
             params::RichardsParameters{FT},
         ) where {FT}
-            (; ν, vg_α, vg_n, vg_m, θ_r) = params
+            (; ν, hydrology_cm, θ_r) = params
+            (; α, n) = hydrology_cm
+            m = 1 - 1 / n
             #unsaturated zone only, assumes water table starts at z_∇
             z_∇ = FT(-1)# matches zmin
-            S = FT((FT(1) + (vg_α * (z - z_∇))^vg_n)^(-vg_m))
+            S = FT((FT(1) + (α * (z - z_∇))^n)^(-m))
             ϑ_l = S * (ν - θ_r) + θ_r
             return FT(ϑ_l)
         end

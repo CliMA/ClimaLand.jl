@@ -19,7 +19,7 @@ FT = Float64
     S_s = FT(1e-3) #inverse meters
     vg_n = FT(2.0)
     vg_α = FT(2.6) # inverse meters
-    vg_m = FT(1) - FT(1) / vg_n
+    hcm = vanGenuchten(; α = vg_α, n = vg_n)
     θ_r = FT(0)
     zmax = FT(0)
     zmin = FT(-10)
@@ -36,13 +36,13 @@ FT = Float64
     ϑ_c = ν / 3
 
     K_c = hydraulic_conductivity(
+        hcm,
         K_sat,
-        vg_m,
         Soil.effective_saturation(ν, ϑ_c, θ_r),
     )
 
-    ψ_bc = pressure_head(vg_α, vg_n, vg_m, θ_r, ϑ_bc, ν, S_s)
-    ψ_c = pressure_head(vg_α, vg_n, vg_m, θ_r, ϑ_c, ν, S_s)
+    ψ_bc = pressure_head(hcm, θ_r, ϑ_bc, ν, S_s)
+    ψ_c = pressure_head(hcm, θ_r, ϑ_c, ν, S_s)
 
     flux_int = diffusive_flux(K_c, ψ_bc + Δz, ψ_c, Δz)
     flux_expected = -K_c * ((ψ_bc - ψ_c + Δz) / Δz)
@@ -57,7 +57,7 @@ end
     S_s = FT(1e-3) #inverse meters
     vg_n = FT(2.0)
     vg_α = FT(2.6) # inverse meters
-    vg_m = FT(1) - FT(1) / vg_n
+    hcm = vanGenuchten(; α = vg_α, n = vg_n)
     θ_r = FT(0.1)
     ν_ss_om = FT(0.0)
     ν_ss_quartz = FT(1.0)
@@ -84,8 +84,7 @@ end
         ν_ss_om = ν_ss_om,
         ν_ss_quartz = ν_ss_quartz,
         ν_ss_gravel = ν_ss_gravel,
-        vg_α = vg_α,
-        vg_n = vg_n,
+        hydrology_cm = hcm,
         K_sat = K_sat,
         S_s = S_s,
         θ_r = θ_r,
@@ -126,7 +125,7 @@ end
     S_s = FT(1e-3) #inverse meters
     vg_n = FT(2.0)
     vg_α = FT(2.6) # inverse meters
-    vg_m = FT(1) - FT(1) / vg_n
+    hcm = vanGenuchten(; α = vg_α, n = vg_n)
     θ_r = FT(0)
     zmax = FT(0)
     zmin = FT(-10)
@@ -138,7 +137,7 @@ end
     sources = ()
     boundary_fluxes =
         (; top = (water = top_flux_bc,), bottom = (water = bot_flux_bc,))
-    params = Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r)
+    params = Soil.RichardsParameters{FT, typeof(hcm)}(ν, hcm, K_sat, S_s, θ_r)
 
     soil = Soil.RichardsModel{FT}(;
         parameters = params,
@@ -155,10 +154,11 @@ end
             z::FT,
             params::RichardsParameters{FT},
         ) where {FT}
-            (; ν, vg_α, vg_n, vg_m, θ_r) = params
+            (; ν, hydrology_cm, θ_r) = params
+            (; α, m, n) = hydrology_cm
             #unsaturated zone only, assumes water table starts at z_∇
             z_∇ = FT(-10)# matches zmin
-            S = FT((FT(1) + (vg_α * (z - z_∇))^vg_n)^(-vg_m))
+            S = FT((FT(1) + (α * (z - z_∇))^n)^(-m))
             ϑ_l = S * (ν - θ_r) + θ_r
             return FT(ϑ_l)
         end
@@ -185,6 +185,7 @@ end
     vg_n = FT(2.0)
     vg_α = FT(2.6) # inverse meters
     vg_m = FT(1) - FT(1) / vg_n
+    hcm = vanGenuchten(; α = vg_α, n = vg_n)
     θ_r = FT(0.1)
     ν_ss_om = FT(0.0)
     ν_ss_quartz = FT(1.0)
@@ -226,8 +227,7 @@ end
         ν_ss_om = ν_ss_om,
         ν_ss_quartz = ν_ss_quartz,
         ν_ss_gravel = ν_ss_gravel,
-        vg_α = vg_α,
-        vg_n = vg_n,
+        hydrology_cm = hcm,
         K_sat = 0.0,
         S_s = S_s,
         θ_r = θ_r,
@@ -281,8 +281,7 @@ end
         ν_ss_om = ν_ss_om,
         ν_ss_quartz = ν_ss_quartz,
         ν_ss_gravel = ν_ss_gravel,
-        vg_α = vg_α,
-        vg_n = vg_n,
+        hydrology_cm = hcm,
         K_sat = K_sat,
         S_s = S_s,
         θ_r = θ_r,
@@ -421,8 +420,7 @@ end
         ν_ss_om = ν_ss_om,
         ν_ss_quartz = ν_ss_quartz,
         ν_ss_gravel = ν_ss_gravel,
-        vg_α = vg_α,
-        vg_n = vg_n,
+        hydrology_cm = hcm,
         K_sat = 0.0,
         S_s = S_s,
         θ_r = θ_r,
@@ -468,8 +466,7 @@ end
         ν_ss_om = ν_ss_om,
         ν_ss_quartz = ν_ss_quartz,
         ν_ss_gravel = ν_ss_gravel,
-        vg_α = vg_α,
-        vg_n = vg_n,
+        hydrology_cm = hcm,
         K_sat = K_sat,
         S_s = S_s,
         θ_r = θ_r,
@@ -564,7 +561,7 @@ end
     S_s = FT(1e-3) #inverse meters
     vg_n = FT(2.0)
     vg_α = FT(2.6) # inverse meters
-    vg_m = FT(1) - FT(1) / vg_n
+    hcm = vanGenuchten(; α = vg_α, n = vg_n)
     θ_r = FT(0.1)
     ν_ss_om = FT(0.0)
     ν_ss_quartz = FT(1.0)
@@ -605,8 +602,7 @@ end
         ν_ss_om = ν_ss_om,
         ν_ss_quartz = ν_ss_quartz,
         ν_ss_gravel = ν_ss_gravel,
-        vg_α = vg_α,
-        vg_n = vg_n,
+        hydrology_cm = hcm,
         K_sat = K_sat,
         S_s = S_s,
         θ_r = θ_r,
