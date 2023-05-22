@@ -99,9 +99,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
         shortwave_radiation,
         longwave_radiation;
         θs = zenith_angle,
-        orbital_data = Insolation.OrbitalData(
-            joinpath(pkgdir(ClimaLSM), "artifacts"),
-        ),
+        orbital_data = Insolation.OrbitalData(),
     )
 
     # Plant Hydraulics

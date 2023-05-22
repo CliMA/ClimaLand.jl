@@ -1,7 +1,7 @@
 name = "ClimaLSM"
 uuid = "7884a58f-fab6-4fd0-82bb-ecfedb2d8430"
 authors = ["Clima Land Team"]
-version = "0.2.4"
+version = "0.2.5"
 
 [deps]
 ArtifactWrappers = "a14bc488-3040-4b00-9dc1-f6467924858a"
@@ -28,7 +28,7 @@ ClimaComms = "0.3, 0.4"
 ClimaCore = "0.10"
 ClimaCoreTempestRemap = "0.3.5, 0.3.6, 0.3.7"
 DocStringExtensions = "0.8, 0.9"
-Insolation = "0.5"
+Insolation = "0.6"
 IntervalSets = "0.5, 0.6, 0.7"
 JLD2 = "0.4"
 NCDatasets = "0.11, 0.12"

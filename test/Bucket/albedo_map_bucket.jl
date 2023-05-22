@@ -51,8 +51,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
             npolynomial = 2,
         ),
     ]
-    orbital_data =
-        Insolation.OrbitalData(joinpath(pkgdir(ClimaLSM), "artifacts"))
+    orbital_data = Insolation.OrbitalData()
 
 
     for bucket_domain in bucket_domains

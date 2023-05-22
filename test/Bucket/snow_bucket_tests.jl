@@ -56,7 +56,7 @@ bucket_domains = [
     ),
 ]
 init_temp(z::FT, value::FT) where {FT} = FT(value)
-orbital_data = Insolation.OrbitalData(joinpath(pkgdir(ClimaLSM), "artifacts"))
+orbital_data = Insolation.OrbitalData()
 for bucket_domain in bucket_domains
 
     @testset "Conservation of water and energy" begin
