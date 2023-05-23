@@ -70,7 +70,7 @@ FT = Float64
 
     t0 = FT(0)
     tf = FT(1e6)
-    dt = FT(0.25)
+    dt = FT(1000)
 
     prob = ODE.ODEProblem(
         CTS.ClimaODEFunction(

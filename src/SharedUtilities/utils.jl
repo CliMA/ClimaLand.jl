@@ -38,10 +38,10 @@ end
 """
     dss_helper!(field_vec::ClimaCore.Fields.FieldVector, _)
 
-Method of `dss_helper!` which unpacks properties of Y when on a
+Method of `dss_helper!` which unpacks properties of dY when on a
 domain that is 2-dimensional in the horizontal.
 
-The assumption is that Y contains FieldVectors which themselves contain either
+The assumption is that dY contains FieldVectors which themselves contain either
 FieldVectors or Fields, and that the final unpacked variable is a Field.
 This method is invoked when the current property itself contains additional
 property(ies).
@@ -57,10 +57,10 @@ end
     dss_helper!(field::ClimaCore.Fields.Field,
             domain::Union{ClimaCore.Spaces.ExtrudedFiniteDifferenceSpace, ClimaCore.Spaces.AbstractSpectralElementSpace})
 
-Method of `dss_helper!` which performs dss on fields of Y when on a
+Method of `dss_helper!` which performs dss on fields of dY when on a
 domain that is 2-dimensional in the horizontal.
 
-The assumption is that Y contains FieldVectors which themselves contain either
+The assumption is that dY contains FieldVectors which themselves contain either
 FieldVectors or Fields, and that the final unpacked variable is a Field.
 This method is invoked when the element cannot be unpacked further.
 """
@@ -79,20 +79,18 @@ end
         domain::Union{ClimaCore.Spaces.FiniteDifferenceSpace, ClimaCore.Spaces.PointSpace})
 
 Computes the appropriate weighted direct stiffness summation based on
-the domain type, updates `Y` in place.
+the domain type, updates `dY` in place.
 
-For column (FiniteDifferenceSpace) domains, no dss is needed.
+For spaces that don't use spectral elements (FiniteDifferenceSpace, PointSpace,
+etc), no dss is needed.
+Model components with no prognostic variables appear in dY as empty Vectors, and
+also do not need dss.
 """
 function dss_helper!(
-    _,
+    field::Union{ClimaCore.Fields.Field, Vector},
     domain::Union{
         ClimaCore.Spaces.FiniteDifferenceSpace,
         ClimaCore.Spaces.PointSpace,
+        Tuple,
     },
-) end
-
-# TODO this function is used for canopy conductance/photosynthesis/rad transfer in ozark - is this the best way?
-function dss_helper!(
-    vector::Vector,
-    domain::Tuple,
 ) end
