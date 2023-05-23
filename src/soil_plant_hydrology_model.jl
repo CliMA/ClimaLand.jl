@@ -105,11 +105,11 @@ function SoilPlantHydrologyModel{FT}(;
     )
 end
 
-interaction_vars(m::SoilPlantHydrologyModel) = (:root_extraction,)
+interaction_vars(m::SoilPlantHydrologyModel) = (:root_extraction, :K_root)
 
-interaction_types(m::SoilPlantHydrologyModel{FT}) where {FT} = (FT,)
+interaction_types(m::SoilPlantHydrologyModel{FT}) where {FT} = (FT, FT)
 
-interaction_domains(m::SoilPlantHydrologyModel) = (:subsurface,)
+interaction_domains(m::SoilPlantHydrologyModel) = (:subsurface, :subsurface)
 
 """
     make_interactions_update_aux(
@@ -131,24 +131,30 @@ function make_interactions_update_aux(
 ) where {FT, SM <: Soil.RichardsModel{FT}, RM <: Canopy.CanopyModel{FT}}
     function update_aux!(p, Y, t)
         z = ClimaCore.Fields.coordinate_field(land.soil.domain.space).z
-        (; area_index, conductivity_model) = land.canopy.hydraulics.parameters
-        @. p.root_extraction =
-            area_index[:root] *
-            PlantHydraulics.flux(
-                z,
-                land.canopy.hydraulics.compartment_midpoints[1],
-                p.soil.ψ,
-                p.canopy.hydraulics.ψ[1],
-                PlantHydraulics.hydraulic_conductivity(
-                    conductivity_model,
-                    p.soil.ψ,
-                ),
-                PlantHydraulics.hydraulic_conductivity(
-                    conductivity_model,
-                    p.canopy.hydraulics.ψ[1],
-                ),
-            ) *
-            (land.canopy.hydraulics.parameters.root_distribution(z))
+        plant_hydraulics = land.canopy.hydraulics
+            
+         (; area_index, conductivity_model) = plant_hydraulics.parameters
+        # Longer term, we should store these. Let's figure out if the root water content
+        # will be a prognostic variable, first.
+        Δz_roots =
+            ClimaCore.Fields.coordinate_field(land.canopy.domain.space).z .- z
+        Δzhalf_stem =
+            (plant_hydraulics.compartment_midpoints[1] .-
+            ClimaCore.Fields.coordinate_field(land.canopy.domain.space).z) ./2
+        @. p.K_root = PlantHydraulics.hydraulic_conductivity(conductivity_model, p.soil.ψ)
+        @inbounds K_base = p.canopy.hydraulics.K[1]
+        @. p.root_extraction = - PlantHydraulics.dhdz(
+            z,
+            plant_hydraulics.compartment_midpoints[1],
+            p.soil.ψ,
+            p.canopy.hydraulics.ψ[1]
+        ) *  PlantHydraulics.interpolate_center_to_face(
+            area_index[:root] * p.K_root,
+            area_index[plant_hydraulics.compartment_labels[1]] * K_base,
+            Δz_roots,
+            Δzhalf_stem,
+        ) * plant_hydraulics.parameters.root_distribution(z)
+        
     end
     return update_aux!
 end

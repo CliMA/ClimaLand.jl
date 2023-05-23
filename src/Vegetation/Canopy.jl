@@ -343,6 +343,8 @@ function ClimaLSM.make_update_aux(
         ψ = p.canopy.hydraulics.ψ
         ϑ_l = Y.canopy.hydraulics.ϑ_l
         fa = p.canopy.hydraulics.fa
+        S_l = p.canopy.hydraulics.S_l
+        K_plant = p.canopy.hydraulics.K
 
         #unpack parameters
         earth_param_set = canopy.parameters.earth_param_set
@@ -385,41 +387,49 @@ function ClimaLSM.make_update_aux(
         n_leaf = hydraulics.n_leaf
         (; retention_model, conductivity_model, S_s, ν, area_index) =
             hydraulics.parameters
+        @inbounds @. S_l[1] = PlantHydraulics.effective_saturation(ν, ϑ_l[1])
+
         @inbounds @. ψ[1] = PlantHydraulics.water_retention_curve(
             retention_model,
-            PlantHydraulics.effective_saturation(ν, ϑ_l[1]),
+            S_l[1]
             ν,
             S_s,
         )
+        @inbounds @. K_plant[1] = PlantHydraulics.hydraulic_conductivity(conductivity_model,
+                                                                         ψ[1],
+                                                                         )
+
 
         @inbounds for i in 1:(n_stem + n_leaf - 1)
-
+            @. S_l[i + 1] = PlantHydraulics.effective_saturation(ν, ϑ_l[i + 1])
             @. ψ[i + 1] = PlantHydraulics.water_retention_curve(
                 retention_model,
-                PlantHydraulics.effective_saturation(ν, ϑ_l[i + 1]),
+                S_l[i + 1],
                 ν,
                 S_s,
             )
-            # Compute the flux*area between the current compartment `i`
-            # and the compartment above.
+            @. K_plant[i + 1] = PlantHydraulics.hydraulic_conductivity(
+                conductivity_model,
+                ψ[i + 1],
+            )
+
+            # Compute the flux*area at the face between the current compartment `i`
+            # and the compartment i+1.
             @. fa[i] =
-                PlantHydraulics.flux(
+                -PlantHydraulics.dhdz(
                     hydraulics.compartment_midpoints[i],
                     hydraulics.compartment_midpoints[i + 1],
                     ψ[i],
                     ψ[i + 1],
-                    PlantHydraulics.hydraulic_conductivity(
-                        conductivity_model,
-                        ψ[i],
-                    ),
-                    PlantHydraulics.hydraulic_conductivity(
-                        conductivity_model,
-                        ψ[i + 1],
-                    ),
-                ) * (
-                    area_index[hydraulics.compartment_labels[i]] +
-                    area_index[hydraulics.compartment_labels[i + 1]]
-                ) / 2
+                ) * PlantHydraulics.interpolate_center_to_face(
+                    K_plant[i] * area_index[hydraulics.compartment_labels[i]],
+                    K_plant[i + 1] *
+                    area_index[hydraulics.compartment_labels[i + 1]],
+                    (hydraulics.compartment_surfaces[i] -
+                     hydraulics.compartment_midpoints[i])/2,
+                    (hydraulics.compartment_surfaces[i + 1] -
+                     hydraulics.compartment_midpoints[i + 1])/2
+                    )
         end
         @. β = moisture_stress(ψ[n_stem + n_leaf] * ρ_l * grav, sc, pc)
         # We update the fa[n_stem+n_leaf] element once we have computed transpiration, below
@@ -450,7 +460,7 @@ function ClimaLSM.make_update_aux(
             p,
             t,
         )
-
+        
     end
     return update_aux!
 end
@@ -521,7 +531,6 @@ function canopy_surface_fluxes(
     r_ae = conditions.r_ae # [s/m]
     r_eff = r_ae .+ r_sfc
     canopy_transpiration = @. conditions.vapor_flux * r_ae / r_eff
-
     # we also need to correct the LHF
     canopy_lhf = @. conditions.lhf * r_ae / r_eff
     return canopy_transpiration, conditions.shf, canopy_lhf

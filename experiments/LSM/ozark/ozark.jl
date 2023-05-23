@@ -6,6 +6,7 @@ using Plots
 using Statistics
 using Dates
 using Insolation
+using NLsolve
 
 using ClimaLSM
 using ClimaLSM.Domains: LSMSingleColumnDomain
@@ -155,8 +156,87 @@ exp_tendency! = make_exp_tendency(land)
 
 #Initial conditions
 Y.soil.ϑ_l = FT(0.4)
-ψ_stem_0 = FT(-1e5 / 9800)
-ψ_leaf_0 = FT(-2e5 / 9800)
+S = Soil.effective_saturation(soil_ν, 0.4, θ_r)
+ψ_soil0 = Soil.matric_potential(soil_vg_α, soil_vg_n, soil_vg_m, S)
+root_depths = parent(cds.subsurface.z)
+plant_hydraulics = land.canopy.hydraulics;
+T0 = Statistics.median(LE ./ (LSMP.LH_v0(earth_param_set) * 1000))
+function initial_rhs!(F, Y; T = T0)
+    T0A = T * area_index[:leaf]
+    for i in 1:(n_leaf + n_stem)
+        if i == 1
+            K_root =  PlantHydraulics.hydraulic_conductivity(K_sat[:root],
+                                             plant_vg_m,
+                                             PlantHydraulics.inverse_water_retention_curve(plant_vg_α,
+                                                                           plant_vg_n,
+                                                                           plant_vg_m,
+                                                                           ψ_soil0,
+                                                                           plant_ν,
+                                                                           plant_S_s)
+                                                             )
+            K_base = PlantHydraulics.hydraulic_conductivity(K_sat[plant_hydraulics.compartment_labels[1]],
+                                                            plant_vg_m,
+                                                            PlantHydraulics.inverse_water_retention_curve(plant_vg_α,
+                                                                                                          plant_vg_n,
+                                                                                                          plant_vg_m,
+                                                                                                          Y[1],
+                                                                                                          plant_ν,
+                                                                                                          plant_S_s)
+                                                            )
+            K_face = PlantHydraulics.interpolate_center_to_face(area_index[:root] * K_root,
+                                                                  area_index[plant_hydraulics.compartment_labels[1]] * K_base,
+                                                                  (0 - plant_hydraulics.root_depths[i]),
+                                                                  plant_hydraulics.compartment_midpoints[1] / 2)
+            fa =
+                -sum(
+                    dhdz.(
+                        root_depths,
+                        plant_hydraulics.compartment_midpoints[i],
+                        ψ_soil0,
+                        Y[i],
+                    ) .* root_distribution.(root_depths) .* (
+                        vcat(root_depths, [0.0])[2:end] -
+                        vcat(root_depths, [0.0])[1:(end - 1)]
+                    ) .* K_face)
+        else
+            K1 =  PlantHydraulics.hydraulic_conductivity(K_sat[plant_hydraulics.compartment_labels[i-1]],
+                                             plant_vg_m,
+                                             PlantHydraulics.inverse_water_retention_curve(plant_vg_α,
+                                                                           plant_vg_n,
+                                                                           plant_vg_m,
+                                                                           Y[i-1],
+                                                                           plant_ν,
+                                                                           plant_S_s)
+                                                             )
+            K2 = PlantHydraulics.hydraulic_conductivity(K_sat[plant_hydraulics.compartment_labels[i]],
+                                                        plant_vg_m,
+                                                        PlantHydraulics.inverse_water_retention_curve(plant_vg_α,
+                                                                                                      plant_vg_n,
+                                                                                                      plant_vg_m,
+                                                                                                      Y[i],
+                                                                                                      plant_ν,
+                                                                                                      plant_S_s)
+                                                        )
+            K_face = PlantHydraulics.interpolate_center_to_face(area_index[plant_hydraulics.compartment_labels[i-1]] * K1,
+                                                                  area_index[plant_hydraulics.compartment_labels[i]] * K2,
+                                                                  (0 - plant_hydraulics.root_depths[i]),
+                                                                  plant_hydraulics.compartment_midpoints[1] / 2)
+            
+            fa =
+                -dhdz(
+                    plant_hydraulics.compartment_midpoints[i - 1],
+                    plant_hydraulics.compartment_midpoints[i],
+                    Y[i - 1],
+                    Y[i],
+                ) * K_face
+        end
+        F[i] = fa - T0A
+    end
+end
+
+soln = nlsolve(initial_rhs!, [-0.03, -0.02]; ftol = 1e-11)
+
+ψ0 = soln.zero
 
 S_l_ini =
     inverse_water_retention_curve.(
@@ -264,8 +344,8 @@ plt2 = Plots.plot(
 )
 Plots.plot(plt2, plt1, layout = (2, 1))
 Plots.savefig(joinpath(savedir, "ET.png"))
-plt1 = Plots.plot(size = (500, 700))
 
+plt1 = Plots.plot(size = (500, 700))
 β = [parent(sv.saveval[k].canopy.hydraulics.β)[1] for k in 1:length(sol.t)]
 plt1 = Plots.plot(
     daily,
@@ -290,7 +370,6 @@ plt2 = Plots.plot(
 )
 Plots.plot(plt2, plt1, layout = (2, 1))
 Plots.savefig(joinpath(savedir, "stomatal_conductance.png"))
-
 
 plt1 = Plots.plot(size = (500, 700))
 Plots.plot!(
@@ -432,5 +511,21 @@ Plots.plot!(
 
 Plots.plot(plt2, plt1, layout = (2, 1))
 Plots.savefig(joinpath(savedir, "plant_hydraulics.png"))
+
+dt_model = sol.t[2] - sol.t[1]
+dt_data = seconds[2] - seconds[1]
+Plots.plot(daily, cumsum(T) * dt_model, label = "Model T")
+Plots.plot!(
+    seconds ./ 24 ./ 3600,
+    cumsum(measured_T[:]) * dt_data,
+    label = "Data ET",
+)
+Plots.plot!(
+    seconds ./ 24 ./ 3600,
+    cumsum(P[:]) * dt_data * (1e3 * 24 * 3600),
+    label = "Data P",
+)
+Plots.plot!(ylabel = "∫ Water fluxes dt", xlabel = "Days", margins = 10Plots.mm)
+Plots.savefig(joinpath(savedir, "cumul_p_et.png"))
 
 rm(joinpath(savedir, "Artifacts.toml"))

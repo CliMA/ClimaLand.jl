@@ -16,7 +16,7 @@ import ClimaLSM:
     name
 export PlantHydraulicsModel,
     AbstractPlantHydraulicsModel,
-    flux,
+    dhdz,
     effective_saturation,
     augmented_liquid_fraction,
     water_retention_curve,
@@ -63,7 +63,7 @@ An abstract type for types representing different models of
 transpiration (Prescribed or Diagnostic)
 """
 abstract type AbstractTranspiration{FT <: AbstractFloat} end
-
+1
 
 """
     PlantHydraulicsParameters{FT <: AbstractFloat}
@@ -195,11 +195,12 @@ prognostic_vars(model::PlantHydraulicsModel) = (:ϑ_l,)
 A function which returns the names of the auxiliary
 variables of the `PlantHydraulicsModel`,
 the transpiration stress factor `β` (unitless),
-the water potential `ψ` (m), the volume flux*cross section `fa` (1/s),
-and the volume flux*root cross section in the roots `fa_roots` (1/s),
+the water potential `ψ` (m), the volume flux*cross section `fa` (1/s)
+at the compartment faces,
+and the volume flux*root cross section at the root/stem face `fa_roots` (1/s),
 where the cross section can be represented by an area index.
 """
-auxiliary_vars(model::PlantHydraulicsModel) = (:β, :ψ, :fa, :fa_roots)
+auxiliary_vars(model::PlantHydraulicsModel) = (:β, :S_l, :ψ, :fa, :K, :fa_roots)
 
 """
     Base.zero(x::Type{NTuple{N, FT}}) where {N, FT}
@@ -259,32 +260,23 @@ ClimaLSM.auxiliary_types(model::PlantHydraulicsModel{FT}) where {FT} = (
     FT,
     NTuple{model.n_stem + model.n_leaf, FT},
     NTuple{model.n_stem + model.n_leaf, FT},
+    NTuple{model.n_stem + model.n_leaf, FT},
+    NTuple{model.n_stem + model.n_leaf, FT},
     FT,
 )
 
 """
-    flux(
-        z1,
-        z2,
-        ψ1,
-        ψ2,
-        K1,
-        K2,
-    ) where {FT} 
-
-Computes the water flux given the absolute potential (pressure/(ρg))
- at the center of the two compartments z1 and z2,
-and the conductivity along
-the flow path between these two points.
-
-We currently assuming an arithmetic
-mean for mean K_sat between the two points (Bonan, 2019; Zhu, 2008)
-to take into account the change in K_sat halfway
-between z1 and z2; this is incorrect for compartments of differing sizes.
 """
-function flux(z1, z2, ψ1, ψ2, K1, K2)
-    flux = -(K1 + K2) / 2 * ((ψ2 - ψ1) / (z2 - z1) + 1)
-    return flux # (m/s)
+function interpolate_center_to_face(x1,x2,Δz1,Δz2)
+    f = Δz1 / (Δz2 + Δz1)
+    return x1 * f + (1 - f) * x2
+end
+
+"""
+ 
+"""
+function dhdz(z1, z2, ψ1, ψ2)
+    return ((ψ2 - ψ1) / (z2 - z1) + 1)
 end
 
 """
@@ -476,12 +468,13 @@ function make_compute_exp_tendency(model::PlantHydraulicsModel, _)
                     p,
                     t,
                 )
-                @inbounds @. dY.canopy.hydraulics.ϑ_l[i] =
+                @. dY.canopy.hydraulics.ϑ_l[i] =
                     1 / AIdz * (fa_roots - fa[i])
             else
-                @inbounds @. dY.canopy.hydraulics.ϑ_l[i] =
+                @. dY.canopy.hydraulics.ϑ_l[i] =
                     1 / AIdz * (fa[i - 1] - fa[i])
             end
+
         end
     end
     return compute_exp_tendency!
@@ -528,37 +521,32 @@ function root_flux_per_ground_area!(
 
     (; conductivity_model, root_distribution, area_index) = model.parameters
     ψ_base = p.canopy.hydraulics.ψ[1]
+    K_base = p.canopy.hydraulics.K[1]
     n_root_layers = length(model.root_depths)
     ψ_soil::FT = re.ψ_soil(t)
+    K_root =  hydraulic_conductivity(conductivity_model, ψ_soil)
+    fa .=0;
     @inbounds for i in 1:n_root_layers
         if i != n_root_layers
-            @. fa +=
-                flux(
-                    model.root_depths[i],
-                    model.compartment_midpoints[1],
-                    ψ_soil,
-                    ψ_base,
-                    hydraulic_conductivity(conductivity_model, ψ_soil),
-                    hydraulic_conductivity(conductivity_model, ψ_base),
-                ) *
-                root_distribution(model.root_depths[i]) *
-                (model.root_depths[i + 1] - model.root_depths[i]) *
-                area_index[:root]
+            dz_root = (model.root_depths[i + 1] - model.root_depths[i])
         else
-            @. fa +=
-                flux(
-                    model.root_depths[i],
-                    model.compartment_midpoints[1],
-                    ψ_soil,
-                    ψ_base,
-                    hydraulic_conductivity(conductivity_model, ψ_soil),
-                    hydraulic_conductivity(conductivity_model, ψ_base),
-                ) *
-                root_distribution(model.root_depths[i]) *
-                (FT(0) - model.root_depths[n_root_layers]) *
-                area_index[:root]
-
+            dz_root = (0 - model.root_depths[i])
         end
+        K_face = interpolate_center_to_face(
+            area_index[:root] * K_root,
+            area_index[model.compartment_labels[1]] * K_base,
+            1/2*(0 - model.root_depths[i]),
+            model.compartment_midpoints[1] / 2
+        )
+        @. fa +=
+            - dhdz(
+                model.root_depths[i],
+                model.compartment_midpoints[1],
+                ψ_soil,
+                ψ_base,
+            ) * K_face
+                root_distribution(model.root_depths[i]) *
+                dz_root
     end
 end
 
