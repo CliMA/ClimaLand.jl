@@ -174,7 +174,7 @@ end
     exp_tendency! = make_exp_tendency(soil)
     imp_tendency!(dY, Y, p, t0)
     exp_tendency!(dY, Y, p, t0)
-    ClimaLSM.dss!(Y, p, t0)
+    ClimaLSM.dss!(dY, p, t0)
 
     @test mean(parent(dY)) < 1e-8
     # should be hydrostatic equilibrium at every layer, at each step:
@@ -263,7 +263,7 @@ end
     exp_tendency! = make_exp_tendency(soil_heat_on)
     dY = similar(Y)
     exp_tendency!(dY, Y, p, t0)
-    ClimaLSM.dss!(Y, p, t0)
+    ClimaLSM.dss!(dY, p, t0)
 
     F_face = 0.0
     κ = parent(p.soil.κ)
@@ -321,7 +321,7 @@ end
     exp_tendency! = make_exp_tendency(soil_water_on)
     dY = similar(Y)
     exp_tendency!(dY, Y, p, t0)
-    ClimaLSM.dss!(Y, p, t0)
+    ClimaLSM.dss!(dY, p, t0)
 
     function dKdθ(θ::FT)::FT where {FT}
         S = (θ - θ_r) / (ν - θ_r)
@@ -465,7 +465,7 @@ end
     exp_tendency! = make_exp_tendency(soil_both_off)
     dY = similar(Y)
     exp_tendency!(dY, Y, p, t0)
-    ClimaLSM.dss!(Y, p, t0)
+    ClimaLSM.dss!(dY, p, t0)
 
     @test maximum(abs.(parent(dY.soil.ρe_int))) == 0.0
     @test maximum(abs.(parent(dY.soil.ϑ_l))) == 0.0
@@ -515,7 +515,7 @@ end
     exp_tendency! = make_exp_tendency(soil_both_on)
     dY = similar(Y)
     exp_tendency!(dY, Y, p, t0)
-    ClimaLSM.dss!(Y, p, t0)
+    ClimaLSM.dss!(dY, p, t0)
 
     @test maximum(abs.(parent(dY.soil.θ_i))) == 0.0
 
