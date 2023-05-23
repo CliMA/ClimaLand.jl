@@ -149,7 +149,7 @@ Y.soil.ϑ_l .= FT(0.494);
 # Next, we turn to timestepping. We choose the initial and final times, as well as a timestep.
 t0 = FT(0)
 timeend = FT(60 * 60 * 24 * 36)
-dt = FT(100);
+dt = FT(1000);
 
 # Now, we choose the timestepping algorithm we want to use.
 # We'll use the ARS111 algorithm with a maximum of 1 Newton iteration
