@@ -12,8 +12,8 @@ FT = Float64
 # Ta from 0 to 50 °C ~ 273 to 323 K
 
 function An_app_f()
-    drivers = Drivers(("PAR (W m-2)", "T (K)"), FT.((10, 283)), (FT.([0, 150]), FT.([273, 323])))
-
+    drivers = Drivers(("PAR (mol m-2 s-1)", "T (K)"), FT.((500 * 1e-6, 283)), (FT.([0, 1500 * 1e-6]), FT.([273, 323])))
+    
     parameters = Parameters(("Moisture stress, B (unit)",
                              "Leaf area index, LAI (m2 m-2)",
                              "CO2 concentration, ca (ppm)", 
