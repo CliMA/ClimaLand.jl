@@ -192,3 +192,60 @@ function compute_photosynthesis(
     Rd = dark_respiration(Vcmax25, β, f, ΔHRd, T, To, R)
     return net_photosynthesis(Ac, Aj, Rd, β)
 end
+
+function Vcmax_opt(
+    model::FarquharModel,
+    T,
+    medlyn_factor,
+    APAR,
+    c_co2,
+    R,
+)
+"""Solve for Jmax25 and Vcmax25 assuming Aj=Ac"""
+    (;
+        Vcmax25,
+        Γstar25,
+        ΔHJmax,
+        ΔHVcmax,
+        ΔHΓstar,
+        f,
+        ΔHRd,
+        To,
+        θj,
+        ϕ,
+        mechanism,
+        sc,
+        ψc,
+        oi,
+        Kc25,
+        Ko25,
+        ΔHkc,
+        ΔHko,
+    ) = model.parameters
+    Γstar = co2_compensation(Γstar25, ΔHΓstar, T, To, R)
+    ci = intercellular_co2(c_co2, Γstar, medlyn_factor)
+    Kc = MM_Kc(Kc25, ΔHkc, T, To, R)
+    Ko = MM_Ko(Ko25, ΔHko, T, To, R)
+
+    # Vcmax25/Jmax25
+    vj_ratio = exp(-1)
+
+    # Light utilization of APAR
+    IPSII = ϕ * APAR / 2
+
+    Jmax_arr = arrhenius_function(T, To, R, ΔHJmax)
+    Vcmax_arr = arrhenius_function(T, To, R, ΔHVcmax)
+
+    if mechanism == C3
+        C = vj_ratio*Vcmax_arr/Jmax_arr*(4*(ci + 2*Γstar)/(ci + Kc*(1 + oi/Ko)))
+    elseif mechanism == C4
+        C = vj_ratio*Vcmax_arr/Jmax_arr
+    end
+
+    Jmax = (C - 1)*IPSII/(C*(C*θj - 1))
+
+    Jmax25 = Jmax/Jmax_arr
+    Vcmax25 = Jmax25*vj_ratio
+
+    return Jmax25, Vcmax25
+end
