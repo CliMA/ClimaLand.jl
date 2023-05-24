@@ -16,6 +16,27 @@ Helper struct for dispatching between C3 and C4 photosynthesis.
 struct C4 <: AbstractPhotosynthesisMechanism end
 
 abstract type AbstractPhotosynthesisModel{FT} <: AbstractCanopyComponent{FT} end
+
+abstract type AbstractJmax25Model end
+
+"""
+    PrescribedJmax25 <: AbstractJmax25Model
+
+Helper struct for dispatching between prescribed and optimality-based Jmax.
+"""
+struct PrescribedJmax25 <: AbstractJmax25Model
+    "Jmax at 25 °C (mol CO2/m^2/s)"
+    Jmax25::FT
+end
+
+"""
+    OptimalityJmax25 <: AbstractJmax25Model
+
+Helper struct for dispatching between prescribed and optimality-based Jmax.
+"""
+struct OptimalityJmax25 <: AbstractJmax25Model end
+
+
 """
     FarquharParameters{FT<:AbstractFloat}
 
@@ -25,8 +46,8 @@ $(DocStringExtensions.FIELDS)
 struct FarquharParameters{FT <: AbstractFloat}
     "Photosynthesis mechanism: C3 or C4"
     mechanism::AbstractPhotosynthesisMechanism
-    "Vcmax at 25 °C (mol CO2/m^2/s)"
-    Vcmax25::FT
+    "Model for computing Jmax"
+    Jmax_model::AbstractJmax25Model
     "Γstar at 25 °C (mol/mol)"
     Γstar25::FT
     "Michaelis-Menten parameter for CO2 at 25 °C (mol/mol)"
@@ -59,6 +80,8 @@ struct FarquharParameters{FT <: AbstractFloat}
     sc::FT
     "Fitting constant to compute the moisture stress factor (Pa)"
     ψc::FT
+    "Ratio of Jmax25 to Vcmax25 (unitless)"
+    jv_ratio::FT
 end
 
 """
@@ -69,7 +92,7 @@ end
         f = FT(0.015), # unitless
         sc = FT(5e-6),# Pa
         ψc = FT(-2e6), # Pa
-        Vcmax25 = FT(5e-5), # converted from 50 μmol/mol CO2/m^2/s to mol/m^2/s
+        Vcmax25 = PrescribedJmax25(FT(8.35e-5)), # converted from Vcmax25 = 50 μmol/mol CO2/m^2/s to Jmax25 in mol/m^2/s
         Γstar25 = FT(4.275e-5),  # converted from 42.75 μmol/mol to mol/mol
         Kc25 = FT(4.049e-4), # converted from 404.9 μmol/mol to mol/mol
         Ko25 = FT(0.2874), # converted from 278.4 mmol/mol to mol/mol
@@ -80,19 +103,20 @@ end
         ΔHΓstar = FT(37830), #J/mol, 11.2 Bonan
         ΔHJmax = FT(43540), # J/mol, 11.2 Bonan
         ΔHRd = FT(43390), # J/mol, 11.2 Bonan
+        jv_ratio = FT(1.67), # unitless, Table 11.5 Bonan
         ) where {FT}
 
 A constructor supplying default values for the FarquharParameters struct.
 """
 function FarquharParameters{FT}(
     mechanism::AbstractPhotosynthesisMechanism;
+    Jmax_model = PrescribedJmax25(FT(8.35e-5)),
     oi = FT(0.209),
     ϕ = FT(0.6),
     θj = FT(0.9),
     f = FT(0.015),
     sc = FT(5e-6),
     ψc = FT(-2e6),
-    Vcmax25 = FT(5e-5),
     Γstar25 = FT(4.275e-5),
     Kc25 = FT(4.049e-4),
     Ko25 = FT(0.2874),
@@ -103,10 +127,11 @@ function FarquharParameters{FT}(
     ΔHΓstar = FT(37830),
     ΔHJmax = FT(43540),
     ΔHRd = FT(46390),
+    jv_ratio = FT(1.67),
 ) where {FT}
     return FarquharParameters{FT}(
         mechanism,
-        Vcmax25,
+        Jmax_model,
         Γstar25,
         Kc25,
         Ko25,
@@ -123,6 +148,7 @@ function FarquharParameters{FT}(
         f,
         sc,
         ψc,
+        jv_ratio,
     )
 end
 
@@ -161,7 +187,7 @@ function compute_photosynthesis(
     R,
 )
     (;
-        Vcmax25,
+        Jmax_model,
         Γstar25,
         ΔHJmax,
         ΔHVcmax,
@@ -179,10 +205,13 @@ function compute_photosynthesis(
         Ko25,
         ΔHkc,
         ΔHko,
+        jv_ratio,
     ) = model.parameters
-    Jmax = max_electron_transport(Vcmax25, ΔHJmax, T, To, R)
+    Jmax25 = compute_Jmax25(Jmax_model, model.parameters, T, medlyn_factor, APAR, c_co2, R)
+    Jmax = Jmax25*arrhenius_function(T, To, R, ΔHJmax)
     J = electron_transport(APAR, Jmax, θj, ϕ)
-    Vcmax = compute_Vcmax(Vcmax25, T, To, R, ΔHVcmax)
+    Vcmax25 = compute_Vcmax25(Jmax25, jv_ratio)
+    Vcmax = Vcmax25*arrhenius_function(T, To, R, ΔHVcmax)
     Γstar = co2_compensation(Γstar25, ΔHΓstar, T, To, R)
     ci = intercellular_co2(c_co2, Γstar, medlyn_factor)
     Aj = light_assimilation(mechanism, J, ci, Γstar)
@@ -193,17 +222,15 @@ function compute_photosynthesis(
     return net_photosynthesis(Ac, Aj, Rd, β)
 end
 
-function Vcmax_opt(
-    model::FarquharModel,
-    T,
-    medlyn_factor,
-    APAR,
-    c_co2,
-    R,
-)
-"""Solve for Jmax25 and Vcmax25 assuming Aj=Ac"""
+function compute_Jmax25(Jmax_model::PrescribedJmax25, _...)
+    return Jmax_model.Jmax25
+end
+
+
+function compute_Jmax25(Jmax_model::OptimalityJmax25, parameters::FarquharParameters, T, medlyn_factor,
+                         APAR, c_co2, R)
+    """Solve for Jmax25 assuming Aj=Ac"""
     (;
-        Vcmax25,
         Γstar25,
         ΔHJmax,
         ΔHVcmax,
@@ -221,14 +248,13 @@ function Vcmax_opt(
         Ko25,
         ΔHkc,
         ΔHko,
-    ) = model.parameters
+        jv_ratio,
+    ) = parameters
+
     Γstar = co2_compensation(Γstar25, ΔHΓstar, T, To, R)
     ci = intercellular_co2(c_co2, Γstar, medlyn_factor)
     Kc = MM_Kc(Kc25, ΔHkc, T, To, R)
     Ko = MM_Ko(Ko25, ΔHko, T, To, R)
-
-    # Vcmax25/Jmax25
-    vj_ratio = exp(-1)
 
     # Light utilization of APAR
     IPSII = ϕ * APAR / 2
@@ -236,16 +262,13 @@ function Vcmax_opt(
     Jmax_arr = arrhenius_function(T, To, R, ΔHJmax)
     Vcmax_arr = arrhenius_function(T, To, R, ΔHVcmax)
 
-    if mechanism == C3
-        C = vj_ratio*Vcmax_arr/Jmax_arr*(4*(ci + 2*Γstar)/(ci + Kc*(1 + oi/Ko)))
-    elseif mechanism == C4
-        C = vj_ratio*Vcmax_arr/Jmax_arr
+    if typeof(mechanism) == C3
+        C = Vcmax_arr/Jmax_arr/jv_ratio*(4*(ci + 2*Γstar)/(ci + Kc*(1 + oi/Ko)))
+    elseif typeof(mechanism) == C4
+        C = Vcmax_arr/Jmax_arr/jv_ratio
     end
 
     Jmax = (C - 1)*IPSII/(C*(C*θj - 1))
 
-    Jmax25 = Jmax/Jmax_arr
-    Vcmax25 = Jmax25*vj_ratio
-
-    return Jmax25, Vcmax25
+    return Jmax/Jmax_arr
 end

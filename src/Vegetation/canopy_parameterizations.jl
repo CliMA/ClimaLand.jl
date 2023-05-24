@@ -176,30 +176,6 @@ function light_assimilation(::C4, J::FT, _...) where {FT}
 end
 
 """
-    max_electron_transport(Vcmax::FT) where {FT}
-
-Computes the maximum potential rate of electron transport (`Jmax`),
-in units of mol/m^2/s, 
-as a function of Vcmax at 25 °C (`Vcmax25`),
-a constant (`ΔHJmax`), a standard temperature (`To`),
-the unversal gas constant (`R`), and the temperature (`T`).
-
-See Table 11.5 of G. Bonan's textbook, 
-Climate Change and Terrestrial Ecosystem Modeling (2019).
-"""
-function max_electron_transport(
-    Vcmax25::FT,
-    ΔHJmax::FT,
-    T::FT,
-    To::FT,
-    R::FT,
-) where {FT}
-    Jmax25 = Vcmax25 * FT(exp(1))
-    Jmax = Jmax25 * arrhenius_function(T, To, R, ΔHJmax)
-    return Jmax
-end
-
-"""
     electron_transport(APAR::FT,
                        Jmax::FT,
                        θj::FT,
@@ -388,29 +364,22 @@ function MM_Ko(Ko25::FT, ΔHko::FT, T::FT, To::FT, R::FT) where {FT}
 end
 
 """
-    compute_Vcmax(Vcmax25::FT,
-           T::FT,
-           To::FT,
-           R::FT,
-           ep5::FT) where {FT}
+    compute_Vcmax25(Jmax25::FT,
+           jv_ratio::FT) where {FT}
 
-Computes the maximum rate of carboxylation of Rubisco (`Vcmax`),
-in units of mol/m^2/s, 
-as a function of temperature (`T`), Vcmax at the reference temperature 25 °C (`Vcmax25`),
-the universal gas constant (`R`), and the reference temperature (`To`).
+Computes the maximum rate of carboxylation of Rubisco at the reference temperature 25 °C (`Vcmax25`),
+in units of mol/m^2/s as a function of Jmax at the reference temperature 25 °C (`Jmax25`), assuming
+a fixed ratio Jmax25/Vcmax25 (`jv_ratio`).
 
 See Table 11.5 of G. Bonan's textbook, 
 Climate Change and Terrestrial Ecosystem Modeling (2019).
 """
-function compute_Vcmax(
-    Vcmax25::FT,
-    T::FT,
-    To::FT,
-    R::FT,
-    ΔHVcmax::FT,
+function compute_Vcmax25(
+    Jmax25::FT,
+    jv_ratio::FT,
 ) where {FT}
-    Vcmax = Vcmax25 * arrhenius_function(T, To, R, ΔHVcmax)
-    return Vcmax
+    Vcmax25 = Jmax25/jv_ratio
+    return Vcmax25
 end
 
 # 3. Stomatal conductance model
