@@ -154,9 +154,9 @@ version = "0.1.30"
 
 [[deps.CUDA]]
 deps = ["AbstractFFTs", "Adapt", "BFloat16s", "CEnum", "CUDA_Driver_jll", "CUDA_Runtime_Discovery", "CUDA_Runtime_jll", "CompilerSupportLibraries_jll", "ExprTools", "GPUArrays", "GPUCompiler", "KernelAbstractions", "LLVM", "LazyArtifacts", "Libdl", "LinearAlgebra", "Logging", "Preferences", "Printf", "Random", "Random123", "RandomNumbers", "Reexport", "Requires", "SparseArrays", "SpecialFunctions", "UnsafeAtomicsLLVM"]
-git-tree-sha1 = "280893f920654ebfaaaa1999fbd975689051f890"
+git-tree-sha1 = "beb01266a709235d8d9be1382d695a25f0b75bd3"
 uuid = "052768ef-5323-5732-b1bb-66c8b64840ba"
-version = "4.2.0"
+version = "4.3.0"
 
 [[deps.CUDA_Driver_jll]]
 deps = ["Artifacts", "JLLWrappers", "LazyArtifacts", "Libdl", "Pkg"]
@@ -202,9 +202,9 @@ version = "0.4.2"
 
 [[deps.ClimaCore]]
 deps = ["Adapt", "BlockArrays", "CUDA", "ClimaComms", "CubedSphere", "DataStructures", "DiffEqBase", "DocStringExtensions", "ForwardDiff", "GaussQuadrature", "GilbertCurves", "HDF5", "InteractiveUtils", "IntervalSets", "LinearAlgebra", "PkgVersion", "RecursiveArrayTools", "RootSolvers", "Rotations", "SparseArrays", "Static", "StaticArrays", "Statistics", "UnPack"]
-git-tree-sha1 = "e8cfd4aeb2099d55331677f37f2447cffa4bf0f4"
+git-tree-sha1 = "9ef8838ca6cab5c79c090854c7159f3aee09d433"
 uuid = "d414da3d-4745-48bb-8d80-42e94e092884"
-version = "0.10.34"
+version = "0.10.36"
 
 [[deps.ClimaCoreTempestRemap]]
 deps = ["ClimaComms", "ClimaCore", "Dates", "LinearAlgebra", "NCDatasets", "PkgVersion", "TempestRemap_jll", "Test"]
@@ -214,7 +214,7 @@ version = "0.3.8"
 
 [[deps.ClimaLSM]]
 deps = ["ArtifactWrappers", "CLIMAParameters", "ClimaComms", "ClimaCore", "ClimaCoreTempestRemap", "Dates", "DocStringExtensions", "Insolation", "IntervalSets", "JLD2", "LinearAlgebra", "NCDatasets", "StaticArrays", "SurfaceFluxes", "Thermodynamics", "UnPack"]
-git-tree-sha1 = "020d1ebe2a058d8d6e97ac5c3b493d43a96db79a"
+path = ".."
 uuid = "7884a58f-fab6-4fd0-82bb-ecfedb2d8430"
 version = "0.2.5"
 
@@ -394,9 +394,9 @@ uuid = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 
 [[deps.Distributions]]
 deps = ["FillArrays", "LinearAlgebra", "PDMats", "Printf", "QuadGK", "Random", "SparseArrays", "SpecialFunctions", "Statistics", "StatsAPI", "StatsBase", "StatsFuns", "Test"]
-git-tree-sha1 = "5eeb2bd01e5065090ad591a205d8cad432ae6cb6"
+git-tree-sha1 = "aa8ae1e8e8d4b5ef38a8fbc028fc75f3c5cad73d"
 uuid = "31c24e10-a181-5473-b8eb-7969acd0382f"
-version = "0.25.93"
+version = "0.25.94"
 
     [deps.Distributions.extensions]
     DistributionsChainRulesCoreExt = "ChainRulesCore"
@@ -582,21 +582,21 @@ version = "0.1.4"
 
 [[deps.GPUCompiler]]
 deps = ["ExprTools", "InteractiveUtils", "LLVM", "Libdl", "Logging", "Scratch", "TimerOutputs", "UUIDs"]
-git-tree-sha1 = "5737dc242dadd392d934ee330c69ceff47f0259c"
+git-tree-sha1 = "11b2d77f29a85f3649c273a38f6618121c6b1c51"
 uuid = "61eb1bfa-7361-4325-ad38-22787b887f55"
-version = "0.19.4"
+version = "0.20.2"
 
 [[deps.GR]]
 deps = ["Artifacts", "Base64", "DelimitedFiles", "Downloads", "GR_jll", "HTTP", "JSON", "Libdl", "LinearAlgebra", "Pkg", "Preferences", "Printf", "Random", "Serialization", "Sockets", "TOML", "Tar", "Test", "UUIDs", "p7zip_jll"]
-git-tree-sha1 = "d014972cd6f5afb1f8cd7adf000b7a966d62c304"
+git-tree-sha1 = "8b8a2fd4536ece6e554168c21860b6820a8a83db"
 uuid = "28b8d3ca-fb5f-59d9-8090-bfdbd6d07a71"
-version = "0.72.5"
+version = "0.72.7"
 
 [[deps.GR_jll]]
 deps = ["Artifacts", "Bzip2_jll", "Cairo_jll", "FFMPEG_jll", "Fontconfig_jll", "GLFW_jll", "JLLWrappers", "JpegTurbo_jll", "Libdl", "Libtiff_jll", "Pixman_jll", "Qt5Base_jll", "Zlib_jll", "libpng_jll"]
-git-tree-sha1 = "f670f269909a9114df1380cc0fcaa316fff655fb"
+git-tree-sha1 = "19fad9cd9ae44847fe842558a744748084a722d1"
 uuid = "d2c73de3-f751-5644-a686-071e5b155ba9"
-version = "0.72.5+0"
+version = "0.72.7+0"
 
 [[deps.GaussQuadrature]]
 deps = ["SpecialFunctions"]
@@ -646,9 +646,9 @@ version = "1.0.2"
 
 [[deps.HDF5]]
 deps = ["Compat", "HDF5_jll", "Libdl", "Mmap", "Random", "Requires", "UUIDs"]
-git-tree-sha1 = "3dab31542b3da9f25a6a1d11159d4af8fdce7d67"
+git-tree-sha1 = "c73fdc3d9da7700691848b78c61841274076932a"
 uuid = "f67ccb44-e63f-5c2f-98bd-6dc0ccc4ba2f"
-version = "0.16.14"
+version = "0.16.15"
 
 [[deps.HDF5_jll]]
 deps = ["Artifacts", "JLLWrappers", "LibCURL_jll", "Libdl", "OpenSSL_jll", "Pkg", "Zlib_jll"]

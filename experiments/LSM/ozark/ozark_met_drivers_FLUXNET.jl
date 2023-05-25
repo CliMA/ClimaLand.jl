@@ -40,7 +40,7 @@ column_names = driver_data[1, :]
 TA = driver_data[2:end, column_names .== "TA_F"] .+ 273.15; # convert C to K
 VPD = driver_data[2:end, column_names .== "VPD_F"] .* 100; # convert hPa to Pa
 PA = driver_data[2:end, column_names .== "PA_F"] .* 1000; # convert kPa to Pa
-P = driver_data[2:end, column_names .== "P_F"] ./ (1000 * 3600); # convert mm/HR to m/s
+P = driver_data[2:end, column_names .== "P_F"] ./ (1000 * 1800); # convert mm/HH to m/s
 WS = driver_data[2:end, column_names .== "WS_F"]; # already m/s
 LW_IN = driver_data[2:end, column_names .== "LW_IN_F"]
 SW_IN = driver_data[2:end, column_names .== "SW_IN_F"]

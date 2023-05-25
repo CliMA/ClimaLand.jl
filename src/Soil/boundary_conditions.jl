@@ -116,7 +116,7 @@ function soil_boundary_fluxes(
     S_c::FT = (1 + ((vg_n - 1) / vg_n)^(1 - 2 * vg_n))^(-vg_m)
     dsl = dry_soil_layer_thickness.(S_l_sfc, S_c, d_ds)
     r_soil = @. dsl / (_D_vapor * τ_a) # [s\m]
-    r_ae = @. 1 / (conditions.Ch * abs(bc.atmos.u(t))) # [s/m]
+    r_ae = conditions.r_ae
     net_water_flux = @. bc.atmos.liquid_precip(t) +
        conditions.vapor_flux * r_ae / (r_soil + r_ae)
     net_energy_flux =
