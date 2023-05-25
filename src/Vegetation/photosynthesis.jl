@@ -17,14 +17,14 @@ struct C4 <: AbstractPhotosynthesisMechanism end
 
 abstract type AbstractPhotosynthesisModel{FT} <: AbstractCanopyComponent{FT} end
 
-abstract type AbstractJmax25Model end
+abstract type AbstractJmax25Model{FT} end
 
 """
     PrescribedJmax25 <: AbstractJmax25Model
 
 Helper struct for dispatching between prescribed and optimality-based Jmax.
 """
-struct PrescribedJmax25 <: AbstractJmax25Model
+struct PrescribedJmax25{FT} <: AbstractJmax25Model{FT}
     "Jmax at 25 °C (mol CO2/m^2/s)"
     Jmax25::FT
 end
@@ -34,7 +34,7 @@ end
 
 Helper struct for dispatching between prescribed and optimality-based Jmax.
 """
-struct OptimalityJmax25 <: AbstractJmax25Model end
+struct OptimalityJmax25{FT} <: AbstractJmax25Model{FT} end
 
 
 """
