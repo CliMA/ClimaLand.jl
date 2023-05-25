@@ -1,5 +1,6 @@
 using DiffEqCallbacks
-using OrdinaryDiffEq: ODEProblem, solve, Euler, RK4
+import OrdinaryDiffEq as ODE
+import ClimaTimeSteppers as CTS
 using ClimaCore
 import CLIMAParameters as CP
 using Plots
@@ -174,28 +175,35 @@ end
 update_aux! = make_update_aux(land)
 update_aux!(p, Y, 0.0)
 
+# Set up timestepper
+ode_algo = CTS.ExplicitAlgorithm(timestepper)
+
 # Simulation
-sv = SavedValues(FT, ClimaCore.Fields.FieldVector)
-prob = ODEProblem(exp_tendency!, Y, (t0, tf), p);
-cb = SavingCallback(
-    (u, t, integrator) -> copy(integrator.p),
-    sv;
-    saveat = hourly,
+n = 120
+saveat = save_every_n(n, dt, t0, tf)
+sv = (;
+    t = Array{FT}(undef, length(saveat)),
+    saveval = Array{ClimaCore.Fields.FieldVector}(undef, length(saveat)),
 )
-sol = solve(
+cb = ClimaLSM.NonInterpSavingCallback(sv, saveat)
+
+prob =
+    ODE.ODEProblem(CTS.ClimaODEFunction(T_exp! = exp_tendency!), Y, (t0, tf), p);
+sol = ODE.solve(
     prob,
-    timestepper;
+    ode_algo;
     dt = dt,
     callback = cb,
     adaptive = false,
-    saveat = hourly,
+    saveat = saveat,
 )
 
 # Plotting
 daily = sol.t ./ 3600 ./ 24
 savedir = joinpath(climalsm_dir, "experiments/LSM/ozark")
 model_GPP = [
-    parent(sv.saveval[k].canopy.photosynthesis.GPP)[1] for k in 1:length(sol.t)
+    parent(sv.saveval[k].canopy.photosynthesis.GPP)[1] for
+    k in 1:length(sv.saveval)
 ]
 
 plt1 = Plots.plot(size = (500, 700))
@@ -231,7 +239,7 @@ Plots.savefig(joinpath(savedir, "GPP.png"))
 T =
     [
         parent(sv.saveval[k].canopy.conductance.transpiration)[1] for
-        k in 1:length(sol.t)
+        k in 1:length(sv.saveval)
     ] .* (1e3 * 24 * 3600)
 measured_T = LE ./ (LSMP.LH_v0(earth_param_set) * 1000) .* (1e3 * 24 * 3600)
 plt1 = Plots.plot(size = (500, 700))

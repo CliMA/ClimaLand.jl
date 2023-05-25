@@ -1,20 +1,20 @@
 using Plots
-using OrdinaryDiffEq: ODEProblem, solve, RK4, Euler, step!, init
-using ClimaCore
-import CLIMAParameters as CP
+import OrdinaryDiffEq as ODE
+import ClimaTimeSteppers as CTS
 using Thermodynamics
 using Insolation
+using ClimaCore
+import CLIMAParameters as CP
+using RootSolvers
+using SurfaceFluxes
+using StaticArrays
 
 using ClimaLSM
 using ClimaLSM.Domains: Column
 using ClimaLSM.Soil
-
 import ClimaLSM
 import ClimaLSM.Parameters as LSMP
 import SurfaceFluxes.Parameters as SFP
-using RootSolvers
-using SurfaceFluxes
-using StaticArrays
 
 include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
 FT = Float64
@@ -139,13 +139,21 @@ end
 t = FT(0)
 t0 = FT(0)
 tf = FT(24 * 3600 * 15)
-dt = FT(100)
+dt = FT(1)
 
 init_soil!(Y, cds.z, soil.parameters)
 soil_exp_tendency! = make_exp_tendency(soil)
 
-prob = ODEProblem(soil_exp_tendency!, Y, (t0, tf), p)
-sol = solve(prob, RK4(); dt = dt, saveat = 3600);
+timestepper = ClimaLSM.RK4()
+ode_algo = CTS.ExplicitAlgorithm(timestepper)
+
+prob = ODE.ODEProblem(
+    CTS.ClimaODEFunction(T_exp! = soil_exp_tendency!, dss! = ClimaLSM.dss!),
+    Y,
+    (t0, tf),
+    p,
+)
+sol = ODE.solve(prob, ode_algo; dt = dt, saveat = 3600)
 
 (; ν, vg_m, vg_n, θ_r, d_ds) = soil.parameters
 _D_vapor = FT(LSMP.D_vapor(soil.parameters.earth_param_set))

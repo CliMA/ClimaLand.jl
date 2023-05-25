@@ -65,7 +65,10 @@ FT = Float64
     Y, p, coords = initialize(soil)
     init_soil!(Y, coords.x, coords.z, soil.parameters)
     dY = similar(Y)
+
     exp_tendency!(dY, Y, p, 0.0)
+    # perform dss on the tendency because that's what we want to check later
+    ClimaLSM.dss!(dY, p, 0.0)
 
     function dθdx(x, z)
         z_∇ = zmin / 2.0 + (zmax - zmin) / 10.0 * sin(π * 2 * x / xmax)
@@ -303,8 +306,6 @@ end
             280.0,
             Ref(parameters),
         )
-
-
 
     exp_tendency! = make_exp_tendency(soil)
     dY = similar(Y)

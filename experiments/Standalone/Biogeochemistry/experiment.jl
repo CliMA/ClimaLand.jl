@@ -1,5 +1,6 @@
 using DiffEqCallbacks
-using OrdinaryDiffEq: ODEProblem, solve, Euler
+import OrdinaryDiffEq as ODE
+import ClimaTimeSteppers as CTS
 using ClimaCore
 using ClimaLSM
 using ClimaLSM.Domains: LSMSingleColumnDomain
@@ -140,13 +141,27 @@ update_aux! = make_update_aux(model)
 update_aux!(p, Y, t0)
 
 Soil_bio_exp_tendency! = make_exp_tendency(model)
+
 tf = FT(10000)
 dt = FT(10)
-saved_values = SavedValues(FT, ClimaCore.Fields.FieldVector)
 
-cb = SavingCallback((u, t, integrator) -> copy(integrator.p), saved_values)
-prob = ODEProblem(Soil_bio_exp_tendency!, Y, (t0, tf), p)
-sol = solve(prob, Euler(); dt = dt, callback = cb)
+timestepper = ClimaLSM.RK4()
+ode_algo = CTS.ExplicitAlgorithm(timestepper)
+
+saveat = collect(t0:FT(10 * dt):tf)
+saved_values = (;
+    t = Array{FT}(undef, length(saveat)),
+    saveval = Array{ClimaCore.Fields.FieldVector}(undef, length(saveat)),
+)
+cb = ClimaLSM.NonInterpSavingCallback(saved_values, saveat)
+
+prob = ODE.ODEProblem(
+    CTS.ClimaODEFunction(T_exp! = Soil_bio_exp_tendency!),
+    Y,
+    (t0, tf),
+    p,
+)
+sol = ODE.solve(prob, ode_algo; dt = dt, callback = cb)
 
 # Animation
 # You will need to ]add GLMakie to your base Julia Project.toml

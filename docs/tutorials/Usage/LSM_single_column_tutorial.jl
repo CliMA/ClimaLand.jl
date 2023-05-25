@@ -35,9 +35,6 @@
 # the equations, rather than on running simulations.
 
 # First, let's load the required modules:
-if !("." in LOAD_PATH)
-    push!(LOAD_PATH, ".")
-end
 using ClimaLSM
 using ClimaLSM.Domains: LSMSingleColumnDomain, Column
 using ClimaLSM.Soil

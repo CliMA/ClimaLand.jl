@@ -3,7 +3,8 @@ using Plots
 using DelimitedFiles
 using Statistics
 using ArtifactWrappers
-using OrdinaryDiffEq: ODEProblem, solve, RK4
+import OrdinaryDiffEq as ODE
+import ClimaTimeSteppers as CTS
 using ClimaCore
 import CLIMAParameters as CP
 using ClimaLSM
@@ -49,13 +50,22 @@ FT = Float64
 
     # specify ICs
     Y.soil.ϑ_l .= FT(0.24)
-    soil_exp_tendency! = make_exp_tendency(soil)
+    exp_tendency! = make_exp_tendency(soil)
 
     t0 = FT(0)
     tf = FT(1e6)
-    dt = FT(0.25)
-    prob = ODEProblem(soil_exp_tendency!, Y, (t0, tf), p)
-    sol = solve(prob, RK4(); dt = dt, saveat = 10000)
+    dt = FT(0.2)
+
+    stepper = ClimaLSM.RK4()
+    ode_algo = CTS.ExplicitAlgorithm(stepper)
+
+    prob = ODE.ODEProblem(
+        CTS.ClimaODEFunction(T_exp! = exp_tendency!),
+        Y,
+        (t0, tf),
+        p,
+    )
+    sol = ODE.solve(prob, ode_algo; dt = dt, saveat = 10000)
 
     N = length(sol.t)
     ϑ_l = parent(sol.u[N].soil.ϑ_l)
@@ -112,13 +122,22 @@ end
 
     # specify ICs
     Y.soil.ϑ_l .= FT(0.1)
-    soil_exp_tendency! = make_exp_tendency(soil)
+    exp_tendency! = make_exp_tendency(soil)
 
     t0 = FT(0)
     tf = FT(60 * 60 * 0.8)
     dt = FT(0.25)
-    prob = ODEProblem(soil_exp_tendency!, Y, (t0, tf), p)
-    sol = solve(prob, RK4(); dt = dt, saveat = 60 * dt)
+
+    stepper = ClimaLSM.RK4()
+    ode_algo = CTS.ExplicitAlgorithm(stepper)
+
+    prob = ODE.ODEProblem(
+        CTS.ClimaODEFunction(T_exp! = exp_tendency!),
+        Y,
+        (t0, tf),
+        p,
+    )
+    sol = ODE.solve(prob, ode_algo; dt = dt, saveat = 60 * dt)
 
     N = length(sol.t)
     ϑ_l = parent(sol.u[N].soil.ϑ_l)

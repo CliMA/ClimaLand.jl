@@ -72,7 +72,8 @@
 # The problem setup and soil properties are chosen to match the lab experiment of Mizoguchi (1990), as detailed in Hansson (2004) and Dall'Amico (2011).
 
 # # Import necessary modules
-using OrdinaryDiffEq: ODEProblem, solve, RK4
+import OrdinaryDiffEq as ODE
+import ClimaTimeSteppers as CTS
 using ArtifactWrappers
 using DelimitedFiles
 using Plots
@@ -80,9 +81,6 @@ using Plots
 using ClimaCore
 import CLIMAParameters as CP
 
-if !("." in LOAD_PATH)
-    push!(LOAD_PATH, ".")
-end
 using ClimaLSM
 using ClimaLSM.Domains: Column
 using ClimaLSM.Soil
@@ -199,17 +197,24 @@ end
 
 init_soil!(Y, coords.z, soil.parameters);
 
-# Create the ode function for the [OrdinaryDiffEq.jl](https://github.com/SciML/OrdinaryDiffEq.jl)
-# ODEProblem, and choose a timestep, integration timespan, etc:
+# Create the tendency function, and choose a timestep, integration timespan, etc:
 exp_tendency! = make_exp_tendency(soil)
 t0 = FT(0)
 dt = FT(60)
 tf = FT(3600 * 50)
 
-prob = ODEProblem(exp_tendency!, Y, (t0, tf), p);
+# Choose a timestepper and set up the ODE problem:
+timestepper = ClimaLSM.RK4();
+ode_algo = CTS.ExplicitAlgorithm(timestepper)
+prob = ODE.ODEProblem(
+    CTS.ClimaODEFunction(T_exp! = exp_tendency!, dss! = ClimaLSM.dss!),
+    Y,
+    (t0, tf),
+    p,
+);
 
-# Now we can solve the problem. Here we use an RK4 timestepper:
-sol = solve(prob, RK4(); dt = dt, saveat = 0:3600:tf);
+# Now we can solve the problem.
+sol = ODE.solve(prob, ode_algo; dt = dt, saveat = 0:3600:tf);
 
 # # Comparison to data
 # This data was obtained by us from the figures of Hansson et al. (2004), but was originally obtained
