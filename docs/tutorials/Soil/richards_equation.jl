@@ -131,9 +131,12 @@ soil = Soil.RichardsModel{FT}(;
     sources = sources,
 );
 
-# Here we create the explicit tendency, which updates prognostic
-# variables.
+# Here we create the explicit and implicit tendencies, which update prognostic
+# variable components that are stepped explicitly and implicitly, respectively.
+# We also create the function which is used to update our Jacobian.
 exp_tendency! = make_exp_tendency(soil);
+imp_tendency! = ClimaLSM.make_imp_tendency(soil);
+update_jacobian! = ClimaLSM.make_update_jacobian(soil);
 
 # # Set up the simulation
 # We can now initialize the prognostic and auxiliary variable vectors, and take
@@ -151,18 +154,42 @@ coords |> propertynames
 Y.soil.ϑ_l .= FT(0.494);
 
 # Next, we turn to timestepping. We choose the initial and final times, as well as a timestep.
+# As usual, your timestep depends on the problem you are solving, the accuracy
+# of the solution required, and the timestepping algorithm you are using.
 t0 = FT(0)
 tf = FT(60 * 60 * 24 * 36)
-dt = FT(100);
+dt = FT(1e3);
 
 # Now, we choose the timestepping algorithm we want to use.
-# We'll use the 4th order Runge-Kutta method, RK4.
-stepper = ClimaLSM.RK4();
-ode_algo = CTS.ExplicitAlgorithm(stepper);
+# We'll use the ARS111 algorithm with 1 Newton iteration per timestep;
+# you can also specify a convergence criterion and a maximum number
+# of Newton iterations.
+stepper = CTS.ARS111();
+ode_algo = CTS.IMEXAlgorithm(
+    stepper,
+    CTS.NewtonsMethod(
+        max_iters = 1,
+        update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
+    ),
+);
 
-# And then we can solve the system of equations, using [OrdinaryDiffEq.jl](https://github.com/SciML/OrdinaryDiffEq.jl):
-prob =
-    ODE.ODEProblem(CTS.ClimaODEFunction(T_exp! = exp_tendency!), Y, (t0, tf), p);
+# Here we set up the information used for our Jacobian.
+jac_kwargs =
+    (; jac_prototype = RichardsTridiagonalW(Y), Wfact = update_jacobian!);
+
+# And then we can solve the system of equations, using
+# [OrdinaryDiffEq.jl](https://github.com/SciML/OrdinaryDiffEq.jl) and
+# [ClimaTimeSteppers.jl](https://github.com/CliMA/ClimaTimeSteppers.jl).
+prob = ODE.ODEProblem(
+    CTS.ClimaODEFunction(
+        T_exp! = exp_tendency!,
+        T_imp! = ODE.ODEFunction(imp_tendency!; jac_kwargs...),
+        dss! = ClimaLSM.dss!,
+    ),
+    Y,
+    (t0, tf),
+    p,
+);
 sol = ODE.solve(prob, ode_algo; dt = dt, adaptive = false);
 
 

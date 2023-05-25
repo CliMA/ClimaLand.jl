@@ -1,6 +1,10 @@
 t0 = FT(0)
 N_days = 365
 tf = t0 + FT(3600 * 24 * N_days)
-dt = FT(30)
-save_every_n(n, dt, t0, tf) = Array(t0:(n * dt):tf)
-timestepper = ClimaLSM.RK4()
+dt = FT(225)
+n = 16
+saveat = Array(t0:(n * dt):tf)
+timestepper = CTS.ARS222()
+norm_condition = CTS.MaximumError(FT(1e-8))
+conv_checker = CTS.ConvergenceChecker(; norm_condition)
+max_iterations = 20
