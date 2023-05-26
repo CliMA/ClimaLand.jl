@@ -349,13 +349,15 @@ function ClimaLSM.make_update_aux(
         c = FT(LSMP.light_speed(earth_param_set))
         h = FT(LSMP.planck_constant(earth_param_set))
         N_a = FT(LSMP.avogadro_constant(earth_param_set))
+        grav = FT(LSMP.grav(earth_param_set))
+        ρ_l = FT(LSMP.ρ_cloud_liq(earth_param_set))
         (; ld, Ω, ρ_leaf, λ_γ) = canopy.radiative_transfer.parameters
         (; LAI) = canopy.parameters
         energy_per_photon = h * c / λ_γ
         R = FT(LSMP.gas_constant(earth_param_set))
         thermo_params = canopy.parameters.earth_param_set.thermo_params
         (; g1, g0, Drel) = canopy.conductance.parameters
-        (; sc, ψc) = canopy.photosynthesis.parameters
+        (; sc, pc) = canopy.photosynthesis.parameters
 
         # Current atmospheric conditions
         θs::FT = canopy.radiation.θs(t, canopy.radiation.orbital_data)
@@ -421,7 +423,7 @@ function ClimaLSM.make_update_aux(
                     area_index[hydraulics.compartment_labels[i + 1]]
                 ) / 2
         end
-        @. β = moisture_stress(ψ[n_stem + n_leaf], sc, ψc)
+        @. β = moisture_stress(ψ[n_stem + n_leaf] * ρ_l * grav, sc, pc)
         # We update the fa[n_stem+n_leaf] element once we have computed transpiration, below
 
         # update photosynthesis and conductance terms
@@ -443,7 +445,7 @@ function ClimaLSM.make_update_aux(
         (canopy_transpiration, shf, lhf) =
             canopy_surface_fluxes(canopy.atmos, canopy, Y, p, t)
         transpiration .= canopy_transpiration
-        # Transpiration is per unit ground area, not leaf area.
+        # Transpiration is per unit ground area, not leaf area (mult by LAI)
         fa[n_stem + n_leaf] .= PlantHydraulics.transpiration_per_ground_area(
             hydraulics.transpiration,
             Y,
@@ -508,8 +510,6 @@ function canopy_surface_fluxes(
     T::FT = model.atmos.T(t)
 
     # here is where we adjust evaporation for stomatal conductance = 1/r_sfc
-    r_ae = 1 / (conditions.Ch * abs(atmos.u(t))) # [s/m]
-
     leaf_conductance = p.canopy.conductance.gs
     canopy_conductance =
         upscale_leaf_conductance.(
@@ -520,6 +520,7 @@ function canopy_surface_fluxes(
             P,
         )
     r_sfc = @. 1 / (canopy_conductance) # [s/m]
+    r_ae = conditions.r_ae # [s/m]
     r_eff = r_ae .+ r_sfc
     canopy_transpiration = @. conditions.vapor_flux * r_ae / r_eff
 

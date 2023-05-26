@@ -1,5 +1,5 @@
 # Soil parameters
-soil_ν = FT(0.45) # m3/m3, from Wang et al. 2021 https://doi.org/10.5194/gmd-14-6741-2021
+soil_ν = FT(0.55) # m3/m3
 soil_K_sat = FT(4e-7) # m/s, matches Natan
 soil_S_s = FT(1e-3) # 1/m, guess
 soil_vg_n = FT(2.6257) # unitless, from Wang et al. 2021 https://doi.org/10.5194/gmd-14-6741-2021
@@ -24,7 +24,7 @@ oi = FT(0.209)
 θj = FT(0.9)
 f = FT(0.015)
 sc = FT(5e-6)
-ψc = FT(-2e6)
+pc = FT(-2e5)
 Vcmax25 = FT(5e-5)
 Γstar25 = FT(4.275e-5)
 Kc25 = FT(4.049e-4)

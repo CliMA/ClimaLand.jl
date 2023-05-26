@@ -1,9 +1,5 @@
 using Test
 import CLIMAParameters as CP
-
-if !("." in LOAD_PATH)
-    push!(LOAD_PATH, ".")
-end
 using ClimaLSM.Canopy
 
 import ClimaLSM
@@ -31,7 +27,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     P = FT(101250) #Pa
     q = FT(0.02)
     VPD = ClimaLSM.vapor_pressure_deficit(T, P, q, thermo_params)#Pa
-    ψ_l = FT(-2e6) # Pa
+    p_l = FT(-2e6) # Pa
     ca = FT(4.11e-4) # mol/mol
     R = FT(LSMP.gas_constant(earth_param_set))
     θs = FT.(Array(0:0.1:(π / 2)))
@@ -113,10 +109,10 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
 
     Aj = light_assimilation.(Ref(photosynthesisparams.mechanism), J, ci, Γstar)
     @test all(@.(Aj == J * (ci - Γstar) / (4 * (ci + 2 * Γstar))))
-    β = moisture_stress(ψ_l, photosynthesisparams.sc, photosynthesisparams.ψc)
+    β = moisture_stress(p_l, photosynthesisparams.sc, photosynthesisparams.pc)
     @test β ==
-          (1 + exp(photosynthesisparams.sc * photosynthesisparams.ψc)) /
-          (1 + exp(photosynthesisparams.sc * (ψ_l - photosynthesisparams.ψc)))
+          (1 + exp(photosynthesisparams.sc * photosynthesisparams.pc)) /
+          (1 + exp(photosynthesisparams.sc * (p_l - photosynthesisparams.pc)))
     #    C4 tests
     @test rubisco_assimilation(
         C4(),

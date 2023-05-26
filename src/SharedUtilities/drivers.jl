@@ -62,6 +62,8 @@ struct PrescribedAtmosphere{FT, LP, SP, TA, UA, QA, RA, CA} <:
     c_co2::CA
     "Reference height (m), relative to surface elevation"
     h::FT
+    "Minimum wind speed (gustiness; m/s)"
+    gustiness::FT
     function PrescribedAtmosphere(
         liquid_precip,
         snow_precip,
@@ -69,11 +71,12 @@ struct PrescribedAtmosphere{FT, LP, SP, TA, UA, QA, RA, CA} <:
         u,
         q,
         P,
-        h;
+        h::FT;
+        gustiness = FT(1),
         c_co2 = nothing,
-    )
+    ) where {FT}
         args = (liquid_precip, snow_precip, T, u, q, P, c_co2)
-        return new{typeof(h), typeof.(args)...}(args..., h)
+        return new{typeof(h), typeof.(args)...}(args..., h, gustiness)
     end
 
 end
@@ -216,6 +219,7 @@ function surface_fluxes_at_a_point(
         z0m = z_0m,
         z0b = z_0b,
         beta = β_sfc,
+        gustiness = atmos.gustiness,
     )
     surface_flux_params = LSMP.surface_fluxes_parameters(earth_param_set)
     conditions = SurfaceFluxes.surface_conditions(
@@ -232,6 +236,7 @@ function surface_fluxes_at_a_point(
         shf = conditions.shf,
         Ch = conditions.Ch,
         vapor_flux = vapor_flux,
+        r_ae = 1 / (conditions.Ch * SurfaceFluxes.windspeed(sc)),
     )
 end
 

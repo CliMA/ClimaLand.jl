@@ -55,10 +55,10 @@ struct FarquharParameters{FT <: AbstractFloat}
     θj::FT
     "Constant factor appearing the dark respiration term, equal to 0.015."
     f::FT
-    "Fitting constant to compute the moisture stress factor (Pa^{-1})"
+    "Sensitivity to low water pressure, in the moisture stress factor, (Pa^{-1}) [Tuzet et al. (2003)]"
     sc::FT
-    "Fitting constant to compute the moisture stress factor (Pa)"
-    ψc::FT
+    "Reference water pressure for the moisture stress factor (Pa) [Tuzet et al. (2003)]"
+    pc::FT
 end
 
 """
@@ -68,7 +68,7 @@ end
         θj = FT(0.9), # unitless
         f = FT(0.015), # unitless
         sc = FT(5e-6),# Pa
-        ψc = FT(-2e6), # Pa
+        pc = FT(-2e6), # Pa
         Vcmax25 = FT(5e-5), # converted from 50 μmol/mol CO2/m^2/s to mol/m^2/s
         Γstar25 = FT(4.275e-5),  # converted from 42.75 μmol/mol to mol/mol
         Kc25 = FT(4.049e-4), # converted from 404.9 μmol/mol to mol/mol
@@ -91,7 +91,7 @@ function FarquharParameters{FT}(
     θj = FT(0.9),
     f = FT(0.015),
     sc = FT(5e-6),
-    ψc = FT(-2e6),
+    pc = FT(-2e6),
     Vcmax25 = FT(5e-5),
     Γstar25 = FT(4.275e-5),
     Kc25 = FT(4.049e-4),
@@ -122,7 +122,7 @@ function FarquharParameters{FT}(
         θj,
         f,
         sc,
-        ψc,
+        pc,
     )
 end
 
@@ -172,8 +172,6 @@ function compute_photosynthesis(
         θj,
         ϕ,
         mechanism,
-        sc,
-        ψc,
         oi,
         Kc25,
         Ko25,

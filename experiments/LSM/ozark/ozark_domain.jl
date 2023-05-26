@@ -3,7 +3,8 @@
 nelements = 10
 zmin = FT(-2)
 zmax = FT(0)
-
+land_domain =
+    LSMSingleColumnDomain(; zlim = (zmin, zmax), nelements = nelements)
 
 # Number of stem and leaf compartments. Leaf compartments are stacked on top of stem compartments
 n_stem = Int64(1)
