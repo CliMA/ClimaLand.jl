@@ -1,4 +1,4 @@
 dynamicdocs = [
                 "Big Leaf" => "dynamicdocs/pages/BigLeaf.md",
-                "Heterotrophic respiration" => "dynamicdocs/pages/SoilBiogeochemistry",
+                "Heterotrophic respiration" => "dynamicdocs/pages/SoilBiogeochemistry.md",
               ]
