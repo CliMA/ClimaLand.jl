@@ -67,7 +67,7 @@ pages = Any[
     "APIs" => apis,
     "Contribution guide" => "Contributing.md",
     "Tutorials" => tutorials,
-	"DynamicDocs" => dynamicdocs,
+    "DynamicDocs" => dynamicdocs,
 ]
 
 

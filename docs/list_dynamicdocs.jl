@@ -1,3 +1,3 @@
 dynamicdocs = [
-                "test" => "dynamicdocs/test.md",
+                "test" => "dynamicdocs/pages/test.md",
               ]
