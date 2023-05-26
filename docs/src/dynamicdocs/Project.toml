@@ -2,4 +2,5 @@
 ClimaLSM = "7884a58f-fab6-4fd0-82bb-ecfedb2d8430"
 JSServe = "824d6782-a2ef-11e9-3a09-e5662e0c26f9"
 ParamViz = "9706fb73-1de9-418d-83da-fef8cd99bb4a"
+UnicodeFun = "1cfade01-22cf-5700-b092-accc4b62d6e1"
 WGLMakie = "276b4fcb-3e11-5398-bf8b-a0c2d153d008"
