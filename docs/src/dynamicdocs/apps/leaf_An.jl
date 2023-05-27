@@ -12,10 +12,10 @@ FT = Float64
 # Ta from 0 to 50 °C ~ 273 to 323 K
 
 function An_app_f()
-    drivers = Drivers(("PAR (mol m^{-2} s^{-1})", "T (K)"), FT.((500 * 1e-6, 283)), (FT.([0, 1500 * 1e-6]), FT.([273, 323])))
+    drivers = Drivers(("PAR (mol m⁻² s⁻¹)", "T (K)"), FT.((500 * 1e-6, 283)), (FT.([0, 1500 * 1e-6]), FT.([273, 323])))
     
-    parameters = Parameters((to_latex("Moisture stress, \\beta"),
-                             to_latex("Leaf area index, LAI (m^2 m^{-2})"),
+    parameters = Parameters(("Moisture stress, β",
+                             "Leaf area index, LAI (m² m⁻²)",
                              "CO2 concentration, ca (ppm)", 
                              "Vapor pressure deficit, VPD (Pa)"),
                             (FT(1.0), # β
@@ -76,7 +76,7 @@ function An_app_f()
 
     inputs = Inputs(drivers, parameters, constants)
 
-    output = Output("An (umol m-2 s-1)", [0, 20])
+    output = Output("An (μmol m⁻² s⁻¹)", [0, 20])
 
     function leaf_photosynthesis(PAR, T, β, LAI, ca, VPD, θs, ld, ρ_leaf, Ω, Γstar25, ΔHΓstar,
                                  To, R, Vcmax25, ΔHJmax, θj, ϕ, ΔHVcmax, g1, Kc25, ΔHkc, Ko25, ΔHko, oi, f, ΔHRd)   
