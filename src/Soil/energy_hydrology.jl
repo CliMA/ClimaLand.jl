@@ -125,7 +125,7 @@ end
 """
     EnergyHydrology <: AbstractSoilModel
 
-A model for simulating the flow of water and heat 
+A model for simulating the flow of water and heat
 in a porous medium by solving the Richardson-Richards equation
 and the heat equation, including terms for phase change.
 
@@ -163,19 +163,22 @@ function EnergyHydrology{FT}(;
 end
 
 """
-    make_rhs(model::EnergyHydrology)
+    make_compute_exp_tendency(model::EnergyHydrology)
 
-An extension of the function `make_rhs`, for the integrated soil
-energy and heat equations, including phase change.
+An extension of the function `make_compute_exp_tendency`, for the integrated
+soil energy and heat equations, including phase change.
 
 This function creates and returns a function which computes the entire
-right hand side of the PDE for `Y.soil.ϑ_l, Y.soil.θ_i, Y.soil.ρe_int`, 
+right hand side of the PDE for `Y.soil.ϑ_l, Y.soil.θ_i, Y.soil.ρe_int`,
 and updates `dY.soil` in place with those values.
+All of these quantities will be stepped explicitly.
 
 This has been written so as to work with Differential Equations.jl.
 """
-function ClimaLSM.make_rhs(model::EnergyHydrology{FT}) where {FT}
-    function rhs!(dY, Y, p, t)
+function ClimaLSM.make_compute_exp_tendency(
+    model::EnergyHydrology{FT},
+) where {FT}
+    function compute_exp_tendency!(dY, Y, p, t)
         z = ClimaCore.Fields.coordinate_field(model.domain.space).z
         Δz_top, Δz_bottom = get_Δz(z)
 
@@ -208,7 +211,7 @@ function ClimaLSM.make_rhs(model::EnergyHydrology{FT}) where {FT}
         # Passing WVector to gradient BC is passing a normal flux.
 
 
-        # Richards-Richardson RHS:
+        # Richards-Richardson RHS
         divf2c_rre = Operators.DivergenceF2C(
             top = Operators.SetValue(Geometry.WVector.(rre_top_flux_bc)),
             bottom = Operators.SetValue(Geometry.WVector.(rre_bot_flux_bc)),
@@ -243,7 +246,7 @@ function ClimaLSM.make_rhs(model::EnergyHydrology{FT}) where {FT}
         # This has to come last
         dss!(dY, model.domain)
     end
-    return rhs!
+    return compute_exp_tendency!
 end
 
 """
@@ -443,7 +446,7 @@ end
         t,
     ) where {FT}
 
-Returns the surface temperature field of the 
+Returns the surface temperature field of the
 `EnergyHydrology` soil model.
 
 The assumption is that the soil surface temperature
@@ -466,7 +469,7 @@ end
         p,
     ) where {FT}
 
-Returns the surface emissivity field of the 
+Returns the surface emissivity field of the
 `EnergyHydrology` soil model.
 """
 function ClimaLSM.surface_emissivity(
@@ -484,7 +487,7 @@ end
         p,
     ) where {FT}
 
-Returns the surface albedo field of the 
+Returns the surface albedo field of the
 `EnergyHydrology` soil model.
 """
 function ClimaLSM.surface_albedo(model::EnergyHydrology{FT}, Y, p) where {FT}
@@ -501,14 +504,14 @@ end
         T_sfc
     ) where {FT}
 
-Returns the surface air density field of the 
-`EnergyHydrology` soil model for the 
+Returns the surface air density field of the
+`EnergyHydrology` soil model for the
 `PrescribedAtmosphere` case.
 
 This assumes the ideal gas law and hydrostatic
 balance to estimate the air density at the surface
 from the values of surface temperature and the atmospheric
-thermodynamic state, 
+thermodynamic state,
 because the surface air density is not a prognostic
 variable of the soil model.
 """
@@ -536,7 +539,7 @@ end
         ρ_sfc
     ) where {FT}
 
-Returns the surface specific humidity field of the 
+Returns the surface specific humidity field of the
 `EnergyHydrology` soil model.
 
 This models the surface specific humidity as

@@ -3,6 +3,7 @@ using OrdinaryDiffEq: ODEProblem, solve, RK4, Euler, step!, init
 using ClimaCore
 import CLIMAParameters as CP
 using Thermodynamics
+using Insolation
 
 using ClimaLSM
 using ClimaLSM.Domains: Column
@@ -19,7 +20,8 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
 FT = Float64
 earth_param_set = create_lsm_parameters(FT)
 thermo_params = LSMP.thermodynamic_parameters(earth_param_set)
-# Coarse sand experiment described in B of Lehmann (2008)
+# Coarse sand experiment described in Figures 7 and 8a
+# of Lehmann, Assouline, Or  (Phys Rev E 77, 2008)
 K_sat = FT(225.1 / 3600 / 24 / 1000)
 # n and alpha estimated by matching vG curve.
 vg_n = FT(10.0)
@@ -50,7 +52,12 @@ z_0b = 1e-5
 
 SW_d = (t) -> eltype(t)(0)
 LW_d = (t) -> eltype(t)(301.15^4 * 5.67e-8)
-radiation = PrescribedRadiativeFluxes(FT, SW_d, LW_d)
+radiation = PrescribedRadiativeFluxes(
+    FT,
+    SW_d,
+    LW_d;
+    orbital_data = Insolation.OrbitalData(),
+)
 # Atmos
 T_air = 301.15
 rh = 0.38
@@ -63,10 +70,11 @@ e = rh * esat
 q = FT(0.622 * e / (101325 - 0.378 * e))
 precip = (t) -> eltype(t)(0.0)
 T_atmos = (t) -> eltype(t)(T_air)
-u_atmos = (t) -> eltype(t)(0.1)
+u_atmos = (t) -> eltype(t)(1.0)
 q_atmos = (t) -> eltype(t)(q)
 h_atmos = FT(0.1)
 P_atmos = (t) -> eltype(t)(101325)
+gustiness = FT(1e-2)
 atmos = PrescribedAtmosphere(
     precip,
     precip,
@@ -74,7 +82,8 @@ atmos = PrescribedAtmosphere(
     u_atmos,
     q_atmos,
     P_atmos,
-    h_atmos,
+    h_atmos;
+    gustiness = gustiness,
 )
 top_bc = ClimaLSM.Soil.AtmosDrivenFluxBC(atmos, radiation)
 zero_flux = FluxBC((p, t) -> eltype(t)(0.0))
@@ -133,9 +142,9 @@ tf = FT(24 * 3600 * 15)
 dt = FT(100)
 
 init_soil!(Y, cds.z, soil.parameters)
-soil_ode! = make_ode_function(soil)
+soil_exp_tendency! = make_exp_tendency(soil)
 
-prob = ODEProblem(soil_ode!, Y, (t0, tf), p)
+prob = ODEProblem(soil_exp_tendency!, Y, (t0, tf), p)
 sol = solve(prob, RK4(); dt = dt, saveat = 3600);
 
 (; ν, vg_m, vg_n, θ_r, d_ds) = soil.parameters
@@ -169,7 +178,7 @@ for i in 1:length(sol.t)
         parent(Soil.dry_soil_layer_thickness.(S_l_sfc, S_c, d_ds))[1]
     push!(dsl, layer_thickness)
     push!(r_soil, parent(@. layer_thickness / (_D_vapor * τ_a))[1])
-    push!(r_ae, parent(@. 1 / (conditions.Ch * abs(top_bc.atmos.u(time))))[1])
+    push!(r_ae, parent(conditions.r_ae)[1])
     push!(evap, parent(conditions.vapor_flux)[1])
     T_sfc = parent(p.soil.T)[end]
     push!(T_soil, T_sfc)
@@ -224,6 +233,7 @@ Plots.plot!(
     xlabel = "Days",
     ylabel = "E/E₀",
     label = "",
+    margins = 10Plots.mm,
 )
 total_moisture_in_mm =
     [sum(sol.u[k].soil.ϑ_l) for k in 1:length(sol.t)] * 1000.0
@@ -236,6 +246,7 @@ Plots.plot!(
     xlabel = "Days",
     ylabel = "∫θdz (mm)",
     label = "",
+    margins = 10Plots.mm,
 )
 
 plt3 = Plots.plot()
@@ -246,6 +257,7 @@ Plots.plot!(
     xlabel = "Days",
     ylabel = "R_soil (m/s)",
     label = "",
+    margins = 10Plots.mm,
 )
 
 plt4 = Plots.plot()
@@ -256,6 +268,7 @@ Plots.plot!(
     xlabel = "Days",
     ylabel = "E (mm/d)",
     label = "",
+    margins = 10Plots.mm,
 )
 plt5 = Plots.plot()
 Plots.plot!(
@@ -265,6 +278,7 @@ Plots.plot!(
     xlabel = "Days",
     ylabel = "T_sfc (K)",
     label = "",
+    margins = 10Plots.mm,
 )
 
 plt6 = Plots.plot()
@@ -275,6 +289,7 @@ Plots.plot!(
     xlabel = "Days",
     ylabel = "q_sfc",
     label = "",
+    margins = 10Plots.mm,
 )
 top = [parent(sol.u[k].soil.ϑ_l)[end] for k in 1:length(sol.t)]
 S = Soil.effective_saturation.(ν, top, θ_r)
@@ -304,6 +319,7 @@ Plots.plot!(
     xlabel = "Days",
     ylabel = "Soil Moisture",
     label = "25cm",
+    margins = 10Plots.mm,
 )
 
 plt8 = Plots.plot()
@@ -314,6 +330,7 @@ Plots.plot!(
     xlabel = "Days",
     ylabel = "ψ_sfc",
     label = "",
+    margins = 10Plots.mm,
 )
 Plots.plot(plt1, plt2, plt3, plt4; layout = (2, 2))
 

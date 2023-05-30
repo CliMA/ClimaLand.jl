@@ -7,7 +7,7 @@ in standalone mode.
 
 The soil model is assumed to have a set of prognostic `Y` and
 auxiliary `p` variables, which describe the state of the
-soil system. The system is evolved in time by solving 
+soil system. The system is evolved in time by solving
 equations of the form
 
 ```
@@ -16,9 +16,9 @@ equations of the form
 
 ```
 
-i.e. partial (or ordinary) differential equations depending 
+i.e. partial (or ordinary) differential equations depending
 on state `Y`,
-auxiliary functions of the state `p`, and other parameters 
+auxiliary functions of the state `p`, and other parameters
 represented by the ellipses. The operator `D` indicates a generic
 nonlinear differential operator.  Not every model
 requires auxilary variables, but these are useful for storing
@@ -31,7 +31,7 @@ Currently, both the Richardson Richards Equation (RRE; hydrology alone)
 and an integrated soil energy and hydrology model are supported.
 
 Addition of additional versions of soil
-models requires defining a model type (of super type 
+models requires defining a model type (of super type
 `AbstractSoilModel`), and extending the methods
 imported by Models.jl, as needed, for computing the
 right hand side functions of the ordinary differential equations
@@ -41,9 +41,9 @@ the right hand side is evaluated.
 This code base assumes that DifferentialEquations.jl
 will be used for evolving the system in time,
 and that the array-like objected being stepped forward
-is a `ClimaCore.Fields.FieldVector`. 
+is a `ClimaCore.Fields.FieldVector`.
 
-The `FieldVector` type is used in order to make use of 
+The `FieldVector` type is used in order to make use of
 `ClimaCore` functionality when solving PDEs (`ClimaCore` handles
 all of the spatial discretization and operator functionality)
  and for ease of handling multi-column models.
@@ -66,9 +66,10 @@ using Thermodynamics
 import ClimaLSM.Domains: Column, HybridBox, SphericalShell
 using ClimaLSM: AbstractTridiagonalW
 import ClimaLSM:
-    AbstractModel,
+    AbstractImExModel,
     make_update_aux,
-    make_rhs,
+    make_compute_exp_tendency,
+    make_compute_imp_tendency,
     make_update_jacobian,
     prognostic_vars,
     auxiliary_vars,
@@ -100,14 +101,14 @@ export RichardsModel,
 
 An abstract type for types of source terms for the soil equations.
 
-In standalone mode, the only supported source type is freezing and 
+In standalone mode, the only supported source type is freezing and
 thawing. ClimaLSM.jl creates additional sources to include as
 necessary e.g. root extraction (not available in stand alone mode).
 """
 abstract type AbstractSoilSource{FT} <: ClimaLSM.AbstractSource{FT} end
 
 """
-    AbstractSoilModel{FT} <: AbstractModel{FT} 
+    AbstractSoilModel{FT} <: ClimaLSM.AbstractImExModel{FT}
 
 The abstract type for all soil models.
 
@@ -115,7 +116,7 @@ Currently, we only have plans to support a RichardsModel, simulating
 the flow of liquid water through soil via the Richardson-Richards equation,
 and a fully integrated soil heat and water model, with phase change.
 """
-abstract type AbstractSoilModel{FT} <: ClimaLSM.AbstractModel{FT} end
+abstract type AbstractSoilModel{FT} <: ClimaLSM.AbstractImExModel{FT} end
 
 ClimaLSM.name(::AbstractSoilModel) = :soil
 ClimaLSM.domain(::AbstractSoilModel) = :subsurface

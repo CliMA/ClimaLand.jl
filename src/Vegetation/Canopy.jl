@@ -3,11 +3,11 @@ using DocStringExtensions
 using Thermodynamics
 using ClimaLSM
 using ClimaCore
-using ClimaLSM:
-    AbstractModel, AbstractRadiativeDrivers, AbstractAtmosphericDrivers
+using ClimaLSM: AbstractRadiativeDrivers, AbstractAtmosphericDrivers
 import ..Parameters as LSMP
 
 import ClimaLSM:
+    AbstractExpModel,
     name,
     domain,
     prognostic_vars,
@@ -17,7 +17,7 @@ import ClimaLSM:
     initialize_prognostic,
     initialize_auxiliary,
     make_update_aux,
-    make_rhs,
+    make_compute_exp_tendency,
     surface_temperature,
     surface_specific_humidity,
     surface_air_density,
@@ -54,13 +54,13 @@ struct SharedCanopyParameters{FT <: AbstractFloat, PSE}
 end
 
 """
-     CanopyModel{FT, RM, PM, SM, PHM, A, R, PS, D} <: AbstractModel{FT}
+     CanopyModel{FT, RM, PM, SM, PHM, A, R, PS, D} <: AbstractExpModel{FT}
 
-The model struct for the canopy, which contains 
+The model struct for the canopy, which contains
 - the canopy model domain (a point for site-level simulations, or
 an extended surface (plane/spherical surface) for regional or global simulations.
 - subcomponent model type for radiative transfer. This is of type
-`AbstractRadiationModel` and currently only the `BeerLambertModel` is 
+`AbstractRadiationModel` and currently only the `BeerLambertModel` is
 supported.
 - subcomponent model type for photosynthesis. This is of type
 `AbstractPhotosynthesisModel`, and currently only the `FarquharModel`
@@ -74,16 +74,16 @@ prognostically solves Richards equation in the plant is available.
 - canopy model parameters, which include parameters that are shared
 between canopy model components or those needed to compute boundary
 fluxes.
-- The atmospheric conditions, which are either prescribed 
+- The atmospheric conditions, which are either prescribed
 (of type `PrescribedAtmosphere`) or computed via a coupled simulation
 (of type `CoupledAtmosphere`).
-- The radiative flux conditions, which are either prescribed 
+- The radiative flux conditions, which are either prescribed
 (of type `PrescribedRadiativeFluxes`) or computed via a coupled simulation
 (of type `CoupledRadiativeFluxes`).
 
 $(DocStringExtensions.FIELDS)
 """
-struct CanopyModel{FT, RM, PM, SM, PHM, A, R, PS, D} <: AbstractModel{FT}
+struct CanopyModel{FT, RM, PM, SM, PHM, A, R, PS, D} <: AbstractExpModel{FT}
     "Radiative transfer model, a canopy component model"
     radiative_transfer::RM
     "Photosynthesis model, a canopy component model"
@@ -313,12 +313,12 @@ are of the type in the parametric type signature: `BeerLambertModel`,
 `FarquharModel`, `MedlynConductanceModel`, and `PlantHydraulicsModel`.
 
 Please note that the plant hydraulics model has auxiliary variables
-that are updated in its prognostic `rhs!` function. While confusing, this
-is better for performance as it saves looping over the state vector
-multiple times.
+that are updated in its prognostic `compute_exp_tendency!` function.
+While confusing, this is better for performance as it saves looping
+over the state vector multiple times.
 
 The other sub-components rely heavily on each other,
-so the version of the `CanopyModel` with these subcomponents 
+so the version of the `CanopyModel` with these subcomponents
 has a single update_aux! function, given here.
 """
 function ClimaLSM.make_update_aux(
@@ -331,49 +331,36 @@ function ClimaLSM.make_update_aux(
     },
 ) where {FT}
     function update_aux!(p, Y, t)
-        earth_param_set = canopy.parameters.earth_param_set
-        # update radiation
+        # variables being updated
         APAR = p.canopy.radiative_transfer.apar
+        PAR = p.canopy.radiative_transfer.par
+        β = p.canopy.hydraulics.β
+        medlyn_factor = p.canopy.conductance.medlyn_term
+        gs = p.canopy.conductance.gs
+        transpiration = p.canopy.conductance.transpiration
+        An = p.canopy.photosynthesis.An
+        GPP = p.canopy.photosynthesis.GPP
+        ψ = p.canopy.hydraulics.ψ
+        ϑ_l = Y.canopy.hydraulics.ϑ_l
+        fa = p.canopy.hydraulics.fa
+
+        #unpack parameters
+        earth_param_set = canopy.parameters.earth_param_set
         c = FT(LSMP.light_speed(earth_param_set))
         h = FT(LSMP.planck_constant(earth_param_set))
         N_a = FT(LSMP.avogadro_constant(earth_param_set))
+        grav = FT(LSMP.grav(earth_param_set))
+        ρ_l = FT(LSMP.ρ_cloud_liq(earth_param_set))
         (; ld, Ω, ρ_leaf, λ_γ) = canopy.radiative_transfer.parameters
         (; LAI) = canopy.parameters
         energy_per_photon = h * c / λ_γ
-        SW_d::FT = canopy.radiation.SW_d(t)
-        LW_d::FT = canopy.radiation.LW_d(t)
-        θs::FT = canopy.radiation.θs(t)
-        PAR = @.(SW_d / (energy_per_photon * N_a) / 2)
-        K = extinction_coeff.(ld, θs)
-        APAR .= plant_absorbed_ppfd.(PAR, ρ_leaf, K, LAI, Ω)
-
-        # update photosynthesis and stomatal conductance
-        # unpack parameters
         R = FT(LSMP.gas_constant(earth_param_set))
         thermo_params = canopy.parameters.earth_param_set.thermo_params
-        (;
-            Vcmax25,
-            Γstar25,
-            ΔHJmax,
-            ΔHVcmax,
-            ΔHΓstar,
-            f,
-            ΔHRd,
-            To,
-            θj,
-            ϕ,
-            mechanism,
-            sc,
-            ψc,
-            oi,
-            Kc25,
-            Ko25,
-            ΔHkc,
-            ΔHko,
-        ) = canopy.photosynthesis.parameters
         (; g1, g0, Drel) = canopy.conductance.parameters
+        (; sc, pc) = canopy.photosynthesis.parameters
 
-        # Compute the current atmosphere conditions
+        # Current atmospheric conditions
+        θs::FT = canopy.radiation.θs(t, canopy.radiation.orbital_data)
         c_co2::FT = canopy.atmos.c_co2(t)
         P::FT = canopy.atmos.P(t)
         u::FT = canopy.atmos.u(t)
@@ -381,89 +368,116 @@ function ClimaLSM.make_update_aux(
         h::FT = canopy.atmos.h
         q::FT = canopy.atmos.q(t)
 
-        #For efficiency (a single loop over plant layers),
-        # the plant hydraulics aux variables are updated in that components's
-        # RHS function. To use the current leaf water potential,
-        # update that here.
+        # update radiative transfer
+        PAR .= compute_PAR(canopy.radiative_transfer, canopy.radiation, t)
+        K = extinction_coeff(ld, θs)
+        @. APAR = plant_absorbed_ppfd(
+            PAR / (energy_per_photon * N_a),
+            ρ_leaf,
+            K,
+            LAI,
+            Ω,
+        )
 
-        top_index = canopy.hydraulics.n_stem + canopy.hydraulics.n_leaf
-        (; vg_α, vg_n, vg_m, S_s, ν, K_sat, area_index) =
-            canopy.hydraulics.parameters
-        @inbounds @. p.canopy.hydraulics.ψ[top_index] = water_retention_curve(
+        # update plant hydraulics aux
+        hydraulics = canopy.hydraulics
+        n_stem = hydraulics.n_stem
+        n_leaf = hydraulics.n_leaf
+        (; vg_α, vg_n, vg_m, S_s, ν, K_sat, area_index) = hydraulics.parameters
+        @inbounds @. ψ[1] = PlantHydraulics.water_retention_curve(
             vg_α,
             vg_n,
             vg_m,
-            PlantHydraulics.effective_saturation(
-                ν,
-                Y.canopy.hydraulics.ϑ_l[top_index],
-            ),
+            PlantHydraulics.effective_saturation(ν, ϑ_l[1]),
             ν,
             S_s,
         )
-        # compute VPD
-        es =
-            Thermodynamics.saturation_vapor_pressure.(
-                Ref(thermo_params),
-                T,
-                Ref(Thermodynamics.Liquid()),
-            )
-        ea =
-            Thermodynamics.partial_pressure_vapor.(
-                Ref(thermo_params),
-                P,
-                Thermodynamics.PhasePartition.(q),
-            )
-        VPD = es .- ea
-        p.canopy.conductance.medlyn_term .= medlyn_term.(g1, VPD)
-        β = moisture_stress.(p.canopy.hydraulics.ψ[top_index], sc, ψc)
-        Jmax = max_electron_transport.(Vcmax25, ΔHJmax, T, To, R)
-        J = electron_transport.(APAR, Jmax, θj, ϕ)
-        Vcmax = compute_Vcmax.(Vcmax25, T, To, R, ΔHVcmax)
-        Γstar = co2_compensation.(Γstar25, ΔHΓstar, T, To, R)
-        ci = intercellular_co2.(c_co2, Γstar, p.canopy.conductance.medlyn_term)
-        Aj = light_assimilation.(Ref(mechanism), J, ci, Γstar)
-        Kc = MM_Kc.(Kc25, ΔHkc, T, To, R)
-        Ko = MM_Ko.(Ko25, ΔHko, T, To, R)
-        Ac = rubisco_assimilation.(Ref(mechanism), Vcmax, ci, Γstar, Kc, Ko, oi)
-        Rd = dark_respiration.(Vcmax25, β, f, ΔHRd, T, To, R)
-        p.canopy.photosynthesis.An .= net_photosynthesis.(Ac, Aj, Rd, β)
-        p.canopy.photosynthesis.GPP .=
-            compute_GPP.(p.canopy.photosynthesis.An, K, LAI, Ω)
-        p.canopy.conductance.gs .=
-            medlyn_conductance.(
-                g0,
-                Drel,
-                p.canopy.conductance.medlyn_term,
-                p.canopy.photosynthesis.An,
-                c_co2,
-            )
 
-        (evapotranspiration, shf, lhf) =
+        @inbounds for i in 1:(n_stem + n_leaf - 1)
+
+            @. ψ[i + 1] = PlantHydraulics.water_retention_curve(
+                vg_α,
+                vg_n,
+                vg_m,
+                PlantHydraulics.effective_saturation(ν, ϑ_l[i + 1]),
+                ν,
+                S_s,
+            )
+            # Compute the flux*area between the current compartment `i`
+            # and the compartment above.
+            @. fa[i] =
+                PlantHydraulics.flux(
+                    hydraulics.compartment_midpoints[i],
+                    hydraulics.compartment_midpoints[i + 1],
+                    ψ[i],
+                    ψ[i + 1],
+                    vg_α,
+                    vg_n,
+                    vg_m,
+                    ν,
+                    S_s,
+                    K_sat[hydraulics.compartment_labels[i]],
+                    K_sat[hydraulics.compartment_labels[i + 1]],
+                ) * (
+                    area_index[hydraulics.compartment_labels[i]] +
+                    area_index[hydraulics.compartment_labels[i + 1]]
+                ) / 2
+        end
+        @. β = moisture_stress(ψ[n_stem + n_leaf] * ρ_l * grav, sc, pc)
+        # We update the fa[n_stem+n_leaf] element once we have computed transpiration, below
+
+        # update photosynthesis and conductance terms
+        medlyn_factor .= medlyn_term.(g1, T, P, q, Ref(thermo_params))
+        An .=
+            compute_photosynthesis.(
+                Ref(canopy.photosynthesis),
+                T,
+                medlyn_factor,
+                APAR,
+                c_co2,
+                β,
+                R,
+            )
+        @. GPP = compute_GPP(An, K, LAI, Ω)
+        @. gs = medlyn_conductance(g0, Drel, medlyn_factor, An, c_co2)
+
+        # Compute transpiration
+        (canopy_transpiration, shf, lhf) =
             canopy_surface_fluxes(canopy.atmos, canopy, Y, p, t)
-        p.canopy.conductance.transpiration .= evapotranspiration ./ LAI # this should be per leaf area
+        transpiration .= canopy_transpiration
+        # Transpiration is per unit ground area, not leaf area (mult by LAI)
+        fa[n_stem + n_leaf] .= PlantHydraulics.transpiration_per_ground_area(
+            hydraulics.transpiration,
+            Y,
+            p,
+            t,
+        )
+
     end
     return update_aux!
 end
 
 """
-    make_rhs(canopy::CanopyModel)
+    make_compute_exp_tendency(canopy::CanopyModel)
 
-Creates and returns the rhs! for the `CanopyModel`. 
+Creates and returns the compute_exp_tendency! for the `CanopyModel`.
 
-This allows for prognostic variables in each canopy component.
+This allows for prognostic variables in each canopy component, and
+specifies that they will be stepped explicitly.
 """
-function make_rhs(canopy::CanopyModel)
+function make_compute_exp_tendency(canopy::CanopyModel)
     components = canopy_components(canopy)
-    rhs_function_list = map(components) do (component)
-        submodel = getproperty(canopy, component)
-        make_rhs(submodel, canopy)
-    end
-    function rhs!(dY, Y, p, t)
-        for f! in rhs_function_list
+    compute_exp_tendency_list = map(
+        x -> make_compute_exp_tendency(getproperty(canopy, x), canopy),
+        components,
+    )
+    function compute_exp_tendency!(dY, Y, p, t)
+        # aux vars are updated in `compute_exp_tendency` functions
+        for f! in compute_exp_tendency_list
             f!(dY, Y, p, t)
         end
     end
-    return rhs!
+    return compute_exp_tendency!
 end
 
 """
@@ -476,7 +490,7 @@ end
 Computes canopy transpiration using Monin-Obukhov Surface Theory,
 the prescribed atmospheric conditions, and the canopy conductance.
 
-Please note that in the future the SurfaceFluxes.jl code will compute 
+Please note that in the future the SurfaceFluxes.jl code will compute
 fluxes taking into account the canopy conductance, so that
 what is returned by `surface_fluxes` is correct. At present, it does not,
 so we are adjusting for it after the fact here in both ET and LHF.
@@ -496,8 +510,6 @@ function canopy_surface_fluxes(
     T::FT = model.atmos.T(t)
 
     # here is where we adjust evaporation for stomatal conductance = 1/r_sfc
-    r_ae = 1 / (conditions.Ch * abs(atmos.u(t))) # [s/m]
-
     leaf_conductance = p.canopy.conductance.gs
     canopy_conductance =
         upscale_leaf_conductance.(
@@ -508,6 +520,7 @@ function canopy_surface_fluxes(
             P,
         )
     r_sfc = @. 1 / (canopy_conductance) # [s/m]
+    r_ae = conditions.r_ae # [s/m]
     r_eff = r_ae .+ r_sfc
     canopy_transpiration = @. conditions.vapor_flux * r_ae / r_eff
 
@@ -520,7 +533,7 @@ end
 """
     ClimaLSM.surface_temperature(model::CanopyModel, Y, p, t)
 
-A helper function which returns the surface temperature for the canopy 
+A helper function which returns the surface temperature for the canopy
 model, which is stored in the aux state.
 """
 function ClimaLSM.surface_temperature(model::CanopyModel, Y, p, t)
@@ -530,7 +543,7 @@ end
 """
     ClimaLSM.surface_height(model::CanopyModel, Y, _...)
 
-A helper function which returns the surface height for the canopy 
+A helper function which returns the surface height for the canopy
 model, which is stored in the parameter struct.
 """
 function ClimaLSM.surface_height(model::CanopyModel, _...)
@@ -540,7 +553,7 @@ end
 """
     ClimaLSM.surface_specific_humidity(model::CanopyModel, Y, p)
 
-A helper function which returns the surface specific humidity for the canopy 
+A helper function which returns the surface specific humidity for the canopy
 model, which is stored in the aux state.
 """
 function ClimaLSM.surface_specific_humidity(
@@ -562,8 +575,8 @@ end
 
 """
     ClimaLSM.surface_air_density(model::CanopyModel, Y, p)
-    
-A helper function which computes and returns the surface air density for the canopy 
+
+A helper function which computes and returns the surface air density for the canopy
 model.
 """
 function ClimaLSM.surface_air_density(

@@ -245,20 +245,20 @@ function net_photosynthesis(Ac::FT, Aj::FT, Rd::FT, β::FT) where {FT}
 end
 
 """
-    moisture_stress(ψl::FT,
+    moisture_stress(pl::FT,
                     sc::FT,
-                    ψc::FT) where {FT}
+                    pc::FT) where {FT}
 
 Computes the moisture stress factor (`β`), which is unitless,
  as a function of
-a constant (`sc`), a constant (`ψc`), and 
-the leaf water potential (`ψl`). 
+a constant (`sc`, 1/Pa), a reference pressure (`pc`, Pa), and 
+the leaf water pressure (`pl`, Pa) . 
 
 See Eqn 12.57 of G. Bonan's textbook, 
 Climate Change and Terrestrial Ecosystem Modeling (2019).
 """
-function moisture_stress(ψl::FT, sc::FT, ψc::FT) where {FT}
-    β = (1 + exp(sc * ψc)) / (1 + exp(sc * (ψc - ψl)))
+function moisture_stress(pl::FT, sc::FT, pc::FT) where {FT}
+    β = (1 + exp(sc * pc)) / (1 + exp(sc * (pc - pl)))
     return β
 end
 
@@ -327,8 +327,7 @@ function upscale_leaf_conductance(
     R::FT,
     P::FT,
 ) where {FT}
-    canopy_conductance = gs * LAI
-    canopy_conductance = canopy_conductance * (R * T) / P # convert to m s-1
+    canopy_conductance = gs * LAI * (R * T) / P # convert to m s-1
     return canopy_conductance
 end
 
@@ -410,19 +409,29 @@ function compute_Vcmax(
     R::FT,
     ΔHVcmax::FT,
 ) where {FT}
-    Vcmax = Vcmax25 * arrhenius_function(T, To, R, ΔHVcmax)#*exp(ep5*(Ta-To))/(R*Ta)
+    Vcmax = Vcmax25 * arrhenius_function(T, To, R, ΔHVcmax)
     return Vcmax
 end
 
 # 3. Stomatal conductance model
 """
-    medlyn_term(g1::FT, VPD::FT) where {FT}
+    medlyn_term(g1::FT, T_air::FT, P_air::FT, q_air::FT, thermo_params) where {FT}
 
 Computes the Medlyn term, equal to `1+g1/sqrt(VPD)`,
+by first computing the `VPD`,
 where `VPD` is the vapor pressure deficit in the atmosphere
 (Pa), and `g_1` is a constant with units of `sqrt(Pa)`.
+
+`thermo_params` is the Thermodynamics.jl parameter set.
 """
-function medlyn_term(g1::FT, VPD::FT) where {FT}
+function medlyn_term(
+    g1::FT,
+    T_air::FT,
+    P_air::FT,
+    q_air::FT,
+    thermo_params,
+) where {FT}
+    VPD = ClimaLSM.vapor_pressure_deficit(T_air, P_air, q_air, thermo_params)
     return 1 + g1 / sqrt(VPD)
 end
 

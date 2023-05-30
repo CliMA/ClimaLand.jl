@@ -167,19 +167,17 @@ end
 
     init_soil!(Y, coords.z, soil.parameters)
 
-    soil_ode! = make_ode_function(soil)
-
     t0 = FT(0)
     dY = similar(Y)
-    ode! = make_ode_function(soil)
-    ode!(dY, Y, p, t0)
+    exp_tendency! = make_exp_tendency(soil)
+    exp_tendency!(dY, Y, p, t0)
     @test mean(parent(dY)) < 1e-8
     # should be hydrostatic equilibrium at every layer, at each step:
     @test mean(parent(p.soil.ψ .+ coords.z)[:] .+ 10.0) < 1e-10
 end
 
 
-@testset "Soil Energy and Water RHS unit tests" begin
+@testset "Soil Energy and Water tendency unit tests" begin
     earth_param_set = create_lsm_parameters(FT)
     ν = FT(0.495)
     K_sat = FT(0.0443 / 3600 / 100) # m/s
@@ -256,9 +254,9 @@ end
     end
 
     init_soil_heat!(Y, coords.z, soil_heat_on.parameters)
-    soil_ode! = make_ode_function(soil_heat_on)
+    exp_tendency! = make_exp_tendency(soil_heat_on)
     dY = similar(Y)
-    soil_ode!(dY, Y, p, 0.0)
+    exp_tendency!(dY, Y, p, 0.0)
     F_face = 0.0
     κ = parent(p.soil.κ)
     F_below = -0.5 * (κ[end] + κ[end - 1]) * (-Δz + 0.5)
@@ -311,9 +309,9 @@ end
     end
 
     init_soil_water!(Y, coords.z, soil_water_on.parameters)
-    soil_ode! = make_ode_function(soil_water_on)
+    exp_tendency! = make_exp_tendency(soil_water_on)
     dY = similar(Y)
-    soil_ode!(dY, Y, p, 0.0)
+    exp_tendency!(dY, Y, p, 0.0)
     function dKdθ(θ::FT)::FT where {FT}
         S = (θ - θ_r) / (ν - θ_r)
         if S < 1
@@ -452,9 +450,9 @@ end
     end
 
     init_soil_off!(Y, coords.z, soil_both_off.parameters)
-    soil_ode! = make_ode_function(soil_both_off)
+    exp_tendency! = make_exp_tendency(soil_both_off)
     dY = similar(Y)
-    soil_ode!(dY, Y, p, 0.0)
+    exp_tendency!(dY, Y, p, 0.0)
     @test maximum(abs.(parent(dY.soil.ρe_int))) == 0.0
     @test maximum(abs.(parent(dY.soil.ϑ_l))) == 0.0
     @test maximum(abs.(parent(dY.soil.θ_i))) == 0.0
@@ -499,9 +497,9 @@ end
     end
 
     init_soil_on!(Y, coords.z, soil_both_on.parameters)
-    soil_ode! = make_ode_function(soil_both_on)
+    exp_tendency! = make_exp_tendency(soil_both_on)
     dY = similar(Y)
-    soil_ode!(dY, Y, p, 0.0)
+    exp_tendency!(dY, Y, p, 0.0)
     @test maximum(abs.(parent(dY.soil.θ_i))) == 0.0
 
     θ = parent(Y.soil.ϑ_l)# on the center
@@ -635,7 +633,7 @@ end
     end
 
     init_soil_heat!(Y, coords.z, soil_heat_on.parameters)
-    soil_ode! = make_ode_function(soil_heat_on)
+    exp_tendency! = make_exp_tendency(soil_heat_on)
     dY = similar(Y)
     dY .= FT(0.0)
     source!(dY, sources[1], Y, p, soil_heat_on)

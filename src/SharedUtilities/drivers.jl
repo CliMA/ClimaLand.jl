@@ -16,7 +16,8 @@ export AbstractAtmosphericDrivers,
     net_radiation,
     surface_fluxes_at_a_point,
     liquid_precipitation,
-    snow_precipitation
+    snow_precipitation,
+    vapor_pressure_deficit
 
 """
      AbstractAtmosphericDrivers{FT <: AbstractFloat}
@@ -61,6 +62,8 @@ struct PrescribedAtmosphere{FT, LP, SP, TA, UA, QA, RA, CA} <:
     c_co2::CA
     "Reference height (m), relative to surface elevation"
     h::FT
+    "Minimum wind speed (gustiness; m/s)"
+    gustiness::FT
     function PrescribedAtmosphere(
         liquid_precip,
         snow_precip,
@@ -68,11 +71,12 @@ struct PrescribedAtmosphere{FT, LP, SP, TA, UA, QA, RA, CA} <:
         u,
         q,
         P,
-        h;
+        h::FT;
+        gustiness = FT(1),
         c_co2 = nothing,
-    )
+    ) where {FT}
         args = (liquid_precip, snow_precip, T, u, q, P, c_co2)
-        return new{typeof(h), typeof.(args)...}(args..., h)
+        return new{typeof(h), typeof.(args)...}(args..., h, gustiness)
     end
 
 end
@@ -132,7 +136,7 @@ end
                    ) where {FT <: AbstractFloat}
 
 Computes the turbulent surface flux terms at the ground for a standalone simulation,
-including turbulent energy fluxes as well as the water vapor flux 
+including turbulent energy fluxes as well as the water vapor flux
 (in units of m^3/m^2/s of water).
 Positive fluxes indicate flow from the ground to the atmosphere.
 
@@ -215,6 +219,7 @@ function surface_fluxes_at_a_point(
         z0m = z_0m,
         z0b = z_0b,
         beta = β_sfc,
+        gustiness = atmos.gustiness,
     )
     surface_flux_params = LSMP.surface_fluxes_parameters(earth_param_set)
     conditions = SurfaceFluxes.surface_conditions(
@@ -231,6 +236,7 @@ function surface_fluxes_at_a_point(
         shf = conditions.shf,
         Ch = conditions.Ch,
         vapor_flux = vapor_flux,
+        r_ae = 1 / (conditions.Ch * SurfaceFluxes.windspeed(sc)),
     )
 end
 
@@ -240,15 +246,25 @@ end
 Container for the prescribed radiation functions needed to drive land models in standalone mode.
 $(DocStringExtensions.FIELDS)
 """
-struct PrescribedRadiativeFluxes{FT, SW, LW, T} <: AbstractRadiativeDrivers{FT}
+struct PrescribedRadiativeFluxes{FT, SW, LW, T, OD} <:
+       AbstractRadiativeDrivers{FT}
     "Downward shortwave radiation function of time (W/m^2): positive indicates towards surface"
     SW_d::SW
     "Downward longwave radiation function of time (W/m^2): positive indicates towards surface"
     LW_d::LW
     "Sun zenith angle, in radians"
     θs::T
-    function PrescribedRadiativeFluxes(FT, SW_d, LW_d; θs = nothing)
-        args = (SW_d, LW_d, θs)
+    "Orbital Data for Insolation.jl"
+    orbital_data::OD
+    function PrescribedRadiativeFluxes(
+        FT,
+        SW_d,
+        LW_d;
+        θs = nothing,
+        orbital_data,
+    )
+        args = (SW_d, LW_d, θs, orbital_data)
+        @assert !isnothing(orbital_data)
         return new{FT, typeof.(args)...}(args...)
     end
 end
@@ -418,3 +434,24 @@ compute surface fluxes and radiative fluxes at the surface using
 the functions in this file.
 """
 function surface_height(model::AbstractModel, Y, p) end
+
+"""
+    vapor_pressure_deficit(T_air, P_air, q_air, thermo_params)
+
+Computes the vapor pressure deficit for air with temperature T_air,
+pressure P_air, and specific humidity q_air, using thermo_params,
+a Thermodynamics.jl param set.
+"""
+function vapor_pressure_deficit(T_air, P_air, q_air, thermo_params)
+    es = Thermodynamics.saturation_vapor_pressure(
+        thermo_params,
+        T_air,
+        Thermodynamics.Liquid(),
+    )
+    ea = Thermodynamics.partial_pressure_vapor(
+        thermo_params,
+        P_air,
+        Thermodynamics.PhasePartition(q_air),
+    )
+    return es - ea
+end

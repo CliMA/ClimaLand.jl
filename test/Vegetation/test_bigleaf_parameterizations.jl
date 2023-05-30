@@ -1,26 +1,21 @@
 using Test
 import CLIMAParameters as CP
-
-if !("." in LOAD_PATH)
-    push!(LOAD_PATH, ".")
-end
 using ClimaLSM.Canopy
 
 import ClimaLSM
 import ClimaLSM.Parameters as LSMP
 
 include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
-FT = Float32
-earth_param_set = create_lsm_parameters(FT)
-
 @testset "Big Leaf Parameterizations" begin
+    FT = Float32
+    earth_param_set = create_lsm_parameters(FT)
     # Test with defaults
     RTparams = BeerLambertParameters{FT}()
     photosynthesisparams = FarquharParameters{FT}(C3();)
     stomatal_g_params = MedlynConductanceParameters{FT}()
 
     LAI = FT(5.0) # m2 (leaf) m-2 (ground)
-
+    thermo_params = LSMP.thermodynamic_parameters(earth_param_set)
     c = FT(LSMP.light_speed(earth_param_set))
     h = FT(LSMP.planck_constant(earth_param_set))
     N_a = FT(LSMP.avogadro_constant(earth_param_set))
@@ -30,8 +25,9 @@ earth_param_set = create_lsm_parameters(FT)
     # Drivers
     T = FT(290) # K
     P = FT(101250) #Pa
-    VPD = FT(6e3) # Pa
-    ψ_l = FT(-2e6) # Pa
+    q = FT(0.02)
+    VPD = ClimaLSM.vapor_pressure_deficit(T, P, q, thermo_params)#Pa
+    p_l = FT(-2e6) # Pa
     ca = FT(4.11e-4) # mol/mol
     R = FT(LSMP.gas_constant(earth_param_set))
     θs = FT.(Array(0:0.1:(π / 2)))
@@ -67,7 +63,7 @@ earth_param_set = create_lsm_parameters(FT)
     @test photosynthesisparams.Vcmax25 *
           arrhenius_function(T, To, R, photosynthesisparams.ΔHVcmax) ≈ Vcmax
 
-    m_t = medlyn_term(stomatal_g_params.g1, VPD)
+    m_t = medlyn_term(stomatal_g_params.g1, T, P, q, thermo_params)
 
     @test m_t == 1 + stomatal_g_params.g1 / sqrt(VPD)
     ci = intercellular_co2(ca, Γstar, m_t)
@@ -113,10 +109,10 @@ earth_param_set = create_lsm_parameters(FT)
 
     Aj = light_assimilation.(Ref(photosynthesisparams.mechanism), J, ci, Γstar)
     @test all(@.(Aj == J * (ci - Γstar) / (4 * (ci + 2 * Γstar))))
-    β = moisture_stress(ψ_l, photosynthesisparams.sc, photosynthesisparams.ψc)
+    β = moisture_stress(p_l, photosynthesisparams.sc, photosynthesisparams.pc)
     @test β ==
-          (1 + exp(photosynthesisparams.sc * photosynthesisparams.ψc)) /
-          (1 + exp(photosynthesisparams.sc * (ψ_l - photosynthesisparams.ψc)))
+          (1 + exp(photosynthesisparams.sc * photosynthesisparams.pc)) /
+          (1 + exp(photosynthesisparams.sc * (p_l - photosynthesisparams.pc)))
     #    C4 tests
     @test rubisco_assimilation(
         C4(),

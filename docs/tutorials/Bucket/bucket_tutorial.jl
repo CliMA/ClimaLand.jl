@@ -51,7 +51,7 @@
 # ``
 
 # ``
-# G_{undersnow} = (R_n+ SHF + LHF)_{snow} - F_{intosnow} 
+# G_{undersnow} = (R_n+ SHF + LHF)_{snow} - F_{intosnow}
 # ``
 
 # ``
@@ -89,7 +89,7 @@
 # Turbulent surface fluxes of sensible heat, latent heat, and water vapor
 # (`SHF, LHF, E`) are computed using Monin-Obukhov theory; `SW↓` and `LW↓`
 # are the downward fluxes in short and long wavelength bands. We use the same
-# roughness lengths for snow and soil. 
+# roughness lengths for snow and soil.
 # Note that with the exception of precipitation and downwelling radiation,
 # all fluxes are defined
 # such that positive is towards the atmosphere.
@@ -131,6 +131,9 @@ using ClimaCore
 # more seamless.
 import CLIMAParameters as CP
 
+# We also use Insolation to calculate solar zenith angle and solar insolation.
+using Insolation
+
 # Lastly, let's bring in the bucket model types (from ClimaLSM) that we
 # will need access to.
 
@@ -139,7 +142,7 @@ using ClimaLSM.Domains: coordinates, LSMSingleColumnDomain
 using ClimaLSM:
     initialize,
     make_update_aux,
-    make_ode_function,
+    make_exp_tendency,
     make_set_initial_aux_state,
     PrescribedAtmosphere,
     PrescribedRadiativeFluxes
@@ -216,7 +219,12 @@ bucket_domain =
 # Here we define the model drivers, starting with downward radiation.
 SW_d = (t) -> eltype(t)(300);
 LW_d = (t) -> eltype(t)(300);
-bucket_rad = PrescribedRadiativeFluxes(FT, SW_d, LW_d);
+bucket_rad = PrescribedRadiativeFluxes(
+    FT,
+    SW_d,
+    LW_d;
+    orbital_data = Insolation.OrbitalData(),
+);
 
 # Prescribed atmospheric variables
 
@@ -267,7 +275,7 @@ ClimaLSM.auxiliary_vars(model)
 p.bucket |> propertynames
 
 
-# Next is to set initial conditions. 
+# Next is to set initial conditions.
 Y.bucket.T .= FT(270);
 Y.bucket.W .= FT(0.05);
 Y.bucket.Ws .= FT(0.0);
@@ -278,13 +286,13 @@ t0 = FT(0.0);
 set_initial_aux_state! = make_set_initial_aux_state(model);
 set_initial_aux_state!(p, Y, t0);
 
-# Then to create the entire right hand side function for the system
+# Then to create the entire right hand side (tendency) function for the system
 # of ordinary differential equations:
-ode_function! = make_ode_function(model);
+exp_tendency! = make_exp_tendency(model);
 
 # Then we can set up the simulation and solve it:
 tf = FT(7 * 86400);
-prob = ODEProblem(ode_function!, Y, (t0, tf), p);
+prob = ODEProblem(exp_tendency!, Y, (t0, tf), p);
 # We need a callback to get and store the auxiliary fields, as they
 # are not stored by default.
 saved_values = SavedValues(FT, ClimaCore.Fields.FieldVector);

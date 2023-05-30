@@ -1,5 +1,5 @@
 env:
-  JULIA_VERSION: "1.8.1"
+  JULIA_VERSION: "1.9.0"
   OPENMPI_VERSION: "4.0.4"
   CUDA_VERSION: "11.2"
   OPENBLAS_NUM_THREADS: 1
@@ -15,6 +15,10 @@ steps:
   - label: "init environment :computer:"
     key: "init_cpu_env"
     command:
+
+      - echo "--- Configure MPI"
+      - julia -e 'using Pkg; Pkg.add("MPIPreferences"); using MPIPreferences; use_system_binary()'
+      
       - "julia --project -e 'using Pkg; Pkg.instantiate(;verbose=true)'"
       - "julia --project -e 'using Pkg; Pkg.precompile()'"
       - "julia --project -e 'using Pkg; Pkg.status()'"

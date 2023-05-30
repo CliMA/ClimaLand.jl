@@ -8,20 +8,23 @@ using ClimaLSM.Domains: Point, Plane
 using ClimaLSM.Canopy
 using ClimaLSM.Canopy.PlantHydraulics
 import ClimaLSM
+using Insolation
+using Dates
+
 include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
 
-FT = Float64
-domains = [
-    Point(; z_sfc = FT(0.0)),
-    Plane(;
-        xlim = (0.0, 1.0),
-        ylim = (0.0, 1.0),
-        nelements = (2, 2),
-        periodic = (true, true),
-        npolynomial = 1,
-    ),
-]
 @testset "Plant hydraulics model integration tests" begin
+    FT = Float64
+    domains = [
+        Point(; z_sfc = FT(0.0)),
+        Plane(;
+            xlim = (0.0, 1.0),
+            ylim = (0.0, 1.0),
+            nelements = (2, 2),
+            periodic = (true, true),
+            npolynomial = 1,
+        ),
+    ]
     RTparams = BeerLambertParameters{FT}()
     photosynthesis_params = FarquharParameters{FT}(C3();)
     stomatal_g_params = MedlynConductanceParameters{FT}()
@@ -35,7 +38,7 @@ domains = [
     z_0m = FT(2.0) # m, Roughness length for momentum - value from tall forest ChatGPT
     z_0b = FT(0.1) # m, Roughness length for scalars - value from tall forest ChatGPT
     h_c = FT(20.0) # m, canopy height
-    h_sfc = FT(20.0) # m, canopy height 
+    h_sfc = FT(20.0) # m, canopy height
     h_int = FT(30.0) # m, "where measurements would be taken at a typical flux tower of a 20m canopy"
     shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
         LAI,
@@ -48,7 +51,8 @@ domains = [
     long = FT(-180) # degree
 
     function zenith_angle(
-        t::FT;
+        t::FT,
+        orbital_data;
         latitude = lat,
         longitude = long,
         insol_params = earth_param_set.insol_params,
@@ -56,6 +60,7 @@ domains = [
         return FT(
             instantaneous_zenith_angle(
                 DateTime(t),
+                orbital_data,
                 longitude,
                 latitude,
                 insol_params,
@@ -100,6 +105,7 @@ domains = [
         shortwave_radiation,
         longwave_radiation;
         θs = zenith_angle,
+        orbital_data = Insolation.OrbitalData(),
     )
     for domain in domains
         # Parameters are the same as the ones used in the Ozark tutorial
@@ -107,7 +113,7 @@ domains = [
         RAI = FT(1) # m2/m2
         area_index = (root = RAI, stem = SAI, leaf = LAI)
         K_sat_plant = 1.8e-8 # m/s. Typical conductivity range is [1e-8, 1e-5] m/s. See Kumar, 2008 and
-        # Pierre Gentine's database for total global plant conductance (1/resistance) 
+        # Pierre Gentine's database for total global plant conductance (1/resistance)
         # (https://github.com/yalingliu-cu/plant-strategies/blob/master/Product%20details.pdf)
         K_sat_root = FT(K_sat_plant) # m/s
         K_sat_stem = FT(K_sat_plant)
@@ -118,7 +124,7 @@ domains = [
         plant_vg_m = FT(1) - FT(1) / plant_vg_n
         plant_ν = FT(0.7) # m3/m3
         plant_S_s = FT(1e-2 * 0.0098) # m3/m3/MPa to m3/m3/m
-        root_depths = -Array(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0 # 1st element is the deepest root depth 
+        root_depths = -Array(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0 # 1st element is the deepest root depth
         function root_distribution(z::T) where {T}
             return T(1.0 / 0.5) * exp(z / T(0.5)) # (1/m)
         end
@@ -176,7 +182,7 @@ domains = [
             radiation = radiation,
         )
         # Set system to hydrostatic equilibrium state by setting fluxes to zero, and setting LHS of both ODEs to 0
-        function initial_rhs!(F, Y)
+        function initial_compute_exp_tendency!(F, Y)
             T0A = FT(1e-8) * area_index[:leaf]
             for i in 1:(n_leaf + n_stem)
                 if i == 1
@@ -222,7 +228,11 @@ domains = [
             end
         end
 
-        soln = nlsolve(initial_rhs!, Vector(-0.03:0.01:0.07); ftol = 1e-11)
+        soln = nlsolve(
+            initial_compute_exp_tendency!,
+            Vector(-0.03:0.01:0.07);
+            ftol = 1e-11,
+        )
 
         S_l =
             inverse_water_retention_curve.(
@@ -244,8 +254,8 @@ domains = [
             p.canopy.hydraulics.fa[i] .= NaN
             dY.canopy.hydraulics.ϑ_l[i] .= NaN
         end
-        canopy_rhs! = make_rhs(model)
-        canopy_rhs!(dY, Y, p, 0.0)
+        canopy_exp_tendency! = make_exp_tendency(model)
+        canopy_exp_tendency!(dY, Y, p, 0.0)
 
         m = similar(dY.canopy.hydraulics.ϑ_l[1])
         m .= FT(0)
@@ -265,8 +275,11 @@ domains = [
             p.canopy.hydraulics.fa[i] .= NaN
             standalone_dY.canopy.hydraulics.ϑ_l[i] .= NaN
         end
-        standalone_rhs! = make_rhs(model.hydraulics, nothing)
-        standalone_rhs!(standalone_dY, Y, p, 0.0)
+        update_aux! = make_update_aux(model)
+        standalone_exp_tendency! =
+            make_compute_exp_tendency(model.hydraulics, nothing)
+        update_aux!(p, Y, 0.0)
+        standalone_exp_tendency!(standalone_dY, Y, p, 0.0)
 
         m = similar(dY.canopy.hydraulics.ϑ_l[1])
         m .= FT(0)
@@ -278,7 +291,6 @@ domains = [
                 )^2.0,
             )
         end
-
         @test sum(parent(m)) < eps(FT)
     end
 end

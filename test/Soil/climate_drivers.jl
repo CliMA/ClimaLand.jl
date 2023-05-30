@@ -58,7 +58,12 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     # Radiation
     SW_d = (t) -> eltype(t)(500)
     LW_d = (t) -> eltype(t)(5.67e-8 * 280.0^4.0)
-    radiation = PrescribedRadiativeFluxes(FT, SW_d, LW_d)
+    radiation = PrescribedRadiativeFluxes(
+        FT,
+        SW_d,
+        LW_d;
+        orbital_data = Insolation.OrbitalData(),
+    )
     # Atmos
     precip = (t) -> eltype(t)(1e-8)
     T_atmos = (t) -> eltype(t)(285.0)
@@ -75,6 +80,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
         P_atmos,
         h_atmos,
     )
+    @test atmos.gustiness == FT(1)
     top_bc = ClimaLSM.Soil.AtmosDrivenFluxBC(atmos, radiation)
     zero_flux = FluxBC((p, t) -> eltype(t)(0.0))
     boundary_fluxes =
@@ -182,7 +188,6 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
             p,
             t,
         )
-        @show conditions
         R_n = ClimaLSM.net_radiation(
             model.boundary_conditions.top.radiation,
             model,
@@ -212,8 +217,13 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
         )
         dsl = Soil.dry_soil_layer_thickness.(S_l_sfc, S_c, d_ds)
         r_soil = @. dsl / (_D_vapor * τ_a) # [s\m]
-        r_ae = @. 1 /
-           (conditions.Ch * abs(model.boundary_conditions.top.atmos.u(t))) # [s/m]
+        r_ae = conditions.r_ae
+        @test r_ae == @. 1 / (
+            conditions.Ch * max(
+                abs(model.boundary_conditions.top.atmos.u(t)),
+                FT(atmos.gustiness),
+            )
+        )
         expected_water_flux = @. atmos.liquid_precip(t) .+
            conditions.vapor_flux * r_ae / (r_soil + r_ae)
         @test computed_water_flux == expected_water_flux

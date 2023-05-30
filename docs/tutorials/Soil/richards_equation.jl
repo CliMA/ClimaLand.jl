@@ -126,7 +126,7 @@ soil = Soil.RichardsModel{FT}(;
     boundary_conditions = boundary_conditions,
     sources = sources,
 );
-soil_ode! = make_ode_function(soil);
+exp_tendency! = make_exp_tendency(soil);
 
 # # Set up the simulation
 # We can now initialize the prognostic and auxiliary variable vectors, and take
@@ -149,7 +149,7 @@ timeend = FT(60 * 60 * 24 * 36)
 dt = FT(100);
 
 # And then we can solve the system of equations, using [OrdinaryDiffEq.jl](https://github.com/SciML/OrdinaryDiffEq.jl):
-prob = ODEProblem(soil_ode!, Y, (t0, timeend), p)
+prob = ODEProblem(exp_tendency!, Y, (t0, timeend), p)
 sol = solve(prob, RK4(); dt = dt, adaptive = false);
 
 # # Create some plots

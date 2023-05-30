@@ -8,9 +8,9 @@ import ClimaCore: Fields, Operators, Geometry, Spaces
 
 import ClimaLSM.Domains: AbstractDomain
 import ClimaLSM:
-    AbstractModel,
+    AbstractExpModel,
     make_update_aux,
-    make_rhs,
+    make_compute_exp_tendency,
     prognostic_vars,
     auxiliary_vars,
     name,
@@ -130,11 +130,12 @@ function SoilCO2ModelParameters{FT}(;
 end
 
 """
-    AbstractSoilBiogeochemistryModel{FT} <: ClimaLSM.AbstractModel{FT}
+    AbstractSoilBiogeochemistryModel{FT} <: ClimaLSM.AbstractExpModel{FT}
 
 An abstract model type for soil biogeochemistry models.
 """
-abstract type AbstractSoilBiogeochemistryModel{FT} <: ClimaLSM.AbstractModel{FT} end
+abstract type AbstractSoilBiogeochemistryModel{FT} <:
+              ClimaLSM.AbstractExpModel{FT} end
 
 """
     SoilCO2Model
@@ -190,16 +191,17 @@ ClimaLSM.auxiliary_types(::SoilCO2Model{FT}) where {FT} = (FT, FT)
 
 
 """
-    make_rhs(model::SoilCO2Model)
+    make_compute_exp_tendency(model::SoilCO2Model)
 
-An extension of the function `make_rhs`, for the soilco2 equation.
+An extension of the function `make_compute_exp_tendency`, for the soilco2 equation.
 This function creates and returns a function which computes the entire
 right hand side of the PDE for `C`, and updates `dY.soil.C` in place
-with that value.
+with that value. These quantities will be stepped explicitly.
+
 This has been written so as to work with Differential Equations.jl.
 """
-function ClimaLSM.make_rhs(model::SoilCO2Model)
-    function rhs!(dY, Y, p, t)
+function ClimaLSM.make_compute_exp_tendency(model::SoilCO2Model)
+    function compute_exp_tendency!(dY, Y, p, t)
         z = ClimaCore.Fields.coordinate_field(model.domain.space).z
         Δz_top, Δz_bottom = get_Δz(z)
 
@@ -239,12 +241,12 @@ function ClimaLSM.make_rhs(model::SoilCO2Model)
         end
 
     end
-    return rhs!
+    return compute_exp_tendency!
 end
 
 """
     AbstractCarbonSource{FT} <: ClimaLSM.AbstractSource{FT}
-    
+
 An abstract type for soil CO2 sources. There are two sources:
 roots and microbes, in struct RootProduction and MicrobeProduction.
 """
@@ -264,7 +266,7 @@ struct MicrobeProduction{FT} <: AbstractCarbonSource{FT} end
                           Y::ClimaCore.Fields.FieldVector,
                           p::ClimaCore.Fields.FieldVector,
                           params)
-   
+
 A method which extends the ClimaLSM source! function for the
 case of microbe production of CO2 in soil.
 """
@@ -308,7 +310,7 @@ end
     PrescribedMet <: AbstractSoilDriver
 
 A container which holds the prescribed functions for soil temperature
-and moisture. 
+and moisture.
 
 This is meant for use when running the biogeochemistry model in standalone mode,
 without a prognostic soil model.
@@ -370,7 +372,7 @@ end
 """
     make_update_aux(model::SoilCO2Model)
 
-An extension of the function `make_update_aux`, for the soilco2 equation. 
+An extension of the function `make_update_aux`, for the soilco2 equation.
 This function creates and returns a function which updates the auxiliary
 variables `p.soil.variable` in place.
 This has been written so as to work with Differential Equations.jl.
@@ -437,7 +439,7 @@ end
 
 A container holding the CO2 state boundary condition (kg CO2 m−3),
 which is a function `f(p,t)`, where `p` is the auxiliary state
-vector. 
+vector.
 """
 struct SoilCO2StateBC <: AbstractSoilCO2BC
     bc::Function
@@ -454,7 +456,7 @@ end
     )::ClimaCore.Fields.Field where {FT}
 
 A method of ClimaLSM.boundary_flux which returns the soilco2
-flux in the case of a prescribed state BC at 
+flux in the case of a prescribed state BC at
  top of the domain.
 """
 function ClimaLSM.boundary_flux(
@@ -483,7 +485,7 @@ end
     )::ClimaCore.Fields.Field where {FT}
 
 A method of ClimaLSM.boundary_flux which returns the soilco2
-flux in the case of a prescribed state BC at 
+flux in the case of a prescribed state BC at
 bottom of the domain.
 """
 function ClimaLSM.boundary_flux(

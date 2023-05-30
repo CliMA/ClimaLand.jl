@@ -15,7 +15,7 @@ using ClimaLSM.Domains:
 using ClimaLSM:
     initialize,
     make_update_aux,
-    make_ode_function,
+    make_exp_tendency,
     make_set_initial_aux_state,
     PrescribedAtmosphere,
     PrescribedRadiativeFluxes
@@ -56,13 +56,14 @@ bucket_domains = [
     ),
 ]
 init_temp(z::FT, value::FT) where {FT} = FT(value)
+orbital_data = Insolation.OrbitalData()
 for bucket_domain in bucket_domains
 
     @testset "Conservation of water and energy" begin
         "Radiation"
         SW_d = (t) -> eltype(t)(20.0)
         LW_d = (t) -> eltype(t)(20.0)
-        bucket_rad = PrescribedRadiativeFluxes(FT, SW_d, LW_d)
+        bucket_rad = PrescribedRadiativeFluxes(FT, SW_d, LW_d; orbital_data)
         "Atmos"
         precip = (t) -> eltype(t)(0) # no precipitation
         T_atmos = (t) -> eltype(t)(280.0)
@@ -108,10 +109,10 @@ for bucket_domain in bucket_domains
         t0 = FT(0.0)
         dY = similar(Y)
 
-        ode_function! = make_ode_function(model)
+        exp_tendency! = make_exp_tendency(model)
         set_initial_aux_state! = make_set_initial_aux_state(model)
         set_initial_aux_state!(p, Y, t0)
-        ode_function!(dY, Y, p, t0)
+        exp_tendency!(dY, Y, p, t0)
 
         _LH_f0 = LSMP.LH_f0(model.parameters.earth_param_set)
         _ρ_liq = LSMP.ρ_cloud_liq(model.parameters.earth_param_set)

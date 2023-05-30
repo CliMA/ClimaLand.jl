@@ -3,9 +3,17 @@ using Test
 using StaticArrays
 using ClimaLSM
 import ClimaLSM:
-    prognostic_vars, prognostic_types, auxiliary_vars, auxiliary_types, name
+    AbstractModel,
+    AbstractImExModel,
+    AbstractExpModel,
+    prognostic_vars,
+    prognostic_types,
+    auxiliary_vars,
+    auxiliary_types,
+    name
 using ClimaLSM.Domains: HybridBox, Column, Point
 using ClimaLSM.Domains: coordinates
+include("../src/Vegetation/component_models.jl")
 
 @testset "Default model" begin
     struct DefaultModel{FT} <: AbstractModel{FT} end
@@ -14,13 +22,58 @@ using ClimaLSM.Domains: coordinates
     @test ClimaLSM.prognostic_types(dm) == ()
     @test ClimaLSM.auxiliary_vars(dm) == ()
     @test ClimaLSM.auxiliary_types(dm) == ()
-    dm_rhs! = make_rhs(dm)
+
     x = [0, 1, 2, 3]
-    @test dm_rhs!(x[1], x[2], x[3], x[4]) == nothing
+    dm_exp_tendency! = make_exp_tendency(dm)
+    @test dm_exp_tendency!(x[1], x[2], x[3], x[4]) == nothing
     @test x == [0, 1, 2, 3]
+
+    dm_compute_exp_tendency! = make_compute_exp_tendency(dm)
+    @test dm_compute_exp_tendency!(x[1], x[2], x[3], x[4]) == nothing
+    @test x == [0, 1, 2, 3]
+
+    dm_imp_tendency! = make_imp_tendency(dm)
+    @test dm_imp_tendency!(x[1], x[2], x[3], x[4]) == nothing
+    @test x == [0, 1, 2, 3]
+
+    dm_compute_imp_tendency! = make_compute_imp_tendency(dm)
+    @test dm_compute_imp_tendency!(x[1], x[2], x[3], x[4]) == nothing
+    @test x == [0, 1, 2, 3]
+
     dm_update_aux! = make_update_aux(dm)
     @test dm_update_aux!(x[1], x[2], x[3]) == nothing
     @test x == [0, 1, 2, 3]
+end
+
+@testset "Default ImEx model" begin
+    struct DefaultImExModel{FT} <: AbstractImExModel{FT} end
+    dm_imex = DefaultImExModel{Float32}()
+
+    x = [0, 1, 2, 3]
+    dm_imp_tendency! = make_imp_tendency(dm_imex)
+    @test dm_imp_tendency!(x[1], x[2], x[3], x[4]) == nothing
+    @test x == [0, 1, 2, 3]
+
+    dm_compute_imp_tendency! = make_compute_imp_tendency(dm_imex)
+    @test dm_compute_imp_tendency!(x[1], x[2], x[3], x[4]) == nothing
+    @test x == [0, 1, 2, 3]
+
+end
+
+@testset "Default canopy component" begin
+    struct DefaultCanopyComponent{FT} <: AbstractCanopyComponent{FT} end
+    dcc = DefaultCanopyComponent{Float32}()
+    @test ClimaLSM.prognostic_vars(dcc) == ()
+    @test ClimaLSM.prognostic_types(dcc) == ()
+    @test ClimaLSM.auxiliary_vars(dcc) == ()
+    @test ClimaLSM.auxiliary_types(dcc) == ()
+
+    x = [0, 1, 2, 3]
+    dcc_compute_exp_tendency! = make_compute_exp_tendency(dcc, nothing)
+    @test dcc_compute_exp_tendency!(x[1], x[2], x[3], x[4]) == nothing
+    @test x == [0, 1, 2, 3]
+
+    @test_throws MethodError make_compute_imp_tendency(dcc)
 end
 
 struct Model{FT, D} <: AbstractModel{FT}
