@@ -131,32 +131,22 @@ function make_interactions_update_aux(
 ) where {FT, SM <: Soil.RichardsModel{FT}, RM <: Canopy.CanopyModel{FT}}
     function update_aux!(p, Y, t)
         z = ClimaCore.Fields.coordinate_field(land.soil.domain.space).z
-        @unpack vg_α, vg_n, vg_m, ν, S_s, K_sat, area_index =
-            land.canopy.hydraulics.parameters
+        (; area_index, conductivity_model) = land.canopy.hydraulics.parameters
         @. p.root_extraction =
             area_index[:root] *
             PlantHydraulics.flux(
                 z,
                 land.canopy.hydraulics.compartment_midpoints[1],
                 p.soil.ψ,
-                PlantHydraulics.water_retention_curve(
-                    vg_α,
-                    vg_n,
-                    vg_m,
-                    PlantHydraulics.effective_saturation(
-                        ν,
-                        Y.canopy.hydraulics.ϑ_l[1],
-                    ),
-                    ν,
-                    S_s,
+                p.canopy.hydraulics.ψ[1],
+                PlantHydraulics.hydraulic_conductivity(
+                    conductivity_model,
+                    p.soil.ψ,
                 ),
-                vg_α,
-                vg_n,
-                vg_m,
-                ν,
-                S_s,
-                K_sat[:root],
-                K_sat[:stem],
+                PlantHydraulics.hydraulic_conductivity(
+                    conductivity_model,
+                    p.canopy.hydraulics.ψ[1],
+                ),
             ) *
             (land.canopy.hydraulics.parameters.root_distribution(z))
     end

@@ -27,7 +27,12 @@ export PlantHydraulicsModel,
     PrescribedTranspiration,
     DiagnosticTranspiration,
     AbstractRootExtraction,
-    Layers
+    Layers,
+    AbstractConductivityModel,
+    AbstractRetentionModel,
+    LinearRetentionCurve,
+    Weibull,
+    hydraulic_conductivity
 
 """
     AbstractPlantHydraulicsModel{FT} <: AbstractCanopyComponent{FT}
@@ -66,24 +71,43 @@ abstract type AbstractTranspiration{FT <: AbstractFloat} end
 A struct for holding parameters of the PlantHydraulics Model.
 $(DocStringExtensions.FIELDS)
 """
-struct PlantHydraulicsParameters{FT <: AbstractFloat}
+struct PlantHydraulicsParameters{FT <: AbstractFloat, CP, RP}
     "RAI, SAI, LAI in [m2 m-2]"
     area_index::NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}}
-    "water conductivity in the above-ground plant compartments (m/s) when pressure is zero, a maximum"
-    K_sat::NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}}
-    "van Genuchten parameter (1/m)"
-    vg_α::FT
-    "van Genuchten parameter (unitless)"
-    vg_n::FT
-    "van Genuchten parameter (unitless)"
-    vg_m::FT
     "porosity (m3/m3)"
     ν::FT
     "storativity (m3/m3)"
     S_s::FT
     "Root distribution function P(z)"
     root_distribution::Function
+    "Conductivity model and parameters"
+    conductivity_model::CP
+    "Water retention model and parameters"
+    retention_model::RP
 end
+
+function PlantHydraulicsParameters(;
+    area_index::NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}},
+    ν::FT,
+    S_s::FT,
+    root_distribution::Function,
+    conductivity_model,
+    retention_model,
+) where {FT}
+    return PlantHydraulicsParameters{
+        FT,
+        typeof(conductivity_model),
+        typeof(retention_model),
+    }(
+        area_index,
+        ν,
+        S_s,
+        root_distribution,
+        conductivity_model,
+        retention_model,
+    )
+end
+
 
 """
     PlantHydraulicsModel{FT, PS, RE, T, B} <: AbstractPlantHydraulicsModel{FT}
@@ -244,51 +268,149 @@ ClimaLSM.auxiliary_types(model::PlantHydraulicsModel{FT}) where {FT} = (
         z2,
         ψ1,
         ψ2,
-        vg_α,
-        vg_n,
-        vg_m,
-        ν,
-        S_s,
-        K_sat1,
-        K_sat2,
-) where {FT}
+        K1,
+        K2,
+    ) where {FT} 
 
-Computes the water flux given 1) the absolute pressure (represented by corresponding
-water column height) at two points located at z1 and z2,
-corresponding here to the middle of each compartment
-(for eg. a stem or leaf compartment), and 2) the maximum conductivity along
-the flow path between these two points, assuming an arithmetic
+Computes the water flux given the absolute potential (pressure/(ρg))
+ at the center of the two compartments z1 and z2,
+and the conductivity along
+the flow path between these two points.
+
+We currently assuming an arithmetic
 mean for mean K_sat between the two points (Bonan, 2019; Zhu, 2008)
 to take into account the change in K_sat halfway
-between z1 and z2. The expression is given in full in the Clima docs
-in section 6.4 "Bulk plant hydraulics model".
+between z1 and z2; this is incorrect for compartments of differing sizes.
 """
-function flux(z1, z2, ψ1, ψ2, vg_α, vg_n, vg_m, ν, S_s, K_sat1, K_sat2)
-
-    S_l1 = inverse_water_retention_curve(vg_α, vg_n, vg_m, ψ1, ν, S_s)
-    S_l2 = inverse_water_retention_curve(vg_α, vg_n, vg_m, ψ2, ν, S_s)
-
-    K1_ψ1 = hydraulic_conductivity(K_sat1, vg_m, S_l1)
-    K2_ψ2 = hydraulic_conductivity(K_sat2, vg_m, S_l2)
-
-    flux = -(K1_ψ1 + K2_ψ2) / 2 * ((ψ2 - ψ1) / (z2 - z1) + 1)
-
+function flux(z1, z2, ψ1, ψ2, K1, K2)
+    flux = -(K1 + K2) / 2 * ((ψ2 - ψ1) / (z2 - z1) + 1)
     return flux # (m/s)
 end
 
 """
-     hydraulic_conductivity(K_sat::FT, vg_m::FT, S::FT) where {FT}
+    AbstractConductivityModel{FT <: AbstractFloat}
 
-A point-wise function returning the hydraulic conductivity, using the
-van Genuchten formulation.
+An abstract type for the plant hydraulics conductivity model.
 """
-function hydraulic_conductivity(K_sat::FT, vg_m::FT, S::FT) where {FT}
-    if S < FT(1)
-        K = sqrt(S) * (FT(1) - (FT(1) - S^(FT(1) / vg_m))^vg_m)^FT(2)
+abstract type AbstractConductivityModel{FT <: AbstractFloat} end
+
+Base.broadcastable(x::AbstractConductivityModel) = tuple(x)
+"""
+    AbstractRetentionModel{FT <: AbstractFloat}
+
+An abstract type for the plant retention curve model.
+"""
+abstract type AbstractRetentionModel{FT <: AbstractFloat} end
+
+Base.broadcastable(x::AbstractRetentionModel) = tuple(x)
+
+
+"""
+    Weibull{FT} <: AbstractConductivityModel{FT}
+
+A concrete type specifying that a Weibull conductivity model is to be used;
+the struct contains the require parameters for this model.
+
+# Fields
+$(DocStringExtensions.FIELDS)
+"""
+struct Weibull{FT} <: AbstractConductivityModel{FT}
+    "Maximum Water conductivity in the above-ground plant compartments (m/s) at saturation"
+    K_sat::FT
+    "The absolute water potential in xylem (or xylem water potential) at which ∼63% 
+    of maximum xylem conductance is lost (Liu, 2020)."
+    ψ63::FT
+    "Weibull parameter c, which controls shape the shape of the conductance curve (Sperry, 2016)."
+    c::FT
+end
+
+"""
+    hydraulic_conductivity(conductivity_params::Weibull{FT}, ψ::FT) where {FT}
+
+Computes the hydraulic conductivity at a point, using the
+Weibull formulation, given the potential ψ.
+"""
+function hydraulic_conductivity(
+    conductivity_params::Weibull{FT},
+    ψ::FT,
+) where {FT}
+    (; K_sat, ψ63, c) = conductivity_params
+    if ψ <= FT(0)
+        K = exp(-(ψ / ψ63)^c)
     else
         K = FT(1)
     end
     return K * K_sat # (m/s)
+end
+
+"""
+    LinearRetentionCurve{FT} <: AbstractRetentionModel{FT}
+
+A concrete type specifying that a linear water retention  model is to be used;
+the struct contains the require parameters for this model.
+
+When ψ = 0, the effective saturation is one, so the intercept
+is not a free parameter, and only the slope must be specified.
+
+# Fields
+$(DocStringExtensions.FIELDS)
+"""
+struct LinearRetentionCurve{FT} <: AbstractRetentionModel{FT}
+    "Bulk modulus of elasticity and slope of potential to volume curve. See also Corcuera, 2002, and Christoffersen, 2016."
+    a::FT
+end
+
+"""
+    water_retention_curve(
+        S_l::FT,
+        b::FT,
+        ν::FT,
+        S_s::FT) where {FT}
+
+Returns the potential ψ given the effective saturation S at a point, according
+to a linear model for the retention curve with parameters specified
+by `retention_params`.
+"""
+function water_retention_curve(
+    retention_params::LinearRetentionCurve{FT},
+    S_l::FT,
+    ν::FT,
+    S_s::FT,
+) where {FT}
+    (; a) = retention_params
+    if S_l <= FT(1)
+        ψ = 1 / a * (S_l - 1) # ψ(S_l=1)=0. 
+    else
+        ϑ_l = augmented_liquid_fraction(ν, S_l)
+        ψ = (ϑ_l - ν) / S_s
+    end
+    return ψ # (m)
+end
+
+"""
+    inverse_water_retention_curve(
+        ψ::FT,
+        b::FT,
+        ν::FT,
+        S_s::FT) where {FT}
+
+Returns the effective saturation given the potential at a point, according 
+to the linear retention curve model.
+"""
+function inverse_water_retention_curve(
+    retention_params::LinearRetentionCurve{FT},
+    ψ::FT,
+    ν::FT,
+    S_s::FT,
+) where {FT}
+    (; a) = retention_params
+    if ψ <= FT(0)
+        S_l = ψ * a + 1 # ψ(S_l=1)=0. 
+    else
+        ϑ_l = ψ * S_s + ν
+        S_l = effective_saturation(ν, ϑ_l)
+    end
+    return S_l #(m3/m3)
 end
 
 """
@@ -297,10 +419,11 @@ end
         S_l::FT) where {FT}
 
 Computes the augmented liquid fraction from porosity and
-effective saturation. Augmented liquid fraction allows for
+effective saturation. 
+
+Augmented liquid fraction allows for
 oversaturation: an expansion of the volume of space
-available for storage in a plant compartment. It is analogous
-to the augmented liquid fraction state variable in the soil model.
+available for storage in a plant compartment. 
 """
 function augmented_liquid_fraction(ν::FT, S_l::FT) where {FT}
     ϑ_l = S_l * ν # ϑ_l can be > ν
@@ -313,75 +436,12 @@ end
         ν::FT,
         ϑ_l::FT) where {FT}
 
-Computes the effective saturation (volumetric water content relative to
-porosity).
+Computes the effective saturation given the augmented liquid fraction.
 """
 function effective_saturation(ν::FT, ϑ_l::FT) where {FT}
     S_l = ϑ_l / ν # S_l can be > 1
     safe_S_l = max(S_l, eps(FT))
     return safe_S_l # (m3 m-3)
-end
-
-"""
-    water_retention_curve(
-        vg_α::FT,
-        vg_n::FT,
-        vg_m::FT,
-        S_l::FT,
-        ν::FT,
-        S_s::FT) where {FT}
-
-Converts augmented liquid fraction (ϑ_l) to effective saturation
-(S_l), and then effective saturation to absolute pressure, represented by
-the height (ψ) of the water column that would give rise to this pressure.
-Pressure for both the unsaturated and saturated regimes are calculated.
-Units are in meters.
-"""
-function water_retention_curve(
-    vg_α::FT,
-    vg_n::FT,
-    vg_m::FT,
-    S_l::FT,
-    ν::FT,
-    S_s::FT,
-) where {FT}
-    if S_l <= FT(1.0)
-        ψ = -((S_l^(-FT(1) / vg_m) - FT(1)) * vg_α^(-vg_n))^(FT(1) / vg_n)
-    else
-        ϑ_l = augmented_liquid_fraction(ν, S_l)
-        ψ = (ϑ_l - ν) / S_s
-    end
-    return ψ # (m)
-end
-
-"""
-    inverse_water_retention_curve(
-        vg_α::FT,
-        vg_n::FT,
-        vg_m::FT,
-        ψ::FT,
-        ν::FT,
-        S_s::FT) where {FT}
-
-Converts absolute pressure, represented by the height (ψ)
-of the water column that would give rise to this pressure,
-to effective saturation (S_l).
-"""
-function inverse_water_retention_curve(
-    vg_α::FT,
-    vg_n::FT,
-    vg_m::FT,
-    ψ::FT,
-    ν::FT,
-    S_s::FT,
-) where {FT}
-    if ψ <= FT(0.0)
-        S_l = ((-vg_α * ψ)^vg_n + FT(1.0))^(-vg_m)
-    else
-        ϑ_l = ψ * S_s + ν
-        S_l = effective_saturation(ν, ϑ_l)
-    end
-    return S_l
 end
 
 """
@@ -394,7 +454,7 @@ Below, `fa` denotes a flux multiplied by the relevant cross section (per unit ar
 """
 function make_compute_exp_tendency(model::PlantHydraulicsModel, _)
     function compute_exp_tendency!(dY, Y, p, t)
-        (; vg_α, vg_n, vg_m, S_s, ν, K_sat, area_index) = model.parameters
+        (; area_index) = model.parameters
         n_stem = model.n_stem
         n_leaf = model.n_leaf
         fa = p.canopy.hydraulics.fa
@@ -426,6 +486,7 @@ function make_compute_exp_tendency(model::PlantHydraulicsModel, _)
     end
     return compute_exp_tendency!
 end
+
 
 
 """
@@ -464,8 +525,8 @@ function root_flux_per_ground_area!(
     p::ClimaCore.Fields.FieldVector,
     t::FT,
 ) where {FT}
-    (; vg_α, vg_n, vg_m, ν, S_s, K_sat, area_index, root_distribution) =
-        model.parameters
+
+    (; conductivity_model, root_distribution, area_index) = model.parameters
     ψ_base = p.canopy.hydraulics.ψ[1]
     n_root_layers = length(model.root_depths)
     ψ_soil::FT = re.ψ_soil(t)
@@ -477,13 +538,8 @@ function root_flux_per_ground_area!(
                     model.compartment_midpoints[1],
                     ψ_soil,
                     ψ_base,
-                    vg_α,
-                    vg_n,
-                    vg_m,
-                    ν,
-                    S_s,
-                    K_sat[:root],
-                    K_sat[model.compartment_labels[1]],
+                    hydraulic_conductivity(conductivity_model, ψ_soil),
+                    hydraulic_conductivity(conductivity_model, ψ_base),
                 ) *
                 root_distribution(model.root_depths[i]) *
                 (model.root_depths[i + 1] - model.root_depths[i]) *
@@ -495,13 +551,8 @@ function root_flux_per_ground_area!(
                     model.compartment_midpoints[1],
                     ψ_soil,
                     ψ_base,
-                    vg_α,
-                    vg_n,
-                    vg_m,
-                    ν,
-                    S_s,
-                    K_sat[:root],
-                    K_sat[model.compartment_labels[1]],
+                    hydraulic_conductivity(conductivity_model, ψ_soil),
+                    hydraulic_conductivity(conductivity_model, ψ_base),
                 ) *
                 root_distribution(model.root_depths[i]) *
                 (FT(0) - model.root_depths[n_root_layers]) *
@@ -510,7 +561,6 @@ function root_flux_per_ground_area!(
         end
     end
 end
-
 
 """
     PrescribedTranspiration{FT} <: AbstractTranspiration{FT}

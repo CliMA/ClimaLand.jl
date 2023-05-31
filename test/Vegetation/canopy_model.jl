@@ -107,19 +107,26 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     SAI = FT(1)
     area_index = (root = RAI, stem = SAI, leaf = LAI)
     K_sat_plant = FT(1.8e-8) # m/s
-    K_sat_root = FT(K_sat_plant) # m/s
-    K_sat_stem = FT(K_sat_plant)
-    K_sat_leaf = FT(K_sat_plant)
-    K_sat = (root = K_sat_root, stem = K_sat_stem, leaf = K_sat_leaf)
-    plant_vg_α = FT(0.002) # 1/m
-    plant_vg_n = FT(4.2) # unitless
-    plant_vg_m = FT(1) - FT(1) / plant_vg_n
+    ψ63 = FT(-4 / 0.0098) # / MPa to m, Holtzman's original parameter value
+    Weibull_param = FT(4) # unitless, Holtzman's original c param value
+    a = FT(0.05 * 0.0098) # Holtzman's original parameter for the bulk modulus of elasticity
     plant_ν = FT(0.7) # m3/m3
     plant_S_s = FT(1e-2 * 0.0098) # m3/m3/MPa to m3/m3/m
+    conductivity_model =
+        PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
+    retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a)
     root_depths = FT.(-Array(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0) # 1st element is the deepest root depth
     function root_distribution(z::T) where {T}
         return T(1.0 / 0.5) * exp(z / T(0.5)) # (1/m)
     end
+    param_set = PlantHydraulics.PlantHydraulicsParameters(;
+        area_index = area_index,
+        ν = plant_ν,
+        S_s = plant_S_s,
+        root_distribution = root_distribution,
+        conductivity_model = conductivity_model,
+        retention_model = retention_model,
+    )
     Δz = FT(1.0) # height of compartments
     n_stem = Int64(0) # number of stem elements
     n_leaf = Int64(1) # number of leaf elements
@@ -139,17 +146,6 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
                 range(start = 0.0, step = Δz, stop = Δz * (n_stem + n_leaf)),
             )
         )
-
-    param_set = PlantHydraulics.PlantHydraulicsParameters{FT}(
-        area_index,
-        K_sat,
-        plant_vg_α,
-        plant_vg_n,
-        plant_vg_m,
-        plant_ν,
-        plant_S_s,
-        root_distribution,
-    )
 
     ψ_soil0 = FT(0.0)
     root_extraction = PrescribedSoilPressure{FT}((t::FT) -> ψ_soil0)

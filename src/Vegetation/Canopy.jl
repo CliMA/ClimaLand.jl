@@ -383,11 +383,10 @@ function ClimaLSM.make_update_aux(
         hydraulics = canopy.hydraulics
         n_stem = hydraulics.n_stem
         n_leaf = hydraulics.n_leaf
-        (; vg_α, vg_n, vg_m, S_s, ν, K_sat, area_index) = hydraulics.parameters
+        (; retention_model, conductivity_model, S_s, ν, area_index) =
+            hydraulics.parameters
         @inbounds @. ψ[1] = PlantHydraulics.water_retention_curve(
-            vg_α,
-            vg_n,
-            vg_m,
+            retention_model,
             PlantHydraulics.effective_saturation(ν, ϑ_l[1]),
             ν,
             S_s,
@@ -396,9 +395,7 @@ function ClimaLSM.make_update_aux(
         @inbounds for i in 1:(n_stem + n_leaf - 1)
 
             @. ψ[i + 1] = PlantHydraulics.water_retention_curve(
-                vg_α,
-                vg_n,
-                vg_m,
+                retention_model,
                 PlantHydraulics.effective_saturation(ν, ϑ_l[i + 1]),
                 ν,
                 S_s,
@@ -411,13 +408,14 @@ function ClimaLSM.make_update_aux(
                     hydraulics.compartment_midpoints[i + 1],
                     ψ[i],
                     ψ[i + 1],
-                    vg_α,
-                    vg_n,
-                    vg_m,
-                    ν,
-                    S_s,
-                    K_sat[hydraulics.compartment_labels[i]],
-                    K_sat[hydraulics.compartment_labels[i + 1]],
+                    PlantHydraulics.hydraulic_conductivity(
+                        conductivity_model,
+                        ψ[i],
+                    ),
+                    PlantHydraulics.hydraulic_conductivity(
+                        conductivity_model,
+                        ψ[i + 1],
+                    ),
                 ) * (
                     area_index[hydraulics.compartment_labels[i]] +
                     area_index[hydraulics.compartment_labels[i + 1]]
