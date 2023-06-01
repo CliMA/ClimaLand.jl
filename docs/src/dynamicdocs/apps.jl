@@ -13,7 +13,10 @@ server = Server(IP, port; proxy_url="https://clima.westus3.cloudapp.azure.com/js
 # Load and create apps
 include("leaf_An.jl"); An_app = An_app_f()
 An_app = An_app_f() # need to run twice for unicode character... (bug)
+include("Beer.jl"); beer_app = Beer_app_f()
+beer_app = Beer_app_f()
 
 # Route apps
 route!(server,"/leaf_An"=>An_app)
+route!(server,"/beer_APAR"=>beer_app)
 
