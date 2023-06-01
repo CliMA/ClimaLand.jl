@@ -391,7 +391,7 @@ function ClimaLSM.make_update_aux(
 
         @inbounds @. ψ[1] = PlantHydraulics.water_retention_curve(
             retention_model,
-            S_l[1]
+            S_l[1],
             ν,
             S_s,
         )

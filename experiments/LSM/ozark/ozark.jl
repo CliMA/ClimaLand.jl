@@ -165,28 +165,21 @@ function initial_rhs!(F, Y; T = T0)
     T0A = T * area_index[:leaf]
     for i in 1:(n_leaf + n_stem)
         if i == 1
-            K_root =  PlantHydraulics.hydraulic_conductivity(K_sat[:root],
-                                             plant_vg_m,
-                                             PlantHydraulics.inverse_water_retention_curve(plant_vg_α,
-                                                                           plant_vg_n,
-                                                                           plant_vg_m,
-                                                                           ψ_soil0,
-                                                                           plant_ν,
-                                                                           plant_S_s)
+            K_root =  PlantHydraulics.hydraulic_conductivity(conductivity_model,
+                                                             PlantHydraulics.inverse_water_retention_curve(retention_model,
+                                                                                                           ψ_soil0,
+                                                                                                           plant_ν,
+                                                                                                           plant_S_s)
                                                              )
-            K_base = PlantHydraulics.hydraulic_conductivity(K_sat[plant_hydraulics.compartment_labels[1]],
-                                                            plant_vg_m,
-                                                            PlantHydraulics.inverse_water_retention_curve(plant_vg_α,
-                                                                                                          plant_vg_n,
-                                                                                                          plant_vg_m,
-                                                                                                          Y[1],
-                                                                                                          plant_ν,
-                                                                                                          plant_S_s)
-                                                            )
+            K_base = PlantHydraulics.hydraulic_conductivity(conductivity_model,
+                                                             PlantHydraulics.inverse_water_retention_curve(retention_model,
+                                                                                                           Y[1],
+                                                                                                           plant_ν,
+                                                                                                           plant_S_s))
             K_face = PlantHydraulics.interpolate_center_to_face(area_index[:root] * K_root,
-                                                                  area_index[plant_hydraulics.compartment_labels[1]] * K_base,
-                                                                  (0 - plant_hydraulics.root_depths[i]),
-                                                                  plant_hydraulics.compartment_midpoints[1] / 2)
+                                                                area_index[plant_hydraulics.compartment_labels[1]] * K_base,
+                                                                (0 - plant_hydraulics.root_depths[i]),
+                                                                plant_hydraulics.compartment_midpoints[1] / 2)
             fa =
                 -sum(
                     dhdz.(
@@ -199,24 +192,16 @@ function initial_rhs!(F, Y; T = T0)
                         vcat(root_depths, [0.0])[1:(end - 1)]
                     ) .* K_face)
         else
-            K1 =  PlantHydraulics.hydraulic_conductivity(K_sat[plant_hydraulics.compartment_labels[i-1]],
-                                             plant_vg_m,
-                                             PlantHydraulics.inverse_water_retention_curve(plant_vg_α,
-                                                                           plant_vg_n,
-                                                                           plant_vg_m,
-                                                                           Y[i-1],
-                                                                           plant_ν,
-                                                                           plant_S_s)
-                                                             )
-            K2 = PlantHydraulics.hydraulic_conductivity(K_sat[plant_hydraulics.compartment_labels[i]],
-                                                        plant_vg_m,
-                                                        PlantHydraulics.inverse_water_retention_curve(plant_vg_α,
-                                                                                                      plant_vg_n,
-                                                                                                      plant_vg_m,
+            K1 =  PlantHydraulics.hydraulic_conductivity(conductivity_model,
+                                                         PlantHydraulics.inverse_water_retention_curve(retention_model,
+                                                                                                       Y[i-1],
+                                                                                                       plant_ν,
+                                                                                                       plant_S_s))
+            K2 = PlantHydraulics.hydraulic_conductivity(conductivity_model,
+                                                        PlantHydraulics.inverse_water_retention_curve(retention_model,
                                                                                                       Y[i],
                                                                                                       plant_ν,
-                                                                                                      plant_S_s)
-                                                        )
+                                                                                                      plant_S_s))
             K_face = PlantHydraulics.interpolate_center_to_face(area_index[plant_hydraulics.compartment_labels[i-1]] * K1,
                                                                   area_index[plant_hydraulics.compartment_labels[i]] * K2,
                                                                   (0 - plant_hydraulics.root_depths[i]),
@@ -241,7 +226,7 @@ soln = nlsolve(initial_rhs!, [-0.03, -0.02]; ftol = 1e-11)
 S_l_ini =
     inverse_water_retention_curve.(
         retention_model,
-        [ψ_stem_0, ψ_leaf_0],
+        ψ0,
         plant_ν,
         plant_S_s,
     )
