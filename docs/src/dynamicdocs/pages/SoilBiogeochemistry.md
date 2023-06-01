@@ -1,2 +1,0 @@
-# Dual Arrhenius Michaelis-Menten
-
