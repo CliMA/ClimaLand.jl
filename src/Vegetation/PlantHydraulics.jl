@@ -266,13 +266,27 @@ ClimaLSM.auxiliary_types(model::PlantHydraulicsModel{FT}) where {FT} = (
 )
 
 """
+    interpolate_center_to_face(x1,x2,Δz1,Δz2)
+
+Interpolates the quantity x to a location z given
+the value of x at two locations (`x1` and `x2`)
+that are a distance `Δz1` and `Δz2` from z.
+
+If Δz1 = 0, returns x1.
 """
-function interpolate_center_to_face(x1,x2,Δz1,Δz2)
+function interpolate_center_to_face(x1, x2, Δz1, Δz2)
     f = Δz1 / (Δz2 + Δz1)
-    return x1 * f + (1 - f) * x2
+    return x1 * (1 - f) + f * x2
 end
 
 """
+    dhdz(z1, z2, ψ1, ψ2)
+
+Computes the derivative of the hydraulic head
+ψ+z with respect to z, 
+at the surface between two compartments with
+midpoints at `z1` and `z2`, and values of `ψ1` and
+`ψ2` at those midpoints.
  
 """
 function dhdz(z1, z2, ψ1, ψ2)
@@ -468,11 +482,9 @@ function make_compute_exp_tendency(model::PlantHydraulicsModel, _)
                     p,
                     t,
                 )
-                @. dY.canopy.hydraulics.ϑ_l[i] =
-                    1 / AIdz * (fa_roots - fa[i])
+                @. dY.canopy.hydraulics.ϑ_l[i] = 1 / AIdz * (fa_roots - fa[i])
             else
-                @. dY.canopy.hydraulics.ϑ_l[i] =
-                    1 / AIdz * (fa[i - 1] - fa[i])
+                @. dY.canopy.hydraulics.ϑ_l[i] = 1 / AIdz * (fa[i - 1] - fa[i])
             end
 
         end
@@ -524,8 +536,8 @@ function root_flux_per_ground_area!(
     K_base = p.canopy.hydraulics.K[1]
     n_root_layers = length(model.root_depths)
     ψ_soil::FT = re.ψ_soil(t)
-    K_root =  hydraulic_conductivity(conductivity_model, ψ_soil)
-    fa .=0;
+    K_root = hydraulic_conductivity(conductivity_model, ψ_soil)
+    fa .= 0
     @inbounds for i in 1:n_root_layers
         if i != n_root_layers
             dz_root = (model.root_depths[i + 1] - model.root_depths[i])
@@ -535,18 +547,17 @@ function root_flux_per_ground_area!(
         K_face = interpolate_center_to_face(
             area_index[:root] * K_root,
             area_index[model.compartment_labels[1]] * K_base,
-            1/2*(0 - model.root_depths[i]),
-            model.compartment_midpoints[1] / 2
+            (0 - model.root_depths[i]),
+            model.compartment_midpoints[1],
         )
         @. fa +=
-            - dhdz(
+            -dhdz(
                 model.root_depths[i],
                 model.compartment_midpoints[1],
                 ψ_soil,
                 ψ_base,
             ) * K_face
-                root_distribution(model.root_depths[i]) *
-                dz_root
+        root_distribution(model.root_depths[i]) * dz_root
     end
 end
 

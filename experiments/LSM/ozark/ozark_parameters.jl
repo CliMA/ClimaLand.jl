@@ -24,7 +24,7 @@ oi = FT(0.209)
 θj = FT(0.9)
 f = FT(0.015)
 sc = FT(5e-6)
-pc = FT(-6e5)
+pc = FT(-5e5) # note: smaller than what is in Bonan's book
 Vcmax25 = FT(5e-5)
 Γstar25 = FT(4.275e-5)
 Kc25 = FT(4.049e-4)
@@ -45,7 +45,7 @@ RAI = (SAI + LAI) * f_root_to_shoot
 K_sat_plant = 1.8e-8 # m/s
 ψ63 = FT(-4 / 0.0098) # / MPa to m, Holtzman's original parameter value
 Weibull_param = FT(4) # unitless, Holtzman's original c param value
-a = FT(0.05 * 0.0098) # Holtzman's original parameter for the bulk modulus of elasticity
+a = FT(0.005 * 0.0098) # Note: made smaller compared with Natan
 conductivity_model =
     PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
 retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a)

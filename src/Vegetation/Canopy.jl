@@ -395,9 +395,8 @@ function ClimaLSM.make_update_aux(
             ν,
             S_s,
         )
-        @inbounds @. K_plant[1] = PlantHydraulics.hydraulic_conductivity(conductivity_model,
-                                                                         ψ[1],
-                                                                         )
+        @inbounds @. K_plant[1] =
+            PlantHydraulics.hydraulic_conductivity(conductivity_model, ψ[1])
 
 
         @inbounds for i in 1:(n_stem + n_leaf - 1)
@@ -425,11 +424,15 @@ function ClimaLSM.make_update_aux(
                     K_plant[i] * area_index[hydraulics.compartment_labels[i]],
                     K_plant[i + 1] *
                     area_index[hydraulics.compartment_labels[i + 1]],
-                    (hydraulics.compartment_surfaces[i] -
-                     hydraulics.compartment_midpoints[i])/2,
-                    (hydraulics.compartment_surfaces[i + 1] -
-                     hydraulics.compartment_midpoints[i + 1])/2
-                    )
+                    (
+                        hydraulics.compartment_surfaces[i] -
+                        hydraulics.compartment_midpoints[i]
+                    ),
+                    (
+                        hydraulics.compartment_surfaces[i + 1] -
+                        hydraulics.compartment_midpoints[i + 1]
+                    ),
+                )
         end
         @. β = moisture_stress(ψ[n_stem + n_leaf] * ρ_l * grav, sc, pc)
         # We update the fa[n_stem+n_leaf] element once we have computed transpiration, below
@@ -460,7 +463,7 @@ function ClimaLSM.make_update_aux(
             p,
             t,
         )
-        
+
     end
     return update_aux!
 end
