@@ -486,9 +486,11 @@ lwp = [
     parent(sv.saveval[k].canopy.hydraulics.ψ)[2] * 9800 for k in 1:length(sol.t)
 ]
 swp = [
-    parent(sv.saveval[k].canopy.hydraulics.ψ)[1] * 9800 for k in 1:length(sol.t)
+    mean(parent(sv.saveval[k].canopy.hydraulics.ψ)) * 9800 for k in 1:length(sol.t)
 ]
-
+ψ_soil = [
+    parent(sv.saveval[k].soil.ψ)[1] * 9800 for k in 1:length(sol.t)
+]
 plt2 = Plots.plot(
     daily,
     lwp,
@@ -500,6 +502,7 @@ plt2 = Plots.plot(
     left_margin = 10Plots.mm,
 )
 Plots.plot!(plt2, daily, swp, label = "Model, Stem")
+Plots.plot!(plt2, daily, ψ_soil, label = "Model, Mean soil")
 
 Plots.plot!(
     plt2,
