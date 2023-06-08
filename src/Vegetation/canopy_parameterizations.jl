@@ -61,7 +61,28 @@ function extinction_coeff(ld::FT, θs::FT) where {FT}
 end
 
 # 2. Photosynthesis, Farquhar model
+"""
+    max_electron_transport(Vcmax::FT) where {FT}
 
+Computes the maximum potential rate of electron transport (`Jmax`),
+in units of mol/m^2/s, 
+as a function of Vcmax at 25 °C (`Vcmax25`),
+a constant (`ΔHJmax`), a standard temperature (`To`),
+the unversal gas constant (`R`), and the temperature (`T`).
+
+See Table 11.5 of G. Bonan's textbook, 
+Climate Change and Terrestrial Ecosystem Modeling (2019).
+"""
+function max_electron_transport(
+    Jmax25::FT,
+    ΔHJmax::FT,
+    T::FT,
+    To::FT,
+    R::FT,
+) where {FT}
+    Jmax = Jmax25 * arrhenius_function(T, To, R, ΔHJmax)
+    return Jmax
+end
 
 """
     intercellular_co2(ca::FT, Γstar::FT, medlyn_factor::FT) where{FT}

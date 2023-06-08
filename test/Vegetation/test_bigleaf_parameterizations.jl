@@ -168,3 +168,39 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
         )
     )
 end
+
+
+@testset "Optimality Photosynthesis model Parameterizations" begin
+    FT = Float32
+    earth_param_set = create_lsm_parameters(FT)
+    # Test with defaults
+    RTparams = BeerLambertParameters{FT}()
+    photosynthesisparams = [OptimalityFarquharParameters{FT}(C3();), OptimalityFarquharParameters{FT}(C4();)]
+    stomatal_g_params = MedlynConductanceParameters{FT}()
+    LAI = FT(5.0) # m2 (leaf) m-2 (ground)
+    thermo_params = LSMP.thermodynamic_parameters(earth_param_set)
+    c = FT(LSMP.light_speed(earth_param_set))
+    h = FT(LSMP.planck_constant(earth_param_set))
+    N_a = FT(LSMP.avogadro_constant(earth_param_set))
+    λ = FT(5e-7) # m (500 nm)
+    energy_per_photon = h * c / λ
+    T = FT(290) # K
+    P = FT(101250) #Pa
+    q = FT(0.02)
+    m_t = medlyn_term(stomatal_g_params.g1, T, P, q, thermo_params)
+    R = FT(LSMP.gas_constant(earth_param_set))
+    θs = FT.(Array(0:0.1:(π / 2)))
+    SW(θs) = cos.(θs) * FT.(500) # W/m^2
+    PAR = SW(θs) ./ (energy_per_photon * N_a) # convert 500 W/m^2 to mol of photons per m^2/s
+    K_c = extinction_coeff.(RTparams.ld, θs)
+    APAR = plant_absorbed_ppfd.(PAR, RTparams.ρ_leaf, K_c, LAI, RTparams.Ω)
+    ψ_l = FT(-2e6) # Pa
+    ca = FT(4.11e-4) # mol/mol
+
+    for photosynthesis_ps in photosynthesisparams
+        model = OptimalityFarquharModel{FT}(photosynthesis_ps)
+        β = moisture_stress(ψ_l, photosynthesis_ps.sc, photosynthesis_ps.ψc)
+        net_ps = ClimaLSM.Canopy.compute_photosynthesis.(Ref(model), T, m_t, APAR, ca, β, R)
+        # @test X == Y
+    end
+end
