@@ -136,32 +136,6 @@ function horizontal_components!(
     _...,
 ) end
 
-"""
-   dss!(dY::ClimaCore.Fields.FieldVector,domain::Column)
-
-Computes the appropriate weighted direct stiffness summation based on
-the domain type, updates `dY` in place.
-
-For column domains, no dss is needed.
-"""
-function dss!(dY::ClimaCore.Fields.FieldVector, domain::Column) end
-
-"""
-   dss!(dY::ClimaCore.Fields.FieldVector,domain::Union{HybridBox, SphericalShell})
-
-Computes the appropriate weighted direct stiffness summation based on
-the domain type, updates `dY` in place.
-"""
-function dss!(
-    dY::ClimaCore.Fields.FieldVector,
-    domain::Union{HybridBox, SphericalShell},
-)
-    for key in propertynames(dY.soil)
-        Spaces.weighted_dss!(getproperty(dY.soil, key))
-    end
-end
-
-
 
 include("./rre.jl")
 include("./energy_hydrology.jl")

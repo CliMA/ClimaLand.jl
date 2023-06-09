@@ -53,16 +53,14 @@
 
 # - Load external packages
 
-using OrdinaryDiffEq: ODEProblem, solve, RK4
+import OrdinaryDiffEq as ODE
 using Plots
-# - Load CLIMAParameters and ClimaLSM modules
+# - Load CliMA packages and ClimaLSM modules
 
 using ClimaCore
 import CLIMAParameters as CP
+import ClimaTimeSteppers as CTS
 
-if !("." in LOAD_PATH)
-    push!(LOAD_PATH, ".")
-end
 using ClimaLSM
 using ClimaLSM.Domains: Column
 using ClimaLSM.Soil
@@ -126,6 +124,9 @@ soil = Soil.RichardsModel{FT}(;
     boundary_conditions = boundary_conditions,
     sources = sources,
 );
+
+# Here we create the explicit tendency, which updates prognostic
+# variables.
 exp_tendency! = make_exp_tendency(soil);
 
 # # Set up the simulation
@@ -145,12 +146,19 @@ Y.soil.ϑ_l .= FT(0.494);
 
 # Next, we turn to timestepping. We choose the initial and final times, as well as a timestep.
 t0 = FT(0)
-timeend = FT(60 * 60 * 24 * 36)
+tf = FT(60 * 60 * 24 * 36)
 dt = FT(100);
 
+# Now, we choose the timestepping algorithm we want to use.
+# We'll use the 4th order Runge-Kutta method, RK4.
+stepper = ClimaLSM.RK4();
+ode_algo = CTS.ExplicitAlgorithm(stepper);
+
 # And then we can solve the system of equations, using [OrdinaryDiffEq.jl](https://github.com/SciML/OrdinaryDiffEq.jl):
-prob = ODEProblem(exp_tendency!, Y, (t0, timeend), p)
-sol = solve(prob, RK4(); dt = dt, adaptive = false);
+prob =
+    ODE.ODEProblem(CTS.ClimaODEFunction(T_exp! = exp_tendency!), Y, (t0, tf), p);
+sol = ODE.solve(prob, ode_algo; dt = dt, adaptive = false);
+
 
 # # Create some plots
 # We'll plot the moisture content vs depth in the soil, as well as

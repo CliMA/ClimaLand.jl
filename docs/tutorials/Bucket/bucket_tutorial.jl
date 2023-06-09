@@ -113,11 +113,13 @@
 # # Simulating a standalone bucket model
 
 # First, we need to import necessary packages. We use [OrdinaryDiffEq.jl](https://github.com/SciML/OrdinaryDiffEq.jl)
-# for the timestepping, and [DiffEqCallbacks.jl](https://github.com/SciML/DiffEqCallbacks.jl)
-# is used as described below,
+# and [ClimaTimeSteppers.jl](https://github.com/CliMA/ClimaTimeSteppers.jl) for the timestepping,
+# and [DiffEqCallbacks.jl](https://github.com/SciML/DiffEqCallbacks.jl) is used as described below,
 # for accessing the solver state during the integration.
-using OrdinaryDiffEq: ODEProblem, solve, Midpoint
+import OrdinaryDiffEq as ODE
 using DiffEqCallbacks
+import ClimaTimeSteppers as CTS
+
 # We use [ClimaCore](https://github.com/CliMA/ClimaCore.jl)
 # for setting up the domain/coordinate points. While
 # this infrastructure isn't really necessary for standalone simulations,
@@ -180,6 +182,9 @@ z_0b = FT(1e-3);
 # Thermal parameters of soil
 κ_soil = FT(0.7);
 ρc_soil = FT(2e6);
+# Simulation start time, end time, and timestep
+t0 = FT(0.0);
+tf = FT(7 * 86400);
 Δt = FT(3600.0);
 
 bucket_parameters = BucketModelParameters(
@@ -282,7 +287,6 @@ Y.bucket.Ws .= FT(0.0);
 Y.bucket.σS .= FT(0.08);
 
 # We also initialize the auxiliary state here:
-t0 = FT(0.0);
 set_initial_aux_state! = make_set_initial_aux_state(model);
 set_initial_aux_state!(p, Y, t0);
 
@@ -290,19 +294,25 @@ set_initial_aux_state!(p, Y, t0);
 # of ordinary differential equations:
 exp_tendency! = make_exp_tendency(model);
 
+# Now we choose our timestepping algorithm.
+timestepper = ClimaLSM.RK4()
+ode_algo = CTS.ExplicitAlgorithm(timestepper)
+
 # Then we can set up the simulation and solve it:
-tf = FT(7 * 86400);
-prob = ODEProblem(exp_tendency!, Y, (t0, tf), p);
+prob =
+    ODE.ODEProblem(CTS.ClimaODEFunction(T_exp! = exp_tendency!), Y, (t0, tf), p);
+
 # We need a callback to get and store the auxiliary fields, as they
 # are not stored by default.
-saved_values = SavedValues(FT, ClimaCore.Fields.FieldVector);
-cb = SavingCallback(
-    (u, t, integrator) -> copy(integrator.p),
-    saved_values;
-    saveat = 0:Δt:tf,
+saveat = collect(t0:Δt:tf);
+saved_values = (;
+    t = Array{FT}(undef, length(saveat)),
+    saveval = Array{ClimaCore.Fields.FieldVector}(undef, length(saveat)),
 );
 
-sol = solve(prob, Midpoint(); dt = Δt, saveat = 0:Δt:tf, callback = cb);
+cb = ClimaLSM.NonInterpSavingCallback(saved_values, saveat);
+
+sol = ODE.solve(prob, ode_algo; dt = Δt, saveat = saveat, callback = cb);
 
 # Extracting the solution from what is returned by the ODE.jl commands
 # is a bit clunky right now, but we are working on hiding some of this.

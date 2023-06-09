@@ -138,9 +138,6 @@ function ClimaLSM.make_compute_exp_tendency(model::RichardsModel)
         for src in model.sources
             ClimaLSM.source!(dY, src, Y, p, model.parameters)
         end
-
-        # This has to come last
-        dss!(dY, model.domain)
     end
     return compute_exp_tendency!
 end
