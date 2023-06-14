@@ -4,15 +4,14 @@
 A struct for storing parameters of the `RichardModel`.
 $(DocStringExtensions.FIELDS)
 """
-struct RichardsParameters{FT <: AbstractFloat}
+struct RichardsParameters{
+    FT <: AbstractFloat,
+    C <: AbstractSoilHydrologyClosure,
+}
     "The porosity of the soil (m^3/m^3)"
     ν::FT
-    "The van Genuchten parameter α (1/m)"
-    vg_α::FT
-    "The van Genuchten parameter n"
-    vg_n::FT
-    "The van Genuchten parameter m"
-    vg_m::FT
+    "The hydrology closure model: vanGenuchten or BrooksCorey"
+    hydrology_cm::C
     "The saturated hydraulic conductivity (m/s)"
     K_sat::FT
     "The specific storativity (1/m)"
@@ -22,15 +21,19 @@ struct RichardsParameters{FT <: AbstractFloat}
 end
 
 function RichardsParameters(;
+    hydrology_cm::C,
     ν::FT,
-    vg_α::FT,
-    vg_n::FT,
-    vg_m::FT,
     K_sat::FT,
     S_s::FT,
     θ_r::FT,
-) where {FT}
-    return RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r)
+) where {FT <: AbstractFloat, C <: AbstractSoilHydrologyClosure}
+    return RichardsParameters{FT, typeof(hydrology_cm)}(
+        ν,
+        hydrology_cm,
+        K_sat,
+        S_s,
+        θ_r,
+    )
 end
 
 """
@@ -87,7 +90,6 @@ This has been written so as to work with Differential Equations.jl.
 """
 function ClimaLSM.make_compute_exp_tendency(model::RichardsModel)
     function compute_exp_tendency!(dY, Y, p, t)
-        (; ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r) = model.parameters
         z = ClimaCore.Fields.coordinate_field(model.domain.space).z
         Δz_top, Δz_bottom = get_Δz(z)
 
@@ -201,13 +203,13 @@ This has been written so as to work with Differential Equations.jl.
 """
 function ClimaLSM.make_update_aux(model::RichardsModel)
     function update_aux!(p, Y, t)
-        (; ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r) = model.parameters
+        (; ν, hydrology_cm, K_sat, S_s, θ_r) = model.parameters
         @. p.soil.K = hydraulic_conductivity(
+            hydrology_cm,
             K_sat,
-            vg_m,
             effective_saturation(ν, Y.soil.ϑ_l, θ_r),
         )
-        @. p.soil.ψ = pressure_head(vg_α, vg_n, vg_m, θ_r, Y.soil.ϑ_l, ν, S_s)
+        @. p.soil.ψ = pressure_head(hydrology_cm, θ_r, Y.soil.ϑ_l, ν, S_s)
     end
     return update_aux!
 end
@@ -307,9 +309,7 @@ function ClimaLSM.make_update_jacobian(model::RichardsModel)
     function update_jacobian!(W::RichardsTridiagonalW, Y, p, dtγ, t)
         FT = eltype(Y.soil.ϑ_l)
         (; dtγ_ref, ∂ϑₜ∂ϑ) = W
-        dtγ_ref[] = dtγ
-        (; ν, vg_α, vg_n, vg_m, S_s, θ_r) = model.parameters
-
+        (; ν, hydrology_cm, S_s, θ_r) = model.parameters
         divf2c_op = Operators.DivergenceF2C(
             top = Operators.SetValue(Geometry.WVector.(FT(0))),
             bottom = Operators.SetValue(Geometry.WVector.(FT(0))),
@@ -332,12 +332,10 @@ function ClimaLSM.make_update_jacobian(model::RichardsModel)
                 interpc2f_op(p.soil.K) * ClimaLSM.to_scalar_coefs(
                     gradc2f_stencil(
                         ClimaLSM.Soil.dψdϑ(
+                            hydrology_cm,
                             Y.soil.ϑ_l,
                             ν,
                             θ_r,
-                            vg_α,
-                            vg_n,
-                            vg_m,
                             S_s,
                         ),
                     ),

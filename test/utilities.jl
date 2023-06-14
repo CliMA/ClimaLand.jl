@@ -56,8 +56,6 @@ end
             saveiter = 0
             for t in t_range
                 if cond(0, t, 0)
-                    @show t
-                    @show affect!.saveat
                     affect!(integrator)
 
                     # save the current state of `integrator`

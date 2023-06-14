@@ -7,7 +7,11 @@ form, we assume the conductivity and volumetric heat capacity
 of the soil are constant.
 $(DocStringExtensions.FIELDS)
 """
-struct EnergyHydrologyParameters{FT <: AbstractFloat, PSE}
+struct EnergyHydrologyParameters{
+    FT <: AbstractFloat,
+    C <: AbstractSoilHydrologyClosure,
+    PSE,
+}
     "The dry soil thermal conductivity, W/m/K"
     κ_dry::FT
     "The saturated thermal conductivity of frozen soil, W/m/K"
@@ -28,12 +32,8 @@ struct EnergyHydrologyParameters{FT <: AbstractFloat, PSE}
     α::FT
     "The parameter β used in computing Kersten number, unitless"
     β::FT
-    "The van Genuchten parameter α (1/m)"
-    vg_α::FT
-    "The van Genuchten parameter n"
-    vg_n::FT
-    "The van Genuchten parameter m"
-    vg_m::FT
+    "The soil hydrology closure model: van Genucthen or Brooks and Corey"
+    hydrology_cm::C
     "The saturated hydraulic conductivity (m/s)"
     K_sat::FT
     "The specific storativity (1/m)"
@@ -69,8 +69,7 @@ function EnergyHydrologyParameters{FT}(;
     ν_ss_om::FT,
     ν_ss_quartz::FT,
     ν_ss_gravel::FT,
-    vg_α::FT,
-    vg_n::FT,
+    hydrology_cm::C,
     K_sat::FT,
     S_s::FT,
     θ_r::FT,
@@ -80,8 +79,7 @@ function EnergyHydrologyParameters{FT}(;
     z_0b = FT(0.01),
     d_ds = FT(0.015),
     earth_param_set::PSE,
-) where {FT, PSE}
-    vg_m = FT(1.0 - 1.0 / vg_n)
+) where {FT <: AbstractFloat, PSE, C <: AbstractSoilHydrologyClosure}
     # These were determined in the Balland and Arp paper, from 2003.
     α = FT(0.24)
     β = FT(18.3)
@@ -90,7 +88,7 @@ function EnergyHydrologyParameters{FT}(;
     # Unclear where these are from (design doc)
     γ = FT(2.64e-2)
     γT_ref = FT(288)
-    return EnergyHydrologyParameters{FT, PSE}(
+    return EnergyHydrologyParameters{FT, C, PSE}(
         κ_dry,
         κ_sat_frozen,
         κ_sat_unfrozen,
@@ -101,9 +99,7 @@ function EnergyHydrologyParameters{FT}(;
         ν_ss_gravel,
         α,
         β,
-        vg_α,
-        vg_n,
-        vg_m,
+        hydrology_cm,
         K_sat,
         S_s,
         θ_r,
@@ -324,9 +320,7 @@ function ClimaLSM.make_update_aux(model::EnergyHydrology)
     function update_aux!(p, Y, t)
         (;
             ν,
-            vg_α,
-            vg_n,
-            vg_m,
+            hydrology_cm,
             K_sat,
             S_s,
             θ_r,
@@ -367,19 +361,12 @@ function ClimaLSM.make_update_aux(model::EnergyHydrology)
             impedance_factor(Y.soil.θ_i / (p.soil.θ_l + Y.soil.θ_i - θ_r), Ω) *
             viscosity_factor(p.soil.T, γ, γT_ref) *
             hydraulic_conductivity(
+                hydrology_cm,
                 K_sat,
-                vg_m,
                 effective_saturation(ν, Y.soil.ϑ_l, θ_r),
             )
-        @. p.soil.ψ = pressure_head(
-            vg_α,
-            vg_n,
-            vg_m,
-            θ_r,
-            Y.soil.ϑ_l,
-            ν - Y.soil.θ_i,
-            S_s,
-        )
+        @. p.soil.ψ =
+            pressure_head(hydrology_cm, θ_r, Y.soil.ϑ_l, ν - Y.soil.θ_i, S_s)
     end
     return update_aux!
 end

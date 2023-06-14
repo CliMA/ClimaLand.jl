@@ -136,7 +136,7 @@ function horizontal_components!(
     _...,
 ) end
 
-
+include("./retention_models.jl")
 include("./rre.jl")
 include("./energy_hydrology.jl")
 include("./boundary_conditions.jl")

@@ -57,6 +57,9 @@ ClimaLSM.Soil.FreeDrainage
 ClimaLSM.Soil.AtmosDrivenFluxBC
 ClimaLSM.Soil.AbstractSoilSource
 ClimaLSM.Soil.PhaseChange
+ClimaLSM.Soil.AbstractSoilHydrologyClosure
+ClimaLSM.Soil.vanGenuchten
+ClimaLSM.Soil.BrooksCorey
 ```
 
 ## Soil Jacobian Structures

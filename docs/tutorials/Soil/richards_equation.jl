@@ -82,17 +82,23 @@ earth_param_set = create_lsm_parameters(FT);
 # we see that we need to supply parameters, a domain, boundary conditions, and sources.
 
 
-# First, we define the parameters: porosity `\nu`, Ksat, the van Genuchten parameters
+# First, we define the parameters: porosity `\nu`, K_sat, the van Genuchten parameters
 # `vg_α`, `vg_m`, `vg_n`, `θ_r`, and the specific storage value for the soil. Note
 # that all values must be given in mks units.
-Ksat = FT(0.0443 / (3600 * 100))
+K_sat = FT(0.0443 / (3600 * 100))
 S_s = FT(1e-3)
 ν = FT(0.495)
 vg_α = FT(2.6)
 vg_n = FT(2)
-vg_m = 1 - 1 / vg_n
+hcm = vanGenuchten(; α = vg_α, n = vg_n);
 θ_r = FT(0)
-params = Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, Ksat, S_s, θ_r);
+params = Soil.RichardsParameters(;
+    ν = ν,
+    hydrology_cm = hcm,
+    K_sat = K_sat,
+    S_s = S_s,
+    θ_r = θ_r,
+);
 
 # Next, we define the domain. Here, we are considering a 1D domain, discretized using
 # finite difference, with coordinates `z`:

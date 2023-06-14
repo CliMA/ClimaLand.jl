@@ -4,7 +4,6 @@ soil_K_sat = FT(4e-7) # m/s, matches Natan
 soil_S_s = FT(1e-3) # 1/m, guess
 soil_vg_n = FT(2.6257) # unitless, from Wang et al. 2021 https://doi.org/10.5194/gmd-14-6741-2021
 soil_vg_α = FT(1.368) # inverse meters. from Wang et al. 2021 https://doi.org/10.5194/gmd-14-6741-2021
-soil_vg_m = FT(1) - FT(1) / soil_vg_n # unitless
 θ_r = FT(0.067) # m3/m3, from Wang et al. 2021 https://doi.org/10.5194/gmd-14-6741-2021
 
 # Beer Lambert model parameters
