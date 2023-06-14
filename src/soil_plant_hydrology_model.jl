@@ -133,7 +133,10 @@ function make_interactions_update_aux(
         z = ClimaCore.Fields.coordinate_field(land.soil.domain.space).z
         (; area_index, conductivity_model) = land.canopy.hydraulics.parameters
         @. p.root_extraction =
-            area_index[:root] *
+            (
+                area_index[:root] +
+                area_index[land.canopy.hydraulics.compartment_labels[1]]
+            ) / 2 *
             PlantHydraulics.flux(
                 z,
                 land.canopy.hydraulics.compartment_midpoints[1],
