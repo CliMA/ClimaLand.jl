@@ -37,7 +37,7 @@ ode_algo = CTS.IMEXAlgorithm(
         max_iters = 50,
         update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
         convergence_checker = conv_checker,
-       # verbose = CTS.Verbose()
+        verbose = CTS.Verbose()
     ),
 )
 
@@ -45,7 +45,9 @@ ode_algo = CTS.IMEXAlgorithm(
 t_start = FT(0)
 t_end = FT(1e6)
 dt = FT(1e4) #1000 = 1e3, 10000 = 1e4
-explicit = false
+explicit =  false
+truth = readdlm("./src/Soil/examples/explicit_solution.csv", ',')
+
 
 # van Genuchten parameters for clay (from Bonan 2019 supplemental program 8.2)
 ν = FT(0.495)
@@ -61,11 +63,9 @@ zmin = FT(-1.5)
 nelems = 150
 
 soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems);
-
-top_bc = Soil.MoistureStateBC((p, t) -> eltype(t)(ν - 1e-3))
-flux_out = FT(0)
-bot_bc = Soil.FluxBC((p, t) -> eltype(t)(flux_out))
-
+ϑ_l_bc = ν - 1e-3
+top_bc = Soil.MoistureStateBC((p, t) -> eltype(t)(ϑ_l_bc))
+bot_bc = Soil.FluxBC((p, t) -> eltype(t)(0))
 sources = ()
 boundary_fluxes = (; top = (water = top_bc,), bottom = (water = bot_bc,))
 params = Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r)
@@ -137,6 +137,60 @@ else
 end
 
 sol = ODE.solve!(integrator)
+ϑ_l_top = [
+    parent(integrator.sol.u[k].soil.ϑ_l)[end] for
+    k in 1:length(integrator.sol.t)
+]
+ψ_top = ClimaLSM.Soil.pressure_head.(vg_α, vg_n, vg_m, θ_r, ϑ_l_top, ν, S_s)
+K_top = @. ClimaLSM.Soil.hydraulic_conductivity(
+    K_sat,
+    vg_m,
+    effective_saturation(ν, ϑ_l_top, θ_r),
+)
+ϑ_l_bot = [
+    parent(integrator.sol.u[k].soil.ϑ_l)[1] for k in 1:length(integrator.sol.t)
+]
+K_bot = @. ClimaLSM.Soil.hydraulic_conductivity(
+    K_sat,
+    vg_m,
+    effective_saturation(ν, ϑ_l_bot, θ_r),
+)
+
+ψ_bc = ClimaLSM.Soil.pressure_head(vg_α, vg_n, vg_m, θ_r, ϑ_l_bc, ν, S_s)
+dz_top = 0.005
+QN = @. -K_top / dz_top * (ψ_bc - ψ_top) - K_top;
+Q0 = 0#-K_bot
+# calculate water mass balance over entire simulation
+implicit_sol = integrator.sol.u[end].soil.ϑ_l
+mass_end = sum(implicit_sol)
+mass_start = sum(integrator.sol.u[1].soil.ϑ_l)
+# flux changes water content every timestep (assumes constant flux_in, flux_out)
+#mass_change_exp = sum(@. (-(QN[2:end] - Q0[2:end]) * dt))
+mass_change_exp = sum(@. (-(QN[2:end]) * dt))
+mass_change_actual = mass_end - mass_start
+relerr = abs(mass_change_actual - mass_change_exp) / mass_change_exp
+rmse = sqrt(mean((truth .- parent(implicit_sol)).^2))
+@info dt
+@info rmse
+@info relerr
+#=
+BC = ν - ϵ
+dts = [10, 25, 100, 250, 1000, 2500, 1e4]
+rmses = [4.0358176789400375e-6, 5.645720063701383e-6, 4.292680404253761e-5, 0.00010665890769993408, 0.00043309844085658716, 0.0011132606742645518,0.005153354873715869]
+masserrs = [3.234895886551343e-6, 1.1431852057916104e-6, 2.6003855544650854e-7, 4.256542768948846e-7, 5.475376618370726e-8, 3.6814091263920326e-8, 3.989774071947699e-9]
+
+
+p = Plots.plot()
+p_twin = twinx(p)
+Plots.plot!(p,dts, rmses, xaxis = :log10, yaxis=:log10, label = "RMSE", color = "red", linewidth = 3, xlabel = "Δt (s)", ylabel = "RMSE ϑ", xlim = [10,1e4])
+Plots.plot!(p_twin, dts, masserrs,label = "Vol. error", color = "purple", linewidth = 3, ylabel = "|∑ϑ-∑ϑ(0)|/∫ΔFdt", xlabel = "")
+Plots.savefig("./src/Soil/examples/state_bc.png")
+=#
+
+
+
+
+#=
 N = length(sol.t)
 ϑ_l = parent(sol.u[N].soil.ϑ_l)[:]
 z = parent(coords.z)[:]
@@ -157,3 +211,4 @@ plot(ϑ_l, parent(z), label = "Clima")
 plot!(bonan_moisture, bonan_z, label = "Bonan's Matlab code")
 # dt = 1e-3 passes, dt = 1e-4 does not, but the solution doesnt have NaNs
 @show(sqrt.(mean((bonan_moisture .- ϑ_l) .^ 2.0)) < FT(1e-3))
+=#
