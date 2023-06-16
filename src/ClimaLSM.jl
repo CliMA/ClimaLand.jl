@@ -9,6 +9,7 @@ import ClimaComms
 ClimaCore.Spaces.PointSpace(x) =
     ClimaCore.Spaces.PointSpace(ClimaComms.SingletonCommsContext(), x)
 
+println("Hi")
 include("Parameters.jl")
 import .Parameters as LSMP
 
