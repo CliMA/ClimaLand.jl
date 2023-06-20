@@ -169,8 +169,13 @@ end
 
     t0 = FT(0)
     dY = similar(Y)
+
+    imp_tendency! = make_imp_tendency(soil)
     exp_tendency! = make_exp_tendency(soil)
+    imp_tendency!(dY, Y, p, t0)
     exp_tendency!(dY, Y, p, t0)
+    ClimaLSM.dss!(dY, p, t0)
+
     @test mean(parent(dY)) < 1e-8
     # should be hydrostatic equilibrium at every layer, at each step:
     @test mean(parent(p.soil.ψ .+ coords.z)[:] .+ 10.0) < 1e-10
@@ -253,10 +258,13 @@ end
             Soil.volumetric_internal_energy.(0.0, ρc_s, T, Ref(params))
     end
 
+    t0 = FT(0)
     init_soil_heat!(Y, coords.z, soil_heat_on.parameters)
     exp_tendency! = make_exp_tendency(soil_heat_on)
     dY = similar(Y)
-    exp_tendency!(dY, Y, p, 0.0)
+    exp_tendency!(dY, Y, p, t0)
+    ClimaLSM.dss!(dY, p, t0)
+
     F_face = 0.0
     κ = parent(p.soil.κ)
     F_below = -0.5 * (κ[end] + κ[end - 1]) * (-Δz + 0.5)
@@ -307,10 +315,13 @@ end
             volumetric_internal_energy.(0.0, ρc_s, 288.0, Ref(params))
     end
 
+    t0 = FT(0)
     init_soil_water!(Y, coords.z, soil_water_on.parameters)
     exp_tendency! = make_exp_tendency(soil_water_on)
     dY = similar(Y)
-    exp_tendency!(dY, Y, p, 0.0)
+    exp_tendency!(dY, Y, p, t0)
+    ClimaLSM.dss!(dY, p, t0)
+
     function dKdθ(θ::FT)::FT where {FT}
         S = (θ - θ_r) / (ν - θ_r)
         if S < 1
@@ -447,10 +458,13 @@ end
             Soil.volumetric_internal_energy.(0.0, ρc_s, T, Ref(params))
     end
 
+    t0 = FT(0)
     init_soil_off!(Y, coords.z, soil_both_off.parameters)
     exp_tendency! = make_exp_tendency(soil_both_off)
     dY = similar(Y)
-    exp_tendency!(dY, Y, p, 0.0)
+    exp_tendency!(dY, Y, p, t0)
+    ClimaLSM.dss!(dY, p, t0)
+
     @test maximum(abs.(parent(dY.soil.ρe_int))) == 0.0
     @test maximum(abs.(parent(dY.soil.ϑ_l))) == 0.0
     @test maximum(abs.(parent(dY.soil.θ_i))) == 0.0
@@ -493,10 +507,13 @@ end
             volumetric_internal_energy.(0.0, ρc_s, T, Ref(params))
     end
 
+    t0 = FT(0)
     init_soil_on!(Y, coords.z, soil_both_on.parameters)
     exp_tendency! = make_exp_tendency(soil_both_on)
     dY = similar(Y)
-    exp_tendency!(dY, Y, p, 0.0)
+    exp_tendency!(dY, Y, p, t0)
+    ClimaLSM.dss!(dY, p, t0)
+
     @test maximum(abs.(parent(dY.soil.θ_i))) == 0.0
 
     θ = parent(Y.soil.ϑ_l)# on the center
@@ -629,7 +646,6 @@ end
     end
 
     init_soil_heat!(Y, coords.z, soil_heat_on.parameters)
-    exp_tendency! = make_exp_tendency(soil_heat_on)
     dY = similar(Y)
     dY .= FT(0.0)
     source!(dY, sources[1], Y, p, soil_heat_on)

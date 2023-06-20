@@ -5,6 +5,7 @@ env:
   OPENBLAS_NUM_THREADS: 1
   BUILDKITE_COMMIT: "${BUILDKITE_COMMIT}"
   BUILDKITE_BRANCH: "${BUILDKITE_BRANCH}"
+  GKSwstype: 100
 
 agents:
   config: cpu
@@ -18,7 +19,7 @@ steps:
 
       - echo "--- Configure MPI"
       - julia -e 'using Pkg; Pkg.add("MPIPreferences"); using MPIPreferences; use_system_binary()'
-      
+
       - "julia --project -e 'using Pkg; Pkg.instantiate(;verbose=true)'"
       - "julia --project -e 'using Pkg; Pkg.precompile()'"
       - "julia --project -e 'using Pkg; Pkg.status()'"
@@ -31,7 +32,7 @@ steps:
       - "julia --project=experiments -e 'using Pkg; Pkg.instantiate(;verbose=true)'"
       - "julia --project=experiments -e 'using Pkg; Pkg.precompile()'"
       - "julia --project=experiments -e 'using Pkg; Pkg.status()'"
-      
+
   - wait
 
   - group: "Unit tests"
@@ -59,3 +60,7 @@ steps:
 
       - label: "Soilbiogeochem"
         command: "julia --color=yes --project=experiments experiments/Standalone/Biogeochemistry/experiment.jl"
+
+      - label: "Water conservation"
+        command: "julia --color=yes --project=experiments experiments/Standalone/Soil/water_conservation.jl"
+        artifact_paths: "experiments/Standalone/Soil/water_conservation*png"

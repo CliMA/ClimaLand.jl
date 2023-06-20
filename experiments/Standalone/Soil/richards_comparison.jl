@@ -16,9 +16,8 @@ import ClimaLSM.Parameters as LSMP
 
 include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
 
-FT = Float64
-
 @testset "Richards comparison to Bonan; clay" begin
+    FT = Float64
     ν = FT(0.495)
     K_sat = FT(0.0443 / 3600 / 100) # m/s
     S_s = FT(1e-3) #inverse meters
@@ -51,16 +50,35 @@ FT = Float64
     # specify ICs
     Y.soil.ϑ_l .= FT(0.24)
     exp_tendency! = make_exp_tendency(soil)
+    imp_tendency! = ClimaLSM.make_imp_tendency(soil)
+    update_jacobian! = ClimaLSM.make_update_jacobian(soil)
 
     t0 = FT(0)
     tf = FT(1e6)
-    dt = FT(0.2)
+    dt = FT(1e3)
 
-    stepper = ClimaLSM.RK4()
-    ode_algo = CTS.ExplicitAlgorithm(stepper)
+    stepper = CTS.ARS111()
+    norm_condition = CTS.MaximumError(FT(1e-8))
+    conv_checker = CTS.ConvergenceChecker(; norm_condition = norm_condition)
+    ode_algo = CTS.IMEXAlgorithm(
+        stepper,
+        CTS.NewtonsMethod(
+            max_iters = 50,
+            update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
+            convergence_checker = conv_checker,
+        ),
+    )
+
+    # set up jacobian info
+    jac_kwargs =
+        (; jac_prototype = RichardsTridiagonalW(Y), Wfact = update_jacobian!)
 
     prob = ODE.ODEProblem(
-        CTS.ClimaODEFunction(T_exp! = exp_tendency!),
+        CTS.ClimaODEFunction(
+            T_exp! = exp_tendency!,
+            T_imp! = ODE.ODEFunction(imp_tendency!; jac_kwargs...),
+            dss! = ClimaLSM.dss!,
+        ),
         Y,
         (t0, tf),
         p,
@@ -90,6 +108,7 @@ end
 
 
 @testset "Richards comparison to Bonan; sand" begin
+    FT = Float64
     ν = FT(0.287)
     K_sat = FT(34 / 3600 / 100) # m/s
     S_s = FT(1e-3) #inverse meters
@@ -123,16 +142,35 @@ end
     # specify ICs
     Y.soil.ϑ_l .= FT(0.1)
     exp_tendency! = make_exp_tendency(soil)
+    imp_tendency! = ClimaLSM.make_imp_tendency(soil)
+    update_jacobian! = ClimaLSM.make_update_jacobian(soil)
 
     t0 = FT(0)
     tf = FT(60 * 60 * 0.8)
-    dt = FT(0.25)
+    dt = FT(1)
+    # Note, we can use a bigger step and still conserve mass.
 
-    stepper = ClimaLSM.RK4()
-    ode_algo = CTS.ExplicitAlgorithm(stepper)
+    stepper = CTS.ARS111()
+    norm_condition = CTS.MaximumError(FT(1e-8))
+    conv_checker = CTS.ConvergenceChecker(; norm_condition = norm_condition)
+    ode_algo = CTS.IMEXAlgorithm(
+        stepper,
+        CTS.NewtonsMethod(
+            max_iters = 50,
+            update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
+            convergence_checker = conv_checker,
+        ),
+    )
+    # set up jacobian info
+    jac_kwargs =
+        (; jac_prototype = RichardsTridiagonalW(Y), Wfact = update_jacobian!)
 
     prob = ODE.ODEProblem(
-        CTS.ClimaODEFunction(T_exp! = exp_tendency!),
+        CTS.ClimaODEFunction(
+            T_exp! = exp_tendency!,
+            T_imp! = ODE.ODEFunction(imp_tendency!; jac_kwargs...),
+            dss! = ClimaLSM.dss!,
+        ),
         Y,
         (t0, tf),
         p,
@@ -158,5 +196,4 @@ end
     plot(ϑ_l, parent(z), label = "Clima")
     plot!(bonan_moisture, bonan_z, label = "Bonan's Matlab code")
     savefig("./experiments/Standalone/Soil/comparison_sand_bonan_matlab.png")
-
 end

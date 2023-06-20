@@ -151,6 +151,7 @@ land = SoilPlantHydrologyModel{FT}(;
 )
 Y, p, cds = initialize(land)
 exp_tendency! = make_exp_tendency(land)
+imp_tendency! = make_imp_tendency(land)
 
 #Initial conditions
 Y.soil.ϑ_l = FT(0.4)
@@ -173,20 +174,38 @@ end
 update_aux! = make_update_aux(land)
 update_aux!(p, Y, 0.0)
 
-# Set up timestepper
-ode_algo = CTS.ExplicitAlgorithm(timestepper)
+# Set up timestepper and jacobian for soil
+update_jacobian! = make_update_jacobian(land.soil)
+
+ode_algo = CTS.IMEXAlgorithm(
+    timestepper,
+    CTS.NewtonsMethod(
+        max_iters = max_iterations,
+        update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
+        convergence_checker = conv_checker,
+    ),
+)
+
+W = RichardsTridiagonalW(Y)
+jac_kwargs = (; jac_prototype = W, Wfact = update_jacobian!)
 
 # Simulation
-n = 120
-saveat = save_every_n(n, dt, t0, tf)
 sv = (;
     t = Array{FT}(undef, length(saveat)),
     saveval = Array{ClimaCore.Fields.FieldVector}(undef, length(saveat)),
 )
 cb = ClimaLSM.NonInterpSavingCallback(sv, saveat)
 
-prob =
-    ODE.ODEProblem(CTS.ClimaODEFunction(T_exp! = exp_tendency!), Y, (t0, tf), p);
+prob = ODE.ODEProblem(
+    CTS.ClimaODEFunction(
+        T_exp! = exp_tendency!,
+        T_imp! = ODE.ODEFunction(imp_tendency!; jac_kwargs...),
+        dss! = ClimaLSM.dss!,
+    ),
+    Y,
+    (t0, tf),
+    p,
+)
 sol = ODE.solve(
     prob,
     ode_algo;

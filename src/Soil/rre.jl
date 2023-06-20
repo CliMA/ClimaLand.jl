@@ -77,19 +77,17 @@ end
 
 
 """
-    make_compute_exp_tendency(model::RichardsModel)
+    make_compute_imp_tendency(model::RichardsModel)
 
-An extension of the function `make_compute_exp_tendency`, for the Richardson-
+An extension of the function `make_compute_imp_tendency`, for the Richardson-
 Richards equation.
 
 This function creates and returns a function which computes the entire
 right hand side of the PDE for `ϑ_l`, and updates `dY.soil.ϑ_l` in place
 with that value.
-
-This has been written so as to work with Differential Equations.jl.
 """
-function ClimaLSM.make_compute_exp_tendency(model::RichardsModel)
-    function compute_exp_tendency!(dY, Y, p, t)
+function ClimaLSM.make_compute_imp_tendency(model::RichardsModel)
+    function compute_imp_tendency!(dY, Y, p, t)
         z = ClimaCore.Fields.coordinate_field(model.domain.space).z
         Δz_top, Δz_bottom = get_Δz(z)
 
@@ -133,7 +131,25 @@ function ClimaLSM.make_compute_exp_tendency(model::RichardsModel)
         # GradC2F returns a Covariant3Vector, so no need to convert.
         @. dY.soil.ϑ_l =
             -(divf2c_water(-interpc2f(p.soil.K) * gradc2f_water(p.soil.ψ + z)))
-        # Horizontal contributions
+    end
+    return compute_imp_tendency!
+end
+
+"""
+    make_explicit_tendency(model::Soil.RichardsModel)
+
+An extension of the function `make_compute_imp_tendency`, for the Richardson-
+Richards equation.
+
+Construct the tendency computation function for the explicit terms of the RHS,
+which are horizontal components and source/sink terms.
+"""
+function ClimaLSM.make_compute_exp_tendency(model::Soil.RichardsModel)
+    function compute_exp_tendency!(dY, Y, p, t::FT) where {FT}
+        # set dY before updating it
+        dY.soil.ϑ_l .= FT(0)
+        z = ClimaCore.Fields.coordinate_field(model.domain.space).z
+
         horizontal_components!(dY, model.domain, model, p, z)
 
         # Source terms
@@ -306,10 +322,14 @@ Using this Jacobian with a backwards Euler timestepper is equivalent
 to using the modified Picard scheme of Celia et al. (1990).
 """
 function ClimaLSM.make_update_jacobian(model::RichardsModel)
+    update_aux! = make_update_aux(model)
     function update_jacobian!(W::RichardsTridiagonalW, Y, p, dtγ, t)
         FT = eltype(Y.soil.ϑ_l)
         (; dtγ_ref, ∂ϑₜ∂ϑ) = W
+        dtγ_ref[] = dtγ
         (; ν, hydrology_cm, S_s, θ_r) = model.parameters
+        update_aux!(p, Y, t)
+
         divf2c_op = Operators.DivergenceF2C(
             top = Operators.SetValue(Geometry.WVector.(FT(0))),
             bottom = Operators.SetValue(Geometry.WVector.(FT(0))),

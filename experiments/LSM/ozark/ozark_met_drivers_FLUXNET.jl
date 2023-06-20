@@ -114,7 +114,7 @@ function zenith_angle(
     insol_params = earth_param_set.insol_params,
 ) where {FT}
     # This should be time in UTC
-    dt = DateTime("2004-01-01-06", "yyyy-mm-dd-HH") + Dates.Second(t)
+    dt = DateTime("2004-01-01-06", "yyyy-mm-dd-HH") + Dates.Second(round(t))
     FT(
         instantaneous_zenith_angle(
             dt,

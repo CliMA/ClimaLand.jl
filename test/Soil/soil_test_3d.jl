@@ -63,14 +63,17 @@ FT = Float64
         end
         Ysoil.soil.ϑ_l .= hydrostatic_profile.(x, z, Ref(params))
     end
-    exp_tendency! = make_exp_tendency(soil)
+
     Y, p, coords = initialize(soil)
     init_soil!(Y, coords.x, coords.z, soil.parameters)
     dY = similar(Y)
 
-    exp_tendency!(dY, Y, p, 0.0)
-    # perform dss on the tendency because that's what we want to check later
-    ClimaLSM.dss!(dY, p, 0.0)
+    t0 = FT(0.0)
+    imp_tendency! = make_imp_tendency(soil)
+    exp_tendency! = make_exp_tendency(soil)
+    imp_tendency!(dY, Y, p, t0)
+    exp_tendency!(dY, Y, p, t0)
+    ClimaLSM.dss!(dY, p, t0)
 
     function dθdx(x, z)
         z_∇ = zmin / 2.0 + (zmax - zmin) / 10.0 * sin(π * 2 * x / xmax)
@@ -310,9 +313,15 @@ end
             Ref(parameters),
         )
 
+
+    t0 = FT(0.0)
+    imp_tendency! = make_imp_tendency(soil)
     exp_tendency! = make_exp_tendency(soil)
     dY = similar(Y)
-    exp_tendency!(dY, Y, p, 0.0)
+    imp_tendency!(dY, Y, p, t0)
+    exp_tendency!(dY, Y, p, t0)
+    ClimaLSM.dss!(dY, p, t0)
+
     ## dY should be zero. Look at dY/Y.
     @test maximum(abs.(parent(dY.soil.ϑ_l))) / ν < 5e-12
     @test maximum(abs.(parent(dY.soil.θ_i))) / ν < 5e-12
@@ -379,10 +388,14 @@ end
         Ysoil.soil.ϑ_l .= hydrostatic_profile.(z, Ref(params))
     end
     init_soil!(Y, coords.z, soil.parameters)
+
+    t0 = FT(0)
+    imp_tendency! = make_imp_tendency(soil)
     exp_tendency! = make_exp_tendency(soil)
     dY = similar(Y)
-    exp_tendency!(dY, Y, p, 0.0)
-    ## dY should be zero except at the boundary, where it should be ±30.
+    imp_tendency!(dY, Y, p, t0)
+
+    ## vertical change should be zero except at the boundary, where it should be ±30.
     @test (mean(unique(parent(ClimaCore.level(dY.soil.ϑ_l, 1)))) - 30.0) / ν <
           1e-11
     @test (mean(unique(parent(ClimaCore.level(dY.soil.ϑ_l, 30)))) + 30.0) / ν <
@@ -390,6 +403,15 @@ end
     @test mean([
         maximum(abs.(unique(parent(ClimaCore.level(dY.soil.ϑ_l, k))))) for
         k in 2:29
+    ]) / ν < 1e-11
+
+    exp_tendency!(dY, Y, p, t0)
+    ClimaLSM.dss!(dY, p, t0)
+
+    # horizontal change should be 0 everywhere
+    @test mean([
+        maximum(abs.(unique(parent(ClimaCore.level(dY.soil.ϑ_l, k))))) for
+        k in 1:30
     ]) / ν < 1e-11
 
 end
