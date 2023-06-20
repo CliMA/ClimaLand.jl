@@ -1,3 +1,4 @@
+include("aqua.jl")
 include("./Snow/parameterizations.jl")
 include("./implicit_timestepping/richards_model.jl")
 include("./Vegetation/test_bigleaf_parameterizations.jl")
