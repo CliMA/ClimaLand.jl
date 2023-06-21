@@ -105,17 +105,14 @@ function soil_boundary_fluxes(
     conditions = surface_fluxes(bc.atmos, model, Y, p, t)
     R_n = net_radiation(bc.radiation, model, Y, p, t)
     # We are ignoring sublimation for now
-    (; ν, hydrology_cm, θ_r, d_ds) = model.parameters
-    (; S_c) = hydrology_cm
-    _D_vapor = FT(LSMP.D_vapor(model.parameters.earth_param_set))
-    S_l_sfc = ClimaLSM.Domains.top_center_to_surface(
-        effective_saturation.(ν, Y.soil.ϑ_l, θ_r),
+    r_soil = ClimaLSM.Domains.top_center_to_surface(
+        soil_resistance.(
+            p.soil.θ_l,
+            Y.soil.ϑ_l,
+            Y.soil.θ_i,
+            Ref(model.parameters),
+        ),
     )
-    τ_a = ClimaLSM.Domains.top_center_to_surface(
-        @. max(eps(FT), (ν - p.soil.θ_l - Y.soil.θ_i)^(FT(5 / 2)) / ν)
-    )
-    dsl = dry_soil_layer_thickness.(S_l_sfc, S_c, d_ds)
-    r_soil = @. dsl / (_D_vapor * τ_a) # [s\m]
     r_ae = conditions.r_ae
     net_water_flux = @. bc.atmos.liquid_precip(t) +
        conditions.vapor_flux * r_ae / (r_soil + r_ae)
@@ -124,18 +121,6 @@ function soil_boundary_fluxes(
     return net_water_flux, net_energy_flux
 
 end
-
-"""
-    dry_soil_layer_thickness(S_l_sfc::FT, S_c::FT, d_ds::FT) where {FT}
-
-Returns the maximum dry soil layer thickness that can develop under evaporation;
-this is used when computing the soil resistance to evaporation according to
-Swenson et al (2012).
-"""
-function dry_soil_layer_thickness(S_l_sfc::FT, S_c::FT, d_ds::FT) where {FT}
-    return S_l_sfc < S_c ? d_ds * (S_c - S_l_sfc) / S_c : FT(0)
-end
-
 
 """
     FreeDrainage <: AbstractSoilBC

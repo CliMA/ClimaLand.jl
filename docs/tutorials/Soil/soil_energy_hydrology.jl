@@ -218,6 +218,7 @@ coords |> propertynames
 # conditions.
 function init_soil!(Y, z, params)
     ν = params.ν
+    θ_r = params.θ_r
     FT = eltype(Y.soil.ϑ_l)
     zmax = FT(0)
     zmin = FT(-1)

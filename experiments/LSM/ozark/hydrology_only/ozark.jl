@@ -27,9 +27,19 @@ include(
         "experiments/LSM/ozark/ozark_met_drivers_FLUXNET.jl",
     ),
 )
-include(joinpath(climalsm_dir, "experiments/LSM/ozark/ozark_parameters.jl"))
+include(
+    joinpath(
+        climalsm_dir,
+        "experiments/LSM/ozark/hydrology_only/ozark_parameters.jl",
+    ),
+)
 include(joinpath(climalsm_dir, "experiments/LSM/ozark/ozark_domain.jl"))
-include(joinpath(climalsm_dir, "experiments/LSM/ozark/ozark_simulation.jl"))
+include(
+    joinpath(
+        climalsm_dir,
+        "experiments/LSM/ozark/hydrology_only/ozark_simulation.jl",
+    ),
+)
 
 # Now we set up the model. For the soil model, we pick
 # a model type and model args:
@@ -217,7 +227,7 @@ sol = ODE.solve(
 
 # Plotting
 daily = sol.t ./ 3600 ./ 24
-savedir = joinpath(climalsm_dir, "experiments/LSM/ozark")
+savedir = joinpath(climalsm_dir, "experiments/LSM/ozark/hydrology_only/")
 model_GPP = [
     parent(sv.saveval[k].canopy.photosynthesis.GPP)[1] for
     k in 1:length(sv.saveval)
