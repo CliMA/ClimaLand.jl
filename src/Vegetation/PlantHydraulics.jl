@@ -202,47 +202,6 @@ where the cross section can be represented by an area index.
 auxiliary_vars(model::PlantHydraulicsModel) = (:β, :ψ, :fa, :fa_roots)
 
 """
-    Base.zero(x::Type{NTuple{N, FT}}) where {N, FT}
-
-A `zero` method for NTuples of floats.
-
-Used when initializing the state vector, when it consists
-of an NTuple at each coordinate point.
-"""
-function Base.zero(x::Type{NTuple{N, FT}}) where {N, FT}
-    ntuple(i -> FT(0), N)
-end
-
-"""
-
-    Copied over from EDMF. This lets us index into ClimaCore
-Fields of NTuples.
-"""
-Base.@propagate_inbounds Base.getindex(
-    field::ClimaCore.Fields.Field,
-    i::Integer,
-) = Base.getproperty(field, i)
-
-"""
-    Copied over from EDMF. This is a helper struct which
-lets us set indices of ClimaCore
-Fields of Ntuples by indexing.
-"""
-struct Cent{I <: Integer}
-    i::I
-end
-
-"""
-    Copied over from EDMF. This lets us set components of ClimaCore
-Fields of NTuples by indexing.
-"""
-Base.@propagate_inbounds Base.setindex!(
-    field::ClimaCore.Fields.Field,
-    v,
-    i::Cent,
-) = Base.setindex!(ClimaCore.Fields.field_values(field), v, i.i)
-
-"""
     ClimaLSM.prognostic_types(model::PlantHydraulicsModel{FT}) where {FT}
 
 Defines the prognostic types for the PlantHydraulicsModel.

@@ -28,7 +28,7 @@ end
     # Aqua.test_deps_compat(ClimaLSM) # failing
     Aqua.test_project_extras(ClimaLSM)
     Aqua.test_project_toml_formatting(ClimaLSM)
-    # Aqua.test_piracy(ClimaLSM) # failing
+    Aqua.test_piracy(ClimaLSM)
 end
 
 nothing
