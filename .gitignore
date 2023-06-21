@@ -1,6 +1,6 @@
 *Artifacts.toml
 *.DS_Store
-
+*.txt
 *#
 *~
 *.png

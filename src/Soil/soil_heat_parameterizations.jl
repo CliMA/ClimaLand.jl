@@ -1,4 +1,3 @@
-using UnPack
 export volumetric_internal_energy,
     temperature_from_ρe_int,
     volumetric_internal_energy_liq,
@@ -12,7 +11,9 @@ export volumetric_internal_energy,
     kersten_number,
     κ_dry,
     thermal_time,
-    phase_change_source
+    phase_change_source,
+    soil_tortuosity,
+    soil_resistance
 
 """
     thermal_time(ρc::FT, Δz::FT, κ::FT) where {FT}
@@ -49,7 +50,7 @@ function phase_change_source(
     τ::FT,
     params::EnergyHydrologyParameters{FT},
 ) where {FT}
-    @unpack ν, θ_r, hydrology_cm, earth_param_set = params
+    (; ν, θ_r, hydrology_cm, earth_param_set) = params
     _ρ_i = FT(LSMP.ρ_cloud_ice(earth_param_set))
     _ρ_l = FT(LSMP.ρ_cloud_liq(earth_param_set))
     _LH_f0 = FT(LSMP.LH_f0(earth_param_set))
@@ -311,4 +312,46 @@ function κ_dry(ρp::FT, ν::FT, κ_solid::FT, κ_air::FT; a = FT(0.053)) where 
     numerator = (a * κ_solid - κ_air) * ρb_dry + κ_air * ρp
     denom = ρp - (FT(1.0) - a) * ρb_dry
     return numerator / denom
+end
+
+"""
+    soil_tortuosity(θ_l::FT, θ_i::FT, ν::FT) where {FT}
+
+Computes the tortuosity of water vapor in a porous medium,
+as a function of porosity `ν` and the volumetric liquid water
+and ice contents, `θ_l` and `θ_i`.
+
+See Equation (1) of : Shokri, N., P. Lehmann, and
+D. Or (2008), Effects of hydrophobic layers on evaporation from
+porous media, Geophys. Res. Lett., 35, L19407, doi:10.1029/
+2008GL035230.
+"""
+function soil_tortuosity(θ_l::FT, θ_i::FT, ν::FT) where {FT}
+    safe_θ_a = max(ν - θ_l - θ_i, eps(FT))
+    return safe_θ_a^(FT(2.5)) / ν
+end
+
+"""
+    soil_resistance(θ_l_sfc, ϑ_l_sfc, θ_i_sfc, parameters::EnergyHydrologyParameters::FT)
+
+Computes the resistance of the top of the soil column to
+water vapor diffusion, as a function of the surface 
+volumetric liquid water fraction `θ_l`, the augmented
+liquid water fraction `ϑ_l`,  the volumetric ice water
+fraction `θ_i`, and other soil parameters.
+"""
+function soil_resistance(
+    θ_l::FT,
+    ϑ_l::FT,
+    θ_i::FT,
+    parameters::EnergyHydrologyParameters{FT},
+) where {FT}
+    (; ν, hydrology_cm, θ_r, d_ds, earth_param_set) = parameters
+    (; S_c) = hydrology_cm
+    _D_vapor = FT(LSMP.D_vapor(earth_param_set))
+    S_l = effective_saturation(ν, ϑ_l, θ_r)
+    τ_a = soil_tortuosity(θ_l, θ_i, ν)
+    dsl = dry_soil_layer_thickness(S_l, S_c, d_ds)
+    r_soil = dsl / (_D_vapor * τ_a) # [s\m]
+    return r_soil
 end

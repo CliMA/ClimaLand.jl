@@ -124,7 +124,26 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     @test viscosity_factor.(T, parameters.γ, parameters.γT_ref) ≈
           exp.(parameters.γ .* (T .- parameters.γT_ref))
 
+    x = [0.0, 0.2, 0.4]
+    @test soil_tortuosity.(x, 0.0, 0.3) ≈
+          [0.3^1.5, 0.1^2.5 / 0.3, eps(Float64)^2.5 / 0.3]
+    x = [0.35, 0.25, 0.0, 0.1]
+    y = [0.0, 0.0, 0.1, 0.1 * 0.15 / 0.25]
+    @test dry_soil_layer_thickness.(x, 0.25, 0.1) ≈ y
+    @test soil_resistance(θ_r, θ_r - eps(FT), FT(0.0), parameters) ≈
+          dry_soil_layer_thickness(
+        effective_saturation(ν, θ_r - eps(FT), θ_r),
+        hcm.S_c,
+        parameters.d_ds,
+    ) / FT(LSMP.D_vapor(param_set)) / soil_tortuosity(θ_r + eps(FT), 0.0, ν)
+    @test soil_resistance(ν, ν + eps(FT), FT(0.0), parameters) ≈
+          dry_soil_layer_thickness(
+        effective_saturation(ν, ν + eps(FT), θ_r),
+        hcm.S_c,
+        parameters.d_ds,
+    ) / FT(LSMP.D_vapor(param_set)) / soil_tortuosity(ν, 0.0, ν)
 end
+
 @testset "Brooks and Corey closure" begin
     FT = Float32
     hcm = BrooksCorey(; ψb = FT(-0.09), c = FT(0.228))
