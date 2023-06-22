@@ -73,7 +73,10 @@ function Domains.coordinates(model::AbstractLandModel)
     return coords
 end
 
-function initialize_prognostic(model::AbstractLandModel{FT}, coords) where {FT}
+function initialize_prognostic(
+    model::AbstractLandModel{FT},
+    coords::ClimaCore.Fields.FieldVector,
+) where {FT}
     components = land_components(model)
     Y_state_list = map(components) do (component)
         submodel = getproperty(model, component)
@@ -85,7 +88,10 @@ function initialize_prognostic(model::AbstractLandModel{FT}, coords) where {FT}
     return Y
 end
 
-function initialize_auxiliary(model::AbstractLandModel{FT}, coords) where {FT}
+function initialize_auxiliary(
+    model::AbstractLandModel{FT},
+    coords::ClimaCore.Fields.FieldVector,
+) where {FT}
     components = land_components(model)
     p_state_list = map(components) do (component)
         submodel = getproperty(model, component)

@@ -6,7 +6,7 @@ using Aqua
     # This tests that we don't accidentally run into
     # https://github.com/JuliaLang/julia/issues/29393
     ua = Aqua.detect_unbound_args_recursively(ClimaLSM)
-    @test length(ua) ≤ 1
+    @test length(ua) == 0
 
     # See: https://github.com/SciML/OrdinaryDiffEq.jl/issues/1750
     # Test that we're not introducing method ambiguities across deps
@@ -19,13 +19,13 @@ using Aqua
     # for method_ambiguity in ambs
     #     @show method_ambiguity
     # end
-    @test length(ambs) ≤ 2
+    @test length(ambs) == 0
 end
 
 @testset "Aqua tests (additional)" begin
-    # Aqua.test_undefined_exports(ClimaLSM) # failing
-    # Aqua.test_stale_deps(ClimaLSM) # failing
-    # Aqua.test_deps_compat(ClimaLSM) # failing
+    Aqua.test_undefined_exports(ClimaLSM)
+    Aqua.test_stale_deps(ClimaLSM)
+    Aqua.test_deps_compat(ClimaLSM)
     Aqua.test_project_extras(ClimaLSM)
     Aqua.test_project_toml_formatting(ClimaLSM)
     Aqua.test_piracy(ClimaLSM)
