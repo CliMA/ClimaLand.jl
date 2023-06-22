@@ -55,17 +55,16 @@ ClimaLSM.auxiliary_vars(::AbstractCanopyComponent) = ()
 """
     initialize_prognostic(
         component::AbstractCanopyComponent,
-        state::ClimaCore.Fields.Field,
+        state,
     )
 
 Creates and returns a ClimaCore.Fields.FieldVector
 with the prognostic variables of the canopy component
  `component`, stored using the name of the component.
+
+The input `state` is usually a ClimaCore Field object.
 """
-function initialize_prognostic(
-    component::AbstractCanopyComponent,
-    state::ClimaCore.Fields.Field,
-)
+function initialize_prognostic(component::AbstractCanopyComponent, state)
     ClimaLSM.initialize_vars(
         prognostic_vars(component),
         prognostic_types(component),
@@ -77,17 +76,19 @@ end
 """
     initialize_auxiliary(
         component::AbstractCanopyComponent,
-        state::ClimaCore.Fields.Field,
+        state,
     )
 
 Creates and returns a ClimaCore.Fields.FieldVector
 with the auxiliary variables of the canopy component
  `component`, stored using the name of the component.
+
+The input `state` is usually a ClimaCore Field object.
 """
 function initialize_auxiliary(
-    component::AbstractCanopyComponent,
-    state::ClimaCore.Fields.Field,
-)
+    component::AbstractCanopyComponent{FT},
+    state,
+) where {FT}
     ClimaLSM.initialize_vars(
         auxiliary_vars(component),
         auxiliary_types(component),

@@ -65,7 +65,7 @@ prognostic_vars(m::AbstractModel) = ()
 
 Returns the prognostic variable types for the model in the form of a tuple.
 
-Types provided must have `ClimaCore.RecursiveApply.rzero(T::DataType)` 
+Types provided must have `ClimaCore.RecursiveApply.rzero(T::DataType)`
  defined. Common examples
  include
 - Float64, Float32 for scalar variables (a scalar value at each
@@ -89,7 +89,7 @@ auxiliary_vars(m::AbstractModel) = ()
 
 Returns the auxiliary variable types for the model in the form of a tuple.
 
-Types provided must have `ClimaCore.RecursiveApply.rzero(T::DataType)` 
+Types provided must have `ClimaCore.RecursiveApply.rzero(T::DataType)`
 defined. Common examples
  include
 - Float64, Float32 for scalar variables (a scalar value at each
@@ -221,13 +221,13 @@ and that all prognostic variables have the same dimension and type.
 If a model has no prognostic variables,
 the returned FieldVector contains only an empty array.
 
+The input `state` is an array-like object, usually a
+ClimaCore Field or a Vector{FT}.
+
 Adjustments to this - for example because different prognostic variables
 have different dimensions - require defining a new method.
 """
-function initialize_prognostic(
-    model::AbstractModel{FT},
-    state::Union{ClimaCore.Fields.Field, Vector{FT}},
-) where {FT}
+function initialize_prognostic(model::AbstractModel{FT}, state) where {FT}
     initialize_vars(
         prognostic_vars(model),
         prognostic_types(model),
@@ -237,7 +237,7 @@ function initialize_prognostic(
 end
 
 """
-    initialize_auxiliary(model::AbstractModel,state::Union{ClimaCore.Fields.Field, Vector{FT}})
+    initialize_auxiliary(model::AbstractModel, state::Union{ClimaCore.Fields.Field, Vector{FT}})
 
 Returns a FieldVector of auxiliary variables for `model` with the required
 structure, with values equal to `similar(state)`. This assumes that all
@@ -247,13 +247,13 @@ and that all auxiliary variables have the same dimension and type.
 If a model has no auxiliary variables,
 the returned FieldVector contains only an empty array.
 
+The input `state` is an array-like object, usually a
+ClimaCore Field or a Vector{FT}.
+
 Adjustments to this - for example because different auxiliary variables
 have different dimensions - require defining a new method.
 """
-function initialize_auxiliary(
-    model::AbstractModel{FT},
-    state::Union{ClimaCore.Fields.Field, Vector{FT}},
-) where {FT}
+function initialize_auxiliary(model::AbstractModel{FT}, state) where {FT}
     initialize_vars(
         auxiliary_vars(model),
         auxiliary_types(model),

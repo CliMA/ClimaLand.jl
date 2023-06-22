@@ -27,7 +27,6 @@ export PlantHydraulicsModel,
     PrescribedTranspiration,
     DiagnosticTranspiration,
     AbstractRootExtraction,
-    Layers,
     AbstractConductivityModel,
     AbstractRetentionModel,
     LinearRetentionCurve,
@@ -229,7 +228,7 @@ ClimaLSM.auxiliary_types(model::PlantHydraulicsModel{FT}) where {FT} = (
         ψ2,
         K1,
         K2,
-    ) where {FT} 
+    ) where {FT}
 
 Computes the water flux given the absolute potential (pressure/(ρg))
  at the center of the two compartments z1 and z2,
@@ -276,7 +275,7 @@ $(DocStringExtensions.FIELDS)
 struct Weibull{FT} <: AbstractConductivityModel{FT}
     "Maximum Water conductivity in the above-ground plant compartments (m/s) at saturation"
     K_sat::FT
-    "The absolute water potential in xylem (or xylem water potential) at which ∼63% 
+    "The absolute water potential in xylem (or xylem water potential) at which ∼63%
     of maximum xylem conductance is lost (Liu, 2020)."
     ψ63::FT
     "Weibull parameter c, which controls shape the shape of the conductance curve (Sperry, 2016)."
@@ -338,7 +337,7 @@ function water_retention_curve(
 ) where {FT}
     (; a) = retention_params
     if S_l <= FT(1)
-        ψ = 1 / a * (S_l - 1) # ψ(S_l=1)=0. 
+        ψ = 1 / a * (S_l - 1) # ψ(S_l=1)=0.
     else
         ϑ_l = augmented_liquid_fraction(ν, S_l)
         ψ = (ϑ_l - ν) / S_s
@@ -353,7 +352,7 @@ end
         ν::FT,
         S_s::FT) where {FT}
 
-Returns the effective saturation given the potential at a point, according 
+Returns the effective saturation given the potential at a point, according
 to the linear retention curve model.
 """
 function inverse_water_retention_curve(
@@ -364,7 +363,7 @@ function inverse_water_retention_curve(
 ) where {FT}
     (; a) = retention_params
     if ψ <= FT(0)
-        S_l = ψ * a + 1 # ψ(S_l=1)=0. 
+        S_l = ψ * a + 1 # ψ(S_l=1)=0.
     else
         ϑ_l = ψ * S_s + ν
         S_l = effective_saturation(ν, ϑ_l)
@@ -378,11 +377,11 @@ end
         S_l::FT) where {FT}
 
 Computes the augmented liquid fraction from porosity and
-effective saturation. 
+effective saturation.
 
 Augmented liquid fraction allows for
 oversaturation: an expansion of the volume of space
-available for storage in a plant compartment. 
+available for storage in a plant compartment.
 """
 function augmented_liquid_fraction(ν::FT, S_l::FT) where {FT}
     ϑ_l = S_l * ν # ϑ_l can be > ν
@@ -469,11 +468,11 @@ end
     )::FT where {FT}
 
 A method which computes the flux between the soil and the stem, via the roots,
-and multiplied by the RAI, 
+and multiplied by the RAI,
 in the case of a standalone plant hydraulics model with prescribed soil pressure (in m)
 at the root tips.
 
-The returned flux is per unit ground area. This assumes that the stem compartment 
+The returned flux is per unit ground area. This assumes that the stem compartment
 is the first element of `Y.canopy.hydraulics.ϑ_l`.
 """
 function root_flux_per_ground_area!(
