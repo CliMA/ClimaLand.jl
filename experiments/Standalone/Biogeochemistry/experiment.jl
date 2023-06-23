@@ -144,7 +144,7 @@ Soil_bio_exp_tendency! = make_exp_tendency(model)
 tf = FT(10000)
 dt = FT(10)
 
-timestepper = ClimaLSM.RK4()
+timestepper = CTS.RK4()
 ode_algo = CTS.ExplicitAlgorithm(timestepper)
 
 saveat = collect(t0:FT(10 * dt):tf)

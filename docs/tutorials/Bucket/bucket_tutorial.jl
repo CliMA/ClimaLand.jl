@@ -295,7 +295,7 @@ set_initial_aux_state!(p, Y, t0);
 exp_tendency! = make_exp_tendency(model);
 
 # Now we choose our timestepping algorithm.
-timestepper = ClimaLSM.RK4()
+timestepper = CTS.RK4()
 ode_algo = CTS.ExplicitAlgorithm(timestepper)
 
 # Then we can set up the simulation and solve it:

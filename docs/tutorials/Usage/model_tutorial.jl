@@ -264,7 +264,7 @@ tf = 600.0;
 dt = 0.25;
 
 # Select the timestepping algorithm we want to use from CTS.jl.
-timestepper = ClimaLSM.RK4()
+timestepper = CTS.RK4()
 ode_algo = CTS.ExplicitAlgorithm(timestepper)
 
 # ODE.jl problem statement using CTS.jl internals:
