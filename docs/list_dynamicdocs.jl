@@ -1,11 +1,10 @@
 dynamicdocs = [
   "Vegetation" => [
-    "Leaf photosynthesis" => "dynamicdocs/pages/vegetation/leaf_photosynthesis.md",
     "Radiative transfer" => [
       "Beer model" => "dynamicdocs/pages/vegetation/beer_model.md"
                             ]
     "Photosynthesis" => [
-      "Farquhar model" => "dynamicdocs/pages/vegetation/farquhar_model.md"
+      "Farquhar model" => "dynamicdocs/pages/vegetation/farquhar_model.md",
       "Optimality model" => "dynamicdocs/pages/vegetation/optimality_model.md"
                         ]
     "Stomatal conductance" => [
