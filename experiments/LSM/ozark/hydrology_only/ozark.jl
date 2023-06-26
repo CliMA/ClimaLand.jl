@@ -406,7 +406,7 @@ lwp_data = readdlm(lwp_path, ',', skipstart = 1)
 # We are using 2005 data in this test, so restrict to this year
 YEAR = lwp_data[:, 1]
 DOY = lwp_data[YEAR .== 2005, 2]
-# Our t0 = Dec 31, midnight, 2004. Predawn = guess of 0600 hours
+# Our t0 = Dec 31, midnight, 2005. Predawn = guess of 0600 hours
 seconds_since_t0 = FT.(DOY) * 24 .* 3600 .+ (6 * 3600)
 lwp_measured = lwp_data[YEAR .== 2005, 7] .* 1e6 # MPa to Pa
 
@@ -444,7 +444,9 @@ lwp = [
 swp = [
     parent(sv.saveval[k].canopy.hydraulics.ψ)[1] * 9800 for k in 1:length(sol.t)
 ]
-
+ψ_soil = [
+    parent(sv.saveval[k].soil.ψ)[1] * 9800 for k in 1:length(sol.t)
+]
 plt2 = Plots.plot(
     daily,
     lwp,
@@ -456,6 +458,7 @@ plt2 = Plots.plot(
     left_margin = 10Plots.mm,
 )
 Plots.plot!(plt2, daily, swp, label = "Model, Stem")
+Plots.plot!(plt2, daily, ψ_soil, label = "Model, Soil 10cm")
 
 Plots.plot!(
     plt2,
