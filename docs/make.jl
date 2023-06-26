@@ -66,6 +66,7 @@ pages = Any[
     "APIs" => apis,
     "Contribution guide" => "Contributing.md",
     "Tutorials" => tutorials,
+    "Repository structure" => "folderstructure.md",
 ]
 
 
