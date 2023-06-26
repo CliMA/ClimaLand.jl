@@ -4,7 +4,7 @@ using DocStringExtensions
 
 using ClimaCore
 import ClimaCore: Fields, Spaces
-# Temporary fix 
+# Temporary fix
 import ClimaComms
 ClimaCore.Spaces.PointSpace(x) =
     ClimaCore.Spaces.PointSpace(ClimaComms.SingletonCommsContext(), x)
@@ -23,7 +23,6 @@ include("SharedUtilities/boundary_conditions.jl")
 include("SharedUtilities/sources.jl")
 include("SharedUtilities/implicit_tendencies.jl")
 include("SharedUtilities/implicit_functions.jl")
-include("SharedUtilities/explicit_tableaus.jl")
 include("Bucket/Bucket.jl")
 export make_interactions_update_aux, domain
 """

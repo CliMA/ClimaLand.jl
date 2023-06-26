@@ -146,7 +146,7 @@ dt = FT(1)
 init_soil!(Y, cds.z, soil.parameters)
 soil_exp_tendency! = make_exp_tendency(soil)
 
-timestepper = ClimaLSM.RK4()
+timestepper = CTS.RK4()
 ode_algo = CTS.ExplicitAlgorithm(timestepper)
 
 prob = ODE.ODEProblem(
