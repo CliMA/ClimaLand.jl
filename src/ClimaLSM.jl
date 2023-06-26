@@ -265,15 +265,15 @@ initialize.
 interaction_domains(m::AbstractLandModel) = ()
 
 # Methods extended by the LSM models we support
-include("SurfaceWater/Pond.jl")
+include("Standalone/SurfaceWater/Pond.jl")
 using .Pond
 import .Pond: surface_runoff
-include("Soil/Soil.jl")
+include("Standalone/Soil/Soil.jl")
 using .Soil
 import .Soil.Biogeochemistry: soil_temperature, soil_moisture
-include("Snow/Snow.jl")
+include("Standalone/Snow/Snow.jl")
 using .Snow
-include("Vegetation/Canopy.jl")
+include("Standalone/Vegetation/Canopy.jl")
 using .Canopy
 using .Canopy.PlantHydraulics
 import .Canopy.PlantHydraulics: root_flux_per_ground_area!
