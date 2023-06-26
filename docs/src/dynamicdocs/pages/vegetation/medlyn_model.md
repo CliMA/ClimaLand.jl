@@ -29,7 +29,7 @@ g_s &= \frac{g_{s,m}}{\rho_m}
 ```
 where $D_{rel} =1.6$ (unitless) is the relative diffusivity of water vapor with respect to CO$_2$, $\rho_m$ is the molar density of water, and $m$ is the Medlyn factor,
 ```math
-\begin{equation}\label{eq:medlyn}
+\begin{equation}
     m = \left( 1 + \frac{g_1}{\sqrt{VPD}} \right), 
 \end{equation}
 ```
