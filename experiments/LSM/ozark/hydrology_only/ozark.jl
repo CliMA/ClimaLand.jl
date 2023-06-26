@@ -106,8 +106,8 @@ photosynthesis_args = (;
 )
 # Set up plant hydraulics
 area_index = (root = RAI, stem = SAI, leaf = LAI)
-
-function root_distribution(z::T; rooting_depth = rooting_depth) where {T}
+function root_distribution(z::T; rooting_depth = rooting_depth) where {T} # Agrees with Natan
+    # Could try without prefactor.
     return T(1.0 / rooting_depth) * exp(z / T(rooting_depth)) # 1/m
 end
 
@@ -320,7 +320,7 @@ plt2 = Plots.plot(
     xlim = [minimum(daily), maximum(daily)],
     xlabel = "days",
     ylabel = "Stomatal conductance",
-    ylim = [0, 0.3],
+#    ylim = [0, 0.3],
     size = (500, 700),
 )
 Plots.plot(plt2, plt1, layout = (2, 1))
@@ -336,7 +336,7 @@ Plots.plot!(
     xtickfontsize = 5,
     ytickfontsize = 5,
     xlim = [minimum(daily), maximum(daily)],
-    ylim = [0.05, 0.5],
+#    ylim = [0.05, 0.5],
     xlabel = "Days",
     ylabel = "SWC [m/m]",
     margins = 10Plots.mm,
