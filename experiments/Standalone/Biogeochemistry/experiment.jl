@@ -1,5 +1,6 @@
 using DiffEqCallbacks
-using OrdinaryDiffEq: ODEProblem, solve, Euler
+import OrdinaryDiffEq as ODE
+import ClimaTimeSteppers as CTS
 using ClimaCore
 using ClimaLSM
 using ClimaLSM.Domains: LSMSingleColumnDomain
@@ -19,7 +20,7 @@ K_sat = FT(0.0443 / 3600 / 100) # m/s
 S_s = FT(1e-3) #inverse meters
 vg_n = FT(2.0)
 vg_α = FT(2.6) # inverse meters
-vg_m = FT(1) - FT(1) / vg_n
+hcm = vanGenuchten(; α = vg_α, n = vg_n)
 θ_r = FT(0.1)
 ν_ss_om = FT(0.0)
 ν_ss_quartz = FT(1.0)
@@ -46,8 +47,7 @@ soil_ps = Soil.EnergyHydrologyParameters{FT}(;
     ν_ss_om = ν_ss_om,
     ν_ss_quartz = ν_ss_quartz,
     ν_ss_gravel = ν_ss_gravel,
-    vg_α = vg_α,
-    vg_n = vg_n,
+    hydrology_cm = hcm,
     K_sat = K_sat,
     S_s = S_s,
     θ_r = θ_r,
@@ -140,13 +140,27 @@ update_aux! = make_update_aux(model)
 update_aux!(p, Y, t0)
 
 Soil_bio_exp_tendency! = make_exp_tendency(model)
+
 tf = FT(10000)
 dt = FT(10)
-saved_values = SavedValues(FT, ClimaCore.Fields.FieldVector)
 
-cb = SavingCallback((u, t, integrator) -> copy(integrator.p), saved_values)
-prob = ODEProblem(Soil_bio_exp_tendency!, Y, (t0, tf), p)
-sol = solve(prob, Euler(); dt = dt, callback = cb)
+timestepper = ClimaLSM.RK4()
+ode_algo = CTS.ExplicitAlgorithm(timestepper)
+
+saveat = collect(t0:FT(10 * dt):tf)
+saved_values = (;
+    t = Array{FT}(undef, length(saveat)),
+    saveval = Array{ClimaCore.Fields.FieldVector}(undef, length(saveat)),
+)
+cb = ClimaLSM.NonInterpSavingCallback(saved_values, saveat)
+
+prob = ODE.ODEProblem(
+    CTS.ClimaODEFunction(T_exp! = Soil_bio_exp_tendency!),
+    Y,
+    (t0, tf),
+    p,
+)
+sol = ODE.solve(prob, ode_algo; dt = dt, callback = cb)
 
 # Animation
 # You will need to ]add GLMakie to your base Julia Project.toml

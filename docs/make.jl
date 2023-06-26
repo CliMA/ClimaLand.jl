@@ -68,6 +68,7 @@ pages = Any[
     "Contribution guide" => "Contributing.md",
     "Tutorials" => tutorials,
     "DynamicDocs" => dynamicdocs,
+    "Repository structure" => "folderstructure.md",
 ]
 
 

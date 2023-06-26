@@ -1,20 +1,20 @@
 using Plots
-using OrdinaryDiffEq: ODEProblem, solve, RK4, Euler, step!, init
-using ClimaCore
-import CLIMAParameters as CP
+import OrdinaryDiffEq as ODE
+import ClimaTimeSteppers as CTS
 using Thermodynamics
 using Insolation
+using ClimaCore
+import CLIMAParameters as CP
+using RootSolvers
+using SurfaceFluxes
+using StaticArrays
 
 using ClimaLSM
 using ClimaLSM.Domains: Column
 using ClimaLSM.Soil
-
 import ClimaLSM
 import ClimaLSM.Parameters as LSMP
 import SurfaceFluxes.Parameters as SFP
-using RootSolvers
-using SurfaceFluxes
-using StaticArrays
 
 include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
 FT = Float64
@@ -26,10 +26,13 @@ K_sat = FT(225.1 / 3600 / 24 / 1000)
 # n and alpha estimated by matching vG curve.
 vg_n = FT(10.0)
 vg_α = FT(6.0)
+hcm = vanGenuchten(; α = vg_α, n = vg_n);
+#ψb = FT(-0.14)
+#c = FT(5.5)
+#hcm = BrooksCorey(; ψb = ψb, c = c);
 ν = FT(0.43)
 θ_r = FT(0.045)
 S_s = FT(1e-3)
-vg_m = FT(1) - FT(1) / vg_n
 ν_ss_om = FT(0.0)
 ν_ss_quartz = FT(1.0)
 ν_ss_gravel = FT(0.0)
@@ -98,8 +101,7 @@ params = ClimaLSM.Soil.EnergyHydrologyParameters{FT}(;
     ν_ss_om = ν_ss_om,
     ν_ss_quartz = ν_ss_quartz,
     ν_ss_gravel = ν_ss_gravel,
-    vg_α = vg_α,
-    vg_n = vg_n,
+    hydrology_cm = hcm,
     K_sat = K_sat,
     S_s = S_s,
     θ_r = θ_r,
@@ -139,18 +141,27 @@ end
 t = FT(0)
 t0 = FT(0)
 tf = FT(24 * 3600 * 15)
-dt = FT(100)
+dt = FT(1)
 
 init_soil!(Y, cds.z, soil.parameters)
 soil_exp_tendency! = make_exp_tendency(soil)
 
-prob = ODEProblem(soil_exp_tendency!, Y, (t0, tf), p)
-sol = solve(prob, RK4(); dt = dt, saveat = 3600);
+timestepper = ClimaLSM.RK4()
+ode_algo = CTS.ExplicitAlgorithm(timestepper)
 
-(; ν, vg_m, vg_n, θ_r, d_ds) = soil.parameters
+prob = ODE.ODEProblem(
+    CTS.ClimaODEFunction(T_exp! = soil_exp_tendency!, dss! = ClimaLSM.dss!),
+    Y,
+    (t0, tf),
+    p,
+)
+sol = ODE.solve(prob, ode_algo; dt = dt, saveat = 3600)
+
+(; ν, θ_r, d_ds) = soil.parameters
 _D_vapor = FT(LSMP.D_vapor(soil.parameters.earth_param_set))
 update_aux! = make_update_aux(soil)
-S_c::FT = (1 + ((vg_n - 1) / vg_n)^(1 - 2 * vg_n))^(-vg_m)
+
+S_c = hcm.S_c
 evap = []
 evap_0 = []
 r_ae = []
@@ -293,7 +304,7 @@ Plots.plot!(
 )
 top = [parent(sol.u[k].soil.ϑ_l)[end] for k in 1:length(sol.t)]
 S = Soil.effective_saturation.(ν, top, θ_r)
-ψ = Soil.matric_potential.(vg_α, vg_n, vg_m, S)
+ψ = Soil.matric_potential.(hcm, S)
 plt7 = Plots.plot()
 Plots.plot!(
     plt7,

@@ -4,15 +4,14 @@
 A struct for storing parameters of the `RichardModel`.
 $(DocStringExtensions.FIELDS)
 """
-struct RichardsParameters{FT <: AbstractFloat}
+struct RichardsParameters{
+    FT <: AbstractFloat,
+    C <: AbstractSoilHydrologyClosure,
+}
     "The porosity of the soil (m^3/m^3)"
     ν::FT
-    "The van Genuchten parameter α (1/m)"
-    vg_α::FT
-    "The van Genuchten parameter n"
-    vg_n::FT
-    "The van Genuchten parameter m"
-    vg_m::FT
+    "The hydrology closure model: vanGenuchten or BrooksCorey"
+    hydrology_cm::C
     "The saturated hydraulic conductivity (m/s)"
     K_sat::FT
     "The specific storativity (1/m)"
@@ -22,15 +21,19 @@ struct RichardsParameters{FT <: AbstractFloat}
 end
 
 function RichardsParameters(;
+    hydrology_cm::C,
     ν::FT,
-    vg_α::FT,
-    vg_n::FT,
-    vg_m::FT,
     K_sat::FT,
     S_s::FT,
     θ_r::FT,
-) where {FT}
-    return RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r)
+) where {FT <: AbstractFloat, C <: AbstractSoilHydrologyClosure}
+    return RichardsParameters{FT, typeof(hydrology_cm)}(
+        ν,
+        hydrology_cm,
+        K_sat,
+        S_s,
+        θ_r,
+    )
 end
 
 """
@@ -74,20 +77,17 @@ end
 
 
 """
-    make_compute_exp_tendency(model::RichardsModel)
+    make_compute_imp_tendency(model::RichardsModel)
 
-An extension of the function `make_compute_exp_tendency`, for the Richardson-
+An extension of the function `make_compute_imp_tendency`, for the Richardson-
 Richards equation.
 
 This function creates and returns a function which computes the entire
 right hand side of the PDE for `ϑ_l`, and updates `dY.soil.ϑ_l` in place
 with that value.
-
-This has been written so as to work with Differential Equations.jl.
 """
-function ClimaLSM.make_compute_exp_tendency(model::RichardsModel)
-    function compute_exp_tendency!(dY, Y, p, t)
-        (; ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r) = model.parameters
+function ClimaLSM.make_compute_imp_tendency(model::RichardsModel)
+    function compute_imp_tendency!(dY, Y, p, t)
         z = ClimaCore.Fields.coordinate_field(model.domain.space).z
         Δz_top, Δz_bottom = get_Δz(z)
 
@@ -131,16 +131,31 @@ function ClimaLSM.make_compute_exp_tendency(model::RichardsModel)
         # GradC2F returns a Covariant3Vector, so no need to convert.
         @. dY.soil.ϑ_l =
             -(divf2c_water(-interpc2f(p.soil.K) * gradc2f_water(p.soil.ψ + z)))
-        # Horizontal contributions
+    end
+    return compute_imp_tendency!
+end
+
+"""
+    make_explicit_tendency(model::Soil.RichardsModel)
+
+An extension of the function `make_compute_imp_tendency`, for the Richardson-
+Richards equation.
+
+Construct the tendency computation function for the explicit terms of the RHS,
+which are horizontal components and source/sink terms.
+"""
+function ClimaLSM.make_compute_exp_tendency(model::Soil.RichardsModel)
+    function compute_exp_tendency!(dY, Y, p, t::FT) where {FT}
+        # set dY before updating it
+        dY.soil.ϑ_l .= FT(0)
+        z = ClimaCore.Fields.coordinate_field(model.domain.space).z
+
         horizontal_components!(dY, model.domain, model, p, z)
 
         # Source terms
         for src in model.sources
             ClimaLSM.source!(dY, src, Y, p, model.parameters)
         end
-
-        # This has to come last
-        dss!(dY, model.domain)
     end
     return compute_exp_tendency!
 end
@@ -204,13 +219,13 @@ This has been written so as to work with Differential Equations.jl.
 """
 function ClimaLSM.make_update_aux(model::RichardsModel)
     function update_aux!(p, Y, t)
-        (; ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r) = model.parameters
+        (; ν, hydrology_cm, K_sat, S_s, θ_r) = model.parameters
         @. p.soil.K = hydraulic_conductivity(
+            hydrology_cm,
             K_sat,
-            vg_m,
             effective_saturation(ν, Y.soil.ϑ_l, θ_r),
         )
-        @. p.soil.ψ = pressure_head(vg_α, vg_n, vg_m, θ_r, Y.soil.ϑ_l, ν, S_s)
+        @. p.soil.ψ = pressure_head(hydrology_cm, θ_r, Y.soil.ϑ_l, ν, S_s)
     end
     return update_aux!
 end
@@ -307,11 +322,13 @@ Using this Jacobian with a backwards Euler timestepper is equivalent
 to using the modified Picard scheme of Celia et al. (1990).
 """
 function ClimaLSM.make_update_jacobian(model::RichardsModel)
+    update_aux! = make_update_aux(model)
     function update_jacobian!(W::RichardsTridiagonalW, Y, p, dtγ, t)
         FT = eltype(Y.soil.ϑ_l)
         (; dtγ_ref, ∂ϑₜ∂ϑ) = W
         dtγ_ref[] = dtγ
-        (; ν, vg_α, vg_n, vg_m, S_s, θ_r) = model.parameters
+        (; ν, hydrology_cm, S_s, θ_r) = model.parameters
+        update_aux!(p, Y, t)
 
         divf2c_op = Operators.DivergenceF2C(
             top = Operators.SetValue(Geometry.WVector.(FT(0))),
@@ -335,12 +352,10 @@ function ClimaLSM.make_update_jacobian(model::RichardsModel)
                 interpc2f_op(p.soil.K) * ClimaLSM.to_scalar_coefs(
                     gradc2f_stencil(
                         ClimaLSM.Soil.dψdϑ(
+                            hydrology_cm,
                             Y.soil.ϑ_l,
                             ν,
                             θ_r,
-                            vg_α,
-                            vg_n,
-                            vg_m,
                             S_s,
                         ),
                     ),

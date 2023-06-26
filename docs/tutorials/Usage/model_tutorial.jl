@@ -118,13 +118,12 @@
 # and working with OrdinaryDiffEq.jl directly!
 
 # Let's first import some needed packages.
-using OrdinaryDiffEq: ODEProblem, solve, RK4
+import OrdinaryDiffEq as ODE
+import ClimaTimeSteppers as CTS
 using SciMLBase
 using Plots
 using ClimaCore
-if !("." in LOAD_PATH)
-    push!(LOAD_PATH, ".")
-end
+
 using ClimaLSM
 using ClimaLSM.Domains
 
@@ -136,6 +135,9 @@ import ClimaLSM:
     prognostic_vars,
     prognostic_types
 import ClimaLSM.Domains: coordinates
+
+# Define the FloatType we'll use throughout the simulation.
+FT = Float64
 
 # There is only one free parameter in the model, `λ`, so our model structure
 # is very simple. Remember, the model should contain everything you need to create the
@@ -251,22 +253,26 @@ Y.hh.m[2] = 0.0;
 # other models, it might involve an `update_aux!` step as well.
 exp_tendency! = make_exp_tendency(hh);
 
-# From here on out, we are just using `OrdinaryDiffEq.jl` functions
+# From here on out, we are using `OrdinaryDiffEq.jl` and
+# `ClimaTimeSteppers.jl` functions
 # to integrate the system forward in time.
 
 # Initial and end times, timestep:
 
 t0 = 0.0;
 tf = 600.0;
-dt = 1.0;
+dt = 0.25;
 
-# ODE.jl problem statement:
-prob = ODEProblem(exp_tendency!, Y, (t0, tf), p);
+# Select the timestepping algorithm we want to use from CTS.jl.
+timestepper = ClimaLSM.RK4()
+ode_algo = CTS.ExplicitAlgorithm(timestepper)
 
-# Solve command - we are using a fourth order Runge-Kutta timestepping
-# scheme. ODE.jl uses adaptive timestepping, but we can still pass in
-# a suggested timestep `dt`.
-sol = solve(prob, RK4(); dt = dt, reltol = 1e-6, abstol = 1e-6);
+# ODE.jl problem statement using CTS.jl internals:
+prob =
+    ODE.ODEProblem(CTS.ClimaODEFunction(T_exp! = exp_tendency!), Y, (t0, tf), p);
+
+# Solve command
+sol = ODE.solve(prob, ode_algo; dt = dt, saveat = dt);
 
 # Get the solution back, and make a plot.
 x = [sol.u[k].hh.x[1] for k in 1:1:length(sol.t)]
@@ -278,107 +284,3 @@ savefig("orbits.png");
 
 # And, yes, we could be using a symplectic integrator, but that would require us to use a slightly different
 # interface - and that isn't needed for our Clima LSM application.
-
-# # And now for some bonus material
-
-# The motion of the system takes place in four dimensions, but it's hard for us to visualize. One
-# nice way of doing so is via a Poincare section, or surface of section. The idea is that for
-# quasiperiodic motion, which Hamiltonian dynamics result in, the orbit will repeatedly meet certain
-# criteria, and we can look at the orbit variables *when that criterion is met*.
-
-# For example, we can define our surface of section to be `` x = 0, \dot{x} > 0 ``, since `x` is
-# varying periodically and repeatedly passes through zero in the positive direction. We also will
-# only look at orbits with a particular energy value, `` E_0 ``.
-
-# Every time the section criterion is met, we plot `` (y, m_y) ``.
-# Points on this surface provide a complete description
-# of the orbit, because we can, with knowledge of `` x = 0, m_x >0, `` and `` E_0 ``, back
-# out the state of the system, which uniquely defines the orbit we are looking at.
-
-# The functions below creates these initial conditions, given a value for E, λ, and y
-# (setting `` m_y = 0 `` arbitrarily):
-
-function set_ic_via_y!(Y, E, λ, y; my = 0.0, x = 0.0)
-    twiceV = λ * (x^2 + y^2 + 2 * x^2 * y - 2 / 3 * y^3)
-    mx = sqrt(2.0 * E - my^2 - twiceV)
-    Y.hh.x[1] = x
-    Y.hh.x[2] = y
-    Y.hh.m[1] = mx
-    Y.hh.m[2] = my
-end;
-
-# This function creates similar initial conditions, but via `` m_y `` :
-function set_ic_via_my!(Y, E, λ, my; y = 0.0, x = 0.0)
-    twiceV = λ * (x^2 + y^2 + 2 * x^2 * y - 2 / 3 * y^3)
-    mx = sqrt(2.0 * E - my^2 - twiceV)
-    Y.hh.x[1] = x
-    Y.hh.x[2] = y
-    Y.hh.m[1] = mx
-    Y.hh.m[2] = my
-end;
-
-# This function takes initial conditions, runs an integration, and
-# saves the values of the state on the surface of section, and then plots
-# those points (thanks to the SciML team for creating a
-# [tutorial](https://tutorials.sciml.ai/html/models/01-classical_physics.html)
-# showing how to extract the state of the system when the section criterion is met.
-
-function map(Y, pl)
-    t0 = 0.0
-    tf = 4800.0
-    dt = 1.0
-    condition(u, t, integrator) = u.hh.x[1]
-    affect!(integrator) = nothing
-    cb = ContinuousCallback(
-        condition,
-        affect!,
-        nothing,
-        save_positions = (true, false),
-    )
-    prob = ODEProblem(exp_tendency!, Y, (t0, tf), p)
-    sol = solve(
-        prob,
-        RK4();
-        dt = dt,
-        reltol = 1e-6,
-        abstol = 1e-6,
-        callback = cb,
-        save_everystep = false,
-        save_start = false,
-        save_end = false,
-    )
-    y_section = [sol.u[k].hh.x[2] for k in 1:1:length(sol.t)]
-    my_section = [sol.u[k].hh.m[2] for k in 1:1:length(sol.t)]
-
-    scatter!(pl, y_section, my_section, label = "", markersize = 3, msw = 0)
-end;
-
-
-# Ok! Let's try it out:
-E = 0.125;
-yvals = -0.35:0.05:0.35;
-pl = scatter();
-for yval in yvals
-    set_ic_via_y!(Y, E, 1.0, yval)
-    map(Y, pl)
-end;
-myvals = [-0.42, -0.27, 0.05, 0.27, 0.42];
-for myval in myvals
-    set_ic_via_my!(Y, E, 1.0, myval)
-    map(Y, pl)
-end;
-
-plot(pl, xlabel = "y", ylabel = "m_y");
-savefig("surface.png");
-# ![](surface.png)
-
-
-# On a plot like this, a single orbit (indicated via point color) can be identified
-# roughly as regular, or periodic, if it the points lie on a curve. Orbits which are chaotic
-# fill out an area (orbits with a lot of numerical error also do...).
-# The coexistence of these orbits arbitrarily close to each other,
-# in the same system, is one fascinating aspect of deterministic chaos. Another fun aspect
-# is seeing periodic orbits of different resonances. The set of cocentric curves are
-# near a first-order resonance,
-# meaning that every period for `x` (to reach zero), we see about one period in `y,my` space.
-# The teal circles around them indicate a near resonant orbit of order 4.

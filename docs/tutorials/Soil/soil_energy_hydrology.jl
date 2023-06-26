@@ -78,14 +78,15 @@
 
 # # Import necessary modules
 # External (non - CliMA) modules
-using OrdinaryDiffEq: ODEProblem, solve, RK4
+import OrdinaryDiffEq as ODE
 using DiffEqCallbacks
 using Statistics
 using Plots
 
-# ClimaLSM and CLIMAParameters modules
+# CliMA packages and ClimaLSM modules
 using ClimaCore
 import CLIMAParameters as CP
+import ClimaTimeSteppers as CTS
 using ClimaLSM
 using ClimaLSM.Domains: Column
 using ClimaLSM.Soil
@@ -117,6 +118,7 @@ Ksat = FT(4.42 / 3600 / 100) # m/s
 S_s = FT(1e-3) #inverse meters
 vg_n = FT(1.89)
 vg_α = FT(7.5) # inverse meters
+hcm = vanGenuchten(; α = vg_α, n = vg_n);
 θ_r = FT(0.0);
 # Other constants needed:
 κ_quartz = FT(7.7) # W/m/K
@@ -146,8 +148,7 @@ params = Soil.EnergyHydrologyParameters{FT}(;
     ν_ss_om = ν_ss_om,
     ν_ss_quartz = ν_ss_quartz,
     ν_ss_gravel = ν_ss_gravel,
-    vg_α = vg_α,
-    vg_n = vg_n,
+    hydrology_cm = hcm,
     K_sat = Ksat,
     S_s = S_s,
     θ_r = θ_r,
@@ -217,6 +218,7 @@ coords |> propertynames
 # conditions.
 function init_soil!(Y, z, params)
     ν = params.ν
+    θ_r = params.θ_r
     FT = eltype(Y.soil.ϑ_l)
     zmax = FT(0)
     zmin = FT(-1)
@@ -249,20 +251,31 @@ update_aux! = make_update_aux(soil)
 update_aux!(p, Y, FT(0.0));
 
 t0 = FT(0)
-timeend = FT(60 * 60 * 72)
+tf = FT(60 * 60 * 72)
 dt = FT(30.0);
 
 # We use [OrdinaryDiffEq.jl](https://github.com/SciML/OrdinaryDiffEq.jl) for carrying out the time integration. By default, it
 # only returns Y and t at each time we request output (`saveat`, below). We use
 # a callback in order to also get the auxiliary vector `p` back:
-saved_values = SavedValues(FT, ClimaCore.Fields.FieldVector)
-cb = SavingCallback(
-    (u, t, integrator) -> copy(integrator.p),
-    saved_values;
-    saveat = 0:43200:timeend,
-)
-prob = ODEProblem(exp_tendency!, Y, (t0, timeend), p);
-sol = solve(prob, RK4(); dt = dt, saveat = 0:43200:timeend, callback = cb);
+saveat = collect(t0:FT(1000 * dt):tf)
+saved_values = (;
+    t = Array{FT}(undef, length(saveat)),
+    saveval = Array{ClimaCore.Fields.FieldVector}(undef, length(saveat)),
+);
+cb = ClimaLSM.NonInterpSavingCallback(saved_values, saveat);
+
+# Choose a timestepper and set up the ODE problem:
+timestepper = ClimaLSM.RK4();
+ode_algo = CTS.ExplicitAlgorithm(timestepper)
+prob = ODE.ODEProblem(
+    CTS.ClimaODEFunction(T_exp! = exp_tendency!, dss! = ClimaLSM.dss!),
+    Y,
+    (t0, tf),
+    p,
+);
+
+# Now we can solve the problem.
+sol = ODE.solve(prob, ode_algo; dt = dt, saveat = saveat, callback = cb);
 
 # Extract output
 z = parent(coords.z)

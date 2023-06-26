@@ -53,16 +53,14 @@
 
 # - Load external packages
 
-using OrdinaryDiffEq: ODEProblem, solve, RK4
+import OrdinaryDiffEq as ODE
 using Plots
-# - Load CLIMAParameters and ClimaLSM modules
+# - Load CliMA packages and ClimaLSM modules
 
 using ClimaCore
 import CLIMAParameters as CP
+import ClimaTimeSteppers as CTS
 
-if !("." in LOAD_PATH)
-    push!(LOAD_PATH, ".")
-end
 using ClimaLSM
 using ClimaLSM.Domains: Column
 using ClimaLSM.Soil
@@ -84,17 +82,23 @@ earth_param_set = create_lsm_parameters(FT);
 # we see that we need to supply parameters, a domain, boundary conditions, and sources.
 
 
-# First, we define the parameters: porosity `\nu`, Ksat, the van Genuchten parameters
+# First, we define the parameters: porosity `\nu`, K_sat, the van Genuchten parameters
 # `vg_α`, `vg_m`, `vg_n`, `θ_r`, and the specific storage value for the soil. Note
 # that all values must be given in mks units.
-Ksat = FT(0.0443 / (3600 * 100))
+K_sat = FT(0.0443 / (3600 * 100))
 S_s = FT(1e-3)
 ν = FT(0.495)
 vg_α = FT(2.6)
 vg_n = FT(2)
-vg_m = 1 - 1 / vg_n
+hcm = vanGenuchten(; α = vg_α, n = vg_n);
 θ_r = FT(0)
-params = Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, Ksat, S_s, θ_r);
+params = Soil.RichardsParameters(;
+    ν = ν,
+    hydrology_cm = hcm,
+    K_sat = K_sat,
+    S_s = S_s,
+    θ_r = θ_r,
+);
 
 # Next, we define the domain. Here, we are considering a 1D domain, discretized using
 # finite difference, with coordinates `z`:
@@ -126,7 +130,13 @@ soil = Soil.RichardsModel{FT}(;
     boundary_conditions = boundary_conditions,
     sources = sources,
 );
+
+# Here we create the explicit and implicit tendencies, which update prognostic
+# variable components that are stepped explicitly and implicitly, respectively.
+# We also create the function which is used to update our Jacobian.
 exp_tendency! = make_exp_tendency(soil);
+imp_tendency! = ClimaLSM.make_imp_tendency(soil);
+update_jacobian! = ClimaLSM.make_update_jacobian(soil);
 
 # # Set up the simulation
 # We can now initialize the prognostic and auxiliary variable vectors, and take
@@ -144,13 +154,44 @@ coords |> propertynames
 Y.soil.ϑ_l .= FT(0.494);
 
 # Next, we turn to timestepping. We choose the initial and final times, as well as a timestep.
+# As usual, your timestep depends on the problem you are solving, the accuracy
+# of the solution required, and the timestepping algorithm you are using.
 t0 = FT(0)
-timeend = FT(60 * 60 * 24 * 36)
-dt = FT(100);
+tf = FT(60 * 60 * 24 * 36)
+dt = FT(1e3);
 
-# And then we can solve the system of equations, using [OrdinaryDiffEq.jl](https://github.com/SciML/OrdinaryDiffEq.jl):
-prob = ODEProblem(exp_tendency!, Y, (t0, timeend), p)
-sol = solve(prob, RK4(); dt = dt, adaptive = false);
+# Now, we choose the timestepping algorithm we want to use.
+# We'll use the ARS111 algorithm with 1 Newton iteration per timestep;
+# you can also specify a convergence criterion and a maximum number
+# of Newton iterations.
+stepper = CTS.ARS111();
+ode_algo = CTS.IMEXAlgorithm(
+    stepper,
+    CTS.NewtonsMethod(
+        max_iters = 1,
+        update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
+    ),
+);
+
+# Here we set up the information used for our Jacobian.
+jac_kwargs =
+    (; jac_prototype = RichardsTridiagonalW(Y), Wfact = update_jacobian!);
+
+# And then we can solve the system of equations, using
+# [OrdinaryDiffEq.jl](https://github.com/SciML/OrdinaryDiffEq.jl) and
+# [ClimaTimeSteppers.jl](https://github.com/CliMA/ClimaTimeSteppers.jl).
+prob = ODE.ODEProblem(
+    CTS.ClimaODEFunction(
+        T_exp! = exp_tendency!,
+        T_imp! = ODE.ODEFunction(imp_tendency!; jac_kwargs...),
+        dss! = ClimaLSM.dss!,
+    ),
+    Y,
+    (t0, tf),
+    p,
+);
+sol = ODE.solve(prob, ode_algo; dt = dt, adaptive = false);
+
 
 # # Create some plots
 # We'll plot the moisture content vs depth in the soil, as well as

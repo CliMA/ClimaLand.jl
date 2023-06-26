@@ -16,7 +16,8 @@ FT = Float64
     S_s = FT(1)#e-3); #inverse meters
     vg_n = FT(2.0)
     vg_α = FT(2.6) # inverse meters
-    vg_m = FT(1) - FT(1) / vg_n
+    vg_m = 1 - 1 / vg_n
+    hcm = vanGenuchten(; α = vg_α, n = vg_n)
     θ_r = FT(0)
     zmax = FT(0)
     zmin = FT(-1)
@@ -33,7 +34,7 @@ FT = Float64
     sources = ()
     boundary_fluxes =
         (; top = (water = top_flux_bc,), bottom = (water = bot_flux_bc,))
-    params = Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r)
+    params = Soil.RichardsParameters{FT, typeof(hcm)}(ν, hcm, K_sat, S_s, θ_r)
 
     soil = Soil.RichardsModel{FT}(;
         parameters = params,
@@ -49,10 +50,11 @@ FT = Float64
             z::FT,
             params::RichardsParameters{FT},
         ) where {FT}
-            (; ν, vg_α, vg_n, vg_m, θ_r, S_s) = params
+            (; ν, hydrology_cm, θ_r, S_s) = params
+            (; α, m, n) = hydrology_cm
             z_∇ = FT(zmin / 2.0 + (zmax - zmin) / 10.0 * sin(π * 2 * x / xmax))
             if z > z_∇
-                S = FT((FT(1) + (vg_α * (z - z_∇))^vg_n)^(-vg_m))
+                S = FT((FT(1) + (α * (z - z_∇))^n)^(-m))
                 ϑ_l = S * (ν - θ_r) + θ_r
             else
                 ϑ_l = -S_s * (z - z_∇) + ν
@@ -61,11 +63,17 @@ FT = Float64
         end
         Ysoil.soil.ϑ_l .= hydrostatic_profile.(x, z, Ref(params))
     end
-    exp_tendency! = make_exp_tendency(soil)
+
     Y, p, coords = initialize(soil)
     init_soil!(Y, coords.x, coords.z, soil.parameters)
     dY = similar(Y)
-    exp_tendency!(dY, Y, p, 0.0)
+
+    t0 = FT(0.0)
+    imp_tendency! = make_imp_tendency(soil)
+    exp_tendency! = make_exp_tendency(soil)
+    imp_tendency!(dY, Y, p, t0)
+    exp_tendency!(dY, Y, p, t0)
+    ClimaLSM.dss!(dY, p, t0)
 
     function dθdx(x, z)
         z_∇ = zmin / 2.0 + (zmax - zmin) / 10.0 * sin(π * 2 * x / xmax)
@@ -209,7 +217,8 @@ end
     S_s = FT(1e-3) #inverse meters
     vg_n = FT(2.68)
     vg_α = FT(14.5) # inverse meters
-    vg_m = FT(1) - FT(1) / vg_n
+    vg_m = 1 - 1 / vg_n
+    hcm = vanGenuchten(; α = vg_α, n = vg_n)
     θ_r = FT(0.045)
     ν_ss_om = FT(0.0)
     ν_ss_quartz = FT(1.0)
@@ -235,8 +244,7 @@ end
         ν_ss_om = ν_ss_om,
         ν_ss_quartz = ν_ss_quartz,
         ν_ss_gravel = ν_ss_gravel,
-        vg_α = vg_α,
-        vg_n = vg_n,
+        hydrology_cm = hcm,
         K_sat = K_sat,
         S_s = S_s,
         θ_r = θ_r,
@@ -276,10 +284,11 @@ end
             z::FT,
             params::EnergyHydrologyParameters,
         ) where {FT}
-            (; ν, vg_α, vg_n, vg_m, θ_r, S_s) = params
+            (; ν, hydrology_cm, θ_r, S_s) = params
+            (; α, m, n) = hydrology_cm
             z_∇ = FT(zmin / 2.0)
             if z > z_∇
-                S = FT((FT(1) + (vg_α * (z - z_∇))^vg_n)^(-vg_m))
+                S = FT((FT(1) + (α * (z - z_∇))^n)^(-m))
                 ϑ_l = S * (ν - θ_r) + θ_r
             else
                 ϑ_l = -S_s * (z - z_∇) + ν
@@ -305,10 +314,14 @@ end
         )
 
 
-
+    t0 = FT(0.0)
+    imp_tendency! = make_imp_tendency(soil)
     exp_tendency! = make_exp_tendency(soil)
     dY = similar(Y)
-    exp_tendency!(dY, Y, p, 0.0)
+    imp_tendency!(dY, Y, p, t0)
+    exp_tendency!(dY, Y, p, t0)
+    ClimaLSM.dss!(dY, p, t0)
+
     ## dY should be zero. Look at dY/Y.
     @test maximum(abs.(parent(dY.soil.ϑ_l))) / ν < 5e-12
     @test maximum(abs.(parent(dY.soil.θ_i))) / ν < 5e-12
@@ -322,14 +335,13 @@ end
     S_s = FT(1e-3) #inverse meters
     vg_n = FT(2.68)
     vg_α = FT(14.5) # inverse meters
-    vg_m = FT(1) - FT(1) / vg_n
+    vg_m = 1 - 1 / vg_n
+    hcm = vanGenuchten(; α = vg_α, n = vg_n)
     θ_r = FT(0.045)
 
     parameters = Soil.RichardsParameters(
         ν = ν,
-        vg_α = vg_α,
-        vg_n = vg_n,
-        vg_m = vg_m,
+        hydrology_cm = hcm,
         K_sat = K_sat,
         S_s = S_s,
         θ_r = θ_r,
@@ -362,10 +374,11 @@ end
             z::FT,
             params::RichardsParameters,
         ) where {FT}
-            (; ν, vg_α, vg_n, vg_m, θ_r, S_s) = params
+            (; ν, hydrology_cm, θ_r, S_s) = params
+            (; α, m, n) = hydrology_cm
             z_∇ = FT(0.5)
             if z > z_∇
-                S = FT((FT(1) + (vg_α * (z - z_∇))^vg_n)^(-vg_m))
+                S = FT((FT(1) + (α * (z - z_∇))^n)^(-m))
                 ϑ_l = S * (ν - θ_r) + θ_r
             else
                 ϑ_l = -S_s * (z - z_∇) + ν
@@ -375,10 +388,14 @@ end
         Ysoil.soil.ϑ_l .= hydrostatic_profile.(z, Ref(params))
     end
     init_soil!(Y, coords.z, soil.parameters)
+
+    t0 = FT(0)
+    imp_tendency! = make_imp_tendency(soil)
     exp_tendency! = make_exp_tendency(soil)
     dY = similar(Y)
-    exp_tendency!(dY, Y, p, 0.0)
-    ## dY should be zero except at the boundary, where it should be ±30.
+    imp_tendency!(dY, Y, p, t0)
+
+    ## vertical change should be zero except at the boundary, where it should be ±30.
     @test (mean(unique(parent(ClimaCore.level(dY.soil.ϑ_l, 1)))) - 30.0) / ν <
           1e-11
     @test (mean(unique(parent(ClimaCore.level(dY.soil.ϑ_l, 30)))) + 30.0) / ν <
@@ -386,6 +403,15 @@ end
     @test mean([
         maximum(abs.(unique(parent(ClimaCore.level(dY.soil.ϑ_l, k))))) for
         k in 2:29
+    ]) / ν < 1e-11
+
+    exp_tendency!(dY, Y, p, t0)
+    ClimaLSM.dss!(dY, p, t0)
+
+    # horizontal change should be 0 everywhere
+    @test mean([
+        maximum(abs.(unique(parent(ClimaCore.level(dY.soil.ϑ_l, k))))) for
+        k in 1:30
     ]) / ν < 1e-11
 
 end

@@ -37,6 +37,9 @@ ClimaLSM.Soil.thermal_conductivity
 ClimaLSM.Soil.phase_change_source
 ClimaLSM.Soil.thermal_time
 ClimaLSM.Soil.dψdϑ
+ClimaLSM.soil.soil_resistance
+ClimaLSM.Soil.dry_soil_layer_thickness
+ClimaLSM.Soil.soil_tortuosity
 ```
 
 ## Soil Parameters
@@ -57,6 +60,9 @@ ClimaLSM.Soil.FreeDrainage
 ClimaLSM.Soil.AtmosDrivenFluxBC
 ClimaLSM.Soil.AbstractSoilSource
 ClimaLSM.Soil.PhaseChange
+ClimaLSM.Soil.AbstractSoilHydrologyClosure
+ClimaLSM.Soil.vanGenuchten
+ClimaLSM.Soil.BrooksCorey
 ```
 
 ## Soil Jacobian Structures

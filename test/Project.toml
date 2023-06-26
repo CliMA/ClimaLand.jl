@@ -1,4 +1,5 @@
 [deps]
+Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 CLIMAParameters = "6eacf6c3-8458-43b9-ae03-caf5306d3d53"
 ClimaComms = "3a4d1b5c-c61d-41fd-a00a-5873ba7a1b0d"
 ClimaCore = "d414da3d-4745-48bb-8d80-42e94e092884"
@@ -15,7 +16,7 @@ Thermodynamics = "b60c26fb-14c3-4610-9d3e-2d17fe7ff00c"
 
 [compat]
 CLIMAParameters = "0.7"
-ClimaComms = "0.3, 0.4"
+ClimaComms = "0.3, 0.4, 0.5"
 ClimaCore = "0.10"
 Insolation = "0.6"
 NLsolve = "4.5"

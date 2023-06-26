@@ -19,7 +19,7 @@ FT = Float64
     S_s = FT(1e-3) #inverse meters
     vg_n = FT(2.0)
     vg_α = FT(2.6) # inverse meters
-    vg_m = FT(1) - FT(1) / vg_n
+    hcm = vanGenuchten(; α = vg_α, n = vg_n)
     θ_r = FT(0)
     zmax = FT(0)
     zmin = FT(-10)
@@ -36,13 +36,13 @@ FT = Float64
     ϑ_c = ν / 3
 
     K_c = hydraulic_conductivity(
+        hcm,
         K_sat,
-        vg_m,
         Soil.effective_saturation(ν, ϑ_c, θ_r),
     )
 
-    ψ_bc = pressure_head(vg_α, vg_n, vg_m, θ_r, ϑ_bc, ν, S_s)
-    ψ_c = pressure_head(vg_α, vg_n, vg_m, θ_r, ϑ_c, ν, S_s)
+    ψ_bc = pressure_head(hcm, θ_r, ϑ_bc, ν, S_s)
+    ψ_c = pressure_head(hcm, θ_r, ϑ_c, ν, S_s)
 
     flux_int = diffusive_flux(K_c, ψ_bc + Δz, ψ_c, Δz)
     flux_expected = -K_c * ((ψ_bc - ψ_c + Δz) / Δz)
@@ -57,7 +57,7 @@ end
     S_s = FT(1e-3) #inverse meters
     vg_n = FT(2.0)
     vg_α = FT(2.6) # inverse meters
-    vg_m = FT(1) - FT(1) / vg_n
+    hcm = vanGenuchten(; α = vg_α, n = vg_n)
     θ_r = FT(0.1)
     ν_ss_om = FT(0.0)
     ν_ss_quartz = FT(1.0)
@@ -84,8 +84,7 @@ end
         ν_ss_om = ν_ss_om,
         ν_ss_quartz = ν_ss_quartz,
         ν_ss_gravel = ν_ss_gravel,
-        vg_α = vg_α,
-        vg_n = vg_n,
+        hydrology_cm = hcm,
         K_sat = K_sat,
         S_s = S_s,
         θ_r = θ_r,
@@ -126,7 +125,7 @@ end
     S_s = FT(1e-3) #inverse meters
     vg_n = FT(2.0)
     vg_α = FT(2.6) # inverse meters
-    vg_m = FT(1) - FT(1) / vg_n
+    hcm = vanGenuchten(; α = vg_α, n = vg_n)
     θ_r = FT(0)
     zmax = FT(0)
     zmin = FT(-10)
@@ -138,7 +137,7 @@ end
     sources = ()
     boundary_fluxes =
         (; top = (water = top_flux_bc,), bottom = (water = bot_flux_bc,))
-    params = Soil.RichardsParameters{FT}(ν, vg_α, vg_n, vg_m, K_sat, S_s, θ_r)
+    params = Soil.RichardsParameters{FT, typeof(hcm)}(ν, hcm, K_sat, S_s, θ_r)
 
     soil = Soil.RichardsModel{FT}(;
         parameters = params,
@@ -155,10 +154,11 @@ end
             z::FT,
             params::RichardsParameters{FT},
         ) where {FT}
-            (; ν, vg_α, vg_n, vg_m, θ_r) = params
+            (; ν, hydrology_cm, θ_r) = params
+            (; α, m, n) = hydrology_cm
             #unsaturated zone only, assumes water table starts at z_∇
             z_∇ = FT(-10)# matches zmin
-            S = FT((FT(1) + (vg_α * (z - z_∇))^vg_n)^(-vg_m))
+            S = FT((FT(1) + (α * (z - z_∇))^n)^(-m))
             ϑ_l = S * (ν - θ_r) + θ_r
             return FT(ϑ_l)
         end
@@ -169,8 +169,13 @@ end
 
     t0 = FT(0)
     dY = similar(Y)
+
+    imp_tendency! = make_imp_tendency(soil)
     exp_tendency! = make_exp_tendency(soil)
+    imp_tendency!(dY, Y, p, t0)
     exp_tendency!(dY, Y, p, t0)
+    ClimaLSM.dss!(dY, p, t0)
+
     @test mean(parent(dY)) < 1e-8
     # should be hydrostatic equilibrium at every layer, at each step:
     @test mean(parent(p.soil.ψ .+ coords.z)[:] .+ 10.0) < 1e-10
@@ -185,6 +190,7 @@ end
     vg_n = FT(2.0)
     vg_α = FT(2.6) # inverse meters
     vg_m = FT(1) - FT(1) / vg_n
+    hcm = vanGenuchten(; α = vg_α, n = vg_n)
     θ_r = FT(0.1)
     ν_ss_om = FT(0.0)
     ν_ss_quartz = FT(1.0)
@@ -226,8 +232,7 @@ end
         ν_ss_om = ν_ss_om,
         ν_ss_quartz = ν_ss_quartz,
         ν_ss_gravel = ν_ss_gravel,
-        vg_α = vg_α,
-        vg_n = vg_n,
+        hydrology_cm = hcm,
         K_sat = 0.0,
         S_s = S_s,
         θ_r = θ_r,
@@ -253,10 +258,13 @@ end
             Soil.volumetric_internal_energy.(0.0, ρc_s, T, Ref(params))
     end
 
+    t0 = FT(0)
     init_soil_heat!(Y, coords.z, soil_heat_on.parameters)
     exp_tendency! = make_exp_tendency(soil_heat_on)
     dY = similar(Y)
-    exp_tendency!(dY, Y, p, 0.0)
+    exp_tendency!(dY, Y, p, t0)
+    ClimaLSM.dss!(dY, p, t0)
+
     F_face = 0.0
     κ = parent(p.soil.κ)
     F_below = -0.5 * (κ[end] + κ[end - 1]) * (-Δz + 0.5)
@@ -281,8 +289,7 @@ end
         ν_ss_om = ν_ss_om,
         ν_ss_quartz = ν_ss_quartz,
         ν_ss_gravel = ν_ss_gravel,
-        vg_α = vg_α,
-        vg_n = vg_n,
+        hydrology_cm = hcm,
         K_sat = K_sat,
         S_s = S_s,
         θ_r = θ_r,
@@ -308,10 +315,13 @@ end
             volumetric_internal_energy.(0.0, ρc_s, 288.0, Ref(params))
     end
 
+    t0 = FT(0)
     init_soil_water!(Y, coords.z, soil_water_on.parameters)
     exp_tendency! = make_exp_tendency(soil_water_on)
     dY = similar(Y)
-    exp_tendency!(dY, Y, p, 0.0)
+    exp_tendency!(dY, Y, p, t0)
+    ClimaLSM.dss!(dY, p, t0)
+
     function dKdθ(θ::FT)::FT where {FT}
         S = (θ - θ_r) / (ν - θ_r)
         if S < 1
@@ -421,8 +431,7 @@ end
         ν_ss_om = ν_ss_om,
         ν_ss_quartz = ν_ss_quartz,
         ν_ss_gravel = ν_ss_gravel,
-        vg_α = vg_α,
-        vg_n = vg_n,
+        hydrology_cm = hcm,
         K_sat = 0.0,
         S_s = S_s,
         θ_r = θ_r,
@@ -449,10 +458,13 @@ end
             Soil.volumetric_internal_energy.(0.0, ρc_s, T, Ref(params))
     end
 
+    t0 = FT(0)
     init_soil_off!(Y, coords.z, soil_both_off.parameters)
     exp_tendency! = make_exp_tendency(soil_both_off)
     dY = similar(Y)
-    exp_tendency!(dY, Y, p, 0.0)
+    exp_tendency!(dY, Y, p, t0)
+    ClimaLSM.dss!(dY, p, t0)
+
     @test maximum(abs.(parent(dY.soil.ρe_int))) == 0.0
     @test maximum(abs.(parent(dY.soil.ϑ_l))) == 0.0
     @test maximum(abs.(parent(dY.soil.θ_i))) == 0.0
@@ -468,8 +480,7 @@ end
         ν_ss_om = ν_ss_om,
         ν_ss_quartz = ν_ss_quartz,
         ν_ss_gravel = ν_ss_gravel,
-        vg_α = vg_α,
-        vg_n = vg_n,
+        hydrology_cm = hcm,
         K_sat = K_sat,
         S_s = S_s,
         θ_r = θ_r,
@@ -496,10 +507,13 @@ end
             volumetric_internal_energy.(0.0, ρc_s, T, Ref(params))
     end
 
+    t0 = FT(0)
     init_soil_on!(Y, coords.z, soil_both_on.parameters)
     exp_tendency! = make_exp_tendency(soil_both_on)
     dY = similar(Y)
-    exp_tendency!(dY, Y, p, 0.0)
+    exp_tendency!(dY, Y, p, t0)
+    ClimaLSM.dss!(dY, p, t0)
+
     @test maximum(abs.(parent(dY.soil.θ_i))) == 0.0
 
     θ = parent(Y.soil.ϑ_l)# on the center
@@ -564,7 +578,7 @@ end
     S_s = FT(1e-3) #inverse meters
     vg_n = FT(2.0)
     vg_α = FT(2.6) # inverse meters
-    vg_m = FT(1) - FT(1) / vg_n
+    hcm = vanGenuchten(; α = vg_α, n = vg_n)
     θ_r = FT(0.1)
     ν_ss_om = FT(0.0)
     ν_ss_quartz = FT(1.0)
@@ -605,8 +619,7 @@ end
         ν_ss_om = ν_ss_om,
         ν_ss_quartz = ν_ss_quartz,
         ν_ss_gravel = ν_ss_gravel,
-        vg_α = vg_α,
-        vg_n = vg_n,
+        hydrology_cm = hcm,
         K_sat = K_sat,
         S_s = S_s,
         θ_r = θ_r,
@@ -633,7 +646,6 @@ end
     end
 
     init_soil_heat!(Y, coords.z, soil_heat_on.parameters)
-    exp_tendency! = make_exp_tendency(soil_heat_on)
     dY = similar(Y)
     dY .= FT(0.0)
     source!(dY, sources[1], Y, p, soil_heat_on)

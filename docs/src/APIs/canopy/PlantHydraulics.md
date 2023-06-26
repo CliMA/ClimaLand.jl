@@ -18,12 +18,15 @@ ClimaLSM.PlantHydraulics.water_retention_curve
 ClimaLSM.PlantHydraulics.inverse_water_retention_curve
 ClimaLSM.PlantHydraulics.root_flux_per_ground_area!
 ClimaLSM.PlantHydraulics.flux
+ClimaLSM.PlantHydraulics.hydraulic_conductivity
 ```
 
 ## Plant Hydraulics Parameters
 
 ```@docs
 ClimaLSM.PlantHydraulics.PlantHydraulicsParameters
+ClimaLSM.PlantHydraulics.Weibull
+ClimaLSM.PlantHydraulics.LinearRetentionCurve
 ```
 
 ## Plant Hydraulics Methods and Types

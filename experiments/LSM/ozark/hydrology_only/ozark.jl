@@ -1,5 +1,6 @@
 using DiffEqCallbacks
-using OrdinaryDiffEq: ODEProblem, solve, Euler, RK4
+import OrdinaryDiffEq as ODE
+import ClimaTimeSteppers as CTS
 using ClimaCore
 import CLIMAParameters as CP
 using Plots
@@ -26,18 +27,26 @@ include(
         "experiments/LSM/ozark/ozark_met_drivers_FLUXNET.jl",
     ),
 )
-include(joinpath(climalsm_dir, "experiments/LSM/ozark/ozark_parameters.jl"))
+include(
+    joinpath(
+        climalsm_dir,
+        "experiments/LSM/ozark/hydrology_only/ozark_parameters.jl",
+    ),
+)
 include(joinpath(climalsm_dir, "experiments/LSM/ozark/ozark_domain.jl"))
-include(joinpath(climalsm_dir, "experiments/LSM/ozark/ozark_simulation.jl"))
+include(
+    joinpath(
+        climalsm_dir,
+        "experiments/LSM/ozark/hydrology_only/ozark_simulation.jl",
+    ),
+)
 
 # Now we set up the model. For the soil model, we pick
 # a model type and model args:
 soil_domain = land_domain.subsurface
-soil_ps = Soil.RichardsParameters{FT}(
+soil_ps = Soil.RichardsParameters{FT, vanGenuchten{FT}}(
     soil_ν,
-    soil_vg_α,
-    soil_vg_n,
-    soil_vg_m,
+    vanGenuchten(; α = soil_vg_α, n = soil_vg_n),
     soil_K_sat,
     soil_S_s,
     θ_r,
@@ -97,24 +106,18 @@ photosynthesis_args = (;
 )
 # Set up plant hydraulics
 area_index = (root = RAI, stem = SAI, leaf = LAI)
-K_sat_root = FT(K_sat_plant) # m/s
-K_sat_stem = FT(K_sat_plant)
-K_sat_leaf = FT(K_sat_plant)
-K_sat = (root = K_sat_root, stem = K_sat_stem, leaf = K_sat_leaf)
 
 function root_distribution(z::T; rooting_depth = rooting_depth) where {T}
     return T(1.0 / rooting_depth) * exp(z / T(rooting_depth)) # 1/m
 end
 
-plant_hydraulics_ps = PlantHydraulics.PlantHydraulicsParameters{FT}(
-    area_index,
-    K_sat,
-    plant_vg_α,
-    plant_vg_n,
-    plant_vg_m,
-    plant_ν,
-    plant_S_s,
-    root_distribution,
+plant_hydraulics_ps = PlantHydraulics.PlantHydraulicsParameters(;
+    area_index = area_index,
+    ν = plant_ν,
+    S_s = plant_S_s,
+    root_distribution = root_distribution,
+    conductivity_model = conductivity_model,
+    retention_model = retention_model,
 )
 
 plant_hydraulics_args = (
@@ -158,6 +161,7 @@ land = SoilPlantHydrologyModel{FT}(;
 )
 Y, p, cds = initialize(land)
 exp_tendency! = make_exp_tendency(land)
+imp_tendency! = make_imp_tendency(land)
 
 #Initial conditions
 Y.soil.ϑ_l = FT(0.4)
@@ -166,9 +170,7 @@ Y.soil.ϑ_l = FT(0.4)
 
 S_l_ini =
     inverse_water_retention_curve.(
-        plant_vg_α,
-        plant_vg_n,
-        plant_vg_m,
+        retention_model,
         [ψ_stem_0, ψ_leaf_0],
         plant_ν,
         plant_S_s,
@@ -182,28 +184,53 @@ end
 update_aux! = make_update_aux(land)
 update_aux!(p, Y, 0.0)
 
-# Simulation
-sv = SavedValues(FT, ClimaCore.Fields.FieldVector)
-prob = ODEProblem(exp_tendency!, Y, (t0, tf), p);
-cb = SavingCallback(
-    (u, t, integrator) -> copy(integrator.p),
-    sv;
-    saveat = hourly,
+# Set up timestepper and jacobian for soil
+update_jacobian! = make_update_jacobian(land.soil)
+
+ode_algo = CTS.IMEXAlgorithm(
+    timestepper,
+    CTS.NewtonsMethod(
+        max_iters = max_iterations,
+        update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
+        convergence_checker = conv_checker,
+    ),
 )
-sol = solve(
+
+W = RichardsTridiagonalW(Y)
+jac_kwargs = (; jac_prototype = W, Wfact = update_jacobian!)
+
+# Simulation
+sv = (;
+    t = Array{FT}(undef, length(saveat)),
+    saveval = Array{ClimaCore.Fields.FieldVector}(undef, length(saveat)),
+)
+cb = ClimaLSM.NonInterpSavingCallback(sv, saveat)
+
+prob = ODE.ODEProblem(
+    CTS.ClimaODEFunction(
+        T_exp! = exp_tendency!,
+        T_imp! = ODE.ODEFunction(imp_tendency!; jac_kwargs...),
+        dss! = ClimaLSM.dss!,
+    ),
+    Y,
+    (t0, tf),
+    p,
+)
+sol = ODE.solve(
     prob,
-    timestepper;
+    ode_algo;
     dt = dt,
     callback = cb,
     adaptive = false,
-    saveat = hourly,
+    saveat = saveat,
 )
 
 # Plotting
 daily = sol.t ./ 3600 ./ 24
-savedir = joinpath(climalsm_dir, "experiments/LSM/ozark")
+savedir = joinpath(climalsm_dir, "experiments/LSM/ozark/hydrology_only/")
 model_GPP = [
-    parent(sv.saveval[k].canopy.photosynthesis.GPP)[1] for k in 1:length(sol.t)
+    parent(sv.saveval[k].canopy.photosynthesis.GPP)[1] for
+    k in 1:length(sv.saveval)
 ]
 
 plt1 = Plots.plot(size = (500, 700))
@@ -239,7 +266,7 @@ Plots.savefig(joinpath(savedir, "GPP.png"))
 T =
     [
         parent(sv.saveval[k].canopy.conductance.transpiration)[1] for
-        k in 1:length(sol.t)
+        k in 1:length(sv.saveval)
     ] .* (1e3 * 24 * 3600)
 measured_T = LE ./ (LSMP.LH_v0(earth_param_set) * 1000) .* (1e3 * 24 * 3600)
 plt1 = Plots.plot(size = (500, 700))
@@ -344,6 +371,46 @@ plt2 = Plots.plot(
 Plots.plot(plt2, plt1, layout = (2, 1))
 Plots.savefig(joinpath(savedir, "soil_water_content.png"))
 
+dt_model = sol.t[2] - sol.t[1]
+dt_data = seconds[2] - seconds[1]
+Plots.plot(daily, cumsum(T) * dt_model, label = "Model T")
+Plots.plot!(
+    seconds ./ 24 ./ 3600,
+    cumsum(measured_T[:]) * dt_data,
+    label = "Data ET",
+)
+Plots.plot!(
+    seconds ./ 24 ./ 3600,
+    cumsum(P[:]) * dt_data * (1e3 * 24 * 3600),
+    label = "Data P",
+)
+Plots.plot!(ylabel = "∫ Water fluxes dt", xlabel = "Days", margins = 10Plots.mm)
+Plots.savefig(joinpath(savedir, "cumul_p_et.png"))
+
+# Leaf water potential data from Pallardy et al (2018)
+# Predawn Leaf Water Potential of Oak-Hickory Forest at Missouri Ozark (MOFLUX) Site: 2004-2020
+# https://doi.org/10.3334/CDIAC/ORNLSFA.004
+lwp_filename = "MOFLUX_PredawnLeafWaterPotential_2020_20210125.csv"
+lwp_artifact = ArtifactFile(
+    url = "https://caltech.box.com/shared/static/d2nbhezw1q99vslnh5qfwnqrnp3p4edo.csv",
+    filename = lwp_filename,
+)
+lwp_dataset = ArtifactWrapper(
+    @__DIR__,
+    "lwp_pallardy_etal2018",
+    ArtifactFile[lwp_artifact],
+);
+
+lwp_path = joinpath(get_data_folder(lwp_dataset), lwp_filename)
+lwp_data = readdlm(lwp_path, ',', skipstart = 1)
+# We are using 2005 data in this test, so restrict to this year
+YEAR = lwp_data[:, 1]
+DOY = lwp_data[YEAR .== 2005, 2]
+# Our t0 = Dec 31, midnight, 2004. Predawn = guess of 0600 hours
+seconds_since_t0 = FT.(DOY) * 24 .* 3600 .+ (6 * 3600)
+lwp_measured = lwp_data[YEAR .== 2005, 7] .* 1e6 # MPa to Pa
+
+
 root_stem_flux = [
     sum(sv.saveval[k].root_extraction) .* (1e3 * 3600 * 24) for
     k in 1:length(sol.t)
@@ -361,15 +428,15 @@ leaf_air_flux = [
 
 plt1 = Plots.plot(
     daily,
-    root_stem_flux,
-    label = "Soil-root-stem flux",
+    leaf_air_flux,
+    label = "Leaf-air flux",
     ylabel = "Within plant fluxes[mm/day]",
     xlim = [minimum(daily), maximum(daily)],
     size = (500, 700),
     margins = 10Plots.mm,
 )
 Plots.plot!(plt1, daily, stem_leaf_flux, label = "Stem-leaf flux")
-Plots.plot!(plt1, daily, leaf_air_flux, label = "Leaf-air flux")
+Plots.plot!(plt1, daily, root_stem_flux, label = "Soil-root-stem flux")
 
 lwp = [
     parent(sv.saveval[k].canopy.hydraulics.ψ)[2] * 9800 for k in 1:length(sol.t)
@@ -381,35 +448,24 @@ swp = [
 plt2 = Plots.plot(
     daily,
     lwp,
-    label = "Leaf",
+    label = "Model, Leaf",
     xlim = [minimum(daily), maximum(daily)],
     xlabel = "days",
     ylabel = "Water potential (Pa)",
     size = (500, 700),
     left_margin = 10Plots.mm,
 )
+Plots.plot!(plt2, daily, swp, label = "Model, Stem")
 
-Plots.plot!(plt2, daily, swp, label = "Stem")
+Plots.plot!(
+    plt2,
+    seconds_since_t0 ./ 24 ./ 3600,
+    lwp_measured,
+    label = "Data; all species",
+)
+
 
 Plots.plot(plt2, plt1, layout = (2, 1))
 Plots.savefig(joinpath(savedir, "plant_hydraulics.png"))
-
-
-dt_model = sol.t[2] - sol.t[1]
-dt_data = seconds[2] - seconds[1]
-Plots.plot(daily, cumsum(T) * dt_model, label = "Model T")
-Plots.plot!(
-    seconds ./ 24 ./ 3600,
-    cumsum(measured_T[:]) * dt_data,
-    label = "Data ET",
-)
-Plots.plot!(
-    seconds ./ 24 ./ 3600,
-    cumsum(P[:]) * dt_data * (1e3 * 24 * 3600),
-    label = "Data P",
-)
-Plots.plot!(ylabel = "∫ Water fluxes dt", xlabel = "Days", margins = 10Plots.mm)
-Plots.savefig(joinpath(savedir, "cumul_p_et.png"))
-
 
 rm(joinpath(savedir, "Artifacts.toml"))

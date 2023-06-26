@@ -65,7 +65,8 @@ prognostic_vars(m::AbstractModel) = ()
 
 Returns the prognostic variable types for the model in the form of a tuple.
 
-Types provided must have `zero(T::DataType)` defined. Common examples
+Types provided must have `ClimaCore.RecursiveApply.rzero(T::DataType)` 
+ defined. Common examples
  include
 - Float64, Float32 for scalar variables (a scalar value at each
 coordinate point)
@@ -88,7 +89,8 @@ auxiliary_vars(m::AbstractModel) = ()
 
 Returns the auxiliary variable types for the model in the form of a tuple.
 
-Types provided must have `zero(T::DataType)` defined. Common examples
+Types provided must have `ClimaCore.RecursiveApply.rzero(T::DataType)` 
+defined. Common examples
  include
 - Float64, Float32 for scalar variables (a scalar value at each
 coordinate point)
@@ -266,7 +268,7 @@ function initialize_vars(keys, types, state, model_name)
         return ClimaCore.Fields.FieldVector(; model_name => FT[])
     else
         zero_states = map(types) do (T)
-            zero_instance = zero(T)
+            zero_instance = ClimaCore.RecursiveApply.rzero(T)
             map(_ -> zero_instance, state)
         end
         return ClimaCore.Fields.FieldVector(;

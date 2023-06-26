@@ -258,7 +258,7 @@ See Eqn 12.57 of G. Bonan's textbook,
 Climate Change and Terrestrial Ecosystem Modeling (2019).
 """
 function moisture_stress(pl::FT, sc::FT, pc::FT) where {FT}
-    β = (1 + exp(sc * pc)) / (1 + exp(sc * (pc - pl)))
+    β = min(FT(1), (1 + exp(sc * pc)) / (1 + exp(sc * (pc - pl))))
     return β
 end
 
