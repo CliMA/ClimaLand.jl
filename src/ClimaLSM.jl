@@ -9,10 +9,10 @@ import ClimaComms
 ClimaCore.Spaces.PointSpace(x) =
     ClimaCore.Spaces.PointSpace(ClimaComms.SingletonCommsContext(), x)
 
-include("Parameters.jl")
+include("SharedUtilities/Parameters.jl")
 import .Parameters as LSMP
 
-include("Regridder.jl")
+include("SharedUtilities/Regridder.jl")
 include("SharedUtilities/Domains.jl")
 using .Domains
 include("SharedUtilities/ntuple_utils.jl")
