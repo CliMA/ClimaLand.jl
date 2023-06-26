@@ -100,8 +100,8 @@ This is not currently needed by other components, but is used for offline valida
 
 We need to supply the following parameters and “drivers"
 
-- $K_{c,25}$ and $K_{o,25}$, $V_{cmax, 25}$, $\Gamma^*_{25},\phi$, $\theta_j$, $o_i$, $s_c$, $\psi_c$
-- $\psi_l$, to compute $\beta$
+- ``K_{c,25}`` and $K_{o,25}$, $V_{cmax, 25}$, $\Gamma^*_{25},\phi$, $\theta_j$, $o_i$, $s_c$, $\psi_c$
+- ``\psi_l``, to compute $\beta$
 - Temperature $T$, $PAR$, $c_a$, VPD, $\theta_s$.
 
 ```@raw html
