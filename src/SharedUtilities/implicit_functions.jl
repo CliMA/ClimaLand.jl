@@ -4,7 +4,7 @@
 import LinearAlgebra
 import ClimaCore: Spaces
 
-export linsolve!, ldiv!, thomas_algorithm!
+export linsolve!, thomas_algorithm!
 
 # Function required by OrdinaryDiffEq.jl
 linsolve!(::Type{Val{:init}}, f, u0; kwargs...) = _linsolve!
