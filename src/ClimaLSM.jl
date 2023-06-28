@@ -23,14 +23,14 @@ include("SharedUtilities/boundary_conditions.jl")
 include("SharedUtilities/sources.jl")
 include("SharedUtilities/implicit_tendencies.jl")
 include("SharedUtilities/implicit_functions.jl")
-include("Standalone/Bucket/Bucket.jl")
+include("standalone/Bucket/Bucket.jl")
 export make_interactions_update_aux, domain
 """
      AbstractLandModel{FT} <: AbstractModel{FT}
 
 An abstract type for all land model types, which are used
 to simulated multiple land surface components as
-a single system. Standalone component runs do not require
+a single system. standalone component runs do not require
 this interface and it should not be used for that purpose.
 
 Many methods taking an argument of type `AbstractLandModel` are
@@ -270,15 +270,15 @@ initialize.
 interaction_domains(m::AbstractLandModel) = ()
 
 # Methods extended by the LSM models we support
-include("Standalone/SurfaceWater/Pond.jl")
+include("standalone/SurfaceWater/Pond.jl")
 using .Pond
 import .Pond: surface_runoff
-include("Standalone/Soil/Soil.jl")
+include("standalone/Soil/Soil.jl")
 using .Soil
 import .Soil.Biogeochemistry: soil_temperature, soil_moisture
-include("Standalone/Snow/Snow.jl")
+include("standalone/Snow/Snow.jl")
 using .Snow
-include("Standalone/Vegetation/Canopy.jl")
+include("standalone/Vegetation/Canopy.jl")
 using .Canopy
 using .Canopy.PlantHydraulics
 import .Canopy.PlantHydraulics: root_flux_per_ground_area!
