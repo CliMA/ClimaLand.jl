@@ -9,20 +9,20 @@ import ClimaComms
 ClimaCore.Spaces.PointSpace(x) =
     ClimaCore.Spaces.PointSpace(ClimaComms.SingletonCommsContext(), x)
 
-include("SharedUtilities/Parameters.jl")
+include("sharedutilities/Parameters.jl")
 import .Parameters as LSMP
 
-include("SharedUtilities/Regridder.jl")
-include("SharedUtilities/Domains.jl")
+include("sharedutilities/Regridder.jl")
+include("sharedutilities/Domains.jl")
 using .Domains
-include("SharedUtilities/ntuple_utils.jl")
-include("SharedUtilities/models.jl")
-include("SharedUtilities/drivers.jl")
-include("SharedUtilities/utils.jl")
-include("SharedUtilities/boundary_conditions.jl")
-include("SharedUtilities/sources.jl")
-include("SharedUtilities/implicit_tendencies.jl")
-include("SharedUtilities/implicit_functions.jl")
+include("sharedutilities/ntuple_utils.jl")
+include("sharedutilities/models.jl")
+include("sharedutilities/drivers.jl")
+include("sharedutilities/utils.jl")
+include("sharedutilities/boundary_conditions.jl")
+include("sharedutilities/sources.jl")
+include("sharedutilities/implicit_tendencies.jl")
+include("sharedutilities/implicit_functions.jl")
 include("standalone/Bucket/Bucket.jl")
 export make_interactions_update_aux, domain
 """
@@ -284,7 +284,7 @@ using .Canopy.PlantHydraulics
 import .Canopy.PlantHydraulics: root_flux_per_ground_area!
 ### Concrete types of AbstractLandModels
 ### and associated methods
-include("Integrated/soil_energy_hydrology_biogeochemistry.jl")
-include("Integrated/soil_plant_hydrology_model.jl")
-include("Integrated/pond_soil_model.jl")
+include("integrated/soil_energy_hydrology_biogeochemistry.jl")
+include("integrated/soil_plant_hydrology_model.jl")
+include("integrated/pond_soil_model.jl")
 end
