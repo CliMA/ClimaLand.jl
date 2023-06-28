@@ -131,7 +131,7 @@ for i in eachindex(dts)
 end
 
 # Save flux BC mass conservation error and RMSE as artifact
-savedir = joinpath(pkgdir(ClimaLSM), "experiments/Standalone/Soil")
+savedir = joinpath(pkgdir(ClimaLSM), "experiments/standalone/Soil")
 plt = Plots.plot()
 plt_twin = twinx(plt)
 Plots.plot!(
