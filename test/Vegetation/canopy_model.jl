@@ -104,7 +104,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
 
     # Plant Hydraulics
     RAI = FT(1)
-    SAI = FT(1)
+    SAI = FT(0)
     area_index = (root = RAI, stem = SAI, leaf = LAI)
     K_sat_plant = FT(1.8e-8) # m/s
     ψ63 = FT(-4 / 0.0098) # / MPa to m, Holtzman's original parameter value

@@ -12,6 +12,57 @@ using Insolation
 using Dates
 
 include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
+@testset "LAI assertions" begin
+    FT = Float64
+    LAI = FT.([0, 1])
+    SAI = FT.([0, 1])
+    RAI = FT.([0, 1])
+    n_stem = [0, 1]
+    n_leaf = [1]
+    for L in LAI
+        for S in SAI
+            for R in RAI
+                for n_s in n_stem
+                    for n_l in n_leaf
+                        area_index = (root = R, stem = S, leaf = L)
+                        if n_l == 0
+                            @test_throws AssertionError ClimaLSM.Canopy.PlantHydraulics.lai_consistency_check(
+                                n_s,
+                                n_l,
+                                area_index,
+                            )
+                        end
+
+                        if (L > eps(FT) || S > eps(FT)) && R < eps(FT)
+                            @test_throws AssertionError ClimaLSM.Canopy.PlantHydraulics.lai_consistency_check(
+                                n_s,
+                                n_l,
+                                area_index,
+                            )
+                        end
+
+                        if S > FT(0) && n_s == 0
+                            @test_throws AssertionError ClimaLSM.Canopy.PlantHydraulics.lai_consistency_check(
+                                n_s,
+                                n_l,
+                                area_index,
+                            )
+                        end
+
+                        if S < eps(FT) && n_s > 0
+                            @test_throws AssertionError ClimaLSM.Canopy.PlantHydraulics.lai_consistency_check(
+                                n_s,
+                                n_l,
+                                area_index,
+                            )
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+end
 
 @testset "Plant hydraulics parameterizations" begin
     FT = Float32
@@ -316,4 +367,164 @@ end
         end
         @test sum(parent(m)) < eps(FT)
     end
+end
+
+
+@testset "No plant" begin
+    FT = Float64
+    domain = Point(; z_sfc = FT(0.0))
+
+    RTparams = BeerLambertParameters{FT}()
+    photosynthesis_params = FarquharParameters{FT}(C3();)
+    stomatal_g_params = MedlynConductanceParameters{FT}()
+
+    stomatal_model = MedlynConductanceModel{FT}(stomatal_g_params)
+    photosynthesis_model = FarquharModel{FT}(photosynthesis_params)
+    rt_model = BeerLambertModel{FT}(RTparams)
+
+    earth_param_set = create_lsm_parameters(FT)
+    LAI = FT(0.0) # m2 [leaf] m-2 [ground]
+    z_0m = FT(2.0) # m, Roughness length for momentum
+    z_0b = FT(0.1) # m, Roughness length for scalars
+    h_c = FT(0.0) # m, canopy height
+    h_sfc = FT(0.0) # m, canopy height
+    h_int = FT(30.0) # m, "where measurements would be taken at a typical flux tower of a 20m canopy"
+    shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
+        LAI,
+        h_c,
+        z_0m,
+        z_0b,
+        earth_param_set,
+    )
+    lat = FT(0.0) # degree
+    long = FT(-180) # degree
+
+    function zenith_angle(
+        t::FT,
+        orbital_data;
+        latitude = lat,
+        longitude = long,
+        insol_params = earth_param_set.insol_params,
+    ) where {FT}
+        return FT(
+            instantaneous_zenith_angle(
+                DateTime(t),
+                orbital_data,
+                longitude,
+                latitude,
+                insol_params,
+            )[1],
+        )
+    end
+
+    function shortwave_radiation(
+        t::FT;
+        latitude = lat,
+        longitude = long,
+        insol_params = earth_param_set.insol_params,
+    ) where {FT}
+        return FT(1000) # W/m^2
+    end
+
+    function longwave_radiation(t::FT) where {FT}
+        return FT(200) # W/m^2
+    end
+
+    u_atmos = t -> eltype(t)(10) #m.s-1
+
+    liquid_precip = (t) -> eltype(t)(0) # m
+    snow_precip = (t) -> eltype(t)(0) # m
+    T_atmos = t -> eltype(t)(290) # Kelvin
+    q_atmos = t -> eltype(t)(0.001) # kg/kg
+    P_atmos = t -> eltype(t)(1e5) # Pa
+    h_atmos = h_int # m
+    c_atmos = (t) -> eltype(t)(4.11e-4) # mol/mol
+    atmos = PrescribedAtmosphere(
+        liquid_precip,
+        snow_precip,
+        T_atmos,
+        u_atmos,
+        q_atmos,
+        P_atmos,
+        h_atmos;
+        c_co2 = c_atmos,
+    )
+    radiation = PrescribedRadiativeFluxes(
+        FT,
+        shortwave_radiation,
+        longwave_radiation;
+        θs = zenith_angle,
+        orbital_data = Insolation.OrbitalData(),
+    )
+
+    n_stem = Int64(0) # number of stem elements
+    n_leaf = Int64(1) # number of leaf elements
+    SAI = FT(0) # m2/m2
+    RAI = FT(0) # m2/m2
+    area_index = (root = RAI, stem = SAI, leaf = LAI)
+    K_sat_plant = 0 # m/s.
+    ψ63 = FT(-4 / 0.0098) # / MPa to m
+    Weibull_param = FT(4) # unitless
+    a = FT(0.05 * 0.0098) # 1/m
+    plant_ν = FT(0.1) # m3/m3
+    plant_S_s = FT(1e-2)
+    conductivity_model =
+        PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
+    retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a)
+    root_depths = [FT(0.0)]# 1st element is the deepest root depth 
+    function root_distribution(z::T) where {T}
+        return T(0) # (1/m)
+    end
+    compartment_midpoints = [FT(0.0)]
+    compartment_surfaces = [FT(0.0), FT(0.0)]
+
+    param_set = PlantHydraulics.PlantHydraulicsParameters(;
+        area_index = area_index,
+        ν = plant_ν,
+        S_s = plant_S_s,
+        root_distribution = root_distribution,
+        conductivity_model = conductivity_model,
+        retention_model = retention_model,
+    )
+
+    ψ_soil0 = FT(0.0)
+    transpiration = DiagnosticTranspiration{FT}()
+    root_extraction = PrescribedSoilPressure{FT}((t::FT) -> ψ_soil0)
+
+    plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
+        parameters = param_set,
+        root_extraction = root_extraction,
+        transpiration = transpiration,
+        root_depths = root_depths,
+        n_stem = n_stem,
+        n_leaf = n_leaf,
+        compartment_surfaces = compartment_surfaces,
+        compartment_midpoints = compartment_midpoints,
+    )
+    model = ClimaLSM.Canopy.CanopyModel{FT}(;
+        parameters = shared_params,
+        domain = domain,
+        radiative_transfer = rt_model,
+        photosynthesis = photosynthesis_model,
+        conductance = stomatal_model,
+        hydraulics = plant_hydraulics,
+        atmos = atmos,
+        radiation = radiation,
+    )
+
+    Y, p, coords = initialize(model)
+    dY = similar(Y)
+    for i in 1:(n_stem + n_leaf)
+        Y.canopy.hydraulics.ϑ_l[i] .= FT(0.1)
+        p.canopy.hydraulics.ψ[i] .= NaN
+        p.canopy.hydraulics.fa[i] .= NaN
+        dY.canopy.hydraulics.ϑ_l[i] .= NaN
+    end
+    canopy_exp_tendency! = make_exp_tendency(model)
+    canopy_exp_tendency!(dY, Y, p, 0.0)
+    @test all(parent(dY.canopy.hydraulics.ϑ_l[1]) .≈ FT(0.0))
+    @test all(parent(p.canopy.hydraulics.fa) .≈ FT(0.0))
+    @test all(parent(p.canopy.hydraulics.fa_roots) .≈ FT(0.0))
+    @test all(parent(p.canopy.conductance.transpiration) .≈ FT(0.0))
+    @test all(parent(p.canopy.radiative_transfer.apar) .≈ FT(0.0))
 end
