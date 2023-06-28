@@ -26,7 +26,7 @@ Currently a number of checks are run per commit for a given PR.
 - `JuliaFormatter` checks if the PR is formatted with `.dev/climaformat.jl`.
 - `Documentation` rebuilds the documentation for the PR and checks if the docs
   are consistent and generate valid output.
-- `Tests` runs the file `test/runtests.jl`,  using `Pkg.test()`. These are a mix of
+- `Tests` runs the file `test/run_tests.jl`,  using `Pkg.test()`. These are a mix of
   unit tests and fast integration tests.
 
 We use [`bors`](https://bors.tech/) to manage merging PR's in the the `ClimaLSM` repo.
