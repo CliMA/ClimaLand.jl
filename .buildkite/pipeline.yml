@@ -56,7 +56,7 @@ steps:
 
       - label: "ozark_test_hydrology_only"
         command: "julia --color=yes --project=experiments experiments/integrated/ozark/hydrology_only/ozark.jl"
-        artifact_paths: "experiments/LSM/ozark/hydrology_only/*png"
+        artifact_paths: "experiments/integrated/ozark/hydrology_only/*png"
 
       - label: "Soilbiogeochem"
         command: "julia --color=yes --project=experiments experiments/standalone/Biogeochemistry/experiment.jl"
