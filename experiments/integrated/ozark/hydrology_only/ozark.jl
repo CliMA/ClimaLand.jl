@@ -24,20 +24,20 @@ climalsm_dir = pkgdir(ClimaLSM)
 include(
     joinpath(
         climalsm_dir,
-        "experiments/LSM/ozark/ozark_met_drivers_FLUXNET.jl",
+        "experiments/integrated/ozark/ozark_met_drivers_FLUXNET.jl",
     ),
 )
 include(
     joinpath(
         climalsm_dir,
-        "experiments/LSM/ozark/hydrology_only/ozark_parameters.jl",
+        "experiments/integrated/ozark/hydrology_only/ozark_parameters.jl",
     ),
 )
-include(joinpath(climalsm_dir, "experiments/LSM/ozark/ozark_domain.jl"))
+include(joinpath(climalsm_dir, "experiments/integrated/ozark/ozark_domain.jl"))
 include(
     joinpath(
         climalsm_dir,
-        "experiments/LSM/ozark/hydrology_only/ozark_simulation.jl",
+        "experiments/integrated/ozark/hydrology_only/ozark_simulation.jl",
     ),
 )
 
@@ -227,7 +227,7 @@ sol = ODE.solve(
 
 # Plotting
 daily = sol.t ./ 3600 ./ 24
-savedir = joinpath(climalsm_dir, "experiments/LSM/ozark/hydrology_only/")
+savedir = joinpath(climalsm_dir, "experiments/integrated/ozark/hydrology_only/")
 model_GPP = [
     parent(sv.saveval[k].canopy.photosynthesis.GPP)[1] for
     k in 1:length(sv.saveval)
