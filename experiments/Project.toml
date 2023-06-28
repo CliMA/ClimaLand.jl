@@ -19,7 +19,6 @@ SurfaceFluxes = "49b00bb7-8bd4-4f2b-b78c-51cd0450215f"
 Thermodynamics = "b60c26fb-14c3-4610-9d3e-2d17fe7ff00c"
 
 [compat]
-ClimaCore = "0.10"
-Insolation = "0.6"
+CLIMAParameters = "0.7"
+ClimaTimeSteppers = "0.7"
 SciMLBase = "<1.51"
-julia = "1.8"
