@@ -48,5 +48,5 @@ The `/src` folder contains the source code of `ClimaLSM` models. It contains 3 f
 - standalone: This folder contains standalone models, which are submodels that can be run independently of each other. This is an important aspect of `ClimaLSM` code design: to maximise modularity, sub-models can be run alone, and many different methods of the same sub-model can be defined via Julia multiple-disptach. The standalone folder is independent from the integrated folder. 
 - integrated: This folder contains integrated models. It assembles standalone models together, as one would assemble pieces of a puzzle. Thanks to the modularity of `ClimaLSM` design, many configuration of LSM can be assembled in integrated models. The same functions (`update_aux!`, `exp_tendency!`, etc.) can be used for standalone and integrated models, and an can be stepped  in the same way.
 
-As well as 3 files:
+As well as one file:
 - ClimaLSM.jl: This file is the main Julia module of `ClimaLSM.jl` repository. It contains all functions defined in `/src` in a nested way, for example `ClimaLSM.X`, `ClimaLSM.Soil.X`, 'ClimaLSM.Canopy.X`, etc. When a Julia user install and uses ClimaLSM via `]add ClimaLSM, using ClimaLSM`, they are loading those functions, and are ready to use ClimaLSM codebase. 
