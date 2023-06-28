@@ -265,7 +265,7 @@ saved_values = (;
 cb = ClimaLSM.NonInterpSavingCallback(saved_values, saveat);
 
 # Choose a timestepper and set up the ODE problem:
-timestepper = ClimaLSM.RK4();
+timestepper = CTS.RK4();
 ode_algo = CTS.ExplicitAlgorithm(timestepper)
 prob = ODE.ODEProblem(
     CTS.ClimaODEFunction(T_exp! = exp_tendency!, dss! = ClimaLSM.dss!),
