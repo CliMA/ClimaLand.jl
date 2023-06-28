@@ -9,20 +9,20 @@ import ClimaComms
 ClimaCore.Spaces.PointSpace(x) =
     ClimaCore.Spaces.PointSpace(ClimaComms.SingletonCommsContext(), x)
 
-include("sharedutilities/Parameters.jl")
+include("shared_utilities/Parameters.jl")
 import .Parameters as LSMP
 
-include("sharedutilities/Regridder.jl")
-include("sharedutilities/Domains.jl")
+include("shared_utilities/Regridder.jl")
+include("shared_utilities/Domains.jl")
 using .Domains
-include("sharedutilities/ntuple_utils.jl")
-include("sharedutilities/models.jl")
-include("sharedutilities/drivers.jl")
-include("sharedutilities/utils.jl")
-include("sharedutilities/boundary_conditions.jl")
-include("sharedutilities/sources.jl")
-include("sharedutilities/implicit_tendencies.jl")
-include("sharedutilities/implicit_functions.jl")
+include("shared_utilities/ntuple_utils.jl")
+include("shared_utilities/models.jl")
+include("shared_utilities/drivers.jl")
+include("shared_utilities/utils.jl")
+include("shared_utilities/boundary_conditions.jl")
+include("shared_utilities/sources.jl")
+include("shared_utilities/implicit_tendencies.jl")
+include("shared_utilities/implicit_functions.jl")
 include("standalone/Bucket/Bucket.jl")
 export make_interactions_update_aux, domain
 """
