@@ -5,7 +5,7 @@ import ClimaLSM
 import ClimaLSM.Parameters as LSMP
 include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
 
-@testset "Integrated Energy and Hydrology Parameterizations" begin
+@testset "integrated Energy and Hydrology Parameterizations" begin
     FT = Float64
     param_set = create_lsm_parameters(FT)
 

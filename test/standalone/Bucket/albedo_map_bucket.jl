@@ -31,7 +31,8 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     varname = "sw_alb"
     path = bareground_albedo_dataset_path()
     comms = ClimaComms.SingletonCommsContext()
-    regrid_dirpath = joinpath(pkgdir(ClimaLSM), "test/Bucket/albedo_tmpfiles")
+    regrid_dirpath =
+        joinpath(pkgdir(ClimaLSM), "test/standalone/Bucket/albedo_tmpfiles")
     albedo_model = BulkAlbedoMap{FT}(regrid_dirpath)
 
     σS_c = FT(0.2)
