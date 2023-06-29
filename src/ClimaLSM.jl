@@ -23,7 +23,7 @@ include("shared_utilities/boundary_conditions.jl")
 include("shared_utilities/sources.jl")
 include("shared_utilities/implicit_tendencies.jl")
 include("shared_utilities/implicit_functions.jl")
-include("Bucket/Bucket.jl")
+include("standalone/Bucket/Bucket.jl")
 export make_interactions_update_aux, domain
 """
      AbstractLandModel{FT} <: AbstractModel{FT}
