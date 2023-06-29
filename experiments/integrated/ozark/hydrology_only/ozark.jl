@@ -146,7 +146,7 @@ shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
 
 canopy_model_args = (; parameters = shared_params, domain = land_domain.surface)
 
-# Integrated plant hydraulics and soil model
+# integrated plant hydraulics and soil model
 # The default is diagnostics transpiration. In this case, we are testing with prescribed
 # but will change that soon.
 land_input =

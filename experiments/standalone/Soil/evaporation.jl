@@ -345,7 +345,7 @@ Plots.plot!(
 )
 Plots.plot(plt1, plt2, plt3, plt4; layout = (2, 2))
 
-savepath = joinpath(pkgdir(ClimaLSM), "experiments/Standalone/Soil")
+savepath = joinpath(pkgdir(ClimaLSM), "experiments/standalone/Soil")
 Plots.savefig(joinpath(savepath, "evaporation_from_coarse_sand1.png"))
 Plots.plot(plt5, plt6, plt7, plt8; layout = (2, 2))
 Plots.savefig(joinpath(savepath, "evaporation_from_coarse_sand2.png"))

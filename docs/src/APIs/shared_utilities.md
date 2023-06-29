@@ -60,13 +60,14 @@ ClimaLSM.AbstractTridiagonalW
 
 ## Drivers
 ```@docs
-ClimaLSM.Drivers.PrescribedAtmosphere
-ClimaLSM.Drivers.PrescribedRadiativeFluxes
-ClimaLSM.Drivers.AbstractAtmosphericDrivers
-ClimaLSM.Drivers.AbstractRadiativeDrivers
-ClimaLSM.Drivers.surface_fluxes_at_a_point
-ClimaLSM.Drivers.radiative_fluxes_at_a_point
-ClimaLSM.Drivers.construct_atmos_ts
-ClimaLSM.Drivers.surface_air_density
-ClimaLSM.Drivers.liquid_precipitation
-ClimaLSM.Drivers.snow_precipitation
+ClimaLSM.PrescribedAtmosphere
+ClimaLSM.PrescribedRadiativeFluxes
+ClimaLSM.AbstractAtmosphericDrivers
+ClimaLSM.AbstractRadiativeDrivers
+ClimaLSM.surface_fluxes_at_a_point
+ClimaLSM.radiative_fluxes_at_a_point
+ClimaLSM.construct_atmos_ts
+ClimaLSM.surface_air_density
+ClimaLSM.liquid_precipitation
+ClimaLSM.snow_precipitation
+```

@@ -39,28 +39,28 @@ steps:
     steps:
 
       - label: "regridder"
-        command: "julia --color=yes --project=test test/Bucket/regridder.jl"
+        command: "julia --color=yes --project=test test/standalone/Bucket/regridder.jl"
         artifact_paths: "regridder/"
 
       - label: "albedo_map"
-        command: "julia --color=yes --project=test test/Bucket/albedo_map_bucket.jl"
+        command: "julia --color=yes --project=test test/standalone/Bucket/albedo_map_bucket.jl"
         artifact_paths: "albedo_map/"
 
       - label: "Richards comparison to Bonan"
-        command: "julia --color=yes --project=experiments experiments/Standalone/Soil/richards_comparison.jl"
-        artifact_paths: "experiments/Standalone/Soil/comparison*png"
+        command: "julia --color=yes --project=experiments experiments/standalone/Soil/richards_comparison.jl"
+        artifact_paths: "experiments/standalone/Soil/comparison*png"
 
       - label: "Evaporation from sand"
-        command: "julia --color=yes --project=experiments experiments/Standalone/Soil/evaporation.jl"
-        artifact_paths: "experiments/Standalone/Soil/evaporation*png"
+        command: "julia --color=yes --project=experiments experiments/standalone/Soil/evaporation.jl"
+        artifact_paths: "experiments/standalone/Soil/evaporation*png"
 
       - label: "ozark_test_hydrology_only"
-        command: "julia --color=yes --project=experiments experiments/LSM/ozark/hydrology_only/ozark.jl"
-        artifact_paths: "experiments/LSM/ozark/hydrology_only/*png"
+        command: "julia --color=yes --project=experiments experiments/integrated/ozark/hydrology_only/ozark.jl"
+        artifact_paths: "experiments/integrated/ozark/hydrology_only/*png"
 
       - label: "Soilbiogeochem"
-        command: "julia --color=yes --project=experiments experiments/Standalone/Biogeochemistry/experiment.jl"
+        command: "julia --color=yes --project=experiments experiments/standalone/Biogeochemistry/experiment.jl"
 
       - label: "Water conservation"
-        command: "julia --color=yes --project=experiments experiments/Standalone/Soil/water_conservation.jl"
-        artifact_paths: "experiments/Standalone/Soil/water_conservation*png"
+        command: "julia --color=yes --project=experiments experiments/standalone/Soil/water_conservation.jl"
+        artifact_paths: "experiments/standalone/Soil/water_conservation*png"

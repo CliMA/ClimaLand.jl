@@ -9,20 +9,20 @@ import ClimaComms
 ClimaCore.Spaces.PointSpace(x) =
     ClimaCore.Spaces.PointSpace(ClimaComms.SingletonCommsContext(), x)
 
-include("SharedUtilities/Parameters.jl")
+include("shared_utilities/Parameters.jl")
 import .Parameters as LSMP
 
-include("SharedUtilities/Regridder.jl")
-include("SharedUtilities/Domains.jl")
+include("shared_utilities/Regridder.jl")
+include("shared_utilities/Domains.jl")
 using .Domains
-include("SharedUtilities/ntuple_utils.jl")
-include("SharedUtilities/models.jl")
-include("SharedUtilities/drivers.jl")
-include("SharedUtilities/utils.jl")
-include("SharedUtilities/boundary_conditions.jl")
-include("SharedUtilities/sources.jl")
-include("SharedUtilities/implicit_tendencies.jl")
-include("SharedUtilities/implicit_functions.jl")
+include("shared_utilities/ntuple_utils.jl")
+include("shared_utilities/models.jl")
+include("shared_utilities/drivers.jl")
+include("shared_utilities/utils.jl")
+include("shared_utilities/boundary_conditions.jl")
+include("shared_utilities/sources.jl")
+include("shared_utilities/implicit_tendencies.jl")
+include("shared_utilities/implicit_functions.jl")
 include("Bucket/Bucket.jl")
 export make_interactions_update_aux, domain
 """
@@ -30,7 +30,7 @@ export make_interactions_update_aux, domain
 
 An abstract type for all land model types, which are used
 to simulated multiple land surface components as
-a single system. Standalone component runs do not require
+a single system. standalone component runs do not require
 this interface and it should not be used for that purpose.
 
 Many methods taking an argument of type `AbstractLandModel` are
