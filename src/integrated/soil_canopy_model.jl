@@ -124,6 +124,11 @@ function SoilCanopyModel{FT}(;
 
     transpiration = Canopy.PlantHydraulics.DiagnosticTranspiration{FT}()
 
+    if canopy_component_types.radiative_transfer == Canopy.TwoStreamModel{FT}
+        @assert canopy_component_args.radiative_transfer.parameters.a_soil ==
+                soil_args.parameters.albedo
+    end
+
     canopy = Canopy.CanopyModel{FT}(;
         radiative_transfer = canopy_component_types.radiative_transfer(
             canopy_component_args.radiative_transfer...,
@@ -264,7 +269,7 @@ end
 
 """
     net_radiation_at_ground(
-        canopy_radiation::Canopy.BeerLambertModel{FT},
+        canopy_radiation::Canopy.AbstractRadiationModel{FT},
         canopy,
         ground_model::Soil.EnergyHydrology,
         Y,
@@ -280,7 +285,7 @@ Returns the correct radiative fluxes for bare ground in the case
 where the canopy LAI is zero.
 """
 function net_radiation_at_ground(
-    canopy_radiation::Canopy.BeerLambertModel{FT},
+    canopy_radiation::Canopy.AbstractRadiationModel{FT},
     canopy,
     ground_model::Soil.EnergyHydrology,
     Y,

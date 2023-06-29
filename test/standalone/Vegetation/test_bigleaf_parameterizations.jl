@@ -11,6 +11,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     earth_param_set = create_lsm_parameters(FT)
     # Test with defaults
     RTparams = BeerLambertParameters{FT}()
+    RT = BeerLambertModel{FT}(RTparams)
     photosynthesisparams = FarquharParameters{FT}(C3();)
     stomatal_g_params = MedlynConductanceParameters{FT}()
 
@@ -35,7 +36,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     PAR = SW(θs) ./ (energy_per_photon * N_a) # convert 500 W/m^2 to mol of photons per m^2/s
     K_c = extinction_coeff.(RTparams.ld, θs)
     @test all(K_c .≈ RTparams.ld ./ cos.(θs))
-    APAR = plant_absorbed_ppfd.(PAR, RTparams.ρ_leaf, K_c, LAI, RTparams.Ω)
+    APAR = plant_absorbed_ppfd.(RT, PAR, LAI, K_c, θs)
     @test all(
         APAR .≈
         PAR .* (1 - RTparams.ρ_leaf) .* (1 .- exp.(-K_c .* LAI .* RTparams.Ω)),

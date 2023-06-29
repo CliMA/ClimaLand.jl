@@ -60,8 +60,7 @@ The model struct for the canopy, which contains
 - the canopy model domain (a point for site-level simulations, or
 an extended surface (plane/spherical surface) for regional or global simulations.
 - subcomponent model type for radiative transfer. This is of type
-`AbstractRadiationModel` and currently only the `BeerLambertModel` is
-supported.
+`AbstractRadiationModel`.
 - subcomponent model type for photosynthesis. This is of type
 `AbstractPhotosynthesisModel`, and currently only the `FarquharModel`
 is supported.
@@ -299,7 +298,7 @@ function initialize_auxiliary(model::CanopyModel{FT}, coords) where {FT}
 end
 
 """
-     ClimaLSM.make_update_aux(canopy::CanopyModel{FT, <:BeerLambertModel,
+     ClimaLSM.make_update_aux(canopy::CanopyModel{FT, <:AbstractRadiationModel,
                                                   <:FarquharModel,
                                                   <:MedlynConductanceModel,
                                                   <:PlantHydraulicsModel,},
@@ -307,7 +306,7 @@ end
 
 Creates the `update_aux!` function for the `CanopyModel`; a specific
 method for `update_aux!` for the case where the canopy model components
-are of the type in the parametric type signature: `BeerLambertModel`,
+are of the type in the parametric type signature: `AbstractRadiationModel`,
 `FarquharModel`, `MedlynConductanceModel`, and `PlantHydraulicsModel`.
 
 Please note that the plant hydraulics model has auxiliary variables
@@ -322,7 +321,7 @@ has a single update_aux! function, given here.
 function ClimaLSM.make_update_aux(
     canopy::CanopyModel{
         FT,
-        <:BeerLambertModel,
+        <:Union{BeerLambertModel, TwoStreamModel},
         <:FarquharModel,
         <:MedlynConductanceModel,
         <:PlantHydraulicsModel,
@@ -349,7 +348,9 @@ function ClimaLSM.make_update_aux(
         N_a = FT(LSMP.avogadro_constant(earth_param_set))
         grav = FT(LSMP.grav(earth_param_set))
         ρ_l = FT(LSMP.ρ_cloud_liq(earth_param_set))
-        (; ld, Ω, ρ_leaf, λ_γ) = canopy.radiative_transfer.parameters
+        Ω = canopy.radiative_transfer.parameters.Ω
+        λ_γ = canopy.radiative_transfer.parameters.λ_γ
+        ld = canopy.radiative_transfer.parameters.ld
         (; LAI) = canopy.parameters
         energy_per_photon = h * c / λ_γ
         R = FT(LSMP.gas_constant(earth_param_set))
@@ -367,14 +368,14 @@ function ClimaLSM.make_update_aux(
         q::FT = canopy.atmos.q(t)
 
         # update radiative transfer
-        PAR .= compute_PAR(canopy.radiative_transfer, canopy.radiation, t)
         K = extinction_coeff(ld, θs)
+        PAR .= compute_PAR(canopy.radiative_transfer, canopy.radiation, t)
         @. APAR = plant_absorbed_ppfd(
+            canopy.radiative_transfer,
             PAR / (energy_per_photon * N_a),
-            ρ_leaf,
-            K,
             LAI,
-            Ω,
+            K,
+            θs,
         )
 
         # update plant hydraulics aux
