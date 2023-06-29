@@ -51,7 +51,9 @@ export BucketModelParameters,
     surface_albedo,
     partition_surface_fluxes
 
-include(joinpath(pkgdir(ClimaLSM), "src/Bucket/artifacts/artifacts.jl"))
+include(
+    joinpath(pkgdir(ClimaLSM), "src/standalone/Bucket/artifacts/artifacts.jl"),
+)
 
 abstract type AbstractBucketModel{FT} <: AbstractExpModel{FT} end
 

@@ -28,9 +28,9 @@
 # water model without lateral flow (standing water, as in a pond). For
 # more details on these models, and how they were set up,
 # please feel free to look at the source
-# code [here](https://github.com/CliMA/ClimaLSM.jl/blob/main/src/Soil/Soil.jl)
+# code [here](https://github.com/CliMA/ClimaLSM.jl/blob/main/src/standalone/Soil/Soil.jl)
 # and
-# [here](https://github.com/CliMA/ClimaLSM.jl/blob/main/src/SurfaceWater/Pond.jl).
+# [here](https://github.com/CliMA/ClimaLSM.jl/blob/main/src/standalone/SurfaceWater/Pond.jl).
 # This tutorial focuses on using the `AbstractModel`s framework to set up
 # the equations, rather than on running simulations.
 
@@ -146,8 +146,8 @@ soil_ode! = make_exp_tendency(soil);
 # Note also that we have defined methods `make_compute_exp_tendency` and
 # `make_update_aux`, which only take the `model` as argument, and which return
 # the functions `compute_exp_tendency!` and `update_aux!`,
-# [here](https://github.com/CliMA/ClimaLSM.jl/blob/9e2b8df6d8d5b7f878a5b0f02e2bf80fa66aec33/src/Soil/Soil.jl#L292)
-# and [here](https://github.com/CliMA/ClimaLSM.jl/blob/9e2b8df6d8d5b7f878a5b0f02e2bf80fa66aec33/src/Soil/Soil.jl#L400).
+# [here](https://github.com/CliMA/ClimaLSM.jl/blob/9e2b8df6d8d5b7f878a5b0f02e2bf80fa66aec33/src/standalone/Soil/Soil.jl#L292)
+# and [here](https://github.com/CliMA/ClimaLSM.jl/blob/9e2b8df6d8d5b7f878a5b0f02e2bf80fa66aec33/src/standalone/Soil/Soil.jl#L400).
 
 # Lastly, the coordinates returned by `initialize` contain
 # the z-coordinates of the centers of the finite difference layers used

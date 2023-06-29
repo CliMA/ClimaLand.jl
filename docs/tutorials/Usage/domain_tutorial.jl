@@ -52,7 +52,7 @@ but it is defined for all domains[^1].
 
 There is a single key method which take a ClimaLSM domain as an argument.
 
-- [` coordinates(domain)`](https://clima.github.io/ClimaLSM.jl/dev/APIs/SharedUtilities/#ClimaLSM.Domains.coordinates): under the hood, this function  uses
+- [` coordinates(domain)`](https://clima.github.io/ClimaLSM.jl/dev/APIs/shared_utilities/#ClimaLSM.Domains.coordinates): under the hood, this function  uses
 the function space (domain.space) to create the coordinate field. This returns the coordinates as a ClimaCore.Fields.Field object.
 Depending on the domain, the returned coordinate field will have elements of different names and types. For example,
 the SphericalShell domain has coordinates of latitude, longitude, and height, while a Plane domain has coordinates
@@ -61,13 +61,13 @@ of x and y, and a Point domain only has a coordinate z_sfc.
 
 ## Domain types
 All ClimaLSM domains are subtypes of abstract type
-[`ClimaLSM.Domains.AbstractDomain`](https://clima.github.io/ClimaLSM.jl/dev/APIs/SharedUtilities/#ClimaLSM.Domains.AbstractDomain).
+[`ClimaLSM.Domains.AbstractDomain`](https://clima.github.io/ClimaLSM.jl/dev/APIs/shared_utilities/#ClimaLSM.Domains.AbstractDomain).
 A variety of concrete domain types are supported:
 
-- 0D: [`Domains.Point`](https://clima.github.io/ClimaLSM.jl/dev/APIs/SharedUtilities/#ClimaLSM.Domains.Point)
-- 1D: [`Domains.Column`](https://clima.github.io/ClimaLSM.jl/dev/APIs/SharedUtilities/#ClimaLSM.Domains.Column)
-- 2D: [`Domains.Plane`](https://clima.github.io/ClimaLSM.jl/dev/APIs/SharedUtilities/#ClimaLSM.Domains.Plane), [`Domains.SphericalSurface`](https://clima.github.io/ClimaLSM.jl/dev/APIs/SharedUtilities/#ClimaLSM.Domains.SphericalSurface)
-- 3D: [`Domains.HybridBox`](https://clima.github.io/ClimaLSM.jl/dev/APIs/SharedUtilities/#ClimaLSM.Domains.HybridBox), [`Domains.SphericalShell`](https://clima.github.io/ClimaLSM.jl/dev/APIs/SharedUtilities/#ClimaLSM.Domains.SphericalShell).
+- 0D: [`Domains.Point`](https://clima.github.io/ClimaLSM.jl/dev/APIs/shared_utilities/#ClimaLSM.Domains.Point)
+- 1D: [`Domains.Column`](https://clima.github.io/ClimaLSM.jl/dev/APIs/shared_utilities/#ClimaLSM.Domains.Column)
+- 2D: [`Domains.Plane`](https://clima.github.io/ClimaLSM.jl/dev/APIs/shared_utilities/#ClimaLSM.Domains.Plane), [`Domains.SphericalSurface`](https://clima.github.io/ClimaLSM.jl/dev/APIs/shared_utilities/#ClimaLSM.Domains.SphericalSurface)
+- 3D: [`Domains.HybridBox`](https://clima.github.io/ClimaLSM.jl/dev/APIs/shared_utilities/#ClimaLSM.Domains.HybridBox), [`Domains.SphericalShell`](https://clima.github.io/ClimaLSM.jl/dev/APIs/shared_utilities/#ClimaLSM.Domains.SphericalShell).
 
 Single component models (soil, snow, vegetation, canopy airspace...) will be solved on
 a single domain. Which domain is appropriate depends on the model equations (PDE vs ODE) and
@@ -82,7 +82,7 @@ domain being modeled:
 
 | LSM Domain | Surface Domain | Subsurface Domain |
 | :---         |     :---:      |          ---: |
-| [LSMSingleColumnDomain](https://clima.github.io/ClimaLSM.jl/dev/APIs/SharedUtilities/#ClimaLSM.Domains.LSMSingleColumnDomain)   | Point    | Column    |
+| [LSMSingleColumnDomain](https://clima.github.io/ClimaLSM.jl/dev/APIs/shared_utilities/#ClimaLSM.Domains.LSMSingleColumnDomain)   | Point    | Column    |
 | LSMCartesianBoxDomain    | Plane[^3]       | HybridBox      |
 | LSMSphericalShellDomain    | SphericalSurface[^3]       | SphericalShell      |
 
@@ -97,15 +97,15 @@ column corresponding to a particular surface location.
 
 ## How variable initialization depends on domains
 When a developer creates a model, they need to specify the symbols used for the prognostic variables,
-via [`prognostic_vars`](https://clima.github.io/ClimaLSM.jl/dev/APIs/SharedUtilities/#ClimaLSM.prognostic_vars),
+via [`prognostic_vars`](https://clima.github.io/ClimaLSM.jl/dev/APIs/shared_utilities/#ClimaLSM.prognostic_vars),
 and
 the types of those variables,
- via [`prognostic_types`](https://clima.github.io/ClimaLSM.jl/dev/APIs/SharedUtilities/#ClimaLSM.prognostic_types).
+ via [`prognostic_types`](https://clima.github.io/ClimaLSM.jl/dev/APIs/shared_utilities/#ClimaLSM.prognostic_types).
 
-The [`initialize`](https://clima.github.io/ClimaLSM.jl/dev/APIs/SharedUtilities/#ClimaLSM.initialize)
+The [`initialize`](https://clima.github.io/ClimaLSM.jl/dev/APIs/shared_utilities/#ClimaLSM.initialize)
 function (which calls both
-[`initialize_prognostic`](https://clima.github.io/ClimaLSM.jl/dev/APIs/SharedUtilities/#ClimaLSM.initialize_prognostic)
- and [`initialize_auxiliary`](https://clima.github.io/ClimaLSM.jl/dev/APIs/SharedUtilities/#ClimaLSM.initialize_auxiliary))
+[`initialize_prognostic`](https://clima.github.io/ClimaLSM.jl/dev/APIs/shared_utilities/#ClimaLSM.initialize_prognostic)
+ and [`initialize_auxiliary`](https://clima.github.io/ClimaLSM.jl/dev/APIs/shared_utilities/#ClimaLSM.initialize_auxiliary))
 creates the prognostic state vector `Y` (a ClimaCore.Fields.FieldVector). Each field (ClimaCore.Fields.Field) stored within
 the field vector corresponds to a prognostic variable (identified with the symbol specified). If the prognostic type for that variable
 is a float, the field will be a field of float values (a scalar field)[^4].

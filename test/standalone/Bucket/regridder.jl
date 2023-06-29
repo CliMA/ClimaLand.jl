@@ -12,7 +12,7 @@ using Test
     FT = Float32
     path = bareground_albedo_dataset_path()
     regrid_dirpath =
-        joinpath(pkgdir(ClimaLSM), "test/Bucket/regridder_tmpfiles")
+        joinpath(pkgdir(ClimaLSM), "test/standalone/Bucket/regridder_tmpfiles")
     mkpath(regrid_dirpath)
     rm(regrid_dirpath, recursive = true)
 
