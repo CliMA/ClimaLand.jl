@@ -2,7 +2,7 @@
 
 [ClimaLSM](https://github.com/CliMA/ClimaLSM.jl) home directory has 5 main folders:
 
-- docs: contains files to generate [the documentation website](clima.github.io/ClimaLSM.jl/).  
+- docs: contains files to generate [the documentation website](https://clima.github.io/ClimaLSM.jl/dev/).  
 - experiments: contains simple runs of `ClimaLSM` models. 
 - parameters: contains a file to retrieve constants such as avogadro's number, the speed of light, etc. 
 - src: contains the code of `ClimaLSM` models. 
