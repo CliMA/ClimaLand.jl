@@ -5,7 +5,7 @@
 
 # This tutorial shows how to set up a simulation for a coupled simulation. More detail for coupled runs can be
 # found in the ClimaCoupler.jl [documentation](https://clima.github.io/ClimaCoupler.jl/dev/). In
-# preparation for understanding this tutorial, we recommend also reading the [intro to multi-component models tutorial](https://clima.github.io/ClimaLSM.jl/dev/generated/LSM_single_column_tutorial/) as well as being familiar
+# preparation for understanding this tutorial, we recommend also reading the [intro to multi-component models tutorial](https://clima.github.io/ClimaLSM.jl/dev/generated/Usage/LSM_single_column_tutorial/) as well as being familiar
 # with multiple dispatch programming in Julia.
 
 # # Background
