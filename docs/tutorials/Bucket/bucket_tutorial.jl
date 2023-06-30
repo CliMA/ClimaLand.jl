@@ -7,7 +7,7 @@
 # This tutorial explains in brief the core equations and the
 # necessary parameters of the bucket model, and shows how to set up a simulation in standalone
 # mode. More detail for coupled runs can be
-# found in the ClimaCoupler.jl [documentation](https://clima.github.io/ClimaCoupler.jl/dev/) and in the coupled simulation [tutorial](https://clima.github.io/ClimaLSM.jl/dev/generated/coupled_bucket/).
+# found in the ClimaCoupler.jl [documentation](https://clima.github.io/ClimaCoupler.jl/dev/) and in the coupled simulation [tutorial](https://clima.github.io/ClimaLSM.jl/dev/generated/Bucket/coupled_bucket/).
 
 # At each coordinate point on the surface, we solve ordinary differential
 # equations for the subsurface water storage
