@@ -1,5 +1,5 @@
 # The `AbstractModel`
-# [tutorial](https://clima.github.io/ClimaLSM.jl/dev/generated/model_tutorial)
+# [tutorial](https://clima.github.io/ClimaLSM.jl/dev/generated/Usage/model_tutorial/)
 # describes how a user can run
 # simulations of a physical system governed by differential equations.
 # In this framework, the user must define a model type for their problem,
