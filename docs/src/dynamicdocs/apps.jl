@@ -3,6 +3,7 @@ using ParamViz
 using JSServe
 using ClimaLSM
 using ClimaLSM.Canopy
+using ClimaLSM.Soil.Biogeochemistry
 FT = Float64
 
 # Create server
