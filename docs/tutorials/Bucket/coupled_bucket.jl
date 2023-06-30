@@ -1,7 +1,7 @@
 # # Setting up a Coupled Simulation
 
 # For more information about the bucket model,
-# please see [the bucket model tutorial](https://clima.github.io/ClimaLSM.jl/dev/generated/bucket_tutorial/).
+# please see [the bucket model tutorial](https://clima.github.io/ClimaLSM.jl/dev/generated/Bucket/bucket_tutorial/).
 
 # This tutorial shows how to set up a simulation for a coupled simulation. More detail for coupled runs can be
 # found in the ClimaCoupler.jl [documentation](https://clima.github.io/ClimaCoupler.jl/dev/). In
