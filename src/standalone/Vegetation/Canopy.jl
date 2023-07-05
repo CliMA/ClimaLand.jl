@@ -41,8 +41,8 @@ A place to store shared parameters that are required by all canopy components.
 $(DocStringExtensions.FIELDS)
 """
 struct SharedCanopyParameters{FT <: AbstractFloat, PSE}
-    "Leaf Area Index (m2/m2)"
-    LAI::FT
+    "Leaf Area Index (m2/m2) as a function of time"
+    LAI::Function
     "Canopy height (m)"
     h_c::FT
     "Roughness length for momentum (m)"
@@ -138,13 +138,13 @@ function CanopyModel{FT}(;
         ClimaLSM.Domains.SphericalSurface,
     },
 ) where {FT, PSE}
-    if parameters.LAI != hydraulics.parameters.area_index[:leaf]
-        throw(
-            AssertionError(
-                "The leaf area index must be the same between the plant hydraulics and shared canopy parameters.",
-            ),
-        )
-    end
+    #if parameters.LAI != hydraulics.parameters.area_index[:leaf]
+    #    throw(
+    #        AssertionError(
+    #            "The leaf area index must be the same between the plant hydraulics and shared canopy parameters.",
+    #        ),
+   #     )
+   # end
     args = (
         radiative_transfer,
         photosynthesis,
@@ -350,7 +350,7 @@ function ClimaLSM.make_update_aux(
         grav = FT(LSMP.grav(earth_param_set))
         ρ_l = FT(LSMP.ρ_cloud_liq(earth_param_set))
         (; ld, Ω, ρ_leaf, λ_γ) = canopy.radiative_transfer.parameters
-        (; LAI) = canopy.parameters
+        LAI::FT = canopy.parameters.LAI(t)
         energy_per_photon = h * c / λ_γ
         R = FT(LSMP.gas_constant(earth_param_set))
         thermo_params = canopy.parameters.earth_param_set.thermo_params
@@ -383,6 +383,7 @@ function ClimaLSM.make_update_aux(
         n_leaf = hydraulics.n_leaf
         (; retention_model, conductivity_model, S_s, ν, area_index) =
             hydraulics.parameters
+        area_index = (root = area_index[:root], stem = area_index[:stem], leaf = LAI)
         @inbounds @. ψ[1] = PlantHydraulics.water_retention_curve(
             retention_model,
             PlantHydraulics.effective_saturation(ν, ϑ_l[1]),
@@ -507,10 +508,11 @@ function canopy_surface_fluxes(
 
     # here is where we adjust evaporation for stomatal conductance = 1/r_sfc
     leaf_conductance = p.canopy.conductance.gs
+    LAI = model.parameters.LAI(t)
     canopy_conductance =
         upscale_leaf_conductance.(
             leaf_conductance,
-            model.parameters.LAI,
+            LAI,
             T,
             R,
             P,

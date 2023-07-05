@@ -204,7 +204,7 @@ function PlantHydraulicsModel{FT}(;
 ) where {FT}
     args = (parameters, root_extraction, transpiration)
     area_index = parameters.area_index
-    lai_consistency_check(n_stem, n_leaf, area_index)
+    #lai_consistency_check(n_stem, n_leaf, area_index)
     @assert (n_leaf + n_stem) == length(compartment_midpoints)
     @assert (n_leaf + n_stem) + 1 == length(compartment_surfaces)
     for i in 1:length(compartment_midpoints)

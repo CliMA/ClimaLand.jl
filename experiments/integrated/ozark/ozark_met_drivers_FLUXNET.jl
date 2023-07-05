@@ -91,6 +91,21 @@ atmos_h = FT(32)
 precipitation_function(t::FT) where {FT} = p_spline(t) < 0.0 ? p_spline(t) : 0.0 # m/s
 snow_precip(t) = eltype(t)(0) # this is likely not correct
 
+# LAI data from compartment_midpoints#
+lai_af = ArtifactFile(
+    url = "https://caltech.box.com/shared/static/yfqj0yqkx8yps7ydltsaixuy99083pon.csv",
+    filename = "Ozark_MODIS_LAI_2005.csv",
+)
+lai_dataset = ArtifactWrapper(@__DIR__, "modis_data", ArtifactFile[lai_af]);
+lai_dataset_path = get_data_folder(lai_dataset);
+lai_raw_data = joinpath(lai_dataset_path, "Ozark_MODIS_LAI_2005.csv");
+LAI_data = readdlm(lai_raw_data, ',') #m2.m-2
+LAI_column_names = LAI_data[1, :]
+LAI_data = LAI_data[2:end, LAI_column_names .== "lai_mean"] #m2.m-2
+# This has the same timestamsp as the driver data, so it's ok to use the time column from that file here
+LAI = Spline1D(seconds, LAI_data[:])
+
+
 
 # Construct the drivers
 atmos = ClimaLSM.PrescribedAtmosphere(

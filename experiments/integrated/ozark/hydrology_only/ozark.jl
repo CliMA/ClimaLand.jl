@@ -102,7 +102,7 @@ photosynthesis_args = (;
     )
 )
 # Set up plant hydraulics
-area_index = (root = RAI, stem = SAI, leaf = LAI)
+area_index = (root = RAI, stem = SAI, leaf = max_LAI) # misleading placeholder - LAI value will be updated each timestep
 
 function root_distribution(z::T; rooting_depth = rooting_depth) where {T}
     return T(1.0 / rooting_depth) * exp(z / T(rooting_depth)) # 1/m
