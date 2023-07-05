@@ -240,7 +240,7 @@ dark respiration (`Rd`), and the moisture stress factor (`β`).
 See Table 11.5 of G. Bonan's textbook, Climate Change and Terrestrial Ecosystem Modeling (2019).
 """
 function net_photosynthesis(Ac::FT, Aj::FT, Rd::FT, β::FT) where {FT}
-    An = max(0, min(Ac * β, Aj) - Rd)
+    An = max(0, min(Ac, Aj) * β - Rd)
     return An
 end
 

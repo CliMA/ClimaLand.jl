@@ -569,7 +569,10 @@ function root_flux_per_ground_area!(
                     ) *
                     root_distribution(model.root_depths[i]) *
                     (model.root_depths[i + 1] - model.root_depths[i]) *
-                    area_index[:root]
+                    (
+                        area_index[:root] +
+                        area_index[model.compartment_labels[1]]
+                    ) / 2
             else
                 @. fa +=
                     flux(

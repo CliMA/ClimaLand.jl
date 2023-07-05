@@ -85,12 +85,16 @@ of the soil domain.
 This  method of `soil_boundary_fluxes` is for use with
 a  `PrescribedAtmosphere` and `PrescribedRadiativeFluxes`
 struct; for example, this is to be used when driving
-the soil model with reanalysis data.
+the soil model in standalone mode with reanalysis data.
+
+If you wish to compute surface fluxes taking into account the
+presence of a canopy, snow, etc, as in a land surface model,
+this is not the correct method to be using.
 
 This function calls the `surface_fluxes` and `net_radiation`
 functions, which use the soil surface conditions as well as 
 the prescribed atmos and radiation conditions in order to
-compute the surface fluxes.
+compute the surface fluxes using Monin Obukhov Surface Theory.
 """
 function soil_boundary_fluxes(
     bc::AtmosDrivenFluxBC{<:PrescribedAtmosphere, <:PrescribedRadiativeFluxes},

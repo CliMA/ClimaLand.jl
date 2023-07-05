@@ -275,6 +275,7 @@ using .Pond
 import .Pond: surface_runoff
 include("standalone/Soil/Soil.jl")
 using .Soil
+import .Soil: soil_boundary_fluxes
 import .Soil.Biogeochemistry: soil_temperature, soil_moisture
 include("standalone/Snow/Snow.jl")
 using .Snow
@@ -287,4 +288,6 @@ import .Canopy.PlantHydraulics: root_flux_per_ground_area!
 include("integrated/soil_energy_hydrology_biogeochemistry.jl")
 include("integrated/soil_plant_hydrology_model.jl")
 include("integrated/pond_soil_model.jl")
+include("integrated/soil_canopy_model.jl")
+
 end

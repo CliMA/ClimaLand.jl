@@ -55,6 +55,7 @@ TS = driver_data[2:end, column_names .== "TS_F_MDS_1"] .+ 273.15;# convert C to 
 replace_missing_with_mean!(TS, TS_F)
 GPP = driver_data[2:end, column_names .== "GPP_DT_VUT_REF"] .* 1e-6 # to convert from micromol to mol.
 LE = driver_data[2:end, column_names .== "LE_CORR"]
+H_CORR = driver_data[2:end, column_names .== "H_CORR"]
 H = driver_data[2:end, column_names .== "H_F_MDS"]
 H_F = driver_data[2:end, column_names .== "H_F_MDS_QC"]
 replace_missing_with_mean!(H, H_F)
@@ -114,7 +115,7 @@ function zenith_angle(
     insol_params = earth_param_set.insol_params,
 ) where {FT}
     # This should be time in UTC
-    dt = DateTime("2004-01-01-06", "yyyy-mm-dd-HH") + Dates.Second(round(t))
+    dt = DateTime("2005-01-01-06", "yyyy-mm-dd-HH") + Dates.Second(round(t))
     FT(
         instantaneous_zenith_angle(
             dt,
@@ -134,5 +135,3 @@ radiation = ClimaLSM.PrescribedRadiativeFluxes(
     θs = zenith_angle,
     orbital_data = Insolation.OrbitalData(),
 )
-
-transpiration = DiagnosticTranspiration{FT}()
