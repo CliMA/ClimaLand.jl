@@ -1,6 +1,6 @@
 # Optimality Model
 
-Photosynthetic coordination theory, originally proposed by Vob Caemmerer & Farquhar (1981), provides an approach to predict dynamic responses of photosynthetic capacity to environmental constraints. It primarily focuses on how leaf nitrogen (N) affects the photosynthetic capacity. Photosynthetic capacity varies both among plant types and over time and space, and a major determinant of photosynthetic capacity is the maximum rate of Rubisco carboxylation ($V_\text{cmax}$). 
+Photosynthetic coordination theory, originally proposed by Von Caemmerer & Farquhar (1981), provides an approach to predict dynamic responses of photosynthetic capacity to environmental constraints. It primarily focuses on how leaf nitrogen (N) affects the photosynthetic capacity. Photosynthetic capacity varies both among plant types and over time and space, and a major determinant of photosynthetic capacity is the maximum rate of Rubisco carboxylation ($V_\text{cmax}$). 
 
 In this optimality model, Smith et al. (2019) assumes that plants are able to acquire the N necessary to build leaves that can photosynthesize at the fastest possible rate given light availability and biophysical constraints. The Vcmax model estimates $V_\text{cmax}$ and $J_\text{max}$ as a function of environmental variables as follows:
 
