@@ -68,13 +68,13 @@ $\Gamma^*$ is the CO$_2$ compensation point in the absence of mitochondrial resp
 where $\Gamma^*_0 = 4.332$ Pa, $p$ is the atmospheric pressure, $p_0 = 101325$ Pa, and $\Delta H_a = 37830$ J/mol.
 
 The model has the following parameters:
-- $\varphi$ is the realized quantum yield of photosynthetic electron transport (dimensionless). Estimated at 0.257.
-- $\theta$ is the curvature of the light response curve (dimensionless). Estimated at 0.85.
-- $\beta$ is the ratio of the carbon cost of maintaining photosynthetic proteins to the carbon cost of maintaining a transpiration stream (dimensionless). Estimated at 146.
+- ``\varphi`` is the realized quantum yield of photosynthetic electron transport (dimensionless). Estimated at 0.257.
+- ``\theta`` is the curvature of the light response curve (dimensionless). Estimated at 0.85.
+- ``\beta`` is the ratio of the carbon cost of maintaining photosynthetic proteins to the carbon cost of maintaining a transpiration stream (dimensionless). Estimated at 146.
 
 For Smith et al. (2019) Vcmax model:
 - Altitude
-- $D_g$ is the vapor pressure deficit (VPD) at altitude
-- $C_a$ is the CO$_2$ partial pressure
-- $I$ is the incident photosynthetically active photon flux (PAR)
-- $T$ is the temperature
+- ``D_g`` is the vapor pressure deficit (VPD) at altitude
+- ``C_a`` is the CO$_2$ partial pressure
+- ``I`` is the incident photosynthetically active photon flux (PAR)
+- ``T`` is the temperature
