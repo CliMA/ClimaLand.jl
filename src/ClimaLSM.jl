@@ -4,7 +4,7 @@ using DocStringExtensions
 
 using ClimaCore
 import ClimaCore: Fields, Spaces
-# Temporary fix 
+# Temporary fix
 import ClimaComms
 ClimaCore.Spaces.PointSpace(x) =
     ClimaCore.Spaces.PointSpace(ClimaComms.SingletonCommsContext(), x)
@@ -15,6 +15,7 @@ import .Parameters as LSMP
 include("Regridder.jl")
 include("SharedUtilities/Domains.jl")
 using .Domains
+include("SharedUtilities/BCReader.jl")
 include("SharedUtilities/models.jl")
 include("SharedUtilities/drivers.jl")
 include("SharedUtilities/utils.jl")
