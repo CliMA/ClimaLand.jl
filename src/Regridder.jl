@@ -93,7 +93,7 @@ end
 
 
 """
-    write_to_hdf5(REGRID_DIR, hd_outfile_root, time, field, varname, 
+    write_to_hdf5(REGRID_DIR, hd_outfile_root, time, field, varname,
         comms_ctx = ClimaComms.SingletonCommsContext())
 Function to save individual HDF5 files after remapping.
 If a CommsContext other than SingletonCommsContext is used for `comms_ctx`,
@@ -141,11 +141,11 @@ end
         mono = false,
     )
 Reads and regrids data of the `varname` variable from an input NetCDF file and
-saves it as another NetCDF file using Tempest Remap. 
-The input NetCDF fileneeds to be `Exodus` formatted, and can contain 
-time-dependent data. The output NetCDF file is then read back, the output 
-arrays converted into Fields and saved as HDF5 files (one per time slice). 
-This function should be called by the root process. 
+saves it as another NetCDF file using Tempest Remap.
+The input NetCDF fileneeds to be `Exodus` formatted, and can contain
+time-dependent data. The output NetCDF file is then read back, the output
+arrays converted into Fields and saved as HDF5 files (one per time slice).
+This function should be called by the root process.
 The saved regridded HDF5 output is readable by multiple MPI processes.
 
 Code taken from ClimaCoupler.Regridder.
@@ -201,7 +201,7 @@ function hdwrite_regridfile_rll_to_cgll(
         # write lat-lon mesh
         rll_mesh(meshfile_rll; nlat = nlat, nlon = nlon)
 
-        # write cgll mesh, overlap mesh and weight file 
+        # write cgll mesh, overlap mesh and weight file
         write_exodus(meshfile_cgll, topology)
         overlap_mesh(meshfile_overlap, meshfile_rll, meshfile_cgll)
 
@@ -311,6 +311,7 @@ function regrid_netcdf_to_field(
     boundary_space;
     outfile_root = string(varname, "_cgll"),
     mono = true,
+    threshold = 0.7
 )
 
     if ClimaComms.iamroot(comms_ctx)
@@ -335,15 +336,35 @@ function regrid_netcdf_to_field(
         comms_ctx,
     )
     field = swap_space!(field, boundary_space) # why do we need this?
-    return nans_to_zero.(field)
+    @. field = nans_to_zero(field)
+    return mono ? field : binary_mask.(field, threshold = threshold)
 end
 
+"""
+    swap_space!(field::ClimaCore.Fields.Field, new_space::ClimaCore.Spaces.AbstractSpace)
 
-function swap_space!(field, new_space)
+Remap the values of a field onto a new space.
+
+# Arguments
+- `field`: [Fields.Field] to be remapped to new space.
+- `new_space`: [Spaces.AbstractSpace] to remap `field` onto.
+"""
+function swap_space!(field::ClimaCore.Fields.Field, new_space::ClimaCore.Spaces.AbstractSpace)
     field_out = zeros(new_space)
     parent(field_out) .= parent(field)
     return field_out
 end
+
+"""
+    binary_mask(var::FT; threshold = 0.5)
+
+Converts a number `var` to 1, if `var` is greater or equal than a given `threshold` value, or 0 otherwise, keeping the same type.
+
+# Arguments
+- `var`: [FT] value to be converted.
+- `threshold`: [Float] cutoff value for conversions.
+"""
+binary_mask(var::FT; threshold = FT(0.5)) where {FT} = var < FT(threshold) ? FT(0) : FT(1)
 
 """
     MapInfo
