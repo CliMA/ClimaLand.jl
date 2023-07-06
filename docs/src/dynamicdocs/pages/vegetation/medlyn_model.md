@@ -1,8 +1,11 @@
 # Stomatal conductance
-This section describes multiple models of stomatal conductance 
-implemented in ClimaLSM. 
+Stomata play an important role in uptaking CO2 for photosynthesis while limiting water loss during transpiration. Consequently, an accurate depiction of stomatal conductance is required to study leaf energy fluxes, transpiration, and photosynthesis.
+
+This section describes multiple models of stomatal conductance implemented in ClimaLSM. 
 
 ## Medlyn Model
+
+The Medlyn model is a semiempirical model that relates stomatal conductance and photosynthesis and is derived from water-use efficiency optimization theory.
 
 Transpiration is computed using the stomatal conductance and Monin-Obukhov theory.
 ```math
