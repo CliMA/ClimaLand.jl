@@ -8,7 +8,7 @@ using ClimaLSM.Regridder: MapInfo, regrid_netcdf_to_field
 using ClimaLSM.Bucket:
     BucketModel,
     BucketModelParameters,
-    BulkAlbedoMap,
+    BulkAlbedoStatic,
     bareground_albedo_dataset_path
 using ClimaLSM.Domains:
     coordinates, LSMSingleColumnDomain, LSMSphericalShellDomain
@@ -32,7 +32,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     path = bareground_albedo_dataset_path()
     comms = ClimaComms.SingletonCommsContext()
     regrid_dirpath = joinpath(pkgdir(ClimaLSM), "test/Bucket/albedo_tmpfiles")
-    albedo_model = BulkAlbedoMap{FT}(regrid_dirpath)
+    albedo_model = BulkAlbedoStatic{FT}(regrid_dirpath)
 
     σS_c = FT(0.2)
     W_f = FT(0.15)
