@@ -1,5 +1,6 @@
 *Artifacts.toml
 *.DS_Store
+.vscode/
 
 *#
 *~
