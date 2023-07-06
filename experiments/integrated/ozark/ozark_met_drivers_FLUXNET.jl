@@ -10,22 +10,7 @@ function replace_missing_with_mean!(field, flag)
     return field
 end
 
-# Fluxnet Ozark (CO2 and H2O fluxes and met drivers)
-# 2005 data extracted as follows:
-#af = ArtifactFile(
-#    url = "https://caltech.box.com/shared/static/cy4jlul43kx72r2pqthvm4isjwkatgxy.csv",
-#    filename = "AMF_US-MOz_FLUXNET_FULLSET_HH_2004-2019_3-5.csv",
-#)
-#dataset = ArtifactWrapper(@__DIR__, "ameriflux_data_all_years", ArtifactFile[af]);
-#dataset_path = get_data_folder(dataset);
-#data = joinpath(dataset_path, "AMF_US-MOz_FLUXNET_FULLSET_HH_2004-2019_3-5.csv")
-#driver_data = readdlm(data, ',')
-#mask = Dates.year.(LOCAL_DATETIME) .== 2005
-#data_from_2005 = vcat(driver_data[[1],:], driver_data[2:end, :][mask, :])
-#open("AMF_US-MOz_FLUXNET_FULLSET_HH_2005.csv"), "w") do io
-#             writedlm(io, data_from_2005, ',')
-#         end
-
+# Fluxnet Ozark (CO2 and H2O fluxes and met drivers) from 2005
 af = ArtifactFile(
     url = "https://caltech.box.com/shared/static/1uwg8rjg2wx7y0vp8j9kv2d44y3fajyk.csv",
     filename = "AMF_US-MOz_FLUXNET_FULLSET_HH_2005.csv",
@@ -91,7 +76,7 @@ atmos_h = FT(32)
 precipitation_function(t::FT) where {FT} = p_spline(t) < 0.0 ? p_spline(t) : 0.0 # m/s
 snow_precip(t) = eltype(t)(0) # this is likely not correct
 
-# LAI data from compartment_midpoints#
+# LAI data
 lai_af = ArtifactFile(
     url = "https://caltech.box.com/shared/static/yfqj0yqkx8yps7ydltsaixuy99083pon.csv",
     filename = "Ozark_MODIS_LAI_2005.csv",
@@ -102,7 +87,7 @@ lai_raw_data = joinpath(lai_dataset_path, "Ozark_MODIS_LAI_2005.csv");
 LAI_data = readdlm(lai_raw_data, ',') #m2.m-2
 LAI_column_names = LAI_data[1, :]
 LAI_data = LAI_data[2:end, LAI_column_names .== "lai_mean"] #m2.m-2
-# This has the same timestamsp as the driver data, so it's ok to use the time column from that file here
+# This has the same timestamp as the driver data, so it's ok to use the time column from that file here
 LAI = Spline1D(seconds, LAI_data[:])
 
 

@@ -143,8 +143,8 @@ function CanopyModel{FT}(;
     #        AssertionError(
     #            "The leaf area index must be the same between the plant hydraulics and shared canopy parameters.",
     #        ),
-   #     )
-   # end
+    #     )
+    # end
     args = (
         radiative_transfer,
         photosynthesis,
@@ -383,7 +383,8 @@ function ClimaLSM.make_update_aux(
         n_leaf = hydraulics.n_leaf
         (; retention_model, conductivity_model, S_s, ν, area_index) =
             hydraulics.parameters
-        area_index = (root = area_index[:root], stem = area_index[:stem], leaf = LAI)
+        area_index =
+            (root = area_index[:root], stem = area_index[:stem], leaf = LAI)
         @inbounds @. ψ[1] = PlantHydraulics.water_retention_curve(
             retention_model,
             PlantHydraulics.effective_saturation(ν, ϑ_l[1]),
@@ -510,13 +511,7 @@ function canopy_surface_fluxes(
     leaf_conductance = p.canopy.conductance.gs
     LAI = model.parameters.LAI(t)
     canopy_conductance =
-        upscale_leaf_conductance.(
-            leaf_conductance,
-            LAI,
-            T,
-            R,
-            P,
-        )
+        upscale_leaf_conductance.(leaf_conductance, LAI, T, R, P)
     r_sfc = @. 1 / (canopy_conductance) # [s/m]
     r_ae = conditions.r_ae # [s/m]
     r_eff = r_ae .+ r_sfc
