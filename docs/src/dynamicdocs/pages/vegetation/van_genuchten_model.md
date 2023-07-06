@@ -1,7 +1,15 @@
 # Plant Hydraulics
-The plant hydraulics code solves for the volumetric water content in the stem and leaf ($\theta_{stem}$ and $\theta_{leaf}$). It allows for an arbitrary number of stem/leaf compartments, but for now we will start with a single stem and leaf compartment. 
+
+Additional understanding of stomatal behavior comes from the transport of water through the soil-plant–atmosphere continuum. Plants reduce stomatal conductance as needed to regulate transpiration and prevent desiccation or other hydraulic failure.
+
+Specifically, water loss during day-time transpiration drives plants to draw water from the soil by roots and transport it through the stem to leaves. Transpiration provides the force that pulls water from soil. As transpiration is dominant during the day, water in soil near the roots, water in the stem, and water in foliage create a water potential gradient that allows leaves to draw water from the soil.
+
+The plant hydraulics code solves for the volumetric water content in the stem and leaf ($\theta_{stem}$ and $\ theta_{leaf}$). It allows for an arbitrary number of stem/leaf compartments, but for now we will start with a single stem and leaf compartment. 
 
 ## Van Genuchten Model
+
+As explained above, soil moisture is an indispensable variable in studying plant water uptake. Van Genuchten (1980) developed a widely used soil moisture retention curve, which is used below to describe plant hydraulics.
+
 The volume flux of water $q$ (m/s) between compartments with centers at two heights, $z_1$ and $z_2$, is given by Darcy's law as
 ```math
 \begin{align}
