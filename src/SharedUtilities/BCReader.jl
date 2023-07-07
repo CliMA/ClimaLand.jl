@@ -17,7 +17,7 @@ import CFTime
 
 using ClimaLSM.Regridder
 
-export BCFileInfo, bcfile_info_init, float_type_bcf, update_midmonth_data!, next_date_in_file, interpolate_midmonth_to_daily, no_scaling
+export to_datetime, datetime_to_strdate, BCFileInfo, bcfile_info_init, float_type_bcf, update_midmonth_data!, next_date_in_file, interpolate_midmonth_to_daily, no_scaling
 
 
 """

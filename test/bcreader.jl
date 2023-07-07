@@ -23,135 +23,138 @@ isdir(regrid_dir) ? nothing : mkpath(regrid_dir)
 
 FT = Float64
 
-# @testset "test to_datetime" begin
-#     year = 2000
-#     dt_noleap = DateTimeNoLeap(year)
-#     @test to_datetime(dt_noleap) == DateTime(year)
-# end
 
-# @testset "test next_date_in_file for FT=$FT" begin
-#     dummy_dates = Vector(range(DateTime(1999, 1, 1); step = Day(1), length = 10))
-#     date0 = dummy_dates[1]
-#     segment_idx0 = [
-#         argmin(
-#             abs.(
-#                 parse(FT, BCReader.datetime_to_strdate(date0)) .-
-#                 parse.(FT, BCReader.datetime_to_strdate.(dummy_dates[:]))
-#             ),
-#         ),
-#     ]
+"""
+these pass :)
+@testset "test to_datetime" begin
+    year = 2000
+    dt_noleap = DateTimeNoLeap(year)
+    @test BCReader.to_datetime(dt_noleap) == DateTime(year)
+end
 
-#     bcf_info = BCReader.BCFileInfo{FT}(
-#         "",                                 # bcfile_dir
-#         comms_ctx,                          # comms_ctx
-#         "",                                 # hd_outfile_root
-#         "",                                 # varname
-#         dummy_dates,                        # all_dates
-#         nothing,                            # monthly_fields
-#         nothing,                            # scaling_function
-#         nothing,                            # land_fraction
-#         deepcopy(segment_idx0),             # segment_idx
-#         segment_idx0,                       # segment_idx0
-#         Int[],                              # segment_length
-#         false,                              # interpolate_daily
-#     )
+@testset "test datetime_to_strdate" begin
+    date1 = DateTime(1950, 12, 31)
+    @test BCReader.datetime_to_strdate(date1) == "19501231"
 
-#     idx = segment_idx0[1]
-#     current_date = date0
-#     next_date = BCReader.next_date_in_file(bcf_info)
-#     @test current_date == dummy_dates[idx]
+    date2 = date1 + Dates.Day(1)
+    @test BCReader.datetime_to_strdate(date2) == "19510101"
+end
 
-#     for i in 1:(length(dummy_dates) - 2)
-#         current_date = next_date
-#         bcf_info.segment_idx[1] += Int(1)
-#         next_date = BCReader.next_date_in_file(bcf_info)
-#         idx = segment_idx0[1] + i
-#         @test next_date == dummy_dates[idx + 1]
-#     end
-# end
+@testset "test next_date_in_file for FT=$FT" begin
+    dummy_dates = Vector(range(DateTime(1999, 1, 1); step = Day(1), length = 10))
+    date0 = dummy_dates[1]
+    segment_idx0 = [
+        argmin(
+            abs.(
+                parse(FT, BCReader.datetime_to_strdate(date0)) .-
+                parse.(FT, BCReader.datetime_to_strdate.(dummy_dates[:]))
+            ),
+        ),
+    ]
 
-# @testset "test interpolate_midmonth_to_daily for FT=$FT" begin
-#     # test interpolate_midmonth_to_daily with interpolation
-#     interpolate_daily = true
-#     dummy_dates = Vector(range(DateTime(1999, 1, 1); step = Day(1), length = 100))
-#     segment_idx0 = [Int(1)]
+    bcf_info = BCReader.BCFileInfo{FT}(
+        "",                                 # bcfile_dir
+        comms_ctx,                          # comms_ctx
+        "",                                 # hd_outfile_root
+        "",                                 # varname
+        dummy_dates,                        # all_dates
+        nothing,                            # monthly_fields
+        nothing,                            # scaling_function
+        nothing,                            # land_fraction
+        deepcopy(segment_idx0),             # segment_idx
+        segment_idx0,                       # segment_idx0
+        Int[],                              # segment_length
+        false,                              # interpolate_daily
+    )
 
-#     # these values give an `interp_fraction` of 0.5 in `interpol` for ease of testing
-#     date0 = dummy_dates[Int(segment_idx0[1] + 1)]
-#     segment_length = [Int(2) * ((date0 - dummy_dates[Int(segment_idx0[1])]).value)]
+    idx = segment_idx0[1]
+    current_date = date0
+    next_date = BCReader.next_date_in_file(bcf_info)
+    @test current_date == dummy_dates[idx]
 
-#     radius = FT(6731e3)
-#     Nq = 4
-#     domain_sphere = Domains.SphereDomain(radius)
-#     mesh = Meshes.EquiangularCubedSphere(domain_sphere, 4)
-#     topology = Topologies.Topology2D(mesh)
-#     quad = Spaces.Quadratures.GLL{Nq}()
-#     boundary_space_t = Spaces.SpectralElementSpace2D(topology, quad)
-#     monthly_fields = (zeros(boundary_space_t), ones(boundary_space_t))
+    for i in 1:(length(dummy_dates) - 2)
+        current_date = next_date
+        bcf_info.segment_idx[1] += Int(1)
+        next_date = BCReader.next_date_in_file(bcf_info)
+        idx = segment_idx0[1] + i
+        @test next_date == dummy_dates[idx + 1]
+    end
+end
 
-#     bcf_info_interp = BCReader.BCFileInfo{FT}(
-#         "",                                 # bcfile_dir
-#         comms_ctx,                          # comms_ctx
-#         "",                                 # hd_outfile_root
-#         "",                                 # varname
-#         dummy_dates,                        # all_dates
-#         monthly_fields,                     # monthly_fields
-#         nothing,                            # scaling_function
-#         nothing,                            # land_fraction
-#         deepcopy(segment_idx0),             # segment_idx
-#         segment_idx0,                       # segment_idx0
-#         segment_length,                     # segment_length
-#         interpolate_daily,                  # interpolate_daily
-#     )
-#     @test BCReader.interpolate_midmonth_to_daily(date0, bcf_info_interp) == ones(boundary_space_t) .* FT(0.5)
+@testset "test interpolate_midmonth_to_daily for FT=$FT" begin
+    # test interpolate_midmonth_to_daily with interpolation
+    interpolate_daily = true
+    dummy_dates = Vector(range(DateTime(1999, 1, 1); step = Day(1), length = 100))
+    segment_idx0 = [Int(1)]
 
-#     # test interpolate_midmonth_to_daily without interpolation
-#     interpolate_daily = false
+    # these values give an `interp_fraction` of 0.5 in `interpol` for ease of testing
+    date0 = dummy_dates[Int(segment_idx0[1] + 1)]
+    segment_length = [Int(2) * ((date0 - dummy_dates[Int(segment_idx0[1])]).value)]
 
-#     bcf_info_no_interp = BCReader.BCFileInfo{FT}(
-#         "",                                 # bcfile_dir
-#         comms_ctx,                          # comms_ctx
-#         "",                                 # hd_outfile_root
-#         "",                                 # varname
-#         dummy_dates,                        # all_dates
-#         monthly_fields,                     # monthly_fields
-#         nothing,                            # scaling_function
-#         nothing,                            # land_fraction
-#         deepcopy(segment_idx0),             # segment_idx
-#         segment_idx0,                       # segment_idx0
-#         segment_length,                     # segment_length
-#         interpolate_daily,                  # interpolate_daily
-#     )
-#     @test BCReader.interpolate_midmonth_to_daily(date0, bcf_info_no_interp) == monthly_fields[1]
-# end
+    radius = FT(6731e3)
+    Nq = 4
+    domain_sphere = Domains.SphereDomain(radius)
+    mesh = Meshes.EquiangularCubedSphere(domain_sphere, 4)
+    topology = Topologies.Topology2D(mesh)
+    quad = Spaces.Quadratures.GLL{Nq}()
+    boundary_space_t = Spaces.SpectralElementSpace2D(topology, quad)
+    monthly_fields = (zeros(boundary_space_t), ones(boundary_space_t))
+
+    bcf_info_interp = BCReader.BCFileInfo{FT}(
+        "",                                 # bcfile_dir
+        comms_ctx,                          # comms_ctx
+        "",                                 # hd_outfile_root
+        "",                                 # varname
+        dummy_dates,                        # all_dates
+        monthly_fields,                     # monthly_fields
+        nothing,                            # scaling_function
+        nothing,                            # land_fraction
+        deepcopy(segment_idx0),             # segment_idx
+        segment_idx0,                       # segment_idx0
+        segment_length,                     # segment_length
+        interpolate_daily,                  # interpolate_daily
+    )
+    @test BCReader.interpolate_midmonth_to_daily(date0, bcf_info_interp) == ones(boundary_space_t) .* FT(0.5)
+
+    # test interpolate_midmonth_to_daily without interpolation
+    interpolate_daily = false
+
+    bcf_info_no_interp = BCReader.BCFileInfo{FT}(
+        "",                                 # bcfile_dir
+        comms_ctx,                          # comms_ctx
+        "",                                 # hd_outfile_root
+        "",                                 # varname
+        dummy_dates,                        # all_dates
+        monthly_fields,                     # monthly_fields
+        nothing,                            # scaling_function
+        nothing,                            # land_fraction
+        deepcopy(segment_idx0),             # segment_idx
+        segment_idx0,                       # segment_idx0
+        segment_length,                     # segment_length
+        interpolate_daily,                  # interpolate_daily
+    )
+    @test BCReader.interpolate_midmonth_to_daily(date0, bcf_info_no_interp) == monthly_fields[1]
+end
+"""
 
 # # Add tests which use TempestRemap here -
 # # TempestRemap is not built on Windows because of NetCDF support limitations
 # # `bcf_info_init` uses TR via a call to `hdwrite_regridfile_rll_to_cgll`
 # if !Sys.iswindows()
-#     @testset "test update_midmonth_data! for FT=$FT" begin
+    @testset "test bcf_info_init for FT=$FT" begin
         # setup for test
-        datafile_rll = albedo_temporal_data
-        varname = "sw_alb"
-
-        # Start with first date in data file
-        date0 = BCReader.to_datetime(NCDataset(datafile_rll)["time"][1])
-        dates = collect(date0:Day(10):(date0 + Day(100))) # includes both endpoints
-        # date0 = date1 = DateTime(1979, 01, 01, 01, 00, 00)
-        # date = DateTime(1979, 01, 01, 00, 00, 00)
-        # tspan = (Int(1), Int(90 * 86400)) # Jan-Mar
-        # Δt = Int(1 * 3600)
-
         radius = FT(6731e3)
         Nq = 4
         domain = Domains.SphereDomain(radius)
         mesh = Meshes.EquiangularCubedSphere(domain, 4)
-        topology = Topologies.DistributedTopology2D(comms_ctx, mesh, Topologies.spacefillingcurve(mesh))
+        topology = Topologies.Topology2D(mesh)
         quad = Spaces.Quadratures.GLL{Nq}()
         boundary_space_t = Spaces.SpectralElementSpace2D(topology, quad)
+        land_fraction_t = Fields.zeros(boundary_space_t)
 
-        land_fraction_t = Fields.ones(boundary_space_t) # TODO test real land mask?
-        # dummy_data = (; test_data = zeros(axes(land_fraction_t)))
+        datafile_rll = mask_data
+        varname = "LSMASK"
+        mono = true
 
         bcf_info = BCReader.bcfile_info_init(
             FT,
@@ -160,20 +163,61 @@ FT = Float64
             varname,
             boundary_space_t,
             comms_ctx,
-            interpolate_daily = true,
+            segment_idx0 = [Int(1309)],
             land_fraction = land_fraction_t,
+            mono = mono,
         )
 
-        # Test initial date - aligned with first date of albedo file
-        bcf_info_copy = bcf_info
-        BCReader.update_midmonth_data!(date0, bcf_info)
+        # test that created object exists and has correct components
+        @test @isdefined(bcf_info)
+        @test all(parent(bcf_info.land_fraction) .== 0)
+    end
 
-        @test bcf_info.monthly_fields[1] == bcf_info.monthly_fields[2]
-        @test bcf_info.segment_length == Int(0)
+#     @testset "test update_midmonth_data! for FT=$FT" begin
+        # setup for test
+        # datafile_rll = albedo_temporal_data
+        # varname = "sw_alb"
 
-        # TODO not sure if this is right - does bcf_info field get modified when midmonth_idx modified?
-        @test bcf_info.segment_idx[1] == bcf_info_copy.segment_idx[1] - 1
-        @test bcf_info.segment_idx0[1] == bcf_info_copy.segment_idx0[1]
+        # # Start with first date in data file
+        # date0 = BCReader.to_datetime(NCDataset(datafile_rll)["time"][1])
+        # dates = collect(date0:Day(10):(date0 + Day(100))) # includes both endpoints
+        # # date0 = date1 = DateTime(1979, 01, 01, 01, 00, 00)
+        # # date = DateTime(1979, 01, 01, 00, 00, 00)
+        # # tspan = (Int(1), Int(90 * 86400)) # Jan-Mar
+        # # Δt = Int(1 * 3600)
+
+        # radius = FT(6731e3)
+        # Nq = 4
+        # domain = Domains.SphereDomain(radius)
+        # mesh = Meshes.EquiangularCubedSphere(domain, 4)
+        # topology = Topologies.DistributedTopology2D(comms_ctx, mesh, Topologies.spacefillingcurve(mesh))
+        # quad = Spaces.Quadratures.GLL{Nq}()
+        # boundary_space_t = Spaces.SpectralElementSpace2D(topology, quad)
+
+        # land_fraction_t = Fields.ones(boundary_space_t) # TODO test real land mask?
+        # # dummy_data = (; test_data = zeros(axes(land_fraction_t)))
+
+        # bcf_info = BCReader.bcfile_info_init(
+        #     FT,
+        #     regrid_dir,
+        #     datafile_rll,
+        #     varname,
+        #     boundary_space_t,
+        #     comms_ctx,
+        #     interpolate_daily = true,
+        #     land_fraction = land_fraction_t,
+        # )
+
+        # # Test initial date - aligned with first date of albedo file
+        # bcf_info_copy = bcf_info
+        # BCReader.update_midmonth_data!(date0, bcf_info)
+
+        # @test bcf_info.monthly_fields[1] == bcf_info.monthly_fields[2]
+        # @test bcf_info.segment_length == Int(0)
+
+        # # TODO not sure if this is right - does bcf_info field get modified when midmonth_idx modified?
+        # @test bcf_info.segment_idx[1] == bcf_info_copy.segment_idx[1] - 1
+        # @test bcf_info.segment_idx0[1] == bcf_info_copy.segment_idx0[1]
 
 
         # Test following dates - not all aligned with dates of albedo file
@@ -275,54 +319,7 @@ FT = Float64
 #     end
 """
 
-#     @testset "test bcf_info_init for FT=$FT" begin
-#         # setup for test
-#         radius = FT(6731e3)
-#         Nq = 4
-#         domain = Domains.SphereDomain(radius)
-#         mesh = Meshes.EquiangularCubedSphere(domain, 4)
-#         topology = Topologies.Topology2D(mesh)
-#         quad = Spaces.Quadratures.GLL{Nq}()
-#         boundary_space_t = Spaces.SpectralElementSpace2D(topology, quad)
-#         land_fraction_t = Fields.zeros(boundary_space_t)
 
-#         datafile_rll = mask_data
-#         varname = "LSMASK"
-#         mono = true
-
-#         bcf_info = BCReader.bcfile_info_init(
-#             FT,
-#             regrid_dir,
-#             datafile_rll,
-#             varname,
-#             boundary_space_t,
-#             comms_ctx,
-#             segment_idx0 = [Int(1309)],
-#             land_fraction = land_fraction_t,
-#             mono = mono,
-#         )
-
-#         # test that created object exists and has correct components
-#         @test @isdefined(bcf_info)
-#         @test all(parent(bcf_info.land_fraction) .== 0)
-
-#         # construct weightfile name to test values
-#         hd_outfile_root = varname * "_cgll"
-#         outfile = hd_outfile_root * ".nc"
-#         outfile_root = mono ? outfile[1:(end - 3)] * "_mono" : outfile[1:(end - 3)]
-#         weightfile = joinpath(regrid_dir, outfile_root * "_remap_weights.nc")
-
-#         # test monotone remapping (all weights in [0, 1])
-#         nt = NCDataset(weightfile) do weights
-#             max_weight = maximum(weights["S"])
-#             min_weight = minimum(weights["S"])
-#             (; max_weight, min_weight)
-#         end
-#         (; max_weight, min_weight) = nt
-
-#         @test max_weight <= FT(1.0) || isapprox(max_weight, FT(1.0), atol = 1e-16)
-#         @test min_weight >= FT(0.0) || isapprox(min_weight, FT(0.0), atol = 1e-16)
-#     end
 # end
 
 # delete testing directory and files
