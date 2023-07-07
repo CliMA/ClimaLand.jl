@@ -17,7 +17,7 @@ import CFTime
 
 using ClimaLSM.Regridder
 
-export to_datetime, datetime_to_strdate, BCFileInfo, bcfile_info_init, float_type_bcf, update_midmonth_data!, next_date_in_file, interpolate_midmonth_to_daily, no_scaling
+export to_datetime, datetime_to_strdate, BCFileInfo, bcfile_info_init, float_type_bcf, update_midmonth_data!, next_date_in_file, interpolate_midmonth_data, no_scaling
 
 
 """
@@ -289,7 +289,7 @@ next_date_in_file(bcf_info::BCFileInfo{FT}) where {FT} = bcf_info.all_dates[bcf_
 
 # IO - daily
 """
-    interpolate_midmonth_to_daily(date, bcf_info::BCFileInfo{FT}) where {FT}
+    interpolate_midmonth_data(date, bcf_info::BCFileInfo{FT}) where {FT}
 
 Interpolates linearly between two `Fields` in the `bcf_info` struct,
 or returns the first Field if interpolation is switched off.
@@ -302,7 +302,7 @@ or returns the first Field if interpolation is switched off.
 - Fields.field
 """
 # TODO rename function
-function interpolate_midmonth_to_daily(date, bcf_info::BCFileInfo{FT}) where {FT}
+function interpolate_midmonth_data(date, bcf_info::BCFileInfo{FT}) where {FT}
     if bcf_info.interpolate_daily && bcf_info.segment_length[1] > FT(0)
         (; segment_length, segment_idx, all_dates, monthly_fields) = bcf_info
 

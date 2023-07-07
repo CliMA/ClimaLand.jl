@@ -81,8 +81,8 @@ end
     end
 end
 
-@testset "test interpolate_midmonth_to_daily for FT=$FT" begin
-    # test interpolate_midmonth_to_daily with interpolation
+@testset "test interpolate_midmonth_data for FT=$FT" begin
+    # test interpolate_midmonth_data with interpolation
     interpolate_daily = true
     dummy_dates = Vector(range(DateTime(1999, 1, 1); step = Day(1), length = 100))
     segment_idx0 = [Int(1)]
@@ -114,9 +114,9 @@ end
         segment_length,                     # segment_length
         interpolate_daily,                  # interpolate_daily
     )
-    @test BCReader.interpolate_midmonth_to_daily(date0, bcf_info_interp) == ones(boundary_space_t) .* FT(0.5)
+    @test BCReader.interpolate_midmonth_data(date0, bcf_info_interp) == ones(boundary_space_t) .* FT(0.5)
 
-    # test interpolate_midmonth_to_daily without interpolation
+    # test interpolate_midmonth_data without interpolation
     interpolate_daily = false
 
     bcf_info_no_interp = BCReader.BCFileInfo{FT}(
@@ -133,7 +133,7 @@ end
         segment_length,                     # segment_length
         interpolate_daily,                  # interpolate_daily
     )
-    @test BCReader.interpolate_midmonth_to_daily(date0, bcf_info_no_interp) == monthly_fields[1]
+    @test BCReader.interpolate_midmonth_data(date0, bcf_info_no_interp) == monthly_fields[1]
 end
 """
 

@@ -433,7 +433,7 @@ function set_initial_parameter_field!(
 ) where {FT}
     # Note: Using `date0` here assumes the simulation is starting at that date
     update_midmonth_data!(albedo.albedo_info.date0, albedo.albedo_info)
-    α_sfc_init = interpolate_midmonth_to_daily(albedo.albedo_info.date0, albedo.albedo_info)
+    α_sfc_init = interpolate_midmonth_data(albedo.albedo_info.date0, albedo.albedo_info)
     p.bucket.α_sfc .= α_sfc_init
 end
 
@@ -581,7 +581,7 @@ function next_albedo(α_sfc::BulkAlbedoTemporal, t)
     if date >= next_date_in_file(α_sfc.albedo_info)
         update_midmonth_data!(date, α_sfc.albedo_info)
     end
-    return interpolate_midmonth_to_daily(date, α_sfc.albedo_info)
+    return interpolate_midmonth_data(date, α_sfc.albedo_info)
 end
 
 include("./bucket_parameterizations.jl")
