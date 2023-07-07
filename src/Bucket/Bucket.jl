@@ -554,35 +554,40 @@ function make_update_aux(model::BucketModel{FT}) where {FT}
         p.bucket.R_n .= net_radiation(model.radiation, model, Y, p, t)
 
         # Surface albedo
-        p.bucket.α_sfc .= next_albedo(model.parameters.albedo, t)
+        p.bucket.α_sfc .= next_albedo(model.parameters.albedo, p, t)
     end
     return update_aux!
 end
 
 """
-    next_albedo(α_sfc::Union{BulkAlbedoFunction, BulkAlbedoStatic}, t)
+    next_albedo(model_albedo::Union{BulkAlbedoFunction{FT}, BulkAlbedoStatic{FT}}, p, t)
 
 Update the surface albedo for time t. This function returns the albedo
-unchanged for types that are either prescribed by a function or don't
-change over time.
+unchanged for types that don't change over time.
 """
-function next_albedo(α_sfc::Union{BulkAlbedoFunction, BulkAlbedoStatic}, t)
-    return α_sf
+function next_albedo(
+    model_albedo::Union{BulkAlbedoFunction{FT}, BulkAlbedoStatic{FT}},
+    p,
+    t,
+) where {FT}
+    return p.bucket.α_sfc
 end
 
 """
-    update_albedo!(α_sfc::BulkAlbedoTemporal, t)
+    update_albedo!(model_albedo::BulkAlbedoTemporal, p, t)
 
 Update the surface albedo for time t. For a file containing albedo
 information over time, this reads in the value for time t.
 """
-function next_albedo(α_sfc::BulkAlbedoTemporal, t)
+function next_albedo(model_albedo::BulkAlbedoTemporal, p, t)
     # Note: this assuments the simulation started at `date0`
-    date = α_sfc.albedo_info.date0 + t
-    if date >= next_date_in_file(α_sfc.albedo_info)
-        update_midmonth_data!(date, α_sfc.albedo_info)
+    date = model_albedo.albedo_info.date0 + t
+    # Get next date if it's closest to current time
+    if date >= next_date_in_file(model_albedo.albedo_info)
+        update_midmonth_data!(date, model_albedo.albedo_info)
     end
-    return interpolate_midmonth_data(date, α_sfc.albedo_info)
+    # Interpolate data value to current time
+    return interpolate_midmonth_data(date, model_albedo.albedo_info)
 end
 
 include("./bucket_parameterizations.jl")

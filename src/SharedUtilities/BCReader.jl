@@ -181,6 +181,8 @@ function bcfile_info_init(
     segment_length = [Int(0)]
 
     # unless the start file date is specified, find the closest one to the start date
+    # TODO if we use two separate data files that start on different dates, we'll need to
+    #  reconcile date0 between the two of them - maybe add a function for this?
     date0 == nothing ? date0 = data_dates[1] : nothing
     segment_idx0 =
         segment_idx0 != nothing ? segment_idx0 :
