@@ -49,6 +49,7 @@ export BucketModelParameters,
     BucketModel,
     BulkAlbedoFunction,
     BulkAlbedoStatic,
+    BulkAlbedoTemporal,
     surface_albedo,
     partition_surface_fluxes
 

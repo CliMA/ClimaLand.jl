@@ -8,6 +8,7 @@ CurrentModule = ClimaLSM.Bucket
 ```@docs
 ClimaLSM.Bucket.BucketModelParameters
 ClimaLSM.Bucket.BulkAlbedoStatic
+ClimaLSM.Bucket.BulkAlbedoTemporal
 ClimaLSM.Bucket.BulkAlbedoFunction
 ClimaLSM.Bucket.BucketModel
 ```
