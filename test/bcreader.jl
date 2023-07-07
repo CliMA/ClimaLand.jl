@@ -9,7 +9,6 @@ using ClimaComms
 using Test
 using Dates
 using NCDatasets
-using CFTime
 
 include(joinpath(pkgdir(ClimaLSM), "src/Bucket/artifacts/artifacts.jl"))
 albedo_temporal_data = cesm2_albedo_dataset_path()
