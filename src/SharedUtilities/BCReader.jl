@@ -232,7 +232,7 @@ function update_midmonth_data!(date, bcf_info::BCFileInfo{FT}) where {FT}
             Regridder.read_from_hdf5(
                 regrid_dirpath,
                 regrid_dirpath,
-                all_dates[Int(length(all_dates))],
+                all_dates[end],
                 varname,
                 comms,
             ),
