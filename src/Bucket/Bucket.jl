@@ -159,7 +159,7 @@ function BulkAlbedoTemporal{FT}(
         comms,
         mask_path,
         mask_varname,
-        boundary_space
+        boundary_space,
     )
 
     # Construct object containing info to read in surface albedo over time
@@ -171,7 +171,7 @@ function BulkAlbedoTemporal{FT}(
         boundary_space,
         comms,
         land_fraction = land_fraction,
-        interpolate_daily = true
+        interpolate_daily = true,
     )
     return BulkAlbedoTemporal{FT}(bcfile_info)
 end
@@ -433,7 +433,8 @@ function set_initial_parameter_field!(
 ) where {FT}
     # Note: Using `date0` here assumes the simulation is starting at that date
     update_midmonth_data!(albedo.albedo_info.date0, albedo.albedo_info)
-    α_sfc_init = interpolate_midmonth_data(albedo.albedo_info.date0, albedo.albedo_info)
+    α_sfc_init =
+        interpolate_midmonth_data(albedo.albedo_info.date0, albedo.albedo_info)
     p.bucket.α_sfc .= α_sfc_init
 end
 

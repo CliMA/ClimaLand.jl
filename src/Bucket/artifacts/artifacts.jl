@@ -1,6 +1,7 @@
 import ArtifactWrappers as AW
 
-export cesm2_albedo_dataset_path, bareground_albedo_dataset_path, mask_dataset_path
+export cesm2_albedo_dataset_path,
+    bareground_albedo_dataset_path, mask_dataset_path
 
 """
     cesm2_albedo_dataset_path()

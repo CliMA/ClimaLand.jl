@@ -17,7 +17,15 @@ import CFTime
 
 using ClimaLSM.Regridder
 
-export to_datetime, datetime_to_strdate, BCFileInfo, bcfile_info_init, float_type_bcf, update_midmonth_data!, next_date_in_file, interpolate_midmonth_data, no_scaling
+export to_datetime,
+    datetime_to_strdate,
+    BCFileInfo,
+    bcfile_info_init,
+    float_type_bcf,
+    update_midmonth_data!,
+    next_date_in_file,
+    interpolate_midmonth_data,
+    no_scaling
 
 
 """
@@ -82,7 +90,8 @@ struct BCFileInfo{FT <: Real, B, X, S, V, D, C, O, M, VI}
     interpolate_daily::Bool
 end
 
-BCFileInfo{FT}(args...) where {FT} = BCFileInfo{FT, typeof.(args[1:9])...}(args...)
+BCFileInfo{FT}(args...) where {FT} =
+    BCFileInfo{FT, typeof.(args[1:9])...}(args...)
 float_type_bcf(::BCFileInfo{FT}) where {FT} = FT
 
 
@@ -161,10 +170,14 @@ function bcfile_info_init(
         )
     end
     ClimaComms.barrier(comms)
-    data_dates = JLD2.load(joinpath(regrid_dirpath, regrid_dirpath * "_times.jld2"), "times")
+    data_dates = JLD2.load(
+        joinpath(regrid_dirpath, regrid_dirpath * "_times.jld2"),
+        "times",
+    )
 
     # init time tracking info
-    current_fields = Fields.zeros(FT, boundary_space), Fields.zeros(FT, boundary_space)
+    current_fields =
+        Fields.zeros(FT, boundary_space), Fields.zeros(FT, boundary_space)
     segment_length = [Int(0)]
 
     # unless the start file date is specified, find the closest one to the start date
@@ -209,18 +222,33 @@ The times for which data is extracted depends on the specifications in the
 """
 function update_midmonth_data!(date, bcf_info::BCFileInfo{FT}) where {FT}
     # monthly count
-    (; regrid_dirpath, comms, regrid_dirpath, varname, all_dates, scaling_function) = bcf_info
+    (;
+        regrid_dirpath,
+        comms,
+        regrid_dirpath,
+        varname,
+        all_dates,
+        scaling_function,
+    ) = bcf_info
     midmonth_idx = bcf_info.segment_idx[1]
     midmonth_idx0 = bcf_info.segment_idx0[1]
 
-    if (midmonth_idx == midmonth_idx0) && (Dates.days(date - all_dates[midmonth_idx]) <= 0) # for init
+    if (midmonth_idx == midmonth_idx0) &&
+       (Dates.days(date - all_dates[midmonth_idx]) <= 0) # for init
         if date !== all_dates[midmonth_idx]
             @warn "this time period is before BC data - using file from $(all_dates[midmonth_idx0])"
         end
         midmonth_idx = bcf_info.segment_idx[1] -= Int(1)
-        midmonth_idx = midmonth_idx < Int(1) ? midmonth_idx + Int(1) : midmonth_idx
+        midmonth_idx =
+            midmonth_idx < Int(1) ? midmonth_idx + Int(1) : midmonth_idx
         bcf_info.monthly_fields[1] .= scaling_function(
-            Regridder.read_from_hdf5(regrid_dirpath, regrid_dirpath, all_dates[Int(midmonth_idx0)], varname, comms),
+            Regridder.read_from_hdf5(
+                regrid_dirpath,
+                regrid_dirpath,
+                all_dates[Int(midmonth_idx0)],
+                varname,
+                comms,
+            ),
             bcf_info,
         )
         bcf_info.monthly_fields[2] .= deepcopy(bcf_info.monthly_fields[1])
@@ -256,13 +284,28 @@ function update_midmonth_data!(date, bcf_info::BCFileInfo{FT}) where {FT}
     elseif Dates.days(date - all_dates[Int(midmonth_idx)]) > 0
         midmonth_idx = bcf_info.segment_idx[1] += Int(1)
         @warn "On $date updating monthly data files: mid-month dates = [ $(all_dates[Int(midmonth_idx)]) , $(all_dates[Int(midmonth_idx+1)]) ]"
-        bcf_info.segment_length .= (all_dates[Int(midmonth_idx + 1)] - all_dates[Int(midmonth_idx)]).value
+        bcf_info.segment_length .=
+            (
+                all_dates[Int(midmonth_idx + 1)] - all_dates[Int(midmonth_idx)]
+            ).value
         bcf_info.monthly_fields[1] .= scaling_function(
-            Regridder.read_from_hdf5(regrid_dirpath, regrid_dirpath, all_dates[Int(midmonth_idx)], varname, comms),
+            Regridder.read_from_hdf5(
+                regrid_dirpath,
+                regrid_dirpath,
+                all_dates[Int(midmonth_idx)],
+                varname,
+                comms,
+            ),
             bcf_info,
         )
         bcf_info.monthly_fields[2] .= scaling_function(
-            Regridder.read_from_hdf5(regrid_dirpath, regrid_dirpath, all_dates[Int(midmonth_idx + 1)], varname, comms),
+            Regridder.read_from_hdf5(
+                regrid_dirpath,
+                regrid_dirpath,
+                all_dates[Int(midmonth_idx + 1)],
+                varname,
+                comms,
+            ),
             bcf_info,
         )
 
@@ -285,7 +328,8 @@ return the same value unless `segment_idx` is modified elsewhere in between.
 # Returns
 - Dates.DateTime
 """
-next_date_in_file(bcf_info::BCFileInfo{FT}) where {FT} = bcf_info.all_dates[bcf_info.segment_idx[1] + Int(1)]
+next_date_in_file(bcf_info::BCFileInfo{FT}) where {FT} =
+    bcf_info.all_dates[bcf_info.segment_idx[1] + Int(1)]
 
 # IO - daily
 """

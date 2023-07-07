@@ -36,7 +36,8 @@ for FT in (Float64, Float32)
     end
 
     @testset "test next_date_in_file for FT=$FT" begin
-        dummy_dates = Vector(range(DateTime(1999, 1, 1); step = Day(1), length = 10))
+        dummy_dates =
+            Vector(range(DateTime(1999, 1, 1); step = Day(1), length = 10))
         date0 = dummy_dates[1]
         segment_idx0 = [
             argmin(
@@ -79,12 +80,14 @@ for FT in (Float64, Float32)
     @testset "test interpolate_midmonth_data for FT=$FT" begin
         # test interpolate_midmonth_data with interpolation
         interpolate_daily = true
-        dummy_dates = Vector(range(DateTime(1999, 1, 1); step = Day(1), length = 100))
+        dummy_dates =
+            Vector(range(DateTime(1999, 1, 1); step = Day(1), length = 100))
         segment_idx0 = [Int(1)]
 
         # these values give an `interp_fraction` of 0.5 in `interpol` for ease of testing
         date0 = dummy_dates[Int(segment_idx0[1] + 1)]
-        segment_length = [Int(2) * ((date0 - dummy_dates[Int(segment_idx0[1])]).value)]
+        segment_length =
+            [Int(2) * ((date0 - dummy_dates[Int(segment_idx0[1])]).value)]
 
         radius = FT(6731e3)
         Nq = 4
@@ -109,7 +112,8 @@ for FT in (Float64, Float32)
             segment_length,                     # segment_length
             interpolate_daily,                  # interpolate_daily
         )
-        @test BCReader.interpolate_midmonth_data(date0, bcf_info_interp) == ones(boundary_space_t) .* FT(0.5)
+        @test BCReader.interpolate_midmonth_data(date0, bcf_info_interp) ==
+              ones(boundary_space_t) .* FT(0.5)
 
         # test interpolate_midmonth_data without interpolation
         interpolate_daily = false
@@ -128,7 +132,8 @@ for FT in (Float64, Float32)
             segment_length,                     # segment_length
             interpolate_daily,                  # interpolate_daily
         )
-        @test BCReader.interpolate_midmonth_data(date0, bcf_info_no_interp) == monthly_fields[1]
+        @test BCReader.interpolate_midmonth_data(date0, bcf_info_no_interp) ==
+              monthly_fields[1]
     end
 
     # Add tests which use TempestRemap here -
@@ -180,7 +185,11 @@ for FT in (Float64, Float32)
             Nq = 4
             domain = Domains.SphereDomain(radius)
             mesh = Meshes.EquiangularCubedSphere(domain, 4)
-            topology = Topologies.DistributedTopology2D(comms_ctx, mesh, Topologies.spacefillingcurve(mesh))
+            topology = Topologies.DistributedTopology2D(
+                comms_ctx,
+                mesh,
+                Topologies.spacefillingcurve(mesh),
+            )
             quad = Spaces.Quadratures.GLL{Nq}()
             boundary_space_t = Spaces.SpectralElementSpace2D(topology, quad)
 
@@ -214,17 +223,24 @@ for FT in (Float64, Float32)
             # Test that the data_saved array was modified
             @test length(data_saved) > 0
             # Check that the final saved date is as expected (midmonth day of last month)
-            midmonth_end = DateTime(year(dates[end]), month(dates[end]), 15, hour(dates[end]))
+            midmonth_end = DateTime(
+                year(dates[end]),
+                month(dates[end]),
+                15,
+                hour(dates[end]),
+            )
             @test updating_dates[end] == midmonth_end
 
             # Test warning/error cases
-            current_fields = Fields.zeros(FT, boundary_space_t), Fields.zeros(FT, boundary_space_t)
+            current_fields = Fields.zeros(FT, boundary_space_t),
+            Fields.zeros(FT, boundary_space_t)
 
             # Use this function to reset values between test cases
             function reset_bcf_info(bcf_info)
                 bcf_info.monthly_fields[1] .= current_fields[1]
                 bcf_info.monthly_fields[2] .= current_fields[2]
-                bcf_info.segment_length[1] = bcf_info.segment_idx[1] = bcf_info.segment_idx0[1] = Int(1)
+                bcf_info.segment_length[1] =
+                    bcf_info.segment_idx[1] = bcf_info.segment_idx0[1] = Int(1)
             end
 
             # Case 1: test initial date - aligned with first date of albedo file
@@ -254,13 +270,18 @@ for FT in (Float64, Float32)
 
             # Case 3: closer initial indices in BC file matching this date (?)
             reset_bcf_info(bcf_info)
-            date = DateTime(bcf_info.all_dates[bcf_info.segment_idx[1] + 1] + Dates.Day(3))
+            date = DateTime(
+                bcf_info.all_dates[bcf_info.segment_idx[1] + 1] + Dates.Day(3),
+            )
             BCReader.update_midmonth_data!(date, bcf_info)
 
             nearest_idx = argmin(
                 abs.(
                     parse(FT, BCReader.datetime_to_strdate(date)) .-
-                    parse.(FT, BCReader.datetime_to_strdate.(bcf_info.all_dates[:]))
+                    parse.(
+                        FT,
+                        BCReader.datetime_to_strdate.(bcf_info.all_dates[:]),
+                    )
                 ),
             )
             @test bcf_info.segment_idx[1] == nearest_idx
@@ -270,7 +291,10 @@ for FT in (Float64, Float32)
             bcf_info.segment_idx[1] = bcf_info.segment_idx0[1] + Int(1)
             date = bcf_info.all_dates[bcf_info.segment_idx[1]] - Dates.Day(1)
 
-            @test_throws ErrorException BCReader.update_midmonth_data!(date, bcf_info)
+            @test_throws ErrorException BCReader.update_midmonth_data!(
+                date,
+                bcf_info,
+            )
 
         end
     end

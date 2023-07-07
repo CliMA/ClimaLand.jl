@@ -311,7 +311,7 @@ function regrid_netcdf_to_field(
     boundary_space;
     outfile_root = string(varname, "_cgll"),
     mono = true,
-    threshold = 0.7
+    threshold = 0.7,
 )
 
     if ClimaComms.iamroot(comms_ctx)
@@ -349,7 +349,10 @@ Remap the values of a field onto a new space.
 - `field`: [Fields.Field] to be remapped to new space.
 - `new_space`: [Spaces.AbstractSpace] to remap `field` onto.
 """
-function swap_space!(field::ClimaCore.Fields.Field, new_space::ClimaCore.Spaces.AbstractSpace)
+function swap_space!(
+    field::ClimaCore.Fields.Field,
+    new_space::ClimaCore.Spaces.AbstractSpace,
+)
     field_out = zeros(new_space)
     parent(field_out) .= parent(field)
     return field_out
@@ -364,7 +367,8 @@ Converts a number `var` to 1, if `var` is greater or equal than a given `thresho
 - `var`: [FT] value to be converted.
 - `threshold`: [Float] cutoff value for conversions.
 """
-binary_mask(var::FT; threshold = FT(0.5)) where {FT} = var < FT(threshold) ? FT(0) : FT(1)
+binary_mask(var::FT; threshold = FT(0.5)) where {FT} =
+    var < FT(threshold) ? FT(0) : FT(1)
 
 """
     MapInfo
