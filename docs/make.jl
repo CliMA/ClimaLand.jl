@@ -18,6 +18,10 @@ tutorials = [
             "Energy and Hydrology" => "Soil/soil_energy_hydrology.jl",
             "Phase Changes" => "Soil/freezing_front.jl",
         ],
+        "Canopy modeling" => [
+            "Standalone Canopy" => "Canopy/canopy_tutorial.jl",
+            "Coupled Canopy and Soil Hydrology" => "Canopy/soil_plant_hydrology_tutorial.jl",
+        ],
         "Bucket LSM" =>
             ["Bucket/bucket_tutorial.jl", "Bucket/coupled_bucket.jl"],
     ],
