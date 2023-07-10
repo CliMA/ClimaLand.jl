@@ -212,12 +212,12 @@ plant_hydraulics_ps = PlantHydraulics.PlantHydraulicsParameters(;
 root_depths = FT.(-Array(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0)
 
 ψ_soil0 = FT(0.0)
-root_extraction = PrescribedSoilPressure{FT}((t::FT) -> ψ_soil0)
+soil_potential = t -> eltype(t)(ψ_soil0)
+root_extraction = PrescribedSoilPressure{FT}(root_depths, soil_potential)
 
 plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
     parameters = plant_hydraulics_ps,
     root_extraction = root_extraction,
-    root_depths = root_depths,
     n_stem = n_stem,
     n_leaf = n_leaf,
     compartment_surfaces = compartment_surfaces,

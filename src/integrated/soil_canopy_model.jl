@@ -109,9 +109,6 @@ function SoilCanopyModel{FT}(;
     )
     sources = (RootExtraction{FT}(), Soil.PhaseChange{FT}(Δz))
     root_extraction = PrognosticSoilPressure{FT}()
-    root_depths = sort(
-        unique(parent(ClimaLSM.Domains.coordinates(soil_args.domain).z)[:]),
-    )
     # add heat BC
     top_bc = ClimaLSM.Soil.AtmosDrivenFluxBC(atmos, CanopyRadiativeFluxes{FT}())
     zero_flux = FluxBC((p, t) -> eltype(t)(0.0))
@@ -140,7 +137,6 @@ function SoilCanopyModel{FT}(;
         hydraulics = canopy_component_types.hydraulics(;
             root_extraction = root_extraction,
             transpiration = transpiration,
-            root_depths = root_depths,
             canopy_component_args.hydraulics...,
         ),
         atmos = atmos,
