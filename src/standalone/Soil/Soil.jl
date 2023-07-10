@@ -136,6 +136,25 @@ function horizontal_components!(
     _...,
 ) end
 
+"""
+   horizontal_components!(dY::ClimaCore.Fields.FieldVector,
+                          domain::Union{HybridBox, SphericalShell},
+                          lateral_flow::Val{false},
+                          _...)
+Updates dY in place by adding in the tendency terms resulting from
+horizontal derivative operators.
+
+In the case of a 3D domain, for either the `RichardsModel` or the
+`EnergyHydrology` model, if the `lateral_flow` flag is set to false,
+there are no horizontal contributions to the right hand side.
+"""
+function horizontal_components!(
+    dY::ClimaCore.Fields.FieldVector,
+    domain::Union{HybridBox, SphericalShell},
+    lateral_flow::Val{false},
+    _...,
+) end
+
 include("./retention_models.jl")
 include("./rre.jl")
 include("./energy_hydrology.jl")
