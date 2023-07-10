@@ -94,21 +94,23 @@ end
 
 """
     BulkAlbedoStatic{FT}(
-        regrid_dirpath;
+        regrid_dirpath::String,
+        path::String;
         α_snow = FT(0.8),
         comms = ClimaComms.SingletonCommsContext(),
-        path = bareground_albedo_dataset_path(),
         varname = "sw_alb",
     ) where {FT}
 
 Constructor for the BulkAlbedoStatic that implements a default albedo map, `comms` context, and value for `α_snow`.
 The `varname` must correspond to the name of the variable in the NetCDF file specified by `path`.
+
+The `bareground_albedo_dataset_path` artifact can be used as a default with this type.
 """
 function BulkAlbedoStatic{FT}(
-    regrid_dirpath;
+    regrid_dirpath::String,
+    path::String;
     α_snow = FT(0.8),
     comms = ClimaComms.SingletonCommsContext(),
-    path = bareground_albedo_dataset_path(),
     varname = "sw_alb",
 ) where {FT}
     α_sfc = MapInfo(path, varname, regrid_dirpath, comms)
@@ -131,26 +133,31 @@ end
 
 # TODO check that file passed in contains data over time
 #  (not sure how to do this) - compare cesm2 and bareground files to check
-# TODO do we need to handle snow differently? I think we can just read in albedo everywhere
 """
     BulkAlbedoTemporal{FT}(
-        regrid_dirpath,
-        boundary_space;
+        regrid_dirpath::String,
+        path::String,
+        surface;
         comms = ClimaComms.SingletonCommsContext(),
-        data_path = cesm2_albedo_dataset_path(),
         varname = "sw_alb"
     ) where {FT}
 
 Constructor for the BulkAlbedoStatic that implements a default albedo map, `comms` context, and value for `α_snow`.
 The `varname` must correspond to the name of the variable in the NetCDF file specified by `path`.
+
+The `cesm2_albedo_dataset_path` artifact can be used as a default with this type.
 """
 function BulkAlbedoTemporal{FT}(
     regrid_dirpath,
-    boundary_space; # TODO in coupler: atmos_sim.domain.face_space.horizontal_space
+    path,
+    surface;
     comms = ClimaComms.SingletonCommsContext(),
-    path = cesm2_albedo_dataset_path(),
     varname = "sw_alb",
 ) where {FT}
+    if typeof(surface) <: ClimaLSM.Domains.Point
+        error("Using an albedo map requires a global run.")
+    end
+    boundary_space = surface.space
     # Set up land mask info
     mask_path = mask_dataset_path()
     mask_varname = "LSMASK"
@@ -275,7 +282,7 @@ function BucketModel(;
     atmosphere::ATM,
     radiation::RAD,
 ) where {FT, PSE, ATM, RAD}
-    if parameters.albedo isa BulkAlbedoStatic
+    if parameters.albedo isa Union{BulkAlbedoStatic, BulkAlbedoTemporal}
         typeof(domain) <: LSMSphericalShellDomain ? nothing :
         error("Using an albedo map requires a global run.")
     end
