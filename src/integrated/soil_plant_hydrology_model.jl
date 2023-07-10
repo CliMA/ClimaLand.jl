@@ -57,10 +57,6 @@ function SoilPlantHydrologyModel{FT}(;
     # These should always be set by the constructor.
     sources = (RootExtraction{FT}(),)
     root_extraction = PrognosticSoilPressure{FT}()
-    root_depths = sort(
-        unique(parent(ClimaLSM.Domains.coordinates(soil_args.domain).z)[:]),
-    )
-
     boundary_conditions = (;
         top = (water = FluxBC((p, t) -> eltype(t)(precipitation(t))),),
         bottom = (water = Soil.FreeDrainage(),),
@@ -91,7 +87,6 @@ function SoilPlantHydrologyModel{FT}(;
         hydraulics = canopy_component_types.hydraulics(;
             root_extraction = root_extraction,
             transpiration = transpiration,
-            root_depths = root_depths,
             canopy_component_args.hydraulics...,
         ),
         atmos = atmos,
@@ -131,15 +126,17 @@ function make_interactions_update_aux(
 ) where {FT, SM <: Soil.RichardsModel{FT}, RM <: Canopy.CanopyModel{FT}}
     function update_aux!(p, Y, t)
         z = ClimaCore.Fields.coordinate_field(land.soil.domain.space).z
-        (; area_index, conductivity_model) = land.canopy.hydraulics.parameters
+        (; conductivity_model, root_distribution) = land.canopy.hydraulics.parameters
+        (; compartment_labels, compartment_midpoints) = land.canopy.parameters
+        area_index = p.canopy.area_index
         @. p.root_extraction =
             (
                 area_index[:root] +
-                area_index[land.canopy.hydraulics.compartment_labels[1]]
+                area_index[compartment_labels[1]]
             ) / 2 *
             PlantHydraulics.flux(
                 z,
-                land.canopy.hydraulics.compartment_midpoints[1],
+                compartment_midpoints[1],
                 p.soil.ψ,
                 p.canopy.hydraulics.ψ[1],
                 PlantHydraulics.hydraulic_conductivity(
@@ -151,7 +148,7 @@ function make_interactions_update_aux(
                     p.canopy.hydraulics.ψ[1],
                 ),
             ) *
-            (land.canopy.hydraulics.parameters.root_distribution(z))
+            (root_distribution(z))
     end
     return update_aux!
 end

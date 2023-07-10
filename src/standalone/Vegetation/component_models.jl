@@ -21,20 +21,20 @@ the canopy component parameterizations.
 abstract type AbstractCanopyComponent{FT <: AbstractFloat} end
 
 """
-    ClimaLSM.auxiliary_types(::AbstractCanopyComponent)
+    ClimaLSM.auxiliary_types(::AbstractCanopyComponent, canopy)
 
 Returns the auxiliary types of the canopy component
 passed in as an argument.
 """
-ClimaLSM.auxiliary_types(::AbstractCanopyComponent) = ()
+ClimaLSM.auxiliary_types(::AbstractCanopyComponent, canopy) = ()
 
 """
-    ClimaLSM.prognostic_types(::AbstractCanopyComponent)
+    ClimaLSM.prognostic_types(::AbstractCanopyComponent, canopy)
 
 Returns the prognostic types of the canopy component
 passed in as an argument.
 """
-ClimaLSM.prognostic_types(::AbstractCanopyComponent) = ()
+ClimaLSM.prognostic_types(::AbstractCanopyComponent, canopy) = ()
 
 """
     ClimaLSM.prognostic_vars(::AbstractCanopyComponent)
@@ -51,51 +51,6 @@ Returns the auxiliary types of the canopy component
 passed in as an argument.
 """
 ClimaLSM.auxiliary_vars(::AbstractCanopyComponent) = ()
-
-"""
-    initialize_prognostic(
-        component::AbstractCanopyComponent,
-        state,
-    )
-
-Creates and returns a ClimaCore.Fields.FieldVector
-with the prognostic variables of the canopy component
- `component`, stored using the name of the component.
-
-The input `state` is usually a ClimaCore Field object.
-"""
-function initialize_prognostic(component::AbstractCanopyComponent, state)
-    ClimaLSM.initialize_vars(
-        prognostic_vars(component),
-        prognostic_types(component),
-        state,
-        name(component),
-    )
-end
-
-"""
-    initialize_auxiliary(
-        component::AbstractCanopyComponent,
-        state,
-    )
-
-Creates and returns a ClimaCore.Fields.FieldVector
-with the auxiliary variables of the canopy component
- `component`, stored using the name of the component.
-
-The input `state` is usually a ClimaCore Field object.
-"""
-function initialize_auxiliary(
-    component::AbstractCanopyComponent{FT},
-    state,
-) where {FT}
-    ClimaLSM.initialize_vars(
-        auxiliary_vars(component),
-        auxiliary_types(component),
-        state,
-        name(component),
-    )
-end
 
 """
      ClimaLSM.make_compute_exp_tendency(component::AbstractCanopyComponent, canopy)

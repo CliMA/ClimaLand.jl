@@ -37,7 +37,17 @@ include("./canopy_parameterizations.jl")
 """
     SharedCanopyParameters{FT <: AbstractFloat, PSE}
 
-A place to store shared parameters that are required by all canopy components.
+A place to store parameters that are required across canopy components.
+
+In  global run with patches
+of bare soil, you can "turn off" the canopy model (to get zero root extraction, zero absorption and
+emission, zero transpiration and sensible heat flux from the canopy), by setting:
+- n_leaf = 1
+- n_stem = 0 
+- LAI = SAI = RAI = 0. 
+
+A plant model can have leaves but no stem, but not vice versa. If n_stem = 0, SAI must be zero.
+
 $(DocStringExtensions.FIELDS)
 """
 struct SharedCanopyParameters{FT <: AbstractFloat, PSE}
@@ -47,14 +57,61 @@ struct SharedCanopyParameters{FT <: AbstractFloat, PSE}
     SAI::FT
     "Root Area Index (m2/m2); treated as constant in time"
     RAI::FT
-    "Canopy height (m)"
-    h_c::FT
+    "The number of stem compartments for the plant; can be zero"
+    n_stem::Int64
+    "The number of leaf compartments for the plant; must be >=1"
+    n_leaf::Int64
+    "The height of the center of each leaf compartment/stem compartment, in meters"
+    compartment_midpoints::Vector{FT}
+    "The height of the compartments' top faces, in meters"
+    compartment_surfaces::Vector{FT}
+    "The label (:stem or :leaf) of each compartment"
+    compartment_labels::Vector{Symbol}
     "Roughness length for momentum (m)"
     z_0m::FT
     "Roughness length for scalars (m)"
     z_0b::FT
     "Earth param set"
     earth_param_set::PSE
+end
+
+function SharedCanopyParameters{FT}(;
+                                    LAI::Function,
+                                    SAI::FT,
+                                    RAI::FT,
+                                    n_stem::Int64,
+                                    n_leaf::Int64,
+                                    compartment_midpoints::Vector{FT},
+                                    compartment_surface::Vector{FT},
+                                    z_0m::FT,
+                                    z_0b::FT,
+                                    earth_param_set) where{FT}
+    @assert (n_leaf + n_stem) == length(compartment_midpoints)
+    @assert (n_leaf + n_stem) + 1 == length(compartment_surfaces)
+    for i in 1:length(compartment_midpoints)
+        @assert compartment_midpoints[i] ==
+            ((compartment_surfaces[i + 1] - compartment_surfaces[i]) / 2) +
+            compartment_surfaces[i]
+    end
+    compartment_labels = Vector{Symbol}(undef, n_stem + n_leaf)
+    for i in 1:(n_stem + n_leaf)
+        if i <= n_stem
+            compartment_labels[i] = :stem
+        else
+            compartment_labels[i] = :leaf
+        end
+    end
+    return SharedCanopyParameters{FT, typeof(earth_param_set)}(LAI,
+                                                               SAI,
+                                                               RAI,
+                                                               n_stem,
+                                                               n_leaf,
+                                                               compartment_midpoints,
+                                                               compartment_surfaces,
+                                                               compartment_labels,
+                                                               z_0m,
+                                                               z_0b,
+                                                               earth_param_set)
 end
 
 """
@@ -84,16 +141,6 @@ fluxes.
 - The radiative flux conditions, which are either prescribed
 (of type `PrescribedRadiativeFluxes`) or computed via a coupled simulation
 (of type `CoupledRadiativeFluxes`).
-
-
-In  global run with patches
-of bare soil, you can "turn off" the canopy model (to get zero root extraction, zero absorption and
-emission, zero transpiration and sensible heat flux from the canopy), by setting:
-- n_leaf = 1 (PlantHydraulicsModel field)
-- n_stem = 0 (PlantHydraulicsModel field)
-- LAI = SAI = RAI = 0. (SharedCanopyParameters field)
-
-A plant model can have leaves but no stem, but not vice versa. If n_stem = 0, SAI must be zero.
 
 $(DocStringExtensions.FIELDS)
 """
@@ -210,7 +257,7 @@ as those returned by `canopy_components`.
 function prognostic_types(canopy::CanopyModel)
     components = canopy_components(canopy)
     prognostic_list = map(components) do model
-        prognostic_types(getproperty(canopy, model))
+        prognostic_types(getproperty(canopy, model), canopy)
     end
     return NamedTuple{components}(prognostic_list)
 end
@@ -244,7 +291,7 @@ as those returned by `canopy_components`.
 function auxiliary_types(canopy::CanopyModel)
     components = canopy_components(canopy)
     auxiliary_list = map(components) do model
-        auxiliary_types(getproperty(canopy, model))
+        auxiliary_types(getproperty(canopy, model), canopy)
     end
     return NamedTuple{components}(auxiliary_list)
 end
@@ -269,12 +316,25 @@ function initialize_prognostic(model::CanopyModel{FT}, coords) where {FT}
     Y_state_list = map(components) do (component)
         submodel = getproperty(model, component)
         zero_state = map(_ -> zero(FT), coords)
-        getproperty(initialize_prognostic(submodel, zero_state), component)
+        getproperty(initialize_vars(prognostic_vars(submodel),
+                                    prognostic_types(submodel, model),
+                                    zero_state,
+                                    component), component)
     end
     Y = ClimaCore.Fields.FieldVector(;
         name(model) => NamedTuple{components}(Y_state_list),
     )
     return Y
+end
+
+function initialize_location_vars(model::CanopyModel, coords)
+    vars = location_vars(land)
+    types = location_var_types(land)
+    p_list = map(types) do (T)
+        zero_instance = zero(T)
+        map(_ -> zero_instance, coords)
+    end
+    return NamedTuple{vars}(p_list)
 end
 
 """
@@ -297,10 +357,14 @@ function initialize_auxiliary(model::CanopyModel{FT}, coords) where {FT}
     p_state_list = map(components) do (component)
         submodel = getproperty(model, component)
         zero_state = map(_ -> zero(FT), coords)
-        getproperty(initialize_auxiliary(submodel, zero_state), component)
+        getproperty(initialize_vars(auxiliary_vars(submodel),
+                                    auxiliary_types(submodel, model),
+                                    zero_state,
+                                    component), component)
     end
+    p_location_vars = initialize_location_vars(model, coords)
     p = ClimaCore.Fields.FieldVector(;
-        name(model) => NamedTuple{components}(p_state_list),
+        name(model) => (p_location_vars..., NamedTuple{components}(p_state_list)...)
     )
     return p
 end
@@ -399,9 +463,10 @@ function ClimaLSM.make_update_aux(
         grav = FT(LSMP.grav(earth_param_set))
         ρ_l = FT(LSMP.ρ_cloud_liq(earth_param_set))
         (; ld, Ω, ρ_leaf, λ_γ) = canopy.radiative_transfer.parameters
-        (; RAI, SAI) = model.parameters
+        (; RAI, SAI, n_stem, n_leaf, compartment_midpoints, compartment_surfaces, compartment_labels) = model.parameters
         area_index .= (root = RAI, stem = SAI, leaf = canopy.parameters.LAI(t))
-
+        lai_consistency_check(n_stem, n_leaf, area_index)
+        
         energy_per_photon = h * c / λ_γ
         R = FT(LSMP.gas_constant(earth_param_set))
         thermo_params = canopy.parameters.earth_param_set.thermo_params
@@ -430,8 +495,6 @@ function ClimaLSM.make_update_aux(
 
         # update plant hydraulics aux
         hydraulics = canopy.hydraulics
-        n_stem = hydraulics.n_stem
-        n_leaf = hydraulics.n_leaf
         (; retention_model, conductivity_model, S_s, ν) =
             hydraulics.parameters
         @inbounds @. ψ[1] = PlantHydraulics.water_retention_curve(
@@ -453,8 +516,8 @@ function ClimaLSM.make_update_aux(
             # and the compartment above.
             @. fa[i] =
                 PlantHydraulics.flux(
-                    hydraulics.compartment_midpoints[i],
-                    hydraulics.compartment_midpoints[i + 1],
+                    compartment_midpoints[i],
+                    compartment_midpoints[i + 1],
                     ψ[i],
                     ψ[i + 1],
                     PlantHydraulics.hydraulic_conductivity(
@@ -466,8 +529,8 @@ function ClimaLSM.make_update_aux(
                         ψ[i + 1],
                     ),
                 ) * (
-                    area_index[hydraulics.compartment_labels[i]] +
-                    area_index[hydraulics.compartment_labels[i + 1]]
+                    area_index[compartment_labels[i]] +
+                    area_index[compartment_labels[i + 1]]
                 ) / 2
         end
         @. β = moisture_stress(ψ[n_stem + n_leaf] * ρ_l * grav, sc, pc)
@@ -589,7 +652,7 @@ A helper function which returns the surface height for the canopy
 model, which is stored in the parameter struct.
 """
 function ClimaLSM.surface_height(model::CanopyModel, _...)
-    return model.parameters.h_c
+    return model.parameters.compartment_surfaces[end]
 end
 
 """

@@ -44,5 +44,5 @@ end
 ClimaLSM.name(model::AbstractStomatalConductanceModel) = :conductance
 ClimaLSM.auxiliary_vars(model::MedlynConductanceModel) =
     (:medlyn_term, :gs, :transpiration)
-ClimaLSM.auxiliary_types(model::MedlynConductanceModel{FT}) where {FT} =
+ClimaLSM.auxiliary_types(model::MedlynConductanceModel{FT},_) where {FT} =
     (FT, FT, FT)

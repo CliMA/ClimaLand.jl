@@ -84,12 +84,12 @@ struct PlantHydraulicsParameters{FT <: AbstractFloat, CP, RP}
 end
 
 function PlantHydraulicsParameters(;
-    ν::FT,
-    S_s::FT,
-    root_distribution::Function,
-    conductivity_model,
-    retention_model,
-) where {FT}
+                                   ν::FT,
+                                   S_s::FT,
+                                   root_distribution::Function,
+                                   conductivity_model,
+                                   retention_model,
+                                   ) where {FT}
     return PlantHydraulicsParameters{
         FT,
         typeof(conductivity_model),
@@ -123,18 +123,6 @@ option (intendend only for debugging) to use a prescribed transpiration rate.
 $(DocStringExtensions.FIELDS)
 """
 struct PlantHydraulicsModel{FT, PS, RE, T} <: AbstractPlantHydraulicsModel{FT}
-    "The number of stem compartments for the plant; can be zero"
-    n_stem::Int64
-    "The number of leaf compartments for the plant; must be >=1"
-    n_leaf::Int64
-    "The depth of the root tips, in meters"
-    root_depths::Vector{FT}
-    "The height of the center of each leaf compartment/stem compartment, in meters"
-    compartment_midpoints::Vector{FT}
-    "The height of the compartments' top faces, in meters"
-    compartment_surfaces::Vector{FT}
-    "The label (:stem or :leaf) of each compartment"
-    compartment_labels::Vector{Symbol}
     "Parameters required by the Plant Hydraulics model"
     parameters::PS
     "The root extraction model, of type `AbstractRootExtraction`"
@@ -144,38 +132,12 @@ struct PlantHydraulicsModel{FT, PS, RE, T} <: AbstractPlantHydraulicsModel{FT}
 end
 
 function PlantHydraulicsModel{FT}(;
-    root_depths::Vector{FT},
-    n_stem::Int64,
-    n_leaf::Int64,
-    compartment_midpoints::Vector{FT},
-    compartment_surfaces::Vector{FT},
-    parameters::PlantHydraulicsParameters{FT},
-    root_extraction::AbstractRootExtraction{FT},
-    transpiration::AbstractTranspiration{FT} = DiagnosticTranspiration{FT}(),
-) where {FT}
+                                  parameters::PlantHydraulicsParameters{FT},
+                                  root_extraction::AbstractRootExtraction{FT},
+                                  transpiration::AbstractTranspiration{FT} = DiagnosticTranspiration{FT}(),
+                                  ) where {FT}
     args = (parameters, root_extraction, transpiration)
-    @assert (n_leaf + n_stem) == length(compartment_midpoints)
-    @assert (n_leaf + n_stem) + 1 == length(compartment_surfaces)
-    for i in 1:length(compartment_midpoints)
-        @assert compartment_midpoints[i] ==
-                ((compartment_surfaces[i + 1] - compartment_surfaces[i]) / 2) +
-                compartment_surfaces[i]
-    end
-    compartment_labels = Vector{Symbol}(undef, n_stem + n_leaf)
-    for i in 1:(n_stem + n_leaf)
-        if i <= n_stem
-            compartment_labels[i] = :stem
-        else
-            compartment_labels[i] = :leaf
-        end
-    end
     return PlantHydraulicsModel{FT, typeof.(args)...}(
-        n_stem,
-        n_leaf,
-        root_depths,
-        compartment_midpoints,
-        compartment_surfaces,
-        compartment_labels,
         args...,
     )
 end
@@ -205,18 +167,17 @@ auxiliary_vars(model::PlantHydraulicsModel) = (:β, :ψ, :fa, :fa_roots)
 
 Defines the prognostic types for the PlantHydraulicsModel.
 """
-ClimaLSM.prognostic_types(model::PlantHydraulicsModel{FT}) where {FT} =
-    (NTuple{model.n_stem + model.n_leaf, FT},)
+ClimaLSM.prognostic_types(model::PlantHydraulicsModel{FT}, canopy) where {FT} = (NTuple{canopy.parameters.n_stem + canopy.parameters.n_leaf, FT},)
 
 """
     ClimaLSM.auxiliary_types(model::PlantHydraulicsModel{FT}) where {FT}
 
 Defines the auxiliary types for the PlantHydraulicsModel.
 """
-ClimaLSM.auxiliary_types(model::PlantHydraulicsModel{FT}) where {FT} = (
+ClimaLSM.auxiliary_types(model::PlantHydraulicsModel{FT}, canopy) where {FT} = (
     FT,
-    NTuple{model.n_stem + model.n_leaf, FT},
-    NTuple{model.n_stem + model.n_leaf, FT},
+    NTuple{canopy.parameters.n_stem + canopy.parameters.n_leaf, FT},
+    NTuple{canopy.parameters.n_stem + canopy.parameters.n_leaf, FT},
     FT,
 )
 
@@ -420,11 +381,10 @@ zero because they are scaled by AI.
 To prevent dividing by zero, we change AI/(AI x dz)" to
 "AI/max(AI x dz, eps(FT))"
 """
-function make_compute_exp_tendency(model::PlantHydraulicsModel, _)
+function make_compute_exp_tendency(model::PlantHydraulicsModel, canopy)
     function compute_exp_tendency!(dY, Y, p, t)
+        (; n_stem, n_leaf, compartment_labels, compartment_surfaces) = canopy.parameters
         area_index = p.canopy.area_index
-        n_stem = model.n_stem
-        n_leaf = model.n_leaf
         fa = p.canopy.hydraulics.fa
         fa_roots = p.canopy.hydraulics.fa_roots
         FT = eltype(t)
@@ -432,9 +392,9 @@ function make_compute_exp_tendency(model::PlantHydraulicsModel, _)
             # To prevent dividing by zero, change AI/(AI x dz)" to
             # "AI/max(AI x dz, eps(FT))"
             AIdz = max(
-                area_index[model.compartment_labels[i]] * (
-                    model.compartment_surfaces[i + 1] -
-                    model.compartment_surfaces[i]
+                area_index[compartment_labels[i]] * (
+                    compartment_surfaces[i + 1] -
+                    compartment_surfaces[i]
                 ),
                 eps(FT),
             )
@@ -443,7 +403,8 @@ function make_compute_exp_tendency(model::PlantHydraulicsModel, _)
                 root_flux_per_ground_area!(
                     fa_roots,
                     model.root_extraction,
-                    model,
+                    model.parameters,
+                    canopy.parameters,
                     Y,
                     p,
                     t,
@@ -468,6 +429,9 @@ A concrete type used for dispatch when computing the `root_flux_per_ground_area!
 in the case where the soil matric potential at each root layer is prescribed.
 """
 struct PrescribedSoilPressure{FT} <: AbstractRootExtraction{FT}
+    "The depth of the root tips, in meters"
+    root_depths::Vector{FT}
+    "The prescribed soil potential at the root tips"
     ψ_soil::Function
 end
 
@@ -492,16 +456,19 @@ is the first element of `Y.canopy.hydraulics.ϑ_l`.
 function root_flux_per_ground_area!(
     fa::ClimaCore.Fields.Field,
     re::PrescribedSoilPressure{FT},
-    model::PlantHydraulicsModel{FT},
+    hydraulics_parameters,
+    canopy_parameters,
     Y::ClimaCore.Fields.FieldVector,
     p::ClimaCore.Fields.FieldVector,
     t::FT,
 ) where {FT}
 
-    (; conductivity_model, root_distribution) = model.parameters
+    (; conductivity_model, root_distribution) = hydraulics_parameters
+    (; compartment_midpoints, compartment_labels) = canopy_parameters
+    root_depths = re.root_depths
     area_index = p.canopy.area_index
     ψ_base = p.canopy.hydraulics.ψ[1]
-    n_root_layers = length(model.root_depths)
+    n_root_layers = length(root_depths)
     ψ_soil::FT = re.ψ_soil(t)
     if area_index[:root] < eps(FT)
         fa .= FT(0)
@@ -510,34 +477,34 @@ function root_flux_per_ground_area!(
             if i != n_root_layers
                 @. fa +=
                     flux(
-                        model.root_depths[i],
-                        model.compartment_midpoints[1],
+                        root_depths[i],
+                        compartment_midpoints[1],
                         ψ_soil,
                         ψ_base,
                         hydraulic_conductivity(conductivity_model, ψ_soil),
                         hydraulic_conductivity(conductivity_model, ψ_base),
                     ) *
-                    root_distribution(model.root_depths[i]) *
-                    (model.root_depths[i + 1] - model.root_depths[i]) *
+                    root_distribution(root_depths[i]) *
+                    (root_depths[i + 1] - root_depths[i]) *
                     (
                         area_index[:root] +
-                        area_index[model.compartment_labels[1]]
+                        area_index[compartment_labels[1]]
                     ) / 2
             else
                 @. fa +=
                     flux(
-                        model.root_depths[i],
-                        model.compartment_midpoints[1],
+                        root_depths[i],
+                        compartment_midpoints[1],
                         ψ_soil,
                         ψ_base,
                         hydraulic_conductivity(conductivity_model, ψ_soil),
                         hydraulic_conductivity(conductivity_model, ψ_base),
                     ) *
-                    root_distribution(model.root_depths[i]) *
-                    (FT(0) - model.root_depths[n_root_layers]) *
+                    root_distribution(root_depths[i]) *
+                    (FT(0) - root_depths[n_root_layers]) *
                     (
                         area_index[:root] +
-                        area_index[model.compartment_labels[1]]
+                        area_index[compartment_labels[1]]
                     ) / 2
             end
         end

@@ -44,7 +44,7 @@ end
 
 ClimaLSM.name(model::AbstractRadiationModel) = :radiative_transfer
 ClimaLSM.auxiliary_vars(model::BeerLambertModel) = (:apar, :par)
-ClimaLSM.auxiliary_types(model::BeerLambertModel{FT}) where {FT} = (FT, FT)
+ClimaLSM.auxiliary_types(model::BeerLambertModel{FT},_) where {FT} = (FT, FT)
 
 """
     compute_PAR(

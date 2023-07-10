@@ -26,7 +26,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
                     for n_l in n_leaf
                         area_index = (root = R, stem = S, leaf = L)
                         if n_l == 0
-                            @test_throws AssertionError ClimaLSM.Canopy.PlantHydraulics.lai_consistency_check(
+                            @test_throws AssertionError ClimaLSM.Canopy.lai_consistency_check(
                                 n_s,
                                 n_l,
                                 area_index,
@@ -34,7 +34,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
                         end
 
                         if (L > eps(FT) || S > eps(FT)) && R < eps(FT)
-                            @test_throws AssertionError ClimaLSM.Canopy.PlantHydraulics.lai_consistency_check(
+                            @test_throws AssertionError ClimaLSM.Canopy.lai_consistency_check(
                                 n_s,
                                 n_l,
                                 area_index,
@@ -42,7 +42,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
                         end
 
                         if S > FT(0) && n_s == 0
-                            @test_throws AssertionError ClimaLSM.Canopy.PlantHydraulics.lai_consistency_check(
+                            @test_throws AssertionError ClimaLSM.Canopy.lai_consistency_check(
                                 n_s,
                                 n_l,
                                 area_index,
@@ -50,7 +50,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
                         end
 
                         if S < eps(FT) && n_s > 0
-                            @test_throws AssertionError ClimaLSM.Canopy.PlantHydraulics.lai_consistency_check(
+                            @test_throws AssertionError ClimaLSM.Canopy.lai_consistency_check(
                                 n_s,
                                 n_l,
                                 area_index,

@@ -109,9 +109,6 @@ function SoilCanopyModel{FT}(;
     )
     sources = (RootExtraction{FT}(), Soil.PhaseChange{FT}(Δz))
     root_extraction = PrognosticSoilPressure{FT}()
-    root_depths = sort(
-        unique(parent(ClimaLSM.Domains.coordinates(soil_args.domain).z)[:]),
-    )
     # add heat BC
     top_bc = ClimaLSM.Soil.AtmosDrivenFluxBC(atmos, CanopyRadiativeFluxes{FT}())
     zero_flux = FluxBC((p, t) -> eltype(t)(0.0))
@@ -140,7 +137,6 @@ function SoilCanopyModel{FT}(;
         hydraulics = canopy_component_types.hydraulics(;
             root_extraction = root_extraction,
             transpiration = transpiration,
-            root_depths = root_depths,
             canopy_component_args.hydraulics...,
         ),
         atmos = atmos,
@@ -212,15 +208,17 @@ function make_interactions_update_aux(
 ) where {FT, SM <: Soil.EnergyHydrology{FT}, RM <: Canopy.CanopyModel{FT}}
     function update_aux!(p, Y, t)
         z = ClimaCore.Fields.coordinate_field(land.soil.domain.space).z
-        (; area_index, conductivity_model) = land.canopy.hydraulics.parameters
+        (; conductivity_model, root_distribution) = land.canopy.hydraulics.parameters
+        (; compartment_labels, compartment_midpoints) = land.canopy.parameters
+        area_index = p.canopy.area_index
         @. p.root_extraction =
             (
                 area_index[:root] +
-                area_index[land.canopy.hydraulics.compartment_labels[1]]
+                area_index[compartment_labels[1]]
             ) / 2 *
             PlantHydraulics.flux(
                 z,
-                land.canopy.hydraulics.compartment_midpoints[1],
+                compartment_midpoints[1],
                 p.soil.ψ,
                 p.canopy.hydraulics.ψ[1],
                 PlantHydraulics.hydraulic_conductivity(
@@ -232,7 +230,7 @@ function make_interactions_update_aux(
                     p.canopy.hydraulics.ψ[1],
                 ),
             ) *
-            (land.canopy.hydraulics.parameters.root_distribution(z))
+            root_distribution(z)
 
         # Soil boundary fluxes under canopy or for bare soil
         bc = land.soil.boundary_conditions.top
