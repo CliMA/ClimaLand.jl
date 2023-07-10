@@ -71,8 +71,6 @@ A struct for holding parameters of the PlantHydraulics Model.
 $(DocStringExtensions.FIELDS)
 """
 struct PlantHydraulicsParameters{FT <: AbstractFloat, CP, RP}
-    "RAI, SAI, LAI in [m2 m-2]"
-    area_index::NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}}
     "porosity (m3/m3)"
     ν::FT
     "storativity (m3/m3)"
@@ -86,7 +84,6 @@ struct PlantHydraulicsParameters{FT <: AbstractFloat, CP, RP}
 end
 
 function PlantHydraulicsParameters(;
-    area_index::NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}},
     ν::FT,
     S_s::FT,
     root_distribution::Function,
@@ -98,7 +95,6 @@ function PlantHydraulicsParameters(;
         typeof(conductivity_model),
         typeof(retention_model),
     }(
-        area_index,
         ν,
         S_s,
         root_distribution,
@@ -107,44 +103,6 @@ function PlantHydraulicsParameters(;
     )
 end
 
-"""
-    lai_consistency_check(
-        n_stem::Int64,
-        n_leaf::Int64,
-        area_index::NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}},
-    ) where {FT}
-
-Carries out consistency checks using the area indices supplied and the number of
-stem elements being modeled.
-
-Note that it is possible to have a plant with no stem compartments
-but with leaf compartments, and that a plant must have leaf compartments
-(even if LAI = 0).
-
-Specifically, this checks that:
-1. n_leaf > 0
-2. if LAI is nonzero or SAI is nonzero, RAI must be nonzero.
-3. if SAI > 0, n_stem must be > 0 for consistency. If SAI == 0, n_stem must
-be zero.
-"""
-function lai_consistency_check(
-    n_stem::Int64,
-    n_leaf::Int64,
-    area_index::NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}},
-) where {FT}
-    @assert n_leaf > 0
-    if area_index[:leaf] > eps(FT) || area_index[:stem] > eps(FT)
-        @assert area_index[:root] > eps(FT)
-    end
-    # If there SAI is zero, there should be no stem compartment
-    if area_index[:stem] < eps(FT)
-        @assert n_stem == FT(0)
-    else
-        # if SAI is > 0, n_stem should be > 0 for consistency
-        @assert n_stem > 0
-    end
-
-end
 
 """
     PlantHydraulicsModel{FT, PS, RE, T} <: AbstractPlantHydraulicsModel{FT}
@@ -156,14 +114,7 @@ transpiration.
 
 This model can also be combined with the soil model using ClimaLSM, in which
 case the prognostic soil water content is used to determine root extraction, and
-the transpiration is also computed diagnostically. In  global run with patches
-of bare soil, you can "turn off" the canopy model (to get zero root extraction, zero absorption and
-emission, zero transpiration and sensible heat flux from the canopy), by setting:
-- n_leaf = 1
-- n_stem = 0
-- LAI = SAI = RAI = 0.
-
-A plant model can have leaves but no stem, but not vice versa. If n_stem = 0, SAI must be zero.
+the transpiration is also computed diagnostically.
 
 Finally, the model can be used in Canopy standalone mode by prescribing
 the soil matric potential at the root tips or flux in the roots. There is also the
@@ -203,8 +154,6 @@ function PlantHydraulicsModel{FT}(;
     transpiration::AbstractTranspiration{FT} = DiagnosticTranspiration{FT}(),
 ) where {FT}
     args = (parameters, root_extraction, transpiration)
-    area_index = parameters.area_index
-    #lai_consistency_check(n_stem, n_leaf, area_index)
     @assert (n_leaf + n_stem) == length(compartment_midpoints)
     @assert (n_leaf + n_stem) + 1 == length(compartment_surfaces)
     for i in 1:length(compartment_midpoints)
@@ -473,7 +422,7 @@ To prevent dividing by zero, we change AI/(AI x dz)" to
 """
 function make_compute_exp_tendency(model::PlantHydraulicsModel, _)
     function compute_exp_tendency!(dY, Y, p, t)
-        (; area_index) = model.parameters
+        area_index = p.canopy.area_index
         n_stem = model.n_stem
         n_leaf = model.n_leaf
         fa = p.canopy.hydraulics.fa
@@ -549,7 +498,8 @@ function root_flux_per_ground_area!(
     t::FT,
 ) where {FT}
 
-    (; conductivity_model, root_distribution, area_index) = model.parameters
+    (; conductivity_model, root_distribution) = model.parameters
+    area_index = p.canopy.area_index
     ψ_base = p.canopy.hydraulics.ψ[1]
     n_root_layers = length(model.root_depths)
     ψ_soil::FT = re.ψ_soil(t)

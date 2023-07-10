@@ -43,6 +43,10 @@ $(DocStringExtensions.FIELDS)
 struct SharedCanopyParameters{FT <: AbstractFloat, PSE}
     "Leaf Area Index (m2/m2) as a function of time"
     LAI::Function
+    "Stem Area Index (m2/m2); treated as constant in time"
+    SAI::FT
+    "Root Area Index (m2/m2); treated as constant in time"
+    RAI::FT
     "Canopy height (m)"
     h_c::FT
     "Roughness length for momentum (m)"
@@ -80,6 +84,16 @@ fluxes.
 - The radiative flux conditions, which are either prescribed
 (of type `PrescribedRadiativeFluxes`) or computed via a coupled simulation
 (of type `CoupledRadiativeFluxes`).
+
+
+In  global run with patches
+of bare soil, you can "turn off" the canopy model (to get zero root extraction, zero absorption and
+emission, zero transpiration and sensible heat flux from the canopy), by setting:
+- n_leaf = 1 (PlantHydraulicsModel field)
+- n_stem = 0 (PlantHydraulicsModel field)
+- LAI = SAI = RAI = 0. (SharedCanopyParameters field)
+
+A plant model can have leaves but no stem, but not vice versa. If n_stem = 0, SAI must be zero.
 
 $(DocStringExtensions.FIELDS)
 """
@@ -138,13 +152,6 @@ function CanopyModel{FT}(;
         ClimaLSM.Domains.SphericalSurface,
     },
 ) where {FT, PSE}
-    #if parameters.LAI != hydraulics.parameters.area_index[:leaf]
-    #    throw(
-    #        AssertionError(
-    #            "The leaf area index must be the same between the plant hydraulics and shared canopy parameters.",
-    #        ),
-    #     )
-    # end
     args = (
         radiative_transfer,
         photosynthesis,
@@ -298,6 +305,48 @@ function initialize_auxiliary(model::CanopyModel{FT}, coords) where {FT}
     return p
 end
 
+
+"""
+    lai_consistency_check(
+        n_stem::Int64,
+        n_leaf::Int64,
+        area_index::NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}},
+    ) where {FT}
+
+Carries out consistency checks using the area indices supplied and the number of
+stem elements being modeled.
+
+Note that it is possible to have a plant with no stem compartments
+but with leaf compartments, and that a plant must have leaf compartments
+(even if LAI = 0).
+
+Specifically, this checks that:
+1. n_leaf > 0
+2. if LAI is nonzero or SAI is nonzero, RAI must be nonzero.
+3. if SAI > 0, n_stem must be > 0 for consistency. If SAI == 0, n_stem must
+be zero.
+"""
+function lai_consistency_check(
+    n_stem::Int64,
+    n_leaf::Int64,
+    area_index::NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}},
+) where {FT}
+    @assert n_leaf > 0
+    if area_index[:leaf] > eps(FT) || area_index[:stem] > eps(FT)
+        @assert area_index[:root] > eps(FT)
+    end
+    # If there SAI is zero, there should be no stem compartment
+    if area_index[:stem] < eps(FT)
+        @assert n_stem == FT(0)
+    else
+        # if SAI is > 0, n_stem should be > 0 for consistency
+        @assert n_stem > 0
+    end
+
+end
+
+
+
 """
      ClimaLSM.make_update_aux(canopy::CanopyModel{FT, <:BeerLambertModel,
                                                   <:FarquharModel,
@@ -341,7 +390,7 @@ function ClimaLSM.make_update_aux(
         ψ = p.canopy.hydraulics.ψ
         ϑ_l = Y.canopy.hydraulics.ϑ_l
         fa = p.canopy.hydraulics.fa
-
+        area_index = p.canopy.area_index
         #unpack parameters
         earth_param_set = canopy.parameters.earth_param_set
         c = FT(LSMP.light_speed(earth_param_set))
@@ -350,7 +399,9 @@ function ClimaLSM.make_update_aux(
         grav = FT(LSMP.grav(earth_param_set))
         ρ_l = FT(LSMP.ρ_cloud_liq(earth_param_set))
         (; ld, Ω, ρ_leaf, λ_γ) = canopy.radiative_transfer.parameters
-        LAI::FT = canopy.parameters.LAI(t)
+        (; RAI, SAI) = model.parameters
+        area_index .= (root = RAI, stem = SAI, leaf = canopy.parameters.LAI(t))
+
         energy_per_photon = h * c / λ_γ
         R = FT(LSMP.gas_constant(earth_param_set))
         thermo_params = canopy.parameters.earth_param_set.thermo_params
@@ -381,10 +432,8 @@ function ClimaLSM.make_update_aux(
         hydraulics = canopy.hydraulics
         n_stem = hydraulics.n_stem
         n_leaf = hydraulics.n_leaf
-        (; retention_model, conductivity_model, S_s, ν, area_index) =
+        (; retention_model, conductivity_model, S_s, ν) =
             hydraulics.parameters
-        area_index =
-            (root = area_index[:root], stem = area_index[:stem], leaf = LAI)
         @inbounds @. ψ[1] = PlantHydraulics.water_retention_curve(
             retention_model,
             PlantHydraulics.effective_saturation(ν, ϑ_l[1]),
@@ -436,7 +485,7 @@ function ClimaLSM.make_update_aux(
                 β,
                 R,
             )
-        @. GPP = compute_GPP(An, K, LAI, Ω)
+        @. GPP = compute_GPP(An, K, area_index[:leaf], Ω)
         @. gs = medlyn_conductance(g0, Drel, medlyn_factor, An, c_co2)
 
         # Compute transpiration
@@ -509,7 +558,7 @@ function canopy_surface_fluxes(
 
     # here is where we adjust evaporation for stomatal conductance = 1/r_sfc
     leaf_conductance = p.canopy.conductance.gs
-    LAI = model.parameters.LAI(t)
+    LAI = p.canopy.area_index[:leaf]
     canopy_conductance =
         upscale_leaf_conductance.(leaf_conductance, LAI, T, R, P)
     r_sfc = @. 1 / (canopy_conductance) # [s/m]
