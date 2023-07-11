@@ -439,10 +439,10 @@ function set_initial_parameter_field!(
     p,
     surface_coords,
 ) where {FT}
-    # Note: Using `date0` here assumes the simulation is starting at that date
-    update_midmonth_data!(albedo.albedo_info.date0, albedo.albedo_info)
+    # Note: Using `all_dates[1]` here assumes the simulation is starting at that date
+    update_midmonth_data!(albedo.albedo_info.all_dates[1], albedo.albedo_info)
     α_sfc_init =
-        interpolate_midmonth_data(albedo.albedo_info.date0, albedo.albedo_info)
+        interpolate_midmonth_data(albedo.albedo_info.all_dates[1], albedo.albedo_info)
     p.bucket.α_sfc .= α_sfc_init
 end
 
