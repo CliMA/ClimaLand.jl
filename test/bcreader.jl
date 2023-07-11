@@ -54,6 +54,7 @@ for FT in (Float64, Float32)
             dummy_dates,                        # all_dates
             nothing,                            # monthly_fields
             nothing,                            # scaling_function
+            nothing,                            # boundary_space
             deepcopy(segment_idx0),             # segment_idx
             segment_idx0,                       # segment_idx0
             Int[],                              # segment_length
@@ -102,6 +103,7 @@ for FT in (Float64, Float32)
             dummy_dates,                        # all_dates
             monthly_fields,                     # monthly_fields
             nothing,                            # scaling_function
+            nothing,                            # boundary_space
             deepcopy(segment_idx0),             # segment_idx
             segment_idx0,                       # segment_idx0
             segment_length,                     # segment_length
@@ -128,7 +130,6 @@ for FT in (Float64, Float32)
 
             datafile_rll = mask_data
             varname = "LSMASK"
-            mono = true
 
             bcf_info = BCReader.bcfile_info_init(
                 FT,
@@ -138,14 +139,12 @@ for FT in (Float64, Float32)
                 boundary_space_t,
                 comms_ctx,
                 segment_idx0 = [Int(0)],
-                mono = mono,
             )
 
             # test that created object exists and has correct components
             @test @isdefined(bcf_info)
             @test bcf_info.varname == varname
             @test bcf_info.segment_idx[1] == Int(0)
-            @test bcf_info.mono == mono
         end
 
         @testset "test update_midmonth_data! for FT=$FT" begin

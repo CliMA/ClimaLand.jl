@@ -160,11 +160,11 @@ function BulkAlbedoTemporal{FT}(
     end
     NCDataset(bcfile_path, "r") do ds
         if !("time" in keys(ds))
-            error("Using a temporal albedo map requires data with time dimension.")
+            error(
+                "Using a temporal albedo map requires data with time dimension.",
+            )
         end
     end
-
-    boundary_space = surface.space
 
     # Construct object containing info to read in surface albedo over time
     bcfile_info = bcfile_info_init(
@@ -172,7 +172,7 @@ function BulkAlbedoTemporal{FT}(
         regrid_dirpath,
         bcfile_path,
         varname,
-        boundary_space,
+        surface.space,
         comms,
     )
     return BulkAlbedoTemporal{FT}(bcfile_info)
@@ -558,7 +558,8 @@ function make_update_aux(model::BucketModel{FT}) where {FT}
         p.bucket.R_n .= net_radiation(model.radiation, model, Y, p, t)
 
         # Surface albedo
-        p.bucket.α_sfc .= next_albedo(model.parameters.albedo, Y, p, t)
+        p.bucket.α_sfc .=
+            next_albedo(model.parameters.albedo, model.parameters, Y, p, t)
     end
     return update_aux!
 end
@@ -571,12 +572,13 @@ unchanged for types that don't change over time.
 """
 function next_albedo(
     model_albedo::Union{BulkAlbedoFunction{FT}, BulkAlbedoStatic{FT}},
+    parameters,
     Y,
     p,
     t,
 ) where {FT}
-    (; α_snow) = model.parameters.albedo
-    (; σS_c) = model.parameters
+    (; α_snow) = model_albedo
+    (; σS_c) = parameters
     α_sfc = p.bucket.α_sfc
     σS = Y.bucket.σS
     safe_σS = max.(σS, eps(FT))
@@ -589,7 +591,7 @@ end
 Update the surface albedo for time t. For a file containing albedo
 information over time, this reads in the value for time t.
 """
-function next_albedo(model_albedo::BulkAlbedoTemporal, Y, p, t)
+function next_albedo(model_albedo::BulkAlbedoTemporal, parameters, Y, p, t)
     # Note: this assumes the simulation started at `data_dates[1]`
     date = model_albedo.albedo_info.all_dates[1] + Second(t)
     # Get next date if it's closest to current time

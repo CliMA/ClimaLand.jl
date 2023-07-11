@@ -145,13 +145,14 @@ end
     surface = nothing
     err = nothing
 
-    try BulkAlbedoTemporal{FT}(regrid_dirpath, path, surface)
+    try
+        BulkAlbedoTemporal{FT}(regrid_dirpath, path, surface)
     catch err
     end
 
     @test err isa Exception
     @test sprint(showerror, err) ==
-            "Using a temporal albedo map requires data with time dimension."
+          "Using a temporal albedo map requires data with time dimension."
 
 end
 

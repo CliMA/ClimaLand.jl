@@ -68,19 +68,21 @@ Stores information specific to each boundary condition from a file and each vari
 - all_dates::D                    # vector of all dates contained in the original data file
 - monthly_fields::C               # tuple of the two monthly fields, that will be used for the daily interpolation
 - scaling_function::O             # function that scales, offsets or transforms the raw variable
+- boundary_space::B               # the space we're reading data onto
 - segment_idx::Vector{Int}        # index of the monthly data in the file
 - segment_idx0::Vector{Int}       # `segment_idx` of the file data that is closest to date0
 - segment_length::Vector{Int}     # length of each month segment (used in the daily interpolation)
 - regrid_dirpath::S               # filename root for regridded data
 - outfile_root::S                 # string root for saved output files for this variable
 """
-struct BCFileInfo{FT <: Real, S, X, V, D, C, O, VI}
+struct BCFileInfo{FT <: Real, S, X, V, D, C, O, B, VI}
     bcfile_path::S
     comms::X
     varname::V
     all_dates::D
     monthly_fields::C
     scaling_function::O
+    boundary_space::B
     segment_idx::VI
     segment_idx0::VI
     segment_length::VI
@@ -89,7 +91,7 @@ struct BCFileInfo{FT <: Real, S, X, V, D, C, O, VI}
 end
 
 BCFileInfo{FT}(args...) where {FT} =
-    BCFileInfo{FT, typeof.(args[1:7])...}(args...)
+    BCFileInfo{FT, typeof.(args[1:8])...}(args...)
 float_type_bcf(::BCFileInfo{FT}) where {FT} = FT
 
 
@@ -188,6 +190,7 @@ function bcfile_info_init(
         data_dates,
         current_fields,
         scaling_function,
+        boundary_space,
         deepcopy(segment_idx0),
     )
     return BCFileInfo{FT, typeof.(args)...}(
