@@ -3,6 +3,7 @@ using UnPack
 using DocStringExtensions
 using Thermodynamics
 using Dates
+using NCDatasets
 using ClimaCore
 using ClimaCore.Fields: coordinate_field, level, FieldVector
 using ClimaCore.Operators: InterpolateC2F, DivergenceF2C, GradientC2F, SetValue
@@ -132,8 +133,6 @@ struct BulkAlbedoTemporal{FT} <: AbstractLandAlbedoModel{FT}
     albedo_info::BCReader.BCFileInfo
 end
 
-# TODO check that file passed in contains data over time
-#  (not sure how to do this) - compare cesm2 and bareground files to check
 """
     BulkAlbedoTemporal{FT}(
         regrid_dirpath::String,
@@ -155,9 +154,16 @@ function BulkAlbedoTemporal{FT}(
     comms = ClimaComms.SingletonCommsContext(),
     varname = "sw_alb",
 ) where {FT}
+    # Verify inputs
     if typeof(surface) <: ClimaLSM.Domains.Point
         error("Using an albedo map requires a global run.")
     end
+    NCDataset(bcfile_path, "r") do ds
+        if !("time" in keys(ds))
+            error("Using a temporal albedo map requires data with time dimension.")
+        end
+    end
+
     boundary_space = surface.space
     # Set up land mask info
     mask_path = mask_dataset_path()
