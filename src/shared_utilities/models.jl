@@ -15,7 +15,8 @@ export AbstractModel,
     prognostic_types,
     auxiliary_types,
     make_set_initial_aux_state,
-    name
+    name,
+    domain
 
 import .Domains: coordinates
 ## Default methods for all models - to be in a seperate module at some point.
@@ -52,6 +53,17 @@ Returns a symbol of the model component name, e.g. :soil or :vegetation.
 """
 name(model::AbstractModel) =
     error("`name` not implemented for $(Base.typename(typeof(model)).wrapper)")
+
+"""
+    domain(model::AbstractModel)
+
+Returns a symbol indicating the model's domain, e.g. :surface or :subsurface. Only required for models that will be used as part of an LSM.
+"""
+domain(model::AbstractModel) = error(
+    "`domain` not implemented for $(Base.typename(typeof(model)).wrapper)",
+)
+
+
 
 """
    prognostic_vars(m::AbstractModel)

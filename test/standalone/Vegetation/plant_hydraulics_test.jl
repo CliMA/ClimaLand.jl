@@ -111,15 +111,13 @@ end
     rt_model = BeerLambertModel{FT}(RTparams)
 
     earth_param_set = create_lsm_parameters(FT)
-    LAI = FT(1.0) # m2 [leaf] m-2 [ground]
+    LAI = (t) -> eltype(t)(1.0) # m2 [leaf] m-2 [ground]
     z_0m = FT(2.0) # m, Roughness length for momentum
     z_0b = FT(0.1) # m, Roughness length for scalars
     h_c = FT(20.0) # m, canopy height
     h_sfc = FT(20.0) # m, canopy height
     h_int = FT(30.0) # m, "where measurements would be taken at a typical flux tower of a 20m canopy"
     shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
-        LAI,
-        h_c,
         z_0m,
         z_0b,
         earth_param_set,
@@ -184,67 +182,66 @@ end
         θs = zenith_angle,
         orbital_data = Insolation.OrbitalData(),
     )
+    Δz = FT(1.0) # height of compartments
+    n_stem = Int64(5) # number of stem elements
+    n_leaf = Int64(6) # number of leaf elements
+    SAI = FT(1) # m2/m2
+    RAI = FT(1) # m2/m2
+    ai_parameterization =
+        PlantHydraulics.PrescribedSiteAreaIndex{FT}(LAI, SAI, RAI)
+    K_sat_plant = 1.8e-8 # m/s.
+    ψ63 = FT(-4 / 0.0098) # / MPa to m
+    Weibull_param = FT(4) # unitless
+    a = FT(0.05 * 0.0098) # 1/m
+    plant_ν = FT(0.7) # m3/m3
+    plant_S_s = FT(1e-2 * 0.0098) # m3/m3/MPa to m3/m3/m
+    conductivity_model =
+        PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
+    retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a)
+    root_depths = -Array(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0 # 1st element is the deepest root depth 
+    function root_distribution(z::T) where {T}
+        return T(1.0 / 0.5) * exp(z / T(0.5)) # (1/m)
+    end
+    compartment_midpoints = Vector(
+        range(
+            start = Δz / 2,
+            step = Δz,
+            stop = Δz * (n_stem + n_leaf) - (Δz / 2),
+        ),
+    )
 
+    compartment_surfaces =
+        Vector(range(start = 0.0, step = Δz, stop = Δz * (n_stem + n_leaf)))
+
+    param_set = PlantHydraulics.PlantHydraulicsParameters(;
+        ai_parameterization = ai_parameterization,
+        ν = plant_ν,
+        S_s = plant_S_s,
+        root_distribution = root_distribution,
+        conductivity_model = conductivity_model,
+        retention_model = retention_model,
+    )
+
+    function leaf_transpiration(t::FT) where {FT}
+        T = FT(1e-8) # m/s
+    end
+
+    ψ_soil0 = FT(0.0)
+    transpiration =
+        PrescribedTranspiration{FT}((t::FT) -> leaf_transpiration(t))
+    root_extraction =
+        PrescribedSoilPressure{FT}(root_depths, (t::FT) -> ψ_soil0)
+
+    plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
+        parameters = param_set,
+        root_extraction = root_extraction,
+        transpiration = transpiration,
+        n_stem = n_stem,
+        n_leaf = n_leaf,
+        compartment_surfaces = compartment_surfaces,
+        compartment_midpoints = compartment_midpoints,
+    )
     for domain in domains
-        # Parameters are the same as the ones used in the Ozark tutorial
-        Δz = FT(1.0) # height of compartments
-        n_stem = Int64(5) # number of stem elements
-        n_leaf = Int64(6) # number of leaf elements
-        SAI = FT(1) # m2/m2
-        RAI = FT(1) # m2/m2
-        area_index = (root = RAI, stem = SAI, leaf = LAI)
-        K_sat_plant = 1.8e-8 # m/s.
-        ψ63 = FT(-4 / 0.0098) # / MPa to m
-        Weibull_param = FT(4) # unitless
-        a = FT(0.05 * 0.0098) # 1/m
-        plant_ν = FT(0.7) # m3/m3
-        plant_S_s = FT(1e-2 * 0.0098) # m3/m3/MPa to m3/m3/m
-        conductivity_model =
-            PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
-        retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a)
-        root_depths = -Array(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0 # 1st element is the deepest root depth 
-        function root_distribution(z::T) where {T}
-            return T(1.0 / 0.5) * exp(z / T(0.5)) # (1/m)
-        end
-        compartment_midpoints = Vector(
-            range(
-                start = Δz / 2,
-                step = Δz,
-                stop = Δz * (n_stem + n_leaf) - (Δz / 2),
-            ),
-        )
-
-        compartment_surfaces =
-            Vector(range(start = 0.0, step = Δz, stop = Δz * (n_stem + n_leaf)))
-
-        param_set = PlantHydraulics.PlantHydraulicsParameters(;
-            area_index = area_index,
-            ν = plant_ν,
-            S_s = plant_S_s,
-            root_distribution = root_distribution,
-            conductivity_model = conductivity_model,
-            retention_model = retention_model,
-        )
-
-        function leaf_transpiration(t::FT) where {FT}
-            T = FT(1e-8) # m/s
-        end
-
-        ψ_soil0 = FT(0.0)
-        transpiration =
-            PrescribedTranspiration{FT}((t::FT) -> leaf_transpiration(t))
-        root_extraction =
-            PrescribedSoilPressure{FT}(root_depths, (t::FT) -> ψ_soil0)
-
-        plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
-            parameters = param_set,
-            root_extraction = root_extraction,
-            transpiration = transpiration,
-            n_stem = n_stem,
-            n_leaf = n_leaf,
-            compartment_surfaces = compartment_surfaces,
-            compartment_midpoints = compartment_midpoints,
-        )
         model = ClimaLSM.Canopy.CanopyModel{FT}(;
             parameters = shared_params,
             domain = domain,
@@ -257,7 +254,8 @@ end
         )
         # Set system to hydrostatic equilibrium state by setting fluxes to zero, and setting LHS of both ODEs to 0
         function initial_compute_exp_tendency!(F, Y)
-            T0A = FT(1e-8) * area_index[:leaf]
+            AI = (; leaf = LAI(0.0), root = RAI, stem = SAI)
+            T0A = FT(1e-8) * AI[:leaf]
             for i in 1:(n_leaf + n_stem)
                 if i == 1
                     fa =
@@ -279,7 +277,7 @@ end
                                 vcat(root_depths, [0.0])[2:end] -
                                 vcat(root_depths, [0.0])[1:(end - 1)]
                             ),
-                        ) * area_index[:root]
+                        ) * AI[:root]
                 else
                     fa =
                         flux(
@@ -296,8 +294,8 @@ end
                                 Y[i],
                             ),
                         ) * (
-                            area_index[plant_hydraulics.compartment_labels[1]] +
-                            area_index[plant_hydraulics.compartment_labels[2]]
+                            AI[plant_hydraulics.compartment_labels[1]] +
+                            AI[plant_hydraulics.compartment_labels[2]]
                         ) / 2
                 end
                 F[i] = fa - T0A
@@ -328,6 +326,8 @@ end
             p.canopy.hydraulics.fa[i] .= NaN
             dY.canopy.hydraulics.ϑ_l[i] .= NaN
         end
+        set_initial_aux_state! = make_set_initial_aux_state(model)
+        set_initial_aux_state!(p, Y, 0.0)
         canopy_exp_tendency! = make_exp_tendency(model)
         canopy_exp_tendency!(dY, Y, p, 0.0)
 
@@ -336,7 +336,7 @@ end
         for i in 1:(n_stem + n_leaf)
             @. m += sqrt(dY.canopy.hydraulics.ϑ_l[i]^2.0)
         end
-        #@test maximum(parent(m)) < 1e-11 # starts in equilibrium
+        @test maximum(parent(m)) < 1e-11 # starts in equilibrium
 
 
         # repeat using the plant hydraulics model directly
@@ -349,10 +349,9 @@ end
             p.canopy.hydraulics.fa[i] .= NaN
             standalone_dY.canopy.hydraulics.ϑ_l[i] .= NaN
         end
-        update_aux! = make_update_aux(model)
+        set_initial_aux_state!(p, Y, 0.0)
         standalone_exp_tendency! =
             make_compute_exp_tendency(model.hydraulics, nothing)
-        update_aux!(p, Y, 0.0)
         standalone_exp_tendency!(standalone_dY, Y, p, 0.0)
 
         m = similar(dY.canopy.hydraulics.ϑ_l[1])
@@ -390,8 +389,6 @@ end
     h_sfc = FT(0.0) # m, canopy height
     h_int = FT(30.0) # m, "where measurements would be taken at a typical flux tower of a 20m canopy"
     shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
-        LAI,
-        h_c,
         z_0m,
         z_0b,
         earth_param_set,
@@ -461,7 +458,8 @@ end
     n_leaf = Int64(1) # number of leaf elements
     SAI = FT(0) # m2/m2
     RAI = FT(0) # m2/m2
-    area_index = (root = RAI, stem = SAI, leaf = LAI)
+    ai_parameterization =
+        PlantHydraulics.PrescribedSiteAreaIndex{FT}(t -> eltype(t)(0), SAI, RAI)
     K_sat_plant = 0 # m/s.
     ψ63 = FT(-4 / 0.0098) # / MPa to m
     Weibull_param = FT(4) # unitless
@@ -475,11 +473,11 @@ end
     function root_distribution(z::T) where {T}
         return T(0) # (1/m)
     end
-    compartment_midpoints = [FT(0.0)]
-    compartment_surfaces = [FT(0.0), FT(0.0)]
+    compartment_midpoints = [FT(1.0)]
+    compartment_surfaces = [FT(0.0), FT(2.0)]
 
     param_set = PlantHydraulics.PlantHydraulicsParameters(;
-        area_index = area_index,
+        ai_parameterization = ai_parameterization,
         ν = plant_ν,
         S_s = plant_S_s,
         root_distribution = root_distribution,
@@ -520,6 +518,8 @@ end
         p.canopy.hydraulics.fa[i] .= NaN
         dY.canopy.hydraulics.ϑ_l[i] .= NaN
     end
+    set_initial_aux_state! = make_set_initial_aux_state(model)
+    set_initial_aux_state!(p, Y, FT(0.0))
     canopy_exp_tendency! = make_exp_tendency(model)
     canopy_exp_tendency!(dY, Y, p, 0.0)
     @test all(parent(dY.canopy.hydraulics.ϑ_l[1]) .≈ FT(0.0))

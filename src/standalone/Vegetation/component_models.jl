@@ -111,3 +111,50 @@ function ClimaLSM.make_compute_exp_tendency(::AbstractCanopyComponent, canopy)
     function compute_exp_tendency!(dY, Y, p, t) end
     return compute_exp_tendency!
 end
+
+
+"""
+     set_canopy_prescribed_field!(component::AbstractCanopyComponent,
+                                  p,
+                                  t0,
+                                 ) end
+
+Sets the spatially and temporally varying prescribed fields of the `component`
+with their initial values.
+
+These fields are stored in the aux-state and *should not* depend on the prognostic
+state `Y` or other diagnostic variables stored in `p`; this allows them
+to be updated first, prior to updating the rest of the aux state and prognostic state.
+
+However, there is no
+guarantee on the order of operations in terms of when diagnostic auxiliary
+variables are updated vs. prescribed field auxiliary variables; any required
+order of operations must be enforced by the developer who writes the update_aux
+function.
+"""
+function set_canopy_prescribed_field!(component::AbstractCanopyComponent, p, t0) end
+
+"""
+     update_canopy_prescribed_field!(component::AbstractCanopyComponent,
+                                     p,
+                                     t,
+                                     ) end
+ 
+Updates the spatially and temporally varying prescribed fields of the `component`
+with their values at time `t`.
+
+These fields are stored in the aux-state and *should not* depend on the prognostic
+state `Y` or other diagnostic variables stored in `p`; this allows them
+to be updated first, prior to updating the rest of the aux state and prognostic state.
+
+However, there is no
+guarantee on the order of operations in terms of when diagnostic auxiliary
+variables are updated vs. prescribed field auxiliary variables; any required
+order of operations must be enforced by the developer who writes the update_aux
+function.
+"""
+function update_canopy_prescribed_field!(
+    component::AbstractCanopyComponent,
+    p,
+    t,
+) end

@@ -169,11 +169,10 @@ photosynthesis_args = (;
 f_root_to_shoot = FT(3.5)
 SAI = FT(0.00242)
 LAI = FT(4.2)
+LAIfunction = (t) -> eltype(t)(LAI)
 K_sat_plant = 1.8e-8
 RAI = (SAI + LAI) * f_root_to_shoot
-
-area_index = (root = RAI, stem = SAI, leaf = LAI)
-
+ai_parameterization = PrescribedSiteAreaIndex{FT}(LAIfunction, SAI, RAI)
 function root_distribution(z::T; rooting_depth = FT(1.0)) where {T}
     return T(1.0 / rooting_depth) * exp(z / T(rooting_depth)) # 1/m
 end
@@ -191,7 +190,7 @@ plant_ν = FT(0.7)
 plant_S_s = FT(1e-2 * 0.0098)
 
 plant_hydraulics_ps = PlantHydraulics.PlantHydraulicsParameters(;
-    area_index = area_index,
+    ai_parameterization = ai_parameterization,
     ν = plant_ν,
     S_s = plant_S_s,
     root_distribution = root_distribution,
@@ -224,15 +223,11 @@ canopy_component_args = (;
     hydraulics = plant_hydraulics_args,
 );
 
-# We also need to provide the shared parameter struct to the canopy as usual and
-# specify the domain for the canopy.
-
+# We also need to provide the shared parameter struct to the canopy.
 z0_m = FT(2)
 z0_b = FT(0.2)
 
 shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
-    LAI,
-    h_stem + h_leaf,
     z0_m,
     z0_b,
     earth_param_set,
@@ -304,8 +299,8 @@ end;
 # Now initialize the auxiliary variables for the combined soil and plant model.
 
 t0 = FT(0)
-update_aux! = make_update_aux(land)
-update_aux!(p, Y, t0);
+set_initial_aux_state! = make_set_initial_aux_state(land)
+set_initial_aux_state!(p, Y, t0);
 
 # Select the timestepper and solvers needed for the specific problem, and setup
 # the jacobian for the soil model. For more details on the soil jacobian setup 

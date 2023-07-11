@@ -100,14 +100,10 @@ include(
 
 # Populate the SharedCanopyParameters struct, which holds the parameters 
 # shared between all different components of the canopy model.
-
-LAI = FT(4.2)
 z0_m = FT(2)
 z0_b = FT(0.2)
 
 shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
-    LAI,
-    h_stem + h_leaf,
     z0_m,
     z0_b,
     earth_param_set,
@@ -162,13 +158,15 @@ photosynthesis_model = FarquharModel{FT}(photo_params);
 
 # Arguments for plant hydraulics model are more complicated. 
 
-# Begin by providing general plant parameters:
-
-
+# Begin by providing general plant parameters. For the area
+#indices of the canopy, we choose a `PrescribedSiteAreaIndex`,
+# which supports LAI as a function of time, with RAI and SAI as constant.
+LAI = 4.2
+LAIfunction = (t) -> eltype(t)(LAI)
 SAI = FT(0.00242)
 f_root_to_shoot = FT(3.5)
 RAI = (SAI + LAI) * f_root_to_shoot
-area_index = (root = RAI, stem = SAI, leaf = LAI)
+ai_parameterization = PrescribedSiteAreaIndex{FT}(LAIfunction, SAI, RAI)
 rooting_depth = FT(1.0);
 
 # Define the root distribution function p(z):
@@ -197,7 +195,7 @@ retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a);
 S_s = FT(1e-2 * 0.0098)
 
 plant_hydraulics_ps = PlantHydraulics.PlantHydraulicsParameters(;
-    area_index = area_index,
+    ai_parameterization = ai_parameterization,
     ν = ν,
     S_s = S_s,
     root_distribution = root_distribution,
@@ -264,12 +262,6 @@ for i in 1:2
     Y.canopy.hydraulics.ϑ_l[i] .= augmented_liquid_fraction.(ν, S_l_ini[i])
 end;
 
-# Initialize the auxiliary variables for the canopy using the initial 
-# conditions
-
-update_aux! = make_update_aux(canopy)
-update_aux!(p, Y, 0.0);
-
 # Select a time range to perform time stepping over, and a dt. Also create the 
 # saveat Array to contain the data from the model at each time step. As usual,
 # the timestep depends on the problem you are solving, the accuracy of the
@@ -279,6 +271,16 @@ t0 = FT(0)
 N_days = 365
 tf = t0 + FT(3600 * 24 * N_days)
 dt = FT(225)
+
+# Initialize the auxiliary variables for the canopy using the initial 
+# conditions and initial time.
+
+set_initial_aux_state! = make_set_initial_aux_state(canopy)
+set_initial_aux_state!(p, Y, t0);
+
+# Allocate the struct which stores the saved auxiliary state
+# and create the callback which saves it at each element in saveat.
+
 n = 16
 saveat = Array(t0:(n * dt):tf)
 

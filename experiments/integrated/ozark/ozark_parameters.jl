@@ -60,6 +60,7 @@ To = FT(298.15)
 # Plant Hydraulics and general plant parameters
 SAI = FT(1.0) # m2/m2 or: estimated from Wang et al, FT(0.00242) ?
 LAI = FT(4.2) # m2/m2, from Wang et al.
+LAIfunction = (t) -> eltype(t)(LAI)
 f_root_to_shoot = FT(3.5)
 RAI = (SAI + LAI) * f_root_to_shoot # CLM
 K_sat_plant = 5e-9 # m/s # seems much too small?
