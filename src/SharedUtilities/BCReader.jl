@@ -62,9 +62,8 @@ datetime_to_strdate(datetime::DateTime) =
 Stores information specific to each boundary condition from a file and each variable.
 
 # Inputs:
-- path::b                         # directory of the BC file
+- bcfile_path::S                  # directory of the BC file
 - comms::X                        # communication context used for MPI
-- regrid_dirpath::S               # filename root for regridded data
 - varname::V                      # name of the variable
 - all_dates::D                    # vector of all dates contained in the original data file
 - monthly_fields::C               # tuple of the two monthly fields, that will be used for the daily interpolation
@@ -73,12 +72,12 @@ Stores information specific to each boundary condition from a file and each vari
 - segment_idx::Vector{Int}        # index of the monthly data in the file
 - segment_idx0::Vector{Int}       # `segment_idx` of the file data that is closest to date0
 - segment_length::Vector{Int}     # length of each month segment (used in the daily interpolation)
-- interpolate_daily::Bool         # switch to trigger daily interpolation
+- regrid_dirpath::S               # filename root for regridded data
+- outfile_root::S                 # string root for saved output files for this variable
 """
-struct BCFileInfo{FT <: Real, B, X, S, V, D, C, O, M, VI}
-    path::B
+struct BCFileInfo{FT <: Real, S, X, V, D, C, O, M, VI}
+    bcfile_path::S
     comms::X
-    regrid_dirpath::S
     varname::V
     all_dates::D
     monthly_fields::C
@@ -87,11 +86,12 @@ struct BCFileInfo{FT <: Real, B, X, S, V, D, C, O, M, VI}
     segment_idx::VI
     segment_idx0::VI
     segment_length::VI
-    interpolate_daily::Bool
+    regrid_dirpath::S
+    outfile_root::S
 end
 
 BCFileInfo{FT}(args...) where {FT} =
-    BCFileInfo{FT, typeof.(args[1:9])...}(args...)
+    BCFileInfo{FT, typeof.(args[1:8])...}(args...)
 float_type_bcf(::BCFileInfo{FT}) where {FT} = FT
 
 
@@ -99,15 +99,13 @@ float_type_bcf(::BCFileInfo{FT}) where {FT} = FT
     bcfile_info_init(
         FT,
         regrid_dirpath,
-        path,
+        bcfile_path,
         varname,
         boundary_space,
         comms;
-        interpolate_daily = false,
         segment_idx0 = nothing,
         scaling_function = no_scaling,
         land_fraction = nothing,
-        date0 = nothing,
         mono = true,
     )
 
@@ -127,16 +125,14 @@ than as a standalone DateTime.
 # Arguments
 - `FT`: [DataType] Float type.
 - `regrid_dirpath`: [String] directory the BC file is stored in.
-- `path`: [String] file containing data to regrid.
+- `bcfile_path`: [String] NCDataset file containing data to regrid.
 - `varname`: [String] name of the variable to be regridded.
 - `boundary_space`: [Spaces.AbstractSpace] the space to which we are mapping.
 - `comms`: [ClimaComms.AbstractCommsContext] context used for this operation.
-- `interpolate_daily`: [Bool] switch to trigger daily interpolation.
 - `segment_idx0`: [Vector{Int}] index of the file data that is closest to date0.
 - `scaling function`: [Function] scales, offsets or transforms `varname`.
 - `land_fraction`: [Fields.field] fraction with 1 = land, 0 = ocean / sea-ice.
-- `date0`: [Dates.DateTime] start date of the file data.
-- `mono`: [Bool] flag for monotone remapping of `path`.
+- `mono`: [Bool] flag for monotone remapping of `bcfile_path`.
 
 # Returns
 - `BCFileInfo`
@@ -144,34 +140,36 @@ than as a standalone DateTime.
 function bcfile_info_init(
     FT,
     regrid_dirpath,
-    path,
+    bcfile_path,
     varname,
     boundary_space,
     comms;
-    interpolate_daily = false,
     segment_idx0 = nothing,
     scaling_function = no_scaling,
     land_fraction = nothing,
-    date0 = nothing,
     mono = true,
 )
 
     # regrid all times and save to hdf5 files
-    regrid_dirpath = varname * "_cgll"
+    # TODO remove regrid_dirpath here
+    # regrid_dirpath = varname * "_cgll"
+    outfile_root = varname * "cgll"
+
+    # Regrid data at all times from lat/lon (RLL) to simulation grid (CGLL)
     if ClimaComms.iamroot(comms)
         Regridder.hdwrite_regridfile_rll_to_cgll(
             FT,
             regrid_dirpath,
-            path,
+            bcfile_path,
             varname,
             boundary_space;
-            hd_outfile_root = regrid_dirpath,
+            hd_outfile_root = outfile_root,
             mono = mono,
         )
     end
     ClimaComms.barrier(comms)
     data_dates = JLD2.load(
-        joinpath(regrid_dirpath, regrid_dirpath * "_times.jld2"),
+        joinpath(regrid_dirpath, outfile_root * "_times.jld2"),
         "times",
     )
 
@@ -182,32 +180,33 @@ function bcfile_info_init(
 
     # unless the start file date is specified, find the closest one to the start date
     # TODO if we use two separate data files that start on different dates, we'll need to
-    #  reconcile date0 between the two of them - maybe add a function for this?
-    date0 == nothing ? date0 = data_dates[1] : nothing
+    #  reconcile data_dates[1] between the two of them - maybe add a function for this?
     segment_idx0 =
         segment_idx0 != nothing ? segment_idx0 :
         [
             argmin(
                 abs.(
-                    parse(FT, datetime_to_strdate(date0)) .-
+                    parse(FT, datetime_to_strdate(data_dates[1])) .-
                     parse.(FT, datetime_to_strdate.(data_dates[:]))
                 ),
             ),
         ]
-
-    return BCFileInfo{FT}(
-        FT,
+    args = (
+        bcfile_path,
         comms,
-        regrid_dirpath,
         varname,
         data_dates,
         current_fields,
         scaling_function,
         land_fraction,
         deepcopy(segment_idx0),
+    )
+    return BCFileInfo{FT, typeof.(args)...}(
+        args...,
         segment_idx0,
         segment_length,
-        interpolate_daily,
+        regrid_dirpath,
+        outfile_root,
     )
 end
 
@@ -225,29 +224,26 @@ The times for which data is extracted depends on the specifications in the
 function update_midmonth_data!(date, bcf_info::BCFileInfo{FT}) where {FT}
     # monthly count
     (;
-        path,
         comms,
         regrid_dirpath,
         varname,
         all_dates,
         scaling_function,
+        outfile_root,
     ) = bcf_info
-    midmonth_idx = bcf_info.segment_idx[1]
-    midmonth_idx0 = bcf_info.segment_idx0[1]
+    segment_idx = bcf_info.segment_idx[1]
+    segment_idx0 = bcf_info.segment_idx0[1]
 
-    if (midmonth_idx == midmonth_idx0) &&
-       (Dates.days(date - all_dates[midmonth_idx]) <= 0) # for init
-        if date !== all_dates[midmonth_idx]
-            @warn "this time period is before BC data - using file from $(all_dates[midmonth_idx0])"
+    if (segment_idx == segment_idx0) &&
+       (Dates.days(date - all_dates[segment_idx]) <= 0) # for init
+        if date !== all_dates[segment_idx]
+            @warn "this time period is before BC data - using file from $(all_dates[segment_idx0])"
         end
-        midmonth_idx = bcf_info.segment_idx[1] -= Int(1)
-        midmonth_idx =
-            midmonth_idx < Int(1) ? midmonth_idx + Int(1) : midmonth_idx
         bcf_info.monthly_fields[1] .= scaling_function(
             Regridder.read_from_hdf5(
-                path,
                 regrid_dirpath,
-                all_dates[Int(midmonth_idx0)],
+                outfile_root,
+                all_dates[Int(segment_idx0)],
                 varname,
                 comms,
             ),
@@ -260,8 +256,8 @@ function update_midmonth_data!(date, bcf_info::BCFileInfo{FT}) where {FT}
         @warn "this time period is after BC data - using file from $(all_dates[end - 1])"
         bcf_info.monthly_fields[1] .= scaling_function(
             Regridder.read_from_hdf5(
-                path,
                 regrid_dirpath,
+                outfile_root,
                 all_dates[end],
                 varname,
                 comms,
@@ -271,30 +267,19 @@ function update_midmonth_data!(date, bcf_info::BCFileInfo{FT}) where {FT}
         bcf_info.monthly_fields[2] .= deepcopy(bcf_info.monthly_fields[1])
         bcf_info.segment_length .= Int(0)
 
-        # throw error when there are closer initial indices for the bc file data that matches this date0
-    elseif Dates.days(date - all_dates[Int(midmonth_idx + 1)]) > 2
-        nearest_idx = argmin(
-            abs.(
-                parse(FT, datetime_to_strdate(date)) .-
-                parse.(FT, datetime_to_strdate.(all_dates[:]))
-            ),
-        )
-        bcf_info.segment_idx[1] = midmonth_idx = midmonth_idx0 = nearest_idx
-        @warn "init data does not correspond to start date. Initializing with `SIC_info.segment_idx[1] = midmonth_idx = midmonth_idx0 = $nearest_idx` for this start date"
-
         # date crosses to the next month
-    elseif Dates.days(date - all_dates[Int(midmonth_idx)]) > 0
-        midmonth_idx = bcf_info.segment_idx[1] += Int(1)
-        @warn "On $date updating monthly data files: mid-month dates = [ $(all_dates[Int(midmonth_idx)]) , $(all_dates[Int(midmonth_idx+1)]) ]"
+    elseif Dates.days(date - all_dates[Int(segment_idx)]) > 0
+        segment_idx = bcf_info.segment_idx[1] += Int(1)
+        @warn "On $date updating monthly data files: mid-month dates = [ $(all_dates[Int(segment_idx)]) , $(all_dates[Int(segment_idx+1)]) ]"
         bcf_info.segment_length .=
             (
-                all_dates[Int(midmonth_idx + 1)] - all_dates[Int(midmonth_idx)]
+                all_dates[Int(segment_idx + 1)] - all_dates[Int(segment_idx)]
             ).value
         bcf_info.monthly_fields[1] .= scaling_function(
             Regridder.read_from_hdf5(
-                path,
                 regrid_dirpath,
-                all_dates[Int(midmonth_idx)],
+                outfile_root,
+                all_dates[Int(segment_idx)],
                 varname,
                 comms,
             ),
@@ -302,14 +287,24 @@ function update_midmonth_data!(date, bcf_info::BCFileInfo{FT}) where {FT}
         )
         bcf_info.monthly_fields[2] .= scaling_function(
             Regridder.read_from_hdf5(
-                path,
                 regrid_dirpath,
-                all_dates[Int(midmonth_idx + 1)],
+                outfile_root,
+                all_dates[Int(segment_idx + 1)],
                 varname,
                 comms,
             ),
             bcf_info,
         )
+        # throw error when there are closer initial indices for the bc file data that matches this date0
+    elseif Dates.days(date - all_dates[Int(segment_idx + 1)]) > 2
+        nearest_idx = argmin(
+            abs.(
+                parse(FT, datetime_to_strdate(date)) .-
+                parse.(FT, datetime_to_strdate.(all_dates[:]))
+            ),
+        )
+        bcf_info.segment_idx[1] = segment_idx = segment_idx0 = nearest_idx
+        @warn "init data does not correspond to start date. Initializing with `BCFileInfo.segment_idx[1] = segment_idx = segment_idx0 = $nearest_idx` for this start date"
 
     else
         throw(ErrorException("Check boundary file specification"))
@@ -347,9 +342,9 @@ or returns the first Field if interpolation is switched off.
 # Returns
 - Fields.field
 """
-# TODO rename function
 function interpolate_midmonth_data(date, bcf_info::BCFileInfo{FT}) where {FT}
-    if bcf_info.interpolate_daily && bcf_info.segment_length[1] > FT(0)
+    # Interpolate if the time period between dates is nonzero
+    if bcf_info.segment_length[1] > FT(0)
         (; segment_length, segment_idx, all_dates, monthly_fields) = bcf_info
 
         return interpol.(
@@ -358,6 +353,7 @@ function interpolate_midmonth_data(date, bcf_info::BCFileInfo{FT}) where {FT}
             FT((date - all_dates[Int(segment_idx[1])]).value),
             FT(segment_length[1]),
         )
+        # Otherwise use the data at the first date
     else
         return bcf_info.monthly_fields[1]
     end
@@ -379,7 +375,6 @@ a segment `Δt_t2t1 = (t2 - t1)`, of fields `f1` and `f2`, with `t2 > t1`.
 - FT
 """
 function interpol(f1::FT, f2::FT, Δt_tt1::FT, Δt_t2t1::FT) where {FT}
-    @assert Δt_t2t1 > FT(0) "t2 must be > t1, but `Δt_t2t1` = $Δt_t2t1"
     interp_fraction = Δt_tt1 / Δt_t2t1
     @assert abs(interp_fraction) <= FT(1) "time interpolation weights must be <= 1, but `interp_fraction` = $interp_fraction"
     return f1 * interp_fraction + f2 * (FT(1) - interp_fraction)

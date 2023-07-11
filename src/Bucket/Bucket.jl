@@ -2,6 +2,7 @@ module Bucket
 using UnPack
 using DocStringExtensions
 using Thermodynamics
+using Dates
 using ClimaCore
 using ClimaCore.Fields: coordinate_field, level, FieldVector
 using ClimaCore.Operators: InterpolateC2F, DivergenceF2C, GradientC2F, SetValue
@@ -136,20 +137,20 @@ end
 """
     BulkAlbedoTemporal{FT}(
         regrid_dirpath::String,
-        path::String,
+        bcfile_path::String,
         surface;
         comms = ClimaComms.SingletonCommsContext(),
         varname = "sw_alb"
     ) where {FT}
 
 Constructor for the BulkAlbedoStatic that implements a default albedo map, `comms` context, and value for `α_snow`.
-The `varname` must correspond to the name of the variable in the NetCDF file specified by `path`.
+The `varname` must correspond to the name of the variable in the NetCDF file specified by `bcfile_path`.
 
 The `cesm2_albedo_dataset_path` artifact can be used as a default with this type.
 """
 function BulkAlbedoTemporal{FT}(
     regrid_dirpath,
-    path,
+    bcfile_path,
     surface;
     comms = ClimaComms.SingletonCommsContext(),
     varname = "sw_alb",
@@ -174,12 +175,11 @@ function BulkAlbedoTemporal{FT}(
     bcfile_info = bcfile_info_init(
         FT,
         regrid_dirpath,
-        path,
+        bcfile_path,
         varname,
         boundary_space,
         comms,
         land_fraction = land_fraction,
-        interpolate_daily = true,
     )
     return BulkAlbedoTemporal{FT}(bcfile_info)
 end
@@ -441,8 +441,10 @@ function set_initial_parameter_field!(
 ) where {FT}
     # Note: Using `all_dates[1]` here assumes the simulation is starting at that date
     update_midmonth_data!(albedo.albedo_info.all_dates[1], albedo.albedo_info)
-    α_sfc_init =
-        interpolate_midmonth_data(albedo.albedo_info.all_dates[1], albedo.albedo_info)
+    α_sfc_init = interpolate_midmonth_data(
+        albedo.albedo_info.all_dates[1],
+        albedo.albedo_info,
+    )
     p.bucket.α_sfc .= α_sfc_init
 end
 
@@ -562,7 +564,7 @@ function make_update_aux(model::BucketModel{FT}) where {FT}
         p.bucket.R_n .= net_radiation(model.radiation, model, Y, p, t)
 
         # Surface albedo
-        p.bucket.α_sfc .= next_albedo(model.parameters.albedo, p, t)
+        p.bucket.α_sfc .= next_albedo(model.parameters.albedo, Y, p, t)
     end
     return update_aux!
 end
@@ -575,10 +577,16 @@ unchanged for types that don't change over time.
 """
 function next_albedo(
     model_albedo::Union{BulkAlbedoFunction{FT}, BulkAlbedoStatic{FT}},
+    Y,
     p,
     t,
 ) where {FT}
-    return p.bucket.α_sfc
+    (; α_snow) = model.parameters.albedo
+    (; σS_c) = model.parameters
+    α_sfc = p.bucket.α_sfc
+    σS = Y.bucket.σS
+    safe_σS = max.(σS, eps(FT))
+    return @. ((1 - σS / (σS + σS_c)) * α_sfc + σS / (σS + σS_c) * α_snow)
 end
 
 """
@@ -587,9 +595,9 @@ end
 Update the surface albedo for time t. For a file containing albedo
 information over time, this reads in the value for time t.
 """
-function next_albedo(model_albedo::BulkAlbedoTemporal, p, t)
-    # Note: this assuments the simulation started at `date0`
-    date = model_albedo.albedo_info.date0 + t
+function next_albedo(model_albedo::BulkAlbedoTemporal, Y, p, t)
+    # Note: this assumes the simulation started at `data_dates[1]`
+    date = model_albedo.albedo_info.all_dates[1] + Second(t)
     # Get next date if it's closest to current time
     if date >= next_date_in_file(model_albedo.albedo_info)
         update_midmonth_data!(date, model_albedo.albedo_info)

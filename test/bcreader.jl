@@ -48,9 +48,8 @@ for FT in (Float64, Float32)
         ]
 
         bcf_info = BCReader.BCFileInfo{FT}(
-            "",                                 # bcfile_dir
-            comms_ctx,                          # comms_ctx
-            "",                                 # hd_outfile_root
+            "",                                 # bcfile_path
+            comms_ctx,                          # comms
             "",                                 # varname
             dummy_dates,                        # all_dates
             nothing,                            # monthly_fields
@@ -59,7 +58,8 @@ for FT in (Float64, Float32)
             deepcopy(segment_idx0),             # segment_idx
             segment_idx0,                       # segment_idx0
             Int[],                              # segment_length
-            false,                              # interpolate_daily
+            "",                                 # regrid_dirpath
+            "",                                 # outfile_root
         )
 
         idx = segment_idx0[1]
@@ -77,8 +77,7 @@ for FT in (Float64, Float32)
     end
 
     @testset "test interpolate_midmonth_data for FT=$FT" begin
-        # test interpolate_midmonth_data with interpolation
-        interpolate_daily = true
+        # test interpolate_midmonth_data with interpolation (default)
         dummy_dates =
             Vector(range(DateTime(1999, 1, 1); step = Day(1), length = 100))
         segment_idx0 = [Int(1)]
@@ -98,9 +97,8 @@ for FT in (Float64, Float32)
         monthly_fields = (zeros(boundary_space_t), ones(boundary_space_t))
 
         bcf_info_interp = BCReader.BCFileInfo{FT}(
-            "",                                 # bcfile_dir
-            comms_ctx,                          # comms_ctx
-            "",                                 # hd_outfile_root
+            "",                                 # bcfile_path
+            comms_ctx,                          # comms
             "",                                 # varname
             dummy_dates,                        # all_dates
             monthly_fields,                     # monthly_fields
@@ -109,30 +107,11 @@ for FT in (Float64, Float32)
             deepcopy(segment_idx0),             # segment_idx
             segment_idx0,                       # segment_idx0
             segment_length,                     # segment_length
-            interpolate_daily,                  # interpolate_daily
+            "",                                 # regrid_dirpath
+            "",                                 # outfile_root
         )
         @test BCReader.interpolate_midmonth_data(date0, bcf_info_interp) ==
               ones(boundary_space_t) .* FT(0.5)
-
-        # test interpolate_midmonth_data without interpolation
-        interpolate_daily = false
-
-        bcf_info_no_interp = BCReader.BCFileInfo{FT}(
-            "",                                 # bcfile_dir
-            comms_ctx,                          # comms_ctx
-            "",                                 # hd_outfile_root
-            "",                                 # varname
-            dummy_dates,                        # all_dates
-            monthly_fields,                     # monthly_fields
-            nothing,                            # scaling_function
-            nothing,                            # land_fraction
-            deepcopy(segment_idx0),             # segment_idx
-            segment_idx0,                       # segment_idx0
-            segment_length,                     # segment_length
-            interpolate_daily,                  # interpolate_daily
-        )
-        @test BCReader.interpolate_midmonth_data(date0, bcf_info_no_interp) ==
-              monthly_fields[1]
     end
 
     # Add tests which use TempestRemap here -
@@ -201,7 +180,6 @@ for FT in (Float64, Float32)
                 varname,
                 boundary_space_t,
                 comms_ctx,
-                interpolate_daily = true,
                 land_fraction = land_fraction_t,
             )
 
