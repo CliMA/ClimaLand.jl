@@ -68,21 +68,19 @@ Stores information specific to each boundary condition from a file and each vari
 - all_dates::D                    # vector of all dates contained in the original data file
 - monthly_fields::C               # tuple of the two monthly fields, that will be used for the daily interpolation
 - scaling_function::O             # function that scales, offsets or transforms the raw variable
-- land_fraction::M                # fraction with 1 = 100% land, 0 = 100% ocean and/or sea-ice
 - segment_idx::Vector{Int}        # index of the monthly data in the file
 - segment_idx0::Vector{Int}       # `segment_idx` of the file data that is closest to date0
 - segment_length::Vector{Int}     # length of each month segment (used in the daily interpolation)
 - regrid_dirpath::S               # filename root for regridded data
 - outfile_root::S                 # string root for saved output files for this variable
 """
-struct BCFileInfo{FT <: Real, S, X, V, D, C, O, M, VI}
+struct BCFileInfo{FT <: Real, S, X, V, D, C, O, VI}
     bcfile_path::S
     comms::X
     varname::V
     all_dates::D
     monthly_fields::C
     scaling_function::O
-    land_fraction::M
     segment_idx::VI
     segment_idx0::VI
     segment_length::VI
@@ -91,7 +89,7 @@ struct BCFileInfo{FT <: Real, S, X, V, D, C, O, M, VI}
 end
 
 BCFileInfo{FT}(args...) where {FT} =
-    BCFileInfo{FT, typeof.(args[1:8])...}(args...)
+    BCFileInfo{FT, typeof.(args[1:7])...}(args...)
 float_type_bcf(::BCFileInfo{FT}) where {FT} = FT
 
 
@@ -105,7 +103,6 @@ float_type_bcf(::BCFileInfo{FT}) where {FT} = FT
         comms;
         segment_idx0 = nothing,
         scaling_function = no_scaling,
-        land_fraction = nothing,
         mono = true,
     )
 
@@ -131,7 +128,6 @@ than as a standalone DateTime.
 - `comms`: [ClimaComms.AbstractCommsContext] context used for this operation.
 - `segment_idx0`: [Vector{Int}] index of the file data that is closest to date0.
 - `scaling function`: [Function] scales, offsets or transforms `varname`.
-- `land_fraction`: [Fields.field] fraction with 1 = land, 0 = ocean / sea-ice.
 - `mono`: [Bool] flag for monotone remapping of `bcfile_path`.
 
 # Returns
@@ -146,15 +142,9 @@ function bcfile_info_init(
     comms;
     segment_idx0 = nothing,
     scaling_function = no_scaling,
-    land_fraction = nothing,
     mono = true,
 )
-
-    # regrid all times and save to hdf5 files
-    # TODO remove regrid_dirpath here
-    # regrid_dirpath = varname * "_cgll"
     outfile_root = varname * "cgll"
-
     # Regrid data at all times from lat/lon (RLL) to simulation grid (CGLL)
     if ClimaComms.iamroot(comms)
         Regridder.hdwrite_regridfile_rll_to_cgll(
@@ -198,7 +188,6 @@ function bcfile_info_init(
         data_dates,
         current_fields,
         scaling_function,
-        land_fraction,
         deepcopy(segment_idx0),
     )
     return BCFileInfo{FT, typeof.(args)...}(
@@ -383,14 +372,14 @@ end
 """
     no_scaling(field, bcf_info)
 
-Remap the values of a `field` onto the space of the
-`bcf_info`'s land_fraction without scaling.
+Remap the values of a `field` onto the space in
+`bcf_info` without scaling.
 
 # Arguments
 - `field`: [Fields.Field] contains the values to be remapped.
-- `bcf_info`: [BCFileInfo] contains a land_fraction to remap onto the space of.
+- `bcf_info`: [BCFileInfo] contains the space to remap onto.
 """
 no_scaling(field::Fields.Field, bcf_info::BCFileInfo{FT}) where {FT} =
-    Regridder.swap_space!(field, axes(bcf_info.land_fraction))
+    Regridder.swap_space!(field, bcf_info.boundary_space)
 
 end

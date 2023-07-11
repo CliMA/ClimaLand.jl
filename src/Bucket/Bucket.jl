@@ -165,17 +165,6 @@ function BulkAlbedoTemporal{FT}(
     end
 
     boundary_space = surface.space
-    # Set up land mask info
-    mask_path = mask_dataset_path()
-    mask_varname = "LSMASK"
-    land_fraction = regrid_netcdf_to_field(
-        FT,
-        regrid_dirpath,
-        comms,
-        mask_path,
-        mask_varname,
-        boundary_space,
-    )
 
     # Construct object containing info to read in surface albedo over time
     bcfile_info = bcfile_info_init(
@@ -185,7 +174,6 @@ function BulkAlbedoTemporal{FT}(
         varname,
         boundary_space,
         comms,
-        land_fraction = land_fraction,
     )
     return BulkAlbedoTemporal{FT}(bcfile_info)
 end

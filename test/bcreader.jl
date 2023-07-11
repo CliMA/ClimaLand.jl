@@ -54,7 +54,6 @@ for FT in (Float64, Float32)
             dummy_dates,                        # all_dates
             nothing,                            # monthly_fields
             nothing,                            # scaling_function
-            nothing,                            # land_fraction
             deepcopy(segment_idx0),             # segment_idx
             segment_idx0,                       # segment_idx0
             Int[],                              # segment_length
@@ -103,7 +102,6 @@ for FT in (Float64, Float32)
             dummy_dates,                        # all_dates
             monthly_fields,                     # monthly_fields
             nothing,                            # scaling_function
-            nothing,                            # land_fraction
             deepcopy(segment_idx0),             # segment_idx
             segment_idx0,                       # segment_idx0
             segment_length,                     # segment_length
@@ -127,7 +125,6 @@ for FT in (Float64, Float32)
             topology = Topologies.Topology2D(mesh)
             quad = Spaces.Quadratures.GLL{Nq}()
             boundary_space_t = Spaces.SpectralElementSpace2D(topology, quad)
-            land_fraction_t = Fields.zeros(boundary_space_t)
 
             datafile_rll = mask_data
             varname = "LSMASK"
@@ -140,14 +137,15 @@ for FT in (Float64, Float32)
                 varname,
                 boundary_space_t,
                 comms_ctx,
-                segment_idx0 = [Int(1309)],
-                land_fraction = land_fraction_t,
+                segment_idx0 = [Int(0)],
                 mono = mono,
             )
 
             # test that created object exists and has correct components
             @test @isdefined(bcf_info)
-            @test all(parent(bcf_info.land_fraction) .== 0)
+            @test bcf_info.varname == varname
+            @test bcf_info.segment_idx[1] == Int(0)
+            @test bcf_info.mono == mono
         end
 
         @testset "test update_midmonth_data! for FT=$FT" begin
@@ -171,8 +169,6 @@ for FT in (Float64, Float32)
             quad = Spaces.Quadratures.GLL{Nq}()
             boundary_space_t = Spaces.SpectralElementSpace2D(topology, quad)
 
-            land_fraction_t = Fields.ones(boundary_space_t)
-
             bcf_info = BCReader.bcfile_info_init(
                 FT,
                 regrid_dir,
@@ -180,7 +176,6 @@ for FT in (Float64, Float32)
                 varname,
                 boundary_space_t,
                 comms_ctx,
-                land_fraction = land_fraction_t,
             )
 
             # General case: loop over simulation dates
