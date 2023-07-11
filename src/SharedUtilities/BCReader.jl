@@ -63,7 +63,7 @@ Stores information specific to each boundary condition from a file and each vari
 
 # Inputs:
 - path::b                         # directory of the BC file
-- comms::X                    # communication context used for MPI
+- comms::X                        # communication context used for MPI
 - regrid_dirpath::S               # filename root for regridded data
 - varname::V                      # name of the variable
 - all_dates::D                    # vector of all dates contained in the original data file
@@ -225,7 +225,7 @@ The times for which data is extracted depends on the specifications in the
 function update_midmonth_data!(date, bcf_info::BCFileInfo{FT}) where {FT}
     # monthly count
     (;
-        regrid_dirpath,
+        path,
         comms,
         regrid_dirpath,
         varname,
@@ -245,7 +245,7 @@ function update_midmonth_data!(date, bcf_info::BCFileInfo{FT}) where {FT}
             midmonth_idx < Int(1) ? midmonth_idx + Int(1) : midmonth_idx
         bcf_info.monthly_fields[1] .= scaling_function(
             Regridder.read_from_hdf5(
-                regrid_dirpath,
+                path,
                 regrid_dirpath,
                 all_dates[Int(midmonth_idx0)],
                 varname,
@@ -260,7 +260,7 @@ function update_midmonth_data!(date, bcf_info::BCFileInfo{FT}) where {FT}
         @warn "this time period is after BC data - using file from $(all_dates[end - 1])"
         bcf_info.monthly_fields[1] .= scaling_function(
             Regridder.read_from_hdf5(
-                regrid_dirpath,
+                path,
                 regrid_dirpath,
                 all_dates[end],
                 varname,
@@ -292,7 +292,7 @@ function update_midmonth_data!(date, bcf_info::BCFileInfo{FT}) where {FT}
             ).value
         bcf_info.monthly_fields[1] .= scaling_function(
             Regridder.read_from_hdf5(
-                regrid_dirpath,
+                path,
                 regrid_dirpath,
                 all_dates[Int(midmonth_idx)],
                 varname,
@@ -302,7 +302,7 @@ function update_midmonth_data!(date, bcf_info::BCFileInfo{FT}) where {FT}
         )
         bcf_info.monthly_fields[2] .= scaling_function(
             Regridder.read_from_hdf5(
-                regrid_dirpath,
+                path,
                 regrid_dirpath,
                 all_dates[Int(midmonth_idx + 1)],
                 varname,
