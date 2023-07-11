@@ -415,3 +415,49 @@ end
     ]) / ν < 1e-11
 
 end
+
+
+@testset "Lateral flow flag" begin
+    FT = Float32
+    zmax = FT(0)
+    zmin = FT(-1)
+    xmax = FT(1.0)
+    boxdomain = ClimaLSM.Domains.HybridBox(;
+        xlim = (zmin, zmax),
+        ylim = (zmin, zmax),
+        zlim = (zmin, zmax),
+        nelements = (100, 2, 100),
+        npolynomial = 3,
+    )
+    shell = ClimaLSM.Domains.SphericalShell(;
+        radius = FT(1),
+        height = FT(1),
+        nelements = (2, 3),
+        npolynomial = 1,
+    )
+    column = ClimaLSM.Domains.Column(; zlim = (zmin, zmax), nelements = 10)
+    for d in [boxdomain, shell]
+        f1 = ClimaCore.Fields.zeros(d.space)
+        f2 = ClimaCore.Fields.zeros(d.space)
+        dY = ClimaCore.Fields.FieldVector(; g = f1, h = f2)
+        ClimaLSM.Soil.horizontal_components!(dY, d, Val(false))
+        @test dY.g == f1
+        @test dY.h == f2
+        # If you pass true, you need additional arguments (dispatch off of model type)
+        @test_throws MethodError ClimaLSM.Soil.horizontal_components!(
+            dY,
+            d,
+            Val(true),
+        )
+
+    end
+    f1 = ClimaCore.Fields.zeros(column.space)
+    f2 = ClimaCore.Fields.zeros(column.space)
+    dY = ClimaCore.Fields.FieldVector(; g = f1, h = f2)
+    ClimaLSM.Soil.horizontal_components!(dY, column, Val(false))
+    @test dY.g == f1
+    @test dY.h == f2
+    ClimaLSM.Soil.horizontal_components!(dY, column, Val(true))
+    @test dY.g == f1
+    @test dY.h == f2
+end

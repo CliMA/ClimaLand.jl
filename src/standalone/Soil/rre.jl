@@ -53,6 +53,8 @@ struct RichardsModel{FT, PS, D, BC, S} <: AbstractSoilModel{FT}
     boundary_conditions::BC
     "A tuple of sources, each of type AbstractSoilSource"
     sources::S
+    "A boolean flag which, when false, turns off the horizontal flow of water"
+    lateral_flow::Bool
 end
 
 """
@@ -61,18 +63,21 @@ end
         domain::D,
         boundary_conditions::NamedTuple,
         sources::Tuple,
+        lateral_flow::Bool = true
     ) where {FT, D}
 
-A constructor for a `RichardsModel`.
+A constructor for a `RichardsModel`, which sets the 
+default value of `lateral_flow` to be true.
 """
 function RichardsModel{FT}(;
     parameters::RichardsParameters{FT},
     domain::D,
     boundary_conditions::NamedTuple,
     sources::Tuple,
+    lateral_flow::Bool = true,
 ) where {FT, D}
     args = (parameters, domain, boundary_conditions, sources)
-    RichardsModel{FT, typeof.(args)...}(args...)
+    RichardsModel{FT, typeof.(args)...}(args..., lateral_flow)
 end
 
 
@@ -150,7 +155,14 @@ function ClimaLSM.make_compute_exp_tendency(model::Soil.RichardsModel)
         dY.soil.ϑ_l .= FT(0)
         z = ClimaCore.Fields.coordinate_field(model.domain.space).z
 
-        horizontal_components!(dY, model.domain, model, p, z)
+        horizontal_components!(
+            dY,
+            model.domain,
+            Val(model.lateral_flow),
+            model,
+            p,
+            z,
+        )
 
         # Source terms
         for src in model.sources
@@ -163,18 +175,24 @@ end
 
 """
    horizontal_components!(dY::ClimaCore.Fields.FieldVector,
-                          domain::HybridBox,
+                          domain::Union{HybridBox, SphericalShell},
+                          lateral_flow::Val{true},
                           model::RichardsModel,
                           p::ClimaCore.Fields.FieldVector)
-Updates dY in place by adding in the tendency terms resulting from
-horizontal derivative operators.
 
-In the case of a hybrid box domain, the horizontal contributions are
+Updates dY in place by adding in the tendency terms resulting from
+horizontal derivative operators for the RichardsModel,
+ in the case of a hybrid box or 
+spherical shell domain with the model
+`lateral_flag` set to true.
+
+The horizontal contributions are
 computed using the WeakDivergence and Gradient operators.
 """
 function horizontal_components!(
     dY::ClimaCore.Fields.FieldVector,
     domain::Union{HybridBox, SphericalShell},
+    lateral_flow::Val{true},
     model::RichardsModel,
     p::ClimaCore.Fields.FieldVector,
     z::ClimaCore.Fields.Field,

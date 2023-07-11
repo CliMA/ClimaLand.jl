@@ -136,6 +136,8 @@ struct EnergyHydrology{FT, PS, D, BCRH, S} <: AbstractSoilModel{FT}
     boundary_conditions::BCRH
     "A tuple of sources, each of type AbstractSoilSource"
     sources::S
+    "A boolean flag which, when false, turns off the horizontal flow of water and heat"
+    lateral_flow::Bool
 end
 
 """
@@ -144,18 +146,21 @@ end
         domain::D,
         boundary_conditions::NamedTuple,
         sources::Tuple,
+        lateral_flow::Bool = true
     ) where {FT, D, PS}
 
-A constructor for a `EnergyHydrology` model.
+A constructor for a `EnergyHydrology` model, which sets the default value
+of the `lateral_flow` flag to true.
 """
 function EnergyHydrology{FT}(;
     parameters::EnergyHydrologyParameters{FT, PSE},
     domain::D,
     boundary_conditions::NamedTuple,
     sources::Tuple,
+    lateral_flow::Bool = true,
 ) where {FT, D, PSE}
     args = (parameters, domain, boundary_conditions, sources)
-    EnergyHydrology{FT, typeof.(args)...}(args...)
+    EnergyHydrology{FT, typeof.(args)...}(args..., lateral_flow)
 end
 
 """
@@ -232,7 +237,14 @@ function ClimaLSM.make_compute_exp_tendency(
                 interpc2f(ρe_int_l * p.soil.K) * gradc2f(p.soil.ψ + z),
             )
         # Horizontal contributions
-        horizontal_components!(dY, model.domain, model, p, z)
+        horizontal_components!(
+            dY,
+            model.domain,
+            Val(model.lateral_flow),
+            model,
+            p,
+            z,
+        )
 
         for src in model.sources
 
@@ -244,19 +256,24 @@ end
 
 """
    horizontal_components!(dY::ClimaCore.Fields.FieldVector,
-                          domain::HybridBox,
+                          domain::Union{HybridBox, SphericalShell},
+                          lateral_flow::Val{true},
                           model::EnergyHydrology,
                           p::ClimaCore.Fields.FieldVector)
 
 Updates dY in place by adding in the tendency terms resulting from
-horizontal derivative operators.
+horizontal derivative operators for the `EnergyHydrology` model,
+ in the case of a hybrid box or 
+spherical shell domain with the model
+`lateral_flag` set to true.
 
-In the case of a hybrid box domain, the horizontal contributions are
+The horizontal contributions are
 computed using the WeakDivergence and Gradient operators.
 """
 function horizontal_components!(
     dY::ClimaCore.Fields.FieldVector,
     domain::Union{HybridBox, SphericalShell},
+    lateral_flow::Val{true},
     model::EnergyHydrology,
     p::ClimaCore.Fields.FieldVector,
     z::ClimaCore.Fields.Field,
