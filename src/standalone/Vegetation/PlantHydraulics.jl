@@ -176,8 +176,6 @@ struct PlantHydraulicsModel{FT, PS, RE, T} <: AbstractPlantHydraulicsModel{FT}
     n_stem::Int64
     "The number of leaf compartments for the plant; must be >=1"
     n_leaf::Int64
-    "The depth of the root tips, in meters"
-    root_depths::Vector{FT}
     "The height of the center of each leaf compartment/stem compartment, in meters"
     compartment_midpoints::Vector{FT}
     "The height of the compartments' top faces, in meters"
@@ -193,7 +191,6 @@ struct PlantHydraulicsModel{FT, PS, RE, T} <: AbstractPlantHydraulicsModel{FT}
 end
 
 function PlantHydraulicsModel{FT}(;
-    root_depths::Vector{FT},
     n_stem::Int64,
     n_leaf::Int64,
     compartment_midpoints::Vector{FT},
@@ -223,7 +220,6 @@ function PlantHydraulicsModel{FT}(;
     return PlantHydraulicsModel{FT, typeof.(args)...}(
         n_stem,
         n_leaf,
-        root_depths,
         compartment_midpoints,
         compartment_surfaces,
         compartment_labels,
@@ -517,8 +513,13 @@ end
 
 A concrete type used for dispatch when computing the `root_flux_per_ground_area!`,
 in the case where the soil matric potential at each root layer is prescribed.
+
+$(DocStringExtensions.FIELDS)
 """
 struct PrescribedSoilPressure{FT} <: AbstractRootExtraction{FT}
+    "The depth of the root tips, in meters"
+    root_depths::Vector{FT}
+    "Prescribed soil potential (m) as a function of time"
     ψ_soil::Function
 end
 
@@ -551,7 +552,8 @@ function root_flux_per_ground_area!(
 
     (; conductivity_model, root_distribution, area_index) = model.parameters
     ψ_base = p.canopy.hydraulics.ψ[1]
-    n_root_layers = length(model.root_depths)
+    root_depths = re.root_depths
+    n_root_layers = length(root_depths)
     ψ_soil::FT = re.ψ_soil(t)
     if area_index[:root] < eps(FT)
         fa .= FT(0)
@@ -560,15 +562,15 @@ function root_flux_per_ground_area!(
             if i != n_root_layers
                 @. fa +=
                     flux(
-                        model.root_depths[i],
+                        root_depths[i],
                         model.compartment_midpoints[1],
                         ψ_soil,
                         ψ_base,
                         hydraulic_conductivity(conductivity_model, ψ_soil),
                         hydraulic_conductivity(conductivity_model, ψ_base),
                     ) *
-                    root_distribution(model.root_depths[i]) *
-                    (model.root_depths[i + 1] - model.root_depths[i]) *
+                    root_distribution(root_depths[i]) *
+                    (root_depths[i + 1] - root_depths[i]) *
                     (
                         area_index[:root] +
                         area_index[model.compartment_labels[1]]
@@ -576,15 +578,15 @@ function root_flux_per_ground_area!(
             else
                 @. fa +=
                     flux(
-                        model.root_depths[i],
+                        root_depths[i],
                         model.compartment_midpoints[1],
                         ψ_soil,
                         ψ_base,
                         hydraulic_conductivity(conductivity_model, ψ_soil),
                         hydraulic_conductivity(conductivity_model, ψ_base),
                     ) *
-                    root_distribution(model.root_depths[i]) *
-                    (FT(0) - model.root_depths[n_root_layers]) *
+                    root_distribution(root_depths[i]) *
+                    (FT(0) - root_depths[n_root_layers]) *
                     (
                         area_index[:root] +
                         area_index[model.compartment_labels[1]]

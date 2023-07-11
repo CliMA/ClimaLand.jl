@@ -57,9 +57,6 @@ function SoilPlantHydrologyModel{FT}(;
     # These should always be set by the constructor.
     sources = (RootExtraction{FT}(),)
     root_extraction = PrognosticSoilPressure{FT}()
-    root_depths = sort(
-        unique(parent(ClimaLSM.Domains.coordinates(soil_args.domain).z)[:]),
-    )
 
     boundary_conditions = (;
         top = (water = FluxBC((p, t) -> eltype(t)(precipitation(t))),),
@@ -91,7 +88,6 @@ function SoilPlantHydrologyModel{FT}(;
         hydraulics = canopy_component_types.hydraulics(;
             root_extraction = root_extraction,
             transpiration = transpiration,
-            root_depths = root_depths,
             canopy_component_args.hydraulics...,
         ),
         atmos = atmos,

@@ -148,12 +148,12 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
         )
 
     ψ_soil0 = FT(0.0)
-    root_extraction = PrescribedSoilPressure{FT}((t::FT) -> ψ_soil0)
+    root_extraction =
+        PrescribedSoilPressure{FT}(root_depths, (t::FT) -> ψ_soil0)
 
     plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
         parameters = param_set,
         root_extraction = root_extraction,
-        root_depths = root_depths,
         n_stem = n_stem,
         n_leaf = n_leaf,
         compartment_surfaces = compartment_faces,
