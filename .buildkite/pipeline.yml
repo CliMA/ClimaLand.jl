@@ -18,7 +18,7 @@ steps:
 
       - echo "--- Configure MPI"
       - julia -e 'using Pkg; Pkg.add("MPIPreferences"); using MPIPreferences; use_system_binary()'
-      
+
       - "julia --project -e 'using Pkg; Pkg.instantiate(;verbose=true)'"
       - "julia --project -e 'using Pkg; Pkg.precompile()'"
       - "julia --project -e 'using Pkg; Pkg.status()'"
@@ -31,7 +31,7 @@ steps:
       - "julia --project=experiments -e 'using Pkg; Pkg.instantiate(;verbose=true)'"
       - "julia --project=experiments -e 'using Pkg; Pkg.precompile()'"
       - "julia --project=experiments -e 'using Pkg; Pkg.status()'"
-      
+
   - wait
 
   - group: "Unit tests"
@@ -41,9 +41,9 @@ steps:
         command: "julia --color=yes --project=test test/Bucket/regridder.jl"
         artifact_paths: "regridder/"
 
-      - label: "albedo_map"
-        command: "julia --color=yes --project=test test/Bucket/albedo_map_bucket.jl"
-        artifact_paths: "albedo_map/"
+      - label: "albedo_maps"
+        command: "julia --color=yes --project=test test/Bucket/albedo_types_bucket.jl"
+        artifact_paths: "albedo_maps/"
 
       - label: "Richards comparison to Bonan"
         command: "julia --color=yes --project=experiments experiments/Standalone/Soil/richards_comparison.jl"

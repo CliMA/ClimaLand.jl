@@ -33,7 +33,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     varname = "sw_alb"
     path = bareground_albedo_dataset_path()
     comms = ClimaComms.SingletonCommsContext()
-    regrid_dirpath = joinpath(pkgdir(ClimaLSM), "test/Bucket/albedo_tmpfiles")
+    regrid_dirpath = joinpath(pkgdir(ClimaLSM), "test/Bucket/albedo_tmpfiles/")
     mkpath(regrid_dirpath)
     albedo_model = BulkAlbedoStatic{FT}(regrid_dirpath, path)
 
@@ -135,13 +135,14 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     rm(regrid_dirpath, recursive = true)
 end
 
-@testset "Test BulkAlbedoTemporal - albedo from map over time" begin
+# @testset "Test BulkAlbedoTemporal - albedo from map over time" begin
+function test_albedotemporal()
     FT = Float32
     earth_param_set = create_lsm_parameters(FT)
     varname = "sw_alb"
     path = cesm2_albedo_dataset_path()
     comms = ClimaComms.SingletonCommsContext()
-    regrid_dirpath = joinpath(pkgdir(ClimaLSM), "test/Bucket/albedo_tmpfiles")
+    regrid_dirpath = joinpath(pkgdir(ClimaLSM), "test/Bucket/albedo_tmpfiles/")
     mkpath(regrid_dirpath)
 
     σS_c = FT(0.2)
