@@ -5,6 +5,7 @@ version = "0.2.6"
 
 [deps]
 ArtifactWrappers = "a14bc488-3040-4b00-9dc1-f6467924858a"
+CFTime = "179af706-886a-5703-950a-314cd64e0468"
 ClimaComms = "3a4d1b5c-c61d-41fd-a00a-5873ba7a1b0d"
 ClimaCore = "d414da3d-4745-48bb-8d80-42e94e092884"
 ClimaCoreTempestRemap = "d934ef94-cdd4-4710-83d6-720549644b70"
@@ -22,6 +23,7 @@ UnPack = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
 
 [compat]
 ArtifactWrappers = "0.2"
+CFTime = "0.1"
 ClimaComms = "0.3, 0.4, 0.5"
 ClimaCore = "0.10.32"
 ClimaCoreTempestRemap = "0.3.5"
