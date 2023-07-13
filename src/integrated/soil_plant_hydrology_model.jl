@@ -10,7 +10,9 @@ export SoilPlantHydrologyModel
     end
 
 A concrete type of land model used for simulating systems with a 
-canopy and a soil component.
+canopy and a soil hydrology component.
+
+This is primarily for testing purposes.
 $(DocStringExtensions.FIELDS)
 """
 struct SoilPlantHydrologyModel{
@@ -34,6 +36,7 @@ end
                                  canopy_component_args::NamedTuple = (;),
                                  canopy_model_args::NamedTuple = (;),
                                  ) where {FT, SM <: Soil.AbstractSoilModel{FT}}
+
 A constructor for the `SoilPlantHydrologyModel`, which takes in the concrete model
 type and required arguments for each component, constructs those models,
 and constructs the `SoilPlantHydrologyModel` from them.
@@ -41,6 +44,10 @@ and constructs the `SoilPlantHydrologyModel` from them.
 Each component model is constructed with everything it needs to be stepped
 forward in time, including boundary conditions, source terms, and interaction
 terms.
+
+Runoff is not currently supported for this configuration, as this model is for testing only;
+ please see the documentation for the
+`SoilCanopyModel`, `EnergyHydrology`, or `RichardsModel` for models that support runoff.
 """
 function SoilPlantHydrologyModel{FT}(;
     land_args::NamedTuple = (;),
@@ -114,8 +121,8 @@ interaction_domains(m::SoilPlantHydrologyModel) = (:subsurface,)
 
 A method which makes a function; the returned function 
 updates the auxiliary variable `p.root_extraction`, which
-is needed for both the boundary condition for the soil model and the source
-term (runoff) for the surface water model.
+is needed for the soil model and 
+for the canopy model.
 
 This function is called each ode function evaluation.
 

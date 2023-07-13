@@ -42,6 +42,15 @@ end
 A model for simulating the flow of water in a porous medium
 by solving the Richardson-Richards Equation.
 
+A variety of boundary condition types are supported, including
+FluxBC, RichardsAtmosDrivenFluxBC, MoistureStateBC, and FreeDrainage 
+(only for the bottom of the domain). 
+
+If you wish to 
+simulate soil hydrology under the context of a prescribed precipitation
+volume flux (m/s) as a function of time, the RichardsAtmosDrivenFluxBC 
+type should be chosen. Please see the documentation for more details.
+
 $(DocStringExtensions.FIELDS)
 """
 struct RichardsModel{FT, PS, D, BC, S} <: AbstractSoilModel{FT}
@@ -76,6 +85,13 @@ function RichardsModel{FT}(;
     sources::Tuple,
     lateral_flow::Bool = true,
 ) where {FT, D}
+    top_bc = boundary_conditions.top.water
+    if typeof(top_bc) <: RichardsAtmosDrivenFluxBC
+        # If the top BC indicates precipitation is driving the model,
+        # add baseflow as a sink/source term
+        subsurface_source = subsurface_runoff_source(top_bc.runoff)
+        sources = append_source(subsurface_source, sources)
+    end
     args = (parameters, domain, boundary_conditions, sources)
     RichardsModel{FT, typeof.(args)...}(args..., lateral_flow)
 end
@@ -99,18 +115,20 @@ function ClimaLSM.make_compute_imp_tendency(model::RichardsModel)
         top_flux_bc = boundary_flux(
             model.boundary_conditions.top.water,
             TopBoundary(),
+            model,
             Δz_top,
+            Y,
             p,
             t,
-            model.parameters,
         )
         bot_flux_bc = boundary_flux(
             model.boundary_conditions.bottom.water,
             BottomBoundary(),
+            model,
             Δz_bottom,
+            Y,
             p,
             t,
-            model.parameters,
         )
 
         interpc2f = Operators.InterpolateC2F()

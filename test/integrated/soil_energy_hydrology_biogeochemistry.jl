@@ -54,10 +54,12 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     nelems = 20
     lsm_domain =
         LSMSingleColumnDomain(; zlim = (zmin, zmax), nelements = nelems)
-    top_flux_bc = Soil.FluxBC((p, t) -> eltype(t)(0.0))
-    bot_flux_bc = Soil.FluxBC((p, t) -> eltype(t)(0.0))
+    zero_flux_bc = Soil.FluxBC((p, t) -> eltype(t)(0.0))
     sources = () # PhaseChange
-    boundary_fluxes = (; water = (top = top_flux_bc, bottom = bot_flux_bc))
+    boundary_fluxes = (;
+        top = (water = zero_flux_bc, heat = zero_flux_bc),
+        bottom = (water = zero_flux_bc, heat = zero_flux_bc),
+    )
     soil_args = (;
         boundary_conditions = boundary_fluxes,
         sources = sources,
