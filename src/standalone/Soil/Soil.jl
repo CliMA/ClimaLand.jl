@@ -65,11 +65,13 @@ using Thermodynamics
 
 import ClimaLSM.Domains: Column, HybridBox, SphericalShell
 using ClimaLSM: AbstractTridiagonalW
+
 import ClimaLSM:
     AbstractImExModel,
     make_update_aux,
     make_compute_exp_tendency,
     make_compute_imp_tendency,
+    make_set_initial_aux_state,
     make_update_jacobian,
     prognostic_vars,
     auxiliary_vars,
@@ -95,20 +97,6 @@ export RichardsModel,
     AbstractSoilModel,
     AbstractSoilSource,
     PhaseChange
-
-
-
-"""
-    AbstractSoilSource{FT} <:  ClimaLSM.AbstractSource{FT}
-
-An abstract type for types of source terms for the soil equations.
-
-In standalone mode, the only supported source type is freezing and
-thawing. ClimaLSM.jl creates additional sources to include as
-necessary e.g. root extraction (not available in stand alone mode).
-"""
-abstract type AbstractSoilSource{FT} <: ClimaLSM.AbstractSource{FT} end
-
 """
     AbstractSoilModel{FT} <: ClimaLSM.AbstractImExModel{FT}
 
@@ -121,6 +109,58 @@ and a fully integrated soil heat and water model, with phase change.
 abstract type AbstractSoilModel{FT} <: ClimaLSM.AbstractImExModel{FT} end
 
 ClimaLSM.name(::AbstractSoilModel) = :soil
+ClimaLSM.domain_name(::AbstractSoilModel) = :subsurface
+
+"""
+    AbstractSoilSource{FT} <:  ClimaLSM.AbstractSource{FT}
+
+An abstract type for types of source terms for the soil equations.
+
+In standalone mode, the only supported source type is freezing and
+thawing. ClimaLSM.jl creates additional sources to include as
+necessary e.g. root extraction (not available in stand alone mode).
+"""
+abstract type AbstractSoilSource{FT} <: ClimaLSM.AbstractSource{FT} end
+
+
+function ClimaLSM.make_set_initial_aux_state(model::AbstractSoilModel)
+    update_aux! = make_update_aux(model)
+    function set_initial_aux_state!(p, Y0, t0)
+        set_initial_parameter_field!(
+            model.boundary_conditions,
+            p,
+            model.domain.surface.space,
+        )
+
+        update_aux!(p, Y0, t0)
+    end
+    return set_initial_aux_state!
+end
+
+ClimaLSM.name(::AbstractSoilModel) = :soil
+    #=
+function ClimaLSM.initialize_auxiliary(
+    model::AbstractSoilModel{FT},
+    _,
+) where {FT}
+    model_name = name(model)
+    vars = auxiliary_vars(model)
+    types = auxiliary_types(model)
+    domain_names = auxiliary_domain_names(model)
+
+    auxiliary_state = map(zip(types, domain_names)) do (T, domain_name)
+        zero_instance = zero(T)
+        space =
+            domain_name == :surface ?
+            ClimaLSM.Domains.obtain_surface_space(model.domain.space) :
+            model.domain.space
+        cds = ClimaCore.Fields.coordinate_field(space)
+        map(_ -> zero_instance, cds)
+    end
+    return NamedTuple{vars}(auxiliary_state)
+end
+=#
+
 """
    horizontal_components!(dY::ClimaCore.Fields.FieldVector,
                           domain::Column, _...)
@@ -154,9 +194,9 @@ function horizontal_components!(
     lateral_flow::Val{false},
     _...,
 ) end
-
+include("Runoff/Runoff.jl")
+using .Runoff
 include("./retention_models.jl")
-include("./runoff.jl")
 include("./rre.jl")
 include("./energy_hydrology.jl")
 include("./boundary_conditions.jl")

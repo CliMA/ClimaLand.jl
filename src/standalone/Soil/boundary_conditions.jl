@@ -501,3 +501,47 @@ function ClimaLSM.∂tendencyBC∂Y(
 )
     return ClimaCore.Fields.FieldVector(; :soil => (; :ϑ_l => zeros(axes(Δz))))
 end
+
+boundary_vars(::AbstractSoilBC) = ()
+boundary_var_domains(::AbstractSoilBC) = ()
+boundary_var_types(::AbstractSoilBC) = ()
+boundary_vars(
+    ::Union{
+        AtmosDrivenFluxBC{
+            <:AbstractAtmosphericDrivers,
+            <:AbstractRadiativeDrivers,
+            <:TOPMODELRunoff,
+        },
+        <:RichardsAtmosDrivenFluxBC{<:TOPMODELRunoff},
+    },
+) = (:ϕ_α, :ϕ_β, :z_∇)
+boundary_var_domains(
+    ::Union{
+        AtmosDrivenFluxBC{
+            <:AbstractAtmosphericDrivers,
+            <:AbstractRadiativeDrivers,
+            <:TOPMODELRunoff,
+        },
+        <:RichardsAtmosDrivenFluxBC{<:TOPMODELRunoff},
+    },
+) = (:surface, :surface, :surface)
+boundary_var_types(
+    ::Union{
+        AtmosDrivenFluxBC{
+            <:AbstractAtmosphericDrivers,
+            <:AbstractRadiativeDrivers,
+            <:TOPMODELRunoff{FT},
+        },
+        <:RichardsAtmosDrivenFluxBC{<:TOPMODELRunoff{FT}},
+    },
+) where {FT} = (FT, FT, FT)
+function set_initial_parameter_field!(parameterization, p, surface_space) end
+# we need surface fields
+# we need a way to add these fields based on parameterization
+function set_initial_parameter_field!(
+    bc::Union{AtmosDrivenFluxBC, <:RichardsAtmosDrivenFluxBC},
+    p,
+    surface_space,
+) where {FT}
+    set_initial_parameter_field!(bc.top.runoff, p, surface_space)
+end

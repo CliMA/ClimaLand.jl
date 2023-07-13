@@ -334,6 +334,11 @@ of `EnergyHydrology`.
 ClimaLSM.auxiliary_vars(soil::EnergyHydrology) = (:K, :ψ, :θ_l, :T, :κ)
 
 """
+"""
+auxiliary_domains(soil::EnergyHydrology) =
+    (:subsurface, :subsurface, :subsurface, :subsurface, :subsurface)
+
+"""
     auxiliary_types(soil::EnergyHydrology{FT}) where {FT}
 
 A function which returns the types of the auxiliary variables

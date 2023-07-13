@@ -237,15 +237,24 @@ ClimaLSM.prognostic_domain_names(soil::RichardsModel) = (:subsurface,)
 A function which returns the names of the auxiliary variables
 of `RichardsModel`.
 
-Note that auxiliary variables are not needed for such a simple model.
-We could instead compute the conductivity and matric potential within the
-tendency function explicitly, rather than compute and store them in the
-auxiliary vector `p`. We did so in this case as a demonstration.
 """
-ClimaLSM.auxiliary_vars(soil::RichardsModel) = (:K, :ψ)
-ClimaLSM.auxiliary_types(soil::RichardsModel{FT}) where {FT} = (FT, FT)
-ClimaLSM.auxiliary_domain_names(soil::RichardsModel) =
-    (:subsurface, :subsurface)
+function ClimaLSM.auxiliary_vars(soil::RichardsModel)
+    return (:K, :ψ, boundary_vars(soil.boundary_conditions.top.water)...)
+end
+
+"""
+"""
+function auxiliary_domain_names(soil::RichardsModel)
+    return (
+        :subsurface,
+        :subsurface,
+        boundary_var_domains(soil.boundary_conditions.top.water)...,
+    )
+end
+
+function ClimaLSM.auxiliary_types(soil::RichardsModel{FT}) where {FT}
+    return (FT, FT, boundary_var_types(soil.boundary_conditions.top.water)...)
+end
 """
     make_update_aux(model::RichardsModel)
 
