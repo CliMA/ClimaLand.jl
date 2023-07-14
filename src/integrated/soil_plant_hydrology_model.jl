@@ -218,7 +218,7 @@ struct RootExtraction{FT} <: Soil.AbstractSoilSource{FT} end
                      src::RootExtraction,
                      Y::ClimaCore.Fields.FieldVector,
                      p::ClimaCore.Fields.FieldVector
-                     params)
+                     model::RichardsModel)
 
 An extension of the `ClimaLSM.source!` function,
  which computes source terms for the 
@@ -230,7 +230,7 @@ function ClimaLSM.source!(
     src::RootExtraction,
     Y::ClimaCore.Fields.FieldVector,
     p::ClimaCore.Fields.FieldVector,
-    _...,
+    model::RichardsModel,
 )
     @. dY.soil.ϑ_l += -1 * p.root_extraction
     # if flow is negative, towards soil -> soil water increases, add in sign here.
