@@ -166,7 +166,7 @@ function ClimaLSM.make_compute_exp_tendency(model::Soil.RichardsModel)
 
         # Source terms
         for src in model.sources
-            ClimaLSM.source!(dY, src, Y, p, model.parameters)
+            ClimaLSM.source!(dY, src, Y, p, model)
         end
     end
     return compute_exp_tendency!

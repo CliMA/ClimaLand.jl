@@ -165,12 +165,12 @@ Y, p, cds = initialize(land)
 exp_tendency! = make_exp_tendency(land)
 
 #Initial conditions
-Y.soil.ϑ_l = SWC[Int(round(t0 / 1800))] # Get soil water content at t0
+Y.soil.ϑ_l = SWC[1 + Int(round(t0 / 1800))] # Get soil water content at t0
 # recalling that the data is in intervals of 1800 seconds. Both the data
 # and simulation are reference to 2005-01-01-00 (LOCAL)
 # or 2005-01-01-06 (UTC)
 Y.soil.θ_i = FT(0.0)
-T_0 = TS[Int(round(t0 / 1800))] # Get soil temperature at t0
+T_0 = TS[1 + Int(round(t0 / 1800))] # Get soil temperature at t0
 ρc_s =
     volumetric_heat_capacity.(Y.soil.ϑ_l, Y.soil.θ_i, Ref(land.soil.parameters))
 Y.soil.ρe_int =
@@ -662,7 +662,6 @@ Plots.plot!(
 Plots.plot!(plt2, seconds ./ 3600 ./ 24, TS, label = "", color = "red")
 
 
-
 plt3 = Plots.plot()
 Plots.plot!(
     plt3,
@@ -702,6 +701,7 @@ Plots.plot!(
     color = "red",
     legend = :bottomright,
 )
+
 Plots.plot!(plt3, legend = :bottomleft)
 Plots.plot(plt3, plt2, layout = (2, 1))
 Plots.savefig(joinpath(savedir, "soil_temperature.png"))

@@ -244,7 +244,7 @@ function make_interactions_update_aux(
                 p.soil.θ_l,
                 Y.soil.ϑ_l,
                 Y.soil.θ_i,
-                Ref(land.soil.parameters),
+                land.soil.parameters,
             ),
         )
         r_ae = soil_conditions.r_ae
@@ -301,7 +301,6 @@ function net_radiation_at_ground(
     h = FT(LSMP.planck_constant(earth_param_set))
     N_a = FT(LSMP.avogadro_constant(earth_param_set))
     (; λ_γ) = canopy_radiation.parameters
-
     energy_per_photon = h * c / λ_γ
     SW_d_beneath_canopy =
         @. SW_d - p.canopy.radiative_transfer.apar * (energy_per_photon * N_a)
@@ -310,4 +309,33 @@ function net_radiation_at_ground(
         -(1 - p.α_soil) * SW_d_beneath_canopy -
         p.ϵ_soil * (LW_d_beneath_canopy - _σ * p.T_soil^4)
     )
+end
+
+
+
+"""
+    ClimaLSM.source!(dY::ClimaCore.Fields.FieldVector,
+                     src::RootExtraction,
+                     Y::ClimaCore.Fields.FieldVector,
+                     p::ClimaCore.Fields.FieldVector
+                     model::EnergyHydrology)
+
+An extension of the `ClimaLSM.source!` function,
+ which computes source terms for the 
+soil model; this method returns the water and energy loss/gain due
+to root extraction.
+"""
+function ClimaLSM.source!(
+    dY::ClimaCore.Fields.FieldVector,
+    src::RootExtraction,
+    Y::ClimaCore.Fields.FieldVector,
+    p::ClimaCore.Fields.FieldVector,
+    model::EnergyHydrology,
+)
+    @. dY.soil.ϑ_l += -1 * p.root_extraction
+    @. dY.soil.ρe_int +=
+        -1 *
+        p.root_extraction *
+        volumetric_internal_energy_liq(p.soil.T, model.parameters)
+    # if flow is negative, towards soil -> soil water increases, add in sign here.
 end

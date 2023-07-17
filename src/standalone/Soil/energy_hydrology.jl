@@ -115,8 +115,7 @@ function EnergyHydrologyParameters{FT}(;
     )
 end
 
-
-
+Base.broadcastable(ps::EnergyHydrologyParameters) = tuple(ps)
 
 """
     EnergyHydrology <: AbstractSoilModel
@@ -227,8 +226,7 @@ function ClimaLSM.make_compute_exp_tendency(
             top = Operators.SetValue(Geometry.WVector.(heat_top_flux_bc)),
             bottom = Operators.SetValue(Geometry.WVector.(heat_bot_flux_bc)),
         )
-        ρe_int_l =
-            volumetric_internal_energy_liq.(p.soil.T, Ref(model.parameters))
+        ρe_int_l = volumetric_internal_energy_liq.(p.soil.T, model.parameters)
 
         # GradC2F returns a Covariant3Vector, so no need to convert.
         @. dY.soil.ρe_int =
@@ -282,7 +280,7 @@ function horizontal_components!(
     hgrad = Operators.Gradient()
     # The flux is already covariant, from hgrad, so no need to convert.
     @. dY.soil.ϑ_l += -hdiv(-p.soil.K * hgrad(p.soil.ψ + z))
-    ρe_int_l = volumetric_internal_energy_liq.(p.soil.T, Ref(model.parameters))
+    ρe_int_l = volumetric_internal_energy_liq.(p.soil.T, model.parameters)
     @. dY.soil.ρe_int +=
         -hdiv(
             -p.soil.κ * hgrad(p.soil.T) -
@@ -351,28 +349,22 @@ function ClimaLSM.make_update_aux(model::EnergyHydrology)
         @. p.soil.θ_l =
             volumetric_liquid_fraction(Y.soil.ϑ_l, ν - Y.soil.θ_i, θ_r)
 
-        p.soil.κ .=
-            thermal_conductivity.(
-                model.parameters.κ_dry,
-                kersten_number.(
-                    Y.soil.θ_i,
-                    relative_saturation.(p.soil.θ_l, Y.soil.θ_i, ν),
-                    Ref(model.parameters),
-                ),
-                κ_sat.(p.soil.θ_l, Y.soil.θ_i, κ_sat_unfrozen, κ_sat_frozen),
-            )
-
-        p.soil.T .=
-            temperature_from_ρe_int.(
-                Y.soil.ρe_int,
+        @. p.soil.κ = thermal_conductivity(
+            model.parameters.κ_dry,
+            kersten_number(
                 Y.soil.θ_i,
-                volumetric_heat_capacity.(
-                    p.soil.θ_l,
-                    Y.soil.θ_i,
-                    Ref(model.parameters),
-                ),
-                Ref(model.parameters),
-            )
+                relative_saturation(p.soil.θ_l, Y.soil.θ_i, ν),
+                model.parameters,
+            ),
+            κ_sat(p.soil.θ_l, Y.soil.θ_i, κ_sat_unfrozen, κ_sat_frozen),
+        )
+
+        @. p.soil.T = temperature_from_ρe_int(
+            Y.soil.ρe_int,
+            Y.soil.θ_i,
+            volumetric_heat_capacity(p.soil.θ_l, Y.soil.θ_i, model.parameters),
+            model.parameters,
+        )
 
         @. p.soil.K =
             impedance_factor(Y.soil.θ_i / (p.soil.θ_l + Y.soil.θ_i - θ_r), Ω) *
@@ -420,11 +412,11 @@ function ClimaLSM.source!(
     (; ν, earth_param_set) = params
     _ρ_l = FT(LSMP.ρ_cloud_liq(earth_param_set))
     _ρ_i = FT(LSMP.ρ_cloud_ice(earth_param_set))
-    ρc = volumetric_heat_capacity.(p.soil.θ_l, Y.soil.θ_i, Ref(params))
+    ρc = volumetric_heat_capacity.(p.soil.θ_l, Y.soil.θ_i, params)
     τ = thermal_time.(ρc, src.Δz, p.soil.κ)
 
     liquid_source =
-        phase_change_source.(p.soil.θ_l, Y.soil.θ_i, p.soil.T, τ, Ref(params))
+        phase_change_source.(p.soil.θ_l, Y.soil.θ_i, p.soil.T, τ, params)
     @. dY.soil.ϑ_l += -liquid_source
     @. dY.soil.θ_i += (_ρ_l / _ρ_i) * liquid_source
 end
@@ -528,7 +520,7 @@ function ClimaLSM.surface_air_density(
     thermo_params =
         LSMP.thermodynamic_parameters(model.parameters.earth_param_set)
     ts_in = construct_atmos_ts(atmos, t, thermo_params)
-    return compute_ρ_sfc.(Ref(thermo_params), Ref(ts_in), T_sfc)
+    return compute_ρ_sfc.(thermo_params, Ref(ts_in), T_sfc)
 end
 
 """
@@ -567,10 +559,10 @@ function ClimaLSM.surface_specific_humidity(
     ψ_sfc = ClimaLSM.Domains.top_center_to_surface(p.soil.ψ)
     q_sat =
         Thermodynamics.q_vap_saturation_generic.(
-            Ref(thermo_params),
+            thermo_params,
             T_sfc,
             ρ_sfc,
-            Ref(Thermodynamics.Liquid()),
+            Thermodynamics.Liquid(),
         )
     return @. (q_sat * exp(g * ψ_sfc * M_w / (R * T_sfc)))
 
