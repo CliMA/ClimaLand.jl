@@ -15,10 +15,10 @@
 # conductance model, placing them under either prescribed or simulated (as in a
 # full Earth System Model) atmospheric and radiative flux conditions. 
 
-# Currently, the only radiative tansfer model supported in ClimaLSM is 
-# Beer-Lambert law, in which the intensity of light absorbed is a negative 
-# exponential function of depth in the canopy and an exinction coefficient
-# determined by optical depth.
+# ClimaLSM supports either Beer-Lambert law or a Two-Stream model for radiative 
+# transfer. For this tutorial, we will use the Beer-Lambert law, 
+# in which the intensity of light absorbed is a negative exponential function of
+# depth in the canopy and an exinction coefficient determined by optical depth.
 
 # The model of photosynthesis in CliMA LSM is the Farquar Model in which GPP is 
 # calculated based on C3 and C4 photosynthesis, which determines potential 
