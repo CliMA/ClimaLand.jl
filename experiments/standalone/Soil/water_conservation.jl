@@ -226,10 +226,11 @@ for i in eachindex(dts)
         top_flux_bc = boundary_flux(
             top_state_bc,
             TopBoundary(),
+            soil_dirichlet,
             Δz_top,
+            sol.u[j],
             p,
             times[j],
-            params,
         )
         flux_in_sim[j - 1] = parent(top_flux_bc)[1]
     end

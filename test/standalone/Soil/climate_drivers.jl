@@ -201,8 +201,8 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
                 top_bc,
                 ClimaLSM.TopBoundary(),
                 model,
-                Y,
                 nothing,
+                Y,
                 p,
                 t,
             )

@@ -124,6 +124,14 @@ A model for simulating the flow of water and heat
 in a porous medium by solving the Richardson-Richards equation
 and the heat equation, including terms for phase change.
 
+A variety of boundary condition types are supported, including
+FluxBC, MoistureStateBC/TemperatureStateBC, 
+FreeDrainage (only for the bottom of the domain),
+and an AtmosDrivenFluxBC (under which radiative fluxes and
+turbulent surface fluxes are computed and used as boundary conditions).
+Please see the documentation for this boundary condition type for more
+details.
+
 $(DocStringExtensions.FIELDS)
 """
 struct EnergyHydrology{FT, PS, D, BCRH, S} <: AbstractSoilModel{FT}
@@ -158,6 +166,13 @@ function EnergyHydrology{FT}(;
     sources::Tuple,
     lateral_flow::Bool = true,
 ) where {FT, D, PSE}
+    top_bc = boundary_conditions.top
+    if typeof(top_bc) <: AtmosDrivenFluxBC
+        # If the top BC indicates atmospheric conditions are driving the model
+        # add baseflow as a sink term
+        subsurface_source = subsurface_runoff_source(top_bc.runoff)
+        sources = append_source(subsurface_source, sources)
+    end
     args = (parameters, domain, boundary_conditions, sources)
     EnergyHydrology{FT, typeof.(args)...}(args..., lateral_flow)
 end
@@ -187,8 +202,8 @@ function ClimaLSM.make_compute_exp_tendency(
             model.boundary_conditions.top,
             TopBoundary(),
             model,
-            Y,
             Δz_top,
+            Y,
             p,
             t,
         )
@@ -196,8 +211,8 @@ function ClimaLSM.make_compute_exp_tendency(
             model.boundary_conditions.bottom,
             BottomBoundary(),
             model,
-            Y,
             Δz_bottom,
+            Y,
             p,
             t,
         )

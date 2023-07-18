@@ -70,9 +70,16 @@ function soil_boundary_fluxes(
     p,
     t,
 ) where {FT}
-    net_water_flux = bc.atmos.liquid_precip(t) .+ p.soil_evap
+    infiltration = soil_surface_infiltration(
+        bc.runoff,
+        bc.atmos.liquid_precip(t) .+ p.soil_evap,
+        Y,
+        p,
+        t,
+        model.parameters,
+    )
     net_energy_flux = @. p.soil_Rn + p.soil_lhf + p.soil_shf
-    return net_water_flux, net_energy_flux
+    return infiltration, net_energy_flux
 end
 
 """
@@ -202,8 +209,9 @@ interaction_domains(m::SoilCanopyModel) = (
 
 A method which makes a function; the returned function 
 updates the auxiliary variable `p.root_extraction`, which
-is needed for both the boundary condition for the soil model and the source
-term (runoff) for the surface water model. It also updates
+is needed for a sink term for the soil model and to create the
+lower water boundary condition for the canopy model.
+It also updates
 the soil surface fluxes, which are affected by the presence of a canopy.
 
 This function is called each ode function evaluation.

@@ -10,8 +10,14 @@ ClimaLSM.Soil.AbstractSoilModel
 ClimaLSM.Soil.RichardsModel
 ClimaLSM.Soil.EnergyHydrology
 ```
+## Soil Parameter Structs
 
-## Soil Functions of State
+```@docs
+ClimaLSM.Soil.RichardsParameters
+ClimaLSM.Soil.EnergyHydrologyParameters
+```
+
+## Soil Hydrology Parameterizations
 
 ```@docs
 ClimaLSM.Soil.volumetric_liquid_fraction
@@ -21,7 +27,16 @@ ClimaLSM.Soil.impedance_factor
 ClimaLSM.Soil.viscosity_factor
 ClimaLSM.Soil.effective_saturation
 ClimaLSM.Soil.matric_potential
+ClimaLSM.Soil.dψdϑ
 ClimaLSM.Soil.inverse_matric_potential
+ClimaLSM.Soil.AbstractSoilHydrologyClosure
+ClimaLSM.Soil.vanGenuchten
+ClimaLSM.Soil.BrooksCorey
+```
+
+## Soil Heat Parameterizations
+
+```@docs
 ClimaLSM.Soil.volumetric_heat_capacity
 ClimaLSM.Soil.κ_solid
 ClimaLSM.Soil.κ_sat_frozen
@@ -36,20 +51,25 @@ ClimaLSM.Soil.temperature_from_ρe_int
 ClimaLSM.Soil.thermal_conductivity
 ClimaLSM.Soil.phase_change_source
 ClimaLSM.Soil.thermal_time
-ClimaLSM.Soil.dψdϑ
+```
+
+## Soil Surface Parameterizations
+
+```@docs
 ClimaLSM.soil.soil_resistance
 ClimaLSM.Soil.dry_soil_layer_thickness
 ClimaLSM.Soil.soil_tortuosity
 ```
 
-## Soil Parameters
+## Soil Runoff Types and Methods
 
 ```@docs
-ClimaLSM.Soil.RichardsParameters
-ClimaLSM.Soil.EnergyHydrologyParameters
+ClimaLSM.Soil.NoRunoff
+ClimaLSM.Soil.subsurface_runoff_source
+ClimaLSM.Soil.soil_surface_infiltration
 ```
 
-## Soil BC and Source Methods and Types
+## Soil BC Methods and Types
 
 ```@docs
 ClimaLSM.Soil.AbstractSoilBC
@@ -57,12 +77,16 @@ ClimaLSM.Soil.MoistureStateBC
 ClimaLSM.Soil.FluxBC
 ClimaLSM.Soil.TemperatureStateBC
 ClimaLSM.Soil.FreeDrainage
+ClimaLSM.Soil.RichardsAtmosDrivenFluxBC
 ClimaLSM.Soil.AtmosDrivenFluxBC
+```
+
+## Soil Source Types
+
+```@docs
 ClimaLSM.Soil.AbstractSoilSource
 ClimaLSM.Soil.PhaseChange
-ClimaLSM.Soil.AbstractSoilHydrologyClosure
-ClimaLSM.Soil.vanGenuchten
-ClimaLSM.Soil.BrooksCorey
+ClimaLSM.Soil.RootExtraction
 ```
 
 ## Soil Jacobian Structures
