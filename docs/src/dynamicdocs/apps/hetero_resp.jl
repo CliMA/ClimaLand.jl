@@ -101,16 +101,16 @@ function Rh_app_f()
   end
 
   function hetero_resp(inputs)
-    Tₛ, θ = inputs.drivers.values[1], inputs.drivers.values[2]
-    ν, α_sx, Ea_sx, kM_sx, kM_O₂, O₂_a, p_sx, Csom = [inputs.parameters.values[i] for i in 1:8]
-    θ_a100, D_liq, D_oa = [inputs.constants.values[i] for i in 1:3]    
+    Tₛ, θ = inputs.drivers.values
+    ν, α_sx, Ea_sx, kM_sx, kM_O₂, O₂_a, p_sx, Csom = inputs.parameters.values
+    θ_a100, D_liq, D_oa = inputs.constants.values    
     return hetero_resp(Tₛ, θ, ν, α_sx, Ea_sx, kM_sx, kM_O₂, O₂_a, p_sx, Csom, θ_a100, D_liq, D_oa)  
   end
 
   function hetero_resp(drivers, parameters, constants)
-    Tₛ, θ = drivers[1], drivers[2]
-    ν, α_sx, Ea_sx, kM_sx, kM_O₂, O₂_a, p_sx, Csom = [parameters[i] for i in 1:8]
-    θ_a100, D_liq, D_oa = [constants[i] for i in 1:3]    
+    Tₛ, θ = drivers
+    ν, α_sx, Ea_sx, kM_sx, kM_O₂, O₂_a, p_sx, Csom = parameters
+    θ_a100, D_liq, D_oa = constants    
     return hetero_resp(Tₛ, θ, ν, α_sx, Ea_sx, kM_sx, kM_O₂, O₂_a, p_sx, Csom, θ_a100, D_liq, D_oa) 
   end
 
