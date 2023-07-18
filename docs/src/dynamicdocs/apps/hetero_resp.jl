@@ -71,7 +71,7 @@ function Rh_app_f()
   inputs = Inputs(drivers, parameters, constants)
 
   output = Output(
-                "Rh (μmol m⁻² s⁻¹)", # name
+                "Rh (mg C m⁻3 s⁻¹)", # name #NEED TO CONVERT THE UNIT
                 [0, 20] # range
                 )
 
