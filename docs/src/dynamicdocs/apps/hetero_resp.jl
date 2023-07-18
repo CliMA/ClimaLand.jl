@@ -26,11 +26,11 @@ function Rh_app_f()
                            "Soil porosity, ν (m³ m⁻³)",
                            "Pre-exponential factor, α_sx (kg C m⁻³ s⁻¹)",                            
                            "Activation energy, Ea_sx (J mol⁻¹)",                            
-                           "Michaelis constant, kM_sx (kg C m⁻³)",                          
+                           "Michaelis constant for soil, kM_sx (kg C m⁻³)",                          
                            "Michaelis constant for O₂, kM_O₂ (m³ m⁻³)",                            
                            "Volumetric fraction of O₂ in the soil air, O₂_a (dimensionless)",
                            "Fraction of soil carbon that is considered soluble, p_sx (dimensionless)",
-                           "Soil organic C, Csom ()"
+                           "Soil organic C, Csom (kg C m⁻³)"
                           ),                       
                           (# values
                            FT(0.556), # ν   
@@ -55,23 +55,18 @@ function Rh_app_f()
                          )
 
   constants = Constants(
-                      (# names   
-                       "Pressure at the surface of the soil (Pa)",
-                       "Diffusivity of soil C substrate in liquid (unitless)",
+                      (# names
                        "Air-filled porosity at soil water potential of -100 cm H₂O (~ 10 Pa)",
-                       "Diffusion coefficient for CO₂ in air at standard temperature and pressure (m² s⁻¹)",
-                       "Absolute value of the slope of the line relating log(ψ) versus log(θ) (unitless)",
+                       "Diffusivity of soil C substrate in liquid (unitless)",
                        "Diffusion coefficient of oxygen in air, dimensionless"
-                       ),                        
+                      ),    
+    
                        (# values
-                       FT(101e3), # P_sfc
                        FT(0.1816), # θ_a100
-                       FT(1.39e-5), # D_ref
-                       FT(4.547), # b
                        FT(3.17), # D_liq
                        FT(1.67) # D_oa
                        )                     
-                      )
+                       )
 
   inputs = Inputs(drivers, parameters, constants)
 
@@ -82,13 +77,10 @@ function Rh_app_f()
 
   function hetero_resp(Tₛ, θ, # drivers
                        ν, α_sx, Ea_sx, kM_sx, kM_O₂, O₂_a, p_sx, Csom, # parameters
-                       P_sfc, θ_a100, D_ref, b, D_liq, D_oa) # constants
+                       θ_a100, D_liq, D_oa) # constants
     params = SoilCO2ModelParameters{FT}(;
-                                        P_sfc = P_sfc,
                                         ν = ν,
                                         θ_a100 = θ_a100,
-                                        D_ref = D_ref,
-                                        b = b,
                                         D_liq = D_liq,                                
                                         α_sx = α_sx,
                                         Ea_sx = Ea_sx,
@@ -111,15 +103,15 @@ function Rh_app_f()
   function hetero_resp(inputs)
     Tₛ, θ = inputs.drivers.values[1], inputs.drivers.values[2]
     ν, α_sx, Ea_sx, kM_sx, kM_O₂, O₂_a, p_sx, Csom = [inputs.parameters.values[i] for i in 1:8]
-    P_sfc, θ_a100, D_ref, b, D_liq, D_oa = [inputs.constants.values[i] for i in 1:6]    
-    return hetero_resp(Tₛ, θ, ν, α_sx, Ea_sx, kM_sx, kM_O₂, O₂_a, p_sx, Csom, P_sfc, θ_a100, D_ref, b, D_liq, D_oa)  
+    θ_a100, D_liq, D_oa = [inputs.constants.values[i] for i in 1:3]    
+    return hetero_resp(Tₛ, θ, ν, α_sx, Ea_sx, kM_sx, kM_O₂, O₂_a, p_sx, Csom, θ_a100, D_liq, D_oa)  
   end
 
   function hetero_resp(drivers, parameters, constants)
     Tₛ, θ = drivers[1], drivers[2]
     ν, α_sx, Ea_sx, kM_sx, kM_O₂, O₂_a, p_sx, Csom = [parameters[i] for i in 1:8]
-    P_sfc, θ_a100, D_ref, b, D_liq, D_oa = [constants[i] for i in 1:6]    
-    return hetero_resp(Tₛ, θ, ν, α_sx, Ea_sx, kM_sx, kM_O₂, O₂_a, p_sx, Csom, P_sfc, θ_a100, D_ref, b, D_liq, D_oa) 
+    θ_a100, D_liq, D_oa = [constants[i] for i in 1:3]    
+    return hetero_resp(Tₛ, θ, ν, α_sx, Ea_sx, kM_sx, kM_O₂, O₂_a, p_sx, Csom, θ_a100, D_liq, D_oa) 
   end
 
   Rh_app = webapp(hetero_resp, inputs, output)
