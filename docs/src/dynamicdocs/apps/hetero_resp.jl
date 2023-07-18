@@ -45,9 +45,9 @@ function Rh_app_f()
                           (# ranges
                            FT.([0.0, 1.0]), # porosity
                            FT.([100e3, 300e3]), # α_sx
-                           FT.([30e3, 90e3]), # Ea_sx
-                           FT.([1e-3, 9e-3]), # kM_sx
-                           FT.([0.001, 0.009]), # kM_o2
+                           FT.([50e3, 70e3]), # Ea_sx
+                           FT.([1e-10, 0.1]), # kM_sx
+                           FT.([1e-10, 0.1]), # kM_o2
                            FT.([0.005, 0.5]), # O2_a
                            FT.([0.005, 0.5]), # p_sx
                            FT.([1.0, 10.0]) # Csom
