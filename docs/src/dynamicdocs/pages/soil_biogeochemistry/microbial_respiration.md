@@ -65,7 +65,6 @@ To sum up, the model has the following parameters:
 | Output | Symbol | Unit | Range |
 | :---         |     :---:      |    :---:      |     :---:   |
 | Heterotrophic respiration  | Rh     | $\mu$mol $m^{-2}$ $s^{-2}$  | 0--25 |
-| git diff     | git diff       | git diff      |
 
 | Drivers | Symbol | Unit | Range |
 | :---         |     :---:      |    :---:      |     :---:   |
