@@ -6,11 +6,11 @@ by microbes, implemented in ClimaLSM.
 
 ```@raw html
 <iframe src="https://clima.westus3.cloudapp.azure.com/jsserve/Rh"
-   style="height:2400px;width:100%;">
+   style="height:1500px;width:100%;">
 </iframe>
 ```
 
-The Dual Arrhenius and Michaelis-Menten (DAMM) kinetics model in ClimaLSM.jl follows Davidson et al. 2012. DAMM models heterotrophic respiration ($Rh$) as a function of soil temperature ($T_s$) and soil moisture ($\theta$). \newline
+The Dual Arrhenius and Michaelis-Menten (DAMM) kinetics model in ClimaLSM.jl follows Davidson et al. 2012. DAMM models heterotrophic respiration ($Rh$) as a function of soil temperature ($T_s$) and soil moisture ($\theta$).
 
 The rate of respiration, $Rh$, is expressed as:
 ```math
@@ -36,7 +36,7 @@ where $V_\text{max}{s_x}$ is the maximum potential rate of respiration, $MM_{s_x
     MM_\text{O_2} = \frac{[O_2]}{kM_{O_2}+[O_2]}
 \end{equation}
 ```
-where $\alpha_{s_x}$ is the pre-exponential factor, $Ea_{s_x}$ is the activation energy of the reaction, $R$ is the gas constant, and $T_s$ is soil temperature. $[s_x]$ is the concentration of all soluble substrate, and $[O_2]$ is the oxygen concentration. $kM_{s_x}$ and $kM_{O_2}$ are the Michaelis constant for soil and oxygen, respectively. \newline
+where $\alpha_{s_x}$ is the pre-exponential factor, $Ea_{s_x}$ is the activation energy of the reaction, $R$ is the gas constant, and $T_s$ is soil temperature. $[s_x]$ is the concentration of all soluble substrate, and $[O_2]$ is the oxygen concentration. $kM_{s_x}$ and $kM_{O_2}$ are the Michaelis constant for soil and oxygen, respectively.
 
 The concentration of soluble carbon substrates is affected by soil water content, and specifically by diffusion of substrates through soil water films. Using these underlying principles, $[s_x]$ is calculated as:
 ```math
