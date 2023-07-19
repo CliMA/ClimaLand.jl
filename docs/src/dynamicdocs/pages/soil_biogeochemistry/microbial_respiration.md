@@ -62,22 +62,23 @@ The air-filled porosity is calculated by subtracting the soil moisture from the 
 ```
 
 To sum up, the model has the following parameters:
+
 | Output | Symbol | Unit | Range |
 | :---         |     :---:      |    :---:      |     :---:   |
 | Heterotrophic respiration  | Rh     | $\mu$mol $m^{-2}$ $s^{-2}$  | 0--25 |
 
 | Drivers | Symbol | Unit | Range |
 | :---         |     :---:      |    :---:      |     :---:   |
-| Soil temperature | $T_s$  | $\degree C$  | -20--50 |
+| Soil temperature | $T_s$  | $°C$  | -20--50 |
 | Soil moisture     | $\theta$   | $m^3$ $m^{-3}$ | 0.0--1.0 |
 
 | Parameters | Symbol | Unit | Range |
 | :---         |     :---:      |    :---:      |     :---:   |
 | Soil porosity | $\nu$  | $m^3$ $m^{-3}$  | 0.0--1.0 |
-| Pre-exponential factor  | $\alpha_{s_x}$   | kg C $m^{-3}$ $s^{-1} | 100e3--300e3 |
+| Pre-exponential factor  | $\alpha_{s_x}$   | kg C $m^{-3}$ $s^{-1}$ | 100e3--300e3 |
 | Activation energy | $Ea_{s_x}$  | J$mol^{-1}$  | 50e3--70e3 |
 | Michaelis constant for soil    | $kM_{s_x}$   | kg C $m^{-3}$ | 1e-10--0.1 |
-| Michaelis constant for $O_2$ | $kM_{O_2}$ | $m^3$$$m^{-3}$  | 1e-10--0.1 |
+| Michaelis constant for $O_2$ | $kM_{O_2}$ | $m^3$ $m^{-3}$  | 1e-10--0.1 |
 | Volumetric fraction of $O_2$ in the soil air content  | $O_{2_a}$   | - | 0.005--0.5 |
 | Fraction of soil carbon that is considered soluble | $p_{s_x}$ | - | 0.005--0.5 |
 | Soil organic C | $C_{som}$  | kg C $m^{-3}$ | 1.0--10.0 |
