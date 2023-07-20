@@ -44,7 +44,7 @@ The model has the following parameters:
 | Canopy reflectance | $ρ_{leaf}$  | -  | 0.0--1.0 |
 | Extinction coefficient  | $K$   | - | 0.0--1.0 |
 | Clumping index | $Ω$  | -  | 0.0--1.0 |
-| Zenith angle | $θ_s$  | -  | 0--π |
+| Zenith angle | $θ_s$  | rad | 0--π |
   
 | Constants | Symbol | Unit | Value |
 | :---         |     :---:      |    :---:      |     :---:   |
