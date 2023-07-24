@@ -120,3 +120,38 @@ We need to supply the following parameters and “drivers"
 - ``K_{c,25}`` and $K_{o,25}$, $V_{cmax, 25}$, $\Gamma^*_{25},\phi$, $\theta_j$, $o_i$, $s_c$, $\psi_c$
 - ``\psi_l``, to compute $\beta$
 - Temperature $T$, $PAR$, $c_a$, VPD, $\theta_s$.
+- 
+| Output | Symbol | Unit | Range |
+| :---         |     :---:      |    :---:      |     :---:   |
+| Total net carbon assimilation | $A_n$   | mol CO$_2$ m$^{-2}$ s$^{-1}$  | 0--25 |
+
+| Drivers | Symbol | Unit | Range |
+| :---         |     :---:      |    :---:      |     :---:   |
+| Photosynthetically Active Radiation | PAR | μmol m⁻² s⁻¹  | 0--1500 |
+| Temperature | $T$  | °C  | 0--50 |
+
+| Parameters | Symbol | Unit | Range |
+| :---         |     :---:      |    :---:      |     :---:   |
+| Moisture stress | $β$  | -  | 0-1 |
+| Leaf Area Index   | LAI   | m² m⁻² | 1--10 |
+| $CO_2$ concentration | $c_a$   | ppm | 300e-6--500e-6 |
+| Vapor pressure deficit | VPD | Pa  | 500-10000 |
+  
+| Constants | Symbol | Unit | Value |
+| :---         |     :---:      |    :---:      |     :---:   |
+| Zenith angle | $θ_s$  | rad | 0.6 |
+| Leaf angle distribution | $l_d$ | - | 0.5 |
+| Canopy reflectance | $ρ_{leaf}$  | -  | 0.1 |
+| Clumping index | $Ω$  | -  | 0.69 |
+| $CO_2$ compensation at 25°C | Γ$^*_{25}$  | mol/mol | 4.275e-5 |
+| A constant energy of activation | $ΔH_{Γ^*}$ | J/mol | 43540 |
+| Standard temperature | $T_o$  | K | 298.15 |
+| Universal gas constant | $R$  | J/mol | 8.314 |
+| The maximum rate of carboxylation of Rubisco | $V_{cmax25}$  | mol CO$_2$ m$^{-2}$ s$^{-1}$ | 5e-5 |
+| Energy of activation of $J_max$ | $ΔH_{J_max}$ | J/mol | 43540 |
+| An empirical "curvature parameter" | $θ_j$  | -  | 0.9 |
+| Clumping index | $Ω$  | -  | 0.69 |
+| $CO_2$ compensation at 25°C | Γ$^*_{25}$  | mol/mol | 4.275e-5 |
+| A constant energy of activation | $ΔH_{Γ^*}$ | J/mol | 43540 |
+| Standard temperature | $T_o$  | K | 298.15 |
+| Universal gas constant | $R$  | J/mol | 8.314 |
