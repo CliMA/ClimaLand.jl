@@ -1,6 +1,9 @@
 module PlantHydraulics
 using ClimaLSM
-using ..ClimaLSM.Canopy: AbstractCanopyComponent
+using ..ClimaLSM.Canopy:
+    AbstractCanopyComponent,
+    update_canopy_prescribed_field!,
+    set_canopy_prescribed_field!
 using ClimaCore
 using DocStringExtensions
 
@@ -31,7 +34,8 @@ export PlantHydraulicsModel,
     AbstractRetentionModel,
     LinearRetentionCurve,
     Weibull,
-    hydraulic_conductivity
+    hydraulic_conductivity,
+    PrescribedSiteAreaIndex
 
 """
     AbstractPlantHydraulicsModel{FT} <: AbstractCanopyComponent{FT}
@@ -63,48 +67,22 @@ transpiration (Prescribed or Diagnostic)
 """
 abstract type AbstractTranspiration{FT <: AbstractFloat} end
 
-
 """
-    PlantHydraulicsParameters{FT <: AbstractFloat}
+   PrescribedSiteAreaIndex{FT <:AbstractFloat}
 
-A struct for holding parameters of the PlantHydraulics Model.
+A struct containing the area indices of the plants at a specific site;
+LAI varies in time, while SAI and RAI are fixed. No spatial variation is
+modeled.
+
 $(DocStringExtensions.FIELDS)
 """
-struct PlantHydraulicsParameters{FT <: AbstractFloat, CP, RP}
-    "RAI, SAI, LAI in [m2 m-2]"
-    area_index::NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}}
-    "porosity (m3/m3)"
-    ν::FT
-    "storativity (m3/m3)"
-    S_s::FT
-    "Root distribution function P(z)"
-    root_distribution::Function
-    "Conductivity model and parameters"
-    conductivity_model::CP
-    "Water retention model and parameters"
-    retention_model::RP
-end
-
-function PlantHydraulicsParameters(;
-    area_index::NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}},
-    ν::FT,
-    S_s::FT,
-    root_distribution::Function,
-    conductivity_model,
-    retention_model,
-) where {FT}
-    return PlantHydraulicsParameters{
-        FT,
-        typeof(conductivity_model),
-        typeof(retention_model),
-    }(
-        area_index,
-        ν,
-        S_s,
-        root_distribution,
-        conductivity_model,
-        retention_model,
-    )
+struct PrescribedSiteAreaIndex{FT <: AbstractFloat}
+    "A function of simulation time `t` giving the leaf area index (LAI; m2/m2)"
+    LAIfunction::Function
+    "The constant stem area index (SAI; m2/m2)"
+    SAI::FT
+    "The constant root area index (RAI; m2/m2)"
+    RAI::FT
 end
 
 """
@@ -133,11 +111,11 @@ function lai_consistency_check(
     area_index::NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}},
 ) where {FT}
     @assert n_leaf > 0
-    if area_index[:leaf] > eps(FT) || area_index[:stem] > eps(FT)
-        @assert area_index[:root] > eps(FT)
+    if area_index.leaf > eps(FT) || area_index.stem > eps(FT)
+        @assert area_index.root > eps(FT)
     end
     # If there SAI is zero, there should be no stem compartment
-    if area_index[:stem] < eps(FT)
+    if area_index.stem < eps(FT)
         @assert n_stem == FT(0)
     else
         # if SAI is > 0, n_stem should be > 0 for consistency
@@ -146,13 +124,59 @@ function lai_consistency_check(
 
 end
 
+
+"""
+    PlantHydraulicsParameters{FT <: AbstractFloat}
+
+A struct for holding parameters of the PlantHydraulics Model.
+$(DocStringExtensions.FIELDS)
+"""
+struct PlantHydraulicsParameters{FT <: AbstractFloat, CP, RP}
+    "The area index model for LAI, SAI, RAI"
+    ai_parameterization::PrescribedSiteAreaIndex{FT}
+    "porosity (m3/m3)"
+    ν::FT
+    "storativity (m3/m3)"
+    S_s::FT
+    "Root distribution function P(z)"
+    root_distribution::Function
+    "Conductivity model and parameters"
+    conductivity_model::CP
+    "Water retention model and parameters"
+    retention_model::RP
+end
+
+function PlantHydraulicsParameters(;
+    ai_parameterization::PrescribedSiteAreaIndex{FT},
+    ν::FT,
+    S_s::FT,
+    root_distribution::Function,
+    conductivity_model,
+    retention_model,
+) where {FT}
+    return PlantHydraulicsParameters{
+        FT,
+        typeof(conductivity_model),
+        typeof(retention_model),
+    }(
+        ai_parameterization,
+        ν,
+        S_s,
+        root_distribution,
+        conductivity_model,
+        retention_model,
+    )
+end
+
 """
     PlantHydraulicsModel{FT, PS, RE, T} <: AbstractPlantHydraulicsModel{FT}
 
 Defines, and constructs instances of, the PlantHydraulicsModel type, which is used
 for simulation flux of water to/from soil, along roots of different depths,
 along a stem, to a leaf, and ultimately being lost from the system by
-transpiration.
+transpiration. Note that the canopy height is specified as part of the 
+PlantHydraulicsModel, along with the area indices of the leaves, roots, and
+stems.
 
 This model can also be combined with the soil model using ClimaLSM, in which
 case the prognostic soil water content is used to determine root extraction, and
@@ -178,7 +202,7 @@ struct PlantHydraulicsModel{FT, PS, RE, T} <: AbstractPlantHydraulicsModel{FT}
     n_leaf::Int64
     "The height of the center of each leaf compartment/stem compartment, in meters"
     compartment_midpoints::Vector{FT}
-    "The height of the compartments' top faces, in meters"
+    "The height of the compartments' top faces, in meters. The canopy height is the last element of the vector."
     compartment_surfaces::Vector{FT}
     "The label (:stem or :leaf) of each compartment"
     compartment_labels::Vector{Symbol}
@@ -200,8 +224,6 @@ function PlantHydraulicsModel{FT}(;
     transpiration::AbstractTranspiration{FT} = DiagnosticTranspiration{FT}(),
 ) where {FT}
     args = (parameters, root_extraction, transpiration)
-    area_index = parameters.area_index
-    lai_consistency_check(n_stem, n_leaf, area_index)
     @assert (n_leaf + n_stem) == length(compartment_midpoints)
     @assert (n_leaf + n_stem) + 1 == length(compartment_surfaces)
     for i in 1:length(compartment_midpoints)
@@ -245,7 +267,8 @@ the water potential `ψ` (m), the volume flux*cross section `fa` (1/s),
 and the volume flux*root cross section in the roots `fa_roots` (1/s),
 where the cross section can be represented by an area index.
 """
-auxiliary_vars(model::PlantHydraulicsModel) = (:β, :ψ, :fa, :fa_roots)
+auxiliary_vars(model::PlantHydraulicsModel) =
+    (:β, :ψ, :fa, :fa_roots, :area_index)
 
 """
     ClimaLSM.prognostic_types(model::PlantHydraulicsModel{FT}) where {FT}
@@ -265,7 +288,50 @@ ClimaLSM.auxiliary_types(model::PlantHydraulicsModel{FT}) where {FT} = (
     NTuple{model.n_stem + model.n_leaf, FT},
     NTuple{model.n_stem + model.n_leaf, FT},
     FT,
+    NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}},
 )
+
+
+"""
+    set_canopy_prescribed_field!(component::PlantHydraulics{FT},
+                                 p,
+                                 t0,
+                                 ) where {FT}
+
+
+Sets the canopy prescribed fields pertaining to the PlantHydraulics
+component (the area indices) with their initial values at time t0.
+"""
+function ClimaLSM.Canopy.set_canopy_prescribed_field!(
+    component::PlantHydraulicsModel{FT},
+    p,
+    t0,
+) where {FT}
+    (; LAIfunction, SAI, RAI) = component.parameters.ai_parameterization
+    @. p.canopy.hydraulics.area_index.leaf = LAIfunction(t0)
+    @. p.canopy.hydraulics.area_index.stem = SAI
+    @. p.canopy.hydraulics.area_index.root = RAI
+end
+
+
+"""
+    update_canopy_prescribed_field!(component::PlantHydraulics{FT},
+                                    p,
+                                    t,
+                                    ) where {FT}
+
+Updates the canopy prescribed fields pertaining to the PlantHydraulics
+component (the LAI only in this case) with their values at time t.    
+"""
+function ClimaLSM.Canopy.update_canopy_prescribed_field!(
+    component::PlantHydraulicsModel{FT},
+    p,
+    t,
+) where {FT}
+    (; LAIfunction) = component.parameters.ai_parameterization
+    @. p.canopy.hydraulics.area_index.leaf = LAIfunction(t)
+end
+
 
 """
     flux(
@@ -469,7 +535,7 @@ To prevent dividing by zero, we change AI/(AI x dz)" to
 """
 function make_compute_exp_tendency(model::PlantHydraulicsModel, _)
     function compute_exp_tendency!(dY, Y, p, t)
-        (; area_index) = model.parameters
+        area_index = p.canopy.hydraulics.area_index
         n_stem = model.n_stem
         n_leaf = model.n_leaf
         fa = p.canopy.hydraulics.fa
@@ -478,13 +544,14 @@ function make_compute_exp_tendency(model::PlantHydraulicsModel, _)
         @inbounds for i in 1:(n_stem + n_leaf)
             # To prevent dividing by zero, change AI/(AI x dz)" to
             # "AI/max(AI x dz, eps(FT))"
-            AIdz = max(
-                area_index[model.compartment_labels[i]] * (
-                    model.compartment_surfaces[i + 1] -
-                    model.compartment_surfaces[i]
-                ),
-                eps(FT),
-            )
+            AIdz =
+                max.(
+                    getproperty(area_index, model.compartment_labels[i]) .* (
+                        model.compartment_surfaces[i + 1] -
+                        model.compartment_surfaces[i]
+                    ),
+                    eps(FT),
+                )
             if i == 1
                 # All fluxes `fa` are per unit area of ground
                 root_flux_per_ground_area!(
@@ -550,48 +617,46 @@ function root_flux_per_ground_area!(
     t::FT,
 ) where {FT}
 
-    (; conductivity_model, root_distribution, area_index) = model.parameters
+    (; conductivity_model, root_distribution) = model.parameters
+    area_index = p.canopy.hydraulics.area_index
     ψ_base = p.canopy.hydraulics.ψ[1]
     root_depths = re.root_depths
     n_root_layers = length(root_depths)
     ψ_soil::FT = re.ψ_soil(t)
-    if area_index[:root] < eps(FT)
-        fa .= FT(0)
-    else
-        @inbounds for i in 1:n_root_layers
-            if i != n_root_layers
-                @. fa +=
-                    flux(
-                        root_depths[i],
-                        model.compartment_midpoints[1],
-                        ψ_soil,
-                        ψ_base,
-                        hydraulic_conductivity(conductivity_model, ψ_soil),
-                        hydraulic_conductivity(conductivity_model, ψ_base),
-                    ) *
-                    root_distribution(root_depths[i]) *
-                    (root_depths[i + 1] - root_depths[i]) *
-                    (
-                        area_index[:root] +
-                        area_index[model.compartment_labels[1]]
-                    ) / 2
-            else
-                @. fa +=
-                    flux(
-                        root_depths[i],
-                        model.compartment_midpoints[1],
-                        ψ_soil,
-                        ψ_base,
-                        hydraulic_conductivity(conductivity_model, ψ_soil),
-                        hydraulic_conductivity(conductivity_model, ψ_base),
-                    ) *
-                    root_distribution(root_depths[i]) *
-                    (FT(0) - root_depths[n_root_layers]) *
-                    (
-                        area_index[:root] +
-                        area_index[model.compartment_labels[1]]
-                    ) / 2
-            end
+    fa .= FT(0.0)
+    @inbounds for i in 1:n_root_layers
+        if i != n_root_layers
+            @. fa +=
+                flux(
+                    root_depths[i],
+                    model.compartment_midpoints[1],
+                    ψ_soil,
+                    ψ_base,
+                    hydraulic_conductivity(conductivity_model, ψ_soil),
+                    hydraulic_conductivity(conductivity_model, ψ_base),
+                ) *
+                root_distribution(root_depths[i]) *
+                (root_depths[i + 1] - root_depths[i]) *
+                (
+                    area_index.root +
+                    getproperty(area_index, model.compartment_labels[1])
+                ) / 2
+        else
+            @. fa +=
+                flux(
+                    root_depths[i],
+                    model.compartment_midpoints[1],
+                    ψ_soil,
+                    ψ_base,
+                    hydraulic_conductivity(conductivity_model, ψ_soil),
+                    hydraulic_conductivity(conductivity_model, ψ_base),
+                ) *
+                root_distribution(root_depths[i]) *
+                (model.compartment_surfaces[1] - root_depths[n_root_layers]) *
+                (
+                    area_index.root +
+                    getproperty(area_index, model.compartment_labels[1])
+                ) / 2
         end
     end
 end

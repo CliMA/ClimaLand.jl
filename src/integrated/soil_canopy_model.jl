@@ -221,11 +221,14 @@ function make_interactions_update_aux(
 ) where {FT, SM <: Soil.EnergyHydrology{FT}, RM <: Canopy.CanopyModel{FT}}
     function update_aux!(p, Y, t)
         z = ClimaCore.Fields.coordinate_field(land.soil.domain.space).z
-        (; area_index, conductivity_model) = land.canopy.hydraulics.parameters
+        (; conductivity_model) = land.canopy.hydraulics.parameters
+        area_index = p.canopy.hydraulics.area_index
         @. p.root_extraction =
             (
-                area_index[:root] +
-                area_index[land.canopy.hydraulics.compartment_labels[1]]
+                area_index.root + getproperty(
+                    area_index,
+                    land.canopy.hydraulics.compartment_labels[1],
+                )
             ) / 2 *
             PlantHydraulics.flux(
                 z,

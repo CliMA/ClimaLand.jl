@@ -111,14 +111,14 @@ photosynthesis_args = (;
     )
 )
 # Set up plant hydraulics
-area_index = (root = RAI, stem = SAI, leaf = LAI)
+ai_parameterization = PrescribedSiteAreaIndex{FT}(LAIfunction, SAI, RAI)
 
 function root_distribution(z::T; rooting_depth = rooting_depth) where {T}
     return T(1.0 / rooting_depth) * exp(z / T(rooting_depth)) # 1/m
 end
 
 plant_hydraulics_ps = PlantHydraulics.PlantHydraulicsParameters(;
-    area_index = area_index,
+    ai_parameterization = ai_parameterization,
     ν = plant_ν,
     S_s = plant_S_s,
     root_distribution = root_distribution,
@@ -142,8 +142,6 @@ canopy_component_args = (;
 )
 # Other info needed
 shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
-    LAI,
-    h_stem + h_leaf,
     z0_m,
     z0_b,
     earth_param_set,
@@ -196,8 +194,8 @@ for i in 1:2
         augmented_liquid_fraction.(plant_ν, S_l_ini[i])
 end
 
-update_aux! = make_update_aux(land)
-update_aux!(p, Y, t0)
+set_initial_aux_state! = make_set_initial_aux_state(land)
+set_initial_aux_state!(p, Y, t0);
 
 # Simulation
 sv = (;

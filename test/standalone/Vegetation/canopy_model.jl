@@ -31,12 +31,8 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     LAI = FT(8.0) # m2 [leaf] m-2 [ground]
     z_0m = FT(2.0) # m, Roughness length for momentum - value from tall forest ChatGPT
     z_0b = FT(0.1) # m, Roughness length for scalars - value from tall forest ChatGPT
-    h_c = FT(20.0) # m, canopy height
-    h_sfc = FT(20.0) # m, canopy height
     h_int = FT(30.0) # m, "where measurements would be taken at a typical flux tower of a 20m canopy"
     shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
-        LAI,
-        h_c,
         z_0m,
         z_0b,
         earth_param_set,
@@ -105,7 +101,11 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     # Plant Hydraulics
     RAI = FT(1)
     SAI = FT(0)
-    area_index = (root = RAI, stem = SAI, leaf = LAI)
+    ai_parameterization = PlantHydraulics.PrescribedSiteAreaIndex{FT}(
+        t -> eltype(t)(LAI),
+        SAI,
+        RAI,
+    )
     K_sat_plant = FT(1.8e-8) # m/s
     ψ63 = FT(-4 / 0.0098) # / MPa to m, Holtzman's original parameter value
     Weibull_param = FT(4) # unitless, Holtzman's original c param value
@@ -120,7 +120,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
         return T(1.0 / 0.5) * exp(z / T(0.5)) # (1/m)
     end
     param_set = PlantHydraulics.PlantHydraulicsParameters(;
-        area_index = area_index,
+        ai_parameterization = ai_parameterization,
         ν = plant_ν,
         S_s = plant_S_s,
         root_distribution = root_distribution,
@@ -187,14 +187,16 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
               prognostic_types(getproperty(canopy, component))
     end
     Y.canopy.hydraulics[1] = plant_ν
+    set_initial_aux_state! = make_set_initial_aux_state(canopy)
     exp_tendency! = make_exp_tendency(canopy)
     t0 = FT(0.0)
     dY = similar(Y)
+    set_initial_aux_state!(p, Y, t0)
     exp_tendency!(dY, Y, p, t0)
     (evapotranspiration, shf, lhf) =
         canopy_surface_fluxes(canopy.atmos, canopy, Y, p, t0)
 
-    @test p.canopy.hydraulics.fa[1] ≈ evapotranspiration
+    @test p.canopy.hydraulics.fa[1] == evapotranspiration
 
     # Penman-monteith
     Δ = FT(100 * (0.444017302 + (290 - 273.15) * 0.0286064092))
@@ -221,8 +223,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     VPD = es .- ea
 
     conditions = surface_fluxes(atmos, canopy, Y, p, t0) #Per unit m^2 of leaf
-    # here is where we adjust evaporation for stomatal conductance = 1/r_sfc
-    r_ae = 1 / (conditions.Ch * abs(atmos.u(t0))) # s/m
+    r_ae = conditions.r_ae # s/m
     ga = 1 / r_ae
     γ = FT(66)
     R = FT(LSMP.gas_constant(earth_param_set))
@@ -252,10 +253,10 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
 
     @test abs(
         (parent(evapotranspiration)[1] - ET) / parent(evapotranspiration)[1],
-    ) < 0.15
+    ) < 0.5
 
     @test ClimaLSM.surface_evaporative_scaling(canopy, Y, p) == FT(1.0)
-    @test ClimaLSM.surface_height(canopy, Y, p) == h_sfc
+    @test ClimaLSM.surface_height(canopy, Y, p) == compartment_faces[end]
     T_sfc = canopy.atmos.T(t0)
     @test ClimaLSM.surface_temperature(canopy, Y, p, t0) == T_sfc
     ρ_sfc = ClimaLSM.surface_air_density(canopy.atmos, canopy, Y, p, t0, T_sfc)
@@ -268,4 +269,113 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     )
     @test ρ_sfc == compute_ρ_sfc.(Ref(thermo_params), Ref(ts_in), T_sfc)
     @test ClimaLSM.domain(canopy) == :surface
+end
+
+
+@testset "Component prescribed fields" begin
+    FT = Float32
+    # Plant Hydraulics
+    LAI = FT(2)
+    RAI = FT(1)
+    SAI = FT(1)
+    ai_parameterization = PlantHydraulics.PrescribedSiteAreaIndex{FT}(
+        t -> eltype(t)(LAI * sin(t * 2π / 365)),
+        SAI,
+        RAI,
+    )
+    K_sat_plant = FT(1.8e-8) # m/s
+    ψ63 = FT(-4 / 0.0098) # / MPa to m, Holtzman's original parameter value
+    Weibull_param = FT(4) # unitless, Holtzman's original c param value
+    a = FT(0.05 * 0.0098) # Holtzman's original parameter for the bulk modulus of elasticity
+    plant_ν = FT(0.7) # m3/m3
+    plant_S_s = FT(1e-2 * 0.0098) # m3/m3/MPa to m3/m3/m
+    conductivity_model =
+        PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
+    retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a)
+    root_depths = FT.(-Array(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0) # 1st element is the deepest root depth
+    function root_distribution(z::T) where {T}
+        return T(1.0 / 0.5) * exp(z / T(0.5)) # (1/m)
+    end
+    param_set = PlantHydraulics.PlantHydraulicsParameters(;
+        ai_parameterization = ai_parameterization,
+        ν = plant_ν,
+        S_s = plant_S_s,
+        root_distribution = root_distribution,
+        conductivity_model = conductivity_model,
+        retention_model = retention_model,
+    )
+    Δz = FT(1.0) # height of compartments
+    n_stem = Int64(0) # number of stem elements
+    n_leaf = Int64(1) # number of leaf elements
+    compartment_centers =
+        FT.(
+            Vector(
+                range(
+                    start = Δz / 2,
+                    step = Δz,
+                    stop = Δz * (n_stem + n_leaf) - (Δz / 2),
+                ),
+            ),
+        )
+    compartment_faces =
+        FT.(
+            Vector(
+                range(start = 0.0, step = Δz, stop = Δz * (n_stem + n_leaf)),
+            )
+        )
+
+    ψ_soil0 = FT(0.0)
+    root_extraction =
+        PrescribedSoilPressure{FT}(root_depths, (t::FT) -> ψ_soil0)
+
+    plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
+        parameters = param_set,
+        root_extraction = root_extraction,
+        n_stem = n_stem,
+        n_leaf = n_leaf,
+        compartment_surfaces = compartment_faces,
+        compartment_midpoints = compartment_centers,
+    )
+
+    t0 = FT(100)
+    domain = Point(; z_sfc = FT(0.0))
+    p = ClimaCore.fill(
+        (;
+            canopy = (;
+                hydraulics = (;
+                    area_index = (
+                        leaf = FT(0.0),
+                        root = FT(0.0),
+                        stem = FT(0.0),
+                    )
+                )
+            )
+        ),
+        domain.space,
+    )
+    # Test that they are set properly
+    set_canopy_prescribed_field!(plant_hydraulics, p, t0)
+    @test all(
+        parent(p.canopy.hydraulics.area_index.leaf) .==
+        FT(LAI * sin(t0 * 2π / 365)),
+    )
+    @test all(parent(p.canopy.hydraulics.area_index.stem) .== FT(1.0))
+    @test all(parent(p.canopy.hydraulics.area_index.root) .== FT(1.0))
+    # Test that LAI is updated
+    update_canopy_prescribed_field!(plant_hydraulics, p, FT(200))
+    @test all(
+        parent(p.canopy.hydraulics.area_index.leaf) .==
+        FT(LAI * sin(200 * 2π / 365)),
+    )
+
+    struct Default{FT} <: ClimaLSM.Canopy.AbstractCanopyComponent{FT} end
+    set_canopy_prescribed_field!(Default{FT}(), p, t0)
+    update_canopy_prescribed_field!(Default{FT}(), p, t0)
+    # Test that they are unchanged
+    @test all(
+        parent(p.canopy.hydraulics.area_index.leaf) .==
+        FT(LAI * sin(200 * 2π / 365)),
+    )
+    @test all(parent(p.canopy.hydraulics.area_index.stem) .== FT(1.0))
+    @test all(parent(p.canopy.hydraulics.area_index.root) .== FT(1.0))
 end

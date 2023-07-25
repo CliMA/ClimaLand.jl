@@ -25,7 +25,7 @@ include("shared_utilities/sources.jl")
 include("shared_utilities/implicit_tendencies.jl")
 include("shared_utilities/implicit_functions.jl")
 include("standalone/Bucket/Bucket.jl")
-export make_interactions_update_aux, domain
+export make_interactions_update_aux
 """
      AbstractLandModel{FT} <: AbstractModel{FT}
 
@@ -50,15 +50,6 @@ and the versions of these component models being used.
 abstract type AbstractLandModel{FT} <: AbstractModel{FT} end
 
 ClimaLSM.name(::AbstractLandModel) = :land
-
-"""
-    domain(model::AbstractModel)
-
-Returns a symbol indicating the model's domain, e.g. :surface or :subsurface
-"""
-domain(model::AbstractModel) = error(
-    "`domain` not implemented for $(Base.typename(typeof(model)).wrapper)",
-)
 
 function Domains.coordinates(model::AbstractLandModel)
     components = land_components(model)
@@ -164,6 +155,21 @@ function make_exp_tendency(land::AbstractLandModel)
         end
     end
     return exp_tendency!
+end
+
+function make_set_initial_aux_state(land::AbstractLandModel)
+    interactions_update_aux! = make_interactions_update_aux(land)
+    components = land_components(land)
+    # These functions also call update_aux
+    set_initial_aux_function_list =
+        map(x -> make_set_initial_aux_state(getproperty(land, x)), components)
+    function set_initial_aux_state!(p, Y0, t0)
+        for f! in set_initial_aux_function_list
+            f!(p, Y0, t0)
+        end
+        interactions_update_aux!(p, Y0, t0) # this has to come last.
+    end
+    return set_initial_aux_state!
 end
 
 function make_update_aux(land::AbstractLandModel)

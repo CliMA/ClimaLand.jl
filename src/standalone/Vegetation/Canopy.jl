@@ -18,6 +18,7 @@ import ClimaLSM:
     initialize_auxiliary,
     make_update_aux,
     make_compute_exp_tendency,
+    make_set_initial_aux_state,
     surface_temperature,
     surface_specific_humidity,
     surface_air_density,
@@ -25,7 +26,8 @@ import ClimaLSM:
     surface_height
 
 using ClimaLSM.Domains: Point, Plane, SphericalSurface
-export SharedCanopyParameters, CanopyModel
+export SharedCanopyParameters,
+    CanopyModel, set_canopy_prescribed_field!, update_canopy_prescribed_field!
 include("./component_models.jl")
 include("./PlantHydraulics.jl")
 using .PlantHydraulics
@@ -37,14 +39,10 @@ include("./canopy_parameterizations.jl")
 """
     SharedCanopyParameters{FT <: AbstractFloat, PSE}
 
-A place to store shared parameters that are required by all canopy components.
+A place to store shared parameters that are required by multiple canopy components.
 $(DocStringExtensions.FIELDS)
 """
 struct SharedCanopyParameters{FT <: AbstractFloat, PSE}
-    "Leaf Area Index (m2/m2)"
-    LAI::FT
-    "Canopy height (m)"
-    h_c::FT
     "Roughness length for momentum (m)"
     z_0m::FT
     "Roughness length for scalars (m)"
@@ -79,6 +77,12 @@ fluxes.
 - The radiative flux conditions, which are either prescribed
 (of type `PrescribedRadiativeFluxes`) or computed via a coupled simulation
 (of type `CoupledRadiativeFluxes`).
+
+Note that the canopy height is specified as part of the 
+PlantHydraulicsModel, along with the area indices of the leaves, roots, and
+stems. Eventually, when plant biomass becomes a prognostic variable (by
+integrating with a carbon model), some parameters specified here will be
+treated differently.
 
 $(DocStringExtensions.FIELDS)
 """
@@ -137,13 +141,6 @@ function CanopyModel{FT}(;
         ClimaLSM.Domains.SphericalSurface,
     },
 ) where {FT, PSE}
-    if parameters.LAI != hydraulics.parameters.area_index[:leaf]
-        throw(
-            AssertionError(
-                "The leaf area index must be the same between the plant hydraulics and shared canopy parameters.",
-            ),
-        )
-    end
     args = (
         radiative_transfer,
         photosynthesis,
@@ -298,7 +295,26 @@ function initialize_auxiliary(model::CanopyModel{FT}, coords) where {FT}
 end
 
 """
-     ClimaLSM.make_update_aux(canopy::CanopyModel{FT, <:AbstractRadiationModel,
+    ClimaLSM.make_set_initial_aux_state(model::CanopyModel)
+
+Returns the set_initial_aux_state! function, which updates the auxiliary
+state `p` in place with the initial values corresponding to Y(t=t0) = Y0.
+
+In this case, we also use this method to update the initial values for the
+spatially and temporally varying canopy parameter fields, 
+read in from data files or otherwise prescribed.
+"""
+function ClimaLSM.make_set_initial_aux_state(model::CanopyModel)
+    update_aux! = make_update_aux(model)
+    function set_initial_aux_state!(p, Y0, t0)
+        set_canopy_prescribed_field!(model.hydraulics, p, t0)
+        update_aux!(p, Y0, t0)
+    end
+    return set_initial_aux_state!
+end
+
+"""
+     ClimaLSM.make_update_aux(canopy::CanopyModel{FT, <:BeerLambertModel,
                                                   <:FarquharModel,
                                                   <:MedlynConductanceModel,
                                                   <:PlantHydraulicsModel,},
@@ -328,7 +344,13 @@ function ClimaLSM.make_update_aux(
     },
 ) where {FT}
     function update_aux!(p, Y, t)
-        # variables being updated
+        # Extend to other fields when necessary
+        # Update the prescribed fields to the current time `t`,
+        # prior to updating the rest of the auxiliary state to
+        # the current time, as they depend on prescribed fields.
+        update_canopy_prescribed_field!(canopy.hydraulics, p, t)
+
+        # Other auxiliary variables being updated:
         APAR = p.canopy.radiative_transfer.apar
         PAR = p.canopy.radiative_transfer.par
         β = p.canopy.hydraulics.β
@@ -341,17 +363,17 @@ function ClimaLSM.make_update_aux(
         ϑ_l = Y.canopy.hydraulics.ϑ_l
         fa = p.canopy.hydraulics.fa
 
-        #unpack parameters
+
+        #unpack parameters         
+        area_index = p.canopy.hydraulics.area_index
+        LAI = area_index.leaf
         earth_param_set = canopy.parameters.earth_param_set
         c = FT(LSMP.light_speed(earth_param_set))
         h = FT(LSMP.planck_constant(earth_param_set))
         N_a = FT(LSMP.avogadro_constant(earth_param_set))
         grav = FT(LSMP.grav(earth_param_set))
         ρ_l = FT(LSMP.ρ_cloud_liq(earth_param_set))
-        Ω = canopy.radiative_transfer.parameters.Ω
-        λ_γ = canopy.radiative_transfer.parameters.λ_γ
-        ld = canopy.radiative_transfer.parameters.ld
-        (; LAI) = canopy.parameters
+        (; ld, Ω, ρ_leaf, λ_γ) = canopy.radiative_transfer.parameters
         energy_per_photon = h * c / λ_γ
         R = FT(LSMP.gas_constant(earth_param_set))
         thermo_params = canopy.parameters.earth_param_set.thermo_params
@@ -382,8 +404,8 @@ function ClimaLSM.make_update_aux(
         hydraulics = canopy.hydraulics
         n_stem = hydraulics.n_stem
         n_leaf = hydraulics.n_leaf
-        (; retention_model, conductivity_model, S_s, ν, area_index) =
-            hydraulics.parameters
+        PlantHydraulics.lai_consistency_check.(n_stem, n_leaf, area_index)
+        (; retention_model, conductivity_model, S_s, ν) = hydraulics.parameters
         @inbounds @. ψ[1] = PlantHydraulics.water_retention_curve(
             retention_model,
             PlantHydraulics.effective_saturation(ν, ϑ_l[1]),
@@ -416,8 +438,11 @@ function ClimaLSM.make_update_aux(
                         ψ[i + 1],
                     ),
                 ) * (
-                    area_index[hydraulics.compartment_labels[i]] +
-                    area_index[hydraulics.compartment_labels[i + 1]]
+                    getproperty(area_index, hydraulics.compartment_labels[i]) +
+                    getproperty(
+                        area_index,
+                        hydraulics.compartment_labels[i + 1],
+                    )
                 ) / 2
         end
         @. β = moisture_stress(ψ[n_stem + n_leaf] * ρ_l * grav, sc, pc)
@@ -469,7 +494,6 @@ function make_compute_exp_tendency(canopy::CanopyModel)
         components,
     )
     function compute_exp_tendency!(dY, Y, p, t)
-        # aux vars are updated in `compute_exp_tendency` functions
         for f! in compute_exp_tendency_list
             f!(dY, Y, p, t)
         end
@@ -511,7 +535,7 @@ function canopy_surface_fluxes(
     canopy_conductance =
         upscale_leaf_conductance.(
             leaf_conductance,
-            model.parameters.LAI,
+            p.canopy.hydraulics.area_index.leaf,
             T,
             R,
             P,
@@ -544,7 +568,7 @@ A helper function which returns the surface height for the canopy
 model, which is stored in the parameter struct.
 """
 function ClimaLSM.surface_height(model::CanopyModel, _...)
-    return model.parameters.h_c
+    return model.hydraulics.compartment_surfaces[end]
 end
 
 """
