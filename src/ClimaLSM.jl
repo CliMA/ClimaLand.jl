@@ -14,6 +14,7 @@ import .Parameters as LSMP
 
 include("shared_utilities/Regridder.jl")
 include("shared_utilities/Domains.jl")
+include("shared_utilities/FileReader.jl")
 using .Domains
 include("shared_utilities/ntuple_utils.jl")
 include("shared_utilities/models.jl")
