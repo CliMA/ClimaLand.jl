@@ -58,6 +58,19 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"));
 const FT = Float64;
 earth_param_set = create_lsm_parameters(FT);
 
+# - We will be using prescribed atmospheric and radiative drivers from the 
+#   US-MOz tower, which we read in here. We are using prescribed
+#   atmospheric and radiative flux conditions, but it is also possible to couple
+#   the simulation with atmospheric and radiative flux models. We also
+# read in the observed LAI and let that vary in time in a prescribed manner.
+
+include(
+    joinpath(
+        pkgdir(ClimaLSM),
+        "experiments/integrated/ozark/ozark_met_drivers_FLUXNET.jl",
+    ),
+);
+
 # # Setup the Coupled Canopy and Soil Physics Model
 
 # We want to simulate the canopy-soil system together, so the model type 
@@ -215,11 +228,11 @@ photosynthesis_args = (;
 );
 
 f_root_to_shoot = FT(3.5)
-SAI = FT(1.0)
-LAI = FT(4.2)
-LAIfunction = (t) -> eltype(t)(LAI)
+SAI = FT(0.00242)
+maxLAI = FT(4.2)
 K_sat_plant = 1.8e-8
-RAI = (SAI + LAI) * f_root_to_shoot
+RAI = (SAI + maxLAI) * f_root_to_shoot;
+# Note: LAIfunction was determined from data in the script we included above.
 ai_parameterization = PrescribedSiteAreaIndex{FT}(LAIfunction, SAI, RAI)
 function root_distribution(z::T; rooting_depth = FT(1.0)) where {T}
     return T(1.0 / rooting_depth) * exp(z / T(rooting_depth)) # 1/m
