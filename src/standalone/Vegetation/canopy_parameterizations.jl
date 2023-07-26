@@ -1,3 +1,4 @@
+using ..ClimaLSM.Canopy
 export plant_absorbed_ppfd,
     extinction_coeff,
     arrhenius_function,
@@ -23,11 +24,12 @@ export plant_absorbed_ppfd,
 # 1. Radiative transfer
 
 """
-    plant_absorbed_ppfd(RT::BeerLambertModel,
+    plant_absorbed_ppfd(RT::BeerLambertModel{FT},
                         PAR::FT,
                         LAI::FT,
                         K::FT,
-                        θs::FT,
+                        _,
+                        _,
     )
 
 Computes the absorbed photosynthetically active radiation in terms 
@@ -42,11 +44,12 @@ BeerLambertModel, along with the PAR, LAI, extinction coefficient K, and solar
 zenith anlgle.
 """
 function plant_absorbed_ppfd(
-    RT::BeerLambertModel,
+    RT::BeerLambertModel{FT},
     PAR::FT,
     LAI::FT,
     K::FT,
-    θs::FT,
+    _,
+    _,
 ) where {FT}
     RTP = RT.parameters
     APAR = PAR * (1 - RTP.ρ_leaf) * (1 - exp(-K * LAI * RTP.Ω))
@@ -54,7 +57,7 @@ function plant_absorbed_ppfd(
 end
 
 """
-    plant_absorbed_ppfd(RT::TwoStreamModel,
+    plant_absorbed_ppfd(RT::TwoStreamModel{FT},
                         PAR::FT,
                         LAI::FT,
                         K::FT,
@@ -66,18 +69,20 @@ of mol photons per m^2 per second (`APAR`).
 
 This applies the two-stream radiative transfer solution which takes into account
 the impacts of scattering within the canopy. The function takes in all 
-paramters from the parameter struct of a TwoStreamModel, along with the PAR, 
-LAI, extinction coefficient K, and solar zenith anlgle.
+parameters from the parameter struct of a TwoStreamModel, along with the 
+incident PAR, LAI, extinction coefficient K, soil albedo from the 
+canopy soil_driver, and solar zenith angle.
 """
 function plant_absorbed_ppfd(
-    RT::TwoStreamModel,
+    RT::TwoStreamModel{FT},
     PAR::FT,
     LAI::FT,
     K::FT,
     θs::FT,
+    a_soil::FT,
 ) where {FT}
 
-    (; ld, ρ_leaf, τ, a_soil, Ω, n_layers, diff_perc) = RT.parameters
+    (; ld, ρ_leaf, τ, Ω, n_layers, diff_perc) = RT.parameters
 
     # Compute μ̄, the average inverse diffuse optical length per LAI
     μ̄ = 1 / (2 * ld)

@@ -6,8 +6,8 @@
 # standalone mode using prescribed values for the inputs of soil hydraulics 
 # into the canopy hydraulics model. However, ClimaLSM has the built-in capacity 
 # to couple the canopy model with a soil physics model and timestep the two 
-# simulations together to model a canopy-soil hydrology system. This tutorial 
-# demonstrates how to setup and run a coupled hydrology simulation, again using 
+# simulations together to model a canopy-soil system. This tutorial 
+# demonstrates how to setup and run a coupled simulation, again using 
 # initial conditions, atmospheric and radiative flux conditions, and canopy 
 # properties observed at the US-MOz flux tower, a flux tower located within an 
 # oak-hickory forest in Ozark, Missouri, USA. See [Wang et al. 2021]
@@ -15,17 +15,18 @@
 # parameters.
 
 
-# In ClimaLSM, the coupling of the canopy and Richard's models is done by 
-# pairing the root extraction of the canopy hydraulics model, which acts as a 
-# boundary flux for the plant system, with a source term for root extraction in 
-# the Richard's model, so that the flux of water from the soil into the roots is 
+# In ClimaLSM, the coupling of the canopy and soil models is done by 
+# pairing the inputs and outputs which between the two models so that they match. 
+# For example, the root extraction of the canopy hydraulics model, which acts as a 
+# boundary flux for the plant system, is paired with a source term for root extraction in 
+# the soil model, so that the flux of water from the soil into the roots is 
 # equal and factored into both models. This pairing is done automatically in the 
 # constructor for a 
-# [`SoilPlantHydrologyModel`](https://clima.github.io/ClimaLSM.jl/dev/APIs/ClimaLSM/#LSM-Model-Types-and-methods)
+# [`SoilCanopyModel`](https://clima.github.io/ClimaLSM.jl/dev/APIs/ClimaLSM/#LSM-Model-Types-and-methods)
 # so that a 
 # user needs only specify the necessary arguments for each of the component 
 # models, and the two models will automatically be paired into a coupled 
-# hydrology model.
+# simulation.
 
 # # Preliminary Setup
 
@@ -60,7 +61,7 @@ earth_param_set = create_lsm_parameters(FT);
 # # Setup the Coupled Canopy and Soil Physics Model
 
 # We want to simulate the canopy-soil system together, so the model type 
-# [`SoilPlantHydrologyModel`](https://clima.github.io/ClimaLSM.jl/dev/APIs/ClimaLSM/#LSM-Model-Types-and-methods)
+# [`SoilCanopyModel`](https://clima.github.io/ClimaLSM.jl/dev/APIs/ClimaLSM/#LSM-Model-Types-and-methods)
 # is chosen.
 # From the linked documentation, we see that we need to provide the soil model 
 # type and arguments as well as the canopy model component types, component
@@ -75,31 +76,79 @@ zmax = FT(0)
 land_domain =
     LSMSingleColumnDomain(; zlim = (zmin, zmax), nelements = nelements);
 
-# For our soil model, we will choose a 
-# [`RichardsModel`](https://clima.github.io/ClimaLSM.jl/dev/APIs/Soil/#Soil-Models-2) 
+# For our soil model, we will choose the
+# [`EnergyHydrology`](https://clima.github.io/ClimaLSM.jl/dev/APIs/Soil/#Soil-Models-2) 
 # and set up all the necessary arguments. See the 
-# [tutorial](https://clima.github.io/ClimaLSM.jl/dev/generated/Soil/richards_equation/)
-# on Richard's Model for a more detailed explanation of the soil model.
+# [tutorial](https://clima.github.io/ClimaLSM.jl/dev/generated/Soil/soil_energy_hydrology/)
+# on the model for a more detailed explanation of the soil model.
 
+# We will be using prescribed atmospheric and radiative drivers from the 
+# US-MOz tower. We are using prescribed
+# atmospheric and radiative flux conditions, but it is also possible to couple
+# the simulation with atmospheric and radiative flux models.
 
-soil_ν = FT(0.55)
-soil_K_sat = FT(4e-7)
-soil_S_s = FT(1e-3)
-soil_vg_n = FT(2.6257)
-soil_vg_α = FT(1.368)
-θ_r = FT(0.067)
+include(
+    joinpath(
+        pkgdir(ClimaLSM),
+        "experiments/integrated/ozark/ozark_met_drivers_FLUXNET.jl",
+    ),
+);
+
+# Define the parameters for the soil model and provide them to the model 
+# parameters struct:
+
+# Soil parameters
+soil_ν = FT(0.5) # m3/m3
+soil_K_sat = FT(4e-7) # m/s
+soil_S_s = FT(1e-3) # 1/m
+soil_vg_n = FT(2.05) # unitless
+soil_vg_α = FT(0.04) # inverse meters
+θ_r = FT(0.067); # m3/m3
+
+# Soil heat transfer parameters
+ν_ss_quartz = FT(0.1)
+ν_ss_om = FT(0.1)
+ν_ss_gravel = FT(0.0);
+κ_quartz = FT(7.7) # W/m/K
+κ_minerals = FT(2.5) # W/m/K
+κ_om = FT(0.25) # W/m/K
+κ_liq = FT(0.57) # W/m/K
+κ_ice = FT(2.29) # W/m/K
+κ_air = FT(0.025); #W/m/K
+ρp = FT(2700); # kg/m^3
+κ_solid = Soil.κ_solid(ν_ss_om, ν_ss_quartz, κ_om, κ_quartz, κ_minerals)
+κ_dry = Soil.κ_dry(ρp, soil_ν, κ_solid, κ_air)
+κ_sat_frozen = Soil.κ_sat_frozen(κ_solid, soil_ν, κ_ice)
+κ_sat_unfrozen = Soil.κ_sat_unfrozen(κ_solid, soil_ν, κ_liq);
+ρc_ds = FT((1 - soil_ν) * 4e6); # J/m^3/K
+z_0m_soil = FT(0.1)
+z_0b_soil = FT(0.1)
+soil_ϵ = FT(0.98)
+soil_α = FT(0.25);
 
 soil_domain = land_domain.subsurface
-soil_ps = Soil.RichardsParameters{FT, vanGenuchten{FT}}(
-    soil_ν,
-    vanGenuchten(; α = soil_vg_α, n = soil_vg_n),
-    soil_K_sat,
-    soil_S_s,
-    θ_r,
-)
+soil_ps = Soil.EnergyHydrologyParameters{FT}(;
+    κ_dry = κ_dry,
+    κ_sat_frozen = κ_sat_frozen,
+    κ_sat_unfrozen = κ_sat_unfrozen,
+    ρc_ds = ρc_ds,
+    ν = soil_ν,
+    ν_ss_om = ν_ss_om,
+    ν_ss_quartz = ν_ss_quartz,
+    ν_ss_gravel = ν_ss_gravel,
+    hydrology_cm = vanGenuchten(; α = soil_vg_α, n = soil_vg_n),
+    K_sat = soil_K_sat,
+    S_s = soil_S_s,
+    θ_r = θ_r,
+    earth_param_set = earth_param_set,
+    z_0m = z_0m_soil,
+    z_0b = z_0b_soil,
+    emissivity = soil_ϵ,
+    albedo = soil_α,
+);
 
 soil_args = (domain = soil_domain, parameters = soil_ps)
-soil_model_type = Soil.RichardsModel{FT};
+soil_model_type = Soil.EnergyHydrology{FT}
 
 # Next we need to set up the [`CanopyModel`](https://clima.github.io/ClimaLSM.jl/dev/APIs/canopy/Canopy/#Canopy-Model-Structs).
 # For more details on the specifics of this model see the previous tutorial.
@@ -113,7 +162,7 @@ soil_model_type = Soil.RichardsModel{FT};
 # this must be done internally from the constructor.
 
 canopy_component_types = (;
-    radiative_transfer = Canopy.BeerLambertModel{FT},
+    radiative_transfer = Canopy.TwoStreamModel{FT},
     photosynthesis = Canopy.FarquharModel{FT},
     conductance = Canopy.MedlynConductanceModel{FT},
     hydraulics = Canopy.PlantHydraulicsModel{FT},
@@ -123,11 +172,14 @@ canopy_component_types = (;
 # and photosynthesis models as was done in the previous tutorial.
 
 radiative_transfer_args = (;
-    parameters = BeerLambertParameters{FT}(;
-        Ω = FT(0.69),
+    parameters = TwoStreamParameters{FT}(;
         ld = FT(0.5),
         ρ_leaf = FT(0.1),
+        τ = FT(0.1),
+        Ω = FT(0.69),
         λ_γ = FT(5e-7),
+        n_layers = UInt64(20),
+        diff_perc = FT(0.5),
     )
 )
 
@@ -162,12 +214,8 @@ photosynthesis_args = (;
     )
 );
 
-# For the plant hydraulics model, we now will not provide prescribed root 
-# extraction since the soil pressure will now be simulated by the soil physics 
-# model.
-
 f_root_to_shoot = FT(3.5)
-SAI = FT(0.00242)
+SAI = FT(1.0)
 LAI = FT(4.2)
 LAIfunction = (t) -> eltype(t)(LAI)
 K_sat_plant = 1.8e-8
@@ -235,30 +283,14 @@ shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
 
 canopy_model_args = (; parameters = shared_params, domain = land_domain.surface);
 
-# - We will be using prescribed atmospheric and radiative drivers from the 
-#   US-MOz tower, which we read in here. We are using prescribed
-#   atmospheric and radiative flux conditions, but it is also possible to couple
-#   the simulation with atmospheric and radiative flux models.
-
-include(
-    joinpath(
-        pkgdir(ClimaLSM),
-        "experiments/integrated/ozark/ozark_met_drivers_FLUXNET.jl",
-    ),
-);
-
-# We may now instantiate the integrated plant hydraulics and soil model. The 
-# Default diagnostics is transpiration. Here we will work with prescribed 
+# We may now instantiate the integrated plant and soil model. In this example, 
+# we will compute transpiration diagnostically, and work with prescribed 
 # atmospheric and radiative flux conditions from the observations at the Ozark 
 # site as was done in the previous tutorial.
 
-land_input = (
-    transpiration = DiagnosticTranspiration{Float64}(),
-    atmos = atmos,
-    radiation = radiation,
-)
+land_input = (atmos = atmos, radiation = radiation)
 
-land = SoilPlantHydrologyModel{FT}(;
+land = SoilCanopyModel{FT}(;
     land_args = land_input,
     soil_model_type = soil_model_type,
     soil_args = soil_args,
@@ -272,14 +304,23 @@ land = SoilPlantHydrologyModel{FT}(;
 # stepping is done implicitly, while the canopy model may be explicitly stepped, 
 # so we use an IMEX (implicit-explicit) scheme for the combined model.
 
-Y, p, coords = initialize(land)
-exp_tendency! = make_exp_tendency(land)
-imp_tendency! = make_imp_tendency(land);
+Y, p, coords = initialize(land);
+exp_tendency! = make_exp_tendency(land);
 
 # We need to provide initial conditions for the soil and canopy hydraulics 
 # models:
-
 Y.soil.ϑ_l = FT(0.4)
+Y.soil.θ_i = FT(0.0)
+T_0 = FT(288.7)
+ρc_s =
+    volumetric_heat_capacity.(Y.soil.ϑ_l, Y.soil.θ_i, Ref(land.soil.parameters))
+Y.soil.ρe_int =
+    volumetric_internal_energy.(
+        Y.soil.θ_i,
+        ρc_s,
+        T_0,
+        Ref(land.soil.parameters),
+    )
 ψ_stem_0 = FT(-1e5 / 9800)
 ψ_leaf_0 = FT(-2e5 / 9800)
 
@@ -302,34 +343,18 @@ t0 = FT(0)
 set_initial_aux_state! = make_set_initial_aux_state(land)
 set_initial_aux_state!(p, Y, t0);
 
-# Select the timestepper and solvers needed for the specific problem, and setup
-# the jacobian for the soil model. For more details on the soil jacobian setup 
-# see the tutorial on using a Richard's Model. Specify the time range and dt
+# Select the timestepper and solvers needed for the specific problem. Specify the time range and dt
 # value over which to perform the simulation.
 
-update_jacobian! = make_update_jacobian(land.soil)
-
-N_days = 365
+t0 = FT(150 * 3600 * 24)# start mid year
+N_days = 100
 tf = t0 + FT(3600 * 24 * N_days)
-dt = FT(225)
-n = 16
+dt = FT(30)
+n = 120
 saveat = Array(t0:(n * dt):tf)
-timestepper = CTS.ARS222()
-norm_condition = CTS.MaximumError(FT(1e-8))
-conv_checker = CTS.ConvergenceChecker(; norm_condition)
-max_iterations = 20
 
-ode_algo = CTS.IMEXAlgorithm(
-    timestepper,
-    CTS.NewtonsMethod(
-        max_iters = max_iterations,
-        update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
-        convergence_checker = conv_checker,
-    ),
-)
-
-W = RichardsTridiagonalW(Y)
-jac_kwargs = (; jac_prototype = W, Wfact = update_jacobian!);
+timestepper = CTS.RK4()
+ode_algo = CTS.ExplicitAlgorithm(timestepper);
 
 # And now perform the simulation as always.
 
@@ -339,16 +364,8 @@ sv = (;
 )
 cb = ClimaLSM.NonInterpSavingCallback(sv, saveat)
 
-prob = ODE.ODEProblem(
-    CTS.ClimaODEFunction(
-        T_exp! = exp_tendency!,
-        T_imp! = ODE.ODEFunction(imp_tendency!; jac_kwargs...),
-        dss! = ClimaLSM.dss!,
-    ),
-    Y,
-    (t0, tf),
-    p,
-)
+prob =
+    ODE.ODEProblem(CTS.ClimaODEFunction(T_exp! = exp_tendency!), Y, (t0, tf), p);
 sol = ODE.solve(
     prob,
     ode_algo;

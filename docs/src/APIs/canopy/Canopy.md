@@ -16,3 +16,11 @@ ClimaLSM.Canopy.SharedCanopyParameters
 ClimaLSM.Canopy.DiagnosticTranspiration
 ClimaLSM.Canopy.canopy_surface_fluxes
 ```
+
+## Canopy Model Soil Drivers
+
+```@docs
+ClimaLSM.Canopy.AbstractSoilDriver
+ClimaLSM.Canopy.PrescribedSoil
+ClimaLSM.Canopy.PrognosticSoil
+```

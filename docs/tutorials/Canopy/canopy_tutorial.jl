@@ -109,17 +109,31 @@ shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
     earth_param_set,
 );
 
+# For this canopy, we are running in standalone mode, which means we need to 
+# use a prescribed soil driver, defined as follows:
+
+ψ_soil0 = FT(0.0)
+
+soil_driver = PrescribedSoil(
+    root_depths = FT.(-Array(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0),
+    ψ_soil = t -> eltype(t)(ψ_soil0),
+    soil_α = FT(0.2),
+);
+
 # Now, setup the canopy model by component.
 # Provide arguments to each component, beginning with radiative transfer:
 
-rt_params = BeerLambertParameters{FT}(;
-    Ω = FT(0.69),
+rt_params = TwoStreamParameters{FT}(;
     ld = FT(0.5),
     ρ_leaf = FT(0.1),
+    τ = FT(0.1),
+    Ω = FT(0.69),
     λ_γ = FT(5e-7),
+    n_layers = UInt64(20),
+    diff_perc = FT(0.5),
 )
 
-rt_model = BeerLambertModel{FT}(rt_params);
+rt_model = TwoStreamModel{FT}(rt_params);
 
 # Arguments for conductance model:
 
@@ -159,7 +173,7 @@ photosynthesis_model = FarquharModel{FT}(photo_params);
 # Arguments for plant hydraulics model are more complicated. 
 
 # Begin by providing general plant parameters. For the area
-#indices of the canopy, we choose a `PrescribedSiteAreaIndex`,
+# indices of the canopy, we choose a `PrescribedSiteAreaIndex`,
 # which supports LAI as a function of time, with RAI and SAI as constant.
 LAI = 4.2
 LAIfunction = (t) -> eltype(t)(LAI)
@@ -203,19 +217,10 @@ plant_hydraulics_ps = PlantHydraulics.PlantHydraulicsParameters(;
     retention_model = retention_model,
 );
 
-# Define the remaining variables required for the plant hydraulics model. We 
-# will use prescribed soil conditions here, but the model can be coupled 
-# with a soil hydraulics simulation as well.
-
-root_depths = FT.(-Array(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0)
-
-ψ_soil0 = FT(0.0)
-soil_potential = t -> eltype(t)(ψ_soil0)
-root_extraction = PrescribedSoilPressure{FT}(root_depths, soil_potential)
+# Define the remaining variables required for the plant hydraulics model.
 
 plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
     parameters = plant_hydraulics_ps,
-    root_extraction = root_extraction,
     n_stem = n_stem,
     n_leaf = n_leaf,
     compartment_surfaces = compartment_surfaces,
@@ -223,9 +228,10 @@ plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
 );
 
 # Now, instantiate the canopy model, using the atmospheric and radiative 
-# drivers included from the external file. This contains every piece of 
-# information needed to generate the set of ODEs modeling the canopy
-# biophysics, ready to be passed off to a timestepper.
+# drivers included from the external file, as well as the soil driver we 
+# instantiated above. This contains every piece of information needed to 
+# generate the set of ODEs modeling the canopy biophysics, ready to be passed 
+# off to a timestepper.
 
 canopy = ClimaLSM.Canopy.CanopyModel{FT}(;
     parameters = shared_params,
@@ -234,6 +240,7 @@ canopy = ClimaLSM.Canopy.CanopyModel{FT}(;
     photosynthesis = photosynthesis_model,
     conductance = stomatal_model,
     hydraulics = plant_hydraulics,
+    soil_driver = soil_driver,
     atmos = atmos,
     radiation = radiation,
 );
@@ -270,7 +277,7 @@ end;
 t0 = FT(0)
 N_days = 365
 tf = t0 + FT(3600 * 24 * N_days)
-dt = FT(225)
+dt = FT(225);
 
 # Initialize the auxiliary variables for the canopy using the initial 
 # conditions and initial time.

@@ -115,7 +115,6 @@ function SoilCanopyModel{FT}(;
         ClimaCore.Fields.Δz_field(ClimaLSM.coordinates(soil_args.domain)),
     )
     sources = (RootExtraction{FT}(), Soil.PhaseChange{FT}(Δz))
-    root_extraction = PrognosticSoilPressure{FT}()
     # add heat BC
     top_bc = ClimaLSM.Soil.AtmosDrivenFluxBC(atmos, CanopyRadiativeFluxes{FT}())
     zero_flux = FluxBC((p, t) -> eltype(t)(0.0))
@@ -131,10 +130,7 @@ function SoilCanopyModel{FT}(;
 
     transpiration = Canopy.PlantHydraulics.DiagnosticTranspiration{FT}()
 
-    if canopy_component_types.radiative_transfer == Canopy.TwoStreamModel{FT}
-        @assert canopy_component_args.radiative_transfer.parameters.a_soil ==
-                soil_args.parameters.albedo
-    end
+    soil_driver = PrognosticSoil(; soil_α = soil.parameters.albedo)
 
     canopy = Canopy.CanopyModel{FT}(;
         radiative_transfer = canopy_component_types.radiative_transfer(
@@ -147,10 +143,10 @@ function SoilCanopyModel{FT}(;
             canopy_component_args.conductance...,
         ),
         hydraulics = canopy_component_types.hydraulics(;
-            root_extraction = root_extraction,
             transpiration = transpiration,
             canopy_component_args.hydraulics...,
         ),
+        soil_driver = soil_driver,
         atmos = atmos,
         radiation = radiation,
         canopy_model_args...,
@@ -321,8 +317,6 @@ function net_radiation_at_ground(
         p.ϵ_soil * (LW_d_beneath_canopy - _σ * p.T_soil^4)
     )
 end
-
-
 
 """
     ClimaLSM.source!(dY::ClimaCore.Fields.FieldVector,

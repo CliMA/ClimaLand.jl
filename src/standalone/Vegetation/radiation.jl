@@ -1,3 +1,5 @@
+using ..ClimaLSM.Canopy: AbstractSoilDriver
+
 export BeerLambertParameters,
     BeerLambertModel, TwoStreamParameters, TwoStreamModel
 
@@ -59,8 +61,6 @@ struct TwoStreamParameters{FT <: AbstractFloat}
     ρ_leaf::FT
     "leaf element transmittance"
     τ::FT
-    "Soil albedo"
-    a_soil::FT
     "Clumping index following Braghiere (2021) (unitless)"
     Ω::FT
     "Typical wavelength per PAR photon (m)"
@@ -76,7 +76,6 @@ end
         ld = FT(0.5),
         ρ_leaf = FT(0.3),
         τ = FT(0.2),
-        a_soil = FT(0.1),
         Ω = FT(1),
         λ_γ = FT(5e-7),
         n_layers = UInt64(20),
@@ -89,22 +88,12 @@ function TwoStreamParameters{FT}(;
     ld = FT(0.5),
     ρ_leaf = FT(0.3),
     τ = FT(0.2),
-    a_soil = FT(0.1),
     Ω = FT(1),
     λ_γ = FT(5e-7),
     n_layers = UInt64(20),
     diff_perc = FT(0),
 ) where {FT}
-    return TwoStreamParameters{FT}(
-        ld,
-        ρ_leaf,
-        τ,
-        a_soil,
-        Ω,
-        λ_γ,
-        n_layers,
-        diff_perc,
-    )
+    return TwoStreamParameters{FT}(ld, ρ_leaf, τ, Ω, λ_γ, n_layers, diff_perc)
 end
 
 struct TwoStreamModel{FT} <: AbstractRadiationModel{FT}

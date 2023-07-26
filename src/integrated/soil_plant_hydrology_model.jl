@@ -41,6 +41,15 @@ A constructor for the `SoilPlantHydrologyModel`, which takes in the concrete mod
 type and required arguments for each component, constructs those models,
 and constructs the `SoilPlantHydrologyModel` from them.
 
+In this model, the soil_driver, of type PrognosticSoil, must be defined by the 
+user and passed in within the land_args tuple. The soil_driver is used to
+provide the canopy model with the soil albedo, and for the full soil + canopy 
+model, the soil model contains the albedo, and the constructor for the model is 
+able to define and pass the soil_driver, but here for the soil model, the soil 
+albedo is not defined, and therefore the user must manually define the
+soil driver and provide it in land_args.
+
+
 Each component model is constructed with everything it needs to be stepped
 forward in time, including boundary conditions, source terms, and interaction
 terms.
@@ -59,11 +68,10 @@ function SoilPlantHydrologyModel{FT}(;
 ) where {FT, SM <: Soil.AbstractSoilModel{FT}}
 
     # These may be passed in, or set, depending on use scenario.
-    (; atmos, radiation) = land_args
+    (; soil_driver, atmos, radiation) = land_args
     precipitation = atmos.liquid_precip
     # These should always be set by the constructor.
     sources = (RootExtraction{FT}(),)
-    root_extraction = PrognosticSoilPressure{FT}()
 
     boundary_conditions = (;
         top = (water = FluxBC((p, t) -> eltype(t)(precipitation(t))),),
@@ -93,10 +101,10 @@ function SoilPlantHydrologyModel{FT}(;
             canopy_component_args.conductance...,
         ),
         hydraulics = canopy_component_types.hydraulics(;
-            root_extraction = root_extraction,
             transpiration = transpiration,
             canopy_component_args.hydraulics...,
         ),
+        soil_driver = soil_driver,
         atmos = atmos,
         radiation = radiation,
         canopy_model_args...,
@@ -162,27 +170,10 @@ function make_interactions_update_aux(
     return update_aux!
 end
 
-
-## Extending methods of the Plant Hydraulics and Soil Model
-## TBD if these should be linked more explicitly.
-"""
-   PrognosticSoilPressure{FT} <: PlantHydraulics.AbstractRootExtraction{FT}
-
-Concrete type of PlantHydraulics.AbstractRootExtraction, used for dispatch 
-in an LSM with both soil and plant hydraulic components.
-
-This is paired with the source term `Soil.RootExtraction`:both 
-are used at the same time,
-ensuring that the water flux into the roots is extracted correctly
-from the soil.
-"""
-struct PrognosticSoilPressure{FT} <:
-       Canopy.PlantHydraulics.AbstractRootExtraction{FT} end
-
 """
     PlantHydraulics.root_flux_per_ground_area!(
         fa::ClimaCore.Fields.Field,
-        re::PrognosticSoilPressure{FT},
+        s::PrognosticSoil,
         model::Canopy.PlantHydraulics.PlantHydraulicsModel{FT},
         Y::ClimaCore.Fields.FieldVector,
         p::ClimaCore.Fields.FieldVector,
@@ -192,7 +183,7 @@ struct PrognosticSoilPressure{FT} <:
 An extension of the `PlantHydraulics.root_flux_per_ground_area!` function,
  which returns the
 net flux of water between the
-roots and the soil, per unti ground area, 
+roots and the soil, per unit ground area, 
 when both soil and plant
 hydraulics are modeled prognostically. This is for use in an LSM.
 
@@ -201,7 +192,7 @@ roots and soil at each soil layer.
 """
 function PlantHydraulics.root_flux_per_ground_area!(
     fa::ClimaCore.Fields.Field,
-    re::PrognosticSoilPressure{FT},
+    s::PrognosticSoil,
     model::Canopy.PlantHydraulics.PlantHydraulicsModel{FT},
     Y::ClimaCore.Fields.FieldVector,
     p::ClimaCore.Fields.FieldVector,

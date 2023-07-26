@@ -229,12 +229,11 @@ end
     ψ_soil0 = FT(0.0)
     transpiration =
         PrescribedTranspiration{FT}((t::FT) -> leaf_transpiration(t))
-    root_extraction =
-        PrescribedSoilPressure{FT}(root_depths, (t::FT) -> ψ_soil0)
+
+    soil_driver = PrescribedSoil(root_depths, (t::FT) -> ψ_soil0, FT(0.2))
 
     plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
         parameters = param_set,
-        root_extraction = root_extraction,
         transpiration = transpiration,
         n_stem = n_stem,
         n_leaf = n_leaf,
@@ -249,6 +248,7 @@ end
             photosynthesis = photosynthesis_model,
             conductance = stomatal_model,
             hydraulics = plant_hydraulics,
+            soil_driver = soil_driver,
             atmos = atmos,
             radiation = radiation,
         )
@@ -351,7 +351,7 @@ end
         end
         set_initial_aux_state!(p, Y, 0.0)
         standalone_exp_tendency! =
-            make_compute_exp_tendency(model.hydraulics, nothing)
+            make_compute_exp_tendency(model.hydraulics, model)
         standalone_exp_tendency!(standalone_dY, Y, p, 0.0)
 
         m = similar(dY.canopy.hydraulics.ϑ_l[1])
@@ -487,12 +487,10 @@ end
 
     ψ_soil0 = FT(0.0)
     transpiration = DiagnosticTranspiration{FT}()
-    root_extraction =
-        PrescribedSoilPressure{FT}(root_depths, (t::FT) -> ψ_soil0)
+    soil_driver = PrescribedSoil(root_depths, (t::FT) -> ψ_soil0, FT(0.2))
 
     plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
         parameters = param_set,
-        root_extraction = root_extraction,
         transpiration = transpiration,
         n_stem = n_stem,
         n_leaf = n_leaf,
@@ -506,6 +504,7 @@ end
         photosynthesis = photosynthesis_model,
         conductance = stomatal_model,
         hydraulics = plant_hydraulics,
+        soil_driver = soil_driver,
         atmos = atmos,
         radiation = radiation,
     )

@@ -3,7 +3,9 @@ using ClimaLSM
 using ..ClimaLSM.Canopy:
     AbstractCanopyComponent,
     update_canopy_prescribed_field!,
-    set_canopy_prescribed_field!
+    set_canopy_prescribed_field!,
+    AbstractSoilDriver,
+    PrescribedSoil
 using ClimaCore
 using DocStringExtensions
 
@@ -26,10 +28,8 @@ export PlantHydraulicsModel,
     inverse_water_retention_curve,
     root_flux_per_ground_area!,
     PlantHydraulicsParameters,
-    PrescribedSoilPressure,
     PrescribedTranspiration,
     DiagnosticTranspiration,
-    AbstractRootExtraction,
     AbstractConductivityModel,
     AbstractRetentionModel,
     LinearRetentionCurve,
@@ -45,19 +45,6 @@ An abstract type for plant hydraulics models.
 abstract type AbstractPlantHydraulicsModel{FT} <: AbstractCanopyComponent{FT} end
 
 ClimaLSM.name(::AbstractPlantHydraulicsModel) = :hydraulics
-
-"""
-    AbstractRootExtraction{FT <: AbstractFloat}
-
-An abstract type for types representing different models of
-water exchange between soil and plants.
-Currently, prescribed soil matric potential and prescribed flux models
-are supported for standalone plant hydraulics.
-Use within an LSM requires types defined within ClimaLSM,
-and include a prognostic soil pressure for models with
-both soil and roots.
-"""
-abstract type AbstractRootExtraction{FT <: AbstractFloat} end
 
 """
     AbstractTranspiration{FT <: AbstractFloat}
@@ -169,7 +156,7 @@ function PlantHydraulicsParameters(;
 end
 
 """
-    PlantHydraulicsModel{FT, PS, RE, T} <: AbstractPlantHydraulicsModel{FT}
+    PlantHydraulicsModel{FT, PS, T} <: AbstractPlantHydraulicsModel{FT}
 
 Defines, and constructs instances of, the PlantHydraulicsModel type, which is used
 for simulation flux of water to/from soil, along roots of different depths,
@@ -195,7 +182,7 @@ option (intendend only for debugging) to use a prescribed transpiration rate.
 
 $(DocStringExtensions.FIELDS)
 """
-struct PlantHydraulicsModel{FT, PS, RE, T} <: AbstractPlantHydraulicsModel{FT}
+struct PlantHydraulicsModel{FT, PS, T} <: AbstractPlantHydraulicsModel{FT}
     "The number of stem compartments for the plant; can be zero"
     n_stem::Int64
     "The number of leaf compartments for the plant; must be >=1"
@@ -208,8 +195,6 @@ struct PlantHydraulicsModel{FT, PS, RE, T} <: AbstractPlantHydraulicsModel{FT}
     compartment_labels::Vector{Symbol}
     "Parameters required by the Plant Hydraulics model"
     parameters::PS
-    "The root extraction model, of type `AbstractRootExtraction`"
-    root_extraction::RE
     "The transpiration model, of type `AbstractTranspiration`"
     transpiration::T
 end
@@ -220,10 +205,9 @@ function PlantHydraulicsModel{FT}(;
     compartment_midpoints::Vector{FT},
     compartment_surfaces::Vector{FT},
     parameters::PlantHydraulicsParameters{FT},
-    root_extraction::AbstractRootExtraction{FT},
     transpiration::AbstractTranspiration{FT} = DiagnosticTranspiration{FT}(),
 ) where {FT}
-    args = (parameters, root_extraction, transpiration)
+    args = (parameters, transpiration)
     @assert (n_leaf + n_stem) == length(compartment_midpoints)
     @assert (n_leaf + n_stem) + 1 == length(compartment_surfaces)
     for i in 1:length(compartment_midpoints)
@@ -533,7 +517,7 @@ zero because they are scaled by AI.
 To prevent dividing by zero, we change AI/(AI x dz)" to
 "AI/max(AI x dz, eps(FT))"
 """
-function make_compute_exp_tendency(model::PlantHydraulicsModel, _)
+function make_compute_exp_tendency(model::PlantHydraulicsModel, canopy)
     function compute_exp_tendency!(dY, Y, p, t)
         area_index = p.canopy.hydraulics.area_index
         n_stem = model.n_stem
@@ -556,7 +540,7 @@ function make_compute_exp_tendency(model::PlantHydraulicsModel, _)
                 # All fluxes `fa` are per unit area of ground
                 root_flux_per_ground_area!(
                     fa_roots,
-                    model.root_extraction,
+                    canopy.soil_driver,
                     model,
                     Y,
                     p,
@@ -573,27 +557,10 @@ function make_compute_exp_tendency(model::PlantHydraulicsModel, _)
     return compute_exp_tendency!
 end
 
-
-
-"""
-    PrescribedSoilPressure{FT} <: AbstractRootExtraction{FT}
-
-A concrete type used for dispatch when computing the `root_flux_per_ground_area!`,
-in the case where the soil matric potential at each root layer is prescribed.
-
-$(DocStringExtensions.FIELDS)
-"""
-struct PrescribedSoilPressure{FT} <: AbstractRootExtraction{FT}
-    "The depth of the root tips, in meters"
-    root_depths::Vector{FT}
-    "Prescribed soil potential (m) as a function of time"
-    ψ_soil::Function
-end
-
 """
     root_flux_per_ground_area!(
         fa::ClimaCore.Fields.Field,
-        re::PrescribedSoilPressure{FT},
+        s::PrescribedSoil{FT},
         model::PlantHydraulicsModel{FT},
         Y::ClimaCore.Fields.FieldVector,
         p::ClimaCore.Fields.FieldVector,
@@ -601,16 +568,15 @@ end
     )::FT where {FT}
 
 A method which computes the flux between the soil and the stem, via the roots,
-and multiplied by the RAI,
-in the case of a standalone plant hydraulics model with prescribed soil pressure (in m)
-at the root tips.
+and multiplied by the RAI, in the case of a model running without an integrated
+soil model.
 
 The returned flux is per unit ground area. This assumes that the stem compartment
 is the first element of `Y.canopy.hydraulics.ϑ_l`.
 """
 function root_flux_per_ground_area!(
     fa::ClimaCore.Fields.Field,
-    re::PrescribedSoilPressure{FT},
+    s::PrescribedSoil{FT},
     model::PlantHydraulicsModel{FT},
     Y::ClimaCore.Fields.FieldVector,
     p::ClimaCore.Fields.FieldVector,
@@ -620,9 +586,9 @@ function root_flux_per_ground_area!(
     (; conductivity_model, root_distribution) = model.parameters
     area_index = p.canopy.hydraulics.area_index
     ψ_base = p.canopy.hydraulics.ψ[1]
-    root_depths = re.root_depths
+    root_depths = s.root_depths
     n_root_layers = length(root_depths)
-    ψ_soil::FT = re.ψ_soil(t)
+    ψ_soil::FT = s.ψ_soil(t)
     fa .= FT(0.0)
     @inbounds for i in 1:n_root_layers
         if i != n_root_layers

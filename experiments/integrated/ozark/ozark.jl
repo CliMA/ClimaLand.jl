@@ -64,7 +64,7 @@ soil_model_type = Soil.EnergyHydrology{FT}
 # Now we set up the canopy model, which we set up by component:
 # Component Types
 canopy_component_types = (;
-    radiative_transfer = Canopy.BeerLambertModel{FT},
+    radiative_transfer = Canopy.TwoStreamModel{FT},
     photosynthesis = Canopy.FarquharModel{FT},
     conductance = Canopy.MedlynConductanceModel{FT},
     hydraulics = Canopy.PlantHydraulicsModel{FT},
@@ -72,11 +72,14 @@ canopy_component_types = (;
 # Individual Component arguments
 # Set up radiative transfer
 radiative_transfer_args = (;
-    parameters = BeerLambertParameters{FT}(;
+    parameters = TwoStreamParameters{FT}(;
         Ω = Ω,
         ld = ld,
         ρ_leaf = ρ_leaf,
         λ_γ = λ_γ,
+        τ = FT(0.1),
+        n_layers = UInt64(20),
+        diff_perc = FT(0.5),
     )
 )
 # Set up conductance
