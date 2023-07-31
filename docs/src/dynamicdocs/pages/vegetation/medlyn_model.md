@@ -38,4 +38,11 @@ where $D_{rel} =1.6$ (unitless) is the relative diffusivity of water vapor with 
 ```
 where g1 is the slope parameter, inversely proportional to the square root of marginal water use efficiency (Medlyn, 2011). We also have A$_n$ as the biochemical demand for CO$_2$ calculated using the photosynthesis model (Farquhar, 1980; Equation \eqref{eq:a_n}; units of molar flux). The resulting units are $m/s$. $g_{0,m}$ is a minimum molar conductivity. (subscript $m$ indicates molar).
 
+The model has the following parameters:
+
+| Constants | Symbol | Unit | Value |
+| :---         |     :---:      |    :---:      |     :---:   |
+| Relative diffusivity of water vapor | $D_{rel}$  | - | 1.6 |
+| Minimum stomatal conductance | $g_0$ | mol/$m^2$/s | 1e-4 |
+| Slope parameter | $g_1$  | $\sqrt{Pa}$  | 790 |
 
