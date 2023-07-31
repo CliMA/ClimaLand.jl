@@ -144,14 +144,19 @@ We need to supply the following parameters and “drivers"
 | Canopy reflectance | $ρ_{leaf}$  | -  | 0.1 |
 | Clumping index | $Ω$  | -  | 0.69 |
 | $CO_2$ compensation at 25°C | Γ$^*_{25}$  | mol/mol | 4.275e-5 |
-| A constant energy of activation | $ΔH_{Γ^*}$ | J/mol | 43540 |
+| Activation energy per mol for $Γ^*$ | $ΔH_{Γ^*}$ | J/mol | 37830 |
 | Standard temperature | $T_o$  | K | 298.15 |
 | Universal gas constant | $R$  | J/mol | 8.314 |
 | The maximum rate of carboxylation of Rubisco | $V_{cmax25}$  | mol CO$_2$ m$^{-2}$ s$^{-1}$ | 5e-5 |
-| Energy of activation of $J_max$ | $ΔH_{J_max}$ | J/mol | 43540 |
+| Activation energy per mol for $J_max$ | $ΔH_{J_max}$ | J/mol | 43540 |
 | An empirical "curvature parameter" | $θ_j$  | -  | 0.9 |
-| Clumping index | $Ω$  | -  | 0.69 |
-| $CO_2$ compensation at 25°C | Γ$^*_{25}$  | mol/mol | 4.275e-5 |
-| A constant energy of activation | $ΔH_{Γ^*}$ | J/mol | 43540 |
-| Standard temperature | $T_o$  | K | 298.15 |
-| Universal gas constant | $R$  | J/mol | 8.314 |
+| The quantum yied of photosystem II | $\phi$  | -  | 0.6 |
+| Activation energy per mol for $V_{cmax}$ | $ΔH_{V_{cmax}}$  | J/mol | 58520 |
+| Slope parameter for stomatal conductance models | $g_1$ | - | 141 |
+| Michaelis Menten constant for $CO_2$ and at 25°C | $K_{c25}$  | mol/mol | 4.049e-4 |
+| NEED INFO | $ΔH_{K_c}$  | J/mol | 79430 |
+| Michaelis Menten constant for $O_2$ at 25 °C | $K_{o25}$  | mmol/mol | 0.2874 |
+| NEED INFO | $ΔH_{K_o}$  | J/mol | 36380 |
+| Intercellular $O_2$ concentration | $o_i$  | NEED INFO | 0.209 |
+| An empirical factor | $f$  | NEED INFO | 0.015 |
+| NEED INFO | $ΔH_{R_d}$  | J/mol | 43390 |
