@@ -146,7 +146,8 @@ canopy_model_args = (; parameters = shared_params, domain = land_domain.surface)
 # debugging purposes), you would pass it as another element
 # of this tuple. The default if it is not passed is
 # a diagnostic (big leaf-computed) transpiration.
-land_input = (atmos = atmos, radiation = radiation)
+soil_driver = PrognosticSoil(; soil_α = FT(0.2))
+land_input = (atmos = atmos, soil_driver = soil_driver, radiation = radiation)
 land = SoilPlantHydrologyModel{FT}(;
     land_args = land_input,
     soil_model_type = soil_model_type,

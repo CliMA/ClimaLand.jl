@@ -148,12 +148,11 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
         )
 
     ψ_soil0 = FT(0.0)
-    root_extraction =
-        PrescribedSoilPressure{FT}(root_depths, (t::FT) -> ψ_soil0)
+
+    soil_driver = PrescribedSoil(root_depths, (t::FT) -> ψ_soil0, FT(0.2))
 
     plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
         parameters = param_set,
-        root_extraction = root_extraction,
         n_stem = n_stem,
         n_leaf = n_leaf,
         compartment_surfaces = compartment_faces,
@@ -166,6 +165,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
         photosynthesis = photosynthesis_model,
         conductance = stomatal_model,
         hydraulics = plant_hydraulics,
+        soil_driver = soil_driver,
         atmos = atmos,
         radiation = radiation,
     )
@@ -324,13 +324,8 @@ end
             )
         )
 
-    ψ_soil0 = FT(0.0)
-    root_extraction =
-        PrescribedSoilPressure{FT}(root_depths, (t::FT) -> ψ_soil0)
-
     plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
         parameters = param_set,
-        root_extraction = root_extraction,
         n_stem = n_stem,
         n_leaf = n_leaf,
         compartment_surfaces = compartment_faces,

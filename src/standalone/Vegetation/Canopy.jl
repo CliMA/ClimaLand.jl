@@ -29,6 +29,7 @@ using ClimaLSM.Domains: Point, Plane, SphericalSurface
 export SharedCanopyParameters,
     CanopyModel, set_canopy_prescribed_field!, update_canopy_prescribed_field!
 include("./component_models.jl")
+include("./soil_drivers.jl")
 include("./PlantHydraulics.jl")
 using .PlantHydraulics
 include("./stomatalconductance.jl")
@@ -52,7 +53,7 @@ struct SharedCanopyParameters{FT <: AbstractFloat, PSE}
 end
 
 """
-     CanopyModel{FT, RM, PM, SM, PHM, A, R, PS, D} <: AbstractExpModel{FT}
+     CanopyModel{FT, RM, PM, SM, PHM, A, R, S, PS, D} <: AbstractExpModel{FT}
 
 The model struct for the canopy, which contains
 - the canopy model domain (a point for site-level simulations, or
@@ -77,6 +78,9 @@ fluxes.
 - The radiative flux conditions, which are either prescribed
 (of type `PrescribedRadiativeFluxes`) or computed via a coupled simulation
 (of type `CoupledRadiativeFluxes`).
+- The soil conditions, which are either prescribed (of type PrecribedSoil, for
+running the canopy model in standalone mode), or prognostic (of type 
+PrognosticSoil, for running integrated soil+canopy models)
 
 Note that the canopy height is specified as part of the 
 PlantHydraulicsModel, along with the area indices of the leaves, roots, and
@@ -86,7 +90,7 @@ treated differently.
 
 $(DocStringExtensions.FIELDS)
 """
-struct CanopyModel{FT, RM, PM, SM, PHM, A, R, PS, D} <: AbstractExpModel{FT}
+struct CanopyModel{FT, RM, PM, SM, PHM, A, R, S, PS, D} <: AbstractExpModel{FT}
     "Radiative transfer model, a canopy component model"
     radiative_transfer::RM
     "Photosynthesis model, a canopy component model"
@@ -99,6 +103,8 @@ struct CanopyModel{FT, RM, PM, SM, PHM, A, R, PS, D} <: AbstractExpModel{FT}
     atmos::A
     "Radiative forcing: prescribed or coupled"
     radiation::R
+    "Soil pressure: prescribed or prognostic"
+    soil_driver::S
     "Shared canopy parameters between component models"
     parameters::PS
     "Canopy model domain"
@@ -113,6 +119,7 @@ end
         hydraulics::AbstractPlantHydraulicsModel{FT},
         atmos::AbstractAtmosphericDrivers{FT},
         radiation::AbstractRadiativeDrivers{FT},
+        soil::AbstractSoilDriver{FT},
         parameters::SharedCanopyParameters{FT, PSE},
         domain::Union{
             ClimaLSM.Domains.Point,
@@ -134,6 +141,7 @@ function CanopyModel{FT}(;
     hydraulics::AbstractPlantHydraulicsModel{FT},
     atmos::AbstractAtmosphericDrivers{FT},
     radiation::AbstractRadiativeDrivers{FT},
+    soil_driver::AbstractSoilDriver{FT},
     parameters::SharedCanopyParameters{FT, PSE},
     domain::Union{
         ClimaLSM.Domains.Point,
@@ -148,6 +156,7 @@ function CanopyModel{FT}(;
         hydraulics,
         atmos,
         radiation,
+        soil_driver,
         parameters,
         domain,
     )
@@ -156,6 +165,7 @@ end
 
 ClimaLSM.name(::CanopyModel) = :canopy
 ClimaLSM.domain(::CanopyModel) = :surface
+
 
 """
     canopy_components(::CanopyModel)
@@ -237,6 +247,17 @@ function auxiliary_types(canopy::CanopyModel)
     end
     return NamedTuple{components}(auxiliary_list)
 end
+
+"""
+    ground_albedo(canopy::CanopyModel{FT})
+
+Returns the soil albedo for the canopy model from the soil_driver of the canopy 
+model.
+"""
+function ground_albedo(canopy::CanopyModel{FT}) where {FT}
+    return canopy.soil_driver.soil_α
+end
+
 
 """
     initialize_prognostic(
@@ -398,6 +419,7 @@ function ClimaLSM.make_update_aux(
             LAI,
             K,
             θs,
+            ground_albedo(canopy),
         )
 
         # update plant hydraulics aux
@@ -550,7 +572,6 @@ function canopy_surface_fluxes(
     return canopy_transpiration, conditions.shf, canopy_lhf
 end
 
-
 """
     ClimaLSM.surface_temperature(model::CanopyModel, Y, p, t)
 
@@ -628,5 +649,8 @@ function ClimaLSM.surface_evaporative_scaling(
     beta = FT(1.0)
     return beta
 end
+
+#Make the canopy model broadcastable
+Base.broadcastable(C::CanopyModel) = tuple(C)
 
 end
