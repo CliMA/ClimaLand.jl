@@ -2,20 +2,11 @@
 """
     surface_albedo(model::BucketModel, Y, p)
 
-A helper function which computes and returns the bulk surface albedo, 
-linearly interpolating between the albedo
-of snow and of the surface, based on the snow water equivalent S relative to
-the parameter S_c.
-
-The linear interpolation is taken from Lague et al 2019.
+Returns the bulk surface albedo, which gets updated in `update_aux`
+via `next_albedo`.
 """
 function ClimaLSM.surface_albedo(model::BucketModel{FT}, Y, p) where {FT}
-    (; α_snow) = model.parameters.albedo
-    (; σS_c) = model.parameters
-    α_sfc = p.bucket.α_sfc
-    σS = Y.bucket.σS
-    safe_σS = max.(σS, eps(FT))
-    return @. ((1 - σS / (σS + σS_c)) * α_sfc + σS / (σS + σS_c) * α_snow)
+    return p.bucket.α_sfc
 end
 
 """
@@ -30,7 +21,7 @@ end
 """
     ClimaLSM.surface_temperature(model::BucketModel, Y, p)
 
-a helper function which returns the surface temperature for the bucket 
+a helper function which returns the surface temperature for the bucket
 model, which is stored in the aux state.
 """
 function ClimaLSM.surface_temperature(model::BucketModel, Y, p, t)
@@ -40,7 +31,7 @@ end
 """
     ClimaLSM.surface_specific_humidity(model::BucketModel, Y, p)
 
-a helper function which returns the surface specific humidity for the bucket 
+a helper function which returns the surface specific humidity for the bucket
 model, which is stored in the aux state.
 """
 function ClimaLSM.surface_specific_humidity(model::BucketModel, Y, p, _...)
@@ -50,7 +41,7 @@ end
 """
     ClimaLSM.surface_height(model::BucketModel, Y, p)
 
-a helper function which returns the surface height for the bucket 
+a helper function which returns the surface height for the bucket
 model, which is zero currently.
 """
 function ClimaLSM.surface_height(model::BucketModel{FT}, Y, p) where {FT}
@@ -60,7 +51,7 @@ end
 """
     ClimaLSM.surface_air_density(model::BucketModel, Y, p)
 
-a helper function which computes and returns the surface air density for the bucket 
+a helper function which computes and returns the surface air density for the bucket
 model.
 """
 function ClimaLSM.surface_air_density(
@@ -113,7 +104,7 @@ end
     ) where{FT}
 
 Partitions the surface fluxes in a flux for melting snow, a flux for sublimating snow,
-and a ground heat flux. 
+and a ground heat flux.
 
 All fluxes are positive if they are in the direction from land towards
 the atmosphere.
@@ -145,14 +136,14 @@ end
 """
     infiltration_at_point(W::FT, M::FT, P::FT, E::FT, W_f::FT)::FT where {FT <: AbstractFloat}
 
-Returns the infiltration given the current water content of the bucket W, 
+Returns the infiltration given the current water content of the bucket W,
 the snow melt volume flux M, the precipitation volume flux P, the liquid evaporative volume
 flux E, and the bucket capacity W_f. Positive values indicate increasing
 soil moisture; the infiltration is the magnitude of the water
 flux into the soil.
 
 Extra inflow when the bucket is at capacity runs off.
-Note that P and M are positive by definition, while E can be 
+Note that P and M are positive by definition, while E can be
 positive (evaporation) or negative (condensation).
 """
 function infiltration_at_point(

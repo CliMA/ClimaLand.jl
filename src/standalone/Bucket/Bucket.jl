@@ -2,6 +2,8 @@ module Bucket
 using UnPack
 using DocStringExtensions
 using Thermodynamics
+using Dates
+using NCDatasets
 using ClimaCore
 using ClimaCore.Fields: coordinate_field, level, FieldVector
 using ClimaCore.Operators: InterpolateC2F, DivergenceF2C, GradientC2F, SetValue
@@ -11,6 +13,7 @@ using ClimaComms
 using ClimaLSM
 
 using ClimaLSM.Regridder: MapInfo, regrid_netcdf_to_field
+using ClimaLSM.FileReader
 import ..Parameters as LSMP
 import ClimaLSM.Domains: coordinates, LSMSphericalShellDomain
 using ClimaLSM:
@@ -48,7 +51,8 @@ import ClimaLSM:
 export BucketModelParameters,
     BucketModel,
     BulkAlbedoFunction,
-    BulkAlbedoMap,
+    BulkAlbedoStatic,
+    BulkAlbedoTemporal,
     surface_albedo,
     partition_surface_fluxes
 
@@ -76,40 +80,110 @@ struct BulkAlbedoFunction{FT} <: AbstractLandAlbedoModel{FT}
 end
 
 """
-    BulkAlbedoMap{FT} <: AbstractLandAlbedoModel
+    BulkAlbedoStatic{FT} <: AbstractLandAlbedoModel
 
 An albedo model where the albedo of different surface types
 is specified. Snow albedo is treated as constant across snow
 location and across wavelength. Surface albedo is specified via a
 NetCDF file, which can be a function of time, but is treated
 as constant across wavelengths; surface is this context refers
-to soil and vegetation.
+to soil and vegetation. This albedo type is static in time.
 
 Note that this option should only be used with global simulations,
 i.e. with a `ClimaLSM.LSMSphericalShellDomain.`
 """
-struct BulkAlbedoMap{FT} <: AbstractLandAlbedoModel{FT}
+struct BulkAlbedoStatic{FT} <: AbstractLandAlbedoModel{FT}
     α_snow::FT
     α_sfc::MapInfo
 end
 
 """
-    BulkAlbedoMap{FT}(regrid_dirpath;α_snow = FT(0.8), comms = ClimaComms.SingletonCommsContext()) where {FT}
+    BulkAlbedoStatic{FT}(
+        regrid_dirpath::String;
+        α_snow = FT(0.8),
+        comms = ClimaComms.SingletonCommsContext(),
+        varname = "sw_alb",
+        path = Bucket.bareground_albedo_dataset_path(),
+    ) where {FT}
 
-Constructor for the BulkAlbedoMap that implements a default albedo map, `comms` context, and value for `α_snow`.
+Constructor for the BulkAlbedoStatic that implements a default albedo map, `comms` context, and value for `α_snow`.
 The `varname` must correspond to the name of the variable in the NetCDF file specified by `path`.
+
+The `bareground_albedo_dataset_path` artifact can be used as a default with this type.
 """
-function BulkAlbedoMap{FT}(
-    regrid_dirpath;
+function BulkAlbedoStatic{FT}(
+    regrid_dirpath::String;
     α_snow = FT(0.8),
     comms = ClimaComms.SingletonCommsContext(),
-    path = bareground_albedo_dataset_path(),
     varname = "sw_alb",
+    path = Bucket.bareground_albedo_dataset_path(),
 ) where {FT}
     α_sfc = MapInfo(path, varname, regrid_dirpath, comms)
-    return BulkAlbedoMap{FT}(α_snow, α_sfc)
+    return BulkAlbedoStatic{FT}(α_snow, α_sfc)
 end
 
+"""
+    BulkAlbedoTemporal{FT} <: AbstractLandAlbedoModel
+
+An albedo model where the albedo of different surface types
+is specified. Albedo is specified via a NetCDF file which is a function
+of time and covers all surface types (soil, vegetation, snow, etc).
+This albedo type changes over time according to the input file.
+
+Note that this option should only be used with global simulations,
+i.e. with a `ClimaLSM.LSMSphericalShellDomain.`
+"""
+struct BulkAlbedoTemporal{FT} <: AbstractLandAlbedoModel{FT}
+    albedo_info::FileReader.PrescribedData
+end
+
+"""
+    BulkAlbedoTemporal{FT}(
+        regrid_dirpath::String,
+        date_ref::Union{DateTime, DateTimeNoLeap},
+        t_start::FT,
+        surface;
+        input_file = Bucket.cesm2_albedo_dataset_path(),
+        varname = "sw_alb"
+    ) where {FT}
+
+Constructor for the BulkAlbedoTemporal struct.
+The `varname` must correspond to the name of the variable in the NetCDF
+file specified by `input_file`.
+The input data file must have a time component; otherwise BulkAlbedoStatic
+should be used.
+"""
+function BulkAlbedoTemporal{FT}(
+    regrid_dirpath::String,
+    date_ref::Union{DateTime, DateTimeNoLeap},
+    t_start::FT,
+    surface;
+    input_file = Bucket.cesm2_albedo_dataset_path(),
+    varname = "sw_alb",
+) where {FT}
+    # Verify inputs
+    if typeof(surface) <: ClimaLSM.Domains.Point
+        error("Using an albedo map requires a global run.")
+    end
+    NCDataset(input_file, "r") do ds
+        if !("time" in keys(ds))
+            error(
+                "Using a temporal albedo map requires data with time dimension.",
+            )
+        end
+    end
+
+    # Construct object containing info to read in surface albedo over time
+    data_info = prescribed_data_init(
+        regrid_dirpath,
+        input_file,
+        varname,
+        date_ref,
+        t_start,
+        surface.space,
+    )
+    return BulkAlbedoTemporal{FT}(data_info)
+end
 
 
 
@@ -212,14 +286,14 @@ end
                  radiation::RAD,
                ) where {FT, PSE, ATM, RAD, D<: ClimaLSM.Domains.AbstractLSMDomain}
 
-An outer constructor for the `BucketModel`, which enforces the 
+An outer constructor for the `BucketModel`, which enforces the
 constraints:
 1. The bucket model domain is of type <: ClimaLSM.Domains.AbstractLSMDomain
 2. Using an albedo read from a lat/lon file requires a global run.
 
 Since the bucket model has prognostic variables that live on the surface of the domain
-(snow water equivalent, bucket water content, runoff), as well as defined within 
-the entire domain (temperature as a function of depth), we make use of 
+(snow water equivalent, bucket water content, runoff), as well as defined within
+the entire domain (temperature as a function of depth), we make use of
 ClimaLSM.Domains.AbstractLSMDomains which are set up for this use case.
 """
 function BucketModel(;
@@ -228,7 +302,7 @@ function BucketModel(;
     atmosphere::ATM,
     radiation::RAD,
 ) where {FT, PSE, ATM, RAD, D <: ClimaLSM.Domains.AbstractLSMDomain}
-    if parameters.albedo isa BulkAlbedoMap
+    if parameters.albedo isa Union{BulkAlbedoStatic, BulkAlbedoTemporal}
         typeof(domain) <: LSMSphericalShellDomain ? nothing :
         error("Using an albedo map requires a global run.")
     end
@@ -333,12 +407,12 @@ end
 
 """
     function set_initial_parameter_field!(
-        albedo::BulkAlbedoMap{FT},
+        albedo::BulkAlbedoStatic{FT},
         p,
         surface_coords,
     ) where {FT}
 
-Updates spatially-varying surface albedo stored in the
+Initializes spatially-varying surface albedo stored in the
 auxiliary vector `p` in place, according to a
 NetCDF file. This data file is encapsulated in an object of
 type `ClimaLSM.Regridder.MapInfo` in the field albedo.α_sfc.
@@ -348,7 +422,7 @@ the surface space of the LSM using ClimaCoreTempestRemap. The result
 is a ClimaCore.Fields.Field of albedo values.
 """
 function set_initial_parameter_field!(
-    albedo::BulkAlbedoMap{FT},
+    albedo::BulkAlbedoStatic{FT},
     p,
     surface_coords,
 ) where {FT}
@@ -364,6 +438,37 @@ function set_initial_parameter_field!(
     )
 end
 
+"""
+    function set_initial_parameter_field!(
+        albedo::BulkAlbedoTemporal{FT},
+        p,
+        surface_coords,
+    ) where {FT}
+
+Initializes spatially- and temporally-varying surface albedo stored in
+the auxiliary vector `p` in place, according to a
+NetCDF file. This data file is encapsulated in an object of
+type `ClimaLSM.FileReader.PrescribedData` in the field albedo.albedo_info.
+This object contains a reference date and start time, which are used
+to get the start date.
+
+The NetCDF file is read in at the dates closest to this start date,
+regridded, and projected onto
+the surface space of the LSM using ClimaCoreTempestRemap. The result
+is a ClimaCore.Fields.Field of albedo values.
+"""
+function set_initial_parameter_field!(
+    albedo::BulkAlbedoTemporal{FT},
+    p,
+    surface_coords,
+) where {FT}
+    sim_info = albedo.albedo_info.sim_info
+    date_start = sim_info.date_ref + Dates.Second(round(sim_info.t_start))
+    space = axes(surface_coords)
+
+    read_data_fields!(albedo.albedo_info, date_start, space)
+    p.bucket.α_sfc .= interpolate_data(albedo.albedo_info, date_start, space)
+end
 
 """
     make_compute_exp_tendency(model::BucketModel{FT}) where {FT}
@@ -473,15 +578,76 @@ function make_update_aux(model::BucketModel{FT}) where {FT}
             )
 
         # Compute turbulent surface fluxes
-
         conditions = surface_fluxes(model.atmos, model, Y, p, t)
         p.bucket.turbulent_energy_flux .= conditions.lhf .+ conditions.shf
         p.bucket.evaporation .= conditions.vapor_flux
 
         # Radiative fluxes
         p.bucket.R_n .= net_radiation(model.radiation, model, Y, p, t)
+
+        # Surface albedo
+        p.bucket.α_sfc .=
+            next_albedo(model.parameters.albedo, model.parameters, Y, p, t)
     end
     return update_aux!
+end
+
+"""
+    next_albedo(model_albedo::Union{BulkAlbedoFunction{FT}, BulkAlbedoStatic{FT}},
+        parameters, Y, p, t)
+
+Update the surface albedo for time `t`. These albedo model types aren't explicitly
+dependent on `t`, but depend on quantities which may change over time.
+
+The albedo is calculated by linearly interpolating between the albedo
+of snow and of the surface, based on the snow water equivalent `S` relative to
+the parameter `S_c`. The linear interpolation is taken from Lague et al 2019.
+"""
+function next_albedo(
+    model_albedo::Union{BulkAlbedoFunction{FT}, BulkAlbedoStatic{FT}},
+    parameters,
+    Y,
+    p,
+    t,
+) where {FT}
+    (; α_snow) = model_albedo
+    (; σS_c) = parameters
+    α_sfc = p.bucket.α_sfc
+    σS = Y.bucket.σS
+    return @. ((1 - σS / (σS + σS_c)) * α_sfc + σS / (σS + σS_c) * α_snow)
+end
+
+"""
+    next_albedo(model_albedo::BulkAlbedoTemporal{FT}, parameters, Y, p, t)
+
+Update the surface albedo for time t. For a file containing albedo
+information over time, this reads in the value for time t.
+"""
+function next_albedo(
+    model_albedo::BulkAlbedoTemporal{FT},
+    parameters,
+    Y,
+    p,
+    t,
+) where {FT}
+    # Get the current date from `t`
+    sim_info = model_albedo.albedo_info.sim_info
+    sim_date = to_datetime(
+        sim_info.date_ref + Second(round(sim_info.t_start)) + Second(round(t)),
+    )
+    # Use next date if it's closest to current time
+    # This maintains `all_dates[date_idx]` <= `sim_date` < `all_dates[date_idx + 1]`
+    @show sim_date
+    @show to_datetime(next_date_in_file(model_albedo.albedo_info))
+    if sim_date >= to_datetime(next_date_in_file(model_albedo.albedo_info))
+        read_data_fields!(model_albedo.albedo_info, sim_date, axes(Y.bucket.W))
+    end
+    # Interpolate data value to current time
+    return interpolate_data(
+        model_albedo.albedo_info,
+        sim_date,
+        axes(Y.bucket.W),
+    )
 end
 
 include("./bucket_parameterizations.jl")

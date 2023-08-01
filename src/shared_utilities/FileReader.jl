@@ -122,7 +122,7 @@ data packaged into a single struct.
 - `input_file`       # NCDataset file containing data to regrid.
 - `varname`          # name of the variable to be regridded.
 - `date_ref`         # reference date to coordinate start of the simulation
-- `t_start`          # start time of the simulation (relative to `date_ref`)
+- `t_start`          # start time of the simulation relative to `date_ref` (date_start = date_ref + t_start)
 - `surface_space`    # the space to which we are mapping.
 - `mono`             # flag for monotone remapping of `input_file`.
 
@@ -197,7 +197,7 @@ in this range of time.
 
 # Arguments
 - `prescribed_data`      # containing parameter value data.
-- `date`                 # start date for data.
+- `date`                 # current date to read in data for.
 - `space`                # space we're remapping the data onto.
 """
 function read_data_fields!(
@@ -317,8 +317,7 @@ next_date_in_file(prescribed_data::PrescribedData) =
 """
     interpolate_data(prescribed_data::PrescribedData, date::Union{DateTime, DateTimeNoLeap}, space::Spaces.AbstractSpace)
 
-Interpolates linearly between two `Fields` in the `prescribed_data` struct,
-or returns the first Field if interpolation is switched off.
+Interpolates linearly between two `Fields` in the `prescribed_data` struct.
 
 # Arguments
 - `prescribed_data`      # contains fields to be interpolated.
@@ -334,20 +333,21 @@ function interpolate_data(
     space::Spaces.AbstractSpace,
 )
     FT = Spaces.undertype(space)
-    # Interpolate if the time period between dates is nonzero
-    if prescribed_data.file_state.segment_length[1] > FT(0)
-        (; segment_length, date_idx, data_fields) = prescribed_data.file_state
-        (; all_dates) = prescribed_data.file_info
+    (; segment_length, date_idx, data_fields) = prescribed_data.file_state
+    (; all_dates) = prescribed_data.file_info
 
+    # Interpolate if the time period between dates is nonzero
+    if segment_length[1] > FT(0) && date != all_dates[Int(date_idx[1])]
+        Δt_tt1 = FT((date - all_dates[Int(date_idx[1])]).value)
         return interpol.(
             data_fields[1],
             data_fields[2],
-            FT((date - all_dates[Int(date_idx[1])]).value),
+            Δt_tt1,
             FT(segment_length[1]),
         )
         # Otherwise use the data at the first date
     else
-        return prescribed_data.file_state.data_fields[1]
+        return data_fields[1]
     end
 end
 

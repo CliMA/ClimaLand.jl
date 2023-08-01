@@ -165,9 +165,9 @@ earth_param_set = create_lsm_parameters(FT);
 # Define our `BulkAlbedoFunction` model using a constant surface and snow albedo:
 # The surface albedo is a function of coordinates, which would be
 # (x,y) on a plane, and (lat,lon) on a sphere. Another albedo
-# option is to specify a `BulkAlbedoMap`, which uses a NetCDF
-# file to read in surface albedo. This option only applies when coordinates
-# are (lat,lon).
+# option is to specify a `BulkAlbedoStatic` or `BulkAlbedoFunction`,
+# which uses a NetCDF file to read in surface albedo.
+# These options only applies when coordinates are (lat,lon).
 α_sfc = (coordinate_point) -> FT(0.2);
 α_snow = FT(0.8);
 albedo = BulkAlbedoFunction{FT}(α_snow, α_sfc);
