@@ -72,6 +72,27 @@ for FT in (Float64, Float32)
         end
     end
 
+    @testset "test interpol for FT=$FT" begin
+        # Setup
+        t1 = FT(0)
+        t2 = FT(10)
+
+        f1 = FT(-1)
+        f2 = FT(1)
+
+        # Case 1: t1 < t < t2
+        t = FT(5)
+        @test FileReader.interpol(f1, f2, t - t1, t2 - t1) == 0
+
+        # Case 2: t1 = t < t2
+        t = FT(0)
+        @test FileReader.interpol(f1, f2, t - t1, t2 - t1) == f1
+
+        # Case 3: t1 < t = t2
+        t = FT(10)
+        @test FileReader.interpol(f1, f2, t - t1, t2 - t1) == f2
+    end
+
     @testset "test interpolate_data for FT=$FT" begin
         # test interpolate_data with interpolation (default)
         dummy_dates =
