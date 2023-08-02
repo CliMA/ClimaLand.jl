@@ -80,3 +80,11 @@ The sink term of the soil is in terms of a volumetric fraction change, i.e. we n
 ```
 
 The sign change occurs in the expression for $S(z)$ because a positive value of $q_{roots}$ indicates flow from the soil to the plant. This is a sink term for the soil.
+
+The model needs the following parameters:
+
+| Drivers | Symbol | Unit | Range |
+| :---         |     :---:      |    :---:      |     :---:   |
+| A function of simulation time t given the leaf area index | LAI | m²/m² | NEED INFO |
+| The constant stem area index | SAI | m²/m²  | NEED INFO |
+| The constant root area index | RAI | m²/m² | NEED INFO |
