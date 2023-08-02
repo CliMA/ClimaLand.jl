@@ -59,10 +59,9 @@ To = FT(298.15)
 
 # Plant Hydraulics and general plant parameters
 SAI = FT(1.0) # m2/m2 or: estimated from Wang et al, FT(0.00242) ?
-LAI = FT(4.2) # m2/m2, from Wang et al.
-LAIfunction = (t) -> eltype(t)(LAI)
+maxLAI = FT(4.2) # m2/m2, from Wang et al.
 f_root_to_shoot = FT(3.5)
-RAI = (SAI + LAI) * f_root_to_shoot # CLM
+RAI = (SAI + maxLAI) * f_root_to_shoot # CLM
 K_sat_plant = 5e-9 # m/s # seems much too small?
 ψ63 = FT(-4 / 0.0098) # / MPa to m, Holtzman's original parameter value is -4 MPa
 Weibull_param = FT(4) # unitless, Holtzman's original c param value
@@ -70,8 +69,8 @@ a = FT(0.05 * 0.0098) # Holtzman's original parameter for the bulk modulus of el
 conductivity_model =
     PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
 retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a)
-capacity = FT(30) # kg/m^2
-plant_ν = capacity / (LAI * h_leaf + SAI * h_stem) / FT(1000)
+capacity = FT(15) # kg/m^2
+plant_ν = capacity / (maxLAI / 2 * h_leaf + SAI * h_stem) / FT(1000)
 plant_S_s = FT(1e-2 * 0.0098) # m3/m3/MPa to m3/m3/m
 rooting_depth = FT(0.5) # from Natan
 z0_m = FT(2)
