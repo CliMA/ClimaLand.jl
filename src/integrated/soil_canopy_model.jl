@@ -310,7 +310,7 @@ function net_radiation_at_ground(
     (; λ_γ) = canopy_radiation.parameters
     energy_per_photon = h * c / λ_γ
     SW_d_beneath_canopy =
-        @. SW_d - p.canopy.radiative_transfer.apar * (energy_per_photon * N_a)
+        @. SW_d - 2* p.canopy.radiative_transfer.apar * (energy_per_photon * N_a)
     LW_d_beneath_canopy = LW_d # Assumes T_canopy = T_air
     return @. (
         -(1 - p.α_soil) * SW_d_beneath_canopy -
