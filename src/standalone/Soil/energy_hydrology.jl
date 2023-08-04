@@ -46,8 +46,10 @@ struct EnergyHydrologyParameters{
     γ::FT
     "Reference temperature for the viscosity factor"
     γT_ref::FT
-    "Soil Albedo"
-    albedo::FT
+    "Soil PAR Albedo"
+    PAR_albedo::FT
+    "Soil NIR Albedo"
+    NIR_albedo::FT
     "Soil Emissivity"
     emissivity::FT
     "Roughness length for momentum"
@@ -73,7 +75,8 @@ function EnergyHydrologyParameters{FT}(;
     K_sat::FT,
     S_s::FT,
     θ_r::FT,
-    albedo = FT(0.2),
+    PAR_albedo = FT(0.2),
+    NIR_albedo = FT(0.4),
     emissivity = FT(1),
     z_0m = FT(0.01),
     z_0b = FT(0.01),
@@ -106,7 +109,8 @@ function EnergyHydrologyParameters{FT}(;
         Ω,
         γ,
         γT_ref,
-        albedo,
+        PAR_albedo,
+        NIR_albedo,
         emissivity,
         z_0m,
         z_0b,
@@ -499,7 +503,9 @@ Returns the surface albedo field of the
 `EnergyHydrology` soil model.
 """
 function ClimaLSM.surface_albedo(model::EnergyHydrology{FT}, Y, p) where {FT}
-    return model.parameters.albedo
+    return FT(
+        0.5 * model.parameters.PAR_albedo + 0.5 * model.parameters.NIR_albedo,
+    )
 end
 
 """

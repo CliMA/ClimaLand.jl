@@ -17,7 +17,7 @@ vwc = swrc_data[4:end, 1] ./ 100 # to convert from percent to a decimal
 ψ = swrc_data[4:end, 2] .* 1e6 ./ (1e3 * 9.8) # to convert from MPa to m
 
 # Assume value for this:
-θ_r = 0.067
+θ_r = 0.04
 α = 10.0 .^ (log10(5e-3):0.1:1)
 n = Array(1.1:0.05:3.0)
 porosity = [0.45, 0.5, 0.55]

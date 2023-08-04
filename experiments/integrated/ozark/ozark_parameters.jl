@@ -25,16 +25,23 @@ soil_vg_α = FT(0.04) # inverse meters
 z_0m_soil = FT(0.1)
 z_0b_soil = FT(0.1)
 soil_ϵ = FT(0.98)
-soil_α = FT(0.25)
+soil_α_PAR = FT(0.3)
+soil_α_NIR = FT(0.5)
 
-# Beer Lambert model parameters
+# TwoStreamModel parameters
 Ω = FT(0.69)
 ld = FT(0.5)
-ρ_leaf = FT(0.1)
-λ_γ = FT(5e-7)
+α_PAR_leaf = FT(0.1)
+λ_γ_PAR = FT(5e-7)
+λ_γ_NIR = FT(1.65e-6)
+τ_PAR_leaf = FT(0.05)
+α_NIR_leaf = FT(0.45)
+τ_NIR_leaf = FT(0.25)
+n_layers = UInt64(20)
+diff_perc = FT(0.2)
 
 # Conductance Model
-g1 = FT(300) # Wang et al: 141 sqrt(Pa) for Medlyn model; Natan used 300.
+g1 = FT(141) # Wang et al: 141 sqrt(Pa) for Medlyn model; Natan used 300.
 Drel = FT(1.6)
 g0 = FT(1e-4)
 
@@ -69,7 +76,7 @@ a = FT(0.05 * 0.0098) # Holtzman's original parameter for the bulk modulus of el
 conductivity_model =
     PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
 retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a)
-capacity = FT(15) # kg/m^2
+capacity = FT(10) # kg/m^2
 plant_ν = capacity / (maxLAI / 2 * h_leaf + SAI * h_stem) / FT(1000)
 plant_S_s = FT(1e-2 * 0.0098) # m3/m3/MPa to m3/m3/m
 rooting_depth = FT(0.5) # from Natan

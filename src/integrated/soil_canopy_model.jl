@@ -130,7 +130,10 @@ function SoilCanopyModel{FT}(;
 
     transpiration = Canopy.PlantHydraulics.DiagnosticTranspiration{FT}()
 
-    soil_driver = PrognosticSoil(; soil_α = soil.parameters.albedo)
+    soil_driver = PrognosticSoil(;
+        soil_α_PAR = soil.parameters.PAR_albedo,
+        soil_α_NIR = soil.parameters.NIR_albedo,
+    )
 
     canopy = Canopy.CanopyModel{FT}(;
         radiative_transfer = canopy_component_types.radiative_transfer(
@@ -307,10 +310,13 @@ function net_radiation_at_ground(
     c = FT(LSMP.light_speed(earth_param_set))
     h = FT(LSMP.planck_constant(earth_param_set))
     N_a = FT(LSMP.avogadro_constant(earth_param_set))
-    (; λ_γ) = canopy_radiation.parameters
-    energy_per_photon = h * c / λ_γ
-    SW_d_beneath_canopy =
-        @. SW_d - p.canopy.radiative_transfer.apar * (energy_per_photon * N_a)
+    (; λ_γ_PAR, λ_γ_NIR) = canopy_radiation.parameters
+    energy_per_photon_PAR = h * c / λ_γ_PAR
+    energy_per_photon_NIR = h * c / λ_γ_NIR
+    SW_d_beneath_canopy = @. SW_d - (
+        (energy_per_photon_PAR * N_a * p.canopy.radiative_transfer.apar) +
+        (energy_per_photon_NIR * N_a * p.canopy.radiative_transfer.anir)
+    )
     LW_d_beneath_canopy = LW_d # Assumes T_canopy = T_air
     return @. (
         -(1 - p.α_soil) * SW_d_beneath_canopy -
