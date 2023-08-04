@@ -585,7 +585,7 @@ root_stem_flux = [
 ]
 
 stem_leaf_flux = [
-r    parent(sv.saveval[k].canopy.hydraulics.fa)[1] .* (1e3 * 3600 * 24) for
+    parent(sv.saveval[k].canopy.hydraulics.fa)[1] .* (1e3 * 3600 * 24) for
     k in 1:length(sol.t)
 ]
 leaf_air_flux = [
@@ -604,7 +604,7 @@ swp = [
         root_distribution.(parent(cds.subsurface.z)),
     ) / sum(root_distribution.(parent(cds.subsurface.z))) * 9800 for
     k in 1:length(sol.t)
-e]
+]
 
 plt1 = Plots.plot(size = (1500, 400))
 Plots.plot!(
