@@ -17,7 +17,7 @@ vwc = swrc_data[4:end, 1] ./ 100 # to convert from percent to a decimal
 ψ = swrc_data[4:end, 2] .* 1e6 ./ (1e3 * 9.8) # to convert from MPa to m
 
 # Assume value for this:
-θ_r = 0.067
+θ_r = 0.04
 α = 10.0 .^ (log10(5e-3):0.1:1)
 n = Array(1.1:0.05:3.0)
 porosity = [0.45, 0.5, 0.55]
@@ -40,18 +40,39 @@ for ν in porosity
     @info ν, α[min_idx[1]], n[min_idx[2]], minimum(L2)
 end
 #=
+# with 0.067 as θr
 [ Info: (0.45, 0.03154786722400966, 2.1, 44.40710028534568)
 [ Info: (0.5, 0.03971641173621406, 2.05, 44.26024841595485)
 [ Info: (0.55, 0.049999999999999996, 2.0, 44.34184235590622)
-=#
+
 # All very similar, try:
 ν = 0.5
 α = 0.04
 n = 2.05
 hcm = ClimaLSM.Soil.vanGenuchten(; α = α, n = n)
-θ = 0.1:1e-3:ν
+θ = 0.08:1e-3:ν
 S = ClimaLSM.Soil.effective_saturation.(ν, θ, θ_r)
 ψ_model = ClimaLSM.Soil.matric_potential.(hcm, S)
-Plots.scatter(-ψ, vwc, label = "Data")
-Plots.plot!(-ψ_model, θ, label = "Model")
-Plots.plot!(xlabel = "-ψ (m)", ylabel = "θ")
+Plots.scatter(-ψ .* 9800, vwc, label = "Data")
+Plots.plot!(-ψ_model .*9800, θ, label = "Model")
+Plots.plot!(xlabel = "-ψ (Pa)", ylabel = "θ")
+=#
+
+#=
+# with 0.04 as θr
+[ Info: (0.45, 0.03971641173621406, 1.8, 44.350050018294745)
+[ Info: (0.5, 0.06294627058970836, 1.7, 44.12339789885875)
+[ Info: (0.55, 0.06294627058970836, 1.75, 44.180860888691335)
+
+# All very similar, try:
+ν = 0.5
+α = 0.1
+n = 1.7
+hcm = ClimaLSM.Soil.vanGenuchten(; α = α, n = n)
+θ = 0.06:1e-3:ν
+S = ClimaLSM.Soil.effective_saturation.(ν, θ, θ_r)
+ψ_model = ClimaLSM.Soil.matric_potential.(hcm, S)
+Plots.scatter(-ψ .* 9800, vwc, label = "Data")
+Plots.plot!(-ψ_model .*9800, θ, label = "Model")
+Plots.plot!(xlabel = "-ψ (Pa)", ylabel = "θ")
+=#

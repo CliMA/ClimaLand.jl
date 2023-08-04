@@ -171,7 +171,7 @@ Y.soil.ϑ_l = SWC[1 + Int(round(t0 / 1800))] # Get soil water content at t0
 # and simulation are reference to 2005-01-01-00 (LOCAL)
 # or 2005-01-01-06 (UTC)
 Y.soil.θ_i = FT(0.0)
-T_0 = TS[1 + Int(round(t0 / 1800))] # Get soil temperature at t0
+T_0 = TS[1 + Int(round(t0 / 1800))]# Get soil temperature at t0
 ρc_s =
     volumetric_heat_capacity.(Y.soil.ϑ_l, Y.soil.θ_i, Ref(land.soil.parameters))
 Y.soil.ρe_int =
@@ -235,7 +235,7 @@ Plots.plot!(
     model_GPP .* 1e6,
     label = "Model",
     xlim = [minimum(daily), maximum(daily)],
-    title = "GPP [μmol/mol]",
+    title = "GPP [mol/m^2/s]",
 )
 Plots.plot!(
     plt1,
@@ -319,8 +319,7 @@ T =
         parent(sv.saveval[k].canopy.conductance.transpiration)[1] for
         k in 1:length(sol.t)
     ] .* (1e3 * 24 * 3600)
-E =
-    [parent(sv.saveval[k].soil_evap)[1] for k in 1:length(sol.t)] .* (1e3 * 24 * 3600)
+E = [parent(sv.saveval[k].soil_evap)[1] for k in 1:length(sol.t)] .* (1e3 * 24 * 3600)
 measured_T = LE ./ (LSMP.LH_v0(earth_param_set) * 1000) .* (1e3 * 24 * 3600)
 
 plt1 = Plots.plot(size = (1500, 400))
@@ -347,9 +346,7 @@ Plots.plot!(
     label = "Model E",
     ylim = [0, 30],
     legend = :topright,
-    title = "Vapor Flux [mm/day]",
-
-)
+    title = "Vapor Flux [mm/day]")
 
 plt2 = Plots.plot(size = (1500, 400))
 Plots.plot!(plt2, seconds ./ 3600 ./ 24, measured_T, label = "")
@@ -422,12 +419,14 @@ Plots.plot!(
 Plots.plot(plt1, plt2, layout = (2, 1))
 Plots.savefig(joinpath(savedir, "stomatal_conductance.png"))
 
+# Current resolution is 3.333 cm per layer, our nodes are at the center of the
+# layers. The second layer is ~ 5cm
 plt1 = Plots.plot(size = (1500, 800))
 Plots.plot!(
     plt1,
     daily,
-    [parent(sol.u[k].soil.ϑ_l)[end] for k in 1:1:length(sol.t)],
-    label = "10cm",
+    [parent(sol.u[k].soil.ϑ_l)[end-1] for k in 1:1:length(sol.t)],
+    label = "5cm",
     xlim = [minimum(daily), maximum(daily)],
     ylim = [0.05, 0.55],
     xlabel = "Days",
@@ -439,24 +438,9 @@ Plots.plot!(
 plot!(
     plt1,
     daily,
-    [parent(sol.u[k].soil.θ_i)[end] for k in 1:1:length(sol.t)],
+    [parent(sol.u[k].soil.θ_i)[end-1] for k in 1:1:length(sol.t)],
     color = "cyan",
-    label = "Ice, 10cm",
-)
-
-plot!(
-    plt1,
-    daily,
-    [parent(sol.u[k].soil.ϑ_l)[end - 2] for k in 1:1:length(sol.t)],
-    label = "30cm",
-    color = "purple",
-)
-plot!(
-    plt1,
-    daily,
-    [parent(sol.u[k].soil.θ_i)[end - 2] for k in 1:1:length(sol.t)],
-    color = "magenta",
-    label = "Ice, 30cm",
+    label = "Ice, 5cm",
 )
 
 Plots.plot!(plt1, seconds ./ 3600 ./ 24, SWC, label = "Data")
@@ -585,7 +569,7 @@ root_stem_flux = [
 ]
 
 stem_leaf_flux = [
-r    parent(sv.saveval[k].canopy.hydraulics.fa)[1] .* (1e3 * 3600 * 24) for
+    parent(sv.saveval[k].canopy.hydraulics.fa)[1] .* (1e3 * 3600 * 24) for
     k in 1:length(sol.t)
 ]
 leaf_air_flux = [
@@ -604,7 +588,7 @@ swp = [
         root_distribution.(parent(cds.subsurface.z)),
     ) / sum(root_distribution.(parent(cds.subsurface.z))) * 9800 for
     k in 1:length(sol.t)
-e]
+]
 
 plt1 = Plots.plot(size = (1500, 400))
 Plots.plot!(
@@ -670,9 +654,10 @@ Plots.plot!(plt1, daily, root_stem_flux, label = "")
 Plots.plot(plt2, plt1, layout = (2, 1))
 Plots.savefig(joinpath(savedir, "water_fluxes.png"))
 
+# Current resolution is 3.333 cm per layer, our nodes are at the center of the
+# layers. The second layer is ~ 5cm
 soil_T_sfc = [parent(sv.saveval[k].soil.T)[end] for k in 1:length(sol.t)]
-soil_T_20 = [parent(sv.saveval[k].soil.T)[end - 1] for k in 1:length(sol.t)]
-soil_T_30 = [parent(sv.saveval[k].soil.T)[end - 2] for k in 1:length(sol.t)]
+soil_T_5 = [parent(sv.saveval[k].soil.T)[end - 1] for k in 1:length(sol.t)]
 
 plt2 = Plots.plot()
 Plots.plot!(
@@ -682,13 +667,13 @@ Plots.plot!(
     color = "blue",
     label = "",
     xlim = [minimum(daily), minimum(daily)+30],
-    ylim = [265, 295],
+    ylim = [260, 320],
     xlabel = "Day of year",
     margins = 10Plots.mm,
     size = (1500,400)
 )
 
-plot!(plt2, daily, soil_T_30, color = "purple", label = "")
+plot!(plt2, daily, soil_T_5, color = "purple", label = "")
 Plots.plot!(plt2, seconds ./ 3600 ./ 24, TA, label = "", color = "green")
 Plots.plot!(plt2, seconds ./ 3600 ./ 24, TS, label = "", color = "red")
 
@@ -699,13 +684,13 @@ Plots.plot!(
     daily,
     soil_T_sfc,
     color = "blue",
-    label = "T_soil, 10cm",
+    label = "T_sfc",
     xlim = [minimum(daily), maximum(daily)],
     ylim = [260, 320],
     title = "Soil Temperature [K]",
 )
 
-plot!(plt3, daily, soil_T_30, color = "purple", label = "T_soil, 30cm")
+plot!(plt3, daily, soil_T_5, color = "purple", label = "T_soil, 5cm")
 Plots.plot!(
     plt3,
     seconds ./ 3600 ./ 24,

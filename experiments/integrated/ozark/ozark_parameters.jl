@@ -2,9 +2,9 @@
 soil_ν = FT(0.5) # m3/m3
 soil_K_sat = FT(4e-7) # m/s, matches Natan
 soil_S_s = FT(1e-3) # 1/m, guess
-soil_vg_n = FT(2.05) # unitless
-soil_vg_α = FT(0.04) # inverse meters
-θ_r = FT(0.067) # m3/m3, from Wang et al. 2021 https://doi.org/10.5194/gmd-14-6741-2021
+soil_vg_n = FT(1.7) # unitless
+soil_vg_α = FT(0.1) # inverse meters
+θ_r = FT(0.04) # m3/m3
 
 # Soil heat transfer parameters; not needed for hydrology only test
 ν_ss_quartz = FT(0.1)
@@ -69,7 +69,7 @@ a = FT(0.05 * 0.0098) # Holtzman's original parameter for the bulk modulus of el
 conductivity_model =
     PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
 retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a)
-capacity = FT(15) # kg/m^2
+capacity = FT(10) # kg/m^2
 plant_ν = capacity / (maxLAI / 2 * h_leaf + SAI * h_stem) / FT(1000)
 plant_S_s = FT(1e-2 * 0.0098) # m3/m3/MPa to m3/m3/m
 rooting_depth = FT(0.5) # from Natan
