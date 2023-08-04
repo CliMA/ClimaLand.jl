@@ -56,6 +56,7 @@ soil_model_type = Soil.RichardsModel{FT}
 # Component Types
 canopy_component_types = (;
     radiative_transfer = Canopy.BeerLambertModel{FT},
+    #radiative_transfer = Canopy.TwoStreamModel{FT},
     photosynthesis = Canopy.FarquharModel{FT},
     conductance = Canopy.MedlynConductanceModel{FT},
     hydraulics = Canopy.PlantHydraulicsModel{FT},
@@ -72,6 +73,18 @@ radiative_transfer_args = (;
         λ_γ_NIR = λ_γ_NIR,
     )
 )
+#= radiative_transfer_args = (;
+    parameters = TwoStreamParameters{FT}(;
+        ld = ld,
+        ρ_leaf = ρ_leaf,
+        τ = FT(0.3),
+        a_soil = FT(0.2),
+        Ω = Ω,
+        λ_γ = λ_γ,
+        n_layers = UInt64(20),
+        diff_perc = FT(0.5)
+    )
+) =#
 # Set up conductance
 conductance_args = (;
     parameters = MedlynConductanceParameters{FT}(;

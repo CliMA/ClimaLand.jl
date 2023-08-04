@@ -1,0 +1,87 @@
+# Soil parameters
+soil_ν = FT(0.386) # m3/m3; from GLDAS
+soil_K_sat = FT(2.9e-7) # m/s, Gupta et al. 2021 (predicted)
+soil_S_s = FT(1e-3) # 1/m, guess
+soil_vg_n = FT(1.448) # unitless
+soil_vg_α = FT(0.027) # inverse meters; VG params from Tiejun Wang et al 2015
+θ_r = FT(0.067) # m3/m3, Guess
+
+# Soil heat transfer parameters; not needed for hydrology only test
+# Site soil composition fractions
+ν_ss_quartz = FT(0.384) # Richardson, Petrenko, Friedland 2017
+ν_ss_om = FT(0.36) # https://harvardforest1.fas.harvard.edu/exist/apps/datasets/showData.html?id=hf143
+ν_ss_gravel = FT(0.0); # Assumption
+
+# Material thermal properties
+κ_quartz = FT(7.7) # W/m/K
+κ_minerals = FT(2.5) # W/m/K
+κ_om = FT(0.25) # W/m/K
+κ_liq = FT(0.57) # W/m/K
+κ_ice = FT(2.29) # W/m/K
+κ_air = FT(0.025); #W/m/K
+ρp = FT(2700); # kg/m^3
+κ_solid = Soil.κ_solid(ν_ss_om, ν_ss_quartz, κ_om, κ_quartz, κ_minerals)
+κ_dry = Soil.κ_dry(ρp, soil_ν, κ_solid, κ_air)
+κ_sat_frozen = Soil.κ_sat_frozen(κ_solid, soil_ν, κ_ice)
+κ_sat_unfrozen = Soil.κ_sat_unfrozen(κ_solid, soil_ν, κ_liq);
+ρc_ds = FT((1 - soil_ν) * 4e6); # J/m^3/K
+z_0m_soil = FT(0.1)
+z_0b_soil = FT(0.1)
+soil_ϵ = FT(0.98)
+soil_α_PAR = FT(0.3) # Estimate
+soil_α_NIR = FT(0.5) # Estimate
+
+# Two Stream Model Parameters
+Ω = FT(0.7) # MODIS
+ld = FT(0.5)
+α_PAR_leaf = FT(0.07) # CLM
+λ_γ_PAR = FT(5e-7)
+λ_γ_NIR = FT(1.65e-6)
+τ_PAR_leaf = FT(0.05) # CLM
+α_NIR_leaf = FT(0.35) # CLM
+τ_NIR_leaf = FT(0.1) # CLM
+n_layers = UInt64(20)
+diff_perc = FT(0.2) # Estimate
+
+# Conductance Model
+g1 = FT(141) # Wang et al: 141 sqrt(Pa) for Medlyn model; Natan used 300.
+Drel = FT(1.6)
+g0 = FT(1e-4)
+
+#Photosynthesis model
+oi = FT(0.209)
+ϕ = FT(0.6)
+θj = FT(0.9)
+f = FT(0.015)
+sc = FT(2e-6) # Bonan's book: range of 2-5e-6
+pc = FT(-2e6) # Bonan's book: -2e6
+Vcmax25 = FT(9e-5) # from Yujie's paper 4.5e-5 , Natan used 9e-5
+Γstar25 = FT(4.275e-5)
+Kc25 = FT(4.049e-4)
+Ko25 = FT(0.2874)
+To = FT(298.15)
+ΔHkc = FT(79430)
+ΔHko = FT(36380)
+ΔHVcmax = FT(58520)
+ΔHΓstar = FT(37830)
+ΔHJmax = FT(43540)
+ΔHRd = FT(46390)
+
+# Plant Hydraulics and general plant parameters
+SAI = FT(1.0) # m2/m2 or: estimated from Wang et al, FT(0.00242) ?
+f_root_to_shoot = FT(3.5)
+maxLAI = FT(3.5)
+RAI = (SAI + maxLAI) * f_root_to_shoot # CLM
+K_sat_plant = 5e-9 # m/s # seems much too small?
+ψ63 = FT(-4 / 0.0098) # / MPa to m, Holtzman's original parameter value is -4 MPa
+Weibull_param = FT(4) # unitless, Holtzman's original c param value
+a = FT(0.05 * 0.0098) # Holtzman's original parameter for the bulk modulus of elasticity
+conductivity_model =
+    PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
+retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a)
+capacity = FT(30) # kg/m^2
+plant_ν = capacity / (maxLAI / 2 * h_leaf + SAI * h_stem) / FT(1000)
+plant_S_s = FT(1e-2 * 0.0098) # m3/m3/MPa to m3/m3/m
+rooting_depth = FT(0.5) # from Natan
+z0_m = FT(2)
+z0_b = FT(0.2)

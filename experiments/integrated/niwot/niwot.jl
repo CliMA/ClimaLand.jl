@@ -24,15 +24,15 @@ climalsm_dir = pkgdir(ClimaLSM)
 include(
     joinpath(
         climalsm_dir,
-        "experiments/integrated/ozark/ozark_met_drivers_FLUXNET.jl",
+        "experiments/integrated/niwot/niwot_met_drivers_FLUXNET.jl",
     ),
 )
-include(joinpath(climalsm_dir, "experiments/integrated/ozark/ozark_domain.jl"))
+include(joinpath(climalsm_dir, "experiments/integrated/niwot/niwot_domain.jl"))
 include(
-    joinpath(climalsm_dir, "experiments/integrated/ozark/ozark_parameters.jl"),
+    joinpath(climalsm_dir, "experiments/integrated/niwot/niwot_parameters.jl"),
 )
 include(
-    joinpath(climalsm_dir, "experiments/integrated/ozark/ozark_simulation.jl"),
+    joinpath(climalsm_dir, "experiments/integrated/niwot/niwot_simulation.jl"),
 )
 
 # Now we set up the model. For the soil model, we pick
@@ -170,12 +170,12 @@ Y, p, cds = initialize(land)
 exp_tendency! = make_exp_tendency(land)
 
 #Initial conditions
-Y.soil.ϑ_l = SWC[1 + Int(round(t0 / 1800))] # Get soil water content at t0
+Y.soil.ϑ_l = SWC[Int(round(t0 / 1800))] # Get soil water content at t0
 # recalling that the data is in intervals of 1800 seconds. Both the data
 # and simulation are reference to 2005-01-01-00 (LOCAL)
 # or 2005-01-01-06 (UTC)
 Y.soil.θ_i = FT(0.0)
-T_0 = TS[1 + Int(round(t0 / 1800))] # Get soil temperature at t0
+T_0 = TS[Int(round(t0 / 1800))] # Get soil temperature at t0
 ρc_s =
     volumetric_heat_capacity.(Y.soil.ϑ_l, Y.soil.θ_i, Ref(land.soil.parameters))
 Y.soil.ρe_int =
@@ -207,7 +207,7 @@ set_initial_aux_state!(p, Y, t0);
 # Simulation
 sv = (;
     t = Array{FT}(undef, length(saveat)),
-    saveval = Array{NamedTuple}(undef, length(saveat)),
+    saveval = Array{ClimaCore.Fields.FieldVector}(undef, length(saveat)),
 )
 cb = ClimaLSM.NonInterpSavingCallback(sv, saveat)
 
@@ -224,7 +224,7 @@ sol = ODE.solve(
 
 # Plotting
 daily = sol.t ./ 3600 ./ 24
-savedir = joinpath(climalsm_dir, "experiments/integrated/ozark/")
+savedir = joinpath(climalsm_dir, "experiments/integrated/niwot/")
 
 # GPP
 model_GPP = [
@@ -315,8 +315,6 @@ Plots.plot!(
 )
 Plots.plot(plt1, plt2, layout = (2, 1))
 Plots.savefig(joinpath(savedir, "VPD.png"))
-
-
 
 T =
     [
@@ -543,122 +541,6 @@ Plots.plot!(
 
 Plots.plot!(ylabel = "∫ Water fluxes dt", xlabel = "Days", margins = 10Plots.mm,)
 Plots.savefig(joinpath(savedir, "cumul_p_et.png"))
-
-
-# Leaf water potential data from Pallardy et al (2018)
-# Predawn Leaf Water Potential of Oak-Hickory Forest at Missouri Ozark (MOFLUX) Site: 2004-2020
-# https://doi.org/10.3334/CDIAC/ORNLSFA.004
-lwp_filename = "MOFLUX_PredawnLeafWaterPotential_2020_20210125.csv"
-lwp_artifact = ArtifactFile(
-    url = "https://caltech.box.com/shared/static/d2nbhezw1q99vslnh5qfwnqrnp3p4edo.csv",
-    filename = lwp_filename,
-)
-lwp_dataset = ArtifactWrapper(
-    @__DIR__,
-    "lwp_pallardy_etal2018",
-    ArtifactFile[lwp_artifact],
-);
-
-lwp_path = joinpath(get_data_folder(lwp_dataset), lwp_filename)
-lwp_data = readdlm(lwp_path, ',', skipstart = 1)
-# We are using 2005 data in this test, so restrict to this year
-YEAR = lwp_data[:, 1]
-DOY = lwp_data[YEAR .== 2005, 2]
-# Our t0 = Dec 31, midnight, 2005. Predawn = guess of 0600 hours
-seconds_since_t0 = FT.(DOY) * 24 .* 3600 .+ (6 * 3600)
-lwp_measured = lwp_data[YEAR .== 2005, 7] .* 1e6 # MPa to Pa
-
-
-root_stem_flux = [
-    sum(sv.saveval[k].root_extraction) .* (1e3 * 3600 * 24) for
-    k in 1:length(sol.t)
-]
-
-stem_leaf_flux = [
-    parent(sv.saveval[k].canopy.hydraulics.fa)[1] .* (1e3 * 3600 * 24) for
-    k in 1:length(sol.t)
-]
-leaf_air_flux = [
-    parent(sv.saveval[k].canopy.hydraulics.fa)[2] .* (1e3 * 3600 * 24) for
-    k in 1:length(sol.t)
-]
-lwp = [
-    parent(sv.saveval[k].canopy.hydraulics.ψ)[2] * 9800 for k in 1:length(sol.t)
-]
-swp = [
-    parent(sv.saveval[k].canopy.hydraulics.ψ)[1] * 9800 for k in 1:length(sol.t)
-]
-ψ_soil = [
-    sum(
-        parent(sv.saveval[k].soil.ψ) .*
-        root_distribution.(parent(cds.subsurface.z)),
-    ) / sum(root_distribution.(parent(cds.subsurface.z))) * 9800 for
-    k in 1:length(sol.t)
-]
-
-plt1 = Plots.plot(size = (1500, 400))
-Plots.plot!(
-    plt1,
-    daily,
-    lwp,
-    label = "Model, Leaf",
-    title = "Water potentials",
-    xlim = [minimum(daily), maximum(daily)],
-)
-Plots.plot!(plt1, daily, swp, label = "Model, Stem")
-Plots.plot!(plt1, daily, ψ_soil, label = "Model, Mean soil")
-Plots.scatter!(
-    plt1,
-    seconds_since_t0 ./ 24 ./ 3600,
-    lwp_measured,
-    label = "Data; all species",
-    legend = :bottomleft,
-)
-
-plt2 = Plots.plot(size = (1500, 400))
-Plots.plot!(
-    plt2,
-    daily,
-    lwp,
-    label = "",
-    xlim = [minimum(daily), minimum(daily) + 30],
-    xlabel = "Day of year",
-    ylim = [-2e6, 0],
-    margin = 10Plots.mm,
-)
-
-Plots.plot!(plt2, daily, swp, label = "")
-Plots.plot!(plt2, daily, ψ_soil, label = "")
-Plots.plot!(plt2, seconds_since_t0 ./ 24 ./ 3600, lwp_measured, label = "")
-
-Plots.plot(plt1, plt2, layout = (2, 1))
-Plots.savefig(joinpath(savedir, "leaf_water_potential.png"))
-
-plt2 = Plots.plot(
-    daily,
-    leaf_air_flux,
-    label = "Leaf-air flux",
-    xlim = [minimum(daily), maximum(daily)],
-    title = "Within plant fluxes[mm/day]",
-    size = (1500, 400),
-)
-Plots.plot!(plt2, daily, stem_leaf_flux, label = "Stem-leaf flux")
-Plots.plot!(plt2, daily, root_stem_flux, label = "Soil-root-stem flux")
-
-plt1 = Plots.plot(
-    daily,
-    leaf_air_flux,
-    label = "",
-    xlabel = "Day of year",
-    margin = 10Plots.mm,
-    xlim = [minimum(daily), minimum(daily) + 30],
-    ylim = [-5, 7.5],
-    size = (1500, 400),
-)
-Plots.plot!(plt1, daily, stem_leaf_flux, label = "")
-Plots.plot!(plt1, daily, root_stem_flux, label = "")
-Plots.plot(plt2, plt1, layout = (2, 1))
-Plots.savefig(joinpath(savedir, "water_fluxes.png"))
 
 # Current resolution is 3.333 cm per layer, our nodes are at the center of the
 # layers. The second layer is ~ 5cm
