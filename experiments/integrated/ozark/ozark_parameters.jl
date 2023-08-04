@@ -2,9 +2,9 @@
 soil_ν = FT(0.5) # m3/m3
 soil_K_sat = FT(4e-7) # m/s, matches Natan
 soil_S_s = FT(1e-3) # 1/m, guess
-soil_vg_n = FT(1.7) # unitless
-soil_vg_α = FT(0.1) # inverse meters
-θ_r = FT(0.04) # m3/m3
+soil_vg_n = FT(2.05) # unitless
+soil_vg_α = FT(0.04) # inverse meters
+θ_r = FT(0.067) # m3/m3
 
 # Soil heat transfer parameters; not needed for hydrology only test
 ν_ss_quartz = FT(0.1)
@@ -34,7 +34,7 @@ ld = FT(0.5)
 λ_γ = FT(5e-7)
 
 # Conductance Model
-g1 = FT(300) # Wang et al: 141 sqrt(Pa) for Medlyn model; Natan used 300.
+g1 = FT(141) # Wang et al: 141 sqrt(Pa) for Medlyn model; Natan used 300.
 Drel = FT(1.6)
 g0 = FT(1e-4)
 

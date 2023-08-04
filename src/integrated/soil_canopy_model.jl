@@ -337,7 +337,7 @@ function ClimaLSM.source!(
     p::ClimaCore.Fields.FieldVector,
     model::EnergyHydrology,
 )
-    @. dY.soil.ϑ_l += -1 * p.root_extraction
+   @. dY.soil.ϑ_l += -1 * p.root_extraction
     @. dY.soil.ρe_int +=
         -1 *
         p.root_extraction *
