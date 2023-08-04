@@ -388,7 +388,6 @@ function ClimaLSM.make_update_aux(
         #unpack parameters         
         area_index = p.canopy.hydraulics.area_index
         LAI = area_index.leaf
-        SAI = area_index.stem
         earth_param_set = canopy.parameters.earth_param_set
         c = FT(LSMP.light_speed(earth_param_set))
         h = FT(LSMP.planck_constant(earth_param_set))
