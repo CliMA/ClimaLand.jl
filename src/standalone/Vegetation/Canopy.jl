@@ -417,7 +417,7 @@ function ClimaLSM.make_update_aux(
         @. APAR = plant_absorbed_ppfd(
             canopy.radiative_transfer,
             PAR / (energy_per_photon * N_a),
-            LAI+SAI,
+            LAI,
             K,
             θs,
             ground_albedo(canopy),
