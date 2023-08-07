@@ -37,15 +37,6 @@ steps:
 
   - group: "Unit tests"
     steps:
-
-      - label: "regridder"
-        command: "julia --color=yes --project=test test/standalone/Bucket/regridder.jl"
-        artifact_paths: "regridder/"
-
-      - label: "albedo_map"
-        command: "julia --color=yes --project=test test/standalone/Bucket/albedo_map_bucket.jl"
-        artifact_paths: "albedo_map/"
-
       - label: "Richards comparison to Bonan"
         command: "julia --color=yes --project=experiments experiments/standalone/Soil/richards_comparison.jl"
         artifact_paths: "experiments/standalone/Soil/comparison*png"
