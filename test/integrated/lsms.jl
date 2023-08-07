@@ -1,7 +1,7 @@
 using Test
 import ClimaLSM:
     name,
-    domain,
+    domain_name,
     prognostic_types,
     auxiliary_types,
     prognostic_vars,
@@ -18,7 +18,7 @@ using ClimaLSM
         domain::Any
     end
     ClimaLSM.name(::DummyModel1) = :m1
-    ClimaLSM.domain(::DummyModel1) = :surface
+    ClimaLSM.domain_name(::DummyModel1) = :surface
     ClimaLSM.auxiliary_vars(::DummyModel1) = (:a, :b)
     ClimaLSM.auxiliary_types(::DummyModel1{FT}) where {FT} = (FT, FT)
 
@@ -27,7 +27,7 @@ using ClimaLSM
     end
 
     ClimaLSM.name(::DummyModel2) = :m2
-    ClimaLSM.domain(::DummyModel2) = :surface
+    ClimaLSM.domain_name(::DummyModel2) = :surface
     ClimaLSM.auxiliary_vars(::DummyModel2) = (:c, :d)
     ClimaLSM.auxiliary_types(::DummyModel2{FT}) where {FT} = (FT, FT)
 

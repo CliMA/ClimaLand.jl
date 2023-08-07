@@ -80,7 +80,7 @@ interaction_vars(m::LandHydrology) = (:soil_infiltration,)
 
 interaction_types(m::LandHydrology{FT}) where {FT} = (FT,)
 
-interaction_domains(m::LandHydrology) = (:surface,)
+interaction_domain_names(m::LandHydrology) = (:surface,)
 
 #=
 If there is a pond present, flux BC should be -i_c

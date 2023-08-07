@@ -62,7 +62,7 @@ end
 ClimaLSM.prognostic_vars(model::PondModel) = (:η,)
 ClimaLSM.prognostic_types(model::PondModel{FT}) where {FT} = (FT,)
 ClimaLSM.name(::AbstractSurfaceWaterModel) = :surface_water
-ClimaLSM.domain(::AbstractSurfaceWaterModel) = :surface
+ClimaLSM.domain_name(::AbstractSurfaceWaterModel) = :surface
 
 function ClimaLSM.make_compute_exp_tendency(model::PondModel)
     function compute_exp_tendency!(dY, Y, p, t)

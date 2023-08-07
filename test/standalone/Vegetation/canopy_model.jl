@@ -268,7 +268,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
         Ref(Thermodynamics.Liquid()),
     )
     @test ρ_sfc == compute_ρ_sfc.(Ref(thermo_params), Ref(ts_in), T_sfc)
-    @test ClimaLSM.domain(canopy) == :surface
+    @test ClimaLSM.domain_name(canopy) == :surface
 end
 
 

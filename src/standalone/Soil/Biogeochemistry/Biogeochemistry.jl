@@ -14,6 +14,7 @@ import ClimaLSM:
     prognostic_vars,
     auxiliary_vars,
     name,
+    domain_name,
     prognostic_types,
     auxiliary_types,
     TopBoundary,
@@ -181,7 +182,7 @@ function SoilCO2Model{FT}(;
 end
 
 ClimaLSM.name(model::SoilCO2Model) = :soilco2
-ClimaLSM.domain(model::SoilCO2Model) = :subsurface
+ClimaLSM.domain_name(model::SoilCO2Model) = :subsurface
 
 
 ClimaLSM.prognostic_vars(::SoilCO2Model) = (:C,)

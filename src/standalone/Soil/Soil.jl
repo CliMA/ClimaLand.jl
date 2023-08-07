@@ -74,6 +74,7 @@ import ClimaLSM:
     prognostic_vars,
     auxiliary_vars,
     name,
+    domain_name,
     prognostic_types,
     auxiliary_types,
     AbstractSource,
@@ -119,7 +120,7 @@ and a fully integrated soil heat and water model, with phase change.
 abstract type AbstractSoilModel{FT} <: ClimaLSM.AbstractImExModel{FT} end
 
 ClimaLSM.name(::AbstractSoilModel) = :soil
-ClimaLSM.domain(::AbstractSoilModel) = :subsurface
+ClimaLSM.domain_name(::AbstractSoilModel) = :subsurface
 
 """
    horizontal_components!(dY::ClimaCore.Fields.FieldVector,

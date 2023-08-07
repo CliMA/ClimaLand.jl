@@ -16,7 +16,7 @@ export AbstractModel,
     auxiliary_types,
     make_set_initial_aux_state,
     name,
-    domain
+    domain_name
 
 import .Domains: coordinates
 ## Default methods for all models - to be in a seperate module at some point.
@@ -55,11 +55,11 @@ name(model::AbstractModel) =
     error("`name` not implemented for $(Base.typename(typeof(model)).wrapper)")
 
 """
-    domain(model::AbstractModel)
+    domain_name(model::AbstractModel)
 
-Returns a symbol indicating the model's domain, e.g. :surface or :subsurface. Only required for models that will be used as part of an LSM.
+Returns a symbol indicating the model's domain name, e.g. :surface or :subsurface. Only required for models that will be used as part of an LSM.
 """
-domain(model::AbstractModel) = error(
+domain_name(model::AbstractModel) = error(
     "`domain` not implemented for $(Base.typename(typeof(model)).wrapper)",
 )
 

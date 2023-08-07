@@ -57,7 +57,7 @@ function Domains.coordinates(model::AbstractLandModel)
         Domains.coordinates(getproperty(model, component))
     end
     domains_list = map(components) do (component)
-        domain(getproperty(model, component))
+        domain_name(getproperty(model, component))
     end
     coords = ClimaCore.Fields.FieldVector(;
         NamedTuple{Tuple(unique(domains_list))}(Tuple(unique(coords_list)))...,
@@ -73,7 +73,7 @@ function initialize_prognostic(
     Y_state_list = map(components) do (component)
         submodel = getproperty(model, component)
         zero_state =
-            map(_ -> zero(FT), getproperty(coords, domain(submodel)))
+            map(_ -> zero(FT), getproperty(coords, domain_name(submodel)))
         getproperty(initialize_prognostic(submodel, zero_state), component)
     end
     Y = ClimaCore.Fields.FieldVector(; NamedTuple{components}(Y_state_list)...)
@@ -88,7 +88,7 @@ function initialize_auxiliary(
     p_state_list = map(components) do (component)
         submodel = getproperty(model, component)
         zero_state =
-            map(_ -> zero(FT), getproperty(coords, domain(submodel)))
+            map(_ -> zero(FT), getproperty(coords, domain_name(submodel)))
         getproperty(initialize_auxiliary(submodel, zero_state), component)
     end
     p_interactions = initialize_interactions(model, coords)
@@ -112,7 +112,7 @@ This function should be called during `initialize_auxiliary` step.
 function initialize_interactions(land::AbstractLandModel, land_coords)
     vars = interaction_vars(land)
     types = interaction_types(land)
-    domains = interaction_domains(land)
+    domains = interaction_domain_names(land)
     interactions = map(zip(types, domains)) do (T, domain)
         zero_instance = zero(T)
         map(_ -> zero_instance, getproperty(land_coords, domain))
@@ -265,7 +265,7 @@ Returns the shared interaction variable types for the model in the form of a tup
 interaction_types(m::AbstractLandModel) = ()
 
 """
-   interaction_domains(m::AbstractLandModel)
+   interaction_domain_names(m::AbstractLandModel)
 
 Returns the interaction domain symbols in the form of a tuple e.g. :surface or :subsurface.
 
@@ -274,7 +274,7 @@ for multi-component models, not standalone components. Component-specific variab
 should be listed as prognostic or auxiliary variables which do not require this to
 initialize.
 """
-interaction_domains(m::AbstractLandModel) = ()
+interaction_domain_names(m::AbstractLandModel) = ()
 
 # Methods extended by the LSM models we support
 include("standalone/SurfaceWater/Pond.jl")

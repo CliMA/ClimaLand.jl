@@ -9,7 +9,7 @@ import ..Parameters as LSMP
 import ClimaLSM:
     AbstractExpModel,
     name,
-    domain,
+    domain_name,
     prognostic_vars,
     prognostic_types,
     auxiliary_vars,
@@ -164,7 +164,7 @@ function CanopyModel{FT}(;
 end
 
 ClimaLSM.name(::CanopyModel) = :canopy
-ClimaLSM.domain(::CanopyModel) = :surface
+ClimaLSM.domain_name(::CanopyModel) = :surface
 
 
 """
