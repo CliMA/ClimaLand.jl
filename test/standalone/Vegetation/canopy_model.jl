@@ -170,7 +170,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
         radiation = radiation,
     )
     Y, p, coords = ClimaLSM.initialize(canopy)
-
+    @test propertynames(p) == (:canopy,)
     for component in ClimaLSM.Canopy.canopy_components(canopy)
         @test propertynames(getproperty(p.canopy, component)) ==
               ClimaLSM.auxiliary_vars(getproperty(canopy, component))

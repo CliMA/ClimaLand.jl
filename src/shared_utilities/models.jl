@@ -60,7 +60,7 @@ name(model::AbstractModel) =
 Returns a symbol indicating the model's domain name, e.g. :surface or :subsurface. Only required for models that will be used as part of an LSM.
 """
 domain_name(model::AbstractModel) = error(
-    "`domain` not implemented for $(Base.typename(typeof(model)).wrapper)",
+    "`domain_name` not implemented for $(Base.typename(typeof(model)).wrapper)",
 )
 
 
@@ -268,12 +268,21 @@ Adjustments to this - for example because different auxiliary variables
 have different dimensions - require defining a new method.
 """
 function initialize_auxiliary(model::AbstractModel{FT}, state) where {FT}
-    initialize_vars(
+    p = initialize_vars(
         auxiliary_vars(model),
         auxiliary_types(model),
         state,
         name(model),
     )
+    if :domain ∈ propertynames(model)
+        p = add_dss_buffer_to_aux(p, model.domain)
+    else
+        error(
+            "Your model does not contain a domain. If this is intended, you will need a new method of initialize_auxiliary.",
+        )
+    end
+
+    return p
 end
 
 function initialize_vars(keys, types, state, model_name)

@@ -39,13 +39,12 @@ using ClimaLSM
 
 
     FT = Float32
-
     d = ClimaLSM.Domains.Point(; z_sfc = FT(0.0))
     m1 = DummyModel1{FT}(d)
     m2 = DummyModel2{FT}(d)
     m = DummyModel{FT}(m1, m2)
     Y, p, cds = ClimaLSM.initialize(m)
-
+    @test propertynames(p) == (:m1, :m2)
     function ClimaLSM.make_update_aux(::DummyModel1{FT}) where {FT}
         function update_aux!(p, Y, t)
             p.m1.b .= FT(10.0)

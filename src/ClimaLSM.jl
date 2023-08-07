@@ -17,9 +17,9 @@ include("shared_utilities/Domains.jl")
 include("shared_utilities/FileReader.jl")
 using .Domains
 include("shared_utilities/ntuple_utils.jl")
+include("shared_utilities/utils.jl")
 include("shared_utilities/models.jl")
 include("shared_utilities/drivers.jl")
-include("shared_utilities/utils.jl")
 include("shared_utilities/boundary_conditions.jl")
 include("shared_utilities/sources.jl")
 include("shared_utilities/implicit_tendencies.jl")
@@ -93,6 +93,13 @@ function initialize_auxiliary(
     end
     p_interactions = initialize_interactions(model, coords)
     p = (; p_interactions..., NamedTuple{components}(p_state_list)...)
+    domains_list = map(components) do (component)
+        submodel = getproperty(model, component)
+        getproperty(submodel, :domain)
+    end
+    for domain in unique(domains_list)
+        p = add_dss_buffer_to_aux(p, domain)
+    end
     return p
 end
 

@@ -147,7 +147,10 @@ end
     )
 
     Y, p, coords = initialize(soil)
-
+    # Here we do not add a dss buffer: check that `initialize`
+    # has not added a buffer to `p` and that it only contains the
+    # `soil` variables.
+    @test propertynames(p) == (:soil,)
     # specify ICs
     function init_soil!(Ysoil, z, params)
         function hydrostatic_profile(

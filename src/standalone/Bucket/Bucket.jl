@@ -24,7 +24,8 @@ using ClimaLSM:
     compute_ρ_sfc,
     AbstractExpModel,
     heaviside,
-    PrescribedAtmosphere
+    PrescribedAtmosphere,
+    add_dss_buffer_to_aux
 import ClimaLSM:
     make_update_aux,
     make_compute_exp_tendency,
@@ -204,12 +205,29 @@ struct BucketModel{
     domain::D
 end
 
+"""
+   BucketModel(; parameters::BucketModelParameters{FT, PSE},
+                 domain::D,
+                 atmosphere::ATM,
+                 radiation::RAD,
+               ) where {FT, PSE, ATM, RAD, D<: ClimaLSM.Domains.AbstractLSMDomain}
+
+An outer constructor for the `BucketModel`, which enforces the 
+constraints:
+1. The bucket model domain is of type <: ClimaLSM.Domains.AbstractLSMDomain
+2. Using an albedo read from a lat/lon file requires a global run.
+
+Since the bucket model has prognostic variables that live on the surface of the domain
+(snow water equivalent, bucket water content, runoff), as well as defined within 
+the entire domain (temperature as a function of depth), we make use of 
+ClimaLSM.Domains.AbstractLSMDomains which are set up for this use case.
+"""
 function BucketModel(;
     parameters::BucketModelParameters{FT, PSE},
-    domain::ClimaLSM.Domains.AbstractLSMDomain,
+    domain::D,
     atmosphere::ATM,
     radiation::RAD,
-) where {FT, PSE, ATM, RAD}
+) where {FT, PSE, ATM, RAD, D <: ClimaLSM.Domains.AbstractLSMDomain}
     if parameters.albedo isa BulkAlbedoMap
         typeof(domain) <: LSMSphericalShellDomain ? nothing :
         error("Using an albedo map requires a global run.")
@@ -264,9 +282,9 @@ function ClimaLSM.initialize(model::BucketModel{FT}) where {FT}
 
     Y = ClimaCore.Fields.FieldVector(; model_name => (; zip(keys, values)...))
 
-    # All aux variables for this model live on the surface
     p = initialize_auxiliary(model, surface_coords)
-
+    p = add_dss_buffer_to_aux(p, model.domain.surface)
+    p = add_dss_buffer_to_aux(p, model.domain.subsurface)
     return Y, p, ClimaLSM.Domains.coordinates(model.domain)
 end
 

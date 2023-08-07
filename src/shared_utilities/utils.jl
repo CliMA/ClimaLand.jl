@@ -20,8 +20,67 @@ Helper function used in computing tendencies of vertical diffusion terms.
 """
 to_scalar_coefs(vector_coefs) = map(vector_coef -> vector_coef.u₃, vector_coefs)
 
+
 """
-   dss!(Y::ClimaCore.Fields.FieldVector, p::NamedTuple, t::FT)
+    add_dss_buffer_to_aux(p::NamedTuple, domain::Domains.AbstractDomain)
+
+Fallback method for `add_dss_buffer_to_aux` which does not add a dss buffer.
+"""
+add_dss_buffer_to_aux(p::NamedTuple, domain::Domains.AbstractDomain) = p
+
+"""
+    add_dss_buffer_to_aux(
+        p::NamedTuple,
+        domain::Union{Domains.Plane, Domains.SphericalSurface},
+    )
+
+Adds a dss buffer corresponding to `domain.space` to `p` with the name `dss_buffer_2d`, 
+appropriate for a 2D domain.
+
+This buffer is added so that we preallocate memory for the dss step and do not allocate it
+at every timestep. We use a name which specifically denotes that 
+the buffer is on a 2d space. This is because some models
+require both a buffer on the 3d space as well as on the surface 
+2d space, e.g. in the case when they have prognostic variables that are only 
+defined on the surface space.
+"""
+function add_dss_buffer_to_aux(
+    p::NamedTuple,
+    domain::Union{Domains.Plane, Domains.SphericalSurface},
+)
+    buffer =
+        ClimaCore.Spaces.create_dss_buffer(ClimaCore.Fields.zeros(domain.space))
+    return merge(p, (; dss_buffer_2d = buffer))
+end
+
+"""
+    add_dss_buffer_to_aux(
+        p::NamedTuple,
+        domain::Union{Domains.HybridBox, Domains.SphericalShell},
+    )
+
+Adds a 3d dss buffer corresponding to `domain.space` to `p` with the name `dss_buffer_3d`, 
+appropriate for a 3D domain.
+
+This buffer is added so that we preallocate memory for the dss step and do not allocate it
+at every timestep. We use a name which specifically denotes that 
+the buffer is on a 3d space. This is because some models
+require both a buffer on the 3d space as well as on the surface 
+2d space, e.g. in the case when they have prognostic variables that are only 
+defined on the surface space.
+"""
+function add_dss_buffer_to_aux(
+    p::NamedTuple,
+    domain::Union{Domains.HybridBox, Domains.SphericalShell},
+)
+    buffer =
+        ClimaCore.Spaces.create_dss_buffer(ClimaCore.Fields.zeros(domain.space))
+    return merge(p, (; dss_buffer_3d = buffer))
+end
+
+
+"""
+      dss!(Y::ClimaCore.Fields.FieldVector, p::NamedTuple, t::FT)
 
 Computes the weighted direct stiffness summation and updates `Y` in place.
 In the case of a column domain, no dss operations are performed.
@@ -33,12 +92,12 @@ function dss!(
 ) where {FT}
     for key in propertynames(Y)
         property = getproperty(Y, key)
-        dss_helper!(property, axes(property))
+        dss_helper!(property, axes(property), p)
     end
 end
 
 """
-    dss_helper!(field_vec::ClimaCore.Fields.FieldVector, _)
+    dss_helper!(field_vec::ClimaCore.Fields.FieldVector, space, p::NamedTuple)
 
 Method of `dss_helper!` which unpacks properties of Y when on a
 domain that is 2-dimensional in the horizontal.
@@ -48,62 +107,87 @@ FieldVectors or Fields, and that the final unpacked variable is a Field.
 This method is invoked when the current property itself contains additional
 property(ies).
 """
-function dss_helper!(field_vec::ClimaCore.Fields.FieldVector, _)
+function dss_helper!(
+    field_vec::ClimaCore.Fields.FieldVector,
+    space,
+    p::NamedTuple,
+)
     for key in propertynames(field_vec)
         property = getproperty(field_vec, key)
-        dss_helper!(property, axes(property))
+        dss_helper!(property, axes(property), p)
     end
 end
 
 """
     dss_helper!(
         field::ClimaCore.Fields.Field,
-        domain::Union{
-            ClimaCore.Spaces.ExtrudedFiniteDifferenceSpace,
-            ClimaCore.Spaces.AbstractSpectralElementSpace,
-        })
+        space::ClimaCore.Spaces.ExtrudedFiniteDifferenceSpace,
+        p::NamedTuple)
 
-Method of `dss_helper!` which performs dss on fields of Y when on a
-domain that is 2-dimensional in the horizontal.
+Method of `dss_helper!` which performs dss on a Field which is defined
+on a 3-dimensional domain.
 
 The assumption is that Y contains FieldVectors which themselves contain either
 FieldVectors or Fields, and that the final unpacked variable is a Field.
 This method is invoked when the element cannot be unpacked further.
+We further assume that all fields in `Y` are defined on cell centers.
 """
 function dss_helper!(
     field::ClimaCore.Fields.Field,
-    domain::Union{
-        ClimaCore.Spaces.ExtrudedFiniteDifferenceSpace,
-        ClimaCore.Spaces.AbstractSpectralElementSpace,
-    },
+    space::ClimaCore.Spaces.ExtrudedFiniteDifferenceSpace,
+    p::NamedTuple,
 )
-    Spaces.weighted_dss!(field)
+    buffer = p.dss_buffer_3d
+    ClimaCore.Spaces.weighted_dss!(field, buffer)
+end
+
+"""
+    dss_helper!(
+        field::ClimaCore.Fields.Field,
+        space::ClimaCore.Spaces.AbstractSpectralElementSpace,
+        p::NamedTuple)
+
+Method of `dss_helper!` which performs dss on a Field which is defined
+on a 2-dimensional domain.
+
+The assumption is that Y contains FieldVectors which themselves contain either
+FieldVectors or Fields, and that the final unpacked variable is a Field.
+This method is invoked when the element cannot be unpacked further.
+We further assume that all fields in `Y` are defined on cell centers.
+"""
+function dss_helper!(
+    field::ClimaCore.Fields.Field,
+    space::ClimaCore.Spaces.AbstractSpectralElementSpace,
+    p::NamedTuple,
+)
+    buffer = p.dss_buffer_2d
+    ClimaCore.Spaces.weighted_dss!(field, buffer)
 end
 
 """
     dss_helper!(
         field::Union{ClimaCore.Fields.Field, Vector},
-        domain::Union{
+        space::Union{
             ClimaCore.Spaces.FiniteDifferenceSpace,
             ClimaCore.Spaces.PointSpace,
             Tuple,
-        })
+        }, _)
 
-Computes the appropriate weighted direct stiffness summation based on
-the domain type, updates `Y` in place.
+Method of `dss_helper!` which does not perform dss.
 
-For spaces that don't use spectral elements (FiniteDifferenceSpace, PointSpace,
-etc), no dss is needed.
-Model components with no prognostic variables appear in Y as empty Vectors, and
-also do not need dss.
+This is intended for spaces that don't use spectral 
+elements (FiniteDifferenceSpace, PointSpace, etc).
+Model components with no prognostic variables appear in Y as empty 
+Vectors, and also do not need dss.
 """
 function dss_helper!(
     field::Union{ClimaCore.Fields.Field, Vector},
-    domain::Union{
+    space::Union{
         ClimaCore.Spaces.FiniteDifferenceSpace,
         ClimaCore.Spaces.PointSpace,
         Tuple,
     },
+    _,
 ) end
 
 """

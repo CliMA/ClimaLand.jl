@@ -310,6 +310,7 @@ function initialize_auxiliary(model::CanopyModel{FT}, coords) where {FT}
         getproperty(initialize_auxiliary(submodel, zero_state), component)
     end
     p = (; name(model) => NamedTuple{components}(p_state_list))
+    p = ClimaLSM.add_dss_buffer_to_aux(p, model.domain)
     return p
 end
 

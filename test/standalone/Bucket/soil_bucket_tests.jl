@@ -98,6 +98,30 @@ for bucket_domain in bucket_domains
         )
         # Initial conditions with no moisture
         Y, p, coords = initialize(model)
+        # test if the correct dss buffers were added to aux.
+        # We only need to add a dss buffer when there is a horizontal
+        # space (spectral element space). So, we check that it is added
+        # in the case of the MultiColumn and SphericalShell domains,
+        # and check that it is not added in the single column case.
+        if typeof(model.domain) <: Union{
+            ClimaLSM.Domains.LSMMultiColumnDomain,
+            ClimaLSM.Domains.LSMSphericalShellDomain,
+        }
+            @test typeof(p.dss_buffer_3d) == typeof(
+                ClimaCore.Spaces.create_dss_buffer(
+                    ClimaCore.Fields.zeros(bucket_domain.subsurface.space),
+                ),
+            )
+            @test typeof(p.dss_buffer_2d) == typeof(
+                ClimaCore.Spaces.create_dss_buffer(
+                    ClimaCore.Fields.zeros(bucket_domain.surface.space),
+                ),
+            )
+        else
+            @test propertynames(p) == (:bucket,)
+        end
+
+
         Y.bucket.T .= init_temp.(coords.subsurface.z, 280.0)
         Y.bucket.W .= 0.0 # no moisture
         Y.bucket.Ws .= 0.0 # no runoff

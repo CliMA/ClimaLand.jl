@@ -5,6 +5,7 @@ using ClimaLSM: Domains, condition, SavingAffect, saving_initialize
 
 TestFloatTypes = (Float32, Float64)
 
+## Callback tests
 mutable struct Integrator{FT}
     t::FT
     p::Array{FT}
@@ -106,17 +107,16 @@ end
     end
 end
 
-@testset "dss! - 1D surface spaces" begin
+
+## DSS 0D/1D tests
+@testset "dss! - 0D/1D spaces" begin
     for FT in TestFloatTypes
         # Test for Spaces.PointSpace and Spaces.FiniteDifferenceSpace
-        coord = Geometry.ZPoint(FT(1))
-        space1 = Spaces.PointSpace(coord)
-
-        model_domain = Domains.Column(; zlim = (FT(-1), FT(0)), nelements = 10)
-        space2 = model_domain.space
-        spaces = (space1, space2)
-
-        for space in spaces
+        domain1 = Domains.Point(; z_sfc = FT(0))
+        domain2 = Domains.Column(; zlim = FT.((-1.0, 0.0)), nelements = (5))
+        domains = (domain1, domain2)
+        for domain in domains
+            space = domain.space
             field = Fields.coordinate_field(space)
             subfield1 = similar(field)
             parent(subfield1) .= parent(copy(field)) .+ FT(1)
@@ -128,16 +128,17 @@ end
             Y_copy = copy(Y)
             p = (;)
             ClimaLSM.dss!(Y, p, FT(0))
-
+            @test p == (;)
+            @test ClimaLSM.add_dss_buffer_to_aux(p, domain) == p
             # On a 1D space, we expect dss! to do nothing
             @test Y == Y_copy
         end
     end
 end
 
-@testset "dss! - 2D surface spaces" begin
+@testset "dss! - 2D spaces" begin
     for FT in TestFloatTypes
-        # Test for Spaces.SpectralElementSpace2D and Spaces.ExtrudedFiniteDifferenceSpace
+        # Test for Spaces.SpectralElementSpace2D
         domain1 = Domains.Plane(;
             xlim = FT.((0.0, 1.0)),
             ylim = FT.((0.0, 1.0)),
@@ -145,22 +146,21 @@ end
             periodic = (true, true),
             npolynomial = 1,
         )
-        domain2 = Domains.HybridBox(;
-            xlim = FT.((0.0, 1.0)),
-            ylim = FT.((0.0, 1.0)),
-            zlim = FT.((-1.0, 0.0)),
-            nelements = (5, 2, 5),
+        domain2 = Domains.SphericalSurface(;
+            radius = FT(2),
+            nelements = 10,
             npolynomial = 3,
         )
 
-        spaces = (domain1.space, domain2.space.horizontal_space)
-
-        for space in spaces
+        domains = (domain1, domain2)
+        for domain in domains
+            space = domain.space
             field = Fields.zeros(space)
             subfield1 = Fields.zeros(space)
             subfield2 = Fields.zeros(space)
 
-            # make fields non-constant
+            # make fields non-constant in order to check the
+            # impact of the dss step
             for i in eachindex(parent(field))
                 parent(field)[i] = sin(i)
                 parent(subfield1)[i] = cos(i)
@@ -173,9 +173,69 @@ end
             )
             Y_copy = copy(Y)
             p = (;)
+            p = ClimaLSM.add_dss_buffer_to_aux(p, domain)
+            @test typeof(p.dss_buffer_2d) == typeof(
+                ClimaCore.Spaces.create_dss_buffer(
+                    ClimaCore.Fields.zeros(domain.space),
+                ),
+            )
             ClimaLSM.dss!(Y, p, FT(0))
 
             # On a 2D space, we expect dss! to change Y
+            @test Y.field != Y_copy.field
+            @test Y.subfields.subfield1 != Y_copy.subfields.subfield1
+            @test Y.subfields.subfield2 != Y_copy.subfields.subfield2
+        end
+    end
+end
+
+@testset "dss! - 3D spaces" begin
+    for FT in TestFloatTypes
+        domain1 = Domains.HybridBox(;
+            xlim = FT.((0.0, 1.0)),
+            ylim = FT.((0.0, 1.0)),
+            zlim = FT.((0.0, 1.0)),
+            nelements = (2, 2, 2),
+            periodic = (true, true),
+            npolynomial = 1,
+        )
+        domain2 = Domains.SphericalShell(;
+            radius = FT(2),
+            height = FT(1.0),
+            nelements = (10, 5),
+            npolynomial = 3,
+        )
+
+        domains = (domain1, domain2)
+        for domain in domains
+            space = domain.space
+            field = Fields.zeros(space)
+            subfield1 = Fields.zeros(space)
+            subfield2 = Fields.zeros(space)
+
+            # make fields non-constant in order to check
+            # the impact of the dss step
+            for i in eachindex(parent(field))
+                parent(field)[i] = sin(i)
+                parent(subfield1)[i] = cos(i)
+                parent(subfield2)[i] = sin(i) * cos(i)
+            end
+
+            Y = Fields.FieldVector(
+                field = field,
+                subfields = (subfield1 = subfield1, subfield2 = subfield2),
+            )
+            Y_copy = copy(Y)
+            p = (;)
+            p = ClimaLSM.add_dss_buffer_to_aux(p, domain)
+            @test typeof(p.dss_buffer_3d) == typeof(
+                ClimaCore.Spaces.create_dss_buffer(
+                    ClimaCore.Fields.zeros(domain.space),
+                ),
+            )
+            ClimaLSM.dss!(Y, p, FT(0))
+
+            # On a 3D space, we expect dss! to change Y
             @test Y.field != Y_copy.field
             @test Y.subfields.subfield1 != Y_copy.subfields.subfield1
             @test Y.subfields.subfield2 != Y_copy.subfields.subfield2
