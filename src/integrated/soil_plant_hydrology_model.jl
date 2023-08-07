@@ -120,7 +120,7 @@ interaction_vars(m::SoilPlantHydrologyModel) = (:root_extraction,)
 
 interaction_types(m::SoilPlantHydrologyModel{FT}) where {FT} = (FT,)
 
-interaction_domains(m::SoilPlantHydrologyModel) = (:subsurface,)
+interaction_domain_names(m::SoilPlantHydrologyModel) = (:subsurface,)
 
 """
     make_interactions_update_aux(

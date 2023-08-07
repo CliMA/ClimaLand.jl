@@ -182,12 +182,12 @@ interaction_types(m::SoilCanopyModel{FT}) where {FT} =
     (FT, FT, FT, FT, FT, FT, FT, FT)
 
 """
-    interaction_domains(m::SoilCanopyModel)
+    interaction_domain_names(m::SoilCanopyModel)
 
-The domains of the additional auxiliary variables that are 
+The domain names of the additional auxiliary variables that are 
 included in the integrated Soil-Canopy model.
 """
-interaction_domains(m::SoilCanopyModel) = (
+interaction_domain_names(m::SoilCanopyModel) = (
     :subsurface,
     :surface,
     :surface,
