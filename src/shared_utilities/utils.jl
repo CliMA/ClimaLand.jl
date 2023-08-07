@@ -72,8 +72,11 @@ function dss_helper!(
         ClimaCore.Spaces.ExtrudedFiniteDifferenceSpace,
         ClimaCore.Spaces.AbstractSpectralElementSpace,
     },
-)
-    Spaces.weighted_dss!(field)
+)       
+    field_buffer = Spaces.create_dss_buffer(field)
+    Spaces.weighted_dss_start!(field, field_buffer)
+    Spaces.weighted_dss_internal!(field, field_buffer)
+    Spaces.weighted_dss_ghost!(field, field_buffer)
 end
 
 """
