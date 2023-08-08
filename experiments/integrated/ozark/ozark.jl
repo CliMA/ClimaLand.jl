@@ -203,7 +203,7 @@ set_initial_aux_state!(p, Y, t0);
 # Simulation
 sv = (;
     t = Array{FT}(undef, length(saveat)),
-    saveval = Array{ClimaCore.Fields.FieldVector}(undef, length(saveat)),
+    saveval = Array{NamedTuple}(undef, length(saveat)),
 )
 cb = ClimaLSM.NonInterpSavingCallback(sv, saveat)
 

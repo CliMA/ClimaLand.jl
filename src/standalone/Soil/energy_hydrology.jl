@@ -272,7 +272,7 @@ end
                           domain::Union{HybridBox, SphericalShell},
                           lateral_flow::Val{true},
                           model::EnergyHydrology,
-                          p::ClimaCore.Fields.FieldVector)
+                          p::NamedTuple)
 
 Updates dY in place by adding in the tendency terms resulting from
 horizontal derivative operators for the `EnergyHydrology` model,
@@ -288,7 +288,7 @@ function horizontal_components!(
     domain::Union{HybridBox, SphericalShell},
     lateral_flow::Val{true},
     model::EnergyHydrology,
-    p::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
     z::ClimaCore.Fields.Field,
 )
     hdiv = Operators.WeakDivergence()
@@ -409,7 +409,7 @@ end
      source!(dY::ClimaCore.Fields.FieldVector,
              src::PhaseChange{FT},
              Y::ClimaCore.Fields.FieldVector,
-             p::ClimaCore.Fields.FieldVector,
+             p::NamedTuple,
              model
              )
 
@@ -420,7 +420,7 @@ function ClimaLSM.source!(
     dY::ClimaCore.Fields.FieldVector,
     src::PhaseChange{FT},
     Y::ClimaCore.Fields.FieldVector,
-    p::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
     model,
 ) where {FT}
     params = model.parameters

@@ -563,7 +563,7 @@ end
         s::PrescribedSoil{FT},
         model::PlantHydraulicsModel{FT},
         Y::ClimaCore.Fields.FieldVector,
-        p::ClimaCore.Fields.FieldVector,
+        p::NamedTuple,
         t::FT,
     )::FT where {FT}
 
@@ -579,7 +579,7 @@ function root_flux_per_ground_area!(
     s::PrescribedSoil{FT},
     model::PlantHydraulicsModel{FT},
     Y::ClimaCore.Fields.FieldVector,
-    p::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
     t::FT,
 ) where {FT}
 

@@ -92,10 +92,7 @@ function initialize_auxiliary(
         getproperty(initialize_auxiliary(submodel, zero_state), component)
     end
     p_interactions = initialize_interactions(model, coords)
-    p = ClimaCore.Fields.FieldVector(;
-        p_interactions...,
-        NamedTuple{components}(p_state_list)...,
-    )
+    p = (; p_interactions..., NamedTuple{components}(p_state_list)...)
     return p
 end
 

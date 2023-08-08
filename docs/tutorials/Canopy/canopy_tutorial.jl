@@ -293,7 +293,7 @@ saveat = Array(t0:(n * dt):tf)
 
 sv = (;
     t = Array{FT}(undef, length(saveat)),
-    saveval = Array{ClimaCore.Fields.FieldVector}(undef, length(saveat)),
+    saveval = Array{NamedTuple}(undef, length(saveat)),
 )
 cb = ClimaLSM.NonInterpSavingCallback(sv, saveat);
 

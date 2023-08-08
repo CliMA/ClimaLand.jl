@@ -196,7 +196,7 @@ end
                           domain::Union{HybridBox, SphericalShell},
                           lateral_flow::Val{true},
                           model::RichardsModel,
-                          p::ClimaCore.Fields.FieldVector)
+                          p::NamedTuple)
 
 Updates dY in place by adding in the tendency terms resulting from
 horizontal derivative operators for the RichardsModel,
@@ -212,7 +212,7 @@ function horizontal_components!(
     domain::Union{HybridBox, SphericalShell},
     lateral_flow::Val{true},
     model::RichardsModel,
-    p::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
     z::ClimaCore.Fields.Field,
 )
     hdiv = Operators.WeakDivergence()

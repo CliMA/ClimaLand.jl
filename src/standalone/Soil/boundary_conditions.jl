@@ -211,7 +211,7 @@ function ClimaLSM.boundary_flux(
     model,
     Δz::ClimaCore.Fields.Field,
     Y::ClimaCore.Fields.FieldVector,
-    p::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
     t,
 )::ClimaCore.Fields.Field
     return bc.bc(p, t) .+ ClimaCore.Fields.zeros(axes(Δz))
@@ -224,7 +224,7 @@ end
                            model::RichardsModel,
                            Δz::ClimaCore.Fields.Field,
                            Y::ClimaCore.Fields.FieldVector,
-                           p::ClimaCore.Fields.FieldVector,
+                           p::NamedTuple,
                            t,
                            )::ClimaCore.Fields.Field
 
@@ -241,7 +241,7 @@ function ClimaLSM.boundary_flux(
     model::RichardsModel,
     Δz::ClimaCore.Fields.Field,
     Y::ClimaCore.Fields.FieldVector,
-    p::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
     t,
 )::ClimaCore.Fields.Field
     precip = bc.precip(t) .+ ClimaCore.Fields.zeros(axes(Δz))
@@ -254,7 +254,7 @@ end
                            model::AbstractSoilModel,
                            Δz::ClimaCore.Fields.Field,
                            Y::ClimaCore.Fields.FieldVector,
-                           p::ClimaCore.Fields.FieldVector,
+                           p::NamedTuple,
                            t,
                            )::ClimaCore.Fields.Field
 
@@ -267,7 +267,7 @@ function ClimaLSM.boundary_flux(
     model::AbstractSoilModel,
     Δz::ClimaCore.Fields.Field,
     Y::ClimaCore.Fields.FieldVector,
-    p::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
     t,
 )::ClimaCore.Fields.Field
     # Approximate K_bc ≈ K_c, ψ_bc ≈ ψ_c (center closest to the boundary)
@@ -290,7 +290,7 @@ end
                            model::AbstractSoilModel,
                            Δz::ClimaCore.Fields.Field,
                            Y::ClimaCore.Fields.FieldVector,
-                           p::ClimaCore.Fields.FieldVector,
+                           p::NamedTuple,
                            t,
                            )::ClimaCore.Fields.Field
 
@@ -303,7 +303,7 @@ function ClimaLSM.boundary_flux(
     model::AbstractSoilModel,
     Δz::ClimaCore.Fields.Field,
     Y::ClimaCore.Fields.FieldVector,
-    p::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
     t,
 )::ClimaCore.Fields.Field
     # Approximate K_bc ≈ K_c, ψ_bc ≈ ψ_c (center closest to the boundary)
@@ -328,7 +328,7 @@ end
                            model::EnergyHydrology,
                            Δz::ClimaCore.Fields.Field,
                            Y::ClimaCore.Fields.FieldVector,
-                           p::ClimaCore.Fields.FieldVector,
+                           p::NamedTuple,
                            t,
                            )::ClimaCore.Fields.Field
 
@@ -341,7 +341,7 @@ function ClimaLSM.boundary_flux(
     model::EnergyHydrology,
     Δz::ClimaCore.Fields.Field,
     Y::ClimaCore.Fields.FieldVector,
-    p::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
     t,
 )::ClimaCore.Fields.Field
     # Approximate κ_bc ≈ κ_c (center closest to the boundary)
@@ -359,7 +359,7 @@ end
                            model::EnergyHydrology,
                            Δz::ClimaCore.Fields.Field,
                            Y::ClimaCore.Fields.FieldVector,
-                           p::ClimaCore.Fields.FieldVector,
+                           p::NamedTuple,
                            t,
                            )::ClimaCore.Fields.Field
 
@@ -372,7 +372,7 @@ function ClimaLSM.boundary_flux(
     model::EnergyHydrology,
     Δz::ClimaCore.Fields.Field,
     Y::ClimaCore.Fields.FieldVector,
-    p::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
     t,
 )::ClimaCore.Fields.Field
     # Approximate κ_bc ≈ κ_c (center closest to the boundary)
@@ -389,7 +389,7 @@ end
                            model::AbstractSoilModel,
                            Δz::ClimaCore.Fields.Field,
                            Y::ClimaCore.Fields.FieldVector,
-                           p::ClimaCore.Fields.FieldVector,
+                           p::NamedTuple,
                            t,
                            )::ClimaCore.Fields.Field
 
@@ -402,7 +402,7 @@ function ClimaLSM.boundary_flux(
     model::AbstractSoilModel,
     Δz::ClimaCore.Fields.Field,
     Y::ClimaCore.Fields.FieldVector,
-    p::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
     t,
 )::ClimaCore.Fields.Field
     K_c = Fields.level(p.soil.K, 1)

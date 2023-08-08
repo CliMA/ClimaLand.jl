@@ -150,7 +150,7 @@ ode_algo = CTS.ExplicitAlgorithm(timestepper)
 saveat = collect(t0:FT(10 * dt):tf)
 saved_values = (;
     t = Array{FT}(undef, length(saveat)),
-    saveval = Array{ClimaCore.Fields.FieldVector}(undef, length(saveat)),
+    saveval = Array{NamedTuple}(undef, length(saveat)),
 )
 cb = ClimaLSM.NonInterpSavingCallback(saved_values, saveat)
 

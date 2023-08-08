@@ -176,7 +176,7 @@ end
         s::PrognosticSoil,
         model::Canopy.PlantHydraulics.PlantHydraulicsModel{FT},
         Y::ClimaCore.Fields.FieldVector,
-        p::ClimaCore.Fields.FieldVector,
+        p::NamedTuple,
         t::FT,
     ) where {FT}
 
@@ -195,7 +195,7 @@ function PlantHydraulics.root_flux_per_ground_area!(
     s::PrognosticSoil,
     model::Canopy.PlantHydraulics.PlantHydraulicsModel{FT},
     Y::ClimaCore.Fields.FieldVector,
-    p::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
     t::FT,
 ) where {FT}
     fa .= sum(p.root_extraction)
@@ -218,7 +218,7 @@ struct RootExtraction{FT} <: Soil.AbstractSoilSource{FT} end
     ClimaLSM.source!(dY::ClimaCore.Fields.FieldVector,
                      src::RootExtraction,
                      Y::ClimaCore.Fields.FieldVector,
-                     p::ClimaCore.Fields.FieldVector
+                     p::NamedTuple
                      model::RichardsModel)
 
 An extension of the `ClimaLSM.source!` function,
@@ -230,7 +230,7 @@ function ClimaLSM.source!(
     dY::ClimaCore.Fields.FieldVector,
     src::RootExtraction,
     Y::ClimaCore.Fields.FieldVector,
-    p::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
     model::RichardsModel,
 )
     @. dY.soil.ϑ_l += -1 * p.root_extraction
