@@ -567,7 +567,7 @@ the total net carbon assimilation (`An`), the extinction coefficient (`K`),
 leaf area index (`LAI`) and the clumping index (`Ω`).
 """
 function compute_GPP(An::FT, K::FT, LAI::FT, Ω::FT) where {FT}
-    GPP = An * (1 - exp(-K * LAI * Ω)) / K
+    GPP = An * (1 - exp(-K * LAI * Ω)) / (K * Ω)
     return GPP
 end
 
