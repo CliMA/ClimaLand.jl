@@ -47,6 +47,24 @@ using ClimaLSM.Pond
         surface_water_args = surface_water_args,
     )
     Y, p, coords = initialize(land)
+    # test that the dss buffers are correctly added
+    @test propertynames(p) == (
+        :soil_infiltration,
+        :soil,
+        :surface_water,
+        :dss_buffer_3d,
+        :dss_buffer_2d,
+    )
+    @test typeof(p.dss_buffer_3d) == typeof(
+        ClimaCore.Spaces.create_dss_buffer(
+            ClimaCore.Fields.zeros(land.soil.domain.space),
+        ),
+    )
+    @test typeof(p.dss_buffer_2d) == typeof(
+        ClimaCore.Spaces.create_dss_buffer(
+            ClimaCore.Fields.zeros(land.surface_water.domain.space),
+        ),
+    )
     function init_soil!(Ysoil, coords, params)
         function hydrostatic_profile(
             z::FT,
@@ -148,6 +166,7 @@ end
         surface_water_args = surface_water_args,
     )
     Y, p, coords = initialize(land)
+    @test propertynames(p) == (:soil_infiltration, :soil, :surface_water)
     function init_soil!(Ysoil, coords, params)
         function hydrostatic_profile(
             z::FT,

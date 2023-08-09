@@ -65,6 +65,13 @@ FT = Float64
     end
 
     Y, p, coords = initialize(soil)
+    # test that the dss buffer was added
+    @test propertynames(p) == (:soil, :dss_buffer_3d)
+    @test typeof(p.dss_buffer_3d) == typeof(
+        ClimaCore.Spaces.create_dss_buffer(
+            ClimaCore.Fields.zeros(soil_domain.space),
+        ),
+    )
     init_soil!(Y, coords.x, coords.z, soil.parameters)
     dY = similar(Y)
 

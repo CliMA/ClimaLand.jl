@@ -319,6 +319,17 @@ end
         ϑ_l_0 = augmented_liquid_fraction.(plant_ν, S_l)
 
         Y, p, coords = initialize(model)
+        if typeof(domain) <: ClimaLSM.Domains.Point
+            @test propertynames(p) == (:canopy,)
+        elseif typeof(domain) <: ClimaLSM.Domains.Plane
+            @test propertynames(p) == (:canopy, :dss_buffer_2d)
+            @test typeof(p.dss_buffer_2d) == typeof(
+                ClimaCore.Spaces.create_dss_buffer(
+                    ClimaCore.Fields.zeros(domain.space),
+                ),
+            )
+        end
+
         dY = similar(Y)
         for i in 1:(n_stem + n_leaf)
             Y.canopy.hydraulics.ϑ_l[i] .= ϑ_l_0[i]
