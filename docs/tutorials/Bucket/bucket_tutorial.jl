@@ -307,7 +307,7 @@ prob =
 saveat = collect(t0:Δt:tf);
 saved_values = (;
     t = Array{FT}(undef, length(saveat)),
-    saveval = Array{ClimaCore.Fields.FieldVector}(undef, length(saveat)),
+    saveval = Array{NamedTuple}(undef, length(saveat)),
 );
 
 cb = ClimaLSM.NonInterpSavingCallback(saved_values, saveat);
@@ -316,8 +316,7 @@ sol = ODE.solve(prob, ode_algo; dt = Δt, saveat = saveat, callback = cb);
 
 # Extracting the solution from what is returned by the ODE.jl commands
 # is a bit clunky right now, but we are working on hiding some of this.
-# `parent` extracts the underlying data from the fields stored in
-# the ClimaCore.Fields.FieldVector,
+# `parent` extracts the underlying data from the ClimaCore.Fields.Field object
 # and we loop over the solution `sol` because of how the data is stored
 # within solutions returned by ODE.jl - indexed by timestep.
 W = [parent(sol.u[k].bucket.W)[1] for k in 1:length(sol.t)];

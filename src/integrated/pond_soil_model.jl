@@ -111,7 +111,7 @@ infiltration_at_point(η::FT, i_c::FT, P::FT) where {FT} =
 """
     function infiltration_capacity(
         Y::ClimaCore.Fields.FieldVector,
-        p::ClimaCore.Fields.FieldVector,
+        p::NamedTuple,
     )
 
 Function which computes the infiltration capacity of the soil based on
@@ -119,10 +119,7 @@ soil characteristics, moisture levels, and pond height.
 
 Defined such that positive means into soil.
 """
-function infiltration_capacity(
-    Y::ClimaCore.Fields.FieldVector,
-    p::ClimaCore.Fields.FieldVector,
-)
+function infiltration_capacity(Y::ClimaCore.Fields.FieldVector, p::NamedTuple)
     face_space = ClimaLSM.Domains.obtain_face_space(axes(Y.soil.ϑ_l))
     N = ClimaCore.Spaces.nlevels(face_space)
     space = axes(Y.surface_water.η)
@@ -133,11 +130,11 @@ function infiltration_capacity(
         space,
     )
     ψ_center = ClimaCore.Fields.Field(
-        ClimaCore.Fields.field_values(ClimaCore.Fields.level(p.ψ, N - 1)),
+        ClimaCore.Fields.field_values(ClimaCore.Fields.level(p.soil.ψ, N - 1)),
         space,
     )
     K_center = ClimaCore.Fields.Field(
-        ClimaCore.Fields.field_values(ClimaCore.Fields.level(p.K, N - 1)),
+        ClimaCore.Fields.field_values(ClimaCore.Fields.level(p.soil.K, N - 1)),
         space,
     )
     z_face = ClimaCore.Fields.Field(
@@ -172,7 +169,7 @@ function make_interactions_update_aux(
     land::LandHydrology{FT, SM, SW},
 ) where {FT, SM <: Soil.RichardsModel{FT}, SW <: Pond.PondModel{FT}}
     function update_aux!(p, Y, t)
-        i_c = infiltration_capacity(Y, p.soil)
+        i_c = infiltration_capacity(Y, p)
         @. p.soil_infiltration =
             -infiltration_at_point(
                 Y.surface_water.η,
@@ -203,7 +200,7 @@ end
     function Pond.surface_runoff(
         runoff::PrognosticRunoff{FT},
         Y::ClimaCore.Fields.FieldVector,
-        p::ClimaCore.Fields.FieldVector,
+        p::NamedTuple,
         t::FT,
     ) where {FT}
 
@@ -213,7 +210,7 @@ prognostically.
 function Pond.surface_runoff(
     runoff::PrognosticRunoff{FT},
     Y::ClimaCore.Fields.FieldVector,
-    p::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
     t::FT,
 ) where {FT}
     return @. -(runoff.precip(t) - p.soil_infiltration)
@@ -240,7 +237,7 @@ struct RunoffBC <: Soil.AbstractSoilBC end
         bc::RunoffBC,
         ::TopBoundary,
         Δz::FT,
-        p::ClimaCore.Fields.FieldVector,
+        p::NamedTuple,
         t::FT,
         params,
     )::ClimaCore.Fields.Field where {FT}
@@ -254,7 +251,7 @@ function ClimaLSM.boundary_flux(
     bc::RunoffBC,
     ::TopBoundary,
     Δz::ClimaCore.Fields.Field,
-    p::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
     t::FT,
     params,
 )::ClimaCore.Fields.Field where {FT}

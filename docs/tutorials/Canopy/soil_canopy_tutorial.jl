@@ -373,7 +373,7 @@ ode_algo = CTS.ExplicitAlgorithm(timestepper);
 
 sv = (;
     t = Array{FT}(undef, length(saveat)),
-    saveval = Array{ClimaCore.Fields.FieldVector}(undef, length(saveat)),
+    saveval = Array{ClimaCore.Fields.NamedTuple}(undef, length(saveat)),
 )
 cb = ClimaLSM.NonInterpSavingCallback(sv, saveat)
 

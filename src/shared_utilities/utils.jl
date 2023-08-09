@@ -21,12 +21,16 @@ Helper function used in computing tendencies of vertical diffusion terms.
 to_scalar_coefs(vector_coefs) = map(vector_coef -> vector_coef.u₃, vector_coefs)
 
 """
-   dss!(Y::ClimaCore.Fields.FieldVector, p::ClimaCore.Fields.FieldVector, T::FT)
+   dss!(Y::ClimaCore.Fields.FieldVector, p::NamedTuple, t::FT)
 
 Computes the weighted direct stiffness summation and updates `Y` in place.
 In the case of a column domain, no dss operations are performed.
 """
-function dss!(Y::ClimaCore.Fields.FieldVector{FT}, _, _) where {FT}
+function dss!(
+    Y::ClimaCore.Fields.FieldVector{FT},
+    p::NamedTuple,
+    t::FT,
+) where {FT}
     for key in propertynames(Y)
         property = getproperty(Y, key)
         dss_helper!(property, axes(property))
@@ -139,7 +143,8 @@ function (affect!::SavingAffect)(integrator)
         # @assert curr_t == integrator.t
         if curr_t == integrator.t
             affect!.saved_values.t[affect!.saveiter] = curr_t
-            affect!.saved_values.saveval[affect!.saveiter] = copy(integrator.p)
+            affect!.saved_values.saveval[affect!.saveiter] =
+                deepcopy(integrator.p)
         end
     end
 end

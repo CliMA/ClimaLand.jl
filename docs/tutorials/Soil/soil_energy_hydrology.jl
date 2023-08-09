@@ -260,7 +260,7 @@ dt = FT(30.0);
 saveat = collect(t0:FT(1000 * dt):tf)
 saved_values = (;
     t = Array{FT}(undef, length(saveat)),
-    saveval = Array{ClimaCore.Fields.FieldVector}(undef, length(saveat)),
+    saveval = Array{NamedTuple}(undef, length(saveat)),
 );
 cb = ClimaLSM.NonInterpSavingCallback(saved_values, saveat);
 

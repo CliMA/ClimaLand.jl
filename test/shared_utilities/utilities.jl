@@ -126,8 +126,8 @@ end
                 subfields = (subfield1 = subfield1),
             )
             Y_copy = copy(Y)
-
-            ClimaLSM.dss!(Y, FT(0), FT(0))
+            p = (;)
+            ClimaLSM.dss!(Y, p, FT(0))
 
             # On a 1D space, we expect dss! to do nothing
             @test Y == Y_copy
@@ -139,16 +139,16 @@ end
     for FT in TestFloatTypes
         # Test for Spaces.SpectralElementSpace2D and Spaces.ExtrudedFiniteDifferenceSpace
         domain1 = Domains.Plane(;
-            xlim = (0.0, 1.0),
-            ylim = (0.0, 1.0),
+            xlim = FT.((0.0, 1.0)),
+            ylim = FT.((0.0, 1.0)),
             nelements = (2, 2),
             periodic = (true, true),
             npolynomial = 1,
         )
         domain2 = Domains.HybridBox(;
-            xlim = (0.0, 1.0),
-            ylim = (0.0, 1.0),
-            zlim = (-1.0, 0.0),
+            xlim = FT.((0.0, 1.0)),
+            ylim = FT.((0.0, 1.0)),
+            zlim = FT.((-1.0, 0.0)),
             nelements = (5, 2, 5),
             npolynomial = 3,
         )
@@ -172,8 +172,8 @@ end
                 subfields = (subfield1 = subfield1, subfield2 = subfield2),
             )
             Y_copy = copy(Y)
-
-            ClimaLSM.dss!(Y, FT(0), FT(0))
+            p = (;)
+            ClimaLSM.dss!(Y, p, FT(0))
 
             # On a 2D space, we expect dss! to change Y
             @test Y.field != Y_copy.field

@@ -240,24 +240,26 @@ Adjustments to this - for example because different prognostic variables
 have different dimensions - require defining a new method.
 """
 function initialize_prognostic(model::AbstractModel{FT}, state) where {FT}
-    initialize_vars(
+    state_nt = initialize_vars(
         prognostic_vars(model),
         prognostic_types(model),
         state,
         name(model),
     )
+    return ClimaCore.Fields.FieldVector(; state_nt...)
 end
 
 """
     initialize_auxiliary(model::AbstractModel, state::Union{ClimaCore.Fields.Field, Vector{FT}})
 
-Returns a FieldVector of auxiliary variables for `model` with the required
+Returns a NamedTuple of auxiliary variables for `model` with the required
 structure, with values equal to `similar(state)`. This assumes that all
  auxiliary variables are defined over the entire domain,
-and that all auxiliary variables have the same dimension and type.
+and that all auxiliary variables have the same dimension and type. The auxiliary
+variables NamedTuple can also hold preallocated objects which are not Fields.
 
 If a model has no auxiliary variables,
-the returned FieldVector contains only an empty array.
+the returned NamedTuple contains only an empty array.
 
 The input `state` is an array-like object, usually a
 ClimaCore Field or a Vector{FT}.
@@ -277,15 +279,13 @@ end
 function initialize_vars(keys, types, state, model_name)
     FT = eltype(state)
     if length(keys) == 0
-        return ClimaCore.Fields.FieldVector(; model_name => FT[])
+        return (; model_name => FT[])
     else
         zero_states = map(types) do (T)
             zero_instance = ClimaCore.RecursiveApply.rzero(T)
             map(_ -> zero_instance, state)
         end
-        return ClimaCore.Fields.FieldVector(;
-            model_name => (; zip(keys, zero_states)...),
-        )
+        return (; model_name => (; zip(keys, zero_states)...))
     end
 end
 

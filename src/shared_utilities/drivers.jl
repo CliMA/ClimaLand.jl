@@ -131,7 +131,7 @@ end
     surface_fluxes(atmos::PrescribedAtmosphere{FT},
                    model::AbstractModel{FT},
                    Y::ClimaCore.Fields.FieldVector,
-                   p::ClimaCore.Fields.FieldVector,
+                   p::NamedTuple,
                    t::FT
                    ) where {FT <: AbstractFloat}
 
@@ -147,7 +147,7 @@ function surface_fluxes(
     atmos::PrescribedAtmosphere{FT},
     model::AbstractModel{FT},
     Y::ClimaCore.Fields.FieldVector,
-    p::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
     t::FT,
 ) where {FT <: AbstractFloat}
     T_sfc = surface_temperature(model, Y, p, t)
@@ -273,7 +273,7 @@ end
     net_radiation(radiation::PrescribedRadiativeFluxes{FT},
                   model::AbstractModel{FT},
                   Y::ClimaCore.Fields.FieldVector,
-                  p::ClimaCore.Fields.FieldVector,
+                  p::NamedTuple,
                   t::FT
                   ) where {FT <: AbstractFloat}
 
@@ -286,7 +286,7 @@ function net_radiation(
     radiation::PrescribedRadiativeFluxes{FT},
     model::AbstractModel{FT},
     Y::ClimaCore.Fields.FieldVector,
-    p::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
     t::FT,
 ) where {FT <: AbstractFloat}
     LW_d::FT = radiation.LW_d(t)

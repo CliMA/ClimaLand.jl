@@ -309,9 +309,7 @@ function initialize_auxiliary(model::CanopyModel{FT}, coords) where {FT}
         zero_state = map(_ -> zero(FT), coords)
         getproperty(initialize_auxiliary(submodel, zero_state), component)
     end
-    p = ClimaCore.Fields.FieldVector(;
-        name(model) => NamedTuple{components}(p_state_list),
-    )
+    p = (; name(model) => NamedTuple{components}(p_state_list))
     return p
 end
 

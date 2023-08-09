@@ -265,7 +265,7 @@ struct MicrobeProduction{FT} <: AbstractCarbonSource{FT} end
     ClimaLSM.source!(dY::ClimaCore.Fields.FieldVector,
                           src::MicrobeProduction,
                           Y::ClimaCore.Fields.FieldVector,
-                          p::ClimaCore.Fields.FieldVector,
+                          p::NamedTuple,
                           params)
 
 A method which extends the ClimaLSM source! function for the
@@ -275,7 +275,7 @@ function ClimaLSM.source!(
     dY::ClimaCore.Fields.FieldVector,
     src::MicrobeProduction,
     Y::ClimaCore.Fields.FieldVector,
-    p::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
     params,
 )
     dY.soilco2.C .+= p.soilco2.Sm
@@ -386,8 +386,8 @@ function ClimaLSM.make_update_aux(model::SoilCO2Model)
         θ_l = soil_moisture(model.driver.met, p, Y, t, z)
         Csom = soil_SOM_C(model.driver.soc, p, Y, t, z)
         θ_w = θ_l
-        p.soilco2.D = co2_diffusivity.(T_soil, θ_w, Ref(params))
-        p.soilco2.Sm = microbe_source.(T_soil, θ_l, Csom, Ref(params))
+        p.soilco2.D .= co2_diffusivity.(T_soil, θ_w, Ref(params))
+        p.soilco2.Sm .= microbe_source.(T_soil, θ_l, Csom, Ref(params))
     end
     return update_aux!
 end
@@ -416,7 +416,7 @@ end
         boundary::ClimaLSM.AbstractBoundary,
         Δz::ClimaCore.Fields.Field,
         Y::ClimaCore.Fields.FieldVector,
-        p::ClimaCore.Fields.FieldVector,
+        p::NamedTuple,
         t::FT,
     )::ClimaCore.Fields.Field where {FT}
 
@@ -429,7 +429,7 @@ function ClimaLSM.boundary_flux(
     boundary::ClimaLSM.AbstractBoundary,
     Δz::ClimaCore.Fields.Field,
     Y::ClimaCore.Fields.FieldVector,
-    p::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
     t::FT,
 )::ClimaCore.Fields.Field where {FT}
     return bc.bc(p, t) .+ ClimaCore.Fields.zeros(axes(Δz))
@@ -452,7 +452,7 @@ end
     boundary::ClimaLSM.TopBoundary,
     Δz::ClimaCore.Fields.Field,
     Y::ClimaCore.Fields.FieldVector,
-    p::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
     t::FT,
     )::ClimaCore.Fields.Field where {FT}
 
@@ -465,7 +465,7 @@ function ClimaLSM.boundary_flux(
     boundary::ClimaLSM.TopBoundary,
     Δz::ClimaCore.Fields.Field,
     Y::ClimaCore.Fields.FieldVector,
-    p::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
     t::FT,
 )::ClimaCore.Fields.Field where {FT}
     p_len = Spaces.nlevels(axes(p.soilco2.D))
@@ -481,7 +481,7 @@ end
         boundary::ClimaLSM.BottomBoundary,
         Δz::ClimaCore.Fields.Field,
         Y::ClimaCore.Fields.FieldVector,
-        p::ClimaCore.Fields.FieldVector,
+        p::NamedTuple,
         t::FT,
     )::ClimaCore.Fields.Field where {FT}
 
@@ -494,7 +494,7 @@ function ClimaLSM.boundary_flux(
     ::ClimaLSM.BottomBoundary,
     Δz::ClimaCore.Fields.Field,
     Y::ClimaCore.Fields.FieldVector,
-    p::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
     t::FT,
 )::ClimaCore.Fields.Field where {FT}
     D_c = Fields.level(p.soilco2.D, 1)
