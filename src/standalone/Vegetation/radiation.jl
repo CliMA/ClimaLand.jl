@@ -86,8 +86,6 @@ struct TwoStreamParameters{FT <: AbstractFloat}
     λ_γ_NIR::FT
     "number of layers to simulate radiative transfer through"
     n_layers::UInt64
-    "Proportion of diffuse radiation"
-    diff_perc::FT
 end
 
 """
@@ -116,7 +114,6 @@ function TwoStreamParameters{FT}(;
     λ_γ_PAR = FT(5e-7),
     λ_γ_NIR = FT(1.65e-6),
     n_layers = UInt64(20),
-    diff_perc = FT(0),
 ) where {FT}
     return TwoStreamParameters{FT}(
         ld,
@@ -128,7 +125,6 @@ function TwoStreamParameters{FT}(;
         λ_γ_PAR,
         λ_γ_NIR,
         n_layers,
-        diff_perc,
     )
 end
 

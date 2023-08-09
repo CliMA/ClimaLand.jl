@@ -1,5 +1,6 @@
 using Test
 
+using Dates
 using Statistics
 using Insolation
 using ClimaCore
@@ -59,9 +60,11 @@ init_temp(z::FT, value::FT) where {FT} = FT(value)
 for bucket_domain in bucket_domains
     @testset "Zero flux tendency" begin
         # Radiation
+        ref_time = DateTime(2005)
         SW_d = (t) -> eltype(t)(0.0)
         LW_d = (t) -> eltype(t)(5.67e-8 * 280.0^4.0)
-        bucket_rad = PrescribedRadiativeFluxes(FT, SW_d, LW_d; orbital_data)
+        bucket_rad =
+            PrescribedRadiativeFluxes(FT, SW_d, LW_d, ref_time; orbital_data)
         # Atmos
         precip = (t) -> eltype(t)(0) # no precipitation
         T_atmos = (t) -> eltype(t)(280.0)
@@ -76,6 +79,7 @@ for bucket_domain in bucket_domains
             u_atmos,
             q_atmos,
             P_atmos,
+            ref_time,
             h_atmos,
         )
         Δt = FT(1.0)
@@ -147,9 +151,11 @@ for bucket_domain in bucket_domains
 
     @testset "Energy + Moisture Conservation" begin
         "Radiation"
+        ref_time = DateTime(2005)
         SW_d = (t) -> eltype(t)(10.0)
         LW_d = (t) -> eltype(t)(300.0)
-        bucket_rad = PrescribedRadiativeFluxes(FT, SW_d, LW_d; orbital_data)
+        bucket_rad =
+            PrescribedRadiativeFluxes(FT, SW_d, LW_d, ref_time; orbital_data)
         "Atmos"
         precip = (t) -> eltype(t)(1e-6)
         T_atmos = (t) -> eltype(t)(298.0)
@@ -164,6 +170,7 @@ for bucket_domain in bucket_domains
             u_atmos,
             q_atmos,
             P_atmos,
+            ref_time,
             h_atmos,
         )
         Δt = FT(100.0)

@@ -8,6 +8,7 @@ import CLIMAParameters as CP
 using RootSolvers
 using SurfaceFluxes
 using StaticArrays
+using Dates
 
 using ClimaLSM
 using ClimaLSM.Domains: Column
@@ -54,12 +55,14 @@ NIR_albedo = FT(0.4)
 z_0m = 1e-4
 z_0b = 1e-5
 
+ref_time = DateTime(2005)
 SW_d = (t) -> eltype(t)(0)
 LW_d = (t) -> eltype(t)(301.15^4 * 5.67e-8)
 radiation = PrescribedRadiativeFluxes(
     FT,
     SW_d,
-    LW_d;
+    LW_d,
+    ref_time;
     orbital_data = Insolation.OrbitalData(),
 )
 # Atmos
@@ -86,6 +89,7 @@ atmos = PrescribedAtmosphere(
     u_atmos,
     q_atmos,
     P_atmos,
+    ref_time,
     h_atmos;
     gustiness = gustiness,
 )

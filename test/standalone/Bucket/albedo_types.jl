@@ -287,9 +287,11 @@ end
 
     for bucket_domain in bucket_domains
         # Radiation
+        ref_time = DateTime(2005)
         SW_d = (t) -> eltype(t)(0.0)
         LW_d = (t) -> eltype(t)(5.67e-8 * 280.0^4.0)
-        bucket_rad = PrescribedRadiativeFluxes(FT, SW_d, LW_d; orbital_data)
+        bucket_rad =
+            PrescribedRadiativeFluxes(FT, SW_d, LW_d, ref_time; orbital_data)
         # Atmos
         precip = (t) -> eltype(t)(0) # no precipitation
         T_atmos = (t) -> eltype(t)(280.0)
@@ -304,6 +306,7 @@ end
             u_atmos,
             q_atmos,
             P_atmos,
+            ref_time,
             h_atmos,
         )
         Δt = FT(1.0)
@@ -431,9 +434,16 @@ end
             albedo_model =
                 BulkAlbedoTemporal{FT}(regrid_dirpath, date_ref, t_start, space)
             # Radiation
+            ref_time = DateTime(2005)
             SW_d = (t) -> eltype(t)(0.0)
             LW_d = (t) -> eltype(t)(5.67e-8 * 280.0^4.0)
-            bucket_rad = PrescribedRadiativeFluxes(FT, SW_d, LW_d; orbital_data)
+            bucket_rad = PrescribedRadiativeFluxes(
+                FT,
+                SW_d,
+                LW_d,
+                ref_time;
+                orbital_data,
+            )
             # Atmos
             precip = (t) -> eltype(t)(0) # no precipitation
             T_atmos = (t) -> eltype(t)(280.0)
@@ -441,6 +451,7 @@ end
             q_atmos = (t) -> eltype(t)(0.0) # no atmos water
             h_atmos = FT(1e-8)
             P_atmos = (t) -> eltype(t)(101325)
+            ref_time = DateTime(2005)
             bucket_atmos = PrescribedAtmosphere(
                 precip,
                 precip,
@@ -448,6 +459,7 @@ end
                 u_atmos,
                 q_atmos,
                 P_atmos,
+                ref_time,
                 h_atmos,
             )
             Δt = FT(1.0)
