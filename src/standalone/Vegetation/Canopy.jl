@@ -249,15 +249,24 @@ function auxiliary_types(canopy::CanopyModel)
 end
 
 """
-    ground_albedo(canopy::CanopyModel{FT})
+    ground_albedo_PAR(canopy::CanopyModel{FT})
 
 Returns the soil albedo for the canopy model from the soil_driver of the canopy 
-model.
+model for PAR.
 """
-function ground_albedo(canopy::CanopyModel{FT}) where {FT}
-    return canopy.soil_driver.soil_α
+function ground_albedo_PAR(canopy::CanopyModel{FT}) where {FT}
+    return canopy.soil_driver.soil_α_PAR
 end
 
+"""
+    ground_albedo_NIR(canopy::CanopyModel{FT})
+
+Returns the soil albedo for the canopy model from the soil_driver of the canopy 
+model for NIR.
+"""
+function ground_albedo_NIR(canopy::CanopyModel{FT}) where {FT}
+    return canopy.soil_driver.soil_α_NIR
+end
 
 """
     initialize_prognostic(
@@ -373,6 +382,8 @@ function ClimaLSM.make_update_aux(
         # Other auxiliary variables being updated:
         APAR = p.canopy.radiative_transfer.apar
         PAR = p.canopy.radiative_transfer.par
+        ANIR = p.canopy.radiative_transfer.anir
+        NIR = p.canopy.radiative_transfer.nir
         β = p.canopy.hydraulics.β
         medlyn_factor = p.canopy.conductance.medlyn_term
         gs = p.canopy.conductance.gs
@@ -393,8 +404,10 @@ function ClimaLSM.make_update_aux(
         N_a = FT(LSMP.avogadro_constant(earth_param_set))
         grav = FT(LSMP.grav(earth_param_set))
         ρ_l = FT(LSMP.ρ_cloud_liq(earth_param_set))
-        (; ld, Ω, ρ_leaf, λ_γ) = canopy.radiative_transfer.parameters
-        energy_per_photon = h * c / λ_γ
+        (; ld, Ω, α_PAR_leaf, λ_γ_PAR, λ_γ_NIR) =
+            canopy.radiative_transfer.parameters
+        energy_per_photon_PAR = h * c / λ_γ_PAR
+        energy_per_photon_NIR = h * c / λ_γ_NIR
         R = FT(LSMP.gas_constant(earth_param_set))
         thermo_params = canopy.parameters.earth_param_set.thermo_params
         (; g1, g0, Drel) = canopy.conductance.parameters
@@ -410,15 +423,19 @@ function ClimaLSM.make_update_aux(
         q::FT = canopy.atmos.q(t)
 
         # update radiative transfer
+        RT = canopy.radiative_transfer
         K = extinction_coeff(ld, θs)
-        PAR .= compute_PAR(canopy.radiative_transfer, canopy.radiation, t)
-        @. APAR = plant_absorbed_ppfd(
-            canopy.radiative_transfer,
-            PAR / (energy_per_photon * N_a),
+        PAR .= compute_PAR(RT, canopy.radiation, t)
+        NIR .= compute_NIR(RT, canopy.radiation, t)
+        APAR, ANIR = compute_absorbances(
+            RT,
+            PAR ./ (energy_per_photon_PAR * N_a),
+            NIR ./ (energy_per_photon_NIR * N_a),
             LAI,
             K,
             θs,
-            ground_albedo(canopy),
+            ground_albedo_PAR(canopy),
+            ground_albedo_NIR(canopy),
         )
 
         # update plant hydraulics aux

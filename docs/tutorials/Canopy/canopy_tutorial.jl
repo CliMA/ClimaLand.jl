@@ -117,7 +117,8 @@ shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
 soil_driver = PrescribedSoil(
     root_depths = FT.(-Array(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0),
     ψ_soil = t -> eltype(t)(ψ_soil0),
-    soil_α = FT(0.2),
+    soil_α_PAR = FT(0.2),
+    soil_α_NIR = FT(0.4),
 );
 
 # Now, setup the canopy model by component.
@@ -125,10 +126,13 @@ soil_driver = PrescribedSoil(
 
 rt_params = TwoStreamParameters{FT}(;
     ld = FT(0.5),
-    ρ_leaf = FT(0.1),
-    τ = FT(0.1),
+    α_PAR_leaf = FT(0.1),
+    α_NIR_leaf = FT(0.45),
+    τ_PAR_leaf = FT(0.05),
+    τ_NIR_leaf = FT(0.25),
     Ω = FT(0.69),
-    λ_γ = FT(5e-7),
+    λ_γ_PAR = FT(5e-7),
+    λ_γ_NIR = FT(1.65e-6),
     n_layers = UInt64(20),
     diff_perc = FT(0.5),
 )

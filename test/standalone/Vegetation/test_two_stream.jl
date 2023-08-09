@@ -32,7 +32,7 @@ column_names = test_set[1, :]
 θs = acos.(FT.(test_set[2:end, column_names .== "mu"]))
 LAI = FT.(test_set[2:end, column_names .== "LAI"])
 ld = FT.(test_set[2:end, column_names .== "ld"])
-ρ_leaf = FT.(test_set[2:end, column_names .== "rho"])
+α_PAR_leaf = FT.(test_set[2:end, column_names .== "rho"])
 τ = FT.(test_set[2:end, column_names .== "tau"])
 a_soil = FT.(test_set[2:end, column_names .== "a_soil"])
 n_layers = UInt64.(test_set[2:end, column_names .== "n_layers"])
@@ -43,7 +43,8 @@ py_FAPAR = FT.(test_set[2:end, column_names .== "FAPAR"])
 
 # Python code does not use clumping index, and λ_γ does not impact FAPAR
 Ω = FT(1)
-λ_γ = FT(5e-7)
+λ_γ_PAR = FT(5e-7)
+λ_γ_NIR = FT(1.65e-6)
 
 @testset "Two-Stream Model Correctness" begin
 
@@ -53,10 +54,11 @@ py_FAPAR = FT.(test_set[2:end, column_names .== "FAPAR"])
         # Set the parameters based on the setup read from the file
         RT_params = TwoStreamParameters{FT}(;
             ld = ld[i],
-            ρ_leaf = ρ_leaf[i],
-            τ = τ[i],
+            α_PAR_leaf = α_PAR_leaf[i],
+            τ_PAR_leaf = τ[i],
             Ω = Ω,
-            λ_γ = λ_γ,
+            λ_γ_PAR = λ_γ_PAR,
+            λ_γ_NIR = λ_γ_NIR,
             n_layers = n_layers[i],
             diff_perc = PropDif[i],
         )
@@ -66,7 +68,16 @@ py_FAPAR = FT.(test_set[2:end, column_names .== "FAPAR"])
 
         # Compute the predicted FAPAR using the ClimaLSM TwoStream implementation
         K = extinction_coeff(ld[i], θs[i])
-        FAPAR = plant_absorbed_ppfd(RT, FT(1), LAI[i], K, θs[i], a_soil[i])
+        FAPAR = plant_absorbed_pfd(
+            RT,
+            FT(1),
+            RT_params.α_PAR_leaf,
+            RT_params.τ_PAR_leaf,
+            LAI[i],
+            K,
+            θs[i],
+            a_soil[i],
+        )
 
         # Check that the predictions are app. equivalent to the Python model
         @test isapprox(py_FAPAR[i], FAPAR, atol = 0.005)

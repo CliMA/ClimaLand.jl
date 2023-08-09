@@ -1,5 +1,5 @@
-t0 = FT(50 * 3600 * 24)# start mid year
-N_days = 275
+t0 = FT(120 * 3600 * 24)# start mid year
+N_days = 120
 tf = t0 + FT(3600 * 24 * N_days)
 dt = FT(60)
 n = 60

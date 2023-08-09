@@ -53,7 +53,8 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     κ_sat_frozen = Soil.κ_sat_frozen(κ_solid, ν, κ_ice)
     κ_sat_unfrozen = Soil.κ_sat_unfrozen(κ_solid, ν, κ_liq)
     emissivity = FT(0.99)
-    albedo = FT(0.2)
+    PAR_albedo = FT(0.2)
+    NIR_albedo = FT(0.4)
     z_0m = FT(0.001)
     z_0b = z_0m
     # Radiation
@@ -99,7 +100,8 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
         K_sat = K_sat,
         S_s = S_s,
         θ_r = θ_r,
-        albedo = albedo,
+        PAR_albedo = PAR_albedo,
+        NIR_albedo = NIR_albedo,
         emissivity = emissivity,
         z_0m = z_0m,
         z_0b = z_0b,
@@ -150,7 +152,8 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
         @test ClimaLSM.surface_emissivity(model, Y, p) == emissivity
         @test ClimaLSM.surface_evaporative_scaling(model, Y, p) == FT(1)
         @test ClimaLSM.surface_height(model, Y, p) == z_sfc
-        @test ClimaLSM.surface_albedo(model, Y, p) == albedo
+        @test ClimaLSM.surface_albedo(model, Y, p) ==
+              PAR_albedo / 2 + NIR_albedo / 2
         @test ClimaLSM.surface_temperature(model, Y, p, t) == T_sfc
 
         thermo_params =

@@ -66,8 +66,10 @@ radiative_transfer_args = (;
     parameters = BeerLambertParameters{FT}(;
         Ω = Ω,
         ld = ld,
-        ρ_leaf = ρ_leaf,
-        λ_γ = λ_γ,
+        α_PAR_leaf = α_PAR_leaf,
+        α_NIR_leaf = α_NIR_leaf,
+        λ_γ_PAR = λ_γ_PAR,
+        λ_γ_NIR = λ_γ_NIR,
     )
 )
 # Set up conductance
@@ -146,7 +148,7 @@ canopy_model_args = (; parameters = shared_params, domain = land_domain.surface)
 # debugging purposes), you would pass it as another element
 # of this tuple. The default if it is not passed is
 # a diagnostic (big leaf-computed) transpiration.
-soil_driver = PrognosticSoil(; soil_α = FT(0.2))
+soil_driver = PrognosticSoil(; soil_α_PAR = soil_α_PAR, soil_α_NIR = soil_α_NIR)
 land_input = (atmos = atmos, soil_driver = soil_driver, radiation = radiation)
 land = SoilPlantHydrologyModel{FT}(;
     land_args = land_input,

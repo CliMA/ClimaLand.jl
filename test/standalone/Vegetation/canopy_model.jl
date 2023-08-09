@@ -149,7 +149,8 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
 
     ψ_soil0 = FT(0.0)
 
-    soil_driver = PrescribedSoil(root_depths, (t::FT) -> ψ_soil0, FT(0.2))
+    soil_driver =
+        PrescribedSoil(root_depths, (t::FT) -> ψ_soil0, FT(0.2), FT(0.4))
 
     plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
         parameters = param_set,

@@ -18,8 +18,10 @@ struct PrescribedSoil{FT} <: AbstractSoilDriver{FT}
     root_depths::Vector{FT}
     "Prescribed soil potential (m) as a function of time"
     ψ_soil::Function
-    "Soil albedo"
-    soil_α::FT
+    "Soil albedo for PAR"
+    soil_α_PAR::FT
+    "Soil albedo for NIR"
+    soil_α_NIR::FT
 end
 
 """
@@ -35,9 +37,10 @@ specify the soil parameters by keyword arguments.
 function PrescribedSoil(;
     root_depths::Vector{FT} = FT.(-Array(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0),
     ψ_soil::Function = t -> eltype(t)(FT(0.0)),
-    soil_α::FT = FT(0.2),
+    soil_α_PAR::FT = FT(0.2),
+    soil_α_NIR::FT = FT(0.4),
 ) where {FT}
-    return PrescribedSoil{FT}(root_depths, ψ_soil, soil_α)
+    return PrescribedSoil{FT}(root_depths, ψ_soil, soil_α_PAR, soil_α_NIR)
 end
 
 """
@@ -56,7 +59,10 @@ have an albedo.
 $(DocStringExtensions.FIELDS)
 """
 struct PrognosticSoil{FT} <: AbstractSoilDriver{FT}
-    soil_α::FT
+    "Soil albedo for PAR"
+    soil_α_PAR::FT
+    "Soil albedo for NIR"
+    soil_α_NIR::FT
 end
 
 """
@@ -65,6 +71,9 @@ end
 An outer constructor for the PrognosticSoil soil driver allowing the user to
 specify the soil albedo by keyword argument.
 """
-function PrognosticSoil(; soil_α::FT = FT(0.2)) where {FT}
-    return PrognosticSoil{FT}(soil_α)
+function PrognosticSoil(;
+    soil_α_PAR::FT = FT(0.2),
+    soil_α_NIR = FT(0.4),
+) where {FT}
+    return PrognosticSoil{FT}(soil_α_PAR, soil_α_NIR)
 end

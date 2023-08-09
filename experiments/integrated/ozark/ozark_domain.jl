@@ -1,6 +1,6 @@
 # Domain setup
 # For soil column
-nelements = 10
+nelements = 60
 zmin = FT(-2)
 zmax = FT(0)
 land_domain =

@@ -1,5 +1,5 @@
 using ..ClimaLSM.Canopy
-export plant_absorbed_ppfd,
+export plant_absorbed_pfd,
     extinction_coeff,
     arrhenius_function,
     intercellular_co2,
@@ -24,71 +24,164 @@ export plant_absorbed_ppfd,
 # 1. Radiative transfer
 
 """
-    plant_absorbed_ppfd(RT::BeerLambertModel{FT},
-                        PAR::FT,
-                        LAI::FT,
-                        K::FT,
-                        _,
-                        _,
+    compute_absorbances(
+        RT::BeerLambertModel{FT},
+        PAR,
+        NIR,
+        LAI,
+        K,
+        _,
+        _,
+        _,
     )
 
-Computes the absorbed photosynthetically active radiation in terms 
-of mol photons per m^2 per second (`APAR`).
-
-This applies the Beer-Lambert law, which is a function of photosynthetically
-active radiation (`PAR`; moles of photons/m^2/),
-PAR canopy reflectance (`ρ_leaf`), the extinction
-coefficient (`K`), leaf area index (`LAI`) and the clumping index (`Ω`). 
-The function takes in all parameters in the parameters struct for a 
-BeerLambertModel, along with the PAR, LAI, extinction coefficient K, and solar 
-zenith anlgle.
+Computes the APAR and ANIR absorbances for a canopy in the case of the 
+Beer-Lambert model. The absorbances are a function of the radiative transfer 
+model, as well as the magnitude of incident PAR and NIR radiation in moles of 
+photons, the leaf area index, and the extinction coefficient. Returns a tuple of 
+(APAR, ANIR).
 """
-function plant_absorbed_ppfd(
+function compute_absorbances(
     RT::BeerLambertModel{FT},
-    PAR::FT,
-    LAI::FT,
-    K::FT,
+    PAR,
+    NIR,
+    LAI,
+    K,
+    _,
     _,
     _,
 ) where {FT}
     RTP = RT.parameters
-    APAR = PAR * (1 - RTP.ρ_leaf) * (1 - exp(-K * LAI * RTP.Ω))
-    return APAR
+    APAR = @. plant_absorbed_pfd(RT, PAR, RTP.α_PAR_leaf, LAI, K)
+    ANIR = @. plant_absorbed_pfd(RT, NIR, RTP.α_NIR_leaf, LAI, K)
+    return (APAR, ANIR)
 end
 
 """
-    plant_absorbed_ppfd(RT::TwoStreamModel{FT},
-                        PAR::FT,
-                        LAI::FT,
-                        K::FT,
-                        θs::FT,
+    compute_absorbances(
+        RT::TwoStreamModel{FT},
+        PAR,
+        NIR,
+        LAI,
+        K,
+        θs,
+        α_soil_PAR,
+        α_soil_NIR,
     )
 
-Computes the absorbed photosynthetically active radiation in terms 
-of mol photons per m^2 per second (`APAR`).
+Compute APAR and ANIR absorbances for a canopy in the case of the
+two-stream model. The absorbances are a function of the radiative transfer 
+model, as well as the magnitude of incident PAR and NIR radiation in moles of 
+photons, the leaf areaindex, the extinction coefficient, the solar zenith angle,
+and soil albedo. Returns a tuple of (APAR, ANIR).
+"""
+function compute_absorbances(
+    RT::TwoStreamModel{FT},
+    PAR,
+    NIR,
+    LAI,
+    K,
+    θs,
+    α_soil_PAR,
+    α_soil_NIR,
+) where {FT}
+    RTP = RT.parameters
+    APAR = @. plant_absorbed_pfd(
+        RT,
+        PAR,
+        RTP.α_PAR_leaf,
+        RTP.τ_PAR_leaf,
+        LAI,
+        K,
+        θs,
+        α_soil_PAR,
+    )
+    ANIR = @. plant_absorbed_pfd(
+        RT,
+        NIR,
+        RTP.α_NIR_leaf,
+        RTP.τ_NIR_leaf,
+        LAI,
+        K,
+        θs,
+        α_soil_NIR,
+    )
+    return (APAR, ANIR)
+end
+
+"""
+    plant_absorbed_pfd(
+        RT::BeerLambertModel{FT},
+        SW_IN:FT,
+        α_leaf::FT,
+        LAI::FT,
+        K::FT,
+    )
+
+Computes the absorbed photon flux density in terms of mol photons per m^2 per 
+second for a radiation band. If the reflectance and radiation for NIR is passed, 
+computes ANIR and if PAR reflectance and rediation are passed, computes APAR.
+
+This applies the Beer-Lambert law, which is a function of incident 
+radiation (`SW_IN`; moles of photons/m^2/), leaf reflectance
+(`α_PAR_leaf`), the extinction coefficient (`K`), leaf area index (`LAI`),
+and the clumping index (`Ω`). 
+The function takes in all parameters in the parameters struct for a 
+BeerLambertModel, along with the SW_IN, LAI, extinction coefficient K, and solar 
+zenith angle.
+"""
+function plant_absorbed_pfd(
+    RT::BeerLambertModel{FT},
+    SW_IN::FT,
+    α_leaf::FT,
+    LAI::FT,
+    K::FT,
+) where {FT}
+    RTP = RT.parameters
+    AR = SW_IN * (1 - α_leaf) * (1 - exp(-K * LAI * RTP.Ω))
+    return AR
+end
+
+"""
+    plant_absorbed_pfd(
+        RT::TwoStreamModel{FT},
+        α_leaf,
+        SW_IN::FT,
+        LAI::FT,
+        K::FT,
+        τ_leaf,
+        θs::FT,
+        α_soil::FT,
+    )
+
+Computes the absorbed photon flux density in terms of mol photons per m^2 per 
+second for a radiation band. If the reflectance, radiation, transmittance, and 
+soil albedo for NIR is passed, computes ANIR and if PAR reflectance, rediation,
+transmittance, and soil albedo are passed, computes APAR.
 
 This applies the two-stream radiative transfer solution which takes into account
 the impacts of scattering within the canopy. The function takes in all 
 parameters from the parameter struct of a TwoStreamModel, along with the 
-incident PAR, LAI, extinction coefficient K, soil albedo from the 
+incident radiation, LAI, extinction coefficient K, soil albedo from the 
 canopy soil_driver, and solar zenith angle.
 """
-function plant_absorbed_ppfd(
+function plant_absorbed_pfd(
     RT::TwoStreamModel{FT},
-    PAR::FT,
+    SW_IN::FT,
+    α_leaf::FT,
+    τ_leaf::FT,
     LAI::FT,
     K::FT,
     θs::FT,
-    a_soil::FT,
+    α_soil::FT,
 ) where {FT}
 
-    (; ld, ρ_leaf, τ, Ω, n_layers, diff_perc) = RT.parameters
+    (; ld, Ω, n_layers, diff_perc) = RT.parameters
 
     # Compute μ̄, the average inverse diffuse optical length per LAI
     μ̄ = 1 / (2 * ld)
 
-    # Compute ω, the scattering coefficient 
-    ω = ρ_leaf + τ
+    ω = α_leaf + τ_leaf
 
     # Compute aₛ, the single scattering albedo
     aₛ = 0.5 * ω * (1 - cos(θs) * log((abs(cos(θs)) + 1) / abs(cos(θs))))
@@ -97,7 +190,7 @@ function plant_absorbed_ppfd(
     β₀ = (1 / ω) * aₛ * (1 + μ̄ * K) / (μ̄ * K)
 
     # Compute β, the diffuse upscattering parameter
-    diff = ρ_leaf - τ
+    diff = α_leaf - τ_leaf
     # With uniform distribution, Dickinson integral becomes following:
     c²θ̄ = pi * ld / 4
     β = 0.5 * (ω + diff * c²θ̄) / ω
@@ -110,9 +203,9 @@ function plant_absorbed_ppfd(
     h = √(b^2 - c^2) / μ̄
     σ = (μ̄ * K)^2 + c^2 - b^2
 
-    u₁ = b - c / a_soil
-    u₂ = b - c * a_soil
-    u₃ = f + c * a_soil
+    u₁ = b - c / α_soil
+    u₂ = b - c * α_soil
+    u₃ = f + c * α_soil
 
     s₁ = exp(-h * LAI * Ω)
     s₂ = exp(-K * LAI * Ω)
@@ -158,8 +251,8 @@ function plant_absorbed_ppfd(
     # Compute the LAI per layer for this canopy
     Lₗ = LAI / n_layers
 
-    # Initialize FAPAR value and layer counter
-    FAPAR = 0
+    # Initialize the fraction absorbed value and layer counter
+    F_abs = 0
     i = 0
 
     # Intialize vars to save computed fluxes from each layer for the next layer
@@ -168,7 +261,7 @@ function plant_absorbed_ppfd(
     I_dif_up_prev = 0
     I_dif_dn_prev = 0
 
-    # Compute FAPAR in each canopy layer
+    # Compute F_abs in each canopy layer
     while i <= n_layers
 
         # Compute cumulative LAI at this layer
@@ -200,8 +293,8 @@ function plant_absorbed_ppfd(
             I_dif_abs = I_dif_up - I_dif_up_prev - I_dif_dn + I_dif_dn_prev
         end
 
-        # Add PAR absorbed in the layer to total APAR
-        FAPAR += (1 - diff_perc) * I_dir_abs + (diff_perc) * I_dif_abs
+        # Add radiation absorbed in the layer to total absorbed radiation
+        F_abs += (1 - diff_perc) * I_dir_abs + (diff_perc) * I_dif_abs
 
         # Save input/output values to compute energy balance of next layer 
         I_dir_up_prev = I_dir_up
@@ -213,9 +306,9 @@ function plant_absorbed_ppfd(
         i += 1
     end
 
-    # Convert FAPAR into APAR and return
+    # Convert fractional absorption into absorption and return
     # Ensure floating point precision is correct (it may be different for PAR)
-    return FT(PAR * FAPAR)
+    return FT(SW_IN * F_abs)
 end
 
 """

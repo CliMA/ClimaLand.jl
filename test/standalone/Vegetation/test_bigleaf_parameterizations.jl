@@ -27,7 +27,6 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     T = FT(290) # K
     P = FT(101250) #Pa
     q = FT(0.02)
-    a_soil = FT(0.2)
     VPD = ClimaLSM.vapor_pressure_deficit(T, P, q, thermo_params)#Pa
     p_l = FT(-2e6) # Pa
     ca = FT(4.11e-4) # mol/mol
@@ -37,10 +36,11 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     PAR = SW(θs) ./ (energy_per_photon * N_a) # convert 500 W/m^2 to mol of photons per m^2/s
     K_c = extinction_coeff.(RTparams.ld, θs)
     @test all(K_c .≈ RTparams.ld ./ cos.(θs))
-    APAR = plant_absorbed_ppfd.(RT, PAR, LAI, K_c, θs, a_soil)
+    APAR = plant_absorbed_pfd.(RT, PAR, RTparams.α_PAR_leaf, LAI, K_c)
     @test all(
         APAR .≈
-        PAR .* (1 - RTparams.ρ_leaf) .* (1 .- exp.(-K_c .* LAI .* RTparams.Ω)),
+        PAR .* (1 - RTparams.α_PAR_leaf) .*
+        (1 .- exp.(-K_c .* LAI .* RTparams.Ω)),
     )
     To = photosynthesisparams.To
     Vcmax =
