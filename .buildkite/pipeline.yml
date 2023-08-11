@@ -24,18 +24,13 @@ steps:
       - "julia --project -e 'using Pkg; Pkg.precompile()'"
       - "julia --project -e 'using Pkg; Pkg.status()'"
 
-      - "julia --project=test -e 'using Pkg; Pkg.develop(path = \".\")'"
-      - "julia --project=test -e 'using Pkg; Pkg.instantiate(;verbose=true)'"
-      - "julia --project=test -e 'using Pkg; Pkg.precompile()'"
-      - "julia --project=test -e 'using Pkg; Pkg.status()'"
-
       - "julia --project=experiments -e 'using Pkg; Pkg.instantiate(;verbose=true)'"
       - "julia --project=experiments -e 'using Pkg; Pkg.precompile()'"
       - "julia --project=experiments -e 'using Pkg; Pkg.status()'"
 
   - wait
 
-  - group: "Unit tests"
+  - group: "Experiments"
     steps:
       - label: "Richards comparison to Bonan"
         command: "julia --color=yes --project=experiments experiments/standalone/Soil/richards_comparison.jl"
@@ -52,6 +47,10 @@ steps:
       - label: "ozark_test"
         command: "julia --color=yes --project=experiments experiments/integrated/ozark/ozark.jl"
         artifact_paths: "experiments/integrated/ozark/*png"
+
+      - label: "ozark_conservation"
+        command: "julia --color=yes --project=experiments experiments/integrated/ozark/conservation/ozark_conservation.jl"
+        artifact_paths: "experiments/integrated/ozark/conservation/*png"
 
       - label: "Soilbiogeochem"
         command: "julia --color=yes --project=experiments experiments/standalone/Biogeochemistry/experiment.jl"
