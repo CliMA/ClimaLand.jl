@@ -33,6 +33,7 @@ export plant_absorbed_pfd,
         _,
         _,
         _,
+        _,
     )
 
 Computes the APAR and ANIR absorbances for a canopy in the case of the 
@@ -47,6 +48,7 @@ function compute_absorbances(
     NIR,
     LAI,
     K,
+    _,
     _,
     _,
     _,
@@ -67,6 +69,7 @@ end
         θs,
         α_soil_PAR,
         α_soil_NIR,
+        frac_diff,
     )
 
 Compute APAR and ANIR absorbances for a canopy in the case of the
@@ -84,6 +87,7 @@ function compute_absorbances(
     θs,
     α_soil_PAR,
     α_soil_NIR,
+    frac_diff,
 ) where {FT}
     RTP = RT.parameters
     APAR = @. plant_absorbed_pfd(
@@ -95,6 +99,7 @@ function compute_absorbances(
         K,
         θs,
         α_soil_PAR,
+        frac_diff,
     )
     ANIR = @. plant_absorbed_pfd(
         RT,
@@ -105,6 +110,7 @@ function compute_absorbances(
         K,
         θs,
         α_soil_NIR,
+        frac_diff,
     )
     return (APAR, ANIR)
 end
@@ -174,9 +180,10 @@ function plant_absorbed_pfd(
     K::FT,
     θs::FT,
     α_soil::FT,
+    frac_diff::FT,
 ) where {FT}
 
-    (; ld, Ω, n_layers, diff_perc) = RT.parameters
+    (; ld, Ω, n_layers) = RT.parameters
 
     # Compute μ̄, the average inverse diffuse optical length per LAI
     μ̄ = 1 / (2 * ld)
@@ -294,7 +301,7 @@ function plant_absorbed_pfd(
         end
 
         # Add radiation absorbed in the layer to total absorbed radiation
-        F_abs += (1 - diff_perc) * I_dir_abs + (diff_perc) * I_dif_abs
+        F_abs += (1 - frac_diff) * I_dir_abs + (frac_diff) * I_dif_abs
 
         # Save input/output values to compute energy balance of next layer 
         I_dir_up_prev = I_dir_up
@@ -310,6 +317,28 @@ function plant_absorbed_pfd(
     # Ensure floating point precision is correct (it may be different for PAR)
     return FT(SW_IN * F_abs)
 end
+
+"""
+    diffuse_fraction(td::FT, T::FT, SW_IN::FT, UR::FT, θs::FT) where {FT}
+
+Computes the fraction of diffuse radiation (`diff_frac`) as a function
+of the solar zenith angle (`θs`), the total surface incident radiation (`SW_IN`),
+the air temperature (`T`), the relative humidity (`UR`), and the day of the year
+(`td`).
+"""
+function diffuse_fraction(td::FT, T::FT, SW_IN::FT, UR::FT, θs::FT) where {FT}
+    k₀ = FT(1370 * (1 + 0.033 * cos(360 * td / 365)) * cos(θs))
+    kₜ = SW_IN / k₀
+    if kₜ ≤ 0.3
+        diff_frac = FT(kₜ * (1 - 0.232 * kₜ + 0.0239 * cos(θs) - 6.82e-4 * T + 0.0195 * UR))
+    elseif kₜ ≤ 0.78
+        diff_frac = FT(kₜ * (1.329 - 1.716 * kₜ + 0.267 * cos(θs) - 3.57e-3 * T + 0.106 * UR))
+    else
+        diff_frac = FT(kₜ * (0.426 * kₜ + 0.256 * cos(θs) - 3.49e-3 * T + 0.0734 * UR))
+    end
+    return diff_frac
+end
+
 
 """
     extinction_coeff(ld::FT,

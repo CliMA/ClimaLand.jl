@@ -60,7 +60,6 @@ py_FAPAR = FT.(test_set[2:end, column_names .== "FAPAR"])
             λ_γ_PAR = λ_γ_PAR,
             λ_γ_NIR = λ_γ_NIR,
             n_layers = n_layers[i],
-            diff_perc = PropDif[i],
         )
 
         # Initialize the TwoStream model
@@ -77,6 +76,7 @@ py_FAPAR = FT.(test_set[2:end, column_names .== "FAPAR"])
             K,
             θs[i],
             a_soil[i],
+            PropDif[i],
         )
 
         # Check that the predictions are app. equivalent to the Python model

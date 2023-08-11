@@ -427,6 +427,8 @@ function ClimaLSM.make_update_aux(
         K = extinction_coeff(ld, θs)
         PAR .= compute_PAR(RT, canopy.radiation, t)
         NIR .= compute_NIR(RT, canopy.radiation, t)
+        rel_hum = q / FT(.04) # TODO: Actually compute
+        frac_diff = @. diffuse_fraction(round(t / 24 / 3600), T, PAR + NIR, rel_hum, θs)
         APAR, ANIR = compute_absorbances(
             RT,
             PAR ./ (energy_per_photon_PAR * N_a),
@@ -436,6 +438,7 @@ function ClimaLSM.make_update_aux(
             θs,
             ground_albedo_PAR(canopy),
             ground_albedo_NIR(canopy),
+            frac_diff
         )
 
         # update plant hydraulics aux
