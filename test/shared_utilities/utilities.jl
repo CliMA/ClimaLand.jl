@@ -112,8 +112,9 @@ end
 @testset "dss! - 0D/1D spaces" begin
     for FT in TestFloatTypes
         # Test for Spaces.PointSpace and Spaces.FiniteDifferenceSpace
-        domain1 = Domains.Point(; z_sfc = FT(0))
-        domain2 = Domains.Column(; zlim = FT.((-1.0, 0.0)), nelements = (5))
+        domain1 = ClimaLSM.Domains.Point(; z_sfc = FT(0))
+        domain2 =
+            ClimaLSM.Domains.Column(; zlim = FT.((-1.0, 0.0)), nelements = (5))
         domains = (domain1, domain2)
         for domain in domains
             space = domain.space
@@ -139,14 +140,14 @@ end
 @testset "dss! - 2D spaces" begin
     for FT in TestFloatTypes
         # Test for Spaces.SpectralElementSpace2D
-        domain1 = Domains.Plane(;
+        domain1 = ClimaLSM.Domains.Plane(;
             xlim = FT.((0.0, 1.0)),
             ylim = FT.((0.0, 1.0)),
             nelements = (2, 2),
             periodic = (true, true),
             npolynomial = 1,
         )
-        domain2 = Domains.SphericalSurface(;
+        domain2 = ClimaLSM.Domains.SphericalSurface(;
             radius = FT(2),
             nelements = 10,
             npolynomial = 3,
@@ -174,11 +175,8 @@ end
             Y_copy = copy(Y)
             p = (;)
             p = ClimaLSM.add_dss_buffer_to_aux(p, domain)
-            @test typeof(p.dss_buffer_2d) == typeof(
-                ClimaCore.Spaces.create_dss_buffer(
-                    ClimaCore.Fields.zeros(domain.space),
-                ),
-            )
+            @test typeof(p.dss_buffer_2d) ==
+                  typeof(Spaces.create_dss_buffer(Fields.zeros(domain.space)))
             ClimaLSM.dss!(Y, p, FT(0))
 
             # On a 2D space, we expect dss! to change Y
@@ -191,7 +189,7 @@ end
 
 @testset "dss! - 3D spaces" begin
     for FT in TestFloatTypes
-        domain1 = Domains.HybridBox(;
+        domain1 = ClimaLSM.Domains.HybridBox(;
             xlim = FT.((0.0, 1.0)),
             ylim = FT.((0.0, 1.0)),
             zlim = FT.((0.0, 1.0)),
@@ -199,7 +197,7 @@ end
             periodic = (true, true),
             npolynomial = 1,
         )
-        domain2 = Domains.SphericalShell(;
+        domain2 = ClimaLSM.Domains.SphericalShell(;
             radius = FT(2),
             height = FT(1.0),
             nelements = (10, 5),
@@ -228,11 +226,8 @@ end
             Y_copy = copy(Y)
             p = (;)
             p = ClimaLSM.add_dss_buffer_to_aux(p, domain)
-            @test typeof(p.dss_buffer_3d) == typeof(
-                ClimaCore.Spaces.create_dss_buffer(
-                    ClimaCore.Fields.zeros(domain.space),
-                ),
-            )
+            @test typeof(p.dss_buffer_3d) ==
+                  typeof(Spaces.create_dss_buffer(Fields.zeros(domain.space)))
             ClimaLSM.dss!(Y, p, FT(0))
 
             # On a 3D space, we expect dss! to change Y

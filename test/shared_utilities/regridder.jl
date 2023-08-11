@@ -1,6 +1,8 @@
 using ClimaLSM.Regridder: MapInfo, regrid_netcdf_to_field
 using ClimaLSM.Bucket:
-    BulkAlbedoMap, bareground_albedo_dataset_path, set_initial_parameter_field!
+    BulkAlbedoStatic,
+    bareground_albedo_dataset_path,
+    set_initial_parameter_field!
 using ClimaLSM.Domains: SphericalSurface
 import ClimaLSM
 using ClimaComms
@@ -36,7 +38,7 @@ using Test
 
     p = (; :bucket => (; :α_sfc => ClimaCore.Fields.zeros(boundary_space)))
     set_initial_parameter_field!(
-        BulkAlbedoMap{FT}(FT(0.08), albedo),
+        BulkAlbedoStatic{FT}(FT(0.08), albedo),
         p,
         ClimaCore.Fields.coordinate_field(boundary_space),
     )

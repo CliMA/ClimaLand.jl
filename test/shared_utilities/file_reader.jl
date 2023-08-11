@@ -11,7 +11,7 @@ using Test
 using Dates
 using NCDatasets
 
-albedo_temporal_data = Bucket.cesm2_land_albedo_dataset_path()
+albedo_temporal_data = Bucket.cesm2_albedo_dataset_path()
 albedo_bareground_data = Bucket.bareground_albedo_dataset_path()
 
 comms_ctx = ClimaComms.SingletonCommsContext()

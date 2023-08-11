@@ -309,6 +309,7 @@ function regrid_netcdf_to_field(
     infile,
     varname,
     boundary_space;
+    date_idx = 1,
     outfile_root = string(varname, "_cgll"),
     mono = true,
 )
@@ -330,7 +331,7 @@ function regrid_netcdf_to_field(
     field = read_from_hdf5(
         REGRID_DIR,
         outfile_root,
-        file_dates[1],
+        file_dates[date_idx],
         varname,
         comms_ctx,
     )

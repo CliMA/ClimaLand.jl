@@ -7,7 +7,8 @@ CurrentModule = ClimaLSM.Bucket
 
 ```@docs
 ClimaLSM.Bucket.BucketModelParameters
-ClimaLSM.Bucket.BulkAlbedoMap
+ClimaLSM.Bucket.BulkAlbedoStatic
+ClimaLSM.Bucket.BulkAlbedoTemporal
 ClimaLSM.Bucket.BulkAlbedoFunction
 ClimaLSM.Bucket.BucketModel
 ```
@@ -29,5 +30,5 @@ ClimaLSM.Bucket.update_soil_albedo
 ## Artifact Path Functions
 
 ```@docs
-ClimaLSM.Bucket.cesm2_land_albedo_dataset_path
+ClimaLSM.Bucket.cesm2_albedo_dataset_path
 ```
