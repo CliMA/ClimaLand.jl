@@ -427,7 +427,9 @@ function ClimaLSM.make_update_aux(
         K = extinction_coeff(ld, θs)
         PAR .= compute_PAR(RT, canopy.radiation, t)
         NIR .= compute_NIR(RT, canopy.radiation, t)
-        rel_hum = q / FT(.04) # TODO: Actually compute
+        e_sat = FT(0.61121 * exp((18.678 - (T / 234.5)) * (T / (257.14 + T))))
+        e = FT(2.655 * q * P / (q + 1.6455))
+        rel_hum = e / e_sat
         frac_diff = @. diffuse_fraction(round(t / 24 / 3600), T, PAR + NIR, rel_hum, θs)
         APAR, ANIR = compute_absorbances(
             RT,
