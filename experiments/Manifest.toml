@@ -2,7 +2,7 @@
 
 julia_version = "1.9.1"
 manifest_format = "2.0"
-project_hash = "dcd75832993598a09a1bfc3fc5e91263c1143da8"
+project_hash = "1b07bee4158b30ddf1757713b108588454bebb79"
 
 [[deps.AMD]]
 deps = ["LinearAlgebra", "SparseArrays", "SuiteSparse_jll"]

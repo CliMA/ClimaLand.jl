@@ -5,6 +5,7 @@ using ClimaCore
 import CLIMAParameters as CP
 using Plots
 using Statistics
+using StatsBase
 using Dates
 using Insolation
 
@@ -231,6 +232,8 @@ model_GPP = [
     k in 1:length(sv.saveval)
 ]
 
+RMSD = StatsBase.rmsd(model_GPP, GPP[120*24*2:2:240*24*2]) * 1e6
+R² = Statistics.cor(model_GPP, GPP[120*24*2:2:240*24*2])^2
 plt1 = Plots.plot(size = (1500, 400))
 Plots.plot!(
     plt1,
@@ -238,7 +241,7 @@ Plots.plot!(
     model_GPP .* 1e6,
     label = "Model",
     xlim = [minimum(daily), maximum(daily)],
-    title = "GPP [mol/m^2/s]",
+    title = "GPP [mol/m^2/s]: RMSD = $(round(RMSD, digits = 3)), R² = $(round(R², digits = 3))",
 )
 Plots.plot!(
     plt1,
