@@ -229,7 +229,7 @@ version = "0.3.5"
 deps = ["ArtifactWrappers", "CFTime", "ClimaComms", "ClimaCore", "ClimaCoreTempestRemap", "Dates", "DiffEqCallbacks", "DocStringExtensions", "IntervalSets", "JLD2", "LinearAlgebra", "NCDatasets", "StaticArrays", "SurfaceFluxes", "Thermodynamics", "UnPack"]
 path = ".."
 uuid = "7884a58f-fab6-4fd0-82bb-ecfedb2d8430"
-version = "0.2.7"
+version = "0.3.0"
 
 [[deps.ClimaTimeSteppers]]
 deps = ["CUDA", "ClimaComms", "DataStructures", "DiffEqBase", "DiffEqCallbacks", "KernelAbstractions", "Krylov", "LinearAlgebra", "LinearOperators", "SciMLBase", "StaticArrays"]
