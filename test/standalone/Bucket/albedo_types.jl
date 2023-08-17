@@ -213,12 +213,8 @@ end
     end)
     t_start = FT(0)
 
-    albedo = BulkAlbedoTemporal{FT}(
-        regrid_dir_temporal,
-        date_ref,
-        t_start,
-        space,
-    )
+    albedo =
+        BulkAlbedoTemporal{FT}(regrid_dir_temporal, date_ref, t_start, space)
 
     Y = (; bucket = (; W = Fields.zeros(space)))
     p = (; bucket = (; α_sfc = Fields.zeros(space)))
@@ -373,23 +369,25 @@ end
     input_file = bareground_albedo_dataset_path()
     date_ref = Dates.DateTime(1900, 1, 1)
     t_start = FT(0)
-    space = nothing
-    err = nothing
+    domain = create_domain_2d(FT)
+    space = domain.surface.space
 
-    try
-        BulkAlbedoTemporal{FT}(
-            regrid_dirpath,
-            date_ref,
-            t_start,
-            space,
-            input_file = input_file,
-        )
-    catch err
+    let err = nothing
+        try
+            BulkAlbedoTemporal{FT}(
+                regrid_dirpath,
+                date_ref,
+                t_start,
+                space,
+                input_file = input_file,
+            )
+        catch err
+        end
+
+        @test err isa Exception
+        @test sprint(showerror, err) ==
+              "Using a temporal albedo map requires data with time dimension."
     end
-
-    @test err isa Exception
-    @test sprint(showerror, err) ==
-          "Using a temporal albedo map requires data with time dimension."
 
 end
 
@@ -430,12 +428,8 @@ end
     for bucket_domain in bucket_domains
         space = bucket_domain.surface.space
         if bucket_domain isa LSMSphericalShellDomain
-            albedo_model = BulkAlbedoTemporal{FT}(
-                regrid_dirpath,
-                date_ref,
-                t_start,
-                space,
-            )
+            albedo_model =
+                BulkAlbedoTemporal{FT}(regrid_dirpath, date_ref, t_start, space)
             # Radiation
             SW_d = (t) -> eltype(t)(0.0)
             LW_d = (t) -> eltype(t)(5.67e-8 * 280.0^4.0)
