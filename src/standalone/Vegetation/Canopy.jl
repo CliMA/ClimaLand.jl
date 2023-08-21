@@ -504,7 +504,7 @@ function ClimaLSM.make_update_aux(
                 R,
             )
         @. GPP = compute_GPP(An, K, LAI, Ω)
-        @. gs = medlyn_conductance(g0, Drel, medlyn_factor, An, c_co2)
+        @. gs = medlyn_conductance(g0, Drel, medlyn_factor, An, c_co2, β)
 
         # Compute transpiration
         (canopy_transpiration, shf, lhf) =

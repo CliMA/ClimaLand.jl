@@ -78,7 +78,7 @@ function soil_boundary_fluxes(
         t,
         model.parameters,
     )
-    net_energy_flux = @. p.soil_Rn + p.soil_lhf + p.soil_shf
+    net_energy_flux = @. p.soil_Rn + p.soil_lhf + p.soil_shf + p.G
     return infiltration, net_energy_flux
 end
 
@@ -173,6 +173,7 @@ interaction_vars(m::SoilCanopyModel) = (
     :T_soil,
     :α_soil,
     :ϵ_soil,
+    :G,
 )
 
 """
@@ -182,7 +183,7 @@ The types of the additional auxiliary variables that are
 included in the integrated Soil-Canopy model.
 """
 interaction_types(m::SoilCanopyModel{FT}) where {FT} =
-    (FT, FT, FT, FT, FT, FT, FT, FT)
+    (FT, FT, FT, FT, FT, FT, FT, FT, FT)
 
 """
     interaction_domain_names(m::SoilCanopyModel)
@@ -192,6 +193,7 @@ included in the integrated Soil-Canopy model.
 """
 interaction_domain_names(m::SoilCanopyModel) = (
     :subsurface,
+    :surface,
     :surface,
     :surface,
     :surface,
@@ -272,7 +274,8 @@ function make_interactions_update_aux(
             p,
             t,
         )
-
+        κ = ClimaLSM.Domains.top_center_to_surface(p.soil.κ)
+        @. p.G = κ * ($surface_temperature(land.canopy, Y, p, t) - $surface_temperature(land.soil, Y, p, t)) / -FT(.1) # Assuming 5 cm depth
     end
     return update_aux!
 end
@@ -317,7 +320,8 @@ function net_radiation_at_ground(
         (energy_per_photon_PAR * N_a * p.canopy.radiative_transfer.apar) +
         (energy_per_photon_NIR * N_a * p.canopy.radiative_transfer.anir)
     )
-    LW_d_beneath_canopy = LW_d # Assumes T_canopy = T_air
+    T_sfc = surface_temperature(canopy, Y, p, t)
+    LW_d_beneath_canopy = _σ * (T_sfc^4)
     return @. (
         -(1 - p.α_soil) * SW_d_beneath_canopy -
         p.ϵ_soil * (LW_d_beneath_canopy - _σ * p.T_soil^4)

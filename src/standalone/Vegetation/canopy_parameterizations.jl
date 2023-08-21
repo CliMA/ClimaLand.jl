@@ -581,7 +581,7 @@ function dark_respiration(
     To::FT,
     R::FT,
 ) where {FT}
-    Rd = f * Vcmax25 * β * arrhenius_function(T, To, R, ΔHRd)
+    Rd = f * Vcmax25 * arrhenius_function(T, To, R, ΔHRd)
     return Rd
 end
 
@@ -750,8 +750,9 @@ function medlyn_conductance(
     medlyn_term::FT,
     An::FT,
     ca::FT,
+    β::FT,
 ) where {FT}
-    gs = g0 + Drel * medlyn_term * (An / ca)
+    gs = g0 + β * Drel * medlyn_term * (An / ca)
     return gs
 end
 

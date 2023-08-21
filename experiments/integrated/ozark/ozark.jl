@@ -169,13 +169,15 @@ land = SoilCanopyModel{FT}(;
 Y, p, cds = initialize(land)
 exp_tendency! = make_exp_tendency(land)
 
+data_dt = 1800 # The size of the time step in the data file
+
 #Initial conditions
-Y.soil.ϑ_l = SWC[1 + Int(round(t0 / 1800))] # Get soil water content at t0
-# recalling that the data is in intervals of 1800 seconds. Both the data
+Y.soil.ϑ_l = SWC[1 + Int(round(t0 / data_dt))] # Get soil water content at t0
+# recalling that the data is in intervals of data_dt seconds. Both the data
 # and simulation are reference to 2005-01-01-00 (LOCAL)
 # or 2005-01-01-06 (UTC)
 Y.soil.θ_i = FT(0.0)
-T_0 = TS[1 + Int(round(t0 / 1800))] # Get soil temperature at t0
+T_0 = TS[1 + Int(round(t0 / data_dt))] # Get soil temperature at t0
 ρc_s =
     volumetric_heat_capacity.(Y.soil.ϑ_l, Y.soil.θ_i, Ref(land.soil.parameters))
 Y.soil.ρe_int =
@@ -226,14 +228,22 @@ sol = ODE.solve(
 daily = sol.t ./ 3600 ./ 24
 savedir = joinpath(climalsm_dir, "experiments/integrated/ozark/")
 
+# This function will be used to plot averages over diurnal cycles
+function diurnal_avg(series, days)
+    daily = floor(Int, length(series) / days)
+    daily_data = [[sample for sample in series[i:1: i + daily - 1]] for i in 1:daily:daily * days]
+    daily_avgs = [mean([daily_data[i][j] for i in 1:days]) for j in 1:daily]
+    return daily_avgs
+end
+
 # GPP
 model_GPP = [
     parent(sv.saveval[k].canopy.photosynthesis.GPP)[1] for
     k in 1:length(sv.saveval)
 ]
 
-RMSD = StatsBase.rmsd(model_GPP, GPP[120*24*2:2:240*24*2]) * 1e6
-R² = Statistics.cor(model_GPP, GPP[120*24*2:2:240*24*2])^2
+RMSD = StatsBase.rmsd(model_GPP, GPP[Int(t0 / data_dt):2:Int(tf / data_dt)]) * 1e6
+R² = Statistics.cor(model_GPP, GPP[Int(t0 / data_dt):2:Int(tf / data_dt)])^2
 plt1 = Plots.plot(size = (1500, 400))
 Plots.plot!(
     plt1,
@@ -265,6 +275,29 @@ Plots.plot!(
 Plots.plot!(plt2, seconds ./ 3600 ./ 24, GPP .* 1e6, label = "", lalpha = 0.3)
 Plots.plot(plt1, plt2, layout = (2, 1))
 Plots.savefig(joinpath(savedir, "GPP.png"))
+
+GPP_daily_avg_model = diurnal_avg(model_GPP, 120)
+GPP_daily_avg_data = diurnal_avg(GPP[48*120:48*240], 120)
+
+plt1 = Plots.plot(size = (1500, 700))
+
+Plots.plot!(
+    plt1,
+    1:.5:24.5,
+    GPP_daily_avg_data,
+    label = "Data GPP Diurnal Avg",
+    margins = 10Plots.mm,
+)
+Plots.plot!(
+    1:1:24,
+    GPP_daily_avg_model,
+    label = "Model GPP Diurnal Avg",
+    title = "GPP Diurnal Cycle Averages",
+    ylabel = "GPP [mol/m^2/s]",
+    xlabel = "Hour (local time)",
+)
+
+Plots.savefig(joinpath(savedir, "Avg_GPP.png"))
 
 # SW_IN
 
@@ -329,6 +362,9 @@ E =
     [parent(sv.saveval[k].soil_evap)[1] for k in 1:length(sol.t)] .* (1e3 * 24 * 3600)
 measured_T = LE ./ (LSMP.LH_v0(earth_param_set) * 1000) .* (1e3 * 24 * 3600)
 
+RMSD = StatsBase.rmsd((T .+ E), measured_T[Int(t0 / data_dt):2:Int(tf / data_dt)])
+R² = Statistics.cor((T .+ E), measured_T[Int(t0 / data_dt):2:Int(tf / data_dt)])^2
+
 plt1 = Plots.plot(size = (1500, 400))
 Plots.plot!(
     plt1,
@@ -353,7 +389,7 @@ Plots.plot!(
     label = "Model E",
     ylim = [0, 30],
     legend = :topright,
-    title = "Vapor Flux [mm/day]",
+    title = "Vapor Flux [mm/day]: RMSD = $(round(RMSD, digits = 3)), R² = $(round(R², digits = 3))",
 )
 
 plt2 = Plots.plot(size = (1500, 400))
@@ -383,7 +419,7 @@ Plots.plot!(
     xlim = [minimum(daily), maximum(daily)],
     title = "Moisture stress factor",
 )
-#i_week = Int(round((7 * 24 * 3600) / (sol.t[2] - sol.t[1])))
+
 plt2 = Plots.plot(size = (1500, 400))
 Plots.plot!(
     plt2,
@@ -429,6 +465,10 @@ Plots.savefig(joinpath(savedir, "stomatal_conductance.png"))
 
 # Current resolution is 3.333 cm per layer, our nodes are at the center of the
 # layers. The second layer is ~ 5cm
+
+RMSD = StatsBase.rmsd([parent(sol.u[k].soil.ϑ_l)[end - 1] for k in 1:1:length(sol.t)], SWC[Int(t0 / data_dt):2:Int(tf / data_dt)])
+R² = Statistics.cor([parent(sol.u[k].soil.ϑ_l)[end - 1] for k in 1:1:length(sol.t)], SWC[Int(t0 / data_dt):2:Int(tf / data_dt)])^2
+
 plt1 = Plots.plot(size = (1500, 800))
 Plots.plot!(
     plt1,
@@ -441,6 +481,7 @@ Plots.plot!(
     ylabel = "SWC [m/m]",
     color = "blue",
     margin = 10Plots.mm,
+    title = "Soil Water Content: RMSD = $(round(RMSD, digits = 3)), R² = $(round(R², digits = 3))"
 )
 
 plot!(
@@ -465,22 +506,67 @@ plt2 = Plots.plot(
 Plots.plot(plt2, plt1, layout = grid(2, 1, heights = [0.2, 0.8]))
 Plots.savefig(joinpath(savedir, "soil_water_content.png"))
 
+model_G = [parent(sv.saveval[k].G)[1] for k in 1:length(sol.t)]
+G_diurnal_avg_model = diurnal_avg(model_G, 120)
+
+G_data_daily = diurnal_avg(FT.(G)[120 * 48:240 * 48], 120)
+
+plt1 = Plots.plot(size = (1500, 700))
+Plots.plot!(
+    plt1,
+    1:.5:24.5,
+    G_data_daily,
+    label = "Data G",
+    margins = 10Plots.mm,
+)
+Plots.plot!(
+    1:1:24,
+    G_diurnal_avg_model,
+    label = "Model G",
+    title = "Avg Diurnal Cycle of Ground Heat Flux"
+)
+
+Plots.savefig(joinpath(savedir, "Avg_G.png"))
+
+plt1 = Plots.plot(size = (1500, 700))
+
+Plots.plot!(
+    plt1,
+    seconds ./ 3600 ./ 24,
+    FT.(G),
+    label = "Data G",
+    margins = 10Plots.mm,
+)
+
+Plots.plot!(
+    plt1,
+    daily,
+    model_G,
+    label = "Model G",
+    xlim = [minimum(daily), maximum(daily)]
+)
+
+Plots.savefig(joinpath(savedir, "Ground_heat_flux.png"))
+
 
 SHF = [parent(sv.saveval[k].soil_shf)[1] for k in 1:length(sol.t)]
+
+RMSD = StatsBase.rmsd(SHF, FT.(H_CORR)[Int(t0 / data_dt):2:Int(tf / data_dt)])
+R² = Statistics.cor(SHF, FT.(H_CORR)[Int(t0 / data_dt):2:Int(tf / data_dt)])^2
 
 plt1 = Plots.plot(size = (1500, 700))
 Plots.plot!(
     plt1,
     seconds ./ 3600 ./ 24,
     FT.(H),
-    label = "Data",
+    label = "Data H",
     margins = 10Plots.mm,
 )
 Plots.plot!(
     plt1,
     seconds ./ 3600 ./ 24,
     FT.(H_CORR),
-    label = "Data Corr",
+    label = "Data H Corr",
     margins = 10Plots.mm,
 )
 Plots.plot!(
@@ -489,7 +575,7 @@ Plots.plot!(
     SHF,
     label = "Model",
     xlim = [minimum(daily), maximum(daily)],
-    title = "Soil Sensible Heat Flux [W/m^2]",
+    title = "Soil Sensible Heat Flux [W/m^2]"#: RMSD = $(round(RMSD, digits = 3)), R² = $(round(R², digits = 3))",
 )
 
 
