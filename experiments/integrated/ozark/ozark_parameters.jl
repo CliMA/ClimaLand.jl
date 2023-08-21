@@ -1,3 +1,12 @@
+# Autotrophic respiration parameters
+ne = FT(8 * 1e-4)
+ηsl = FT(0.01)
+σl = FT(0.05)
+μr = FT(1.0)
+μs = FT(0.1)
+f1 = FT(0.012)
+f2 = FT(0.25)
+
 # Soil parameters
 soil_ν = FT(0.5) # m3/m3
 soil_K_sat = FT(4e-7) # m/s, matches Natan

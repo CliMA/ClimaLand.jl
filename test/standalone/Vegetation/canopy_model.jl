@@ -19,10 +19,12 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     FT = Float32
     domain = Point(; z_sfc = FT(0.0))
 
+    AR_params = AutotrophicRespirationParameters{FT}()
     RTparams = BeerLambertParameters{FT}()
     photosynthesis_params = FarquharParameters{FT}(C3();)
     stomatal_g_params = MedlynConductanceParameters{FT}()
 
+    AR_model = AutotrophicRespirationModel{FT}(AR_params)
     stomatal_model = MedlynConductanceModel{FT}(stomatal_g_params)
     photosynthesis_model = FarquharModel{FT}(photosynthesis_params)
     rt_model = BeerLambertModel{FT}(RTparams)
@@ -163,9 +165,14 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
         compartment_surfaces = compartment_faces,
         compartment_midpoints = compartment_centers,
     )
+    autotrophic_parameters =
+        ClimaLSM.Canopy.AutotrophicRespirationParameters{FT}()
+    autotrophic_respiration_model =
+        ClimaLSM.Canopy.AutotrophicRespirationModel(autotrophic_parameters)
     canopy = ClimaLSM.Canopy.CanopyModel{FT}(;
         parameters = shared_params,
         domain = domain,
+        autotrophic_respiration = AR_model,
         radiative_transfer = rt_model,
         photosynthesis = photosynthesis_model,
         conductance = stomatal_model,
@@ -197,6 +204,8 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     t0 = FT(0.0)
     dY = similar(Y)
     set_initial_aux_state!(p, Y, t0)
+    # check that this is updated correctly:
+    # @test p.canopy.autotrophic_respiration.Ra == 
     exp_tendency!(dY, Y, p, t0)
     (evapotranspiration, shf, lhf) =
         canopy_surface_fluxes(canopy.atmos, canopy, Y, p, t0)

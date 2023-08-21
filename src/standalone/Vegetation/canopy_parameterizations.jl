@@ -19,7 +19,10 @@ export plant_absorbed_pfd,
     medlyn_conductance,
     canopy_surface_fluxes,
     upscale_leaf_conductance,
-    penman_monteith
+    penman_monteith,
+    nitrogen_content,
+    plant_respiration_maintenance,
+    plant_respiration_growth
 
 # 1. Radiative transfer
 
@@ -835,4 +838,87 @@ function penman_monteith(
 ) where {FT}
     ET = (Δ * (Rn - G) + ρa * cp * VPD * ga) / ((Δ + γ * (1 + ga / gs)) * Lv)
     return ET
+end
+
+"""
+    nitrogen_content(
+                     ne::FT, # Mean leaf nitrogen concentration (kg N (kg C)-1)
+                     Vcmax25::FT, #
+                     LAI::FT, # Leaf area index
+                     RAI::FT,
+                     ηsl::FT, # live stem  wood coefficient (kg C m-3) 
+                     h::FT, # canopy height (m)
+                     σl::FT # Specific leaf density (kg C m-2 [leaf])
+                     μr::FT, # Ratio root nitrogen to top leaf nitrogen (-), typical value 1.0
+                     μs::FT, # Ratio stem nitrogen to top leaf nitrogen (-), typical value 0.1 
+                    ) where {FT}
+
+Computes the nitrogen content of leafs (Nl), roots (Nr) and stems (Ns)
+as a function of leaf area index (LAI), specific leaf density (σl),
+the carbon content of roots (Rc), the carbon content of stems (Rs), 
+and mean leaf nitrogen concentration (nm).
+"""
+function nitrogen_content(
+    ne::FT, # Mean leaf nitrogen concentration (kg N (kg C)-1)
+    Vcmax25::FT, #
+    LAI::FT, # Leaf area index
+    RAI::FT,
+    ηsl::FT, # live stem  wood coefficient (kg C m-3) 
+    h::FT, # canopy height (m)
+    σl::FT, # Specific leaf density (kg C m-2 [leaf])
+    μr::FT, # Ratio root nitrogen to top leaf nitrogen (-), typical value 1.0
+    μs::FT, # Ratio stem nitrogen to top leaf nitrogen (-), typical value 0.1 
+) where {FT}
+    Sc = ηsl * h * LAI
+    Rc = σl * RAI
+    nm = Vcmax25 / ne
+    Nl = nm * σl * LAI
+    Nr = μr * nm * Rc
+    Ns = μs * nm * Sc
+    return Nl, Nr, Ns
+end
+
+"""
+    plant_respiration_maintenance(
+        Rd::FT, # Dark respiration
+        β::FT, # Soil moisture factor
+        Nl::FT, # Nitrogen content of leafs
+        Nr::FT, # Nitrogen content of roots
+        Ns::FT, # Nitrogen content of stems
+        f::FT # Factor to convert from mol CO2 to kg C
+        ) where {FT}
+
+Computes plant maintenance respiration as a function of dark respiration (Rd),
+the nitrogen content of leafs (Nl), roots (Nr) and stems (Ns), 
+and the soil moisture factor (β).
+"""
+function plant_respiration_maintenance(
+    Rd::FT, # Dark respiration
+    β::FT, # Soil moisture factor
+    Nl::FT, # Nitrogen content of leafs
+    Nr::FT, # Nitrogen content of roots
+    Ns::FT, # Nitrogen content of stems
+    f1::FT, # Factor to convert from mol CO2 to kg C
+) where {FT}
+    Rpm = f1 * Rd * (β + (Nr + Ns) / Nl)
+    return Rpm
+end
+
+"""
+    plant_respiration_growth(
+        f::FT, # Factor of relative contribution
+        GPP::FT, # Gross primary productivity
+        Rpm::FT # Plant maintenance respiration
+        ) where {FT}
+
+Computes plant growth respiration as a function of gross primary productivity (GPP),
+plant maintenance respiration (Rpm), and a relative contribution factor, f.
+"""
+function plant_respiration_growth(
+    f2::FT, # Factor of relative contribution, usually 0.25
+    GPP::FT, # Gross primary productivity
+    Rpm::FT, # Plant maintenance respiration
+) where {FT}
+    Rg = f2 * (GPP - Rpm)
+    return Rg
 end

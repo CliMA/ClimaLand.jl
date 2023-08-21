@@ -131,9 +131,11 @@ struct FarquharModel{FT} <: AbstractPhotosynthesisModel{FT}
 end
 
 ClimaLSM.name(model::AbstractPhotosynthesisModel) = :photosynthesis
-ClimaLSM.auxiliary_vars(model::FarquharModel) = (:An, :GPP)
-ClimaLSM.auxiliary_types(model::FarquharModel{FT}) where {FT} = (FT, FT)
-ClimaLSM.auxiliary_domain_names(::FarquharModel) = (:surface, :surface)
+ClimaLSM.auxiliary_vars(model::FarquharModel) = (:An, :GPP, :Rd)
+ClimaLSM.auxiliary_types(model::FarquharModel{FT}) where {FT} = (FT, FT, FT)
+ClimaLSM.auxiliary_domain_names(::FarquharModel) =
+    (:surface, :surface, :surface)
+
 """
     compute_photosynthesis(
         model::FarquharModel,
@@ -159,6 +161,7 @@ function compute_photosynthesis(
     c_co2,
     β,
     R,
+    Rd,
 )
     (;
         Vcmax25,
@@ -187,6 +190,5 @@ function compute_photosynthesis(
     Kc = MM_Kc(Kc25, ΔHkc, T, To, R)
     Ko = MM_Ko(Ko25, ΔHko, T, To, R)
     Ac = rubisco_assimilation(mechanism, Vcmax, ci, Γstar, Kc, Ko, oi)
-    Rd = dark_respiration(Vcmax25, β, f, ΔHRd, T, To, R)
     return net_photosynthesis(Ac, Aj, Rd, β)
 end

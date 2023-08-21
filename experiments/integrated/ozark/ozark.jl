@@ -64,12 +64,25 @@ soil_model_type = Soil.EnergyHydrology{FT}
 # Now we set up the canopy model, which we set up by component:
 # Component Types
 canopy_component_types = (;
+    autotrophic_respiration = Canopy.AutotrophicRespirationModel{FT},
     radiative_transfer = Canopy.TwoStreamModel{FT},
     photosynthesis = Canopy.FarquharModel{FT},
     conductance = Canopy.MedlynConductanceModel{FT},
     hydraulics = Canopy.PlantHydraulicsModel{FT},
 )
 # Individual Component arguments
+# Set up autotrophic respiration
+autotrophic_respiration_args = (;
+    parameters = AutotrophicRespirationParameters{FT}(;
+        ne = ne,
+        ηsl = ηsl,
+        σl = σl,
+        μr = μr,
+        μs = μs,
+        f1 = f1,
+        f2 = f2,
+    )
+)
 # Set up radiative transfer
 radiative_transfer_args = (;
     parameters = TwoStreamParameters{FT}(;
@@ -141,6 +154,7 @@ plant_hydraulics_args = (
 
 # Canopy component args
 canopy_component_args = (;
+    autotrophic_respiration = autotrophic_respiration_args,
     radiative_transfer = radiative_transfer_args,
     photosynthesis = photosynthesis_args,
     conductance = conductance_args,
@@ -228,6 +242,25 @@ sol = SciMLBase.solve(
 # Plotting
 daily = sol.t ./ 3600 ./ 24
 savedir = joinpath(climalsm_dir, "experiments/integrated/ozark/")
+
+# Autotrophic Respiration
+AR = [
+    parent(sv.saveval[k].canopy.autotrophic_respiration.Ra)[1] for
+    k in 1:length(sv.saveval)
+]
+
+pltAR = Plots.plot(size = (1500, 400))
+
+Plots.plot!(
+    pltAR,
+    daily,
+    AR .* 1e6,
+    label = "Autotrophic Respiration",
+    xlim = [minimum(daily), maximum(daily)],
+    title = "AR [μmol/m^2/s]",
+)
+
+Plots.savefig(joinpath(savedir, "AutoResp.png"))
 
 # GPP
 model_GPP = [
@@ -723,5 +756,9 @@ Plots.plot!(
 Plots.plot!(plt3, legend = :bottomleft)
 Plots.plot(plt3, plt2, layout = (2, 1))
 Plots.savefig(joinpath(savedir, "soil_temperature.png"))
+
+
+
+
 
 rm(joinpath(savedir, "Artifacts.toml"))

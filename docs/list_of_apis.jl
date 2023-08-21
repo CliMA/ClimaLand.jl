@@ -18,6 +18,7 @@ apis = [
             "Canopy RT" => "APIs/canopy/RadiativeTransfer.md",
             "Canopy Energy" => "APIs/canopy/CanopyEnergy.md",
             "Canopy Stomatal Conductance" => "APIs/canopy/StomatalConductance.md",
+            "Canopy Autotrophic Respiration" => "APIs/canopy/AutotrophicRespiration.md",
         ],
         "Surface Water Models" => "APIs/SurfaceWater.md",
         "Bucket Model" => "APIs/Bucket.md",
