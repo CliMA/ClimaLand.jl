@@ -105,8 +105,7 @@ end
     regrid_dir_temporal = joinpath(pkgdir(ClimaLSM), "test", "temporal")
     t_start = FT(0)
     domain = create_domain_2d(FT)
-    surface = domain.surface
-    space = surface.space
+    space = domain.surface.space
 
     input_file = cesm2_albedo_dataset_path()
     date_ref = to_datetime(NCDataset(input_file, "r") do ds
@@ -114,7 +113,7 @@ end
     end)
 
     albedo =
-        BulkAlbedoTemporal{FT}(regrid_dir_temporal, date_ref, t_start, surface)
+        BulkAlbedoTemporal{FT}(regrid_dir_temporal, date_ref, t_start, space)
     p = (; bucket = (; α_sfc = Fields.zeros(space)))
     surface_coords = Fields.coordinate_field(space)
 
@@ -214,12 +213,8 @@ end
     end)
     t_start = FT(0)
 
-    albedo = BulkAlbedoTemporal{FT}(
-        regrid_dir_temporal,
-        date_ref,
-        t_start,
-        domain.surface,
-    )
+    albedo =
+        BulkAlbedoTemporal{FT}(regrid_dir_temporal, date_ref, t_start, space)
 
     Y = (; bucket = (; W = Fields.zeros(space)))
     p = (; bucket = (; α_sfc = Fields.zeros(space)))
@@ -374,23 +369,25 @@ end
     input_file = bareground_albedo_dataset_path()
     date_ref = Dates.DateTime(1900, 1, 1)
     t_start = FT(0)
-    surface = nothing
-    err = nothing
+    domain = create_domain_2d(FT)
+    space = domain.surface.space
 
-    try
-        BulkAlbedoTemporal{FT}(
-            regrid_dirpath,
-            date_ref,
-            t_start,
-            surface,
-            input_file = input_file,
-        )
-    catch err
+    let err = nothing
+        try
+            BulkAlbedoTemporal{FT}(
+                regrid_dirpath,
+                date_ref,
+                t_start,
+                space,
+                input_file = input_file,
+            )
+        catch err
+        end
+
+        @test err isa Exception
+        @test sprint(showerror, err) ==
+              "Using a temporal albedo map requires data with time dimension."
     end
-
-    @test err isa Exception
-    @test sprint(showerror, err) ==
-          "Using a temporal albedo map requires data with time dimension."
 
 end
 
@@ -429,14 +426,10 @@ end
     orbital_data = Insolation.OrbitalData()
 
     for bucket_domain in bucket_domains
-        surface = bucket_domain.surface
+        space = bucket_domain.surface.space
         if bucket_domain isa LSMSphericalShellDomain
-            albedo_model = BulkAlbedoTemporal{FT}(
-                regrid_dirpath,
-                date_ref,
-                t_start,
-                surface,
-            )
+            albedo_model =
+                BulkAlbedoTemporal{FT}(regrid_dirpath, date_ref, t_start, space)
             # Radiation
             SW_d = (t) -> eltype(t)(0.0)
             LW_d = (t) -> eltype(t)(5.67e-8 * 280.0^4.0)
@@ -532,7 +525,7 @@ end
                         regrid_dirpath,
                         date_ref,
                         t_start,
-                        surface,
+                        space,
                     )
                 catch err
                 end

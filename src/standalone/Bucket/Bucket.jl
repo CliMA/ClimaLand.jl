@@ -142,7 +142,7 @@ end
         regrid_dirpath::String,
         date_ref::Union{DateTime, DateTimeNoLeap},
         t_start::FT,
-        surface;
+        Space::ClimaCore.Spaces.AbstractSpace;
         input_file = Bucket.cesm2_albedo_dataset_path(),
         varname = "sw_alb"
     ) where {FT}
@@ -157,12 +157,12 @@ function BulkAlbedoTemporal{FT}(
     regrid_dirpath::String,
     date_ref::Union{DateTime, DateTimeNoLeap},
     t_start::FT,
-    surface;
+    space::ClimaCore.Spaces.AbstractSpace;
     input_file = Bucket.cesm2_albedo_dataset_path(),
     varname = "sw_alb",
 ) where {FT}
     # Verify inputs
-    if typeof(surface) <: ClimaLSM.Domains.Point
+    if typeof(space) <: ClimaCore.Spaces.PointSpace
         error("Using an albedo map requires a global run.")
     end
     NCDataset(input_file, "r") do ds
@@ -180,7 +180,7 @@ function BulkAlbedoTemporal{FT}(
         varname,
         date_ref,
         t_start,
-        surface.space,
+        space,
     )
     return BulkAlbedoTemporal{FT}(data_info)
 end
