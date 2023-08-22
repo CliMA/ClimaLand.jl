@@ -332,3 +332,59 @@ Plots.plot!(
     label = "Canopy Water Balance",
 )
 Plots.savefig(joinpath(savedir, "water_conservation.png"))
+
+
+
+##  Soil energy balance ##
+# Energy of liquid water infiltrating soil is ignored in our model.
+
+# Turbulent fluxes
+LHF = [parent(sv.saveval[k].soil_lhf)[1] for k in 2:length(sol.t)]
+SHF = [parent(sv.saveval[k].soil_shf)[1] for k in 2:length(sol.t)]
+# Radiation
+soil_Rn = [parent(sv.saveval[k].soil_Rn)[1] for k in 2:length(sol.t)]
+# Root sink term: a positive root extraction is a sink term for soil; add minus sign
+root_sink_energy = [
+    sum(
+        -1 .* sv.saveval[k].root_extraction .*
+        ClimaLSM.Soil.volumetric_internal_energy_liq.(
+            sv.saveval[k].soil.T,
+            land.soil.parameters,
+        ),
+    ) for k in 2:length(sol.t)
+]
+# Bottom energy BC
+soil_bottom_flux = FT(0)
+
+# Energy balance equation
+
+# d[∫Idz] = [-(F_sfc - F_bot) + ∫Sdz]dt = -ΔF dt + ∫Sdz dt
+# N.B. in ClimaCore, sum(field) -> integral
+rhs_soil_energy =
+    -(LHF .+ SHF .+ soil_Rn .- soil_bottom_flux) .+ root_sink_energy
+
+net_soil_energy_storage =
+    [sum(sol.u[k].soil.ρe_int)[1] for k in 1:length(sol.t)]
+lhs_soil_energy = net_soil_energy_storage[2:end] .- net_soil_energy_storage[1]
+soil_energy_change_actual = lhs_soil_energy
+soil_energy_change_exp = cumsum(rhs_soil_energy) .* dt
+
+plt2 = Plots.plot(
+    size = (1500, 400),
+    ylabel = "Fractional Error",
+    yaxis = :log,
+    margin = 10Plots.mm,
+    xlabel = "Day",
+)
+Plots.plot!(
+    plt2,
+    daily,
+    eps(FT) .+
+    abs.(
+        (soil_energy_change_actual - soil_energy_change_exp) ./
+        soil_energy_change_exp
+    ),
+    label = "Soil Energy Balance",
+)
+
+Plots.savefig(joinpath(savedir, "energy_conservation.png"))
