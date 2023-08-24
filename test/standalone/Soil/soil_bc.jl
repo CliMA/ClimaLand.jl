@@ -17,7 +17,7 @@ FT = Float64
 
     domain = SphericalShell(;
         radius = FT(1.0),
-        height = FT(1.0),
+        depth = FT(1.0),
         nelements = (1, 2),
         npolynomial = 3,
     )

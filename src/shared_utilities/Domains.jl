@@ -63,6 +63,8 @@ struct Column{FT, S} <: AbstractDomain{FT}
     zlim::Tuple{FT, FT}
     "Number of elements used to discretize the interval"
     nelements::Tuple{Int}
+    "Tuple for mesh stretching specifying *target* (dz_bottom, dz_top) (m). If nothing, no stretching is applied."
+    dz_tuple::Union{Tuple{FT, FT}, Nothing}
     "Boundary face identifiers"
     boundary_tags::Tuple{Symbol, Symbol}
     "The associated ClimaCore Space"
@@ -72,12 +74,28 @@ end
 """
     Column(;
         zlim::Tuple{FT, FT},
-        nelements::Int) where {FT}
-Outer constructor for the `Column` type.
+        nelements::Int,
+        dz_tuple::Union{Tuple{FT, FT}, Nothing} = nothing) where {FT}
+
+Outer constructor for the `Column` type. 
+
+Using `ClimaCore` tools, the coordinate
+mesh can be stretched such that the top of the domain has finer resolution
+than the bottom of the domain. In order to activate this, a tuple with the
+target dz_bottom and dz_top should be passed via keyword argument. The default is
+uniform spacing. Please note that in order to use this feature, ClimaCore requires that
+the elements of zlim be <=0. Additionally, the dz_tuple you supply may not be compatible
+with the domain boundaries in some cases, in which case you may need to choose
+different values.
+
 The `boundary_tags` field values are used to label the boundary faces 
 at the top and bottom of the domain.
 """
-function Column(; zlim::Tuple{FT, FT}, nelements::Int) where {FT}
+function Column(;
+    zlim::Tuple{FT, FT},
+    nelements::Int,
+    dz_tuple::Union{Tuple{FT, FT}, Nothing} = nothing,
+) where {FT}
     @assert zlim[1] < zlim[2]
     boundary_tags = (:bottom, :top)
     column = ClimaCore.Domains.IntervalDomain(
@@ -85,11 +103,26 @@ function Column(; zlim::Tuple{FT, FT}, nelements::Int) where {FT}
         ClimaCore.Geometry.ZPoint{FT}(zlim[2]);
         boundary_tags = boundary_tags,
     )
-    mesh = ClimaCore.Meshes.IntervalMesh(column; nelems = nelements)
+    if dz_tuple isa Nothing
+        mesh = ClimaCore.Meshes.IntervalMesh(column; nelems = nelements)
+    else
+        @assert zlim[2] <= 0
+        mesh = ClimaCore.Meshes.IntervalMesh(
+            column,
+            ClimaCore.Meshes.GeneralizedExponentialStretching{FT}(
+                dz_tuple[1],
+                dz_tuple[2],
+            );
+            nelems = nelements,
+            reverse_mode = true,
+        )
+    end
+
     center_space = ClimaCore.Spaces.CenterFiniteDifferenceSpace(mesh)
     return Column{FT, typeof(center_space)}(
         zlim,
         (nelements,),
+        dz_tuple,
         boundary_tags,
         center_space,
     )
@@ -174,6 +207,7 @@ end
         xlim::Tuple{FT, FT}
         ylim::Tuple{FT, FT}
         zlim::Tuple{FT, FT}
+        dz_tuple::Union{Tuple{FT, FT}, Nothing}
         nelements::Tuple{Int, Int, Int}
         npolynomial::Int
         periodic::Tuple{Bool, Bool}
@@ -194,6 +228,8 @@ struct HybridBox{FT, S} <: AbstractDomain{FT}
     ylim::Tuple{FT, FT}
     "Domain interval limits along z axis, in meters"
     zlim::Tuple{FT, FT}
+    "Tuple for mesh stretching specifying *target* (dz_bottom, dz_top) (m). If nothing, no stretching is applied."
+    dz_tuple::Union{Tuple{FT, FT}, Nothing}
     "Number of elements to discretize interval, (nx, ny,nz)"
     nelements::Tuple{Int, Int, Int}
     " Polynomial order for the horizontal directions"
@@ -211,6 +247,7 @@ end
         zlim::Tuple{FT, FT},
         nelements::Tuple{Int, Int, Int},
         npolynomial::Int,
+        dz_tuple::Union{Tuple{FT, FT}, Nothing} = nothing,
         periodic = (true, true),
     ) where {FT}
 Constructs the `HybridBox` domain
@@ -222,6 +259,15 @@ to the x-axis, the second corresponding to the y-axis, and the third
 corresponding to the z-axis. The domain is periodic at the (xy) boundaries,
 and the function space is of polynomial order `npolynomial` in the
 horizontal directions.
+
+Using `ClimaCore` tools, the coordinate
+mesh can be stretched such that the top of the domain has finer resolution
+than the bottom of the domain. In order to activate this, a tuple with the
+target dz_bottom and dz_top should be passed via keyword argument. The default is
+uniform spacing. Please note that in order to use this feature, ClimaCore requires that
+the elements of zlim be <=0. Additionally, the dz_tuple you supply may not be compatible
+with the domain boundaries in some cases, in which case you may need to choose
+different values.
 """
 function HybridBox(;
     xlim::Tuple{FT, FT},
@@ -229,6 +275,7 @@ function HybridBox(;
     zlim::Tuple{FT, FT},
     nelements::Tuple{Int, Int, Int},
     npolynomial::Int,
+    dz_tuple::Union{Tuple{FT, FT}, Nothing} = nothing,
     periodic = (true, true),
 ) where {FT}
     @assert xlim[1] < xlim[2]
@@ -240,7 +287,21 @@ function HybridBox(;
         ClimaCore.Geometry.ZPoint(zlim[2]);
         boundary_tags = (:bottom, :top),
     )
-    vertmesh = ClimaCore.Meshes.IntervalMesh(vertdomain, nelems = nelements[3])
+    if dz_tuple isa Nothing
+        vertmesh =
+            ClimaCore.Meshes.IntervalMesh(vertdomain; nelems = nelements[3])
+    else
+        @assert zlim[2] <= 0
+        vertmesh = ClimaCore.Meshes.IntervalMesh(
+            vertdomain,
+            ClimaCore.Meshes.GeneralizedExponentialStretching{FT}(
+                dz_tuple[1],
+                dz_tuple[2],
+            );
+            nelems = nelements[3],
+            reverse_mode = true,
+        )
+    end
     vert_center_space = ClimaCore.Spaces.CenterFiniteDifferenceSpace(vertmesh)
 
     horzdomain = Plane(;
@@ -260,6 +321,7 @@ function HybridBox(;
         xlim,
         ylim,
         zlim,
+        dz_tuple,
         nelements,
         npolynomial,
         periodic,
@@ -270,7 +332,8 @@ end
 """
     struct SphericalShell{FT} <: AbstractDomain{FT}
         radius::FT
-        height::FT
+        depth::FT
+        dz_tuple::Union{Tuple{FT, FT}, Nothing}
         nelements::Tuple{Int, Int}
         npolynomial::Int
     end
@@ -285,7 +348,9 @@ struct SphericalShell{FT, S} <: AbstractDomain{FT}
     "The radius of the shell"
     radius::FT
     "The radial extent of the shell"
-    height::FT
+    depth::FT
+    "Tuple for mesh stretching specifying *target* (dz_bottom, dz_top) (m). If nothing, no stretching is applied."
+    dz_tuple::Union{Tuple{FT, FT}, Nothing}
     "The number of elements to be used in the non-radial and radial directions"
     nelements::Tuple{Int, Int}
     "The polynomial order to be used in the non-radial directions"
@@ -297,31 +362,49 @@ end
 """
     SphericalShell(;
         radius::FT,
-        height::FT,
+        depth::FT,
         nelements::Tuple{Int, Int},
         npolynomial::Int,
+        dz_tuple::Union{Tuple{FT, FT}, Nothing} = nothing,
     ) where {FT}
 Outer constructor for the `SphericalShell` domain, using keyword arguments.
+
+Using `ClimaCore` tools, the coordinate
+mesh can be stretched such that the top of the domain has finer resolution
+than the bottom of the domain. In order to activate this, a tuple with the
+target dz_bottom and dz_top should be passed via keyword argument. The default is
+uniform spacing. Please note that the dz_tuple you supply may not be compatible
+with the depth/nelements chosen, in which case you may need to choose
+different values.
 """
 function SphericalShell(;
     radius::FT,
-    height::FT,
+    depth::FT,
     nelements::Tuple{Int, Int},
     npolynomial::Int,
+    dz_tuple::Union{Tuple{FT, FT}, Nothing} = nothing,
 ) where {FT}
     @assert 0 < radius
-    @assert 0 < height
+    @assert 0 < depth
     vertdomain = ClimaCore.Domains.IntervalDomain(
-        ClimaCore.Geometry.ZPoint(FT(0)),
-        ClimaCore.Geometry.ZPoint(FT(height));
+        ClimaCore.Geometry.ZPoint(FT(-depth)),
+        ClimaCore.Geometry.ZPoint(FT(0));
         boundary_tags = (:bottom, :top),
     )
-
-    vertmesh = ClimaCore.Meshes.IntervalMesh(
-        vertdomain,
-        ClimaCore.Meshes.Uniform(),
-        nelems = nelements[2],
-    )
+    if dz_tuple isa Nothing
+        vertmesh =
+            ClimaCore.Meshes.IntervalMesh(vertdomain; nelems = nelements[2])
+    else
+        vertmesh = ClimaCore.Meshes.IntervalMesh(
+            vertdomain,
+            ClimaCore.Meshes.GeneralizedExponentialStretching{FT}(
+                dz_tuple[1],
+                dz_tuple[2],
+            );
+            nelems = nelements[2],
+            reverse_mode = true,
+        )
+    end
     vert_center_space = ClimaCore.Spaces.CenterFiniteDifferenceSpace(vertmesh)
 
     horzdomain = ClimaCore.Domains.SphereDomain(radius)
@@ -336,7 +419,8 @@ function SphericalShell(;
     )
     return SphericalShell{FT, typeof(hv_center_space)}(
         radius,
-        height,
+        depth,
+        dz_tuple,
         nelements,
         npolynomial,
         hv_center_space,
@@ -424,12 +508,18 @@ end
     LSMSingleColumnDomain(;
         zlim::Tuple{FT, FT},
         nelements::Int,
+        dz_tuple::Union{Tuple{FT, FT}, Nothing} = nothing,
     ) where {FT}
 A constructor for the LSMSingleColumnDomain.
 """
-function LSMSingleColumnDomain(; zlim::Tuple{FT, FT}, nelements::Int) where {FT}
+function LSMSingleColumnDomain(;
+    zlim::Tuple{FT, FT},
+    nelements::Int,
+    dz_tuple::Union{Tuple{FT, FT}, Nothing} = nothing,
+) where {FT}
     @assert zlim[1] < zlim[2]
-    subsurface_domain = Column(; zlim = FT.(zlim), nelements = nelements)
+    subsurface_domain =
+        Column(; zlim = FT.(zlim), nelements = nelements, dz_tuple = dz_tuple)
     surface_space = obtain_surface_space(subsurface_domain.space)
     surface_domain = Point{FT, typeof(surface_space)}(zlim[2], surface_space)
     return LSMSingleColumnDomain{
@@ -469,7 +559,8 @@ end
         zlim::Tuple{FT, FT}
         nelements::Tuple{Int, Int, Int}
         npolynomial::Int
-        periodic::Tuple{Bool, Bool}
+        periodic::Tuple{Bool, Bool} = (true, true),
+        dz_tuple::Union{Tuple{FT,FT}, Nothing} = nothing,
     ) where {FT}
 A constructor for the LSMMultiColumnDomain.
 """
@@ -479,7 +570,8 @@ function LSMMultiColumnDomain(;
     zlim::Tuple{FT, FT},
     nelements::Tuple{Int, Int, Int},
     npolynomial::Int,
-    periodic::Tuple{Bool, Bool},
+    periodic::Tuple{Bool, Bool} = (true, true),
+    dz_tuple::Union{Tuple{FT, FT}, Nothing} = nothing,
 ) where {FT}
     @assert xlim[1] < xlim[2]
     @assert ylim[1] < ylim[2]
@@ -489,6 +581,7 @@ function LSMMultiColumnDomain(;
         xlim = xlim,
         ylim = ylim,
         zlim = zlim,
+        dz_tuple = dz_tuple,
         nelements = nelements,
         npolynomial = npolynomial,
         periodic = periodic,
@@ -536,23 +629,26 @@ end
 """
     LSMSphericalShellDomain(;
         radius::FT,
-        height::FT,
+        depth::FT,
         nelements::Tuple{Int, Int},
         npolynomial::Int,
+        dz_tuple::Union{Tuple{FT, FT}, Nothing} = nothing,
     ) where {FT}
 A constructor for the LSMSphericalShellDomain.
 """
 function LSMSphericalShellDomain(;
     radius::FT,
-    height::FT,
+    depth::FT,
     nelements::Tuple{Int, Int},
     npolynomial::Int,
+    dz_tuple::Union{Tuple{FT, FT}, Nothing} = nothing,
 ) where {FT}
     @assert radius > FT(0)
-    @assert height > FT(0)
+    @assert depth > FT(0)
     subsurface = SphericalShell(;
         radius = radius,
-        height = height,
+        depth = depth,
+        dz_tuple = dz_tuple,
         nelements = nelements,
         npolynomial = npolynomial,
     )

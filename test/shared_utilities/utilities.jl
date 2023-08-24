@@ -199,7 +199,7 @@ end
         )
         domain2 = ClimaLSM.Domains.SphericalShell(;
             radius = FT(2),
-            height = FT(1.0),
+            depth = FT(1.0),
             nelements = (10, 5),
             npolynomial = 3,
         )

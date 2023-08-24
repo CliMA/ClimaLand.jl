@@ -20,20 +20,20 @@ TestFloatTypes = (Float32, Float64)
 
 @testset "Clima Core Domains" begin
     for FT in TestFloatTypes
-        zmin = FT(1.0)
-        zmax = FT(2.0)
+        zmin = FT(-1.0)
+        zmax = FT(0.0)
         xlim = FT.((0.0, 10.0))
         ylim = FT.((0.0, 1.0))
         zlim = FT.((zmin, zmax))
-        nelements = (1, 1, 5)
+        nelements = (1, 1, 10)
         shell = SphericalShell(;
             radius = FT(100.0),
-            height = FT(30.0),
+            depth = FT(30.0),
             nelements = (6, 20),
             npolynomial = 3,
         )
         @test shell.radius == FT(100)
-        @test shell.height == FT(30)
+        @test shell.depth == FT(30)
         @test shell.nelements == (6, 20)
         @test shell.npolynomial == 3
         shell_coords = coordinates(shell)
@@ -43,6 +43,20 @@ TestFloatTypes = (Float32, Float64)
               ClimaCore.Spaces.SpectralElementSpace2D
         @test typeof(shell.space) <:
               ClimaCore.Spaces.CenterExtrudedFiniteDifferenceSpace
+
+        shell_stretch = SphericalShell(;
+            radius = FT(100.0),
+            depth = FT(1.0),
+            dz_tuple = FT.((0.3, 0.03)),
+            nelements = (6, 10),
+            npolynomial = 3,
+        )
+        shell_coords_stretch = coordinates(shell_stretch)
+        dz =
+            parent(shell_coords_stretch.z)[:, 1, 4, 1, 216][2:end] .-
+            parent(shell_coords_stretch.z)[:, 1, 4, 1, 216][1:(end - 1)]
+        @test abs(dz[1] - 0.3) < 1e-1
+        @test abs(dz[end] - 0.03) < 1e-2
 
 
         shell_surface = SphericalSurface(;
@@ -60,6 +74,13 @@ TestFloatTypes = (Float32, Float64)
         @test typeof(shell_surface.space) <:
               ClimaCore.Spaces.SpectralElementSpace2D
 
+        xy_plane = Plane(;
+            xlim = xlim,
+            ylim = ylim,
+            nelements = nelements[1:2],
+            periodic = (true, true),
+            npolynomial = 0,
+        )
 
         xyz_column_box = HybridBox(;
             xlim = xlim,
@@ -82,6 +103,20 @@ TestFloatTypes = (Float32, Float64)
         @test typeof(xyz_column_box.space) <:
               ClimaCore.Spaces.CenterExtrudedFiniteDifferenceSpace
 
+        xyz_stretch_column_box = HybridBox(;
+            xlim = xlim,
+            ylim = ylim,
+            zlim = zlim,
+            dz_tuple = FT.((0.3, 0.03)),
+            nelements = nelements,
+            npolynomial = 0,
+        )
+        box_coords_stretch = coordinates(xyz_stretch_column_box)
+        dz =
+            parent(box_coords_stretch.z)[:][2:end] .-
+            parent(box_coords_stretch.z)[:][1:(end - 1)]
+        @test abs(dz[1] - 0.3) < 1e-1
+        @test abs(dz[end] - 0.03) < 1e-2
         xy_plane = Plane(;
             xlim = xlim,
             ylim = ylim,
@@ -107,7 +142,21 @@ TestFloatTypes = (Float32, Float64)
         @test typeof(column_coords) <: ClimaCore.Fields.Field
         @test typeof(z_column.space) <:
               ClimaCore.Spaces.CenterFiniteDifferenceSpace
+        @test any(
+            parent(column_coords)[:][2:end] .-
+            parent(column_coords)[:][1:(end - 1)] .≈
+            (zmax - zmin) / nelements[3],
+        )
 
+        z_column_stretch =
+            Column(; zlim = zlim, nelements = 10, dz_tuple = FT.((0.3, 0.03)))
+        column_coords = coordinates(z_column_stretch)
+        @test z_column_stretch.zlim == FT.(zlim)
+        dz =
+            parent(column_coords)[:][2:end] .-
+            parent(column_coords)[:][1:(end - 1)]
+        @test abs(dz[1] - 0.3) < 1e-1
+        @test abs(dz[end] - 0.03) < 1e-2
     end
 end
 
@@ -130,11 +179,15 @@ end
 
 @testset "LSMSingleColumnDomain" begin
     for FT in TestFloatTypes
-        zmin = FT(1.0)
-        zmax = FT(2.0)
+        zmin = FT(-1.0)
+        zmax = FT(0.0)
         zlim = FT.((zmin, zmax))
         nelements = 5
-        domain = LSMSingleColumnDomain(; zlim = zlim, nelements = nelements)
+        domain = LSMSingleColumnDomain(;
+            zlim = zlim,
+            nelements = nelements,
+            dz_tuple = FT.((0.3, 0.03)),
+        )
         point = domain.surface
         column = domain.subsurface
 
@@ -149,8 +202,8 @@ end
 
 @testset "LSMMultiColumnDomain" begin
     for FT in TestFloatTypes
-        zmin = FT(1.0)
-        zmax = FT(2.0)
+        zmin = FT(-1.0)
+        zmax = FT(0.0)
         zlim = FT.((zmin, zmax))
         xlim = FT.((0.0, 10.0))
         ylim = FT.((0.0, 1.0))
@@ -164,6 +217,7 @@ end
             nelements = nelements,
             periodic = (true, true),
             npolynomial = npolynomial,
+            dz_tuple = FT.((0.3, 0.03)),
         )
         plane = domain.surface
         box = domain.subsurface
@@ -182,9 +236,10 @@ end
     for FT in TestFloatTypes
         domain = LSMSphericalShellDomain(;
             radius = FT(100.0),
-            height = FT(30.0),
+            depth = FT(30.0),
             nelements = (6, 20),
             npolynomial = 3,
+            dz_tuple = FT.((5.0, 0.3)),
         )
         surf = domain.surface
         shell = domain.subsurface

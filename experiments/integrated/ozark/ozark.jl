@@ -425,8 +425,7 @@ Plots.plot!(
 Plots.plot(plt1, plt2, layout = (2, 1))
 Plots.savefig(joinpath(savedir, "stomatal_conductance.png"))
 
-# Current resolution is 3.333 cm per layer, our nodes are at the center of the
-# layers. The second layer is ~ 5cm
+# Current resolution has the first layer at 0.1 cm, the second at 5cm.
 plt1 = Plots.plot(size = (1500, 800))
 Plots.plot!(
     plt1,

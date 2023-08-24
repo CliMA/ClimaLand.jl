@@ -46,7 +46,7 @@ function create_domain_2d(FT)
     np = 2
     return LSMSphericalShellDomain(;
         radius = rad,
-        height = h,
+        depth = h,
         nelements = ne,
         npolynomial = np,
     )
@@ -277,7 +277,7 @@ end
         LSMSingleColumnDomain(; zlim = (-100.0, 0.0), nelements = 10),
         LSMSphericalShellDomain(;
             radius = FT(100.0),
-            height = FT(3.5),
+            depth = FT(3.5),
             nelements = (2, 10),
             npolynomial = 2,
         ),
@@ -418,7 +418,7 @@ end
         LSMSingleColumnDomain(; zlim = (-100.0, 0.0), nelements = 10),
         LSMSphericalShellDomain(;
             radius = FT(100.0),
-            height = FT(3.5),
+            depth = FT(3.5),
             nelements = (2, 10),
             npolynomial = 2,
         ),

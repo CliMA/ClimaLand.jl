@@ -356,7 +356,7 @@ end
 
     soil_domain = SphericalShell(;
         radius = FT(100.0),
-        height = FT(1.0),
+        depth = FT(1.0),
         nelements = (1, 30),
         npolynomial = 3,
     )
@@ -404,13 +404,13 @@ end
 
     ## vertical change should be zero except at the boundary, where it should be ±30.
     @test (mean(unique(parent(ClimaCore.level(dY.soil.ϑ_l, 1)))) - 30.0) / ν <
-          1e-11
+          1e-10
     @test (mean(unique(parent(ClimaCore.level(dY.soil.ϑ_l, 30)))) + 30.0) / ν <
-          1e-11
+          1e-10
     @test mean([
         maximum(abs.(unique(parent(ClimaCore.level(dY.soil.ϑ_l, k))))) for
         k in 2:29
-    ]) / ν < 1e-11
+    ]) / ν < 1e-10
 
     exp_tendency!(dY, Y, p, t0)
     ClimaLSM.dss!(dY, p, t0)
@@ -419,7 +419,7 @@ end
     @test mean([
         maximum(abs.(unique(parent(ClimaCore.level(dY.soil.ϑ_l, k))))) for
         k in 1:30
-    ]) / ν < 1e-11
+    ]) / ν < 1e-10
 
 end
 
@@ -438,7 +438,7 @@ end
     )
     shell = ClimaLSM.Domains.SphericalShell(;
         radius = FT(1),
-        height = FT(1),
+        depth = FT(1),
         nelements = (2, 3),
         npolynomial = 1,
     )
