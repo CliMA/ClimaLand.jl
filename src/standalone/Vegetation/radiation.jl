@@ -181,7 +181,7 @@ Base.broadcastable(RT::AbstractRadiationModel) = tuple(RT)
 
 ClimaLSM.name(model::AbstractRadiationModel) = :radiative_transfer
 ClimaLSM.auxiliary_vars(model::Union{BeerLambertModel, TwoStreamModel}) =
-    (:apar, :par, :anir, :nir)
+    (:apar, :par, :anir, :nir, :α_sfc)
 ClimaLSM.auxiliary_types(
     model::Union{BeerLambertModel{FT}, TwoStreamModel{FT}},
-) where {FT} = (FT, FT, FT, FT)
+) where {FT} = (FT, FT, FT, FT, FT)

@@ -30,8 +30,8 @@ export plant_absorbed_pfd,
         NIR,
         LAI,
         K,
-        _,
-        _,
+        α_soil_PAR,
+        α_soil_NIR,
         _,
     )
 
@@ -47,13 +47,18 @@ function compute_absorbances(
     NIR,
     LAI,
     K,
-    _,
-    _,
+    α_soil_PAR,
+    α_soil_NIR,
     _,
 ) where {FT}
     RTP = RT.parameters
     APAR = @. plant_absorbed_pfd(RT, PAR, RTP.α_PAR_leaf, LAI, K)
     ANIR = @. plant_absorbed_pfd(RT, NIR, RTP.α_NIR_leaf, LAI, K)
+    APAR_sl = (1 - α_soil_PAR) * (PAR - APAR)
+    ANIR_sl = (1 - α_soil_NIR) * (NIR - ANIR)
+    bulk_reflected_sw = APAR + ANIR + APAR_sl + ANIR_sl
+    bulk_α_sfc = bulk_reflected_sw / (PAR + NIR)
+    return (APAR, ANIR, bulk_α_sfc)
     return (APAR, ANIR)
 end
 
@@ -64,9 +69,9 @@ end
         NIR,
         LAI,
         K,
-        θs,
         α_soil_PAR,
         α_soil_NIR,
+        θs,
     )
 
 Compute APAR and ANIR absorbances for a canopy in the case of the
@@ -81,9 +86,9 @@ function compute_absorbances(
     NIR,
     LAI,
     K,
-    θs,
     α_soil_PAR,
     α_soil_NIR,
+    θs,
 ) where {FT}
     RTP = RT.parameters
     APAR = @. plant_absorbed_pfd(
@@ -106,7 +111,11 @@ function compute_absorbances(
         θs,
         α_soil_NIR,
     )
-    return (APAR, ANIR)
+    APAR_sl = (1 - α_soil_PAR) * (PAR - APAR)
+    ANIR_sl = (1 - α_soil_NIR) * (NIR - ANIR)
+    bulk_reflected_sw = APAR + ANIR + APAR_sl + ANIR_sl
+    bulk_α_sfc = bulk_reflected_sw / (PAR + NIR)
+    return (APAR, ANIR, bulk_α_sfc)
 end
 
 """

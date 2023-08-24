@@ -384,6 +384,7 @@ function ClimaLSM.make_update_aux(
         PAR = p.canopy.radiative_transfer.par
         ANIR = p.canopy.radiative_transfer.anir
         NIR = p.canopy.radiative_transfer.nir
+        α_sfc = p.canopy.radiative_transfer.α_sfc
         β = p.canopy.hydraulics.β
         medlyn_factor = p.canopy.conductance.medlyn_term
         gs = p.canopy.conductance.gs
@@ -427,15 +428,15 @@ function ClimaLSM.make_update_aux(
         K = extinction_coeff(ld, θs)
         PAR .= compute_PAR(RT, canopy.radiation, t)
         NIR .= compute_NIR(RT, canopy.radiation, t)
-        APAR, ANIR = compute_absorbances(
+        APAR, ANIR, α_sfc = compute_absorbances(
             RT,
             PAR ./ (energy_per_photon_PAR * N_a),
             NIR ./ (energy_per_photon_NIR * N_a),
             LAI,
             K,
-            θs,
             ground_albedo_PAR(canopy),
             ground_albedo_NIR(canopy),
+            θs,
         )
 
         # update plant hydraulics aux
