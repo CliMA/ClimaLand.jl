@@ -325,6 +325,23 @@ function net_radiation_at_ground(
 end
 
 """
+    ClimaLSM.surface_albedo(
+        model::SoilCanopyModel,
+        Y::ClimaCore.Fields.FieldVector,
+        p::NamedTuple,
+    )
+
+Returns the surface albedo of the integrated canopy over soil model.
+"""
+function ClimaLSM.surface_albedo(
+    model::SoilCanopyModel,
+    Y::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
+)
+    return @. p.canopy.α_sfc
+end
+
+"""
     ClimaLSM.source!(dY::ClimaCore.Fields.FieldVector,
                      src::RootExtraction,
                      Y::ClimaCore.Fields.FieldVector,

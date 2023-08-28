@@ -290,6 +290,23 @@ Plots.plot(plt1, plt2, layout = (2, 1))
 
 Plots.savefig(joinpath(savedir, "SW_IN.png"))
 
+α_sfc = [
+    parent(sv.saveval[k].canopy.radiative_transfer.α_sfc)[1] for
+    k in 1:length(sol.t)
+]
+
+plt1 = Plots.plot(size = (1500, 400))
+Plots.plot!(
+    plt1,
+    daily,
+    α_sfc,
+    xlim = [minimum(daily), maximum(daily)],
+    label = "Model Surface Albedo",
+    margin = 10Plots.mm,
+    title = "Surface Albedo",
+)
+Plots.savefig(joinpath(savedir, "surface_albedo.png"))
+
 # VPD
 
 plt1 = Plots.plot(size = (1500, 400))

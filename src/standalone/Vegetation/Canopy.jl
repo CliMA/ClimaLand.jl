@@ -269,6 +269,25 @@ function ground_albedo_NIR(canopy::CanopyModel{FT}) where {FT}
 end
 
 """
+    ClimaLSM.surface_albedo(
+        canopy::CanopyModel,
+        Y,
+        p,
+    )
+
+Extends the `surface_albedo` function to the `CanopyModel` type, returning the 
+bulk shortwave albedo of a canopy model with soil beneath it, which may be 
+used whether running in standalone or integrated mode.
+"""
+function ClimaLSM.surface_albedo(
+    canopy::CanopyModel,
+    Y,
+    p,
+)
+    return p.canopy.radiative_transfer.α_sfc
+end
+
+"""
     initialize_prognostic(
         model::CanopyModel{FT},
         coords,
@@ -405,7 +424,7 @@ function ClimaLSM.make_update_aux(
         N_a = FT(LSMP.avogadro_constant(earth_param_set))
         grav = FT(LSMP.grav(earth_param_set))
         ρ_l = FT(LSMP.ρ_cloud_liq(earth_param_set))
-        (; ld, Ω, α_PAR_leaf, λ_γ_PAR, λ_γ_NIR) =
+        (; ld, Ω, λ_γ_PAR, λ_γ_NIR) =
             canopy.radiative_transfer.parameters
         energy_per_photon_PAR = h * c / λ_γ_PAR
         energy_per_photon_NIR = h * c / λ_γ_NIR
@@ -428,7 +447,7 @@ function ClimaLSM.make_update_aux(
         K = extinction_coeff(ld, θs)
         PAR .= compute_PAR(RT, canopy.radiation, t)
         NIR .= compute_NIR(RT, canopy.radiation, t)
-        APAR, ANIR, α_sfc = compute_absorbances(
+        abs_par, abs_nir, surface_α = compute_absorbances(
             RT,
             PAR ./ (energy_per_photon_PAR * N_a),
             NIR ./ (energy_per_photon_NIR * N_a),
@@ -438,6 +457,9 @@ function ClimaLSM.make_update_aux(
             ground_albedo_NIR(canopy),
             θs,
         )
+        @. APAR = abs_par
+        @. ANIR = abs_nir
+        @. α_sfc = surface_α
 
         # update plant hydraulics aux
         hydraulics = canopy.hydraulics

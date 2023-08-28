@@ -54,12 +54,11 @@ function compute_absorbances(
     RTP = RT.parameters
     APAR = @. plant_absorbed_pfd(RT, PAR, RTP.α_PAR_leaf, LAI, K)
     ANIR = @. plant_absorbed_pfd(RT, NIR, RTP.α_NIR_leaf, LAI, K)
-    APAR_sl = (1 - α_soil_PAR) * (PAR - APAR)
-    ANIR_sl = (1 - α_soil_NIR) * (NIR - ANIR)
-    bulk_reflected_sw = APAR + ANIR + APAR_sl + ANIR_sl
-    bulk_α_sfc = bulk_reflected_sw / (PAR + NIR)
+    APAR_sl = @. (1 - α_soil_PAR) * (PAR - APAR)
+    ANIR_sl = @. (1 - α_soil_NIR) * (NIR - ANIR)
+    bulk_reflected_sw = @. PAR + NIR - (APAR + ANIR + APAR_sl + ANIR_sl)
+    bulk_α_sfc = @. bulk_reflected_sw / (PAR + NIR)
     return (APAR, ANIR, bulk_α_sfc)
-    return (APAR, ANIR)
 end
 
 """
@@ -111,10 +110,10 @@ function compute_absorbances(
         θs,
         α_soil_NIR,
     )
-    APAR_sl = (1 - α_soil_PAR) * (PAR - APAR)
-    ANIR_sl = (1 - α_soil_NIR) * (NIR - ANIR)
-    bulk_reflected_sw = APAR + ANIR + APAR_sl + ANIR_sl
-    bulk_α_sfc = bulk_reflected_sw / (PAR + NIR)
+    APAR_sl = @. (1 - α_soil_PAR) * (PAR - APAR)
+    ANIR_sl = @. (1 - α_soil_NIR) * (NIR - ANIR)
+    bulk_reflected_sw = @. PAR + NIR - (APAR + ANIR + APAR_sl + ANIR_sl)
+    bulk_α_sfc = @. bulk_reflected_sw / (PAR + NIR)
     return (APAR, ANIR, bulk_α_sfc)
 end
 
@@ -129,7 +128,7 @@ end
 
 Computes the absorbed photon flux density in terms of mol photons per m^2 per 
 second for a radiation band. If the reflectance and radiation for NIR is passed, 
-computes ANIR and if PAR reflectance and rediation are passed, computes APAR.
+computes ANIR and if PAR reflectance and radiation are passed, computes APAR.
 
 This applies the Beer-Lambert law, which is a function of incident 
 radiation (`SW_IN`; moles of photons/m^2/), leaf reflectance
