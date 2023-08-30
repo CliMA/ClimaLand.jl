@@ -290,22 +290,34 @@ Plots.plot(plt1, plt2, layout = (2, 1))
 
 Plots.savefig(joinpath(savedir, "SW_IN.png"))
 
-α_sfc = [
+SW_sim = FT.(SW_IN)[120 * 24 * 2:2: 240 * 24 * 2]
+LW_sim = FT.(LW_IN)[120 * 24 * 2:2: 240 * 24 * 2]
+
+model_rn = SW_sim .- ([
     parent(sv.saveval[k].canopy.radiative_transfer.α_sfc)[1] for
     k in 1:length(sol.t)
-]
+] .* SW_sim)
 
 plt1 = Plots.plot(size = (1500, 400))
 Plots.plot!(
     plt1,
     daily,
-    α_sfc,
+    model_rn,
     xlim = [minimum(daily), maximum(daily)],
-    label = "Model Surface Albedo",
+    label = "Model Shortwave Absorbed",
     margin = 10Plots.mm,
-    title = "Surface Albedo",
+    title = "Surface shortwave absorbance",
 )
-Plots.savefig(joinpath(savedir, "surface_albedo.png"))
+
+data_rn = map(k -> k < 2500 ? k : 0, FT.(SW_IN .- SW_OUT))
+
+Plots.plot!(
+    plt1,
+    seconds ./ 3600 ./ 24,
+    data_rn,
+    label = "Data SW Absorbed",
+)
+Plots.savefig(joinpath(savedir, "radiation.png"))
 
 # VPD
 
