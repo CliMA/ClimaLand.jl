@@ -48,7 +48,7 @@ bucket_domains = [
     ),
     LSMSphericalShellDomain(;
         radius = 100.0,
-        height = 3.5,
+        depth = 3.5,
         nelements = (1, 10),
         npolynomial = 1,
     ),

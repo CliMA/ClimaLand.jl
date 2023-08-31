@@ -1,10 +1,16 @@
 # Domain setup
 # For soil column
-nelements = 60
+nelements = 10
 zmin = FT(-2)
 zmax = FT(0)
-land_domain =
-    LSMSingleColumnDomain(; zlim = (zmin, zmax), nelements = nelements)
+dz_bottom = FT(0.5)
+dz_top = FT(0.025)
+
+land_domain = LSMSingleColumnDomain(;
+    zlim = (zmin, zmax),
+    nelements = nelements,
+    dz_tuple = (dz_bottom, dz_top),
+)
 
 # Number of stem and leaf compartments. Leaf compartments are stacked on top of stem compartments
 n_stem = Int64(1)

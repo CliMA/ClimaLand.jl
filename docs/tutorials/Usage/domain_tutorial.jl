@@ -16,7 +16,7 @@ system of differential equations, where at each coordinate point a value of
 `ρ`, `T`, `P`, and `u⃗` are solved for at each step. The choice of domain is a question "only"
 of geometry: you may be interested in a large eddy simulation (using a box domain), or
 in a global model (where you would need a spherical shell domain
-representing the atmosphere or ocean from some depth to a given height).
+representing the atmosphere or ocean from some depth to z_sfc = 0).
 
 For land surface
 models, each variable is not defined everywhere in space. For example,
@@ -55,7 +55,7 @@ There is a single key method which take a ClimaLSM domain as an argument.
 - [` coordinates(domain)`](https://clima.github.io/ClimaLSM.jl/dev/APIs/shared_utilities/#ClimaLSM.Domains.coordinates): under the hood, this function  uses
 the function space (domain.space) to create the coordinate field. This returns the coordinates as a ClimaCore.Fields.Field object.
 Depending on the domain, the returned coordinate field will have elements of different names and types. For example,
-the SphericalShell domain has coordinates of latitude, longitude, and height, while a Plane domain has coordinates
+the SphericalShell domain has coordinates of latitude, longitude, and depth, while a Plane domain has coordinates
 of x and y, and a Point domain only has a coordinate z_sfc.
 
 
