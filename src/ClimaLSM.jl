@@ -4,10 +4,6 @@ using DocStringExtensions
 
 using ClimaCore
 import ClimaCore: Fields, Spaces
-# Temporary fix
-import ClimaComms
-ClimaCore.Spaces.PointSpace(x) =
-    ClimaCore.Spaces.PointSpace(ClimaComms.SingletonCommsContext(), x)
 
 include("shared_utilities/Parameters.jl")
 import .Parameters as LSMP
