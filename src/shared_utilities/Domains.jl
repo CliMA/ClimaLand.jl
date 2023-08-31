@@ -2,6 +2,7 @@
 ### the models.jl code as well. But LSM domains will live in ClimaLSM.
 module Domains
 using ClimaCore
+using ClimaComms
 using IntervalSets
 using DocStringExtensions
 
@@ -40,12 +41,25 @@ struct Point{FT, S} <: AbstractDomain{FT}
 end
 
 """
-    Point(;z_sfc::FT) where {FT}
+    Point(;z_sfc::FT,
+           comms = ClimaComms.SingletonCommsContext()
+          ) where {FT}
+
 Constructor for the `Point` domain using keyword arguments.
+
+All other ClimaLSM domains rely on default comms set internally
+by ClimaCore. However, the Point space is unique in this context,
+and does not have the same default defined in ClimaCore. 
+Because of this, we set the default here
+in ClimaLSM. In long term, we will repeat the same for all ClimaLSM domains
+and not rely on any internal defaults set in ClimaCore.
 """
-function Point(; z_sfc::FT) where {FT}
+function Point(;
+    z_sfc::FT,
+    comms = ClimaComms.SingletonCommsContext(),
+) where {FT}
     coord = ClimaCore.Geometry.ZPoint(z_sfc)
-    space = ClimaCore.Spaces.PointSpace(coord)
+    space = ClimaCore.Spaces.PointSpace(comms, coord)
     return Point{FT, typeof(space)}(z_sfc, space)
 end
 
