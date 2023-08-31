@@ -233,14 +233,14 @@ function make_interactions_update_aux(
                 z,
                 land.canopy.hydraulics.compartment_midpoints[1],
                 p.soil.ψ,
-                p.canopy.hydraulics.ψ[1],
+                p.canopy.hydraulics.ψ.:1,
                 PlantHydraulics.hydraulic_conductivity(
                     conductivity_model,
                     p.soil.ψ,
                 ),
                 PlantHydraulics.hydraulic_conductivity(
                     conductivity_model,
-                    p.canopy.hydraulics.ψ[1],
+                    p.canopy.hydraulics.ψ.:1,
                 ),
             ) *
             (land.canopy.hydraulics.parameters.root_distribution(z))

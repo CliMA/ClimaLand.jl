@@ -270,7 +270,7 @@ S_l_ini =
     )
 
 for i in 1:2
-    Y.canopy.hydraulics.ϑ_l[i] .= augmented_liquid_fraction.(ν, S_l_ini[i])
+    Y.canopy.hydraulics.ϑ_l.:($i) .= augmented_liquid_fraction.(ν, S_l_ini[i])
 end;
 
 # Select a time range to perform time stepping over, and a dt. Also create the 

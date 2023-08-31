@@ -197,7 +197,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     (evapotranspiration, shf, lhf) =
         canopy_surface_fluxes(canopy.atmos, canopy, Y, p, t0)
 
-    @test p.canopy.hydraulics.fa[1] == evapotranspiration
+    @test p.canopy.hydraulics.fa.:1 == evapotranspiration
 
     # Penman-monteith
     Δ = FT(100 * (0.444017302 + (290 - 273.15) * 0.0286064092))

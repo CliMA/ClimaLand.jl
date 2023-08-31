@@ -525,13 +525,22 @@ function make_compute_exp_tendency(model::PlantHydraulicsModel, canopy)
         fa = p.canopy.hydraulics.fa
         fa_roots = p.canopy.hydraulics.fa_roots
         FT = eltype(t)
+
+        # Inside of a loop, we need to use a single dollar sign
+        # for indexing into Fields of Tuples in non broadcasted
+        # expressions, and two dollar signs for
+        # for broadcasted expressions using the macro @.
+        # field.:($index) .= value # works
+        # @ field.:($$index) = value # works
         @inbounds for i in 1:(n_stem + n_leaf)
+            im1 = i - 1
+            ip1 = i + 1
             # To prevent dividing by zero, change AI/(AI x dz)" to
             # "AI/max(AI x dz, eps(FT))"
             AIdz =
                 max.(
                     getproperty(area_index, model.compartment_labels[i]) .* (
-                        model.compartment_surfaces[i + 1] -
+                        model.compartment_surfaces[ip1] -
                         model.compartment_surfaces[i]
                     ),
                     eps(FT),
@@ -546,11 +555,11 @@ function make_compute_exp_tendency(model::PlantHydraulicsModel, canopy)
                     p,
                     t,
                 )
-                @inbounds @. dY.canopy.hydraulics.ϑ_l[i] =
-                    1 / AIdz * (fa_roots - fa[i])
+                @inbounds @. dY.canopy.hydraulics.ϑ_l.:($$i) =
+                    1 / AIdz * (fa_roots - fa.:($$i))
             else
-                @inbounds @. dY.canopy.hydraulics.ϑ_l[i] =
-                    1 / AIdz * (fa[i - 1] - fa[i])
+                @inbounds @. dY.canopy.hydraulics.ϑ_l.:($$i) =
+                    1 / AIdz * (fa.:($$im1) - fa.:($$i))
             end
         end
     end
@@ -585,7 +594,9 @@ function root_flux_per_ground_area!(
 
     (; conductivity_model, root_distribution) = model.parameters
     area_index = p.canopy.hydraulics.area_index
-    ψ_base = p.canopy.hydraulics.ψ[1]
+    # We can index into a field of Tuple{FT} to extract a field of FT
+    # using the following notation: field.:index
+    ψ_base = p.canopy.hydraulics.ψ.:1
     root_depths = s.root_depths
     n_root_layers = length(root_depths)
     ψ_soil::FT = s.ψ_soil(t)
