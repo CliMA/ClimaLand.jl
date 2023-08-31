@@ -637,8 +637,6 @@ function next_albedo(
     )
     # Use next date if it's closest to current time
     # This maintains `all_dates[date_idx]` <= `sim_date` < `all_dates[date_idx + 1]`
-    @show sim_date
-    @show to_datetime(next_date_in_file(model_albedo.albedo_info))
     if sim_date >= to_datetime(next_date_in_file(model_albedo.albedo_info))
         read_data_fields!(model_albedo.albedo_info, sim_date, axes(Y.bucket.W))
     end
