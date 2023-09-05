@@ -248,12 +248,8 @@ canopy = ClimaLSM.Canopy.CanopyModel{FT}(;
     radiation = radiation,
 );
 
-# Initialize the state vectors and obtain the model coordinates, then get the
-# explicit time stepping tendency that updates auxiliary and prognostic
-# variables that are stepped explicitly.
-
+# Initialize the state vectors and obtain the model coordinates
 Y, p, coords = ClimaLSM.initialize(canopy)
-exp_tendency! = make_exp_tendency(canopy);
 
 # Provide initial conditions for the canopy hydraulics model
 
@@ -300,13 +296,25 @@ sv = (;
 )
 cb = ClimaLSM.NonInterpSavingCallback(sv, saveat);
 
-# Select a timestepping algorithm and setup the ODE problem.
-
+# Select an (explicit) timestepping algorithm and setup the ODE problem.
 timestepper = CTS.RK4();
 ode_algo = CTS.ExplicitAlgorithm(timestepper)
 
+# We use the
+# [ClimaTimeSteppers.jl](https://github.com/CliMA/ClimaTimeSteppers.jl)
+# interface for handling the specification of implicitly and explicitly
+# treated terms.
+# To set up the ClimaODEFunction, we must specify:
+# - the ODE function/tendency which is treated explicitly in time
+# - the ODE function/tendency which is treated implicitly in time (none here),
+# - the ClimaLSM.dss! function, which does nothing for single column
+#   domains but carries out the dss step needed for domains with spectral
+#   element discretization (employed by Clima in the horizontal directions)
+exp_tendency! = make_exp_tendency(canopy);
+clima_ode_function =
+    CTS.ClimaODEFunction(T_exp! = exp_tendency!, dss! = ClimaLSM.dss!);
 prob = SciMLBase.ODEProblem(
-    CTS.ClimaODEFunction(T_exp! = exp_tendency!, dss! = ClimaLSM.dss!),
+    clima_ode_function,
     Y,
     (t0, tf),
     p,

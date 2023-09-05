@@ -131,13 +131,6 @@ soil = Soil.RichardsModel{FT}(;
     sources = sources,
 );
 
-# Here we create the explicit and implicit tendencies, which update prognostic
-# variable components that are stepped explicitly and implicitly, respectively.
-# We also create the function which is used to update our Jacobian.
-exp_tendency! = make_exp_tendency(soil);
-imp_tendency! = ClimaLSM.make_imp_tendency(soil);
-update_jacobian! = ClimaLSM.make_update_jacobian(soil);
-
 # # Set up the simulation
 # We can now initialize the prognostic and auxiliary variable vectors, and take
 # a peek at what those variables are:
@@ -162,12 +155,38 @@ tf = FT(60 * 60 * 24 * 36);
 set_initial_aux_state! = make_set_initial_aux_state(soil);
 set_initial_aux_state!(p, Y, t0);
 
-# Next, we turn to timestepping.
+# For solving Richards equation, the `RichardsModel` is set up to
+# treat the vertical transport of water implicitly in time,
+# and the horizontal transport (if applicable) explicitly in time.
+# We use the
+# [ClimaTimeSteppers.jl](https://github.com/CliMA/ClimaTimeSteppers.jl)
+# interface for handling the specification of implicitly and explicitly
+# treated terms.
+# To set up the ClimaODEFunction, we must specify:
+# - the ODE function/tendency which is treated explicitly in time
+# - the ODE function/tendency which is treated implicitly in time,
+#   along with information about the Jacobian of this function
+# - the ClimaLSM.dss! function, which does nothing for single column
+#   domains but carries out the dss step needed for domains with spectral
+#   element discretization (employed by Clima in the horizontal directions)
+# Here we set up the information used for the Jacobian of the implicit
+exp_tendency! = ClimaLSM.make_exp_tendency(soil);
+imp_tendency! = ClimaLSM.make_imp_tendency(soil);
+update_jacobian! = ClimaLSM.make_update_jacobian(soil);
+jac_kwargs =
+    (; jac_prototype = RichardsTridiagonalW(Y), Wfact = update_jacobian!);
+clima_ode_function =
+    CTS.ClimaODEFunction(
+        T_exp! = exp_tendency!,
+        T_imp! = ODE.ODEFunction(imp_tendency!; jac_kwargs...),
+        dss! = ClimaLSM.dss!,
+    )
+
+
+# Now, we choose the imex timestepping algorithm we want to use and the timestep.
 # As usual, your timestep depends on the problem you are solving, the accuracy
 # of the solution required, and the timestepping algorithm you are using.
 dt = FT(1e3);
-
-# Now, we choose the timestepping algorithm we want to use.
 # We'll use the ARS111 algorithm with 1 Newton iteration per timestep;
 # you can also specify a convergence criterion and a maximum number
 # of Newton iterations.
@@ -180,25 +199,11 @@ ode_algo = CTS.IMEXAlgorithm(
     ),
 );
 
-# Here we set up the information used for our Jacobian.
-jac_kwargs =
-    (; jac_prototype = RichardsTridiagonalW(Y), Wfact = update_jacobian!);
-
 # And then we can solve the system of equations, using
 # [SciMLBase.jl](https://github.com/SciML/SciMLBase.jl) and
 # [ClimaTimeSteppers.jl](https://github.com/CliMA/ClimaTimeSteppers.jl).
-prob = SciMLBase.ODEProblem(
-    CTS.ClimaODEFunction(
-        T_exp! = exp_tendency!,
-        T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
-        dss! = ClimaLSM.dss!,
-    ),
-    Y,
-    (t0, tf),
-    p,
-);
+prob = SciMLBase.ODEProblem(clima_ode_function, Y, (t0, tf), p);
 sol = SciMLBase.solve(prob, ode_algo; dt = dt, adaptive = false);
-
 
 # # Create some plots
 # We'll plot the moisture content vs depth in the soil, as well as

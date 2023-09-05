@@ -210,7 +210,7 @@ sv = (;
 cb = ClimaLSM.NonInterpSavingCallback(sv, saveat)
 
 prob = SciMLBase.ODEProblem(
-    CTS.ClimaODEFunction(T_exp! = exp_tendency!),
+    CTS.ClimaODEFunction(T_exp! = exp_tendency!, dss! = ClimaLSM.dss!),
     Y,
     (t0, tf),
     p,

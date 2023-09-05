@@ -301,17 +301,31 @@ set_initial_aux_state!(p, Y, t0);
 # of ordinary differential equations:
 exp_tendency! = make_exp_tendency(model);
 
-# Now we choose our timestepping algorithm.
+# Now we choose our (explicit) timestepping algorithm.
 timestepper = CTS.RK4()
-ode_algo = CTS.ExplicitAlgorithm(timestepper)
+ode_algo = CTS.ExplicitAlgorithm(timestepper);
 
+
+# We use the
+# [ClimaTimeSteppers.jl](https://github.com/CliMA/ClimaTimeSteppers.jl)
+# interface for handling the specification of implicitly and explicitly
+# treated terms.
+# To set up the ClimaODEFunction, we must specify:
+# - the ODE function/tendency which is treated explicitly in time
+# - the ODE function/tendency which is treated implicitly in time (none here),
+# - the ClimaLSM.dss! function, which does nothing for single column
+#   domains but carries out the dss step needed for domains with spectral
+#   element discretization (employed by Clima in the horizontal directions)
+clima_ode_function =
+    CTS.ClimaODEFunction(T_exp! = exp_tendency!, dss! = ClimaLSM.dss!);
 # Then we can set up the simulation and solve it:
 prob = SciMLBase.ODEProblem(
-    CTS.ClimaODEFunction(T_exp! = exp_tendency!),
+    clima_ode_function,
     Y,
     (t0, tf),
     p,
 );
+
 
 # We need a callback to get and store the auxiliary fields, as they
 # are not stored by default.

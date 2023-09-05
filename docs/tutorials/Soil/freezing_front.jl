@@ -200,25 +200,39 @@ end
 
 init_soil!(Y, coords.z, soil.parameters);
 
-# We choose the initial and final simulation times:
+# Here we choose the timestepping algorithm. For the energy & hydrology
+# soil model, we currently only support explicit timestepping.
+# Here, we use the explicit timestepping algorithm RK4, which is suitable
+# for this model because it has no defined implicit tendendency function.
+timestepper = CTS.RK4();
+ode_algo = CTS.ExplicitAlgorithm(timestepper);
+
+# Choose a timestep, integration timespan:
 t0 = FT(0)
-tf = FT(60 * 60 * 50);
+tf = FT(60 * 60 * 50)
+dt = FT(60);
 
 # We set the aux state corresponding to the initial conditions
 # of the state Y:
 set_initial_aux_state! = make_set_initial_aux_state(soil);
 set_initial_aux_state!(p, Y, t0);
-# Create the tendency function, and choose a timestep, and timestepper:
+# To set up the ClimaODEFunction which will be executed to step the
+# system explicitly in time, we must specify:
+# - the ODE function/tendency which is treated explicitly in time
+# - the ClimaLSM.dss! function, which does nothing for single column
+#   domains but carries out the dss step needed for domains with spectral
+#   element discretization (employed by Clima in the horizontal directions)
 exp_tendency! = make_exp_tendency(soil)
-dt = FT(60)
-timestepper = CTS.RK4()
-ode_algo = CTS.ExplicitAlgorithm(timestepper)
+clima_ode_function =
+    CTS.ClimaODEFunction(T_exp! = exp_tendency!, dss! = ClimaLSM.dss!);
+
 prob = SciMLBase.ODEProblem(
-    CTS.ClimaODEFunction(T_exp! = exp_tendency!, dss! = ClimaLSM.dss!),
+    clima_ode_function,
     Y,
     (t0, tf),
     p,
 );
+
 
 # Now we can solve the problem.
 sol = SciMLBase.solve(prob, ode_algo; dt = dt, saveat = 0:3600:tf);

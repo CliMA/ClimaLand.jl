@@ -316,13 +316,8 @@ land = SoilCanopyModel{FT}(;
     canopy_model_args = canopy_model_args,
 );
 
-# Now we can initialize the state vectors and model coordinates, and initialize 
-# the explicit/implicit tendencies as usual. The Richard's equation time 
-# stepping is done implicitly, while the canopy model may be explicitly stepped, 
-# so we use an IMEX (implicit-explicit) scheme for the combined model.
-
+# Now we can initialize the state vectors and model coordinates. 
 Y, p, coords = initialize(land);
-exp_tendency! = make_exp_tendency(land);
 
 # We need to provide initial conditions for the soil and canopy hydraulics 
 # models:
@@ -354,39 +349,48 @@ for i in 1:2
         augmented_liquid_fraction.(plant_ν, S_l_ini[i])
 end;
 
-# Now set the initial conditions for the auxiliary variables for the combined soil and plant model.
-
-t0 = FT(0)
-set_initial_aux_state! = make_set_initial_aux_state(land)
-set_initial_aux_state!(p, Y, t0);
-
 # Select the timestepper and solvers needed for the specific problem. Specify the time range and dt
-# value over which to perform the simulation.
-
 t0 = FT(150 * 3600 * 24)# start mid year
 N_days = 100
 tf = t0 + FT(3600 * 24 * N_days)
-dt = FT(30)
-n = 120
-saveat = Array(t0:(n * dt):tf)
 
+# Now set the initial conditions for the auxiliary variables for the combined soil and plant model.
+set_initial_aux_state! = make_set_initial_aux_state(land)
+set_initial_aux_state!(p, Y, t0);
+
+# Pick the timestepper, timestep. Here we choose an explicit algorithm,
+# which is appropriate for this model.
+dt = FT(30)
 timestepper = CTS.RK4()
 ode_algo = CTS.ExplicitAlgorithm(timestepper);
 
-# And now perform the simulation as always.
-
+# By default, only the state Y is saved. We'd like to save `p` as well,
+# so we can define a callback which does so here:
+n = 120
+saveat = Array(t0:(n * dt):tf)
 sv = (;
     t = Array{FT}(undef, length(saveat)),
     saveval = Array{ClimaCore.Fields.NamedTuple}(undef, length(saveat)),
 )
-cb = ClimaLSM.NonInterpSavingCallback(sv, saveat)
+cb = ClimaLSM.NonInterpSavingCallback(sv, saveat);
 
-prob = SciMLBase.ODEProblem(
-    CTS.ClimaODEFunction(T_exp! = exp_tendency!),
-    Y,
-    (t0, tf),
-    p,
-);
+# We use the
+# [ClimaTimeSteppers.jl](https://github.com/CliMA/ClimaTimeSteppers.jl)
+# interface for handling the specification of implicitly and explicitly
+# treated terms.
+# To set up the ClimaODEFunction, we must specify:
+# - the ODE function/tendency which is treated explicitly in time
+# - the ODE function/tendency which is treated implicitly in time (none here),
+# - the ClimaLSM.dss! function, which does nothing for single column
+#   domains but carries out the dss step needed for domains with spectral
+#   element discretization (employed by Clima in the horizontal directions)
+exp_tendency! = make_exp_tendency(land);
+clima_ode_function =
+    CTS.ClimaODEFunction(T_exp! = exp_tendency!, dss! = ClimaLSM.dss!)
+prob = SciMLBase.ODEProblem(clima_ode_function, Y, (t0, tf), p);
+
+# Now, wrap the problem, algorithm, timestep, and callback together
+# to carry out the simulation.
 sol = SciMLBase.solve(
     prob,
     ode_algo;
