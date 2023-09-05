@@ -112,6 +112,7 @@ model = LandSoilBiogeochemistry{FT}(;
 )
 
 Y, p, coords = initialize(model)
+set_initial_aux_state! = make_set_initial_aux_state(model);
 
 function init_soil!(Y, z, params)
     ν = params.ν
@@ -136,9 +137,7 @@ z = coords.subsurface.z
 init_soil!(Y, z, model.soil.parameters)
 init_co2!(Y, z)
 t0 = FT(0.0)
-update_aux! = make_update_aux(model)
-update_aux!(p, Y, t0)
-
+set_initial_aux_state!(p, Y, t0);
 Soil_bio_exp_tendency! = make_exp_tendency(model)
 
 tf = FT(10000)

@@ -116,8 +116,8 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     init_soil!(Y, z, model.soil.parameters)
     init_co2!(Y, C)
     t0 = FT(0.0)
-    update_aux! = make_update_aux(model)
-    update_aux!(p, Y, t0)
+    set_initial_aux_state! = make_set_initial_aux_state(model)
+    set_initial_aux_state!(p, Y, t0)
 
     @test p.soil.T ≈ Soil.Biogeochemistry.soil_temperature(
         model.soilco2.driver.met,

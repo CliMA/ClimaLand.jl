@@ -171,6 +171,8 @@ end
     init_soil!(Y, coords.z, soil.parameters)
 
     t0 = FT(0)
+    set_initial_aux_state! = make_set_initial_aux_state(soil)
+    set_initial_aux_state!(p, Y, t0)
     dY = similar(Y)
 
     imp_tendency! = make_imp_tendency(soil)
@@ -263,6 +265,8 @@ end
 
     t0 = FT(0)
     init_soil_heat!(Y, coords.z, soil_heat_on.parameters)
+    set_initial_aux_state! = make_set_initial_aux_state(soil_heat_on)
+    set_initial_aux_state!(p, Y, t0)
     exp_tendency! = make_exp_tendency(soil_heat_on)
     dY = similar(Y)
     exp_tendency!(dY, Y, p, t0)
@@ -320,6 +324,8 @@ end
 
     t0 = FT(0)
     init_soil_water!(Y, coords.z, soil_water_on.parameters)
+    set_initial_aux_state! = make_set_initial_aux_state(soil_water_on)
+    set_initial_aux_state!(p, Y, t0)
     exp_tendency! = make_exp_tendency(soil_water_on)
     dY = similar(Y)
     exp_tendency!(dY, Y, p, t0)
@@ -463,6 +469,8 @@ end
 
     t0 = FT(0)
     init_soil_off!(Y, coords.z, soil_both_off.parameters)
+    set_initial_aux_state! = make_set_initial_aux_state(soil_both_off)
+    set_initial_aux_state!(p, Y, t0)
     exp_tendency! = make_exp_tendency(soil_both_off)
     dY = similar(Y)
     exp_tendency!(dY, Y, p, t0)
@@ -512,6 +520,9 @@ end
 
     t0 = FT(0)
     init_soil_on!(Y, coords.z, soil_both_on.parameters)
+    set_initial_aux_state! = make_set_initial_aux_state(soil_both_on)
+    set_initial_aux_state!(p, Y, t0)
+
     exp_tendency! = make_exp_tendency(soil_both_on)
     dY = similar(Y)
     exp_tendency!(dY, Y, p, t0)
@@ -649,6 +660,8 @@ end
     end
 
     init_soil_heat!(Y, coords.z, soil_heat_on.parameters)
+    set_initial_aux_state! = make_set_initial_aux_state(soil_heat_on)
+    set_initial_aux_state!(p, Y, FT(0.0))
     dY = similar(Y)
     dY .= FT(0.0)
     source!(dY, sources[1], Y, p, soil_heat_on)

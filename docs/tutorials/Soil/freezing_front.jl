@@ -200,14 +200,18 @@ end
 
 init_soil!(Y, coords.z, soil.parameters);
 
-# Create the tendency function, and choose a timestep, integration timespan, etc:
-exp_tendency! = make_exp_tendency(soil)
+# We choose the initial and final simulation times:
 t0 = FT(0)
-dt = FT(60)
-tf = FT(3600 * 50)
+tf = FT(60 * 60 * 50);
 
-# Choose a timestepper and set up the ODE problem:
-timestepper = CTS.RK4();
+# We set the aux state corresponding to the initial conditions
+# of the state Y:
+set_initial_aux_state! = make_set_initial_aux_state(soil);
+set_initial_aux_state!(p, Y, t0);
+# Create the tendency function, and choose a timestep, and timestepper:
+exp_tendency! = make_exp_tendency(soil)
+dt = FT(60)
+timestepper = CTS.RK4()
 ode_algo = CTS.ExplicitAlgorithm(timestepper)
 prob = ODE.ODEProblem(
     CTS.ClimaODEFunction(T_exp! = exp_tendency!, dss! = ClimaLSM.dss!),

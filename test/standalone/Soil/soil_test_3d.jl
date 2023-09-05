@@ -76,6 +76,8 @@ FT = Float64
     dY = similar(Y)
 
     t0 = FT(0.0)
+    set_initial_aux_state! = make_set_initial_aux_state(soil)
+    set_initial_aux_state!(p, Y, t0)
     imp_tendency! = make_imp_tendency(soil)
     exp_tendency! = make_exp_tendency(soil)
     imp_tendency!(dY, Y, p, t0)
@@ -322,6 +324,8 @@ end
 
 
     t0 = FT(0.0)
+    set_initial_aux_state! = make_set_initial_aux_state(soil)
+    set_initial_aux_state!(p, Y, t0)
     imp_tendency! = make_imp_tendency(soil)
     exp_tendency! = make_exp_tendency(soil)
     dY = similar(Y)
@@ -397,6 +401,8 @@ end
     init_soil!(Y, coords.z, soil.parameters)
 
     t0 = FT(0)
+    set_initial_aux_state! = make_set_initial_aux_state(soil)
+    set_initial_aux_state!(p, Y, t0)
     imp_tendency! = make_imp_tendency(soil)
     exp_tendency! = make_exp_tendency(soil)
     dY = similar(Y)

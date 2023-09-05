@@ -286,7 +286,7 @@ Y.bucket.W .= FT(0.05);
 Y.bucket.Ws .= FT(0.0);
 Y.bucket.σS .= FT(0.08);
 
-# We also initialize the auxiliary state here:
+# We also set the initial conditions of the auxiliary state here:
 set_initial_aux_state! = make_set_initial_aux_state(model);
 set_initial_aux_state!(p, Y, t0);
 

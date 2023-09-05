@@ -45,6 +45,9 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     dY = similar(Y)
     exp_tendency! = make_exp_tendency(model)
     t = FT(1)
+    Y.soilco2.C .= FT(4)
+    set_initial_aux_state! = make_set_initial_aux_state(model)
+    set_initial_aux_state!(p, Y, t)
     exp_tendency!(dY, Y, p, t)
     @test dY.soilco2.C ≈ p.soilco2.Sm
 end
@@ -84,6 +87,8 @@ end
     exp_tendency! = make_exp_tendency(model)
     t = FT(1)
     Y.soilco2.C .= FT(C)
+    set_initial_aux_state! = make_set_initial_aux_state(model)
+    set_initial_aux_state!(p, Y, t)
     exp_tendency!(dY, Y, p, t)
     @test sum(dY.soilco2.C) ≈ FT(0.0)
 end

@@ -243,18 +243,31 @@ function init_soil!(Y, z, params)
 end
 
 init_soil!(Y, coords.z, soil.parameters);
-# Updating the auxiliary to the initial state is not necessary, because
-# the first step of the tendency function is to update the auxiliary state.
-# However, we want to plot the initial state in this tutorial, so
-# we update it here.
-update_aux! = make_update_aux(soil)
-update_aux!(p, Y, FT(0.0));
 
+# We choose the initial and final simulation times:
 t0 = FT(0)
-tf = FT(60 * 60 * 72)
-dt = FT(30.0);
+tf = FT(60 * 60 * 72);
 
-# We use [OrdinaryDiffEq.jl](https://github.com/SciML/OrdinaryDiffEq.jl) for carrying out the time integration. By default, it
+# We set the aux state corresponding to the initial conditions
+# of the state Y:
+set_initial_aux_state! = make_set_initial_aux_state(soil);
+set_initial_aux_state!(p, Y, t0);
+
+# We use [ClimaTimesteppers.jl](https://github.com/CliMA/ClimaTimesteppers.jl) for carrying out the time integration.
+
+# Choose a timestepper and set up the ODE problem:
+dt = FT(30.0);
+timestepper = CTS.RK4();
+ode_algo = CTS.ExplicitAlgorithm(timestepper)
+prob = ODE.ODEProblem(
+    CTS.ClimaODEFunction(T_exp! = exp_tendency!, dss! = ClimaLSM.dss!),
+    Y,
+    (t0, tf),
+    p,
+);
+
+
+#By default, it
 # only returns Y and t at each time we request output (`saveat`, below). We use
 # a callback in order to also get the auxiliary vector `p` back:
 saveat = collect(t0:FT(1000 * dt):tf)
@@ -264,15 +277,6 @@ saved_values = (;
 );
 cb = ClimaLSM.NonInterpSavingCallback(saved_values, saveat);
 
-# Choose a timestepper and set up the ODE problem:
-timestepper = CTS.RK4();
-ode_algo = CTS.ExplicitAlgorithm(timestepper)
-prob = ODE.ODEProblem(
-    CTS.ClimaODEFunction(T_exp! = exp_tendency!, dss! = ClimaLSM.dss!),
-    Y,
-    (t0, tf),
-    p,
-);
 
 # Now we can solve the problem.
 sol = ODE.solve(prob, ode_algo; dt = dt, saveat = saveat, callback = cb);

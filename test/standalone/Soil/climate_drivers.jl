@@ -131,8 +131,8 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
 
         t = FT(0)
         init_soil!(Y, coords.z, model.parameters)
-        update_aux! = ClimaLSM.make_update_aux(model)
-        update_aux!(p, Y, t)
+        set_initial_aux_state! = make_set_initial_aux_state(model)
+        set_initial_aux_state!(p, Y, t)
 
 
         face_space = ClimaLSM.Domains.obtain_face_space(model.domain.space)
