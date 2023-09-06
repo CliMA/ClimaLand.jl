@@ -44,6 +44,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
         boundary_conditions = boundary_states,
         sources = sources,
     )
+    set_initial_aux_state! = make_set_initial_aux_state(soil)
 
     Y, p, coords = initialize(soil)
 
@@ -54,6 +55,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     update_jacobian! = ClimaLSM.make_update_jacobian(soil)
 
     t0 = FT(0)
+    set_initial_aux_state!(p, Y, t0)
     tf = FT(1e6)
     dt = FT(1e3)
 
@@ -138,6 +140,7 @@ end
     )
 
     Y, p, coords = initialize(soil)
+    set_initial_aux_state! = make_set_initial_aux_state(soil)
 
     # specify ICs
     Y.soil.ϑ_l .= FT(0.1)
@@ -146,6 +149,7 @@ end
     update_jacobian! = ClimaLSM.make_update_jacobian(soil)
 
     t0 = FT(0)
+    set_initial_aux_state!(p, Y, t0)
     tf = FT(60 * 60 * 0.8)
     dt = FT(1)
     # Note, we can use a bigger step and still conserve mass.

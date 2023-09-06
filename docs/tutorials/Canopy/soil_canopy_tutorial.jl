@@ -355,7 +355,7 @@ for i in 1:2
         augmented_liquid_fraction.(plant_ν, S_l_ini[i])
 end;
 
-# Now initialize the auxiliary variables for the combined soil and plant model.
+# Now set the initial conditions for the auxiliary variables for the combined soil and plant model.
 
 t0 = FT(0)
 set_initial_aux_state! = make_set_initial_aux_state(land)

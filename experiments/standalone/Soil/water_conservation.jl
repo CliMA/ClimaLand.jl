@@ -86,6 +86,7 @@ soil = Soil.RichardsModel{FT}(;
 )
 
 exp_tendency! = make_exp_tendency(soil)
+set_initial_aux_state! = make_set_initial_aux_state(soil);
 imp_tendency! = make_imp_tendency(soil)
 update_jacobian! = make_update_jacobian(soil)
 
@@ -96,6 +97,7 @@ for i in eachindex(dts)
 
     Y, p, coords = initialize(soil)
     @. Y.soil.ϑ_l = FT(0.24)
+    set_initial_aux_state!(p, Y, FT(0.0))
 
     jac_kwargs =
         (; jac_prototype = RichardsTridiagonalW(Y), Wfact = update_jacobian!)
@@ -186,6 +188,7 @@ soil_dirichlet = Soil.RichardsModel{FT}(;
 )
 
 exp_tendency! = make_exp_tendency(soil_dirichlet)
+set_initial_aux_state! = make_set_initial_aux_state(soil_dirichlet);
 imp_tendency! = make_imp_tendency(soil_dirichlet)
 update_jacobian! = make_update_jacobian(soil_dirichlet)
 update_aux! = make_update_aux(soil_dirichlet)
@@ -197,6 +200,7 @@ for i in eachindex(dts)
 
     Y, p, coords = initialize(soil_dirichlet)
     @. Y.soil.ϑ_l = FT(0.24)
+    set_initial_aux_state!(p, Y, FT(0.0))
 
     jac_kwargs =
         (; jac_prototype = RichardsTridiagonalW(Y), Wfact = update_jacobian!)

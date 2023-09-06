@@ -89,6 +89,10 @@ using ClimaLSM.Pond
     exp_tendency! = make_exp_tendency(land)
     t = FT(0)
     dt = FT(1)
+    # set aux state values to those corresponding with Y(t=0)
+    set_initial_aux_state! = make_set_initial_aux_state(land)
+    set_initial_aux_state!(p, Y, t)
+    # integrate
     for step in 1:10
         exp_tendency!(dY, Y, p, t)
         t = t + dt

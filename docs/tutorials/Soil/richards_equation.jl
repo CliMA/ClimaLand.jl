@@ -153,11 +153,18 @@ coords |> propertynames
 # conditions.
 Y.soil.ϑ_l .= FT(0.494);
 
-# Next, we turn to timestepping. We choose the initial and final times, as well as a timestep.
+# We choose the initial and final simulation times:
+t0 = FT(0)
+tf = FT(60 * 60 * 24 * 36);
+
+# We set the aux state corresponding to the initial conditions
+# of the state Y:
+set_initial_aux_state! = make_set_initial_aux_state(soil);
+set_initial_aux_state!(p, Y, t0);
+
+# Next, we turn to timestepping. 
 # As usual, your timestep depends on the problem you are solving, the accuracy
 # of the solution required, and the timestepping algorithm you are using.
-t0 = FT(0)
-tf = FT(60 * 60 * 24 * 36)
 dt = FT(1e3);
 
 # Now, we choose the timestepping algorithm we want to use.

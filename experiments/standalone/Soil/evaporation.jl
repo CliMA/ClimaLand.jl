@@ -140,14 +140,17 @@ function init_soil!(Y, z, params)
         Soil.volumetric_internal_energy.(FT(0), ρc_s, T, Ref(params))
 end
 
-t = FT(0)
+init_soil!(Y, cds.z, soil.parameters)
+
 t0 = FT(0)
 tf = FT(24 * 3600 * 15)
+# We also set the initial conditions of the auxiliary state here:
+set_initial_aux_state! = make_set_initial_aux_state(soil);
+set_initial_aux_state!(p, Y, t0);
+
+# Timestepping:
 dt = FT(1)
-
-init_soil!(Y, cds.z, soil.parameters)
 soil_exp_tendency! = make_exp_tendency(soil)
-
 timestepper = CTS.RK4()
 ode_algo = CTS.ExplicitAlgorithm(timestepper)
 

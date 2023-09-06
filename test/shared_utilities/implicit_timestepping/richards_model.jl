@@ -50,6 +50,9 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
 
         Y, p, coords = initialize(soil)
         Y.soil.ϑ_l .= FT(0.24)
+        # We do not set the initial aux state here because
+        # we want to test that it is updated correctly in
+        # the jacobian correctly.
         W = RichardsTridiagonalW(Y)
         Wfact! = make_tendency_jacobian(soil)
         dtγ = FT(1.0)
@@ -151,6 +154,9 @@ end
 
         Y, p, coords = initialize(soil)
         Y.soil.ϑ_l .= FT(0.24)
+        # We do not set the initial aux state here because
+        # we want to test that it is updated correctly in
+        # the jacobian correctly.
         W = RichardsTridiagonalW(Y)
         Wfact! = make_tendency_jacobian(soil)
         dtγ = FT(1.0)

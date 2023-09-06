@@ -29,6 +29,9 @@ FT = Float64
     t0 = FT(0)
     tf = FT(200)
     dt = FT(1)
+    set_initial_aux_state! = make_set_initial_aux_state(pond_model)
+    set_initial_aux_state!(p, Y, t0)
+
 
     function expected_pond_height(t)
         if t < 20
