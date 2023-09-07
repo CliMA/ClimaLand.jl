@@ -444,48 +444,53 @@ function ClimaLSM.make_update_aux(
         n_leaf = hydraulics.n_leaf
         PlantHydraulics.lai_consistency_check.(n_stem, n_leaf, area_index)
         (; retention_model, conductivity_model, S_s, ν) = hydraulics.parameters
-        @inbounds @. ψ[1] = PlantHydraulics.water_retention_curve(
+        # We can index into a field of Tuple{FT} to extract a field of FT
+        # using the following notation: field.:index
+        @inbounds @. ψ.:1 = PlantHydraulics.water_retention_curve(
             retention_model,
-            PlantHydraulics.effective_saturation(ν, ϑ_l[1]),
+            PlantHydraulics.effective_saturation(ν, ϑ_l.:1),
             ν,
             S_s,
         )
-
+        # Inside of a loop, we need to use a single dollar sign
+        # for indexing into Fields of Tuples in non broadcasted
+        # expressions, and two dollar signs for
+        # for broadcasted expressions using the macro @.
+        # field.:($index) .= value # works
+        # @ field.:($$index) = value # works
         @inbounds for i in 1:(n_stem + n_leaf - 1)
-
-            @. ψ[i + 1] = PlantHydraulics.water_retention_curve(
+            ip1 = i + 1
+            @. ψ.:($$ip1) = PlantHydraulics.water_retention_curve(
                 retention_model,
-                PlantHydraulics.effective_saturation(ν, ϑ_l[i + 1]),
+                PlantHydraulics.effective_saturation(ν, ϑ_l.:($$ip1)),
                 ν,
                 S_s,
             )
             # Compute the flux*area between the current compartment `i`
             # and the compartment above.
-            @. fa[i] =
+            @. fa.:($$i) =
                 PlantHydraulics.flux(
                     hydraulics.compartment_midpoints[i],
-                    hydraulics.compartment_midpoints[i + 1],
-                    ψ[i],
-                    ψ[i + 1],
+                    hydraulics.compartment_midpoints[ip1],
+                    ψ.:($$i),
+                    ψ.:($$ip1),
                     PlantHydraulics.hydraulic_conductivity(
                         conductivity_model,
-                        ψ[i],
+                        ψ.:($$i),
                     ),
                     PlantHydraulics.hydraulic_conductivity(
                         conductivity_model,
-                        ψ[i + 1],
+                        ψ.:($$ip1),
                     ),
                 ) * (
                     getproperty(area_index, hydraulics.compartment_labels[i]) +
-                    getproperty(
-                        area_index,
-                        hydraulics.compartment_labels[i + 1],
-                    )
+                    getproperty(area_index, hydraulics.compartment_labels[ip1])
                 ) / 2
         end
-        @. β = moisture_stress(ψ[n_stem + n_leaf] * ρ_l * grav, sc, pc)
-        # We update the fa[n_stem+n_leaf] element once we have computed transpiration, below
+        i_end = n_stem + n_leaf
+        @. β = moisture_stress(ψ.:($$i_end) * ρ_l * grav, sc, pc)
 
+        # We update the fa[n_stem+n_leaf] element once we have computed transpiration, below
         # update photosynthesis and conductance terms
         medlyn_factor .= medlyn_term.(g1, T, P, q, Ref(thermo_params))
         An .=
@@ -506,7 +511,7 @@ function ClimaLSM.make_update_aux(
             canopy_surface_fluxes(canopy.atmos, canopy, Y, p, t)
         transpiration .= canopy_transpiration
         # Transpiration is per unit ground area, not leaf area (mult by LAI)
-        fa[n_stem + n_leaf] .= PlantHydraulics.transpiration_per_ground_area(
+        fa.:($i_end) .= PlantHydraulics.transpiration_per_ground_area(
             hydraulics.transpiration,
             Y,
             p,

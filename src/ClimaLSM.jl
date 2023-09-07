@@ -12,7 +12,6 @@ include("shared_utilities/Regridder.jl")
 include("shared_utilities/Domains.jl")
 include("shared_utilities/FileReader.jl")
 using .Domains
-include("shared_utilities/ntuple_utils.jl")
 include("shared_utilities/utils.jl")
 include("shared_utilities/models.jl")
 include("shared_utilities/drivers.jl")

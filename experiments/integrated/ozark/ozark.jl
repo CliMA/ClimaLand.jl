@@ -197,7 +197,7 @@ S_l_ini =
     )
 
 for i in 1:2
-    Y.canopy.hydraulics.ϑ_l[i] .=
+    Y.canopy.hydraulics.ϑ_l.:($i) .=
         augmented_liquid_fraction.(plant_ν, S_l_ini[i])
 end
 
