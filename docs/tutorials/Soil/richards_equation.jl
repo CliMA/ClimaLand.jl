@@ -53,7 +53,7 @@
 
 # - Load external packages
 
-import OrdinaryDiffEq as ODE
+import SciMLBase
 using Plots
 # - Load CliMA packages and ClimaLSM modules
 
@@ -187,17 +187,17 @@ jac_kwargs =
 # And then we can solve the system of equations, using
 # [OrdinaryDiffEq.jl](https://github.com/SciML/OrdinaryDiffEq.jl) and
 # [ClimaTimeSteppers.jl](https://github.com/CliMA/ClimaTimeSteppers.jl).
-prob = ODE.ODEProblem(
+prob = SciMLBase.ODEProblem(
     CTS.ClimaODEFunction(
         T_exp! = exp_tendency!,
-        T_imp! = ODE.ODEFunction(imp_tendency!; jac_kwargs...),
+        T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
         dss! = ClimaLSM.dss!,
     ),
     Y,
     (t0, tf),
     p,
 );
-sol = ODE.solve(prob, ode_algo; dt = dt, adaptive = false);
+sol = SciMLBase.solve(prob, ode_algo; dt = dt, adaptive = false);
 
 
 # # Create some plots

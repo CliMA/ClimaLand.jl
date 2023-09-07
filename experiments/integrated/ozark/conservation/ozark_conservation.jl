@@ -1,5 +1,5 @@
 using DiffEqCallbacks
-import OrdinaryDiffEq as ODE
+import SciMLBase
 import ClimaTimeSteppers as CTS
 using ClimaCore
 import CLIMAParameters as CP
@@ -214,7 +214,7 @@ sv = (;
 )
 cb = ClimaLSM.NonInterpSavingCallback(sv, saveat)
 
-prob = ODE.ODEProblem(
+prob = SciMLBase.ODEProblem(
     CTS.ClimaODEFunction(
         T_exp! = exp_tendency!,
         dss! = ClimaLSM.dss!,
@@ -224,7 +224,7 @@ prob = ODE.ODEProblem(
     (t0, tf),
     p,
 );
-sol = ODE.solve(
+sol = SciMLBase.solve(
     prob,
     ode_algo;
     dt = dt,

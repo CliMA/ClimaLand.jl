@@ -34,7 +34,7 @@
 
 # Load External Packages:
 
-import OrdinaryDiffEq as ODE
+import SciMLBase
 using Plots
 using Statistics
 using Dates
@@ -306,7 +306,7 @@ cb = ClimaLSM.NonInterpSavingCallback(sv, saveat);
 timestepper = CTS.RK4();
 ode_algo = CTS.ExplicitAlgorithm(timestepper)
 
-prob = ODE.ODEProblem(
+prob = SciMLBase.ODEProblem(
     CTS.ClimaODEFunction(T_exp! = exp_tendency!, dss! = ClimaLSM.dss!),
     Y,
     (t0, tf),
@@ -317,7 +317,7 @@ prob = ODE.ODEProblem(
 # using [`OrdinaryDiffEq.jl`](https://github.com/SciML/OrdinaryDiffEq.jl) and
 # [`ClimaTimeSteppers.jl`](https://github.com/CliMA/ClimaTimeSteppers.jl).
 
-sol = ODE.solve(prob, ode_algo; dt = dt, callback = cb, saveat = saveat);
+sol = SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb, saveat = saveat);
 
 # # Create some plots
 

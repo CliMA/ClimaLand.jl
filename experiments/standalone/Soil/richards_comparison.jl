@@ -3,7 +3,7 @@ using Plots
 using DelimitedFiles
 using Statistics
 using ArtifactWrappers
-import OrdinaryDiffEq as ODE
+import SciMLBase
 import ClimaTimeSteppers as CTS
 using ClimaCore
 import CLIMAParameters as CP
@@ -75,17 +75,17 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     jac_kwargs =
         (; jac_prototype = RichardsTridiagonalW(Y), Wfact = update_jacobian!)
 
-    prob = ODE.ODEProblem(
+    prob = SciMLBase.ODEProblem(
         CTS.ClimaODEFunction(
             T_exp! = exp_tendency!,
-            T_imp! = ODE.ODEFunction(imp_tendency!; jac_kwargs...),
+            T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
             dss! = ClimaLSM.dss!,
         ),
         Y,
         (t0, tf),
         p,
     )
-    sol = ODE.solve(prob, ode_algo; dt = dt, saveat = 10000)
+    sol = SciMLBase.solve(prob, ode_algo; dt = dt, saveat = 10000)
 
     N = length(sol.t)
     ϑ_l = parent(sol.u[N].soil.ϑ_l)
@@ -169,17 +169,17 @@ end
     jac_kwargs =
         (; jac_prototype = RichardsTridiagonalW(Y), Wfact = update_jacobian!)
 
-    prob = ODE.ODEProblem(
+    prob = SciMLBase.ODEProblem(
         CTS.ClimaODEFunction(
             T_exp! = exp_tendency!,
-            T_imp! = ODE.ODEFunction(imp_tendency!; jac_kwargs...),
+            T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
             dss! = ClimaLSM.dss!,
         ),
         Y,
         (t0, tf),
         p,
     )
-    sol = ODE.solve(prob, ode_algo; dt = dt, saveat = 60 * dt)
+    sol = SciMLBase.solve(prob, ode_algo; dt = dt, saveat = 60 * dt)
 
     N = length(sol.t)
     ϑ_l = parent(sol.u[N].soil.ϑ_l)

@@ -78,7 +78,7 @@
 
 # # Import necessary modules
 # External (non - CliMA) modules
-import OrdinaryDiffEq as ODE
+import SciMLBase
 using DiffEqCallbacks
 using Statistics
 using Plots
@@ -259,7 +259,7 @@ set_initial_aux_state!(p, Y, t0);
 dt = FT(30.0);
 timestepper = CTS.RK4();
 ode_algo = CTS.ExplicitAlgorithm(timestepper)
-prob = ODE.ODEProblem(
+prob = SciMLBase.ODEProblem(
     CTS.ClimaODEFunction(T_exp! = exp_tendency!, dss! = ClimaLSM.dss!),
     Y,
     (t0, tf),
@@ -279,7 +279,7 @@ cb = ClimaLSM.NonInterpSavingCallback(saved_values, saveat);
 
 
 # Now we can solve the problem.
-sol = ODE.solve(prob, ode_algo; dt = dt, saveat = saveat, callback = cb);
+sol = SciMLBase.solve(prob, ode_algo; dt = dt, saveat = saveat, callback = cb);
 
 # Extract output
 z = parent(coords.z)
