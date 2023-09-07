@@ -1,5 +1,5 @@
 using DiffEqCallbacks
-import OrdinaryDiffEq as ODE
+import SciMLBase
 import ClimaTimeSteppers as CTS
 using ClimaCore
 using ClimaLSM
@@ -153,13 +153,13 @@ saved_values = (;
 )
 cb = ClimaLSM.NonInterpSavingCallback(saved_values, saveat)
 
-prob = ODE.ODEProblem(
+prob = SciMLBase.ODEProblem(
     CTS.ClimaODEFunction(T_exp! = Soil_bio_exp_tendency!),
     Y,
     (t0, tf),
     p,
 )
-sol = ODE.solve(prob, ode_algo; dt = dt, callback = cb)
+sol = SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb)
 
 # Animation
 # You will need to ]add GLMakie to your base Julia Project.toml

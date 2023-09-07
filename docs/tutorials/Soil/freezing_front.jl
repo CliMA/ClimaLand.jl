@@ -72,7 +72,7 @@
 # The problem setup and soil properties are chosen to match the lab experiment of Mizoguchi (1990), as detailed in Hansson (2004) and Dall'Amico (2011).
 
 # # Import necessary modules
-import OrdinaryDiffEq as ODE
+import SciMLBase
 import ClimaTimeSteppers as CTS
 using ArtifactWrappers
 using DelimitedFiles
@@ -213,7 +213,7 @@ exp_tendency! = make_exp_tendency(soil)
 dt = FT(60)
 timestepper = CTS.RK4()
 ode_algo = CTS.ExplicitAlgorithm(timestepper)
-prob = ODE.ODEProblem(
+prob = SciMLBase.ODEProblem(
     CTS.ClimaODEFunction(T_exp! = exp_tendency!, dss! = ClimaLSM.dss!),
     Y,
     (t0, tf),
@@ -221,7 +221,7 @@ prob = ODE.ODEProblem(
 );
 
 # Now we can solve the problem.
-sol = ODE.solve(prob, ode_algo; dt = dt, saveat = 0:3600:tf);
+sol = SciMLBase.solve(prob, ode_algo; dt = dt, saveat = 0:3600:tf);
 
 # # Comparison to data
 # This data was obtained by us from the figures of Hansson et al. (2004), but was originally obtained

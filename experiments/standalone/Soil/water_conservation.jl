@@ -1,5 +1,5 @@
 using ClimaCore
-import OrdinaryDiffEq as ODE
+import SciMLBase
 import ClimaTimeSteppers as CTS
 using Plots
 using Statistics
@@ -102,10 +102,10 @@ for i in eachindex(dts)
     jac_kwargs =
         (; jac_prototype = RichardsTridiagonalW(Y), Wfact = update_jacobian!)
 
-    prob = ODE.ODEProblem(
+    prob = SciMLBase.ODEProblem(
         CTS.ClimaODEFunction(
             T_exp! = exp_tendency!,
-            T_imp! = ODE.ODEFunction(imp_tendency!; jac_kwargs...),
+            T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
             dss! = ClimaLSM.dss!,
         ),
         Y,
@@ -113,7 +113,7 @@ for i in eachindex(dts)
         p,
     )
 
-    sol = ODE.solve(prob, ode_algo; dt = dt, saveat = dt)
+    sol = SciMLBase.solve(prob, ode_algo; dt = dt, saveat = dt)
 
     # Calculate water mass balance over entire simulation
     mass_end = sum(sol.u[end].soil.ϑ_l)
@@ -205,17 +205,17 @@ for i in eachindex(dts)
     jac_kwargs =
         (; jac_prototype = RichardsTridiagonalW(Y), Wfact = update_jacobian!)
 
-    prob = ODE.ODEProblem(
+    prob = SciMLBase.ODEProblem(
         CTS.ClimaODEFunction(
             T_exp! = exp_tendency!,
-            T_imp! = ODE.ODEFunction(imp_tendency!; jac_kwargs...),
+            T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
             dss! = ClimaLSM.dss!,
         ),
         Y,
         (t_start, t_end),
         p,
     )
-    sol = ODE.solve(prob, ode_algo; dt = dt, saveat = dt)
+    sol = SciMLBase.solve(prob, ode_algo; dt = dt, saveat = dt)
 
     # Calculate water mass balance over entire simulation
     # Convert Dirichlet BC to flux

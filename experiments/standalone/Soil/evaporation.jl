@@ -1,5 +1,5 @@
 using Plots
-import OrdinaryDiffEq as ODE
+import SciMLBase
 import ClimaTimeSteppers as CTS
 using Thermodynamics
 using Insolation
@@ -154,13 +154,13 @@ soil_exp_tendency! = make_exp_tendency(soil)
 timestepper = CTS.RK4()
 ode_algo = CTS.ExplicitAlgorithm(timestepper)
 
-prob = ODE.ODEProblem(
+prob = SciMLBase.ODEProblem(
     CTS.ClimaODEFunction(T_exp! = soil_exp_tendency!, dss! = ClimaLSM.dss!),
     Y,
     (t0, tf),
     p,
 )
-sol = ODE.solve(prob, ode_algo; dt = dt, saveat = 3600)
+sol = SciMLBase.solve(prob, ode_algo; dt = dt, saveat = 3600)
 
 (; ν, θ_r, d_ds) = soil.parameters
 _D_vapor = FT(LSMP.D_vapor(soil.parameters.earth_param_set))

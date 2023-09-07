@@ -116,7 +116,7 @@
 # and [ClimaTimeSteppers.jl](https://github.com/CliMA/ClimaTimeSteppers.jl) for the timestepping,
 # and [DiffEqCallbacks.jl](https://github.com/SciML/DiffEqCallbacks.jl) is used as described below,
 # for accessing the solver state during the integration.
-import OrdinaryDiffEq as ODE
+import SciMLBase
 using DiffEqCallbacks
 import ClimaTimeSteppers as CTS
 
@@ -299,8 +299,12 @@ timestepper = CTS.RK4()
 ode_algo = CTS.ExplicitAlgorithm(timestepper)
 
 # Then we can set up the simulation and solve it:
-prob =
-    ODE.ODEProblem(CTS.ClimaODEFunction(T_exp! = exp_tendency!), Y, (t0, tf), p);
+prob = SciMLBase.ODEProblem(
+    CTS.ClimaODEFunction(T_exp! = exp_tendency!),
+    Y,
+    (t0, tf),
+    p,
+);
 
 # We need a callback to get and store the auxiliary fields, as they
 # are not stored by default.
@@ -312,7 +316,7 @@ saved_values = (;
 
 cb = ClimaLSM.NonInterpSavingCallback(saved_values, saveat);
 
-sol = ODE.solve(prob, ode_algo; dt = Δt, saveat = saveat, callback = cb);
+sol = SciMLBase.solve(prob, ode_algo; dt = Δt, saveat = saveat, callback = cb);
 
 # Extracting the solution from what is returned by the ODE.jl commands
 # is a bit clunky right now, but we are working on hiding some of this.
