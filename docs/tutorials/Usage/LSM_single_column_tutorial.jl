@@ -9,7 +9,7 @@
 # stored in the `model` is used to make the system of equations.
 # Given initial conditions, these equations can then be stepped forward in
 # time using the time-stepper of your choice (we are set up to use
-# OrdinaryDiffEq.jl currently).
+# SciMLBase.jl currently).
 # Note that a model requiring implicit timestepping would instead use an
 # `AbstractImExModel` framework.
 

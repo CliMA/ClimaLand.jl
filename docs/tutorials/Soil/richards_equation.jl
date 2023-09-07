@@ -162,7 +162,7 @@ tf = FT(60 * 60 * 24 * 36);
 set_initial_aux_state! = make_set_initial_aux_state(soil);
 set_initial_aux_state!(p, Y, t0);
 
-# Next, we turn to timestepping. 
+# Next, we turn to timestepping.
 # As usual, your timestep depends on the problem you are solving, the accuracy
 # of the solution required, and the timestepping algorithm you are using.
 dt = FT(1e3);
@@ -185,7 +185,7 @@ jac_kwargs =
     (; jac_prototype = RichardsTridiagonalW(Y), Wfact = update_jacobian!);
 
 # And then we can solve the system of equations, using
-# [OrdinaryDiffEq.jl](https://github.com/SciML/OrdinaryDiffEq.jl) and
+# [SciMLBase.jl](https://github.com/SciML/SciMLBase.jl) and
 # [ClimaTimeSteppers.jl](https://github.com/CliMA/ClimaTimeSteppers.jl).
 prob = SciMLBase.ODEProblem(
     CTS.ClimaODEFunction(

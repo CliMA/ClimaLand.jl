@@ -1,4 +1,3 @@
-using DiffEqCallbacks
 import SciMLBase
 import ClimaTimeSteppers as CTS
 using ClimaCore

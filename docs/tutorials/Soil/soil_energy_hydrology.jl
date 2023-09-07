@@ -79,7 +79,6 @@
 # # Import necessary modules
 # External (non - CliMA) modules
 import SciMLBase
-using DiffEqCallbacks
 using Statistics
 using Plots
 

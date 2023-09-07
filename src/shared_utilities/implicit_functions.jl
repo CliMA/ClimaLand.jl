@@ -6,7 +6,7 @@ import ClimaCore: Spaces
 
 export linsolve!, thomas_algorithm!
 
-# Function required by OrdinaryDiffEq.jl
+# Function required by SciMLBase.jl
 linsolve!(::Type{Val{:init}}, f, u0; kwargs...) = _linsolve!
 _linsolve!(x, A, b, update_matrix = false; kwargs...) =
     LinearAlgebra.ldiv!(x, A, b)

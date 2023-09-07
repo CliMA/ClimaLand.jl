@@ -130,7 +130,7 @@ end
 Returns an `imp_tendency` that updates auxiliary variables and
 updates the prognostic state of variables that are stepped implicitly.
 
-`compute_imp_tendency!` should be compatible with OrdinaryDiffEq.jl solvers.
+`compute_imp_tendency!` should be compatible with SciMLBase.jl solvers.
 """
 function make_imp_tendency(model::AbstractImExModel)
     compute_imp_tendency! = make_compute_imp_tendency(model)
@@ -158,7 +158,7 @@ end
 Returns an `exp_tendency` that updates auxiliary variables and
 updates the prognostic state of variables that are stepped explicitly.
 
-`compute_exp_tendency!` should be compatible with OrdinaryDiffEq.jl solvers.
+`compute_exp_tendency!` should be compatible with SciMLBase.jl solvers.
 """
 function make_exp_tendency(model::AbstractModel)
     compute_exp_tendency! = make_compute_exp_tendency(model)
@@ -176,7 +176,7 @@ end
 Return a `compute_imp_tendency!` function that updates state variables
 that we will be stepped implicitly.
 
-`compute_imp_tendency!` should be compatible with OrdinaryDiffEq.jl solvers.
+`compute_imp_tendency!` should be compatible with SciMLBase.jl solvers.
 """
 function make_compute_imp_tendency(model::AbstractModel)
     function compute_imp_tendency!(dY, Y, p, t) end
@@ -189,7 +189,7 @@ end
 Return a `compute_exp_tendency!` function that updates state variables
 that we will be stepped explicitly.
 
-`compute_exp_tendency!` should be compatible with OrdinaryDiffEq.jl solvers.
+`compute_exp_tendency!` should be compatible with SciMLBase.jl solvers.
 """
 function make_compute_exp_tendency(model::AbstractModel)
     function compute_exp_tendency!(dY, Y, p, t) end
