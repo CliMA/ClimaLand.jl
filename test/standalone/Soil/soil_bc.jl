@@ -1,8 +1,11 @@
 using Test
+using Statistics
 using ClimaCore
 using ClimaLSM
+using ClimaLSM.Soil
+using ClimaLSM.Domains: HybridBox, SphericalShell, Column
 
-using ClimaLSM.Domains: HybridBox, SphericalShell
+include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
 FT = Float64
 
 @testset "WVector usage in gradient" begin
@@ -88,4 +91,110 @@ FT = Float64
     # )
 
     #div_rpt = unique(parent(@. (divf2c(gradc2f(scalar)))))
+end
+
+@testset "Test RRE state to flux BC calculations" begin
+    ν = FT(0.495)
+    K_sat = FT(0.0443 / 3600 / 100) # m/s
+    S_s = FT(1e-3) #inverse meters
+    vg_n = FT(2.0)
+    vg_α = FT(2.6) # inverse meters
+    hcm = vanGenuchten(; α = vg_α, n = vg_n)
+    θ_r = FT(0)
+    zmax = FT(0)
+    zmin = FT(-10)
+    nelems = 50
+    soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems)
+    z = ClimaCore.Fields.coordinate_field(soil_domain.space).z
+    Δz = abs(zmax - zmin) / nelems / 2.0
+
+    top_Δz, bottom_Δz = get_Δz(z)
+    @test (mean(abs.(parent(top_Δz) .- Δz)) < 1e-13) &&
+          (mean(abs.(parent(bottom_Δz) .- Δz)) < 1e-13)
+
+    ϑ_bc = ν / 2
+    ϑ_c = ν / 3
+
+    K_c = hydraulic_conductivity(
+        hcm,
+        K_sat,
+        Soil.effective_saturation(ν, ϑ_c, θ_r),
+    )
+
+    ψ_bc = pressure_head(hcm, θ_r, ϑ_bc, ν, S_s)
+    ψ_c = pressure_head(hcm, θ_r, ϑ_c, ν, S_s)
+
+    flux_int = diffusive_flux(K_c, ψ_bc + Δz, ψ_c, Δz)
+    flux_expected = -K_c * ((ψ_bc - ψ_c + Δz) / Δz)
+
+    @test abs(flux_expected - flux_int) < 1e-13
+end
+
+@testset "Test heat state to flux BC calculations" begin
+    earth_param_set = create_lsm_parameters(FT)
+    ν = FT(0.495)
+    K_sat = FT(0.0443 / 3600 / 100) # m/s
+    S_s = FT(1e-3) #inverse meters
+    vg_n = FT(2.0)
+    vg_α = FT(2.6) # inverse meters
+    hcm = vanGenuchten(; α = vg_α, n = vg_n)
+    θ_r = FT(0.1)
+    ν_ss_om = FT(0.0)
+    ν_ss_quartz = FT(1.0)
+    ν_ss_gravel = FT(0.0)
+    κ_minerals = FT(2.5)
+    κ_om = FT(0.25)
+    κ_quartz = FT(8.0)
+    κ_air = FT(0.025)
+    κ_ice = FT(2.21)
+    κ_liq = FT(0.57)
+    ρp = FT(2.66 / 1e3 * 1e6)
+    ρc_ds = FT(2e6 * (1.0 - ν))
+    κ_solid = Soil.κ_solid(ν_ss_om, ν_ss_quartz, κ_om, κ_quartz, κ_minerals)
+    κ_dry = Soil.κ_dry(ρp, ν, κ_solid, κ_air)
+    κ_sat_frozen = Soil.κ_sat_frozen(κ_solid, ν, κ_ice)
+    κ_sat_unfrozen = Soil.κ_sat_unfrozen(κ_solid, ν, κ_liq)
+
+    hyd_on_en_on = Soil.EnergyHydrologyParameters{FT}(;
+        κ_dry = κ_dry,
+        κ_sat_frozen = κ_sat_frozen,
+        κ_sat_unfrozen = κ_sat_unfrozen,
+        ρc_ds = ρc_ds,
+        ν = ν,
+        ν_ss_om = ν_ss_om,
+        ν_ss_quartz = ν_ss_quartz,
+        ν_ss_gravel = ν_ss_gravel,
+        hydrology_cm = hcm,
+        K_sat = K_sat,
+        S_s = S_s,
+        θ_r = θ_r,
+        earth_param_set = earth_param_set,
+    )
+
+    zmax = FT(0)
+    zmin = FT(-1)
+    nelems = 200
+    Δz = abs(zmax - zmin) / nelems
+
+    ϑ_bc = ν / 2
+    ϑ_c = ν / 3
+    θ_i = FT(0)
+    T_bc = 298
+    T_c = 290
+
+    κ_c =
+        thermal_conductivity.(
+            κ_dry,
+            kersten_number.(
+                θ_i,
+                relative_saturation.(ϑ_c, θ_i, ν),
+                Ref(hyd_on_en_on),
+            ),
+            κ_sat.(ϑ_c, θ_i, κ_sat_unfrozen, κ_sat_frozen),
+        )
+
+    flux_int = diffusive_flux(κ_c, T_bc, T_c, Δz)
+    flux_expected = -κ_c * (T_bc - T_c) / Δz
+
+    @test abs(flux_expected - flux_int) < 1e-13
 end

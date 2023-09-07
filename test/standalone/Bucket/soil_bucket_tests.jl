@@ -1,6 +1,7 @@
 using Test
 
 using Statistics
+using Insolation
 using ClimaCore
 import CLIMAParameters as CP
 using ClimaLSM.Bucket: BucketModel, BucketModelParameters, BulkAlbedoFunction
