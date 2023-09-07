@@ -1,6 +1,7 @@
 using Test
 
 using Statistics
+using Insolation
 using ClimaCore
 using ClimaLSM.Bucket:
     BucketModel,
