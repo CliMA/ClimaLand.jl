@@ -42,14 +42,15 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
 
     function zenith_angle(
         t::FT,
-        orbital_data;
+        orbital_data,
+        ref_time;
         latitude = lat,
         longitude = long,
         insol_params = earth_param_set.insol_params,
     ) where {FT}
         return FT(
             instantaneous_zenith_angle(
-                DateTime(t),
+                ref_time + Dates.Second(round(t)),
                 orbital_data,
                 longitude,
                 latitude,
@@ -80,6 +81,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     P_atmos = t -> eltype(t)(1e5) # Pa
     h_atmos = h_int # m
     c_atmos = (t) -> eltype(t)(4.11e-4) # mol/mol
+    ref_time = DateTime(2005)
     atmos = PrescribedAtmosphere(
         liquid_precip,
         snow_precip,
@@ -87,13 +89,15 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
         u_atmos,
         q_atmos,
         P_atmos,
+        ref_time,
         h_atmos;
         c_co2 = c_atmos,
     )
     radiation = PrescribedRadiativeFluxes(
         FT,
         shortwave_radiation,
-        longwave_radiation;
+        longwave_radiation,
+        ref_time;
         θs = zenith_angle,
         orbital_data = Insolation.OrbitalData(),
     )

@@ -153,11 +153,13 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     @test all(
         @.(
             stomatal_conductance ≈
-            stomatal_g_params.g0 + stomatal_g_params.Drel * m_t * (An / ca)
+            (stomatal_g_params.g0 + stomatal_g_params.Drel * m_t * (An / ca))
         )
     )
     GPP = compute_GPP.(An, K_c, LAI, RTparams.Ω) # mol m-2 s-1
-    @test all(@.(GPP ≈ An * (1 - exp(-K_c * LAI * RTparams.Ω)) / K_c))
+    @test all(
+        @.(GPP ≈ An * (1 - exp(-K_c * LAI * RTparams.Ω)) / (K_c * RTparams.Ω))
+    )
 
     @test all(
         @.(

@@ -2,6 +2,7 @@ using Test
 
 using Statistics
 using Insolation
+using Dates
 using ClimaCore
 using ClimaLSM.Bucket:
     BucketModel,
@@ -62,9 +63,11 @@ for bucket_domain in bucket_domains
 
     @testset "Conservation of water and energy" begin
         "Radiation"
+        ref_time = DateTime(2005)
         SW_d = (t) -> eltype(t)(20.0)
         LW_d = (t) -> eltype(t)(20.0)
-        bucket_rad = PrescribedRadiativeFluxes(FT, SW_d, LW_d; orbital_data)
+        bucket_rad =
+            PrescribedRadiativeFluxes(FT, SW_d, LW_d, ref_time; orbital_data)
         "Atmos"
         precip = (t) -> eltype(t)(0) # no precipitation
         T_atmos = (t) -> eltype(t)(280.0)
@@ -79,6 +82,7 @@ for bucket_domain in bucket_domains
             u_atmos,
             q_atmos,
             P_atmos,
+            ref_time,
             h_atmos,
         )
         Δt = FT(1.0)

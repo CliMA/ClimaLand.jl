@@ -151,6 +151,9 @@ using ClimaLSM:
 # We also want to plot the solution
 using Plots
 
+# And we need to use the DateTime type to store reference times
+using Dates
+
 FT = Float64;
 
 # As mentioned we use CLIMAParameters for earth parameters that are
@@ -212,6 +215,11 @@ bucket_domain =
     LSMSingleColumnDomain(; zlim = (-soil_depth, 0.0), nelements = 10);
 
 
+# The PrescribedAtmosphere and PrescribedRadiation need to take in a reference 
+# time, the date of the start of the simulation. In this tutorial we will 
+# consider this January 1, 2005.
+ref_time = DateTime(2005);
+
 # To drive the system in standalone mode,
 # the user must provide
 # prescribed functions of time for the water volume flux in precipitation,
@@ -227,7 +235,8 @@ LW_d = (t) -> eltype(t)(300);
 bucket_rad = PrescribedRadiativeFluxes(
     FT,
     SW_d,
-    LW_d;
+    LW_d,
+    ref_time;
     orbital_data = Insolation.OrbitalData(),
 );
 
@@ -250,6 +259,7 @@ bucket_atmos = PrescribedAtmosphere(
     u_atmos,
     q_atmos,
     P_atmos,
+    ref_time,
     h_atmos,
 );
 

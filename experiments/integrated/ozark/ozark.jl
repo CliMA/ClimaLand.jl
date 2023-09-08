@@ -83,7 +83,6 @@ radiative_transfer_args = (;
         α_NIR_leaf = α_NIR_leaf,
         τ_NIR_leaf = τ_NIR_leaf,
         n_layers = n_layers,
-        diff_perc = diff_perc,
     )
 )
 # Set up conductance

@@ -92,7 +92,8 @@ precipitation_function(t::FT) where {FT} = p_spline(t) < 0.0 ? p_spline(t) : 0.0
 snow_precip(t) = eltype(t)(0) # this is likely not correct
 
 
-# Construct the drivers
+# Construct the drivers. For the reference time we will use the UTC time at the
+# start of the simulation
 atmos = ClimaLSM.PrescribedAtmosphere(
     precipitation_function,
     snow_precip,
@@ -100,6 +101,7 @@ atmos = ClimaLSM.PrescribedAtmosphere(
     atmos_u,
     atmos_q,
     atmos_p,
+    UTC_DATETIME[1],
     atmos_h;
     c_co2 = atmos_co2,
 )
@@ -109,13 +111,14 @@ long = FT(-92.2000) # degree
 
 function zenith_angle(
     t::FT,
-    orbital_data;
+    orbital_data,
+    ref_time;
     latitude = lat,
     longitude = long,
     insol_params = earth_param_set.insol_params,
 ) where {FT}
     # This should be time in UTC
-    dt = DateTime("2005-01-01-06", "yyyy-mm-dd-HH") + Dates.Second(round(t))
+    dt = ref_time + Dates.Second(round(t))
     FT(
         instantaneous_zenith_angle(
             dt,
@@ -131,7 +134,8 @@ end
 radiation = ClimaLSM.PrescribedRadiativeFluxes(
     FT,
     SW_IN_spline,
-    LW_IN_spline;
+    LW_IN_spline,
+    UTC_DATETIME[1];
     θs = zenith_angle,
     orbital_data = Insolation.OrbitalData(),
 )

@@ -7,6 +7,7 @@ using ClimaLSM.Soil
 import ClimaLSM
 import ClimaLSM.Parameters as LSMP
 using Insolation
+using Dates
 include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
 @testset "Surface fluxes and radiation for soil" begin
     FT = Float32
@@ -58,12 +59,14 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     z_0m = FT(0.001)
     z_0b = z_0m
     # Radiation
+    ref_time = DateTime(2005)
     SW_d = (t) -> eltype(t)(500)
     LW_d = (t) -> eltype(t)(5.67e-8 * 280.0^4.0)
     radiation = PrescribedRadiativeFluxes(
         FT,
         SW_d,
-        LW_d;
+        LW_d,
+        ref_time;
         orbital_data = Insolation.OrbitalData(),
     )
     # Atmos
@@ -80,6 +83,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
         u_atmos,
         q_atmos,
         P_atmos,
+        ref_time,
         h_atmos,
     )
     @test atmos.gustiness == FT(1)

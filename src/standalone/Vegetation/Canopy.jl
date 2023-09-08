@@ -36,6 +36,7 @@ include("./stomatalconductance.jl")
 include("./photosynthesis.jl")
 include("./radiation.jl")
 include("./canopy_parameterizations.jl")
+using Dates
 
 """
     SharedCanopyParameters{FT <: AbstractFloat, PSE}
@@ -414,7 +415,8 @@ function ClimaLSM.make_update_aux(
         (; sc, pc) = canopy.photosynthesis.parameters
 
         # Current atmospheric conditions
-        θs::FT = canopy.radiation.θs(t, canopy.radiation.orbital_data)
+        ref_time = canopy.atmos.ref_time
+        θs::FT = canopy.radiation.θs(t, canopy.radiation.orbital_data, ref_time)
         c_co2::FT = canopy.atmos.c_co2(t)
         P::FT = canopy.atmos.P(t)
         u::FT = canopy.atmos.u(t)
@@ -427,6 +429,21 @@ function ClimaLSM.make_update_aux(
         K = extinction_coeff(ld, θs)
         PAR .= compute_PAR(RT, canopy.radiation, t)
         NIR .= compute_NIR(RT, canopy.radiation, t)
+        e_sat =
+            Thermodynamics.saturation_vapor_pressure.(
+                Ref(thermo_params),
+                T,
+                Ref(Thermodynamics.Liquid()),
+            )
+        e =
+            Thermodynamics.partial_pressure_vapor.(
+                Ref(thermo_params),
+                P,
+                Ref(PhasePartition(q)),
+            )
+        rel_hum = e / e_sat
+        DOY = Dates.dayofyear(ref_time + Dates.Second(floor(Int64, t)))
+        frac_diff = @. diffuse_fraction(DOY, T, PAR + NIR, rel_hum, θs)
         APAR, ANIR = compute_absorbances(
             RT,
             PAR ./ (energy_per_photon_PAR * N_a),
@@ -436,6 +453,7 @@ function ClimaLSM.make_update_aux(
             θs,
             ground_albedo_PAR(canopy),
             ground_albedo_NIR(canopy),
+            frac_diff,
         )
 
         # update plant hydraulics aux

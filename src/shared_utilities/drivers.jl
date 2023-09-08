@@ -34,7 +34,7 @@ An abstract type of radiative drivers of land models.
 abstract type AbstractRadiativeDrivers{FT <: AbstractFloat} end
 
 """
-    PrescribedAtmosphere{FT, LP, SP, TA, UA, QA, RA, CA} <: AbstractAtmosphericDrivers{FT}
+    PrescribedAtmosphere{FT, LP, SP, TA, UA, QA, RA, CA, DT} <: AbstractAtmosphericDrivers{FT}
 
 Container for holding prescribed atmospheric drivers and other
 information needed for computing turbulent surface fluxes when
@@ -44,7 +44,7 @@ Since not all models require co2 concentration, the default for that
 is `nothing`.
 $(DocStringExtensions.FIELDS)
 """
-struct PrescribedAtmosphere{FT, LP, SP, TA, UA, QA, RA, CA} <:
+struct PrescribedAtmosphere{FT, LP, SP, TA, UA, QA, RA, CA, DT} <:
        AbstractAtmosphericDrivers{FT}
     "Precipitation (m/s) function of time: positive by definition"
     liquid_precip::LP
@@ -60,6 +60,8 @@ struct PrescribedAtmosphere{FT, LP, SP, TA, UA, QA, RA, CA} <:
     P::RA
     "CO2 concentration in atmosphere (mol/mol)"
     c_co2::CA
+    "Reference time - the datetime corresponding to t=0 for the simulation"
+    ref_time::DT
     "Reference height (m), relative to surface elevation"
     h::FT
     "Minimum wind speed (gustiness; m/s)"
@@ -71,11 +73,12 @@ struct PrescribedAtmosphere{FT, LP, SP, TA, UA, QA, RA, CA} <:
         u,
         q,
         P,
+        ref_time,
         h::FT;
         gustiness = FT(1),
         c_co2 = nothing,
     ) where {FT}
-        args = (liquid_precip, snow_precip, T, u, q, P, c_co2)
+        args = (liquid_precip, snow_precip, T, u, q, P, c_co2, ref_time)
         return new{typeof(h), typeof.(args)...}(args..., h, gustiness)
     end
 
@@ -241,17 +244,19 @@ function surface_fluxes_at_a_point(
 end
 
 """
-    PrescribedRadiativeFluxes{FT, SW, LW, T} <: AbstractRadiativeDrivers{FT}
+    PrescribedRadiativeFluxes{FT, SW, LW, DT, T, OD} <: AbstractRadiativeDrivers{FT}
 
 Container for the prescribed radiation functions needed to drive land models in standalone mode.
 $(DocStringExtensions.FIELDS)
 """
-struct PrescribedRadiativeFluxes{FT, SW, LW, T, OD} <:
+struct PrescribedRadiativeFluxes{FT, SW, LW, DT, T, OD} <:
        AbstractRadiativeDrivers{FT}
     "Downward shortwave radiation function of time (W/m^2): positive indicates towards surface"
     SW_d::SW
     "Downward longwave radiation function of time (W/m^2): positive indicates towards surface"
     LW_d::LW
+    "Reference time - the datetime corresponding to t=0 for the simulation"
+    ref_time::DT
     "Sun zenith angle, in radians"
     θs::T
     "Orbital Data for Insolation.jl"
@@ -259,11 +264,12 @@ struct PrescribedRadiativeFluxes{FT, SW, LW, T, OD} <:
     function PrescribedRadiativeFluxes(
         FT,
         SW_d,
-        LW_d;
+        LW_d,
+        ref_time;
         θs = nothing,
         orbital_data,
     )
-        args = (SW_d, LW_d, θs, orbital_data)
+        args = (SW_d, LW_d, ref_time, θs, orbital_data)
         @assert !isnothing(orbital_data)
         return new{FT, typeof.(args)...}(args...)
     end
