@@ -8,7 +8,7 @@ using Aqua
     ua = Aqua.detect_unbound_args_recursively(ClimaLSM)
     @test length(ua) == 0
 
-    # See: https://github.com/SciML/OrdinaryDiffEq.jl/issues/1750
+    # See: https://github.com/SciML/SciMLBase.jl/issues/1750
     # Test that we're not introducing method ambiguities across deps
     ambs = Aqua.detect_ambiguities(ClimaLSM; recursive = true)
     pkg_match(pkgname, pkdir::Nothing) = false

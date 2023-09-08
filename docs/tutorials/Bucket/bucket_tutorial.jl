@@ -112,12 +112,9 @@
 
 # # Simulating a standalone bucket model
 
-# First, we need to import necessary packages. We use [OrdinaryDiffEq.jl](https://github.com/SciML/OrdinaryDiffEq.jl)
-# and [ClimaTimeSteppers.jl](https://github.com/CliMA/ClimaTimeSteppers.jl) for the timestepping,
-# and [DiffEqCallbacks.jl](https://github.com/SciML/DiffEqCallbacks.jl) is used as described below,
-# for accessing the solver state during the integration.
+# First, we need to import necessary packages. We use [SciMLBase.jl](https://github.com/SciML/SciMLBase.jl)
+# and [ClimaTimeSteppers.jl](https://github.com/CliMA/ClimaTimeSteppers.jl) for the timestepping.
 import SciMLBase
-using DiffEqCallbacks
 import ClimaTimeSteppers as CTS
 
 # We use [ClimaCore](https://github.com/CliMA/ClimaCore.jl)
@@ -215,8 +212,8 @@ bucket_domain =
     LSMSingleColumnDomain(; zlim = (-soil_depth, 0.0), nelements = 10);
 
 
-# The PrescribedAtmosphere and PrescribedRadiation need to take in a reference 
-# time, the date of the start of the simulation. In this tutorial we will 
+# The PrescribedAtmosphere and PrescribedRadiation need to take in a reference
+# time, the date of the start of the simulation. In this tutorial we will
 # consider this January 1, 2005.
 ref_time = DateTime(2005);
 

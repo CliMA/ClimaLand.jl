@@ -1,4 +1,4 @@
-using DiffEqCallbacks
+import SciMLBase
 
 """
      heaviside(x::FT)::FT where {FT}
@@ -34,14 +34,14 @@ add_dss_buffer_to_aux(p::NamedTuple, domain::Domains.AbstractDomain) = p
         domain::Union{Domains.Plane, Domains.SphericalSurface},
     )
 
-Adds a dss buffer corresponding to `domain.space` to `p` with the name `dss_buffer_2d`, 
+Adds a dss buffer corresponding to `domain.space` to `p` with the name `dss_buffer_2d`,
 appropriate for a 2D domain.
 
 This buffer is added so that we preallocate memory for the dss step and do not allocate it
-at every timestep. We use a name which specifically denotes that 
+at every timestep. We use a name which specifically denotes that
 the buffer is on a 2d space. This is because some models
-require both a buffer on the 3d space as well as on the surface 
-2d space, e.g. in the case when they have prognostic variables that are only 
+require both a buffer on the 3d space as well as on the surface
+2d space, e.g. in the case when they have prognostic variables that are only
 defined on the surface space.
 """
 function add_dss_buffer_to_aux(
@@ -59,14 +59,14 @@ end
         domain::Union{Domains.HybridBox, Domains.SphericalShell},
     )
 
-Adds a 3d dss buffer corresponding to `domain.space` to `p` with the name `dss_buffer_3d`, 
+Adds a 3d dss buffer corresponding to `domain.space` to `p` with the name `dss_buffer_3d`,
 appropriate for a 3D domain.
 
 This buffer is added so that we preallocate memory for the dss step and do not allocate it
-at every timestep. We use a name which specifically denotes that 
+at every timestep. We use a name which specifically denotes that
 the buffer is on a 3d space. This is because some models
-require both a buffer on the 3d space as well as on the surface 
-2d space, e.g. in the case when they have prognostic variables that are only 
+require both a buffer on the 3d space as well as on the surface
+2d space, e.g. in the case when they have prognostic variables that are only
 defined on the surface space.
 """
 function add_dss_buffer_to_aux(
@@ -175,9 +175,9 @@ end
 
 Method of `dss_helper!` which does not perform dss.
 
-This is intended for spaces that don't use spectral 
+This is intended for spaces that don't use spectral
 elements (FiniteDifferenceSpace, PointSpace, etc).
-Model components with no prognostic variables appear in Y as empty 
+Model components with no prognostic variables appear in Y as empty
 Vectors, and also do not need dss.
 """
 function dss_helper!(
@@ -208,7 +208,7 @@ end
     condition(saveat)
 
 This function returns a function with the type signature expected by
-`DiffEqCallbacks.DiscreteCallback`, and determines whether `affect!` gets
+`SciMLBase.DiscreteCallback`, and determines whether `affect!` gets
 called in the callback. This implementation simply checks if the current time
 is contained in the list of save times used for the callback.
 """
@@ -255,7 +255,7 @@ tuple containing `t` and `saveval`, each having the same length as `saveat`.
 Important: The times in `saveat` must be times the simulation is
 evaluated at for this function to work.
 
-Note that unlike DiffEqCallbacks's SavingCallback, this version does not
+Note that unlike SciMLBase's SavingCallback, this version does not
 interpolate if a time in saveat is not a multiple of our timestep. This
 function also doesn't work with adaptive timestepping.
 """
@@ -265,7 +265,7 @@ function NonInterpSavingCallback(saved_values, saveat::Vector{FT}) where {FT}
     saveiter = 0
     affect! = SavingAffect(saved_values, saveat, saveiter)
 
-    DiffEqCallbacks.DiscreteCallback(
+    SciMLBase.DiscreteCallback(
         cond,
         affect!;
         initialize = saving_initialize,

@@ -1,33 +1,33 @@
 # # Introduction to the Canopy Model
 
 # This tutorial shows how to instantiate and run a simulation of the
-# canopy biophysics model in ClimaLSM. A 
+# canopy biophysics model in ClimaLSM. A
 # [`CanopyModel`](https://clima.github.io/ClimaLSM.jl/dev/APIs/canopy/Canopy/#Canopy-Model-Structs)
-# including all component 
-# models is initialized, then an example simulation is run. The initial conditions,  
-# atmospheric and radiative flux conditions, and canopy properties are set up 
-# to match those observed at the US-MOz flux tower, a flux tower located within 
+# including all component
+# models is initialized, then an example simulation is run. The initial conditions,
+# atmospheric and radiative flux conditions, and canopy properties are set up
+# to match those observed at the US-MOz flux tower, a flux tower located within
 # an oak-hickory forest in Ozark, Missouri, USA. See [Wang et al. 2021](https://doi.org/10.5194/gmd-14-6741-2021)
 # for details on the site and canopy parameters.
 
-# The canopy biophysics model in ClimaLSM combines a photosynthesis model with a 
-# canopy radiative transfer scheme, plant hydraulics model, and stomatal 
+# The canopy biophysics model in ClimaLSM combines a photosynthesis model with a
+# canopy radiative transfer scheme, plant hydraulics model, and stomatal
 # conductance model, placing them under either prescribed or simulated (as in a
-# full Earth System Model) atmospheric and radiative flux conditions. 
+# full Earth System Model) atmospheric and radiative flux conditions.
 
-# ClimaLSM supports either Beer-Lambert law or a Two-Stream model for radiative 
-# transfer. For this tutorial, we will use the Beer-Lambert law, 
+# ClimaLSM supports either Beer-Lambert law or a Two-Stream model for radiative
+# transfer. For this tutorial, we will use the Beer-Lambert law,
 # in which the intensity of light absorbed is a negative exponential function of
 # depth in the canopy and an exinction coefficient determined by optical depth.
 
-# The model of photosynthesis in CliMA LSM is the Farquar Model in which GPP is 
-# calculated based on C3 and C4 photosynthesis, which determines potential 
+# The model of photosynthesis in CliMA LSM is the Farquar Model in which GPP is
+# calculated based on C3 and C4 photosynthesis, which determines potential
 # leaf-level photosynthesis.
 
-# The plant hydraulics model in ClimaLSM solves for the water content within 
-# bulk root-stem-canopy system using Richards equation discretized into an 
-# arbitrary number of layers. The water content is related to the water 
-# potential using a retention curve relationship, and the water potential is 
+# The plant hydraulics model in ClimaLSM solves for the water content within
+# bulk root-stem-canopy system using Richards equation discretized into an
+# arbitrary number of layers. The water content is related to the water
+# potential using a retention curve relationship, and the water potential is
 # used to simulate the effect moisture stress has on transpiration and GPP.
 
 # # Preliminary Setup
@@ -61,19 +61,19 @@ earth_param_set = create_lsm_parameters(FT);
 
 # # Setup the Canopy Model
 
-# We want to simulate a vegetative canopy in standalone mode, without coupling 
-# the canopy to atmospheric or soil physics models, so we choose a 
-# [`CanopyModel`](https://clima.github.io/ClimaLSM.jl/dev/APIs/canopy/Canopy/#Canopy-Model-Structs). 
-# From the linked 
-# documentation, we can see that we need to provide shared parameters, a domain, 
-# a radiative transfer model, photosynthesis model, plant hydraulics model, 
-# stomatal conductance model, and atmospheric and radiative flux conditions 
+# We want to simulate a vegetative canopy in standalone mode, without coupling
+# the canopy to atmospheric or soil physics models, so we choose a
+# [`CanopyModel`](https://clima.github.io/ClimaLSM.jl/dev/APIs/canopy/Canopy/#Canopy-Model-Structs).
+# From the linked
+# documentation, we can see that we need to provide shared parameters, a domain,
+# a radiative transfer model, photosynthesis model, plant hydraulics model,
+# stomatal conductance model, and atmospheric and radiative flux conditions
 # which may be either prescribed or simulated.
 
-# First, define the parameters of the model domain. These values are needed 
-# by some of the component models. Here we are performing a 1-dimensional 
-# simulation in a `Point` domain and will use 
-# single stem and leaf compartments, but for 2D simulations, the parameters of 
+# First, define the parameters of the model domain. These values are needed
+# by some of the component models. Here we are performing a 1-dimensional
+# simulation in a `Point` domain and will use
+# single stem and leaf compartments, but for 2D simulations, the parameters of
 # the [`domain`](https://clima.github.io/ClimaLSM.jl/dev/APIs/shared_utilities/#Domains)
 # would change.
 
@@ -86,7 +86,7 @@ h_leaf = FT(9.5)
 compartment_midpoints = [h_stem / 2, h_stem + h_leaf / 2]
 compartment_surfaces = [FT(0), h_stem, h_stem + h_leaf];
 
-# We will be using prescribed atmospheric and radiative flux drivers from the 
+# We will be using prescribed atmospheric and radiative flux drivers from the
 # US-MOz tower observations, which we read in here. We are using prescribed
 # atmospheric and radiative flux conditions, but it is also possible to couple
 # the simulation with atmospheric and/or radiative flux models.
@@ -98,7 +98,7 @@ include(
     ),
 );
 
-# Populate the SharedCanopyParameters struct, which holds the parameters 
+# Populate the SharedCanopyParameters struct, which holds the parameters
 # shared between all different components of the canopy model.
 z0_m = FT(2)
 z0_b = FT(0.2)
@@ -109,7 +109,7 @@ shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
     earth_param_set,
 );
 
-# For this canopy, we are running in standalone mode, which means we need to 
+# For this canopy, we are running in standalone mode, which means we need to
 # use a prescribed soil driver, defined as follows:
 
 ψ_soil0 = FT(0.0)
@@ -173,7 +173,7 @@ photo_params = FarquharParameters{FT}(
 
 photosynthesis_model = FarquharModel{FT}(photo_params);
 
-# Arguments for plant hydraulics model are more complicated. 
+# Arguments for plant hydraulics model are more complicated.
 
 # Begin by providing general plant parameters. For the area
 # indices of the canopy, we choose a `PrescribedSiteAreaIndex`,
@@ -192,7 +192,7 @@ function root_distribution(z::T; rooting_depth = rooting_depth) where {T}
     return T(1.0 / rooting_depth) * exp(z / T(rooting_depth))
 end;
 
-# Create the component conductivity and retention models of the hydraulics 
+# Create the component conductivity and retention models of the hydraulics
 # model. In ClimaLSM, a Weibull parameterization is used for the conductivity as
 # a function of potential, and a linear retention curve is used.
 
@@ -230,10 +230,10 @@ plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
     compartment_midpoints = compartment_midpoints,
 );
 
-# Now, instantiate the canopy model, using the atmospheric and radiative 
-# drivers included from the external file, as well as the soil driver we 
-# instantiated above. This contains every piece of information needed to 
-# generate the set of ODEs modeling the canopy biophysics, ready to be passed 
+# Now, instantiate the canopy model, using the atmospheric and radiative
+# drivers included from the external file, as well as the soil driver we
+# instantiated above. This contains every piece of information needed to
+# generate the set of ODEs modeling the canopy biophysics, ready to be passed
 # off to a timestepper.
 
 canopy = ClimaLSM.Canopy.CanopyModel{FT}(;
@@ -248,8 +248,8 @@ canopy = ClimaLSM.Canopy.CanopyModel{FT}(;
     radiation = radiation,
 );
 
-# Initialize the state vectors and obtain the model coordinates, then get the 
-# explicit time stepping tendency that updates auxiliary and prognostic 
+# Initialize the state vectors and obtain the model coordinates, then get the
+# explicit time stepping tendency that updates auxiliary and prognostic
 # variables that are stepped explicitly.
 
 Y, p, coords = ClimaLSM.initialize(canopy)
@@ -272,7 +272,7 @@ for i in 1:2
     Y.canopy.hydraulics.ϑ_l.:($i) .= augmented_liquid_fraction.(ν, S_l_ini[i])
 end;
 
-# Select a time range to perform time stepping over, and a dt. Also create the 
+# Select a time range to perform time stepping over, and a dt. Also create the
 # saveat Array to contain the data from the model at each time step. As usual,
 # the timestep depends on the problem you are solving, the accuracy of the
 # solution required, and the timestepping algorithm you are using.
@@ -282,7 +282,7 @@ N_days = 365
 tf = t0 + FT(3600 * 24 * N_days)
 dt = FT(225);
 
-# Initialize the auxiliary variables for the canopy using the initial 
+# Initialize the auxiliary variables for the canopy using the initial
 # conditions and initial time.
 
 set_initial_aux_state! = make_set_initial_aux_state(canopy)
@@ -312,8 +312,8 @@ prob = SciMLBase.ODEProblem(
     p,
 );
 
-# Now, we can solve the problem and store the model data in the saveat array, 
-# using [`OrdinaryDiffEq.jl`](https://github.com/SciML/OrdinaryDiffEq.jl) and
+# Now, we can solve the problem and store the model data in the saveat array,
+# using [`SciMLBase.jl`](https://github.com/SciML/SciMLBase.jl) and
 # [`ClimaTimeSteppers.jl`](https://github.com/CliMA/ClimaTimeSteppers.jl).
 
 sol = SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb, saveat = saveat);

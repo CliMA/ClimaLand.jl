@@ -161,7 +161,7 @@ end
 Defines, and constructs instances of, the PlantHydraulicsModel type, which is used
 for simulation flux of water to/from soil, along roots of different depths,
 along a stem, to a leaf, and ultimately being lost from the system by
-transpiration. Note that the canopy height is specified as part of the 
+transpiration. Note that the canopy height is specified as part of the
 PlantHydraulicsModel, along with the area indices of the leaves, roots, and
 stems.
 
@@ -305,7 +305,7 @@ end
                                     ) where {FT}
 
 Updates the canopy prescribed fields pertaining to the PlantHydraulics
-component (the LAI only in this case) with their values at time t.    
+component (the LAI only in this case) with their values at time t.
 """
 function ClimaLSM.Canopy.update_canopy_prescribed_field!(
     component::PlantHydraulicsModel{FT},
@@ -503,15 +503,15 @@ end
     make_compute_exp_tendency(model::PlantHydraulicsModel, _)
 
 A function which creates the compute_exp_tendency! function for the PlantHydraulicsModel.
-The compute_exp_tendency! function must comply with a rhs function of OrdinaryDiffEq.jl.
+The compute_exp_tendency! function must comply with a rhs function of SciMLBase.jl.
 
-Below, `fa` denotes a flux multiplied by the relevant cross section 
-(per unit area ground, or area index, AI). The tendency for the 
+Below, `fa` denotes a flux multiplied by the relevant cross section
+(per unit area ground, or area index, AI). The tendency for the
 ith compartment can be written then as:
 ∂ϑ[i]/∂t = 1/(AI*dz)[fa[i]-fa[i+1]).
 
-Note that if the area_index is zero because no plant is present, 
-AIdz is zero, and the fluxes `fa` appearing in the numerator are 
+Note that if the area_index is zero because no plant is present,
+AIdz is zero, and the fluxes `fa` appearing in the numerator are
 zero because they are scaled by AI.
 
 To prevent dividing by zero, we change AI/(AI x dz)" to
