@@ -6,8 +6,24 @@ FT = Float64
 =#
 
 using Unitful: K, °C, mol, μmol, m, s
-
-import ParamViz.parameterisation
+    
+function ParamViz.parameterisation(ci, T, β, LAI, PAR, Vcmax25, θs, ld, ρ_leaf, Ω, Γstar25, ΔHΓstar,
+                                 To, R, ΔHJmax, θj, ϕ, ΔHVcmax, Kc25, ΔHkc, Ko25, ΔHko, oi, f, ΔHRd)   
+      K = extinction_coeff(ld, θs)
+      # APAR = plant_absorbed_ppfd(PAR, ρ_leaf, K, LAI, Ω)
+      APAR = PAR * (1 - ρ_leaf) * (1 - exp(-K * LAI * Ω)) # not sure how to call new plant_absorbed_pfd
+      Jmax = max_electron_transport(Vcmax25, ΔHJmax, T, To, R)
+      J = electron_transport(APAR, Jmax, θj, ϕ)
+      Vcmax = compute_Vcmax(Vcmax25, T, To, R, ΔHVcmax)
+      Γstar = co2_compensation(Γstar25, ΔHΓstar, T, To, R)
+      Kc = MM_Kc(Kc25, ΔHkc, T, To, R)
+      Ko = MM_Ko(Ko25, ΔHko, T, To, R)
+      Ac = rubisco_assimilation(Canopy.C3(), Vcmax, ci, Γstar, Kc, Ko, oi)
+      Aj = light_assimilation(Canopy.C3(), J, ci, Γstar)
+      Rd = dark_respiration(Vcmax25, β, f, ΔHRd, T, To, R)
+      An = net_photosynthesis(Ac, Aj, Rd, β) 
+      return An
+end
 
 function An_ci_app_f()
     drivers = Drivers(
@@ -79,29 +95,8 @@ function An_ci_app_f()
                               )) 
 
     inputs = Inputs(drivers, parameters, constants)
-
     output = Output("An (μmol m⁻² s⁻¹)", [0, 20 * 1e-6], (mol*m^-2*s^-1, μmol*m^-2*s^-1))
-    
-    # import ParamViz.parameterisation
-    function parameterisation(ci, T, β, LAI, PAR, Vcmax25, θs, ld, ρ_leaf, Ω, Γstar25, ΔHΓstar,
-                                     To, R, ΔHJmax, θj, ϕ, ΔHVcmax, Kc25, ΔHkc, Ko25, ΔHko, oi, f, ΔHRd)   
-          K = extinction_coeff(ld, θs)
-          # APAR = plant_absorbed_ppfd(PAR, ρ_leaf, K, LAI, Ω)
-          APAR = PAR * (1 - ρ_leaf) * (1 - exp(-K * LAI * Ω)) # not sure how to call new plant_absorbed_pfd
-          Jmax = max_electron_transport(Vcmax25, ΔHJmax, T, To, R)
-          J = electron_transport(APAR, Jmax, θj, ϕ)
-          Vcmax = compute_Vcmax(Vcmax25, T, To, R, ΔHVcmax)
-          Γstar = co2_compensation(Γstar25, ΔHΓstar, T, To, R)
-          Kc = MM_Kc(Kc25, ΔHkc, T, To, R)
-          Ko = MM_Ko(Ko25, ΔHko, T, To, R)
-          Ac = rubisco_assimilation(Canopy.C3(), Vcmax, ci, Γstar, Kc, Ko, oi)
-          Aj = light_assimilation(Canopy.C3(), J, ci, Γstar)
-          Rd = dark_respiration(Vcmax25, β, f, ΔHRd, T, To, R)
-          An = net_photosynthesis(Ac, Aj, Rd, β) 
-          return An
-    end
-
-    An_ci_app = webapp(parameterisation, inputs, output)
+    An_ci_app = webapp(ParamViz.parameterisation, inputs, output)
     return An_ci_app
 end
 
