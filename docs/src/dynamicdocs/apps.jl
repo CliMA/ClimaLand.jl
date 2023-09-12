@@ -23,3 +23,4 @@ route!(server,"/beer_APAR"=>beer_app)
 route!(server,"/leaf_An_ci"=>An_ci_app)
 route!(server,"/Rh"=>Rh_app)
 
+wait()
