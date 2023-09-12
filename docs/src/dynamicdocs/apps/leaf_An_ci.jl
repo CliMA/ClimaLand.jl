@@ -6,7 +6,7 @@ FT = Float64
 =#
 
 using Unitful: K, °C, mol, μmol, m, s
-    
+
 function ParamViz.parameterisation(ci, T, β, LAI, PAR, Vcmax25, θs, ld, ρ_leaf, Ω, Γstar25, ΔHΓstar,
                                  To, R, ΔHJmax, θj, ϕ, ΔHVcmax, Kc25, ΔHkc, Ko25, ΔHko, oi, f, ΔHRd)   
       K = extinction_coeff(ld, θs)
