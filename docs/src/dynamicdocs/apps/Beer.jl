@@ -7,7 +7,7 @@ FT = Float64
 
 using Unitful: m, s, mol, μmol
 
-function parameterisation(PAR, LAI, ρ_leaf, K, Ω, a, b)   
+function ParamViz.parameterisation(PAR, LAI, ρ_leaf, K, Ω, a, b)   
          # APAR = plant_absorbed_ppfd(PAR, ρ_leaf, K, LAI, Ω) 
          APAR = PAR * (1 - ρ_leaf) * (1 - exp(-K * LAI * Ω)) # not sure how to call new plant_absorbed_pfd
          return APAR
@@ -29,8 +29,7 @@ function Beer_app_f()
     constants = Constants(("a", "b"), (FT(1), FT(2))) # dummy constants
     inputs = Inputs(drivers, parameters, constants)
     output = Output("APAR (μmol m⁻² s⁻¹)", [0, 1500 * 1e-6], (mol*m^-2*s^-1, μmol*m^-2*s^-1))
-    beer_app = webapp(parameterisation, inputs, output)
-    beer_app = webapp(parameterisation, inputs, output)
+    beer_app = webapp(ParamViz.parameterisation, inputs, output)
     return beer_app
 end
 
