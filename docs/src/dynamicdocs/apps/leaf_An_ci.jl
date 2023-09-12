@@ -5,25 +5,37 @@ using ClimaLSM.Canopy
 FT = Float64
 =#
 
-function An_ci_app_f()
-    drivers = Drivers(("ci (ppm)", "T (K)"),  #name, values, range
-                        FT.((0.0003, 283)), 
-                       (FT.([0.0001, 0.001]), FT.([273, 323])))
+using Unitful: K, °C, mol, μmol, m, s
 
-    parameters = Parameters(("Moisture stress, β",
-                                 "Leaf area index, LAI (m² m⁻²)",
-                                 "Photosynthetic radiation, PAR (mol m⁻² s⁻¹)", 
-                                 "Vcmax25, (mol m⁻² s⁻¹)"),
-                                (FT(1.0), # β
-                                 FT(1.0), # LAI
-                                 FT(500 * 1e-6), # PAR
-                                 FT(5e-5), # Vcmax25
-                                 ),
-                                (FT.([0, 1]), # β
-                                 FT.([1, 10]), # LAI, m2 m-2
-                                 FT.([0, 1500 * 1e-6]), # PAR
-                                 FT.([1e-5, 1e-4]), # Vcmax25
-                                 ))
+import ParamViz.parameterisation
+
+function An_ci_app_f()
+    drivers = Drivers(
+                      ("ci (ppm)", "T (°C)"),  # names
+                      (FT.([0.0001, 0.001]), FT.([273, 323])), # ranges
+                      ((mol/mol, μmol/mol), (K, °C)) # units from, unit to
+                     )
+
+    parameters = Parameters(
+                            (
+                             "Moisture stress, β",
+                             "Leaf area index, LAI (m² m⁻²)",
+                             "Photosynthetic radiation, PAR (mol m⁻² s⁻¹)", 
+                             "Vcmax25, (mol m⁻² s⁻¹)"
+                            ),
+                            (
+                             FT.([0, 1]), # β
+                             FT.([1, 10]), # LAI, m2 m-2
+                             FT.([0, 1500 * 1e-6]), # PAR
+                             FT.([1e-5, 1e-4]), # Vcmax25
+                            ),
+                            (
+                             (m, m), # dummy unit, no conversion
+                             (m^2*m^-2, m^2*m^-2),
+                             (mol*m^-2*s^-1, μmol*m^-2*s^-1),
+                             (mol*m^-2*s^-1, μmol*m^-2*s^-1)
+                            ),
+                           )
 
     constants = Constants(("θs", # Sun zenith angle
                                "ld", # Leaf angle distribution
@@ -68,12 +80,14 @@ function An_ci_app_f()
 
     inputs = Inputs(drivers, parameters, constants)
 
-    output = Output("An (μmol m⁻² s⁻¹)", [0, 20])
-
-    function leaf_photosynthesis(ci, T, β, LAI, PAR, Vcmax25, θs, ld, ρ_leaf, Ω, Γstar25, ΔHΓstar,
+    output = Output("An (μmol m⁻² s⁻¹)", [0, 20 * 1e-6], (mol*m^-2*s^-1, μmol*m^-2*s^-1))
+    
+    # import ParamViz.parameterisation
+    function parameterisation(ci, T, β, LAI, PAR, Vcmax25, θs, ld, ρ_leaf, Ω, Γstar25, ΔHΓstar,
                                      To, R, ΔHJmax, θj, ϕ, ΔHVcmax, Kc25, ΔHkc, Ko25, ΔHko, oi, f, ΔHRd)   
           K = extinction_coeff(ld, θs)
-          APAR = plant_absorbed_ppfd(PAR, ρ_leaf, K, LAI, Ω)
+          # APAR = plant_absorbed_ppfd(PAR, ρ_leaf, K, LAI, Ω)
+          APAR = PAR * (1 - ρ_leaf) * (1 - exp(-K * LAI * Ω)) # not sure how to call new plant_absorbed_pfd
           Jmax = max_electron_transport(Vcmax25, ΔHJmax, T, To, R)
           J = electron_transport(APAR, Jmax, θj, ϕ)
           Vcmax = compute_Vcmax(Vcmax25, T, To, R, ΔHVcmax)
@@ -83,28 +97,11 @@ function An_ci_app_f()
           Ac = rubisco_assimilation(Canopy.C3(), Vcmax, ci, Γstar, Kc, Ko, oi)
           Aj = light_assimilation(Canopy.C3(), J, ci, Γstar)
           Rd = dark_respiration(Vcmax25, β, f, ΔHRd, T, To, R)
-          An = net_photosynthesis(Ac, Aj, Rd, β) * 1e6 # from mol to umol 
+          An = net_photosynthesis(Ac, Aj, Rd, β) 
           return An
     end
 
-    function leaf_photosynthesis(inputs)
-            ci, T = inputs.drivers.values[1], inputs.drivers.values[2] 
-            β, LAI, PAR, Vcmax25 = [inputs.parameters.values[i] for i in 1:4]
-            θs, ld, ρ_leaf, Ω, Γstar25, ΔHΓstar, To, R, ΔHJmax, θj,
-              ϕ, ΔHVcmax, Kc25, ΔHkc, Ko25, ΔHko, oi, f, ΔHRd = [inputs.constants.values[i] for i in 1:19]
-            return leaf_photosynthesis(PAR, T, β, LAI, ca, VPD, θs, ld, ρ_leaf, Ω, Γstar25, ΔHΓstar,
-                                       To, R, Vcmax25, ΔHJmax, θj, ϕ, ΔHVcmax, g1, Kc25, ΔHkc, Ko25, ΔHko, oi, f, ΔHRd)
-    end
-
-    function leaf_photosynthesis(drivers, parameters, constants)
-          ci, T = drivers[1], drivers[2]
-          β, LAI, PAR, Vcmax25 = [parameters[i] for i in 1:4]
-          θs, ld, ρ_leaf, Ω, Γstar25, ΔHΓstar, To, R, ΔHJmax, θj,
-          ϕ, ΔHVcmax, Kc25, ΔHkc, Ko25, ΔHko, oi, f, ΔHRd = [constants[i] for i in 1:19]
-          return leaf_photosynthesis(ci, T, β, LAI, PAR, Vcmax25, θs, ld, ρ_leaf, Ω, Γstar25, ΔHΓstar,
-                                     To, R, ΔHJmax, θj, ϕ, ΔHVcmax, Kc25, ΔHkc, Ko25, ΔHko, oi, f, ΔHRd)
-    end
-
-    An_ci_app = webapp(leaf_photosynthesis, inputs, output)
+    An_ci_app = webapp(parameterisation, inputs, output)
     return An_ci_app
 end
+
