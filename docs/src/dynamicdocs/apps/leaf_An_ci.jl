@@ -36,8 +36,8 @@ function An_ci_app_f()
                             (
                              "Moisture stress, β",
                              "Leaf area index, LAI (m² m⁻²)",
-                             "Photosynthetic radiation, PAR (mol m⁻² s⁻¹)", 
-                             "Vcmax25, (mol m⁻² s⁻¹)"
+                             "Photosynthetic radiation, PAR (μmol m⁻² s⁻¹)", 
+                             "Vcmax25, (μmol m⁻² s⁻¹)"
                             ),
                             (
                              FT.([0, 1]), # β
