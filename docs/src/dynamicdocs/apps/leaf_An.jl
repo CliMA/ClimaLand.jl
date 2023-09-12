@@ -11,23 +11,64 @@ FT = Float64
 # PAR 150 W m-2 over 30 minutes is ~ 2000 umol m-2 s-1 PPFD
 # Ta from 0 to 50 °C ~ 273 to 323 K
 
+using Unitful: K, °C, mol, μmol, m, s, Pa, kPa
+
+function ParamViz.parameterisation(PAR, T, β, LAI, ca, VPD, θs, ld, ρ_leaf, Ω, Γstar25, ΔHΓstar,
+                             To, R, Vcmax25, ΔHJmax, θj, ϕ, ΔHVcmax, g1, Kc25, ΔHkc, Ko25, ΔHko, oi, f, ΔHRd)   
+  K = extinction_coeff(ld, θs)
+  # APAR = plant_absorbed_ppfd(PAR, ρ_leaf, K, LAI, Ω)
+  APAR = PAR * (1 - ρ_leaf) * (1 - exp(-K * LAI * Ω)) # not sure how to call new plant_absorbed_pfd
+  Jmax = max_electron_transport(Vcmax25, ΔHJmax, T, To, R)
+  J = electron_transport(APAR, Jmax, θj, ϕ)
+  Vcmax = compute_Vcmax(Vcmax25, T, To, R, ΔHVcmax)
+  Γstar = co2_compensation(Γstar25, ΔHΓstar, T, To, R)
+  medlynt = 1 + g1 / sqrt(VPD)
+  ci = intercellular_co2(ca, Γstar, medlynt)
+  Aj = light_assimilation(Canopy.C3(), J, ci, Γstar)
+  Kc = MM_Kc(Kc25, ΔHkc, T, To, R)
+  Ko = MM_Ko(Ko25, ΔHko, T, To, R)
+  Ac = rubisco_assimilation(Canopy.C3(), Vcmax, ci, Γstar, Kc, Ko, oi)
+  Rd = dark_respiration(Vcmax25, β, f, ΔHRd, T, To, R)
+  An = net_photosynthesis(Ac, Aj, Rd, β)
+  return An
+end
+
 function An_app_f()
-    drivers = Drivers(("PAR (mol m⁻² s⁻¹)", "T (K)"), FT.((500 * 1e-6, 283)), (FT.([0, 1500 * 1e-6]), FT.([273, 323])))
+    drivers = Drivers(
+                      (
+                       "PAR (μmol m⁻² s⁻¹)",
+                       "T (°C)"
+                      ),
+                      (
+                       FT.([0, 1500 * 1e-6]),
+                       FT.([273, 323])
+                      ),
+                      (
+                       (mol*m^-2*s^-1, μmol*m^-2*s^-1),
+                       (K, °C),
+                      )
+                     )
     
-    parameters = Parameters(("Moisture stress, β",
+    parameters = Parameters(
+                            (
+                             "Moisture stress, β",
                              "Leaf area index, LAI (m² m⁻²)",
                              "CO2 concentration, ca (ppm)", 
-                             "Vapor pressure deficit, VPD (Pa)"),
-                            (FT(1.0), # β
-                             FT(1.0), # LAI
-                             FT(400 * 1e-6), # ca, from μmol to mol
-                             FT(1000), # VPD, Pa
-                             ),
-                            (FT.([0, 1]), # β
+                             "Vapor pressure deficit, VPD (Pa)"
+                            ),                            
+                            (
+                             FT.([0, 1]), # β
                              FT.([1, 10]), # LAI, m2 m-2
                              FT.([300 * 1e-6, 500 * 1e-6]), # ca
                              FT.([500, 10000]), # VPD, Pa
-                             ))
+                            ),
+                            (
+                             (m, m), # dummy units, no conversion
+                             (m^2*m^-2, m^2*m^-2),
+                             (mol/mol, μmol/mol),
+                             (Pa, kPa),
+                            )
+                           )
 
     constants = Constants(("θs", # Sun zenith angle
                            "ld", # Leaf angle distribution
@@ -76,46 +117,9 @@ function An_app_f()
 
     inputs = Inputs(drivers, parameters, constants)
 
-    output = Output("An (μmol m⁻² s⁻¹)", [0, 20])
+    output = Output("An (μmol m⁻² s⁻¹)", [0, 20 * 1e-6], (mol*m^-2*s^-1, μmol*m^-2*s^-1))
 
-    function leaf_photosynthesis(PAR, T, β, LAI, ca, VPD, θs, ld, ρ_leaf, Ω, Γstar25, ΔHΓstar,
-                                 To, R, Vcmax25, ΔHJmax, θj, ϕ, ΔHVcmax, g1, Kc25, ΔHkc, Ko25, ΔHko, oi, f, ΔHRd)   
-      K = extinction_coeff(ld, θs)
-      APAR = plant_absorbed_ppfd(PAR, ρ_leaf, K, LAI, Ω)
-      Jmax = max_electron_transport(Vcmax25, ΔHJmax, T, To, R)
-      J = electron_transport(APAR, Jmax, θj, ϕ)
-      Vcmax = compute_Vcmax(Vcmax25, T, To, R, ΔHVcmax)
-      Γstar = co2_compensation(Γstar25, ΔHΓstar, T, To, R)
-      medlynt = 1 + g1 / sqrt(VPD)
-      ci = intercellular_co2(ca, Γstar, medlynt)
-      Aj = light_assimilation(Canopy.C3(), J, ci, Γstar)
-      Kc = MM_Kc(Kc25, ΔHkc, T, To, R)
-      Ko = MM_Ko(Ko25, ΔHko, T, To, R)
-      Ac = rubisco_assimilation(Canopy.C3(), Vcmax, ci, Γstar, Kc, Ko, oi)
-      Rd = dark_respiration(Vcmax25, β, f, ΔHRd, T, To, R)
-      An = net_photosynthesis(Ac, Aj, Rd, β) * 1e6 # from mol to umol 
-      return An
-    end
-
-    function leaf_photosynthesis(inputs)
-        PAR, T = inputs.drivers.values[1], inputs.drivers.values[2] 
-        β, LAI, ca, VPD = [inputs.parameters.values[i] for i in 1:4]
-        θs, ld, ρ_leaf, Ω, Γstar25, ΔHΓstar, To, R, Vcmax25, ΔHJmax, θj,
-          ϕ, ΔHVcmax, g1, Kc25, ΔHkc, Ko25, ΔHko, oi, f, ΔHRd = [inputs.constants.values[i] for i in 1:21]
-        return leaf_photosynthesis(PAR, T, β, LAI, ca, VPD, θs, ld, ρ_leaf, Ω, Γstar25, ΔHΓstar,
-                                   To, R, Vcmax25, ΔHJmax, θj, ϕ, ΔHVcmax, g1, Kc25, ΔHkc, Ko25, ΔHko, oi, f, ΔHRd)
-    end
-
-    function leaf_photosynthesis(drivers, parameters, constants)
-      PAR, T = drivers[1], drivers[2]
-      β, LAI, ca, VPD = [parameters[i] for i in 1:4]
-      θs, ld, ρ_leaf, Ω, Γstar25, ΔHΓstar, To, R, Vcmax25, ΔHJmax, θj,
-      ϕ, ΔHVcmax, g1, Kc25, ΔHkc, Ko25, ΔHko, oi, f, ΔHRd = [constants[i] for i in 1:21]
-      return leaf_photosynthesis(PAR, T, β, LAI, ca, VPD, θs, ld, ρ_leaf, Ω, Γstar25, ΔHΓstar,
-                                 To, R, Vcmax25, ΔHJmax, θj, ϕ, ΔHVcmax, g1, Kc25, ΔHkc, Ko25, ΔHko, oi, f, ΔHRd)
-    end
-
-    An_app = webapp(leaf_photosynthesis, inputs, output)
+    An_app = webapp(ParamViz.parameterisation, inputs, output)
     return An_app
 end
 
