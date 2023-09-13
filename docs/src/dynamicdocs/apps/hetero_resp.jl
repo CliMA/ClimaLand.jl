@@ -6,10 +6,10 @@ FT = Float64
 =#
 
 # this whole mess is because of parameters.jl ...
-using CLIMAParameters
-using Thermodynamics
-using Insolation
-using SurfaceFluxes
+# using CLIMAParameters
+# using Thermodynamics
+# using Insolation
+# using SurfaceFluxes
 import ClimaLSM.Parameters as LSMP
 include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
 earth_param_set = create_lsm_parameters(FT)
