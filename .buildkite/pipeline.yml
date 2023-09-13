@@ -40,6 +40,10 @@ steps:
         command: "julia --color=yes --project=experiments experiments/standalone/Soil/evaporation.jl"
         artifact_paths: "experiments/standalone/Soil/evaporation*png"
 
+      - label: "vaira_test"
+        command: "julia --color=yes --project=experiments experiments/integrated/vaira_ranch/vaira.jl"
+        artifact_paths: "experiments/integrated/vaira_ranch/*png"
+
       - label: "ozark_test"
         command: "julia --color=yes --project=experiments experiments/integrated/ozark/ozark.jl"
         artifact_paths: "experiments/integrated/ozark/*png"

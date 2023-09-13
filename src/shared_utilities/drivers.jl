@@ -1,7 +1,6 @@
 using Thermodynamics
 using ClimaCore
 using DocStringExtensions
-using UnPack
 using SurfaceFluxes
 import SurfaceFluxes.Parameters as SFP
 using StaticArrays
@@ -214,7 +213,7 @@ function surface_fluxes_at_a_point(
     parameters::P,
     atmos::PA,
 ) where {FT <: AbstractFloat, P, PA <: PrescribedAtmosphere{FT}}
-    @unpack z_0m, z_0b, earth_param_set = parameters
+    (; z_0m, z_0b, earth_param_set) = parameters
     thermo_params = LSMP.thermodynamic_parameters(earth_param_set)
 
     u::FT = atmos.u(t)

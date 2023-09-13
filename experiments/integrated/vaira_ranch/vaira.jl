@@ -24,17 +24,27 @@ climalsm_dir = pkgdir(ClimaLSM)
 include(
     joinpath(
         climalsm_dir,
-        "experiments/integrated/ozark/ozark_met_drivers_FLUXNET.jl",
+        "experiments/integrated/vaira_ranch/vaira_met_drivers_FLUXNET.jl",
     ),
 )
-include(joinpath(climalsm_dir, "experiments/integrated/ozark/ozark_domain.jl"))
 include(
-    joinpath(climalsm_dir, "experiments/integrated/ozark/ozark_parameters.jl"),
+    joinpath(
+        climalsm_dir,
+        "experiments/integrated/vaira_ranch/vaira_domain.jl",
+    ),
 )
 include(
-    joinpath(climalsm_dir, "experiments/integrated/ozark/ozark_simulation.jl"),
+    joinpath(
+        climalsm_dir,
+        "experiments/integrated/vaira_ranch/vaira_parameters.jl",
+    ),
 )
-
+include(
+    joinpath(
+        climalsm_dir,
+        "experiments/integrated/vaira_ranch/vaira_simulation.jl",
+    ),
+)
 # Now we set up the model. For the soil model, we pick
 # a model type and model args:
 soil_domain = land_domain
@@ -187,11 +197,11 @@ Y, p, cds = initialize(land)
 exp_tendency! = make_exp_tendency(land)
 
 #Initial conditions
-Y.soil.ϑ_l = SWC[1 + Int(round(t0 / DATA_DT))] # Get soil water content at t0
+Y.soil.ϑ_l = SWC_3[1 + Int(round(t0 / DATA_DT))] # Get soil water content at t0
 # Both data and simulation are reference to 2005-01-01-00 (LOCAL)
 # or 2005-01-01-06 (UTC)
 Y.soil.θ_i = FT(0.0)
-T_0 = TS[1 + Int(round(t0 / DATA_DT))] # Get soil temperature at t0
+T_0 = TS_3[1 + Int(round(t0 / DATA_DT))] # Get soil temperature at t0
 ρc_s =
     volumetric_heat_capacity.(Y.soil.ϑ_l, Y.soil.θ_i, Ref(land.soil.parameters))
 Y.soil.ρe_int =
@@ -201,21 +211,12 @@ Y.soil.ρe_int =
         T_0,
         Ref(land.soil.parameters),
     )
-ψ_stem_0 = FT(-1e5 / 9800)
 ψ_leaf_0 = FT(-2e5 / 9800)
 
 S_l_ini =
-    inverse_water_retention_curve.(
-        retention_model,
-        [ψ_stem_0, ψ_leaf_0],
-        plant_ν,
-        plant_S_s,
-    )
+    inverse_water_retention_curve(retention_model, ψ_leaf_0, plant_ν, plant_S_s)
 
-for i in 1:2
-    Y.canopy.hydraulics.ϑ_l.:($i) .=
-        augmented_liquid_fraction.(plant_ν, S_l_ini[i])
-end
+Y.canopy.hydraulics.ϑ_l.:1 .= augmented_liquid_fraction(plant_ν, S_l_ini)
 
 
 Y.canopy.energy.T = TA[1 + Int(round(t0 / 1800))] # Get atmos temperature at t0
@@ -248,7 +249,7 @@ sol = SciMLBase.solve(
 
 # Plotting
 daily = sol.t ./ 3600 ./ 24
-savedir = joinpath(climalsm_dir, "experiments/integrated/ozark/")
+savedir = joinpath(climalsm_dir, "experiments/integrated/vaira_ranch/")
 # Number of datapoints per day
 data_daily_points = Int64(86400 / DATA_DT)
 # Number of model points per day
@@ -265,7 +266,7 @@ data_per_model = Int64(dt * n ÷ DATA_DT)
 # and it will return a vector of the average value at each timestamp in the 
 # day averaged over every day in the series.
 function diurnal_avg(series)
-    num_days = Int64(N_days - N_spinup_days)
+    num_days = Int64(N_days - N_days_spinup)
     daily_points = Int64(length(series) ÷ num_days) # Num datapoints per day
     daily_data = [
         series[i:1:(i + daily_points - 1)] for
@@ -410,13 +411,7 @@ Plots.plot!(
     margins = 10Plots.mm,
     title = "Average Daily ET: RMSD = $(round(RMSD, digits = 2)), R² = $(round(R², digits = 2))",
 )
-Plots.plot!(
-    plt1,
-    model_daily_indices,
-    ET_avg_model,
-    label = "Model ET",
-    ylim = [0, 30],
-)
+Plots.plot!(plt1, model_daily_indices, ET_avg_model, label = "Model ET")
 Plots.savefig(joinpath(savedir, "ET.png"))
 
 # Water stress factor
@@ -450,13 +445,12 @@ Plots.savefig(joinpath(savedir, "stomatal_conductance.png"))
 
 # Soil water content
 
-# Current resolution has the first layer at 0.1 cm, the second at 5cm.
 plt1 = Plots.plot(size = (1500, 800))
 Plots.plot!(
     plt1,
     daily,
-    [parent(sol.u[k].soil.ϑ_l)[end - 1] for k in 1:1:length(sol.t)],
-    label = "1.25cm",
+    [parent(sol.u[k].soil.ϑ_l)[end] for k in 1:1:length(sol.t)],
+    label = "Model, 2.5cm",
     xlim = [minimum(daily), maximum(daily)],
     ylim = [0.05, 0.55],
     xlabel = "Days",
@@ -464,16 +458,23 @@ Plots.plot!(
     color = "blue",
     margin = 10Plots.mm,
 )
-
-plot!(
+Plots.plot!(
     plt1,
     daily,
-    [parent(sol.u[k].soil.θ_i)[end - 1] for k in 1:1:length(sol.t)],
-    color = "cyan",
-    label = "Ice, 1.25cm",
+    [parent(sol.u[k].soil.ϑ_l)[end - 2] for k in 1:1:length(sol.t)],
+    label = "20cm",
 )
 
-Plots.plot!(plt1, seconds ./ 3600 ./ 24, SWC, label = "Data")
+Plots.plot!(
+    plt1,
+    daily,
+    [parent(sol.u[k].soil.ϑ_l)[end - 4] for k in 1:1:length(sol.t)],
+    label = "56m",
+)
+
+Plots.plot!(plt1, seconds ./ 3600 ./ 24, SWC_1, label = "Data, 5cm")
+Plots.plot!(plt1, seconds ./ 3600 ./ 24, SWC_2, label = "Data, 20cm")
+Plots.plot!(plt1, seconds ./ 3600 ./ 24, SWC_3, label = "Data, 50cm")
 plt2 = Plots.plot(
     seconds ./ 3600 ./ 24,
     P .* (-1e3 * 24 * 3600),
@@ -496,8 +497,7 @@ SHF = SHF_soil + SHF_canopy
 SHF_soil_avg_model = diurnal_avg(SHF_soil)
 SHF_canopy_avg_model = diurnal_avg(SHF_canopy)
 SHF_avg_model = diurnal_avg(SHF)
-SHF_avg_data =
-    diurnal_avg(H_CORR[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)])
+SHF_avg_data = diurnal_avg(H[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)])
 
 RMSD = StatsBase.rmsd(SHF_avg_model, SHF_avg_data[1:data_per_model:end])
 R² = Statistics.cor(SHF_avg_model, SHF_avg_data[1:data_per_model:end])^2
@@ -613,34 +613,7 @@ Plots.plot!(ylabel = "∫ Water fluxes dt", xlabel = "Days", margins = 10Plots.m
 Plots.savefig(joinpath(savedir, "cumul_p_et.png"))
 
 # Leaf Water Potentials
-
-# Leaf water potential data from Pallardy et al (2018)
-# Predawn Leaf Water Potential of Oak-Hickory Forest at Missouri Ozark (MOFLUX) Site: 2004-2020
-# https://doi.org/10.3334/CDIAC/ORNLSFA.004
-lwp_filename = "MOFLUX_PredawnLeafWaterPotential_2020_20210125.csv"
-lwp_artifact = ArtifactFile(
-    url = "https://caltech.box.com/shared/static/d2nbhezw1q99vslnh5qfwnqrnp3p4edo.csv",
-    filename = lwp_filename,
-)
-lwp_dataset = ArtifactWrapper(
-    @__DIR__,
-    "lwp_pallardy_etal2018",
-    ArtifactFile[lwp_artifact],
-);
-
-lwp_path = joinpath(get_data_folder(lwp_dataset), lwp_filename)
-lwp_data = readdlm(lwp_path, ',', skipstart = 1)
-# We are using 2005 data in this test, so restrict to this year
-YEAR = lwp_data[:, 1]
-DOY = lwp_data[YEAR .== 2005, 2]
-# Our t0 = Dec 31, midnight, 2005. Predawn = guess of 0600 hours
-seconds_since_t0 = FT.(DOY) * 24 .* 3600 .+ (6 * 3600)
-lwp_measured = lwp_data[YEAR .== 2005, 7] .* 1e6 # MPa to Pa
-
 lwp = [
-    parent(sv.saveval[k].canopy.hydraulics.ψ)[2] * 9800 for k in 1:length(sol.t)
-]
-swp = [
     parent(sv.saveval[k].canopy.hydraulics.ψ)[1] * 9800 for k in 1:length(sol.t)
 ]
 ψ_soil = [
@@ -663,22 +636,11 @@ Plots.plot!(
     margin = 10Plots.mm,
     xlim = [minimum(daily), maximum(daily)],
 )
-Plots.plot!(plt1, daily, swp, label = "Model, Stem")
 Plots.plot!(plt1, daily, ψ_soil, label = "Model, Mean soil")
-Plots.scatter!(
-    plt1,
-    seconds_since_t0 ./ 24 ./ 3600,
-    lwp_measured,
-    label = "Data; all species",
-    legend = :bottomleft,
-)
+
 Plots.savefig(joinpath(savedir, "leaf_water_potential.png"))
 
-# Soil Temperature
-
-# The second layer is ~ 5cm
-soil_T_5 = [parent(sv.saveval[k].soil.T)[end - 1] for k in 1:length(sol.t)]
-soil_T_5_avg = diurnal_avg(soil_T_5)
+# Temperatures
 soil_T_sfc = [parent(sv.saveval[k].soil.T)[end] for k in 1:length(sol.t)]
 soil_T_sfc_avg = diurnal_avg(soil_T_sfc)
 
@@ -696,7 +658,7 @@ canopy_T = [
 canopy_T_avg = diurnal_avg(canopy_T)
 
 TA_avg = diurnal_avg(FT.(TA)[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)])
-TS_avg = diurnal_avg(FT.(TS)[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)])
+TS_avg = diurnal_avg(FT.(TS_1)[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)])
 
 plt1 = Plots.plot(size = (1500, 400))
 Plots.plot!(
@@ -707,13 +669,66 @@ Plots.plot!(
     title = "Temperature",
 )
 Plots.plot!(plt1, data_daily_indices, TA_avg, label = "Atmos-D")
-Plots.plot!(plt1, model_daily_indices, soil_T_5_avg, label = "Soil-M-5cm")
-Plots.plot!(plt1, model_daily_indices, soil_T_sfc_avg, label = "Soil-M-1cm")
+
+Plots.plot!(plt1, model_daily_indices, soil_T_sfc_avg, label = "Soil-M-2.5cm")
 
 Plots.plot!(plt1, model_daily_indices, canopy_T_avg, label = "Canopy-M")
 Plots.plot!(plt1, xlabel = "Hour of day", ylabel = "Average over Simulation")
 Plots.plot!(plt1, margins = 10Plots.mm)
 Plots.savefig(joinpath(savedir, "temperature.png"))
+
+# Soil Temperature
+soil_T_1 = [parent(sv.saveval[k].soil.T)[end - 2] for k in 1:length(sol.t)]# 20cm
+soil_T_2 = [parent(sv.saveval[k].soil.T)[end - 3] for k in 1:length(sol.t)]#36cm
+soil_T_3 = [parent(sv.saveval[k].soil.T)[end - 5] for k in 1:length(sol.t)] # 80cm
+
+TA_avg = diurnal_avg(FT.(TA)[Int64(t_spinup ÷ DATA_DT + 1):Int64(tf ÷ DATA_DT)])
+
+plt1 = Plots.plot(size = (1500, 400))
+Plots.plot!(
+    plt1,
+    data_daily_indices,
+    diurnal_avg(FT.(TS_1)[Int64(t_spinup ÷ DATA_DT + 1):Int64(tf ÷ DATA_DT)]),
+    label = "Data L1",
+    title = "Temperature",
+)
+Plots.plot!(
+    plt1,
+    data_daily_indices,
+    diurnal_avg(FT.(TS_2)[Int64(t_spinup ÷ DATA_DT + 1):Int64(tf ÷ DATA_DT)]),
+    label = "Data L2",
+    title = "Temperature",
+)
+Plots.plot!(
+    plt1,
+    data_daily_indices,
+    diurnal_avg(FT.(TS_3)[Int64(t_spinup ÷ DATA_DT + 1):Int64(tf ÷ DATA_DT)]),
+    label = "Data L3",
+    title = "Temperature",
+)
+#Plots.plot!(plt1, data_daily_indices, TA_avg, label = "Air")
+Plots.plot!(
+    plt1,
+    model_daily_indices,
+    diurnal_avg(soil_T_1),
+    label = "Model L1",
+)
+Plots.plot!(
+    plt1,
+    model_daily_indices,
+    diurnal_avg(soil_T_2),
+    label = "Model L2",
+)
+Plots.plot!(
+    plt1,
+    model_daily_indices,
+    diurnal_avg(soil_T_3),
+    label = "Model L3",
+)
+Plots.plot!(plt1, xlabel = "Hour of day", ylabel = "Average over Simulation")
+Plots.plot!(plt1, margins = 10Plots.mm)
+Plots.savefig(joinpath(savedir, "soil_temperature.png"))
+
 
 
 # Ground heat flux
@@ -809,7 +824,7 @@ Plots.plot!(
     plt1,
     data_daily_indices,
     diurnal_avg(first_layer_flux),
-    label = "Model: -κ∂T∂z|_5cm",
+    label = "Model: -κ∂T∂z|_10cm",
 )
 Plots.savefig(joinpath(savedir, "ground_heat_flux.png"))
 
@@ -853,6 +868,7 @@ Plots.plot!(
     yaxis = :log,
 )
 Plots.savefig(joinpath(savedir, "r_ae.png"))
+
 
 # Run script with comand line argument "save" to save model output to CSV
 if length(ARGS) ≥ 1 && ARGS[1] == "save"
