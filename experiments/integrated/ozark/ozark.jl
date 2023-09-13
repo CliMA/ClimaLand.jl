@@ -6,6 +6,7 @@ using Plots
 using Statistics
 using Dates
 using Insolation
+using StatsBase
 
 using ClimaLSM
 using ClimaLSM.Domains: Column
@@ -183,12 +184,11 @@ Y, p, cds = initialize(land)
 exp_tendency! = make_exp_tendency(land)
 
 #Initial conditions
-Y.soil.ϑ_l = SWC[1 + Int(round(t0 / 1800))] # Get soil water content at t0
-# recalling that the data is in intervals of 1800 seconds. Both the data
-# and simulation are reference to 2005-01-01-00 (LOCAL)
+Y.soil.ϑ_l = SWC[1 + Int(round(t0 / DATA_DT))] # Get soil water content at t0
+# Both data and simulation are reference to 2005-01-01-00 (LOCAL)
 # or 2005-01-01-06 (UTC)
 Y.soil.θ_i = FT(0.0)
-T_0 = TS[1 + Int(round(t0 / 1800))] # Get soil temperature at t0
+T_0 = TS[1 + Int(round(t0 / DATA_DT))] # Get soil temperature at t0
 ρc_s =
     volumetric_heat_capacity.(Y.soil.ϑ_l, Y.soil.θ_i, Ref(land.soil.parameters))
 Y.soil.ρe_int =
@@ -225,7 +225,7 @@ sv = (;
 cb = ClimaLSM.NonInterpSavingCallback(sv, saveat)
 
 prob = SciMLBase.ODEProblem(
-    CTS.ClimaODEFunction(T_exp! = exp_tendency!),
+    CTS.ClimaODEFunction((T_exp!) = exp_tendency!),
     Y,
     (t0, tf),
     p,
@@ -242,25 +242,54 @@ sol = SciMLBase.solve(
 # Plotting
 daily = sol.t ./ 3600 ./ 24
 savedir = joinpath(climalsm_dir, "experiments/integrated/ozark/")
+# Number of datapoints per day
+data_daily_points = Int64(86400 / DATA_DT)
+# Number of model points per day
+model_daily_points = Int64(86400 / n / dt)
+# Scales data indices 0 to 24 in a day
+data_daily_indices = range(0, step = DATA_DT / 3600, length = data_daily_points)
+model_daily_indices =
+    range(0, step = dt * n / 3600, length = model_daily_points)
+# Number of data points per each model point (Ratio of data dt to model dt)
+data_per_model = Int64(dt * n ÷ DATA_DT)
 
+# This function will be used to compute averages over diurnal cycles. Input a
+# data series to average over and the total number of days in the data series, 
+# and it will return a vector of the average value at each timestamp in the 
+# day averaged over every day in the series.
+function diurnal_avg(series)
+    num_days = Int64(N_days - N_spinup_days)
+    daily_points = Int64(length(series) ÷ num_days) # Num datapoints per day
+    daily_data = [
+        series[i:1:(i + daily_points - 1)] for
+        i in 1:daily_points:(daily_points * num_days)
+    ]
+    daily_avgs =
+        [mean([daily_data[i][j] for i in 1:num_days]) for j in 1:daily_points]
+    return daily_avgs
+end
 # Autotrophic Respiration
 AR = [
     parent(sv.saveval[k].canopy.autotrophic_respiration.Ra)[1] for
     k in 1:length(sv.saveval)
 ]
+AR_daily_avg_model = diurnal_avg(AR)
 
 pltAR = Plots.plot(size = (1500, 400))
 
 Plots.plot!(
     pltAR,
-    daily,
-    AR .* 1e6,
-    label = "Autotrophic Respiration",
-    xlim = [minimum(daily), maximum(daily)],
+    model_daily_indices,
+    AR_daily_avg_model .* 1e6,
+    label = "Model",
     title = "AR [μmol/m^2/s]",
+    xlabel = "Hour of day",
+    ylabel = "Average over simulation",
+    margin = 10Plots.mm,
 )
 
 Plots.savefig(joinpath(savedir, "AutoResp.png"))
+
 
 # GPP
 model_GPP = [
@@ -268,94 +297,90 @@ model_GPP = [
     k in 1:length(sv.saveval)
 ]
 
-plt1 = Plots.plot(size = (1500, 400))
+GPP_daily_avg_model = diurnal_avg(model_GPP)
+GPP_daily_avg_data =
+    diurnal_avg(GPP[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)])
+RMSD =
+    StatsBase.rmsd(
+        GPP_daily_avg_model,
+        GPP_daily_avg_data[1:data_per_model:end],
+    ) * 1e6
+R² =
+    Statistics.cor(
+        GPP_daily_avg_model,
+        GPP_daily_avg_data[1:data_per_model:end],
+    )^2
+
+plt1 = Plots.plot(size = (800, 400))
 Plots.plot!(
     plt1,
-    daily,
-    model_GPP .* 1e6,
+    model_daily_indices,
+    GPP_daily_avg_model .* 1e6,
+    xlabel = "Hour of day",
+    ylabel = "GPP (mol/m²/s)",
     label = "Model",
-    xlim = [minimum(daily), maximum(daily)],
-    title = "GPP [mol/m^2/s]",
+    title = "GPP [μmol/m^2/s]: RMSD = $(round(RMSD, digits = 2)), R² = $(round(R², digits = 2))",
 )
 Plots.plot!(
     plt1,
-    seconds ./ 3600 ./ 24,
-    GPP .* 1e6,
+    data_daily_indices,
+    GPP_daily_avg_data .* 1e6,
     label = "Data",
     lalpha = 0.3,
+    margin = 10Plots.mm,
 )
 
-plt2 = Plots.plot(size = (1500, 400))
-Plots.plot!(
-    plt2,
-    daily,
-    model_GPP .* 1e6,
-    label = "",
-    xlim = [minimum(daily), minimum(daily) + 30],
-    ylim = [0, 10],
-    margin = 10Plots.mm,
-    xlabel = "Day of year",
-)
-Plots.plot!(plt2, seconds ./ 3600 ./ 24, GPP .* 1e6, label = "", lalpha = 0.3)
-Plots.plot(plt1, plt2, layout = (2, 1))
 Plots.savefig(joinpath(savedir, "GPP.png"))
 
 # SW_OUT
 SW_out_model = [parent(sv.saveval[k].SW_out)[1] for k in 1:length(sv.saveval)]
+SW_out_model_avg = diurnal_avg(SW_out_model)
+SW_out_data_avg =
+    diurnal_avg(FT.(SW_OUT)[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)])
+
+RMSD = StatsBase.rmsd(SW_out_model_avg, SW_out_data_avg[1:data_per_model:end])
+R² = Statistics.cor(SW_out_model_avg, SW_out_data_avg[1:data_per_model:end])^2
+
 plt1 = Plots.plot(size = (1500, 400))
 Plots.plot!(
     plt1,
-    seconds ./ 3600 ./ 24,
-    FT.(SW_OUT),
+    data_daily_indices,
+    SW_out_data_avg,
     label = "Data",
-    title = "Outgoing SW (W/m^2)",
-    xlim = [minimum(daily), maximum(daily)],
-)
-
-Plots.plot!(plt1, daily, SW_out_model, label = "Model")
-
-plt2 = Plots.plot(size = (1500, 400))
-Plots.plot!(
-    plt2,
-    seconds ./ 3600 ./ 24,
-    FT.(SW_OUT),
-    label = "",
-    xlim = [minimum(daily), minimum(daily) + 30],
+    title = "Outgoing SW (W/m^2): RMSD = $(round(RMSD, digits = 2)), R² = $(round(R², digits = 2))",
+    xlabel = "Hour of day",
     margin = 10Plots.mm,
-    xlabel = "Day of year",
 )
-Plots.plot!(plt2, daily, SW_out_model, label = "Model")
-Plots.plot(plt1, plt2, layout = (2, 1))
-Plots.savefig(joinpath(savedir, "SW.png"))
+
+Plots.plot!(plt1, model_daily_indices, SW_out_model_avg, label = "Model")
+
+Plots.savefig(joinpath(savedir, "SW_OUT.png"))
 
 
 # LW_OUT
 LW_out_model = [parent(sv.saveval[k].LW_out)[1] for k in 1:length(sv.saveval)]
+LW_out_model_avg = diurnal_avg(LW_out_model)
+LW_out_data_avg =
+    diurnal_avg(FT.(LW_OUT)[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)])
+
+
+RMSD = StatsBase.rmsd(LW_out_model_avg, LW_out_data_avg[1:data_per_model:end])
+R² = Statistics.cor(LW_out_model_avg, LW_out_data_avg[1:data_per_model:end])^2
+
 plt1 = Plots.plot(size = (1500, 400))
 Plots.plot!(
     plt1,
-    seconds ./ 3600 ./ 24,
-    FT.(LW_OUT),
+    data_daily_indices,
+    LW_out_data_avg,
     label = "Data",
-    title = "Outgoing LW (W/m^2)",
-    xlim = [minimum(daily), maximum(daily)],
-)
-
-Plots.plot!(plt1, daily, LW_out_model, label = "Model")
-
-plt2 = Plots.plot(size = (1500, 400))
-Plots.plot!(
-    plt2,
-    seconds ./ 3600 ./ 24,
-    FT.(LW_OUT),
-    label = "",
-    xlim = [minimum(daily), minimum(daily) + 30],
+    title = "Outgoing LW (W/m^2): RMSD = $(round(RMSD, digits = 2)), R² = $(round(R², digits = 2))",
+    xlabel = "Hour of day",
     margin = 10Plots.mm,
-    xlabel = "Day of year",
 )
-Plots.plot!(plt2, daily, LW_out_model, label = "Model")
-Plots.plot(plt1, plt2, layout = (2, 1))
-Plots.savefig(joinpath(savedir, "LW.png"))
+
+Plots.plot!(plt1, model_daily_indices, LW_out_model_avg, label = "Model")
+
+Plots.savefig(joinpath(savedir, "LW_out.png"))
 
 
 T =
@@ -367,52 +392,38 @@ E =
     [parent(sv.saveval[k].soil_evap)[1] for k in 1:length(sol.t)] .* (1e3 * 24 * 3600)
 measured_T = LE ./ (LSMP.LH_v0(earth_param_set) * 1000) .* (1e3 * 24 * 3600)
 
-plt1 = Plots.plot(size = (1500, 400))
+ET_avg_model = diurnal_avg(T .+ E)
+ET_avg_data =
+    diurnal_avg(measured_T[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)])
+
+RMSD = StatsBase.rmsd(ET_avg_model, ET_avg_data[1:data_per_model:end])
+R² = Statistics.cor(ET_avg_model, ET_avg_data[1:data_per_model:end])^2
+
+plt1 = Plots.plot(size = (800, 400))
 Plots.plot!(
     plt1,
-    seconds ./ 3600 ./ 24,
-    measured_T,
+    data_daily_indices,
+    ET_avg_data,
     label = "Data ET",
+    xlabel = "Hour of day",
+    ylabel = "ET",
     margins = 10Plots.mm,
+    title = "Average Daily ET: RMSD = $(round(RMSD, digits = 2)), R² = $(round(R², digits = 2))",
 )
 Plots.plot!(
     plt1,
-    daily,
-    T,
-    label = "Model T",
-    xlim = [minimum(daily), maximum(daily)],
+    model_daily_indices,
+    ET_avg_model,
+    label = "Model ET",
     ylim = [0, 30],
 )
 
-Plots.plot!(
-    plt1,
-    daily,
-    E,
-    label = "Model E",
-    ylim = [0, 30],
-    legend = :topright,
-    title = "Vapor Flux [mm/day]",
-)
-
-plt2 = Plots.plot(size = (1500, 400))
-Plots.plot!(plt2, seconds ./ 3600 ./ 24, measured_T, label = "")
-Plots.plot!(
-    plt2,
-    daily,
-    T,
-    xlim = [minimum(daily), minimum(daily) + 30],
-    label = "",
-    xlabel = "Day of year",
-    margin = 10Plots.mm,
-    ylim = [0, 30],
-)
-
-Plots.plot!(plt2, daily, E, label = "", ylim = [0, 20])
-Plots.plot(plt1, plt2, layout = (2, 1))
 Plots.savefig(joinpath(savedir, "ET.png"))
 
+# Water stress factor
 β = [parent(sv.saveval[k].canopy.hydraulics.β)[1] for k in 1:length(sol.t)]
-plt1 = Plots.plot(size = (1500, 400))
+plt1 =
+    Plots.plot(size = (1500, 400), xlabel = "Day of year", margin = 10Plots.mm)
 Plots.plot!(
     plt1,
     daily,
@@ -421,26 +432,13 @@ Plots.plot!(
     xlim = [minimum(daily), maximum(daily)],
     title = "Moisture stress factor",
 )
-#i_week = Int(round((7 * 24 * 3600) / (sol.t[2] - sol.t[1])))
-plt2 = Plots.plot(size = (1500, 400))
-Plots.plot!(
-    plt2,
-    daily,
-    β,
-    label = "",
-    xlim = [minimum(daily), minimum(daily) + 30],
-    xlabel = "Day of year",
-    #ylim = [minimum(β[1:i_week]), maximum(β[1:i_week])],
-    margin = 10Plots.mm,
-)
-
-Plots.plot(plt1, plt2, layout = (2, 1))
 Plots.savefig(joinpath(savedir, "moisture_stress.png"))
 
-
+# Stomatal conductance
 g_stomata =
     [parent(sv.saveval[k].canopy.conductance.gs)[1] for k in 1:length(sol.t)]
-plt1 = Plots.plot(size = (1500, 400))
+plt1 =
+    Plots.plot(size = (1500, 400), xlabel = "Day of year", margin = 10Plots.mm)
 Plots.plot!(
     plt1,
     daily,
@@ -449,21 +447,9 @@ Plots.plot!(
     xlim = [minimum(daily), maximum(daily)],
     title = "Stomatal conductance (mol/m^2/s)",
 )
-i_week = Int(round((7 * 24 * 3600) / (sol.t[2] - sol.t[1])))
-plt2 = Plots.plot(size = (1500, 400))
-Plots.plot!(
-    plt2,
-    daily,
-    g_stomata,
-    label = "",
-    xlim = [minimum(daily), minimum(daily) + 30],
-    xlabel = "Day of year",
-    ylim = [minimum(g_stomata[1:i_week]), maximum(g_stomata[1:i_week])],
-    margin = 10Plots.mm,
-)
-
-Plots.plot(plt1, plt2, layout = (2, 1))
 Plots.savefig(joinpath(savedir, "stomatal_conductance.png"))
+
+# Soil water content
 
 # Current resolution has the first layer at 0.1 cm, the second at 5cm.
 plt1 = Plots.plot(size = (1500, 800))
@@ -502,63 +488,37 @@ plt2 = Plots.plot(
 Plots.plot(plt2, plt1, layout = grid(2, 1, heights = [0.2, 0.8]))
 Plots.savefig(joinpath(savedir, "soil_water_content.png"))
 
+# Soil Heat Flux
 
 SHF = [parent(sv.saveval[k].soil_shf)[1] for k in 1:length(sol.t)]
+SHF_avg_model = diurnal_avg(SHF)
+SHF_avg_data =
+    diurnal_avg(H_CORR[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)])
 
-plt1 = Plots.plot(size = (1500, 700))
+RMSD = StatsBase.rmsd(SHF_avg_model, SHF_avg_data[1:data_per_model:end])
+R² = Statistics.cor(SHF_avg_model, SHF_avg_data[1:data_per_model:end])^2
+
+plt1 = Plots.plot(size = (800, 400))
 Plots.plot!(
     plt1,
-    seconds ./ 3600 ./ 24,
-    FT.(H),
+    data_daily_indices,
+    SHF_avg_data,
+    xlabel = "Hour of day",
+    ylabel = "SHF (W/m²)",
     label = "Data",
     margins = 10Plots.mm,
 )
 Plots.plot!(
     plt1,
-    seconds ./ 3600 ./ 24,
-    FT.(H_CORR),
-    label = "Data Corr",
-    margins = 10Plots.mm,
-)
-Plots.plot!(
-    plt1,
-    daily,
-    SHF,
+    model_daily_indices,
+    SHF_avg_model,
     label = "Model",
-    xlim = [minimum(daily), maximum(daily)],
-    title = "Soil Sensible Heat Flux [W/m^2]",
+    title = "Soil Sensible Heat Flux: RMSD = $(round(RMSD, digits = 2)), R² = $(round(R², digits = 2))",
 )
-
-
-plt2 = Plots.plot(size = (1500, 700))
-Plots.plot!(
-    plt2,
-    seconds ./ 3600 ./ 24,
-    FT.(H),
-    label = "",
-    margins = 10Plots.mm,
-)
-Plots.plot!(
-    plt2,
-    seconds ./ 3600 ./ 24,
-    FT.(H_CORR),
-    label = "",
-    margins = 10Plots.mm,
-)
-Plots.plot!(
-    plt2,
-    daily,
-    SHF,
-    label = "",
-    xlim = [minimum(daily), minimum(daily) + 30],
-    ylim = [-300, 700],
-    xlabel = "Day of year",
-    margin = 10Plots.mm,
-)
-Plots.plot(plt1, plt2, layout = (2, 1))
 
 Plots.savefig(joinpath(savedir, "shf.png"))
 
+# Cumulative ET
 
 dt_model = sol.t[2] - sol.t[1]
 dt_data = seconds[2] - seconds[1]
@@ -583,6 +543,7 @@ Plots.plot!(
 Plots.plot!(ylabel = "∫ Water fluxes dt", xlabel = "Days", margins = 10Plots.mm)
 Plots.savefig(joinpath(savedir, "cumul_p_et.png"))
 
+# Leaf Water Potentials
 
 # Leaf water potential data from Pallardy et al (2018)
 # Predawn Leaf Water Potential of Oak-Hickory Forest at Missouri Ozark (MOFLUX) Site: 2004-2020
@@ -635,6 +596,7 @@ swp = [
     k in 1:length(sol.t)
 ]
 
+
 plt1 = Plots.plot(size = (1500, 400))
 Plots.plot!(
     plt1,
@@ -642,6 +604,8 @@ Plots.plot!(
     lwp,
     label = "Model, Leaf",
     title = "Water potentials",
+    xlabel = "Day of year",
+    margin = 10Plots.mm,
     xlim = [minimum(daily), maximum(daily)],
 )
 Plots.plot!(plt1, daily, swp, label = "Model, Stem")
@@ -653,24 +617,6 @@ Plots.scatter!(
     label = "Data; all species",
     legend = :bottomleft,
 )
-
-plt2 = Plots.plot(size = (1500, 400))
-Plots.plot!(
-    plt2,
-    daily,
-    lwp,
-    label = "",
-    xlim = [minimum(daily), minimum(daily) + 30],
-    xlabel = "Day of year",
-    ylim = [-2e6, 0],
-    margin = 10Plots.mm,
-)
-
-Plots.plot!(plt2, daily, swp, label = "")
-Plots.plot!(plt2, daily, ψ_soil, label = "")
-Plots.plot!(plt2, seconds_since_t0 ./ 24 ./ 3600, lwp_measured, label = "")
-
-Plots.plot(plt1, plt2, layout = (2, 1))
 Plots.savefig(joinpath(savedir, "leaf_water_potential.png"))
 
 plt2 = Plots.plot(
@@ -699,66 +645,109 @@ Plots.plot!(plt1, daily, root_stem_flux, label = "")
 Plots.plot(plt2, plt1, layout = (2, 1))
 Plots.savefig(joinpath(savedir, "water_fluxes.png"))
 
-# Current resolution is 3.333 cm per layer, our nodes are at the center of the
-# layers. The second layer is ~ 5cm
-soil_T_sfc = [parent(sv.saveval[k].soil.T)[end] for k in 1:length(sol.t)]
+# Soil Temperature
+
+# The second layer is ~ 5cm, third is at 11cm
 soil_T_5 = [parent(sv.saveval[k].soil.T)[end - 1] for k in 1:length(sol.t)]
+soil_T_5_avg = diurnal_avg(soil_T_5)
+soil_T_10 = [parent(sv.saveval[k].soil.T)[end - 2] for k in 1:length(sol.t)]
+soil_T_10_avg = diurnal_avg(soil_T_10)
 
-plt2 = Plots.plot()
+TA_avg = diurnal_avg(FT.(TA)[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)])
+TS_avg = diurnal_avg(FT.(TS)[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)])
+
+plt1 = Plots.plot(size = (1500, 400))
 Plots.plot!(
-    plt2,
-    daily,
-    soil_T_sfc,
-    color = "blue",
-    label = "",
-    xlim = [minimum(daily), minimum(daily) + 30],
-    ylim = [260, 320],
-    xlabel = "Day of year",
-    margins = 10Plots.mm,
-    size = (1500, 400),
+    plt1,
+    data_daily_indices,
+    TS_avg,
+    label = "Tsoil (data)",
+    title = "Temperature",
 )
-
-plot!(plt2, daily, soil_T_5, color = "purple", label = "")
-Plots.plot!(plt2, seconds ./ 3600 ./ 24, TA, label = "", color = "green")
-Plots.plot!(plt2, seconds ./ 3600 ./ 24, TS, label = "", color = "red")
-
-
-plt3 = Plots.plot()
+Plots.plot!(plt1, data_daily_indices, TA_avg, label = "Tair (data)")
 Plots.plot!(
-    plt3,
-    daily,
-    soil_T_sfc,
-    color = "blue",
-    label = "T_sfc",
-    xlim = [minimum(daily), maximum(daily)],
-    ylim = [260, 320],
-    title = "Soil Temperature [K]",
+    plt1,
+    model_daily_indices,
+    soil_T_5_avg,
+    label = "Tsoil (model; 5cm)",
 )
-
-plot!(plt3, daily, soil_T_5, color = "purple", label = "T_soil, 5cm")
 Plots.plot!(
-    plt3,
-    seconds ./ 3600 ./ 24,
-    TA,
-    label = "T_air (data)",
-    color = "green",
+    plt1,
+    model_daily_indices,
+    soil_T_10_avg,
+    label = "Tsoil (model; 11cm)",
 )
-
-Plots.plot!(
-    plt3,
-    seconds ./ 3600 ./ 24,
-    TS,
-    label = "T_soil (data)",
-    color = "red",
-    legend = :bottomright,
-)
-
-Plots.plot!(plt3, legend = :bottomleft)
-Plots.plot(plt3, plt2, layout = (2, 1))
+Plots.plot!(plt1, xlabel = "Hour of day", ylabel = "Average over Simulation")
+Plots.plot!(plt1, margins = 10Plots.mm)
 Plots.savefig(joinpath(savedir, "soil_temperature.png"))
 
 
+# Ground heat flux
+G_model = [
+    (
+        parent(sv.saveval[k].soil_shf)[1] + parent(sv.saveval[k].soil_lhf)[1] -
+        parent(sv.saveval[k].soil_LW_n)[1] -
+        parent(sv.saveval[k].soil_SW_n)[1]
+    ) for k in 1:length(sol.t)
+]
+G_model_avg = diurnal_avg(G_model)
+G_data_avg = diurnal_avg(FT.(G)[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)])
+plt1 = Plots.plot(size = (1500, 400))
+Plots.plot!(
+    plt1,
+    data_daily_indices,
+    -1 .* G_data_avg,
+    label = "Data",
+    margins = 10Plots.mm,
+    xlabel = "Hour of day",
+)
+Plots.plot!(
+    plt1,
+    model_daily_indices,
+    G_model_avg,
+    label = "Model",
+    title = "Ground Heat Flux [W/m^2]",
+)
+Plots.savefig(joinpath(savedir, "ground_heat_flux.png"))
 
-
+# Run script with comand line argument "save" to save model output to CSV
+if length(ARGS) ≥ 1 && ARGS[1] == "save"
+    # Formats fields as semicolon seperated strings
+    field_to_array = (field) -> join(parent(field), ';')
+    # Recursively unpacks a nested NamedTuple of fields into an array of strings
+    function unpack(tup, data)
+        for entry in tup
+            if entry isa NamedTuple
+                unpack(entry, data)
+            else
+                push!(data, field_to_array(entry))
+            end
+        end
+    end
+    # Recursively extracts the names of all fields in a nested namedTuple
+    function extract_names(nt, names)
+        for entry in pairs(nt)
+            if entry[2] isa NamedTuple
+                extract_names(entry[2], names)
+            else
+                push!(names, entry[1])
+            end
+        end
+    end
+    # Collect unpacked data from each timestep into an array
+    timestamps = [[]]
+    push!(timestamps[1], "Timestep")
+    extract_names(sv.saveval[1], timestamps[1])
+    local cnt = 0
+    for timestamp in sv.saveval
+        cnt = cnt + 1
+        save_data = Any[cnt]
+        unpack(timestamp, save_data)
+        push!(timestamps, save_data)
+    end
+    # Write all data to a csv file
+    writedlm(joinpath(savedir, "model_output.csv"), timestamps, ',')
+    @info "Saved model output to $(savedir)model_output.csv"
+end
 
 rm(joinpath(savedir, "Artifacts.toml"))
