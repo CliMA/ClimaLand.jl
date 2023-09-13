@@ -207,7 +207,7 @@ sv = (;
     saveval = Array{NamedTuple}(undef, length(saveat)),
 )
 cb = ClimaLSM.NonInterpSavingCallback(sv, saveat)
-clima_ode_function = ClimaLSM.get_ClimaODEFunction(land)
+clima_ode_function = ClimaLSM.get_ClimaODEFunction(land, Y)
 prob = SciMLBase.ODEProblem(clima_ode_function, Y, (t0, tf), p);
 sol = SciMLBase.solve(
     prob,

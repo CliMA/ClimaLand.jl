@@ -137,7 +137,7 @@ init_soil!(Y, z, model.soil.parameters)
 init_co2!(Y, z)
 t0 = FT(0.0)
 set_initial_aux_state!(p, Y, t0);
-clima_ode_function = ClimaLSM.get_ClimaODEFunction(model)
+clima_ode_function = ClimaLSM.get_ClimaODEFunction(model, Y)
 
 tf = FT(10000)
 dt = FT(10)

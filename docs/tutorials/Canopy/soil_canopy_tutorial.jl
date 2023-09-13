@@ -376,7 +376,7 @@ cb = ClimaLSM.NonInterpSavingCallback(sv, saveat);
 
 # To set up the ClimaODEFunction which will be executed to step the
 # system explicitly in time, we call `get_ClimaODEFunction`:
-clima_ode_function = ClimaLSM.get_ClimaODEFunction(land)
+clima_ode_function = ClimaLSM.get_ClimaODEFunction(land, Y)
 prob = SciMLBase.ODEProblem(clima_ode_function, Y, (t0, tf), p);
 
 # Now, wrap the problem, algorithm, timestep, and callback together

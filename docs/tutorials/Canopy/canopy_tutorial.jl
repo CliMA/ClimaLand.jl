@@ -302,7 +302,7 @@ ode_algo = CTS.ExplicitAlgorithm(timestepper)
 
 # To set up the ClimaODEFunction which will be executed to step the
 # system explicitly in time, we call `get_ClimaODEFunction`:
-clima_ode_function = ClimaLSM.get_ClimaODEFunction(canopy)
+clima_ode_function = ClimaLSM.get_ClimaODEFunction(canopy, Y)
 prob = SciMLBase.ODEProblem(clima_ode_function, Y, (t0, tf), p);
 
 # Now, we can solve the problem and store the model data in the saveat array,

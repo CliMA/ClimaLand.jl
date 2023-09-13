@@ -241,7 +241,6 @@ function init_soil!(Y, z, params)
 end
 
 init_soil!(Y, coords.z, soil.parameters);
-<< << << < HEAD
 
 # We choose the initial and final simulation times:
 t0 = FT(0)
@@ -263,7 +262,7 @@ ode_algo = CTS.ExplicitAlgorithm(timestepper);
 dt = FT(30.0);
 # To set up the ClimaODEFunction which will be executed to step the
 # system explicitly in time, we call `get_ClimaODEFunction`:
-clima_ode_function = ClimaLSM.get_ClimaODEFunction(soil)
+clima_ode_function = ClimaLSM.get_ClimaODEFunction(soil, Y)
 prob = SciMLBase.ODEProblem(clima_ode_function, Y, (t0, tf), p);
 
 # By default, the `solve` command

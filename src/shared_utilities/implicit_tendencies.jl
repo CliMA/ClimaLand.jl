@@ -1,7 +1,7 @@
 export make_update_jacobian, make_jacobian, AbstractTridiagonalW, ∂tendencyBC∂Y
 
 """
-    make_update_jacobian(model::AbstractImExModel)
+    make_update_jacobian(model::AbstractModel)
 
 Creates and returns a function which updates the entries
 of the Jacobian matrix `W` in place.
@@ -15,7 +15,7 @@ and `T!_i` is the implicit tendency of the `i-th` state variable.
 This is a stub function to be extended for concrete instances of
 AbstractImExModels.
 """
-function make_update_jacobian(model::AbstractImExModel)
+function make_update_jacobian(model::AbstractModel)
     function update_jacobian!(W, Y, p, dtγ, t) end
     return update_jacobian!
 end
@@ -47,7 +47,7 @@ abstract type AbstractTridiagonalW end
 Base.similar(w::AbstractTridiagonalW) = w
 
 """
-    make_jacobian(model::AbstractImExModel, Y::ClimaCore.Fields.FieldVector;
+    make_jacobian(model::AbstractModel, Y::ClimaCore.Fields.FieldVector;
                   transform::Bool = false)::Union{Nothing,AbstractTridiagonalW}
 
 Creates and returns a struct with allocated memory
@@ -63,7 +63,7 @@ This is a stub function to be extended for concrete instances of
 AbstractImExModels.
 """
 make_jacobian(
-    model::AbstractImExModel,
+    model::AbstractModel,
     Y::ClimaCore.Fields.FieldVector;
     transform::Bool = false,
 )::Union{Nothing, AbstractTridiagonalW} = nothing

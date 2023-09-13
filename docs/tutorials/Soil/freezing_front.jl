@@ -219,7 +219,7 @@ set_initial_aux_state! = make_set_initial_aux_state(soil);
 set_initial_aux_state!(p, Y, t0);
 # To set up the ClimaODEFunction which will be executed to step the
 # system explicitly in time, we call `get_ClimaODEFunction`:
-clima_ode_function = ClimaLSM.get_ClimaODEFunction(soil)
+clima_ode_function = ClimaLSM.get_ClimaODEFunction(soil, Y)
 prob = SciMLBase.ODEProblem(clima_ode_function, Y, (t0, tf), p);
 
 

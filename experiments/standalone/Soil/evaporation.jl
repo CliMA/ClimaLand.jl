@@ -156,7 +156,7 @@ set_initial_aux_state!(p, Y, t0);
 dt = FT(1)
 timestepper = CTS.RK4()
 ode_algo = CTS.ExplicitAlgorithm(timestepper)
-clima_ode_function = ClimaLSM.get_ClimaODEFunction(soil)
+clima_ode_function = ClimaLSM.get_ClimaODEFunction(soil, Y)
 prob = SciMLBase.ODEProblem(clima_ode_function, Y, (t0, tf), p)
 sol = SciMLBase.solve(prob, ode_algo; dt = dt, saveat = 3600)
 

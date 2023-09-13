@@ -316,9 +316,11 @@ function initialize(model::AbstractModel{FT}) where {FT}
     return Y, p, coords
 end
 
-
+"""
+     eventually split into a method for AbstractImExModel, AbstractExpModel, and AbstractLandModel?
+"""
 function get_ClimaODEFunction(
-    model::AbstractImExModel,
+    model::AbstractModel,
     Y::ClimaCore.Fields.FieldVector;
     transform = false,
 )
@@ -331,16 +333,6 @@ function get_ClimaODEFunction(
     return CTS.ClimaODEFunction(
         T_exp! = exp_tendency!,
         T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
-        dss! = dss!,
-    )
-end
-
-function get_ClimaODEFunction(model::AbstractExpModel)
-    exp_tendency! = make_exp_tendency(model)
-    dss! = ClimaLSM.dss!
-    return CTS.ClimaODEFunction(
-        T_exp! = exp_tendency!,
-        T_imp! = nothing,
         dss! = dss!,
     )
 end
