@@ -72,8 +72,11 @@ canopy_component_types = (;
     photosynthesis = Canopy.FarquharModel{FT},
     conductance = Canopy.MedlynConductanceModel{FT},
     hydraulics = Canopy.PlantHydraulicsModel{FT},
+    energy = Canopy.BigLeafEnergyModel{FT},
 )
 # Individual Component arguments
+energy_args = (parameters = Canopy.BigLeafEnergyParameters{FT}(ac_canopy),)
+
 # Set up autotrophic respiration
 autotrophic_respiration_args = (;
     parameters = AutotrophicRespirationParameters{FT}(;
@@ -161,6 +164,7 @@ canopy_component_args = (;
     photosynthesis = photosynthesis_args,
     conductance = conductance_args,
     hydraulics = plant_hydraulics_args,
+    energy = energy_args,
 )
 # Other info needed
 shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
@@ -215,6 +219,8 @@ for i in 1:2
     Y.canopy.hydraulics.ϑ_l.:($i) .=
         augmented_liquid_fraction.(plant_ν, S_l_ini[i])
 end
+
+Y.canopy.energy.T = TA[1 + Int(round(t0 / 1800))] # Get atmos temperature at t0
 
 set_initial_aux_state! = make_set_initial_aux_state(land)
 set_initial_aux_state!(p, Y, t0);
@@ -361,15 +367,8 @@ soil_Rn =
         k in 2:length(sol.t)
     ]
 # Root sink term: a positive root extraction is a sink term for soil; add minus sign
-root_sink_energy = [
-    sum(
-        -1 .* sv.saveval[k].root_extraction .*
-        ClimaLSM.Soil.volumetric_internal_energy_liq.(
-            sv.saveval[k].soil.T,
-            land.soil.parameters,
-        ),
-    ) for k in 2:length(sol.t)
-]
+root_sink_energy =
+    [sum(-1 .* sv.saveval[k].root_energy_extraction) for k in 2:length(sol.t)]
 # Bottom energy BC
 soil_bottom_flux = FT(0)
 

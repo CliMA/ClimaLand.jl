@@ -70,7 +70,8 @@ is supported
 prognostically solves Richards equation in the plant is available.
 - subcomponent model type for canopy energy. This is of type
  `AbstractCanopyEnergyModel` and currently we support a version where
-  the canopy temperature is prescribed.
+  the canopy temperature is prescribed, and one where it is solved for
+  prognostically.
 - canopy model parameters, which include parameters that are shared
 between canopy model components or those needed to compute boundary
 fluxes.
@@ -125,6 +126,7 @@ end
         photosynthesis::AbstractPhotosynthesisModel{FT},
         conductance::AbstractStomatalConductanceModel{FT},
         hydraulics::AbstractPlantHydraulicsModel{FT},
+        energy::AbstractCanopyEnergyModel{FT},
         atmos::AbstractAtmosphericDrivers{FT},
         radiation::AbstractRadiativeDrivers{FT},
         soil::AbstractSoilDriver{FT},
@@ -373,6 +375,7 @@ function ClimaLSM.make_update_aux(
         <:FarquharModel,
         <:MedlynConductanceModel,
         <:PlantHydraulicsModel,
+        <:AbstractCanopyEnergyModel,
     },
 ) where {FT}
     function update_aux!(p, Y, t)
@@ -395,14 +398,12 @@ function ClimaLSM.make_update_aux(
         β = p.canopy.hydraulics.β
         medlyn_factor = p.canopy.conductance.medlyn_term
         gs = p.canopy.conductance.gs
-        transpiration = p.canopy.conductance.transpiration
         An = p.canopy.photosynthesis.An
         GPP = p.canopy.photosynthesis.GPP
         Rd = p.canopy.photosynthesis.Rd
         ψ = p.canopy.hydraulics.ψ
         ϑ_l = Y.canopy.hydraulics.ϑ_l
         fa = p.canopy.hydraulics.fa
-
 
         #unpack parameters         
         area_index = p.canopy.hydraulics.area_index
@@ -526,13 +527,16 @@ function ClimaLSM.make_update_aux(
 
         # We update the fa[n_stem+n_leaf] element once we have computed transpiration, below
         # update photosynthesis and conductance terms
+        # This should still use T_air, P_air, q_air
         medlyn_factor .=
             medlyn_term.(g1, T_air, P_air, q_air, Ref(thermo_params))
-        @. Rd = dark_respiration(Vcmax25, β, f, ΔHRd, T_air, To, R)
+        # Anywhere we use an Arrhenius factor, use T_canopy instead T_air
+        T_canopy = canopy_temperature(canopy.energy, canopy, Y, p, t)
+        @. Rd = dark_respiration(Vcmax25, β, f, ΔHRd, T_canopy, To, R)
         An .=
             compute_photosynthesis.(
                 Ref(canopy.photosynthesis),
-                T_air,
+                T_canopy,
                 medlyn_factor,
                 APAR,
                 c_co2_air,
@@ -570,7 +574,7 @@ function make_compute_exp_tendency(
         <:FarquharModel,
         <:MedlynConductanceModel,
         <:PlantHydraulicsModel,
-        <:PrescribedCanopyTempModel,
+        <:Union{PrescribedCanopyTempModel, BigLeafEnergyModel},
     },
 ) where {FT}
     components = canopy_components(canopy)
@@ -594,5 +598,4 @@ include("./canopy_boundary_fluxes.jl")
 
 #Make the canopy model broadcastable
 Base.broadcastable(C::CanopyModel) = tuple(C)
-
 end

@@ -70,6 +70,7 @@ canopy_component_types = (;
     photosynthesis = Canopy.FarquharModel{FT},
     conductance = Canopy.MedlynConductanceModel{FT},
     hydraulics = Canopy.PlantHydraulicsModel{FT},
+    energy = Canopy.BigLeafEnergyModel{FT},
 )
 # Individual Component arguments
 # Set up autotrophic respiration
@@ -153,6 +154,7 @@ plant_hydraulics_args = (
     compartment_surfaces = compartment_surfaces,
 )
 
+energy_args = (parameters = Canopy.BigLeafEnergyParameters{FT}(ac_canopy),)
 # Canopy component args
 canopy_component_args = (;
     autotrophic_respiration = autotrophic_respiration_args,
@@ -160,6 +162,7 @@ canopy_component_args = (;
     photosynthesis = photosynthesis_args,
     conductance = conductance_args,
     hydraulics = plant_hydraulics_args,
+    energy = energy_args,
 )
 # Other info needed
 shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
@@ -214,6 +217,9 @@ for i in 1:2
         augmented_liquid_fraction.(plant_ν, S_l_ini[i])
 end
 
+
+Y.canopy.energy.T = TA[1 + Int(round(t0 / 1800))] # Get atmos temperature at t0
+
 set_initial_aux_state! = make_set_initial_aux_state(land)
 set_initial_aux_state!(p, Y, t0);
 
@@ -223,6 +229,7 @@ sv = (;
     saveval = Array{NamedTuple}(undef, length(saveat)),
 )
 cb = ClimaLSM.NonInterpSavingCallback(sv, saveat)
+
 
 prob = SciMLBase.ODEProblem(
     CTS.ClimaODEFunction((T_exp!) = exp_tendency!),
@@ -314,6 +321,13 @@ R² =
 plt1 = Plots.plot(size = (800, 400))
 Plots.plot!(
     plt1,
+    data_daily_indices,
+    GPP_daily_avg_data .* 1e6,
+    label = "Data",
+    margin = 10Plots.mm,
+)
+Plots.plot!(
+    plt1,
     model_daily_indices,
     GPP_daily_avg_model .* 1e6,
     xlabel = "Hour of day",
@@ -321,15 +335,6 @@ Plots.plot!(
     label = "Model",
     title = "GPP [μmol/m^2/s]: RMSD = $(round(RMSD, digits = 2)), R² = $(round(R², digits = 2))",
 )
-Plots.plot!(
-    plt1,
-    data_daily_indices,
-    GPP_daily_avg_data .* 1e6,
-    label = "Data",
-    lalpha = 0.3,
-    margin = 10Plots.mm,
-)
-
 Plots.savefig(joinpath(savedir, "GPP.png"))
 
 # SW_OUT
@@ -351,11 +356,8 @@ Plots.plot!(
     xlabel = "Hour of day",
     margin = 10Plots.mm,
 )
-
 Plots.plot!(plt1, model_daily_indices, SW_out_model_avg, label = "Model")
-
 Plots.savefig(joinpath(savedir, "SW_OUT.png"))
-
 
 # LW_OUT
 LW_out_model = [parent(sv.saveval[k].LW_out)[1] for k in 1:length(sv.saveval)]
@@ -377,9 +379,7 @@ Plots.plot!(
     xlabel = "Hour of day",
     margin = 10Plots.mm,
 )
-
 Plots.plot!(plt1, model_daily_indices, LW_out_model_avg, label = "Model")
-
 Plots.savefig(joinpath(savedir, "LW_out.png"))
 
 
@@ -417,7 +417,6 @@ Plots.plot!(
     label = "Model ET",
     ylim = [0, 30],
 )
-
 Plots.savefig(joinpath(savedir, "ET.png"))
 
 # Water stress factor
@@ -457,7 +456,7 @@ Plots.plot!(
     plt1,
     daily,
     [parent(sol.u[k].soil.ϑ_l)[end - 1] for k in 1:1:length(sol.t)],
-    label = "5cm",
+    label = "1.25cm",
     xlim = [minimum(daily), maximum(daily)],
     ylim = [0.05, 0.55],
     xlabel = "Days",
@@ -471,7 +470,7 @@ plot!(
     daily,
     [parent(sol.u[k].soil.θ_i)[end - 1] for k in 1:1:length(sol.t)],
     color = "cyan",
-    label = "Ice, 5cm",
+    label = "Ice, 1.25cm",
 )
 
 Plots.plot!(plt1, seconds ./ 3600 ./ 24, SWC, label = "Data")
@@ -488,15 +487,21 @@ plt2 = Plots.plot(
 Plots.plot(plt2, plt1, layout = grid(2, 1, heights = [0.2, 0.8]))
 Plots.savefig(joinpath(savedir, "soil_water_content.png"))
 
-# Soil Heat Flux
+# Sensible Heat Flux
 
-SHF = [parent(sv.saveval[k].soil_shf)[1] for k in 1:length(sol.t)]
+SHF_soil = [parent(sv.saveval[k].soil_shf)[1] for k in 1:length(sol.t)]
+SHF_canopy =
+    [parent(sv.saveval[k].canopy.energy.shf)[1] for k in 1:length(sol.t)]
+SHF = SHF_soil + SHF_canopy
+SHF_soil_avg_model = diurnal_avg(SHF_soil)
+SHF_canopy_avg_model = diurnal_avg(SHF_canopy)
 SHF_avg_model = diurnal_avg(SHF)
 SHF_avg_data =
     diurnal_avg(H_CORR[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)])
 
 RMSD = StatsBase.rmsd(SHF_avg_model, SHF_avg_data[1:data_per_model:end])
 R² = Statistics.cor(SHF_avg_model, SHF_avg_data[1:data_per_model:end])^2
+
 
 plt1 = Plots.plot(size = (800, 400))
 Plots.plot!(
@@ -512,14 +517,78 @@ Plots.plot!(
     plt1,
     model_daily_indices,
     SHF_avg_model,
-    label = "Model",
-    title = "Soil Sensible Heat Flux: RMSD = $(round(RMSD, digits = 2)), R² = $(round(R², digits = 2))",
+    label = "Model_total",
+    title = "Sensible Heat Flux: RMSD = $(round(RMSD, digits = 2)), R² = $(round(R², digits = 2))",
 )
-
+Plots.plot!(
+    plt1,
+    model_daily_indices,
+    SHF_soil_avg_model,
+    label = "SHF_soil",
+    color = "blue",
+    margin = 10Plots.mm,
+)
+Plots.plot!(
+    plt1,
+    model_daily_indices,
+    SHF_canopy_avg_model,
+    label = "SHF_canopy",
+    color = "cyan",
+    margin = 10Plots.mm,
+)
 Plots.savefig(joinpath(savedir, "shf.png"))
 
-# Cumulative ET
+# Latent Heat Flux
 
+LHF_soil = [parent(sv.saveval[k].soil_lhf)[1] for k in 1:length(sol.t)]
+LHF_canopy =
+    [parent(sv.saveval[k].canopy.energy.lhf)[1] for k in 1:length(sol.t)]
+LHF = LHF_soil + LHF_canopy
+LHF_soil_avg_model = diurnal_avg(LHF_soil)
+LHF_canopy_avg_model = diurnal_avg(LHF_canopy)
+LHF_avg_model = diurnal_avg(LHF)
+LHF_avg_data = diurnal_avg(LE[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)])
+
+RMSD = StatsBase.rmsd(LHF_avg_model, LHF_avg_data[1:data_per_model:end])
+R² = Statistics.cor(LHF_avg_model, LHF_avg_data[1:data_per_model:end])^2
+
+plt1 = Plots.plot(size = (800, 400))
+Plots.plot!(
+    plt1,
+    data_daily_indices,
+    LHF_avg_data,
+    xlabel = "Hour of day",
+    ylabel = "LHF (W/m²)",
+    label = "Data",
+    margins = 10Plots.mm,
+)
+Plots.plot!(
+    plt1,
+    model_daily_indices,
+    LHF_avg_model,
+    label = "Model_total",
+    title = "Latent Heat Flux: RMSD = $(round(RMSD, digits = 2)), R² = $(round(R², digits = 2))",
+)
+Plots.plot!(
+    plt1,
+    model_daily_indices,
+    LHF_soil_avg_model,
+    label = "LHF_soil",
+    color = "blue",
+    margin = 10Plots.mm,
+)
+Plots.plot!(
+    plt1,
+    model_daily_indices,
+    LHF_canopy_avg_model,
+    label = "LHF_canopy",
+    color = "cyan",
+    margin = 10Plots.mm,
+)
+Plots.savefig(joinpath(savedir, "lhf.png"))
+
+
+# Cumulative ET
 dt_model = sol.t[2] - sol.t[1]
 dt_data = seconds[2] - seconds[1]
 # Find which index in the data our simulation starts at:
@@ -568,20 +637,6 @@ DOY = lwp_data[YEAR .== 2005, 2]
 seconds_since_t0 = FT.(DOY) * 24 .* 3600 .+ (6 * 3600)
 lwp_measured = lwp_data[YEAR .== 2005, 7] .* 1e6 # MPa to Pa
 
-
-root_stem_flux = [
-    sum(sv.saveval[k].root_extraction) .* (1e3 * 3600 * 24) for
-    k in 1:length(sol.t)
-]
-
-stem_leaf_flux = [
-    parent(sv.saveval[k].canopy.hydraulics.fa)[1] .* (1e3 * 3600 * 24) for
-    k in 1:length(sol.t)
-]
-leaf_air_flux = [
-    parent(sv.saveval[k].canopy.hydraulics.fa)[2] .* (1e3 * 3600 * 24) for
-    k in 1:length(sol.t)
-]
 lwp = [
     parent(sv.saveval[k].canopy.hydraulics.ψ)[2] * 9800 for k in 1:length(sol.t)
 ]
@@ -619,39 +674,26 @@ Plots.scatter!(
 )
 Plots.savefig(joinpath(savedir, "leaf_water_potential.png"))
 
-plt2 = Plots.plot(
-    daily,
-    leaf_air_flux,
-    label = "Leaf-air flux",
-    xlim = [minimum(daily), maximum(daily)],
-    title = "Within plant fluxes[mm/day]",
-    size = (1500, 400),
-)
-Plots.plot!(plt2, daily, stem_leaf_flux, label = "Stem-leaf flux")
-Plots.plot!(plt2, daily, root_stem_flux, label = "Soil-root-stem flux")
-
-plt1 = Plots.plot(
-    daily,
-    leaf_air_flux,
-    label = "",
-    xlabel = "Day of year",
-    margin = 10Plots.mm,
-    xlim = [minimum(daily), minimum(daily) + 30],
-    ylim = [-5, 7.5],
-    size = (1500, 400),
-)
-Plots.plot!(plt1, daily, stem_leaf_flux, label = "")
-Plots.plot!(plt1, daily, root_stem_flux, label = "")
-Plots.plot(plt2, plt1, layout = (2, 1))
-Plots.savefig(joinpath(savedir, "water_fluxes.png"))
-
 # Soil Temperature
 
-# The second layer is ~ 5cm, third is at 11cm
+# The second layer is ~ 5cm
 soil_T_5 = [parent(sv.saveval[k].soil.T)[end - 1] for k in 1:length(sol.t)]
 soil_T_5_avg = diurnal_avg(soil_T_5)
-soil_T_10 = [parent(sv.saveval[k].soil.T)[end - 2] for k in 1:length(sol.t)]
-soil_T_10_avg = diurnal_avg(soil_T_10)
+soil_T_sfc = [parent(sv.saveval[k].soil.T)[end] for k in 1:length(sol.t)]
+soil_T_sfc_avg = diurnal_avg(soil_T_sfc)
+
+canopy_T = [
+    parent(
+        ClimaLSM.Canopy.canopy_temperature(
+            land.canopy.energy,
+            land.canopy,
+            sol.u[k],
+            sv.saveval[k],
+            sol.t[k],
+        ),
+    )[1] for k in 1:length(sol.t)
+]
+canopy_T_avg = diurnal_avg(canopy_T)
 
 TA_avg = diurnal_avg(FT.(TA)[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)])
 TS_avg = diurnal_avg(FT.(TS)[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)])
@@ -661,25 +703,17 @@ Plots.plot!(
     plt1,
     data_daily_indices,
     TS_avg,
-    label = "Tsoil (data)",
+    label = "Soil-D",
     title = "Temperature",
 )
-Plots.plot!(plt1, data_daily_indices, TA_avg, label = "Tair (data)")
-Plots.plot!(
-    plt1,
-    model_daily_indices,
-    soil_T_5_avg,
-    label = "Tsoil (model; 5cm)",
-)
-Plots.plot!(
-    plt1,
-    model_daily_indices,
-    soil_T_10_avg,
-    label = "Tsoil (model; 11cm)",
-)
+Plots.plot!(plt1, data_daily_indices, TA_avg, label = "Atmos-D")
+Plots.plot!(plt1, model_daily_indices, soil_T_5_avg, label = "Soil-M-5cm")
+Plots.plot!(plt1, model_daily_indices, soil_T_sfc_avg, label = "Soil-M-1cm")
+
+Plots.plot!(plt1, model_daily_indices, canopy_T_avg, label = "Canopy-M")
 Plots.plot!(plt1, xlabel = "Hour of day", ylabel = "Average over Simulation")
 Plots.plot!(plt1, margins = 10Plots.mm)
-Plots.savefig(joinpath(savedir, "soil_temperature.png"))
+Plots.savefig(joinpath(savedir, "temperature.png"))
 
 
 # Ground heat flux
@@ -690,8 +724,13 @@ G_model = [
         parent(sv.saveval[k].soil_SW_n)[1]
     ) for k in 1:length(sol.t)
 ]
+
 G_model_avg = diurnal_avg(G_model)
 G_data_avg = diurnal_avg(FT.(G)[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)])
+
+RMSD = StatsBase.rmsd(G_model_avg, G_data_avg[1:data_per_model:end])
+R² = Statistics.cor(G_model_avg, G_data_avg[1:data_per_model:end])^2
+
 plt1 = Plots.plot(size = (1500, 400))
 Plots.plot!(
     plt1,
@@ -706,9 +745,49 @@ Plots.plot!(
     model_daily_indices,
     G_model_avg,
     label = "Model",
-    title = "Ground Heat Flux [W/m^2]",
+    title = "Ground Heat Flux [W/m^2]: RMSD = $(round(RMSD, digits = 2)), R² = $(round(R², digits = 2))",
 )
 Plots.savefig(joinpath(savedir, "ground_heat_flux.png"))
+
+# Aerodynamic resistance
+r_ae = [parent(sv.saveval[k].canopy.energy.r_ae)[1] for k in 1:length(sol.t)]
+r_ae = min.(r_ae, 1e4)
+r_ae_avg = diurnal_avg(r_ae)
+R = FT(LSMP.gas_constant(earth_param_set))
+
+r_canopy =
+    1.0 ./ [
+        ClimaLSM.Canopy.upscale_leaf_conductance(
+            g_stomata[k],
+            parent(sv.saveval[k].canopy.hydraulics.area_index.leaf)[1],
+            atmos.T(sv.t[k]),
+            R,
+            atmos.P(sv.t[k]),
+        ) for k in 1:length(sol.t)
+    ]
+
+plt1 = Plots.plot(size = (1500, 400))
+Plots.plot!(
+    plt1,
+    data_daily_indices,
+    r_ae_avg,
+    label = "Aerodynamic",
+    margins = 10Plots.mm,
+    xlabel = "Hour of day",
+    title = "Aerodynamic Resistance [s/m]",
+)
+
+Plots.plot!(
+    plt1,
+    data_daily_indices,
+    diurnal_avg(r_canopy),
+    label = "Canopy",
+    margins = 10Plots.mm,
+    xlabel = "Hour of day",
+    title = "Resistance [s/m]",
+    yaxis = :log,
+)
+Plots.savefig(joinpath(savedir, "r_ae.png"))
 
 # Run script with comand line argument "save" to save model output to CSV
 if length(ARGS) ≥ 1 && ARGS[1] == "save"

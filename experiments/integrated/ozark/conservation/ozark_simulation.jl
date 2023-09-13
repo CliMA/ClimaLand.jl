@@ -1,7 +1,7 @@
 t0 = FT(120 * 3600 * 24)# start mid year
 N_days = 10
 tf = t0 + FT(3600 * 24 * N_days)
-dt = FT(300)
+dt = FT(150)
 n = 1
 saveat = Array(t0:(n * dt):tf)
 timestepper = CTS.ARS111()

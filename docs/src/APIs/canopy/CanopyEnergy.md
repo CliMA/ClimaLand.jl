@@ -8,6 +8,7 @@ CurrentModule = ClimaLSM.Canopy
 
 ```@docs
 ClimaLSM.Canopy.canopy_temperature
+ClimaLSM.Canopy.root_energy_flux_per_ground_area!
 ```
 
 ## Types
@@ -15,4 +16,5 @@ ClimaLSM.Canopy.canopy_temperature
 ```@docs
 ClimaLSM.Canopy.AbstractCanopyEnergyModel
 ClimaLSM.Canopy.PrescribedCanopyTempModel
+ClimaLSM.Canopy.BigLeafEnergyModel
 ```

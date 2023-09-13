@@ -19,7 +19,7 @@ model.
 See Cowan 1968; Brutsaert 1982, pp. 113–116; Campbell and Norman 1998, p. 71; Shuttleworth 2012, p. 343; Monteith and Unsworth 2013, p. 304.
 """
 function ClimaLSM.displacement_height(model::CanopyModel{FT}, Y, p) where {FT}
-    return FT(0.67) * surface_height(model, Y, p)
+    return FT(0.67) * model.hydraulics.compartment_surfaces[end]
 end
 
 """
@@ -43,7 +43,10 @@ function canopy_turbulent_surface_fluxes(
     # We upscaled LHF and E from leaf level to canopy level via the
     # upscaling of stomatal conductance.
     # Do we need to upscale SHF? 
-    return conditions.vapor_flux, conditions.shf, conditions.lhf
+    return conditions.vapor_flux,
+    conditions.shf,
+    conditions.lhf,
+    conditions.r_ae
 end
 
 """
@@ -91,7 +94,7 @@ A helper function which returns the surface height for the canopy
 model, which is stored in the parameter struct.
 """
 function ClimaLSM.surface_height(model::CanopyModel, _...)
-    return model.hydraulics.compartment_surfaces[end]
+    return model.hydraulics.compartment_surfaces[1]
 end
 
 """
@@ -147,7 +150,7 @@ end
                                 <:FarquharModel,
                                 <:MedlynConductanceModel,
                                 <:PlantHydraulicsModel,
-                                <:PrescribedCanopyTempModel,
+                                <:Union{PrescribedCanopyTempModel,BigLeafEnergyModel}
                             },
                             radiation::PrescribedRadiativeFluxes,
                             atmos::PrescribedAtmosphere,
@@ -178,7 +181,7 @@ function canopy_boundary_fluxes!(
         <:FarquharModel,
         <:MedlynConductanceModel,
         <:PlantHydraulicsModel,
-        <:PrescribedCanopyTempModel,
+        <:Union{PrescribedCanopyTempModel, BigLeafEnergyModel},
     },
     radiation::PrescribedRadiativeFluxes,
     atmos::PrescribedAtmosphere,
@@ -187,6 +190,7 @@ function canopy_boundary_fluxes!(
 ) where {FT}
 
     root_water_flux = p.canopy.hydraulics.fa_roots
+    root_energy_flux = p.canopy.energy.fa_energy_roots
     fa = p.canopy.hydraulics.fa
     transpiration = p.canopy.conductance.transpiration
     shf = p.canopy.energy.shf
@@ -194,11 +198,12 @@ function canopy_boundary_fluxes!(
     i_end = canopy.hydraulics.n_stem + canopy.hydraulics.n_leaf
 
     # Compute transpiration
-    (canopy_transpiration, canopy_shf, canopy_lhf) =
+    (canopy_transpiration, canopy_shf, canopy_lhf, r_ae) =
         canopy_turbulent_surface_fluxes(atmos, canopy, Y, p, t)
     transpiration .= canopy_transpiration
     shf .= canopy_shf
     lhf .= canopy_lhf
+    p.canopy.energy.r_ae .= r_ae
 
     # Transpiration is per unit ground area, not leaf area (mult by LAI)
     fa.:($i_end) .= PlantHydraulics.transpiration_per_ground_area(
@@ -212,6 +217,15 @@ function canopy_boundary_fluxes!(
         root_water_flux,
         canopy.soil_driver,
         canopy.hydraulics,
+        Y,
+        p,
+        t,
+    )
+
+    root_energy_flux_per_ground_area!(
+        root_energy_flux,
+        canopy.soil_driver,
+        canopy.energy,
         Y,
         p,
         t,
