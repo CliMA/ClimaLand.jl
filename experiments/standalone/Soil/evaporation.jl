@@ -154,16 +154,10 @@ set_initial_aux_state!(p, Y, t0);
 
 # Timestepping:
 dt = FT(1)
-soil_exp_tendency! = make_exp_tendency(soil)
 timestepper = CTS.RK4()
 ode_algo = CTS.ExplicitAlgorithm(timestepper)
-
-prob = SciMLBase.ODEProblem(
-    CTS.ClimaODEFunction(T_exp! = soil_exp_tendency!, dss! = ClimaLSM.dss!),
-    Y,
-    (t0, tf),
-    p,
-)
+clima_ode_function = ClimaLSM.get_ClimaODEFunction(soil)
+prob = SciMLBase.ODEProblem(clima_ode_function, Y, (t0, tf), p)
 sol = SciMLBase.solve(prob, ode_algo; dt = dt, saveat = 3600)
 
 (; ν, θ_r, d_ds) = soil.parameters

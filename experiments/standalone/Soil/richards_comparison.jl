@@ -50,10 +50,6 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
 
     # specify ICs
     Y.soil.ϑ_l .= FT(0.24)
-    exp_tendency! = make_exp_tendency(soil)
-    imp_tendency! = ClimaLSM.make_imp_tendency(soil)
-    update_jacobian! = ClimaLSM.make_update_jacobian(soil)
-
     t0 = FT(0)
     set_initial_aux_state!(p, Y, t0)
     tf = FT(1e6)
@@ -70,21 +66,8 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
             convergence_checker = conv_checker,
         ),
     )
-
-    # set up jacobian info
-    jac_kwargs =
-        (; jac_prototype = RichardsTridiagonalW(Y), Wfact = update_jacobian!)
-
-    prob = SciMLBase.ODEProblem(
-        CTS.ClimaODEFunction(
-            T_exp! = exp_tendency!,
-            T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
-            dss! = ClimaLSM.dss!,
-        ),
-        Y,
-        (t0, tf),
-        p,
-    )
+    clima_ode_function = ClimaLSM.get_ClimaODEFunction(soil, Y)
+    prob = SciMLBase.ODEProblem(clima_ode_function, Y, (t0, tf), p)
     sol = SciMLBase.solve(prob, ode_algo; dt = dt, saveat = 10000)
 
     N = length(sol.t)
@@ -144,10 +127,6 @@ end
 
     # specify ICs
     Y.soil.ϑ_l .= FT(0.1)
-    exp_tendency! = make_exp_tendency(soil)
-    imp_tendency! = ClimaLSM.make_imp_tendency(soil)
-    update_jacobian! = ClimaLSM.make_update_jacobian(soil)
-
     t0 = FT(0)
     set_initial_aux_state!(p, Y, t0)
     tf = FT(60 * 60 * 0.8)
@@ -165,20 +144,8 @@ end
             convergence_checker = conv_checker,
         ),
     )
-    # set up jacobian info
-    jac_kwargs =
-        (; jac_prototype = RichardsTridiagonalW(Y), Wfact = update_jacobian!)
-
-    prob = SciMLBase.ODEProblem(
-        CTS.ClimaODEFunction(
-            T_exp! = exp_tendency!,
-            T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
-            dss! = ClimaLSM.dss!,
-        ),
-        Y,
-        (t0, tf),
-        p,
-    )
+    clima_ode_function = ClimaLSM.get_ClimaODEFunction(soil, Y)
+    prob = SciMLBase.ODEProblem(clima_ode_function, Y, (t0, tf), p)
     sol = SciMLBase.solve(prob, ode_algo; dt = dt, saveat = 60 * dt)
 
     N = length(sol.t)

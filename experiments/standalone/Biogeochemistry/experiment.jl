@@ -137,7 +137,7 @@ init_soil!(Y, z, model.soil.parameters)
 init_co2!(Y, z)
 t0 = FT(0.0)
 set_initial_aux_state!(p, Y, t0);
-Soil_bio_exp_tendency! = make_exp_tendency(model)
+clima_ode_function = ClimaLSM.get_ClimaODEFunction(model)
 
 tf = FT(10000)
 dt = FT(10)
@@ -152,12 +152,7 @@ saved_values = (;
 )
 cb = ClimaLSM.NonInterpSavingCallback(saved_values, saveat)
 
-prob = SciMLBase.ODEProblem(
-    CTS.ClimaODEFunction(T_exp! = Soil_bio_exp_tendency!, dss! = ClimaLSM.dss!),
-    Y,
-    (t0, tf),
-    p,
-)
+prob = SciMLBase.ODEProblem(clima_ode_function, Y, (t0, tf), p)
 sol = SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb)
 
 # Animation

@@ -165,7 +165,6 @@ land = SoilCanopyModel{FT}(;
     canopy_model_args = canopy_model_args,
 )
 Y, p, cds = initialize(land)
-exp_tendency! = make_exp_tendency(land)
 
 #Initial conditions
 Y.soil.ϑ_l = SWC[1 + Int(round(t0 / 1800))] # Get soil water content at t0
@@ -208,13 +207,8 @@ sv = (;
     saveval = Array{NamedTuple}(undef, length(saveat)),
 )
 cb = ClimaLSM.NonInterpSavingCallback(sv, saveat)
-
-prob = SciMLBase.ODEProblem(
-    CTS.ClimaODEFunction(T_exp! = exp_tendency!, dss! = ClimaLSM.dss!),
-    Y,
-    (t0, tf),
-    p,
-);
+clima_ode_function = ClimaLSM.get_ClimaODEFunction(land)
+prob = SciMLBase.ODEProblem(clima_ode_function, Y, (t0, tf), p);
 sol = SciMLBase.solve(
     prob,
     ode_algo;
