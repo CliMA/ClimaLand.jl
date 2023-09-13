@@ -295,8 +295,9 @@ include("standalone/Snow/Snow.jl")
 using .Snow
 include("standalone/Vegetation/Canopy.jl")
 using .Canopy
+import .Canopy: canopy_radiant_energy_fluxes!, root_energy_flux_per_ground_area!
 using .Canopy.PlantHydraulics
-import .Canopy.PlantHydraulics: root_flux_per_ground_area!
+import .Canopy.PlantHydraulics: root_water_flux_per_ground_area!
 ### Concrete types of AbstractLandModels
 ### and associated methods
 include("integrated/soil_energy_hydrology_biogeochemistry.jl")

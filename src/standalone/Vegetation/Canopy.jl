@@ -19,13 +19,7 @@ import ClimaLSM:
     initialize_auxiliary,
     make_update_aux,
     make_compute_exp_tendency,
-    make_set_initial_aux_state,
-    surface_temperature,
-    surface_specific_humidity,
-    surface_air_density,
-    surface_evaporative_scaling,
-    surface_height,
-    surface_resistance
+    make_set_initial_aux_state
 
 using ClimaLSM.Domains: Point, Plane, SphericalSurface
 export SharedCanopyParameters,
@@ -76,7 +70,8 @@ is supported
 prognostically solves Richards equation in the plant is available.
 - subcomponent model type for canopy energy. This is of type
  `AbstractCanopyEnergyModel` and currently we support a version where
-  the canopy temperature is prescribed.
+  the canopy temperature is prescribed, and one where it is solved for
+  prognostically.
 - canopy model parameters, which include parameters that are shared
 between canopy model components or those needed to compute boundary
 fluxes.
@@ -131,6 +126,7 @@ end
         photosynthesis::AbstractPhotosynthesisModel{FT},
         conductance::AbstractStomatalConductanceModel{FT},
         hydraulics::AbstractPlantHydraulicsModel{FT},
+        energy::AbstractCanopyEnergyModel{FT},
         atmos::AbstractAtmosphericDrivers{FT},
         radiation::AbstractRadiativeDrivers{FT},
         soil::AbstractSoilDriver{FT},
@@ -205,6 +201,7 @@ canopy_components(::CanopyModel) = (
     :photosynthesis,
     :radiative_transfer,
     :autotrophic_respiration,
+    :energy
 )
 
 """
@@ -398,6 +395,7 @@ function ClimaLSM.make_update_aux(
         <:FarquharModel,
         <:MedlynConductanceModel,
         <:PlantHydraulicsModel,
+        <:AbstractCanopyEnergyModel,
     },
 ) where {FT}
     function update_aux!(p, Y, t)
@@ -420,14 +418,12 @@ function ClimaLSM.make_update_aux(
         β = p.canopy.hydraulics.β
         medlyn_factor = p.canopy.conductance.medlyn_term
         gs = p.canopy.conductance.gs
-        transpiration = p.canopy.conductance.transpiration
         An = p.canopy.photosynthesis.An
         GPP = p.canopy.photosynthesis.GPP
         Rd = p.canopy.photosynthesis.Rd
         ψ = p.canopy.hydraulics.ψ
         ϑ_l = Y.canopy.hydraulics.ϑ_l
         fa = p.canopy.hydraulics.fa
-
 
         #unpack parameters         
         area_index = p.canopy.hydraulics.area_index
@@ -551,8 +547,10 @@ function ClimaLSM.make_update_aux(
 
         # We update the fa[n_stem+n_leaf] element once we have computed transpiration, below
         # update photosynthesis and conductance terms
+        # This should still use T_air, P_air, q_air
         medlyn_factor .=
             medlyn_term.(g1, T_air, P_air, q_air, Ref(thermo_params))
+        # Anywhere we use an Arrhenius factor, use T_canopy instead T_air
         @. Rd = dark_respiration(Vcmax25, β, f, ΔHRd, T_air, To, R)
         An .=
             compute_photosynthesis.(
@@ -578,18 +576,6 @@ function ClimaLSM.make_update_aux(
             β,
             h,
         )
-        # Compute transpiration using T_canopy
-        (canopy_transpiration, shf, lhf) =
-            canopy_surface_fluxes(canopy.atmos, canopy, Y, p, t)
-        transpiration .= canopy_transpiration
-        # Transpiration is per unit ground area, not leaf area (mult by LAI)
-        fa.:($i_end) .= PlantHydraulics.transpiration_per_ground_area(
-            hydraulics.transpiration,
-            Y,
-            p,
-            t,
-        )
-
     end
     return update_aux!
 end
@@ -598,157 +584,38 @@ end
     make_compute_exp_tendency(canopy::CanopyModel)
 
 Creates and returns the compute_exp_tendency! for the `CanopyModel`.
-
-This allows for prognostic variables in each canopy component, and
-specifies that they will be stepped explicitly.
 """
-function make_compute_exp_tendency(canopy::CanopyModel)
+function make_compute_exp_tendency(
+    canopy::CanopyModel{
+        FT,
+        <:AutotrophicRespirationModel,
+        <:Union{BeerLambertModel, TwoStreamModel},
+        <:FarquharModel,
+        <:MedlynConductanceModel,
+        <:PlantHydraulicsModel,
+        <:Union{PrescribedCanopyTempModel, BigLeafEnergyModel},
+    },
+) where {FT}
     components = canopy_components(canopy)
     compute_exp_tendency_list = map(
         x -> make_compute_exp_tendency(getproperty(canopy, x), canopy),
         components,
     )
     function compute_exp_tendency!(dY, Y, p, t)
+        # First we need to compute/update in place the boundary fluxes for
+        # the component models.
+        canopy_boundary_fluxes!(p, canopy, canopy.radiation, canopy.atmos, Y, t)
+        # Then we execute the tendency
         for f! in compute_exp_tendency_list
             f!(dY, Y, p, t)
         end
+
     end
     return compute_exp_tendency!
 end
-
-"""
-    canopy_surface_fluxes(atmos::PrescribedAtmosphere{FT},
-                          model::CanopyModel,
-                          Y,
-                          p,
-                          t::FT) where {FT}
-
-Computes canopy transpiration using Monin-Obukhov Surface Theory,
-the prescribed atmospheric conditions, and the canopy conductance.
-
-Please note that in the future the SurfaceFluxes.jl code will compute
-fluxes taking into account the canopy conductance, so that
-what is returned by `surface_fluxes` is correct. At present, it does not,
-so we are adjusting for it after the fact here in both ET and LHF.
-"""
-function canopy_surface_fluxes(
-    atmos::PrescribedAtmosphere{FT},
-    model::CanopyModel,
-    Y,
-    p,
-    t::FT,
-) where {FT}
-    conditions = surface_fluxes(atmos, model, Y, p, t) # per unit m^2 of leaf
-    return conditions.vapor_flux, conditions.shf, conditions.lhf
-end
-
-"""
-    ClimaLSM.surface_resistance(
-        model::CanopyModel{FT},
-        Y,
-        p,
-        t,
-    ) where {FT}
-Returns the surface resistance field of the
-`CanopyModel` canopy.
-"""
-function ClimaLSM.surface_resistance(model::CanopyModel{FT}, Y, p, t) where {FT}
-    earth_param_set = model.parameters.earth_param_set
-    R = FT(LSMP.gas_constant(earth_param_set))
-    ρ_liq = FT(LSMP.ρ_cloud_liq(earth_param_set))
-    P_air::FT = model.atmos.P(t)
-    T_air::FT = model.atmos.T(t)
-    leaf_conductance = p.canopy.conductance.gs
-    canopy_conductance =
-        upscale_leaf_conductance.(
-            leaf_conductance,
-            p.canopy.hydraulics.area_index.leaf,
-            T_air,
-            R,
-            P_air,
-        )
-    return 1 ./ canopy_conductance # [s/m]
-end
-
-"""
-    ClimaLSM.surface_temperature(model::CanopyModel, Y, p, t)
-
-A helper function which returns the surface temperature for the canopy
-model, which is stored in the aux state.
-"""
-function ClimaLSM.surface_temperature(model::CanopyModel, Y, p, t)
-    return canopy_temperature(model.energy, model, Y, p, t)
-end
-
-"""
-    ClimaLSM.surface_height(model::CanopyModel, Y, _...)
-
-A helper function which returns the surface height for the canopy
-model, which is stored in the parameter struct.
-"""
-function ClimaLSM.surface_height(model::CanopyModel, _...)
-    return model.hydraulics.compartment_surfaces[end]
-end
-
-"""
-    ClimaLSM.surface_specific_humidity(model::CanopyModel, Y, p)
-
-A helper function which returns the surface specific humidity for the canopy
-model, which is stored in the aux state.
-"""
-function ClimaLSM.surface_specific_humidity(
-    model::CanopyModel,
-    Y,
-    p,
-    T_canopy,
-    ρ_canopy,
-)
-    thermo_params =
-        LSMP.thermodynamic_parameters(model.parameters.earth_param_set)
-    return Thermodynamics.q_vap_saturation_generic.(
-        Ref(thermo_params),
-        T_canopy,
-        ρ_canopy,
-        Ref(Thermodynamics.Liquid()),
-    )
-end
-
-"""
-    ClimaLSM.surface_air_density(model::CanopyModel, Y, p)
-
-A helper function which computes and returns the surface air density for the canopy
-model.
-"""
-function ClimaLSM.surface_air_density(
-    atmos::PrescribedAtmosphere,
-    model::CanopyModel,
-    Y,
-    p,
-    t,
-    T_canopy,
-)
-    thermo_params =
-        LSMP.thermodynamic_parameters(model.parameters.earth_param_set)
-    ts_in = construct_atmos_ts(atmos, t, thermo_params)
-    return compute_ρ_sfc.(Ref(thermo_params), Ref(ts_in), T_canopy)
-end
-
-"""
-    ClimaLSM.surface_evaporative_scaling(model::CanopyModel, Y, p)
-
-A helper function which computes and returns the surface evaporative scaling
- factor for the canopy model.
-"""
-function ClimaLSM.surface_evaporative_scaling(
-    model::CanopyModel{FT},
-    Y,
-    p,
-) where {FT}
-    beta = FT(1.0)
-    return beta
-end
-
 #Make the canopy model broadcastable
 Base.broadcastable(C::CanopyModel) = tuple(C)
+
+include("./canopy_boundary_fluxes.jl")
 
 end

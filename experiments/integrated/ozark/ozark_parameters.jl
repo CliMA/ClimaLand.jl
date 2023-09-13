@@ -31,16 +31,17 @@ soil_vg_α = FT(0.04) # inverse meters
 κ_sat_frozen = Soil.κ_sat_frozen(κ_solid, soil_ν, κ_ice)
 κ_sat_unfrozen = Soil.κ_sat_unfrozen(κ_solid, soil_ν, κ_liq);
 ρc_ds = FT((1 - soil_ν) * 4e6); # J/m^3/K
-z_0m_soil = FT(0.1)
-z_0b_soil = FT(0.1)
-soil_ϵ = FT(0.98)
+z_0m_soil = FT(0.01)
+z_0b_soil = FT(0.001)
+soil_ϵ = FT(0.96)
 soil_α_PAR = FT(0.2)
 soil_α_NIR = FT(0.2)
 
 # TwoStreamModel parameters
 Ω = FT(0.69)
 ld = FT(0.5)
-α_PAR_leaf = FT(0.1)
+#α_PAR_leaf = FT(0.1)
+α_PAR_leaf = FT(0.15)
 λ_γ_PAR = FT(5e-7)
 λ_γ_NIR = FT(1.65e-6)
 τ_PAR_leaf = FT(0.05)
@@ -48,6 +49,9 @@ ld = FT(0.5)
 τ_NIR_leaf = FT(0.25)
 n_layers = UInt64(20)
 ϵ_canopy = FT(0.97)
+
+# Energy Balance model
+ρc_canopy = FT(2.8e3)
 
 # Conductance Model
 g1 = FT(141) # Wang et al: 141 sqrt(Pa) for Medlyn model; Natan used 300.
