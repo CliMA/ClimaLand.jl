@@ -84,11 +84,7 @@ soil = Soil.RichardsModel{FT}(;
     boundary_conditions = boundary_fluxes,
     sources = sources,
 )
-
-exp_tendency! = make_exp_tendency(soil)
 set_initial_aux_state! = make_set_initial_aux_state(soil);
-imp_tendency! = make_imp_tendency(soil)
-update_jacobian! = make_update_jacobian(soil)
 
 rmses = Array{FT}(undef, length(dts))
 mass_errors = Array{FT}(undef, length(dts))
@@ -99,19 +95,8 @@ for i in eachindex(dts)
     @. Y.soil.ϑ_l = FT(0.24)
     set_initial_aux_state!(p, Y, FT(0.0))
 
-    jac_kwargs =
-        (; jac_prototype = RichardsTridiagonalW(Y), Wfact = update_jacobian!)
-
-    prob = SciMLBase.ODEProblem(
-        CTS.ClimaODEFunction(
-            T_exp! = exp_tendency!,
-            T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
-            dss! = ClimaLSM.dss!,
-        ),
-        Y,
-        (t_start, t_end),
-        p,
-    )
+    clima_ode_function = ClimaLSM.get_ClimaODEFunction(soil, Y)
+    prob = SciMLBase.ODEProblem(clima_ode_function, Y, (t_start, t_end), p)
 
     sol = SciMLBase.solve(prob, ode_algo; dt = dt, saveat = dt)
 
@@ -187,11 +172,7 @@ soil_dirichlet = Soil.RichardsModel{FT}(;
     sources = sources,
 )
 
-exp_tendency! = make_exp_tendency(soil_dirichlet)
 set_initial_aux_state! = make_set_initial_aux_state(soil_dirichlet);
-imp_tendency! = make_imp_tendency(soil_dirichlet)
-update_jacobian! = make_update_jacobian(soil_dirichlet)
-update_aux! = make_update_aux(soil_dirichlet)
 
 rmses_dirichlet = Array{FT}(undef, length(dts))
 mass_errors_dirichlet = Array{FT}(undef, length(dts))
@@ -202,19 +183,9 @@ for i in eachindex(dts)
     @. Y.soil.ϑ_l = FT(0.24)
     set_initial_aux_state!(p, Y, FT(0.0))
 
-    jac_kwargs =
-        (; jac_prototype = RichardsTridiagonalW(Y), Wfact = update_jacobian!)
+    clima_ode_function = ClimaLSM.get_ClimaODEFunction(soiil_dirichlet, Y)
 
-    prob = SciMLBase.ODEProblem(
-        CTS.ClimaODEFunction(
-            T_exp! = exp_tendency!,
-            T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
-            dss! = ClimaLSM.dss!,
-        ),
-        Y,
-        (t_start, t_end),
-        p,
-    )
+    prob = SciMLBase.ODEProblem(clima_ode_function, Y, (t_start, t_end), p)
     sol = SciMLBase.solve(prob, ode_algo; dt = dt, saveat = dt)
 
     # Calculate water mass balance over entire simulation

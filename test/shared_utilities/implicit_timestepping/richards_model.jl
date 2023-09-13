@@ -54,7 +54,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
         # we want to test that it is updated correctly in
         # the jacobian correctly.
         W = RichardsTridiagonalW(Y)
-        Wfact! = make_tendency_jacobian(soil)
+        Wfact! = make_update_jacobian(soil)
         dtγ = FT(1.0)
         Wfact!(W, Y, p, dtγ, FT(0.0))
 
@@ -158,7 +158,7 @@ end
         # we want to test that it is updated correctly in
         # the jacobian correctly.
         W = RichardsTridiagonalW(Y)
-        Wfact! = make_tendency_jacobian(soil)
+        Wfact! = make_update_jacobian(soil)
         dtγ = FT(1.0)
         Wfact!(W, Y, p, dtγ, FT(0.0))
 

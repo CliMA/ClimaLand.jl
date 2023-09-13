@@ -158,8 +158,6 @@ land = SoilPlantHydrologyModel{FT}(;
     canopy_model_args = canopy_model_args,
 )
 Y, p, cds = initialize(land)
-exp_tendency! = make_exp_tendency(land)
-imp_tendency! = make_imp_tendency(land)
 
 #Initial conditions
 Y.soil.ϑ_l = SWC[Int(round(t0 / 1800))] # Get soil water content at t0
@@ -182,9 +180,6 @@ end
 set_initial_aux_state! = make_set_initial_aux_state(land)
 set_initial_aux_state!(p, Y, t0);
 
-# Set up timestepper and jacobian for soil
-update_jacobian! = make_update_jacobian(land.soil)
-
 ode_algo = CTS.IMEXAlgorithm(
     timestepper,
     CTS.NewtonsMethod(
@@ -194,8 +189,6 @@ ode_algo = CTS.IMEXAlgorithm(
     ),
 )
 
-W = RichardsTridiagonalW(Y)
-jac_kwargs = (; jac_prototype = W, Wfact = update_jacobian!)
 
 # Simulation
 sv = (;
@@ -203,17 +196,8 @@ sv = (;
     saveval = Array{NamedTuple}(undef, length(saveat)),
 )
 cb = ClimaLSM.NonInterpSavingCallback(sv, saveat)
-
-prob = SciMLBase.ODEProblem(
-    CTS.ClimaODEFunction(
-        T_exp! = exp_tendency!,
-        T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
-        dss! = ClimaLSM.dss!,
-    ),
-    Y,
-    (t0, tf),
-    p,
-)
+clima_ode_function = ClimaLSM.get_ClimaODEFunction(land, Y)
+prob = SciMLBase.ODEProblem(clima_ode_function, Y, (t0, tf), p)
 sol = SciMLBase.solve(
     prob,
     ode_algo;

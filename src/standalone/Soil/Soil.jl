@@ -71,6 +71,7 @@ import ClimaLSM:
     make_compute_exp_tendency,
     make_compute_imp_tendency,
     make_update_jacobian,
+    make_jacobian,
     prognostic_vars,
     auxiliary_vars,
     name,

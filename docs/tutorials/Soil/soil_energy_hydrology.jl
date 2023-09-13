@@ -201,7 +201,6 @@ soil = Soil.EnergyHydrology{FT}(;
     sources = sources,
 );
 
-exp_tendency! = make_exp_tendency(soil);
 # # Set up the simulation
 # We can now initialize the prognostic and auxiliary variable vectors, and take
 # a peek at what those variables are:
@@ -252,21 +251,21 @@ tf = FT(60 * 60 * 72);
 set_initial_aux_state! = make_set_initial_aux_state(soil);
 set_initial_aux_state!(p, Y, t0);
 
-# We use [ClimaTimesteppers.jl](https://github.com/CliMA/ClimaTimesteppers.jl) for carrying out the time integration.
-
-# Choose a timestepper and set up the ODE problem:
-dt = FT(30.0);
+# Next we choose the timestepping algorithm. For the energy & hydrology
+# soil model, we currently only support explicit timestepping.
+# Here, we use the explicit timestepping algorithm RK4, which is suitable
+# for this model because it has no defined implicit tendendency function.
+# We use [ClimaTimeSteppers.jl](https://github.com/CliMA/ClimaTimeSteppers.jl)
+# for timestepping.
 timestepper = CTS.RK4();
-ode_algo = CTS.ExplicitAlgorithm(timestepper)
-prob = SciMLBase.ODEProblem(
-    CTS.ClimaODEFunction(T_exp! = exp_tendency!, dss! = ClimaLSM.dss!),
-    Y,
-    (t0, tf),
-    p,
-);
+ode_algo = CTS.ExplicitAlgorithm(timestepper);
+dt = FT(30.0);
+# To set up the ClimaODEFunction which will be executed to step the
+# system explicitly in time, we call `get_ClimaODEFunction`:
+clima_ode_function = ClimaLSM.get_ClimaODEFunction(soil, Y)
+prob = SciMLBase.ODEProblem(clima_ode_function, Y, (t0, tf), p);
 
-
-#By default, it
+# By default, the `solve` command
 # only returns Y and t at each time we request output (`saveat`, below). We use
 # a callback in order to also get the auxiliary vector `p` back:
 saveat = collect(t0:FT(1000 * dt):tf)
