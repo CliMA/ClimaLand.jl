@@ -348,6 +348,11 @@ function RichardsTridiagonalW(
     )
 end
 
+ClimaLSM.make_jacobian(
+    model::RichardsModel,
+    Y::ClimaCore.Fields.FieldVector;
+    transform = false,
+) = RichardsTridiagonalW(Y; transform = transform)
 
 """
     ClimaLSM.make_update_jacobian(model::RichardsModel)

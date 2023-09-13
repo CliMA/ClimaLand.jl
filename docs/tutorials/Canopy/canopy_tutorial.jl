@@ -296,29 +296,14 @@ sv = (;
 )
 cb = ClimaLSM.NonInterpSavingCallback(sv, saveat);
 
-# Select an (explicit) timestepping algorithm and setup the ODE problem.
+# Select an (explicit) timestepping algorithm from [ClimaTimeSteppers.jl](https://github.com/CliMA/ClimaTimeSteppers.jl)
 timestepper = CTS.RK4();
 ode_algo = CTS.ExplicitAlgorithm(timestepper)
 
-# We use the
-# [ClimaTimeSteppers.jl](https://github.com/CliMA/ClimaTimeSteppers.jl)
-# interface for handling the specification of implicitly and explicitly
-# treated terms.
-# To set up the ClimaODEFunction, we must specify:
-# - the ODE function/tendency which is treated explicitly in time
-# - the ODE function/tendency which is treated implicitly in time (none here),
-# - the ClimaLSM.dss! function, which does nothing for single column
-#   domains but carries out the dss step needed for domains with spectral
-#   element discretization (employed by Clima in the horizontal directions)
-exp_tendency! = make_exp_tendency(canopy);
-clima_ode_function =
-    CTS.ClimaODEFunction(T_exp! = exp_tendency!, dss! = ClimaLSM.dss!);
-prob = SciMLBase.ODEProblem(
-    clima_ode_function,
-    Y,
-    (t0, tf),
-    p,
-);
+# To set up the ClimaODEFunction which will be executed to step the
+# system explicitly in time, we call `get_ClimaODEFunction`:
+clima_ode_function = ClimaLSM.get_ClimaODEFunction(canopy)
+prob = SciMLBase.ODEProblem(clima_ode_function, Y, (t0, tf), p);
 
 # Now, we can solve the problem and store the model data in the saveat array,
 # using [`SciMLBase.jl`](https://github.com/SciML/SciMLBase.jl) and

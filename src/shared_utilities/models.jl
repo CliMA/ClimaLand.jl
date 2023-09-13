@@ -16,7 +16,8 @@ export AbstractModel,
     auxiliary_types,
     make_set_initial_aux_state,
     name,
-    domain_name
+    domain_name,
+    get_ClimaODEFunction
 
 import .Domains: coordinates
 ## Default methods for all models - to be in a seperate module at some point.
@@ -313,4 +314,33 @@ function initialize(model::AbstractModel{FT}) where {FT}
     Y = initialize_prognostic(model, coords)
     p = initialize_auxiliary(model, coords)
     return Y, p, coords
+end
+
+
+function get_ClimaODEFunction(
+    model::AbstractImExModel,
+    Y::ClimaCore.Fields.FieldVector;
+    transform = false,
+)
+    imp_tendency! = make_imp_tendency(model)
+    exp_tendency! = make_exp_tendency(model)
+    dss! = ClimaLSM.dss!
+    update_jacobian! = ClimaLSM.make_update_jacobian(model)
+    jac_prototype = ClimaLSM.make_jacobian(model, Y; transform = transform)
+    jac_kwargs = (; jac_prototype = jac_prototype, Wfact = update_jacobian!)
+    return CTS.ClimaODEFunction(
+        T_exp! = exp_tendency!,
+        T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
+        dss! = dss!,
+    )
+end
+
+function get_ClimaODEFunction(model::AbstractExpModel)
+    exp_tendency! = make_exp_tendency(model)
+    dss! = ClimaLSM.dss!
+    return CTS.ClimaODEFunction(
+        T_exp! = exp_tendency!,
+        T_imp! = nothing,
+        dss! = dss!,
+    )
 end

@@ -241,7 +241,7 @@ function init_soil!(Y, z, params)
 end
 
 init_soil!(Y, coords.z, soil.parameters);
-<<<<<<< HEAD
+<< << << < HEAD
 
 # We choose the initial and final simulation times:
 t0 = FT(0)
@@ -262,14 +262,8 @@ timestepper = CTS.RK4();
 ode_algo = CTS.ExplicitAlgorithm(timestepper);
 dt = FT(30.0);
 # To set up the ClimaODEFunction which will be executed to step the
-# system explicitly in time, we must specify:
-# - the ODE function/tendency which is treated explicitly in time
-# - the ClimaLSM.dss! function, which does nothing for single column
-#   domains but carries out the dss step needed for domains with spectral
-#   element discretization (employed by Clima in the horizontal directions)
-exp_tendency! = make_exp_tendency(soil)
-clima_ode_function =
-    CTS.ClimaODEFunction(T_exp! = exp_tendency!, dss! = ClimaLSM.dss!);
+# system explicitly in time, we call `get_ClimaODEFunction`:
+clima_ode_function = ClimaLSM.get_ClimaODEFunction(soil)
 prob = SciMLBase.ODEProblem(clima_ode_function, Y, (t0, tf), p);
 
 # By default, the `solve` command
