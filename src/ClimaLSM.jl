@@ -292,7 +292,6 @@ import .Canopy.PlantHydraulics: root_flux_per_ground_area!
 ### Concrete types of AbstractLandModels
 ### and associated methods
 include("integrated/soil_energy_hydrology_biogeochemistry.jl")
-include("integrated/soil_plant_hydrology_model.jl")
 include("integrated/pond_soil_model.jl")
 include("integrated/soil_canopy_model.jl")
 

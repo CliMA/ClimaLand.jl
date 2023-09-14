@@ -40,10 +40,6 @@ steps:
         command: "julia --color=yes --project=experiments experiments/standalone/Soil/evaporation.jl"
         artifact_paths: "experiments/standalone/Soil/evaporation*png"
 
-      - label: "ozark_test_hydrology_only"
-        command: "julia --color=yes --project=experiments experiments/integrated/ozark/hydrology_only/ozark.jl"
-        artifact_paths: "experiments/integrated/ozark/hydrology_only/*png"
-
       - label: "ozark_test"
         command: "julia --color=yes --project=experiments experiments/integrated/ozark/ozark.jl"
         artifact_paths: "experiments/integrated/ozark/*png"
