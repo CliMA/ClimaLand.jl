@@ -36,11 +36,19 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     PAR = SW(θs) ./ (energy_per_photon * N_a) # convert 500 W/m^2 to mol of photons per m^2/s
     K_c = extinction_coeff.(RTparams.ld, θs)
     @test all(K_c .≈ RTparams.ld ./ cos.(θs))
-    APAR = plant_absorbed_pfd.(RT, PAR, RTparams.α_PAR_leaf, LAI, K_c)
+    α_soil_PAR = FT(0.2)
+    output =
+        plant_absorbed_pfd.(RT, PAR, RTparams.α_PAR_leaf, LAI, K_c, α_soil_PAR)
+    APAR = getproperty.(output, :abs)
+    TPAR = getproperty.(output, :trans)
+    RPAR = getproperty.(output, :refl)
+    @test all(@. TPAR ≈ PAR * exp(-K_c * LAI * RTparams.Ω))
+    @test all(@. RPAR ≈ PAR - APAR - TPAR * (1 - α_soil_PAR))
+
     @test all(
-        APAR .≈
-        PAR .* (1 - RTparams.α_PAR_leaf) .*
-        (1 .- exp.(-K_c .* LAI .* RTparams.Ω)),
+        @. APAR ≈
+           PAR * (1 - RTparams.α_PAR_leaf) .*
+           (1 - exp(-K_c * LAI * RTparams.Ω)) * (1 - α_soil_PAR)
     )
     To = photosynthesisparams.To
     Vcmax =

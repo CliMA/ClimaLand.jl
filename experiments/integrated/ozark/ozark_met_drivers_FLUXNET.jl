@@ -10,6 +10,13 @@ function replace_missing_with_mean!(field, flag)
     return field
 end
 
+function replace_missing_with_mean_by_value!(field)
+    good_indices = .~(field .== -9999)
+    fill_value = mean(field[good_indices])
+    field[.~good_indices] .= fill_value
+    return field
+end
+
 # Fluxnet Ozark (CO2 and H2O fluxes and met drivers)
 # 2005 data extracted as follows:
 #af = ArtifactFile(
@@ -65,6 +72,9 @@ replace_missing_with_mean!(G, G_F)
 
 LW_OUT = driver_data[2:end, column_names .== "LW_OUT"]# This has missing data
 SW_OUT = driver_data[2:end, column_names .== "SW_OUT"]# This has missing data
+replace_missing_with_mean_by_value!(SW_OUT)
+replace_missing_with_mean_by_value!(LW_OUT)
+
 LOCAL_DATETIME = DateTime.(string.(driver_data[2:end, 1]), "yyyymmddHHMM")
 UTC_DATETIME = LOCAL_DATETIME .+ Dates.Hour(6)
 thermo_params = LSMP.thermodynamic_parameters(earth_param_set)

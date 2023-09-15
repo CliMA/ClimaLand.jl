@@ -16,6 +16,7 @@ apis = [
             "Plant Hydraulics" => "APIs/canopy/PlantHydraulics.md",
             "Canopy Photosynthesis" => "APIs/canopy/Photosynthesis.md",
             "Canopy RT" => "APIs/canopy/RadiativeTransfer.md",
+            "Canopy Energy" => "APIs/canopy/CanopyEnergy.md",
             "Canopy Stomatal Conductance" => "APIs/canopy/StomatalConductance.md",
         ],
         "Surface Water Models" => "APIs/SurfaceWater.md",

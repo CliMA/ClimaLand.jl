@@ -67,7 +67,7 @@ py_FAPAR = FT.(test_set[2:end, column_names .== "FAPAR"])
 
         # Compute the predicted FAPAR using the ClimaLSM TwoStream implementation
         K = extinction_coeff(ld[i], θs[i])
-        FAPAR = plant_absorbed_pfd(
+        output = plant_absorbed_pfd(
             RT,
             FT(1),
             RT_params.α_PAR_leaf,
@@ -78,7 +78,7 @@ py_FAPAR = FT.(test_set[2:end, column_names .== "FAPAR"])
             a_soil[i],
             PropDif[i],
         )
-
+        FAPAR = output.abs
         # Check that the predictions are app. equivalent to the Python model
         @test isapprox(py_FAPAR[i], FAPAR, atol = 0.005)
 
