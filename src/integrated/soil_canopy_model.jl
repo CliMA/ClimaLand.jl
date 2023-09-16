@@ -325,6 +325,51 @@ function net_radiation_at_ground(
 end
 
 """
+    PlantHydraulics.root_flux_per_ground_area!(
+        fa::ClimaCore.Fields.Field,
+        s::PrognosticSoil,
+        model::Canopy.PlantHydraulics.PlantHydraulicsModel{FT},
+        Y::ClimaCore.Fields.FieldVector,
+        p::NamedTuple,
+        t::FT,
+    ) where {FT}
+
+An extension of the `PlantHydraulics.root_flux_per_ground_area!` function,
+ which returns the
+net flux of water between the
+roots and the soil, per unit ground area, 
+when both soil and plant
+hydraulics are modeled prognostically. This is for use in an LSM.
+
+It is computed by summing the flux of water per ground area between
+roots and soil at each soil layer.
+"""
+function PlantHydraulics.root_flux_per_ground_area!(
+    fa::ClimaCore.Fields.Field,
+    s::PrognosticSoil,
+    model::Canopy.PlantHydraulics.PlantHydraulicsModel{FT},
+    Y::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
+    t::FT,
+) where {FT}
+    fa .= sum(p.root_extraction)
+end
+
+"""
+    RootExtraction{FT} <: Soil.AbstractSoilSource{FT}
+
+Concrete type of Soil.AbstractSoilSource, used for dispatch 
+in an LSM with both soil and plant hydraulic components.
+
+This is paired with the source term `Canopy.PrognosticSoil`:both 
+are used at the same time,
+ensuring that the water flux into the roots is extracted correctly
+from the soil.
+"""
+struct RootExtraction{FT} <: Soil.AbstractSoilSource{FT} end
+
+
+"""
     ClimaLSM.source!(dY::ClimaCore.Fields.FieldVector,
                      src::RootExtraction,
                      Y::ClimaCore.Fields.FieldVector,
