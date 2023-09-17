@@ -14,5 +14,5 @@ ClimaLSM.Canopy.canopy_temperature
 
 ```@docs
 ClimaLSM.Canopy.AbstractCanopyEnergyModel
-ClimaLSM.Canopy.CanopyPrescribedCanopyTempModel
+ClimaLSM.Canopy.PrescribedCanopyTempModel
 ```

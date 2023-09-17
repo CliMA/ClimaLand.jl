@@ -78,8 +78,8 @@ function soil_boundary_fluxes(
         t,
         model.parameters,
     )
-    net_energy_flux = @. -p.soil_LW_n - p.soil_SW_n + p.soil_lhf + p.soil_shf
-    return infiltration, net_energy_flux
+    G = @. -p.soil_LW_n - p.soil_SW_n + p.soil_lhf + p.soil_shf
+    return infiltration, G
 end
 
 """
