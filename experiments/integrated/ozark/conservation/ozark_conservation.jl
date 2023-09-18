@@ -339,8 +339,13 @@ Plots.savefig(joinpath(savedir, "water_conservation.png"))
 # Turbulent fluxes
 LHF = [parent(sv.saveval[k].soil_lhf)[1] for k in 2:length(sol.t)]
 SHF = [parent(sv.saveval[k].soil_shf)[1] for k in 2:length(sol.t)]
-# Radiation
-soil_Rn = [parent(sv.saveval[k].soil_Rn)[1] for k in 2:length(sol.t)]
+# Radiation is computed in LW and SW components
+# with positive numbers indicating the soil gaining energy.
+soil_Rn =
+    -1 .* [
+        parent(sv.saveval[k].soil_LW_n .+ sv.saveval[k].soil_SW_n)[1] for
+        k in 2:length(sol.t)
+    ]
 # Root sink term: a positive root extraction is a sink term for soil; add minus sign
 root_sink_energy = [
     sum(
