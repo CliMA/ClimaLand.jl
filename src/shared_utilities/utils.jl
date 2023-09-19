@@ -6,7 +6,7 @@ import SciMLBase
 Computes the heaviside function.
 """
 function heaviside(x::FT)::FT where {FT}
-    if x >= FT(0.0)
+    if x > eps(FT)
         return FT(1.0)
     else
         return FT(0.0)
