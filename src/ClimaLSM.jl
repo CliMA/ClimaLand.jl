@@ -46,30 +46,39 @@ abstract type AbstractLandModel{FT} <: AbstractModel{FT} end
 
 ClimaLSM.name(::AbstractLandModel) = :land
 
+"""
+    Domains.coordinates(model::AbstractLandModel)
+
+Returns a NamedTuple of the unique set of coordinates for the LSM
+`model`, where the unique set is taken over the coordinates of all
+of the subcomponents.
+
+For example, an LSM with a single layer snow model, multi-layer 
+soil model, and canopy model would have a coordinate set corresponding
+to the coordinates of the surface (snow), the subsurface coordinates (soil)
+and the coordinates of the surface (canopy). This would return the coordinates
+of the surface and subsurface. These are distinct because the subsurface
+coordinates correspond to the centers of the layers, while the surface
+corresponds to the top face of the domain.
+"""
 function Domains.coordinates(model::AbstractLandModel)
     components = land_components(model)
     coords_list = map(components) do (component)
         Domains.coordinates(getproperty(model, component))
     end
-    domains_list = map(components) do (component)
-        domain_name(getproperty(model, component))
-    end
-    coords = ClimaCore.Fields.FieldVector(;
-        NamedTuple{Tuple(unique(domains_list))}(Tuple(unique(coords_list)))...,
-    )
-    return coords
+    unique_coords_list = merge(coords_list...)
+    return unique_coords_list
 end
+
 
 function initialize_prognostic(
     model::AbstractLandModel{FT},
-    coords::ClimaCore.Fields.FieldVector,
+    coords::NamedTuple,
 ) where {FT}
     components = land_components(model)
     Y_state_list = map(components) do (component)
         submodel = getproperty(model, component)
-        zero_state =
-            map(_ -> zero(FT), getproperty(coords, domain_name(submodel)))
-        getproperty(initialize_prognostic(submodel, zero_state), component)
+        getproperty(initialize_prognostic(submodel, coords), component)
     end
     Y = ClimaCore.Fields.FieldVector(; NamedTuple{components}(Y_state_list)...)
     return Y
@@ -77,14 +86,12 @@ end
 
 function initialize_auxiliary(
     model::AbstractLandModel{FT},
-    coords::ClimaCore.Fields.FieldVector,
+    coords::NamedTuple,
 ) where {FT}
     components = land_components(model)
     p_state_list = map(components) do (component)
         submodel = getproperty(model, component)
-        zero_state =
-            map(_ -> zero(FT), getproperty(coords, domain_name(submodel)))
-        getproperty(initialize_auxiliary(submodel, zero_state), component)
+        getproperty(initialize_auxiliary(submodel, coords), component)
     end
     p_interactions = initialize_interactions(model, coords)
     p = (; p_interactions..., NamedTuple{components}(p_state_list)...)
@@ -248,6 +255,7 @@ function auxiliary_types(land::AbstractLandModel)
         interaction_types(land),
     ))
 end
+
 
 """
    interaction_vars(m::AbstractLandModel)

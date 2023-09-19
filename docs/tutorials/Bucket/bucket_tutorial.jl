@@ -137,7 +137,7 @@ using Insolation
 # will need access to.
 
 using ClimaLSM.Bucket: BucketModel, BucketModelParameters, BulkAlbedoFunction
-using ClimaLSM.Domains: coordinates, LSMSingleColumnDomain
+using ClimaLSM.Domains: coordinates, Column
 using ClimaLSM:
     initialize,
     make_update_aux,
@@ -205,11 +205,10 @@ bucket_parameters = BucketModelParameters(
 # resolution as the atmosphere, the bucket horizontal resolution would match the
 # horizontal resolution at the lowest level of the atmosphere model. In general, however, the two
 # resolutions do not need to match. Here we just set up something
-# simple - an LSMSingleColumnDomain, consisting of a single column.
+# simple - a Column.
 
 soil_depth = FT(3.5);
-bucket_domain =
-    LSMSingleColumnDomain(; zlim = (-soil_depth, 0.0), nelements = 10);
+bucket_domain = Column(; zlim = (-soil_depth, 0.0), nelements = 10);
 
 
 # The PrescribedAtmosphere and PrescribedRadiation need to take in a reference

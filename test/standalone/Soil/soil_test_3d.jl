@@ -66,13 +66,18 @@ FT = Float64
 
     Y, p, coords = initialize(soil)
     # test that the dss buffer was added
-    @test propertynames(p) == (:soil, :dss_buffer_3d)
+    @test propertynames(p) == (:soil, :dss_buffer_3d, :dss_buffer_2d)
     @test typeof(p.dss_buffer_3d) == typeof(
         ClimaCore.Spaces.create_dss_buffer(
-            ClimaCore.Fields.zeros(soil_domain.space),
+            ClimaCore.Fields.zeros(soil_domain.space.subsurface),
         ),
     )
-    init_soil!(Y, coords.x, coords.z, soil.parameters)
+    @test typeof(p.dss_buffer_2d) == typeof(
+        ClimaCore.Spaces.create_dss_buffer(
+            ClimaCore.Fields.zeros(soil_domain.space.surface),
+        ),
+    )
+    init_soil!(Y, coords.subsurface.x, coords.subsurface.z, soil.parameters)
     dY = similar(Y)
 
     t0 = FT(0.0)
@@ -188,8 +193,8 @@ FT = Float64
     end
 
 
-    X = coords.x
-    Z = coords.z
+    X = coords.subsurface.x
+    Z = coords.subsurface.z
     θ = Y.soil.ϑ_l
 
     #5.517176201418359e-9 max error with horizontal terms off
@@ -307,7 +312,7 @@ end
         Ysoil.soil.ϑ_l .= hydrostatic_profile.(z, Ref(params))
         Ysoil.soil.θ_i .= ClimaCore.Fields.zeros(FT, axes(Ysoil.soil.θ_i))
     end
-    init_soil!(Y, coords.z, soil.parameters)
+    init_soil!(Y, coords.subsurface.z, soil.parameters)
 
 
     θ_l = Soil.volumetric_liquid_fraction.(Y.soil.ϑ_l, ν, θ_r)
@@ -398,7 +403,7 @@ end
         end
         Ysoil.soil.ϑ_l .= hydrostatic_profile.(z, Ref(params))
     end
-    init_soil!(Y, coords.z, soil.parameters)
+    init_soil!(Y, coords.subsurface.z, soil.parameters)
 
     t0 = FT(0)
     set_initial_aux_state! = make_set_initial_aux_state(soil)
@@ -450,8 +455,8 @@ end
     )
     column = ClimaLSM.Domains.Column(; zlim = (zmin, zmax), nelements = 10)
     for d in [boxdomain, shell]
-        f1 = ClimaCore.Fields.zeros(d.space)
-        f2 = ClimaCore.Fields.zeros(d.space)
+        f1 = ClimaCore.Fields.zeros(d.space.subsurface)
+        f2 = ClimaCore.Fields.zeros(d.space.subsurface)
         dY = ClimaCore.Fields.FieldVector(; g = f1, h = f2)
         ClimaLSM.Soil.horizontal_components!(dY, d, Val(false))
         @test dY.g == f1
@@ -464,8 +469,8 @@ end
         )
 
     end
-    f1 = ClimaCore.Fields.zeros(column.space)
-    f2 = ClimaCore.Fields.zeros(column.space)
+    f1 = ClimaCore.Fields.zeros(column.space.subsurface)
+    f2 = ClimaCore.Fields.zeros(column.space.subsurface)
     dY = ClimaCore.Fields.FieldVector(; g = f1, h = f2)
     ClimaLSM.Soil.horizontal_components!(dY, column, Val(false))
     @test dY.g == f1

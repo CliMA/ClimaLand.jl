@@ -44,7 +44,7 @@ using ClimaCore
 import CLIMAParameters as CP
 import ClimaTimeSteppers as CTS
 using ClimaLSM
-using ClimaLSM.Domains: LSMSingleColumnDomain
+using ClimaLSM.Domains: Column, obtain_surface_domain
 using ClimaLSM.Soil
 using ClimaLSM.Canopy
 using ClimaLSM.Canopy.PlantHydraulics
@@ -86,8 +86,7 @@ include(
 nelements = 10
 zmin = FT(-2)
 zmax = FT(0)
-land_domain =
-    LSMSingleColumnDomain(; zlim = (zmin, zmax), nelements = nelements);
+land_domain = Column(; zlim = (zmin, zmax), nelements = nelements);
 
 # For our soil model, we will choose the
 # [`EnergyHydrology`](https://clima.github.io/ClimaLSM.jl/dev/APIs/Soil/#Soil-Models-2) 
@@ -140,7 +139,7 @@ soil_ϵ = FT(0.98)
 soil_α_PAR = FT(0.2)
 soil_α_NIR = FT(0.4)
 
-soil_domain = land_domain.subsurface
+soil_domain = land_domain
 soil_ps = Soil.EnergyHydrologyParameters{FT}(;
     κ_dry = κ_dry,
     κ_sat_frozen = κ_sat_frozen,
@@ -297,8 +296,8 @@ shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
     z0_b,
     earth_param_set,
 )
-
-canopy_model_args = (; parameters = shared_params, domain = land_domain.surface);
+canopy_domain = obtain_surface_domain(land_domain)
+canopy_model_args = (; parameters = shared_params, domain = canopy_domain);
 
 # We may now instantiate the integrated plant and soil model. In this example, 
 # we will compute transpiration diagnostically, and work with prescribed 

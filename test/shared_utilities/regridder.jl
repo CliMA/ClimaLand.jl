@@ -24,7 +24,7 @@ using Test
 
     surface_domain =
         SphericalSurface(; radius = FT(1), nelements = 2, npolynomial = 3)
-    boundary_space = surface_domain.space
+    boundary_space = surface_domain.space.surface
     field = regrid_netcdf_to_field(
         FT,
         regrid_dirpath,

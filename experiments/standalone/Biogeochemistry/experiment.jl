@@ -2,7 +2,7 @@ import SciMLBase
 import ClimaTimeSteppers as CTS
 using ClimaCore
 using ClimaLSM
-using ClimaLSM.Domains: LSMSingleColumnDomain
+using ClimaLSM.Domains: Column
 using ClimaLSM.Soil
 using ClimaLSM.Soil.Biogeochemistry
 using ClimaLSM.Soil.Biogeochemistry: MicrobeProduction
@@ -58,7 +58,7 @@ zmin = FT(-1)
 nelems = 20
 Δz = abs(zmax - zmin) / nelems
 
-lsm_domain = LSMSingleColumnDomain(; zlim = (zmin, zmax), nelements = nelems)
+lsm_domain = Column(; zlim = (zmin, zmax), nelements = nelems)
 
 top_flux_bc_w = Soil.FluxBC((p, t) -> eltype(t)(-0.00001))
 bot_flux_bc_w = Soil.FreeDrainage()
@@ -75,7 +75,7 @@ boundary_fluxes = (;
 soil_args = (;
     boundary_conditions = boundary_fluxes,
     sources = sources,
-    domain = lsm_domain.subsurface,
+    domain = lsm_domain,
     parameters = soil_ps,
 )
 
@@ -99,7 +99,7 @@ soil_drivers = Soil.Biogeochemistry.SoilDrivers(
 soilco2_args = (;
     boundary_conditions = co2_boundary_conditions,
     sources = co2_sources,
-    domain = lsm_domain.subsurface,
+    domain = lsm_domain,
     parameters = co2_parameters,
     drivers = soil_drivers,
 )

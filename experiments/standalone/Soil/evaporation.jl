@@ -123,7 +123,7 @@ zmax = FT(0)
 zmin = FT(-1.0)
 nelems = 10
 soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems)
-z = ClimaCore.Fields.coordinate_field(soil_domain.space).z
+z = ClimaCore.Fields.coordinate_field(soil_domain.space.subsurface).z
 
 soil = Soil.EnergyHydrology{FT}(;
     parameters = params,
@@ -144,7 +144,7 @@ function init_soil!(Y, z, params)
         Soil.volumetric_internal_energy.(FT(0), ρc_s, T, Ref(params))
 end
 
-init_soil!(Y, cds.z, soil.parameters)
+init_soil!(Y, z, soil.parameters)
 
 t0 = FT(0)
 tf = FT(24 * 3600 * 15)

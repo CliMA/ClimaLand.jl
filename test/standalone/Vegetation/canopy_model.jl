@@ -273,7 +273,6 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
         Ref(Thermodynamics.Liquid()),
     )
     @test ρ_sfc == compute_ρ_sfc.(Ref(thermo_params), Ref(ts_in), T_sfc)
-    @test ClimaLSM.domain_name(canopy) == :surface
 end
 
 
@@ -351,7 +350,7 @@ end
                 )
             )
         ),
-        domain.space,
+        domain.space.surface,
     )
     # Test that they are set properly
     set_canopy_prescribed_field!(plant_hydraulics, p, t0)

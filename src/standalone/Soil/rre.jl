@@ -109,7 +109,7 @@ with that value.
 """
 function ClimaLSM.make_compute_imp_tendency(model::RichardsModel)
     function compute_imp_tendency!(dY, Y, p, t)
-        z = ClimaCore.Fields.coordinate_field(model.domain.space).z
+        z = ClimaCore.Fields.coordinate_field(model.domain.space.subsurface).z
         Δz_top, Δz_bottom = get_Δz(z)
 
         top_flux_bc = boundary_flux(
@@ -171,7 +171,7 @@ function ClimaLSM.make_compute_exp_tendency(model::Soil.RichardsModel)
     function compute_exp_tendency!(dY, Y, p, t::FT) where {FT}
         # set dY before updating it
         dY.soil.ϑ_l .= FT(0)
-        z = ClimaCore.Fields.coordinate_field(model.domain.space).z
+        z = ClimaCore.Fields.coordinate_field(model.domain.space.subsurface).z
 
         horizontal_components!(
             dY,
@@ -229,6 +229,8 @@ of `RichardsModel`.
 """
 ClimaLSM.prognostic_vars(soil::RichardsModel) = (:ϑ_l,)
 ClimaLSM.prognostic_types(soil::RichardsModel{FT}) where {FT} = (FT,)
+ClimaLSM.prognostic_domain_names(soil::RichardsModel) = (:subsurface,)
+
 """
     auxiliary_vars(soil::RichardsModel)
 
@@ -242,6 +244,8 @@ auxiliary vector `p`. We did so in this case as a demonstration.
 """
 ClimaLSM.auxiliary_vars(soil::RichardsModel) = (:K, :ψ)
 ClimaLSM.auxiliary_types(soil::RichardsModel{FT}) where {FT} = (FT, FT)
+ClimaLSM.auxiliary_domain_names(soil::RichardsModel) =
+    (:subsurface, :subsurface)
 """
     make_update_aux(model::RichardsModel)
 

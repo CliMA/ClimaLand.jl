@@ -26,9 +26,9 @@ FT = Float64
     )
 
     coords = ClimaLSM.Domains.coordinates(domain) # center coordinates
-    ϕ = (FT(90) .- coords.lat)
-    θ = coords.long
-    r = coords.z .+ FT(1.0)
+    ϕ = (FT(90) .- coords.subsurface.lat)
+    θ = coords.subsurface.long
+    r = coords.subsurface.z .+ FT(1.0)
 
     #=
     # For my own sanity, convert lat/lon to usual spherical coords, to cartesian components,
@@ -105,7 +105,7 @@ end
     zmin = FT(-10)
     nelems = 50
     soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems)
-    z = ClimaCore.Fields.coordinate_field(soil_domain.space).z
+    z = ClimaCore.Fields.coordinate_field(soil_domain.space.subsurface).z
     Δz = abs(zmax - zmin) / nelems / 2.0
 
     top_Δz, bottom_Δz = get_Δz(z)

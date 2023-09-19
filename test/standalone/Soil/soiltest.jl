@@ -62,7 +62,7 @@ FT = Float64
         Ysoil.soil.ϑ_l .= hydrostatic_profile.(z, Ref(params))
     end
 
-    init_soil!(Y, coords.z, soil.parameters)
+    init_soil!(Y, coords.subsurface.z, soil.parameters)
 
     t0 = FT(0)
     set_initial_aux_state! = make_set_initial_aux_state(soil)
@@ -77,7 +77,7 @@ FT = Float64
 
     @test mean(parent(dY)) < 1e-8
     # should be hydrostatic equilibrium at every layer, at each step:
-    @test mean(parent(p.soil.ψ .+ coords.z)[:] .+ 10.0) < 1e-10
+    @test mean(parent(p.soil.ψ .+ coords.subsurface.z)[:] .+ 10.0) < 1e-10
 end
 
 
@@ -158,7 +158,7 @@ end
     end
 
     t0 = FT(0)
-    init_soil_heat!(Y, coords.z, soil_heat_on.parameters)
+    init_soil_heat!(Y, coords.subsurface.z, soil_heat_on.parameters)
     set_initial_aux_state! = make_set_initial_aux_state(soil_heat_on)
     set_initial_aux_state!(p, Y, t0)
     exp_tendency! = make_exp_tendency(soil_heat_on)
@@ -217,7 +217,7 @@ end
     end
 
     t0 = FT(0)
-    init_soil_water!(Y, coords.z, soil_water_on.parameters)
+    init_soil_water!(Y, coords.subsurface.z, soil_water_on.parameters)
     set_initial_aux_state! = make_set_initial_aux_state(soil_water_on)
     set_initial_aux_state!(p, Y, t0)
     exp_tendency! = make_exp_tendency(soil_water_on)
@@ -290,7 +290,7 @@ end
 
     θ = parent(Y.soil.ϑ_l)# on the center
     θ_face = 0.5 * (θ[2:end] + θ[1:(end - 1)])
-    Z = parent(coords.z)
+    Z = parent(coords.subsurface.z)
     Z_face = 0.5 * (Z[2:end] + Z[1:(end - 1)])
     K_face = 0.5 .* (K.(θ[2:end]) .+ K.(θ[1:(end - 1)]))
     flux_interior = (@. -K_face * (1.0 + dψdθ(θ_face) * dθdz(Z_face)))
@@ -362,7 +362,7 @@ end
     end
 
     t0 = FT(0)
-    init_soil_off!(Y, coords.z, soil_both_off.parameters)
+    init_soil_off!(Y, coords.subsurface.z, soil_both_off.parameters)
     set_initial_aux_state! = make_set_initial_aux_state(soil_both_off)
     set_initial_aux_state!(p, Y, t0)
     exp_tendency! = make_exp_tendency(soil_both_off)
@@ -413,7 +413,7 @@ end
     end
 
     t0 = FT(0)
-    init_soil_on!(Y, coords.z, soil_both_on.parameters)
+    init_soil_on!(Y, coords.subsurface.z, soil_both_on.parameters)
     set_initial_aux_state! = make_set_initial_aux_state(soil_both_on)
     set_initial_aux_state!(p, Y, t0)
 
@@ -426,7 +426,7 @@ end
 
     θ = parent(Y.soil.ϑ_l)# on the center
     θ_face = 0.5 * (θ[2:end] + θ[1:(end - 1)])
-    Z = parent(coords.z)
+    Z = parent(coords.subsurface.z)
     Z_face = 0.5 * (Z[2:end] + Z[1:(end - 1)])
     K_face = 0.5 .* (K.(θ[2:end]) .+ K.(θ[1:(end - 1)]))
     vf = parent(
@@ -553,7 +553,7 @@ end
             Soil.volumetric_internal_energy.(0.0, ρc_s, T, Ref(params))
     end
 
-    init_soil_heat!(Y, coords.z, soil_heat_on.parameters)
+    init_soil_heat!(Y, coords.subsurface.z, soil_heat_on.parameters)
     set_initial_aux_state! = make_set_initial_aux_state(soil_heat_on)
     set_initial_aux_state!(p, Y, FT(0.0))
     dY = similar(Y)

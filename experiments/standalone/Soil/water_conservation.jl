@@ -219,7 +219,7 @@ for i in eachindex(dts)
 
     # Calculate water mass balance over entire simulation
     # Convert Dirichlet BC to flux
-    z = ClimaCore.Fields.coordinate_field(soil_domain.space).z
+    z = ClimaCore.Fields.coordinate_field(soil_domain.space.subsurface).z
     Δz_top, Δz_bottom = get_Δz(z)
 
     times = collect(t_start:dt:t_end)

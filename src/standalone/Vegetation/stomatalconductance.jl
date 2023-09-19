@@ -46,3 +46,5 @@ ClimaLSM.auxiliary_vars(model::MedlynConductanceModel) =
     (:medlyn_term, :gs, :transpiration)
 ClimaLSM.auxiliary_types(model::MedlynConductanceModel{FT}) where {FT} =
     (FT, FT, FT)
+ClimaLSM.auxiliary_domain_names(::MedlynConductanceModel) =
+    (:surface, :surface, :surface)

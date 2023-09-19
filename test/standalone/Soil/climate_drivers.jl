@@ -134,15 +134,15 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
         end
 
         t = FT(0)
-        init_soil!(Y, coords.z, model.parameters)
+        init_soil!(Y, coords.subsurface.z, model.parameters)
         set_initial_aux_state! = make_set_initial_aux_state(model)
         set_initial_aux_state!(p, Y, t)
 
 
-        face_space = ClimaLSM.Domains.obtain_face_space(model.domain.space)
+        face_space =
+            ClimaLSM.Domains.obtain_face_space(model.domain.space.subsurface)
         N = ClimaCore.Spaces.nlevels(face_space)
-        surface_space =
-            ClimaLSM.Domains.obtain_surface_space(model.domain.space)
+        surface_space = model.domain.space.surface
         z_sfc = ClimaCore.Fields.Field(
             ClimaCore.Fields.field_values(
                 ClimaCore.Fields.level(

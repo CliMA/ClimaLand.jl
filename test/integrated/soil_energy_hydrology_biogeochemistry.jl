@@ -1,7 +1,7 @@
 using Test
 using ClimaCore
 using ClimaLSM
-using ClimaLSM.Domains: LSMSingleColumnDomain
+using ClimaLSM.Domains: Column
 using ClimaLSM.Soil
 using ClimaLSM.Soil.Biogeochemistry
 
@@ -52,8 +52,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     zmax = FT(0)
     zmin = FT(-1)
     nelems = 20
-    lsm_domain =
-        LSMSingleColumnDomain(; zlim = (zmin, zmax), nelements = nelems)
+    lsm_domain = Column(; zlim = (zmin, zmax), nelements = nelems)
     zero_flux_bc = Soil.FluxBC((p, t) -> eltype(t)(0.0))
     sources = () # PhaseChange
     boundary_fluxes = (;
@@ -63,7 +62,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     soil_args = (;
         boundary_conditions = boundary_fluxes,
         sources = sources,
-        domain = lsm_domain.subsurface,
+        domain = lsm_domain,
         parameters = soil_ps,
     )
 
@@ -85,7 +84,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     soilco2_args = (;
         boundary_conditions = co2_boundary_conditions,
         sources = co2_sources,
-        domain = lsm_domain.subsurface,
+        domain = lsm_domain,
         parameters = co2_parameters,
         drivers = soil_drivers,
     )
@@ -157,7 +156,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
         soilco2_args = (;
             boundary_conditions = co2_boundary_conditions,
             sources = co2_sources,
-            domain = lsm_domain.subsurface,
+            domain = lsm_domain,
             parameters = co2_parameters,
             drivers = soil_drivers,
         )
@@ -183,7 +182,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
         soilco2_args = (;
             boundary_conditions = co2_boundary_conditions,
             sources = co2_sources,
-            domain = lsm_domain.subsurface,
+            domain = lsm_domain,
             parameters = co2_parameters,
             drivers = soil_drivers,
         )

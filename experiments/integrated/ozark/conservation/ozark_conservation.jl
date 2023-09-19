@@ -8,7 +8,7 @@ using Dates
 using Insolation
 
 using ClimaLSM
-using ClimaLSM.Domains: LSMSingleColumnDomain
+using ClimaLSM.Domains: Column
 using ClimaLSM.Soil
 using ClimaLSM.Canopy
 using ClimaLSM.Canopy.PlantHydraulics
@@ -39,7 +39,7 @@ include(
 
 # Now we set up the model. For the soil model, we pick
 # a model type and model args:
-soil_domain = land_domain.subsurface
+soil_domain = land_domain
 soil_ps = Soil.EnergyHydrologyParameters{FT}(;
     κ_dry = κ_dry,
     κ_sat_frozen = κ_sat_frozen,
@@ -155,7 +155,7 @@ shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
     earth_param_set,
 )
 
-canopy_model_args = (; parameters = shared_params, domain = land_domain.surface)
+canopy_model_args = (; parameters = shared_params, domain = canopy_domain)
 
 # Integrated plant hydraulics and soil model
 land_input = (atmos = atmos, radiation = radiation)

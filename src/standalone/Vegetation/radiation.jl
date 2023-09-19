@@ -181,3 +181,5 @@ ClimaLSM.auxiliary_vars(model::Union{BeerLambertModel, TwoStreamModel}) =
 ClimaLSM.auxiliary_types(
     model::Union{BeerLambertModel{FT}, TwoStreamModel{FT}},
 ) where {FT} = (FT, FT, FT, FT)
+ClimaLSM.auxiliary_domain_names(::Union{BeerLambertModel, TwoStreamModel}) =
+    (:surface, :surface, :surface, :surface)

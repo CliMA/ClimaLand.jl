@@ -14,12 +14,10 @@ ClimaLSM.Domains.HybridBox
 ClimaLSM.Domains.Column
 ClimaLSM.Domains.Plane
 ClimaLSM.Domains.Point
-ClimaLSM.Domains.LSMSingleColumnDomain
-ClimaLSM.Domains.LSMMultiColumnDomain
-ClimaLSM.Domains.LSMSphericalShellDomain
 ClimaLSM.Domains.coordinates
 ClimaLSM.Domains.obtain_face_space
 ClimaLSM.Domains.obtain_surface_space
+ClimaLSM.Domains.obtain_surface_domain
 ClimaLSM.Domains.top_center_to_surface
 ```
 
@@ -37,8 +35,10 @@ ClimaLSM.make_update_aux
 ClimaLSM.make_set_initial_aux_state
 ClimaLSM.prognostic_vars
 ClimaLSM.prognostic_types
+ClimaLSM.prognostic_domain_names
 ClimaLSM.auxiliary_vars
 ClimaLSM.auxiliary_types
+ClimaLSM.auxiliary_domain_names
 ClimaLSM.initialize_prognostic
 ClimaLSM.initialize_auxiliary
 ClimaLSM.initialize

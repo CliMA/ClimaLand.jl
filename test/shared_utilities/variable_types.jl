@@ -10,6 +10,8 @@ import ClimaLSM:
     prognostic_types,
     auxiliary_vars,
     auxiliary_types,
+    prognostic_domain_names,
+    auxiliary_domain_names,
     name
 using ClimaLSM.Domains: HybridBox, Column, Point
 using ClimaLSM.Domains: coordinates
@@ -20,8 +22,10 @@ using ClimaLSM.Canopy: AbstractCanopyComponent
     dm = DefaultModel{Float32}()
     @test ClimaLSM.prognostic_vars(dm) == ()
     @test ClimaLSM.prognostic_types(dm) == ()
+    @test ClimaLSM.prognostic_domain_names(dm) == ()
     @test ClimaLSM.auxiliary_vars(dm) == ()
     @test ClimaLSM.auxiliary_types(dm) == ()
+    @test ClimaLSM.auxiliary_domain_names(dm) == ()
 
     x = [0, 1, 2, 3]
     dm_exp_tendency! = make_exp_tendency(dm)
@@ -65,8 +69,11 @@ end
     dcc = DefaultCanopyComponent{Float32}()
     @test ClimaLSM.prognostic_vars(dcc) == ()
     @test ClimaLSM.prognostic_types(dcc) == ()
+    @test ClimaLSM.prognostic_domain_names(dcc) == ()
+
     @test ClimaLSM.auxiliary_vars(dcc) == ()
     @test ClimaLSM.auxiliary_types(dcc) == ()
+    @test ClimaLSM.auxiliary_domain_names(dcc) == ()
 
     x = [0, 1, 2, 3]
     dcc_compute_exp_tendency! = make_compute_exp_tendency(dcc, nothing)
@@ -85,8 +92,10 @@ end
     ClimaLSM.auxiliary_vars(m::Model) = (:d, :e)
 
     ClimaLSM.prognostic_types(m::Model{FT}) where {FT} = (FT, SVector{2, FT})
-
     ClimaLSM.auxiliary_types(m::Model{FT}) where {FT} = (FT, SVector{2, FT})
+
+    ClimaLSM.prognostic_domain_names(m::Model) = (:surface, :surface)
+    ClimaLSM.auxiliary_domain_names(m::Model) = (:surface, :subsurface)
 
     FT = Float64
     zmin = FT(1.0)
@@ -95,22 +104,10 @@ end
     nelements = 5
 
     column = Column(; zlim = zlim, nelements = nelements)
-    point = Point(; z_sfc = zlim[1])
-
-    for domain in [column, point]
-
-        m = Model{FT, typeof(domain)}(domain)
-        Y, p, coords = initialize(m)
-        if typeof(domain) <: Column
-            @test parent(Y.foo.a) == zeros(FT, 5, 1)
-            @test parent(Y.foo.b) == zeros(FT, 5, 2)
-            @test parent(p.foo.d) == zeros(FT, 5, 1)
-            @test parent(p.foo.e) == zeros(FT, 5, 2)
-        elseif typeof(domain) <: Point
-            @test Y.foo.a[] == 0.0
-            @test Y.foo.b[] == zero(SVector{2, FT})
-            @test p.foo.d[] == 0.0
-            @test p.foo.e[] == zero(SVector{2, FT})
-        end
-    end
+    m = Model{FT, typeof(column)}(column)
+    Y, p, coords = initialize(m)
+    @test parent(Y.foo.a) == zeros(FT, 1)
+    @test parent(Y.foo.b) == zeros(FT, 2)
+    @test parent(p.foo.d) == zeros(FT, 1)
+    @test parent(p.foo.e) == zeros(FT, 5, 2)
 end

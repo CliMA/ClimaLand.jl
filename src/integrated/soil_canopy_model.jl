@@ -112,7 +112,9 @@ function SoilCanopyModel{FT}(;
     (; atmos, radiation) = land_args
     # These should always be set by the constructor.
     Δz = minimum(
-        ClimaCore.Fields.Δz_field(ClimaLSM.coordinates(soil_args.domain)),
+        ClimaCore.Fields.Δz_field(
+            ClimaLSM.coordinates(soil_args.domain).subsurface,
+        ),
     )
     sources = (RootExtraction{FT}(), Soil.PhaseChange{FT}(Δz))
     # add heat BC
@@ -219,7 +221,10 @@ function make_interactions_update_aux(
     land::SoilCanopyModel{FT, SM, RM},
 ) where {FT, SM <: Soil.EnergyHydrology{FT}, RM <: Canopy.CanopyModel{FT}}
     function update_aux!(p, Y, t)
-        z = ClimaCore.Fields.coordinate_field(land.soil.domain.space).z
+        z =
+            ClimaCore.Fields.coordinate_field(
+                land.soil.domain.space.subsurface,
+            ).z
         (; conductivity_model) = land.canopy.hydraulics.parameters
         area_index = p.canopy.hydraulics.area_index
         @. p.root_extraction =

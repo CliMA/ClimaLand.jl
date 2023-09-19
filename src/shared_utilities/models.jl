@@ -14,9 +14,10 @@ export AbstractModel,
     auxiliary_vars,
     prognostic_types,
     auxiliary_types,
+    prognostic_domain_names,
+    auxiliary_domain_names,
     make_set_initial_aux_state,
-    name,
-    domain_name
+    name
 
 import .Domains: coordinates
 ## Default methods for all models - to be in a seperate module at some point.
@@ -55,22 +56,20 @@ name(model::AbstractModel) =
     error("`name` not implemented for $(Base.typename(typeof(model)).wrapper)")
 
 """
-    domain_name(model::AbstractModel)
-
-Returns a symbol indicating the model's domain name, e.g. :surface or :subsurface. Only required for models that will be used as part of an LSM.
-"""
-domain_name(model::AbstractModel) = error(
-    "`domain_name` not implemented for $(Base.typename(typeof(model)).wrapper)",
-)
-
-
-
-"""
    prognostic_vars(m::AbstractModel)
 
 Returns the prognostic variable symbols for the model in the form of a tuple.
 """
 prognostic_vars(m::AbstractModel) = ()
+
+"""
+   prognostic_domain_names(m::AbstractModel)
+
+Returns the domain names for the prognostic variables in the form of a tuple.
+
+Examples: (:surface, :surface, :subsurface).
+"""
+prognostic_domain_names(m::AbstractModel) = ()
 
 """
    prognostic_types(m::AbstractModel{FT}) where {FT}
@@ -94,6 +93,16 @@ prognostic_types(m::AbstractModel) = ()
 Returns the auxiliary variable symbols for the model in the form of a tuple.
 """
 auxiliary_vars(m::AbstractModel) = ()
+
+
+"""
+   auxiliary_domain_names(m::AbstractModel)
+
+Returns the domain names for the auxiliary variables in the form of a tuple.
+
+Examples: (:surface, :surface, :subsurface).
+"""
+auxiliary_domain_names(m::AbstractModel) = ()
 
 
 """
@@ -223,7 +232,7 @@ function make_set_initial_aux_state(model::AbstractModel)
 end
 
 """
-    initialize_prognostic(model::AbstractModel, state::Union{ClimaCore.Fields.Field, Vector{FT}})
+    initialize_prognostic(model::AbstractModel, state::NamedTuple)
 
 Returns a FieldVector of prognostic variables for `model` with the required
 structure, with values equal to `similar(state)`. This assumes that all
@@ -243,6 +252,7 @@ function initialize_prognostic(model::AbstractModel{FT}, state) where {FT}
     state_nt = initialize_vars(
         prognostic_vars(model),
         prognostic_types(model),
+        prognostic_domain_names(model),
         state,
         name(model),
     )
@@ -250,7 +260,7 @@ function initialize_prognostic(model::AbstractModel{FT}, state) where {FT}
 end
 
 """
-    initialize_auxiliary(model::AbstractModel, state::Union{ClimaCore.Fields.Field, Vector{FT}})
+    initialize_auxiliary(model::AbstractModel, state::NamedTuple)
 
 Returns a NamedTuple of auxiliary variables for `model` with the required
 structure, with values equal to `similar(state)`. This assumes that all
@@ -271,6 +281,7 @@ function initialize_auxiliary(model::AbstractModel{FT}, state) where {FT}
     p = initialize_vars(
         auxiliary_vars(model),
         auxiliary_types(model),
+        auxiliary_domain_names(model),
         state,
         name(model),
     )
@@ -285,14 +296,14 @@ function initialize_auxiliary(model::AbstractModel{FT}, state) where {FT}
     return p
 end
 
-function initialize_vars(keys, types, state, model_name)
+function initialize_vars(keys, types, domain_names, state, model_name)
     FT = eltype(state)
     if length(keys) == 0
         return (; model_name => FT[])
     else
-        zero_states = map(types) do (T)
+        zero_states = map(zip(types, domain_names)) do (T, D)
             zero_instance = ClimaCore.RecursiveApply.rzero(T)
-            map(_ -> zero_instance, state)
+            map(_ -> zero_instance, getproperty(state, D))
         end
         return (; model_name => (; zip(keys, zero_states)...))
     end

@@ -115,9 +115,13 @@ end
         domain1 = ClimaLSM.Domains.Point(; z_sfc = FT(0))
         domain2 =
             ClimaLSM.Domains.Column(; zlim = FT.((-1.0, 0.0)), nelements = (5))
-        domains = (domain1, domain2)
-        for domain in domains
-            space = domain.space
+        domains = (domain1, domain2, domain2)
+        spaces = (
+            domain1.space.surface,
+            domain2.space.subsurface,
+            domain2.space.surface,
+        )
+        for (domain, space) in zip(domains, spaces)
             field = Fields.coordinate_field(space)
             subfield1 = similar(field)
             parent(subfield1) .= parent(copy(field)) .+ FT(1)
@@ -155,7 +159,7 @@ end
 
         domains = (domain1, domain2)
         for domain in domains
-            space = domain.space
+            space = domain.space.surface
             field = Fields.zeros(space)
             subfield1 = Fields.zeros(space)
             subfield2 = Fields.zeros(space)
@@ -176,7 +180,7 @@ end
             p = (;)
             p = ClimaLSM.add_dss_buffer_to_aux(p, domain)
             @test typeof(p.dss_buffer_2d) ==
-                  typeof(Spaces.create_dss_buffer(Fields.zeros(domain.space)))
+                  typeof(Spaces.create_dss_buffer(Fields.zeros(space)))
             ClimaLSM.dss!(Y, p, FT(0))
 
             # On a 2D space, we expect dss! to change Y
@@ -206,7 +210,7 @@ end
 
         domains = (domain1, domain2)
         for domain in domains
-            space = domain.space
+            space = domain.space.subsurface
             field = Fields.zeros(space)
             subfield1 = Fields.zeros(space)
             subfield2 = Fields.zeros(space)
@@ -227,7 +231,10 @@ end
             p = (;)
             p = ClimaLSM.add_dss_buffer_to_aux(p, domain)
             @test typeof(p.dss_buffer_3d) ==
-                  typeof(Spaces.create_dss_buffer(Fields.zeros(domain.space)))
+                  typeof(Spaces.create_dss_buffer(Fields.zeros(space)))
+            @test typeof(p.dss_buffer_2d) == typeof(
+                Spaces.create_dss_buffer(Fields.zeros(domain.space.surface)),
+            )
             ClimaLSM.dss!(Y, p, FT(0))
 
             # On a 3D space, we expect dss! to change Y

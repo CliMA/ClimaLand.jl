@@ -45,12 +45,26 @@ passed in as an argument.
 ClimaLSM.prognostic_vars(::AbstractCanopyComponent) = ()
 
 """
+   prognostic_domain_names(m::AbstractCanopyComponent)
+
+Returns the domain names for the prognostic variables in the form of a tuple.
+"""
+ClimaLSM.prognostic_domain_names(::AbstractCanopyComponent) = ()
+
+"""
     ClimaLSM.auxiliary_vars(::AbstractCanopyComponent)
 
 Returns the auxiliary types of the canopy component
 passed in as an argument.
 """
 ClimaLSM.auxiliary_vars(::AbstractCanopyComponent) = ()
+
+"""
+   auxiliary_domain_names(m::AbstractCanopyComponent)
+
+Returns the domain names for the auxiliary variables in the form of a tuple.
+"""
+ClimaLSM.auxiliary_domain_names(::AbstractCanopyComponent) = ()
 
 """
     initialize_prognostic(
@@ -68,6 +82,7 @@ function initialize_prognostic(component::AbstractCanopyComponent, state)
     ClimaLSM.initialize_vars(
         prognostic_vars(component),
         prognostic_types(component),
+        prognostic_domain_names(component),
         state,
         name(component),
     )
@@ -92,6 +107,7 @@ function initialize_auxiliary(
     ClimaLSM.initialize_vars(
         auxiliary_vars(component),
         auxiliary_types(component),
+        auxiliary_domain_names(component),
         state,
         name(component),
     )

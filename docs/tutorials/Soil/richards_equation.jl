@@ -217,7 +217,7 @@ sol = SciMLBase.solve(prob, ode_algo; dt = dt, adaptive = false);
 
 t = sol.t ./ (60 * 60 * 24);
 ϑ_l = [parent(sol.u[k].soil.ϑ_l) for k in 1:length(t)]
-z = parent(coords.z)
+z = parent(coords.subsurface.z)
 plot(
     ϑ_l[1],
     z,

@@ -1,7 +1,7 @@
 using Test
 using ClimaCore
 using ClimaLSM
-using ClimaLSM.Domains: LSMMultiColumnDomain, LSMSingleColumnDomain
+using ClimaLSM.Domains: HybridBox, Column, obtain_surface_domain
 using ClimaLSM.Soil
 using ClimaLSM.Pond
 
@@ -25,7 +25,7 @@ using ClimaLSM.Pond
     zmax = FT(0)
     zmin = FT(-1)
     nelems = 20
-    lsm_domain = LSMMultiColumnDomain(;
+    lsm_domain = HybridBox(;
         xlim = (0.0, 1.0),
         ylim = (0.0, 1.0),
         zlim = (zmin, zmax),
@@ -34,8 +34,8 @@ using ClimaLSM.Pond
         periodic = (true, true),
     )
     soil_ps = Soil.RichardsParameters{FT, typeof(hcm)}(ν, hcm, K_sat, S_s, θ_r)
-    soil_args = (; domain = lsm_domain.subsurface, parameters = soil_ps)
-    surface_water_args = (; domain = lsm_domain.surface)
+    soil_args = (; domain = lsm_domain, parameters = soil_ps)
+    surface_water_args = (; domain = obtain_surface_domain(lsm_domain))
 
     land_args = (; precip = precipitation)
 
@@ -57,12 +57,12 @@ using ClimaLSM.Pond
     )
     @test typeof(p.dss_buffer_3d) == typeof(
         ClimaCore.Spaces.create_dss_buffer(
-            ClimaCore.Fields.zeros(land.soil.domain.space),
+            ClimaCore.Fields.zeros(land.soil.domain.space.subsurface),
         ),
     )
     @test typeof(p.dss_buffer_2d) == typeof(
         ClimaCore.Spaces.create_dss_buffer(
-            ClimaCore.Fields.zeros(land.surface_water.domain.space),
+            ClimaCore.Fields.zeros(land.surface_water.domain.space.surface),
         ),
     )
     function init_soil!(Ysoil, coords, params)
@@ -153,12 +153,11 @@ end
     zmax = FT(0)
     zmin = FT(-1)
     nelems = 20
-    lsm_domain =
-        LSMSingleColumnDomain(; zlim = (zmin, zmax), nelements = nelems)
+    lsm_domain = Column(; zlim = (zmin, zmax), nelements = nelems)
 
     soil_ps = Soil.RichardsParameters{FT, typeof(hcm)}(ν, hcm, K_sat, S_s, θ_r)
-    soil_args = (; domain = lsm_domain.subsurface, parameters = soil_ps)
-    surface_water_args = (; domain = lsm_domain.surface)
+    soil_args = (; domain = lsm_domain, parameters = soil_ps)
+    surface_water_args = (; domain = obtain_surface_domain(lsm_domain))
 
     land_args = (; precip = precipitation)
 
