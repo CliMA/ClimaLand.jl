@@ -83,8 +83,10 @@
 # heat capacity of the land, `σ_SB` the Stefan-Boltzmann constant,  and `κ_soil` the thermal
 # conductivity. The albedo is a linear interpolation between the albedo of surface and
 # snow, as decribed in [3]. The surface temperature is taken to be equal to the temperature
-# T at the first grid point, assumed to be the same for soil and snow. At present the snow cover fraction is a heaviside function, and only one set
+# T at the first grid point, assumed to be the same for soil and snow. At present the snow
+# cover fraction is a heaviside function, and only one set
 # of surface fluxes is computed per grid point.
+# The surface albedo is read in from a file and is constant over time.
 
 # Turbulent surface fluxes of sensible heat, latent heat, and water vapor
 # (`SHF, LHF, E`) are computed using Monin-Obukhov theory; `SW↓` and `LW↓`
@@ -136,8 +138,8 @@ using Insolation
 # Lastly, let's bring in the bucket model types (from ClimaLSM) that we
 # will need access to.
 
-using ClimaLSM.Bucket: BucketModel, BucketModelParameters, BulkAlbedoFunction
-using ClimaLSM.Domains: coordinates, LSMSingleColumnDomain
+using ClimaLSM.Bucket: BucketModel, BucketModelParameters, BulkAlbedoStatic
+using ClimaLSM.Domains: coordinates, LSMSphericalShellDomain
 using ClimaLSM:
     initialize,
     make_update_aux,
@@ -162,15 +164,25 @@ import ClimaLSM
 include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"));
 earth_param_set = create_lsm_parameters(FT);
 
-# Define our `BulkAlbedoFunction` model using a constant surface and snow albedo:
-# The surface albedo is a function of coordinates, which would be
-# (x,y) on a plane, and (lat,lon) on a sphere. Another albedo
-# option is to specify a `BulkAlbedoStatic` or `BulkAlbedoTemporal`,
-# which uses a NetCDF file to read in surface albedo.
-# These options only applies when coordinates are (lat,lon).
-α_sfc = (coordinate_point) -> FT(0.2);
-α_snow = FT(0.8);
-albedo = BulkAlbedoFunction{FT}(α_snow, α_sfc);
+# Define our `BulkAlbedoStatic` model, which reads in surface albedo from an
+# input file and prescribes a constant snow albedo.
+# This options only applies when coordinates are (lat,lon).
+# The only required argument is `regrid_dirpath`, which specifies where the
+# regridded albedo data will be saved.
+# Optional arguments are `α_snow` (snow albedo), `comms` (communications context),
+# `varname` (variable name as it appears in the input file), and `path` (the
+# path to the input data file - `Bucket.bareground_albedo_dataset_path()` by default).
+regrid_dirpath = joinpath(pkgdir(ClimaLSM), "albedo-static");
+albedo = BulkAlbedoStatic{FT}(regrid_dirpath);
+"""
+# The albedo can alternatively be constructed using the following:
+α_snow = 0.8;
+comms = ClimaComms.SingletonCommsContext();
+varname = "sw_alb";
+path = Bucket.bareground_albedo_dataset_path();
+albedo = BulkAlbedoStatic{FT}(regrid_dirpath; α_snow, comms, varname, path);
+"""
+
 # The critical snow level setting the scale for when we interpolate between
 # snow and surface albedo
 σS_c = FT(0.2);
@@ -204,12 +216,14 @@ bucket_parameters = BucketModelParameters(
 # In coupled simulations run at the same
 # resolution as the atmosphere, the bucket horizontal resolution would match the
 # horizontal resolution at the lowest level of the atmosphere model. In general, however, the two
-# resolutions do not need to match. Here we just set up something
-# simple - an LSMSingleColumnDomain, consisting of a single column.
-
+# resolutions do not need to match.
 soil_depth = FT(3.5);
-bucket_domain =
-    LSMSingleColumnDomain(; zlim = (-soil_depth, 0.0), nelements = 10);
+bucket_domain = LSMSphericalShellDomain(;
+    radius = FT(100.0),
+    depth = soil_depth,
+    nelements = (1, 10),
+    npolynomial = 1,
+)
 
 
 # The PrescribedAtmosphere and PrescribedRadiation need to take in a reference
