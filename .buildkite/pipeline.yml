@@ -54,3 +54,12 @@ steps:
       - label: "Water conservation"
         command: "julia --color=yes --project=experiments experiments/standalone/Soil/water_conservation.jl"
         artifact_paths: "experiments/standalone/Soil/water_conservation*png"
+
+  - group: "albedo type demos"
+    steps:
+      - label: "bucket tutorial - BulkAlbedoFunction"
+        command: "julia --color=yes --project=docs docs/tutorials/Bucket/bucket_tutorial.jl"
+      - label: "bucket tutorial - BulkAlbedoStatic"
+        command: "julia --color=yes --project=docs docs/tutorials/Bucket/bucket_tutorial_albedostatic.jl"
+      - label: "bucket tutorial - BulkAlbedoTemporal"
+        command: "julia --color=yes --project=docs docs/tutorials/Bucket/bucket_tutorial_albedotemporal.jl"
