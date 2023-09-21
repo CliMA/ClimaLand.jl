@@ -90,7 +90,7 @@ function compute_absorbances(
     frac_diff,
 ) where {FT}
     RTP = RT.parameters
-    APAR = @. plant_absorbed_pfd(
+    APAR, RPAR = @. plant_absorbed_pfd(
         RT,
         PAR,
         RTP.α_PAR_leaf,
@@ -101,7 +101,7 @@ function compute_absorbances(
         α_soil_PAR,
         frac_diff,
     )
-    ANIR = @. plant_absorbed_pfd(
+    ANIR, RNIR = @. plant_absorbed_pfd(
         RT,
         NIR,
         RTP.α_NIR_leaf,
@@ -112,7 +112,7 @@ function compute_absorbances(
         α_soil_NIR,
         frac_diff,
     )
-    return (APAR, ANIR)
+    return (APAR, RPAR, ANIR, RNIR)
 end
 
 """
@@ -262,6 +262,9 @@ function plant_absorbed_pfd(
     F_abs = 0
     i = 0
 
+    # Total light reflected form top of canopy
+    reflected = 0
+
     # Intialize vars to save computed fluxes from each layer for the next layer
     I_dir_up_prev = 0
     I_dir_dn_prev = 0
@@ -300,6 +303,11 @@ function plant_absorbed_pfd(
             I_dif_abs = I_dif_up - I_dif_up_prev - I_dif_dn + I_dif_dn_prev
         end
 
+        if i == 1
+            reflected = (1 - frac_diff) * I_dir_up + (frac_diff) * I_dif_up
+        end
+
+
         # Add radiation absorbed in the layer to total absorbed radiation
         F_abs += (1 - frac_diff) * I_dir_abs + (frac_diff) * I_dif_abs
 
@@ -315,7 +323,7 @@ function plant_absorbed_pfd(
 
     # Convert fractional absorption into absorption and return
     # Ensure floating point precision is correct (it may be different for PAR)
-    return FT(SW_IN * F_abs)
+    return (FT(SW_IN * F_abs), FT(SW_IN * reflected))
 end
 
 """

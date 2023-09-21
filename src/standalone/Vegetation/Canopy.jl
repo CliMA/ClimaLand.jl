@@ -398,8 +398,10 @@ function ClimaLSM.make_update_aux(
         # Other auxiliary variables being updated:
         APAR = p.canopy.radiative_transfer.apar
         PAR = p.canopy.radiative_transfer.par
+        RPAR = p.canopy.radiative_transfer.rpar
         ANIR = p.canopy.radiative_transfer.anir
         NIR = p.canopy.radiative_transfer.nir
+        RNIR = p.canopy.radiative_transfer.rnir
         β = p.canopy.hydraulics.β
         medlyn_factor = p.canopy.conductance.medlyn_term
         gs = p.canopy.conductance.gs
@@ -457,7 +459,7 @@ function ClimaLSM.make_update_aux(
         rel_hum = e / e_sat
         DOY = Dates.dayofyear(ref_time + Dates.Second(floor(Int64, t)))
         frac_diff = @. diffuse_fraction(DOY, T_air, PAR + NIR, rel_hum, θs)
-        APAR, ANIR = compute_absorbances(
+        APAR, RPAR, ANIR, RNIR = compute_absorbances(
             RT,
             PAR ./ (energy_per_photon_PAR * N_a),
             NIR ./ (energy_per_photon_NIR * N_a),
@@ -468,7 +470,6 @@ function ClimaLSM.make_update_aux(
             ground_albedo_NIR(canopy),
             frac_diff,
         )
-
         # update plant hydraulics aux
         hydraulics = canopy.hydraulics
         n_stem = hydraulics.n_stem
