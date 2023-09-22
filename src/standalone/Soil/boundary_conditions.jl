@@ -514,7 +514,7 @@ boundary_vars(
         },
         <:RichardsAtmosDrivenFluxBC{<:TOPMODELRunoff},
     },
-) = (:ϕ_α, :ϕ_β, :z_∇)
+) = (:landsea_mask, :fmax, :z_∇, :fsat)
 boundary_var_domains(
     ::Union{
         AtmosDrivenFluxBC{
@@ -524,7 +524,7 @@ boundary_var_domains(
         },
         <:RichardsAtmosDrivenFluxBC{<:TOPMODELRunoff},
     },
-) = (:surface, :surface, :surface)
+) = (:surface, :surface, :surface, :surface)
 boundary_var_types(
     ::Union{
         AtmosDrivenFluxBC{
@@ -534,7 +534,7 @@ boundary_var_types(
         },
         <:RichardsAtmosDrivenFluxBC{<:TOPMODELRunoff{FT}},
     },
-) where {FT} = (FT, FT, FT)
+) where {FT} = (FT, FT, FT, FT)
 function set_initial_parameter_field!(parameterization, p, surface_space) end
 # we need surface fields
 # we need a way to add these fields based on parameterization
@@ -544,4 +544,14 @@ function set_initial_parameter_field!(
     surface_space,
 ) where {FT}
     set_initial_parameter_field!(bc.top.runoff, p, surface_space)
+end
+
+function make_update_boundary_vars(
+    bc::Union{AtmosDrivenFluxBC, <:RichardsAtmosDrivenFluxBC},
+)
+    function update_boundary_vars!(p, Y, t)
+        p.soil.z_∇ .= sum(heaviside.(Y.soil.ϑ_l .- ν))
+        @. p.soil.fsat = p.soil.fmax * exp(-bc.f_over * p.soil.z_∇)
+    end
+    return update_boundary_vars!(p, Y, t)
 end

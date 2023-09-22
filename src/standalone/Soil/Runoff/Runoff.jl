@@ -77,7 +77,7 @@ append_source(src::Nothing, srcs::Tuple)::Tuple = srcs
 struct TOPMODELSubsurfaceRunoff{FT} <: AbstractSoilSource{FT} end
 
 struct TOPMODELRunoff{FT <: AbstractFloat} <: AbstractRunoffModel
-    f::FT
+    f_over::FT
     regrid_dirpath::String
     raw_datapath::String
     subsurface_source::TOPMODELSubsurfaceRunoff{FT}
@@ -89,25 +89,24 @@ function set_initial_parameter_field!(
     surface_space,
 ) where {FT}
     #    comms =
-    p.soil.ϕ_α .= regrid_netcdf_to_field(
+    p.soil.fmax .= regrid_netcdf_to_field(
         FT,
         parameterization.regrid_dirpath,
         comms,
         parameterization.raw_datapath,
-        :ϕ_α,
+        :fmax,
         surface_space,
     )
-    p.soil.ϕ_β .= regrid_netcdf_to_field(
+
+    p.soil.landsea_mask .= regrid_netcdf_to_field(
         FT,
         parameterization.regrid_dirpath,
         comms,
         parameterization.raw_datapath,
-        :ϕ_β,
+        :landsea_mask,
         surface_space,
     )
 end
-# also add p.soil.z_∇ to aux and update each step.
-# p.soil.ϕ_sat = p.soil.ϕ_α /p.soil.ϕ_β + model.boundary_conditions.top.runoff.f*(z_sfc .- z_∇)
 
 """
 TOPMODEL infiltration
@@ -119,7 +118,7 @@ function soil_surface_infiltration(
     p,
     soil_parameters,
 )
-    fsat = p.soil.ϕ_sat # update correctly
+
     (; hydrology_cm, K_sat, ν, θ_r) = soil_parameters
     # we need this at the surface only
     infiltration_capacity = @. -p.soil.K / hydraulic_conductivity(
@@ -129,7 +128,7 @@ function soil_surface_infiltration(
     )
     # net_water_flux is negative if towards the soil; take smaller in magnitude -> max
     # net_water_flux is positive if away from soil -> use as BC.
-    return (1 - fsat) * max(infiltration_capacity, net_water_flux)
+    return (1 - p.soil.fsat) * max(infiltration_capacity, net_water_flux)
 end
 
 """
@@ -142,7 +141,7 @@ function ClimaLSM.source!(
     p,
     model::AbstractSoilModel,
 )
-    # we need this at the surface only
+    #=
     h_∇ = sum(heaviside.(Y.soil.ϑ_l .- ν))
     @. dY.soil.ϑ_l -=
         -p.soil.K / hydraulic_conductivity(
@@ -151,7 +150,7 @@ function ClimaLSM.source!(
             effective_saturation(ν, Y.soil.ϑ_l, θ_r),
         ) / model.boundary_conditions.top.runoff.f * exp(-p.soil.ϕ_sat) / h_∇ *
         heaviside.(Y.soil.ϑ_l .- ν)
-
+    =#
 
 end
 

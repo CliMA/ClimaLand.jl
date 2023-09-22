@@ -248,7 +248,7 @@ function auxiliary_domain_names(soil::RichardsModel)
     return (
         :subsurface,
         :subsurface,
-        boundary_var_domains(soil.boundary_conditions.top.water)...,
+        boundary_var_domain_names(soil.boundary_conditions.top.water)...,
     )
 end
 
@@ -267,6 +267,8 @@ variables `p.soil.variable` in place.
 This has been written so as to work with Differential Equations.jl.
 """
 function ClimaLSM.make_update_aux(model::RichardsModel)
+    update_boundary_vars! =
+        make_update_boundary_vars(model.boundary_conditions.top.water)
     function update_aux!(p, Y, t)
         (; ν, hydrology_cm, K_sat, S_s, θ_r) = model.parameters
         @. p.soil.K = hydraulic_conductivity(
@@ -275,6 +277,7 @@ function ClimaLSM.make_update_aux(model::RichardsModel)
             effective_saturation(ν, Y.soil.ϑ_l, θ_r),
         )
         @. p.soil.ψ = pressure_head(hydrology_cm, θ_r, Y.soil.ϑ_l, ν, S_s)
+        update_boundary_vars!(p, Y, t)
     end
     return update_aux!
 end
