@@ -109,7 +109,6 @@ and a fully integrated soil heat and water model, with phase change.
 abstract type AbstractSoilModel{FT} <: ClimaLSM.AbstractImExModel{FT} end
 
 ClimaLSM.name(::AbstractSoilModel) = :soil
-ClimaLSM.domain_name(::AbstractSoilModel) = :subsurface
 
 """
     AbstractSoilSource{FT} <:  ClimaLSM.AbstractSource{FT}
@@ -136,30 +135,6 @@ function ClimaLSM.make_set_initial_aux_state(model::AbstractSoilModel)
     end
     return set_initial_aux_state!
 end
-
-ClimaLSM.name(::AbstractSoilModel) = :soil
-#=
-function ClimaLSM.initialize_auxiliary(
-model::AbstractSoilModel{FT},
-_,
-) where {FT}
-model_name = name(model)
-vars = auxiliary_vars(model)
-types = auxiliary_types(model)
-domain_names = auxiliary_domain_names(model)
-
-auxiliary_state = map(zip(types, domain_names)) do (T, domain_name)
-    zero_instance = zero(T)
-    space =
-        domain_name == :surface ?
-        ClimaLSM.Domains.obtain_surface_space(model.domain.space) :
-        model.domain.space
-    cds = ClimaCore.Fields.coordinate_field(space)
-    map(_ -> zero_instance, cds)
-end
-return NamedTuple{vars}(auxiliary_state)
-end
-=#
 
 """
    horizontal_components!(dY::ClimaCore.Fields.FieldVector,
@@ -205,3 +180,26 @@ include("./soil_heat_parameterizations.jl")
 include("Biogeochemistry/Biogeochemistry.jl")
 using .Biogeochemistry
 end
+ClimaLSM.name(::AbstractSoilModel) = :soil
+#=
+function ClimaLSM.initialize_auxiliary(
+model::AbstractSoilModel{FT},
+_,
+) where {FT}
+model_name = name(model)
+vars = auxiliary_vars(model)
+types = auxiliary_types(model)
+domain_names = auxiliary_domain_names(model)
+
+auxiliary_state = map(zip(types, domain_names)) do (T, domain_name)
+    zero_instance = zero(T)
+    space =
+        domain_name == :surface ?
+        ClimaLSM.Domains.obtain_surface_space(model.domain.space) :
+        model.domain.space
+    cds = ClimaCore.Fields.coordinate_field(space)
+    map(_ -> zero_instance, cds)
+end
+return NamedTuple{vars}(auxiliary_state)
+end
+=#
