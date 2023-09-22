@@ -2,7 +2,12 @@ using JLD2
 using Plots
 include("distributions.jl")
 
-files = ["./inv_gamma_1.0.jld2", "./lognormal_1.0.jld2", "./gamma_1.0.jld2","./frechet_1.0.jld2"]
+files = [
+    "./inv_gamma_1.0.jld2",
+    "./lognormal_1.0.jld2",
+    "./gamma_1.0.jld2",
+    "./frechet_1.0.jld2",
+]
 p1 = load(files[1])["parameters"];
 p2 = load(files[2])["parameters"];
 p3 = load(files[3])["parameters"];
@@ -17,8 +22,18 @@ LL4 = p4[:, :, 5]
 Δ14 = LL1 .- LL4
 plt = Plots.plot(xlabel = "ΔLL")
 Plots.histogram!(plt, Δ12[Δ12 .!= 0.0], norm = true, label = "inv gamma/gamma")
-Plots.histogram!(plt, Δ13[Δ13 .!= 0.0], norm = true, label = "inv gamma/lognormal")
-Plots.histogram!(plt, Δ14[Δ14 .!= 0.0], norm = true, label = "inv gamma/frechet")
+Plots.histogram!(
+    plt,
+    Δ13[Δ13 .!= 0.0],
+    norm = true,
+    label = "inv gamma/lognormal",
+)
+Plots.histogram!(
+    plt,
+    Δ14[Δ14 .!= 0.0],
+    norm = true,
+    label = "inv gamma/frechet",
+)
 Plots.savefig(plt, "llΔ.png")
 
 using NCDatasets

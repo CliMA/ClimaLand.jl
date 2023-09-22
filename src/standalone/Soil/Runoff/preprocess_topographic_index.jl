@@ -42,12 +42,12 @@ function main(; resolution, dist_name)
             present = .~(typeof.(ϕ) .<: Missing) .& (ϕ .> 0)
             present_count = sum(present)
             zeros = .~(typeof.(ϕ) .<: Missing) .& (ϕ .== 0)
-            
+
 
             if present_count > 100
                 x̄, var, params = fit(dist_type, Float32.(ϕ[present]))
                 if ~isnan(params[1])
-                    
+
                     parameters[lat_id, lon_id, 1] = x̄
                     parameters[lat_id, lon_id, 2] = var
                     parameters[lat_id, lon_id, 3] = mean(lat[lat_indices])
@@ -56,7 +56,7 @@ function main(; resolution, dist_name)
                         log_likelihood(dist_type, ϕ[present], params)
                     parameters[lat_id, lon_id, 6] = present_count
                     parameters[lat_id, lon_id, 7] = sum(zeros)
-                    
+
                     parameters[lat_id, lon_id, 8:(7 + n_params(dist_type))] .=
                         params
                 end

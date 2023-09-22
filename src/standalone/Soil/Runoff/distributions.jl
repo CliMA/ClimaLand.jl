@@ -5,26 +5,28 @@ using NLsolve
 
 struct FrechetDistribution end
 function constraint!(F, α, x)
-    F[1] = 1/α[1]+ mean(x.^(-α[1]) .*log.(x))/mean(x.^(-α[1])) - mean(log.(x))
+    F[1] =
+        1 / α[1] + mean(x .^ (-α[1]) .* log.(x)) / mean(x .^ (-α[1])) -
+        mean(log.(x))
 end
 
 
 function fit(dist::FrechetDistribution, x)
     wrapper!(F, α) = constraint!(F, α, x)
     α = nlsolve(wrapper!, [1.0])
-    if α.f_converged && α.zero[1] >0
-        σ = mean(x.^(-α.zero[1]))^(-1/α.zero[1])
+    if α.f_converged && α.zero[1] > 0
+        σ = mean(x .^ (-α.zero[1]))^(-1 / α.zero[1])
         return Statistics.mean(x), Statistics.var(x), [α.zero[1], σ]
     else
         return Statistics.mean(x), Statistics.var(x), [NaN, NaN]
     end
-    
+
 end
 
 function pdf(dist::FrechetDistribution, x, params)
     (α, σ) = params
-    y = x/σ
-    return α/σ*exp(-y^(-α))*y^(-α-1)
+    y = x / σ
+    return α / σ * exp(-y^(-α)) * y^(-α - 1)
 end
 
 
@@ -34,13 +36,13 @@ struct LogNormalDistribution end
 
 function fit(dist::LogNormalDistribution, y)
     μ = mean(log.(y))
-    σ2 = mean((log.(y) .- μ).^2)
+    σ2 = mean((log.(y) .- μ) .^ 2)
     return Statistics.mean(y), Statistics.var(y), [μ, σ2]
 end
 
 function pdf(dist::LogNormalDistribution, x, params)
     (μ, σ2) = params
-    return 1/(x*sqrt(σ2*2π))*exp(-(log(x)-μ)^2/2/σ2)
+    return 1 / (x * sqrt(σ2 * 2π)) * exp(-(log(x) - μ)^2 / 2 / σ2)
 end
 
 
@@ -49,7 +51,11 @@ n_params(dist::LogNormalDistribution) = 2
 
 struct PercentileDistribution end
 
-function fit(dist::PercentileDistribution, x; q = [0.0, 0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9, 1.0])
+function fit(
+    dist::PercentileDistribution,
+    x;
+    q = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
+)
     x̄ = Statistics.mean(x)
     var = Statistics.var(x)
     params = StatsBase.quantile(x, q)
@@ -74,22 +80,22 @@ end
 function cdf(dist::PercentileDistribution, x, p; y = Array(0.0:0.1:1.0))
     id_u = sortedIndex(p, x)
     if id_u <= 1
-        return  0
-    elseif id_u == length(y)+1
+        return 0
+    elseif id_u == length(y) + 1
         return 1
     else
-        return y[id_u-1] + 0.1/(p[id_u]-p[id_u-1])*(x - p[id_u-1])
+        return y[id_u - 1] + 0.1 / (p[id_u] - p[id_u - 1]) * (x - p[id_u - 1])
     end
 end
 
 function pdf(dist::PercentileDistribution, x, p; y = Array(0.0:0.1:1.0))
     id_u = sortedIndex(p, x)
     if id_u <= 1
-        return  eps(Float64)
-    elseif id_u == length(y)+1
+        return eps(Float64)
+    elseif id_u == length(y) + 1
         return eps(Float64)
     else
-        return 0.1/(p[id_u]-p[id_u-1])
+        return 0.1 / (p[id_u] - p[id_u - 1])
     end
 end
 
