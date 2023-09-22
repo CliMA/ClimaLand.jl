@@ -133,7 +133,7 @@ end
 ClimaLSM.name(model::AbstractPhotosynthesisModel) = :photosynthesis
 ClimaLSM.auxiliary_vars(model::FarquharModel) = (:An, :GPP)
 ClimaLSM.auxiliary_types(model::FarquharModel{FT}) where {FT} = (FT, FT)
-
+ClimaLSM.auxiliary_domain_names(::FarquharModel) = (:surface, :surface)
 """
     compute_photosynthesis(
         model::FarquharModel,

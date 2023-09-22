@@ -6,11 +6,7 @@ using Insolation
 using ClimaCore
 import CLIMAParameters as CP
 using ClimaLSM.Bucket: BucketModel, BucketModelParameters, BulkAlbedoFunction
-using ClimaLSM.Domains:
-    coordinates,
-    LSMSingleColumnDomain,
-    LSMMultiColumnDomain,
-    LSMSphericalShellDomain
+using ClimaLSM.Domains: coordinates, Column, HybridBox, SphericalShell
 using ClimaLSM:
     initialize,
     make_update_aux,
@@ -39,8 +35,8 @@ z_0b = FT(1e-3)
 
 # Model domain
 bucket_domains = [
-    LSMSingleColumnDomain(; zlim = (-100.0, 0.0), nelements = 10),
-    LSMMultiColumnDomain(;
+    Column(; zlim = (-100.0, 0.0), nelements = 10),
+    HybridBox(;
         xlim = (-1.0, 0.0),
         ylim = (-1.0, 0.0),
         zlim = (-100.0, 0.0),
@@ -48,7 +44,7 @@ bucket_domains = [
         npolynomial = 1,
         periodic = (true, true),
     ),
-    LSMSphericalShellDomain(;
+    SphericalShell(;
         radius = 100.0,
         depth = 3.5,
         nelements = (1, 10),
@@ -106,20 +102,18 @@ for bucket_domain in bucket_domains
         # test if the correct dss buffers were added to aux.
         # We only need to add a dss buffer when there is a horizontal
         # space (spectral element space). So, we check that it is added
-        # in the case of the MultiColumn and SphericalShell domains,
+        # in the case of the HybridBox and SphericalShell domains,
         # and check that it is not added in the single column case.
-        if typeof(model.domain) <: Union{
-            ClimaLSM.Domains.LSMMultiColumnDomain,
-            ClimaLSM.Domains.LSMSphericalShellDomain,
-        }
+        if typeof(model.domain) <:
+           Union{ClimaLSM.Domains.HybridBox, ClimaLSM.Domains.SphericalShell}
             @test typeof(p.dss_buffer_3d) == typeof(
                 ClimaCore.Spaces.create_dss_buffer(
-                    ClimaCore.Fields.zeros(bucket_domain.subsurface.space),
+                    ClimaCore.Fields.zeros(bucket_domain.space.subsurface),
                 ),
             )
             @test typeof(p.dss_buffer_2d) == typeof(
                 ClimaCore.Spaces.create_dss_buffer(
-                    ClimaCore.Fields.zeros(bucket_domain.surface.space),
+                    ClimaCore.Fields.zeros(bucket_domain.space.surface),
                 ),
             )
         else
@@ -206,11 +200,11 @@ for bucket_domain in bucket_domains
         exp_tendency!(dY, Y, p, t0)
         F_water_sfc = precip(t0) .- p.bucket.evaporation
         F_sfc = -1 .* (p.bucket.turbulent_energy_flux .+ p.bucket.R_n)
-        surface_space = model.domain.surface.space
+        surface_space = model.domain.space.surface
         A_sfc = sum(ones(surface_space))
         # For the point space, we actually want the flux itself, since our variables are per unit area.
         # Divide by A_sfc
-        if typeof(model.domain.surface.space) <: ClimaCore.Spaces.PointSpace
+        if typeof(model.domain.space.surface) <: ClimaCore.Spaces.PointSpace
             F_sfc .= F_sfc ./ A_sfc
         end
 

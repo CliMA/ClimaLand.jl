@@ -20,8 +20,7 @@ using ClimaLSM.Bucket:
     cesm2_albedo_dataset_path,
     set_initial_parameter_field!,
     next_albedo
-using ClimaLSM.Domains:
-    coordinates, LSMSingleColumnDomain, LSMSphericalShellDomain
+using ClimaLSM.Domains: coordinates, Column, SphericalShell
 using ClimaLSM:
     initialize,
     make_update_aux,
@@ -44,7 +43,7 @@ function create_domain_2d(FT)
     h = FT(3.5)
     ne = (2, 10)
     np = 2
-    return LSMSphericalShellDomain(;
+    return SphericalShell(;
         radius = rad,
         depth = h,
         nelements = ne,
@@ -60,7 +59,7 @@ end
     albedo = BulkAlbedoFunction{FT}(α_snow, α_sfc)
 
     domain = create_domain_2d(FT)
-    space = domain.surface.space
+    space = domain.space.surface
     p = (; bucket = (; α_sfc = Fields.zeros(space)))
     surface_coords = Fields.coordinate_field(space)
 
@@ -76,7 +75,7 @@ end
     regrid_dir_static = joinpath(pkgdir(ClimaLSM), "test", "static")
     albedo = BulkAlbedoStatic{FT}(regrid_dir_static)
     domain = create_domain_2d(FT)
-    space = domain.surface.space
+    space = domain.space.surface
     p = (; bucket = (; α_sfc = Fields.zeros(space)))
     surface_coords = Fields.coordinate_field(space)
 
@@ -105,7 +104,7 @@ end
     regrid_dir_temporal = joinpath(pkgdir(ClimaLSM), "test", "temporal")
     t_start = FT(0)
     domain = create_domain_2d(FT)
-    space = domain.surface.space
+    space = domain.space.surface
 
     input_file = cesm2_albedo_dataset_path()
     date_ref = to_datetime(NCDataset(input_file, "r") do ds
@@ -147,7 +146,7 @@ end
     parameters = (; σS_c = σS_c)
 
     domain = create_domain_2d(FT)
-    space = domain.surface.space
+    space = domain.space.surface
     surface_coords = Fields.coordinate_field(space)
     p = (; bucket = (; α_sfc = α_sfc.(surface_coords)))
 
@@ -178,7 +177,7 @@ end
     parameters = (; σS_c = σS_c)
 
     domain = create_domain_2d(FT)
-    space = domain.surface.space
+    space = domain.space.surface
     surface_coords = Fields.coordinate_field(space)
     p = (; bucket = (; α_sfc = Fields.zeros(space)))
     set_initial_parameter_field!(albedo, p, surface_coords)
@@ -204,7 +203,7 @@ end
     FT = Float32
     # set up each argument for function call
     domain = create_domain_2d(FT)
-    space = domain.surface.space
+    space = domain.space.surface
     surface_coords = Fields.coordinate_field(space)
 
     input_file = cesm2_albedo_dataset_path()
@@ -274,8 +273,8 @@ end
     init_temp(z::FT, value::FT) where {FT} = FT(value)
 
     bucket_domains = [
-        LSMSingleColumnDomain(; zlim = (-100.0, 0.0), nelements = 10),
-        LSMSphericalShellDomain(;
+        Column(; zlim = (-100.0, 0.0), nelements = 10),
+        SphericalShell(;
             radius = FT(100.0),
             depth = FT(3.5),
             nelements = (2, 10),
@@ -321,7 +320,7 @@ end
             Δt,
             earth_param_set,
         )
-        if bucket_domain isa LSMSphericalShellDomain
+        if bucket_domain isa SphericalShell
             model = BucketModel(
                 parameters = bucket_parameters,
                 domain = bucket_domain,
@@ -342,7 +341,7 @@ end
                 comms,
                 path,
                 varname,
-                model.domain.surface.space,
+                model.domain.space.surface,
             )
             @test p.bucket.α_sfc == field
         else
@@ -373,7 +372,7 @@ end
     date_ref = Dates.DateTime(1900, 1, 1)
     t_start = FT(0)
     domain = create_domain_2d(FT)
-    space = domain.surface.space
+    space = domain.space.surface
 
     let err = nothing
         try
@@ -418,8 +417,8 @@ end
     end)
 
     bucket_domains = [
-        LSMSingleColumnDomain(; zlim = (-100.0, 0.0), nelements = 10),
-        LSMSphericalShellDomain(;
+        Column(; zlim = (-100.0, 0.0), nelements = 10),
+        SphericalShell(;
             radius = FT(100.0),
             depth = FT(3.5),
             nelements = (2, 10),
@@ -429,8 +428,8 @@ end
     orbital_data = Insolation.OrbitalData()
 
     for bucket_domain in bucket_domains
-        space = bucket_domain.surface.space
-        if bucket_domain isa LSMSphericalShellDomain
+        space = bucket_domain.space.surface
+        if bucket_domain isa SphericalShell
             albedo_model =
                 BulkAlbedoTemporal{FT}(regrid_dirpath, date_ref, t_start, space)
             # Radiation
@@ -495,7 +494,7 @@ end
                 comms,
                 input_file,
                 varname,
-                model.domain.surface.space,
+                model.domain.space.surface,
                 date_idx = 1,
             )
             # If there are any NaNs in the input data, replace them so we can compare results
@@ -520,7 +519,7 @@ end
                     comms,
                     input_file,
                     varname,
-                    model.domain.surface.space,
+                    model.domain.space.surface,
                     date_idx = i,
                 )
                 @test nans_to_zero.(p.bucket.α_sfc) ≈ field

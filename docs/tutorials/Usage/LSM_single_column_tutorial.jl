@@ -36,7 +36,7 @@
 
 # First, let's load the required modules:
 using ClimaLSM
-using ClimaLSM.Domains: LSMSingleColumnDomain, Column
+using ClimaLSM.Domains: Column, obtain_surface_domain
 using ClimaLSM.Soil
 using ClimaLSM.Pond
 
@@ -246,22 +246,21 @@ pond_ode! = make_exp_tendency(pond_model);
 # - boundary conditions,
 # - sources in the soil equation, if any.
 
-# First, let's make our LSM domain, which now contains
+# First, let's make our  domain, which now contains
 # information about the subsurface domain and the surface domain. For
 # a single column, this means specifying the boundaries of the soil domain
 # and the number of elements.
-lsm_domain = LSMSingleColumnDomain(; zlim = (zmin, zmax), nelements = nelems);
-# The surface domain is again just a `Point` with
+lsm_domain = Column(; zlim = (zmin, zmax), nelements = nelems);
+# The surface domain is just a `Point` with
 # `z_sfc = zmax`.
-lsm_domain.surface
-# The subsurface domain is a column from zmin to zmax:
-lsm_domain.subsurface
+surface_domain = obtain_surface_domain(lsm_domain)
+# The subsurface domain is the column itself.
 
 # Let's now collect the needed arguments for the soil and pond
 # models:
 
-soil_args = (parameters = soil_ps, domain = lsm_domain.subsurface, sources = ());
-surface_water_args = (domain = lsm_domain.surface,);
+soil_args = (parameters = soil_ps, domain = lsm_domain, sources = ());
+surface_water_args = (domain = surface_domain,);
 # Atmospheric drivers don't "belong" to either component alone:
 land_args = (precip = precipitation,);
 land = LandHydrology{FT}(;

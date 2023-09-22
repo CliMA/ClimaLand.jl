@@ -198,7 +198,7 @@ function init_soil!(Ysoil, z, params)
         Soil.volumetric_internal_energy.(FT(0.0), ρc_s, T, Ref(params))
 end
 
-init_soil!(Y, coords.z, soil.parameters);
+init_soil!(Y, coords.subsurface.z, soil.parameters);
 
 # We choose the initial and final simulation times:
 t0 = FT(0)
@@ -242,7 +242,7 @@ mask_12h = hours .== 12
 mask_24h = hours .== 24
 mask_50h = hours .== 50;
 
-z = parent(coords.z)[:];
+z = parent(coords.subsurface.z)[:];
 plot1 = plot(
     ylabel = "Soil depth (m)",
     xlabel = "",

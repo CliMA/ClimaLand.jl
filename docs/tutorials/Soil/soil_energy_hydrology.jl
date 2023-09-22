@@ -241,7 +241,7 @@ function init_soil!(Y, z, params)
         Soil.volumetric_internal_energy.(Y.soil.θ_i, ρc_s, T, Ref(params))
 end
 
-init_soil!(Y, coords.z, soil.parameters);
+init_soil!(Y, coords.subsurface.z, soil.parameters);
 
 # We choose the initial and final simulation times:
 t0 = FT(0)
@@ -281,7 +281,7 @@ cb = ClimaLSM.NonInterpSavingCallback(saved_values, saveat);
 sol = SciMLBase.solve(prob, ode_algo; dt = dt, saveat = saveat, callback = cb);
 
 # Extract output
-z = parent(coords.z)
+z = parent(coords.subsurface.z)
 t = parent(sol.t)
 ϑ_l = [parent(sol.u[k].soil.ϑ_l) for k in 1:length(t)]
 T = [parent(saved_values.saveval[k].soil.T) for k in 1:length(t)];

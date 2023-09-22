@@ -10,7 +10,8 @@ import ClimaLSM:
     make_compute_exp_tendency,
     prognostic_vars,
     name,
-    prognostic_types
+    prognostic_types,
+    prognostic_domain_names
 using ClimaLSM.Domains
 export PondModel, PrescribedRunoff, surface_runoff
 
@@ -61,8 +62,8 @@ end
 
 ClimaLSM.prognostic_vars(model::PondModel) = (:η,)
 ClimaLSM.prognostic_types(model::PondModel{FT}) where {FT} = (FT,)
+ClimaLSM.prognostic_domain_names(model::PondModel) = (:surface,)
 ClimaLSM.name(::AbstractSurfaceWaterModel) = :surface_water
-ClimaLSM.domain_name(::AbstractSurfaceWaterModel) = :surface
 
 function ClimaLSM.make_compute_exp_tendency(model::PondModel)
     function compute_exp_tendency!(dY, Y, p, t)

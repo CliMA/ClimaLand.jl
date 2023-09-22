@@ -330,7 +330,7 @@ end
             @test propertynames(p) == (:canopy, :dss_buffer_2d)
             @test typeof(p.dss_buffer_2d) == typeof(
                 ClimaCore.Spaces.create_dss_buffer(
-                    ClimaCore.Fields.zeros(domain.space),
+                    ClimaCore.Fields.zeros(domain.space.surface),
                 ),
             )
         end

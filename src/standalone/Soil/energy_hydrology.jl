@@ -198,7 +198,7 @@ function ClimaLSM.make_compute_exp_tendency(
     model::EnergyHydrology{FT},
 ) where {FT}
     function compute_exp_tendency!(dY, Y, p, t)
-        z = ClimaCore.Fields.coordinate_field(model.domain.space).z
+        z = ClimaCore.Fields.coordinate_field(model.domain.space.subsurface).z
         Δz_top, Δz_bottom = get_Δz(z)
 
         # Convert all boundary conditions to FluxBCs
@@ -322,6 +322,9 @@ A function which returns the types of the prognostic variables
 of `EnergyHydrology`.
 """
 ClimaLSM.prognostic_types(soil::EnergyHydrology{FT}) where {FT} = (FT, FT, FT)
+
+ClimaLSM.prognostic_domain_names(soil::EnergyHydrology) =
+    (:subsurface, :subsurface, :subsurface)
 """
     auxiliary_vars(soil::EnergyHydrology)
 
@@ -339,6 +342,8 @@ of `EnergyHydrology`.
 ClimaLSM.auxiliary_types(soil::EnergyHydrology{FT}) where {FT} =
     (FT, FT, FT, FT, FT)
 
+ClimaLSM.auxiliary_domain_names(soil::EnergyHydrology) =
+    (:subsurface, :subsurface, :subsurface, :subsurface, :subsurface)
 """
     make_update_aux(model::EnergyHydrology)
 
@@ -599,9 +604,10 @@ end
 Returns the surface height of the `EnergyHydrology` model.
 """
 function ClimaLSM.surface_height(model::EnergyHydrology{FT}, Y, p) where {FT}
-    face_space = ClimaLSM.Domains.obtain_face_space(model.domain.space)
+    face_space =
+        ClimaLSM.Domains.obtain_face_space(model.domain.space.subsurface)
     N = ClimaCore.Spaces.nlevels(face_space)
-    surface_space = ClimaLSM.Domains.obtain_surface_space(model.domain.space)
+    surface_space = model.domain.space.surface
     z_sfc = ClimaCore.Fields.Field(
         ClimaCore.Fields.field_values(
             ClimaCore.Fields.level(

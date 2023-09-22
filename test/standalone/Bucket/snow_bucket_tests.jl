@@ -9,11 +9,7 @@ using ClimaLSM.Bucket:
     BucketModelParameters,
     BulkAlbedoFunction,
     partition_surface_fluxes
-using ClimaLSM.Domains:
-    coordinates,
-    LSMSingleColumnDomain,
-    LSMMultiColumnDomain,
-    LSMSphericalShellDomain
+using ClimaLSM.Domains: coordinates, Column, HybridBox, SphericalShell
 using ClimaLSM:
     initialize,
     make_update_aux,
@@ -41,8 +37,8 @@ z_0b = FT(1e-3)
 
 # Model domain
 bucket_domains = [
-    LSMSingleColumnDomain(; zlim = (-100.0, 0.0), nelements = 10),
-    LSMMultiColumnDomain(;
+    Column(; zlim = (-100.0, 0.0), nelements = 10),
+    HybridBox(;
         xlim = (-1.0, 0.0),
         ylim = (-1.0, 0.0),
         zlim = (-100.0, 0.0),
@@ -50,7 +46,7 @@ bucket_domains = [
         npolynomial = 1,
         periodic = (true, true),
     ),
-    LSMSphericalShellDomain(;
+    SphericalShell(;
         radius = 100.0,
         depth = 3.5,
         nelements = (1, 10),
@@ -148,7 +144,7 @@ for i in 1:3
 
 
         if i == 1
-            A_point = sum(ones(bucket_domains[i].surface.space))
+            A_point = sum(ones(bucket_domains[i].space.surface))
         else
             A_point = 1
         end
@@ -255,7 +251,7 @@ for i in 1:3
             liquid_precip(t0) + snow_precip(t0) .- p.bucket.evaporation
 
         if i == 1
-            A_point = sum(ones(bucket_domains[i].surface.space))
+            A_point = sum(ones(bucket_domains[i].space.surface))
         else
             A_point = 1
         end
@@ -335,7 +331,7 @@ end
     compute_exp_tendency! = ClimaLSM.make_compute_exp_tendency(model)
     set_initial_aux_state! = make_set_initial_aux_state(model)
     set_initial_aux_state!(p, Y, t0)
-    random = zeros(bucket_domains[i].surface.space)
+    random = zeros(bucket_domains[i].space.surface)
     parent(random) .= rand(FT, size(parent(random)))
     p.bucket.evaporation .= random .* 1e-7
     compute_exp_tendency!(dY, Y, p, t0)

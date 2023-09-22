@@ -9,11 +9,12 @@ import ..Parameters as LSMP
 import ClimaLSM:
     AbstractExpModel,
     name,
-    domain_name,
     prognostic_vars,
     prognostic_types,
     auxiliary_vars,
     auxiliary_types,
+    auxiliary_domain_names,
+    prognostic_domain_names,
     initialize_prognostic,
     initialize_auxiliary,
     make_update_aux,
@@ -165,8 +166,6 @@ function CanopyModel{FT}(;
 end
 
 ClimaLSM.name(::CanopyModel) = :canopy
-ClimaLSM.domain_name(::CanopyModel) = :surface
-
 
 """
     canopy_components(::CanopyModel)
@@ -288,8 +287,7 @@ function initialize_prognostic(model::CanopyModel{FT}, coords) where {FT}
     components = canopy_components(model)
     Y_state_list = map(components) do (component)
         submodel = getproperty(model, component)
-        zero_state = map(_ -> zero(FT), coords)
-        getproperty(initialize_prognostic(submodel, zero_state), component)
+        getproperty(initialize_prognostic(submodel, coords), component)
     end
     Y = ClimaCore.Fields.FieldVector(;
         name(model) => NamedTuple{components}(Y_state_list),
@@ -316,8 +314,7 @@ function initialize_auxiliary(model::CanopyModel{FT}, coords) where {FT}
     components = canopy_components(model)
     p_state_list = map(components) do (component)
         submodel = getproperty(model, component)
-        zero_state = map(_ -> zero(FT), coords)
-        getproperty(initialize_auxiliary(submodel, zero_state), component)
+        getproperty(initialize_auxiliary(submodel, coords), component)
     end
     p = (; name(model) => NamedTuple{components}(p_state_list))
     p = ClimaLSM.add_dss_buffer_to_aux(p, model.domain)

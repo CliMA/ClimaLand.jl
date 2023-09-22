@@ -48,8 +48,9 @@ function add_dss_buffer_to_aux(
     p::NamedTuple,
     domain::Union{Domains.Plane, Domains.SphericalSurface},
 )
-    buffer =
-        ClimaCore.Spaces.create_dss_buffer(ClimaCore.Fields.zeros(domain.space))
+    buffer = ClimaCore.Spaces.create_dss_buffer(
+        ClimaCore.Fields.zeros(domain.space.surface),
+    )
     return merge(p, (; dss_buffer_2d = buffer))
 end
 
@@ -59,8 +60,8 @@ end
         domain::Union{Domains.HybridBox, Domains.SphericalShell},
     )
 
-Adds a 3d dss buffer corresponding to `domain.space` to `p` with the name `dss_buffer_3d`,
-appropriate for a 3D domain.
+Adds a 2d and 3d dss buffer corresponding to `domain.space` to `p` with the names
+`dss_buffer_3d`, and `dss_buffer_2d`.
 
 This buffer is added so that we preallocate memory for the dss step and do not allocate it
 at every timestep. We use a name which specifically denotes that
@@ -73,9 +74,13 @@ function add_dss_buffer_to_aux(
     p::NamedTuple,
     domain::Union{Domains.HybridBox, Domains.SphericalShell},
 )
-    buffer =
-        ClimaCore.Spaces.create_dss_buffer(ClimaCore.Fields.zeros(domain.space))
-    return merge(p, (; dss_buffer_3d = buffer))
+    buffer_2d = ClimaCore.Spaces.create_dss_buffer(
+        ClimaCore.Fields.zeros(domain.space.surface),
+    )
+    buffer_3d = ClimaCore.Spaces.create_dss_buffer(
+        ClimaCore.Fields.zeros(domain.space.subsurface),
+    )
+    return merge(p, (; dss_buffer_3d = buffer_3d, dss_buffer_2d = buffer_2d))
 end
 
 

@@ -1,5 +1,3 @@
-### Long term plan: many of these domains will live in Models.jl repo, with
-### the models.jl code as well. But LSM domains will live in ClimaLSM.
 module Domains
 using ClimaCore
 using ClimaComms
@@ -12,32 +10,54 @@ import ClimaCore.Meshes: Uniform
 
 """
     AbstractDomain{FT <:AbstractFloat}
-An abstract type for domains.
+
+An abstract type for domains. 
+
+The domain structs typically hold information
+regarding the bounds of the domain, the boundary condition type
+(periodic or not), and the spatial discretization.
+
+Additionally, the domain struct holds the relevant spaces for that
+domain. For example, a 3D domain holds the center space (in terms of
+finite difference - the space corresponding to the centers of each
+element), and the top face space where surface fluxes are computed.
 """
 abstract type AbstractDomain{FT <: AbstractFloat} end
 Base.eltype(::AbstractDomain{FT}) where {FT} = FT
+
 """
     coordinates(domain::AbstractDomain)
-Returns the coordinate field for the domain.
+
+Returns the coordinate fields for the domain as a NamedTuple.
+
+The returned coordinates are stored with keys :surface, :subsurface, e.g.
+as relevant for the domain.
 """
 function coordinates(domain::AbstractDomain)
-    cc = ClimaCore.Fields.coordinate_field(domain.space)
-    return cc
+    domain_names = propertynames(domain.space)
+    domain_spaces = getproperty.(Ref(domain.space), domain_names)
+    return NamedTuple{domain_names}(
+        ClimaCore.Fields.coordinate_field.(domain_spaces),
+    )
 end
 
 """
     Point{FT} <: AbstractDomain{FT}
+
 A domain for single column surface variables.
 For models such as ponds, snow, plant hydraulics, etc. Enables consistency 
 in variable initialization across all domains.
+
+`space` is a NamedTuple holding the surface space (in this case,
+the Point space).
 # Fields
 $(DocStringExtensions.FIELDS)
 """
-struct Point{FT, S} <: AbstractDomain{FT}
+struct Point{FT} <: AbstractDomain{FT}
     "Surface elevation relative to a reference (m)"
     z_sfc::FT
-    "The associated ClimaCore Space"
-    space::S
+    "A NamedTuple of associated ClimaCore spaces: in this case, the Point (surface) space"
+    space::NamedTuple
 end
 
 """
@@ -59,8 +79,8 @@ function Point(;
     comms = ClimaComms.SingletonCommsContext(),
 ) where {FT}
     coord = ClimaCore.Geometry.ZPoint(z_sfc)
-    space = ClimaCore.Spaces.PointSpace(comms, coord)
-    return Point{FT, typeof(space)}(z_sfc, space)
+    space = (; surface = ClimaCore.Spaces.PointSpace(comms, coord))
+    return Point{FT}(z_sfc, space)
 end
 
 """
@@ -69,10 +89,14 @@ A struct holding the necessary information
 to construct a domain, a mesh, a center and face
 space, etc. for use when a finite difference in
 1D is suitable, as for a soil column model.
+
+`space` is a NamedTuple holding the surface space (in this case,
+the top face space) and the center space for the subsurface.
+These are stored using the keys :surface and :subsurface.
 # Fields
 $(DocStringExtensions.FIELDS)
 """
-struct Column{FT, S} <: AbstractDomain{FT}
+struct Column{FT} <: AbstractDomain{FT}
     "Domain interval limits, (zmin, zmax), in meters"
     zlim::Tuple{FT, FT}
     "Number of elements used to discretize the interval"
@@ -81,8 +105,8 @@ struct Column{FT, S} <: AbstractDomain{FT}
     dz_tuple::Union{Tuple{FT, FT}, Nothing}
     "Boundary face identifiers"
     boundary_tags::Tuple{Symbol, Symbol}
-    "The associated ClimaCore Space"
-    space::S
+    "A NamedTuple of associated ClimaCore spaces: in this case, the surface space and subsurface center space"
+    space::NamedTuple
 end
 
 """
@@ -132,14 +156,10 @@ function Column(;
         )
     end
 
-    center_space = ClimaCore.Spaces.CenterFiniteDifferenceSpace(mesh)
-    return Column{FT, typeof(center_space)}(
-        zlim,
-        (nelements,),
-        dz_tuple,
-        boundary_tags,
-        center_space,
-    )
+    subsurface_space = ClimaCore.Spaces.CenterFiniteDifferenceSpace(mesh)
+    surface_space = obtain_surface_space(subsurface_space)
+    space = (; surface = surface_space, subsurface = subsurface_space)
+    return Column{FT}(zlim, (nelements,), dz_tuple, boundary_tags, space)
 end
 
 """
@@ -148,10 +168,13 @@ A struct holding the necessary information
 to construct a domain, a mesh, a 2d spectral
 element space, and the resulting coordinate field.
 Note that only periodic domains are currently supported.
+
+`space` is a NamedTuple holding the surface space (in this case,
+the entire Plane space).
 # Fields
 $(DocStringExtensions.FIELDS)
 """
-struct Plane{FT, S} <: AbstractDomain{FT}
+struct Plane{FT} <: AbstractDomain{FT}
     "Domain interval limits along x axis, in meters"
     xlim::Tuple{FT, FT}
     "Domain interval limits along y axis, in meters"
@@ -162,8 +185,8 @@ struct Plane{FT, S} <: AbstractDomain{FT}
     periodic::Tuple{Bool, Bool}
     "Polynomial order for both x and y"
     npolynomial::Int
-    "The associated ClimaCore Space"
-    space::S
+    "A NamedTuple of associated ClimaCore spaces: in this case, the surface(Plane) space"
+    space::NamedTuple
 end
 
 """
@@ -206,14 +229,8 @@ function Plane(;
         quad = ClimaCore.Spaces.Quadratures.GLL{npolynomial + 1}()
     end
     space = ClimaCore.Spaces.SpectralElementSpace2D(grid_topology, quad)
-    return Plane{FT, typeof(space)}(
-        xlim,
-        ylim,
-        nelements,
-        periodic,
-        npolynomial,
-        space,
-    )
+    space = (; surface = space)
+    return Plane{FT}(xlim, ylim, nelements, periodic, npolynomial, space)
 end
 
 """
@@ -232,10 +249,14 @@ a 2d spectral element space (horizontal) x a 1d finite difference space
 This domain is not periodic along the z-axis. Note that 
 only periodic domains are supported
 in the horizontal.
+
+`space` is a NamedTuple holding the surface space (in this case,
+the top face space) and the center space for the subsurface.
+These are stored using the keys :surface and :subsurface.
 # Fields
 $(DocStringExtensions.FIELDS)
 """
-struct HybridBox{FT, S} <: AbstractDomain{FT}
+struct HybridBox{FT} <: AbstractDomain{FT}
     "Domain interval limits along x axis, in meters"
     xlim::Tuple{FT, FT}
     "Domain interval limits along y axis, in meters"
@@ -250,8 +271,8 @@ struct HybridBox{FT, S} <: AbstractDomain{FT}
     npolynomial::Int
     "Flag indicating periodic boundaries in horizontal. only true is supported"
     periodic::Tuple{Bool, Bool}
-    "The associated ClimaCore Space"
-    space::S
+    "A NamedTuple of associated ClimaCore spaces: in this case, the surface space and subsurface center space"
+    space::NamedTuple
 end
 
 """
@@ -325,13 +346,16 @@ function HybridBox(;
         periodic = periodic,
         npolynomial = npolynomial,
     )
-    horzspace = horzdomain.space
+    horzspace = horzdomain.space.surface
 
-    hv_center_space = ClimaCore.Spaces.ExtrudedFiniteDifferenceSpace(
+    subsurface_space = ClimaCore.Spaces.ExtrudedFiniteDifferenceSpace(
         horzspace,
         vert_center_space,
     )
-    return HybridBox{FT, typeof(hv_center_space)}(
+
+    surface_space = obtain_surface_space(subsurface_space)
+    space = (; surface = surface_space, subsurface = subsurface_space)
+    return HybridBox{FT}(
         xlim,
         ylim,
         zlim,
@@ -339,7 +363,7 @@ function HybridBox(;
         nelements,
         npolynomial,
         periodic,
-        hv_center_space,
+        space,
     )
 end
 
@@ -355,10 +379,14 @@ A struct holding the necessary information to construct a domain, a mesh,
 a 2d spectral element space (non-radial directions) 
 x a 1d finite difference space (radial direction),
  and the resulting coordinate field.
+
+`space` is a NamedTuple holding the surface space (in this case,
+the top face space) and the center space for the subsurface.
+These are stored using the keys :surface and :subsurface.
 # Fields
 $(DocStringExtensions.FIELDS)
 """
-struct SphericalShell{FT, S} <: AbstractDomain{FT}
+struct SphericalShell{FT} <: AbstractDomain{FT}
     "The radius of the shell"
     radius::FT
     "The radial extent of the shell"
@@ -369,8 +397,8 @@ struct SphericalShell{FT, S} <: AbstractDomain{FT}
     nelements::Tuple{Int, Int}
     "The polynomial order to be used in the non-radial directions"
     npolynomial::Int
-    "The associated ClimaCore Space"
-    space::S
+    "A NamedTuple of associated ClimaCore spaces: in this case, the surface space and subsurface center space"
+    space::NamedTuple
 end
 
 """
@@ -427,17 +455,19 @@ function SphericalShell(;
     quad = ClimaCore.Spaces.Quadratures.GLL{npolynomial + 1}()
     horzspace = ClimaCore.Spaces.SpectralElementSpace2D(horztopology, quad)
 
-    hv_center_space = ClimaCore.Spaces.ExtrudedFiniteDifferenceSpace(
+    subsurface_space = ClimaCore.Spaces.ExtrudedFiniteDifferenceSpace(
         horzspace,
         vert_center_space,
     )
-    return SphericalShell{FT, typeof(hv_center_space)}(
+    surface_space = obtain_surface_space(subsurface_space)
+    space = (; surface = surface_space, subsurface = subsurface_space)
+    return SphericalShell{FT}(
         radius,
         depth,
         dz_tuple,
         nelements,
         npolynomial,
-        hv_center_space,
+        space,
     )
 end
 
@@ -450,18 +480,21 @@ end
     end
 A struct holding the necessary information to construct a domain, a mesh, 
 a 2d spectral element space (non-radial directions) and the resulting coordinate field.
+
+`space` is a NamedTuple holding the surface space (in this case,
+the entire SphericalSurface space).
 # Fields
 $(DocStringExtensions.FIELDS)
 """
-struct SphericalSurface{FT, S} <: AbstractDomain{FT}
+struct SphericalSurface{FT} <: AbstractDomain{FT}
     "The radius of the surface"
     radius::FT
     "The number of elements to be used in the non-radial directions"
     nelements::Int
     "The polynomial order to be used in the non-radial directions"
     npolynomial::Int
-    "The associated ClimaCore Space"
-    space::S
+    "A NamedTuple of associated ClimaCore spaces: in this case, the surface (SphericalSurface) space"
+    space::NamedTuple
 end
 
 """
@@ -483,220 +516,69 @@ function SphericalSurface(;
     horztopology = Topologies.Topology2D(horzmesh)
     quad = Spaces.Quadratures.GLL{npolynomial + 1}()
     horzspace = Spaces.SpectralElementSpace2D(horztopology, quad)
-    return SphericalSurface{FT, typeof(horzspace)}(
-        radius,
-        nelements,
-        npolynomial,
-        horzspace,
-    )
-end
-
-
-
-"""
-    AbstractLSMDomain{FT} <: AbstractDomain{FT}
-An abstract type for LSMDomains, which have two components: a surface
-and a subsurface.
-"""
-abstract type AbstractLSMDomain{FT} <: AbstractDomain{FT} end
-
-"""
-    LSMSingleColumnDomain{FT} <: AbstractLSMDomain{FT}
-A mixed domain, consisting of a column domain with z-coordinates at the
-finite difference cell centers, and a point domain, with a single z
-coordinate at the top boundary of the column domain.
-For use in LSM modeling, where a subsurface finite difference space 
-(for modeling soil hydrology and energy) and a surface space are both
-needed.
-# Fields
-$(DocStringExtensions.FIELDS)
-"""
-struct LSMSingleColumnDomain{FT, S1, S2} <: AbstractLSMDomain{FT}
-    "The subsurface Column domain"
-    subsurface::Column{FT, S1}
-    "The surface Point domain"
-    surface::Point{FT, S2}
-end
-
-"""
-    LSMSingleColumnDomain(;
-        zlim::Tuple{FT, FT},
-        nelements::Int,
-        dz_tuple::Union{Tuple{FT, FT}, Nothing} = nothing,
-    ) where {FT}
-A constructor for the LSMSingleColumnDomain.
-"""
-function LSMSingleColumnDomain(;
-    zlim::Tuple{FT, FT},
-    nelements::Int,
-    dz_tuple::Union{Tuple{FT, FT}, Nothing} = nothing,
-) where {FT}
-    @assert zlim[1] < zlim[2]
-    subsurface_domain =
-        Column(; zlim = FT.(zlim), nelements = nelements, dz_tuple = dz_tuple)
-    surface_space = obtain_surface_space(subsurface_domain.space)
-    surface_domain = Point{FT, typeof(surface_space)}(zlim[2], surface_space)
-    return LSMSingleColumnDomain{
-        FT,
-        typeof(subsurface_domain.space),
-        typeof(surface_space),
-    }(
-        subsurface_domain,
-        surface_domain,
-    )
-end
-
-"""
-    LSMMultiColumnDomain{FT} <: AbstractLSMDomain{FT}
-
-A mixed domain, consisting of a hybdrid box domain with z-coordinates at the
-finite difference cell centers, and a plane domain, coinciding with the surface
-of the box.
-
-For use in LSM modeling, where a subsurface finite difference space 
-(for modeling soil hydrology and energy) and a surface space are both
-needed.
-# Fields
-$(DocStringExtensions.FIELDS)
-"""
-struct LSMMultiColumnDomain{FT, S1, S2} <: AbstractLSMDomain{FT}
-    "The subsurface box domain"
-    subsurface::HybridBox{FT, S1}
-    "The surface plane domain"
-    surface::Plane{FT, S2}
-end
-
-"""
-    LSMMultiColumnDomain(;
-        xlim::Tuple{FT, FT}
-        ylim::Tuple{FT, FT}
-        zlim::Tuple{FT, FT}
-        nelements::Tuple{Int, Int, Int}
-        npolynomial::Int
-        periodic::Tuple{Bool, Bool} = (true, true),
-        dz_tuple::Union{Tuple{FT,FT}, Nothing} = nothing,
-    ) where {FT}
-A constructor for the LSMMultiColumnDomain.
-"""
-function LSMMultiColumnDomain(;
-    xlim::Tuple{FT, FT},
-    ylim::Tuple{FT, FT},
-    zlim::Tuple{FT, FT},
-    nelements::Tuple{Int, Int, Int},
-    npolynomial::Int,
-    periodic::Tuple{Bool, Bool} = (true, true),
-    dz_tuple::Union{Tuple{FT, FT}, Nothing} = nothing,
-) where {FT}
-    @assert xlim[1] < xlim[2]
-    @assert ylim[1] < ylim[2]
-    @assert zlim[1] < zlim[2]
-    @assert periodic == (true, true)
-    subsurface = HybridBox(;
-        xlim = xlim,
-        ylim = ylim,
-        zlim = zlim,
-        dz_tuple = dz_tuple,
-        nelements = nelements,
-        npolynomial = npolynomial,
-        periodic = periodic,
-    )
-    surface_space = obtain_surface_space(subsurface.space)
-    surface = Plane{FT, typeof(surface_space)}(
-        xlim,
-        ylim,
-        nelements[1:2],
-        periodic,
-        npolynomial,
-        surface_space,
-    )
-    return LSMMultiColumnDomain{
-        FT,
-        typeof(subsurface.space),
-        typeof(surface.space),
-    }(
-        subsurface,
-        surface,
-    )
+    space = (; surface = horzspace)
+    return SphericalSurface{FT}(radius, nelements, npolynomial, space)
 end
 
 
 """
-    LSMSphericalShellDomain{FT} <: AbstractLSMDomain{FT}
+    obtain_surface_domain(d::AbstractDomain) where {FT}
 
-A mixed domain, consisting of a spherical shell domain with z-coordinates at the
-finite difference cell centers, and a spherical surface domain, coinciding with 
-the surface of the shell.
-
-For use in LSM modeling, where a subsurface finite difference space 
-(for modeling soil hydrology and energy) and a surface space are both
-needed.
-# Fields
-$(DocStringExtensions.FIELDS)
+Default method throwing an error; any domain with a corresponding
+domain should define a new method of this function.
 """
-struct LSMSphericalShellDomain{FT, S1, S2} <: AbstractLSMDomain{FT}
-    "The subsurface shell domain"
-    subsurface::SphericalShell{FT, S1}
-    "The surface domain"
-    surface::SphericalSurface{FT, S2}
+obtain_surface_domain(d::AbstractDomain) =
+    @error("No surface domain is defined for this domain.")
+
+"""
+    obtain_surface_domain(c::Column{FT}) where {FT}
+
+Returns the Point domain corresponding to the top face (surface) of the
+Column domain `c`.
+"""
+function obtain_surface_domain(c::Column{FT}) where {FT}
+    surface_domain = Point{FT}(c.zlim[2], (; surface = c.space.surface))
+    return surface_domain
 end
 
 """
-    LSMSphericalShellDomain(;
-        radius::FT,
-        depth::FT,
-        nelements::Tuple{Int, Int},
-        npolynomial::Int,
-        dz_tuple::Union{Tuple{FT, FT}, Nothing} = nothing,
-    ) where {FT}
-A constructor for the LSMSphericalShellDomain.
+    obtain_surface_domain(b::HybridBox{FT}) where {FT}
+
+Returns the Plane domain corresponding to the top face (surface) of the
+HybridBox domain `b`.
 """
-function LSMSphericalShellDomain(;
-    radius::FT,
-    depth::FT,
-    nelements::Tuple{Int, Int},
-    npolynomial::Int,
-    dz_tuple::Union{Tuple{FT, FT}, Nothing} = nothing,
-) where {FT}
-    @assert radius > FT(0)
-    @assert depth > FT(0)
-    subsurface = SphericalShell(;
-        radius = radius,
-        depth = depth,
-        dz_tuple = dz_tuple,
-        nelements = nelements,
-        npolynomial = npolynomial,
+function obtain_surface_domain(b::HybridBox{FT}) where {FT}
+    surface_domain = Plane{FT}(
+        b.xlim,
+        b.ylim,
+        b.nelements[1:2],
+        b.periodic,
+        b.npolynomial,
+        (; surface = b.space.surface),
     )
-    surface_space = obtain_surface_space(subsurface.space)
-    surface = SphericalSurface{FT, typeof(surface_space)}(
-        radius,
-        nelements[1],
-        npolynomial,
-        surface_space,
-    )
-    return LSMSphericalShellDomain{
-        FT,
-        typeof(subsurface.space),
-        typeof(surface.space),
-    }(
-        subsurface,
-        surface,
-    )
+    return surface_domain
 end
 
+
 """
-    coordinates(domain::AbstractLSMDomain{FT}) where {FT}
-Returns the coordinates of the AbstractLSMDomain as a named tuple,
-with keys of `subsurface` and `surface`.
+    obtain_surface_domain(s::SphericalShell{FT}) where {FT}
+
+Returns the SphericalSurface domain corresponding to the top face 
+(surface) of the SphericalShell domain `s`.
 """
-function coordinates(domain::AbstractLSMDomain{FT}) where {FT}
-    return (
-        subsurface = coordinates(domain.subsurface),
-        surface = coordinates(domain.surface),
+function obtain_surface_domain(s::SphericalShell{FT}) where {FT}
+    surface_domain = SphericalSurface{FT}(
+        s.radius,
+        s.nelements[1],
+        s.npolynomial,
+        (; surface = s.space.surface),
     )
+    return surface_domain
 end
 
 """
     obtain_face_space(cs::ClimaCore.Spaces.AbstractSpace)
+
 Returns the face space, if applicable, for the center space `cs`.
 """
 obtain_face_space(cs::ClimaCore.Spaces.AbstractSpace) =
@@ -704,6 +586,7 @@ obtain_face_space(cs::ClimaCore.Spaces.AbstractSpace) =
 
 """
     obtain_surface_space(cs::ClimaCore.Spaces.AbstractSpace)
+
 Returns the surface space, if applicable, for the center space `cs`.
 """
 obtain_surface_space(cs::ClimaCore.Spaces.AbstractSpace) =
@@ -711,6 +594,7 @@ obtain_surface_space(cs::ClimaCore.Spaces.AbstractSpace) =
 
 """
     obtain_face_space(cs::ClimaCore.Spaces.CenterExtrudedFiniteDifferenceSpace)
+
 Returns the face space for the CenterExtrudedFiniteDifferenceSpace `cs`.
 """
 function obtain_face_space(
@@ -721,6 +605,7 @@ end
 
 """
     obtain_face_space(cs::ClimaCore.Spaces.CenterFiniteDifferenceSpace)
+
 Returns the face space corresponding to the CenterFiniteDifferenceSpace `cs`.
 """
 function obtain_face_space(cs::ClimaCore.Spaces.CenterFiniteDifferenceSpace)
@@ -729,6 +614,7 @@ end
 
 """
     obtain_surface_space(cs::ClimaCore.Spaces.CenterExtrudedFiniteDifferenceSpace)
+
 Returns the horizontal space for the CenterExtrudedFiniteDifferenceSpace `cs`.
 """
 function obtain_surface_space(
@@ -739,6 +625,7 @@ end
 
 """
     obtain_surface_space(cs::ClimaCore.Spaces.CenterFiniteDifferenceSpace)
+
 Returns the top level of the face space corresponding to the CenterFiniteDifferenceSpace `cs`.
 """
 function obtain_surface_space(cs::ClimaCore.Spaces.CenterFiniteDifferenceSpace)
@@ -785,10 +672,12 @@ function top_center_to_surface(center_field::ClimaCore.Fields.Field)
 end
 
 
-export AbstractDomain, AbstractLSMDomain
+export AbstractDomain
 export Column, Plane, HybridBox, Point, SphericalShell, SphericalSurface
-export LSMSingleColumnDomain, LSMMultiColumnDomain, LSMSphericalShellDomain
 export coordinates,
-    obtain_face_space, obtain_surface_space, top_center_to_surface
+    obtain_face_space,
+    obtain_surface_space,
+    top_center_to_surface,
+    obtain_surface_domain
 
 end

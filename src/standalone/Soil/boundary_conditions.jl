@@ -450,7 +450,7 @@ function ClimaLSM.∂tendencyBC∂Y(
     t,
 )
     (; ν, hydrology_cm, S_s, θ_r) = model.parameters
-    fs = ClimaLSM.Domains.obtain_face_space(model.domain.space)
+    fs = ClimaLSM.Domains.obtain_face_space(model.domain.space.subsurface)
     face_len = ClimaCore.Utilities.PlusHalf(ClimaCore.Spaces.nlevels(fs) - 1)
     interpc2f_op = Operators.InterpolateC2F(
         bottom = Operators.Extrapolate(),

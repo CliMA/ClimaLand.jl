@@ -14,9 +14,10 @@ import ClimaLSM:
     prognostic_vars,
     auxiliary_vars,
     name,
-    domain_name,
     prognostic_types,
     auxiliary_types,
+    prognostic_domain_names,
+    auxiliary_domain_names,
     TopBoundary,
     BottomBoundary,
     boundary_flux,
@@ -182,13 +183,13 @@ function SoilCO2Model{FT}(;
 end
 
 ClimaLSM.name(model::SoilCO2Model) = :soilco2
-ClimaLSM.domain_name(model::SoilCO2Model) = :subsurface
-
-
 ClimaLSM.prognostic_vars(::SoilCO2Model) = (:C,)
 ClimaLSM.prognostic_types(::SoilCO2Model{FT}) where {FT} = (FT,)
+ClimaLSM.prognostic_domain_names(::SoilCO2Model) = (:subsurface,)
+
 ClimaLSM.auxiliary_vars(::SoilCO2Model) = (:D, :Sm)
 ClimaLSM.auxiliary_types(::SoilCO2Model{FT}) where {FT} = (FT, FT)
+ClimaLSM.auxiliary_domain_names(::SoilCO2Model) = (:subsurface, :subsurface)
 
 
 """
@@ -203,7 +204,7 @@ This has been written so as to work with Differential Equations.jl.
 """
 function ClimaLSM.make_compute_exp_tendency(model::SoilCO2Model)
     function compute_exp_tendency!(dY, Y, p, t)
-        z = ClimaCore.Fields.coordinate_field(model.domain.space).z
+        z = ClimaCore.Fields.coordinate_field(model.domain.space.subsurface).z
         Δz_top, Δz_bottom = get_Δz(z)
 
         top_flux_bc = boundary_flux(
@@ -381,7 +382,7 @@ This has been written so as to work with Differential Equations.jl.
 function ClimaLSM.make_update_aux(model::SoilCO2Model)
     function update_aux!(p, Y, t)
         params = model.parameters
-        z = ClimaCore.Fields.coordinate_field(model.domain.space).z
+        z = ClimaCore.Fields.coordinate_field(model.domain.space.subsurface).z
         T_soil = soil_temperature(model.driver.met, p, Y, t, z)
         θ_l = soil_moisture(model.driver.met, p, Y, t, z)
         Csom = soil_SOM_C(model.driver.soc, p, Y, t, z)

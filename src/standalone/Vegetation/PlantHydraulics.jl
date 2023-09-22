@@ -10,14 +10,13 @@ using ClimaCore
 using DocStringExtensions
 
 import ClimaLSM:
-    initialize_prognostic,
     make_update_aux,
     make_compute_exp_tendency,
     prognostic_vars,
     prognostic_types,
     auxiliary_vars,
-    initialize,
-    initialize_auxiliary,
+    auxiliary_domain_names,
+    prognostic_domain_names,
     name
 export PlantHydraulicsModel,
     AbstractPlantHydraulicsModel,
@@ -261,6 +260,7 @@ Defines the prognostic types for the PlantHydraulicsModel.
 """
 ClimaLSM.prognostic_types(model::PlantHydraulicsModel{FT}) where {FT} =
     (NTuple{model.n_stem + model.n_leaf, FT},)
+ClimaLSM.prognostic_domain_names(::PlantHydraulicsModel) = (:surface,)
 
 """
     ClimaLSM.auxiliary_types(model::PlantHydraulicsModel{FT}) where {FT}
@@ -274,6 +274,8 @@ ClimaLSM.auxiliary_types(model::PlantHydraulicsModel{FT}) where {FT} = (
     FT,
     NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}},
 )
+ClimaLSM.auxiliary_domain_names(::PlantHydraulicsModel) =
+    (:surface, :surface, :surface, :surface, :surface)
 
 
 """

@@ -15,7 +15,7 @@ using ClimaLSM
 using ClimaLSM.Regridder: MapInfo, regrid_netcdf_to_field
 using ClimaLSM.FileReader
 import ..Parameters as LSMP
-import ClimaLSM.Domains: coordinates, LSMSphericalShellDomain
+import ClimaLSM.Domains: coordinates, SphericalShell
 using ClimaLSM:
     AbstractAtmosphericDrivers,
     AbstractRadiativeDrivers,
@@ -37,6 +37,8 @@ import ClimaLSM:
     name,
     prognostic_types,
     auxiliary_types,
+    prognostic_domain_names,
+    auxiliary_domain_names,
     initialize_vars,
     initialize,
     initialize_auxiliary,
@@ -284,26 +286,21 @@ end
                  domain::D,
                  atmosphere::ATM,
                  radiation::RAD,
-               ) where {FT, PSE, ATM, RAD, D<: ClimaLSM.Domains.AbstractLSMDomain}
+               ) where {FT, PSE, ATM, RAD, D<: ClimaLSM.Domains.AbstractDomain}
 
 An outer constructor for the `BucketModel`, which enforces the
 constraints:
-1. The bucket model domain is of type <: ClimaLSM.Domains.AbstractLSMDomain
+1. The bucket model domain is of type <: ClimaLSM.Domains.AbstractDomain
 2. Using an albedo read from a lat/lon file requires a global run.
-
-Since the bucket model has prognostic variables that live on the surface of the domain
-(snow water equivalent, bucket water content, runoff), as well as defined within
-the entire domain (temperature as a function of depth), we make use of
-ClimaLSM.Domains.AbstractLSMDomains which are set up for this use case.
 """
 function BucketModel(;
     parameters::BucketModelParameters{FT, PSE},
     domain::D,
     atmosphere::ATM,
     radiation::RAD,
-) where {FT, PSE, ATM, RAD, D <: ClimaLSM.Domains.AbstractLSMDomain}
+) where {FT, PSE, ATM, RAD, D <: ClimaLSM.Domains.AbstractDomain}
     if parameters.albedo isa Union{BulkAlbedoStatic, BulkAlbedoTemporal}
-        typeof(domain) <: LSMSphericalShellDomain ? nothing :
+        typeof(domain) <: SphericalShell ? nothing :
         error("Using an albedo map requires a global run.")
     end
 
@@ -315,52 +312,14 @@ end
 
 prognostic_types(::BucketModel{FT}) where {FT} = (FT, FT, FT, FT)
 prognostic_vars(::BucketModel) = (:W, :T, :Ws, :σS)
+prognostic_domain_names(::BucketModel) =
+    (:surface, :subsurface, :surface, :surface)
+
 auxiliary_types(::BucketModel{FT}) where {FT} = (FT, FT, FT, FT, FT, FT, FT)
 auxiliary_vars(::BucketModel) =
     (:q_sfc, :evaporation, :turbulent_energy_flux, :R_n, :T_sfc, :α_sfc, :ρ_sfc)
-
-"""
-    ClimaLSM.initialize(model::BucketModel{FT}) where {FT}
-
-Initializes the variables for the `BucketModel`.
-
-Note that the `BucketModel` has prognostic variables that are defined on different
-subsets of the domain. Because of that, we have to treat them independently.
-In LSM models which are combinations of standalone component models, this is not
-needed, and we can use the default `initialize`. Here, however, we need to do some
-hardcoding specific to this model.
-"""
-function ClimaLSM.initialize(model::BucketModel{FT}) where {FT}
-    model_name = name(model)
-    subsurface_coords, surface_coords =
-        ClimaLSM.Domains.coordinates(model.domain)
-    # Temperature `T` is the only prognostic variable on the subsurface.
-    subsurface_prog =
-        ClimaLSM.initialize_vars((:T,), (FT,), subsurface_coords, model_name)
-
-    # Surface variables:
-    surface_keys = [key for key in prognostic_vars(model) if key != :T]
-    surface_types = [FT for _ in surface_keys]
-    surface_prog = ClimaLSM.initialize_vars(
-        surface_keys,
-        surface_types,
-        surface_coords,
-        model_name,
-    )
-    surface_prog_states = map(surface_keys) do (key)
-        getproperty(surface_prog.bucket, key)
-    end
-
-    values = (surface_prog_states..., subsurface_prog.bucket.T)
-    keys = (surface_keys..., :T)
-
-    Y = ClimaCore.Fields.FieldVector(; model_name => (; zip(keys, values)...))
-
-    p = initialize_auxiliary(model, surface_coords)
-    p = add_dss_buffer_to_aux(p, model.domain.surface)
-    p = add_dss_buffer_to_aux(p, model.domain.subsurface)
-    return Y, p, ClimaLSM.Domains.coordinates(model.domain)
-end
+auxiliary_domain_names(::BucketModel) =
+    (:surface, :surface, :surface, :surface, :surface, :surface, :surface)
 
 """
     ClimaLSM.make_set_initial_aux_state(model::BucketModel{FT}) where{FT}
@@ -377,7 +336,7 @@ function ClimaLSM.make_set_initial_aux_state(model::BucketModel)
         set_initial_parameter_field!(
             model.parameters.albedo,
             p,
-            ClimaCore.Fields.coordinate_field(model.domain.surface.space),
+            ClimaCore.Fields.coordinate_field(model.domain.space.surface),
         )
         update_aux!(p, Y0, t0)
     end
