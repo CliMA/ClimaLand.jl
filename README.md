@@ -2,7 +2,7 @@
 an in-progress prototype interface for running land models in integrated (multi-
 component) or standalone (single component) modes.
 
-Recommended Julia Version: Stable release v1.9.0. CI no longer tests earlier
+Recommended Julia Version: Stable release v1.9.3. CI no longer tests earlier
 versions of Julia.
 
 ## Models
