@@ -96,7 +96,9 @@ export RichardsModel,
     EnergyHydrologyParameters,
     AbstractSoilModel,
     AbstractSoilSource,
-    PhaseChange
+    PhaseChange,
+    set_initial_parameter_field!
+
 """
     AbstractSoilModel{FT} <: ClimaLSM.AbstractImExModel{FT}
 
@@ -126,9 +128,9 @@ function ClimaLSM.make_set_initial_aux_state(model::AbstractSoilModel)
     update_aux! = make_update_aux(model)
     function set_initial_aux_state!(p, Y0, t0)
         set_initial_parameter_field!(
-            model.boundary_conditions,
+            model.boundary_conditions.top.water,
             p,
-            model.domain.surface.space,
+            model.domain.space.surface,
         )
 
         update_aux!(p, Y0, t0)
@@ -169,6 +171,12 @@ function horizontal_components!(
     lateral_flow::Val{false},
     _...,
 ) end
+
+
+function set_initial_parameter_field!(parameterization, p, surface_space)
+    @info "hi"
+end
+
 include("Runoff/Runoff.jl")
 using .Runoff
 include("./retention_models.jl")
@@ -180,7 +188,6 @@ include("./soil_heat_parameterizations.jl")
 include("Biogeochemistry/Biogeochemistry.jl")
 using .Biogeochemistry
 end
-ClimaLSM.name(::AbstractSoilModel) = :soil
 #=
 function ClimaLSM.initialize_auxiliary(
 model::AbstractSoilModel{FT},

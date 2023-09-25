@@ -3,6 +3,7 @@
 *.txt
 *#
 *~
+#.nc
 *.png
 *.pdf
 *.jld2

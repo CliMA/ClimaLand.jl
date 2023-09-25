@@ -258,8 +258,8 @@ end
                            t,
                            )::ClimaCore.Fields.Field
 
-A method of boundary fluxes which converts a state boundary condition on θ_l at the top of the
-domain into a flux of liquid water.
+A method of boundary fluxes which converts a state boundary condition on θ_tl at the top of the
+edomain into a flux of liquid water.
 """
 function ClimaLSM.boundary_flux(
     rre_bc::MoistureStateBC,
@@ -503,7 +503,7 @@ function ClimaLSM.∂tendencyBC∂Y(
 end
 
 boundary_vars(::AbstractSoilBC) = ()
-boundary_var_domains(::AbstractSoilBC) = ()
+boundary_var_domain_names(::AbstractSoilBC) = ()
 boundary_var_types(::AbstractSoilBC) = ()
 boundary_vars(
     ::Union{
@@ -514,8 +514,8 @@ boundary_vars(
         },
         <:RichardsAtmosDrivenFluxBC{<:TOPMODELRunoff},
     },
-) = (:landsea_mask, :fmax, :z_∇, :fsat)
-boundary_var_domains(
+) = (:landsea_mask, :fmax, :ϕ̄, :h_∇, :fsat, :q_subsurface)
+boundary_var_domain_names(
     ::Union{
         AtmosDrivenFluxBC{
             <:AbstractAtmosphericDrivers,
@@ -524,7 +524,7 @@ boundary_var_domains(
         },
         <:RichardsAtmosDrivenFluxBC{<:TOPMODELRunoff},
     },
-) = (:surface, :surface, :surface, :surface)
+) = (:surface, :surface, :surface, :surface, :surface, :surface)
 boundary_var_types(
     ::Union{
         AtmosDrivenFluxBC{
@@ -534,24 +534,38 @@ boundary_var_types(
         },
         <:RichardsAtmosDrivenFluxBC{<:TOPMODELRunoff{FT}},
     },
-) where {FT} = (FT, FT, FT, FT)
-function set_initial_parameter_field!(parameterization, p, surface_space) end
-# we need surface fields
-# we need a way to add these fields based on parameterization
+) where {FT} = (FT, FT, FT, FT, FT, FT)
+
 function set_initial_parameter_field!(
     bc::Union{AtmosDrivenFluxBC, <:RichardsAtmosDrivenFluxBC},
     p,
     surface_space,
-) where {FT}
-    set_initial_parameter_field!(bc.top.runoff, p, surface_space)
+)
+    set_initial_parameter_field!(bc.runoff, p, surface_space)
 end
 
 function make_update_boundary_vars(
-    bc::Union{AtmosDrivenFluxBC, <:RichardsAtmosDrivenFluxBC},
-)
+    model::AbstractSoilModel,
+    bc::Union{
+        AtmosDrivenFluxBC{
+            <:AbstractAtmosphericDrivers,
+            <:AbstractRadiativeDrivers,
+            <:TOPMODELRunoff{FT},
+        },
+        <:RichardsAtmosDrivenFluxBC{<:TOPMODELRunoff{FT}},
+    },
+) where {FT}
     function update_boundary_vars!(p, Y, t)
-        p.soil.z_∇ .= sum(heaviside.(Y.soil.ϑ_l .- ν))
-        @. p.soil.fsat = p.soil.fmax * exp(-bc.f_over * p.soil.z_∇)
+        (; K_sat, ν) = model.parameters
+        soil_depth = model.domain.depth # generalize to column and box
+        f = model.boundary_conditions.top.water.runoff.f_over
+
+        h_∇ = p.soil.h_∇
+        h_∇ = sum(heaviside.(Y.soil.ϑ_l .- ν))
+        d_∇ = soil_depth - h_∇# depth to water table ## double check!!
+
+        @. p.soil.fsat = p.soil.fmax * exp(-f * d_∇) # should be zero if no depth!!
+        @. p.soil.q_subsurface = K_sat / f * exp(-f * d_∇ - p.soil.ϕ̄) # should be zero if no depth!!!
     end
-    return update_boundary_vars!(p, Y, t)
+    return update_boundary_vars!
 end

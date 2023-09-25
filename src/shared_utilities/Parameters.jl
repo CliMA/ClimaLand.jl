@@ -4,6 +4,7 @@ abstract type AbstractLSMParameters end
 const ALSMP = AbstractLSMParameters
 
 Base.@kwdef struct LSMParameters{FT, TP, SFP, IP} <: ALSMP
+    planet_radius::FT
     K_therm::FT
     ρ_cloud_liq::FT
     ρ_cloud_ice::FT
@@ -28,6 +29,7 @@ Base.@kwdef struct LSMParameters{FT, TP, SFP, IP} <: ALSMP
 end
 
 # wrapper methods:
+r_earth(ps::ALSMP) = ps.planet_radius
 P_ref(ps::ALSMP) = ps.MSLP
 K_therm(ps::ALSMP) = ps.K_therm
 ρ_cloud_liq(ps::ALSMP) = ps.ρ_cloud_liq

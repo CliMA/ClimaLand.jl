@@ -1,7 +1,9 @@
 module Runoff
 using ClimaLSM
+using ClimaLSM.Regridder: regrid_netcdf_to_field
 import ClimaLSM: source!
 using ..ClimaLSM.Soil: AbstractSoilSource, AbstractSoilModel
+import ..ClimaLSM.Soil: set_initial_parameter_field!
 export soil_surface_infiltration,
     TOPMODELRunoff,
     AbstractRunoffModel,
@@ -83,12 +85,12 @@ struct TOPMODELRunoff{FT <: AbstractFloat} <: AbstractRunoffModel
     subsurface_source::TOPMODELSubsurfaceRunoff{FT}
 end
 
-function set_initial_parameter_field!(
-    parameterization::TOPMODELRunoff{FT},
+function ClimaLSM.Soil.set_initial_parameter_field!(
+    parameterization::P,
     p,
     surface_space,
-) where {FT}
-    #    comms =
+) where {FT, P <: TOPMODELRunoff{FT}}
+    comms = surface_space.topology.context
     p.soil.fmax .= regrid_netcdf_to_field(
         FT,
         parameterization.regrid_dirpath,
@@ -106,6 +108,15 @@ function set_initial_parameter_field!(
         :landsea_mask,
         surface_space,
     )
+
+    p.soil.ϕ̄ .= regrid_netcdf_to_field(
+        FT,
+        parameterization.regrid_dirpath,
+        comms,
+        parameterization.raw_datapath,
+        :mean_ti,
+        surface_space,
+    )
 end
 
 """
@@ -121,11 +132,7 @@ function soil_surface_infiltration(
 
     (; hydrology_cm, K_sat, ν, θ_r) = soil_parameters
     # we need this at the surface only
-    infiltration_capacity = @. -p.soil.K / hydraulic_conductivity(
-        hydrology_cm,
-        K_sat,
-        effective_saturation(ν, Y.soil.ϑ_l, θ_r),
-    )
+    infiltration_capacity = @. -K_sat
     # net_water_flux is negative if towards the soil; take smaller in magnitude -> max
     # net_water_flux is positive if away from soil -> use as BC.
     return (1 - p.soil.fsat) * max(infiltration_capacity, net_water_flux)
@@ -141,16 +148,9 @@ function ClimaLSM.source!(
     p,
     model::AbstractSoilModel,
 )
-    #=
-    h_∇ = sum(heaviside.(Y.soil.ϑ_l .- ν))
-    @. dY.soil.ϑ_l -=
-        -p.soil.K / hydraulic_conductivity(
-            hydrology_cm,
-            K_sat,
-            effective_saturation(ν, Y.soil.ϑ_l, θ_r),
-        ) / model.boundary_conditions.top.runoff.f * exp(-p.soil.ϕ_sat) / h_∇ *
-        heaviside.(Y.soil.ϑ_l .- ν)
-    =#
+    h_∇ = p.soil.h_∇
+    ν = model.parameters.νx
+    @. dY.soil.ϑ_l -= p.soil.q_subsurface / h_∇ * heaviside.(Y.soil.ϑ_l .- ν)
 
 end
 

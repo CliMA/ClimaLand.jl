@@ -268,7 +268,7 @@ This has been written so as to work with Differential Equations.jl.
 """
 function ClimaLSM.make_update_aux(model::RichardsModel)
     update_boundary_vars! =
-        make_update_boundary_vars(model.boundary_conditions.top.water)
+        make_update_boundary_vars(model, model.boundary_conditions.top.water)
     function update_aux!(p, Y, t)
         (; ν, hydrology_cm, K_sat, S_s, θ_r) = model.parameters
         @. p.soil.K = hydraulic_conductivity(
