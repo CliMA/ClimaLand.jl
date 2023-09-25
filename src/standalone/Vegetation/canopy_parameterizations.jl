@@ -30,17 +30,20 @@ export plant_absorbed_pfd,
         NIR,
         LAI,
         K,
-        _,
-        _,
+        α_soil_PAR,
+        α_soil_NIR,
         _,
         _,
     )
 
-Computes the APAR and ANIR absorbances for a canopy in the case of the 
+Computes the PAR and NIR absorbances, reflectances, and tranmittances
+for a canopy in the case of the 
 Beer-Lambert model. The absorbances are a function of the radiative transfer 
 model, as well as the magnitude of incident PAR and NIR radiation in moles of 
-photons, the leaf area index, and the extinction coefficient. Returns a tuple of 
-(APAR, ANIR).
+photons, the leaf area index, the extinction coefficient, and the
+soil albedo in the PAR and NIR bands. Returns a
+NamedTuple of NamedTuple, of the form:
+(; par = (; refl = , trans = , abs = ),  nir = (; refl = , trans = , abs = ))
 """
 function compute_absorbances(
     RT::BeerLambertModel{FT},
@@ -48,15 +51,16 @@ function compute_absorbances(
     NIR,
     LAI,
     K,
-    _,
-    _,
-    _,
-    _,
+    α_soil_PAR,
+    α_soil_NIR,
+    _...,
 ) where {FT}
     RTP = RT.parameters
-    APAR = @. plant_absorbed_pfd(RT, PAR, RTP.α_PAR_leaf, LAI, K)
-    ANIR = @. plant_absorbed_pfd(RT, NIR, RTP.α_NIR_leaf, LAI, K)
-    return (APAR, ANIR)
+    canopy_par =
+        @. plant_absorbed_pfd(RT, PAR, RTP.α_PAR_leaf, LAI, K, α_soil_PAR)
+    canopy_nir =
+        @. plant_absorbed_pfd(RT, NIR, RTP.α_NIR_leaf, LAI, K, α_soil_NIR)
+    return (; par = canopy_par, nir = canopy_nir)
 end
 
 """
@@ -66,17 +70,23 @@ end
         NIR,
         LAI,
         K,
-        θs,
         α_soil_PAR,
         α_soil_NIR,
+        θs,
         frac_diff,
     )
 
-Compute APAR and ANIR absorbances for a canopy in the case of the
-two-stream model. The absorbances are a function of the radiative transfer 
+Computes the PAR and NIR absorbances, reflectances, and tranmittances
+for a canopy in the case of the 
+Beer-Lambert model. The absorbances are a function of the radiative transfer 
 model, as well as the magnitude of incident PAR and NIR radiation in moles of 
-photons, the leaf areaindex, the extinction coefficient, the solar zenith angle,
-and soil albedo. Returns a tuple of (APAR, ANIR).
+photons, the leaf area index, the extinction coefficient, and the
+soil albedo in the PAR and NIR bands. 
+
+This model also depends on the diffuse fraction and the zenith angle.
+Returns a
+NamedTuple of NamedTuple, of the form:
+(; par = (; refl = , trans = , abs = ),  nir = (; refl = , trans = , abs = ))
 """
 function compute_absorbances(
     RT::TwoStreamModel{FT},
@@ -84,13 +94,13 @@ function compute_absorbances(
     NIR,
     LAI,
     K,
-    θs,
     α_soil_PAR,
     α_soil_NIR,
+    θs,
     frac_diff,
 ) where {FT}
     RTP = RT.parameters
-    APAR = @. plant_absorbed_pfd(
+    canopy_par = @. plant_absorbed_pfd(
         RT,
         PAR,
         RTP.α_PAR_leaf,
@@ -101,7 +111,7 @@ function compute_absorbances(
         α_soil_PAR,
         frac_diff,
     )
-    ANIR = @. plant_absorbed_pfd(
+    canopy_nir = @. plant_absorbed_pfd(
         RT,
         NIR,
         RTP.α_NIR_leaf,
@@ -112,7 +122,7 @@ function compute_absorbances(
         α_soil_NIR,
         frac_diff,
     )
-    return (APAR, ANIR)
+    return (; par = canopy_par, nir = canopy_nir)
 end
 
 """
@@ -122,19 +132,20 @@ end
         α_leaf::FT,
         LAI::FT,
         K::FT,
+        α_soil::FT
     )
 
-Computes the absorbed photon flux density in terms of mol photons per m^2 per 
-second for a radiation band. If the reflectance and radiation for NIR is passed, 
-computes ANIR and if PAR reflectance and rediation are passed, computes APAR.
+Computes the absorbed, reflected, and transmitted photon flux density 
+in terms of mol photons per m^2 per 
+second for a radiation band.
 
 This applies the Beer-Lambert law, which is a function of incident 
 radiation (`SW_IN`; moles of photons/m^2/), leaf reflectance
-(`α_PAR_leaf`), the extinction coefficient (`K`), leaf area index (`LAI`),
-and the clumping index (`Ω`). 
-The function takes in all parameters in the parameters struct for a 
-BeerLambertModel, along with the SW_IN, LAI, extinction coefficient K, and solar 
-zenith angle.
+(`α_leaf`), the extinction coefficient (`K`), leaf area index (`LAI`),
+and the albedo of the soil (`α_soil`). 
+
+Returns a tuple of reflected, absorbed, and transmitted radiation in
+mol photons/m^2/s.
 """
 function plant_absorbed_pfd(
     RT::BeerLambertModel{FT},
@@ -142,10 +153,13 @@ function plant_absorbed_pfd(
     α_leaf::FT,
     LAI::FT,
     K::FT,
+    α_soil::FT,
 ) where {FT}
     RTP = RT.parameters
-    AR = SW_IN * (1 - α_leaf) * (1 - exp(-K * LAI * RTP.Ω))
-    return AR
+    AR = SW_IN * (1 - α_leaf) * (1 - exp(-K * LAI * RTP.Ω)) * (1 - α_soil)
+    TR = SW_IN * exp(-K * LAI * RTP.Ω)
+    RR = SW_IN - AR - TR * (1 - α_soil)
+    return (; abs = AR, refl = RR, trans = TR)
 end
 
 """
@@ -160,16 +174,17 @@ end
         α_soil::FT,
     )
 
-Computes the absorbed photon flux density in terms of mol photons per m^2 per 
-second for a radiation band. If the reflectance, radiation, transmittance, and 
-soil albedo for NIR is passed, computes ANIR and if PAR reflectance, rediation,
-transmittance, and soil albedo are passed, computes APAR.
+Computes the absorbed, transmitted, and reflected  photon flux density 
+in terms of mol photons  per m^2 per second for a radiation band. 
 
 This applies the two-stream radiative transfer solution which takes into account
 the impacts of scattering within the canopy. The function takes in all 
 parameters from the parameter struct of a TwoStreamModel, along with the 
 incident radiation, LAI, extinction coefficient K, soil albedo from the 
-canopy soil_driver, and solar zenith angle.
+canopy soil_driver, solar zenith angle, and τ.
+
+Returns a tuple of reflected, absorbed, and transmitted radiation in
+mol photons/m^2/s.
 """
 function plant_absorbed_pfd(
     RT::TwoStreamModel{FT},
@@ -262,6 +277,9 @@ function plant_absorbed_pfd(
     F_abs = 0
     i = 0
 
+    # Total light reflected form top of canopy
+    F_refl = 0
+
     # Intialize vars to save computed fluxes from each layer for the next layer
     I_dir_up_prev = 0
     I_dir_dn_prev = 0
@@ -300,6 +318,11 @@ function plant_absorbed_pfd(
             I_dif_abs = I_dif_up - I_dif_up_prev - I_dif_dn + I_dif_dn_prev
         end
 
+        if i == 1
+            F_refl = (1 - frac_diff) * I_dir_up + (frac_diff) * I_dif_up
+        end
+
+
         # Add radiation absorbed in the layer to total absorbed radiation
         F_abs += (1 - frac_diff) * I_dir_abs + (frac_diff) * I_dif_abs
 
@@ -315,7 +338,12 @@ function plant_absorbed_pfd(
 
     # Convert fractional absorption into absorption and return
     # Ensure floating point precision is correct (it may be different for PAR)
-    return FT(SW_IN * F_abs)
+    F_trans = (1 - F_abs - F_refl) / (1 - α_soil)
+    return (;
+        abs = FT(SW_IN * F_abs),
+        refl = FT(SW_IN * F_refl),
+        trans = FT(SW_IN * F_trans),
+    )
 end
 
 """
@@ -329,9 +357,19 @@ the air temperature (`T`), the relative humidity (`RH`), and the day of the year
 See Appendix A of Braghiere, "Evaluation of turbulent fluxes of CO2, sensible heat,
 and latent heat as a function of aerosol optical depth over the course of deforestation
 in the Brazilian Amazon" 2013.
+
+Note that cos(θs) is equal to zero when θs = π/2, and this is a coefficient
+of k₀, which we divide by in this expression. This can amplify small errors
+when θs is near π/2. 
+
+This formula is empirical and can yied negative numbers depending on the 
+input, which, when dividing by something very near zero, 
+can become large negative numbers.
+
+Because of that, we cap the returned value to lie within [0,1].
 """
 function diffuse_fraction(td, T::FT, SW_IN::FT, RH::FT, θs::FT) where {FT}
-    k₀ = FT(1370 * (1 + 0.033 * cos(360 * td / 365)) * cos(θs))
+    k₀ = FT(1370 * (1 + 0.033 * cos(2π * td / 365))) * cos(θs)
     kₜ = SW_IN / k₀
     if kₜ ≤ 0.3
         diff_frac = FT(
@@ -348,7 +386,7 @@ function diffuse_fraction(td, T::FT, SW_IN::FT, RH::FT, θs::FT) where {FT}
         diff_frac =
             FT(kₜ * (0.426 * kₜ + 0.256 * cos(θs) - 3.49e-3 * T + 0.0734 * RH))
     end
-    return diff_frac
+    return max(min(diff_frac, FT(1)), FT(0))
 end
 
 

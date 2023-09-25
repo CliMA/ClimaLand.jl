@@ -18,6 +18,8 @@ struct BeerLambertParameters{FT <: AbstractFloat}
     α_PAR_leaf::FT
     "NIR leaf reflectance"
     α_NIR_leaf::FT
+    "Emissivity of the canopy"
+    ϵ_canopy::FT
     "Clumping index following Braghiere (2021) (unitless)"
     Ω::FT
     "Typical wavelength per PAR photon (m)"
@@ -31,17 +33,19 @@ end
         ld = FT(0.5),    
         α_PAR_leaf = FT(0.1),
         α_NIR_leaf = FT(0.4),
+        ϵ_canopy = FT(0.98),
         Ω = FT(1),
         λ_γ_PAR = FT(5e-7),
         λ_γ_NIR = FT(1.65e-6),
     ) where {FT}
 
 A constructor supplying default values for the BeerLambertParameters struct.
-    """
+        """
 function BeerLambertParameters{FT}(;
     ld = FT(0.5),
     α_PAR_leaf = FT(0.1),
     α_NIR_leaf = FT(0.4),
+    ϵ_canopy = FT(0.98),
     Ω = FT(1),
     λ_γ_PAR = FT(5e-7),
     λ_γ_NIR = FT(1.65e-6),
@@ -50,6 +54,7 @@ function BeerLambertParameters{FT}(;
         ld,
         α_PAR_leaf,
         α_NIR_leaf,
+        ϵ_canopy,
         Ω,
         λ_γ_PAR,
         λ_γ_NIR,
@@ -78,6 +83,8 @@ struct TwoStreamParameters{FT <: AbstractFloat}
     α_NIR_leaf::FT
     "NIR leaf element transmittance"
     τ_NIR_leaf::FT
+    "Emissivity of the canopy"
+    ϵ_canopy::FT
     "Clumping index following Braghiere (2021) (unitless)"
     Ω::FT
     "Typical wavelength per PAR photon (m)"
@@ -95,6 +102,7 @@ end
         τ_PAR_leaf = FT(0.2),
         α_NIR_leaf = FT(0.4),
         τ_NIR_leaf = FT(0.25),
+        ϵ_canopy = FT(0.98),
         Ω = FT(1),
         λ_γ_PAR = FT(5e-7),
         λ_γ_NIR = FT(1.65e-6),
@@ -103,13 +111,14 @@ end
     ) where {FT}
 
 A constructor supplying default values for the TwoStreamParameters struct.
-"""
+    """
 function TwoStreamParameters{FT}(;
     ld = FT(0.5),
     α_PAR_leaf = FT(0.3),
     τ_PAR_leaf = FT(0.2),
     α_NIR_leaf = FT(0.4),
     τ_NIR_leaf = FT(0.25),
+    ϵ_canopy = FT(0.98),
     Ω = FT(1),
     λ_γ_PAR = FT(5e-7),
     λ_γ_NIR = FT(1.65e-6),
@@ -121,6 +130,7 @@ function TwoStreamParameters{FT}(;
         τ_PAR_leaf,
         α_NIR_leaf,
         τ_NIR_leaf,
+        ϵ_canopy,
         Ω,
         λ_γ_PAR,
         λ_γ_NIR,
@@ -177,9 +187,17 @@ Base.broadcastable(RT::AbstractRadiationModel) = tuple(RT)
 
 ClimaLSM.name(model::AbstractRadiationModel) = :radiative_transfer
 ClimaLSM.auxiliary_vars(model::Union{BeerLambertModel, TwoStreamModel}) =
-    (:apar, :par, :anir, :nir)
+    (:apar, :par, :rpar, :tpar, :anir, :nir, :rnir, :tnir)
 ClimaLSM.auxiliary_types(
     model::Union{BeerLambertModel{FT}, TwoStreamModel{FT}},
-) where {FT} = (FT, FT, FT, FT)
-ClimaLSM.auxiliary_domain_names(::Union{BeerLambertModel, TwoStreamModel}) =
-    (:surface, :surface, :surface, :surface)
+) where {FT} = (FT, FT, FT, FT, FT, FT, FT, FT)
+ClimaLSM.auxiliary_domain_names(::Union{BeerLambertModel, TwoStreamModel}) = (
+    :surface,
+    :surface,
+    :surface,
+    :surface,
+    :surface,
+    :surface,
+    :surface,
+    :surface,
+)

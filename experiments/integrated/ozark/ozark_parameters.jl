@@ -25,8 +25,8 @@ soil_vg_α = FT(0.04) # inverse meters
 z_0m_soil = FT(0.1)
 z_0b_soil = FT(0.1)
 soil_ϵ = FT(0.98)
-soil_α_PAR = FT(0.3)
-soil_α_NIR = FT(0.5)
+soil_α_PAR = FT(0.2)
+soil_α_NIR = FT(0.2)
 
 # TwoStreamModel parameters
 Ω = FT(0.69)
@@ -39,6 +39,7 @@ ld = FT(0.5)
 τ_NIR_leaf = FT(0.25)
 n_layers = UInt64(20)
 diff_perc = FT(0.2)
+ϵ_canopy = FT(0.97)
 
 # Conductance Model
 g1 = FT(141) # Wang et al: 141 sqrt(Pa) for Medlyn model; Natan used 300.

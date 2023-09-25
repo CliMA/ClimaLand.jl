@@ -82,6 +82,7 @@ radiative_transfer_args = (;
         α_NIR_leaf = α_NIR_leaf,
         τ_NIR_leaf = τ_NIR_leaf,
         n_layers = n_layers,
+        ϵ_canopy = ϵ_canopy,
     )
 )
 # Set up conductance
@@ -266,58 +267,62 @@ Plots.plot!(plt2, seconds ./ 3600 ./ 24, GPP .* 1e6, label = "", lalpha = 0.3)
 Plots.plot(plt1, plt2, layout = (2, 1))
 Plots.savefig(joinpath(savedir, "GPP.png"))
 
-# SW_IN
-
+# SW_OUT
+SW_out_model = [parent(sv.saveval[k].SW_out)[1] for k in 1:length(sv.saveval)]
 plt1 = Plots.plot(size = (1500, 400))
 Plots.plot!(
     plt1,
     seconds ./ 3600 ./ 24,
-    FT.(SW_IN),
+    FT.(SW_OUT),
     label = "Data",
-    title = " SWd (W/m^2)",
+    title = "Outgoing SW (W/m^2)",
     xlim = [minimum(daily), maximum(daily)],
 )
+
+Plots.plot!(plt1, daily, SW_out_model, label = "Model")
 
 plt2 = Plots.plot(size = (1500, 400))
 Plots.plot!(
     plt2,
     seconds ./ 3600 ./ 24,
-    FT.(SW_IN),
+    FT.(SW_OUT),
     label = "",
     xlim = [minimum(daily), minimum(daily) + 30],
     margin = 10Plots.mm,
     xlabel = "Day of year",
 )
+Plots.plot!(plt2, daily, SW_out_model, label = "Model")
 Plots.plot(plt1, plt2, layout = (2, 1))
+Plots.savefig(joinpath(savedir, "SW.png"))
 
-Plots.savefig(joinpath(savedir, "SW_IN.png"))
 
-# VPD
-
+# LW_OUT
+LW_out_model = [parent(sv.saveval[k].LW_out)[1] for k in 1:length(sv.saveval)]
 plt1 = Plots.plot(size = (1500, 400))
 Plots.plot!(
     plt1,
     seconds ./ 3600 ./ 24,
-    FT.(VPD),
+    FT.(LW_OUT),
     label = "Data",
-    title = "VPD (Pa)",
+    title = "Outgoing LW (W/m^2)",
     xlim = [minimum(daily), maximum(daily)],
 )
+
+Plots.plot!(plt1, daily, LW_out_model, label = "Model")
 
 plt2 = Plots.plot(size = (1500, 400))
 Plots.plot!(
     plt2,
     seconds ./ 3600 ./ 24,
-    FT.(VPD),
+    FT.(LW_OUT),
     label = "",
     xlim = [minimum(daily), minimum(daily) + 30],
-    ylim = [0, 2000],
     margin = 10Plots.mm,
     xlabel = "Day of year",
 )
+Plots.plot!(plt2, daily, LW_out_model, label = "Model")
 Plots.plot(plt1, plt2, layout = (2, 1))
-Plots.savefig(joinpath(savedir, "VPD.png"))
-
+Plots.savefig(joinpath(savedir, "LW.png"))
 
 
 T =

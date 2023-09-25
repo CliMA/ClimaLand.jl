@@ -78,8 +78,8 @@ function soil_boundary_fluxes(
         t,
         model.parameters,
     )
-    net_energy_flux = @. p.soil_Rn + p.soil_lhf + p.soil_shf
-    return infiltration, net_energy_flux
+    G = @. -p.soil_LW_n - p.soil_SW_n + p.soil_lhf + p.soil_shf
+    return infiltration, G
 end
 
 """
@@ -168,13 +168,18 @@ included in the integrated Soil-Canopy model.
 """
 interaction_vars(m::SoilCanopyModel) = (
     :root_extraction,
-    :soil_Rn,
+    :soil_LW_n,
+    :soil_SW_n,
     :soil_evap,
     :soil_shf,
     :soil_lhf,
     :T_soil,
     :α_soil,
     :ϵ_soil,
+    :canopy_LW_n,
+    :canopy_SW_n,
+    :LW_out,
+    :SW_out,
 )
 
 """
@@ -184,7 +189,7 @@ The types of the additional auxiliary variables that are
 included in the integrated Soil-Canopy model.
 """
 interaction_types(m::SoilCanopyModel{FT}) where {FT} =
-    (FT, FT, FT, FT, FT, FT, FT, FT)
+    (FT, FT, FT, FT, FT, FT, FT, FT, FT, FT, FT, FT, FT)
 
 """
     interaction_domain_names(m::SoilCanopyModel)
@@ -194,6 +199,11 @@ included in the integrated Soil-Canopy model.
 """
 interaction_domain_names(m::SoilCanopyModel) = (
     :subsurface,
+    :surface,
+    :surface,
+    :surface,
+    :surface,
+    :surface,
     :surface,
     :surface,
     :surface,
@@ -269,12 +279,12 @@ function make_interactions_update_aux(
         p.T_soil .= surface_temperature(land.soil, Y, p, t)
         p.α_soil .= surface_albedo(land.soil, Y, p)
         p.ϵ_soil .= surface_emissivity(land.soil, Y, p)
-        p.soil_Rn .= net_radiation_at_ground(
+        lsm_radiation_update!(
+            p,
             land.canopy.radiative_transfer,
             land.canopy,
             land.soil,
             Y,
-            p,
             t,
         )
 
@@ -299,12 +309,12 @@ give the canopy radiation model.
 Returns the correct radiative fluxes for bare ground in the case
 where the canopy LAI is zero.
 """
-function net_radiation_at_ground(
+function lsm_radiation_update!(
+    p,
     canopy_radiation::Canopy.AbstractRadiationModel{FT},
     canopy,
     ground_model::Soil.EnergyHydrology,
     Y,
-    p,
     t,
 ) where {FT}
     radiation = canopy.radiation
@@ -315,18 +325,55 @@ function net_radiation_at_ground(
     c = FT(LSMP.light_speed(earth_param_set))
     h = FT(LSMP.planck_constant(earth_param_set))
     N_a = FT(LSMP.avogadro_constant(earth_param_set))
-    (; λ_γ_PAR, λ_γ_NIR) = canopy_radiation.parameters
+    (; λ_γ_PAR, λ_γ_NIR, ϵ_canopy) = canopy_radiation.parameters
     energy_per_photon_PAR = h * c / λ_γ_PAR
     energy_per_photon_NIR = h * c / λ_γ_NIR
-    SW_d_beneath_canopy = @. SW_d - (
-        (energy_per_photon_PAR * N_a * p.canopy.radiative_transfer.apar) +
-        (energy_per_photon_NIR * N_a * p.canopy.radiative_transfer.anir)
-    )
-    LW_d_beneath_canopy = LW_d # Assumes T_canopy = T_air
-    return @. (
-        -(1 - p.α_soil) * SW_d_beneath_canopy -
-        p.ϵ_soil * (LW_d_beneath_canopy - _σ * p.T_soil^4)
-    )
+    T_canopy =
+        ClimaLSM.Canopy.canopy_temperature(canopy.energy, canopy, Y, p, t)
+    T_soil = p.T_soil
+    α_soil_PAR = Canopy.ground_albedo_PAR(canopy)
+    α_soil_NIR = Canopy.ground_albedo_NIR(canopy)
+
+    ϵ_soil = p.ϵ_soil
+    # in W/m^2
+    PAR = p.canopy.radiative_transfer.par
+    NIR = p.canopy.radiative_transfer.nir
+
+    LW_net_canopy = p.canopy_LW_n
+    SW_net_canopy = p.canopy_SW_n
+    LW_net_soil = p.soil_LW_n
+    SW_net_soil = p.soil_SW_n
+    LW_out = p.LW_out
+    SW_out = p.SW_out
+
+    # in total: INC - OUT = CANOPY_ABS + (1-α_soil)*CANOPY_TRANS
+    # SW out  = reflected par + reflected nir
+    @. SW_out =
+        energy_per_photon_NIR * N_a * p.canopy.radiative_transfer.rnir +
+        energy_per_photon_PAR * N_a * p.canopy.radiative_transfer.rpar
+
+    # net canopy = absorbed par + absorbed nir
+    @. SW_net_canopy =
+        energy_per_photon_NIR * N_a * p.canopy.radiative_transfer.anir +
+        energy_per_photon_PAR * N_a * p.canopy.radiative_transfer.apar
+
+    # net soil = (1-α)*trans for par and nir
+    @. SW_net_soil =
+        energy_per_photon_NIR *
+        N_a *
+        p.canopy.radiative_transfer.tnir *
+        (1 - α_soil_NIR) +
+        energy_per_photon_PAR *
+        N_a *
+        p.canopy.radiative_transfer.tpar *
+        (1 - α_soil_PAR)
+
+    LW_d_canopy = @. (1 - ϵ_canopy) * LW_d + ϵ_canopy * _σ * T_canopy^4 # double checked
+    LW_u_soil = @. ϵ_soil * _σ * T_soil^4 + (1 - ϵ_soil) * LW_d_canopy # double checked
+    @. LW_net_canopy =
+        ϵ_canopy * LW_d - 2 * ϵ_canopy * _σ * T_canopy^4 + ϵ_canopy * LW_u_soil # double checked
+    @. LW_net_soil = ϵ_soil * LW_d_canopy - ϵ_soil * _σ * T_soil^4 # double checked
+    @. LW_out = (1 - ϵ_canopy) * LW_u_soil + ϵ_canopy * _σ * T_canopy^4 # double checked
 end
 
 """
