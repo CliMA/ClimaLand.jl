@@ -8,7 +8,7 @@ using Dates
 using JLD2
 using DocStringExtensions
 
-export MapInfo, regrid_netcdf_to_field
+export regrid_netcdf_to_field
 
 nans_to_zero(v::T) where {T} = isnan(v) ? T(0) : v
 
@@ -281,6 +281,7 @@ function hdwrite_regridfile_rll_to_cgll(
     )
 
     # TODO: extend write! to handle time-dependent fields
+    comms_ctx = space.topology.context
     map(
         x -> write_to_hdf5(
             REGRID_DIR,
@@ -288,6 +289,7 @@ function hdwrite_regridfile_rll_to_cgll(
             times[x],
             offline_fields[x],
             varname,
+            comms_ctx,
         ),
         1:length(times),
     )
@@ -344,26 +346,6 @@ function swap_space!(field, new_space)
     field_out = zeros(new_space)
     parent(field_out) .= parent(field)
     return field_out
-end
-
-"""
-    MapInfo
-
-A struct holding the information required to identify the
-netcdf file where a global map of a particular parameter is stored,
-and for carrying out regridding of that dataset to a ClimaCore.Domains.AbstractDomain.
-
-$(DocStringExtensions.FIELDS)
-"""
-struct MapInfo
-    "Local path to NetCDF file"
-    path::String
-    "Variable name of interest"
-    varname::String
-    "Path where temporary regrid files are stored."
-    regrid_dirpath::String
-    "Communication context. Not tested yet with MPI"
-    comms::ClimaComms.AbstractCommsContext
 end
 
 end

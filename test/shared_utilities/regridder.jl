@@ -1,4 +1,5 @@
-using ClimaLSM.Regridder: MapInfo, regrid_netcdf_to_field
+using ClimaLSM.Regridder: regrid_netcdf_to_field
+using ClimaLSM.FileReader: PrescribedDataStatic
 using ClimaLSM.Bucket:
     BulkAlbedoStatic,
     bareground_albedo_dataset_path,
@@ -10,21 +11,20 @@ using ClimaCore
 using Test
 
 
-@testset "Spatially varying map" begin
+@testset "Spatially varying map - regrid to field" begin
     FT = Float32
     path = bareground_albedo_dataset_path()
     regrid_dirpath =
         joinpath(pkgdir(ClimaLSM), "test/standalone/Bucket/regridder_tmpfiles")
     mkpath(regrid_dirpath)
-    rm(regrid_dirpath, recursive = true)
 
     varname = "sw_alb"
-    comms = ClimaComms.SingletonCommsContext()
-    albedo = MapInfo(path, varname, regrid_dirpath, comms)
+    albedo = PrescribedDataStatic(path, regrid_dirpath, varname)
 
     surface_domain =
         SphericalSurface(; radius = FT(1), nelements = 2, npolynomial = 3)
     boundary_space = surface_domain.space.surface
+    comms = boundary_space.topology.context
     field = regrid_netcdf_to_field(
         FT,
         regrid_dirpath,

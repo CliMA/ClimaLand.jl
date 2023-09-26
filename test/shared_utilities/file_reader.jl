@@ -42,9 +42,10 @@ for FT in (Float64, Float32)
 
         # manually create structs to avoid creating space for outer constructor
         file_info = FileReader.FileInfo(
+            "",             # infile_path
             "",             # regrid_dirpath
-            "",             # outfile_root
             "",             # varname
+            "",             # outfile_root
             dummy_dates,    # all_dates
             date_idx0,      # date_idx0
         )
@@ -56,7 +57,7 @@ for FT in (Float64, Float32)
         sim_info = nothing
 
         prescribed_data =
-            FileReader.PrescribedData(file_info, file_state, sim_info)
+            FileReader.PrescribedDataTemporal(file_info, file_state, sim_info)
 
         # read in next dates, manually compare to `dummy_dates` array
         idx = date_idx0[1]
@@ -117,9 +118,10 @@ for FT in (Float64, Float32)
 
         # create structs manually since we aren't reading from a data file
         file_info = FileReader.FileInfo(
+            "",             # infile_path
             "",             # regrid_dirpath
-            "",             # outfile_root
             "",             # varname
+            "",             # outfile_root
             dummy_dates,    # all_dates
             date_idx0,      # date_idx0
         )
@@ -133,7 +135,7 @@ for FT in (Float64, Float32)
             t_start,        # t_start
         )
 
-        prescribed_data = FileReader.PrescribedData(
+        prescribed_data = FileReader.PrescribedDataTemporal(
             file_info,      # file_info
             file_state,     # file_state
             sim_info,       # sim_info
@@ -147,11 +149,35 @@ for FT in (Float64, Float32)
         ) == ones(surface_space_t) .* FT(0.5)
     end
 
+    @testset "test PrescribedDataStatic construction for FT=$FT" begin
+        infile_path = albedo_temporal_data
+        varname = "sw_alb"
+        ps_data_spatial = FileReader.PrescribedDataStatic(
+            infile_path,
+            regrid_dir_static,
+            varname,
+        )
+
+        # test that created object exists
+        @test @isdefined(ps_data_spatial)
+        @test ps_data_spatial isa FileReader.AbstractPrescribedData
+
+        # test fields that we've passed into constructor as args
+        @test ps_data_spatial.file_info.infile_path == infile_path
+        @test ps_data_spatial.file_info.regrid_dirpath == regrid_dir_static
+        @test ps_data_spatial.file_info.varname == varname
+
+        # test fields which are set internally by constructor
+        @test ps_data_spatial.file_info.outfile_root == ""
+        @test ps_data_spatial.file_info.all_dates == []
+        @test ps_data_spatial.file_info.date_idx0 == []
+    end
+
     # Add tests which use TempestRemap here -
     # TempestRemap is not built on Windows because of NetCDF support limitations
-    # `prescribed_data_init` uses TR via a call to `hdwrite_regridfile_rll_to_cgll`
+    # `PrescribedDataTemporal` uses TR via a call to `hdwrite_regridfile_rll_to_cgll`
     if !Sys.iswindows()
-        @testset "test prescribed_data_init and constructors for FT=$FT" begin
+        @testset "test PrescribedDataTemporal construction for FT=$FT" begin
             # setup for test
             radius = FT(6731e3)
             Nq = 4
@@ -161,15 +187,15 @@ for FT in (Float64, Float32)
             quad = Spaces.Quadratures.GLL{Nq}()
             surface_space_t = Spaces.SpectralElementSpace2D(topology, quad)
 
-            datafile_rll = albedo_bareground_data
+            infile_path = albedo_temporal_data
             varname = "sw_alb"
             date_idx0 = Int[1]
             date_ref = DateTime(1800, 1, 1)
             t_start = FT(0)
 
-            ps_data_from_init = FileReader.prescribed_data_init(
-                regrid_dir_static,
-                datafile_rll,
+            ps_data_temp = FileReader.PrescribedDataTemporal(
+                regrid_dir_temporal,
+                infile_path,
                 varname,
                 date_ref,
                 t_start,
@@ -177,22 +203,22 @@ for FT in (Float64, Float32)
             )
 
             # test that created object exists
-            @test @isdefined(ps_data_from_init)
+            @test @isdefined(ps_data_temp)
+            @test ps_data_temp isa FileReader.AbstractPrescribedData
 
             # test fields that we've passed into constructor as args
-            @test ps_data_from_init.file_info.regrid_dirpath ==
-                  regrid_dir_static
-            @test ps_data_from_init.file_info.varname == varname
-            @test ps_data_from_init.file_info.date_idx0 == date_idx0
-            @test ps_data_from_init.file_state.date_idx == date_idx0
-            @test ps_data_from_init.sim_info.date_ref == date_ref
-            @test ps_data_from_init.sim_info.t_start == t_start
+            @test ps_data_temp.file_info.regrid_dirpath == regrid_dir_temporal
+            @test ps_data_temp.file_info.varname == varname
+            @test ps_data_temp.file_info.date_idx0 == date_idx0
+            @test ps_data_temp.file_state.date_idx == date_idx0
+            @test ps_data_temp.sim_info.date_ref == date_ref
+            @test ps_data_temp.sim_info.t_start == t_start
 
             # test fields which are set internally by constructor
-            @test ps_data_from_init.file_info.outfile_root != ""
-            @test !isnothing(ps_data_from_init.file_info.all_dates)
-            @test !isnothing(ps_data_from_init.file_state.data_fields)
-            @test !isnothing(ps_data_from_init.file_state.segment_length)
+            @test ps_data_temp.file_info.outfile_root != ""
+            @test !isnothing(ps_data_temp.file_info.all_dates)
+            @test !isnothing(ps_data_temp.file_state.data_fields)
+            @test !isnothing(ps_data_temp.file_state.segment_length)
         end
 
         @testset "test read_data_fields! for FT=$FT" begin
@@ -221,7 +247,7 @@ for FT in (Float64, Float32)
             quad = Spaces.Quadratures.GLL{Nq}()
             surface_space_t = Spaces.SpectralElementSpace2D(topology, quad)
 
-            prescribed_data = FileReader.prescribed_data_init(
+            prescribed_data = FileReader.PrescribedDataTemporal(
                 regrid_dir_temporal,
                 albedo_temporal_data,
                 varname,
