@@ -3,11 +3,6 @@
 ```@meta
 CurrentModule = ClimaLSM.Regridder
 ```
-## Types
-
-```@docs
-ClimaLSM.Regridder.MapInfo
-```
 
 ## Functions
 

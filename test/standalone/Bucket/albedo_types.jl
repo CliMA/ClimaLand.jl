@@ -83,14 +83,14 @@ end
 
     # set up for manual data reading
     comms = ClimaComms.SingletonCommsContext()
-    input_file = bareground_albedo_dataset_path()
+    infile_path = bareground_albedo_dataset_path()
     varname = "sw_alb"
 
     data_manual = regrid_netcdf_to_field(
         FT,
         regrid_dir_static,
         comms,
-        input_file,
+        infile_path,
         varname,
         space,
     )
@@ -106,8 +106,8 @@ end
     domain = create_domain_2d(FT)
     space = domain.space.surface
 
-    input_file = cesm2_albedo_dataset_path()
-    date_ref = to_datetime(NCDataset(input_file, "r") do ds
+    infile_path = cesm2_albedo_dataset_path()
+    date_ref = to_datetime(NCDataset(infile_path, "r") do ds
         ds["time"][1]
     end)
 
@@ -120,14 +120,14 @@ end
 
     # set up for manual data reading
     comms = ClimaComms.SingletonCommsContext()
-    input_file = bareground_albedo_dataset_path()
+    infile_path = bareground_albedo_dataset_path()
     varname = "sw_alb"
 
     data_manual = regrid_netcdf_to_field(
         FT,
         regrid_dir_temporal,
         comms,
-        input_file,
+        infile_path,
         varname,
         space,
     )
@@ -206,8 +206,8 @@ end
     space = domain.space.surface
     surface_coords = Fields.coordinate_field(space)
 
-    input_file = cesm2_albedo_dataset_path()
-    date_ref = to_datetime(NCDataset(input_file, "r") do ds
+    infile_path = cesm2_albedo_dataset_path()
+    date_ref = to_datetime(NCDataset(infile_path, "r") do ds
         ds["time"][1]
     end)
     t_start = FT(0)
@@ -240,7 +240,7 @@ end
             FT,
             regrid_dir_temporal,
             comms,
-            input_file,
+            infile_path,
             varname,
             space,
             date_idx = i,
@@ -368,7 +368,7 @@ end
 @testset "Test BulkAlbedoTemporal error with static map" begin
     FT = Float32
     regrid_dirpath = ""
-    input_file = bareground_albedo_dataset_path()
+    infile_path = bareground_albedo_dataset_path()
     date_ref = Dates.DateTime(1900, 1, 1)
     t_start = FT(0)
     domain = create_domain_2d(FT)
@@ -381,7 +381,7 @@ end
                 date_ref,
                 t_start,
                 space,
-                input_file = input_file,
+                infile_path = infile_path,
             )
         catch err
         end
@@ -398,7 +398,7 @@ end
     FT = Float32
     earth_param_set = create_lsm_parameters(FT)
     varname = "sw_alb"
-    input_file = cesm2_albedo_dataset_path()
+    infile_path = cesm2_albedo_dataset_path()
     comms = ClimaComms.SingletonCommsContext()
     regrid_dirpath = joinpath(pkgdir(ClimaLSM), "test/albedo_tmpfiles/")
     mkpath(regrid_dirpath)
@@ -412,7 +412,7 @@ end
     init_temp(z::FT, value::FT) where {FT} = FT(value)
 
     t_start = FT(0)
-    date_ref = to_datetime(NCDataset(input_file, "r") do ds
+    date_ref = to_datetime(NCDataset(infile_path, "r") do ds
         ds["time"][1]
     end)
 
@@ -492,7 +492,7 @@ end
                 FT,
                 regrid_dirpath,
                 comms,
-                input_file,
+                infile_path,
                 varname,
                 model.domain.space.surface,
                 date_idx = 1,
@@ -517,7 +517,7 @@ end
                     FT,
                     regrid_dirpath,
                     comms,
-                    input_file,
+                    infile_path,
                     varname,
                     model.domain.space.surface,
                     date_idx = i,

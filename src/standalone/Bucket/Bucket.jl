@@ -12,7 +12,7 @@ using ClimaComms
 
 using ClimaLSM
 
-using ClimaLSM.Regridder: MapInfo, regrid_netcdf_to_field
+using ClimaLSM.Regridder: regrid_netcdf_to_field
 using ClimaLSM.FileReader
 import ..Parameters as LSMP
 import ClimaLSM.Domains: coordinates, SphericalShell
@@ -96,16 +96,15 @@ i.e. with a `ClimaLSM.LSMSphericalShellDomain.`
 """
 struct BulkAlbedoStatic{FT} <: AbstractLandAlbedoModel{FT}
     α_snow::FT
-    α_sfc::MapInfo
+    α_sfc::PrescribedDataStatic
 end
 
 """
     BulkAlbedoStatic{FT}(
         regrid_dirpath::String;
         α_snow = FT(0.8),
-        comms = ClimaComms.SingletonCommsContext(),
         varname = "sw_alb",
-        path = Bucket.bareground_albedo_dataset_path(),
+        infile_path = Bucket.bareground_albedo_dataset_path(),
     ) where {FT}
 
 Constructor for the BulkAlbedoStatic that implements a default albedo map, `comms` context, and value for `α_snow`.
@@ -116,11 +115,10 @@ The `bareground_albedo_dataset_path` artifact can be used as a default with this
 function BulkAlbedoStatic{FT}(
     regrid_dirpath::String;
     α_snow = FT(0.8),
-    comms = ClimaComms.SingletonCommsContext(),
     varname = "sw_alb",
-    path = Bucket.bareground_albedo_dataset_path(),
+    infile_path = Bucket.bareground_albedo_dataset_path(),
 ) where {FT}
-    α_sfc = MapInfo(path, varname, regrid_dirpath, comms)
+    α_sfc = PrescribedDataStatic(infile_path, regrid_dirpath, varname)
     return BulkAlbedoStatic{FT}(α_snow, α_sfc)
 end
 
@@ -136,7 +134,7 @@ Note that this option should only be used with global simulations,
 i.e. with a `ClimaLSM.LSMSphericalShellDomain.`
 """
 struct BulkAlbedoTemporal{FT} <: AbstractLandAlbedoModel{FT}
-    albedo_info::FileReader.PrescribedData
+    albedo_info::FileReader.PrescribedDataTemporal
 end
 
 """
@@ -145,13 +143,13 @@ end
         date_ref::Union{DateTime, DateTimeNoLeap},
         t_start::FT,
         Space::ClimaCore.Spaces.AbstractSpace;
-        input_file = Bucket.cesm2_albedo_dataset_path(),
+        infile_path = Bucket.cesm2_albedo_dataset_path(),
         varname = "sw_alb"
     ) where {FT}
 
 Constructor for the BulkAlbedoTemporal struct.
 The `varname` must correspond to the name of the variable in the NetCDF
-file specified by `input_file`.
+file specified by `infile_path`.
 The input data file must have a time component; otherwise BulkAlbedoStatic
 should be used.
 """
@@ -160,14 +158,14 @@ function BulkAlbedoTemporal{FT}(
     date_ref::Union{DateTime, DateTimeNoLeap},
     t_start::FT,
     space::ClimaCore.Spaces.AbstractSpace;
-    input_file = Bucket.cesm2_albedo_dataset_path(),
+    infile_path = Bucket.cesm2_albedo_dataset_path(),
     varname = "sw_alb",
 ) where {FT}
     # Verify inputs
     if typeof(space) <: ClimaCore.Spaces.PointSpace
         error("Using an albedo map requires a global run.")
     end
-    NCDataset(input_file, "r") do ds
+    NCDataset(infile_path, "r") do ds
         if !("time" in keys(ds))
             error(
                 "Using a temporal albedo map requires data with time dimension.",
@@ -176,9 +174,9 @@ function BulkAlbedoTemporal{FT}(
     end
 
     # Construct object containing info to read in surface albedo over time
-    data_info = prescribed_data_init(
+    data_info = PrescribedDataTemporal(
         regrid_dirpath,
-        input_file,
+        infile_path,
         varname,
         date_ref,
         t_start,
@@ -373,8 +371,7 @@ end
 
 Initializes spatially-varying surface albedo stored in the
 auxiliary vector `p` in place, according to a
-NetCDF file. This data file is encapsulated in an object of
-type `ClimaLSM.Regridder.MapInfo` in the field albedo.α_sfc.
+NetCDF file.
 
 The NetCDF file is read in, regridded, and projected onto
 the surface space of the LSM using ClimaCoreTempestRemap. The result
@@ -385,15 +382,18 @@ function set_initial_parameter_field!(
     p,
     surface_coords,
 ) where {FT}
+    space = axes(surface_coords)
+    comms_ctx = space.topology.context
     α_sfc = albedo.α_sfc
-    (; comms, varname, path, regrid_dirpath) = α_sfc
+    (; infile_path, regrid_dirpath, varname) = α_sfc.file_info
+
     p.bucket.α_sfc .= regrid_netcdf_to_field(
         FT,
         regrid_dirpath,
-        comms,
-        path,
+        comms_ctx,
+        infile_path,
         varname,
-        axes(surface_coords),
+        space,
     )
 end
 
@@ -407,7 +407,7 @@ end
 Initializes spatially- and temporally-varying surface albedo stored in
 the auxiliary vector `p` in place, according to a
 NetCDF file. This data file is encapsulated in an object of
-type `ClimaLSM.FileReader.PrescribedData` in the field albedo.albedo_info.
+type `ClimaLSM.FileReader.PrescribedDataTemporal` in the field albedo.albedo_info.
 This object contains a reference date and start time, which are used
 to get the start date.
 

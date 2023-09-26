@@ -19,16 +19,62 @@ using CFTime
 
 using ClimaLSM.Regridder
 
-export to_datetime,
+export AbstractPrescribedData,
+    PrescribedDataTemporal,
+    PrescribedDataStatic,
     FileInfo,
     FileState,
     SimInfo,
-    PrescribedData,
-    prescribed_data_init,
     read_data_fields!,
     next_date_in_file,
-    interpolate_data
+    interpolate_data,
+    to_datetime
 
+
+"""
+    abstract type AbstractPrescribedData
+
+An abstract type for storing prescribed data info. Subtypes
+include temporally-varying prescribed data and static prescribed data.
+"""
+abstract type AbstractPrescribedData end
+
+"""
+    PrescribedDataStatic <: AbstractPrescribedData
+
+Stores information to read in a prescribed variable from a file.
+The data is read in once and stored without changing for the duration of a
+simulation. This type is meant to be used with input data that does not have
+a time dimension.
+Each of the fields of this struct is itself a struct.
+
+# Inputs:
+- file_info::FI     # unchanging info about the input data file
+"""
+struct PrescribedDataStatic{FI} <: AbstractPrescribedData
+    file_info::FI
+end
+
+"""
+    PrescribedDataTemporal <: AbstractPrescribedData
+
+Stores information to read in a prescribed variable from a file.
+Contains sufficient information to read in the variable at various
+timesteps, and to coordinate this reading between variables coming from
+different files. This type is meant to be used with input data that has
+a time dimension.
+Each of the fields of this struct is itself a struct.
+
+# Inputs:
+- file_info::FI     # unchanging info about the input data file
+- file_state::FS    # info about the dates currently being read from file
+- sim_info::S       # unchanging info about the start date/time of the simulation
+"""
+struct PrescribedDataTemporal{FI, FS, S} <: AbstractPrescribedData
+    file_info::FI
+    file_state::FS
+    sim_info::S
+end
 
 """
     FileInfo
@@ -36,17 +82,19 @@ export to_datetime,
 Stores information about the current data being read in from a file.
 
 # Inputs:
+- infile_path::String        # path to the input NetCDF data file
 - regrid_dirpath::String     # directory for storing files used in regridding
-- outfile_root::String       # root for regridded data files generated when regridding data from input file
 - varname::String            # name of the variable we're reading from the input file, which we assume is a scalar
-- all_dates::V               # vector containing all dates of the input file, which we assume are `DateTime`s or `DateTimeNoLeap`s
+- outfile_root::String       # root for regridded data files generated when writing data at each time from input file
+- all_dates::Vector          # vector containing all dates of the input file, which we assume are `DateTime`s or `DateTimeNoLeap`s
 - date_idx0::Vector{Int}     # index of the first data in the file being used for this simulation
 """
-struct FileInfo{V}
+struct FileInfo
+    infile_path::String
     regrid_dirpath::String
-    outfile_root::String
     varname::String
-    all_dates::V
+    outfile_root::String
+    all_dates::Vector
     date_idx0::Vector{Int}
 end
 
@@ -70,7 +118,7 @@ end
     SimInfo
 
 Stores information about the simulation being run. We may want to store
-multiple copies of an instance of this struct in multiple PrescribedData
+multiple copies of an instance of this struct in multiple PrescribedDataTemporal
 objects if we're reading in data over time for multiple variables.
 
 # Inputs:
@@ -83,27 +131,32 @@ struct SimInfo{D, FT}
 end
 
 """
-    PrescribedData
+    PrescribedDataStatic(
+        infile_path::String,
+        regrid_dirpath::String,
+        varname::String,
+    )
 
-Stores information specific to each prescribed variable from a file.
-Each of the fields of this struct is itself a struct.
-
-# Inputs:
-- file_info::FI     # unchanging info about the input data file
-- file_state::FS    # info about the dates currently being read from file
-- sim_info::S       # unchanging info about the start date/time of the simulation
+Constructor for the `PrescribedDataStatic`` type.
+Creates a `FileInfo` object containing all the information needed to read in
+the data stored in the input file, which will later be regridded to our
+simulation grid. Date-related args (last 3 to FileInfo) are unused for static
+data maps.
 """
-struct PrescribedData{FI, FS, S}
-    file_info::FI
-    file_state::FS
-    sim_info::S
+function PrescribedDataStatic(
+    infile_path::String,
+    regrid_dirpath::String,
+    varname::String,
+)
+    file_info = FileInfo(infile_path, regrid_dirpath, varname, "", [], [])
+    return PrescribedDataStatic(file_info)
 end
 
 
 """
-    prescribed_data_init(
+    PrescribedDataTemporal(
         regrid_dirpath,
-        input_file,
+        infile_path,
         varname,
         date_ref,
         t_start,
@@ -111,27 +164,27 @@ end
         mono = true,
     )
 
-
+Constructor for the `PrescribedDataTemporal` type.
 Regrids from the input lat-lon grid to the simulation cgll grid, saving
 the regridded output in a new file found at `regrid_dirpath`, and
 returns the info required to run the simulation using this prescribed
-data packaged into a single struct.
+data packaged into a single `PrescribedDataTemporal` struct.
 
 # Arguments
 - `regrid_dirpath`   # directory the data file is stored in.
-- `input_file`       # NCDataset file containing data to regrid.
+- `infile_path`      # NCDataset file containing data to regrid.
 - `varname`          # name of the variable to be regridded.
 - `date_ref`         # reference date to coordinate start of the simulation
 - `t_start`          # start time of the simulation relative to `date_ref` (date_start = date_ref + t_start)
 - `surface_space`    # the space to which we are mapping.
-- `mono`             # flag for monotone remapping of `input_file`.
+- `mono`             # flag for monotone remapping of `infile_path`.
 
 # Returns
-- `PrescribedData`
+- `PrescribedDataTemporal` object
 """
-function prescribed_data_init(
+function PrescribedDataTemporal(
     regrid_dirpath::String,
-    input_file::String,
+    infile_path::String,
     varname::String,
     date_ref::Union{DateTime, DateTimeNoLeap},
     t_start::FT,
@@ -146,7 +199,7 @@ function prescribed_data_init(
         Regridder.hdwrite_regridfile_rll_to_cgll(
             FT,
             regrid_dirpath,
-            input_file,
+            infile_path,
             varname,
             surface_space,
             outfile_root;
@@ -175,17 +228,23 @@ function prescribed_data_init(
     date_idx0 =
         [argmin(abs.(Dates.value(date_start) .- Dates.value.(all_dates[:])))]
 
-    # Construct component structs of PrescribedData object
-    file_info =
-        FileInfo(regrid_dirpath, outfile_root, varname, all_dates, date_idx0)
+    # Construct component structs of PrescribedDataTemporal object
+    file_info = FileInfo(
+        infile_path,
+        regrid_dirpath,
+        varname,
+        outfile_root,
+        all_dates,
+        date_idx0,
+    )
     file_state = FileState(data_fields, copy(date_idx0), segment_length)
     sim_info = SimInfo(date_ref, t_start)
 
-    return PrescribedData(file_info, file_state, sim_info)
+    return PrescribedDataTemporal(file_info, file_state, sim_info)
 end
 
 """
-    read_data_fields!(prescribed_data::PrescribedData, date::DateTime, space::Spaces.AbstractSpace)
+    read_data_fields!(prescribed_data::PrescribedDataTemporal, date::DateTime, space::Spaces.AbstractSpace)
 
 Extracts data from regridded (to model grid) NetCDF files.
 The times for which data is extracted depends on the specifications in the
@@ -201,7 +260,7 @@ in this range of time.
 - `space`                # space we're remapping the data onto.
 """
 function read_data_fields!(
-    prescribed_data::PrescribedData,
+    prescribed_data::PrescribedDataTemporal,
     date::DateTime,
     space::Spaces.AbstractSpace,
 )
@@ -289,14 +348,14 @@ function read_data_fields!(
         nearest_idx =
             argmin(abs.(Dates.value(date) .- Dates.value.(all_dates[:])))
         pd_file_state.date_idx[1] = date_idx = date_idx0 = nearest_idx
-        @warn "init data does not correspond to start date. Initializing with `PrescribedData.date_idx[1] = date_idx = date_idx0 = $nearest_idx` for this start date"
+        @warn "init data does not correspond to start date. Initializing with `file_state.date_idx[1] = date_idx = date_idx0 = $nearest_idx` for this start date"
     else
         throw(ErrorException("Check input file specification"))
     end
 end
 
 """
-    next_date_in_file(prescribed_data::PrescribedData)
+    next_date_in_file(prescribed_data::PrescribedDataTemporal)
 
 Returns the next date stored in the file `prescribed_data` struct after the
 current date index given by `date_idx`.
@@ -309,13 +368,13 @@ return the same value unless `date_idx` is modified elsewhere in between.
 # Returns
 - DateTime or DateTimeNoLeap
 """
-next_date_in_file(prescribed_data::PrescribedData) =
+next_date_in_file(prescribed_data::PrescribedDataTemporal) =
     prescribed_data.file_info.all_dates[prescribed_data.file_state.date_idx[1] + Int(
         1,
     )]
 
 """
-    interpolate_data(prescribed_data::PrescribedData, date::Union{DateTime, DateTimeNoLeap}, space::Spaces.AbstractSpace)
+    interpolate_data(prescribed_data::PrescribedDataTemporal, date::Union{DateTime, DateTimeNoLeap}, space::Spaces.AbstractSpace)
 
 Interpolates linearly between two `Fields` in the `prescribed_data` struct.
 
@@ -328,7 +387,7 @@ Interpolates linearly between two `Fields` in the `prescribed_data` struct.
 - Fields.field
 """
 function interpolate_data(
-    prescribed_data::PrescribedData,
+    prescribed_data::PrescribedDataTemporal,
     date::Union{DateTime, DateTimeNoLeap},
     space::Spaces.AbstractSpace,
 )
