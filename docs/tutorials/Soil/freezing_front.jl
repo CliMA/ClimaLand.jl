@@ -59,7 +59,7 @@
 
 # ``- κ ∇T(t, z = 0) = 28 W/m^2/K (T - 267.15K) ẑ``
 
-# ``- κ ∇T(t, z= -0.2) =  0 ẑ ``
+# ``- κ ∇T(t, z= -0.2) =  -3 W/m^2/K (T - 279.85K) ẑ ``
 
 # `` T(t = 0, z) = 279.85 K``
 
@@ -69,7 +69,7 @@
 
 # `` ϑ_l(t = 0, z) = 0.33 ``.
 
-# The problem setup and soil properties are chosen to match the lab experiment of Mizoguchi (1990), as detailed in Hansson (2004) and Dall'Amico (2011).
+# The problem setup and soil properties are chosen to match the lab experiment of Mizoguchi (1990), as detailed in Hansson (2004) and Dall'Amico (2011). Like Hansson et al., we allow for a small amount of energy leakage at the bottom of the domain to account for imperfect insulation.
 
 # # Import necessary modules
 import SciMLBase
@@ -151,10 +151,15 @@ function top_heat_flux(p, t)
     T_c = ClimaCore.Fields.level(p.soil.T, p_len)
     return @. eltype(t)(28 * (T_c - 267.15))
 end
+function bottom_heat_flux(p, t)
+    T_c = ClimaCore.Fields.level(p.soil.T, 1)
+    return @. eltype(t)(-3 * (T_c - 279.85))
+end
 top_heat_flux_bc = FluxBC(top_heat_flux)
+bottom_heat_flux_bc = FluxBC(bottom_heat_flux)
 boundary_fluxes = (;
     top = (water = zero_flux_bc, heat = top_heat_flux_bc),
-    bottom = (water = zero_flux_bc, heat = zero_flux_bc),
+    bottom = (water = zero_flux_bc, heat = bottom_heat_flux_bc),
 );
 
 # Create the source term instance. Our phase change model requires
