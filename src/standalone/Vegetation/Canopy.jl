@@ -39,6 +39,7 @@ include("./radiation.jl")
 include("./canopy_energy.jl")
 include("./canopy_parameterizations.jl")
 using Dates
+include("./autotrophic_respiration.jl")
 
 """
     SharedCanopyParameters{FT <: AbstractFloat, PSE}
@@ -56,7 +57,7 @@ struct SharedCanopyParameters{FT <: AbstractFloat, PSE}
 end
 
 """
-     CanopyModel{FT, RM, PM, SM, PHM, EM, A, R, S, PS, D} <: AbstractExpModel{FT}
+     CanopyModel{FT, AR, RM, PM, SM, PHM, EM, A, R, S, PS, D} <: AbstractExpModel{FT}
 
 The model struct for the canopy, which contains
 - the canopy model domain (a point for site-level simulations, or
@@ -96,8 +97,10 @@ treated differently.
 
 $(DocStringExtensions.FIELDS)
 """
-struct CanopyModel{FT, RM, PM, SM, PHM, EM, A, R, S, PS, D} <:
+struct CanopyModel{FT, AR, RM, PM, SM, PHM, EM, A, R, S, PS, D} <:
        AbstractExpModel{FT}
+    "Autotrophic respiration model, a canopy component model"
+    autotrophic_respiration::AR
     "Radiative transfer model, a canopy component model"
     radiative_transfer::RM
     "Photosynthesis model, a canopy component model"
@@ -122,6 +125,7 @@ end
 
 """
     CanopyModel{FT}(;
+        autotrophic_respiration::AbstractAutotrophicRespirationModel{FT},
         radiative_transfer::AbstractRadiationModel{FT},
         photosynthesis::AbstractPhotosynthesisModel{FT},
         conductance::AbstractStomatalConductanceModel{FT},
@@ -145,6 +149,7 @@ consistency between the PlantHydraulics model and the general canopy model,
 since these are built separately.
 """
 function CanopyModel{FT}(;
+    autotrophic_respiration::AbstractAutotrophicRespirationModel{FT},
     radiative_transfer::AbstractRadiationModel{FT},
     photosynthesis::AbstractPhotosynthesisModel{FT},
     conductance::AbstractStomatalConductanceModel{FT},
@@ -166,6 +171,7 @@ function CanopyModel{FT}(;
     end
 
     args = (
+        autotrophic_respiration,
         radiative_transfer,
         photosynthesis,
         conductance,
@@ -192,8 +198,13 @@ in a hierarchical manner within the state vectors.
 
 These names must match the field names of the CanopyModel struct.
 """
-canopy_components(::CanopyModel) =
-    (:hydraulics, :conductance, :photosynthesis, :radiative_transfer)
+canopy_components(::CanopyModel) = (
+    :hydraulics,
+    :conductance,
+    :photosynthesis,
+    :radiative_transfer,
+    :autotrophic_respiration,
+)
 
 """
     prognostic_vars(canopy::CanopyModel)
@@ -356,7 +367,9 @@ function ClimaLSM.make_set_initial_aux_state(model::CanopyModel)
 end
 
 """
-     ClimaLSM.make_update_aux(canopy::CanopyModel{FT, <:BeerLambertModel,
+     ClimaLSM.make_update_aux(canopy::CanopyModel{FT, 
+                                                  <:AutotrophicRespirationModel,
+                                                  <:Union{BeerLambertModel, TwoStreamModel},
                                                   <:FarquharModel,
                                                   <:MedlynConductanceModel,
                                                   <:PlantHydraulicsModel,},
@@ -364,7 +377,7 @@ end
 
 Creates the `update_aux!` function for the `CanopyModel`; a specific
 method for `update_aux!` for the case where the canopy model components
-are of the type in the parametric type signature: `AbstractRadiationModel`,
+are of the type in the parametric type signature: `AutotrophicRespirationModel`, `AbstractRadiationModel`,
 `FarquharModel`, `MedlynConductanceModel`, and `PlantHydraulicsModel`.
 
 Please note that the plant hydraulics model has auxiliary variables
@@ -379,6 +392,7 @@ has a single update_aux! function, given here.
 function ClimaLSM.make_update_aux(
     canopy::CanopyModel{
         FT,
+        <:AutotrophicRespirationModel,
         <:Union{BeerLambertModel, TwoStreamModel},
         <:FarquharModel,
         <:MedlynConductanceModel,
@@ -393,6 +407,7 @@ function ClimaLSM.make_update_aux(
         update_canopy_prescribed_field!(canopy.hydraulics, p, t)
 
         # Other auxiliary variables being updated:
+        Ra = p.canopy.autotrophic_respiration.Ra
         APAR = p.canopy.radiative_transfer.apar
         PAR = p.canopy.radiative_transfer.par
         TPAR = p.canopy.radiative_transfer.tpar
@@ -407,6 +422,7 @@ function ClimaLSM.make_update_aux(
         transpiration = p.canopy.conductance.transpiration
         An = p.canopy.photosynthesis.An
         GPP = p.canopy.photosynthesis.GPP
+        Rd = p.canopy.photosynthesis.Rd
         ψ = p.canopy.hydraulics.ψ
         ϑ_l = Y.canopy.hydraulics.ϑ_l
         fa = p.canopy.hydraulics.fa
@@ -415,20 +431,22 @@ function ClimaLSM.make_update_aux(
         #unpack parameters         
         area_index = p.canopy.hydraulics.area_index
         LAI = area_index.leaf
+        RAI = area_index.root
+        (; Vcmax25, ΔHVcmax, f, ΔHRd, To, sc, pc) =
+            canopy.photosynthesis.parameters
         earth_param_set = canopy.parameters.earth_param_set
         c = FT(LSMP.light_speed(earth_param_set))
-        h = FT(LSMP.planck_constant(earth_param_set))
+        planck_h = FT(LSMP.planck_constant(earth_param_set))
         N_a = FT(LSMP.avogadro_constant(earth_param_set))
         grav = FT(LSMP.grav(earth_param_set))
         ρ_l = FT(LSMP.ρ_cloud_liq(earth_param_set))
         (; ld, Ω, α_PAR_leaf, λ_γ_PAR, λ_γ_NIR) =
             canopy.radiative_transfer.parameters
-        energy_per_photon_PAR = h * c / λ_γ_PAR
-        energy_per_photon_NIR = h * c / λ_γ_NIR
+        energy_per_photon_PAR = planck_h * c / λ_γ_PAR
+        energy_per_photon_NIR = planck_h * c / λ_γ_NIR
         R = FT(LSMP.gas_constant(earth_param_set))
         thermo_params = canopy.parameters.earth_param_set.thermo_params
         (; g1, g0, Drel) = canopy.conductance.parameters
-        (; sc, pc) = canopy.photosynthesis.parameters
 
         # Current atmospheric conditions
         ref_time = canopy.atmos.ref_time
@@ -437,6 +455,7 @@ function ClimaLSM.make_update_aux(
         P_air::FT = canopy.atmos.P(t)
         T_air::FT = canopy.atmos.T(t)
         q_air::FT = canopy.atmos.q(t)
+        h::FT = canopy.atmos.h
 
         # update radiative transfer
         RT = canopy.radiative_transfer
@@ -533,6 +552,7 @@ function ClimaLSM.make_update_aux(
         # update photosynthesis and conductance terms
         medlyn_factor .=
             medlyn_term.(g1, T_air, P_air, q_air, Ref(thermo_params))
+        @. Rd = dark_respiration(Vcmax25, β, f, ΔHRd, T_air, To, R)
         An .=
             compute_photosynthesis.(
                 Ref(canopy.photosynthesis),
@@ -542,10 +562,21 @@ function ClimaLSM.make_update_aux(
                 c_co2_air,
                 β,
                 R,
+                Rd,
             )
         @. GPP = compute_GPP(An, K, LAI, Ω)
         @. gs = medlyn_conductance(g0, Drel, medlyn_factor, An, c_co2_air)
-
+        # update autotrophic respiration
+        @. Ra = compute_autrophic_respiration(
+            canopy.autotrophic_respiration,
+            Vcmax25,
+            LAI,
+            RAI,
+            GPP,
+            Rd,
+            β,
+            h,
+        )
         # Compute transpiration using T_canopy
         (canopy_transpiration, shf, lhf) =
             canopy_surface_fluxes(canopy.atmos, canopy, Y, p, t)

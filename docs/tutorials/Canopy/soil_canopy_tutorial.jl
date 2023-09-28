@@ -176,6 +176,7 @@ soil_model_type = Soil.EnergyHydrology{FT}
 # this must be done internally from the constructor.
 
 canopy_component_types = (;
+    autotrophic_respiration = Canopy.AutotrophicRespirationModel{FT},
     radiative_transfer = Canopy.TwoStreamModel{FT},
     photosynthesis = Canopy.FarquharModel{FT},
     conductance = Canopy.MedlynConductanceModel{FT},
@@ -184,6 +185,18 @@ canopy_component_types = (;
 
 # Then provide arguments to the canopy radiative transfer, stomatal conductance,
 # and photosynthesis models as was done in the previous tutorial.
+
+autotrophic_respiration_args = (;
+    parameters = AutotrophicRespirationParameters{FT}(;
+        ne = FT(8 * 1e-4),
+        ηsl = FT(0.01),
+        σl = FT(0.05),
+        μr = FT(1.0),
+        μs = FT(0.1),
+        f1 = FT(0.012),
+        f2 = FT(0.25),
+    )
+)
 
 radiative_transfer_args = (;
     parameters = TwoStreamParameters{FT}(;
@@ -281,6 +294,7 @@ plant_hydraulics_args = (
 # arguments tuple for the canopy component models.
 
 canopy_component_args = (;
+    autotrophic_respiration = autotrophic_respiration_args,
     radiative_transfer = radiative_transfer_args,
     photosynthesis = photosynthesis_args,
     conductance = conductance_args,

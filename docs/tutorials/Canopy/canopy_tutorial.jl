@@ -173,6 +173,10 @@ photo_params = FarquharParameters{FT}(
 
 photosynthesis_model = FarquharModel{FT}(photo_params);
 
+# Arguments for autotrophic respiration model:
+AR_params = AutotrophicRespirationParameters{FT}()
+AR_model = AutotrophicRespirationModel{FT}(AR_params);
+
 # Arguments for plant hydraulics model are more complicated.
 
 # Begin by providing general plant parameters. For the area
@@ -239,6 +243,7 @@ plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
 canopy = ClimaLSM.Canopy.CanopyModel{FT}(;
     parameters = shared_params,
     domain = land_domain,
+    autotrophic_respiration = AR_model,
     radiative_transfer = rt_model,
     photosynthesis = photosynthesis_model,
     conductance = stomatal_model,

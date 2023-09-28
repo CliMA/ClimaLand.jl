@@ -138,6 +138,9 @@ function SoilCanopyModel{FT}(;
     )
 
     canopy = Canopy.CanopyModel{FT}(;
+        autotrophic_respiration = canopy_component_types.autotrophic_respiration(
+            canopy_component_args.autotrophic_respiration...,
+        ),
         radiative_transfer = canopy_component_types.radiative_transfer(
             canopy_component_args.radiative_transfer...,
         ),

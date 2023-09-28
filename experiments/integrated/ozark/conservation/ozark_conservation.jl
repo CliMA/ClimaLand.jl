@@ -67,12 +67,25 @@ soil_model_type = Soil.EnergyHydrology{FT}
 # Now we set up the canopy model, which we set up by component:
 # Component Types
 canopy_component_types = (;
+    autotrophic_respiration = Canopy.AutotrophicRespirationModel{FT},
     radiative_transfer = Canopy.TwoStreamModel{FT},
     photosynthesis = Canopy.FarquharModel{FT},
     conductance = Canopy.MedlynConductanceModel{FT},
     hydraulics = Canopy.PlantHydraulicsModel{FT},
 )
 # Individual Component arguments
+# Set up autotrophic respiration
+autotrophic_respiration_args = (;
+    parameters = AutotrophicRespirationParameters{FT}(;
+        ne = ne,
+        ηsl = ηsl,
+        σl = σl,
+        μr = μr,
+        μs = μs,
+        f1 = f1,
+        f2 = f2,
+    )
+)
 # Set up radiative transfer
 radiative_transfer_args = (;
     parameters = TwoStreamParameters{FT}(;
@@ -143,6 +156,7 @@ plant_hydraulics_args = (
 
 # Canopy component args
 canopy_component_args = (;
+    autotrophic_respiration = autotrophic_respiration_args,
     radiative_transfer = radiative_transfer_args,
     photosynthesis = photosynthesis_args,
     conductance = conductance_args,

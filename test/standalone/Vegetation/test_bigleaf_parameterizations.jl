@@ -10,12 +10,14 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     FT = Float32
     earth_param_set = create_lsm_parameters(FT)
     # Test with defaults
+    ARparams = AutotrophicRespirationParameters{FT}()
     RTparams = BeerLambertParameters{FT}()
     RT = BeerLambertModel{FT}(RTparams)
     photosynthesisparams = FarquharParameters{FT}(C3();)
     stomatal_g_params = MedlynConductanceParameters{FT}()
 
     LAI = FT(5.0) # m2 (leaf) m-2 (ground)
+    RAI = FT(1.0)
     thermo_params = LSMP.thermodynamic_parameters(earth_param_set)
     c = FT(LSMP.light_speed(earth_param_set))
     h = FT(LSMP.planck_constant(earth_param_set))
@@ -175,4 +177,34 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
             stomatal_conductance * LAI * R * T / P
         )
     )
+
+    # Tests for Autotrophic Respiration parameterisation
+    h_canopy = FT(1.0) # h planck defined above
+    Nl, Nr, Ns = nitrogen_content(
+        ARparams.ne,
+        photosynthesisparams.Vcmax25,
+        LAI,
+        RAI,
+        ARparams.ηsl,
+        h_canopy,
+        ARparams.σl,
+        ARparams.μr,
+        ARparams.μs,
+    )
+    Rpm = plant_respiration_maintenance(Rd, β, Nl, Nr, Ns, ARparams.f1)
+    Rg = plant_respiration_growth.(ARparams.f2, GPP, Rpm)
+
+    @test Nl == photosynthesisparams.Vcmax25 / ARparams.ne * ARparams.σl * LAI
+    @test Nr ==
+          ARparams.μr * photosynthesisparams.Vcmax25 / ARparams.ne *
+          ARparams.σl *
+          RAI
+    @test Ns ≈
+          ARparams.μs * photosynthesisparams.Vcmax25 / ARparams.ne *
+          ARparams.ηsl *
+          h_canopy *
+          LAI # == gives a very small error
+    @test Rpm == ARparams.f1 * Rd * (β + (Nr + Ns) / Nl)
+    @test all(@.(Rg ≈ ARparams.f2 * (GPP - Rpm)))
+
 end
