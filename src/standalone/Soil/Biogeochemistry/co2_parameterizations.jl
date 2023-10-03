@@ -61,6 +61,7 @@ end
     co2_diffusivity(
                     T_soil::FT,
                     θ_w::FT,
+                    P_sfc::FT,
                     params::SoilCO2ModelParameters{FT}
                     ) where {FT}
 
@@ -76,9 +77,10 @@ at a soil water potential of
 function co2_diffusivity(
     T_soil::FT,
     θ_w::FT,
+    P_sfc::FT,
     params::SoilCO2ModelParameters{FT},
 ) where {FT}
-    @unpack P_sfc, D_ref, θ_a100, b, ν, earth_param_set = params
+    @unpack D_ref, θ_a100, b, ν, earth_param_set = params
     T_ref = FT(LSMP.T_0(earth_param_set))
     P_ref = FT(LSMP.P_ref(earth_param_set))
     θ_a = volumetric_air_content(θ_w, params)

@@ -2,10 +2,15 @@ export SoilCanopyModel
 """
     struct SoilCanopyModel{
         FT,
+        MM <: Soil.Biogeochemistry.SoilCO2Model{FT},
         SM <: Soil.EnergyHydrology{FT},
         VM <: Canopy.CanopyModel{FT},
     } <: AbstractLandModel{FT}
+        "The soil microbe model to be used"
+        soilco2::MM
+        "The soil model to be used"
         soil::SM
+        "The canopy model to be used"
         canopy::VM
     end
 
@@ -15,9 +20,12 @@ $(DocStringExtensions.FIELDS)
 """
 struct SoilCanopyModel{
     FT,
+    MM <: Soil.Biogeochemistry.SoilCO2Model{FT},
     SM <: Soil.EnergyHydrology{FT},
     VM <: Canopy.CanopyModel{FT},
 } <: AbstractLandModel{FT}
+    "The soil microbe model to be used"
+    soilco2::MM
     "The soil model to be used"
     soil::SM
     "The canopy model to be used"
@@ -42,13 +50,20 @@ struct CanopyRadiativeFluxes{FT} <: AbstractRadiativeDrivers{FT} end
 
 """
     SoilCanopyModel{FT}(;
-                         land_args::NamedTuple = (;),
-                         soil_model_type::Type{SM},
-                         soil_args::NamedTuple = (;),
-                         canopy_component_types::NamedTuple = (;),
-                         canopy_component_args::NamedTuple = (;),
-                         canopy_model_args::NamedTuple = (;),
-                         ) where {FT, SM <: Soil.EnergyHydrology{FT}}
+        soilco2_type::Type{MM},
+        soilco2_args::NamedTuple = (;),
+        land_args::NamedTuple = (;),
+        soil_model_type::Type{SM},
+        soil_args::NamedTuple = (;),
+        canopy_component_types::NamedTuple = (;),
+        canopy_component_args::NamedTuple = (;),
+        canopy_model_args::NamedTuple = (;),
+        ) where {
+            FT,
+            SM <: Soil.EnergyHydrology{FT},
+            MM <: Soil.Biogeochemistry.SoilCO2Model{FT},
+            }
+
 A constructor for the `SoilCanopyModel`, which takes in the concrete model
 type and required arguments for each component, constructs those models,
 and constructs the `SoilCanopyModel` from them.
@@ -58,13 +73,19 @@ forward in time, including boundary conditions, source terms, and interaction
 terms.
 """
 function SoilCanopyModel{FT}(;
+    soilco2_type::Type{MM},
+    soilco2_args::NamedTuple = (;),
     land_args::NamedTuple = (;),
     soil_model_type::Type{SM},
     soil_args::NamedTuple = (;),
     canopy_component_types::NamedTuple = (;),
     canopy_component_args::NamedTuple = (;),
     canopy_model_args::NamedTuple = (;),
-) where {FT, SM <: Soil.EnergyHydrology{FT}}
+) where {
+    FT,
+    SM <: Soil.EnergyHydrology{FT},
+    MM <: Soil.Biogeochemistry.SoilCO2Model{FT},
+}
 
     # These may be passed in, or set, depending on use scenario.
     (; atmos, radiation) = land_args
@@ -145,7 +166,17 @@ function SoilCanopyModel{FT}(;
         )
     end
 
-    return SoilCanopyModel{FT, typeof(soil), typeof(canopy)}(soil, canopy)
+    soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(; soilco2_args...)
+
+    if typeof(soilco2_args.drivers.met) != PrognosticMet
+        throw(AssertionError("Must be of type PrognosticMet."))
+    end
+
+    return SoilCanopyModel{FT, typeof(soilco2), typeof(soil), typeof(canopy)}(
+        soilco2,
+        soil,
+        canopy,
+    )
 end
 
 """
@@ -201,8 +232,13 @@ interaction_domain_names(m::SoilCanopyModel) = (
 
 """
     make_interactions_update_aux(
-        land::SoilCanopyModel{FT, SM, RM},
-    ) where {FT, SM <: Soil.RichardsModel{FT}, RM <: Canopy.CanopyModel{FT}}
+        land::SoilCanopyModel{FT, MM, SM, RM},
+    ) where {
+        FT,
+        MM <: Soil.Biogeochemistry.SoilCO2Model{FT},
+        SM <: Soil.RichardsModel{FT},
+        RM <: Canopy.CanopyModel{FT}
+        }
 
 A method which makes a function; the returned function 
 updates the auxiliary variable `p.root_extraction`, which
@@ -214,8 +250,13 @@ the soil surface fluxes, which are affected by the presence of a canopy.
 This function is called each ode function evaluation.
 """
 function make_interactions_update_aux(
-    land::SoilCanopyModel{FT, SM, RM},
-) where {FT, SM <: Soil.EnergyHydrology{FT}, RM <: Canopy.CanopyModel{FT}}
+    land::SoilCanopyModel{FT, MM, SM, RM},
+) where {
+    FT,
+    MM <: Soil.Biogeochemistry.SoilCO2Model{FT},
+    SM <: Soil.EnergyHydrology{FT},
+    RM <: Canopy.CanopyModel{FT},
+}
     function update_aux!(p, Y, t)
         z =
             ClimaCore.Fields.coordinate_field(

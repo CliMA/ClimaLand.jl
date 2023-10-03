@@ -11,6 +11,7 @@ using StatsBase
 using ClimaLSM
 using ClimaLSM.Domains: Column
 using ClimaLSM.Soil
+using ClimaLSM.Soil.Biogeochemistry
 using ClimaLSM.Canopy
 using ClimaLSM.Canopy.PlantHydraulics
 import ClimaLSM
@@ -61,6 +62,50 @@ soil_ps = Soil.EnergyHydrologyParameters{FT}(;
 
 soil_args = (domain = soil_domain, parameters = soil_ps)
 soil_model_type = Soil.EnergyHydrology{FT}
+
+# Soil microbes model
+soilco2_type = Soil.Biogeochemistry.SoilCO2Model{FT}
+
+soilco2_ps = SoilCO2ModelParameters{FT}(;
+    ν = soil_ν, # same as soil
+    θ_a100 = θ_a100,
+    D_ref = D_ref,
+    b = b,
+    D_liq = D_liq,
+    # DAMM
+    α_sx = α_sx,
+    Ea_sx = Ea_sx,
+    kM_sx = kM_sx,
+    kM_o2 = kM_o2,
+    O2_a = O2_a,
+    D_oa = D_oa,
+    p_sx = p_sx,
+    earth_param_set = earth_param_set,
+);
+
+# soil microbes args
+Csom = (z, t) -> 5.0
+
+soilco2_top_bc = Soil.Biogeochemistry.SoilCO2StateBC((p, t) -> atmos_co2(t))
+soilco2_bot_bc = Soil.Biogeochemistry.SoilCO2FluxBC((p, t) -> 0.0) # no flux
+soilco2_sources = (MicrobeProduction{FT}(),)
+
+soilco2_boundary_conditions =
+    (; top = (CO2 = soilco2_top_bc,), bottom = (CO2 = soilco2_bot_bc,))
+
+soilco2_drivers = Soil.Biogeochemistry.SoilDrivers(
+    Soil.Biogeochemistry.PrognosticMet(),
+    Soil.Biogeochemistry.PrescribedSOC(Csom),
+    atmos,
+)
+
+soilco2_args = (;
+    boundary_conditions = soilco2_boundary_conditions,
+    sources = soilco2_sources,
+    domain = soil_domain,
+    parameters = soilco2_ps,
+    drivers = soilco2_drivers,
+)
 
 # Now we set up the canopy model, which we set up by component:
 # Component Types
@@ -176,6 +221,8 @@ canopy_model_args = (; parameters = shared_params, domain = canopy_domain)
 # Integrated plant hydraulics and soil model
 land_input = (atmos = atmos, radiation = radiation)
 land = SoilCanopyModel{FT}(;
+    soilco2_type = soilco2_type,
+    soilco2_args = soilco2_args,
     land_args = land_input,
     soil_model_type = soil_model_type,
     soil_args = soil_args,
@@ -201,6 +248,9 @@ Y.soil.ρe_int =
         T_0,
         Ref(land.soil.parameters),
     )
+
+Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
+
 ψ_stem_0 = FT(-1e5 / 9800)
 ψ_leaf_0 = FT(-2e5 / 9800)
 
@@ -246,6 +296,27 @@ sol = SciMLBase.solve(
     saveat = saveat,
 )
 
+# Calculate RH as boundary flux
+z = ClimaLSM.coordinates(land.soil.domain).subsurface.z
+Δz_top = ClimaLSM.get_Δz(z)[1]
+
+update_aux! = make_update_aux(land)
+
+HR = Array{FT}(undef, length(sol.t))
+
+for i in 1:length(sol.t)
+    update_aux!(p, sol.u[i], sol.t[i])
+    top_flux_BC_HR = ClimaLSM.boundary_flux(
+        soilco2_top_bc,
+        ClimaLSM.TopBoundary(),
+        Δz_top,
+        sol.u[i],
+        p,
+        sol.t[i],
+    )
+    HR[i] = parent(top_flux_BC_HR)[1] .* 1e6 # from mol to umol
+end
+
 # Plotting
 daily = sol.t ./ 3600 ./ 24
 savedir = joinpath(climalsm_dir, "experiments/integrated/ozark/")
@@ -275,6 +346,26 @@ function diurnal_avg(series)
         [mean([daily_data[i][j] for i in 1:num_days]) for j in 1:daily_points]
     return daily_avgs
 end
+
+# Heterotrophic respiration
+
+HR_daily_avg_model = diurnal_avg(HR)
+
+pltHR = Plots.plot(size = (1500, 400))
+
+Plots.plot!(
+    pltHR,
+    model_daily_indices,
+    HR_daily_avg_model,
+    label = "HR model",
+    title = "HR [μmol m² s⁻¹]",
+    xlabel = "Hour of day",
+    ylabel = "Average over simulation",
+    margin = 10Plots.mm,
+)
+
+Plots.savefig(joinpath(savedir, "HeteroResp_hourly_avg.png"))
+
 # Autotrophic Respiration
 AR = [
     parent(sv.saveval[k].canopy.autotrophic_respiration.Ra)[1] for
@@ -289,14 +380,40 @@ Plots.plot!(
     model_daily_indices,
     AR_daily_avg_model .* 1e6,
     label = "Model",
-    title = "AR [μmol/m^2/s]",
+    title = "R [μmol/m^2/s]",
     xlabel = "Hour of day",
     ylabel = "Average over simulation",
     margin = 10Plots.mm,
 )
+Plots.plot!(pltAR, seconds ./ 3600 ./ 24, RECO .* 1e6, label = "Reco Data")
 
 Plots.savefig(joinpath(savedir, "AutoResp.png"))
 
+# time series respiration fluxes
+
+pltR_timeseries = Plots.plot(size = (1500, 400))
+
+Plots.plot!(
+    pltR_timeseries,
+    daily,
+    HR,
+    label = "HR model",
+    title = "R [μmol m² s⁻¹]",
+    xlabel = "Day of the year",
+    ylabel = "Respiration",
+    margin = 10Plots.mm,
+)
+
+Plots.plot!(pltR_timeseries, daily, AR .* 1e6, label = "AR model")
+
+Plots.plot!(
+    pltR_timeseries,
+    seconds ./ 3600 ./ 24,
+    RECO .* 1e6,
+    label = "RECO data",
+)
+
+Plots.savefig(joinpath(savedir, "Resp_timeseries.png"))
 
 # GPP
 model_GPP = [

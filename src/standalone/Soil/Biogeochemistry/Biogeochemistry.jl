@@ -41,10 +41,6 @@ A struct for storing parameters of the `SoilCO2Model`.
 $(DocStringExtensions.FIELDS)
 """
 struct SoilCO2ModelParameters{FT <: AbstractFloat, PSE}
-    "Pressure at the surface of the soil (Pa)"
-    P_sfc::FT
-    "Diffusivity of soil C substrate in liquid (unitless)"
-    D_liq::FT
     "Soil porosity (m³ m⁻³)"
     ν::FT
     "Air-filled porosity at soil water potential of -100 cm H₂O (~ 10 Pa)"
@@ -53,6 +49,8 @@ struct SoilCO2ModelParameters{FT <: AbstractFloat, PSE}
     D_ref::FT
     "Absolute value of the slope of the line relating log(ψ) versus log(θ) (unitless)"
     b::FT
+    "Diffusivity of soil C substrate in liquid (unitless)"
+    D_liq::FT
     # DAMM
     "Pre-exponential factor (kg C m-3 s-1)"
     α_sx::FT
@@ -74,7 +72,6 @@ end
 
 """
     SoilCO2ModelParameters{FT}(;
-                                P_sfc = FT(101e3),
                                 ν = FT(0.556),
                                 θ_a100 = FT(0.1816),
                                 D_ref = FT(1.39e-5),
@@ -96,7 +93,6 @@ An outer constructor for creating the parameter struct of the `SoilCO2Model`,
     based on keyword arguments.
 """
 function SoilCO2ModelParameters{FT}(;
-    P_sfc = FT(101e3),
     ν = FT(0.556),
     θ_a100 = FT(0.1816),
     D_ref = FT(1.39e-5),
@@ -113,12 +109,11 @@ function SoilCO2ModelParameters{FT}(;
     earth_param_set::PSE,
 ) where {FT, PSE}
     return SoilCO2ModelParameters{FT, PSE}(
-        P_sfc,
-        D_liq,
         ν,
         θ_a100,
         D_ref,
         b,
+        D_liq,
         # DAMM
         α_sx,
         Ea_sx,
@@ -156,7 +151,7 @@ struct SoilCO2Model{FT, PS, D, BC, S, DT} <:
     boundary_conditions::BC
     "A tuple of sources, each of type AbstractSource"
     sources::S
-    " Drivers"
+    "Drivers"
     driver::DT
 end
 
@@ -167,7 +162,8 @@ SoilCO2Model{FT}(;
         domain::ClimaLSM.AbstractDomain,
         boundary_conditions::NamedTuple,
         sources::Tuple,
-    ) where {FT}
+        drivers::DT,
+    ) where {FT, BC, DT}
 
 A constructor for `SoilCO2Model`.
 """
@@ -285,10 +281,11 @@ end
 """
     AbstractSoilDriver
 
-An abstract type for drivers of soil CO2 production.
+An abstract type for drivers of soil CO2 production and diffusion.
 These are soil temperature, soil moisture,
-root carbon, soil organic matter and microbe carbon.
-All varying in space (horizontally and vertically) and time.
+root carbon, soil organic matter and microbe carbon, and atmospheric pressure.
+Soil temperature and moisture, as well as soc, vary in space (horizontally and vertically) and time.
+Atmospheric pressure vary in time (defined at the surface only, not with depth). 
 """
 abstract type AbstractSoilDriver end
 
@@ -306,6 +303,8 @@ struct SoilDrivers
     met::AbstractSoilDriver
     "Soil SOM driver - Prescribed only"
     soc::AbstractSoilDriver
+    "Prescribed atmospheric variables"
+    atmos::PrescribedAtmosphere
 end
 
 """
@@ -372,6 +371,15 @@ function soil_SOM_C(driver::PrescribedSOC, p, Y, t, z)
 end
 
 """
+    air_pressure(driver::PrescribedAtmosphere, t)
+
+Returns the prescribed air pressure at the top boundary condition at time (t).
+"""
+function air_pressure(driver::PrescribedAtmosphere, p, Y, t) # not sure if/why p and Y are needed?
+    return driver.P.(t) # not sure broadcast (.) is needed
+end
+
+"""
     make_update_aux(model::SoilCO2Model)
 
 An extension of the function `make_update_aux`, for the soilco2 equation.
@@ -386,8 +394,9 @@ function ClimaLSM.make_update_aux(model::SoilCO2Model)
         T_soil = soil_temperature(model.driver.met, p, Y, t, z)
         θ_l = soil_moisture(model.driver.met, p, Y, t, z)
         Csom = soil_SOM_C(model.driver.soc, p, Y, t, z)
+        P_sfc = air_pressure(model.driver.atmos, p, Y, t)
         θ_w = θ_l
-        p.soilco2.D .= co2_diffusivity.(T_soil, θ_w, Ref(params))
+        p.soilco2.D .= co2_diffusivity.(T_soil, θ_w, P_sfc, Ref(params))
         p.soilco2.Sm .= microbe_source.(T_soil, θ_l, Csom, Ref(params))
     end
     return update_aux!

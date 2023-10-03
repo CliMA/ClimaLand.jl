@@ -49,6 +49,7 @@ data = joinpath(dataset_path, af.filename)
 driver_data = readdlm(data, ',')
 
 column_names = driver_data[1, :]
+RECO = driver_data[2:end, column_names .== "RECO_DT_VUT_REF"] .* 1e-6 # to convert from micromol to mol.
 TA = driver_data[2:end, column_names .== "TA_F"] .+ 273.15; # convert C to K
 VPD = driver_data[2:end, column_names .== "VPD_F"] .* 100; # convert hPa to Pa
 PA = driver_data[2:end, column_names .== "PA_F"] .* 1000; # convert kPa to Pa
