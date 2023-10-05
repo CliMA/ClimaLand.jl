@@ -42,7 +42,6 @@ dataset_path = get_data_folder(dataset);
 data = joinpath(dataset_path, "AMF_US-MOz_FLUXNET_FULLSET_HH_2005.csv");
 driver_data = readdlm(data, ',')
 
-
 column_names = driver_data[1, :]
 TA = driver_data[2:end, column_names .== "TA_F"] .+ 273.15; # convert C to K
 VPD = driver_data[2:end, column_names .== "VPD_F"] .* 100; # convert hPa to Pa
@@ -77,6 +76,8 @@ replace_missing_with_mean_by_value!(LW_OUT)
 
 LOCAL_DATETIME = DateTime.(string.(driver_data[2:end, 1]), "yyyymmddHHMM")
 UTC_DATETIME = LOCAL_DATETIME .+ Dates.Hour(6)
+DATA_DT = Second(LOCAL_DATETIME[2] - LOCAL_DATETIME[1]).value # seconds
+
 thermo_params = LSMP.thermodynamic_parameters(earth_param_set)
 esat =
     Thermodynamics.saturation_vapor_pressure.(
@@ -88,7 +89,7 @@ e = @. esat - VPD
 q = @. 0.622 * e ./ (PA - 0.378 * e)
 
 #Make a bunch of splines
-seconds = FT.(0:1800:((length(UTC_DATETIME) - 1) * 1800));
+seconds = FT.(0:DATA_DT:((length(UTC_DATETIME) - 1) * DATA_DT));
 p_spline = Spline1D(seconds, -P[:]) # m/s
 atmos_q = Spline1D(seconds, q[:])
 atmos_T = Spline1D(seconds, TA[:])
