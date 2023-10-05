@@ -268,61 +268,61 @@ Plots.plot(plt1, plt2, layout = (2, 1))
 Plots.savefig(joinpath(savedir, "GPP.png"))
 
 # SW_OUT
-SW_out_model = [parent(sv.saveval[k].SW_out)[1] for k in 1:length(sv.saveval)]
-plt1 = Plots.plot(size = (1500, 400))
-Plots.plot!(
-    plt1,
-    seconds ./ 3600 ./ 24,
-    FT.(SW_OUT),
-    label = "Data",
-    title = "Outgoing SW (W/m^2)",
-    xlim = [minimum(daily), maximum(daily)],
-)
+# SW_out_model = [parent(sv.saveval[k].SW_out)[1] for k in 1:length(sv.saveval)]
+# plt1 = Plots.plot(size = (1500, 400))
+# Plots.plot!(
+#     plt1,
+#     seconds ./ 3600 ./ 24,
+#     FT.(SW_OUT),
+#     label = "Data",
+#     title = "Outgoing SW (W/m^2)",
+#     xlim = [minimum(daily), maximum(daily)],
+# )
 
-Plots.plot!(plt1, daily, SW_out_model, label = "Model")
+# Plots.plot!(plt1, daily, SW_out_model, label = "Model")
 
-plt2 = Plots.plot(size = (1500, 400))
-Plots.plot!(
-    plt2,
-    seconds ./ 3600 ./ 24,
-    FT.(SW_OUT),
-    label = "",
-    xlim = [minimum(daily), minimum(daily) + 30],
-    margin = 10Plots.mm,
-    xlabel = "Day of year",
-)
-Plots.plot!(plt2, daily, SW_out_model, label = "Model")
-Plots.plot(plt1, plt2, layout = (2, 1))
-Plots.savefig(joinpath(savedir, "SW.png"))
+# plt2 = Plots.plot(size = (1500, 400))
+# Plots.plot!(
+#     plt2,
+#     seconds ./ 3600 ./ 24,
+#     FT.(SW_OUT),
+#     label = "",
+#     xlim = [minimum(daily), minimum(daily) + 30],
+#     margin = 10Plots.mm,
+#     xlabel = "Day of year",
+# )
+# Plots.plot!(plt2, daily, SW_out_model, label = "Model")
+# Plots.plot(plt1, plt2, layout = (2, 1))
+# Plots.savefig(joinpath(savedir, "SW.png"))
 
 
-# LW_OUT
-LW_out_model = [parent(sv.saveval[k].LW_out)[1] for k in 1:length(sv.saveval)]
-plt1 = Plots.plot(size = (1500, 400))
-Plots.plot!(
-    plt1,
-    seconds ./ 3600 ./ 24,
-    FT.(LW_OUT),
-    label = "Data",
-    title = "Outgoing LW (W/m^2)",
-    xlim = [minimum(daily), maximum(daily)],
-)
+# # LW_OUT
+# LW_out_model = [parent(sv.saveval[k].LW_out)[1] for k in 1:length(sv.saveval)]
+# plt1 = Plots.plot(size = (1500, 400))
+# Plots.plot!(
+#     plt1,
+#     seconds ./ 3600 ./ 24,
+#     FT.(LW_OUT),
+#     label = "Data",
+#     title = "Outgoing LW (W/m^2)",
+#     xlim = [minimum(daily), maximum(daily)],
+# )
 
-Plots.plot!(plt1, daily, LW_out_model, label = "Model")
+# Plots.plot!(plt1, daily, LW_out_model, label = "Model")
 
-plt2 = Plots.plot(size = (1500, 400))
-Plots.plot!(
-    plt2,
-    seconds ./ 3600 ./ 24,
-    FT.(LW_OUT),
-    label = "",
-    xlim = [minimum(daily), minimum(daily) + 30],
-    margin = 10Plots.mm,
-    xlabel = "Day of year",
-)
-Plots.plot!(plt2, daily, LW_out_model, label = "Model")
-Plots.plot(plt1, plt2, layout = (2, 1))
-Plots.savefig(joinpath(savedir, "LW.png"))
+# plt2 = Plots.plot(size = (1500, 400))
+# Plots.plot!(
+#     plt2,
+#     seconds ./ 3600 ./ 24,
+#     FT.(LW_OUT),
+#     label = "",
+#     xlim = [minimum(daily), minimum(daily) + 30],
+#     margin = 10Plots.mm,
+#     xlabel = "Day of year",
+# )
+# Plots.plot!(plt2, daily, LW_out_model, label = "Model")
+# Plots.plot(plt1, plt2, layout = (2, 1))
+# Plots.savefig(joinpath(savedir, "LW.png"))
 
 
 T =
@@ -334,6 +334,8 @@ E =
     [parent(sv.saveval[k].soil_evap)[1] for k in 1:length(sol.t)] .* (1e3 * 24 * 3600)
 measured_T = LE ./ (LSMP.LH_v0(earth_param_set) * 1000) .* (1e3 * 24 * 3600)
 
+model_ET = T .+ E
+
 plt1 = Plots.plot(size = (1500, 400))
 Plots.plot!(
     plt1,
@@ -341,387 +343,403 @@ Plots.plot!(
     measured_T,
     label = "Data ET",
     margins = 10Plots.mm,
-)
-Plots.plot!(
-    plt1,
-    daily,
-    T,
-    label = "Model T",
-    xlim = [minimum(daily), maximum(daily)],
+    linewidth = 3,
     ylim = [0, 30],
-)
-
-Plots.plot!(
-    plt1,
-    daily,
-    E,
-    label = "Model E",
-    ylim = [0, 30],
-    legend = :topright,
-    title = "Vapor Flux [mm/day]",
-)
-
-plt2 = Plots.plot(size = (1500, 400))
-Plots.plot!(plt2, seconds ./ 3600 ./ 24, measured_T, label = "")
-Plots.plot!(
-    plt2,
-    daily,
-    T,
-    xlim = [minimum(daily), minimum(daily) + 30],
-    label = "",
+    xlim = [130, 140],
+    title = "Evapotranspiration in combined soil/canopy model",
+    legend = :topleft,
     xlabel = "Day of year",
-    margin = 10Plots.mm,
-    ylim = [0, 30],
+    ylabel = "Vapor flux [mm/day]"
 )
+Plots.plot!(
+    plt1,
+    daily,
+    model_ET,
+    label = "Model ET",
+    margins = 10Plots.mm,
+    linewidth = 3,
+)
+# Plots.plot!(
+#     plt1,
+#     daily,
+#     T,
+#     label = "Model T",
+#     xlim = [minimum(daily), maximum(daily)],
+#     ylim = [0, 30],
+# )
 
-Plots.plot!(plt2, daily, E, label = "", ylim = [0, 20])
-Plots.plot(plt1, plt2, layout = (2, 1))
+# Plots.plot!(
+#     plt1,
+#     daily,
+#     E,
+#     label = "Model E",
+#     ylim = [0, 30],
+#     legend = :topright,
+#     title = "Vapor Flux [mm/day]",
+# )
+
+# plt2 = Plots.plot(size = (1500, 400))
+# Plots.plot!(plt2, seconds ./ 3600 ./ 24, measured_T, label = "")
+# Plots.plot!(
+#     plt2,
+#     daily,
+#     T,
+#     xlim = [minimum(daily), minimum(daily) + 30],
+#     label = "",
+#     xlabel = "Day of year",
+#     margin = 10Plots.mm,
+#     ylim = [0, 30],
+# )
+
+# Plots.plot!(plt2, daily, E, label = "", ylim = [0, 20])
+# Plots.plot(plt1, plt2, layout = (2, 1))
+Plots.plot(plt1)
 Plots.savefig(joinpath(savedir, "ET.png"))
 
-β = [parent(sv.saveval[k].canopy.hydraulics.β)[1] for k in 1:length(sol.t)]
-plt1 = Plots.plot(size = (1500, 400))
-Plots.plot!(
-    plt1,
-    daily,
-    β,
-    label = "Model",
-    xlim = [minimum(daily), maximum(daily)],
-    title = "Moisture stress factor",
-)
-#i_week = Int(round((7 * 24 * 3600) / (sol.t[2] - sol.t[1])))
-plt2 = Plots.plot(size = (1500, 400))
-Plots.plot!(
-    plt2,
-    daily,
-    β,
-    label = "",
-    xlim = [minimum(daily), minimum(daily) + 30],
-    xlabel = "Day of year",
-    #ylim = [minimum(β[1:i_week]), maximum(β[1:i_week])],
-    margin = 10Plots.mm,
-)
+# β = [parent(sv.saveval[k].canopy.hydraulics.β)[1] for k in 1:length(sol.t)]
+# plt1 = Plots.plot(size = (1500, 400))
+# Plots.plot!(
+#     plt1,
+#     daily,
+#     β,
+#     label = "Model",
+#     xlim = [minimum(daily), maximum(daily)],
+#     title = "Moisture stress factor",
+# )
+# #i_week = Int(round((7 * 24 * 3600) / (sol.t[2] - sol.t[1])))
+# plt2 = Plots.plot(size = (1500, 400))
+# Plots.plot!(
+#     plt2,
+#     daily,
+#     β,
+#     label = "",
+#     xlim = [minimum(daily), minimum(daily) + 30],
+#     xlabel = "Day of year",
+#     #ylim = [minimum(β[1:i_week]), maximum(β[1:i_week])],
+#     margin = 10Plots.mm,
+# )
 
-Plots.plot(plt1, plt2, layout = (2, 1))
-Plots.savefig(joinpath(savedir, "moisture_stress.png"))
-
-
-g_stomata =
-    [parent(sv.saveval[k].canopy.conductance.gs)[1] for k in 1:length(sol.t)]
-plt1 = Plots.plot(size = (1500, 400))
-Plots.plot!(
-    plt1,
-    daily,
-    g_stomata,
-    label = "Model",
-    xlim = [minimum(daily), maximum(daily)],
-    title = "Stomatal conductance (mol/m^2/s)",
-)
-i_week = Int(round((7 * 24 * 3600) / (sol.t[2] - sol.t[1])))
-plt2 = Plots.plot(size = (1500, 400))
-Plots.plot!(
-    plt2,
-    daily,
-    g_stomata,
-    label = "",
-    xlim = [minimum(daily), minimum(daily) + 30],
-    xlabel = "Day of year",
-    ylim = [minimum(g_stomata[1:i_week]), maximum(g_stomata[1:i_week])],
-    margin = 10Plots.mm,
-)
-
-Plots.plot(plt1, plt2, layout = (2, 1))
-Plots.savefig(joinpath(savedir, "stomatal_conductance.png"))
-
-# Current resolution has the first layer at 0.1 cm, the second at 5cm.
-plt1 = Plots.plot(size = (1500, 800))
-Plots.plot!(
-    plt1,
-    daily,
-    [parent(sol.u[k].soil.ϑ_l)[end - 1] for k in 1:1:length(sol.t)],
-    label = "5cm",
-    xlim = [minimum(daily), maximum(daily)],
-    ylim = [0.05, 0.55],
-    xlabel = "Days",
-    ylabel = "SWC [m/m]",
-    color = "blue",
-    margin = 10Plots.mm,
-)
-
-plot!(
-    plt1,
-    daily,
-    [parent(sol.u[k].soil.θ_i)[end - 1] for k in 1:1:length(sol.t)],
-    color = "cyan",
-    label = "Ice, 5cm",
-)
-
-Plots.plot!(plt1, seconds ./ 3600 ./ 24, SWC, label = "Data")
-plt2 = Plots.plot(
-    seconds ./ 3600 ./ 24,
-    P .* (-1e3 * 24 * 3600),
-    label = "Data",
-    ylabel = "Precipitation [mm/day]",
-    xlim = [minimum(daily), maximum(daily)],
-    margin = 10Plots.mm,
-    ylim = [-200, 0],
-    size = (1500, 400),
-)
-Plots.plot(plt2, plt1, layout = grid(2, 1, heights = [0.2, 0.8]))
-Plots.savefig(joinpath(savedir, "soil_water_content.png"))
+# Plots.plot(plt1, plt2, layout = (2, 1))
+# Plots.savefig(joinpath(savedir, "moisture_stress.png"))
 
 
-SHF = [parent(sv.saveval[k].soil_shf)[1] for k in 1:length(sol.t)]
+# g_stomata =
+#     [parent(sv.saveval[k].canopy.conductance.gs)[1] for k in 1:length(sol.t)]
+# plt1 = Plots.plot(size = (1500, 400))
+# Plots.plot!(
+#     plt1,
+#     daily,
+#     g_stomata,
+#     label = "Model",
+#     xlim = [minimum(daily), maximum(daily)],
+#     title = "Stomatal conductance (mol/m^2/s)",
+# )
+# i_week = Int(round((7 * 24 * 3600) / (sol.t[2] - sol.t[1])))
+# plt2 = Plots.plot(size = (1500, 400))
+# Plots.plot!(
+#     plt2,
+#     daily,
+#     g_stomata,
+#     label = "",
+#     xlim = [minimum(daily), minimum(daily) + 30],
+#     xlabel = "Day of year",
+#     ylim = [minimum(g_stomata[1:i_week]), maximum(g_stomata[1:i_week])],
+#     margin = 10Plots.mm,
+# )
 
-plt1 = Plots.plot(size = (1500, 700))
-Plots.plot!(
-    plt1,
-    seconds ./ 3600 ./ 24,
-    FT.(H),
-    label = "Data",
-    margins = 10Plots.mm,
-)
-Plots.plot!(
-    plt1,
-    seconds ./ 3600 ./ 24,
-    FT.(H_CORR),
-    label = "Data Corr",
-    margins = 10Plots.mm,
-)
-Plots.plot!(
-    plt1,
-    daily,
-    SHF,
-    label = "Model",
-    xlim = [minimum(daily), maximum(daily)],
-    title = "Soil Sensible Heat Flux [W/m^2]",
-)
+# Plots.plot(plt1, plt2, layout = (2, 1))
+# Plots.savefig(joinpath(savedir, "stomatal_conductance.png"))
 
+# # Current resolution has the first layer at 0.1 cm, the second at 5cm.
+# plt1 = Plots.plot(size = (1500, 800))
+# Plots.plot!(
+#     plt1,
+#     daily,
+#     [parent(sol.u[k].soil.ϑ_l)[end - 1] for k in 1:1:length(sol.t)],
+#     label = "5cm",
+#     xlim = [minimum(daily), maximum(daily)],
+#     ylim = [0.05, 0.55],
+#     xlabel = "Days",
+#     ylabel = "SWC [m/m]",
+#     color = "blue",
+#     margin = 10Plots.mm,
+# )
 
-plt2 = Plots.plot(size = (1500, 700))
-Plots.plot!(
-    plt2,
-    seconds ./ 3600 ./ 24,
-    FT.(H),
-    label = "",
-    margins = 10Plots.mm,
-)
-Plots.plot!(
-    plt2,
-    seconds ./ 3600 ./ 24,
-    FT.(H_CORR),
-    label = "",
-    margins = 10Plots.mm,
-)
-Plots.plot!(
-    plt2,
-    daily,
-    SHF,
-    label = "",
-    xlim = [minimum(daily), minimum(daily) + 30],
-    ylim = [-300, 700],
-    xlabel = "Day of year",
-    margin = 10Plots.mm,
-)
-Plots.plot(plt1, plt2, layout = (2, 1))
+# plot!(
+#     plt1,
+#     daily,
+#     [parent(sol.u[k].soil.θ_i)[end - 1] for k in 1:1:length(sol.t)],
+#     color = "cyan",
+#     label = "Ice, 5cm",
+# )
 
-Plots.savefig(joinpath(savedir, "shf.png"))
-
-
-dt_model = sol.t[2] - sol.t[1]
-dt_data = seconds[2] - seconds[1]
-# Find which index in the data our simulation starts at:
-idx = argmin(abs.(seconds .- sol.t[1]))
-Plots.plot(
-    seconds ./ 24 ./ 3600,
-    cumsum(measured_T[:]) * dt_data,
-    label = "Data ET",
-)
-Plots.plot!(
-    seconds ./ 24 ./ 3600,
-    cumsum(P[:]) * dt_data * (1e3 * 24 * 3600),
-    label = "Data P",
-)
-Plots.plot!(
-    daily,
-    cumsum(T .+ E) * dt_model .+ cumsum(measured_T[:])[idx] * dt_data,
-    label = "Model ET",
-)
-
-Plots.plot!(ylabel = "∫ Water fluxes dt", xlabel = "Days", margins = 10Plots.mm)
-Plots.savefig(joinpath(savedir, "cumul_p_et.png"))
+# Plots.plot!(plt1, seconds ./ 3600 ./ 24, SWC, label = "Data")
+# plt2 = Plots.plot(
+#     seconds ./ 3600 ./ 24,
+#     P .* (-1e3 * 24 * 3600),
+#     label = "Data",
+#     ylabel = "Precipitation [mm/day]",
+#     xlim = [minimum(daily), maximum(daily)],
+#     margin = 10Plots.mm,
+#     ylim = [-200, 0],
+#     size = (1500, 400),
+# )
+# Plots.plot(plt2, plt1, layout = grid(2, 1, heights = [0.2, 0.8]))
+# Plots.savefig(joinpath(savedir, "soil_water_content.png"))
 
 
-# Leaf water potential data from Pallardy et al (2018)
-# Predawn Leaf Water Potential of Oak-Hickory Forest at Missouri Ozark (MOFLUX) Site: 2004-2020
-# https://doi.org/10.3334/CDIAC/ORNLSFA.004
-lwp_filename = "MOFLUX_PredawnLeafWaterPotential_2020_20210125.csv"
-lwp_artifact = ArtifactFile(
-    url = "https://caltech.box.com/shared/static/d2nbhezw1q99vslnh5qfwnqrnp3p4edo.csv",
-    filename = lwp_filename,
-)
-lwp_dataset = ArtifactWrapper(
-    @__DIR__,
-    "lwp_pallardy_etal2018",
-    ArtifactFile[lwp_artifact],
-);
+# SHF = [parent(sv.saveval[k].soil_shf)[1] for k in 1:length(sol.t)]
 
-lwp_path = joinpath(get_data_folder(lwp_dataset), lwp_filename)
-lwp_data = readdlm(lwp_path, ',', skipstart = 1)
-# We are using 2005 data in this test, so restrict to this year
-YEAR = lwp_data[:, 1]
-DOY = lwp_data[YEAR .== 2005, 2]
-# Our t0 = Dec 31, midnight, 2005. Predawn = guess of 0600 hours
-seconds_since_t0 = FT.(DOY) * 24 .* 3600 .+ (6 * 3600)
-lwp_measured = lwp_data[YEAR .== 2005, 7] .* 1e6 # MPa to Pa
-
-
-root_stem_flux = [
-    sum(sv.saveval[k].root_extraction) .* (1e3 * 3600 * 24) for
-    k in 1:length(sol.t)
-]
-
-stem_leaf_flux = [
-    parent(sv.saveval[k].canopy.hydraulics.fa)[1] .* (1e3 * 3600 * 24) for
-    k in 1:length(sol.t)
-]
-leaf_air_flux = [
-    parent(sv.saveval[k].canopy.hydraulics.fa)[2] .* (1e3 * 3600 * 24) for
-    k in 1:length(sol.t)
-]
-lwp = [
-    parent(sv.saveval[k].canopy.hydraulics.ψ)[2] * 9800 for k in 1:length(sol.t)
-]
-swp = [
-    parent(sv.saveval[k].canopy.hydraulics.ψ)[1] * 9800 for k in 1:length(sol.t)
-]
-ψ_soil = [
-    sum(
-        parent(sv.saveval[k].soil.ψ) .*
-        root_distribution.(parent(cds.subsurface.z)),
-    ) / sum(root_distribution.(parent(cds.subsurface.z))) * 9800 for
-    k in 1:length(sol.t)
-]
-
-plt1 = Plots.plot(size = (1500, 400))
-Plots.plot!(
-    plt1,
-    daily,
-    lwp,
-    label = "Model, Leaf",
-    title = "Water potentials",
-    xlim = [minimum(daily), maximum(daily)],
-)
-Plots.plot!(plt1, daily, swp, label = "Model, Stem")
-Plots.plot!(plt1, daily, ψ_soil, label = "Model, Mean soil")
-Plots.scatter!(
-    plt1,
-    seconds_since_t0 ./ 24 ./ 3600,
-    lwp_measured,
-    label = "Data; all species",
-    legend = :bottomleft,
-)
-
-plt2 = Plots.plot(size = (1500, 400))
-Plots.plot!(
-    plt2,
-    daily,
-    lwp,
-    label = "",
-    xlim = [minimum(daily), minimum(daily) + 30],
-    xlabel = "Day of year",
-    ylim = [-2e6, 0],
-    margin = 10Plots.mm,
-)
-
-Plots.plot!(plt2, daily, swp, label = "")
-Plots.plot!(plt2, daily, ψ_soil, label = "")
-Plots.plot!(plt2, seconds_since_t0 ./ 24 ./ 3600, lwp_measured, label = "")
-
-Plots.plot(plt1, plt2, layout = (2, 1))
-Plots.savefig(joinpath(savedir, "leaf_water_potential.png"))
-
-plt2 = Plots.plot(
-    daily,
-    leaf_air_flux,
-    label = "Leaf-air flux",
-    xlim = [minimum(daily), maximum(daily)],
-    title = "Within plant fluxes[mm/day]",
-    size = (1500, 400),
-)
-Plots.plot!(plt2, daily, stem_leaf_flux, label = "Stem-leaf flux")
-Plots.plot!(plt2, daily, root_stem_flux, label = "Soil-root-stem flux")
-
-plt1 = Plots.plot(
-    daily,
-    leaf_air_flux,
-    label = "",
-    xlabel = "Day of year",
-    margin = 10Plots.mm,
-    xlim = [minimum(daily), minimum(daily) + 30],
-    ylim = [-5, 7.5],
-    size = (1500, 400),
-)
-Plots.plot!(plt1, daily, stem_leaf_flux, label = "")
-Plots.plot!(plt1, daily, root_stem_flux, label = "")
-Plots.plot(plt2, plt1, layout = (2, 1))
-Plots.savefig(joinpath(savedir, "water_fluxes.png"))
-
-# Current resolution is 3.333 cm per layer, our nodes are at the center of the
-# layers. The second layer is ~ 5cm
-soil_T_sfc = [parent(sv.saveval[k].soil.T)[end] for k in 1:length(sol.t)]
-soil_T_5 = [parent(sv.saveval[k].soil.T)[end - 1] for k in 1:length(sol.t)]
-
-plt2 = Plots.plot()
-Plots.plot!(
-    plt2,
-    daily,
-    soil_T_sfc,
-    color = "blue",
-    label = "",
-    xlim = [minimum(daily), minimum(daily) + 30],
-    ylim = [260, 320],
-    xlabel = "Day of year",
-    margins = 10Plots.mm,
-    size = (1500, 400),
-)
-
-plot!(plt2, daily, soil_T_5, color = "purple", label = "")
-Plots.plot!(plt2, seconds ./ 3600 ./ 24, TA, label = "", color = "green")
-Plots.plot!(plt2, seconds ./ 3600 ./ 24, TS, label = "", color = "red")
+# plt1 = Plots.plot(size = (1500, 700))
+# Plots.plot!(
+#     plt1,
+#     seconds ./ 3600 ./ 24,
+#     FT.(H),
+#     label = "Data",
+#     margins = 10Plots.mm,
+# )
+# Plots.plot!(
+#     plt1,
+#     seconds ./ 3600 ./ 24,
+#     FT.(H_CORR),
+#     label = "Data Corr",
+#     margins = 10Plots.mm,
+# )
+# Plots.plot!(
+#     plt1,
+#     daily,
+#     SHF,
+#     label = "Model",
+#     xlim = [minimum(daily), maximum(daily)],
+#     title = "Soil Sensible Heat Flux [W/m^2]",
+# )
 
 
-plt3 = Plots.plot()
-Plots.plot!(
-    plt3,
-    daily,
-    soil_T_sfc,
-    color = "blue",
-    label = "T_sfc",
-    xlim = [minimum(daily), maximum(daily)],
-    ylim = [260, 320],
-    title = "Soil Temperature [K]",
-)
+# plt2 = Plots.plot(size = (1500, 700))
+# Plots.plot!(
+#     plt2,
+#     seconds ./ 3600 ./ 24,
+#     FT.(H),
+#     label = "",
+#     margins = 10Plots.mm,
+# )
+# Plots.plot!(
+#     plt2,
+#     seconds ./ 3600 ./ 24,
+#     FT.(H_CORR),
+#     label = "",
+#     margins = 10Plots.mm,
+# )
+# Plots.plot!(
+#     plt2,
+#     daily,
+#     SHF,
+#     label = "",
+#     xlim = [minimum(daily), minimum(daily) + 30],
+#     ylim = [-300, 700],
+#     xlabel = "Day of year",
+#     margin = 10Plots.mm,
+# )
+# Plots.plot(plt1, plt2, layout = (2, 1))
 
-plot!(plt3, daily, soil_T_5, color = "purple", label = "T_soil, 5cm")
-Plots.plot!(
-    plt3,
-    seconds ./ 3600 ./ 24,
-    TA,
-    label = "T_air (data)",
-    color = "green",
-)
+# Plots.savefig(joinpath(savedir, "shf.png"))
 
-Plots.plot!(
-    plt3,
-    seconds ./ 3600 ./ 24,
-    TS,
-    label = "T_soil (data)",
-    color = "red",
-    legend = :bottomright,
-)
 
-Plots.plot!(plt3, legend = :bottomleft)
-Plots.plot(plt3, plt2, layout = (2, 1))
-Plots.savefig(joinpath(savedir, "soil_temperature.png"))
+# dt_model = sol.t[2] - sol.t[1]
+# dt_data = seconds[2] - seconds[1]
+# # Find which index in the data our simulation starts at:
+# idx = argmin(abs.(seconds .- sol.t[1]))
+# Plots.plot(
+#     seconds ./ 24 ./ 3600,
+#     cumsum(measured_T[:]) * dt_data,
+#     label = "Data ET",
+# )
+# Plots.plot!(
+#     seconds ./ 24 ./ 3600,
+#     cumsum(P[:]) * dt_data * (1e3 * 24 * 3600),
+#     label = "Data P",
+# )
+# Plots.plot!(
+#     daily,
+#     cumsum(T .+ E) * dt_model .+ cumsum(measured_T[:])[idx] * dt_data,
+#     label = "Model ET",
+# )
+
+# Plots.plot!(ylabel = "∫ Water fluxes dt", xlabel = "Days", margins = 10Plots.mm)
+# Plots.savefig(joinpath(savedir, "cumul_p_et.png"))
+
+
+# # Leaf water potential data from Pallardy et al (2018)
+# # Predawn Leaf Water Potential of Oak-Hickory Forest at Missouri Ozark (MOFLUX) Site: 2004-2020
+# # https://doi.org/10.3334/CDIAC/ORNLSFA.004
+# lwp_filename = "MOFLUX_PredawnLeafWaterPotential_2020_20210125.csv"
+# lwp_artifact = ArtifactFile(
+#     url = "https://caltech.box.com/shared/static/d2nbhezw1q99vslnh5qfwnqrnp3p4edo.csv",
+#     filename = lwp_filename,
+# )
+# lwp_dataset = ArtifactWrapper(
+#     @__DIR__,
+#     "lwp_pallardy_etal2018",
+#     ArtifactFile[lwp_artifact],
+# );
+
+# lwp_path = joinpath(get_data_folder(lwp_dataset), lwp_filename)
+# lwp_data = readdlm(lwp_path, ',', skipstart = 1)
+# # We are using 2005 data in this test, so restrict to this year
+# YEAR = lwp_data[:, 1]
+# DOY = lwp_data[YEAR .== 2005, 2]
+# # Our t0 = Dec 31, midnight, 2005. Predawn = guess of 0600 hours
+# seconds_since_t0 = FT.(DOY) * 24 .* 3600 .+ (6 * 3600)
+# lwp_measured = lwp_data[YEAR .== 2005, 7] .* 1e6 # MPa to Pa
+
+
+# root_stem_flux = [
+#     sum(sv.saveval[k].root_extraction) .* (1e3 * 3600 * 24) for
+#     k in 1:length(sol.t)
+# ]
+
+# stem_leaf_flux = [
+#     parent(sv.saveval[k].canopy.hydraulics.fa)[1] .* (1e3 * 3600 * 24) for
+#     k in 1:length(sol.t)
+# ]
+# leaf_air_flux = [
+#     parent(sv.saveval[k].canopy.hydraulics.fa)[2] .* (1e3 * 3600 * 24) for
+#     k in 1:length(sol.t)
+# ]
+# lwp = [
+#     parent(sv.saveval[k].canopy.hydraulics.ψ)[2] * 9800 for k in 1:length(sol.t)
+# ]
+# swp = [
+#     parent(sv.saveval[k].canopy.hydraulics.ψ)[1] * 9800 for k in 1:length(sol.t)
+# ]
+# ψ_soil = [
+#     sum(
+#         parent(sv.saveval[k].soil.ψ) .*
+#         root_distribution.(parent(cds.subsurface.z)),
+#     ) / sum(root_distribution.(parent(cds.subsurface.z))) * 9800 for
+#     k in 1:length(sol.t)
+# ]
+
+# plt1 = Plots.plot(size = (1500, 400))
+# Plots.plot!(
+#     plt1,
+#     daily,
+#     lwp,
+#     label = "Model, Leaf",
+#     title = "Water potentials",
+#     xlim = [minimum(daily), maximum(daily)],
+# )
+# Plots.plot!(plt1, daily, swp, label = "Model, Stem")
+# Plots.plot!(plt1, daily, ψ_soil, label = "Model, Mean soil")
+# Plots.scatter!(
+#     plt1,
+#     seconds_since_t0 ./ 24 ./ 3600,
+#     lwp_measured,
+#     label = "Data; all species",
+#     legend = :bottomleft,
+# )
+
+# plt2 = Plots.plot(size = (1500, 400))
+# Plots.plot!(
+#     plt2,
+#     daily,
+#     lwp,
+#     label = "",
+#     xlim = [minimum(daily), minimum(daily) + 30],
+#     xlabel = "Day of year",
+#     ylim = [-2e6, 0],
+#     margin = 10Plots.mm,
+# )
+
+# Plots.plot!(plt2, daily, swp, label = "")
+# Plots.plot!(plt2, daily, ψ_soil, label = "")
+# Plots.plot!(plt2, seconds_since_t0 ./ 24 ./ 3600, lwp_measured, label = "")
+
+# Plots.plot(plt1, plt2, layout = (2, 1))
+# Plots.savefig(joinpath(savedir, "leaf_water_potential.png"))
+
+# plt2 = Plots.plot(
+#     daily,
+#     leaf_air_flux,
+#     label = "Leaf-air flux",
+#     xlim = [minimum(daily), maximum(daily)],
+#     title = "Within plant fluxes[mm/day]",
+#     size = (1500, 400),
+# )
+# Plots.plot!(plt2, daily, stem_leaf_flux, label = "Stem-leaf flux")
+# Plots.plot!(plt2, daily, root_stem_flux, label = "Soil-root-stem flux")
+
+# plt1 = Plots.plot(
+#     daily,
+#     leaf_air_flux,
+#     label = "",
+#     xlabel = "Day of year",
+#     margin = 10Plots.mm,
+#     xlim = [minimum(daily), minimum(daily) + 30],
+#     ylim = [-5, 7.5],
+#     size = (1500, 400),
+# )
+# Plots.plot!(plt1, daily, stem_leaf_flux, label = "")
+# Plots.plot!(plt1, daily, root_stem_flux, label = "")
+# Plots.plot(plt2, plt1, layout = (2, 1))
+# Plots.savefig(joinpath(savedir, "water_fluxes.png"))
+
+# # Current resolution is 3.333 cm per layer, our nodes are at the center of the
+# # layers. The second layer is ~ 5cm
+# soil_T_sfc = [parent(sv.saveval[k].soil.T)[end] for k in 1:length(sol.t)]
+# soil_T_5 = [parent(sv.saveval[k].soil.T)[end - 1] for k in 1:length(sol.t)]
+
+# plt2 = Plots.plot()
+# Plots.plot!(
+#     plt2,
+#     daily,
+#     soil_T_sfc,
+#     color = "blue",
+#     label = "",
+#     xlim = [minimum(daily), minimum(daily) + 30],
+#     ylim = [260, 320],
+#     xlabel = "Day of year",
+#     margins = 10Plots.mm,
+#     size = (1500, 400),
+# )
+
+# plot!(plt2, daily, soil_T_5, color = "purple", label = "")
+# Plots.plot!(plt2, seconds ./ 3600 ./ 24, TA, label = "", color = "green")
+# Plots.plot!(plt2, seconds ./ 3600 ./ 24, TS, label = "", color = "red")
+
+
+# plt3 = Plots.plot()
+# Plots.plot!(
+#     plt3,
+#     daily,
+#     soil_T_sfc,
+#     color = "blue",
+#     label = "T_sfc",
+#     xlim = [minimum(daily), maximum(daily)],
+#     ylim = [260, 320],
+#     title = "Soil Temperature [K]",
+# )
+
+# plot!(plt3, daily, soil_T_5, color = "purple", label = "T_soil, 5cm")
+# Plots.plot!(
+#     plt3,
+#     seconds ./ 3600 ./ 24,
+#     TA,
+#     label = "T_air (data)",
+#     color = "green",
+# )
+
+# Plots.plot!(
+#     plt3,
+#     seconds ./ 3600 ./ 24,
+#     TS,
+#     label = "T_soil (data)",
+#     color = "red",
+#     legend = :bottomright,
+# )
+
+# Plots.plot!(plt3, legend = :bottomleft)
+# Plots.plot(plt3, plt2, layout = (2, 1))
+# Plots.savefig(joinpath(savedir, "soil_temperature.png"))
 
 rm(joinpath(savedir, "Artifacts.toml"))
