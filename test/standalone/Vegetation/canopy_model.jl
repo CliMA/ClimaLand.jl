@@ -237,7 +237,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     VPD = es .- ea
 
     conditions = surface_fluxes(atmos, canopy, Y, p, t0) #Per unit m^2 of leaf
-    r_ae = conditions.r_ae # s/m
+    r_ae = parent(conditions.r_ae)[1] # s/m
     ga = 1 / r_ae
     γ = FT(66)
     R = FT(LSMP.gas_constant(earth_param_set))

@@ -24,7 +24,8 @@ import ClimaLSM:
     surface_specific_humidity,
     surface_air_density,
     surface_evaporative_scaling,
-    surface_height
+    surface_height,
+    surface_resistance
 
 using ClimaLSM.Domains: Point, Plane, SphericalSurface
 export SharedCanopyParameters,
@@ -638,13 +639,25 @@ function canopy_surface_fluxes(
     t::FT,
 ) where {FT}
     conditions = surface_fluxes(atmos, model, Y, p, t) # per unit m^2 of leaf
+    return conditions.vapor_flux, conditions.shf, conditions.lhf
+end
+
+"""
+    ClimaLSM.surface_resistance(
+        model::CanopyModel{FT},
+        Y,
+        p,
+        t,
+    ) where {FT}
+Returns the surface resistance field of the
+`CanopyModel` canopy.
+"""
+function ClimaLSM.surface_resistance(model::CanopyModel{FT}, Y, p, t) where {FT}
     earth_param_set = model.parameters.earth_param_set
     R = FT(LSMP.gas_constant(earth_param_set))
     ρ_liq = FT(LSMP.ρ_cloud_liq(earth_param_set))
     P_air::FT = model.atmos.P(t)
     T_air::FT = model.atmos.T(t)
-
-    # here is where we adjust evaporation for stomatal conductance = 1/r_sfc
     leaf_conductance = p.canopy.conductance.gs
     canopy_conductance =
         upscale_leaf_conductance.(
@@ -654,14 +667,7 @@ function canopy_surface_fluxes(
             R,
             P_air,
         )
-    r_sfc = @. 1 / (canopy_conductance) # [s/m]
-    r_ae = conditions.r_ae # [s/m]
-    r_eff = r_ae .+ r_sfc
-    canopy_transpiration = @. conditions.vapor_flux * r_ae / r_eff
-
-    # we also need to correct the LHF
-    canopy_lhf = @. conditions.lhf * r_ae / r_eff
-    return canopy_transpiration, conditions.shf, canopy_lhf
+    return 1 ./ canopy_conductance # [s/m]
 end
 
 """

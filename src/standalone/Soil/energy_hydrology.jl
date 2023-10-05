@@ -480,6 +480,34 @@ function ClimaLSM.surface_temperature(
 end
 
 """
+    ClimaLSM.surface_resistance(
+        model::EnergyHydrology{FT},
+        Y,
+        p,
+        t,
+    ) where {FT}
+
+Returns the surface resistance field of the
+`EnergyHydrology` soil model.
+"""
+function ClimaLSM.surface_resistance(
+    model::EnergyHydrology{FT},
+    Y,
+    p,
+    t,
+) where {FT}
+    return ClimaLSM.Domains.top_center_to_surface(
+        ClimaLSM.Soil.soil_resistance.(
+            p.soil.θ_l,
+            Y.soil.ϑ_l,
+            Y.soil.θ_i,
+            model.parameters,
+        ),
+    )
+end
+
+
+"""
     ClimaLSM.surface_emissivity(
         model::EnergyHydrology{FT},
         Y,

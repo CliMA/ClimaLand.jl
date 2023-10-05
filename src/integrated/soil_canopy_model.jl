@@ -266,19 +266,9 @@ function make_interactions_update_aux(
         # Soil boundary fluxes under canopy or for bare soil
         bc = land.soil.boundary_conditions.top
         soil_conditions = surface_fluxes(bc.atmos, land.soil, Y, p, t)
-
-        r_soil = ClimaLSM.Domains.top_center_to_surface(
-            ClimaLSM.Soil.soil_resistance.(
-                p.soil.θ_l,
-                Y.soil.ϑ_l,
-                Y.soil.θ_i,
-                land.soil.parameters,
-            ),
-        )
-        r_ae = soil_conditions.r_ae
-        @. p.soil_evap = soil_conditions.vapor_flux * r_ae / (r_soil + r_ae)
-        @. p.soil_lhf = soil_conditions.lhf * r_ae / (r_soil + r_ae)
         @. p.soil_shf = soil_conditions.shf
+        @. p.soil_evap = soil_conditions.vapor_flux
+        @. p.soil_lhf = soil_conditions.lhf
         p.T_soil .= surface_temperature(land.soil, Y, p, t)
         p.α_soil .= surface_albedo(land.soil, Y, p)
         p.ϵ_soil .= surface_emissivity(land.soil, Y, p)

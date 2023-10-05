@@ -47,7 +47,6 @@ ld = FT(0.5)
 α_NIR_leaf = FT(0.45)
 τ_NIR_leaf = FT(0.25)
 n_layers = UInt64(20)
-diff_perc = FT(0.2)
 ϵ_canopy = FT(0.97)
 
 # Conductance Model
