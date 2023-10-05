@@ -1,7 +1,6 @@
 [deps]
 ArtifactWrappers = "a14bc488-3040-4b00-9dc1-f6467924858a"
 CLIMAParameters = "6eacf6c3-8458-43b9-ae03-caf5306d3d53"
-CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 ClimaCore = "d414da3d-4745-48bb-8d80-42e94e092884"
 ClimaLSM = "7884a58f-fab6-4fd0-82bb-ecfedb2d8430"
 ClimaTimeSteppers = "595c0a79-7f3d-439a-bc5a-b232dc3bde79"
@@ -17,7 +16,6 @@ Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 SurfaceFluxes = "49b00bb7-8bd4-4f2b-b78c-51cd0450215f"
 Thermodynamics = "b60c26fb-14c3-4610-9d3e-2d17fe7ff00c"
-TypedTables = "9d95f2ec-7b3d-5a63-8d20-e2491e220bb9"
 
 [compat]
 CLIMAParameters = "0.7"

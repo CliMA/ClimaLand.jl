@@ -9,6 +9,8 @@ using RootSolvers
 using SurfaceFluxes
 using StaticArrays
 using Dates
+using ArtifactWrappers
+using DelimitedFiles: readdlm
 
 using ClimaLSM
 using ClimaLSM.Domains: Column
@@ -26,8 +28,9 @@ thermo_params = LSMP.thermodynamic_parameters(earth_param_set)
 K_sat = FT(225.1 / 3600 / 24 / 1000)
 # n and alpha estimated by matching vG curve.
 vg_n = FT(10.0)
-vg_α = FT(6.0)
+vg_α = FT(4.2)
 hcm = vanGenuchten(; α = vg_α, n = vg_n);
+# Alternative parameters for Brooks Corey water retention model
 #ψb = FT(-0.14)
 #c = FT(5.5)
 #hcm = BrooksCorey(; ψb = ψb, c = c);
@@ -52,7 +55,7 @@ S_s = FT(1e-3)
 emissivity = FT(1.0)
 PAR_albedo = FT(0.2)
 NIR_albedo = FT(0.4)
-z_0m = 1e-4
+z_0m = 5e-4
 z_0b = 1e-5
 
 ref_time = DateTime(2005)
@@ -77,7 +80,7 @@ e = rh * esat
 q = FT(0.622 * e / (101325 - 0.378 * e))
 precip = (t) -> eltype(t)(0.0)
 T_atmos = (t) -> eltype(t)(T_air)
-u_atmos = (t) -> eltype(t)(1.0)
+u_atmos = (t) -> eltype(t)(1)
 q_atmos = (t) -> eltype(t)(q)
 h_atmos = FT(0.1)
 P_atmos = (t) -> eltype(t)(101325)
@@ -120,8 +123,8 @@ params = ClimaLSM.Soil.EnergyHydrologyParameters{FT}(;
 
 #TODO: Run with higher resolution once we have the implicit stepper
 zmax = FT(0)
-zmin = FT(-1.0)
-nelems = 10
+zmin = FT(-0.35)
+nelems = 5
 soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems)
 z = ClimaCore.Fields.coordinate_field(soil_domain.space.subsurface).z
 
@@ -147,7 +150,7 @@ end
 init_soil!(Y, z, soil.parameters)
 
 t0 = FT(0)
-tf = FT(24 * 3600 * 15)
+tf = FT(24 * 3600 * 13)
 # We also set the initial conditions of the auxiliary state here:
 set_initial_aux_state! = make_set_initial_aux_state(soil);
 set_initial_aux_state!(p, Y, t0);
@@ -166,6 +169,7 @@ prob = SciMLBase.ODEProblem(
 )
 sol = SciMLBase.solve(prob, ode_algo; dt = dt, saveat = 3600)
 
+# Post processing
 (; ν, θ_r, d_ds) = soil.parameters
 _D_vapor = FT(LSMP.D_vapor(soil.parameters.earth_param_set))
 update_aux! = make_update_aux(soil)
@@ -245,6 +249,7 @@ for i in 1:length(sol.t)
     push!(evap_0, vapor_flux)
     push!(L_MO, potential_conditions.L_MO)
 end
+
 plt1 = Plots.plot()
 Plots.plot!(
     plt1,
@@ -253,7 +258,7 @@ Plots.plot!(
     xlabel = "Days",
     ylabel = "E/E₀",
     label = "",
-    margins = 10Plots.mm,
+    margins = 6Plots.mm,
 )
 total_moisture_in_mm =
     [sum(sol.u[k].soil.ϑ_l) for k in 1:length(sol.t)] * 1000.0
@@ -266,7 +271,7 @@ Plots.plot!(
     xlabel = "Days",
     ylabel = "∫θdz (mm)",
     label = "",
-    margins = 10Plots.mm,
+    margins = 6Plots.mm,
 )
 
 plt3 = Plots.plot()
@@ -277,7 +282,7 @@ Plots.plot!(
     xlabel = "Days",
     ylabel = "R_soil (m/s)",
     label = "",
-    margins = 10Plots.mm,
+    margins = 6Plots.mm,
 )
 
 plt4 = Plots.plot()
@@ -288,7 +293,7 @@ Plots.plot!(
     xlabel = "Days",
     ylabel = "E (mm/d)",
     label = "",
-    margins = 10Plots.mm,
+    margins = 6Plots.mm,
 )
 plt5 = Plots.plot()
 Plots.plot!(
@@ -298,7 +303,7 @@ Plots.plot!(
     xlabel = "Days",
     ylabel = "T_sfc (K)",
     label = "",
-    margins = 10Plots.mm,
+    margins = 6Plots.mm,
 )
 
 plt6 = Plots.plot()
@@ -309,7 +314,7 @@ Plots.plot!(
     xlabel = "Days",
     ylabel = "q_sfc",
     label = "",
-    margins = 10Plots.mm,
+    margins = 6Plots.mm,
 )
 top = [parent(sol.u[k].soil.ϑ_l)[end] for k in 1:length(sol.t)]
 S = Soil.effective_saturation.(ν, top, θ_r)
@@ -339,7 +344,7 @@ Plots.plot!(
     xlabel = "Days",
     ylabel = "Soil Moisture",
     label = "25cm",
-    margins = 10Plots.mm,
+    margins = 6Plots.mm,
 )
 
 plt8 = Plots.plot()
@@ -350,11 +355,53 @@ Plots.plot!(
     xlabel = "Days",
     ylabel = "ψ_sfc",
     label = "",
-    margins = 10Plots.mm,
+    margins = 6Plots.mm,
 )
-Plots.plot(plt1, plt2, plt3, plt4; layout = (2, 2))
 
 savepath = joinpath(pkgdir(ClimaLSM), "experiments/standalone/Soil")
+Plots.plot(plt1, plt2, plt3, plt4; layout = (2, 2))
 Plots.savefig(joinpath(savepath, "evaporation_from_coarse_sand1.png"))
+
 Plots.plot(plt5, plt6, plt7, plt8; layout = (2, 2))
 Plots.savefig(joinpath(savepath, "evaporation_from_coarse_sand2.png"))
+
+# Read in reference solution from artifact
+evap_dataset = ArtifactWrapper(
+    @__DIR__,
+    "lehmann2008_fig8_evaporation",
+    ArtifactFile[ArtifactFile(
+        url = "https://caltech.box.com/shared/static/cgppw3tx6zdz7h02yt28ri44g1j088ju.csv",
+        filename = "lehmann2008_fig8_evaporation.csv",
+    ),],
+)
+evap_datapath = get_data_folder(evap_dataset)
+ref_soln_E =
+    readdlm(joinpath(evap_datapath, "lehmann2008_fig8_evaporation.csv"), ',')
+ref_soln_E_350mm = ref_soln_E[2:end, 1:2]
+data_dates = ref_soln_E_350mm[:, 1]
+data_evaprate = ref_soln_E_350mm[:, 2]
+
+# Compare our data to Figure 8b of Lehmann, Assouline, Or  (Phys Rev E 77, 2008)
+plt_fig8b = Plots.plot(size = (600, 400))
+Plots.plot!(
+    plt_fig8b,
+    data_dates,
+    data_evaprate,
+    xlabel = "Day",
+    ylabel = "Evaporation rate (mm/d)",
+    label = "Data",
+    linewidth = 3,
+    margins = 6Plots.mm,
+    title = "Soil evaporation rate over time",
+    xlim = [minimum(data_dates), maximum(data_dates)],
+)
+Plots.plot!(
+    plt_fig8b,
+    sol.t ./ 3600 ./ 24,
+    (evap .* r_ae ./ (r_ae .+ r_soil)) .* (1000 * 3600 * 24),
+    label = "Model",
+    color = :black,
+    linewidth = 3,
+)
+Plots.plot(plt_fig8b)
+Plots.savefig(joinpath(savepath, "evaporation_lehmann2008_fig8b.png"))
