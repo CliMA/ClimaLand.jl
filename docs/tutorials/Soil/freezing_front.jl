@@ -262,7 +262,7 @@ plot!(
     z,
     label = "",
     color = :black,
-    linewidth = 3,
+    linewidth = 5,
 )
 
 plot2 = plot(
@@ -279,7 +279,7 @@ plot!(
     z,
     label = "",
     color = :black,
-    linewidth = 3,
+    linewidth = 5,
 )
 
 plot3 = plot(
@@ -302,7 +302,7 @@ plot!(
     z,
     label = "Simulation",
     color = :black,
-    linewidth = 3,
+    linewidth = 5,
 )
 plot!(plot3, legend = :bottomright)
 plot(
@@ -311,8 +311,8 @@ plot(
     plot3,
     layout = (1, 3),
     size = (1200, 500),
-    margin = 10Plots.mm,
-    title = "Freezing front depth over time",
+    margin = 6Plots.mm,
+    plot_title = "Freezing front depth",
 )
 savefig("mizoguchi_data_comparison.png");
 # ![](mizoguchi_data_comparison.png)
