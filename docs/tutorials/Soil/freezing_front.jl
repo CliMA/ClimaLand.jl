@@ -255,13 +255,14 @@ plot1 = plot(
     xlim = [0.2, 0.55],
     ylim = [-0.2, 0],
 )
-scatter!(plot1, vwc[mask_12h], -depth[mask_12h], label = "", color = "purple")
+scatter!(plot1, vwc[mask_12h], -depth[mask_12h], label = "", color = 1)
 plot!(
     plot1,
     parent(sol.u[13].soil.ϑ_l .+ sol.u[13].soil.θ_i)[:],
     z,
     label = "",
-    color = :green,
+    color = :black,
+    linewidth = 3,
 )
 
 plot2 = plot(
@@ -271,13 +272,14 @@ plot2 = plot(
     xlim = [0.2, 0.55],
     ylim = [-0.2, 0],
 )
-scatter!(plot2, vwc[mask_24h], -depth[mask_24h], label = "", color = "purple")
+scatter!(plot2, vwc[mask_24h], -depth[mask_24h], label = "", color = 1)
 plot!(
     plot2,
     parent(sol.u[25].soil.ϑ_l .+ sol.u[25].soil.θ_i)[:],
     z,
     label = "",
-    color = :green,
+    color = :black,
+    linewidth = 3,
 )
 
 plot3 = plot(
@@ -292,14 +294,15 @@ scatter!(
     vwc[mask_50h],
     -depth[mask_50h],
     label = "Data",
-    color = "purple",
+    color = 1,
 )
 plot!(
     plot3,
     parent(sol.u[51].soil.ϑ_l .+ sol.u[51].soil.θ_i)[:],
     z,
     label = "Simulation",
-    color = :green,
+    color = :black,
+    linewidth = 3,
 )
 plot!(plot3, legend = :bottomright)
 plot(
@@ -309,6 +312,7 @@ plot(
     layout = (1, 3),
     size = (1200, 500),
     margin = 10Plots.mm,
+    title = "Freezing front depth over time",
 )
 savefig("mizoguchi_data_comparison.png");
 # ![](mizoguchi_data_comparison.png)
