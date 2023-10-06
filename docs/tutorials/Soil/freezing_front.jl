@@ -262,12 +262,12 @@ plot!(
     z,
     label = "",
     color = :black,
-    linewidth = 5,
+    linewidth = 4,
 )
 
 plot2 = plot(
     ylabel = "",
-    xlabel = "Volumetric Water content",
+    xlabel = "Volumetric water content",
     title = "24 hours",
     xlim = [0.2, 0.55],
     ylim = [-0.2, 0],
@@ -279,7 +279,7 @@ plot!(
     z,
     label = "",
     color = :black,
-    linewidth = 5,
+    linewidth = 4,
 )
 
 plot3 = plot(
@@ -302,7 +302,7 @@ plot!(
     z,
     label = "Simulation",
     color = :black,
-    linewidth = 5,
+    linewidth = 4,
 )
 plot!(plot3, legend = :bottomright)
 plot(
