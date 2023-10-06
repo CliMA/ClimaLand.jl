@@ -289,13 +289,7 @@ plot3 = plot(
     xlim = [0.2, 0.55],
     ylim = [-0.2, 0],
 )
-scatter!(
-    plot3,
-    vwc[mask_50h],
-    -depth[mask_50h],
-    label = "Data",
-    color = 1,
-)
+scatter!(plot3, vwc[mask_50h], -depth[mask_50h], label = "Data", color = 1)
 plot!(
     plot3,
     parent(sol.u[51].soil.ϑ_l .+ sol.u[51].soil.θ_i)[:],
