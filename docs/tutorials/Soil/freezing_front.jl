@@ -312,7 +312,7 @@ plot(
     layout = (1, 3),
     size = (1200, 500),
     margin = 6Plots.mm,
-    plot_title = "Freezing front depth",
+    plot_title = "Soil freezing front depth",
 )
 savefig("mizoguchi_data_comparison.png");
 # ![](mizoguchi_data_comparison.png)
