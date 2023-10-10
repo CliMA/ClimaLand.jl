@@ -70,4 +70,7 @@ ClimaLSM.construct_atmos_ts
 ClimaLSM.surface_air_density
 ClimaLSM.liquid_precipitation
 ClimaLSM.snow_precipitation
+ClimaLSM.surface_temperature
+ClimaLSM.surface_resistance
+ClimaLSM.surface_specific_humidity
 ```

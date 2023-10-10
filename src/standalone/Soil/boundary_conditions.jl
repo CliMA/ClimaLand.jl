@@ -172,27 +172,16 @@ function soil_boundary_fluxes(
     conditions = surface_fluxes(bc.atmos, model, Y, p, t)
     R_n = net_radiation(bc.radiation, model, Y, p, t)
     # We are ignoring sublimation for now
-    r_soil = ClimaLSM.Domains.top_center_to_surface(
-        soil_resistance.(
-            p.soil.θ_l,
-            Y.soil.ϑ_l,
-            Y.soil.θ_i,
-            Ref(model.parameters),
-        ),
-    )
-    r_ae = conditions.r_ae
     precip = bc.atmos.liquid_precip(t)
-    evaporation = @. conditions.vapor_flux * r_ae / (r_soil + r_ae)
     infiltration = soil_surface_infiltration(
         bc.runoff,
-        precip .+ evaporation,
+        precip .+ conditions.vapor_flux,
         Y,
         p,
         model.parameters,
     )
     # We do not model the energy flux from infiltration
-    net_energy_flux =
-        @. R_n + conditions.lhf * r_ae / (r_soil + r_ae) + conditions.shf
+    net_energy_flux = @. R_n + conditions.lhf + conditions.shf
     return infiltration, net_energy_flux
 
 end

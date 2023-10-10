@@ -225,12 +225,6 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
         dsl = Soil.dry_soil_layer_thickness.(S_l_sfc, S_c, d_ds)
         r_soil = @. dsl / (_D_vapor * τ_a) # [s\m]
         r_ae = conditions.r_ae
-        @test r_ae == @. 1 / (
-            conditions.Ch * max(
-                abs(model.boundary_conditions.top.atmos.u(t)),
-                FT(atmos.gustiness),
-            )
-        )
         expected_water_flux = @. atmos.liquid_precip(t) .+
            conditions.vapor_flux * r_ae / (r_soil + r_ae)
         @test computed_water_flux == expected_water_flux

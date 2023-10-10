@@ -158,12 +158,14 @@ function surface_fluxes(
     q_sfc = surface_specific_humidity(model, Y, p, T_sfc, ρ_sfc)
     β_sfc = surface_evaporative_scaling(model, Y, p)
     h_sfc = surface_height(model, Y, p)
+    r_sfc = surface_resistance(model, Y, p, t)
     return surface_fluxes_at_a_point.(
         T_sfc,
         q_sfc,
         ρ_sfc,
         β_sfc,
         h_sfc,
+        r_sfc,
         t,
         Ref(model.parameters),
         Ref(atmos),
@@ -176,6 +178,7 @@ end
                               ρ_sfc::FT,
                               β_sfc::FT,
                               h_sfc::FT,
+                              r_sfc::FT,
                               t::FT,
                               parameters,
                               atmos::PA,
@@ -184,7 +187,9 @@ end
 Computes turbulent surface fluxes at a point on a surface given
 (1) the surface temperature, specific humidity, and air density,
 (2) the time at which the fluxes are needed,
-(3) a factor β_sfc  which scales the evaporation from the potential rate,
+(3) a factor β_sfc  which scales the evaporation from the potential rate
+    (used in bucket models), and/or the surface resistance r_sfc (used
+    in more complex land models),
 (4) the parameter set for the model, which must have fields `earth_param_set`,
 and roughness lengths `z_0m, z_0b`.
 (5) the prescribed atmospheric state, stored in `atmos`.
@@ -198,6 +203,7 @@ function surface_fluxes_at_a_point(
     ρ_sfc::FT,
     β_sfc::FT,
     h_sfc::FT,
+    r_sfc::FT,
     t::FT,
     parameters::P,
     atmos::PA,
@@ -230,17 +236,21 @@ function surface_fluxes_at_a_point(
         sc;
         tol_neutral = SFP.cp_d(surface_flux_params) / 100000,
     )
-    # Land needs a volume flux of water, not mass flux
-    vapor_flux =
-        SurfaceFluxes.evaporation(surface_flux_params, sc, conditions.Ch) /
-        _ρ_liq
-    return (
-        lhf = conditions.lhf,
-        shf = conditions.shf,
-        Ch = conditions.Ch,
-        vapor_flux = vapor_flux,
-        r_ae = 1 / (conditions.Ch * SurfaceFluxes.windspeed(sc)),
-    )
+    grav::FT = LSMP.grav(earth_param_set)
+    cp_d::FT = Thermodynamics.Parameters.cp_d(thermo_params)
+    R_d::FT = Thermodynamics.Parameters.R_d(thermo_params)
+    T_0::FT = LSMP.T_0(earth_param_set)
+    cp_m = Thermodynamics.cp_m(thermo_params, ts_in)
+    T_in = Thermodynamics.air_temperature(thermo_params, ts_in)
+    ΔT = T_in - T_sfc
+    hd_sfc = cp_d * (T_sfc - T_0) + R_d * T_0
+    E0 = SurfaceFluxes.evaporation(surface_flux_params, sc, conditions.Ch)
+    r_ae = 1 / (conditions.Ch * SurfaceFluxes.windspeed(sc))
+    E = E0 * r_ae / (r_sfc + r_ae)
+    Ẽ = E / _ρ_liq
+    H = conditions.shf + hd_sfc * (E0 - E)
+    LH = conditions.lhf * r_ae / (r_sfc + r_ae)
+    return (lhf = LH, shf = H, vapor_flux = Ẽ, r_ae = r_ae)
 end
 
 """
@@ -339,6 +349,25 @@ compute surface fluxes and radiative fluxes at the surface using
 the functions in this file.
 """
 function surface_temperature(model::AbstractModel, Y, p, t) end
+
+"""
+    surface_resistance(model::AbstractModel, Y, p, t)
+
+A helper function which returns the surface resistance for a given
+model, needed because different models compute and store surface resistance in
+different ways and places.
+
+Extending this function for your model is only necessary if you need to
+compute surface fluxes and radiative fluxes at the surface using
+the functions in this file.
+
+The default is 0, which is no additional resistance aside from the usual
+aerodynamic resistance from MOST.
+"""
+function surface_resistance(model::AbstractModel{FT}, Y, p, t) where {FT}
+    return FT(0)
+end
+
 
 """
     surface_air_density(
