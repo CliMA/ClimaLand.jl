@@ -9,6 +9,9 @@ end
 @safetestset "Integrated LSM unit tests" begin
     include("integrated/lsms.jl")
 end
+@safetestset "Integrated LSM unit tests" begin
+    include("integrated/soil_canopy_lsm.jl")
+end
 @safetestset "Integrated pond/soil LSM tests" begin
     include("integrated/pond_soil_lsm.jl")
 end
