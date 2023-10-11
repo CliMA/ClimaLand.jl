@@ -31,17 +31,16 @@ soil_vg_α = FT(0.04) # inverse meters
 κ_sat_frozen = Soil.κ_sat_frozen(κ_solid, soil_ν, κ_ice)
 κ_sat_unfrozen = Soil.κ_sat_unfrozen(κ_solid, soil_ν, κ_liq);
 ρc_ds = FT((1 - soil_ν) * 4e6); # J/m^3/K
-z_0m_soil = FT(0.01)
-z_0b_soil = FT(0.001)
-soil_ϵ = FT(0.96)
+z_0m_soil = FT(0.1)
+z_0b_soil = FT(0.1)
+soil_ϵ = FT(0.98)
 soil_α_PAR = FT(0.2)
 soil_α_NIR = FT(0.2)
 
 # TwoStreamModel parameters
 Ω = FT(0.69)
 ld = FT(0.5)
-#α_PAR_leaf = FT(0.1)
-α_PAR_leaf = FT(0.15)
+α_PAR_leaf = FT(0.1)
 λ_γ_PAR = FT(5e-7)
 λ_γ_NIR = FT(1.65e-6)
 τ_PAR_leaf = FT(0.05)

@@ -732,17 +732,9 @@ Plots.savefig(joinpath(savedir, "temperature.png"))
 
 
 # Ground heat flux
-#G_model = [
-#    (
-#        parent(sv.saveval[k].soil_shf)[1] + parent(sv.saveval[k].soil_lhf)[1] -
-#        parent(sv.saveval[k].soil_LW_n)[1] -
-#        parent(sv.saveval[k].soil_SW_n)[1]
-#    ) for k in 1:length(sol.t)
-#]
 G_model = [
-    (
-        parent(sv.saveval[k].soil_shf)[1] 
-    ) for k in 1:length(sol.t)
+    (parent(sv.saveval[k].soil_shf)[1] + parent(sv.saveval[k].soil_lhf)[1] - parent(sv.saveval[k].soil_LW_n)[1] - parent(sv.saveval[k].soil_SW_n)[1]
+     ) for k in 1:length(sol.t)
 ]
 
 G_model_avg = diurnal_avg(G_model)
@@ -755,8 +747,7 @@ plt1 = Plots.plot(size = (1500, 400))
 Plots.plot!(
     plt1,
     data_daily_indices,
-    #-1 .* G_data_avg,
-    1 .* G_data_avg,
+    -1 .* G_data_avg,
     label = "Data",
     margins = 10Plots.mm,
     xlabel = "Hour of day",
