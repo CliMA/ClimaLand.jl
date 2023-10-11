@@ -9,10 +9,12 @@ f2 = FT(0.25)
 
 # Soil parameters - Bonan silt loam
 soil_ν = FT(0.485) # m3/m3
-soil_K_sat = FT(2.59 / 3600 / 100) # m/s,
+soil_K_sat = FT(4e-7)#FT(2.59 / 3600 / 100) # m/s,
 soil_S_s = FT(1e-3) # 1/m, guess
-soil_bc_c = FT(0.188) # unitless
-soil_bc_ψb = FT(-0.786) # inverse meters
+soil_vg_n = FT(1.69) # unitless
+soil_vg_α = FT(7.5) # inverse meters
+#soil_bc_c = FT(0.188) # unitless
+#soil_bc_ψb = FT(-0.786) # inverse meters
 θ_r = FT(0.0) # m3/m3, 
 
 # Soil heat transfer parameters; not needed for hydrology only test

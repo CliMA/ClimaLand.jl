@@ -1,4 +1,4 @@
-import SciMLBase
+2oimport SciMLBase
 import ClimaTimeSteppers as CTS
 using ClimaCore
 import CLIMAParameters as CP
@@ -47,7 +47,7 @@ soil_ps = Soil.EnergyHydrologyParameters{FT}(;
     ν_ss_om = ν_ss_om,
     ν_ss_quartz = ν_ss_quartz,
     ν_ss_gravel = ν_ss_gravel,
-    hydrology_cm = BrooksCorey(; c = soil_bc_c, ψb = soil_bc_ψb),
+    hydrology_cm = vanGenuchten(; α = soil_vg_α, n = soil_vg_n),#BrooksCorey(; c = soil_bc_c, ψb = soil_bc_ψb),
     K_sat = soil_K_sat,
     S_s = soil_S_s,
     θ_r = θ_r,
@@ -594,13 +594,10 @@ Plots.plot!(plt2, daily, root_leaf_flux, label = "Root flux")
 Plots.savefig(joinpath(savedir, "water_fluxes.png"))
 
 # Soil Temperature
+soil_T_1 = [parent(sv.saveval[k].soil.T)[end-2] for k in 1:length(sol.t)] # 15
+soil_T_2 =  ([parent(sv.saveval[k].soil.T)[end - 3] for k in 1:length(sol.t)] .+ [parent(sv.saveval[k].soil.T)[end - 4] for k in 1:length(sol.t)]) ./2 # 40
+soil_T_3 = [parent(sv.saveval[k].soil.T)[end - 5] for k in 1:length(sol.t)] # 72
 
-# The second layer is ~ 5cm, third is at 11cm
-soil_T_1 = [parent(sv.saveval[k].soil.T)[end - 2] for k in 1:length(sol.t)]
-soil_T_2 = [parent(sv.saveval[k].soil.T)[end - 4] for k in 1:length(sol.t)]
-soil_T_3 = [parent(sv.saveval[k].soil.T)[end - 5] for k in 1:length(sol.t)]
-soil_T_4 = [parent(sv.saveval[k].soil.T)[end - 8] for k in 1:length(sol.t)]
-soil_T_5 = [parent(sv.saveval[k].soil.T)[end - 11] for k in 1:length(sol.t)]
 TA_avg = diurnal_avg(FT.(TA)[Int64(t_spinup ÷ DATA_DT + 1):Int64(tf ÷ DATA_DT)])
 
 plt1 = Plots.plot(size = (1500, 400))
@@ -608,41 +605,41 @@ Plots.plot!(
     plt1,
     data_daily_indices,
     diurnal_avg(FT.(TS_1)[Int64(t_spinup ÷ DATA_DT + 1):Int64(tf ÷ DATA_DT)]),
-    label = "Tsoil (data; 20 cm)",
+    label = "Data L1",
     title = "Temperature",
 )
 Plots.plot!(
     plt1,
     data_daily_indices,
     diurnal_avg(FT.(TS_2)[Int64(t_spinup ÷ DATA_DT + 1):Int64(tf ÷ DATA_DT)]),
-    label = "Tsoil (data; 40 cm)",
+    label = "Data L2",
     title = "Temperature",
 )
 Plots.plot!(
     plt1,
     data_daily_indices,
     diurnal_avg(FT.(TS_3)[Int64(t_spinup ÷ DATA_DT + 1):Int64(tf ÷ DATA_DT)]),
-    label = "Tsoil (data; 80 cm)",
+    label = "Data L3",
     title = "Temperature",
 )
-Plots.plot!(plt1, data_daily_indices, TA_avg, label = "Tair (data)")
+#Plots.plot!(plt1, data_daily_indices, TA_avg, label = "Air")
 Plots.plot!(
     plt1,
     model_daily_indices,
     diurnal_avg(soil_T_1),
-    label = "Tsoil (model; 15cm)",
+    label = "Model L1",
 )
 Plots.plot!(
     plt1,
     model_daily_indices,
     diurnal_avg(soil_T_2),
-    label = "Tsoil (model; 46cm)",
+    label = "Model L2",
 )
 Plots.plot!(
     plt1,
     model_daily_indices,
     diurnal_avg(soil_T_3),
-    label = "Tsoil (model; 70cm)",
+    label = "Model L3",
 )
 Plots.plot!(plt1, xlabel = "Hour of day", ylabel = "Average over Simulation")
 Plots.plot!(plt1, margins = 10Plots.mm)
