@@ -17,11 +17,6 @@ export canopy_turbulent_surface_fluxes
 
 Computes canopy transpiration using Monin-Obukhov Surface Theory,
 the prescribed atmospheric conditions, and the canopy conductance.
-
-Please note that in the future the SurfaceFluxes.jl code will compute
-fluxes taking into account the canopy conductance, so that
-what is returned by `surface_fluxes` is correct. At present, it does not,
-so we are adjusting for it after the fact here in both ET, LHF, and SHF.
 """
 function canopy_turbulent_surface_fluxes(
     atmos::PrescribedAtmosphere{FT},
@@ -30,7 +25,14 @@ function canopy_turbulent_surface_fluxes(
     p,
     t::FT,
 ) where {FT}
-    conditions = surface_fluxes(atmos, model, Y, p, t) # per unit m^2 of leaf
+    conditions = surface_fluxes(atmos, model, Y, p, t)
+    # We upscaled LHF and E from leaf level to canopy level via the
+    # upscaling of stomatal conductance.
+    
+    # SHF still needs to be upscaled. Following CLM, multiply
+    # by SAI+LAI
+#    area_index = p.canopy.hydraulics.area_index
+#    AI = area_index.stem .+ area_index.leaf
     return conditions.vapor_flux, conditions.shf, conditions.lhf
 end
 
