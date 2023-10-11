@@ -25,7 +25,8 @@ import ClimaLSM:
     surface_air_density,
     surface_evaporative_scaling,
     surface_height,
-    surface_resistance
+    surface_resistance,
+    displacement_height
 
 using ClimaLSM.Domains: Point, Plane, SphericalSurface
 export SharedCanopyParameters,
@@ -688,6 +689,19 @@ model, which is stored in the parameter struct.
 """
 function ClimaLSM.surface_height(model::CanopyModel, _...)
     return model.hydraulics.compartment_surfaces[end]
+end
+
+
+"""
+    ClimaLSM.displacment_height(model::CanopyModel, Y, _...)
+
+A helper function which returns the displacement height for the canopy
+model.
+
+See Cowan 1968; Brutsaert 1982, pp. 113–116; Campbell and Norman 1998, p. 71; Shuttleworth 2012, p. 343; Monteith and Unsworth 2013, p. 304.
+"""
+function ClimaLSM.displacement_height(model::CanopyModel{FT}, _...) where {FT}
+    return FT(0.67) * surface_height(model, Y, p)
 end
 
 """
