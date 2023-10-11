@@ -17,7 +17,8 @@ export AbstractAtmosphericDrivers,
     surface_fluxes_at_a_point,
     liquid_precipitation,
     snow_precipitation,
-    vapor_pressure_deficit
+    vapor_pressure_deficit,
+    displacement_height
 
 """
      AbstractAtmosphericDrivers{FT <: AbstractFloat}
@@ -159,6 +160,7 @@ function surface_fluxes(
     β_sfc = surface_evaporative_scaling(model, Y, p)
     h_sfc = surface_height(model, Y, p)
     r_sfc = surface_resistance(model, Y, p, t)
+    d_sfc = displacement_height(model, Y, p)
     return surface_fluxes_at_a_point.(
         T_sfc,
         q_sfc,
@@ -166,6 +168,7 @@ function surface_fluxes(
         β_sfc,
         h_sfc,
         r_sfc,
+        d_sfc,
         t,
         Ref(model.parameters),
         Ref(atmos),
@@ -179,6 +182,7 @@ end
                               β_sfc::FT,
                               h_sfc::FT,
                               r_sfc::FT,
+                              d_sfc::FT,
                               t::FT,
                               parameters,
                               atmos::PA,
@@ -192,7 +196,8 @@ Computes turbulent surface fluxes at a point on a surface given
     in more complex land models),
 (4) the parameter set for the model, which must have fields `earth_param_set`,
 and roughness lengths `z_0m, z_0b`.
-(5) the prescribed atmospheric state, stored in `atmos`.
+(5) the prescribed atmospheric state, stored in `atmos`,
+(6) the displacement height for the model.
 
 This returns an energy flux and a liquid water volume flux, stored in
 a tuple with self explanatory keys.
@@ -204,6 +209,7 @@ function surface_fluxes_at_a_point(
     β_sfc::FT,
     h_sfc::FT,
     r_sfc::FT,
+    d_sfc::FT,
     t::FT,
     parameters::P,
     atmos::PA,
@@ -218,8 +224,21 @@ function surface_fluxes_at_a_point(
     ts_in = construct_atmos_ts(atmos, t, thermo_params)
     ts_sfc = Thermodynamics.PhaseEquil_ρTq(thermo_params, ρ_sfc, T_sfc, q_sfc)
 
-    state_sfc = SurfaceFluxes.StateValues(h_sfc, SVector{2, FT}(0, 0), ts_sfc)
-    state_in = SurfaceFluxes.StateValues(h, SVector{2, FT}(u, 0), ts_in)
+    # SurfaceFluxes.jl expects a relative difference between where u = 0
+    # and the atmosphere height. Here, we assume h and h_sfc are measured
+    # relative to a common reference. Then d_sfc + h_sfc + z_0m is the apparent
+    # source of momentum, and
+    # Δh ≈ h - d_sfc - h_sfc is the relative height difference between the
+    # apparent source of momentum and the atmosphere height.
+
+    # In this we have neglected z_0m and z_0b (i.e. assumed they are small
+    # compared to Δh).
+    state_sfc = SurfaceFluxes.StateValues(FT(0), SVector{2, FT}(0, 0), ts_sfc)
+    state_in = SurfaceFluxes.StateValues(
+        h - d_sfc - h_sfc,
+        SVector{2, FT}(u, 0),
+        ts_in,
+    )
 
     # State containers
     sc = SurfaceFluxes.ValuesOnly(
@@ -469,6 +488,20 @@ compute surface fluxes and radiative fluxes at the surface using
 the functions in this file.
 """
 function surface_height(model::AbstractModel, Y, p) end
+
+"""
+    displacement_height(model::AbstractModel, Y, p)
+
+A helper function which returns the displacement height 
+ for a given model; the default is zero.
+
+Extending this function for your model is only necessary if you need to
+compute surface fluxes and radiative fluxes at the surface using
+the functions in this file.
+"""
+function displacement_height(model::AbstractModel{FT}, Y, p) where {FT}
+    return FT(0)
+end
 
 """
     vapor_pressure_deficit(T_air, P_air, q_air, thermo_params)

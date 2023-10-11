@@ -591,6 +591,7 @@ function make_compute_exp_tendency(
     return compute_exp_tendency!
 end
 include("./canopy_boundary_fluxes.jl")
+
 #Make the canopy model broadcastable
 Base.broadcastable(C::CanopyModel) = tuple(C)
 
