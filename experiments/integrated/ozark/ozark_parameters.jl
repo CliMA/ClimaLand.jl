@@ -92,5 +92,5 @@ capacity = FT(10) # kg/m^2
 plant_ν = capacity / (maxLAI / 2 * h_leaf + SAI * h_stem) / FT(1000)
 plant_S_s = FT(1e-2 * 0.0098) # m3/m3/MPa to m3/m3/m
 rooting_depth = FT(0.5) # from Natan
-z0_m = FT(2)
-z0_b = FT(0.2)
+z0_m = FT(2.4)
+z0_b = FT(0.24)
