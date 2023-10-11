@@ -97,7 +97,7 @@ makedocs(
     pages = pages,
     checkdocs = :exports,
     doctest = true,
-    strict = false,
+    warnonly = true,
     clean = true,
     modules = [ClimaLSM],
 )
