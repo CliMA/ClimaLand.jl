@@ -201,7 +201,7 @@ canopy_components(::CanopyModel) = (
     :photosynthesis,
     :radiative_transfer,
     :autotrophic_respiration,
-    :energy
+    :energy,
 )
 
 """

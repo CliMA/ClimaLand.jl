@@ -248,7 +248,7 @@ function surface_fluxes_at_a_point(
     r_ae = 1 / (conditions.Ch * SurfaceFluxes.windspeed(sc))
     E = E0 * r_ae / (r_sfc + r_ae)
     Ẽ = E / _ρ_liq
-    H = conditions.shf + hd_sfc * E0 
+    H = conditions.shf + hd_sfc * E0
     LH = conditions.lhf * r_ae / (r_sfc + r_ae) - hd_sfc * E
     return (lhf = LH, shf = H, vapor_flux = Ẽ, r_ae = r_ae)
 end

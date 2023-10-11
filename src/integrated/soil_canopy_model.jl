@@ -89,61 +89,61 @@ function SoilCanopyModel{FT}(;
     )
 
     transpiration = Canopy.PlantHydraulics.DiagnosticTranspiration{FT}()
-    
+
     soil_driver = PrognosticSoil(;
-                                 soil_α_PAR = soil.parameters.PAR_albedo,
-                                 soil_α_NIR = soil.parameters.NIR_albedo,
-                                 )
+        soil_α_PAR = soil.parameters.PAR_albedo,
+        soil_α_NIR = soil.parameters.NIR_albedo,
+    )
     if :energy in propertynames(canopy_component_args)
 
         canopy = Canopy.CanopyModel{FT}(;
-                                        autotrophic_respiration = canopy_component_types.autotrophic_respiration(
-                                            canopy_component_args.autotrophic_respiration...,
-                                        ),
-                                        radiative_transfer = canopy_component_types.radiative_transfer(
-                                            canopy_component_args.radiative_transfer...,
-                                        ),
-                                        photosynthesis = canopy_component_types.photosynthesis(
-                                            canopy_component_args.photosynthesis...,
-                                        ),
-                                        conductance = canopy_component_types.conductance(
-                                            canopy_component_args.conductance...,
-                                        ),
-                                        hydraulics = canopy_component_types.hydraulics(;
-                                                                                       transpiration = transpiration,
-                                                                                       canopy_component_args.hydraulics...,
-                                                                                       ),
-                                        energy = canopy_component_types.energy(
-                                            canopy_component_args.energy.parameters,
-                                        ),
-                                        soil_driver = soil_driver,
-                                        atmos = atmos,
-                                        radiation = radiation,
-                                        canopy_model_args...,
-                                        )
+            autotrophic_respiration = canopy_component_types.autotrophic_respiration(
+                canopy_component_args.autotrophic_respiration...,
+            ),
+            radiative_transfer = canopy_component_types.radiative_transfer(
+                canopy_component_args.radiative_transfer...,
+            ),
+            photosynthesis = canopy_component_types.photosynthesis(
+                canopy_component_args.photosynthesis...,
+            ),
+            conductance = canopy_component_types.conductance(
+                canopy_component_args.conductance...,
+            ),
+            hydraulics = canopy_component_types.hydraulics(;
+                transpiration = transpiration,
+                canopy_component_args.hydraulics...,
+            ),
+            energy = canopy_component_types.energy(
+                canopy_component_args.energy.parameters,
+            ),
+            soil_driver = soil_driver,
+            atmos = atmos,
+            radiation = radiation,
+            canopy_model_args...,
+        )
     else
         canopy = Canopy.CanopyModel{FT}(;
-                                        autotrophic_respiration = canopy_component_types.autotrophic_respiration(
-                                            canopy_component_args.autotrophic_respiration...,
-                                        ),
-                                        radiative_transfer = canopy_component_types.radiative_transfer(
-                                            canopy_component_args.radiative_transfer...,
-                                        ),
-                                        photosynthesis = canopy_component_types.photosynthesis(
-                                            canopy_component_args.photosynthesis...,
-                                        ),
-                                        conductance = canopy_component_types.conductance(
-                                            canopy_component_args.conductance...,
-                                        ),
-                                        hydraulics = canopy_component_types.hydraulics(;
-                                                                                       transpiration = transpiration,
-                                                                                       canopy_component_args.hydraulics...,
-                                                                                       ),
-                                        soil_driver = soil_driver,
-                                        atmos = atmos,
-                                        radiation = radiation,
-                                        canopy_model_args...,
-                                        )
+            autotrophic_respiration = canopy_component_types.autotrophic_respiration(
+                canopy_component_args.autotrophic_respiration...,
+            ),
+            radiative_transfer = canopy_component_types.radiative_transfer(
+                canopy_component_args.radiative_transfer...,
+            ),
+            photosynthesis = canopy_component_types.photosynthesis(
+                canopy_component_args.photosynthesis...,
+            ),
+            conductance = canopy_component_types.conductance(
+                canopy_component_args.conductance...,
+            ),
+            hydraulics = canopy_component_types.hydraulics(;
+                transpiration = transpiration,
+                canopy_component_args.hydraulics...,
+            ),
+            soil_driver = soil_driver,
+            atmos = atmos,
+            radiation = radiation,
+            canopy_model_args...,
+        )
     end
 
     return SoilCanopyModel{FT, typeof(soil), typeof(canopy)}(soil, canopy)

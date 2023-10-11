@@ -28,11 +28,11 @@ function canopy_turbulent_surface_fluxes(
     conditions = surface_fluxes(atmos, model, Y, p, t)
     # We upscaled LHF and E from leaf level to canopy level via the
     # upscaling of stomatal conductance.
-    
+
     # SHF still needs to be upscaled. Following CLM, multiply
     # by SAI+LAI
-#    area_index = p.canopy.hydraulics.area_index
-#    AI = area_index.stem .+ area_index.leaf
+    #    area_index = p.canopy.hydraulics.area_index
+    #    AI = area_index.stem .+ area_index.leaf
     return conditions.vapor_flux, conditions.shf, conditions.lhf
 end
 
@@ -189,7 +189,7 @@ function canopy_boundary_fluxes!(
         Y,
         t,
     )
-    
+
 end
 
 
@@ -201,7 +201,7 @@ function canopy_boundary_fluxes!(
     p::NamedTuple,
     canopy::CanopyModel{
         FT,
-        <: AutotrophicRespirationModel,
+        <:AutotrophicRespirationModel,
         <:Union{BeerLambertModel, TwoStreamModel},
         <:FarquharModel,
         <:MedlynConductanceModel,

@@ -547,8 +547,7 @@ LHF = LHF_soil + LHF_canopy
 LHF_soil_avg_model = diurnal_avg(LHF_soil)
 LHF_canopy_avg_model = diurnal_avg(LHF_canopy)
 LHF_avg_model = diurnal_avg(LHF)
-LHF_avg_data =
-    diurnal_avg(LE[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)])
+LHF_avg_data = diurnal_avg(LE[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)])
 
 RMSD = StatsBase.rmsd(LHF_avg_model, LHF_avg_data[1:data_per_model:end])
 R² = Statistics.cor(LHF_avg_model, LHF_avg_data[1:data_per_model:end])^2
@@ -720,12 +719,7 @@ Plots.plot!(
     soil_T_10_avg,
     label = "Tsoil (model; 11cm)",
 )
-Plots.plot!(
-    plt1,
-    model_daily_indices,
-    canopy_T_avg,
-    label = "T canopy (model)",
-)
+Plots.plot!(plt1, model_daily_indices, canopy_T_avg, label = "T canopy (model)")
 Plots.plot!(plt1, xlabel = "Hour of day", ylabel = "Average over Simulation")
 Plots.plot!(plt1, margins = 10Plots.mm)
 Plots.savefig(joinpath(savedir, "temperature.png"))
@@ -733,8 +727,11 @@ Plots.savefig(joinpath(savedir, "temperature.png"))
 
 # Ground heat flux
 G_model = [
-    (parent(sv.saveval[k].soil_shf)[1] + parent(sv.saveval[k].soil_lhf)[1] - parent(sv.saveval[k].soil_LW_n)[1] - parent(sv.saveval[k].soil_SW_n)[1]
-     ) for k in 1:length(sol.t)
+    (
+        parent(sv.saveval[k].soil_shf)[1] + parent(sv.saveval[k].soil_lhf)[1] -
+        parent(sv.saveval[k].soil_LW_n)[1] -
+        parent(sv.saveval[k].soil_SW_n)[1]
+    ) for k in 1:length(sol.t)
 ]
 
 G_model_avg = diurnal_avg(G_model)
@@ -758,7 +755,6 @@ Plots.plot!(
     G_model_avg,
     label = "Model",
     title = "Ground Heat Flux [W/m^2]: RMSD = $(round(RMSD, digits = 2)), R² = $(round(R², digits = 2))",
-
 )
 Plots.savefig(joinpath(savedir, "ground_heat_flux.png"))
 
