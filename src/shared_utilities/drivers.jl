@@ -34,11 +34,14 @@ An abstract type of radiative drivers of land models.
 abstract type AbstractRadiativeDrivers{FT <: AbstractFloat} end
 
 """
-    PrescribedAtmosphere{FT, LP, SP, TA, UA, QA, RA, CA, DT} <: AbstractAtmosphericDrivers{FT}
+    PrescribedAtmosphere{FT, CA, DT} <: AbstractAtmosphericDrivers{FT}
 
 Container for holding prescribed atmospheric drivers and other
 information needed for computing turbulent surface fluxes when
 driving land models in standalone mode.
+
+The arguments labeled with "function of time" are typically either of type
+`Function` or type `Spline1D` from the `Dierckx.jl` package.
 
 Since not all models require co2 concentration, the default for that
 is `nothing`.
@@ -81,7 +84,6 @@ struct PrescribedAtmosphere{FT, LP, SP, TA, UA, QA, RA, CA, DT} <:
         args = (liquid_precip, snow_precip, T, u, q, P, c_co2, ref_time)
         return new{typeof(h), typeof.(args)...}(args..., h, gustiness)
     end
-
 end
 
 """
@@ -108,9 +110,9 @@ end
 """
     construct_atmos_ts(
         atmos::PrescribedAtmosphere,
-        t::FT,
+        t,
         thermo_params,
-    ) where {FT}
+    )
 
 A helper function which constructs a Clima.Thermodynamics
 thermodynamic state given a PrescribedAtmosphere, a time
@@ -118,13 +120,13 @@ at which the state is needed, and a set of Clima.Thermodynamics
 parameters thermo_params.
 """
 function construct_atmos_ts(
-    atmos::PrescribedAtmosphere,
-    t::FT,
+    atmos::PrescribedAtmosphere{FT},
+    t,
     thermo_params,
 ) where {FT}
-    P::FT = atmos.P(t)
-    T::FT = atmos.T(t)
-    q::FT = atmos.q(t)
+    P = FT.(atmos.P(t))
+    T = FT.(atmos.T(t))
+    q = FT.(atmos.q(t))
     ts_in = Thermodynamics.PhaseEquil_pTq(thermo_params, P, T, q)
     return ts_in
 end
@@ -135,8 +137,8 @@ end
                    model::AbstractModel{FT},
                    Y::ClimaCore.Fields.FieldVector,
                    p::NamedTuple,
-                   t::FT
-                   ) where {FT <: AbstractFloat}
+                   t
+                   ) where {FT}
 
 Computes the turbulent surface flux terms at the ground for a standalone simulation,
 including turbulent energy fluxes as well as the water vapor flux
@@ -151,15 +153,15 @@ function surface_fluxes(
     model::AbstractModel{FT},
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
-    t::FT,
-) where {FT <: AbstractFloat}
-    T_sfc = surface_temperature(model, Y, p, t)
-    ρ_sfc = surface_air_density(atmos, model, Y, p, t, T_sfc)
-    q_sfc = surface_specific_humidity(model, Y, p, T_sfc, ρ_sfc)
-    β_sfc = surface_evaporative_scaling(model, Y, p)
-    h_sfc = surface_height(model, Y, p)
-    r_sfc = surface_resistance(model, Y, p, t)
-    d_sfc = displacement_height(model, Y, p)
+    t,
+) where {FT}
+    T_sfc = FT.(surface_temperature(model, Y, p, t))
+    ρ_sfc = FT.(surface_air_density(atmos, model, Y, p, t, T_sfc))
+    q_sfc = FT.(surface_specific_humidity(model, Y, p, T_sfc, ρ_sfc))
+    β_sfc = FT.(surface_evaporative_scaling(model, Y, p))
+    h_sfc = FT.(surface_height(model, Y, p))
+    r_sfc = FT.(surface_resistance(model, Y, p, t))
+    d_sfc = FT.(displacement_height(model, Y, p))
     return surface_fluxes_at_a_point.(
         T_sfc,
         q_sfc,
@@ -182,10 +184,10 @@ end
                               h_sfc::FT,
                               r_sfc::FT,
                               d_sfc::FT,
-                              t::FT,
-                              parameters,
+                              t,
+                              parameters::P,
                               atmos::PA,
-                              ) where {FT <: AbstractFloat, PA <: PrescribedAtmosphere{FT}}
+                              ) where {FT <: AbstractFloat, P, PA <: PrescribedAtmosphere{FT}}
 
 Computes turbulent surface fluxes at a point on a surface given
 (1) the surface temperature, specific humidity, and air density,
@@ -209,7 +211,7 @@ function surface_fluxes_at_a_point(
     h_sfc::FT,
     r_sfc::FT,
     d_sfc::FT,
-    t::FT,
+    t,
     parameters::P,
     atmos::PA,
 ) where {FT <: AbstractFloat, P, PA <: PrescribedAtmosphere{FT}}
@@ -254,15 +256,15 @@ function surface_fluxes_at_a_point(
         tol_neutral = SFP.cp_d(surface_flux_params) / 100000,
     )
     _LH_v0::FT = LSMP.LH_v0(earth_param_set)
-    _ρ_liq = LSMP.ρ_cloud_liq(earth_param_set)
+    _ρ_liq::FT = LSMP.ρ_cloud_liq(earth_param_set)
 
-    cp_m = Thermodynamics.cp_m(thermo_params, ts_in)
-    T_in = Thermodynamics.air_temperature(thermo_params, ts_in)
+    cp_m::FT = Thermodynamics.cp_m(thermo_params, ts_in)
+    T_in::FT = Thermodynamics.air_temperature(thermo_params, ts_in)
     ΔT = T_in - T_sfc
-    r_ae = 1 / (conditions.Ch * SurfaceFluxes.windspeed(sc))
-    ρ_air = Thermodynamics.air_density(thermo_params, ts_in)
+    r_ae::FT = 1 / (conditions.Ch * SurfaceFluxes.windspeed(sc))
+    ρ_air::FT = Thermodynamics.air_density(thermo_params, ts_in)
 
-    E0 = SurfaceFluxes.evaporation(surface_flux_params, sc, conditions.Ch)
+    E0::FT = SurfaceFluxes.evaporation(surface_flux_params, sc, conditions.Ch)
     E = E0 * r_ae / (r_sfc + r_ae)
     Ẽ = E / _ρ_liq
     H = -ρ_air * cp_m * ΔT / r_ae
@@ -271,10 +273,13 @@ function surface_fluxes_at_a_point(
 end
 
 """
-    PrescribedRadiativeFluxes{FT, SW, LW, DT, T, OD} <: AbstractRadiativeDrivers{FT}
+    PrescribedRadiativeFluxes{FT, DT, T, OD} <: AbstractRadiativeDrivers{FT}
 
 Container for the prescribed radiation functions needed to drive land models in standalone mode.
 $(DocStringExtensions.FIELDS)
+
+The arguments labeled with "function of time" are typically either of type
+`Function` or type `Spline1D` from the `Dierckx.jl` package.
 """
 struct PrescribedRadiativeFluxes{FT, SW, LW, DT, T, OD} <:
        AbstractRadiativeDrivers{FT}
@@ -307,8 +312,8 @@ end
                   model::AbstractModel{FT},
                   Y::ClimaCore.Fields.FieldVector,
                   p::NamedTuple,
-                  t::FT
-                  ) where {FT <: AbstractFloat}
+                  t,
+                  ) where {FT}
 
 Computes net radiative fluxes for a prescribed incoming
 longwave and shortwave radiation.
@@ -320,8 +325,8 @@ function net_radiation(
     model::AbstractModel{FT},
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
-    t::FT,
-) where {FT <: AbstractFloat}
+    t,
+) where {FT}
     LW_d::FT = radiation.LW_d(t)
     SW_d::FT = radiation.SW_d(t)
     earth_param_set = model.parameters.earth_param_set
@@ -341,8 +346,8 @@ end
 
 Returns the liquid precipitation (m/s) at the surface.
 """
-function liquid_precipitation(atmos::PrescribedAtmosphere, p, t)
-    return atmos.liquid_precip(t)
+function liquid_precipitation(atmos::PrescribedAtmosphere{FT}, p, t) where {FT}
+    return FT.(atmos.liquid_precip(t))
 end
 
 """
@@ -350,8 +355,8 @@ end
 
 Returns the precipitation in snow (m of liquid water/s) at the surface.
 """
-function snow_precipitation(atmos::PrescribedAtmosphere, p, t)
-    return atmos.snow_precip(t)
+function snow_precipitation(atmos::PrescribedAtmosphere{FT}, p, t) where {FT}
+    return FT.(atmos.snow_precip(t))
 end
 
 """
@@ -490,7 +495,7 @@ function surface_height(model::AbstractModel, Y, p) end
 """
     displacement_height(model::AbstractModel, Y, p)
 
-A helper function which returns the displacement height 
+A helper function which returns the displacement height
  for a given model; the default is zero.
 
 Extending this function for your model is only necessary if you need to

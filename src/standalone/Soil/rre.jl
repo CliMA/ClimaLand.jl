@@ -20,13 +20,13 @@ struct RichardsParameters{
     θ_r::FT
 end
 
-function RichardsParameters(;
+function RichardsParameters{FT, C}(;
     hydrology_cm::C,
     ν::FT,
     K_sat::FT,
     S_s::FT,
     θ_r::FT,
-) where {FT <: AbstractFloat, C <: AbstractSoilHydrologyClosure}
+) where {FT, C}
     return RichardsParameters{FT, typeof(hydrology_cm)}(
         ν,
         hydrology_cm,
@@ -43,12 +43,12 @@ A model for simulating the flow of water in a porous medium
 by solving the Richardson-Richards Equation.
 
 A variety of boundary condition types are supported, including
-FluxBC, RichardsAtmosDrivenFluxBC, MoistureStateBC, and FreeDrainage 
-(only for the bottom of the domain). 
+FluxBC, RichardsAtmosDrivenFluxBC, MoistureStateBC, and FreeDrainage
+(only for the bottom of the domain).
 
-If you wish to 
+If you wish to
 simulate soil hydrology under the context of a prescribed precipitation
-volume flux (m/s) as a function of time, the RichardsAtmosDrivenFluxBC 
+volume flux (m/s) as a function of time, the RichardsAtmosDrivenFluxBC
 type should be chosen. Please see the documentation for more details.
 
 $(DocStringExtensions.FIELDS)
@@ -75,7 +75,7 @@ end
         lateral_flow::Bool = true
     ) where {FT, D}
 
-A constructor for a `RichardsModel`, which sets the 
+A constructor for a `RichardsModel`, which sets the
 default value of `lateral_flow` to be true.
 """
 function RichardsModel{FT}(;
@@ -168,9 +168,9 @@ Construct the tendency computation function for the explicit terms of the RHS,
 which are horizontal components and source/sink terms.
 """
 function ClimaLSM.make_compute_exp_tendency(model::Soil.RichardsModel)
-    function compute_exp_tendency!(dY, Y, p, t::FT) where {FT}
+    function compute_exp_tendency!(dY, Y, p, t)
         # set dY before updating it
-        dY.soil.ϑ_l .= FT(0)
+        dY.soil.ϑ_l .= eltype(dY.soil.ϑ_l)(0)
         z = ClimaCore.Fields.coordinate_field(model.domain.space.subsurface).z
 
         horizontal_components!(
@@ -200,7 +200,7 @@ end
 
 Updates dY in place by adding in the tendency terms resulting from
 horizontal derivative operators for the RichardsModel,
- in the case of a hybrid box or 
+ in the case of a hybrid box or
 spherical shell domain with the model
 `lateral_flag` set to true.
 
@@ -354,17 +354,16 @@ end
 
 
 """
-    ClimaLSM.make_update_jacobian(model::RichardsModel)
+    ClimaLSM.make_update_jacobian(model::RichardsModel{FT}) where {FT}
 
 Creates and returns the update_jacobian! function for RichardsModel.
 
 Using this Jacobian with a backwards Euler timestepper is equivalent
 to using the modified Picard scheme of Celia et al. (1990).
 """
-function ClimaLSM.make_update_jacobian(model::RichardsModel)
+function ClimaLSM.make_update_jacobian(model::RichardsModel{FT}) where {FT}
     update_aux! = make_update_aux(model)
     function update_jacobian!(W::RichardsTridiagonalW, Y, p, dtγ, t)
-        FT = eltype(Y.soil.ϑ_l)
         (; dtγ_ref, ∂ϑₜ∂ϑ) = W
         dtγ_ref[] = dtγ
         (; ν, hydrology_cm, S_s, θ_r) = model.parameters

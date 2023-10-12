@@ -170,12 +170,12 @@ soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems);
 # `p` and time `t`.
 
 # Water boundary conditions:
-surface_water_flux = FluxBC((p, t) -> eltype(t)(0.0))
-bottom_water_flux = FluxBC((p, t) -> eltype(t)(0.0));
+surface_water_flux = FluxBC((p, t) -> 0.0)
+bottom_water_flux = FluxBC((p, t) -> 0.0);
 
 # The boundary conditions for the heat equation:
-surface_heat_flux = FluxBC((p, t) -> eltype(t)(0.0))
-bottom_heat_flux = FluxBC((p, t) -> eltype(t)(0.0));
+surface_heat_flux = FluxBC((p, t) -> 0.0)
+bottom_heat_flux = FluxBC((p, t) -> 0.0);
 
 # We wrap up all of those in a NamedTuple:
 boundary_fluxes = (;

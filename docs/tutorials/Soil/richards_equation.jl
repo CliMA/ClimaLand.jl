@@ -92,7 +92,7 @@ vg_α = FT(2.6)
 vg_n = FT(2)
 hcm = vanGenuchten(; α = vg_α, n = vg_n);
 θ_r = FT(0)
-params = Soil.RichardsParameters(;
+params = Soil.RichardsParameters{FT, typeof(hcm)}(;
     ν = ν,
     hydrology_cm = hcm,
     K_sat = K_sat,
@@ -113,8 +113,8 @@ soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems);
 # are passed as the (scalar) z-component of the flux `f`, i.e. F⃗ = f ẑ.
 # In either case, the user must pass a function of the auxiliary variables `p` and time `t`:
 
-surface_flux = Soil.FluxBC((p, t) -> eltype(t)(0.0))
-bottom_flux = Soil.FluxBC((p, t) -> eltype(t)(0.0))
+surface_flux = Soil.FluxBC((p, t) -> 0.0)
+bottom_flux = Soil.FluxBC((p, t) -> 0.0)
 boundary_conditions =
     (; top = (water = surface_flux,), bottom = (water = bottom_flux,));
 

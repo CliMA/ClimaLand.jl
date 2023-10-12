@@ -85,16 +85,12 @@ end
 
 
 """
-      dss!(Y::ClimaCore.Fields.FieldVector, p::NamedTuple, t::FT)
+      dss!(Y::ClimaCore.Fields.FieldVector, p::NamedTuple, t)
 
 Computes the weighted direct stiffness summation and updates `Y` in place.
 In the case of a column domain, no dss operations are performed.
 """
-function dss!(
-    Y::ClimaCore.Fields.FieldVector{FT},
-    p::NamedTuple,
-    t::FT,
-) where {FT}
+function dss!(Y::ClimaCore.Fields.FieldVector, p::NamedTuple, t)
     for key in propertynames(Y)
         property = getproperty(Y, key)
         dss_helper!(property, axes(property), p)

@@ -59,8 +59,8 @@ z_0m = 5e-4
 z_0b = 1e-5
 
 ref_time = DateTime(2005)
-SW_d = (t) -> eltype(t)(0)
-LW_d = (t) -> eltype(t)(301.15^4 * 5.67e-8)
+SW_d = (t) -> 0
+LW_d = (t) -> 301.15^4 * 5.67e-8
 radiation = PrescribedRadiativeFluxes(
     FT,
     SW_d,
@@ -78,12 +78,12 @@ esat = Thermodynamics.saturation_vapor_pressure(
 )
 e = rh * esat
 q = FT(0.622 * e / (101325 - 0.378 * e))
-precip = (t) -> eltype(t)(0.0)
-T_atmos = (t) -> eltype(t)(T_air)
-u_atmos = (t) -> eltype(t)(1)
-q_atmos = (t) -> eltype(t)(q)
+precip = (t) -> 0.0
+T_atmos = (t) -> T_air
+u_atmos = (t) -> 1
+q_atmos = (t) -> q
 h_atmos = FT(0.1)
-P_atmos = (t) -> eltype(t)(101325)
+P_atmos = (t) -> 101325
 gustiness = FT(1e-2)
 atmos = PrescribedAtmosphere(
     precip,
@@ -97,7 +97,7 @@ atmos = PrescribedAtmosphere(
     gustiness = gustiness,
 )
 top_bc = ClimaLSM.Soil.AtmosDrivenFluxBC(atmos, radiation)
-zero_flux = FluxBC((p, t) -> eltype(t)(0.0))
+zero_flux = FluxBC((p, t) -> 0)
 boundary_fluxes =
     (; top = top_bc, bottom = (water = zero_flux, heat = zero_flux))
 params = ClimaLSM.Soil.EnergyHydrologyParameters{FT}(;
@@ -138,7 +138,7 @@ soil = Soil.EnergyHydrology{FT}(;
 Y, p, cds = initialize(soil) # begins saturated
 function init_soil!(Y, z, params)
     ν = params.ν
-    FT = typeof(ν)
+    FT = eltype(ν)
     Y.soil.ϑ_l .= ν - 1e-2
     Y.soil.θ_i .= 0
     T = FT(301.15)

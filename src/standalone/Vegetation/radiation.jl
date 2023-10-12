@@ -33,7 +33,7 @@ end
 
 """
     function BeerLambertParameters{FT}(;
-        ld = FT(0.5),    
+        ld = FT(0.5),
         α_PAR_leaf = FT(0.1),
         α_NIR_leaf = FT(0.4),
         ϵ_canopy = FT(0.98),
@@ -146,7 +146,7 @@ end
 
 """
     compute_PAR(
-        model::AbstractRadiationModel,
+        model::{FT}},
         solar_radiation::ClimaLSM.PrescribedRadiativeFluxes,
         t,
     )
@@ -157,17 +157,17 @@ for a radiative transfer model.
 The estimated PAR is half of the incident shortwave radiation.
 """
 function compute_PAR(
-    model::AbstractRadiationModel,
-    solar_radiation::ClimaLSM.PrescribedRadiativeFluxes,
+    model::AbstractRadiationModel{FT},
+    solar_radiation::ClimaLSM.PrescribedRadiativeFluxes{FT},
     t,
-)
-    return solar_radiation.SW_d(t) / 2
+) where {FT}
+    return FT(solar_radiation.SW_d(t) / 2)
 end
 
 """
     compute_NIR(
-        model::AbstractRadiationModel,
-        solar_radiation::ClimaLSM.PrescribedRadiativeFluxes,
+        model::AbstractRadiationModel{FT},
+        solar_radiation::ClimaLSM.PrescribedRadiativeFluxes{FT},
         t,
     )
 
@@ -177,11 +177,11 @@ for a radiative transfer model.
 The estimated PNIR is half of the incident shortwave radiation.
 """
 function compute_NIR(
-    model::AbstractRadiationModel,
-    solar_radiation::ClimaLSM.PrescribedRadiativeFluxes,
+    model::AbstractRadiationModel{FT},
+    solar_radiation::ClimaLSM.PrescribedRadiativeFluxes{FT},
     t,
-)
-    return solar_radiation.SW_d(t) / 2
+) where {FT}
+    return FT(solar_radiation.SW_d(t) / 2)
 end
 
 # Make radiation models broadcastable
@@ -250,7 +250,7 @@ function canopy_radiant_energy_fluxes!(
         (energy_per_photon_NIR * N_a * ANIR)
 
     # Long wave: use soil conditions from the PrescribedSoil driver
-    T_soil = s.T(t)
+    T_soil::FT = s.T(t)
     ϵ_soil = s.ϵ
     _σ = FT(LSMP.Stefan(earth_param_set))
     LW_d::FT = canopy.radiation.LW_d(t)

@@ -1,31 +1,31 @@
 # # Coupling the CliMA Canopy and Soil Hydraulics Models
 
-# In the 
+# In the
 # [`previous tutorial`](@ref https://clima.github.io/ClimaLSM.jl/dev/generated/soil_plant_hydrology_tutorial/),
-# we demonstrated how to run the canopy model in 
-# standalone mode using prescribed values for the inputs of soil hydraulics 
-# into the canopy hydraulics model. However, ClimaLSM has the built-in capacity 
-# to couple the canopy model with a soil physics model and timestep the two 
-# simulations together to model a canopy-soil system. This tutorial 
-# demonstrates how to setup and run a coupled simulation, again using 
-# initial conditions, atmospheric and radiative flux conditions, and canopy 
-# properties observed at the US-MOz flux tower, a flux tower located within an 
+# we demonstrated how to run the canopy model in
+# standalone mode using prescribed values for the inputs of soil hydraulics
+# into the canopy hydraulics model. However, ClimaLSM has the built-in capacity
+# to couple the canopy model with a soil physics model and timestep the two
+# simulations together to model a canopy-soil system. This tutorial
+# demonstrates how to setup and run a coupled simulation, again using
+# initial conditions, atmospheric and radiative flux conditions, and canopy
+# properties observed at the US-MOz flux tower, a flux tower located within an
 # oak-hickory forest in Ozark, Missouri, USA. See [Wang et al. 2021]
 # (https://doi.org/10.5194/gmd-14-6741-2021) for details on the site and
 # parameters.
 
 
-# In ClimaLSM, the coupling of the canopy and soil models is done by 
-# pairing the inputs and outputs which between the two models so that they match. 
-# For example, the root extraction of the canopy hydraulics model, which acts as a 
-# boundary flux for the plant system, is paired with a source term for root extraction in 
-# the soil model, so that the flux of water from the soil into the roots is 
-# equal and factored into both models. This pairing is done automatically in the 
-# constructor for a 
+# In ClimaLSM, the coupling of the canopy and soil models is done by
+# pairing the inputs and outputs which between the two models so that they match.
+# For example, the root extraction of the canopy hydraulics model, which acts as a
+# boundary flux for the plant system, is paired with a source term for root extraction in
+# the soil model, so that the flux of water from the soil into the roots is
+# equal and factored into both models. This pairing is done automatically in the
+# constructor for a
 # [`SoilCanopyModel`](https://clima.github.io/ClimaLSM.jl/dev/APIs/ClimaLSM/#LSM-Model-Types-and-methods)
-# so that a 
-# user needs only specify the necessary arguments for each of the component 
-# models, and the two models will automatically be paired into a coupled 
+# so that a
+# user needs only specify the necessary arguments for each of the component
+# models, and the two models will automatically be paired into a coupled
 # simulation.
 
 # # Preliminary Setup
@@ -59,7 +59,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"));
 const FT = Float64;
 earth_param_set = create_lsm_parameters(FT);
 
-# - We will be using prescribed atmospheric and radiative drivers from the 
+# - We will be using prescribed atmospheric and radiative drivers from the
 #   US-MOz tower, which we read in here. We are using prescribed
 #   atmospheric and radiative flux conditions, but it is also possible to couple
 #   the simulation with atmospheric and radiative flux models. We also
@@ -74,12 +74,12 @@ include(
 
 # # Setup the Coupled Canopy and Soil Physics Model
 
-# We want to simulate the canopy-soil system together, so the model type 
+# We want to simulate the canopy-soil system together, so the model type
 # [`SoilCanopyModel`](https://clima.github.io/ClimaLSM.jl/dev/APIs/ClimaLSM/#LSM-Model-Types-and-methods)
 # is chosen.
-# From the linked documentation, we see that we need to provide the soil model 
+# From the linked documentation, we see that we need to provide the soil model
 # type and arguments as well as the canopy model component types, component
-# arguments, and the canopy model arguments, so we first need to initialize 
+# arguments, and the canopy model arguments, so we first need to initialize
 # all of these.
 
 # Setup the domain for the model:
@@ -90,12 +90,12 @@ zmax = FT(0)
 land_domain = Column(; zlim = (zmin, zmax), nelements = nelements);
 
 # For our soil model, we will choose the
-# [`EnergyHydrology`](https://clima.github.io/ClimaLSM.jl/dev/APIs/Soil/#Soil-Models-2) 
-# and set up all the necessary arguments. See the 
+# [`EnergyHydrology`](https://clima.github.io/ClimaLSM.jl/dev/APIs/Soil/#Soil-Models-2)
+# and set up all the necessary arguments. See the
 # [tutorial](https://clima.github.io/ClimaLSM.jl/dev/generated/Soil/soil_energy_hydrology/)
 # on the model for a more detailed explanation of the soil model.
 
-# We will be using prescribed atmospheric and radiative drivers from the 
+# We will be using prescribed atmospheric and radiative drivers from the
 # US-MOz tower. We are using prescribed
 # atmospheric and radiative flux conditions, but it is also possible to couple
 # the simulation with atmospheric and radiative flux models.
@@ -107,7 +107,7 @@ include(
     ),
 );
 
-# Define the parameters for the soil model and provide them to the model 
+# Define the parameters for the soil model and provide them to the model
 # parameters struct:
 
 # Soil parameters
@@ -167,7 +167,7 @@ soil_model_type = Soil.EnergyHydrology{FT}
 
 # For the heterotrophic respiration model, see the
 # [documentation](https://clima.github.io/ClimaLSM.jl/previews/PR214/dynamicdocs/pages/soil_biogeochemistry/microbial_respiration/)
-# to understand the parameterisation. 
+# to understand the parameterisation.
 # The domain is defined similarly to the soil domain described above.
 ν = soil_ν # defined above
 θ_a100 = FT(0.1816)
@@ -211,8 +211,8 @@ soilco2_boundary_conditions =
     (; top = (CO2 = soilco2_top_bc,), bottom = (CO2 = soilco2_bot_bc,));
 
 soilco2_drivers = Soil.Biogeochemistry.SoilDrivers(
-    Soil.Biogeochemistry.PrognosticMet(),
-    Soil.Biogeochemistry.PrescribedSOC(Csom),
+    Soil.Biogeochemistry.PrognosticMet{FT}(),
+    Soil.Biogeochemistry.PrescribedSOC{FT}(Csom),
     atmos,
 );
 
@@ -227,12 +227,12 @@ soilco2_args = (;
 # Next we need to set up the [`CanopyModel`](https://clima.github.io/ClimaLSM.jl/dev/APIs/canopy/Canopy/#Canopy-Model-Structs).
 # For more details on the specifics of this model see the previous tutorial.
 
-# Begin by declaring the component types of the canopy model. Unlike in the 
-# previous tutorial, collect the arguments to each component into tuples and do 
-# not instantiate the component models yet. The constructor for the 
-# SoilPlantHydrologyModel will use these arguments and internally instatiate the 
-# component CanopyModel and RichardsModel instances. This is done so that the 
-# constructor may enforce consistency constraints between the two models, and 
+# Begin by declaring the component types of the canopy model. Unlike in the
+# previous tutorial, collect the arguments to each component into tuples and do
+# not instantiate the component models yet. The constructor for the
+# SoilPlantHydrologyModel will use these arguments and internally instatiate the
+# component CanopyModel and RichardsModel instances. This is done so that the
+# constructor may enforce consistency constraints between the two models, and
 # this must be done internally from the constructor.
 
 canopy_component_types = (;
@@ -306,7 +306,7 @@ photosynthesis_args = (;
 f_root_to_shoot = FT(3.5)
 SAI = FT(0.00242)
 maxLAI = FT(4.2)
-K_sat_plant = 1.8e-8
+K_sat_plant = FT(1.8e-8)
 RAI = (SAI + maxLAI) * f_root_to_shoot;
 # Note: LAIfunction was determined from data in the script we included above.
 ai_parameterization = PrescribedSiteAreaIndex{FT}(LAIfunction, SAI, RAI)
@@ -350,7 +350,7 @@ plant_hydraulics_args = (
     compartment_surfaces = compartment_surfaces,
 );
 
-# We may now collect all of the canopy component argument tuples into one 
+# We may now collect all of the canopy component argument tuples into one
 # arguments tuple for the canopy component models.
 
 canopy_component_args = (;
@@ -373,9 +373,9 @@ shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
 canopy_domain = obtain_surface_domain(land_domain)
 canopy_model_args = (; parameters = shared_params, domain = canopy_domain);
 
-# We may now instantiate the integrated plant and soil model. In this example, 
-# we will compute transpiration diagnostically, and work with prescribed 
-# atmospheric and radiative flux conditions from the observations at the Ozark 
+# We may now instantiate the integrated plant and soil model. In this example,
+# we will compute transpiration diagnostically, and work with prescribed
+# atmospheric and radiative flux conditions from the observations at the Ozark
 # site as was done in the previous tutorial.
 
 land_input = (atmos = atmos, radiation = radiation)
@@ -391,15 +391,15 @@ land = SoilCanopyModel{FT}(;
     canopy_model_args = canopy_model_args,
 );
 
-# Now we can initialize the state vectors and model coordinates, and initialize 
-# the explicit/implicit tendencies as usual. The Richard's equation time 
-# stepping is done implicitly, while the canopy model may be explicitly stepped, 
+# Now we can initialize the state vectors and model coordinates, and initialize
+# the explicit/implicit tendencies as usual. The Richard's equation time
+# stepping is done implicitly, while the canopy model may be explicitly stepped,
 # so we use an IMEX (implicit-explicit) scheme for the combined model.
 
 Y, p, coords = initialize(land);
 exp_tendency! = make_exp_tendency(land);
 
-# We need to provide initial conditions for the soil and canopy hydraulics 
+# We need to provide initial conditions for the soil and canopy hydraulics
 # models:
 Y.soil.ϑ_l = FT(0.4)
 Y.soil.θ_i = FT(0.0)
@@ -476,9 +476,9 @@ sol = SciMLBase.solve(
 
 # # Plotting
 
-# Now that we have both a soil and canopy model incorporated together, we will 
-# show how to plot some model data demonstrating the time series produced from 
-# each of these models. As before, we may plot the GPP of the system as well 
+# Now that we have both a soil and canopy model incorporated together, we will
+# show how to plot some model data demonstrating the time series produced from
+# each of these models. As before, we may plot the GPP of the system as well
 # as transpiration showing fluxes in the canopy.
 
 daily = sol.t ./ 3600 ./ 24
@@ -525,7 +525,7 @@ Plots.plot(plt1, plt2, layout = (2, 1));
 savefig("ozark_canopy_flux_test.png");
 # ![](ozark_canopy_flux_test.png)
 
-# Now, we will plot the augmented volumetric liquid water fraction at different 
+# Now, we will plot the augmented volumetric liquid water fraction at different
 # depths in the soil over the course of the simulation.
 
 plt1 = Plots.plot(size = (500, 700));

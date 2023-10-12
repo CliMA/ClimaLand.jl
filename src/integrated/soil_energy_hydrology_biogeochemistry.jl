@@ -7,7 +7,7 @@ export LandSoilBiogeochemistry, PrognosticMet
         SB <: Soil.Biogeochemistry.SoilCO2Model{FT},
     } <: AbstractLandModel{FT}
 
-A concrete type of land model used for simulating systems with a 
+A concrete type of land model used for simulating systems with a
 soil energy, hydrology, and biogeochemistry component.
 $(DocStringExtensions.FIELDS)"""
 struct LandSoilBiogeochemistry{
@@ -47,10 +47,10 @@ function LandSoilBiogeochemistry{FT}(;
     )
 
     soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(; soilco2_args...)
-    if typeof(soilco2_args.drivers.met) != PrognosticMet
+    if !(soilco2_args.drivers.met isa PrognosticMet)
         throw(
             AssertionError(
-                "To run with a prognostic soil energy and hydrology model, the met driver must be of type PrognosticSoil.",
+                "To run with a prognostic soil energy and hydrology model, the met driver must be of type PrognosticMet.",
             ),
         )
     end
@@ -66,7 +66,7 @@ function LandSoilBiogeochemistry{FT}(;
     return LandSoilBiogeochemistry{FT, typeof.(args)...}(args...)
 end
 
-struct PrognosticMet <: Soil.Biogeochemistry.AbstractSoilDriver end
+struct PrognosticMet{FT} <: Soil.Biogeochemistry.AbstractSoilDriver{FT} end
 
 """
     soil_temperature(driver::PrognosticSoil, p, Y, t, z)

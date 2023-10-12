@@ -14,7 +14,7 @@ export SoilCanopyModel
         canopy::VM
     end
 
-A concrete type of land model used for simulating systems with a 
+A concrete type of land model used for simulating systems with a
 canopy and a soil component.
 $(DocStringExtensions.FIELDS)
 """
@@ -36,7 +36,7 @@ end
     CanopyRadiativeFluxes{FT} <: AbstractRadiativeDrivers{FT}
 
 A struct used to compute radiative fluxes in land surface models,
-indicating that 
+indicating that
 canopy absorption and emission is taken into account when computing
 radiation at the surface of the soil or snow.
 
@@ -44,7 +44,7 @@ The only other alternative at this stage is
 ClimaLSM.PrescribedRadiativeFluxes, where the prescribed downwelling
 short and longwave radiative fluxes are used directly,
 without accounting for the canopy. There is a different method
-of the function `soil_boundary_fluxes` in this case. 
+of the function `soil_boundary_fluxes` in this case.
 """
 struct CanopyRadiativeFluxes{FT} <: AbstractRadiativeDrivers{FT} end
 
@@ -98,7 +98,7 @@ function SoilCanopyModel{FT}(;
     sources = (RootExtraction{FT}(), Soil.PhaseChange{FT}(Δz))
     # add heat BC
     top_bc = ClimaLSM.Soil.AtmosDrivenFluxBC(atmos, CanopyRadiativeFluxes{FT}())
-    zero_flux = FluxBC((p, t) -> eltype(t)(0.0))
+    zero_flux = FluxBC((p, t) -> 0.0)
     boundary_conditions = (;
         top = top_bc,
         bottom = (water = Soil.FreeDrainage(), heat = zero_flux),
@@ -168,7 +168,7 @@ function SoilCanopyModel{FT}(;
 
     soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(; soilco2_args...)
 
-    if typeof(soilco2_args.drivers.met) != PrognosticMet
+    if !(soilco2_args.drivers.met isa PrognosticMet)
         throw(AssertionError("Must be of type PrognosticMet."))
     end
 
@@ -182,7 +182,7 @@ end
 """
     interaction_vars(m::SoilCanopyModel)
 
-The names of the additional auxiliary variables that are 
+The names of the additional auxiliary variables that are
 included in the integrated Soil-Canopy model.
 """
 interaction_vars(m::SoilCanopyModel) = (
@@ -203,7 +203,7 @@ interaction_vars(m::SoilCanopyModel) = (
 """
     interaction_types(m::SoilCanopyModel)
 
-The types of the additional auxiliary variables that are 
+The types of the additional auxiliary variables that are
 included in the integrated Soil-Canopy model.
 """
 interaction_types(m::SoilCanopyModel{FT}) where {FT} =
@@ -212,7 +212,7 @@ interaction_types(m::SoilCanopyModel{FT}) where {FT} =
 """
     interaction_domain_names(m::SoilCanopyModel)
 
-The domain names of the additional auxiliary variables that are 
+The domain names of the additional auxiliary variables that are
 included in the integrated Soil-Canopy model.
 """
 interaction_domain_names(m::SoilCanopyModel) = (
@@ -240,7 +240,7 @@ interaction_domain_names(m::SoilCanopyModel) = (
         RM <: Canopy.CanopyModel{FT}
         }
 
-A method which makes a function; the returned function 
+A method which makes a function; the returned function
 updates the auxiliary variable `p.root_extraction`, which
 is needed for a sink term for the soil model and to create the
 lower water boundary condition for the canopy model.
@@ -338,15 +338,15 @@ function lsm_radiant_energy_fluxes!(
     ground_model::Soil.EnergyHydrology,
     Y,
     t,
-) where {FT}
+) where {(FT)}
     radiation = canopy.radiation
     earth_param_set = canopy.parameters.earth_param_set
     _σ = LSMP.Stefan(earth_param_set)
-    LW_d::FT = radiation.LW_d(t)
-    SW_d::FT = radiation.SW_d(t)
-    c = FT(LSMP.light_speed(earth_param_set))
-    h = FT(LSMP.planck_constant(earth_param_set))
-    N_a = FT(LSMP.avogadro_constant(earth_param_set))
+    LW_d = FT(radiation.LW_d(t))
+    SW_d = FT(radiation.SW_d(t))
+    c = LSMP.light_speed(earth_param_set)
+    h = LSMP.planck_constant(earth_param_set)
+    N_a = LSMP.avogadro_constant(earth_param_set)
     (; λ_γ_PAR, λ_γ_NIR, ϵ_canopy) = canopy_radiation.parameters
     energy_per_photon_PAR = h * c / λ_γ_PAR
     energy_per_photon_NIR = h * c / λ_γ_NIR
@@ -419,8 +419,8 @@ integrated land surface models; this computes and returns the net
 energy and water flux at the surface of the soil for use as boundary
 conditions.
 
-The net radiative, sensible heat, latent heat, and evaporative fluxes 
-are computed and stored in the auxiliary state of the integrated land 
+The net radiative, sensible heat, latent heat, and evaporative fluxes
+are computed and stored in the auxiliary state of the integrated land
 surface models, and this function simply returns those. They are updated
 each time step in `update_aux`.
 """
@@ -435,7 +435,7 @@ function soil_boundary_fluxes(
 ) where {FT}
     infiltration = soil_surface_infiltration(
         bc.runoff,
-        bc.atmos.liquid_precip(t) .+ p.soil_evap,
+        FT.(bc.atmos.liquid_precip(t)) .+ p.soil_evap,
         Y,
         p,
         t,
@@ -449,8 +449,8 @@ end
 """
      PrognosticSoil{FT} <: AbstractSoilDriver{FT}
 
-Concrete type of AbstractSoilDriver used for dispatch in cases where both 
-a canopy model and soil model are run. 
+Concrete type of AbstractSoilDriver used for dispatch in cases where both
+a canopy model and soil model are run.
 $(DocStringExtensions.FIELDS)
 """
 struct PrognosticSoil{FT} <: AbstractSoilDriver{FT}
@@ -476,13 +476,13 @@ end
         model::Canopy.PlantHydraulics.PlantHydraulicsModel{FT},
         Y::ClimaCore.Fields.FieldVector,
         p::NamedTuple,
-        t::FT,
-    ) where {FT}
+        t,
+    )
 
 An extension of the `PlantHydraulics.root_water_flux_per_ground_area!` function,
  which returns the
 net flux of water between the
-roots and the soil, per unit ground area, 
+roots and the soil, per unit ground area,
 when both soil and plant
 hydraulics are modeled prognostically. This is for use in an LSM.
 
@@ -495,7 +495,7 @@ function PlantHydraulics.root_water_flux_per_ground_area!(
     model::Canopy.PlantHydraulics.PlantHydraulicsModel{FT},
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
-    t::FT,
+    t,
 ) where {FT}
     fa .= sum(p.root_extraction)
 end
@@ -508,7 +508,7 @@ end
         model::Canopy.AbstractCanopyEnergyModel{FT},
         Y::ClimaCore.Fields.FieldVector,
         p::NamedTuple,
-        t::FT,
+        t,
     ) where {FT}
 
 
@@ -518,8 +518,8 @@ this quantity: in this case, when the canopy energy is tracked,
 but we are using a `PrescribedSoil` model (non-prognostic soil model).
 
 Note that this energy flux is not typically included in land surface
-models. We account for it when the soil model is prognostic because 
-the soil model includes the energy in the soil water in its energy 
+models. We account for it when the soil model is prognostic because
+the soil model includes the energy in the soil water in its energy
 balance; therefore, in order to conserve energy, the canopy model
 must account for it as well.
 """
@@ -529,7 +529,7 @@ function Canopy.root_energy_flux_per_ground_area!(
     model::Canopy.AbstractCanopyEnergyModel{FT},
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
-    t::FT,
+    t,
 ) where {FT}
     fa_energy .= sum(p.root_energy_extraction)
 end
@@ -537,10 +537,10 @@ end
 """
     RootExtraction{FT} <: Soil.AbstractSoilSource{FT}
 
-Concrete type of Soil.AbstractSoilSource, used for dispatch 
+Concrete type of Soil.AbstractSoilSource, used for dispatch
 in an LSM with both soil and plant hydraulic components.
 
-This is paired with the source term `Canopy.PrognosticSoil`:both 
+This is paired with the source term `Canopy.PrognosticSoil`:both
 are used at the same time,
 ensuring that the water flux into the roots is extracted correctly
 from the soil.
@@ -556,7 +556,7 @@ struct RootExtraction{FT} <: Soil.AbstractSoilSource{FT} end
                      model::EnergyHydrology)
 
 An extension of the `ClimaLSM.source!` function,
- which computes source terms for the 
+ which computes source terms for the
 soil model; this method returns the water and energy loss/gain due
 to root extraction.
 """
@@ -582,7 +582,7 @@ end
                                          t,
                                         ) where {FT, PSE}
 
-In standalone mode, this function computes and stores the net 
+In standalone mode, this function computes and stores the net
 long and short wave radition, in W/m^2,
 absorbed by the canopy.
 

@@ -22,7 +22,7 @@ ClimaLSM.auxiliary_domain_names(model::AbstractCanopyEnergyModel) =
 
 A model for the energy of the canopy which assumes the canopy temperature
 is the same as the atmosphere temperature prescribed in the
-`PrescribedAtmos` struct. 
+`PrescribedAtmos` struct.
 
 No equation for the energy of the canopy is solved.
 """
@@ -31,12 +31,19 @@ struct PrescribedCanopyTempModel{FT} <: AbstractCanopyEnergyModel{FT} end
 """
     canopy_temperature(model::PrescribedCanopyTempModel, canopy, Y, p, t)
 
-Returns the canopy temperature under the `PrescribedCanopyTemp` model, 
+Returns the canopy temperature under the `PrescribedCanopyTemp` model,
 where the canopy temperature is assumed to be the same as the atmosphere
 temperature.
 """
-canopy_temperature(model::PrescribedCanopyTempModel, canopy, Y, p, t) =
-    canopy.atmos.T(t)
+function canopy_temperature(
+    model::PrescribedCanopyTempModel{FT},
+    canopy,
+    Y,
+    p,
+    t,
+) where {FT}
+    FT.(canopy.atmos.T(t))
+end
 
 ## Prognostic Canopy Temperature
 """
@@ -69,7 +76,7 @@ ClimaLSM.prognostic_domain_names(model::BigLeafEnergyModel) = (:surface,)
 """
     canopy_temperature(model::BigLeafEnergyModel, canopy, Y, p, t)
 
-Returns the canopy temperature under the `BigLeafEnergyModel` model, 
+Returns the canopy temperature under the `BigLeafEnergyModel` model,
 where the canopy temperature is modeled prognostically.
 """
 canopy_temperature(model::BigLeafEnergyModel, canopy, Y, p, t) =
@@ -112,20 +119,20 @@ end
         model::AbstractCanopyEnergyModel{FT},
         Y::ClimaCore.Fields.FieldVector,
         p::NamedTuple,
-        t::FT,
+        t,
     ) where {FT}
 
 
 A method which updates the ClimaCore.Fields.Field `fa_energy` in place
 with  the energy flux associated with the root-soil
 water flux for the `CanopyModel` run in standalone mode,
-with a `PrescribedSoil` model.This value is ignored and set to zero 
-in this case. 
+with a `PrescribedSoil` model.This value is ignored and set to zero
+in this case.
 
-Background information: This energy 
+Background information: This energy
 flux is not typically included in land surface
-models. We account for it when the soil model is prognostic because 
-the soil model includes the energy in the soil water in its energy 
+models. We account for it when the soil model is prognostic because
+the soil model includes the energy in the soil water in its energy
 balance; therefore, in order to conserve energy, the canopy model
 must account for it as well.
 """
@@ -135,7 +142,7 @@ function root_energy_flux_per_ground_area!(
     model::AbstractCanopyEnergyModel{FT},
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
-    t::FT,
+    t,
 ) where {FT}
     fa_energy .= FT(0)
 end

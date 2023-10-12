@@ -38,7 +38,7 @@ end
 
 function PondModel{FT}(;
     domain::ClimaLSM.Domains.AbstractDomain{FT} = ClimaLSM.Domains.Point(
-        z_sfc = 0.0,
+        z_sfc = FT(0),
     ),
     runoff::AbstractSurfaceRunoff{FT},
 ) where {FT}
@@ -47,7 +47,7 @@ end
 
 
 """
-    PrescribedRunoff <:  AbstractSurfaceRunoff
+    PrescribedRunoff{FT} <:  AbstractSurfaceRunoff{FT}
 
 The required input for driving the simple pond model: precipitation, as a
 function of time, soil effective saturation at a depth `Δz` below the surface,
@@ -75,7 +75,7 @@ end
 
 # Runoff > 0 -> into river system.
 function surface_runoff(runoff::PrescribedRunoff{FT}, Y, p, t) where {FT}
-    return -(runoff.precip(t) - runoff.infil(t))
+    return @. -FT((runoff.precip(t) - runoff.infil(t)))
 end
 
 end

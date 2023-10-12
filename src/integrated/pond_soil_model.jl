@@ -7,7 +7,7 @@ export LandHydrology, infiltration_capacity, infiltration_at_point
         SW <: Pond.AbstractSurfaceWaterModel{FT},
     } <: AbstractLandModel{FT}
 
-A concrete type of land model used for simulating systems with a 
+A concrete type of land model used for simulating systems with a
 soil and surface water component.
 $(DocStringExtensions.FIELDS)"""
 struct LandHydrology{
@@ -97,15 +97,15 @@ I|______________________________________________________________________________
 =#
 
 """
-    infiltration_at_point(η::FT, i_c::FT, P::FT)   
+    infiltration_at_point(η::FT, i_c::FT, P::FT)
 
 Returns the infiltration given pond height η, infiltration capacity,
-and precipitation. 
+and precipitation.
 
 
 This is defined such that positive means into soil.
 """
-infiltration_at_point(η::FT, i_c::FT, P::FT) where {FT} =
+infiltration_at_point(η::FT, i_c::FT, P::FT) where {FT <: AbstractFloat} =
     η > eps(FT) ? i_c : min(i_c, P)
 
 """
@@ -120,6 +120,7 @@ soil characteristics, moisture levels, and pond height.
 Defined such that positive means into soil.
 """
 function infiltration_capacity(Y::ClimaCore.Fields.FieldVector, p::NamedTuple)
+    FT = eltype(Y.soil.ϑ_l)
     face_space = ClimaLSM.Domains.obtain_face_space(axes(Y.soil.ϑ_l))
     N = ClimaCore.Spaces.nlevels(face_space)
     space = axes(Y.surface_water.η)
@@ -146,7 +147,7 @@ function infiltration_capacity(Y::ClimaCore.Fields.FieldVector, p::NamedTuple)
         ),
         space,
     )
-    ψ_face = max.(0.0, Y.surface_water.η)
+    ψ_face = max.(FT(0), Y.surface_water.η)
     return @. (
         K_center * (ψ_face + z_face - (ψ_center + z_center)) /
         (z_face - z_center)
@@ -158,7 +159,7 @@ end
         land::LandHydrology{FT, SM, SW},
     ) where {FT, SM <: Soil.RichardsModel{FT}, SW <: Pond.PondModel{FT}}
 
-A method which makes a function; the returned function 
+A method which makes a function; the returned function
 updates the auxiliary variable `p.soil_infiltration`, which
 is needed for both the boundary condition for the soil model and the source
 term (runoff) for the surface water model.
@@ -174,7 +175,7 @@ function make_interactions_update_aux(
             -infiltration_at_point(
                 Y.surface_water.η,
                 i_c,
-                -land.surface_water.runoff.precip(t),
+                -FT(land.surface_water.runoff.precip(t)),
             )
     end
     return update_aux!
@@ -201,7 +202,7 @@ end
         runoff::PrognosticRunoff{FT},
         Y::ClimaCore.Fields.FieldVector,
         p::NamedTuple,
-        t::FT,
+        t,
     ) where {FT}
 
 Extension of the `Pond.surface_runoff` function, which computes the surface runoff, for use in an LSM when the runoff is determined
@@ -211,9 +212,9 @@ function Pond.surface_runoff(
     runoff::PrognosticRunoff{FT},
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
-    t::FT,
+    t,
 ) where {FT}
-    return @. -(runoff.precip(t) - p.soil_infiltration)
+    return @. FT(p.soil_infiltration - runoff.precip(t))
 end
 
 """
@@ -225,7 +226,7 @@ prognostically. This infiltration is then used to set an upper
 boundary condition for the soil.
 
 
-This is paired with `Pond.PrognosticRunoff`: both are used at the same 
+This is paired with `Pond.PrognosticRunoff`: both are used at the same
 time,
 ensuring that the infiltration used for the boundary condition of soil
 is also used to compute the runoff for the surface water.
@@ -238,9 +239,9 @@ struct RunoffBC <: Soil.AbstractSoilBC end
         ::TopBoundary,
         Δz::FT,
         p::NamedTuple,
-        t::FT,
+        t,
         params,
-    )::ClimaCore.Fields.Field where {FT}
+    )::ClimaCore.Fields.Field
 
 Extension of the `ClimaLSM.boundary_flux` function, which returns the water volume
 boundary flux for the soil.
@@ -252,8 +253,8 @@ function ClimaLSM.boundary_flux(
     ::TopBoundary,
     Δz::ClimaCore.Fields.Field,
     p::NamedTuple,
-    t::FT,
+    t,
     params,
-)::ClimaCore.Fields.Field where {FT}
+)::ClimaCore.Fields.Field
     return p.soil_infiltration
 end

@@ -106,8 +106,12 @@ atmos_u = Spline1D(seconds, WS[:])
 LW_IN_spline = Spline1D(seconds, LW_IN[:])
 SW_IN_spline = Spline1D(seconds, SW_IN[:])
 atmos_h = FT(32)
-precipitation_function(t::FT) where {FT} = p_spline(t) < 0.0 ? p_spline(t) : 0.0 # m/s
-snow_precip(t) = eltype(t)(0) # this is likely not correct
+
+function precipitation_function(t)
+    spline = p_spline(t)
+    spline < 0 ? spline : 0 # m/s
+end
+snow_precip(t) = 0 # this is likely not correct
 
 
 # Construct the drivers. For the reference time we will use the UTC time at the
@@ -174,4 +178,4 @@ LAI_column_names = LAI_data[1, :]
 LAI_data = LAI_data[2:end, LAI_column_names .== "lai_mean"] #m2.m-2
 # This has the same timestamp as the driver data, so it's ok to use the time column from that file here
 LAIspline = Spline1D(seconds, LAI_data[:])
-LAIfunction = (t) -> eltype(t)(LAIspline(t))
+LAIfunction = (t) -> LAIspline(t)

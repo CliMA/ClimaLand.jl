@@ -61,11 +61,11 @@ nelems = 20
 
 lsm_domain = Column(; zlim = (zmin, zmax), nelements = nelems)
 
-top_flux_bc_w = Soil.FluxBC((p, t) -> eltype(t)(-0.00001))
+top_flux_bc_w = Soil.FluxBC((p, t) -> -0.00001)
 bot_flux_bc_w = Soil.FreeDrainage()
 
-top_flux_bc_h = Soil.FluxBC((p, t) -> eltype(t)(0.0))
-bot_flux_bc_h = Soil.FluxBC((p, t) -> eltype(t)(0.0))
+top_flux_bc_h = Soil.FluxBC((p, t) -> 0.0)
+bot_flux_bc_h = Soil.FluxBC((p, t) -> 0.0)
 
 
 sources = (PhaseChange{FT}(Δz),)
@@ -81,15 +81,15 @@ soil_args = (;
 )
 
 # Make biogeochemistry model args
-Csom = (z, t) -> eltype(t)(5.0)
+Csom = (z, t) -> 5.0
 
 co2_parameters = Soil.Biogeochemistry.SoilCO2ModelParameters{FT}(;
     earth_param_set = earth_param_set,
 )
 C = FT(100)
 
-co2_top_bc = Soil.Biogeochemistry.SoilCO2StateBC((p, t) -> eltype(t)(0.0))
-co2_bot_bc = Soil.Biogeochemistry.SoilCO2StateBC((p, t) -> eltype(t)(0.0))
+co2_top_bc = Soil.Biogeochemistry.SoilCO2StateBC((p, t) -> 0.0)
+co2_bot_bc = Soil.Biogeochemistry.SoilCO2StateBC((p, t) -> 0.0)
 co2_sources = (MicrobeProduction{FT}(),)
 co2_boundary_conditions =
     (; top = (CO2 = co2_top_bc,), bottom = (CO2 = co2_bot_bc,))
@@ -118,8 +118,8 @@ atmos = ClimaLSM.PrescribedAtmosphere(
 )
 
 soil_drivers = Soil.Biogeochemistry.SoilDrivers(
-    Soil.Biogeochemistry.PrognosticMet(),
-    Soil.Biogeochemistry.PrescribedSOC(Csom),
+    Soil.Biogeochemistry.PrognosticMet{FT}(),
+    Soil.Biogeochemistry.PrescribedSOC{FT}(Csom),
     atmos,
 )
 

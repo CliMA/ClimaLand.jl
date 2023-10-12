@@ -105,8 +105,8 @@ soilco2_boundary_conditions =
     (; top = (CO2 = soilco2_top_bc,), bottom = (CO2 = soilco2_bot_bc,))
 
 soilco2_drivers = Soil.Biogeochemistry.SoilDrivers(
-    Soil.Biogeochemistry.PrognosticMet(),
-    Soil.Biogeochemistry.PrescribedSOC(Csom),
+    Soil.Biogeochemistry.PrognosticMet{FT}(),
+    Soil.Biogeochemistry.PrescribedSOC{FT}(Csom),
     atmos,
 )
 
@@ -332,8 +332,8 @@ model_daily_indices =
 data_per_model = Int64(dt * n ÷ DATA_DT)
 
 # This function will be used to compute averages over diurnal cycles. Input a
-# data series to average over and the total number of days in the data series, 
-# and it will return a vector of the average value at each timestamp in the 
+# data series to average over and the total number of days in the data series,
+# and it will return a vector of the average value at each timestamp in the
 # day averaged over every day in the series.
 function diurnal_avg(series)
     num_days = Int64(N_days - N_days_spinup)

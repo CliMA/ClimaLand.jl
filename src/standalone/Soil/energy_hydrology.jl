@@ -82,7 +82,7 @@ function EnergyHydrologyParameters{FT}(;
     z_0b = FT(0.01),
     d_ds = FT(0.015),
     earth_param_set::PSE,
-) where {FT <: AbstractFloat, PSE, C <: AbstractSoilHydrologyClosure}
+) where {FT, PSE, C <: AbstractSoilHydrologyClosure}
     # These were determined in the Balland and Arp paper, from 2003.
     α = FT(0.24)
     β = FT(18.3)
@@ -129,7 +129,7 @@ in a porous medium by solving the Richardson-Richards equation
 and the heat equation, including terms for phase change.
 
 A variety of boundary condition types are supported, including
-FluxBC, MoistureStateBC/TemperatureStateBC, 
+FluxBC, MoistureStateBC/TemperatureStateBC,
 FreeDrainage (only for the bottom of the domain),
 and an AtmosDrivenFluxBC (under which radiative fluxes and
 turbulent surface fluxes are computed and used as boundary conditions).
@@ -280,7 +280,7 @@ end
 
 Updates dY in place by adding in the tendency terms resulting from
 horizontal derivative operators for the `EnergyHydrology` model,
- in the case of a hybrid box or 
+ in the case of a hybrid box or
 spherical shell domain with the model
 `lateral_flag` set to true.
 
@@ -570,7 +570,6 @@ function ClimaLSM.surface_air_density(
     t,
     T_sfc,
 ) where {FT}
-
     thermo_params =
         LSMP.thermodynamic_parameters(model.parameters.earth_param_set)
     ts_in = construct_atmos_ts(atmos, t, thermo_params)

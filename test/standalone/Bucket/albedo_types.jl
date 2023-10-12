@@ -32,12 +32,6 @@ using ClimaLSM:
 import ClimaLSM
 include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
 
-# Use two separate regrid dirs to avoid duplicate filenames since files have same varname
-regrid_dir_static = joinpath(pkgdir(ClimaLSM), "test", "static")
-regrid_dir_temporal = joinpath(pkgdir(ClimaLSM), "test", "temporal")
-isdir(regrid_dir_static) ? nothing : mkpath(regrid_dir_static)
-isdir(regrid_dir_temporal) ? nothing : mkpath(regrid_dir_temporal)
-
 function create_domain_2d(FT)
     rad = FT(100)
     h = FT(3.5)
@@ -51,8 +45,14 @@ function create_domain_2d(FT)
     )
 end
 
-@testset "Test set_initial_parameter_field for BulkAlbedoFunction" begin
-    FT = Float32
+FT = Float32
+# Use two separate regrid dirs to avoid duplicate filenames since files have same varname
+regrid_dir_static = joinpath(pkgdir(ClimaLSM), "test", "static")
+regrid_dir_temporal = joinpath(pkgdir(ClimaLSM), "test", "temporal")
+isdir(regrid_dir_static) ? nothing : mkpath(regrid_dir_static)
+isdir(regrid_dir_temporal) ? nothing : mkpath(regrid_dir_temporal)
+
+@testset "Test set_initial_parameter_field for BulkAlbedoFunction, FT = $FT" begin
     # set up for function call
     α_sfc = (coord_point) -> sin(coord_point.lat + coord_point.long)
     α_snow = FT(0.8)
@@ -69,8 +69,7 @@ end
     @test p.bucket.α_sfc == α_sfc.(surface_coords)
 end
 
-@testset "Test set_initial_parameter_field for BulkAlbedoStatic" begin
-    FT = Float32
+@testset "Test set_initial_parameter_field for BulkAlbedoStatic, FT = $FT" begin
     # set up for function call
     regrid_dir_static = joinpath(pkgdir(ClimaLSM), "test", "static")
     albedo = BulkAlbedoStatic{FT}(regrid_dir_static)
@@ -98,8 +97,7 @@ end
     @test p.bucket.α_sfc == data_manual
 end
 
-@testset "Test set_initial_parameter_field for BulkAlbedoTemporal" begin
-    FT = Float32
+@testset "Test set_initial_parameter_field for BulkAlbedoTemporal, FT = $FT" begin
     # set up for function call
     regrid_dir_temporal = joinpath(pkgdir(ClimaLSM), "test", "temporal")
     t_start = FT(0)
@@ -135,8 +133,7 @@ end
     @test nans_to_zero.(p.bucket.α_sfc) == nans_to_zero.(data_manual)
 end
 
-@testset "Test next_albedo for BulkAlbedoFunction" begin
-    FT = Float32
+@testset "Test next_albedo for BulkAlbedoFunction, FT = $FT" begin
     # set up each argument for function call
     α_sfc = (coord_point) -> sin(coord_point.lat + coord_point.long)
     α_snow = FT(0.8)
@@ -167,8 +164,7 @@ end
     @test next_albedo(albedo, parameters, Y, p, FT(0)) == next_alb_manual
 end
 
-@testset "Test next_albedo for BulkAlbedoStatic" begin
-    FT = Float32
+@testset "Test next_albedo for BulkAlbedoStatic, FT = $FT" begin
     # set up each argument for function call
     α_snow = FT(0.8)
     albedo = BulkAlbedoStatic{FT}(regrid_dir_static, α_snow = α_snow)
@@ -199,8 +195,7 @@ end
     @test next_albedo(albedo, parameters, Y, p, FT(0)) == next_alb_manual
 end
 
-@testset "Test next_albedo for BulkAlbedoTemporal" begin
-    FT = Float32
+@testset "Test next_albedo for BulkAlbedoTemporal, FT = $FT" begin
     # set up each argument for function call
     domain = create_domain_2d(FT)
     space = domain.space.surface
@@ -254,8 +249,33 @@ end
     end
 end
 
-@testset "Test BulkAlbedoStatic - albedo from map" begin
-    FT = Float32
+@testset "Test BulkAlbedoTemporal error with static map, FT = $FT" begin
+    regrid_dirpath = ""
+    infile_path = bareground_albedo_dataset_path()
+    date_ref = Dates.DateTime(1900, 1, 1)
+    t_start = FT(0)
+    domain = create_domain_2d(FT)
+    space = domain.space.surface
+
+    let err = nothing
+        try
+            BulkAlbedoTemporal{FT}(
+                regrid_dirpath,
+                date_ref,
+                t_start,
+                space,
+                infile_path = infile_path,
+            )
+        catch err
+        end
+
+        @test err isa Exception
+        @test sprint(showerror, err) ==
+              "Using a temporal albedo map requires data with time dimension."
+    end
+end
+
+@testset "Test BulkAlbedoStatic - albedo from map, FT = $FT" begin
     earth_param_set = create_lsm_parameters(FT)
     varname = "sw_alb"
     path = bareground_albedo_dataset_path()
@@ -287,17 +307,17 @@ end
     for bucket_domain in bucket_domains
         # Radiation
         ref_time = DateTime(2005)
-        SW_d = (t) -> eltype(t)(0.0)
-        LW_d = (t) -> eltype(t)(5.67e-8 * 280.0^4.0)
+        SW_d = (t) -> 0.0
+        LW_d = (t) -> 5.67e-8 * 280.0^4.0
         bucket_rad =
             PrescribedRadiativeFluxes(FT, SW_d, LW_d, ref_time; orbital_data)
         # Atmos
-        precip = (t) -> eltype(t)(0) # no precipitation
-        T_atmos = (t) -> eltype(t)(280.0)
-        u_atmos = (t) -> eltype(t)(1.0)
-        q_atmos = (t) -> eltype(t)(0.0) # no atmos water
+        precip = (t) -> 0 # no precipitation
+        T_atmos = (t) -> 280.0
+        u_atmos = (t) -> 1.0
+        q_atmos = (t) -> 0.0 # no atmos water
         h_atmos = FT(1e-8)
-        P_atmos = (t) -> eltype(t)(101325)
+        P_atmos = (t) -> 101325
         bucket_atmos = PrescribedAtmosphere(
             precip,
             precip,
@@ -365,37 +385,8 @@ end
     rm(regrid_dirpath, recursive = true)
 end
 
-@testset "Test BulkAlbedoTemporal error with static map" begin
-    FT = Float32
-    regrid_dirpath = ""
-    infile_path = bareground_albedo_dataset_path()
-    date_ref = Dates.DateTime(1900, 1, 1)
-    t_start = FT(0)
-    domain = create_domain_2d(FT)
-    space = domain.space.surface
-
-    let err = nothing
-        try
-            BulkAlbedoTemporal{FT}(
-                regrid_dirpath,
-                date_ref,
-                t_start,
-                space,
-                infile_path = infile_path,
-            )
-        catch err
-        end
-
-        @test err isa Exception
-        @test sprint(showerror, err) ==
-              "Using a temporal albedo map requires data with time dimension."
-    end
-
-end
-
 # Note: this test implicitly tests `FileReader.interpolate_data` behavior
-@testset "Test BulkAlbedoTemporal - albedo from map over time" begin
-    FT = Float32
+@testset "Test BulkAlbedoTemporal - albedo from map over time, FT = $FT" begin
     earth_param_set = create_lsm_parameters(FT)
     varname = "sw_alb"
     infile_path = cesm2_albedo_dataset_path()
@@ -434,8 +425,8 @@ end
                 BulkAlbedoTemporal{FT}(regrid_dirpath, date_ref, t_start, space)
             # Radiation
             ref_time = DateTime(2005)
-            SW_d = (t) -> eltype(t)(0.0)
-            LW_d = (t) -> eltype(t)(5.67e-8 * 280.0^4.0)
+            SW_d = (t) -> 0
+            LW_d = (t) -> 5.67e-8 * 280.0^4.0
             bucket_rad = PrescribedRadiativeFluxes(
                 FT,
                 SW_d,
@@ -444,12 +435,12 @@ end
                 orbital_data,
             )
             # Atmos
-            precip = (t) -> eltype(t)(0) # no precipitation
-            T_atmos = (t) -> eltype(t)(280.0)
-            u_atmos = (t) -> eltype(t)(1.0)
-            q_atmos = (t) -> eltype(t)(0.0) # no atmos water
+            precip = (t) -> 0 # no precipitation
+            T_atmos = (t) -> 280.0
+            u_atmos = (t) -> 1.0
+            q_atmos = (t) -> 0.0 # no atmos water
             h_atmos = FT(1e-8)
-            P_atmos = (t) -> eltype(t)(101325)
+            P_atmos = (t) -> 101325
             ref_time = DateTime(2005)
             bucket_atmos = PrescribedAtmosphere(
                 precip,
