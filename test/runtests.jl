@@ -13,7 +13,7 @@ end
     include("integrated/pond_soil_lsm.jl")
 end
 @safetestset "Integrated soil energy/hydrology/biogeochem LSM tests" begin
-    include("integrated/pond_soil_lsm.jl")
+    include("integrated/soil_energy_hydrology_biogeochemistry.jl")
 end
 
 # Shared ClimaLSM utilities tests
