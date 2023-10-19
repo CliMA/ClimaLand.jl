@@ -241,11 +241,17 @@ sol = SciMLBase.solve(
 
 # Plotting
 # Makie plots test
+using CairoMakie
+fig = CairoMakie.Figure()
+ax = CairoMakie.Axis(fig[1, 1])
+plot = CairoMakie.scatter!(ax, rand(4), rand(4))
 
+savedir = joinpath(climalsm_dir, "experiments/integrated/ozark/")
+
+CairoMakie.save(joinpath(savedir, "test.png"), fig)
 
 
 daily = sol.t ./ 3600 ./ 24
-savedir = joinpath(climalsm_dir, "experiments/integrated/ozark/")
 # Number of datapoints per day
 data_daily_points = Int64(86400 / DATA_DT)
 # Number of model points per day
