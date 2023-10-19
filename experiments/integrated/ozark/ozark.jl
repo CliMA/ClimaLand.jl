@@ -476,7 +476,7 @@ Plots.plot!(
     margin = 10Plots.mm,
 )
 
-plot!(
+Plots.plot!(
     plt1,
     daily,
     [parent(sol.u[k].soil.θ_i)[end - 1] for k in 1:1:length(sol.t)],
