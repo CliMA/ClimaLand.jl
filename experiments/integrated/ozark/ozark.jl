@@ -240,7 +240,10 @@ sol = SciMLBase.solve(
 )
 
 # Plotting
-# Makie plots
+# Makie plots test
+
+
+
 daily = sol.t ./ 3600 ./ 24
 savedir = joinpath(climalsm_dir, "experiments/integrated/ozark/")
 # Number of datapoints per day
