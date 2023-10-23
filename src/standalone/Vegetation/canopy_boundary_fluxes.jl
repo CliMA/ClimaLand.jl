@@ -4,7 +4,8 @@ import ClimaLSM:
     surface_air_density,
     surface_evaporative_scaling,
     surface_height,
-    surface_resistance
+    surface_resistance,
+    displacement_height
 
 export canopy_turbulent_surface_fluxes
 
@@ -29,10 +30,9 @@ function canopy_turbulent_surface_fluxes(
     # We upscaled LHF and E from leaf level to canopy level via the
     # upscaling of stomatal conductance.
 
-    # SHF still needs to be upscaled. Following CLM, multiply
-    # by SAI+LAI
-    #    area_index = p.canopy.hydraulics.area_index
-    #    AI = area_index.stem .+ area_index.leaf
+    # SHF still needs to be upscaled. ?
+#    area_index = p.canopy.hydraulics.area_index
+#    AI = area_index.stem .+ area_index.leaf .* 2?
     return conditions.vapor_flux, conditions.shf, conditions.lhf
 end
 
@@ -64,6 +64,17 @@ function ClimaLSM.surface_resistance(model::CanopyModel{FT}, Y, p, t) where {FT}
     return 1 ./ canopy_conductance # [s/m]
 end
 
+"""
+    ClimaLSM.displacment_height(model::CanopyModel, Y, p)
+
+A helper function which returns the displacement height for the canopy
+model.
+
+See Cowan 1968; Brutsaert 1982, pp. 113–116; Campbell and Norman 1998, p. 71; Shuttleworth 2012, p. 343; Monteith and Unsworth 2013, p. 304.
+"""
+function ClimaLSM.displacement_height(model::CanopyModel{FT}, Y, p) where {FT}
+    return FT(0.67) * surface_height(model, Y, p)
+end
 
 """
     ClimaLSM.surface_temperature(model::CanopyModel, Y, p, t)

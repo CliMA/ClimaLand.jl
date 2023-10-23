@@ -19,14 +19,8 @@ import ClimaLSM:
     initialize_auxiliary,
     make_update_aux,
     make_compute_exp_tendency,
-    make_set_initial_aux_state,
-    surface_temperature,
-    surface_specific_humidity,
-    surface_air_density,
-    surface_evaporative_scaling,
-    surface_height,
-    surface_resistance,
-    displacement_height
+    make_set_initial_aux_state
+
 
 using ClimaLSM.Domains: Point, Plane, SphericalSurface
 export SharedCanopyParameters,
@@ -558,11 +552,12 @@ function ClimaLSM.make_update_aux(
         medlyn_factor .=
             medlyn_term.(g1, T_air, P_air, q_air, Ref(thermo_params))
         # Anywhere we use an Arrhenius factor, use T_canopy instead T_air
-        @. Rd = dark_respiration(Vcmax25, β, f, ΔHRd, T_air, To, R)
+        T_canopy = Y.canopy.energy.T
+        @. Rd = dark_respiration(Vcmax25, β, f, ΔHRd, T_canopy, To, R)
         An .=
             compute_photosynthesis.(
                 Ref(canopy.photosynthesis),
-                T_air,
+                T_canopy,
                 medlyn_factor,
                 APAR,
                 c_co2_air,
@@ -619,151 +614,6 @@ function make_compute_exp_tendency(
 
     end
     return compute_exp_tendency!
-end
-
-"""
-    canopy_surface_fluxes(atmos::PrescribedAtmosphere{FT},
-                          model::CanopyModel,
-                          Y,
-                          p,
-                          t::FT) where {FT}
-
-Computes canopy transpiration using Monin-Obukhov Surface Theory,
-the prescribed atmospheric conditions, and the canopy conductance.
-
-Please note that in the future the SurfaceFluxes.jl code will compute
-fluxes taking into account the canopy conductance, so that
-what is returned by `surface_fluxes` is correct. At present, it does not,
-so we are adjusting for it after the fact here in both ET and LHF.
-"""
-function canopy_surface_fluxes(
-    atmos::PrescribedAtmosphere{FT},
-    model::CanopyModel,
-    Y,
-    p,
-    t::FT,
-) where {FT}
-    conditions = surface_fluxes(atmos, model, Y, p, t) # per unit m^2 of leaf
-    return conditions.vapor_flux, conditions.shf, conditions.lhf
-end
-
-"""
-    ClimaLSM.surface_resistance(
-        model::CanopyModel{FT},
-        Y,
-        p,
-        t,
-    ) where {FT}
-Returns the surface resistance field of the
-`CanopyModel` canopy.
-"""
-function ClimaLSM.surface_resistance(model::CanopyModel{FT}, Y, p, t) where {FT}
-    earth_param_set = model.parameters.earth_param_set
-    R = FT(LSMP.gas_constant(earth_param_set))
-    ρ_liq = FT(LSMP.ρ_cloud_liq(earth_param_set))
-    P_air::FT = model.atmos.P(t)
-    T_air::FT = model.atmos.T(t)
-    leaf_conductance = p.canopy.conductance.gs
-    canopy_conductance =
-        upscale_leaf_conductance.(
-            leaf_conductance,
-            p.canopy.hydraulics.area_index.leaf,
-            T_air,
-            R,
-            P_air,
-        )
-    return 1 ./ canopy_conductance # [s/m]
-end
-
-"""
-    ClimaLSM.surface_temperature(model::CanopyModel, Y, p, t)
-
-A helper function which returns the surface temperature for the canopy
-model, which is stored in the aux state.
-"""
-function ClimaLSM.surface_temperature(model::CanopyModel, Y, p, t)
-    return canopy_temperature(model.energy, model, Y, p, t)
-end
-
-"""
-    ClimaLSM.surface_height(model::CanopyModel, Y, _...)
-
-A helper function which returns the surface height for the canopy
-model, which is stored in the parameter struct.
-"""
-function ClimaLSM.surface_height(model::CanopyModel, _...)
-    return model.hydraulics.compartment_surfaces[end]
-end
-
-
-"""
-    ClimaLSM.displacment_height(model::CanopyModel, Y, _...)
-
-A helper function which returns the displacement height for the canopy
-model.
-
-See Cowan 1968; Brutsaert 1982, pp. 113–116; Campbell and Norman 1998, p. 71; Shuttleworth 2012, p. 343; Monteith and Unsworth 2013, p. 304.
-"""
-function ClimaLSM.displacement_height(model::CanopyModel{FT}, _...) where {FT}
-    return FT(0.67) * surface_height(model, Y, p)
-end
-
-"""
-    ClimaLSM.surface_specific_humidity(model::CanopyModel, Y, p)
-
-A helper function which returns the surface specific humidity for the canopy
-model, which is stored in the aux state.
-"""
-function ClimaLSM.surface_specific_humidity(
-    model::CanopyModel,
-    Y,
-    p,
-    T_canopy,
-    ρ_canopy,
-)
-    thermo_params =
-        LSMP.thermodynamic_parameters(model.parameters.earth_param_set)
-    return Thermodynamics.q_vap_saturation_generic.(
-        Ref(thermo_params),
-        T_canopy,
-        ρ_canopy,
-        Ref(Thermodynamics.Liquid()),
-    )
-end
-
-"""
-    ClimaLSM.surface_air_density(model::CanopyModel, Y, p)
-
-A helper function which computes and returns the surface air density for the canopy
-model.
-"""
-function ClimaLSM.surface_air_density(
-    atmos::PrescribedAtmosphere,
-    model::CanopyModel,
-    Y,
-    p,
-    t,
-    T_canopy,
-)
-    thermo_params =
-        LSMP.thermodynamic_parameters(model.parameters.earth_param_set)
-    ts_in = construct_atmos_ts(atmos, t, thermo_params)
-    return compute_ρ_sfc.(Ref(thermo_params), Ref(ts_in), T_canopy)
-end
-
-"""
-    ClimaLSM.surface_evaporative_scaling(model::CanopyModel, Y, p)
-
-A helper function which computes and returns the surface evaporative scaling
- factor for the canopy model.
-"""
-function ClimaLSM.surface_evaporative_scaling(
-    model::CanopyModel{FT},
-    Y,
-    p,
-) where {FT}
-    beta = FT(1.0)
-    return beta
 end
 
 #Make the canopy model broadcastable

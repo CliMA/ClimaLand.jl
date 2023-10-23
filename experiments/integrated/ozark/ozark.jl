@@ -676,11 +676,12 @@ Plots.savefig(joinpath(savedir, "leaf_water_potential.png"))
 
 # Soil Temperature
 
-# The second layer is ~ 5cm, third is at 11cm
-soil_T_5 = [parent(sv.saveval[k].soil.T)[end - 1] for k in 1:length(sol.t)]
+# The second layer is ~ 5cm
+soil_T_5 = [parent(sv.saveval[k].soil.T)[end-1] for k in 1:length(sol.t)]
 soil_T_5_avg = diurnal_avg(soil_T_5)
-soil_T_10 = [parent(sv.saveval[k].soil.T)[end - 2] for k in 1:length(sol.t)]
-soil_T_10_avg = diurnal_avg(soil_T_10)
+soil_T_sfc = [parent(sv.saveval[k].soil.T)[end] for k in 1:length(sol.t)]
+soil_T_sfc_avg = diurnal_avg(soil_T_sfc)
+
 canopy_T = [
     parent(
         ClimaLSM.Canopy.canopy_temperature(
@@ -702,24 +703,24 @@ Plots.plot!(
     plt1,
     data_daily_indices,
     TS_avg,
-    label = "Tsoil (data)",
+    label = "Soil-D",
     title = "Temperature",
 )
-Plots.plot!(plt1, data_daily_indices, TA_avg, label = "Tair (data)")
+Plots.plot!(plt1, data_daily_indices, TA_avg, label = "Atmos-D")
 Plots.plot!(
     plt1,
     model_daily_indices,
     soil_T_5_avg,
-    label = "Tsoil (model; 5cm)",
+    label = "Soil-M-5cm",
 )
-
 Plots.plot!(
     plt1,
     model_daily_indices,
-    soil_T_10_avg,
-    label = "Tsoil (model; 11cm)",
+    soil_T_sfc_avg,
+    label = "Soil-M-1cm",
 )
-Plots.plot!(plt1, model_daily_indices, canopy_T_avg, label = "T canopy (model)")
+
+Plots.plot!(plt1, model_daily_indices, canopy_T_avg, label = "Canopy-M")
 Plots.plot!(plt1, xlabel = "Hour of day", ylabel = "Average over Simulation")
 Plots.plot!(plt1, margins = 10Plots.mm)
 Plots.savefig(joinpath(savedir, "temperature.png"))

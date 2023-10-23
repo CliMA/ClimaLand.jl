@@ -1,7 +1,7 @@
 t0 = FT(120 * 3600 * 24)# start mid year
 N_days_spinup = 10
 N_days = 30 + N_days_spinup
-dt = FT(240)
+dt = FT(120)
 tf = t0 + FT(3600 * 24 * N_days)
 # Number of timesteps between saving output
 n = 30

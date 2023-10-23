@@ -225,7 +225,7 @@ function surface_fluxes_at_a_point(
     ts_sfc = Thermodynamics.PhaseEquil_ρTq(thermo_params, ρ_sfc, T_sfc, q_sfc)
 
     state_sfc =
-        SurfaceFluxes.SurfaceValues(h_sfc - d_sfc, SVector{2, FT}(0, 0), ts_sfc)
+        SurfaceFluxes.SurfaceValues(FT(0), SVector{2, FT}(0, 0), ts_sfc)
     state_in =
         SurfaceFluxes.InteriorValues(h - d_sfc, SVector{2, FT}(u, 0), ts_in)
 
@@ -248,16 +248,18 @@ function surface_fluxes_at_a_point(
     cp_d::FT = Thermodynamics.Parameters.cp_d(thermo_params)
     R_d::FT = Thermodynamics.Parameters.R_d(thermo_params)
     T_0::FT = LSMP.T_0(earth_param_set)
+    _LH_v0::FT = LSMP.LH_v0(earth_param_set)
     cp_m = Thermodynamics.cp_m(thermo_params, ts_in)
     T_in = Thermodynamics.air_temperature(thermo_params, ts_in)
     ΔT = T_in - T_sfc
     hd_sfc = cp_d * (T_sfc - T_0) + R_d * T_0
     E0 = SurfaceFluxes.evaporation(surface_flux_params, sc, conditions.Ch)
     r_ae = 1 / (conditions.Ch * SurfaceFluxes.windspeed(sc))
+    ρ_air = Thermodynamics.air_density(thermo_params, ts_in)
     E = E0 * r_ae / (r_sfc + r_ae)
     Ẽ = E / _ρ_liq
-    H = conditions.shf + hd_sfc * E0
-    LH = conditions.lhf * r_ae / (r_sfc + r_ae) - hd_sfc * E
+    H = -ρ_air * cp_m * ΔT / r_ae#conditions.shf + hd_sfc * E0
+    LH = _LH_v0*E#conditions.lhf * r_ae / (r_sfc + r_ae) - hd_sfc * E
     return (lhf = LH, shf = H, vapor_flux = Ẽ, r_ae = r_ae)
 end
 
