@@ -1,7 +1,10 @@
 using ..ClimaLSM.Canopy: AbstractSoilDriver
 
 export BeerLambertParameters,
-    BeerLambertModel, TwoStreamParameters, TwoStreamModel
+    BeerLambertModel,
+    TwoStreamParameters,
+    TwoStreamModel,
+    canopy_radiant_energy_fluxes!
 
 abstract type AbstractRadiationModel{FT} <: AbstractCanopyComponent{FT} end
 
@@ -186,10 +189,10 @@ Base.broadcastable(RT::AbstractRadiationModel) = tuple(RT)
 
 ClimaLSM.name(model::AbstractRadiationModel) = :radiative_transfer
 ClimaLSM.auxiliary_vars(model::Union{BeerLambertModel, TwoStreamModel}) =
-    (:apar, :par, :rpar, :tpar, :anir, :nir, :rnir, :tnir)
+    (:apar, :par, :rpar, :tpar, :anir, :nir, :rnir, :tnir, :LW_n, :SW_n)
 ClimaLSM.auxiliary_types(
     model::Union{BeerLambertModel{FT}, TwoStreamModel{FT}},
-) where {FT} = (FT, FT, FT, FT, FT, FT, FT, FT)
+) where {FT} = (FT, FT, FT, FT, FT, FT, FT, FT, FT, FT)
 ClimaLSM.auxiliary_domain_names(::Union{BeerLambertModel, TwoStreamModel}) = (
     :surface,
     :surface,
@@ -199,4 +202,42 @@ ClimaLSM.auxiliary_domain_names(::Union{BeerLambertModel, TwoStreamModel}) = (
     :surface,
     :surface,
     :surface,
+    :surface,
+    :surface,
 )
+
+function canopy_radiant_energy_fluxes!(
+    p::NamedTuple,
+    s::PrescribedSoil{FT},
+    canopy,
+    radiation::PrescribedRadiativeFluxes,
+    earth_param_set::PSE,
+    Y::ClimaCore.Fields.FieldVector,
+    t::FT,
+) where {FT, PSE}
+
+    T_soil = s.T_soil(t)
+    ϵ_soil = s.ϵ_soil
+    c = FT(LSMP.light_speed(earth_param_set))
+    h = FT(LSMP.planck_constant(earth_param_set))
+    N_a = FT(LSMP.avogadro_constant(earth_param_set))
+    _σ = FT(LSMP.Stefan(earth_param_set))
+    (; α_PAR_leaf, λ_γ_PAR, λ_γ_NIR, ϵ_canopy) =
+        canopy.radiative_transfer.parameters
+    APAR = p.canopy.radiative_transfer.apar
+    ANIR = p.canopy.radiative_transfer.anir
+    energy_per_photon_PAR = h * c / λ_γ_PAR
+    energy_per_photon_NIR = h * c / λ_γ_NIR
+    LW_d::FT = canopy.radiation.LW_d(t)
+    SW_d::FT = canopy.radiation.SW_d(t)
+
+    T_canopy = canopy_temperature(canopy.energy, canopy, Y, p, t)
+    LW_d_canopy = @. (1 - ϵ_canopy) * LW_d + ϵ_canopy * _σ * T_canopy^4
+    LW_u_soil = @. ϵ_soil * _σ * T_soil^4 + (1 - ϵ_soil) * LW_d_canopy
+    @. p.canopy.radiative_transfer.LW_n =
+        ϵ_canopy * LW_d - 2 * ϵ_canopy * _σ * T_canopy^4 + ϵ_canopy * LW_u_soil
+    @. p.canopy.radiative_transfer.SW_n =
+        (energy_per_photon_PAR * N_a * APAR) +
+        (energy_per_photon_NIR * N_a * ANIR)
+
+end

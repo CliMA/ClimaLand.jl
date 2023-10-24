@@ -25,7 +25,7 @@ export PlantHydraulicsModel,
     augmented_liquid_fraction,
     water_retention_curve,
     inverse_water_retention_curve,
-    root_flux_per_ground_area!,
+    root_water_flux_per_ground_area!,
     PlantHydraulicsParameters,
     PrescribedTranspiration,
     DiagnosticTranspiration,
@@ -549,14 +549,6 @@ function make_compute_exp_tendency(model::PlantHydraulicsModel, canopy)
                 )
             if i == 1
                 # All fluxes `fa` are per unit area of ground
-                root_flux_per_ground_area!(
-                    fa_roots,
-                    canopy.soil_driver,
-                    model,
-                    Y,
-                    p,
-                    t,
-                )
                 @inbounds @. dY.canopy.hydraulics.ϑ_l.:($$i) =
                     1 / AIdz * (fa_roots - fa.:($$i))
             else
@@ -569,8 +561,8 @@ function make_compute_exp_tendency(model::PlantHydraulicsModel, canopy)
 end
 
 """
-    root_flux_per_ground_area!(
-        fa::ClimaCore.Fields.Field,
+    root_water_flux_per_ground_area!(
+        fa_water::ClimaCore.Fields.Field,
         s::PrescribedSoil{FT},
         model::PlantHydraulicsModel{FT},
         Y::ClimaCore.Fields.FieldVector,
@@ -585,7 +577,7 @@ soil model.
 The returned flux is per unit ground area. This assumes that the stem compartment
 is the first element of `Y.canopy.hydraulics.ϑ_l`.
 """
-function root_flux_per_ground_area!(
+function root_water_flux_per_ground_area!(
     fa::ClimaCore.Fields.Field,
     s::PrescribedSoil{FT},
     model::PlantHydraulicsModel{FT},

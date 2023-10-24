@@ -31,11 +31,11 @@ soil_vg_α = FT(0.04) # inverse meters
 κ_sat_frozen = Soil.κ_sat_frozen(κ_solid, soil_ν, κ_ice)
 κ_sat_unfrozen = Soil.κ_sat_unfrozen(κ_solid, soil_ν, κ_liq);
 ρc_ds = FT((1 - soil_ν) * 4e6); # J/m^3/K
-z_0m_soil = FT(0.1)
-z_0b_soil = FT(0.1)
+z_0m_soil = FT(0.01)
+z_0b_soil = FT(0.001)
 soil_ϵ = FT(0.98)
 soil_α_PAR = FT(0.2)
-soil_α_NIR = FT(0.2)
+soil_α_NIR = FT(0.3)
 
 # TwoStreamModel parameters
 Ω = FT(0.69)
@@ -49,8 +49,11 @@ ld = FT(0.5)
 n_layers = UInt64(20)
 ϵ_canopy = FT(0.97)
 
+# Energy Balance model
+ρc_canopy = FT(3.0e2)
+
 # Conductance Model
-g1 = FT(141) # Wang et al: 141 sqrt(Pa) for Medlyn model; Natan used 300.
+g1 = FT(70) # Wang et al: 141 sqrt(Pa) for Medlyn model; Natan used 300.
 Drel = FT(1.6)
 g0 = FT(1e-4)
 
@@ -81,7 +84,7 @@ RAI = (SAI + maxLAI) * f_root_to_shoot # CLM
 K_sat_plant = 5e-9 # m/s # seems much too small?
 ψ63 = FT(-4 / 0.0098) # / MPa to m, Holtzman's original parameter value is -4 MPa
 Weibull_param = FT(4) # unitless, Holtzman's original c param value
-a = FT(0.05 * 0.0098) # Holtzman's original parameter for the bulk modulus of elasticity
+a = FT(0.08 * 0.0098) # Natan used 0.05
 conductivity_model =
     PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
 retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a)
@@ -89,5 +92,5 @@ capacity = FT(10) # kg/m^2
 plant_ν = capacity / (maxLAI / 2 * h_leaf + SAI * h_stem) / FT(1000)
 plant_S_s = FT(1e-2 * 0.0098) # m3/m3/MPa to m3/m3/m
 rooting_depth = FT(0.5) # from Natan
-z0_m = FT(2)
-z0_b = FT(0.2)
+z0_m = FT(0.13) * h_canopy
+z0_b = FT(0.1) * z0_m

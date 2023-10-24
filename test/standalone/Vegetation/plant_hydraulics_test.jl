@@ -1,3 +1,4 @@
+
 using Test
 using Statistics
 using NLsolve
@@ -234,11 +235,18 @@ end
     end
 
     ψ_soil0 = FT(0.0)
+    T_soil0 = FT(280)
     transpiration =
         PrescribedTranspiration{FT}((t::FT) -> leaf_transpiration(t))
 
-    soil_driver =
-        PrescribedSoil(root_depths, (t::FT) -> ψ_soil0, FT(0.2), FT(0.4))
+    soil_driver = PrescribedSoil(
+        root_depths,
+        (t::FT) -> ψ_soil0,
+        (t::FT) -> T_soil0,
+        FT(0.2),
+        FT(0.4),
+        FT(0.98),
+    )
 
     plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
         parameters = param_set,
@@ -362,33 +370,6 @@ end
         end
         @test maximum(parent(m)) < 1e-11 # starts in equilibrium
 
-
-        # repeat using the plant hydraulics model directly
-        # make sure it agrees with what we get when use the canopy model ODE
-        Y, p, coords = initialize(model)
-        standalone_dY = similar(Y)
-        for i in 1:(n_stem + n_leaf)
-            Y.canopy.hydraulics.ϑ_l.:($i) .= ϑ_l_0[i]
-            p.canopy.hydraulics.ψ.:($i) .= NaN
-            p.canopy.hydraulics.fa.:($i) .= NaN
-            standalone_dY.canopy.hydraulics.ϑ_l.:($i) .= NaN
-        end
-        set_initial_aux_state!(p, Y, 0.0)
-        standalone_exp_tendency! =
-            make_compute_exp_tendency(model.hydraulics, model)
-        standalone_exp_tendency!(standalone_dY, Y, p, 0.0)
-
-        m = similar(dY.canopy.hydraulics.ϑ_l.:1)
-        m .= FT(0)
-        for i in 1:(n_stem + n_leaf)
-            @. m += sqrt(
-                (
-                    dY.canopy.hydraulics.ϑ_l.:($$i) -
-                    standalone_dY.canopy.hydraulics.ϑ_l.:($$i)
-                )^2.0,
-            )
-        end
-        @test sum(parent(m)) < eps(FT)
     end
 end
 
@@ -515,10 +496,17 @@ end
         retention_model = retention_model,
     )
 
-    ψ_soil0 = FT(0.0)
     transpiration = DiagnosticTranspiration{FT}()
-    soil_driver =
-        PrescribedSoil(root_depths, (t::FT) -> ψ_soil0, FT(0.2), FT(0.4))
+    ψ_soil0 = FT(0.0)
+    T_soil0 = FT(280)
+    soil_driver = PrescribedSoil(
+        root_depths,
+        (t::FT) -> ψ_soil0,
+        (t::FT) -> T_soil0,
+        FT(0.2),
+        FT(0.4),
+        FT(0.98),
+    )
 
     plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
         parameters = param_set,
