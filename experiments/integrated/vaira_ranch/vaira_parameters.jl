@@ -7,20 +7,18 @@ ne = FT(8 * 1e-4)
 f1 = FT(0.012)
 f2 = FT(0.25)
 
-# Soil parameters - Bonan silt loam
-soil_ν = FT(0.485) # m3/m3
-soil_K_sat = FT(4e-7)#FT(2.59 / 3600 / 100) # m/s,
+# Soil parameters
+soil_ν = FT(0.45) # m3/m3
+soil_K_sat = FT(0.45 / 3600 / 100) # m/s,
 soil_S_s = FT(1e-3) # 1/m, guess
-soil_vg_n = FT(1.69) # unitless
-soil_vg_α = FT(7.5) # inverse meters
-#soil_bc_c = FT(0.188) # unitless
-#soil_bc_ψb = FT(-0.786) # inverse meters
-θ_r = FT(0.0) # m3/m3, 
+soil_vg_n = FT(2.0) # unitless
+soil_vg_α = FT(2.0) # inverse meters
+θ_r = FT(0.067) # m3/m3, 
 
 # Soil heat transfer parameters; not needed for hydrology only test
-ν_ss_quartz = FT(0.295)
+ν_ss_quartz = FT(0.38)
 ν_ss_om = FT(0.0)
-ν_ss_gravel = FT(0.0);
+ν_ss_gravel = FT(0.1);
 κ_quartz = FT(7.7) # W/m/K
 κ_minerals = FT(2.5) # W/m/K
 κ_om = FT(0.25) # W/m/K
@@ -33,23 +31,22 @@ soil_vg_α = FT(7.5) # inverse meters
 κ_sat_frozen = Soil.κ_sat_frozen(κ_solid, soil_ν, κ_ice)
 κ_sat_unfrozen = Soil.κ_sat_unfrozen(κ_solid, soil_ν, κ_liq);
 ρc_ds = FT((1 - soil_ν) * 4e6); # J/m^3/K
-z_0m_soil = FT(0.1)
-z_0b_soil = FT(0.1)
+z_0m_soil = FT(0.01)
+z_0b_soil = FT(0.001)
 soil_ϵ = FT(0.98)
-soil_α_PAR = FT(0.2)
-soil_α_NIR = FT(0.2)
+soil_α_PAR = FT(0.3)
+soil_α_NIR = FT(0.4)
 
 # TwoStreamModel parameters
-Ω = FT(0.8)
+Ω = FT(1.0)
 ld = FT(0.5)
-α_PAR_leaf = FT(0.1)
+α_PAR_leaf = FT(0.11)
 λ_γ_PAR = FT(5e-7)
 λ_γ_NIR = FT(1.65e-6)
 τ_PAR_leaf = FT(0.05)
-α_NIR_leaf = FT(0.45)
-τ_NIR_leaf = FT(0.25)
+α_NIR_leaf = FT(0.35)
+τ_NIR_leaf = FT(0.34)
 n_layers = UInt64(20)
-diff_perc = FT(0.2)
 ϵ_canopy = FT(0.97)
 
 # Conductance Model
@@ -64,7 +61,7 @@ oi = FT(0.209)
 f = FT(0.015)
 sc = FT(2e-6) # Bonan's book: range of 2-5e-6
 pc = FT(-2e6) # Bonan's book: -2e6
-Vcmax25 = FT(5e-5) # ????
+Vcmax25 = FT(4e-5) # CLM C3 grass
 Γstar25 = FT(4.275e-5)
 Kc25 = FT(4.049e-4)
 Ko25 = FT(0.2874)
@@ -75,6 +72,9 @@ To = FT(298.15)
 ΔHΓstar = FT(37830)
 ΔHJmax = FT(43540)
 ΔHRd = FT(46390)
+
+# Energy Balance model
+ρc_canopy = FT(2e3)
 
 # Plant Hydraulics and general plant parameters
 maxLAI = FT(maximum(LAI_timeseries))
@@ -88,9 +88,9 @@ a = FT(0.05 * 0.0098) # Holtzman's original parameter for the bulk modulus of el
 conductivity_model =
     PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
 retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a)
-capacity = FT(22.0) # kg/m^2
+capacity = FT(2.0) # kg/m^2
 plant_ν = capacity / (maxLAI * h_leaf) / FT(1000)
 plant_S_s = FT(1e-2 * 0.0098) # m3/m3/MPa to m3/m3/m
 rooting_depth = FT(2.6) # from Bonan Table 2.3
-z0_m = FT(0.25)
-z0_b = FT(0.25)
+z0_m = FT(0.13) * h_canopy
+z0_b = FT(0.1) * z0_m
