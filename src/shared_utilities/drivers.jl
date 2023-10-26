@@ -218,15 +218,15 @@ function surface_fluxes_at_a_point(
     ts_in = construct_atmos_ts(atmos, t, thermo_params)
     ts_sfc = Thermodynamics.PhaseEquil_ρTq(thermo_params, ρ_sfc, T_sfc, q_sfc)
 
-    state_sfc = SurfaceFluxes.SurfaceValues(h_sfc, SVector{2, FT}(0, 0), ts_sfc)
-    state_in = SurfaceFluxes.InteriorValues(h, SVector{2, FT}(u, 0), ts_in)
+    state_sfc = SurfaceFluxes.StateValues(h_sfc, SVector{2, FT}(0, 0), ts_sfc)
+    state_in = SurfaceFluxes.StateValues(h, SVector{2, FT}(u, 0), ts_in)
 
     # State containers
-    sc = SurfaceFluxes.ValuesOnly{FT}(;
+    sc = SurfaceFluxes.ValuesOnly(
         state_in,
         state_sfc,
-        z0m = z_0m,
-        z0b = z_0b,
+        z_0m,
+        z_0b,
         beta = β_sfc,
         gustiness = atmos.gustiness,
     )
