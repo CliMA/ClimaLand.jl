@@ -220,21 +220,15 @@ for i in 1:length(sol.t)
         parent(ClimaLSM.surface_specific_humidity(soil, Y, p, T_sfc, ρ_sfc))[1]
     push!(q_soil, q_sfc)
     ts_sfc = Thermodynamics.PhaseEquil_ρTq(thermo_params, ρ_sfc, T_sfc, q_sfc)
-    state_sfc = SurfaceFluxes.SurfaceValues(0.0, SVector{2, FT}(0, 0), ts_sfc)
-    state_in = SurfaceFluxes.InteriorValues(
+    state_sfc = SurfaceFluxes.StateValues(0.0, SVector{2, FT}(0, 0), ts_sfc)
+    state_in = SurfaceFluxes.StateValues(
         h_atmos,
         SVector{2, FT}(u_atmos(time), 0),
         ts_in,
     )
 
     # State containers
-    sc = SurfaceFluxes.ValuesOnly{FT}(;
-        state_in,
-        state_sfc,
-        z0m = z_0m,
-        z0b = z_0b,
-        beta = 1.0,
-    )
+    sc = SurfaceFluxes.ValuesOnly(state_in, state_sfc, z_0m, z_0b, beta = 1.0)
     potential_conditions = SurfaceFluxes.surface_conditions(
         surface_flux_params,
         sc;
