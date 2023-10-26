@@ -27,10 +27,10 @@ ClimaLSM.PrognosticRunoff
 ClimaLSM.RunoffBC
 ```
 
-## SoilPlantHydrologyModel
+## SoilCanopyModel
 
 ```@docs
-ClimaLSM.PrognosticSoilPressure
+ClimaLSM.PrognosticSoil
 ClimaLSM.RootExtraction
 ```
 

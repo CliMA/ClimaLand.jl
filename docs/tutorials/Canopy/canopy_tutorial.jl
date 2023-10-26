@@ -114,11 +114,13 @@ shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
 
 ψ_soil0 = FT(0.0)
 
-soil_driver = PrescribedSoil(
+soil_driver = PrescribedSoil{FT}(
     root_depths = FT.(-Array(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0),
-    ψ_soil = t -> eltype(t)(ψ_soil0),
-    soil_α_PAR = FT(0.2),
-    soil_α_NIR = FT(0.4),
+    ψ = t -> eltype(t)(ψ_soil0),
+    α_PAR = FT(0.2),
+    α_NIR = FT(0.4),
+    T = t -> 298.0,
+    ϵ = FT(0.99),
 );
 
 # Now, setup the canopy model by component.

@@ -41,48 +41,6 @@ of the function `soil_boundary_fluxes` in this case.
 struct CanopyRadiativeFluxes{FT} <: AbstractRadiativeDrivers{FT} end
 
 """
-    soil_boundary_fluxes(
-        bc::AtmosDrivenFluxBC{<:PrescribedAtmosphere, <:CanopyRadiativeFluxes},
-        boundary::ClimaLSM.TopBoundary,
-        model::EnergyHydrology{FT},
-        Y,
-        Δz,
-        p,
-        t,
-    ) where {FT}
-
-A method of `ClimaLSM.Soil.soil_boundary_fluxes` which is used for
-integrated land surface models; this computes and returns the net
-energy and water flux at the surface of the soil for use as boundary
-conditions.
-
-The net radiative, sensible heat, latent heat, and evaporative fluxes 
-are computed and stored in the auxiliary state of the integrated land 
-surface models, and this function simply returns those. They are updated
-each time step in `update_aux`.
-"""
-function soil_boundary_fluxes(
-    bc::AtmosDrivenFluxBC{<:PrescribedAtmosphere, <:CanopyRadiativeFluxes},
-    boundary::ClimaLSM.TopBoundary,
-    model::EnergyHydrology{FT},
-    Y,
-    Δz,
-    p,
-    t,
-) where {FT}
-    infiltration = soil_surface_infiltration(
-        bc.runoff,
-        bc.atmos.liquid_precip(t) .+ p.soil_evap,
-        Y,
-        p,
-        t,
-        model.parameters,
-    )
-    G = @. -p.soil_LW_n - p.soil_SW_n + p.soil_lhf + p.soil_shf
-    return infiltration, G
-end
-
-"""
     SoilCanopyModel{FT}(;
                          land_args::NamedTuple = (;),
                          soil_model_type::Type{SM},
@@ -132,11 +90,6 @@ function SoilCanopyModel{FT}(;
 
     transpiration = Canopy.PlantHydraulics.DiagnosticTranspiration{FT}()
 
-    soil_driver = PrognosticSoil(;
-        soil_α_PAR = soil.parameters.PAR_albedo,
-        soil_α_NIR = soil.parameters.NIR_albedo,
-    )
-
     canopy = Canopy.CanopyModel{FT}(;
         autotrophic_respiration = canopy_component_types.autotrophic_respiration(
             canopy_component_args.autotrophic_respiration...,
@@ -154,7 +107,10 @@ function SoilCanopyModel{FT}(;
             transpiration = transpiration,
             canopy_component_args.hydraulics...,
         ),
-        soil_driver = soil_driver,
+        soil_driver = PrognosticSoil{FT}(
+            soil.parameters.PAR_albedo,
+            soil.parameters.NIR_albedo,
+        ),
         atmos = atmos,
         radiation = radiation,
         canopy_model_args...,
@@ -177,8 +133,6 @@ interaction_vars(m::SoilCanopyModel) = (
     :soil_shf,
     :soil_lhf,
     :T_soil,
-    :α_soil,
-    :ϵ_soil,
     :canopy_LW_n,
     :canopy_SW_n,
     :LW_out,
@@ -192,7 +146,7 @@ The types of the additional auxiliary variables that are
 included in the integrated Soil-Canopy model.
 """
 interaction_types(m::SoilCanopyModel{FT}) where {FT} =
-    (FT, FT, FT, FT, FT, FT, FT, FT, FT, FT, FT, FT, FT)
+    (FT, FT, FT, FT, FT, FT, FT, FT, FT, FT, FT)
 
 """
     interaction_domain_names(m::SoilCanopyModel)
@@ -202,8 +156,6 @@ included in the integrated Soil-Canopy model.
 """
 interaction_domain_names(m::SoilCanopyModel) = (
     :subsurface,
-    :surface,
-    :surface,
     :surface,
     :surface,
     :surface,
@@ -270,8 +222,6 @@ function make_interactions_update_aux(
         @. p.soil_evap = soil_conditions.vapor_flux
         @. p.soil_lhf = soil_conditions.lhf
         p.T_soil .= surface_temperature(land.soil, Y, p, t)
-        p.α_soil .= surface_albedo(land.soil, Y, p)
-        p.ϵ_soil .= surface_emissivity(land.soil, Y, p)
         lsm_radiation_update!(
             p,
             land.canopy.radiative_transfer,
@@ -324,10 +274,10 @@ function lsm_radiation_update!(
     T_canopy =
         ClimaLSM.Canopy.canopy_temperature(canopy.energy, canopy, Y, p, t)
     T_soil = p.T_soil
-    α_soil_PAR = Canopy.ground_albedo_PAR(canopy)
-    α_soil_NIR = Canopy.ground_albedo_NIR(canopy)
+    α_soil_PAR = Canopy.ground_albedo_PAR(canopy.soil_driver, Y, p, t)
+    α_soil_NIR = Canopy.ground_albedo_NIR(canopy.soil_driver, Y, p, t)
 
-    ϵ_soil = p.ϵ_soil
+    ϵ_soil = ground_model.parameters.emissivity
     # in W/m^2
     PAR = p.canopy.radiative_transfer.par
     NIR = p.canopy.radiative_transfer.nir
@@ -369,8 +319,76 @@ function lsm_radiation_update!(
     @. LW_out = (1 - ϵ_canopy) * LW_u_soil + ϵ_canopy * _σ * T_canopy^4 # double checked
 end
 
+
+### Extensions of existing functions to account for prognostic soil/canopy
 """
-    PlantHydraulics.root_flux_per_ground_area!(
+    soil_boundary_fluxes(
+        bc::AtmosDrivenFluxBC{<:PrescribedAtmosphere, <:CanopyRadiativeFluxes},
+        boundary::ClimaLSM.TopBoundary,
+        model::EnergyHydrology{FT},
+        Y,
+        Δz,
+        p,
+        t,
+    ) where {FT}
+
+A method of `ClimaLSM.Soil.soil_boundary_fluxes` which is used for
+integrated land surface models; this computes and returns the net
+energy and water flux at the surface of the soil for use as boundary
+conditions.
+
+The net radiative, sensible heat, latent heat, and evaporative fluxes 
+are computed and stored in the auxiliary state of the integrated land 
+surface models, and this function simply returns those. They are updated
+each time step in `update_aux`.
+"""
+function soil_boundary_fluxes(
+    bc::AtmosDrivenFluxBC{<:PrescribedAtmosphere, <:CanopyRadiativeFluxes},
+    boundary::ClimaLSM.TopBoundary,
+    model::EnergyHydrology{FT},
+    Y,
+    Δz,
+    p,
+    t,
+) where {FT}
+    infiltration = soil_surface_infiltration(
+        bc.runoff,
+        bc.atmos.liquid_precip(t) .+ p.soil_evap,
+        Y,
+        p,
+        t,
+        model.parameters,
+    )
+    G = @. -p.soil_LW_n - p.soil_SW_n + p.soil_lhf + p.soil_shf
+    return infiltration, G
+end
+
+
+"""
+     PrognosticSoil{FT} <: AbstractSoilDriver{FT}
+
+Concrete type of AbstractSoilDriver used for dispatch in cases where both 
+a canopy model and soil model are run. 
+$(DocStringExtensions.FIELDS)
+"""
+struct PrognosticSoil{FT} <: AbstractSoilDriver{FT}
+    "Soil albedo for PAR"
+    α_PAR::FT
+    "Soil albedo for NIR"
+    α_NIR::FT
+end
+
+function Canopy.ground_albedo_PAR(soil_driver::PrognosticSoil, Y, p, t)
+    return soil_driver.α_PAR
+end
+
+function Canopy.ground_albedo_NIR(soil_driver::PrognosticSoil, Y, p, t)
+    return soil_driver.α_NIR
+end
+
+
+"""
+    PlantHydraulics.root_water_flux_per_ground_area!(
         fa::ClimaCore.Fields.Field,
         s::PrognosticSoil,
         model::Canopy.PlantHydraulics.PlantHydraulicsModel{FT},
@@ -379,7 +397,7 @@ end
         t::FT,
     ) where {FT}
 
-An extension of the `PlantHydraulics.root_flux_per_ground_area!` function,
+An extension of the `PlantHydraulics.root_water_flux_per_ground_area!` function,
  which returns the
 net flux of water between the
 roots and the soil, per unit ground area, 
@@ -389,7 +407,7 @@ hydraulics are modeled prognostically. This is for use in an LSM.
 It is computed by summing the flux of water per ground area between
 roots and soil at each soil layer.
 """
-function PlantHydraulics.root_flux_per_ground_area!(
+function PlantHydraulics.root_water_flux_per_ground_area!(
     fa::ClimaCore.Fields.Field,
     s::PrognosticSoil,
     model::Canopy.PlantHydraulics.PlantHydraulicsModel{FT},

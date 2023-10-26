@@ -1,4 +1,4 @@
-export AbstractSoilDriver, PrescribedSoil, PrognosticSoil
+export AbstractSoilDriver, PrescribedSoil, ground_albedo_NIR, ground_albedo_PAR
 
 """
 An abstract type of soil drivers of the canopy model.
@@ -9,71 +9,64 @@ abstract type AbstractSoilDriver{FT <: AbstractFloat} end
      PrescribedSoil{FT} <: AbstractSoilDriver{FT}
 
 A container for holding prescribed soil parameters needed by the canopy model
-when running the canopy in standalone mode, including the soil pressure and 
-albedo.
+when running the canopy in standalone mode, including the soil pressure, surface
+temperature, and albedo.
 $(DocStringExtensions.FIELDS)
 """
 struct PrescribedSoil{FT} <: AbstractSoilDriver{FT}
     "The depth of the root tips, in meters"
     root_depths::Vector{FT}
-    "Prescribed soil potential (m) as a function of time"
-    ψ_soil::Function
+    "Prescribed soil potential (m) in the root zone  a function of time"
+    ψ::Function
+    "Prescribed soil surface temperature (K) as a function of time"
+    T::Function
     "Soil albedo for PAR"
-    soil_α_PAR::FT
+    α_PAR::FT
     "Soil albedo for NIR"
-    soil_α_NIR::FT
+    α_NIR::FT
+    "Soil emissivity"
+    ϵ::FT
 end
 
 """
      function PrescribedSoil{FT}(;
          root_depths::Vector{FT},
-         ψ_soil::Function,
-         soil_α::FT
+         ψ::Function,
+         T::Function,
+         α_PAR::FT,
+         α_NIR::FT,
+         ϵ::FT
      ) where {FT}
 
 An outer constructor for the PrescribedSoil soil driver allowing the user to 
 specify the soil parameters by keyword arguments.
 """
-function PrescribedSoil(;
+function PrescribedSoil{FT}(;
     root_depths::Vector{FT} = FT.(-Array(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0),
-    ψ_soil::Function = t -> eltype(t)(FT(0.0)),
-    soil_α_PAR::FT = FT(0.2),
-    soil_α_NIR::FT = FT(0.4),
+    ψ::Function = t -> eltype(t)(FT(0.0)),
+    T::Function = t -> 298.0,
+    α_PAR = FT(0.2),
+    α_NIR = FT(0.4),
+    ϵ = FT(0.99),
 ) where {FT}
-    return PrescribedSoil{FT}(root_depths, ψ_soil, soil_α_PAR, soil_α_NIR)
+    return PrescribedSoil{FT}(root_depths, ψ, T, α_PAR, α_NIR, ϵ)
+end
+
+
+"""
+    ground_albedo_PAR(soil_driver::PrescribedSoil, _...)
+
+Returns the soil albedo in the PAR for a PrescribedSoil driver.
+"""
+function ground_albedo_PAR(soil_driver::PrescribedSoil, _...)
+    return soil_driver.α_PAR
 end
 
 """
-     PrognosticSoil{FT} <: AbstractSoilDriver{FT}
+    ground_albedo_NIR(soil_driver::PrescribedSoil, _...)
 
-Concrete type of AbstractSoilDriver used for dispatch in cases where both 
-a canopy model and soil model are run. Contains the soil albedo to be shared 
-between the canopy and soil models.
-
-When running the SoilCanopyModel, the soil model specifies the albedo. In this 
-case, the constructor for the model reads the albedo from the soil model and the
-user only specifies it once, for the soil model. When running the 
-SoilPlantHydrologyModel (which is intended for internal usage/testing primarily)
-the user must specify the albedo because the soil model in that case does not
-have an albedo.
-$(DocStringExtensions.FIELDS)
+Returns the soil albedo in the NIR for a PrescribedSoil driver.
 """
-struct PrognosticSoil{FT} <: AbstractSoilDriver{FT}
-    "Soil albedo for PAR"
-    soil_α_PAR::FT
-    "Soil albedo for NIR"
-    soil_α_NIR::FT
-end
-
-"""
-    function PrognosticSoil{FT}(; soil_α::FT) where {FT}
-
-An outer constructor for the PrognosticSoil soil driver allowing the user to
-specify the soil albedo by keyword argument.
-"""
-function PrognosticSoil(;
-    soil_α_PAR::FT = FT(0.2),
-    soil_α_NIR = FT(0.4),
-) where {FT}
-    return PrognosticSoil{FT}(soil_α_PAR, soil_α_NIR)
+function ground_albedo_NIR(soil_driver::PrescribedSoil, _...)
+    return soil_driver.α_NIR
 end

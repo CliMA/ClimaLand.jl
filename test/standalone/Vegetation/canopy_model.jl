@@ -155,8 +155,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
 
     ψ_soil0 = FT(0.0)
 
-    soil_driver =
-        PrescribedSoil(root_depths, (t::FT) -> ψ_soil0, FT(0.2), FT(0.4))
+    soil_driver = PrescribedSoil{FT}()
 
     plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
         parameters = param_set,
@@ -208,7 +207,13 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     # @test p.canopy.autotrophic_respiration.Ra == 
     exp_tendency!(dY, Y, p, t0)
     (evapotranspiration, shf, lhf) =
-        canopy_surface_fluxes(canopy.atmos, canopy, Y, p, t0)
+        ClimaLSM.Canopy.canopy_turbulent_surface_fluxes(
+            canopy.atmos,
+            canopy,
+            Y,
+            p,
+            t0,
+        )
 
     @test p.canopy.hydraulics.fa.:1 == evapotranspiration
 
@@ -386,4 +391,16 @@ end
     )
     @test all(parent(p.canopy.hydraulics.area_index.stem) .== FT(1.0))
     @test all(parent(p.canopy.hydraulics.area_index.root) .== FT(1.0))
+end
+
+
+@testset "PrescribedSoil" begin
+    FT = Float32
+    soil_driver = PrescribedSoil{FT}()
+    @test ground_albedo_PAR(soil_driver, nothing, nothing, nothing) == FT(0.2)
+    @test ground_albedo_NIR(soil_driver, nothing, nothing, nothing) == FT(0.4)
+    @test soil_driver.root_depths ==
+          FT.(-Array(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0)
+    @test soil_driver.ψ(2.0) == 0.0
+    @test soil_driver.T(2.0) == 298.0
 end

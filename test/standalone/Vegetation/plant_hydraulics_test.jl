@@ -237,8 +237,7 @@ end
     transpiration =
         PrescribedTranspiration{FT}((t::FT) -> leaf_transpiration(t))
 
-    soil_driver =
-        PrescribedSoil(root_depths, (t::FT) -> ψ_soil0, FT(0.2), FT(0.4))
+    soil_driver = PrescribedSoil{FT}()
 
     plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
         parameters = param_set,
@@ -517,8 +516,7 @@ end
 
     ψ_soil0 = FT(0.0)
     transpiration = DiagnosticTranspiration{FT}()
-    soil_driver =
-        PrescribedSoil(root_depths, (t::FT) -> ψ_soil0, FT(0.2), FT(0.4))
+    soil_driver = PrescribedSoil{FT}()
 
     plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
         parameters = param_set,

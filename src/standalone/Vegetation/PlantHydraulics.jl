@@ -25,7 +25,7 @@ export PlantHydraulicsModel,
     augmented_liquid_fraction,
     water_retention_curve,
     inverse_water_retention_curve,
-    root_flux_per_ground_area!,
+    root_water_flux_per_ground_area!,
     PlantHydraulicsParameters,
     PrescribedTranspiration,
     DiagnosticTranspiration,
@@ -549,7 +549,7 @@ function make_compute_exp_tendency(model::PlantHydraulicsModel, canopy)
                 )
             if i == 1
                 # All fluxes `fa` are per unit area of ground
-                root_flux_per_ground_area!(
+                root_water_flux_per_ground_area!(
                     fa_roots,
                     canopy.soil_driver,
                     model,
@@ -569,7 +569,7 @@ function make_compute_exp_tendency(model::PlantHydraulicsModel, canopy)
 end
 
 """
-    root_flux_per_ground_area!(
+    root_water_flux_per_ground_area!(
         fa::ClimaCore.Fields.Field,
         s::PrescribedSoil{FT},
         model::PlantHydraulicsModel{FT},
@@ -578,14 +578,14 @@ end
         t::FT,
     )::FT where {FT}
 
-A method which computes the flux between the soil and the stem, via the roots,
+A method which computes the water flux between the soil and the stem, via the roots,
 and multiplied by the RAI, in the case of a model running without an integrated
 soil model.
 
 The returned flux is per unit ground area. This assumes that the stem compartment
 is the first element of `Y.canopy.hydraulics.ϑ_l`.
 """
-function root_flux_per_ground_area!(
+function root_water_flux_per_ground_area!(
     fa::ClimaCore.Fields.Field,
     s::PrescribedSoil{FT},
     model::PlantHydraulicsModel{FT},
@@ -601,7 +601,7 @@ function root_flux_per_ground_area!(
     ψ_base = p.canopy.hydraulics.ψ.:1
     root_depths = s.root_depths
     n_root_layers = length(root_depths)
-    ψ_soil::FT = s.ψ_soil(t)
+    ψ_soil::FT = s.ψ(t)
     fa .= FT(0.0)
     @inbounds for i in 1:n_root_layers
         if i != n_root_layers

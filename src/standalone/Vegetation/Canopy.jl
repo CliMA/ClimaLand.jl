@@ -20,6 +20,7 @@ import ClimaLSM:
     make_update_aux,
     make_compute_exp_tendency,
     make_set_initial_aux_state,
+    canopy_turbulent_surface_fluxes,
     surface_temperature,
     surface_specific_humidity,
     surface_air_density,
@@ -276,26 +277,6 @@ function auxiliary_types(canopy::CanopyModel)
 end
 
 """
-    ground_albedo_PAR(canopy::CanopyModel{FT})
-
-Returns the soil albedo for the canopy model from the soil_driver of the canopy 
-model for PAR.
-"""
-function ground_albedo_PAR(canopy::CanopyModel{FT}) where {FT}
-    return canopy.soil_driver.soil_α_PAR
-end
-
-"""
-    ground_albedo_NIR(canopy::CanopyModel{FT})
-
-Returns the soil albedo for the canopy model from the soil_driver of the canopy 
-model for NIR.
-"""
-function ground_albedo_NIR(canopy::CanopyModel{FT}) where {FT}
-    return canopy.soil_driver.soil_α_NIR
-end
-
-"""
     initialize_prognostic(
         model::CanopyModel{FT},
         coords,
@@ -484,8 +465,8 @@ function ClimaLSM.make_update_aux(
             NIR ./ (energy_per_photon_NIR * N_a),
             LAI,
             K,
-            ground_albedo_PAR(canopy),
-            ground_albedo_NIR(canopy),
+            ground_albedo_PAR(canopy.soil_driver, Y, p, t),
+            ground_albedo_NIR(canopy.soil_driver, Y, p, t),
             θs,
             frac_diff,
         )
@@ -580,7 +561,7 @@ function ClimaLSM.make_update_aux(
         )
         # Compute transpiration using T_canopy
         (canopy_transpiration, shf, lhf) =
-            canopy_surface_fluxes(canopy.atmos, canopy, Y, p, t)
+            canopy_turbulent_surface_fluxes(canopy.atmos, canopy, Y, p, t)
         transpiration .= canopy_transpiration
         # Transpiration is per unit ground area, not leaf area (mult by LAI)
         fa.:($i_end) .= PlantHydraulics.transpiration_per_ground_area(
@@ -617,7 +598,7 @@ function make_compute_exp_tendency(canopy::CanopyModel)
 end
 
 """
-    canopy_surface_fluxes(atmos::PrescribedAtmosphere{FT},
+    canopy_turbulent_surface_fluxes(atmos::PrescribedAtmosphere{FT},
                           model::CanopyModel,
                           Y,
                           p,
@@ -631,7 +612,7 @@ fluxes taking into account the canopy conductance, so that
 what is returned by `surface_fluxes` is correct. At present, it does not,
 so we are adjusting for it after the fact here in both ET and LHF.
 """
-function canopy_surface_fluxes(
+function canopy_turbulent_surface_fluxes(
     atmos::PrescribedAtmosphere{FT},
     model::CanopyModel,
     Y,

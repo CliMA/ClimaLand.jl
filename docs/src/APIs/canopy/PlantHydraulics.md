@@ -16,7 +16,7 @@ ClimaLSM.PlantHydraulics.effective_saturation
 ClimaLSM.PlantHydraulics.augmented_liquid_fraction
 ClimaLSM.PlantHydraulics.water_retention_curve
 ClimaLSM.PlantHydraulics.inverse_water_retention_curve
-ClimaLSM.PlantHydraulics.root_flux_per_ground_area!
+ClimaLSM.PlantHydraulics.root_water_flux_per_ground_area!
 ClimaLSM.PlantHydraulics.flux
 ClimaLSM.PlantHydraulics.hydraulic_conductivity
 ```
