@@ -133,10 +133,10 @@ interaction_vars(m::SoilCanopyModel) = (
     :soil_shf,
     :soil_lhf,
     :T_soil,
-    :canopy_LW_n,
-    :canopy_SW_n,
     :LW_out,
     :SW_out,
+    :scratch1,
+    :scratch2,
 )
 
 """
@@ -222,7 +222,7 @@ function make_interactions_update_aux(
         @. p.soil_evap = soil_conditions.vapor_flux
         @. p.soil_lhf = soil_conditions.lhf
         p.T_soil .= surface_temperature(land.soil, Y, p, t)
-        lsm_radiation_update!(
+        lsm_radiant_energy_fluxes!(
             p,
             land.canopy.radiative_transfer,
             land.canopy,
@@ -236,23 +236,25 @@ function make_interactions_update_aux(
 end
 
 """
-    net_radiation_at_ground(
-        canopy_radiation::Canopy.AbstractRadiationModel{FT},
-        canopy,
-        ground_model::Soil.EnergyHydrology,
-        Y,
-        p,
-        t,
-    ) where {FT}
+    lsm_radiant_energy_fluxes!(p,
+                                canopy_radiation::Canopy.AbstractRadiationModel{FT},
+                                canopy,
+                                ground_model::Soil.EnergyHydrology,
+                                Y,
+                                t,
+                                ) where {FT}
 
 
 A function which computes the net radiation at the ground surface
-give the canopy radiation model.
+give the canopy radiation model, as well as the outgoing radiation,
+and the net canopy radiation.
 
 Returns the correct radiative fluxes for bare ground in the case
-where the canopy LAI is zero.
+where the canopy LAI is zero. Note also that this serves the role of
+`canopy_radiant_energy_fluxes!`, which computes the net canopy radiation
+when the Canopy is run in standalone mode.
 """
-function lsm_radiation_update!(
+function lsm_radiant_energy_fluxes!(
     p,
     canopy_radiation::Canopy.AbstractRadiationModel{FT},
     canopy,
@@ -282,9 +284,11 @@ function lsm_radiation_update!(
     PAR = p.canopy.radiative_transfer.par
     NIR = p.canopy.radiative_transfer.nir
 
-    LW_net_canopy = p.canopy_LW_n
-    SW_net_canopy = p.canopy_SW_n
     LW_net_soil = p.soil_LW_n
+    LW_d_canopy = p.scratch1
+    LW_u_soil = p.scratch2
+    LW_net_canopy = p.canopy.radiative_transfer.LW_n
+    SW_net_canopy = p.canopy.radiative_transfer.SW_n
     SW_net_soil = p.soil_SW_n
     LW_out = p.LW_out
     SW_out = p.SW_out
@@ -295,10 +299,11 @@ function lsm_radiation_update!(
         energy_per_photon_NIR * N_a * p.canopy.radiative_transfer.rnir +
         energy_per_photon_PAR * N_a * p.canopy.radiative_transfer.rpar
 
-    # net canopy = absorbed par + absorbed nir
+    # net canopy
     @. SW_net_canopy =
         energy_per_photon_NIR * N_a * p.canopy.radiative_transfer.anir +
         energy_per_photon_PAR * N_a * p.canopy.radiative_transfer.apar
+
 
     # net soil = (1-α)*trans for par and nir
     @. SW_net_soil =
@@ -311,11 +316,11 @@ function lsm_radiation_update!(
         p.canopy.radiative_transfer.tpar *
         (1 - α_soil_PAR)
 
-    LW_d_canopy = @. (1 - ϵ_canopy) * LW_d + ϵ_canopy * _σ * T_canopy^4 # double checked
-    LW_u_soil = @. ϵ_soil * _σ * T_soil^4 + (1 - ϵ_soil) * LW_d_canopy # double checked
-    @. LW_net_canopy =
-        ϵ_canopy * LW_d - 2 * ϵ_canopy * _σ * T_canopy^4 + ϵ_canopy * LW_u_soil # double checked
+    @. LW_d_canopy = (1 - ϵ_canopy) * LW_d + ϵ_canopy * _σ * T_canopy^4 # double checked
+    @. LW_u_soil = ϵ_soil * _σ * T_soil^4 + (1 - ϵ_soil) * LW_d_canopy # double checked
     @. LW_net_soil = ϵ_soil * LW_d_canopy - ϵ_soil * _σ * T_soil^4 # double checked
+    @. LW_net_canopy =
+        ϵ_canopy * LW_d - 2 * ϵ_canopy * _σ * T_canopy^4 + ϵ_canopy * LW_u_soil
     @. LW_out = (1 - ϵ_canopy) * LW_u_soil + ϵ_canopy * _σ * T_canopy^4 # double checked
 end
 
@@ -457,4 +462,36 @@ function ClimaLSM.source!(
         p.root_extraction *
         volumetric_internal_energy_liq(p.soil.T, model.parameters)
     # if flow is negative, towards soil -> soil water increases, add in sign here.
+end
+
+"""
+    Canopy.canopy_radiant_energy_fluxes!(p::NamedTuple,
+                                         s::PrognosticSoil{FT},
+                                         canopy,
+                                         radiation::PrescribedRadiativeFluxes,
+                                         earth_param_set::PSE,
+                                         Y::ClimaCore.Fields.FieldVector,
+                                         t,
+                                        ) where {FT, PSE}
+
+In standalone mode, this function computes and stores the net 
+long and short wave radition, in W/m^2,
+absorbed by the canopy.
+
+In integrated mode, we have already computed those quantities in
+`lsm_radiant_energy_fluxes!`, so this method does nothing additional.
+
+LW and SW net radiation are stored in `p.canopy.radiative_transfer.LW_n`
+and `p.canopy.radiative_transfer.SW_n`.
+"""
+function Canopy.canopy_radiant_energy_fluxes!(
+    p::NamedTuple,
+    s::PrognosticSoil{FT},
+    canopy,
+    radiation::PrescribedRadiativeFluxes,
+    earth_param_set::PSE,
+    Y::ClimaCore.Fields.FieldVector,
+    t,
+) where {FT, PSE}
+    nothing
 end

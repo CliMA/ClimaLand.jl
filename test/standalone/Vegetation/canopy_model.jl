@@ -216,6 +216,34 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
         )
 
     @test p.canopy.hydraulics.fa.:1 == evapotranspiration
+    @test p.canopy.energy.shf == shf
+    @test p.canopy.energy.lhf == lhf
+    @test p.canopy.conductance.transpiration == evapotranspiration
+    c = FT(LSMP.light_speed(earth_param_set))
+    h = FT(LSMP.planck_constant(earth_param_set))
+    N_a = FT(LSMP.avogadro_constant(earth_param_set))
+    _σ = FT(LSMP.Stefan(earth_param_set))
+    (; α_PAR_leaf, λ_γ_PAR, λ_γ_NIR, ϵ_canopy) =
+        canopy.radiative_transfer.parameters
+    APAR = p.canopy.radiative_transfer.apar
+    ANIR = p.canopy.radiative_transfer.anir
+    energy_per_photon_PAR = h * c / λ_γ_PAR
+    energy_per_photon_NIR = h * c / λ_γ_NIR
+
+    @test p.canopy.radiative_transfer.SW_n ==
+          @. (energy_per_photon_PAR * N_a * APAR) +
+             (energy_per_photon_NIR * N_a * ANIR)
+
+    T_canopy = atmos.T(t0)
+    T_soil = soil_driver.T(t0)
+    ϵ_soil = soil_driver.ϵ
+    LW_d = radiation.LW_d(t0)
+    LW_d_canopy = (1 - ϵ_canopy) * LW_d + ϵ_canopy * _σ * T_canopy^4
+    LW_u_soil = ϵ_soil * _σ * T_soil^4 + (1 - ϵ_soil) * LW_d_canopy
+    @test parent(p.canopy.radiative_transfer.LW_n)[1] ≈
+          ϵ_canopy * LW_d - 2 * ϵ_canopy * _σ * T_canopy^4 +
+          ϵ_canopy * LW_u_soil
+
 
     # Penman-monteith
     Δ = FT(100 * (0.444017302 + (290 - 273.15) * 0.0286064092))

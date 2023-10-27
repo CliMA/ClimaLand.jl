@@ -17,6 +17,8 @@ struct PrescribedCanopyTempModel{FT} <: AbstractCanopyEnergyModel{FT} end
 ClimaLSM.auxiliary_vars(model::AbstractCanopyEnergyModel) = (:shf, :lhf)
 ClimaLSM.auxiliary_types(model::AbstractCanopyEnergyModel{FT}) where {FT} =
     (FT, FT)
+ClimaLSM.auxiliary_domain_names(model::AbstractCanopyEnergyModel) =
+    (:surface, :surface)
 
 """
     canopy_temperature(model::PrescribedCanopyTempModel, canopy, Y, p, t)

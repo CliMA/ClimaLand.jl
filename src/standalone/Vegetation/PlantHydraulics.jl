@@ -548,15 +548,6 @@ function make_compute_exp_tendency(model::PlantHydraulicsModel, canopy)
                     eps(FT),
                 )
             if i == 1
-                # All fluxes `fa` are per unit area of ground
-                root_water_flux_per_ground_area!(
-                    fa_roots,
-                    canopy.soil_driver,
-                    model,
-                    Y,
-                    p,
-                    t,
-                )
                 @inbounds @. dY.canopy.hydraulics.ϑ_l.:($$i) =
                     1 / AIdz * (fa_roots - fa.:($$i))
             else
