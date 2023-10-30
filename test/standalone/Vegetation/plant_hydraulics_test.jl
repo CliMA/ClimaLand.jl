@@ -1,3 +1,4 @@
+
 using Test
 using Statistics
 using NLsolve
@@ -234,6 +235,7 @@ end
     end
 
     ψ_soil0 = FT(0.0)
+
     transpiration =
         PrescribedTranspiration{FT}((t::FT) -> leaf_transpiration(t))
 
@@ -486,10 +488,8 @@ end
         retention_model = retention_model,
     )
 
-    ψ_soil0 = FT(0.0)
     transpiration = DiagnosticTranspiration{FT}()
     soil_driver = PrescribedSoil{FT}()
-
     plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
         parameters = param_set,
         transpiration = transpiration,
