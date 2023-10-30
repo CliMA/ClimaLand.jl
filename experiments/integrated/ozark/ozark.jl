@@ -315,13 +315,11 @@ GPP_daily_avg_model = diurnal_avg(model_GPP)
 GPP_daily_avg_data =
     diurnal_avg(GPP[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)])
 RMSD =
-    StatsBase.rmsd(
-        match_indices(GPP_daily_avg_model, GPP_daily_avg_data)...,
-    ) * 1e6
+    StatsBase.rmsd(match_indices(GPP_daily_avg_model, GPP_daily_avg_data)...,) *
+    1e6
 R² =
     Statistics.cor(
-        match_indices(GPP_daily_avg_model, GPP_daily_avg_data)...,
-    )^2
+        match_indices(GPP_daily_avg_model, GPP_daily_avg_data)...)^2
 
 plt1 = Plots.plot(size = (800, 400))
 Plots.plot!(
