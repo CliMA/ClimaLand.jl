@@ -36,6 +36,7 @@ import SciMLBase
 using Plots
 using Statistics
 using Dates
+using Insolation
 
 
 # Load CliMA Packages and ClimaLSM Modules:
@@ -59,16 +60,53 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"));
 const FT = Float32;
 earth_param_set = create_lsm_parameters(FT);
 
+# Setup the domain for the model:
+
+nelements = 10
+zmin = FT(-2)
+zmax = FT(0)
+f_root_to_shoot = FT(3.5)
+SAI = FT(0.00242)
+maxLAI = FT(4.2)
+capacity = FT(10) # kg/m^2
+n_stem = Int64(1)
+n_leaf = Int64(1)
+h_stem = FT(9)
+h_leaf = FT(9.5)
+compartment_midpoints = [h_stem / 2, h_stem + h_leaf / 2]
+compartment_surfaces = [zmax, h_stem, h_stem + h_leaf]
+land_domain = Column(; zlim = (zmin, zmax), nelements = nelements);
+
 # - We will be using prescribed atmospheric and radiative drivers from the
 #   US-MOz tower, which we read in here. We are using prescribed
 #   atmospheric and radiative flux conditions, but it is also possible to couple
 #   the simulation with atmospheric and radiative flux models. We also
 # read in the observed LAI and let that vary in time in a prescribed manner.
 
+# Use the data tools for reading FLUXNET data sets 
+include(
+    joinpath(pkgdir(ClimaLSM), "experiments/integrated/fluxnet/data_tools.jl"),
+);
+
+# First provide some information about the site
+# Timezone (offset from UTC in hrs)
+time_offset = 7
+
+# Site latitude and longitude
+lat = FT(38.7441) # degree
+long = FT(-92.2000) # degree
+
+# Height of the sensor at the site
+atmos_h = FT(32) # m
+
+# Provide the site site ID and the path to the data file:
+site_ID = "US-MOz"
+data_link = "https://caltech.box.com/shared/static/7r0ci9pacsnwyo0o9c25mhhcjhsu6d72.csv"
+
 include(
     joinpath(
         pkgdir(ClimaLSM),
-        "experiments/integrated/ozark/ozark_met_drivers_FLUXNET.jl",
+        "experiments/integrated/fluxnet/met_drivers_FLUXNET.jl",
     ),
 );
 
@@ -82,30 +120,11 @@ include(
 # arguments, and the canopy model arguments, so we first need to initialize
 # all of these.
 
-# Setup the domain for the model:
-
-nelements = 10
-zmin = FT(-2)
-zmax = FT(0)
-land_domain = Column(; zlim = (zmin, zmax), nelements = nelements);
-
 # For our soil model, we will choose the
 # [`EnergyHydrology`](https://clima.github.io/ClimaLSM.jl/dev/APIs/Soil/#Soil-Models-2)
 # and set up all the necessary arguments. See the
 # [tutorial](https://clima.github.io/ClimaLSM.jl/dev/generated/Soil/soil_energy_hydrology/)
 # on the model for a more detailed explanation of the soil model.
-
-# We will be using prescribed atmospheric and radiative drivers from the
-# US-MOz tower. We are using prescribed
-# atmospheric and radiative flux conditions, but it is also possible to couple
-# the simulation with atmospheric and radiative flux models.
-
-include(
-    joinpath(
-        pkgdir(ClimaLSM),
-        "experiments/integrated/ozark/ozark_met_drivers_FLUXNET.jl",
-    ),
-);
 
 # Define the parameters for the soil model and provide them to the model
 # parameters struct:
@@ -303,9 +322,6 @@ photosynthesis_args = (;
     )
 );
 
-f_root_to_shoot = FT(3.5)
-SAI = FT(0.00242)
-maxLAI = FT(4.2)
 K_sat_plant = FT(1.8e-8)
 RAI = (SAI + maxLAI) * f_root_to_shoot;
 # Note: LAIfunction was determined from data in the script we included above.
@@ -334,13 +350,6 @@ plant_hydraulics_ps = PlantHydraulics.PlantHydraulicsParameters(;
     conductivity_model = conductivity_model,
     retention_model = retention_model,
 )
-
-n_stem = Int64(1)
-n_leaf = Int64(1)
-h_stem = FT(9)
-h_leaf = FT(9.5)
-compartment_midpoints = [h_stem / 2, h_stem + h_leaf / 2]
-compartment_surfaces = [zmax, h_stem, h_stem + h_leaf]
 
 plant_hydraulics_args = (
     parameters = plant_hydraulics_ps,

@@ -1,10 +1,19 @@
-## Ozark parameters taken from the following:
-## Wang et al. 2021 https://doi.org/10.5194/gmd-14-6741-2021
-## Holtzman, Natan; private communication
-## CLM 5.0 Tech Note: https://www2.cesm.ucar.edu/models/cesm2/land/CLM50_Tech_Note.pdf
-## # Bonan, G. Climate change and terrestrial ecosystem modeling. Cambridge University Press, 2019.
+"""Site-specific model parameters for running CliMA LSM on the Ozark
+fluxtower site."""
 
-## LAI data from MODIS
+# Data File download link
+data_link = "https://caltech.box.com/shared/static/7r0ci9pacsnwyo0o9c25mhhcjhsu6d72.csv"
+
+# Timezone (offset from UTC in hrs)
+time_offset = 7
+
+# Height of sensor on flux tower
+atmos_h = FT(32)
+
+# Site latitude and longitude
+lat = FT(38.7441) # degree
+long = FT(-92.2000) # degree
+
 # Heterotrophic respiration parameters
 θ_a100 = FT(0.1816)
 D_ref = FT(1.39e-5)
@@ -56,10 +65,10 @@ z_0m_soil = FT(0.01)
 z_0b_soil = FT(0.001)
 soil_ϵ = FT(0.98)
 soil_α_PAR = FT(0.2)
-soil_α_NIR = FT(0.3)
+soil_α_NIR = FT(0.2)
 
 # TwoStreamModel parameters
-Ω = FT(0.89)
+Ω = FT(0.69)
 ld = FT(0.5)
 α_PAR_leaf = FT(0.1)
 λ_γ_PAR = FT(5e-7)
@@ -74,7 +83,7 @@ n_layers = UInt64(20)
 ac_canopy = FT(2.5e3)
 
 # Conductance Model
-g1 = FT(70) # Wang et al: 141 sqrt(Pa) for Medlyn model; Natan used 300.
+g1 = FT(141) # Wang et al: 141 sqrt(Pa) for Medlyn model; Natan used 300.
 Drel = FT(1.6)
 g0 = FT(1e-4)
 
@@ -99,18 +108,15 @@ To = FT(298.15)
 
 # Plant Hydraulics and general plant parameters
 SAI = FT(1.0) # m2/m2 or: estimated from Wang et al, FT(0.00242) ?
-maxLAI = FT(4.2) # m2/m2, from Wang et al.
 f_root_to_shoot = FT(3.5)
-RAI = (SAI + maxLAI) * f_root_to_shoot # CLM
 K_sat_plant = 5e-9 # m/s # seems much too small?
 ψ63 = FT(-4 / 0.0098) # / MPa to m, Holtzman's original parameter value is -4 MPa
 Weibull_param = FT(4) # unitless, Holtzman's original c param value
-a = FT(0.08 * 0.0098) # Natan used 0.05
+a = FT(0.05 * 0.0098) # Holtzman's original parameter for the bulk modulus of elasticity
 conductivity_model =
     PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
 retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a)
 capacity = FT(10) # kg/m^2
-plant_ν = capacity / (maxLAI / 2 * h_leaf + SAI * h_stem) / FT(1000)
 plant_S_s = FT(1e-2 * 0.0098) # m3/m3/MPa to m3/m3/m
 rooting_depth = FT(0.5) # from Natan
 z0_m = FT(0.13) * h_canopy
