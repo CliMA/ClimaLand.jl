@@ -268,6 +268,20 @@ function diurnal_avg(series)
         [mean([daily_data[i][j] for i in 1:num_days]) for j in 1:daily_points]
     return daily_avgs
 end
+
+# This function scales 2 data series to the same length and matches their
+# indices such that they may be used to compute GOF stats
+function match_indices(model, data)
+    dpm = dt * n / DATA_DT
+    model_per_data = 1
+    if dpm < 1
+        model_per_data = Int64(1 / dpm)
+        dpm = 1
+    end
+    data_per_model = Int64(dpm)
+    return model[1:model_per_data:end], data[1:data_per_model:end]
+end 
+
 # Autotrophic Respiration
 AR = [
     parent(sv.saveval[k].canopy.autotrophic_respiration.Ra)[1] for
@@ -302,13 +316,11 @@ GPP_daily_avg_data =
     diurnal_avg(GPP[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)])
 RMSD =
     StatsBase.rmsd(
-        GPP_daily_avg_model,
-        GPP_daily_avg_data[1:data_per_model:end],
+        match_indices(GPP_daily_avg_model, GPP_daily_avg_data)...,
     ) * 1e6
 R² =
     Statistics.cor(
-        GPP_daily_avg_model,
-        GPP_daily_avg_data[1:data_per_model:end],
+        match_indices(GPP_daily_avg_model, GPP_daily_avg_data)...,
     )^2
 
 plt1 = Plots.plot(size = (800, 400))
@@ -338,8 +350,8 @@ SW_out_model_avg = diurnal_avg(SW_out_model)
 SW_out_data_avg =
     diurnal_avg(FT.(SW_OUT)[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)])
 
-RMSD = StatsBase.rmsd(SW_out_model_avg, SW_out_data_avg[1:data_per_model:end])
-R² = Statistics.cor(SW_out_model_avg, SW_out_data_avg[1:data_per_model:end])^2
+RMSD = StatsBase.rmsd(match_indices(SW_out_model_avg, SW_out_data_avg)...)
+R² = Statistics.cor(match_indices(SW_out_model_avg, SW_out_data_avg)...)^2
 
 plt1 = Plots.plot(size = (1500, 400))
 Plots.plot!(
@@ -364,8 +376,8 @@ LW_out_data_avg =
     diurnal_avg(FT.(LW_OUT)[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)])
 
 
-RMSD = StatsBase.rmsd(LW_out_model_avg, LW_out_data_avg[1:data_per_model:end])
-R² = Statistics.cor(LW_out_model_avg, LW_out_data_avg[1:data_per_model:end])^2
+RMSD = StatsBase.rmsd(match_indices(LW_out_model_avg, LW_out_data_avg)...)
+R² = Statistics.cor(match_indices(LW_out_model_avg, LW_out_data_avg)...)^2
 
 plt1 = Plots.plot(size = (1500, 400))
 Plots.plot!(
@@ -396,8 +408,8 @@ ET_avg_model = diurnal_avg(T .+ E)
 ET_avg_data =
     diurnal_avg(measured_T[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)])
 
-RMSD = StatsBase.rmsd(ET_avg_model, ET_avg_data[1:data_per_model:end])
-R² = Statistics.cor(ET_avg_model, ET_avg_data[1:data_per_model:end])^2
+RMSD = StatsBase.rmsd(match_indices(ET_avg_model, ET_avg_data)...)
+R² = Statistics.cor(match_indices(ET_avg_model, ET_avg_data)...)^2
 
 plt1 = Plots.plot(size = (800, 400))
 Plots.plot!(
@@ -495,8 +507,8 @@ SHF_avg_model = diurnal_avg(SHF)
 SHF_avg_data =
     diurnal_avg(H_CORR[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)])
 
-RMSD = StatsBase.rmsd(SHF_avg_model, SHF_avg_data[1:data_per_model:end])
-R² = Statistics.cor(SHF_avg_model, SHF_avg_data[1:data_per_model:end])^2
+RMSD = StatsBase.rmsd(match_indices(SHF_avg_model, SHF_avg_data)...)
+R² = Statistics.cor(match_indices(SHF_avg_model, SHF_avg_data)...)^2
 
 plt1 = Plots.plot(size = (800, 400))
 Plots.plot!(
