@@ -280,7 +280,7 @@ function match_indices(model, data)
     end
     data_per_model = Int64(dpm)
     return model[1:model_per_data:end], data[1:data_per_model:end]
-end 
+end
 
 # Autotrophic Respiration
 AR = [
