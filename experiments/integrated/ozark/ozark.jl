@@ -275,10 +275,10 @@ function match_indices(model, data)
     dpm = dt * n / DATA_DT
     model_per_data = 1
     if dpm < 1
-        model_per_data = Int64(1 / dpm)
+        model_per_data = round(Int64, 1 / dpm)
         dpm = 1
     end
-    data_per_model = Int64(dpm)
+    data_per_model = round(Int64, dpm)
     return model[1:model_per_data:end], data[1:data_per_model:end]
 end
 
