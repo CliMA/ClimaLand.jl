@@ -198,3 +198,145 @@ for FT in (Float32, Float64)
         @test abs(flux_expected - flux_int) < eps(FT)
     end
 end
+
+
+@testset "Boundary vars" begin
+    # AtmosDrivenFluxBC method tested in `test/standalone/Soil/climate_drivers.jl`
+    # Currently no other methods exist besides the default, which we test here
+    FT = Float32
+    earth_param_set = create_lsm_parameters(FT)
+    ν = FT(0.495)
+    K_sat = FT(0.0443 / 3600 / 100) # m/s
+    S_s = FT(1e-3) #inverse meters
+    vg_n = FT(2.0)
+    vg_α = FT(2.6) # inverse meters
+    vg_m = FT(1) - FT(1) / vg_n
+    hcm = vanGenuchten(; α = vg_α, n = vg_n)
+    θ_r = FT(0.1)
+    ν_ss_om = FT(0.0)
+    ν_ss_quartz = FT(1.0)
+    ν_ss_gravel = FT(0.0)
+    κ_minerals = FT(2.5)
+    κ_om = FT(0.25)
+    κ_quartz = FT(8.0)
+    κ_air = FT(0.025)
+    κ_ice = FT(2.21)
+    κ_liq = FT(0.57)
+    ρp = FT(2.66 / 1e3 * 1e6)
+    ρc_ds = FT(2e6 * (1.0 - ν))
+    κ_soil_solids =
+        Soil.κ_solid(ν_ss_om, ν_ss_quartz, κ_om, κ_quartz, κ_minerals)
+    κ_dry_soil = Soil.κ_dry(ρp, ν, κ_soil_solids, κ_air)
+    κ_sat_ice = Soil.κ_sat_frozen(κ_soil_solids, ν, κ_ice)
+    κ_sat_liq = Soil.κ_sat_unfrozen(κ_soil_solids, ν, κ_liq)
+    zmax = FT(0)
+    zmin = FT(-1)
+    nelems = 200
+    Δz = abs(zmax - zmin) / nelems
+    soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems)
+    top_flux_bc = FluxBC((p, t) -> -1.0e-8)
+    bot_flux_bc = FluxBC((p, t) -> -2.0e-8)
+    sources = ()
+    # Use the same BCs for RRE and heat
+    boundary_fluxes = (;
+        top = (water = top_flux_bc, heat = top_flux_bc),
+        bottom = (water = bot_flux_bc, heat = bot_flux_bc),
+    )
+
+    parameters = Soil.EnergyHydrologyParameters{FT}(;
+        κ_dry = κ_dry_soil,
+        κ_sat_frozen = κ_sat_ice,
+        κ_sat_unfrozen = κ_sat_liq,
+        ρc_ds = ρc_ds,
+        ν = ν,
+        ν_ss_om = ν_ss_om,
+        ν_ss_quartz = ν_ss_quartz,
+        ν_ss_gravel = ν_ss_gravel,
+        hydrology_cm = hcm,
+        K_sat = FT(0),
+        S_s = S_s,
+        θ_r = θ_r,
+        earth_param_set = earth_param_set,
+    )
+    energy_hydrology = Soil.EnergyHydrology{FT}(;
+        parameters = parameters,
+        domain = soil_domain,
+        boundary_conditions = boundary_fluxes,
+        sources = sources,
+    )
+    bc = boundary_fluxes
+    @test Soil.boundary_vars(bc, ClimaLSM.TopBoundary()) == (:top_bc,)
+    @test Soil.boundary_var_domain_names(bc, ClimaLSM.TopBoundary()) ==
+          (:surface,)
+    @test Soil.boundary_var_types(
+        energy_hydrology,
+        bc,
+        ClimaLSM.TopBoundary(),
+    ) == (NamedTuple{(:water, :heat), Tuple{Float32, Float32}},)
+
+    @test Soil.boundary_vars(bc, ClimaLSM.BottomBoundary()) == (:bottom_bc,)
+    @test Soil.boundary_var_domain_names(bc, ClimaLSM.BottomBoundary()) ==
+          (:surface,)
+    @test Soil.boundary_var_types(
+        energy_hydrology,
+        bc,
+        ClimaLSM.BottomBoundary(),
+    ) == (NamedTuple{(:water, :heat), Tuple{Float32, Float32}},)
+    Y, p, cds = initialize(energy_hydrology)
+    Y.soil.ϑ_l .= ν
+    Y.soil.θ_i .= 0
+    Y.soil.ρe_int .= 3e7
+    update_boundary_vars! = make_update_boundary_fluxes(energy_hydrology)
+    update_boundary_vars!(p, Y, FT(0))
+    f = similar(p.soil.top_bc.water)
+    fill!(ClimaCore.Fields.field_values(f), FT(top_flux_bc.bc(p, FT(0))))
+    @test p.soil.top_bc.water == f
+    @test p.soil.top_bc.heat == f
+
+    f = similar(p.soil.bottom_bc.water)
+    fill!(ClimaCore.Fields.field_values(f), FT(bot_flux_bc.bc(p, FT(0))))
+    @test p.soil.bottom_bc.water == f
+    @test p.soil.bottom_bc.heat == f
+
+
+    boundary_fluxes =
+        (; top = (water = top_flux_bc,), bottom = (water = bot_flux_bc,))
+
+    parameters = Soil.RichardsParameters{FT, typeof(hcm)}(;
+        ν = ν,
+        hydrology_cm = hcm,
+        K_sat = FT(0),
+        S_s = S_s,
+        θ_r = θ_r,
+    )
+    bc = boundary_fluxes
+    rre = Soil.RichardsModel{FT}(;
+        parameters = parameters,
+        domain = soil_domain,
+        boundary_conditions = boundary_fluxes,
+        sources = sources,
+    )
+
+    @test Soil.boundary_vars(bc, ClimaLSM.TopBoundary()) == (:top_bc,)
+    @test Soil.boundary_var_domain_names(bc, ClimaLSM.TopBoundary()) ==
+          (:surface,)
+    @test Soil.boundary_var_types(rre, bc, ClimaLSM.TopBoundary()) ==
+          (NamedTuple{(:water,), Tuple{Float32}},)
+
+    @test Soil.boundary_vars(bc, ClimaLSM.BottomBoundary()) == (:bottom_bc,)
+    @test Soil.boundary_var_domain_names(bc, ClimaLSM.BottomBoundary()) ==
+          (:surface,)
+    @test Soil.boundary_var_types(rre, bc, ClimaLSM.BottomBoundary()) ==
+          (NamedTuple{(:water,), Tuple{Float32}},)
+
+    Y, p, cds = initialize(rre)
+    Y.soil.ϑ_l .= ν
+    update_boundary_vars! = make_update_boundary_fluxes(rre)
+    update_boundary_vars!(p, Y, FT(0))
+    f = similar(p.soil.top_bc.water)
+    fill!(ClimaCore.Fields.field_values(f), FT(top_flux_bc.bc(p, FT(0))))
+    @test p.soil.top_bc.water == f
+    f = similar(p.soil.bottom_bc.water)
+    fill!(ClimaCore.Fields.field_values(f), FT(bot_flux_bc.bc(p, FT(0))))
+    @test p.soil.bottom_bc.water == f
+end

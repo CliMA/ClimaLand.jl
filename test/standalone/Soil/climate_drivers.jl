@@ -119,6 +119,19 @@ for FT in (Float32, Float64)
             )
 
             Y, p, coords = initialize(model)
+            @test propertynames(p.soil.sfc_conditions) ==
+                  (:lhf, :shf, :vapor_flux, :r_ae)
+            @test propertynames(p.soil) == (
+                :K,
+                :ψ,
+                :θ_l,
+                :T,
+                :κ,
+                :sfc_conditions,
+                :R_n,
+                :top_bc,
+                :bottom_bc,
+            )
             function init_soil!(Y, z, params)
                 ν = params.ν
                 FT = eltype(ν)
@@ -139,8 +152,8 @@ for FT in (Float32, Float64)
             init_soil!(Y, coords.subsurface.z, model.parameters)
             set_initial_aux_state! = make_set_initial_aux_state(model)
             set_initial_aux_state!(p, Y, t)
-
-
+            tendency! = make_exp_tendency(model)
+            tendency!(similar(Y), Y, p, t)
             face_space = ClimaLSM.Domains.obtain_face_space(
                 model.domain.space.subsurface,
             )
@@ -212,6 +225,8 @@ for FT in (Float32, Float64)
                 p,
                 t,
             )
+            @test R_n == p.soil.R_n
+            @test conditions == p.soil.sfc_conditions
 
             fluxes = ClimaLSM.Soil.soil_boundary_fluxes(
                 top_bc,

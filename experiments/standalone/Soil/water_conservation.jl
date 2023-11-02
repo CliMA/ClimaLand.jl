@@ -148,7 +148,7 @@ for FT in (Float32, Float64)
     if FT == Float64
         # Save flux BC mass conservation error and RMSE as artifact
         savedir = joinpath(pkgdir(ClimaLSM), "experiments/standalone/Soil")
-        plt = Plots.plot()
+        plt = Plots.plot(margin = 10Plots.mm)
         plt_twin = twinx(plt)
         Plots.plot!(
             plt,
@@ -232,32 +232,30 @@ for FT in (Float32, Float64)
             (t_start, t_end),
             p,
         )
-        sol = SciMLBase.solve(prob, ode_algo; dt = dt, saveat = dt)
-
+        saveat = Array(t_start:dt:t_end)
+        sv = (;
+            t = Array{Int64}(undef, length(saveat)),
+            saveval = Array{NamedTuple}(undef, length(saveat)),
+        )
+        cb = ClimaLSM.NonInterpSavingCallback(sv, saveat)
+        sol = SciMLBase.solve(
+            prob,
+            ode_algo;
+            dt = dt,
+            callback = cb,
+            adaptive = false,
+            saveat = saveat,
+        )
         # Check that simulation still has correct float type
         @assert eltype(sol.u[end].soil) == FT
 
         # Calculate water mass balance over entire simulation
-        # Convert Dirichlet BC to flux
-        z = ClimaCore.Fields.coordinate_field(soil_domain.space.subsurface).z
-        Δz_top, Δz_bottom = get_Δz(z)
-
-        times = collect(t_start:dt:t_end)
-        flux_in_sim = Array{FT}(undef, length(times) - 1)
         # Because we use Backward Euler, compute fluxes at times[2:end]
-        for j in 2:length(times)
-            update_aux!(p, sol.u[j], times[j])
-            top_flux_bc = boundary_flux(
-                top_state_bc,
-                TopBoundary(),
-                soil_dirichlet,
-                Δz_top,
-                sol.u[j],
-                p,
-                times[j],
-            )
-            flux_in_sim[j - 1] = parent(top_flux_bc)[1]
-        end
+        flux_in_sim = [
+            parent(sv.saveval[k].soil.top_bc.water)[1] for
+            k in 2:length(sv.saveval)
+        ]
+
 
         mass_end = sum(sol.u[end].soil.ϑ_l)
         mass_start = sum(sol.u[1].soil.ϑ_l)
@@ -276,7 +274,7 @@ for FT in (Float32, Float64)
 
     # Save Dirichlet BC mass conservation error and RMSE as artifact
     if FT == Float64
-        plt = Plots.plot()
+        plt = Plots.plot(margin = 10Plots.mm)
         plt_twin = twinx(plt)
         Plots.plot!(
             plt,

@@ -444,7 +444,10 @@ T =
         k in 1:length(sol.t)
     ] .* (1e3 * 24 * 3600)
 E =
-    [parent(sv.saveval[k].soil_evap)[1] for k in 1:length(sol.t)] .* (1e3 * 24 * 3600)
+    [
+        parent(sv.saveval[k].soil.sfc_conditions.vapor_flux)[1] for
+        k in 1:length(sol.t)
+    ] .* (1e3 * 24 * 3600)
 ET_model = T .+ E
 if drivers.LE.status == absent
     plot_daily_avg("ET", ET_model, dt * n, num_days, "mm/day", savedir, "Model")
@@ -466,7 +469,8 @@ else
 end
 
 # Sensible Heat Flux
-SHF_soil = [parent(sv.saveval[k].soil_shf)[1] for k in 1:length(sol.t)]
+SHF_soil =
+    [parent(sv.saveval[k].soil.sfc_conditions.shf)[1] for k in 1:length(sol.t)]
 SHF_canopy =
     [parent(sv.saveval[k].canopy.energy.shf)[1] for k in 1:length(sol.t)]
 SHF_model = SHF_soil + SHF_canopy
@@ -494,32 +498,32 @@ else
     )
 end
 
-# Ground Heat Flux
-Δz = parent(cds.subsurface.z)[end] - parent(cds.subsurface.z)[end - 2]
-first_layer_flux = [
-    -parent(sv.saveval[k].soil.κ)[1] * (
-        parent(sv.saveval[k].soil.T)[end] -
-        parent(sv.saveval[k].soil.T)[end - 2]
-    ) / Δz for k in 1:length(sol.t)
-]
-G_model = [
-    (
-        parent(sv.saveval[k].soil_shf)[1] + parent(sv.saveval[k].soil_lhf)[1] -
-        parent(sv.saveval[k].soil_LW_n)[1] -
-        parent(sv.saveval[k].soil_SW_n)[1]
-    ) for k in 1:length(sol.t)
-]
-canopy_G = [
-    (
-        parent(sv.saveval[k].canopy.energy.shf)[1] +
-        parent(sv.saveval[k].canopy.energy.lhf)[1] -
-        parent(sv.saveval[k].canopy.radiative_transfer.LW_n)[1] -
-        parent(sv.saveval[k].canopy.radiative_transfer.SW_n)[1]
-    ) for k in 1:length(sol.t)
-]
+# Latent Heat Flux
+LHF_soil =
+    [parent(sv.saveval[k].soil.sfc_conditions.lhf)[1] for k in 1:length(sol.t)]
+LHF_canopy =
+    [parent(sv.saveval[k].canopy.energy.lhf)[1] for k in 1:length(sol.t)]
+LHF_model = LHF_soil + LHF_canopy
+if drivers.LE.status == absent
+    plot_daily_avg("LHF", LHF_model, dt * n, num_days, "w/m^2", savedir)
+else
+    LHF_data = drivers.LE.values[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)]
+    plot_avg_comp(
+        "LHF",
+        LHF_model,
+        dt * n,
+        LHF_data,
+        FT(DATA_DT),
+        N_days - N_spinup_days,
+        drivers.LE.units,
+        savedir,
+    )
+end
 
-G_model_avg = compute_diurnal_avg(G_model, model_times, num_days)
-canopy_G_avg = compute_diurnal_avg(canopy_G, model_times, num_days)
+# Ground Heat Flux
+# In the land model, positive fluxes are always in the upwards direction
+# In the data, a positive G indicates a flux into the soil, so we adjust the sign
+# on the data G
 if drivers.G.status != absent
     G_data_avg = compute_diurnal_avg(
         FT.(drivers.G.values)[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)],
@@ -527,6 +531,11 @@ if drivers.G.status != absent
         num_days,
     )
     plt1 = Plots.plot(0.5:0.5:24, -1 .* G_data_avg, label = "Data: -G")
+    Plots.plot!(
+        plt1,
+        ylabel = "Flux (W/m^2)",
+        title = "Energy balance at the site",
+    )
     if drivers.LE.status != absent &&
        drivers.H.status != absent &&
        drivers.SW_OUT.status != absent &&
@@ -555,13 +564,6 @@ if drivers.G.status != absent
             data_times,
             num_days,
         )
-        RminusG_avg = compute_diurnal_avg(
-            FT.(Rn .- drivers.G.values)[Int64(t_spinup ÷ DATA_DT):Int64(
-                tf ÷ DATA_DT,
-            )],
-            data_times,
-            num_days,
-        )
         Plots.plot!(
             plt1,
             0.5:0.5:24,
@@ -578,27 +580,37 @@ if drivers.G.status != absent
         )
         Plots.plot(plt1, plt2, layout = (2, 1))
     end
-    Plots.plot!(
-        plt1,
-        ylabel = "Flux (W/m^2)",
-        title = "Energy balance at the site",
-    )
 end
 
 Plots.savefig(joinpath(savedir, "energy_balance_data.png"))
 
-plt1 = Plots.plot(size = (1500, 400))
+Δz = parent(cds.subsurface.z)[end] - parent(cds.subsurface.z)[end - 2]
+first_layer_flux = [
+    -parent(sv.saveval[k].soil.κ)[1] * (
+        parent(sv.saveval[k].soil.T)[end] -
+        parent(sv.saveval[k].soil.T)[end - 2]
+    ) / Δz for k in 1:length(sol.t)
+]
+G_model = [
+    (
+        parent(sv.saveval[k].soil.sfc_conditions.shf)[1] +
+        parent(sv.saveval[k].soil.sfc_conditions.lhf)[1] -
+        parent(sv.saveval[k].soil.R_n)[1]
+    ) for k in 1:length(sol.t)
+]
+canopy_G = [
+    (
+        parent(sv.saveval[k].canopy.energy.shf)[1] +
+        parent(sv.saveval[k].canopy.energy.lhf)[1] -
+        parent(sv.saveval[k].canopy.radiative_transfer.LW_n)[1] -
+        parent(sv.saveval[k].canopy.radiative_transfer.SW_n)[1]
+    ) for k in 1:length(sol.t)
+]
 
-if drivers.G.status != absent
-    Plots.plot!(
-        plt1,
-        0.5:0.5:24,
-        -1 .* G_data_avg,
-        label = "Data: -G",
-        margins = 10Plots.mm,
-        xlabel = "Hour of day",
-    )
-end
+G_model_avg = compute_diurnal_avg(G_model, model_times, num_days)
+canopy_G_avg = compute_diurnal_avg(canopy_G, model_times, num_days)
+
+plt1 = Plots.plot(size = (1500, 400))
 Plots.plot!(
     plt1,
     0.5:0.5:24,

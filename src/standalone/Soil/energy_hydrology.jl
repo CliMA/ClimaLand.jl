@@ -342,8 +342,18 @@ ClimaLSM.prognostic_domain_names(soil::EnergyHydrology) =
 A function which returns the names of the auxiliary variables
 of `EnergyHydrology`.
 """
-ClimaLSM.auxiliary_vars(soil::EnergyHydrology) =
-    (:K, :ψ, :θ_l, :T, :κ, :top_bc, :bottom_bc)
+ClimaLSM.auxiliary_vars(soil::EnergyHydrology) = (
+    :K,
+    :ψ,
+    :θ_l,
+    :T,
+    :κ,
+    boundary_vars(soil.boundary_conditions.top, ClimaLSM.TopBoundary())...,
+    boundary_vars(
+        soil.boundary_conditions.bottom,
+        ClimaLSM.BottomBoundary(),
+    )...,
+)
 
 """
     auxiliary_types(soil::EnergyHydrology{FT}) where {FT}
@@ -357,8 +367,16 @@ ClimaLSM.auxiliary_types(soil::EnergyHydrology{FT}) where {FT} = (
     FT,
     FT,
     FT,
-    NamedTuple{(:water, :heat), Tuple{FT, FT}},
-    NamedTuple{(:water, :heat), Tuple{FT, FT}},
+    boundary_var_types(
+        soil,
+        soil.boundary_conditions.top,
+        ClimaLSM.TopBoundary(),
+    )...,
+    boundary_var_types(
+        soil,
+        soil.boundary_conditions.bottom,
+        ClimaLSM.BottomBoundary(),
+    )...,
 )
 
 ClimaLSM.auxiliary_domain_names(soil::EnergyHydrology) = (
@@ -367,8 +385,14 @@ ClimaLSM.auxiliary_domain_names(soil::EnergyHydrology) = (
     :subsurface,
     :subsurface,
     :subsurface,
-    :surface,
-    :surface,
+    boundary_var_domain_names(
+        soil.boundary_conditions.top,
+        ClimaLSM.TopBoundary(),
+    )...,
+    boundary_var_domain_names(
+        soil.boundary_conditions.bottom,
+        ClimaLSM.BottomBoundary(),
+    )...,
 )
 """
     make_update_aux(model::EnergyHydrology)
