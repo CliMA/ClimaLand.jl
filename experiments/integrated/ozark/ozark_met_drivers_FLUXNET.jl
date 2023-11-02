@@ -1,3 +1,9 @@
+## Dataset obtained from Ameriflux. Funding for the AmeriFlux data portal was provided by the U.S. Department of Energy Office of Science.
+## Missouri Ozark site
+## Citation: Jeffrey Wood, Lianhong Gu (2021),
+## AmeriFlux FLUXNET-1F US-MOz Missouri Ozark Site, Ver. 3-5, AmeriFlux AMP, (Dataset). https://doi.org/10.17190/AMF/1854370
+
+
 using ArtifactWrappers
 using DelimitedFiles
 using Dierckx
@@ -18,7 +24,7 @@ function replace_missing_with_mean_by_value!(field)
 end
 
 # Fluxnet Ozark (CO2 and H2O fluxes and met drivers)
-# 2005 data extracted as follows:
+# 2005 data extracted from the full Fluxnet data for the site as follows:
 #af = ArtifactFile(
 #    url = "https://caltech.box.com/shared/static/cy4jlul43kx72r2pqthvm4isjwkatgxy.csv",
 #    filename = "AMF_US-MOz_FLUXNET_FULLSET_HH_2004-2019_3-5.csv",
@@ -37,9 +43,9 @@ af = ArtifactFile(
     url = "https://caltech.box.com/shared/static/1uwg8rjg2wx7y0vp8j9kv2d44y3fajyk.csv",
     filename = "AMF_US-MOz_FLUXNET_FULLSET_HH_2005.csv",
 )
-dataset = ArtifactWrapper(@__DIR__, "ameriflux_data", ArtifactFile[af]);
+dataset = ArtifactWrapper(@__DIR__, "ameriflux_data-US-MOz", ArtifactFile[af]);
 dataset_path = get_data_folder(dataset);
-data = joinpath(dataset_path, "AMF_US-MOz_FLUXNET_FULLSET_HH_2005.csv");
+data = joinpath(dataset_path, af.filename)
 driver_data = readdlm(data, ',')
 
 column_names = driver_data[1, :]
@@ -121,15 +127,17 @@ lat = FT(38.7441) # degree
 long = FT(-92.2000) # degree
 
 function zenith_angle(
-    t::FT,
+    t,
     orbital_data,
     ref_time;
     latitude = lat,
     longitude = long,
-    insol_params = earth_param_set.insol_params,
+    insol_params::Insolation.Parameters.InsolationParameters{FT} = earth_param_set.insol_params,
 ) where {FT}
     # This should be time in UTC
     dt = ref_time + Dates.Second(round(t))
+    # Orbital Data uses Float64, so we need to convert to our sim
+    # FT.
     FT(
         instantaneous_zenith_angle(
             dt,
