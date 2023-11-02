@@ -209,7 +209,7 @@ for FT in (Float32, Float64)
         # @test p.canopy.autotrophic_respiration.Ra ==
         exp_tendency!(dY, Y, p, t0)
         (evapotranspiration, shf, lhf) =
-            ClimaLSM.Canopy.canopy_turbulent_surface_fluxes(
+            ClimaLSM.Canopy.canopy_turbulent_fluxes(
                 canopy.atmos,
                 canopy,
                 Y,
@@ -272,7 +272,7 @@ for FT in (Float32, Float64)
 
         VPD = es .- ea
 
-        conditions = surface_fluxes(atmos, canopy, Y, p, t0) #Per unit m^2 of leaf
+        conditions = turbulent_fluxes(atmos, canopy, Y, p, t0) #Per unit m^2 of leaf
         r_ae = Array(parent(conditions.r_ae))[1] # s/m
         ga = 1 / r_ae
         γ = FT(66)
@@ -667,7 +667,7 @@ for FT in (Float32, Float64)
         dY = similar(Y)
         exp_tendency!(dY, Y, p, t0)
         (evapotranspiration, shf, lhf) =
-            canopy_turbulent_surface_fluxes(canopy.atmos, canopy, Y, p, t0)
+            canopy_turbulent_fluxes(canopy.atmos, canopy, Y, p, t0)
         @test p.canopy.hydraulics.fa.:1 == evapotranspiration
         @test p.canopy.energy.lhf == lhf
         @test p.canopy.energy.shf == shf

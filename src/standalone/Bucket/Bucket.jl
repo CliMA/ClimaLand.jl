@@ -20,7 +20,7 @@ using ClimaLSM:
     AbstractRadiativeDrivers,
     liquid_precipitation,
     snow_precipitation,
-    surface_fluxes,
+    turbulent_fluxes,
     net_radiation,
     construct_atmos_ts,
     compute_ρ_sfc,
@@ -554,9 +554,9 @@ function make_update_aux(model::BucketModel{FT}) where {FT}
             )
 
         # Compute turbulent surface fluxes
-        conditions = surface_fluxes(model.atmos, model, Y, p, t)
-        p.bucket.turbulent_energy_flux .= conditions.lhf .+ conditions.shf
-        p.bucket.evaporation .= conditions.vapor_flux
+        turb_fluxes = turbulent_fluxes(model.atmos, model, Y, p, t)
+        p.bucket.turbulent_energy_flux .= turb_fluxes.lhf .+ turb_fluxes.shf
+        p.bucket.evaporation .= turb_fluxes.vapor_flux
 
         # Radiative fluxes
         p.bucket.R_n .= net_radiation(model.radiation, model, Y, p, t)

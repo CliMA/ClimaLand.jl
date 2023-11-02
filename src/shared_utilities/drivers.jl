@@ -11,9 +11,9 @@ export AbstractAtmosphericDrivers,
     PrescribedRadiativeFluxes,
     compute_ρ_sfc,
     construct_atmos_ts,
-    surface_fluxes,
+    turbulent_fluxes,
     net_radiation,
-    surface_fluxes_at_a_point,
+    turbulent_fluxes_at_a_point,
     liquid_precipitation,
     snow_precipitation,
     vapor_pressure_deficit,
@@ -133,7 +133,7 @@ end
 
 
 """
-    surface_fluxes(atmos::PrescribedAtmosphere{FT},
+    turbulent_fluxes(atmos::PrescribedAtmosphere{FT},
                    model::AbstractModel{FT},
                    Y::ClimaCore.Fields.FieldVector,
                    p::NamedTuple,
@@ -148,7 +148,7 @@ Positive fluxes indicate flow from the ground to the atmosphere.
 It solves for these given atmospheric conditions, stored in `atmos`,
 model parameters, and the surface conditions.
 """
-function surface_fluxes(
+function turbulent_fluxes(
     atmos::PrescribedAtmosphere{FT},
     model::AbstractModel{FT},
     Y::ClimaCore.Fields.FieldVector,
@@ -162,7 +162,7 @@ function surface_fluxes(
     h_sfc = FT.(surface_height(model, Y, p))
     r_sfc = FT.(surface_resistance(model, Y, p, t))
     d_sfc = FT.(displacement_height(model, Y, p))
-    return surface_fluxes_at_a_point.(
+    return turbulent_fluxes_at_a_point.(
         T_sfc,
         q_sfc,
         ρ_sfc,
@@ -177,7 +177,7 @@ function surface_fluxes(
 end
 
 """
-    surface_fluxes_at_a_point(T_sfc::FT,
+    turbulent_fluxes_at_a_point(T_sfc::FT,
                               q_sfc::FT,
                               ρ_sfc::FT,
                               β_sfc::FT,
@@ -203,7 +203,7 @@ and roughness lengths `z_0m, z_0b`.
 This returns an energy flux and a liquid water volume flux, stored in
 a tuple with self explanatory keys.
 """
-function surface_fluxes_at_a_point(
+function turbulent_fluxes_at_a_point(
     T_sfc::FT,
     q_sfc::FT,
     ρ_sfc::FT,
