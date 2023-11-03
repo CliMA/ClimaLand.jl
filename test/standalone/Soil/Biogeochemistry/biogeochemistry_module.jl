@@ -1,4 +1,5 @@
 using Test
+using Dates
 import CLIMAParameters as CP
 using ClimaCore
 using ClimaLSM
@@ -10,9 +11,10 @@ import ClimaLSM.Parameters as LSMP
 include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
 
 @testset "Soil co2 biogeochemistry sources" begin
-    FT = Float32
+    FT = Float64
     earth_param_set = create_lsm_parameters(FT)
     # Prognostic variables
+    P_sfc = (t) -> 101e3
     T_soil = (z, t) -> eltype(t)(303)
     θ_l = (z, t) -> eltype(t)(0.3)
     θ_i = (z, t) -> eltype(t)(0.0)
@@ -32,7 +34,32 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     sources = (MicrobeProduction{FT}(),)
     boundary_conditions = (; top = (CO2 = top_bc,), bottom = (CO2 = bot_bc,))
 
-    soil_drivers = SoilDrivers(PrescribedMet(T_soil, θ_l), PrescribedSOC(Csom))
+    # Make a PrescribedAtmosphere - we only care about atmos_p though
+    precipitation_function = (t) -> 1.0
+    snow_precip = (t) -> 1.0
+    atmos_T = (t) -> 1.0
+    atmos_u = (t) -> 1.0
+    atmos_q = (t) -> 1.0
+    atmos_p = (t) -> 100000.0
+    UTC_DATETIME = Dates.now()
+    atmos_h = FT(30)
+    atmos_co2 = (t) -> 1.0
+
+    atmos = ClimaLSM.PrescribedAtmosphere(
+        precipitation_function,
+        snow_precip,
+        atmos_T,
+        atmos_u,
+        atmos_q,
+        atmos_p,
+        UTC_DATETIME,
+        atmos_h;
+        c_co2 = atmos_co2,
+    )
+
+    soil_drivers =
+        SoilDrivers(PrescribedMet(T_soil, θ_l), PrescribedSOC(Csom), atmos)
+
     model = SoilCO2Model{FT}(;
         parameters = parameters,
         domain = soil_domain,
@@ -54,9 +81,10 @@ end
 
 
 @testset "Soil co2 biogeochemistry diffusion" begin
-    FT = Float32
+    FT = Float64
     earth_param_set = create_lsm_parameters(FT)
     # Prognostic variables
+    P_sfc = (t) -> 101e3
     T_soil = (z, t) -> eltype(t)(303)
     θ_l = (z, t) -> eltype(t)(0.3)
     θ_i = (z, t) -> eltype(t)(0.0)
@@ -73,7 +101,35 @@ end
     sources = ()
     boundary_conditions = (; top = (CO2 = top_bc,), bottom = (CO2 = bot_bc,))
 
-    soil_drivers = SoilDrivers(PrescribedMet(T_soil, θ_l), PrescribedSOC(Csom))
+    # Make a PrescribedAtmosphere - we only care about atmos_p though
+    precipitation_function = (t) -> 1.0
+    snow_precip = (t) -> 1.0
+    atmos_T = (t) -> 1.0
+    atmos_u = (t) -> 1.0
+    atmos_q = (t) -> 1.0
+    atmos_p = (t) -> 100000.0
+    UTC_DATETIME = Dates.now()
+    atmos_h = FT(30)
+    atmos_co2 = (t) -> 1.0
+
+    atmos = ClimaLSM.PrescribedAtmosphere(
+        precipitation_function,
+        snow_precip,
+        atmos_T,
+        atmos_u,
+        atmos_q,
+        atmos_p,
+        UTC_DATETIME,
+        atmos_h;
+        c_co2 = atmos_co2,
+    )
+
+    soil_drivers = SoilDrivers(
+        PrescribedMet(T_soil, θ_l),
+        PrescribedSOC(Csom),
+        atmos, # need to create some functions
+    )
+
     model = SoilCO2Model{FT}(;
         parameters = parameters,
         domain = soil_domain,

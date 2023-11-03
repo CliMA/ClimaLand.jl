@@ -4,6 +4,7 @@ using ClimaLSM
 using ClimaLSM.Domains: Column
 using ClimaLSM.Soil
 using ClimaLSM.Soil.Biogeochemistry
+using Dates
 
 import ClimaLSM.Parameters as LSMP
 include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
@@ -77,9 +78,35 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     co2_bot_bc = Soil.Biogeochemistry.SoilCO2StateBC((p, t) -> eltype(t)(C))
     co2_sources = ()
     co2_boundary_conditions = (; CO2 = (top = co2_top_bc, bottom = co2_bot_bc))
+
+    # Make a PrescribedAtmosphere - we only care about atmos_p though
+    precipitation_function = (t) -> 1.0
+    snow_precip = (t) -> 1.0
+    atmos_T = (t) -> 1.0
+    atmos_u = (t) -> 1.0
+    atmos_q = (t) -> 1.0
+    atmos_p = (t) -> 100000.0
+    UTC_DATETIME = Dates.now()
+    atmos_h = FT(30)
+    atmos_co2 = (t) -> 1.0
+
+    atmos = ClimaLSM.PrescribedAtmosphere(
+        precipitation_function,
+        snow_precip,
+        atmos_T,
+        atmos_u,
+        atmos_q,
+        atmos_p,
+        UTC_DATETIME,
+        atmos_h;
+        c_co2 = atmos_co2,
+    )
+
+
     soil_drivers = Soil.Biogeochemistry.SoilDrivers(
         Soil.Biogeochemistry.PrognosticMet(),
         Soil.Biogeochemistry.PrescribedSOC(Csom),
+        atmos,
     )
     soilco2_args = (;
         boundary_conditions = co2_boundary_conditions,
@@ -152,6 +179,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
         soil_drivers = Soil.Biogeochemistry.SoilDrivers(
             Soil.Biogeochemistry.PrognosticMet(),
             Soil.Biogeochemistry.PrescribedSOC(Csom),
+            atmos,
         )
         soilco2_args = (;
             boundary_conditions = co2_boundary_conditions,
@@ -178,6 +206,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
         soil_drivers = Soil.Biogeochemistry.SoilDrivers(
             Soil.Biogeochemistry.PrescribedMet(Csom, Csom),
             Soil.Biogeochemistry.PrescribedSOC(Csom),
+            atmos,
         )
         soilco2_args = (;
             boundary_conditions = co2_boundary_conditions,

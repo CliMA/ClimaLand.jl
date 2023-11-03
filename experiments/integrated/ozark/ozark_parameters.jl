@@ -5,6 +5,19 @@
 ## # Bonan, G. Climate change and terrestrial ecosystem modeling. Cambridge University Press, 2019.
 
 ## LAI data from MODIS
+# Heterotrophic respiration parameters
+θ_a100 = FT(0.1816)
+D_ref = FT(1.39e-5)
+b = FT(4.547)
+D_liq = FT(3.17)
+# DAMM
+α_sx = FT(194e3)
+Ea_sx = FT(61e3)
+kM_sx = FT(5e-3)
+kM_o2 = FT(0.004)
+O2_a = FT(0.209)
+D_oa = FT(1.67)
+p_sx = FT(0.024)
 
 # Autotrophic respiration parameters
 ne = FT(8 * 1e-4)

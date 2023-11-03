@@ -8,10 +8,9 @@ import ClimaLSM.Parameters as LSMP
 include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
 
 @testset "Soil CO2 production and transport" begin
-    FT = Float32
+    FT = Float64
     earth_param_set = create_lsm_parameters(FT)
     # Parameters should be supplied in m/kg/s (Pa... etc)
-    P_sfc = FT(101e3)
     D_liq = FT(3.17)
     ν = FT(0.556)
     θ_a100 = FT(0.1846)
@@ -25,6 +24,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     D_oa = FT(1.67)
     p_sx = FT(0.024)
     # Prognostic variables
+    P_sfc = FT(101e3)
     T_soil = FT(303)
     θ_l = FT(0.3)
     θ_i = FT(0.0)
@@ -34,7 +34,6 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     R = FT(LSMP.gas_constant(earth_param_set))
 
     parameters = SoilCO2ModelParameters{FT}(;
-        P_sfc = P_sfc,
         D_liq = D_liq,
         ν = ν,
         θ_a100 = θ_a100,
@@ -48,12 +47,12 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     @test θ_a == parameters.ν - θ_w
     @test typeof(θ_a) == FT
 
-    D = co2_diffusivity(T_soil, θ_w, parameters)
+    D = co2_diffusivity(T_soil, θ_w, P_sfc, parameters)
     @test D ==
           (
               parameters.D_ref *
               (T_soil / T_ref)^FT(1.75) *
-              (FT(LSMP.P_ref(parameters.earth_param_set)) / parameters.P_sfc)
+              (FT(LSMP.P_ref(parameters.earth_param_set)) / P_sfc)
           ) *
           (FT(2)parameters.θ_a100^FT(3) + FT(0.04)parameters.θ_a100) *
           (θ_a / parameters.θ_a100)^(FT(2) + FT(3) / parameters.b)

@@ -55,7 +55,7 @@ CO2_F = driver_data[2:end, column_names .== "CO2_F_MDS_QC"][subset]
 CO2 = driver_data[2:end, column_names .== "CO2_F_MDS"][subset] .* 1e-6; # convert \mumol to mol
 replace_missing_with_mean!(CO2, CO2_F)
 
-
+RECO = driver_data[2:end, column_names .== "RECO_DT_VUT_REF"] .* 1e-6 # to convert from micromol to mol.
 TA = driver_data[2:end, column_names .== "TA_F"][subset] .+ 273.15; # convert C to K
 VPD = driver_data[2:end, column_names .== "VPD_F"][subset] .* 100; # convert hPa to Pa
 PA = driver_data[2:end, column_names .== "PA_F"][subset] .* 1000; # convert kPa to Pa
