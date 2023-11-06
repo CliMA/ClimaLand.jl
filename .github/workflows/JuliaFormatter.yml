@@ -2,10 +2,6 @@ name: JuliaFormatter
 
 on:
   push:
-    branches:
-      - main
-      - trying
-      - staging
     tags: '*'
   pull_request:
 
@@ -36,7 +32,7 @@ jobs:
       if: steps.filter.outputs.julia_file_change == 'true'
       run: |
         julia --project=.dev .dev/climaformat.jl .
-          
+
     - name: Check formatting diff
       if: steps.filter.outputs.julia_file_change == 'true'
       run: |
