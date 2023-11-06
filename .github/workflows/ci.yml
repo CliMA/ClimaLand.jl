@@ -1,10 +1,6 @@
 name: ci
 on:
   push:
-    branches:
-      - main
-      - trying
-      - staging
     tags: '*'
   pull_request:
 
