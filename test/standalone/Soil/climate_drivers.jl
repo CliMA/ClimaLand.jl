@@ -41,7 +41,6 @@ for FT in (Float32, Float64)
         @test Soil.dry_soil_layer_thickness(FT(1), S_c, FT(1)) == FT(0)
         @test Soil.dry_soil_layer_thickness(FT(0), S_c, FT(1)) == FT(1)
 
-
         ν_ss_om = FT(0.0)
         ν_ss_quartz = FT(1.0)
         ν_ss_gravel = FT(0.0)
@@ -126,6 +125,7 @@ for FT in (Float32, Float64)
                 :T,
                 :κ,
                 :turbulent_fluxes,
+                :ice_frac,
                 :R_n,
                 :top_bc,
                 :infiltration,
@@ -260,11 +260,17 @@ for FT in (Float32, Float64)
             τ_a = ClimaLand.Domains.top_center_to_surface(
                 @. (ν - p.soil.θ_l - Y.soil.θ_i)^(FT(5 / 2)) / ν
             )
+            f_ice = ClimaLand.Domains.top_center_to_surface(
+                @. effective_saturation(ν, Y.soil.θ_i, θ_r) / (
+                    effective_saturation(ν, Y.soil.θ_i, θ_r) +
+                    effective_saturation(ν, Y.soil.ϑ_l, θ_r)
+                )
+            )
             dsl = Soil.dry_soil_layer_thickness.(S_l_sfc, S_c, d_ds)
             r_soil = @. dsl / (_D_vapor * τ_a) # [s\m]
             r_ae = conditions.r_ae
             expected_water_flux = @. FT(precip(t)) .+
-               conditions.vapor_flux * r_ae / (r_soil + r_ae)
+               conditions.vapor_flux * (1 - f_ice) * r_ae / (r_soil + r_ae)
             @test computed_water_flux == expected_water_flux
             expected_energy_flux = @. R_n +
                conditions.lhf * r_ae / (r_soil + r_ae) +

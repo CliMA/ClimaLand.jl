@@ -119,9 +119,11 @@ function EnergyHydrology{FT}(;
     top_bc = boundary_conditions.top
     if typeof(top_bc) <: AtmosDrivenFluxBC
         # If the top BC indicates atmospheric conditions are driving the model
-        # add baseflow as a sink term
+        # add baseflow as a sink term, add sublimation as a sink term
+        sublimation_source = SoilSublimation{FT}()
         subsurface_source = subsurface_runoff_source(top_bc.runoff)
         sources = append_source(subsurface_source, sources)
+        sources = append_source(sublimation_source, sources)
     end
     args = (parameters, domain, boundary_conditions, sources)
     EnergyHydrology{FT, typeof.(args)...}(args..., lateral_flow)
@@ -442,6 +444,41 @@ function ClimaLand.source!(
 end
 
 
+"""
+    SoilSublimation{FT} <: AbstractSoilSource{FT}
+
+Soil Sublimation source type. Used to defined a method
+of `ClimaLand.source!` for soil sublimation.
+"""
+struct SoilSublimation{FT} <: AbstractSoilSource{FT} end
+
+"""
+     source!(dY::ClimaCore.Fields.FieldVector,
+             src::SoilSublimation{FT},
+             Y::ClimaCore.Fields.FieldVector,
+             p::NamedTuple,
+             model
+             )
+
+Updates dY.soil.θ_i in place with a term due to sublimation; this only affects
+the surface layer of soil.
+
+"""
+function ClimaLand.source!(
+    dY::ClimaCore.Fields.FieldVector,
+    src::SoilSublimation{FT},
+    Y::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
+    model,
+) where {FT}
+    _ρ_i = FT(LP.ρ_cloud_ice(model.parameters.earth_param_set))
+    _ρ_l = FT(LP.ρ_cloud_liq(model.parameters.earth_param_set))
+    z = ClimaCore.Fields.coordinate_field(axes(Y.soil.θ_i)).z
+    Δz, _ = ClimaLand.Domains.get_Δz(z) # center to face distance, we need a factor of two 
+    @. dY.soil.θ_i +=
+        -p.soil.turbulent_fluxes.vapor_flux * p.soil.ice_frac * _ρ_l / _ρ_i *
+        heaviside(z + 2 * Δz) # only apply to top layer
+end
 
 ## The functions below are required to be defined
 ## for use with the `AtmosDrivenFluxBC` upper
@@ -493,18 +530,14 @@ function ClimaLand.surface_resistance(
 ) where {FT}
     cds = ClimaCore.Fields.coordinate_field(model.domain.space.subsurface)
     (; ν, θ_r, hydrology_cm) = model.parameters
-    S_l = effective_saturation.(ν, p.soil.θ_l, θ_r)
-    S_l_sfc = p.soil.sfc_scratch
-    ClimaLand.Domains.linear_interpolation_to_surface!(S_l_sfc, S_l, cds.z)
-    θ_l_sfc = @. S_l_sfc * (ν - θ_r) + θ_r
-    θ_i_sfc = ClimaLand.Domains.top_center_to_surface(Y.soil.θ_i)
-    ϑ_l_sfc = θ_l_sfc
-    return ClimaLand.Soil.soil_resistance.(
+    θ_l_sfc = p.soil.sfc_scratch
+    ClimaLand.Domains.linear_interpolation_to_surface!(
         θ_l_sfc,
-        ϑ_l_sfc,
-        θ_i_sfc,
-        model.parameters,
+        p.soil.θ_l,
+        cds.z,
     )
+    θ_i_sfc = ClimaLand.Domains.top_center_to_surface(Y.soil.θ_i)
+    return ClimaLand.Soil.soil_resistance.(θ_l_sfc, θ_i_sfc, model.parameters)
 end
 
 """
@@ -553,7 +586,7 @@ end
 Returns the surface specific humidity field of the
 `EnergyHydrology` soil model.
 
-This models the surface specific humidity as
+This models the specific humidity over the soil liquid water as
 the saturated value multiplied by
 the factor `exp(ψ_sfc g M_w/(RT_sfc))` in accordance
 with the Clausius-Clapeyron equation,
@@ -561,6 +594,12 @@ where `ψ_sfc` is the matric potential at the surface,
 `T_sfc` the surface temperature, `g` the gravitational
 acceleration on the surface of the Earth, `M_w` the molar
 mass of water, and `R` the universal gas constant.
+
+Over the soil ice, the specific humidity is the saturated value.
+
+The total surface specific humidity of the soil is approximated by
+q = q_over_ice * f + q_over_water * (1-f), where `f` is given by
+the function `ice_fraction`. 
 """
 function ClimaLand.surface_specific_humidity(
     model::EnergyHydrology{FT},
@@ -577,17 +616,30 @@ function ClimaLand.surface_specific_humidity(
     cds = ClimaCore.Fields.coordinate_field(model.domain.space.subsurface)
     ψ_sfc = p.soil.sfc_scratch
     ClimaLand.Domains.linear_interpolation_to_surface!(ψ_sfc, p.soil.ψ, cds.z)
-
-    q_sat =
+    q_over_ice =
+        Thermodynamics.q_vap_saturation_generic.(
+            thermo_params,
+            T_sfc,
+            ρ_sfc,
+            Thermodynamics.Ice(),
+        )
+    q_over_liq =
         Thermodynamics.q_vap_saturation_generic.(
             thermo_params,
             T_sfc,
             ρ_sfc,
             Thermodynamics.Liquid(),
-        )
-    return @. q_sat * exp(g * ψ_sfc * M_w / (R * T_sfc))
-
+        ) .* (@. exp(g * ψ_sfc * M_w / (R * T_sfc)))
+    ice_frac = p.soil.ice_frac
+    ν_sfc = model.parameters.ν
+    θ_r_sfc = model.parameters.θ_r
+    S_c_sfc = model.parameters.hydrology_cm.S_c
+    θ_l_sfc = ClimaLand.Domains.top_center_to_surface(p.soil.θ_l)
+    θ_i_sfc = ClimaLand.Domains.top_center_to_surface(Y.soil.θ_i)
+    @. ice_frac = ice_fraction(θ_l_sfc, θ_i_sfc, ν_sfc, θ_r_sfc)
+    return @. (1 - ice_frac) * q_over_liq + ice_frac * q_over_ice
 end
+
 
 """
     ClimaLand.surface_height(

@@ -1,7 +1,6 @@
-# This sets up the simulation that mimicks the coarse sand
-# lab experiment
-# presented in Figures 7 and 8a of
-# Lehmann, Assouline, Or  (Phys Rev E 77, 2008).
+# Eventually this will be a bare soil site experiment,
+# showing how to set up the soil model in a column with
+# prescribed forcing and comparing to data.
 
 using CairoMakie
 import SciMLBase
@@ -27,22 +26,9 @@ FT = Float64;
 earth_param_set = LP.LandParameters(FT)
 thermo_params = LP.thermodynamic_parameters(earth_param_set);
 
-# We model evaporation using Monin-Obukhov surface theory.
-# In our soil model,
-# it is not possible to set the initial condition corresponding to
-#  MOST fluxes, but not include radiative fluxes.
-# This is because for land surface models does not make sense
-# to include atmospheric forcing but not radiative forcing.
-
-# Because of this, we need to supply downward welling short and long wave
-# radiation. We chose SW = 0 and LW = σT^4, in order to approximately balance
-# out the blackbody emission of the soil which is accounted for by our model.
-# Our assumption is that in the lab experiment there was no radiative heating
-# or cooling of the soil.
-
-ref_time = DateTime(2005) # required argument, but not used in this case
+ref_time = DateTime(2005)
 SW_d = (t) -> 0
-LW_d = (t) -> 301.15^4 * 5.67e-8
+LW_d = (t) -> 270.0^4 * 5.67e-8
 radiation = PrescribedRadiativeFluxes(
     FT,
     TimeVaryingInput(SW_d),
@@ -52,7 +38,7 @@ radiation = PrescribedRadiativeFluxes(
 # Set up atmospheric conditions that result in the potential evaporation
 # rate obsereved in the experiment.
 # Some of these conditions are reported in the paper.
-T_air = FT(301.15)
+T_air = FT(270.0)
 rh = FT(0.38)
 esat = Thermodynamics.saturation_vapor_pressure(
     thermo_params,
@@ -129,16 +115,17 @@ params = ClimaLand.Soil.EnergyHydrologyParameters(
 # Domain - single column
 zmax = FT(0)
 zmin = FT(-0.35)
-nelems = 5
-soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems)
+nelems = 12
+soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems);
 z = ClimaCore.Fields.coordinate_field(soil_domain.space.subsurface).z;
-
+Δz = parent(z)[end]
 # Soil model, and create the prognostic vector Y and cache p:
+sources = (PhaseChange{FT}(Δz),);
 soil = Soil.EnergyHydrology{FT}(;
     parameters = params,
     domain = soil_domain,
     boundary_conditions = boundary_fluxes,
-    sources = (),
+    sources = sources,
 )
 
 Y, p, cds = initialize(soil);
@@ -155,9 +142,9 @@ function hydrostatic_equilibrium(z, z_interface, params)
 end
 function init_soil!(Y, z, params)
     FT = eltype(Y.soil.ϑ_l)
-    Y.soil.ϑ_l .= hydrostatic_equilibrium.(z, FT(-0.001), params)
+    Y.soil.ϑ_l .= hydrostatic_equilibrium.(z, FT(-0.1), params)
     Y.soil.θ_i .= 0
-    T = FT(296.15)
+    T = FT(275.0)
     ρc_s = @. Soil.volumetric_heat_capacity(Y.soil.ϑ_l, FT(0), params)
     Y.soil.ρe_int =
         Soil.volumetric_internal_energy.(FT(0), ρc_s, T, Ref(params))
@@ -166,8 +153,8 @@ init_soil!(Y, z, soil.parameters);
 
 # Timestepping:
 t0 = Float64(0)
-tf = Float64(24 * 3600 * 13)
-dt = Float64(2.0)
+tf = Float64(24 * 3600 * 4)
+dt = Float64(0.5)
 soil_exp_tendency! = make_exp_tendency(soil)
 timestepper = CTS.RK4()
 ode_algo = CTS.ExplicitAlgorithm(timestepper);
@@ -206,69 +193,87 @@ evap = [
         (1 .- sv.saveval[k].soil.ice_frac),
     )[1] for k in 1:length(sol.t)
 ]
-savepath = joinpath(pkgdir(ClimaLand), "docs/tutorials/standalone/Soil/")
-evap_dataset = ArtifactWrapper(
-    @__DIR__,
-    "lehmann2008_fig8_evaporation",
-    ArtifactFile[ArtifactFile(
-        url = "https://caltech.box.com/shared/static/cgppw3tx6zdz7h02yt28ri44g1j088ju.csv",
-        filename = "lehmann2008_fig8_evaporation.csv",
-    ),],
-)
-evap_datapath = get_data_folder(evap_dataset)
-ref_soln_E =
-    readdlm(joinpath(evap_datapath, "lehmann2008_fig8_evaporation.csv"), ',')
-ref_soln_E_350mm = ref_soln_E[2:end, 1:2]
-data_dates = ref_soln_E_350mm[:, 1]
-data_e = ref_soln_E_350mm[:, 2];
+sub = [
+    parent(
+        sv.saveval[k].soil.turbulent_fluxes.vapor_flux .*
+        sv.saveval[k].soil.ice_frac,
+    )[1] for k in 1:length(sol.t)
+]
 
-fig = Figure(size = (800, 400))
+savepath = joinpath(pkgdir(ClimaLand), "docs/tutorials/standalone/Soil/")
+
+fig = Figure(size = (400, 400))
 ax = Axis(
     fig[1, 1],
     xlabel = "Day",
-    ylabel = "Evaporation rate (mm/d)",
-    title = "Bare soil evaporation",
+    ylabel = "Rate (mm/d)",
+    title = "Vapor Fluxes",
 )
-CairoMakie.xlims!(minimum(data_dates), maximum(data_dates))
 CairoMakie.lines!(
     ax,
-    FT.(data_dates),
-    FT.(data_e),
-    label = "Data",
+    sol.t ./ 3600 ./ 24,
+    sub .* (1000 * 3600 * 24),
+    label = "Sublimation",
     color = :blue,
 )
 CairoMakie.lines!(
     ax,
     sol.t ./ 3600 ./ 24,
     evap .* (1000 * 3600 * 24),
-    label = "Model",
+    label = "Evaporation",
     color = :black,
 )
 CairoMakie.axislegend(ax)
 
-ax = Axis(
-    fig[1, 2],
-    xlabel = "Mass (g)",
-    yticksvisible = false,
-    yticklabelsvisible = false,
-)
-A_col = π * (0.027)^2
-mass_0 = sum(sol.u[1].soil.ϑ_l) * 1e6 * A_col
-mass_loss =
-    [mass_0 - sum(sol.u[k].soil.ϑ_l) * 1e6 * A_col for k in 1:length(sol.t)]
-CairoMakie.lines!(
-    ax,
-    cumsum(FT.(data_e)) ./ (1000 * 24) .* A_col .* 1e6,
-    FT.(data_e),
-    label = "Data",
-    color = :blue,
-)
-CairoMakie.lines!(
-    ax,
-    mass_loss,
-    evap .* (1000 * 3600 * 24),
-    label = "Model",
-    color = :black,
-)
-save("evaporation_lehmann2008_fig8b.png", fig);
-# ![](evaporation_lehmann2008_fig8b.png)
+save("water_fluxes.png", fig);
+# ![](water_fluxes.png)
+
+fig2 = Figure(size = (800, 1200))
+ax1 = Axis(fig2[1, 1], title = "Temperature")
+CairoMakie.ylims!(-0.35, 0)
+CairoMakie.xlims!(260, 280)
+linestyles = [:solid, :dash, :dashdot, :dashdotdot, :dot]
+days = [0, 1, 2, 3, 4]
+for i in 1:length(days)
+    CairoMakie.lines!(
+        ax1,
+        parent(sv.saveval[Int(days[i] * 24 + 1)].soil.T)[:],
+        parent(z)[:],
+        label = "$(days[i]) days",
+        color = :black,
+        linestyle = linestyles[i],
+    )
+end
+ax2 = Axis(fig2[2, 1], title = "Ice", ylabel = "Depth(cm)")
+
+CairoMakie.ylims!(-0.35, 0)
+CairoMakie.xlims!(0.0, 0.5)
+for i in 1:length(days)
+    CairoMakie.lines!(
+        ax2,
+        parent(sol.u[Int(days[i] * 24 + 1)].soil.θ_i)[:],
+        parent(z)[:],
+        label = "$(days[i]) days",
+        color = :black,
+        linestyle = linestyles[i],
+    )
+end
+ax3 = Axis(fig2[3, 1], title = "Liquid Water", xlabel = "")
+CairoMakie.ylims!(-0.35, 0)
+CairoMakie.xlims!(0.0, 0.5)
+for i in 1:length(days)
+    CairoMakie.lines!(
+        ax3,
+        parent(sol.u[Int(days[i] * 24 + 1)].soil.ϑ_l)[:],
+        parent(z)[:],
+        label = "$(days[i]) days",
+        color = :black,
+        linestyle = linestyles[i],
+    )
+end
+
+CairoMakie.axislegend(ax3, position = :lt)
+CairoMakie.axislegend(ax2, position = :lt)
+CairoMakie.axislegend(ax1, position = :lt)
+save("profiles.png", fig2);
+# ![](profiles.png)

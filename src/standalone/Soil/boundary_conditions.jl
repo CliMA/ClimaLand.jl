@@ -785,7 +785,7 @@ boundary_vars(
         <:AbstractRunoffModel,
     },
     ::ClimaLand.TopBoundary,
-) = (:turbulent_fluxes, :R_n, :top_bc, :infiltration, :sfc_scratch)
+) = (:turbulent_fluxes, :ice_frac, :R_n, :top_bc, :infiltration, :sfc_scratch)
 
 """
     boundary_var_domain_names(::AtmosDrivenFluxBC{<:AbstractAtmosphericDrivers,
@@ -805,7 +805,7 @@ boundary_var_domain_names(
         <:AbstractRunoffModel,
     },
     ::ClimaLand.TopBoundary,
-) = (:surface, :surface, :surface, :surface, :surface)
+) = (:surface, :surface, :surface, :surface, :surface, :surface)
 """
     boundary_var_types(
         ::AtmosDrivenFluxBC{
@@ -828,6 +828,7 @@ boundary_var_types(
     ::ClimaLand.TopBoundary,
 ) where {FT} = (
     NamedTuple{(:lhf, :shf, :vapor_flux, :r_ae), Tuple{FT, FT, FT, FT}},
+    FT,
     FT,
     NamedTuple{(:water, :heat), Tuple{FT, FT}},
     FT,
@@ -872,11 +873,13 @@ function soil_boundary_fluxes!(
 )
     p.soil.turbulent_fluxes .= turbulent_fluxes(bc.atmos, model, Y, p, t)
     p.soil.R_n .= net_radiation(bc.radiation, model, Y, p, t)
-    # We are ignoring sublimation for now
     update_runoff!(p, bc.runoff, Y, t, model)
-    # We do not model the energy flux from infiltration
+    # We do not model the energy flux from infiltration. We multiply
+    # the vapor flux by the ice fraction in order to get the contribution
+    # from liquid water
     @. p.soil.top_bc.water =
-        p.soil.infiltration .+ p.soil.turbulent_fluxes.vapor_flux
+        p.soil.infiltration +
+        p.soil.turbulent_fluxes.vapor_flux * (1 - p.soil.ice_frac)
     @. p.soil.top_bc.heat =
         p.soil.R_n + p.soil.turbulent_fluxes.lhf + p.soil.turbulent_fluxes.shf
 end
@@ -903,6 +906,7 @@ boundary_vars(
     ::ClimaLand.TopBoundary,
 ) = (
     :turbulent_fluxes,
+    :ice_frac,
     :R_n,
     :top_bc,
     :h∇,
@@ -931,7 +935,18 @@ boundary_var_domain_names(
         <:Runoff.TOPMODELRunoff,
     },
     ::ClimaLand.TopBoundary,
-) = (:surface, :surface, :surface, :surface, :surface, :surface, :surface, :sfc)
+) = (
+    :surface,
+    :surface,
+    :surface,
+    :surface,
+    :surface,
+    :surface,
+    :surface,
+    :surface,
+    :surface,
+)
+
 """
     boundary_var_types(
         ::AtmosDrivenFluxBC{
@@ -955,6 +970,7 @@ boundary_var_types(
     ::ClimaLand.TopBoundary,
 ) where {FT} = (
     NamedTuple{(:lhf, :shf, :vapor_flux, :r_ae), Tuple{FT, FT, FT, FT}},
+    FT,
     FT,
     NamedTuple{(:water, :heat), Tuple{FT, FT}},
     FT,
