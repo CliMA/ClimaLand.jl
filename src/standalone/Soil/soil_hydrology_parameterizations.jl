@@ -6,8 +6,7 @@ export volumetric_liquid_fraction,
     hydraulic_conductivity,
     impedance_factor,
     viscosity_factor,
-    dψdϑ,
-    dry_soil_layer_thickness
+    dψdϑ
 """
     volumetric_liquid_fraction(ϑ_l::FT, ν_eff::FT, θ_r::FT) where {FT}
 
@@ -266,15 +265,4 @@ function viscosity_factor(T::FT, γ::FT, γT_ref::FT) where {FT}
     factor = FT(γ * (T - γT_ref))
     Theta = FT(exp(factor))
     return Theta
-end
-
-"""
-    dry_soil_layer_thickness(S_l_sfc::FT, S_c::FT, d_ds::FT) where {FT}
-
-Returns the maximum dry soil layer thickness that can develop under evaporation; 
-this is used when computing the soil resistance to evaporation according to
-Swenson et al (2012).
-"""
-function dry_soil_layer_thickness(S_l_sfc::FT, S_c::FT, d_ds::FT) where {FT}
-    return S_l_sfc < S_c ? d_ds * (S_c - S_l_sfc) / S_c : FT(0)
 end
