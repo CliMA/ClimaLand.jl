@@ -53,3 +53,6 @@ steps:
       - label: "Water conservation"
         command: "julia --color=yes --project=experiments experiments/standalone/Soil/water_conservation.jl"
         artifact_paths: "experiments/standalone/Soil/water_conservation*png"
+  - wait
+
+  - command: "compact_depot"
