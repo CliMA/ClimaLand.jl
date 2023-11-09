@@ -228,11 +228,11 @@ function hdwrite_regridfile_rll_to_cgll(
                 Dates.DateTime.(
                     reinterpret.(
                         Ref(NCDatasets.DateTimeStandard),
-                        ds["time"][:],
+                        Array(ds["time"]),
                     )
                 )
         elseif "date" in ds
-            data_dates = strdate_to_datetime.(string.(ds["date"][:]))
+            data_dates = strdate_to_datetime.(string.(Array(ds["date"])))
         else
             @warn "No dates available in file $datafile_rll"
             data_dates = [Dates.DateTime(0)]
@@ -242,7 +242,7 @@ function hdwrite_regridfile_rll_to_cgll(
     # read the remapped file with sparse matrices
     offline_outvector, times = NCDataset(datafile_cgll, "r") do ds_wt
         (
-            offline_outvector = ds_wt[varname][:][:, :], # ncol, times
+            offline_outvector = Array(ds_wt[varname])[:, :], # ncol, times
             times = get_time(ds_wt),
         )
     end
@@ -270,11 +270,10 @@ function hdwrite_regridfile_rll_to_cgll(
     offline_field = ClimaCore.Fields.zeros(FT, space_undistributed)
 
     offline_fields = ntuple(x -> similar(offline_field), length(times))
-
     ntuple(
         x -> reshape_cgll_sparse_to_field!(
             offline_fields[x],
-            offline_outvector[:, x],
+            Array(offline_outvector)[:, x],
             R,
         ),
         length(times),
