@@ -14,7 +14,6 @@ steps:
   - label: "init environment :computer:"
     key: "init_cpu_env"
     command:
-
       - echo "--- Instantiate project"
       - "julia --project -e 'using Pkg; Pkg.instantiate(;verbose=true)'"
       - "julia --project -e 'using Pkg; Pkg.status()'"
@@ -22,6 +21,10 @@ steps:
       - echo "--- Instantiate test"
       - "julia --project=experiments -e 'using Pkg; Pkg.instantiate(;verbose=true)'"
       - "julia --project=experiments -e 'using Pkg; Pkg.status()'"
+    agents:
+      slurm_cpus_per_task: 8
+    env:
+      JULIA_NUM_PRECOMPILE_TASKS: 8
 
   - wait
 
