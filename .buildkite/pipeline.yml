@@ -1,32 +1,31 @@
-env:
-  JULIA_VERSION: "1.9.3"
-  OPENMPI_VERSION: "4.0.4"
-  CUDA_VERSION: "11.2"
-  OPENBLAS_NUM_THREADS: 1
-  BUILDKITE_COMMIT: "${BUILDKITE_COMMIT}"
-  BUILDKITE_BRANCH: "${BUILDKITE_BRANCH}"
-  GKSwstype: 100
-
 agents:
-  config: cpu
-  queue: central
-  slurm_ntasks: 1
+  queue: central  
+  modules: julia/1.9.3 cuda/12.2 ucx/1.14.1_cuda-12.2 openmpi/4.1.5_cuda-12.2 hdf5/1.12.2-ompi415 nsight-systems/2023.3.1
+
+env:
+  JULIA_LOAD_PATH: "${JULIA_LOAD_PATH}:${BUILDKITE_BUILD_CHECKOUT_PATH}/.buildkite"
+  JULIA_NVTX_CALLBACKS: gc
+  JULIA_CPU_TARGET: 'broadwell;skylake'
+  OPENBLAS_NUM_THREADS: 1
+  OMPI_MCA_opal_warn_on_missing_libcuda: 0
+  SLURM_KILL_BAD_EXIT: 1
 
 steps:
   - label: "init environment :computer:"
     key: "init_cpu_env"
     command:
-
-      - echo "--- Configure MPI"
-      - julia -e 'using Pkg; Pkg.add("MPIPreferences"); using MPIPreferences; use_system_binary()'
-
+      - echo "--- Instantiate project"
       - "julia --project -e 'using Pkg; Pkg.instantiate(;verbose=true)'"
-      - "julia --project -e 'using Pkg; Pkg.precompile()'"
       - "julia --project -e 'using Pkg; Pkg.status()'"
 
+      - echo "--- Instantiate test"
       - "julia --project=experiments -e 'using Pkg; Pkg.instantiate(;verbose=true)'"
-      - "julia --project=experiments -e 'using Pkg; Pkg.precompile()'"
       - "julia --project=experiments -e 'using Pkg; Pkg.status()'"
+    agents:
+      slurm_cpus_per_task: 8
+      slurm_mem_per_cpu: 8G
+    env:
+      JULIA_NUM_PRECOMPILE_TASKS: 8
 
   - wait
 
@@ -58,3 +57,6 @@ steps:
       - label: "Water conservation"
         command: "julia --color=yes --project=experiments experiments/standalone/Soil/water_conservation.jl"
         artifact_paths: "experiments/standalone/Soil/water_conservation*png"
+  - wait
+
+  - command: "compact_depot"
