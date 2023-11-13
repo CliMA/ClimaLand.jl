@@ -81,7 +81,7 @@ for FT in (Float32, Float64)
                 ref_time,
                 h_atmos,
             )
-            Δt = FT(1.0)
+            τc = FT(1.0)
             bucket_parameters = BucketModelParameters(
                 κ_soil,
                 ρc_soil,
@@ -90,7 +90,7 @@ for FT in (Float32, Float64)
                 W_f,
                 z_0m,
                 z_0b,
-                Δt,
+                τc,
                 earth_param_set,
             )
 
@@ -178,7 +178,7 @@ for FT in (Float32, Float64)
                 ref_time,
                 h_atmos,
             )
-            Δt = FT(100.0)
+            τc = FT(100.0)
             bucket_parameters = BucketModelParameters(
                 κ_soil,
                 ρc_soil,
@@ -187,7 +187,7 @@ for FT in (Float32, Float64)
                 W_f,
                 z_0m,
                 z_0b,
-                Δt,
+                τc,
                 earth_param_set,
             )
             model = BucketModel(

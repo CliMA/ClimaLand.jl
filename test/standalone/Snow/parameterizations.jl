@@ -32,7 +32,7 @@ for FT in (Float32, Float64)
         θ_r = FT(0.08)
         Ksat = FT(1e-3)
         κ_ice = FT(2.21)
-        Δt = FT(180.0)
+        Δt = Float64(180.0)
         parameters = SnowParameters{FT}(Δt; earth_param_set = param_set)
         @test parameters.ρ_snow == ρ_snow
         @test typeof(parameters.ρ_snow) == FT

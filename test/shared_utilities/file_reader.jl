@@ -52,7 +52,7 @@ end
         Vector(range(DateTime(1999, 1, 1); step = Day(1), length = 100))
     date_idx0 = Int[1]
     date_ref = dummy_dates[Int(date_idx0[1]) + 1]
-    t_start = FT(0)
+    t_start = Float64(0)
     date0 = date_ref + Dates.Second(t_start)
 
     # these values give an `interp_fraction` of 0.5 in `interpol` for ease of testing
@@ -109,7 +109,7 @@ end
     dummy_dates =
         Vector(range(DateTime(1999, 1, 1); step = Day(1), length = 10))
     date_ref = dummy_dates[1]
-    t_start = FT(0)
+    t_start = Float64(0)
     date0 = date_ref + Dates.Second(t_start)
     date_idx0 =
         [argmin(abs.(Dates.value(date0) .- Dates.value.(dummy_dates[:])))]
@@ -187,7 +187,7 @@ if !Sys.iswindows()
         varname = "sw_alb"
         date_idx0 = Int[1]
         date_ref = DateTime(1800, 1, 1)
-        t_start = FT(0)
+        t_start = Float64(0)
 
         ps_data_temp = FileReader.PrescribedDataTemporal{FT}(
             regrid_dir_temporal,
@@ -229,7 +229,7 @@ if !Sys.iswindows()
         date0 = FileReader.to_datetime(date0)
         dates = collect(date0:Day(10):(date0 + Day(100))) # includes both endpoints
         date_ref = date0
-        t_start = FT(0)
+        t_start = Float64(0)
 
         radius = FT(6731e3)
         Nq = 4

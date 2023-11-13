@@ -26,9 +26,9 @@ for FT in (Float32, Float64)
         Y.surface_water.η .= FT(0.0)
 
         exp_tendency! = make_exp_tendency(pond_model)
-        t0 = FT(0)
-        tf = FT(200)
-        dt = FT(1)
+        t0 = Float64(0)
+        tf = Float64(200)
+        dt = Float64(1)
         set_initial_aux_state! = make_set_initial_aux_state(pond_model)
         set_initial_aux_state!(p, Y, t0)
 

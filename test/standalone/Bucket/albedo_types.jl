@@ -100,7 +100,7 @@ end
 @testset "Test set_initial_parameter_field for BulkAlbedoTemporal, FT = $FT" begin
     # set up for function call
     regrid_dir_temporal = joinpath(pkgdir(ClimaLSM), "test", "temporal")
-    t_start = FT(0)
+    t_start = Float64(0)
     domain = create_domain_2d(FT)
     space = domain.space.surface
 
@@ -205,7 +205,7 @@ end
     date_ref = to_datetime(NCDataset(infile_path, "r") do ds
         ds["time"][1]
     end)
-    t_start = FT(0)
+    t_start = Float64(0)
 
     albedo =
         BulkAlbedoTemporal{FT}(regrid_dir_temporal, date_ref, t_start, space)
@@ -253,7 +253,7 @@ end
     regrid_dirpath = ""
     infile_path = bareground_albedo_dataset_path()
     date_ref = Dates.DateTime(1900, 1, 1)
-    t_start = FT(0)
+    t_start = Float64(0)
     domain = create_domain_2d(FT)
     space = domain.space.surface
 
@@ -328,7 +328,7 @@ end
             ref_time,
             h_atmos,
         )
-        Δt = FT(1.0)
+        τc = FT(1.0)
         bucket_parameters = BucketModelParameters(
             κ_soil,
             ρc_soil,
@@ -337,7 +337,7 @@ end
             W_f,
             z_0m,
             z_0b,
-            Δt,
+            τc,
             earth_param_set,
         )
         if bucket_domain isa SphericalShell
@@ -402,7 +402,7 @@ end
     ρc_soil = FT(2e6)
     init_temp(z::FT, value::FT) where {FT} = FT(value)
 
-    t_start = FT(0)
+    t_start = Float64(0)
     date_ref = to_datetime(NCDataset(infile_path, "r") do ds
         ds["time"][1]
     end)
@@ -452,7 +452,7 @@ end
                 ref_time,
                 h_atmos,
             )
-            Δt = FT(1.0)
+            τc = FT(1.0)
             bucket_parameters = BucketModelParameters(
                 κ_soil,
                 ρc_soil,
@@ -461,7 +461,7 @@ end
                 W_f,
                 z_0m,
                 z_0b,
-                Δt,
+                τc,
                 earth_param_set,
             )
 
