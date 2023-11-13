@@ -445,7 +445,8 @@ function ClimaLSM.boundary_flux(
     p::NamedTuple,
     t,
 )::ClimaCore.Fields.Field
-    return bc.bc(p, t) .+ ClimaCore.Fields.zeros(axes(Δz))
+    FT = eltype(Δz)
+    return FT.(bc.bc(p, t)) .+ FT.(ClimaCore.Fields.zeros(axes(Δz)))
 end
 
 """

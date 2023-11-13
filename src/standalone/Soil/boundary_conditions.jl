@@ -237,7 +237,8 @@ function ClimaLSM.boundary_flux(
     p::NamedTuple,
     t,
 )::ClimaCore.Fields.Field
-    precip = bc.precip(t) .+ ClimaCore.Fields.zeros(axes(Δz))
+    FT = eltype(Δz)
+    precip = FT.(bc.precip(t)) .+ FT.(ClimaCore.Fields.zeros(axes(Δz)))
     return soil_surface_infiltration(bc.runoff, precip, Y, p, model.parameters)
 end
 
@@ -339,6 +340,7 @@ function ClimaLSM.boundary_flux(
     p::NamedTuple,
     t,
 )::ClimaCore.Fields.Field
+    FT = eltype(Δz)
     # Approximate κ_bc ≈ κ_c (center closest to the boundary)
     p_len = Spaces.nlevels(axes(p.soil.T))
     T_c = Fields.level(p.soil.T, p_len)
@@ -370,6 +372,7 @@ function ClimaLSM.boundary_flux(
     p::NamedTuple,
     t,
 )::ClimaCore.Fields.Field
+    FT = eltype(Δz)
     # Approximate κ_bc ≈ κ_c (center closest to the boundary)
     T_c = Fields.level(p.soil.T, 1)
     κ_c = Fields.level(p.soil.κ, 1)
@@ -400,8 +403,9 @@ function ClimaLSM.boundary_flux(
     p::NamedTuple,
     t,
 )::ClimaCore.Fields.Field
+    FT = eltype(Δz)
     K_c = Fields.level(p.soil.K, 1)
-    return -1 .* K_c
+    return FT.(-1 .* K_c)
 end
 
 """
