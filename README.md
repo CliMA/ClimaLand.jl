@@ -65,6 +65,3 @@ SoilPlantHydrologyModel <: AbstractLandModel <: AbstractModel (constructs the in
 
 [codecov-img]: https://codecov.io/gh/CliMA/ClimaLSM.jl/branch/main/graph/badge.svg
 [codecov-url]: https://codecov.io/gh/CliMA/ClimaLSM.jl
-
-[bors-img]: https://bors.tech/images/badge_small.svg
-[bors-url]: https://app.bors.tech/repositories/40649
