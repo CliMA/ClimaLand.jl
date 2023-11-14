@@ -141,7 +141,7 @@ end
     BulkAlbedoTemporal{FT}(
         regrid_dirpath::String,
         date_ref::Union{DateTime, DateTimeNoLeap},
-        t_start::FT,
+        t_start,
         Space::ClimaCore.Spaces.AbstractSpace;
         infile_path = Bucket.cesm2_albedo_dataset_path(),
         varname = "sw_alb"
@@ -156,7 +156,7 @@ should be used.
 function BulkAlbedoTemporal{FT}(
     regrid_dirpath::String,
     date_ref::Union{DateTime, DateTimeNoLeap},
-    t_start::FT,
+    t_start,
     space::ClimaCore.Spaces.AbstractSpace;
     infile_path = Bucket.cesm2_albedo_dataset_path(),
     varname = "sw_alb",
@@ -174,7 +174,7 @@ function BulkAlbedoTemporal{FT}(
     end
 
     # Construct object containing info to read in surface albedo over time
-    data_info = PrescribedDataTemporal(
+    data_info = PrescribedDataTemporal{FT}(
         regrid_dirpath,
         infile_path,
         varname,

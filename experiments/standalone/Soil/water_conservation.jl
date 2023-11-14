@@ -72,9 +72,9 @@ sources = ()
 
 # Set flux boundary conditions (used for calculating mass balance)
 flux_in = FT(-1e-7)
-top_bc = Soil.FluxBC((p, t) -> eltype(t)(flux_in))
+top_bc = Soil.FluxBC((p, t) -> flux_in)
 flux_out = FT(0)
-bot_bc = Soil.FluxBC((p, t) -> eltype(t)(flux_out))
+bot_bc = Soil.FluxBC((p, t) -> flux_out)
 
 boundary_fluxes = (; top = (water = top_bc,), bottom = (water = bot_bc,))
 
@@ -174,9 +174,9 @@ Plots.savefig(joinpath(savedir, "water_conservation_flux.png"))
 
 
 # Perform simulation with Dirichlet boundary conditions
-top_state_bc = MoistureStateBC((p, t) -> eltype(t)(ν - 1e-3))
+top_state_bc = MoistureStateBC((p, t) -> ν - 1e-3)
 flux_out = FT(0)
-bot_flux_bc = Soil.FluxBC((p, t) -> eltype(t)(flux_out))
+bot_flux_bc = Soil.FluxBC((p, t) -> flux_out)
 boundary_conds =
     (; top = (water = top_state_bc,), bottom = (water = bot_flux_bc,))
 
@@ -290,5 +290,6 @@ Plots.savefig(joinpath(savedir, "water_conservation_dirichlet.png"))
 # Uncomment to recreate Dirichlet BC reference solution artifact (using small dt)
 # soln_file_dirichlet = joinpath(savedir, "ref_soln_dirichlet.csv")
 # open((soln_file_dirichlet), "w") do io
+#     writedlm(io, parent(sol.u[end].soil.ϑ_l), ',')
 #     writedlm(io, parent(sol.u[end].soil.ϑ_l), ',')
 # end

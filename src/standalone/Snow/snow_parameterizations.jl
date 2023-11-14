@@ -74,8 +74,8 @@ end
                           c_s::FT,
                           parameters::SnowParameters{FT}) where {FT}
 
-Computes the bulk snow temperature from the snow water equivalent SWE, 
-energy per unit area U, liquid water mass fraction q_l, and specific heat 
+Computes the bulk snow temperature from the snow water equivalent SWE,
+energy per unit area U, liquid water mass fraction q_l, and specific heat
 capacity c_s, along with other needed parameters.
 
 If there is no snow (U = SWE = 0), the bulk temperature is the reference temperature,
@@ -156,12 +156,12 @@ function maximum_liquid_mass_fraction(
 end
 
 """
-    runoff_timescale(z::FT, Ksat::FT, Δt::FT) where {FT}
+    runoff_timescale(z::FT, Ksat::FT, Δt) where {FT}
 
 Computes the timescale for liquid water to percolate and leave the snowpack,
 given the depth of the snowpack z and the hydraulic conductivity Ksat.
 """
-function runoff_timescale(z::FT, Ksat::FT, Δt::FT) where {FT}
+function runoff_timescale(z::FT, Ksat::FT, Δt) where {FT}
     τ = max(Δt, z / Ksat)
     return τ
 end

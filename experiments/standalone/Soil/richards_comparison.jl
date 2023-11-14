@@ -31,7 +31,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems)
     z = ClimaCore.Fields.coordinate_field(soil_domain.space.subsurface).z
 
-    top_state_bc = MoistureStateBC((p, t) -> eltype(t)(ν - 1e-3))
+    top_state_bc = MoistureStateBC((p, t) -> ν - 1e-3)
     bot_flux_bc = FreeDrainage()
     sources = ()
     boundary_states =
@@ -124,7 +124,7 @@ end
     soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems)
     z = ClimaCore.Fields.coordinate_field(soil_domain.space.subsurface).z
 
-    top_state_bc = MoistureStateBC((p, t) -> eltype(t)(0.267))
+    top_state_bc = MoistureStateBC((p, t) -> 0.267)
     bot_flux_bc = FreeDrainage()
     sources = ()
     boundary_states =

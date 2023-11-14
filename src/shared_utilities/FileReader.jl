@@ -123,11 +123,11 @@ objects if we're reading in data over time for multiple variables.
 
 # Inputs:
 - date_ref::D    # a reference date before or at the start of the simulation
-- t_start::FT    # time in seconds since `date_ref`
+- t_start        # time in seconds since `date_ref`
 """
-struct SimInfo{D, FT}
+struct SimInfo{D}
     date_ref::D
-    t_start::FT
+    t_start::Any
 end
 
 """
@@ -154,7 +154,7 @@ end
 
 
 """
-    PrescribedDataTemporal(
+    PrescribedDataTemporal{FT}(
         regrid_dirpath,
         infile_path,
         varname,
@@ -162,7 +162,7 @@ end
         t_start,
         surface_space;
         mono = true,
-    )
+    ) where {FT <: AbstractFloat}
 
 Constructor for the `PrescribedDataTemporal` type.
 Regrids from the input lat-lon grid to the simulation cgll grid, saving
@@ -182,15 +182,15 @@ data packaged into a single `PrescribedDataTemporal` struct.
 # Returns
 - `PrescribedDataTemporal` object
 """
-function PrescribedDataTemporal(
+function PrescribedDataTemporal{FT}(
     regrid_dirpath::String,
     infile_path::String,
     varname::String,
     date_ref::Union{DateTime, DateTimeNoLeap},
-    t_start::FT,
+    t_start,
     surface_space::Spaces.AbstractSpace;
     mono::Bool = true,
-) where {FT}
+) where {FT <: AbstractFloat}
     comms_ctx = surface_space.topology.context
     outfile_root = varname * "_cgll"
 
@@ -240,7 +240,8 @@ function PrescribedDataTemporal(
     file_state = FileState(data_fields, copy(date_idx0), segment_length)
     sim_info = SimInfo(date_ref, t_start)
 
-    return PrescribedDataTemporal(file_info, file_state, sim_info)
+    args = (file_info, file_state, sim_info)
+    return PrescribedDataTemporal{typeof.(args)...}(args...)
 end
 
 """

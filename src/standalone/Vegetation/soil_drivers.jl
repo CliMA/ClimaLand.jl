@@ -38,16 +38,16 @@ end
          ϵ::FT
      ) where {FT}
 
-An outer constructor for the PrescribedSoil soil driver allowing the user to 
+An outer constructor for the PrescribedSoil soil driver allowing the user to
 specify the soil parameters by keyword arguments.
 """
 function PrescribedSoil{FT}(;
     root_depths::Vector{FT} = FT.(-Array(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0),
-    ψ::Function = t -> eltype(t)(FT(0.0)),
+    ψ::Function = t -> 0.0,
     T::Function = t -> 298.0,
-    α_PAR = FT(0.2),
-    α_NIR = FT(0.4),
-    ϵ = FT(0.99),
+    α_PAR::FT = FT(0.2),
+    α_NIR::FT = FT(0.4),
+    ϵ::FT = FT(0.99),
 ) where {FT}
     return PrescribedSoil{FT}(root_depths, ψ, T, α_PAR, α_NIR, ϵ)
 end

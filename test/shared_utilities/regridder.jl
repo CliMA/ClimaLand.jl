@@ -10,9 +10,9 @@ using ClimaComms
 using ClimaCore
 using Test
 
+FT = Float32
+@testset "Spatially varying map - regrid to field, FT = $FT" begin
 
-@testset "Spatially varying map - regrid to field" begin
-    FT = Float32
     path = bareground_albedo_dataset_path()
     regrid_dirpath =
         joinpath(pkgdir(ClimaLSM), "test/standalone/Bucket/regridder_tmpfiles")
@@ -44,5 +44,4 @@ using Test
     )
     @test p.bucket.α_sfc == field
     rm(regrid_dirpath, recursive = true)
-
 end

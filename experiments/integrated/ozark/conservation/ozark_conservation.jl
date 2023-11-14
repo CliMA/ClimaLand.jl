@@ -96,8 +96,8 @@ soilco2_boundary_conditions =
     (; top = (CO2 = soilco2_top_bc,), bottom = (CO2 = soilco2_bot_bc,))
 
 soilco2_drivers = Soil.Biogeochemistry.SoilDrivers(
-    Soil.Biogeochemistry.PrognosticMet(),
-    Soil.Biogeochemistry.PrescribedSOC(Csom),
+    Soil.Biogeochemistry.PrognosticMet{FT}(),
+    Soil.Biogeochemistry.PrescribedSOC{FT}(Csom),
     atmos,
 )
 

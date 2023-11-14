@@ -45,7 +45,7 @@ end
 
 """
     FreeDrainage <: AbstractSoilBC
-A concrete type of soil boundary condition, for use at 
+A concrete type of soil boundary condition, for use at
 the BottomBoundary only, where the flux is set to be
 `F = -K∇h = -K`.
 """
@@ -59,7 +59,7 @@ A concrete type of boundary condition intended only for use with the RichardsMod
 which uses a prescribed precipitation rate (m/s) to compute the infiltration
 into the soil.
 
-A runoff model is used 
+A runoff model is used
 to simulate surface and subsurface runoff and this is accounted
 for when setting boundary conditions. In order to run the simulation
 *without* runoff, choose runoff = NoRunoff() - this is also the default.
@@ -90,18 +90,18 @@ end
 
 A concrete type of soil boundary condition for use at the top
 of the domain. This holds the conditions for the atmosphere
-`AbstractAtmosphericDrivers`, for the radiation state 
+`AbstractAtmosphericDrivers`, for the radiation state
 `AbstractRadiativeDrivers`. This is only supported for the
 `EnergyHydrology` model.
 
 This choice indicates the Monin-Obukhov Surface Theory will
-be used to compute the sensible and latent heat fluxes, as 
+be used to compute the sensible and latent heat fluxes, as
 well as evaporation,
  and that the net radiation and precipitation
 will also be computed. The net energy and water fluxes
-are used as boundary conditions. 
+are used as boundary conditions.
 
-A runoff model is used 
+A runoff model is used
 to simulate surface and subsurface runoff and this is accounted
 for when setting boundary conditions. The default is to have no runoff
 accounted for.
@@ -141,8 +141,8 @@ end
         t,
     ) where {FT}
 
-Returns the net volumetric water flux (m/s) and net energy 
-flux (W/m^2) for the soil `EnergyHydrology` model at the top 
+Returns the net volumetric water flux (m/s) and net energy
+flux (W/m^2) for the soil `EnergyHydrology` model at the top
 of the soil domain.
 
 This  method of `soil_boundary_fluxes` is for use with
@@ -155,12 +155,15 @@ presence of a canopy, snow, etc, as in a land surface model,
 this is not the correct method to be using.
 
 This function calls the `surface_fluxes` and `net_radiation`
-functions, which use the soil surface conditions as well as 
+functions, which use the soil surface conditions as well as
 the prescribed atmos and radiation conditions in order to
 compute the surface fluxes using Monin Obukhov Surface Theory.
 """
 function soil_boundary_fluxes(
-    bc::AtmosDrivenFluxBC{<:PrescribedAtmosphere, <:PrescribedRadiativeFluxes},
+    bc::AtmosDrivenFluxBC{
+        <:PrescribedAtmosphere{FT},
+        <:PrescribedRadiativeFluxes{FT},
+    },
     boundary::ClimaLSM.TopBoundary,
     model::EnergyHydrology{FT},
     Δz,
@@ -172,7 +175,7 @@ function soil_boundary_fluxes(
     conditions = surface_fluxes(bc.atmos, model, Y, p, t)
     R_n = net_radiation(bc.radiation, model, Y, p, t)
     # We are ignoring sublimation for now
-    precip = bc.atmos.liquid_precip(t)
+    precip = FT.(bc.atmos.liquid_precip(t))
     infiltration = soil_surface_infiltration(
         bc.runoff,
         precip .+ conditions.vapor_flux,
@@ -203,22 +206,23 @@ function ClimaLSM.boundary_flux(
     p::NamedTuple,
     t,
 )::ClimaCore.Fields.Field
-    return bc.bc(p, t) .+ ClimaCore.Fields.zeros(axes(Δz))
+    FT = eltype(Δz)
+    return FT.(bc.bc(p, t)) .+ FT.(ClimaCore.Fields.zeros(axes(Δz)))
 end
 
 
 """
     ClimaLSM.boundary_flux(bc::RichardsAtmosDrivenFluxBC,
                            boundary::ClimaLSM.AbstractBoundary,
-                           model::RichardsModel,
+                           model::RichardsModel{FT},
                            Δz::ClimaCore.Fields.Field,
                            Y::ClimaCore.Fields.FieldVector,
                            p::NamedTuple,
                            t,
-                           )::ClimaCore.Fields.Field
+                           )::ClimaCore.Fields.Field where {FT}
 
-A method of boundary fluxes which returns the desired water volume flux for 
-the RichardsModel, at the top of the domain, in the case of a prescribed 
+A method of boundary fluxes which returns the desired water volume flux for
+the RichardsModel, at the top of the domain, in the case of a prescribed
 precipitation flux.
 
 If `model.runoff` is not of type `NoRunoff`, surface runoff is accounted for
@@ -259,6 +263,7 @@ function ClimaLSM.boundary_flux(
     p::NamedTuple,
     t,
 )::ClimaCore.Fields.Field
+    FT = eltype(Δz)
     # Approximate K_bc ≈ K_c, ψ_bc ≈ ψ_c (center closest to the boundary)
     p_len = Spaces.nlevels(axes(p.soil.K))
     K_c = Fields.level(p.soil.K, p_len)
@@ -266,7 +271,7 @@ function ClimaLSM.boundary_flux(
 
     # Calculate pressure head using boundary condition
     (; hydrology_cm, θ_r, ν, S_s) = model.parameters
-    θ_bc = rre_bc.bc(p, t)
+    θ_bc = FT.(rre_bc.bc(p, t))
     ψ_bc = @. pressure_head(hydrology_cm, θ_r, θ_bc, ν, S_s)
 
     # Pass in (ψ_bc .+ Δz) as x_2 to account for contribution of gravity in RRE
@@ -295,13 +300,14 @@ function ClimaLSM.boundary_flux(
     p::NamedTuple,
     t,
 )::ClimaCore.Fields.Field
+    FT = eltype(Δz)
     # Approximate K_bc ≈ K_c, ψ_bc ≈ ψ_c (center closest to the boundary)
     K_c = Fields.level(p.soil.K, 1)
     ψ_c = Fields.level(p.soil.ψ, 1)
 
     # Calculate pressure head using boundary condition
     (; hydrology_cm, θ_r, ν, S_s) = model.parameters
-    θ_bc = rre_bc.bc(p, t)
+    θ_bc = FT.(rre_bc.bc(p, t))
     ψ_bc = @. pressure_head(hydrology_cm, θ_r, θ_bc, ν, S_s)
 
     # At the bottom boundary, ψ_c is at larger z than ψ_bc
@@ -338,7 +344,7 @@ function ClimaLSM.boundary_flux(
     T_c = Fields.level(p.soil.T, p_len)
     κ_c = Fields.level(p.soil.κ, p_len)
 
-    T_bc = heat_bc.bc(p, t)
+    T_bc = FT.(heat_bc.bc(p, t))
     return ClimaLSM.diffusive_flux(κ_c, T_bc, T_c, Δz)
 end
 
@@ -367,7 +373,7 @@ function ClimaLSM.boundary_flux(
     # Approximate κ_bc ≈ κ_c (center closest to the boundary)
     T_c = Fields.level(p.soil.T, 1)
     κ_c = Fields.level(p.soil.κ, 1)
-    T_bc = heat_bc.bc(p, t)
+    T_bc = FT.(heat_bc.bc(p, t))
     return ClimaLSM.diffusive_flux(κ_c, T_c, T_bc, Δz)
 end
 
@@ -426,7 +432,7 @@ condition, with respect to the state variable in the top layer.
 
 For a diffusion equation like Richards equation with a single state
 variable, this is given by
-`∂T_N∂Y_N = [-∂/∂z(∂F_bc/∂Y_N)]_N`, where `N` indicates the top 
+`∂T_N∂Y_N = [-∂/∂z(∂F_bc/∂Y_N)]_N`, where `N` indicates the top
 layer cell index.
 """
 function ClimaLSM.∂tendencyBC∂Y(
@@ -466,17 +472,17 @@ end
         t,
 )
 
-A default method which computes and returns the zero for the 
+A default method which computes and returns the zero for the
 derivative of the part of the
 implicit tendency in the top layer, due to the boundary
 condition, with respect to the state variable in the top layer.
 
 For a diffusion equation like Richards equation with a single state
 variable, this is given by
-`∂T_N∂Y_N = [-∂/∂z(∂F_bc/∂Y_N)]_N`, where `N` indicates the top 
+`∂T_N∂Y_N = [-∂/∂z(∂F_bc/∂Y_N)]_N`, where `N` indicates the top
 layer cell index.
 
-If `F_bc` can be approximated as independent of `Y_N`, the derivative 
+If `F_bc` can be approximated as independent of `Y_N`, the derivative
 is zero.
 """
 function ClimaLSM.∂tendencyBC∂Y(

@@ -81,7 +81,7 @@ vg_n = FT(2.0);
 vg_α = FT(2.6); # inverse meters
 hcm = vanGenuchten(; α = vg_α, n = vg_n);
 θ_r = FT(0);
-soil_ps = Soil.RichardsParameters(;
+soil_ps = Soil.RichardsParameters{FT, typeof(hcm)}(;
     ν = ν,
     hydrology_cm = hcm,
     K_sat = K_sat,
@@ -96,8 +96,8 @@ nelems = 20;
 soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems);
 
 # And boundary conditions and source terms (none currently):
-top_flux_bc = FluxBC((p, t) -> eltype(t)(0.0))
-bot_flux_bc = FluxBC((p, t) -> eltype(t)(0.0))
+top_flux_bc = FluxBC((p, t) -> 0.0);
+bot_flux_bc = FluxBC((p, t) -> 0.0);
 sources = ()
 boundary_fluxes =
     (; top = (water = top_flux_bc,), bottom = (water = bot_flux_bc,))
@@ -173,9 +173,9 @@ soil_ode! = make_exp_tendency(soil);
 # them inside our pond model, since again, the pond model structure
 # must contain everything needed to make the tendency function:
 
-precipitation(t::T) where {T} = t < T(20) ? -T(1e-5) : T(0.0) # m/s
+precipitation(t) = t < 20 ? -1e-5 : 0.0 # m/s
 
-infiltration(t::T) where {T} = -T(1e-6) #m/s
+infiltration(t) = -(1e-6) #m/s
 pond_model = Pond.PondModel{FT}(;
     runoff = PrescribedRunoff{FT}(precipitation, infiltration),
 );

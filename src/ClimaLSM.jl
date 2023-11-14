@@ -53,7 +53,7 @@ Returns a NamedTuple of the unique set of coordinates for the LSM
 `model`, where the unique set is taken over the coordinates of all
 of the subcomponents.
 
-For example, an LSM with a single layer snow model, multi-layer 
+For example, an LSM with a single layer snow model, multi-layer
 soil model, and canopy model would have a coordinate set corresponding
 to the coordinates of the surface (snow), the subsurface coordinates (soil)
 and the coordinates of the surface (canopy). This would return the coordinates

@@ -116,7 +116,7 @@ shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
 
 soil_driver = PrescribedSoil{FT}(
     root_depths = FT.(-Array(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0),
-    ψ = t -> eltype(t)(ψ_soil0),
+    ψ = t -> ψ_soil0,
     α_PAR = FT(0.2),
     α_NIR = FT(0.4),
     T = t -> 298.0,
@@ -185,7 +185,7 @@ AR_model = AutotrophicRespirationModel{FT}(AR_params);
 # indices of the canopy, we choose a `PrescribedSiteAreaIndex`,
 # which supports LAI as a function of time, with RAI and SAI as constant.
 LAI = 4.2
-LAIfunction = (t) -> eltype(t)(LAI)
+LAIfunction = (t) -> LAI
 SAI = FT(0.00242)
 f_root_to_shoot = FT(3.5)
 RAI = (SAI + LAI) * f_root_to_shoot

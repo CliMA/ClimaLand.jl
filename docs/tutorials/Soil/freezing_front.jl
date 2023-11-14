@@ -145,15 +145,17 @@ nelems = 20
 soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems);
 
 # Set the boundary conditions:
-zero_flux_bc = FluxBC((p, t) -> eltype(t)(0.0))
+zero_flux_bc = FluxBC((p, t) -> 0.0)
 function top_heat_flux(p, t)
+    FT = eltype(p.soil.T)
     p_len = ClimaCore.Spaces.nlevels(axes(p.soil.T))
     T_c = ClimaCore.Fields.level(p.soil.T, p_len)
-    return @. eltype(t)(28 * (T_c - 267.15))
+    return @. FT(28 * (T_c - 267.15))
 end
 function bottom_heat_flux(p, t)
+    FT = eltype(p.soil.T)
     T_c = ClimaCore.Fields.level(p.soil.T, 1)
-    return @. eltype(t)(-3 * (T_c - 279.85))
+    return @. FT(-3 * (T_c - 279.85))
 end
 top_heat_flux_bc = FluxBC(top_heat_flux)
 bottom_heat_flux_bc = FluxBC(bottom_heat_flux)
@@ -194,7 +196,7 @@ Y, p, coords = initialize(soil);
 
 function init_soil!(Ysoil, z, params)
     ν = params.ν
-    FT = eltype(Y.soil.ϑ_l)
+    FT = eltype(Ysoil.soil.ϑ_l)
     Ysoil.soil.ϑ_l .= FT(0.33)
     Ysoil.soil.θ_i .= FT(0.0)
     T = FT(279.85)

@@ -29,13 +29,13 @@
 
 # In a coupled simulation, this changes. As we will see, the coupler computes turbulent surface fluxes
 # based on information (prognostic state, parameters) passed to it by both the atmosphere and land models.
-# Net radiation 
+# Net radiation
 # is computed within the atmosphere model, using the prognostic land surface temperature and the land surface
 # albedo, and passed back to the land model via the coupler. Similarily, precipitation is computed within the
 # atmosphere model, and passed back to the land model via the coupler. These details are important, but from
 # the point of view of the land
 # model, we only need to know that the coupler accesses land model variables to compute fluxes,
-# and that the coupler passes these fluxes back to the land model. 
+# and that the coupler passes these fluxes back to the land model.
 
 # In our current setup, "passed back to the land model via the coupler" means that the coupler
 # accesses the auxiliary state of the land model and modifies it, at each step in the simulation, so that
@@ -86,7 +86,7 @@ function ClimaLSM.Bucket.surface_fluxes(
     model::BucketModel{FT},
     p,
     _...,
-) where {FT <: AbstractFloat}
+) where {FT}
     return (
         turbulent_energy_flux = p.bucket.turbulent_energy_flux,
         evaporation = p.bucket.evaporation,
@@ -99,11 +99,11 @@ function ClimaLSM.Bucket.net_radiation(
     model::BucketModel{FT},
     p,
     _...,
-) where {FT <: AbstractFloat}
+) where {FT}
     return p.bucket.R_n
 end
 # Essentially, these methods simply returns the values stored in the auxiliary state `p`. Importantly, these functions are
-# called by the bucket model 
+# called by the bucket model
 # each time step **after** the coupler has already computed these values
 # (or extracted them from another model) and modifed `p`!
 

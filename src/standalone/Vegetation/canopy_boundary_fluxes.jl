@@ -27,7 +27,7 @@ end
                           model::CanopyModel,
                           Y,
                           p,
-                          t::FT) where {FT}
+                          t) where {FT}
 
 Computes canopy transpiration using Monin-Obukhov Surface Theory,
 the prescribed atmospheric conditions, and the canopy conductance.
@@ -37,12 +37,12 @@ function canopy_turbulent_surface_fluxes(
     model::CanopyModel,
     Y,
     p,
-    t::FT,
+    t,
 ) where {FT}
     conditions = surface_fluxes(atmos, model, Y, p, t)
     # We upscaled LHF and E from leaf level to canopy level via the
     # upscaling of stomatal conductance.
-    # Do we need to upscale SHF? 
+    # Do we need to upscale SHF?
     return conditions.vapor_flux,
     conditions.shf,
     conditions.lhf,

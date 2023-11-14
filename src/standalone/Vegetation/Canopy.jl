@@ -82,10 +82,10 @@ fluxes.
 (of type `PrescribedRadiativeFluxes`) or computed via a coupled simulation
 (of type `CoupledRadiativeFluxes`).
 - The soil conditions, which are either prescribed (of type PrecribedSoil, for
-running the canopy model in standalone mode), or prognostic (of type 
+running the canopy model in standalone mode), or prognostic (of type
 PrognosticSoil, for running integrated soil+canopy models)
 
-Note that the canopy height is specified as part of the 
+Note that the canopy height is specified as part of the
 PlantHydraulicsModel, along with the area indices of the leaves, roots, and
 stems. Eventually, when plant biomass becomes a prognostic variable (by
 integrating with a carbon model), some parameters specified here will be
@@ -332,7 +332,7 @@ Returns the set_initial_aux_state! function, which updates the auxiliary
 state `p` in place with the initial values corresponding to Y(t=t0) = Y0.
 
 In this case, we also use this method to update the initial values for the
-spatially and temporally varying canopy parameter fields, 
+spatially and temporally varying canopy parameter fields,
 read in from data files or otherwise prescribed.
 """
 function ClimaLSM.make_set_initial_aux_state(model::CanopyModel)
@@ -345,7 +345,7 @@ function ClimaLSM.make_set_initial_aux_state(model::CanopyModel)
 end
 
 """
-     ClimaLSM.make_update_aux(canopy::CanopyModel{FT, 
+     ClimaLSM.make_update_aux(canopy::CanopyModel{FT,
                                                   <:AutotrophicRespirationModel,
                                                   <:Union{BeerLambertModel, TwoStreamModel},
                                                   <:FarquharModel,
@@ -405,7 +405,7 @@ function ClimaLSM.make_update_aux(
         ϑ_l = Y.canopy.hydraulics.ϑ_l
         fa = p.canopy.hydraulics.fa
 
-        #unpack parameters         
+        #unpack parameters
         area_index = p.canopy.hydraulics.area_index
         LAI = area_index.leaf
         RAI = area_index.root

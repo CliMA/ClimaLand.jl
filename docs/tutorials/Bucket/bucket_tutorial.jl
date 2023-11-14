@@ -226,8 +226,8 @@ ref_time = DateTime(2005);
 # `ρ_a` (kg/m^3) at a reference height `h_a` (m).
 
 # Here we define the model drivers, starting with downward radiation.
-SW_d = (t) -> eltype(t)(300);
-LW_d = (t) -> eltype(t)(300);
+SW_d = (t) -> 300;
+LW_d = (t) -> 300;
 bucket_rad = PrescribedRadiativeFluxes(
     FT,
     SW_d,
@@ -239,15 +239,15 @@ bucket_rad = PrescribedRadiativeFluxes(
 # Prescribed atmospheric variables
 
 # Stochastic precipitation:
-precip = (t) -> eltype(t)(0);
-snow_precip = (t) -> eltype(t)(5e-7 * (t > 3 * 86400) * (t < 4 * 86400));
+precip = (t) -> 0;
+snow_precip = (t) -> 5e-7 * (t > 3 * 86400) * (t < 4 * 86400);
 # Diurnal temperature variations:
-T_atmos = (t) -> eltype(t)(275.0 + 5.0 * sin(2.0 * π * t / 86400 + 7200));
+T_atmos = (t) -> 275.0 + 5.0 * sin(2.0 * π * t / 86400 + 7200);
 # Constant otherwise:
-u_atmos = (t) -> eltype(t)(3.0);
-q_atmos = (t) -> eltype(t)(0.005);
+u_atmos = (t) -> 3.0;
+q_atmos = (t) -> 0.005;
 h_atmos = FT(2);
-P_atmos = (t) -> eltype(t)(101325);
+P_atmos = (t) -> 101325;
 bucket_atmos = PrescribedAtmosphere(
     precip,
     snow_precip,
