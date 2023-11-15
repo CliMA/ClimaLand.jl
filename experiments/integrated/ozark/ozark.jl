@@ -741,11 +741,17 @@ Plots.savefig(joinpath(savedir, "ground_heat_flux.png"))
 
 
 
-function get_p(variable::String) # auxiliary    
+function get_p(variable::Symbol) # auxiliary    
     out = [parent(sv.saveval[k].SW_out)[1] for k in 1:length(sv.saveval)]   
     return out
 end
 # example: get_p("SW_out")
+
+# need to construct sv.saveval[k].X with X as an argument (String?) 
+# or a way to go through ALL sv.saveval[k].X ?
+# or ...
+
+# getproperty(sv.saveval[1], :SW_out)
 
 
 function get_Y(variable) # prognostic

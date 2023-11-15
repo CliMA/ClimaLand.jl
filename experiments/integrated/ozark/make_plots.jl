@@ -19,9 +19,11 @@ include(joinpath(climalsm_dir, "experiments", "integrated", "ozark", "ozark.jl")
 savedir = joinpath(climalsm_dir, "experiments", "integrated", "ozark/") 
 using CairoMakie # Draw vector graphics to SVG or PDF. High quality plots! 
 
-# Get model output (using Ed's code)
+# Get model output as a DataFrame
+# Ed's code: (Array of Arrays)
 outputs = save_model_outputs() # This is an array or arrays
 
+# Get data as a DataFrame
 
 # 1. Time series
 
@@ -37,14 +39,4 @@ ax_T = Axis(fig[4, 1]) # air, canopy, and soil temperature
 # add plots into axis ax_C
 p_GPP_d
 p_GPP_m 
-
-
-
-
-
-
-
-
-
-
 
