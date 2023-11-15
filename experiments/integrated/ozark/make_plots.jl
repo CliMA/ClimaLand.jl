@@ -10,12 +10,18 @@
 # 9. Wavelet coherence
 # to do in another script: animations
 
-# TO DO: 
-# 1. Script to get all inputs (e.g., arrays from model output - need functions) 
-# 2. Script for plut utilities, Ed started this with plot_utils.jl
+# TO DO:  
+# Script for plot utilities, Ed started this with plot_utils.jl
 
+using ClimaLSM 
+climalsm_dir = pkgdir(ClimaLSM)
+include(joinpath(climalsm_dir, "experiments", "integrated", "ozark", "ozark.jl"))
+savedir = joinpath(climalsm_dir, "experiments", "integrated", "ozark/") 
 using CairoMakie # Draw vector graphics to SVG or PDF. High quality plots! 
-savedir = joinpath(climalsm_dir, "experiments/integrated/ozark/") 
+
+# Get model output (using Ed's code)
+outputs = save_model_outputs() # This is an array or arrays
+
 
 # 1. Time series
 

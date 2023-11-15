@@ -720,8 +720,44 @@ Plots.plot!(
 )
 Plots.savefig(joinpath(savedir, "ground_heat_flux.png"))
 
-# Run script with comand line argument "save" to save model output to CSV
-if length(ARGS) ≥ 1 && ARGS[1] == "save"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+function get_p(variable::String) # auxiliary    
+    out = [parent(sv.saveval[k].SW_out)[1] for k in 1:length(sv.saveval)]   
+    return out
+end
+# example: get_p("SW_out")
+
+
+function get_Y(variable) # prognostic
+
+end
+
+
+
+
+
+
+function save_model_outputs()
     # Formats fields as semicolon seperated strings
     field_to_array = (field) -> join(parent(field), ';')
     # Recursively unpacks a nested NamedTuple of fields into an array of strings
@@ -755,6 +791,12 @@ if length(ARGS) ≥ 1 && ARGS[1] == "save"
         unpack(timestamp, save_data)
         push!(timestamps, save_data)
     end
+    return timestamps
+end
+
+# Run script with comand line argument "save" to save model output to CSV
+if length(ARGS) ≥ 1 && ARGS[1] == "save"
+    timestamps = save_model_outputs()
     # Write all data to a csv file
     writedlm(joinpath(savedir, "model_output.csv"), timestamps, ',')
     @info "Saved model output to $(savedir)model_output.csv"
