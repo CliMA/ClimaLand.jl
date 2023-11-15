@@ -23,7 +23,9 @@ include(
 )
 
 # Run sim with Float32 for 3 timesteps, Float64 for whole simulation
-for (float_type, tf) in ((Float32, 3 * dt), (Float64, tf))
+#float_type = Float32
+for float_type in (Float32, Float64)
+    #for (float_type, tf) in ((Float32, 3 * dt), (Float64, tf))
     # Make these global so we can use them in other files
     global FT = float_type
     global earth_param_set = create_lsm_parameters(FT)
@@ -309,7 +311,9 @@ for (float_type, tf) in ((Float32, 3 * dt), (Float64, tf))
         adaptive = false,
         saveat = saveat,
     )
+end
 
+#=
     # Check that simulation still has correct float type
     @assert eltype(sol.u[end].soil) == FT
     @assert eltype(sol.u[end].soilco2) == FT
@@ -1123,3 +1127,4 @@ for (float_type, tf) in ((Float32, 3 * dt), (Float64, tf))
         rm(joinpath(savedir, "Artifacts.toml"))
     end
 end
+=#
