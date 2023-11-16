@@ -222,6 +222,12 @@ function surface_fluxes_at_a_point(
     h::FT = atmos.h
 
     ts_in = construct_atmos_ts(atmos, t, thermo_params)
+    q::FT = atmos.q(t)
+    # do not permit frost?
+    if q > q_sfc
+        q_sfc = q
+    end
+
     ts_sfc = Thermodynamics.PhaseEquil_ρTq(thermo_params, ρ_sfc, T_sfc, q_sfc)
 
     # SurfaceFluxes.jl expects a relative difference between where u = 0

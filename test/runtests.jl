@@ -53,6 +53,7 @@ end
 # Standalone Snow model tests
 @safetestset "Snow parameterization tests" begin
     include("standalone/Snow/parameterizations.jl")
+    include("standalone/Snow/snow.jl")
 end
 
 # Standalone Soil model tests

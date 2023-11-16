@@ -20,3 +20,6 @@ ClimaLSM.Snow.snow_bulk_temperature
 ClimaLSM.Snow.snow_liquid_mass_fraction
 ClimaLSM.Snow.maximum_liquid_mass_fraction
 ClimaLSM.Snow.runoff_timescale
+ClimaLSM.Snow.compute_energy_runoff	
+ClimaLSM.Snow.energy_from_q_l_and_swe
+ClimaLSM.Snow.energy_from_temperature_and_swe

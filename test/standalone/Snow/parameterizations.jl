@@ -88,5 +88,37 @@ for FT in (Float32, Float64)
         T_pred = snow_bulk_temperature.(Upred, SWE, q_lpred, Ref(parameters))
         @test all(q_lpred .≈ q_l)
         @test all(T_pred .≈ T_bulk)
+        @test ClimaLSM.Snow.volumetric_internal_energy_liq(FT, parameters) ==
+            _ρ_l * _cp_l * (_T_freeze .- _T_ref)
+        q_l_max = FT(0.5)
+        c_snow = specific_heat_capacity(q_l_max, parameters)
+        @test ClimaLSM.Snow.energy_at_maximum_q_l(FT(1.0), q_l_max, parameters) ==
+            _ρ_l * (c_snow * (_T_freeze - _T_ref) - (1 - q_l_max) * _LH_f0)
+        
+        depth = snow_depth(FT(1.0), parameters.ρ_snow, _ρ_l)
+        τ = ClimaLSM.Snow.runoff_timescale(depth, parameters.Ksat, parameters.Δt)
+        q_l_max =
+            maximum_liquid_mass_fraction(FT(273.15), parameters.ρ_snow, parameters)
+        U_max = ClimaLSM.Snow.energy_at_maximum_q_l(FT(1.0), q_l_max, parameters)
+        
+        temp = FT(273.0)
+        U = ClimaLSM.Snow.energy_from_temperature_and_swe(FT(1.0), temp, parameters)
+        q_l = snow_liquid_mass_fraction(U, FT(1.0), parameters)
+        @test T_bulk = snow_bulk_temperature(U, FT(1.0), q_l, parameters) == temp
+        
+        q_l = FT(0.5)
+        U = ClimaLSM.Snow.energy_from_q_l_and_swe(FT(1.0), q_l, parameters)
+        @test snow_liquid_mass_fraction(U, FT(1.0), parameters) == q_l
+        
+        try
+            ClimaLSM.Snow.energy_from_temperature_and_swe(
+                FT(1.0),
+                FT(278.0),
+                parameters,
+            )
+        catch err
+            @test isa(err, AssertionError)
+        end
+        
     end
 end

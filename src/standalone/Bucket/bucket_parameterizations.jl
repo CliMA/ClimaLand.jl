@@ -49,9 +49,15 @@ function ClimaLSM.surface_height(model::BucketModel{FT}, Y, p) where {FT}
 end
 
 """
-    ClimaLSM.surface_air_density(model::BucketModel, Y, p)
-
-a helper function which computes and returns the surface air density for the bucket
+    ClimaLSM.surface_air_density(
+        atmos::PrescribedAtmosphere,
+        model::BucketModel,
+        Y,
+        p,
+        t,
+        T_sfc,
+    )
+a helper function which computes and returns the surface air density for the bucket 
 model.
 """
 function ClimaLSM.surface_air_density(
