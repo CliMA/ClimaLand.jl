@@ -27,8 +27,7 @@ end
     Aqua.test_stale_deps(ClimaLSM)
     Aqua.test_deps_compat(ClimaLSM)
     Aqua.test_project_extras(ClimaLSM)
-    Aqua.test_project_toml_formatting(ClimaLSM)
-    Aqua.test_piracy(ClimaLSM)
+    Aqua.test_piracies(ClimaLSM)
 end
 
 nothing
