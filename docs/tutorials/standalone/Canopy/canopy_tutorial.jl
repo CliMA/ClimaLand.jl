@@ -56,7 +56,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"));
 # Define the floating point precision desired (64 or 32 bit), and get the
 # parameter set holding constants used across CliMA Models:
 
-const FT = Float64;
+const FT = Float32;
 earth_param_set = create_lsm_parameters(FT);
 
 # # Setup the Canopy Model
@@ -284,10 +284,10 @@ end;
 # the timestep depends on the problem you are solving, the accuracy of the
 # solution required, and the timestepping algorithm you are using.
 
-t0 = FT(0)
+t0 = 0.0
 N_days = 365
-tf = t0 + FT(3600 * 24 * N_days)
-dt = FT(225);
+tf = t0 + 3600 * 24 * N_days
+dt = 225.0;
 
 # Initialize the auxiliary variables for the canopy using the initial
 # conditions and initial time.

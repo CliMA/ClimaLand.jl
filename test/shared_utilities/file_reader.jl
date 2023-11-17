@@ -27,23 +27,23 @@ isdir(regrid_dir_temporal) ? nothing : mkpath(regrid_dir_temporal)
 FT = Float32
 @testset "test interpol, FT = $FT" begin
     # Setup
-    t1 = FT(0)
-    t2 = FT(10)
+    x1 = FT(0)
+    x2 = FT(10)
 
     f1 = FT(-1)
     f2 = FT(1)
 
-    # Case 1: t1 < t < t2
-    t = FT(5)
-    @test FileReader.interpol(f1, f2, t - t1, t2 - t1) == 0
+    # Case 1: x1 < x < x2
+    x = FT(5)
+    @test FileReader.interpol(f1, f2, x - x1, x2 - x1) == 0
 
-    # Case 2: t1 = t < t2
-    t = FT(0)
-    @test FileReader.interpol(f1, f2, t - t1, t2 - t1) == f1
+    # Case 2: x1 = x < x2
+    x = FT(0)
+    @test FileReader.interpol(f1, f2, x - x1, x2 - x1) == f1
 
-    # Case 3: t1 < t = t2
-    t = FT(10)
-    @test FileReader.interpol(f1, f2, t - t1, t2 - t1) == f2
+    # Case 3: x1 < x = x2
+    x = FT(10)
+    @test FileReader.interpol(f1, f2, x - x1, x2 - x1) == f2
 end
 
 @testset "test interpolate_data, FT = $FT" begin

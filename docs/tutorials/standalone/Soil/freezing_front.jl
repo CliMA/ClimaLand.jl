@@ -92,7 +92,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"));
 # # Preliminary set-up
 
 # Choose a floating point precision, and get the parameter set, which holds constants used across CliMA models:
-FT = Float64
+FT = Float32
 earth_param_set = create_lsm_parameters(FT);
 
 # Set the values of other parameters required by the model:
@@ -141,7 +141,7 @@ params = Soil.EnergyHydrologyParameters{FT}(;
 zmax = FT(0)
 zmin = FT(-0.2)
 nelems = 20
-Δz = 0.01
+Δz = FT(0.01)
 soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems);
 
 # Set the boundary conditions:
@@ -208,8 +208,8 @@ end
 init_soil!(Y, coords.subsurface.z, soil.parameters);
 
 # We choose the initial and final simulation times:
-t0 = FT(0)
-tf = FT(60 * 60 * 50);
+t0 = Float64(0)
+tf = Float64(60 * 60 * 50);
 
 # We set the aux state corresponding to the initial conditions
 # of the state Y:
@@ -217,7 +217,7 @@ set_initial_aux_state! = make_set_initial_aux_state(soil);
 set_initial_aux_state!(p, Y, t0);
 # Create the tendency function, and choose a timestep, and timestepper:
 exp_tendency! = make_exp_tendency(soil)
-dt = FT(60)
+dt = Float64(60)
 timestepper = CTS.RK4()
 ode_algo = CTS.ExplicitAlgorithm(timestepper)
 prob = SciMLBase.ODEProblem(
