@@ -16,9 +16,9 @@ end
 
 FT = Float32
 @testset "callback cond, affect! test, FT = $FT" begin
-    t0 = FT(0)
-    dt = FT(10)
-    tf = FT(100)
+    t0 = Float64(0)
+    dt = Float64(10)
+    tf = Float64(100)
     t_range = collect(t0:dt:tf)
 
     # specify when to save in the callback (test different dts)
@@ -71,9 +71,9 @@ FT = Float32
 end
 
 @testset "callback saving_initialize test, FT = $FT" begin
-    t0 = FT(0)
-    dt = FT(10)
-    tf = FT(100)
+    t0 = Float64(0)
+    dt = Float64(10)
+    tf = Float64(100)
 
     # we're only testing the save at t0 so one saveat range is sufficient
     saveat = collect(t0:dt:tf)

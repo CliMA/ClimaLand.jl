@@ -16,10 +16,15 @@ using ClimaLSM.Canopy
 using ClimaLSM.Canopy.PlantHydraulics
 import ClimaLSM
 import ClimaLSM.Parameters as LSMP
-include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
-const FT = Float64
-earth_param_set = create_lsm_parameters(FT)
 climalsm_dir = pkgdir(ClimaLSM)
+include(joinpath(climalsm_dir, "parameters", "create_parameters.jl"))
+
+FT = Float64
+earth_param_set = create_lsm_parameters(FT)
+
+include(
+    joinpath(climalsm_dir, "experiments/integrated/ozark/ozark_simulation.jl"),
+)
 # This reads in the data from the flux tower site and creates
 # the atmospheric and radiative driver structs for the model
 include(
@@ -31,9 +36,6 @@ include(
 include(joinpath(climalsm_dir, "experiments/integrated/ozark/ozark_domain.jl"))
 include(
     joinpath(climalsm_dir, "experiments/integrated/ozark/ozark_parameters.jl"),
-)
-include(
-    joinpath(climalsm_dir, "experiments/integrated/ozark/ozark_simulation.jl"),
 )
 
 # Now we set up the model. For the soil model, we pick
@@ -58,7 +60,7 @@ soil_ps = Soil.EnergyHydrologyParameters{FT}(;
     emissivity = soil_ϵ,
     PAR_albedo = soil_α_PAR,
     NIR_albedo = soil_α_NIR,
-);
+)
 
 soil_args = (domain = soil_domain, parameters = soil_ps)
 soil_model_type = Soil.EnergyHydrology{FT}
@@ -81,10 +83,10 @@ soilco2_ps = SoilCO2ModelParameters{FT}(;
     D_oa = D_oa,
     p_sx = p_sx,
     earth_param_set = earth_param_set,
-);
+)
 
 # soil microbes args
-Csom = (z, t) -> 5.0
+Csom = (z, t) -> eltype(z)(5.0)
 
 soilco2_top_bc = Soil.Biogeochemistry.SoilCO2StateBC((p, t) -> atmos_co2(t))
 soilco2_bot_bc = Soil.Biogeochemistry.SoilCO2FluxBC((p, t) -> 0.0) # no flux
@@ -238,7 +240,7 @@ Y.soil.ϑ_l = SWC[1 + Int(round(t0 / DATA_DT))] # Get soil water content at t0
 # Both data and simulation are reference to 2005-01-01-00 (LOCAL)
 # or 2005-01-01-06 (UTC)
 Y.soil.θ_i = FT(0.0)
-T_0 = TS[1 + Int(round(t0 / DATA_DT))] # Get soil temperature at t0
+T_0 = FT.(TS[1 + Int(round(t0 / DATA_DT))]) # Get soil temperature at t0
 ρc_s =
     volumetric_heat_capacity.(Y.soil.ϑ_l, Y.soil.θ_i, Ref(land.soil.parameters))
 Y.soil.ρe_int =
@@ -271,22 +273,21 @@ end
 Y.canopy.energy.T = TA[1 + Int(round(t0 / 1800))] # Get atmos temperature at t0
 
 set_initial_aux_state! = make_set_initial_aux_state(land)
-set_initial_aux_state!(p, Y, t0);
+set_initial_aux_state!(p, Y, t0)
 
 # Simulation
 sv = (;
-    t = Array{FT}(undef, length(saveat)),
+    t = Array{Int64}(undef, length(saveat)),
     saveval = Array{NamedTuple}(undef, length(saveat)),
 )
 cb = ClimaLSM.NonInterpSavingCallback(sv, saveat)
-
 
 prob = SciMLBase.ODEProblem(
     CTS.ClimaODEFunction((T_exp!) = exp_tendency!),
     Y,
     (t0, tf),
     p,
-);
+)
 sol = SciMLBase.solve(
     prob,
     ode_algo;
@@ -295,6 +296,13 @@ sol = SciMLBase.solve(
     adaptive = false,
     saveat = saveat,
 )
+
+# Check that simulation still has correct float type
+@assert eltype(sol.u[end].soil) == FT
+@assert eltype(sol.u[end].soilco2) == FT
+# TODO canopy state vector type is `Any` --> why?
+@assert all(x -> eltype(x) == FT, sol.u[end].canopy)
+
 
 # Calculate RH as boundary flux
 z = ClimaLSM.coordinates(land.soil.domain).subsurface.z
@@ -743,7 +751,7 @@ lwp_dataset = ArtifactWrapper(
     @__DIR__,
     "lwp_pallardy_etal2018",
     ArtifactFile[lwp_artifact],
-);
+)
 
 lwp_path = joinpath(get_data_folder(lwp_dataset), lwp_filename)
 lwp_data = readdlm(lwp_path, ',', skipstart = 1)
