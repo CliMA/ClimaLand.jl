@@ -281,7 +281,6 @@ function hdwrite_regridfile_rll_to_cgll(
     )
 
     # TODO: extend write! to handle time-dependent fields
-    comms_ctx = space.topology.context
     map(
         x -> write_to_hdf5(
             REGRID_DIR,
@@ -289,7 +288,7 @@ function hdwrite_regridfile_rll_to_cgll(
             times[x],
             offline_fields[x],
             varname,
-            comms_ctx,
+            ClimaComms.SingletonCommsContext(),
         ),
         1:length(times),
     )
