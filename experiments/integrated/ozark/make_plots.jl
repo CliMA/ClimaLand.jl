@@ -13,6 +13,10 @@
 # TO DO:  
 # Script for plot utilities, Ed started this with plot_utils.jl
 
+# TO DO:
+# make white or dark background figures
+# publication style and presentation style (bigger font etc.)
+
 using ClimaLSM 
 climalsm_dir = pkgdir(ClimaLSM)
 include(joinpath(climalsm_dir, "experiments", "integrated", "ozark", "ozark.jl"))
