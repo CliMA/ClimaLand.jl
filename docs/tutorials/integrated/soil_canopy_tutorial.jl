@@ -56,7 +56,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"));
 # Define the floating point precision desired (64 or 32 bit), and get the
 # parameter set holding constants used across CliMA Models:
 
-const FT = Float64;
+const FT = Float32;
 earth_param_set = create_lsm_parameters(FT);
 
 # - We will be using prescribed atmospheric and radiative drivers from the
@@ -201,7 +201,7 @@ soilco2_ps = SoilCO2ModelParameters{FT}(;
 );
 
 # soil microbes args
-Csom = (z, t) -> 5.0; # kg C m⁻³, this is a guess, not measured at the site
+Csom = (z, t) -> eltype(z)(5); # kg C m⁻³, this is a guess, not measured at the site
 
 soilco2_top_bc = Soil.Biogeochemistry.SoilCO2StateBC((p, t) -> atmos_co2(t));
 soilco2_bot_bc = Soil.Biogeochemistry.SoilCO2StateBC((p, t) -> 0.0);
@@ -432,24 +432,23 @@ for i in 1:2
         augmented_liquid_fraction.(plant_ν, S_l_ini[i])
 end;
 
-# Now set the initial conditions for the auxiliary variables for the combined soil and plant model.
-
-t0 = FT(0)
-set_initial_aux_state! = make_set_initial_aux_state(land)
-set_initial_aux_state!(p, Y, t0);
-
 # Select the timestepper and solvers needed for the specific problem. Specify the time range and dt
 # value over which to perform the simulation.
 
-t0 = FT(150 * 3600 * 24)# start mid year
+t0 = Float64(150 * 3600 * 24)# start mid year
 N_days = 100
-tf = t0 + FT(3600 * 24 * N_days)
-dt = FT(30)
+tf = t0 + Float64(3600 * 24 * N_days)
+dt = Float64(30)
 n = 120
 saveat = Array(t0:(n * dt):tf)
 
 timestepper = CTS.RK4()
 ode_algo = CTS.ExplicitAlgorithm(timestepper);
+
+# Now set the initial conditions for the auxiliary variables for the combined soil and plant model.
+
+set_initial_aux_state! = make_set_initial_aux_state(land)
+set_initial_aux_state!(p, Y, t0);
 
 # And now perform the simulation as always.
 

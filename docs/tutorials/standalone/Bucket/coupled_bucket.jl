@@ -49,7 +49,7 @@
 # To begin, let's import some necessary abstract and concrete types, as well as methods.
 using ClimaLSM
 using ClimaLSM: AbstractAtmosphericDrivers, AbstractRadiativeDrivers
-using ClimaLSM.Bucket: BucketModel, BucketModelParameters
+using ClimaLSM.Bucket: BucketModel
 
 import ClimaLSM.Bucket:
     surface_fluxes,
@@ -57,7 +57,7 @@ import ClimaLSM.Bucket:
     liquid_precipitation,
     snow_precipitation
 
-FT = Float64;
+FT = Float32;
 # # Turbulent Surface Fluxes and Radiation
 
 # Let's review how turbulent surface fluxes and radiation are computed by the land model.

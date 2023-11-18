@@ -141,7 +141,7 @@ for FT in (Float32, Float64)
                     )
             end
 
-            t = FT(0)
+            t = Float64(0)
             init_soil!(Y, coords.subsurface.z, model.parameters)
             set_initial_aux_state! = make_set_initial_aux_state(model)
             set_initial_aux_state!(p, Y, t)

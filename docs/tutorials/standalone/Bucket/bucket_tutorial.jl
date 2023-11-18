@@ -151,7 +151,7 @@ using Plots
 # And we need to use the DateTime type to store reference times
 using Dates
 
-FT = Float64;
+FT = Float32;
 
 # As mentioned we use CLIMAParameters for earth parameters that are
 # required across models (e.g. the density of water and ice, the latent
@@ -168,7 +168,7 @@ earth_param_set = create_lsm_parameters(FT);
 # option is to specify a `BulkAlbedoStatic` or `BulkAlbedoFunction`,
 # which uses a NetCDF file to read in surface albedo.
 # These options only applies when coordinates are (lat,lon).
-α_sfc = (coordinate_point) -> FT(0.2);
+α_sfc = (coordinate_point) -> 0.2;
 α_snow = FT(0.8);
 albedo = BulkAlbedoFunction{FT}(α_snow, α_sfc);
 # The critical snow level setting the scale for when we interpolate between
@@ -182,10 +182,12 @@ z_0b = FT(1e-3);
 # Thermal parameters of soil
 κ_soil = FT(0.7);
 ρc_soil = FT(2e6);
+# Snow melt timescale
+τc = FT(3600);
 # Simulation start time, end time, and timestep
-t0 = FT(0.0);
-tf = FT(7 * 86400);
-Δt = FT(3600.0);
+t0 = 0.0;
+tf = 7 * 86400;
+Δt = 3600.0;
 
 bucket_parameters = BucketModelParameters(
     κ_soil,
@@ -195,7 +197,7 @@ bucket_parameters = BucketModelParameters(
     W_f,
     z_0m,
     z_0b,
-    Δt,
+    τc,
     earth_param_set,
 );
 
@@ -208,7 +210,7 @@ bucket_parameters = BucketModelParameters(
 # simple - a Column.
 
 soil_depth = FT(3.5);
-bucket_domain = Column(; zlim = (-soil_depth, 0.0), nelements = 10);
+bucket_domain = Column(; zlim = (-soil_depth, FT(0.0)), nelements = 10);
 
 
 # The PrescribedAtmosphere and PrescribedRadiation need to take in a reference

@@ -95,7 +95,7 @@ import ClimaLSM.Parameters as LSMP
 include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"));
 
 # Choose a floating point precision, and get the parameter set, which holds constants used across CliMA models:
-FT = Float64
+FT = Float32
 earth_param_set = create_lsm_parameters(FT);
 
 
@@ -244,8 +244,8 @@ end
 init_soil!(Y, coords.subsurface.z, soil.parameters);
 
 # We choose the initial and final simulation times:
-t0 = FT(0)
-tf = FT(60 * 60 * 72);
+t0 = Float64(0)
+tf = Float64(60 * 60 * 72);
 
 # We set the aux state corresponding to the initial conditions
 # of the state Y:
@@ -255,7 +255,7 @@ set_initial_aux_state!(p, Y, t0);
 # We use [ClimaTimesteppers.jl](https://github.com/CliMA/ClimaTimesteppers.jl) for carrying out the time integration.
 
 # Choose a timestepper and set up the ODE problem:
-dt = FT(30.0);
+dt = Float64(30.0);
 timestepper = CTS.RK4();
 ode_algo = CTS.ExplicitAlgorithm(timestepper)
 prob = SciMLBase.ODEProblem(

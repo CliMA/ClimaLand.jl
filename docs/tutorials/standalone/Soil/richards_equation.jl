@@ -70,7 +70,7 @@ import ClimaLSM.Parameters as LSMP
 include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"));
 
 # - Define the float type desired (`Float64` or `Float32`), and get the parameter set, which holds constants used across CliMA models:
-const FT = Float64;
+const FT = Float32;
 earth_param_set = create_lsm_parameters(FT);
 
 # # Set up the soil model
@@ -154,8 +154,8 @@ coords |> propertynames
 Y.soil.ϑ_l .= FT(0.494);
 
 # We choose the initial and final simulation times:
-t0 = FT(0)
-tf = FT(60 * 60 * 24 * 36);
+t0 = Float64(0)
+tf = Float64(60 * 60 * 24 * 36);
 
 # We set the aux state corresponding to the initial conditions
 # of the state Y:
@@ -165,7 +165,7 @@ set_initial_aux_state!(p, Y, t0);
 # Next, we turn to timestepping.
 # As usual, your timestep depends on the problem you are solving, the accuracy
 # of the solution required, and the timestepping algorithm you are using.
-dt = FT(1e3);
+dt = Float64(1e3);
 
 # Now, we choose the timestepping algorithm we want to use.
 # We'll use the ARS111 algorithm with 1 Newton iteration per timestep;

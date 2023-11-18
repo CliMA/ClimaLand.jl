@@ -55,7 +55,7 @@ for FT in (Float32, Float64)
         zmin = FT(-1)
         nelems = 20
         lsm_domain = Column(; zlim = (zmin, zmax), nelements = nelems)
-        zero_flux_bc = Soil.FluxBC((p, t) -> eltype(t)(0.0))
+        zero_flux_bc = Soil.FluxBC((p, t) -> 0.0)
         sources = () # PhaseChange
         boundary_fluxes = (;
             top = (water = zero_flux_bc, heat = zero_flux_bc),

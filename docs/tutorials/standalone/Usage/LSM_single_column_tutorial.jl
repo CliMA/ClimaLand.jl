@@ -40,7 +40,7 @@ using ClimaLSM.Domains: Column, obtain_surface_domain
 using ClimaLSM.Soil
 using ClimaLSM.Pond
 
-FT = Float64;
+FT = Float32;
 
 # # The individual component models I - Soil Hydrology
 # The RR equation for the volumetric water content of soil is given by

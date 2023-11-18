@@ -8,21 +8,25 @@ using ClimaLSM
 include("pages_helper.jl")
 tutorials = [
     "For model developers" => [
-        "Intro to multi-component models" => "Usage/LSM_single_column_tutorial.jl",
-        "Intro to ClimaLSM Domains" => "Usage/domain_tutorial.jl",
+        "Intro to multi-component models" => "standalone/Usage/LSM_single_column_tutorial.jl",
+        "Intro to ClimaLSM Domains" => "standalone/Usage/domain_tutorial.jl",
     ],
     "Running simulations" => [
+        "Bucket LSM" => [
+            "standalone/Bucket/bucket_tutorial.jl",
+            "standalone/Bucket/coupled_bucket.jl",
+        ],
         "Soil modeling" => [
-            "Richards Equation" => "Soil/richards_equation.jl",
-            "Energy and Hydrology" => "Soil/soil_energy_hydrology.jl",
-            "Phase Changes" => "Soil/freezing_front.jl",
+            "Richards Equation" => "standalone/Soil/richards_equation.jl",
+            "Energy and Hydrology" => "standalone/Soil/soil_energy_hydrology.jl",
+            "Phase Changes" => "standalone/Soil/freezing_front.jl",
         ],
         "Canopy modeling" => [
-            "Standalone Canopy" => "Canopy/canopy_tutorial.jl",
-            "Coupled Canopy and Soil" => "Canopy/soil_canopy_tutorial.jl",
+            "Standalone Canopy" => "standalone/Canopy/canopy_tutorial.jl",
         ],
-        "Bucket LSM" =>
-            ["Bucket/bucket_tutorial.jl", "Bucket/coupled_bucket.jl"],
+        "Integrated soil+canopy modeling" => [
+            "Coupled Canopy and Soil" => "integrated/soil_canopy_tutorial.jl",
+        ],
     ],
 ]
 @everywhere const clima_dir = dirname(dirname(pathof(ClimaLSM)));
