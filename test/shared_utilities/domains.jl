@@ -61,8 +61,8 @@ FT = Float32
     )
     shell_coords_stretch = coordinates(shell_stretch).subsurface
     dz =
-        parent(shell_coords_stretch.z)[:, 1, 4, 1, 216][2:end] .-
-        parent(shell_coords_stretch.z)[:, 1, 4, 1, 216][1:(end - 1)]
+        Array(parent(shell_coords_stretch.z))[:, 1, 4, 1, 216][2:end] .-
+        Array(parent(shell_coords_stretch.z))[:, 1, 4, 1, 216][1:(end - 1)]
     @test abs(dz[1] - 0.3) < 1e-1
     @test abs(dz[end] - 0.03) < 1e-2
 
@@ -126,8 +126,8 @@ FT = Float32
     )
     box_coords_stretch = coordinates(xyz_stretch_column_box).subsurface
     dz =
-        parent(box_coords_stretch.z)[:][2:end] .-
-        parent(box_coords_stretch.z)[:][1:(end - 1)]
+        Array(parent(box_coords_stretch.z))[:][2:end] .-
+        Array(parent(box_coords_stretch.z))[:][1:(end - 1)]
     @test abs(dz[1] - 0.3) < 1e-1
     @test abs(dz[end] - 0.03) < 1e-2
 
@@ -163,8 +163,9 @@ FT = Float32
           ClimaCore.Spaces.CenterFiniteDifferenceSpace
     @test typeof(z_column.space.surface) <: ClimaCore.Spaces.PointSpace
     @test any(
-        parent(column_coords)[:][2:end] .-
-        parent(column_coords)[:][1:(end - 1)] .≈ (zmax - zmin) / nelements[3],
+        Array(parent(column_coords))[:][2:end] .-
+        Array(parent(column_coords))[:][1:(end - 1)] .≈
+        (zmax - zmin) / nelements[3],
     )
     @test obtain_surface_space(z_column.space.subsurface) ==
           z_column.space.surface
@@ -175,7 +176,8 @@ FT = Float32
     column_coords = coordinates(z_column_stretch).subsurface
     @test z_column_stretch.zlim == FT.(zlim)
     dz =
-        parent(column_coords)[:][2:end] .- parent(column_coords)[:][1:(end - 1)]
+        Array(parent(column_coords))[:][2:end] .-
+        Array(parent(column_coords))[:][1:(end - 1)]
     @test abs(dz[1] - 0.3) < 1e-1
     @test abs(dz[end] - 0.03) < 1e-2
 end
@@ -189,6 +191,6 @@ end
     coords = coordinates(point).surface
     @test coords isa ClimaCore.Fields.Field
     @test eltype(coords) == ClimaCore.Geometry.ZPoint{FT}
-    @test ClimaCore.Fields.field_values(coords)[] ==
-          ClimaCore.Geometry.ZPoint(zmin)
+    @test Array(parent(ClimaCore.Fields.field_values(coords)))[] ==
+          ClimaCore.Geometry.ZPoint(zmin).z[]
 end

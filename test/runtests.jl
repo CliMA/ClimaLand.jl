@@ -1,5 +1,9 @@
 using SafeTestsets
 
+import ClimaComms
+
+gpu_broken = ClimaComms.device() isa ClimaComms.CUDADevice
+
 # Performance and code quality tests
 @safetestset "Aqua tests" begin
     include("aqua.jl")
@@ -15,9 +19,10 @@ end
 @safetestset "Integrated pond/soil LSM tests" begin
     include("integrated/pond_soil_lsm.jl")
 end
-@safetestset "Integrated soil energy/hydrology/biogeochem LSM tests" begin
-    include("integrated/soil_energy_hydrology_biogeochemistry.jl")
-end
+gpu_broken ||
+    @safetestset "Integrated soil energy/hydrology/biogeochem LSM tests" begin
+        include("integrated/soil_energy_hydrology_biogeochemistry.jl")
+    end
 
 # Shared ClimaLSM utilities tests
 @safetestset "Richards model implicit timestepping tests" begin
@@ -26,13 +31,13 @@ end
 @safetestset "Domains module tests" begin
     include("shared_utilities/domains.jl")
 end
-@safetestset "FileReader module tests" begin
+gpu_broken || @safetestset "FileReader module tests" begin
     include("shared_utilities/file_reader.jl")
 end
-@safetestset "Regridder module tests" begin
+gpu_broken || @safetestset "Regridder module tests" begin
     include("shared_utilities/regridder.jl")
 end
-@safetestset "General utilities tests" begin
+gpu_broken || @safetestset "General utilities tests" begin
     include("shared_utilities/utilities.jl")
 end
 @safetestset "Variable types tests" begin
@@ -40,13 +45,13 @@ end
 end
 
 # Standalone Bucket model tests
-@safetestset "Bucket albedo types tests" begin
+gpu_broken || @safetestset "Bucket albedo types tests" begin
     include("standalone/Bucket/albedo_types.jl")
 end
-@safetestset "Bucket snow tests" begin
+gpu_broken || @safetestset "Bucket snow tests" begin
     include("standalone/Bucket/snow_bucket_tests.jl")
 end
-@safetestset "Bucket soil tests" begin
+gpu_broken || @safetestset "Bucket soil tests" begin
     include("standalone/Bucket/soil_bucket_tests.jl")
 end
 
@@ -56,7 +61,7 @@ end
 end
 
 # Standalone Soil model tests
-@safetestset "Soil Biogeochemistry module tests" begin
+gpu_broken || @safetestset "Soil Biogeochemistry module tests" begin
     include("standalone/Soil/Biogeochemistry/biogeochemistry_module.jl")
 end
 @safetestset "Soil CO2 parameterization tests" begin
@@ -77,7 +82,7 @@ end
 @safetestset "Soil 3D domain tests" begin
     include("standalone/Soil/soil_test_3d.jl")
 end
-@safetestset "Soil integration tests" begin
+gpu_broken || @safetestset "Soil integration tests" begin
     include("standalone/Soil/soiltest.jl")
 end
 
@@ -87,10 +92,10 @@ end
 end
 
 # Standalone Vegetation model tests
-@safetestset "Canopy module tests" begin
+gpu_broken || @safetestset "Canopy module tests" begin
     include("standalone/Vegetation/canopy_model.jl")
 end
-@safetestset "Canopy PlantHydraulics tests" begin
+gpu_broken || @safetestset "Canopy PlantHydraulics tests" begin
     include("standalone/Vegetation/plant_hydraulics_test.jl")
 end
 @safetestset "Big Leaf model tests" begin

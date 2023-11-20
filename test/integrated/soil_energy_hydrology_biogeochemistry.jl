@@ -104,7 +104,6 @@ for FT in (Float32, Float64)
             c_co2 = atmos_co2,
         )
 
-
         soil_drivers = Soil.Biogeochemistry.SoilDrivers(
             Soil.Biogeochemistry.PrognosticMet{FT}(),
             Soil.Biogeochemistry.PrescribedSOC{FT}(Csom),
@@ -198,7 +197,7 @@ for FT in (Float32, Float64)
             )
             Y, p, coords = initialize(model)
 
-            function init_soil!(Y, z, params)
+            function init_soil_2!(Y, z, params)
                 ν = params.ν
                 FT = eltype(Y.soil.ϑ_l)
                 Y.soil.ϑ_l .= FT(0.33)
@@ -214,13 +213,13 @@ for FT in (Float32, Float64)
                     )
             end
 
-            function init_co2!(Y, C_0)
+            function init_co2_2!(Y, C_0)
                 Y.soilco2.C .= C_0
             end
 
             z = coords.subsurface.z
-            init_soil!(Y, z, model.soil.parameters)
-            init_co2!(Y, C)
+            init_soil_2!(Y, z, model.soil.parameters)
+            init_co2_2!(Y, C)
             t0 = FT(0.0)
             set_initial_aux_state! = make_set_initial_aux_state(model)
             set_initial_aux_state!(p, Y, t0)

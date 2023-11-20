@@ -321,9 +321,7 @@ function RichardsTridiagonalW(
     tridiag_type = Operators.StencilCoefs{-1, 1, NTuple{3, FT}}
     ∂ϑₜ∂ϑ = Fields.Field(tridiag_type, center_space)
 
-    ∂ϑₜ∂ϑ.coefs.:1 .= FT(0)
-    ∂ϑₜ∂ϑ.coefs.:2 .= FT(0)
-    ∂ϑₜ∂ϑ.coefs.:3 .= FT(0)
+    fill!(parent(∂ϑₜ∂ϑ), FT(0))
 
     W_column_arrays = [
         LinearAlgebra.Tridiagonal(

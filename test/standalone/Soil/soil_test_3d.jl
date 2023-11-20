@@ -46,25 +46,24 @@ for FT in (Float32, Float64)
 
         # sinusoidal water table
         function init_soil!(Ysoil, x, z, params)
-            function hydrostatic_profile(
-                x::FT,
-                z::FT,
-                params::RichardsParameters{FT},
-            ) where {FT}
-                (; ν, hydrology_cm, θ_r, S_s) = params
-                (; α, m, n) = hydrology_cm
-                z_∇ = FT(
-                    zmin / 2.0 + (zmax - zmin) / 10.0 * sin(π * 2 * x / xmax),
-                )
-                if z > z_∇
-                    S = FT((FT(1) + (α * (z - z_∇))^n)^(-m))
-                    ϑ_l = S * (ν - θ_r) + θ_r
-                else
-                    ϑ_l = -S_s * (z - z_∇) + ν
+            (; ν, hydrology_cm, θ_r, S_s) = params
+            (; α, m, n) = hydrology_cm
+            let α = α, m = m, n = n, ν = ν, θ_r = θ_r, S_s = S_s
+                function hydrostatic_profile(x::FT, z::FT) where {FT}
+                    z_∇ = FT(
+                        zmin / 2.0 +
+                        (zmax - zmin) / 10.0 * sin(π * 2 * x / xmax),
+                    )
+                    if z > z_∇
+                        S = FT((FT(1) + (α * (z - z_∇))^n)^(-m))
+                        ϑ_l = S * (ν - θ_r) + θ_r
+                    else
+                        ϑ_l = -S_s * (z - z_∇) + ν
+                    end
+                    return FT(ϑ_l)
                 end
-                return FT(ϑ_l)
+                Ysoil.soil.ϑ_l .= hydrostatic_profile.(x, z)
             end
-            Ysoil.soil.ϑ_l .= hydrostatic_profile.(x, z, Ref(params))
         end
 
         Y, p, coords = initialize(soil)
@@ -207,9 +206,9 @@ for FT in (Float32, Float64)
 
         # Test in unsaturated zone
         for N in [25, 75]
-            myXslice = parent(X)[N, 1, 1, 1, :]
-            myθslice = parent(Y.soil.ϑ_l)[N, 1, 1, 1, :]
-            mydYslice = parent(dY.soil.ϑ_l)[N, 1, 1, 1, :]
+            myXslice = Array(parent(X))[N, 1, 1, 1, :]
+            myθslice = Array(parent(Y.soil.ϑ_l))[N, 1, 1, 1, :]
+            mydYslice = Array(parent(dY.soil.ϑ_l))[N, 1, 1, 1, :]
             local_p = sortperm(myXslice)
 
             Xsort = myXslice[local_p]
@@ -218,7 +217,7 @@ for FT in (Float32, Float64)
             unique_indices = unique(i -> Xsort[i], 1:length(Xsort))
             XX = Xsort[unique_indices]
             θX = θsort[unique_indices]
-            myZ = unique(parent(Z)[N, 1, 1, 1, :])[1]
+            myZ = unique(Array(parent(Z))[N, 1, 1, 1, :])[1]
             dYX = dYsort[unique_indices]
             expected = @. (
                 dKdθ(θX) * dψdθ(θX) * dθdx(XX, myZ)^2.0 +
@@ -299,23 +298,23 @@ for FT in (Float32, Float64)
 
         # specify ICs
         function init_soil!(Ysoil, z, params)
-            function hydrostatic_profile(
-                z::FT,
-                params::EnergyHydrologyParameters,
-            ) where {FT}
-                (; ν, hydrology_cm, θ_r, S_s) = params
-                (; α, m, n) = hydrology_cm
-                z_∇ = FT(zmin / 2.0)
-                if z > z_∇
-                    S = FT((FT(1) + (α * (z - z_∇))^n)^(-m))
-                    ϑ_l = S * (ν - θ_r) + θ_r
-                else
-                    ϑ_l = -S_s * (z - z_∇) + ν
+            (; ν, hydrology_cm, θ_r, S_s) = params
+            (; α, m, n) = hydrology_cm
+            let α = α, m = m, n = n, ν = ν, θ_r = θ_r, S_s = S_s
+                function hydrostatic_profile(z::FT) where {FT}
+                    z_∇ = FT(zmin / 2.0)
+                    if z > z_∇
+                        S = FT((FT(1) + (α * (z - z_∇))^n)^(-m))
+                        ϑ_l = S * (ν - θ_r) + θ_r
+                    else
+                        ϑ_l = -S_s * (z - z_∇) + ν
+                    end
+                    return FT(ϑ_l)
                 end
-                return FT(ϑ_l)
+                Ysoil.soil.ϑ_l .= hydrostatic_profile.(z)
+                Ysoil.soil.θ_i .=
+                    ClimaCore.Fields.zeros(FT, axes(Ysoil.soil.θ_i))
             end
-            Ysoil.soil.ϑ_l .= hydrostatic_profile.(z, Ref(params))
-            Ysoil.soil.θ_i .= ClimaCore.Fields.zeros(FT, axes(Ysoil.soil.θ_i))
         end
         init_soil!(Y, coords.subsurface.z, soil.parameters)
 
@@ -344,9 +343,10 @@ for FT in (Float32, Float64)
         ClimaLSM.dss!(dY, p, t0)
 
         ## dY should be zero. Look at dY/Y.
-        @test maximum(abs.(parent(dY.soil.ϑ_l))) / ν < 10^3 * eps(FT)
-        @test maximum(abs.(parent(dY.soil.θ_i))) / ν < eps(FT)
-        @test maximum(abs.(parent(dY.soil.ρe_int))) ./ 2.052e7 < 10^3 * eps(FT)
+        @test maximum(abs.(Array(parent(dY.soil.ϑ_l)))) / ν < 10^3 * eps(FT)
+        @test maximum(abs.(Array(parent(dY.soil.θ_i)))) / ν < eps(FT)
+        @test maximum(abs.(Array(parent(dY.soil.ρe_int)))) ./ 2.052e7 <
+              10^3 * eps(FT)
     end
 
     @testset "Soil hydrology tendency on sphere, FT = $FT" begin
@@ -390,22 +390,21 @@ for FT in (Float32, Float64)
 
         # specify ICs
         function init_soil!(Ysoil, z, params)
-            function hydrostatic_profile(
-                z::FT,
-                params::RichardsParameters,
-            ) where {FT}
-                (; ν, hydrology_cm, θ_r, S_s) = params
-                (; α, m, n) = hydrology_cm
-                z_∇ = FT(0.5)
-                if z > z_∇
-                    S = FT((FT(1) + (α * (z - z_∇))^n)^(-m))
-                    ϑ_l = S * (ν - θ_r) + θ_r
-                else
-                    ϑ_l = -S_s * (z - z_∇) + ν
+            (; ν, hydrology_cm, θ_r, S_s) = params
+            (; α, m, n) = hydrology_cm
+            let α = α, m = m, n = n, ν = ν, θ_r = θ_r, S_s = S_s
+                function hydrostatic_profile(z::FT) where {FT}
+                    z_∇ = FT(0.5)
+                    if z > z_∇
+                        S = FT((FT(1) + (α * (z - z_∇))^n)^(-m))
+                        ϑ_l = S * (ν - θ_r) + θ_r
+                    else
+                        ϑ_l = -S_s * (z - z_∇) + ν
+                    end
+                    return FT(ϑ_l)
                 end
-                return FT(ϑ_l)
+                Ysoil.soil.ϑ_l .= hydrostatic_profile.(z)
             end
-            Ysoil.soil.ϑ_l .= hydrostatic_profile.(z, Ref(params))
         end
         init_soil!(Y, coords.subsurface.z, soil.parameters)
 
@@ -418,13 +417,17 @@ for FT in (Float32, Float64)
         imp_tendency!(dY, Y, p, t0)
 
         ## vertical change should be zero except at the boundary, where it should be ±30.
-        @test (mean(unique(parent(ClimaCore.level(dY.soil.ϑ_l, 1)))) - 30.0) /
-              ν < 1e-1
-        @test (mean(unique(parent(ClimaCore.level(dY.soil.ϑ_l, 30)))) + 30.0) /
-              ν < 1e-1
+        @test (
+            mean(unique(Array(parent(ClimaCore.level(dY.soil.ϑ_l, 1))))) - 30.0
+        ) / ν < 1e-1
+        @test (
+            mean(unique(Array(parent(ClimaCore.level(dY.soil.ϑ_l, 30))))) +
+            30.0
+        ) / ν < 1e-1
         @test mean([
-            maximum(abs.(unique(parent(ClimaCore.level(dY.soil.ϑ_l, k))))) for
-            k in 2:29
+            maximum(
+                abs.(unique(Array(parent(ClimaCore.level(dY.soil.ϑ_l, k))))),
+            ) for k in 2:29
         ]) / ν < 1e-1
 
         exp_tendency!(dY, Y, p, t0)
@@ -432,8 +435,9 @@ for FT in (Float32, Float64)
 
         # horizontal change should be 0 everywhere
         @test mean([
-            maximum(abs.(unique(parent(ClimaCore.level(dY.soil.ϑ_l, k))))) for
-            k in 1:30
+            maximum(
+                abs.(unique(Array(parent(ClimaCore.level(dY.soil.ϑ_l, k))))),
+            ) for k in 1:30
         ]) / ν < eps(FT)
     end
 end

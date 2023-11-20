@@ -18,9 +18,13 @@ steps:
       - "julia --project -e 'using Pkg; Pkg.instantiate(;verbose=true)'"
       - "julia --project -e 'using Pkg; Pkg.status()'"
 
-      - echo "--- Instantiate test"
+      - echo "--- Instantiate experiments"
       - "julia --project=experiments -e 'using Pkg; Pkg.instantiate(;verbose=true)'"
       - "julia --project=experiments -e 'using Pkg; Pkg.status()'"
+
+      - echo "--- Instantiate test"
+      - "julia --project=test -e 'using Pkg; Pkg.develop(;path=\".\"); Pkg.instantiate(;verbose=true)'"
+      - "julia --project=test -e 'using Pkg; Pkg.status()'"
     agents:
       slurm_cpus_per_task: 8
       slurm_mem_per_cpu: 8G
@@ -57,6 +61,14 @@ steps:
       - label: "Water conservation"
         command: "julia --color=yes --project=experiments experiments/standalone/Soil/water_conservation.jl"
         artifact_paths: "experiments/standalone/Soil/water_conservation*png"
+
+  - group: "GPU"
+    steps:
+      - label: "GPU runtests"
+        command: "julia --color=yes --project=test test/runtests.jl"
+        agents:
+          slurm_gpus: 1
+
   - wait
 
   - command: "compact_depot"

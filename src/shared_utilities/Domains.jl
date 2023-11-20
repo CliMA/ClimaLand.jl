@@ -11,7 +11,7 @@ import ClimaCore.Meshes: Uniform
 """
     AbstractDomain{FT <:AbstractFloat}
 
-An abstract type for domains. 
+An abstract type for domains.
 
 The domain structs typically hold information
 regarding the bounds of the domain, the boundary condition type
@@ -45,7 +45,7 @@ end
     Point{FT} <: AbstractDomain{FT}
 
 A domain for single column surface variables.
-For models such as ponds, snow, plant hydraulics, etc. Enables consistency 
+For models such as ponds, snow, plant hydraulics, etc. Enables consistency
 in variable initialization across all domains.
 
 `space` is a NamedTuple holding the surface space (in this case,
@@ -69,7 +69,7 @@ Constructor for the `Point` domain using keyword arguments.
 
 All other ClimaLSM domains rely on default comms set internally
 by ClimaCore. However, the Point space is unique in this context,
-and does not have the same default defined in ClimaCore. 
+and does not have the same default defined in ClimaCore.
 Because of this, we set the default here
 in ClimaLSM. In long term, we will repeat the same for all ClimaLSM domains
 and not rely on any internal defaults set in ClimaCore.
@@ -85,7 +85,7 @@ end
 
 """
     Column{FT} <: AbstractDomain{FT}
-A struct holding the necessary information 
+A struct holding the necessary information
 to construct a domain, a mesh, a center and face
 space, etc. for use when a finite difference in
 1D is suitable, as for a soil column model.
@@ -115,7 +115,7 @@ end
         nelements::Int,
         dz_tuple::Union{Tuple{FT, FT}, Nothing} = nothing) where {FT}
 
-Outer constructor for the `Column` type. 
+Outer constructor for the `Column` type.
 
 Using `ClimaCore` tools, the coordinate
 mesh can be stretched such that the top of the domain has finer resolution
@@ -126,7 +126,7 @@ the elements of zlim be <=0. Additionally, the dz_tuple you supply may not be co
 with the domain boundaries in some cases, in which case you may need to choose
 different values.
 
-The `boundary_tags` field values are used to label the boundary faces 
+The `boundary_tags` field values are used to label the boundary faces
 at the top and bottom of the domain.
 """
 function Column(;
@@ -164,7 +164,7 @@ end
 
 """
     Plane{FT} <: AbstractDomain{FT}
-A struct holding the necessary information 
+A struct holding the necessary information
 to construct a domain, a mesh, a 2d spectral
 element space, and the resulting coordinate field.
 Note that only periodic domains are currently supported.
@@ -243,10 +243,10 @@ end
         npolynomial::Int
         periodic::Tuple{Bool, Bool}
     end
-A struct holding the necessary information to construct a domain, a mesh, 
+A struct holding the necessary information to construct a domain, a mesh,
 a 2d spectral element space (horizontal) x a 1d finite difference space
  (vertical), and the resulting coordinate field.
-This domain is not periodic along the z-axis. Note that 
+This domain is not periodic along the z-axis. Note that
 only periodic domains are supported
 in the horizontal.
 
@@ -286,11 +286,11 @@ end
         periodic = (true, true),
     ) where {FT}
 Constructs the `HybridBox` domain
- with limits `xlim` `ylim` and `zlim` 
-(where `xlim[1] < xlim[2]`,`ylim[1] < ylim[2]`, and `zlim[1] < zlim[2]`), 
-`nelements` must be a tuple with three values, with the first 
+ with limits `xlim` `ylim` and `zlim
+(where `xlim[1] < xlim[2]`,`ylim[1] < ylim[2]`, and `zlim[1] < zlim[2]`),
+`nelements` must be a tuple with three values, with the first
 value corresponding
-to the x-axis, the second corresponding to the y-axis, and the third 
+to the x-axis, the second corresponding to the y-axis, and the third
 corresponding to the z-axis. The domain is periodic at the (xy) boundaries,
 and the function space is of polynomial order `npolynomial` in the
 horizontal directions.
@@ -375,8 +375,8 @@ end
         nelements::Tuple{Int, Int}
         npolynomial::Int
     end
-A struct holding the necessary information to construct a domain, a mesh, 
-a 2d spectral element space (non-radial directions) 
+A struct holding the necessary information to construct a domain, a mesh,
+a 2d spectral element space (non-radial directions)
 x a 1d finite difference space (radial direction),
  and the resulting coordinate field.
 
@@ -478,7 +478,7 @@ end
         nelements::Tuple{Int, Int}
         npolynomial::Int
     end
-A struct holding the necessary information to construct a domain, a mesh, 
+A struct holding the necessary information to construct a domain, a mesh,
 a 2d spectral element space (non-radial directions) and the resulting coordinate field.
 
 `space` is a NamedTuple holding the surface space (in this case,
@@ -563,7 +563,7 @@ end
 """
     obtain_surface_domain(s::SphericalShell{FT}) where {FT}
 
-Returns the SphericalSurface domain corresponding to the top face 
+Returns the SphericalSurface domain corresponding to the top face
 (surface) of the SphericalShell domain `s`.
 """
 function obtain_surface_domain(s::SphericalShell{FT}) where {FT}
@@ -640,13 +640,13 @@ end
     top_center_to_surface(center_field::ClimaCore.Fields.Field)
 
 Creates and returns a ClimaCore.Fields.Field defined on the space
-corresponding to the surface of the space on which `center_field` 
-is defined, with values equal to the those at the level of the top 
+corresponding to the surface of the space on which `center_field`
+is defined, with values equal to the those at the level of the top
 center.
 
 For example, given a `center_field` defined on 1D center finite difference space,
 this would return a field defined on the Point space of the surface of
-the column. The value would be the value of the oroginal `center_field` 
+the column. The value would be the value of the oroginal `center_field`
 at the topmost location. Given a `center_field` defined on a 3D
 extruded center finite difference space, this would return a 2D field
 corresponding to the surface, with values equal to the topmost level.

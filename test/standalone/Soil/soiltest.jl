@@ -48,19 +48,18 @@ for FT in (Float32, Float64)
         @test propertynames(p) == (:soil,)
         # specify ICs
         function init_soil!(Ysoil, z, params)
-            function hydrostatic_profile(
-                z::FT,
-                params::RichardsParameters{FT},
-            ) where {FT}
-                (; ν, hydrology_cm, θ_r) = params
-                (; α, m, n) = hydrology_cm
-                #unsaturated zone only, assumes water table starts at z_∇
-                z_∇ = FT(-10)# matches zmin
-                S = FT((FT(1) + (α * (z - z_∇))^n)^(-m))
-                ϑ_l = S * (ν - θ_r) + θ_r
-                return FT(ϑ_l)
+            (; ν, hydrology_cm, θ_r, S_s) = params
+            (; α, m, n) = hydrology_cm
+            let α = α, m = m, n = n, ν = ν, θ_r = θ_r, S_s = S_s
+                function hydrostatic_profile(z::FT) where {FT}
+                    #unsaturated zone only, assumes water table starts at z_∇
+                    z_∇ = FT(-10)# matches zmin
+                    S = FT((FT(1) + (α * (z - z_∇))^n)^(-m))
+                    ϑ_l = S * (ν - θ_r) + θ_r
+                    return FT(ϑ_l)
+                end
+                Ysoil.soil.ϑ_l .= hydrostatic_profile.(z)
             end
-            Ysoil.soil.ϑ_l .= hydrostatic_profile.(z, Ref(params))
         end
 
         init_soil!(Y, coords.subsurface.z, soil.parameters)
@@ -76,10 +75,11 @@ for FT in (Float32, Float64)
         exp_tendency!(dY, Y, p, t0)
         ClimaLSM.dss!(dY, p, t0)
 
-        @test mean(parent(dY)) < eps(FT)
+        @test mean(Array(parent(dY))) < eps(FT)
         # should be hydrostatic equilibrium at every layer, at each step:
-        @test mean(parent(p.soil.ψ .+ coords.subsurface.z)[:] .+ FT(10)) <
-              eps(FT)
+        @test mean(
+            Array(parent(p.soil.ψ .+ coords.subsurface.z))[:] .+ FT(10),
+        ) < eps(FT)
     end
 
     @testset "Soil Energy and Water tendency unit tests, FT = $FT" begin
@@ -177,18 +177,18 @@ for FT in (Float32, Float64)
         ClimaLSM.dss!(dY, p, t0)
 
         F_face = FT(0)
-        κ = parent(p.soil.κ)
+        κ = Array(parent(p.soil.κ))
         F_below = -0.5 * (κ[end] + κ[end - 1]) * (-Δz + 0.5)
         dY_top = -(F_face - F_below) / Δz
         F_top = -0.5 * (κ[2] + κ[1]) * ((-1.0 + Δz) + 0.5)
         dY_bot = -(F_top - F_face) / Δz
-        expected = parent(p.soil.κ)
+        expected = Array(parent(p.soil.κ))
         expected[1] = dY_bot
         expected[end] = dY_top
-        @test mean(abs.(expected .- parent(dY.soil.ρe_int))) /
+        @test mean(abs.(expected .- Array(parent(dY.soil.ρe_int)))) /
               median(parent(Y.soil.ρe_int)) < eps(FT)
-        @test maximum(abs.(parent(dY.soil.ϑ_l))) == FT(0)
-        @test maximum(abs.(parent(dY.soil.θ_i))) == FT(0)
+        @test maximum(abs.(Array(parent(dY.soil.ϑ_l)))) == FT(0)
+        @test maximum(abs.(Array(parent(dY.soil.θ_i)))) == FT(0)
 
         ###
         hyd_on_en_off = Soil.EnergyHydrologyParameters{FT}(
@@ -306,9 +306,9 @@ for FT in (Float32, Float64)
             return ν / 2.0
         end
 
-        θ = parent(Y.soil.ϑ_l)# on the center
+        θ = Array(parent(Y.soil.ϑ_l))# on the center
         θ_face = 0.5 * (θ[2:end] + θ[1:(end - 1)])
-        Z = parent(coords.subsurface.z)
+        Z = Array(parent(coords.subsurface.z))
         Z_face = 0.5 * (Z[2:end] + Z[1:(end - 1)])
         K_face = 0.5 .* (K.(θ[2:end]) .+ K.(θ[1:(end - 1)]))
         flux_interior = (@. -K_face * (1.0 + dψdθ(θ_face) * dθdz(Z_face)))
@@ -319,13 +319,16 @@ for FT in (Float32, Float64)
         )
 
         expected = -(flux[2:end] - flux[1:(end - 1)]) ./ Δz
-        @test mean(abs.(expected .- parent(dY.soil.ϑ_l))) / ν < 10^2 * eps(FT)
-        @test maximum(abs.(parent(dY.soil.θ_i))) == FT(0)
+        @test mean(abs.(expected .- Array(parent(dY.soil.ϑ_l)))) / ν <
+              10^2 * eps(FT)
+        @test maximum(abs.(Array(parent(dY.soil.θ_i)))) == FT(0)
 
-        ρe_int_l = parent(
-            Soil.volumetric_internal_energy_liq.(
-                p.soil.T,
-                Ref(soil_water_on.parameters),
+        ρe_int_l = Array(
+            parent(
+                Soil.volumetric_internal_energy_liq.(
+                    p.soil.T,
+                    Ref(soil_water_on.parameters),
+                ),
             ),
         )
         ρe_int_l_face = 0.5 * (ρe_int_l[2:end] + ρe_int_l[1:(end - 1)])
@@ -338,8 +341,8 @@ for FT in (Float32, Float64)
         )
         expected = -(flux[2:end] - flux[1:(end - 1)]) ./ Δz
 
-        @test mean(abs.(expected .- parent(dY.soil.ρe_int))) /
-              median(parent(Y.soil.ρe_int)) < 10^2 * eps(FT)
+        @test mean(abs.(expected .- Array(parent(dY.soil.ρe_int)))) /
+              median(Array(parent(Y.soil.ρe_int))) < 10^2 * eps(FT)
 
         ###
 
@@ -397,9 +400,9 @@ for FT in (Float32, Float64)
         exp_tendency!(dY, Y, p, t0)
         ClimaLSM.dss!(dY, p, t0)
 
-        @test maximum(abs.(parent(dY.soil.ρe_int))) == FT(0)
-        @test maximum(abs.(parent(dY.soil.ϑ_l))) == FT(0)
-        @test maximum(abs.(parent(dY.soil.θ_i))) == FT(0)
+        @test maximum(abs.(Array(parent(dY.soil.ρe_int)))) == FT(0)
+        @test maximum(abs.(Array(parent(dY.soil.ϑ_l)))) == FT(0)
+        @test maximum(abs.(Array(parent(dY.soil.θ_i)))) == FT(0)
 
 
         ### Test with both energy and hydrology on
@@ -454,18 +457,20 @@ for FT in (Float32, Float64)
         exp_tendency!(dY, Y, p, t0)
         ClimaLSM.dss!(dY, p, t0)
 
-        @test maximum(abs.(parent(dY.soil.θ_i))) == FT(0)
+        @test maximum(abs.(Array(parent(dY.soil.θ_i)))) == FT(0)
 
-        θ = parent(Y.soil.ϑ_l)# on the center
+        θ = Array(parent(Y.soil.ϑ_l))# on the center
         θ_face = 0.5 * (θ[2:end] + θ[1:(end - 1)])
-        Z = parent(coords.subsurface.z)
+        Z = Array(parent(coords.subsurface.z))
         Z_face = 0.5 * (Z[2:end] + Z[1:(end - 1)])
         K_face = 0.5 .* (K.(θ[2:end]) .+ K.(θ[1:(end - 1)]))
-        vf = parent(
-            Soil.viscosity_factor.(
-                p.soil.T,
-                hyd_on_en_on.γ,
-                hyd_on_en_on.γT_ref,
+        vf = Array(
+            parent(
+                Soil.viscosity_factor.(
+                    p.soil.T,
+                    hyd_on_en_on.γ,
+                    hyd_on_en_on.γT_ref,
+                ),
             ),
         )
         vf_face = 0.5 .* (vf[2:end] .+ vf[1:(end - 1)])
@@ -479,16 +484,19 @@ for FT in (Float32, Float64)
         )
 
         expected = -(flux[2:end] - flux[1:(end - 1)]) ./ Δz
-        @test mean(abs.(expected .- parent(dY.soil.ϑ_l))) / ν < 10^2 * eps(FT)
+        @test mean(abs.(expected .- Array(parent(dY.soil.ϑ_l)))) / ν <
+              10^2 * eps(FT)
 
-        ρe_int_l = parent(
-            Soil.volumetric_internal_energy_liq.(
-                p.soil.T,
-                Ref(soil_both_on.parameters),
+        ρe_int_l = Array(
+            parent(
+                Soil.volumetric_internal_energy_liq.(
+                    p.soil.T,
+                    Ref(soil_both_on.parameters),
+                ),
             ),
         )
         ρe_int_l_face = 0.5 * (ρe_int_l[2:end] + ρe_int_l[1:(end - 1)])
-        κ = parent(p.soil.κ)
+        κ = Array(parent(p.soil.κ))
         κ_face = 0.5 * (κ[2:end] + κ[1:(end - 1)])
 
 
@@ -510,8 +518,8 @@ for FT in (Float32, Float64)
         flux = flux_one .+ flux_two
         expected = -(flux[2:end] - flux[1:(end - 1)]) ./ Δz
 
-        @test mean(abs.(expected .- parent(dY.soil.ρe_int))) /
-              median(parent(Y.soil.ρe_int)) < 10^2 * eps(FT)
+        @test mean(abs.(expected .- Array(parent(dY.soil.ρe_int)))) /
+              median(Array(parent(Y.soil.ρe_int))) < 10^2 * eps(FT)
     end
 
     @testset "Phase change source term, FT = $FT" begin
@@ -605,6 +613,7 @@ for FT in (Float32, Float64)
         source!(dY, sources[1], Y, p, soil_heat_on)
         _ρ_l = FT(LSMP.ρ_cloud_liq(soil_heat_on.parameters.earth_param_set))
         _ρ_i = FT(LSMP.ρ_cloud_ice(soil_heat_on.parameters.earth_param_set))
-        @test parent(dY.soil.ϑ_l) ≈ -(_ρ_i / _ρ_l) .* parent(dY.soil.θ_i)
+        @test Array(parent(dY.soil.ϑ_l)) ≈
+              -(_ρ_i / _ρ_l) .* Array(parent(dY.soil.θ_i))
     end
 end

@@ -78,39 +78,45 @@ for FT in (Float32, Float64)
                     parent(W.∂ϑₜ∂ϑ.coefs.:1)[2:end] .≈
                     parent(W.∂ϑₜ∂ϑ.coefs.:3)[1:(end - 1)],
                 )
-                @test parent(W.∂ϑₜ∂ϑ.coefs.:1)[1] == FT(0)
-                @test parent(W.∂ϑₜ∂ϑ.coefs.:3)[end] == FT(0)
+                @test Array(parent(W.∂ϑₜ∂ϑ.coefs.:1))[1] == FT(0)
+                @test Array(parent(W.∂ϑₜ∂ϑ.coefs.:3))[end] == FT(0)
                 @test all(
-                    parent(W.∂ϑₜ∂ϑ.coefs.:1)[2:end] .≈ K_ic / dz^2 * dψdϑ_ic,
+                    Array(parent(W.∂ϑₜ∂ϑ.coefs.:1))[2:end] .≈
+                    K_ic / dz^2 * dψdϑ_ic,
                 )
-                @test parent(W.∂ϑₜ∂ϑ.coefs.:2)[1] .≈ -K_ic / dz^2 * dψdϑ_ic
+                @test Array(parent(W.∂ϑₜ∂ϑ.coefs.:2))[1] .≈
+                      -K_ic / dz^2 * dψdϑ_ic
                 @test all(
-                    parent(W.∂ϑₜ∂ϑ.coefs.:2)[2:(end - 1)] .≈
+                    Array(parent(W.∂ϑₜ∂ϑ.coefs.:2))[2:(end - 1)] .≈
                     -2 * K_ic / dz^2 * dψdϑ_ic,
                 )
-                @test parent(W.∂ϑₜ∂ϑ.coefs.:2)[end] .≈
+                @test Array(parent(W.∂ϑₜ∂ϑ.coefs.:2))[end] .≈
                       -K_ic / dz^2 * dψdϑ_ic - K_ic / (dz * dz / 2) * dψdϑ_ic
             elseif typeof(domain) <: HybridBox
                 @test all(
-                    parent(W.∂ϑₜ∂ϑ.coefs.:1)[2:end, :, 1, 1, 1] .≈
-                    parent(W.∂ϑₜ∂ϑ.coefs.:3)[1:(end - 1), :, 1, 1, 1],
+                    Array(parent(W.∂ϑₜ∂ϑ.coefs.:1))[2:end, :, 1, 1, 1] .≈
+                    Array(parent(W.∂ϑₜ∂ϑ.coefs.:3))[1:(end - 1), :, 1, 1, 1],
                 )
-                @test all(parent(W.∂ϑₜ∂ϑ.coefs.:1)[1, :, 1, 1, 1] .== FT(0))
-                @test all(parent(W.∂ϑₜ∂ϑ.coefs.:3)[end, :, 1, 1, 1] .== FT(0))
                 @test all(
-                    parent(W.∂ϑₜ∂ϑ.coefs.:1)[2:end, :, 1, 1, 1] .≈
+                    Array(parent(W.∂ϑₜ∂ϑ.coefs.:1))[1, :, 1, 1, 1] .== FT(0),
+                )
+                @test all(
+                    Array(parent(W.∂ϑₜ∂ϑ.coefs.:3))[end, :, 1, 1, 1] .== FT(0),
+                )
+                @test all(
+                    Array(parent(W.∂ϑₜ∂ϑ.coefs.:1))[2:end, :, 1, 1, 1] .≈
                     K_ic / dz^2 * dψdϑ_ic,
                 )
                 @test all(
-                    parent(W.∂ϑₜ∂ϑ.coefs.:2)[1, :, 1, 1, 1] .≈
+                    Array(parent(W.∂ϑₜ∂ϑ.coefs.:2))[1, :, 1, 1, 1] .≈
                     -K_ic / dz^2 * dψdϑ_ic,
                 )
                 @test all(
-                    parent(W.∂ϑₜ∂ϑ.coefs.:2)[2:(end - 1), :, 1, 1, 1] .≈
+                    Array(parent(W.∂ϑₜ∂ϑ.coefs.:2))[2:(end - 1), :, 1, 1, 1] .≈
                     -2 * K_ic / dz^2 * dψdϑ_ic,
                 )
                 @test all(
-                    parent(W.∂ϑₜ∂ϑ.coefs.:2)[end, :, 1, 1, 1] .≈
+                    Array(parent(W.∂ϑₜ∂ϑ.coefs.:2))[end, :, 1, 1, 1] .≈
                     -K_ic / dz^2 * dψdϑ_ic - K_ic / (dz * dz / 2) * dψdϑ_ic,
                 )
             end
@@ -172,23 +178,25 @@ for FT in (Float32, Float64)
             dz = FT(0.01)
             dψdϑ_ic = dψdϑ(hcm, FT(0.24), ν, θ_r, S_s)
             if typeof(domain) <: Column
-                @test parent(W.∂ϑₜ∂ϑ.coefs.:2)[1] .≈ -K_ic / dz^2 * dψdϑ_ic
+                @test Array(parent(W.∂ϑₜ∂ϑ.coefs.:2))[1] .≈
+                      -K_ic / dz^2 * dψdϑ_ic
                 @test all(
-                    parent(W.∂ϑₜ∂ϑ.coefs.:2)[2:(end - 1)] .≈
+                    Array(parent(W.∂ϑₜ∂ϑ.coefs.:2))[2:(end - 1)] .≈
                     -2 * K_ic / dz^2 * dψdϑ_ic,
                 )
-                @test parent(W.∂ϑₜ∂ϑ.coefs.:2)[end] .≈ -K_ic / dz^2 * dψdϑ_ic
+                @test Array(parent(W.∂ϑₜ∂ϑ.coefs.:2))[end] .≈
+                      -K_ic / dz^2 * dψdϑ_ic
             elseif typeof(domain) <: HybridBox
                 @test all(
-                    parent(W.∂ϑₜ∂ϑ.coefs.:2)[1, :, 1, 1, 1] .≈
+                    Array(parent(W.∂ϑₜ∂ϑ.coefs.:2))[1, :, 1, 1, 1] .≈
                     -K_ic / dz^2 * dψdϑ_ic,
                 )
                 @test all(
-                    parent(W.∂ϑₜ∂ϑ.coefs.:2)[2:(end - 1), :, 1, 1, 1] .≈
+                    Array(parent(W.∂ϑₜ∂ϑ.coefs.:2))[2:(end - 1), :, 1, 1, 1] .≈
                     -2 * K_ic / dz^2 * dψdϑ_ic,
                 )
                 @test all(
-                    parent(W.∂ϑₜ∂ϑ.coefs.:2)[end, :, 1, 1, 1] .≈
+                    Array(parent(W.∂ϑₜ∂ϑ.coefs.:2))[end, :, 1, 1, 1] .≈
                     -K_ic / dz^2 * dψdϑ_ic,
                 )
             end

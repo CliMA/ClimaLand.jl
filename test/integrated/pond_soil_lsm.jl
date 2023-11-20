@@ -67,20 +67,19 @@ for FT in (Float32, Float64)
             ),
         )
         function init_soil!(Ysoil, coords, params)
-            function hydrostatic_profile(
-                z::FT,
-                params::RichardsParameters{FT},
-            ) where {FT}
-                (; ν, hydrology_cm, θ_r) = params
-                (; α, n) = hydrology_cm
-                m = 1 - 1 / n
-                #unsaturated zone only, assumes water table starts at z_∇
-                z_∇ = FT(-1)# matches zmin
-                S = FT((FT(1) + (α * (z - z_∇))^n)^(-m))
-                ϑ_l = S * (ν - θ_r) + θ_r
-                return FT(ϑ_l)
+            (; ν, hydrology_cm, θ_r) = params
+            (; α, n) = hydrology_cm
+            let ν = ν, θ_r = θ_r, n = vg_n, α = vg_α
+                function hydrostatic_profile(z::FT) where {FT}
+                    m = 1 - 1 / n
+                    #unsaturated zone only, assumes water table starts at z_∇
+                    z_∇ = FT(-1)# matches zmin
+                    S = FT((FT(1) + (α * (z - z_∇))^n)^(-m))
+                    ϑ_l = S * (ν - θ_r) + θ_r
+                    return FT(ϑ_l)
+                end
+                Ysoil.soil.ϑ_l .= hydrostatic_profile.(coords.z)
             end
-            Ysoil.soil.ϑ_l .= hydrostatic_profile.(coords.z, Ref(params))
         end
         init_soil!(Y, coords.subsurface, land.soil.parameters)
         # initialize the pond height to zero
@@ -174,20 +173,19 @@ for FT in (Float32, Float64)
         Y, p, coords = initialize(land)
         @test propertynames(p) == (:soil_infiltration, :soil, :surface_water)
         function init_soil!(Ysoil, coords, params)
-            function hydrostatic_profile(
-                z::FT,
-                params::RichardsParameters{FT},
-            ) where {FT}
-                (; ν, hydrology_cm, θ_r) = params
-                (; α, n) = hydrology_cm
-                m = 1 - 1 / n
-                #unsaturated zone only, assumes water table starts at z_∇
-                z_∇ = FT(-1)# matches zmin
-                S = FT((FT(1) + (α * (z - z_∇))^n)^(-m))
-                ϑ_l = S * (ν - θ_r) + θ_r
-                return FT(ϑ_l)
+            (; ν, hydrology_cm, θ_r) = params
+            (; α, n) = hydrology_cm
+            let ν = ν, θ_r = θ_r, n = vg_n, α = vg_α
+                function hydrostatic_profile(z::FT) where {FT}
+                    m = 1 - 1 / n
+                    #unsaturated zone only, assumes water table starts at z_∇
+                    z_∇ = FT(-1)# matches zmin
+                    S = FT((FT(1) + (α * (z - z_∇))^n)^(-m))
+                    ϑ_l = S * (ν - θ_r) + θ_r
+                    return FT(ϑ_l)
+                end
+                Ysoil.soil.ϑ_l .= hydrostatic_profile.(coords.z)
             end
-            Ysoil.soil.ϑ_l .= hydrostatic_profile.(coords.z, Ref(params))
         end
         init_soil!(Y, coords.subsurface, land.soil.parameters)
         # initialize the pond height to zero

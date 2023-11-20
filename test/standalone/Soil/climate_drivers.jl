@@ -193,7 +193,8 @@ for FT in (Float32, Float64)
             M_w = LSMP.molar_mass_water(model.parameters.earth_param_set)
             R = LSMP.gas_constant(model.parameters.earth_param_set)
             ψ_sfc =
-                parent(p.soil.ψ)[end] .+ ClimaCore.Fields.zeros(surface_space)
+                Array(parent(p.soil.ψ))[end] .+
+                ClimaCore.Fields.zeros(surface_space)
             q_sfc = @. (q_sat * exp(g * ψ_sfc * M_w / (R * T_sfc)))
             @test ClimaLSM.surface_specific_humidity(
                 model,

@@ -421,6 +421,8 @@ function interpolate_data(
     # Interpolate if the time period between dates is nonzero
     if segment_length[1] > FT(0) && date != all_dates[Int(date_idx[1])]
         Δt_tt1 = FT((date - all_dates[Int(date_idx[1])]).value)
+        interp_fraction = Δt_tt1 / FT(segment_length[1])
+        @assert abs(interp_fraction) <= FT(1) "time interpolation weights must be <= 1, but `interp_fraction` = $interp_fraction"
         return interpol.(
             data_fields[1],
             data_fields[2],
@@ -450,7 +452,6 @@ a segment `Δt_t2t1 = (t2 - t1)`, of fields `f1` and `f2`, with `t2 > t1`.
 """
 function interpol(f1::FT, f2::FT, Δt_tt1::FT, Δt_t2t1::FT) where {FT}
     interp_fraction = Δt_tt1 / Δt_t2t1
-    @assert abs(interp_fraction) <= FT(1) "time interpolation weights must be <= 1, but `interp_fraction` = $interp_fraction"
     return f1 * (FT(1) - interp_fraction) + f2 * (interp_fraction)
 end
 
