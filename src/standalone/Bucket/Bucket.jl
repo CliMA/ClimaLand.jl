@@ -101,24 +101,30 @@ end
 
 """
     BulkAlbedoStatic{FT}(
-        regrid_dirpath::String;
+        regrid_dirpath::String,
+        comms_ctx::ClimaComms.AbstractCommsContext;
         α_snow = FT(0.8),
         varname = "sw_alb",
-        infile_path = Bucket.bareground_albedo_dataset_path(),
+        get_infile::Function = Bucket.bareground_albedo_dataset_path,
     ) where {FT}
 
-Constructor for the BulkAlbedoStatic that implements a default albedo map, `comms` context, and value for `α_snow`.
-The `varname` must correspond to the name of the variable in the NetCDF file specified by `path`.
+Constructor for the BulkAlbedoStatic that implements a default albedo map,
+`comms` context, and value for `α_snow`.
+The `varname` must correspond to the name of the variable in the NetCDF
+file retrieved by `infile_path`.
+`infile_path` is a function that uses ArtifactWrappers.jl to return a path to
+the data file and download the data if it doesn't already exist on the machine.
 
-The `bareground_albedo_dataset_path` artifact can be used as a default with this type.
+The `bareground_albedo_dataset_path` artifact will be used as a default with this type.
 """
 function BulkAlbedoStatic{FT}(
-    regrid_dirpath::String;
+    regrid_dirpath::String,
+    comms_ctx::ClimaComms.AbstractCommsContext;
     α_snow = FT(0.8),
     varname = "sw_alb",
-    infile_path = Bucket.bareground_albedo_dataset_path(),
+    get_infile::Function = Bucket.bareground_albedo_dataset_path,
 ) where {FT}
-    α_sfc = PrescribedDataStatic(infile_path, regrid_dirpath, varname)
+    α_sfc = PrescribedDataStatic(get_infile, regrid_dirpath, varname, comms_ctx)
     return BulkAlbedoStatic{FT}(α_snow, α_sfc)
 end
 
@@ -143,13 +149,15 @@ end
         date_ref::Union{DateTime, DateTimeNoLeap},
         t_start,
         Space::ClimaCore.Spaces.AbstractSpace;
-        infile_path = Bucket.cesm2_albedo_dataset_path(),
+        get_infile = Bucket.cesm2_albedo_dataset_path,
         varname = "sw_alb"
     ) where {FT}
 
 Constructor for the BulkAlbedoTemporal struct.
 The `varname` must correspond to the name of the variable in the NetCDF
-file specified by `infile_path`.
+file retrieved by the `get_infile` function.
+`get_infile` uses ArtifactWrappers.jl to return a path to the data file
+and download the data if it doesn't already exist on the machine.
 The input data file must have a time component; otherwise BulkAlbedoStatic
 should be used.
 """
@@ -158,25 +166,18 @@ function BulkAlbedoTemporal{FT}(
     date_ref::Union{DateTime, DateTimeNoLeap},
     t_start,
     space::ClimaCore.Spaces.AbstractSpace;
-    infile_path = Bucket.cesm2_albedo_dataset_path(),
+    get_infile = Bucket.cesm2_albedo_dataset_path,
     varname = "sw_alb",
 ) where {FT}
     # Verify inputs
     if typeof(space) <: ClimaCore.Spaces.PointSpace
         error("Using an albedo map requires a global run.")
     end
-    NCDataset(infile_path, "r") do ds
-        if !("time" in keys(ds))
-            error(
-                "Using a temporal albedo map requires data with time dimension.",
-            )
-        end
-    end
 
     # Construct object containing info to read in surface albedo over time
     data_info = PrescribedDataTemporal{FT}(
         regrid_dirpath,
-        infile_path,
+        get_infile,
         varname,
         date_ref,
         t_start,

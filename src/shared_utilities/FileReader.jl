@@ -16,6 +16,7 @@ using ClimaCore: Fields, Spaces
 using Dates
 using JLD2
 using CFTime
+using NCDatasets
 
 using ClimaLSM.Regridder
 
@@ -132,9 +133,10 @@ end
 
 """
     PrescribedDataStatic(
-        infile_path::String,
+        get_infile::Function,
         regrid_dirpath::String,
         varname::String,
+        commx_ctx::ClimaComms.AbstractCommsContext,
     )
 
 Constructor for the `PrescribedDataStatic`` type.
@@ -144,10 +146,18 @@ simulation grid. Date-related args (last 3 to FileInfo) are unused for static
 data maps.
 """
 function PrescribedDataStatic(
-    infile_path::String,
+    get_infile::Function,
     regrid_dirpath::String,
     varname::String,
+    comms_ctx::ClimaComms.AbstractCommsContext,
 )
+    # Download `infile_path` artifact on root process first to avoid race condition
+    if ClimaComms.iamroot(comms_ctx)
+        infile_path = get_infile()
+    end
+    ClimaComms.barrier(comms_ctx)
+    infile_path = get_infile()
+
     file_info = FileInfo(infile_path, regrid_dirpath, varname, "", [], [])
     return PrescribedDataStatic(file_info)
 end
@@ -156,7 +166,7 @@ end
 """
     PrescribedDataTemporal{FT}(
         regrid_dirpath,
-        infile_path,
+        get_infile,
         varname,
         date_ref,
         t_start,
@@ -172,7 +182,7 @@ data packaged into a single `PrescribedDataTemporal` struct.
 
 # Arguments
 - `regrid_dirpath`   # directory the data file is stored in.
-- `infile_path`      # NCDataset file containing data to regrid.
+- `get_infile`       # function returning path to NCDataset file containing data to regrid.
 - `varname`          # name of the variable to be regridded.
 - `date_ref`         # reference date to coordinate start of the simulation
 - `t_start`          # start time of the simulation relative to `date_ref` (date_start = date_ref + t_start)
@@ -184,7 +194,7 @@ data packaged into a single `PrescribedDataTemporal` struct.
 """
 function PrescribedDataTemporal{FT}(
     regrid_dirpath::String,
-    infile_path::String,
+    get_infile::Function,
     varname::String,
     date_ref::Union{DateTime, DateTimeNoLeap},
     t_start,
@@ -195,7 +205,9 @@ function PrescribedDataTemporal{FT}(
     outfile_root = varname * "_cgll"
 
     # Regrid data at all times from lat/lon (RLL) to simulation grid (CGLL)
+    # Download `infile_path` artifact on root process first to avoid race condition
     if ClimaComms.iamroot(comms_ctx)
+        infile_path = get_infile()
         Regridder.hdwrite_regridfile_rll_to_cgll(
             FT,
             regrid_dirpath,
@@ -205,8 +217,18 @@ function PrescribedDataTemporal{FT}(
             outfile_root;
             mono = mono,
         )
+
+        NCDataset(infile_path, "r") do ds
+            if !("time" in keys(ds))
+                error(
+                    "Using a temporal albedo map requires data with time dimension.",
+                )
+            end
+        end
     end
     ClimaComms.barrier(comms_ctx)
+    infile_path = get_infile()
+
     all_dates = JLD2.load(
         joinpath(regrid_dirpath, outfile_root * "_times.jld2"),
         "times",
