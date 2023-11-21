@@ -70,9 +70,10 @@ isdir(regrid_dir_temporal) ? nothing : mkpath(regrid_dir_temporal)
 end
 
 @testset "Test set_initial_parameter_field for BulkAlbedoStatic, FT = $FT" begin
+    comms_ctx = ClimaComms.SingletonCommsContext()
     # set up for function call
     regrid_dir_static = joinpath(pkgdir(ClimaLSM), "test", "static")
-    albedo = BulkAlbedoStatic{FT}(regrid_dir_static)
+    albedo = BulkAlbedoStatic{FT}(regrid_dir_static, comms_ctx)
     domain = create_domain_2d(FT)
     space = domain.space.surface
     p = (; bucket = (; α_sfc = Fields.zeros(space)))
@@ -81,14 +82,13 @@ end
     set_initial_parameter_field!(albedo, p, surface_coords)
 
     # set up for manual data reading
-    comms = ClimaComms.SingletonCommsContext()
     infile_path = bareground_albedo_dataset_path()
     varname = "sw_alb"
 
     data_manual = regrid_netcdf_to_field(
         FT,
         regrid_dir_static,
-        comms,
+        comms_ctx,
         infile_path,
         varname,
         space,
@@ -117,14 +117,14 @@ end
     set_initial_parameter_field!(albedo, p, surface_coords)
 
     # set up for manual data reading
-    comms = ClimaComms.SingletonCommsContext()
+    comms_ctx = ClimaComms.SingletonCommsContext()
     infile_path = bareground_albedo_dataset_path()
     varname = "sw_alb"
 
     data_manual = regrid_netcdf_to_field(
         FT,
         regrid_dir_temporal,
-        comms,
+        comms_ctx,
         infile_path,
         varname,
         space,
@@ -165,9 +165,10 @@ end
 end
 
 @testset "Test next_albedo for BulkAlbedoStatic, FT = $FT" begin
+    comms_ctx = ClimaComms.SingletonCommsContext()
     # set up each argument for function call
     α_snow = FT(0.8)
-    albedo = BulkAlbedoStatic{FT}(regrid_dir_static, α_snow = α_snow)
+    albedo = BulkAlbedoStatic{FT}(regrid_dir_static, comms_ctx, α_snow = α_snow)
 
     σS_c = FT(0.2)
     parameters = (; σS_c = σS_c)
@@ -223,7 +224,7 @@ end
         joinpath(regrid_dir_temporal, outfile_root * "_times.jld2"),
         "times",
     )
-    comms = ClimaComms.SingletonCommsContext()
+    comms_ctx = ClimaComms.SingletonCommsContext()
 
     new_date = date_ref + Second(t_start)
     t_curr = t_start
@@ -234,7 +235,7 @@ end
         field = regrid_netcdf_to_field(
             FT,
             regrid_dir_temporal,
-            comms,
+            comms_ctx,
             infile_path,
             varname,
             space,
@@ -251,7 +252,7 @@ end
 
 @testset "Test BulkAlbedoTemporal error with static map, FT = $FT" begin
     regrid_dirpath = ""
-    infile_path = bareground_albedo_dataset_path()
+    get_infile = bareground_albedo_dataset_path
     date_ref = Dates.DateTime(1900, 1, 1)
     t_start = Float64(0)
     domain = create_domain_2d(FT)
@@ -264,7 +265,7 @@ end
                 date_ref,
                 t_start,
                 space,
-                infile_path = infile_path,
+                get_infile = get_infile,
             )
         catch err
         end
@@ -279,10 +280,10 @@ end
     earth_param_set = create_lsm_parameters(FT)
     varname = "sw_alb"
     path = bareground_albedo_dataset_path()
-    comms = ClimaComms.SingletonCommsContext()
+    comms_ctx = ClimaComms.SingletonCommsContext()
     regrid_dirpath = joinpath(pkgdir(ClimaLSM), "test/albedo_tmpfiles/")
     mkpath(regrid_dirpath)
-    albedo_model = BulkAlbedoStatic{FT}(regrid_dirpath)
+    albedo_model = BulkAlbedoStatic{FT}(regrid_dirpath, comms_ctx)
 
     σS_c = FT(0.2)
     W_f = FT(0.15)
@@ -302,7 +303,6 @@ end
         ),
     ]
     orbital_data = Insolation.OrbitalData()
-
 
     for bucket_domain in bucket_domains
         # Radiation
@@ -358,7 +358,7 @@ end
             field = regrid_netcdf_to_field(
                 FT,
                 regrid_dirpath,
-                comms,
+                comms_ctx,
                 path,
                 varname,
                 model.domain.space.surface,
@@ -390,7 +390,7 @@ end
     earth_param_set = create_lsm_parameters(FT)
     varname = "sw_alb"
     infile_path = cesm2_albedo_dataset_path()
-    comms = ClimaComms.SingletonCommsContext()
+    comms_ctx = ClimaComms.SingletonCommsContext()
     regrid_dirpath = joinpath(pkgdir(ClimaLSM), "test/albedo_tmpfiles/")
     mkpath(regrid_dirpath)
 
@@ -482,7 +482,7 @@ end
             field = regrid_netcdf_to_field(
                 FT,
                 regrid_dirpath,
-                comms,
+                comms_ctx,
                 infile_path,
                 varname,
                 model.domain.space.surface,
@@ -507,7 +507,7 @@ end
                 field = regrid_netcdf_to_field(
                     FT,
                     regrid_dirpath,
-                    comms,
+                    comms_ctx,
                     infile_path,
                     varname,
                     model.domain.space.surface,

@@ -11,8 +11,8 @@ using Test
 using Dates
 using NCDatasets
 
-albedo_temporal_data = Bucket.cesm2_albedo_dataset_path()
-albedo_bareground_data = Bucket.bareground_albedo_dataset_path()
+albedo_temporal_data = Bucket.cesm2_albedo_dataset_path
+albedo_bareground_data = Bucket.bareground_albedo_dataset_path
 
 comms_ctx = ClimaComms.SingletonCommsContext()
 
@@ -149,17 +149,21 @@ end
 end
 
 @testset "test PrescribedDataStatic construction, FT = $FT" begin
-    infile_path = albedo_temporal_data
+    get_infile = albedo_temporal_data
     varname = "sw_alb"
-    ps_data_spatial =
-        FileReader.PrescribedDataStatic(infile_path, regrid_dir_static, varname)
+    ps_data_spatial = FileReader.PrescribedDataStatic(
+        get_infile,
+        regrid_dir_static,
+        varname,
+        comms_ctx,
+    )
 
     # test that created object exists
     @test @isdefined(ps_data_spatial)
     @test ps_data_spatial isa FileReader.AbstractPrescribedData
 
     # test fields that we've passed into constructor as args
-    @test ps_data_spatial.file_info.infile_path == infile_path
+    @test ps_data_spatial.file_info.infile_path == get_infile()
     @test ps_data_spatial.file_info.regrid_dirpath == regrid_dir_static
     @test ps_data_spatial.file_info.varname == varname
 
@@ -183,7 +187,7 @@ if !Sys.iswindows()
         quad = Spaces.Quadratures.GLL{Nq}()
         surface_space_t = Spaces.SpectralElementSpace2D(topology, quad)
 
-        infile_path = albedo_temporal_data
+        get_infile = albedo_temporal_data
         varname = "sw_alb"
         date_idx0 = Int[1]
         date_ref = DateTime(1800, 1, 1)
@@ -191,7 +195,7 @@ if !Sys.iswindows()
 
         ps_data_temp = FileReader.PrescribedDataTemporal{FT}(
             regrid_dir_temporal,
-            infile_path,
+            get_infile,
             varname,
             date_ref,
             t_start,
@@ -218,12 +222,12 @@ if !Sys.iswindows()
     end
 
     @testset "test read_data_fields!, FT = $FT" begin
-        # setup for test
-        datafile_rll = albedo_temporal_data
+        get_infile = albedo_temporal_data
+        infile_path = get_infile()
         varname = "sw_alb"
 
         # Start with first date in data file
-        date0 = NCDataset(datafile_rll) do ds
+        date0 = NCDataset(infile_path) do ds
             ds["time"][1]
         end
         date0 = FileReader.to_datetime(date0)
@@ -245,7 +249,7 @@ if !Sys.iswindows()
 
         prescribed_data = FileReader.PrescribedDataTemporal{FT}(
             regrid_dir_temporal,
-            albedo_temporal_data,
+            get_infile,
             varname,
             date_ref,
             t_start,
