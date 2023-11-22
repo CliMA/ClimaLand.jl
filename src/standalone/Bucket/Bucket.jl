@@ -1,5 +1,4 @@
 module Bucket
-using UnPack
 using DocStringExtensions
 using Thermodynamics
 using Dates
@@ -437,7 +436,7 @@ Creates the compute_exp_tendency! function for the bucket model.
 """
 function make_compute_exp_tendency(model::BucketModel{FT}) where {FT}
     function compute_exp_tendency!(dY, Y, p, t)
-        @unpack κ_soil, ρc_soil, σS_c, W_f = model.parameters
+        (; κ_soil, ρc_soil, σS_c, W_f) = model.parameters
 
         #Currently, the entire surface is assumed to be
         # snow covered entirely or not at all.
@@ -452,7 +451,7 @@ function make_compute_exp_tendency(model::BucketModel{FT}) where {FT}
 
         # The below is NOT CORRECT if we want the snow
         # cover fraction to be intermediate between 0 and 1.
-        @unpack turbulent_energy_flux, R_n, evaporation = p.bucket
+        (; turbulent_energy_flux, R_n, evaporation) = p.bucket
         F_sfc = @. (R_n + turbulent_energy_flux) # Eqn (15)
 
         _T_freeze = LSMP.T_freeze(model.parameters.earth_param_set)

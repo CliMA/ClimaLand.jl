@@ -19,7 +19,6 @@ SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 SurfaceFluxes = "49b00bb7-8bd4-4f2b-b78c-51cd0450215f"
 Thermodynamics = "b60c26fb-14c3-4610-9d3e-2d17fe7ff00c"
-UnPack = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
 
 [compat]
 ArtifactWrappers = "0.2"
@@ -37,5 +36,4 @@ SciMLBase = "1, 2"
 StaticArrays = "1"
 SurfaceFluxes = "0.8"
 Thermodynamics = "0.9, 0.10, 0.11"
-UnPack = "1"
 julia = "1.8"

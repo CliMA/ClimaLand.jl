@@ -56,7 +56,7 @@ function LandHydrology{FT}(;
     SW <: Pond.AbstractSurfaceWaterModel{FT},
 }
 
-    @unpack precip = land_args
+    (; precip) = land_args
 
     sources = ()
     surface_runoff = PrognosticRunoff{FT}(precip)
