@@ -190,7 +190,7 @@ for FT in (Float32, Float64)
             @test getproperty(prognostic_types(canopy), component) ==
                   prognostic_types(getproperty(canopy, component))
         end
-        Y.canopy.hydraulics[1] = plant_ν
+        parent(Y.canopy.hydraulics.ϑ_l) .= plant_ν
         set_initial_aux_state! = make_set_initial_aux_state(canopy)
         exp_tendency! = make_exp_tendency(canopy)
         t0 = FT(0.0)
@@ -233,7 +233,7 @@ for FT in (Float32, Float64)
         LW_d = FT.(radiation.LW_d(t0))
         LW_d_canopy = (1 - ϵ_canopy) * LW_d + ϵ_canopy * _σ * T_canopy^4
         LW_u_soil = ϵ_soil * _σ * T_soil^4 + (1 - ϵ_soil) * LW_d_canopy
-        @test parent(p.canopy.radiative_transfer.LW_n)[1] ≈
+        @test Array(parent(p.canopy.radiative_transfer.LW_n))[1] ≈
               ϵ_canopy * LW_d - 2 * ϵ_canopy * _σ * T_canopy^4 +
               ϵ_canopy * LW_u_soil
 
@@ -264,17 +264,19 @@ for FT in (Float32, Float64)
         VPD = es .- ea
 
         conditions = surface_fluxes(atmos, canopy, Y, p, t0) #Per unit m^2 of leaf
-        r_ae = parent(conditions.r_ae)[1] # s/m
+        r_ae = Array(parent(conditions.r_ae))[1] # s/m
         ga = 1 / r_ae
         γ = FT(66)
         R = FT(LSMP.gas_constant(earth_param_set))
-        gs = parent(
-            ClimaLSM.Canopy.upscale_leaf_conductance.(
-                p.canopy.conductance.gs,
-                LAI,
-                FT.(T_atmos(t0)),
-                R,
-                FT.(P_atmos(t0)),
+        gs = Array(
+            parent(
+                ClimaLSM.Canopy.upscale_leaf_conductance.(
+                    p.canopy.conductance.gs,
+                    LAI,
+                    FT.(T_atmos(t0)),
+                    R,
+                    FT.(P_atmos(t0)),
+                ),
             ),
         )[1]
         Lv = FT(2453e6) #J/m^3
@@ -293,8 +295,8 @@ for FT in (Float32, Float64)
         )
 
         @test abs(
-            (parent(evapotranspiration)[1] - ET) /
-            parent(evapotranspiration)[1],
+            (Array(parent(evapotranspiration))[1] - ET) /
+            Array(parent(evapotranspiration))[1],
         ) < 0.5
 
         @test ClimaLSM.surface_evaporative_scaling(canopy, Y, p) == FT(1.0)
@@ -404,16 +406,20 @@ for FT in (Float32, Float64)
         # Test that they are set properly
         set_canopy_prescribed_field!(plant_hydraulics, p, t0)
         @test all(
-            parent(p.canopy.hydraulics.area_index.leaf) .==
+            Array(parent(p.canopy.hydraulics.area_index.leaf)) .==
             FT(LAI * sin(t0 * 2π / 365)),
         )
-        @test all(parent(p.canopy.hydraulics.area_index.stem) .== FT(1.0))
-        @test all(parent(p.canopy.hydraulics.area_index.root) .== FT(1.0))
+        @test all(
+            Array(parent(p.canopy.hydraulics.area_index.stem)) .== FT(1.0),
+        )
+        @test all(
+            Array(parent(p.canopy.hydraulics.area_index.root)) .== FT(1.0),
+        )
 
         # Test that LAI is updated
         update_canopy_prescribed_field!(plant_hydraulics, p, FT(200))
         @test all(
-            parent(p.canopy.hydraulics.area_index.leaf) .==
+            Array(parent(p.canopy.hydraulics.area_index.leaf)) .==
             FT(LAI * sin(200 * 2π / 365)),
         )
 
@@ -425,8 +431,12 @@ for FT in (Float32, Float64)
             parent(p.canopy.hydraulics.area_index.leaf) .==
             FT(LAI * sin(200 * 2π / 365)),
         )
-        @test all(parent(p.canopy.hydraulics.area_index.stem) .== FT(1.0))
-        @test all(parent(p.canopy.hydraulics.area_index.root) .== FT(1.0))
+        @test all(
+            Array(parent(p.canopy.hydraulics.area_index.stem)) .== FT(1.0),
+        )
+        @test all(
+            Array(parent(p.canopy.hydraulics.area_index.root)) .== FT(1.0),
+        )
     end
 
     @testset "PrescribedSoil, FT = $FT" begin
@@ -646,19 +656,22 @@ for FT in (Float32, Float64)
         @test p.canopy.hydraulics.fa.:1 == evapotranspiration
         @test p.canopy.energy.lhf == lhf
         @test p.canopy.energy.shf == shf
-        @test all(parent(p.canopy.energy.fa_energy_roots) .== FT(0))
+        @test all(Array(parent(p.canopy.energy.fa_energy_roots)) .== FT(0))
 
         @test all(
-            parent(ClimaLSM.surface_temperature(canopy, Y, p, t0)) .== FT(289),
+            Array(parent(ClimaLSM.surface_temperature(canopy, Y, p, t0))) .==
+            FT(289),
         )
         @test all(
-            parent(
-                ClimaLSM.Canopy.canopy_temperature(
-                    canopy.energy,
-                    canopy,
-                    Y,
-                    p,
-                    t0,
+            Array(
+                parent(
+                    ClimaLSM.Canopy.canopy_temperature(
+                        canopy.energy,
+                        canopy,
+                        Y,
+                        p,
+                        t0,
+                    ),
                 ),
             ) .== FT(289),
         )

@@ -23,7 +23,7 @@ FT = Float32
     surface_domain =
         SphericalSurface(; radius = FT(1), nelements = 2, npolynomial = 3)
     boundary_space = surface_domain.space.surface
-    comms_ctx = boundary_space.topology.context
+    comms_ctx = ClimaComms.context(boundary_space)
     varname = "sw_alb"
     field = regrid_netcdf_to_field(
         FT,

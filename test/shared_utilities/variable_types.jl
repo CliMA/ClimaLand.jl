@@ -107,8 +107,8 @@ end
     column = Column(; zlim = zlim, nelements = nelements)
     m = Model{FT, typeof(column)}(column)
     Y, p, coords = initialize(m)
-    @test parent(Y.foo.a) == zeros(FT, 1)
-    @test parent(Y.foo.b) == zeros(FT, 2)
-    @test parent(p.foo.d) == zeros(FT, 1)
-    @test parent(p.foo.e) == zeros(FT, 5, 2)
+    @test Array(parent(Y.foo.a)) == zeros(FT, 1)
+    @test Array(parent(Y.foo.b)) == zeros(FT, 2)
+    @test Array(parent(p.foo.d)) == zeros(FT, 1)
+    @test Array(parent(p.foo.e)) == zeros(FT, 5, 2)
 end

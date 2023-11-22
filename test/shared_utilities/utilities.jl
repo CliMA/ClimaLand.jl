@@ -127,7 +127,8 @@ end
         @test p == (;)
         @test ClimaLSM.add_dss_buffer_to_aux(p, domain) == p
         # On a 1D space, we expect dss! to do nothing
-        @test Y == Y_copy
+        @test Y.field == Y_copy.field
+        @test Y.subfields == Y_copy.subfields
     end
 end
 
