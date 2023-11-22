@@ -1,7 +1,7 @@
 name = "ClimaLSM"
 uuid = "7884a58f-fab6-4fd0-82bb-ecfedb2d8430"
 authors = ["Clima Land Team"]
-version = "0.3.4"
+version = "0.4.0"
 
 [deps]
 ArtifactWrappers = "a14bc488-3040-4b00-9dc1-f6467924858a"
