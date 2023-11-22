@@ -453,7 +453,7 @@ set_initial_aux_state!(p, Y, t0);
 # And now perform the simulation as always.
 
 sv = (;
-    t = Array{FT}(undef, length(saveat)),
+    t = Array{Float64}(undef, length(saveat)),
     saveval = Array{ClimaCore.Fields.NamedTuple}(undef, length(saveat)),
 )
 cb = ClimaLSM.NonInterpSavingCallback(sv, saveat)

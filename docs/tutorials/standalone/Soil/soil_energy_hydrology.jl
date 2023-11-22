@@ -271,7 +271,7 @@ prob = SciMLBase.ODEProblem(
 # a callback in order to also get the auxiliary vector `p` back:
 saveat = collect(t0:FT(1000 * dt):tf)
 saved_values = (;
-    t = Array{FT}(undef, length(saveat)),
+    t = Array{Float64}(undef, length(saveat)),
     saveval = Array{NamedTuple}(undef, length(saveat)),
 );
 cb = ClimaLSM.NonInterpSavingCallback(saved_values, saveat);

@@ -293,7 +293,7 @@ for float_type in (Float32, Float64)
 
     # Simulation
     sv = (;
-        t = Array{FT}(undef, length(saveat)),
+        t = Array{Float64}(undef, length(saveat)),
         saveval = Array{NamedTuple}(undef, length(saveat)),
     )
     cb = ClimaLSM.NonInterpSavingCallback(sv, saveat)

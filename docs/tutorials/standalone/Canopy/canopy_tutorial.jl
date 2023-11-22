@@ -302,7 +302,7 @@ n = 16
 saveat = Array(t0:(n * dt):tf)
 
 sv = (;
-    t = Array{FT}(undef, length(saveat)),
+    t = Array{Float64}(undef, length(saveat)),
     saveval = Array{NamedTuple}(undef, length(saveat)),
 )
 cb = ClimaLSM.NonInterpSavingCallback(sv, saveat);
