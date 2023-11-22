@@ -53,7 +53,7 @@ function reshape_cgll_sparse_to_field!(
     hspace = ClimaCore.Spaces.horizontal_space(space)
     target = ClimaCore.Fields.field_values(field)
 
-    ClimaCore.Spaces.dss2!(target, topology, hspace.quadrature_style)
+    ClimaCore.Topologies.dss!(target, topology)
 end
 
 """
@@ -186,12 +186,15 @@ function hdwrite_regridfile_rll_to_cgll(
 
     topology = ClimaCore.Topologies.Topology2D(
         cpu_context,
-        space.topology.mesh,
-        ClimaCore.Topologies.spacefillingcurve(space.topology.mesh),
+        ClimaCore.Spaces.topology(space).mesh,
+        ClimaCore.Topologies.spacefillingcurve(
+            ClimaCore.Spaces.topology(space).mesh,
+        ),
     )
     Nq =
-        ClimaCore.Spaces.Quadratures.polynomial_degree(space.quadrature_style) +
-        1
+        ClimaCore.Spaces.Quadratures.polynomial_degree(
+            ClimaCore.Spaces.quadrature_style(space),
+        ) + 1
     space_undistributed = ClimaCore.Spaces.SpectralElementSpace2D(
         topology,
         ClimaCore.Spaces.Quadratures.GLL{Nq}(),

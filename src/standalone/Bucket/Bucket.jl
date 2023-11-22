@@ -384,7 +384,7 @@ function set_initial_parameter_field!(
     surface_coords,
 ) where {FT}
     space = axes(surface_coords)
-    comms_ctx = space.topology.context
+    comms_ctx = ClimaComms.context(space)
     α_sfc = albedo.α_sfc
     (; infile_path, regrid_dirpath, varname) = α_sfc.file_info
 

@@ -620,7 +620,7 @@ Returns the horizontal space for the CenterExtrudedFiniteDifferenceSpace `cs`.
 function obtain_surface_space(
     cs::ClimaCore.Spaces.CenterExtrudedFiniteDifferenceSpace,
 )
-    return cs.horizontal_space
+    return Spaces.horizontal_space(cs)
 end
 
 """

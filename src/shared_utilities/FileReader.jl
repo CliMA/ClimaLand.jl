@@ -201,7 +201,7 @@ function PrescribedDataTemporal{FT}(
     surface_space::Spaces.AbstractSpace;
     mono::Bool = true,
 ) where {FT <: AbstractFloat}
-    comms_ctx = surface_space.topology.context
+    comms_ctx = ClimaComms.context(surface_space)
     outfile_root = varname * "_cgll"
 
     # Regrid data at all times from lat/lon (RLL) to simulation grid (CGLL)
@@ -287,7 +287,7 @@ function read_data_fields!(
     date::DateTime,
     space::Spaces.AbstractSpace,
 )
-    comms_ctx = space.topology.context
+    comms_ctx = ClimaComms.context(space)
     pd_file_info = prescribed_data.file_info
     pd_file_state = prescribed_data.file_state
 
