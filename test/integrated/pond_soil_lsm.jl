@@ -8,10 +8,10 @@ using ClimaLSM.Pond
 for FT in (Float32, Float64)
     @testset "Pond soil Multi Column LSM integration test, FT = $FT" begin
         function precipitation(t)
-            if t < 20
+            if t < 20.0
                 precip = -1e-8
             else
-                precip = t < 100 ? -5e-5 : 0
+                precip = t < 100.0 ? -5e-5 : 0.0
             end
             return precip
         end
