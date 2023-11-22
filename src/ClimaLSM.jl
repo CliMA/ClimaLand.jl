@@ -19,13 +19,13 @@ include("shared_utilities/sources.jl")
 include("shared_utilities/implicit_tendencies.jl")
 include("shared_utilities/implicit_functions.jl")
 include("standalone/Bucket/Bucket.jl")
-export make_interactions_update_aux
+
 """
      AbstractLandModel{FT} <: AbstractModel{FT}
 
 An abstract type for all land model types, which are used
 to simulated multiple land surface components as
-a single system. standalone component runs do not require
+a single system. Standalone component runs do not require
 this interface and it should not be used for that purpose.
 
 Many methods taking an argument of type `AbstractLandModel` are
@@ -92,8 +92,8 @@ function initialize_auxiliary(
         submodel = getproperty(model, component)
         getproperty(initialize_auxiliary(submodel, coords), component)
     end
-    p_interactions = initialize_interactions(model, coords)
-    p = (; p_interactions..., NamedTuple{components}(p_state_list)...)
+    p_additional_aux = initialize_lsm_aux(model, coords)
+    p = (; p_additional_aux..., NamedTuple{components}(p_state_list)...)
     domains_list = map(components) do (component)
         submodel = getproperty(model, component)
         getproperty(submodel, :domain)
@@ -105,25 +105,26 @@ function initialize_auxiliary(
 end
 
 """
-    initialize_interactions(land::AbstractLandModel) end
+    initialize_lsm_aux(land::AbstractLandModel) end
 
-Initializes interaction variables, which are a type of auxiliary
-variable, to empty objects of the correct type for the model.
+Initializes additional auxiliary variables required in integrated models, and
+not existing in the individual component models auxiliary vars.
 
-Interaction variables are specified by `interaction_vars`, their types
-by `interaction_types`, and their spaces by `interaction_spaces`.
+Additional auxiliary variables are specified by `lsm_aux_vars`, their types
+by `lsm_aux_types`, and their domain names by `lsm_aux_domain_names`.
 This function should be called during `initialize_auxiliary` step.
 """
-function initialize_interactions(land::AbstractLandModel, land_coords)
-    vars = interaction_vars(land)
-    types = interaction_types(land)
-    domains = interaction_domain_names(land)
-    interactions = map(zip(types, domains)) do (T, domain)
+function initialize_lsm_aux(land::AbstractLandModel, land_coords)
+    vars = lsm_aux_vars(land)
+    types = lsm_aux_types(land)
+    domains = lsm_aux_domain_names(land)
+    additional_aux = map(zip(types, domains)) do (T, domain)
         zero_instance = zero(T)
         map(_ -> zero_instance, getproperty(land_coords, domain))
     end
-    return NamedTuple{vars}(interactions)
+    return NamedTuple{vars}(additional_aux)
 end
+
 
 function make_imp_tendency(land::AbstractLandModel)
     components = land_components(land)
@@ -138,8 +139,10 @@ function make_imp_tendency(land::AbstractLandModel)
             components,
         )
         update_aux! = make_update_aux(land)
+        update_boundary_fluxes! = make_update_boundary_fluxes(land)
         function imp_tendency!(dY, Y, p, t)
             update_aux!(p, Y, t)
+            update_boundary_fluxes!(p, Y, t)
             for f! in compute_imp_tendency_list
                 f!(dY, Y, p, t)
             end
@@ -153,8 +156,10 @@ function make_exp_tendency(land::AbstractLandModel)
     compute_exp_tendency_list =
         map(x -> make_compute_exp_tendency(getproperty(land, x)), components)
     update_aux! = make_update_aux(land)
+    update_boundary_fluxes! = make_update_boundary_fluxes(land)
     function exp_tendency!(dY, Y, p, t)
         update_aux!(p, Y, t)
+        update_boundary_fluxes!(p, Y, t)
         for f! in compute_exp_tendency_list
             f!(dY, Y, p, t)
         end
@@ -163,7 +168,7 @@ function make_exp_tendency(land::AbstractLandModel)
 end
 
 function make_set_initial_aux_state(land::AbstractLandModel)
-    interactions_update_aux! = make_interactions_update_aux(land)
+    update_boundary_fluxes! = make_update_boundary_fluxes(land)
     components = land_components(land)
     # These functions also call update_aux
     set_initial_aux_function_list =
@@ -172,13 +177,12 @@ function make_set_initial_aux_state(land::AbstractLandModel)
         for f! in set_initial_aux_function_list
             f!(p, Y0, t0)
         end
-        interactions_update_aux!(p, Y0, t0) # this has to come last.
+        update_boundary_fluxes!(p, Y0, t0) # this has to come last.
     end
     return set_initial_aux_state!
 end
 
 function make_update_aux(land::AbstractLandModel)
-    interactions_update_aux! = make_interactions_update_aux(land)
     components = land_components(land)
     update_aux_function_list =
         map(x -> make_update_aux(getproperty(land, x)), components)
@@ -186,28 +190,22 @@ function make_update_aux(land::AbstractLandModel)
         for f! in update_aux_function_list
             f!(p, Y, t)
         end
-        interactions_update_aux!(p, Y, t) # this has to come last.
     end
     return update_aux!
 end
 
-"""
-    make_interactions_update_aux(land::AbstractLandModel) end
-
-Makes and returns a function which updates the interaction variables,
-which are a type of auxiliary variable.
-
-The `update_aux!` function returned is evaluted during the right hand
-side evaluation.
-
-This is a stub which concrete types of LSMs extend.
-"""
-function make_interactions_update_aux(land::AbstractLandModel)
-    function interactions_update_aux!(p, Y, t)
-        nothing
+function make_update_boundary_fluxes(land::AbstractLandModel)
+    components = land_components(land)
+    update_fluxes_function_list =
+        map(x -> make_update_boundary_fluxes(getproperty(land, x)), components)
+    function update_boundary_fluxes!(p, Y, t)
+        for f! in update_fluxes_function_list
+            f!(p, Y, t)
+        end
     end
-    return interactions_update_aux!
+    return update_boundary_fluxes!
 end
+
 
 """
     land_components(land::AbstractLandModel)
@@ -233,14 +231,23 @@ function prognostic_types(land::AbstractLandModel)
     return NamedTuple{components}(prognostic_list)
 end
 
+function prognostic_domain_names(land::AbstractLandModel)
+    components = land_components(land)
+    prognostic_list = map(components) do model
+        prognostic_domain_names(getproperty(land, model))
+    end
+    return NamedTuple{components}(prognostic_list)
+end
+
+
 function auxiliary_vars(land::AbstractLandModel)
     components = land_components(land)
     auxiliary_list = map(components) do model
         auxiliary_vars(getproperty(land, model))
     end
-    return NamedTuple{(components..., :interactions)}((
+    return NamedTuple{(components..., :lsm_aux)}((
         auxiliary_list...,
-        interaction_vars(land),
+        lsm_aux_vars(land),
     ))
 end
 
@@ -249,38 +256,49 @@ function auxiliary_types(land::AbstractLandModel)
     auxiliary_list = map(components) do model
         auxiliary_types(getproperty(land, model))
     end
-    return NamedTuple{(components..., :interactions)}((
+    return NamedTuple{(components..., :lsm_aux)}((
         auxiliary_list...,
-        interaction_types(land),
+        lsm_aux_types(land),
+    ))
+end
+
+function auxiliary_domain_names(land::AbstractLandModel)
+    components = land_components(land)
+    auxiliary_list = map(components) do model
+        auxiliary_domain_names(getproperty(land, model))
+    end
+    return NamedTuple{(components..., :lsm_aux)}((
+        auxiliary_list...,
+        lsm_aux_domain_names(land),
     ))
 end
 
 
 """
-   interaction_vars(m::AbstractLandModel)
+   lsm_aux_vars(m::AbstractLandModel)
 
-Returns the interaction variable symbols for the model in the form of a tuple.
+Returns the additional aux variable symbols for the model in the form of a tuple.
 """
-interaction_vars(m::AbstractLandModel) = ()
-
-"""
-   interaction_types(m::AbstractLandModel)
-
-Returns the shared interaction variable types for the model in the form of a tuple.
-"""
-interaction_types(m::AbstractLandModel) = ()
+lsm_aux_vars(m::AbstractLandModel) = ()
 
 """
-   interaction_domain_names(m::AbstractLandModel)
+   lsm_aux_types(m::AbstractLandModel)
 
-Returns the interaction domain symbols in the form of a tuple e.g. :surface or :subsurface.
+Returns the shared additional aux variable types for the model in the form of a tuple.
+"""
+lsm_aux_types(m::AbstractLandModel) = ()
+
+"""
+   lsm_aux_domain_names(m::AbstractLandModel)
+
+Returns the additional domain symbols in the form of a tuple e.g. :surface or :subsurface.
 
 This is only required for variables shared between land submodels, and only needed
 for multi-component models, not standalone components. Component-specific variables
 should be listed as prognostic or auxiliary variables which do not require this to
 initialize.
 """
-interaction_domain_names(m::AbstractLandModel) = ()
+lsm_aux_domain_names(m::AbstractLandModel) = ()
 
 # Methods extended by the LSM models we support
 include("standalone/SurfaceWater/Pond.jl")

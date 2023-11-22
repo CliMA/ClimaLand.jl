@@ -180,12 +180,12 @@ function SoilCanopyModel{FT}(;
 end
 
 """
-    interaction_vars(m::SoilCanopyModel)
+    lsm_aux_vars(m::SoilCanopyModel)
 
 The names of the additional auxiliary variables that are
 included in the integrated Soil-Canopy model.
 """
-interaction_vars(m::SoilCanopyModel) = (
+lsm_aux_vars(m::SoilCanopyModel) = (
     :root_extraction,
     :root_energy_extraction,
     :soil_LW_n,
@@ -201,21 +201,21 @@ interaction_vars(m::SoilCanopyModel) = (
 )
 
 """
-    interaction_types(m::SoilCanopyModel)
+    lsm_aux_types(m::SoilCanopyModel)
 
 The types of the additional auxiliary variables that are
 included in the integrated Soil-Canopy model.
 """
-interaction_types(m::SoilCanopyModel{FT}) where {FT} =
+lsm_aux_types(m::SoilCanopyModel{FT}) where {FT} =
     (FT, FT, FT, FT, FT, FT, FT, FT, FT, FT, FT, FT)
 
 """
-    interaction_domain_names(m::SoilCanopyModel)
+    lsm_aux_domain_names(m::SoilCanopyModel)
 
 The domain names of the additional auxiliary variables that are
 included in the integrated Soil-Canopy model.
 """
-interaction_domain_names(m::SoilCanopyModel) = (
+lsm_aux_domain_names(m::SoilCanopyModel) = (
     :subsurface,
     :subsurface,
     :surface,
@@ -231,7 +231,7 @@ interaction_domain_names(m::SoilCanopyModel) = (
 )
 
 """
-    make_interactions_update_aux(
+    make_update_boundary_fluxes(
         land::SoilCanopyModel{FT, MM, SM, RM},
     ) where {
         FT,
@@ -241,15 +241,14 @@ interaction_domain_names(m::SoilCanopyModel) = (
         }
 
 A method which makes a function; the returned function
-updates the auxiliary variable `p.root_extraction`, which
-is needed for a sink term for the soil model and to create the
-lower water boundary condition for the canopy model.
-It also updates
-the soil surface fluxes, which are affected by the presence of a canopy.
+updates the additional auxiliary variables for the integrated model,
+as well as updates the boundary auxiliary variables for all component
+models. 
 
-This function is called each ode function evaluation.
+This function is called each ode function evaluation, prior to the tendency function
+evaluation.
 """
-function make_interactions_update_aux(
+function make_update_boundary_fluxes(
     land::SoilCanopyModel{FT, MM, SM, RM},
 ) where {
     FT,
@@ -257,7 +256,11 @@ function make_interactions_update_aux(
     SM <: Soil.EnergyHydrology{FT},
     RM <: Canopy.CanopyModel{FT},
 }
-    function update_aux!(p, Y, t)
+    update_soil_bf! = make_update_boundary_fluxes(land.soil)
+    update_soilco2_bf! = make_update_boundary_fluxes(land.soilco2)
+    update_canopy_bf! = make_update_boundary_fluxes(land.canopy)
+    function update_boundary_fluxes!(p, Y, t)
+        # update root extraction
         z =
             ClimaCore.Fields.coordinate_field(
                 land.soil.domain.space.subsurface,
@@ -294,13 +297,7 @@ function make_interactions_update_aux(
                 land.soil.parameters,
             )
 
-        # Soil boundary fluxes under canopy or for bare soil
-        bc = land.soil.boundary_conditions.top
-        soil_conditions = surface_fluxes(bc.atmos, land.soil, Y, p, t)
-        @. p.soil_shf = soil_conditions.shf
-        @. p.soil_evap = soil_conditions.vapor_flux
-        @. p.soil_lhf = soil_conditions.lhf
-        p.T_soil .= surface_temperature(land.soil, Y, p, t)
+        # Radiation
         lsm_radiant_energy_fluxes!(
             p,
             land.canopy.radiative_transfer,
@@ -309,9 +306,11 @@ function make_interactions_update_aux(
             Y,
             t,
         )
-
+        update_soil_bf!(p, Y, t)
+        update_canopy_bf!(p, Y, t)
+        update_soilco2_bf!(p, Y, t)
     end
-    return update_aux!
+    return update_boundary_fluxes!
 end
 
 """
@@ -354,7 +353,8 @@ function lsm_radiant_energy_fluxes!(
     energy_per_photon_NIR = h * c / λ_γ_NIR
     T_canopy =
         ClimaLSM.Canopy.canopy_temperature(canopy.energy, canopy, Y, p, t)
-    T_soil = p.T_soil
+    p.T_soil .= surface_temperature(ground_model, Y, p, t)
+
     α_soil_PAR = Canopy.ground_albedo_PAR(canopy.soil_driver, Y, p, t)
     α_soil_NIR = Canopy.ground_albedo_NIR(canopy.soil_driver, Y, p, t)
     ϵ_soil = ground_model.parameters.emissivity
@@ -396,8 +396,8 @@ function lsm_radiant_energy_fluxes!(
         (1 - α_soil_PAR)
 
     @. LW_d_canopy = (1 - ϵ_canopy) * LW_d + ϵ_canopy * _σ * T_canopy^4 # double checked
-    @. LW_u_soil = ϵ_soil * _σ * T_soil^4 + (1 - ϵ_soil) * LW_d_canopy # double checked
-    @. LW_net_soil = ϵ_soil * LW_d_canopy - ϵ_soil * _σ * T_soil^4 # double checked
+    @. LW_u_soil = ϵ_soil * _σ * p.T_soil^4 + (1 - ϵ_soil) * LW_d_canopy # double checked
+    @. LW_net_soil = ϵ_soil * LW_d_canopy - ϵ_soil * _σ * p.T_soil^4 # double checked
     @. LW_net_canopy =
         ϵ_canopy * LW_d - 2 * ϵ_canopy * _σ * T_canopy^4 + ϵ_canopy * LW_u_soil
     @. LW_out = (1 - ϵ_canopy) * LW_u_soil + ϵ_canopy * _σ * T_canopy^4 # double checked
@@ -429,19 +429,24 @@ each time step in `update_aux`.
 function soil_boundary_fluxes(
     bc::AtmosDrivenFluxBC{<:PrescribedAtmosphere, <:CanopyRadiativeFluxes},
     boundary::ClimaLSM.TopBoundary,
-    model::EnergyHydrology{FT},
+    soil::EnergyHydrology{FT},
     Δz,
     Y,
     p,
     t,
 ) where {FT}
+    bc = soil.boundary_conditions.top
+    soil_conditions = surface_fluxes(bc.atmos, soil, Y, p, t)
+    @. p.soil_shf = soil_conditions.shf
+    @. p.soil_evap = soil_conditions.vapor_flux
+    @. p.soil_lhf = soil_conditions.lhf
     infiltration = soil_surface_infiltration(
         bc.runoff,
         FT.(bc.atmos.liquid_precip(t)) .+ p.soil_evap,
         Y,
         p,
         t,
-        model.parameters,
+        soil.parameters,
     )
     return @. ClimaLSM.Soil.create_soil_bc_named_tuple(
         infiltration,

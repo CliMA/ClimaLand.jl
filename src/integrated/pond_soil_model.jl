@@ -68,19 +68,21 @@ function LandHydrology{FT}(;
         sources = sources,
         soil_args...,
     )
+    domain = soil_args.domain
+    surface_domain = ClimaLSM.Domains.obtain_surface_domain(domain)
     surface_water = surface_water_model_type(;
         runoff = surface_runoff,
-        surface_water_args...,
+        domain = surface_domain,
     )
     args = (soil, surface_water)
     return LandHydrology{FT, typeof.(args)...}(args...)
 end
 
-interaction_vars(m::LandHydrology) = (:soil_infiltration,)
+lsm_aux_vars(m::LandHydrology) = (:soil_infiltration,)
 
-interaction_types(m::LandHydrology{FT}) where {FT} = (FT,)
+lsm_aux_types(m::LandHydrology{FT}) where {FT} = (FT,)
 
-interaction_domain_names(m::LandHydrology) = (:surface,)
+lsm_aux_domain_names(m::LandHydrology) = (:surface,)
 
 #=
 If there is a pond present, flux BC should be -i_c
@@ -155,7 +157,7 @@ function infiltration_capacity(Y::ClimaCore.Fields.FieldVector, p::NamedTuple)
 end
 
 """
-    function make_interactions_update_aux(
+    function make_update_boundary_fluxes(
         land::LandHydrology{FT, SM, SW},
     ) where {FT, SM <: Soil.RichardsModel{FT}, SW <: Pond.PondModel{FT}}
 
@@ -166,10 +168,12 @@ term (runoff) for the surface water model.
 
 This function is called each ode function evaluation.
 """
-function make_interactions_update_aux(
+function make_update_boundary_fluxes(
     land::LandHydrology{FT, SM, SW},
 ) where {FT, SM <: Soil.RichardsModel{FT}, SW <: Pond.PondModel{FT}}
-    function update_aux!(p, Y, t)
+    update_soil_bf! = make_update_boundary_fluxes(land.soil)
+    update_pond_bf! = make_update_boundary_fluxes(land.surface_water)
+    function update_boundary_fluxes!(p, Y, t)
         i_c = infiltration_capacity(Y, p)
         @. p.soil_infiltration =
             -infiltration_at_point(
@@ -177,8 +181,10 @@ function make_interactions_update_aux(
                 i_c,
                 -FT(land.surface_water.runoff.precip(t)),
             )
+        update_soil_bf!(p, Y, t)
+        update_pond_bf!(p, Y, t)
     end
-    return update_aux!
+    return update_boundary_fluxes!
 end
 
 """
@@ -243,7 +249,9 @@ struct RunoffBC <: Soil.AbstractSoilBC end
     function ClimaLSM.boundary_flux(
         bc::RunoffBC,
         ::TopBoundary,
+        model::Soil.RichardsModel,
         Δz::FT,
+        Y::ClimaCore.Fields.FieldVector,
         p::NamedTuple,
         t,
         params,
@@ -257,10 +265,11 @@ stored in `p.soil_infiltration`).
 function ClimaLSM.boundary_flux(
     bc::RunoffBC,
     ::TopBoundary,
+    model::Soil.RichardsModel,
     Δz::ClimaCore.Fields.Field,
+    Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
     t,
-    params,
 )::ClimaCore.Fields.Field
     return p.soil_infiltration
 end

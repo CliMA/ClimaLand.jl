@@ -11,6 +11,10 @@ import ClimaLSM:
     name,
     prognostic_types,
     prognostic_domain_names,
+    auxiliary_vars,
+    auxiliary_types,
+    auxiliary_domain_names,
+    make_update_boundary_fluxes,
     FTfromY
 
 using ClimaLSM.Domains
@@ -36,7 +40,7 @@ struct PondModel{FT, D, R} <: AbstractSurfaceWaterModel{FT}
     "The runoff model for the pond model"
     runoff::R
 end
-
+ClimaLSM.name(model::AbstractSurfaceWaterModel) = :surface_water
 function PondModel{FT}(;
     domain::ClimaLSM.Domains.AbstractDomain{FT} = ClimaLSM.Domains.Point(
         z_sfc = FT(0),
@@ -64,12 +68,21 @@ end
 ClimaLSM.prognostic_vars(model::PondModel) = (:η,)
 ClimaLSM.prognostic_types(model::PondModel{FT}) where {FT} = (FT,)
 ClimaLSM.prognostic_domain_names(model::PondModel) = (:surface,)
-ClimaLSM.name(::AbstractSurfaceWaterModel) = :surface_water
+ClimaLSM.auxiliary_vars(model::PondModel) = (:runoff,)
+ClimaLSM.auxiliary_types(model::PondModel{FT}) where {FT} = (FT,)
+ClimaLSM.auxiliary_domain_names(model::PondModel) = (:surface,)
+
+function ClimaLSM.make_update_boundary_fluxes(model::PondModel)
+    function update_boundary_fluxes!(p, Y, t)
+        p.surface_water.runoff .= surface_runoff(model.runoff, Y, p, t)
+    end
+    return update_boundary_fluxes!
+end
+
 
 function ClimaLSM.make_compute_exp_tendency(model::PondModel)
     function compute_exp_tendency!(dY, Y, p, t)
-        runoff = surface_runoff(model.runoff, Y, p, t)
-        @. dY.surface_water.η = runoff
+        @. dY.surface_water.η = p.surface_water.runoff
     end
     return compute_exp_tendency!
 end

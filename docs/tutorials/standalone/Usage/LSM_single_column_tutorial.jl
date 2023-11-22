@@ -8,18 +8,14 @@
 # `prognostic_variables(model)`, etc, the information
 # stored in the `model` is used to make the system of equations.
 # Given initial conditions, these equations can then be stepped forward in
-# time using the time-stepper of your choice (we are set up to use
-# SciMLBase.jl currently).
+# time using the time-stepper of your choice.
 # Note that a model requiring implicit timestepping would instead use an
 # `AbstractImExModel` framework.
 
 # The benefit of this framework is that it can be used for both individual
 # components of an LSM (soil, snow, rivers, canopy biophysics, carbon...)
-# **as well as the LSM itself**. Here we explain how a simple single column two
-# component model can be set up using this software interface. Additionally,
-# we demonstrate here the use of the auxiliary or cache variables,
-# which were mentioned but not needed in the Henon-Heiles problem
-# solved in the prior tutorial.
+# **as well as the LSM itself**. Here we explain how a simple two
+# component model can be set up using this software interface.
 
 # We'll first demonstrate how to set up two components in
 # standalone mode, before spending time explaining the LSM setup.
@@ -65,8 +61,8 @@ FT = Float32;
 # initial conditions,
 # a time span, and a time-stepping scheme in order to specify completely).
 
-# Here, we'll focus on what you need to write the equations. In the design
-# of all CliMA systems, everything you need to write the equations is stored
+# Here, we'll focus on what you need to write the equations. This information
+# is stored
 # in the model structure itself, so that we can call
 # `make_exp_tendency(model)` and get back a function which computes the time
 # derivative of the prognostic variables,
@@ -123,32 +119,29 @@ soil_ode! = make_exp_tendency(soil);
 
 # for each value of ϑ on the mesh of our `soil_domain`.
 
-# Note that the soil model does include both hydraulic `K` and pressure
-# head `ψ` in the auxiliary vector, so the fields `p_soil.soil.K` and
-# `p_soil.soil.ψ`
-# are present. These are automatically updated first in each call
+# Note that the soil model does includes hydraulic `K`, pressure
+# head `ψ`, and the boundary fluxes at the top and bottom of the domain
+# in the auxiliary vector. These are updated first in each call
 # to `soil_ode!`, as follows:
 # ```julia
 # function soil_ode!(dY, Y, p, t)
-#          update_aux!(p,Y,t)
-#          compute_exp_tendency!(dY, Y, p, t)
+#          update_aux!(p,Y,t) # updates p.soil.K, p.soil.ψ in place
+#          update_boundary_fluxes!(p,Y,t) # updates p.soil.top_bc, p.soil.bottom_bc in place
+#          compute_exp_tendency!(dY, Y, p, t) # computes the divergence of the Darcy flux, updates dY in place.
 # end
 # ```
 
-# where `update_aux!` updates `K`, and `ψ`, in `p`, in place,
-# and `compute_exp_tendency!` computes the divergence of the Darcy flux,
-# using the updated `p`, and then updates `dY` in place with the computed values.
-# For this reason,
-# the `p` vector does not need to be set to
-# some initial condition consistent
-# with Y_soil.soil.ϑ(t=0) before starting a simulation, though initial
-# conditions must be given for `Y`.
+# It is crucial the the cache `p` is correctly updated before the tendency is
+# computed. The default method for
+# `make_exp_tendency` creates the `update_aux!` and `update_boundary_fluxes!`
+# functions, given the model, and evaluates them before computing
+# the tendency, so we do not need to define that for the soil model.
 
-# Note also that we have defined methods `make_compute_exp_tendency` and
-# `make_update_aux`, which only take the `model` as argument, and which return
-# the functions `compute_exp_tendency!` and `update_aux!`,
-# [here](https://github.com/CliMA/ClimaLSM.jl/blob/9e2b8df6d8d5b7f878a5b0f02e2bf80fa66aec33/src/standalone/Soil/Soil.jl#L292)
-# and [here](https://github.com/CliMA/ClimaLSM.jl/blob/9e2b8df6d8d5b7f878a5b0f02e2bf80fa66aec33/src/standalone/Soil/Soil.jl#L400).
+# Note also that we have defined methods `make_compute_exp_tendency`, 
+# `make_update_aux`, and `make_update_boundary_fluxes`, which only take
+# the `model` as argument, and which return
+# the functions `compute_exp_tendency!`, `update_aux!`, and `update_boundary_fluxes!`.
+# Please see the API documentation or source code for more information.
 
 # Lastly, the coordinates returned by `initialize` contain
 # the z-coordinates of the centers of the finite difference layers used
@@ -168,7 +161,7 @@ soil_ode! = make_exp_tendency(soil);
 # To write down the pond equations, we need to specify
 # - P
 # - I
-# which are akin to boundary conditions. In standalone mode,
+# which are akin to boundary fluxes. In standalone mode,
 #  one would need to pass in **prescribed** functions of time and store
 # them inside our pond model, since again, the pond model structure
 # must contain everything needed to make the tendency function:
@@ -192,24 +185,11 @@ pond_ode! = make_exp_tendency(pond_model);
 # The `pond_ode!` function works in the same way as for the soil model:
 # ```julia
 # function pond_ode!(dY, Y, p, t)
-#          update_aux!(p,Y,t)
+#          update_aux!(p,Y,t) # falls back to default; does nothing
+#          update_boundary_fluxes!(p,Y,t)  # p.surface_water.runoff in place
 #          compute_exp_tendency!(dY, Y, p, t)
 # end
 # ```
-# but the `update_aux!` does not alter `p` at all in this case.
-# The pond model does not have auxiliary variables, so
-# `p_pond` is empty.
-
-
-
-# The coordinates here are relatively meaningless - we
-# are solving for the pond height at a point in space on the surface of the
-# Earth, and by default
-# this assigns a `Point` domain, with a coordinate of `z_sfc = 0`.
-# In a simulation with horizontal
-# resolution, the `coordinates` returned would be the `(x,y,z=z_sfc(x,y))`
-# coordinates of the surface, which are more useful.
-
 
 # # An LSM with pond and soil:
 # The LSM model must contain everything needed to write
@@ -245,21 +225,17 @@ pond_ode! = make_exp_tendency(pond_model);
 # - boundary conditions,
 # - sources in the soil equation, if any.
 
-# First, let's make our  domain, which now contains
-# information about the subsurface domain and the surface domain. For
-# a single column, this means specifying the boundaries of the soil domain
-# and the number of elements.
+# First, let's make our single column domain.
 lsm_domain = Column(; zlim = (zmin, zmax), nelements = nelems);
-# The surface domain is just a `Point` with
-# `z_sfc = zmax`.
-surface_domain = obtain_surface_domain(lsm_domain)
-# The subsurface domain is the column itself.
 
-# Let's now collect the needed arguments for the soil and pond
-# models:
+# Let's now collect the needed arguments for the soil model.
+# The pond model only has one argument, the runoff model, but that will
+# be set internally. Similarily, the boundary conditions of the soil
+# model will be set internally to be consisent with the equations of the
+# pond-soil model - see below for detail.
 
 soil_args = (parameters = soil_ps, domain = lsm_domain, sources = ());
-surface_water_args = (domain = surface_domain,);
+surface_water_args = NamedTuple();
 # Atmospheric drivers don't "belong" to either component alone:
 land_args = (precip = precipitation,);
 land = LandHydrology{FT}(;
@@ -272,14 +248,11 @@ land = LandHydrology{FT}(;
 
 # Here, `LandHydrology` is a type of `AbstractModel` which has a surface
 # water model (Pond or otherwise) and a soil model (RR, or perhaps otherwise).
-# Note that we pass in the type of the soil and surface water model -
-# these could be more complex, e.g. a river model with lateral
-# flow could be used in place of the `Pond`. We could also add in
-# a snow component.
 
 # Now, note that we did not specify the infiltration function, like we did
 # in standalone pond mode, nor did we specify boundary conditions for the
-# soil model. Yet, before we stressed that the model needs to have everything
+# soil model, nor did we specify the pond model domain.
+# Yet, before we stressed that the model needs to have everything
 # required to write down and evaluate the time derivative of the ODEs.
 # So, how does this work?
 
@@ -298,26 +271,34 @@ land = LandHydrology{FT}(;
 # from time `t` to
 # time `t+Δt`, we must compute the infiltration at `t`.
 # This value is stored
-# in `p.soil_infiltration`, and reflects a proper use of the auxiliary
-# or cache state: storing a quantity which we would rather compute once
-# and store, rather than compute twice, once in the soil tendency function,
-# and once in the pond tendency function. This guarantees the same value is
-# used for both equations. In pseudo code, we have:
+# in `p.soil_infiltration`.  In pseudo code, we have:
 # ```julia
 # function make_update_aux(land)
 #          soil_update_aux! = make_update_aux(land.soil)
 #          surface_update_aux! = make_update_aux(land.surface_water)
-#          interactions_update_aux! = make_update_aux(land, land.soil, land.surface_water)
 #          function update_aux!(p,Y,t)
 #                   surface_update_aux!(p,Y,t) # does nothing to `p`
 #                   soil_update_aux!(p,Y,t) # updates p.soil.K and p.soil.ψ
-#                   interactions_update_aux!(p,Y,t) # updates p.soil_infiltration
 #          end
 #          return update_aux!
 # end
 # ```
 
+# ```julia
+# function make_update_boundary_fluxes(land)
+#          update_soil_bf! = make_update_boundary_fluxes(land.soil)
+#          update_pond_bf! = make_update_boundary_fluxes(land.surface_water)
+#          function update_boundary_fluxes!(p,Y,t)
+#                   p.soil_infiltration = compute_infiltration(Y,p, t)
+#                   update_soil_bf!(p,Y,t) # updates p.soil.top_bc using p.soil_infiltration
+#                   update_pond_bf!(p,Y,t) # updates p.surface_water.runoff using p.soil_infiltration
+#          end
+#          return update_boundary_fluxes!
+# end
+# ```
+
 # and similarily for the `compute_exp_tendency!` functions:
+
 # ```julia
 # function make_compute_exp_tendency(land)
 #          soil_compute_exp_tendency! = make_update_aux(land.soil)
@@ -335,6 +316,7 @@ land = LandHydrology{FT}(;
 # ```julia
 # function exp_tendency!(dY, Y, p, t)
 #          update_aux!(p,Y,t)
+#          update_boundary_fluxes!(p,Y,t)
 #          compute_exp_tendency!(dY, Y, p, t)
 # end
 # ```
@@ -350,7 +332,7 @@ land = LandHydrology{FT}(;
 # four things:
 # - initialize(land.soil)
 # - initialize(land.surface_water)
-# - initializes interaction terms, like p.soil_infiltration
+# - initializes additional auxiliary variables, like p.soil_infiltration
 # - append these into Y, p, and coords:
 Y, p, coords = initialize(land);
 # We have volumetric liquid water fraction:
@@ -359,9 +341,9 @@ propertynames(Y.soil)
 propertynames(Y.surface_water)
 # as well as auxiliary variables for the soil:
 propertynames(p.soil)
-# and nothing for surface water:
+# and the runoff for surface water:
 propertynames(p.surface_water)
-# and the shared interaction term
+# and the additional variable required in the LSM is stored here as well:
 propertynames(p)
 # and finally, coordinates - useful for visualization of solutions:
 coords.subsurface
@@ -377,14 +359,15 @@ land_ode! = make_exp_tendency(land);
 # # Advantages and disadvantages
 
 # Some advantages to our interface design are as follows:
-# - a developer only needs to learn a few concepts (`compute_exp_tendency!`, prognostic vs. aux variables, `update_aux!`, `initialize`, domains) to make a model which can be run in standalone or work with other components.
-# - likewise, a user only needs to learn one interface to run all models, regardless of if they are standalone components or LSMs with multiple componnents.
+# - a developer only needs to learn a few concepts (`compute_exp_tendency!`, prognostic vs. aux variables, `update_aux!`/`update_boundary_fluxes!`, `initialize`, domains) to make a model which can be run in standalone or work with other components.
+# - likewise, a user only needs to learn one interface to run all models, regardless of if they are standalone components or LSMs with multiple components.
 # - the `exp_tendency! `is completely seperate from the timestepping scheme used, so any scheme can be used (with the exception of mixed implicit/explicit schemes, which we can't handle yet).
-# - although we wrote it here in a ``hardwired`` fashion for surface water and soil, the `update_aux!`, `compute_exp_tendency!`, etc. many methods for LSM models generalize to any number and mix of components. One just needs to write a new model type (e.g. `BiophysicsModel <: AbstractModel` for a vegetation and carbon component model) and the appropriate `interaction` methods for that model.
-# - the order in which the components are treated in the tendency or in update aux does not matter. What matters is that auxiliary/cache variables are updated first, and within this update, interactions are updated last. We assume that the tendency function for a component only needs the entire `p` and `Y.component` in making this statement. Similarily, updating the aux variables of a single component does not require interaction variables. Yhis is also the same as saying they can be run in *standalone* mode.
+# - although we wrote it here in a ``hardwired`` fashion for surface water and soil, the `update_aux!`, `compute_exp_tendency!` methods for LSM models generalize to any number and mix of components. One just needs to write a new model type (e.g. `BiophysicsModel <: AbstractModel` for a vegetation and carbon component model) and the appropriate `make_update_boundary_var` methods for that model.
+# - the order in which the components are treated in the tendency or in update aux does not matter. What matters is that (1) auxiliary/cache variables are updated prior to calling `update_boundary_fluxes!`, and that (2) `update_boundary_fluxes!` is called prior to evaluating the tendency.
 # - the code is also modular in terms of swapping out a simple component model for a more complex version.
 
 # Possible disadvantages to our interface design:
 # - Even in standalone model, variables are accessed in a nested way: Y.soil, p.soil, etc, which is excessive.
 # - To accomodate the fact that some components involve PDEs, a developer for purely ODE based component does need to at least handle `ClimaCore.Field.FieldVector`s.
 # - standalone models need to play by the rules of `AbstractModel`s, and LSMs need to play by the rules of `ClimaLSM.jl`.
+# - we need to define multiple update cache functions in order to handle dependencies between cache variables of one component model and boundary fluxes of another.

@@ -1,4 +1,3 @@
-
 using Test
 using Statistics
 using NLsolve
@@ -126,7 +125,7 @@ for FT in (Float32, Float64)
         LAI = (t) -> 1.0 # m2 [leaf] m-2 [ground]
         z_0m = FT(2.0) # m, Roughness length for momentum
         z_0b = FT(0.1) # m, Roughness length for scalars
-        h_c = FT(20.0) # m, canopy height
+        h_canopy = FT(20.0) # m, canopy height
         h_sfc = FT(20.0) # m, canopy height
         h_int = FT(30.0) # m, "where measurements would be taken at a typical flux tower of a 20m canopy"
         shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
@@ -419,8 +418,8 @@ for FT in (Float32, Float64)
         LAI = FT(0.0) # m2 [leaf] m-2 [ground]
         z_0m = FT(2.0) # m, Roughness length for momentum
         z_0b = FT(0.1) # m, Roughness length for scalars
-        h_c = FT(0.0) # m, canopy height
-        h_sfc = FT(0.0) # m, canopy height
+        h_canopy = FT(0.0) # m, canopy height
+        h_sfc = FT(0.0) # m
         h_int = FT(30.0) # m, "where measurements would be taken at a typical flux tower of a 20m canopy"
         shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
             z_0m,
@@ -517,8 +516,8 @@ for FT in (Float32, Float64)
         function root_distribution(z::T) where {T}
             return T(0) # (1/m)
         end
-        compartment_midpoints = [FT(1.0)]
-        compartment_surfaces = [FT(0.0), FT(2.0)]
+        compartment_midpoints = [h_canopy]
+        compartment_surfaces = [FT(0.0), h_canopy]
 
         param_set = PlantHydraulics.PlantHydraulicsParameters(;
             ai_parameterization = ai_parameterization,
@@ -568,12 +567,12 @@ for FT in (Float32, Float64)
         end
         set_initial_aux_state! = make_set_initial_aux_state(model)
         set_initial_aux_state!(p, Y, FT(0.0))
-        canopy_exp_tendency! = make_exp_tendency(model)
-        canopy_exp_tendency!(dY, Y, p, 0.0)
-        @test all(parent(dY.canopy.hydraulics.ϑ_l.:1) .≈ FT(0.0))
         @test all(parent(p.canopy.hydraulics.fa) .≈ FT(0.0))
         @test all(parent(p.canopy.hydraulics.fa_roots) .≈ FT(0.0))
         @test all(parent(p.canopy.conductance.transpiration) .≈ FT(0.0))
         @test all(parent(p.canopy.radiative_transfer.apar) .≈ FT(0.0))
+        exp_tend! = make_exp_tendency(model)
+        exp_tend!(dY, Y, p, FT(0))
+        @test all(parent(dY.canopy.hydraulics.ϑ_l.:1) .≈ FT(0.0))
     end
 end

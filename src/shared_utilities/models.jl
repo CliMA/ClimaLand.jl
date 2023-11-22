@@ -156,8 +156,10 @@ updates the prognostic state of variables that are stepped implicitly.
 function make_imp_tendency(model::AbstractImExModel)
     compute_imp_tendency! = make_compute_imp_tendency(model)
     update_aux! = make_update_aux(model)
+    update_boundary_fluxes! = make_update_boundary_fluxes(model)
     function imp_tendency!(dY, Y, p, t)
         update_aux!(p, Y, t)
+        update_boundary_fluxes!(p, Y, t)
         compute_imp_tendency!(dY, Y, p, t)
     end
     return imp_tendency!
@@ -184,8 +186,10 @@ updates the prognostic state of variables that are stepped explicitly.
 function make_exp_tendency(model::AbstractModel)
     compute_exp_tendency! = make_compute_exp_tendency(model)
     update_aux! = make_update_aux(model)
+    update_boundary_fluxes! = make_update_boundary_fluxes(model)
     function exp_tendency!(dY, Y, p, t)
         update_aux!(p, Y, t)
+        update_boundary_fluxes!(p, Y, t)
         compute_exp_tendency!(dY, Y, p, t)
     end
     return exp_tendency!
@@ -237,8 +241,10 @@ before the simulation can be carried out.
 """
 function make_set_initial_aux_state(model::AbstractModel)
     update_aux! = make_update_aux(model)
+    update_boundary_fluxes! = make_update_boundary_fluxes(model)
     function set_initial_aux_state!(p, Y0, t0)
         update_aux!(p, Y0, t0)
+        update_boundary_fluxes!(p, Y0, t0)
     end
     return set_initial_aux_state!
 end
