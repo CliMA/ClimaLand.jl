@@ -96,6 +96,31 @@ function RichardsModel{FT}(;
     RichardsModel{FT, typeof.(args)...}(args..., lateral_flow)
 end
 
+function make_update_boundary_fluxes(model::RichardsModel)
+    function update_boundary_fluxes!(p, Y, t)
+        z = ClimaCore.Fields.coordinate_field(model.domain.space.subsurface).z
+        Δz_top, Δz_bottom = get_Δz(z)
+        p.soil.top_bc .= boundary_flux(
+            model.boundary_conditions.top.water,
+            TopBoundary(),
+            model,
+            Δz_top,
+            Y,
+            p,
+            t,
+        )
+        p.soil.bottom_bc .= boundary_flux(
+            model.boundary_conditions.bottom.water,
+            BottomBoundary(),
+            model,
+            Δz_bottom,
+            Y,
+            p,
+            t,
+        )
+    end
+    return update_boundary_fluxes!
+end
 
 """
     make_compute_imp_tendency(model::RichardsModel)
@@ -108,28 +133,12 @@ right hand side of the PDE for `ϑ_l`, and updates `dY.soil.ϑ_l` in place
 with that value.
 """
 function ClimaLSM.make_compute_imp_tendency(model::RichardsModel)
+    update_boundary_fluxes! = make_update_boundary_fluxes(model)
     function compute_imp_tendency!(dY, Y, p, t)
         z = ClimaCore.Fields.coordinate_field(model.domain.space.subsurface).z
-        Δz_top, Δz_bottom = get_Δz(z)
-
-        top_flux_bc = boundary_flux(
-            model.boundary_conditions.top.water,
-            TopBoundary(),
-            model,
-            Δz_top,
-            Y,
-            p,
-            t,
-        )
-        bot_flux_bc = boundary_flux(
-            model.boundary_conditions.bottom.water,
-            BottomBoundary(),
-            model,
-            Δz_bottom,
-            Y,
-            p,
-            t,
-        )
+        update_boundary_fluxes!(p, Y, t)
+        top_flux_bc = p.soil.top_bc
+        bottom_flux_bc = p.soil.bottom_bc
 
         interpc2f = Operators.InterpolateC2F()
         gradc2f_water = Operators.GradientC2F()
@@ -148,7 +157,7 @@ function ClimaLSM.make_compute_imp_tendency(model::RichardsModel)
 
         divf2c_water = Operators.DivergenceF2C(
             top = Operators.SetValue(Geometry.WVector.(top_flux_bc)),
-            bottom = Operators.SetValue(Geometry.WVector.(bot_flux_bc)),
+            bottom = Operators.SetValue(Geometry.WVector.(bottom_flux_bc)),
         )
 
         # GradC2F returns a Covariant3Vector, so no need to convert.
@@ -168,6 +177,10 @@ Construct the tendency computation function for the explicit terms of the RHS,
 which are horizontal components and source/sink terms.
 """
 function ClimaLSM.make_compute_exp_tendency(model::Soil.RichardsModel)
+    # Currently, boundary conditions in the horizontal conditions
+    # are restricted to be periodic. In this case, the explicit tendency
+    # does not depend on boundary fluxes, and we do not need to update
+    # the boundary_var variables prior to evaluation.
     function compute_exp_tendency!(dY, Y, p, t)
         # set dY before updating it
         dY.soil.ϑ_l .= eltype(dY.soil.ϑ_l)(0)
@@ -242,10 +255,10 @@ We could instead compute the conductivity and matric potential within the
 tendency function explicitly, rather than compute and store them in the
 auxiliary vector `p`. We did so in this case as a demonstration.
 """
-ClimaLSM.auxiliary_vars(soil::RichardsModel) = (:K, :ψ)
-ClimaLSM.auxiliary_types(soil::RichardsModel{FT}) where {FT} = (FT, FT)
+ClimaLSM.auxiliary_vars(soil::RichardsModel) = (:K, :ψ, :top_bc, :bottom_bc)
+ClimaLSM.auxiliary_types(soil::RichardsModel{FT}) where {FT} = (FT, FT, FT, FT)
 ClimaLSM.auxiliary_domain_names(soil::RichardsModel) =
-    (:subsurface, :subsurface)
+    (:subsurface, :subsurface, :surface, :surface)
 """
     make_update_aux(model::RichardsModel)
 
@@ -361,12 +374,13 @@ to using the modified Picard scheme of Celia et al. (1990).
 """
 function ClimaLSM.make_update_jacobian(model::RichardsModel{FT}) where {FT}
     update_aux! = make_update_aux(model)
+    update_boundary_fluxes! = make_update_boundary_fluxes(model)
     function update_jacobian!(W::RichardsTridiagonalW, Y, p, dtγ, t)
         (; dtγ_ref, ∂ϑₜ∂ϑ) = W
         dtγ_ref[] = dtγ
         (; ν, hydrology_cm, S_s, θ_r) = model.parameters
         update_aux!(p, Y, t)
-
+        update_boundary_fluxes!(p, Y, t)
         divf2c_op = Operators.DivergenceF2C(
             top = Operators.SetValue(Geometry.WVector.(FT(0))),
             bottom = Operators.SetValue(Geometry.WVector.(FT(0))),
@@ -400,6 +414,7 @@ function ClimaLSM.make_update_jacobian(model::RichardsModel{FT}) where {FT}
             ),
         )
         # Hardcoded for single column: FIX!
+        # The derivative of the tendency may eventually live in boundary vars and be updated there. but TBD
         z = Fields.coordinate_field(axes(Y.soil.ϑ_l)).z
         Δz_top, Δz_bottom = get_Δz(z)
         ∂T_bc∂YN = ClimaLSM.∂tendencyBC∂Y(

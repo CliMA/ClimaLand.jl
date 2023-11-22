@@ -17,6 +17,7 @@ import ClimaLSM:
     prognostic_domain_names,
     initialize_prognostic,
     initialize_auxiliary,
+    make_update_boundary_fluxes,
     make_update_aux,
     make_compute_exp_tendency,
     make_set_initial_aux_state
@@ -582,10 +583,11 @@ function make_compute_exp_tendency(
         x -> make_compute_exp_tendency(getproperty(canopy, x), canopy),
         components,
     )
+    update_boundary_fluxes! = make_update_boundary_fluxes(canopy)
     function compute_exp_tendency!(dY, Y, p, t)
         # First we need to compute/update in place the boundary fluxes for
         # the component models.
-        canopy_boundary_fluxes!(p, canopy, canopy.radiation, canopy.atmos, Y, t)
+        update_boundary_fluxes!(p, Y, t)
         # Then we execute the tendency
         for f! in compute_exp_tendency_list
             f!(dY, Y, p, t)

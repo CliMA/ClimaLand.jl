@@ -10,6 +10,7 @@ import ClimaLSM:
     AbstractExpModel,
     make_update_aux,
     make_compute_exp_tendency,
+    make_update_boundary_fluxes,
     prognostic_vars,
     auxiliary_vars,
     name,
@@ -182,10 +183,35 @@ ClimaLSM.prognostic_vars(::SoilCO2Model) = (:C,)
 ClimaLSM.prognostic_types(::SoilCO2Model{FT}) where {FT} = (FT,)
 ClimaLSM.prognostic_domain_names(::SoilCO2Model) = (:subsurface,)
 
-ClimaLSM.auxiliary_vars(::SoilCO2Model) = (:D, :Sm)
-ClimaLSM.auxiliary_types(::SoilCO2Model{FT}) where {FT} = (FT, FT)
-ClimaLSM.auxiliary_domain_names(::SoilCO2Model) = (:subsurface, :subsurface)
+ClimaLSM.auxiliary_vars(::SoilCO2Model) = (:D, :Sm, :top_bc, :bottom_bc)
+ClimaLSM.auxiliary_types(::SoilCO2Model{FT}) where {FT} = (FT, FT, FT, FT)
+ClimaLSM.auxiliary_domain_names(::SoilCO2Model) =
+    (:subsurface, :subsurface, :surface, :surface)
 
+function make_update_boundary_fluxes(model::SoilCO2Model)
+    function update_boundary_fluxes!(p, Y, t)
+        z = ClimaCore.Fields.coordinate_field(model.domain.space.subsurface).z
+        Δz_top, Δz_bottom = get_Δz(z)
+        p.soilco2.top_bc .= boundary_flux(
+            model.boundary_conditions.top.CO2,
+            TopBoundary(),
+            Δz_top,
+            Y,
+            p,
+            t,
+        )
+        p.soilco2.bottom_bc .= boundary_flux(
+            model.boundary_conditions.bottom.CO2,
+            BottomBoundary(),
+            Δz_bottom,
+            Y,
+            p,
+            t,
+        )
+
+    end
+    return update_boundary_fluxes!
+end
 
 """
     make_compute_exp_tendency(model::SoilCO2Model)
@@ -198,26 +224,11 @@ with that value. These quantities will be stepped explicitly.
 This has been written so as to work with Differential Equations.jl.
 """
 function ClimaLSM.make_compute_exp_tendency(model::SoilCO2Model)
+    update_boundary_fluxes! = make_update_boundary_fluxes(model)
     function compute_exp_tendency!(dY, Y, p, t)
-        z = ClimaCore.Fields.coordinate_field(model.domain.space.subsurface).z
-        Δz_top, Δz_bottom = get_Δz(z)
-
-        top_flux_bc = boundary_flux(
-            model.boundary_conditions.top.CO2,
-            TopBoundary(),
-            Δz_top,
-            Y,
-            p,
-            t,
-        )
-        bot_flux_bc = boundary_flux(
-            model.boundary_conditions.bottom.CO2,
-            BottomBoundary(),
-            Δz_bottom,
-            Y,
-            p,
-            t,
-        )
+        update_boundary_fluxes!(p, Y, t)
+        top_flux_bc = p.soilco2.top_bc
+        bottom_flux_bc = p.soilco2.bottom_bc
 
         interpc2f = ClimaCore.Operators.InterpolateC2F()
         gradc2f_C = ClimaCore.Operators.GradientC2F()
@@ -226,7 +237,7 @@ function ClimaLSM.make_compute_exp_tendency(model::SoilCO2Model)
                 ClimaCore.Geometry.WVector.(top_flux_bc),
             ),
             bottom = ClimaCore.Operators.SetValue(
-                ClimaCore.Geometry.WVector.(bot_flux_bc),
+                ClimaCore.Geometry.WVector.(bottom_flux_bc),
             ),
         ) # -∇ ⋅ (-D∇C), where -D∇C is a flux of C02. ∇C point in direction of increasing C, so the flux is - this.
         @. dY.soilco2.C =
@@ -483,8 +494,15 @@ function ClimaLSM.boundary_flux(
 )::ClimaCore.Fields.Field
     FT = eltype(Δz)
     p_len = Spaces.nlevels(axes(p.soilco2.D))
-    D_c = Fields.level(p.soilco2.D, p_len)
-    C_c = Fields.level(Y.soilco2.C, p_len)
+    # We need to project center values onto the face space
+    D_c = Fields.Field(
+        Fields.field_values(Fields.level(p.soilco2.D, p_len)),
+        axes(Δz),
+    )
+    C_c = Fields.Field(
+        Fields.field_values(Fields.level(Y.soilco2.C, p_len)),
+        axes(Δz),
+    )
     C_bc = FT.(bc.bc(p, t))
     return ClimaLSM.diffusive_flux(D_c, C_bc, C_c, Δz)
 end
@@ -512,8 +530,15 @@ function ClimaLSM.boundary_flux(
     t,
 )::ClimaCore.Fields.Field
     FT = eltype(Δz)
-    D_c = Fields.level(p.soilco2.D, 1)
-    C_c = Fields.level(Y.soilco2.C, 1)
+    # We need to project center values onto the face space
+    D_c = Fields.Field(
+        Fields.field_values(Fields.level(p.soilco2.D, 1)),
+        axes(Δz),
+    )
+    C_c = Fields.Field(
+        Fields.field_values(Fields.level(Y.soilco2.C, 1)),
+        axes(Δz),
+    )
     C_bc = FT.(bc.bc(p, t))
     return ClimaLSM.diffusive_flux(D_c, C_c, C_bc, Δz)
 end
