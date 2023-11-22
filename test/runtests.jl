@@ -9,21 +9,6 @@ gpu_broken = ClimaComms.device() isa ClimaComms.CUDADevice
     include("aqua.jl")
 end
 
-# Integrated LSM tests
-@safetestset "Integrated LSM unit tests" begin
-    include("integrated/lsms.jl")
-end
-@safetestset "Integrated LSM unit tests" begin
-    include("integrated/soil_canopy_lsm.jl")
-end
-@safetestset "Integrated pond/soil LSM tests" begin
-    include("integrated/pond_soil_lsm.jl")
-end
-gpu_broken ||
-    @safetestset "Integrated soil energy/hydrology/biogeochem LSM tests" begin
-        include("integrated/soil_energy_hydrology_biogeochemistry.jl")
-    end
-
 # Shared ClimaLSM utilities tests
 @safetestset "Richards model implicit timestepping tests" begin
     include("shared_utilities/implicit_timestepping/richards_model.jl")
@@ -104,3 +89,18 @@ end
 @safetestset "Two Stream model tests" begin
     include("standalone/Vegetation/test_two_stream.jl")
 end
+
+# Integrated LSM tests
+@safetestset "Integrated LSM unit tests" begin
+    include("integrated/lsms.jl")
+end
+@safetestset "Integrated LSM unit tests" begin
+    include("integrated/soil_canopy_lsm.jl")
+end
+@safetestset "Integrated pond/soil LSM tests" begin
+    include("integrated/pond_soil_lsm.jl")
+end
+gpu_broken ||
+    @safetestset "Integrated soil energy/hydrology/biogeochem LSM tests" begin
+        include("integrated/soil_energy_hydrology_biogeochemistry.jl")
+    end
