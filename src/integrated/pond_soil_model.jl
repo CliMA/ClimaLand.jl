@@ -59,7 +59,7 @@ function LandHydrology{FT}(;
     (; precip) = land_args
 
     sources = ()
-    surface_runoff = PrognosticRunoff{FT}(precip)
+    surface_runoff = PrognosticRunoff(precip)
     boundary_conditions =
         (; top = (water = RunoffBC(),), bottom = (water = Soil.FreeDrainage(),))
 
@@ -182,7 +182,7 @@ function make_interactions_update_aux(
 end
 
 """
-    PrognosticRunoff{FT} <: Pond.AbstractSurfaceRunoff{FT}
+    PrognosticRunoff <: Pond.AbstractSurfaceRunoff
 
 Concrete type of `Pond.AbstractSurfaceRunoff` for use in LSM models,
 where precipitation is passed in, but infiltration is computed
@@ -193,27 +193,28 @@ ensuring the infiltration used for the boundary condition of soil
 is also used to compute the runoff for the surface water.
 
 """
-struct PrognosticRunoff{FT} <: Pond.AbstractSurfaceRunoff{FT}
-    precip::Function
+struct PrognosticRunoff{F <: Function} <: Pond.AbstractSurfaceRunoff
+    precip::F
 end
 
 """
     function Pond.surface_runoff(
-        runoff::PrognosticRunoff{FT},
+        runoff::PrognosticRunoff,
         Y::ClimaCore.Fields.FieldVector,
         p::NamedTuple,
         t,
-    ) where {FT}
+    )
 
-Extension of the `Pond.surface_runoff` function, which computes the surface runoff, for use in an LSM when the runoff is determined
+Extension of the `Pond.surface_runoff` function, which computes
+ the surface runoff, for use in an LSM when the runoff is determined
 prognostically.
 """
 function Pond.surface_runoff(
-    runoff::PrognosticRunoff{FT},
+    runoff::PrognosticRunoff,
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
     t,
-) where {FT}
+)
     return @. FT(p.soil_infiltration - runoff.precip(t))
 end
 
