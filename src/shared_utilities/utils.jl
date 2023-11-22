@@ -1,3 +1,4 @@
+import ClimaCore
 import SciMLBase
 
 """
@@ -272,4 +273,8 @@ function NonInterpSavingCallback(saved_values, saveat::Vector{FT}) where {FT}
         initialize = saving_initialize,
         save_positions = (false, false),
     )
+end
+
+function FTfromY(Y::ClimaCore.Fields.FieldVector)
+    return eltype(Y)
 end

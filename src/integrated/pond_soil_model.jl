@@ -215,6 +215,7 @@ function Pond.surface_runoff(
     p::NamedTuple,
     t,
 )
+    FT = FTfromY(Y)
     return @. FT(p.soil_infiltration - runoff.precip(t))
 end
 
