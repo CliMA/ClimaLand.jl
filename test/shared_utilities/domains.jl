@@ -40,7 +40,7 @@ FT = Float32
     shell_coords = coordinates(shell).subsurface
     @test eltype(shell_coords) == ClimaCore.Geometry.LatLongZPoint{FT}
     @test typeof(shell_coords) <: ClimaCore.Fields.Field
-    @test typeof(shell.space.subsurface.horizontal_space) <:
+    @test typeof(ClimaCore.Spaces.horizontal_space(shell.space.subsurface)) <:
           ClimaCore.Spaces.SpectralElementSpace2D
     @test typeof(shell.space.subsurface) <:
           ClimaCore.Spaces.CenterExtrudedFiniteDifferenceSpace
@@ -99,8 +99,9 @@ FT = Float32
     @test xyz_column_box.nelements == nelements
     @test xyz_column_box.npolynomial == 0
     @test xyz_column_box.periodic == (true, true)
-    @test typeof(xyz_column_box.space.subsurface.horizontal_space) <:
-          ClimaCore.Spaces.SpectralElementSpace2D
+    @test typeof(
+        ClimaCore.Spaces.horizontal_space(xyz_column_box.space.subsurface),
+    ) <: ClimaCore.Spaces.SpectralElementSpace2D
     @test typeof(xyz_column_box.space.subsurface) <:
           ClimaCore.Spaces.CenterExtrudedFiniteDifferenceSpace
     @test typeof(xyz_column_box.space.surface) <:
