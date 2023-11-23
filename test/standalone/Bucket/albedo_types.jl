@@ -4,7 +4,7 @@ using ClimaCore
 using ClimaCore: Geometry, Meshes, Domains, Topologies, Spaces, Fields
 using ClimaComms
 import CLIMAParameters as CP
-using Insolation
+
 using Dates
 using NCDatasets
 using JLD2
@@ -302,15 +302,13 @@ end
             npolynomial = 2,
         ),
     ]
-    orbital_data = Insolation.OrbitalData()
 
     for bucket_domain in bucket_domains
         # Radiation
         ref_time = DateTime(2005)
         SW_d = (t) -> 0.0
         LW_d = (t) -> 5.67e-8 * 280.0^4.0
-        bucket_rad =
-            PrescribedRadiativeFluxes(FT, SW_d, LW_d, ref_time; orbital_data)
+        bucket_rad = PrescribedRadiativeFluxes(FT, SW_d, LW_d, ref_time)
         # Atmos
         precip = (t) -> 0 # no precipitation
         T_atmos = (t) -> 280.0
@@ -416,7 +414,6 @@ end
             npolynomial = 2,
         ),
     ]
-    orbital_data = Insolation.OrbitalData()
 
     for bucket_domain in bucket_domains
         space = bucket_domain.space.surface
@@ -427,13 +424,7 @@ end
             ref_time = DateTime(2005)
             SW_d = (t) -> 0
             LW_d = (t) -> 5.67e-8 * 280.0^4.0
-            bucket_rad = PrescribedRadiativeFluxes(
-                FT,
-                SW_d,
-                LW_d,
-                ref_time;
-                orbital_data,
-            )
+            bucket_rad = PrescribedRadiativeFluxes(FT, SW_d, LW_d, ref_time)
             # Atmos
             precip = (t) -> 0 # no precipitation
             T_atmos = (t) -> 280.0

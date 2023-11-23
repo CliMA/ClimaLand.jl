@@ -3,12 +3,13 @@
 ## Citation: Jeffrey Wood, Lianhong Gu (2021),
 ## AmeriFlux FLUXNET-1F US-MOz Missouri Ozark Site, Ver. 3-5, AmeriFlux AMP, (Dataset). https://doi.org/10.17190/AMF/1854370
 
-
 using ArtifactWrappers
 using DelimitedFiles
 using Dierckx
 using Thermodynamics
 using Dates
+import Insolation
+
 function replace_missing_with_mean!(field, flag)
     good_indices = (flag .== 0) .|| (flag .== 1)
     fill_value = mean(field[good_indices])
@@ -133,23 +134,31 @@ long = FT(-92.2000) # degree
 
 function zenith_angle(
     t,
-    orbital_data,
     ref_time;
     latitude = lat,
     longitude = long,
     insol_params::Insolation.Parameters.InsolationParameters{FT} = earth_param_set.insol_params,
 ) where {FT}
     # This should be time in UTC
-    dt = ref_time + Dates.Second(round(t))
-    # Orbital Data uses Float64, so we need to convert to our sim
-    # FT.
+    current_datetime = ref_time + Dates.Second(round(t))
+
+    # Orbital Data uses Float64, so we need to convert to our sim FT
+    d, δ, η_UTC =
+        FT.(
+            Insolation.helper_instantaneous_zenith_angle(
+                current_datetime,
+                ref_time,
+                insol_params,
+            )
+        )
+
     FT(
-        instantaneous_zenith_angle(
-            dt,
-            orbital_data,
+        Insolation.instantaneous_zenith_angle(
+            d,
+            δ,
+            η_UTC,
             longitude,
             latitude,
-            insol_params,
         )[1],
     )
 end
@@ -161,7 +170,6 @@ radiation = ClimaLSM.PrescribedRadiativeFluxes(
     LW_IN_spline,
     UTC_DATETIME[1];
     θs = zenith_angle,
-    orbital_data = Insolation.OrbitalData(),
 )
 
 

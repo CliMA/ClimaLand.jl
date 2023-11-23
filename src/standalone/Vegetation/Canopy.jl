@@ -427,7 +427,7 @@ function ClimaLSM.make_update_aux(
 
         # Current atmospheric conditions
         ref_time = canopy.atmos.ref_time
-        θs::FT = canopy.radiation.θs(t, canopy.radiation.orbital_data, ref_time)
+        θs::FT = canopy.radiation.θs(t, ref_time)
         c_co2_air::FT = canopy.atmos.c_co2(t)
         P_air::FT = canopy.atmos.P(t)
         T_air::FT = canopy.atmos.T(t)

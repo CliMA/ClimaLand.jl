@@ -2,7 +2,7 @@ using Test
 
 using Dates
 using Statistics
-using Insolation
+
 using ClimaCore
 import CLIMAParameters as CP
 using ClimaLSM.Bucket: BucketModel, BucketModelParameters, BulkAlbedoFunction
@@ -49,7 +49,6 @@ for FT in (Float32, Float64)
             npolynomial = 1,
         ),
     ]
-    orbital_data = Insolation.OrbitalData()
     init_temp(z::FT, value::FT) where {FT} = FT(value)
     for bucket_domain in bucket_domains
         @testset "Zero flux tendency, FT = $FT" begin
@@ -57,13 +56,7 @@ for FT in (Float32, Float64)
             ref_time = DateTime(2005)
             SW_d = (t) -> 0
             LW_d = (t) -> 5.67e-8 * 280.0^4.0
-            bucket_rad = PrescribedRadiativeFluxes(
-                FT,
-                SW_d,
-                LW_d,
-                ref_time;
-                orbital_data,
-            )
+            bucket_rad = PrescribedRadiativeFluxes(FT, SW_d, LW_d, ref_time)
             # Atmos
             precip = (t) -> 0 # no precipitation
             T_atmos = (t) -> 280.0
@@ -153,13 +146,7 @@ for FT in (Float32, Float64)
             ref_time = DateTime(2005)
             SW_d = (t) -> 10
             LW_d = (t) -> 300
-            bucket_rad = PrescribedRadiativeFluxes(
-                FT,
-                SW_d,
-                LW_d,
-                ref_time;
-                orbital_data,
-            )
+            bucket_rad = PrescribedRadiativeFluxes(FT, SW_d, LW_d, ref_time)
             "Atmos"
             precip = (t) -> 1e-6
             precip_snow = (t) -> 0

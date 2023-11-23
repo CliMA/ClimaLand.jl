@@ -273,7 +273,7 @@ function surface_fluxes_at_a_point(
 end
 
 """
-    PrescribedRadiativeFluxes{FT, DT, T, OD} <: AbstractRadiativeDrivers{FT}
+    PrescribedRadiativeFluxes{FT, SW, LW, DT, T} <: AbstractRadiativeDrivers{FT}
 
 Container for the prescribed radiation functions needed to drive land models in standalone mode.
 $(DocStringExtensions.FIELDS)
@@ -281,7 +281,7 @@ $(DocStringExtensions.FIELDS)
 The arguments labeled with "function of time" are typically either of type
 `Function` or type `Spline1D` from the `Dierckx.jl` package.
 """
-struct PrescribedRadiativeFluxes{FT, SW, LW, DT, T, OD} <:
+struct PrescribedRadiativeFluxes{FT, SW, LW, DT, T} <:
        AbstractRadiativeDrivers{FT}
     "Downward shortwave radiation function of time (W/m^2): positive indicates towards surface"
     SW_d::SW
@@ -291,18 +291,8 @@ struct PrescribedRadiativeFluxes{FT, SW, LW, DT, T, OD} <:
     ref_time::DT
     "Sun zenith angle, in radians"
     θs::T
-    "Orbital Data for Insolation.jl"
-    orbital_data::OD
-    function PrescribedRadiativeFluxes(
-        FT,
-        SW_d,
-        LW_d,
-        ref_time;
-        θs = nothing,
-        orbital_data,
-    )
-        args = (SW_d, LW_d, ref_time, θs, orbital_data)
-        @assert !isnothing(orbital_data)
+    function PrescribedRadiativeFluxes(FT, SW_d, LW_d, ref_time; θs = nothing)
+        args = (SW_d, LW_d, ref_time, θs)
         return new{FT, typeof.(args)...}(args...)
     end
 end
