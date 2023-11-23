@@ -45,6 +45,7 @@ using Dates
 using ClimaCore
 import CLIMAParameters as CP
 import ClimaTimeSteppers as CTS
+using StaticArrays
 using ClimaLSM
 using ClimaLSM.Domains: Point
 using ClimaLSM.Canopy
@@ -114,8 +115,9 @@ shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
 
 ψ_soil0 = FT(0.0)
 
-soil_driver = PrescribedSoil{FT}(
-    root_depths = FT.(-Array(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0),
+soil_driver = PrescribedSoil(
+    FT;
+    root_depths = SVector{10, FT}(-(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0),
     ψ = t -> ψ_soil0,
     α_PAR = FT(0.2),
     α_NIR = FT(0.4),

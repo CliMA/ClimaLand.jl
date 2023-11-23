@@ -115,7 +115,7 @@ end
 """
     root_energy_flux_per_ground_area!(
         fa_energy::ClimaCore.Fields.Field,
-        s::PrescribedSoil{FT},
+        s::PrescribedSoil,
         model::AbstractCanopyEnergyModel{FT},
         Y::ClimaCore.Fields.FieldVector,
         p::NamedTuple,
@@ -138,7 +138,7 @@ must account for it as well.
 """
 function root_energy_flux_per_ground_area!(
     fa_energy::ClimaCore.Fields.Field,
-    s::PrescribedSoil{FT},
+    s::PrescribedSoil,
     model::AbstractCanopyEnergyModel{FT},
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,

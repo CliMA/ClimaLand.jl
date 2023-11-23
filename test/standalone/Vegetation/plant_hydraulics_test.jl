@@ -252,7 +252,7 @@ for FT in (Float32, Float64)
         transpiration =
             PrescribedTranspiration{FT}((t) -> leaf_transpiration(t))
 
-        soil_driver = PrescribedSoil{FT}()
+        soil_driver = PrescribedSoil(FT)
 
         plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
             parameters = param_set,
@@ -530,7 +530,7 @@ for FT in (Float32, Float64)
         )
 
         transpiration = DiagnosticTranspiration{FT}()
-        soil_driver = PrescribedSoil{FT}()
+        soil_driver = PrescribedSoil(FT)
         plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
             parameters = param_set,
             transpiration = transpiration,
