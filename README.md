@@ -52,7 +52,6 @@ SoilPlantHydrologyModel <: AbstractLandModel <: AbstractModel (constructs the in
 | **Documentation**    | [![dev][docs-dev-img]][docs-dev-url]          |
 | **GHA CI**           | [![gha ci][gha-ci-img]][gha-ci-url]           |
 | **Code Coverage**    | [![codecov][codecov-img]][codecov-url]        |
-| **Bors enabled**     | [![bors][bors-img]][bors-url]                 |
 
 [docs-bld-img]: https://github.com/CliMA/ClimaLSM.jl/actions/workflows/docs.yml/badge.svg
 [docs-bld-url]: https://github.com/CliMA/ClimaLSM.jl/actions/workflows/docs.yml
