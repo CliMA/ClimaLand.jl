@@ -19,7 +19,7 @@ for FT in (Float32, Float64)
         end
 
         pond_model = Pond.PondModel{FT}(;
-            runoff = PrescribedRunoff{FT}(precipitation, (t) -> 0.0),
+            runoff = PrescribedRunoff(precipitation, (t) -> 0.0),
         )
 
         Y, p, coords = initialize(pond_model)

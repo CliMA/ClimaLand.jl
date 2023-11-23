@@ -10,7 +10,9 @@ import ClimaLSM:
     prognostic_vars,
     name,
     prognostic_types,
-    prognostic_domain_names
+    prognostic_domain_names,
+    FTfromY
+
 using ClimaLSM.Domains
 export PondModel, PrescribedRunoff, surface_runoff
 
@@ -46,17 +48,17 @@ end
 
 
 """
-    PrescribedRunoff{FT} <:  AbstractSurfaceRunoff
+    PrescribedRunoff{F1 <: Function, F2 <: Function} <:  AbstractSurfaceRunoff
 
 The required input for driving the simple pond model: precipitation, as a
 function of time, soil effective saturation at a depth `Δz` below the surface,
 as a function of time, and soil parameters, which affect infiltration.
 """
-struct PrescribedRunoff{FT} <: AbstractSurfaceRunoff
+struct PrescribedRunoff{F1 <: Function, F2 <: Function} <: AbstractSurfaceRunoff
     "Time dependent precipitation magnitude, given in m/s. Negative is into the soil"
-    precip::Function
+    precip::F1
     "Time dependent infiltration magnitude, given in m/s. Negative is into the soil."
-    infil::Function
+    infil::F2
 end
 
 ClimaLSM.prognostic_vars(model::PondModel) = (:η,)
@@ -73,7 +75,8 @@ function ClimaLSM.make_compute_exp_tendency(model::PondModel)
 end
 
 # Runoff > 0 -> into river system.
-function surface_runoff(runoff::PrescribedRunoff{FT}, Y, p, t) where {FT}
+function surface_runoff(runoff::PrescribedRunoff, Y, p, t)
+    FT = FTfromY(Y)
     return @. -FT((runoff.precip(t) - runoff.infil(t)))
 end
 
