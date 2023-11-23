@@ -405,7 +405,7 @@ function ClimaLSM.make_update_aux(
         ϑ_l = Y.canopy.hydraulics.ϑ_l
         fa = p.canopy.hydraulics.fa
 
-        #unpack parameters
+        # unpack parameters
         area_index = p.canopy.hydraulics.area_index
         LAI = area_index.leaf
         RAI = area_index.root

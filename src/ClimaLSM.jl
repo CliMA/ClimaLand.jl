@@ -1,5 +1,4 @@
 module ClimaLSM
-using UnPack
 using DocStringExtensions
 
 using ClimaCore

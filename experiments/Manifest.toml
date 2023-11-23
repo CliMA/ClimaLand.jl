@@ -217,7 +217,7 @@ uuid = "d934ef94-cdd4-4710-83d6-720549644b70"
 version = "0.3.11"
 
 [[deps.ClimaLSM]]
-deps = ["ArtifactWrappers", "CFTime", "ClimaComms", "ClimaCore", "ClimaCoreTempestRemap", "Dates", "DocStringExtensions", "IntervalSets", "JLD2", "LinearAlgebra", "NCDatasets", "SciMLBase", "StaticArrays", "SurfaceFluxes", "Thermodynamics", "UnPack"]
+deps = ["ArtifactWrappers", "CFTime", "ClimaComms", "ClimaCore", "ClimaCoreTempestRemap", "Dates", "DocStringExtensions", "IntervalSets", "JLD2", "LinearAlgebra", "NCDatasets", "SciMLBase", "StaticArrays", "SurfaceFluxes", "Thermodynamics"]
 path = ".."
 uuid = "7884a58f-fab6-4fd0-82bb-ecfedb2d8430"
 version = "0.4.0"
