@@ -2,7 +2,7 @@
 
 julia_version = "1.9.4"
 manifest_format = "2.0"
-project_hash = "b3e3a6d4123251d3704cd4a385039b761f093c21"
+project_hash = "2067c786604e9e079cf0e3e81be0d40fac5319be"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "332e5d7baeff8497b923b730b994fa480601efc7"
@@ -724,9 +724,9 @@ version = "0.1.1"
 
 [[deps.Insolation]]
 deps = ["Artifacts", "Dates", "DelimitedFiles", "Interpolations"]
-git-tree-sha1 = "eb83622d1d24e764d799ebeb92e9ffa5926870fc"
+git-tree-sha1 = "937658520f9d5786ea11b70713163fe277925492"
 uuid = "e98cc03f-d57e-4e3c-b70c-8d51efe9e0d8"
-version = "0.7.0"
+version = "0.8.0"
 
 [[deps.IntelOpenMP_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]

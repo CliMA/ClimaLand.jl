@@ -6,7 +6,7 @@ using ClimaLSM
 using ClimaLSM.Soil
 import ClimaLSM
 import ClimaLSM.Parameters as LSMP
-using Insolation
+
 using Dates
 include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
 
@@ -65,13 +65,7 @@ for FT in (Float32, Float64)
         ref_time = DateTime(2005)
         SW_d = (t) -> 500
         LW_d = (t) -> 5.67e-8 * 280.0^4.0
-        radiation = PrescribedRadiativeFluxes(
-            FT,
-            SW_d,
-            LW_d,
-            ref_time;
-            orbital_data = Insolation.OrbitalData(),
-        )
+        radiation = PrescribedRadiativeFluxes(FT, SW_d, LW_d, ref_time)
         # Atmos
         precip = (t) -> 1e-8
         precip_snow = (t) -> 0

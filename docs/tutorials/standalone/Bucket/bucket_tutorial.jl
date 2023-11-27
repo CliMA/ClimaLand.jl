@@ -131,7 +131,7 @@ using ClimaCore
 import CLIMAParameters as CP
 
 # We also use Insolation to calculate solar zenith angle and solar insolation.
-using Insolation
+
 
 # Lastly, let's bring in the bucket model types (from ClimaLSM) that we
 # will need access to.
@@ -230,13 +230,7 @@ ref_time = DateTime(2005);
 # Here we define the model drivers, starting with downward radiation.
 SW_d = (t) -> 300;
 LW_d = (t) -> 300;
-bucket_rad = PrescribedRadiativeFluxes(
-    FT,
-    SW_d,
-    LW_d,
-    ref_time;
-    orbital_data = Insolation.OrbitalData(),
-);
+bucket_rad = PrescribedRadiativeFluxes(FT, SW_d, LW_d, ref_time);
 
 # Prescribed atmospheric variables
 

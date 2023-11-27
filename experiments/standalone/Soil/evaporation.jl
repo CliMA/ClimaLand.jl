@@ -2,7 +2,7 @@ using Plots
 import SciMLBase
 import ClimaTimeSteppers as CTS
 using Thermodynamics
-using Insolation
+
 using ClimaCore
 import CLIMAParameters as CP
 using RootSolvers
@@ -67,13 +67,7 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
     ref_time = DateTime(2005)
     SW_d = (t) -> 0
     LW_d = (t) -> 301.15^4 * 5.67e-8
-    radiation = PrescribedRadiativeFluxes(
-        FT,
-        SW_d,
-        LW_d,
-        ref_time;
-        orbital_data = Insolation.OrbitalData(),
-    )
+    radiation = PrescribedRadiativeFluxes(FT, SW_d, LW_d, ref_time)
     # Atmos
     T_air = 301.15
     rh = 0.38

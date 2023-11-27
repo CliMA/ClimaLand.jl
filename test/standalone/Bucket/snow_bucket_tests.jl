@@ -1,7 +1,7 @@
 using Test
 
 using Statistics
-using Insolation
+
 using Dates
 using ClimaCore
 using ClimaLSM.Bucket:
@@ -54,20 +54,13 @@ for FT in (Float32, Float64)
         ),
     ]
     init_temp(z::FT, value::FT) where {FT} = FT(value)
-    orbital_data = Insolation.OrbitalData()
     for i in 1:3
         @testset "Conservation of water and energy I (snow present), FT = $FT" begin
             "Radiation"
             ref_time = DateTime(2005)
             SW_d = (t) -> 20
             LW_d = (t) -> 20
-            bucket_rad = PrescribedRadiativeFluxes(
-                FT,
-                SW_d,
-                LW_d,
-                ref_time;
-                orbital_data,
-            )
+            bucket_rad = PrescribedRadiativeFluxes(FT, SW_d, LW_d, ref_time)
             "Atmos"
             liquid_precip = (t) -> 1e-8 # precipitation
             snow_precip = (t) -> 1e-7 # precipitation
@@ -174,13 +167,7 @@ for FT in (Float32, Float64)
             ref_time = DateTime(2005)
             SW_d = (t) -> 20
             LW_d = (t) -> 20
-            bucket_rad = PrescribedRadiativeFluxes(
-                FT,
-                SW_d,
-                LW_d,
-                ref_time;
-                orbital_data,
-            )
+            bucket_rad = PrescribedRadiativeFluxes(FT, SW_d, LW_d, ref_time)
             "Atmos"
             liquid_precip = (t) -> 1e-8 # precipitation
             snow_precip = (t) -> 1e-7 # precipitation
@@ -286,8 +273,7 @@ for FT in (Float32, Float64)
         ref_time = DateTime(2005)
         SW_d = (t) -> 20
         LW_d = (t) -> 20
-        bucket_rad =
-            PrescribedRadiativeFluxes(FT, SW_d, LW_d, ref_time; orbital_data)
+        bucket_rad = PrescribedRadiativeFluxes(FT, SW_d, LW_d, ref_time)
         "Atmos"
         liquid_precip = (t) -> 1e-8 # precipitation
         snow_precip = (t) -> 1e-7 # precipitation

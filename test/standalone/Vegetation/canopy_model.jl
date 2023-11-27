@@ -2,13 +2,13 @@ using Test
 import CLIMAParameters as CP
 using ClimaCore
 using Thermodynamics
-using Insolation
 using Dates
 using ClimaLSM
 using ClimaLSM: PrescribedAtmosphere, PrescribedRadiativeFluxes
 using ClimaLSM.Canopy
 using ClimaLSM.Canopy.PlantHydraulics
 using ClimaLSM.Domains: Point
+import Insolation
 
 import ClimaLSM
 import ClimaLSM.Parameters as LSMP
@@ -43,18 +43,26 @@ for FT in (Float32, Float64)
 
         function zenith_angle(
             t,
-            orbital_data,
             ref_time;
             latitude = lat,
             longitude = long,
             insol_params = earth_param_set.insol_params,
         )
-            return instantaneous_zenith_angle(
-                ref_time + Dates.Second(round(t)),
-                orbital_data,
+            current_datetime = ref_time + Dates.Second(round(t))
+            d, δ, η_UTC =
+                FT.(
+                    Insolation.helper_instantaneous_zenith_angle(
+                        current_datetime,
+                        ref_time,
+                        insol_params,
+                    )
+                )
+            return Insolation.instantaneous_zenith_angle(
+                d,
+                δ,
+                η_UTC,
                 longitude,
                 latitude,
-                insol_params,
             )[1]
         end
 
@@ -98,7 +106,6 @@ for FT in (Float32, Float64)
             longwave_radiation,
             ref_time;
             θs = zenith_angle,
-            orbital_data = Insolation.OrbitalData(),
         )
 
         # Plant Hydraulics
@@ -477,18 +484,26 @@ for FT in (Float32, Float64)
 
         function zenith_angle(
             t,
-            orbital_data,
             ref_time;
             latitude = lat,
             longitude = long,
             insol_params = earth_param_set.insol_params,
         )
-            return instantaneous_zenith_angle(
-                ref_time + Dates.Second(round(t)),
-                orbital_data,
+            current_datetime = ref_time + Dates.Second(round(t))
+            d, δ, η_UTC =
+                FT.(
+                    Insolation.helper_instantaneous_zenith_angle(
+                        current_datetime,
+                        ref_time,
+                        insol_params,
+                    )
+                )
+            return Insolation.instantaneous_zenith_angle(
+                d,
+                δ,
+                η_UTC,
                 longitude,
                 latitude,
-                insol_params,
             )[1]
         end
 
@@ -532,7 +547,6 @@ for FT in (Float32, Float64)
             longwave_radiation,
             ref_time;
             θs = zenith_angle,
-            orbital_data = Insolation.OrbitalData(),
         )
 
         # Plant Hydraulics

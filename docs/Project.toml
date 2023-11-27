@@ -20,5 +20,5 @@ Thermodynamics = "b60c26fb-14c3-4610-9d3e-2d17fe7ff00c"
 [compat]
 CLIMAParameters = "0.7"
 ClimaTimeSteppers = "=0.7.7"
-Insolation = "0.7"
+Insolation = "0.8"
 InteractiveUtils = "1"
