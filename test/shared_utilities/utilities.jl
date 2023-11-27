@@ -33,7 +33,7 @@ FT = Float32
         deleteat!(saveat, findall(x -> (x - t0) % dt != 0, saveat))
 
         saved_values = (;
-            t = Array{FT}(undef, length(saveat)),
+            t = Array{Float64}(undef, length(saveat)),
             saveval = Array{Array{FT}}(undef, length(saveat)),
         )
 
@@ -47,7 +47,7 @@ FT = Float32
 
         # use this to manually save `integrator` at various `t`
         integ_saved = (;
-            t = Array{FT}(undef, length(saveat)),
+            t = Array{Float64}(undef, length(saveat)),
             p = Array{Array{FT}}(undef, length(saveat)),
         )
 
@@ -78,7 +78,7 @@ end
     # we're only testing the save at t0 so one saveat range is sufficient
     saveat = collect(t0:dt:tf)
     saved_values = (;
-        t = Array{FT}(undef, length(saveat)),
+        t = Array{Float64}(undef, length(saveat)),
         saveval = Array{Array{FT}}(undef, length(saveat)),
     )
 

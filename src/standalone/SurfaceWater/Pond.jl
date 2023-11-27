@@ -15,7 +15,7 @@ using ClimaLSM.Domains
 export PondModel, PrescribedRunoff, surface_runoff
 
 abstract type AbstractSurfaceWaterModel{FT} <: AbstractExpModel{FT} end
-abstract type AbstractSurfaceRunoff{FT <: AbstractFloat} end
+abstract type AbstractSurfaceRunoff end
 """
     PondModel{FT, D, R} <: AbstractSurfaceWaterModel{FT}
 
@@ -39,20 +39,20 @@ function PondModel{FT}(;
     domain::ClimaLSM.Domains.AbstractDomain{FT} = ClimaLSM.Domains.Point(
         z_sfc = FT(0),
     ),
-    runoff::AbstractSurfaceRunoff{FT},
+    runoff::AbstractSurfaceRunoff,
 ) where {FT}
     return PondModel{FT, typeof(domain), typeof(runoff)}(domain, runoff)
 end
 
 
 """
-    PrescribedRunoff{FT} <:  AbstractSurfaceRunoff{FT}
+    PrescribedRunoff{FT} <:  AbstractSurfaceRunoff
 
 The required input for driving the simple pond model: precipitation, as a
 function of time, soil effective saturation at a depth `Δz` below the surface,
 as a function of time, and soil parameters, which affect infiltration.
 """
-struct PrescribedRunoff{FT} <: AbstractSurfaceRunoff{FT}
+struct PrescribedRunoff{FT} <: AbstractSurfaceRunoff
     "Time dependent precipitation magnitude, given in m/s. Negative is into the soil"
     precip::Function
     "Time dependent infiltration magnitude, given in m/s. Negative is into the soil."

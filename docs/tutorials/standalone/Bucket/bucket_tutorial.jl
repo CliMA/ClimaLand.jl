@@ -312,7 +312,7 @@ prob = SciMLBase.ODEProblem(
 # are not stored by default.
 saveat = collect(t0:Δt:tf);
 saved_values = (;
-    t = Array{FT}(undef, length(saveat)),
+    t = Array{Float64}(undef, length(saveat)),
     saveval = Array{NamedTuple}(undef, length(saveat)),
 );
 
