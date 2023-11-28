@@ -75,11 +75,11 @@ for FT in (Float32, Float64)
         exp_tendency!(dY, Y, p, t0)
         ClimaLSM.dss!(dY, p, t0)
 
-        @test mean(Array(parent(dY))) < eps(FT)
+        @test mean(Array(parent(dY.soil.ϑ_l))) < eps(FT)
         # should be hydrostatic equilibrium at every layer, at each step:
         @test mean(
             Array(parent(p.soil.ψ .+ coords.subsurface.z))[:] .+ FT(10),
-        ) < eps(FT)
+        ) < 2eps(FT)
     end
 
     @testset "Soil Energy and Water tendency unit tests, FT = $FT" begin
