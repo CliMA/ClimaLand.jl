@@ -46,7 +46,7 @@ end
 end
 
 # Standalone Soil model tests
-gpu_broken || @safetestset "Soil Biogeochemistry module tests" begin
+@safetestset "Soil Biogeochemistry module tests" begin
     include("standalone/Soil/Biogeochemistry/biogeochemistry_module.jl")
 end
 @safetestset "Soil CO2 parameterization tests" begin
