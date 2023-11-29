@@ -288,7 +288,6 @@ function hdwrite_regridfile_rll_to_cgll(
         length(times),
     )
 
-    # TODO: extend write! to handle time-dependent fields
     map(
         x -> write_to_hdf5(
             REGRID_DIR,
