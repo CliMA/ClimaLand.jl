@@ -129,7 +129,7 @@ end
         energy::AbstractCanopyEnergyModel{FT},
         atmos::AbstractAtmosphericDrivers{FT},
         radiation::AbstractRadiativeDrivers{FT},
-        soil::AbstractSoilDriver{FT},
+        soil::AbstractSoilDriver,
         parameters::SharedCanopyParameters{FT, PSE},
         domain::Union{
             ClimaLSM.Domains.Point,
@@ -154,7 +154,7 @@ function CanopyModel{FT}(;
     energy = PrescribedCanopyTempModel{FT}(),
     atmos::AbstractAtmosphericDrivers{FT},
     radiation::AbstractRadiativeDrivers{FT},
-    soil_driver::AbstractSoilDriver{FT},
+    soil_driver::AbstractSoilDriver,
     parameters::SharedCanopyParameters{FT, PSE},
     domain::Union{
         ClimaLSM.Domains.Point,

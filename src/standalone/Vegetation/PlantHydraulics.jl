@@ -564,7 +564,7 @@ end
 """
     root_water_flux_per_ground_area!(
         fa::ClimaCore.Fields.Field,
-        s::PrescribedSoil{FT},
+        s::PrescribedSoil,
         model::PlantHydraulicsModel{FT},
         Y::ClimaCore.Fields.FieldVector,
         p::NamedTuple,
@@ -580,7 +580,7 @@ is the first element of `Y.canopy.hydraulics.ϑ_l`.
 """
 function root_water_flux_per_ground_area!(
     fa::ClimaCore.Fields.Field,
-    s::PrescribedSoil{FT},
+    s::PrescribedSoil,
     model::PlantHydraulicsModel{FT},
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,

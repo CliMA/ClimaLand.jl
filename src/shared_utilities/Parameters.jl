@@ -27,6 +27,8 @@ Base.@kwdef struct LSMParameters{FT, TP, SFP, IP} <: ALSMP
     insol_params::IP
 end
 
+Base.eltype(::LSMParameters{FT}) where {FT} = FT
+
 # wrapper methods:
 P_ref(ps::ALSMP) = ps.MSLP
 K_therm(ps::ALSMP) = ps.K_therm

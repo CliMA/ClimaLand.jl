@@ -3,6 +3,7 @@ import CLIMAParameters as CP
 using ClimaCore
 using Thermodynamics
 using Dates
+using StaticArrays
 using ClimaLSM
 using ClimaLSM: PrescribedAtmosphere, PrescribedRadiativeFluxes
 using ClimaLSM.Canopy
@@ -122,7 +123,7 @@ for FT in (Float32, Float64)
         conductivity_model =
             PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
         retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a)
-        root_depths = FT.(-Array(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0) # 1st element is the deepest root depth
+        root_depths = SVector{10, FT}(-(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0) # 1st element is the deepest root depth
         function root_distribution(z::T) where {T}
             return T(1.0 / 0.5) * exp(z / T(0.5)) # (1/m)
         end
@@ -159,7 +160,7 @@ for FT in (Float32, Float64)
             )
 
         ψ_soil0 = FT(0.0)
-        soil_driver = PrescribedSoil{FT}()
+        soil_driver = PrescribedSoil(FT)
         plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
             parameters = param_set,
             n_stem = n_stem,
@@ -350,7 +351,7 @@ for FT in (Float32, Float64)
         conductivity_model =
             PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
         retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a)
-        root_depths = FT.(-Array(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0) # 1st element is the deepest root depth
+        root_depths = SVector{10, FT}(-(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0) # 1st element is the deepest root depth
         function root_distribution(z::T) where {T}
             return T(1.0 / 0.5) * exp(z / T(0.5)) # (1/m)
         end
@@ -447,13 +448,13 @@ for FT in (Float32, Float64)
     end
 
     @testset "PrescribedSoil, FT = $FT" begin
-        soil_driver = PrescribedSoil{FT}()
+        soil_driver = PrescribedSoil(FT)
         @test ground_albedo_PAR(soil_driver, nothing, nothing, nothing) ==
               FT(0.2)
         @test ground_albedo_NIR(soil_driver, nothing, nothing, nothing) ==
               FT(0.4)
         @test soil_driver.root_depths ==
-              FT.(-Array(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0)
+              SVector{10, FT}(-(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0)
         @test FT.(soil_driver.ψ(2.0)) == FT.(0.0)
         @test FT.(soil_driver.T(2.0)) == FT.(298.0)
     end
@@ -563,7 +564,7 @@ for FT in (Float32, Float64)
         conductivity_model =
             PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
         retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a)
-        root_depths = FT.(-Array(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0) # 1st element is the deepest root depth
+        root_depths = SVector{10, FT}(-(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0) # 1st element is the deepest root depth
         function root_distribution(z::T) where {T}
             return T(1.0 / 0.5) * exp(z / T(0.5)) # (1/m)
         end
@@ -601,7 +602,7 @@ for FT in (Float32, Float64)
 
         ψ_soil0 = FT(0.0)
         T_soil0 = FT(290)
-        soil_driver = PrescribedSoil{FT}(
+        soil_driver = PrescribedSoil(
             root_depths,
             (t) -> ψ_soil0,
             (t) -> T_soil0,

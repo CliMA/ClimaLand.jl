@@ -447,13 +447,13 @@ end
 
 
 """
-     PrognosticSoil{FT} <: AbstractSoilDriver{FT}
+     PrognosticSoil{FT} <: AbstractSoilDriver
 
 Concrete type of AbstractSoilDriver used for dispatch in cases where both
 a canopy model and soil model are run.
 $(DocStringExtensions.FIELDS)
 """
-struct PrognosticSoil{FT} <: AbstractSoilDriver{FT}
+struct PrognosticSoil{FT} <: AbstractSoilDriver
     "Soil albedo for PAR"
     α_PAR::FT
     "Soil albedo for NIR"
