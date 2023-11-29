@@ -208,13 +208,13 @@ ClimaLSM.auxiliary_domain_names(::Union{BeerLambertModel, TwoStreamModel}) = (
 
 """
     canopy_radiant_energy_fluxes!(p::NamedTuple,
-                                  s::PrescribedSoil{FT},
+                                  s::PrescribedSoil,
                                   canopy,
                                   radiation::PrescribedRadiativeFluxes,
                                   earth_param_set::PSE,
                                   Y::ClimaCore.Fields.FieldVector,
                                   t,
-                                 ) where {FT, PSE}
+                                 ) where {PSE}
 
 
 Computes and stores the net long and short wave radition, in W/m^2,
@@ -226,13 +226,14 @@ and `p.canopy.radiative_transfer.SW_n`.
 """
 function canopy_radiant_energy_fluxes!(
     p::NamedTuple,
-    s::PrescribedSoil{FT},
+    s::PrescribedSoil,
     canopy,
     radiation::PrescribedRadiativeFluxes,
     earth_param_set::PSE,
     Y::ClimaCore.Fields.FieldVector,
     t,
-) where {FT, PSE}
+) where {PSE}
+    FT = eltype(earth_param_set)
 
     # Short wave makes use of precomputed APAR and ANIR
     # in moles of photons per m^2 per s

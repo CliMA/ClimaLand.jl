@@ -278,7 +278,7 @@ function ClimaLSM.source!(
 end
 
 """
-    AbstractSoilDriver{FT <: AbstractFloat}
+    AbstractSoilDriver
 
 An abstract type for drivers of soil CO2 production and diffusion.
 These are soil temperature, soil moisture,
@@ -286,7 +286,7 @@ root carbon, soil organic matter and microbe carbon, and atmospheric pressure.
 Soil temperature and moisture, as well as soc, vary in space (horizontally and vertically) and time.
 Atmospheric pressure vary in time (defined at the surface only, not with depth).
 """
-abstract type AbstractSoilDriver{FT <: AbstractFloat} end
+abstract type AbstractSoilDriver end
 
 """
     SoilDrivers
@@ -299,9 +299,9 @@ $(DocStringExtensions.FIELDS)
 """
 struct SoilDrivers{FT}
     "Soil temperature and moisture drivers - Prescribed or Prognostic"
-    met::AbstractSoilDriver{FT}
+    met::AbstractSoilDriver
     "Soil SOM driver - Prescribed only"
-    soc::AbstractSoilDriver{FT}
+    soc::AbstractSoilDriver
     "Prescribed atmospheric variables"
     atmos::PrescribedAtmosphere{FT}
 end
@@ -317,7 +317,7 @@ without a prognostic soil model.
 
 $(DocStringExtensions.FIELDS)
 """
-struct PrescribedMet{FT} <: AbstractSoilDriver{FT}
+struct PrescribedMet{FT} <: AbstractSoilDriver
     "The temperature of the soil, of the form f(z::FT,t) where FT <: AbstractFloat"
     temperature::Function
     "Soil moisture, of the form f(z::FT,t) FT <: AbstractFloat"
@@ -334,7 +334,7 @@ organic carbon model.
 
 $(DocStringExtensions.FIELDS)
 """
-struct PrescribedSOC{FT} <: AbstractSoilDriver{FT}
+struct PrescribedSOC{FT} <: AbstractSoilDriver
     "Carbon content of soil organic matter, of the form f(z::FT, t) where FT <: AbstractFloat"
     soil_organic_carbon::Function
 end

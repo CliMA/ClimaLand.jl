@@ -66,7 +66,7 @@ function LandSoilBiogeochemistry{FT}(;
     return LandSoilBiogeochemistry{FT, typeof.(args)...}(args...)
 end
 
-struct PrognosticMet{FT} <: Soil.Biogeochemistry.AbstractSoilDriver{FT} end
+struct PrognosticMet{FT} <: Soil.Biogeochemistry.AbstractSoilDriver end
 
 """
     soil_temperature(driver::PrognosticSoil, p, Y, t, z)

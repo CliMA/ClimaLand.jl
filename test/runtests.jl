@@ -46,7 +46,7 @@ end
 end
 
 # Standalone Soil model tests
-gpu_broken || @safetestset "Soil Biogeochemistry module tests" begin
+@safetestset "Soil Biogeochemistry module tests" begin
     include("standalone/Soil/Biogeochemistry/biogeochemistry_module.jl")
 end
 @safetestset "Soil CO2 parameterization tests" begin
@@ -67,7 +67,7 @@ end
 @safetestset "Soil 3D domain tests" begin
     include("standalone/Soil/soil_test_3d.jl")
 end
-gpu_broken || @safetestset "Soil integration tests" begin
+@safetestset "Soil integration tests" begin
     include("standalone/Soil/soiltest.jl")
 end
 
