@@ -46,106 +46,10 @@ FT = Float32
     @test FileReader.interpol(f1, f2, x - x1, x2 - x1) == f2
 end
 
-@testset "test interpolate_data, FT = $FT" begin
-    # test interpolate_data with interpolation (default)
-    dummy_dates =
-        Vector(range(DateTime(1999, 1, 1); step = Day(1), length = 100))
-    date_idx0 = Int[1]
-    date_ref = dummy_dates[Int(date_idx0[1]) + 1]
-    t_start = Float64(0)
-    date0 = date_ref + Dates.Second(t_start)
-
-    # these values give an `interp_fraction` of 0.5 in `interpol` for ease of testing
-    segment_length =
-        [Int(2) * ((date_ref - dummy_dates[Int(date_idx0[1])]).value)]
-
-    radius = FT(6731e3)
-    Nq = 4
-    domain_sphere = ClimaCore.Domains.SphereDomain(radius)
-    mesh = Meshes.EquiangularCubedSphere(domain_sphere, 4)
-    topology = Topologies.Topology2D(mesh)
-    quad = Spaces.Quadratures.GLL{Nq}()
-    surface_space_t = Spaces.SpectralElementSpace2D(topology, quad)
-    data_fields = (zeros(surface_space_t), ones(surface_space_t))
-
-    # create structs manually since we aren't reading from a data file
-    file_info = FileReader.FileInfo(
-        "",             # infile_path
-        "",             # regrid_dirpath
-        "",             # varname
-        "",             # outfile_root
-        dummy_dates,    # all_dates
-        date_idx0,      # date_idx0
-    )
-    file_state = FileReader.FileState(
-        data_fields,        # data_fields
-        copy(date_idx0),    # date_idx
-        segment_length,     # segment_length
-    )
-    sim_info = FileReader.SimInfo(
-        date_ref,       # date_ref
-        t_start,        # t_start
-    )
-
-    pd_args = (file_info, file_state, sim_info)
-    prescribed_data =
-        FileReader.PrescribedDataTemporal{typeof.(pd_args)...}(pd_args...)
-
-    # Note: we expect this to give a warning "No dates available in file..."
-    @test FileReader.interpolate_data(
-        prescribed_data,
-        date0,
-        surface_space_t,
-    ) == ones(surface_space_t) .* FT(0.5)
-end
-
 @testset "test to_datetime, FT = $FT" begin
     year = 2000
     dt_noleap = DateTimeNoLeap(year)
     @test FileReader.to_datetime(dt_noleap) == DateTime(year)
-end
-
-@testset "test next_date_in_file, FT = $FT" begin
-    dummy_dates =
-        Vector(range(DateTime(1999, 1, 1); step = Day(1), length = 10))
-    date_ref = dummy_dates[1]
-    t_start = Float64(0)
-    date0 = date_ref + Dates.Second(t_start)
-    date_idx0 =
-        [argmin(abs.(Dates.value(date0) .- Dates.value.(dummy_dates[:])))]
-
-    # manually create structs to avoid creating space for outer constructor
-    file_info = FileReader.FileInfo(
-        "",             # infile_path
-        "",             # regrid_dirpath
-        "",             # varname
-        "",             # outfile_root
-        dummy_dates,    # all_dates
-        date_idx0,      # date_idx0
-    )
-    file_state = FileReader.FileState(
-        nothing,            # data_fields
-        copy(date_idx0),    # date_idx
-        Int[],              # segment_length
-    )
-    sim_info = nothing
-
-    pd_args = (file_info, file_state, sim_info)
-    prescribed_data =
-        FileReader.PrescribedDataTemporal{typeof.(pd_args)...}(pd_args...)
-
-    # read in next dates, manually compare to `dummy_dates` array
-    idx = date_idx0[1]
-    next_date = date0
-    for i in 1:(length(dummy_dates) - 1)
-        current_date = next_date
-        next_date = FileReader.next_date_in_file(prescribed_data)
-
-        @test next_date == dummy_dates[idx + 1]
-
-        prescribed_data.file_state.date_idx[1] += 1
-        idx = date_idx0[1] + i
-    end
 end
 
 @testset "test PrescribedDataStatic construction, FT = $FT" begin
@@ -177,6 +81,102 @@ end
 # TempestRemap is not built on Windows because of NetCDF support limitations
 # `PrescribedDataTemporal` uses TR via a call to `hdwrite_regridfile_rll_to_cgll`
 if !Sys.iswindows()
+    @testset "test interpolate_data, FT = $FT" begin
+        # test interpolate_data with interpolation (default)
+        dummy_dates =
+            Vector(range(DateTime(1999, 1, 1); step = Day(1), length = 100))
+        date_idx0 = Int[1]
+        date_ref = dummy_dates[Int(date_idx0[1]) + 1]
+        t_start = Float64(0)
+        date0 = date_ref + Dates.Second(t_start)
+
+        # these values give an `interp_fraction` of 0.5 in `interpol` for ease of testing
+        segment_length =
+            [Int(2) * ((date_ref - dummy_dates[Int(date_idx0[1])]).value)]
+
+        radius = FT(6731e3)
+        Nq = 4
+        domain_sphere = ClimaCore.Domains.SphereDomain(radius)
+        mesh = Meshes.EquiangularCubedSphere(domain_sphere, 4)
+        topology = Topologies.Topology2D(mesh)
+        quad = Spaces.Quadratures.GLL{Nq}()
+        surface_space_t = Spaces.SpectralElementSpace2D(topology, quad)
+        data_fields = (zeros(surface_space_t), ones(surface_space_t))
+
+        # create structs manually since we aren't reading from a data file
+        file_info = FileReader.FileInfo(
+            "",             # infile_path
+            "",             # regrid_dirpath
+            "",             # varname
+            "",             # outfile_root
+            dummy_dates,    # all_dates
+            date_idx0,      # date_idx0
+        )
+        file_state = FileReader.FileState(
+            data_fields,        # data_fields
+            copy(date_idx0),    # date_idx
+            segment_length,     # segment_length
+        )
+        sim_info = FileReader.SimInfo(
+            date_ref,       # date_ref
+            t_start,        # t_start
+        )
+
+        pd_args = (file_info, file_state, sim_info)
+        prescribed_data =
+            FileReader.PrescribedDataTemporal{typeof.(pd_args)...}(pd_args...)
+
+        # Note: we expect this to give a warning "No dates available in file..."
+        @test FileReader.interpolate_data(
+            prescribed_data,
+            date0,
+            surface_space_t,
+        ) == ones(surface_space_t) .* FT(0.5)
+    end
+
+    @testset "test next_date_in_file, FT = $FT" begin
+        dummy_dates =
+            Vector(range(DateTime(1999, 1, 1); step = Day(1), length = 10))
+        date_ref = dummy_dates[1]
+        t_start = Float64(0)
+        date0 = date_ref + Dates.Second(t_start)
+        date_idx0 =
+            [argmin(abs.(Dates.value(date0) .- Dates.value.(dummy_dates[:])))]
+
+        # manually create structs to avoid creating space for outer constructor
+        file_info = FileReader.FileInfo(
+            "",             # infile_path
+            "",             # regrid_dirpath
+            "",             # varname
+            "",             # outfile_root
+            dummy_dates,    # all_dates
+            date_idx0,      # date_idx0
+        )
+        file_state = FileReader.FileState(
+            nothing,            # data_fields
+            copy(date_idx0),    # date_idx
+            Int[],              # segment_length
+        )
+        sim_info = nothing
+
+        pd_args = (file_info, file_state, sim_info)
+        prescribed_data =
+            FileReader.PrescribedDataTemporal{typeof.(pd_args)...}(pd_args...)
+
+        # read in next dates, manually compare to `dummy_dates` array
+        idx = date_idx0[1]
+        next_date = date0
+        for i in 1:(length(dummy_dates) - 1)
+            current_date = next_date
+            next_date = FileReader.next_date_in_file(prescribed_data)
+
+            @test next_date == dummy_dates[idx + 1]
+
+            prescribed_data.file_state.date_idx[1] += 1
+            idx = date_idx0[1] + i
+        end
+    end
+
     @testset "test PrescribedDataTemporal construction, FT = $FT" begin
         # setup for test
         radius = FT(6731e3)

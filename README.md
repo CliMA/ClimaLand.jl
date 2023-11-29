@@ -5,6 +5,9 @@ component) or standalone (single component) modes.
 Recommended Julia Version: Stable release v1.9.4. CI no longer tests earlier
 versions of Julia.
 
+Certain features, including global runs, are not currently available on
+Windows due to limitations with our regridding software.
+
 ## Models
 ```
 Model <: AbstractModel
