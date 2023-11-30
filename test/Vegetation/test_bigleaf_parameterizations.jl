@@ -85,8 +85,9 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     )
     @test Ac ==
           Vcmax * (ci - Γstar) / (ci + Kc * (1 + photosynthesisparams.oi / Ko))
+    Jmax25 = photosynthesisparams.Vcmax25*photosynthesisparams.jv_ratio
     Jmax = max_electron_transport(
-        photosynthesisparams.Vcmax25,
+        Jmax25,
         photosynthesisparams.ΔHJmax,
         T,
         To,
@@ -94,7 +95,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
     )
     @test Jmax ==
           photosynthesisparams.Vcmax25 *
-          FT(exp(1)) *
+          photosynthesisparams.jv_ratio *
           arrhenius_function(T, To, R, photosynthesisparams.ΔHJmax)
     J =
         electron_transport.(

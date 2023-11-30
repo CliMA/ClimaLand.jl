@@ -42,8 +42,8 @@ struct OptimalityFarquharParameters{FT <: AbstractFloat}
     sc::FT
     "Fitting constant to compute the moisture stress factor (Pa)"
     ψc::FT
-    "Ratio of Jmax25 to Vcmax25 (unitless)"
-    jv_ratio::FT
+    "Constant describing cost of maintaining electron transport (unitless)"
+    c::FT
 end
 
 """
@@ -64,7 +64,7 @@ end
         ΔHΓstar = FT(37830), #J/mol, 11.2 Bonan
         ΔHJmax = FT(43540), # J/mol, 11.2 Bonan
         ΔHRd = FT(43390), # J/mol, 11.2 Bonan
-        jv_ratio = FT(1.67), # unitless, Table 11.5 Bonan
+        c = FT(0.05336251), # unitless, Smith
         ) where {FT}
 
 A constructor supplying default values for the FarquharParameters struct.
@@ -87,7 +87,7 @@ function OptimalityFarquharParameters{FT}(
     ΔHΓstar = FT(37830),
     ΔHJmax = FT(43540),
     ΔHRd = FT(46390),
-    jv_ratio = FT(1.67),
+    c = FT(0.05336251),
 ) where {FT}
     return OptimalityFarquharParameters{FT}(
         mechanism,
@@ -107,7 +107,7 @@ function OptimalityFarquharParameters{FT}(
         f,
         sc,
         ψc,
-        jv_ratio,
+        c
     )
 end
 
@@ -144,14 +144,14 @@ moisture stress factor `beta` (unitless), and the universal gas constant
 `R`.
 """
 function compute_photosynthesis(
-    model::OptimalityFarquharModel,
-    T,
-    medlyn_factor,
-    APAR,
-    c_co2,
-    β,
-    R,
-)
+    model::OptimalityFarquharModel{FT},
+    T::FT,
+    medlyn_factor::FT,
+    APAR::FT,
+    c_co2::FT,
+    β::FT,
+    R::FT,
+) where {FT}
     (;
         Γstar25,
         ΔHJmax,
@@ -168,7 +168,7 @@ function compute_photosynthesis(
         Ko25,
         ΔHkc,
         ΔHko,
-        jv_ratio,
+        c,
     ) = model.parameters
     Γstar = co2_compensation(Γstar25, ΔHΓstar, T, To, R)
     ci = intercellular_co2(c_co2, Γstar, medlyn_factor)
@@ -178,23 +178,29 @@ function compute_photosynthesis(
     # Light utilization of APAR
     IPSII = ϕ * APAR / 2
 
-    Jmax_arr = arrhenius_function(T, To, R, ΔHJmax)
-    Vcmax_arr = arrhenius_function(T, To, R, ΔHVcmax)
-    Vcmax_over_Jmax = Vcmax_arr/Jmax_arr/jv_ratio
-    if typeof(mechanism) == C3
-        C = Vcmax_over_Jmax*(4*(ci + 2*Γstar)/(ci + Kc*(1 + oi/Ko)))
-    elseif typeof(mechanism) == C4
-        C = Vcmax_over_Jmax
+    mc = (ci - Γstar)/(ci + Kc*(1 + oi/Ko))
+    m = (ci - Γstar)/(ci + 2*Γstar)
+
+    # Corrected form of ω, see https://github.com/SmithEcophysLab/optimal_vcmax_R/issues/3
+    if ((θj < 1) & (8*c > m) & (4*c < m) & (m/c < 8*θj)) | ((θj > 1) & (4*c > m))
+        ω = (-2 + 4*θj - sqrt(((-1 + θj)*(m - 8*c*θj)^2)/(c*(-m + 4*c*θj))))/2
+    elseif ((θj < 1) & (8*c < m)) | ((m/c > 8*θj) & (8*c > m) & (4*c < m))
+        ω = (-2 + 4*θj + sqrt(((-1 + θj)*(m - 8*c*θj)^2)/(c*(-m + 4*c*θj))))/2
+    else
+        ω = FT(0)
     end
 
-    Jmax = (C - 1)*IPSII/(C*(C*θj - 1))
+    Jmax = IPSII*ω
+    Vcmax = IPSII*(m/mc)*ω/(8*θj)
+
+    Vcmax_arr = arrhenius_function(T, To, R, ΔHVcmax)
+    Vcmax25 = Vcmax/Vcmax_arr
+
     J = electron_transport(APAR, Jmax, θj, ϕ)
-    Jmax25 = Jmax/Jmax_arr
-    Vcmax25 = compute_Vcmax25(Jmax25, jv_ratio)
-    Vcmax = Vcmax_over_Jmax*Jmax
+
     Aj = light_assimilation(mechanism, J, ci, Γstar)
     Ac = rubisco_assimilation(mechanism, Vcmax, ci, Γstar, Kc, Ko, oi)
-    @assert Ac ≈ Aj
     Rd = dark_respiration(Vcmax25, β, f, ΔHRd, T, To, R)
+
     return net_photosynthesis(Ac, Aj, Rd, β)
 end

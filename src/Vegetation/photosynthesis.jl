@@ -172,7 +172,7 @@ function compute_photosynthesis(
     Jmax25 = Vcmax25*jv_ratio
     Jmax = max_electron_transport(Jmax25, ΔHJmax, T, To, R)
     J = electron_transport(APAR, Jmax, θj, ϕ)
-    Vcmax = compute_Vcmax(Vcmax25, T, To, R, ΔHVcmax)
+    Vcmax = Vcmax25*arrhenius_function(T, To, R, ΔHVcmax)
     Γstar = co2_compensation(Γstar25, ΔHΓstar, T, To, R)
     ci = intercellular_co2(c_co2, Γstar, medlyn_factor)
     Aj = light_assimilation(mechanism, J, ci, Γstar)
