@@ -758,6 +758,7 @@ function save_model_outputs()
     end
     return timestamps
 end
+end
 
 # Run script with comand line argument "save" to save model output to CSV
 if length(ARGS) ≥ 1 && ARGS[1] == "save"
