@@ -50,3 +50,5 @@ index_t_start = 120*48 # we shouldn't hardcode that 120 in ozark_simulation.jl
 index_t_end = 120*48 + (N_days - N_spinup_days)*48
 model_dt = inputs.DateTime[index_t_start:index_t_end]  
 
+insertcols!(df, 1, :DateTime => model_dt)
+
