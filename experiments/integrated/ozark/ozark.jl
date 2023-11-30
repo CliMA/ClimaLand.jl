@@ -720,49 +720,8 @@ Plots.plot!(
 )
 Plots.savefig(joinpath(savedir, "ground_heat_flux.png"))
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-function get_p(variable::Symbol) # auxiliary    
-    out = [parent(sv.saveval[k].SW_out)[1] for k in 1:length(sv.saveval)]   
-    return out
-end
-# example: get_p("SW_out")
-
-# need to construct sv.saveval[k].X with X as an argument (String?) 
-# or a way to go through ALL sv.saveval[k].X ?
-# or ...
-
-# getproperty(sv.saveval[1], :SW_out)
-
-
-function get_Y(variable) # prognostic
-
-end
-
-
-
-
-
-
+# Run script with comand line argument "save" to save model output to CSV
+if length(ARGS) ≥ 1 && ARGS[1] == "save"
 function save_model_outputs()
     # Formats fields as semicolon seperated strings
     field_to_array = (field) -> join(parent(field), ';')
