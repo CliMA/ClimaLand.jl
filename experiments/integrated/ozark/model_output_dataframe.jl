@@ -1,5 +1,6 @@
 #=
 include("integrated/ozark/ozark.jl")
+include("integrated/ozark/input_df.jl")
 =#
 
 """
@@ -44,4 +45,8 @@ data_dict = Dict(zip(column_names, output_vectors))
 # Create a DataFrame from the dictionary
 df = DataFrame(data_dict)
 # now if I want for example GPP, I can just do df.GPP
+
+index_t_start = 120*48 # we shouldn't hardcode that 120 in ozark_simulation.jl
+index_t_end = 120*48 + (N_days - N_spinup_days)*48
+model_dt = inputs.DateTime[index_t_start:index_t_end]  
 
