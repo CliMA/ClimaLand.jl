@@ -500,6 +500,11 @@ function ClimaLSM.make_update_aux(
                 ν,
                 S_s,
             )
+
+            areai = getproperty(area_index, hydraulics.compartment_labels[i])
+            areaip1 =
+                getproperty(area_index, hydraulics.compartment_labels[ip1])
+
             # Compute the flux*area between the current compartment `i`
             # and the compartment above.
             @. fa.:($$i) =
@@ -516,10 +521,7 @@ function ClimaLSM.make_update_aux(
                         conductivity_model,
                         ψ.:($$ip1),
                     ),
-                ) * (
-                    getproperty(area_index, hydraulics.compartment_labels[i]) +
-                    getproperty(area_index, hydraulics.compartment_labels[ip1])
-                ) / 2
+                ) * (areai + areaip1) / 2
         end
         # We update the fa[n_stem+n_leaf] element once we have computed transpiration, below
         # update photosynthesis and conductance terms
