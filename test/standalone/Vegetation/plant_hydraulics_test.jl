@@ -249,8 +249,7 @@ for FT in (Float32, Float64)
         end
 
         ψ_soil0 = FT(0.0)
-        transpiration =
-            PrescribedTranspiration{FT}((t) -> leaf_transpiration(t))
+        transpiration = PrescribedTranspiration{FT}(leaf_transpiration)
 
         soil_driver = PrescribedSoil(FT)
 
@@ -502,8 +501,9 @@ for FT in (Float32, Float64)
         n_leaf = Int64(1) # number of leaf elements
         SAI = FT(0) # m2/m2
         RAI = FT(0) # m2/m2
+        lai_fun = t -> 0
         ai_parameterization =
-            PlantHydraulics.PrescribedSiteAreaIndex{FT}(t -> 0, SAI, RAI)
+            PlantHydraulics.PrescribedSiteAreaIndex{FT}(lai_fun, SAI, RAI)
         K_sat_plant = 0 # m/s.
         ψ63 = FT(-4 / 0.0098) # / MPa to m
         Weibull_param = FT(4) # unitless

@@ -23,7 +23,7 @@ for FT in (Float32, Float64)
     earth_param_set = create_lsm_parameters(FT)
     α_sfc = (coordinate_point) -> 0.2 # surface albedo, spatially constant
     α_snow = FT(0.8) # snow albedo
-    albedo = BulkAlbedoFunction{FT}(α_snow, α_sfc)
+    albedo = BulkAlbedoFunction(α_snow, α_sfc)
     σS_c = FT(0.2)
     W_f = FT(0.15)
     z_0m = FT(1e-2)

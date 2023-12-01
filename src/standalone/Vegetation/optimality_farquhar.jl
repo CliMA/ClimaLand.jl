@@ -47,6 +47,8 @@ struct OptimalityFarquharParameters{FT <: AbstractFloat}
     c::FT
 end
 
+Base.eltype(::OptimalityFarquharParameters{FT}) where {FT} = FT
+
 """
     function OptimalityFarquharParameters{FT}(
         oi = FT(0.209),
@@ -112,14 +114,25 @@ function OptimalityFarquharParameters{FT}(;
 end
 
 """
-    OptimalityFarquharModel{FT} <: AbstractPhotosynthesisModel{FT}
+    OptimalityFarquharModel{FT,
+                            OPFT <: OptimalityFarquharParameters{FT}
+                            } <: AbstractPhotosynthesisModel{FT}
 
 Optimality model of Smith et al. (2019) for estimating Vcmax, based on the assumption that Aj = Ac.
 Smith et al. (2019). Global photosynthetic capacity is optimized to the environment. Ecology Letters, 22(3), 506–517. https://doi.org/10.1111/ele.13210
 """
-struct OptimalityFarquharModel{FT} <: AbstractPhotosynthesisModel{FT}
+struct OptimalityFarquharModel{FT, OPFT <: OptimalityFarquharParameters{FT}} <:
+       AbstractPhotosynthesisModel{FT}
     "Required parameters for the Optimality based Farquhar model of Smith et al. (2019)"
-    parameters::OptimalityFarquharParameters{FT}
+    parameters::OPFT
+end
+
+function OptimalityFarquharModel{FT}(
+    parameters::OptimalityFarquharParameters{FT},
+) where {FT <: AbstractFloat}
+    return OptimalityFarquharModel{eltype(parameters), typeof(parameters)}(
+        parameters,
+    )
 end
 
 ClimaLSM.auxiliary_vars(model::OptimalityFarquharModel) =

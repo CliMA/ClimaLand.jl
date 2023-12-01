@@ -64,10 +64,18 @@ function BeerLambertParameters{FT}(;
     )
 end
 
-struct BeerLambertModel{FT} <: AbstractRadiationModel{FT}
-    parameters::BeerLambertParameters{FT}
+Base.eltype(::BeerLambertParameters{FT}) where {FT} = FT
+
+struct BeerLambertModel{FT, BLP <: BeerLambertParameters{FT}} <:
+       AbstractRadiationModel{FT}
+    parameters::BLP
 end
 
+function BeerLambertModel{FT}(
+    parameters::BeerLambertParameters{FT},
+) where {FT <: AbstractFloat}
+    return BeerLambertModel{eltype(parameters), typeof(parameters)}(parameters)
+end
 
 """
     TwoStreamParameters{FT <: AbstractFloat}
@@ -140,8 +148,17 @@ function TwoStreamParameters{FT}(;
     )
 end
 
-struct TwoStreamModel{FT} <: AbstractRadiationModel{FT}
-    parameters::TwoStreamParameters{FT}
+Base.eltype(::TwoStreamParameters{FT}) where {FT} = FT
+
+struct TwoStreamModel{FT, TSP <: TwoStreamParameters{FT}} <:
+       AbstractRadiationModel{FT}
+    parameters::TSP
+end
+
+function TwoStreamModel{FT}(
+    parameters::TwoStreamParameters{FT},
+) where {FT <: AbstractFloat}
+    return TwoStreamModel{eltype(parameters), typeof(parameters)}(parameters)
 end
 
 """

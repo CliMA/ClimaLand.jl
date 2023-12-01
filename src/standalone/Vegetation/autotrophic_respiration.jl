@@ -51,9 +51,21 @@ function AutotrophicRespirationParameters{FT}(;
     return AutotrophicRespirationParameters{FT}(ne, ηsl, σl, μr, μs, f1, f2)
 end
 
-struct AutotrophicRespirationModel{FT} <:
-       AbstractAutotrophicRespirationModel{FT} # we could give it a more specific name...
-    parameters::AutotrophicRespirationParameters{FT}
+Base.eltype(::AutotrophicRespirationParameters{FT}) where {FT} = FT
+
+struct AutotrophicRespirationModel{
+    FT,
+    ARP <: AutotrophicRespirationParameters{FT},
+} <: AbstractAutotrophicRespirationModel{FT} # we could give it a more specific name...
+    parameters::ARP
+end
+
+function AutotrophicRespirationModel{FT}(
+    parameters::AutotrophicRespirationParameters{FT},
+) where {FT <: AbstractFloat}
+    return AutotrophicRespirationModel{eltype(parameters), typeof(parameters)}(
+        parameters,
+    )
 end
 
 ClimaLSM.name(model::AbstractAutotrophicRespirationModel) =

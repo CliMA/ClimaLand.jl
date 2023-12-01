@@ -66,7 +66,7 @@ abstract type AbstractBucketModel{FT} <: AbstractExpModel{FT} end
 abstract type AbstractLandAlbedoModel{FT <: AbstractFloat} end
 
 """
-    BulkAlbedoFunction{FT} <: AbstractLandAlbedoModel
+    BulkAlbedoFunction{FT, F <: FUnction} <: AbstractLandAlbedoModel
 
 An albedo model where the albedo of different surface types
 is specified. Snow albedo is treated as constant across snow
@@ -75,13 +75,20 @@ is specified as a function
 of latitude and longitude, but is also treated as constant across
 wavelength; surface is this context refers to soil and vegetation.
 """
-struct BulkAlbedoFunction{FT} <: AbstractLandAlbedoModel{FT}
+struct BulkAlbedoFunction{FT, F <: Function} <: AbstractLandAlbedoModel{FT}
     α_snow::FT
-    α_sfc::Function
+    α_sfc::F
+end
+
+function BulkAlbedoFunction{FT}(
+    α_snow::FT,
+    α_sfc::Function,
+) where {FT <: AbstractFloat}
+    BulkAlbedoFunction(α_snow, α_sfc)
 end
 
 """
-    BulkAlbedoStatic{FT} <: AbstractLandAlbedoModel
+    BulkAlbedoStatic{FT, PDS <: PrescribedDataStatic} <: AbstractLandAlbedoModel
 
 An albedo model where the albedo of different surface types
 is specified. Snow albedo is treated as constant across snow
@@ -93,9 +100,17 @@ to soil and vegetation. This albedo type is static in time.
 Note that this option should only be used with global simulations,
 i.e. with a `ClimaLSM.LSMSphericalShellDomain.`
 """
-struct BulkAlbedoStatic{FT} <: AbstractLandAlbedoModel{FT}
+struct BulkAlbedoStatic{FT, PDS <: PrescribedDataStatic} <:
+       AbstractLandAlbedoModel{FT}
     α_snow::FT
-    α_sfc::PrescribedDataStatic
+    α_sfc::PDS
+end
+
+function BulkAlbedoStatic{FT}(
+    α_snow::FT,
+    α_sfc::PrescribedDataStatic,
+) where {FT}
+    return BulkAlbedoStatic{FT, typeof(α_sfc)}(α_snow, α_sfc)
 end
 
 """
@@ -124,11 +139,12 @@ function BulkAlbedoStatic{FT}(
     get_infile::Function = Bucket.bareground_albedo_dataset_path,
 ) where {FT}
     α_sfc = PrescribedDataStatic(get_infile, regrid_dirpath, varname, comms_ctx)
-    return BulkAlbedoStatic{FT}(α_snow, α_sfc)
+    return BulkAlbedoStatic{FT, typeof(α_sfc)}(α_snow, α_sfc)
 end
 
 """
-    BulkAlbedoTemporal{FT} <: AbstractLandAlbedoModel
+    BulkAlbedoTemporal{FT, FR <: FileReader.PrescribedDataTemporal}
+                       <: AbstractLandAlbedoModel
 
 An albedo model where the albedo of different surface types
 is specified. Albedo is specified via a NetCDF file which is a function
@@ -138,8 +154,9 @@ This albedo type changes over time according to the input file.
 Note that this option should only be used with global simulations,
 i.e. with a `ClimaLSM.LSMSphericalShellDomain.`
 """
-struct BulkAlbedoTemporal{FT} <: AbstractLandAlbedoModel{FT}
-    albedo_info::FileReader.PrescribedDataTemporal
+struct BulkAlbedoTemporal{FT, FR <: FileReader.PrescribedDataTemporal} <:
+       AbstractLandAlbedoModel{FT}
+    albedo_info::FR
 end
 
 """
@@ -182,7 +199,7 @@ function BulkAlbedoTemporal{FT}(
         t_start,
         space,
     )
-    return BulkAlbedoTemporal{FT}(data_info)
+    return BulkAlbedoTemporal{FT, typeof(data_info)}(data_info)
 end
 
 

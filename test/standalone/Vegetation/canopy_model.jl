@@ -112,8 +112,9 @@ for FT in (Float32, Float64)
         # Plant Hydraulics
         RAI = FT(1)
         SAI = FT(0)
+        lai_fun = t -> LAI
         ai_parameterization =
-            PlantHydraulics.PrescribedSiteAreaIndex{FT}(t -> LAI, SAI, RAI)
+            PlantHydraulics.PrescribedSiteAreaIndex{FT}(lai_fun, SAI, RAI)
         K_sat_plant = FT(1.8e-8) # m/s
         ψ63 = FT(-4 / 0.0098) # / MPa to m, Holtzman's original parameter value
         Weibull_param = FT(4) # unitless, Holtzman's original c param value
@@ -337,11 +338,9 @@ for FT in (Float32, Float64)
         LAI = FT(2)
         RAI = FT(1)
         SAI = FT(1)
-        ai_parameterization = PlantHydraulics.PrescribedSiteAreaIndex{FT}(
-            t -> LAI * sin(t * 2π / 365),
-            SAI,
-            RAI,
-        )
+        lai_fun = t -> LAI * sin(t * 2π / 365)
+        ai_parameterization =
+            PlantHydraulics.PrescribedSiteAreaIndex{FT}(lai_fun, SAI, RAI)
         K_sat_plant = FT(1.8e-8) # m/s
         ψ63 = FT(-4 / 0.0098) # / MPa to m, Holtzman's original parameter value
         Weibull_param = FT(4) # unitless, Holtzman's original c param value
@@ -553,8 +552,9 @@ for FT in (Float32, Float64)
         # Plant Hydraulics
         RAI = FT(1)
         SAI = FT(0)
+        lai_fun = t -> LAI
         ai_parameterization =
-            PlantHydraulics.PrescribedSiteAreaIndex{FT}(t -> LAI, SAI, RAI)
+            PlantHydraulics.PrescribedSiteAreaIndex{FT}(lai_fun, SAI, RAI)
         K_sat_plant = FT(1.8e-8) # m/s
         ψ63 = FT(-4 / 0.0098) # / MPa to m, Holtzman's original parameter value
         Weibull_param = FT(4) # unitless, Holtzman's original c param value
