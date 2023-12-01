@@ -59,8 +59,8 @@ for FT in (Float32, Float64)
         )
 
         soil_drivers = SoilDrivers(
-            PrescribedMet{FT}(T_soil, θ_l),
-            PrescribedSOC{FT}(Csom),
+            PrescribedMet{FT, typeof(T_soil), typeof(θ_l)}(T_soil, θ_l),
+            PrescribedSOC{FT, typeof(Csom)}(Csom),
             atmos,
         )
 
@@ -130,8 +130,8 @@ for FT in (Float32, Float64)
         )
 
         soil_drivers = SoilDrivers(
-            PrescribedMet{FT}(T_soil, θ_l),
-            PrescribedSOC{FT}(Csom),
+            PrescribedMet{FT, typeof(T_soil), typeof(θ_l)}(T_soil, θ_l),
+            PrescribedSOC{FT, typeof(Csom)}(Csom),
             atmos, # need to create some functions
         )
 

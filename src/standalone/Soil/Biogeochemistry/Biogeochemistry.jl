@@ -308,13 +308,18 @@ or Prognostic (for running with a prognostic model for soil temp and moisture).
 
 $(DocStringExtensions.FIELDS)
 """
-struct SoilDrivers{FT}
+struct SoilDrivers{
+    FT,
+    MET <: AbstractSoilDriver,
+    SOC <: AbstractSoilDriver,
+    ATM <: PrescribedAtmosphere{FT},
+}
     "Soil temperature and moisture drivers - Prescribed or Prognostic"
-    met::AbstractSoilDriver
+    met::MET
     "Soil SOM driver - Prescribed only"
-    soc::AbstractSoilDriver
+    soc::SOC
     "Prescribed atmospheric variables"
-    atmos::PrescribedAtmosphere{FT}
+    atmos::ATM
 end
 
 """
@@ -328,11 +333,11 @@ without a prognostic soil model.
 
 $(DocStringExtensions.FIELDS)
 """
-struct PrescribedMet{FT} <: AbstractSoilDriver
+struct PrescribedMet{FT, F1 <: Function, F2 <: Function} <: AbstractSoilDriver
     "The temperature of the soil, of the form f(z::FT,t) where FT <: AbstractFloat"
-    temperature::Function
+    temperature::F1
     "Soil moisture, of the form f(z::FT,t) FT <: AbstractFloat"
-    volumetric_liquid_fraction::Function
+    volumetric_liquid_fraction::F2
 end
 
 """
@@ -345,9 +350,9 @@ organic carbon model.
 
 $(DocStringExtensions.FIELDS)
 """
-struct PrescribedSOC{FT} <: AbstractSoilDriver
+struct PrescribedSOC{FT, F <: Function} <: AbstractSoilDriver
     "Carbon content of soil organic matter, of the form f(z::FT, t) where FT <: AbstractFloat"
-    soil_organic_carbon::Function
+    soil_organic_carbon::F
 end
 
 """
@@ -429,8 +434,8 @@ A container holding the CO2 flux boundary condition,
 which is a function `f(p,t)`, where `p` is the auxiliary state
 vector.
 """
-struct SoilCO2FluxBC <: AbstractSoilCO2BC
-    bc::Function
+struct SoilCO2FluxBC{F <: Function} <: AbstractSoilCO2BC
+    bc::F
 end
 
 """
@@ -466,8 +471,8 @@ A container holding the CO2 state boundary condition (kg CO2 m−3),
 which is a function `f(p,t)`, where `p` is the auxiliary state
 vector.
 """
-struct SoilCO2StateBC <: AbstractSoilCO2BC
-    bc::Function
+struct SoilCO2StateBC{F <: Function} <: AbstractSoilCO2BC
+    bc::F
 end
 
 """

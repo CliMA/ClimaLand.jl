@@ -36,9 +36,19 @@ function MedlynConductanceParameters{FT}(;
     return MedlynConductanceParameters{FT}(Drel, g0, g1)
 end
 
+Base.eltype(::MedlynConductanceParameters{FT}) where {FT} = FT
 
-struct MedlynConductanceModel{FT} <: AbstractStomatalConductanceModel{FT}
-    parameters::MedlynConductanceParameters{FT}
+struct MedlynConductanceModel{FT, MCP <: MedlynConductanceParameters{FT}} <:
+       AbstractStomatalConductanceModel{FT}
+    parameters::MCP
+end
+
+function MedlynConductanceModel{FT}(
+    parameters::MedlynConductanceParameters{FT},
+) where {FT <: AbstractFloat}
+    return MedlynConductanceModel{eltype(parameters), typeof(parameters)}(
+        parameters,
+    )
 end
 
 ClimaLSM.name(model::AbstractStomatalConductanceModel) = :conductance

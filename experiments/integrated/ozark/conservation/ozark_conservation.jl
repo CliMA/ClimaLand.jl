@@ -109,7 +109,7 @@ for float_type in (Float32, Float64)
 
     soilco2_drivers = Soil.Biogeochemistry.SoilDrivers(
         Soil.Biogeochemistry.PrognosticMet{FT}(),
-        Soil.Biogeochemistry.PrescribedSOC{FT}(Csom),
+        Soil.Biogeochemistry.PrescribedSOC{FT, typeof(Csom)}(Csom),
         atmos,
     )
 
@@ -192,7 +192,8 @@ for float_type in (Float32, Float64)
         )
     )
     # Set up plant hydraulics
-    ai_parameterization = PrescribedSiteAreaIndex{FT}(LAIfunction, SAI, RAI)
+    ai_parameterization =
+        PrescribedSiteAreaIndex{FT, typeof(LAIfunction)}(LAIfunction, SAI, RAI)
 
     function root_distribution(z::T; rooting_depth = rooting_depth) where {T}
         return T(1.0 / rooting_depth) * exp(z / T(rooting_depth)) # 1/m

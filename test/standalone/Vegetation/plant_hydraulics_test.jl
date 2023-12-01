@@ -117,10 +117,14 @@ for FT in (Float32, Float64)
         photosynthesis_params = FarquharParameters{FT}(C3();)
         stomatal_g_params = MedlynConductanceParameters{FT}()
 
-        AR_model = AutotrophicRespirationModel{FT}(AR_params)
-        stomatal_model = MedlynConductanceModel{FT}(stomatal_g_params)
-        photosynthesis_model = FarquharModel{FT}(photosynthesis_params)
-        rt_model = BeerLambertModel{FT}(RTparams)
+        AR_model = AutotrophicRespirationModel{FT, typeof(AR_params)}(AR_params)
+        stomatal_model = MedlynConductanceModel{FT, typeof(stomatal_g_params)}(
+            stomatal_g_params,
+        )
+        photosynthesis_model = FarquharModel{FT, typeof(photosynthesis_params)}(
+            photosynthesis_params,
+        )
+        rt_model = BeerLambertModel{FT, typeof(RTparams)}(RTparams)
 
         earth_param_set = create_lsm_parameters(FT)
         LAI = (t) -> 1.0 # m2 [leaf] m-2 [ground]
@@ -209,7 +213,11 @@ for FT in (Float32, Float64)
         SAI = FT(1) # m2/m2
         RAI = FT(1) # m2/m2
         ai_parameterization =
-            PlantHydraulics.PrescribedSiteAreaIndex{FT}(LAI, SAI, RAI)
+            PlantHydraulics.PrescribedSiteAreaIndex{FT, typeof(LAI)}(
+                LAI,
+                SAI,
+                RAI,
+            )
         K_sat_plant = 1.8e-8 # m/s.
         ψ63 = FT(-4 / 0.0098) # / MPa to m
         Weibull_param = FT(4) # unitless
@@ -249,8 +257,9 @@ for FT in (Float32, Float64)
         end
 
         ψ_soil0 = FT(0.0)
-        transpiration =
-            PrescribedTranspiration{FT}((t) -> leaf_transpiration(t))
+        transpiration = PrescribedTranspiration{FT, typeof(leaf_transpiration)}(
+            leaf_transpiration,
+        )
 
         soil_driver = PrescribedSoil(FT)
 
@@ -265,7 +274,10 @@ for FT in (Float32, Float64)
         autotrophic_parameters =
             ClimaLSM.Canopy.AutotrophicRespirationParameters{FT}()
         autotrophic_respiration_model =
-            ClimaLSM.Canopy.AutotrophicRespirationModel{FT}(
+            ClimaLSM.Canopy.AutotrophicRespirationModel{
+                FT,
+                typeof(autotrophic_parameters),
+            }(
                 autotrophic_parameters,
             )
         for domain in domains
@@ -411,10 +423,14 @@ for FT in (Float32, Float64)
         photosynthesis_params = FarquharParameters{FT}(C3();)
         stomatal_g_params = MedlynConductanceParameters{FT}()
 
-        AR_model = AutotrophicRespirationModel{FT}(AR_params)
-        stomatal_model = MedlynConductanceModel{FT}(stomatal_g_params)
-        photosynthesis_model = FarquharModel{FT}(photosynthesis_params)
-        rt_model = BeerLambertModel{FT}(RTparams)
+        AR_model = AutotrophicRespirationModel{FT, typeof(AR_params)}(AR_params)
+        stomatal_model = MedlynConductanceModel{FT, typeof(stomatal_g_params)}(
+            stomatal_g_params,
+        )
+        photosynthesis_model = FarquharModel{FT, typeof(photosynthesis_params)}(
+            photosynthesis_params,
+        )
+        rt_model = BeerLambertModel{FT, typeof(RTparams)}(RTparams)
 
         earth_param_set = create_lsm_parameters(FT)
         LAI = FT(0.0) # m2 [leaf] m-2 [ground]
@@ -502,8 +518,13 @@ for FT in (Float32, Float64)
         n_leaf = Int64(1) # number of leaf elements
         SAI = FT(0) # m2/m2
         RAI = FT(0) # m2/m2
+        lai_fun = t -> 0
         ai_parameterization =
-            PlantHydraulics.PrescribedSiteAreaIndex{FT}(t -> 0, SAI, RAI)
+            PlantHydraulics.PrescribedSiteAreaIndex{FT, typeof(lai_fun)}(
+                lai_fun,
+                SAI,
+                RAI,
+            )
         K_sat_plant = 0 # m/s.
         ψ63 = FT(-4 / 0.0098) # / MPa to m
         Weibull_param = FT(4) # unitless

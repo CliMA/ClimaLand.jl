@@ -19,8 +19,8 @@ abstract type AbstractSoilBC <: ClimaLSM.AbstractBC end
 A simple concrete type of boundary condition, which enforces a
 state boundary condition ϑ_l = f(p,t) at either the top or bottom of the domain.
 """
-struct MoistureStateBC <: AbstractSoilBC
-    bc::Function
+struct MoistureStateBC{F <: Function} <: AbstractSoilBC
+    bc::F
 end
 
 """
@@ -29,8 +29,8 @@ end
 A simple concrete type of boundary condition, which enforces a
 state boundary condition T = f(p,t) at either the top or bottom of the domain.
 """
-struct TemperatureStateBC <: AbstractSoilBC
-    bc::Function
+struct TemperatureStateBC{F <: Function} <: AbstractSoilBC
+    bc::F
 end
 
 """
@@ -39,8 +39,8 @@ end
 A simple concrete type of boundary condition, which enforces a
 normal flux boundary condition f(p,t) at either the top or bottom of the domain.
 """
-struct FluxBC <: AbstractSoilBC
-    bc::Function
+struct FluxBC{F <: Function} <: AbstractSoilBC
+    bc::F
 end
 
 """
@@ -53,7 +53,7 @@ struct FreeDrainage <: AbstractSoilBC end
 
 
 """
-   RichardsAtmosDrivenFluxBC{R <: AbstractRunoffModel} <: AbstractSoilBC
+   RichardsAtmosDrivenFluxBC{R <: AbstractRunoffModel, F <: Function} <: AbstractSoilBC
 
 A concrete type of boundary condition intended only for use with the RichardsModel,
 which uses a prescribed precipitation rate (m/s) to compute the infiltration
@@ -68,15 +68,19 @@ If you wish to simulate preciptation and runoff in the full `EnergyHydrology` mo
 you must use the `AtmosDrivenFluxBC` type.
 $(DocStringExtensions.FIELDS)
 """
-struct RichardsAtmosDrivenFluxBC{R <: AbstractRunoffModel} <: AbstractSoilBC
+struct RichardsAtmosDrivenFluxBC{F <: Function, R <: AbstractRunoffModel} <:
+       AbstractSoilBC
     "The prescribed liquid water precipitation rate f(t) (m/s); Negative by convention."
-    precip::Function
+    precip::F
     "The runoff model. The default is no runoff."
     runoff::R
 end
 
 function RichardsAtmosDrivenFluxBC(precip::Function; runoff = NoRunoff())
-    return RichardsAtmosDrivenFluxBC{typeof(runoff)}(precip, runoff)
+    return RichardsAtmosDrivenFluxBC{typeof(precip), typeof(runoff)}(
+        precip,
+        runoff,
+    )
 end
 
 

@@ -46,7 +46,7 @@ if !Sys.iswindows()
 
         p = (; :bucket => (; :α_sfc => ClimaCore.Fields.zeros(boundary_space)))
         set_initial_parameter_field!(
-            BulkAlbedoStatic{FT}(FT(0.08), albedo),
+            BulkAlbedoStatic{FT, typeof(albedo)}(FT(0.08), albedo),
             p,
             ClimaCore.Fields.coordinate_field(boundary_space),
         )

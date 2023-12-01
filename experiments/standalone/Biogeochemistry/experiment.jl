@@ -124,7 +124,7 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
 
     soil_drivers = Soil.Biogeochemistry.SoilDrivers(
         Soil.Biogeochemistry.PrognosticMet{FT}(),
-        Soil.Biogeochemistry.PrescribedSOC{FT}(Csom),
+        Soil.Biogeochemistry.PrescribedSOC{FT, typeof(Csom)}(Csom),
         atmos,
     )
 

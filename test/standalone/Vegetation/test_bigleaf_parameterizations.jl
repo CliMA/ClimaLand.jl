@@ -74,7 +74,7 @@ for FT in (Float32, Float64)
         # Test with defaults
         ARparams = AutotrophicRespirationParameters{FT}()
         RTparams = BeerLambertParameters{FT}()
-        RT = BeerLambertModel{FT}(RTparams)
+        RT = BeerLambertModel{FT, typeof(RTparams)}(RTparams)
         photosynthesisparams = FarquharParameters{FT}(C3();)
         stomatal_g_params = MedlynConductanceParameters{FT}()
 

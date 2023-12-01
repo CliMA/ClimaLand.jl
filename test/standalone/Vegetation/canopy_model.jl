@@ -24,10 +24,14 @@ for FT in (Float32, Float64)
         photosynthesis_params = FarquharParameters{FT}(C3();)
         stomatal_g_params = MedlynConductanceParameters{FT}()
 
-        AR_model = AutotrophicRespirationModel{FT}(AR_params)
-        stomatal_model = MedlynConductanceModel{FT}(stomatal_g_params)
-        photosynthesis_model = FarquharModel{FT}(photosynthesis_params)
-        rt_model = BeerLambertModel{FT}(RTparams)
+        AR_model = AutotrophicRespirationModel{FT, typeof(AR_params)}(AR_params)
+        stomatal_model = MedlynConductanceModel{FT, typeof(stomatal_g_params)}(
+            stomatal_g_params,
+        )
+        photosynthesis_model = FarquharModel{FT, typeof(photosynthesis_params)}(
+            photosynthesis_params,
+        )
+        rt_model = BeerLambertModel{FT, typeof(RTparams)}(RTparams)
 
         earth_param_set = create_lsm_parameters(FT)
         LAI = FT(8.0) # m2 [leaf] m-2 [ground]
@@ -112,8 +116,13 @@ for FT in (Float32, Float64)
         # Plant Hydraulics
         RAI = FT(1)
         SAI = FT(0)
+        lai_fun = t -> LAI
         ai_parameterization =
-            PlantHydraulics.PrescribedSiteAreaIndex{FT}(t -> LAI, SAI, RAI)
+            PlantHydraulics.PrescribedSiteAreaIndex{FT, typeof(lai_fun)}(
+                lai_fun,
+                SAI,
+                RAI,
+            )
         K_sat_plant = FT(1.8e-8) # m/s
         ψ63 = FT(-4 / 0.0098) # / MPa to m, Holtzman's original parameter value
         Weibull_param = FT(4) # unitless, Holtzman's original c param value
@@ -337,11 +346,13 @@ for FT in (Float32, Float64)
         LAI = FT(2)
         RAI = FT(1)
         SAI = FT(1)
-        ai_parameterization = PlantHydraulics.PrescribedSiteAreaIndex{FT}(
-            t -> LAI * sin(t * 2π / 365),
-            SAI,
-            RAI,
-        )
+        lai_fun = t -> LAI * sin(t * 2π / 365)
+        ai_parameterization =
+            PlantHydraulics.PrescribedSiteAreaIndex{FT, typeof(lai_fun)}(
+                lai_fun,
+                SAI,
+                RAI,
+            )
         K_sat_plant = FT(1.8e-8) # m/s
         ψ63 = FT(-4 / 0.0098) # / MPa to m, Holtzman's original parameter value
         Weibull_param = FT(4) # unitless, Holtzman's original c param value
@@ -466,10 +477,17 @@ for FT in (Float32, Float64)
         photosynthesis_params = FarquharParameters{FT}(C3();)
         stomatal_g_params = MedlynConductanceParameters{FT}()
 
-        stomatal_model = MedlynConductanceModel{FT}(stomatal_g_params)
-        photosynthesis_model = FarquharModel{FT}(photosynthesis_params)
-        rt_model = BeerLambertModel{FT}(RTparams)
-        energy_model = BigLeafEnergyModel{FT}(BigLeafEnergyParameters{FT}())
+        stomatal_model = MedlynConductanceModel{FT, typeof(stomatal_g_params)}(
+            stomatal_g_params,
+        )
+        photosynthesis_model = FarquharModel{FT, typeof(photosynthesis_params)}(
+            photosynthesis_params,
+        )
+        rt_model = BeerLambertModel{FT, typeof(RTparams)}(RTparams)
+        energy_model =
+            BigLeafEnergyModel{FT, typeof(BigLeafEnergyParameters{FT}())}(
+                BigLeafEnergyParameters{FT}(),
+            )
         earth_param_set = create_lsm_parameters(FT)
         LAI = FT(8.0) # m2 [leaf] m-2 [ground]
         z_0m = FT(2.0) # m, Roughness length for momentum - value from tall forest ChatGPT
@@ -553,8 +571,13 @@ for FT in (Float32, Float64)
         # Plant Hydraulics
         RAI = FT(1)
         SAI = FT(0)
+        lai_fun = t -> LAI
         ai_parameterization =
-            PlantHydraulics.PrescribedSiteAreaIndex{FT}(t -> LAI, SAI, RAI)
+            PlantHydraulics.PrescribedSiteAreaIndex{FT, typeof(lai_fun)}(
+                lai_fun,
+                SAI,
+                RAI,
+            )
         K_sat_plant = FT(1.8e-8) # m/s
         ψ63 = FT(-4 / 0.0098) # / MPa to m, Holtzman's original parameter value
         Weibull_param = FT(4) # unitless, Holtzman's original c param value
@@ -621,7 +644,10 @@ for FT in (Float32, Float64)
         autotrophic_parameters =
             ClimaLSM.Canopy.AutotrophicRespirationParameters{FT}()
         autotrophic_respiration_model =
-            ClimaLSM.Canopy.AutotrophicRespirationModel{FT}(
+            ClimaLSM.Canopy.AutotrophicRespirationModel{
+                FT,
+                typeof(autotrophic_parameters),
+            }(
                 autotrophic_parameters,
             )
 

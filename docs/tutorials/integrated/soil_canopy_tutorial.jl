@@ -212,7 +212,7 @@ soilco2_boundary_conditions =
 
 soilco2_drivers = Soil.Biogeochemistry.SoilDrivers(
     Soil.Biogeochemistry.PrognosticMet{FT}(),
-    Soil.Biogeochemistry.PrescribedSOC{FT}(Csom),
+    Soil.Biogeochemistry.PrescribedSOC{FT, typeof(Csom)}(Csom),
     atmos,
 );
 
@@ -309,7 +309,8 @@ maxLAI = FT(4.2)
 K_sat_plant = FT(1.8e-8)
 RAI = (SAI + maxLAI) * f_root_to_shoot;
 # Note: LAIfunction was determined from data in the script we included above.
-ai_parameterization = PrescribedSiteAreaIndex{FT}(LAIfunction, SAI, RAI)
+ai_parameterization =
+    PrescribedSiteAreaIndex{FT, typeof(LAIfunction)}(LAIfunction, SAI, RAI)
 function root_distribution(z::T; rooting_depth = FT(1.0)) where {T}
     return T(1.0 / rooting_depth) * exp(z / T(rooting_depth)) # 1/m
 end

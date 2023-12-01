@@ -140,7 +140,7 @@ rt_params = TwoStreamParameters{FT}(;
     n_layers = UInt64(20),
 )
 
-rt_model = TwoStreamModel{FT}(rt_params);
+rt_model = TwoStreamModel{FT, typeof(rt_params)}(rt_params);
 
 # Arguments for conductance model:
 
@@ -150,7 +150,7 @@ cond_params = MedlynConductanceParameters{FT}(;
     g0 = FT(1e-4),
 )
 
-stomatal_model = MedlynConductanceModel{FT}(cond_params);
+stomatal_model = MedlynConductanceModel{FT, typeof(cond_params)}(cond_params);
 
 # Arguments for photosynthesis model:
 
@@ -175,11 +175,11 @@ photo_params = FarquharParameters{FT}(
     ΔHRd = FT(46390),
 )
 
-photosynthesis_model = FarquharModel{FT}(photo_params);
+photosynthesis_model = FarquharModel{FT, typeof(photo_params)}(photo_params);
 
 # Arguments for autotrophic respiration model:
 AR_params = AutotrophicRespirationParameters{FT}()
-AR_model = AutotrophicRespirationModel{FT}(AR_params);
+AR_model = AutotrophicRespirationModel{FT, typeof(AR_params)}(AR_params);
 
 # Arguments for plant hydraulics model are more complicated.
 
@@ -191,7 +191,8 @@ LAIfunction = (t) -> LAI
 SAI = FT(0.00242)
 f_root_to_shoot = FT(3.5)
 RAI = (SAI + LAI) * f_root_to_shoot
-ai_parameterization = PrescribedSiteAreaIndex{FT}(LAIfunction, SAI, RAI)
+ai_parameterization =
+    PrescribedSiteAreaIndex{FT, typeof(LAIfunction)}(LAIfunction, SAI, RAI)
 rooting_depth = FT(1.0);
 
 # Define the root distribution function p(z):
