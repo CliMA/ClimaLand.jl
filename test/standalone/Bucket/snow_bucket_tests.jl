@@ -3,6 +3,7 @@ using Test
 using Statistics
 
 using Dates
+import ClimaComms
 using ClimaCore
 using ClimaLSM.Bucket:
     BucketModel,
@@ -329,7 +330,8 @@ for FT in (Float32, Float64)
         set_initial_aux_state! = make_set_initial_aux_state(model)
         set_initial_aux_state!(p, Y, t0)
         random = zeros(bucket_domains[i].space.surface)
-        parent(random) .= rand(FT, size(parent(random)))
+        ArrayType = ClimaComms.array_type(Y)
+        parent(random) .= ArrayType(rand(FT, size(parent(random))))
         p.bucket.evaporation .= random .* 1e-7
         compute_exp_tendency!(dY, Y, p, t0)
         _LH_f0 = LSMP.LH_f0(model.parameters.earth_param_set)
