@@ -2,7 +2,7 @@ import SciMLBase
 import ClimaTimeSteppers as CTS
 using ClimaCore
 import CLIMAParameters as CP
-using Plots
+# using Plots
 using Statistics
 using Dates
 using Insolation
@@ -239,7 +239,7 @@ sol = SciMLBase.solve(
     saveat = saveat,
 )
 
-# Plotting
+#= Plotting
 # Makie plots test
 using CairoMakie
 fig = CairoMakie.Figure()
@@ -769,3 +769,5 @@ if length(ARGS) ≥ 1 && ARGS[1] == "save"
 end
 
 rm(joinpath(savedir, "Artifacts.toml"))
+=#
+
