@@ -131,37 +131,41 @@ struct FarquharModel{FT} <: AbstractPhotosynthesisModel{FT}
 end
 
 ClimaLSM.name(model::AbstractPhotosynthesisModel) = :photosynthesis
-ClimaLSM.auxiliary_vars(model::FarquharModel) = (:An, :GPP, :Rd)
-ClimaLSM.auxiliary_types(model::FarquharModel{FT}) where {FT} = (FT, FT, FT)
+ClimaLSM.auxiliary_vars(model::FarquharModel) = (:An, :GPP, :Rd, :Vcmax25)
+ClimaLSM.auxiliary_types(model::FarquharModel{FT}) where {FT} = (FT, FT, FT, FT)
 ClimaLSM.auxiliary_domain_names(::FarquharModel) =
-    (:surface, :surface, :surface)
+    (:surface, :surface, :surface, :surface)
 
 """
-    compute_photosynthesis(
+    update_photosynthesis!(Rd, An, Vcmax25,
         model::FarquharModel,
         T,
-        medlyn_factor,
         APAR,
-        c_co2,
         β,
+        medlyn_factor,
+        c_co2,
         R,
     )
 
-Computes the net photosynthesis rate for the Farquhar model,
-given the canopy leaf temperature `T`, Medlyn factor, `APAR` in
+Computes the net photosynthesis rate `An` for the Farquhar model, along with the
+dark respiration `Rd`, and updates them in place.
+
+To do so, we require the canopy leaf temperature `T`, Medlyn factor, `APAR` in
 photons per m^2 per second, CO2 concentration in the atmosphere,
-moisture stress factor `beta` (unitless), and the universal gas constant
+moisture stress factor `β` (unitless), and the universal gas constant
 `R`.
 """
-function compute_photosynthesis(
+function update_photosynthesis!(
+    Rd,
+    An,
+    Vcmax25field,
     model::FarquharModel,
     T,
-    medlyn_factor,
     APAR,
-    c_co2,
     β,
+    medlyn_factor,
+    c_co2,
     R,
-    Rd,
 )
     (;
         Vcmax25,
@@ -181,14 +185,19 @@ function compute_photosynthesis(
         ΔHkc,
         ΔHko,
     ) = model.parameters
-    Jmax = max_electron_transport(Vcmax25, ΔHJmax, T, To, R)
-    J = electron_transport(APAR, Jmax, θj, ϕ)
-    Vcmax = compute_Vcmax(Vcmax25, T, To, R, ΔHVcmax)
-    Γstar = co2_compensation(Γstar25, ΔHΓstar, T, To, R)
-    ci = intercellular_co2(c_co2, Γstar, medlyn_factor)
-    Aj = light_assimilation(mechanism, J, ci, Γstar)
-    Kc = MM_Kc(Kc25, ΔHkc, T, To, R)
-    Ko = MM_Ko(Ko25, ΔHko, T, To, R)
-    Ac = rubisco_assimilation(mechanism, Vcmax, ci, Γstar, Kc, Ko, oi)
-    return net_photosynthesis(Ac, Aj, Rd, β)
+    Jmax = max_electron_transport.(Vcmax25, ΔHJmax, T, To, R)
+    J = electron_transport.(APAR, Jmax, θj, ϕ)
+    Vcmax = compute_Vcmax.(Vcmax25, T, To, R, ΔHVcmax)
+    Γstar = co2_compensation.(Γstar25, ΔHΓstar, T, To, R)
+    ci = intercellular_co2.(c_co2, Γstar, medlyn_factor)
+    Aj = light_assimilation.(mechanism, J, ci, Γstar)
+    Kc = MM_Kc.(Kc25, ΔHkc, T, To, R)
+    Ko = MM_Ko.(Ko25, ΔHko, T, To, R)
+    Ac = rubisco_assimilation.(mechanism, Vcmax, ci, Γstar, Kc, Ko, oi)
+    @. Rd = dark_respiration(Vcmax25, β, f, ΔHRd, T, To, R)
+    @. An = net_photosynthesis(Ac, Aj, Rd, β)
+    Vcmax25field .= Vcmax25
 end
+Base.broadcastable(m::AbstractPhotosynthesisMechanism) = tuple(m) # this is so that @. does not broadcast on Ref(canopy.autotrophic_respiration)
+
+include("./optimality_farquhar.jl")

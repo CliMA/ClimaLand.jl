@@ -373,7 +373,7 @@ function ClimaLSM.make_update_aux(
         FT,
         <:AutotrophicRespirationModel,
         <:Union{BeerLambertModel, TwoStreamModel},
-        <:FarquharModel,
+        <:Union{FarquharModel, OptimalityFarquharModel},
         <:MedlynConductanceModel,
         <:PlantHydraulicsModel,
         <:AbstractCanopyEnergyModel,
@@ -407,24 +407,22 @@ function ClimaLSM.make_update_aux(
         fa = p.canopy.hydraulics.fa
 
         # unpack parameters
-        area_index = p.canopy.hydraulics.area_index
-        LAI = area_index.leaf
-        RAI = area_index.root
-        (; Vcmax25, ΔHVcmax, f, ΔHRd, To, sc, pc) =
-            canopy.photosynthesis.parameters
         earth_param_set = canopy.parameters.earth_param_set
         c = FT(LSMP.light_speed(earth_param_set))
         planck_h = FT(LSMP.planck_constant(earth_param_set))
         N_a = FT(LSMP.avogadro_constant(earth_param_set))
         grav = FT(LSMP.grav(earth_param_set))
         ρ_l = FT(LSMP.ρ_cloud_liq(earth_param_set))
-        (; ld, Ω, α_PAR_leaf, λ_γ_PAR, λ_γ_NIR) =
-            canopy.radiative_transfer.parameters
+        R = FT(LSMP.gas_constant(earth_param_set))
+        thermo_params = earth_param_set.thermo_params
+        (; ld, Ω, λ_γ_PAR, λ_γ_NIR) = canopy.radiative_transfer.parameters
         energy_per_photon_PAR = planck_h * c / λ_γ_PAR
         energy_per_photon_NIR = planck_h * c / λ_γ_NIR
-        R = FT(LSMP.gas_constant(earth_param_set))
-        thermo_params = canopy.parameters.earth_param_set.thermo_params
         (; g1, g0, Drel) = canopy.conductance.parameters
+        area_index = p.canopy.hydraulics.area_index
+        LAI = area_index.leaf
+        RAI = area_index.root
+        (; sc, pc) = canopy.photosynthesis.parameters
 
         # Current atmospheric conditions
         ref_time = canopy.atmos.ref_time
@@ -523,9 +521,6 @@ function ClimaLSM.make_update_aux(
                     getproperty(area_index, hydraulics.compartment_labels[ip1])
                 ) / 2
         end
-        i_end = n_stem + n_leaf
-        @. β = moisture_stress(ψ.:($$i_end) * ρ_l * grav, sc, pc)
-
         # We update the fa[n_stem+n_leaf] element once we have computed transpiration, below
         # update photosynthesis and conductance terms
         # This should still use T_air, P_air, q_air
@@ -533,18 +528,25 @@ function ClimaLSM.make_update_aux(
             medlyn_term.(g1, T_air, P_air, q_air, Ref(thermo_params))
         # Anywhere we use an Arrhenius factor, use T_canopy instead T_air
         T_canopy = canopy_temperature(canopy.energy, canopy, Y, p, t)
-        @. Rd = dark_respiration(Vcmax25, β, f, ΔHRd, T_canopy, To, R)
-        An .=
-            compute_photosynthesis.(
-                Ref(canopy.photosynthesis),
-                T_canopy,
-                medlyn_factor,
-                APAR,
-                c_co2_air,
-                β,
-                R,
-                Rd,
-            )
+
+        # update moisture stress
+        i_end = n_stem + n_leaf
+        @. β = moisture_stress(ψ.:($$i_end) * ρ_l * grav, sc, pc)
+
+        # Update Rd, An, Vcmax25 (if applicable to model) in place
+        Vcmax25 = p.canopy.photosynthesis.Vcmax25
+        update_photosynthesis!(
+            Rd,
+            An,
+            Vcmax25,
+            canopy.photosynthesis,
+            T_canopy,
+            APAR,
+            β,
+            medlyn_factor,
+            c_co2_air,
+            R,
+        )
         @. GPP = compute_GPP(An, K, LAI, Ω)
         @. gs = medlyn_conductance(g0, Drel, medlyn_factor, An, c_co2_air)
         # update autotrophic respiration
@@ -572,7 +574,7 @@ function make_compute_exp_tendency(
         FT,
         <:AutotrophicRespirationModel,
         <:Union{BeerLambertModel, TwoStreamModel},
-        <:FarquharModel,
+        <:Union{FarquharModel, OptimalityFarquharModel},
         <:MedlynConductanceModel,
         <:PlantHydraulicsModel,
         <:Union{PrescribedCanopyTempModel, BigLeafEnergyModel},

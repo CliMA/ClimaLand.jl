@@ -8,6 +8,7 @@ CurrentModule = ClimaLSM.Canopy
 
 ```@docs
 ClimaLSM.Canopy.FarquharParameters
+ClimaLSM.Canopy.OptimalityFarquharParameters
 ```
 
 ## Methods
@@ -23,6 +24,7 @@ ClimaLSM.Canopy.C4
 ClimaLSM.Canopy.max_electron_transport
 ClimaLSM.Canopy.electron_transport
 ClimaLSM.Canopy.net_photosynthesis
+ClimaLSM.Canopy.optimality_max_photosynthetic_rates
 ClimaLSM.Canopy.moisture_stress
 ClimaLSM.Canopy.dark_respiration
 ClimaLSM.Canopy.compute_GPP

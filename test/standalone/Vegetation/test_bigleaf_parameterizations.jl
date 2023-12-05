@@ -8,6 +8,67 @@ import ClimaLSM.Parameters as LSMP
 include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
 
 for FT in (Float32, Float64)
+    @testset "Optimality Photosynthesis model Parameterizations, FT = $FT" begin
+        earth_param_set = create_lsm_parameters(FT)
+        P = FT(101325) #Pa
+        ci = FT(56.337) / P # convert to mol/mol
+        oi = FT(21225.1557) / P# convert to mol/mol
+        APAR = FT(1.8967 * 1e-6) # convert from μmol to mol
+        θj = FT(0.85) #unitless
+        ϕ = FT(0.514) # unitless
+        Γstar = FT(4.332) / P # convert from Pa to mol/mol
+        Kc = FT(41.03) / P# convert from Pa to mol/mol
+        Ko = FT(28210) / P# convert from Pa to mol/mol
+        c = FT(0.05336251)
+        Jmax, Vcmax = ClimaLSM.Canopy.optimality_max_photosynthetic_rates(
+            APAR,
+            θj,
+            ϕ,
+            oi,
+            ci,
+            Γstar,
+            Kc,
+            Ko,
+            c,
+        )
+        # We are comparing to output from another code that didnt use exactly
+        # the same inputs, so we cant expect machine precision agreement
+        @test abs(Jmax - FT(5.683554489145192e-7)) < 1e-10
+        @test abs(Vcmax - FT(1.8572441998848603e-7)) < 1e-10
+        @test typeof(Jmax) == FT
+        @test typeof(Vcmax) == FT
+        params = OptimalityFarquharParameters{FT}()
+        @test params.mechanism == C3()
+        model = OptimalityFarquharModel(params)
+        @test ClimaLSM.auxiliary_vars(model) == (:An, :GPP, :Rd, :Vcmax25)
+        @test ClimaLSM.auxiliary_types(model) == (FT, FT, FT, FT)
+        @test ClimaLSM.auxiliary_domain_names(model) ==
+              (:surface, :surface, :surface, :surface)
+        Rd = zeros(FT, 1)
+        An = similar(Rd)
+        Vcmax25 = similar(An)
+        T = FT(280)
+        β = FT(1)
+        medlyn_factor = FT(10.0)
+        c_co2 = FT(4.8e-4)
+        R = FT(LSMP.gas_constant(earth_param_set))
+        ClimaLSM.Canopy.update_photosynthesis!(
+            Rd,
+            An,
+            Vcmax25,
+            model,
+            T,
+            APAR,
+            β,
+            medlyn_factor,
+            c_co2,
+            R,
+        )
+        @test Rd[1] != 0.0
+        @test Vcmax25[1] != 0.0
+        @test An[1] != 0.0
+    end
+
     @testset "Big Leaf Parameterizations, FT = $FT" begin
         earth_param_set = create_lsm_parameters(FT)
         # Test with defaults
