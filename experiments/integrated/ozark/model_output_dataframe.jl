@@ -33,6 +33,7 @@ output_list = (
     (:canopy, :hydraulics, :area_index, :leaf),
     (:soil_shf,),
     (:soil_lhf,),
+    (:soil_evap,),
 )
 
 using DataFrames

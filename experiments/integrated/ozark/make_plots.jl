@@ -1,7 +1,11 @@
 #=
 include("integrated/ozark/ozark.jl")
 include("integrated/ozark/input_df.jl")
-include("integrated/ozark/model_output_dataframe.jl") # should rename df to outputs or climalsm
+include("integrated/ozark/model_output_dataframe.jl") 
+
+# TO DO:
+# rename df to outputs or climalsm
+# change unit from SI to what we want (e.g., umol m-2 s-1)
 =# 
 
 # Make all sort of plots with data and model output
@@ -45,12 +49,16 @@ ax_P = Axis(fig[3, 1]) # Precip & soil moisture
 ax_T = Axis(fig[4, 1]) # air, canopy, and soil temperature
 
 # for time series, Makie should allow DateTime type soon (but not yet)
+# so the 2 lines of code below are a trick to be able to use DateTime - will be removed later
 using PlotUtils: optimize_ticks
 dateticks = optimize_ticks(df.DateTime[1], df.DateTime[end])[1][2:end-1] # first and last are weirdly placed
 
 # add plots into axis ax_C
 p_GPP_d = scatter!(ax_C, datetime2unix.(df.DateTime), df.GPP .* 1e6, color = :blue)
 p_GPP_m = scatter!(ax_C, datetime2unix.(inputs.DateTime[index_t_start:index_t_end]), inputs.GPP[index_t_start:index_t_end] .*1e6, color = :black) 
+
+#p_ET_d = scatter!(ax_W, datetime2unix.(df.DateTime), df.GPP .* 1e6, color = :blue)
+#p_ET_m = scatter!(ax_W, datetime2unix.(inputs.DateTime[index_t_start:index_t_end]), inputs.GPP[index_t_start:index_t_end] .*1e6, color = :black) 
 
 ax_C.xticks[] = (datetime2unix.(dateticks) , Dates.format.(dateticks, "mm/dd"))
 
