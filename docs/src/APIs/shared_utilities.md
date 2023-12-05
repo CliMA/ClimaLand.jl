@@ -32,6 +32,7 @@ ClimaLSM.make_imp_tendency
 ClimaLSM.make_compute_exp_tendency
 ClimaLSM.make_compute_imp_tendency
 ClimaLSM.make_update_aux
+ClimaLSM.make_update_boundary_fluxes
 ClimaLSM.make_set_initial_aux_state
 ClimaLSM.prognostic_vars
 ClimaLSM.prognostic_types

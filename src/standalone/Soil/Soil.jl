@@ -70,6 +70,7 @@ import ClimaLSM:
     make_update_aux,
     make_compute_exp_tendency,
     make_compute_imp_tendency,
+    make_update_boundary_fluxes,
     make_update_jacobian,
     prognostic_vars,
     auxiliary_vars,

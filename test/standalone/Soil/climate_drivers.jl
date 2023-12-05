@@ -213,17 +213,17 @@ for FT in (Float32, Float64)
                 t,
             )
 
-            (computed_water_flux, computed_energy_flux) =
-                ClimaLSM.Soil.soil_boundary_fluxes(
-                    top_bc,
-                    ClimaLSM.TopBoundary(),
-                    model,
-                    nothing,
-                    Y,
-                    p,
-                    t,
-                )
-
+            fluxes = ClimaLSM.Soil.soil_boundary_fluxes(
+                top_bc,
+                ClimaLSM.TopBoundary(),
+                model,
+                nothing,
+                Y,
+                p,
+                t,
+            )
+            computed_water_flux = fluxes.water
+            computed_energy_flux = fluxes.heat
             (; ν, θ_r, d_ds) = model.parameters
             _D_vapor = FT(LSMP.D_vapor(model.parameters.earth_param_set))
             S_l_sfc = ClimaLSM.Domains.top_center_to_surface(

@@ -128,6 +128,21 @@ function AtmosDrivenFluxBC(atmos, radiation; runoff = NoRunoff())
 end
 
 """
+    create_soil_bc_named_tuple(water_flux, heat_flux)
+
+A helper function which takes in two scalar values of `water_flux`
+and `heat_flux`, and creates a named tuple out of them.
+
+When broadcasted over two ClimaCore.Fields.Field objects, 
+this returns a Field of NamedTuples which we can access like
+x.water, x.heat, to obtain the boundary condition fields.
+"""
+function create_soil_bc_named_tuple(water_flux, heat_flux)
+    return (; :water => water_flux, :heat => heat_flux)
+end
+
+
+"""
     soil_boundary_fluxes(
         bc::AtmosDrivenFluxBC{
             <:PrescribedAtmosphere,
@@ -184,8 +199,10 @@ function soil_boundary_fluxes(
         model.parameters,
     )
     # We do not model the energy flux from infiltration
-    net_energy_flux = @. R_n + conditions.lhf + conditions.shf
-    return infiltration, net_energy_flux
+    return @. create_soil_bc_named_tuple(
+        infiltration,
+        R_n + conditions.lhf + conditions.shf,
+    )
 
 end
 
@@ -267,8 +284,15 @@ function ClimaLSM.boundary_flux(
     FT = eltype(Δz)
     # Approximate K_bc ≈ K_c, ψ_bc ≈ ψ_c (center closest to the boundary)
     p_len = Spaces.nlevels(axes(p.soil.K))
-    K_c = Fields.level(p.soil.K, p_len)
-    ψ_c = Fields.level(p.soil.ψ, p_len)
+    # We need to project the center values onto the face space.
+    K_c = Fields.Field(
+        Fields.field_values(Fields.level(p.soil.K, p_len)),
+        axes(Δz),
+    )
+    ψ_c = Fields.Field(
+        Fields.field_values(Fields.level(p.soil.ψ, p_len)),
+        axes(Δz),
+    )
 
     # Calculate pressure head using boundary condition
     (; hydrology_cm, θ_r, ν, S_s) = model.parameters
@@ -303,8 +327,9 @@ function ClimaLSM.boundary_flux(
 )::ClimaCore.Fields.Field
     FT = eltype(Δz)
     # Approximate K_bc ≈ K_c, ψ_bc ≈ ψ_c (center closest to the boundary)
-    K_c = Fields.level(p.soil.K, 1)
-    ψ_c = Fields.level(p.soil.ψ, 1)
+    # We need to project the center values onto the face space.
+    K_c = Fields.Field(Fields.field_values(Fields.level(p.soil.K, 1)), axes(Δz))
+    ψ_c = Fields.Field(Fields.field_values(Fields.level(p.soil.ψ, 1)), axes(Δz))
 
     # Calculate pressure head using boundary condition
     (; hydrology_cm, θ_r, ν, S_s) = model.parameters
@@ -343,8 +368,15 @@ function ClimaLSM.boundary_flux(
     FT = eltype(Δz)
     # Approximate κ_bc ≈ κ_c (center closest to the boundary)
     p_len = Spaces.nlevels(axes(p.soil.T))
-    T_c = Fields.level(p.soil.T, p_len)
-    κ_c = Fields.level(p.soil.κ, p_len)
+    # We need to project the center values onto the face space.
+    T_c = Fields.Field(
+        Fields.field_values(Fields.level(p.soil.T, p_len)),
+        axes(Δz),
+    )
+    κ_c = Fields.Field(
+        Fields.field_values(Fields.level(p.soil.κ, p_len)),
+        axes(Δz),
+    )
 
     T_bc = FT.(heat_bc.bc(p, t))
     return ClimaLSM.diffusive_flux(κ_c, T_bc, T_c, Δz)
@@ -374,8 +406,9 @@ function ClimaLSM.boundary_flux(
 )::ClimaCore.Fields.Field
     FT = eltype(Δz)
     # Approximate κ_bc ≈ κ_c (center closest to the boundary)
-    T_c = Fields.level(p.soil.T, 1)
-    κ_c = Fields.level(p.soil.κ, 1)
+    # We need to project the center values onto the face space.
+    T_c = Fields.Field(Fields.field_values(Fields.level(p.soil.T, 1)), axes(Δz))
+    κ_c = Fields.Field(Fields.field_values(Fields.level(p.soil.κ, 1)), axes(Δz))
     T_bc = FT.(heat_bc.bc(p, t))
     return ClimaLSM.diffusive_flux(κ_c, T_c, T_bc, Δz)
 end
@@ -415,8 +448,10 @@ Returns the boundary fluxes for ϑ_l and ρe_int, in that order.
 """
 function soil_boundary_fluxes(bc::NamedTuple, boundary, model, Δz, Y, p, t)
     params = model.parameters
-    return ClimaLSM.boundary_flux(bc.water, boundary, model, Δz, Y, p, t),
-    ClimaLSM.boundary_flux(bc.heat, boundary, model, Δz, Y, p, t)
+    return create_soil_bc_named_tuple.(
+        ClimaLSM.boundary_flux(bc.water, boundary, model, Δz, Y, p, t),
+        ClimaLSM.boundary_flux(bc.heat, boundary, model, Δz, Y, p, t),
+    )
 end
 
 """

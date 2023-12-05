@@ -140,6 +140,12 @@ function ClimaLSM.surface_air_density(
     return compute_ρ_sfc.(Ref(thermo_params), Ref(ts_in), T_canopy)
 end
 
+function make_update_boundary_fluxes(canopy::CanopyModel)
+    function update_boundary_fluxes!(p, Y, t)
+        canopy_boundary_fluxes!(p, canopy, canopy.radiation, canopy.atmos, Y, t)
+    end
+    return update_boundary_fluxes!
+end
 
 """
     canopy_boundary_fluxes!(p::NamedTuple,

@@ -17,9 +17,11 @@ used as `Wfact!` in `ClimaTimeSteppers.jl` and `SciMLBase.jl`.
 """
 function make_tendency_jacobian(model::AbstractModel)
     update_aux! = make_update_aux(model)
+    update_boundary_fluxes! = make_update_boundary_fluxes(model)
     update_jacobian! = make_update_jacobian(model)
     function tendency_jacobian!(W, Y, p, dtγ, t)
         update_aux!(p, Y, t)
+        update_boundary_fluxes!(p, Y, t)
         update_jacobian!(W, Y, p, dtγ, t)
     end
     return tendency_jacobian!

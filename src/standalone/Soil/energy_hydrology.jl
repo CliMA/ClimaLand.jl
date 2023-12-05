@@ -181,6 +181,35 @@ function EnergyHydrology{FT}(;
     EnergyHydrology{FT, typeof.(args)...}(args..., lateral_flow)
 end
 
+function make_update_boundary_fluxes(model::EnergyHydrology)
+    function update_boundary_fluxes!(p, Y, t)
+        z = ClimaCore.Fields.coordinate_field(model.domain.space.subsurface).z
+        Δz_top, Δz_bottom = get_Δz(z)
+        p.soil.top_bc .= soil_boundary_fluxes(
+            model.boundary_conditions.top,
+            ClimaLSM.TopBoundary(),
+            model,
+            Δz_top,
+            Y,
+            p,
+            t,
+        )
+
+        p.soil.bottom_bc .= soil_boundary_fluxes(
+            model.boundary_conditions.bottom,
+            ClimaLSM.BottomBoundary(),
+            model,
+            Δz_bottom,
+            Y,
+            p,
+            t,
+        )
+    end
+    return update_boundary_fluxes!
+end
+
+
+
 """
     make_compute_exp_tendency(model::EnergyHydrology)
 
@@ -197,29 +226,14 @@ This has been written so as to work with Differential Equations.jl.
 function ClimaLSM.make_compute_exp_tendency(
     model::EnergyHydrology{FT},
 ) where {FT}
+    update_boundary_fluxes! = make_update_boundary_fluxes(model)
     function compute_exp_tendency!(dY, Y, p, t)
         z = ClimaCore.Fields.coordinate_field(model.domain.space.subsurface).z
-        Δz_top, Δz_bottom = get_Δz(z)
-
-        # Convert all boundary conditions to FluxBCs
-        rre_top_flux_bc, heat_top_flux_bc = soil_boundary_fluxes(
-            model.boundary_conditions.top,
-            TopBoundary(),
-            model,
-            Δz_top,
-            Y,
-            p,
-            t,
-        )
-        rre_bot_flux_bc, heat_bot_flux_bc = soil_boundary_fluxes(
-            model.boundary_conditions.bottom,
-            BottomBoundary(),
-            model,
-            Δz_bottom,
-            Y,
-            p,
-            t,
-        )
+        update_boundary_fluxes!(p, Y, t)
+        rre_top_flux_bc = p.soil.top_bc.water
+        heat_top_flux_bc = p.soil.top_bc.heat
+        rre_bottom_flux_bc = p.soil.bottom_bc.water
+        heat_bottom_flux_bc = p.soil.bottom_bc.heat
 
         interpc2f = Operators.InterpolateC2F()
         gradc2f = Operators.GradientC2F()
@@ -233,7 +247,7 @@ function ClimaLSM.make_compute_exp_tendency(
         # Richards-Richardson RHS
         divf2c_rre = Operators.DivergenceF2C(
             top = Operators.SetValue(Geometry.WVector.(rre_top_flux_bc)),
-            bottom = Operators.SetValue(Geometry.WVector.(rre_bot_flux_bc)),
+            bottom = Operators.SetValue(Geometry.WVector.(rre_bottom_flux_bc)),
         )
         # GradC2F returns a Covariant3Vector, so no need to convert.
         @. dY.soil.ϑ_l =
@@ -243,7 +257,7 @@ function ClimaLSM.make_compute_exp_tendency(
         # Heat equation RHS
         divf2c_heat = Operators.DivergenceF2C(
             top = Operators.SetValue(Geometry.WVector.(heat_top_flux_bc)),
-            bottom = Operators.SetValue(Geometry.WVector.(heat_bot_flux_bc)),
+            bottom = Operators.SetValue(Geometry.WVector.(heat_bottom_flux_bc)),
         )
         ρe_int_l = volumetric_internal_energy_liq.(p.soil.T, model.parameters)
 
@@ -264,7 +278,6 @@ function ClimaLSM.make_compute_exp_tendency(
         )
 
         for src in model.sources
-
             ClimaLSM.source!(dY, src, Y, p, model)
         end
     end
@@ -331,7 +344,8 @@ ClimaLSM.prognostic_domain_names(soil::EnergyHydrology) =
 A function which returns the names of the auxiliary variables
 of `EnergyHydrology`.
 """
-ClimaLSM.auxiliary_vars(soil::EnergyHydrology) = (:K, :ψ, :θ_l, :T, :κ)
+ClimaLSM.auxiliary_vars(soil::EnergyHydrology) =
+    (:K, :ψ, :θ_l, :T, :κ, :top_bc, :bottom_bc)
 
 """
     auxiliary_types(soil::EnergyHydrology{FT}) where {FT}
@@ -339,11 +353,25 @@ ClimaLSM.auxiliary_vars(soil::EnergyHydrology) = (:K, :ψ, :θ_l, :T, :κ)
 A function which returns the types of the auxiliary variables
 of `EnergyHydrology`.
 """
-ClimaLSM.auxiliary_types(soil::EnergyHydrology{FT}) where {FT} =
-    (FT, FT, FT, FT, FT)
+ClimaLSM.auxiliary_types(soil::EnergyHydrology{FT}) where {FT} = (
+    FT,
+    FT,
+    FT,
+    FT,
+    FT,
+    NamedTuple{(:water, :heat), Tuple{FT, FT}},
+    NamedTuple{(:water, :heat), Tuple{FT, FT}},
+)
 
-ClimaLSM.auxiliary_domain_names(soil::EnergyHydrology) =
-    (:subsurface, :subsurface, :subsurface, :subsurface, :subsurface)
+ClimaLSM.auxiliary_domain_names(soil::EnergyHydrology) = (
+    :subsurface,
+    :subsurface,
+    :subsurface,
+    :subsurface,
+    :subsurface,
+    :surface,
+    :surface,
+)
 """
     make_update_aux(model::EnergyHydrology)
 

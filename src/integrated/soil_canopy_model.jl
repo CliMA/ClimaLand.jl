@@ -441,8 +441,10 @@ function soil_boundary_fluxes(
         t,
         model.parameters,
     )
-    G = @. -p.soil_LW_n - p.soil_SW_n + p.soil_lhf + p.soil_shf
-    return infiltration, G
+    return @. ClimaLSM.Soil.create_soil_bc_named_tuple(
+        infiltration,
+        -p.soil_LW_n - p.soil_SW_n + p.soil_lhf + p.soil_shf,
+    )
 end
 
 

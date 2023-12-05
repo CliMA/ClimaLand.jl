@@ -8,6 +8,7 @@ export AbstractModel,
     make_update_aux,
     initialize_prognostic,
     initialize_auxiliary,
+    make_update_boundary_fluxes,
     initialize_vars,
     initialize,
     prognostic_vars,
@@ -131,6 +132,17 @@ Return an `update_aux!` function that updates auxiliary parameters `p`.
 function make_update_aux(model::AbstractModel)
     function update_aux!(p, Y, t) end
     return update_aux!
+end
+
+"""
+    make_update_boundary_fluxes(model::AbstractModel)
+
+Return an `update_boundary_fluxes!` function that updates the auxiliary parameters in `p`
+corresponding to boundary fluxes or interactions between componets..
+"""
+function make_update_boundary_fluxes(model::AbstractModel)
+    function update_boundary_fluxes!(p, Y, t) end
+    return update_boundary_fluxes!
 end
 
 """
