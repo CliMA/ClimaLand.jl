@@ -3,6 +3,15 @@ N_spinup_days = 10
 N_days = N_spinup_days + 30
 dt = FT(120)
 tf = t0 + FT(3600 * 24 * N_days)
+
+#=
+t0 = FT(1) # starts first day
+N_spinup_days = 0
+N_days = 365
+dt = FT(120)
+tf = t0 + FT(3600 * 24 * N_days)
+=#
+
 # Number of timesteps between saving output
 n = 15
 t_spinup = t0 + FT(N_spinup_days * 3600 * 24)
