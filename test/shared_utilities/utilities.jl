@@ -1,5 +1,6 @@
 using Test
 using ClimaCore: Spaces, Geometry, Fields
+import ClimaComms
 using ClimaLSM
 using ClimaLSM: Domains, condition, SavingAffect, saving_initialize
 
@@ -156,11 +157,20 @@ end
 
         # make fields non-constant in order to check the
         # impact of the dss step
-        for i in eachindex(parent(field))
-            parent(field)[i] = sin(i)
-            parent(subfield1)[i] = cos(i)
-            parent(subfield2)[i] = sin(i) * cos(i)
-        end
+        ArrayType = ClimaComms.array_type(ClimaComms.device())
+        local_size = size(parent(field))
+
+        sin_i = ArrayType(
+            reshape([sin(i) for i in eachindex(parent(field))], local_size),
+        )
+        cos_i = ArrayType(
+            reshape([cos(i) for i in eachindex(parent(field))], local_size),
+        )
+        sin_cos_i = sin_i .* cos_i
+
+        parent(field) .= sin_i
+        parent(subfield1) .= cos_i
+        parent(subfield2) .= sin_cos_i
 
         Y = Fields.FieldVector(
             field = field,
@@ -205,11 +215,20 @@ end
 
         # make fields non-constant in order to check
         # the impact of the dss step
-        for i in eachindex(parent(field))
-            parent(field)[i] = sin(i)
-            parent(subfield1)[i] = cos(i)
-            parent(subfield2)[i] = sin(i) * cos(i)
-        end
+        ArrayType = ClimaComms.array_type(ClimaComms.device())
+        local_size = size(parent(field))
+
+        sin_i = ArrayType(
+            reshape([sin(i) for i in eachindex(parent(field))], local_size),
+        )
+        cos_i = ArrayType(
+            reshape([cos(i) for i in eachindex(parent(field))], local_size),
+        )
+        sin_cos_i = sin_i .* cos_i
+
+        parent(field) .= sin_i
+        parent(subfield1) .= cos_i
+        parent(subfield2) .= sin_cos_i
 
         Y = Fields.FieldVector(
             field = field,
