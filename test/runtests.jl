@@ -16,10 +16,10 @@ end
 @safetestset "Domains module tests" begin
     include("shared_utilities/domains.jl")
 end
-gpu_broken || @safetestset "FileReader module tests" begin
+@safetestset "FileReader module tests" begin
     include("shared_utilities/file_reader.jl")
 end
-gpu_broken || @safetestset "Regridder module tests" begin
+@safetestset "Regridder module tests" begin
     include("shared_utilities/regridder.jl")
 end
 gpu_broken || @safetestset "General utilities tests" begin
