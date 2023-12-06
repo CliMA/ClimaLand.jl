@@ -100,7 +100,6 @@ end
 @safetestset "Integrated pond/soil LSM tests" begin
     include("integrated/pond_soil_lsm.jl")
 end
-gpu_broken ||
-    @safetestset "Integrated soil energy/hydrology/biogeochem LSM tests" begin
-        include("integrated/soil_energy_hydrology_biogeochemistry.jl")
-    end
+@safetestset "Integrated soil energy/hydrology/biogeochem LSM tests" begin
+    include("integrated/soil_energy_hydrology_biogeochemistry.jl")
+end
