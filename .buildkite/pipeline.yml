@@ -71,6 +71,7 @@ steps:
       - label: "GPU runtests"
         command: "julia --color=yes --project=test test/runtests.jl"
         agents:
+          slurm_mem_per_cpu: 8G
           slurm_gpus: 1
 
   - wait
