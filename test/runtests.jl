@@ -22,7 +22,7 @@ end
 @safetestset "Regridder module tests" begin
     include("shared_utilities/regridder.jl")
 end
-gpu_broken || @safetestset "General utilities tests" begin
+@safetestset "General utilities tests" begin
     include("shared_utilities/utilities.jl")
 end
 @safetestset "Variable types tests" begin
