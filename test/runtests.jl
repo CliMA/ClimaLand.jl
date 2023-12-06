@@ -33,10 +33,10 @@ end
 gpu_broken || @safetestset "Bucket albedo types tests" begin
     include("standalone/Bucket/albedo_types.jl")
 end
-gpu_broken || @safetestset "Bucket snow tests" begin
+@safetestset "Bucket snow tests" begin
     include("standalone/Bucket/snow_bucket_tests.jl")
 end
-gpu_broken || @safetestset "Bucket soil tests" begin
+@safetestset "Bucket soil tests" begin
     include("standalone/Bucket/soil_bucket_tests.jl")
 end
 
