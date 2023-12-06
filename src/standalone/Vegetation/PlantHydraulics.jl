@@ -618,6 +618,9 @@ function root_water_flux_per_ground_area!(
     ψ_soil::FT = s.ψ(t)
     fa .= FT(0.0)
     @inbounds for i in 1:n_root_layers
+        above_ground_area_index =
+            getproperty(area_index, model.compartment_labels[1])
+
         if i != n_root_layers
             @. fa +=
                 flux(
@@ -630,10 +633,7 @@ function root_water_flux_per_ground_area!(
                 ) *
                 root_distribution(root_depths[i]) *
                 (root_depths[i + 1] - root_depths[i]) *
-                (
-                    area_index.root +
-                    getproperty(area_index, model.compartment_labels[1])
-                ) / 2
+                (area_index.root + above_ground_area_index) / 2
         else
             @. fa +=
                 flux(
@@ -646,10 +646,7 @@ function root_water_flux_per_ground_area!(
                 ) *
                 root_distribution(root_depths[i]) *
                 (model.compartment_surfaces[1] - root_depths[n_root_layers]) *
-                (
-                    area_index.root +
-                    getproperty(area_index, model.compartment_labels[1])
-                ) / 2
+                (area_index.root + above_ground_area_index) / 2
         end
     end
 end

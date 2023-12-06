@@ -77,10 +77,10 @@ end
 end
 
 # Standalone Vegetation model tests
-gpu_broken || @safetestset "Canopy module tests" begin
+@safetestset "Canopy module tests" begin
     include("standalone/Vegetation/canopy_model.jl")
 end
-gpu_broken || @safetestset "Canopy PlantHydraulics tests" begin
+@safetestset "Canopy PlantHydraulics tests" begin
     include("standalone/Vegetation/plant_hydraulics_test.jl")
 end
 @safetestset "Big Leaf model tests" begin

@@ -657,7 +657,7 @@ for FT in (Float32, Float64)
             @test getproperty(prognostic_types(canopy), component) ==
                   prognostic_types(getproperty(canopy, component))
         end
-        Y.canopy.hydraulics[1] = plant_ν
+        Y.canopy.hydraulics .= plant_ν
         Y.canopy.energy.T = FT(289)
 
         set_initial_aux_state! = make_set_initial_aux_state(canopy)
