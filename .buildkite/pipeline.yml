@@ -24,6 +24,7 @@ steps:
 
       - echo "--- Instantiate test"
       - "julia --project=test -e 'using Pkg; Pkg.develop(;path=\".\"); Pkg.instantiate(;verbose=true)'"
+      - "julia --project=test -e 'using Pkg; Pkg.add(;url=\"https://github.com/CliMA/ClimaCore.jl.git#gb/cuda_device\"); Pkg.instantiate(;verbose=true)'"
       - "julia --project=test -e 'using Pkg; Pkg.status()'"
     agents:
       slurm_cpus_per_task: 8
