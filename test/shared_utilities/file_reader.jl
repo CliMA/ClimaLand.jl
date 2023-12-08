@@ -24,7 +24,7 @@ isdir(regrid_dir_static) ? nothing : mkpath(regrid_dir_static)
 isdir(regrid_dir_temporal) ? nothing : mkpath(regrid_dir_temporal)
 
 
-FT = Float32
+FT = Float64
 @testset "test interpol, FT = $FT" begin
     # Setup
     x1 = FT(0)
