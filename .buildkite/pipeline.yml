@@ -1,6 +1,6 @@
 agents:
   queue: central
-  modules: julia/1.9.4 cuda/12.2 ucx/1.14.1_cuda-12.2 openmpi/4.1.5_cuda-12.2 hdf5/1.12.2-ompi415 nsight-systems/2023.3.1
+  modules: julia/1.9.4 cuda/12.2 ucx/1.14.1_cuda-12.2 openmpi/4.1.5_cuda-12.2 nsight-systems/2023.3.1
 
 env:
   JULIA_LOAD_PATH: "${JULIA_LOAD_PATH}:${BUILDKITE_BUILD_CHECKOUT_PATH}/.buildkite"
@@ -9,6 +9,10 @@ env:
   OPENBLAS_NUM_THREADS: 1
   OMPI_MCA_opal_warn_on_missing_libcuda: 0
   SLURM_KILL_BAD_EXIT: 1
+  JULIA_CUDA_MEMORY_POOL: none
+  JULIA_MPI_HAS_CUDA: "true"
+  MPITRAMPOLINE_LIB: "/groups/esm/software/MPIwrapper/ompi4.1.5_cuda-12.2/lib64/libmpiwrapper.so"
+  MPITRAMPOLINE_MPIEXEC: "/groups/esm/software/MPIwrapper/ompi4.1.5_cuda-12.2/bin/mpiwrapperexec"
 
 steps:
   - label: "init environment :computer:"
