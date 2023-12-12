@@ -170,7 +170,7 @@ earth_param_set = create_lsm_parameters(FT);
 # These options only applies when coordinates are (lat,lon).
 α_sfc = (coordinate_point) -> 0.2;
 α_snow = FT(0.8);
-albedo = BulkAlbedoFunction{FT}(α_snow, α_sfc);
+albedo = BulkAlbedoFunction(α_snow, α_sfc);
 # The critical snow level setting the scale for when we interpolate between
 # snow and surface albedo
 σS_c = FT(0.2);

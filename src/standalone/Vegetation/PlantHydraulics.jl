@@ -54,7 +54,7 @@ transpiration (Prescribed or Diagnostic)
 abstract type AbstractTranspiration{FT <: AbstractFloat} end
 
 """
-   PrescribedSiteAreaIndex{FT <:AbstractFloat}
+   PrescribedSiteAreaIndex{FT <:AbstractFloat, F <: Function}
 
 A struct containing the area indices of the plants at a specific site;
 LAI varies in time, while SAI and RAI are fixed. No spatial variation is
@@ -62,13 +62,21 @@ modeled.
 
 $(DocStringExtensions.FIELDS)
 """
-struct PrescribedSiteAreaIndex{FT <: AbstractFloat}
+struct PrescribedSiteAreaIndex{FT <: AbstractFloat, F <: Function}
     "A function of simulation time `t` giving the leaf area index (LAI; m2/m2)"
-    LAIfunction::Function
+    LAIfunction::F
     "The constant stem area index (SAI; m2/m2)"
     SAI::FT
     "The constant root area index (RAI; m2/m2)"
     RAI::FT
+end
+
+function PrescribedSiteAreaIndex{FT}(
+    LAIfunction::Function,
+    SAI::FT,
+    RAI::FT,
+) where {FT <: AbstractFloat}
+    PrescribedSiteAreaIndex{FT, typeof(LAIfunction)}(LAIfunction, SAI, RAI)
 end
 
 """
@@ -112,24 +120,30 @@ end
 
 
 """
-    PlantHydraulicsParameters{FT <: AbstractFloat}
+    PlantHydraulicsParameters
 
 A struct for holding parameters of the PlantHydraulics Model.
 $(DocStringExtensions.FIELDS)
 """
-struct PlantHydraulicsParameters{FT <: AbstractFloat, CP, RP}
+struct PlantHydraulicsParameters{
+    FT <: AbstractFloat,
+    PSAI <: PrescribedSiteAreaIndex{FT},
+    CP,
+    RP,
+    F <: Function,
+}
     "The area index model for LAI, SAI, RAI"
-    ai_parameterization::PrescribedSiteAreaIndex{FT}
+    ai_parameterization::PSAI
     "porosity (m3/m3)"
     ν::FT
     "storativity (m3/m3)"
     S_s::FT
-    "Root distribution function P(z)"
-    root_distribution::Function
     "Conductivity model and parameters"
     conductivity_model::CP
     "Water retention model and parameters"
     retention_model::RP
+    "Root distribution function P(z)"
+    root_distribution::F
 end
 
 function PlantHydraulicsParameters(;
@@ -142,20 +156,22 @@ function PlantHydraulicsParameters(;
 ) where {FT}
     return PlantHydraulicsParameters{
         FT,
+        typeof(ai_parameterization),
         typeof(conductivity_model),
         typeof(retention_model),
+        typeof(root_distribution),
     }(
         ai_parameterization,
         ν,
         S_s,
-        root_distribution,
         conductivity_model,
         retention_model,
+        root_distribution,
     )
 end
 
 """
-    PlantHydraulicsModel{FT, PS, T} <: AbstractPlantHydraulicsModel{FT}
+    PlantHydraulicsModel{FT, PS, T, AA} <: AbstractPlantHydraulicsModel{FT}
 
 Defines, and constructs instances of, the PlantHydraulicsModel type, which is used
 for simulation flux of water to/from soil, along roots of different depths,
@@ -181,15 +197,16 @@ option (intendend only for debugging) to use a prescribed transpiration rate.
 
 $(DocStringExtensions.FIELDS)
 """
-struct PlantHydraulicsModel{FT, PS, T} <: AbstractPlantHydraulicsModel{FT}
+struct PlantHydraulicsModel{FT, PS, T, AA <: AbstractArray{FT}} <:
+       AbstractPlantHydraulicsModel{FT}
     "The number of stem compartments for the plant; can be zero"
     n_stem::Int64
     "The number of leaf compartments for the plant; must be >=1"
     n_leaf::Int64
     "The height of the center of each leaf compartment/stem compartment, in meters"
-    compartment_midpoints::Vector{FT}
+    compartment_midpoints::AA
     "The height of the compartments' top faces, in meters. The canopy height is the last element of the vector."
-    compartment_surfaces::Vector{FT}
+    compartment_surfaces::AA
     "The label (:stem or :leaf) of each compartment"
     compartment_labels::Vector{Symbol}
     "Parameters required by the Plant Hydraulics model"
@@ -222,7 +239,11 @@ function PlantHydraulicsModel{FT}(;
             compartment_labels[i] = :leaf
         end
     end
-    return PlantHydraulicsModel{FT, typeof.(args)...}(
+    return PlantHydraulicsModel{
+        FT,
+        typeof.(args)...,
+        typeof(compartment_midpoints),
+    }(
         n_stem,
         n_leaf,
         compartment_midpoints,
@@ -597,6 +618,9 @@ function root_water_flux_per_ground_area!(
     ψ_soil::FT = s.ψ(t)
     fa .= FT(0.0)
     @inbounds for i in 1:n_root_layers
+        above_ground_area_index =
+            getproperty(area_index, model.compartment_labels[1])
+
         if i != n_root_layers
             @. fa +=
                 flux(
@@ -609,10 +633,7 @@ function root_water_flux_per_ground_area!(
                 ) *
                 root_distribution(root_depths[i]) *
                 (root_depths[i + 1] - root_depths[i]) *
-                (
-                    area_index.root +
-                    getproperty(area_index, model.compartment_labels[1])
-                ) / 2
+                (area_index.root + above_ground_area_index) / 2
         else
             @. fa +=
                 flux(
@@ -625,22 +646,23 @@ function root_water_flux_per_ground_area!(
                 ) *
                 root_distribution(root_depths[i]) *
                 (model.compartment_surfaces[1] - root_depths[n_root_layers]) *
-                (
-                    area_index.root +
-                    getproperty(area_index, model.compartment_labels[1])
-                ) / 2
+                (area_index.root + above_ground_area_index) / 2
         end
     end
 end
 
 """
-    PrescribedTranspiration{FT} <: AbstractTranspiration{FT}
+    PrescribedTranspiration{FT, F <: Function} <: AbstractTranspiration{FT}
 
 A concrete type used for dispatch when computing the transpiration
 from the leaves, in the case where transpiration is prescribed.
 """
-struct PrescribedTranspiration{FT} <: AbstractTranspiration{FT}
-    T::Function
+struct PrescribedTranspiration{FT, F <: Function} <: AbstractTranspiration{FT}
+    T::F
+end
+
+function PrescribedTranspiration{FT}(T::Function) where {FT <: AbstractFloat}
+    return PrescribedTranspiration{FT, typeof(T)}(T)
 end
 
 """

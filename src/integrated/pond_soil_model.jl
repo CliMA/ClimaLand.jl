@@ -59,7 +59,7 @@ function LandHydrology{FT}(;
     (; precip) = land_args
 
     sources = ()
-    surface_runoff = PrognosticRunoff(precip)
+    surface_runoff = PrognosticRunoff{FT}(precip)
     boundary_conditions =
         (; top = (water = RunoffBC(),), bottom = (water = Soil.FreeDrainage(),))
 
@@ -193,8 +193,12 @@ ensuring the infiltration used for the boundary condition of soil
 is also used to compute the runoff for the surface water.
 
 """
-struct PrognosticRunoff{F <: Function} <: Pond.AbstractSurfaceRunoff
+struct PrognosticRunoff{FT, F <: Function} <: Pond.AbstractSurfaceRunoff
     precip::F
+end
+
+function PrognosticRunoff{FT}(precip) where {FT <: AbstractFloat}
+    return PrognosticRunoff{FT, typeof(precip)}(precip)
 end
 
 """

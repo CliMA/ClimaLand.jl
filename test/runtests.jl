@@ -16,13 +16,13 @@ end
 @safetestset "Domains module tests" begin
     include("shared_utilities/domains.jl")
 end
-gpu_broken || @safetestset "FileReader module tests" begin
+@safetestset "FileReader module tests" begin
     include("shared_utilities/file_reader.jl")
 end
-gpu_broken || @safetestset "Regridder module tests" begin
+@safetestset "Regridder module tests" begin
     include("shared_utilities/regridder.jl")
 end
-gpu_broken || @safetestset "General utilities tests" begin
+@safetestset "General utilities tests" begin
     include("shared_utilities/utilities.jl")
 end
 @safetestset "Variable types tests" begin
@@ -33,10 +33,10 @@ end
 gpu_broken || @safetestset "Bucket albedo types tests" begin
     include("standalone/Bucket/albedo_types.jl")
 end
-gpu_broken || @safetestset "Bucket snow tests" begin
+@safetestset "Bucket snow tests" begin
     include("standalone/Bucket/snow_bucket_tests.jl")
 end
-gpu_broken || @safetestset "Bucket soil tests" begin
+@safetestset "Bucket soil tests" begin
     include("standalone/Bucket/soil_bucket_tests.jl")
 end
 
@@ -77,10 +77,10 @@ end
 end
 
 # Standalone Vegetation model tests
-gpu_broken || @safetestset "Canopy module tests" begin
+@safetestset "Canopy module tests" begin
     include("standalone/Vegetation/canopy_model.jl")
 end
-gpu_broken || @safetestset "Canopy PlantHydraulics tests" begin
+@safetestset "Canopy PlantHydraulics tests" begin
     include("standalone/Vegetation/plant_hydraulics_test.jl")
 end
 @safetestset "Big Leaf model tests" begin
@@ -100,7 +100,6 @@ end
 @safetestset "Integrated pond/soil LSM tests" begin
     include("integrated/pond_soil_lsm.jl")
 end
-gpu_broken ||
-    @safetestset "Integrated soil energy/hydrology/biogeochem LSM tests" begin
-        include("integrated/soil_energy_hydrology_biogeochemistry.jl")
-    end
+@safetestset "Integrated soil energy/hydrology/biogeochem LSM tests" begin
+    include("integrated/soil_energy_hydrology_biogeochemistry.jl")
+end

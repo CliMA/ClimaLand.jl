@@ -23,6 +23,16 @@ regrid_dir_temporal =
 isdir(regrid_dir_static) ? nothing : mkpath(regrid_dir_static)
 isdir(regrid_dir_temporal) ? nothing : mkpath(regrid_dir_temporal)
 
+"""
+Set NaN and Missing to zero (GPU compatible)
+"""
+function replace_nan_missing!(field::Fields.Field)
+    # For GPU runs, we perform the substitution on the CPU and move back to GPU
+    parent_without_NaN_missing =
+        replace(Array(parent(field)), NaN => 0, missing => 0)
+    ArrayType = ClimaComms.array_type(ClimaComms.device())
+    parent(field) .= ArrayType(parent_without_NaN_missing)
+end
 
 FT = Float32
 @testset "test interpol, FT = $FT" begin
@@ -278,10 +288,8 @@ if !Sys.iswindows()
         # Test that both data fields store the same data
         # Remove NaNs and missings before comparison
         (; data_fields) = prescribed_data.file_state
-        replace!(parent(data_fields[1]), NaN => 0)
-        replace!(parent(data_fields[1]), missing => 0)
-        replace!(parent(data_fields[2]), NaN => 0)
-        replace!(parent(data_fields[2]), missing => 0)
+
+        foreach(replace_nan_missing!, data_fields)
 
         @test prescribed_data.file_state.data_fields[1] ==
               prescribed_data.file_state.data_fields[2]
@@ -308,16 +316,8 @@ if !Sys.iswindows()
         @test prescribed_data.file_state.segment_length == Int[0]
 
         # Remove NaNs and missings before comparison
-        replace!(parent(prescribed_data.file_state.data_fields[1]), NaN => 0)
-        replace!(
-            parent(prescribed_data.file_state.data_fields[1]),
-            missing => 0,
-        )
-        replace!(parent(prescribed_data.file_state.data_fields[2]), NaN => 0)
-        replace!(
-            parent(prescribed_data.file_state.data_fields[2]),
-            missing => 0,
-        )
+        foreach(replace_nan_missing!, data_fields)
+
         @test prescribed_data.file_state.data_fields[1] ==
               prescribed_data.file_state.data_fields[2]
 
@@ -346,10 +346,7 @@ if !Sys.iswindows()
         end
 
         # Replace NaNs and missings for testing
-        for ds in data_saved
-            replace!(parent(ds), NaN => 0)
-            replace!(parent(ds), missing => 0)
-        end
+        foreach(replace_nan_missing!, data_saved)
 
         # Manually read in data from HDF5
         f = prescribed_data.file_state.data_fields[1]
@@ -368,8 +365,7 @@ if !Sys.iswindows()
                 surface_space_t,
             )
             # Replace NaNs and missings for testing comparison
-            replace!(parent(data_manual[i]), NaN => 0)
-            replace!(parent(data_manual[i]), missing => 0)
+            replace_nan_missing!(data_manual[i])
 
             @test parent(data_saved[i]) == parent(data_manual[i])
         end

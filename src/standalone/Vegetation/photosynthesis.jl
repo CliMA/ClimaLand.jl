@@ -17,14 +17,15 @@ struct C4 <: AbstractPhotosynthesisMechanism end
 
 abstract type AbstractPhotosynthesisModel{FT} <: AbstractCanopyComponent{FT} end
 """
-    FarquharParameters{FT<:AbstractFloat}
+    FarquharParameters{FT<:AbstractFloat, MECH <: AbstractPhotosynthesisMechanism}
 
 The required parameters for the Farquhar photosynthesis model.
 $(DocStringExtensions.FIELDS)
 """
-struct FarquharParameters{FT <: AbstractFloat}
-    "Photosynthesis mechanism: C3 or C4"
-    mechanism::AbstractPhotosynthesisMechanism
+struct FarquharParameters{
+    FT <: AbstractFloat,
+    MECH <: AbstractPhotosynthesisMechanism,
+}
     "Vcmax at 25 °C (mol CO2/m^2/s)"
     Vcmax25::FT
     "Γstar at 25 °C (mol/mol)"
@@ -59,6 +60,8 @@ struct FarquharParameters{FT <: AbstractFloat}
     sc::FT
     "Reference water pressure for the moisture stress factor (Pa) [Tuzet et al. (2003)]"
     pc::FT
+    "Photosynthesis mechanism: C3 or C4"
+    mechanism::MECH
 end
 
 """
@@ -104,8 +107,7 @@ function FarquharParameters{FT}(
     ΔHJmax = FT(43540),
     ΔHRd = FT(46390),
 ) where {FT}
-    return FarquharParameters{FT}(
-        mechanism,
+    return FarquharParameters{FT, typeof(mechanism)}(
         Vcmax25,
         Γstar25,
         Kc25,
@@ -123,11 +125,21 @@ function FarquharParameters{FT}(
         f,
         sc,
         pc,
+        mechanism,
     )
 end
 
-struct FarquharModel{FT} <: AbstractPhotosynthesisModel{FT}
-    parameters::FarquharParameters{FT}
+Base.eltype(::FarquharParameters{FT}) where {FT} = FT
+
+struct FarquharModel{FT, FP <: FarquharParameters{FT}} <:
+       AbstractPhotosynthesisModel{FT}
+    parameters::FP
+end
+
+function FarquharModel{FT}(
+    parameters::FarquharParameters{FT},
+) where {FT <: AbstractFloat}
+    return FarquharModel{eltype(parameters), typeof(parameters)}(parameters)
 end
 
 ClimaLSM.name(model::AbstractPhotosynthesisModel) = :photosynthesis

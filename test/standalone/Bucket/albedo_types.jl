@@ -56,7 +56,7 @@ isdir(regrid_dir_temporal) ? nothing : mkpath(regrid_dir_temporal)
     # set up for function call
     α_sfc = (coord_point) -> sin(coord_point.lat + coord_point.long)
     α_snow = FT(0.8)
-    albedo = BulkAlbedoFunction{FT}(α_snow, α_sfc)
+    albedo = BulkAlbedoFunction(α_snow, α_sfc)
 
     domain = create_domain_2d(FT)
     space = domain.space.surface
@@ -73,7 +73,7 @@ end
     # set up each argument for function call
     α_sfc = (coord_point) -> sin(coord_point.lat + coord_point.long)
     α_snow = FT(0.8)
-    albedo = BulkAlbedoFunction{FT}(α_snow, α_sfc)
+    albedo = BulkAlbedoFunction(α_snow, α_sfc)
 
     σS_c = FT(0.2)
     parameters = (; σS_c = σS_c)

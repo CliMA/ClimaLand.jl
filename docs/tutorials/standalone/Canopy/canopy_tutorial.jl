@@ -190,7 +190,7 @@ LAI = 4.2
 LAIfunction = (t) -> LAI
 SAI = FT(0.00242)
 f_root_to_shoot = FT(3.5)
-RAI = (SAI + LAI) * f_root_to_shoot
+RAI = FT((SAI + LAI) * f_root_to_shoot)
 ai_parameterization = PrescribedSiteAreaIndex{FT}(LAIfunction, SAI, RAI)
 rooting_depth = FT(1.0);
 

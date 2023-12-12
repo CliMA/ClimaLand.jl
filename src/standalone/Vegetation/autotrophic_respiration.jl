@@ -51,9 +51,21 @@ function AutotrophicRespirationParameters{FT}(;
     return AutotrophicRespirationParameters{FT}(ne, ηsl, σl, μr, μs, f1, f2)
 end
 
-struct AutotrophicRespirationModel{FT} <:
-       AbstractAutotrophicRespirationModel{FT} # we could give it a more specific name...
-    parameters::AutotrophicRespirationParameters{FT}
+Base.eltype(::AutotrophicRespirationParameters{FT}) where {FT} = FT
+
+struct AutotrophicRespirationModel{
+    FT,
+    ARP <: AutotrophicRespirationParameters{FT},
+} <: AbstractAutotrophicRespirationModel{FT} # we could give it a more specific name...
+    parameters::ARP
+end
+
+function AutotrophicRespirationModel{FT}(
+    parameters::AutotrophicRespirationParameters{FT},
+) where {FT <: AbstractFloat}
+    return AutotrophicRespirationModel{eltype(parameters), typeof(parameters)}(
+        parameters,
+    )
 end
 
 ClimaLSM.name(model::AbstractAutotrophicRespirationModel) =
@@ -80,7 +92,7 @@ function compute_autrophic_respiration(
     (; ne, ηsl, σl, μr, μs, f1, f2) = model.parameters
 
     Nl, Nr, Ns = nitrogen_content(ne, Vcmax25, LAI, RAI, ηsl, h, σl, μr, μs)
-    Rpm = plant_respiration_maintenance.(Rd, β, Nl, Nr, Ns, f1)
+    Rpm = plant_respiration_maintenance(Rd, β, Nl, Nr, Ns, f1)
     Rg = plant_respiration_growth(f2, GPP, Rpm)
     Ra = Rpm + Rg # Should this be a function in canopy_parameterizations.jl or is it ok here?
     return Ra

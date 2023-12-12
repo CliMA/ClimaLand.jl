@@ -57,6 +57,8 @@ struct BigLeafEnergyParameters{FT <: AbstractFloat}
     ac_canopy::FT
 end
 
+Base.eltype(::BigLeafEnergyParameters{FT}) where {FT} = FT
+
 function BigLeafEnergyParameters{FT}(; ac_canopy = FT(2e3)) where {FT}
     return BigLeafEnergyParameters{FT}(ac_canopy)
 end
@@ -65,8 +67,17 @@ end
 """
     BigLeafEnergyModel{FT} <: AbstractCanopyEnergyModel{FT}
 """
-struct BigLeafEnergyModel{FT} <: AbstractCanopyEnergyModel{FT}
-    parameters::BigLeafEnergyParameters{FT}
+struct BigLeafEnergyModel{FT, BEP <: BigLeafEnergyParameters{FT}} <:
+       AbstractCanopyEnergyModel{FT}
+    parameters::BEP
+end
+
+function BigLeafEnergyModel{FT}(
+    parameters::BigLeafEnergyParameters{FT},
+) where {FT <: AbstractFloat}
+    return BigLeafEnergyModel{eltype(parameters), typeof(parameters)}(
+        parameters,
+    )
 end
 
 ClimaLSM.prognostic_vars(model::BigLeafEnergyModel) = (:T,)

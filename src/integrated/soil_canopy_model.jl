@@ -263,14 +263,16 @@ function make_interactions_update_aux(
                 land.soil.domain.space.subsurface,
             ).z
         (; conductivity_model) = land.canopy.hydraulics.parameters
+
         area_index = p.canopy.hydraulics.area_index
+
+        above_ground_area_index = getproperty(
+            area_index,
+            land.canopy.hydraulics.compartment_labels[1],
+        )
+
         @. p.root_extraction =
-            (
-                area_index.root + getproperty(
-                    area_index,
-                    land.canopy.hydraulics.compartment_labels[1],
-                )
-            ) / 2 *
+            (area_index.root + above_ground_area_index) / 2 *
             PlantHydraulics.flux(
                 z,
                 land.canopy.hydraulics.compartment_midpoints[1],

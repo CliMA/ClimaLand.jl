@@ -3,6 +3,7 @@ using Test
 using Statistics
 
 using Dates
+import ClimaComms
 using ClimaCore
 using ClimaLSM.Bucket:
     BucketModel,
@@ -27,7 +28,7 @@ for FT in (Float32, Float64)
     earth_param_set = create_lsm_parameters(FT)
     α_sfc = (coordinate_point) -> 0.2 # surface albedo, spatially constant
     α_snow = FT(0.8) # snow albedo
-    albedo = BulkAlbedoFunction{FT}(α_snow, α_sfc)
+    albedo = BulkAlbedoFunction(α_snow, α_sfc)
     σS_c = FT(0.2)
     W_f = FT(0.15)
     z_0m = FT(1e-2)
@@ -57,6 +58,7 @@ for FT in (Float32, Float64)
     for i in 1:3
         @testset "Conservation of water and energy I (snow present), FT = $FT" begin
             "Radiation"
+
             ref_time = DateTime(2005)
             SW_d = (t) -> 20
             LW_d = (t) -> 20
@@ -116,7 +118,9 @@ for FT in (Float32, Float64)
             _ρ_liq = LSMP.ρ_cloud_liq(model.parameters.earth_param_set)
             _ρLH_f0 = _ρ_liq * _LH_f0 # Latent heat per unit volume
             _T_freeze = LSMP.T_freeze(model.parameters.earth_param_set)
-            snow_cover_fraction(σS) = σS > eps(FT) ? FT(1.0) : FT(0.0)
+            function snow_cover_fraction(σS)
+                return σS > eps(typeof(σS)) ? typeof(σS)(1.0) : typeof(σS)(0.0)
+            end
 
             partitioned_fluxes =
                 partition_surface_fluxes.(
@@ -139,7 +143,6 @@ for FT in (Float32, Float64)
             F_water_sfc =
                 FT(liquid_precip(t0)) + FT(snow_precip(t0)) .-
                 p.bucket.evaporation
-
 
             if i == 1
                 A_point = sum(ones(bucket_domains[i].space.surface))
@@ -223,7 +226,9 @@ for FT in (Float32, Float64)
             _ρ_liq = LSMP.ρ_cloud_liq(model.parameters.earth_param_set)
             _ρLH_f0 = _ρ_liq * _LH_f0 # Latent heat per unit volume
             _T_freeze = LSMP.T_freeze(model.parameters.earth_param_set)
-            snow_cover_fraction(σS) = σS > eps(FT) ? FT(1.0) : FT(0.0)
+            function snow_cover_fraction(σS)
+                return σS > eps(typeof(σS)) ? typeof(σS)(1.0) : typeof(σS)(0.0)
+            end
 
             partitioned_fluxes =
                 partition_surface_fluxes.(
@@ -325,14 +330,17 @@ for FT in (Float32, Float64)
         set_initial_aux_state! = make_set_initial_aux_state(model)
         set_initial_aux_state!(p, Y, t0)
         random = zeros(bucket_domains[i].space.surface)
-        parent(random) .= rand(FT, size(parent(random)))
+        ArrayType = ClimaComms.array_type(Y)
+        parent(random) .= ArrayType(rand(FT, size(parent(random))))
         p.bucket.evaporation .= random .* 1e-7
         compute_exp_tendency!(dY, Y, p, t0)
         _LH_f0 = LSMP.LH_f0(model.parameters.earth_param_set)
         _ρ_liq = LSMP.ρ_cloud_liq(model.parameters.earth_param_set)
         _ρLH_f0 = _ρ_liq * _LH_f0 # Latent heat per unit volume
         _T_freeze = LSMP.T_freeze(model.parameters.earth_param_set)
-        snow_cover_fraction(σS) = σS > eps(FT) ? FT(1.0) : FT(0.0)
+        function snow_cover_fraction(σS)
+            return σS > eps(typeof(σS)) ? typeof(σS)(1.0) : typeof(σS)(0.0)
+        end
 
         partitioned_fluxes =
             partition_surface_fluxes.(
