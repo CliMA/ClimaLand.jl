@@ -954,7 +954,8 @@ function plant_respiration_maintenance(
     Ns::FT, # Nitrogen content of stems
     f1::FT, # Factor to convert from mol CO2 to kg C
 ) where {FT}
-    Rpm = f1 * Rd * (β + (Nr + Ns) / Nl)
+    # When LAI is zero, Nl = 0
+    Rpm = f1 * Rd * (β + (Nr + Ns) / max(Nl, eps(FT)))
     return Rpm
 end
 

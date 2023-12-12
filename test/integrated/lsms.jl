@@ -8,11 +8,11 @@ import ClimaLSM:
     auxiliary_domain_names,
     prognostic_domain_names,
     prognostic_domain_names,
-    interaction_vars,
-    interaction_types,
-    interaction_domain_names,
+    lsm_aux_vars,
+    lsm_aux_types,
+    lsm_aux_domain_names,
     make_compute_exp_tendency,
-    make_interactions_update_aux,
+    make_update_boundary_fluxes,
     make_update_aux,
     make_set_initial_aux_state,
     land_components
@@ -45,9 +45,9 @@ for FT in (Float32, Float64)
             m2::Any
         end
         ClimaLSM.land_components(::DummyModel) = (:m1, :m2)
-        ClimaLSM.interaction_vars(::DummyModel) = (:i1,)
-        ClimaLSM.interaction_types(::DummyModel{FT}) where {FT} = (FT,)
-        ClimaLSM.interaction_domain_names(::DummyModel) = (:surface,)
+        ClimaLSM.lsm_aux_vars(::DummyModel) = (:i1,)
+        ClimaLSM.lsm_aux_types(::DummyModel{FT}) where {FT} = (FT,)
+        ClimaLSM.lsm_aux_domain_names(::DummyModel) = (:surface,)
 
 
 
@@ -58,7 +58,7 @@ for FT in (Float32, Float64)
             return update_aux!
         end
 
-        function ClimaLSM.make_interactions_update_aux(
+        function ClimaLSM.make_update_boundary_fluxes(
             ::DummyModel{FT},
         ) where {FT}
             function update_aux!(p, Y, t)
@@ -151,9 +151,11 @@ for FT in (Float32, Float64)
             m::DummyModel3{FT},
         ) where {FT}
             update_aux! = ClimaLSM.make_update_aux(m)
+            update_boundary_fluxes! = ClimaLSM.make_update_boundary_fluxes(m)
             function set_initial_aux_state!(p, Y, t)
                 p.m1.a .= FT(2.0)
                 update_aux!(p, Y, t)
+                update_boundary_fluxes!(p, Y, t)
             end
             return set_initial_aux_state!
         end

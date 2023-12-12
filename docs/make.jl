@@ -8,6 +8,7 @@ using ClimaLSM
 include("pages_helper.jl")
 tutorials = [
     "For model developers" => [
+        "Intro to standalone models" => "standalone/Usage/model_tutorial.jl",
         "Intro to multi-component models" => "standalone/Usage/LSM_single_column_tutorial.jl",
         "Intro to ClimaLSM Domains" => "standalone/Usage/domain_tutorial.jl",
     ],

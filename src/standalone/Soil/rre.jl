@@ -1,5 +1,5 @@
 """
-    RichardsParameters{FT <: AbstractFloat}
+    RichardsParameters{FT <: AbstractFloat, C <: AbstractSoilHydrologyClosure}
 
 A struct for storing parameters of the `RichardModel`.
 $(DocStringExtensions.FIELDS)
@@ -133,10 +133,8 @@ right hand side of the PDE for `ϑ_l`, and updates `dY.soil.ϑ_l` in place
 with that value.
 """
 function ClimaLSM.make_compute_imp_tendency(model::RichardsModel)
-    update_boundary_fluxes! = make_update_boundary_fluxes(model)
     function compute_imp_tendency!(dY, Y, p, t)
         z = ClimaCore.Fields.coordinate_field(model.domain.space.subsurface).z
-        update_boundary_fluxes!(p, Y, t)
         top_flux_bc = p.soil.top_bc
         bottom_flux_bc = p.soil.bottom_bc
 

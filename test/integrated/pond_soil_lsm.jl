@@ -110,8 +110,12 @@ for FT in (Float32, Float64)
 
         land_prognostic_vars = prognostic_vars(land)
         land_prognostic_types = prognostic_types(land)
+        land_prognostic_domain_names = prognostic_domain_names(land)
+
         land_auxiliary_vars = auxiliary_vars(land)
         land_auxiliary_types = auxiliary_types(land)
+        land_auxiliary_domain_names = auxiliary_domain_names(land)
+
         # prognostic vars
         @test land_prognostic_vars.soil == prognostic_vars(land.soil)
         @test land_prognostic_vars.surface_water ==
@@ -120,8 +124,7 @@ for FT in (Float32, Float64)
         @test land_auxiliary_vars.soil == auxiliary_vars(land.soil)
         @test land_auxiliary_vars.surface_water ==
               auxiliary_vars(land.surface_water)
-        @test land_auxiliary_vars.interactions ==
-              ClimaLSM.interaction_vars(land)
+        @test land_auxiliary_vars.lsm_aux == ClimaLSM.lsm_aux_vars(land)
         # prognostic types
         @test land_prognostic_types.soil == prognostic_types(land.soil)
         @test land_prognostic_types.surface_water ==
@@ -130,8 +133,19 @@ for FT in (Float32, Float64)
         @test land_auxiliary_types.soil == auxiliary_types(land.soil)
         @test land_auxiliary_types.surface_water ==
               auxiliary_types(land.surface_water)
-        @test land_auxiliary_types.interactions ==
-              ClimaLSM.interaction_types(land)
+        @test land_auxiliary_types.lsm_aux == ClimaLSM.lsm_aux_types(land)
+        # prognostic domain names
+        @test land_prognostic_domain_names.soil ==
+              prognostic_domain_names(land.soil)
+        @test land_prognostic_domain_names.surface_water ==
+              prognostic_domain_names(land.surface_water)
+        # auxiliary domain names
+        @test land_auxiliary_domain_names.soil ==
+              auxiliary_domain_names(land.soil)
+        @test land_auxiliary_domain_names.surface_water ==
+              auxiliary_domain_names(land.surface_water)
+        @test land_auxiliary_domain_names.lsm_aux ==
+              ClimaLSM.lsm_aux_domain_names(land)
     end
 
 

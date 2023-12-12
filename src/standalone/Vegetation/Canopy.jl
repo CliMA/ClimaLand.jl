@@ -338,9 +338,11 @@ read in from data files or otherwise prescribed.
 """
 function ClimaLSM.make_set_initial_aux_state(model::CanopyModel)
     update_aux! = make_update_aux(model)
+    update_bf! = make_update_boundary_fluxes(model)
     function set_initial_aux_state!(p, Y0, t0)
         set_canopy_prescribed_field!(model.hydraulics, p, t0)
         update_aux!(p, Y0, t0)
+        update_bf!(p, Y0, t0)
     end
     return set_initial_aux_state!
 end
@@ -552,6 +554,7 @@ function ClimaLSM.make_update_aux(
         @. GPP = compute_GPP(An, K, LAI, Ω)
         @. gs = medlyn_conductance(g0, Drel, medlyn_factor, An, c_co2_air)
         # update autotrophic respiration
+        h_canopy = hydraulics.compartment_surfaces[end]
         @. Ra = compute_autrophic_respiration(
             canopy.autotrophic_respiration,
             Vcmax25,
@@ -560,7 +563,7 @@ function ClimaLSM.make_update_aux(
             GPP,
             Rd,
             β,
-            h,
+            h_canopy,
         )
     end
     return update_aux!
@@ -587,12 +590,7 @@ function make_compute_exp_tendency(
         x -> make_compute_exp_tendency(getproperty(canopy, x), canopy),
         components,
     )
-    update_boundary_fluxes! = make_update_boundary_fluxes(canopy)
     function compute_exp_tendency!(dY, Y, p, t)
-        # First we need to compute/update in place the boundary fluxes for
-        # the component models.
-        update_boundary_fluxes!(p, Y, t)
-        # Then we execute the tendency
         for f! in compute_exp_tendency_list
             f!(dY, Y, p, t)
         end

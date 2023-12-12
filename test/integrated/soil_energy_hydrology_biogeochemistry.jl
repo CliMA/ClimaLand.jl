@@ -79,7 +79,7 @@ for FT in (Float32, Float64)
         co2_bot_bc = Soil.Biogeochemistry.SoilCO2StateBC((p, t) -> C)
         co2_sources = ()
         co2_boundary_conditions =
-            (; CO2 = (top = co2_top_bc, bottom = co2_bot_bc))
+            (; (top = (; CO2 = co2_top_bc)), (bottom = (; CO2 = co2_bot_bc)))
 
         # Make a PrescribedAtmosphere - we only care about atmos_p though
         precipitation_function = (t) -> 1.0

@@ -224,9 +224,7 @@ with that value. These quantities will be stepped explicitly.
 This has been written so as to work with Differential Equations.jl.
 """
 function ClimaLSM.make_compute_exp_tendency(model::SoilCO2Model)
-    update_boundary_fluxes! = make_update_boundary_fluxes(model)
     function compute_exp_tendency!(dY, Y, p, t)
-        update_boundary_fluxes!(p, Y, t)
         top_flux_bc = p.soilco2.top_bc
         bottom_flux_bc = p.soilco2.bottom_bc
 

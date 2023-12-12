@@ -226,10 +226,8 @@ This has been written so as to work with Differential Equations.jl.
 function ClimaLSM.make_compute_exp_tendency(
     model::EnergyHydrology{FT},
 ) where {FT}
-    update_boundary_fluxes! = make_update_boundary_fluxes(model)
     function compute_exp_tendency!(dY, Y, p, t)
         z = ClimaCore.Fields.coordinate_field(model.domain.space.subsurface).z
-        update_boundary_fluxes!(p, Y, t)
         rre_top_flux_bc = p.soil.top_bc.water
         heat_top_flux_bc = p.soil.top_bc.heat
         rre_bottom_flux_bc = p.soil.bottom_bc.water
