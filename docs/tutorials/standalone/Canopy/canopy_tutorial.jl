@@ -318,11 +318,11 @@ N_days = 365
 tf = t0 + 3600 * 24 * N_days
 dt = 225.0;
 
-# Initialize the auxiliary variables for the canopy using the initial
+# Initialize the cache variables for the canopy using the initial
 # conditions and initial time.
 
-set_initial_aux_state! = make_set_initial_aux_state(canopy)
-set_initial_aux_state!(p, Y, t0);
+set_initial_cache! = make_set_initial_cache(canopy)
+set_initial_cache!(p, Y, t0);
 
 # Allocate the struct which stores the saved auxiliary state
 # and create the callback which saves it at each element in saveat.

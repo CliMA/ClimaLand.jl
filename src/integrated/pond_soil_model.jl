@@ -157,7 +157,7 @@ function infiltration_capacity(Y::ClimaCore.Fields.FieldVector, p::NamedTuple)
 end
 
 """
-    function make_update_boundary_fluxes(
+    make_update_boundary_fluxes(
         land::LandHydrology{FT, SM, SW},
     ) where {FT, SM <: Soil.RichardsModel{FT}, SW <: Pond.PondModel{FT}}
 

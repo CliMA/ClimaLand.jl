@@ -142,7 +142,7 @@ using ClimaLSM:
     initialize,
     make_update_aux,
     make_exp_tendency,
-    make_set_initial_aux_state,
+    make_set_initial_cache,
     PrescribedAtmosphere,
     PrescribedRadiativeFluxes
 # We also want to plot the solution
@@ -288,9 +288,9 @@ Y.bucket.W .= FT(0.05);
 Y.bucket.Ws .= FT(0.0);
 Y.bucket.σS .= FT(0.08);
 
-# We also set the initial conditions of the auxiliary state here:
-set_initial_aux_state! = make_set_initial_aux_state(model);
-set_initial_aux_state!(p, Y, t0);
+# We also set the initial values of the cache here:
+set_initial_cache! = make_set_initial_cache(model);
+set_initial_cache!(p, Y, t0);
 
 # Then to create the entire right hand side (tendency) function for the system
 # of ordinary differential equations:

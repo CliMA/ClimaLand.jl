@@ -13,9 +13,8 @@ using ClimaLSM.Bucket:
 using ClimaLSM.Domains: coordinates, Column, HybridBox, SphericalShell
 using ClimaLSM:
     initialize,
-    make_update_aux,
     make_exp_tendency,
-    make_set_initial_aux_state,
+    make_set_initial_cache,
     PrescribedAtmosphere,
     PrescribedRadiativeFluxes
 
@@ -111,8 +110,8 @@ for FT in (Float32, Float64)
             dY = similar(Y)
 
             exp_tendency! = make_exp_tendency(model)
-            set_initial_aux_state! = make_set_initial_aux_state(model)
-            set_initial_aux_state!(p, Y, t0)
+            set_initial_cache! = make_set_initial_cache(model)
+            set_initial_cache!(p, Y, t0)
             exp_tendency!(dY, Y, p, t0)
             _LH_f0 = LSMP.LH_f0(model.parameters.earth_param_set)
             _ρ_liq = LSMP.ρ_cloud_liq(model.parameters.earth_param_set)
@@ -219,8 +218,8 @@ for FT in (Float32, Float64)
             dY = similar(Y)
 
             exp_tendency! = make_exp_tendency(model)
-            set_initial_aux_state! = make_set_initial_aux_state(model)
-            set_initial_aux_state!(p, Y, t0)
+            set_initial_cache! = make_set_initial_cache(model)
+            set_initial_cache!(p, Y, t0)
             exp_tendency!(dY, Y, p, t0)
             _LH_f0 = LSMP.LH_f0(model.parameters.earth_param_set)
             _ρ_liq = LSMP.ρ_cloud_liq(model.parameters.earth_param_set)
@@ -327,8 +326,8 @@ for FT in (Float32, Float64)
         dY = similar(Y)
 
         compute_exp_tendency! = ClimaLSM.make_compute_exp_tendency(model)
-        set_initial_aux_state! = make_set_initial_aux_state(model)
-        set_initial_aux_state!(p, Y, t0)
+        set_initial_cache! = make_set_initial_cache(model)
+        set_initial_cache!(p, Y, t0)
         random = zeros(bucket_domains[i].space.surface)
         ArrayType = ClimaComms.array_type(Y)
         parent(random) .= ArrayType(rand(FT, size(parent(random))))

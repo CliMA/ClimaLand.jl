@@ -20,7 +20,7 @@ import ClimaLSM:
     make_update_boundary_fluxes,
     make_update_aux,
     make_compute_exp_tendency,
-    make_set_initial_aux_state
+    make_set_initial_cache
 
 using ClimaLSM.Domains: Point, Plane, SphericalSurface
 export SharedCanopyParameters,
@@ -327,24 +327,22 @@ function initialize_auxiliary(model::CanopyModel{FT}, coords) where {FT}
 end
 
 """
-    ClimaLSM.make_set_initial_aux_state(model::CanopyModel)
+    ClimaLSM.make_set_initial_cache(model::CanopyModel)
 
-Returns the set_initial_aux_state! function, which updates the auxiliary
+Returns the set_initial_cache! function, which updates the auxiliary
 state `p` in place with the initial values corresponding to Y(t=t0) = Y0.
 
 In this case, we also use this method to update the initial values for the
 spatially and temporally varying canopy parameter fields,
 read in from data files or otherwise prescribed.
 """
-function ClimaLSM.make_set_initial_aux_state(model::CanopyModel)
-    update_aux! = make_update_aux(model)
-    update_bf! = make_update_boundary_fluxes(model)
-    function set_initial_aux_state!(p, Y0, t0)
+function ClimaLSM.make_set_initial_cache(model::CanopyModel)
+    update_cache! = make_update_cache(model)
+    function set_initial_cache!(p, Y0, t0)
         set_canopy_prescribed_field!(model.hydraulics, p, t0)
-        update_aux!(p, Y0, t0)
-        update_bf!(p, Y0, t0)
+        update_cache!(p, Y0, t0)
     end
-    return set_initial_aux_state!
+    return set_initial_cache!
 end
 
 """

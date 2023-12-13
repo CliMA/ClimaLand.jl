@@ -143,8 +143,8 @@ for FT in (Float32, Float64)
         init_soil!(Y, z, model.soil.parameters)
         init_co2!(Y, C)
         t0 = FT(0.0)
-        set_initial_aux_state! = make_set_initial_aux_state(model)
-        set_initial_aux_state!(p, Y, t0)
+        set_initial_cache! = make_set_initial_cache(model)
+        set_initial_cache!(p, Y, t0)
 
         @test p.soil.T ≈ Soil.Biogeochemistry.soil_temperature(
             model.soilco2.driver.met,
@@ -221,8 +221,8 @@ for FT in (Float32, Float64)
             init_soil_2!(Y, z, model.soil.parameters)
             init_co2_2!(Y, C)
             t0 = FT(0.0)
-            set_initial_aux_state! = make_set_initial_aux_state(model)
-            set_initial_aux_state!(p, Y, t0)
+            set_initial_cache! = make_set_initial_cache(model)
+            set_initial_cache!(p, Y, t0)
 
             @test p.soil.T ≈ Soil.Biogeochemistry.soil_temperature(
                 model.soilco2.driver.met,

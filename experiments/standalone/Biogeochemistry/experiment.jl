@@ -143,7 +143,7 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
     )
 
     Y, p, coords = initialize(model)
-    set_initial_aux_state! = make_set_initial_aux_state(model)
+    set_initial_cache! = make_set_initial_cache(model)
 
     function init_soil!(Y, z, params)
         ν = params.ν
@@ -167,7 +167,7 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
     z = coords.subsurface.z
     init_soil!(Y, z, model.soil.parameters)
     init_co2!(Y, z)
-    set_initial_aux_state!(p, Y, t0)
+    set_initial_cache!(p, Y, t0)
     Soil_bio_exp_tendency! = make_exp_tendency(model)
 
     timestepper = CTS.RK4()

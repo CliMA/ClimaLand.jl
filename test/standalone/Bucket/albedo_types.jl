@@ -24,7 +24,7 @@ using ClimaLSM.Domains: coordinates, Column, SphericalShell
 using ClimaLSM:
     initialize,
     make_update_aux,
-    make_set_initial_aux_state,
+    make_set_initial_cache,
     PrescribedAtmosphere,
     PrescribedRadiativeFluxes
 
@@ -340,8 +340,8 @@ if !Sys.iswindows()
                 Y.bucket.W .= 0.0
                 Y.bucket.Ws .= 0.0
                 Y.bucket.σS .= 0.0
-                set_initial_aux_state! = make_set_initial_aux_state(model)
-                set_initial_aux_state!(p, Y, FT(0.0))
+                set_initial_cache! = make_set_initial_cache(model)
+                set_initial_cache!(p, Y, FT(0.0))
                 field = regrid_netcdf_to_field(
                     FT,
                     regrid_dirpath,
@@ -487,8 +487,8 @@ if !Sys.iswindows()
                 Y.bucket.W .= 0.0
                 Y.bucket.Ws .= 0.0
                 Y.bucket.σS .= 0.0
-                set_initial_aux_state! = make_set_initial_aux_state(model)
-                set_initial_aux_state!(p, Y, FT(0.0))
+                set_initial_cache! = make_set_initial_cache(model)
+                set_initial_cache!(p, Y, FT(0.0))
                 field = regrid_netcdf_to_field(
                     FT,
                     regrid_dirpath,

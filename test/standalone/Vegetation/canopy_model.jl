@@ -200,11 +200,11 @@ for FT in (Float32, Float64)
                   prognostic_types(getproperty(canopy, component))
         end
         parent(Y.canopy.hydraulics.ϑ_l) .= plant_ν
-        set_initial_aux_state! = make_set_initial_aux_state(canopy)
+        set_initial_cache! = make_set_initial_cache(canopy)
         exp_tendency! = make_exp_tendency(canopy)
         t0 = FT(0.0)
         dY = similar(Y)
-        set_initial_aux_state!(p, Y, t0)
+        set_initial_cache!(p, Y, t0)
         # check that this is updated correctly:
         # @test p.canopy.autotrophic_respiration.Ra ==
         exp_tendency!(dY, Y, p, t0)
@@ -660,9 +660,9 @@ for FT in (Float32, Float64)
         Y.canopy.hydraulics .= plant_ν
         Y.canopy.energy.T = FT(289)
 
-        set_initial_aux_state! = make_set_initial_aux_state(canopy)
+        set_initial_cache! = make_set_initial_cache(canopy)
         t0 = FT(0.0)
-        set_initial_aux_state!(p, Y, t0)
+        set_initial_cache!(p, Y, t0)
         exp_tendency! = make_exp_tendency(canopy)
         dY = similar(Y)
         exp_tendency!(dY, Y, p, t0)
