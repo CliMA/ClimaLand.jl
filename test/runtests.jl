@@ -44,6 +44,9 @@ end
 @safetestset "Snow parameterization tests" begin
     include("standalone/Snow/parameterizations.jl")
 end
+@safetestset "Neural Snow model tools tests" begin
+    include("standalone/Snow/tool_tests.jl")
+end
 
 # Standalone Soil model tests
 @safetestset "Soil Biogeochemistry module tests" begin

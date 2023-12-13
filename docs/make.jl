@@ -28,6 +28,14 @@ tutorials = [
         "Integrated soil+canopy modeling" => [
             "Coupled Canopy and Soil" => "integrated/soil_canopy_tutorial.jl",
         ],
+        "Bucket LSM" => [
+            "standalone/Bucket/bucket_tutorial.jl",
+            "standalone/Bucket/coupled_bucket.jl",
+        ],
+        "Snow Modeling" => [
+            "standalone/Snow/base_tutorial.jl",
+            "standalone/Snow/data_tutorial.jl",
+        ],
     ],
 ]
 @everywhere const clima_dir = dirname(dirname(pathof(ClimaLSM)));
