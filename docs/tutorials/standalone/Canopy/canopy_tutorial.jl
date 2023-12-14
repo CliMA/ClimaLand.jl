@@ -38,7 +38,7 @@ import SciMLBase
 using Plots
 using Statistics
 using Dates
-
+using Insolation
 
 # Load CliMA Packages and ClimaLSM Modules:
 
@@ -78,24 +78,51 @@ earth_param_set = create_lsm_parameters(FT);
 # the [`domain`](https://clima.github.io/ClimaLSM.jl/dev/APIs/shared_utilities/#Domains)
 # would change.
 
-land_domain = Point(; z_sfc = FT(0.0))
-
+nelements = 10
+zmin = FT(-2)
+zmax = FT(0)
+f_root_to_shoot = FT(3.5)
+SAI = FT(0.00242)
+maxLAI = FT(4.2)
+capacity = FT(10) # kg/m^2
 n_stem = Int64(1)
 n_leaf = Int64(1)
 h_stem = FT(9)
 h_leaf = FT(9.5)
 compartment_midpoints = [h_stem / 2, h_stem + h_leaf / 2]
-compartment_surfaces = [FT(0), h_stem, h_stem + h_leaf];
+compartment_surfaces = [zmax, h_stem, h_stem + h_leaf]
+land_domain = Point(; z_sfc = FT(0.0))
 
-# We will be using prescribed atmospheric and radiative flux drivers from the
-# US-MOz tower observations, which we read in here. We are using prescribed
-# atmospheric and radiative flux conditions, but it is also possible to couple
-# the simulation with atmospheric and/or radiative flux models.
+# - We will be using prescribed atmospheric and radiative drivers from the
+#   US-MOz tower, which we read in here. We are using prescribed
+#   atmospheric and radiative flux conditions, but it is also possible to couple
+#   the simulation with atmospheric and radiative flux models. We also
+# read in the observed LAI and let that vary in time in a prescribed manner.
+
+# Use the data tools for reading FLUXNET data sets 
+include(
+    joinpath(pkgdir(ClimaLSM), "experiments/integrated/fluxnet/data_tools.jl"),
+);
+
+# First provide some information about the site
+# Timezone (offset from UTC in hrs)
+time_offset = 7
+
+# Site latitude and longitude
+lat = FT(38.7441) # degree
+long = FT(-92.2000) # degree
+
+# Height of the sensor at the site
+atmos_h = FT(32)
+
+# Provide the site site ID and the path to the data file:
+site_ID = "US-MOz"
+data_link = "https://caltech.box.com/shared/static/7r0ci9pacsnwyo0o9c25mhhcjhsu6d72.csv"
 
 include(
     joinpath(
         pkgdir(ClimaLSM),
-        "experiments/integrated/ozark/ozark_met_drivers_FLUXNET.jl",
+        "experiments/integrated/fluxnet/met_drivers_FLUXNET.jl",
     ),
 );
 

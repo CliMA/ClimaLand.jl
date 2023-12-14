@@ -48,12 +48,20 @@ steps:
         artifact_paths: "experiments/standalone/Soil/evaporation*png"
 
       - label: "vaira_test"
-        command: "julia --color=yes --project=experiments experiments/integrated/vaira_ranch/vaira.jl"
-        artifact_paths: "experiments/integrated/vaira_ranch/*png"
+        command: "julia --color=yes --project=experiments experiments/integrated/fluxnet/run_fluxnet.jl US-Var"
+        artifact_paths: "experiments/integrated/fluxnet/US-Var/out/*png"
 
       - label: "ozark_test"
-        command: "julia --color=yes --project=experiments experiments/integrated/ozark/ozark.jl"
-        artifact_paths: "experiments/integrated/ozark/*png"
+        command: "julia --color=yes --project=experiments experiments/integrated/fluxnet/run_fluxnet.jl US-MOz"
+        artifact_paths: "experiments/integrated/fluxnet/US-MOz/out/*png"
+
+      - label: "niwot_test"
+        command: "julia --color=yes --project=experiments experiments/integrated/fluxnet/run_fluxnet.jl US-NR1"
+        artifact_paths: "experiments/integrated/fluxnet/US-NR1/out/*png"
+
+      - label: "harvard_test"
+        command: "julia --color=yes --project=experiments experiments/integrated/fluxnet/run_fluxnet.jl US-Ha1"
+        artifact_paths: "experiments/integrated/fluxnet/US-Ha1/out/*png"
 
       - label: "ozark_conservation"
         command: "julia --color=yes --project=experiments experiments/integrated/ozark/conservation/ozark_conservation.jl"

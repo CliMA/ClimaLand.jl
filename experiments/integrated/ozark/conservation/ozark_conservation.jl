@@ -6,7 +6,6 @@ using Plots
 using Statistics
 using Dates
 
-
 using ClimaLSM
 using ClimaLSM.Domains: Column
 using ClimaLSM.Soil
@@ -22,7 +21,34 @@ for float_type in (Float32, Float64)
     # Make these global so we can use them in other ozark files
     global FT = float_type
     global earth_param_set = create_lsm_parameters(FT)
+    global site_ID = "US-MOz"
 
+    # Utility functions for reading in and filling fluxnet data
+    include(
+        joinpath(climalsm_dir, "experiments/integrated/fluxnet/data_tools.jl"),
+    )
+    # Site-specific domain parameters
+    include(
+        joinpath(
+            climalsm_dir,
+            "experiments/integrated/fluxnet/$(site_ID)/$(site_ID)_simulation.jl",
+        ),
+    )
+    # Setup the domain for the simulation
+    include(
+        joinpath(
+            climalsm_dir,
+            "experiments/integrated/fluxnet/fluxnet_domain.jl",
+        ),
+    )
+    # Read in the parameters for the Ozark site
+    include(
+        joinpath(
+            climalsm_dir,
+            "experiments/integrated/fluxnet/$(site_ID)/$(site_ID)_parameters.jl",
+        ),
+    )
+    # Read simulation parameters for the conservation test
     include(
         joinpath(
             climalsm_dir,
@@ -34,16 +60,7 @@ for float_type in (Float32, Float64)
     include(
         joinpath(
             climalsm_dir,
-            "experiments/integrated/ozark/ozark_met_drivers_FLUXNET.jl",
-        ),
-    )
-    include(
-        joinpath(climalsm_dir, "experiments/integrated/ozark/ozark_domain.jl"),
-    )
-    include(
-        joinpath(
-            climalsm_dir,
-            "experiments/integrated/ozark/ozark_parameters.jl",
+            "experiments/integrated/fluxnet/met_drivers_FLUXNET.jl",
         ),
     )
 
@@ -248,12 +265,12 @@ for float_type in (Float32, Float64)
     exp_tendency! = make_exp_tendency(land)
 
     #Initial conditions
-    Y.soil.ϑ_l = SWC[1 + Int(round(t0 / 1800))] # Get soil water content at t0
+    Y.soil.ϑ_l = drivers.SWC.values[1 + Int(round(t0 / 1800))] # Get soil water content at t0
     # recalling that the data is in intervals of 1800 seconds. Both the data
     # and simulation are reference to 2005-01-01-00 (LOCAL)
     # or 2005-01-01-06 (UTC)
     Y.soil.θ_i = FT(0.0)
-    T_0 = FT(TS[1 + Int(round(t0 / 1800))]) # Get soil temperature at t0
+    T_0 = FT(drivers.TS.values[1 + Int(round(t0 / 1800))]) # Get soil temperature at t0
     ρc_s =
         volumetric_heat_capacity.(
             Y.soil.ϑ_l,
@@ -286,7 +303,7 @@ for float_type in (Float32, Float64)
             augmented_liquid_fraction.(plant_ν, S_l_ini[i])
     end
 
-    Y.canopy.energy.T = TA[1 + Int(round(t0 / 1800))] # Get atmos temperature at t0
+    Y.canopy.energy.T = drivers.TA.values[1 + Int(round(t0 / 1800))] # Get atmos temperature at t0
 
     set_initial_aux_state! = make_set_initial_aux_state(land)
     set_initial_aux_state!(p, Y, t0)
