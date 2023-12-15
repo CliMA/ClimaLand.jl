@@ -72,7 +72,7 @@ ax_SWOUT.xticks[] = (datetime2unix.(dateticks) , Dates.format.(dateticks, "mm/dd
 
 axislegend(ax_C, [p_GPP_d, p_GPP_m], ["Observations", "ClimaLSM"], "", position = :rt, orientation = :horizontal)
 
-save("timeseries.png", fig)
+save("timeseries.svg", fig)
 
 
 
@@ -116,7 +116,7 @@ Colorbar(fig[1, 2], hm_GPP)
 
 ax_C.xticks[] = (datetime2unix.(dateticks) , Dates.format.(dateticks, "mm/dd"))
 
-save("Fingerprint.png", fig)
+save("Fingerprint.svg", fig)
 
 
 
