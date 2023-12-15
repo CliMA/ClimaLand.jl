@@ -19,7 +19,13 @@ export timeseries_fluxes_fig,
 # to do in another script: animations
 
 # 1. Time series of GPP, ET and SW_OUT
-function timeseries_fluxes_fig(inputs, climaland, index_t_start, index_t_end) # will run for any inputs or climaland output of FLUXNET sites
+function timeseries_fluxes_fig(
+    inputs,
+    climaland,
+    index_t_start,
+    index_t_end,
+    earth_param_set,
+) # will run for any inputs or climaland output of FLUXNET sites
     # create an empty figure
     fig = Figure(size = (1000, 1000)) # note: do not load Plots.jl in this branch (it is loading in plot_utils)
     fontsize_theme = Theme(fontsize = 20)
@@ -82,7 +88,7 @@ function timeseries_fluxes_fig(inputs, climaland, index_t_start, index_t_end) # 
     p_SWOUT_d = CairoMakie.scatter!(
         ax_SWOUT,
         datetime2unix.(inputs.DateTime[index_t_start:index_t_end]),
-        FT.(inputs.SW_OUT[index_t_start:index_t_end]),
+        inputs.SW_OUT[index_t_start:index_t_end],
         color = :black,
     )
 
@@ -122,7 +128,13 @@ function timeseries_fluxes_fig(inputs, climaland, index_t_start, index_t_end) # 
 end
 
 # 2. Time series of SWC, Precip, moisture stress, stomatal conductance
-function timeseries_H2O_fig(inputs, climaland, index_t_start, index_t_end) # will run for any inputs or climaland output of FLUXNET sites
+function timeseries_H2O_fig(
+    inputs,
+    climaland,
+    index_t_start,
+    index_t_end,
+    earth_param_set,
+) # will run for any inputs or climaland output of FLUXNET sites
     # create an empty figure
     fig = Figure(size = (1000, 1000)) # note: do not load Plots.jl in this branch (it is loading in plot_utils)
     fontsize_theme = Theme(fontsize = 20)
@@ -228,7 +240,13 @@ function timeseries_H2O_fig(inputs, climaland, index_t_start, index_t_end) # wil
 end
 
 # 3. Fingerprint plot
-function fingerprint_fig(inputs, climaland, index_t_start, index_t_end)
+function fingerprint_fig(
+    inputs,
+    climaland,
+    index_t_start,
+    index_t_end,
+    earth_param_set,
+)
     fig = Figure(size = (1000, 1000))
     fontsize_theme = Theme(fontsize = 20)
     set_theme!(fontsize_theme)
@@ -300,7 +318,13 @@ function diurnal_plot!(
     return diurnal_p
 end
 
-function diurnals_fig(inputs, climaland, index_t_start, index_t_end)
+function diurnals_fig(
+    inputs,
+    climaland,
+    index_t_start,
+    index_t_end,
+    earth_param_set,
+)
     fig = Figure(size = (1000, 1000))
     fontsize_theme = Theme(fontsize = 20)
     set_theme!(fontsize_theme)
@@ -369,7 +393,7 @@ function diurnals_fig(inputs, climaland, index_t_start, index_t_end)
         fig,
         ax_E,
         inputs.DateTime[index_t_start:index_t_end],
-        FT.(inputs.SW_OUT[index_t_start:index_t_end]),
+        inputs.SW_OUT[index_t_start:index_t_end],
         :red,
         alpha = 0.1,
         linestyle = :dot,
@@ -413,7 +437,8 @@ end
 
 # 6. Energy balance closure (L + H = Rn - G)
 
-function make_plots(inputs, climaland)
+function make_plots(inputs, climaland; FT = Float64)
+    earth_param_set = LP.LandParameters(FT)
     # below shouldn't be hardcoded!
     index_t_start = 120 * 48 # we shouldn't hardcode that 120 in ozark_simulation.jl
     index_t_end = 120 * 48 + (60 - 30) * 48
@@ -424,10 +449,34 @@ function make_plots(inputs, climaland)
         mkdir("figures")
     end
 
-    fig1 = timeseries_fluxes_fig(inputs, climaland, index_t_start, index_t_end)
-    fig2 = timeseries_H2O_fig(inputs, climaland, index_t_start, index_t_end)
-    fig3 = fingerprint_fig(inputs, climaland, index_t_start, index_t_end)
-    fig4 = diurnals_fig(inputs, climaland, index_t_start, index_t_end)
+    fig1 = timeseries_fluxes_fig(
+        inputs,
+        climaland,
+        index_t_start,
+        index_t_end,
+        earth_param_set,
+    )
+    fig2 = timeseries_H2O_fig(
+        inputs,
+        climaland,
+        index_t_start,
+        index_t_end,
+        earth_param_set,
+    )
+    fig3 = fingerprint_fig(
+        inputs,
+        climaland,
+        index_t_start,
+        index_t_end,
+        earth_param_set,
+    )
+    fig4 = diurnals_fig(
+        inputs,
+        climaland,
+        index_t_start,
+        index_t_end,
+        earth_param_set,
+    )
 
     names = [
         "timeseries_fluxes.pdf",

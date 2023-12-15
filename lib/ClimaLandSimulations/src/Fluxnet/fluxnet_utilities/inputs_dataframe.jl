@@ -1,11 +1,24 @@
 export make_inputs_df
 
+# UnitfulMoles compound
+@compound CO2
+
 """
-    make_inputs_df(LOCAL_DATETIME, drivers)
+    make_inputs_df(site_ID)
 
 Returns DataFrames of inputs, one unitless, one in SI units, one in commonly used units. 
 """
-function make_inputs_df(LOCAL_DATETIME, drivers)
+function make_inputs_df(
+    site_ID;
+    FT = Float64,
+    context = ClimaComms.SingletonCommsContext(),
+    setup = make_setup(site_ID),
+    domain = make_domain(setup, FT),
+    config = make_config(site_ID),
+    params = make_parameters(site_ID),
+    drivers = make_drivers(site_ID, setup, config, params, context),
+    timestepper = make_timestepper(setup),
+)
 
     variables_name = (
         "DateTime",
@@ -29,23 +42,23 @@ function make_inputs_df(LOCAL_DATETIME, drivers)
 
     variables = [
         vec(mat) for mat in (
-            LOCAL_DATETIME,
-            drivers.RECO.values,
-            drivers.TA.values,
-            drivers.VPD.values,
-            drivers.PA.values,
-            drivers.P.values,
-            drivers.WS.values,
-            drivers.LW_IN.values,
-            drivers.SW_IN.values,
-            drivers.CO2.values,
-            drivers.SWC.values,
-            drivers.TS.values,
-            drivers.GPP.values,
-            drivers.LE.values,
-            drivers.H.values,
-            drivers.G.values,
-            drivers.SW_OUT.values,
+            drivers.LOCAL_DATETIME,
+            drivers.drivers.RECO.values,
+            drivers.drivers.TA.values,
+            drivers.drivers.VPD.values,
+            drivers.drivers.PA.values,
+            drivers.drivers.P.values,
+            drivers.drivers.WS.values,
+            drivers.drivers.LW_IN.values,
+            drivers.drivers.SW_IN.values,
+            drivers.drivers.CO2.values,
+            drivers.drivers.SWC.values,
+            drivers.drivers.TS.values,
+            drivers.drivers.GPP.values,
+            drivers.drivers.LE.values,
+            drivers.drivers.H.values,
+            drivers.drivers.G.values,
+            drivers.drivers.SW_OUT.values,
         )
     ]
 
