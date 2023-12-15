@@ -54,6 +54,7 @@ function plot_daily_avg(
     num_days::Int64,
     unit::String,
     savedir::String,
+    label::String = "data",
 )
     # Rescale the data and take the average diurnal cycle
     data_hh_avg =
@@ -65,7 +66,7 @@ function plot_daily_avg(
         plt,
         0.5:0.5:24,
         data_hh_avg,
-        label = "Data",
+        label = label,
         xlabel = "Hour of day",
         ylabel = "$var_name $(unit)",
         title = "$var_name",

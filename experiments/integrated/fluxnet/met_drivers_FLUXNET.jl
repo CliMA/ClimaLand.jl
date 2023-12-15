@@ -185,13 +185,17 @@ radiation = ClimaLSM.PrescribedRadiativeFluxes(
     θs = zenith_angle,
 )
 
+# Start and end dates of data in MODIS format
+modis_start_date = "A$(Dates.year(UTC_DATETIME[1]))$(lpad(Dates.dayofyear(UTC_DATETIME[1]), 3, "0"))"
+modis_end_date = "A$(Dates.year(UTC_DATETIME[end]))$(lpad(Dates.dayofyear(UTC_DATETIME[end]), 3, "0"))"
+
 MODIS_LAI = single_col_data_matrix(
     parse_response(
         check_response(
             send_get_subset(
                 "MCD15A2H",
-                "A2005000",
-                "A2006000",
+                modis_start_date,
+                modis_end_date,
                 site_ID,
                 band = "Lai_500m",
             ),
