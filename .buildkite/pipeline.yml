@@ -74,6 +74,10 @@ steps:
         command: "julia --color=yes --project=experiments experiments/standalone/Soil/water_conservation.jl"
         artifact_paths: "experiments/standalone/Soil/water_conservation*png"
 
+      - label: "Makie test"
+        command: "julia --color=yes --project=experiments experiments/integrated/fluxnet/buildkite_test.jl"
+        artifact_paths: "experiments/integrated/fluxnet/figures/*pdf"
+
   - group: "GPU"
     steps:
       - label: "GPU runtests"

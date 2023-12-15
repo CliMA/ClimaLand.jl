@@ -1,9 +1,5 @@
 """Plotting utilities for the integrated fluxnet site experiments"""
 
-using Interpolations
-using Plots
-using StatsBase
-
 S_PER_DAY = 86400 # Number of seconds in a day
 
 """This function uses interpolation to convert a time series of data at 
