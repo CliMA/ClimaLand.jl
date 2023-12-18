@@ -12,9 +12,9 @@ ClimaLSM.LandHydrology
 ClimaLSM.make_interactions_update_aux
 ClimaLSM.initialize_interactions
 ClimaLSM.land_components
-ClimaLSM.interaction_vars
-ClimaLSM.interaction_types
-ClimaLSM.interaction_domain_names
+ClimaLSM.lsm_aux_vars
+ClimaLSM.lsm_aux_types
+ClimaLSM.lsm_aux_domain_names
 ClimaLSM.domain_name
 ```
 

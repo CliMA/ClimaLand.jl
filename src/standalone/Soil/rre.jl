@@ -100,7 +100,7 @@ function make_update_boundary_fluxes(model::RichardsModel)
     function update_boundary_fluxes!(p, Y, t)
         z = ClimaCore.Fields.coordinate_field(model.domain.space.subsurface).z
         Δz_top, Δz_bottom = get_Δz(z)
-        p.soil.top_bc .= boundary_flux(
+        p.soil.top_bc.water .= boundary_flux(
             model.boundary_conditions.top.water,
             TopBoundary(),
             model,
@@ -109,7 +109,7 @@ function make_update_boundary_fluxes(model::RichardsModel)
             p,
             t,
         )
-        p.soil.bottom_bc .= boundary_flux(
+        p.soil.bottom_bc.water .= boundary_flux(
             model.boundary_conditions.bottom.water,
             BottomBoundary(),
             model,
@@ -135,8 +135,8 @@ with that value.
 function ClimaLSM.make_compute_imp_tendency(model::RichardsModel)
     function compute_imp_tendency!(dY, Y, p, t)
         z = ClimaCore.Fields.coordinate_field(model.domain.space.subsurface).z
-        top_flux_bc = p.soil.top_bc
-        bottom_flux_bc = p.soil.bottom_bc
+        top_flux_bc = p.soil.top_bc.water
+        bottom_flux_bc = p.soil.bottom_bc.water
 
         interpc2f = Operators.InterpolateC2F()
         gradc2f_water = Operators.GradientC2F()
@@ -247,16 +247,63 @@ ClimaLSM.prognostic_domain_names(soil::RichardsModel) = (:subsurface,)
 
 A function which returns the names of the auxiliary variables
 of `RichardsModel`.
-
-Note that auxiliary variables are not needed for such a simple model.
-We could instead compute the conductivity and matric potential within the
-tendency function explicitly, rather than compute and store them in the
-auxiliary vector `p`. We did so in this case as a demonstration.
 """
-ClimaLSM.auxiliary_vars(soil::RichardsModel) = (:K, :ψ, :top_bc, :bottom_bc)
-ClimaLSM.auxiliary_types(soil::RichardsModel{FT}) where {FT} = (FT, FT, FT, FT)
-ClimaLSM.auxiliary_domain_names(soil::RichardsModel) =
-    (:subsurface, :subsurface, :surface, :surface)
+function ClimaLSM.auxiliary_vars(soil::RichardsModel)
+    return (
+        :K,
+        :ψ,
+        boundary_vars(soil.boundary_conditions.top, ClimaLSM.TopBoundary())...,
+        boundary_vars(
+            soil.boundary_conditions.bottom,
+            ClimaLSM.BottomBoundary(),
+        )...,
+    )
+end
+
+"""
+    auxiliary_domain_names(soil::RichardsModel)
+
+A function which returns the names of the auxiliary domain names
+of `RichardsModel`.
+"""
+function ClimaLSM.auxiliary_domain_names(soil::RichardsModel)
+    return (
+        :subsurface,
+        :subsurface,
+        boundary_var_domain_names(
+            soil.boundary_conditions.top,
+            ClimaLSM.TopBoundary(),
+        )...,
+        boundary_var_domain_names(
+            soil.boundary_conditions.bottom,
+            ClimaLSM.BottomBoundary(),
+        )...,
+    )
+end
+
+"""
+    auxiliary_types(soil::RichardsModel)
+
+A function which returns the names of the auxiliary types
+of `RichardsModel`.
+"""
+function ClimaLSM.auxiliary_types(soil::RichardsModel{FT}) where {FT}
+    return (
+        FT,
+        FT,
+        boundary_var_types(
+            soil,
+            soil.boundary_conditions.top,
+            ClimaLSM.TopBoundary(),
+        )...,
+        boundary_var_types(
+            soil,
+            soil.boundary_conditions.bottom,
+            ClimaLSM.BottomBoundary(),
+        )...,
+    )
+end
+
 """
     make_update_aux(model::RichardsModel)
 

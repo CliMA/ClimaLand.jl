@@ -1,10 +1,13 @@
-import ClimaLSM: AbstractBC, boundary_flux
+import ClimaLSM: AbstractBC, AbstractBoundary, boundary_flux
 export TemperatureStateBC,
     MoistureStateBC,
     FreeDrainage,
     FluxBC,
     AtmosDrivenFluxBC,
-    RichardsAtmosDrivenFluxBC
+    RichardsAtmosDrivenFluxBC,
+    boundary_vars,
+    boundary_var_domain_names,
+    boundary_var_types
 
 """
     AbstractSoilBC <: ClimaLSM. AbstractBC
@@ -12,6 +15,96 @@ export TemperatureStateBC,
 An abstract type for soil-specific types of boundary conditions, like free drainage.
 """
 abstract type AbstractSoilBC <: ClimaLSM.AbstractBC end
+
+
+"""
+    boundary_vars(::NamedTuple, ::ClimaLSM.TopBoundary)
+
+The list of symbols for additional variables to add to the soil
+model auxiliary state, which defaults to adding storage for the
+ top boundary flux fields,
+but which can be extended depending on the type of boundary condition used.
+
+Note that `:top_bc` must be present, with the default type and domain name,
+for both the RichardsModel and the 
+EnergyHydrology soil models.
+
+ Use this function in the exact same way you would use `auxiliary_vars`.
+"""
+boundary_vars(::NamedTuple, ::ClimaLSM.TopBoundary) = (:top_bc,)
+
+"""
+    boundary_vars(::NamedTuple, ::ClimaLSM.BottomBoundary)
+
+The list of symbols for additional variables to add to the soil
+model auxiliary state, which defaults to adding storage for the
+ bottom boundary flux fields,
+but which can be extended depending on the type of boundary condition used.
+
+Use this function in the exact same way you would use `auxiliary_vars`.
+
+Note that `:bottom_bc` must be present, with the default type and domain name,
+for both the RichardsModel and the 
+EnergyHydrology soil models.
+"""
+boundary_vars(::NamedTuple, ::ClimaLSM.BottomBoundary) = (:bottom_bc,)
+
+"""
+    boundary_var_domain_names(::AbstractSoilBC, ::ClimaLSM.AbstractBoundary)
+
+The list of domain names for additional variables to add to the soil
+model auxiliary state,  which defaults to adding storage for the
+ boundary flux fields,
+but which can be extended depending on the type of boundary condition used.
+Note that extensions to this function must still include a flux bc defined on
+the surface in addition to other variables.
+
+Use this function in the exact same way you would use `auxiliary_var_domain_names`.
+"""
+boundary_var_domain_names(::NamedTuple, ::ClimaLSM.AbstractBoundary) =
+    (:surface,)
+
+"""
+    boundary_var_types(::Soil.EnergyHydrology{FT}, ::NamedTuple, ::ClimaLSM.AbstractBoundary) where {FT}
+
+The list of variable types for additional variables to add to the EnergyHydrology
+model auxiliary state, which defaults to adding storage for the
+ boundary flux fields,
+but which can be extended depending on the type of boundary condition used.
+
+Use this function in the exact same way you would use `auxiliary_types`.
+Note that extensions to this function must still include a flux bc defined on
+the surface in addition to other variables.
+"""
+function boundary_var_types(
+    ::Soil.EnergyHydrology{FT},
+    ::NamedTuple,
+    ::ClimaLSM.AbstractBoundary,
+) where {FT}
+    (NamedTuple{(:water, :heat), Tuple{FT, FT}},)
+end
+
+"""
+    boundary_var_types(::Soil.RichardsModel{FT}, ::NamedTuple, ::ClimaLSM.AbstractBoundary) where {FT}
+
+The list of variable types for additional variables to add to the Richards
+model auxiliary state,  which defaults to adding storage for the
+ boundary flux fields,
+but which can be extended depending on the type of boundary condition used.
+
+Since the only prognostic variable for the Richards-Richardson equation is the
+volumetric water content, only a water flux boundary condition is required per boundary.
+
+Use this function in the exact same way you would use `auxiliary_types`.
+Note that extensions to this function must still include a flux bc defined on
+the surface in addition to other variables.
+"""
+boundary_var_types(
+    ::Soil.RichardsModel{FT},
+    ::NamedTuple,
+    ::ClimaLSM.AbstractBoundary,
+) where {FT} = (NamedTuple{(:water,), Tuple{FT}},)
+
 
 """
    MoistureStateBC <: AbstractSoilBC
@@ -145,6 +238,53 @@ function create_soil_bc_named_tuple(water_flux, heat_flux)
     return (; :water => water_flux, :heat => heat_flux)
 end
 
+"""
+    boundary_vars(::AtmosDrivenFluxBC, ::ClimaLSM.TopBoundary)
+
+An extension of the `boundary_vars` method for AtmosDrivenFluxBC. This
+adds the surface conditions (SHF, LHF, evaporation, and resistance) and the
+net radiation to the auxiliary variables.
+
+These variables are updated in place in `soil_boundary_fluxes`.
+"""
+boundary_vars(bc::AtmosDrivenFluxBC, ::ClimaLSM.TopBoundary) =
+    (:sfc_conditions, :R_n, :top_bc)
+
+"""
+    boundary_var_domain_names(::AtmosDrivenFluxBC, ::ClimaLSM.TopBoundary))
+
+An extension of the `boundary_var_domain_names` method for AtmosDrivenFluxBC. This
+specifies the part of the domain on which the additional variables should be
+defined.
+"""
+boundary_var_domain_names(bc::AtmosDrivenFluxBC, ::ClimaLSM.TopBoundary) =
+    (:surface, :surface, :surface)
+"""
+    boundary_var_types(
+        ::AtmosDrivenFluxBC{
+            <:AbstractAtmosphericDrivers{FT},
+            <:AbstractRadiativeDrivers{FT},
+            <:AbstractRunoffModel,
+        }, ::ClimaLSM.TopBoundary,
+    ) where {FT}
+
+An extension of the `boundary_var_types` method for AtmosDrivenFluxBC. This
+specifies the type of the additional variables.
+"""
+boundary_var_types(
+    model::EnergyHydrology{FT},
+    bc::AtmosDrivenFluxBC{
+        <:AbstractAtmosphericDrivers{FT},
+        <:AbstractRadiativeDrivers{FT},
+        <:AbstractRunoffModel,
+    },
+    ::ClimaLSM.TopBoundary,
+) where {FT} = (
+    NamedTuple{(:lhf, :shf, :vapor_flux, :r_ae), Tuple{FT, FT, FT, FT}},
+    FT,
+    NamedTuple{(:water, :heat), Tuple{FT, FT}},
+)
+
 
 """
     soil_boundary_fluxes(
@@ -191,13 +331,13 @@ function soil_boundary_fluxes(
     t,
 ) where {FT}
 
-    conditions = surface_fluxes(bc.atmos, model, Y, p, t)
-    R_n = net_radiation(bc.radiation, model, Y, p, t)
+    p.soil.sfc_conditions .= surface_fluxes(bc.atmos, model, Y, p, t)
+    p.soil.R_n .= net_radiation(bc.radiation, model, Y, p, t)
     # We are ignoring sublimation for now
     precip = FT.(bc.atmos.liquid_precip(t))
     infiltration = soil_surface_infiltration(
         bc.runoff,
-        precip .+ conditions.vapor_flux,
+        precip .+ p.soil.sfc_conditions.vapor_flux,
         Y,
         p,
         model.parameters,
@@ -205,9 +345,8 @@ function soil_boundary_fluxes(
     # We do not model the energy flux from infiltration
     return @. create_soil_bc_named_tuple(
         infiltration,
-        R_n + conditions.lhf + conditions.shf,
+        p.soil.R_n + p.soil.sfc_conditions.lhf + p.soil.sfc_conditions.shf,
     )
-
 end
 
 """

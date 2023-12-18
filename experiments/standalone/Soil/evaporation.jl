@@ -24,7 +24,7 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
 # Define simulation times
 t0 = Float64(0)
 tf = Float64(24 * 3600 * 13)
-dt = Float64(1)
+dt = Float64(2)
 
 for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
     earth_param_set = create_lsm_parameters(FT)
@@ -34,7 +34,7 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
     K_sat = FT(225.1 / 3600 / 24 / 1000)
     # n and alpha estimated by matching vG curve.
     vg_n = FT(10.0)
-    vg_α = FT(4.2)
+    vg_α = FT(6.0)
     hcm = vanGenuchten(; α = vg_α, n = vg_n)
     # Alternative parameters for Brooks Corey water retention model
     #ψb = FT(-0.14)
@@ -61,8 +61,9 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
     emissivity = FT(1.0)
     PAR_albedo = FT(0.2)
     NIR_albedo = FT(0.4)
-    z_0m = 5e-4
-    z_0b = 1e-5
+    z_0m = FT(1e-3)
+    z_0b = FT(1e-4)
+    d_ds = FT(0.005)
 
     ref_time = DateTime(2005)
     SW_d = (t) -> 0
@@ -119,6 +120,7 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
         z_0m = z_0m,
         z_0b = z_0b,
         earth_param_set = earth_param_set,
+        d_ds = d_ds,
     )
 
     #TODO: Run with higher resolution once we have the implicit stepper
@@ -164,7 +166,15 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
         (t0, tf),
         p,
     )
-    sol = SciMLBase.solve(prob, ode_algo; dt = dt, saveat = 3600)
+    saveat = Array(t0:3600.0:tf)
+    sv = (;
+        t = Array{Float64}(undef, length(saveat)),
+        saveval = Array{NamedTuple}(undef, length(saveat)),
+    )
+    cb = ClimaLSM.NonInterpSavingCallback(sv, saveat)
+
+    sol =
+        SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb, saveat = saveat)
 
     # Check that simulation still has correct float type
     @assert eltype(sol.u[end].soil) == FT
@@ -173,26 +183,28 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
     if FT == Float64
         (; ν, θ_r, d_ds) = soil.parameters
         _D_vapor = FT(LSMP.D_vapor(soil.parameters.earth_param_set))
-        update_aux! = make_update_aux(soil)
-
+        evap = [
+            parent(sv.saveval[k].soil.sfc_conditions.vapor_flux)[1] for
+            k in 1:length(sol.t)
+        ]
+        r_ae = [
+            parent(sv.saveval[k].soil.sfc_conditions.r_ae)[1] for
+            k in 1:length(sol.t)
+        ]
+        T_soil = [parent(sv.saveval[k].soil.T)[end] for k in 1:length(sol.t)]
         S_c = hcm.S_c
-        evap = []
         evap_0 = []
-        r_ae = []
         r_soil = []
         dsl = []
-        T_soil = []
         q_soil = []
         ρ_soil = []
         ρ_atmos = []
-        L_MO = []
         surface_flux_params = LSMP.surface_fluxes_parameters(earth_param_set)
 
         for i in 1:length(sol.t)
             time = sol.t[i]
             u = sol.u[i]
-            update_aux!(p, u, time)
-            conditions = surface_fluxes(top_bc.atmos, soil, u, p, time)
+            p = sv.saveval[i]
             τ_a = ClimaLSM.Domains.top_center_to_surface(
                 @. max(eps(FT), (ν - p.soil.θ_l - u.soil.θ_i)^(FT(5 / 2)) / ν)
             )
@@ -203,10 +215,7 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
                 parent(Soil.dry_soil_layer_thickness.(S_l_sfc, S_c, d_ds))[1]
             push!(dsl, layer_thickness)
             push!(r_soil, parent(@. layer_thickness / (_D_vapor * τ_a))[1])
-            push!(r_ae, parent(conditions.r_ae)[1])
-            push!(evap, parent(conditions.vapor_flux)[1])
-            T_sfc = parent(p.soil.T)[end]
-            push!(T_soil, T_sfc)
+            T_sfc = T_soil[i]
             ts_in =
                 ClimaLSM.construct_atmos_ts(top_bc.atmos, time, thermo_params)
             push!(ρ_atmos, Thermodynamics.air_density(thermo_params, ts_in))
@@ -256,14 +265,13 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
                     potential_conditions.Ch,
                 ) / 1000.0
             push!(evap_0, vapor_flux)
-            push!(L_MO, potential_conditions.L_MO)
         end
 
         plt1 = Plots.plot()
         Plots.plot!(
             plt1,
             sol.t ./ 3600 ./ 24,
-            (evap .* r_ae ./ (r_ae .+ r_soil)) ./ evap_0,
+            evap ./ evap_0,
             xlabel = "Days",
             ylabel = "E/E₀",
             label = "",
@@ -298,7 +306,7 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
         Plots.plot!(
             plt4,
             sol.t ./ 3600 ./ 24,
-            (evap .* r_ae ./ (r_ae .+ r_soil)) .* (1000 * 3600 * 24),
+            evap .* (1000 * 3600 * 24),
             xlabel = "Days",
             ylabel = "E (mm/d)",
             label = "",
@@ -409,7 +417,7 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
         Plots.plot!(
             plt_fig8b,
             sol.t ./ 3600 ./ 24,
-            (evap .* r_ae ./ (r_ae .+ r_soil)) .* (1000 * 3600 * 24),
+            evap .* (1000 * 3600 * 24),
             label = "Model",
             color = :black,
             linewidth = 3,

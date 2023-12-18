@@ -79,6 +79,9 @@ ClimaLSM.Soil.TemperatureStateBC
 ClimaLSM.Soil.FreeDrainage
 ClimaLSM.Soil.RichardsAtmosDrivenFluxBC
 ClimaLSM.Soil.AtmosDrivenFluxBC
+ClimaLSM.Soil.boundary_vars
+ClimaLSM.Soil.boundary_var_domain_names
+ClimaLSM.Soil.boundary_var_types
 ```
 
 ## Soil Source Types
