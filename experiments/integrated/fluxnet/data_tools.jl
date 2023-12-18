@@ -11,32 +11,54 @@ using StatsBase
 # Define the valid data statuses
 @enum DataStatus complete = 1 absent = 2 incomplete = 3
 
-function replace_missing_with_mean!(field, flag)
-    """Replace values indicated to be missing by a QC flag with the mean value
-    in the column"""
+"""
+    replace_poor_quality_with_mean!(field, flag)
+
+Replace values indicated to be poor quality by a fluxnet 
+QC `flag` (Array) with the mean value
+in the `field` (Array).
+
+This uses the Fluxnet convention of 0 = measured, 1 = good quality
+gap fill, 2 = medium quality, and 3 = poor quality, and replaces
+data with QC flag = 2,3. 
+"""
+function replace_poor_quality_with_mean!(field, flag)
     good_indices = (flag .== 0) .|| (flag .== 1)
     fill_value = mean(field[good_indices])
     field[.~good_indices] .= fill_value
     return field
 end
 
+"""
+    replace_replace_missing_with_mean_by_value!(field)
+
+Replace values indicated to be missing
+ with the mean value in the `field` (Array).
+
+This uses the Fluxnet convention of a value of -9999 indicating
+missing data.
+"""
 function replace_missing_with_mean_by_value!(field)
-    """Replace missing values indicated by -9999 in the column data with the 
-    mean value in the column"""
     good_indices = .~(field .== -9999)
     fill_value = mean(field[good_indices])
     field[.~good_indices] .= fill_value
     return field
 end
 
-function check_column(file_matrix::Matrix, column_name::String)
-    """Checks that the data file parsed into the data matrix contains the column
-    specified by the string column, and that the column does not contain 
-    missing values. Returns the corresponding DataStatus."""
+"""
+    column_status(driver_data::Matrix, column_name::String)
+
+Checks that the `driver_data` matrix contains the column
+specified by the string `column_name`; checks if that the column does not contain 
+missing values. Returns the corresponding DataStatus (absent if column name 
+is not present, incomplete if missing data is present, or complete if no missing
+data is present).
+"""
+function column_status(driver_data::Matrix, column_name::String)
     col_dat = []
-    column_names = file_matrix[1, :]
+    column_names = driver_data[1, :]
     try
-        col_dat = file_matrix[2:end, column_names .== column_name]
+        col_dat = driver_data[2:end, column_names .== column_name]
     catch _
         return col_dat, absent
     end
@@ -54,81 +76,99 @@ function check_column(file_matrix::Matrix, column_name::String)
     return col_dat, complete
 end
 
+"""
+    DataColumn
+
+A struct for storing data columns along with thir units and 
+a status flag which indicates the data is complete (but not neccessarily QC
+checked), absent entirely, or incomplete.
+"""
 struct DataColumn
-    """A struct for storing data columns along with thir units and 
-    a status flag which indicates the data is complete, missing, or 
-    incomplete."""
+    "A nx1 matrix, where n is the number of data points, of data values"
     values::Matrix
+    "The units of those values"
     units::String
+    "The missing-data status of the column"
     status::DataStatus
 end
 
-function DataColumn(file_matrix::Matrix, column_name::String, units::String)
-    """Returns a DataColumn struct containing the data from the column
-    specified by the string column_name, along with the units of the data and 
-    a status flag which indicates the data is complete, missing, or
-    incomplete."""
-    col_dat, status = check_column(file_matrix, column_name)
-    # Patch missing values with mean
-    if status == incomplete
-        num_missing = count(x -> x == -9999, col_dat)
-        percent_missing = 100.0 * num_missing / length(col_dat)
-        if percent_missing > 90.0
-            return DataColumn(col_dat, units, absent)
-        end
-        @info "Warning: Data for $column_name $(round(percent_missing,
-        sigdigits=3))% missing. Filling with mean value"
-        replace_missing_with_mean_by_value!(col_dat)
-        status = complete
-    end
-    return DataColumn(col_dat, units, status)
-end
+"""
+    filter_column(driver_data::Matrix, column_name::String, units::String)
 
-function VerifiedColumn(file_matrix::Matrix, column_name::String, units::String)
-    """Returns a DataColumn struct with units and status for a column read from 
-    the fluxnet data file. Checks to see if a quality control flag 
-    is available for the data column, and if so, replaces missing values with
-    the mean value per the QC flag."""
-    # Check that the data exists and read it in
-    col_dat, status = check_column(file_matrix, column_name)
+Checks the `driver_data` for the present of `column_name`; returns a 
+DataColumn struct with cleaned data and a complete status if present,
+returns an empty DataColumn with status absent if not.
+
+- Checks to see if a quality control flag 
+is available for the data column, and if so, replaces poor quality values with
+the mean value per the QC flag.
+ - Checks for missing data and replaces with the mean value
+- Returns an `absent` status if the column is not present.
+"""
+function filter_column(driver_data::Matrix, column_name::String, units::String)
+    # Check that the data exists and read it in if so
+    col_dat, status = column_status(driver_data, column_name)
+    # Set missing data threshold above which column is treated as absent
+    missing_threshold = 0.5
+    # Set poor quality threshold above which the column undergoes no replacement using the quality flag
+    quality_threshold = 0.5
+    # if it does not exist, exit
     if status == absent
+        @info "Warning: Data for $column_name is absent"
         return DataColumn(reshape([], 0, 0), "", status)
-    end
-    # Check for a QC flag column
-    column_QC = column_name * "_QC"
-    QC_col, QCstatus = check_column(file_matrix, column_QC)
-    # If no QC flag, then fill and return the data column as is
-    if QCstatus != absent && minimum(QC_col) != 2
-        # Fill any missing data with the mean value per the QC flag
-        num_missing = count(x -> x > 1, QC_col)
-        if num_missing > 0
-            perc_missing = 100.0 * num_missing / length(col_dat)
-            @info "Warning: Data for $column_name $(
-            round(perc_missing, sigdigits=3))% missing. Filling with mean value"
-            replace_missing_with_mean!(col_dat, QC_col)
+    elseif status == complete # all data is present but some may be poor quality
+        # Check for a QC flag column and use it to clean data if possible
+        column_QC = column_name * "_QC"
+        QC_col, QCstatus = column_status(driver_data, column_QC)
+        if QCstatus != absent
+            # QC flag = [0,1] -> good data, [2,3] -> poorer data
+            num_poor = count(x -> x >= 2, QC_col)
+            percent_poor = 100.0 * num_poor / length(col_dat)
+            # If the percent_poor is below a threshold, fill any missing data with the mean value per the QC flag, 
+            # otherwise return data column with a specific warning but use poorer quality data directly
+            if percent_poor < quality_threshold
+                replace_poor_quality_with_mean!(col_dat, QC_col)
+                @info "Warning: Data for $column_name $(round(percent_poor, sigdigits=3))% poor quality. Filled with mean value using QC flag"
+                return DataColumn(col_dat, units, status)
+            else
+                @info "Warning: Data for $column_name $(round(percent_poor, sigdigits=3))% poor quality. Returning with no replacement."
+                return DataColumn(col_dat, units, status)
+            end
+        else
+            @info "Information: Data for $column_name is complete and no QC flag present"
+            return DataColumn(col_dat, units, status)
         end
-        return DataColumn(col_dat, units, complete)
-    end
-    if status == incomplete
+    elseif status == incomplete # data is missing
+        # Replace values of -9999 with mean
         num_missing = count(x -> x == -9999, col_dat)
         percent_missing = 100.0 * num_missing / length(col_dat)
-        if percent_missing > 90.0
+        if percent_missing > missing_threshold
+            @info "Warning: Data for $column_name $(round(percent_missing,
+                                        sigdigits=3))% has value of -9999. Treating as absent"
             return DataColumn(col_dat, "", absent)
         end
-        @info "Warning: Data for $column_name $(round(percent_missing,
-        sigdigits=3))% missing. Filling with mean value"
+        replace_missing_with_mean_by_value!(col_dat)
         status = complete
+        @info "Warning: Data for $column_name $(round(percent_missing,
+                                sigdigits=3))% has value of -9999. Filled with mean value"
+        return DataColumn(col_dat, units, status)
     end
-    return DataColumn(col_dat, units, status)
 end
 
+"""
+    transform_column(column::DataColumn,
+                     transform::Function,
+                     units::String,
+                    )
+
+Returns a new DataColumn struct with the values of the input `column`
+transformed via the function `transform`. Useful for unit conversions. Sets 
+the units of the column to the string units.
+"""
 function transform_column(
     column::DataColumn,
     transform::Function,
     units::String,
 )
-    """Returns a new DataColumn struct with the values of the input column
-    transformed via the function transform. Useful for unit conversions. Sets 
-    the units of the column to the string units."""
     return DataColumn(transform.(column.values), units, column.status)
 end
