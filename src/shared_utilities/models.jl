@@ -61,6 +61,10 @@ name(model::AbstractModel) =
    prognostic_vars(m::AbstractModel)
 
 Returns the prognostic variable symbols for the model in the form of a tuple.
+
+Note that this default suggests that a model has no prognostic variables,
+which is an invalid model setup. This function is meant to be extended for
+all models.
 """
 prognostic_vars(m::AbstractModel) = ()
 
@@ -70,6 +74,10 @@ prognostic_vars(m::AbstractModel) = ()
 Returns the domain names for the prognostic variables in the form of a tuple.
 
 Examples: (:surface, :surface, :subsurface).
+
+Note that this default suggests that a model has no prognostic variables,
+which is an invalid model setup. This function is meant to be extended for
+all models.
 """
 prognostic_domain_names(m::AbstractModel) = ()
 
@@ -87,15 +95,19 @@ coordinate point)
  length `k` at each coordinate point.
 
 Here, the coordinate points are those returned by coordinates(model).
+
+Note that this default suggests that a model has no prognostic variables,
+which is an invalid model setup. This function is meant to be extended for
+all models.
 """
 prognostic_types(m::AbstractModel) = ()
+
 """
    auxiliary_vars(m::AbstractModel)
 
 Returns the auxiliary variable symbols for the model in the form of a tuple.
 """
 auxiliary_vars(m::AbstractModel) = ()
-
 
 """
    auxiliary_domain_names(m::AbstractModel)
@@ -105,7 +117,6 @@ Returns the domain names for the auxiliary variables in the form of a tuple.
 Examples: (:surface, :surface, :subsurface).
 """
 auxiliary_domain_names(m::AbstractModel) = ()
-
 
 """
    auxiliary_types(m::AbstractModel{FT}) where {FT}
@@ -306,6 +317,11 @@ Adjustments to this - for example because different prognostic variables
 have different dimensions - require defining a new method.
 """
 function initialize_prognostic(model::AbstractModel{FT}, state) where {FT}
+    if length(prognostic_vars(model)) == 0
+        throw(
+            AssertionError("Model must have at least one prognostic variable."),
+        )
+    end
     state_nt = initialize_vars(
         prognostic_vars(model),
         prognostic_types(model),
@@ -355,7 +371,7 @@ end
 function initialize_vars(keys, types, domain_names, state, model_name)
     FT = eltype(state)
     if length(keys) == 0
-        return (; model_name => FT[])
+        return (; model_name => nothing)
     else
         zero_states = map(zip(types, domain_names)) do (T, D)
             zero_instance = ClimaCore.RecursiveApply.rzero(T)

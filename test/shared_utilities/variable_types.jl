@@ -85,6 +85,23 @@ end
     @test_throws MethodError make_compute_imp_tendency(dcc)
 end
 
+@testset "Model with no prognostic vars, FT = $FT" begin
+    struct Model{FT, D} <: AbstractModel{FT}
+        domain::D
+    end
+
+    zmin = FT(1.0)
+    zmax = FT(2.0)
+    zlim = (zmin, zmax)
+    nelements = 5
+
+    column = Column(; zlim = zlim, nelements = nelements)
+    m = Model{FT, typeof(column)}(column)
+
+    # `initialize` should fail for a model with no prognostic variables
+    @test_throws AssertionError initialize(m)
+end
+
 @testset "Variables, FT = $FT" begin
     struct Model{FT, D} <: AbstractModel{FT}
         domain::D

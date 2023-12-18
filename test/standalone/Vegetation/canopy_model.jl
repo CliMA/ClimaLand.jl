@@ -182,14 +182,19 @@ for FT in (Float32, Float64)
             radiation = radiation,
         )
         Y, p, coords = ClimaLSM.initialize(canopy)
+
+        # Check that structure of Y is value (will error if not)
+        @test !isnothing(zero(Y))
         @test typeof(canopy.energy) == PrescribedCanopyTempModel{FT}
         @test propertynames(p) == (:canopy,)
         for component in ClimaLSM.Canopy.canopy_components(canopy)
+            # Only hydraulics has a prognostic variable
+            if component == :hydraulics
+                @test propertynames(getproperty(Y.canopy, component)) ==
+                      ClimaLSM.prognostic_vars(getproperty(canopy, component))
+            end
             @test propertynames(getproperty(p.canopy, component)) ==
                   ClimaLSM.auxiliary_vars(getproperty(canopy, component))
-            @test propertynames(getproperty(Y.canopy, component)) ==
-                  ClimaLSM.prognostic_vars(getproperty(canopy, component))
-
             @test getproperty(auxiliary_types(canopy), component) ==
                   auxiliary_types(getproperty(canopy, component))
             @test getproperty(auxiliary_vars(canopy), component) ==
@@ -641,12 +646,18 @@ for FT in (Float32, Float64)
         @test canopy.radiative_transfer.parameters.ϵ_canopy == FT(0.98)
         @test canopy.energy.parameters.ac_canopy == FT(2.0e3)
         Y, p, coords = ClimaLSM.initialize(canopy)
+
+        # Check that structure of Y is value (will error if not)
+        @test !isnothing(zero(Y))
         @test propertynames(p) == (:canopy,)
         for component in ClimaLSM.Canopy.canopy_components(canopy)
+            # Only hydraulics has a prognostic variable
+            if component == :hydraulics
+                @test propertynames(getproperty(Y.canopy, component)) ==
+                      ClimaLSM.prognostic_vars(getproperty(canopy, component))
+            end
             @test propertynames(getproperty(p.canopy, component)) ==
                   ClimaLSM.auxiliary_vars(getproperty(canopy, component))
-            @test propertynames(getproperty(Y.canopy, component)) ==
-                  ClimaLSM.prognostic_vars(getproperty(canopy, component))
 
             @test getproperty(auxiliary_types(canopy), component) ==
                   auxiliary_types(getproperty(canopy, component))

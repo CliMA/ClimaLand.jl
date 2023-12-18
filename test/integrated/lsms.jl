@@ -110,15 +110,21 @@ for FT in (Float32, Float64)
         ClimaLSM.auxiliary_vars(::DummyModel3) = (:a, :b)
         ClimaLSM.auxiliary_types(::DummyModel3{FT}) where {FT} = (FT, FT)
         ClimaLSM.auxiliary_domain_names(::DummyModel3) = (:surface, :surface)
+        ClimaLSM.prognostic_vars(::DummyModel3) = (:c,)
+        ClimaLSM.prognostic_types(::DummyModel3{FT}) where {FT} = (FT,)
+        ClimaLSM.prognostic_domain_names(::DummyModel3) = (:surface,)
 
         struct DummyModel4{FT} <: ClimaLSM.AbstractModel{FT}
             domain::Any
         end
 
         ClimaLSM.name(::DummyModel4) = :m2
-        ClimaLSM.auxiliary_vars(::DummyModel4) = (:c, :d)
+        ClimaLSM.auxiliary_vars(::DummyModel4) = (:d, :e)
         ClimaLSM.auxiliary_types(::DummyModel4{FT}) where {FT} = (FT, FT)
         ClimaLSM.auxiliary_domain_names(::DummyModel4) = (:surface, :surface)
+        ClimaLSM.prognostic_vars(::DummyModel4) = (:f,)
+        ClimaLSM.prognostic_types(::DummyModel4{FT}) where {FT} = (FT,)
+        ClimaLSM.prognostic_domain_names(::DummyModel4) = (:surface,)
 
         struct DummyModelB{FT} <: ClimaLSM.AbstractLandModel{FT}
             m1::Any
@@ -141,8 +147,8 @@ for FT in (Float32, Float64)
 
         function ClimaLSM.make_update_aux(::DummyModel4{FT}) where {FT}
             function update_aux!(p, Y, t)
-                p.m2.c .= FT(10.0)
                 p.m2.d .= FT(10.0)
+                p.m2.e .= FT(10.0)
             end
             return update_aux!
         end
@@ -165,7 +171,7 @@ for FT in (Float32, Float64)
         set_initial_cache!(p, Y, FT(0.0))
         @test all(parent(p.m1.a) .== FT(2))
         @test all(parent(p.m1.b) .== FT(10))
-        @test all(parent(p.m2.c) .== FT(10))
         @test all(parent(p.m2.d) .== FT(10))
+        @test all(parent(p.m2.e) .== FT(10))
     end
 end
