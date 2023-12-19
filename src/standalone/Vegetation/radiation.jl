@@ -176,9 +176,10 @@ The estimated PAR is half of the incident shortwave radiation.
 function compute_PAR(
     model::AbstractRadiationModel{FT},
     solar_radiation::ClimaLSM.PrescribedRadiativeFluxes{FT},
+    p,
     t,
 ) where {FT}
-    return FT(solar_radiation.SW_d(t) / 2)
+    return p.drivers.SW_d / 2
 end
 
 """
@@ -196,9 +197,10 @@ The estimated PNIR is half of the incident shortwave radiation.
 function compute_NIR(
     model::AbstractRadiationModel{FT},
     solar_radiation::ClimaLSM.PrescribedRadiativeFluxes{FT},
+    p,
     t,
 ) where {FT}
-    return FT(solar_radiation.SW_d(t) / 2)
+    return p.drivers.SW_d / 2
 end
 
 # Make radiation models broadcastable

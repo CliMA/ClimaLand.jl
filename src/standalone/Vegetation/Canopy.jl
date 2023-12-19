@@ -411,6 +411,8 @@ function ClimaLSM.make_update_aux(
         P_air = p.drivers.P
         T_air = p.drivers.T
         q_air = p.drivers.q
+        SW_d = p.drivers.SW_d
+
         # unpack parameters
         earth_param_set = canopy.parameters.earth_param_set
         c = FT(LSMP.light_speed(earth_param_set))
@@ -437,12 +439,13 @@ function ClimaLSM.make_update_aux(
         T_air .= canopy.atmos.T(t)
         q_air .= canopy.atmos.q(t)
         h::FT = canopy.atmos.h
-
+        SW_d .= canopy.radiation.SW_d(t)
+        
         # update radiative transfer
         RT = canopy.radiative_transfer
         K = extinction_coeff(ld, θs)
-        PAR .= compute_PAR(RT, canopy.radiation, t)
-        NIR .= compute_NIR(RT, canopy.radiation, t)
+        PAR .= compute_PAR(RT, canopy.radiation, p, t)
+        NIR .= compute_NIR(RT, canopy.radiation, p, t)
         e_sat =
             Thermodynamics.saturation_vapor_pressure.(
                 Ref(thermo_params),
@@ -608,16 +611,6 @@ Base.broadcastable(C::CanopyModel) = tuple(C)
 
 
 function ClimaLSM.add_drivers_to_cache(p, model::CanopyModel{FT}) where {FT}
-    if typeof(model.atmos) <: PrescribedAtmosphere && typeof(model.radiation) <: PrescribedRadiativeFuxes
-        keys = (:P_liq, :P_snow, :T, :P, :u, :q, :c_co2, :SW_d, :LW_d, :θs)
-        types = ([FT for k in keys]...,)
-        domain_names = ([:surface for k in keys]...,)
-        state = ClimaLSM.Domains.coordinates(model)
-        model_name = :drivers
-        vars = ClimaLSM.initialize_vars(keys, types, domain_names, state, model_name)
-        return merge(p, vars)
-    else
-        return p
-    end
-end    
+    vars = ClimaLSM.driver_p(model.atmos, model.radiation,ClimaLSM.Domains.coordinates(model))
+    return merge(p, vars)
 end

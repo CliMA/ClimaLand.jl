@@ -502,8 +502,11 @@ function make_compute_exp_tendency(model::BucketModel{FT}) where {FT}
 
 
         # Partition water fluxes
-        liquid_precip = liquid_precipitation(model.atmos, p, t) # always positive
-        snow_precip = snow_precipitation(model.atmos, p, t) # always positive
+        liquid_precip = p.drivers.P_liq
+        snow_precip = p.drivers.P_snow
+        
+        liquid_precip .= liquid_precipitation(model.atmos, p, t) # always positive
+        snow_precip .= snow_precipitation(model.atmos, p, t) # always positive
         # Always positive; F_melt at present already has σ factor in it.
         snow_melt = @. (-F_melt / _ρLH_f0) # Equation (20)
 
@@ -626,17 +629,8 @@ function next_albedo(
 end
 
 function ClimaLSM.add_drivers_to_cache(p, model::BucketModel{FT}) where {FT}
-    if typeof(model.atmos) <: PrescribedAtmosphere && typeof(model.radiation) <: PrescribedRadiativeFuxes
-        keys = (:P_liq, :P_snow, :T, :P, :u, :q, :c_co2, :SW_d, :LW_d, :θs)
-        types = ([FT for k in keys]...,)
-        domain_names = ([:surface for k in keys]...,)
-        state = ClimaLSM.Domains.coordinates(model)
-        model_name = :drivers
-        vars = ClimaLSM.initialize_vars(keys, types, domain_names, state, model_name)
-        return merge(p, vars)
-    else
-        return p
-    end
+        vars = ClimaLSM.driver_p(model.atmos, model.radiation, ClimaLSM.Domains.coordinates(model))
+    return merge(p, vars)
 end
 
 include("./bucket_parameterizations.jl")

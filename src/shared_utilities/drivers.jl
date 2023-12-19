@@ -10,7 +10,6 @@ export AbstractAtmosphericDrivers,
     PrescribedAtmosphere,
     PrescribedRadiativeFluxes,
     compute_ρ_sfc,
-    construct_atmos_ts,
     turbulent_fluxes,
     net_radiation,
     turbulent_fluxes_at_a_point,
@@ -108,31 +107,6 @@ function compute_ρ_sfc(thermo_params, ts_in, T_sfc)
 end
 
 """
-    construct_atmos_ts(
-        atmos::PrescribedAtmosphere,
-        t,
-        thermo_params,
-    )
-
-A helper function which constructs a Clima.Thermodynamics
-thermodynamic state given a PrescribedAtmosphere, a time
-at which the state is needed, and a set of Clima.Thermodynamics
-parameters thermo_params.
-"""
-function construct_atmos_ts(
-    atmos::PrescribedAtmosphere{FT},
-    t,
-    thermo_params,
-) where {FT}
-    P = FT.(atmos.P(t))
-    T = FT.(atmos.T(t))
-    q = FT.(atmos.q(t))
-    ts_in = Thermodynamics.PhaseEquil_pTq(thermo_params, P, T, q)
-    return ts_in
-end
-
-
-"""
     turbulent_fluxes(atmos::PrescribedAtmosphere{FT},
                    model::AbstractModel{FT},
                    Y::ClimaCore.Fields.FieldVector,
@@ -162,32 +136,20 @@ function turbulent_fluxes(
     h_sfc = FT.(surface_height(model, Y, p))
     r_sfc = FT.(surface_resistance(model, Y, p, t))
     d_sfc = FT.(displacement_height(model, Y, p))
-    return turbulent_fluxes_at_a_point.(
-        T_sfc,
-        q_sfc,
-        ρ_sfc,
-        β_sfc,
-        h_sfc,
-        r_sfc,
-        d_sfc,
-        t,
-        Ref(model.parameters),
-        Ref(atmos),
-    )
+    T_air = p.drivers.T
+    P_air = p.drivers.P
+    q_air = p.drivers.q
+    u_air = p.drivers.u
+    P_air .= FT.(atmos.P(t))
+    T_air .= FT.(atmos.T(t))
+    q_air .= FT.(atmos.q(t))
+    u_air .= FT.(atmos.u(t))
+    return turbulent_fluxes_at_a_point.(T_sfc, q_sfc, ρ_sfc, h_sfc, d_sfc, β_sfc, r_sfc,
+                                        T_air, q_air, P_air, atmos.h, u_air, atmos.gustiness, t, Ref(model.parameters))
 end
 
 """
-    turbulent_fluxes_at_a_point(T_sfc::FT,
-                              q_sfc::FT,
-                              ρ_sfc::FT,
-                              β_sfc::FT,
-                              h_sfc::FT,
-                              r_sfc::FT,
-                              d_sfc::FT,
-                              t,
-                              parameters::P,
-                              atmos::PA,
-                              ) where {FT <: AbstractFloat, P, PA <: PrescribedAtmosphere{FT}}
+    turbulent_fluxes_at_a_point()
 
 Computes turbulent surface fluxes at a point on a surface given
 (1) the surface temperature, specific humidity, and air density,
@@ -197,31 +159,20 @@ Computes turbulent surface fluxes at a point on a surface given
     in more complex land models),
 (4) the parameter set for the model, which must have fields `earth_param_set`,
 and roughness lengths `z_0m, z_0b`.
-(5) the prescribed atmospheric state, stored in `atmos`,
+(5) the air temperature, specific humidity, and pressure
 (6) the displacement height for the model.
 
 This returns an energy flux and a liquid water volume flux, stored in
 a tuple with self explanatory keys.
 """
-function turbulent_fluxes_at_a_point(
-    T_sfc::FT,
-    q_sfc::FT,
-    ρ_sfc::FT,
-    β_sfc::FT,
-    h_sfc::FT,
-    r_sfc::FT,
-    d_sfc::FT,
-    t,
-    parameters::P,
-    atmos::PA,
-) where {FT <: AbstractFloat, P, PA <: PrescribedAtmosphere{FT}}
+function turbulent_fluxes_at_a_point(T_sfc, q_sfc, ρ_sfc, h_sfc, β_sfc, r_sfc, d_sfc,
+                                     T_air, q_air, P_air, h_air, u_air, gustiness, t,
+                                     parameters::P,
+                                     ) where {FT <: AbstractFloat, P}
     (; z_0m, z_0b, earth_param_set) = parameters
     thermo_params = LSMP.thermodynamic_parameters(earth_param_set)
 
-    u::FT = atmos.u(t)
-    h::FT = atmos.h
-
-    ts_in = construct_atmos_ts(atmos, t, thermo_params)
+    ts_in = Thermodynamics.PhaseEquil_pTq(thermo_params, P_air, T_air, q_air)
     ts_sfc = Thermodynamics.PhaseEquil_ρTq(thermo_params, ρ_sfc, T_sfc, q_sfc)
 
     # SurfaceFluxes.jl expects a relative difference between where u = 0
@@ -235,8 +186,8 @@ function turbulent_fluxes_at_a_point(
     # compared to Δh).
     state_sfc = SurfaceFluxes.StateValues(FT(0), SVector{2, FT}(0, 0), ts_sfc)
     state_in = SurfaceFluxes.StateValues(
-        h - d_sfc - h_sfc,
-        SVector{2, FT}(u, 0),
+        h_air - d_sfc - h_sfc,
+        SVector{2, FT}(u_air, 0),
         ts_in,
     )
 
@@ -247,7 +198,7 @@ function turbulent_fluxes_at_a_point(
         z_0m,
         z_0b,
         beta = β_sfc,
-        gustiness = atmos.gustiness,
+        gustiness = gustiness,
     )
     surface_flux_params = LSMP.surface_fluxes_parameters(earth_param_set)
     conditions = SurfaceFluxes.surface_conditions(
@@ -317,8 +268,10 @@ function net_radiation(
     p::NamedTuple,
     t,
 ) where {FT}
-    LW_d::FT = radiation.LW_d(t)
-    SW_d::FT = radiation.SW_d(t)
+    LW_d = p.drivers.LW_d
+    SW_d = p.drivers.SW_d
+    LW_d .= radiation.LW_d(t)
+    SW_d .= radiation.SW_d(t)
     earth_param_set = model.parameters.earth_param_set
     _σ = LSMP.Stefan(earth_param_set)
     T_sfc = surface_temperature(model, Y, p, t)
@@ -347,6 +300,15 @@ Returns the precipitation in snow (m of liquid water/s) at the surface.
 """
 function snow_precipitation(atmos::PrescribedAtmosphere{FT}, p, t) where {FT}
     return FT.(atmos.snow_precip(t))
+end
+
+function driver_p(d::PrescribedAtmosphere{FT}, coords) where {FT}
+    keys = (:P_liq, :P_snow, :T, :P, :u, :q, :c_co2, :SW_d, : :LW_d, :θs)
+    types = ([FT for k in keys]...,)
+    domain_names = ([:surface for k in keys]...,)
+    model_name = :drivers
+    vars = ClimaLSM.initialize_vars(keys, types, domain_names, coords, model_name)
+    return vars
 end
 
 """
