@@ -445,7 +445,7 @@ T =
     ] .* (1e3 * 24 * 3600)
 E =
     [
-        parent(sv.saveval[k].soil.sfc_conditions.vapor_flux)[1] for
+        parent(sv.saveval[k].soil.turbulent_fluxes.vapor_flux)[1] for
         k in 1:length(sol.t)
     ] .* (1e3 * 24 * 3600)
 ET_model = T .+ E
@@ -469,8 +469,9 @@ else
 end
 
 # Sensible Heat Flux
-SHF_soil =
-    [parent(sv.saveval[k].soil.sfc_conditions.shf)[1] for k in 1:length(sol.t)]
+SHF_soil = [
+    parent(sv.saveval[k].soil.turbulent_fluxes.shf)[1] for k in 1:length(sol.t)
+]
 SHF_canopy =
     [parent(sv.saveval[k].canopy.energy.shf)[1] for k in 1:length(sol.t)]
 SHF_model = SHF_soil + SHF_canopy
@@ -499,8 +500,9 @@ else
 end
 
 # Latent Heat Flux
-LHF_soil =
-    [parent(sv.saveval[k].soil.sfc_conditions.lhf)[1] for k in 1:length(sol.t)]
+LHF_soil = [
+    parent(sv.saveval[k].soil.turbulent_fluxes.lhf)[1] for k in 1:length(sol.t)
+]
 LHF_canopy =
     [parent(sv.saveval[k].canopy.energy.lhf)[1] for k in 1:length(sol.t)]
 LHF_model = LHF_soil + LHF_canopy
@@ -593,8 +595,8 @@ first_layer_flux = [
 ]
 G_model = [
     (
-        parent(sv.saveval[k].soil.sfc_conditions.shf)[1] +
-        parent(sv.saveval[k].soil.sfc_conditions.lhf)[1] -
+        parent(sv.saveval[k].soil.turbulent_fluxes.shf)[1] +
+        parent(sv.saveval[k].soil.turbulent_fluxes.lhf)[1] -
         parent(sv.saveval[k].soil.R_n)[1]
     ) for k in 1:length(sol.t)
 ]

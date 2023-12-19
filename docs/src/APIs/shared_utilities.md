@@ -65,7 +65,8 @@ ClimaLSM.PrescribedAtmosphere
 ClimaLSM.PrescribedRadiativeFluxes
 ClimaLSM.AbstractAtmosphericDrivers
 ClimaLSM.AbstractRadiativeDrivers
-ClimaLSM.surface_fluxes_at_a_point
+ClimaLSM.turbulent_fluxes
+ClimaLSM.turbulent_fluxes_at_a_point
 ClimaLSM.radiative_fluxes_at_a_point
 ClimaLSM.construct_atmos_ts
 ClimaLSM.surface_air_density

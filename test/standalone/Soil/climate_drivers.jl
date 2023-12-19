@@ -119,7 +119,7 @@ for FT in (Float32, Float64)
             )
 
             Y, p, coords = initialize(model)
-            @test propertynames(p.soil.sfc_conditions) ==
+            @test propertynames(p.soil.turbulent_fluxes) ==
                   (:lhf, :shf, :vapor_flux, :r_ae)
             @test propertynames(p.soil) == (
                 :K,
@@ -127,7 +127,7 @@ for FT in (Float32, Float64)
                 :θ_l,
                 :T,
                 :κ,
-                :sfc_conditions,
+                :turbulent_fluxes,
                 :R_n,
                 :top_bc,
                 :bottom_bc,
@@ -211,7 +211,7 @@ for FT in (Float32, Float64)
                 ρ_sfc,
             ) == q_sfc
 
-            conditions = ClimaLSM.surface_fluxes(
+            conditions = ClimaLSM.turbulent_fluxes(
                 model.boundary_conditions.top.atmos,
                 model,
                 Y,
@@ -226,7 +226,7 @@ for FT in (Float32, Float64)
                 t,
             )
             @test R_n == p.soil.R_n
-            @test conditions == p.soil.sfc_conditions
+            @test conditions == p.soil.turbulent_fluxes
 
             fluxes = ClimaLSM.Soil.soil_boundary_fluxes(
                 top_bc,

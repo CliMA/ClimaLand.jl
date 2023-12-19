@@ -356,7 +356,7 @@ for float_type in (Float32, Float64)
 
         # Evaporation
         E = [
-            parent(sv.saveval[k].soil.sfc_conditions.vapor_flux)[1] for
+            parent(sv.saveval[k].soil.turbulent_fluxes.vapor_flux)[1] for
             k in 2:length(sol.t)
         ]
         # Root sink term: a positive root extraction is a sink term for soil; add minus sign
@@ -459,11 +459,11 @@ for float_type in (Float32, Float64)
 
         # Turbulent fluxes
         LHF = [
-            parent(sv.saveval[k].soil.sfc_conditions.lhf)[1] for
+            parent(sv.saveval[k].soil.turbulent_fluxes.lhf)[1] for
             k in 2:length(sol.t)
         ]
         SHF = [
-            parent(sv.saveval[k].soil.sfc_conditions.shf)[1] for
+            parent(sv.saveval[k].soil.turbulent_fluxes.shf)[1] for
             k in 2:length(sol.t)
         ]
         # Radiation is computed in LW and SW components

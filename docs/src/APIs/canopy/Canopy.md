@@ -14,7 +14,7 @@ ClimaLSM.Canopy.SharedCanopyParameters
 
 ```@docs
 ClimaLSM.Canopy.DiagnosticTranspiration
-ClimaLSM.Canopy.canopy_turbulent_surface_fluxes
+ClimaLSM.Canopy.canopy_turbulent_fluxes
 ```
 
 ## Canopy Model Soil Drivers
