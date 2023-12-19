@@ -14,7 +14,7 @@ import ClimaLSM:
     make_compute_exp_tendency,
     make_update_boundary_fluxes,
     make_update_aux,
-    make_set_initial_aux_state,
+    make_set_initial_cache,
     land_components
 using ClimaLSM
 
@@ -147,17 +147,13 @@ for FT in (Float32, Float64)
             return update_aux!
         end
 
-        function ClimaLSM.make_set_initial_aux_state(
-            m::DummyModel3{FT},
-        ) where {FT}
-            update_aux! = ClimaLSM.make_update_aux(m)
-            update_boundary_fluxes! = ClimaLSM.make_update_boundary_fluxes(m)
-            function set_initial_aux_state!(p, Y, t)
+        function ClimaLSM.make_set_initial_cache(m::DummyModel3{FT}) where {FT}
+            update_cache! = ClimaLSM.make_update_cache(m)
+            function set_initial_cache!(p, Y, t)
                 p.m1.a .= FT(2.0)
-                update_aux!(p, Y, t)
-                update_boundary_fluxes!(p, Y, t)
+                update_cache!(p, Y, t)
             end
-            return set_initial_aux_state!
+            return set_initial_cache!
         end
 
         # The scenario here is that model 1 has a single prescribed but constant
@@ -165,8 +161,8 @@ for FT in (Float32, Float64)
         # DummyModel4 has only variables that get updated each step.
         # Test that the land model function properly calls the individual
         # model's functions
-        set_initial_aux_state! = ClimaLSM.make_set_initial_aux_state(m)
-        set_initial_aux_state!(p, Y, FT(0.0))
+        set_initial_cache! = ClimaLSM.make_set_initial_cache(m)
+        set_initial_cache!(p, Y, FT(0.0))
         @test all(parent(p.m1.a) .== FT(2))
         @test all(parent(p.m1.b) .== FT(10))
         @test all(parent(p.m2.c) .== FT(10))

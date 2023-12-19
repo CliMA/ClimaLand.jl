@@ -9,9 +9,8 @@ using ClimaLSM.Bucket: BucketModel, BucketModelParameters, BulkAlbedoFunction
 using ClimaLSM.Domains: coordinates, Column, HybridBox, SphericalShell
 using ClimaLSM:
     initialize,
-    make_update_aux,
     make_exp_tendency,
-    make_set_initial_aux_state,
+    make_set_initial_cache,
     PrescribedAtmosphere,
     PrescribedRadiativeFluxes
 
@@ -125,8 +124,8 @@ for FT in (Float32, Float64)
             Y.bucket.σS .= 0.0
 
             exp_tendency! = make_exp_tendency(model)
-            set_initial_aux_state! = make_set_initial_aux_state(model)
-            set_initial_aux_state!(p, Y, 0.0)
+            set_initial_cache! = make_set_initial_cache(model)
+            set_initial_cache!(p, Y, 0.0)
             dY = similar(Y)
             # init to nonzero numbers
             dY.bucket.T .= init_temp.(coords.subsurface.z, FT(1.0))
@@ -192,8 +191,8 @@ for FT in (Float32, Float64)
             Y.bucket.σS .= 0.0
             exp_tendency! = make_exp_tendency(model)
             t0 = FT(0.0)
-            set_initial_aux_state! = make_set_initial_aux_state(model)
-            set_initial_aux_state!(p, Y, t0)
+            set_initial_cache! = make_set_initial_cache(model)
+            set_initial_cache!(p, Y, t0)
             dY = similar(Y)
             exp_tendency!(dY, Y, p, t0)
             F_water_sfc = FT(precip(t0)) .- p.bucket.evaporation

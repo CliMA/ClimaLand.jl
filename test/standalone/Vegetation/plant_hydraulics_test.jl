@@ -364,8 +364,8 @@ for FT in (Float32, Float64)
                 p.canopy.hydraulics.fa.:($i) .= NaN
                 dY.canopy.hydraulics.ϑ_l.:($i) .= NaN
             end
-            set_initial_aux_state! = make_set_initial_aux_state(model)
-            set_initial_aux_state!(p, Y, 0.0)
+            set_initial_cache! = make_set_initial_cache(model)
+            set_initial_cache!(p, Y, 0.0)
             canopy_exp_tendency! = make_exp_tendency(model)
             canopy_exp_tendency!(dY, Y, p, 0.0)
 
@@ -387,7 +387,7 @@ for FT in (Float32, Float64)
                 p.canopy.hydraulics.fa.:($i) .= NaN
                 standalone_dY.canopy.hydraulics.ϑ_l.:($i) .= NaN
             end
-            set_initial_aux_state!(p, Y, 0.0)
+            set_initial_cache!(p, Y, 0.0)
             standalone_exp_tendency! =
                 make_compute_exp_tendency(model.hydraulics, model)
             standalone_exp_tendency!(standalone_dY, Y, p, 0.0)
@@ -565,8 +565,8 @@ for FT in (Float32, Float64)
             p.canopy.hydraulics.fa.:($i) .= NaN
             dY.canopy.hydraulics.ϑ_l.:($i) .= NaN
         end
-        set_initial_aux_state! = make_set_initial_aux_state(model)
-        set_initial_aux_state!(p, Y, FT(0.0))
+        set_initial_cache! = make_set_initial_cache(model)
+        set_initial_cache!(p, Y, FT(0.0))
         @test all(parent(p.canopy.hydraulics.fa) .≈ FT(0.0))
         @test all(parent(p.canopy.hydraulics.fa_roots) .≈ FT(0.0))
         @test all(parent(p.canopy.conductance.transpiration) .≈ FT(0.0))

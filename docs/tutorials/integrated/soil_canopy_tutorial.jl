@@ -454,10 +454,10 @@ saveat = Array(t0:(n * dt):tf)
 timestepper = CTS.RK4()
 ode_algo = CTS.ExplicitAlgorithm(timestepper);
 
-# Now set the initial conditions for the auxiliary variables for the combined soil and plant model.
+# Now set the initial values for the cache variables for the combined soil and plant model.
 
-set_initial_aux_state! = make_set_initial_aux_state(land)
-set_initial_aux_state!(p, Y, t0);
+set_initial_cache! = make_set_initial_cache(land)
+set_initial_cache!(p, Y, t0);
 
 # And now perform the simulation as always.
 

@@ -152,8 +152,8 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
     init_soil!(Y, z, soil.parameters)
 
     # We also set the initial conditions of the auxiliary state here:
-    set_initial_aux_state! = make_set_initial_aux_state(soil)
-    set_initial_aux_state!(p, Y, t0)
+    set_initial_cache! = make_set_initial_cache(soil)
+    set_initial_cache!(p, Y, t0)
 
     # Timestepping:
     soil_exp_tendency! = make_exp_tendency(soil)

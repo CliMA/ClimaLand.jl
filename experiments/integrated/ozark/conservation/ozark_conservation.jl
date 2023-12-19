@@ -305,8 +305,8 @@ for float_type in (Float32, Float64)
 
     Y.canopy.energy.T = drivers.TA.values[1 + Int(round(t0 / 1800))] # Get atmos temperature at t0
 
-    set_initial_aux_state! = make_set_initial_aux_state(land)
-    set_initial_aux_state!(p, Y, t0)
+    set_initial_cache! = make_set_initial_cache(land)
+    set_initial_cache!(p, Y, t0)
 
     # Simulation
     sv = (;

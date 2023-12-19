@@ -29,8 +29,8 @@ for FT in (Float32, Float64)
         t0 = Float64(0)
         tf = Float64(200)
         dt = Float64(1)
-        set_initial_aux_state! = make_set_initial_aux_state(pond_model)
-        set_initial_aux_state!(p, Y, t0)
+        set_initial_cache! = make_set_initial_cache(pond_model)
+        set_initial_cache!(p, Y, t0)
 
 
         function expected_pond_height(t)

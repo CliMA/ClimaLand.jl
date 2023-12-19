@@ -157,10 +157,10 @@ Y.soil.ϑ_l .= FT(0.494);
 t0 = Float64(0)
 tf = Float64(60 * 60 * 24 * 36);
 
-# We set the aux state corresponding to the initial conditions
+# We set the cache values corresponding to the initial conditions
 # of the state Y:
-set_initial_aux_state! = make_set_initial_aux_state(soil);
-set_initial_aux_state!(p, Y, t0);
+set_initial_cache! = make_set_initial_cache(soil);
+set_initial_cache!(p, Y, t0);
 
 # Next, we turn to timestepping.
 # As usual, your timestep depends on the problem you are solving, the accuracy

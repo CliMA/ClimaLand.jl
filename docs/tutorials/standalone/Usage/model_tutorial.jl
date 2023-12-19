@@ -331,8 +331,8 @@ Y.soil.θ = 0.25f0;
 
 # Set initial cache variable values, and inspect values:
 
-set_initial_aux_state! = make_set_initial_aux_state(soil);
-set_initial_aux_state!(p, Y, 0.0);
+set_initial_cache! = make_set_initial_cache(soil);
+set_initial_cache!(p, Y, 0.0);
 @show p.soil.K
 
 @show p.soil.ψ

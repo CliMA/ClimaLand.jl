@@ -73,9 +73,9 @@ for FT in (Float32, Float64)
             exp_tendency! = make_exp_tendency(land)
             t = Float64(0)
             dt = Float64(1)
-            # set aux state values to those corresponding with Y(t=0)
-            set_initial_aux_state! = make_set_initial_aux_state(land)
-            set_initial_aux_state!(p, Y, t)
+            # set cache values to those corresponding with Y(t=0)
+            set_initial_cache! = make_set_initial_cache(land)
+            set_initial_cache!(p, Y, t)
             @test p.soil.top_bc.water == p.soil_infiltration
 
             if typeof(lsm_domain) <: ClimaLSM.HybridBox
