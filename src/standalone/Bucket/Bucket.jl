@@ -27,7 +27,8 @@ using ClimaLSM:
     AbstractExpModel,
     heaviside,
     PrescribedAtmosphere,
-    add_dss_buffer_to_aux
+    add_dss_buffer_to_aux,
+    add_drivers_to_cache
 import ClimaLSM:
     make_update_aux,
     make_compute_exp_tendency,
@@ -622,6 +623,20 @@ function next_albedo(
         sim_date,
         axes(Y.bucket.W),
     )
+end
+
+function ClimaLSM.add_drivers_to_cache(p, model::BucketModel{FT}) where {FT}
+    if typeof(model.atmos) <: PrescribedAtmosphere && typeof(model.radiation) <: PrescribedRadiativeFuxes
+        keys = (:P_liq, :P_snow, :T, :P, :u, :q, :c_co2, :SW_d, :LW_d, :θs)
+        types = ([FT for k in keys]...,)
+        domain_names = ([:surface for k in keys]...,)
+        state = ClimaLSM.Domains.coordinates(model)
+        model_name = :drivers
+        vars = ClimaLSM.initialize_vars(keys, types, domain_names, state, model_name)
+        return merge(p, vars)
+    else
+        return p
+    end
 end
 
 include("./bucket_parameterizations.jl")

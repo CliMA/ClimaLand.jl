@@ -94,6 +94,7 @@ for FT in (Float32, Float64)
             )
             # Initial conditions with no moisture
             Y, p, coords = initialize(model)
+            @test propertynames(p.drivers) == (:P_liq, :P_snow, :T, :P, :u, :q, :c_co2, :SW_d, :LW_d, :θs)
             # test if the correct dss buffers were added to aux.
             # We only need to add a dss buffer when there is a horizontal
             # space (spectral element space). So, we check that it is added

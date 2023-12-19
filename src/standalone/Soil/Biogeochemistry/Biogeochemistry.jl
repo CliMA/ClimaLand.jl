@@ -23,7 +23,8 @@ import ClimaLSM:
     boundary_flux,
     AbstractBC,
     AbstractSource,
-    source!
+    source!,
+    add_drivers_to_cache
 export SoilCO2ModelParameters,
     SoilCO2Model,
     PrescribedMet,
@@ -162,7 +163,7 @@ SoilCO2Model{FT}(;
         domain::ClimaLSM.AbstractDomain,
         boundary_conditions::NamedTuple,
         sources::Tuple,
-        drivers::DT,
+        driver::DT,
     ) where {FT, BC, DT}
 
 A constructor for `SoilCO2Model`.
@@ -172,9 +173,9 @@ function SoilCO2Model{FT}(;
     domain::ClimaLSM.AbstractDomain,
     boundary_conditions::BC,
     sources::Tuple,
-    drivers::DT,
+    driver::DT,
 ) where {FT, BC, DT}
-    args = (parameters, domain, boundary_conditions, sources, drivers)
+    args = (parameters, domain, boundary_conditions, sources, driver)
     SoilCO2Model{FT, typeof.(args)...}(args...)
 end
 
@@ -424,6 +425,7 @@ function ClimaLSM.make_update_aux(model::SoilCO2Model)
         # get FT to enforce types of variables not stored directly in `p`
         FT = eltype(Y.soilco2.C)
         params = model.parameters
+        P_sfc = p.drivers.P
         z = ClimaCore.Fields.coordinate_field(model.domain.space.subsurface).z
         T_soil = FT.(soil_temperature(model.driver.met, p, Y, t, z))
         θ_l = FT.(soil_moisture(model.driver.met, p, Y, t, z))
@@ -563,6 +565,20 @@ function ClimaLSM.boundary_flux(
     )
     C_bc = FT.(bc.bc(p, t))
     return ClimaLSM.diffusive_flux(D_c, C_c, C_bc, Δz)
+end
+
+function ClimaLSM.add_drivers_to_cache(p, model::SoilCO2Model{FT}) where {FT}
+    if typeof(model.driver.atmos) <: PrescribedAtmosphere
+        keys = (:P_liq, :P_snow, :T, :P, :u, :q, :c_co2, :SW_d, :LW_d, :θs)
+        types = ([FT for k in keys]...,)
+        domain_names = ([:surface for k in keys]...,)
+        state = ClimaLSM.Domains.coordinates(model)
+        model_name = :drivers
+        vars = ClimaLSM.initialize_vars(keys, types, domain_names, state, model_name)
+        return merge(p, vars)
+    else
+        return p
+    end
 end
 
 include("./co2_parameterizations.jl")

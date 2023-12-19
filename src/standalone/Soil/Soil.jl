@@ -88,7 +88,8 @@ import ClimaLSM:
     surface_emissivity,
     surface_air_density,
     surface_height,
-    surface_resistance
+    surface_resistance,
+    add_drivers_to_cache
 export RichardsModel,
     RichardsParameters,
     RichardsTridiagonalW,

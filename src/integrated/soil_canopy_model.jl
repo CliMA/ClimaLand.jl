@@ -585,3 +585,17 @@ function Canopy.canopy_radiant_energy_fluxes!(
 ) where {FT, PSE}
     nothing
 end
+
+function ClimaLSM.add_drivers_to_cache(p, model::SoilCanopyModel{FT}) where {FT}
+    if typeof(model.soil.boundary_conditions.top) <: ClimaLSM.Soil.AtmosDrivenFluxBC
+        keys = (:P_liq, :P_snow, :T, :P, :u, :q, :c_co2, :SW_d, :LW_d, :θs)
+        types = ([FT for k in keys]...,)
+        domain_names = ([:surface for k in keys]...,)
+        state = ClimaLSM.Domains.coordinates(model)
+        model_name = :drivers
+        vars = ClimaLSM.initialize_vars(keys, types, domain_names, state, model_name)
+        return merge(p, vars)
+    else
+        return p
+    end
+end  

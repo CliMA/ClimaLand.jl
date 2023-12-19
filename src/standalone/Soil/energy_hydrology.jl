@@ -696,3 +696,18 @@ function ClimaLSM.surface_height(model::EnergyHydrology{FT}, Y, p) where {FT}
     )
     return z_sfc
 end
+
+function ClimaLSM.add_drivers_to_cache(p, model::EnergyHydrology{FT}) where {FT}
+    if typeof(model.boundary_conditions.top) <: AtmosDrivenFluxBC
+        keys = (:P_liq, :P_snow, :T, :P, :u, :q, :c_co2, :SW_d, :LW_d, :θs)
+        types = ([FT for k in keys]...,)
+        domain_names = ([:surface for k in keys]...,)
+        state = ClimaLSM.Domains.coordinates(model)
+        model_name = :drivers
+        vars = ClimaLSM.initialize_vars(keys, types, domain_names, state, model_name)
+        return merge(p, vars)
+    else
+        return p
+    end
+end    
+        

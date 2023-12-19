@@ -119,6 +119,7 @@ for FT in (Float32, Float64)
             )
 
             Y, p, coords = initialize(model)
+            @test propertynames(p.drivers) == (:P_liq, :P_snow, :T, :P, :u, :q, :c_co2, :SW_d, :LW_d, :θs)
             @test propertynames(p.soil.turbulent_fluxes) ==
                   (:lhf, :shf, :vapor_flux, :r_ae)
             @test propertynames(p.soil) == (

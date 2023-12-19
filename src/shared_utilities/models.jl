@@ -19,6 +19,7 @@ export AbstractModel,
     auxiliary_domain_names,
     make_set_initial_cache,
     make_update_cache,
+    add_drivers_to_cache,
     name
 
 import .Domains: coordinates

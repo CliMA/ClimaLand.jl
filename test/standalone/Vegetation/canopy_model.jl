@@ -182,6 +182,7 @@ for FT in (Float32, Float64)
             radiation = radiation,
         )
         Y, p, coords = ClimaLSM.initialize(canopy)
+        @test propertynames(p.drivers) == (:P_liq, :P_snow, :T, :P, :u, :q, :c_co2, :SW_d, :LW_d, :θs)
         @test typeof(canopy.energy) == PrescribedCanopyTempModel{FT}
         @test propertynames(p) == (:canopy,)
         for component in ClimaLSM.Canopy.canopy_components(canopy)
