@@ -334,7 +334,8 @@ function soil_boundary_fluxes(
     p.soil.turbulent_fluxes .= turbulent_fluxes(bc.atmos, model, Y, p, t)
     p.soil.R_n .= net_radiation(bc.radiation, model, Y, p, t)
     # We are ignoring sublimation for now
-    precip = FT.(bc.atmos.liquid_precip(t))
+    precip = p.drivers.P_liq
+    precip .= FT.(bc.atmos.liquid_precip(t))
     infiltration = soil_surface_infiltration(
         bc.runoff,
         precip .+ p.soil.turbulent_fluxes.vapor_flux,

@@ -311,14 +311,14 @@ struct SoilDrivers{
     FT,
     MET <: AbstractSoilDriver,
     SOC <: AbstractSoilDriver,
-    ATM <: PrescribedAtmosphere{FT},
+    ATM,
 }
     "Soil temperature and moisture drivers - Prescribed or Prognostic"
     met::MET
     "Soil SOM driver - Prescribed only"
     soc::SOC
-    "Prescribed atmospheric variables"
-    atmos::ATM
+    "Prescribed air pressure"
+    air_pressure::ATM
 end
 
 """
@@ -404,15 +404,6 @@ function soil_SOM_C(driver::PrescribedSOC, p, Y, t, z)
 end
 
 """
-    air_pressure(driver::PrescribedAtmosphere, t)
-
-Returns the prescribed air pressure at the top boundary condition at time (t).
-"""
-function air_pressure(driver::PrescribedAtmosphere, p, Y, t) # not sure if/why p and Y are needed?
-    return driver.P.(t) # not sure broadcast (.) is needed
-end
-
-"""
     make_update_aux(model::SoilCO2Model)
 
 An extension of the function `make_update_aux`, for the soilco2 equation.
@@ -430,7 +421,7 @@ function ClimaLSM.make_update_aux(model::SoilCO2Model)
         T_soil = FT.(soil_temperature(model.driver.met, p, Y, t, z))
         θ_l = FT.(soil_moisture(model.driver.met, p, Y, t, z))
         Csom = FT.(soil_SOM_C(model.driver.soc, p, Y, t, z))
-        P_sfc = FT.(air_pressure(model.driver.atmos, p, Y, t))
+        P_sfc = FT.(model.driver.air_pressure(t))
         θ_w = θ_l
 
         p.soilco2.D .= co2_diffusivity.(T_soil, θ_w, P_sfc, Ref(params))
@@ -565,16 +556,6 @@ function ClimaLSM.boundary_flux(
     )
     C_bc = FT.(bc.bc(p, t))
     return ClimaLSM.diffusive_flux(D_c, C_c, C_bc, Δz)
-end
-
-function ClimaLSM.add_drivers_to_cache(p, model::SoilCO2Model{FT}) where {FT}
-    atmos = (model.driver.atmos
-    if typeof(atmos) <: PrescribedAtmosphere
-        vars = ClimaLSM.driver_p(atmos, nothing, ClimaLSM.Domains.coordinates(model))
-        return merge(p, vars)
-    else
-        return p
-    end
 end
 
 include("./co2_parameterizations.jl")

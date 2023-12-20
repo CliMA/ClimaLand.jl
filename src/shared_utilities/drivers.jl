@@ -302,7 +302,7 @@ function snow_precipitation(atmos::PrescribedAtmosphere{FT}, p, t) where {FT}
     return FT.(atmos.snow_precip(t))
 end
 
-function driver_p(d::PrescribedAtmosphere{FT}, coords) where {FT}
+function driver_p(a::PrescribedAtmosphere{FT}, r::AbstractRadiativeDrivers{FT}, coords) where {FT}
     keys = (:P_liq, :P_snow, :T, :P, :u, :q, :c_co2, :SW_d, : :LW_d, :θs)
     types = ([FT for k in keys]...,)
     domain_names = ([:surface for k in keys]...,)

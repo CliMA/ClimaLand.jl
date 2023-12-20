@@ -86,17 +86,28 @@ function soil_moisture(driver::PrognosticMet, p, Y, t, z)
     return p.soil.θ_l
 end
 
-function ClimaLSM.add_drivers_to_cache(p, model::LandSoilBiogeochemistry{FT}) where {FT}
+function ClimaLSM.add_drivers_to_cache(
+    p,
+    model::LandSoilBiogeochemistry{FT},
+) where {FT}
     @info "hi"
-    if typeof(model.soil.boundary_conditions.top) <: ClimaLSM.Soil.AtmosDrivenFluxBC || typeof(model.soilco2.driver.atmos) <: PrescribedAtmosphere
+    if typeof(model.soil.boundary_conditions.top) <:
+       ClimaLSM.Soil.AtmosDrivenFluxBC ||
+       typeof(model.soilco2.driver.atmos) <: PrescribedAtmosphere
         keys = (:P_liq, :P_snow, :T, :P, :u, :q, :c_co2, :SW_d, :LW_d, :θs)
         types = ([FT for k in keys]...,)
         domain_names = ([:surface for k in keys]...,)
         state = ClimaLSM.Domains.coordinates(model)
         model_name = :drivers
-        vars = ClimaLSM.initialize_vars(keys, types, domain_names, state, model_name)
+        vars = ClimaLSM.initialize_vars(
+            keys,
+            types,
+            domain_names,
+            state,
+            model_name,
+        )
         return merge(p, vars)
     else
         return p
     end
-end  
+end

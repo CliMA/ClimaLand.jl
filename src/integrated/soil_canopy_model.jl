@@ -323,8 +323,10 @@ function lsm_radiant_energy_fluxes!(
     radiation = canopy.radiation
     earth_param_set = canopy.parameters.earth_param_set
     _σ = LSMP.Stefan(earth_param_set)
-    LW_d = FT(radiation.LW_d(t))
-    SW_d = FT(radiation.SW_d(t))
+    LW_d = p.drivers.LW_d
+    SW_d = p.drivers.SW_d
+    LW_d .= FT(radiation.LW_d(t))
+    SW_d .= FT(radiation.SW_d(t))
     c = LSMP.light_speed(earth_param_set)
     h = LSMP.planck_constant(earth_param_set)
     N_a = LSMP.avogadro_constant(earth_param_set)
@@ -411,9 +413,11 @@ function soil_boundary_fluxes(
 ) where {FT}
     bc = soil.boundary_conditions.top
     soil_conditions = turbulent_fluxes(bc.atmos, soil, Y, p, t)
+    precip = p.drivers.P_liq
+    precip .= FT.(bc.atmos.liquid_precip(t))
     infiltration = soil_surface_infiltration(
         bc.runoff,
-        FT.(bc.atmos.liquid_precip(t)) .+ p.soil.turbulent_fluxes.vapor_flux,
+        precip .+ p.soil.turbulent_fluxes.vapor_flux,
         Y,
         p,
         t,
@@ -586,6 +590,10 @@ end
 
 function ClimaLSM.add_drivers_to_cache(p, model::SoilCanopyModel{FT}) where {FT}
     canopy = model.canopy
-    vars = ClimaLSM.driver_p(canopy.atmos, canopy.radiation,ClimaLSM.Domains.coordinates(model))
+    vars = ClimaLSM.driver_p(
+        canopy.atmos,
+        canopy.radiation,
+        ClimaLSM.Domains.coordinates(model),
+    )
     return merge(p, vars)
-end  
+end
