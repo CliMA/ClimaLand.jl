@@ -24,6 +24,6 @@ cuDNN = "02a925ec-e4fe-4b08-9a7e-0d78e3d38ccd"
 
 [compat]
 CLIMAParameters = "0.7"
-ClimaTimeSteppers = "=0.7.7"
+ClimaTimeSteppers = "0.7"
 Insolation = "0.8"
 Statistics = "1"

@@ -274,6 +274,32 @@ function auxiliary_types(canopy::CanopyModel)
 end
 
 """
+    filter_nt(nt::NamedTuple)
+
+Removes all key/value pairs of a NamedTuple where the value is `nothing`.
+Note that NamedTuples are immutable, so rather than updating the input
+in-place, this creates a new NamedTuple with the filtered key/value pairs.
+
+This results in unnecessary allocations because a new object is being
+created, and we may want to implement a better solution in the future.
+"""
+function filter_nt(nt::NamedTuple)
+    pairs = []
+    for (k, v) in (zip(keys(nt), values(nt)))
+        ~(isnothing(v)) ? push!(pairs, k => (filter_nt(v))) : (;)
+    end
+    return NamedTuple(pairs)
+end
+
+"""
+    filter_nt(nt)
+
+Base case for `filter_nt` recursion, used when this function is called on
+a NamedTuple with no nested NamedTuples.
+"""
+filter_nt(nt) = nt
+
+"""
     initialize_prognostic(
         model::CanopyModel{FT},
         coords,
@@ -294,8 +320,10 @@ function initialize_prognostic(model::CanopyModel{FT}, coords) where {FT}
         submodel = getproperty(model, component)
         getproperty(initialize_prognostic(submodel, coords), component)
     end
+    # `Y_state_list` contains `nothing` for components with no prognostic
+    #  variables, which we need to filter out before constructing `Y`
     Y = ClimaCore.Fields.FieldVector(;
-        name(model) => NamedTuple{components}(Y_state_list),
+        name(model) => filter_nt(NamedTuple{components}(Y_state_list)),
     )
     return Y
 end
@@ -321,7 +349,9 @@ function initialize_auxiliary(model::CanopyModel{FT}, coords) where {FT}
         submodel = getproperty(model, component)
         getproperty(initialize_auxiliary(submodel, coords), component)
     end
-    p = (; name(model) => NamedTuple{components}(p_state_list))
+    # `p_state_list` contains `nothing` for components with no auxiliary
+    #  variables, which we need to filter out before constructing `p`
+    p = (; name(model) => filter_nt(NamedTuple{components}(p_state_list)))
     p = ClimaLSM.add_dss_buffer_to_aux(p, model.domain)
     return p
 end

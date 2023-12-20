@@ -337,8 +337,7 @@ for float_type in (Float32, Float64)
     # Check that simulation still has correct float type
     @assert eltype(sol.u[end].soil) == FT
     @assert eltype(sol.u[end].soilco2) == FT
-    # TODO canopy state vector type is `Any` --> why?
-    @assert all(x -> eltype(x) == FT, sol.u[end].canopy)
+    @assert eltype(sol.u[end].canopy) == FT
 
     # Plotting for Float64 simulation
     if FT == Float64
