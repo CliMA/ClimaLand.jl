@@ -152,8 +152,8 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
     init_soil!(Y, z, soil.parameters)
 
     # We also set the initial conditions of the auxiliary state here:
-    set_initial_aux_state! = make_set_initial_aux_state(soil)
-    set_initial_aux_state!(p, Y, t0)
+    set_initial_cache! = make_set_initial_cache(soil)
+    set_initial_cache!(p, Y, t0)
 
     # Timestepping:
     soil_exp_tendency! = make_exp_tendency(soil)
@@ -184,11 +184,11 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
         (; ν, θ_r, d_ds) = soil.parameters
         _D_vapor = FT(LSMP.D_vapor(soil.parameters.earth_param_set))
         evap = [
-            parent(sv.saveval[k].soil.sfc_conditions.vapor_flux)[1] for
+            parent(sv.saveval[k].soil.turbulent_fluxes.vapor_flux)[1] for
             k in 1:length(sol.t)
         ]
         r_ae = [
-            parent(sv.saveval[k].soil.sfc_conditions.r_ae)[1] for
+            parent(sv.saveval[k].soil.turbulent_fluxes.r_ae)[1] for
             k in 1:length(sol.t)
         ]
         T_soil = [parent(sv.saveval[k].soil.T)[end] for k in 1:length(sol.t)]

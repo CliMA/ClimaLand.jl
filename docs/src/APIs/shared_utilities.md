@@ -33,7 +33,8 @@ ClimaLSM.make_compute_exp_tendency
 ClimaLSM.make_compute_imp_tendency
 ClimaLSM.make_update_aux
 ClimaLSM.make_update_boundary_fluxes
-ClimaLSM.make_set_initial_aux_state
+ClimaLSM.make_set_initial_cache
+ClimaLSM.make_update_drivers
 ClimaLSM.prognostic_vars
 ClimaLSM.prognostic_types
 ClimaLSM.prognostic_domain_names
@@ -65,7 +66,8 @@ ClimaLSM.PrescribedAtmosphere
 ClimaLSM.PrescribedRadiativeFluxes
 ClimaLSM.AbstractAtmosphericDrivers
 ClimaLSM.AbstractRadiativeDrivers
-ClimaLSM.surface_fluxes_at_a_point
+ClimaLSM.turbulent_fluxes
+ClimaLSM.turbulent_fluxes_at_a_point
 ClimaLSM.radiative_fluxes_at_a_point
 ClimaLSM.construct_atmos_ts
 ClimaLSM.surface_air_density

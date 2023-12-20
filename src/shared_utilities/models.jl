@@ -17,7 +17,8 @@ export AbstractModel,
     auxiliary_types,
     prognostic_domain_names,
     auxiliary_domain_names,
-    make_set_initial_aux_state,
+    make_set_initial_cache,
+    make_update_cache,
     name
 
 import .Domains: coordinates
@@ -60,6 +61,10 @@ name(model::AbstractModel) =
    prognostic_vars(m::AbstractModel)
 
 Returns the prognostic variable symbols for the model in the form of a tuple.
+
+Note that this default suggests that a model has no prognostic variables,
+which is an invalid model setup. This function is meant to be extended for
+all models.
 """
 prognostic_vars(m::AbstractModel) = ()
 
@@ -69,6 +74,10 @@ prognostic_vars(m::AbstractModel) = ()
 Returns the domain names for the prognostic variables in the form of a tuple.
 
 Examples: (:surface, :surface, :subsurface).
+
+Note that this default suggests that a model has no prognostic variables,
+which is an invalid model setup. This function is meant to be extended for
+all models.
 """
 prognostic_domain_names(m::AbstractModel) = ()
 
@@ -86,15 +95,19 @@ coordinate point)
  length `k` at each coordinate point.
 
 Here, the coordinate points are those returned by coordinates(model).
+
+Note that this default suggests that a model has no prognostic variables,
+which is an invalid model setup. This function is meant to be extended for
+all models.
 """
 prognostic_types(m::AbstractModel) = ()
+
 """
    auxiliary_vars(m::AbstractModel)
 
 Returns the auxiliary variable symbols for the model in the form of a tuple.
 """
 auxiliary_vars(m::AbstractModel) = ()
-
 
 """
    auxiliary_domain_names(m::AbstractModel)
@@ -104,7 +117,6 @@ Returns the domain names for the auxiliary variables in the form of a tuple.
 Examples: (:surface, :surface, :subsurface).
 """
 auxiliary_domain_names(m::AbstractModel) = ()
-
 
 """
    auxiliary_types(m::AbstractModel{FT}) where {FT}
@@ -144,6 +156,46 @@ function make_update_boundary_fluxes(model::AbstractModel)
     function update_boundary_fluxes!(p, Y, t) end
     return update_boundary_fluxes!
 end
+
+"""
+    make_update_drivers(model::AbstractModel)
+
+Return an `update_drivers!` function that updates the cache parameters in `p`
+corresponding to forcing at the surface.
+"""
+function make_update_drivers(model::AbstractModel)
+    function update_drivers!(p, Y, t) end
+    return update_drivers!
+end
+
+"""
+     make_update_cache(model::AbstractModel)
+
+A helper function which updates all cache variables of a model;
+currently only used in `set_initial_cache` since not all 
+cache variables are updated at the same time.
+"""
+function make_update_cache(model::AbstractModel)
+    update_drivers! = make_update_drivers(model)
+    update_aux! = make_update_aux(model)
+    update_boundary_fluxes! = make_update_boundary_fluxes(model)
+    function update_cache!(p, Y, t)
+        update_drivers!(p, Y, t)
+        update_aux!(p, Y, t)
+        update_boundary_fluxes!(p, Y, t)
+    end
+    return update_cache!
+end
+
+"""
+    add_drivers_to_cache(p, model::AbstractModel)
+
+Adds driver variables to the cache; the default is not
+add anything, consistent with the default of no additional
+driver variables in the cache.
+"""
+add_drivers_to_cache(p, model::AbstractModel) = p
+
 
 """
     make_imp_tendency(model::AbstractImExModel)
@@ -222,9 +274,9 @@ function make_compute_exp_tendency(model::AbstractModel)
 end
 
 """
-    make_set_initial_aux_state(model::AbstractModel)
+    make_set_initial_cache(model::AbstractModel)
 
-Returns the set_initial_aux_state! function, which updates the auxiliary
+Returns the set_initial_cache! function, which updates the auxiliary
 state `p` in place with the initial values corresponding to Y(t=t0) = Y0.
 
 In principle, this function is not needed, because in the very first evaluation
@@ -239,14 +291,12 @@ the auxiliary state. In this case, `update_aux!` does not need to do
 anything, but they do need to be set with the initial (constant) values
 before the simulation can be carried out.
 """
-function make_set_initial_aux_state(model::AbstractModel)
-    update_aux! = make_update_aux(model)
-    update_boundary_fluxes! = make_update_boundary_fluxes(model)
-    function set_initial_aux_state!(p, Y0, t0)
-        update_aux!(p, Y0, t0)
-        update_boundary_fluxes!(p, Y0, t0)
+function make_set_initial_cache(model::AbstractModel)
+    update_cache! = make_update_cache(model)
+    function set_initial_cache!(p, Y0, t0)
+        update_cache!(p, Y0, t0)
     end
-    return set_initial_aux_state!
+    return set_initial_cache!
 end
 
 """
@@ -267,6 +317,11 @@ Adjustments to this - for example because different prognostic variables
 have different dimensions - require defining a new method.
 """
 function initialize_prognostic(model::AbstractModel{FT}, state) where {FT}
+    if length(prognostic_vars(model)) == 0
+        throw(
+            AssertionError("Model must have at least one prognostic variable."),
+        )
+    end
     state_nt = initialize_vars(
         prognostic_vars(model),
         prognostic_types(model),
@@ -310,14 +365,13 @@ function initialize_auxiliary(model::AbstractModel{FT}, state) where {FT}
             "Your model does not contain a domain. If this is intended, you will need a new method of initialize_auxiliary.",
         )
     end
-
     return p
 end
 
 function initialize_vars(keys, types, domain_names, state, model_name)
     FT = eltype(state)
     if length(keys) == 0
-        return (; model_name => FT[])
+        return (; model_name => nothing)
     else
         zero_states = map(zip(types, domain_names)) do (T, D)
             zero_instance = ClimaCore.RecursiveApply.rzero(T)
@@ -341,5 +395,9 @@ function initialize(model::AbstractModel{FT}) where {FT}
     coords = Domains.coordinates(model)
     Y = initialize_prognostic(model, coords)
     p = initialize_auxiliary(model, coords)
+    # We have to do this here and not in init_aux because LSM calls init_aux for each model,
+    # but we only want the drivers once
+    # This is nice because all models use this function - none have a special method
+    p = add_drivers_to_cache(p, model)
     return Y, p, coords
 end

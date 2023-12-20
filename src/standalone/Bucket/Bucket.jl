@@ -20,7 +20,7 @@ using ClimaLSM:
     AbstractRadiativeDrivers,
     liquid_precipitation,
     snow_precipitation,
-    surface_fluxes,
+    turbulent_fluxes,
     net_radiation,
     construct_atmos_ts,
     compute_ρ_sfc,
@@ -41,7 +41,7 @@ import ClimaLSM:
     initialize_vars,
     initialize,
     initialize_auxiliary,
-    make_set_initial_aux_state,
+    make_set_initial_cache,
     surface_temperature,
     surface_air_density,
     surface_specific_humidity,
@@ -337,25 +337,25 @@ auxiliary_domain_names(::BucketModel) =
     (:surface, :surface, :surface, :surface, :surface, :surface, :surface)
 
 """
-    ClimaLSM.make_set_initial_aux_state(model::BucketModel{FT}) where{FT}
+    ClimaLSM.make_set_initial_cache(model::BucketModel{FT}) where{FT}
 
-Returns the set_initial_aux_state! function, which updates the auxiliary
+Returns the set_initial_cache! function, which updates the auxiliary
 state `p` in place with the initial values corresponding to Y(t=t0) = Y0.
 
 In this case, we also use this method to update the initial values for the
 spatially varying parameter fields, read in from data files.
 """
-function ClimaLSM.make_set_initial_aux_state(model::BucketModel)
-    update_aux! = make_update_aux(model)
-    function set_initial_aux_state!(p, Y0, t0)
+function ClimaLSM.make_set_initial_cache(model::BucketModel)
+    update_cache! = make_update_cache(model)
+    function set_initial_cache!(p, Y0, t0)
         set_initial_parameter_field!(
             model.parameters.albedo,
             p,
             ClimaCore.Fields.coordinate_field(model.domain.space.surface),
         )
-        update_aux!(p, Y0, t0)
+        update_cache!(p, Y0, t0)
     end
-    return set_initial_aux_state!
+    return set_initial_cache!
 end
 
 """
@@ -554,9 +554,9 @@ function make_update_aux(model::BucketModel{FT}) where {FT}
             )
 
         # Compute turbulent surface fluxes
-        conditions = surface_fluxes(model.atmos, model, Y, p, t)
-        p.bucket.turbulent_energy_flux .= conditions.lhf .+ conditions.shf
-        p.bucket.evaporation .= conditions.vapor_flux
+        turb_fluxes = turbulent_fluxes(model.atmos, model, Y, p, t)
+        p.bucket.turbulent_energy_flux .= turb_fluxes.lhf .+ turb_fluxes.shf
+        p.bucket.evaporation .= turb_fluxes.vapor_flux
 
         # Radiative fluxes
         p.bucket.R_n .= net_radiation(model.radiation, model, Y, p, t)

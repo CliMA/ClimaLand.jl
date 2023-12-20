@@ -167,21 +167,6 @@ function make_exp_tendency(land::AbstractLandModel)
     return exp_tendency!
 end
 
-function make_set_initial_aux_state(land::AbstractLandModel)
-    update_boundary_fluxes! = make_update_boundary_fluxes(land)
-    components = land_components(land)
-    # These functions also call update_aux
-    set_initial_aux_function_list =
-        map(x -> make_set_initial_aux_state(getproperty(land, x)), components)
-    function set_initial_aux_state!(p, Y0, t0)
-        for f! in set_initial_aux_function_list
-            f!(p, Y0, t0)
-        end
-        update_boundary_fluxes!(p, Y0, t0) # this has to come last.
-    end
-    return set_initial_aux_state!
-end
-
 function make_update_aux(land::AbstractLandModel)
     components = land_components(land)
     update_aux_function_list =
@@ -206,6 +191,28 @@ function make_update_boundary_fluxes(land::AbstractLandModel)
     return update_boundary_fluxes!
 end
 
+"""
+    make_set_initial_cache(land::AbstractLandModel)
+
+Creates and returns the function which sets the initial cache
+with the correct values given the initial conditions Y0 and initial
+time t0. 
+
+Note that this will call update_drivers! multiple times, once
+per component model.
+"""
+function make_set_initial_cache(land::AbstractLandModel)
+    components = land_components(land)
+    # These functions also call update_aux
+    set_initial_cache_function_list =
+        map(x -> make_set_initial_cache(getproperty(land, x)), components)
+    function set_initial_cache!(p, Y0, t0)
+        for f! in set_initial_cache_function_list
+            f!(p, Y0, t0)
+        end
+    end
+    return set_initial_cache!
+end
 
 """
     land_components(land::AbstractLandModel)

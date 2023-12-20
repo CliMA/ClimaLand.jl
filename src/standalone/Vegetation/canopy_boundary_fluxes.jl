@@ -7,7 +7,7 @@ import ClimaLSM:
     surface_resistance,
     displacement_height
 
-export canopy_turbulent_surface_fluxes
+export canopy_turbulent_fluxes
 
 
 """
@@ -23,7 +23,7 @@ function ClimaLSM.displacement_height(model::CanopyModel{FT}, Y, p) where {FT}
 end
 
 """
-    canopy_turbulent_surface_fluxes(atmos::PrescribedAtmosphere{FT},
+    canopy_turbulent_fluxes(atmos::PrescribedAtmosphere{FT},
                           model::CanopyModel,
                           Y,
                           p,
@@ -32,14 +32,14 @@ end
 Computes canopy transpiration using Monin-Obukhov Surface Theory,
 the prescribed atmospheric conditions, and the canopy conductance.
 """
-function canopy_turbulent_surface_fluxes(
+function canopy_turbulent_fluxes(
     atmos::PrescribedAtmosphere{FT},
     model::CanopyModel,
     Y,
     p,
     t,
 ) where {FT}
-    conditions = surface_fluxes(atmos, model, Y, p, t)
+    conditions = turbulent_fluxes(atmos, model, Y, p, t)
     # We upscaled LHF and E from leaf level to canopy level via the
     # upscaling of stomatal conductance.
     # Do we need to upscale SHF?
@@ -205,7 +205,7 @@ function canopy_boundary_fluxes!(
 
     # Compute transpiration
     (canopy_transpiration, canopy_shf, canopy_lhf, r_ae) =
-        canopy_turbulent_surface_fluxes(atmos, canopy, Y, p, t)
+        canopy_turbulent_fluxes(atmos, canopy, Y, p, t)
     transpiration .= canopy_transpiration
     shf .= canopy_shf
     lhf .= canopy_lhf

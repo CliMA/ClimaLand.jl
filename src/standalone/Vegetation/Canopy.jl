@@ -20,7 +20,7 @@ import ClimaLSM:
     make_update_boundary_fluxes,
     make_update_aux,
     make_compute_exp_tendency,
-    make_set_initial_aux_state
+    make_set_initial_cache
 
 using ClimaLSM.Domains: Point, Plane, SphericalSurface
 export SharedCanopyParameters,
@@ -274,6 +274,32 @@ function auxiliary_types(canopy::CanopyModel)
 end
 
 """
+    filter_nt(nt::NamedTuple)
+
+Removes all key/value pairs of a NamedTuple where the value is `nothing`.
+Note that NamedTuples are immutable, so rather than updating the input
+in-place, this creates a new NamedTuple with the filtered key/value pairs.
+
+This results in unnecessary allocations because a new object is being
+created, and we may want to implement a better solution in the future.
+"""
+function filter_nt(nt::NamedTuple)
+    pairs = []
+    for (k, v) in (zip(keys(nt), values(nt)))
+        ~(isnothing(v)) ? push!(pairs, k => (filter_nt(v))) : (;)
+    end
+    return NamedTuple(pairs)
+end
+
+"""
+    filter_nt(nt)
+
+Base case for `filter_nt` recursion, used when this function is called on
+a NamedTuple with no nested NamedTuples.
+"""
+filter_nt(nt) = nt
+
+"""
     initialize_prognostic(
         model::CanopyModel{FT},
         coords,
@@ -294,8 +320,10 @@ function initialize_prognostic(model::CanopyModel{FT}, coords) where {FT}
         submodel = getproperty(model, component)
         getproperty(initialize_prognostic(submodel, coords), component)
     end
+    # `Y_state_list` contains `nothing` for components with no prognostic
+    #  variables, which we need to filter out before constructing `Y`
     Y = ClimaCore.Fields.FieldVector(;
-        name(model) => NamedTuple{components}(Y_state_list),
+        name(model) => filter_nt(NamedTuple{components}(Y_state_list)),
     )
     return Y
 end
@@ -321,30 +349,30 @@ function initialize_auxiliary(model::CanopyModel{FT}, coords) where {FT}
         submodel = getproperty(model, component)
         getproperty(initialize_auxiliary(submodel, coords), component)
     end
-    p = (; name(model) => NamedTuple{components}(p_state_list))
+    # `p_state_list` contains `nothing` for components with no auxiliary
+    #  variables, which we need to filter out before constructing `p`
+    p = (; name(model) => filter_nt(NamedTuple{components}(p_state_list)))
     p = ClimaLSM.add_dss_buffer_to_aux(p, model.domain)
     return p
 end
 
 """
-    ClimaLSM.make_set_initial_aux_state(model::CanopyModel)
+    ClimaLSM.make_set_initial_cache(model::CanopyModel)
 
-Returns the set_initial_aux_state! function, which updates the auxiliary
+Returns the set_initial_cache! function, which updates the auxiliary
 state `p` in place with the initial values corresponding to Y(t=t0) = Y0.
 
 In this case, we also use this method to update the initial values for the
 spatially and temporally varying canopy parameter fields,
 read in from data files or otherwise prescribed.
 """
-function ClimaLSM.make_set_initial_aux_state(model::CanopyModel)
-    update_aux! = make_update_aux(model)
-    update_bf! = make_update_boundary_fluxes(model)
-    function set_initial_aux_state!(p, Y0, t0)
+function ClimaLSM.make_set_initial_cache(model::CanopyModel)
+    update_cache! = make_update_cache(model)
+    function set_initial_cache!(p, Y0, t0)
         set_canopy_prescribed_field!(model.hydraulics, p, t0)
-        update_aux!(p, Y0, t0)
-        update_bf!(p, Y0, t0)
+        update_cache!(p, Y0, t0)
     end
-    return set_initial_aux_state!
+    return set_initial_cache!
 end
 
 """

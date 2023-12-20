@@ -211,10 +211,10 @@ init_soil!(Y, coords.subsurface.z, soil.parameters);
 t0 = Float64(0)
 tf = Float64(60 * 60 * 50);
 
-# We set the aux state corresponding to the initial conditions
+# We set the cache values corresponding to the initial conditions
 # of the state Y:
-set_initial_aux_state! = make_set_initial_aux_state(soil);
-set_initial_aux_state!(p, Y, t0);
+set_initial_cache! = make_set_initial_cache(soil);
+set_initial_cache!(p, Y, t0);
 # Create the tendency function, and choose a timestep, and timestepper:
 exp_tendency! = make_exp_tendency(soil)
 dt = Float64(60)

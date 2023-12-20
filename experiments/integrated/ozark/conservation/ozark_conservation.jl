@@ -305,8 +305,8 @@ for float_type in (Float32, Float64)
 
     Y.canopy.energy.T = drivers.TA.values[1 + Int(round(t0 / 1800))] # Get atmos temperature at t0
 
-    set_initial_aux_state! = make_set_initial_aux_state(land)
-    set_initial_aux_state!(p, Y, t0)
+    set_initial_cache! = make_set_initial_cache(land)
+    set_initial_cache!(p, Y, t0)
 
     # Simulation
     sv = (;
@@ -337,8 +337,7 @@ for float_type in (Float32, Float64)
     # Check that simulation still has correct float type
     @assert eltype(sol.u[end].soil) == FT
     @assert eltype(sol.u[end].soilco2) == FT
-    # TODO canopy state vector type is `Any` --> why?
-    @assert all(x -> eltype(x) == FT, sol.u[end].canopy)
+    @assert eltype(sol.u[end].canopy) == FT
 
     # Plotting for Float64 simulation
     if FT == Float64
@@ -356,7 +355,7 @@ for float_type in (Float32, Float64)
 
         # Evaporation
         E = [
-            parent(sv.saveval[k].soil.sfc_conditions.vapor_flux)[1] for
+            parent(sv.saveval[k].soil.turbulent_fluxes.vapor_flux)[1] for
             k in 2:length(sol.t)
         ]
         # Root sink term: a positive root extraction is a sink term for soil; add minus sign
@@ -459,11 +458,11 @@ for float_type in (Float32, Float64)
 
         # Turbulent fluxes
         LHF = [
-            parent(sv.saveval[k].soil.sfc_conditions.lhf)[1] for
+            parent(sv.saveval[k].soil.turbulent_fluxes.lhf)[1] for
             k in 2:length(sol.t)
         ]
         SHF = [
-            parent(sv.saveval[k].soil.sfc_conditions.shf)[1] for
+            parent(sv.saveval[k].soil.turbulent_fluxes.shf)[1] for
             k in 2:length(sol.t)
         ]
         # Radiation is computed in LW and SW components

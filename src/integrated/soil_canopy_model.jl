@@ -401,11 +401,6 @@ A method of `ClimaLSM.Soil.soil_boundary_fluxes` which is used for
 integrated land surface models; this computes and returns the net
 energy and water flux at the surface of the soil for use as boundary
 conditions.
-
-The net radiative, sensible heat, latent heat, and evaporative fluxes
-are computed and stored in the auxiliary state of the integrated land
-surface models, and this function simply returns those. They are updated
-each time step in `update_aux`.
 """
 function soil_boundary_fluxes(
     bc::AtmosDrivenFluxBC{<:PrescribedAtmosphere, <:CanopyRadiativeFluxes},
@@ -417,10 +412,10 @@ function soil_boundary_fluxes(
     t,
 ) where {FT}
     bc = soil.boundary_conditions.top
-    soil_conditions = surface_fluxes(bc.atmos, soil, Y, p, t)
+    soil_conditions = turbulent_fluxes(bc.atmos, soil, Y, p, t)
     infiltration = soil_surface_infiltration(
         bc.runoff,
-        FT.(bc.atmos.liquid_precip(t)) .+ p.soil.sfc_conditions.vapor_flux,
+        FT.(bc.atmos.liquid_precip(t)) .+ p.soil.turbulent_fluxes.vapor_flux,
         Y,
         p,
         t,
@@ -428,7 +423,7 @@ function soil_boundary_fluxes(
     )
     return @. ClimaLSM.Soil.create_soil_bc_named_tuple(
         infiltration,
-        -p.soil.R_n + p.soil.sfc_conditions.lhf + p.soil.sfc_conditions.shf,
+        -p.soil.R_n + p.soil.turbulent_fluxes.lhf + p.soil.turbulent_fluxes.shf,
     )
 end
 

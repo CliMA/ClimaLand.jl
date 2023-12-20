@@ -248,7 +248,7 @@ net radiation to the auxiliary variables.
 These variables are updated in place in `soil_boundary_fluxes`.
 """
 boundary_vars(bc::AtmosDrivenFluxBC, ::ClimaLSM.TopBoundary) =
-    (:sfc_conditions, :R_n, :top_bc)
+    (:turbulent_fluxes, :R_n, :top_bc)
 
 """
     boundary_var_domain_names(::AtmosDrivenFluxBC, ::ClimaLSM.TopBoundary))
@@ -313,7 +313,7 @@ If you wish to compute surface fluxes taking into account the
 presence of a canopy, snow, etc, as in a land surface model,
 this is not the correct method to be using.
 
-This function calls the `surface_fluxes` and `net_radiation`
+This function calls the `turbulent_fluxes` and `net_radiation`
 functions, which use the soil surface conditions as well as
 the prescribed atmos and radiation conditions in order to
 compute the surface fluxes using Monin Obukhov Surface Theory.
@@ -331,13 +331,13 @@ function soil_boundary_fluxes(
     t,
 ) where {FT}
 
-    p.soil.sfc_conditions .= surface_fluxes(bc.atmos, model, Y, p, t)
+    p.soil.turbulent_fluxes .= turbulent_fluxes(bc.atmos, model, Y, p, t)
     p.soil.R_n .= net_radiation(bc.radiation, model, Y, p, t)
     # We are ignoring sublimation for now
     precip = FT.(bc.atmos.liquid_precip(t))
     infiltration = soil_surface_infiltration(
         bc.runoff,
-        precip .+ p.soil.sfc_conditions.vapor_flux,
+        precip .+ p.soil.turbulent_fluxes.vapor_flux,
         Y,
         p,
         model.parameters,
@@ -345,7 +345,7 @@ function soil_boundary_fluxes(
     # We do not model the energy flux from infiltration
     return @. create_soil_bc_named_tuple(
         infiltration,
-        p.soil.R_n + p.soil.sfc_conditions.lhf + p.soil.sfc_conditions.shf,
+        p.soil.R_n + p.soil.turbulent_fluxes.lhf + p.soil.turbulent_fluxes.shf,
     )
 end
 

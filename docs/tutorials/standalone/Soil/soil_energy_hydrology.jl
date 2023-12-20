@@ -247,10 +247,10 @@ init_soil!(Y, coords.subsurface.z, soil.parameters);
 t0 = Float64(0)
 tf = Float64(60 * 60 * 72);
 
-# We set the aux state corresponding to the initial conditions
+# We set the cache values corresponding to the initial conditions
 # of the state Y:
-set_initial_aux_state! = make_set_initial_aux_state(soil);
-set_initial_aux_state!(p, Y, t0);
+set_initial_cache! = make_set_initial_cache(soil);
+set_initial_cache!(p, Y, t0);
 
 # We use [ClimaTimesteppers.jl](https://github.com/CliMA/ClimaTimesteppers.jl) for carrying out the time integration.
 

@@ -182,14 +182,19 @@ for FT in (Float32, Float64)
             radiation = radiation,
         )
         Y, p, coords = ClimaLSM.initialize(canopy)
+
+        # Check that structure of Y is value (will error if not)
+        @test !isnothing(zero(Y))
         @test typeof(canopy.energy) == PrescribedCanopyTempModel{FT}
         @test propertynames(p) == (:canopy,)
         for component in ClimaLSM.Canopy.canopy_components(canopy)
+            # Only hydraulics has a prognostic variable
+            if component == :hydraulics
+                @test propertynames(getproperty(Y.canopy, component)) ==
+                      ClimaLSM.prognostic_vars(getproperty(canopy, component))
+            end
             @test propertynames(getproperty(p.canopy, component)) ==
                   ClimaLSM.auxiliary_vars(getproperty(canopy, component))
-            @test propertynames(getproperty(Y.canopy, component)) ==
-                  ClimaLSM.prognostic_vars(getproperty(canopy, component))
-
             @test getproperty(auxiliary_types(canopy), component) ==
                   auxiliary_types(getproperty(canopy, component))
             @test getproperty(auxiliary_vars(canopy), component) ==
@@ -200,16 +205,16 @@ for FT in (Float32, Float64)
                   prognostic_types(getproperty(canopy, component))
         end
         parent(Y.canopy.hydraulics.ϑ_l) .= plant_ν
-        set_initial_aux_state! = make_set_initial_aux_state(canopy)
+        set_initial_cache! = make_set_initial_cache(canopy)
         exp_tendency! = make_exp_tendency(canopy)
         t0 = FT(0.0)
         dY = similar(Y)
-        set_initial_aux_state!(p, Y, t0)
+        set_initial_cache!(p, Y, t0)
         # check that this is updated correctly:
         # @test p.canopy.autotrophic_respiration.Ra ==
         exp_tendency!(dY, Y, p, t0)
         (evapotranspiration, shf, lhf) =
-            ClimaLSM.Canopy.canopy_turbulent_surface_fluxes(
+            ClimaLSM.Canopy.canopy_turbulent_fluxes(
                 canopy.atmos,
                 canopy,
                 Y,
@@ -272,7 +277,7 @@ for FT in (Float32, Float64)
 
         VPD = es .- ea
 
-        conditions = surface_fluxes(atmos, canopy, Y, p, t0) #Per unit m^2 of leaf
+        conditions = turbulent_fluxes(atmos, canopy, Y, p, t0) #Per unit m^2 of leaf
         r_ae = Array(parent(conditions.r_ae))[1] # s/m
         ga = 1 / r_ae
         γ = FT(66)
@@ -641,12 +646,18 @@ for FT in (Float32, Float64)
         @test canopy.radiative_transfer.parameters.ϵ_canopy == FT(0.98)
         @test canopy.energy.parameters.ac_canopy == FT(2.0e3)
         Y, p, coords = ClimaLSM.initialize(canopy)
+
+        # Check that structure of Y is value (will error if not)
+        @test !isnothing(zero(Y))
         @test propertynames(p) == (:canopy,)
         for component in ClimaLSM.Canopy.canopy_components(canopy)
+            # Only hydraulics has a prognostic variable
+            if component == :hydraulics
+                @test propertynames(getproperty(Y.canopy, component)) ==
+                      ClimaLSM.prognostic_vars(getproperty(canopy, component))
+            end
             @test propertynames(getproperty(p.canopy, component)) ==
                   ClimaLSM.auxiliary_vars(getproperty(canopy, component))
-            @test propertynames(getproperty(Y.canopy, component)) ==
-                  ClimaLSM.prognostic_vars(getproperty(canopy, component))
 
             @test getproperty(auxiliary_types(canopy), component) ==
                   auxiliary_types(getproperty(canopy, component))
@@ -660,14 +671,14 @@ for FT in (Float32, Float64)
         Y.canopy.hydraulics .= plant_ν
         Y.canopy.energy.T = FT(289)
 
-        set_initial_aux_state! = make_set_initial_aux_state(canopy)
+        set_initial_cache! = make_set_initial_cache(canopy)
         t0 = FT(0.0)
-        set_initial_aux_state!(p, Y, t0)
+        set_initial_cache!(p, Y, t0)
         exp_tendency! = make_exp_tendency(canopy)
         dY = similar(Y)
         exp_tendency!(dY, Y, p, t0)
         (evapotranspiration, shf, lhf) =
-            canopy_turbulent_surface_fluxes(canopy.atmos, canopy, Y, p, t0)
+            canopy_turbulent_fluxes(canopy.atmos, canopy, Y, p, t0)
         @test p.canopy.hydraulics.fa.:1 == evapotranspiration
         @test p.canopy.energy.lhf == lhf
         @test p.canopy.energy.shf == shf

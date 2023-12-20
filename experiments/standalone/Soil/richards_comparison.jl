@@ -68,7 +68,7 @@ bonan_sand_dataset = ArtifactWrapper(
             boundary_conditions = boundary_states,
             sources = sources,
         )
-        set_initial_aux_state! = make_set_initial_aux_state(soil)
+        set_initial_cache! = make_set_initial_cache(soil)
 
         Y, p, coords = initialize(soil)
 
@@ -77,7 +77,7 @@ bonan_sand_dataset = ArtifactWrapper(
         exp_tendency! = make_exp_tendency(soil)
         imp_tendency! = ClimaLSM.make_imp_tendency(soil)
         update_jacobian! = ClimaLSM.make_update_jacobian(soil)
-        set_initial_aux_state!(p, Y, t0)
+        set_initial_cache!(p, Y, t0)
 
         stepper = CTS.ARS111()
         norm_condition = CTS.MaximumError(FT(1e-8))
@@ -171,14 +171,14 @@ end
         )
 
         Y, p, coords = initialize(soil)
-        set_initial_aux_state! = make_set_initial_aux_state(soil)
+        set_initial_cache! = make_set_initial_cache(soil)
 
         # specify ICs
         Y.soil.ϑ_l .= FT(0.1)
         exp_tendency! = make_exp_tendency(soil)
         imp_tendency! = ClimaLSM.make_imp_tendency(soil)
         update_jacobian! = ClimaLSM.make_update_jacobian(soil)
-        set_initial_aux_state!(p, Y, t0)
+        set_initial_cache!(p, Y, t0)
 
         stepper = CTS.ARS111()
         norm_condition = CTS.MaximumError(FT(1e-8))
