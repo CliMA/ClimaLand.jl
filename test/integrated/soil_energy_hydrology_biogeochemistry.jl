@@ -123,7 +123,8 @@ for FT in (Float32, Float64)
             soilco2_args = soilco2_args,
         )
         Y, p, coords = initialize(model)
-
+        @test propertynames(p.drivers) ==
+              (:P_liq, :P_snow, :T, :P, :u, :q, :c_co2)
         function init_soil!(Y, z, params)
             ν = params.ν
             FT = eltype(Y.soil.ϑ_l)

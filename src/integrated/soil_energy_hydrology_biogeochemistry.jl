@@ -85,3 +85,17 @@ model from the prognostic liquid and ice fractions.
 function soil_moisture(driver::PrognosticMet, p, Y, t, z)
     return p.soil.θ_l
 end
+
+
+function ClimaLSM.get_drivers(model::LandSoilBiogeochemistry)
+    bc = model.soil.boundary_conditions.top
+    if typeof(bc) <: AtmosDrivenFluxBC{
+        <:PrescribedAtmosphere,
+        <:AbstractRadiativeDrivers,
+        <:Soil.AbstractRunoffModel,
+    }
+        return (bc.atmos, bc.radiation)
+    else
+        return (model.soilco2.driver.atmos, nothing)
+    end
+end

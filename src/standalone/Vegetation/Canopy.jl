@@ -20,7 +20,8 @@ import ClimaLSM:
     make_update_boundary_fluxes,
     make_update_aux,
     make_compute_exp_tendency,
-    make_set_initial_cache
+    make_set_initial_cache,
+    get_drivers
 
 using ClimaLSM.Domains: Point, Plane, SphericalSurface
 export SharedCanopyParameters,
@@ -626,6 +627,11 @@ function make_compute_exp_tendency(
     end
     return compute_exp_tendency!
 end
+function ClimaLSM.get_drivers(model::CanopyModel)
+    return (model.atmos, model.radiation)
+end
+
+
 include("./canopy_boundary_fluxes.jl")
 
 #Make the canopy model broadcastable

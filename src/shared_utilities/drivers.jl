@@ -516,3 +516,73 @@ function vapor_pressure_deficit(T_air, P_air, q_air, thermo_params)
     )
     return es - ea
 end
+
+"""
+    initialize_drivers(r::PrescribedAtmosphere{FT}, coords) where {FT}
+
+Creates and returns a NamedTuple for the `PrescribedAtmosphere` driver, 
+with variables `P_liq`, `P_snow`, and air temperature `T`, pressure `P`,
+horizontal wind speed `u`, specific humidity `q`, and CO2 concentration
+`c_co2`.
+"""
+function initialize_drivers(a::PrescribedAtmosphere{FT}, coords) where {FT}
+    keys = (:P_liq, :P_snow, :T, :P, :u, :q, :c_co2)
+    types = ([FT for k in keys]...,)
+    domain_names = ([:surface for k in keys]...,)
+    model_name = :drivers
+    # intialize_vars packages the variables as a named tuple,
+    # as part of a named tuple with `model_name` as the key.
+    # Here we just want the variable named tuple itself
+    vars =
+        ClimaLSM.initialize_vars(keys, types, domain_names, coords, model_name)
+    return vars.drivers
+end
+
+"""
+    initialize_drivers(r::PrescribedRadiativeFluxes{FT}, coords) where {FT}
+
+Creates and returns a NamedTuple for the `PrescribedRadiativeFluxes` driver,
+ with variables `SW_d`, `LW_d`, and zenith angle `θ_s`.
+"""
+function initialize_drivers(r::PrescribedRadiativeFluxes{FT}, coords) where {FT}
+    keys = (:SW_d, :LW_d, :θs)
+    types = ([FT for k in keys]...,)
+    domain_names = ([:surface for k in keys]...,)
+    model_name = :drivers
+    # intialize_vars packages the variables as a named tuple,
+    # as part of a named tuple with `model_name` as the key.
+    # Here we just want the variable named tuple itself
+    vars =
+        ClimaLSM.initialize_vars(keys, types, domain_names, coords, model_name)
+    return vars.drivers
+end
+
+"""
+    initialize_drivers(d::Nothing, coords)
+
+Creates and returns a NamedTuple with `nothing` when no driver cache variables are needed.
+"""
+function initialize_drivers(d::Nothing, coords)
+    return (;)
+end
+
+"""
+    initialize_drivers(a::Union{AbstractAtmosphericDrivers, Nothing},
+                       r::Union{AbstractRadiativeDrivers, Nothing},
+                       coords)
+
+Creates and returns a NamedTuple with the cache variables required by the 
+atmospheric and radiative drivers.
+
+If no forcing is required, `a` and `r` are type `Nothing` and an
+empty NamedTuple is returned.
+"""
+function initialize_drivers(
+    a::Union{AbstractAtmosphericDrivers, Nothing},
+    r::Union{AbstractRadiativeDrivers, Nothing},
+    coords,
+)
+    atmos_drivers = initialize_drivers(a, coords)
+    radiation_drivers = initialize_drivers(r, coords)
+    merge(atmos_drivers, radiation_drivers)
+end
