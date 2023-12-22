@@ -19,6 +19,8 @@ export AbstractModel,
     auxiliary_domain_names,
     make_set_initial_cache,
     make_update_cache,
+    add_drivers_to_cache,
+    get_drivers,
     name
 
 import .Domains: coordinates
@@ -384,6 +386,33 @@ end
 Domains.coordinates(model::AbstractModel) = Domains.coordinates(model.domain)
 
 """
+    add_drivers_to_cache(p::NamedTuple, model::AbstractModel, coords)
+
+Creates the driver variable NamedTuple (atmospheric and radiative forcing),
+and merges it into `p` under the key `drivers`. If no driver variables
+are required, `p` is returned unchanged.
+"""
+function add_drivers_to_cache(p::NamedTuple, model::AbstractModel, coords)
+    (atmos, radiation) = get_drivers(model)
+    driver_nt = initialize_drivers(atmos, radiation, coords)
+    if driver_nt == (;)
+        return p
+    else
+        return merge(p, (; drivers = driver_nt))
+    end
+end
+
+"""
+    get_drivers(model::AbstractModel)
+
+Returns the `driver` objects for the model - atmospheric and radiative forcing - as a tuple (atmos, radiation).
+"""
+function get_drivers(model::AbstractModel)
+    return (nothing, nothing)
+end
+
+
+"""
     initialize(model::AbstractModel)
 
 Creates the prognostic and auxiliary states structures, but with unset
@@ -395,9 +424,6 @@ function initialize(model::AbstractModel{FT}) where {FT}
     coords = Domains.coordinates(model)
     Y = initialize_prognostic(model, coords)
     p = initialize_auxiliary(model, coords)
-    # We have to do this here and not in init_aux because LSM calls init_aux for each model,
-    # but we only want the drivers once
-    # This is nice because all models use this function - none have a special method
-    p = add_drivers_to_cache(p, model)
+    p = add_drivers_to_cache(p, model, coords)
     return Y, p, coords
 end

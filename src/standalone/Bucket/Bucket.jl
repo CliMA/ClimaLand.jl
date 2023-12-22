@@ -48,7 +48,8 @@ import ClimaLSM:
     surface_evaporative_scaling,
     surface_albedo,
     surface_emissivity,
-    surface_height
+    surface_height,
+    get_drivers
 export BucketModelParameters,
     BucketModel,
     BulkAlbedoFunction,
@@ -622,6 +623,10 @@ function next_albedo(
         sim_date,
         axes(Y.bucket.W),
     )
+end
+
+function ClimaLSM.get_drivers(model::BucketModel)
+    return (model.atmos, model.radiation)
 end
 
 include("./bucket_parameterizations.jl")

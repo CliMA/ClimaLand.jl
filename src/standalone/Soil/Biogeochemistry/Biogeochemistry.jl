@@ -565,6 +565,10 @@ function ClimaLSM.boundary_flux(
     return ClimaLSM.diffusive_flux(D_c, C_c, C_bc, Δz)
 end
 
+function ClimaLSM.get_drivers(model::SoilCO2Model)
+    return (model.driver.atmos, nothing)
+end
+
 include("./co2_parameterizations.jl")
 
 end # module

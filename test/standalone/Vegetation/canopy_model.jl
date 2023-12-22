@@ -182,11 +182,12 @@ for FT in (Float32, Float64)
             radiation = radiation,
         )
         Y, p, coords = ClimaLSM.initialize(canopy)
-
+        @test propertynames(p.drivers) ==
+              (:P_liq, :P_snow, :T, :P, :u, :q, :c_co2, :SW_d, :LW_d, :θs)
         # Check that structure of Y is value (will error if not)
         @test !isnothing(zero(Y))
         @test typeof(canopy.energy) == PrescribedCanopyTempModel{FT}
-        @test propertynames(p) == (:canopy,)
+        @test propertynames(p) == (:canopy, :drivers)
         for component in ClimaLSM.Canopy.canopy_components(canopy)
             # Only hydraulics has a prognostic variable
             if component == :hydraulics
@@ -649,7 +650,7 @@ for FT in (Float32, Float64)
 
         # Check that structure of Y is value (will error if not)
         @test !isnothing(zero(Y))
-        @test propertynames(p) == (:canopy,)
+        @test propertynames(p) == (:canopy, :drivers)
         for component in ClimaLSM.Canopy.canopy_components(canopy)
             # Only hydraulics has a prognostic variable
             if component == :hydraulics

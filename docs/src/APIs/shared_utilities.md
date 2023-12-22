@@ -58,6 +58,7 @@ ClimaLSM.make_tendency_jacobian
 ClimaLSM.make_update_jacobian
 ClimaLSM.∂tendencyBC∂Y
 ClimaLSM.AbstractTridiagonalW
+ClimaLSM.get_drivers
 ```
 
 ## Drivers

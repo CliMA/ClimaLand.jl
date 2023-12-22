@@ -28,6 +28,9 @@ end
 @safetestset "Variable types tests" begin
     include("shared_utilities/variable_types.jl")
 end
+@safetestset "Driver tests" begin
+    include("shared_utilities/drivers.jl")
+end
 
 # Standalone Bucket model tests
 gpu_broken || @safetestset "Bucket albedo types tests" begin

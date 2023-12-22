@@ -696,3 +696,16 @@ function ClimaLSM.surface_height(model::EnergyHydrology{FT}, Y, p) where {FT}
     )
     return z_sfc
 end
+
+function ClimaLSM.get_drivers(model::EnergyHydrology)
+    bc = model.boundary_conditions.top
+    if typeof(bc) <: AtmosDrivenFluxBC{
+        <:PrescribedAtmosphere,
+        <:AbstractRadiativeDrivers,
+        <:AbstractRunoffModel,
+    }
+        return (bc.atmos, bc.radiation)
+    else
+        return (nothing, nothing)
+    end
+end

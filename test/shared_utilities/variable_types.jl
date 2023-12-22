@@ -48,6 +48,9 @@ FT = Float32
     dm_update_aux! = make_update_aux(dm)
     @test dm_update_aux!(x[1], x[2], x[3]) == nothing
     @test x == [0, 1, 2, 3]
+
+    @test ClimaLSM.get_drivers(dm) == (nothing, nothing)
+    @test ClimaLSM.add_drivers_to_cache((;), dm, nothing) == (;)
 end
 
 @testset "Default ImEx model, FT = $FT" begin

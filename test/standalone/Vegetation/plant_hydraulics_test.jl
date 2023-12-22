@@ -347,9 +347,9 @@ for FT in (Float32, Float64)
 
             Y, p, coords = initialize(model)
             if typeof(domain) <: ClimaLSM.Domains.Point
-                @test propertynames(p) == (:canopy,)
+                @test propertynames(p) == (:canopy, :drivers)
             elseif typeof(domain) <: ClimaLSM.Domains.Plane
-                @test propertynames(p) == (:canopy, :dss_buffer_2d)
+                @test propertynames(p) == (:canopy, :dss_buffer_2d, :drivers)
                 @test typeof(p.dss_buffer_2d) == typeof(
                     ClimaCore.Spaces.create_dss_buffer(
                         ClimaCore.Fields.zeros(domain.space.surface),

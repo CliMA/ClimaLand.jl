@@ -585,3 +585,8 @@ function Canopy.canopy_radiant_energy_fluxes!(
 ) where {FT, PSE}
     nothing
 end
+
+
+function ClimaLSM.get_drivers(model::SoilCanopyModel)
+    return (model.canopy.atmos, model.canopy.radiation)
+end
