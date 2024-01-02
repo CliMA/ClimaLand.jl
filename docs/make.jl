@@ -11,6 +11,7 @@ tutorials = [
         "Intro to standalone models" => "standalone/Usage/model_tutorial.jl",
         "Intro to multi-component models" => "standalone/Usage/LSM_single_column_tutorial.jl",
         "Intro to ClimaLSM Domains" => "standalone/Usage/domain_tutorial.jl",
+        "Intro to forced site-level runs" => "shared_utilities/driver_tutorial.jl",
     ],
     "Running simulations" => [
         "Bucket LSM" => [

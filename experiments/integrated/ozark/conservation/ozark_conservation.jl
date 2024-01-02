@@ -313,8 +313,11 @@ for float_type in (Float32, Float64)
         t = Array{Float64}(undef, length(saveat)),
         saveval = Array{NamedTuple}(undef, length(saveat)),
     )
-    cb = ClimaLSM.NonInterpSavingCallback(sv, saveat)
+    saving_cb = ClimaLSM.NonInterpSavingCallback(sv, saveat)
 
+    updateat = deepcopy(saveat)
+    updatefunc = ClimaLSM.make_update_drivers(atmos, radiation)
+    driver_cb = ClimaLSM.DriverUpdateCallback(updateat, updatefunc)
     prob = SciMLBase.ODEProblem(
         CTS.ClimaODEFunction(
             T_exp! = exp_tendency!,
@@ -325,6 +328,7 @@ for float_type in (Float32, Float64)
         (t0, tf),
         p,
     )
+    cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
     sol = SciMLBase.solve(
         prob,
         ode_algo;
@@ -341,6 +345,17 @@ for float_type in (Float32, Float64)
 
     # Plotting for Float64 simulation
     if FT == Float64
+        # Check that the driver variables stored in `p` are
+        # updated correctly - just check one from radiation,
+        # and one from atmos.
+        cache_θs = [parent(sv.saveval[k].drivers.θs)[1] for k in 1:length(sv.t)]
+        cache_Tair =
+            [parent(sv.saveval[k].drivers.T)[1] for k in 1:length(sv.t)]
+        @assert mean(
+            abs.(radiation.θs.(sv.t, radiation.ref_time) .- cache_θs),
+        ) < eps(FT)
+        @assert mean(abs.(atmos.T.(sv.t) .- cache_Tair)) < eps(FT)
+
         daily = sol.t[2:end] ./ 3600 ./ 24
         savedir =
             joinpath(climalsm_dir, "experiments/integrated/ozark/conservation")

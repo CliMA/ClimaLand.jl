@@ -17,7 +17,8 @@ export AbstractAtmosphericDrivers,
     liquid_precipitation,
     snow_precipitation,
     vapor_pressure_deficit,
-    displacement_height
+    displacement_height,
+    make_update_drivers
 
 """
      AbstractAtmosphericDrivers{FT <: AbstractFloat}
@@ -79,7 +80,7 @@ struct PrescribedAtmosphere{FT, LP, SP, TA, UA, QA, RA, CA, DT} <:
         ref_time,
         h::FT;
         gustiness = FT(1),
-        c_co2 = nothing,
+        c_co2 = (t) -> 4.2e-4,
     ) where {FT}
         args = (liquid_precip, snow_precip, T, u, q, P, c_co2, ref_time)
         return new{typeof(h), typeof.(args)...}(args..., h, gustiness)
@@ -585,4 +586,71 @@ function initialize_drivers(
     atmos_drivers = initialize_drivers(a, coords)
     radiation_drivers = initialize_drivers(r, coords)
     merge(atmos_drivers, radiation_drivers)
+end
+
+"""
+    make_update_drivers(a::Union{AbstractAtmosphericDrivers, Nothing},
+                          r::Union{AbstractRadiativeDrivers, Nothing},
+                         )
+
+Creates and returns a function which updates the atmospheric
+and radiative forcing variables ("drivers").
+"""
+function make_update_drivers(
+    a::Union{AbstractAtmosphericDrivers, Nothing},
+    r::Union{AbstractRadiativeDrivers, Nothing},
+)
+    update_atmos! = make_update_drivers(a)
+    update_radiation! = make_update_drivers(r)
+    function update_drivers!(drivers, t)
+        update_atmos!(drivers, t)
+        update_radiation!(drivers, t)
+    end
+    return update_drivers!
+end
+
+"""
+    make_update_drivers(d::Nothing)
+
+Creates and returns a function which updates the driver variables
+in the case of no driver variables.
+"""
+make_update_drivers(d::Nothing) = (p, t) -> nothing
+
+"""
+    make_update_drivers(a::PrescribedAtmosphere{FT}) where {FT}
+
+Creates and returns a function which updates the driver variables
+in the case of a PrescribedAtmosphere at a point.
+"""
+function make_update_drivers(a::PrescribedAtmosphere{FT}) where {FT}
+    function update_drivers!(drivers, t)
+        drivers.P_liq .= FT(a.liquid_precip(t))
+        drivers.P_snow .= FT(a.snow_precip(t))
+        drivers.T .= FT(a.T(t))
+        drivers.P .= FT(a.P(t))
+        drivers.u .= FT(a.u(t))
+        drivers.q .= FT(a.q(t))
+        drivers.c_co2 .= FT(a.c_co2(t))
+    end
+    return update_drivers!
+end
+
+"""
+    make_update_drivers(r::PrescribedRadiativeFluxes{FT}) where {FT}
+
+Creates and returns a function which updates the driver variables
+in the case of a PrescribedRadiativeFluxes at a point.
+"""
+function make_update_drivers(r::PrescribedRadiativeFluxes{FT}) where {FT}
+    function update_drivers!(drivers, t)
+        drivers.SW_d .= FT(r.SW_d(t))
+        drivers.LW_d .= FT(r.LW_d(t))
+        if ~isnothing(r.θs)
+            drivers.θs .= FT(r.θs(t, r.ref_time))
+        else
+            drivers.θs .= FT(0)
+        end
+    end
+    return update_drivers!
 end
