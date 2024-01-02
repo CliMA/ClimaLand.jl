@@ -174,11 +174,15 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
     ode_algo = CTS.ExplicitAlgorithm(timestepper)
 
     saveat = collect(t0:FT(10 * dt):tf)
-    saved_values = (;
+    sv = (;
         t = Array{Float64}(undef, length(saveat)),
         saveval = Array{NamedTuple}(undef, length(saveat)),
     )
-    cb = ClimaLSM.NonInterpSavingCallback(saved_values, saveat)
+    saving_cb = ClimaLSM.NonInterpSavingCallback(sv, saveat)
+    updateat = deepcopy(saveat)
+    updatefunc = ClimaLSM.make_update_drivers(atmos, nothing)
+    driver_cb = ClimaLSM.DriverUpdateCallback(updateat, updatefunc)
+    cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
 
     prob = SciMLBase.ODEProblem(
         CTS.ClimaODEFunction(T_exp! = Soil_bio_exp_tendency!),

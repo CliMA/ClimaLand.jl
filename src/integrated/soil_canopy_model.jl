@@ -48,6 +48,7 @@ of the function `soil_boundary_fluxes` in this case.
 """
 struct CanopyRadiativeFluxes{FT} <: AbstractRadiativeDrivers{FT} end
 
+
 """
     SoilCanopyModel{FT}(;
         soilco2_type::Type{MM},
@@ -325,8 +326,8 @@ function lsm_radiant_energy_fluxes!(
     radiation = canopy.radiation
     earth_param_set = canopy.parameters.earth_param_set
     _σ = LSMP.Stefan(earth_param_set)
-    LW_d = FT(radiation.LW_d(t))
-    SW_d = FT(radiation.SW_d(t))
+    LW_d = p.drivers.LW_d
+    SW_d = p.drivers.SW_d
     c = LSMP.light_speed(earth_param_set)
     h = LSMP.planck_constant(earth_param_set)
     N_a = LSMP.avogadro_constant(earth_param_set)
@@ -415,7 +416,7 @@ function soil_boundary_fluxes(
     soil_conditions = turbulent_fluxes(bc.atmos, soil, Y, p, t)
     infiltration = soil_surface_infiltration(
         bc.runoff,
-        FT.(bc.atmos.liquid_precip(t)) .+ p.soil.turbulent_fluxes.vapor_flux,
+        p.drivers.P_liq .+ p.soil.turbulent_fluxes.vapor_flux,
         Y,
         p,
         t,

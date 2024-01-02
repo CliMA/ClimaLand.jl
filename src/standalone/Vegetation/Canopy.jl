@@ -437,6 +437,15 @@ function ClimaLSM.make_update_aux(
         ϑ_l = Y.canopy.hydraulics.ϑ_l
         fa = p.canopy.hydraulics.fa
 
+        # Current atmospheric conditions
+        θs = p.drivers.θs
+        c_co2_air = p.drivers.c_co2
+        P_air = p.drivers.P
+        T_air = p.drivers.T
+        q_air = p.drivers.q
+        h::FT = canopy.atmos.h
+
+
         # unpack parameters
         earth_param_set = canopy.parameters.earth_param_set
         c = FT(LSMP.light_speed(earth_param_set))
@@ -455,34 +464,27 @@ function ClimaLSM.make_update_aux(
         RAI = area_index.root
         (; sc, pc) = canopy.photosynthesis.parameters
 
-        # Current atmospheric conditions
-        ref_time = canopy.atmos.ref_time
-        θs::FT = canopy.radiation.θs(t, ref_time)
-        c_co2_air::FT = canopy.atmos.c_co2(t)
-        P_air::FT = canopy.atmos.P(t)
-        T_air::FT = canopy.atmos.T(t)
-        q_air::FT = canopy.atmos.q(t)
-        h::FT = canopy.atmos.h
-
         # update radiative transfer
         RT = canopy.radiative_transfer
-        K = extinction_coeff(ld, θs)
-        PAR .= compute_PAR(RT, canopy.radiation, t)
-        NIR .= compute_NIR(RT, canopy.radiation, t)
+        K = extinction_coeff.(ld, θs)
+        PAR .= compute_PAR(RT, canopy.radiation, p, t)
+        NIR .= compute_NIR(RT, canopy.radiation, p, t)
         e_sat =
             Thermodynamics.saturation_vapor_pressure.(
-                Ref(thermo_params),
+                thermo_params,
                 T_air,
                 Ref(Thermodynamics.Liquid()),
             )
         e =
             Thermodynamics.partial_pressure_vapor.(
-                Ref(thermo_params),
+                thermo_params,
                 P_air,
-                Ref(PhasePartition(q_air)),
+                PhasePartition.(q_air),
             )
         rel_hum = e ./ e_sat
-        DOY = Dates.dayofyear(ref_time + Dates.Second(floor(Int64, t)))
+        DOY = Dates.dayofyear(
+            canopy.atmos.ref_time + Dates.Second(floor(Int64, t)),
+        )
         frac_diff = @. diffuse_fraction(DOY, T_air, PAR + NIR, rel_hum, θs)
         absorbance_tuple = compute_absorbances(
             RT,

@@ -459,14 +459,21 @@ ode_algo = CTS.ExplicitAlgorithm(timestepper);
 set_initial_cache! = make_set_initial_cache(land)
 set_initial_cache!(p, Y, t0);
 
-# And now perform the simulation as always.
+# Set the callbacks, which govern
+# how often we save output, and how often we update
+# the forcing data ("drivers")
 
 sv = (;
     t = Array{Float64}(undef, length(saveat)),
-    saveval = Array{ClimaCore.Fields.NamedTuple}(undef, length(saveat)),
+    saveval = Array{NamedTuple}(undef, length(saveat)),
 )
-cb = ClimaLSM.NonInterpSavingCallback(sv, saveat)
+saving_cb = ClimaLSM.NonInterpSavingCallback(sv, saveat)
+updatefunc = ClimaLSM.make_update_drivers(atmos, radiation)
+updateat = Array(t0:1800:tf)
+driver_cb = ClimaLSM.DriverUpdateCallback(updateat, updatefunc)
+cb = SciMLBase.CallbackSet(driver_cb, saving_cb);
 
+# Carry out the simulation
 prob = SciMLBase.ODEProblem(
     CTS.ClimaODEFunction(T_exp! = exp_tendency!),
     Y,

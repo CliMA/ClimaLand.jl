@@ -17,11 +17,12 @@ using ClimaLSM.Canopy.PlantHydraulics
 import ClimaLSM
 import ClimaLSM.Parameters as LSMP
 include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
-include("data_tools.jl")
-include("plot_utils.jl")
 const FT = Float64
 earth_param_set = create_lsm_parameters(FT)
 climalsm_dir = pkgdir(ClimaLSM)
+
+include(joinpath(climalsm_dir, "experiments/integrated/fluxnet/data_tools.jl"))
+include(joinpath(climalsm_dir, "experiments/integrated/fluxnet/plot_utils.jl"))
 
 # Read in the site to be run from the command line
 if length(ARGS) < 1
@@ -55,13 +56,14 @@ include(
 include(
     joinpath(
         climalsm_dir,
-        "experiments/integrated/fluxnet/met_drivers_FLUXNET.jl",
+        "experiments/integrated/fluxnet/fluxnet_simulation.jl",
     ),
 )
+
 include(
     joinpath(
         climalsm_dir,
-        "experiments/integrated/fluxnet/fluxnet_simulation.jl",
+        "experiments/integrated/fluxnet/met_drivers_FLUXNET.jl",
     ),
 )
 
@@ -304,10 +306,16 @@ set_initial_cache!(p, Y, t0);
 
 # Simulation
 sv = (;
-    t = Array{FT}(undef, length(saveat)),
+    t = Array{Float64}(undef, length(saveat)),
     saveval = Array{NamedTuple}(undef, length(saveat)),
 )
-cb = ClimaLSM.NonInterpSavingCallback(sv, saveat)
+saving_cb = ClimaLSM.NonInterpSavingCallback(sv, saveat)
+## How often we want to update the drivers. Note that this uses the defined `t0` and `tf`
+## defined in the simulatons file
+updateat = Array(t0:DATA_DT:tf)
+updatefunc = ClimaLSM.make_update_drivers(atmos, radiation)
+driver_cb = ClimaLSM.DriverUpdateCallback(updateat, updatefunc)
+cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
 
 prob = SciMLBase.ODEProblem(
     CTS.ClimaODEFunction((T_exp!) = exp_tendency!),

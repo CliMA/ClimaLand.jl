@@ -54,7 +54,7 @@ end
     @test cond(nothing, tf, nothing) == false
     @test cond(nothing, t0 + 0.5 * dt, nothing) == true
     @test cond(nothing, updateat[end], nothing) == true
-    updatefunc = (drivers, t) -> drivers.q .= [t]
+    updatefunc = (p, t) -> p.drivers.q .= [t]
     affect! = ClimaLSM.DriverAffect(updateat, updatefunc)
     @test affect!.updateat == updateat
     @test affect!.updatefunc == updatefunc
@@ -81,39 +81,39 @@ end
     pa = ClimaLSM.PrescribedAtmosphere(f, f, f, f, f, f, f, FT(1);)
     pr = ClimaLSM.PrescribedRadiativeFluxes(FT, f, f, f)
     coords = (; surface = [1])
-    drivers = ClimaLSM.initialize_drivers(nothing, nothing, coords)
+    p = (; drivers = ClimaLSM.initialize_drivers(nothing, nothing, coords))
     nothing_update! = ClimaLSM.make_update_drivers(nothing, nothing)
-    nothing_update!(drivers, 0.0)
-    @test drivers == (;)
-    drivers = ClimaLSM.initialize_drivers(pa, nothing, coords)
+    nothing_update!(p, 0.0)
+    @test p.drivers == (;)
+    p = (; drivers = ClimaLSM.initialize_drivers(pa, nothing, coords))
     atmos_only_update! = ClimaLSM.make_update_drivers(pa, nothing)
-    atmos_only_update!(drivers, 0.0)
-    @test drivers.P_liq == [FT(10)]
-    @test drivers.P_snow == [FT(10)]
-    @test drivers.P == [FT(10)]
-    @test drivers.T == [FT(10)]
-    @test drivers.q == [FT(10)]
-    @test drivers.u == [FT(10)]
-    @test drivers.c_co2 == [FT(4.2e-4)]
+    atmos_only_update!(p, 0.0)
+    @test p.drivers.P_liq == [FT(10)]
+    @test p.drivers.P_snow == [FT(10)]
+    @test p.drivers.P == [FT(10)]
+    @test p.drivers.T == [FT(10)]
+    @test p.drivers.q == [FT(10)]
+    @test p.drivers.u == [FT(10)]
+    @test p.drivers.c_co2 == [FT(4.2e-4)]
 
-    drivers = ClimaLSM.initialize_drivers(pa, pr, coords)
+    p = (; drivers = ClimaLSM.initialize_drivers(pa, pr, coords))
     update! = ClimaLSM.make_update_drivers(pa, pr)
-    update!(drivers, 0.0)
-    @test drivers.P_liq == [FT(10)]
-    @test drivers.P_snow == [FT(10)]
-    @test drivers.P == [FT(10)]
-    @test drivers.T == [FT(10)]
-    @test drivers.q == [FT(10)]
-    @test drivers.u == [FT(10)]
-    @test drivers.c_co2 == [FT(4.2e-4)]
-    @test drivers.SW_d == [FT(10)]
-    @test drivers.LW_d == [FT(10)]
-    @test drivers.θs == [FT(0)]
+    update!(p, 0.0)
+    @test p.drivers.P_liq == [FT(10)]
+    @test p.drivers.P_snow == [FT(10)]
+    @test p.drivers.P == [FT(10)]
+    @test p.drivers.T == [FT(10)]
+    @test p.drivers.q == [FT(10)]
+    @test p.drivers.u == [FT(10)]
+    @test p.drivers.c_co2 == [FT(4.2e-4)]
+    @test p.drivers.SW_d == [FT(10)]
+    @test p.drivers.LW_d == [FT(10)]
+    @test p.drivers.θs == [FT(0)]
 
-    drivers = ClimaLSM.initialize_drivers(nothing, pr, coords)
+    p = (; drivers = ClimaLSM.initialize_drivers(nothing, pr, coords))
     rad_only_update! = ClimaLSM.make_update_drivers(nothing, pr)
-    rad_only_update!(drivers, 0.0)
-    @test drivers.SW_d == [FT(10)]
-    @test drivers.LW_d == [FT(10)]
-    @test drivers.θs == [FT(0)]
+    rad_only_update!(p, 0.0)
+    @test p.drivers.SW_d == [FT(10)]
+    @test p.drivers.LW_d == [FT(10)]
+    @test p.drivers.θs == [FT(0)]
 end

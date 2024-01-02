@@ -258,8 +258,8 @@ for FT in (Float32, Float64)
         Rn = FT(shortwave_radiation(t0))
         G = FT(0.0)
         thermo_params = canopy.parameters.earth_param_set.thermo_params
-        ts_in = construct_atmos_ts(atmos, t0, thermo_params)
-        ρa = Thermodynamics.air_density(thermo_params, ts_in)
+        ts_in = construct_atmos_ts(atmos, p, thermo_params)
+        ρa = Thermodynamics.air_density.(thermo_params, ts_in)
         cp =
             FT(cp_m(thermo_params, Thermodynamics.PhasePartition.(q_atmos(t0))))
 
@@ -271,8 +271,8 @@ for FT in (Float32, Float64)
             )
         ea =
             Thermodynamics.partial_pressure_vapor.(
-                Ref(thermo_params),
-                FT.(P_atmos(t0)),
+                thermo_params,
+                FT(P_atmos(t0)),
                 Thermodynamics.PhasePartition.(FT.(q_atmos(t0))),
             )
 
@@ -296,7 +296,7 @@ for FT in (Float32, Float64)
         )[1]
         Lv = FT(2453e6) #J/m^3
 
-        ET = penman_monteith(
+        ET = penman_monteith.(
             Δ, # Rate of change of saturation specific humidity with air temperature. (Pa K−1)
             Rn, # Net irradiance (W m−2), the external source of energy flux
             G, # Ground heat flux (W m−2)
@@ -310,7 +310,7 @@ for FT in (Float32, Float64)
         )
 
         @test abs(
-            (Array(parent(evapotranspiration))[1] - ET) /
+            (Array(parent(evapotranspiration .- ET))[1]) /
             Array(parent(evapotranspiration))[1],
         ) < 0.5
 
@@ -334,7 +334,7 @@ for FT in (Float32, Float64)
             ρ_sfc,
             Ref(Thermodynamics.Liquid()),
         )
-        @test ρ_sfc == compute_ρ_sfc.(Ref(thermo_params), Ref(ts_in), T_sfc)
+        @test ρ_sfc == compute_ρ_sfc.(thermo_params, ts_in, T_sfc)
     end
 
 

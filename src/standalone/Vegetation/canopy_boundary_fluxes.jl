@@ -63,8 +63,8 @@ function ClimaLSM.surface_resistance(model::CanopyModel{FT}, Y, p, t) where {FT}
     earth_param_set = model.parameters.earth_param_set
     R = FT(LSMP.gas_constant(earth_param_set))
     ρ_liq = FT(LSMP.ρ_cloud_liq(earth_param_set))
-    P_air::FT = model.atmos.P(t)
-    T_air::FT = model.atmos.T(t)
+    P_air = p.drivers.P
+    T_air = p.drivers.T
     leaf_conductance = p.canopy.conductance.gs
     canopy_conductance =
         upscale_leaf_conductance.(
@@ -136,8 +136,8 @@ function ClimaLSM.surface_air_density(
 )
     thermo_params =
         LSMP.thermodynamic_parameters(model.parameters.earth_param_set)
-    ts_in = construct_atmos_ts(atmos, t, thermo_params)
-    return compute_ρ_sfc.(Ref(thermo_params), Ref(ts_in), T_canopy)
+    ts_in = construct_atmos_ts(atmos, p, thermo_params)
+    return compute_ρ_sfc.(thermo_params, ts_in, T_canopy)
 end
 
 function make_update_boundary_fluxes(canopy::CanopyModel)
