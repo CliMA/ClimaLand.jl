@@ -21,17 +21,11 @@ using UnitfulMoles: molC
 using Unitful, UnitfulMoles
 using HTTP
 using JSON
-using Statistics
-using Dates
 using ArtifactWrappers
 using DelimitedFiles
 using Dierckx
 using Thermodynamics
-using Dates
 using Formatting
-using HTTP
-using JSON
-using Insolation
 using CairoMakie 
 using LaTeXStrings 
 using PlotUtils: optimize_ticks
