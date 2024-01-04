@@ -1,11 +1,6 @@
 """ This file provides methods for interacting with the MODIS REST API at a site
     in order to downloads specific subsets of MODIS products at a site level."""
 
-using HTTP
-using JSON
-using Statistics
-using Dates
-
 function send_get_subset(
     product::String,
     start_date::String,
