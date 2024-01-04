@@ -39,8 +39,10 @@ savedir =
 include(joinpath(climalsm_dir, "parameters", "create_parameters.jl"))
 earth_param_set = create_lsm_parameters(FT)
 
-include("run.jl")
-export run
+include("climaland.jl")
+export climaland
+
+#=
 
 include(joinpath("utilities", "climalsm_output_dataframe.jl"))
 export getoutput
@@ -66,6 +68,8 @@ export zenith_angle
 
 include(joinpath("utilities", "pull_MODIS.jl"))
 export send_get_subset, check_response, parse_response, single_col_data_matrix
+
+=#
 
 function __init__()
     Unitful.register(ClimaLandSite)
