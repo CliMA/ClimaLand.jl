@@ -1,17 +1,3 @@
-#= run these lines for test / development
-
-ARGS = ["US-MOz"]
-include("integrated/fluxnet/setup.jl")
-include("integrated/fluxnet/run_fluxnet.jl")
-include("integrated/fluxnet/inputs_dataframe.jl")
-include("integrated/fluxnet/climalsm_output_dataframe.jl") 
-
-# TO DO:
-# change unit from SI to what we want (e.g., umol m-2 s-1)
-# soil moisture is currently deepest I think, change the depth
-
-=#
-
 # Make all sort of plots with data and model output
 # 1. Time series (e.g., C fluxes, h2o fluxes, energy fluxes, met drivers)
 # 2. Seasonal pattern (i.e., monthly average and std)
@@ -23,22 +9,6 @@ include("integrated/fluxnet/climalsm_output_dataframe.jl")
 # 8. Fingerprint plots (showing both seasonality and diurnal pattern)
 # 9. Wavelet coherence
 # to do in another script: animations
-
-# TO DO:  
-# Script for plot utilities, Ed started this with plot_utils.jl
-
-# TO DO:
-# make white or dark background figures
-# publication style and presentation style (bigger font etc.)
-
-using ClimaLSM
-savedir =
-    joinpath(climalsm_dir, "experiments", "integrated", "fluxnet/figures/")
-using CairoMakie # Draw vector graphics to SVG or PDF. High quality plots! 
-using LaTeXStrings # To have latex labels
-using PlotUtils: optimize_ticks
-
-# drivers will be in drivers from Ed PR
 
 # 1. Time series of GPP, ET and SW_OUT
 function timeseries_fluxes_fig(inputs, climalsm) # will run for any inputs or climalsm output of FLUXNET sites
@@ -142,11 +112,6 @@ function timeseries_fluxes_fig(inputs, climalsm) # will run for any inputs or cl
     fig
     return fig
 end
-
-#= to test. These will be in another script though.
-fig = timeseries_fluxes_fig(inputs, climalsm) 
-save(joinpath(savedir, "timeseries_fluxes.pdf"), fig)
-=#
 
 # 2. Time series of SWC, Precip, moisture stress, stomatal conductance
 function timeseries_H2O_fig(inputs, climalsm) # will run for any inputs or climalsm output of FLUXNET sites
@@ -254,11 +219,6 @@ function timeseries_H2O_fig(inputs, climalsm) # will run for any inputs or clima
     return fig
 end
 
-#= to test. These will be in another script though.
-fig = timeseries_H2O_fig(inputs, climalsm) 
-save(joinpath(savedir, "timeseries_H2O.pdf"), fig)
-=#
-
 # 3. Fingerprint plot
 function fingerprint_fig(inputs, climalsm)
     fig = Figure(size = (1000, 1000))
@@ -296,29 +256,6 @@ function fingerprint_fig(inputs, climalsm)
     fig
     return fig
 end
-
-#=
-fig = fingerprint_fig(inputs, climalsm)
-save(joinpath(savedir, "fingerprint.pdf"), fig)
-=#
-
-# 4. Diurnals, with quantiles, for C, h2o, energy
-
-# Energy: H, L, G, LW_OUT, SW_OUT
-# inputs.G, inputs.H, inputs.LE, inputs.SW_OUT 
-# climalsm.lhf, climalsm.shf, climalsm.LW_out, climalsm.SW_OUT # need G
-
-# C: GPP, ER (AR + HR)
-# inputs.RECO, inputs.GPP
-# climalsm.Ra, climalsm.GPP # need Rh
-
-# drivers: Temperature (soil, air, canopy)
-# inputs.TS, inputs.TA
-# climalsm.T # need canopy and soil T?
-
-
-
-using Statistics
 
 function diurnal(datetime, data)
     hourlyquantile = [
@@ -458,11 +395,6 @@ function diurnals_fig(inputs, climalsm)
     fig
     return fig
 end
-
-#=
-fig = diurnals_fig(inputs, climalsm)
-save(joinpath(savedir, "diurnals.pdf"), fig)
-=#
 
 # 5. Cumulative P and ET
 

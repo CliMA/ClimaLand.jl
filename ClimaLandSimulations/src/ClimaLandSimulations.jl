@@ -39,8 +39,11 @@ savedir =
 include(joinpath(climalsm_dir, "parameters", "create_parameters.jl"))
 earth_param_set = create_lsm_parameters(FT)
 
-include("fluxnet_simulations.jl")
+include("fluxnet_simulation.jl")
 export fluxnet_simulation
+
+include(joinpath("utilities", "makie_plots.jl"))
+export timeseries_fluxes_fig, timeseries_H2O_fig, fingerprint_fig, diurnal, diurnal_plot!, diurnals_fig
 
 #=
 
@@ -60,8 +63,6 @@ include(joinpath("utilities", "fluxnet_simulation.jl"))
 include(joinpath("utilities", "inputs_dataframe.jl"))
 # need to create methods
 
-include(joinpath("utilities", "makie_plots.jl"))
-export timeseries_fluxes_fig, timeseries_H2O_fig, fingerprint_fig, diurnal, diurnal_plot!, diurnals_fig
 
 include(joinpath("utilities", "met_drivers_FLUXNET.jl"))
 export zenith_angle
