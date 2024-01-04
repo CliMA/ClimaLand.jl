@@ -1,4 +1,4 @@
-module ClimaLandSite
+module ClimaLandSimulations
 
 import SciMLBase
 import ClimaTimeSteppers as CTS
