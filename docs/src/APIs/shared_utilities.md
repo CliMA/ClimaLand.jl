@@ -77,4 +77,5 @@ ClimaLSM.snow_precipitation
 ClimaLSM.surface_temperature
 ClimaLSM.surface_resistance
 ClimaLSM.surface_specific_humidity
+ClimaLSM.make_update_drivers
 ```

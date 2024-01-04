@@ -194,6 +194,77 @@ function dss_helper!(
     _,
 ) end
 
+
+"""
+    DriverAffect{updateType, updateFType}
+
+This struct is used by `DriverUpdateCallback` to update the values of
+`p.drivers` at different timesteps specified by `updateat`, using the
+function `updatefunc` which takes as arguments (p.drivers, t).
+"""
+mutable struct DriverAffect{updateType, updateFType}
+    updateat::updateType
+    updatefunc::updateFType
+end
+
+"""
+    (affect!::DriverAffect)(integrator)
+
+This function is used by `DriverUpdateCallback` to perform the updating.
+"""
+function (affect!::DriverAffect)(integrator)
+    # If there are still update times in the queue and
+    # they are less than the current simulation time,
+    # cycle through until you reach the `updateat` value
+    # closest to, but less than, the current simulation time.
+    # This is important if the user happens to set update times
+    # such that there are multiple per timestep
+    while !isempty(affect!.updateat) && first(affect!.updateat) <= integrator.t
+        curr_t = popfirst!(affect!.updateat)
+        cond = curr_t <= integrator.t && curr_t > (integrator.t - integrator.dt)
+        if cond
+            # update all drivers to curr_t
+            affect!.updatefunc(integrator.p.drivers, curr_t)
+        end
+    end
+end
+
+"""
+    DriverUpdateCallback(updateat::Vector{FT}, updatefunc)
+
+Constructs a DiscreteCallback which updates the cache `p.drivers` at each time
+specified by `updateat`, using the function `updatefunc` which takes as arguments (p.drivers,t).
+"""
+function DriverUpdateCallback(updateat::Vector{FT}, updatefunc) where {FT}
+    cond = update_condition(updateat)
+    affect! = DriverAffect(updateat, updatefunc)
+
+    SciMLBase.DiscreteCallback(
+        cond,
+        affect!;
+        initialize = driver_initialize,
+        save_positions = (false, false),
+    )
+end
+
+"""
+    driver_initialize(cb, u, t, integrator)
+
+This function updates `p.drivers` at the start of the simulation.
+"""
+function driver_initialize(cb, u, t, integrator)
+    cb.affect!.updatefunc(integrator.p.drivers, t)
+end
+
+"""
+    update_condition(updateat)
+
+This function returns a function with the type signature expected by
+`SciMLBase.DiscreteCallback`, and determines whether `affect!` gets
+called in the callback. This implementation simply checks if the current time of the simulation is within the (inclusive) bounds of `updateat`.
+"""
+update_condition(updateat) =
+    (_, t, _) -> t >= minimum(updateat) && t <= maximum(updateat)
 """
     SavingAffect{saveatType}
 
@@ -209,16 +280,6 @@ mutable struct SavingAffect{saveatType}
 end
 
 """
-    condition(saveat)
-
-This function returns a function with the type signature expected by
-`SciMLBase.DiscreteCallback`, and determines whether `affect!` gets
-called in the callback. This implementation simply checks if the current time
-is contained in the list of save times used for the callback.
-"""
-condition(saveat) = (_, t, _) -> t in saveat
-
-"""
     (affect!::SavingAffect)(integrator)
 
 This function is used by `NonInterpSavingCallback` to perform the saving.
@@ -227,7 +288,6 @@ function (affect!::SavingAffect)(integrator)
     while !isempty(affect!.saveat) && first(affect!.saveat) <= integrator.t
         affect!.saveiter += 1
         curr_t = popfirst!(affect!.saveat)
-
         # @assert curr_t == integrator.t
         if curr_t == integrator.t
             affect!.saved_values.t[affect!.saveiter] = curr_t
@@ -276,6 +336,16 @@ function NonInterpSavingCallback(saved_values, saveat::Vector{FT}) where {FT}
         save_positions = (false, false),
     )
 end
+
+"""
+    condition(saveat)
+
+This function returns a function with the type signature expected by
+`SciMLBase.DiscreteCallback`, and determines whether `affect!` gets
+called in the callback. This implementation simply checks if the current time
+is contained in the list of affect times used for the callback.
+"""
+condition(saveat) = (_, t, _) -> t in saveat
 
 function FTfromY(Y::ClimaCore.Fields.FieldVector)
     return eltype(Y)
