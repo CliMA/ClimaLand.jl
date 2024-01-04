@@ -5,9 +5,9 @@ A library of methods to run ClimaLand at single sites, such as FLUXNET
 ## Installation
 
 ```jl
-julia> ]
+julia> ] # to go into pkg mode
 pkg> add ClimaLandSite
-pkg> *backspace*
+pkg> *backspace* # press backspace button to go back into julia mode
 julia> using ClimaLandSite
 ```
 
