@@ -39,8 +39,8 @@ savedir =
 include(joinpath(climalsm_dir, "parameters", "create_parameters.jl"))
 earth_param_set = create_lsm_parameters(FT)
 
-include("climaland.jl")
-export climaland
+include("fluxnet_simulations.jl")
+export fluxnet_simulation
 
 #=
 
@@ -72,7 +72,7 @@ export send_get_subset, check_response, parse_response, single_col_data_matrix
 =#
 
 function __init__()
-    Unitful.register(ClimaLandSite)
+    Unitful.register(ClimaLandSimulations)
 end
 
 end
