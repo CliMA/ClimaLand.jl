@@ -1,3 +1,8 @@
+name = "ClimaLandSite"
+uuid = "348a0bd3-1299-4261-8002-d2cd97df6055"
+authors = ["Clima Land Team"]
+version = "0.1.0"
+
 [deps]
 ArtifactWrappers = "a14bc488-3040-4b00-9dc1-f6467924858a"
 CLIMAParameters = "6eacf6c3-8458-43b9-ae03-caf5306d3d53"

@@ -9,19 +9,16 @@ using Dates
 using Insolation
 using StatsBase
 using Interpolations
-using StatsBase
 using ClimaLSM
 using ClimaLSM.Domains: Column
 using ClimaLSM.Soil
 using ClimaLSM.Soil.Biogeochemistry
 using ClimaLSM.Canopy
 using ClimaLSM.Canopy.PlantHydraulics
-import ClimaLSM
 import ClimaLSM.Parameters as LSMP
 using Unitful: R, L, mol, K, kJ, °C, m, g, cm, hr, mg, s, μmol, Pa, W, mm
 using UnitfulMoles: molC
 using Unitful, UnitfulMoles
-@compound CO₂
 using HTTP
 using JSON
 using Statistics
@@ -38,6 +35,8 @@ using Insolation
 using CairoMakie 
 using LaTeXStrings 
 using PlotUtils: optimize_ticks
+
+@compound CO₂
 const FT = Float64
 
 climalsm_dir = pkgdir(ClimaLSM)
