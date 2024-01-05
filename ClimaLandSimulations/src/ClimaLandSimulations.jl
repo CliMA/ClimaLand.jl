@@ -39,6 +39,8 @@ savedir =
 include(joinpath(climalsm_dir, "parameters", "create_parameters.jl"))
 earth_param_set = create_lsm_parameters(FT)
 
+ClimaLandSimulations_dir = pkgdir(ClimaLandSimulations)
+
 include("fluxnet_simulation.jl")
 export fluxnet_simulation
 

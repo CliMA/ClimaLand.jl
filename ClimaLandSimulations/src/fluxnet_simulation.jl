@@ -1,6 +1,13 @@
-function fluxnet_simulation(ID; FT = Float64, timestepper = CTS.RK4())#; paramaters = parameters, domain = domain) # these args do not exist, for now suggestion 
+function fluxnet_simulation(site_ID; FT = Float64, timestepper = CTS.RK4())#; paramaters = parameters, domain = domain) # these args do not exist, for now suggestion 
     timestepper = setup_timestepper(; timestepper = timestepper)
-    drivers = setup_drivers(ID)
+    drivers = setup_drivers(site_ID)
+
+    path_to_params = joinpath(ClimaLandSimulations_dir, "src", "fluxnet", "$site_ID", "$(site_ID)_parameters.jl")
+    path_to_domain = joinpath(ClimaLandSimulations_dir, "src", "fluxnet", "$site_ID", "$(site_ID)_simulation.jl")
+
+    include(path_to_params)
+    include(path_to_domain)
+
     # also create or pass in parameters and domain
     # Now we set up the model. For the soil model, we pick
     # a model type and model args:
