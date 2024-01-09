@@ -5,7 +5,8 @@ Return a vector of FT corresponding to the variable of interest at all times.
 By default, get output from sv.saveval, but user can specify e.g., result = sol.u
 By default, get surface value, but user can specify depth for e.g., soil temperature
 """
-function getoutput(sv,
+function getoutput(
+    sv,
     variable::Symbol,
     variables::Symbol...;
     result = sv.saveval,
@@ -60,4 +61,3 @@ function make_output_df(sv, inputs)
     insertcols!(climalsm, 1, :DateTime => model_dt)
     return climalsm
 end
-

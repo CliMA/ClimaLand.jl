@@ -5,16 +5,50 @@
 
 Run ClimaLSM at a fluxnet site.
 """
-function fluxnet_simulation(site_ID; FT = Float64,
-                                     path_to_sim = joinpath(ClimaLandSimulations_dir, "src", "fluxnet", "$site_ID", "$(site_ID)_simulation.jl"),
-                                     path_to_domain = joinpath(ClimaLandSimulations_dir, "src", "utilities", "fluxnet_domain.jl"),
-                                     path_to_params = joinpath(ClimaLandSimulations_dir, "src", "fluxnet", "$site_ID", "$(site_ID)_parameters.jl"),
-                                     path_to_sim2 = joinpath(ClimaLandSimulations_dir, "src", "utilities", "fluxnet_simulation.jl")) # why is there 2?
+function fluxnet_simulation(
+    site_ID;
+    FT = Float64,
+    path_to_sim = joinpath(
+        ClimaLandSimulations_dir,
+        "src",
+        "fluxnet",
+        "$site_ID",
+        "$(site_ID)_simulation.jl",
+    ),
+    path_to_domain = joinpath(
+        ClimaLandSimulations_dir,
+        "src",
+        "utilities",
+        "fluxnet_domain.jl",
+    ),
+    path_to_params = joinpath(
+        ClimaLandSimulations_dir,
+        "src",
+        "fluxnet",
+        "$site_ID",
+        "$(site_ID)_parameters.jl",
+    ),
+    path_to_sim2 = joinpath(
+        ClimaLandSimulations_dir,
+        "src",
+        "utilities",
+        "fluxnet_simulation.jl",
+    ),
+) # why is there 2?
 
-    include(path_to_sim) 
-    include(path_to_domain) 
-    include(path_to_params) 
-    LOCAL_DATETIME, atmos_co2, DATA_DT, drivers, atmos, radiation, LAIfunction, maxLAI, RAI, plant_ν = setup_drivers(site_ID)
+    include(path_to_sim)
+    include(path_to_domain)
+    include(path_to_params)
+    LOCAL_DATETIME,
+    atmos_co2,
+    DATA_DT,
+    drivers,
+    atmos,
+    radiation,
+    LAIfunction,
+    maxLAI,
+    RAI,
+    plant_ν = setup_drivers(site_ID)
     include(path_to_sim2)
 
     # also create or pass in parameters and domain
@@ -40,7 +74,7 @@ function fluxnet_simulation(site_ID; FT = Float64,
         emissivity = soil_ϵ,
         PAR_albedo = soil_α_PAR,
         NIR_albedo = soil_α_NIR,
-    );
+    )
 
     soil_args = (domain = soil_domain, parameters = soil_ps)
     soil_model_type = Soil.EnergyHydrology{FT}
@@ -229,7 +263,11 @@ function fluxnet_simulation(site_ID; FT = Float64,
         drivers.TS.values[1 + Int(round(t0 / DATA_DT))] :
         drivers.TA.values[1 + Int(round(t0 / DATA_DT))] + 40# Get soil temperature at t0
     ρc_s =
-        volumetric_heat_capacity.(Y.soil.ϑ_l, Y.soil.θ_i, Ref(land.soil.parameters))
+        volumetric_heat_capacity.(
+            Y.soil.ϑ_l,
+            Y.soil.θ_i,
+            Ref(land.soil.parameters),
+        )
     Y.soil.ρe_int =
         volumetric_internal_energy.(
             Y.soil.θ_i,
@@ -243,7 +281,12 @@ function fluxnet_simulation(site_ID; FT = Float64,
     ψ_comps = n_stem > 0 ? [ψ_stem_0, ψ_leaf_0] : ψ_leaf_0
 
     S_l_ini =
-        inverse_water_retention_curve.(retention_model, ψ_comps, plant_ν, plant_S_s)
+        inverse_water_retention_curve.(
+            retention_model,
+            ψ_comps,
+            plant_ν,
+            plant_S_s,
+        )
 
     for i in 1:(n_stem + n_leaf)
         Y.canopy.hydraulics.ϑ_l.:($i) .=
@@ -253,7 +296,7 @@ function fluxnet_simulation(site_ID; FT = Float64,
     Y.canopy.energy.T = drivers.TA.values[1 + Int(round(t0 / DATA_DT))] # Get atmos temperature at t0
 
     set_initial_cache! = make_set_initial_cache(land)
-    set_initial_cache!(p, Y, t0);
+    set_initial_cache!(p, Y, t0)
 
     # Simulation
     sv = (;
@@ -267,7 +310,7 @@ function fluxnet_simulation(site_ID; FT = Float64,
         Y,
         (t0, tf),
         p,
-    );
+    )
     sol = SciMLBase.solve(
         prob,
         ode_algo;
@@ -277,7 +320,8 @@ function fluxnet_simulation(site_ID; FT = Float64,
         saveat = saveat,
     )
 
-    inputs, inputs_SI, inputs_commonly_used = make_inputs_df(LOCAL_DATETIME, drivers) # why does it needs args?
+    inputs, inputs_SI, inputs_commonly_used =
+        make_inputs_df(LOCAL_DATETIME, drivers) # why does it needs args?
     climalsm = make_output_df(sv, inputs)
 
     if isfile(

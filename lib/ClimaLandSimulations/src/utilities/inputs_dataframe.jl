@@ -53,15 +53,58 @@ function make_inputs_df(LOCAL_DATETIME, drivers)
 
     # make a Unitful dataframe with SI units and one with commonly used units
     columns = variables_name[2:end]
-    units = [molCO₂*m^-2*s^-1, K, Pa, Pa, m*s^-1, m*s^-1, W*m^-2, W*m^-2, molCO₂, m^3*m^-3, K, molCO₂*m^-2*s^-1, W*m^-2, W*m^-2, W*m^-2, W*m^-2]
+    units = [
+        molCO₂ * m^-2 * s^-1,
+        K,
+        Pa,
+        Pa,
+        m * s^-1,
+        m * s^-1,
+        W * m^-2,
+        W * m^-2,
+        molCO₂,
+        m^3 * m^-3,
+        K,
+        molCO₂ * m^-2 * s^-1,
+        W * m^-2,
+        W * m^-2,
+        W * m^-2,
+        W * m^-2,
+    ]
     inputs_SI = copy(inputs)
-    foreach((col, unit) -> inputs_SI[!, col] .= first([inputs_SI[!, col]]unit), columns, units)
+    foreach(
+        (col, unit) -> inputs_SI[!, col] .= first([inputs_SI[!, col]]unit),
+        columns,
+        units,
+    )
 
-    units_to = [μmolCO₂*m^-2*s^-1, °C, kPa, Pa, mm*s^-1, m*s^-1, W*m^-2, W*m^-2, μmolCO₂, m^3*m^-3, °C, μmolCO₂*m^-2*s^-1, W*m^-2, W*m^-2, W*m^-2, W*m^-2]
+    units_to = [
+        μmolCO₂ * m^-2 * s^-1,
+        °C,
+        kPa,
+        Pa,
+        mm * s^-1,
+        m * s^-1,
+        W * m^-2,
+        W * m^-2,
+        μmolCO₂,
+        m^3 * m^-3,
+        °C,
+        μmolCO₂ * m^-2 * s^-1,
+        W * m^-2,
+        W * m^-2,
+        W * m^-2,
+        W * m^-2,
+    ]
     inputs_commonly_used = copy(inputs_SI)
-    foreach((col, unit_to) -> inputs_commonly_used[!, col] = uconvert.(unit_to, inputs_SI[!, col]), columns, units_to)
+    foreach(
+        (col, unit_to) ->
+            inputs_commonly_used[!, col] =
+                uconvert.(unit_to, inputs_SI[!, col]),
+        columns,
+        units_to,
+    )
 
     return (inputs, inputs_SI, inputs_commonly_used)
 
 end
-

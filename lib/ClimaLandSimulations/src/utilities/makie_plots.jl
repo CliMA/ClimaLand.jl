@@ -429,4 +429,3 @@ function make_plots(inputs, climalsm)
     ]
     return nothing
 end
-

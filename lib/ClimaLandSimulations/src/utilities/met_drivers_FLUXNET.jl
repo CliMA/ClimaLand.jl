@@ -8,9 +8,9 @@ function setup_drivers(site_ID)
         "$(@__DIR__)" * "/$site_ID",
         "ameriflux_data",
         ArtifactFile[af],
-    );
-    dataset_path = get_data_folder(dataset);
-    data = joinpath(dataset_path, "AMF_$(site_ID)_FLUXNET_FULLSET.csv");
+    )
+    dataset_path = get_data_folder(dataset)
+    data = joinpath(dataset_path, "AMF_$(site_ID)_FLUXNET_FULLSET.csv")
     driver_data = readdlm(data, ',')
 
     LOCAL_DATETIME = DateTime.(format.(driver_data[2:end, 1]), "yyyymmddHHMM")
@@ -91,8 +91,10 @@ function setup_drivers(site_ID)
         end
     end
     if length(missing_drivers) != 0
-        error("Driver data missing for columns: $([missing_drivers[i] * " " for 
-            i in 1:length(missing_drivers)]...)")
+        error(
+            "Driver data missing for columns: $([missing_drivers[i] * " " for 
+          i in 1:length(missing_drivers)]...)",
+        )
     end
 
     thermo_params = LSMP.thermodynamic_parameters(earth_param_set)
@@ -107,7 +109,7 @@ function setup_drivers(site_ID)
 
     # Create splines for each atmospheric driver needed for PrescribedAtmosphere
     # and for PrescribedRadiation
-    seconds = FT.(0:DATA_DT:((length(UTC_DATETIME) - 1) * DATA_DT));
+    seconds = FT.(0:DATA_DT:((length(UTC_DATETIME) - 1) * DATA_DT))
     p_spline = Spline1D(seconds, -drivers.P.values[:]) # m/s
     atmos_q = Spline1D(seconds, q[:])
     atmos_T = Spline1D(seconds, drivers.TA.values[:])
@@ -116,7 +118,8 @@ function setup_drivers(site_ID)
     atmos_u = Spline1D(seconds, drivers.WS.values[:])
     LW_IN_spline = Spline1D(seconds, drivers.LW_IN.values[:])
     SW_IN_spline = Spline1D(seconds, drivers.SW_IN.values[:])
-    precipitation_function(t::FT) where {FT} = p_spline(t) < 0.0 ? p_spline(t) : 0.0 # m/s
+    precipitation_function(t::FT) where {FT} =
+        p_spline(t) < 0.0 ? p_spline(t) : 0.0 # m/s
     snow_precip(t) = FT(0) # this is likely not correct
 
     # Construct the drivers. For the reference time we will use the UTC time at the
@@ -203,6 +206,17 @@ function setup_drivers(site_ID)
     maxLAI = FT(maximum(MODIS_LAI[:, 2]))
     RAI = maxLAI * f_root_to_shoot
     plant_ν = capacity / (maxLAI * h_leaf) / FT(1000)
-    
-    return (LOCAL_DATETIME, atmos_co2, DATA_DT, drivers, atmos, radiation, LAIfunction, maxLAI, RAI, plant_ν)
+
+    return (
+        LOCAL_DATETIME,
+        atmos_co2,
+        DATA_DT,
+        drivers,
+        atmos,
+        radiation,
+        LAIfunction,
+        maxLAI,
+        RAI,
+        plant_ν,
+    )
 end
