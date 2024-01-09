@@ -593,7 +593,7 @@ end
 
 """
     ClimaLSM.surface_air_density(
-        atmos::PrescribedAtmosphere{FT},
+        atmos::AbstractAtmosphericDrivers{FT},
         model::EnergyHydrology{FT},
         Y,
         p,
@@ -603,7 +603,7 @@ end
 
 Returns the surface air density field of the
 `EnergyHydrology` soil model for the
-`PrescribedAtmosphere` case.
+`AbstractAtmosphericDrivers` case.
 
 This assumes the ideal gas law and hydrostatic
 balance to estimate the air density at the surface
@@ -613,7 +613,7 @@ because the surface air density is not a prognostic
 variable of the soil model.
 """
 function ClimaLSM.surface_air_density(
-    atmos::PrescribedAtmosphere{FT},
+    atmos::AbstractAtmosphericDrivers{FT},
     model::EnergyHydrology{FT},
     Y,
     p,
@@ -700,7 +700,7 @@ end
 function ClimaLSM.get_drivers(model::EnergyHydrology)
     bc = model.boundary_conditions.top
     if typeof(bc) <: AtmosDrivenFluxBC{
-        <:PrescribedAtmosphere,
+        <:AbstractAtmosphericDrivers,
         <:AbstractRadiativeDrivers,
         <:AbstractRunoffModel,
     }

@@ -9,11 +9,11 @@
 # # Types of forcing data
 
 # We currently support site-level simulations and have two site-level
-# driver types, `PrescribedAtmosphere` and `PrescribedRadiativeFluxes`.
+# driver types, `PrescribedAtmosSite` and `PrescribedRadiativeFluxes`.
 
-# The atmosphere driver stores the atmospheric state data as a 
+# The atmosphere driver stores the atmospheric state data as a
 # function of time, including the liquid precipitation rate (m/s), the
-# snow precipitation rate converted into an equivalent rate of liquid 
+# snow precipitation rate converted into an equivalent rate of liquid
 # water (m/s), the atmopheric pressure (Pa), specific humidity, horizontal
 # wind speed (m/s), temperature (K), CO2 concentration (mol/mol), and the
 # height at which these measurements were taken (currently assumed to be the
@@ -24,15 +24,15 @@
 # shortwave and longwave flux (W/m^2). The radiative driver is also where
 # a function which computes the zenith angle for the site is stored.
 
-# Both drivers store the reference time for the data/simulation. 
-# This is the DateTime object which corresponds to the time at which t=0 
+# Both drivers store the reference time for the data/simulation.
+# This is the DateTime object which corresponds to the time at which t=0
 # in the simulation. Additionally, for site-level runs, both drivers store the
 # forcing data as a spline function fit to the data which takes the time
 # `t` as an argument, where `t` is the simulation time measured in seconds since
 # the reference time. The reference time should be in UTC.
 
-# Note: for coupled runs, corresponding types `CoupledAtmosphere` 
-# and `CoupledRadiativeFluxes` exist. However, these are not defined 
+# Note: for coupled runs, corresponding types `CoupledAtmosphere`
+# and `CoupledRadiativeFluxes` exist. However, these are not defined
 # in ClimaLSM, but rather inside of the Clima Coupler repository.
 
 

@@ -226,7 +226,7 @@ lsm_aux_domain_names(m::SoilCanopyModel) =
 A method which makes a function; the returned function
 updates the additional auxiliary variables for the integrated model,
 as well as updates the boundary auxiliary variables for all component
-models. 
+models.
 
 This function is called each ode function evaluation, prior to the tendency function
 evaluation.
@@ -389,7 +389,7 @@ end
 ### Extensions of existing functions to account for prognostic soil/canopy
 """
     soil_boundary_fluxes(
-        bc::AtmosDrivenFluxBC{<:PrescribedAtmosphere, <:CanopyRadiativeFluxes},
+        bc::AtmosDrivenFluxBC{<:AbstractAtmosphericDrivers, <:CanopyRadiativeFluxes},
         boundary::ClimaLSM.TopBoundary,
         model::EnergyHydrology{FT},
         Δz,
@@ -404,7 +404,10 @@ energy and water flux at the surface of the soil for use as boundary
 conditions.
 """
 function soil_boundary_fluxes(
-    bc::AtmosDrivenFluxBC{<:PrescribedAtmosphere, <:CanopyRadiativeFluxes},
+    bc::AtmosDrivenFluxBC{
+        <:AbstractAtmosphericDrivers,
+        <:CanopyRadiativeFluxes,
+    },
     boundary::ClimaLSM.TopBoundary,
     soil::EnergyHydrology{FT},
     Δz,

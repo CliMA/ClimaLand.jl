@@ -148,7 +148,7 @@ using ClimaLSM:
     make_update_aux,
     make_exp_tendency,
     make_set_initial_cache,
-    PrescribedAtmosphere,
+    PrescribedAtmosSite,
     PrescribedRadiativeFluxes
 # We also want to plot the solution
 using Plots
@@ -218,7 +218,7 @@ soil_depth = FT(3.5);
 bucket_domain = Column(; zlim = (-soil_depth, FT(0.0)), nelements = 10);
 
 
-# The PrescribedAtmosphere and PrescribedRadiation need to take in a reference
+# The PrescribedAtmosSite and PrescribedRadiation need to take in a reference
 # time, the date of the start of the simulation. In this tutorial we will
 # consider this January 1, 2005.
 ref_time = DateTime(2005);
@@ -245,7 +245,7 @@ u_atmos = (t) -> 3.0;
 q_atmos = (t) -> 0.005;
 h_atmos = FT(2);
 P_atmos = (t) -> 101325;
-bucket_atmos = PrescribedAtmosphere(
+bucket_atmos = PrescribedAtmosSite(
     precip,
     snow_precip,
     T_atmos,

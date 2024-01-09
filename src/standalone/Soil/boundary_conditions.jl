@@ -26,7 +26,7 @@ model auxiliary state, which defaults to adding storage for the
 but which can be extended depending on the type of boundary condition used.
 
 Note that `:top_bc` must be present, with the default type and domain name,
-for both the RichardsModel and the 
+for both the RichardsModel and the
 EnergyHydrology soil models.
 
  Use this function in the exact same way you would use `auxiliary_vars`.
@@ -44,7 +44,7 @@ but which can be extended depending on the type of boundary condition used.
 Use this function in the exact same way you would use `auxiliary_vars`.
 
 Note that `:bottom_bc` must be present, with the default type and domain name,
-for both the RichardsModel and the 
+for both the RichardsModel and the
 EnergyHydrology soil models.
 """
 boundary_vars(::NamedTuple, ::ClimaLSM.BottomBoundary) = (:bottom_bc,)
@@ -230,7 +230,7 @@ end
 A helper function which takes in two scalar values of `water_flux`
 and `heat_flux`, and creates a named tuple out of them.
 
-When broadcasted over two ClimaCore.Fields.Field objects, 
+When broadcasted over two ClimaCore.Fields.Field objects,
 this returns a Field of NamedTuples which we can access like
 x.water, x.heat, to obtain the boundary condition fields.
 """
@@ -289,7 +289,7 @@ boundary_var_types(
 """
     soil_boundary_fluxes(
         bc::AtmosDrivenFluxBC{
-            <:PrescribedAtmosphere,
+            <:AbstractAtmosphericDrivers,
             <:PrescribedRadiativeFluxes,
         },
         boundary::ClimaLSM.TopBoundary,
@@ -305,8 +305,9 @@ flux (W/m^2) for the soil `EnergyHydrology` model at the top
 of the soil domain.
 
 This  method of `soil_boundary_fluxes` is for use with
-a  `PrescribedAtmosphere` and `PrescribedRadiativeFluxes`
-struct; for example, this is to be used when driving
+structs that are subtypes of `AbstractAtmosphericDrivers`
+and of `PrescribedRadiativeFluxes`;
+for example, this is to be used when driving
 the soil model in standalone mode with reanalysis data.
 
 If you wish to compute surface fluxes taking into account the
@@ -320,7 +321,7 @@ compute the surface fluxes using Monin Obukhov Surface Theory.
 """
 function soil_boundary_fluxes(
     bc::AtmosDrivenFluxBC{
-        <:PrescribedAtmosphere{FT},
+        <:AbstractAtmosphericDrivers{FT},
         <:PrescribedRadiativeFluxes{FT},
     },
     boundary::ClimaLSM.TopBoundary,

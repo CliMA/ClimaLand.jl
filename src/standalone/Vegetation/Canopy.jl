@@ -78,8 +78,8 @@ prognostically solves Richards equation in the plant is available.
 between canopy model components or those needed to compute boundary
 fluxes.
 - The atmospheric conditions, which are either prescribed
-(of type `PrescribedAtmosphere`) or computed via a coupled simulation
-(of type `CoupledAtmosphere`).
+(of type `PrescribedAtmosSite` or `PrescribedAtmosGlobal`) or computed
+via a coupled simulation (of type `CoupledAtmosphere`).
 - The radiative flux conditions, which are either prescribed
 (of type `PrescribedRadiativeFluxes`) or computed via a coupled simulation
 (of type `CoupledRadiativeFluxes`).
@@ -165,8 +165,9 @@ function CanopyModel{FT}(;
     },
 ) where {FT, PSE}
     if typeof(energy) <: PrescribedCanopyTempModel{FT}
-        @info "Using the PrescribedAtmosphere air temperature as the canopy temperature"
-        @assert typeof(atmos) <: PrescribedAtmosphere{FT}
+        @info "Using the PrescribedAtmos air temperature as the canopy temperature"
+        @assert typeof(atmos) <:
+                Union{PrescribedAtmosSite{FT}, PrescribedAtmosGlobal{FT}}
     end
 
     args = (

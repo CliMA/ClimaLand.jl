@@ -35,7 +35,7 @@ for FT in (Float32, Float64)
         boundary_conditions =
             (; top = (CO2 = top_bc,), bottom = (CO2 = bot_bc,))
 
-        # Make a PrescribedAtmosphere - we only care about atmos_p though
+        # Make a PrescribedAtmosSite - we only care about atmos_p though
         precipitation_function = (t) -> 1.0
         snow_precip = (t) -> 1.0
         atmos_T = (t) -> 1.0
@@ -46,7 +46,7 @@ for FT in (Float32, Float64)
         atmos_h = FT(30)
         atmos_co2 = (t) -> 1.0
 
-        atmos = ClimaLSM.PrescribedAtmosphere(
+        atmos = ClimaLSM.PrescribedAtmosSite(
             precipitation_function,
             snow_precip,
             atmos_T,
@@ -106,7 +106,7 @@ for FT in (Float32, Float64)
         boundary_conditions =
             (; top = (CO2 = top_bc,), bottom = (CO2 = bot_bc,))
 
-        # Make a PrescribedAtmosphere - we only care about atmos_p though
+        # Make a PrescribedAtmosSite - we only care about atmos_p though
         precipitation_function = (t) -> 1.0
         snow_precip = (t) -> 1.0
         atmos_T = (t) -> 1.0
@@ -117,7 +117,7 @@ for FT in (Float32, Float64)
         atmos_h = FT(30)
         atmos_co2 = (t) -> 1.0
 
-        atmos = ClimaLSM.PrescribedAtmosphere(
+        atmos = ClimaLSM.PrescribedAtmosSite(
             precipitation_function,
             snow_precip,
             atmos_T,

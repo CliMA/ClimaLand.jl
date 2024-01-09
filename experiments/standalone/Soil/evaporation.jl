@@ -86,7 +86,7 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
     h_atmos = FT(0.1)
     P_atmos = (t) -> 101325
     gustiness = FT(1e-2)
-    atmos = PrescribedAtmosphere(
+    atmos = PrescribedAtmosSite(
         precip,
         precip,
         T_atmos,

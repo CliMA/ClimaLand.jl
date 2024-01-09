@@ -55,7 +55,7 @@ a helper function which computes and returns the surface air density for the buc
 model.
 """
 function ClimaLSM.surface_air_density(
-    atmos::PrescribedAtmosphere{FT},
+    atmos::AbstractAtmosphericDrivers{FT},
     model::BucketModel,
     Y,
     p,

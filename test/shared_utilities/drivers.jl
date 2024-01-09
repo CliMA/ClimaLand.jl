@@ -5,7 +5,7 @@ using ClimaLSM
 
 FT = Float32
 @testset "Default model, FT = $FT" begin
-    pa = ClimaLSM.PrescribedAtmosphere(
+    pa = ClimaLSM.PrescribedAtmosSite(
         nothing,
         nothing,
         nothing,
@@ -78,7 +78,7 @@ end
 
 @testset "Driver update functions" begin
     f = (t) -> 10.0
-    pa = ClimaLSM.PrescribedAtmosphere(f, f, f, f, f, f, f, FT(1);)
+    pa = ClimaLSM.PrescribedAtmosSite(f, f, f, f, f, f, f, FT(1);)
     pr = ClimaLSM.PrescribedRadiativeFluxes(FT, f, f, f)
     coords = (; surface = [1])
     p = (; drivers = ClimaLSM.initialize_drivers(nothing, nothing, coords))

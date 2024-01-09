@@ -7,7 +7,7 @@ using StaticArrays
 import ..Parameters as LSMP
 export AbstractAtmosphericDrivers,
     AbstractRadiativeDrivers,
-    PrescribedAtmosphere,
+    PrescribedAtmosSite,
     PrescribedRadiativeFluxes,
     compute_ρ_sfc,
     construct_atmos_ts,
@@ -35,11 +35,12 @@ An abstract type of radiative drivers of land models.
 abstract type AbstractRadiativeDrivers{FT <: AbstractFloat} end
 
 """
-    PrescribedAtmosphere{FT, CA, DT} <: AbstractAtmosphericDrivers{FT}
+    PrescribedAtmosSite{FT, LP, SP, TA, UA, QA, RA, CA, DT}
+        <: AbstractAtmosphericDrivers{FT}
 
 Container for holding prescribed atmospheric drivers and other
 information needed for computing turbulent surface fluxes when
-driving land models in standalone mode.
+driving land models in standalone mode at a single site.
 
 The arguments labeled with "function of time" are typically either of type
 `Function` or type `Spline1D` from the `Dierckx.jl` package.
@@ -48,7 +49,7 @@ Since not all models require co2 concentration, the default for that
 is `nothing`.
 $(DocStringExtensions.FIELDS)
 """
-struct PrescribedAtmosphere{FT, LP, SP, TA, UA, QA, RA, CA, DT} <:
+struct PrescribedAtmosSite{FT, LP, SP, TA, UA, QA, RA, CA, DT} <:
        AbstractAtmosphericDrivers{FT}
     "Precipitation (m/s) function of time: positive by definition"
     liquid_precip::LP
@@ -70,7 +71,7 @@ struct PrescribedAtmosphere{FT, LP, SP, TA, UA, QA, RA, CA, DT} <:
     h::FT
     "Minimum wind speed (gustiness; m/s)"
     gustiness::FT
-    function PrescribedAtmosphere(
+    function PrescribedAtmosSite(
         liquid_precip,
         snow_precip,
         T,
@@ -110,21 +111,21 @@ end
 
 """
     construct_atmos_ts(
-        atmos::PrescribedAtmosphere,
+        ::AbstractAtmosphericDrivers,
         p,
         thermo_params,
     )
 
 A helper function which constructs a Clima.Thermodynamics
-thermodynamic state given a PrescribedAtmosphere, the cache `p`,
- and a set of Clima.Thermodynamics
+thermodynamic state given an atmospheric driver, the cache `p`,
+and a set of Clima.Thermodynamics
 parameters thermo_params.
 """
 function construct_atmos_ts(
-    atmos::PrescribedAtmosphere{FT},
+    ::AbstractAtmosphericDrivers,
     p,
     thermo_params,
-) where {FT}
+)
     P = p.drivers.P
     T = p.drivers.T
     q = p.drivers.q
@@ -134,7 +135,7 @@ end
 
 
 """
-    turbulent_fluxes(atmos::PrescribedAtmosphere,
+    turbulent_fluxes(atmos::AbstractAtmosphericDrivers,
                    model::AbstractModel,
                    Y::ClimaCore.Fields.FieldVector,
                    p::NamedTuple,
@@ -150,7 +151,7 @@ It solves for these given atmospheric conditions, stored in `atmos`,
 model parameters, and the surface conditions.
 """
 function turbulent_fluxes(
-    atmos::PrescribedAtmosphere,
+    atmos::AbstractAtmosphericDrivers,
     model::AbstractModel,
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
@@ -200,9 +201,9 @@ end
                                ) where {FT <: AbstractFloat, P}
 
 Computes turbulent surface fluxes at a point on a surface given
-(1) the surface temperature (T_sfc), specific humidity (q_sfc), 
+(1) the surface temperature (T_sfc), specific humidity (q_sfc),
     and air density (ρ_sfc),
-(2) Other surface properties, such as the factor 
+(2) Other surface properties, such as the factor
     β_sfc  which scales the evaporation from the potential rate
     (used in bucket models), and the surface resistance r_sfc (used
     in more complex land models), and the topographical height of the surface (h_sfc).
@@ -341,20 +342,20 @@ function net_radiation(
 end
 
 """
-    liquid_precipitation(atmos::PrescribedAtmosphere, p, t)
+    liquid_precipitation(::AbstractAtmosphericDrivers, p, t)
 
 Returns the liquid precipitation (m/s) at the surface.
 """
-function liquid_precipitation(atmos::PrescribedAtmosphere{FT}, p, t) where {FT}
+function liquid_precipitation(::AbstractAtmosphericDrivers, p, t)
     return p.drivers.P_liq
 end
 
 """
-    snow_precipitation(atmos::PrescribedAtmosphere, p, t)
+    snow_precipitation(::AbstractAtmosphericDrivers, p, t)
 
 Returns the precipitation in snow (m of liquid water/s) at the surface.
 """
-function snow_precipitation(atmos::PrescribedAtmosphere{FT}, p, t) where {FT}
+function snow_precipitation(::AbstractAtmosphericDrivers, p, t) where {FT}
     return p.drivers.P_snow
 end
 
@@ -527,14 +528,17 @@ function vapor_pressure_deficit(T_air, P_air, q_air, thermo_params)
 end
 
 """
-    initialize_drivers(r::PrescribedAtmosphere{FT}, coords) where {FT}
+    initialize_drivers(r::AbstractAtmosphericDrivers{FT}, coords) where {FT}
 
-Creates and returns a NamedTuple for the `PrescribedAtmosphere` driver, 
+Creates and returns a NamedTuple for the `AbstractAtmosphericDrivers` driver,
 with variables `P_liq`, `P_snow`, and air temperature `T`, pressure `P`,
 horizontal wind speed `u`, specific humidity `q`, and CO2 concentration
 `c_co2`.
 """
-function initialize_drivers(a::PrescribedAtmosphere{FT}, coords) where {FT}
+function initialize_drivers(
+    a::AbstractAtmosphericDrivers{FT},
+    coords,
+) where {FT}
     keys = (:P_liq, :P_snow, :T, :P, :u, :q, :c_co2)
     types = ([FT for k in keys]...,)
     domain_names = ([:surface for k in keys]...,)
@@ -579,18 +583,18 @@ function initialize_drivers(
 end
 
 """
-    initialize_drivers(a::Union{AbstractAtmosphericDrivers, Nothing},
+    initialize_drivers(a::Nothing,
                        r::Union{AbstractRadiativeDrivers, Nothing},
                        coords)
 
-Creates and returns a NamedTuple with the cache variables required by the 
+Creates and returns a NamedTuple with the cache variables required by the
 atmospheric and radiative drivers.
 
 If no forcing is required, `a` and `r` are type `Nothing` and an
 empty NamedTuple is returned.
 """
 function initialize_drivers(
-    a::Union{AbstractAtmosphericDrivers, Nothing},
+    a::Nothing,
     r::Union{AbstractRadiativeDrivers, Nothing},
     coords,
 )
@@ -631,12 +635,12 @@ make_update_drivers(
 ) = (p, t) -> nothing
 
 """
-    make_update_drivers(a::PrescribedAtmosphere{FT}) where {FT}
+    make_update_drivers(a::PrescribedAtmosSite{FT}) where {FT}
 
 Creates and returns a function which updates the driver variables
-in the case of a PrescribedAtmosphere at a point.
+in the case of a PrescribedAtmosSite at a point.
 """
-function make_update_drivers(a::PrescribedAtmosphere{FT}) where {FT}
+function make_update_drivers(a::PrescribedAtmosSite{FT}) where {FT}
     function update_drivers!(p, t)
         p.drivers.P_liq .= FT(a.liquid_precip(t))
         p.drivers.P_snow .= FT(a.snow_precip(t))

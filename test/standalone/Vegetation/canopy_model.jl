@@ -5,7 +5,7 @@ using Thermodynamics
 using Dates
 using StaticArrays
 using ClimaLSM
-using ClimaLSM: PrescribedAtmosphere, PrescribedRadiativeFluxes
+using ClimaLSM: PrescribedAtmosSite, PrescribedRadiativeFluxes
 using ClimaLSM.Canopy
 using ClimaLSM.Canopy.PlantHydraulics
 using ClimaLSM.Domains: Point
@@ -90,7 +90,7 @@ for FT in (Float32, Float64)
         h_atmos = h_int # m
         c_atmos = (t) -> 4.11e-4 # mol/mol
         ref_time = DateTime(2005)
-        atmos = PrescribedAtmosphere(
+        atmos = PrescribedAtmosSite(
             liquid_precip,
             snow_precip,
             T_atmos,
@@ -536,7 +536,7 @@ for FT in (Float32, Float64)
         h_atmos = h_int # m
         c_atmos = (t) -> 4.11e-4 # mol/mol
         ref_time = DateTime(2005)
-        atmos = PrescribedAtmosphere(
+        atmos = PrescribedAtmosSite(
             liquid_precip,
             snow_precip,
             T_atmos,

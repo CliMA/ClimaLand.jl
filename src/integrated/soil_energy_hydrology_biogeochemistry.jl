@@ -90,7 +90,7 @@ end
 function ClimaLSM.get_drivers(model::LandSoilBiogeochemistry)
     bc = model.soil.boundary_conditions.top
     if typeof(bc) <: AtmosDrivenFluxBC{
-        <:PrescribedAtmosphere,
+        <:AbstractAtmosphericDrivers,
         <:AbstractRadiativeDrivers,
         <:Soil.AbstractRunoffModel,
     }

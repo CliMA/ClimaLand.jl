@@ -25,7 +25,7 @@ using ClimaLSM:
     initialize,
     make_update_aux,
     make_set_initial_cache,
-    PrescribedAtmosphere,
+    PrescribedAtmosSite,
     PrescribedRadiativeFluxes
 
 # Bucket model parameters
@@ -305,7 +305,7 @@ if !Sys.iswindows()
             q_atmos = (t) -> 0.0 # no atmos water
             h_atmos = FT(1e-8)
             P_atmos = (t) -> 101325
-            bucket_atmos = PrescribedAtmosphere(
+            bucket_atmos = PrescribedAtmosSite(
                 precip,
                 precip,
                 T_atmos,
@@ -452,7 +452,7 @@ if !Sys.iswindows()
                 h_atmos = FT(1e-8)
                 P_atmos = (t) -> 101325
                 ref_time = DateTime(2005)
-                bucket_atmos = PrescribedAtmosphere(
+                bucket_atmos = PrescribedAtmosSite(
                     precip,
                     precip,
                     T_atmos,

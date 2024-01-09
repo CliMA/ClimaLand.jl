@@ -63,7 +63,7 @@ ClimaLSM.get_drivers
 
 ## Drivers
 ```@docs
-ClimaLSM.PrescribedAtmosphere
+ClimaLSM.PrescribedAtmosSite
 ClimaLSM.PrescribedRadiativeFluxes
 ClimaLSM.AbstractAtmosphericDrivers
 ClimaLSM.AbstractRadiativeDrivers

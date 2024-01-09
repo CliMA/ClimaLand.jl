@@ -310,7 +310,7 @@ struct SoilDrivers{
     FT,
     MET <: AbstractSoilDriver,
     SOC <: AbstractSoilDriver,
-    ATM <: PrescribedAtmosphere{FT},
+    ATM <: AbstractAtmosphericDrivers{FT},
 }
     "Soil temperature and moisture drivers - Prescribed or Prognostic"
     met::MET
@@ -403,11 +403,11 @@ function soil_SOM_C(driver::PrescribedSOC, p, Y, t, z)
 end
 
 """
-    air_pressure(driver::PrescribedAtmosphere, t)
+    air_pressure(::AbstractAtmosphericDrivers, t)
 
 Returns the prescribed air pressure at the top boundary condition at time (t).
 """
-function air_pressure(driver::PrescribedAtmosphere, p, Y, t) # not sure if/why p and Y are needed?
+function air_pressure(::AbstractAtmosphericDrivers, p, Y, t) # TODO remove Y, t?
     return p.drivers.P
 end
 

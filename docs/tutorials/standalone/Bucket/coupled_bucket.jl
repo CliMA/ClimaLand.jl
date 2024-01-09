@@ -63,13 +63,13 @@ FT = Float32;
 # The user first creates the prescribed atmosphere and prescribed radiation drivers. In
 # pseudo code, this might look something like:
 
-# ` prescribed_atmos = PrescribedAtmosphere{FT}(*driver functions passed in here*)`
+# ` prescribed_atmos = PrescribedAtmosSite{FT}(*driver functions passed in here*)`
 # ` prescribed_radiation = PrescribedRadiativeFluxes{FT}(*driver functions passed in here*) `
 
 # These are stored in the [BucketModel](https://clima.github.io/ClimaLSM.jl/dev/APIs/Bucket/#ClimaLSM.Bucket.BucketModel) object,
 # along with [BucketParameters](https://clima.github.io/ClimaLSM.jl/dev/APIs/Bucket/#ClimaLSM.Bucket.BucketParameters).
 # In order to compute turbulent surface fluxes, we call [turbulent_fluxes](https://clima.github.io/ClimaLSM.jl/dev/APIs/shared_utilities/#ClimaLSM.turbulent_fluxes),
-# with arguments including `prescribed_atmosphere`. Since this argument is of the type `PrescribedAtmosphere`, the method of `turbulent_fluxes` which is executed is one which computes the turbulent surface fluxes
+# with arguments including `prescribed_atmosphere`. Since this argument is of the type `PrescribedAtmosSite`, the method of `turbulent_fluxes` which is executed is one which computes the turbulent surface fluxes
 # using MOST. We have a similar function for [net_radiation](https://clima.github.io/ClimaLSM.jl/dev/APIs/shared_utilities/#ClimaLSM.net_radiation) and which computes the net radiation based on the prescribed downwelling radiative fluxes, stored in an argument
 # `prescribed_radiation`, which is of type `PrescribedRadiation`.
 
@@ -112,7 +112,7 @@ end
 # we call the functions [`surface_air_density`](https://clima.github.io/ClimaLSM.jl/dev/APIs/shared_utilities/#ClimaLSM.surface_air_density),
 #  [`liquid_precipitation`](https://clima.github.io/ClimaLSM.jl/dev/APIs/shared_utilities/#ClimaLSM.liquid_precipitation), and
 # [`snow_precipitation`](https://clima.github.io/ClimaLSM.jl/dev/APIs/shared_utilities/#ClimaLSM.snow_precipitation).
-# When the `atmos` type is `PrescribedAtmosphere`, these
+# When the `atmos` type is `PrescribedAtmosSite`, these
 # return the prescribed values for these quantities.
 
 # In the coupled case, we need to extend these functions with a `CoupledAtmosphere` method:

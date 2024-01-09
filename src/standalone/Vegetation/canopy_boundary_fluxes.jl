@@ -23,7 +23,7 @@ function ClimaLSM.displacement_height(model::CanopyModel{FT}, Y, p) where {FT}
 end
 
 """
-    canopy_turbulent_fluxes(atmos::PrescribedAtmosphere{FT},
+    canopy_turbulent_fluxes(atmos::AbstractAtmosphericDrivers{FT},
                           model::CanopyModel,
                           Y,
                           p,
@@ -33,7 +33,7 @@ Computes canopy transpiration using Monin-Obukhov Surface Theory,
 the prescribed atmospheric conditions, and the canopy conductance.
 """
 function canopy_turbulent_fluxes(
-    atmos::PrescribedAtmosphere{FT},
+    atmos::AbstractAtmosphericDrivers{FT},
     model::CanopyModel,
     Y,
     p,
@@ -121,13 +121,15 @@ function ClimaLSM.surface_specific_humidity(
 end
 
 """
-    ClimaLSM.surface_air_density(model::CanopyModel, Y, p)
+    ClimaLSM.surface_air_density(
+        atmos::AbstractAtmosphericDrivers,
+        model::CanopyModel, Y, p, t, T_canopy)
 
 A helper function which computes and returns the surface air density for the canopy
 model.
 """
 function ClimaLSM.surface_air_density(
-    atmos::PrescribedAtmosphere,
+    atmos::AbstractAtmosphericDrivers,
     model::CanopyModel,
     Y,
     p,
@@ -159,7 +161,7 @@ end
                                 <:Union{PrescribedCanopyTempModel,BigLeafEnergyModel}
                             },
                             radiation::PrescribedRadiativeFluxes,
-                            atmos::PrescribedAtmosphere,
+                            atmos::AbstractAtmosphericDrivers,
                             Y::ClimaCore.Fields.FieldVector,
                             t,
                             ) where {FT}
@@ -190,7 +192,7 @@ function canopy_boundary_fluxes!(
         <:Union{PrescribedCanopyTempModel, BigLeafEnergyModel},
     },
     radiation::PrescribedRadiativeFluxes,
-    atmos::PrescribedAtmosphere,
+    atmos::AbstractAtmosphericDrivers,
     Y::ClimaCore.Fields.FieldVector,
     t,
 ) where {FT}

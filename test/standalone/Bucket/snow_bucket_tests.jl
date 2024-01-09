@@ -15,7 +15,7 @@ using ClimaLSM:
     initialize,
     make_exp_tendency,
     make_set_initial_cache,
-    PrescribedAtmosphere,
+    PrescribedAtmosSite,
     PrescribedRadiativeFluxes
 
 # Bucket model parameters
@@ -71,7 +71,7 @@ for FT in (Float32, Float64)
             q_atmos = (t) -> 0.03
             h_atmos = FT(3)
             P_atmos = (t) -> 101325 # Pa
-            bucket_atmos = PrescribedAtmosphere(
+            bucket_atmos = PrescribedAtmosSite(
                 liquid_precip,
                 snow_precip,
                 T_atmos,
@@ -179,7 +179,7 @@ for FT in (Float32, Float64)
             q_atmos = (t) -> 0.03
             h_atmos = FT(3)
             P_atmos = (t) -> 101325 # Pa
-            bucket_atmos = PrescribedAtmosphere(
+            bucket_atmos = PrescribedAtmosSite(
                 liquid_precip,
                 snow_precip,
                 T_atmos,
@@ -287,7 +287,7 @@ for FT in (Float32, Float64)
         q_atmos = (t) -> 0.03
         h_atmos = FT(3)
         P_atmos = (t) -> 101325 # Pa
-        bucket_atmos = PrescribedAtmosphere(
+        bucket_atmos = PrescribedAtmosSite(
             liquid_precip,
             snow_precip,
             T_atmos,

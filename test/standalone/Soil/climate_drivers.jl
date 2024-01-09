@@ -74,7 +74,7 @@ for FT in (Float32, Float64)
         q_atmos = (t) -> 0.005
         h_atmos = FT(3)
         P_atmos = (t) -> 101325
-        atmos = PrescribedAtmosphere(
+        atmos = PrescribedAtmosSite(
             precip,
             precip_snow,
             T_atmos,

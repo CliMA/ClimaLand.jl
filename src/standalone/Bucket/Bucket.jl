@@ -26,7 +26,6 @@ using ClimaLSM:
     compute_ρ_sfc,
     AbstractExpModel,
     heaviside,
-    PrescribedAtmosphere,
     add_dss_buffer_to_aux
 import ClimaLSM:
     make_update_aux,

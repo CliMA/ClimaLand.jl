@@ -52,7 +52,7 @@ labels = (
     :CO2,
 )
 
-# For every data column to be collected, name of the column in the file, 
+# For every data column to be collected, name of the column in the file,
 # transformation function to desired unit, and string of final unit
 collect_args = [
     ("TA_F", (x) -> x .+ 273.15, "K")
@@ -73,8 +73,8 @@ collect_args = [
     ("CO2_F_MDS", (x) -> x .* 1e-6, "mol")
 ]
 
-# Named tuple mapping every label to a DataColumn with the correct transformed 
-# unit and data status. Automatically fills gaps in the data 
+# Named tuple mapping every label to a DataColumn with the correct transformed
+# unit and data status. Automatically fills gaps in the data
 drivers = (;
     zip(
         labels,
@@ -104,7 +104,7 @@ for (name, column) in required
     end
 end
 if length(missing_drivers) != 0
-    error("Driver data missing for columns: $([missing_drivers[i] * " " for 
+    error("Driver data missing for columns: $([missing_drivers[i] * " " for
         i in 1:length(missing_drivers)]...)")
 end
 
@@ -118,7 +118,7 @@ esat =
 e = @. esat - drivers.VPD.values
 q = @. 0.622 * e ./ (drivers.PA.values - 0.378 * e)
 
-# Create splines for each atmospheric driver needed for PrescribedAtmosphere
+# Create splines for each atmospheric driver needed for PrescribedAtmosSite
 # and for PrescribedRadiation
 seconds = FT.(0:DATA_DT:((length(UTC_DATETIME) - 1) * DATA_DT));
 p_spline = Spline1D(seconds, -drivers.P.values[:]) # m/s
@@ -134,7 +134,7 @@ snow_precip(t) = FT(0) # this is likely not correct
 
 # Construct the drivers. For the reference time we will use the UTC time at the
 # start of the simulation
-atmos = ClimaLSM.PrescribedAtmosphere(
+atmos = ClimaLSM.PrescribedAtmosSite(
     precipitation_function,
     snow_precip,
     atmos_T,
