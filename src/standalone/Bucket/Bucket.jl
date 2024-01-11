@@ -470,7 +470,7 @@ function make_compute_exp_tendency(model::BucketModel{FT}) where {FT}
         # The below is NOT CORRECT if we want the snow
         # cover fraction to be intermediate between 0 and 1.
         (; turbulent_energy_flux, R_n, evaporation) = p.bucket
-        F_sfc = @. (R_n + turbulent_energy_flux) # Eqn (15)
+        F_sfc = @. (R_n + turbulent_energy_flux) # Eqn (21)
 
         _T_freeze = LSMP.T_freeze(model.parameters.earth_param_set)
         _LH_f0 = LSMP.LH_f0(model.parameters.earth_param_set)
@@ -498,14 +498,15 @@ function make_compute_exp_tendency(model::BucketModel{FT}) where {FT}
                 ClimaCore.Geometry.WVector.(FT(0.0)),
             ),
         )
-        @. dY.bucket.T = -1 / ρc_soil * (divf2c(-κ_soil * gradc2f(Y.bucket.T))) # Simple heat equation, Eq 6
+        @. dY.bucket.T = -1 / ρc_soil * (divf2c(-κ_soil * gradc2f(Y.bucket.T))) # Simple heat equation, Eq 10
 
 
         # Partition water fluxes
-        liquid_precip = liquid_precipitation(model.atmos, p, t) # always positive
-        snow_precip = snow_precipitation(model.atmos, p, t) # always positive
-        # Always positive; F_melt at present already has σ factor in it.
-        snow_melt = @. (-F_melt / _ρLH_f0) # Equation (20)
+        liquid_precip = liquid_precipitation(model.atmos, p, t) # always negative
+        snow_precip = snow_precipitation(model.atmos, p, t) # always negative
+        # F_melt at present already has σ factor in it; F_melt is negative as
+        # it is a downward welling flux warming the snow
+        snow_melt = @. F_melt / _ρLH_f0 # defined after Equation (22)
 
         infiltration = @. infiltration_at_point(
             Y.bucket.W,
@@ -513,21 +514,20 @@ function make_compute_exp_tendency(model::BucketModel{FT}) where {FT}
             liquid_precip,
             (1 - snow_cover_fraction) * evaporation,
             W_f,
-        ) # Equation (4b) of the text.
+        ) # Equation (2) of the text.
 
         # Positive infiltration -> net (negative) flux into soil
-        dY.bucket.W .= infiltration # Equation (4) of the text.
+        @. dY.bucket.W = -infiltration # Equation (2) of the text.
 
-        dY.bucket.Ws = @. (
-            (
-                liquid_precip + snow_melt -
-                (1 - snow_cover_fraction) * evaporation
-            ) - infiltration
-        ) # Equation (5) of the text, snow melt already multipied by snow_cover_fraction
+        dY.bucket.Ws = @. -(
+            liquid_precip +
+            snow_melt +
+            (1 - snow_cover_fraction) * evaporation - infiltration
+        ) # Equation (3) of the text, snow melt already multipied by snow_cover_fraction
 
         # snow melt already multipied by snow_cover_fraction
         dY.bucket.σS =
-            @. (snow_precip - snow_cover_fraction * evaporation - snow_melt) # Equation (11)
+            @. -(snow_precip + snow_cover_fraction * evaporation - snow_melt) # Equation (6)
     end
     return compute_exp_tendency!
 end

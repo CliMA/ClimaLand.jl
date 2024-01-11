@@ -24,18 +24,18 @@
 # is the albedo of vegetated and non-vegetated surfaces, for which
 # we use the symbol `α_sfc`.
 
-# We have:
+# All equation variables are defined immediately below. We have:
 
 # ``
-# \frac{d W}{dt} = I,
-# ``
-
-# ``
-# \frac{d Ws}{dt} = P_{liq} + σM - (1-σ) E_{soil} - I,
+# \frac{d W}{dt} = -I,
 # ``
 
 # ``
-# \frac{d σS}{dt} = P_{snow} - σ(E_{snow} + M),
+# \frac{d Ws}{dt} = -(P_{liq} + σM + (1-σ) E_{soil} - I),
+# ``
+
+# ``
+# \frac{d σS}{dt} = -(P_{snow} + σE_{snow} - σM),
 # ``
 
 # ``
@@ -55,7 +55,7 @@
 # ``
 
 # ``
-# F_{intosnow} = -ρ_l L_{f,0} (M+E_{snow})
+# F_{intosnow} = -ρ_l L_{f,0} (P_{snow} + E_{snow}-M)
 # ``
 
 
@@ -70,13 +70,18 @@
 # `σE_snow` the water volume flux in sublimation from snow, and
 # `σM` (m/s) the water volume flux in melting of snow. The melt rate is
 # defined via the net surface flux when surface temperatures are above freezing.
+# All fluxes are defined to be positive if towards the atmosphere
+# (cooling land or decreasing water mass in land) and negative if
+# towards land (warming land or increasing water mass). Hence
+# the melting flux is negative since it warms land, and precipitation
+# fluxes are negative since they increase water mass on land.
 
 # For heat fluxes, we have `R_n` the net radiation, `SHF` the sensible
 # heat flux, `LHF` the latent heat flux, `G_undersnow` the heat flux into snow-covered soil,
 # and `F_intosnow` the heat flux into the snowpack itself. Note that the water balance
 # equation for snow is equivalent to the heat balance
 # equation, since we neglect the sensible heat contribution and only track the
-# latent heat contribution.
+# latent heat contribution. We neglect the energy in liquid precipitation.
 
 # Finally, we have `α_sfc(lat, lon)` the
 # (snow-free) surface albedo, `ρc` the volumetric
@@ -227,16 +232,12 @@ ref_time = DateTime(2005);
 # wind speed `u_a` (m/s), specific humidity `q_a`, and air density
 # `ρ_a` (kg/m^3) at a reference height `h_a` (m).
 
-# Here we define the model drivers, starting with downward radiation.
-SW_d = (t) -> 300;
-LW_d = (t) -> 300;
-bucket_rad = PrescribedRadiativeFluxes(FT, SW_d, LW_d, ref_time);
-
+# Here we define the model drivers
 # Prescribed atmospheric variables
 
-# Stochastic precipitation:
+# Precipitation:
 precip = (t) -> 0;
-snow_precip = (t) -> 5e-7 * (t > 3 * 86400) * (t < 4 * 86400);
+snow_precip = (t) -> -5e-7 * (t > 3 * 86400) * (t < 4 * 86400);
 # Diurnal temperature variations:
 T_atmos = (t) -> 275.0 + 5.0 * sin(2.0 * π * t / 86400 + 7200);
 # Constant otherwise:
@@ -254,6 +255,15 @@ bucket_atmos = PrescribedAtmosphere(
     ref_time,
     h_atmos,
 );
+
+# Prescribed radiation -- a prescribed downwelling SW diurnal cycle, with a
+# peak at local noon, and a prescribed downwelling LW radiative
+# flux, assuming the air temperature is on average 275 degrees
+# K with a diurnal amplitude of 5 degrees K:
+SW_d = (t) -> @. max(1361 * sin(2π * t / 86400 + 7200));
+LW_d = (t) -> 5.67e-8 * (275.0 + 5.0 * sin(2.0 * π * t / 86400 + 7200))^4;
+bucket_rad = PrescribedRadiativeFluxes(FT, SW_d, LW_d, ref_time);
+
 
 # Then, we create the model object, which contains the drivers, parameters,
 # domain, and is associated with the correct differential equations
@@ -366,7 +376,7 @@ savefig("swe.png")
 
 plot(
     sol.t ./ 86400,
-    -snow_precip.(sol.t),
+    snow_precip.(sol.t),
     label = "Net precipitation",
     xlabel = "time (days)",
     ylabel = "Flux (m/s)",

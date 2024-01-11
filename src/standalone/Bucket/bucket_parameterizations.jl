@@ -119,8 +119,8 @@ function partition_surface_fluxes(
     _ρLH_f0::FT,
     _T_freeze::FT,
 ) where {FT}
-    F_available_to_melt = F_sfc + _ρLH_f0 * E # Eqn (20), negative as towards ground
-    if σS > -F_available_to_melt * τ / _ρLH_f0 # Eqn (21)
+    F_available_to_melt = F_sfc + _ρLH_f0 * E # Eqn (23), negative as towards ground
+    if σS > -F_available_to_melt * τ / _ρLH_f0 # Eqn (24)
         F_melt = F_available_to_melt
     else
         F_melt = -σS * _ρLH_f0 / τ
@@ -128,7 +128,7 @@ function partition_surface_fluxes(
     F_melt =
         F_melt * heaviside(T_sfc - _T_freeze) * heaviside(-F_available_to_melt)
     F_into_snow = -_ρLH_f0 * E * snow_cover_fraction + F_melt # F_melt is already multiplied by σ
-    G = (F_sfc - F_into_snow) # Eqn 20
+    G = (F_sfc - F_into_snow) # Eqn 22
     return (; F_melt = F_melt, F_into_snow = F_into_snow, G = G)
 end
 
@@ -138,13 +138,10 @@ end
 
 Returns the infiltration given the current water content of the bucket W,
 the snow melt volume flux M, the precipitation volume flux P, the liquid evaporative volume
-flux E, and the bucket capacity W_f. Positive values indicate increasing
-soil moisture; the infiltration is the magnitude of the water
-flux into the soil.
+flux E, and the bucket capacity W_f.
 
 Extra inflow when the bucket is at capacity runs off.
-Note that P and M are positive by definition, while E can be
-positive (evaporation) or negative (condensation).
+Note that all fluxes are positive if towards the atmosphere.
 """
 function infiltration_at_point(
     W::FT,
@@ -153,10 +150,11 @@ function infiltration_at_point(
     E::FT,
     W_f::FT,
 )::FT where {FT <: AbstractFloat}
-    if (W > W_f) & (P + M - E > 0) # Equation (4b) of text
-        return FT(0)
+    f = FT(P + M + E)
+    if (W > W_f) & (f < 0) # Equation (2) of text
+        return FT(0) # we are at capacity and the net flux is negative
     else
-        return FT(P + M - E)
+        return f # can be positive (water loss to atmos) or negative
     end
 end
 
