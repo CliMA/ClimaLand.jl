@@ -149,7 +149,7 @@ for FT in (Float32, Float64)
             LW_d = (t) -> 300
             bucket_rad = PrescribedRadiativeFluxes(FT, SW_d, LW_d, ref_time)
             "Atmos"
-            precip = (t) -> 1e-6
+            precip = (t) -> -1e-6
             precip_snow = (t) -> 0
             T_atmos = (t) -> 298
             u_atmos = (t) -> 4
@@ -197,8 +197,8 @@ for FT in (Float32, Float64)
             set_initial_cache!(p, Y, t0)
             dY = similar(Y)
             exp_tendency!(dY, Y, p, t0)
-            F_water_sfc = FT(precip(t0)) .- p.bucket.evaporation
-            F_sfc = -1 .* (p.bucket.turbulent_energy_flux .+ p.bucket.R_n)
+            F_water_sfc = FT(precip(t0)) .+ p.bucket.evaporation
+            F_sfc = p.bucket.turbulent_energy_flux .+ p.bucket.R_n
             surface_space = model.domain.space.surface
             A_sfc = sum(ones(surface_space))
             # For the point space, we actually want the flux itself, since our variables are per unit area.
@@ -207,8 +207,8 @@ for FT in (Float32, Float64)
                 F_sfc .= F_sfc ./ A_sfc
             end
 
-            @test sum(F_water_sfc) ≈ sum(dY.bucket.W .+ dY.bucket.Ws)
-            @test sum(F_sfc) ≈ sum(dY.bucket.T .* ρc_soil)
+            @test -sum(F_water_sfc) ≈ sum(dY.bucket.W .+ dY.bucket.Ws)
+            @test -sum(F_sfc) ≈ sum(dY.bucket.T .* ρc_soil)
         end
     end
 end

@@ -63,8 +63,8 @@ for FT in (Float32, Float64)
             LW_d = (t) -> 20
             bucket_rad = PrescribedRadiativeFluxes(FT, SW_d, LW_d, ref_time)
             "Atmos"
-            liquid_precip = (t) -> 1e-8 # precipitation
-            snow_precip = (t) -> 1e-7 # precipitation
+            liquid_precip = (t) -> -1e-8 # precipitation
+            snow_precip = (t) -> -1e-7 # precipitation
 
             T_atmos = (t) -> 280.0
             u_atmos = (t) -> 10.0
@@ -134,13 +134,13 @@ for FT in (Float32, Float64)
                 )
             F_melt = partitioned_fluxes.F_melt
             F_into_snow =
-                partitioned_fluxes.F_into_snow .+ _ρLH_f0 .* FT(snow_precip(t0))
+                partitioned_fluxes.F_into_snow .- _ρLH_f0 .* FT(snow_precip(t0))
             G = partitioned_fluxes.G
             F_sfc =
-                p.bucket.turbulent_energy_flux .+ p.bucket.R_n .+
+                p.bucket.turbulent_energy_flux .+ p.bucket.R_n .-
                 _ρLH_f0 .* FT(snow_precip(t0))
             F_water_sfc =
-                FT(liquid_precip(t0)) + FT(snow_precip(t0)) .-
+                FT(liquid_precip(t0)) + FT(snow_precip(t0)) .+
                 p.bucket.evaporation
 
             if i == 1
@@ -156,7 +156,7 @@ for FT in (Float32, Float64)
             @test sum(de_soil) ≈ sum(-1 .* G) / A_point
 
             dWL = dY.bucket.W .+ dY.bucket.Ws .+ dY.bucket.σS
-            @test sum(dWL) / A_point ≈ sum(F_water_sfc) / A_point
+            @test sum(dWL) / A_point ≈ -sum(F_water_sfc) / A_point
 
             dIL = sum(dIsnow) / A_point .+ sum(de_soil)
             @test dIL ≈ sum(-1 .* F_sfc) / A_point
@@ -171,8 +171,8 @@ for FT in (Float32, Float64)
             LW_d = (t) -> 20
             bucket_rad = PrescribedRadiativeFluxes(FT, SW_d, LW_d, ref_time)
             "Atmos"
-            liquid_precip = (t) -> 1e-8 # precipitation
-            snow_precip = (t) -> 1e-7 # precipitation
+            liquid_precip = (t) -> -1e-8 # precipitation
+            snow_precip = (t) -> -1e-7 # precipitation
 
             T_atmos = (t) -> 280
             u_atmos = (t) -> 10
@@ -242,13 +242,13 @@ for FT in (Float32, Float64)
                 )
             F_melt = partitioned_fluxes.F_melt
             F_into_snow =
-                partitioned_fluxes.F_into_snow .+ _ρLH_f0 .* FT(snow_precip(t0))
+                partitioned_fluxes.F_into_snow .- _ρLH_f0 .* FT(snow_precip(t0))
             G = partitioned_fluxes.G
             F_sfc =
-                p.bucket.turbulent_energy_flux .+ p.bucket.R_n .+
+                p.bucket.turbulent_energy_flux .+ p.bucket.R_n .-
                 _ρLH_f0 .* FT(snow_precip(t0))
             F_water_sfc =
-                FT(liquid_precip(t0)) + FT(snow_precip(t0)) .-
+                FT(liquid_precip(t0)) + FT(snow_precip(t0)) .+
                 p.bucket.evaporation
 
             if i == 1
@@ -264,7 +264,7 @@ for FT in (Float32, Float64)
             @test sum(de_soil) ≈ sum(-1 .* G) / A_point
 
             dWL = dY.bucket.W .+ dY.bucket.Ws .+ dY.bucket.σS
-            @test sum(dWL) / A_point ≈ sum(F_water_sfc) / A_point
+            @test sum(dWL) / A_point ≈ -sum(F_water_sfc) / A_point
 
             dIL = sum(dIsnow) / A_point .+ sum(de_soil)
             @test dIL ≈ sum(-1 .* F_sfc) / A_point
@@ -279,8 +279,8 @@ for FT in (Float32, Float64)
         LW_d = (t) -> 20
         bucket_rad = PrescribedRadiativeFluxes(FT, SW_d, LW_d, ref_time)
         "Atmos"
-        liquid_precip = (t) -> 1e-8 # precipitation
-        snow_precip = (t) -> 1e-7 # precipitation
+        liquid_precip = (t) -> -1e-8 # precipitation
+        snow_precip = (t) -> -1e-7 # precipitation
 
         T_atmos = (t) -> 280
         u_atmos = (t) -> 10
@@ -354,13 +354,13 @@ for FT in (Float32, Float64)
             )
         F_melt = partitioned_fluxes.F_melt
         F_into_snow =
-            partitioned_fluxes.F_into_snow .+ _ρLH_f0 .* FT(snow_precip(t0))
+            partitioned_fluxes.F_into_snow .- _ρLH_f0 .* FT(snow_precip(t0))
         G = partitioned_fluxes.G
         F_sfc =
-            p.bucket.turbulent_energy_flux .+ p.bucket.R_n .+
+            p.bucket.turbulent_energy_flux .+ p.bucket.R_n .-
             _ρLH_f0 .* FT(snow_precip(t0))
         F_water_sfc =
-            FT(liquid_precip(t0)) + FT(snow_precip(t0)) .- p.bucket.evaporation
+            FT(liquid_precip(t0)) + FT(snow_precip(t0)) .+ p.bucket.evaporation
 
         dIsnow = -_ρLH_f0 .* dY.bucket.σS
         @test sum(dIsnow) ≈ sum(-1 .* F_into_snow)
@@ -369,7 +369,7 @@ for FT in (Float32, Float64)
         @test sum(de_soil) ≈ sum(-1 .* G)
 
         dWL = dY.bucket.W .+ dY.bucket.Ws .+ dY.bucket.σS
-        @test sum(dWL) ≈ sum(F_water_sfc)
+        @test sum(dWL) ≈ -sum(F_water_sfc)
 
         dIL = sum(dIsnow) .+ sum(de_soil)
         @test dIL ≈ sum(-1 .* F_sfc)

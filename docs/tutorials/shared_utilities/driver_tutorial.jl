@@ -121,7 +121,7 @@ radiation = ClimaLSM.PrescribedRadiativeFluxes(
 # When you `initialize` the variables and cache of a model,
 # the cache `p` will be returned with memory allocated but all
 # values set to zero:
-p = (; drivers = (LW_d = [0.0], SW_d = [0.0], θs = [0.0]),);
+p = (; drivers = (LW_d = [0.0], SW_d = [0.0], θs = [0.0]));
 
 # In order to update them, we can make use of default update functions:
 update_radiation! = ClimaLSM.make_update_drivers(radiation)
