@@ -80,7 +80,7 @@ drivers = (;
         labels,
         [
             transform_column(
-                VerifiedColumn(driver_data, name, ""),
+                filter_column(driver_data, name, ""),
                 transform,
                 unit,
             ) for (name, transform, unit) in collect_args
