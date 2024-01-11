@@ -11,6 +11,12 @@ using StatsBase
 # Define the valid data statuses
 @enum DataStatus complete = 1 absent = 2 incomplete = 3
 
+function replace_missing_with_zero_by_value!(field)
+    good_indices = .~(field .== -9999)
+    field[.~good_indices] .= 0.0
+    return field
+end
+
 function replace_missing_with_mean!(field, flag)
     """Replace values indicated to be missing by a QC flag with the mean value
     in the column"""
@@ -21,8 +27,9 @@ function replace_missing_with_mean!(field, flag)
 end
 
 function replace_missing_with_mean_by_value!(field)
-    """Replace missing values indicated by -9999 in the column data with the 
+    """Replace missing values indicated by -9999 or Missing in the column data with the 
     mean value in the column"""
+    field[typeof.(field) .== Missing] .= -9999
     good_indices = .~(field .== -9999)
     fill_value = mean(field[good_indices])
     field[.~good_indices] .= fill_value

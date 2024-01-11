@@ -8,12 +8,12 @@
 
 
 # Soil parameters
-soil_ν = FT(0.45) # m3/m3
+soil_ν = FT(0.5) # m3/m3
 soil_K_sat = FT(0.45 / 3600 / 100) # m/s,
 soil_S_s = FT(1e-3) # 1/m, guess
 soil_vg_n = FT(2.0) # unitless
 soil_vg_α = FT(2.0) # inverse meters
-θ_r = FT(0.067) # m3/m3, 
+θ_r = FT(0.09) # m3/m3, 
 
 # Soil heat transfer parameters; not needed for hydrology only test
 ν_ss_quartz = FT(0.2)
@@ -31,5 +31,5 @@ soil_vg_α = FT(2.0) # inverse meters
 z_0m_soil = FT(0.01)
 z_0b_soil = FT(0.001)
 soil_ϵ = FT(0.98)
-soil_α_PAR = FT(0.3)
-soil_α_NIR = FT(0.4)
+soil_α_PAR = FT(0.5)
+soil_α_NIR = FT(0.5)

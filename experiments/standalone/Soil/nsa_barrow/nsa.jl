@@ -17,6 +17,13 @@ include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
 const FT = Float64
 earth_param_set = create_lsm_parameters(FT)
 climalsm_dir = pkgdir(ClimaLSM)
+# Tools
+include(
+    joinpath(
+        climalsm_dir,
+        "experiments/integrated/fluxnet/data_tools.jl",
+    ),
+)
 # This reads in the data from the flux tower site and creates
 # the atmospheric and radiative driver structs for the model
 include(
@@ -78,16 +85,16 @@ soil = Soil.EnergyHydrology{FT}(;
 Y, p, cds = initialize(soil)
 
 #Initial conditions
-Y.soil.ϑ_l = SWC_1[1 + Int(round(t0 / DATA_DT))] # Get soil water content at t0
 # Both data and simulation are reference to 2005-01-01-00 (LOCAL)
 # or 2005-01-01-06 (UTC)
-Y.soil.θ_i = FT(0.0)
+Y.soil.ϑ_l = SWC_1[1 + Int(round(t0 / DATA_DT))]
+Y.soil.θ_i = maximum(SWC_1) .- SWC_1[1 + Int(round(t0 / DATA_DT))]
 T_0 = TS_3[1 + Int(round(t0 / DATA_DT))] # Get soil temperature at t0
 ρc_s = volumetric_heat_capacity.(Y.soil.ϑ_l, Y.soil.θ_i, Ref(soil.parameters))
 Y.soil.ρe_int =
     volumetric_internal_energy.(Y.soil.θ_i, ρc_s, T_0, Ref(soil.parameters))
-set_initial_aux_state! = make_set_initial_aux_state(soil)
-set_initial_aux_state!(p, Y, t0);
+set_initial_cache! = make_set_initial_cache(soil)
+set_initial_cache!(p, Y, t0);
 
 # Simulation
 sv = (;
@@ -123,8 +130,8 @@ plt1 = Plots.plot(size = (1500, 800))
 Plots.plot!(
     plt1,
     daily,
-    [parent(sol.u[k].soil.ϑ_l)[end] for k in 1:1:length(sol.t)],
-    label = "Model, 2.5cm",
+    [parent(sol.u[k].soil.ϑ_l)[end-1] for k in 1:1:length(sol.t)],
+    label = "Model, 6cm",
     xlim = [minimum(daily), maximum(daily)],
     ylim = [0.05, 0.55],
     xlabel = "Days",
@@ -135,15 +142,15 @@ Plots.plot!(
 Plots.plot!(
     plt1,
     daily,
-    [parent(sol.u[k].soil.ϑ_l)[end - 2] for k in 1:1:length(sol.t)],
-    label = "20cm",
+    [parent(sol.u[k].soil.ϑ_l)[end - 4] for k in 1:1:length(sol.t)],
+    label = "25cm",
 )
 
 Plots.plot!(
     plt1,
     daily,
-    [parent(sol.u[k].soil.ϑ_l)[end - 4] for k in 1:1:length(sol.t)],
-    label = "56m",
+    [parent(sol.u[k].soil.ϑ_l)[end - 6] for k in 1:1:length(sol.t)],
+    label = "45cm",
 )
 
 Plots.plot!(plt1, seconds ./ 3600 ./ 24, SWC_1, label = "Data, ?cm")
@@ -167,8 +174,8 @@ plt3 = Plots.plot(size = (1500, 800))
 Plots.plot!(
     plt3,
     daily,
-    [parent(sv.saveval[k].soil.T)[end] for k in 1:1:length(sol.t)],
-    label = "Model, 2.5cm",
+    [parent(sv.saveval[k].soil.T)[end-1] for k in 1:1:length(sol.t)],
+    label = "Model, 6cm",
     xlim = [minimum(daily), maximum(daily)],
     xlabel = "Days",
     ylabel = "T [m/m]",
@@ -179,21 +186,14 @@ Plots.plot!(
     plt3,
     daily,
     [parent(sv.saveval[k].soil.T)[end - 2] for k in 1:1:length(sol.t)],
-    label = "20cm",
+    label = "25cm",
 )
 
 Plots.plot!(
     plt3,
     daily,
     [parent(sv.saveval[k].soil.T)[end - 6] for k in 1:1:length(sol.t)],
-    label = "1m",
-)
-
-Plots.plot!(
-    plt3,
-    daily,
-    [parent(sv.saveval[k].soil.T)[end - 11] for k in 1:1:length(sol.t)],
-    label = "3.3m",
+    label = "45cm",
 )
 
 Plots.plot!(plt3, seconds ./ 3600 ./ 24, TS_1, label = "Data, 1")
@@ -203,7 +203,7 @@ Plots.plot!(plt3, seconds ./ 3600 ./ 24, TS_3, label = "Data, 3")
 
 # LHF
 lhf =
-    [parent(sv.saveval[k].soil.sfc_conditions.lhf)[1] for k in 1:length(sol.t)]
+    [parent(sv.saveval[k].soil.turbulent_fluxes.lhf)[1] for k in 1:length(sol.t)]
 Plots.plot(daily, lhf, label = "Model", xlim = extrema(daily))
 Plots.plot!(seconds ./ 3600 ./ 24, LE, label = "Data")
 
