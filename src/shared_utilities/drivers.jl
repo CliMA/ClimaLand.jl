@@ -1,5 +1,7 @@
 using Thermodynamics
 using ClimaCore
+using Dates
+using CFTime
 using DocStringExtensions
 using SurfaceFluxes
 import SurfaceFluxes.Parameters as SFP
@@ -86,6 +88,49 @@ struct PrescribedAtmosSite{FT, LP, SP, TA, UA, QA, RA, CA, DT} <:
         args = (liquid_precip, snow_precip, T, u, q, P, c_co2, ref_time)
         return new{typeof(h), typeof.(args)...}(args..., h, gustiness)
     end
+end
+
+"""
+    PrescribedAtmosGlobal{FT, FR <: FileReader.PrescribedDataTemporal} <:
+        AbstractAtmosphericDrivers{FT}
+
+Container for holding prescribed atmospheric drivers and other
+information needed for computing turbulent surface fluxes when
+driving land models in standalone mode over the globe.
+
+The various quantities we need for atmospheric forcing should all be stored
+in the file described by `atmos_info`.
+$(DocStringExtensions.FIELDS)
+"""
+struct PrescribedAtmosGlobal{FT, FR <: FileReader.PrescribedDataTemporal} <:
+       AbstractAtmosphericDrivers{FT}
+    "Struct containing file info for atmospheric drivers"
+    atmos_info::FR
+end
+
+function PrescribedAtmosGlobal{FT}(
+    regrid_dirpath::String,
+    date_ref::Union{DateTime, DateTimeNoLeap},
+    t_start,
+    space::ClimaCore.Spaces.AbstractSpace,
+    get_infile,
+    varnames::Vector{String},
+) where {FT}
+    # Verify inputs
+    if typeof(space) <: ClimaCore.Spaces.PointSpace
+        error("Using an albedo map requires a global run.")
+    end
+
+    # Construct object containing info to read in surface albedo over time
+    data_info = PrescribedDataTemporal{FT}(
+        regrid_dirpath,
+        get_infile,
+        varnames,
+        date_ref,
+        t_start,
+        space,
+    )
+    return BulkAlbedoTemporal{FT, typeof(data_info)}(data_info)
 end
 
 """

@@ -64,11 +64,11 @@ end
 
 @testset "test PrescribedDataStatic construction, FT = $FT" begin
     get_infile = albedo_temporal_data
-    varname = "sw_alb"
+    varnames = ["sw_alb"]
     ps_data_spatial = FileReader.PrescribedDataStatic(
         get_infile,
         regrid_dir_static,
-        varname,
+        varnames,
         comms_ctx,
     )
 
@@ -79,7 +79,7 @@ end
     # test fields that we've passed into constructor as args
     @test ps_data_spatial.file_info.infile_path == get_infile()
     @test ps_data_spatial.file_info.regrid_dirpath == regrid_dir_static
-    @test ps_data_spatial.file_info.varname == varname
+    @test ps_data_spatial.file_info.varnames == varnames
 
     # test fields which are set internally by constructor
     @test ps_data_spatial.file_info.outfile_root == ""
@@ -117,7 +117,7 @@ if !Sys.iswindows()
         file_info = FileReader.FileInfo(
             "",             # infile_path
             "",             # regrid_dirpath
-            "",             # varname
+            [""],           # varnames
             "",             # outfile_root
             dummy_dates,    # all_dates
             date_idx0,      # date_idx0
@@ -157,7 +157,7 @@ if !Sys.iswindows()
         file_info = FileReader.FileInfo(
             "",             # infile_path
             "",             # regrid_dirpath
-            "",             # varname
+            [""],           # varnames
             "",             # outfile_root
             dummy_dates,    # all_dates
             date_idx0,      # date_idx0
@@ -198,7 +198,7 @@ if !Sys.iswindows()
         surface_space_t = Spaces.SpectralElementSpace2D(topology, quad)
 
         get_infile = albedo_temporal_data
-        varname = "sw_alb"
+        varnames = ["sw_alb"]
         date_idx0 = Int[1]
         date_ref = DateTime(1800, 1, 1)
         t_start = Float64(0)
@@ -206,7 +206,7 @@ if !Sys.iswindows()
         ps_data_temp = FileReader.PrescribedDataTemporal{FT}(
             regrid_dir_temporal,
             get_infile,
-            varname,
+            varnames,
             date_ref,
             t_start,
             surface_space_t,
@@ -218,7 +218,7 @@ if !Sys.iswindows()
 
         # test fields that we've passed into constructor as args
         @test ps_data_temp.file_info.regrid_dirpath == regrid_dir_temporal
-        @test ps_data_temp.file_info.varname == varname
+        @test ps_data_temp.file_info.varnames == varnames
         @test ps_data_temp.file_info.date_idx0 == date_idx0
         @test ps_data_temp.file_state.date_idx == date_idx0
         @test ps_data_temp.sim_info.date_ref == date_ref
@@ -234,7 +234,7 @@ if !Sys.iswindows()
     @testset "test read_data_fields!, FT = $FT" begin
         get_infile = albedo_temporal_data
         infile_path = get_infile()
-        varname = "sw_alb"
+        varnames = ["sw_alb"]
 
         # Start with first date in data file
         date0 = NCDataset(infile_path) do ds
@@ -260,7 +260,7 @@ if !Sys.iswindows()
         prescribed_data = FileReader.PrescribedDataTemporal{FT}(
             regrid_dir_temporal,
             get_infile,
-            varname,
+            varnames,
             date_ref,
             t_start,
             surface_space_t,
@@ -351,8 +351,10 @@ if !Sys.iswindows()
         # Manually read in data from HDF5
         f = prescribed_data.file_state.data_fields[1]
         data_manual = [similar(f), similar(f), similar(f)]
-        (; regrid_dirpath, outfile_root, varname, all_dates) =
+        (; regrid_dirpath, outfile_root, varnames, all_dates) =
             prescribed_data.file_info
+        # Access `varname` since we only have one variable in this test
+        varname = varnames[1]
         for i in eachindex(data_saved)
             data_manual[i] = Regridder.swap_space!(
                 Regridder.read_from_hdf5(

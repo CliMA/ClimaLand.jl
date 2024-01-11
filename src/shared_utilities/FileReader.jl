@@ -85,7 +85,7 @@ Stores information about the current data being read in from a file.
 # Inputs:
 - infile_path::String        # path to the input NetCDF data file
 - regrid_dirpath::String     # directory for storing files used in regridding
-- varname::String            # name of the variable we're reading from the input file, which we assume is a scalar
+- varnames::Vector{String}   # names of the variables we're reading from the input file
 - outfile_root::String       # root for regridded data files generated when writing data at each time from input file
 - all_dates::Vector          # vector containing all dates of the input file, which we assume are `DateTime`s or `DateTimeNoLeap`s
 - date_idx0::Vector{Int}     # index of the first data in the file being used for this simulation
@@ -93,7 +93,7 @@ Stores information about the current data being read in from a file.
 struct FileInfo
     infile_path::String
     regrid_dirpath::String
-    varname::String
+    varnames::Vector{String}
     outfile_root::String
     all_dates::Vector
     date_idx0::Vector{Int}
@@ -135,7 +135,7 @@ end
     PrescribedDataStatic(
         get_infile::Function,
         regrid_dirpath::String,
-        varname::String,
+        varnames::Vector{String},
         commx_ctx::ClimaComms.AbstractCommsContext,
     )
 
@@ -148,7 +148,7 @@ data maps.
 function PrescribedDataStatic(
     get_infile::Function,
     regrid_dirpath::String,
-    varname::String,
+    varnames::Vector{String},
     comms_ctx::ClimaComms.AbstractCommsContext,
 )
     # Download `infile_path` artifact on root process first to avoid race condition
@@ -158,7 +158,7 @@ function PrescribedDataStatic(
     ClimaComms.barrier(comms_ctx)
     infile_path = get_infile()
 
-    file_info = FileInfo(infile_path, regrid_dirpath, varname, "", [], [])
+    file_info = FileInfo(infile_path, regrid_dirpath, varnames, "", [], [])
     return PrescribedDataStatic(file_info)
 end
 
@@ -167,7 +167,7 @@ end
     PrescribedDataTemporal{FT}(
         regrid_dirpath,
         get_infile,
-        varname,
+        varnames,
         date_ref,
         t_start,
         surface_space;
@@ -183,7 +183,7 @@ data packaged into a single `PrescribedDataTemporal` struct.
 # Arguments
 - `regrid_dirpath`   # directory the data file is stored in.
 - `get_infile`       # function returning path to NCDataset file containing data to regrid.
-- `varname`          # name of the variable to be regridded.
+- `varnames`         # vector containing names of variables to be regridded.
 - `date_ref`         # reference date to coordinate start of the simulation
 - `t_start`          # start time of the simulation relative to `date_ref` (date_start = date_ref + t_start)
 - `surface_space`    # the space to which we are mapping.
@@ -195,14 +195,14 @@ data packaged into a single `PrescribedDataTemporal` struct.
 function PrescribedDataTemporal{FT}(
     regrid_dirpath::String,
     get_infile::Function,
-    varname::String,
+    varnames::Vector{String},
     date_ref::Union{DateTime, DateTimeNoLeap},
     t_start,
     surface_space::Spaces.AbstractSpace;
     mono::Bool = true,
 ) where {FT <: AbstractFloat}
     comms_ctx = ClimaComms.context(surface_space)
-    outfile_root = varname * "_cgll"
+    outfile_root = "cgll"
 
     # Regrid data at all times from lat/lon (RLL) to simulation grid (CGLL)
     # Download `infile_path` artifact on root process first to avoid race condition
@@ -212,7 +212,7 @@ function PrescribedDataTemporal{FT}(
             FT,
             regrid_dirpath,
             infile_path,
-            varname,
+            varnames,
             surface_space,
             outfile_root;
             mono = mono,
@@ -229,8 +229,9 @@ function PrescribedDataTemporal{FT}(
     ClimaComms.barrier(comms_ctx)
     infile_path = get_infile()
 
+    # Get file dates from first variable stored in file
     all_dates = JLD2.load(
-        joinpath(regrid_dirpath, outfile_root * "_times.jld2"),
+        joinpath(regrid_dirpath, outfile_root * varnames[1] * "_times.jld2"),
         "times",
     )
 
@@ -254,7 +255,7 @@ function PrescribedDataTemporal{FT}(
     file_info = FileInfo(
         infile_path,
         regrid_dirpath,
-        varname,
+        varnames,
         outfile_root,
         all_dates,
         date_idx0,

@@ -135,7 +135,7 @@ end
         FT,
         REGRID_DIR,
         datafile_rll,
-        varname,
+        varnames,
         space;
         hd_outfile_root = "data_cgll",
         mono = false,
@@ -155,7 +155,7 @@ Code taken from ClimaCoupler.Regridder.
 - `FT`: [DataType] Float type.
 - `REGRID_DIR`: [String] directory to save output files in.
 - `datafile_rll`: [String] filename of RLL dataset to be mapped to CGLL.
-- `varname`: [String] the name of the variable to be remapped.
+- `varname`: [Vector{String}] the names of the variables to be remapped.
 - `space`: [ClimaCore.Spaces.AbstractSpace] the space to which we are mapping.
 - `hd_outfile_root`: [String] root of the output file name.
 - `mono`: [Bool] flag to specify monotone remapping.
@@ -164,7 +164,7 @@ function hdwrite_regridfile_rll_to_cgll(
     FT,
     REGRID_DIR,
     datafile_rll,
-    varname,
+    varnames::Vector{String},
     space,
     hd_outfile_root;
     mono = false,
@@ -225,7 +225,9 @@ function hdwrite_regridfile_rll_to_cgll(
             meshfile_overlap;
             kwargs...,
         )
-        apply_remap(datafile_cgll, datafile_rll, weightfile, [varname])
+        for varname in varnames
+            apply_remap(datafile_cgll, datafile_rll, weightfile, [varname])
+        end
     else
         @warn "Using the existing $datafile_cgll : check topology is consistent"
     end
@@ -245,14 +247,6 @@ function hdwrite_regridfile_rll_to_cgll(
             @warn "No dates available in file $datafile_rll"
             data_dates = [Dates.DateTime(0)]
         end
-    end
-
-    # read the remapped file with sparse matrices
-    offline_outvector, times = NCDataset(datafile_cgll, "r") do ds_wt
-        (
-            offline_outvector = Array(ds_wt[varname])[:, :], # ncol, times
-            times = get_time(ds_wt),
-        )
     end
 
     # weightfile info needed to populate all nodes and save into fields with
@@ -277,32 +271,42 @@ function hdwrite_regridfile_rll_to_cgll(
 
     offline_field = ClimaCore.Fields.zeros(FT, space_undistributed)
 
-    offline_fields = ntuple(x -> similar(offline_field), length(times))
+    for varname in varnames
+        offline_fields = ntuple(x -> similar(offline_field), length(times))
 
-    ntuple(
-        x -> reshape_cgll_sparse_to_field!(
-            offline_fields[x],
-            offline_outvector[:, x],
-            R,
-        ),
-        length(times),
-    )
+        # read the remapped file with sparse matrices
+        offline_outvector, times = NCDataset(datafile_cgll, "r") do ds_wt
+            (
+                offline_outvector = Array(ds_wt[varname])[:, :], # ncol, times
+                times = get_time(ds_wt),
+            )
+        end
 
-    map(
-        x -> write_to_hdf5(
-            REGRID_DIR,
-            hd_outfile_root,
-            times[x],
-            offline_fields[x],
-            varname,
-            cpu_context,
-        ),
-        1:length(times),
-    )
-    jldsave(
-        joinpath(REGRID_DIR, hd_outfile_root * "_times.jld2");
-        times = times,
-    )
+        ntuple(
+            x -> reshape_cgll_sparse_to_field!(
+                offline_fields[x],
+                offline_outvector[:, x],
+                R,
+            ),
+            length(times),
+        )
+
+        map(
+            x -> write_to_hdf5(
+                REGRID_DIR,
+                hd_outfile_root * varname,
+                times[x],
+                offline_fields[x],
+                varname,
+                cpu_context,
+            ),
+            1:length(times),
+        )
+        jldsave(
+            joinpath(REGRID_DIR, hd_outfile_root * varname * "_times.jld2");
+            times = times,
+        )
+    end
 end
 
 
@@ -315,7 +319,7 @@ function regrid_netcdf_to_field(
     REGRID_DIR,
     comms_ctx::ClimaComms.AbstractCommsContext,
     infile,
-    varname,
+    varnames,
     boundary_space;
     date_idx = 1,
     outfile_root = string(varname, "_cgll"),
@@ -327,7 +331,7 @@ function regrid_netcdf_to_field(
             FT,
             REGRID_DIR,
             infile,
-            varname,
+            varnames,
             boundary_space,
             outfile_root;
             mono = mono,

@@ -183,7 +183,7 @@ function BulkAlbedoTemporal{FT}(
     t_start,
     space::ClimaCore.Spaces.AbstractSpace;
     get_infile = Bucket.cesm2_albedo_dataset_path,
-    varname = "sw_alb",
+    varnames::Vector{String} = ["sw_alb"],
 ) where {FT}
     # Verify inputs
     if typeof(space) <: ClimaCore.Spaces.PointSpace
@@ -194,7 +194,7 @@ function BulkAlbedoTemporal{FT}(
     data_info = PrescribedDataTemporal{FT}(
         regrid_dirpath,
         get_infile,
-        varname,
+        varnames,
         date_ref,
         t_start,
         space,
@@ -402,14 +402,14 @@ function set_initial_parameter_field!(
     space = axes(surface_coords)
     comms_ctx = ClimaComms.context(space)
     α_sfc = albedo.α_sfc
-    (; infile_path, regrid_dirpath, varname) = α_sfc.file_info
+    (; infile_path, regrid_dirpath, varnames) = α_sfc.file_info
 
     p.bucket.α_sfc .= regrid_netcdf_to_field(
         FT,
         regrid_dirpath,
         comms_ctx,
         infile_path,
-        varname,
+        varnames,
         space,
     )
 end
