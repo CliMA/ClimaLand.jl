@@ -567,11 +567,14 @@ function initialize_drivers(r::PrescribedRadiativeFluxes{FT}, coords) where {FT}
 end
 
 """
-    initialize_drivers(d::Nothing, coords)
+    initialize_drivers(d::Union{AbstractAtmosphericDrivers, AbstractRadiativeDrivers, Nothing}, coords)
 
 Creates and returns a NamedTuple with `nothing` when no driver cache variables are needed.
 """
-function initialize_drivers(d::Nothing, coords)
+function initialize_drivers(
+    d::Union{AbstractAtmosphericDrivers, AbstractRadiativeDrivers, Nothing},
+    coords,
+)
     return (;)
 end
 
