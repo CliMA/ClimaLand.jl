@@ -200,7 +200,7 @@ function dss_helper!(
 
 This struct is used by `DriverUpdateCallback` to update the values of
 `p.drivers` at different timesteps specified by `updateat`, using the
-function `updatefunc` which takes as arguments (p.drivers, t).
+function `updatefunc` which takes as arguments (p, t).
 """
 mutable struct DriverAffect{updateType, updateFType}
     updateat::updateType
@@ -224,7 +224,7 @@ function (affect!::DriverAffect)(integrator)
         cond = curr_t <= integrator.t && curr_t > (integrator.t - integrator.dt)
         if cond
             # update all drivers to curr_t
-            affect!.updatefunc(integrator.p.drivers, curr_t)
+            affect!.updatefunc(integrator.p, curr_t)
         end
     end
 end
@@ -233,7 +233,7 @@ end
     DriverUpdateCallback(updateat::Vector{FT}, updatefunc)
 
 Constructs a DiscreteCallback which updates the cache `p.drivers` at each time
-specified by `updateat`, using the function `updatefunc` which takes as arguments (p.drivers,t).
+specified by `updateat`, using the function `updatefunc` which takes as arguments (p,t).
 """
 function DriverUpdateCallback(updateat::Vector{FT}, updatefunc) where {FT}
     cond = update_condition(updateat)
@@ -253,7 +253,7 @@ end
 This function updates `p.drivers` at the start of the simulation.
 """
 function driver_initialize(cb, u, t, integrator)
-    cb.affect!.updatefunc(integrator.p.drivers, t)
+    cb.affect!.updatefunc(integrator.p, t)
 end
 
 """

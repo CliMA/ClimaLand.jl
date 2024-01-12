@@ -204,9 +204,12 @@ per component model.
 function make_set_initial_cache(land::AbstractLandModel)
     components = land_components(land)
     # These functions also call update_aux
+    (atmos, radiation) = get_drivers(land)
+    update_drivers! = make_update_drivers(atmos, radiation)
     set_initial_cache_function_list =
         map(x -> make_set_initial_cache(getproperty(land, x)), components)
     function set_initial_cache!(p, Y0, t0)
+        update_drivers!(p, t0)
         for f! in set_initial_cache_function_list
             f!(p, Y0, t0)
         end

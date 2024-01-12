@@ -64,8 +64,8 @@ function ClimaLSM.surface_air_density(
 ) where {FT}
     thermo_params =
         LSMP.thermodynamic_parameters(model.parameters.earth_param_set)
-    ts_in = construct_atmos_ts(atmos, t, thermo_params)
-    return compute_ρ_sfc.(Ref(thermo_params), Ref(ts_in), T_sfc)
+    ts_in = construct_atmos_ts(atmos, p, thermo_params)
+    return compute_ρ_sfc.(thermo_params, ts_in, T_sfc)
 end
 
 """

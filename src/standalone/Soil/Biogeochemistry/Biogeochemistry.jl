@@ -408,7 +408,7 @@ end
 Returns the prescribed air pressure at the top boundary condition at time (t).
 """
 function air_pressure(driver::PrescribedAtmosphere, p, Y, t) # not sure if/why p and Y are needed?
-    return driver.P.(t) # not sure broadcast (.) is needed
+    return p.drivers.P
 end
 
 """

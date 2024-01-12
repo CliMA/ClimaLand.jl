@@ -171,8 +171,11 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
         t = Array{Float64}(undef, length(saveat)),
         saveval = Array{NamedTuple}(undef, length(saveat)),
     )
-    cb = ClimaLSM.NonInterpSavingCallback(sv, saveat)
-
+    saving_cb = ClimaLSM.NonInterpSavingCallback(sv, saveat)
+    updateat = deepcopy(saveat)
+    updatefunc = ClimaLSM.make_update_drivers(atmos, radiation)
+    driver_cb = ClimaLSM.DriverUpdateCallback(updateat, updatefunc)
+    cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
     sol =
         SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb, saveat = saveat)
 
@@ -193,12 +196,11 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
         ]
         T_soil = [parent(sv.saveval[k].soil.T)[end] for k in 1:length(sol.t)]
         S_c = hcm.S_c
-        evap_0 = []
-        r_soil = []
-        dsl = []
-        q_soil = []
-        ρ_soil = []
-        ρ_atmos = []
+        N = length(sol.t)
+        potential_evap = zeros(N)
+        r_soil = zeros(N)
+        dsl = zeros(N)
+        q_soil = zeros(N)
         surface_flux_params = LSMP.surface_fluxes_parameters(earth_param_set)
 
         for i in 1:length(sol.t)
@@ -211,67 +213,66 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
             S_l_sfc = ClimaLSM.Domains.top_center_to_surface(
                 effective_saturation.(ν, u.soil.ϑ_l, θ_r),
             )
-            layer_thickness =
-                parent(Soil.dry_soil_layer_thickness.(S_l_sfc, S_c, d_ds))[1]
-            push!(dsl, layer_thickness)
-            push!(r_soil, parent(@. layer_thickness / (_D_vapor * τ_a))[1])
+            layer_thickness = Soil.dry_soil_layer_thickness.(S_l_sfc, S_c, d_ds)
             T_sfc = T_soil[i]
-            ts_in =
-                ClimaLSM.construct_atmos_ts(top_bc.atmos, time, thermo_params)
-            push!(ρ_atmos, Thermodynamics.air_density(thermo_params, ts_in))
-            ρ_sfc = compute_ρ_sfc(thermo_params, ts_in, T_sfc)
-            push!(ρ_soil, ρ_sfc)
-            q_sat = Thermodynamics.q_vap_saturation_generic(
-                thermo_params,
-                T_sfc,
-                ρ_sfc,
-                Thermodynamics.Liquid(),
-            )
-            q_sfc = parent(
-                ClimaLSM.surface_specific_humidity(soil, Y, p, T_sfc, ρ_sfc),
-            )[1]
-            push!(q_soil, q_sfc)
-            ts_sfc = Thermodynamics.PhaseEquil_ρTq(
-                thermo_params,
-                ρ_sfc,
-                T_sfc,
-                q_sfc,
-            )
+            ts_in = ClimaLSM.construct_atmos_ts(top_bc.atmos, p, thermo_params)
+            ρ_sfc = compute_ρ_sfc.(thermo_params, ts_in, T_sfc)
+            q_sat =
+                Thermodynamics.q_vap_saturation_generic.(
+                    thermo_params,
+                    T_sfc,
+                    ρ_sfc,
+                    Thermodynamics.Liquid(),
+                )
+            q_sfc = ClimaLSM.surface_specific_humidity(soil, Y, p, T_sfc, ρ_sfc)
+            ts_sfc =
+                Thermodynamics.PhaseEquil_ρTq.(
+                    thermo_params,
+                    ρ_sfc,
+                    T_sfc,
+                    q_sfc,
+                )
             state_sfc =
-                SurfaceFluxes.StateValues(0.0, SVector{2, FT}(0, 0), ts_sfc)
-            state_in = SurfaceFluxes.StateValues(
-                h_atmos,
-                SVector{2, FT}(u_atmos(time), 0),
-                ts_in,
-            )
+                SurfaceFluxes.StateValues.(
+                    0.0,
+                    Ref(SVector{2, FT}(0, 0)),
+                    ts_sfc,
+                )
+            state_in =
+                SurfaceFluxes.StateValues.(
+                    h_atmos,
+                    Ref(SVector{2, FT}(u_atmos(time), 0)),
+                    ts_in,
+                )
 
             # State containers
-            sc = SurfaceFluxes.ValuesOnly(
-                state_in,
-                state_sfc,
-                z_0m,
-                z_0b,
-                beta = 1.0,
-            )
-            potential_conditions = SurfaceFluxes.surface_conditions(
-                surface_flux_params,
-                sc;
-                tol_neutral = SFP.cp_d(surface_flux_params) / 100000,
-            )
+            sc = SurfaceFluxes.ValuesOnly.(state_in, state_sfc, z_0m, z_0b)
+            potential_conditions =
+                SurfaceFluxes.surface_conditions.(
+                    surface_flux_params,
+                    sc;
+                    tol_neutral = SFP.cp_d(surface_flux_params) / 100000,
+                )
             vapor_flux =
-                SurfaceFluxes.evaporation(
+                SurfaceFluxes.evaporation.(
                     surface_flux_params,
                     sc,
                     potential_conditions.Ch,
-                ) / 1000.0
-            push!(evap_0, vapor_flux)
+                ) ./ 1000.0
+
+            # Store the values we want to plot later.
+            # Because these are Fields, convert to scalars using `parent`
+            dsl[i] = parent(layer_thickness)[1]
+            r_soil[i] = parent(@. layer_thickness / (_D_vapor * τ_a))[1]
+            q_soil[i] = parent(q_sfc)[1]
+            potential_evap[i] = parent(vapor_flux)[1]
         end
 
         plt1 = Plots.plot()
         Plots.plot!(
             plt1,
             sol.t ./ 3600 ./ 24,
-            evap ./ evap_0,
+            evap ./ potential_evap,
             xlabel = "Days",
             ylabel = "E/E₀",
             label = "",

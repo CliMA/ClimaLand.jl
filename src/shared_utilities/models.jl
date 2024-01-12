@@ -159,16 +159,6 @@ function make_update_boundary_fluxes(model::AbstractModel)
     return update_boundary_fluxes!
 end
 
-"""
-    make_update_drivers(model::AbstractModel)
-
-Return an `update_drivers!` function that updates the cache parameters in `p`
-corresponding to forcing at the surface.
-"""
-function make_update_drivers(model::AbstractModel)
-    function update_drivers!(p, Y, t) end
-    return update_drivers!
-end
 
 """
      make_update_cache(model::AbstractModel)
@@ -178,11 +168,14 @@ currently only used in `set_initial_cache` since not all
 cache variables are updated at the same time.
 """
 function make_update_cache(model::AbstractModel)
-    update_drivers! = make_update_drivers(model)
+    # if not forced using atmospheric/radiatiave drivers
+    # this return (nothing, nothing)
+    (atmos, radiation) = get_drivers(model)
+    update_drivers! = make_update_drivers(atmos, radiation)
     update_aux! = make_update_aux(model)
     update_boundary_fluxes! = make_update_boundary_fluxes(model)
     function update_cache!(p, Y, t)
-        update_drivers!(p, Y, t)
+        update_drivers!(p, t)
         update_aux!(p, Y, t)
         update_boundary_fluxes!(p, Y, t)
     end

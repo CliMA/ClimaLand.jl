@@ -154,6 +154,15 @@ for FT in (Float32, Float64)
             init_soil!(Y, coords.subsurface.z, model.parameters)
             set_initial_cache! = make_set_initial_cache(model)
             set_initial_cache!(p, Y, t)
+            space = axes(p.drivers.P_liq)
+            @test p.drivers.P_liq == zeros(space) .+ FT(1e-8)
+            @test p.drivers.P_snow == zeros(space) .+ FT(0)
+            @test p.drivers.T == zeros(space) .+ FT(285)
+            @test p.drivers.u == zeros(space) .+ FT(3)
+            @test p.drivers.q == zeros(space) .+ FT(0.005)
+            @test p.drivers.P == zeros(space) .+ FT(101325)
+            @test p.drivers.LW_d == zeros(space) .+ FT(5.67e-8 * 280.0^4.0)
+            @test p.drivers.SW_d == zeros(space) .+ FT(500)
             face_space = ClimaLSM.Domains.obtain_face_space(
                 model.domain.space.subsurface,
             )
@@ -178,8 +187,8 @@ for FT in (Float32, Float64)
 
             thermo_params =
                 LSMP.thermodynamic_parameters(model.parameters.earth_param_set)
-            ts_in = construct_atmos_ts(atmos, t, thermo_params)
-            ρ_sfc = compute_ρ_sfc.(Ref(thermo_params), Ref(ts_in), T_sfc)
+            ts_in = construct_atmos_ts(atmos, p, thermo_params)
+            ρ_sfc = compute_ρ_sfc.(thermo_params, ts_in, T_sfc)
             @test ClimaLSM.surface_air_density(
                 model.boundary_conditions.top.atmos,
                 model,

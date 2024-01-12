@@ -329,12 +329,19 @@ set_initial_cache!(p, Y, t0);
 
 n = 16
 saveat = Array(t0:(n * dt):tf)
-
 sv = (;
     t = Array{Float64}(undef, length(saveat)),
     saveval = Array{NamedTuple}(undef, length(saveat)),
 )
-cb = ClimaLSM.NonInterpSavingCallback(sv, saveat);
+saving_cb = ClimaLSM.NonInterpSavingCallback(sv, saveat);
+
+# Create the callback function which updates the forcing variables,
+# or drivers.
+updateat = Array(t0:1800:tf)
+updatefunc = ClimaLSM.make_update_drivers(atmos, radiation)
+driver_cb = ClimaLSM.DriverUpdateCallback(updateat, updatefunc)
+cb = SciMLBase.CallbackSet(driver_cb, saving_cb);
+
 
 # Select a timestepping algorithm and setup the ODE problem.
 

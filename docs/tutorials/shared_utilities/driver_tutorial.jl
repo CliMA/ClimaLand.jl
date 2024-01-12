@@ -126,7 +126,7 @@ p = (; drivers = (LW_d = [0.0], SW_d = [0.0], θs = [0.0]));
 # In order to update them, we can make use of default update functions:
 update_radiation! = ClimaLSM.make_update_drivers(radiation)
 t0 = seconds[1] # midnight local time
-update_radiation!(p.drivers, t0);
+update_radiation!(p, t0);
 @show(p.drivers);
 
 # During a simulation, the drivers are updated in place in `p.drivers`
