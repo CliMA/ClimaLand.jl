@@ -231,7 +231,7 @@ function hdwrite_regridfile_rll_to_cgll(
     end
 
     function get_time(ds)
-        if "time" in ds
+        if "time" in keys(ds.dim)
             data_dates =
                 Dates.DateTime.(
                     reinterpret.(
@@ -239,7 +239,7 @@ function hdwrite_regridfile_rll_to_cgll(
                         Array(ds["time"]),
                     )
                 )
-        elseif "date" in ds
+        elseif "date" in keys(ds.dim)
             data_dates = strdate_to_datetime.(string.(Array(ds["date"])))
         else
             @warn "No dates available in file $datafile_rll"
