@@ -319,8 +319,8 @@ function read_data_fields!(
 
         # Case 2: current date is at or after last date in input file
         #  Load in data at last date for both `data_fields[1]` and `data_fields[2]`
-    elseif Dates.days(date - all_dates[end]) > 0
-        @warn "this time period is after input data - using file from $(all_dates[end])"
+    elseif Dates.days(date - all_dates[end - 1]) >= 0
+        @warn "this time period is after input data - using file from $(all_dates[end - 1])"
         pd_file_state.data_fields[1] .= Regridder.swap_space!(
             Regridder.read_from_hdf5(
                 regrid_dirpath,
