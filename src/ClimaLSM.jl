@@ -12,6 +12,7 @@ include("shared_utilities/Domains.jl")
 include("shared_utilities/FileReader.jl")
 using .Domains
 include("shared_utilities/utils.jl")
+include("shared_utilities/general_utils.jl")
 include("shared_utilities/models.jl")
 include("shared_utilities/drivers.jl")
 include("shared_utilities/boundary_conditions.jl")
