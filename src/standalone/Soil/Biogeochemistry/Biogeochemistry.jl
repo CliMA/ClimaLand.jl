@@ -237,7 +237,7 @@ function ClimaLSM.make_compute_exp_tendency(model::SoilCO2Model)
             bottom = ClimaCore.Operators.SetValue(
                 ClimaCore.Geometry.WVector.(bottom_flux_bc),
             ),
-        ) # -∇ ⋅ (-D∇C), where -D∇C is a flux of C02. ∇C point in direction of increasing C, so the flux is - this.
+        ) # -∇ ⋅ (-D∇C), where -D∇C is a flux of CO2. ∇C point in direction of increasing C, so the flux is - this.
         @. dY.soilco2.C =
             -divf2c_C(-interpc2f(p.soilco2.D) * gradc2f_C(Y.soilco2.C))
 
