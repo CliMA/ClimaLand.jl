@@ -11,7 +11,6 @@ using ClimaComms
 
 using ClimaLand
 
-using ClimaLand.Regridder: regrid_netcdf_to_field
 using ClimaLand.FileReader
 import ..Parameters as LP
 import ClimaLand.Domains: coordinates, SphericalShell
@@ -116,9 +115,9 @@ end
 """
     BulkAlbedoStatic{FT}(
         regrid_dirpath::String,
-        comms_ctx::ClimaComms.AbstractCommsContext;
+        surface_space::ClimaCore.Spaces.AbstractSpace;
         α_snow = FT(0.8),
-        varname = "sw_alb",
+        varname = []"sw_alb"],
         get_infile::Function = Bucket.bareground_albedo_dataset_path,
     ) where {FT}
 
@@ -133,12 +132,20 @@ The `bareground_albedo_dataset_path` artifact will be used as a default with thi
 """
 function BulkAlbedoStatic{FT}(
     regrid_dirpath::String,
-    comms_ctx::ClimaComms.AbstractCommsContext;
+    surface_space::ClimaCore.Spaces.AbstractSpace;
     α_snow = FT(0.8),
-    varname = "sw_alb",
+    varnames = ["sw_alb"],
     get_infile::Function = Bucket.bareground_albedo_dataset_path,
 ) where {FT}
-    α_sfc = PrescribedDataStatic(get_infile, regrid_dirpath, varname, comms_ctx)
+    if surface_space isa ClimaCore.Spaces.PointSpace
+        error("Using an albedo map requires a global run.")
+    end
+    α_sfc = PrescribedDataStatic{FT}(
+        get_infile,
+        regrid_dirpath,
+        varnames,
+        surface_space,
+    )
     return BulkAlbedoStatic{FT, typeof(α_sfc)}(α_snow, α_sfc)
 end
 
@@ -194,7 +201,7 @@ function BulkAlbedoTemporal{FT}(
     data_info = PrescribedDataTemporal{FT}(
         regrid_dirpath,
         get_infile,
-        varname,
+        [varname],
         date_ref,
         t_start,
         space,
@@ -407,18 +414,11 @@ function set_initial_parameter_field!(
     surface_coords,
 ) where {FT}
     space = axes(surface_coords)
-    comms_ctx = ClimaComms.context(space)
     α_sfc = albedo.α_sfc
-    (; infile_path, regrid_dirpath, varname) = α_sfc.file_info
+    # Albedo file only has one variable, so access first `varname`
+    varname = α_sfc.file_info.varnames[1]
 
-    p.bucket.α_sfc .= regrid_netcdf_to_field(
-        FT,
-        regrid_dirpath,
-        comms_ctx,
-        infile_path,
-        varname,
-        space,
-    )
+    p.bucket.α_sfc .= FT.(get_data_at_date(α_sfc, space, varname))
 end
 
 """
@@ -450,7 +450,12 @@ function set_initial_parameter_field!(
     space = axes(surface_coords)
 
     read_data_fields!(albedo.albedo_info, date_start, space)
-    p.bucket.α_sfc .= interpolate_data(albedo.albedo_info, date_start, space)
+    p.bucket.α_sfc .= FileReader.get_data_at_date(
+        albedo.albedo_info,
+        space,
+        "sw_alb",
+        date_start,
+    )
 end
 
 """
@@ -627,10 +632,11 @@ function next_albedo(
         read_data_fields!(model_albedo.albedo_info, sim_date, axes(Y.bucket.W))
     end
     # Interpolate data value to current time
-    return interpolate_data(
+    return get_data_at_date(
         model_albedo.albedo_info,
-        sim_date,
         axes(Y.bucket.W),
+        "sw_alb",
+        sim_date,
     )
 end
 

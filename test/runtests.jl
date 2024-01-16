@@ -17,9 +17,6 @@ end
 @safetestset "FileReader module tests" begin
     include("shared_utilities/file_reader.jl")
 end
-@safetestset "Regridder module tests" begin
-    include("shared_utilities/regridder.jl")
-end
 @safetestset "TimeVaryingInput module tests" begin
     include("shared_utilities/time_varying_inputs.jl")
 end

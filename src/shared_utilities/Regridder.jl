@@ -8,13 +8,11 @@ using Dates
 using JLD2
 using DocStringExtensions
 
-export regrid_netcdf_to_field
-
-nans_to_zero(v::T) where {T} = isnan(v) ? T(0) : v
-
+export swap_space!, hdwrite_regridfile_rll_to_cgll
 
 """
     reshape_cgll_sparse_to_field!(field::Fields.Field, in_array::Array, R)
+
 Reshapes a sparse vector array `in_array` (CGLL, raw output of the TempestRemap),
 and uses its data to populate the input Field object `field`.
 Redundant nodes are populated using `dss` operations.
@@ -59,6 +57,7 @@ end
 """
     read_from_hdf5(REGIRD_DIR, hd_outfile_root, time, varname,
         comms_ctx = ClimaComms.SingletonCommsContext())
+
 Read in a variable `varname` from an HDF5 file.
 If a CommsContext other than SingletonCommsContext is used for `comms_ctx`,
 the input HDF5 file must be readable by multiple MPI processes.
@@ -81,10 +80,17 @@ function read_from_hdf5(
     varname,
     comms_ctx = ClimaComms.SingletonCommsContext(),
 )
-    hdfreader = ClimaCore.InputOutput.HDF5Reader(
-        joinpath(REGRID_DIR, hd_outfile_root * "_" * string(time) * ".hdf5"),
-        comms_ctx,
-    )
+    # Include time component in HDF5 reader name if it's a valid date
+    if !(time == Dates.DateTime(0))
+        hdfreader_path = joinpath(
+            REGRID_DIR,
+            hd_outfile_root * "_" * varname * "_" * string(time) * ".hdf5",
+        )
+    else
+        hdfreader_path =
+            joinpath(REGRID_DIR, hd_outfile_root * "_" * varname * ".hdf5")
+    end
+    hdfreader = ClimaCore.InputOutput.HDF5Reader(hdfreader_path, comms_ctx)
 
     field = ClimaCore.InputOutput.read_field(hdfreader, varname)
     Base.close(hdfreader)
@@ -118,13 +124,28 @@ function write_to_hdf5(
     varname,
     comms_ctx = ClimaComms.SingletonCommsContext(),
 )
-    t = Dates.datetime2unix.(time)
-    hdfwriter = ClimaCore.InputOutput.HDF5Writer(
-        joinpath(REGRID_DIR, hd_outfile_root * "_" * string(time) * ".hdf5"),
-        comms_ctx,
-    )
+    # Include time component in HDF5 writer name, and write time to file if it's a valid date
+    if !(time == Dates.DateTime(0))
+        hdfwriter = ClimaCore.InputOutput.HDF5Writer(
+            joinpath(
+                REGRID_DIR,
+                hd_outfile_root * "_" * varname * "_" * string(time) * ".hdf5",
+            ),
+            comms_ctx,
+        )
 
-    ClimaCore.InputOutput.HDF5.write_attribute(hdfwriter.file, "unix time", t) # TODO: a better way to write metadata, CMIP convention
+        t = Dates.datetime2unix.(time)
+        ClimaCore.InputOutput.HDF5.write_attribute(
+            hdfwriter.file,
+            "unix time",
+            t,
+        ) # TODO: a better way to write metadata, CMIP convention
+    else
+        hdfwriter = ClimaCore.InputOutput.HDF5Writer(
+            joinpath(REGRID_DIR, hd_outfile_root * "_" * varname * ".hdf5"),
+            comms_ctx,
+        )
+    end
     ClimaCore.InputOutput.write!(hdfwriter, field, string(varname))
     Base.close(hdfwriter)
 end
@@ -135,18 +156,20 @@ end
         FT,
         REGRID_DIR,
         datafile_rll,
-        varname,
+        varnames,
         space;
         hd_outfile_root = "data_cgll",
         mono = false,
     )
-Reads and regrids data of the `varname` variable from an input NetCDF file and
+Reads and regrids data of all `varnames` variables from an input NetCDF file and
 saves it as another NetCDF file using Tempest Remap.
 The input NetCDF fileneeds to be `Exodus` formatted, and can contain
 time-dependent data. The output NetCDF file is then read back, the output
 arrays converted into Fields and saved as HDF5 files (one per time slice).
 This function should be called by the root process.
 The saved regridded HDF5 output is readable by multiple MPI processes.
+Assumes that all variables specified by `varnames` have the same dates
+and grid.
 
 Code taken from ClimaCoupler.Regridder.
 
@@ -155,26 +178,23 @@ Code taken from ClimaCoupler.Regridder.
 - `FT`: [DataType] Float type.
 - `REGRID_DIR`: [String] directory to save output files in.
 - `datafile_rll`: [String] filename of RLL dataset to be mapped to CGLL.
-- `varname`: [String] the name of the variable to be remapped.
+- `varnames`: [Vector{String}] the name of the variable to be remapped.
 - `space`: [ClimaCore.Spaces.AbstractSpace] the space to which we are mapping.
-- `hd_outfile_root`: [String] root of the output file name.
+- `outfile_root`: [String] root of the output file name.
 - `mono`: [Bool] flag to specify monotone remapping.
 """
 function hdwrite_regridfile_rll_to_cgll(
     FT,
     REGRID_DIR,
     datafile_rll,
-    varname,
+    varnames::Vector{String},
     space,
-    hd_outfile_root;
+    outfile_root;
     mono = false,
 )
     out_type = "cgll"
 
-    outfile = hd_outfile_root * ".nc"
-    outfile_root = mono ? outfile[1:(end - 3)] * "_mono" : outfile[1:(end - 3)]
     datafile_cgll = joinpath(REGRID_DIR, outfile_root * ".g")
-
     meshfile_rll = joinpath(REGRID_DIR, outfile_root * "_mesh_rll.g")
     meshfile_cgll = joinpath(REGRID_DIR, outfile_root * "_mesh_cgll.g")
     meshfile_overlap = joinpath(REGRID_DIR, outfile_root * "_mesh_overlap.g")
@@ -184,12 +204,11 @@ function hdwrite_regridfile_rll_to_cgll(
     cpu_context =
         ClimaComms.SingletonCommsContext(ClimaComms.CPUSingleThreaded())
 
+    # Note: this topology gives us `space == space_undistributed` in the undistributed
+    # case (as desired), which wouldn't hold if we used `spacefillingcurve` here.
     topology = ClimaCore.Topologies.Topology2D(
         cpu_context,
         ClimaCore.Spaces.topology(space).mesh,
-        ClimaCore.Topologies.spacefillingcurve(
-            ClimaCore.Spaces.topology(space).mesh,
-        ),
     )
     Nq =
         ClimaCore.Spaces.Quadratures.polynomial_degree(
@@ -225,7 +244,9 @@ function hdwrite_regridfile_rll_to_cgll(
             meshfile_overlap;
             kwargs...,
         )
-        apply_remap(datafile_cgll, datafile_rll, weightfile, [varname])
+        for varname in varnames
+            apply_remap(datafile_cgll, datafile_rll, weightfile, [varname])
+        end
     else
         @warn "Using the existing $datafile_cgll : check topology is consistent"
     end
@@ -245,14 +266,6 @@ function hdwrite_regridfile_rll_to_cgll(
             @warn "No dates available in file $datafile_rll"
             data_dates = [Dates.DateTime(0)]
         end
-    end
-
-    # read the remapped file with sparse matrices
-    offline_outvector, times = NCDataset(datafile_cgll, "r") do ds_wt
-        (
-            offline_outvector = Array(ds_wt[varname])[:, :], # ncol, times
-            times = get_time(ds_wt),
-        )
     end
 
     # weightfile info needed to populate all nodes and save into fields with
@@ -277,74 +290,48 @@ function hdwrite_regridfile_rll_to_cgll(
 
     offline_field = ClimaCore.Fields.zeros(FT, space_undistributed)
 
-    offline_fields = ntuple(x -> similar(offline_field), length(times))
+    # Save regridded HDF5 file for each variable in `varnames`
+    for varname in varnames
+        # read the remapped file with sparse matrices
+        offline_outvector, times = NCDataset(datafile_cgll, "r") do ds_wt
+            (
+                offline_outvector = Array(ds_wt[varname])[:, :], # ncol, times
+                times = get_time(ds_wt),
+            )
+        end
 
-    ntuple(
-        x -> reshape_cgll_sparse_to_field!(
-            offline_fields[x],
-            offline_outvector[:, x],
-            R,
-        ),
-        length(times),
-    )
+        # Check that input data has the expected float type and time dimension
+        if eltype(offline_outvector) <: AbstractFloat
+            @assert eltype(offline_outvector) == FT "Invalid float type in $datafile_rll for $varname"
+        end
+        @assert length(times) == size(offline_outvector, 2) "Inconsistent time dimension in $datafile_cgll for $varname"
 
-    map(
-        x -> write_to_hdf5(
-            REGRID_DIR,
-            hd_outfile_root,
-            times[x],
-            offline_fields[x],
-            varname,
-            cpu_context,
-        ),
-        1:length(times),
-    )
-    jldsave(
-        joinpath(REGRID_DIR, hd_outfile_root * "_times.jld2");
-        times = times,
-    )
-end
+        offline_fields = ntuple(x -> similar(offline_field), length(times))
+        ntuple(
+            x -> reshape_cgll_sparse_to_field!(
+                offline_fields[x],
+                offline_outvector[:, x],
+                R,
+            ),
+            length(times),
+        )
 
-
-"""
-
-This function is slightly modified from ClimaCoupler "land_sea_mask" function.
-"""
-function regrid_netcdf_to_field(
-    FT,
-    REGRID_DIR,
-    comms_ctx::ClimaComms.AbstractCommsContext,
-    infile,
-    varname,
-    boundary_space;
-    date_idx = 1,
-    outfile_root = string(varname, "_cgll"),
-    mono = true,
-)
-
-    if ClimaComms.iamroot(comms_ctx)
-        hdwrite_regridfile_rll_to_cgll(
-            FT,
-            REGRID_DIR,
-            infile,
-            varname,
-            boundary_space,
-            outfile_root;
-            mono = mono,
+        map(
+            x -> write_to_hdf5(
+                REGRID_DIR,
+                outfile_root,
+                times[x],
+                offline_fields[x],
+                varname,
+                cpu_context,
+            ),
+            1:length(times),
+        )
+        jldsave(
+            joinpath(REGRID_DIR, outfile_root * "_" * varname * "_times.jld2");
+            times = times,
         )
     end
-    ClimaComms.barrier(comms_ctx)
-    file_dates =
-        load(joinpath(REGRID_DIR, outfile_root * "_times.jld2"), "times")
-    field = read_from_hdf5(
-        REGRID_DIR,
-        outfile_root,
-        file_dates[date_idx],
-        varname,
-        comms_ctx,
-    )
-    field = swap_space!(field, boundary_space) # why do we need this?
-    return nans_to_zero.(field)
 end
 
 function swap_space!(field, new_space)

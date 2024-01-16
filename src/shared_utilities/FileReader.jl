@@ -28,7 +28,7 @@ export AbstractPrescribedData,
     SimInfo,
     read_data_fields!,
     next_date_in_file,
-    interpolate_data,
+    get_data_at_date,
     to_datetime
 
 
@@ -59,22 +59,23 @@ end
 """
     PrescribedDataTemporal <: AbstractPrescribedData
 
-Stores information to read in a prescribed variable from a file.
-Contains sufficient information to read in the variable at various
-timesteps, and to coordinate this reading between variables coming from
+Stores information to read in prescribed data from a file.
+Contains sufficient information to read in the variables at various
+timesteps, and to coordinate this reading between data coming from
 different files. This type is meant to be used with input data that has
 a time dimension.
-Each of the fields of this struct is itself a struct.
+The `file_states` field is a dictionary mapping variable names to `FileState`
+structs, which contain information about the current data for that variable.
 
 # Inputs:
-- file_info::FI     # unchanging info about the input data file
-- file_state::FS    # info about the dates currently being read from file
-- sim_info::S       # unchanging info about the start date/time of the simulation
+- file_info::FI         # unchanging info about the input data file
+- file_states::Dict{S, FS}   # info about the data currently being read from file for each variable
+- sim_info::SI          # unchanging info about the start date/time of the simulation
 """
-struct PrescribedDataTemporal{FI, FS, S} <: AbstractPrescribedData
+struct PrescribedDataTemporal{FI, S, FS, SI} <: AbstractPrescribedData
     file_info::FI
-    file_state::FS
-    sim_info::S
+    file_states::Dict{S, FS}
+    sim_info::SI
 end
 
 """
@@ -85,7 +86,7 @@ Stores information about the current data being read in from a file.
 # Inputs:
 - infile_path::String        # path to the input NetCDF data file
 - regrid_dirpath::String     # directory for storing files used in regridding
-- varname::String            # name of the variable we're reading from the input file, which we assume is a scalar
+- varnames::Vector{String}   # names of the variables we're reading from the input file
 - outfile_root::String       # root for regridded data files generated when writing data at each time from input file
 - all_dates::Vector          # vector containing all dates of the input file, which we assume are `DateTime`s or `DateTimeNoLeap`s
 - date_idx0::Vector{Int}     # index of the first data in the file being used for this simulation
@@ -93,7 +94,7 @@ Stores information about the current data being read in from a file.
 struct FileInfo
     infile_path::String
     regrid_dirpath::String
-    varname::String
+    varnames::Vector{String}
     outfile_root::String
     all_dates::Vector
     date_idx0::Vector{Int}
@@ -102,7 +103,7 @@ end
 """
     FileState
 
-Stores information about the current data being read in from a file.
+Stores information about the current data being read in from a file for one variable.
 
 # Inputs:
 - data_fields::F                # tuple of two fields at consecutive dates, that will be used for interpolation
@@ -132,34 +133,53 @@ struct SimInfo{D}
 end
 
 """
-    PrescribedDataStatic(
+    PrescribedDataStatic{FT}(
         get_infile::Function,
         regrid_dirpath::String,
-        varname::String,
-        commx_ctx::ClimaComms.AbstractCommsContext,
-    )
+        varnames::Vector{String},
+        surface_space::Spaces.AbstractSpace,
+        mono::Bool = true,
+    ) where {FT <: AbstractFloat}
 
 Constructor for the `PrescribedDataStatic`` type.
+Regrids from the input lat-lon grid to the simulation cgll grid, saving
+the regridded output in new files found at `regrid_dirpath`. The `mono` flag
+here is used to determine whether or not the remapping is monotone.
+
 Creates a `FileInfo` object containing all the information needed to read in
 the data stored in the input file, which will later be regridded to our
-simulation grid. Date-related args (last 3 to FileInfo) are unused for static
-data maps.
+simulation grid. Date-related args (last 3 passed to FileInfo) are unused for
+static data maps.
 """
-function PrescribedDataStatic(
+function PrescribedDataStatic{FT}(
     get_infile::Function,
     regrid_dirpath::String,
-    varname::String,
-    comms_ctx::ClimaComms.AbstractCommsContext,
-)
+    varnames::Vector{String},
+    surface_space::Spaces.AbstractSpace;
+    mono::Bool = true,
+) where {FT <: AbstractFloat}
+    comms_ctx = ClimaComms.context(surface_space)
+    outfile_root = "static_data_cgll"
+
     # Download `infile_path` artifact on root process first to avoid race condition
     if ClimaComms.iamroot(comms_ctx)
         infile_path = get_infile()
+        Regridder.hdwrite_regridfile_rll_to_cgll(
+            FT,
+            regrid_dirpath,
+            infile_path,
+            varnames,
+            surface_space,
+            outfile_root;
+            mono = mono,
+        )
     end
     ClimaComms.barrier(comms_ctx)
     infile_path = get_infile()
 
-    file_info = FileInfo(infile_path, regrid_dirpath, varname, "", [], [])
-    return PrescribedDataStatic(file_info)
+    file_info =
+        FileInfo(infile_path, regrid_dirpath, varnames, outfile_root, [], [])
+    return PrescribedDataStatic{typeof(file_info)}(file_info)
 end
 
 
@@ -167,7 +187,7 @@ end
     PrescribedDataTemporal{FT}(
         regrid_dirpath,
         get_infile,
-        varname,
+        varnames,
         date_ref,
         t_start,
         surface_space;
@@ -183,7 +203,7 @@ data packaged into a single `PrescribedDataTemporal` struct.
 # Arguments
 - `regrid_dirpath`   # directory the data file is stored in.
 - `get_infile`       # function returning path to NCDataset file containing data to regrid.
-- `varname`          # name of the variable to be regridded.
+- `varnames`         # names of the variables to be regridded.
 - `date_ref`         # reference date to coordinate start of the simulation
 - `t_start`          # start time of the simulation relative to `date_ref` (date_start = date_ref + t_start)
 - `surface_space`    # the space to which we are mapping.
@@ -195,14 +215,14 @@ data packaged into a single `PrescribedDataTemporal` struct.
 function PrescribedDataTemporal{FT}(
     regrid_dirpath::String,
     get_infile::Function,
-    varname::String,
+    varnames::Vector{String},
     date_ref::Union{DateTime, DateTimeNoLeap},
     t_start,
     surface_space::Spaces.AbstractSpace;
     mono::Bool = true,
 ) where {FT <: AbstractFloat}
     comms_ctx = ClimaComms.context(surface_space)
-    outfile_root = varname * "_cgll"
+    outfile_root = "temporal_data_cgll"
 
     # Regrid data at all times from lat/lon (RLL) to simulation grid (CGLL)
     # Download `infile_path` artifact on root process first to avoid race condition
@@ -212,7 +232,7 @@ function PrescribedDataTemporal{FT}(
             FT,
             regrid_dirpath,
             infile_path,
-            varname,
+            varnames,
             surface_space,
             outfile_root;
             mono = mono,
@@ -229,8 +249,12 @@ function PrescribedDataTemporal{FT}(
     ClimaComms.barrier(comms_ctx)
     infile_path = get_infile()
 
+    # Get file dates from first variable stored in file
     all_dates = JLD2.load(
-        joinpath(regrid_dirpath, outfile_root * "_times.jld2"),
+        joinpath(
+            regrid_dirpath,
+            outfile_root * "_" * varnames[1] * "_times.jld2",
+        ),
         "times",
     )
 
@@ -254,20 +278,36 @@ function PrescribedDataTemporal{FT}(
     file_info = FileInfo(
         infile_path,
         regrid_dirpath,
-        varname,
+        varnames,
         outfile_root,
         all_dates,
         date_idx0,
     )
-    file_state = FileState(data_fields, copy(date_idx0), segment_length)
+    file_states = Dict{String, FileState{typeof(data_fields)}}()
+    for varname in varnames
+        file_states[varname] =
+            FileState(data_fields, copy(date_idx0), segment_length)
+    end
     sim_info = SimInfo(date_ref, t_start)
 
-    args = (file_info, file_state, sim_info)
-    return PrescribedDataTemporal{typeof.(args)...}(args...)
+    args = (file_info, file_states, sim_info)
+
+    # Get types of `file_info`, the first `file_states` Dict pair, and `sim_info`
+    type_args = (
+        typeof(file_info),
+        typeof(first(file_states)[1]),
+        typeof(first(file_states)[2]),
+        typeof(sim_info),
+    )
+    return PrescribedDataTemporal{type_args...}(args...)
 end
 
 """
-    read_data_fields!(prescribed_data::PrescribedDataTemporal, date::DateTime, space::Spaces.AbstractSpace)
+    read_data_fields!(
+        prescribed_data::PrescribedDataTemporal,
+        date::DateTime,
+        space::Spaces.AbstractSpace
+    )
 
 Extracts data from regridded (to model grid) NetCDF files.
 The times for which data is extracted depends on the specifications in the
@@ -278,7 +318,7 @@ two data fields saved, we can interpolate between them for any dates
 in this range of time.
 
 # Arguments
-- `prescribed_data`      # containing parameter value data.
+- `prescribed_data`      # containing data and file information.
 - `date`                 # current date to read in data for.
 - `space`                # space we're remapping the data onto.
 """
@@ -289,13 +329,13 @@ function read_data_fields!(
 )
     comms_ctx = ClimaComms.context(space)
     pd_file_info = prescribed_data.file_info
-    pd_file_state = prescribed_data.file_state
+    pd_file_states = prescribed_data.file_states
 
-    (; regrid_dirpath, outfile_root, varname, all_dates) = pd_file_info
+    (; regrid_dirpath, outfile_root, all_dates, varnames) = pd_file_info
 
     date_idx0 = pd_file_info.date_idx0[1]
-    date_idx = pd_file_state.date_idx[1]
-
+    # Assumes that all variables in `prescribed_data` have the same dates
+    date_idx = pd_file_states[varnames[1]].date_idx[1]
 
     # Case 1: Current date is before or at first date in data file
     #  Load in data at first date for both `data_fields[1]` and `data_fields[2]`
@@ -304,74 +344,89 @@ function read_data_fields!(
             @warn "this time period is before input data - using file from $(all_dates[date_idx0])"
         end
 
-        pd_file_state.data_fields[1] .= Regridder.swap_space!(
-            Regridder.read_from_hdf5(
-                regrid_dirpath,
-                outfile_root,
-                all_dates[Int(date_idx0)],
-                varname,
-                comms_ctx,
-            ),
-            space,
-        )
-        pd_file_state.data_fields[2] .= pd_file_state.data_fields[1]
-        pd_file_state.segment_length .= 0
+        # Loop over all variables we need to read in
+        for (varname, file_state) in pd_file_states
+            file_state.data_fields[1] .= Regridder.swap_space!(
+                Regridder.read_from_hdf5(
+                    regrid_dirpath,
+                    outfile_root,
+                    all_dates[Int(date_idx0)],
+                    varname,
+                    comms_ctx,
+                ),
+                space,
+            )
+            file_state.data_fields[2] .= file_state.data_fields[1]
+            file_state.segment_length .= 0
+        end
 
         # Case 2: current date is at or after last date in input file
         #  Load in data at last date for both `data_fields[1]` and `data_fields[2]`
     elseif Dates.days(date - all_dates[end - 1]) >= 0
         @warn "this time period is after input data - using file from $(all_dates[end - 1])"
-        pd_file_state.data_fields[1] .= Regridder.swap_space!(
-            Regridder.read_from_hdf5(
-                regrid_dirpath,
-                outfile_root,
-                all_dates[end],
-                varname,
-                comms_ctx,
-            ),
-            space,
-        )
-        pd_file_state.data_fields[2] .= pd_file_state.data_fields[1]
-        pd_file_state.segment_length .= 0
+
+        # Loop over all variables we need to read in
+        for (varname, file_state) in pd_file_states
+            file_state.data_fields[1] .= Regridder.swap_space!(
+                Regridder.read_from_hdf5(
+                    regrid_dirpath,
+                    outfile_root,
+                    all_dates[end],
+                    varname,
+                    comms_ctx,
+                ),
+                space,
+            )
+            file_state.data_fields[2] .= file_state.data_fields[1]
+            file_state.segment_length .= 0
+        end
 
         # Case 3: current date is later than date of data being read in
         #  Load in data at most recent past date in `data_fields[1]` and
         #  next date in `data_fields[2]`
     elseif Dates.days(date - all_dates[Int(date_idx)]) > 0
-        # Increment `date_idx` to use next date
-        date_idx = pd_file_state.date_idx[1] += Int(1)
-        @warn "On $date updating data files: dates = [ $(all_dates[Int(date_idx)]) , $(all_dates[Int(date_idx+1)]) ]"
-        # Time between consecutive dates being stored gives `segment_length`
-        pd_file_state.segment_length .=
-            (all_dates[Int(date_idx + 1)] - all_dates[Int(date_idx)]).value
-        # Read in data fields at both dates
-        pd_file_state.data_fields[1] .= Regridder.swap_space!(
-            Regridder.read_from_hdf5(
-                regrid_dirpath,
-                outfile_root,
-                all_dates[Int(date_idx)],
-                varname,
-                comms_ctx,
-            ),
-            space,
-        )
-        pd_file_state.data_fields[2] .= Regridder.swap_space!(
-            Regridder.read_from_hdf5(
-                regrid_dirpath,
-                outfile_root,
-                all_dates[Int(date_idx + 1)],
-                varname,
-                comms_ctx,
-            ),
-            space,
-        )
+        @warn "On $date updating data files: dates = [ $(all_dates[Int(date_idx+1)]) , $(all_dates[Int(date_idx+2)]) ]"
+
+        # Loop over all variables we need to read in
+        for (varname, file_state) in pd_file_states
+            # Increment `date_idx` to use next date
+            date_idx = file_state.date_idx[1] += Int(1)
+            # Time between consecutive dates being stored gives `segment_length`
+            file_state.segment_length .=
+                (all_dates[Int(date_idx + 1)] - all_dates[Int(date_idx)]).value
+            # Read in data fields at both dates
+            file_state.data_fields[1] .= Regridder.swap_space!(
+                Regridder.read_from_hdf5(
+                    regrid_dirpath,
+                    outfile_root,
+                    all_dates[Int(date_idx)],
+                    varname,
+                    comms_ctx,
+                ),
+                space,
+            )
+            file_state.data_fields[2] .= Regridder.swap_space!(
+                Regridder.read_from_hdf5(
+                    regrid_dirpath,
+                    outfile_root,
+                    all_dates[Int(date_idx + 1)],
+                    varname,
+                    comms_ctx,
+                ),
+                space,
+            )
+        end
         # Case 4: Nearest date index not being used for initial date field
         #  Throw warning and update date index
     elseif Dates.days(date - all_dates[Int(date_idx + 1)]) > 2
+        @warn "init data does not correspond to start date. Initializing with `date_idx = date_idx0 = $nearest_idx` for this start date"
         nearest_idx =
             argmin(abs.(Dates.value(date) .- Dates.value.(all_dates[:])))
-        pd_file_state.date_idx[1] = date_idx = date_idx0 = nearest_idx
-        @warn "init data does not correspond to start date. Initializing with `file_state.date_idx[1] = date_idx = date_idx0 = $nearest_idx` for this start date"
+
+        # Loop over all variables we need to read in
+        for (_, file_state) in pd_file_states
+            file_state.date_idx[1] = date_idx = date_idx0 = nearest_idx
+        end
     else
         throw(ErrorException("Check input file specification"))
     end
@@ -384,6 +439,7 @@ Returns the next date stored in the file `prescribed_data` struct after the
 current date index given by `date_idx`.
 Note: this function does not update `date_idx`, so repeated calls will
 return the same value unless `date_idx` is modified elsewhere in between.
+Assumes that all variables in `prescribed_data` have the same dates.
 
 # Arguments
 - `prescribed_data`   # contains all input file information needed for the simulation.
@@ -392,32 +448,78 @@ return the same value unless `date_idx` is modified elsewhere in between.
 - DateTime or DateTimeNoLeap
 """
 next_date_in_file(prescribed_data::PrescribedDataTemporal) =
-    prescribed_data.file_info.all_dates[prescribed_data.file_state.date_idx[1] + Int(
-        1,
-    )]
+    prescribed_data.file_info.all_dates[first(
+        prescribed_data.file_states,
+    )[2].date_idx[1] + Int(1)]
 
 """
-    interpolate_data(prescribed_data::PrescribedDataTemporal, date::Union{DateTime, DateTimeNoLeap}, space::Spaces.AbstractSpace)
+    get_data_at_date(
+        prescribed_data::PrescribedDataStatic,
+        space::Spaces.AbstractSpace,
+        varname::String,
+    )
 
-Interpolates linearly between two `Fields` in the `prescribed_data` struct.
+Returns the data at a given date, interpolated if necessary.
 
 # Arguments
 - `prescribed_data`      # contains fields to be interpolated.
-- `date`                 # start date for data.
 - `space`                # the space of our simulation.
+- `varname`              # the name of the variable we want to read in.
 
 # Returns
 - Fields.field
 """
-function interpolate_data(
-    prescribed_data::PrescribedDataTemporal,
-    date::Union{DateTime, DateTimeNoLeap},
+function get_data_at_date(
+    prescribed_data::PrescribedDataStatic,
     space::Spaces.AbstractSpace,
+    varname::String,
+)
+    (; regrid_dirpath, outfile_root) = prescribed_data.file_info
+
+    comms_ctx = ClimaComms.context(space)
+    field = Regridder.read_from_hdf5(
+        regrid_dirpath,
+        outfile_root,
+        Dates.DateTime(0), # dummy date
+        varname,
+        comms_ctx,
+    )
+    Regridder.swap_space!(field, space)
+    return nans_to_zero.(field)
+end
+
+"""
+    get_data_at_date(
+        prescribed_data::PrescribedDataTemporal,
+        space::Spaces.AbstractSpace,
+        varname::String,
+        date::Union{DateTime, DateTimeNoLeap},
+    )
+
+Returns the data for a specific variable at a given date,
+interpolated if necessary.
+
+# Arguments
+- `prescribed_data`      # contains fields to be interpolated.
+- `space`                # the space of our simulation.
+- `varname`              # the name of the variable we want to read in.
+- `date`                 # start date for data.
+
+# Returns
+- Fields.field
+"""
+function get_data_at_date(
+    prescribed_data::PrescribedDataTemporal,
+    space::Spaces.AbstractSpace,
+    varname::String,
+    date::Union{DateTime, DateTimeNoLeap},
 )
     FT = Spaces.undertype(space)
-    (; segment_length, date_idx, data_fields) = prescribed_data.file_state
     (; all_dates) = prescribed_data.file_info
 
+    # Use the file state of the variable we want
+    file_state = prescribed_data.file_states[varname]
+    (; segment_length, date_idx, data_fields) = file_state
     # Interpolate if the time period between dates is nonzero
     if segment_length[1] > FT(0) && date != all_dates[Int(date_idx[1])]
         Δt_tt1 = FT((date - all_dates[Int(date_idx[1])]).value)
@@ -434,6 +536,8 @@ function interpolate_data(
         return data_fields[1]
     end
 end
+
+nans_to_zero(v::T) where {T} = isnan(v) ? T(0) : v
 
 """
     interpol(f1::FT, f2::FT, Δt_tt1::FT, Δt_t2t1::FT)

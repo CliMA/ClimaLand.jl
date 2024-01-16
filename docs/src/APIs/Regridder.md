@@ -7,5 +7,6 @@ CurrentModule = ClimaLand.Regridder
 ## Functions
 
 ```@docs
-ClimaLand.Regridder.regrid_netcdf_to_field
+ClimaLand.Regridder.hdwrite_regridfile_rll_to_cgll
+ClimaLand.Regridder.swap_space!
 ```
