@@ -8,7 +8,9 @@ import ..Parameters as LSMP
 export AbstractAtmosphericDrivers,
     AbstractRadiativeDrivers,
     PrescribedAtmosphere,
+    CoupledAtmosphere,
     PrescribedRadiativeFluxes,
+    CoupledRadiativeFluxes,
     compute_ρ_sfc,
     construct_atmos_ts,
     turbulent_fluxes,
@@ -95,6 +97,20 @@ struct PrescribedAtmosphere{
         return new{typeof(h), typeof.(args)...}(args..., h, gustiness)
     end
 end
+
+"""
+    CoupledRadiativeFluxes{FT} <: AbstractRadiativeDrivers{FT}
+
+To be used when coupling to an atmosphere model.
+"""
+struct CoupledRadiativeFluxes{FT} <: AbstractRadiativeDrivers{FT} end
+
+"""
+    CoupledAtmosphere{FT} <: AbstractAtmosphericDrivers{FT}
+
+To be used when coupling to an atmosphere model.
+"""
+struct CoupledAtmosphere{FT} <: AbstractAtmosphericDrivers{FT} end
 
 """
     compute_ρ_sfc(thermo_params, ts_in, T_sfc)
@@ -297,6 +313,33 @@ function turbulent_fluxes_at_a_point(
 end
 
 """
+    surface_fluxes(atmos::CoupledAtmosphere,
+                    model::AbstractModel,
+                    Y,
+                    p,
+                    t)
+
+Computes the turbulent surface fluxes terms at the ground for a coupled simulation.
+"""
+function ClimaLSM.turbulent_fluxes(
+    atmos::CoupledAtmosphere,
+    model::AbstractModel,
+    Y,
+    p,
+    t,
+)
+    # coupler has done its thing behind the scenes already
+    model_name = ClimaLSM.name(model)
+    model_cache = getproperty(p, model_name)
+    return (
+        lhf = model_cache.turbulent_fluxes.lhf,
+        shf = model_cache.turbulent_fluxes.shf,
+        vapor_flux = model_cache.turbulent_fluxes.vapor_flux,
+    )
+end
+
+
+"""
     PrescribedRadiativeFluxes{FT, SW, LW, DT, T} <: AbstractRadiativeDrivers{FT}
 
 Container for the prescribed radiation functions needed to drive land models in standalone mode.
@@ -337,12 +380,12 @@ longwave and shortwave radiation.
 This returns an energy flux.
 """
 function net_radiation(
-    radiation::PrescribedRadiativeFluxes{FT},
-    model::AbstractModel{FT},
+    radiation::PrescribedRadiativeFluxes,
+    model::AbstractModel,
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
     t,
-) where {FT}
+)
     LW_d = p.drivers.LW_d
     SW_d = p.drivers.SW_d
     earth_param_set = model.parameters.earth_param_set
@@ -358,20 +401,44 @@ function net_radiation(
 end
 
 """
-    liquid_precipitation(atmos::PrescribedAtmosphere, p, t)
+    net_radiation(radiation::CoupledRadiativeFluxes,
+                  model::AbstractModel,
+                  Y,
+                  p,
+                  t)
+
+Computes the net radiative flux at the ground for a coupled simulation.
+Your model cache must contain the field `R_n`.
+"""
+function ClimaLSM.net_radiation(
+    radiation::CoupledRadiativeFluxes,
+    model::AbstractModel,
+    Y::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
+    t,
+)
+    # coupler has done its thing behind the scenes already
+    model_name = ClimaLSM.name(model)
+    model_cache = getproperty(p, model_name)
+    return model_cache.R_n
+end
+
+
+"""
+    liquid_precipitation(atmos::AbstractAtmosphericDrivers, p, t)
 
 Returns the liquid precipitation (m/s) at the surface.
 """
-function liquid_precipitation(atmos::PrescribedAtmosphere{FT}, p, t) where {FT}
+function liquid_precipitation(atmos::AbstractAtmosphericDrivers, p, t)
     return p.drivers.P_liq
 end
 
 """
-    snow_precipitation(atmos::PrescribedAtmosphere, p, t)
+    snow_precipitation(atmos::AbstractAtmosphericDrivers, p, t)
 
 Returns the precipitation in snow (m of liquid water/s) at the surface.
 """
-function snow_precipitation(atmos::PrescribedAtmosphere{FT}, p, t) where {FT}
+function snow_precipitation(atmos::AbstractAtmosphericDrivers, p, t)
     return p.drivers.P_snow
 end
 
@@ -409,7 +476,7 @@ end
 
 """
     surface_air_density(
-                        atmos::AbstractAtmosphericDrivers,
+                        atmos::PrescribedAtmosphere,
                         model::AbstractModel,
                         Y,
                         p,
@@ -417,26 +484,55 @@ end
                         T_sfc,
                         )
 
-A helper function which returns the surface air density for a given
-model, needed because different models compute and store surface air density
- in different ways and places.
+A helper function which returns the surface air density; this assumes that
+the `model` has a property called `parameters` containing `earth_param_set`.
 
 We additionally include the `atmos` type as an argument because
-the surface air density computation may change between a coupled simulation
+the surface air density computation will change between a coupled simulation
 and a prescibed atmos simulation.
 
 Extending this function for your model is only necessary if you need to
-compute surface fluxes and radiative fluxes at the surface using
-the functions in this file.
+compute the air density in a different way.
 """
 function surface_air_density(
-    atmos::AbstractAtmosphericDrivers,
+    atmos::PrescribedAtmosphere,
     model::AbstractModel,
     Y,
     p,
     t,
     T_sfc,
-) end
+)
+    thermo_params =
+        LSMP.thermodynamic_parameters(model.parameters.earth_param_set)
+    ts_in = construct_atmos_ts(atmos, p, thermo_params)
+    return compute_ρ_sfc.(thermo_params, ts_in, T_sfc)
+end
+
+
+"""
+    ClimaLSM.surface_air_density(
+                    atmos::CoupledAtmosphere,
+                    model::AbstractModel,
+                    Y,
+                    p,
+                    _...,
+                )
+Returns the air density at the surface in the case of a coupled simulation.
+
+This requires the field `ρ_sfc` to be present in the cache `p` under the name
+of the model.
+"""
+function surface_air_density(
+    atmos::CoupledAtmosphere,
+    model::AbstractModel,
+    Y,
+    p,
+    _...,
+)
+    model_name = ClimaLSM.name(model)
+    model_cache = getproperty(p, model_name)
+    return model_cache.ρ_sfc
+end
 
 """
     surface_specific_humidity(model::AbstractModel, Y, p, T_sfc, ρ_sfc)

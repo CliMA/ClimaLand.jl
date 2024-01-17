@@ -349,16 +349,20 @@ Ws = [parent(sol.u[k].bucket.Ws)[1] for k in 1:length(sol.t)];
 T_sfc =
     [parent(saved_values.saveval[k].bucket.T_sfc)[1] for k in 1:length(sol.t)];
 evaporation = [
-    parent(saved_values.saveval[k].bucket.evaporation)[1] for
-    k in 1:length(sol.t)
+    parent(saved_values.saveval[k].bucket.turbulent_fluxes.vapor_flux)[1]
+    for k in 1:length(sol.t)
 ];
 R_n = [parent(saved_values.saveval[k].bucket.R_n)[1] for k in 1:length(sol.t)];
 # The turbulent energy flux is the sum of latent and sensible heat fluxes.
-turbulent_energy_flux = [
-    parent(saved_values.saveval[k].bucket.turbulent_energy_flux)[1] for
+LHF = [
+    parent(saved_values.saveval[k].bucket.turbulent_fluxes.lhf)[1] for
     k in 1:length(sol.t)
 ];
-
+SHF = [
+    parent(saved_values.saveval[k].bucket.turbulent_fluxes.shf)[1] for
+    k in 1:length(sol.t)
+];
+turbulent_energy_flux = SHF .+ LHF
 
 plot(
     sol.t ./ 86400,

@@ -86,7 +86,6 @@ import ClimaLSM:
     surface_specific_humidity,
     surface_albedo,
     surface_emissivity,
-    surface_air_density,
     surface_height,
     surface_resistance,
     get_drivers

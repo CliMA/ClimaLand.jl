@@ -592,41 +592,6 @@ function ClimaLSM.surface_albedo(model::EnergyHydrology{FT}, Y, p) where {FT}
 end
 
 """
-    ClimaLSM.surface_air_density(
-        atmos::PrescribedAtmosphere{FT},
-        model::EnergyHydrology{FT},
-        Y,
-        p,
-        t,
-        T_sfc
-    ) where {FT}
-
-Returns the surface air density field of the
-`EnergyHydrology` soil model for the
-`PrescribedAtmosphere` case.
-
-This assumes the ideal gas law and hydrostatic
-balance to estimate the air density at the surface
-from the values of surface temperature and the atmospheric
-thermodynamic state,
-because the surface air density is not a prognostic
-variable of the soil model.
-"""
-function ClimaLSM.surface_air_density(
-    atmos::PrescribedAtmosphere{FT},
-    model::EnergyHydrology{FT},
-    Y,
-    p,
-    t,
-    T_sfc,
-) where {FT}
-    thermo_params =
-        LSMP.thermodynamic_parameters(model.parameters.earth_param_set)
-    ts_in = construct_atmos_ts(atmos, p, thermo_params)
-    return compute_ρ_sfc.(thermo_params, ts_in, T_sfc)
-end
-
-"""
     ClimaLSM.surface_specific_humidity(
         model::EnergyHydrology{FT},
         Y,

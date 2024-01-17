@@ -65,6 +65,8 @@ ClimaLSM.get_drivers
 ```@docs
 ClimaLSM.PrescribedAtmosphere
 ClimaLSM.PrescribedRadiativeFluxes
+ClimaLSM.CoupledAtmosphere
+ClimaLSM.CoupledRadiativeFluxes
 ClimaLSM.AbstractAtmosphericDrivers
 ClimaLSM.AbstractRadiativeDrivers
 ClimaLSM.turbulent_fluxes
