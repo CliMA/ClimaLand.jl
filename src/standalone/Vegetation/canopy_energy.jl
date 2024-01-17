@@ -35,14 +35,8 @@ Returns the canopy temperature under the `PrescribedCanopyTemp` model,
 where the canopy temperature is assumed to be the same as the atmosphere
 temperature.
 """
-function canopy_temperature(
-    model::PrescribedCanopyTempModel{FT},
-    canopy,
-    Y,
-    p,
-    t,
-) where {FT}
-    FT.(canopy.atmos.T(t))
+function canopy_temperature(model::PrescribedCanopyTempModel, canopy, Y, p, t)
+    p.drivers.T
 end
 
 ## Prognostic Canopy Temperature

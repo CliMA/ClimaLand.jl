@@ -316,15 +316,30 @@ for FT in (Float32, Float64)
 
         @test ClimaLSM.surface_evaporative_scaling(canopy, Y, p) == FT(1.0)
         @test ClimaLSM.surface_height(canopy, Y, p) == compartment_faces[1]
-        T_sfc = FT.(canopy.atmos.T(t0))
-        @test ClimaLSM.surface_temperature(canopy, Y, p, t0) == T_sfc
+        T_sfc = FT.(T_atmos(t0))
+        @test Array(parent(ClimaLSM.surface_temperature(canopy, Y, p, t0))) ==
+              [T_sfc]
+        @test ClimaLSM.surface_temperature(canopy, Y, p, t0) isa
+              ClimaCore.Fields.Field
+        @test Array(
+            parent(
+                ClimaLSM.Canopy.canopy_temperature(
+                    canopy.energy,
+                    canopy,
+                    Y,
+                    p,
+                    t0,
+                ),
+            ),
+        ) == [T_sfc]
         @test ClimaLSM.Canopy.canopy_temperature(
             canopy.energy,
             canopy,
             Y,
             p,
             t0,
-        ) == T_sfc
+        ) isa ClimaCore.Fields.Field
+
         ρ_sfc =
             ClimaLSM.surface_air_density(canopy.atmos, canopy, Y, p, t0, T_sfc)
         @test ClimaLSM.surface_specific_humidity(canopy, Y, p, T_sfc, ρ_sfc) ==
