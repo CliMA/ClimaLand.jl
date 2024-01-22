@@ -2,7 +2,7 @@
 
 julia_version = "1.10.0"
 manifest_format = "2.0"
-project_hash = "c2c9a92eed1920c504c8225567ea24f4e8748f9c"
+project_hash = "c767f9491a1ab9fc44999890c490adc337d52056"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "41c37aa88889c171f1300ceac1313c06e891d245"
@@ -414,9 +414,9 @@ uuid = "7445602f-e544-4518-8976-18f8e8ae6cdb"
 version = "0.2.4"
 
 [[deps.DataAPI]]
-git-tree-sha1 = "8da84edb865b0b5b0100c0666a9bc9a0b71c553c"
+git-tree-sha1 = "abe83f3a2f1b857aac70ef8b269080af17764bbe"
 uuid = "9a962f9c-6df0-11e9-0e5d-c546b8b5ee8a"
-version = "1.15.0"
+version = "1.16.0"
 
 [[deps.DataFrames]]
 deps = ["Compat", "DataAPI", "DataStructures", "Future", "InlineStrings", "InvertedIndices", "IteratorInterfaceExtensions", "LinearAlgebra", "Markdown", "Missings", "PooledArrays", "PrecompileTools", "PrettyTables", "Printf", "REPL", "Random", "Reexport", "SentinelArrays", "SortingAlgorithms", "Statistics", "TableTraits", "Tables", "Unicode"]
@@ -883,9 +883,13 @@ version = "1.4.0"
 
 [[deps.Insolation]]
 deps = ["Artifacts", "Dates", "DelimitedFiles", "Interpolations"]
-git-tree-sha1 = "2679907708edd9bbe2bd98585e575b48f17902c8"
+git-tree-sha1 = "2aaf998568ab59643cefb0fc17eba42f9d5bef37"
 uuid = "e98cc03f-d57e-4e3c-b70c-8d51efe9e0d8"
-version = "0.8.2"
+version = "0.9.0"
+weakdeps = ["CLIMAParameters"]
+
+    [deps.Insolation.extensions]
+    CreateParametersExt = "CLIMAParameters"
 
 [[deps.IntelOpenMP_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
