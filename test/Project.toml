@@ -29,7 +29,7 @@ cuDNN = "02a925ec-e4fe-4b08-9a7e-0d78e3d38ccd"
 [compat]
 Aqua = "0.8"
 BSON = "0.3"
-CLIMAParameters = "0.7"
+CLIMAParameters = "0.8"
 CSV = "0.10"
 DataFrames = "1.6"
 DelimitedFiles = "1"
