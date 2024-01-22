@@ -2,7 +2,7 @@
 
 julia_version = "1.10.0"
 manifest_format = "2.0"
-project_hash = "38cce2923c456c4bfaa5a20ccbe5a1ae295ab182"
+project_hash = "78717ed36b625bc0ac7c1aa4add129902588f3ea"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "41c37aa88889c171f1300ceac1313c06e891d245"
@@ -917,9 +917,13 @@ version = "1.4.0"
 
 [[deps.Insolation]]
 deps = ["Artifacts", "Dates", "DelimitedFiles", "Interpolations"]
-git-tree-sha1 = "2679907708edd9bbe2bd98585e575b48f17902c8"
+git-tree-sha1 = "2aaf998568ab59643cefb0fc17eba42f9d5bef37"
 uuid = "e98cc03f-d57e-4e3c-b70c-8d51efe9e0d8"
-version = "0.8.2"
+version = "0.9.0"
+weakdeps = ["CLIMAParameters"]
+
+    [deps.Insolation.extensions]
+    CreateParametersExt = "CLIMAParameters"
 
 [[deps.IntelOpenMP_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
