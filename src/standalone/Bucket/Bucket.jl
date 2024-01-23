@@ -551,7 +551,11 @@ function make_update_aux(model::BucketModel{FT}) where {FT}
                 p.bucket.T_sfc,
                 Y.bucket.σS,
                 p.bucket.ρ_sfc,
-                Ref(model.parameters),
+                Ref(
+                    LSMP.thermodynamic_parameters(
+                        model.parameters.earth_param_set,
+                    ),
+                ),
             )
 
         # Compute turbulent surface fluxes

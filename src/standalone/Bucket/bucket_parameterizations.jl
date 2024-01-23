@@ -177,7 +177,7 @@ function β(W::FT, W_f::FT) where {FT}
 end
 
 """
-    saturation_specific_humidity(T::FT, σS::FT, ρ_sfc::FT, parameters::PE)::FT where {FT, PE}
+    saturation_specific_humidity(T::FT, σS::FT, ρ_sfc::FT, thermo_parameters::TPE)::FT where {FT, TPE}
 
 Computes the saturation specific humidity for the land surface, over ice
 if snow is present (σS>0), and over water for a snow-free surface.
@@ -186,9 +186,8 @@ function saturation_specific_humidity(
     T::FT,
     σS::FT,
     ρ_sfc::FT,
-    parameters::PE,
-)::FT where {FT, PE}
-    thermo_params = LSMP.thermodynamic_parameters(parameters.earth_param_set)
+    thermo_params::TPE,
+)::FT where {FT, TPE}
     return (1 - heaviside(σS)) * Thermodynamics.q_vap_saturation_generic(
         thermo_params,
         T,

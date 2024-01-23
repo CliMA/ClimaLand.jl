@@ -168,6 +168,7 @@ function turbulent_fluxes(
     ts_air = construct_atmos_ts(atmos, p, thermo_params)
     u_air = p.drivers.u
     h_air = atmos.h
+
     return turbulent_fluxes_at_a_point.(
         T_sfc,
         q_sfc,
@@ -180,7 +181,9 @@ function turbulent_fluxes(
         u_air,
         h_air,
         atmos.gustiness,
-        Ref(model.parameters),
+        model.parameters.z_0m,
+        model.parameters.z_0b,
+        Ref(model.parameters.earth_param_set),
     )
 end
 
@@ -196,18 +199,20 @@ end
                                 u::FT,
                                 h::FT,
                                 gustiness::FT,
-                                parameters::P,
+                                z_0m::FT,
+                                z_0b::FT,
+                                earth_param_set::EP,
                                ) where {FT <: AbstractFloat, P}
 
 Computes turbulent surface fluxes at a point on a surface given
-(1) the surface temperature (T_sfc), specific humidity (q_sfc), 
+(1) the surface temperature (T_sfc), specific humidity (q_sfc),
     and air density (ρ_sfc),
-(2) Other surface properties, such as the factor 
+(2) Other surface properties, such as the factor
     β_sfc  which scales the evaporation from the potential rate
     (used in bucket models), and the surface resistance r_sfc (used
-    in more complex land models), and the topographical height of the surface (h_sfc).
-(3) the parameter set for the model, which must have fields `earth_param_set`,
-    and roughness lengths `z_0m, z_0b`.
+    in more complex land models), and the topographical height of the surface (h_sfc)
+(3) the roughness lengths `z_0m, z_0b`, and the Earth parameter set for the model
+    `earth_params`.
 (4) the prescribed atmospheric state, `ts_in`, u, h the height
     at which these measurements are made, and the gustiness parameter (m/s).
 (5) the displacement height for the model d_sfc
@@ -227,9 +232,10 @@ function turbulent_fluxes_at_a_point(
     u::FT,
     h::FT,
     gustiness::FT,
-    parameters::P,
-) where {FT <: AbstractFloat, P}
-    (; z_0m, z_0b, earth_param_set) = parameters
+    z_0m::FT,
+    z_0b::FT,
+    earth_param_set::EP,
+) where {FT <: AbstractFloat, EP}
     thermo_params = LSMP.thermodynamic_parameters(earth_param_set)
     ts_sfc = Thermodynamics.PhaseEquil_ρTq(thermo_params, ρ_sfc, T_sfc, q_sfc)
 
