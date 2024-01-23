@@ -1,7 +1,7 @@
 import ClimaCore
 import SciMLBase
 
-export FTfromY, searchsortednearest
+export FTfromY
 
 """
      heaviside(x::FT)::FT where {FT}

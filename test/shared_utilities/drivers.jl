@@ -77,7 +77,7 @@ end
 end
 
 @testset "Driver update functions" begin
-    f = (t) -> 10.0
+    f = TimeVaryingInput((t) -> 10.0)
     pa = ClimaLSM.PrescribedAtmosphere(f, f, f, f, f, f, f, FT(1);)
     pr = ClimaLSM.PrescribedRadiativeFluxes(FT, f, f, f)
     coords = (; surface = [1])

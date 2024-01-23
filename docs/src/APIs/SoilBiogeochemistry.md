@@ -21,6 +21,7 @@ ClimaLSM.Soil.Biogeochemistry.SoilCO2ModelParameters
 ClimaLSM.Soil.Biogeochemistry.MicrobeProduction
 ClimaLSM.Soil.Biogeochemistry.SoilCO2FluxBC
 ClimaLSM.Soil.Biogeochemistry.SoilCO2StateBC
+ClimaLSM.Soil.Biogeochemistry.AtmosCO2StateBC
 ClimaLSM.Soil.Biogeochemistry.AbstractSoilDriver
 ClimaLSM.Soil.Biogeochemistry.SoilDrivers
 ClimaLSM.Soil.Biogeochemistry.PrescribedMet

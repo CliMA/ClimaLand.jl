@@ -101,7 +101,7 @@ function fluxnet_simulation(
     # soil microbes args
     Csom = (z, t) -> eltype(z)(5.0)
 
-    soilco2_top_bc = Soil.Biogeochemistry.SoilCO2StateBC((p, t) -> atmos_co2(t))
+    soilco2_top_bc = Soil.Biogeochemistry.AtmosCO2StateBC()
     soilco2_bot_bc = Soil.Biogeochemistry.SoilCO2FluxBC((p, t) -> 0.0) # no flux
     soilco2_sources = (MicrobeProduction{FT}(),)
 

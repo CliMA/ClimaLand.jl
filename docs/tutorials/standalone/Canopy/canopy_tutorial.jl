@@ -218,7 +218,8 @@ LAIfunction = (t) -> LAI
 SAI = FT(0.00242)
 f_root_to_shoot = FT(3.5)
 RAI = FT((SAI + LAI) * f_root_to_shoot)
-ai_parameterization = PrescribedSiteAreaIndex{FT}(LAIfunction, SAI, RAI)
+ai_parameterization =
+    PrescribedSiteAreaIndex{FT}(TimeVaryingInput(LAIfunction), SAI, RAI)
 rooting_depth = FT(1.0);
 
 # Define the root distribution function p(z):
@@ -314,7 +315,7 @@ end;
 # solution required, and the timestepping algorithm you are using.
 
 t0 = 0.0
-N_days = 365
+N_days = 364
 tf = t0 + 3600 * 24 * N_days
 dt = 225.0;
 

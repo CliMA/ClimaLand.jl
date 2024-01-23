@@ -30,6 +30,7 @@ export SoilCO2ModelParameters,
     PrescribedSOC,
     MicrobeProduction,
     SoilCO2FluxBC,
+    AtmosCO2StateBC,
     SoilCO2StateBC,
     AbstractSoilDriver,
     SoilDrivers
@@ -563,6 +564,48 @@ function ClimaLSM.boundary_flux(
     )
     C_bc = FT.(bc.bc(p, t))
     return ClimaLSM.diffusive_flux(D_c, C_c, C_bc, Δz)
+end
+
+"""
+    AtmosCO2StateBC <: AbstractSoilCO2BC
+
+Set the CO2 concentration to the atmospheric one.
+"""
+struct AtmosCO2StateBC <: AbstractSoilCO2BC end
+
+"""
+    ClimaLSM.boundary_flux(
+    bc::AtmosCO2StateBC,
+    boundary::ClimaLSM.TopBoundary,
+    Δz::ClimaCore.Fields.Field,
+    Y::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
+    t,
+    )::ClimaCore.Fields.Field
+
+A method of ClimaLSM.boundary_flux which returns the soilco2 flux in the case when the
+atmospheric CO2 is ued at top of the domain.
+"""
+function ClimaLSM.boundary_flux(
+    bc::AtmosCO2StateBC,
+    boundary::ClimaLSM.TopBoundary,
+    Δz::ClimaCore.Fields.Field,
+    Y::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
+    t,
+)::ClimaCore.Fields.Field
+    p_len = Spaces.nlevels(axes(p.soilco2.D))
+    # We need to project center values onto the face space
+    D_c = Fields.Field(
+        Fields.field_values(Fields.level(p.soilco2.D, p_len)),
+        axes(Δz),
+    )
+    C_c = Fields.Field(
+        Fields.field_values(Fields.level(Y.soilco2.C, p_len)),
+        axes(Δz),
+    )
+    C_bc = p.drivers.c_co2
+    return ClimaLSM.diffusive_flux(D_c, C_bc, C_c, Δz)
 end
 
 function ClimaLSM.get_drivers(model::SoilCO2Model)

@@ -117,7 +117,8 @@ for float_type in (Float32, Float64)
     # soil microbes args
     Csom = (z, t) -> eltype(z)(5.0)
 
-    soilco2_top_bc = Soil.Biogeochemistry.SoilCO2StateBC((p, t) -> atmos_co2(t))
+    # Set the soil CO2 BC to being atmospheric CO2
+    soilco2_top_bc = Soil.Biogeochemistry.AtmosCO2StateBC()
     soilco2_bot_bc = Soil.Biogeochemistry.SoilCO2StateBC((p, t) -> 0.0)
     soilco2_sources = (MicrobeProduction{FT}(),)
 
@@ -354,7 +355,13 @@ for float_type in (Float32, Float64)
         @assert mean(
             abs.(radiation.θs.(sv.t, radiation.ref_time) .- cache_θs),
         ) < eps(FT)
-        @assert mean(abs.(atmos.T.(sv.t) .- cache_Tair)) < eps(FT)
+        T_mutable = Vector{FT}(undef, 1)
+        atmos_T = map(sv.t) do time
+            ClimaLSM.evaluate!(T_mutable, atmos.T, time)
+            return T_mutable[]
+        end |> collect
+
+        @assert mean(abs.(atmos_T .- cache_Tair)) < eps(FT)
 
         daily = sol.t[2:end] ./ 3600 ./ 24
         savedir =
@@ -380,7 +387,13 @@ for float_type in (Float32, Float64)
         soil_bottom_flux =
             [-parent(sv.saveval[k].soil.K)[1] for k in 2:length(sol.t)]
         # Precip is not stored in the aux state, evaluated using sol.t
-        precip = [atmos.liquid_precip.(sol.t[k]) for k in 1:(length(sol.t) - 1)]
+        p_mutable = Vector{FT}(undef, 1)
+
+        precip =
+            map(sol.t[k] for k in 1:(length(sol.t) - 1)) do time
+                ClimaLSM.evaluate!(p_mutable, atmos.liquid_precip, time)
+                return p_mutable[]
+            end |> collect
 
         # Water balance equation
 

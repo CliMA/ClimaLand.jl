@@ -132,7 +132,7 @@ and within the soil. The tendency (produced by `make_exp_tendency` and `make_imp
 
 We envision each step of the land surface model simulation to be solved  in two steps: (1) the vertical tendency
 evaluations are carried out (and can be parallelized), and (2) the horizontal tendency functions are then evaluated
-(possibly less frequently?) and require communcation between columns.
+(possibly less frequently?) and require communication between columns.
 In this case, tendency functions will need to be aware of the domain.
 In general, tendencies reflecting horizontal flow will be treated explicitly and include in the explicit tendency function.
 Tendencies reflecting vertical flow may be treated explicitly or implicitly depending on the use case. To solve the problem,

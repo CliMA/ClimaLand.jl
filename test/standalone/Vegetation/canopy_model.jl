@@ -6,6 +6,7 @@ using Dates
 using StaticArrays
 using ClimaLSM
 using ClimaLSM: PrescribedAtmosphere, PrescribedRadiativeFluxes
+using ClimaLSM: TimeVaryingInput
 using ClimaLSM.Canopy
 using ClimaLSM.Canopy.PlantHydraulics
 using ClimaLSM.Domains: Point
@@ -91,20 +92,20 @@ for FT in (Float32, Float64)
         c_atmos = (t) -> 4.11e-4 # mol/mol
         ref_time = DateTime(2005)
         atmos = PrescribedAtmosphere(
-            liquid_precip,
-            snow_precip,
-            T_atmos,
-            u_atmos,
-            q_atmos,
-            P_atmos,
+            TimeVaryingInput(liquid_precip),
+            TimeVaryingInput(snow_precip),
+            TimeVaryingInput(T_atmos),
+            TimeVaryingInput(u_atmos),
+            TimeVaryingInput(q_atmos),
+            TimeVaryingInput(P_atmos),
             ref_time,
             h_atmos;
-            c_co2 = c_atmos,
+            c_co2 = TimeVaryingInput(c_atmos),
         )
         radiation = PrescribedRadiativeFluxes(
             FT,
-            shortwave_radiation,
-            longwave_radiation,
+            TimeVaryingInput(shortwave_radiation),
+            TimeVaryingInput(longwave_radiation),
             ref_time;
             θs = zenith_angle,
         )
@@ -113,8 +114,11 @@ for FT in (Float32, Float64)
         RAI = FT(1)
         SAI = FT(0)
         lai_fun = t -> LAI
-        ai_parameterization =
-            PlantHydraulics.PrescribedSiteAreaIndex{FT}(lai_fun, SAI, RAI)
+        ai_parameterization = PlantHydraulics.PrescribedSiteAreaIndex{FT}(
+            TimeVaryingInput(lai_fun),
+            SAI,
+            RAI,
+        )
         K_sat_plant = FT(1.8e-8) # m/s
         ψ63 = FT(-4 / 0.0098) # / MPa to m, Holtzman's original parameter value
         Weibull_param = FT(4) # unitless, Holtzman's original c param value
@@ -242,10 +246,10 @@ for FT in (Float32, Float64)
               @. (energy_per_photon_PAR * N_a * APAR) +
                  (energy_per_photon_NIR * N_a * ANIR)
 
-        T_canopy = FT.(atmos.T(t0))
+        T_canopy = FT.(T_atmos(t0))
         T_soil = FT.(soil_driver.T(t0))
         ϵ_soil = FT.(soil_driver.ϵ)
-        LW_d = FT.(radiation.LW_d(t0))
+        LW_d = FT.(longwave_radiation(t0))
         LW_d_canopy = (1 - ϵ_canopy) * LW_d + ϵ_canopy * _σ * T_canopy^4
         LW_u_soil = ϵ_soil * _σ * T_soil^4 + (1 - ϵ_soil) * LW_d_canopy
         @test Array(parent(p.canopy.radiative_transfer.LW_n))[1] ≈
@@ -360,8 +364,11 @@ for FT in (Float32, Float64)
         RAI = FT(1)
         SAI = FT(1)
         lai_fun = t -> LAI * sin(t * 2π / 365)
-        ai_parameterization =
-            PlantHydraulics.PrescribedSiteAreaIndex{FT}(lai_fun, SAI, RAI)
+        ai_parameterization = PlantHydraulics.PrescribedSiteAreaIndex{FT}(
+            TimeVaryingInput(lai_fun),
+            SAI,
+            RAI,
+        )
         K_sat_plant = FT(1.8e-8) # m/s
         ψ63 = FT(-4 / 0.0098) # / MPa to m, Holtzman's original parameter value
         Weibull_param = FT(4) # unitless, Holtzman's original c param value
@@ -552,20 +559,20 @@ for FT in (Float32, Float64)
         c_atmos = (t) -> 4.11e-4 # mol/mol
         ref_time = DateTime(2005)
         atmos = PrescribedAtmosphere(
-            liquid_precip,
-            snow_precip,
-            T_atmos,
-            u_atmos,
-            q_atmos,
-            P_atmos,
+            TimeVaryingInput(liquid_precip),
+            TimeVaryingInput(snow_precip),
+            TimeVaryingInput(T_atmos),
+            TimeVaryingInput(u_atmos),
+            TimeVaryingInput(q_atmos),
+            TimeVaryingInput(P_atmos),
             ref_time,
             h_atmos;
-            c_co2 = c_atmos,
+            c_co2 = TimeVaryingInput(c_atmos),
         )
         radiation = PrescribedRadiativeFluxes(
             FT,
-            shortwave_radiation,
-            longwave_radiation,
+            TimeVaryingInput(shortwave_radiation),
+            TimeVaryingInput(longwave_radiation),
             ref_time;
             θs = zenith_angle,
         )
@@ -574,8 +581,11 @@ for FT in (Float32, Float64)
         RAI = FT(1)
         SAI = FT(0)
         lai_fun = t -> LAI
-        ai_parameterization =
-            PlantHydraulics.PrescribedSiteAreaIndex{FT}(lai_fun, SAI, RAI)
+        ai_parameterization = PlantHydraulics.PrescribedSiteAreaIndex{FT}(
+            TimeVaryingInput(lai_fun),
+            SAI,
+            RAI,
+        )
         K_sat_plant = FT(1.8e-8) # m/s
         ψ63 = FT(-4 / 0.0098) # / MPa to m, Holtzman's original parameter value
         Weibull_param = FT(4) # unitless, Holtzman's original c param value

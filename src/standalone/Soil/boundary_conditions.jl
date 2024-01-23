@@ -157,7 +157,7 @@ to simulate surface and subsurface runoff and this is accounted
 for when setting boundary conditions. In order to run the simulation
 *without* runoff, choose runoff = NoRunoff() - this is also the default.
 
-If you wish to simulate preciptation and runoff in the full `EnergyHydrology` model,
+If you wish to simulate precipitation and runoff in the full `EnergyHydrology` model,
 you must use the `AtmosDrivenFluxBC` type.
 $(DocStringExtensions.FIELDS)
 """

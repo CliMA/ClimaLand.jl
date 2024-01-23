@@ -20,6 +20,9 @@ end
 @safetestset "Regridder module tests" begin
     include("shared_utilities/regridder.jl")
 end
+@safetestset "TimeVaryingInput module tests" begin
+    include("shared_utilities/time_varying_inputs.jl")
+end
 @safetestset "General utilities tests" begin
     include("shared_utilities/utilities.jl")
 end

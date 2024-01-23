@@ -117,7 +117,8 @@ soilco2_ps = SoilCO2ModelParameters{FT}(;
 # soil microbes args
 Csom = (z, t) -> eltype(z)(5.0)
 
-soilco2_top_bc = Soil.Biogeochemistry.SoilCO2StateBC((p, t) -> atmos_co2(t))
+# Set the soil CO2 BC to being atmospheric CO2
+soilco2_top_bc = Soil.Biogeochemistry.AtmosCO2StateBC()
 soilco2_bot_bc = Soil.Biogeochemistry.SoilCO2FluxBC((p, t) -> 0.0) # no flux
 soilco2_sources = (MicrobeProduction{FT}(),)
 

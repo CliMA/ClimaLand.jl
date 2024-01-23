@@ -41,15 +41,24 @@ Container for holding prescribed atmospheric drivers and other
 information needed for computing turbulent surface fluxes when
 driving land models in standalone mode.
 
-The arguments labeled with "function of time" are typically either of type
-`Function` or type `Spline1D` from the `Dierckx.jl` package.
+The default CO2 concentration is a constant as a function of time, equal to
+4.2e-4 mol/mol.
 
 Since not all models require co2 concentration, the default for that
 is `nothing`.
 $(DocStringExtensions.FIELDS)
 """
-struct PrescribedAtmosphere{FT, LP, SP, TA, UA, QA, RA, CA, DT} <:
-       AbstractAtmosphericDrivers{FT}
+struct PrescribedAtmosphere{
+    FT,
+    LP <: Union{Nothing, AbstractTimeVaryingInput},
+    SP <: Union{Nothing, AbstractTimeVaryingInput},
+    TA <: Union{Nothing, AbstractTimeVaryingInput},
+    UA <: Union{Nothing, AbstractTimeVaryingInput},
+    QA <: Union{Nothing, AbstractTimeVaryingInput},
+    RA <: Union{Nothing, AbstractTimeVaryingInput},
+    CA <: Union{Nothing, AbstractTimeVaryingInput},
+    DT,
+} <: AbstractAtmosphericDrivers{FT}
     "Precipitation (m/s) function of time: positive by definition"
     liquid_precip::LP
     "Snow precipitation (m/s) function of time: positive by definition"
@@ -80,7 +89,7 @@ struct PrescribedAtmosphere{FT, LP, SP, TA, UA, QA, RA, CA, DT} <:
         ref_time,
         h::FT;
         gustiness = FT(1),
-        c_co2 = (t) -> 4.2e-4,
+        c_co2 = TimeVaryingInput((t) -> 4.2e-4),
     ) where {FT}
         args = (liquid_precip, snow_precip, T, u, q, P, c_co2, ref_time)
         return new{typeof(h), typeof.(args)...}(args..., h, gustiness)
@@ -292,12 +301,14 @@ end
 
 Container for the prescribed radiation functions needed to drive land models in standalone mode.
 $(DocStringExtensions.FIELDS)
-
-The arguments labeled with "function of time" are typically either of type
-`Function` or type `Spline1D` from the `Dierckx.jl` package.
 """
-struct PrescribedRadiativeFluxes{FT, SW, LW, DT, T} <:
-       AbstractRadiativeDrivers{FT}
+struct PrescribedRadiativeFluxes{
+    FT,
+    SW <: Union{Nothing, AbstractTimeVaryingInput},
+    LW <: Union{Nothing, AbstractTimeVaryingInput},
+    DT,
+    T,
+} <: AbstractRadiativeDrivers{FT}
     "Downward shortwave radiation function of time (W/m^2): positive indicates towards surface"
     SW_d::SW
     "Downward longwave radiation function of time (W/m^2): positive indicates towards surface"
@@ -644,13 +655,13 @@ in the case of a PrescribedAtmosphere at a point.
 """
 function make_update_drivers(a::PrescribedAtmosphere{FT}) where {FT}
     function update_drivers!(p, t)
-        p.drivers.P_liq .= FT(a.liquid_precip(t))
-        p.drivers.P_snow .= FT(a.snow_precip(t))
-        p.drivers.T .= FT(a.T(t))
-        p.drivers.P .= FT(a.P(t))
-        p.drivers.u .= FT(a.u(t))
-        p.drivers.q .= FT(a.q(t))
-        p.drivers.c_co2 .= FT(a.c_co2(t))
+        evaluate!(p.drivers.P_liq, a.liquid_precip, t)
+        evaluate!(p.drivers.P_snow, a.snow_precip, t)
+        evaluate!(p.drivers.T, a.T, t)
+        evaluate!(p.drivers.P, a.P, t)
+        evaluate!(p.drivers.u, a.u, t)
+        evaluate!(p.drivers.q, a.q, t)
+        evaluate!(p.drivers.c_co2, a.c_co2, t)
     end
     return update_drivers!
 end
@@ -663,8 +674,8 @@ in the case of a PrescribedRadiativeFluxes at a point.
 """
 function make_update_drivers(r::PrescribedRadiativeFluxes{FT}) where {FT}
     function update_drivers!(p, t)
-        p.drivers.SW_d .= FT(r.SW_d(t))
-        p.drivers.LW_d .= FT(r.LW_d(t))
+        evaluate!(p.drivers.SW_d, r.SW_d, t)
+        evaluate!(p.drivers.LW_d, r.LW_d, t)
         if !isnothing(r.θs)
             p.drivers.θs .= FT(r.θs(t, r.ref_time))
         else

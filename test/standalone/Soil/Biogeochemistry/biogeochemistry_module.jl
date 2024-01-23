@@ -47,15 +47,15 @@ for FT in (Float32, Float64)
         atmos_co2 = (t) -> 1.0
 
         atmos = ClimaLSM.PrescribedAtmosphere(
-            precipitation_function,
-            snow_precip,
-            atmos_T,
-            atmos_u,
-            atmos_q,
-            atmos_p,
+            TimeVaryingInput(precipitation_function),
+            TimeVaryingInput(snow_precip),
+            TimeVaryingInput(atmos_T),
+            TimeVaryingInput(atmos_u),
+            TimeVaryingInput(atmos_q),
+            TimeVaryingInput(atmos_p),
             UTC_DATETIME,
             atmos_h;
-            c_co2 = atmos_co2,
+            c_co2 = TimeVaryingInput(atmos_co2),
         )
 
         soil_drivers = SoilDrivers(
@@ -118,15 +118,15 @@ for FT in (Float32, Float64)
         atmos_co2 = (t) -> 1.0
 
         atmos = ClimaLSM.PrescribedAtmosphere(
-            precipitation_function,
-            snow_precip,
-            atmos_T,
-            atmos_u,
-            atmos_q,
-            atmos_p,
+            TimeVaryingInput(precipitation_function),
+            TimeVaryingInput(snow_precip),
+            TimeVaryingInput(atmos_T),
+            TimeVaryingInput(atmos_u),
+            TimeVaryingInput(atmos_q),
+            TimeVaryingInput(atmos_p),
             UTC_DATETIME,
             atmos_h;
-            c_co2 = atmos_co2,
+            c_co2 = TimeVaryingInput(atmos_co2),
         )
 
         soil_drivers = SoilDrivers(

@@ -20,7 +20,7 @@
 # how to use a `Model <: AbstractModel` structure to define
 # a set of equations, and explain a few core methods
 # which must be defined for your `Model` type in order to
-# run a simulation. 
+# run a simulation.
 
 # # General setup
 # We assume you are solving a system of the form
@@ -296,6 +296,13 @@ end;
 # boundary conditions and tendency functions.
 # Please see the (LSM tutorial) for further explanation.
 
+# More complex cases might require the evaluation of external data. For this, use the
+# `TimeVaryingInput` interface. You can wrap functions, 1D/2D data in `TimeVaryingInput` to
+# obtain an object that know how to evaluate that data on the model time (e.g., by
+# performing linear interpolation). Then, in your model, you can just call
+# `evaluate!(destination, itp, time)` to evaluate the itp on the given `time` and write the
+# result to `dest` (typically a `Field`). With this common interface, you do not have to
+# worry about the detail of the underlying data.
 
 # # Running a simulation
 # Create a model instance.

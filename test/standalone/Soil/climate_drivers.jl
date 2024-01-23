@@ -65,7 +65,12 @@ for FT in (Float32, Float64)
         ref_time = DateTime(2005)
         SW_d = (t) -> 500
         LW_d = (t) -> 5.67e-8 * 280.0^4.0
-        radiation = PrescribedRadiativeFluxes(FT, SW_d, LW_d, ref_time)
+        radiation = PrescribedRadiativeFluxes(
+            FT,
+            TimeVaryingInput(SW_d),
+            TimeVaryingInput(LW_d),
+            ref_time,
+        )
         # Atmos
         precip = (t) -> 1e-8
         precip_snow = (t) -> 0
@@ -75,12 +80,12 @@ for FT in (Float32, Float64)
         h_atmos = FT(3)
         P_atmos = (t) -> 101325
         atmos = PrescribedAtmosphere(
-            precip,
-            precip_snow,
-            T_atmos,
-            u_atmos,
-            q_atmos,
-            P_atmos,
+            TimeVaryingInput(precip),
+            TimeVaryingInput(precip_snow),
+            TimeVaryingInput(T_atmos),
+            TimeVaryingInput(u_atmos),
+            TimeVaryingInput(q_atmos),
+            TimeVaryingInput(P_atmos),
             ref_time,
             h_atmos,
         )
@@ -259,7 +264,7 @@ for FT in (Float32, Float64)
             dsl = Soil.dry_soil_layer_thickness.(S_l_sfc, S_c, d_ds)
             r_soil = @. dsl / (_D_vapor * τ_a) # [s\m]
             r_ae = conditions.r_ae
-            expected_water_flux = @. FT(atmos.liquid_precip(t)) .+
+            expected_water_flux = @. FT(precip(t)) .+
                conditions.vapor_flux * r_ae / (r_soil + r_ae)
             @test computed_water_flux == expected_water_flux
             expected_energy_flux = @. R_n +

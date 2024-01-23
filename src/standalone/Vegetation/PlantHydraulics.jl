@@ -1,5 +1,6 @@
 module PlantHydraulics
 using ClimaLSM
+using ClimaLSM.TimeVaryingInputs
 using ..ClimaLSM.Canopy:
     AbstractCanopyComponent,
     update_canopy_prescribed_field!,
@@ -62,7 +63,10 @@ modeled.
 
 $(DocStringExtensions.FIELDS)
 """
-struct PrescribedSiteAreaIndex{FT <: AbstractFloat, F <: Function}
+struct PrescribedSiteAreaIndex{
+    FT <: AbstractFloat,
+    F <: AbstractTimeVaryingInput,
+}
     "A function of simulation time `t` giving the leaf area index (LAI; m2/m2)"
     LAIfunction::F
     "The constant stem area index (SAI; m2/m2)"
@@ -72,7 +76,7 @@ struct PrescribedSiteAreaIndex{FT <: AbstractFloat, F <: Function}
 end
 
 function PrescribedSiteAreaIndex{FT}(
-    LAIfunction::Function,
+    LAIfunction::AbstractTimeVaryingInput,
     SAI::FT,
     RAI::FT,
 ) where {FT <: AbstractFloat}
@@ -315,7 +319,8 @@ function ClimaLSM.Canopy.set_canopy_prescribed_field!(
     t0,
 ) where {FT}
     (; LAIfunction, SAI, RAI) = component.parameters.ai_parameterization
-    @. p.canopy.hydraulics.area_index.leaf = LAIfunction(t0)
+    evaluate!(p.canopy.hydraulics.area_index.leaf, LAIfunction, t0)
+
     @. p.canopy.hydraulics.area_index.stem = SAI
     @. p.canopy.hydraulics.area_index.root = RAI
 end
@@ -336,7 +341,7 @@ function ClimaLSM.Canopy.update_canopy_prescribed_field!(
     t,
 ) where {FT}
     (; LAIfunction) = component.parameters.ai_parameterization
-    @. p.canopy.hydraulics.area_index.leaf = FT(LAIfunction(t))
+    evaluate!(p.canopy.hydraulics.area_index.leaf, LAIfunction, t)
 end
 
 

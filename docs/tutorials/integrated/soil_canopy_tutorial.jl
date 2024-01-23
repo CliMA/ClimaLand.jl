@@ -222,7 +222,7 @@ soilco2_ps = SoilCO2ModelParameters{FT}(;
 # soil microbes args
 Csom = (z, t) -> eltype(z)(5); # kg C m⁻³, this is a guess, not measured at the site
 
-soilco2_top_bc = Soil.Biogeochemistry.SoilCO2StateBC((p, t) -> atmos_co2(t));
+soilco2_top_bc = Soil.Biogeochemistry.AtmosCO2StateBC()
 soilco2_bot_bc = Soil.Biogeochemistry.SoilCO2StateBC((p, t) -> 0.0);
 soilco2_sources = (MicrobeProduction{FT}(),);
 

@@ -16,6 +16,7 @@ using ClimaLSM.Soil.Biogeochemistry
 using ClimaLSM.Canopy
 using ClimaLSM.Canopy.PlantHydraulics
 import ClimaLSM.Parameters as LSMP
+import ClimaComms
 using Unitful: R, L, mol, K, kJ, °C, m, g, cm, hr, mg, s, μmol, Pa, W, mm, kPa
 using UnitfulMoles: molC
 using Unitful, UnitfulMoles
@@ -23,7 +24,6 @@ using HTTP
 using JSON
 using ArtifactWrappers
 using DelimitedFiles
-using Dierckx
 using Thermodynamics
 using Formatting
 using CairoMakie
