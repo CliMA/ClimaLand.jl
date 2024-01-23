@@ -2,8 +2,6 @@ using SafeTestsets
 
 import ClimaComms
 
-gpu_broken = ClimaComms.device() isa ClimaComms.CUDADevice
-
 # Performance and code quality tests
 @safetestset "Aqua tests" begin
     include("aqua.jl")
@@ -33,7 +31,7 @@ end
 end
 
 # Standalone Bucket model tests
-gpu_broken || @safetestset "Bucket albedo types tests" begin
+@safetestset "Bucket albedo types tests" begin
     include("standalone/Bucket/albedo_types.jl")
 end
 @safetestset "Bucket snow tests" begin
