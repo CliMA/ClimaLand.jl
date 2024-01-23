@@ -1,67 +1,50 @@
-import CLIMAParameters as CP
-import Thermodynamics.Parameters as TDP
-import Insolation.Parameters as IP
-import SurfaceFluxes.Parameters as SFP
+import ClimaLSM.Parameters.LSMParameters
+import Thermodynamics.Parameters.ThermodynamicsParameters
+import Insolation.Parameters.InsolationParameters
+import SurfaceFluxes.Parameters.SurfaceFluxesParameters
 import SurfaceFluxes.UniversalFunctions as UF
-import ClimaLSM.Parameters as LSMP
+import CLIMAParameters as CP
 
-#=
-import ClimaLSM
-include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
-param_set = create_lsm_parameters(FT)
-=#
-function create_lsm_parameters(FT)
-    toml_dict = CP.create_toml_dict(FT; dict_type = "alias")
+create_lsm_parameters(::Type{FT}) where {FT <: AbstractFloat} =
+    LSMParameters(CP.create_toml_dict(FT))
 
-    aliases = string.(fieldnames(TDP.ThermodynamicsParameters))
-    param_pairs = CP.get_parameter_values!(toml_dict, aliases, "Thermodynamics")
-    thermo_params = TDP.ThermodynamicsParameters{FT}(; param_pairs...)
+function LSMParameters(toml_dict::CP.AbstractTOMLDict)
+    thermo_params = ThermodynamicsParameters(toml_dict)
     TP = typeof(thermo_params)
 
-    insol_aliases = string.(fieldnames(IP.InsolationParameters))
-    insol_param_pairs =
-        CP.get_parameter_values!(toml_dict, insol_aliases, "Insolation")
-    insol_params = IP.InsolationParameters{FT}(; insol_param_pairs...)
-    IPT = typeof(insol_params)
+    insol_params = InsolationParameters(toml_dict)
+    IP = typeof(insol_params)
 
-    aliases = [
-        "Pr_0_Businger",
-        "a_m_Businger",
-        "a_h_Businger",
-        "ζ_a_Businger",
-        "γ_Businger",
-    ]
-    pairs = CP.get_parameter_values!(toml_dict, aliases, "UniversalFunctions")
-    pairs = (; pairs...) # convert to NamedTuple
-    pairs = (;
-        Pr_0 = pairs.Pr_0_Businger,
-        a_m = pairs.a_m_Businger,
-        a_h = pairs.a_h_Businger,
-        ζ_a = pairs.ζ_a_Businger,
-        γ = pairs.γ_Businger,
+    surf_flux_params = SurfaceFluxesParameters(toml_dict, UF.BusingerParams)
+    SFP = typeof(surf_flux_params)
+
+    name_map = (;
+        :light_speed => :light_speed,
+        :planck_constant => :h_Planck,
+        :density_ice_water => :ρ_cloud_ice,
+        :avogadro_constant => :avogad,
+        :thermodynamics_temperature_reference => :T_0,
+        :temperature_water_freeze => :T_freeze,
+        :density_liquid_water => :ρ_cloud_liq,
+        :isobaric_specific_heat_ice => :cp_i,
+        :latent_heat_sublimation_at_reference => :LH_s0,
+        :molar_mass_water => :molmass_water,
+        :mean_sea_level_pressure => :MSLP,
+        :diffusivity_of_water_vapor => :D_vapor,
+        :isobaric_specific_heat_liquid => :cp_l,
+        :latent_heat_vaporization_at_reference => :LH_v0,
+        :gas_constant => :gas_constant,
+        :thermal_conductivity_of_air => :K_therm,
+        :gravitational_acceleration => :grav,
+        :stefan_boltzmann_constant => :Stefan,
     )
-    ufp = UF.BusingerParams{FT}(; pairs...)
-    UFP = typeof(ufp)
 
-    pairs = CP.get_parameter_values!(
-        toml_dict,
-        ["von_karman_const"],
-        "SurfaceFluxesParameters",
-    )
-    surf_flux_params =
-        SFP.SurfaceFluxesParameters{FT, UFP, TP}(; pairs..., ufp, thermo_params)
-    SFPS = typeof(surf_flux_params)
-
-    aliases = string.(fieldnames(LSMP.LSMParameters))
-    param_pairs = CP.get_parameter_values!(toml_dict, aliases, "ClimaLSM")
-    param_set = LSMP.LSMParameters{FT, TP, SFPS, IPT}(;
-        param_pairs...,
+    parameters = CP.get_parameter_values(toml_dict, name_map, "ClimaLSM")
+    FT = CP.float_type(toml_dict)
+    return LSMParameters{FT, TP, SFP, IP}(;
+        parameters...,
         thermo_params,
         surf_flux_params,
         insol_params,
     )
-
-    # logfilepath = joinpath(@__DIR__, "logfilepath_$FT.toml")
-    # CP.log_parameter_information(toml_dict, logfilepath)
-    return param_set
 end
