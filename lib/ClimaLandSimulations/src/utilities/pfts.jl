@@ -6,42 +6,41 @@ and the parameters fed to the model are then the linear combination of the PFT
 parameters weighted by the land cover percentages.
 """
 
-export params_from_pfts, Pft
+export params_from_pfts, Pft, default_pfts
 
-using LinearAlgebra
 using DataFrames
-
+using LinearAlgebra
 
 # List of parameters that PFTs need to define. Will become the column names in
 # the PFT DataFrame.
 param_list = [
 
     # TwoStreamModel parameters
-    "Ω",          # Clumping Index
-    "α_PAR_leaf", # PAR Leaf Reflectance
-    "α_NIR_leaf", # Near-infrared Leaf Reflectance
-    "τ_PAR_leaf", # PAR Leaf Transmittance
-    "τ_NIR_leaf", # Near-infrared Leaf Transmittance
+    :Ω,          # Clumping Index
+    :α_PAR_leaf, # PAR Leaf Reflectance
+    :α_NIR_leaf, # Near-infrared Leaf Reflectance
+    :τ_PAR_leaf, # PAR Leaf Transmittance
+    :τ_NIR_leaf, # Near-infrared Leaf Transmittance
 
     # Energy Balance model
-    "ac_canopy", # Specific Heat per Emmiting Area
+    :ac_canopy, # Specific Heat per Emmiting Area
 
     # Conductance Model
-    "g1", # Medlyn CO2 Sensitivity
+    :g1, # Medlyn CO2 Sensitivity
 
     # Photosynthesis model
-    "Vcmax25", # Max rate of carboxylation of Rubisco
+    :Vcmax25, # Max rate of carboxylation of Rubisco
 
     # Plant Hydraulics and general plant parameters
-    "SAI",             # Avg Stem Area Index
-    "f_root_to_shoot", # Root to Shoot Ratio
-    "K_sat_plant",     # Hydraulic Conductivity at Saturation
-    "ψ63",             # Xylem water potential at 63% loss of conductivity
-    "Weibull_param",   # Conductivity Weibull Parameter
-    "a",               # Retention Curve Curvature Parameter
-    "capacity",        # Water Storage Capacity
-    "plant_S_s",       # Specific Storativity
-    "rooting_depth"    # Plant Rooting Depth
+    :SAI,             # Avg Stem Area Index
+    :f_root_to_shoot, # Root to Shoot Ratio
+    :K_sat_plant,     # Hydraulic Conductivity at Saturation
+    :ψ63,             # Xylem water potential at 63% loss of conductivity
+    :Weibull_param,   # Conductivity Weibull Parameter
+    :a,               # Retention Curve Curvature Parameter
+    :capacity,        # Water Storage Capacity
+    :plant_S_s,       # Specific Storativity
+    :rooting_depth    # Plant Rooting Depth
 ]
 
 
@@ -49,28 +48,23 @@ param_list = [
 Define a PFT type that can be used to store the parameters for each PFT.
 Each PFT has a name and a list of parameters. The parameters are stored as 
 NamedTuples with the parameter name as the first element and the parameter value
-as the second element.
+as the second element. The inner constructor checks to ensure all required
+parameters are defined for the PFT.
 """
 struct Pft
     name::String
-    parameters::NamedTuple{String, FT}
-end
+    parameters::NamedTuple
 
-
-"""
-A constructor for the PFT type which ensures that all required parameters listed
-in the param_list are defined for the PFT.
-"""
-function Pft(name::String, parameters::List{NamedTuple{String, FT}})
-    # Check that all required parameters are defined
-    defined_param_names = [p[1] for p in parameters]
-    for param in param_list
-        if param ∉ defined_param_names
-            error("PFT $name is missing parameter $param")
+    # Inner constructor to verify all required parameters are defined
+    function Pft(name, parameters)
+        defined_param_names = keys(parameters)
+        for param in param_list
+            if param ∉ defined_param_names
+                error("PFT $name is missing parameter $param")
+            end
         end
+        new(name, parameters)
     end
-    # Return the PFT
-    return Pft(name, parameters)
 end
 
 
@@ -112,7 +106,7 @@ NET_Temp = Pft(
         Ω = 0.74,          # Chen et al. 2012 Table 1
         α_PAR_leaf = 0.07, # CLM5.0 Table 2.3.1
         α_NIR_leaf = 0.35, # CLM5.0 Table 2.3.1
-        τ_PAR_leaf = 0.05  # CLM5.0 Table 2.3.1
+        τ_PAR_leaf = 0.05, # CLM5.0 Table 2.3.1
         τ_NIR_leaf = 0.10, # CLM5.0 Table 2.3.1
 
         # Canopy Energy Model
@@ -145,7 +139,7 @@ NET_Bor = Pft(
         Ω = 0.74,          # Chen et al. 2012 Table 1
         α_PAR_leaf = 0.07, # CLM5.0 Table 2.3.1
         α_NIR_leaf = 0.35, # CLM5.0 Table 2.3.1
-        τ_PAR_leaf = 0.05  # CLM5.0 Table 2.3.1
+        τ_PAR_leaf = 0.05, # CLM5.0 Table 2.3.1
         τ_NIR_leaf = 0.10, # CLM5.0 Table 2.3.1
 
         # Canopy Energy Model
@@ -178,7 +172,7 @@ NDT_Bor = Pft(
         Ω = 0.78,          # Chen et al. 2012 Table 1
         α_PAR_leaf = 0.07, # CLM5.0 Table 2.3.1
         α_NIR_leaf = 0.35, # CLM5.0 Table 2.3.1
-        τ_PAR_leaf = 0.05  # CLM5.0 Table 2.3.1
+        τ_PAR_leaf = 0.05, # CLM5.0 Table 2.3.1
         τ_NIR_leaf = 0.10, # CLM5.0 Table 2.3.1
 
         # Canopy Energy Model
@@ -210,7 +204,7 @@ BET_Trop = Pft(
         Ω = 0.66,          # Chen et al. 2012 Table 1
         α_PAR_leaf = 0.10, # CLM5.0 Table 2.3.1
         α_NIR_leaf = 0.45, # CLM5.0 Table 2.3.1
-        τ_PAR_leaf = 0.05  # CLM5.0 Table 2.3.1
+        τ_PAR_leaf = 0.05, # CLM5.0 Table 2.3.1
         τ_NIR_leaf = 0.25, # CLM5.0 Table 2.3.1
 
         # Canopy Energy Model
@@ -243,7 +237,7 @@ BET_Temp = Pft(
         Ω = 0.66,          # Chen et al. 2012 Table 1
         α_PAR_leaf = 0.10, # CLM5.0 Table 2.3.1
         α_NIR_leaf = 0.45, # CLM5.0 Table 2.3.1
-        τ_PAR_leaf = 0.05  # CLM5.0 Table 2.3.1
+        τ_PAR_leaf = 0.05, # CLM5.0 Table 2.3.1
         τ_NIR_leaf = 0.25, # CLM5.0 Table 2.3.1
 
         # Canopy Energy Model
@@ -276,7 +270,7 @@ BDT_Trop = Pft(
         Ω = 0.70,          # Chen et al. 2012 Table 1
         α_PAR_leaf = 0.10, # CLM5.0 Table 2.3.1
         α_NIR_leaf = 0.45, # CLM5.0 Table 2.3.1
-        τ_PAR_leaf = 0.05  # CLM5.0 Table 2.3.1
+        τ_PAR_leaf = 0.05, # CLM5.0 Table 2.3.1
         τ_NIR_leaf = 0.25, # CLM5.0 Table 2.3.1
 
         # Canopy Energy Model
@@ -308,26 +302,26 @@ BDT_Temp = Pft(
         Ω = 0.70,          # Chen et al. 2012 Table 1
         α_PAR_leaf = 0.10, # CLM5.0 Table 2.3.1
         α_NIR_leaf = 0.45, # CLM5.0 Table 2.3.1
-        τ_PAR_leaf = 0.05  # CLM5.0 Table 2.3.1
+        τ_PAR_leaf = 0.05, # CLM5.0 Table 2.3.1
         τ_NIR_leaf = 0.25, # CLM5.0 Table 2.3.1
 
         # Canopy Energy Model
         ac_canopy = 2.5e3, # Taken from site params
 
         # Stomatal Conductance Model
-        g1 = 4.45, # CLM5.0 Table 2.9.1
+        g1 = 141, # CLM5.0 Table 2.9.1 ?????
 
         # Photosynthesis Model,
         Vcmax25 = 5.524e-5, # Oliver et al. 2022 Table 2
 
         # Hydraulics Model and Plant Parameters
-        SAI = 2.50,                # Guess
+        SAI = 1.0,                 # Guess
         f_root_to_shoot = 3.50,    # Guess
-        K_sat_plant = 2.78e-6,     # Guess
+        K_sat_plant = 5e-9,        # Guess
         ψ63 = -4.0 / 0.0098,       # Guess
         Weibull_param = 4.00,      # Taken from site params
         a = 0.05 * 0.0098,         # Taken from site params
-        capacity = 15.00,          # Guess
+        capacity = 10.00,          # Guess
         plant_S_s = 1e-2 * 0.0098, # Taken from site params
         rooting_depth = 2.90,      # Bonan Table 2.3
     )
@@ -341,7 +335,7 @@ BDT_Bor = Pft(
         Ω = 0.70,          # Chen et al. 2012 Table 1
         α_PAR_leaf = 0.10, # CLM5.0 Table 2.3.1
         α_NIR_leaf = 0.45, # CLM5.0 Table 2.3.1
-        τ_PAR_leaf = 0.05  # CLM5.0 Table 2.3.1
+        τ_PAR_leaf = 0.05, # CLM5.0 Table 2.3.1
         τ_NIR_leaf = 0.25, # CLM5.0 Table 2.3.1
 
         # Canopy Energy Model
@@ -374,7 +368,7 @@ BES_Temp = Pft(
         Ω = 0.75,          # Chen et al. 2012 Table 1
         α_PAR_leaf = 0.07, # CLM5.0 Table 2.3.1
         α_NIR_leaf = 0.35, # CLM5.0 Table 2.3.1
-        τ_PAR_leaf = 0.05  # CLM5.0 Table 2.3.1
+        τ_PAR_leaf = 0.05, # CLM5.0 Table 2.3.1
         τ_NIR_leaf = 0.10, # CLM5.0 Table 2.3.1
 
         # Canopy Energy Model
@@ -407,7 +401,7 @@ BDS_Temp = Pft(
         Ω = 0.75,          # Chen et al. 2012 Table 1
         α_PAR_leaf = 0.10, # CLM5.0 Table 2.3.1
         α_NIR_leaf = 0.45, # CLM5.0 Table 2.3.1
-        τ_PAR_leaf = 0.05  # CLM5.0 Table 2.3.1
+        τ_PAR_leaf = 0.05, # CLM5.0 Table 2.3.1
         τ_NIR_leaf = 0.25, # CLM5.0 Table 2.3.1
 
         # Canopy Energy Model
@@ -440,7 +434,7 @@ BDS_Bor = Pft(
         Ω = 0.75,          # Chen et al. 2012 Table 1
         α_PAR_leaf = 0.10, # CLM5.0 Table 2.3.1
         α_NIR_leaf = 0.45, # CLM5.0 Table 2.3.1
-        τ_PAR_leaf = 0.05  # CLM5.0 Table 2.3.1
+        τ_PAR_leaf = 0.05, # CLM5.0 Table 2.3.1
         τ_NIR_leaf = 0.25, # CLM5.0 Table 2.3.1
 
         # Canopy Energy Model
@@ -473,7 +467,7 @@ C3G_A = Pft(
         Ω = 0.76,          # Chen et al. 2012 Table 1
         α_PAR_leaf = 0.11, # CLM5.0 Table 2.3.1
         α_NIR_leaf = 0.35, # CLM5.0 Table 2.3.1
-        τ_PAR_leaf = 0.05  # CLM5.0 Table 2.3.1
+        τ_PAR_leaf = 0.05, # CLM5.0 Table 2.3.1
         τ_NIR_leaf = 0.34, # CLM5.0 Table 2.3.1
 
         # Canopy Energy Model
@@ -505,7 +499,7 @@ C3G_NA = Pft(
         Ω = 0.76,          # Chen et al. 2012 Table 1
         α_PAR_leaf = 0.11, # CLM5.0 Table 2.3.1
         α_NIR_leaf = 0.35, # CLM5.0 Table 2.3.1
-        τ_PAR_leaf = 0.05  # CLM5.0 Table 2.3.1
+        τ_PAR_leaf = 0.05, # CLM5.0 Table 2.3.1
         τ_NIR_leaf = 0.34, # CLM5.0 Table 2.3.1
 
         # Canopy Energy Model
@@ -538,7 +532,7 @@ C4G = Pft(
         Ω = 0.75,          # Chen et al. 2012 Table 1
         α_PAR_leaf = 0.11, # CLM5.0 Table 2.3.1
         α_NIR_leaf = 0.35, # CLM5.0 Table 2.3.1
-        τ_PAR_leaf = 0.05  # CLM5.0 Table 2.3.1
+        τ_PAR_leaf = 0.05, # CLM5.0 Table 2.3.1
         τ_NIR_leaf = 0.34, # CLM5.0 Table 2.3.1
 
         # Canopy Energy Model
