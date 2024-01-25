@@ -7,6 +7,11 @@ import ClimaCore: Fields, Spaces
 include("shared_utilities/Parameters.jl")
 import .Parameters as LSMP
 
+include("shared_utilities/general_utils.jl")
+include("shared_utilities/TimeVaryingInputs.jl")
+using .TimeVaryingInputs
+export TimeVaryingInput, evaluate!
+
 include("shared_utilities/Regridder.jl")
 include("shared_utilities/Domains.jl")
 include("shared_utilities/FileReader.jl")
@@ -208,6 +213,7 @@ function make_set_initial_cache(land::AbstractLandModel)
     update_drivers! = make_update_drivers(atmos, radiation)
     set_initial_cache_function_list =
         map(x -> make_set_initial_cache(getproperty(land, x)), components)
+
     function set_initial_cache!(p, Y0, t0)
         update_drivers!(p, t0)
         for f! in set_initial_cache_function_list

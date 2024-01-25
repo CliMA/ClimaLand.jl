@@ -252,3 +252,13 @@ end
         @test Y.subfields.subfield2 != Y_copy.subfields.subfield2
     end
 end
+
+@testset "searchsortednearest" begin
+    A = 10 * collect(range(1, 10))
+
+    @test searchsortednearest(A, 0) == 1
+    @test searchsortednearest(A, 1000) == 10
+    @test searchsortednearest(A, 20) == 2
+    @test searchsortednearest(A, 21) == 2
+    @test searchsortednearest(A, 29) == 3
+end

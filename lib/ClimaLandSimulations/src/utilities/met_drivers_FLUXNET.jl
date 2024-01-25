@@ -1,6 +1,7 @@
 export setup_drivers
 
 function setup_drivers(site_ID)
+    context = ClimaComms.context()
 
     af = ArtifactFile(
         url = data_link,
@@ -109,25 +110,24 @@ function setup_drivers(site_ID)
     e = @. esat - drivers.VPD.values
     q = @. 0.622 * e ./ (drivers.PA.values - 0.378 * e)
 
-    # Create splines for each atmospheric driver needed for PrescribedAtmosphere
-    # and for PrescribedRadiation
+    # Create interpolators for each atmospheric driver needed for PrescribedAtmosphere and
+    # for PrescribedRadiation
     seconds = FT.(0:DATA_DT:((length(UTC_DATETIME) - 1) * DATA_DT))
-    p_spline = Spline1D(seconds, -drivers.P.values[:]) # m/s
-    atmos_q = Spline1D(seconds, q[:])
-    atmos_T = Spline1D(seconds, drivers.TA.values[:])
-    atmos_p = Spline1D(seconds, drivers.PA.values[:])
-    atmos_co2 = Spline1D(seconds, drivers.CO2.values[:])
-    atmos_u = Spline1D(seconds, drivers.WS.values[:])
-    LW_IN_spline = Spline1D(seconds, drivers.LW_IN.values[:])
-    SW_IN_spline = Spline1D(seconds, drivers.SW_IN.values[:])
-    precipitation_function(t::FT) where {FT} =
-        p_spline(t) < 0.0 ? p_spline(t) : 0.0 # m/s
-    snow_precip(t) = FT(0) # this is likely not correct
+
+    precip = TimeVaryingInput(seconds, -FT.(drivers.P.values[:]); context) # m/s
+    atmos_q = TimeVaryingInput(seconds, FT.(q[:]); context)
+    atmos_T = TimeVaryingInput(seconds, FT.(drivers.TA.values[:]); context)
+    atmos_p = TimeVaryingInput(seconds, FT.(drivers.PA.values[:]); context)
+    atmos_co2 = TimeVaryingInput(seconds, FT.(drivers.CO2.values[:]); context)
+    atmos_u = TimeVaryingInput(seconds, FT.(drivers.WS.values[:]); context)
+    LW_IN = TimeVaryingInput(seconds, FT.(drivers.LW_IN.values[:]); context)
+    SW_IN = TimeVaryingInput(seconds, FT.(drivers.SW_IN.values[:]); context)
+    snow_precip = TimeVaryingInput((t) -> FT(0))
 
     # Construct the drivers. For the reference time we will use the UTC time at the
     # start of the simulation
     atmos = ClimaLSM.PrescribedAtmosphere(
-        precipitation_function,
+        precip,
         snow_precip,
         atmos_T,
         atmos_u,
@@ -171,8 +171,8 @@ function setup_drivers(site_ID)
 
     radiation = ClimaLSM.PrescribedRadiativeFluxes(
         FT,
-        SW_IN_spline,
-        LW_IN_spline,
+        SW_IN,
+        LW_IN,
         UTC_DATETIME[1];
         θs = zenith_angle,
     )
@@ -198,9 +198,8 @@ function setup_drivers(site_ID)
     LAI_dt = Second(MODIS_LAI[2, 1] - MODIS_LAI[1, 1]).value
     LAI_seconds = FT.(0:LAI_dt:((length(MODIS_LAI[:, 1]) - 1) * LAI_dt))
 
-    # LAI spline for radiative transfer
-    LAIspline = Spline1D(LAI_seconds, MODIS_LAI[:, 2])
-    LAIfunction = (t) -> eltype(t)(LAIspline(t))
+    # LAI function for radiative transfer
+    LAIfunction = TimeVaryingInput(LAI_seconds, FT.(MODIS_LAI[:, 2]); context)
 
     # Necessary inputs from LAI Data
     # Note that f_root_to_shoot, capacity, and h_leaf are site-specific parameters

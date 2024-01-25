@@ -79,3 +79,9 @@ ClimaLSM.surface_resistance
 ClimaLSM.surface_specific_humidity
 ClimaLSM.make_update_drivers
 ```
+
+## TimeVaryingInput
+```@docs
+ClimaLSM.TimeVaryingInput
+ClimaLSM.evaluate!
+```

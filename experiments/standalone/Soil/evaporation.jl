@@ -68,7 +68,12 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
     ref_time = DateTime(2005)
     SW_d = (t) -> 0
     LW_d = (t) -> 301.15^4 * 5.67e-8
-    radiation = PrescribedRadiativeFluxes(FT, SW_d, LW_d, ref_time)
+    radiation = PrescribedRadiativeFluxes(
+        FT,
+        TimeVaryingInput(SW_d),
+        TimeVaryingInput(LW_d),
+        ref_time,
+    )
     # Atmos
     T_air = 301.15
     rh = 0.38
@@ -87,12 +92,12 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
     P_atmos = (t) -> 101325
     gustiness = FT(1e-2)
     atmos = PrescribedAtmosphere(
-        precip,
-        precip,
-        T_atmos,
-        u_atmos,
-        q_atmos,
-        P_atmos,
+        TimeVaryingInput(precip),
+        TimeVaryingInput(precip),
+        TimeVaryingInput(T_atmos),
+        TimeVaryingInput(u_atmos),
+        TimeVaryingInput(q_atmos),
+        TimeVaryingInput(P_atmos),
         ref_time,
         h_atmos;
         gustiness = gustiness,

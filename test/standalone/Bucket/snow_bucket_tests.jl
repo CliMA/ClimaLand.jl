@@ -16,7 +16,8 @@ using ClimaLSM:
     make_exp_tendency,
     make_set_initial_cache,
     PrescribedAtmosphere,
-    PrescribedRadiativeFluxes
+    PrescribedRadiativeFluxes,
+    TimeVaryingInput
 
 # Bucket model parameters
 import ClimaLSM
@@ -61,7 +62,12 @@ for FT in (Float32, Float64)
             ref_time = DateTime(2005)
             SW_d = (t) -> 20
             LW_d = (t) -> 20
-            bucket_rad = PrescribedRadiativeFluxes(FT, SW_d, LW_d, ref_time)
+            bucket_rad = PrescribedRadiativeFluxes(
+                FT,
+                TimeVaryingInput(SW_d),
+                TimeVaryingInput(LW_d),
+                ref_time,
+            )
             "Atmos"
             liquid_precip = (t) -> -1e-8 # precipitation
             snow_precip = (t) -> -1e-7 # precipitation
@@ -72,12 +78,12 @@ for FT in (Float32, Float64)
             h_atmos = FT(3)
             P_atmos = (t) -> 101325 # Pa
             bucket_atmos = PrescribedAtmosphere(
-                liquid_precip,
-                snow_precip,
-                T_atmos,
-                u_atmos,
-                q_atmos,
-                P_atmos,
+                TimeVaryingInput(liquid_precip),
+                TimeVaryingInput(snow_precip),
+                TimeVaryingInput(T_atmos),
+                TimeVaryingInput(u_atmos),
+                TimeVaryingInput(q_atmos),
+                TimeVaryingInput(P_atmos),
                 ref_time,
                 h_atmos,
             )
@@ -169,7 +175,12 @@ for FT in (Float32, Float64)
             ref_time = DateTime(2005)
             SW_d = (t) -> 20
             LW_d = (t) -> 20
-            bucket_rad = PrescribedRadiativeFluxes(FT, SW_d, LW_d, ref_time)
+            bucket_rad = PrescribedRadiativeFluxes(
+                FT,
+                TimeVaryingInput(SW_d),
+                TimeVaryingInput(LW_d),
+                ref_time,
+            )
             "Atmos"
             liquid_precip = (t) -> -1e-8 # precipitation
             snow_precip = (t) -> -1e-7 # precipitation
@@ -180,12 +191,12 @@ for FT in (Float32, Float64)
             h_atmos = FT(3)
             P_atmos = (t) -> 101325 # Pa
             bucket_atmos = PrescribedAtmosphere(
-                liquid_precip,
-                snow_precip,
-                T_atmos,
-                u_atmos,
-                q_atmos,
-                P_atmos,
+                TimeVaryingInput(liquid_precip),
+                TimeVaryingInput(snow_precip),
+                TimeVaryingInput(T_atmos),
+                TimeVaryingInput(u_atmos),
+                TimeVaryingInput(q_atmos),
+                TimeVaryingInput(P_atmos),
                 ref_time,
                 h_atmos,
             )
@@ -277,7 +288,12 @@ for FT in (Float32, Float64)
         ref_time = DateTime(2005)
         SW_d = (t) -> 20
         LW_d = (t) -> 20
-        bucket_rad = PrescribedRadiativeFluxes(FT, SW_d, LW_d, ref_time)
+        bucket_rad = PrescribedRadiativeFluxes(
+            FT,
+            TimeVaryingInput(SW_d),
+            TimeVaryingInput(LW_d),
+            ref_time,
+        )
         "Atmos"
         liquid_precip = (t) -> -1e-8 # precipitation
         snow_precip = (t) -> -1e-7 # precipitation
@@ -288,12 +304,12 @@ for FT in (Float32, Float64)
         h_atmos = FT(3)
         P_atmos = (t) -> 101325 # Pa
         bucket_atmos = PrescribedAtmosphere(
-            liquid_precip,
-            snow_precip,
-            T_atmos,
-            u_atmos,
-            q_atmos,
-            P_atmos,
+            TimeVaryingInput(liquid_precip),
+            TimeVaryingInput(snow_precip),
+            TimeVaryingInput(T_atmos),
+            TimeVaryingInput(u_atmos),
+            TimeVaryingInput(q_atmos),
+            TimeVaryingInput(P_atmos),
             ref_time,
             h_atmos,
         )

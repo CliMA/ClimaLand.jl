@@ -26,7 +26,8 @@ using ClimaLSM:
     make_update_aux,
     make_set_initial_cache,
     PrescribedAtmosphere,
-    PrescribedRadiativeFluxes
+    PrescribedRadiativeFluxes,
+    TimeVaryingInput
 
 # Bucket model parameters
 import ClimaLSM
@@ -297,7 +298,12 @@ if !Sys.iswindows()
             ref_time = DateTime(2005)
             SW_d = (t) -> 0.0
             LW_d = (t) -> 5.67e-8 * 280.0^4.0
-            bucket_rad = PrescribedRadiativeFluxes(FT, SW_d, LW_d, ref_time)
+            bucket_rad = PrescribedRadiativeFluxes(
+                FT,
+                TimeVaryingInput(SW_d),
+                TimeVaryingInput(LW_d),
+                ref_time,
+            )
             # Atmos
             precip = (t) -> 0 # no precipitation
             T_atmos = (t) -> 280.0
@@ -306,12 +312,12 @@ if !Sys.iswindows()
             h_atmos = FT(1e-8)
             P_atmos = (t) -> 101325
             bucket_atmos = PrescribedAtmosphere(
-                precip,
-                precip,
-                T_atmos,
-                u_atmos,
-                q_atmos,
-                P_atmos,
+                TimeVaryingInput(precip),
+                TimeVaryingInput(precip),
+                TimeVaryingInput(T_atmos),
+                TimeVaryingInput(u_atmos),
+                TimeVaryingInput(q_atmos),
+                TimeVaryingInput(P_atmos),
                 ref_time,
                 h_atmos,
             )
@@ -443,7 +449,12 @@ if !Sys.iswindows()
                 ref_time = DateTime(2005)
                 SW_d = (t) -> 0
                 LW_d = (t) -> 5.67e-8 * 280.0^4.0
-                bucket_rad = PrescribedRadiativeFluxes(FT, SW_d, LW_d, ref_time)
+                bucket_rad = PrescribedRadiativeFluxes(
+                    FT,
+                    TimeVaryingInput(SW_d),
+                    TimeVaryingInput(LW_d),
+                    ref_time,
+                )
                 # Atmos
                 precip = (t) -> 0 # no precipitation
                 T_atmos = (t) -> 280.0
@@ -453,12 +464,12 @@ if !Sys.iswindows()
                 P_atmos = (t) -> 101325
                 ref_time = DateTime(2005)
                 bucket_atmos = PrescribedAtmosphere(
-                    precip,
-                    precip,
-                    T_atmos,
-                    u_atmos,
-                    q_atmos,
-                    P_atmos,
+                    TimeVaryingInput(precip),
+                    TimeVaryingInput(precip),
+                    TimeVaryingInput(T_atmos),
+                    TimeVaryingInput(u_atmos),
+                    TimeVaryingInput(q_atmos),
+                    TimeVaryingInput(P_atmos),
                     ref_time,
                     h_atmos,
                 )

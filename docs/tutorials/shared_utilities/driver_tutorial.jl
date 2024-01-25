@@ -11,9 +11,9 @@
 # We currently support site-level simulations and have two site-level
 # driver types, `PrescribedAtmosphere` and `PrescribedRadiativeFluxes`.
 
-# The atmosphere driver stores the atmospheric state data as a 
+# The atmosphere driver stores the atmospheric state data as a
 # function of time, including the liquid precipitation rate (m/s), the
-# snow precipitation rate converted into an equivalent rate of liquid 
+# snow precipitation rate converted into an equivalent rate of liquid
 # water (m/s), the atmopheric pressure (Pa), specific humidity, horizontal
 # wind speed (m/s), temperature (K), CO2 concentration (mol/mol), and the
 # height at which these measurements were taken (currently assumed to be the
@@ -24,15 +24,15 @@
 # shortwave and longwave flux (W/m^2). The radiative driver is also where
 # a function which computes the zenith angle for the site is stored.
 
-# Both drivers store the reference time for the data/simulation. 
-# This is the DateTime object which corresponds to the time at which t=0 
+# Both drivers store the reference time for the data/simulation.
+# This is the DateTime object which corresponds to the time at which t=0
 # in the simulation. Additionally, for site-level runs, both drivers store the
 # forcing data as a spline function fit to the data which takes the time
 # `t` as an argument, where `t` is the simulation time measured in seconds since
 # the reference time. The reference time should be in UTC.
 
-# Note: for coupled runs, corresponding types `CoupledAtmosphere` 
-# and `CoupledRadiativeFluxes` exist. However, these are not defined 
+# Note: for coupled runs, corresponding types `CoupledAtmosphere`
+# and `CoupledRadiativeFluxes` exist. However, these are not defined
 # in ClimaLSM, but rather inside of the Clima Coupler repository.
 
 
@@ -43,7 +43,6 @@
 # times at which the observations were made and the latitude and longitude of the site.
 using Dates
 using Insolation # for computing zenith angle given lat, lon, time.
-using Dierckx # for fitting splines
 using ClimaLSM
 import ClimaLSM.Parameters as LSMP
 include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"));
@@ -68,12 +67,12 @@ T = @. 298.15 + 5.0 * sin(2π * (seconds - 3600 * 6) / (3600 * 24));
 LW_d = 5.67 * 10^(-8) .* T .^ 4;
 SW_d = @. max(1400 * sin(2π * (seconds - 3600 * 6) / (3600 * 24)), 0.0);
 
-# Next, fit splines to the data. These splines are what are stored in
+# Next, fit interpolators to the data. These interpolators are what are stored in
 # the driver function. Then we can evaluate the radiative forcing
 # at any simulation time (and not just at times coinciding with measurements).
-# Note that this approach will change in the future.
-LW_d_spline = Spline1D(seconds, LW_d)
-SW_d_spline = Spline1D(seconds, SW_d);
+# By default, linear interpolation is used.
+LW_d = TimeVaryingInput(seconds, LW_d)
+SW_d = TimeVaryingInput(seconds, SW_d);
 
 # Finally, for many models we also need to specify the function
 # for computing the zenith angle as a function of simulation time.
@@ -105,12 +104,12 @@ function zenith_angle(
     )[1]
 end;
 
-# Lastly, we store the splines for downwelling fluxes and the zenith angle function
-# in the `PrescribedRadiativeFluxes` struct:
+# Lastly, we store the interpolators for downwelling fluxes and the zenith angle function
+# in the `PrescribedRadiativeFluxes` struct.
 radiation = ClimaLSM.PrescribedRadiativeFluxes(
     Float64,
-    SW_d_spline,
-    LW_d_spline,
+    SW_d,
+    LW_d,
     ref_time;
     θs = zenith_angle,
 );

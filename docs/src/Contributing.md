@@ -28,9 +28,3 @@ Currently a number of checks are run per commit for a given PR.
   are consistent and generate valid output.
 - `Tests` runs the file `test/runtests.jl`,  using `Pkg.test()`. These are a mix of
   unit tests and fast integration tests.
-
-We use [`bors`](https://bors.tech/) to manage merging PR's in the the `ClimaLSM` repo.
-If you're a collaborator and have the necessary permissions, you can type
-`bors try` in a comment on a PR to have integration test suite run on that
-PR, or `bors r+` to try and merge the code.  Bors ensures that all integration tests
-for a given PR always pass before merging into `main`.

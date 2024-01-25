@@ -150,6 +150,7 @@ using ClimaLSM:
     make_set_initial_cache,
     PrescribedAtmosphere,
     PrescribedRadiativeFluxes
+using ClimaLSM.TimeVaryingInputs
 # We also want to plot the solution
 using Plots
 
@@ -245,13 +246,15 @@ u_atmos = (t) -> 3.0;
 q_atmos = (t) -> 0.005;
 h_atmos = FT(2);
 P_atmos = (t) -> 101325;
+# We need to warp all these objects in TimeVaryingInputs (this is because in general
+# PrescribedAtmosphere could take numerical data)
 bucket_atmos = PrescribedAtmosphere(
-    precip,
-    snow_precip,
-    T_atmos,
-    u_atmos,
-    q_atmos,
-    P_atmos,
+    TimeVaryingInput(precip),
+    TimeVaryingInput(snow_precip),
+    TimeVaryingInput(T_atmos),
+    TimeVaryingInput(u_atmos),
+    TimeVaryingInput(q_atmos),
+    TimeVaryingInput(P_atmos),
     ref_time,
     h_atmos,
 );
@@ -262,7 +265,12 @@ bucket_atmos = PrescribedAtmosphere(
 # K with a diurnal amplitude of 5 degrees K:
 SW_d = (t) -> @. max(1361 * sin(2π * t / 86400 + 7200));
 LW_d = (t) -> 5.67e-8 * (275.0 + 5.0 * sin(2.0 * π * t / 86400 + 7200))^4;
-bucket_rad = PrescribedRadiativeFluxes(FT, SW_d, LW_d, ref_time);
+bucket_rad = PrescribedRadiativeFluxes(
+    FT,
+    TimeVaryingInput(SW_d),
+    TimeVaryingInput(LW_d),
+    ref_time,
+);
 
 
 # Then, we create the model object, which contains the drivers, parameters,

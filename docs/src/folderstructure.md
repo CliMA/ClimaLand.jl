@@ -18,7 +18,7 @@ as well as 5 files:
 - LICENSE: License file of `ClimaLSM`, you can [read it](https://github.com/CliMA/ClimaLSM.jl/blob/main/LICENSE) to learn about legal practice regarding use of `ClimaLSM` open source code. 
 - Project.toml: The Julia programming language requires a `Project.toml` file to create an environment, which specify dependencies of a project as well as its version, name, authors and a unique identifier number (uuid). Every Julia registered package has a `Project.toml` file. 
 - README.md: This markdown file contains the info that you can read on [ClimaLSM GitHub web page](https://github.com/CliMA/ClimaLSM.jl)
-- bors.toml: This file ensure unit tests and other continuous integration requirements are met before merging a pull request to `ClimaLSM` main branch. 
+
 
 ## /docs folder
 

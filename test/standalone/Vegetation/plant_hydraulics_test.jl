@@ -185,20 +185,20 @@ for FT in (Float32, Float64)
         c_atmos = (t) -> 4.11e-4 # mol/mol
         ref_time = DateTime(2005)
         atmos = PrescribedAtmosphere(
-            liquid_precip,
-            snow_precip,
-            T_atmos,
-            u_atmos,
-            q_atmos,
-            P_atmos,
+            TimeVaryingInput(liquid_precip),
+            TimeVaryingInput(snow_precip),
+            TimeVaryingInput(T_atmos),
+            TimeVaryingInput(u_atmos),
+            TimeVaryingInput(q_atmos),
+            TimeVaryingInput(P_atmos),
             ref_time,
             h_atmos;
-            c_co2 = c_atmos,
+            c_co2 = TimeVaryingInput(c_atmos),
         )
         radiation = PrescribedRadiativeFluxes(
             FT,
-            shortwave_radiation,
-            longwave_radiation,
+            TimeVaryingInput(shortwave_radiation),
+            TimeVaryingInput(longwave_radiation),
             ref_time;
             θs = zenith_angle,
         )
@@ -207,8 +207,11 @@ for FT in (Float32, Float64)
         n_leaf = Int64(6) # number of leaf elements
         SAI = FT(1) # m2/m2
         RAI = FT(1) # m2/m2
-        ai_parameterization =
-            PlantHydraulics.PrescribedSiteAreaIndex{FT}(LAI, SAI, RAI)
+        ai_parameterization = PlantHydraulics.PrescribedSiteAreaIndex{FT}(
+            TimeVaryingInput(LAI),
+            SAI,
+            RAI,
+        )
         K_sat_plant = 1.8e-8 # m/s.
         ψ63 = FT(-4 / 0.0098) # / MPa to m
         Weibull_param = FT(4) # unitless
@@ -478,20 +481,20 @@ for FT in (Float32, Float64)
         c_atmos = (t) -> 4.11e-4 # mol/mol
         ref_time = DateTime(2005)
         atmos = PrescribedAtmosphere(
-            liquid_precip,
-            snow_precip,
-            T_atmos,
-            u_atmos,
-            q_atmos,
-            P_atmos,
+            TimeVaryingInput(liquid_precip),
+            TimeVaryingInput(snow_precip),
+            TimeVaryingInput(T_atmos),
+            TimeVaryingInput(u_atmos),
+            TimeVaryingInput(q_atmos),
+            TimeVaryingInput(P_atmos),
             ref_time,
             h_atmos;
-            c_co2 = c_atmos,
+            c_co2 = TimeVaryingInput(c_atmos),
         )
         radiation = PrescribedRadiativeFluxes(
             FT,
-            shortwave_radiation,
-            longwave_radiation,
+            TimeVaryingInput(shortwave_radiation),
+            TimeVaryingInput(longwave_radiation),
             ref_time;
             θs = zenith_angle,
         )
@@ -501,8 +504,11 @@ for FT in (Float32, Float64)
         SAI = FT(0) # m2/m2
         RAI = FT(0) # m2/m2
         lai_fun = t -> 0
-        ai_parameterization =
-            PlantHydraulics.PrescribedSiteAreaIndex{FT}(lai_fun, SAI, RAI)
+        ai_parameterization = PlantHydraulics.PrescribedSiteAreaIndex{FT}(
+            TimeVaryingInput(lai_fun),
+            SAI,
+            RAI,
+        )
         K_sat_plant = 0 # m/s.
         ψ63 = FT(-4 / 0.0098) # / MPa to m
         Weibull_param = FT(4) # unitless
