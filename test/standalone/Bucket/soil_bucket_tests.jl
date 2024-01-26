@@ -208,8 +208,10 @@ for FT in (Float32, Float64)
             set_initial_cache!(p, Y, t0)
             dY = similar(Y)
             exp_tendency!(dY, Y, p, t0)
-            F_water_sfc = FT(precip(t0)) .+ p.bucket.evaporation
-            F_sfc = p.bucket.turbulent_energy_flux .+ p.bucket.R_n
+            F_water_sfc = FT(precip(t0)) .+ p.bucket.turbulent_fluxes.vapor_flux
+            F_sfc =
+                p.bucket.turbulent_fluxes.lhf .+
+                p.bucket.turbulent_fluxes.shf .+ p.bucket.R_n
             surface_space = model.domain.space.surface
             A_sfc = sum(ones(surface_space))
             # For the point space, we actually want the flux itself, since our variables are per unit area.

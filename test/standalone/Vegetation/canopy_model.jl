@@ -218,19 +218,12 @@ for FT in (Float32, Float64)
         # check that this is updated correctly:
         # @test p.canopy.autotrophic_respiration.Ra ==
         exp_tendency!(dY, Y, p, t0)
-        (evapotranspiration, shf, lhf) =
-            ClimaLSM.Canopy.canopy_turbulent_fluxes(
-                canopy.atmos,
-                canopy,
-                Y,
-                p,
-                t0,
-            )
+        turb_fluxes = ClimaLSM.turbulent_fluxes(canopy.atmos, canopy, Y, p, t0)
 
-        @test p.canopy.hydraulics.fa.:1 == evapotranspiration
-        @test p.canopy.energy.shf == shf
-        @test p.canopy.energy.lhf == lhf
-        @test p.canopy.conductance.transpiration == evapotranspiration
+        @test p.canopy.hydraulics.fa.:1 == turb_fluxes.vapor_flux
+        @test p.canopy.energy.shf == turb_fluxes.shf
+        @test p.canopy.energy.lhf == turb_fluxes.lhf
+        @test p.canopy.conductance.transpiration == turb_fluxes.vapor_flux
         c = FT(LSMP.light_speed(earth_param_set))
         h = FT(LSMP.planck_constant(earth_param_set))
         N_a = FT(LSMP.avogadro_constant(earth_param_set))
@@ -314,8 +307,8 @@ for FT in (Float32, Float64)
         )
 
         @test abs(
-            (Array(parent(evapotranspiration .- ET))[1]) /
-            Array(parent(evapotranspiration))[1],
+            (Array(parent(turb_fluxes.vapor_flux .- ET))[1]) /
+            Array(parent(turb_fluxes.vapor_flux))[1],
         ) < 0.5
 
         @test ClimaLSM.surface_evaporative_scaling(canopy, Y, p) == FT(1.0)
@@ -703,11 +696,10 @@ for FT in (Float32, Float64)
         exp_tendency! = make_exp_tendency(canopy)
         dY = similar(Y)
         exp_tendency!(dY, Y, p, t0)
-        (evapotranspiration, shf, lhf) =
-            canopy_turbulent_fluxes(canopy.atmos, canopy, Y, p, t0)
-        @test p.canopy.hydraulics.fa.:1 == evapotranspiration
-        @test p.canopy.energy.lhf == lhf
-        @test p.canopy.energy.shf == shf
+        turb_fluxes = turbulent_fluxes(canopy.atmos, canopy, Y, p, t0)
+        @test p.canopy.hydraulics.fa.:1 == turb_fluxes.vapor_flux
+        @test p.canopy.energy.lhf == turb_fluxes.lhf
+        @test p.canopy.energy.shf == turb_fluxes.shf
         @test all(Array(parent(p.canopy.energy.fa_energy_roots)) .== FT(0))
 
         @test all(

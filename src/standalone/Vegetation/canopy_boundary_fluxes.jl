@@ -1,13 +1,10 @@
 import ClimaLSM:
     surface_temperature,
     surface_specific_humidity,
-    surface_air_density,
     surface_evaporative_scaling,
     surface_height,
     surface_resistance,
     displacement_height
-
-export canopy_turbulent_fluxes
 
 
 """
@@ -20,33 +17,6 @@ See Cowan 1968; Brutsaert 1982, pp. 113–116; Campbell and Norman 1998, p. 71; 
 """
 function ClimaLSM.displacement_height(model::CanopyModel{FT}, Y, p) where {FT}
     return FT(0.67) * model.hydraulics.compartment_surfaces[end]
-end
-
-"""
-    canopy_turbulent_fluxes(atmos::PrescribedAtmosphere{FT},
-                          model::CanopyModel,
-                          Y,
-                          p,
-                          t) where {FT}
-
-Computes canopy transpiration using Monin-Obukhov Surface Theory,
-the prescribed atmospheric conditions, and the canopy conductance.
-"""
-function canopy_turbulent_fluxes(
-    atmos::PrescribedAtmosphere{FT},
-    model::CanopyModel,
-    Y,
-    p,
-    t,
-) where {FT}
-    conditions = turbulent_fluxes(atmos, model, Y, p, t)
-    # We upscaled LHF and E from leaf level to canopy level via the
-    # upscaling of stomatal conductance.
-    # Do we need to upscale SHF?
-    return conditions.vapor_flux,
-    conditions.shf,
-    conditions.lhf,
-    conditions.r_ae
 end
 
 """
@@ -120,26 +90,6 @@ function ClimaLSM.surface_specific_humidity(
     )
 end
 
-"""
-    ClimaLSM.surface_air_density(model::CanopyModel, Y, p)
-
-A helper function which computes and returns the surface air density for the canopy
-model.
-"""
-function ClimaLSM.surface_air_density(
-    atmos::PrescribedAtmosphere,
-    model::CanopyModel,
-    Y,
-    p,
-    t,
-    T_canopy,
-)
-    thermo_params =
-        LSMP.thermodynamic_parameters(model.parameters.earth_param_set)
-    ts_in = construct_atmos_ts(atmos, p, thermo_params)
-    return compute_ρ_sfc.(thermo_params, ts_in, T_canopy)
-end
-
 function make_update_boundary_fluxes(canopy::CanopyModel)
     function update_boundary_fluxes!(p, Y, t)
         canopy_boundary_fluxes!(p, canopy, canopy.radiation, canopy.atmos, Y, t)
@@ -201,15 +151,15 @@ function canopy_boundary_fluxes!(
     transpiration = p.canopy.conductance.transpiration
     shf = p.canopy.energy.shf
     lhf = p.canopy.energy.lhf
+    r_ae = p.canopy.energy.r_ae
     i_end = canopy.hydraulics.n_stem + canopy.hydraulics.n_leaf
 
-    # Compute transpiration
-    (canopy_transpiration, canopy_shf, canopy_lhf, r_ae) =
-        canopy_turbulent_fluxes(atmos, canopy, Y, p, t)
-    transpiration .= canopy_transpiration
-    shf .= canopy_shf
-    lhf .= canopy_lhf
-    p.canopy.energy.r_ae .= r_ae
+    # Compute transpiration, SHF, LHF
+    canopy_turbulent_fluxes = turbulent_fluxes(atmos, canopy, Y, p, t)
+    transpiration .= canopy_turbulent_fluxes.vapor_flux
+    shf .= canopy_turbulent_fluxes.shf
+    lhf .= canopy_turbulent_fluxes.lhf
+    r_ae .= canopy_turbulent_fluxes.r_ae
 
     # Transpiration is per unit ground area, not leaf area (mult by LAI)
     fa.:($i_end) .= PlantHydraulics.transpiration_per_ground_area(

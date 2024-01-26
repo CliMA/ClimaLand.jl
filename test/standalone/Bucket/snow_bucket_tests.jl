@@ -133,8 +133,9 @@ for FT in (Float32, Float64)
                     p.bucket.T_sfc,
                     model.parameters.τc,
                     snow_cover_fraction.(Y.bucket.σS),
-                    p.bucket.evaporation,
-                    p.bucket.turbulent_energy_flux .+ p.bucket.R_n,
+                    p.bucket.turbulent_fluxes.vapor_flux,
+                    p.bucket.turbulent_fluxes.lhf .+
+                    p.bucket.turbulent_fluxes.shf .+ p.bucket.R_n,
                     _ρLH_f0,
                     _T_freeze,
                 )
@@ -143,11 +144,12 @@ for FT in (Float32, Float64)
                 partitioned_fluxes.F_into_snow .- _ρLH_f0 .* FT(snow_precip(t0))
             G = partitioned_fluxes.G
             F_sfc =
-                p.bucket.turbulent_energy_flux .+ p.bucket.R_n .-
+                p.bucket.turbulent_fluxes.lhf .+
+                p.bucket.turbulent_fluxes.shf .+ p.bucket.R_n .-
                 _ρLH_f0 .* FT(snow_precip(t0))
             F_water_sfc =
                 FT(liquid_precip(t0)) + FT(snow_precip(t0)) .+
-                p.bucket.evaporation
+                p.bucket.turbulent_fluxes.vapor_flux
 
             if i == 1
                 A_point = sum(ones(bucket_domains[i].space.surface))
@@ -246,8 +248,9 @@ for FT in (Float32, Float64)
                     p.bucket.T_sfc,
                     model.parameters.τc,
                     snow_cover_fraction.(Y.bucket.σS),
-                    p.bucket.evaporation,
-                    p.bucket.turbulent_energy_flux .+ p.bucket.R_n,
+                    p.bucket.turbulent_fluxes.vapor_flux,
+                    p.bucket.turbulent_fluxes.lhf .+
+                    p.bucket.turbulent_fluxes.shf .+ p.bucket.R_n,
                     _ρLH_f0,
                     _T_freeze,
                 )
@@ -256,11 +259,12 @@ for FT in (Float32, Float64)
                 partitioned_fluxes.F_into_snow .- _ρLH_f0 .* FT(snow_precip(t0))
             G = partitioned_fluxes.G
             F_sfc =
-                p.bucket.turbulent_energy_flux .+ p.bucket.R_n .-
+                p.bucket.turbulent_fluxes.lhf .+
+                p.bucket.turbulent_fluxes.shf .+ p.bucket.R_n .-
                 _ρLH_f0 .* FT(snow_precip(t0))
             F_water_sfc =
                 FT(liquid_precip(t0)) + FT(snow_precip(t0)) .+
-                p.bucket.evaporation
+                p.bucket.turbulent_fluxes.vapor_flux
 
             if i == 1
                 A_point = sum(ones(bucket_domains[i].space.surface))
@@ -347,7 +351,7 @@ for FT in (Float32, Float64)
         random = zeros(bucket_domains[i].space.surface)
         ArrayType = ClimaComms.array_type(Y)
         parent(random) .= ArrayType(rand(FT, size(parent(random))))
-        p.bucket.evaporation .= random .* 1e-7
+        p.bucket.turbulent_fluxes.vapor_flux .= random .* 1e-7
         compute_exp_tendency!(dY, Y, p, t0)
         _LH_f0 = LSMP.LH_f0(model.parameters.earth_param_set)
         _ρ_liq = LSMP.ρ_cloud_liq(model.parameters.earth_param_set)
@@ -363,8 +367,9 @@ for FT in (Float32, Float64)
                 p.bucket.T_sfc,
                 model.parameters.τc,
                 snow_cover_fraction.(Y.bucket.σS),
-                p.bucket.evaporation,
-                p.bucket.turbulent_energy_flux .+ p.bucket.R_n,
+                p.bucket.turbulent_fluxes.vapor_flux,
+                p.bucket.turbulent_fluxes.lhf .+
+                p.bucket.turbulent_fluxes.shf .+ p.bucket.R_n,
                 _ρLH_f0,
                 _T_freeze,
             )
@@ -373,10 +378,11 @@ for FT in (Float32, Float64)
             partitioned_fluxes.F_into_snow .- _ρLH_f0 .* FT(snow_precip(t0))
         G = partitioned_fluxes.G
         F_sfc =
-            p.bucket.turbulent_energy_flux .+ p.bucket.R_n .-
-            _ρLH_f0 .* FT(snow_precip(t0))
+            p.bucket.turbulent_fluxes.lhf .+ p.bucket.turbulent_fluxes.shf .+
+            p.bucket.R_n .- _ρLH_f0 .* FT(snow_precip(t0))
         F_water_sfc =
-            FT(liquid_precip(t0)) + FT(snow_precip(t0)) .+ p.bucket.evaporation
+            FT(liquid_precip(t0)) + FT(snow_precip(t0)) .+
+            p.bucket.turbulent_fluxes.vapor_flux
 
         dIsnow = -_ρLH_f0 .* dY.bucket.σS
         @test sum(dIsnow) ≈ sum(-1 .* F_into_snow)

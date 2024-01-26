@@ -262,7 +262,7 @@ boundary_var_domain_names(bc::AtmosDrivenFluxBC, ::ClimaLSM.TopBoundary) =
 """
     boundary_var_types(
         ::AtmosDrivenFluxBC{
-            <:AbstractAtmosphericDrivers{FT},
+            <:PrescribedAtmosphere{FT},
             <:AbstractRadiativeDrivers{FT},
             <:AbstractRunoffModel,
         }, ::ClimaLSM.TopBoundary,
@@ -274,7 +274,7 @@ specifies the type of the additional variables.
 boundary_var_types(
     model::EnergyHydrology{FT},
     bc::AtmosDrivenFluxBC{
-        <:AbstractAtmosphericDrivers{FT},
+        <:PrescribedAtmosphere{FT},
         <:AbstractRadiativeDrivers{FT},
         <:AbstractRunoffModel,
     },
@@ -293,21 +293,16 @@ boundary_var_types(
             <:PrescribedRadiativeFluxes,
         },
         boundary::ClimaLSM.TopBoundary,
-        model::EnergyHydrology{FT},
+        model::EnergyHydrology,
         Δz,
         Y,
         p,
         t,
-    ) where {FT}
+    )
 
 Returns the net volumetric water flux (m/s) and net energy
 flux (W/m^2) for the soil `EnergyHydrology` model at the top
 of the soil domain.
-
-This  method of `soil_boundary_fluxes` is for use with
-a  `PrescribedAtmosphere` and `PrescribedRadiativeFluxes`
-struct; for example, this is to be used when driving
-the soil model in standalone mode with reanalysis data.
 
 If you wish to compute surface fluxes taking into account the
 presence of a canopy, snow, etc, as in a land surface model,
@@ -315,21 +310,18 @@ this is not the correct method to be using.
 
 This function calls the `turbulent_fluxes` and `net_radiation`
 functions, which use the soil surface conditions as well as
-the prescribed atmos and radiation conditions in order to
+the atmos and radiation conditions in order to
 compute the surface fluxes using Monin Obukhov Surface Theory.
 """
 function soil_boundary_fluxes(
-    bc::AtmosDrivenFluxBC{
-        <:PrescribedAtmosphere{FT},
-        <:PrescribedRadiativeFluxes{FT},
-    },
+    bc::AtmosDrivenFluxBC{<:PrescribedAtmosphere, <:PrescribedRadiativeFluxes},
     boundary::ClimaLSM.TopBoundary,
-    model::EnergyHydrology{FT},
+    model::EnergyHydrology,
     Δz,
     Y,
     p,
     t,
-) where {FT}
+)
 
     p.soil.turbulent_fluxes .= turbulent_fluxes(bc.atmos, model, Y, p, t)
     p.soil.R_n .= net_radiation(bc.radiation, model, Y, p, t)

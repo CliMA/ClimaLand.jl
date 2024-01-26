@@ -44,7 +44,6 @@ import ClimaLSM:
     make_set_initial_cache,
     surface_temperature,
     surface_air_density,
-    surface_specific_humidity,
     surface_evaporative_scaling,
     surface_albedo,
     surface_emissivity,
@@ -331,9 +330,16 @@ prognostic_vars(::BucketModel) = (:W, :T, :Ws, :σS)
 prognostic_domain_names(::BucketModel) =
     (:surface, :subsurface, :surface, :surface)
 
-auxiliary_types(::BucketModel{FT}) where {FT} = (FT, FT, FT, FT, FT, FT, FT)
+auxiliary_types(::BucketModel{FT}) where {FT} = (
+    FT,
+    NamedTuple{(:lhf, :shf, :vapor_flux, :r_ae), Tuple{FT, FT, FT, FT}},
+    FT,
+    FT,
+    FT,
+    FT,
+)
 auxiliary_vars(::BucketModel) =
-    (:q_sfc, :evaporation, :turbulent_energy_flux, :R_n, :T_sfc, :α_sfc, :ρ_sfc)
+    (:q_sfc, :turbulent_fluxes, :R_n, :T_sfc, :α_sfc, :ρ_sfc)
 auxiliary_domain_names(::BucketModel) =
     (:surface, :surface, :surface, :surface, :surface, :surface, :surface)
 
@@ -469,9 +475,8 @@ function make_compute_exp_tendency(model::BucketModel{FT}) where {FT}
 
         # The below is NOT CORRECT if we want the snow
         # cover fraction to be intermediate between 0 and 1.
-        (; turbulent_energy_flux, R_n, evaporation) = p.bucket
-        F_sfc = @. (R_n + turbulent_energy_flux) # Eqn (21)
-
+        (; turbulent_fluxes, R_n) = p.bucket
+        F_sfc = @. (turbulent_fluxes.shf .+ turbulent_fluxes.lhf + R_n) # Eqn (21)
         _T_freeze = LSMP.T_freeze(model.parameters.earth_param_set)
         _LH_f0 = LSMP.LH_f0(model.parameters.earth_param_set)
         _ρ_liq = LSMP.ρ_cloud_liq(model.parameters.earth_param_set)
@@ -483,13 +488,12 @@ function make_compute_exp_tendency(model::BucketModel{FT}) where {FT}
                 p.bucket.T_sfc,
                 model.parameters.τc,
                 snow_cover_fraction,
-                evaporation,
+                turbulent_fluxes.vapor_flux,
                 F_sfc,
                 _ρLH_f0,
                 _T_freeze,
             )
         (; F_melt, F_into_snow, G) = partitioned_fluxes
-
         # Temperature profile of soil.
         gradc2f = ClimaCore.Operators.GradientC2F()
         divf2c = ClimaCore.Operators.DivergenceF2C(
@@ -498,8 +502,8 @@ function make_compute_exp_tendency(model::BucketModel{FT}) where {FT}
                 ClimaCore.Geometry.WVector.(FT(0.0)),
             ),
         )
-        @. dY.bucket.T = -1 / ρc_soil * (divf2c(-κ_soil * gradc2f(Y.bucket.T))) # Simple heat equation, Eq 10
 
+        @. dY.bucket.T = -1 / ρc_soil * (divf2c(-κ_soil * gradc2f(Y.bucket.T))) # Simple heat equation, Eq 10
 
         # Partition water fluxes
         liquid_precip = liquid_precipitation(model.atmos, p, t) # always negative
@@ -512,7 +516,7 @@ function make_compute_exp_tendency(model::BucketModel{FT}) where {FT}
             Y.bucket.W,
             snow_melt, # snow melt already multipied by snow_cover_fraction
             liquid_precip,
-            (1 - snow_cover_fraction) * evaporation,
+            (1 - snow_cover_fraction) * turbulent_fluxes.vapor_flux,
             W_f,
         ) # Equation (2) of the text.
 
@@ -522,12 +526,14 @@ function make_compute_exp_tendency(model::BucketModel{FT}) where {FT}
         dY.bucket.Ws = @. -(
             liquid_precip +
             snow_melt +
-            (1 - snow_cover_fraction) * evaporation - infiltration
+            (1 - snow_cover_fraction) * turbulent_fluxes.vapor_flux -
+            infiltration
         ) # Equation (3) of the text, snow melt already multipied by snow_cover_fraction
 
         # snow melt already multipied by snow_cover_fraction
-        dY.bucket.σS =
-            @. -(snow_precip + snow_cover_fraction * evaporation - snow_melt) # Equation (6)
+        dY.bucket.σS = @. -(
+            snow_precip + snow_cover_fraction * turbulent_fluxes.vapor_flux - snow_melt
+        ) # Equation (6)
     end
     return compute_exp_tendency!
 end
@@ -559,9 +565,8 @@ function make_update_aux(model::BucketModel{FT}) where {FT}
             )
 
         # Compute turbulent surface fluxes
-        turb_fluxes = turbulent_fluxes(model.atmos, model, Y, p, t)
-        p.bucket.turbulent_energy_flux .= turb_fluxes.lhf .+ turb_fluxes.shf
-        p.bucket.evaporation .= turb_fluxes.vapor_flux
+        p.bucket.turbulent_fluxes .=
+            turbulent_fluxes(model.atmos, model, Y, p, t)
 
         # Radiative fluxes
         p.bucket.R_n .= net_radiation(model.radiation, model, Y, p, t)

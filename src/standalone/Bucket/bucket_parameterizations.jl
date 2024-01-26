@@ -49,26 +49,6 @@ function ClimaLSM.surface_height(model::BucketModel{FT}, Y, p) where {FT}
 end
 
 """
-    ClimaLSM.surface_air_density(model::BucketModel, Y, p)
-
-a helper function which computes and returns the surface air density for the bucket
-model.
-"""
-function ClimaLSM.surface_air_density(
-    atmos::PrescribedAtmosphere{FT},
-    model::BucketModel,
-    Y,
-    p,
-    t,
-    T_sfc,
-) where {FT}
-    thermo_params =
-        LSMP.thermodynamic_parameters(model.parameters.earth_param_set)
-    ts_in = construct_atmos_ts(atmos, p, thermo_params)
-    return compute_ρ_sfc.(thermo_params, ts_in, T_sfc)
-end
-
-"""
     ClimaLSM.surface_evaporative_scaling(model::BucketModel, Y, p)
 
 a helper function which computes and returns the surface evaporative scaling
