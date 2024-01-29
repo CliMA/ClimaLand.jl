@@ -1,13 +1,13 @@
 # # Introduction to the Land Bucket Model
 
-# The land bucket model implemented in ClimaLSM is based off of
+# The land bucket model implemented in ClimaLand is based off of
 # the models of Manabe (1969)[1], Milly and Shmakin (2002)[2], and the SLIM
 # model (Laguë, Bonan, Swann 2019)[3], with small changes, as noted.
 
 # This tutorial explains in brief the core equations and the
 # necessary parameters of the bucket model, and shows how to set up a simulation in standalone
 # mode. More detail for coupled runs can be
-# found in the ClimaCoupler.jl [documentation](https://clima.github.io/ClimaCoupler.jl/dev/) and in the coupled simulation [tutorial](https://clima.github.io/ClimaLSM.jl/dev/generated/coupled_bucket/).
+# found in the ClimaCoupler.jl [documentation](https://clima.github.io/ClimaCoupler.jl/dev/) and in the coupled simulation [tutorial](https://clima.github.io/ClimaLand.jl/dev/generated/coupled_bucket/).
 
 # At each coordinate point on the surface, we solve ordinary differential
 # equations for the subsurface water storage
@@ -138,19 +138,19 @@ import CLIMAParameters as CP
 # We also use Insolation to calculate solar zenith angle and solar insolation.
 
 
-# Lastly, let's bring in the bucket model types (from ClimaLSM) that we
+# Lastly, let's bring in the bucket model types (from ClimaLand) that we
 # will need access to.
 
-using ClimaLSM.Bucket: BucketModel, BucketModelParameters, BulkAlbedoFunction
-using ClimaLSM.Domains: coordinates, Column
-using ClimaLSM:
+using ClimaLand.Bucket: BucketModel, BucketModelParameters, BulkAlbedoFunction
+using ClimaLand.Domains: coordinates, Column
+using ClimaLand:
     initialize,
     make_update_aux,
     make_exp_tendency,
     make_set_initial_cache,
     PrescribedAtmosphere,
     PrescribedRadiativeFluxes
-using ClimaLSM.TimeVaryingInputs
+using ClimaLand.TimeVaryingInputs
 # We also want to plot the solution
 using Plots
 
@@ -164,8 +164,8 @@ FT = Float32;
 # heat of fusion at a reference temperature, etc). The land model requires
 # additional parameters as described in the text above. These two sets
 # are combined in the object `BucketModelParameters` as follows:
-import ClimaLSM
-include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"));
+import ClimaLand
+include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"));
 earth_param_set = create_lsm_parameters(FT);
 
 # Define our `BulkAlbedoFunction` model using a constant surface and snow albedo:
@@ -288,15 +288,15 @@ model = BucketModel(
 # type and rely on multiple dispatch to obtain the atmospheric and radiative
 # quantitites from the coupler.
 
-# Like all ClimaLSM models, we set up the state vector using `initialize`:
+# Like all ClimaLand models, we set up the state vector using `initialize`:
 Y, p, coords = initialize(model);
 
 # We can inspect the prognostic and auxiliary variables of the model:
-ClimaLSM.prognostic_vars(model)
+ClimaLand.prognostic_vars(model)
 Y.bucket |> propertynames
 # The auxiliary variables in this case are the surface temperature, the turbulent fluxes, the
 # net radiation, and the surface specific humidity.
-ClimaLSM.auxiliary_vars(model)
+ClimaLand.auxiliary_vars(model)
 p.bucket |> propertynames
 
 
@@ -320,7 +320,7 @@ ode_algo = CTS.ExplicitAlgorithm(timestepper)
 
 # Then we can set up the simulation and solve it:
 prob = SciMLBase.ODEProblem(
-    CTS.ClimaODEFunction(T_exp! = exp_tendency!, dss! = ClimaLSM.dss!),
+    CTS.ClimaODEFunction(T_exp! = exp_tendency!, dss! = ClimaLand.dss!),
     Y,
     (t0, tf),
     p,
@@ -334,10 +334,10 @@ saved_values = (;
     t = Array{Float64}(undef, length(saveat)),
     saveval = Array{NamedTuple}(undef, length(saveat)),
 );
-saving_cb = ClimaLSM.NonInterpSavingCallback(saved_values, saveat);
+saving_cb = ClimaLand.NonInterpSavingCallback(saved_values, saveat);
 updateat = copy(saveat)
-updatefunc = ClimaLSM.make_update_drivers(bucket_atmos, bucket_rad)
-driver_cb = ClimaLSM.DriverUpdateCallback(updateat, updatefunc)
+updatefunc = ClimaLand.make_update_drivers(bucket_atmos, bucket_rad)
+driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
 cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
 
 sol = SciMLBase.solve(prob, ode_algo; dt = Δt, saveat = saveat, callback = cb);

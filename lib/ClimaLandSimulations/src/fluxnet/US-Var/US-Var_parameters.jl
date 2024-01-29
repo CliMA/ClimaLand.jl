@@ -1,4 +1,4 @@
-"""Site-specific model parameters for running CliMA LSM on the Vaira Ranch
+"""Site-specific model parameters for running Clima Land on the Vaira Ranch
 fluxtower site."""
 
 ## Some site parameters have been taken from

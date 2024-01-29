@@ -1,15 +1,15 @@
 import SciMLBase
 import ClimaTimeSteppers as CTS
 using ClimaCore
-using ClimaLSM
-using ClimaLSM.Domains: Column
-using ClimaLSM.Soil
-using ClimaLSM.Soil.Biogeochemistry
-using ClimaLSM.Soil.Biogeochemistry: MicrobeProduction
+using ClimaLand
+using ClimaLand.Domains: Column
+using ClimaLand.Soil
+using ClimaLand.Soil.Biogeochemistry
+using ClimaLand.Soil.Biogeochemistry: MicrobeProduction
 using Dates
 
-import ClimaLSM.Parameters as LSMP
-include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
+import ClimaLand.Parameters as LP
+include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"))
 
 # Define simulation times
 t0 = Float64(0)
@@ -110,7 +110,7 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
     atmos_h = FT(30)
     atmos_co2 = (t) -> 1.0
 
-    atmos = ClimaLSM.PrescribedAtmosphere(
+    atmos = ClimaLand.PrescribedAtmosphere(
         TimeVaryingInput(precipitation_function),
         TimeVaryingInput(snow_precip),
         TimeVaryingInput(atmos_T),
@@ -178,10 +178,10 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
         t = Array{Float64}(undef, length(saveat)),
         saveval = Array{NamedTuple}(undef, length(saveat)),
     )
-    saving_cb = ClimaLSM.NonInterpSavingCallback(sv, saveat)
+    saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat)
     updateat = deepcopy(saveat)
-    updatefunc = ClimaLSM.make_update_drivers(atmos, nothing)
-    driver_cb = ClimaLSM.DriverUpdateCallback(updateat, updatefunc)
+    updatefunc = ClimaLand.make_update_drivers(atmos, nothing)
+    driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
     cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
 
     prob = SciMLBase.ODEProblem(

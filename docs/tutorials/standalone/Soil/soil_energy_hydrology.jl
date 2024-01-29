@@ -82,17 +82,17 @@ import SciMLBase
 using Statistics
 using Plots
 
-# CliMA packages and ClimaLSM modules
+# CliMA packages and ClimaLand modules
 using ClimaCore
 import CLIMAParameters as CP
 import ClimaTimeSteppers as CTS
-using ClimaLSM
-using ClimaLSM.Domains: Column
-using ClimaLSM.Soil
+using ClimaLand
+using ClimaLand.Domains: Column
+using ClimaLand.Soil
 
-import ClimaLSM
-import ClimaLSM.Parameters as LSMP
-include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"));
+import ClimaLand
+import ClimaLand.Parameters as LP
+include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"));
 
 # Choose a floating point precision, and get the parameter set, which holds constants used across CliMA models:
 FT = Float32
@@ -189,7 +189,7 @@ boundary_fluxes = (;
 sources = ();
 
 # Lastly, we can create the [`EnergyHydrology`](@ref
-# ClimaLSM.Soil.EnergyHydrology) model.
+# ClimaLand.Soil.EnergyHydrology) model.
 # As always, the
 # model encodes and stores all of the information (parameters, continous equations,
 # prognostic variables, etc) which are needed to turn the PDE system into a set of ODEs,
@@ -259,7 +259,7 @@ dt = Float64(30.0);
 timestepper = CTS.RK4();
 ode_algo = CTS.ExplicitAlgorithm(timestepper)
 prob = SciMLBase.ODEProblem(
-    CTS.ClimaODEFunction(T_exp! = exp_tendency!, dss! = ClimaLSM.dss!),
+    CTS.ClimaODEFunction(T_exp! = exp_tendency!, dss! = ClimaLand.dss!),
     Y,
     (t0, tf),
     p,
@@ -274,7 +274,7 @@ saved_values = (;
     t = Array{Float64}(undef, length(saveat)),
     saveval = Array{NamedTuple}(undef, length(saveat)),
 );
-cb = ClimaLSM.NonInterpSavingCallback(saved_values, saveat);
+cb = ClimaLand.NonInterpSavingCallback(saved_values, saveat);
 
 
 # Now we can solve the problem.

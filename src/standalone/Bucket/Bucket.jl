@@ -9,13 +9,13 @@ using ClimaCore.Operators: InterpolateC2F, DivergenceF2C, GradientC2F, SetValue
 using ClimaCore.Geometry: WVector
 using ClimaComms
 
-using ClimaLSM
+using ClimaLand
 
-using ClimaLSM.Regridder: regrid_netcdf_to_field
-using ClimaLSM.FileReader
-import ..Parameters as LSMP
-import ClimaLSM.Domains: coordinates, SphericalShell
-using ClimaLSM:
+using ClimaLand.Regridder: regrid_netcdf_to_field
+using ClimaLand.FileReader
+import ..Parameters as LP
+import ClimaLand.Domains: coordinates, SphericalShell
+using ClimaLand:
     AbstractAtmosphericDrivers,
     AbstractRadiativeDrivers,
     liquid_precipitation,
@@ -28,7 +28,7 @@ using ClimaLSM:
     heaviside,
     PrescribedAtmosphere,
     add_dss_buffer_to_aux
-import ClimaLSM:
+import ClimaLand:
     make_update_aux,
     make_compute_exp_tendency,
     prognostic_vars,
@@ -58,7 +58,7 @@ export BucketModelParameters,
     partition_surface_fluxes
 
 include(
-    joinpath(pkgdir(ClimaLSM), "src/standalone/Bucket/artifacts/artifacts.jl"),
+    joinpath(pkgdir(ClimaLand), "src/standalone/Bucket/artifacts/artifacts.jl"),
 )
 
 abstract type AbstractBucketModel{FT} <: AbstractExpModel{FT} end
@@ -98,7 +98,7 @@ as constant across wavelengths; surface is this context refers
 to soil and vegetation. This albedo type is static in time.
 
 Note that this option should only be used with global simulations,
-i.e. with a `ClimaLSM.LSMSphericalShellDomain.`
+i.e. with a `ClimaLand.LSMSphericalShellDomain.`
 """
 struct BulkAlbedoStatic{FT, PDS <: PrescribedDataStatic} <:
        AbstractLandAlbedoModel{FT}
@@ -152,7 +152,7 @@ of time and covers all surface types (soil, vegetation, snow, etc).
 This albedo type changes over time according to the input file.
 
 Note that this option should only be used with global simulations,
-i.e. with a `ClimaLSM.LSMSphericalShellDomain.`
+i.e. with a `ClimaLand.LSMSphericalShellDomain.`
 """
 struct BulkAlbedoTemporal{FT, FR <: FileReader.PrescribedDataTemporal} <:
        AbstractLandAlbedoModel{FT}
@@ -204,7 +204,7 @@ end
 
 
 
-ClimaLSM.name(::AbstractBucketModel) = :bucket
+ClimaLand.name(::AbstractBucketModel) = :bucket
 
 """
     struct BucketModelParameters{
@@ -301,11 +301,11 @@ end
                  domain::D,
                  atmosphere::ATM,
                  radiation::RAD,
-               ) where {FT, PSE, ATM, RAD, D<: ClimaLSM.Domains.AbstractDomain}
+               ) where {FT, PSE, ATM, RAD, D<: ClimaLand.Domains.AbstractDomain}
 
 An outer constructor for the `BucketModel`, which enforces the
 constraints:
-1. The bucket model domain is of type <: ClimaLSM.Domains.AbstractDomain
+1. The bucket model domain is of type <: ClimaLand.Domains.AbstractDomain
 2. Using an albedo read from a lat/lon file requires a global run.
 """
 function BucketModel(;
@@ -313,7 +313,7 @@ function BucketModel(;
     domain::D,
     atmosphere::ATM,
     radiation::RAD,
-) where {FT, PSE, ATM, RAD, D <: ClimaLSM.Domains.AbstractDomain}
+) where {FT, PSE, ATM, RAD, D <: ClimaLand.Domains.AbstractDomain}
     if parameters.albedo isa Union{BulkAlbedoStatic, BulkAlbedoTemporal}
         typeof(domain) <: SphericalShell ? nothing :
         error("Using an albedo map requires a global run.")
@@ -344,7 +344,7 @@ auxiliary_domain_names(::BucketModel) =
     (:surface, :surface, :surface, :surface, :surface, :surface, :surface)
 
 """
-    ClimaLSM.make_set_initial_cache(model::BucketModel{FT}) where{FT}
+    ClimaLand.make_set_initial_cache(model::BucketModel{FT}) where{FT}
 
 Returns the set_initial_cache! function, which updates the auxiliary
 state `p` in place with the initial values corresponding to Y(t=t0) = Y0.
@@ -352,7 +352,7 @@ state `p` in place with the initial values corresponding to Y(t=t0) = Y0.
 In this case, we also use this method to update the initial values for the
 spatially varying parameter fields, read in from data files.
 """
-function ClimaLSM.make_set_initial_cache(model::BucketModel)
+function ClimaLand.make_set_initial_cache(model::BucketModel)
     update_cache! = make_update_cache(model)
     function set_initial_cache!(p, Y0, t0)
         set_initial_parameter_field!(
@@ -431,7 +431,7 @@ end
 Initializes spatially- and temporally-varying surface albedo stored in
 the auxiliary vector `p` in place, according to a
 NetCDF file. This data file is encapsulated in an object of
-type `ClimaLSM.FileReader.PrescribedDataTemporal` in the field albedo.albedo_info.
+type `ClimaLand.FileReader.PrescribedDataTemporal` in the field albedo.albedo_info.
 This object contains a reference date and start time, which are used
 to get the start date.
 
@@ -477,9 +477,9 @@ function make_compute_exp_tendency(model::BucketModel{FT}) where {FT}
         # cover fraction to be intermediate between 0 and 1.
         (; turbulent_fluxes, R_n) = p.bucket
         F_sfc = @. (turbulent_fluxes.shf .+ turbulent_fluxes.lhf + R_n) # Eqn (21)
-        _T_freeze = LSMP.T_freeze(model.parameters.earth_param_set)
-        _LH_f0 = LSMP.LH_f0(model.parameters.earth_param_set)
-        _ρ_liq = LSMP.ρ_cloud_liq(model.parameters.earth_param_set)
+        _T_freeze = LP.T_freeze(model.parameters.earth_param_set)
+        _LH_f0 = LP.LH_f0(model.parameters.earth_param_set)
+        _ρ_liq = LP.ρ_cloud_liq(model.parameters.earth_param_set)
         _ρLH_f0 = _ρ_liq * _LH_f0 # Latent heat per unit volume.
         # partition energy fluxes
         partitioned_fluxes =
@@ -545,7 +545,7 @@ Creates the update_aux! function for the BucketModel.
 """
 function make_update_aux(model::BucketModel{FT}) where {FT}
     function update_aux!(p, Y, t)
-        p.bucket.T_sfc .= ClimaLSM.Domains.top_center_to_surface(Y.bucket.T)
+        p.bucket.T_sfc .= ClimaLand.Domains.top_center_to_surface(Y.bucket.T)
         p.bucket.ρ_sfc .=
             surface_air_density(model.atmos, model, Y, p, t, p.bucket.T_sfc)
 
@@ -558,7 +558,7 @@ function make_update_aux(model::BucketModel{FT}) where {FT}
                 Y.bucket.σS,
                 p.bucket.ρ_sfc,
                 Ref(
-                    LSMP.thermodynamic_parameters(
+                    LP.thermodynamic_parameters(
                         model.parameters.earth_param_set,
                     ),
                 ),
@@ -634,7 +634,7 @@ function next_albedo(
     )
 end
 
-function ClimaLSM.get_drivers(model::BucketModel)
+function ClimaLand.get_drivers(model::BucketModel)
     return (model.atmos, model.radiation)
 end
 

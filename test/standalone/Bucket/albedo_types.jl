@@ -8,9 +8,9 @@ import CLIMAParameters as CP
 using Dates
 using NCDatasets
 using JLD2
-using ClimaLSM.Regridder: regrid_netcdf_to_field, nans_to_zero, read_from_hdf5
-using ClimaLSM.FileReader: next_date_in_file, to_datetime
-using ClimaLSM.Bucket:
+using ClimaLand.Regridder: regrid_netcdf_to_field, nans_to_zero, read_from_hdf5
+using ClimaLand.FileReader: next_date_in_file, to_datetime
+using ClimaLand.Bucket:
     BucketModel,
     BucketModelParameters,
     BulkAlbedoFunction,
@@ -20,8 +20,8 @@ using ClimaLSM.Bucket:
     cesm2_albedo_dataset_path,
     set_initial_parameter_field!,
     next_albedo
-using ClimaLSM.Domains: coordinates, Column, SphericalShell
-using ClimaLSM:
+using ClimaLand.Domains: coordinates, Column, SphericalShell
+using ClimaLand:
     initialize,
     make_update_aux,
     make_set_initial_cache,
@@ -30,8 +30,8 @@ using ClimaLSM:
     TimeVaryingInput
 
 # Bucket model parameters
-import ClimaLSM
-include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
+import ClimaLand
+include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"))
 
 function create_domain_2d(FT)
     rad = FT(100)
@@ -48,8 +48,8 @@ end
 
 FT = Float32
 # Use two separate regrid dirs to avoid duplicate filenames since files have same varname
-regrid_dir_static = joinpath(pkgdir(ClimaLSM), "test", "static")
-regrid_dir_temporal = joinpath(pkgdir(ClimaLSM), "test", "temporal")
+regrid_dir_static = joinpath(pkgdir(ClimaLand), "test", "static")
+regrid_dir_temporal = joinpath(pkgdir(ClimaLand), "test", "temporal")
 isdir(regrid_dir_static) ? nothing : mkpath(regrid_dir_static)
 isdir(regrid_dir_temporal) ? nothing : mkpath(regrid_dir_temporal)
 
@@ -142,7 +142,7 @@ if !Sys.iswindows()
     @testset "Test set_initial_parameter_field for BulkAlbedoStatic, FT = $FT" begin
         comms_ctx = ClimaComms.SingletonCommsContext()
         # set up for function call
-        regrid_dir_static = joinpath(pkgdir(ClimaLSM), "test", "static")
+        regrid_dir_static = joinpath(pkgdir(ClimaLand), "test", "static")
         albedo = BulkAlbedoStatic{FT}(regrid_dir_static, comms_ctx)
         domain = create_domain_2d(FT)
         space = domain.space.surface
@@ -169,7 +169,7 @@ if !Sys.iswindows()
 
     @testset "Test set_initial_parameter_field for BulkAlbedoTemporal, FT = $FT" begin
         # set up for function call
-        regrid_dir_temporal = joinpath(pkgdir(ClimaLSM), "test", "temporal")
+        regrid_dir_temporal = joinpath(pkgdir(ClimaLand), "test", "temporal")
         t_start = Float64(0)
         domain = create_domain_2d(FT)
         space = domain.space.surface
@@ -271,7 +271,7 @@ if !Sys.iswindows()
         varname = "sw_alb"
         path = bareground_albedo_dataset_path()
         comms_ctx = ClimaComms.SingletonCommsContext()
-        regrid_dirpath = joinpath(pkgdir(ClimaLSM), "test/albedo_tmpfiles/")
+        regrid_dirpath = joinpath(pkgdir(ClimaLand), "test/albedo_tmpfiles/")
         mkpath(regrid_dirpath)
         albedo_model = BulkAlbedoStatic{FT}(regrid_dirpath, comms_ctx)
 
@@ -410,7 +410,7 @@ if !Sys.iswindows()
         varname = "sw_alb"
         infile_path = cesm2_albedo_dataset_path()
         comms_ctx = ClimaComms.SingletonCommsContext()
-        regrid_dirpath = joinpath(pkgdir(ClimaLSM), "test/albedo_tmpfiles/")
+        regrid_dirpath = joinpath(pkgdir(ClimaLand), "test/albedo_tmpfiles/")
         mkpath(regrid_dirpath)
 
         σS_c = FT(0.2)

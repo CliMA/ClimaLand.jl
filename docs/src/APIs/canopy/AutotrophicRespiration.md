@@ -1,19 +1,19 @@
 # Autotrophic Respiration
 
 ```@meta
-CurrentModule = ClimaLSM.Canopy
+CurrentModule = ClimaLand.Canopy
 ```
 
 ## Parameters
 
 ```@docs
-ClimaLSM.Canopy.AutotrophicRespirationParameters
+ClimaLand.Canopy.AutotrophicRespirationParameters
 ```
 
 ## Methods
 
 ```@docs
-ClimaLSM.Canopy.nitrogen_content
-ClimaLSM.Canopy.plant_respiration_maintenance
-ClimaLSM.Canopy.plant_respiration_growth
+ClimaLand.Canopy.nitrogen_content
+ClimaLand.Canopy.plant_respiration_maintenance
+ClimaLand.Canopy.plant_respiration_growth
 ```

@@ -2,11 +2,11 @@ using Test
 using Statistics
 using ClimaCore
 import CLIMAParameters as CP
-using ClimaLSM
-using ClimaLSM.Domains: HybridBox, SphericalShell
-using ClimaLSM.Soil
-import ClimaLSM
-include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
+using ClimaLand
+using ClimaLand.Domains: HybridBox, SphericalShell
+using ClimaLand.Soil
+import ClimaLand
+include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"))
 
 
 for FT in (Float32, Float64)
@@ -89,7 +89,7 @@ for FT in (Float32, Float64)
         exp_tendency! = make_exp_tendency(soil)
         imp_tendency!(dY, Y, p, t0)
         exp_tendency!(dY, Y, p, t0)
-        ClimaLSM.dss!(dY, p, t0)
+        ClimaLand.dss!(dY, p, t0)
 
         function dθdx(x, z)
             z_∇ = zmin / 2.0 + (zmax - zmin) / 10.0 * sin(π * 2 * x / xmax)
@@ -340,7 +340,7 @@ for FT in (Float32, Float64)
         dY = similar(Y)
         imp_tendency!(dY, Y, p, t0)
         exp_tendency!(dY, Y, p, t0)
-        ClimaLSM.dss!(dY, p, t0)
+        ClimaLand.dss!(dY, p, t0)
 
         ## dY should be zero. Look at dY/Y.
         @test maximum(abs.(Array(parent(dY.soil.ϑ_l)))) / ν < 10^3 * eps(FT)
@@ -431,7 +431,7 @@ for FT in (Float32, Float64)
         ]) / ν < 1e-1
 
         exp_tendency!(dY, Y, p, t0)
-        ClimaLSM.dss!(dY, p, t0)
+        ClimaLand.dss!(dY, p, t0)
 
         # horizontal change should be 0 everywhere
         @test mean([
@@ -447,29 +447,29 @@ end
     zmax = FT(0)
     zmin = FT(-1)
     xmax = FT(1.0)
-    boxdomain = ClimaLSM.Domains.HybridBox(;
+    boxdomain = ClimaLand.Domains.HybridBox(;
         xlim = (zmin, zmax),
         ylim = (zmin, zmax),
         zlim = (zmin, zmax),
         nelements = (100, 2, 100),
         npolynomial = 3,
     )
-    shell = ClimaLSM.Domains.SphericalShell(;
+    shell = ClimaLand.Domains.SphericalShell(;
         radius = FT(1),
         depth = FT(1),
         nelements = (2, 3),
         npolynomial = 1,
     )
-    column = ClimaLSM.Domains.Column(; zlim = (zmin, zmax), nelements = 10)
+    column = ClimaLand.Domains.Column(; zlim = (zmin, zmax), nelements = 10)
     for d in [boxdomain, shell]
         f1 = ClimaCore.Fields.zeros(d.space.subsurface)
         f2 = ClimaCore.Fields.zeros(d.space.subsurface)
         dY = ClimaCore.Fields.FieldVector(; g = f1, h = f2)
-        ClimaLSM.Soil.horizontal_components!(dY, d, Val(false))
+        ClimaLand.Soil.horizontal_components!(dY, d, Val(false))
         @test dY.g == f1
         @test dY.h == f2
         # If you pass true, you need additional arguments (dispatch off of model type)
-        @test_throws MethodError ClimaLSM.Soil.horizontal_components!(
+        @test_throws MethodError ClimaLand.Soil.horizontal_components!(
             dY,
             d,
             Val(true),
@@ -479,10 +479,10 @@ end
     f1 = ClimaCore.Fields.zeros(column.space.subsurface)
     f2 = ClimaCore.Fields.zeros(column.space.subsurface)
     dY = ClimaCore.Fields.FieldVector(; g = f1, h = f2)
-    ClimaLSM.Soil.horizontal_components!(dY, column, Val(false))
+    ClimaLand.Soil.horizontal_components!(dY, column, Val(false))
     @test dY.g == f1
     @test dY.h == f2
-    ClimaLSM.Soil.horizontal_components!(dY, column, Val(true))
+    ClimaLand.Soil.horizontal_components!(dY, column, Val(true))
     @test dY.g == f1
     @test dY.h == f2
 end

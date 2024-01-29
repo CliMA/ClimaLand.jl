@@ -18,7 +18,7 @@ using JLD2
 using CFTime
 using NCDatasets
 
-using ClimaLSM.Regridder
+using ClimaLand.Regridder
 
 export AbstractPrescribedData,
     PrescribedDataTemporal,

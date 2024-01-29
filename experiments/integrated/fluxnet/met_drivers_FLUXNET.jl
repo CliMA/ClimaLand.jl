@@ -7,7 +7,7 @@ using HTTP
 using JSON
 using Insolation
 
-using ClimaLSM
+using ClimaLand
 
 import ClimaComms
 
@@ -15,7 +15,7 @@ context = ClimaComms.context()
 
 # Methods for reading in the LAI data from MODIS data
 include(
-    joinpath(pkgdir(ClimaLSM), "experiments/integrated/fluxnet/pull_MODIS.jl"),
+    joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/pull_MODIS.jl"),
 )
 
 af = ArtifactFile(
@@ -111,7 +111,7 @@ if length(missing_drivers) != 0
         i in 1:length(missing_drivers)]...)")
 end
 
-thermo_params = LSMP.thermodynamic_parameters(earth_param_set)
+thermo_params = LP.thermodynamic_parameters(earth_param_set)
 esat =
     Thermodynamics.saturation_vapor_pressure.(
         Ref(thermo_params),
@@ -137,7 +137,7 @@ snow_precip = TimeVaryingInput((t) -> FT(0))
 
 # Construct the drivers. For the reference time we will use the UTC time at the
 # start of the simulation
-atmos = ClimaLSM.PrescribedAtmosphere(
+atmos = ClimaLand.PrescribedAtmosphere(
     precip,
     snow_precip,
     atmos_T,
@@ -180,7 +180,7 @@ function zenith_angle(
     )
 end
 
-radiation = ClimaLSM.PrescribedRadiativeFluxes(
+radiation = ClimaLand.PrescribedRadiativeFluxes(
     FT,
     SW_IN,
     LW_IN,

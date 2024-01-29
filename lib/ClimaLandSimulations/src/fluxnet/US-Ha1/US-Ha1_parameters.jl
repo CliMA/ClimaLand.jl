@@ -1,4 +1,4 @@
-"""Site-specific model parameters for running CliMA LSM on the Harvard Forest
+"""Site-specific model parameters for running Clima Land on the Harvard Forest
 fluxtower site."""
 
 # Data File download link

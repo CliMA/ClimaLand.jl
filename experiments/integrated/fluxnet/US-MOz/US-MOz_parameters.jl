@@ -1,4 +1,4 @@
-"""Site-specific model parameters for running CliMA LSM on the Ozark
+"""Site-specific model parameters for running Clima Land on the Ozark
 fluxtower site."""
 
 # Data File download link

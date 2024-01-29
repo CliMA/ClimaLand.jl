@@ -26,7 +26,7 @@ end
 """
     make_output_df(sv, inputs)
 
-Return a dataframe containing climalsm outputs
+Return a dataframe containing climaland outputs
 """
 function make_output_df(sv, inputs)
     # List of output that we want
@@ -53,13 +53,13 @@ function make_output_df(sv, inputs)
     # Create a dictionary with simplified column names and corresponding vectors
     data_dict = Dict(zip(column_names, output_vectors))
     # Create a DataFrame from the dictionary
-    climalsm = DataFrame(data_dict)
+    climaland = DataFrame(data_dict)
     # now if I want for example GPP, I can just do df.GPP
 
     index_t_start = 120 * 48 # we shouldn't hardcode that 120 in ozark_simulation.jl
     index_t_end = 120 * 48 + (N_days - N_spinup_days) * 48
     model_dt = inputs.DateTime[index_t_start:index_t_end]
 
-    insertcols!(climalsm, 1, :DateTime => model_dt)
-    return climalsm
+    insertcols!(climaland, 1, :DateTime => model_dt)
+    return climaland
 end

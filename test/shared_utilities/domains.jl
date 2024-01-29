@@ -1,8 +1,8 @@
 using ClimaCore
 using Test
-using ClimaLSM
-using ClimaLSM: Domains
-using ClimaLSM.Domains:
+using ClimaLand
+using ClimaLand: Domains
+using ClimaLand.Domains:
     Column,
     HybridBox,
     Plane,

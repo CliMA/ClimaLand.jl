@@ -87,7 +87,7 @@ function soil_moisture(driver::PrognosticMet, p, Y, t, z)
 end
 
 
-function ClimaLSM.get_drivers(model::LandSoilBiogeochemistry)
+function ClimaLand.get_drivers(model::LandSoilBiogeochemistry)
     bc = model.soil.boundary_conditions.top
     if typeof(bc) <: AtmosDrivenFluxBC{
         <:PrescribedAtmosphere,

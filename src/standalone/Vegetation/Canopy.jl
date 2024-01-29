@@ -1,12 +1,12 @@
 module Canopy
 using DocStringExtensions
 using Thermodynamics
-using ClimaLSM
+using ClimaLand
 using ClimaCore
-using ClimaLSM: AbstractRadiativeDrivers, AbstractAtmosphericDrivers
-import ..Parameters as LSMP
+using ClimaLand: AbstractRadiativeDrivers, AbstractAtmosphericDrivers
+import ..Parameters as LP
 
-import ClimaLSM:
+import ClimaLand:
     AbstractExpModel,
     name,
     prognostic_vars,
@@ -23,7 +23,7 @@ import ClimaLSM:
     make_set_initial_cache,
     get_drivers
 
-using ClimaLSM.Domains: Point, Plane, SphericalSurface
+using ClimaLand.Domains: Point, Plane, SphericalSurface
 export SharedCanopyParameters,
     CanopyModel, set_canopy_prescribed_field!, update_canopy_prescribed_field!
 include("./component_models.jl")
@@ -134,9 +134,9 @@ end
         soil::AbstractSoilDriver,
         parameters::SharedCanopyParameters{FT, PSE},
         domain::Union{
-            ClimaLSM.Domains.Point,
-            ClimaLSM.Domains.Plane,
-            ClimaLSM.Domains.SphericalSurface,
+            ClimaLand.Domains.Point,
+            ClimaLand.Domains.Plane,
+            ClimaLand.Domains.SphericalSurface,
         },
         energy = PrescribedCanopyTempModel{FT}(),
     ) where {FT, PSE}
@@ -159,9 +159,9 @@ function CanopyModel{FT}(;
     soil_driver::AbstractSoilDriver,
     parameters::SharedCanopyParameters{FT, PSE},
     domain::Union{
-        ClimaLSM.Domains.Point,
-        ClimaLSM.Domains.Plane,
-        ClimaLSM.Domains.SphericalSurface,
+        ClimaLand.Domains.Point,
+        ClimaLand.Domains.Plane,
+        ClimaLand.Domains.SphericalSurface,
     },
 ) where {FT, PSE}
     if typeof(energy) <: PrescribedCanopyTempModel{FT}
@@ -185,7 +185,7 @@ function CanopyModel{FT}(;
     return CanopyModel{FT, typeof.(args)...}(args...)
 end
 
-ClimaLSM.name(::CanopyModel) = :canopy
+ClimaLand.name(::CanopyModel) = :canopy
 
 """
     canopy_components(::CanopyModel)
@@ -353,12 +353,12 @@ function initialize_auxiliary(model::CanopyModel{FT}, coords) where {FT}
     # `p_state_list` contains `nothing` for components with no auxiliary
     #  variables, which we need to filter out before constructing `p`
     p = (; name(model) => filter_nt(NamedTuple{components}(p_state_list)))
-    p = ClimaLSM.add_dss_buffer_to_aux(p, model.domain)
+    p = ClimaLand.add_dss_buffer_to_aux(p, model.domain)
     return p
 end
 
 """
-    ClimaLSM.make_set_initial_cache(model::CanopyModel)
+    ClimaLand.make_set_initial_cache(model::CanopyModel)
 
 Returns the set_initial_cache! function, which updates the auxiliary
 state `p` in place with the initial values corresponding to Y(t=t0) = Y0.
@@ -367,7 +367,7 @@ In this case, we also use this method to update the initial values for the
 spatially and temporally varying canopy parameter fields,
 read in from data files or otherwise prescribed.
 """
-function ClimaLSM.make_set_initial_cache(model::CanopyModel)
+function ClimaLand.make_set_initial_cache(model::CanopyModel)
     update_cache! = make_update_cache(model)
     function set_initial_cache!(p, Y0, t0)
         set_canopy_prescribed_field!(model.hydraulics, p, t0)
@@ -377,7 +377,7 @@ function ClimaLSM.make_set_initial_cache(model::CanopyModel)
 end
 
 """
-     ClimaLSM.make_update_aux(canopy::CanopyModel{FT,
+     ClimaLand.make_update_aux(canopy::CanopyModel{FT,
                                                   <:AutotrophicRespirationModel,
                                                   <:Union{BeerLambertModel, TwoStreamModel},
                                                   <:FarquharModel,
@@ -399,7 +399,7 @@ The other sub-components rely heavily on each other,
 so the version of the `CanopyModel` with these subcomponents
 has a single update_aux! function, given here.
 """
-function ClimaLSM.make_update_aux(
+function ClimaLand.make_update_aux(
     canopy::CanopyModel{
         FT,
         <:AutotrophicRespirationModel,
@@ -448,12 +448,12 @@ function ClimaLSM.make_update_aux(
 
         # unpack parameters
         earth_param_set = canopy.parameters.earth_param_set
-        c = FT(LSMP.light_speed(earth_param_set))
-        planck_h = FT(LSMP.planck_constant(earth_param_set))
-        N_a = FT(LSMP.avogadro_constant(earth_param_set))
-        grav = FT(LSMP.grav(earth_param_set))
-        ρ_l = FT(LSMP.ρ_cloud_liq(earth_param_set))
-        R = FT(LSMP.gas_constant(earth_param_set))
+        c = FT(LP.light_speed(earth_param_set))
+        planck_h = FT(LP.planck_constant(earth_param_set))
+        N_a = FT(LP.avogadro_constant(earth_param_set))
+        grav = FT(LP.grav(earth_param_set))
+        ρ_l = FT(LP.ρ_cloud_liq(earth_param_set))
+        R = FT(LP.gas_constant(earth_param_set))
         thermo_params = earth_param_set.thermo_params
         (; ld, Ω, λ_γ_PAR, λ_γ_NIR) = canopy.radiative_transfer.parameters
         energy_per_photon_PAR = planck_h * c / λ_γ_PAR
@@ -629,7 +629,7 @@ function make_compute_exp_tendency(
     end
     return compute_exp_tendency!
 end
-function ClimaLSM.get_drivers(model::CanopyModel)
+function ClimaLand.get_drivers(model::CanopyModel)
     return (model.atmos, model.radiation)
 end
 

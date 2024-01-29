@@ -1,10 +1,10 @@
 # # Coupling the CliMA Canopy and Soil Hydraulics Models
 
 # In the
-# [`previous tutorial`](@ref https://clima.github.io/ClimaLSM.jl/dev/generated/soil_plant_hydrology_tutorial/),
+# [`previous tutorial`](@ref https://clima.github.io/ClimaLand.jl/dev/generated/soil_plant_hydrology_tutorial/),
 # we demonstrated how to run the canopy model in
 # standalone mode using prescribed values for the inputs of soil hydraulics
-# into the canopy hydraulics model. However, ClimaLSM has the built-in capacity
+# into the canopy hydraulics model. However, ClimaLand has the built-in capacity
 # to couple the canopy model with a soil physics model and timestep the two
 # simulations together to model a canopy-soil system. This tutorial
 # demonstrates how to setup and run a coupled simulation, again using
@@ -15,14 +15,14 @@
 # parameters.
 
 
-# In ClimaLSM, the coupling of the canopy and soil models is done by
+# In ClimaLand, the coupling of the canopy and soil models is done by
 # pairing the inputs and outputs which between the two models so that they match.
 # For example, the root extraction of the canopy hydraulics model, which acts as a
 # boundary flux for the plant system, is paired with a source term for root extraction in
 # the soil model, so that the flux of water from the soil into the roots is
 # equal and factored into both models. This pairing is done automatically in the
 # constructor for a
-# [`SoilCanopyModel`](https://clima.github.io/ClimaLSM.jl/dev/APIs/ClimaLSM/#LSM-Model-Types-and-methods)
+# [`SoilCanopyModel`](https://clima.github.io/ClimaLand.jl/dev/APIs/ClimaLand/#LSM-Model-Types-and-methods)
 # so that a
 # user needs only specify the necessary arguments for each of the component
 # models, and the two models will automatically be paired into a coupled
@@ -39,20 +39,20 @@ using Dates
 using Insolation
 
 
-# Load CliMA Packages and ClimaLSM Modules:
+# Load CliMA Packages and ClimaLand Modules:
 
 using ClimaCore
 import CLIMAParameters as CP
 import ClimaTimeSteppers as CTS
-using ClimaLSM
-using ClimaLSM.Domains: Column, obtain_surface_domain
-using ClimaLSM.Soil
-using ClimaLSM.Soil.Biogeochemistry
-using ClimaLSM.Canopy
-using ClimaLSM.Canopy.PlantHydraulics
-import ClimaLSM
-import ClimaLSM.Parameters as LSMP
-include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"));
+using ClimaLand
+using ClimaLand.Domains: Column, obtain_surface_domain
+using ClimaLand.Soil
+using ClimaLand.Soil.Biogeochemistry
+using ClimaLand.Canopy
+using ClimaLand.Canopy.PlantHydraulics
+import ClimaLand
+import ClimaLand.Parameters as LP
+include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"));
 
 # Define the floating point precision desired (64 or 32 bit), and get the
 # parameter set holding constants used across CliMA Models:
@@ -85,7 +85,7 @@ land_domain = Column(; zlim = (zmin, zmax), nelements = nelements);
 
 # Use the data tools for reading FLUXNET data sets 
 include(
-    joinpath(pkgdir(ClimaLSM), "experiments/integrated/fluxnet/data_tools.jl"),
+    joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/data_tools.jl"),
 );
 
 # First provide some information about the site
@@ -105,7 +105,7 @@ data_link = "https://caltech.box.com/shared/static/7r0ci9pacsnwyo0o9c25mhhcjhsu6
 
 include(
     joinpath(
-        pkgdir(ClimaLSM),
+        pkgdir(ClimaLand),
         "experiments/integrated/fluxnet/met_drivers_FLUXNET.jl",
     ),
 );
@@ -113,7 +113,7 @@ include(
 # # Setup the Coupled Canopy and Soil Physics Model
 
 # We want to simulate the canopy-soil system together, so the model type
-# [`SoilCanopyModel`](https://clima.github.io/ClimaLSM.jl/dev/APIs/ClimaLSM/#LSM-Model-Types-and-methods)
+# [`SoilCanopyModel`](https://clima.github.io/ClimaLand.jl/dev/APIs/ClimaLand/#LSM-Model-Types-and-methods)
 # is chosen.
 # From the linked documentation, we see that we need to provide the soil model
 # type and arguments as well as the canopy model component types, component
@@ -121,9 +121,9 @@ include(
 # all of these.
 
 # For our soil model, we will choose the
-# [`EnergyHydrology`](https://clima.github.io/ClimaLSM.jl/dev/APIs/Soil/#Soil-Models-2)
+# [`EnergyHydrology`](https://clima.github.io/ClimaLand.jl/dev/APIs/Soil/#Soil-Models-2)
 # and set up all the necessary arguments. See the
-# [tutorial](https://clima.github.io/ClimaLSM.jl/dev/generated/Soil/soil_energy_hydrology/)
+# [tutorial](https://clima.github.io/ClimaLand.jl/dev/generated/Soil/soil_energy_hydrology/)
 # on the model for a more detailed explanation of the soil model.
 
 # Define the parameters for the soil model and provide them to the model
@@ -185,7 +185,7 @@ soil_args = (domain = soil_domain, parameters = soil_ps)
 soil_model_type = Soil.EnergyHydrology{FT}
 
 # For the heterotrophic respiration model, see the
-# [documentation](https://clima.github.io/ClimaLSM.jl/previews/PR214/dynamicdocs/pages/soil_biogeochemistry/microbial_respiration/)
+# [documentation](https://clima.github.io/ClimaLand.jl/previews/PR214/dynamicdocs/pages/soil_biogeochemistry/microbial_respiration/)
 # to understand the parameterisation.
 # The domain is defined similarly to the soil domain described above.
 ν = soil_ν # defined above
@@ -243,7 +243,7 @@ soilco2_args = (;
     drivers = soilco2_drivers,
 );
 
-# Next we need to set up the [`CanopyModel`](https://clima.github.io/ClimaLSM.jl/dev/APIs/canopy/Canopy/#Canopy-Model-Structs).
+# Next we need to set up the [`CanopyModel`](https://clima.github.io/ClimaLand.jl/dev/APIs/canopy/Canopy/#Canopy-Model-Structs).
 # For more details on the specifics of this model see the previous tutorial.
 
 # Begin by declaring the component types of the canopy model. Unlike in the
@@ -467,10 +467,10 @@ sv = (;
     t = Array{Float64}(undef, length(saveat)),
     saveval = Array{NamedTuple}(undef, length(saveat)),
 )
-saving_cb = ClimaLSM.NonInterpSavingCallback(sv, saveat)
-updatefunc = ClimaLSM.make_update_drivers(atmos, radiation)
+saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat)
+updatefunc = ClimaLand.make_update_drivers(atmos, radiation)
 updateat = Array(t0:1800:tf)
-driver_cb = ClimaLSM.DriverUpdateCallback(updateat, updatefunc)
+driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
 cb = SciMLBase.CallbackSet(driver_cb, saving_cb);
 
 # Carry out the simulation

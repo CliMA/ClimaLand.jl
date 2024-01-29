@@ -135,11 +135,11 @@ function OptimalityFarquharModel{FT}(
     )
 end
 
-ClimaLSM.auxiliary_vars(model::OptimalityFarquharModel) =
+ClimaLand.auxiliary_vars(model::OptimalityFarquharModel) =
     (:An, :GPP, :Rd, :Vcmax25)
-ClimaLSM.auxiliary_types(model::OptimalityFarquharModel{FT}) where {FT} =
+ClimaLand.auxiliary_types(model::OptimalityFarquharModel{FT}) where {FT} =
     (FT, FT, FT, FT)
-ClimaLSM.auxiliary_domain_names(::OptimalityFarquharModel) =
+ClimaLand.auxiliary_domain_names(::OptimalityFarquharModel) =
     (:surface, :surface, :surface, :surface)
 
 """

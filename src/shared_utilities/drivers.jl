@@ -4,7 +4,7 @@ using DocStringExtensions
 using SurfaceFluxes
 import SurfaceFluxes.Parameters as SFP
 using StaticArrays
-import ..Parameters as LSMP
+import ..Parameters as LP
 export AbstractAtmosphericDrivers,
     AbstractRadiativeDrivers,
     PrescribedAtmosphere,
@@ -189,7 +189,7 @@ function turbulent_fluxes(
     r_sfc = surface_resistance(model, Y, p, t)
     d_sfc = displacement_height(model, Y, p)
     thermo_params =
-        LSMP.thermodynamic_parameters(model.parameters.earth_param_set)
+        LP.thermodynamic_parameters(model.parameters.earth_param_set)
     ts_air = construct_atmos_ts(atmos, p, thermo_params)
     u_air = p.drivers.u
     h_air = atmos.h
@@ -261,7 +261,7 @@ function turbulent_fluxes_at_a_point(
     z_0b::FT,
     earth_param_set::EP,
 ) where {FT <: AbstractFloat, EP}
-    thermo_params = LSMP.thermodynamic_parameters(earth_param_set)
+    thermo_params = LP.thermodynamic_parameters(earth_param_set)
     ts_sfc = Thermodynamics.PhaseEquil_ρTq(thermo_params, ρ_sfc, T_sfc, q_sfc)
 
     # SurfaceFluxes.jl expects a relative difference between where u = 0
@@ -289,14 +289,14 @@ function turbulent_fluxes_at_a_point(
         beta = β_sfc,
         gustiness = gustiness,
     )
-    surface_flux_params = LSMP.surface_fluxes_parameters(earth_param_set)
+    surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
     conditions = SurfaceFluxes.surface_conditions(
         surface_flux_params,
         sc;
         tol_neutral = SFP.cp_d(surface_flux_params) / 100000,
     )
-    _LH_v0::FT = LSMP.LH_v0(earth_param_set)
-    _ρ_liq::FT = LSMP.ρ_cloud_liq(earth_param_set)
+    _LH_v0::FT = LP.LH_v0(earth_param_set)
+    _ρ_liq::FT = LP.ρ_cloud_liq(earth_param_set)
 
     cp_m::FT = Thermodynamics.cp_m(thermo_params, ts_in)
     T_in::FT = Thermodynamics.air_temperature(thermo_params, ts_in)
@@ -321,7 +321,7 @@ end
 
 Computes the turbulent surface fluxes terms at the ground for a coupled simulation.
 """
-function ClimaLSM.turbulent_fluxes(
+function ClimaLand.turbulent_fluxes(
     atmos::CoupledAtmosphere,
     model::AbstractModel,
     Y,
@@ -329,7 +329,7 @@ function ClimaLSM.turbulent_fluxes(
     t,
 )
     # coupler has done its thing behind the scenes already
-    model_name = ClimaLSM.name(model)
+    model_name = ClimaLand.name(model)
     model_cache = getproperty(p, model_name)
     return (
         lhf = model_cache.turbulent_fluxes.lhf,
@@ -389,7 +389,7 @@ function net_radiation(
     LW_d = p.drivers.LW_d
     SW_d = p.drivers.SW_d
     earth_param_set = model.parameters.earth_param_set
-    _σ = LSMP.Stefan(earth_param_set)
+    _σ = LP.Stefan(earth_param_set)
     T_sfc = surface_temperature(model, Y, p, t)
     α_sfc = surface_albedo(model, Y, p)
     ϵ_sfc = surface_emissivity(model, Y, p)
@@ -410,7 +410,7 @@ end
 Computes the net radiative flux at the ground for a coupled simulation.
 Your model cache must contain the field `R_n`.
 """
-function ClimaLSM.net_radiation(
+function ClimaLand.net_radiation(
     radiation::CoupledRadiativeFluxes,
     model::AbstractModel,
     Y::ClimaCore.Fields.FieldVector,
@@ -418,7 +418,7 @@ function ClimaLSM.net_radiation(
     t,
 )
     # coupler has done its thing behind the scenes already
-    model_name = ClimaLSM.name(model)
+    model_name = ClimaLand.name(model)
     model_cache = getproperty(p, model_name)
     return model_cache.R_n
 end
@@ -503,14 +503,14 @@ function surface_air_density(
     T_sfc,
 )
     thermo_params =
-        LSMP.thermodynamic_parameters(model.parameters.earth_param_set)
+        LP.thermodynamic_parameters(model.parameters.earth_param_set)
     ts_in = construct_atmos_ts(atmos, p, thermo_params)
     return compute_ρ_sfc.(thermo_params, ts_in, T_sfc)
 end
 
 
 """
-    ClimaLSM.surface_air_density(
+    ClimaLand.surface_air_density(
                     atmos::CoupledAtmosphere,
                     model::AbstractModel,
                     Y,
@@ -529,7 +529,7 @@ function surface_air_density(
     p,
     _...,
 )
-    model_name = ClimaLSM.name(model)
+    model_name = ClimaLand.name(model)
     model_cache = getproperty(p, model_name)
     return model_cache.ρ_sfc
 end
@@ -656,7 +656,7 @@ function initialize_drivers(a::PrescribedAtmosphere{FT}, coords) where {FT}
     # as part of a named tuple with `model_name` as the key.
     # Here we just want the variable named tuple itself
     vars =
-        ClimaLSM.initialize_vars(keys, types, domain_names, coords, model_name)
+        ClimaLand.initialize_vars(keys, types, domain_names, coords, model_name)
     return vars.drivers
 end
 
@@ -675,7 +675,7 @@ function initialize_drivers(r::PrescribedRadiativeFluxes{FT}, coords) where {FT}
     # as part of a named tuple with `model_name` as the key.
     # Here we just want the variable named tuple itself
     vars =
-        ClimaLSM.initialize_vars(keys, types, domain_names, coords, model_name)
+        ClimaLand.initialize_vars(keys, types, domain_names, coords, model_name)
     return vars.drivers
 end
 

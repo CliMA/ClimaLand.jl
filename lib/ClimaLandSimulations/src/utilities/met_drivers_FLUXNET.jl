@@ -100,7 +100,7 @@ function setup_drivers(site_ID)
         )
     end
 
-    thermo_params = LSMP.thermodynamic_parameters(earth_param_set)
+    thermo_params = LP.thermodynamic_parameters(earth_param_set)
     esat =
         Thermodynamics.saturation_vapor_pressure.(
             Ref(thermo_params),
@@ -126,7 +126,7 @@ function setup_drivers(site_ID)
 
     # Construct the drivers. For the reference time we will use the UTC time at the
     # start of the simulation
-    atmos = ClimaLSM.PrescribedAtmosphere(
+    atmos = ClimaLand.PrescribedAtmosphere(
         precip,
         snow_precip,
         atmos_T,
@@ -169,7 +169,7 @@ function setup_drivers(site_ID)
         )
     end
 
-    radiation = ClimaLSM.PrescribedRadiativeFluxes(
+    radiation = ClimaLand.PrescribedRadiativeFluxes(
         FT,
         SW_IN,
         LW_IN,

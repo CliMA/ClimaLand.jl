@@ -5,56 +5,56 @@
 Returns the bulk surface albedo, which gets updated in `update_aux`
 via `next_albedo`.
 """
-function ClimaLSM.surface_albedo(model::BucketModel{FT}, Y, p) where {FT}
+function ClimaLand.surface_albedo(model::BucketModel{FT}, Y, p) where {FT}
     return p.bucket.α_sfc
 end
 
 """
-   ClimaLSM.surface_emissivity(model::BucketModel{FT}, Y, p)
+   ClimaLand.surface_emissivity(model::BucketModel{FT}, Y, p)
 
 Returns the emissivity for the bucket model (1.0).
 """
-function ClimaLSM.surface_emissivity(model::BucketModel{FT}, Y, p) where {FT}
+function ClimaLand.surface_emissivity(model::BucketModel{FT}, Y, p) where {FT}
     return FT(1)
 end
 
 """
-    ClimaLSM.surface_temperature(model::BucketModel, Y, p)
+    ClimaLand.surface_temperature(model::BucketModel, Y, p)
 
 a helper function which returns the surface temperature for the bucket
 model, which is stored in the aux state.
 """
-function ClimaLSM.surface_temperature(model::BucketModel, Y, p, t)
+function ClimaLand.surface_temperature(model::BucketModel, Y, p, t)
     return p.bucket.T_sfc
 end
 
 """
-    ClimaLSM.surface_specific_humidity(model::BucketModel, Y, p)
+    ClimaLand.surface_specific_humidity(model::BucketModel, Y, p)
 
 a helper function which returns the surface specific humidity for the bucket
 model, which is stored in the aux state.
 """
-function ClimaLSM.surface_specific_humidity(model::BucketModel, Y, p, _...)
+function ClimaLand.surface_specific_humidity(model::BucketModel, Y, p, _...)
     return p.bucket.q_sfc
 end
 
 """
-    ClimaLSM.surface_height(model::BucketModel, Y, p)
+    ClimaLand.surface_height(model::BucketModel, Y, p)
 
 a helper function which returns the surface height for the bucket
 model, which is zero currently.
 """
-function ClimaLSM.surface_height(model::BucketModel{FT}, Y, p) where {FT}
+function ClimaLand.surface_height(model::BucketModel{FT}, Y, p) where {FT}
     return FT(0)
 end
 
 """
-    ClimaLSM.surface_evaporative_scaling(model::BucketModel, Y, p)
+    ClimaLand.surface_evaporative_scaling(model::BucketModel, Y, p)
 
 a helper function which computes and returns the surface evaporative scaling
  factor for the bucket model.
 """
-function ClimaLSM.surface_evaporative_scaling(model::BucketModel, Y, p)
+function ClimaLand.surface_evaporative_scaling(model::BucketModel, Y, p)
     beta = beta_factor.(Y.bucket.W, Y.bucket.σS, model.parameters.W_f)
     return beta
 end

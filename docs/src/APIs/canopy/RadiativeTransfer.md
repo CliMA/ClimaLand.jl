@@ -1,21 +1,21 @@
 # Radiative Transfer
 
 ```@meta
-CurrentModule = ClimaLSM.Canopy
+CurrentModule = ClimaLand.Canopy
 ```
 
 ## Parameters
 
 ```@docs
-ClimaLSM.Canopy.BeerLambertParameters
+ClimaLand.Canopy.BeerLambertParameters
 ```
 
 ## Methods
 
 ```@docs
-ClimaLSM.Canopy.compute_absorbances
-ClimaLSM.Canopy.plant_absorbed_pfd
-ClimaLSM.Canopy.extinction_coeff
-ClimaLSM.Canopy.extinction_coeff
-ClimaLSM.Canopy.canopy_radiant_energy_fluxes!
+ClimaLand.Canopy.compute_absorbances
+ClimaLand.Canopy.plant_absorbed_pfd
+ClimaLand.Canopy.extinction_coeff
+ClimaLand.Canopy.extinction_coeff
+ClimaLand.Canopy.canopy_radiant_energy_fluxes!
 ```

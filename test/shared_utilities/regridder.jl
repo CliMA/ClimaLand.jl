@@ -1,11 +1,11 @@
-using ClimaLSM.Regridder: regrid_netcdf_to_field
-using ClimaLSM.FileReader: PrescribedDataStatic
-using ClimaLSM.Bucket:
+using ClimaLand.Regridder: regrid_netcdf_to_field
+using ClimaLand.FileReader: PrescribedDataStatic
+using ClimaLand.Bucket:
     BulkAlbedoStatic,
     bareground_albedo_dataset_path,
     set_initial_parameter_field!
-using ClimaLSM.Domains: SphericalSurface
-import ClimaLSM
+using ClimaLand.Domains: SphericalSurface
+import ClimaLand
 using ClimaComms
 using ClimaCore
 using Test
@@ -21,7 +21,7 @@ if !Sys.iswindows()
         infile_path = get_infile()
 
         regrid_dirpath = joinpath(
-            pkgdir(ClimaLSM),
+            pkgdir(ClimaLand),
             "test/standalone/Bucket/regridder_tmpfiles",
         )
         mkpath(regrid_dirpath)

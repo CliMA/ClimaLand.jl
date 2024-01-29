@@ -1,8 +1,8 @@
 # # Introduction to the Canopy Model
 
 # This tutorial shows how to instantiate and run a simulation of the
-# canopy biophysics model in ClimaLSM. A
-# [`CanopyModel`](https://clima.github.io/ClimaLSM.jl/dev/APIs/canopy/Canopy/#Canopy-Model-Structs)
+# canopy biophysics model in ClimaLand. A
+# [`CanopyModel`](https://clima.github.io/ClimaLand.jl/dev/APIs/canopy/Canopy/#Canopy-Model-Structs)
 # including all component
 # models is initialized, then an example simulation is run. The initial conditions,
 # atmospheric and radiative flux conditions, and canopy properties are set up
@@ -10,21 +10,21 @@
 # an oak-hickory forest in Ozark, Missouri, USA. See [Wang et al. 2021](https://doi.org/10.5194/gmd-14-6741-2021)
 # for details on the site and canopy parameters.
 
-# The canopy biophysics model in ClimaLSM combines a photosynthesis model with a
+# The canopy biophysics model in ClimaLand combines a photosynthesis model with a
 # canopy radiative transfer scheme, plant hydraulics model, and stomatal
 # conductance model, placing them under either prescribed or simulated (as in a
 # full Earth System Model) atmospheric and radiative flux conditions.
 
-# ClimaLSM supports either Beer-Lambert law or a Two-Stream model for radiative
+# ClimaLand supports either Beer-Lambert law or a Two-Stream model for radiative
 # transfer. For this tutorial, we will use the Beer-Lambert law,
 # in which the intensity of light absorbed is a negative exponential function of
 # depth in the canopy and an exinction coefficient determined by optical depth.
 
-# The model of photosynthesis in CliMA LSM is the Farquar Model in which GPP is
+# The model of photosynthesis in Clima Land is the Farquar Model in which GPP is
 # calculated based on C3 and C4 photosynthesis, which determines potential
 # leaf-level photosynthesis.
 
-# The plant hydraulics model in ClimaLSM solves for the water content within
+# The plant hydraulics model in ClimaLand solves for the water content within
 # bulk root-stem-canopy system using Richards equation discretized into an
 # arbitrary number of layers. The water content is related to the water
 # potential using a retention curve relationship, and the water potential is
@@ -40,19 +40,19 @@ using Statistics
 using Dates
 using Insolation
 
-# Load CliMA Packages and ClimaLSM Modules:
+# Load CliMA Packages and ClimaLand Modules:
 
 using ClimaCore
 import CLIMAParameters as CP
 import ClimaTimeSteppers as CTS
 using StaticArrays
-using ClimaLSM
-using ClimaLSM.Domains: Point
-using ClimaLSM.Canopy
-using ClimaLSM.Canopy.PlantHydraulics
-import ClimaLSM
-import ClimaLSM.Parameters as LSMP
-include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"));
+using ClimaLand
+using ClimaLand.Domains: Point
+using ClimaLand.Canopy
+using ClimaLand.Canopy.PlantHydraulics
+import ClimaLand
+import ClimaLand.Parameters as LP
+include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"));
 
 # Define the floating point precision desired (64 or 32 bit), and get the
 # parameter set holding constants used across CliMA Models:
@@ -64,7 +64,7 @@ earth_param_set = create_lsm_parameters(FT);
 
 # We want to simulate a vegetative canopy in standalone mode, without coupling
 # the canopy to atmospheric or soil physics models, so we choose a
-# [`CanopyModel`](https://clima.github.io/ClimaLSM.jl/dev/APIs/canopy/Canopy/#Canopy-Model-Structs).
+# [`CanopyModel`](https://clima.github.io/ClimaLand.jl/dev/APIs/canopy/Canopy/#Canopy-Model-Structs).
 # From the linked
 # documentation, we can see that we need to provide shared parameters, a domain,
 # a radiative transfer model, photosynthesis model, plant hydraulics model,
@@ -75,7 +75,7 @@ earth_param_set = create_lsm_parameters(FT);
 # by some of the component models. Here we are performing a 1-dimensional
 # simulation in a `Point` domain and will use
 # single stem and leaf compartments, but for 2D simulations, the parameters of
-# the [`domain`](https://clima.github.io/ClimaLSM.jl/dev/APIs/shared_utilities/#Domains)
+# the [`domain`](https://clima.github.io/ClimaLand.jl/dev/APIs/shared_utilities/#Domains)
 # would change.
 
 nelements = 10
@@ -101,7 +101,7 @@ land_domain = Point(; z_sfc = FT(0.0))
 
 # Use the data tools for reading FLUXNET data sets 
 include(
-    joinpath(pkgdir(ClimaLSM), "experiments/integrated/fluxnet/data_tools.jl"),
+    joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/data_tools.jl"),
 );
 
 # First provide some information about the site
@@ -121,7 +121,7 @@ data_link = "https://caltech.box.com/shared/static/7r0ci9pacsnwyo0o9c25mhhcjhsu6
 
 include(
     joinpath(
-        pkgdir(ClimaLSM),
+        pkgdir(ClimaLand),
         "experiments/integrated/fluxnet/met_drivers_FLUXNET.jl",
     ),
 );
@@ -229,7 +229,7 @@ function root_distribution(z::T; rooting_depth = rooting_depth) where {T}
 end;
 
 # Create the component conductivity and retention models of the hydraulics
-# model. In ClimaLSM, a Weibull parameterization is used for the conductivity as
+# model. In ClimaLand, a Weibull parameterization is used for the conductivity as
 # a function of potential, and a linear retention curve is used.
 
 K_sat_plant = FT(1.8e-8)
@@ -272,7 +272,7 @@ plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
 # generate the set of ODEs modeling the canopy biophysics, ready to be passed
 # off to a timestepper.
 
-canopy = ClimaLSM.Canopy.CanopyModel{FT}(;
+canopy = ClimaLand.Canopy.CanopyModel{FT}(;
     parameters = shared_params,
     domain = land_domain,
     autotrophic_respiration = AR_model,
@@ -289,7 +289,7 @@ canopy = ClimaLSM.Canopy.CanopyModel{FT}(;
 # explicit time stepping tendency that updates auxiliary and prognostic
 # variables that are stepped explicitly.
 
-Y, p, coords = ClimaLSM.initialize(canopy)
+Y, p, coords = ClimaLand.initialize(canopy)
 exp_tendency! = make_exp_tendency(canopy);
 
 # Provide initial conditions for the canopy hydraulics model
@@ -334,13 +334,13 @@ sv = (;
     t = Array{Float64}(undef, length(saveat)),
     saveval = Array{NamedTuple}(undef, length(saveat)),
 )
-saving_cb = ClimaLSM.NonInterpSavingCallback(sv, saveat);
+saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat);
 
 # Create the callback function which updates the forcing variables,
 # or drivers.
 updateat = Array(t0:1800:tf)
-updatefunc = ClimaLSM.make_update_drivers(atmos, radiation)
-driver_cb = ClimaLSM.DriverUpdateCallback(updateat, updatefunc)
+updatefunc = ClimaLand.make_update_drivers(atmos, radiation)
+driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
 cb = SciMLBase.CallbackSet(driver_cb, saving_cb);
 
 
@@ -350,7 +350,7 @@ timestepper = CTS.RK4();
 ode_algo = CTS.ExplicitAlgorithm(timestepper)
 
 prob = SciMLBase.ODEProblem(
-    CTS.ClimaODEFunction(T_exp! = exp_tendency!, dss! = ClimaLSM.dss!),
+    CTS.ClimaODEFunction(T_exp! = exp_tendency!, dss! = ClimaLand.dss!),
     Y,
     (t0, tf),
     p,

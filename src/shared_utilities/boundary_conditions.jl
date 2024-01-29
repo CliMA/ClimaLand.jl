@@ -51,7 +51,7 @@ both as Fields.
 """
 function get_Δz(z::ClimaCore.Fields.Field)
     # Extract the differences between levels of the face space
-    fs = ClimaLSM.Domains.obtain_face_space(axes(z))
+    fs = ClimaLand.Domains.obtain_face_space(axes(z))
     z_face = ClimaCore.Fields.coordinate_field(fs).z
     Δz = ClimaCore.Fields.Δz_field(z_face)
 

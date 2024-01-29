@@ -51,10 +51,10 @@ function MedlynConductanceModel{FT}(
     )
 end
 
-ClimaLSM.name(model::AbstractStomatalConductanceModel) = :conductance
-ClimaLSM.auxiliary_vars(model::MedlynConductanceModel) =
+ClimaLand.name(model::AbstractStomatalConductanceModel) = :conductance
+ClimaLand.auxiliary_vars(model::MedlynConductanceModel) =
     (:medlyn_term, :gs, :transpiration)
-ClimaLSM.auxiliary_types(model::MedlynConductanceModel{FT}) where {FT} =
+ClimaLand.auxiliary_types(model::MedlynConductanceModel{FT}) where {FT} =
     (FT, FT, FT)
-ClimaLSM.auxiliary_domain_names(::MedlynConductanceModel) =
+ClimaLand.auxiliary_domain_names(::MedlynConductanceModel) =
     (:surface, :surface, :surface)

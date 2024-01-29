@@ -15,56 +15,56 @@ However, some of the same functionality is nice to have
 for canopy components, especially when defining the variables,
 which is why we introduce the
 `AbstractCanopyComponent` type and extend many of the
-methods for `ClimaLSM.AbstractModel`s for
+methods for `ClimaLand.AbstractModel`s for
 the canopy component parameterizations.
 """
 abstract type AbstractCanopyComponent{FT <: AbstractFloat} end
 
 """
-    ClimaLSM.auxiliary_types(::AbstractCanopyComponent)
+    ClimaLand.auxiliary_types(::AbstractCanopyComponent)
 
 Returns the auxiliary types of the canopy component
 passed in as an argument.
 """
-ClimaLSM.auxiliary_types(::AbstractCanopyComponent) = ()
+ClimaLand.auxiliary_types(::AbstractCanopyComponent) = ()
 
 """
-    ClimaLSM.prognostic_types(::AbstractCanopyComponent)
+    ClimaLand.prognostic_types(::AbstractCanopyComponent)
 
 Returns the prognostic types of the canopy component
 passed in as an argument.
 """
-ClimaLSM.prognostic_types(::AbstractCanopyComponent) = ()
+ClimaLand.prognostic_types(::AbstractCanopyComponent) = ()
 
 """
-    ClimaLSM.prognostic_vars(::AbstractCanopyComponent)
+    ClimaLand.prognostic_vars(::AbstractCanopyComponent)
 
 Returns the prognostic vars of the canopy component
 passed in as an argument.
 """
-ClimaLSM.prognostic_vars(::AbstractCanopyComponent) = ()
+ClimaLand.prognostic_vars(::AbstractCanopyComponent) = ()
 
 """
    prognostic_domain_names(m::AbstractCanopyComponent)
 
 Returns the domain names for the prognostic variables in the form of a tuple.
 """
-ClimaLSM.prognostic_domain_names(::AbstractCanopyComponent) = ()
+ClimaLand.prognostic_domain_names(::AbstractCanopyComponent) = ()
 
 """
-    ClimaLSM.auxiliary_vars(::AbstractCanopyComponent)
+    ClimaLand.auxiliary_vars(::AbstractCanopyComponent)
 
 Returns the auxiliary types of the canopy component
 passed in as an argument.
 """
-ClimaLSM.auxiliary_vars(::AbstractCanopyComponent) = ()
+ClimaLand.auxiliary_vars(::AbstractCanopyComponent) = ()
 
 """
    auxiliary_domain_names(m::AbstractCanopyComponent)
 
 Returns the domain names for the auxiliary variables in the form of a tuple.
 """
-ClimaLSM.auxiliary_domain_names(::AbstractCanopyComponent) = ()
+ClimaLand.auxiliary_domain_names(::AbstractCanopyComponent) = ()
 
 """
     initialize_prognostic(
@@ -79,7 +79,7 @@ with the prognostic variables of the canopy component
 The input `state` is usually a ClimaCore Field object.
 """
 function initialize_prognostic(component::AbstractCanopyComponent, state)
-    ClimaLSM.initialize_vars(
+    ClimaLand.initialize_vars(
         prognostic_vars(component),
         prognostic_types(component),
         prognostic_domain_names(component),
@@ -104,7 +104,7 @@ function initialize_auxiliary(
     component::AbstractCanopyComponent{FT},
     state,
 ) where {FT}
-    ClimaLSM.initialize_vars(
+    ClimaLand.initialize_vars(
         auxiliary_vars(component),
         auxiliary_types(component),
         auxiliary_domain_names(component),
@@ -114,7 +114,7 @@ function initialize_auxiliary(
 end
 
 """
-     ClimaLSM.make_compute_exp_tendency(component::AbstractCanopyComponent, canopy)
+     ClimaLand.make_compute_exp_tendency(component::AbstractCanopyComponent, canopy)
 
 Creates the compute_exp_tendency!(dY,Y,p,t) function for the canopy `component`.
 
@@ -123,7 +123,7 @@ may be needed and passed in (via the `canopy` model itself).
 The right hand side for the entire canopy model can make use of
 these functions for the individual components.
 """
-function ClimaLSM.make_compute_exp_tendency(::AbstractCanopyComponent, canopy)
+function ClimaLand.make_compute_exp_tendency(::AbstractCanopyComponent, canopy)
     function compute_exp_tendency!(dY, Y, p, t) end
     return compute_exp_tendency!
 end

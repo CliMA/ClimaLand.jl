@@ -1,24 +1,24 @@
 # Canopy
 
 ```@meta
-CurrentModule = ClimaLSM.Canopy
+CurrentModule = ClimaLand.Canopy
 ```
 ## Canopy Model Structs
 
 ```@docs
-ClimaLSM.Canopy.CanopyModel
-ClimaLSM.Canopy.SharedCanopyParameters
+ClimaLand.Canopy.CanopyModel
+ClimaLand.Canopy.SharedCanopyParameters
 ```
 
 ## Canopy Model Fluxes
 
 ```@docs
-ClimaLSM.Canopy.DiagnosticTranspiration
+ClimaLand.Canopy.DiagnosticTranspiration
 ```
 
 ## Canopy Model Soil Drivers
 
 ```@docs
-ClimaLSM.Canopy.AbstractSoilDriver
-ClimaLSM.Canopy.PrescribedSoil
+ClimaLand.Canopy.AbstractSoilDriver
+ClimaLand.Canopy.PrescribedSoil
 ```

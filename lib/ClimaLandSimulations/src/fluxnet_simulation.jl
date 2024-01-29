@@ -3,7 +3,7 @@ export fluxnet_simulation
 """
     fluxnet_simulation(site_ID; kwargs)
 
-Run ClimaLSM at a fluxnet site.
+Run ClimaLand at a fluxnet site.
 """
 function fluxnet_simulation(
     site_ID;
@@ -302,12 +302,12 @@ function fluxnet_simulation(
         t = Array{Float64}(undef, length(saveat)),
         saveval = Array{NamedTuple}(undef, length(saveat)),
     )
-    saving_cb = ClimaLSM.NonInterpSavingCallback(sv, saveat)
+    saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat)
     ## How often we want to update the drivers. Note that this uses the defined `t0` and `tf`
     ## defined in the simulatons file
     updateat = Array(t0:DATA_DT:tf)
-    updatefunc = ClimaLSM.make_update_drivers(atmos, radiation)
-    driver_cb = ClimaLSM.DriverUpdateCallback(updateat, updatefunc)
+    updatefunc = ClimaLand.make_update_drivers(atmos, radiation)
+    driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
     cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
 
     prob = SciMLBase.ODEProblem(
@@ -327,17 +327,17 @@ function fluxnet_simulation(
 
     inputs, inputs_SI, inputs_commonly_used =
         make_inputs_df(LOCAL_DATETIME, drivers) # why does it needs args?
-    climalsm = make_output_df(sv, inputs)
+    climaland = make_output_df(sv, inputs)
 
     if isfile(
         joinpath(
-            climalsm_dir,
+            climaland_dir,
             "lib/ClimaLandSimulations/src/utilities/$site_ID/Artifacts.toml",
         ),
     )
         rm(
             joinpath(
-                climalsm_dir,
+                climaland_dir,
                 "lib/ClimaLandSimulations/src/utilities/$site_ID/Artifacts.toml",
             ),
         )
@@ -345,7 +345,7 @@ function fluxnet_simulation(
         nothing
     end
 
-    return sv, sol, Y, p, inputs, climalsm
+    return sv, sol, Y, p, inputs, climaland
 
 end
 

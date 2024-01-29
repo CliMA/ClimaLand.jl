@@ -12,14 +12,14 @@ using Dates
 using ArtifactWrappers
 using DelimitedFiles: readdlm
 
-using ClimaLSM
-using ClimaLSM.Domains: Column
-using ClimaLSM.Soil
-import ClimaLSM
-import ClimaLSM.Parameters as LSMP
+using ClimaLand
+using ClimaLand.Domains: Column
+using ClimaLand.Soil
+import ClimaLand
+import ClimaLand.Parameters as LP
 import SurfaceFluxes.Parameters as SFP
 
-include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
+include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"))
 
 # Define simulation times
 t0 = Float64(0)
@@ -28,7 +28,7 @@ dt = Float64(2)
 
 for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
     earth_param_set = create_lsm_parameters(FT)
-    thermo_params = LSMP.thermodynamic_parameters(earth_param_set)
+    thermo_params = LP.thermodynamic_parameters(earth_param_set)
     # Coarse sand experiment described in Figures 7 and 8a
     # of Lehmann, Assouline, Or  (Phys Rev E 77, 2008)
     K_sat = FT(225.1 / 3600 / 24 / 1000)
@@ -102,11 +102,11 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
         h_atmos;
         gustiness = gustiness,
     )
-    top_bc = ClimaLSM.Soil.AtmosDrivenFluxBC(atmos, radiation)
+    top_bc = ClimaLand.Soil.AtmosDrivenFluxBC(atmos, radiation)
     zero_flux = FluxBC((p, t) -> 0)
     boundary_fluxes =
         (; top = top_bc, bottom = (water = zero_flux, heat = zero_flux))
-    params = ClimaLSM.Soil.EnergyHydrologyParameters{FT}(;
+    params = ClimaLand.Soil.EnergyHydrologyParameters{FT}(;
         κ_dry = κ_dry_soil,
         κ_sat_frozen = κ_sat_frozen,
         κ_sat_unfrozen = κ_sat_unfrozen,
@@ -166,7 +166,10 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
     ode_algo = CTS.ExplicitAlgorithm(timestepper)
 
     prob = SciMLBase.ODEProblem(
-        CTS.ClimaODEFunction(T_exp! = soil_exp_tendency!, dss! = ClimaLSM.dss!),
+        CTS.ClimaODEFunction(
+            T_exp! = soil_exp_tendency!,
+            dss! = ClimaLand.dss!,
+        ),
         Y,
         (t0, tf),
         p,
@@ -176,10 +179,10 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
         t = Array{Float64}(undef, length(saveat)),
         saveval = Array{NamedTuple}(undef, length(saveat)),
     )
-    saving_cb = ClimaLSM.NonInterpSavingCallback(sv, saveat)
+    saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat)
     updateat = deepcopy(saveat)
-    updatefunc = ClimaLSM.make_update_drivers(atmos, radiation)
-    driver_cb = ClimaLSM.DriverUpdateCallback(updateat, updatefunc)
+    updatefunc = ClimaLand.make_update_drivers(atmos, radiation)
+    driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
     cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
     sol =
         SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb, saveat = saveat)
@@ -190,7 +193,7 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
     # Post processing for Float64 simulation
     if FT == Float64
         (; ν, θ_r, d_ds) = soil.parameters
-        _D_vapor = FT(LSMP.D_vapor(soil.parameters.earth_param_set))
+        _D_vapor = FT(LP.D_vapor(soil.parameters.earth_param_set))
         evap = [
             parent(sv.saveval[k].soil.turbulent_fluxes.vapor_flux)[1] for
             k in 1:length(sol.t)
@@ -206,21 +209,21 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
         r_soil = zeros(N)
         dsl = zeros(N)
         q_soil = zeros(N)
-        surface_flux_params = LSMP.surface_fluxes_parameters(earth_param_set)
+        surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
 
         for i in 1:length(sol.t)
             time = sol.t[i]
             u = sol.u[i]
             p = sv.saveval[i]
-            τ_a = ClimaLSM.Domains.top_center_to_surface(
+            τ_a = ClimaLand.Domains.top_center_to_surface(
                 @. max(eps(FT), (ν - p.soil.θ_l - u.soil.θ_i)^(FT(5 / 2)) / ν)
             )
-            S_l_sfc = ClimaLSM.Domains.top_center_to_surface(
+            S_l_sfc = ClimaLand.Domains.top_center_to_surface(
                 effective_saturation.(ν, u.soil.ϑ_l, θ_r),
             )
             layer_thickness = Soil.dry_soil_layer_thickness.(S_l_sfc, S_c, d_ds)
             T_sfc = T_soil[i]
-            ts_in = ClimaLSM.construct_atmos_ts(top_bc.atmos, p, thermo_params)
+            ts_in = ClimaLand.construct_atmos_ts(top_bc.atmos, p, thermo_params)
             ρ_sfc = compute_ρ_sfc.(thermo_params, ts_in, T_sfc)
             q_sat =
                 Thermodynamics.q_vap_saturation_generic.(
@@ -229,7 +232,8 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
                     ρ_sfc,
                     Thermodynamics.Liquid(),
                 )
-            q_sfc = ClimaLSM.surface_specific_humidity(soil, Y, p, T_sfc, ρ_sfc)
+            q_sfc =
+                ClimaLand.surface_specific_humidity(soil, Y, p, T_sfc, ρ_sfc)
             ts_sfc =
                 Thermodynamics.PhaseEquil_ρTq.(
                     thermo_params,
@@ -381,7 +385,7 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
             margins = 6Plots.mm,
         )
 
-        savepath = joinpath(pkgdir(ClimaLSM), "experiments/standalone/Soil")
+        savepath = joinpath(pkgdir(ClimaLand), "experiments/standalone/Soil")
         Plots.plot(plt1, plt2, plt3, plt4; layout = (2, 2))
         Plots.savefig(joinpath(savepath, "evaporation_from_coarse_sand1.png"))
 

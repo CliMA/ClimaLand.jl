@@ -1,11 +1,11 @@
 using Test
 import CLIMAParameters as CP
-using ClimaLSM.Canopy
+using ClimaLand.Canopy
 
-import ClimaLSM
-import ClimaLSM.Parameters as LSMP
+import ClimaLand
+import ClimaLand.Parameters as LP
 
-include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
+include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"))
 
 for FT in (Float32, Float64)
     @testset "Optimality Photosynthesis model Parameterizations, FT = $FT" begin
@@ -20,7 +20,7 @@ for FT in (Float32, Float64)
         Kc = FT(41.03) / P# convert from Pa to mol/mol
         Ko = FT(28210) / P# convert from Pa to mol/mol
         c = FT(0.05336251)
-        Jmax, Vcmax = ClimaLSM.Canopy.optimality_max_photosynthetic_rates(
+        Jmax, Vcmax = ClimaLand.Canopy.optimality_max_photosynthetic_rates(
             APAR,
             θj,
             ϕ,
@@ -40,9 +40,9 @@ for FT in (Float32, Float64)
         params = OptimalityFarquharParameters{FT}()
         @test params.mechanism == C3()
         model = OptimalityFarquharModel(params)
-        @test ClimaLSM.auxiliary_vars(model) == (:An, :GPP, :Rd, :Vcmax25)
-        @test ClimaLSM.auxiliary_types(model) == (FT, FT, FT, FT)
-        @test ClimaLSM.auxiliary_domain_names(model) ==
+        @test ClimaLand.auxiliary_vars(model) == (:An, :GPP, :Rd, :Vcmax25)
+        @test ClimaLand.auxiliary_types(model) == (FT, FT, FT, FT)
+        @test ClimaLand.auxiliary_domain_names(model) ==
               (:surface, :surface, :surface, :surface)
         Rd = zeros(FT, 1)
         An = similar(Rd)
@@ -51,8 +51,8 @@ for FT in (Float32, Float64)
         β = FT(1)
         medlyn_factor = FT(10.0)
         c_co2 = FT(4.8e-4)
-        R = FT(LSMP.gas_constant(earth_param_set))
-        ClimaLSM.Canopy.update_photosynthesis!(
+        R = FT(LP.gas_constant(earth_param_set))
+        ClimaLand.Canopy.update_photosynthesis!(
             Rd,
             An,
             Vcmax25,
@@ -80,10 +80,10 @@ for FT in (Float32, Float64)
 
         LAI = FT(5.0) # m2 (leaf) m-2 (ground)
         RAI = FT(1.0)
-        thermo_params = LSMP.thermodynamic_parameters(earth_param_set)
-        c = FT(LSMP.light_speed(earth_param_set))
-        h = FT(LSMP.planck_constant(earth_param_set))
-        N_a = FT(LSMP.avogadro_constant(earth_param_set))
+        thermo_params = LP.thermodynamic_parameters(earth_param_set)
+        c = FT(LP.light_speed(earth_param_set))
+        h = FT(LP.planck_constant(earth_param_set))
+        N_a = FT(LP.avogadro_constant(earth_param_set))
         λ = FT(5e-7) # m (500 nm)
         energy_per_photon = h * c / λ
 
@@ -91,10 +91,10 @@ for FT in (Float32, Float64)
         T = FT(290) # K
         P = FT(101250) #Pa
         q = FT(0.02)
-        VPD = ClimaLSM.vapor_pressure_deficit(T, P, q, thermo_params)#Pa
+        VPD = ClimaLand.vapor_pressure_deficit(T, P, q, thermo_params)#Pa
         p_l = FT(-2e6) # Pa
         ca = FT(4.11e-4) # mol/mol
-        R = FT(LSMP.gas_constant(earth_param_set))
+        R = FT(LP.gas_constant(earth_param_set))
         θs = FT.(Array(0:0.1:(π / 2)))
         SW(θs) = cos.(θs) * FT.(500) # W/m^2
         PAR = SW(θs) ./ (energy_per_photon * N_a) # convert 500 W/m^2 to mol of photons per m^2/s

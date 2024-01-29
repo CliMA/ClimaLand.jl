@@ -6,9 +6,9 @@ using Statistics
 using DelimitedFiles
 using ArtifactWrappers
 
-using ClimaLSM
-using ClimaLSM.Soil
-using ClimaLSM.Domains: Column
+using ClimaLand
+using ClimaLand.Soil
+using ClimaLand.Domains: Column
 
 rmse(v1, v2) = sqrt(mean((v1 .- v2) .^ 2))
 
@@ -114,7 +114,7 @@ for FT in (Float32, Float64)
             CTS.ClimaODEFunction(
                 T_exp! = exp_tendency!,
                 T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
-                dss! = ClimaLSM.dss!,
+                dss! = ClimaLand.dss!,
             ),
             Y,
             (t_start, t_end),
@@ -147,7 +147,7 @@ for FT in (Float32, Float64)
 
     if FT == Float64
         # Save flux BC mass conservation error and RMSE as artifact
-        savedir = joinpath(pkgdir(ClimaLSM), "experiments/standalone/Soil")
+        savedir = joinpath(pkgdir(ClimaLand), "experiments/standalone/Soil")
         plt = Plots.plot(margin = 10Plots.mm)
         plt_twin = twinx(plt)
         Plots.plot!(
@@ -226,7 +226,7 @@ for FT in (Float32, Float64)
             CTS.ClimaODEFunction(
                 T_exp! = exp_tendency!,
                 T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
-                dss! = ClimaLSM.dss!,
+                dss! = ClimaLand.dss!,
             ),
             Y,
             (t_start, t_end),
@@ -237,7 +237,7 @@ for FT in (Float32, Float64)
             t = Array{Int64}(undef, length(saveat)),
             saveval = Array{NamedTuple}(undef, length(saveat)),
         )
-        cb = ClimaLSM.NonInterpSavingCallback(sv, saveat)
+        cb = ClimaLand.NonInterpSavingCallback(sv, saveat)
         sol = SciMLBase.solve(
             prob,
             ode_algo;

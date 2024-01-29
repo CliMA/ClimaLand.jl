@@ -1,7 +1,7 @@
 module Snow
 
 using DocStringExtensions
-import ...Parameters as LSMP
+import ...Parameters as LP
 export SnowParameters
 
 """

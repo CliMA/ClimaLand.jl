@@ -1,4 +1,4 @@
-import ClimaLSM:
+import ClimaLand:
     surface_temperature,
     surface_specific_humidity,
     surface_evaporative_scaling,
@@ -8,19 +8,19 @@ import ClimaLSM:
 
 
 """
-    ClimaLSM.displacment_height(model::CanopyModel, Y, p)
+    ClimaLand.displacment_height(model::CanopyModel, Y, p)
 
 A helper function which returns the displacement height for the canopy
 model.
 
 See Cowan 1968; Brutsaert 1982, pp. 113–116; Campbell and Norman 1998, p. 71; Shuttleworth 2012, p. 343; Monteith and Unsworth 2013, p. 304.
 """
-function ClimaLSM.displacement_height(model::CanopyModel{FT}, Y, p) where {FT}
+function ClimaLand.displacement_height(model::CanopyModel{FT}, Y, p) where {FT}
     return FT(0.67) * model.hydraulics.compartment_surfaces[end]
 end
 
 """
-    ClimaLSM.surface_resistance(
+    ClimaLand.surface_resistance(
         model::CanopyModel{FT},
         Y,
         p,
@@ -29,10 +29,15 @@ end
 Returns the surface resistance field of the
 `CanopyModel` canopy.
 """
-function ClimaLSM.surface_resistance(model::CanopyModel{FT}, Y, p, t) where {FT}
+function ClimaLand.surface_resistance(
+    model::CanopyModel{FT},
+    Y,
+    p,
+    t,
+) where {FT}
     earth_param_set = model.parameters.earth_param_set
-    R = FT(LSMP.gas_constant(earth_param_set))
-    ρ_liq = FT(LSMP.ρ_cloud_liq(earth_param_set))
+    R = FT(LP.gas_constant(earth_param_set))
+    ρ_liq = FT(LP.ρ_cloud_liq(earth_param_set))
     P_air = p.drivers.P
     T_air = p.drivers.T
     leaf_conductance = p.canopy.conductance.gs
@@ -48,32 +53,32 @@ function ClimaLSM.surface_resistance(model::CanopyModel{FT}, Y, p, t) where {FT}
 end
 
 """
-    ClimaLSM.surface_temperature(model::CanopyModel, Y, p, t)
+    ClimaLand.surface_temperature(model::CanopyModel, Y, p, t)
 
 A helper function which returns the temperature for the canopy
 model.
 """
-function ClimaLSM.surface_temperature(model::CanopyModel, Y, p, t)
+function ClimaLand.surface_temperature(model::CanopyModel, Y, p, t)
     return canopy_temperature(model.energy, model, Y, p, t)
 end
 
 """
-    ClimaLSM.surface_height(model::CanopyModel, Y, _...)
+    ClimaLand.surface_height(model::CanopyModel, Y, _...)
 
 A helper function which returns the surface height for the canopy
 model, which is stored in the parameter struct.
 """
-function ClimaLSM.surface_height(model::CanopyModel, _...)
+function ClimaLand.surface_height(model::CanopyModel, _...)
     return model.hydraulics.compartment_surfaces[1]
 end
 
 """
-    ClimaLSM.surface_specific_humidity(model::CanopyModel, Y, p)
+    ClimaLand.surface_specific_humidity(model::CanopyModel, Y, p)
 
 A helper function which returns the surface specific humidity for the canopy
 model, which is stored in the aux state.
 """
-function ClimaLSM.surface_specific_humidity(
+function ClimaLand.surface_specific_humidity(
     model::CanopyModel,
     Y,
     p,
@@ -81,7 +86,7 @@ function ClimaLSM.surface_specific_humidity(
     ρ_canopy,
 )
     thermo_params =
-        LSMP.thermodynamic_parameters(model.parameters.earth_param_set)
+        LP.thermodynamic_parameters(model.parameters.earth_param_set)
     return Thermodynamics.q_vap_saturation_generic.(
         Ref(thermo_params),
         T_canopy,

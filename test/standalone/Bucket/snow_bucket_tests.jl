@@ -5,13 +5,13 @@ using Statistics
 using Dates
 import ClimaComms
 using ClimaCore
-using ClimaLSM.Bucket:
+using ClimaLand.Bucket:
     BucketModel,
     BucketModelParameters,
     BulkAlbedoFunction,
     partition_surface_fluxes
-using ClimaLSM.Domains: coordinates, Column, HybridBox, SphericalShell
-using ClimaLSM:
+using ClimaLand.Domains: coordinates, Column, HybridBox, SphericalShell
+using ClimaLand:
     initialize,
     make_exp_tendency,
     make_set_initial_cache,
@@ -20,9 +20,9 @@ using ClimaLSM:
     TimeVaryingInput
 
 # Bucket model parameters
-import ClimaLSM
-import ClimaLSM.Parameters as LSMP
-include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
+import ClimaLand
+import ClimaLand.Parameters as LP
+include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"))
 
 for FT in (Float32, Float64)
     earth_param_set = create_lsm_parameters(FT)
@@ -119,10 +119,10 @@ for FT in (Float32, Float64)
             set_initial_cache! = make_set_initial_cache(model)
             set_initial_cache!(p, Y, t0)
             exp_tendency!(dY, Y, p, t0)
-            _LH_f0 = LSMP.LH_f0(model.parameters.earth_param_set)
-            _ρ_liq = LSMP.ρ_cloud_liq(model.parameters.earth_param_set)
+            _LH_f0 = LP.LH_f0(model.parameters.earth_param_set)
+            _ρ_liq = LP.ρ_cloud_liq(model.parameters.earth_param_set)
             _ρLH_f0 = _ρ_liq * _LH_f0 # Latent heat per unit volume
-            _T_freeze = LSMP.T_freeze(model.parameters.earth_param_set)
+            _T_freeze = LP.T_freeze(model.parameters.earth_param_set)
             function snow_cover_fraction(σS)
                 return σS > eps(typeof(σS)) ? typeof(σS)(1.0) : typeof(σS)(0.0)
             end
@@ -234,10 +234,10 @@ for FT in (Float32, Float64)
             set_initial_cache! = make_set_initial_cache(model)
             set_initial_cache!(p, Y, t0)
             exp_tendency!(dY, Y, p, t0)
-            _LH_f0 = LSMP.LH_f0(model.parameters.earth_param_set)
-            _ρ_liq = LSMP.ρ_cloud_liq(model.parameters.earth_param_set)
+            _LH_f0 = LP.LH_f0(model.parameters.earth_param_set)
+            _ρ_liq = LP.ρ_cloud_liq(model.parameters.earth_param_set)
             _ρLH_f0 = _ρ_liq * _LH_f0 # Latent heat per unit volume
-            _T_freeze = LSMP.T_freeze(model.parameters.earth_param_set)
+            _T_freeze = LP.T_freeze(model.parameters.earth_param_set)
             function snow_cover_fraction(σS)
                 return σS > eps(typeof(σS)) ? typeof(σS)(1.0) : typeof(σS)(0.0)
             end
@@ -345,7 +345,7 @@ for FT in (Float32, Float64)
         t0 = FT(0.0)
         dY = similar(Y)
 
-        compute_exp_tendency! = ClimaLSM.make_compute_exp_tendency(model)
+        compute_exp_tendency! = ClimaLand.make_compute_exp_tendency(model)
         set_initial_cache! = make_set_initial_cache(model)
         set_initial_cache!(p, Y, t0)
         random = zeros(bucket_domains[i].space.surface)
@@ -353,10 +353,10 @@ for FT in (Float32, Float64)
         parent(random) .= ArrayType(rand(FT, size(parent(random))))
         p.bucket.turbulent_fluxes.vapor_flux .= random .* 1e-7
         compute_exp_tendency!(dY, Y, p, t0)
-        _LH_f0 = LSMP.LH_f0(model.parameters.earth_param_set)
-        _ρ_liq = LSMP.ρ_cloud_liq(model.parameters.earth_param_set)
+        _LH_f0 = LP.LH_f0(model.parameters.earth_param_set)
+        _ρ_liq = LP.ρ_cloud_liq(model.parameters.earth_param_set)
         _ρLH_f0 = _ρ_liq * _LH_f0 # Latent heat per unit volume
-        _T_freeze = LSMP.T_freeze(model.parameters.earth_param_set)
+        _T_freeze = LP.T_freeze(model.parameters.earth_param_set)
         function snow_cover_fraction(σS)
             return σS > eps(typeof(σS)) ? typeof(σS)(1.0) : typeof(σS)(0.0)
         end

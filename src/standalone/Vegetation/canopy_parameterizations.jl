@@ -1,4 +1,4 @@
-using ..ClimaLSM.Canopy
+using ..ClimaLand.Canopy
 export plant_absorbed_pfd,
     extinction_coeff,
     arrhenius_function,
@@ -830,7 +830,7 @@ function medlyn_term(
     q_air::FT,
     thermo_params,
 ) where {FT}
-    VPD = ClimaLSM.vapor_pressure_deficit(T_air, P_air, q_air, thermo_params)
+    VPD = ClimaLand.vapor_pressure_deficit(T_air, P_air, q_air, thermo_params)
     return 1 + g1 / sqrt(VPD)
 end
 

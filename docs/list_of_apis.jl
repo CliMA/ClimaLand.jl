@@ -3,8 +3,8 @@
 ####
 
 apis = [
-    "ClimaLSM" => [
-        "ClimaLSM" => "APIs/ClimaLSM.md",
+    "ClimaLand" => [
+        "ClimaLand" => "APIs/ClimaLand.md",
         "Parameter Dataset Tools" => "APIs/Regridder.md",
         "Shared Utilities" => "APIs/shared_utilities.md",
         "Soil" => [

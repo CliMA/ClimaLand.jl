@@ -1,11 +1,11 @@
 # Bucket
 
 ```@meta
-CurrentModule = ClimaLSM.Regridder
+CurrentModule = ClimaLand.Regridder
 ```
 
 ## Functions
 
 ```@docs
-ClimaLSM.Regridder.regrid_netcdf_to_field
+ClimaLand.Regridder.regrid_netcdf_to_field
 ```

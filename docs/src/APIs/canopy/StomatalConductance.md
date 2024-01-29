@@ -1,20 +1,20 @@
 # Stomatal Conductance
 
 ```@meta
-CurrentModule = ClimaLSM.Canopy
+CurrentModule = ClimaLand.Canopy
 ```
 
 ## Parameters
 
 ```@docs
-ClimaLSM.Canopy.MedlynConductanceParameters
+ClimaLand.Canopy.MedlynConductanceParameters
 ```
 
 ## Methods
 
 ```@docs
-ClimaLSM.Canopy.medlyn_term
-ClimaLSM.Canopy.medlyn_conductance
-ClimaLSM.Canopy.upscale_leaf_conductance
-ClimaLSM.Canopy.penman_monteith
+ClimaLand.Canopy.medlyn_term
+ClimaLand.Canopy.medlyn_conductance
+ClimaLand.Canopy.upscale_leaf_conductance
+ClimaLand.Canopy.penman_monteith
 ```

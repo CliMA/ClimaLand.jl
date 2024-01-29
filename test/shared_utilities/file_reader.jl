@@ -1,9 +1,9 @@
 #=
-    Unit tests for ClimaLSM FileReader module
+    Unit tests for ClimaLand FileReader module
 =#
 
-using ClimaLSM
-using ClimaLSM: Bucket, Regridder, FileReader
+using ClimaLand
+using ClimaLand: Bucket, Regridder, FileReader
 using ClimaCore
 using ClimaCore: Fields, Meshes, Domains, Topologies, Spaces
 using ClimaComms
@@ -17,9 +17,9 @@ albedo_bareground_data = Bucket.bareground_albedo_dataset_path
 comms_ctx = ClimaComms.SingletonCommsContext()
 
 # Use two separate regrid dirs to avoid duplicate filenames since files have same varname
-regrid_dir_static = joinpath(pkgdir(ClimaLSM), "test", "regridding")
+regrid_dir_static = joinpath(pkgdir(ClimaLand), "test", "regridding")
 regrid_dir_temporal =
-    joinpath(pkgdir(ClimaLSM), "test", "regridding", "temporal")
+    joinpath(pkgdir(ClimaLand), "test", "regridding", "temporal")
 isdir(regrid_dir_static) ? nothing : mkpath(regrid_dir_static)
 isdir(regrid_dir_temporal) ? nothing : mkpath(regrid_dir_temporal)
 

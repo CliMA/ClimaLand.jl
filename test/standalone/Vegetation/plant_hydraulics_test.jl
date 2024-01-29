@@ -3,15 +3,15 @@ using Statistics
 using NLsolve
 using ClimaCore
 import CLIMAParameters as CP
-using ClimaLSM
-using ClimaLSM.Domains: Point, Plane
-using ClimaLSM.Canopy
-using ClimaLSM.Canopy.PlantHydraulics
-import ClimaLSM
+using ClimaLand
+using ClimaLand.Domains: Point, Plane
+using ClimaLand.Canopy
+using ClimaLand.Canopy.PlantHydraulics
+import ClimaLand
 import Insolation
 using Dates
 
-include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
+include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"))
 
 for FT in (Float32, Float64)
     @testset "LAI assertions, FT = $FT" begin
@@ -27,7 +27,7 @@ for FT in (Float32, Float64)
                         for n_l in n_leaf
                             area_index = (root = R, stem = S, leaf = L)
                             if n_l == 0
-                                @test_throws AssertionError ClimaLSM.Canopy.PlantHydraulics.lai_consistency_check(
+                                @test_throws AssertionError ClimaLand.Canopy.PlantHydraulics.lai_consistency_check(
                                     n_s,
                                     n_l,
                                     area_index,
@@ -35,7 +35,7 @@ for FT in (Float32, Float64)
                             end
 
                             if (L > eps(FT) || S > eps(FT)) && R < eps(FT)
-                                @test_throws AssertionError ClimaLSM.Canopy.PlantHydraulics.lai_consistency_check(
+                                @test_throws AssertionError ClimaLand.Canopy.PlantHydraulics.lai_consistency_check(
                                     n_s,
                                     n_l,
                                     area_index,
@@ -43,7 +43,7 @@ for FT in (Float32, Float64)
                             end
 
                             if S > FT(0) && n_s == 0
-                                @test_throws AssertionError ClimaLSM.Canopy.PlantHydraulics.lai_consistency_check(
+                                @test_throws AssertionError ClimaLand.Canopy.PlantHydraulics.lai_consistency_check(
                                     n_s,
                                     n_l,
                                     area_index,
@@ -51,7 +51,7 @@ for FT in (Float32, Float64)
                             end
 
                             if S < eps(FT) && n_s > 0
-                                @test_throws AssertionError ClimaLSM.Canopy.PlantHydraulics.lai_consistency_check(
+                                @test_throws AssertionError ClimaLand.Canopy.PlantHydraulics.lai_consistency_check(
                                     n_s,
                                     n_l,
                                     area_index,
@@ -264,13 +264,13 @@ for FT in (Float32, Float64)
             compartment_midpoints = compartment_midpoints,
         )
         autotrophic_parameters =
-            ClimaLSM.Canopy.AutotrophicRespirationParameters{FT}()
+            ClimaLand.Canopy.AutotrophicRespirationParameters{FT}()
         autotrophic_respiration_model =
-            ClimaLSM.Canopy.AutotrophicRespirationModel{FT}(
+            ClimaLand.Canopy.AutotrophicRespirationModel{FT}(
                 autotrophic_parameters,
             )
         for domain in domains
-            model = ClimaLSM.Canopy.CanopyModel{FT}(;
+            model = ClimaLand.Canopy.CanopyModel{FT}(;
                 parameters = shared_params,
                 domain = domain,
                 autotrophic_respiration = autotrophic_respiration_model,
@@ -349,9 +349,9 @@ for FT in (Float32, Float64)
             ϑ_l_0 = augmented_liquid_fraction.(plant_ν, S_l)
 
             Y, p, coords = initialize(model)
-            if typeof(domain) <: ClimaLSM.Domains.Point
+            if typeof(domain) <: ClimaLand.Domains.Point
                 @test propertynames(p) == (:canopy, :drivers)
-            elseif typeof(domain) <: ClimaLSM.Domains.Plane
+            elseif typeof(domain) <: ClimaLand.Domains.Plane
                 @test propertynames(p) == (:canopy, :dss_buffer_2d, :drivers)
                 @test typeof(p.dss_buffer_2d) == typeof(
                     ClimaCore.Spaces.create_dss_buffer(
@@ -546,11 +546,11 @@ for FT in (Float32, Float64)
         )
 
         autotrophic_parameters =
-            ClimaLSM.Canopy.AutotrophicRespirationParameters{FT}()
+            ClimaLand.Canopy.AutotrophicRespirationParameters{FT}()
         autotrophic_respiration_model =
-            ClimaLSM.Canopy.AutotrophicRespirationModel(autotrophic_parameters)
+            ClimaLand.Canopy.AutotrophicRespirationModel(autotrophic_parameters)
 
-        model = ClimaLSM.Canopy.CanopyModel{FT}(;
+        model = ClimaLand.Canopy.CanopyModel{FT}(;
             parameters = shared_params,
             domain = domain,
             autotrophic_respiration = autotrophic_respiration_model,

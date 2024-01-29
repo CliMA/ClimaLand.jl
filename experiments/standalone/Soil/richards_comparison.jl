@@ -7,14 +7,14 @@ import SciMLBase
 import ClimaTimeSteppers as CTS
 using ClimaCore
 import CLIMAParameters as CP
-using ClimaLSM
-using ClimaLSM.Domains: Column
-using ClimaLSM.Soil
+using ClimaLand
+using ClimaLand.Domains: Column
+using ClimaLand.Soil
 
-import ClimaLSM
-import ClimaLSM.Parameters as LSMP
+import ClimaLand
+import ClimaLand.Parameters as LP
 
-include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
+include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"))
 
 # Read in reference solutions from artifacts
 bonan_clay_dataset = ArtifactWrapper(
@@ -75,8 +75,8 @@ bonan_sand_dataset = ArtifactWrapper(
         # specify ICs
         Y.soil.ϑ_l .= FT(0.24)
         exp_tendency! = make_exp_tendency(soil)
-        imp_tendency! = ClimaLSM.make_imp_tendency(soil)
-        update_jacobian! = ClimaLSM.make_update_jacobian(soil)
+        imp_tendency! = ClimaLand.make_imp_tendency(soil)
+        update_jacobian! = ClimaLand.make_update_jacobian(soil)
         set_initial_cache!(p, Y, t0)
 
         stepper = CTS.ARS111()
@@ -101,7 +101,7 @@ bonan_sand_dataset = ArtifactWrapper(
             CTS.ClimaODEFunction(
                 T_exp! = exp_tendency!,
                 T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
-                dss! = ClimaLSM.dss!,
+                dss! = ClimaLand.dss!,
             ),
             Y,
             (t0, tf),
@@ -176,8 +176,8 @@ end
         # specify ICs
         Y.soil.ϑ_l .= FT(0.1)
         exp_tendency! = make_exp_tendency(soil)
-        imp_tendency! = ClimaLSM.make_imp_tendency(soil)
-        update_jacobian! = ClimaLSM.make_update_jacobian(soil)
+        imp_tendency! = ClimaLand.make_imp_tendency(soil)
+        update_jacobian! = ClimaLand.make_update_jacobian(soil)
         set_initial_cache!(p, Y, t0)
 
         stepper = CTS.ARS111()
@@ -201,7 +201,7 @@ end
             CTS.ClimaODEFunction(
                 T_exp! = exp_tendency!,
                 T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
-                dss! = ClimaLSM.dss!,
+                dss! = ClimaLand.dss!,
             ),
             Y,
             (t0, tf),

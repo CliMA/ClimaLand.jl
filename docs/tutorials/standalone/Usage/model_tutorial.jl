@@ -7,7 +7,7 @@
 # with an external package for the time-stepping of
 # ODEs, `ClimaTimesteppers.jl`,
 # with `ClimaCore.jl`, for the spatial discretization of
-# PDEs, and with `ClimaLSM.jl`, for designing and
+# PDEs, and with `ClimaLand.jl`, for designing and
 # running multi-component land surface models. For a developer of a new
 # land model component, using `AbstractModel`s as shown
 # below is the first step towards building a model which
@@ -82,13 +82,13 @@
 # is not supported (`` \vec{Y} `` cannot be zero dimensional).
 
 # In order to define this set of equations, in a manner which is consistent
-# with the `AbstractModel` interface (used by `ClimaLSM.jl`) and
+# with the `AbstractModel` interface (used by `ClimaLand.jl`) and
 # time-stepping algorithms (`OrdinaryDiffEq.jl` for the present),
 # the following must be provided.
 
 # # The Model
 
-# All `ClimaLSM` component models are concrete instances of `AbstractModel`s. The reason
+# All `ClimaLand` component models are concrete instances of `AbstractModel`s. The reason
 # for grouping them in such a way is because they all have shared required
 # functionality, as we will see, and can make use of common default behavior.
 
@@ -123,10 +123,10 @@ import ClimaTimeSteppers as CTS
 using SciMLBase
 using Plots
 using ClimaCore
-using ClimaLSM
+using ClimaLand
 
 # Import the functions we are extending for our model:
-import ClimaLSM:
+import ClimaLand:
     name,
     make_exp_tendency,
     make_compute_exp_tendency,
@@ -147,7 +147,7 @@ import ClimaLSM:
 # (single column, global run, etc..).
 struct RichardsTutorialModel{FT, D} <: AbstractModel{FT}
     "van Genuchten model parameters"
-    vGmodel::ClimaLSM.Soil.vanGenuchten{FT}
+    vGmodel::ClimaLand.Soil.vanGenuchten{FT}
     "Porosity [unitless]"
     ν::FT
     "Residual water fraction [unitless]"
@@ -161,7 +161,7 @@ struct RichardsTutorialModel{FT, D} <: AbstractModel{FT}
 end;
 
 # For reasons that will be clear momentarily, let's also define the name of the model:
-ClimaLSM.name(model::RichardsTutorialModel) = :soil;
+ClimaLand.name(model::RichardsTutorialModel) = :soil;
 
 # # Explicit tendency
 
@@ -177,7 +177,7 @@ ClimaLSM.name(model::RichardsTutorialModel) = :soil;
 # where K(θ) is the hydraulic conductivity, and ψ(θ) is the matric potential.
 # We now create the function which makes the `compute_exp_tendency!` function:
 
-function ClimaLSM.make_compute_exp_tendency(model::RichardsTutorialModel)
+function ClimaLand.make_compute_exp_tendency(model::RichardsTutorialModel)
     function compute_exp_tendency!(dY, Y, p, t)
         gradc2f = ClimaCore.Operators.GradientC2F()
         interpc2f = ClimaCore.Operators.InterpolateC2F()
@@ -218,9 +218,9 @@ end;
 # scalar), and where in the domain they are defined. For example, the volumetric water content
 # is a scalar (type FT), with name θ, and it is defined throughout the subsurface of the domain.
 
-ClimaLSM.prognostic_vars(::RichardsTutorialModel) = (:θ,);
-ClimaLSM.prognostic_types(::RichardsTutorialModel{FT}) where {FT} = (FT,);
-ClimaLSM.prognostic_domain_names(::RichardsTutorialModel) = (:subsurface,);
+ClimaLand.prognostic_vars(::RichardsTutorialModel) = (:θ,);
+ClimaLand.prognostic_types(::RichardsTutorialModel{FT}) where {FT} = (FT,);
+ClimaLand.prognostic_domain_names(::RichardsTutorialModel) = (:subsurface,);
 
 
 # The auxiliary variables for this model are the hydraulic conductivity, matric potential,
@@ -228,11 +228,11 @@ ClimaLSM.prognostic_domain_names(::RichardsTutorialModel) = (:subsurface,);
 # some are defined throughout the soil volume, or subsurface, while some are defined only on
 # a surface (at the top or bottom of the domain).
 
-ClimaLSM.auxiliary_vars(::RichardsTutorialModel) =
+ClimaLand.auxiliary_vars(::RichardsTutorialModel) =
     (:K, :ψ, :top_flux, :bottom_flux, :z)
-ClimaLSM.auxiliary_types(::RichardsTutorialModel{FT}) where {FT} =
+ClimaLand.auxiliary_types(::RichardsTutorialModel{FT}) where {FT} =
     (FT, FT, FT, FT, FT);
-ClimaLSM.auxiliary_domain_names(::RichardsTutorialModel) =
+ClimaLand.auxiliary_domain_names(::RichardsTutorialModel) =
     (:subsurface, :subsurface, :surface, :surface, :subsurface);
 
 # # Updating the cache
@@ -240,33 +240,33 @@ ClimaLSM.auxiliary_domain_names(::RichardsTutorialModel) =
 # functions, `update_aux!`, and `update_boundary_fluxes!`. For standalone component models,
 # these could be combined into a single function, and indeed they could also be part of the tendency
 # function itself. 
-function ClimaLSM.make_update_aux(model::RichardsTutorialModel)
+function ClimaLand.make_update_aux(model::RichardsTutorialModel)
     function update_aux!(p, Y, t)
         p.soil.z .=
             ClimaCore.Fields.coordinate_field(model.domain.space.subsurface).z # technically this does not need to update each step
-        @. p.soil.K = ClimaLSM.Soil.hydraulic_conductivity(
+        @. p.soil.K = ClimaLand.Soil.hydraulic_conductivity(
             model.vGmodel,
             model.Ksat,
-            ClimaLSM.Soil.effective_saturation(model.ν, Y.soil.θ, model.θ_r),
+            ClimaLand.Soil.effective_saturation(model.ν, Y.soil.θ, model.θ_r),
         )
-        @. p.soil.ψ = ClimaLSM.Soil.matric_potential(
+        @. p.soil.ψ = ClimaLand.Soil.matric_potential(
             model.vGmodel,
-            ClimaLSM.Soil.effective_saturation(model.ν, Y.soil.θ, model.θ_r),
+            ClimaLand.Soil.effective_saturation(model.ν, Y.soil.θ, model.θ_r),
         )
     end
     return update_aux!
 end;
 
-function ClimaLSM.make_update_boundary_fluxes(model::RichardsTutorialModel)
+function ClimaLand.make_update_boundary_fluxes(model::RichardsTutorialModel)
     function update_boundary_fluxes!(p, Y, t)
-        FT = ClimaLSM.FTfromY(Y)
+        FT = ClimaLand.FTfromY(Y)
         p.soil.top_flux .= model.F_sfc
         p.soil.bottom_flux .= FT(0)
     end
     return update_boundary_fluxes!
 end;
 
-# The default tendency function in ClimaLSM for any AbstractModel carries out the following:
+# The default tendency function in ClimaLand for any AbstractModel carries out the following:
 
 # ```julia
 # function make_exp_tendency(model::AbstractModel)
@@ -307,12 +307,12 @@ end;
 # # Running a simulation
 # Create a model instance.
 FT = Float32
-vGmodel = ClimaLSM.Soil.vanGenuchten(; α = 2.3f0, n = 2.0f0)
+vGmodel = ClimaLand.Soil.vanGenuchten(; α = 2.3f0, n = 2.0f0)
 Ksat = FT(4.0e-7)
 ν = 0.5f0
 θ_r = 0.0f0
 F_sfc = FT(-3.0e-8)
-domain = ClimaLSM.Domains.Column(; zlim = (-1.0f0, 0.0f0), nelements = 10)
+domain = ClimaLand.Domains.Column(; zlim = (-1.0f0, 0.0f0), nelements = 10)
 soil = RichardsTutorialModel{Float32, typeof(domain)}(
     vGmodel,
     ν,

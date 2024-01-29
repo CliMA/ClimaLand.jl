@@ -1,4 +1,4 @@
-import ClimaLSM: AbstractBC, AbstractBoundary, boundary_flux
+import ClimaLand: AbstractBC, AbstractBoundary, boundary_flux
 export TemperatureStateBC,
     MoistureStateBC,
     FreeDrainage,
@@ -10,15 +10,15 @@ export TemperatureStateBC,
     boundary_var_types
 
 """
-    AbstractSoilBC <: ClimaLSM. AbstractBC
+    AbstractSoilBC <: ClimaLand. AbstractBC
 
 An abstract type for soil-specific types of boundary conditions, like free drainage.
 """
-abstract type AbstractSoilBC <: ClimaLSM.AbstractBC end
+abstract type AbstractSoilBC <: ClimaLand.AbstractBC end
 
 
 """
-    boundary_vars(::NamedTuple, ::ClimaLSM.TopBoundary)
+    boundary_vars(::NamedTuple, ::ClimaLand.TopBoundary)
 
 The list of symbols for additional variables to add to the soil
 model auxiliary state, which defaults to adding storage for the
@@ -31,10 +31,10 @@ EnergyHydrology soil models.
 
  Use this function in the exact same way you would use `auxiliary_vars`.
 """
-boundary_vars(::NamedTuple, ::ClimaLSM.TopBoundary) = (:top_bc,)
+boundary_vars(::NamedTuple, ::ClimaLand.TopBoundary) = (:top_bc,)
 
 """
-    boundary_vars(::NamedTuple, ::ClimaLSM.BottomBoundary)
+    boundary_vars(::NamedTuple, ::ClimaLand.BottomBoundary)
 
 The list of symbols for additional variables to add to the soil
 model auxiliary state, which defaults to adding storage for the
@@ -47,10 +47,10 @@ Note that `:bottom_bc` must be present, with the default type and domain name,
 for both the RichardsModel and the 
 EnergyHydrology soil models.
 """
-boundary_vars(::NamedTuple, ::ClimaLSM.BottomBoundary) = (:bottom_bc,)
+boundary_vars(::NamedTuple, ::ClimaLand.BottomBoundary) = (:bottom_bc,)
 
 """
-    boundary_var_domain_names(::AbstractSoilBC, ::ClimaLSM.AbstractBoundary)
+    boundary_var_domain_names(::AbstractSoilBC, ::ClimaLand.AbstractBoundary)
 
 The list of domain names for additional variables to add to the soil
 model auxiliary state,  which defaults to adding storage for the
@@ -61,11 +61,11 @@ the surface in addition to other variables.
 
 Use this function in the exact same way you would use `auxiliary_var_domain_names`.
 """
-boundary_var_domain_names(::NamedTuple, ::ClimaLSM.AbstractBoundary) =
+boundary_var_domain_names(::NamedTuple, ::ClimaLand.AbstractBoundary) =
     (:surface,)
 
 """
-    boundary_var_types(::Soil.EnergyHydrology{FT}, ::NamedTuple, ::ClimaLSM.AbstractBoundary) where {FT}
+    boundary_var_types(::Soil.EnergyHydrology{FT}, ::NamedTuple, ::ClimaLand.AbstractBoundary) where {FT}
 
 The list of variable types for additional variables to add to the EnergyHydrology
 model auxiliary state, which defaults to adding storage for the
@@ -79,13 +79,13 @@ the surface in addition to other variables.
 function boundary_var_types(
     ::Soil.EnergyHydrology{FT},
     ::NamedTuple,
-    ::ClimaLSM.AbstractBoundary,
+    ::ClimaLand.AbstractBoundary,
 ) where {FT}
     (NamedTuple{(:water, :heat), Tuple{FT, FT}},)
 end
 
 """
-    boundary_var_types(::Soil.RichardsModel{FT}, ::NamedTuple, ::ClimaLSM.AbstractBoundary) where {FT}
+    boundary_var_types(::Soil.RichardsModel{FT}, ::NamedTuple, ::ClimaLand.AbstractBoundary) where {FT}
 
 The list of variable types for additional variables to add to the Richards
 model auxiliary state,  which defaults to adding storage for the
@@ -102,7 +102,7 @@ the surface in addition to other variables.
 boundary_var_types(
     ::Soil.RichardsModel{FT},
     ::NamedTuple,
-    ::ClimaLSM.AbstractBoundary,
+    ::ClimaLand.AbstractBoundary,
 ) where {FT} = (NamedTuple{(:water,), Tuple{FT}},)
 
 
@@ -239,7 +239,7 @@ function create_soil_bc_named_tuple(water_flux, heat_flux)
 end
 
 """
-    boundary_vars(::AtmosDrivenFluxBC, ::ClimaLSM.TopBoundary)
+    boundary_vars(::AtmosDrivenFluxBC, ::ClimaLand.TopBoundary)
 
 An extension of the `boundary_vars` method for AtmosDrivenFluxBC. This
 adds the surface conditions (SHF, LHF, evaporation, and resistance) and the
@@ -247,17 +247,17 @@ net radiation to the auxiliary variables.
 
 These variables are updated in place in `soil_boundary_fluxes`.
 """
-boundary_vars(bc::AtmosDrivenFluxBC, ::ClimaLSM.TopBoundary) =
+boundary_vars(bc::AtmosDrivenFluxBC, ::ClimaLand.TopBoundary) =
     (:turbulent_fluxes, :R_n, :top_bc)
 
 """
-    boundary_var_domain_names(::AtmosDrivenFluxBC, ::ClimaLSM.TopBoundary))
+    boundary_var_domain_names(::AtmosDrivenFluxBC, ::ClimaLand.TopBoundary))
 
 An extension of the `boundary_var_domain_names` method for AtmosDrivenFluxBC. This
 specifies the part of the domain on which the additional variables should be
 defined.
 """
-boundary_var_domain_names(bc::AtmosDrivenFluxBC, ::ClimaLSM.TopBoundary) =
+boundary_var_domain_names(bc::AtmosDrivenFluxBC, ::ClimaLand.TopBoundary) =
     (:surface, :surface, :surface)
 """
     boundary_var_types(
@@ -265,7 +265,7 @@ boundary_var_domain_names(bc::AtmosDrivenFluxBC, ::ClimaLSM.TopBoundary) =
             <:PrescribedAtmosphere{FT},
             <:AbstractRadiativeDrivers{FT},
             <:AbstractRunoffModel,
-        }, ::ClimaLSM.TopBoundary,
+        }, ::ClimaLand.TopBoundary,
     ) where {FT}
 
 An extension of the `boundary_var_types` method for AtmosDrivenFluxBC. This
@@ -278,7 +278,7 @@ boundary_var_types(
         <:AbstractRadiativeDrivers{FT},
         <:AbstractRunoffModel,
     },
-    ::ClimaLSM.TopBoundary,
+    ::ClimaLand.TopBoundary,
 ) where {FT} = (
     NamedTuple{(:lhf, :shf, :vapor_flux, :r_ae), Tuple{FT, FT, FT, FT}},
     FT,
@@ -292,7 +292,7 @@ boundary_var_types(
             <:PrescribedAtmosphere,
             <:PrescribedRadiativeFluxes,
         },
-        boundary::ClimaLSM.TopBoundary,
+        boundary::ClimaLand.TopBoundary,
         model::EnergyHydrology,
         Δz,
         Y,
@@ -315,7 +315,7 @@ compute the surface fluxes using Monin Obukhov Surface Theory.
 """
 function soil_boundary_fluxes(
     bc::AtmosDrivenFluxBC{<:PrescribedAtmosphere, <:PrescribedRadiativeFluxes},
-    boundary::ClimaLSM.TopBoundary,
+    boundary::ClimaLand.TopBoundary,
     model::EnergyHydrology,
     Δz,
     Y,
@@ -342,16 +342,16 @@ function soil_boundary_fluxes(
 end
 
 """
-    ClimaLSM.boundary_flux(bc::FluxBC,  _...)::ClimaCore.Fields.Field
+    ClimaLand.boundary_flux(bc::FluxBC,  _...)::ClimaCore.Fields.Field
 
 A method of boundary fluxes which returns the desired flux.
 
 We add a field of zeros in order to convert the bc (float) into
 a field.
 """
-function ClimaLSM.boundary_flux(
+function ClimaLand.boundary_flux(
     bc::FluxBC,
-    boundary::ClimaLSM.AbstractBoundary,
+    boundary::ClimaLand.AbstractBoundary,
     model,
     Δz::ClimaCore.Fields.Field,
     Y::ClimaCore.Fields.FieldVector,
@@ -364,8 +364,8 @@ end
 
 
 """
-    ClimaLSM.boundary_flux(bc::RichardsAtmosDrivenFluxBC,
-                           boundary::ClimaLSM.AbstractBoundary,
+    ClimaLand.boundary_flux(bc::RichardsAtmosDrivenFluxBC,
+                           boundary::ClimaLand.AbstractBoundary,
                            model::RichardsModel{FT},
                            Δz::ClimaCore.Fields.Field,
                            Y::ClimaCore.Fields.FieldVector,
@@ -380,9 +380,9 @@ precipitation flux.
 If `model.runoff` is not of type `NoRunoff`, surface runoff is accounted for
 when computing the infiltration.
 """
-function ClimaLSM.boundary_flux(
+function ClimaLand.boundary_flux(
     bc::RichardsAtmosDrivenFluxBC,
-    boundary::ClimaLSM.AbstractBoundary,
+    boundary::ClimaLand.AbstractBoundary,
     model::RichardsModel,
     Δz::ClimaCore.Fields.Field,
     Y::ClimaCore.Fields.FieldVector,
@@ -395,8 +395,8 @@ function ClimaLSM.boundary_flux(
 end
 
 """
-    ClimaLSM.boundary_flux(rre_bc::MoistureStateBC,
-                           ::ClimaLSM.TopBoundary,
+    ClimaLand.boundary_flux(rre_bc::MoistureStateBC,
+                           ::ClimaLand.TopBoundary,
                            model::AbstractSoilModel,
                            Δz::ClimaCore.Fields.Field,
                            Y::ClimaCore.Fields.FieldVector,
@@ -407,9 +407,9 @@ end
 A method of boundary fluxes which converts a state boundary condition on θ_l at the top of the
 domain into a flux of liquid water.
 """
-function ClimaLSM.boundary_flux(
+function ClimaLand.boundary_flux(
     rre_bc::MoistureStateBC,
-    ::ClimaLSM.TopBoundary,
+    ::ClimaLand.TopBoundary,
     model::AbstractSoilModel,
     Δz::ClimaCore.Fields.Field,
     Y::ClimaCore.Fields.FieldVector,
@@ -435,12 +435,12 @@ function ClimaLSM.boundary_flux(
     ψ_bc = @. pressure_head(hydrology_cm, θ_r, θ_bc, ν, S_s)
 
     # Pass in (ψ_bc .+ Δz) as x_2 to account for contribution of gravity in RRE
-    return ClimaLSM.diffusive_flux(K_c, ψ_bc .+ Δz, ψ_c, Δz)
+    return ClimaLand.diffusive_flux(K_c, ψ_bc .+ Δz, ψ_c, Δz)
 end
 
 """
-    ClimaLSM.boundary_flux(rre_bc::MoistureStateBC,
-                           ::ClimaLSM.BottomBoundary,
+    ClimaLand.boundary_flux(rre_bc::MoistureStateBC,
+                           ::ClimaLand.BottomBoundary,
                            model::AbstractSoilModel,
                            Δz::ClimaCore.Fields.Field,
                            Y::ClimaCore.Fields.FieldVector,
@@ -451,9 +451,9 @@ end
 A method of boundary fluxes which converts a state boundary condition on θ_l at the bottom of the
 domain into a flux of liquid water.
 """
-function ClimaLSM.boundary_flux(
+function ClimaLand.boundary_flux(
     rre_bc::MoistureStateBC,
-    ::ClimaLSM.BottomBoundary,
+    ::ClimaLand.BottomBoundary,
     model::AbstractSoilModel,
     Δz::ClimaCore.Fields.Field,
     Y::ClimaCore.Fields.FieldVector,
@@ -474,13 +474,13 @@ function ClimaLSM.boundary_flux(
     # At the bottom boundary, ψ_c is at larger z than ψ_bc
     #  so we swap their order in the derivative calc
     # Pass in (ψ_c .+ Δz) as x_2 to account for contribution of gravity in RRE
-    return ClimaLSM.diffusive_flux(K_c, ψ_c .+ Δz, ψ_bc, Δz)
+    return ClimaLand.diffusive_flux(K_c, ψ_c .+ Δz, ψ_bc, Δz)
 end
 
 
 """
-    ClimaLSM.boundary_flux(heat_bc::TemperatureStateBC,
-                           ::ClimaLSM.TopBoundary,
+    ClimaLand.boundary_flux(heat_bc::TemperatureStateBC,
+                           ::ClimaLand.TopBoundary,
                            model::EnergyHydrology,
                            Δz::ClimaCore.Fields.Field,
                            Y::ClimaCore.Fields.FieldVector,
@@ -491,9 +491,9 @@ end
 A method of boundary fluxes which converts a state boundary condition on temperature at the top of the
 domain into a flux of energy.
 """
-function ClimaLSM.boundary_flux(
+function ClimaLand.boundary_flux(
     heat_bc::TemperatureStateBC,
-    ::ClimaLSM.TopBoundary,
+    ::ClimaLand.TopBoundary,
     model::EnergyHydrology,
     Δz::ClimaCore.Fields.Field,
     Y::ClimaCore.Fields.FieldVector,
@@ -514,12 +514,12 @@ function ClimaLSM.boundary_flux(
     )
 
     T_bc = FT.(heat_bc.bc(p, t))
-    return ClimaLSM.diffusive_flux(κ_c, T_bc, T_c, Δz)
+    return ClimaLand.diffusive_flux(κ_c, T_bc, T_c, Δz)
 end
 
 """
-    ClimaLSM.boundary_flux(heat_bc::TemperatureStateBC,
-                           ::ClimaLSM.BottomBoundary,
+    ClimaLand.boundary_flux(heat_bc::TemperatureStateBC,
+                           ::ClimaLand.BottomBoundary,
                            model::EnergyHydrology,
                            Δz::ClimaCore.Fields.Field,
                            Y::ClimaCore.Fields.FieldVector,
@@ -530,9 +530,9 @@ end
 A method of boundary fluxes which converts a state boundary condition on temperature at the bottom of the
 domain into a flux of energy.
 """
-function ClimaLSM.boundary_flux(
+function ClimaLand.boundary_flux(
     heat_bc::TemperatureStateBC,
-    ::ClimaLSM.BottomBoundary,
+    ::ClimaLand.BottomBoundary,
     model::EnergyHydrology,
     Δz::ClimaCore.Fields.Field,
     Y::ClimaCore.Fields.FieldVector,
@@ -545,13 +545,13 @@ function ClimaLSM.boundary_flux(
     T_c = Fields.Field(Fields.field_values(Fields.level(p.soil.T, 1)), axes(Δz))
     κ_c = Fields.Field(Fields.field_values(Fields.level(p.soil.κ, 1)), axes(Δz))
     T_bc = FT.(heat_bc.bc(p, t))
-    return ClimaLSM.diffusive_flux(κ_c, T_c, T_bc, Δz)
+    return ClimaLand.diffusive_flux(κ_c, T_c, T_bc, Δz)
 end
 
 
 """
-    ClimaLSM.boundary_flux(bc::FreeDrainage,
-                           boundary::ClimaLSM.BottomBoundary,
+    ClimaLand.boundary_flux(bc::FreeDrainage,
+                           boundary::ClimaLand.BottomBoundary,
                            model::AbstractSoilModel,
                            Δz::ClimaCore.Fields.Field,
                            Y::ClimaCore.Fields.FieldVector,
@@ -562,9 +562,9 @@ end
 A method of boundary fluxes which enforces free drainage at the bottom
 of the domain.
 """
-function ClimaLSM.boundary_flux(
+function ClimaLand.boundary_flux(
     bc::FreeDrainage,
-    boundary::ClimaLSM.BottomBoundary,
+    boundary::ClimaLand.BottomBoundary,
     model::AbstractSoilModel,
     Δz::ClimaCore.Fields.Field,
     Y::ClimaCore.Fields.FieldVector,
@@ -584,16 +584,16 @@ Returns the boundary fluxes for ϑ_l and ρe_int, in that order.
 function soil_boundary_fluxes(bc::NamedTuple, boundary, model, Δz, Y, p, t)
     params = model.parameters
     return create_soil_bc_named_tuple.(
-        ClimaLSM.boundary_flux(bc.water, boundary, model, Δz, Y, p, t),
-        ClimaLSM.boundary_flux(bc.heat, boundary, model, Δz, Y, p, t),
+        ClimaLand.boundary_flux(bc.water, boundary, model, Δz, Y, p, t),
+        ClimaLand.boundary_flux(bc.heat, boundary, model, Δz, Y, p, t),
     )
 end
 
 """
-    ClimaLSM.∂tendencyBC∂Y(
+    ClimaLand.∂tendencyBC∂Y(
         model::RichardsModel,
         ::MoistureStateBC,
-        boundary::ClimaLSM.TopBoundary,
+        boundary::ClimaLand.TopBoundary,
         Δz,
         Y,
         p,
@@ -609,17 +609,17 @@ variable, this is given by
 `∂T_N∂Y_N = [-∂/∂z(∂F_bc/∂Y_N)]_N`, where `N` indicates the top
 layer cell index.
 """
-function ClimaLSM.∂tendencyBC∂Y(
+function ClimaLand.∂tendencyBC∂Y(
     model::RichardsModel,
     ::MoistureStateBC,
-    boundary::ClimaLSM.TopBoundary,
+    boundary::ClimaLand.TopBoundary,
     Δz,
     Y,
     p,
     t,
 )
     (; ν, hydrology_cm, S_s, θ_r) = model.parameters
-    fs = ClimaLSM.Domains.obtain_face_space(model.domain.space.subsurface)
+    fs = ClimaLand.Domains.obtain_face_space(model.domain.space.subsurface)
     face_len = ClimaCore.Utilities.PlusHalf(ClimaCore.Spaces.nlevels(fs) - 1)
     interpc2f_op = Operators.InterpolateC2F(
         bottom = Operators.Extrapolate(),
@@ -636,10 +636,10 @@ function ClimaLSM.∂tendencyBC∂Y(
 end
 
 """
-    ClimaLSM.∂tendencyBC∂Y(
+    ClimaLand.∂tendencyBC∂Y(
         ::AbstractSoilModel,
         ::AbstractSoilBC,
-        boundary::ClimaLSM.TopBoundary,
+        boundary::ClimaLand.TopBoundary,
         Δz,
         Y,
         p,
@@ -659,10 +659,10 @@ layer cell index.
 If `F_bc` can be approximated as independent of `Y_N`, the derivative
 is zero.
 """
-function ClimaLSM.∂tendencyBC∂Y(
+function ClimaLand.∂tendencyBC∂Y(
     ::AbstractSoilModel,
     ::AbstractSoilBC,
-    boundary::ClimaLSM.TopBoundary,
+    boundary::ClimaLand.TopBoundary,
     Δz,
     Y,
     p,

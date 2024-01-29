@@ -1,5 +1,5 @@
-using ClimaLSM.Snow.DataTools
-using ClimaLSM.Snow.ModelTools
+using ClimaLand.Snow.DataTools
+using ClimaLand.Snow.ModelTools
 using Test
 using BSON, Dates, HTTP
 using DataFrames, CSV, StatsBase, Flux, LinearAlgebra

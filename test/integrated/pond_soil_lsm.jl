@@ -1,9 +1,9 @@
 using Test
 using ClimaCore
-using ClimaLSM
-using ClimaLSM.Domains: HybridBox, Column, obtain_surface_domain
-using ClimaLSM.Soil
-using ClimaLSM.Pond
+using ClimaLand
+using ClimaLand.Domains: HybridBox, Column, obtain_surface_domain
+using ClimaLand.Soil
+using ClimaLand.Pond
 
 for FT in (Float32, Float64)
     @testset "Pond soil Multi Column LSM integration test, FT = $FT" begin
@@ -78,7 +78,7 @@ for FT in (Float32, Float64)
             set_initial_cache!(p, Y, t)
             @test p.soil.top_bc.water == p.soil_infiltration
 
-            if typeof(lsm_domain) <: ClimaLSM.HybridBox
+            if typeof(lsm_domain) <: ClimaLand.HybridBox
                 # test that the dss buffers are correctly added
                 @test propertynames(p) == (
                     :soil_infiltration,
@@ -118,7 +118,8 @@ for FT in (Float32, Float64)
                 @test land_auxiliary_vars.soil == auxiliary_vars(land.soil)
                 @test land_auxiliary_vars.surface_water ==
                       auxiliary_vars(land.surface_water)
-                @test land_auxiliary_vars.lsm_aux == ClimaLSM.lsm_aux_vars(land)
+                @test land_auxiliary_vars.lsm_aux ==
+                      ClimaLand.lsm_aux_vars(land)
                 # prognostic types
                 @test land_prognostic_types.soil == prognostic_types(land.soil)
                 @test land_prognostic_types.surface_water ==
@@ -128,7 +129,7 @@ for FT in (Float32, Float64)
                 @test land_auxiliary_types.surface_water ==
                       auxiliary_types(land.surface_water)
                 @test land_auxiliary_types.lsm_aux ==
-                      ClimaLSM.lsm_aux_types(land)
+                      ClimaLand.lsm_aux_types(land)
                 # prognostic domain names
                 @test land_prognostic_domain_names.soil ==
                       prognostic_domain_names(land.soil)
@@ -140,7 +141,7 @@ for FT in (Float32, Float64)
                 @test land_auxiliary_domain_names.surface_water ==
                       auxiliary_domain_names(land.surface_water)
                 @test land_auxiliary_domain_names.lsm_aux ==
-                      ClimaLSM.lsm_aux_domain_names(land)
+                      ClimaLand.lsm_aux_domain_names(land)
             else
                 @test propertynames(p) ==
                       (:soil_infiltration, :soil, :surface_water)

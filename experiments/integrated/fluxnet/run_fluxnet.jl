@@ -8,21 +8,21 @@ using Dates
 using Insolation
 using StatsBase
 
-using ClimaLSM
-using ClimaLSM.Domains: Column
-using ClimaLSM.Soil
-using ClimaLSM.Soil.Biogeochemistry
-using ClimaLSM.Canopy
-using ClimaLSM.Canopy.PlantHydraulics
-import ClimaLSM
-import ClimaLSM.Parameters as LSMP
-include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
+using ClimaLand
+using ClimaLand.Domains: Column
+using ClimaLand.Soil
+using ClimaLand.Soil.Biogeochemistry
+using ClimaLand.Canopy
+using ClimaLand.Canopy.PlantHydraulics
+import ClimaLand
+import ClimaLand.Parameters as LP
+include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"))
 const FT = Float64
 earth_param_set = create_lsm_parameters(FT)
-climalsm_dir = pkgdir(ClimaLSM)
+climaland_dir = pkgdir(ClimaLand)
 
-include(joinpath(climalsm_dir, "experiments/integrated/fluxnet/data_tools.jl"))
-include(joinpath(climalsm_dir, "experiments/integrated/fluxnet/plot_utils.jl"))
+include(joinpath(climaland_dir, "experiments/integrated/fluxnet/data_tools.jl"))
+include(joinpath(climaland_dir, "experiments/integrated/fluxnet/plot_utils.jl"))
 
 # Read in the site to be run from the command line
 if length(ARGS) < 1
@@ -34,19 +34,19 @@ site_ID = ARGS[1]
 # Read all site-specific domain parameters from the simulation file for the site
 include(
     joinpath(
-        climalsm_dir,
+        climaland_dir,
         "experiments/integrated/fluxnet/$site_ID/$(site_ID)_simulation.jl",
     ),
 )
 
 include(
-    joinpath(climalsm_dir, "experiments/integrated/fluxnet/fluxnet_domain.jl"),
+    joinpath(climaland_dir, "experiments/integrated/fluxnet/fluxnet_domain.jl"),
 )
 
 # Read all site-specific parameters from the parameter file for the site
 include(
     joinpath(
-        climalsm_dir,
+        climaland_dir,
         "experiments/integrated/fluxnet/$site_ID/$(site_ID)_parameters.jl",
     ),
 )
@@ -55,14 +55,14 @@ include(
 # the atmospheric and radiative driver structs for the model
 include(
     joinpath(
-        climalsm_dir,
+        climaland_dir,
         "experiments/integrated/fluxnet/fluxnet_simulation.jl",
     ),
 )
 
 include(
     joinpath(
-        climalsm_dir,
+        climaland_dir,
         "experiments/integrated/fluxnet/met_drivers_FLUXNET.jl",
     ),
 )
@@ -310,12 +310,12 @@ sv = (;
     t = Array{Float64}(undef, length(saveat)),
     saveval = Array{NamedTuple}(undef, length(saveat)),
 )
-saving_cb = ClimaLSM.NonInterpSavingCallback(sv, saveat)
+saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat)
 ## How often we want to update the drivers. Note that this uses the defined `t0` and `tf`
 ## defined in the simulatons file
 updateat = Array(t0:DATA_DT:tf)
-updatefunc = ClimaLSM.make_update_drivers(atmos, radiation)
-driver_cb = ClimaLSM.DriverUpdateCallback(updateat, updatefunc)
+updatefunc = ClimaLand.make_update_drivers(atmos, radiation)
+driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
 cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
 
 prob = SciMLBase.ODEProblem(
@@ -335,7 +335,8 @@ sol = SciMLBase.solve(
 
 # Plotting
 daily = sol.t ./ 3600 ./ 24
-savedir = joinpath(climalsm_dir, "experiments/integrated/fluxnet/$site_ID/out/")
+savedir =
+    joinpath(climaland_dir, "experiments/integrated/fluxnet/$site_ID/out/")
 
 if !isdir(savedir)
     mkdir(savedir)
@@ -462,7 +463,7 @@ if drivers.LE.status == absent
     plot_daily_avg("ET", ET_model, dt * n, num_days, "mm/day", savedir, "Model")
 else
     measured_T =
-        drivers.LE.values ./ (LSMP.LH_v0(earth_param_set) * 1000) .*
+        drivers.LE.values ./ (LP.LH_v0(earth_param_set) * 1000) .*
         (1e3 * 24 * 3600)
     ET_data = measured_T[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)]
     plot_avg_comp(
@@ -802,7 +803,7 @@ soil_T_sfc_avg = compute_diurnal_avg(soil_T_sfc, model_times, num_days)
 
 canopy_T = [
     parent(
-        ClimaLSM.Canopy.canopy_temperature(
+        ClimaLand.Canopy.canopy_temperature(
             land.canopy.energy,
             land.canopy,
             sol.u[k],
@@ -874,7 +875,7 @@ end
 
 rm(
     joinpath(
-        climalsm_dir,
+        climaland_dir,
         "experiments/integrated/fluxnet/$site_ID/Artifacts.toml",
     ),
 )

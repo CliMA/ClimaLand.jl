@@ -69,7 +69,7 @@ function LandHydrology{FT}(;
         soil_args...,
     )
     domain = soil_args.domain
-    surface_domain = ClimaLSM.Domains.obtain_surface_domain(domain)
+    surface_domain = ClimaLand.Domains.obtain_surface_domain(domain)
     surface_water = surface_water_model_type(;
         runoff = surface_runoff,
         domain = surface_domain,
@@ -123,7 +123,7 @@ Defined such that positive means into soil.
 """
 function infiltration_capacity(Y::ClimaCore.Fields.FieldVector, p::NamedTuple)
     FT = eltype(Y.soil.ϑ_l)
-    face_space = ClimaLSM.Domains.obtain_face_space(axes(Y.soil.ϑ_l))
+    face_space = ClimaLand.Domains.obtain_face_space(axes(Y.soil.ϑ_l))
     N = ClimaCore.Spaces.nlevels(face_space)
     space = axes(Y.surface_water.η)
     z = ClimaCore.Fields.coordinate_field(axes(Y.soil.ϑ_l)).z
@@ -246,7 +246,7 @@ is also used to compute the runoff for the surface water.
 struct RunoffBC <: Soil.AbstractSoilBC end
 
 """
-    function ClimaLSM.boundary_flux(
+    function ClimaLand.boundary_flux(
         bc::RunoffBC,
         ::TopBoundary,
         model::Soil.RichardsModel,
@@ -257,12 +257,12 @@ struct RunoffBC <: Soil.AbstractSoilBC end
         params,
     )::ClimaCore.Fields.Field
 
-Extension of the `ClimaLSM.boundary_flux` function, which returns the water volume
+Extension of the `ClimaLand.boundary_flux` function, which returns the water volume
 boundary flux for the soil.
 At the top boundary, return the soil infiltration (computed each step and
 stored in `p.soil_infiltration`).
 """
-function ClimaLSM.boundary_flux(
+function ClimaLand.boundary_flux(
     bc::RunoffBC,
     ::TopBoundary,
     model::Soil.RichardsModel,

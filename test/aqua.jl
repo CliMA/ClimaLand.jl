@@ -1,19 +1,19 @@
 using Test
-using ClimaLSM
+using ClimaLand
 using Aqua
 
 @testset "Aqua tests (performance)" begin
     # This tests that we don't accidentally run into
     # https://github.com/JuliaLang/julia/issues/29393
-    ua = Aqua.detect_unbound_args_recursively(ClimaLSM)
+    ua = Aqua.detect_unbound_args_recursively(ClimaLand)
     @test length(ua) == 0
 
     # See: https://github.com/SciML/SciMLBase.jl/issues/1750
     # Test that we're not introducing method ambiguities across deps
-    ambs = Aqua.detect_ambiguities(ClimaLSM; recursive = true)
+    ambs = Aqua.detect_ambiguities(ClimaLand; recursive = true)
     pkg_match(pkgname, pkdir::Nothing) = false
     pkg_match(pkgname, pkdir::AbstractString) = occursin(pkgname, pkdir)
-    filter!(x -> pkg_match("ClimaLSM", pkgdir(last(x).module)), ambs)
+    filter!(x -> pkg_match("ClimaLand", pkgdir(last(x).module)), ambs)
 
     # Uncomment for debugging:
     # for method_ambiguity in ambs
@@ -23,11 +23,11 @@ using Aqua
 end
 
 @testset "Aqua tests (additional)" begin
-    Aqua.test_undefined_exports(ClimaLSM)
-    Aqua.test_stale_deps(ClimaLSM)
-    Aqua.test_deps_compat(ClimaLSM)
-    Aqua.test_project_extras(ClimaLSM)
-    Aqua.test_piracies(ClimaLSM)
+    Aqua.test_undefined_exports(ClimaLand)
+    Aqua.test_stale_deps(ClimaLand)
+    Aqua.test_deps_compat(ClimaLand)
+    Aqua.test_project_extras(ClimaLand)
+    Aqua.test_piracies(ClimaLand)
 end
 
 nothing

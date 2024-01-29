@@ -142,10 +142,11 @@ function FarquharModel{FT}(
     return FarquharModel{eltype(parameters), typeof(parameters)}(parameters)
 end
 
-ClimaLSM.name(model::AbstractPhotosynthesisModel) = :photosynthesis
-ClimaLSM.auxiliary_vars(model::FarquharModel) = (:An, :GPP, :Rd, :Vcmax25)
-ClimaLSM.auxiliary_types(model::FarquharModel{FT}) where {FT} = (FT, FT, FT, FT)
-ClimaLSM.auxiliary_domain_names(::FarquharModel) =
+ClimaLand.name(model::AbstractPhotosynthesisModel) = :photosynthesis
+ClimaLand.auxiliary_vars(model::FarquharModel) = (:An, :GPP, :Rd, :Vcmax25)
+ClimaLand.auxiliary_types(model::FarquharModel{FT}) where {FT} =
+    (FT, FT, FT, FT)
+ClimaLand.auxiliary_domain_names(::FarquharModel) =
     (:surface, :surface, :surface, :surface)
 
 """

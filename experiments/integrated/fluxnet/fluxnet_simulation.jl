@@ -1,4 +1,4 @@
-"""This file contains the site-generic time variables for running CliMALSM on 
+"""This file contains the site-generic time variables for running ClimaLand on 
 fluxtower sites. These work in tandem with the site-specific timing parameters 
 found in the {site-ID}_simulation.jl files in each site directory."""
 
