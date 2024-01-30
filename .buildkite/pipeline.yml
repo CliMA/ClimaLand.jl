@@ -23,7 +23,7 @@ steps:
       - "julia --project -e 'using Pkg; Pkg.status()'"
 
       - echo "--- Instantiate experiments"
-      - "julia --project=experiments -e 'using Pkg; Pkg.instantiate(;verbose=true)'"
+      - "julia --project=experiments -e 'using Pkg; Pkg.develop(;path=\".\"); Pkg.instantiate(;verbose=true)'"
       - "julia --project=experiments -e 'using Pkg; Pkg.status()'"
 
       - echo "--- Instantiate lib/ClimaLandSimulations"
@@ -78,6 +78,17 @@ steps:
         command: "julia --color=yes --project=experiments experiments/standalone/Soil/water_conservation.jl"
         artifact_paths: "experiments/standalone/Soil/water_conservation*png"
 
+      - label: "Global Bucket on CPU"
+        key: "global_bucket_cpu"
+        command: "julia --color=yes --project=experiments experiments/standalone/Bucket/global_bucket.jl"
+        artifact_paths: "experiments/standalone/Bucket/artifacts/*cpu*"
+
+      - label: "Compare GPU bucket with CPU bucket"
+        command: "julia --color=yes --project=experiments experiments/standalone/Bucket/compare_gpu_cpu_output.jl"
+        depends_on:
+          - "global_bucket_cpu"
+          - "global_bucket_gpu"
+
   - group: "lib/ClimaLandSimulations"
     steps:
       - label: "Ozark figures Makie"
@@ -91,6 +102,14 @@ steps:
         agents:
           slurm_mem_per_cpu: 8G
           slurm_gpus: 1
+
+      - label: "Global Bucket on GPU"
+        key: "global_bucket_gpu"
+        command: "julia --color=yes --project=experiments experiments/standalone/Bucket/global_bucket.jl"
+        agents:
+          slurm_mem: 8G
+          slurm_gpus: 1
+        artifact_paths: "experiments/standalone/Bucket/artifacts/*gpu*"
 
   - wait
 

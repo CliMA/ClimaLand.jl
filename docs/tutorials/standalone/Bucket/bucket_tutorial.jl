@@ -327,14 +327,18 @@ prob = SciMLBase.ODEProblem(
 );
 
 # We need a callback to get and store the auxiliary fields, as they
-# are not stored by default.
+# are not stored by default. We also need a callback to update the
+# drivers (atmos and radiation)
 saveat = collect(t0:Δt:tf);
 saved_values = (;
     t = Array{Float64}(undef, length(saveat)),
     saveval = Array{NamedTuple}(undef, length(saveat)),
 );
-
-cb = ClimaLSM.NonInterpSavingCallback(saved_values, saveat);
+saving_cb = ClimaLSM.NonInterpSavingCallback(saved_values, saveat);
+updateat = copy(saveat)
+updatefunc = ClimaLSM.make_update_drivers(bucket_atmos, bucket_rad)
+driver_cb = ClimaLSM.DriverUpdateCallback(updateat, updatefunc)
+cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
 
 sol = SciMLBase.solve(prob, ode_algo; dt = Δt, saveat = saveat, callback = cb);
 
