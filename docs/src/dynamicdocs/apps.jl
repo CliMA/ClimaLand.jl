@@ -1,6 +1,6 @@
 # Load packages
 using ParamViz
-using JSServe
+using Bonito
 using ClimaLSM
 using ClimaLSM.Canopy
 using ClimaLSM.Soil.Biogeochemistry
