@@ -1,28 +1,28 @@
 using Test
 import CLIMAParameters as CP
-using ClimaLSM.Snow
-import ClimaLSM
-import ClimaLSM.Parameters as LSMP
-include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
+using ClimaLand.Snow
+import ClimaLand
+import ClimaLand.Parameters as LP
+include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"))
 
 for FT in (Float32, Float64)
     @testset "Snow Parameterizations, FT = $FT" begin
         param_set = create_lsm_parameters(FT)
 
         # Density of liquid water (kg/m``^3``)
-        _ρ_l = FT(LSMP.ρ_cloud_liq(param_set))
+        _ρ_l = FT(LP.ρ_cloud_liq(param_set))
         # Density of ice water (kg/m``^3``)
-        _ρ_i = FT(LSMP.ρ_cloud_ice(param_set))
-        _cp_l = FT(LSMP.cp_l(param_set))
-        _cp_i = FT(LSMP.cp_i(param_set))
+        _ρ_i = FT(LP.ρ_cloud_ice(param_set))
+        _cp_l = FT(LP.cp_l(param_set))
+        _cp_i = FT(LP.cp_i(param_set))
         # Reference temperature (K)
-        _T_ref = FT(LSMP.T_0(param_set))
+        _T_ref = FT(LP.T_0(param_set))
         # Freezing temperature (K)
-        _T_freeze = FT(LSMP.T_freeze(param_set))
+        _T_freeze = FT(LP.T_freeze(param_set))
         # Latent heat of fusion at ``T_0`` (J/kg)
-        _LH_f0 = FT(LSMP.LH_f0(param_set))
+        _LH_f0 = FT(LP.LH_f0(param_set))
         # Thermal conductivity of dry air
-        κ_air = FT(LSMP.K_therm(param_set))
+        κ_air = FT(LP.K_therm(param_set))
 
         ρ_snow = FT(200)
         z_0m = FT(0.0024)

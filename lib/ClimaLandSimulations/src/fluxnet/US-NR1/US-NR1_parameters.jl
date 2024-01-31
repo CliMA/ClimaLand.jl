@@ -1,4 +1,4 @@
-"""Site-specific model parameters for running CliMA LSM on the Niwot Ridge
+"""Site-specific model parameters for running Clima Land on the Niwot Ridge
 fluxtower site."""
 
 # Data download link

@@ -1,9 +1,9 @@
 module Parameters
 
-abstract type AbstractLSMParameters end
-const ALSMP = AbstractLSMParameters
+abstract type AbstractLandParameters end
+const ALP = AbstractLandParameters
 
-Base.@kwdef struct LSMParameters{FT, TP, SFP, IP} <: ALSMP
+Base.@kwdef struct LandParameters{FT, TP, SFP, IP} <: ALP
     K_therm::FT
     ρ_cloud_liq::FT
     ρ_cloud_ice::FT
@@ -27,33 +27,33 @@ Base.@kwdef struct LSMParameters{FT, TP, SFP, IP} <: ALSMP
     insol_params::IP
 end
 
-Base.eltype(::LSMParameters{FT}) where {FT} = FT
+Base.eltype(::LandParameters{FT}) where {FT} = FT
 
 # wrapper methods:
-P_ref(ps::ALSMP) = ps.MSLP
-K_therm(ps::ALSMP) = ps.K_therm
-ρ_cloud_liq(ps::ALSMP) = ps.ρ_cloud_liq
-ρ_cloud_ice(ps::ALSMP) = ps.ρ_cloud_ice
-cp_l(ps::ALSMP) = ps.cp_l
-cp_i(ps::ALSMP) = ps.cp_i
-T_0(ps::ALSMP) = ps.T_0
-LH_v0(ps::ALSMP) = ps.LH_v0
-LH_s0(ps::ALSMP) = ps.LH_s0
-Stefan(ps::ALSMP) = ps.Stefan
-T_freeze(ps::ALSMP) = ps.T_freeze
-grav(ps::ALSMP) = ps.grav
-D_vapor(ps::ALSMP) = ps.D_vapor
-gas_constant(ps::ALSMP) = ps.gas_constant
-molar_mass_water(ps::ALSMP) = ps.molmass_water
-planck_constant(ps::ALSMP) = ps.h_Planck
-avogadro_constant(ps::ALSMP) = ps.avogad
-light_speed(ps::ALSMP) = ps.light_speed
+P_ref(ps::ALP) = ps.MSLP
+K_therm(ps::ALP) = ps.K_therm
+ρ_cloud_liq(ps::ALP) = ps.ρ_cloud_liq
+ρ_cloud_ice(ps::ALP) = ps.ρ_cloud_ice
+cp_l(ps::ALP) = ps.cp_l
+cp_i(ps::ALP) = ps.cp_i
+T_0(ps::ALP) = ps.T_0
+LH_v0(ps::ALP) = ps.LH_v0
+LH_s0(ps::ALP) = ps.LH_s0
+Stefan(ps::ALP) = ps.Stefan
+T_freeze(ps::ALP) = ps.T_freeze
+grav(ps::ALP) = ps.grav
+D_vapor(ps::ALP) = ps.D_vapor
+gas_constant(ps::ALP) = ps.gas_constant
+molar_mass_water(ps::ALP) = ps.molmass_water
+planck_constant(ps::ALP) = ps.h_Planck
+avogadro_constant(ps::ALP) = ps.avogad
+light_speed(ps::ALP) = ps.light_speed
 # Derived parameters
-LH_f0(ps::ALSMP) = LH_s0(ps) - LH_v0(ps)
-ρ_m_liq(ps::ALSMP) = ρ_cloud_liq(ps) / molar_mass_water(ps)
+LH_f0(ps::ALP) = LH_s0(ps) - LH_v0(ps)
+ρ_m_liq(ps::ALP) = ρ_cloud_liq(ps) / molar_mass_water(ps)
 # Dependency parameter wrappers
-thermodynamic_parameters(ps::ALSMP) = ps.thermo_params
-surface_fluxes_parameters(ps::ALSMP) = ps.surf_flux_params
-insolation_parameters(ps::ALSMP) = ps.insol_params
+thermodynamic_parameters(ps::ALP) = ps.thermo_params
+surface_fluxes_parameters(ps::ALP) = ps.surf_flux_params
+insolation_parameters(ps::ALP) = ps.insol_params
 
 end # module

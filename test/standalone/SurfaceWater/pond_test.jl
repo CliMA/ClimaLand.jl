@@ -4,8 +4,8 @@ using ClimaCore
 if !("." in LOAD_PATH)
     push!(LOAD_PATH, ".")
 end
-using ClimaLSM
-using ClimaLSM.Pond
+using ClimaLand
+using ClimaLand.Pond
 
 for FT in (Float32, Float64)
     @testset "Pond integration tests, FT = $FT" begin

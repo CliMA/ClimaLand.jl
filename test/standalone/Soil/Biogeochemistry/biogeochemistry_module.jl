@@ -2,13 +2,13 @@ using Test
 using Dates
 import CLIMAParameters as CP
 using ClimaCore
-using ClimaLSM
-using ClimaLSM.Domains: Column
-using ClimaLSM.Soil.Biogeochemistry
-import ClimaLSM
-import ClimaLSM.Parameters as LSMP
+using ClimaLand
+using ClimaLand.Domains: Column
+using ClimaLand.Soil.Biogeochemistry
+import ClimaLand
+import ClimaLand.Parameters as LP
 
-include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
+include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"))
 
 for FT in (Float32, Float64)
     @testset "Soil co2 biogeochemistry sources, FT = $FT" begin
@@ -46,7 +46,7 @@ for FT in (Float32, Float64)
         atmos_h = FT(30)
         atmos_co2 = (t) -> 1.0
 
-        atmos = ClimaLSM.PrescribedAtmosphere(
+        atmos = ClimaLand.PrescribedAtmosphere(
             TimeVaryingInput(precipitation_function),
             TimeVaryingInput(snow_precip),
             TimeVaryingInput(atmos_T),
@@ -117,7 +117,7 @@ for FT in (Float32, Float64)
         atmos_h = FT(30)
         atmos_co2 = (t) -> 1.0
 
-        atmos = ClimaLSM.PrescribedAtmosphere(
+        atmos = ClimaLand.PrescribedAtmosphere(
             TimeVaryingInput(precipitation_function),
             TimeVaryingInput(snow_precip),
             TimeVaryingInput(atmos_T),

@@ -1,20 +1,20 @@
 # Canopy Energy Model
 
 ```@meta
-CurrentModule = ClimaLSM.Canopy
+CurrentModule = ClimaLand.Canopy
 ```
 
 ## Methods
 
 ```@docs
-ClimaLSM.Canopy.canopy_temperature
-ClimaLSM.Canopy.root_energy_flux_per_ground_area!
+ClimaLand.Canopy.canopy_temperature
+ClimaLand.Canopy.root_energy_flux_per_ground_area!
 ```
 
 ## Types
 
 ```@docs
-ClimaLSM.Canopy.AbstractCanopyEnergyModel
-ClimaLSM.Canopy.PrescribedCanopyTempModel
-ClimaLSM.Canopy.BigLeafEnergyModel
+ClimaLand.Canopy.AbstractCanopyEnergyModel
+ClimaLand.Canopy.PrescribedCanopyTempModel
+ClimaLand.Canopy.BigLeafEnergyModel
 ```

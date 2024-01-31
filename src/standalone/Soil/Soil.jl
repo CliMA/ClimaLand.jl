@@ -49,23 +49,23 @@ all of the spatial discretization and operator functionality)
  and for ease of handling multi-column models.
 
 To simulate land surfaces with multiple components (vegetation,
-soil, rivers, etc), the ClimaLSM.jl package should be used.
+soil, rivers, etc), the ClimaLand.jl package should be used.
 That package will use the methods of this function for advancing
 the system forward in time, extending methods as needed to account
 for interactions between components.
 =#
 
-using ClimaLSM
+using ClimaLand
 using DocStringExtensions
 using LinearAlgebra
 using ClimaCore
-import ..Parameters as LSMP
+import ..Parameters as LP
 import ClimaCore: Fields, Operators, Geometry, Spaces
 using Thermodynamics
 
-import ClimaLSM.Domains: Column, HybridBox, SphericalShell
-using ClimaLSM: AbstractTridiagonalW
-import ClimaLSM:
+import ClimaLand.Domains: Column, HybridBox, SphericalShell
+using ClimaLand: AbstractTridiagonalW
+import ClimaLand:
     AbstractImExModel,
     make_update_aux,
     make_compute_exp_tendency,
@@ -101,18 +101,18 @@ export RichardsModel,
 
 
 """
-    AbstractSoilSource{FT} <:  ClimaLSM.AbstractSource{FT}
+    AbstractSoilSource{FT} <:  ClimaLand.AbstractSource{FT}
 
 An abstract type for types of source terms for the soil equations.
 
 In standalone mode, the only supported source type is freezing and
-thawing. ClimaLSM.jl creates additional sources to include as
+thawing. ClimaLand.jl creates additional sources to include as
 necessary e.g. root extraction (not available in stand alone mode).
 """
-abstract type AbstractSoilSource{FT} <: ClimaLSM.AbstractSource{FT} end
+abstract type AbstractSoilSource{FT} <: ClimaLand.AbstractSource{FT} end
 
 """
-    AbstractSoilModel{FT} <: ClimaLSM.AbstractImExModel{FT}
+    AbstractSoilModel{FT} <: ClimaLand.AbstractImExModel{FT}
 
 The abstract type for all soil models.
 
@@ -120,9 +120,9 @@ Currently, we only have plans to support a RichardsModel, simulating
 the flow of liquid water through soil via the Richardson-Richards equation,
 and a fully integrated soil heat and water model, with phase change.
 """
-abstract type AbstractSoilModel{FT} <: ClimaLSM.AbstractImExModel{FT} end
+abstract type AbstractSoilModel{FT} <: ClimaLand.AbstractImExModel{FT} end
 
-ClimaLSM.name(::AbstractSoilModel) = :soil
+ClimaLand.name(::AbstractSoilModel) = :soil
 """
    horizontal_components!(dY::ClimaCore.Fields.FieldVector,
                           domain::Column, _...)

@@ -2,7 +2,7 @@
 # Domain Tutorial
 
 ## Goals of the tutorial
-The goal of this is to outline what is currently implemented in ClimaLSM
+The goal of this is to outline what is currently implemented in ClimaLand
 and to serve as a software design document
 for future development involving the underlying domains.
 
@@ -30,7 +30,7 @@ In other words, different variables in land surface models exist
 in different, overlapping, domains. We need to decide on the geometry of interest (e.g. single column
 vs a global simulation), but we also need to specify where each variable of the model is defined.
 
-ClimaLSM Domains were designed with this in mind. The domains are defined
+ClimaLand Domains were designed with this in mind. The domains are defined
 so that
 1. the user can easily switch geometries, e.g. single column to global model,
 2. individual component models can be run by themselves, using a single domain,
@@ -38,10 +38,10 @@ so that
 4. different variables can exist on different parts of the domain.
 
 
-## What is a ClimaLSM Domain?
-A domain represents a region of space. In ClimaLSM, domains are simply
+## What is a ClimaLand Domain?
+A domain represents a region of space. In ClimaLand, domains are simply
 structs containing parameters that define these regions - for example an
-x-range and y-range that define a plane. In addition, ClimaLSM domains store
+x-range and y-range that define a plane. In addition, ClimaLand domains store
 the ClimaCore function spaces for the
 physical domain as a NamedTuple. When solving partial differential equations, the spatial
 discretization is tied to a set of basis functions you wish to use to represent the prognostic
@@ -53,14 +53,14 @@ underlying infrastructure in both cases.
 
 
 ## Domain types
-All ClimaLSM domains are subtypes of abstract type
-[`ClimaLSM.Domains.AbstractDomain`](https://clima.github.io/ClimaLSM.jl/dev/APIs/shared_utilities/#ClimaLSM.Domains.AbstractDomain).
+All ClimaLand domains are subtypes of abstract type
+[`ClimaLand.Domains.AbstractDomain`](https://clima.github.io/ClimaLand.jl/dev/APIs/shared_utilities/#ClimaLand.Domains.AbstractDomain).
 A variety of concrete domain types are supported:
 
-- 0D: [`Domains.Point`](https://clima.github.io/ClimaLSM.jl/dev/APIs/shared_utilities/#ClimaLSM.Domains.Point)
-- 1D: [`Domains.Column`](https://clima.github.io/ClimaLSM.jl/dev/APIs/shared_utilities/#ClimaLSM.Domains.Column)
-- 2D: [`Domains.Plane`](https://clima.github.io/ClimaLSM.jl/dev/APIs/shared_utilities/#ClimaLSM.Domains.Plane), [`Domains.SphericalSurface`](https://clima.github.io/ClimaLSM.jl/dev/APIs/shared_utilities/#ClimaLSM.Domains.SphericalSurface)
-- 3D: [`Domains.HybridBox`](https://clima.github.io/ClimaLSM.jl/dev/APIs/shared_utilities/#ClimaLSM.Domains.HybridBox), [`Domains.SphericalShell`](https://clima.github.io/ClimaLSM.jl/dev/APIs/shared_utilities/#ClimaLSM.Domains.SphericalShell).
+- 0D: [`Domains.Point`](https://clima.github.io/ClimaLand.jl/dev/APIs/shared_utilities/#ClimaLand.Domains.Point)
+- 1D: [`Domains.Column`](https://clima.github.io/ClimaLand.jl/dev/APIs/shared_utilities/#ClimaLand.Domains.Column)
+- 2D: [`Domains.Plane`](https://clima.github.io/ClimaLand.jl/dev/APIs/shared_utilities/#ClimaLand.Domains.Plane), [`Domains.SphericalSurface`](https://clima.github.io/ClimaLand.jl/dev/APIs/shared_utilities/#ClimaLand.Domains.SphericalSurface)
+- 3D: [`Domains.HybridBox`](https://clima.github.io/ClimaLand.jl/dev/APIs/shared_utilities/#ClimaLand.Domains.HybridBox), [`Domains.SphericalShell`](https://clima.github.io/ClimaLand.jl/dev/APIs/shared_utilities/#ClimaLand.Domains.SphericalShell).
 
 As discussed above, our modeling requires that variables of a model can be defined on different subsets of the domain. Because of that, we define the concept of a surface domain, and a subsurface domain. Not all domains have a surface and subsurface; some only have surface domains, as shown in the Table below.
 
@@ -72,9 +72,9 @@ As discussed above, our modeling requires that variables of a model can be defin
 | SphericalShell    | SphericalSurface      | SphericalShell      |
 
 
-There is a single key method which take a ClimaLSM domain as an argument.
+There is a single key method which take a ClimaLand domain as an argument.
 
-- [` coordinates(domain)`](https://clima.github.io/ClimaLSM.jl/dev/APIs/shared_utilities/#ClimaLSM.Domains.coordinates): under the hood, this function  uses
+- [` coordinates(domain)`](https://clima.github.io/ClimaLand.jl/dev/APIs/shared_utilities/#ClimaLand.Domains.coordinates): under the hood, this function  uses
 the NamedTuple of function spaces (domain.space) to create the coordinate field for the surface and subsurface domains (as applicable), stored in a NamedTuple.
 Depending on the domain, the returned coordinate field will have elements of different names and types. For example,
 the SphericalShell domain has subsurface coordinates of latitude, longitude, and depth, while the surface coordinates
@@ -98,18 +98,18 @@ make sense to use. A single layer snow model does not require vertical resolutio
 that make sense to use are a Point, Plane, or SphericalSurface.
 
 When a developer first defines a model, they need to specify the symbols used for the prognostic variables,
-via [`prognostic_vars`](https://clima.github.io/ClimaLSM.jl/dev/APIs/shared_utilities/#ClimaLSM.prognostic_vars),
+via [`prognostic_vars`](https://clima.github.io/ClimaLand.jl/dev/APIs/shared_utilities/#ClimaLand.prognostic_vars),
 and
 the types of those variables,
- via [`prognostic_types`](https://clima.github.io/ClimaLSM.jl/dev/APIs/shared_utilities/#ClimaLSM.prognostic_types).
+ via [`prognostic_types`](https://clima.github.io/ClimaLand.jl/dev/APIs/shared_utilities/#ClimaLand.prognostic_types).
 
 They additionally need to define which subset of the domain the variables are defined on, using 
-[`prognostic_domain_names`](https://clima.github.io/ClimaLSM.jl/dev/APIs/shared_utilities/#ClimaLSM.prognostic_domain_names).
+[`prognostic_domain_names`](https://clima.github.io/ClimaLand.jl/dev/APIs/shared_utilities/#ClimaLand.prognostic_domain_names).
 
-The [`initialize`](https://clima.github.io/ClimaLSM.jl/dev/APIs/shared_utilities/#ClimaLSM.initialize)
+The [`initialize`](https://clima.github.io/ClimaLand.jl/dev/APIs/shared_utilities/#ClimaLand.initialize)
 function (which calls both
-[`initialize_prognostic`](https://clima.github.io/ClimaLSM.jl/dev/APIs/shared_utilities/#ClimaLSM.initialize_prognostic)
- and [`initialize_auxiliary`](https://clima.github.io/ClimaLSM.jl/dev/APIs/shared_utilities/#ClimaLSM.initialize_auxiliary))
+[`initialize_prognostic`](https://clima.github.io/ClimaLand.jl/dev/APIs/shared_utilities/#ClimaLand.initialize_prognostic)
+ and [`initialize_auxiliary`](https://clima.github.io/ClimaLand.jl/dev/APIs/shared_utilities/#ClimaLand.initialize_auxiliary))
 creates the prognostic state vector `Y` (a ClimaCore.Fields.FieldVector). Each field (ClimaCore.Fields.Field) stored within
 the field vector corresponds to a prognostic variable (identified with the symbol specified). If the prognostic type for that variable
 is a float, the field will be a field of float values (a scalar field)[^4].

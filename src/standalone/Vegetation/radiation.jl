@@ -1,4 +1,4 @@
-using ..ClimaLSM.Canopy: AbstractSoilDriver
+using ..ClimaLand.Canopy: AbstractSoilDriver
 
 export BeerLambertParameters,
     BeerLambertModel,
@@ -164,7 +164,7 @@ end
 """
     compute_PAR(
         model::AbstractRadiationModel,
-        solar_radiation::ClimaLSM.PrescribedRadiativeFluxes,
+        solar_radiation::ClimaLand.PrescribedRadiativeFluxes,
         p,
         t,
     )
@@ -176,7 +176,7 @@ The estimated PAR is half of the incident shortwave radiation.
 """
 function compute_PAR(
     model::AbstractRadiationModel,
-    solar_radiation::ClimaLSM.PrescribedRadiativeFluxes,
+    solar_radiation::ClimaLand.PrescribedRadiativeFluxes,
     p,
     t,
 )
@@ -186,7 +186,7 @@ end
 """
     compute_NIR(
         model::AbstractRadiationModel,
-        solar_radiation::ClimaLSM.PrescribedRadiativeFluxes,
+        solar_radiation::ClimaLand.PrescribedRadiativeFluxes,
         p,
         t,
     )
@@ -198,7 +198,7 @@ The estimated PNIR is half of the incident shortwave radiation.
 """
 function compute_NIR(
     model::AbstractRadiationModel,
-    solar_radiation::ClimaLSM.PrescribedRadiativeFluxes,
+    solar_radiation::ClimaLand.PrescribedRadiativeFluxes,
     p,
     t,
 )
@@ -208,13 +208,13 @@ end
 # Make radiation models broadcastable
 Base.broadcastable(RT::AbstractRadiationModel) = tuple(RT)
 
-ClimaLSM.name(model::AbstractRadiationModel) = :radiative_transfer
-ClimaLSM.auxiliary_vars(model::Union{BeerLambertModel, TwoStreamModel}) =
+ClimaLand.name(model::AbstractRadiationModel) = :radiative_transfer
+ClimaLand.auxiliary_vars(model::Union{BeerLambertModel, TwoStreamModel}) =
     (:apar, :par, :rpar, :tpar, :anir, :nir, :rnir, :tnir, :LW_n, :SW_n)
-ClimaLSM.auxiliary_types(
+ClimaLand.auxiliary_types(
     model::Union{BeerLambertModel{FT}, TwoStreamModel{FT}},
 ) where {FT} = (FT, FT, FT, FT, FT, FT, FT, FT, FT, FT)
-ClimaLSM.auxiliary_domain_names(::Union{BeerLambertModel, TwoStreamModel}) = (
+ClimaLand.auxiliary_domain_names(::Union{BeerLambertModel, TwoStreamModel}) = (
     :surface,
     :surface,
     :surface,
@@ -258,9 +258,9 @@ function canopy_radiant_energy_fluxes!(
 
     # Short wave makes use of precomputed APAR and ANIR
     # in moles of photons per m^2 per s
-    c = FT(LSMP.light_speed(earth_param_set))
-    h = FT(LSMP.planck_constant(earth_param_set))
-    N_a = FT(LSMP.avogadro_constant(earth_param_set))
+    c = FT(LP.light_speed(earth_param_set))
+    h = FT(LP.planck_constant(earth_param_set))
+    N_a = FT(LP.avogadro_constant(earth_param_set))
     (; α_PAR_leaf, λ_γ_PAR, λ_γ_NIR, ϵ_canopy) =
         canopy.radiative_transfer.parameters
     APAR = p.canopy.radiative_transfer.apar
@@ -274,7 +274,7 @@ function canopy_radiant_energy_fluxes!(
     # Long wave: use soil conditions from the PrescribedSoil driver
     T_soil::FT = s.T(t)
     ϵ_soil = s.ϵ
-    _σ = FT(LSMP.Stefan(earth_param_set))
+    _σ = FT(LP.Stefan(earth_param_set))
     LW_d = p.drivers.LW_d
 
     T_canopy = canopy_temperature(canopy.energy, canopy, Y, p, t)

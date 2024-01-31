@@ -2,14 +2,14 @@ using Test
 using Statistics
 using ClimaCore
 import CLIMAParameters as CP
-using ClimaLSM
-using ClimaLSM.Domains: Column
-using ClimaLSM.Soil
+using ClimaLand
+using ClimaLand.Domains: Column
+using ClimaLand.Soil
 
-import ClimaLSM
-import ClimaLSM.Parameters as LSMP
+import ClimaLand
+import ClimaLand.Parameters as LP
 
-include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
+include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"))
 
 
 for FT in (Float32, Float64)
@@ -73,7 +73,7 @@ for FT in (Float32, Float64)
         exp_tendency! = make_exp_tendency(soil)
         imp_tendency!(dY, Y, p, t0)
         exp_tendency!(dY, Y, p, t0)
-        ClimaLSM.dss!(dY, p, t0)
+        ClimaLand.dss!(dY, p, t0)
 
         @test mean(Array(parent(dY.soil.ϑ_l))) < eps(FT)
         # should be hydrostatic equilibrium at every layer, at each step:
@@ -174,7 +174,7 @@ for FT in (Float32, Float64)
         exp_tendency! = make_exp_tendency(soil_heat_on)
         dY = similar(Y)
         exp_tendency!(dY, Y, p, t0)
-        ClimaLSM.dss!(dY, p, t0)
+        ClimaLand.dss!(dY, p, t0)
 
         F_face = FT(0)
         κ = Array(parent(p.soil.κ))
@@ -241,7 +241,7 @@ for FT in (Float32, Float64)
         exp_tendency! = make_exp_tendency(soil_water_on)
         dY = similar(Y)
         exp_tendency!(dY, Y, p, t0)
-        ClimaLSM.dss!(dY, p, t0)
+        ClimaLand.dss!(dY, p, t0)
 
         function dKdθ(θ::FT)::FT where {FT}
             S = (θ - θ_r) / (ν - θ_r)
@@ -398,7 +398,7 @@ for FT in (Float32, Float64)
         exp_tendency! = make_exp_tendency(soil_both_off)
         dY = similar(Y)
         exp_tendency!(dY, Y, p, t0)
-        ClimaLSM.dss!(dY, p, t0)
+        ClimaLand.dss!(dY, p, t0)
 
         @test maximum(abs.(Array(parent(dY.soil.ρe_int)))) == FT(0)
         @test maximum(abs.(Array(parent(dY.soil.ϑ_l)))) == FT(0)
@@ -455,7 +455,7 @@ for FT in (Float32, Float64)
         exp_tendency! = make_exp_tendency(soil_both_on)
         dY = similar(Y)
         exp_tendency!(dY, Y, p, t0)
-        ClimaLSM.dss!(dY, p, t0)
+        ClimaLand.dss!(dY, p, t0)
 
         @test maximum(abs.(Array(parent(dY.soil.θ_i)))) == FT(0)
 
@@ -611,8 +611,8 @@ for FT in (Float32, Float64)
         dY = similar(Y)
         dY .= FT(0.0)
         source!(dY, sources[1], Y, p, soil_heat_on)
-        _ρ_l = FT(LSMP.ρ_cloud_liq(soil_heat_on.parameters.earth_param_set))
-        _ρ_i = FT(LSMP.ρ_cloud_ice(soil_heat_on.parameters.earth_param_set))
+        _ρ_l = FT(LP.ρ_cloud_liq(soil_heat_on.parameters.earth_param_set))
+        _ρ_i = FT(LP.ρ_cloud_ice(soil_heat_on.parameters.earth_param_set))
         @test Array(parent(dY.soil.ϑ_l)) ≈
               -(_ρ_i / _ρ_l) .* Array(parent(dY.soil.θ_i))
     end

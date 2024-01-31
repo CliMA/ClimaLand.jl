@@ -11,4 +11,4 @@ land_domain = Column(;
     nelements = nelements,
     dz_tuple = (dz_bottom, dz_top),
 )
-canopy_domain = ClimaLSM.Domains.obtain_surface_domain(land_domain)
+canopy_domain = ClimaLand.Domains.obtain_surface_domain(land_domain)

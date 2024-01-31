@@ -41,7 +41,7 @@ canopy absorption and emission is taken into account when computing
 radiation at the surface of the soil or snow.
 
 The only other alternative at this stage is
-ClimaLSM.PrescribedRadiativeFluxes, where the prescribed downwelling
+ClimaLand.PrescribedRadiativeFluxes, where the prescribed downwelling
 short and longwave radiative fluxes are used directly,
 without accounting for the canopy. There is a different method
 of the function `soil_boundary_fluxes` in this case.
@@ -93,12 +93,13 @@ function SoilCanopyModel{FT}(;
     # These should always be set by the constructor.
     Δz = minimum(
         ClimaCore.Fields.Δz_field(
-            ClimaLSM.coordinates(soil_args.domain).subsurface,
+            ClimaLand.coordinates(soil_args.domain).subsurface,
         ),
     )
     sources = (RootExtraction{FT}(), Soil.PhaseChange{FT}(Δz))
     # add heat BC
-    top_bc = ClimaLSM.Soil.AtmosDrivenFluxBC(atmos, CanopyRadiativeFluxes{FT}())
+    top_bc =
+        ClimaLand.Soil.AtmosDrivenFluxBC(atmos, CanopyRadiativeFluxes{FT}())
     zero_flux = FluxBC((p, t) -> 0.0)
     boundary_conditions = (;
         top = top_bc,
@@ -275,7 +276,7 @@ function make_update_boundary_fluxes(
             ) *
             (land.canopy.hydraulics.parameters.root_distribution(z))
         @. p.root_energy_extraction =
-            p.root_extraction * ClimaLSM.Soil.volumetric_internal_energy_liq(
+            p.root_extraction * ClimaLand.Soil.volumetric_internal_energy_liq(
                 p.soil.T,
                 land.soil.parameters,
             )
@@ -325,17 +326,17 @@ function lsm_radiant_energy_fluxes!(
 ) where {(FT)}
     radiation = canopy.radiation
     earth_param_set = canopy.parameters.earth_param_set
-    _σ = LSMP.Stefan(earth_param_set)
+    _σ = LP.Stefan(earth_param_set)
     LW_d = p.drivers.LW_d
     SW_d = p.drivers.SW_d
-    c = LSMP.light_speed(earth_param_set)
-    h = LSMP.planck_constant(earth_param_set)
-    N_a = LSMP.avogadro_constant(earth_param_set)
+    c = LP.light_speed(earth_param_set)
+    h = LP.planck_constant(earth_param_set)
+    N_a = LP.avogadro_constant(earth_param_set)
     (; λ_γ_PAR, λ_γ_NIR, ϵ_canopy) = canopy_radiation.parameters
     energy_per_photon_PAR = h * c / λ_γ_PAR
     energy_per_photon_NIR = h * c / λ_γ_NIR
     T_canopy =
-        ClimaLSM.Canopy.canopy_temperature(canopy.energy, canopy, Y, p, t)
+        ClimaLand.Canopy.canopy_temperature(canopy.energy, canopy, Y, p, t)
     p.T_ground .= surface_temperature(ground_model, Y, p, t)
 
     α_soil_PAR = Canopy.ground_albedo_PAR(canopy.soil_driver, Y, p, t)
@@ -390,7 +391,7 @@ end
 """
     soil_boundary_fluxes(
         bc::AtmosDrivenFluxBC{<:PrescribedAtmosphere, <:CanopyRadiativeFluxes},
-        boundary::ClimaLSM.TopBoundary,
+        boundary::ClimaLand.TopBoundary,
         model::EnergyHydrology{FT},
         Δz,
         Y,
@@ -398,14 +399,14 @@ end
         t,
     ) where {FT}
 
-A method of `ClimaLSM.Soil.soil_boundary_fluxes` which is used for
+A method of `ClimaLand.Soil.soil_boundary_fluxes` which is used for
 integrated land surface models; this computes and returns the net
 energy and water flux at the surface of the soil for use as boundary
 conditions.
 """
 function soil_boundary_fluxes(
     bc::AtmosDrivenFluxBC{<:PrescribedAtmosphere, <:CanopyRadiativeFluxes},
-    boundary::ClimaLSM.TopBoundary,
+    boundary::ClimaLand.TopBoundary,
     soil::EnergyHydrology{FT},
     Δz,
     Y,
@@ -422,7 +423,7 @@ function soil_boundary_fluxes(
         t,
         soil.parameters,
     )
-    return @. ClimaLSM.Soil.create_soil_bc_named_tuple(
+    return @. ClimaLand.Soil.create_soil_bc_named_tuple(
         infiltration,
         -p.soil.R_n + p.soil.turbulent_fluxes.lhf + p.soil.turbulent_fluxes.shf,
     )
@@ -532,18 +533,18 @@ struct RootExtraction{FT} <: Soil.AbstractSoilSource{FT} end
 
 
 """
-    ClimaLSM.source!(dY::ClimaCore.Fields.FieldVector,
+    ClimaLand.source!(dY::ClimaCore.Fields.FieldVector,
                      src::RootExtraction,
                      Y::ClimaCore.Fields.FieldVector,
                      p::NamedTuple
                      model::EnergyHydrology)
 
-An extension of the `ClimaLSM.source!` function,
+An extension of the `ClimaLand.source!` function,
  which computes source terms for the
 soil model; this method returns the water and energy loss/gain due
 to root extraction.
 """
-function ClimaLSM.source!(
+function ClimaLand.source!(
     dY::ClimaCore.Fields.FieldVector,
     src::RootExtraction,
     Y::ClimaCore.Fields.FieldVector,
@@ -588,6 +589,6 @@ function Canopy.canopy_radiant_energy_fluxes!(
 end
 
 
-function ClimaLSM.get_drivers(model::SoilCanopyModel)
+function ClimaLand.get_drivers(model::SoilCanopyModel)
     return (model.canopy.atmos, model.canopy.radiation)
 end

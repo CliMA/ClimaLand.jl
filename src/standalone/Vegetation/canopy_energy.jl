@@ -7,14 +7,14 @@ export PrescribedCanopyTempModel,
 
 abstract type AbstractCanopyEnergyModel{FT} <: AbstractCanopyComponent{FT} end
 
-ClimaLSM.name(model::AbstractCanopyEnergyModel) = :energy
+ClimaLand.name(model::AbstractCanopyEnergyModel) = :energy
 
 
-ClimaLSM.auxiliary_vars(model::AbstractCanopyEnergyModel) =
+ClimaLand.auxiliary_vars(model::AbstractCanopyEnergyModel) =
     (:shf, :lhf, :fa_energy_roots, :r_ae)
-ClimaLSM.auxiliary_types(model::AbstractCanopyEnergyModel{FT}) where {FT} =
+ClimaLand.auxiliary_types(model::AbstractCanopyEnergyModel{FT}) where {FT} =
     (FT, FT, FT, FT)
-ClimaLSM.auxiliary_domain_names(model::AbstractCanopyEnergyModel) =
+ClimaLand.auxiliary_domain_names(model::AbstractCanopyEnergyModel) =
     (:surface, :surface, :surface, :surface)
 
 """
@@ -74,9 +74,9 @@ function BigLeafEnergyModel{FT}(
     )
 end
 
-ClimaLSM.prognostic_vars(model::BigLeafEnergyModel) = (:T,)
-ClimaLSM.prognostic_types(model::BigLeafEnergyModel{FT}) where {FT} = (FT,)
-ClimaLSM.prognostic_domain_names(model::BigLeafEnergyModel) = (:surface,)
+ClimaLand.prognostic_vars(model::BigLeafEnergyModel) = (:T,)
+ClimaLand.prognostic_types(model::BigLeafEnergyModel{FT}) where {FT} = (FT,)
+ClimaLand.prognostic_domain_names(model::BigLeafEnergyModel) = (:surface,)
 
 """
     canopy_temperature(model::BigLeafEnergyModel, canopy, Y, p, t)

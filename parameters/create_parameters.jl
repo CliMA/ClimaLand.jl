@@ -1,4 +1,4 @@
-import ClimaLSM.Parameters.LSMParameters
+import ClimaLand.Parameters.LandParameters
 import Thermodynamics.Parameters.ThermodynamicsParameters
 import Insolation.Parameters.InsolationParameters
 import SurfaceFluxes.Parameters.SurfaceFluxesParameters
@@ -6,9 +6,9 @@ import SurfaceFluxes.UniversalFunctions as UF
 import CLIMAParameters as CP
 
 create_lsm_parameters(::Type{FT}) where {FT <: AbstractFloat} =
-    LSMParameters(CP.create_toml_dict(FT))
+    LandParameters(CP.create_toml_dict(FT))
 
-function LSMParameters(toml_dict::CP.AbstractTOMLDict)
+function LandParameters(toml_dict::CP.AbstractTOMLDict)
     thermo_params = ThermodynamicsParameters(toml_dict)
     TP = typeof(thermo_params)
 
@@ -39,9 +39,9 @@ function LSMParameters(toml_dict::CP.AbstractTOMLDict)
         :stefan_boltzmann_constant => :Stefan,
     )
 
-    parameters = CP.get_parameter_values(toml_dict, name_map, "ClimaLSM")
+    parameters = CP.get_parameter_values(toml_dict, name_map, "ClimaLand")
     FT = CP.float_type(toml_dict)
-    return LSMParameters{FT, TP, SFP, IP}(;
+    return LandParameters{FT, TP, SFP, IP}(;
         parameters...,
         thermo_params,
         surf_flux_params,

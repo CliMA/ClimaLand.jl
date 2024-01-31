@@ -7,7 +7,7 @@ import ClimaComms
     include("aqua.jl")
 end
 
-# Shared ClimaLSM utilities tests
+# Shared ClimaLand utilities tests
 @safetestset "Richards model implicit timestepping tests" begin
     include("shared_utilities/implicit_timestepping/richards_model.jl")
 end

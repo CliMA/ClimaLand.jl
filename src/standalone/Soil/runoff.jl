@@ -5,13 +5,13 @@ export soil_surface_infiltration
 
 The abstract type for soil runoff models to be used with
 the following boundary condition types:
-- `ClimaLSM.Soil.AtmosDrivenFluxBC`
-- `ClimaLSM.Soil.RichardsAtmosDrivenFluxBC`,
+- `ClimaLand.Soil.AtmosDrivenFluxBC`
+- `ClimaLand.Soil.RichardsAtmosDrivenFluxBC`,
 
 and for these functions:
--`ClimaLSM.Soil.soil_surface_infiltration`
-- `ClimaLSM.Soil.subsurface_runoff_source`
-- `ClimaLSM.source!`.
+-`ClimaLand.Soil.soil_surface_infiltration`
+- `ClimaLand.Soil.subsurface_runoff_source`
+- `ClimaLand.source!`.
 
 Please see the documentation for these for more details.
 The model should specify the subsurface runoff sink term as well

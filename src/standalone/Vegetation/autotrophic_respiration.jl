@@ -68,12 +68,12 @@ function AutotrophicRespirationModel{FT}(
     )
 end
 
-ClimaLSM.name(model::AbstractAutotrophicRespirationModel) =
+ClimaLand.name(model::AbstractAutotrophicRespirationModel) =
     :autotrophic_respiration
-ClimaLSM.auxiliary_vars(model::AutotrophicRespirationModel) = (:Ra,) # Ra = Rpm + Rg
-ClimaLSM.auxiliary_types(model::AutotrophicRespirationModel{FT}) where {FT} =
+ClimaLand.auxiliary_vars(model::AutotrophicRespirationModel) = (:Ra,) # Ra = Rpm + Rg
+ClimaLand.auxiliary_types(model::AutotrophicRespirationModel{FT}) where {FT} =
     (FT,)
-ClimaLSM.auxiliary_domain_names(::AutotrophicRespirationModel) = (:surface,)
+ClimaLand.auxiliary_domain_names(::AutotrophicRespirationModel) = (:surface,)
 
 """
 

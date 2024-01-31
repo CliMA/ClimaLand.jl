@@ -39,9 +39,9 @@ function specific_heat_capacity(
     parameters::SnowParameters{FT},
 ) where {FT}
     q_i = 1 - q_l
-    _cp_i = FT(LSMP.cp_i(parameters.earth_param_set))
+    _cp_i = FT(LP.cp_i(parameters.earth_param_set))
 
-    _cp_l = FT(LSMP.cp_l(parameters.earth_param_set))
+    _cp_l = FT(LP.cp_l(parameters.earth_param_set))
 
     cp_s = q_l * _cp_l + q_i * _cp_i
     return cp_s
@@ -61,7 +61,7 @@ function snow_thermal_conductivity(
     ρ_snow::FT,
     parameters::SnowParameters{FT},
 ) where {FT}
-    _κ_air = FT(LSMP.K_therm(parameters.earth_param_set))
+    _κ_air = FT(LP.K_therm(parameters.earth_param_set))
     κ_ice = parameters.κ_ice
     return _κ_air +
            (FT(7.75e-5) * ρ_snow + FT(1.105e-6) * ρ_snow^2) * (κ_ice - _κ_air)
@@ -87,12 +87,12 @@ function snow_bulk_temperature(
     q_l::FT,
     parameters::SnowParameters{FT},
 ) where {FT}
-    _ρ_i = FT(LSMP.ρ_cloud_ice(parameters.earth_param_set))
-    _ρ_l = FT(LSMP.ρ_cloud_liq(parameters.earth_param_set))
-    _T_ref = FT(LSMP.T_0(parameters.earth_param_set))
-    _LH_f0 = FT(LSMP.LH_f0(parameters.earth_param_set))
+    _ρ_i = FT(LP.ρ_cloud_ice(parameters.earth_param_set))
+    _ρ_l = FT(LP.ρ_cloud_liq(parameters.earth_param_set))
+    _T_ref = FT(LP.T_0(parameters.earth_param_set))
+    _LH_f0 = FT(LP.LH_f0(parameters.earth_param_set))
     cp_s = specific_heat_capacity(q_l, parameters)
-    _T_freeze = FT(LSMP.T_freeze(parameters.earth_param_set))
+    _T_freeze = FT(LP.T_freeze(parameters.earth_param_set))
     # to prevent dividing by zero
     SWE = max(SWE, eps(FT))
     T = _T_ref + (U / (_ρ_l * SWE) + (1 - q_l) * _LH_f0) / cp_s
@@ -112,13 +112,13 @@ function snow_liquid_mass_fraction(
     SWE::FT,
     parameters::SnowParameters{FT},
 ) where {FT}
-    _ρ_i = FT(LSMP.ρ_cloud_ice(parameters.earth_param_set))
-    _ρ_l = FT(LSMP.ρ_cloud_liq(parameters.earth_param_set))
-    _T_ref = FT(LSMP.T_0(parameters.earth_param_set))
-    _T_freeze = FT(LSMP.T_freeze(parameters.earth_param_set))
-    _LH_f0 = FT(LSMP.LH_f0(parameters.earth_param_set))
-    _cp_i = FT(LSMP.cp_i(parameters.earth_param_set))
-    _cp_l = FT(LSMP.cp_l(parameters.earth_param_set))
+    _ρ_i = FT(LP.ρ_cloud_ice(parameters.earth_param_set))
+    _ρ_l = FT(LP.ρ_cloud_liq(parameters.earth_param_set))
+    _T_ref = FT(LP.T_0(parameters.earth_param_set))
+    _T_freeze = FT(LP.T_freeze(parameters.earth_param_set))
+    _LH_f0 = FT(LP.LH_f0(parameters.earth_param_set))
+    _cp_i = FT(LP.cp_i(parameters.earth_param_set))
+    _cp_l = FT(LP.cp_l(parameters.earth_param_set))
 
     ΔT = _T_freeze - _T_ref
     # to prevent dividing by zero
@@ -145,8 +145,8 @@ function maximum_liquid_mass_fraction(
     ρ_snow::FT,
     parameters::SnowParameters{FT},
 ) where {FT}
-    _ρ_l = FT(LSMP.ρ_cloud_liq(parameters.earth_param_set))
-    _T_freeze = FT(LSMP.T_freeze(parameters.earth_param_set))
+    _ρ_l = FT(LP.ρ_cloud_liq(parameters.earth_param_set))
+    _T_freeze = FT(LP.T_freeze(parameters.earth_param_set))
 
     if T > _T_freeze
         return FT(0)

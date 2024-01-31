@@ -1,7 +1,7 @@
 module PlantHydraulics
-using ClimaLSM
-using ClimaLSM.TimeVaryingInputs
-using ..ClimaLSM.Canopy:
+using ClimaLand
+using ClimaLand.TimeVaryingInputs
+using ..ClimaLand.Canopy:
     AbstractCanopyComponent,
     update_canopy_prescribed_field!,
     set_canopy_prescribed_field!,
@@ -10,7 +10,7 @@ using ..ClimaLSM.Canopy:
 using ClimaCore
 using DocStringExtensions
 
-import ClimaLSM:
+import ClimaLand:
     make_update_aux,
     make_compute_exp_tendency,
     prognostic_vars,
@@ -44,7 +44,7 @@ An abstract type for plant hydraulics models.
 """
 abstract type AbstractPlantHydraulicsModel{FT} <: AbstractCanopyComponent{FT} end
 
-ClimaLSM.name(::AbstractPlantHydraulicsModel) = :hydraulics
+ClimaLand.name(::AbstractPlantHydraulicsModel) = :hydraulics
 
 """
     AbstractTranspiration{FT <: AbstractFloat}
@@ -184,7 +184,7 @@ transpiration. Note that the canopy height is specified as part of the
 PlantHydraulicsModel, along with the area indices of the leaves, roots, and
 stems.
 
-This model can also be combined with the soil model using ClimaLSM, in which
+This model can also be combined with the soil model using ClimaLand, in which
 case the prognostic soil water content is used to determine root extraction, and
 the transpiration is also computed diagnostically. In  global run with patches
 of bare soil, you can "turn off" the canopy model (to get zero root extraction, zero absorption and
@@ -279,27 +279,27 @@ auxiliary_vars(model::PlantHydraulicsModel) =
     (:β, :ψ, :fa, :fa_roots, :area_index)
 
 """
-    ClimaLSM.prognostic_types(model::PlantHydraulicsModel{FT}) where {FT}
+    ClimaLand.prognostic_types(model::PlantHydraulicsModel{FT}) where {FT}
 
 Defines the prognostic types for the PlantHydraulicsModel.
 """
-ClimaLSM.prognostic_types(model::PlantHydraulicsModel{FT}) where {FT} =
+ClimaLand.prognostic_types(model::PlantHydraulicsModel{FT}) where {FT} =
     (NTuple{model.n_stem + model.n_leaf, FT},)
-ClimaLSM.prognostic_domain_names(::PlantHydraulicsModel) = (:surface,)
+ClimaLand.prognostic_domain_names(::PlantHydraulicsModel) = (:surface,)
 
 """
-    ClimaLSM.auxiliary_types(model::PlantHydraulicsModel{FT}) where {FT}
+    ClimaLand.auxiliary_types(model::PlantHydraulicsModel{FT}) where {FT}
 
 Defines the auxiliary types for the PlantHydraulicsModel.
 """
-ClimaLSM.auxiliary_types(model::PlantHydraulicsModel{FT}) where {FT} = (
+ClimaLand.auxiliary_types(model::PlantHydraulicsModel{FT}) where {FT} = (
     FT,
     NTuple{model.n_stem + model.n_leaf, FT},
     NTuple{model.n_stem + model.n_leaf, FT},
     FT,
     NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}},
 )
-ClimaLSM.auxiliary_domain_names(::PlantHydraulicsModel) =
+ClimaLand.auxiliary_domain_names(::PlantHydraulicsModel) =
     (:surface, :surface, :surface, :surface, :surface)
 
 
@@ -313,7 +313,7 @@ ClimaLSM.auxiliary_domain_names(::PlantHydraulicsModel) =
 Sets the canopy prescribed fields pertaining to the PlantHydraulics
 component (the area indices) with their initial values at time t0.
 """
-function ClimaLSM.Canopy.set_canopy_prescribed_field!(
+function ClimaLand.Canopy.set_canopy_prescribed_field!(
     component::PlantHydraulicsModel{FT},
     p,
     t0,
@@ -335,7 +335,7 @@ end
 Updates the canopy prescribed fields pertaining to the PlantHydraulics
 component (the LAI only in this case) with their values at time t.
 """
-function ClimaLSM.Canopy.update_canopy_prescribed_field!(
+function ClimaLand.Canopy.update_canopy_prescribed_field!(
     component::PlantHydraulicsModel{FT},
     p,
     t,

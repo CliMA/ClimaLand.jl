@@ -1,4 +1,4 @@
-# This script tests the output of the ClimaLSM TwoStream implementation
+# This script tests the output of the ClimaLand TwoStream implementation
 # against the T. Quaife pySellersTwoStream implementation by providing
 # the same setups to each model and checking that the outputs are equal.
 # The output of the python module for a variety of inputs is given in the
@@ -6,8 +6,8 @@
 # the FAPAR of each model is within 1/2 of a percentage point.
 
 using Test
-using ClimaLSM
-using ClimaLSM.Canopy
+using ClimaLand
+using ClimaLand.Canopy
 using DelimitedFiles
 using ArtifactWrappers
 
@@ -63,7 +63,7 @@ for FT in (Float32, Float64)
             # Initialize the TwoStream model
             RT = TwoStreamModel(RT_params)
 
-            # Compute the predicted FAPAR using the ClimaLSM TwoStream implementation
+            # Compute the predicted FAPAR using the ClimaLand TwoStream implementation
             K = extinction_coeff(ld[i], θs[i])
             output = plant_absorbed_pfd(
                 RT,

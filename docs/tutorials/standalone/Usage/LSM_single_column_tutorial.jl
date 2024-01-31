@@ -1,5 +1,5 @@
 # The `AbstractModel`
-# [tutorial](https://clima.github.io/ClimaLSM.jl/dev/generated/model_tutorial)
+# [tutorial](https://clima.github.io/ClimaLand.jl/dev/generated/model_tutorial)
 # describes how a user can run
 # simulations of a physical system governed by differential equations.
 # In this framework, the user must define a model type for their problem,
@@ -24,17 +24,17 @@
 # water model without lateral flow (standing water, as in a pond). For
 # more details on these models, and how they were set up,
 # please feel free to look at the source
-# code [here](https://github.com/CliMA/ClimaLSM.jl/blob/main/src/standalone/Soil/Soil.jl)
+# code [here](https://github.com/CliMA/ClimaLand.jl/blob/main/src/standalone/Soil/Soil.jl)
 # and
-# [here](https://github.com/CliMA/ClimaLSM.jl/blob/main/src/standalone/SurfaceWater/Pond.jl).
+# [here](https://github.com/CliMA/ClimaLand.jl/blob/main/src/standalone/SurfaceWater/Pond.jl).
 # This tutorial focuses on using the `AbstractModel`s framework to set up
 # the equations, rather than on running simulations.
 
 # First, let's load the required modules:
-using ClimaLSM
-using ClimaLSM.Domains: Column, obtain_surface_domain
-using ClimaLSM.Soil
-using ClimaLSM.Pond
+using ClimaLand
+using ClimaLand.Domains: Column, obtain_surface_domain
+using ClimaLand.Soil
+using ClimaLand.Pond
 
 FT = Float32;
 
@@ -369,5 +369,5 @@ land_ode! = make_exp_tendency(land);
 # Possible disadvantages to our interface design:
 # - Even in standalone model, variables are accessed in a nested way: Y.soil, p.soil, etc, which is excessive.
 # - To accomodate the fact that some components involve PDEs, a developer for purely ODE based component does need to at least handle `ClimaCore.Field.FieldVector`s.
-# - standalone models need to play by the rules of `AbstractModel`s, and LSMs need to play by the rules of `ClimaLSM.jl`.
+# - standalone models need to play by the rules of `AbstractModel`s, and LSMs need to play by the rules of `ClimaLand.jl`.
 # - we need to define multiple update cache functions in order to handle dependencies between cache variables of one component model and boundary fluxes of another.

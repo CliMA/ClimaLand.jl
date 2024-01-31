@@ -1,4 +1,4 @@
-"""This file sets up the domain to run CLiMA LSM on a fluxtower site, using both
+"""This file sets up the domain to run Clima Land on a fluxtower site, using both
 the generic parameters set in this file as well as the site-specific parameters 
 given in the {site-ID}_simulation.jl file in each site directory."""
 
@@ -17,4 +17,4 @@ land_domain = Column(;
     nelements = nelements,
     dz_tuple = (dz_bottom, dz_top),
 )
-canopy_domain = ClimaLSM.Domains.obtain_surface_domain(land_domain)
+canopy_domain = ClimaLand.Domains.obtain_surface_domain(land_domain)

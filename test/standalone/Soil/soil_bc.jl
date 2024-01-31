@@ -1,11 +1,11 @@
 using Test
 using Statistics
 using ClimaCore
-using ClimaLSM
-using ClimaLSM.Soil
-using ClimaLSM.Domains: HybridBox, SphericalShell, Column
+using ClimaLand
+using ClimaLand.Soil
+using ClimaLand.Domains: HybridBox, SphericalShell, Column
 
-include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
+include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"))
 
 for FT in (Float32, Float64)
     @testset "WVector usage in gradient, FT = $FT" begin
@@ -25,7 +25,7 @@ for FT in (Float32, Float64)
             npolynomial = 3,
         )
 
-        coords = ClimaLSM.Domains.coordinates(domain) # center coordinates
+        coords = ClimaLand.Domains.coordinates(domain) # center coordinates
         ϕ = (FT(90) .- coords.subsurface.lat)
         θ = coords.subsurface.long
         r = coords.subsurface.z .+ FT(1.0)
@@ -265,22 +265,22 @@ end
         sources = sources,
     )
     bc = boundary_fluxes
-    @test Soil.boundary_vars(bc, ClimaLSM.TopBoundary()) == (:top_bc,)
-    @test Soil.boundary_var_domain_names(bc, ClimaLSM.TopBoundary()) ==
+    @test Soil.boundary_vars(bc, ClimaLand.TopBoundary()) == (:top_bc,)
+    @test Soil.boundary_var_domain_names(bc, ClimaLand.TopBoundary()) ==
           (:surface,)
     @test Soil.boundary_var_types(
         energy_hydrology,
         bc,
-        ClimaLSM.TopBoundary(),
+        ClimaLand.TopBoundary(),
     ) == (NamedTuple{(:water, :heat), Tuple{Float32, Float32}},)
 
-    @test Soil.boundary_vars(bc, ClimaLSM.BottomBoundary()) == (:bottom_bc,)
-    @test Soil.boundary_var_domain_names(bc, ClimaLSM.BottomBoundary()) ==
+    @test Soil.boundary_vars(bc, ClimaLand.BottomBoundary()) == (:bottom_bc,)
+    @test Soil.boundary_var_domain_names(bc, ClimaLand.BottomBoundary()) ==
           (:surface,)
     @test Soil.boundary_var_types(
         energy_hydrology,
         bc,
-        ClimaLSM.BottomBoundary(),
+        ClimaLand.BottomBoundary(),
     ) == (NamedTuple{(:water, :heat), Tuple{Float32, Float32}},)
     Y, p, cds = initialize(energy_hydrology)
     Y.soil.ϑ_l .= ν
@@ -317,16 +317,16 @@ end
         sources = sources,
     )
 
-    @test Soil.boundary_vars(bc, ClimaLSM.TopBoundary()) == (:top_bc,)
-    @test Soil.boundary_var_domain_names(bc, ClimaLSM.TopBoundary()) ==
+    @test Soil.boundary_vars(bc, ClimaLand.TopBoundary()) == (:top_bc,)
+    @test Soil.boundary_var_domain_names(bc, ClimaLand.TopBoundary()) ==
           (:surface,)
-    @test Soil.boundary_var_types(rre, bc, ClimaLSM.TopBoundary()) ==
+    @test Soil.boundary_var_types(rre, bc, ClimaLand.TopBoundary()) ==
           (NamedTuple{(:water,), Tuple{Float32}},)
 
-    @test Soil.boundary_vars(bc, ClimaLSM.BottomBoundary()) == (:bottom_bc,)
-    @test Soil.boundary_var_domain_names(bc, ClimaLSM.BottomBoundary()) ==
+    @test Soil.boundary_vars(bc, ClimaLand.BottomBoundary()) == (:bottom_bc,)
+    @test Soil.boundary_var_domain_names(bc, ClimaLand.BottomBoundary()) ==
           (:surface,)
-    @test Soil.boundary_var_types(rre, bc, ClimaLSM.BottomBoundary()) ==
+    @test Soil.boundary_var_types(rre, bc, ClimaLand.BottomBoundary()) ==
           (NamedTuple{(:water,), Tuple{Float32}},)
 
     Y, p, cds = initialize(rre)

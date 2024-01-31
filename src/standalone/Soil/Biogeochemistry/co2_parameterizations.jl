@@ -20,7 +20,7 @@ function microbe_source(
 ) where {FT}
     (; α_sx, Ea_sx, kM_sx, kM_o2, ν, D_liq, p_sx, D_oa, O2_a, earth_param_set) =
         params
-    R = FT(LSMP.gas_constant(earth_param_set))
+    R = FT(LP.gas_constant(earth_param_set))
     Vmax = α_sx * exp(-Ea_sx / (R * T_soil)) # Maximum potential rate of respiration
     Sx = p_sx * Csom * D_liq * θ_l^3 # All soluble substrate, kgC m⁻³
     MM_sx = Sx / (kM_sx + Sx) # Availability of substrate factor, 0-1
@@ -72,8 +72,8 @@ function co2_diffusivity(
     params::SoilCO2ModelParameters{FT},
 ) where {FT}
     (; D_ref, θ_a100, b, ν, earth_param_set) = params
-    T_ref = FT(LSMP.T_0(earth_param_set))
-    P_ref = FT(LSMP.P_ref(earth_param_set))
+    T_ref = FT(LP.T_0(earth_param_set))
+    P_ref = FT(LP.P_ref(earth_param_set))
     θ_a = volumetric_air_content(θ_w, params)
     D0 = D_ref * (T_soil / T_ref)^FT(1.75) * (P_ref / P_sfc)
     D =

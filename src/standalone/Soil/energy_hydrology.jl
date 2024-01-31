@@ -187,7 +187,7 @@ function make_update_boundary_fluxes(model::EnergyHydrology)
         Δz_top, Δz_bottom = get_Δz(z)
         p.soil.top_bc .= soil_boundary_fluxes(
             model.boundary_conditions.top,
-            ClimaLSM.TopBoundary(),
+            ClimaLand.TopBoundary(),
             model,
             Δz_top,
             Y,
@@ -197,7 +197,7 @@ function make_update_boundary_fluxes(model::EnergyHydrology)
 
         p.soil.bottom_bc .= soil_boundary_fluxes(
             model.boundary_conditions.bottom,
-            ClimaLSM.BottomBoundary(),
+            ClimaLand.BottomBoundary(),
             model,
             Δz_bottom,
             Y,
@@ -223,7 +223,7 @@ All of these quantities will be stepped explicitly.
 
 This has been written so as to work with Differential Equations.jl.
 """
-function ClimaLSM.make_compute_exp_tendency(
+function ClimaLand.make_compute_exp_tendency(
     model::EnergyHydrology{FT},
 ) where {FT}
     function compute_exp_tendency!(dY, Y, p, t)
@@ -276,7 +276,7 @@ function ClimaLSM.make_compute_exp_tendency(
         )
 
         for src in model.sources
-            ClimaLSM.source!(dY, src, Y, p, model)
+            ClimaLand.source!(dY, src, Y, p, model)
         end
     end
     return compute_exp_tendency!
@@ -324,7 +324,7 @@ end
 A function which returns the names of the prognostic variables
 of `EnergyHydrology`.
 """
-ClimaLSM.prognostic_vars(soil::EnergyHydrology) = (:ϑ_l, :θ_i, :ρe_int)
+ClimaLand.prognostic_vars(soil::EnergyHydrology) = (:ϑ_l, :θ_i, :ρe_int)
 
 """
     prognostic_types(soil::EnergyHydrology{FT}) where {FT}
@@ -332,9 +332,9 @@ ClimaLSM.prognostic_vars(soil::EnergyHydrology) = (:ϑ_l, :θ_i, :ρe_int)
 A function which returns the types of the prognostic variables
 of `EnergyHydrology`.
 """
-ClimaLSM.prognostic_types(soil::EnergyHydrology{FT}) where {FT} = (FT, FT, FT)
+ClimaLand.prognostic_types(soil::EnergyHydrology{FT}) where {FT} = (FT, FT, FT)
 
-ClimaLSM.prognostic_domain_names(soil::EnergyHydrology) =
+ClimaLand.prognostic_domain_names(soil::EnergyHydrology) =
     (:subsurface, :subsurface, :subsurface)
 """
     auxiliary_vars(soil::EnergyHydrology)
@@ -342,16 +342,16 @@ ClimaLSM.prognostic_domain_names(soil::EnergyHydrology) =
 A function which returns the names of the auxiliary variables
 of `EnergyHydrology`.
 """
-ClimaLSM.auxiliary_vars(soil::EnergyHydrology) = (
+ClimaLand.auxiliary_vars(soil::EnergyHydrology) = (
     :K,
     :ψ,
     :θ_l,
     :T,
     :κ,
-    boundary_vars(soil.boundary_conditions.top, ClimaLSM.TopBoundary())...,
+    boundary_vars(soil.boundary_conditions.top, ClimaLand.TopBoundary())...,
     boundary_vars(
         soil.boundary_conditions.bottom,
-        ClimaLSM.BottomBoundary(),
+        ClimaLand.BottomBoundary(),
     )...,
 )
 
@@ -361,7 +361,7 @@ ClimaLSM.auxiliary_vars(soil::EnergyHydrology) = (
 A function which returns the types of the auxiliary variables
 of `EnergyHydrology`.
 """
-ClimaLSM.auxiliary_types(soil::EnergyHydrology{FT}) where {FT} = (
+ClimaLand.auxiliary_types(soil::EnergyHydrology{FT}) where {FT} = (
     FT,
     FT,
     FT,
@@ -370,16 +370,16 @@ ClimaLSM.auxiliary_types(soil::EnergyHydrology{FT}) where {FT} = (
     boundary_var_types(
         soil,
         soil.boundary_conditions.top,
-        ClimaLSM.TopBoundary(),
+        ClimaLand.TopBoundary(),
     )...,
     boundary_var_types(
         soil,
         soil.boundary_conditions.bottom,
-        ClimaLSM.BottomBoundary(),
+        ClimaLand.BottomBoundary(),
     )...,
 )
 
-ClimaLSM.auxiliary_domain_names(soil::EnergyHydrology) = (
+ClimaLand.auxiliary_domain_names(soil::EnergyHydrology) = (
     :subsurface,
     :subsurface,
     :subsurface,
@@ -387,11 +387,11 @@ ClimaLSM.auxiliary_domain_names(soil::EnergyHydrology) = (
     :subsurface,
     boundary_var_domain_names(
         soil.boundary_conditions.top,
-        ClimaLSM.TopBoundary(),
+        ClimaLand.TopBoundary(),
     )...,
     boundary_var_domain_names(
         soil.boundary_conditions.bottom,
-        ClimaLSM.BottomBoundary(),
+        ClimaLand.BottomBoundary(),
     )...,
 )
 """
@@ -405,7 +405,7 @@ variables `p.soil.variable` in place.
 
 This has been written so as to work with Differential Equations.jl.
 """
-function ClimaLSM.make_update_aux(model::EnergyHydrology)
+function ClimaLand.make_update_aux(model::EnergyHydrology)
     function update_aux!(p, Y, t)
         (;
             ν,
@@ -475,7 +475,7 @@ end
 Computes the source terms for phase change.
 
 """
-function ClimaLSM.source!(
+function ClimaLand.source!(
     dY::ClimaCore.Fields.FieldVector,
     src::PhaseChange{FT},
     Y::ClimaCore.Fields.FieldVector,
@@ -484,8 +484,8 @@ function ClimaLSM.source!(
 ) where {FT}
     params = model.parameters
     (; ν, earth_param_set) = params
-    _ρ_l = FT(LSMP.ρ_cloud_liq(earth_param_set))
-    _ρ_i = FT(LSMP.ρ_cloud_ice(earth_param_set))
+    _ρ_l = FT(LP.ρ_cloud_liq(earth_param_set))
+    _ρ_i = FT(LP.ρ_cloud_ice(earth_param_set))
     ρc = volumetric_heat_capacity.(p.soil.θ_l, Y.soil.θ_i, params)
     τ = thermal_time.(ρc, src.Δz, p.soil.κ)
 
@@ -506,7 +506,7 @@ end
 
 
 """
-    ClimaLSM.surface_temperature(
+    ClimaLand.surface_temperature(
         model::EnergyHydrology{FT},
         Y,
         p,
@@ -520,17 +520,17 @@ The assumption is that the soil surface temperature
 is the same as the temperature at the center of the
 first soil layer.
 """
-function ClimaLSM.surface_temperature(
+function ClimaLand.surface_temperature(
     model::EnergyHydrology{FT},
     Y,
     p,
     t,
 ) where {FT}
-    return ClimaLSM.Domains.top_center_to_surface(p.soil.T)
+    return ClimaLand.Domains.top_center_to_surface(p.soil.T)
 end
 
 """
-    ClimaLSM.surface_resistance(
+    ClimaLand.surface_resistance(
         model::EnergyHydrology{FT},
         Y,
         p,
@@ -540,14 +540,14 @@ end
 Returns the surface resistance field of the
 `EnergyHydrology` soil model.
 """
-function ClimaLSM.surface_resistance(
+function ClimaLand.surface_resistance(
     model::EnergyHydrology{FT},
     Y,
     p,
     t,
 ) where {FT}
-    return ClimaLSM.Domains.top_center_to_surface(
-        ClimaLSM.Soil.soil_resistance.(
+    return ClimaLand.Domains.top_center_to_surface(
+        ClimaLand.Soil.soil_resistance.(
             p.soil.θ_l,
             Y.soil.ϑ_l,
             Y.soil.θ_i,
@@ -558,7 +558,7 @@ end
 
 
 """
-    ClimaLSM.surface_emissivity(
+    ClimaLand.surface_emissivity(
         model::EnergyHydrology{FT},
         Y,
         p,
@@ -567,7 +567,7 @@ end
 Returns the surface emissivity field of the
 `EnergyHydrology` soil model.
 """
-function ClimaLSM.surface_emissivity(
+function ClimaLand.surface_emissivity(
     model::EnergyHydrology{FT},
     Y,
     p,
@@ -576,7 +576,7 @@ function ClimaLSM.surface_emissivity(
 end
 
 """
-    ClimaLSM.surface_albedo(
+    ClimaLand.surface_albedo(
         model::EnergyHydrology{FT},
         Y,
         p,
@@ -585,14 +585,14 @@ end
 Returns the surface albedo field of the
 `EnergyHydrology` soil model.
 """
-function ClimaLSM.surface_albedo(model::EnergyHydrology{FT}, Y, p) where {FT}
+function ClimaLand.surface_albedo(model::EnergyHydrology{FT}, Y, p) where {FT}
     return FT(
         0.5 * model.parameters.PAR_albedo + 0.5 * model.parameters.NIR_albedo,
     )
 end
 
 """
-    ClimaLSM.surface_specific_humidity(
+    ClimaLand.surface_specific_humidity(
         model::EnergyHydrology{FT},
         Y,
         p,
@@ -612,19 +612,19 @@ where `ψ_sfc` is the matric potential at the surface,
 acceleration on the surface of the Earth, `M_w` the molar
 mass of water, and `R` the universal gas constant.
 """
-function ClimaLSM.surface_specific_humidity(
+function ClimaLand.surface_specific_humidity(
     model::EnergyHydrology{FT},
     Y,
     p,
     T_sfc,
     ρ_sfc,
 ) where {FT}
-    g = LSMP.grav(model.parameters.earth_param_set)
-    R = LSMP.gas_constant(model.parameters.earth_param_set)
-    M_w = LSMP.molar_mass_water(model.parameters.earth_param_set)
+    g = LP.grav(model.parameters.earth_param_set)
+    R = LP.gas_constant(model.parameters.earth_param_set)
+    M_w = LP.molar_mass_water(model.parameters.earth_param_set)
     thermo_params =
-        LSMP.thermodynamic_parameters(model.parameters.earth_param_set)
-    ψ_sfc = ClimaLSM.Domains.top_center_to_surface(p.soil.ψ)
+        LP.thermodynamic_parameters(model.parameters.earth_param_set)
+    ψ_sfc = ClimaLand.Domains.top_center_to_surface(p.soil.ψ)
     q_sat =
         Thermodynamics.q_vap_saturation_generic.(
             thermo_params,
@@ -637,7 +637,7 @@ function ClimaLSM.surface_specific_humidity(
 end
 
 """
-    ClimaLSM.surface_height(
+    ClimaLand.surface_height(
         model::EnergyHydrology{FT},
         Y,
         p,
@@ -645,9 +645,9 @@ end
 
 Returns the surface height of the `EnergyHydrology` model.
 """
-function ClimaLSM.surface_height(model::EnergyHydrology{FT}, Y, p) where {FT}
+function ClimaLand.surface_height(model::EnergyHydrology{FT}, Y, p) where {FT}
     face_space =
-        ClimaLSM.Domains.obtain_face_space(model.domain.space.subsurface)
+        ClimaLand.Domains.obtain_face_space(model.domain.space.subsurface)
     N = ClimaCore.Spaces.nlevels(face_space)
     surface_space = model.domain.space.surface
     z_sfc = ClimaCore.Fields.Field(
@@ -662,7 +662,7 @@ function ClimaLSM.surface_height(model::EnergyHydrology{FT}, Y, p) where {FT}
     return z_sfc
 end
 
-function ClimaLSM.get_drivers(model::EnergyHydrology)
+function ClimaLand.get_drivers(model::EnergyHydrology)
     bc = model.boundary_conditions.top
     if typeof(bc) <: AtmosDrivenFluxBC{
         <:PrescribedAtmosphere,

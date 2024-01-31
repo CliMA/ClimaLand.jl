@@ -1,17 +1,17 @@
 # SurfaceWater
 
 ```@meta
-CurrentModule = ClimaLSM.Pond
+CurrentModule = ClimaLand.Pond
 ```
 ## Models
 
 ```@docs
-ClimaLSM.Pond.PondModel
+ClimaLand.Pond.PondModel
 ```
 
 ## Methods and Types
 
 ```@docs
-ClimaLSM.Pond.PrescribedRunoff
-ClimaLSM.Pond.surface_runoff
+ClimaLand.Pond.PrescribedRunoff
+ClimaLand.Pond.surface_runoff
 ```

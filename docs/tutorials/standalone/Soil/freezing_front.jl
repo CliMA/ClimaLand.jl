@@ -81,13 +81,13 @@ using Plots
 using ClimaCore
 import CLIMAParameters as CP
 
-using ClimaLSM
-using ClimaLSM.Domains: Column
-using ClimaLSM.Soil
+using ClimaLand
+using ClimaLand.Domains: Column
+using ClimaLand.Soil
 
-import ClimaLSM
-import ClimaLSM.Parameters as LSMP
-include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"));
+import ClimaLand
+import ClimaLand.Parameters as LP
+include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"));
 
 # # Preliminary set-up
 
@@ -167,14 +167,14 @@ boundary_fluxes = (;
 # Create the source term instance. Our phase change model requires
 # knowledge of the vertical spacing, so we pass
 # that information in via an attribute of the
-# [`PhaseChange`](@ref ClimaLSM.Soil.PhaseChange) structure.
+# [`PhaseChange`](@ref ClimaLand.Soil.PhaseChange) structure.
 # Sources are added as elements of a list of sources. Here we just add freezing
 # and thawing.
 
 sources = (PhaseChange{FT}(Δz),);
 
 # Now we can package this up in the
-# [`EnergyHydrology`](@ref ClimaLSM.Soil.EnergyHydrology) model
+# [`EnergyHydrology`](@ref ClimaLand.Soil.EnergyHydrology) model
 # struct:
 soil = Soil.EnergyHydrology{FT}(;
     parameters = params,
@@ -187,7 +187,7 @@ soil = Soil.EnergyHydrology{FT}(;
 # # Running a simulation
 
 # Once we have the model, we can
-# [`initialize`](@ref ClimaLSM.initialize)
+# [`initialize`](@ref ClimaLand.initialize)
 # the state vectors and obtain the coordinates
 Y, p, coords = initialize(soil);
 
@@ -221,7 +221,7 @@ dt = Float64(60)
 timestepper = CTS.RK4()
 ode_algo = CTS.ExplicitAlgorithm(timestepper)
 prob = SciMLBase.ODEProblem(
-    CTS.ClimaODEFunction(T_exp! = exp_tendency!, dss! = ClimaLSM.dss!),
+    CTS.ClimaODEFunction(T_exp! = exp_tendency!, dss! = ClimaLand.dss!),
     Y,
     (t0, tf),
     p,

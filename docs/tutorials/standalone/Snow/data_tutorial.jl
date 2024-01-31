@@ -10,8 +10,8 @@
 # additional utility in creating alternative data sets for further investigation.
 
 # We begin by importing the data tools module, as well as other required packages:
-using ClimaLSM.Snow.DataTools
-using ClimaLSM
+using ClimaLand.Snow.DataTools
+using ClimaLand
 using DataFrames, Dates, CSV #CSV is for saving, can leave out otherwise
 
 # We then define constants that will be used in the cleaning of the SNOTEL data,

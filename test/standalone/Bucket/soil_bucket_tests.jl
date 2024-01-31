@@ -5,9 +5,9 @@ using Statistics
 
 using ClimaCore
 import CLIMAParameters as CP
-using ClimaLSM.Bucket: BucketModel, BucketModelParameters, BulkAlbedoFunction
-using ClimaLSM.Domains: coordinates, Column, HybridBox, SphericalShell
-using ClimaLSM:
+using ClimaLand.Bucket: BucketModel, BucketModelParameters, BulkAlbedoFunction
+using ClimaLand.Domains: coordinates, Column, HybridBox, SphericalShell
+using ClimaLand:
     initialize,
     make_exp_tendency,
     make_set_initial_cache,
@@ -16,8 +16,8 @@ using ClimaLSM:
     TimeVaryingInput
 
 # Bucket model parameters
-import ClimaLSM
-include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
+import ClimaLand
+include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"))
 
 for FT in (Float32, Float64)
     earth_param_set = create_lsm_parameters(FT)
@@ -108,8 +108,8 @@ for FT in (Float32, Float64)
             # in the case of the HybridBox and SphericalShell domains,
             # and check that it is not added in the single column case.
             if typeof(model.domain) <: Union{
-                ClimaLSM.Domains.HybridBox,
-                ClimaLSM.Domains.SphericalShell,
+                ClimaLand.Domains.HybridBox,
+                ClimaLand.Domains.SphericalShell,
             }
                 @test typeof(p.dss_buffer_3d) == typeof(
                     ClimaCore.Spaces.create_dss_buffer(

@@ -19,7 +19,7 @@ export timeseries_fluxes_fig,
 # to do in another script: animations
 
 # 1. Time series of GPP, ET and SW_OUT
-function timeseries_fluxes_fig(inputs, climalsm, index_t_start, index_t_end) # will run for any inputs or climalsm output of FLUXNET sites
+function timeseries_fluxes_fig(inputs, climaland, index_t_start, index_t_end) # will run for any inputs or climaland output of FLUXNET sites
     # create an empty figure
     fig = Figure(size = (1000, 1000)) # note: do not load Plots.jl in this branch (it is loading in plot_utils)
     fontsize_theme = Theme(fontsize = 20)
@@ -40,13 +40,13 @@ function timeseries_fluxes_fig(inputs, climalsm, index_t_start, index_t_end) # w
     # for time series, CairoMakie should allow DateTime type soon (but not yet)
     # so the 2 lines of code below are a trick to be able to use DateTime - will be removed later
     dateticks =
-        optimize_ticks(climalsm.DateTime[1], climalsm.DateTime[end])[1][2:(end - 1)] # first and last are weirdly placed
+        optimize_ticks(climaland.DateTime[1], climaland.DateTime[end])[1][2:(end - 1)] # first and last are weirdly placed
 
     # add plots into axis ax_C
     p_GPP_m = CairoMakie.scatter!(
         ax_C,
-        datetime2unix.(climalsm.DateTime),
-        climalsm.GPP .* 1e6,
+        datetime2unix.(climaland.DateTime),
+        climaland.GPP .* 1e6,
         color = :blue,
     )
     p_GPP_d = CairoMakie.scatter!(
@@ -59,24 +59,24 @@ function timeseries_fluxes_fig(inputs, climalsm, index_t_start, index_t_end) # w
     # ax_W
     p_ET_m = CairoMakie.scatter!(
         ax_W,
-        datetime2unix.(climalsm.DateTime),
-        (climalsm.vapor_flux .* 1e3 .* 24 .* 3600) .+
-        (climalsm.transpiration .* 1e3 .* 24 .* 3600),
+        datetime2unix.(climaland.DateTime),
+        (climaland.vapor_flux .* 1e3 .* 24 .* 3600) .+
+        (climaland.transpiration .* 1e3 .* 24 .* 3600),
         color = :blue,
     ) # not sure about units
     p_ET_d = CairoMakie.scatter!(
         ax_W,
         datetime2unix.(inputs.DateTime[index_t_start:index_t_end]),
         inputs.LE[index_t_start:index_t_end] ./
-        (LSMP.LH_v0(earth_param_set) * 1000) .* (1e3 * 24 * 3600),
+        (LP.LH_v0(earth_param_set) * 1000) .* (1e3 * 24 * 3600),
         color = :black,
     ) # not sure units
 
     # ax_SW_OUT
     p_SWOUT_m = CairoMakie.scatter!(
         ax_SWOUT,
-        datetime2unix.(climalsm.DateTime),
-        climalsm.SW_out,
+        datetime2unix.(climaland.DateTime),
+        climaland.SW_out,
         color = :blue,
     )
     p_SWOUT_d = CairoMakie.scatter!(
@@ -97,7 +97,7 @@ function timeseries_fluxes_fig(inputs, climalsm, index_t_start, index_t_end) # w
     axislegend(
         ax_C,
         [p_GPP_d, p_GPP_m],
-        ["Observations", "ClimaLSM"],
+        ["Observations", "ClimaLand"],
         "",
         position = :rt,
         orientation = :horizontal,
@@ -111,8 +111,8 @@ function timeseries_fluxes_fig(inputs, climalsm, index_t_start, index_t_end) # w
         CairoMakie.xlims!(
             axes,
             (
-                datetime2unix(climalsm.DateTime[1]),
-                datetime2unix(climalsm.DateTime[end]),
+                datetime2unix(climaland.DateTime[1]),
+                datetime2unix(climaland.DateTime[end]),
             ),
         ) for axes in [ax_C, ax_W, ax_SWOUT]
     ]
@@ -122,7 +122,7 @@ function timeseries_fluxes_fig(inputs, climalsm, index_t_start, index_t_end) # w
 end
 
 # 2. Time series of SWC, Precip, moisture stress, stomatal conductance
-function timeseries_H2O_fig(inputs, climalsm, index_t_start, index_t_end) # will run for any inputs or climalsm output of FLUXNET sites
+function timeseries_H2O_fig(inputs, climaland, index_t_start, index_t_end) # will run for any inputs or climaland output of FLUXNET sites
     # create an empty figure
     fig = Figure(size = (1000, 1000)) # note: do not load Plots.jl in this branch (it is loading in plot_utils)
     fontsize_theme = Theme(fontsize = 20)
@@ -149,13 +149,13 @@ function timeseries_H2O_fig(inputs, climalsm, index_t_start, index_t_end) # will
     # for time series, CairoMakie should allow DateTime type soon (but not yet)
     # so the 2 lines of code below are a trick to be able to use DateTime - will be removed later
     dateticks =
-        optimize_ticks(climalsm.DateTime[1], climalsm.DateTime[end])[1][2:(end - 1)] # first and last are weirdly placed
+        optimize_ticks(climaland.DateTime[1], climaland.DateTime[end])[1][2:(end - 1)] # first and last are weirdly placed
 
     # add plots into axis ax_H2O
     p_H2O_m = CairoMakie.scatter!(
         ax_H2O,
-        datetime2unix.(climalsm.DateTime),
-        climalsm.θ_l,
+        datetime2unix.(climaland.DateTime),
+        climaland.θ_l,
         color = :green,
     )
     p_H2O_d = CairoMakie.scatter!(
@@ -176,16 +176,16 @@ function timeseries_H2O_fig(inputs, climalsm, index_t_start, index_t_end) # will
     # Moisture stress
     p_MS = CairoMakie.scatter!(
         ax_MS,
-        datetime2unix.(climalsm.DateTime),
-        climalsm.β,
+        datetime2unix.(climaland.DateTime),
+        climaland.β,
         color = :green,
     ) # not sure about units
 
     # Stomatal conductance
     p_SC = CairoMakie.scatter!(
         ax_SC,
-        datetime2unix.(climalsm.DateTime),
-        climalsm.gs,
+        datetime2unix.(climaland.DateTime),
+        climaland.gs,
         color = :green,
     )
 
@@ -203,7 +203,7 @@ function timeseries_H2O_fig(inputs, climalsm, index_t_start, index_t_end) # will
     axislegend(
         ax_H2O,
         [p_H2O_d, p_H2O_m],
-        ["Observations", "ClimaLSM"],
+        ["Observations", "ClimaLand"],
         "",
         position = :rt,
         orientation = :horizontal,
@@ -217,8 +217,8 @@ function timeseries_H2O_fig(inputs, climalsm, index_t_start, index_t_end) # will
         CairoMakie.xlims!(
             axes,
             (
-                datetime2unix(climalsm.DateTime[1]),
-                datetime2unix(climalsm.DateTime[end]),
+                datetime2unix(climaland.DateTime[1]),
+                datetime2unix(climaland.DateTime[end]),
             ),
         ) for axes in [ax_H2O, ax_H2O_rain, ax_MS, ax_SC]
     ]
@@ -228,7 +228,7 @@ function timeseries_H2O_fig(inputs, climalsm, index_t_start, index_t_end) # will
 end
 
 # 3. Fingerprint plot
-function fingerprint_fig(inputs, climalsm, index_t_start, index_t_end)
+function fingerprint_fig(inputs, climaland, index_t_start, index_t_end)
     fig = Figure(size = (1000, 1000))
     fontsize_theme = Theme(fontsize = 20)
     set_theme!(fontsize_theme)
@@ -300,7 +300,7 @@ function diurnal_plot!(
     return diurnal_p
 end
 
-function diurnals_fig(inputs, climalsm, index_t_start, index_t_end)
+function diurnals_fig(inputs, climaland, index_t_start, index_t_end)
     fig = Figure(size = (1000, 1000))
     fontsize_theme = Theme(fontsize = 20)
     set_theme!(fontsize_theme)
@@ -319,9 +319,14 @@ function diurnals_fig(inputs, climalsm, index_t_start, index_t_end)
 
     # CO2 fluxes
     # model
-    p_GPP_m =
-        diurnal_plot!(fig, ax_C, climalsm.DateTime, climalsm.GPP .* 1e6, :green)
-    diurnal_plot!(fig, ax_C, climalsm.DateTime, climalsm.Ra .* 1e6, :black)
+    p_GPP_m = diurnal_plot!(
+        fig,
+        ax_C,
+        climaland.DateTime,
+        climaland.GPP .* 1e6,
+        :green,
+    )
+    diurnal_plot!(fig, ax_C, climaland.DateTime, climaland.Ra .* 1e6, :black)
     # data
     p_GPP_d = diurnal_plot!(
         fig,
@@ -338,8 +343,8 @@ function diurnals_fig(inputs, climalsm, index_t_start, index_t_end)
     p_ET_m = diurnal_plot!(
         fig,
         ax_W,
-        climalsm.DateTime,
-        climalsm.transpiration .* 1e3 .* 24 .* 3600,
+        climaland.DateTime,
+        climaland.transpiration .* 1e3 .* 24 .* 3600,
         :blue,
     )
     # data
@@ -348,7 +353,7 @@ function diurnals_fig(inputs, climalsm, index_t_start, index_t_end)
         ax_W,
         inputs.DateTime[index_t_start:index_t_end],
         inputs.LE[index_t_start:index_t_end] ./
-        (LSMP.LH_v0(earth_param_set) * 1000) .* (1e3 * 24 * 3600),
+        (LP.LH_v0(earth_param_set) * 1000) .* (1e3 * 24 * 3600),
         :blue,
         alpha = 0.1,
         linestyle = :dot,
@@ -356,9 +361,9 @@ function diurnals_fig(inputs, climalsm, index_t_start, index_t_end)
 
     # Energy fluxes
     # model
-    # diurnal_plot!(fig, ax_E, climalsm.DateTime, climalsm.LW_out, :red)
+    # diurnal_plot!(fig, ax_E, climaland.DateTime, climaland.LW_out, :red)
     p_SWout_m =
-        diurnal_plot!(fig, ax_E, climalsm.DateTime, climalsm.SW_out, :red)
+        diurnal_plot!(fig, ax_E, climaland.DateTime, climaland.SW_out, :red)
     # data
     p_SWout_d = diurnal_plot!(
         fig,
@@ -375,7 +380,7 @@ function diurnals_fig(inputs, climalsm, index_t_start, index_t_end)
     axislegend(
         ax_C,
         [p_GPP_d, p_GPP_m],
-        ["Observations", "ClimaLSM"],
+        ["Observations", "ClimaLand"],
         "",
         position = :rt,
         orientation = :horizontal,
@@ -383,7 +388,7 @@ function diurnals_fig(inputs, climalsm, index_t_start, index_t_end)
     axislegend(
         ax_W,
         [p_ET_d, p_ET_m],
-        ["Observations", "ClimaLSM"],
+        ["Observations", "ClimaLand"],
         "",
         position = :rt,
         orientation = :horizontal,
@@ -391,7 +396,7 @@ function diurnals_fig(inputs, climalsm, index_t_start, index_t_end)
     axislegend(
         ax_E,
         [p_SWout_d, p_SWout_m],
-        ["Observations", "ClimaLSM"],
+        ["Observations", "ClimaLand"],
         "",
         position = :rt,
         orientation = :horizontal,
@@ -408,7 +413,7 @@ end
 
 # 6. Energy balance closure (L + H = Rn - G)
 
-function make_plots(inputs, climalsm)
+function make_plots(inputs, climaland)
     # below shouldn't be hardcoded!
     index_t_start = 120 * 48 # we shouldn't hardcode that 120 in ozark_simulation.jl
     index_t_end = 120 * 48 + (60 - 30) * 48
@@ -419,10 +424,10 @@ function make_plots(inputs, climalsm)
         mkdir("figures")
     end
 
-    fig1 = timeseries_fluxes_fig(inputs, climalsm, index_t_start, index_t_end)
-    fig2 = timeseries_H2O_fig(inputs, climalsm, index_t_start, index_t_end)
-    fig3 = fingerprint_fig(inputs, climalsm, index_t_start, index_t_end)
-    fig4 = diurnals_fig(inputs, climalsm, index_t_start, index_t_end)
+    fig1 = timeseries_fluxes_fig(inputs, climaland, index_t_start, index_t_end)
+    fig2 = timeseries_H2O_fig(inputs, climaland, index_t_start, index_t_end)
+    fig3 = fingerprint_fig(inputs, climaland, index_t_start, index_t_end)
+    fig4 = diurnals_fig(inputs, climaland, index_t_start, index_t_end)
 
     names = [
         "timeseries_fluxes.pdf",

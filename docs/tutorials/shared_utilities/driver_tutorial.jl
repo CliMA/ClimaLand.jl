@@ -33,7 +33,7 @@
 
 # Note: for coupled runs, corresponding types `CoupledAtmosphere`
 # and `CoupledRadiativeFluxes` exist. However, these are not defined
-# in ClimaLSM, but rather inside of the Clima Coupler repository.
+# in ClimaLand, but rather inside of the Clima Coupler repository.
 
 
 # # Creating site-level drivers for radiation
@@ -43,9 +43,9 @@
 # times at which the observations were made and the latitude and longitude of the site.
 using Dates
 using Insolation # for computing zenith angle given lat, lon, time.
-using ClimaLSM
-import ClimaLSM.Parameters as LSMP
-include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"));
+using ClimaLand
+import ClimaLand.Parameters as LP
+include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"));
 
 # Assume the local_datetime array is read in from the data file.
 local_datetime = DateTime(2013):Dates.Hour(1):DateTime(2013, 1, 7); # one week, hourly data
@@ -106,7 +106,7 @@ end;
 
 # Lastly, we store the interpolators for downwelling fluxes and the zenith angle function
 # in the `PrescribedRadiativeFluxes` struct.
-radiation = ClimaLSM.PrescribedRadiativeFluxes(
+radiation = ClimaLand.PrescribedRadiativeFluxes(
     Float64,
     SW_d,
     LW_d,
@@ -123,7 +123,7 @@ radiation = ClimaLSM.PrescribedRadiativeFluxes(
 p = (; drivers = (LW_d = [0.0], SW_d = [0.0], θs = [0.0]));
 
 # In order to update them, we can make use of default update functions:
-update_radiation! = ClimaLSM.make_update_drivers(radiation)
+update_radiation! = ClimaLand.make_update_drivers(radiation)
 t0 = seconds[1] # midnight local time
 update_radiation!(p, t0);
 @show(p.drivers);
@@ -136,6 +136,6 @@ update_radiation!(p, t0);
 # the drivers every three hours:
 updateat = collect(seconds[1]:(3600 * 3):seconds[end]);
 updatefunc = update_radiation!;
-cb = ClimaLSM.DriverUpdateCallback(updateat, updatefunc);
+cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc);
 
 # This callback must then be provided to the simulation [`solve`](https://docs.sciml.ai/DiffEqCallbacks/stable/) function.

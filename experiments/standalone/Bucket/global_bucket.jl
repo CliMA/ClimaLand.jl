@@ -9,18 +9,18 @@ using ClimaCore
 using ClimaCore: Remapping, Geometry
 import CLIMAParameters as CP
 import ClimaComms
-import ClimaLSM
-include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"));
-using ClimaLSM.Bucket: BucketModel, BucketModelParameters, BulkAlbedoFunction
-using ClimaLSM.Domains: coordinates, Column
-using ClimaLSM:
+import ClimaLand
+include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"));
+using ClimaLand.Bucket: BucketModel, BucketModelParameters, BulkAlbedoFunction
+using ClimaLand.Domains: coordinates, Column
+using ClimaLand:
     initialize,
     make_update_aux,
     make_exp_tendency,
     make_set_initial_cache,
     PrescribedAtmosphere,
     PrescribedRadiativeFluxes
-using ClimaLSM.TimeVaryingInputs
+using ClimaLand.TimeVaryingInputs
 
 """
    compute_extrema(v)
@@ -39,7 +39,7 @@ anim_plots = false
 FT = Float64;
 context = ClimaComms.context()
 earth_param_set = create_lsm_parameters(FT);
-outdir = joinpath(pkgdir(ClimaLSM), "experiments/standalone/Bucket/artifacts")
+outdir = joinpath(pkgdir(ClimaLand), "experiments/standalone/Bucket/artifacts")
 !ispath(outdir) && mkpath(outdir)
 α_sfc = (coordinate_point) -> 0.2;
 α_snow = FT(0.8);
@@ -68,7 +68,7 @@ bucket_parameters = BucketModelParameters(
 );
 
 soil_depth = FT(3.5);
-bucket_domain = ClimaLSM.Domains.SphericalShell(;
+bucket_domain = ClimaLand.Domains.SphericalShell(;
     radius = FT(6.3781e6),
     depth = soil_depth,
     nelements = (10, 10),
@@ -132,7 +132,7 @@ exp_tendency! = make_exp_tendency(model);
 timestepper = CTS.RK4()
 ode_algo = CTS.ExplicitAlgorithm(timestepper)
 prob = SciMLBase.ODEProblem(
-    CTS.ClimaODEFunction(T_exp! = exp_tendency!, dss! = ClimaLSM.dss!),
+    CTS.ClimaODEFunction(T_exp! = exp_tendency!, dss! = ClimaLand.dss!),
     Y,
     (t0, tf),
     p,
@@ -143,10 +143,10 @@ saved_values = (;
     t = Array{Float64}(undef, length(saveat)),
     saveval = Array{NamedTuple}(undef, length(saveat)),
 );
-saving_cb = ClimaLSM.NonInterpSavingCallback(saved_values, saveat);
+saving_cb = ClimaLand.NonInterpSavingCallback(saved_values, saveat);
 updateat = copy(saveat)
-updatefunc = ClimaLSM.make_update_drivers(bucket_atmos, bucket_rad)
-driver_cb = ClimaLSM.DriverUpdateCallback(updateat, updatefunc)
+updatefunc = ClimaLand.make_update_drivers(bucket_atmos, bucket_rad)
+driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
 cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
 
 @time sol =

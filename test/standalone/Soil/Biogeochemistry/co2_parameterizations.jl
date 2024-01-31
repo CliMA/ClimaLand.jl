@@ -1,11 +1,11 @@
 using Test
 import CLIMAParameters as CP
-using ClimaLSM.Soil.Biogeochemistry
+using ClimaLand.Soil.Biogeochemistry
 
-import ClimaLSM
-import ClimaLSM.Parameters as LSMP
+import ClimaLand
+import ClimaLand.Parameters as LP
 
-include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
+include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"))
 
 for FT in (Float32, Float64)
     @testset "Soil CO2 production and transport, FT = $FT" begin
@@ -30,8 +30,8 @@ for FT in (Float32, Float64)
         θ_i = FT(0.0)
         θ_w = θ_l + θ_i
         Csom = FT(5.0)
-        T_ref = FT(LSMP.T_0(earth_param_set))
-        R = FT(LSMP.gas_constant(earth_param_set))
+        T_ref = FT(LP.T_0(earth_param_set))
+        R = FT(LP.gas_constant(earth_param_set))
 
         parameters = SoilCO2ModelParameters{FT}(;
             D_liq = D_liq,
@@ -52,7 +52,7 @@ for FT in (Float32, Float64)
               (
                   parameters.D_ref *
                   (T_soil / T_ref)^FT(1.75) *
-                  (FT(LSMP.P_ref(parameters.earth_param_set)) / P_sfc)
+                  (FT(LP.P_ref(parameters.earth_param_set)) / P_sfc)
               ) *
               (FT(2)parameters.θ_a100^FT(3) + FT(0.04)parameters.θ_a100) *
               (θ_a / parameters.θ_a100)^(FT(2) + FT(3) / parameters.b)

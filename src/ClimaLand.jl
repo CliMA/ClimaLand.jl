@@ -1,11 +1,11 @@
-module ClimaLSM
+module ClimaLand
 using DocStringExtensions
 
 using ClimaCore
 import ClimaCore: Fields, Spaces
 
 include("shared_utilities/Parameters.jl")
-import .Parameters as LSMP
+import .Parameters as LP
 
 include("shared_utilities/general_utils.jl")
 include("shared_utilities/TimeVaryingInputs.jl")
@@ -48,7 +48,7 @@ and the versions of these component models being used.
 """
 abstract type AbstractLandModel{FT} <: AbstractModel{FT} end
 
-ClimaLSM.name(::AbstractLandModel) = :land
+ClimaLand.name(::AbstractLandModel) = :land
 
 """
     Domains.coordinates(model::AbstractLandModel)

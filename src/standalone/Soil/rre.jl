@@ -132,7 +132,7 @@ This function creates and returns a function which computes the entire
 right hand side of the PDE for `ϑ_l`, and updates `dY.soil.ϑ_l` in place
 with that value.
 """
-function ClimaLSM.make_compute_imp_tendency(model::RichardsModel)
+function ClimaLand.make_compute_imp_tendency(model::RichardsModel)
     function compute_imp_tendency!(dY, Y, p, t)
         z = ClimaCore.Fields.coordinate_field(model.domain.space.subsurface).z
         top_flux_bc = p.soil.top_bc.water
@@ -174,7 +174,7 @@ Richards equation.
 Construct the tendency computation function for the explicit terms of the RHS,
 which are horizontal components and source/sink terms.
 """
-function ClimaLSM.make_compute_exp_tendency(model::Soil.RichardsModel)
+function ClimaLand.make_compute_exp_tendency(model::Soil.RichardsModel)
     # Currently, boundary conditions in the horizontal conditions
     # are restricted to be periodic. In this case, the explicit tendency
     # does not depend on boundary fluxes, and we do not need to update
@@ -195,7 +195,7 @@ function ClimaLSM.make_compute_exp_tendency(model::Soil.RichardsModel)
 
         # Source terms
         for src in model.sources
-            ClimaLSM.source!(dY, src, Y, p, model)
+            ClimaLand.source!(dY, src, Y, p, model)
         end
     end
     return compute_exp_tendency!
@@ -238,9 +238,9 @@ end
 A function which returns the names of the prognostic variables
 of `RichardsModel`.
 """
-ClimaLSM.prognostic_vars(soil::RichardsModel) = (:ϑ_l,)
-ClimaLSM.prognostic_types(soil::RichardsModel{FT}) where {FT} = (FT,)
-ClimaLSM.prognostic_domain_names(soil::RichardsModel) = (:subsurface,)
+ClimaLand.prognostic_vars(soil::RichardsModel) = (:ϑ_l,)
+ClimaLand.prognostic_types(soil::RichardsModel{FT}) where {FT} = (FT,)
+ClimaLand.prognostic_domain_names(soil::RichardsModel) = (:subsurface,)
 
 """
     auxiliary_vars(soil::RichardsModel)
@@ -248,14 +248,14 @@ ClimaLSM.prognostic_domain_names(soil::RichardsModel) = (:subsurface,)
 A function which returns the names of the auxiliary variables
 of `RichardsModel`.
 """
-function ClimaLSM.auxiliary_vars(soil::RichardsModel)
+function ClimaLand.auxiliary_vars(soil::RichardsModel)
     return (
         :K,
         :ψ,
-        boundary_vars(soil.boundary_conditions.top, ClimaLSM.TopBoundary())...,
+        boundary_vars(soil.boundary_conditions.top, ClimaLand.TopBoundary())...,
         boundary_vars(
             soil.boundary_conditions.bottom,
-            ClimaLSM.BottomBoundary(),
+            ClimaLand.BottomBoundary(),
         )...,
     )
 end
@@ -266,17 +266,17 @@ end
 A function which returns the names of the auxiliary domain names
 of `RichardsModel`.
 """
-function ClimaLSM.auxiliary_domain_names(soil::RichardsModel)
+function ClimaLand.auxiliary_domain_names(soil::RichardsModel)
     return (
         :subsurface,
         :subsurface,
         boundary_var_domain_names(
             soil.boundary_conditions.top,
-            ClimaLSM.TopBoundary(),
+            ClimaLand.TopBoundary(),
         )...,
         boundary_var_domain_names(
             soil.boundary_conditions.bottom,
-            ClimaLSM.BottomBoundary(),
+            ClimaLand.BottomBoundary(),
         )...,
     )
 end
@@ -287,19 +287,19 @@ end
 A function which returns the names of the auxiliary types
 of `RichardsModel`.
 """
-function ClimaLSM.auxiliary_types(soil::RichardsModel{FT}) where {FT}
+function ClimaLand.auxiliary_types(soil::RichardsModel{FT}) where {FT}
     return (
         FT,
         FT,
         boundary_var_types(
             soil,
             soil.boundary_conditions.top,
-            ClimaLSM.TopBoundary(),
+            ClimaLand.TopBoundary(),
         )...,
         boundary_var_types(
             soil,
             soil.boundary_conditions.bottom,
-            ClimaLSM.BottomBoundary(),
+            ClimaLand.BottomBoundary(),
         )...,
     )
 end
@@ -315,7 +315,7 @@ variables `p.soil.variable` in place.
 
 This has been written so as to work with Differential Equations.jl.
 """
-function ClimaLSM.make_update_aux(model::RichardsModel)
+function ClimaLand.make_update_aux(model::RichardsModel)
     function update_aux!(p, Y, t)
         (; ν, hydrology_cm, K_sat, S_s, θ_r) = model.parameters
         @. p.soil.K = hydraulic_conductivity(
@@ -330,7 +330,7 @@ end
 
 
 """
-    RichardsTridiagonalW{R, J, W, T} <: ClimaLSM.AbstractTridiagonalW
+    RichardsTridiagonalW{R, J, W, T} <: ClimaLand.AbstractTridiagonalW
 
 A struct containing the necessary information for constructing a tridiagonal
 Jacobian matrix (`W`) for solving Richards equation, treating only the vertical
@@ -340,7 +340,7 @@ Note that the diagonal, upper diagonal, and lower diagonal entry values
 are stored in this struct and updated in place.
 $(DocStringExtensions.FIELDS)
 """
-struct RichardsTridiagonalW{R, J, JA, T, A} <: ClimaLSM.AbstractTridiagonalW
+struct RichardsTridiagonalW{R, J, JA, T, A} <: ClimaLand.AbstractTridiagonalW
     "Reference to dtγ, which is specified by the ODE solver"
     dtγ_ref::R
     "Diagonal entries of the Jacobian stored as a ClimaCore.Fields.Field"
@@ -394,7 +394,7 @@ function RichardsTridiagonalW(
     temp2 = similar(Y.soil.ϑ_l)
     temp2 .= FT(0)
 
-    face_space = ClimaLSM.Domains.obtain_face_space(center_space)
+    face_space = ClimaLand.Domains.obtain_face_space(center_space)
     ones_face_space = ones(face_space)
 
     return RichardsTridiagonalW(
@@ -410,14 +410,14 @@ end
 
 
 """
-    ClimaLSM.make_update_jacobian(model::RichardsModel{FT}) where {FT}
+    ClimaLand.make_update_jacobian(model::RichardsModel{FT}) where {FT}
 
 Creates and returns the update_jacobian! function for RichardsModel.
 
 Using this Jacobian with a backwards Euler timestepper is equivalent
 to using the modified Picard scheme of Celia et al. (1990).
 """
-function ClimaLSM.make_update_jacobian(model::RichardsModel{FT}) where {FT}
+function ClimaLand.make_update_jacobian(model::RichardsModel{FT}) where {FT}
     update_aux! = make_update_aux(model)
     update_boundary_fluxes! = make_update_boundary_fluxes(model)
     function update_jacobian!(W::RichardsTridiagonalW, Y, p, dtγ, t)
@@ -445,9 +445,9 @@ function ClimaLSM.make_update_jacobian(model::RichardsModel{FT}) where {FT}
         @. ∂ϑₜ∂ϑ = compose(
             divf2c_stencil(Geometry.Covariant3Vector(W.ones_face_space)),
             (
-                interpc2f_op(p.soil.K) * ClimaLSM.to_scalar_coefs(
+                interpc2f_op(p.soil.K) * ClimaLand.to_scalar_coefs(
                     gradc2f_stencil(
-                        ClimaLSM.Soil.dψdϑ(
+                        ClimaLand.Soil.dψdϑ(
                             hydrology_cm,
                             Y.soil.ϑ_l,
                             ν,
@@ -462,10 +462,10 @@ function ClimaLSM.make_update_jacobian(model::RichardsModel{FT}) where {FT}
         # The derivative of the tendency may eventually live in boundary vars and be updated there. but TBD
         z = Fields.coordinate_field(axes(Y.soil.ϑ_l)).z
         Δz_top, Δz_bottom = get_Δz(z)
-        ∂T_bc∂YN = ClimaLSM.∂tendencyBC∂Y(
+        ∂T_bc∂YN = ClimaLand.∂tendencyBC∂Y(
             model,
             model.boundary_conditions.top.water,
-            ClimaLSM.TopBoundary(),
+            ClimaLand.TopBoundary(),
             Δz_top,
             Y,
             p,

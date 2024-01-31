@@ -4,13 +4,13 @@ push!(LOAD_PATH, joinpath(@__DIR__, ".."))
 using Distributed
 @everywhere using Documenter
 @everywhere using Literate
-using ClimaLSM
+using ClimaLand
 include("pages_helper.jl")
 tutorials = [
     "For model developers" => [
         "Intro to standalone models" => "standalone/Usage/model_tutorial.jl",
         "Intro to multi-component models" => "standalone/Usage/LSM_single_column_tutorial.jl",
-        "Intro to ClimaLSM Domains" => "standalone/Usage/domain_tutorial.jl",
+        "Intro to ClimaLand Domains" => "standalone/Usage/domain_tutorial.jl",
         "Intro to forced site-level runs" => "shared_utilities/driver_tutorial.jl",
     ],
     "Running simulations" => [
@@ -39,7 +39,7 @@ tutorials = [
         ],
     ],
 ]
-@everywhere const clima_dir = dirname(dirname(pathof(ClimaLSM)));
+@everywhere const clima_dir = dirname(dirname(pathof(ClimaLand)));
 @everywhere source_dir = joinpath(@__DIR__, "src")
 @everywhere GENERATED_DIR = joinpath(source_dir, "generated") # generated files directory
 rm(GENERATED_DIR, force = true, recursive = true)
@@ -55,7 +55,7 @@ mkpath(GENERATED_DIR)
         path = relpath(clima_dir, pwd())
         content = """
                 # ```@meta
-                    # EditURL = "https://github.com/CliMA/ClimaLSM.jl/$(path)"
+                    # EditURL = "https://github.com/CliMA/ClimaLand.jl/$(path)"
                     # ```
                 """
         mdpre(str) = content * str
@@ -105,7 +105,7 @@ format = Documenter.HTML(
 )
 
 makedocs(
-    sitename = "ClimaLSM.jl",
+    sitename = "ClimaLand.jl",
     authors = "Clima Land Model Team",
     format = format,
     pages = pages,
@@ -113,11 +113,11 @@ makedocs(
     doctest = true,
     warnonly = true,
     clean = true,
-    modules = [ClimaLSM],
+    modules = [ClimaLand],
 )
 
 deploydocs(
-    repo = "github.com/CliMA/ClimaLSM.jl.git",
+    repo = "github.com/CliMA/ClimaLand.jl.git",
     target = "build",
     push_preview = true,
     devbranch = "main",

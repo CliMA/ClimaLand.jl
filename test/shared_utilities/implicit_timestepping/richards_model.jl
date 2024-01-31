@@ -2,14 +2,14 @@ using Test
 using LinearAlgebra
 using ClimaCore
 import CLIMAParameters as CP
-using ClimaLSM
-using ClimaLSM.Domains: Column, HybridBox
-using ClimaLSM.Soil
+using ClimaLand
+using ClimaLand.Domains: Column, HybridBox
+using ClimaLand.Soil
 
-import ClimaLSM
-import ClimaLSM.Parameters as LSMP
+import ClimaLand
+import ClimaLand.Parameters as LP
 
-include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
+include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"))
 
 for FT in (Float32, Float64)
     @testset "Richards Jacobian entries, Moisture BC, FT = $FT" begin

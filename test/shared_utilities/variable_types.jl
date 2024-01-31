@@ -1,8 +1,8 @@
 using ClimaCore
 using Test
 using StaticArrays
-using ClimaLSM
-import ClimaLSM:
+using ClimaLand
+import ClimaLand:
     AbstractModel,
     AbstractImExModel,
     AbstractExpModel,
@@ -13,20 +13,20 @@ import ClimaLSM:
     prognostic_domain_names,
     auxiliary_domain_names,
     name
-using ClimaLSM.Domains: HybridBox, Column, Point
-using ClimaLSM.Domains: coordinates
-using ClimaLSM.Canopy: AbstractCanopyComponent
+using ClimaLand.Domains: HybridBox, Column, Point
+using ClimaLand.Domains: coordinates
+using ClimaLand.Canopy: AbstractCanopyComponent
 
 FT = Float32
 @testset "Default model, FT = $FT" begin
     struct DefaultModel{FT} <: AbstractModel{FT} end
     dm = DefaultModel{FT}()
-    @test ClimaLSM.prognostic_vars(dm) == ()
-    @test ClimaLSM.prognostic_types(dm) == ()
-    @test ClimaLSM.prognostic_domain_names(dm) == ()
-    @test ClimaLSM.auxiliary_vars(dm) == ()
-    @test ClimaLSM.auxiliary_types(dm) == ()
-    @test ClimaLSM.auxiliary_domain_names(dm) == ()
+    @test ClimaLand.prognostic_vars(dm) == ()
+    @test ClimaLand.prognostic_types(dm) == ()
+    @test ClimaLand.prognostic_domain_names(dm) == ()
+    @test ClimaLand.auxiliary_vars(dm) == ()
+    @test ClimaLand.auxiliary_types(dm) == ()
+    @test ClimaLand.auxiliary_domain_names(dm) == ()
 
     x = [0, 1, 2, 3]
     dm_exp_tendency! = make_exp_tendency(dm)
@@ -49,8 +49,8 @@ FT = Float32
     @test dm_update_aux!(x[1], x[2], x[3]) == nothing
     @test x == [0, 1, 2, 3]
 
-    @test ClimaLSM.get_drivers(dm) == (nothing, nothing)
-    @test ClimaLSM.add_drivers_to_cache((;), dm, nothing) == (;)
+    @test ClimaLand.get_drivers(dm) == (nothing, nothing)
+    @test ClimaLand.add_drivers_to_cache((;), dm, nothing) == (;)
 end
 
 @testset "Default ImEx model, FT = $FT" begin
@@ -72,13 +72,13 @@ end
     FT = Float64
     struct DefaultCanopyComponent{FT} <: AbstractCanopyComponent{FT} end
     dcc = DefaultCanopyComponent{FT}()
-    @test ClimaLSM.prognostic_vars(dcc) == ()
-    @test ClimaLSM.prognostic_types(dcc) == ()
-    @test ClimaLSM.prognostic_domain_names(dcc) == ()
+    @test ClimaLand.prognostic_vars(dcc) == ()
+    @test ClimaLand.prognostic_types(dcc) == ()
+    @test ClimaLand.prognostic_domain_names(dcc) == ()
 
-    @test ClimaLSM.auxiliary_vars(dcc) == ()
-    @test ClimaLSM.auxiliary_types(dcc) == ()
-    @test ClimaLSM.auxiliary_domain_names(dcc) == ()
+    @test ClimaLand.auxiliary_vars(dcc) == ()
+    @test ClimaLand.auxiliary_types(dcc) == ()
+    @test ClimaLand.auxiliary_domain_names(dcc) == ()
 
     x = [0, 1, 2, 3]
     dcc_compute_exp_tendency! = make_compute_exp_tendency(dcc, nothing)
@@ -109,15 +109,15 @@ end
     struct Model{FT, D} <: AbstractModel{FT}
         domain::D
     end
-    ClimaLSM.name(m::Model) = :foo
-    ClimaLSM.prognostic_vars(m::Model) = (:a, :b)
-    ClimaLSM.auxiliary_vars(m::Model) = (:d, :e)
+    ClimaLand.name(m::Model) = :foo
+    ClimaLand.prognostic_vars(m::Model) = (:a, :b)
+    ClimaLand.auxiliary_vars(m::Model) = (:d, :e)
 
-    ClimaLSM.prognostic_types(m::Model{FT}) where {FT} = (FT, SVector{2, FT})
-    ClimaLSM.auxiliary_types(m::Model{FT}) where {FT} = (FT, SVector{2, FT})
+    ClimaLand.prognostic_types(m::Model{FT}) where {FT} = (FT, SVector{2, FT})
+    ClimaLand.auxiliary_types(m::Model{FT}) where {FT} = (FT, SVector{2, FT})
 
-    ClimaLSM.prognostic_domain_names(m::Model) = (:surface, :surface)
-    ClimaLSM.auxiliary_domain_names(m::Model) = (:surface, :subsurface)
+    ClimaLand.prognostic_domain_names(m::Model) = (:surface, :surface)
+    ClimaLand.auxiliary_domain_names(m::Model) = (:surface, :subsurface)
 
     zmin = FT(1.0)
     zmax = FT(2.0)

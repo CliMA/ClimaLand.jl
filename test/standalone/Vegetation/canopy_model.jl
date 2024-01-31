@@ -4,18 +4,18 @@ using ClimaCore
 using Thermodynamics
 using Dates
 using StaticArrays
-using ClimaLSM
-using ClimaLSM: PrescribedAtmosphere, PrescribedRadiativeFluxes
-using ClimaLSM: TimeVaryingInput
-using ClimaLSM.Canopy
-using ClimaLSM.Canopy.PlantHydraulics
-using ClimaLSM.Domains: Point
+using ClimaLand
+using ClimaLand: PrescribedAtmosphere, PrescribedRadiativeFluxes
+using ClimaLand: TimeVaryingInput
+using ClimaLand.Canopy
+using ClimaLand.Canopy.PlantHydraulics
+using ClimaLand.Domains: Point
 import Insolation
 
-import ClimaLSM
-import ClimaLSM.Parameters as LSMP
+import ClimaLand
+import ClimaLand.Parameters as LP
 
-include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
+include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"))
 for FT in (Float32, Float64)
     @testset "Canopy software pipes, FT = $FT" begin
         domain = Point(; z_sfc = FT(0.0))
@@ -173,7 +173,7 @@ for FT in (Float32, Float64)
             compartment_surfaces = compartment_faces,
             compartment_midpoints = compartment_centers,
         )
-        canopy = ClimaLSM.Canopy.CanopyModel{FT}(;
+        canopy = ClimaLand.Canopy.CanopyModel{FT}(;
             parameters = shared_params,
             domain = domain,
             autotrophic_respiration = AR_model,
@@ -185,21 +185,21 @@ for FT in (Float32, Float64)
             atmos = atmos,
             radiation = radiation,
         )
-        Y, p, coords = ClimaLSM.initialize(canopy)
+        Y, p, coords = ClimaLand.initialize(canopy)
         @test propertynames(p.drivers) ==
               (:P_liq, :P_snow, :T, :P, :u, :q, :c_co2, :SW_d, :LW_d, :θs)
         # Check that structure of Y is value (will error if not)
         @test !isnothing(zero(Y))
         @test typeof(canopy.energy) == PrescribedCanopyTempModel{FT}
         @test propertynames(p) == (:canopy, :drivers)
-        for component in ClimaLSM.Canopy.canopy_components(canopy)
+        for component in ClimaLand.Canopy.canopy_components(canopy)
             # Only hydraulics has a prognostic variable
             if component == :hydraulics
                 @test propertynames(getproperty(Y.canopy, component)) ==
-                      ClimaLSM.prognostic_vars(getproperty(canopy, component))
+                      ClimaLand.prognostic_vars(getproperty(canopy, component))
             end
             @test propertynames(getproperty(p.canopy, component)) ==
-                  ClimaLSM.auxiliary_vars(getproperty(canopy, component))
+                  ClimaLand.auxiliary_vars(getproperty(canopy, component))
             @test getproperty(auxiliary_types(canopy), component) ==
                   auxiliary_types(getproperty(canopy, component))
             @test getproperty(auxiliary_vars(canopy), component) ==
@@ -218,16 +218,16 @@ for FT in (Float32, Float64)
         # check that this is updated correctly:
         # @test p.canopy.autotrophic_respiration.Ra ==
         exp_tendency!(dY, Y, p, t0)
-        turb_fluxes = ClimaLSM.turbulent_fluxes(canopy.atmos, canopy, Y, p, t0)
+        turb_fluxes = ClimaLand.turbulent_fluxes(canopy.atmos, canopy, Y, p, t0)
 
         @test p.canopy.hydraulics.fa.:1 == turb_fluxes.vapor_flux
         @test p.canopy.energy.shf == turb_fluxes.shf
         @test p.canopy.energy.lhf == turb_fluxes.lhf
         @test p.canopy.conductance.transpiration == turb_fluxes.vapor_flux
-        c = FT(LSMP.light_speed(earth_param_set))
-        h = FT(LSMP.planck_constant(earth_param_set))
-        N_a = FT(LSMP.avogadro_constant(earth_param_set))
-        _σ = FT(LSMP.Stefan(earth_param_set))
+        c = FT(LP.light_speed(earth_param_set))
+        h = FT(LP.planck_constant(earth_param_set))
+        N_a = FT(LP.avogadro_constant(earth_param_set))
+        _σ = FT(LP.Stefan(earth_param_set))
         (; α_PAR_leaf, λ_γ_PAR, λ_γ_NIR, ϵ_canopy) =
             canopy.radiative_transfer.parameters
         APAR = p.canopy.radiative_transfer.apar
@@ -279,10 +279,10 @@ for FT in (Float32, Float64)
         r_ae = Array(parent(conditions.r_ae))[1] # s/m
         ga = 1 / r_ae
         γ = FT(66)
-        R = FT(LSMP.gas_constant(earth_param_set))
+        R = FT(LP.gas_constant(earth_param_set))
         gs = Array(
             parent(
-                ClimaLSM.Canopy.upscale_leaf_conductance.(
+                ClimaLand.Canopy.upscale_leaf_conductance.(
                     p.canopy.conductance.gs,
                     LAI,
                     FT.(T_atmos(t0)),
@@ -311,16 +311,16 @@ for FT in (Float32, Float64)
             Array(parent(turb_fluxes.vapor_flux))[1],
         ) < 0.5
 
-        @test ClimaLSM.surface_evaporative_scaling(canopy, Y, p) == FT(1.0)
-        @test ClimaLSM.surface_height(canopy, Y, p) == compartment_faces[1]
+        @test ClimaLand.surface_evaporative_scaling(canopy, Y, p) == FT(1.0)
+        @test ClimaLand.surface_height(canopy, Y, p) == compartment_faces[1]
         T_sfc = FT.(T_atmos(t0))
-        @test Array(parent(ClimaLSM.surface_temperature(canopy, Y, p, t0))) ==
+        @test Array(parent(ClimaLand.surface_temperature(canopy, Y, p, t0))) ==
               [T_sfc]
-        @test ClimaLSM.surface_temperature(canopy, Y, p, t0) isa
+        @test ClimaLand.surface_temperature(canopy, Y, p, t0) isa
               ClimaCore.Fields.Field
         @test Array(
             parent(
-                ClimaLSM.Canopy.canopy_temperature(
+                ClimaLand.Canopy.canopy_temperature(
                     canopy.energy,
                     canopy,
                     Y,
@@ -329,7 +329,7 @@ for FT in (Float32, Float64)
                 ),
             ),
         ) == [T_sfc]
-        @test ClimaLSM.Canopy.canopy_temperature(
+        @test ClimaLand.Canopy.canopy_temperature(
             canopy.energy,
             canopy,
             Y,
@@ -338,8 +338,8 @@ for FT in (Float32, Float64)
         ) isa ClimaCore.Fields.Field
 
         ρ_sfc =
-            ClimaLSM.surface_air_density(canopy.atmos, canopy, Y, p, t0, T_sfc)
-        @test ClimaLSM.surface_specific_humidity(canopy, Y, p, T_sfc, ρ_sfc) ==
+            ClimaLand.surface_air_density(canopy.atmos, canopy, Y, p, t0, T_sfc)
+        @test ClimaLand.surface_specific_humidity(canopy, Y, p, T_sfc, ρ_sfc) ==
               Thermodynamics.q_vap_saturation_generic.(
             Ref(thermo_params),
             T_sfc,
@@ -451,7 +451,7 @@ for FT in (Float32, Float64)
             FT(LAI * sin(200 * 2π / 365)),
         )
 
-        struct Default{FT} <: ClimaLSM.Canopy.AbstractCanopyComponent{FT} end
+        struct Default{FT} <: ClimaLand.Canopy.AbstractCanopyComponent{FT} end
         set_canopy_prescribed_field!(Default{FT}(), p, t0)
         update_canopy_prescribed_field!(Default{FT}(), p, t0)
         # Test that they are unchanged
@@ -643,13 +643,13 @@ for FT in (Float32, Float64)
             compartment_midpoints = compartment_centers,
         )
         autotrophic_parameters =
-            ClimaLSM.Canopy.AutotrophicRespirationParameters{FT}()
+            ClimaLand.Canopy.AutotrophicRespirationParameters{FT}()
         autotrophic_respiration_model =
-            ClimaLSM.Canopy.AutotrophicRespirationModel{FT}(
+            ClimaLand.Canopy.AutotrophicRespirationModel{FT}(
                 autotrophic_parameters,
             )
 
-        canopy = ClimaLSM.Canopy.CanopyModel{FT}(;
+        canopy = ClimaLand.Canopy.CanopyModel{FT}(;
             parameters = shared_params,
             domain = domain,
             radiative_transfer = rt_model,
@@ -664,19 +664,19 @@ for FT in (Float32, Float64)
         )
         @test canopy.radiative_transfer.parameters.ϵ_canopy == FT(0.98)
         @test canopy.energy.parameters.ac_canopy == FT(2.0e3)
-        Y, p, coords = ClimaLSM.initialize(canopy)
+        Y, p, coords = ClimaLand.initialize(canopy)
 
         # Check that structure of Y is value (will error if not)
         @test !isnothing(zero(Y))
         @test propertynames(p) == (:canopy, :drivers)
-        for component in ClimaLSM.Canopy.canopy_components(canopy)
+        for component in ClimaLand.Canopy.canopy_components(canopy)
             # Only hydraulics has a prognostic variable
             if component == :hydraulics
                 @test propertynames(getproperty(Y.canopy, component)) ==
-                      ClimaLSM.prognostic_vars(getproperty(canopy, component))
+                      ClimaLand.prognostic_vars(getproperty(canopy, component))
             end
             @test propertynames(getproperty(p.canopy, component)) ==
-                  ClimaLSM.auxiliary_vars(getproperty(canopy, component))
+                  ClimaLand.auxiliary_vars(getproperty(canopy, component))
 
             @test getproperty(auxiliary_types(canopy), component) ==
                   auxiliary_types(getproperty(canopy, component))
@@ -703,13 +703,13 @@ for FT in (Float32, Float64)
         @test all(Array(parent(p.canopy.energy.fa_energy_roots)) .== FT(0))
 
         @test all(
-            Array(parent(ClimaLSM.surface_temperature(canopy, Y, p, t0))) .==
+            Array(parent(ClimaLand.surface_temperature(canopy, Y, p, t0))) .==
             FT(289),
         )
         @test all(
             Array(
                 parent(
-                    ClimaLSM.Canopy.canopy_temperature(
+                    ClimaLand.Canopy.canopy_temperature(
                         canopy.energy,
                         canopy,
                         Y,

@@ -1,13 +1,13 @@
 using Test
 using ClimaCore
-using ClimaLSM
-using ClimaLSM.Domains: Column
-using ClimaLSM.Soil
-using ClimaLSM.Soil.Biogeochemistry
+using ClimaLand
+using ClimaLand.Domains: Column
+using ClimaLand.Soil
+using ClimaLand.Soil.Biogeochemistry
 using Dates
 
-import ClimaLSM.Parameters as LSMP
-include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
+import ClimaLand.Parameters as LP
+include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"))
 
 for FT in (Float32, Float64)
     @testset "Soil respiration test set, FT = $FT" begin
@@ -92,7 +92,7 @@ for FT in (Float32, Float64)
         atmos_h = FT(30)
         atmos_co2 = (t) -> 1.0
 
-        atmos = ClimaLSM.PrescribedAtmosphere(
+        atmos = ClimaLand.PrescribedAtmosphere(
             TimeVaryingInput(precipitation_function),
             TimeVaryingInput(snow_precip),
             TimeVaryingInput(atmos_T),

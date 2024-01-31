@@ -43,12 +43,12 @@
 # We begin by importing the developed code to create and run the neural network,
 # as well as some preliminary packages:
 using DataFrames, CSV, HTTP, Dates
-using ClimaLSM.Snow.ModelTools
-using ClimaLSM.Snow.DataTools
+using ClimaLand.Snow.ModelTools
+using ClimaLand.Snow.DataTools
 
 # and also some purpose-made functions for analyzing and displaying the output.
-using ClimaLSM
-code_dir = joinpath(pkgdir(ClimaLSM), "docs/tutorials/standalone/Snow")
+using ClimaLand
+code_dir = joinpath(pkgdir(ClimaLand), "docs/tutorials/standalone/Snow")
 include(joinpath(code_dir, "analysis_tools.jl"))
 include(joinpath(code_dir, "display_tools.jl"));
 
@@ -84,7 +84,7 @@ p_idx = 7;
 
 # We next read in the already-cleaned dataset, though for custom datasets
 # there is plenty of functionality provided in [`DataTools`](@ref
-# ClimaLSM.Snow.DataTools) to scrape SNOTEL data directly. We also set the
+# ClimaLand.Snow.DataTools) to scrape SNOTEL data directly. We also set the
 # unit timestep seen in this data (daily, so 1 day) to be used for
 # setting the network's constraints as well as generating timeseries during usage.
 # To see the code that generated this data file, check out the [data tutorial](../data_tutorial/).

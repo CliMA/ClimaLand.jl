@@ -1,11 +1,11 @@
 # # Setting up a Coupled Simulation
 
 # For more information about the bucket model,
-# please see [the bucket model tutorial](https://clima.github.io/ClimaLSM.jl/dev/generated/bucket_tutorial/).
+# please see [the bucket model tutorial](https://clima.github.io/ClimaLand.jl/dev/generated/bucket_tutorial/).
 
 # This tutorial shows how to set up a simulation for a coupled simulation. More detail for coupled runs can be
 # found in the ClimaCoupler.jl [documentation](https://clima.github.io/ClimaCoupler.jl/dev/). In
-# preparation for understanding this tutorial, we recommend also reading the [intro to multi-component models tutorial](https://clima.github.io/ClimaLSM.jl/dev/generated/LSM_single_column_tutorial/) as well as being familiar
+# preparation for understanding this tutorial, we recommend also reading the [intro to multi-component models tutorial](https://clima.github.io/ClimaLand.jl/dev/generated/LSM_single_column_tutorial/) as well as being familiar
 # with multiple dispatch programming in Julia.
 
 # # Background
@@ -57,11 +57,11 @@
 # ` prescribed_atmos = PrescribedAtmosphere{FT}(*driver data passed in here*)`
 # ` prescribed_radiation = PrescribedRadiativeFluxes{FT}(*driver data passed in here*) `
 
-# These are stored in the [BucketModel](https://clima.github.io/ClimaLSM.jl/dev/APIs/Bucket/#ClimaLSM.Bucket.BucketModel) object,
-# along with [BucketParameters](https://clima.github.io/ClimaLSM.jl/dev/APIs/Bucket/#ClimaLSM.Bucket.BucketParameters).
-# In order to compute turbulent surface fluxes, we call [turbulent_fluxes](https://clima.github.io/ClimaLSM.jl/dev/APIs/shared_utilities/#ClimaLSM.turbulent_fluxes),
+# These are stored in the [BucketModel](https://clima.github.io/ClimaLand.jl/dev/APIs/Bucket/#ClimaLand.Bucket.BucketModel) object,
+# along with [BucketParameters](https://clima.github.io/ClimaLand.jl/dev/APIs/Bucket/#ClimaLand.Bucket.BucketParameters).
+# In order to compute turbulent surface fluxes, we call [turbulent_fluxes](https://clima.github.io/ClimaLand.jl/dev/APIs/shared_utilities/#ClimaLand.turbulent_fluxes),
 # with arguments including `prescribed_atmos`. Since this argument is of the type `PrescribedAtmosphere`, the method of `turbulent_fluxes` which is executed is one which computes the turbulent surface fluxes
-# using MOST. We have a similar function for [net_radiation](https://clima.github.io/ClimaLSM.jl/dev/APIs/shared_utilities/#ClimaLSM.net_radiation) and which computes the net radiation based on the prescribed downwelling radiative fluxes, stored in an argument
+# using MOST. We have a similar function for [net_radiation](https://clima.github.io/ClimaLand.jl/dev/APIs/shared_utilities/#ClimaLand.net_radiation) and which computes the net radiation based on the prescribed downwelling radiative fluxes, stored in an argument
 # `prescribed_radiation`, which is of type `PrescribedRadiation`.
 
 # In the coupled case, we want different behavior. We have defined new ``coupled`` types to
@@ -73,7 +73,7 @@
 # Then, we have defined a new method for `turbulent_fluxes` and `net_radiation` which dispatch for these types,
 # and simply return the fluxes that the coupler has updated `p.bucket.turbulent_fluxes` and `p.bucket.R_n` with.
 # In pseudo code:
-# function ClimaLSM.turbulent_fluxes(
+# function ClimaLand.turbulent_fluxes(
 #    atmos::CoupledAtmosphere,
 #    model::BucketModel,
 #    p)
@@ -86,7 +86,7 @@
 
 # similarily: 
 
-# function ClimaLSM.net_radiation(
+# function ClimaLand.net_radiation(
 #     radiation::CoupledRadiativeFluxes{FT},
 #     model::BucketModel{FT},
 #     p)
@@ -101,13 +101,13 @@
 # # Surface air density
 # Within the right hand side/ODE function calls for the bucket model, we need both the 
 # surface air density (for computing specific humidity at the surface). In standalone runs,
-# we call the function [`surface_air_density`](https://clima.github.io/ClimaLSM.jl/dev/APIs/shared_utilities/#ClimaLSM.surface_air_density),
+# we call the function [`surface_air_density`](https://clima.github.io/ClimaLand.jl/dev/APIs/shared_utilities/#ClimaLand.surface_air_density),
 # When the `atmos` type is `PrescribedAtmosphere`, this function uses the atmospheric state and surface
 # temperature to estimate the surface air density assuming an ideal gas and hydrostatic balance
 # and by extrapolating from the air density at the lowest level of the atmosphere.
 
 # In the coupled case, we need to extend these functions with a `CoupledAtmosphere` method:
-# function ClimaLSM.surface_air_density(
+# function ClimaLand.surface_air_density(
 #     atmos::CoupledAtmosphere,
 #     model::BucketModel,
 #     p)

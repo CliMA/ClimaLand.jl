@@ -2,24 +2,24 @@ using Test
 using ClimaCore
 import CLIMAParameters as CP
 using Thermodynamics
-using ClimaLSM
-using ClimaLSM.Soil
-import ClimaLSM
-import ClimaLSM.Parameters as LSMP
+using ClimaLand
+using ClimaLand.Soil
+import ClimaLand
+import ClimaLand.Parameters as LP
 
 using Dates
-include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
+include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"))
 
 for FT in (Float32, Float64)
     @testset "Surface fluxes and radiation for soil, FT = $FT" begin
         earth_param_set = create_lsm_parameters(FT)
 
         soil_domains = [
-            ClimaLSM.Domains.Column(;
+            ClimaLand.Domains.Column(;
                 zlim = FT.((-100.0, 0.0)),
                 nelements = 10,
             ),
-            ClimaLSM.Domains.HybridBox(;
+            ClimaLand.Domains.HybridBox(;
                 xlim = FT.((-1.0, 0.0)),
                 ylim = FT.((-1.0, 0.0)),
                 zlim = FT.((-100.0, 0.0)),
@@ -90,11 +90,11 @@ for FT in (Float32, Float64)
             h_atmos,
         )
         @test atmos.gustiness == FT(1)
-        top_bc = ClimaLSM.Soil.AtmosDrivenFluxBC(atmos, radiation)
+        top_bc = ClimaLand.Soil.AtmosDrivenFluxBC(atmos, radiation)
         zero_flux = FluxBC((p, t) -> 0.0)
         boundary_fluxes =
             (; top = top_bc, bottom = (water = zero_flux, heat = zero_flux))
-        params = ClimaLSM.Soil.EnergyHydrologyParameters{FT}(;
+        params = ClimaLand.Soil.EnergyHydrologyParameters{FT}(;
             κ_dry = κ_dry_soil,
             κ_sat_frozen = κ_sat_frozen,
             κ_sat_unfrozen = κ_sat_unfrozen,
@@ -168,7 +168,7 @@ for FT in (Float32, Float64)
             @test p.drivers.P == zeros(space) .+ FT(101325)
             @test p.drivers.LW_d == zeros(space) .+ FT(5.67e-8 * 280.0^4.0)
             @test p.drivers.SW_d == zeros(space) .+ FT(500)
-            face_space = ClimaLSM.Domains.obtain_face_space(
+            face_space = ClimaLand.Domains.obtain_face_space(
                 model.domain.space.subsurface,
             )
             N = ClimaCore.Spaces.nlevels(face_space)
@@ -183,18 +183,18 @@ for FT in (Float32, Float64)
                 surface_space,
             )
             T_sfc = ClimaCore.Fields.zeros(surface_space) .+ FT(280.0)
-            @test ClimaLSM.surface_emissivity(model, Y, p) == emissivity
-            @test ClimaLSM.surface_evaporative_scaling(model, Y, p) == FT(1)
-            @test ClimaLSM.surface_height(model, Y, p) == z_sfc
-            @test ClimaLSM.surface_albedo(model, Y, p) ==
+            @test ClimaLand.surface_emissivity(model, Y, p) == emissivity
+            @test ClimaLand.surface_evaporative_scaling(model, Y, p) == FT(1)
+            @test ClimaLand.surface_height(model, Y, p) == z_sfc
+            @test ClimaLand.surface_albedo(model, Y, p) ==
                   PAR_albedo / 2 + NIR_albedo / 2
-            @test ClimaLSM.surface_temperature(model, Y, p, t) == T_sfc
+            @test ClimaLand.surface_temperature(model, Y, p, t) == T_sfc
 
             thermo_params =
-                LSMP.thermodynamic_parameters(model.parameters.earth_param_set)
+                LP.thermodynamic_parameters(model.parameters.earth_param_set)
             ts_in = construct_atmos_ts(atmos, p, thermo_params)
             ρ_sfc = compute_ρ_sfc.(thermo_params, ts_in, T_sfc)
-            @test ClimaLSM.surface_air_density(
+            @test ClimaLand.surface_air_density(
                 model.boundary_conditions.top.atmos,
                 model,
                 Y,
@@ -210,14 +210,14 @@ for FT in (Float32, Float64)
                     ρ_sfc,
                     Ref(Thermodynamics.Liquid()),
                 )
-            g = LSMP.grav(model.parameters.earth_param_set)
-            M_w = LSMP.molar_mass_water(model.parameters.earth_param_set)
-            R = LSMP.gas_constant(model.parameters.earth_param_set)
+            g = LP.grav(model.parameters.earth_param_set)
+            M_w = LP.molar_mass_water(model.parameters.earth_param_set)
+            R = LP.gas_constant(model.parameters.earth_param_set)
             ψ_sfc =
                 Array(parent(p.soil.ψ))[end] .+
                 ClimaCore.Fields.zeros(surface_space)
             q_sfc = @. (q_sat * exp(g * ψ_sfc * M_w / (R * T_sfc)))
-            @test ClimaLSM.surface_specific_humidity(
+            @test ClimaLand.surface_specific_humidity(
                 model,
                 Y,
                 p,
@@ -225,14 +225,14 @@ for FT in (Float32, Float64)
                 ρ_sfc,
             ) == q_sfc
 
-            conditions = ClimaLSM.turbulent_fluxes(
+            conditions = ClimaLand.turbulent_fluxes(
                 model.boundary_conditions.top.atmos,
                 model,
                 Y,
                 p,
                 t,
             )
-            R_n = ClimaLSM.net_radiation(
+            R_n = ClimaLand.net_radiation(
                 model.boundary_conditions.top.radiation,
                 model,
                 Y,
@@ -242,9 +242,9 @@ for FT in (Float32, Float64)
             @test R_n == p.soil.R_n
             @test conditions == p.soil.turbulent_fluxes
 
-            fluxes = ClimaLSM.Soil.soil_boundary_fluxes(
+            fluxes = ClimaLand.Soil.soil_boundary_fluxes(
                 top_bc,
-                ClimaLSM.TopBoundary(),
+                ClimaLand.TopBoundary(),
                 model,
                 nothing,
                 Y,
@@ -254,11 +254,11 @@ for FT in (Float32, Float64)
             computed_water_flux = fluxes.water
             computed_energy_flux = fluxes.heat
             (; ν, θ_r, d_ds) = model.parameters
-            _D_vapor = FT(LSMP.D_vapor(model.parameters.earth_param_set))
-            S_l_sfc = ClimaLSM.Domains.top_center_to_surface(
+            _D_vapor = FT(LP.D_vapor(model.parameters.earth_param_set))
+            S_l_sfc = ClimaLand.Domains.top_center_to_surface(
                 Soil.effective_saturation.(ν, Y.soil.ϑ_l, θ_r),
             )
-            τ_a = ClimaLSM.Domains.top_center_to_surface(
+            τ_a = ClimaLand.Domains.top_center_to_surface(
                 @. (ν - p.soil.θ_l - Y.soil.θ_i)^(FT(5 / 2)) / ν
             )
             dsl = Soil.dry_soil_layer_thickness.(S_l_sfc, S_c, d_ds)

@@ -1,28 +1,28 @@
 using Test
 import CLIMAParameters as CP
-using ClimaLSM.Soil
-import ClimaLSM
-import ClimaLSM.Parameters as LSMP
-include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
+using ClimaLand.Soil
+import ClimaLand
+import ClimaLand.Parameters as LP
+include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"))
 
 for FT in (Float32, Float64)
     @testset "integrated Energy and Hydrology Parameterizations, FT = $FT" begin
         param_set = create_lsm_parameters(FT)
 
         # Density of liquid water (kg/m``^3``)
-        _ρ_l = FT(LSMP.ρ_cloud_liq(param_set))
+        _ρ_l = FT(LP.ρ_cloud_liq(param_set))
         # Density of ice water (kg/m``^3``)
-        _ρ_i = FT(LSMP.ρ_cloud_ice(param_set))
+        _ρ_i = FT(LP.ρ_cloud_ice(param_set))
         # Volum. isobaric heat capacity liquid water (J/m3/K)
-        _ρcp_l = FT(LSMP.cp_l(param_set) * _ρ_l)
+        _ρcp_l = FT(LP.cp_l(param_set) * _ρ_l)
         # Volumetric isobaric heat capacity ice (J/m3/K)
-        _ρcp_i = FT(LSMP.cp_i(param_set) * _ρ_i)
+        _ρcp_i = FT(LP.cp_i(param_set) * _ρ_i)
         # Reference temperature (K)
-        _T_ref = FT(LSMP.T_0(param_set))
+        _T_ref = FT(LP.T_0(param_set))
         # Latent heat of fusion at ``T_0`` (J/kg)
-        _LH_f0 = FT(LSMP.LH_f0(param_set))
+        _LH_f0 = FT(LP.LH_f0(param_set))
         # Thermal conductivity of dry air
-        κ_air = FT(LSMP.K_therm(param_set))
+        κ_air = FT(LP.K_therm(param_set))
 
         ν = FT(0.2)
         S_s = FT(1e-3)
@@ -145,14 +145,13 @@ for FT in (Float32, Float64)
             Soil.effective_saturation(ν, θ_r - eps(FT), θ_r),
             hcm.S_c,
             parameters.d_ds,
-        ) / FT(LSMP.D_vapor(param_set)) /
-              soil_tortuosity(θ_r + eps(FT), FT(0), ν)
+        ) / FT(LP.D_vapor(param_set)) / soil_tortuosity(θ_r + eps(FT), FT(0), ν)
         @test soil_resistance(ν, ν + eps(FT), FT(0.0), parameters) ≈
               dry_soil_layer_thickness(
             Soil.effective_saturation(ν, ν + eps(FT), θ_r),
             hcm.S_c,
             parameters.d_ds,
-        ) / FT(LSMP.D_vapor(param_set)) / soil_tortuosity(ν, FT(0), ν)
+        ) / FT(LP.D_vapor(param_set)) / soil_tortuosity(ν, FT(0), ν)
     end
 
     @testset "Brooks and Corey closure, FT = $FT" begin
@@ -253,24 +252,24 @@ for FT in (Float32, Float64)
         param_set = create_lsm_parameters(FT)
 
         # Density of liquid water (kg/m``^3``)
-        _ρ_l = FT(LSMP.ρ_cloud_liq(param_set))
+        _ρ_l = FT(LP.ρ_cloud_liq(param_set))
         # Density of ice water (kg/m``^3``)
-        _ρ_i = FT(LSMP.ρ_cloud_ice(param_set))
+        _ρ_i = FT(LP.ρ_cloud_ice(param_set))
         # Volum. isobaric heat capacity liquid water (J/m3/K)
-        _ρcp_l = FT(LSMP.cp_l(param_set) * _ρ_l)
+        _ρcp_l = FT(LP.cp_l(param_set) * _ρ_l)
         # Volumetric isobaric heat capacity ice (J/m3/K)
-        _ρcp_i = FT(LSMP.cp_i(param_set) * _ρ_i)
+        _ρcp_i = FT(LP.cp_i(param_set) * _ρ_i)
         # Reference temperature (K)
-        _T_ref = FT(LSMP.T_0(param_set))
+        _T_ref = FT(LP.T_0(param_set))
         # Latent heat of fusion at ``T_0`` (J/kg)
-        _LH_f0 = FT(LSMP.LH_f0(param_set))
+        _LH_f0 = FT(LP.LH_f0(param_set))
         # Gravitational acceleration
-        _grav = FT(LSMP.grav(param_set))
+        _grav = FT(LP.grav(param_set))
         # T freeze
-        _T_freeze = FT(LSMP.T_freeze(param_set))
+        _T_freeze = FT(LP.T_freeze(param_set))
 
         # Thermal conductivity of dry air
-        κ_air = FT(LSMP.K_therm(param_set))
+        κ_air = FT(LP.K_therm(param_set))
 
         ν = FT(0.2)
         S_s = FT(1e-3)

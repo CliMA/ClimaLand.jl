@@ -1,6 +1,6 @@
 using Test
-import ClimaLSM
-import ClimaLSM: TimeVaryingInputs
+import ClimaLand
+import ClimaLand: TimeVaryingInputs
 
 import ClimaCore: Domains, Geometry, Fields, Meshes, Topologies, Spaces
 import ClimaComms

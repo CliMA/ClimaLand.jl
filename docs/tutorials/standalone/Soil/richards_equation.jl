@@ -1,6 +1,6 @@
 # # Hydrostatic Equilibrium test for Richards Equation
 
-# This tutorial shows how to use `ClimaLSM` code to solve
+# This tutorial shows how to use `ClimaLand` code to solve
 # Richards equation in a column of soil. We choose boundary
 # conditions of zero flux at the top and bottom of the column,
 # and then run the simulation long enough to see that the system
@@ -55,19 +55,19 @@
 
 import SciMLBase
 using Plots
-# - Load CliMA packages and ClimaLSM modules
+# - Load CliMA packages and ClimaLand modules
 
 using ClimaCore
 import CLIMAParameters as CP
 import ClimaTimeSteppers as CTS
 
-using ClimaLSM
-using ClimaLSM.Domains: Column
-using ClimaLSM.Soil
+using ClimaLand
+using ClimaLand.Domains: Column
+using ClimaLand.Soil
 
-import ClimaLSM
-import ClimaLSM.Parameters as LSMP
-include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"));
+import ClimaLand
+import ClimaLand.Parameters as LP
+include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"));
 
 # - Define the float type desired (`Float64` or `Float32`), and get the parameter set, which holds constants used across CliMA models:
 const FT = Float32;
@@ -78,7 +78,7 @@ earth_param_set = create_lsm_parameters(FT);
 # We want to solve Richards equation alone, without simultaneously
 # solving the heat equation. Because of that, we choose a
 # [`RichardsModel`](@ref
-# ClimaLSM.Soil.RichardsModel). Taking a look at the documentation (linked),
+# ClimaLand.Soil.RichardsModel). Taking a look at the documentation (linked),
 # we see that we need to supply parameters, a domain, boundary conditions, and sources.
 
 
@@ -135,8 +135,8 @@ soil = Soil.RichardsModel{FT}(;
 # variable components that are stepped explicitly and implicitly, respectively.
 # We also create the function which is used to update our Jacobian.
 exp_tendency! = make_exp_tendency(soil);
-imp_tendency! = ClimaLSM.make_imp_tendency(soil);
-update_jacobian! = ClimaLSM.make_update_jacobian(soil);
+imp_tendency! = ClimaLand.make_imp_tendency(soil);
+update_jacobian! = ClimaLand.make_update_jacobian(soil);
 
 # # Set up the simulation
 # We can now initialize the prognostic and auxiliary variable vectors, and take
@@ -191,7 +191,7 @@ prob = SciMLBase.ODEProblem(
     CTS.ClimaODEFunction(
         T_exp! = exp_tendency!,
         T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
-        dss! = ClimaLSM.dss!,
+        dss! = ClimaLand.dss!,
     ),
     Y,
     (t0, tf),

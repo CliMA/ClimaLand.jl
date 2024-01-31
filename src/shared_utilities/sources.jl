@@ -14,7 +14,7 @@ abstract type AbstractSource{FT <: AbstractFloat} end
              p::NamedTuple
              )::ClimaCore.Fields.Field
 
-A stub function, which is extended by ClimaLSM.
+A stub function, which is extended by ClimaLand.
 """
 function source!(
     dY::ClimaCore.Fields.FieldVector,

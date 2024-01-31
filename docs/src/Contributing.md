@@ -1,6 +1,6 @@
 # Contributing
 
-Thank you for contributing to `ClimaLSM`! We encourage
+Thank you for contributing to `ClimaLand`! We encourage
 Pull Requests (PRs). Please do not hesitate to ask questions.
 
 ## Some useful tips

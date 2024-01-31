@@ -6,16 +6,16 @@ using Plots
 using Statistics
 using Dates
 
-using ClimaLSM
-using ClimaLSM.Domains: Column
-using ClimaLSM.Soil
-using ClimaLSM.Soil.Biogeochemistry
-using ClimaLSM.Canopy
-using ClimaLSM.Canopy.PlantHydraulics
-import ClimaLSM
-import ClimaLSM.Parameters as LSMP
-climalsm_dir = pkgdir(ClimaLSM)
-include(joinpath(climalsm_dir, "parameters", "create_parameters.jl"))
+using ClimaLand
+using ClimaLand.Domains: Column
+using ClimaLand.Soil
+using ClimaLand.Soil.Biogeochemistry
+using ClimaLand.Canopy
+using ClimaLand.Canopy.PlantHydraulics
+import ClimaLand
+import ClimaLand.Parameters as LP
+climaland_dir = pkgdir(ClimaLand)
+include(joinpath(climaland_dir, "parameters", "create_parameters.jl"))
 
 for float_type in (Float32, Float64)
     # Make these global so we can use them in other ozark files
@@ -25,33 +25,33 @@ for float_type in (Float32, Float64)
 
     # Utility functions for reading in and filling fluxnet data
     include(
-        joinpath(climalsm_dir, "experiments/integrated/fluxnet/data_tools.jl"),
+        joinpath(climaland_dir, "experiments/integrated/fluxnet/data_tools.jl"),
     )
     # Site-specific domain parameters
     include(
         joinpath(
-            climalsm_dir,
+            climaland_dir,
             "experiments/integrated/fluxnet/$(site_ID)/$(site_ID)_simulation.jl",
         ),
     )
     # Setup the domain for the simulation
     include(
         joinpath(
-            climalsm_dir,
+            climaland_dir,
             "experiments/integrated/fluxnet/fluxnet_domain.jl",
         ),
     )
     # Read in the parameters for the Ozark site
     include(
         joinpath(
-            climalsm_dir,
+            climaland_dir,
             "experiments/integrated/fluxnet/$(site_ID)/$(site_ID)_parameters.jl",
         ),
     )
     # Read simulation parameters for the conservation test
     include(
         joinpath(
-            climalsm_dir,
+            climaland_dir,
             "experiments/integrated/ozark/conservation/ozark_simulation.jl",
         ),
     )
@@ -59,7 +59,7 @@ for float_type in (Float32, Float64)
     # the atmospheric and radiative driver structs for the model
     include(
         joinpath(
-            climalsm_dir,
+            climaland_dir,
             "experiments/integrated/fluxnet/met_drivers_FLUXNET.jl",
         ),
     )
@@ -314,15 +314,15 @@ for float_type in (Float32, Float64)
         t = Array{Float64}(undef, length(saveat)),
         saveval = Array{NamedTuple}(undef, length(saveat)),
     )
-    saving_cb = ClimaLSM.NonInterpSavingCallback(sv, saveat)
+    saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat)
 
     updateat = deepcopy(saveat)
-    updatefunc = ClimaLSM.make_update_drivers(atmos, radiation)
-    driver_cb = ClimaLSM.DriverUpdateCallback(updateat, updatefunc)
+    updatefunc = ClimaLand.make_update_drivers(atmos, radiation)
+    driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
     prob = SciMLBase.ODEProblem(
         CTS.ClimaODEFunction(
             T_exp! = exp_tendency!,
-            dss! = ClimaLSM.dss!,
+            dss! = ClimaLand.dss!,
             T_imp! = nothing,
         ),
         Y,
@@ -357,7 +357,7 @@ for float_type in (Float32, Float64)
         ) < eps(FT)
         T_mutable = Vector{FT}(undef, 1)
         atmos_T = map(sv.t) do time
-            ClimaLSM.evaluate!(T_mutable, atmos.T, time)
+            ClimaLand.evaluate!(T_mutable, atmos.T, time)
             return T_mutable[]
         end |> collect
 
@@ -365,7 +365,7 @@ for float_type in (Float32, Float64)
 
         daily = sol.t[2:end] ./ 3600 ./ 24
         savedir =
-            joinpath(climalsm_dir, "experiments/integrated/ozark/conservation")
+            joinpath(climaland_dir, "experiments/integrated/ozark/conservation")
 
         # The aux state in `sv` is an index off from the solution..
         # Aux state at index 2 corresponds to the solution at index 1
@@ -391,7 +391,7 @@ for float_type in (Float32, Float64)
 
         precip =
             map(sol.t[k] for k in 1:(length(sol.t) - 1)) do time
-                ClimaLSM.evaluate!(p_mutable, atmos.liquid_precip, time)
+                ClimaLand.evaluate!(p_mutable, atmos.liquid_precip, time)
                 return p_mutable[]
             end |> collect
 
@@ -401,8 +401,8 @@ for float_type in (Float32, Float64)
         # N.B. in ClimaCore, sum(field) -> integral
         rhs_soil = -(precip .+ E .- soil_bottom_flux) .+ root_sink
 
-        ρ_liq = LSMP.ρ_cloud_liq(earth_param_set)
-        ρ_ice = LSMP.ρ_cloud_ice(earth_param_set)
+        ρ_liq = LP.ρ_cloud_liq(earth_param_set)
+        ρ_ice = LP.ρ_cloud_ice(earth_param_set)
         net_soil_water_storage = [
             sum(sol.u[k].soil.ϑ_l .+ sol.u[k].soil.θ_i .* ρ_ice ./ ρ_liq)[1]
             for k in 1:length(sol.t)

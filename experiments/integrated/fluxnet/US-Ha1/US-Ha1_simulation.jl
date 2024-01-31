@@ -1,4 +1,4 @@
-"""This file contains simulation variables for running CliMA LSM on the US-Ha1
+"""This file contains simulation variables for running Clima Land on the US-Ha1
 fluxtower site. This includes both the domain variables and timestepping 
 variables for running the simulation."""
 

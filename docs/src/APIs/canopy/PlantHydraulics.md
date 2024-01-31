@@ -1,38 +1,38 @@
 # PlantHydraulics
 
 ```@meta
-CurrentModule = ClimaLSM.PlantHydraulics
+CurrentModule = ClimaLand.PlantHydraulics
 ```
 ## Models
 
 ```@docs
-ClimaLSM.PlantHydraulics.PlantHydraulicsModel
+ClimaLand.PlantHydraulics.PlantHydraulicsModel
 ```
 
 ## Plant Hydraulics Diagnostic Variables
 
 ```@docs
-ClimaLSM.PlantHydraulics.effective_saturation
-ClimaLSM.PlantHydraulics.augmented_liquid_fraction
-ClimaLSM.PlantHydraulics.water_retention_curve
-ClimaLSM.PlantHydraulics.inverse_water_retention_curve
-ClimaLSM.PlantHydraulics.root_water_flux_per_ground_area!
-ClimaLSM.PlantHydraulics.flux
-ClimaLSM.PlantHydraulics.hydraulic_conductivity
+ClimaLand.PlantHydraulics.effective_saturation
+ClimaLand.PlantHydraulics.augmented_liquid_fraction
+ClimaLand.PlantHydraulics.water_retention_curve
+ClimaLand.PlantHydraulics.inverse_water_retention_curve
+ClimaLand.PlantHydraulics.root_water_flux_per_ground_area!
+ClimaLand.PlantHydraulics.flux
+ClimaLand.PlantHydraulics.hydraulic_conductivity
 ```
 
 ## Plant Hydraulics Parameters
 
 ```@docs
-ClimaLSM.PlantHydraulics.PlantHydraulicsParameters
-ClimaLSM.PlantHydraulics.Weibull
-ClimaLSM.PlantHydraulics.LinearRetentionCurve
+ClimaLand.PlantHydraulics.PlantHydraulicsParameters
+ClimaLand.PlantHydraulics.Weibull
+ClimaLand.PlantHydraulics.LinearRetentionCurve
 ```
 
 ## Plant Hydraulics Methods and Types
 
 ```@docs
-ClimaLSM.PlantHydraulics.PrescribedSoilPressure
-ClimaLSM.PlantHydraulics.PrescribedTranspiration
-ClimaLSM.PlantHydraulics.AbstractRootExtraction
+ClimaLand.PlantHydraulics.PrescribedSoilPressure
+ClimaLand.PlantHydraulics.PrescribedTranspiration
+ClimaLand.PlantHydraulics.AbstractRootExtraction
 ```
