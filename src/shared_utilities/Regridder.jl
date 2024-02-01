@@ -244,9 +244,8 @@ function hdwrite_regridfile_rll_to_cgll(
             meshfile_overlap;
             kwargs...,
         )
-        for varname in varnames
-            apply_remap(datafile_cgll, datafile_rll, weightfile, [varname])
-        end
+
+        apply_remap(datafile_cgll, datafile_rll, weightfile, varnames)
     else
         @warn "Using the existing $datafile_cgll : check topology is consistent"
     end

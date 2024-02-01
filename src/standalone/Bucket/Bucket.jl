@@ -117,7 +117,7 @@ end
         regrid_dirpath::String,
         surface_space::ClimaCore.Spaces.AbstractSpace;
         α_snow = FT(0.8),
-        varname = []"sw_alb"],
+        varname = ["sw_alb"],
         get_infile::Function = Bucket.bareground_albedo_dataset_path,
     ) where {FT}
 

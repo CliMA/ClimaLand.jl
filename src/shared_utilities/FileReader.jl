@@ -286,7 +286,7 @@ function PrescribedDataTemporal{FT}(
     file_states = Dict{String, FileState{typeof(data_fields)}}()
     for varname in varnames
         file_states[varname] =
-            FileState(data_fields, copy(date_idx0), segment_length)
+            FileState(deepcopy(data_fields), copy(date_idx0), segment_length)
     end
     sim_info = SimInfo(date_ref, t_start)
 
@@ -339,7 +339,7 @@ function read_data_fields!(
 
     # Case 1: Current date is before or at first date in data file
     #  Load in data at first date for both `data_fields[1]` and `data_fields[2]`
-    if (date_idx == date_idx0) && (Dates.days(date - all_dates[date_idx]) <= 0)
+    if (date_idx == date_idx0) && (date <= all_dates[date_idx])
         if date !== all_dates[date_idx]
             @warn "this time period is before input data - using file from $(all_dates[date_idx0])"
         end
@@ -362,7 +362,7 @@ function read_data_fields!(
 
         # Case 2: current date is at or after last date in input file
         #  Load in data at last date for both `data_fields[1]` and `data_fields[2]`
-    elseif Dates.days(date - all_dates[end - 1]) >= 0
+    elseif date >= all_dates[end - 1]
         @warn "this time period is after input data - using file from $(all_dates[end - 1])"
 
         # Loop over all variables we need to read in
@@ -384,49 +384,45 @@ function read_data_fields!(
         # Case 3: current date is later than date of data being read in
         #  Load in data at most recent past date in `data_fields[1]` and
         #  next date in `data_fields[2]`
-    elseif Dates.days(date - all_dates[Int(date_idx)]) > 0
-        @warn "On $date updating data files: dates = [ $(all_dates[Int(date_idx+1)]) , $(all_dates[Int(date_idx+2)]) ]"
-
+        # elseif Dates.days(date - all_dates[Int(date_idx)]) > 0
+    elseif date > all_dates[Int(date_idx)]
         # Loop over all variables we need to read in
         for (varname, file_state) in pd_file_states
+            file_state = pd_file_states[varname]
+
             # Increment `date_idx` to use next date
             date_idx = file_state.date_idx[1] += Int(1)
             # Time between consecutive dates being stored gives `segment_length`
             file_state.segment_length .=
                 (all_dates[Int(date_idx + 1)] - all_dates[Int(date_idx)]).value
-            # Read in data fields at both dates
-            file_state.data_fields[1] .= Regridder.swap_space!(
-                Regridder.read_from_hdf5(
-                    regrid_dirpath,
-                    outfile_root,
-                    all_dates[Int(date_idx)],
-                    varname,
-                    comms_ctx,
-                ),
-                space,
-            )
-            file_state.data_fields[2] .= Regridder.swap_space!(
-                Regridder.read_from_hdf5(
-                    regrid_dirpath,
-                    outfile_root,
-                    all_dates[Int(date_idx + 1)],
-                    varname,
-                    comms_ctx,
-                ),
-                space,
-            )
-        end
-        # Case 4: Nearest date index not being used for initial date field
-        #  Throw warning and update date index
-    elseif Dates.days(date - all_dates[Int(date_idx + 1)]) > 2
-        @warn "init data does not correspond to start date. Initializing with `date_idx = date_idx0 = $nearest_idx` for this start date"
-        nearest_idx =
-            argmin(abs.(Dates.value(date) .- Dates.value.(all_dates[:])))
 
-        # Loop over all variables we need to read in
-        for (_, file_state) in pd_file_states
-            file_state.date_idx[1] = date_idx = date_idx0 = nearest_idx
+            # Read in data fields at both dates
+            file_state.data_fields[1] .= deepcopy(
+                Regridder.swap_space!(
+                    Regridder.read_from_hdf5(
+                        regrid_dirpath,
+                        outfile_root,
+                        all_dates[Int(date_idx)],
+                        varname,
+                        comms_ctx,
+                    ),
+                    space,
+                ),
+            )
+            file_state.data_fields[2] .= deepcopy(
+                Regridder.swap_space!(
+                    Regridder.read_from_hdf5(
+                        regrid_dirpath,
+                        outfile_root,
+                        all_dates[Int(date_idx + 1)],
+                        varname,
+                        comms_ctx,
+                    ),
+                    space,
+                ),
+            )
         end
+        # Case 4: Everything else
     else
         throw(ErrorException("Check input file specification"))
     end

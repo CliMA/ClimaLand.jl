@@ -11,8 +11,14 @@ using Test
 using Dates
 using NCDatasets
 
+# Include testing artifacts from Bucket
 albedo_temporal_data = Bucket.cesm2_albedo_dataset_path
 albedo_bareground_data = Bucket.bareground_albedo_dataset_path
+
+# Include testing artifacts from test directory
+include(joinpath(pkgdir(ClimaLand), "test", "artifacts", "artifacts.jl"))
+era5_t2m_sp_u10n_data = era5_t2m_sp_u10n_dataset_path
+era5_t2m_sp_u10n_static_data = era5_t2m_sp_u10n_static_dataset_path
 
 comms_ctx = ClimaComms.SingletonCommsContext()
 
@@ -20,8 +26,6 @@ comms_ctx = ClimaComms.SingletonCommsContext()
 regrid_dir_static = joinpath(pkgdir(ClimaLand), "test", "regridding")
 regrid_dir_temporal =
     joinpath(pkgdir(ClimaLand), "test", "regridding", "temporal")
-isdir(regrid_dir_static) ? nothing : mkpath(regrid_dir_static)
-isdir(regrid_dir_temporal) ? nothing : mkpath(regrid_dir_temporal)
 
 """
 Set NaN and Missing to zero (GPU compatible)
@@ -76,31 +80,40 @@ if !Sys.iswindows()
         quad = Spaces.Quadratures.GLL{Nq}()
         surface_space_t = Spaces.SpectralElementSpace2D(topology, quad)
 
-        get_infile = albedo_temporal_data
-        varnames = ["sw_alb"]
-        ps_data_spatial = FileReader.PrescribedDataStatic{FT}(
-            get_infile,
-            regrid_dir_static,
-            varnames,
-            surface_space_t,
-        )
+        # Loop over files with one and multiple variables
+        for (get_infile, varnames) in [
+            (albedo_bareground_data, ["sw_alb"]),
+            (era5_t2m_sp_u10n_static_data, ["t2m", "sp", "u10n"]),
+        ]
+            # reset regrid directory between files
+            isdir(regrid_dir_static) ? nothing : mkpath(regrid_dir_static)
 
-        # test that created object exists
-        @test @isdefined(ps_data_spatial)
-        @test ps_data_spatial isa FileReader.AbstractPrescribedData
+            ps_data_spatial = FileReader.PrescribedDataStatic{FT}(
+                get_infile,
+                regrid_dir_static,
+                varnames,
+                surface_space_t,
+            )
 
-        # test fields that we've passed into constructor as args
-        @test ps_data_spatial.file_info.infile_path == get_infile()
-        @test ps_data_spatial.file_info.regrid_dirpath == regrid_dir_static
-        @test ps_data_spatial.file_info.varnames == varnames
+            # test that created object exists
+            @test @isdefined(ps_data_spatial)
+            @test ps_data_spatial isa FileReader.AbstractPrescribedData
 
-        # test fields which are set internally by constructor
-        @test ps_data_spatial.file_info.outfile_root == "static_data_cgll"
-        @test ps_data_spatial.file_info.all_dates == []
-        @test ps_data_spatial.file_info.date_idx0 == []
+            # test fields that we've passed into constructor as args
+            @test ps_data_spatial.file_info.infile_path == get_infile()
+            @test ps_data_spatial.file_info.regrid_dirpath == regrid_dir_static
+            @test ps_data_spatial.file_info.varnames == varnames
+
+            # test fields which are set internally by constructor
+            @test ps_data_spatial.file_info.outfile_root == "static_data_cgll"
+            @test ps_data_spatial.file_info.all_dates == []
+            @test ps_data_spatial.file_info.date_idx0 == []
+            rm(regrid_dir_static; recursive = true, force = true)
+        end
     end
 
     @testset "test get_data_at_date for PrescribedDataStatic, FT = $FT" begin
+        isdir(regrid_dir_static) ? nothing : mkpath(regrid_dir_static)
         # test `get_data_at_date` with interpolation (default)
         dummy_dates = [DateTime(1999, 1, 1)]
         date_idx0 = Int[1]
@@ -115,8 +128,8 @@ if !Sys.iswindows()
         surface_space_t = Spaces.SpectralElementSpace2D(topology, quad)
         data_field = ones(surface_space_t) .* FT(0.5)
 
-        varname = "var"
-        varnames = [varname]
+        # Add 2 variables to `FileInfo`, but only read/write `var1`
+        varnames = ["var1", "var2"]
         outfile_root = "static_data_cgll"
 
         # write data to dummy HDF5 file, which gets read in by `get_data_at_date`
@@ -125,7 +138,7 @@ if !Sys.iswindows()
             outfile_root,
             Dates.DateTime(0), # dummy date
             data_field,
-            varname,
+            varnames[1],
             comms_ctx,
         )
 
@@ -149,6 +162,7 @@ if !Sys.iswindows()
             varnames[1],
         )
         @test field_out == data_field
+        rm(regrid_dir_static; recursive = true, force = true)
     end
 
     @testset "test PrescribedDataTemporal construction, FT = $FT" begin
@@ -161,39 +175,55 @@ if !Sys.iswindows()
         quad = Spaces.Quadratures.GLL{Nq}()
         surface_space_t = Spaces.SpectralElementSpace2D(topology, quad)
 
-        get_infile = albedo_temporal_data
-        varname = "sw_alb"
-        varnames = [varname]
         date_idx0 = Int[1]
         date_ref = DateTime(1800, 1, 1)
         t_start = Float64(0)
 
-        ps_data_temp = FileReader.PrescribedDataTemporal{FT}(
-            regrid_dir_temporal,
-            get_infile,
-            varnames,
-            date_ref,
-            t_start,
-            surface_space_t,
-        )
+        # Loop over files with one and multiple variables
+        for (get_infile, varnames) in [
+            (albedo_temporal_data, ["sw_alb"]),
+            (era5_t2m_sp_u10n_data, ["t2m", "sp", "u10n"]),
+        ]
+            # reset regrid directory between files
+            isdir(regrid_dir_temporal) ? nothing : mkpath(regrid_dir_temporal)
 
-        # test that created object exists
-        @test @isdefined(ps_data_temp)
-        @test ps_data_temp isa FileReader.AbstractPrescribedData
+            ps_data_temp = FileReader.PrescribedDataTemporal{FT}(
+                regrid_dir_temporal,
+                get_infile,
+                varnames,
+                date_ref,
+                t_start,
+                surface_space_t,
+            )
 
-        # test fields that we've passed into constructor as args
-        @test ps_data_temp.file_info.regrid_dirpath == regrid_dir_temporal
-        @test ps_data_temp.file_info.varnames == varnames
-        @test ps_data_temp.file_info.date_idx0 == date_idx0
-        @test ps_data_temp.file_states[varname].date_idx == date_idx0
-        @test ps_data_temp.sim_info.date_ref == date_ref
-        @test ps_data_temp.sim_info.t_start == t_start
+            # test that created object exists
+            @test @isdefined(ps_data_temp)
+            @test ps_data_temp isa FileReader.AbstractPrescribedData
 
-        # test fields which are set internally by constructor
-        @test ps_data_temp.file_info.outfile_root == "temporal_data_cgll"
-        @test !isnothing(ps_data_temp.file_info.all_dates)
-        @test !isnothing(ps_data_temp.file_states[varname].data_fields)
-        @test !isnothing(ps_data_temp.file_states[varname].segment_length)
+            # test fields that we've passed into constructor as args
+            @test ps_data_temp.file_info.regrid_dirpath == regrid_dir_temporal
+            @test ps_data_temp.file_info.varnames == varnames
+            @test ps_data_temp.file_info.date_idx0 == date_idx0
+            @test ps_data_temp.sim_info.date_ref == date_ref
+            @test ps_data_temp.sim_info.t_start == t_start
+
+            # test fields which are set internally by constructor
+            @test ps_data_temp.file_info.outfile_root == "temporal_data_cgll"
+            @test !isnothing(ps_data_temp.file_info.all_dates)
+            @test sort(collect(keys(ps_data_temp.file_states))) ==
+                  sort(varnames)
+
+            # check varnames individually
+            for varname in varnames
+                @test ps_data_temp.file_states[varname].date_idx == date_idx0
+                @test ps_data_temp.file_states[varname].date_idx == date_idx0
+                @test !isnothing(ps_data_temp.file_states[varname].data_fields)
+                @test !isnothing(
+                    ps_data_temp.file_states[varname].segment_length,
+                )
+            end
+            rm(regrid_dir_temporal; recursive = true, force = true)
+        end
     end
 
     @testset "test get_data_at_date for PrescribedDataTemporal, FT = $FT" begin
@@ -219,8 +249,8 @@ if !Sys.iswindows()
         surface_space_t = Spaces.SpectralElementSpace2D(topology, quad)
         data_fields = (zeros(surface_space_t), ones(surface_space_t))
 
-        varname = "var"
-        varnames = [varname]
+        # Add 2 variables to `FileInfo`, but only read/write `var1`
+        varnames = ["var1", "var2"]
 
         # create structs manually since we aren't reading from a data file
         file_info = FileReader.FileInfo(
@@ -231,12 +261,18 @@ if !Sys.iswindows()
             dummy_dates,    # all_dates
             date_idx0,      # date_idx0
         )
-        file_state = FileReader.FileState(
+        file_state1 = FileReader.FileState(
             data_fields,        # data_fields
             copy(date_idx0),    # date_idx
             segment_length,     # segment_length
         )
-        file_states = Dict(varname => file_state)
+        file_state2 = FileReader.FileState(
+            data_fields,        # data_fields
+            copy(date_idx0),    # date_idx
+            segment_length,     # segment_length
+        )
+        file_states =
+            Dict(varnames[1] => file_state1, varnames[2] => file_state2)
         sim_info = FileReader.SimInfo(
             date_ref,       # date_ref
             t_start,        # t_start
@@ -312,7 +348,10 @@ if !Sys.iswindows()
         end
     end
 
-    @testset "test read_data_fields!, FT = $FT" begin
+    @testset "test read_data_fields! for single variable, FT = $FT" begin
+        # Create regridding directory
+        isdir(regrid_dir_temporal) ? nothing : mkpath(regrid_dir_temporal)
+
         get_infile = albedo_temporal_data
         infile_path = get_infile()
         varname = "sw_alb"
@@ -361,27 +400,27 @@ if !Sys.iswindows()
                     ps_data.file_info.date_idx0[1] = Int(1)
         end
 
-        # Case 1: test initial date - aligned with first date of albedo file
-        # This case should not print any warnings
-        reset_ps_data(prescribed_data)
-        prescribed_data_copy = prescribed_data
-        FileReader.read_data_fields!(prescribed_data, date0, surface_space_t)
+        # Case 1: test date before first date of file, and date aligned with first date of file
+        for date in [date0 - Day(1), date0]
+            reset_ps_data(prescribed_data)
+            prescribed_data_copy = prescribed_data
+            FileReader.read_data_fields!(prescribed_data, date, surface_space_t)
 
-        # Test that both data fields store the same data
-        # Remove NaNs and missings before comparison
-        (; data_fields) = prescribed_data.file_states[varname]
+            # Test that both data fields store the same data
+            # Remove NaNs and missings before comparison
+            (; data_fields) = prescribed_data.file_states[varname]
 
-        foreach(replace_nan_missing!, data_fields)
+            foreach(replace_nan_missing!, data_fields)
 
-        @test prescribed_data.file_states[varname].data_fields[1] ==
-              prescribed_data.file_states[varname].data_fields[2]
-        # date_idx and date_idx0 should be unchanged
-        @test prescribed_data.file_states[varname].segment_length == Int[0]
-        @test prescribed_data.file_states[varname].date_idx[1] ==
-              prescribed_data_copy.file_states[varname].date_idx[1]
-        @test prescribed_data.file_info.date_idx0[1] ==
-              prescribed_data_copy.file_info.date_idx0[1]
-
+            @test prescribed_data.file_states[varname].data_fields[1] ==
+                  prescribed_data.file_states[varname].data_fields[2]
+            # date_idx and date_idx0 should be unchanged
+            @test prescribed_data.file_states[varname].segment_length == Int[0]
+            @test prescribed_data.file_states[varname].date_idx[1] ==
+                  prescribed_data_copy.file_states[varname].date_idx[1]
+            @test prescribed_data.file_info.date_idx0[1] ==
+                  prescribed_data_copy.file_info.date_idx0[1]
+        end
 
         # Case 2: test date after dates in file
         # This case should print 1 warning "this time period is after input data..."
@@ -398,6 +437,7 @@ if !Sys.iswindows()
         @test prescribed_data.file_states[varname].segment_length == Int[0]
 
         # Remove NaNs and missings before comparison
+        (; data_fields) = prescribed_data.file_states[varname]
         foreach(replace_nan_missing!, data_fields)
 
         @test prescribed_data.file_states[varname].data_fields[1] ==
@@ -430,6 +470,7 @@ if !Sys.iswindows()
         end
 
         # Replace NaNs and missings for testing
+        (; data_fields) = prescribed_data.file_states[varname]
         foreach(replace_nan_missing!, data_saved)
 
         # Manually read in data from HDF5
@@ -474,6 +515,207 @@ if !Sys.iswindows()
             date,
             surface_space_t,
         )
+        # Delete regridding directory and files
+        rm(regrid_dir_temporal; recursive = true, force = true)
+    end
+
+    @testset "test read_data_fields! for multiple variables, FT = $FT" begin
+        # Create regridding directory
+        isdir(regrid_dir_temporal) ? nothing : mkpath(regrid_dir_temporal)
+
+        get_infile = era5_t2m_sp_u10n_data
+        infile_path = get_infile()
+        varnames = ["t2m", "sp", "u10n"]
+
+        # Start with first date in data file
+        date0 = NCDataset(infile_path) do ds
+            ds["time"][1]
+        end
+        date0 = FileReader.to_datetime(date0)
+        # Gives dates [00:45, 01:30, 02:15, 03:00, 03:45, 04:30, 05:15, 06:00, 06:45, 07:30]
+        dates = collect(date0:Minute(45):(date0 + Minute(450))) # includes both endpoints
+        date_ref = date0
+        t_start = Float64(0)
+
+        radius = FT(6731e3)
+        Nq = 4
+        domain = ClimaCore.Domains.SphereDomain(radius)
+        mesh = Meshes.EquiangularCubedSphere(domain, 4)
+        topology = Topologies.DistributedTopology2D(
+            comms_ctx,
+            mesh,
+            Topologies.spacefillingcurve(mesh),
+        )
+        quad = Spaces.Quadratures.GLL{Nq}()
+        surface_space_t = Spaces.SpectralElementSpace2D(topology, quad)
+
+        prescribed_data = FileReader.PrescribedDataTemporal{FT}(
+            regrid_dir_temporal,
+            get_infile,
+            varnames,
+            date_ref,
+            t_start,
+            surface_space_t,
+        )
+
+        # Test each case (1-4)
+        current_fields =
+            Fields.zeros(FT, surface_space_t), Fields.zeros(FT, surface_space_t)
+
+        # Use this function to reset values between test cases
+        function reset_ps_data(ps_data)
+            for varname in varnames
+                ps_data.file_states[varname].data_fields[1] .= current_fields[1]
+                ps_data.file_states[varname].data_fields[2] .= current_fields[2]
+                ps_data.file_states[varname].segment_length[1] =
+                    ps_data.file_states[varname].date_idx[1] =
+                        ps_data.file_info.date_idx0[1] = Int(1)
+            end
+        end
+
+        # Case 1: test date before first date of file, and date aligned with first date of file
+        for date in [date0 - Day(1), date0]
+            reset_ps_data(prescribed_data)
+            prescribed_data_copy = prescribed_data
+            FileReader.read_data_fields!(prescribed_data, date, surface_space_t)
+
+            # Test that both data fields store the same data
+            # Remove NaNs and missings before comparison
+            for varname in varnames
+                (; data_fields) = prescribed_data.file_states[varname]
+
+                foreach(replace_nan_missing!, data_fields)
+
+                @test prescribed_data.file_states[varname].data_fields[1] ==
+                      prescribed_data.file_states[varname].data_fields[2]
+                # date_idx and date_idx0 should be unchanged
+                @test prescribed_data.file_states[varname].segment_length ==
+                      Int[0]
+                @test prescribed_data.file_states[varname].date_idx[1] ==
+                      prescribed_data_copy.file_states[varname].date_idx[1]
+                @test prescribed_data.file_info.date_idx0[1] ==
+                      prescribed_data_copy.file_info.date_idx0[1]
+            end
+        end
+
+        # Case 2: test date after dates in file
+        # This case should print 1 warning "this time period is after input data..."
+        reset_ps_data(prescribed_data)
+        date_after = prescribed_data.file_info.all_dates[end] + Dates.Day(1)
+        prescribed_data_copy = prescribed_data
+        FileReader.read_data_fields!(
+            prescribed_data,
+            date_after,
+            surface_space_t,
+        )
+
+        for varname in varnames
+            # Test that both data fields store the same data
+            @test prescribed_data.file_states[varname].segment_length == Int[0]
+            @test prescribed_data.file_states[varname].data_fields[1] ==
+                  prescribed_data.file_states[varname].data_fields[2]
+        end
+
+        # Case 3: loop over simulation dates (general case)
+        # This case should print 3 warnings "updating data files: ..."
+        reset_ps_data(prescribed_data)
+
+        # Read in data fields over dummy times
+        # With the current test setup, read_data_fields! should get called 3 times
+        data_saved = Dict{String, Vector{Fields.Field}}(
+            varnames[1] => [],
+            varnames[2] => [],
+            varnames[3] => [],
+        )
+        updating_dates = []
+        for date in dates
+            callback_date = FileReader.next_date_in_file(prescribed_data)
+
+            if (date >= callback_date)
+                FileReader.read_data_fields!(
+                    prescribed_data,
+                    date,
+                    surface_space_t,
+                )
+                for varname in varnames
+                    push!(
+                        data_saved[varname],
+                        deepcopy(
+                            prescribed_data.file_states[varname].data_fields[1],
+                        ),
+                    )
+                    # Replace NaNs and missings for testing
+                    replace_nan_missing!(data_saved[varname][end])
+                end
+
+                push!(updating_dates, callback_date)
+            end
+        end
+
+        # Manually read in data from HDF5
+        data_manual = Dict{String, Vector{Fields.Field}}(
+            varnames[1] => [],
+            varnames[2] => [],
+            varnames[3] => [],
+        )
+        (; regrid_dirpath, outfile_root, varnames, all_dates) =
+            prescribed_data.file_info
+
+        for i in eachindex(updating_dates)
+            for varname in varnames
+                push!(
+                    data_manual[varname],
+                    Regridder.swap_space!(
+                        Regridder.read_from_hdf5(
+                            regrid_dirpath,
+                            outfile_root,
+                            updating_dates[i],
+                            varname,
+                            comms_ctx,
+                        ),
+                        surface_space_t,
+                    ),
+                )
+                # Replace NaNs and missings for testing comparison
+                replace_nan_missing!(data_manual[varname][end])
+            end
+        end
+
+        # Test read_data_fields and manually read data are the same
+        for varname in varnames
+            @test all(
+                parent(data_saved[varname]) .== parent(data_manual[varname]),
+            )
+        end
+
+        # Test that the data_saved array was modified
+        @test length(data_saved) > 0
+        # Check that the final saved date is as expected (midmonth day of last month)
+        midmonth_end = DateTime(
+            year(dates[end]),
+            month(dates[end]),
+            day(dates[end]),
+            hour(dates[end]),
+        )
+        @test updating_dates[end] == midmonth_end
+
+        # Case 4: everything else
+        reset_ps_data(prescribed_data)
+        for varname in varnames
+            prescribed_data.file_states[varname].date_idx[1] =
+                prescribed_data.file_info.date_idx0[1] + Int(1)
+            date =
+                prescribed_data.file_info.all_dates[prescribed_data.file_states[varname].date_idx[1]] -
+                Dates.Day(1)
+
+            @test_throws ErrorException FileReader.read_data_fields!(
+                prescribed_data,
+                date,
+                surface_space_t,
+            )
+        end
+        # Delete regridding directory and files
+        rm(regrid_dir_temporal; recursive = true, force = true)
     end
 end
 
