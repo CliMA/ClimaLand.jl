@@ -149,7 +149,7 @@ for FT in (Float32, Float64)
 
 
         @testset "Energy + Moisture Conservation, FT = $FT" begin
-            "Radiation"
+            # Radiation
             ref_time = DateTime(2005)
             SW_d = (t) -> 10
             LW_d = (t) -> 300
@@ -159,7 +159,7 @@ for FT in (Float32, Float64)
                 TimeVaryingInput(LW_d),
                 ref_time,
             )
-            "Atmos"
+            # Atmos
             precip = (t) -> -1e-6
             precip_snow = (t) -> 0
             T_atmos = (t) -> 298

@@ -57,8 +57,7 @@ for FT in (Float32, Float64)
     init_temp(z::FT, value::FT) where {FT} = FT(value)
     for i in 1:3
         @testset "Conservation of water and energy I (snow present), FT = $FT" begin
-            "Radiation"
-
+            # Radiation
             ref_time = DateTime(2005)
             SW_d = (t) -> 20
             LW_d = (t) -> 20
@@ -68,7 +67,7 @@ for FT in (Float32, Float64)
                 TimeVaryingInput(LW_d),
                 ref_time,
             )
-            "Atmos"
+            # Atmos
             liquid_precip = (t) -> -1e-8 # precipitation
             snow_precip = (t) -> -1e-7 # precipitation
 
@@ -173,7 +172,7 @@ for FT in (Float32, Float64)
 
     for i in 1:3
         @testset "Conservation of water and energy II (no snow to start), FT = $FT" begin
-            "Radiation"
+            # Radiation
             ref_time = DateTime(2005)
             SW_d = (t) -> 20
             LW_d = (t) -> 20
@@ -183,7 +182,7 @@ for FT in (Float32, Float64)
                 TimeVaryingInput(LW_d),
                 ref_time,
             )
-            "Atmos"
+            # Atmos
             liquid_precip = (t) -> -1e-8 # precipitation
             snow_precip = (t) -> -1e-7 # precipitation
 
@@ -288,7 +287,7 @@ for FT in (Float32, Float64)
 
     @testset "Conservation of water and energy - nonuniform evaporation, FT = $FT" begin
         i = 3
-        "Radiation"
+        # Radiation
         ref_time = DateTime(2005)
         SW_d = (t) -> 20
         LW_d = (t) -> 20
@@ -298,7 +297,7 @@ for FT in (Float32, Float64)
             TimeVaryingInput(LW_d),
             ref_time,
         )
-        "Atmos"
+        # Atmos
         liquid_precip = (t) -> -1e-8 # precipitation
         snow_precip = (t) -> -1e-7 # precipitation
 
