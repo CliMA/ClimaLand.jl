@@ -346,15 +346,12 @@ function read_data_fields!(
 
         # Loop over all variables we need to read in
         for (varname, file_state) in pd_file_states
-            file_state.data_fields[1] .= Regridder.swap_space!(
-                Regridder.read_from_hdf5(
-                    regrid_dirpath,
-                    outfile_root,
-                    all_dates[Int(date_idx0)],
-                    varname,
-                    comms_ctx,
-                ),
-                space,
+            file_state.data_fields[1] .= Regridder.read_from_hdf5(
+                regrid_dirpath,
+                outfile_root,
+                all_dates[Int(date_idx0)],
+                varname,
+                comms_ctx,
             )
             file_state.data_fields[2] .= file_state.data_fields[1]
             file_state.segment_length .= 0
@@ -367,15 +364,12 @@ function read_data_fields!(
 
         # Loop over all variables we need to read in
         for (varname, file_state) in pd_file_states
-            file_state.data_fields[1] .= Regridder.swap_space!(
-                Regridder.read_from_hdf5(
-                    regrid_dirpath,
-                    outfile_root,
-                    all_dates[end],
-                    varname,
-                    comms_ctx,
-                ),
-                space,
+            file_state.data_fields[1] .= Regridder.read_from_hdf5(
+                regrid_dirpath,
+                outfile_root,
+                all_dates[end],
+                varname,
+                comms_ctx,
             )
             file_state.data_fields[2] .= file_state.data_fields[1]
             file_state.segment_length .= 0
@@ -397,29 +391,19 @@ function read_data_fields!(
                 (all_dates[Int(date_idx + 1)] - all_dates[Int(date_idx)]).value
 
             # Read in data fields at both dates
-            file_state.data_fields[1] .= deepcopy(
-                Regridder.swap_space!(
-                    Regridder.read_from_hdf5(
-                        regrid_dirpath,
-                        outfile_root,
-                        all_dates[Int(date_idx)],
-                        varname,
-                        comms_ctx,
-                    ),
-                    space,
-                ),
+            file_state.data_fields[1] .= Regridder.read_from_hdf5(
+                regrid_dirpath,
+                outfile_root,
+                all_dates[Int(date_idx)],
+                varname,
+                comms_ctx,
             )
-            file_state.data_fields[2] .= deepcopy(
-                Regridder.swap_space!(
-                    Regridder.read_from_hdf5(
-                        regrid_dirpath,
-                        outfile_root,
-                        all_dates[Int(date_idx + 1)],
-                        varname,
-                        comms_ctx,
-                    ),
-                    space,
-                ),
+            file_state.data_fields[2] .= Regridder.read_from_hdf5(
+                regrid_dirpath,
+                outfile_root,
+                all_dates[Int(date_idx + 1)],
+                varname,
+                comms_ctx,
             )
         end
         # Case 4: Everything else
@@ -480,7 +464,6 @@ function get_data_at_date(
         varname,
         comms_ctx,
     )
-    Regridder.swap_space!(field, space)
     return nans_to_zero.(field)
 end
 

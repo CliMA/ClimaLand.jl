@@ -8,7 +8,7 @@ using Dates
 using JLD2
 using DocStringExtensions
 
-export swap_space!, hdwrite_regridfile_rll_to_cgll
+export hdwrite_regridfile_rll_to_cgll
 
 """
     reshape_cgll_sparse_to_field!(field::Fields.Field, in_array::Array, R)
@@ -331,13 +331,6 @@ function hdwrite_regridfile_rll_to_cgll(
             times = times,
         )
     end
-end
-
-function swap_space!(field, new_space)
-    return ClimaCore.Fields.Field(
-        ClimaCore.Fields.field_values(field),
-        new_space,
-    )
 end
 
 end

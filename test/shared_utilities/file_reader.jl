@@ -370,11 +370,7 @@ if !Sys.iswindows()
         Nq = 4
         domain = ClimaCore.Domains.SphereDomain(radius)
         mesh = Meshes.EquiangularCubedSphere(domain, 4)
-        topology = Topologies.DistributedTopology2D(
-            comms_ctx,
-            mesh,
-            Topologies.spacefillingcurve(mesh),
-        )
+        topology = Topologies.Topology2D(mesh)
         quad = Spaces.Quadratures.GLL{Nq}()
         surface_space_t = Spaces.SpectralElementSpace2D(topology, quad)
 
@@ -479,15 +475,12 @@ if !Sys.iswindows()
         (; regrid_dirpath, outfile_root, varnames, all_dates) =
             prescribed_data.file_info
         for i in eachindex(data_saved)
-            data_manual[i] = Regridder.swap_space!(
-                Regridder.read_from_hdf5(
-                    regrid_dirpath,
-                    outfile_root,
-                    all_dates[i + 1],
-                    varnames[1],
-                    comms_ctx,
-                ),
-                surface_space_t,
+            data_manual[i] = Regridder.read_from_hdf5(
+                regrid_dirpath,
+                outfile_root,
+                all_dates[i + 1],
+                varnames[1],
+                comms_ctx,
             )
             # Replace NaNs and missings for testing comparison
             replace_nan_missing!(data_manual[i])
@@ -541,11 +534,7 @@ if !Sys.iswindows()
         Nq = 4
         domain = ClimaCore.Domains.SphereDomain(radius)
         mesh = Meshes.EquiangularCubedSphere(domain, 4)
-        topology = Topologies.DistributedTopology2D(
-            comms_ctx,
-            mesh,
-            Topologies.spacefillingcurve(mesh),
-        )
+        topology = Topologies.Topology2D(mesh)
         quad = Spaces.Quadratures.GLL{Nq}()
         surface_space_t = Spaces.SpectralElementSpace2D(topology, quad)
 
@@ -665,15 +654,12 @@ if !Sys.iswindows()
             for varname in varnames
                 push!(
                     data_manual[varname],
-                    Regridder.swap_space!(
-                        Regridder.read_from_hdf5(
-                            regrid_dirpath,
-                            outfile_root,
-                            updating_dates[i],
-                            varname,
-                            comms_ctx,
-                        ),
-                        surface_space_t,
+                    Regridder.read_from_hdf5(
+                        regrid_dirpath,
+                        outfile_root,
+                        updating_dates[i],
+                        varname,
+                        comms_ctx,
                     ),
                 )
                 # Replace NaNs and missings for testing comparison
