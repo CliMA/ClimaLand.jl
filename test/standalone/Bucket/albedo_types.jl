@@ -7,7 +7,6 @@ import CLIMAParameters as CP
 
 using Dates
 using NCDatasets
-using JLD2
 using ClimaLand.Regridder: read_from_hdf5
 using ClimaLand.FileReader:
     next_date_in_file, to_datetime, nans_to_zero, get_data_at_date
@@ -229,7 +228,6 @@ if !Sys.iswindows()
 
         # set up for manual data reading
         varname = "sw_alb"
-        outfile_root = string(varname, "_cgll")
         file_dates = albedo.albedo_info.file_info.all_dates
 
         new_date = date_ref + Second(t_start)
@@ -392,9 +390,10 @@ if !Sys.iswindows()
         init_temp(z::FT, value::FT) where {FT} = FT(value)
 
         t_start = Float64(0)
-        date_ref = to_datetime(NCDataset(infile_path, "r") do ds
-            ds["time"][1]
+        file_dates = to_datetime(NCDataset(infile_path, "r") do ds
+            ds["time"][:]
         end)
+        date_ref = file_dates[1]
 
         bucket_domains = [
             Column(; zlim = FT.((-100.0, 0.0)), nelements = 10),
@@ -479,15 +478,6 @@ if !Sys.iswindows()
                 # If there are any NaNs in the input data, replace them so we can compare results
                 @test nans_to_zero.(p.bucket.α_sfc) ==
                       nans_to_zero.(data_manual)
-
-                outfile_root = "temporal_data_cgll"
-                file_dates = load(
-                    joinpath(
-                        regrid_dirpath,
-                        outfile_root * "_" * varname * "_times.jld2",
-                    ),
-                    "times",
-                )
 
                 update_aux! = make_update_aux(model)
                 new_date = date_ref + Second(t_start)

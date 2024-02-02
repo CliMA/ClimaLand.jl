@@ -5,7 +5,6 @@ using ClimaComms
 using NCDatasets
 using ClimaCoreTempestRemap
 using Dates
-using JLD2
 using DocStringExtensions
 
 export hdwrite_regridfile_rll_to_cgll
@@ -157,8 +156,8 @@ end
         REGRID_DIR,
         datafile_rll,
         varnames,
-        space;
-        hd_outfile_root = "data_cgll",
+        space,
+        outfile_root;
         mono = false,
     )
 Reads and regrids data of all `varnames` variables from an input NetCDF file and
@@ -289,6 +288,7 @@ function hdwrite_regridfile_rll_to_cgll(
 
     offline_field = ClimaCore.Fields.zeros(FT, space_undistributed)
 
+    times = [DateTime(0)]
     # Save regridded HDF5 file for each variable in `varnames`
     for varname in varnames
         # read the remapped file with sparse matrices
@@ -326,11 +326,8 @@ function hdwrite_regridfile_rll_to_cgll(
             ),
             1:length(times),
         )
-        jldsave(
-            joinpath(REGRID_DIR, outfile_root * "_" * varname * "_times.jld2");
-            times = times,
-        )
     end
+    return times
 end
 
 end

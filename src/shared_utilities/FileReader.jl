@@ -14,7 +14,6 @@ module FileReader
 using ClimaComms
 using ClimaCore: Fields, Spaces
 using Dates
-using JLD2
 using CFTime
 using NCDatasets
 
@@ -224,11 +223,14 @@ function PrescribedDataTemporal{FT}(
     comms_ctx = ClimaComms.context(surface_space)
     outfile_root = "temporal_data_cgll"
 
+    # Initialize dummy date to be overwritten by actual dates during file read
+    all_dates = [DateTime(0)]
+
     # Regrid data at all times from lat/lon (RLL) to simulation grid (CGLL)
     # Download `infile_path` artifact on root process first to avoid race condition
     if ClimaComms.iamroot(comms_ctx)
         infile_path = get_infile()
-        Regridder.hdwrite_regridfile_rll_to_cgll(
+        all_dates = Regridder.hdwrite_regridfile_rll_to_cgll(
             FT,
             regrid_dirpath,
             infile_path,
@@ -246,17 +248,9 @@ function PrescribedDataTemporal{FT}(
             end
         end
     end
+    all_dates = ClimaComms.bcast(comms_ctx, all_dates)
     ClimaComms.barrier(comms_ctx)
     infile_path = get_infile()
-
-    # Get file dates from first variable stored in file
-    all_dates = JLD2.load(
-        joinpath(
-            regrid_dirpath,
-            outfile_root * "_" * varnames[1] * "_times.jld2",
-        ),
-        "times",
-    )
 
     # Init time tracking info
     data_fields =
