@@ -24,9 +24,14 @@ function timeseries_fluxes_fig(
     climaland,
     index_t_start,
     index_t_end,
-    earth_param_set,
+    earth_param_set;
+    dashboard = false,
 ) # will run for any inputs or climaland output of FLUXNET sites
-    # create an empty figure
+
+    if dashboard == true
+        WGLMakie.activate!() # for dashboards
+    end
+
     fig = Figure(size = (1000, 1000)) # note: do not load Plots.jl in this branch (it is loading in plot_utils)
     fontsize_theme = Theme(fontsize = 20)
     set_theme!(fontsize_theme)
@@ -49,13 +54,13 @@ function timeseries_fluxes_fig(
         optimize_ticks(climaland.DateTime[1], climaland.DateTime[end])[1][2:(end - 1)] # first and last are weirdly placed
 
     # add plots into axis ax_C
-    p_GPP_m = CairoMakie.scatter!(
+    p_GPP_m = scatter!(
         ax_C,
         datetime2unix.(climaland.DateTime),
         climaland.GPP .* 1e6,
         color = :blue,
     )
-    p_GPP_d = CairoMakie.scatter!(
+    p_GPP_d = scatter!(
         ax_C,
         datetime2unix.(inputs.DateTime[index_t_start:index_t_end]),
         inputs.GPP[index_t_start:index_t_end] .* 1e6,
@@ -63,14 +68,14 @@ function timeseries_fluxes_fig(
     )
 
     # ax_W
-    p_ET_m = CairoMakie.scatter!(
+    p_ET_m = scatter!(
         ax_W,
         datetime2unix.(climaland.DateTime),
         (climaland.vapor_flux .* 1e3 .* 24 .* 3600) .+
         (climaland.transpiration .* 1e3 .* 24 .* 3600),
         color = :blue,
     ) # not sure about units
-    p_ET_d = CairoMakie.scatter!(
+    p_ET_d = scatter!(
         ax_W,
         datetime2unix.(inputs.DateTime[index_t_start:index_t_end]),
         inputs.LE[index_t_start:index_t_end] ./
@@ -79,13 +84,13 @@ function timeseries_fluxes_fig(
     ) # not sure units
 
     # ax_SW_OUT
-    p_SWOUT_m = CairoMakie.scatter!(
+    p_SWOUT_m = scatter!(
         ax_SWOUT,
         datetime2unix.(climaland.DateTime),
         climaland.SW_out,
         color = :blue,
     )
-    p_SWOUT_d = CairoMakie.scatter!(
+    p_SWOUT_d = scatter!(
         ax_SWOUT,
         datetime2unix.(inputs.DateTime[index_t_start:index_t_end]),
         inputs.SW_OUT[index_t_start:index_t_end],
@@ -109,12 +114,12 @@ function timeseries_fluxes_fig(
         orientation = :horizontal,
     )
 
-    CairoMakie.ylims!(ax_C, (0, 40))
-    CairoMakie.ylims!(ax_W, (0, 30))
-    CairoMakie.ylims!(ax_SWOUT, (0, 200))
+    ylims!(ax_C, (0, 40))
+    ylims!(ax_W, (0, 30))
+    ylims!(ax_SWOUT, (0, 200))
 
     [
-        CairoMakie.xlims!(
+        xlims!(
             axes,
             (
                 datetime2unix(climaland.DateTime[1]),
@@ -133,8 +138,14 @@ function timeseries_H2O_fig(
     climaland,
     index_t_start,
     index_t_end,
-    earth_param_set,
+    earth_param_set;
+    dashboard = false,
 ) # will run for any inputs or climaland output of FLUXNET sites
+
+    if dashboard == true
+        WGLMakie.activate!() # for dashboards
+    end
+
     # create an empty figure
     fig = Figure(size = (1000, 1000)) # note: do not load Plots.jl in this branch (it is loading in plot_utils)
     fontsize_theme = Theme(fontsize = 20)
@@ -164,13 +175,13 @@ function timeseries_H2O_fig(
         optimize_ticks(climaland.DateTime[1], climaland.DateTime[end])[1][2:(end - 1)] # first and last are weirdly placed
 
     # add plots into axis ax_H2O
-    p_H2O_m = CairoMakie.scatter!(
+    p_H2O_m = scatter!(
         ax_H2O,
         datetime2unix.(climaland.DateTime),
         climaland.θ_l,
         color = :green,
     )
-    p_H2O_d = CairoMakie.scatter!(
+    p_H2O_d = scatter!(
         ax_H2O,
         datetime2unix.(inputs.DateTime[index_t_start:index_t_end]),
         inputs.SWC[index_t_start:index_t_end],
@@ -186,7 +197,7 @@ function timeseries_H2O_fig(
     )
 
     # Moisture stress
-    p_MS = CairoMakie.scatter!(
+    p_MS = scatter!(
         ax_MS,
         datetime2unix.(climaland.DateTime),
         climaland.β,
@@ -194,7 +205,7 @@ function timeseries_H2O_fig(
     ) # not sure about units
 
     # Stomatal conductance
-    p_SC = CairoMakie.scatter!(
+    p_SC = scatter!(
         ax_SC,
         datetime2unix.(climaland.DateTime),
         climaland.gs,
@@ -221,12 +232,12 @@ function timeseries_H2O_fig(
         orientation = :horizontal,
     )
 
-    #CairoMakie.ylims!(ax_C, (0, 40))
-    #CairoMakie.ylims!(ax_W, (0, 30))
-    #CairoMakie.ylims!(ax_SWOUT, (0, 200))
+    #ylims!(ax_C, (0, 40))
+    #ylims!(ax_W, (0, 30))
+    #ylims!(ax_SWOUT, (0, 200))
 
     [
-        CairoMakie.xlims!(
+        xlims!(
             axes,
             (
                 datetime2unix(climaland.DateTime[1]),
@@ -245,8 +256,14 @@ function fingerprint_fig(
     climaland,
     index_t_start,
     index_t_end,
-    earth_param_set,
-)
+    earth_param_set;
+    dashboard = false,
+) # will run for any inputs or climaland output of FLUXNET sites
+
+    if dashboard == true
+        WGLMakie.activate!() # for dashboards
+    end
+
     fig = Figure(size = (1000, 1000))
     fontsize_theme = Theme(fontsize = 20)
     set_theme!(fontsize_theme)
@@ -268,7 +285,7 @@ function fingerprint_fig(
         optimize_ticks(inputs.DateTime[1], inputs.DateTime[end])[1][2:(end - 1)] # first and last are weirdly placed
 
     # Fingerprint plot
-    hm_GPP = CairoMakie.heatmap!(
+    hm_GPP = heatmap!(
         ax_C,
         datetime2unix.(DateTime.(Date.(inputs.DateTime))),
         hour.(inputs.DateTime) .+ (minute.(inputs.DateTime) ./ 60),
@@ -301,14 +318,14 @@ function diurnal_plot!(
 )
     fig
     hourlyquantile = diurnal(datetime, data)
-    diurnal_p = CairoMakie.lines!(
+    diurnal_p = lines!(
         ax,
         0.5:1:23.5,
         getindex.(hourlyquantile[1:24], 2),
         color = color,
         linestyle = linestyle,
     )
-    diurnal_q = CairoMakie.band!(
+    diurnal_q = band!(
         ax,
         0.5:1:23.5,
         getindex.(hourlyquantile[1:24], 1),
@@ -323,8 +340,14 @@ function diurnals_fig(
     climaland,
     index_t_start,
     index_t_end,
-    earth_param_set,
-)
+    earth_param_set;
+    dashboard = false,
+) # will run for any inputs or climaland output of FLUXNET sites
+
+    if dashboard == true
+        WGLMakie.activate!() # for dashboards
+    end
+
     fig = Figure(size = (1000, 1000))
     fontsize_theme = Theme(fontsize = 20)
     set_theme!(fontsize_theme)
@@ -399,7 +422,7 @@ function diurnals_fig(
         linestyle = :dot,
     )
 
-    [CairoMakie.xlims!(axes, (0, 24)) for axes in [ax_C, ax_W, ax_E]]
+    [xlims!(axes, (0, 24)) for axes in [ax_C, ax_W, ax_E]]
 
     axislegend(
         ax_C,
@@ -437,17 +460,24 @@ end
 
 # 6. Energy balance closure (L + H = Rn - G)
 
-function make_plots(inputs, climaland; FT = Float64)
+function make_plots(
+    inputs,
+    climaland;
+    FT = Float64,
+    save_fig = true,
+    dashboard = false,
+) # will run for any inputs or climaland output of FLUXNET sites
+
+    if dashboard == true
+        WGLMakie.activate!() # for dashboards
+    else
+        CairoMakie.activate!()
+    end
+
     earth_param_set = LP.LandParameters(FT)
     # below shouldn't be hardcoded!
     index_t_start = 120 * 48 # we shouldn't hardcode that 120 in ozark_simulation.jl
     index_t_end = 120 * 48 + (60 - 30) * 48
-
-    if isdir("figures")
-        nothing
-    else
-        mkdir("figures")
-    end
 
     fig1 = timeseries_fluxes_fig(
         inputs,
@@ -478,16 +508,35 @@ function make_plots(inputs, climaland; FT = Float64)
         earth_param_set,
     )
 
-    names = [
-        "timeseries_fluxes.pdf",
-        "timeseries_H2O.pdf",
-        "fingerprint.pdf",
-        "diurnals.pdf",
-    ]
+    if save_fig == true
+        if isdir("figures")
+            nothing
+        else
+            mkdir("figures")
+        end
 
-    [
-        save(joinpath("figures", name), fig) for
-        (name, fig) in zip(names, [fig1, fig2, fig3, fig4])
-    ]
-    return nothing
+        names = [
+            "timeseries_fluxes.pdf",
+            "timeseries_H2O.pdf",
+            "fingerprint.pdf",
+            "diurnals.pdf",
+        ]
+
+        [
+            save(joinpath("figures", name), fig) for
+            (name, fig) in zip(names, [fig1, fig2, fig3, fig4])
+        ]
+
+        return nothing
+    end
+
+    if save_fig == false
+        return (
+            timeseries = fig1,
+            water = fig2,
+            fingerprint = fig3,
+            diurnals = fig4,
+        )
+    end
+
 end

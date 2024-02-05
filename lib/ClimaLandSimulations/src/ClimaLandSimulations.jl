@@ -1,6 +1,7 @@
 module ClimaLandSimulations
 
 using CairoMakie
+using WGLMakie
 using DataFrames
 using LaTeXStrings
 using PlotUtils: optimize_ticks
@@ -19,6 +20,8 @@ climaland_dir = pkgdir(ClimaLand)
 
 include(joinpath("Fluxnet", "Fluxnet.jl"))
 using .Fluxnet
+include(joinpath("Dashboards", "Dashboards.jl"))
+using .Dashboards
 
 include(joinpath("utilities", "make_domain.jl"))
 include(joinpath("utilities", "make_timestepper.jl"))
