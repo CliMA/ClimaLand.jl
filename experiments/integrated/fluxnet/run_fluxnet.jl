@@ -146,17 +146,8 @@ canopy_component_types = (;
 )
 # Individual Component arguments
 # Set up autotrophic respiration
-autotrophic_respiration_args = (;
-    parameters = AutotrophicRespirationParameters{FT}(;
-        ne = ne,
-        ηsl = ηsl,
-        σl = σl,
-        μr = μr,
-        μs = μs,
-        f1 = f1,
-        f2 = f2,
-    )
-)
+autotrophic_respiration_args =
+    (; parameters = AutotrophicRespirationParameters(FT))
 # Set up radiative transfer
 radiative_transfer_args = (;
     parameters = TwoStreamParameters{FT}(;

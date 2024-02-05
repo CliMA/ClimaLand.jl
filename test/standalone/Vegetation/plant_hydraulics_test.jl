@@ -2,7 +2,7 @@ using Test
 using Statistics
 using NLsolve
 using ClimaCore
-import CLIMAParameters as CP
+import CLIMAParameters
 using ClimaLand
 using ClimaLand.Domains: Point, Plane
 using ClimaLand.Canopy
@@ -111,7 +111,7 @@ for FT in (Float32, Float64)
             ),
         ]
 
-        AR_params = AutotrophicRespirationParameters{FT}()
+        AR_params = AutotrophicRespirationParameters(FT)
         RTparams = BeerLambertParameters{FT}()
         photosynthesis_params = FarquharParameters{FT}(C3();)
         stomatal_g_params = MedlynConductanceParameters{FT}()
@@ -263,12 +263,9 @@ for FT in (Float32, Float64)
             compartment_surfaces = compartment_surfaces,
             compartment_midpoints = compartment_midpoints,
         )
-        autotrophic_parameters =
-            ClimaLand.Canopy.AutotrophicRespirationParameters{FT}()
+        autotrophic_parameters = AutotrophicRespirationParameters(FT)
         autotrophic_respiration_model =
-            ClimaLand.Canopy.AutotrophicRespirationModel{FT}(
-                autotrophic_parameters,
-            )
+            AutotrophicRespirationModel{FT}(autotrophic_parameters)
         for domain in domains
             model = ClimaLand.Canopy.CanopyModel{FT}(;
                 parameters = shared_params,
@@ -407,7 +404,7 @@ for FT in (Float32, Float64)
     @testset "No plant, FT = $FT" begin
         domain = Point(; z_sfc = FT(0.0))
 
-        AR_params = AutotrophicRespirationParameters{FT}()
+        AR_params = AutotrophicRespirationParameters(FT)
         RTparams = BeerLambertParameters{FT}()
         photosynthesis_params = FarquharParameters{FT}(C3();)
         stomatal_g_params = MedlynConductanceParameters{FT}()
@@ -545,10 +542,9 @@ for FT in (Float32, Float64)
             compartment_midpoints = compartment_midpoints,
         )
 
-        autotrophic_parameters =
-            ClimaLand.Canopy.AutotrophicRespirationParameters{FT}()
+        autotrophic_parameters = AutotrophicRespirationParameters(FT)
         autotrophic_respiration_model =
-            ClimaLand.Canopy.AutotrophicRespirationModel(autotrophic_parameters)
+            AutotrophicRespirationModel(autotrophic_parameters)
 
         model = ClimaLand.Canopy.CanopyModel{FT}(;
             parameters = shared_params,

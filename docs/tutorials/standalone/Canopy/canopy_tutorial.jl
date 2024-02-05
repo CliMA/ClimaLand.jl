@@ -203,7 +203,7 @@ photo_params = FarquharParameters{FT}(
 photosynthesis_model = FarquharModel{FT}(photo_params);
 
 # Arguments for autotrophic respiration model:
-AR_params = AutotrophicRespirationParameters{FT}()
+AR_params = AutotrophicRespirationParameters(FT)
 AR_model = AutotrophicRespirationModel{FT}(AR_params);
 
 # Arguments for plant hydraulics model are more complicated.
