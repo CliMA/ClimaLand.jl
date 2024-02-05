@@ -336,7 +336,7 @@ sol = SciMLBase.solve(
 # Plotting
 daily = sol.t ./ 3600 ./ 24
 savedir =
-    joinpath(climaland_dir, "experiments/integrated/fluxnet/$site_ID/out/")
+    joinpath(climaland_dir, "experiments/integrated/semi-arid fluxnet/$site_ID/out/")
 
 if !isdir(savedir)
     mkdir(savedir)
@@ -834,7 +834,7 @@ Plots.plot!(plt1, margins = 10Plots.mm)
 Plots.savefig(joinpath(savedir, "temperature.png"))
 
 # Run script with comand line argument "save" to save model output to CSV
-if length(ARGS) ≥ 1 && ARGS[1] == "save"
+if (length(ARGS) ≥ 1) && (ARGS[2] == "save")
     # Formats fields as semicolon seperated strings
     field_to_array = (field) -> join(parent(field), ';')
     # Recursively unpacks a nested NamedTuple of fields into an array of strings
