@@ -120,6 +120,7 @@ if !Sys.iswindows()
         param_σS_c = parameters.σS_c
         a_α_snow = albedo.α_snow
         a_α_bareground = albedo.α_bareground
+        @test eltype(a_α_bareground) == FT
 
         next_alb_manual = @. (
             (1 - Y_σS / (Y_σS + param_σS_c)) * a_α_bareground +

@@ -45,7 +45,7 @@ bonan_sand_dataset = ArtifactWrapper(
         S_s = FT(1e-3) #inverse meters
         vg_n = FT(1.43)
         vg_α = FT(2.6) # inverse meters
-        hcm = vanGenuchten(; α = vg_α, n = vg_n)
+        hcm = vanGenuchten{FT}(; α = vg_α, n = vg_n)
         θ_r = FT(0.124)
         zmax = FT(0)
         zmin = FT(-1.5)
@@ -58,8 +58,13 @@ bonan_sand_dataset = ArtifactWrapper(
         sources = ()
         boundary_states =
             (; top = (water = top_state_bc,), bottom = (water = bot_flux_bc,))
-        params =
-            Soil.RichardsParameters{FT, typeof(hcm)}(ν, hcm, K_sat, S_s, θ_r)
+        params = Soil.RichardsParameters(;
+            ν = ν,
+            hydrology_cm = hcm,
+            K_sat = K_sat,
+            S_s = S_s,
+            θ_r = θ_r,
+        )
 
         soil = Soil.RichardsModel{FT}(;
             parameters = params,
@@ -145,7 +150,7 @@ end
         S_s = FT(1e-3) #inverse meters
         vg_n = FT(3.96)
         vg_α = FT(2.7) # inverse meters
-        hcm = vanGenuchten(; α = vg_α, n = vg_n)
+        hcm = vanGenuchten{FT}(; α = vg_α, n = vg_n)
         θ_r = FT(0.075)
         zmax = FT(0)
         zmin = FT(-1.5)

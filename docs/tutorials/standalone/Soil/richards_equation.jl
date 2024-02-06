@@ -89,9 +89,9 @@ S_s = FT(1e-3)
 ν = FT(0.495)
 vg_α = FT(2.6)
 vg_n = FT(2)
-hcm = vanGenuchten(; α = vg_α, n = vg_n);
+hcm = vanGenuchten{FT}(; α = vg_α, n = vg_n);
 θ_r = FT(0)
-params = Soil.RichardsParameters{FT, typeof(hcm)}(;
+params = Soil.RichardsParameters(;
     ν = ν,
     hydrology_cm = hcm,
     K_sat = K_sat,
@@ -109,7 +109,7 @@ soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems);
 # We also need to specify the boundary conditions. The user can specify two conditions,
 # either at the top or at the bottom, and they can either be either
 # on the state `ϑ_l` or on the flux  `-K∇h`. Flux boundary conditions
-# are passed as the (scalar) z-component of the flux `f`, i.e. F⃗ = f ẑ.
+# are passed as the (scalar) z-component of the flux `f`, i.e. F⃗ = f ẑ.
 # In either case, the user must pass a function of the auxiliary variables `p` and time `t`:
 
 surface_flux = Soil.FluxBC((p, t) -> 0.0)

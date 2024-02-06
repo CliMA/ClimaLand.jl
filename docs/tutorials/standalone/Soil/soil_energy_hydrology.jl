@@ -116,7 +116,7 @@ Ksat = FT(4.42 / 3600 / 100) # m/s
 S_s = FT(1e-3) #inverse meters
 vg_n = FT(1.89)
 vg_α = FT(7.5) # inverse meters
-hcm = vanGenuchten(; α = vg_α, n = vg_n);
+hcm = vanGenuchten{FT}(; α = vg_α, n = vg_n);
 θ_r = FT(0.0);
 params = Soil.EnergyHydrologyParameters{FT}(;
     ν = ν,
@@ -141,7 +141,7 @@ soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems);
 # requires a boundary condition at the top and the bottom of the domain
 # for each equation being solved. These conditions can be on the state (`ϑ_l`
 # or `T`), or on the fluxes (`-K∇h` or `-κ∇T`). In the case of fluxes,
-# we return the magnitude of the flux, assumed to point along `ẑ`. And, in each case,
+# we return the magnitude of the flux, assumed to point along `ẑ`. And, in each case,
 # the boundary conditions are supplied in the form of a function of auxiliary variables
 # `p` and time `t`.
 

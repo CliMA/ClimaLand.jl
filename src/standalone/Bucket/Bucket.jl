@@ -92,8 +92,7 @@ function BulkAlbedoFunction{FT}(
     α_bareground_func::Function,
     space,
 ) where {FT <: AbstractFloat}
-    surface_coords = ClimaCore.Fields.coordinate_field(space)
-    α_bareground = FT.(α_bareground_func.(surface_coords))
+    α_bareground = SpaceVaryingInput(α_bareground_func, space)
     args = (α_snow, α_bareground)
     BulkAlbedoFunction{typeof.(args)...}(args...)
 end
@@ -158,8 +157,7 @@ function BulkAlbedoStatic{FT}(
 
     # Albedo file only has one variable, so access first `varname`
     varname = varnames[1]
-    α_bareground =
-        FT.(get_data_at_date(α_bareground_data, surface_space, varname))
+    α_bareground = SpaceVaryingInput(α_bareground_data, varname, surface_space)
     return BulkAlbedoStatic(α_snow, α_bareground)
 end
 

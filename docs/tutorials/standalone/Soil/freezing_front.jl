@@ -100,7 +100,7 @@ K_sat = FT(3.2e-6) # m/s
 S_s = FT(1e-3) #inverse meters
 vg_n = FT(1.48)
 vg_α = FT(1.11) # inverse meters
-hcm = vanGenuchten(; α = vg_α, n = vg_n);
+hcm = vanGenuchten{FT}(; α = vg_α, n = vg_n);
 # You could also try the Brooks and Corey model:
 #ψb = FT(-0.6)
 #c = FT(0.43)

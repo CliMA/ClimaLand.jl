@@ -87,3 +87,8 @@ ClimaLand.make_update_drivers
 ClimaLand.TimeVaryingInput
 ClimaLand.evaluate!
 ```
+
+## SpaceVaryingInput
+```@docs
+ClimaLand.SpaceVaryingInput
+```

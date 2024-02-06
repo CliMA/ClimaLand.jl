@@ -152,17 +152,9 @@ function evaluate!(
     # case, we just return the value of vals[1] (we are on a node, no need for
     # interpolation).
 
-    index = searchsortedfirst(itp.times, time)
-    if index == 1
-        dest .= itp.vals[index]
-    else
-        index_prev = index - 1
-
-        t0, t1 = itp.times[index_prev], itp.times[index]
-        y0, y1 = itp.vals[index_prev], itp.vals[index]
-
-        dest .= y0 + (y1 - y0) / (t1 - t0) * (time - t0)
-    end
-
+    indep_vars = itp.times
+    indep_value = time
+    dep_vars = itp.vals
+    dest .= linear_interpolation(indep_vars, dep_vars, indep_value)
     return nothing
 end
