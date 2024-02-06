@@ -17,7 +17,7 @@ function cesm2_albedo_dataset_path()
         @__DIR__,
         "land_albedo",
         AW.ArtifactFile[AW.ArtifactFile(
-            url = "https://caltech.box.com/shared/static/h3fcq4hlfe0o4kaj7ghftv76tg7v879v.nc",
+            url = "https://caltech.box.com/shared/static/eesee8iv3c21z3pysizcgnuncfp5xykv.nc",
             filename = "esw_albedo_Amon_CESM2_historical_r1i1p1f1_gn_185001-201412_v2.nc",
         ),],
     )
