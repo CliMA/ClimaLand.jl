@@ -313,7 +313,7 @@ function turbulent_fluxes_at_a_point(
 end
 
 """
-    surface_fluxes(atmos::CoupledAtmosphere,
+    turbulent_fluxes(atmos::CoupledAtmosphere,
                     model::AbstractModel,
                     Y,
                     p,
@@ -331,11 +331,7 @@ function ClimaLand.turbulent_fluxes(
     # coupler has done its thing behind the scenes already
     model_name = ClimaLand.name(model)
     model_cache = getproperty(p, model_name)
-    return (
-        lhf = model_cache.turbulent_fluxes.lhf,
-        shf = model_cache.turbulent_fluxes.shf,
-        vapor_flux = model_cache.turbulent_fluxes.vapor_flux,
-    )
+    return model_cache.turbulent_fluxes
 end
 
 
@@ -640,15 +636,38 @@ function vapor_pressure_deficit(T_air, P_air, q_air, thermo_params)
 end
 
 """
-    initialize_drivers(r::PrescribedAtmosphere{FT}, coords) where {FT}
+    initialize_drivers(a::PrescribedAtmosphere{FT}, coords) where {FT}
 
-Creates and returns a NamedTuple for the `PrescribedAtmosphere` driver, 
+Creates and returns a NamedTuple for the `PrescribedAtmosphere` driver,
 with variables `P_liq`, `P_snow`, and air temperature `T`, pressure `P`,
 horizontal wind speed `u`, specific humidity `q`, and CO2 concentration
 `c_co2`.
 """
 function initialize_drivers(a::PrescribedAtmosphere{FT}, coords) where {FT}
     keys = (:P_liq, :P_snow, :T, :P, :u, :q, :c_co2)
+    types = ([FT for k in keys]...,)
+    domain_names = ([:surface for k in keys]...,)
+    model_name = :drivers
+    # intialize_vars packages the variables as a named tuple,
+    # as part of a named tuple with `model_name` as the key.
+    # Here we just want the variable named tuple itself
+    vars =
+        ClimaLand.initialize_vars(keys, types, domain_names, coords, model_name)
+    return vars.drivers
+end
+
+"""
+    initialize_drivers(r::CoupledAtmosphere{FT}, coords) where {FT}
+
+Creates and returns a NamedTuple for the `CoupledAtmosphere` driver,
+with variables `P_liq`, and `P_snow`. This is intended to be used in coupled
+simulations with ClimaCoupler.jl
+"""
+function ClimaLand.initialize_drivers(
+    a::CoupledAtmosphere{FT},
+    coords,
+) where {FT}
+    keys = (:P_liq, :P_snow)
     types = ([FT for k in keys]...,)
     domain_names = ([:surface for k in keys]...,)
     model_name = :drivers
@@ -696,7 +715,7 @@ end
                        r::Union{AbstractRadiativeDrivers, Nothing},
                        coords)
 
-Creates and returns a NamedTuple with the cache variables required by the 
+Creates and returns a NamedTuple with the cache variables required by the
 atmospheric and radiative drivers.
 
 If no forcing is required, `a` and `r` are type `Nothing` and an
