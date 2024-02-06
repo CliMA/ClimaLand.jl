@@ -65,51 +65,60 @@ abstract type AbstractBucketModel{FT} <: AbstractExpModel{FT} end
 abstract type AbstractLandAlbedoModel{FT <: AbstractFloat} end
 
 """
-    BulkAlbedoFunction{FT, F <: FUnction} <: AbstractLandAlbedoModel
+    BulkAlbedoFunction{FT, F <: ClimaCore.Fields.Field} <: AbstractLandAlbedoModel
 
 An albedo model where the albedo of different surface types
 is specified. Snow albedo is treated as constant across snow
-location and across wavelength. Surface albedo (sfc)
+location and across wavelength. Bareground surface albedo
 is specified as a function
 of latitude and longitude, but is also treated as constant across
-wavelength; surface is this context refers to soil and vegetation.
+wavelength; bareground surface is this context refers to soil and vegetation.
 """
-struct BulkAlbedoFunction{FT, F <: Function} <: AbstractLandAlbedoModel{FT}
+struct BulkAlbedoFunction{FT, F <: ClimaCore.Fields.Field} <:
+       AbstractLandAlbedoModel{FT}
     α_snow::FT
-    α_sfc::F
+    α_bareground::F
+end
+
+function BulkAlbedoFunction{FT}(
+    α_snow::FT,
+    α_bareground::F,
+) where {FT <: AbstractFloat, F}
+    BulkAlbedoFunction(α_snow, α_bareground)
 end
 
 function BulkAlbedoFunction{FT}(
     α_snow::FT,
     α_sfc::Function,
+    space,
 ) where {FT <: AbstractFloat}
-    BulkAlbedoFunction(α_snow, α_sfc)
+    surface_coords = ClimaCore.Fields.coordinate_field(space)
+    α_bareground = FT.(α_sfc.(surface_coords))
+    args = (α_snow, α_bareground)
+    BulkAlbedoFunction{typeof.(args)...}(args...)
 end
 
 """
-    BulkAlbedoStatic{FT, PDS <: PrescribedDataStatic} <: AbstractLandAlbedoModel
+    BulkAlbedoStatic{FT, F <: ClimaCore.Fields.Field} <: AbstractLandAlbedoModel
 
 An albedo model where the albedo of different surface types
 is specified. Snow albedo is treated as constant across snow
-location and across wavelength. Surface albedo is specified via a
-NetCDF file, which can be a function of time, but is treated
+location and across wavelength. Bareground surface albedo is specified
+via a NetCDF file that is treated
 as constant across wavelengths; surface is this context refers
 to soil and vegetation. This albedo type is static in time.
 
 Note that this option should only be used with global simulations,
 i.e. with a `ClimaLand.LSMSphericalShellDomain.`
 """
-struct BulkAlbedoStatic{FT, PDS <: PrescribedDataStatic} <:
+struct BulkAlbedoStatic{FT, F <: ClimaCore.Fields.Field} <:
        AbstractLandAlbedoModel{FT}
     α_snow::FT
-    α_sfc::PDS
+    α_bareground::F
 end
 
-function BulkAlbedoStatic{FT}(
-    α_snow::FT,
-    α_sfc::PrescribedDataStatic,
-) where {FT}
-    return BulkAlbedoStatic{FT, typeof(α_sfc)}(α_snow, α_sfc)
+function BulkAlbedoStatic{FT}(α_snow::FT, α_bareground::F) where {FT, F}
+    return BulkAlbedoStatic(α_snow, α_bareground)
 end
 
 """
@@ -146,7 +155,11 @@ function BulkAlbedoStatic{FT}(
         varnames,
         surface_space,
     )
-    return BulkAlbedoStatic{FT, typeof(α_sfc)}(α_snow, α_sfc)
+
+    # Albedo file only has one variable, so access first `varname`
+    varname = varnames[1]
+    α_bareground = FT.(get_data_at_date(α_sfc, surface_space, varname))
+    return BulkAlbedoStatic(α_snow, α_bareground)
 end
 
 """
@@ -389,8 +402,8 @@ function set_initial_parameter_field!(
     p,
     surface_coords,
 ) where {FT}
-    (; α_sfc) = albedo
-    @. p.bucket.α_sfc = α_sfc(surface_coords)
+    # TODO should we include snow here?
+    @. p.bucket.α_sfc = albedo.α_bareground
 end
 
 """
@@ -413,12 +426,8 @@ function set_initial_parameter_field!(
     p,
     surface_coords,
 ) where {FT}
-    space = axes(surface_coords)
-    α_sfc = albedo.α_sfc
-    # Albedo file only has one variable, so access first `varname`
-    varname = α_sfc.file_info.varnames[1]
-
-    p.bucket.α_sfc .= FT.(get_data_at_date(α_sfc, space, varname))
+    # TODO should we include snow here?
+    p.bucket.α_sfc .= albedo.α_bareground
 end
 
 """
@@ -601,11 +610,12 @@ function next_albedo(
     p,
     t,
 ) where {FT}
-    (; α_snow) = model_albedo
+    (; α_snow, α_bareground) = model_albedo
     (; σS_c) = parameters
-    α_sfc = p.bucket.α_sfc
     σS = Y.bucket.σS
-    return @. ((1 - σS / (σS + σS_c)) * α_sfc + σS / (σS + σS_c) * α_snow)
+    return @. (
+        (1 - σS / (σS + σS_c)) * α_bareground + σS / (σS + σS_c) * α_snow
+    )
 end
 
 """

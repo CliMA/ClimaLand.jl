@@ -168,6 +168,17 @@ import ClimaLand
 include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"));
 earth_param_set = create_lsm_parameters(FT);
 
+# Set up the model domain. At every surface coordinate point, we'll solve
+# an ODE for `W` and `Ws`, and for every subsurface point, we solve for `T`.
+# In coupled simulations run at the same
+# resolution as the atmosphere, the bucket horizontal resolution would match the
+# horizontal resolution at the lowest level of the atmosphere model. In general, however, the two
+# resolutions do not need to match. Here we just set up something
+# simple - a Column.
+soil_depth = FT(3.5);
+bucket_domain = Column(; zlim = (-soil_depth, FT(0.0)), nelements = 10);
+surface_space = bucket_domain.space.surface
+
 # Define our `BulkAlbedoFunction` model using a constant surface and snow albedo:
 # The surface albedo is a function of coordinates, which would be
 # (x,y) on a plane, and (lat,lon) on a sphere. Another albedo
@@ -176,7 +187,7 @@ earth_param_set = create_lsm_parameters(FT);
 # These options only applies when coordinates are (lat,lon).
 α_sfc = (coordinate_point) -> 0.2;
 α_snow = FT(0.8);
-albedo = BulkAlbedoFunction(α_snow, α_sfc);
+albedo = BulkAlbedoFunction{FT}(α_snow, α_sfc, surface_space);
 # The critical snow level setting the scale for when we interpolate between
 # snow and surface albedo
 σS_c = FT(0.2);
@@ -206,17 +217,6 @@ bucket_parameters = BucketModelParameters(
     τc,
     earth_param_set,
 );
-
-# Set up the model domain. At every surface coordinate point, we'll solve
-# an ODE for `W` and `Ws`, and for every subsurface point, we solve for `T`.
-# In coupled simulations run at the same
-# resolution as the atmosphere, the bucket horizontal resolution would match the
-# horizontal resolution at the lowest level of the atmosphere model. In general, however, the two
-# resolutions do not need to match. Here we just set up something
-# simple - a Column.
-
-soil_depth = FT(3.5);
-bucket_domain = Column(; zlim = (-soil_depth, FT(0.0)), nelements = 10);
 
 
 # The PrescribedAtmosphere and PrescribedRadiation need to take in a reference

@@ -68,10 +68,10 @@ isdir(regrid_dir_temporal) ? nothing : mkpath(regrid_dir_temporal)
     # set up for function call
     α_sfc = (coord_point) -> sin(coord_point.lat + coord_point.long)
     α_snow = FT(0.8)
-    albedo = BulkAlbedoFunction(α_snow, α_sfc)
-
     domain = create_domain_2d(FT)
     space = domain.space.surface
+    albedo = BulkAlbedoFunction{FT}(α_snow, α_sfc, space)
+
     p = (; bucket = (; α_sfc = Fields.zeros(space)))
     surface_coords = Fields.coordinate_field(space)
 
@@ -85,13 +85,13 @@ end
     # set up each argument for function call
     α_sfc = (coord_point) -> sin(coord_point.lat + coord_point.long)
     α_snow = FT(0.8)
-    albedo = BulkAlbedoFunction(α_snow, α_sfc)
+    domain = create_domain_2d(FT)
+    space = domain.space.surface
+    albedo = BulkAlbedoFunction{FT}(α_snow, α_sfc, space)
 
     σS_c = FT(0.2)
     parameters = (; σS_c = σS_c)
 
-    domain = create_domain_2d(FT)
-    space = domain.space.surface
     surface_coords = Fields.coordinate_field(space)
     p = (; bucket = (; α_sfc = α_sfc.(surface_coords)))
 
@@ -137,13 +137,13 @@ if !Sys.iswindows()
         Y = (; bucket = (; σS = σS))
 
         # extract fields for manual calculation
-        p_α_sfc = p.bucket.α_sfc
         Y_σS = Y.bucket.σS
         param_σS_c = parameters.σS_c
         a_α_snow = albedo.α_snow
+        a_α_bareground = albedo.α_bareground
 
         next_alb_manual = @. (
-            (1 - Y_σS / (Y_σS + param_σS_c)) * p_α_sfc +
+            (1 - Y_σS / (Y_σS + param_σS_c)) * a_α_bareground +
             Y_σS / (Y_σS + param_σS_c) * a_α_snow
         )
 
@@ -160,11 +160,18 @@ if !Sys.iswindows()
         albedo = BulkAlbedoStatic{FT}(regrid_dir_static, space)
         set_initial_parameter_field!(albedo, p, surface_coords)
 
-        # set up for manual data reading
-        infile_path = bareground_albedo_dataset_path()
+        # read data manually
         varname = "sw_alb"
-
-        data_manual = get_data_at_date(albedo.α_sfc, space, varname)
+        outfile_root = "static_data_cgll"
+        comms_ctx = ClimaComms.context(space)
+        field = read_from_hdf5(
+            regrid_dir_static,
+            outfile_root,
+            Dates.DateTime(0), # dummy date
+            varname,
+            comms_ctx,
+        )
+        data_manual = nans_to_zero.(field)
 
         @test p.bucket.α_sfc == data_manual
     end
@@ -335,12 +342,20 @@ if !Sys.iswindows()
                 Y.bucket.σS .= 0.0
                 set_initial_cache! = make_set_initial_cache(model)
                 set_initial_cache!(p, Y, FT(0.0))
-                field = get_data_at_date(
-                    albedo_model.α_sfc,
-                    model.domain.space.surface,
+
+                # Read in data manually
+                outfile_root = "static_data_cgll"
+                comms_ctx = ClimaComms.context(surface_space)
+                field = read_from_hdf5(
+                    regrid_dirpath,
+                    outfile_root,
+                    Dates.DateTime(0), # dummy date
                     varname,
+                    comms_ctx,
                 )
-                @test p.bucket.α_sfc == field
+                data_manual = nans_to_zero.(field)
+
+                @test p.bucket.α_sfc == data_manual
             else
                 surface_space = bucket_domain.space.surface
                 @test_throws "Using an albedo map requires a global run." BulkAlbedoStatic{
