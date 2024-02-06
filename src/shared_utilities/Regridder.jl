@@ -300,9 +300,11 @@ function hdwrite_regridfile_rll_to_cgll(
             )
         end
 
-        # Check that input data has the expected float type and time dimension
-        if eltype(offline_outvector) <: AbstractFloat
-            @assert eltype(offline_outvector) == FT "Invalid float type in $datafile_rll for $varname"
+        # Convert input data float type if needed
+        if eltype(offline_outvector) <: AbstractFloat &&
+           eltype(offline_outvector) != FT
+            @warn "Converting $varname data in $datafile_cgll from $(eltype(offline_outvector)) to $FT"
+            offline_outvector = Array{FT}(offline_outvector)
         end
         @assert length(times) == size(offline_outvector, 2) "Inconsistent time dimension in $datafile_cgll for $varname"
 
