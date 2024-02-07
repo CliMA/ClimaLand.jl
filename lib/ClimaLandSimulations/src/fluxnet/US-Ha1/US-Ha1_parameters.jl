@@ -78,7 +78,6 @@ ld = FT(0.5)
 τ_PAR_leaf = FT(0.05)
 α_NIR_leaf = FT(0.45)
 τ_NIR_leaf = FT(0.25)
-n_layers = UInt64(20)
 ϵ_canopy = FT(0.97)
 
 # Energy Balance model

@@ -96,13 +96,16 @@ struct TwoStreamParameters{FT <: AbstractFloat}
     τ_NIR_leaf::FT
     "Emissivity of the canopy"
     ϵ_canopy::FT
-    "Clumping index following Braghiere (2021) (unitless)"
+    "Clumping index following Braghiere 2021 (unitless)"
     Ω::FT
     "Typical wavelength per PAR photon (m)"
     λ_γ_PAR::FT
     "Typical wavelength per NIR photon (m)"
     λ_γ_NIR::FT
-    "number of layers to simulate radiative transfer through"
+    "Number of layers to partition the canopy into when integrating the
+    absorption over the canopy vertically. Unrelated to the number of layers in 
+    the vertical discretization of the canopy for the plant hydraulics model.
+    (Constant, and should eventually move to ClimaParameters)"
     n_layers::UInt64
 end
 
