@@ -20,12 +20,6 @@ ClimaLand.Bucket.surface_albedo
 ClimaLand.Bucket.beta_factor
 ```
 
-## Methods for handling parameters read in from NetCDF files
-
-```@docs
-ClimaLand.Bucket.update_soil_albedo
-```
-
 ## Artifact Path Functions
 
 ```@docs

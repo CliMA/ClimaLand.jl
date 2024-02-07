@@ -65,29 +65,28 @@ isdir(regrid_dir_temporal) ? nothing : mkpath(regrid_dir_temporal)
 
 @testset "Test next_albedo for BulkAlbedoFunction, FT = $FT" begin
     # set up each argument for function call
-    α_sfc = (coord_point) -> sin(coord_point.lat + coord_point.long)
+    α_bareground_func = (coord_point) -> sin(coord_point.lat + coord_point.long)
     α_snow = FT(0.8)
     domain = create_domain_2d(FT)
     space = domain.space.surface
-    albedo = BulkAlbedoFunction{FT}(α_snow, α_sfc, space)
+    albedo = BulkAlbedoFunction{FT}(α_snow, α_bareground_func, space)
 
     σS_c = FT(0.2)
     parameters = (; σS_c = σS_c)
 
     surface_coords = Fields.coordinate_field(space)
-    p = (; bucket = (; α_sfc = α_sfc.(surface_coords)))
-
     σS = FT(0.1)
     Y = (; bucket = (; σS = σS))
+    p = (; bucket = (; α_sfc = Fields.zeros(space)))
 
     # extract fields for manual calculation
-    p_α_sfc = p.bucket.α_sfc
+    α_bareground = α_bareground_func.(surface_coords)
     Y_σS = Y.bucket.σS
     param_σS_c = parameters.σS_c
     a_α_snow = albedo.α_snow
 
     next_alb_manual = @. (
-        (1 - Y_σS / (Y_σS + param_σS_c)) * p_α_sfc +
+        (1 - Y_σS / (Y_σS + param_σS_c)) * α_bareground +
         Y_σS / (Y_σS + param_σS_c) * a_α_snow
     )
 
@@ -112,10 +111,9 @@ if !Sys.iswindows()
         σS_c = FT(0.2)
         parameters = (; σS_c = σS_c)
 
-        p = (; bucket = (; α_sfc = Fields.zeros(space)))
-
         σS = FT(0.1)
         Y = (; bucket = (; σS = σS))
+        p = (; bucket = (; α_sfc = Fields.zeros(space)))
 
         # extract fields for manual calculation
         Y_σS = Y.bucket.σS

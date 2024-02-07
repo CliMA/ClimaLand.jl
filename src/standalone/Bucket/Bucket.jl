@@ -89,11 +89,11 @@ end
 
 function BulkAlbedoFunction{FT}(
     α_snow::FT,
-    α_sfc::Function,
+    α_bareground_func::Function,
     space,
 ) where {FT <: AbstractFloat}
     surface_coords = ClimaCore.Fields.coordinate_field(space)
-    α_bareground = FT.(α_sfc.(surface_coords))
+    α_bareground = FT.(α_bareground_func.(surface_coords))
     args = (α_snow, α_bareground)
     BulkAlbedoFunction{typeof.(args)...}(args...)
 end
@@ -149,7 +149,7 @@ function BulkAlbedoStatic{FT}(
     if surface_space isa ClimaCore.Spaces.PointSpace
         error("Using an albedo map requires a global run.")
     end
-    α_sfc = PrescribedDataStatic{FT}(
+    α_bareground_data = PrescribedDataStatic{FT}(
         get_infile,
         regrid_dirpath,
         varnames,
@@ -158,7 +158,8 @@ function BulkAlbedoStatic{FT}(
 
     # Albedo file only has one variable, so access first `varname`
     varname = varnames[1]
-    α_bareground = FT.(get_data_at_date(α_sfc, surface_space, varname))
+    α_bareground =
+        FT.(get_data_at_date(α_bareground_data, surface_space, varname))
     return BulkAlbedoStatic(α_snow, α_bareground)
 end
 

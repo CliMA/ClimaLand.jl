@@ -564,7 +564,7 @@ end
     surface_albedo(model::AbstractModel, Y, p)
 
 A helper function which returns the surface albedo
- for a given model, needed because different models compute and store α_sfc in
+for a given model, needed because different models compute and store α_sfc in
 different ways and places.
 
 Extending this function for your model is only necessary if you need to
