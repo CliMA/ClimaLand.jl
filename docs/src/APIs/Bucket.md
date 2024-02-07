@@ -23,7 +23,6 @@ ClimaLand.Bucket.beta_factor
 ## Methods for handling parameters read in from NetCDF files
 
 ```@docs
-ClimaLand.Bucket.set_initial_parameter_field!
 ClimaLand.Bucket.update_soil_albedo
 ```
 

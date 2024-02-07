@@ -375,96 +375,9 @@ spatially varying parameter fields, read in from data files.
 function ClimaLand.make_set_initial_cache(model::BucketModel)
     update_cache! = make_update_cache(model)
     function set_initial_cache!(p, Y0, t0)
-        set_initial_parameter_field!(
-            model.parameters.albedo,
-            p,
-            ClimaCore.Fields.coordinate_field(model.domain.space.surface),
-        )
         update_cache!(p, Y0, t0)
     end
     return set_initial_cache!
-end
-
-"""
-    function set_initial_parameter_field!(
-        albedo::BulkAlbedoFunction{FT},
-        p,
-        surface_coords,
-    ) where {FT}
-
-Updates the spatially-varying but constant in time surface
- albedo stored in the
-auxiliary vector `p` in place,  according to the
-passed function of latitute and longitude stored in `albedo.α_sfc`.
-"""
-function set_initial_parameter_field!(
-    albedo::BulkAlbedoFunction{FT},
-    p,
-    surface_coords,
-) where {FT}
-    # TODO should we include snow here?
-    @. p.bucket.α_sfc = albedo.α_bareground
-end
-
-"""
-    function set_initial_parameter_field!(
-        albedo::BulkAlbedoStatic{FT},
-        p,
-        surface_coords,
-    ) where {FT}
-
-Initializes spatially-varying surface albedo stored in the
-auxiliary vector `p` in place, according to a
-NetCDF file.
-
-The NetCDF file is read in, regridded, and projected onto
-the surface space of the LSM using ClimaCoreTempestRemap. The result
-is a ClimaCore.Fields.Field of albedo values.
-"""
-function set_initial_parameter_field!(
-    albedo::BulkAlbedoStatic{FT},
-    p,
-    surface_coords,
-) where {FT}
-    # TODO should we include snow here?
-    p.bucket.α_sfc .= albedo.α_bareground
-end
-
-"""
-    function set_initial_parameter_field!(
-        albedo::BulkAlbedoTemporal{FT},
-        p,
-        surface_coords,
-    ) where {FT}
-
-Initializes spatially- and temporally-varying surface albedo stored in
-the auxiliary vector `p` in place, according to a
-NetCDF file. This data file is encapsulated in an object of
-type `ClimaLand.FileReader.PrescribedDataTemporal` in the field albedo.albedo_info.
-This object contains a reference date and start time, which are used
-to get the start date.
-
-The NetCDF file is read in at the dates closest to this start date,
-regridded, and projected onto
-the surface space of the LSM using ClimaCoreTempestRemap. The result
-is a ClimaCore.Fields.Field of albedo values.
-"""
-function set_initial_parameter_field!(
-    albedo::BulkAlbedoTemporal{FT},
-    p,
-    surface_coords,
-) where {FT}
-    sim_info = albedo.albedo_info.sim_info
-    date_start = sim_info.date_ref + Dates.Second(round(sim_info.t_start))
-    space = axes(surface_coords)
-
-    read_data_fields!(albedo.albedo_info, date_start, space)
-    p.bucket.α_sfc .= FileReader.get_data_at_date(
-        albedo.albedo_info,
-        space,
-        "sw_alb",
-        date_start,
-    )
 end
 
 """
@@ -636,9 +549,10 @@ function next_albedo(
     sim_date = to_datetime(
         sim_info.date_ref + Second(round(sim_info.t_start)) + Second(round(t)),
     )
-    # Use next date if it's closest to current time
+    # Read next data fields if initializing or next date is closest to current time
     # This maintains `all_dates[date_idx]` <= `sim_date` < `all_dates[date_idx + 1]`
-    if sim_date >= to_datetime(next_date_in_file(model_albedo.albedo_info))
+    if t == sim_info.t_start ||
+       sim_date >= to_datetime(next_date_in_file(model_albedo.albedo_info))
         read_data_fields!(model_albedo.albedo_info, sim_date, axes(Y.bucket.W))
     end
     # Interpolate data value to current time
