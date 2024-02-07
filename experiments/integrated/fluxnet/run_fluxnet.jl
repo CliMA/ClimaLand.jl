@@ -173,7 +173,6 @@ radiative_transfer_args = (;
         τ_PAR_leaf = τ_PAR_leaf,
         α_NIR_leaf = α_NIR_leaf,
         τ_NIR_leaf = τ_NIR_leaf,
-        n_layers = n_layers,
         ϵ_canopy = ϵ_canopy,
     )
 )

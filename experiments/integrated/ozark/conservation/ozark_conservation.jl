@@ -175,7 +175,6 @@ for float_type in (Float32, Float64)
             τ_PAR_leaf = τ_PAR_leaf,
             α_NIR_leaf = α_NIR_leaf,
             τ_NIR_leaf = τ_NIR_leaf,
-            n_layers = n_layers,
         )
     )
     # Set up conductance

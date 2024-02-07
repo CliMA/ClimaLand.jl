@@ -164,7 +164,6 @@ rt_params = TwoStreamParameters{FT}(;
     Ω = FT(0.69),
     λ_γ_PAR = FT(5e-7),
     λ_γ_NIR = FT(1.65e-6),
-    n_layers = UInt64(20),
 )
 
 rt_model = TwoStreamModel{FT}(rt_params);
