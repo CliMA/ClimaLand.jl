@@ -8,11 +8,10 @@ import ClimaLand
 import ClimaLand.Parameters as LP
 
 using Dates
-include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"))
 
 for FT in (Float32, Float64)
     @testset "Surface fluxes and radiation for soil, FT = $FT" begin
-        earth_param_set = create_lsm_parameters(FT)
+        earth_param_set = LP.LandParameters(FT)
 
         soil_domains = [
             ClimaLand.Domains.Column(;

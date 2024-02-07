@@ -9,7 +9,6 @@ using ClimaLand.Soil
 import ClimaLand
 import ClimaLand.Parameters as LP
 
-include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"))
 
 for FT in (Float32, Float64)
     @testset "Richards Jacobian entries, Moisture BC, FT = $FT" begin

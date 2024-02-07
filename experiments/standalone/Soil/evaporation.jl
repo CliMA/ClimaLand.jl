@@ -19,15 +19,13 @@ import ClimaLand
 import ClimaLand.Parameters as LP
 import SurfaceFluxes.Parameters as SFP
 
-include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"))
-
 # Define simulation times
 t0 = Float64(0)
 tf = Float64(24 * 3600 * 13)
 dt = Float64(2)
 
 for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
-    earth_param_set = create_lsm_parameters(FT)
+    earth_param_set = LP.LandParameters(FT)
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
     # Coarse sand experiment described in Figures 7 and 8a
     # of Lehmann, Assouline, Or  (Phys Rev E 77, 2008)

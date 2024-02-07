@@ -22,10 +22,10 @@ using ClimaLand:
 # Bucket model parameters
 import ClimaLand
 import ClimaLand.Parameters as LP
-include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"))
+import CLIMAParameters
 
 for FT in (Float32, Float64)
-    earth_param_set = create_lsm_parameters(FT)
+    earth_param_set = LP.LandParameters(FT)
     α_bareground_func = (coordinate_point) -> 0.2 # surface albedo, spatially constant
     α_snow = FT(0.8) # snow albedo
     σS_c = FT(0.2)

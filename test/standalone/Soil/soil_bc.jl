@@ -4,8 +4,7 @@ using ClimaCore
 using ClimaLand
 using ClimaLand.Soil
 using ClimaLand.Domains: HybridBox, SphericalShell, Column
-
-include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"))
+import ClimaLand.Parameters as LP
 
 for FT in (Float32, Float64)
     @testset "WVector usage in gradient, FT = $FT" begin
@@ -130,7 +129,7 @@ for FT in (Float32, Float64)
     end
 
     @testset "Test heat state to flux BC calculations, FT = $FT" begin
-        earth_param_set = create_lsm_parameters(FT)
+        earth_param_set = LP.LandParameters(FT)
         ν = FT(0.495)
         K_sat = FT(0.0443 / 3600 / 100) # m/s
         S_s = FT(1e-3) #inverse meters
@@ -192,7 +191,7 @@ end
     # AtmosDrivenFluxBC method tested in `test/standalone/Soil/climate_drivers.jl`
     # Currently no other methods exist besides the default, which we test here
     FT = Float32
-    earth_param_set = create_lsm_parameters(FT)
+    earth_param_set = LP.LandParameters(FT)
     ν = FT(0.495)
     K_sat = FT(0.0443 / 3600 / 100) # m/s
     S_s = FT(1e-3) #inverse meters

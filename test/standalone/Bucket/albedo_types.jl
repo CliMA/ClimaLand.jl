@@ -30,7 +30,7 @@ using ClimaLand:
 
 # Bucket model parameters
 import ClimaLand
-include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"))
+import ClimaLand.Parameters as LP
 
 function create_domain_2d(FT)
     rad = FT(100)
@@ -176,7 +176,7 @@ if !Sys.iswindows()
     end
 
     @testset "Test BulkAlbedoStatic - albedo from map, FT = $FT" begin
-        earth_param_set = create_lsm_parameters(FT)
+        earth_param_set = LP.LandParameters(FT)
         varname = "sw_alb"
         path = bareground_albedo_dataset_path()
         regrid_dirpath = joinpath(pkgdir(ClimaLand), "test/albedo_tmpfiles/")
@@ -308,7 +308,7 @@ if !Sys.iswindows()
     end
 
     @testset "Test BulkAlbedoTemporal - albedo from map over time, FT = $FT" begin
-        earth_param_set = create_lsm_parameters(FT)
+        earth_param_set = LP.LandParameters(FT)
         varname = "sw_alb"
         infile_path = cesm2_albedo_dataset_path()
         regrid_dirpath = joinpath(pkgdir(ClimaLand), "test/albedo_tmpfiles/")

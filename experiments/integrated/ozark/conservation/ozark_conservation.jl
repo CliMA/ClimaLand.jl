@@ -1,7 +1,6 @@
 import SciMLBase
 import ClimaTimeSteppers as CTS
 using ClimaCore
-import CLIMAParameters as CP
 using Plots
 using Statistics
 using Dates
@@ -14,13 +13,14 @@ using ClimaLand.Canopy
 using ClimaLand.Canopy.PlantHydraulics
 import ClimaLand
 import ClimaLand.Parameters as LP
+import CLIMAParameters
+
 climaland_dir = pkgdir(ClimaLand)
-include(joinpath(climaland_dir, "parameters", "create_parameters.jl"))
 
 for float_type in (Float32, Float64)
     # Make these global so we can use them in other ozark files
     global FT = float_type
-    global earth_param_set = create_lsm_parameters(FT)
+    global earth_param_set = LP.LandParameters(FT)
     global site_ID = "US-MOz"
 
     # Utility functions for reading in and filling fluxnet data

@@ -7,10 +7,10 @@ using Statistics
 import ClimaTimeSteppers as CTS
 using ClimaCore
 using ClimaCore: Remapping, Geometry
-import CLIMAParameters as CP
 import ClimaComms
 import ClimaLand
-include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"));
+import ClimaLand.Parameters as LP
+import CLIMAParameters
 using ClimaLand.Bucket: BucketModel, BucketModelParameters, BulkAlbedoFunction
 using ClimaLand.Domains: coordinates, Column
 using ClimaLand:
@@ -38,7 +38,7 @@ end
 anim_plots = false
 FT = Float64;
 context = ClimaComms.context()
-earth_param_set = create_lsm_parameters(FT);
+earth_param_set = LP.LandParameters(FT);
 outdir = joinpath(pkgdir(ClimaLand), "experiments/standalone/Bucket/artifacts")
 !ispath(outdir) && mkpath(outdir)
 

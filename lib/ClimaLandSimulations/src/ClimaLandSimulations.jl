@@ -37,8 +37,7 @@ const FT = Float64
 climaland_dir = pkgdir(ClimaLand)
 savedir =
     joinpath(climaland_dir, "experiments", "integrated", "fluxnet/figures/")
-include(joinpath(climaland_dir, "parameters", "create_parameters.jl"))
-earth_param_set = create_lsm_parameters(FT)
+earth_param_set = LP.LandParameters(FT)
 
 ClimaLandSimulations_dir = pkgdir(ClimaLandSimulations)
 

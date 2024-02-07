@@ -6,8 +6,7 @@ using ClimaLand
 using ClimaLand.Domains: HybridBox, SphericalShell
 using ClimaLand.Soil
 import ClimaLand
-include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"))
-
+import ClimaLand.Parameters as LP
 
 for FT in (Float32, Float64)
     @testset "Soil horizontal operators unit tests, FT = $FT" begin
@@ -229,7 +228,7 @@ for FT in (Float32, Float64)
     end
 
     @testset "Soil energy+hydrology horizontal operators, FT = $FT" begin
-        earth_param_set = create_lsm_parameters(FT)
+        earth_param_set = LP.LandParameters(FT)
         ν = FT(0.44)
         K_sat = FT(29.7 / 3600 / 100) # m/s
         S_s = FT(1e-3) #inverse meters

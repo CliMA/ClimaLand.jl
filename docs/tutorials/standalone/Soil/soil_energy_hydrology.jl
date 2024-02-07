@@ -92,11 +92,10 @@ using ClimaLand.Soil
 
 import ClimaLand
 import ClimaLand.Parameters as LP
-include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"));
 
 # Choose a floating point precision, and get the parameter set, which holds constants used across CliMA models:
 FT = Float32
-earth_param_set = create_lsm_parameters(FT);
+earth_param_set = LP.LandParameters(FT);
 
 
 # # Create the model

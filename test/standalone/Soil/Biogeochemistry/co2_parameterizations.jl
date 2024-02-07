@@ -5,11 +5,9 @@ using ClimaLand.Soil.Biogeochemistry
 import ClimaLand
 import ClimaLand.Parameters as LP
 
-include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"))
-
 for FT in (Float32, Float64)
     @testset "Soil CO2 production and transport, FT = $FT" begin
-        earth_param_set = create_lsm_parameters(FT)
+        earth_param_set = LP.LandParameters(FT)
         # Parameters should be supplied in m/kg/s (Pa... etc)
         D_liq = FT(3.17)
         ν = FT(0.556)

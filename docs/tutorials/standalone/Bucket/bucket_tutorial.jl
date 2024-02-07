@@ -165,8 +165,8 @@ FT = Float32;
 # additional parameters as described in the text above. These two sets
 # are combined in the object `BucketModelParameters` as follows:
 import ClimaLand
-include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"));
-earth_param_set = create_lsm_parameters(FT);
+import ClimaLand.Parameters as LP
+earth_param_set = LP.LandParameters(FT);
 
 # Set up the model domain. At every surface coordinate point, we'll solve
 # an ODE for `W` and `Ws`, and for every subsurface point, we solve for `T`.
