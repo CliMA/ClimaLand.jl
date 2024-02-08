@@ -30,24 +30,7 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
     ν_ss_om = FT(0.0)
     ν_ss_quartz = FT(1.0)
     ν_ss_gravel = FT(0.0)
-    κ_minerals = FT(2.5)
-    κ_om = FT(0.25)
-    κ_quartz = FT(8.0)
-    κ_air = FT(0.025)
-    κ_ice = FT(2.21)
-    κ_liq = FT(0.57)
-    ρp = FT(2.66 / 1e3 * 1e6)
-    ρc_ds = FT(2e6 * (1.0 - ν))
-    κ_solid = Soil.κ_solid(ν_ss_om, ν_ss_quartz, κ_om, κ_quartz, κ_minerals)
-    κ_dry = Soil.κ_dry(ρp, ν, κ_solid, κ_air)
-    κ_sat_frozen = Soil.κ_sat_frozen(κ_solid, ν, κ_ice)
-    κ_sat_unfrozen = Soil.κ_sat_unfrozen(κ_solid, ν, κ_liq)
-
     soil_ps = Soil.EnergyHydrologyParameters{FT}(;
-        κ_dry = κ_dry,
-        κ_sat_frozen = κ_sat_frozen,
-        κ_sat_unfrozen = κ_sat_unfrozen,
-        ρc_ds = ρc_ds,
         ν = ν,
         ν_ss_om = ν_ss_om,
         ν_ss_quartz = ν_ss_quartz,

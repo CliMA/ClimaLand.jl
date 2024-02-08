@@ -71,10 +71,6 @@ include(
 # a model type and model args:
 soil_domain = land_domain
 soil_ps = Soil.EnergyHydrologyParameters{FT}(;
-    κ_dry = κ_dry,
-    κ_sat_frozen = κ_sat_frozen,
-    κ_sat_unfrozen = κ_sat_unfrozen,
-    ρc_ds = ρc_ds,
     ν = soil_ν,
     ν_ss_om = ν_ss_om,
     ν_ss_quartz = ν_ss_quartz,

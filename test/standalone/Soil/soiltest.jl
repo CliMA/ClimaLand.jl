@@ -124,10 +124,6 @@ for FT in (Float32, Float64)
 
         ###
         hyd_off_en_on = Soil.EnergyHydrologyParameters{FT}(;
-            κ_dry = κ_dry,
-            κ_sat_frozen = κ_sat_frozen,
-            κ_sat_unfrozen = κ_sat_unfrozen,
-            ρc_ds = ρc_ds,
             ν = ν,
             ν_ss_om = ν_ss_om,
             ν_ss_quartz = ν_ss_quartz,
@@ -190,21 +186,38 @@ for FT in (Float32, Float64)
         @test maximum(abs.(Array(parent(dY.soil.ϑ_l)))) == FT(0)
         @test maximum(abs.(Array(parent(dY.soil.θ_i)))) == FT(0)
 
-        ###
-        hyd_on_en_off = Soil.EnergyHydrologyParameters{FT}(
-            κ_dry = FT(0),
-            κ_sat_frozen = FT(0),
-            κ_sat_unfrozen = FT(0),
-            ρc_ds = ρc_ds,
-            ν = ν,
-            ν_ss_om = ν_ss_om,
-            ν_ss_quartz = ν_ss_quartz,
-            ν_ss_gravel = ν_ss_gravel,
-            hydrology_cm = hcm,
-            K_sat = K_sat,
-            S_s = S_s,
-            θ_r = θ_r,
-            earth_param_set = earth_param_set,
+        ### Here we bypass the outer constructor to use the default. this makes it possible to set
+        ### the thermal conductivities to zero, but at the expense of being unreadable.
+        ### Because this is only for a test, we tolerate it :)
+        hyd_on_en_off = Soil.EnergyHydrologyParameters{
+            FT,
+            typeof(hcm),
+            typeof(earth_param_set),
+        }(
+            FT(0), # κ_dry
+            FT(0), #κ_sat_frozen
+            FT(0), #κ_sat_unfrozen
+            ρc_ds,
+            ν,
+            ν_ss_om,
+            ν_ss_quartz,
+            ν_ss_gravel,
+            FT(0.24), #α
+            FT(18.3), #β
+            hcm,
+            K_sat,
+            S_s,
+            θ_r,
+            FT(7),#Ω
+            FT(2.64e-2),#γ
+            FT(288),#γT_ref
+            FT(0.2),# NIR_albedo
+            FT(0.2), #PAR_albedo
+            FT(0.96),#ϵ
+            FT(0.001),# z_0m
+            FT(0.01), # z_0b
+            FT(0.015), #d_ds
+            earth_param_set,
         )
         soil_water_on = Soil.EnergyHydrology{FT}(;
             parameters = hyd_on_en_off,
@@ -344,22 +357,44 @@ for FT in (Float32, Float64)
         @test mean(abs.(expected .- Array(parent(dY.soil.ρe_int)))) /
               median(Array(parent(Y.soil.ρe_int))) < 10^2 * eps(FT)
 
-        ###
-
-        hyd_off_en_off = Soil.EnergyHydrologyParameters{FT}(;
-            κ_dry = FT(0),
-            κ_sat_frozen = FT(0),
-            κ_sat_unfrozen = FT(0),
-            ρc_ds = ρc_ds,
-            ν = ν,
-            ν_ss_om = ν_ss_om,
-            ν_ss_quartz = ν_ss_quartz,
-            ν_ss_gravel = ν_ss_gravel,
-            hydrology_cm = hcm,
-            K_sat = FT(0),
-            S_s = S_s,
-            θ_r = θ_r,
-            earth_param_set = earth_param_set,
+        ### Here we bypass the outer constructor to use the default. this makes it possible to set
+        ### the thermal conductivities to zero, but at the expense of being unreadable.
+        ### Because this is only for a test, we tolerate it :)
+        hyd_off_en_off = Soil.EnergyHydrologyParameters{
+            FT,
+            typeof(hcm),
+            typeof(earth_param_set),
+        }(
+            FT(0), # κ_dry
+            FT(0), #κ_sat_frozen
+            FT(0), #κ_sat_unfrozen
+            ρc_ds,
+            ν,
+            ν_ss_om,
+            ν_ss_quartz,
+            ν_ss_gravel,
+            FT(0.24), #α
+            FT(18.3), #β
+            hcm,
+            FT(0), # ksat
+            S_s,
+            θ_r,
+            FT(7),#Ω
+            FT(2.64e-2),#γ
+            FT(288),#γT_ref
+            FT(0.2),# NIR_albedo
+            FT(0.2), #PAR_albedo
+            FT(0.96),#ϵ
+            FT(0.001),# z_0m
+            FT(0.01), # z_0b
+            FT(0.015), #d_ds
+            earth_param_set,
+        )
+        soil_water_on = Soil.EnergyHydrology{FT}(;
+            parameters = hyd_on_en_off,
+            domain = soil_domain,
+            boundary_conditions = boundary_fluxes,
+            sources = sources,
         )
 
         soil_both_off = Soil.EnergyHydrology{FT}(;
@@ -407,10 +442,6 @@ for FT in (Float32, Float64)
 
         ### Test with both energy and hydrology on
         hyd_on_en_on = Soil.EnergyHydrologyParameters{FT}(;
-            κ_dry = κ_dry,
-            κ_sat_frozen = κ_sat_frozen,
-            κ_sat_unfrozen = κ_sat_unfrozen,
-            ρc_ds = ρc_ds,
             ν = ν,
             ν_ss_om = ν_ss_om,
             ν_ss_quartz = ν_ss_quartz,
@@ -562,10 +593,6 @@ for FT in (Float32, Float64)
 
         ###
         hyd_off_en_on = Soil.EnergyHydrologyParameters{FT}(;
-            κ_dry = κ_dry,
-            κ_sat_frozen = κ_sat_frozen,
-            κ_sat_unfrozen = κ_sat_unfrozen,
-            ρc_ds = ρc_ds,
             ν = ν,
             ν_ss_om = ν_ss_om,
             ν_ss_quartz = ν_ss_quartz,

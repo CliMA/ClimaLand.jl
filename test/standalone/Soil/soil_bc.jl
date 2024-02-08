@@ -141,24 +141,7 @@ for FT in (Float32, Float64)
         ν_ss_om = FT(0.0)
         ν_ss_quartz = FT(1.0)
         ν_ss_gravel = FT(0.0)
-        κ_minerals = FT(2.5)
-        κ_om = FT(0.25)
-        κ_quartz = FT(8.0)
-        κ_air = FT(0.025)
-        κ_ice = FT(2.21)
-        κ_liq = FT(0.57)
-        ρp = FT(2.66 / 1e3 * 1e6)
-        ρc_ds = FT(2e6 * (1.0 - ν))
-        κ_solid = Soil.κ_solid(ν_ss_om, ν_ss_quartz, κ_om, κ_quartz, κ_minerals)
-        κ_dry = Soil.κ_dry(ρp, ν, κ_solid, κ_air)
-        κ_sat_frozen = Soil.κ_sat_frozen(κ_solid, ν, κ_ice)
-        κ_sat_unfrozen = Soil.κ_sat_unfrozen(κ_solid, ν, κ_liq)
-
-        hyd_on_en_on = Soil.EnergyHydrologyParameters{FT}(;
-            κ_dry = κ_dry,
-            κ_sat_frozen = κ_sat_frozen,
-            κ_sat_unfrozen = κ_sat_unfrozen,
-            ρc_ds = ρc_ds,
+        parameters = Soil.EnergyHydrologyParameters{FT}(;
             ν = ν,
             ν_ss_om = ν_ss_om,
             ν_ss_quartz = ν_ss_quartz,
@@ -183,13 +166,18 @@ for FT in (Float32, Float64)
 
         κ_c =
             thermal_conductivity.(
-                κ_dry,
+                parameters.κ_dry,
                 kersten_number.(
                     θ_i,
                     relative_saturation.(ϑ_c, θ_i, ν),
-                    Ref(hyd_on_en_on),
+                    Ref(parameters),
                 ),
-                κ_sat.(ϑ_c, θ_i, κ_sat_unfrozen, κ_sat_frozen),
+                κ_sat.(
+                    ϑ_c,
+                    θ_i,
+                    parameters.κ_sat_unfrozen,
+                    parameters.κ_sat_frozen,
+                ),
             )
 
         flux_int = diffusive_flux(κ_c, T_bc, T_c, Δz)
@@ -244,10 +232,6 @@ end
     )
 
     parameters = Soil.EnergyHydrologyParameters{FT}(;
-        κ_dry = κ_dry_soil,
-        κ_sat_frozen = κ_sat_ice,
-        κ_sat_unfrozen = κ_sat_liq,
-        ρc_ds = ρc_ds,
         ν = ν,
         ν_ss_om = ν_ss_om,
         ν_ss_quartz = ν_ss_quartz,
