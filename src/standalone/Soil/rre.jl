@@ -161,6 +161,8 @@ function ClimaLand.make_compute_imp_tendency(model::RichardsModel)
         # GradC2F returns a Covariant3Vector, so no need to convert.
         @. dY.soil.ϑ_l =
             -(divf2c_water(-interpc2f(p.soil.K) * gradc2f_water(p.soil.ψ + z)))
+
+        apply_land_mask!(dY.soil.ϑ_l, model.domain)
     end
     return compute_imp_tendency!
 end

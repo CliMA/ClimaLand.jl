@@ -330,6 +330,11 @@ function ClimaLand.make_compute_exp_tendency(
             ClimaLand.source!(dY, src, Y, p, model)
         end
     end
+
+    apply_land_mask!(dY.soil.ϑ_l, model.domain)
+    apply_land_mask!(dY.soil.θ_i, model.domain)
+    apply_land_mask!(dY.soil.ρe_int, model.domain)
+    
     return compute_exp_tendency!
 end
 

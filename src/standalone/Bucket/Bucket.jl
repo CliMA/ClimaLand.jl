@@ -15,6 +15,7 @@ using ClimaLand.FileReader
 import ..Parameters as LP
 import ClimaLand.Domains: coordinates, SphericalShell
 using ClimaLand:
+    apply_land_mask!,
     AbstractAtmosphericDrivers,
     AbstractRadiativeDrivers,
     liquid_precipitation,
@@ -474,6 +475,10 @@ function make_compute_exp_tendency(model::BucketModel{FT}) where {FT}
             snow_cover_fraction * snow_melt
         ) # Equation (6)
     end
+    apply_land_mask!(dY.bucket.σS, model.domain)
+    apply_land_mask!(dY.bucket.W model.domain)
+    apply_land_mask!(dY.bucket.Ws, model.domain)
+    apply_land_mask!(dY.bucket.T, model.domain)
     return compute_exp_tendency!
 end
 

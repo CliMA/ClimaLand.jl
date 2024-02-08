@@ -11,6 +11,7 @@ using ClimaCore
 using DocStringExtensions
 
 import ClimaLand:
+    apply_land_mask!,
     make_update_aux,
     make_compute_exp_tendency,
     prognostic_vars,
@@ -567,23 +568,27 @@ function make_compute_exp_tendency(
             ip1 = i + 1
             # To prevent dividing by zero, change AI/(AI x dz)" to
             # "AI/max(AI x dz, eps(FT))"
-            AIdz =
-                max.(
-                    getproperty(area_index, model.compartment_labels[i]) .* (
-                        model.compartment_surfaces[ip1] -
-                        model.compartment_surfaces[i]
-                    ),
-                    eps(FT),
-                )
-            if i == 1
-                @inbounds @. dY.canopy.hydraulics.ϑ_l.:($$i) =
-                    1 / AIdz * (fa_roots - fa.:($$i))
-            else
-                @inbounds @. dY.canopy.hydraulics.ϑ_l.:($$i) =
-                    1 / AIdz * (fa.:($$im1) - fa.:($$i))
-            end
-        end
+    AIdz =
+        max.(
+            getproperty(area_index, model.compartment_labels[i]) .* (
+                model.compartment_surfaces[ip1] -
+                model.compartment_surfaces[i]
+            ),
+            eps(FT),
+        )
+    if i == 1
+        @inbounds @. dY.canopy.hydraulics.ϑ_l.:($$i) =
+            1 / AIdz * (fa_roots - fa.:($$i))
+    else
+        @inbounds @. dY.canopy.hydraulics.ϑ_l.:($$i) =
+            1 / AIdz * (fa.:($$im1) - fa.:($$i))
     end
+    apply_land_mask!(dY.canopy.hydraulics.ϑ_l.:($$i), model.domain)
+
+end
+end
+
+
     return compute_exp_tendency!
 end
 

@@ -66,6 +66,7 @@ using Thermodynamics
 import ClimaLand.Domains: Column, HybridBox, SphericalShell
 using ClimaLand: AbstractTridiagonalW
 import ClimaLand:
+    apply_land_mask!,
     AbstractImExModel,
     make_update_aux,
     make_compute_exp_tendency,

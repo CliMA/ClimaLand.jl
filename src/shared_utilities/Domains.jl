@@ -376,11 +376,13 @@ end
         dz_tuple::Union{Tuple{FT, FT}, Nothing}
         nelements::Tuple{Int, Int}
         npolynomial::Int
+        land_mask::Union{Nothing, ClimaCore.Fields.Field}
     end
 A struct holding the necessary information to construct a domain, a mesh,
 a 2d spectral element space (non-radial directions)
 x a 1d finite difference space (radial direction),
- and the resulting coordinate field.
+ and the resulting coordinate field. An optional mask
+can be passed to indicate which grid points are land.
 
 `space` is a NamedTuple holding the surface space (in this case,
 the top face space) and the center space for the subsurface.
@@ -401,6 +403,8 @@ struct SphericalShell{FT} <: AbstractDomain{FT}
     npolynomial::Int
     "A NamedTuple of associated ClimaCore spaces: in this case, the surface space and subsurface center space"
     space::NamedTuple
+    "Mask of 1's or 0's indicating grid points where land is present="
+    land_mask::Union{Nothing, ClimaCore.Fields.Field}
 end
 
 """
@@ -411,6 +415,7 @@ end
         npolynomial::Int,
         dz_tuple::Union{Tuple{FT, FT}, Nothing} = nothing,
         comms_ctx = ClimaComms.SingletonCommsContext(),
+        land_mask_data = nothing
     ) where {FT}
 Outer constructor for the `SphericalShell` domain, using keyword arguments.
 
@@ -423,13 +428,14 @@ with the depth/nelements chosen, in which case you may need to choose
 different values.
 """
 function SphericalShell(;
-    radius::FT,
-    depth::FT,
-    nelements::Tuple{Int, Int},
-    npolynomial::Int,
-    dz_tuple::Union{Tuple{FT, FT}, Nothing} = nothing,
-    comms_ctx = ClimaComms.SingletonCommsContext(),
-) where {FT}
+                        radius::FT,
+                        depth::FT,
+                        nelements::Tuple{Int, Int},
+                        npolynomial::Int,
+                        dz_tuple::Union{Tuple{FT, FT}, Nothing} = nothing,
+                        comms_ctx = ClimaComms.SingletonCommsContext(),
+                        land_mask_data = nothing,
+                        ) where {FT}
     @assert 0 < radius
     @assert 0 < depth
     vertdomain = ClimaCore.Domains.IntervalDomain(
@@ -465,6 +471,12 @@ function SphericalShell(;
     )
     surface_space = obtain_surface_space(subsurface_space)
     space = (; surface = surface_space, subsurface = subsurface_space)
+    if ~(land_mask_data isa Nothing)
+        land_mask = get_data_at_date(land_mask_data.pds, surface_space, land_mask_data.varname)
+    else
+        land_mask = ClimaCore.Fields.ones(space.surface)
+    end
+    
     return SphericalShell{FT}(
         radius,
         depth,
@@ -472,6 +484,7 @@ function SphericalShell(;
         nelements,
         npolynomial,
         space,
+        land_mask
     )
 end
 
@@ -481,6 +494,7 @@ end
         radius::FT
         nelements::Tuple{Int, Int}
         npolynomial::Int
+        land_mask::Union{Nothing, ClimaCore.Fields.Field}
     end
 A struct holding the necessary information to construct a domain, a mesh,
 a 2d spectral element space (non-radial directions) and the resulting coordinate field.
@@ -499,6 +513,8 @@ struct SphericalSurface{FT} <: AbstractDomain{FT}
     npolynomial::Int
     "A NamedTuple of associated ClimaCore spaces: in this case, the surface (SphericalSurface) space"
     space::NamedTuple
+    "Mask of 1's or 0's indicating grid points where land is present="
+    land_mask::Union{Nothing, ClimaCore.Fields.Field}
 end
 
 """
@@ -507,6 +523,7 @@ end
         nelements::Int
         npolynomial::Int,
         comms_ctx = ClimaComms.SingletonCommsContext(),
+        land_mask = nothing,
     ) where {FT}
 Outer constructor for the `SphericalSurface` domain, using keyword arguments.
 """
@@ -515,6 +532,7 @@ function SphericalSurface(;
     nelements::Int,
     npolynomial::Int,
     comms_ctx = ClimaComms.SingletonCommsContext(),
+    land_mask = nothing,
 ) where {FT}
     @assert 0 < radius
     horzdomain = ClimaCore.Domains.SphereDomain(radius)
@@ -523,7 +541,12 @@ function SphericalSurface(;
     quad = Spaces.Quadratures.GLL{npolynomial + 1}()
     horzspace = Spaces.SpectralElementSpace2D(horztopology, quad)
     space = (; surface = horzspace)
-    return SphericalSurface{FT}(radius, nelements, npolynomial, space)
+    if ~(land_mask isa Nothing)
+        @assert (axes(land_mask) == space.surface)
+    else
+        land_mask = ClimaCore.Fields.ones(space.surface)
+    end
+    return SphericalSurface{FT}(radius, nelements, npolynomial, space, land_mask)
 end
 
 
@@ -578,6 +601,7 @@ function obtain_surface_domain(s::SphericalShell{FT}) where {FT}
         s.nelements[1],
         s.npolynomial,
         (; surface = s.space.surface),
+        s.land_mask
     )
     return surface_domain
 end
@@ -677,6 +701,11 @@ function top_center_to_surface(center_field::ClimaCore.Fields.Field)
     )
 end
 
+function apply_land_mask!(field::ClimaCore.Fields.Field, domain::AbstractDomain) end
+
+function apply_land_mask!(field::ClimaCore.Fields.Field, domain::Union{SphericalShell, SphericalSurface})
+    field .= field .* domain.land_mask
+end
 
 export AbstractDomain
 export Column, Plane, HybridBox, Point, SphericalShell, SphericalSurface
@@ -684,6 +713,7 @@ export coordinates,
     obtain_face_space,
     obtain_surface_space,
     top_center_to_surface,
-    obtain_surface_domain
+    obtain_surface_domain,
+    apply_land_mask!
 
 end

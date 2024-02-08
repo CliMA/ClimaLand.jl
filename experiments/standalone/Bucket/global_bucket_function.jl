@@ -58,13 +58,15 @@ outdir = joinpath(pkgdir(ClimaLand), "experiments/standalone/Bucket/artifacts")
 
 # Construct simulation domain
 soil_depth = FT(3.5);
+land_mask_pds = PrescribedDataStatic{FT}()
 bucket_domain = ClimaLand.Domains.SphericalShell(;
-    radius = FT(6.3781e6),
-    depth = soil_depth,
-    nelements = (10, 10),
-    npolynomial = 1,
-    dz_tuple = FT.((1.0, 0.05)),
-);
+                                                 radius = FT(6.3781e6),
+                                                 depth = soil_depth,
+                                                 nelements = (10, 10),
+                                                 npolynomial = 1,
+                                                 dz_tuple = FT.((1.0, 0.05)),
+                                                 land_mask_pds = land_mask_pds,
+                                                 );
 surface_space = bucket_domain.space.surface
 
 # Set up parameters
@@ -93,6 +95,7 @@ bucket_parameters = BucketModelParameters(
     τc,
     earth_param_set,
 );
+
 ref_time = DateTime(2005);
 
 # Precipitation:

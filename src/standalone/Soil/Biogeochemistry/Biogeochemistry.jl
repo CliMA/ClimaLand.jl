@@ -7,6 +7,7 @@ import ClimaCore: Fields, Operators, Geometry, Spaces
 
 import ClimaLand.Domains: AbstractDomain
 import ClimaLand:
+    apply_land_mask!,
     AbstractExpModel,
     make_update_aux,
     make_compute_exp_tendency,
@@ -248,6 +249,9 @@ function ClimaLand.make_compute_exp_tendency(model::SoilCO2Model)
         end
 
     end
+
+    apply_land_mask!(dY.soilco2.C, model.domain)
+    
     return compute_exp_tendency!
 end
 
