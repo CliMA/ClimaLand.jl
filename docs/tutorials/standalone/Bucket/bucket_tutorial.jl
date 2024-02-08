@@ -83,7 +83,7 @@
 # equation, since we neglect the sensible heat contribution and only track the
 # latent heat contribution. We neglect the energy in liquid precipitation.
 
-# Finally, we have `α_sfc(lat, lon)` the
+# Finally, we have `α_bareground_func(lat, lon)` the
 # (snow-free) surface albedo, `ρc` the volumetric
 # heat capacity of the land, `σ_SB` the Stefan-Boltzmann constant,  and `κ_soil` the thermal
 # conductivity. The albedo is a linear interpolation between the albedo of surface and
@@ -168,15 +168,27 @@ import ClimaLand
 include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"));
 earth_param_set = create_lsm_parameters(FT);
 
-# Define our `BulkAlbedoFunction` model using a constant surface and snow albedo:
-# The surface albedo is a function of coordinates, which would be
+# Set up the model domain. At every surface coordinate point, we'll solve
+# an ODE for `W` and `Ws`, and for every subsurface point, we solve for `T`.
+# In coupled simulations run at the same
+# resolution as the atmosphere, the bucket horizontal resolution would match the
+# horizontal resolution at the lowest level of the atmosphere model. In general, however, the two
+# resolutions do not need to match. Here we just set up something
+# simple - a Column.
+soil_depth = FT(3.5);
+bucket_domain = Column(; zlim = (-soil_depth, FT(0.0)), nelements = 10);
+surface_space = bucket_domain.space.surface
+
+# Define our `BulkAlbedoFunction` model using a constant bareground surface and
+# snow albedo:
+# The bareground albedo is a function of coordinates, which would be
 # (x,y) on a plane, and (lat,lon) on a sphere. Another albedo
 # option is to specify a `BulkAlbedoStatic` or `BulkAlbedoFunction`,
-# which uses a NetCDF file to read in surface albedo.
+# which uses a NetCDF file to read in bareground albedo.
 # These options only applies when coordinates are (lat,lon).
-α_sfc = (coordinate_point) -> 0.2;
+α_bareground_func = (coordinate_point) -> 0.2;
 α_snow = FT(0.8);
-albedo = BulkAlbedoFunction(α_snow, α_sfc);
+albedo = BulkAlbedoFunction{FT}(α_snow, α_bareground_func, surface_space);
 # The critical snow level setting the scale for when we interpolate between
 # snow and surface albedo
 σS_c = FT(0.2);
@@ -206,17 +218,6 @@ bucket_parameters = BucketModelParameters(
     τc,
     earth_param_set,
 );
-
-# Set up the model domain. At every surface coordinate point, we'll solve
-# an ODE for `W` and `Ws`, and for every subsurface point, we solve for `T`.
-# In coupled simulations run at the same
-# resolution as the atmosphere, the bucket horizontal resolution would match the
-# horizontal resolution at the lowest level of the atmosphere model. In general, however, the two
-# resolutions do not need to match. Here we just set up something
-# simple - a Column.
-
-soil_depth = FT(3.5);
-bucket_domain = Column(; zlim = (-soil_depth, FT(0.0)), nelements = 10);
 
 
 # The PrescribedAtmosphere and PrescribedRadiation need to take in a reference

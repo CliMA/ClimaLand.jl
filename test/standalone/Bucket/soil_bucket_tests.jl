@@ -21,9 +21,8 @@ include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"))
 
 for FT in (Float32, Float64)
     earth_param_set = create_lsm_parameters(FT)
-    α_sfc = (coordinate_point) -> 0.2 # surface albedo, spatially constant
+    α_bareground_func = (coordinate_point) -> 0.2 # surface albedo, spatially constant
     α_snow = FT(0.8) # snow albedo
-    albedo = BulkAlbedoFunction(α_snow, α_sfc)
     σS_c = FT(0.2)
     W_f = FT(0.15)
     z_0m = FT(1e-2)
@@ -51,6 +50,10 @@ for FT in (Float32, Float64)
     ]
     init_temp(z::FT, value::FT) where {FT} = FT(value)
     for bucket_domain in bucket_domains
+        surface_space = bucket_domain.space.surface
+        albedo =
+            BulkAlbedoFunction{FT}(α_snow, α_bareground_func, surface_space)
+
         @testset "Zero flux tendency, FT = $FT" begin
             # Radiation
             ref_time = DateTime(2005)

@@ -18,7 +18,6 @@ using ClimaLand.Bucket:
     BulkAlbedoTemporal,
     bareground_albedo_dataset_path,
     cesm2_albedo_dataset_path,
-    set_initial_parameter_field!,
     next_albedo
 using ClimaLand.Domains: coordinates, Column, SphericalShell
 using ClimaLand:
@@ -64,48 +63,30 @@ regrid_dir_temporal = joinpath(pkgdir(ClimaLand), "test", "temporal")
 isdir(regrid_dir_static) ? nothing : mkpath(regrid_dir_static)
 isdir(regrid_dir_temporal) ? nothing : mkpath(regrid_dir_temporal)
 
-@testset "Test set_initial_parameter_field for BulkAlbedoFunction, FT = $FT" begin
-    # set up for function call
-    α_sfc = (coord_point) -> sin(coord_point.lat + coord_point.long)
-    α_snow = FT(0.8)
-    albedo = BulkAlbedoFunction(α_snow, α_sfc)
-
-    domain = create_domain_2d(FT)
-    space = domain.space.surface
-    p = (; bucket = (; α_sfc = Fields.zeros(space)))
-    surface_coords = Fields.coordinate_field(space)
-
-    set_initial_parameter_field!(albedo, p, surface_coords)
-
-    # compare calculated result to manually applied albedo function
-    @test p.bucket.α_sfc == α_sfc.(surface_coords)
-end
-
 @testset "Test next_albedo for BulkAlbedoFunction, FT = $FT" begin
     # set up each argument for function call
-    α_sfc = (coord_point) -> sin(coord_point.lat + coord_point.long)
+    α_bareground_func = (coord_point) -> sin(coord_point.lat + coord_point.long)
     α_snow = FT(0.8)
-    albedo = BulkAlbedoFunction(α_snow, α_sfc)
+    domain = create_domain_2d(FT)
+    space = domain.space.surface
+    albedo = BulkAlbedoFunction{FT}(α_snow, α_bareground_func, space)
 
     σS_c = FT(0.2)
     parameters = (; σS_c = σS_c)
 
-    domain = create_domain_2d(FT)
-    space = domain.space.surface
     surface_coords = Fields.coordinate_field(space)
-    p = (; bucket = (; α_sfc = α_sfc.(surface_coords)))
-
     σS = FT(0.1)
     Y = (; bucket = (; σS = σS))
+    p = (; bucket = (; α_sfc = Fields.zeros(space)))
 
     # extract fields for manual calculation
-    p_α_sfc = p.bucket.α_sfc
+    α_bareground = α_bareground_func.(surface_coords)
     Y_σS = Y.bucket.σS
     param_σS_c = parameters.σS_c
     a_α_snow = albedo.α_snow
 
     next_alb_manual = @. (
-        (1 - Y_σS / (Y_σS + param_σS_c)) * p_α_sfc +
+        (1 - Y_σS / (Y_σS + param_σS_c)) * α_bareground +
         Y_σS / (Y_σS + param_σS_c) * a_α_snow
     )
 
@@ -130,75 +111,22 @@ if !Sys.iswindows()
         σS_c = FT(0.2)
         parameters = (; σS_c = σS_c)
 
-        p = (; bucket = (; α_sfc = Fields.zeros(space)))
-        set_initial_parameter_field!(albedo, p, surface_coords)
-
         σS = FT(0.1)
         Y = (; bucket = (; σS = σS))
+        p = (; bucket = (; α_sfc = Fields.zeros(space)))
 
         # extract fields for manual calculation
-        p_α_sfc = p.bucket.α_sfc
         Y_σS = Y.bucket.σS
         param_σS_c = parameters.σS_c
         a_α_snow = albedo.α_snow
+        a_α_bareground = albedo.α_bareground
 
         next_alb_manual = @. (
-            (1 - Y_σS / (Y_σS + param_σS_c)) * p_α_sfc +
+            (1 - Y_σS / (Y_σS + param_σS_c)) * a_α_bareground +
             Y_σS / (Y_σS + param_σS_c) * a_α_snow
         )
 
         @test next_albedo(albedo, parameters, Y, p, FT(0)) == next_alb_manual
-    end
-
-    @testset "Test set_initial_parameter_field for BulkAlbedoStatic, FT = $FT" begin
-        # set up for function call
-        domain = create_domain_2d(FT)
-        space = domain.space.surface
-        p = (; bucket = (; α_sfc = Fields.zeros(space)))
-        surface_coords = Fields.coordinate_field(space)
-
-        albedo = BulkAlbedoStatic{FT}(regrid_dir_static, space)
-        set_initial_parameter_field!(albedo, p, surface_coords)
-
-        # set up for manual data reading
-        infile_path = bareground_albedo_dataset_path()
-        varname = "sw_alb"
-
-        data_manual = get_data_at_date(albedo.α_sfc, space, varname)
-
-        @test p.bucket.α_sfc == data_manual
-    end
-
-    @testset "Test set_initial_parameter_field for BulkAlbedoTemporal, FT = $FT" begin
-        # set up for function call
-        t_start = Float64(0)
-        domain = create_domain_2d(FT)
-        space = domain.space.surface
-
-        infile_path = cesm2_albedo_dataset_path()
-        date_ref = to_datetime(NCDataset(infile_path, "r") do ds
-            ds["time"][1]
-        end)
-
-        albedo = BulkAlbedoTemporal{FT}(
-            regrid_dir_temporal,
-            date_ref,
-            t_start,
-            space,
-        )
-        p = (; bucket = (; α_sfc = Fields.zeros(space)))
-        surface_coords = Fields.coordinate_field(space)
-
-        set_initial_parameter_field!(albedo, p, surface_coords)
-
-        # set up for manual data reading
-        infile_path = bareground_albedo_dataset_path()
-        varname = "sw_alb"
-
-        data_manual =
-            get_data_at_date(albedo.albedo_info, space, varname, date_ref)
-
-        @test nans_to_zero.(p.bucket.α_sfc) == nans_to_zero.(data_manual)
     end
 
     @testset "Test next_albedo for BulkAlbedoTemporal, FT = $FT" begin
@@ -222,9 +150,6 @@ if !Sys.iswindows()
 
         Y = (; bucket = (; W = Fields.zeros(space)))
         p = (; bucket = (; α_sfc = Fields.zeros(space)))
-
-        # initialize data fields
-        set_initial_parameter_field!(albedo, p, surface_coords)
 
         # set up for manual data reading
         varname = "sw_alb"
@@ -335,12 +260,20 @@ if !Sys.iswindows()
                 Y.bucket.σS .= 0.0
                 set_initial_cache! = make_set_initial_cache(model)
                 set_initial_cache!(p, Y, FT(0.0))
-                field = get_data_at_date(
-                    albedo_model.α_sfc,
-                    model.domain.space.surface,
+
+                # Read in data manually
+                outfile_root = "static_data_cgll"
+                comms_ctx = ClimaComms.context(surface_space)
+                field = read_from_hdf5(
+                    regrid_dirpath,
+                    outfile_root,
+                    Dates.DateTime(0), # dummy date
                     varname,
+                    comms_ctx,
                 )
-                @test p.bucket.α_sfc == field
+                data_manual = nans_to_zero.(field)
+
+                @test p.bucket.α_sfc == data_manual
             else
                 surface_space = bucket_domain.space.surface
                 @test_throws "Using an albedo map requires a global run." BulkAlbedoStatic{

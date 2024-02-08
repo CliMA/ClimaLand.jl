@@ -65,51 +65,60 @@ abstract type AbstractBucketModel{FT} <: AbstractExpModel{FT} end
 abstract type AbstractLandAlbedoModel{FT <: AbstractFloat} end
 
 """
-    BulkAlbedoFunction{FT, F <: FUnction} <: AbstractLandAlbedoModel
+    BulkAlbedoFunction{FT, F <: ClimaCore.Fields.Field} <: AbstractLandAlbedoModel
 
 An albedo model where the albedo of different surface types
 is specified. Snow albedo is treated as constant across snow
-location and across wavelength. Surface albedo (sfc)
+location and across wavelength. Bareground surface albedo
 is specified as a function
 of latitude and longitude, but is also treated as constant across
-wavelength; surface is this context refers to soil and vegetation.
+wavelength; bareground surface is this context refers to soil and vegetation.
 """
-struct BulkAlbedoFunction{FT, F <: Function} <: AbstractLandAlbedoModel{FT}
+struct BulkAlbedoFunction{FT, F <: ClimaCore.Fields.Field} <:
+       AbstractLandAlbedoModel{FT}
     α_snow::FT
-    α_sfc::F
+    α_bareground::F
 end
 
 function BulkAlbedoFunction{FT}(
     α_snow::FT,
-    α_sfc::Function,
+    α_bareground::F,
+) where {FT <: AbstractFloat, F}
+    BulkAlbedoFunction(α_snow, α_bareground)
+end
+
+function BulkAlbedoFunction{FT}(
+    α_snow::FT,
+    α_bareground_func::Function,
+    space,
 ) where {FT <: AbstractFloat}
-    BulkAlbedoFunction(α_snow, α_sfc)
+    surface_coords = ClimaCore.Fields.coordinate_field(space)
+    α_bareground = FT.(α_bareground_func.(surface_coords))
+    args = (α_snow, α_bareground)
+    BulkAlbedoFunction{typeof.(args)...}(args...)
 end
 
 """
-    BulkAlbedoStatic{FT, PDS <: PrescribedDataStatic} <: AbstractLandAlbedoModel
+    BulkAlbedoStatic{FT, F <: ClimaCore.Fields.Field} <: AbstractLandAlbedoModel
 
 An albedo model where the albedo of different surface types
 is specified. Snow albedo is treated as constant across snow
-location and across wavelength. Surface albedo is specified via a
-NetCDF file, which can be a function of time, but is treated
+location and across wavelength. Bareground surface albedo is specified
+via a NetCDF file that is treated
 as constant across wavelengths; surface is this context refers
 to soil and vegetation. This albedo type is static in time.
 
 Note that this option should only be used with global simulations,
 i.e. with a `ClimaLand.LSMSphericalShellDomain.`
 """
-struct BulkAlbedoStatic{FT, PDS <: PrescribedDataStatic} <:
+struct BulkAlbedoStatic{FT, F <: ClimaCore.Fields.Field} <:
        AbstractLandAlbedoModel{FT}
     α_snow::FT
-    α_sfc::PDS
+    α_bareground::F
 end
 
-function BulkAlbedoStatic{FT}(
-    α_snow::FT,
-    α_sfc::PrescribedDataStatic,
-) where {FT}
-    return BulkAlbedoStatic{FT, typeof(α_sfc)}(α_snow, α_sfc)
+function BulkAlbedoStatic{FT}(α_snow::FT, α_bareground::F) where {FT, F}
+    return BulkAlbedoStatic(α_snow, α_bareground)
 end
 
 """
@@ -140,13 +149,18 @@ function BulkAlbedoStatic{FT}(
     if surface_space isa ClimaCore.Spaces.PointSpace
         error("Using an albedo map requires a global run.")
     end
-    α_sfc = PrescribedDataStatic{FT}(
+    α_bareground_data = PrescribedDataStatic{FT}(
         get_infile,
         regrid_dirpath,
         varnames,
         surface_space,
     )
-    return BulkAlbedoStatic{FT, typeof(α_sfc)}(α_snow, α_sfc)
+
+    # Albedo file only has one variable, so access first `varname`
+    varname = varnames[1]
+    α_bareground =
+        FT.(get_data_at_date(α_bareground_data, surface_space, varname))
+    return BulkAlbedoStatic(α_snow, α_bareground)
 end
 
 """
@@ -362,100 +376,9 @@ spatially varying parameter fields, read in from data files.
 function ClimaLand.make_set_initial_cache(model::BucketModel)
     update_cache! = make_update_cache(model)
     function set_initial_cache!(p, Y0, t0)
-        set_initial_parameter_field!(
-            model.parameters.albedo,
-            p,
-            ClimaCore.Fields.coordinate_field(model.domain.space.surface),
-        )
         update_cache!(p, Y0, t0)
     end
     return set_initial_cache!
-end
-
-"""
-    function set_initial_parameter_field!(
-        albedo::BulkAlbedoFunction{FT},
-        p,
-        surface_coords,
-    ) where {FT}
-
-Updates the spatially-varying but constant in time surface
- albedo stored in the
-auxiliary vector `p` in place,  according to the
-passed function of latitute and longitude stored in `albedo.α_sfc`.
-"""
-function set_initial_parameter_field!(
-    albedo::BulkAlbedoFunction{FT},
-    p,
-    surface_coords,
-) where {FT}
-    (; α_sfc) = albedo
-    @. p.bucket.α_sfc = α_sfc(surface_coords)
-end
-
-"""
-    function set_initial_parameter_field!(
-        albedo::BulkAlbedoStatic{FT},
-        p,
-        surface_coords,
-    ) where {FT}
-
-Initializes spatially-varying surface albedo stored in the
-auxiliary vector `p` in place, according to a
-NetCDF file.
-
-The NetCDF file is read in, regridded, and projected onto
-the surface space of the LSM using ClimaCoreTempestRemap. The result
-is a ClimaCore.Fields.Field of albedo values.
-"""
-function set_initial_parameter_field!(
-    albedo::BulkAlbedoStatic{FT},
-    p,
-    surface_coords,
-) where {FT}
-    space = axes(surface_coords)
-    α_sfc = albedo.α_sfc
-    # Albedo file only has one variable, so access first `varname`
-    varname = α_sfc.file_info.varnames[1]
-
-    p.bucket.α_sfc .= FT.(get_data_at_date(α_sfc, space, varname))
-end
-
-"""
-    function set_initial_parameter_field!(
-        albedo::BulkAlbedoTemporal{FT},
-        p,
-        surface_coords,
-    ) where {FT}
-
-Initializes spatially- and temporally-varying surface albedo stored in
-the auxiliary vector `p` in place, according to a
-NetCDF file. This data file is encapsulated in an object of
-type `ClimaLand.FileReader.PrescribedDataTemporal` in the field albedo.albedo_info.
-This object contains a reference date and start time, which are used
-to get the start date.
-
-The NetCDF file is read in at the dates closest to this start date,
-regridded, and projected onto
-the surface space of the LSM using ClimaCoreTempestRemap. The result
-is a ClimaCore.Fields.Field of albedo values.
-"""
-function set_initial_parameter_field!(
-    albedo::BulkAlbedoTemporal{FT},
-    p,
-    surface_coords,
-) where {FT}
-    sim_info = albedo.albedo_info.sim_info
-    date_start = sim_info.date_ref + Dates.Second(round(sim_info.t_start))
-    space = axes(surface_coords)
-
-    read_data_fields!(albedo.albedo_info, date_start, space)
-    p.bucket.α_sfc .= FileReader.get_data_at_date(
-        albedo.albedo_info,
-        space,
-        "sw_alb",
-        date_start,
-    )
 end
 
 """
@@ -601,11 +524,12 @@ function next_albedo(
     p,
     t,
 ) where {FT}
-    (; α_snow) = model_albedo
+    (; α_snow, α_bareground) = model_albedo
     (; σS_c) = parameters
-    α_sfc = p.bucket.α_sfc
     σS = Y.bucket.σS
-    return @. ((1 - σS / (σS + σS_c)) * α_sfc + σS / (σS + σS_c) * α_snow)
+    return @. (
+        (1 - σS / (σS + σS_c)) * α_bareground + σS / (σS + σS_c) * α_snow
+    )
 end
 
 """
@@ -626,9 +550,10 @@ function next_albedo(
     sim_date = to_datetime(
         sim_info.date_ref + Second(round(sim_info.t_start)) + Second(round(t)),
     )
-    # Use next date if it's closest to current time
+    # Read next data fields if initializing or next date is closest to current time
     # This maintains `all_dates[date_idx]` <= `sim_date` < `all_dates[date_idx + 1]`
-    if sim_date >= to_datetime(next_date_in_file(model_albedo.albedo_info))
+    if t == sim_info.t_start ||
+       sim_date >= to_datetime(next_date_in_file(model_albedo.albedo_info))
         read_data_fields!(model_albedo.albedo_info, sim_date, axes(Y.bucket.W))
     end
     # Interpolate data value to current time

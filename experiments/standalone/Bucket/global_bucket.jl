@@ -41,9 +41,22 @@ context = ClimaComms.context()
 earth_param_set = create_lsm_parameters(FT);
 outdir = joinpath(pkgdir(ClimaLand), "experiments/standalone/Bucket/artifacts")
 !ispath(outdir) && mkpath(outdir)
-α_sfc = (coordinate_point) -> 0.2;
+
+# Construct simulation domain
+soil_depth = FT(3.5);
+bucket_domain = ClimaLand.Domains.SphericalShell(;
+    radius = FT(6.3781e6),
+    depth = soil_depth,
+    nelements = (10, 10),
+    npolynomial = 1,
+    dz_tuple = FT.((1.0, 0.05)),
+);
+surface_space = bucket_domain.space.surface
+
+# Set up parameters
+α_bareground_func = (coordinate_point) -> 0.2;
 α_snow = FT(0.8);
-albedo = BulkAlbedoFunction(α_snow, α_sfc);
+albedo = BulkAlbedoFunction{FT}(α_snow, α_bareground_func, surface_space);
 σS_c = FT(0.2);
 W_f = FT(0.15);
 z_0m = FT(1e-2);
@@ -65,15 +78,6 @@ bucket_parameters = BucketModelParameters(
     z_0b,
     τc,
     earth_param_set,
-);
-
-soil_depth = FT(3.5);
-bucket_domain = ClimaLand.Domains.SphericalShell(;
-    radius = FT(6.3781e6),
-    depth = soil_depth,
-    nelements = (10, 10),
-    npolynomial = 1,
-    dz_tuple = FT.((1.0, 0.05)),
 );
 ref_time = DateTime(2005);
 
