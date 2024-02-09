@@ -20,9 +20,22 @@ include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"))
 const FT = Float64
 earth_param_set = create_lsm_parameters(FT)
 climaland_dir = pkgdir(ClimaLand)
+cor_savedir =
+    joinpath(climaland_dir, "experiments/integrated/semi-arid fluxnet/$site_ID/results/")
+savedir =
+    joinpath(cor_savedir, "output/")
+savedir_in =
+    joinpath(cor_savedir, "input/")
 
-include(joinpath(climaland_dir, "experiments/integrated/fluxnet/data_tools.jl"))
-include(joinpath(climaland_dir, "experiments/integrated/fluxnet/plot_utils.jl"))
+isdir(cor_savedir) || mkdir(cor_savedir)
+isdir(savedir) || mkdir(savedir)
+isdir(savedir_in) || mkdir(savedir_in)
+
+
+plot_input = true
+save_plots = true
+include(joinpath(climaland_dir, "experiments/integrated/semi-arid fluxnet/data_tools.jl"))
+include(joinpath(climaland_dir, "experiments/integrated/semi-arid fluxnet/plot_utils.jl"))
 
 # Read in the site to be run from the command line
 if length(ARGS) < 1
@@ -35,19 +48,19 @@ site_ID = ARGS[1]
 include(
     joinpath(
         climaland_dir,
-        "experiments/integrated/fluxnet/$site_ID/$(site_ID)_simulation.jl",
+        "experiments/integrated/semi-arid fluxnet/$site_ID/$(site_ID)_simulation.jl",
     ),
 )
 
 include(
-    joinpath(climaland_dir, "experiments/integrated/fluxnet/fluxnet_domain.jl"),
+    joinpath(climaland_dir, "experiments/integrated/semi-arid fluxnet/fluxnet_domain.jl"),
 )
 
 # Read all site-specific parameters from the parameter file for the site
 include(
     joinpath(
         climaland_dir,
-        "experiments/integrated/fluxnet/$site_ID/$(site_ID)_parameters.jl",
+        "experiments/integrated/semi-arid fluxnet/$site_ID/$(site_ID)_parameters.jl",
     ),
 )
 
@@ -56,17 +69,18 @@ include(
 include(
     joinpath(
         climaland_dir,
-        "experiments/integrated/fluxnet/fluxnet_simulation.jl",
+        "experiments/integrated/semi-arid fluxnet/fluxnet_simulation.jl",
     ),
 )
 
 include(
     joinpath(
         climaland_dir,
-        "experiments/integrated/fluxnet/met_drivers_FLUXNET.jl",
+        "experiments/integrated/semi-arid fluxnet/met_drivers_FLUXNET.jl",
     ),
 )
 
+plot_and_save(required, LOCAL_DATETIME, plot_input, save_plots, savedir_in)
 # Now we set up the model. For the soil model, we pick
 # a model type and model args:
 soil_domain = land_domain
@@ -335,13 +349,6 @@ sol = SciMLBase.solve(
 
 # Plotting
 daily = sol.t ./ 3600 ./ 24
-savedir =
-    joinpath(climaland_dir, "experiments/integrated/semi-arid fluxnet/$site_ID/out/")
-
-if !isdir(savedir)
-    mkdir(savedir)
-end
-
 # Number of days to plot
 num_days = N_days - N_spinup_days
 
