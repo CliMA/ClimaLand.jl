@@ -119,30 +119,7 @@ vg_n = FT(1.89)
 vg_α = FT(7.5) # inverse meters
 hcm = vanGenuchten(; α = vg_α, n = vg_n);
 θ_r = FT(0.0);
-# Other constants needed:
-κ_quartz = FT(7.7) # W/m/K
-κ_minerals = FT(2.5) # W/m/K
-κ_om = FT(0.25) # W/m/K
-κ_liq = FT(0.57) # W/m/K
-κ_ice = FT(2.29) # W/m/K
-κ_air = FT(0.025); #W/m/K
-# The particle density of organic material-free soil is
-# equal to the particle density of quartz and other minerals (Balland and Arp (2005)).
-ρp = FT(2700); # kg/m^3
-# We calculate the thermal conductivities for the solid material
-# and for saturated soil. These functions are taken from (Balland and Arp (2005)).
-κ_solid = Soil.κ_solid(ν_ss_om, ν_ss_quartz, κ_om, κ_quartz, κ_minerals)
-κ_dry = Soil.κ_dry(ρp, ν, κ_solid, κ_air)
-κ_sat_frozen = Soil.κ_sat_frozen(κ_solid, ν, κ_ice)
-κ_sat_unfrozen = Soil.κ_sat_unfrozen(κ_solid, ν, κ_liq);
-# Next, we calculate the volumetric heat capacity of dry soil. Dry soil
-# refers to soil that has no water content.
-ρc_ds = FT((1 - ν) * 1.926e06); # J/m^3/K
 params = Soil.EnergyHydrologyParameters{FT}(;
-    κ_dry = κ_dry,
-    κ_sat_frozen = κ_sat_frozen,
-    κ_sat_unfrozen = κ_sat_unfrozen,
-    ρc_ds = ρc_ds,
     ν = ν,
     ν_ss_om = ν_ss_om,
     ν_ss_quartz = ν_ss_quartz,

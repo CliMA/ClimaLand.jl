@@ -21,8 +21,6 @@ for FT in (Float32, Float64)
         _T_ref = FT(LP.T_0(param_set))
         # Latent heat of fusion at ``T_0`` (J/kg)
         _LH_f0 = FT(LP.LH_f0(param_set))
-        # Thermal conductivity of dry air
-        κ_air = FT(LP.K_therm(param_set))
 
         ν = FT(0.2)
         S_s = FT(1e-3)
@@ -34,17 +32,28 @@ for FT in (Float32, Float64)
         ν_ss_om = FT(0.1)
         ν_ss_gravel = FT(0.1)
         ν_ss_quartz = FT(0.1)
-        ρc_ds = FT(1e6)
-        κ_solid = FT(0.1)
-        ρp = FT(1)
-        κ_sat_unfrozen = FT(0)
-        κ_sat_frozen = FT(0)
-        κ_dry = Soil.κ_dry(ρp, ν, κ_solid, κ_air)
+
+        # Constants from Ballard and Arp paper
+        κ_minerals = FT(2.5)
+        κ_om = FT(0.25)
+        κ_quartz = FT(8.0)
+        #κ_gravel = κ_minerals implicitly in equation for κ_solid
+
+        ρp_quartz = FT(2.66e3)
+        ρp_minerals = FT(2.65e3)
+        ρp_om = FT(1.3e3)
+        ρp_gravel = ρp_minerals
+
+        ρc_quartz = FT(2.01e6)
+        ρc_om = FT(2.51e6)
+        ρc_minerals = FT(2.01e6)
+        ρc_gravel = ρc_minerals
+
+        κ_air = FT(LP.K_therm(param_set))
+        κ_ice = FT(2.21)
+        κ_liq = FT(0.57)
+
         parameters = EnergyHydrologyParameters{FT}(;
-            κ_dry = κ_dry,
-            κ_sat_frozen = κ_sat_frozen,
-            κ_sat_unfrozen = κ_sat_unfrozen,
-            ρc_ds = ρc_ds,
             ν = ν,
             ν_ss_om = ν_ss_om,
             ν_ss_quartz = ν_ss_quartz,
@@ -63,6 +72,28 @@ for FT in (Float32, Float64)
         @test Ω == FT(7)
         @test γT_ref == FT(288)
         # Test derived parameters
+        κ_solid_soil =
+            Soil.κ_solid.(ν_ss_om, ν_ss_quartz, κ_om, κ_quartz, κ_minerals)
+        ρp = (
+            ν_ss_om * ρp_om +
+            ν_ss_quartz * ρp_quartz +
+            ν_ss_gravel * ρp_gravel +
+            (1 - ν_ss_om - ν_ss_quartz - ν_ss_gravel) * ρp_minerals
+        )
+        ρc_ss = (
+            ν_ss_om * ρc_om +
+            ν_ss_quartz * ρc_quartz +
+            ν_ss_gravel * ρc_gravel +
+            (1 - ν_ss_om - ν_ss_quartz - ν_ss_gravel) * ρc_minerals
+        )
+        # Volumetric heat capacity of dry soil - per unit volume of soil
+        ρc_ds = (1 - ν) * ρc_ss
+        @test parameters.κ_dry == Soil.κ_dry.(ρp, ν, κ_solid_soil, κ_air)
+        @test parameters.κ_sat_frozen ==
+              Soil.κ_sat_frozen.(κ_solid_soil, ν, κ_ice)
+        @test parameters.κ_sat_unfrozen ==
+              Soil.κ_sat_unfrozen.(κ_solid_soil, ν, κ_liq)
+        @test parameters.ρc_ds == ρc_ds
         @test hydrology_cm.m == FT(1.0 - 1.0 / vg_n)
         @test hydrology_cm.S_c ==
               FT(1 + ((vg_n - 1) / vg_n)^(1 - 2 * vg_n))^(-hydrology_cm.m)
@@ -76,7 +107,7 @@ for FT in (Float32, Float64)
         ) == FT(_T_ref + (5.4e7 + 0.05 * _ρ_i * _LH_f0) / 2.1415e6)
 
         @test volumetric_heat_capacity(FT(0.25), FT(0.05), parameters) ==
-              FT(1e6 + 0.25 * _ρcp_l + 0.05 * _ρcp_i)
+              FT(ρc_ds + 0.25 * _ρcp_l + 0.05 * _ρcp_i)
 
         @test volumetric_internal_energy(
             FT(0.05),
@@ -121,9 +152,10 @@ for FT in (Float32, Float64)
         @test Soil.κ_sat_unfrozen(FT(0.5), FT(0.1), FT(0.4)) ==
               FT(0.5)^FT(0.9) * FT(0.4)^FT(0.1)
 
-        @test Soil.κ_dry(ρp, ν, κ_solid, κ_air) ==
-              ((FT(0.053) * FT(0.1) - κ_air) * FT(0.8) + κ_air * FT(1.0)) /
-              (FT(1.0) - (FT(1.0) - FT(0.053)) * FT(0.8))
+        ρb = (1 - ν) * ρp
+        @test Soil.κ_dry(ρp, ν, κ_solid_soil, κ_air) ==
+              ((FT(0.053) * FT(κ_solid_soil) - κ_air) * FT(ρb) + κ_air * ρp) /
+              (ρp - (FT(1.0) - FT(0.053)) * ρb)
 
 
         # Impedance factor
@@ -268,9 +300,6 @@ for FT in (Float32, Float64)
         # T freeze
         _T_freeze = FT(LP.T_freeze(param_set))
 
-        # Thermal conductivity of dry air
-        κ_air = FT(LP.K_therm(param_set))
-
         ν = FT(0.2)
         S_s = FT(1e-3)
         θ_r = FT(0.1)
@@ -282,17 +311,7 @@ for FT in (Float32, Float64)
         ν_ss_om = FT(0.1)
         ν_ss_gravel = FT(0.1)
         ν_ss_quartz = FT(0.1)
-        ρc_ds = FT(1e6)
-        κ_solid = FT(0.1)
-        ρp = FT(1.0)
-        κ_sat_unfrozen = FT(0)
-        κ_sat_frozen = FT(0)
-        κ_dry = Soil.κ_dry(ρp, ν, κ_solid, κ_air)
         parameters = EnergyHydrologyParameters{FT}(;
-            κ_dry = κ_dry,
-            κ_sat_frozen = κ_sat_frozen,
-            κ_sat_unfrozen = κ_sat_unfrozen,
-            ρc_ds = ρc_ds,
             ν = ν,
             ν_ss_om = ν_ss_om,
             ν_ss_quartz = ν_ss_quartz,
@@ -305,7 +324,8 @@ for FT in (Float32, Float64)
         )
 
         Δz = FT(1.0)
-        @test thermal_time(ρc_ds, Δz, κ_dry) == ρc_ds * Δz^2 / κ_dry
+        @test thermal_time(parameters.ρc_ds, Δz, parameters.κ_dry) ==
+              parameters.ρc_ds * Δz^2 / parameters.κ_dry
         θ_l = FT.([0.11, 0.15, ν])
         θ_i = FT(0.0)
         T = FT(273)

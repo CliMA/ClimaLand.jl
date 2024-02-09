@@ -18,7 +18,7 @@ struct EnergyHydrologyParameters{
     κ_sat_frozen::FT
     "The saturated thermal conductivity of unfrozen soil, W/m/K"
     κ_sat_unfrozen::FT
-    "The volumetric heat capacity of dry soil, J/m^3/K"
+    "The volumetric heat capacity of dry soil, J/m^3/K (per volume dry soil, not per volume soil solids)"
     ρc_ds::FT
     "The porosity of the soil (m^3/m^3)"
     ν::FT
@@ -63,10 +63,6 @@ struct EnergyHydrologyParameters{
 end
 
 function EnergyHydrologyParameters{FT}(;
-    κ_dry::FT,
-    κ_sat_frozen::FT,
-    κ_sat_unfrozen::FT,
-    ρc_ds::FT,
     ν::FT,
     ν_ss_om::FT,
     ν_ss_quartz::FT,
@@ -91,6 +87,58 @@ function EnergyHydrologyParameters{FT}(;
     # Unclear where these are from (design doc)
     γ = FT(2.64e-2)
     γT_ref = FT(288)
+
+    # Constants from Ballard and Arp paper - will be moved to ClimaParameters
+    κ_minerals = FT(2.5)
+    κ_om = FT(0.25)
+    κ_quartz = FT(8.0)
+    #κ_gravel = κ_minerals implicitly in equation for κ_solid
+
+    ρp_quartz = FT(2.66e3)
+    ρp_minerals = FT(2.65e3)
+    ρp_om = FT(1.3e3)
+    ρp_gravel = ρp_minerals
+
+    ρc_quartz = FT(2.01e6)
+    ρc_om = FT(2.51e6)
+    ρc_minerals = FT(2.01e6)
+    ρc_gravel = ρc_minerals
+
+    # Thermal conductivity of dry air
+    κ_air = FT(LP.K_therm(earth_param_set))
+    κ_ice = FT(2.21)
+    κ_liq = FT(0.57)
+
+    # Particle density of the soil - per unit soil solids
+    # Denoted ρ_ds in the Clima Design Docs (Equation 2.3)
+    # where ν_ss_i = ν_i/(1-ν)
+    ρp = (
+        ν_ss_om * ρp_om +
+        ν_ss_quartz * ρp_quartz +
+        ν_ss_gravel * ρp_gravel +
+        (1 - ν_ss_om - ν_ss_quartz - ν_ss_gravel) * ρp_minerals
+    )
+
+    # Volumetric heat capacity of soil solids - per unit volume soil solids
+    # This is Equation 2.6a/2.10 in the Clima Design Docs
+    # where ν_ss_i = ν_i/(1-ν)
+    ρc_ss = (
+        ν_ss_om * ρc_om +
+        ν_ss_quartz * ρc_quartz +
+        ν_ss_gravel * ρc_gravel +
+        (1 - ν_ss_om - ν_ss_quartz - ν_ss_gravel) * ρc_minerals
+    )
+
+    # Volumetric heat capacity of dry soil - per unit volume of soil
+    # This is denoted č_ds (Equation 2.11) and is used in equation 2.9
+    ρc_ds = (1 - ν) * ρc_ss
+
+
+    κ_solid = Soil.κ_solid.(ν_ss_om, ν_ss_quartz, κ_om, κ_quartz, κ_minerals)
+    κ_dry = Soil.κ_dry.(ρp, ν, κ_solid, κ_air)
+    κ_sat_frozen = Soil.κ_sat_frozen.(κ_solid, ν, κ_ice)
+    κ_sat_unfrozen = Soil.κ_sat_unfrozen.(κ_solid, ν, κ_liq)
+
     return EnergyHydrologyParameters{FT, C, PSE}(
         κ_dry,
         κ_sat_frozen,
