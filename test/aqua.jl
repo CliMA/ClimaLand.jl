@@ -24,7 +24,8 @@ end
 
 @testset "Aqua tests (additional)" begin
     Aqua.test_undefined_exports(ClimaLand)
-    Aqua.test_stale_deps(ClimaLand)
+    # Insolation is a direct dependency for the package extension
+    Aqua.test_stale_deps(ClimaLand; ignore = [:Insolation])
     Aqua.test_deps_compat(ClimaLand)
     Aqua.test_project_extras(ClimaLand)
     Aqua.test_piracies(ClimaLand)

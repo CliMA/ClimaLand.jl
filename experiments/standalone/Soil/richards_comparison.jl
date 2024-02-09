@@ -14,7 +14,6 @@ using ClimaLand.Soil
 import ClimaLand
 import ClimaLand.Parameters as LP
 
-include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"))
 
 # Read in reference solutions from artifacts
 bonan_clay_dataset = ArtifactWrapper(

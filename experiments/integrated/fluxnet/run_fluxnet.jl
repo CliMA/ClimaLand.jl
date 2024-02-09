@@ -16,9 +16,8 @@ using ClimaLand.Canopy
 using ClimaLand.Canopy.PlantHydraulics
 import ClimaLand
 import ClimaLand.Parameters as LP
-include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"))
 const FT = Float64
-earth_param_set = create_lsm_parameters(FT)
+earth_param_set = LP.LandParameters(FT)
 climaland_dir = pkgdir(ClimaLand)
 
 include(joinpath(climaland_dir, "experiments/integrated/fluxnet/data_tools.jl"))

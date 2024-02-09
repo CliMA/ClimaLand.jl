@@ -1,3 +1,5 @@
+module CreateParametersExt
+
 import ClimaLand.Parameters.LandParameters
 import Thermodynamics.Parameters.ThermodynamicsParameters
 import Insolation.Parameters.InsolationParameters
@@ -5,7 +7,7 @@ import SurfaceFluxes.Parameters.SurfaceFluxesParameters
 import SurfaceFluxes.UniversalFunctions as UF
 import CLIMAParameters as CP
 
-create_lsm_parameters(::Type{FT}) where {FT <: AbstractFloat} =
+LandParameters(::Type{FT}) where {FT <: AbstractFloat} =
     LandParameters(CP.create_toml_dict(FT))
 
 function LandParameters(toml_dict::CP.AbstractTOMLDict)
@@ -47,4 +49,6 @@ function LandParameters(toml_dict::CP.AbstractTOMLDict)
         surf_flux_params,
         insol_params,
     )
+end
+
 end

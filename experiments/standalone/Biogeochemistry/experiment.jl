@@ -9,7 +9,7 @@ using ClimaLand.Soil.Biogeochemistry: MicrobeProduction
 using Dates
 
 import ClimaLand.Parameters as LP
-include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"))
+import CLIMAParameters
 
 # Define simulation times
 t0 = Float64(0)
@@ -17,7 +17,7 @@ tf = Float64(10000)
 dt = Float64(10)
 
 for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
-    earth_param_set = create_lsm_parameters(FT)
+    earth_param_set = LP.LandParameters(FT)
 
     # Make soil model args
     ν = FT(0.556)

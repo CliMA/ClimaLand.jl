@@ -3,11 +3,10 @@ import CLIMAParameters as CP
 using ClimaLand.Snow
 import ClimaLand
 import ClimaLand.Parameters as LP
-include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"))
 
 for FT in (Float32, Float64)
     @testset "Snow Parameterizations, FT = $FT" begin
-        param_set = create_lsm_parameters(FT)
+        param_set = LP.LandParameters(FT)
 
         # Density of liquid water (kg/m``^3``)
         _ρ_l = FT(LP.ρ_cloud_liq(param_set))

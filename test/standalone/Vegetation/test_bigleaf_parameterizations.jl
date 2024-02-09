@@ -5,11 +5,10 @@ using ClimaLand.Canopy
 import ClimaLand
 import ClimaLand.Parameters as LP
 
-include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"))
 
 for FT in (Float32, Float64)
     @testset "Optimality Photosynthesis model Parameterizations, FT = $FT" begin
-        earth_param_set = create_lsm_parameters(FT)
+        earth_param_set = LP.LandParameters(FT)
         P = FT(101325) #Pa
         ci = FT(56.337) / P # convert to mol/mol
         oi = FT(21225.1557) / P# convert to mol/mol
@@ -70,7 +69,7 @@ for FT in (Float32, Float64)
     end
 
     @testset "Big Leaf Parameterizations, FT = $FT" begin
-        earth_param_set = create_lsm_parameters(FT)
+        earth_param_set = LP.LandParameters(FT)
         # Test with defaults
         ARparams = AutotrophicRespirationParameters{FT}()
         RTparams = BeerLambertParameters{FT}()

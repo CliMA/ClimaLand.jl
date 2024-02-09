@@ -9,9 +9,6 @@ using ClimaLand.Soil
 import ClimaLand
 import ClimaLand.Parameters as LP
 
-include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"))
-
-
 for FT in (Float32, Float64)
     @testset "Richards equation with flux BCs, FT = $FT" begin
         ν = FT(0.495)
@@ -83,7 +80,7 @@ for FT in (Float32, Float64)
     end
 
     @testset "Soil Energy and Water tendency unit tests, FT = $FT" begin
-        earth_param_set = create_lsm_parameters(FT)
+        earth_param_set = LP.LandParameters(FT)
         ν = FT(0.495)
         K_sat = FT(0.0443 / 3600 / 100) # m/s
         S_s = FT(1e-3) #inverse meters
@@ -554,7 +551,7 @@ for FT in (Float32, Float64)
     end
 
     @testset "Phase change source term, FT = $FT" begin
-        earth_param_set = create_lsm_parameters(FT)
+        earth_param_set = LP.LandParameters(FT)
         ν = FT(0.495)
         K_sat = FT(0.0) # m/s
         S_s = FT(1e-3) #inverse meters

@@ -15,7 +15,6 @@ import Insolation
 import ClimaLand
 import ClimaLand.Parameters as LP
 
-include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"))
 for FT in (Float32, Float64)
     @testset "Canopy software pipes, FT = $FT" begin
         domain = Point(; z_sfc = FT(0.0))
@@ -30,7 +29,7 @@ for FT in (Float32, Float64)
         photosynthesis_model = FarquharModel{FT}(photosynthesis_params)
         rt_model = BeerLambertModel{FT}(RTparams)
 
-        earth_param_set = create_lsm_parameters(FT)
+        earth_param_set = LP.LandParameters(FT)
         LAI = FT(8.0) # m2 [leaf] m-2 [ground]
         z_0m = FT(2.0) # m, Roughness length for momentum - value from tall forest ChatGPT
         z_0b = FT(0.1) # m, Roughness length for scalars - value from tall forest ChatGPT
@@ -490,7 +489,7 @@ for FT in (Float32, Float64)
         photosynthesis_model = FarquharModel{FT}(photosynthesis_params)
         rt_model = BeerLambertModel{FT}(RTparams)
         energy_model = BigLeafEnergyModel{FT}(BigLeafEnergyParameters{FT}())
-        earth_param_set = create_lsm_parameters(FT)
+        earth_param_set = LP.LandParameters(FT)
         LAI = FT(8.0) # m2 [leaf] m-2 [ground]
         z_0m = FT(2.0) # m, Roughness length for momentum - value from tall forest ChatGPT
         z_0b = FT(0.1) # m, Roughness length for scalars - value from tall forest ChatGPT

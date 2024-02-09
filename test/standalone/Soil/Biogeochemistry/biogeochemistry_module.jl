@@ -8,11 +8,9 @@ using ClimaLand.Soil.Biogeochemistry
 import ClimaLand
 import ClimaLand.Parameters as LP
 
-include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"))
-
 for FT in (Float32, Float64)
     @testset "Soil co2 biogeochemistry sources, FT = $FT" begin
-        earth_param_set = create_lsm_parameters(FT)
+        earth_param_set = LP.LandParameters(FT)
         # Prognostic variables
         P_sfc = (t) -> 101e3
         T_soil = (z, t) -> eltype(z)(t)
@@ -85,7 +83,7 @@ for FT in (Float32, Float64)
 
 
     @testset "Soil co2 biogeochemistry diffusion, FT = $FT" begin
-        earth_param_set = create_lsm_parameters(FT)
+        earth_param_set = LP.LandParameters(FT)
         # Prognostic variables
         P_sfc = (t) -> 101e3
         T_soil = (z, t) -> eltype(z)(303)
