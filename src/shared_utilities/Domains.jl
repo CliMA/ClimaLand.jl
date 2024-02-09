@@ -195,7 +195,8 @@ end
         ylim::Tuple{FT,FT},
         nelements::Tuple{Int,Int},
         periodic::Tuple{Bool,Bool},
-        npolynomial::Int
+        npolynomial::Int,
+        comms_ctx = ClimaComms.SingletonCommsContext(),
         ) where {FT}
 Outer constructor for the `Plane` domain, using keyword arguments.
 """
@@ -205,6 +206,7 @@ function Plane(;
     nelements::Tuple{Int, Int},
     periodic::Tuple{Bool, Bool} = (true, true),
     npolynomial::Int,
+    comms_ctx = ClimaComms.SingletonCommsContext(),
 ) where {FT}
     @assert xlim[1] < xlim[2]
     @assert ylim[1] < ylim[2]
@@ -222,7 +224,7 @@ function Plane(;
     plane = ClimaCore.Domains.RectangleDomain(domain_x, domain_y)
 
     mesh = ClimaCore.Meshes.RectilinearMesh(plane, nelements[1], nelements[2])
-    grid_topology = ClimaCore.Topologies.Topology2D(mesh)
+    grid_topology = ClimaCore.Topologies.Topology2D(comms_ctx, mesh)
     if npolynomial == 0
         quad = ClimaCore.Spaces.Quadratures.GL{npolynomial + 1}()
     else
@@ -408,6 +410,7 @@ end
         nelements::Tuple{Int, Int},
         npolynomial::Int,
         dz_tuple::Union{Tuple{FT, FT}, Nothing} = nothing,
+        comms_ctx = ClimaComms.SingletonCommsContext(),
     ) where {FT}
 Outer constructor for the `SphericalShell` domain, using keyword arguments.
 
@@ -425,6 +428,7 @@ function SphericalShell(;
     nelements::Tuple{Int, Int},
     npolynomial::Int,
     dz_tuple::Union{Tuple{FT, FT}, Nothing} = nothing,
+    comms_ctx = ClimaComms.SingletonCommsContext(),
 ) where {FT}
     @assert 0 < radius
     @assert 0 < depth
@@ -451,7 +455,7 @@ function SphericalShell(;
 
     horzdomain = ClimaCore.Domains.SphereDomain(radius)
     horzmesh = ClimaCore.Meshes.EquiangularCubedSphere(horzdomain, nelements[1])
-    horztopology = ClimaCore.Topologies.Topology2D(horzmesh)
+    horztopology = ClimaCore.Topologies.Topology2D(comms_ctx, horzmesh)
     quad = ClimaCore.Spaces.Quadratures.GLL{npolynomial + 1}()
     horzspace = ClimaCore.Spaces.SpectralElementSpace2D(horztopology, quad)
 
@@ -502,6 +506,7 @@ end
         radius::FT,
         nelements::Int
         npolynomial::Int,
+        comms_ctx = ClimaComms.SingletonCommsContext(),
     ) where {FT}
 Outer constructor for the `SphericalSurface` domain, using keyword arguments.
 """
@@ -509,11 +514,12 @@ function SphericalSurface(;
     radius::FT,
     nelements::Int,
     npolynomial::Int,
+    comms_ctx = ClimaComms.SingletonCommsContext(),
 ) where {FT}
     @assert 0 < radius
     horzdomain = ClimaCore.Domains.SphereDomain(radius)
     horzmesh = Meshes.EquiangularCubedSphere(horzdomain, nelements)
-    horztopology = Topologies.Topology2D(horzmesh)
+    horztopology = Topologies.Topology2D(comms_ctx, horzmesh)
     quad = Spaces.Quadratures.GLL{npolynomial + 1}()
     horzspace = Spaces.SpectralElementSpace2D(horztopology, quad)
     space = (; surface = horzspace)
