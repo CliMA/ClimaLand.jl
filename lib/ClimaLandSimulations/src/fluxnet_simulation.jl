@@ -1,4 +1,5 @@
 export fluxnet_simulation
+include(joinpath(ClimaLandSimulations_dir, "src", "utilities", "pfts.jl"))
 
 """
     fluxnet_simulation(site_ID; kwargs)
@@ -34,11 +35,15 @@ function fluxnet_simulation(
         "utilities",
         "timestepper_setup.jl",
     ),
+    pft_pcts = "None",
 ) # why is there 2?
 
     include(path_to_sim)
     include(path_to_domain_setup)
     include(path_to_params)
+    if typeof(pft_pcts) != String
+        params_from_pfts(pft_pcts)
+    end
     LOCAL_DATETIME,
     atmos_co2,
     DATA_DT,
