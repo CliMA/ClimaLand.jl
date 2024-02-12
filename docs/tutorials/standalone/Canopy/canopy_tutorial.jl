@@ -179,26 +179,7 @@ stomatal_model = MedlynConductanceModel{FT}(cond_params);
 
 # Arguments for photosynthesis model:
 
-photo_params = FarquharParameters{FT}(
-    Canopy.C3();
-    oi = FT(0.209),
-    ϕ = FT(0.6),
-    θj = FT(0.9),
-    f = FT(0.015),
-    sc = FT(5e-6),
-    pc = FT(-2e5),
-    Vcmax25 = FT(5e-5),
-    Γstar25 = FT(4.275e-5),
-    Kc25 = FT(4.049e-4),
-    Ko25 = FT(0.2874),
-    To = FT(298.15),
-    ΔHkc = FT(79430),
-    ΔHko = FT(36380),
-    ΔHVcmax = FT(58520),
-    ΔHΓstar = FT(37830),
-    ΔHJmax = FT(43540),
-    ΔHRd = FT(46390),
-)
+photo_params = FarquharParameters(FT, Canopy.C3(); Vcmax25 = FT(5e-5))
 
 photosynthesis_model = FarquharModel{FT}(photo_params);
 

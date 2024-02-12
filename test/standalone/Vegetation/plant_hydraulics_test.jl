@@ -113,7 +113,7 @@ for FT in (Float32, Float64)
 
         AR_params = AutotrophicRespirationParameters(FT)
         RTparams = BeerLambertParameters{FT}()
-        photosynthesis_params = FarquharParameters{FT}(C3();)
+        photosynthesis_params = FarquharParameters(FT, C3())
         stomatal_g_params = MedlynConductanceParameters{FT}()
 
         AR_model = AutotrophicRespirationModel{FT}(AR_params)
@@ -406,7 +406,7 @@ for FT in (Float32, Float64)
 
         AR_params = AutotrophicRespirationParameters(FT)
         RTparams = BeerLambertParameters{FT}()
-        photosynthesis_params = FarquharParameters{FT}(C3();)
+        photosynthesis_params = FarquharParameters(FT, C3())
         stomatal_g_params = MedlynConductanceParameters{FT}()
 
         AR_model = AutotrophicRespirationModel{FT}(AR_params)

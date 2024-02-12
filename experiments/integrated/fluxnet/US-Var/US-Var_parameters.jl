@@ -72,23 +72,7 @@ Drel = FT(1.6)
 g0 = FT(1e-4)
 
 #Photosynthesis model
-oi = FT(0.209)
-ϕ = FT(0.6)
-θj = FT(0.9)
-f = FT(0.015)
-sc = FT(2e-6) # Bonan's book: range of 2-5e-6
-pc = FT(-2e6) # Bonan's book: -2e6
 Vcmax25 = FT(4.225e-5) # CLM C3 grass, Slevin et al. 2015
-Γstar25 = FT(4.275e-5)
-Kc25 = FT(4.049e-4)
-Ko25 = FT(0.2874)
-To = FT(298.15)
-ΔHkc = FT(79430)
-ΔHko = FT(36380)
-ΔHVcmax = FT(58520)
-ΔHΓstar = FT(37830)
-ΔHJmax = FT(43540)
-ΔHRd = FT(46390)
 
 # Energy Balance model
 ac_canopy = FT(745)

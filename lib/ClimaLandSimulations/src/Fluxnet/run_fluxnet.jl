@@ -133,7 +133,8 @@ function run_fluxnet(
     )
     # Set up photosynthesis
     photosynthesis_args = (;
-        parameters = FarquharParameters{FT}(
+        parameters = FarquharParameters(
+            FT,
             Canopy.C3();
             oi = params.photosynthesis.oi,
             ϕ = params.photosynthesis.ϕ,

@@ -173,28 +173,8 @@ for float_type in (Float32, Float64)
         )
     )
     # Set up photosynthesis
-    photosynthesis_args = (;
-        parameters = FarquharParameters{FT}(
-            Canopy.C3();
-            oi = oi,
-            ϕ = ϕ,
-            θj = θj,
-            f = f,
-            sc = sc,
-            pc = pc,
-            Vcmax25 = Vcmax25,
-            Γstar25 = Γstar25,
-            Kc25 = Kc25,
-            Ko25 = Ko25,
-            To = To,
-            ΔHkc = ΔHkc,
-            ΔHko = ΔHko,
-            ΔHVcmax = ΔHVcmax,
-            ΔHΓstar = ΔHΓstar,
-            ΔHJmax = ΔHJmax,
-            ΔHRd = ΔHRd,
-        )
-    )
+    photosynthesis_args =
+        (; parameters = FarquharParameters(FT, Canopy.C3(); Vcmax25 = Vcmax25))
     # Set up plant hydraulics
     ai_parameterization = PrescribedSiteAreaIndex{FT}(LAIfunction, SAI, RAI)
 
