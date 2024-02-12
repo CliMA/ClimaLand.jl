@@ -883,17 +883,12 @@ if length(ARGS) ≥ 1 && ARGS[1] == "save"
     @info "Saved model output to $(savedir)model_output.csv"
 end
 
-<<<<<<< HEAD
 if isfile(
-=======
-rm(
->>>>>>> 80552b88 (Add PFTs to ClimaLand src)
     joinpath(
         climaland_dir,
         "experiments/integrated/fluxnet/$site_ID/Artifacts.toml",
     ),
 )
-<<<<<<< HEAD
     rm(
         joinpath(
             climaland_dir,
@@ -901,5 +896,3 @@ rm(
         ),
     )
 end
-=======
->>>>>>> 80552b88 (Add PFTs to ClimaLand src)
