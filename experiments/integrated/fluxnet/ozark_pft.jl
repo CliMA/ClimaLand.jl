@@ -72,7 +72,6 @@ pft_pcts = [
 ]
 
 # Load the PFT parameters into the namespace
-<<<<<<< HEAD
 (
     Ω,
     α_PAR_leaf,
@@ -90,9 +89,6 @@ pft_pcts = [
     plant_ν,
     rooting_depth,
 ) = FT.(params_from_pfts(pft_pcts))
-=======
-params_from_pfts(pft_pcts)
->>>>>>> 80552b88 (Add PFTs to ClimaLand src)
 
 # This reads in the data from the flux tower site and creates
 # the atmospheric and radiative driver structs for the model
@@ -117,11 +113,7 @@ soil_ps = Soil.EnergyHydrologyParameters{FT}(;
     ν_ss_om = ν_ss_om,
     ν_ss_quartz = ν_ss_quartz,
     ν_ss_gravel = ν_ss_gravel,
-<<<<<<< HEAD
     hydrology_cm = vanGenuchten{FT}(; α = soil_vg_α, n = soil_vg_n),
-=======
-    hydrology_cm = vanGenuchten(; α = soil_vg_α, n = soil_vg_n),
->>>>>>> 80552b88 (Add PFTs to ClimaLand src)
     K_sat = soil_K_sat,
     S_s = soil_S_s,
     θ_r = θ_r,
@@ -164,12 +156,7 @@ soilco2_top_bc = Soil.Biogeochemistry.AtmosCO2StateBC()
 soilco2_bot_bc = Soil.Biogeochemistry.SoilCO2FluxBC((p, t) -> 0.0) # no flux
 soilco2_sources = (MicrobeProduction{FT}(),)
 
-<<<<<<< HEAD
 soilco2_boundary_conditions = (; top = soilco2_top_bc, bottom = soilco2_bot_bc)
-=======
-soilco2_boundary_conditions =
-    (; top = (CO2 = soilco2_top_bc,), bottom = (CO2 = soilco2_bot_bc,))
->>>>>>> 80552b88 (Add PFTs to ClimaLand src)
 
 soilco2_drivers = Soil.Biogeochemistry.SoilDrivers(
     Soil.Biogeochemistry.PrognosticMet{FT}(),
@@ -197,27 +184,13 @@ canopy_component_types = (;
 )
 # Individual Component arguments
 # Set up autotrophic respiration
-<<<<<<< HEAD
 autotrophic_respiration_args =
     (; parameters = AutotrophicRespirationParameters(FT))
-=======
-autotrophic_respiration_args = (;
-    parameters = AutotrophicRespirationParameters{FT}(;
-        ne = ne,
-        ηsl = ηsl,
-        σl = σl,
-        μr = μr,
-        μs = μs,
-        f1 = f1,
-        f2 = f2,
-    )
-)
->>>>>>> 80552b88 (Add PFTs to ClimaLand src)
 # Set up radiative transfer
 radiative_transfer_args = (;
     parameters = TwoStreamParameters{FT}(;
         Ω = Ω,
-        ld = ld,
+        χl = χl,
         α_PAR_leaf = α_PAR_leaf,
         λ_γ_PAR = λ_γ_PAR,
         λ_γ_NIR = λ_γ_NIR,
@@ -236,34 +209,9 @@ conductance_args = (;
     )
 )
 # Set up photosynthesis
-<<<<<<< HEAD
 # Set up photosynthesis
 photosynthesis_args =
     (; parameters = FarquharParameters(FT, Canopy.C3(); Vcmax25 = Vcmax25))
-=======
-photosynthesis_args = (;
-    parameters = FarquharParameters{FT}(
-        Canopy.C3();
-        oi = oi,
-        ϕ = ϕ,
-        θj = θj,
-        f = f,
-        sc = sc,
-        pc = pc,
-        Vcmax25 = Vcmax25,
-        Γstar25 = Γstar25,
-        Kc25 = Kc25,
-        Ko25 = Ko25,
-        To = To,
-        ΔHkc = ΔHkc,
-        ΔHko = ΔHko,
-        ΔHVcmax = ΔHVcmax,
-        ΔHΓstar = ΔHΓstar,
-        ΔHJmax = ΔHJmax,
-        ΔHRd = ΔHRd,
-    )
-)
->>>>>>> 80552b88 (Add PFTs to ClimaLand src)
 # Set up plant hydraulics
 ai_parameterization = PrescribedSiteAreaIndex{FT}(LAIfunction, SAI, RAI)
 
@@ -391,7 +339,6 @@ sol = SciMLBase.solve(
 
 # Plotting
 daily = sol.t ./ 3600 ./ 24
-<<<<<<< HEAD
 if !isdir(
     joinpath(climaland_dir, "experiments/integrated/fluxnet/$site_ID/out"),
 )
@@ -401,11 +348,6 @@ if !isdir(
 end
 savedir =
     joinpath(climaland_dir, "experiments/integrated/fluxnet/$site_ID/out/pft/")
-=======
-savedir =
-    joinpath(climaland_dir, "experiments/integrated/fluxnet/$site_ID/out/")
-
->>>>>>> 80552b88 (Add PFTs to ClimaLand src)
 if !isdir(savedir)
     mkdir(savedir)
 end

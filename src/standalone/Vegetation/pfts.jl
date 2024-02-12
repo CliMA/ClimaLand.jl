@@ -61,8 +61,13 @@ pft_param_list = [
     :f_root_to_shoot, # Root to Shoot Ratio
     :K_sat_plant,     # Hydraulic Conductivity at Saturation
     :ψ63,             # Xylem water potential at 63% loss of conductivity
+<<<<<<< HEAD
     :plant_ν,         # Plant porosity
     :rooting_depth,   # Plant Rooting Depth
+=======
+    :capacity,        # Water Storage Capacity
+    :rooting_depth,    # Plant Rooting Depth
+>>>>>>> 52219b36 (format and add pft to buildkite)
 ]
 
 
