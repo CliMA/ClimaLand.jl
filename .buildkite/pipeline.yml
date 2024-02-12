@@ -62,6 +62,10 @@ steps:
         command: "julia --color=yes --project=experiments experiments/integrated/fluxnet/run_fluxnet.jl US-Ha1"
         artifact_paths: "experiments/integrated/fluxnet/US-Ha1/out/*png"
 
+      - label: "ozark_pft"
+        command: "julia --color=yes --project=experiments experiments/integrated/fluxnet/ozark_pft.jl"
+        artifact_paths: "experiments/integrated/fluxnet/US-MOz/out/pft/*png"
+
       - label: "ozark_conservation"
         command: "julia --color=yes --project=experiments experiments/integrated/ozark/conservation/ozark_conservation.jl"
         artifact_paths: "experiments/integrated/ozark/conservation/*png"
