@@ -40,10 +40,10 @@ end
 
 function make_setup(site_ID)
     default_args = Dict(
-        "US-MOz" => ozark_default_args,
-        "US-Ha1" => harvard_default_args,
-        "US-NR1" => niwotridge_default_args,
-        "US-Var" => vairaranch_default_args,
+        "US-MOz" => ozark_default_args(),
+        "US-Ha1" => harvard_default_args(),
+        "US-NR1" => niwotridge_default_args(),
+        "US-Var" => vairaranch_default_args(),
     )
 
     if haskey(default_args, site_ID)
