@@ -1,6 +1,11 @@
-# ClimaLand
-a codebase for creating and running land models in integrated (multi-
-component) or standalone (single component) modes.
+<h1 align="center">
+  <img src="logo.png" width="400px"> <br>
+</h1>
+<p align="center">
+  <strong>Create and run  land models in integrated (multi-
+component) or standalone (single component) modes.  </strong>
+</p>
+
 
 Recommended Julia Version: Stable release v1.10.0. CI no longer tests earlier
 versions of Julia.
