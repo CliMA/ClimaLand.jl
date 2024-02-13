@@ -55,24 +55,38 @@ a helper function which computes and returns the surface evaporative scaling
  factor for the bucket model.
 """
 function ClimaLand.surface_evaporative_scaling(model::BucketModel, Y, p)
-    beta = beta_factor.(Y.bucket.W, Y.bucket.σS, model.parameters.W_f)
+    beta =
+        beta_factor.(
+            Y.bucket.W,
+            Y.bucket.σS,
+            model.parameters.f_bucket * model.parameters.W_f,
+            model.parameters.f_snow * model.parameters.σS_c,
+            model.parameters.p,
+        )
     return beta
 end
 
+"""
+    beta_factor(W::FT, σS::FT, fW_f::FT, fσS_c::FT, p::FT) where {FT}
+
+Computes the beta factor which scales the evaporation/sublimation from the potential
+rate. The beta factor is given by:
+
+β = (x/x_c)^p x < x_c
+    1         otherwise
+
+where x = W and x_c = f_bucket * W_f for the bucket,
+and x = σS and x_c = f_snow *σS_c for snow.
 
 """
-    beta_factor(W::FT, σS::FT, W_f::FT) where {FT}
-
-Computes the beta factor which scales the evaporation from the potential
-rate.
-"""
-function beta_factor(W::FT, σS::FT, W_f::FT) where {FT}
+function beta_factor(W::FT, σS::FT, fW_f::FT, fσS_c::FT, p::FT) where {FT}
     snow_cover_fraction = heaviside(σS)
-    return (1 - snow_cover_fraction) * β(W, W_f) + snow_cover_fraction * 1
+    return (1 - snow_cover_fraction) * β(W, fW_f, p) +
+           snow_cover_fraction * β(σS, fσS_c, p)
 end
 
 """
-    partition_surface_fluxes(
+    partition_snow_surface_fluxes(
         σS::FT,
         T_sfc::FT,
         τ::FT,
@@ -84,12 +98,13 @@ end
     ) where{FT}
 
 Partitions the surface fluxes in a flux for melting snow, a flux for sublimating snow,
-and a ground heat flux.
+and a ground heat flux. Fluxes are given over snow covered area and multiplied by snow cover
+fraciton elsewhere.
 
 All fluxes are positive if they are in the direction from land towards
 the atmosphere.
 """
-function partition_surface_fluxes(
+function partition_snow_surface_fluxes(
     σS::FT,
     T_sfc::FT,
     τ::FT,
@@ -99,17 +114,23 @@ function partition_surface_fluxes(
     _ρLH_f0::FT,
     _T_freeze::FT,
 ) where {FT}
+    σS = max(FT(0), σS) # clip to zero in case small and negative
+    S = snow_cover_fraction > FT(0) ? σS / snow_cover_fraction : FT(0)
     F_available_to_melt = F_sfc + _ρLH_f0 * E # Eqn (23), negative as towards ground
-    if σS > -F_available_to_melt * τ / _ρLH_f0 # Eqn (24)
+    if S > -F_available_to_melt * τ / _ρLH_f0 # Eqn (24)
         F_melt = F_available_to_melt
     else
-        F_melt = -σS * _ρLH_f0 / τ
+        F_melt = -S * _ρLH_f0 / τ
     end
     F_melt =
         F_melt * heaviside(T_sfc - _T_freeze) * heaviside(-F_available_to_melt)
-    F_into_snow = -_ρLH_f0 * E * snow_cover_fraction + F_melt # F_melt is already multiplied by σ
-    G = (F_sfc - F_into_snow) # Eqn 22
-    return (; F_melt = F_melt, F_into_snow = F_into_snow, G = G)
+    F_into_snow = -_ρLH_f0 * E + F_melt
+    G_under_snow = (F_sfc - F_into_snow) # Eqn 22
+    return (;
+        F_melt = F_melt,
+        F_into_snow = F_into_snow,
+        G_under_snow = G_under_snow,
+    )
 end
 
 
@@ -139,18 +160,25 @@ function infiltration_at_point(
 end
 
 """
-    β(W::FT, W_f::FT) where {FT}
+    β(x::FT, x_c::FT, p::FT) where {FT}
 
-Returns the coefficient which scales the saturated
-specific humidity at the surface based on the bucket water
-levels, which is then used
- to obtain the
-true specific humidity of the soil surface <= q_sat.
-    """
-function β(W::FT, W_f::FT) where {FT}
-    safe_W = max(0, W)
-    if safe_W < FT(0.75) * W_f
-        safe_W / (FT(0.75) * W_f)
+Returns the coefficient which scales the evaporation or
+sublimation rate based on the bucket water
+or snow levels.
+
+Over ground, x_c is a default of 75% of the capacity, since the ground
+evaporation rate remains near the potential rate until water has dropped
+sufficiently.
+
+Over snow, x_c taken a default of 10% of the value around which snow starts to become patchy,
+since snow sublimates at the potential rate in general. We use the β function
+mainly to damp sublimation to zero for vanishing snowpacks. Note that the snow cover fraction
+returns zero for 0 < σS < eps(FT) while this function returns a nonzero function.
+"""
+function β(x::FT, x_c::FT, p::FT) where {FT}
+    safe_x = max(0, x)
+    if safe_x < x_c
+        (safe_x / x_c)^p
     else
         FT(1.0)
     end
