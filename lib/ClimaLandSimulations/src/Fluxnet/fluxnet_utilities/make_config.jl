@@ -22,10 +22,10 @@ end
 
 function make_config(site_ID)
     default_configs = Dict(
-        "US-MOz" => ozark_default_configs,
-        "US-Ha1" => harvard_default_configs,
-        "US-NR1" => niwotridge_default_configs,
-        "US-Var" => vairaranch_default_configs,
+        "US-MOz" => ozark_default_configs(),
+        "US-Ha1" => harvard_default_configs(),
+        "US-NR1" => niwotridge_default_configs(),
+        "US-Var" => vairaranch_default_configs(),
     )
 
     if haskey(default_configs, site_ID)

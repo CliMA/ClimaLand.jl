@@ -23,6 +23,8 @@ v0.11.1
 -------
 - ![][badge-✨feature] Add option to profile albedo job. PR
   [#505](https://github.com/CliMA/ClimaLand.jl/pull/551)
+- ![][badge-✨feature] ClimaLandSimulations: better plots (legend and style tweaks, added cumulative ET and P), unit tests, start and end time as an optional argument. PR [#494](https://github.com/CliMA/ClimaLand.jl/pull/494)
+- ![][badge-🐛bugfix] ClimaLandSimulations: installation readme. PR [#494](https://github.com/CliMA/ClimaLand.jl/pull/494)
 
 v0.11.0
 -------
