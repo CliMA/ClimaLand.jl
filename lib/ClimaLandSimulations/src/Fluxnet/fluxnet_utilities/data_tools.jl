@@ -5,9 +5,6 @@ convert units and check for missing data. Data is automatically filled when
 read in based on the quality control flags provided in the FLUXNET data or 
 by simply filling with the mean value in the column."""
 
-using Interpolations
-using StatsBase
-
 # Define the valid data statuses
 @enum DataStatus complete = 1 absent = 2 incomplete = 3
 
