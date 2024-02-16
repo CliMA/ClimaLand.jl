@@ -75,7 +75,7 @@ for float_type in (Float32, Float64)
         ν_ss_om = ν_ss_om,
         ν_ss_quartz = ν_ss_quartz,
         ν_ss_gravel = ν_ss_gravel,
-        hydrology_cm = vanGenuchten(; α = soil_vg_α, n = soil_vg_n),
+        hydrology_cm = vanGenuchten{FT}(; α = soil_vg_α, n = soil_vg_n),
         K_sat = soil_K_sat,
         S_s = soil_S_s,
         θ_r = θ_r,

@@ -17,6 +17,9 @@ end
 @safetestset "FileReader module tests" begin
     include("shared_utilities/file_reader.jl")
 end
+@safetestset "SpaceVaryingInput module tests" begin
+    include("shared_utilities/space_varying_inputs.jl")
+end
 @safetestset "TimeVaryingInput module tests" begin
     include("shared_utilities/time_varying_inputs.jl")
 end

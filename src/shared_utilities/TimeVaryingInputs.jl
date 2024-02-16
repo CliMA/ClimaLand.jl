@@ -31,6 +31,7 @@
 module TimeVaryingInputs
 
 import ..searchsortednearest
+import ..linear_interpolation
 
 import Adapt
 import CUDA

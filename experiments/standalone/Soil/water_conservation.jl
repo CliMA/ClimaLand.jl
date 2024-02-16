@@ -66,13 +66,19 @@ for FT in (Float32, Float64)
     vg_α = FT(0.026 * 100) # inverse meters
     θ_r = FT(0.124)
     S_s = FT(1e-3) #inverse meters
-    hcm = vanGenuchten(; α = vg_α, n = vg_n)
+    hcm = vanGenuchten{FT}(; α = vg_α, n = vg_n)
 
     zmax = FT(0)
     zmin = FT(-0.5)
     nelems = 50
 
-    params = Soil.RichardsParameters{FT, typeof(hcm)}(ν, hcm, K_sat, S_s, θ_r)
+    params = Soil.RichardsParameters(;
+        ν = ν,
+        hydrology_cm = hcm,
+        K_sat = K_sat,
+        S_s = S_s,
+        θ_r = θ_r,
+    )
     soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems)
     sources = ()
 

@@ -16,7 +16,7 @@ for FT in (Float32, Float64)
         S_s = FT(1e-3) #inverse meters
         vg_n = FT(2.0)
         vg_α = FT(2.6) # inverse meters
-        hcm = vanGenuchten(; α = vg_α, n = vg_n)
+        hcm = vanGenuchten{FT}(; α = vg_α, n = vg_n)
         θ_r = FT(0)
         zmax = FT(0)
         zmin = FT(-10)
@@ -28,8 +28,13 @@ for FT in (Float32, Float64)
         sources = ()
         boundary_fluxes =
             (; top = (water = top_flux_bc,), bottom = (water = bot_flux_bc,))
-        params =
-            Soil.RichardsParameters{FT, typeof(hcm)}(ν, hcm, K_sat, S_s, θ_r)
+        params = Soil.RichardsParameters(;
+            ν = ν,
+            hydrology_cm = hcm,
+            K_sat = K_sat,
+            S_s = S_s,
+            θ_r = θ_r,
+        )
 
         soil = Soil.RichardsModel{FT}(;
             parameters = params,
@@ -87,23 +92,13 @@ for FT in (Float32, Float64)
         vg_n = FT(2.0)
         vg_α = FT(2.6) # inverse meters
         vg_m = FT(1) - FT(1) / vg_n
-        hcm = vanGenuchten(; α = vg_α, n = vg_n)
+        hcm = vanGenuchten{FT}(; α = vg_α, n = vg_n)
         θ_r = FT(0.1)
         ν_ss_om = FT(0.0)
         ν_ss_quartz = FT(1.0)
         ν_ss_gravel = FT(0.0)
-        κ_minerals = FT(2.5)
-        κ_om = FT(0.25)
-        κ_quartz = FT(8.0)
-        κ_air = FT(0.025)
-        κ_ice = FT(2.21)
-        κ_liq = FT(0.57)
         ρp = FT(2.66 / 1e3 * 1e6)
         ρc_ds = FT(2e6 * (1.0 - ν))
-        κ_solid = Soil.κ_solid(ν_ss_om, ν_ss_quartz, κ_om, κ_quartz, κ_minerals)
-        κ_dry = Soil.κ_dry(ρp, ν, κ_solid, κ_air)
-        κ_sat_frozen = Soil.κ_sat_frozen(κ_solid, ν, κ_ice)
-        κ_sat_unfrozen = Soil.κ_sat_unfrozen(κ_solid, ν, κ_liq)
         zmax = FT(0)
         zmin = FT(-1)
         nelems = 200
@@ -187,6 +182,7 @@ for FT in (Float32, Float64)
         ### the thermal conductivities to zero, but at the expense of being unreadable.
         ### Because this is only for a test, we tolerate it :)
         hyd_on_en_off = Soil.EnergyHydrologyParameters{
+            FT,
             FT,
             typeof(hcm),
             typeof(earth_param_set),
@@ -359,6 +355,7 @@ for FT in (Float32, Float64)
         ### Because this is only for a test, we tolerate it :)
         hyd_off_en_off = Soil.EnergyHydrologyParameters{
             FT,
+            FT,
             typeof(hcm),
             typeof(earth_param_set),
         }(
@@ -373,7 +370,7 @@ for FT in (Float32, Float64)
             FT(0.24), #α
             FT(18.3), #β
             hcm,
-            FT(0), # ksat
+            FT(0), # K_sat
             S_s,
             θ_r,
             FT(7),#Ω
@@ -386,12 +383,6 @@ for FT in (Float32, Float64)
             FT(0.01), # z_0b
             FT(0.015), #d_ds
             earth_param_set,
-        )
-        soil_water_on = Soil.EnergyHydrology{FT}(;
-            parameters = hyd_on_en_off,
-            domain = soil_domain,
-            boundary_conditions = boundary_fluxes,
-            sources = sources,
         )
 
         soil_both_off = Soil.EnergyHydrology{FT}(;
@@ -557,23 +548,13 @@ for FT in (Float32, Float64)
         S_s = FT(1e-3) #inverse meters
         vg_n = FT(2.0)
         vg_α = FT(2.6) # inverse meters
-        hcm = vanGenuchten(; α = vg_α, n = vg_n)
+        hcm = vanGenuchten{FT}(; α = vg_α, n = vg_n)
         θ_r = FT(0.1)
         ν_ss_om = FT(0.0)
         ν_ss_quartz = FT(1.0)
         ν_ss_gravel = FT(0.0)
-        κ_minerals = FT(2.5)
-        κ_om = FT(0.25)
-        κ_quartz = FT(8.0)
-        κ_air = FT(0.025)
-        κ_ice = FT(2.21)
-        κ_liq = FT(0.57)
         ρp = FT(2.66 / 1e3 * 1e6)
         ρc_ds = FT(2e6 * (1.0 - ν))
-        κ_solid = Soil.κ_solid(ν_ss_om, ν_ss_quartz, κ_om, κ_quartz, κ_minerals)
-        κ_dry = Soil.κ_dry(ρp, ν, κ_solid, κ_air)
-        κ_sat_frozen = Soil.κ_sat_frozen(κ_solid, ν, κ_ice)
-        κ_sat_unfrozen = Soil.κ_sat_unfrozen(κ_solid, ν, κ_liq)
         zmax = FT(0)
         zmin = FT(-1)
         nelems = 200

@@ -307,7 +307,7 @@ end;
 # # Running a simulation
 # Create a model instance.
 FT = Float32
-vGmodel = ClimaLand.Soil.vanGenuchten(; α = 2.3f0, n = 2.0f0)
+vGmodel = ClimaLand.Soil.vanGenuchten{FT}(; α = 2.3f0, n = 2.0f0)
 Ksat = FT(4.0e-7)
 ν = 0.5f0
 θ_r = 0.0f0

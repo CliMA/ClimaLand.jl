@@ -10,6 +10,73 @@ export TemperatureStateBC,
     boundary_var_types
 
 """
+    get_top_surface_field(
+        center_field::ClimaCore.Fields.Field,
+        surface_space,
+    )
+
+A helper function to extract the top level of a center field and
+cast it onto the surface face space.
+"""
+function get_top_surface_field(
+    center_field::ClimaCore.Fields.Field,
+    surface_space,
+)
+    # TODO: Find cleaner way to do this
+    nz = Spaces.nlevels(axes(center_field))
+    return Fields.Field(
+        Fields.field_values(Fields.level(center_field, nz)),
+        surface_space,
+    )
+end
+
+"""
+    get_top_surface_field(
+        center_val,
+        _,
+    )
+
+A helper function for the case where we use `get_top_surface_field` on
+a parameter that is a scalar rather than a field. Returns the scalar value.
+"""
+function get_top_surface_field(center_val, _)
+    return center_val
+end
+
+"""
+    get_bottom_surface_field(
+        center_field::ClimaCore.Fields.Field,
+        bottom_space,
+    )
+
+A helper function to extract the bottom level of a center field and
+cast it onto the bottom face space.
+"""
+function get_bottom_surface_field(
+    center_field::ClimaCore.Fields.Field,
+    bottom_space,
+)
+    # TODO: Find cleaner way to do this
+    return Fields.Field(
+        Fields.field_values(Fields.level(center_field, 1)),
+        bottom_space,
+    )
+end
+
+"""
+    get_bottom_surface_field(
+        center_val,
+        _,
+    )
+
+A helper function for the case where we use `get_bottom_surface_field` on
+a parameter that is a scalar rather than a field. Returns the scalar value.
+"""
+function get_bottom_surface_field(center_val, _)
+    return center_val
+end
+
+"""
     AbstractSoilBC <: ClimaLand. AbstractBC
 
 An abstract type for soil-specific types of boundary conditions, like free drainage.
@@ -417,25 +484,32 @@ function ClimaLand.boundary_flux(
     t,
 )::ClimaCore.Fields.Field
     FT = eltype(Δz)
-    # Approximate K_bc ≈ K_c, ψ_bc ≈ ψ_c (center closest to the boundary)
-    p_len = Spaces.nlevels(axes(p.soil.K))
-    # We need to project the center values onto the face space.
-    K_c = Fields.Field(
-        Fields.field_values(Fields.level(p.soil.K, p_len)),
-        axes(Δz),
-    )
-    ψ_c = Fields.Field(
-        Fields.field_values(Fields.level(p.soil.ψ, p_len)),
-        axes(Δz),
-    )
+    surface_space = axes(Δz)
+    # First extract the value of the top layer of the pressure head
+    # and cast onto the face space
+    ψ_c = get_top_surface_field(p.soil.ψ, surface_space)
 
-    # Calculate pressure head using boundary condition
+    # Calculate pressure head using boundary condition on ϑ_l = θ_bc
+    # We first need to extract the parameters of the soil in the top layer
+    # Again, we need to cast them onto the face space
     (; hydrology_cm, θ_r, ν, S_s) = model.parameters
-    θ_bc = FT.(rre_bc.bc(p, t))
-    ψ_bc = @. pressure_head(hydrology_cm, θ_r, θ_bc, ν, S_s)
+    hcm_bc = get_top_surface_field(hydrology_cm, surface_space)
+    θ_r_bc = get_top_surface_field(θ_r, surface_space)
+    ν_bc = get_top_surface_field(ν, surface_space)
+    S_s_bc = get_top_surface_field(S_s, surface_space)
 
-    # Pass in (ψ_bc .+ Δz) as x_2 to account for contribution of gravity in RRE
-    return ClimaLand.diffusive_flux(K_c, ψ_bc .+ Δz, ψ_c, Δz)
+    θ_bc = FT.(rre_bc.bc(p, t))
+    ψ_bc = @. pressure_head(hcm_bc, θ_r_bc, θ_bc, ν_bc, S_s_bc)
+
+    # Lastly, we need an effective conductivity to compute the flux that results from
+    # the gradient in pressure.
+    # currently we approximate this as equal to the center value at the top layer (K_c)
+    # More accurate would be to compute the mean between K_c and K evaluated at the boundary
+    # condition.
+    K_eff = get_top_surface_field(p.soil.K, surface_space)
+
+    # Pass in (ψ_bc .+ Δz) as to account for contribution of gravity (∂(ψ+z)/∂z
+    return ClimaLand.diffusive_flux(K_eff, ψ_bc .+ Δz, ψ_c, Δz)
 end
 
 """
@@ -461,20 +535,35 @@ function ClimaLand.boundary_flux(
     t,
 )::ClimaCore.Fields.Field
     FT = eltype(Δz)
-    # Approximate K_bc ≈ K_c, ψ_bc ≈ ψ_c (center closest to the boundary)
-    # We need to project the center values onto the face space.
-    K_c = Fields.Field(Fields.field_values(Fields.level(p.soil.K, 1)), axes(Δz))
-    ψ_c = Fields.Field(Fields.field_values(Fields.level(p.soil.ψ, 1)), axes(Δz))
+    surface_space = axes(Δz)
+    # First extract the value of the bottom layer of the pressure head
+    # and cast onto the face space
+    ψ_c = get_bottom_surface_field(p.soil.ψ, surface_space)
 
-    # Calculate pressure head using boundary condition
+
+    # Calculate pressure head using boundary condition on ϑ_l = θ_bc
+    # We first need to extract the parameters of the soil in the bottom layer
+    # Again, we need to cast them onto the face space
     (; hydrology_cm, θ_r, ν, S_s) = model.parameters
+    hcm_bc = get_bottom_surface_field(hydrology_cm, surface_space)
+    θ_r_bc = get_bottom_surface_field(θ_r, surface_space)
+    ν_bc = get_bottom_surface_field(ν, surface_space)
+    S_s_bc = get_bottom_surface_field(S_s, surface_space)
+
     θ_bc = FT.(rre_bc.bc(p, t))
-    ψ_bc = @. pressure_head(hydrology_cm, θ_r, θ_bc, ν, S_s)
+    ψ_bc = @. pressure_head(hcm_bc, θ_r_bc, θ_bc, ν_bc, S_s_bc)
+
+    # Lastly, we need an effective conductivity to compute the flux that results from
+    # the gradient in pressure.
+    # currently we approximate this as equal to the center value at the top layer (K_c)
+    # More accurate would be to compute the mean between K_c and K evaluated at the boundary
+    # condition.
+    K_eff = get_bottom_surface_field(p.soil.K, surface_space)
 
     # At the bottom boundary, ψ_c is at larger z than ψ_bc
     #  so we swap their order in the derivative calc
-    # Pass in (ψ_c .+ Δz) as x_2 to account for contribution of gravity in RRE
-    return ClimaLand.diffusive_flux(K_c, ψ_c .+ Δz, ψ_bc, Δz)
+    # Pass in (ψ_c .+ Δz)  to account for contribution of gravity  (∂(ψ+z)/∂z
+    return ClimaLand.diffusive_flux(K_eff, ψ_c .+ Δz, ψ_bc, Δz)
 end
 
 
@@ -502,16 +591,10 @@ function ClimaLand.boundary_flux(
 )::ClimaCore.Fields.Field
     FT = eltype(Δz)
     # Approximate κ_bc ≈ κ_c (center closest to the boundary)
-    p_len = Spaces.nlevels(axes(p.soil.T))
+    surface_space = axes(Δz)
     # We need to project the center values onto the face space.
-    T_c = Fields.Field(
-        Fields.field_values(Fields.level(p.soil.T, p_len)),
-        axes(Δz),
-    )
-    κ_c = Fields.Field(
-        Fields.field_values(Fields.level(p.soil.κ, p_len)),
-        axes(Δz),
-    )
+    T_c = get_top_surface_space(p.soil.T, surface_space)
+    κ_c = get_top_surface_space(p.soil.κ, surface_space)
 
     T_bc = FT.(heat_bc.bc(p, t))
     return ClimaLand.diffusive_flux(κ_c, T_bc, T_c, Δz)
@@ -541,9 +624,10 @@ function ClimaLand.boundary_flux(
 )::ClimaCore.Fields.Field
     FT = eltype(Δz)
     # Approximate κ_bc ≈ κ_c (center closest to the boundary)
+    surface_space = axes(Δz)
     # We need to project the center values onto the face space.
-    T_c = Fields.Field(Fields.field_values(Fields.level(p.soil.T, 1)), axes(Δz))
-    κ_c = Fields.Field(Fields.field_values(Fields.level(p.soil.κ, 1)), axes(Δz))
+    T_c = get_bottom_surface_space(p.soil.T, surface_space)
+    κ_c = get_bottom_surface_space(p.soil.κ, surface_space)
     T_bc = FT.(heat_bc.bc(p, t))
     return ClimaLand.diffusive_flux(κ_c, T_c, T_bc, Δz)
 end
@@ -626,12 +710,12 @@ function ClimaLand.∂tendencyBC∂Y(
         top = Operators.Extrapolate(),
     )
     K = Fields.level(interpc2f_op.(p.soil.K), face_len)
-    ϑ_l = Fields.level(interpc2f_op.(Y.soil.ϑ_l), face_len)
+    dψ = Fields.level(
+        interpc2f_op.(dψdϑ.(hydrology_cm, Y.soil.ϑ_l, ν, θ_r, S_s)),
+        face_len,
+    )
     return ClimaCore.Fields.FieldVector(;
-        :soil => (;
-            :ϑ_l => @. -K / Δz * dψdϑ(hydrology_cm, ϑ_l, ν, θ_r, S_s) /
-               (2 * Δz)
-        ),
+        :soil => (; :ϑ_l => @. -K / Δz * dψ / (2 * Δz)),
     )
 end
 

@@ -1,45 +1,48 @@
 """
-    EnergyHydrologyParameters{FT <: AbstractFloat}
+    EnergyHydrologyParameters{FT <: AbstractFloat, 
+                              F <: Union{<:AbstractFloat,
+                                         ClimaCore.Fields.Field},
+                              C,
+                              PSE,}
 
 A parameter structure for the integrated soil water and energy
- equation system. In this simplest
-form, we assume the conductivity and volumetric heat capacity
-of the soil are constant.
+ equation system. 
 $(DocStringExtensions.FIELDS)
 """
 struct EnergyHydrologyParameters{
     FT <: AbstractFloat,
-    C <: AbstractSoilHydrologyClosure,
+    F <: Union{<:AbstractFloat, ClimaCore.Fields.Field},
+    C,
     PSE,
 }
     "The dry soil thermal conductivity, W/m/K"
-    κ_dry::FT
+    κ_dry::F
     "The saturated thermal conductivity of frozen soil, W/m/K"
-    κ_sat_frozen::FT
+    κ_sat_frozen::F
     "The saturated thermal conductivity of unfrozen soil, W/m/K"
-    κ_sat_unfrozen::FT
+    κ_sat_unfrozen::F
     "The volumetric heat capacity of dry soil, J/m^3/K (per volume dry soil, not per volume soil solids)"
-    ρc_ds::FT
+    ρc_ds::F
     "The porosity of the soil (m^3/m^3)"
-    ν::FT
+    ν::F
     "The volumetric fraction of the soil solids in organic matter (m^3/m^3)"
-    ν_ss_om::FT
+    ν_ss_om::F
     "The volumetric fraction of the soil solids in quartz (m^3/m^3)"
-    ν_ss_quartz::FT
+    ν_ss_quartz::F
     "The volumetric fraction of the soil solids in gravel (m^3/m^3)"
-    ν_ss_gravel::FT
+    ν_ss_gravel::F
     "The parameter α used in computing Kersten number, unitless"
     α::FT
     "The parameter β used in computing Kersten number, unitless"
     β::FT
-    "The soil hydrology closure model: van Genucthen or Brooks and Corey"
+    "The soil hydrology closure model: van Genuchten or Brooks and Corey"
     hydrology_cm::C
     "The saturated hydraulic conductivity (m/s)"
-    K_sat::FT
+    K_sat::F
     "The specific storativity (1/m)"
-    S_s::FT
+    S_s::F
     "The residual water fraction (m^3/m^3"
-    θ_r::FT
+    θ_r::F
     "Ice impedance factor for the hydraulic conductivity"
     Ω::FT
     "Coefficient of viscosity factor for the hydraulic conductivity"
@@ -47,9 +50,9 @@ struct EnergyHydrologyParameters{
     "Reference temperature for the viscosity factor"
     γT_ref::FT
     "Soil PAR Albedo"
-    PAR_albedo::FT
+    PAR_albedo::F
     "Soil NIR Albedo"
-    NIR_albedo::FT
+    NIR_albedo::F
     "Soil Emissivity"
     emissivity::FT
     "Roughness length for momentum"
@@ -63,22 +66,23 @@ struct EnergyHydrologyParameters{
 end
 
 function EnergyHydrologyParameters{FT}(;
-    ν::FT,
-    ν_ss_om::FT,
-    ν_ss_quartz::FT,
-    ν_ss_gravel::FT,
+    ν::F,
+    ν_ss_om::F,
+    ν_ss_quartz::F,
+    ν_ss_gravel::F,
     hydrology_cm::C,
-    K_sat::FT,
-    S_s::FT,
-    θ_r::FT,
+    K_sat::F,
+    S_s::F,
+    θ_r::F,
     PAR_albedo = FT(0.2),
     NIR_albedo = FT(0.4),
-    emissivity = FT(1),
+    emissivity = FT(0.96),
     z_0m = FT(0.01),
     z_0b = FT(0.01),
     d_ds = FT(0.015),
     earth_param_set::PSE,
-) where {FT, PSE, C <: AbstractSoilHydrologyClosure}
+) where {FT, F <: Union{FT, ClimaCore.Fields.FieldVector}, PSE, C}
+    # All below will be moved to CP
     # These were determined in the Balland and Arp paper, from 2003.
     α = FT(0.24)
     β = FT(18.3)
@@ -112,7 +116,7 @@ function EnergyHydrologyParameters{FT}(;
     # Particle density of the soil - per unit soil solids
     # Denoted ρ_ds in the Clima Design Docs (Equation 2.3)
     # where ν_ss_i = ν_i/(1-ν)
-    ρp = (
+    ρp = @. (
         ν_ss_om * ρp_om +
         ν_ss_quartz * ρp_quartz +
         ν_ss_gravel * ρp_gravel +
@@ -122,7 +126,7 @@ function EnergyHydrologyParameters{FT}(;
     # Volumetric heat capacity of soil solids - per unit volume soil solids
     # This is Equation 2.6a/2.10 in the Clima Design Docs
     # where ν_ss_i = ν_i/(1-ν)
-    ρc_ss = (
+    ρc_ss = @. (
         ν_ss_om * ρc_om +
         ν_ss_quartz * ρc_quartz +
         ν_ss_gravel * ρc_gravel +
@@ -131,15 +135,14 @@ function EnergyHydrologyParameters{FT}(;
 
     # Volumetric heat capacity of dry soil - per unit volume of soil
     # This is denoted č_ds (Equation 2.11) and is used in equation 2.9
-    ρc_ds = (1 - ν) * ρc_ss
-
+    ρc_ds = @. (1 - ν) * ρc_ss
 
     κ_solid = Soil.κ_solid.(ν_ss_om, ν_ss_quartz, κ_om, κ_quartz, κ_minerals)
     κ_dry = Soil.κ_dry.(ρp, ν, κ_solid, κ_air)
     κ_sat_frozen = Soil.κ_sat_frozen.(κ_solid, ν, κ_ice)
     κ_sat_unfrozen = Soil.κ_sat_unfrozen.(κ_solid, ν, κ_liq)
 
-    return EnergyHydrologyParameters{FT, C, PSE}(
+    return EnergyHydrologyParameters{FT, F, C, PSE}(
         κ_dry,
         κ_sat_frozen,
         κ_sat_unfrozen,

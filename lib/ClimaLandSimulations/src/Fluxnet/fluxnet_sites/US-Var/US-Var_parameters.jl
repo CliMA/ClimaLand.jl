@@ -86,7 +86,7 @@ function soil_vairaranch(;
     PAR_albedo = FT(0.2),
     NIR_albedo = FT(0.2),
 )
-    hydrology_cm = vanGenuchten(; α = vg_α, n = vg_n)
+    hydrology_cm = vanGenuchten{FT}(; α = vg_α, n = vg_n)
     return EnergyHydrologyParameters{FT}(; # here, calls the src function, not the src struct    
         ν = ν,
         ν_ss_om = ν_ss_om,
