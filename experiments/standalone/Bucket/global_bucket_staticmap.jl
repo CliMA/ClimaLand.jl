@@ -1,3 +1,20 @@
+# # Global bucket run using spatial map albedo
+
+# The code sets up and runs the bucket for 7 days using albedo read in from
+# a file containing static data over the globe, and analytic atmospheric and
+# radiative forcings.
+# Moving forward, this driver will serve as our more complex global bucket run,
+# eventually running for a longer time period (1+ year) and using temporally
+# varying atmospheric and radiative forcing data.
+# This driver is used to verify that this more complex version of the model can
+# run on both CPU and GPU, with only minor computational differences between the results.
+
+# Outputs:
+# The final state of the simulation is saved to a CSV file so we can compare
+# between CPU and GPU runs.
+# Plots of the temporal evolution of water content, snow cover fraction,
+# surface temperature, evaporation, and surface energy flux.
+
 import SciMLBase
 using CairoMakie
 using Dates
@@ -7,11 +24,12 @@ using Statistics
 import ClimaTimeSteppers as CTS
 using ClimaCore
 using ClimaCore: Remapping, Geometry
+import CLIMAParameters as CP
 import ClimaComms
 import ClimaLand
 import ClimaLand.Parameters as LP
 import CLIMAParameters
-using ClimaLand.Bucket: BucketModel, BucketModelParameters, BulkAlbedoFunction
+using ClimaLand.Bucket: BucketModel, BucketModelParameters, BulkAlbedoStatic
 using ClimaLand.Domains: coordinates, Column
 using ClimaLand:
     initialize,
@@ -39,10 +57,13 @@ anim_plots = false
 FT = Float64;
 context = ClimaComms.context()
 earth_param_set = LP.LandParameters(FT);
-outdir = joinpath(pkgdir(ClimaLand), "experiments/standalone/Bucket/artifacts")
+outdir = joinpath(
+    pkgdir(ClimaLand),
+    "experiments/standalone/Bucket/artifacts_staticmap",
+)
 !ispath(outdir) && mkpath(outdir)
 
-# Construct simulation domain
+# Set up simulation domain
 soil_depth = FT(3.5);
 bucket_domain = ClimaLand.Domains.SphericalShell(;
     radius = FT(6.3781e6),
@@ -51,12 +72,9 @@ bucket_domain = ClimaLand.Domains.SphericalShell(;
     npolynomial = 1,
     dz_tuple = FT.((1.0, 0.05)),
 );
-surface_space = bucket_domain.space.surface
+ref_time = DateTime(2005);
 
 # Set up parameters
-α_bareground_func = (coordinate_point) -> 0.2;
-α_snow = FT(0.8);
-albedo = BulkAlbedoFunction{FT}(α_snow, α_bareground_func, surface_space);
 σS_c = FT(0.2);
 W_f = FT(0.15);
 z_0m = FT(1e-2);
@@ -67,6 +85,19 @@ z_0b = FT(1e-3);
 t0 = 0.0;
 tf = 7 * 86400;
 Δt = 3600.0;
+
+# Construct albedo parameter object using static map
+# Use separate regridding directory for CPU and GPU runs to avoid race condition
+device_suffix =
+    typeof(ClimaComms.context().device) <: ClimaComms.CPUSingleThreaded ?
+    "cpu" : "gpu"
+regrid_dir = joinpath(
+    pkgdir(ClimaLand),
+    "experiments/standalone/Bucket/$device_suffix/regrid-static/",
+)
+!ispath(regrid_dir) && mkpath(regrid_dir)
+surface_space = bucket_domain.space.surface
+albedo = BulkAlbedoStatic{FT}(regrid_dir, surface_space);
 
 bucket_parameters = BucketModelParameters(
     κ_soil,
@@ -79,13 +110,12 @@ bucket_parameters = BucketModelParameters(
     τc,
     earth_param_set,
 );
-ref_time = DateTime(2005);
 
 # Precipitation:
 precip = (t) -> 0;
 snow_precip = (t) -> -5e-7 * (t < 1 * 86400);
 # Diurnal temperature variations:
-T_atmos = (t) -> 275.0 + 5.0 * sin(2.0 * π * t / 86400 + 7200);
+T_atmos = (t) -> 275.0 + 5.0 * sin(2.0 * π * t / 86400 - π / 2);
 # Constant otherwise:
 u_atmos = (t) -> 3.0;
 q_atmos = (t) -> 0.001;
@@ -107,8 +137,8 @@ bucket_atmos = PrescribedAtmosphere(
 # peak at local noon, and a prescribed downwelling LW radiative
 # flux, assuming the air temperature is on average 275 degrees
 # K with a diurnal amplitude of 5 degrees K:
-SW_d = (t) -> max(1361 * sin(2π * t / 86400 + 7200));
-LW_d = (t) -> 5.67e-8 * (275.0 + 5.0 * sin(2.0 * π * t / 86400 + 7200))^4;
+SW_d = (t) -> max(1361 * sin(2π * t / 86400 - π / 2), 0.0);
+LW_d = (t) -> 5.67e-8 * (275.0 + 5.0 * sin(2.0 * π * t / 86400 - π / 2))^4;
 bucket_rad = PrescribedRadiativeFluxes(
     FT,
     TimeVaryingInput(SW_d),
@@ -191,11 +221,7 @@ F_sfc = [
     ) for k in 1:length(sol.t)
 ];
 
-# save prognostic state to CSV - for comparison between
-# GPU and CPU output
-device_suffix =
-    typeof(ClimaComms.context().device) <: ClimaComms.CPUSingleThreaded ?
-    "cpu" : "gpu"
+# save prognostic state to CSV - for comparison between GPU and CPU output
 open(joinpath(outdir, "tf_state_$device_suffix.txt"), "w") do io
     writedlm(io, hcat(T_sfc[end][:], W[end][:], Ws[end][:], σS[end][:]), ',')
 end;
@@ -233,9 +259,17 @@ for (i, (field_ts, field_name)) in enumerate(
         end
     end
     # Plot the timeseries of the mean value as well.
-    xlabel = i == 5 ? "Time" : ""
-    ax2 = Axis(fig_ts[i, 1], xlabel = xlabel, ylabel = field_name)
+    xlabel = i == 5 ? "Time (days)" : ""
+    ax2 = Axis(
+        fig_ts[i, 1],
+        xlabel = xlabel,
+        ylabel = field_name,
+        title = "Global bucket with static map albedo",
+    )
     CairoMakie.lines!(ax2, sol.t ./ 3600 ./ 24, [mean(x) for x in field_ts])
 end
 outfile = joinpath(outdir, string("ts_$device_suffix.png"))
 CairoMakie.save(outfile, fig_ts)
+
+# delete regrid directory
+rm(regrid_dir, recursive = true)

@@ -78,24 +78,30 @@ steps:
         command: "julia --color=yes --project=experiments experiments/standalone/Soil/water_conservation.jl"
         artifact_paths: "experiments/standalone/Soil/water_conservation*png"
 
-      - label: "Global Bucket on CPU"
-        key: "global_bucket_cpu"
-        command: "julia --color=yes --project=experiments experiments/standalone/Bucket/global_bucket.jl"
-        artifact_paths: "experiments/standalone/Bucket/artifacts/*cpu*"
-
-      - label: "Compare GPU bucket with CPU bucket"
-        command: "julia --color=yes --project=experiments experiments/standalone/Bucket/compare_gpu_cpu_output.jl"
-        depends_on:
-          - "global_bucket_cpu"
-          - "global_bucket_gpu"
-
-  - group: "lib/ClimaLandSimulations"
+  - group: "ClimaLandSimulations"
     steps:
       - label: "Ozark figures Makie"
         command: "julia --color=yes --project=lib/ClimaLandSimulations lib/ClimaLandSimulations/experiments/ozark.jl"
         artifact_paths: "figures/*pdf"
 
-  - group: "GPU"
+  - group: "CPU: global bucket"
+    steps:
+      - label: "Global Bucket on CPU (functional albedo)"
+        key: "global_bucket_function_cpu"
+        command: "julia --color=yes --project=experiments experiments/standalone/Bucket/global_bucket_function.jl"
+        artifact_paths: "experiments/standalone/Bucket/artifacts/*cpu*"
+
+      - label: "Global Bucket on CPU (static map albedo)"
+        key: "global_bucket_staticmap_cpu"
+        command: "julia --color=yes --project=experiments experiments/standalone/Bucket/global_bucket_staticmap.jl"
+        artifact_paths: "experiments/standalone/Bucket/artifacts_staticmap/*cpu*"
+
+      - label: "Global Bucket on CPU (temporal map albedo)"
+        key: "global_bucket_temporalmap_cpu"
+        command: "julia --color=yes --project=experiments experiments/standalone/Bucket/global_bucket_temporalmap.jl"
+        artifact_paths: "experiments/standalone/Bucket/artifacts_temporalmap/*cpu*"
+
+  - group: "GPU: unit tests and global bucket"
     steps:
       - label: "GPU runtests"
         command: "julia --color=yes --project=test test/runtests.jl"
@@ -103,13 +109,49 @@ steps:
           slurm_mem_per_cpu: 8G
           slurm_gpus: 1
 
-      - label: "Global Bucket on GPU"
-        key: "global_bucket_gpu"
-        command: "julia --color=yes --project=experiments experiments/standalone/Bucket/global_bucket.jl"
+      - label: "Global Bucket on GPU (functional albedo)"
+        key: "global_bucket_function_gpu"
+        command: "julia --color=yes --project=experiments experiments/standalone/Bucket/global_bucket_function.jl"
         agents:
           slurm_mem: 8G
           slurm_gpus: 1
         artifact_paths: "experiments/standalone/Bucket/artifacts/*gpu*"
+
+      - label: "Global Bucket on GPU (static map albedo)"
+        key: "global_bucket_staticmap_gpu"
+        command: "julia --color=yes --project=experiments experiments/standalone/Bucket/global_bucket_staticmap.jl"
+        agents:
+          slurm_mem: 8G
+          slurm_gpus: 1
+        artifact_paths: "experiments/standalone/Bucket/artifacts_staticmap/*gpu*"
+
+      - label: "Global Bucket on GPU (temporal map albedo)"
+        key: "global_bucket_temporalmap_gpu"
+        command: "julia --color=yes --project=experiments experiments/standalone/Bucket/global_bucket_temporalmap.jl"
+        agents:
+          slurm_mem: 8G
+          slurm_gpus: 1
+        artifact_paths: "experiments/standalone/Bucket/artifacts_temporalmap/*gpu*"
+
+  - group: "CPU/GPU comparisons"
+    steps:
+      - label: "Compare GPU bucket with CPU bucket (functional albedo)"
+        command: "julia --color=yes --project=experiments experiments/standalone/Bucket/compare_gpu_cpu_output.jl"
+        depends_on:
+          - "global_bucket_function_cpu"
+          - "global_bucket_function_gpu"
+
+      - label: "Compare GPU bucket with CPU bucket (static map albedo)"
+        command: "julia --color=yes --project=experiments experiments/standalone/Bucket/compare_gpu_cpu_output.jl"
+        depends_on:
+          - "global_bucket_staticmap_cpu"
+          - "global_bucket_staticmap_gpu"
+
+      - label: "Compare GPU bucket with CPU bucket (temporal map albedo)"
+        command: "julia --color=yes --project=experiments experiments/standalone/Bucket/compare_gpu_cpu_output.jl"
+        depends_on:
+          - "global_bucket_temporalmap_cpu"
+          - "global_bucket_temporalmap_gpu"
 
   - wait
 

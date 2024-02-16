@@ -294,14 +294,17 @@ function hdwrite_regridfile_rll_to_cgll(
         # read the remapped file with sparse matrices
         offline_outvector, times = NCDataset(datafile_cgll, "r") do ds_wt
             (
-                offline_outvector = Array(ds_wt[varname])[:, :], # ncol, times
+                # read the data in, and remove missing type (will error if missing data is present)
+                offline_outvector = nomissing(Array(ds_wt[varname])[:, :]), # ncol, times
                 times = get_time(ds_wt),
             )
         end
 
-        # Check that input data has the expected float type and time dimension
-        if eltype(offline_outvector) <: AbstractFloat
-            @assert eltype(offline_outvector) == FT "Invalid float type in $datafile_rll for $varname"
+        # Convert input data float type if needed
+        if eltype(offline_outvector) <: AbstractFloat &&
+           eltype(offline_outvector) != FT
+            @warn "Converting $varname data in $datafile_cgll from $(eltype(offline_outvector)) to $FT"
+            offline_outvector = Array{FT}(offline_outvector)
         end
         @assert length(times) == size(offline_outvector, 2) "Inconsistent time dimension in $datafile_cgll for $varname"
 
