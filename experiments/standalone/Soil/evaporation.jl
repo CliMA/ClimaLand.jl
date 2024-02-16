@@ -61,8 +61,8 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
         ref_time,
     )
     # Atmos
-    T_air = 301.15
-    rh = 0.38
+    T_air = FT(301.15)
+    rh = FT(0.38)
     esat = Thermodynamics.saturation_vapor_pressure(
         thermo_params,
         T_air,

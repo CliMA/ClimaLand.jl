@@ -104,7 +104,7 @@ function make_drivers(site_ID, setup, config, params, context)
     esat =
         Thermodynamics.saturation_vapor_pressure.(
             Ref(thermo_params),
-            drivers.TA.values,
+            FT.(drivers.TA.values),
             Ref(Thermodynamics.Liquid()),
         )
     e = @. esat - drivers.VPD.values
