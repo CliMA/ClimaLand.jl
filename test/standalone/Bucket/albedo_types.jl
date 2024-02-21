@@ -270,7 +270,7 @@ if !Sys.iswindows()
                     outfile_root,
                     Dates.DateTime(0), # dummy date
                     varname,
-                    comms_ctx,
+                    surface_space,
                 )
                 data_manual = nans_to_zero.(field)
 

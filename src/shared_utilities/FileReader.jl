@@ -345,7 +345,7 @@ function read_data_fields!(
                 outfile_root,
                 all_dates[Int(date_idx0)],
                 varname,
-                comms_ctx,
+                space,
             )
             file_state.data_fields[2] .= file_state.data_fields[1]
             file_state.segment_length .= 0
@@ -363,7 +363,7 @@ function read_data_fields!(
                 outfile_root,
                 all_dates[end],
                 varname,
-                comms_ctx,
+                space,
             )
             file_state.data_fields[2] .= file_state.data_fields[1]
             file_state.segment_length .= 0
@@ -390,14 +390,14 @@ function read_data_fields!(
                 outfile_root,
                 all_dates[Int(date_idx)],
                 varname,
-                comms_ctx,
+                space,
             )
             file_state.data_fields[2] .= Regridder.read_from_hdf5(
                 regrid_dirpath,
                 outfile_root,
                 all_dates[Int(date_idx + 1)],
                 varname,
-                comms_ctx,
+                space,
             )
         end
         # Case 4: Everything else
@@ -456,7 +456,7 @@ function get_data_at_date(
         outfile_root,
         Dates.DateTime(0), # dummy date
         varname,
-        comms_ctx,
+        space,
     )
     return nans_to_zero.(field)
 end
