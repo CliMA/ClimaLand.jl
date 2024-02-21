@@ -213,7 +213,7 @@ Container for holding the parameters of the bucket model.
 
 $(DocStringExtensions.FIELDS)
 """
-struct BucketModelParameters{
+Base.@kwdef struct BucketModelParameters{
     FT <: AbstractFloat,
     AAM <: AbstractBucketAlbedoModel,
     PSE,
@@ -243,35 +243,6 @@ struct BucketModelParameters{
     "Earth Parameter set; physical constants, etc"
     earth_param_set::PSE
 end
-
-BucketModelParameters(
-    κ_soil::FT,
-    ρc_soil::FT,
-    albedo::AAM,
-    σS_c::FT,
-    W_f::FT,
-    z_0m::FT,
-    z_0b::FT,
-    τc::FT,
-    earth_param_set::PSE;
-    f_snow = FT(0.0),
-    f_bucket = FT(0.75),
-    p = FT(1),
-) where {FT, AAM, PSE} = BucketModelParameters{FT, AAM, PSE}(
-    κ_soil,
-    ρc_soil,
-    albedo,
-    σS_c,
-    f_snow,
-    W_f,
-    f_bucket,
-    p,
-    z_0m,
-    z_0b,
-    τc,
-    earth_param_set,
-)
-
 
 """
 

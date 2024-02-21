@@ -100,17 +100,7 @@ surface_space = bucket_domain.space.surface
 α_snow = FT(0.8)
 albedo = PrescribedBaregroundAlbedo{FT}(α_snow, regrid_dir, surface_space);
 
-bucket_parameters = BucketModelParameters(
-    κ_soil,
-    ρc_soil,
-    albedo,
-    σS_c,
-    W_f,
-    z_0m,
-    z_0b,
-    τc,
-    earth_param_set,
-);
+bucket_parameters = BucketModelParameters(FT; albedo, z_0m, z_0b, τc);
 
 # Precipitation:
 precip = (t) -> 0;

@@ -203,7 +203,7 @@ if !Sys.iswindows()
         for bucket_domain in bucket_domains
             if bucket_domain isa SphericalShell
                 surface_space = bucket_domain.space.surface
-                albedo_model = PrescribedBaregroundAlbedo{FT}(
+                albedo = PrescribedBaregroundAlbedo{FT}(
                     α_snow,
                     regrid_dirpath,
                     surface_space,
@@ -237,17 +237,8 @@ if !Sys.iswindows()
                     h_atmos,
                 )
                 τc = FT(1.0)
-                bucket_parameters = BucketModelParameters(
-                    κ_soil,
-                    ρc_soil,
-                    albedo_model,
-                    σS_c,
-                    W_f,
-                    z_0m,
-                    z_0b,
-                    τc,
-                    earth_param_set,
-                )
+                bucket_parameters =
+                    BucketModelParameters(FT; albedo, z_0m, z_0b, τc)
 
                 model = BucketModel(
                     parameters = bucket_parameters,
@@ -382,15 +373,11 @@ if !Sys.iswindows()
                 )
                 τc = FT(1.0)
                 bucket_parameters = BucketModelParameters(
-                    κ_soil,
-                    ρc_soil,
-                    albedo_model,
-                    σS_c,
-                    W_f,
+                    FT;
+                    albedo = albedo_model,
                     z_0m,
                     z_0b,
                     τc,
-                    earth_param_set,
                 )
 
                 model = BucketModel(
