@@ -458,7 +458,7 @@ function get_data_at_date(
         varname,
         space,
     )
-    return nans_to_zero.(field)
+    return field
 end
 
 """
@@ -510,7 +510,6 @@ function get_data_at_date(
     end
 end
 
-nans_to_zero(v::T) where {T} = isnan(v) ? T(0) : v
 
 """
     interpol(f1::FT, f2::FT, Δt_tt1::FT, Δt_t2t1::FT)

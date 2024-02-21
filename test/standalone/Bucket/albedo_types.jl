@@ -8,8 +8,7 @@ import CLIMAParameters as CP
 using Dates
 using NCDatasets
 using ClimaLand.Regridder: read_from_hdf5
-using ClimaLand.FileReader:
-    next_date_in_file, to_datetime, nans_to_zero, get_data_at_date
+using ClimaLand.FileReader: next_date_in_file, to_datetime, get_data_at_date
 using ClimaLand.Bucket:
     BucketModel,
     BucketModelParameters,
@@ -272,7 +271,8 @@ if !Sys.iswindows()
                     varname,
                     surface_space,
                 )
-                data_manual = nans_to_zero.(field)
+                replace_nan_missing!(field)
+                data_manual = field
 
                 @test p.bucket.α_sfc == data_manual
             else
@@ -410,8 +410,9 @@ if !Sys.iswindows()
                     date_ref,
                 )
                 # If there are any NaNs in the input data, replace them so we can compare results
-                @test nans_to_zero.(p.bucket.α_sfc) ==
-                      nans_to_zero.(data_manual)
+                replace_nan_missing!(p.bucket.α_sfc)
+                replace_nan_missing!(data_manual)
+                @test p.bucket.α_sfc == data_manual
 
                 update_aux! = make_update_aux(model)
                 new_date = date_ref + Second(t_start)
@@ -426,8 +427,9 @@ if !Sys.iswindows()
                         varname,
                         file_dates[i],
                     )
-                    @test nans_to_zero.(p.bucket.α_sfc) ≈
-                          nans_to_zero.(data_manual)
+                    replace_nan_missing!(p.bucket.α_sfc)
+                    replace_nan_missing!(data_manual)
+                    @test p.bucket.α_sfc == data_manual
 
                     # Update manual date to match next date in file
                     dt = Second(file_dates[i + 1] - file_dates[i])
