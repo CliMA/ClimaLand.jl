@@ -79,12 +79,14 @@ pmap(t -> generate_tutorial(tutorials_dir, t), tutorials_jl)
 ext_jl2md(x) = joinpath(basename(GENERATED_DIR), replace(x, ".jl" => ".md"))
 tutorials = transform_second(x -> ext_jl2md(x), tutorials)
 include("list_of_apis.jl")
+include("list_standalone_models.jl")
 pages = Any[
     "Home" => "index.md",
     "APIs" => apis,
     "Contribution guide" => "Contributing.md",
     "Tutorials" => tutorials,
     "Repository structure" => "folderstructure.md",
+    "Standalone models" => standalone_models,
 ]
 
 
