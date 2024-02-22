@@ -9,7 +9,7 @@ abstract type AbstractAutotrophicRespirationModel{FT} <:
 The required parameters for the autrophic respiration model.
 $(DocStringExtensions.FIELDS)
 """
-struct AutotrophicRespirationParameters{FT <: AbstractFloat}
+Base.@kwdef struct AutotrophicRespirationParameters{FT <: AbstractFloat}
     "Vcmax25 to N factor (mol CO2 m-2 s-1 kg C (kg C)-1)"
     ne::FT
     "Live stem wood coefficient (kg C m-3)"
@@ -24,31 +24,6 @@ struct AutotrophicRespirationParameters{FT <: AbstractFloat}
     f1::FT
     "Factor of relative contribution or Rgrowth (-)"
     f2::FT
-end
-
-"""
-    function AutotrophicRespirationParameters{FT}(;
-        ne = FT(8 * 1e-4),
-        ηsl = FT(0.01),
-        σl = FT(0.05),
-        μr = FT(1.0),
-        μs = FT(0.1),
-        f1 = FT(0.012), 
-        f2 = FT(0.25)        
-) where {FT}
-
-A constructor supplying default values for the AutotrophicRespirationParameters struct.
-"""
-function AutotrophicRespirationParameters{FT}(;
-    ne = FT(8 * 1e-4),
-    ηsl = FT(0.01),
-    σl = FT(0.05),
-    μr = FT(1.0),
-    μs = FT(0.1),
-    f1 = FT(0.012),
-    f2 = FT(0.25),
-) where {FT}
-    return AutotrophicRespirationParameters{FT}(ne, ηsl, σl, μr, μs, f1, f2)
 end
 
 Base.eltype(::AutotrophicRespirationParameters{FT}) where {FT} = FT

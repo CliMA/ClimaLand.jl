@@ -8,7 +8,7 @@ The required parameters for the optimality Farquhar photosynthesis model.
 Currently, only C3 photosynthesis is supported.
 $(DocStringExtensions.FIELDS)
 """
-struct OptimalityFarquharParameters{FT <: AbstractFloat}
+Base.@kwdef struct OptimalityFarquharParameters{FT <: AbstractFloat}
     "Photosynthesis mechanism: C3 only"
     mechanism::C3
     "Γstar at 25 °C (mol/mol)"
@@ -48,70 +48,6 @@ struct OptimalityFarquharParameters{FT <: AbstractFloat}
 end
 
 Base.eltype(::OptimalityFarquharParameters{FT}) where {FT} = FT
-
-"""
-    function OptimalityFarquharParameters{FT}(
-        oi = FT(0.209),
-        ϕ = FT(0.6),
-        θj = FT(0.9),
-        f = FT(0.015),
-        sc = FT(5e-6),
-        pc = FT(-2e6),
-        Γstar25 = FT(4.275e-5),
-        Kc25 = FT(4.049e-4),
-        Ko25 = FT(0.2874),
-        To = FT(298.15),
-        ΔHkc = FT(79430),
-        ΔHko = FT(36380),
-        ΔHVcmax = FT(58520),
-        ΔHΓstar = FT(37830),
-        ΔHJmax = FT(43540),
-        ΔHRd = FT(46390),
-        c = FT(0.05336251)
-    )
-A constructor supplying default values for the FarquharParameters struct.
-"""
-function OptimalityFarquharParameters{FT}(;
-    oi = FT(0.209),
-    ϕ = FT(0.6),
-    θj = FT(0.9),
-    f = FT(0.015),
-    sc = FT(5e-6),
-    pc = FT(-2e6),
-    Γstar25 = FT(4.275e-5),
-    Kc25 = FT(4.049e-4),
-    Ko25 = FT(0.2874),
-    To = FT(298.15),
-    ΔHkc = FT(79430),
-    ΔHko = FT(36380),
-    ΔHVcmax = FT(58520),
-    ΔHΓstar = FT(37830),
-    ΔHJmax = FT(43540),
-    ΔHRd = FT(46390),
-    c = FT(0.05336251),
-) where {FT}
-    mechanism = C3()
-    return OptimalityFarquharParameters{FT}(
-        mechanism,
-        Γstar25,
-        Kc25,
-        Ko25,
-        ΔHkc,
-        ΔHko,
-        ΔHVcmax,
-        ΔHΓstar,
-        ΔHJmax,
-        ΔHRd,
-        To,
-        oi,
-        ϕ,
-        θj,
-        f,
-        sc,
-        pc,
-        c,
-    )
-end
 
 """
     OptimalityFarquharModel{FT,

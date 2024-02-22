@@ -6,13 +6,12 @@ using ClimaLand
 using ClimaLand.Soil
 import ClimaLand
 import ClimaLand.Parameters as LP
-
 using Dates
-include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"))
+
 
 for FT in (Float32, Float64)
     @testset "Surface fluxes and radiation for soil, FT = $FT" begin
-        earth_param_set = create_lsm_parameters(FT)
+        earth_param_set = LP.LandParameters(FT)
 
         soil_domains = [
             ClimaLand.Domains.Column(;
@@ -34,7 +33,7 @@ for FT in (Float32, Float64)
         vg_n = FT(2.0)
         vg_α = FT(2.6) # inverse meters
         vg_m = FT(1) - FT(1) / vg_n
-        hcm = vanGenuchten(; α = vg_α, n = vg_n)
+        hcm = vanGenuchten{FT}(; α = vg_α, n = vg_n)
         θ_r = FT(0.1)
         S_c = hcm.S_c
         @test Soil.dry_soil_layer_thickness(FT(1), S_c, FT(1)) == FT(0)

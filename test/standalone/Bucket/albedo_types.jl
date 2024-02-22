@@ -8,8 +8,7 @@ import CLIMAParameters as CP
 using Dates
 using NCDatasets
 using ClimaLand.Regridder: read_from_hdf5
-using ClimaLand.FileReader:
-    next_date_in_file, to_datetime, nans_to_zero, get_data_at_date
+using ClimaLand.FileReader: next_date_in_file, to_datetime, get_data_at_date
 using ClimaLand.Bucket:
     BucketModel,
     BucketModelParameters,
@@ -30,7 +29,7 @@ using ClimaLand:
 
 # Bucket model parameters
 import ClimaLand
-include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"))
+import ClimaLand.Parameters as LP
 
 function create_domain_2d(FT)
     rad = FT(100)
@@ -120,6 +119,7 @@ if !Sys.iswindows()
         param_σS_c = parameters.σS_c
         a_α_snow = albedo.α_snow
         a_α_bareground = albedo.α_bareground
+        @test eltype(a_α_bareground) == FT
 
         next_alb_manual = @. (
             (1 - Y_σS / (Y_σS + param_σS_c)) * a_α_bareground +
@@ -176,7 +176,7 @@ if !Sys.iswindows()
     end
 
     @testset "Test BulkAlbedoStatic - albedo from map, FT = $FT" begin
-        earth_param_set = create_lsm_parameters(FT)
+        earth_param_set = LP.LandParameters(FT)
         varname = "sw_alb"
         path = bareground_albedo_dataset_path()
         regrid_dirpath = joinpath(pkgdir(ClimaLand), "test/albedo_tmpfiles/")
@@ -269,9 +269,10 @@ if !Sys.iswindows()
                     outfile_root,
                     Dates.DateTime(0), # dummy date
                     varname,
-                    comms_ctx,
+                    surface_space,
                 )
-                data_manual = nans_to_zero.(field)
+                replace_nan_missing!(field)
+                data_manual = field
 
                 @test p.bucket.α_sfc == data_manual
             else
@@ -308,7 +309,7 @@ if !Sys.iswindows()
     end
 
     @testset "Test BulkAlbedoTemporal - albedo from map over time, FT = $FT" begin
-        earth_param_set = create_lsm_parameters(FT)
+        earth_param_set = LP.LandParameters(FT)
         varname = "sw_alb"
         infile_path = cesm2_albedo_dataset_path()
         regrid_dirpath = joinpath(pkgdir(ClimaLand), "test/albedo_tmpfiles/")
@@ -409,8 +410,9 @@ if !Sys.iswindows()
                     date_ref,
                 )
                 # If there are any NaNs in the input data, replace them so we can compare results
-                @test nans_to_zero.(p.bucket.α_sfc) ==
-                      nans_to_zero.(data_manual)
+                replace_nan_missing!(p.bucket.α_sfc)
+                replace_nan_missing!(data_manual)
+                @test p.bucket.α_sfc == data_manual
 
                 update_aux! = make_update_aux(model)
                 new_date = date_ref + Second(t_start)
@@ -425,8 +427,9 @@ if !Sys.iswindows()
                         varname,
                         file_dates[i],
                     )
-                    @test nans_to_zero.(p.bucket.α_sfc) ≈
-                          nans_to_zero.(data_manual)
+                    replace_nan_missing!(p.bucket.α_sfc)
+                    replace_nan_missing!(data_manual)
+                    @test p.bucket.α_sfc == data_manual
 
                     # Update manual date to match next date in file
                     dt = Second(file_dates[i + 1] - file_dates[i])

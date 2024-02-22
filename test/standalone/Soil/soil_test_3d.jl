@@ -6,18 +6,17 @@ using ClimaLand
 using ClimaLand.Domains: HybridBox, SphericalShell
 using ClimaLand.Soil
 import ClimaLand
-include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"))
-
+import ClimaLand.Parameters as LP
 
 for FT in (Float32, Float64)
     @testset "Soil horizontal operators unit tests, FT = $FT" begin
         ν = FT(0.495)
-        K_sat = FT(1)#0.0443 / 3600 / 100); # m/s
-        S_s = FT(1)#e-3); #inverse meters
+        K_sat = FT(1)
+        S_s = FT(1)
         vg_n = FT(2.0)
         vg_α = FT(2.6) # inverse meters
         vg_m = 1 - 1 / vg_n
-        hcm = vanGenuchten(; α = vg_α, n = vg_n)
+        hcm = vanGenuchten{FT}(; α = vg_α, n = vg_n)
         θ_r = FT(0)
         zmax = FT(0)
         zmin = FT(-1)
@@ -34,8 +33,13 @@ for FT in (Float32, Float64)
         sources = ()
         boundary_fluxes =
             (; top = (water = top_flux_bc,), bottom = (water = bot_flux_bc,))
-        params =
-            Soil.RichardsParameters{FT, typeof(hcm)}(ν, hcm, K_sat, S_s, θ_r)
+        params = Soil.RichardsParameters(;
+            ν = ν,
+            hydrology_cm = hcm,
+            K_sat = K_sat,
+            S_s = S_s,
+            θ_r = θ_r,
+        )
 
         soil = Soil.RichardsModel{FT}(;
             parameters = params,
@@ -229,14 +233,14 @@ for FT in (Float32, Float64)
     end
 
     @testset "Soil energy+hydrology horizontal operators, FT = $FT" begin
-        earth_param_set = create_lsm_parameters(FT)
+        earth_param_set = LP.LandParameters(FT)
         ν = FT(0.44)
         K_sat = FT(29.7 / 3600 / 100) # m/s
         S_s = FT(1e-3) #inverse meters
         vg_n = FT(2.68)
         vg_α = FT(14.5) # inverse meters
         vg_m = 1 - 1 / vg_n
-        hcm = vanGenuchten(; α = vg_α, n = vg_n)
+        hcm = vanGenuchten{FT}(; α = vg_α, n = vg_n)
         θ_r = FT(0.045)
         ν_ss_om = FT(0.0)
         ν_ss_quartz = FT(1.0)
@@ -340,10 +344,9 @@ for FT in (Float32, Float64)
         vg_n = FT(2.68)
         vg_α = FT(14.5) # inverse meters
         vg_m = 1 - 1 / vg_n
-        hcm = vanGenuchten(; α = vg_α, n = vg_n)
+        hcm = vanGenuchten{FT}(; α = vg_α, n = vg_n)
         θ_r = FT(0.045)
-
-        parameters = Soil.RichardsParameters{FT, typeof(hcm)}(
+        parameters = Soil.RichardsParameters(;
             ν = ν,
             hydrology_cm = hcm,
             K_sat = K_sat,

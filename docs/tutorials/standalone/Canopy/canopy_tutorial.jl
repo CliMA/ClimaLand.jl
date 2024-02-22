@@ -52,13 +52,12 @@ using ClimaLand.Canopy
 using ClimaLand.Canopy.PlantHydraulics
 import ClimaLand
 import ClimaLand.Parameters as LP
-include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"));
 
 # Define the floating point precision desired (64 or 32 bit), and get the
 # parameter set holding constants used across CliMA Models:
 
 const FT = Float32;
-earth_param_set = create_lsm_parameters(FT);
+earth_param_set = LP.LandParameters(FT);
 
 # # Setup the Canopy Model
 
@@ -180,31 +179,12 @@ stomatal_model = MedlynConductanceModel{FT}(cond_params);
 
 # Arguments for photosynthesis model:
 
-photo_params = FarquharParameters{FT}(
-    Canopy.C3();
-    oi = FT(0.209),
-    ϕ = FT(0.6),
-    θj = FT(0.9),
-    f = FT(0.015),
-    sc = FT(5e-6),
-    pc = FT(-2e5),
-    Vcmax25 = FT(5e-5),
-    Γstar25 = FT(4.275e-5),
-    Kc25 = FT(4.049e-4),
-    Ko25 = FT(0.2874),
-    To = FT(298.15),
-    ΔHkc = FT(79430),
-    ΔHko = FT(36380),
-    ΔHVcmax = FT(58520),
-    ΔHΓstar = FT(37830),
-    ΔHJmax = FT(43540),
-    ΔHRd = FT(46390),
-)
+photo_params = FarquharParameters(FT, Canopy.C3(); Vcmax25 = FT(5e-5))
 
 photosynthesis_model = FarquharModel{FT}(photo_params);
 
 # Arguments for autotrophic respiration model:
-AR_params = AutotrophicRespirationParameters{FT}()
+AR_params = AutotrophicRespirationParameters(FT)
 AR_model = AutotrophicRespirationModel{FT}(AR_params);
 
 # Arguments for plant hydraulics model are more complicated.

@@ -8,7 +8,7 @@ A library of methods to run ClimaLand:
 
 ```jl
 julia> ] # to go into pkg mode
-pkg> add ClimaLandSimulations
+pkg> add https://github.com/CliMA/ClimaLand.jl/tree/main/lib/ClimaLandSimulations # because unregistered for now
 pkg> *backspace* # press backspace button to go back into julia mode
 julia> using ClimaLandSimulations
 ```

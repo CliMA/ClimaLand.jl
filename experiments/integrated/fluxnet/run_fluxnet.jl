@@ -16,9 +16,8 @@ using ClimaLand.Canopy
 using ClimaLand.Canopy.PlantHydraulics
 import ClimaLand
 import ClimaLand.Parameters as LP
-include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"))
 const FT = Float64
-earth_param_set = create_lsm_parameters(FT)
+earth_param_set = LP.LandParameters(FT)
 climaland_dir = pkgdir(ClimaLand)
 
 
@@ -91,7 +90,7 @@ soil_ps = Soil.EnergyHydrologyParameters{FT}(;
     ν_ss_om = ν_ss_om,
     ν_ss_quartz = ν_ss_quartz,
     ν_ss_gravel = ν_ss_gravel,
-    hydrology_cm = vanGenuchten(; α = soil_vg_α, n = soil_vg_n),
+    hydrology_cm = vanGenuchten{FT}(; α = soil_vg_α, n = soil_vg_n),
     K_sat = soil_K_sat,
     S_s = soil_S_s,
     θ_r = θ_r,
@@ -163,17 +162,8 @@ canopy_component_types = (;
 )
 # Individual Component arguments
 # Set up autotrophic respiration
-autotrophic_respiration_args = (;
-    parameters = AutotrophicRespirationParameters{FT}(;
-        ne = ne,
-        ηsl = ηsl,
-        σl = σl,
-        μr = μr,
-        μs = μs,
-        f1 = f1,
-        f2 = f2,
-    )
-)
+autotrophic_respiration_args =
+    (; parameters = AutotrophicRespirationParameters(FT))
 # Set up radiative transfer
 radiative_transfer_args = (;
     parameters = TwoStreamParameters{FT}(;
@@ -197,28 +187,8 @@ conductance_args = (;
     )
 )
 # Set up photosynthesis
-photosynthesis_args = (;
-    parameters = FarquharParameters{FT}(
-        Canopy.C3();
-        oi = oi,
-        ϕ = ϕ,
-        θj = θj,
-        f = f,
-        sc = sc,
-        pc = pc,
-        Vcmax25 = Vcmax25,
-        Γstar25 = Γstar25,
-        Kc25 = Kc25,
-        Ko25 = Ko25,
-        To = To,
-        ΔHkc = ΔHkc,
-        ΔHko = ΔHko,
-        ΔHVcmax = ΔHVcmax,
-        ΔHΓstar = ΔHΓstar,
-        ΔHJmax = ΔHJmax,
-        ΔHRd = ΔHRd,
-    )
-)
+photosynthesis_args =
+    (; parameters = FarquharParameters(FT, Canopy.C3(); Vcmax25 = Vcmax25))
 # Set up plant hydraulics
 ai_parameterization = PrescribedSiteAreaIndex{FT}(LAIfunction, SAI, RAI)
 

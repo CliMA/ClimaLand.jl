@@ -54,11 +54,30 @@ function reshape_cgll_sparse_to_field!(
 end
 
 """
-    read_from_hdf5(REGIRD_DIR, hd_outfile_root, time, varname,
-        comms_ctx = ClimaComms.SingletonCommsContext())
+    swap_space(field, new_space)
 
-Read in a variable `varname` from an HDF5 file.
-If a CommsContext other than SingletonCommsContext is used for `comms_ctx`,
+Update the space of a ClimaCore.Fields.Field object. Returns a new Field
+object with the same values as the original field, but on the new space.
+This is needed to correctly read in regridded files that may be reused
+between simulations.
+
+# Arguments
+- `field`: The ClimaCore.Fields.Field object to swap the space of.
+- `new_space`: The new ClimaCore.Spaces.AbstractSpace to assign to the field.
+"""
+function swap_space(field, new_space)
+    return ClimaCore.Fields.Field(
+        ClimaCore.Fields.field_values(field),
+        new_space,
+    )
+end
+
+"""
+    read_from_hdf5(REGIRD_DIR, hd_outfile_root, time, varname,
+        space)
+
+Read in a variable `varname` from an HDF5 file onto the provided space.
+If a CommsContext other than SingletonCommsContext is used in the `space`,
 the input HDF5 file must be readable by multiple MPI processes.
 
 Code taken from ClimaCoupler.Regridder.
@@ -68,17 +87,12 @@ Code taken from ClimaCoupler.Regridder.
 - `hd_outfile_root`: [String] root of the output file name.
 - `time`: [Dates.DateTime] the timestamp of the data being written.
 - `varname`: [String] variable name of data.
-- `comms_ctx`: [ClimaComms.AbstractCommsContext] context used for this operation.
+- `space`: [ClimaCore.Spaces.AbstractSpace] to read the HDF5 file onto.
 # Returns
 - Field or FieldVector
 """
-function read_from_hdf5(
-    REGRID_DIR,
-    hd_outfile_root,
-    time,
-    varname,
-    comms_ctx = ClimaComms.SingletonCommsContext(),
-)
+function read_from_hdf5(REGRID_DIR, hd_outfile_root, time, varname, space)
+    comms_ctx = ClimaComms.context(space)
     # Include time component in HDF5 reader name if it's a valid date
     if !(time == Dates.DateTime(0))
         hdfreader_path = joinpath(
@@ -93,7 +107,10 @@ function read_from_hdf5(
 
     field = ClimaCore.InputOutput.read_field(hdfreader, varname)
     Base.close(hdfreader)
-    return field
+
+    # Ensure the field is on the correct space when reusing regridded files
+    #  between simulations
+    return swap_space(field, space)
 end
 
 
@@ -294,14 +311,17 @@ function hdwrite_regridfile_rll_to_cgll(
         # read the remapped file with sparse matrices
         offline_outvector, times = NCDataset(datafile_cgll, "r") do ds_wt
             (
-                offline_outvector = Array(ds_wt[varname])[:, :], # ncol, times
+                # read the data in, and remove missing type (will error if missing data is present)
+                offline_outvector = nomissing(Array(ds_wt[varname])[:, :]), # ncol, times
                 times = get_time(ds_wt),
             )
         end
 
-        # Check that input data has the expected float type and time dimension
-        if eltype(offline_outvector) <: AbstractFloat
-            @assert eltype(offline_outvector) == FT "Invalid float type in $datafile_rll for $varname"
+        # Convert input data float type if needed
+        if eltype(offline_outvector) <: AbstractFloat &&
+           eltype(offline_outvector) != FT
+            @warn "Converting $varname data in $datafile_cgll from $(eltype(offline_outvector)) to $FT"
+            offline_outvector = Array{FT}(offline_outvector)
         end
         @assert length(times) == size(offline_outvector, 2) "Inconsistent time dimension in $datafile_cgll for $varname"
 

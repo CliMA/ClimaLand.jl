@@ -19,15 +19,13 @@ import ClimaLand
 import ClimaLand.Parameters as LP
 import SurfaceFluxes.Parameters as SFP
 
-include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"))
-
 # Define simulation times
 t0 = Float64(0)
 tf = Float64(24 * 3600 * 13)
 dt = Float64(2)
 
 for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
-    earth_param_set = create_lsm_parameters(FT)
+    earth_param_set = LP.LandParameters(FT)
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
     # Coarse sand experiment described in Figures 7 and 8a
     # of Lehmann, Assouline, Or  (Phys Rev E 77, 2008)
@@ -35,7 +33,7 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
     # n and alpha estimated by matching vG curve.
     vg_n = FT(10.0)
     vg_α = FT(6.0)
-    hcm = vanGenuchten(; α = vg_α, n = vg_n)
+    hcm = vanGenuchten{FT}(; α = vg_α, n = vg_n)
     # Alternative parameters for Brooks Corey water retention model
     #ψb = FT(-0.14)
     #c = FT(5.5)
@@ -63,8 +61,8 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
         ref_time,
     )
     # Atmos
-    T_air = 301.15
-    rh = 0.38
+    T_air = FT(301.15)
+    rh = FT(0.38)
     esat = Thermodynamics.saturation_vapor_pressure(
         thermo_params,
         T_air,

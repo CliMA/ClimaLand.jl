@@ -22,6 +22,7 @@ tutorials = [
             "Richards Equation" => "standalone/Soil/richards_equation.jl",
             "Energy and Hydrology" => "standalone/Soil/soil_energy_hydrology.jl",
             "Phase Changes" => "standalone/Soil/freezing_front.jl",
+            "Layered Soil" => "standalone/Soil/layered_soil.jl",
         ],
         "Canopy modeling" => [
             "Standalone Canopy" => "standalone/Canopy/canopy_tutorial.jl",

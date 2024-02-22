@@ -20,7 +20,7 @@ for FT in (Float32, Float64)
         S_s = FT(1e-3) #inverse meters
         vg_n = FT(2.0)
         vg_α = FT(2.6) # inverse meters
-        hcm = vanGenuchten(; α = vg_α, n = vg_n)
+        hcm = vanGenuchten{FT}(; α = vg_α, n = vg_n)
         θ_r = FT(0)
         zmax = FT(0)
         zmin = FT(-1)

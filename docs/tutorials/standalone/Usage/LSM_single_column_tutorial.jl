@@ -75,9 +75,9 @@ K_sat = FT(0.0443 / 3600 / 100); # m/s
 S_s = FT(1e-3); #inverse meters
 vg_n = FT(2.0);
 vg_α = FT(2.6); # inverse meters
-hcm = vanGenuchten(; α = vg_α, n = vg_n);
+hcm = vanGenuchten{FT}(; α = vg_α, n = vg_n);
 θ_r = FT(0);
-soil_ps = Soil.RichardsParameters{FT, typeof(hcm)}(;
+soil_ps = Soil.RichardsParameters(;
     ν = ν,
     hydrology_cm = hcm,
     K_sat = K_sat,

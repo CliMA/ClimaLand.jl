@@ -1,33 +1,33 @@
 """
-    RichardsParameters{FT <: AbstractFloat, C <: AbstractSoilHydrologyClosure}
+    RichardsParameters{F <: Union{<: AbstractFloat, ClimaCore.Fields.Field}, C <: AbstractSoilHydrologyClosure}
 
 A struct for storing parameters of the `RichardModel`.
 $(DocStringExtensions.FIELDS)
 """
 struct RichardsParameters{
-    FT <: AbstractFloat,
-    C <: AbstractSoilHydrologyClosure,
+    F <: Union{<:AbstractFloat, ClimaCore.Fields.Field},
+    C,
 }
     "The porosity of the soil (m^3/m^3)"
-    ν::FT
+    ν::F
     "The hydrology closure model: vanGenuchten or BrooksCorey"
     hydrology_cm::C
     "The saturated hydraulic conductivity (m/s)"
-    K_sat::FT
+    K_sat::F
     "The specific storativity (1/m)"
-    S_s::FT
+    S_s::F
     "The residual water fraction (m^3/m^3"
-    θ_r::FT
+    θ_r::F
 end
 
-function RichardsParameters{FT, C}(;
+function RichardsParameters(;
     hydrology_cm::C,
-    ν::FT,
-    K_sat::FT,
-    S_s::FT,
-    θ_r::FT,
-) where {FT, C}
-    return RichardsParameters{FT, typeof(hydrology_cm)}(
+    ν::F,
+    K_sat::F,
+    S_s::F,
+    θ_r::F,
+) where {F <: Union{<:AbstractFloat, ClimaCore.Fields.Field}, C}
+    return RichardsParameters{F, typeof(hydrology_cm)}(
         ν,
         hydrology_cm,
         K_sat,
@@ -68,7 +68,7 @@ end
 
 """
     RichardsModel{FT}(;
-        parameters::RichardsParameters{FT},
+        parameters::RichardsParameters,
         domain::D,
         boundary_conditions::NamedTuple,
         sources::Tuple,
@@ -79,7 +79,7 @@ A constructor for a `RichardsModel`, which sets the
 default value of `lateral_flow` to be true.
 """
 function RichardsModel{FT}(;
-    parameters::RichardsParameters{FT},
+    parameters::RichardsParameters,
     domain::D,
     boundary_conditions::NamedTuple,
     sources::Tuple,

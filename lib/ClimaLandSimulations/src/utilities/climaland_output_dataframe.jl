@@ -28,7 +28,7 @@ end
 
 Return a dataframe containing climaland outputs
 """
-function make_output_df(sv, inputs)
+function make_output_df(sv, inputs; N_days = 60, N_spinup_days = 30)
     # List of output that we want
     output_list = (
         (:SW_out,),

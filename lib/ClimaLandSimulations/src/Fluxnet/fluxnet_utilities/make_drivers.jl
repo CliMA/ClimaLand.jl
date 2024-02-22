@@ -1,14 +1,14 @@
-export setup_drivers
+export make_drivers
 
-function setup_drivers(site_ID)
-    context = ClimaComms.context()
+function make_drivers(site_ID, setup, config, params, context)
+    #earth_param_set = create_lsm_parameters(FT)
 
     af = ArtifactFile(
-        url = data_link,
+        url = config.data_link,
         filename = "AMF_$(site_ID)_FLUXNET_FULLSET.csv",
     )
     dataset = ArtifactWrapper(
-        "$ClimaLandSimulations_dir/src/fluxnet/$site_ID",
+        "$climalandsimulations_dir/src/Fluxnet/fluxnet_sites/$site_ID",
         "ameriflux_data",
         ArtifactFile[af],
     )
@@ -17,7 +17,7 @@ function setup_drivers(site_ID)
     driver_data = readdlm(data, ',')
 
     LOCAL_DATETIME = DateTime.(format.(driver_data[2:end, 1]), "yyyymmddHHMM")
-    UTC_DATETIME = LOCAL_DATETIME .+ Dates.Hour(time_offset)
+    UTC_DATETIME = LOCAL_DATETIME .+ Dates.Hour(config.local_to_UTC)
     DATA_DT = Second(LOCAL_DATETIME[2] - LOCAL_DATETIME[1]).value # seconds
 
     # Label of every data column to be collected from the driver data file
@@ -104,7 +104,7 @@ function setup_drivers(site_ID)
     esat =
         Thermodynamics.saturation_vapor_pressure.(
             Ref(thermo_params),
-            drivers.TA.values,
+            FT.(drivers.TA.values),
             Ref(Thermodynamics.Liquid()),
         )
     e = @. esat - drivers.VPD.values
@@ -113,7 +113,6 @@ function setup_drivers(site_ID)
     # Create interpolators for each atmospheric driver needed for PrescribedAtmosphere and
     # for PrescribedRadiation
     seconds = FT.(0:DATA_DT:((length(UTC_DATETIME) - 1) * DATA_DT))
-
     precip = TimeVaryingInput(seconds, -FT.(drivers.P.values[:]); context) # m/s
     atmos_q = TimeVaryingInput(seconds, FT.(q[:]); context)
     atmos_T = TimeVaryingInput(seconds, FT.(drivers.TA.values[:]); context)
@@ -134,15 +133,15 @@ function setup_drivers(site_ID)
         atmos_q,
         atmos_p,
         UTC_DATETIME[1],
-        atmos_h;
+        config.atmos_h;
         c_co2 = atmos_co2,
     )
 
     function zenith_angle(
         t,
         ref_time;
-        latitude = lat,
-        longitude = long,
+        latitude = config.lat,
+        longitude = config.long,
         insol_params::Insolation.Parameters.InsolationParameters{FT} = earth_param_set.insol_params,
     ) where {FT}
         # This should be time in UTC
@@ -198,26 +197,27 @@ function setup_drivers(site_ID)
     LAI_dt = Second(MODIS_LAI[2, 1] - MODIS_LAI[1, 1]).value
     LAI_seconds = FT.(0:LAI_dt:((length(MODIS_LAI[:, 1]) - 1) * LAI_dt))
 
-    # LAI function for radiative transfer
+    # LAI for radiative transfer
     LAIfunction = TimeVaryingInput(LAI_seconds, FT.(MODIS_LAI[:, 2]); context)
 
     # Necessary inputs from LAI Data
     # Note that f_root_to_shoot, capacity, and h_leaf are site-specific parameters
     # defined in the parameters file for each site
     maxLAI = FT(maximum(MODIS_LAI[:, 2]))
-    RAI = maxLAI * f_root_to_shoot
-    plant_ν = capacity / (maxLAI * h_leaf) / FT(1000)
+    RAI = maxLAI * params.plant_hydraulics.f_root_to_shoot
+    plant_ν =
+        params.plant_hydraulics.capacity / (maxLAI * setup.h_leaf) / FT(1000)
 
     return (
-        LOCAL_DATETIME,
-        atmos_co2,
-        DATA_DT,
-        drivers,
-        atmos,
-        radiation,
-        LAIfunction,
-        maxLAI,
-        RAI,
-        plant_ν,
+        LOCAL_DATETIME = LOCAL_DATETIME,
+        atmos_co2 = atmos_co2,
+        DATA_DT = DATA_DT,
+        drivers = drivers,
+        atmos = atmos,
+        radiation = radiation,
+        LAIfunction = LAIfunction,
+        maxLAI = maxLAI,
+        RAI = RAI,
+        plant_ν = plant_ν,
     )
 end

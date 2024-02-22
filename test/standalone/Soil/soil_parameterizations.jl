@@ -3,11 +3,10 @@ import CLIMAParameters as CP
 using ClimaLand.Soil
 import ClimaLand
 import ClimaLand.Parameters as LP
-include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"))
 
 for FT in (Float32, Float64)
     @testset "integrated Energy and Hydrology Parameterizations, FT = $FT" begin
-        param_set = create_lsm_parameters(FT)
+        param_set = LP.LandParameters(FT)
 
         # Density of liquid water (kg/m``^3``)
         _ρ_l = FT(LP.ρ_cloud_liq(param_set))
@@ -27,7 +26,7 @@ for FT in (Float32, Float64)
         θ_r = FT(0.1)
         vg_α = FT(2.0)
         vg_n = FT(1.4)
-        hcm = vanGenuchten(; α = vg_α, n = vg_n)
+        hcm = vanGenuchten{FT}(; α = vg_α, n = vg_n)
         K_sat = FT(1e-5)
         ν_ss_om = FT(0.1)
         ν_ss_gravel = FT(0.1)
@@ -156,8 +155,6 @@ for FT in (Float32, Float64)
         @test Soil.κ_dry(ρp, ν, κ_solid_soil, κ_air) ==
               ((FT(0.053) * FT(κ_solid_soil) - κ_air) * FT(ρb) + κ_air * ρp) /
               (ρp - (FT(1.0) - FT(0.053)) * ρb)
-
-
         # Impedance factor
         @test impedance_factor(FT(1.0), parameters.Ω) ≈ 1e-7
 
@@ -187,7 +184,7 @@ for FT in (Float32, Float64)
     end
 
     @testset "Brooks and Corey closure, FT = $FT" begin
-        hcm = BrooksCorey(; ψb = FT(-0.09), c = FT(0.228))
+        hcm = BrooksCorey{FT}(; ψb = FT(-0.09), c = FT(0.228))
         # Test derived parameter
         @test hcm.S_c == (1 + 1 / FT(0.228))^(-FT(0.228))
 
@@ -227,10 +224,10 @@ for FT in (Float32, Float64)
         S_s = FT(1e-2)
         vg_α = FT(3.6)
         vg_n = FT(1.56)
-        hcm = vanGenuchten(; α = vg_α, n = vg_n)
+        hcm = vanGenuchten{FT}(; α = vg_α, n = vg_n)
         K_sat = FT(2.9e-7)
         vg_m = FT(1.0 - 1.0 / vg_n)
-        richards_parameters = RichardsParameters{FT, typeof(hcm)}(;
+        richards_parameters = RichardsParameters(;
             ν = ν,
             hydrology_cm = hcm,
             K_sat = K_sat,
@@ -281,7 +278,7 @@ for FT in (Float32, Float64)
     end
 
     @testset "Freezing and Thawing, FT = $FT" begin
-        param_set = create_lsm_parameters(FT)
+        param_set = LP.LandParameters(FT)
 
         # Density of liquid water (kg/m``^3``)
         _ρ_l = FT(LP.ρ_cloud_liq(param_set))
@@ -305,7 +302,7 @@ for FT in (Float32, Float64)
         θ_r = FT(0.1)
         vg_α = FT(2.0)
         vg_n = FT(1.4)
-        hcm = vanGenuchten(; α = vg_α, n = vg_n)
+        hcm = vanGenuchten{FT}(; α = vg_α, n = vg_n)
 
         K_sat = FT(1e-5)
         ν_ss_om = FT(0.1)

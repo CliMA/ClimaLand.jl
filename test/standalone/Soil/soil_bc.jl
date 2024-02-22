@@ -4,8 +4,7 @@ using ClimaCore
 using ClimaLand
 using ClimaLand.Soil
 using ClimaLand.Domains: HybridBox, SphericalShell, Column
-
-include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"))
+import ClimaLand.Parameters as LP
 
 for FT in (Float32, Float64)
     @testset "WVector usage in gradient, FT = $FT" begin
@@ -98,7 +97,7 @@ for FT in (Float32, Float64)
         S_s = FT(1e-3) #inverse meters
         vg_n = FT(2.0)
         vg_α = FT(2.6) # inverse meters
-        hcm = vanGenuchten(; α = vg_α, n = vg_n)
+        hcm = vanGenuchten{FT}(; α = vg_α, n = vg_n)
         θ_r = FT(0)
         zmax = FT(0)
         zmin = FT(-10)
@@ -130,13 +129,13 @@ for FT in (Float32, Float64)
     end
 
     @testset "Test heat state to flux BC calculations, FT = $FT" begin
-        earth_param_set = create_lsm_parameters(FT)
+        earth_param_set = LP.LandParameters(FT)
         ν = FT(0.495)
         K_sat = FT(0.0443 / 3600 / 100) # m/s
         S_s = FT(1e-3) #inverse meters
         vg_n = FT(2.0)
         vg_α = FT(2.6) # inverse meters
-        hcm = vanGenuchten(; α = vg_α, n = vg_n)
+        hcm = vanGenuchten{FT}(; α = vg_α, n = vg_n)
         θ_r = FT(0.1)
         ν_ss_om = FT(0.0)
         ν_ss_quartz = FT(1.0)
@@ -192,31 +191,31 @@ end
     # AtmosDrivenFluxBC method tested in `test/standalone/Soil/climate_drivers.jl`
     # Currently no other methods exist besides the default, which we test here
     FT = Float32
-    earth_param_set = create_lsm_parameters(FT)
+    earth_param_set = LP.LandParameters(FT)
     ν = FT(0.495)
     K_sat = FT(0.0443 / 3600 / 100) # m/s
     S_s = FT(1e-3) #inverse meters
     vg_n = FT(2.0)
     vg_α = FT(2.6) # inverse meters
-    vg_m = FT(1) - FT(1) / vg_n
-    hcm = vanGenuchten(; α = vg_α, n = vg_n)
+    hcm = vanGenuchten{FT}(; α = vg_α, n = vg_n)
     θ_r = FT(0.1)
     ν_ss_om = FT(0.0)
     ν_ss_quartz = FT(1.0)
     ν_ss_gravel = FT(0.0)
     κ_minerals = FT(2.5)
-    κ_om = FT(0.25)
-    κ_quartz = FT(8.0)
-    κ_air = FT(0.025)
-    κ_ice = FT(2.21)
-    κ_liq = FT(0.57)
     ρp = FT(2.66 / 1e3 * 1e6)
-    ρc_ds = FT(2e6 * (1.0 - ν))
-    κ_soil_solids =
-        Soil.κ_solid(ν_ss_om, ν_ss_quartz, κ_om, κ_quartz, κ_minerals)
-    κ_dry_soil = Soil.κ_dry(ρp, ν, κ_soil_solids, κ_air)
-    κ_sat_ice = Soil.κ_sat_frozen(κ_soil_solids, ν, κ_ice)
-    κ_sat_liq = Soil.κ_sat_unfrozen(κ_soil_solids, ν, κ_liq)
+    ρc_ds = @. FT(2e6 * (1.0 - ν))
+    parameters = Soil.EnergyHydrologyParameters{FT}(;
+        ν = ν,
+        ν_ss_om = ν_ss_om,
+        ν_ss_quartz = ν_ss_quartz,
+        ν_ss_gravel = ν_ss_gravel,
+        hydrology_cm = hcm,
+        K_sat = K_sat,
+        S_s = S_s,
+        θ_r = θ_r,
+        earth_param_set = earth_param_set,
+    )
     zmax = FT(0)
     zmin = FT(-1)
     nelems = 200
@@ -286,7 +285,7 @@ end
     boundary_fluxes =
         (; top = (water = top_flux_bc,), bottom = (water = bot_flux_bc,))
 
-    parameters = Soil.RichardsParameters{FT, typeof(hcm)}(;
+    parameters = Soil.RichardsParameters(;
         ν = ν,
         hydrology_cm = hcm,
         K_sat = FT(0),

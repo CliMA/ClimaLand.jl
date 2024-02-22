@@ -5,11 +5,10 @@ using ClimaLand.Canopy
 import ClimaLand
 import ClimaLand.Parameters as LP
 
-include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"))
 
 for FT in (Float32, Float64)
     @testset "Optimality Photosynthesis model Parameterizations, FT = $FT" begin
-        earth_param_set = create_lsm_parameters(FT)
+        earth_param_set = LP.LandParameters(FT)
         P = FT(101325) #Pa
         ci = FT(56.337) / P # convert to mol/mol
         oi = FT(21225.1557) / P# convert to mol/mol
@@ -37,7 +36,7 @@ for FT in (Float32, Float64)
         @test abs(Vcmax - FT(1.8572441998848603e-7)) < 1e-10
         @test typeof(Jmax) == FT
         @test typeof(Vcmax) == FT
-        params = OptimalityFarquharParameters{FT}()
+        params = OptimalityFarquharParameters(FT)
         @test params.mechanism == C3()
         model = OptimalityFarquharModel(params)
         @test ClimaLand.auxiliary_vars(model) == (:An, :GPP, :Rd, :Vcmax25)
@@ -70,12 +69,12 @@ for FT in (Float32, Float64)
     end
 
     @testset "Big Leaf Parameterizations, FT = $FT" begin
-        earth_param_set = create_lsm_parameters(FT)
+        earth_param_set = LP.LandParameters(FT)
         # Test with defaults
-        ARparams = AutotrophicRespirationParameters{FT}()
+        ARparams = AutotrophicRespirationParameters(FT)
         RTparams = BeerLambertParameters{FT}()
         RT = BeerLambertModel{FT}(RTparams)
-        photosynthesisparams = FarquharParameters{FT}(C3();)
+        photosynthesisparams = FarquharParameters(FT, C3())
         stomatal_g_params = MedlynConductanceParameters{FT}()
 
         LAI = FT(5.0) # m2 (leaf) m-2 (ground)

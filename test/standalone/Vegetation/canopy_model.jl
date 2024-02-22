@@ -1,5 +1,5 @@
 using Test
-import CLIMAParameters as CP
+import CLIMAParameters
 using ClimaCore
 using Thermodynamics
 using Dates
@@ -15,14 +15,13 @@ import Insolation
 import ClimaLand
 import ClimaLand.Parameters as LP
 
-include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"))
 for FT in (Float32, Float64)
     @testset "Canopy software pipes, FT = $FT" begin
         domain = Point(; z_sfc = FT(0.0))
 
-        AR_params = AutotrophicRespirationParameters{FT}()
+        AR_params = AutotrophicRespirationParameters(FT)
         RTparams = BeerLambertParameters{FT}()
-        photosynthesis_params = FarquharParameters{FT}(C3();)
+        photosynthesis_params = FarquharParameters(FT, C3())
         stomatal_g_params = MedlynConductanceParameters{FT}()
 
         AR_model = AutotrophicRespirationModel{FT}(AR_params)
@@ -30,7 +29,7 @@ for FT in (Float32, Float64)
         photosynthesis_model = FarquharModel{FT}(photosynthesis_params)
         rt_model = BeerLambertModel{FT}(RTparams)
 
-        earth_param_set = create_lsm_parameters(FT)
+        earth_param_set = LP.LandParameters(FT)
         LAI = FT(8.0) # m2 [leaf] m-2 [ground]
         z_0m = FT(2.0) # m, Roughness length for momentum - value from tall forest ChatGPT
         z_0b = FT(0.1) # m, Roughness length for scalars - value from tall forest ChatGPT
@@ -483,14 +482,14 @@ for FT in (Float32, Float64)
         domain = Point(; z_sfc = FT(0.0))
 
         RTparams = BeerLambertParameters{FT}()
-        photosynthesis_params = FarquharParameters{FT}(C3();)
+        photosynthesis_params = FarquharParameters(FT, C3())
         stomatal_g_params = MedlynConductanceParameters{FT}()
 
         stomatal_model = MedlynConductanceModel{FT}(stomatal_g_params)
         photosynthesis_model = FarquharModel{FT}(photosynthesis_params)
         rt_model = BeerLambertModel{FT}(RTparams)
         energy_model = BigLeafEnergyModel{FT}(BigLeafEnergyParameters{FT}())
-        earth_param_set = create_lsm_parameters(FT)
+        earth_param_set = LP.LandParameters(FT)
         LAI = FT(8.0) # m2 [leaf] m-2 [ground]
         z_0m = FT(2.0) # m, Roughness length for momentum - value from tall forest ChatGPT
         z_0b = FT(0.1) # m, Roughness length for scalars - value from tall forest ChatGPT
@@ -642,12 +641,9 @@ for FT in (Float32, Float64)
             compartment_surfaces = compartment_faces,
             compartment_midpoints = compartment_centers,
         )
-        autotrophic_parameters =
-            ClimaLand.Canopy.AutotrophicRespirationParameters{FT}()
+        autotrophic_parameters = AutotrophicRespirationParameters(FT)
         autotrophic_respiration_model =
-            ClimaLand.Canopy.AutotrophicRespirationModel{FT}(
-                autotrophic_parameters,
-            )
+            AutotrophicRespirationModel{FT}(autotrophic_parameters)
 
         canopy = ClimaLand.Canopy.CanopyModel{FT}(;
             parameters = shared_params,

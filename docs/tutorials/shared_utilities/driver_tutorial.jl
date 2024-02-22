@@ -45,7 +45,7 @@ using Dates
 using Insolation # for computing zenith angle given lat, lon, time.
 using ClimaLand
 import ClimaLand.Parameters as LP
-include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"));
+import CLIMAParameters
 
 # Assume the local_datetime array is read in from the data file.
 local_datetime = DateTime(2013):Dates.Hour(1):DateTime(2013, 1, 7); # one week, hourly data
@@ -77,7 +77,7 @@ SW_d = TimeVaryingInput(seconds, SW_d);
 # Finally, for many models we also need to specify the function
 # for computing the zenith angle as a function of simulation time.
 # To do so, we use the `Insolation` package as follows:
-earth_param_set = create_lsm_parameters(Float64);
+earth_param_set = LP.LandParameters(Float64);
 insol_params = earth_param_set.insol_params # parameters of Earth's orbit required to compute the insolation
 function zenith_angle(
     t,

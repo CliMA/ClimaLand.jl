@@ -72,11 +72,12 @@ end
 if !Sys.iswindows()
     @testset "test PrescribedDataStatic construction, FT = $FT" begin
         # setup for test
+        comms_ctx = ClimaComms.SingletonCommsContext()
         radius = FT(6731e3)
         Nq = 4
         domain = ClimaCore.Domains.SphereDomain(radius)
         mesh = Meshes.EquiangularCubedSphere(domain, 4)
-        topology = Topologies.Topology2D(mesh)
+        topology = Topologies.Topology2D(comms_ctx, mesh)
         quad = Spaces.Quadratures.GLL{Nq}()
         surface_space_t = Spaces.SpectralElementSpace2D(topology, quad)
 
@@ -119,11 +120,12 @@ if !Sys.iswindows()
         date_idx0 = Int[1]
 
         # construct space and dummy field
+        comms_ctx = ClimaComms.SingletonCommsContext()
         radius = FT(6731e3)
         Nq = 4
         domain_sphere = ClimaCore.Domains.SphereDomain(radius)
         mesh = Meshes.EquiangularCubedSphere(domain_sphere, 4)
-        topology = Topologies.Topology2D(mesh)
+        topology = Topologies.Topology2D(comms_ctx, mesh)
         quad = Spaces.Quadratures.GLL{Nq}()
         surface_space_t = Spaces.SpectralElementSpace2D(topology, quad)
         data_field = ones(surface_space_t) .* FT(0.5)
@@ -167,11 +169,12 @@ if !Sys.iswindows()
 
     @testset "test PrescribedDataTemporal construction, FT = $FT" begin
         # setup for test
+        comms_ctx = ClimaComms.SingletonCommsContext()
         radius = FT(6731e3)
         Nq = 4
         domain = ClimaCore.Domains.SphereDomain(radius)
         mesh = Meshes.EquiangularCubedSphere(domain, 4)
-        topology = Topologies.Topology2D(mesh)
+        topology = Topologies.Topology2D(comms_ctx, mesh)
         quad = Spaces.Quadratures.GLL{Nq}()
         surface_space_t = Spaces.SpectralElementSpace2D(topology, quad)
 
@@ -240,11 +243,12 @@ if !Sys.iswindows()
             [Int(2) * ((date_ref - dummy_dates[Int(date_idx0[1])]).value)]
 
         # construct space and dummy field
+        comms_ctx = ClimaComms.SingletonCommsContext()
         radius = FT(6731e3)
         Nq = 4
         domain_sphere = ClimaCore.Domains.SphereDomain(radius)
         mesh = Meshes.EquiangularCubedSphere(domain_sphere, 4)
-        topology = Topologies.Topology2D(mesh)
+        topology = Topologies.Topology2D(comms_ctx, mesh)
         quad = Spaces.Quadratures.GLL{Nq}()
         surface_space_t = Spaces.SpectralElementSpace2D(topology, quad)
         data_fields = (zeros(surface_space_t), ones(surface_space_t))
@@ -366,11 +370,12 @@ if !Sys.iswindows()
         date_ref = date0
         t_start = Float64(0)
 
+        comms_ctx = ClimaComms.SingletonCommsContext()
         radius = FT(6731e3)
         Nq = 4
         domain = ClimaCore.Domains.SphereDomain(radius)
         mesh = Meshes.EquiangularCubedSphere(domain, 4)
-        topology = Topologies.Topology2D(mesh)
+        topology = Topologies.Topology2D(comms_ctx, mesh)
         quad = Spaces.Quadratures.GLL{Nq}()
         surface_space_t = Spaces.SpectralElementSpace2D(topology, quad)
 
@@ -480,7 +485,7 @@ if !Sys.iswindows()
                 outfile_root,
                 all_dates[i + 1],
                 varnames[1],
-                comms_ctx,
+                surface_space_t,
             )
             # Replace NaNs and missings for testing comparison
             replace_nan_missing!(data_manual[i])
@@ -530,11 +535,12 @@ if !Sys.iswindows()
         date_ref = date0
         t_start = Float64(0)
 
+        comms_ctx = ClimaComms.SingletonCommsContext()
         radius = FT(6731e3)
         Nq = 4
         domain = ClimaCore.Domains.SphereDomain(radius)
         mesh = Meshes.EquiangularCubedSphere(domain, 4)
-        topology = Topologies.Topology2D(mesh)
+        topology = Topologies.Topology2D(comms_ctx, mesh)
         quad = Spaces.Quadratures.GLL{Nq}()
         surface_space_t = Spaces.SpectralElementSpace2D(topology, quad)
 
@@ -659,7 +665,7 @@ if !Sys.iswindows()
                         outfile_root,
                         updating_dates[i],
                         varname,
-                        comms_ctx,
+                        surface_space_t,
                     ),
                 )
                 # Replace NaNs and missings for testing comparison

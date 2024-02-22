@@ -165,8 +165,8 @@ FT = Float32;
 # additional parameters as described in the text above. These two sets
 # are combined in the object `BucketModelParameters` as follows:
 import ClimaLand
-include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"));
-earth_param_set = create_lsm_parameters(FT);
+import ClimaLand.Parameters as LP
+earth_param_set = LP.LandParameters(FT);
 
 # Set up the model domain. At every surface coordinate point, we'll solve
 # an ODE for `W` and `Ws`, and for every subsurface point, we solve for `T`.
@@ -241,7 +241,7 @@ ref_time = DateTime(2005);
 precip = (t) -> 0;
 snow_precip = (t) -> -5e-7 * (t > 3 * 86400) * (t < 4 * 86400);
 # Diurnal temperature variations:
-T_atmos = (t) -> 275.0 + 5.0 * sin(2.0 * π * t / 86400 + 7200);
+T_atmos = (t) -> 275.0 + 5.0 * sin(2.0 * π * t / 86400 - π / 2);
 # Constant otherwise:
 u_atmos = (t) -> 3.0;
 q_atmos = (t) -> 0.005;
@@ -264,8 +264,8 @@ bucket_atmos = PrescribedAtmosphere(
 # peak at local noon, and a prescribed downwelling LW radiative
 # flux, assuming the air temperature is on average 275 degrees
 # K with a diurnal amplitude of 5 degrees K:
-SW_d = (t) -> @. max(1361 * sin(2π * t / 86400 + 7200));
-LW_d = (t) -> 5.67e-8 * (275.0 + 5.0 * sin(2.0 * π * t / 86400 + 7200))^4;
+SW_d = (t) -> @. max(1361 * sin(2π * t / 86400 - π / 2));
+LW_d = (t) -> 5.67e-8 * (275.0 + 5.0 * sin(2.0 * π * t / 86400 - π / 2))^4;
 bucket_rad = PrescribedRadiativeFluxes(
     FT,
     TimeVaryingInput(SW_d),

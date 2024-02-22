@@ -27,13 +27,11 @@ Thermodynamics = "b60c26fb-14c3-4610-9d3e-2d17fe7ff00c"
 cuDNN = "02a925ec-e4fe-4b08-9a7e-0d78e3d38ccd"
 
 [compat]
-CLIMAParameters = "0.8.1"
 CSV = "0.10"
 ClimaTimeSteppers = "0.7"
 DataFrames = "1.6"
 Flux = "0.14"
 HTTP = "1.10"
-Insolation = "0.9"
 InteractiveUtils = "1"
 StatsBase = "0.34"
 cuDNN = "1"

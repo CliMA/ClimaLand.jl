@@ -87,13 +87,12 @@ using ClimaLand.Soil
 
 import ClimaLand
 import ClimaLand.Parameters as LP
-include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"));
 
 # # Preliminary set-up
 
 # Choose a floating point precision, and get the parameter set, which holds constants used across CliMA models:
 FT = Float32
-earth_param_set = create_lsm_parameters(FT);
+earth_param_set = LP.LandParameters(FT);
 
 # Set the values of other parameters required by the model:
 ν = FT(0.535)
@@ -101,7 +100,7 @@ K_sat = FT(3.2e-6) # m/s
 S_s = FT(1e-3) #inverse meters
 vg_n = FT(1.48)
 vg_α = FT(1.11) # inverse meters
-hcm = vanGenuchten(; α = vg_α, n = vg_n);
+hcm = vanGenuchten{FT}(; α = vg_α, n = vg_n);
 # You could also try the Brooks and Corey model:
 #ψb = FT(-0.6)
 #c = FT(0.43)

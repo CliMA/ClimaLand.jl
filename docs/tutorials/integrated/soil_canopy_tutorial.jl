@@ -52,13 +52,12 @@ using ClimaLand.Canopy
 using ClimaLand.Canopy.PlantHydraulics
 import ClimaLand
 import ClimaLand.Parameters as LP
-include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"));
 
 # Define the floating point precision desired (64 or 32 bit), and get the
 # parameter set holding constants used across CliMA Models:
 
 const FT = Float32;
-earth_param_set = create_lsm_parameters(FT);
+earth_param_set = LP.LandParameters(FT);
 
 # Setup the domain for the model:
 
@@ -153,7 +152,7 @@ soil_ps = Soil.EnergyHydrologyParameters{FT}(;
     ν_ss_om = ν_ss_om,
     ν_ss_quartz = ν_ss_quartz,
     ν_ss_gravel = ν_ss_gravel,
-    hydrology_cm = vanGenuchten(; α = soil_vg_α, n = soil_vg_n),
+    hydrology_cm = vanGenuchten{FT}(; α = soil_vg_α, n = soil_vg_n),
     K_sat = soil_K_sat,
     S_s = soil_S_s,
     θ_r = θ_r,
@@ -249,17 +248,8 @@ canopy_component_types = (;
 # Then provide arguments to the canopy radiative transfer, stomatal conductance,
 # and photosynthesis models as was done in the previous tutorial.
 
-autotrophic_respiration_args = (;
-    parameters = AutotrophicRespirationParameters{FT}(;
-        ne = FT(8 * 1e-4),
-        ηsl = FT(0.01),
-        σl = FT(0.05),
-        μr = FT(1.0),
-        μs = FT(0.1),
-        f1 = FT(0.012),
-        f2 = FT(0.25),
-    )
-)
+autotrophic_respiration_args =
+    (; parameters = AutotrophicRespirationParameters(FT))
 
 radiative_transfer_args = (;
     parameters = TwoStreamParameters{FT}(;
@@ -282,28 +272,8 @@ conductance_args = (;
     )
 )
 
-photosynthesis_args = (;
-    parameters = FarquharParameters{FT}(
-        Canopy.C3();
-        oi = FT(0.209),
-        ϕ = FT(0.6),
-        θj = FT(0.9),
-        f = FT(0.015),
-        sc = FT(5e-6),
-        pc = FT(-2e5),
-        Vcmax25 = FT(5e-5),
-        Γstar25 = FT(4.275e-5),
-        Kc25 = FT(4.049e-4),
-        Ko25 = FT(0.2874),
-        To = FT(298.15),
-        ΔHkc = FT(79430),
-        ΔHko = FT(36380),
-        ΔHVcmax = FT(58520),
-        ΔHΓstar = FT(37830),
-        ΔHJmax = FT(43540),
-        ΔHRd = FT(46390),
-    )
-);
+photosynthesis_args =
+    (; parameters = FarquharParameters(FT, Canopy.C3(); Vcmax25 = FT(5e-5)));
 
 K_sat_plant = FT(1.8e-8)
 RAI = (SAI + maxLAI) * f_root_to_shoot;
