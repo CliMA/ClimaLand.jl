@@ -248,17 +248,8 @@ canopy_component_types = (;
 # Then provide arguments to the canopy radiative transfer, stomatal conductance,
 # and photosynthesis models as was done in the previous tutorial.
 
-autotrophic_respiration_args = (;
-    parameters = AutotrophicRespirationParameters{FT}(;
-        ne = FT(8 * 1e-4),
-        ηsl = FT(0.01),
-        σl = FT(0.05),
-        μr = FT(1.0),
-        μs = FT(0.1),
-        f1 = FT(0.012),
-        f2 = FT(0.25),
-    )
-)
+autotrophic_respiration_args =
+    (; parameters = AutotrophicRespirationParameters(FT))
 
 radiative_transfer_args = (;
     parameters = TwoStreamParameters{FT}(;

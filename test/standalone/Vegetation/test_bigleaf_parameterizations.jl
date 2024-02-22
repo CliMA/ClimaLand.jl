@@ -71,7 +71,7 @@ for FT in (Float32, Float64)
     @testset "Big Leaf Parameterizations, FT = $FT" begin
         earth_param_set = LP.LandParameters(FT)
         # Test with defaults
-        ARparams = AutotrophicRespirationParameters{FT}()
+        ARparams = AutotrophicRespirationParameters(FT)
         RTparams = BeerLambertParameters{FT}()
         RT = BeerLambertModel{FT}(RTparams)
         photosynthesisparams = FarquharParameters{FT}(C3();)

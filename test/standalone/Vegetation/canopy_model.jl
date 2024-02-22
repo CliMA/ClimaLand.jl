@@ -1,5 +1,5 @@
 using Test
-import CLIMAParameters as CP
+import CLIMAParameters
 using ClimaCore
 using Thermodynamics
 using Dates
@@ -19,7 +19,7 @@ for FT in (Float32, Float64)
     @testset "Canopy software pipes, FT = $FT" begin
         domain = Point(; z_sfc = FT(0.0))
 
-        AR_params = AutotrophicRespirationParameters{FT}()
+        AR_params = AutotrophicRespirationParameters(FT)
         RTparams = BeerLambertParameters{FT}()
         photosynthesis_params = FarquharParameters{FT}(C3();)
         stomatal_g_params = MedlynConductanceParameters{FT}()
@@ -641,12 +641,9 @@ for FT in (Float32, Float64)
             compartment_surfaces = compartment_faces,
             compartment_midpoints = compartment_centers,
         )
-        autotrophic_parameters =
-            ClimaLand.Canopy.AutotrophicRespirationParameters{FT}()
+        autotrophic_parameters = AutotrophicRespirationParameters(FT)
         autotrophic_respiration_model =
-            ClimaLand.Canopy.AutotrophicRespirationModel{FT}(
-                autotrophic_parameters,
-            )
+            AutotrophicRespirationModel{FT}(autotrophic_parameters)
 
         canopy = ClimaLand.Canopy.CanopyModel{FT}(;
             parameters = shared_params,
