@@ -22,7 +22,7 @@ abstract type AbstractPhotosynthesisModel{FT} <: AbstractCanopyComponent{FT} end
 The required parameters for the Farquhar photosynthesis model.
 $(DocStringExtensions.FIELDS)
 """
-struct FarquharParameters{
+Base.@kwdef struct FarquharParameters{
     FT <: AbstractFloat,
     MECH <: AbstractPhotosynthesisMechanism,
 }
@@ -62,71 +62,6 @@ struct FarquharParameters{
     pc::FT
     "Photosynthesis mechanism: C3 or C4"
     mechanism::MECH
-end
-
-"""
-    function FarquharParameters{FT}(mechanism::AbstractPhotosynthesisMechanism;
-        oi = FT(0.209),# mol/mol
-        ϕ = FT(0.6), # unitless
-        θj = FT(0.9), # unitless
-        f = FT(0.015), # unitless
-        sc = FT(5e-6),# Pa
-        pc = FT(-2e6), # Pa
-        Vcmax25 = FT(5e-5), # converted from 50 μmol/mol CO2/m^2/s to mol/m^2/s
-        Γstar25 = FT(4.275e-5),  # converted from 42.75 μmol/mol to mol/mol
-        Kc25 = FT(4.049e-4), # converted from 404.9 μmol/mol to mol/mol
-        Ko25 = FT(0.2874), # converted from 278.4 mmol/mol to mol/mol
-        To = FT(298.15), # 25 C
-        ΔHkc = FT(79430), #J/mol, Table 11.2 Bonan
-        ΔHko = FT(36380), #J/mol, Table 11.2 Bonan
-        ΔHVcmax = FT(58520), #J/mol, Table 11.2 Bonan
-        ΔHΓstar = FT(37830), #J/mol, 11.2 Bonan
-        ΔHJmax = FT(43540), # J/mol, 11.2 Bonan
-        ΔHRd = FT(43390), # J/mol, 11.2 Bonan
-        ) where {FT}
-
-A constructor supplying default values for the FarquharParameters struct.
-"""
-function FarquharParameters{FT}(
-    mechanism::AbstractPhotosynthesisMechanism;
-    oi = FT(0.209),
-    ϕ = FT(0.6),
-    θj = FT(0.9),
-    f = FT(0.015),
-    sc = FT(5e-6),
-    pc = FT(-2e6),
-    Vcmax25 = FT(5e-5),
-    Γstar25 = FT(4.275e-5),
-    Kc25 = FT(4.049e-4),
-    Ko25 = FT(0.2874),
-    To = FT(298.15),
-    ΔHkc = FT(79430),
-    ΔHko = FT(36380),
-    ΔHVcmax = FT(58520),
-    ΔHΓstar = FT(37830),
-    ΔHJmax = FT(43540),
-    ΔHRd = FT(46390),
-) where {FT}
-    return FarquharParameters{FT, typeof(mechanism)}(
-        Vcmax25,
-        Γstar25,
-        Kc25,
-        Ko25,
-        ΔHkc,
-        ΔHko,
-        ΔHVcmax,
-        ΔHΓstar,
-        ΔHJmax,
-        ΔHRd,
-        To,
-        oi,
-        ϕ,
-        θj,
-        f,
-        sc,
-        pc,
-        mechanism,
-    )
 end
 
 Base.eltype(::FarquharParameters{FT}) where {FT} = FT

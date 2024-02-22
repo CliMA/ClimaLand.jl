@@ -66,23 +66,7 @@ Drel = FT(1.6)
 g0 = FT(1e-4)
 
 #Photosynthesis model
-oi = FT(0.209)
-ϕ = FT(0.6)
-θj = FT(0.9)
-f = FT(0.015)
-sc = FT(2e-6) # Bonan's book: range of 2-5e-6
-pc = FT(-2e6) # Bonan's book: -2e6
 Vcmax25 = FT(9e-5) # from Yujie's paper 4.5e-5 , Natan used 9e-5
-Γstar25 = FT(4.275e-5)
-Kc25 = FT(4.049e-4)
-Ko25 = FT(0.2874)
-To = FT(298.15)
-ΔHkc = FT(79430)
-ΔHko = FT(36380)
-ΔHVcmax = FT(58520)
-ΔHΓstar = FT(37830)
-ΔHJmax = FT(43540)
-ΔHRd = FT(46390)
 
 # Plant Hydraulics and general plant parameters
 SAI = FT(1.0) # m2/m2 or: estimated from Wang et al, FT(0.00242) ?
