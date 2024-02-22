@@ -350,7 +350,7 @@ version = "0.3.13"
 deps = ["Adapt", "ArtifactWrappers", "CFTime", "CSV", "CUDA", "ClimaComms", "ClimaCore", "ClimaCoreTempestRemap", "DataFrames", "Dates", "DocStringExtensions", "Flux", "HTTP", "Insolation", "IntervalSets", "LinearAlgebra", "NCDatasets", "SciMLBase", "StaticArrays", "StatsBase", "SurfaceFluxes", "Thermodynamics", "cuDNN"]
 path = ".."
 uuid = "08f4d4ce-cf43-44bb-ad95-9d2d5f413532"
-version = "0.9.0"
+version = "0.10.0"
 weakdeps = ["CLIMAParameters"]
 
     [deps.ClimaLand.extensions]

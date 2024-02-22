@@ -485,7 +485,7 @@ if !Sys.iswindows()
                 outfile_root,
                 all_dates[i + 1],
                 varnames[1],
-                comms_ctx,
+                surface_space_t,
             )
             # Replace NaNs and missings for testing comparison
             replace_nan_missing!(data_manual[i])
@@ -665,7 +665,7 @@ if !Sys.iswindows()
                         outfile_root,
                         updating_dates[i],
                         varname,
-                        comms_ctx,
+                        surface_space_t,
                     ),
                 )
                 # Replace NaNs and missings for testing comparison
