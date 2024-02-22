@@ -54,7 +54,7 @@ export BucketModelParameters,
     BulkAlbedoStatic,
     BulkAlbedoTemporal,
     surface_albedo,
-    partition_surface_fluxes
+    partition_snow_surface_fluxes
 
 include(
     joinpath(pkgdir(ClimaLand), "src/standalone/Bucket/artifacts/artifacts.jl"),
@@ -248,8 +248,14 @@ struct BucketModelParameters{
     albedo::AAM
     "Critical σSWE amount (m) where surface transitions from to snow-covered"
     σS_c::FT
+    "Fraction of critical amount of snow at which sublimation β begins to decay to zero (unitless)"
+    f_snow::FT
     "Capacity of the land bucket (m)"
     W_f::FT
+    "Fraction of bucket capacity at which evaporation β begins to decay to zero (unitless)"
+    f_bucket::FT
+    "Exponent used in β decay (unitless)"
+    p::FT
     "Roughness length for momentum (m)"
     z_0m::FT
     "Roughness length for scalars (m)"
@@ -269,13 +275,19 @@ BucketModelParameters(
     z_0m::FT,
     z_0b::FT,
     τc::FT,
-    earth_param_set::PSE,
+    earth_param_set::PSE;
+    f_snow = FT(0.0),
+    f_bucket = FT(0.75),
+    p = FT(1),
 ) where {FT, AAM, PSE} = BucketModelParameters{FT, AAM, PSE}(
     κ_soil,
     ρc_soil,
     albedo,
     σS_c,
+    f_snow,
     W_f,
+    f_bucket,
+    p,
     z_0m,
     z_0b,
     τc,
@@ -399,17 +411,17 @@ function make_compute_exp_tendency(model::BucketModel{FT}) where {FT}
         # the returned fluxes are computed correctly for the cell
         # regardless of snow-coverage.
 
-        # The below is NOT CORRECT if we want the snow
-        # cover fraction to be intermediate between 0 and 1.
+        # The below must be adjusted to compute F_sfc over snow and over soil
+        # if we want the snow cover fraction to be intermediate between 0 and 1.
         (; turbulent_fluxes, R_n) = p.bucket
         F_sfc = @. (turbulent_fluxes.shf .+ turbulent_fluxes.lhf + R_n) # Eqn (21)
         _T_freeze = LP.T_freeze(model.parameters.earth_param_set)
         _LH_f0 = LP.LH_f0(model.parameters.earth_param_set)
         _ρ_liq = LP.ρ_cloud_liq(model.parameters.earth_param_set)
         _ρLH_f0 = _ρ_liq * _LH_f0 # Latent heat per unit volume.
-        # partition energy fluxes
+        # partition energy fluxes for snow covered area
         partitioned_fluxes =
-            partition_surface_fluxes.(
+            partition_snow_surface_fluxes.(
                 Y.bucket.σS,
                 p.bucket.T_sfc,
                 model.parameters.τc,
@@ -419,7 +431,9 @@ function make_compute_exp_tendency(model::BucketModel{FT}) where {FT}
                 _ρLH_f0,
                 _T_freeze,
             )
-        (; F_melt, F_into_snow, G) = partitioned_fluxes
+        (; F_melt, F_into_snow, G_under_snow) = partitioned_fluxes
+        G = @. F_sfc * (1 - snow_cover_fraction) +
+           G_under_snow * snow_cover_fraction # Equation 22
         # Temperature profile of soil.
         gradc2f = ClimaCore.Operators.GradientC2F()
         divf2c = ClimaCore.Operators.DivergenceF2C(
@@ -434,13 +448,12 @@ function make_compute_exp_tendency(model::BucketModel{FT}) where {FT}
         # Partition water fluxes
         liquid_precip = liquid_precipitation(model.atmos, p, t) # always negative
         snow_precip = snow_precipitation(model.atmos, p, t) # always negative
-        # F_melt at present already has σ factor in it; F_melt is negative as
-        # it is a downward welling flux warming the snow
+        # F_melt is negative as it is a downward welling flux warming the snow
         snow_melt = @. F_melt / _ρLH_f0 # defined after Equation (22)
 
         infiltration = @. infiltration_at_point(
             Y.bucket.W,
-            snow_melt, # snow melt already multipied by snow_cover_fraction
+            snow_cover_fraction * snow_melt,
             liquid_precip,
             (1 - snow_cover_fraction) * turbulent_fluxes.vapor_flux,
             W_f,
@@ -451,14 +464,14 @@ function make_compute_exp_tendency(model::BucketModel{FT}) where {FT}
 
         dY.bucket.Ws = @. -(
             liquid_precip +
-            snow_melt +
+            snow_cover_fraction * snow_melt +
             (1 - snow_cover_fraction) * turbulent_fluxes.vapor_flux -
             infiltration
-        ) # Equation (3) of the text, snow melt already multipied by snow_cover_fraction
+        ) # Equation (3) of the text
 
-        # snow melt already multipied by snow_cover_fraction
         dY.bucket.σS = @. -(
-            snow_precip + snow_cover_fraction * turbulent_fluxes.vapor_flux - snow_melt
+            snow_precip + snow_cover_fraction * turbulent_fluxes.vapor_flux -
+            snow_cover_fraction * snow_melt
         ) # Equation (6)
     end
     return compute_exp_tendency!
@@ -512,8 +525,14 @@ Update the surface albedo for time `t`. These albedo model types aren't explicit
 dependent on `t`, but depend on quantities which may change over time.
 
 The albedo is calculated by linearly interpolating between the albedo
-of snow and of the surface, based on the snow water equivalent `S` relative to
+of snow and of the bareground surface, based on the snow water equivalent `S` relative to
 the parameter `S_c`. The linear interpolation is taken from Lague et al 2019.
+
+Note that if our snow_cover_fraction function was smoothly varying, the albedo
+would simply be σα_snow + (1-σ)α_bareground. Since we cannot support snow cover
+fractions that are not a heaviside function, we have a small inconsistency
+for 0 < σS < eps(FT) where the snow cover fraction is zero, but there is a small
+contribution of snow to the albedo.
 """
 function next_albedo(
     model_albedo::Union{BulkAlbedoFunction{FT}, BulkAlbedoStatic{FT}},
@@ -524,7 +543,7 @@ function next_albedo(
 ) where {FT}
     (; α_snow, α_bareground) = model_albedo
     (; σS_c) = parameters
-    σS = Y.bucket.σS
+    σS = max.(Y.bucket.σS, FT(0))# if σS is small and negative, clip to zero for albedo estimation
     return @. (
         (1 - σS / (σS + σS_c)) * α_bareground + σS / (σS + σS_c) * α_snow
     )
