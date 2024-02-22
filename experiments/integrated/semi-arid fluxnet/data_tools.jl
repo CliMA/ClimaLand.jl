@@ -249,9 +249,11 @@ this function replaces field data element that are below thr or have flag qualit
         for idx in indices
             dt = formatted_time[idx]
             time_criteria = [
-                x -> month(x) == month(dt) && day(x) == day(dt) && hour(x) == hour(dt),
-                x -> month(x) == month(dt) && day(x) == day(dt),#same day of the year across all years
-                x -> month(x) == month(dt) && week(x) == week(dt),#same week of the year across all years
+                x -> month(x) == month(dt) && day(x) == day(dt) && hour(x) == hour(dt),#same hour of the same day across all years
+                x -> month(x) == month(dt) && week(x) == week(dt) && hour(x) == hour(dt),#same hour of the same week of the year across all years
+                x -> month(x) == month(dt) && hour(x) == hour(dt),#same hour of the same month across all years
+                x -> month(x) == month(dt) && day(x) == day(dt),#average across the same day  of the same month
+                x -> month(x) == month(dt) && week(x) == week(dt),#average across the same week of the same month
                 x -> month(x) == month(dt)#same month of the year across all years
                 ]
             for criterion in time_criteria

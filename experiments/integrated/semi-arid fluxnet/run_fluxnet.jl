@@ -20,6 +20,18 @@ include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"))
 const FT = Float64
 earth_param_set = create_lsm_parameters(FT)
 climaland_dir = pkgdir(ClimaLand)
+
+
+include(joinpath(climaland_dir, "experiments/integrated/semi-arid fluxnet/data_tools.jl"))
+include(joinpath(climaland_dir, "experiments/integrated/semi-arid fluxnet/plot_utils.jl"))
+
+# Read in the site to be run from the command line
+if length(ARGS) < 1
+    error("Must provide site ID on command line")
+end
+
+site_ID = ARGS[1]
+#create directories
 cor_savedir =
     joinpath(climaland_dir, "experiments/integrated/semi-arid fluxnet/$site_ID/results/")
 savedir =
@@ -30,20 +42,6 @@ savedir_in =
 isdir(cor_savedir) || mkdir(cor_savedir)
 isdir(savedir) || mkdir(savedir)
 isdir(savedir_in) || mkdir(savedir_in)
-
-
-plot_input = true
-save_plots = true
-include(joinpath(climaland_dir, "experiments/integrated/semi-arid fluxnet/data_tools.jl"))
-include(joinpath(climaland_dir, "experiments/integrated/semi-arid fluxnet/plot_utils.jl"))
-
-# Read in the site to be run from the command line
-if length(ARGS) < 1
-    error("Must provide site ID on command line")
-end
-
-site_ID = ARGS[1]
-
 # Read all site-specific domain parameters from the simulation file for the site
 include(
     joinpath(
@@ -79,16 +77,16 @@ include(
         "experiments/integrated/semi-arid fluxnet/met_drivers_FLUXNET.jl",
     ),
 )
-
-plot_and_save(required, LOCAL_DATETIME, plot_input, save_plots, savedir_in)
+#if save, then inputs are plotted and saved
+if (length(ARGS) ≥ 1) && (ARGS[2] == "save")
+    plot_input=true
+    save_plots=true
+    plot_and_save(required, LOCAL_DATETIME, plot_input, save_plots, savedir_in)
+end
 # Now we set up the model. For the soil model, we pick
 # a model type and model args:
 soil_domain = land_domain
 soil_ps = Soil.EnergyHydrologyParameters{FT}(;
-    κ_dry = κ_dry,
-    κ_sat_frozen = κ_sat_frozen,
-    κ_sat_unfrozen = κ_sat_unfrozen,
-    ρc_ds = ρc_ds,
     ν = soil_ν,
     ν_ss_om = ν_ss_om,
     ν_ss_quartz = ν_ss_quartz,
@@ -187,7 +185,6 @@ radiative_transfer_args = (;
         τ_PAR_leaf = τ_PAR_leaf,
         α_NIR_leaf = α_NIR_leaf,
         τ_NIR_leaf = τ_NIR_leaf,
-        n_layers = n_layers,
         ϵ_canopy = ϵ_canopy,
     )
 )
@@ -349,6 +346,9 @@ sol = SciMLBase.solve(
 
 # Plotting
 daily = sol.t ./ 3600 ./ 24
+
+
+
 # Number of days to plot
 num_days = N_days - N_spinup_days
 
@@ -883,6 +883,6 @@ end
 rm(
     joinpath(
         climaland_dir,
-        "experiments/integrated/fluxnet/$site_ID/Artifacts.toml",
+        "experiments/integrated/semi-arid fluxnet/$site_ID/Artifacts.toml",
     ),
 )
