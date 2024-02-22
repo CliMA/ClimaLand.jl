@@ -7,13 +7,15 @@ by simply filling with the mean value in the column."""
 
 using Interpolations
 using StatsBase
-using Dates
+
 # Define the valid data statuses
 @enum DataStatus complete = 1 absent = 2 incomplete = 3
-function replace_poor_quality_with_mean!(field, flag, bounds::Vector)
+
+
+function replace_poor_by_mean!(field, flag, bounds::Vector)
 
     """
-    this function replaces field with flag values out of bounds range with average of field values whose flag are within the range
+    this function is very similar to "replace_poor_quality_with_mean!" replaces field with flag values out of bounds range with average of field values whose flag are within the range
         # Arguments
         - `field`: An array of numerical data to be modified in place.
         - `flag`: An array of the same length as `field`, containing quality flags for each corresponding value in `field`.
@@ -25,6 +27,24 @@ function replace_poor_quality_with_mean!(field, flag, bounds::Vector)
     lower_bound, upper_bound = bounds
     good_indices = (flag .>= lower_bound) .&& (flag .<= upper_bound)
     fill_value = round(mean(field[good_indices]),digits=2)
+    field[.~good_indices] .= fill_value
+    return field
+end
+
+"""
+    replace_poor_quality_with_mean!(field, flag)
+
+Replace values indicated to be poor quality by a fluxnet 
+QC `flag` (Array) with the mean value
+in the `field` (Array).
+
+This uses the Fluxnet convention of 0 = measured, 1 = good quality
+gap fill, 2 = medium quality, and 3 = poor quality, and replaces
+data with QC flag = 2,3. 
+"""
+function replace_poor_quality_with_mean!(field, flag)
+    good_indices = (flag .== 0) .|| (flag .== 1)
+    fill_value = mean(field[good_indices])
     field[.~good_indices] .= fill_value
     return field
 end
@@ -105,6 +125,7 @@ the mean value per the QC flag.
  - Checks for missing data and replaces with the mean value
 - Returns an `absent` status if the column is not present.
 """
+
 function filter_column(driver_data::Matrix, column_name::String, units::String)
     # Check that the data exists and read it in if so
     col_dat, status = column_status(driver_data, column_name)
@@ -197,71 +218,72 @@ function transform_column(
     return DataColumn(transform.(column.values), units, column.status)
 end
 
-function update_flags_out_of_bounds!(field, flag,thr, out_of_bounds_value)
-    """
-    this function updates flag values manually
-    checks if field values are nan, missing or below thr, sets the flag to be bad quality
-    """
-    
-    for i in eachindex(field)
-        if (ismissing(field[i]) || isnan(field[i]) || field[i] < thr)
-            flag[i] = out_of_bounds_value
-        end
-    end
-end
-
 function replace_with_longterm_mean!(field, flag,time,bounds::Vector,thr::Float64)
-"""
-this function replaces field data element that are below thr or have flag quality out of bounds range replaced with long term mean of same hour of data acquired on daily, weekly, biweekly, monthly, or yearly 
-# input arguments
-- `field`: the array of drivers
-- `flag`: an array of the same length as `field`, containing quality flags for each corresponding value in `field`.
-- `time `: the array same length as `field` that contains timestamps in the format of string "yyyymmddHHMM"
-- `bounds`: a vector of two element where the first element is the lower bound and the second element is the upper bound of the flag values considered to indicate good quality.
-- `thr`:  a single value that fields value below it get replaced regardless of flag value (for SWC and GPP it is often 0 and for other fields -900)
-# output argument
-- the modified `field` in place
-"""
-    function check_and_replace(criteria,field,flag,formatted_time)
-        matching_indices = findall(criteria, formatted_time)
-        filtered_flags = flag[matching_indices]
-        filtered_field = field[matching_indices]
-        if any(flg -> flg >= bounds[1] && flg <= bounds[2], filtered_flags)
-            # Assuming replace_poor_quality_with_mean! modifies `field` in place for matching indices
-            # and requires correct definition elsewhere
-            replace_poor_quality_with_mean!(filtered_field, filtered_flags, bounds)
-            field[matching_indices]=filtered_field
-            return true
+    """
+    this function replaces field data element that are below thr or have flag quality out of bounds range replaced with long term mean of same hour of data acquired on daily, weekly, biweekly, monthly, or yearly 
+    # input arguments
+    - `field`: the array of drivers
+    - `flag`: an array of the same length as `field`, containing quality flags for each corresponding value in `field`.
+    - `time `: the array same length as `field` that contains timestamps in the format of string "yyyymmddHHMM"
+    - `bounds`: a vector of two element where the first element is the lower bound and the second element is the upper bound of the flag values considered to indicate good quality.
+    - `thr`:  a single value that fields value below it get replaced regardless of flag value (for SWC and GPP it is often 0 and for other fields -900)
+    # output argument
+    - the modified `field` in place
+    """
+        function check_and_replace(criteria,field,flag,formatted_time)
+            matching_indices = findall(criteria, formatted_time)
+            filtered_flags = flag[matching_indices]
+            filtered_field = field[matching_indices]
+            if any(flg -> flg >= bounds[1] && flg <= bounds[2], filtered_flags)
+                # Assuming replace_poor_quality_with_mean! modifies `field` in place for matching indices
+                # and requires correct definition elsewhere
+                replace_poor_by_mean!(filtered_field, filtered_flags, bounds)
+                field[matching_indices]=filtered_field
+                return true
+            end
+            return false
         end
-        return false
-    end
-    out_of_bounds_value = bounds[end]+900
-    formatted_time = DateTime.(string.(time), "yyyymmddHHMM")
-    update_flags_out_of_bounds!(field, flag, thr, out_of_bounds_value)
-    valid_values = filter(x -> !(x === missing || isnan(x) || x < thr), field)
-    #first checks data belonging to the same hour of the year across all years
 
-    if isempty(valid_values)
-        error("This field doesn't contain any valid values to be gap-filled.")
-    else
-        indices = findall(x -> (ismissing(field[x]) || isnan(field[x]) || (flag[x] < bounds[1] || flag[x] > bounds[2])), eachindex(field))
-        # filter indices
-        for idx in indices
-            dt = formatted_time[idx]
-            time_criteria = [
-                x -> month(x) == month(dt) && day(x) == day(dt) && hour(x) == hour(dt),#same hour of the same day across all years
-                x -> month(x) == month(dt) && week(x) == week(dt) && hour(x) == hour(dt),#same hour of the same week of the year across all years
-                x -> month(x) == month(dt) && hour(x) == hour(dt),#same hour of the same month across all years
-                x -> month(x) == month(dt) && day(x) == day(dt),#average across the same day  of the same month
-                x -> month(x) == month(dt) && week(x) == week(dt),#average across the same week of the same month
-                x -> month(x) == month(dt)#same month of the year across all years
-                ]
-            for criterion in time_criteria
-                if check_and_replace(criterion,field,flag,formatted_time)
-                    return  # Exit after successful replacement
+        function update_flags_out_of_bounds!(field, flag,thr, out_of_bounds_value)
+            """
+            this function updates flag values manually
+            checks if field values are nan, missing or below thr, sets the flag to be bad quality
+            """
+            
+            for i in eachindex(field)
+                if (ismissing(field[i]) || isnan(field[i]) || field[i] < thr)
+                    flag[i] = out_of_bounds_value
                 end
             end
         end
+
+        out_of_bounds_value = bounds[end]+900
+        formatted_time = DateTime.(string.(time), "yyyymmddHHMM")
+        update_flags_out_of_bounds!(field, flag, thr, out_of_bounds_value)
+        valid_values = filter(x -> !(x === missing || isnan(x) || x < thr), field)
+        #first checks data belonging to the same hour of the year across all years
+    
+        if isempty(valid_values)
+            error("This field doesn't contain any valid values to be gap-filled.")
+        else
+            indices = findall(x -> (ismissing(field[x]) || isnan(field[x]) || (flag[x] < bounds[1] || flag[x] > bounds[2])), eachindex(field))
+            # filter indices
+            for idx in indices
+                dt = formatted_time[idx]
+                time_criteria = [
+                    x -> month(x) == month(dt) && day(x) == day(dt) && hour(x) == hour(dt),#same hour of the same day across all years
+                    x -> month(x) == month(dt) && week(x) == week(dt) && hour(x) == hour(dt),#same hour of the same week of the year across all years
+                    x -> month(x) == month(dt) && hour(x) == hour(dt),#same hour of the same month across all years
+                    x -> month(x) == month(dt) && day(x) == day(dt),#average across the same day  of the same month
+                    x -> month(x) == month(dt) && week(x) == week(dt),#average across the same week of the same month
+                    x -> month(x) == month(dt)#same month of the year across all years
+                    ]
+                for criterion in time_criteria
+                    if check_and_replace(criterion,field,flag,formatted_time)
+                        return  # Exit after successful replacement
+                    end
+                end
+            end
+        end
+     
     end
- 
-end

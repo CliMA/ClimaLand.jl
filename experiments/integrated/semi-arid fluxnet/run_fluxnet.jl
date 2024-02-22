@@ -16,11 +16,9 @@ using ClimaLand.Canopy
 using ClimaLand.Canopy.PlantHydraulics
 import ClimaLand
 import ClimaLand.Parameters as LP
-include(joinpath(pkgdir(ClimaLand), "parameters", "create_parameters.jl"))
 const FT = Float64
-earth_param_set = create_lsm_parameters(FT)
+earth_param_set = LP.LandParameters(FT)
 climaland_dir = pkgdir(ClimaLand)
-
 
 include(joinpath(climaland_dir, "experiments/integrated/semi-arid fluxnet/data_tools.jl"))
 include(joinpath(climaland_dir, "experiments/integrated/semi-arid fluxnet/plot_utils.jl"))
@@ -31,6 +29,7 @@ if length(ARGS) < 1
 end
 
 site_ID = ARGS[1]
+
 #create directories
 cor_savedir =
     joinpath(climaland_dir, "experiments/integrated/semi-arid fluxnet/$site_ID/results/")
@@ -42,6 +41,7 @@ savedir_in =
 isdir(cor_savedir) || mkdir(cor_savedir)
 isdir(savedir) || mkdir(savedir)
 isdir(savedir_in) || mkdir(savedir_in)
+
 # Read all site-specific domain parameters from the simulation file for the site
 include(
     joinpath(
@@ -79,9 +79,9 @@ include(
 )
 #if save, then inputs are plotted and saved
 if (length(ARGS) ≥ 1) && (ARGS[2] == "save")
-    plot_input=true
-    save_plots=true
-    plot_and_save(required, LOCAL_DATETIME, plot_input, save_plots, savedir_in)
+    plot_on=true #plots the input drivers without saving them
+    save_plots=true #saves the input drivers in results
+    plot_and_save(required, LOCAL_DATETIME, plot_on, save_plots,savedir_in)
 end
 # Now we set up the model. For the soil model, we pick
 # a model type and model args:
@@ -91,7 +91,7 @@ soil_ps = Soil.EnergyHydrologyParameters{FT}(;
     ν_ss_om = ν_ss_om,
     ν_ss_quartz = ν_ss_quartz,
     ν_ss_gravel = ν_ss_gravel,
-    hydrology_cm = vanGenuchten(; α = soil_vg_α, n = soil_vg_n),
+    hydrology_cm = vanGenuchten{FT}(; α = soil_vg_α, n = soil_vg_n),
     K_sat = soil_K_sat,
     S_s = soil_S_s,
     θ_r = θ_r,
@@ -163,17 +163,8 @@ canopy_component_types = (;
 )
 # Individual Component arguments
 # Set up autotrophic respiration
-autotrophic_respiration_args = (;
-    parameters = AutotrophicRespirationParameters{FT}(;
-        ne = ne,
-        ηsl = ηsl,
-        σl = σl,
-        μr = μr,
-        μs = μs,
-        f1 = f1,
-        f2 = f2,
-    )
-)
+autotrophic_respiration_args =
+    (; parameters = AutotrophicRespirationParameters(FT))
 # Set up radiative transfer
 radiative_transfer_args = (;
     parameters = TwoStreamParameters{FT}(;
@@ -197,28 +188,8 @@ conductance_args = (;
     )
 )
 # Set up photosynthesis
-photosynthesis_args = (;
-    parameters = FarquharParameters{FT}(
-        Canopy.C3();
-        oi = oi,
-        ϕ = ϕ,
-        θj = θj,
-        f = f,
-        sc = sc,
-        pc = pc,
-        Vcmax25 = Vcmax25,
-        Γstar25 = Γstar25,
-        Kc25 = Kc25,
-        Ko25 = Ko25,
-        To = To,
-        ΔHkc = ΔHkc,
-        ΔHko = ΔHko,
-        ΔHVcmax = ΔHVcmax,
-        ΔHΓstar = ΔHΓstar,
-        ΔHJmax = ΔHJmax,
-        ΔHRd = ΔHRd,
-    )
-)
+photosynthesis_args =
+    (; parameters = FarquharParameters(FT, Canopy.C3(); Vcmax25 = Vcmax25))
 # Set up plant hydraulics
 ai_parameterization = PrescribedSiteAreaIndex{FT}(LAIfunction, SAI, RAI)
 
@@ -346,7 +317,6 @@ sol = SciMLBase.solve(
 
 # Plotting
 daily = sol.t ./ 3600 ./ 24
-
 
 
 # Number of days to plot
@@ -841,7 +811,7 @@ Plots.plot!(plt1, margins = 10Plots.mm)
 Plots.savefig(joinpath(savedir, "temperature.png"))
 
 # Run script with comand line argument "save" to save model output to CSV
-if (length(ARGS) ≥ 1) && (ARGS[2] == "save")
+if (length(ARGS) ≥ 1) && (ARGS[1] == "save")
     # Formats fields as semicolon seperated strings
     field_to_array = (field) -> join(parent(field), ';')
     # Recursively unpacks a nested NamedTuple of fields into an array of strings
