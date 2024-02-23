@@ -12,9 +12,8 @@ using ClimaLand.FileReader: next_date_in_file, to_datetime, get_data_at_date
 using ClimaLand.Bucket:
     BucketModel,
     BucketModelParameters,
-    BulkAlbedoFunction,
-    BulkAlbedoStatic,
-    BulkAlbedoTemporal,
+    PrescribedBaregroundAlbedo,
+    PrescribedSurfaceAlbedo,
     bareground_albedo_dataset_path,
     cesm2_albedo_dataset_path,
     next_albedo
@@ -62,13 +61,13 @@ regrid_dir_temporal = joinpath(pkgdir(ClimaLand), "test", "temporal")
 isdir(regrid_dir_static) ? nothing : mkpath(regrid_dir_static)
 isdir(regrid_dir_temporal) ? nothing : mkpath(regrid_dir_temporal)
 
-@testset "Test next_albedo for BulkAlbedoFunction, FT = $FT" begin
+@testset "Test next_albedo for PrescribedBaregroundAlbedo, from a function, FT = $FT" begin
     # set up each argument for function call
     α_bareground_func = (coord_point) -> sin(coord_point.lat + coord_point.long)
     α_snow = FT(0.8)
     domain = create_domain_2d(FT)
     space = domain.space.surface
-    albedo = BulkAlbedoFunction{FT}(α_snow, α_bareground_func, space)
+    albedo = PrescribedBaregroundAlbedo{FT}(α_snow, α_bareground_func, space)
 
     σS_c = FT(0.2)
     parameters = (; σS_c = σS_c)
@@ -94,10 +93,10 @@ end
 
 # Add tests which use TempestRemap here -
 # TempestRemap is not built on Windows because of NetCDF support limitations
-# `BulkAlbedoStatic` and `BulkAlbedoTemporal` use TR via a call to
+# Our prescribed albedo models  use TR via a call to
 #   `hdwrite_regridfile_rll_to_cgll`
 if !Sys.iswindows()
-    @testset "Test next_albedo for BulkAlbedoStatic, FT = $FT" begin
+    @testset "Test next_albedo for PrescribedBaregroundAlbedo, from a map, FT = $FT" begin
         # setup for test
         domain = create_domain_2d(FT)
         space = domain.space.surface
@@ -105,7 +104,8 @@ if !Sys.iswindows()
 
         # set up each argument for function call
         α_snow = FT(0.8)
-        albedo = BulkAlbedoStatic{FT}(regrid_dir_static, space, α_snow = α_snow)
+        albedo =
+            PrescribedBaregroundAlbedo{FT}(α_snow, regrid_dir_static, space)
 
         σS_c = FT(0.2)
         parameters = (; σS_c = σS_c)
@@ -129,7 +129,7 @@ if !Sys.iswindows()
         @test next_albedo(albedo, parameters, Y, p, FT(0)) == next_alb_manual
     end
 
-    @testset "Test next_albedo for BulkAlbedoTemporal, FT = $FT" begin
+    @testset "Test next_albedo for PrescribedSurfaceAlbedo, FT = $FT" begin
         # set up each argument for function call
         domain = create_domain_2d(FT)
         space = domain.space.surface
@@ -141,7 +141,7 @@ if !Sys.iswindows()
         end)
         t_start = Float64(0)
 
-        albedo = BulkAlbedoTemporal{FT}(
+        albedo = PrescribedSurfaceAlbedo{FT}(
             regrid_dir_temporal,
             date_ref,
             t_start,
@@ -175,13 +175,13 @@ if !Sys.iswindows()
         end
     end
 
-    @testset "Test BulkAlbedoStatic - albedo from map, FT = $FT" begin
+    @testset "Test PrescribedBaregroundAlbedo - albedo from map, FT = $FT" begin
         earth_param_set = LP.LandParameters(FT)
         varname = "sw_alb"
         path = bareground_albedo_dataset_path()
         regrid_dirpath = joinpath(pkgdir(ClimaLand), "test/albedo_tmpfiles/")
         mkpath(regrid_dirpath)
-
+        α_snow = FT(0.8)
         σS_c = FT(0.2)
         W_f = FT(0.15)
         z_0m = FT(1e-2)
@@ -203,8 +203,11 @@ if !Sys.iswindows()
         for bucket_domain in bucket_domains
             if bucket_domain isa SphericalShell
                 surface_space = bucket_domain.space.surface
-                albedo_model =
-                    BulkAlbedoStatic{FT}(regrid_dirpath, surface_space)
+                albedo_model = PrescribedBaregroundAlbedo{FT}(
+                    α_snow,
+                    regrid_dirpath,
+                    surface_space,
+                )
 
                 # Radiation
                 ref_time = DateTime(2005)
@@ -277,9 +280,10 @@ if !Sys.iswindows()
                 @test p.bucket.α_sfc == data_manual
             else
                 surface_space = bucket_domain.space.surface
-                @test_throws "Using an albedo map requires a global run." BulkAlbedoStatic{
+                @test_throws "Using an albedo map requires a global run." PrescribedBaregroundAlbedo{
                     FT,
                 }(
+                    α_snow,
                     regrid_dirpath,
                     surface_space,
                 )
@@ -288,7 +292,7 @@ if !Sys.iswindows()
         rm(regrid_dirpath, recursive = true)
     end
 
-    @testset "Test BulkAlbedoTemporal error with static map, FT = $FT" begin
+    @testset "Test PrescribedSurfaceAlbedo error with static map, FT = $FT" begin
         get_infile = bareground_albedo_dataset_path
         date_ref = Dates.DateTime(1900, 1, 1)
         t_start = Float64(0)
@@ -297,7 +301,7 @@ if !Sys.iswindows()
         domain = create_domain_2d(FT)
         space = domain.space.surface
 
-        @test_throws "Using a temporal albedo map requires data with time dimension." BulkAlbedoTemporal{
+        @test_throws "Using a temporal albedo map requires data with time dimension." PrescribedSurfaceAlbedo{
             FT,
         }(
             regrid_dir_temporal,
@@ -308,7 +312,7 @@ if !Sys.iswindows()
         )
     end
 
-    @testset "Test BulkAlbedoTemporal - albedo from map over time, FT = $FT" begin
+    @testset "Test PrescribedSurfaceAlbedo - albedo from map over time, FT = $FT" begin
         earth_param_set = LP.LandParameters(FT)
         varname = "sw_alb"
         infile_path = cesm2_albedo_dataset_path()
@@ -342,7 +346,7 @@ if !Sys.iswindows()
         for bucket_domain in bucket_domains
             space = bucket_domain.space.surface
             if bucket_domain isa SphericalShell
-                albedo_model = BulkAlbedoTemporal{FT}(
+                albedo_model = PrescribedSurfaceAlbedo{FT}(
                     regrid_dirpath,
                     date_ref,
                     t_start,
@@ -437,7 +441,7 @@ if !Sys.iswindows()
                     t_curr += dt.value
                 end
             else
-                @test_throws "Using an albedo map requires a global run." BulkAlbedoTemporal{
+                @test_throws "Using an albedo map requires a global run." PrescribedSurfaceAlbedo{
                     FT,
                 }(
                     regrid_dirpath,

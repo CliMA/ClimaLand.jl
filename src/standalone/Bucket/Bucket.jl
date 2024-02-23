@@ -50,9 +50,8 @@ import ClimaLand:
     get_drivers
 export BucketModelParameters,
     BucketModel,
-    BulkAlbedoFunction,
-    BulkAlbedoStatic,
-    BulkAlbedoTemporal,
+    PrescribedBaregroundAlbedo,
+    PrescribedSurfaceAlbedo,
     surface_albedo,
     partition_snow_surface_fluxes
 
@@ -62,86 +61,63 @@ include(
 
 abstract type AbstractBucketModel{FT} <: AbstractExpModel{FT} end
 
-abstract type AbstractLandAlbedoModel{FT <: AbstractFloat} end
+abstract type AbstractBucketAlbedoModel{FT <: AbstractFloat} end
 
 """
-    BulkAlbedoFunction{FT, F <: ClimaCore.Fields.Field} <: AbstractLandAlbedoModel
+    PrescribedBaregroundAlbedo{FT, F <: ClimaCore.Fields.Field} <: AbstractBucketAlbedoModel
 
-An albedo model where the albedo of different surface types
-is specified. Snow albedo is treated as constant across snow
-location and across wavelength. Bareground surface albedo
-is specified as a function
-of latitude and longitude, but is also treated as constant across
-wavelength; bareground surface is this context refers to soil and vegetation.
+An albedo model where the static snow-free bareground albedo is prescribed as a
+function of space or using data from a file, and the land surface albedo is
+computed each timestep as a linear combination of the snow albedo and the bareground
+albedo, following the SLIM model (Lague et al 2019).
 """
-struct BulkAlbedoFunction{FT, F <: ClimaCore.Fields.Field} <:
-       AbstractLandAlbedoModel{FT}
+struct PrescribedBaregroundAlbedo{FT, F <: ClimaCore.Fields.Field} <:
+       AbstractBucketAlbedoModel{FT}
     α_snow::FT
     α_bareground::F
 end
 
-function BulkAlbedoFunction{FT}(
-    α_snow::FT,
-    α_bareground::F,
-) where {FT <: AbstractFloat, F}
-    BulkAlbedoFunction(α_snow, α_bareground)
-end
+"""
+     PrescribedBaregroundAlbedo{FT}(α_snow::FT,
+                                    α_bareground_func::Function,
+                                    surface_space::ClimaCore.Spaces.AbstractSpace
+                                    ) where {FT}
 
-function BulkAlbedoFunction{FT}(
+An outer constructor for the PrescribedBaregroundAlbedo model which uses an analytic function
+of the coordinates to compute α_bareground on the model `surface_space`.
+
+This particular method can be used with site level or global runs.
+"""
+function PrescribedBaregroundAlbedo{FT}(
     α_snow::FT,
     α_bareground_func::Function,
-    space,
-) where {FT <: AbstractFloat}
-    α_bareground = SpaceVaryingInput(α_bareground_func, space)
-    args = (α_snow, α_bareground)
-    BulkAlbedoFunction{typeof.(args)...}(args...)
+    surface_space::ClimaCore.Spaces.AbstractSpace,
+) where {FT}
+    α_bareground = SpaceVaryingInput(α_bareground_func, surface_space)
+    return PrescribedBaregroundAlbedo{FT, typeof(α_bareground)}(
+        α_snow,
+        α_bareground,
+    )
 end
 
-"""
-    BulkAlbedoStatic{FT, F <: ClimaCore.Fields.Field} <: AbstractLandAlbedoModel
-
-An albedo model where the albedo of different surface types
-is specified. Snow albedo is treated as constant across snow
-location and across wavelength. Bareground surface albedo is specified
-via a NetCDF file that is treated
-as constant across wavelengths; surface is this context refers
-to soil and vegetation. This albedo type is static in time.
-
-Note that this option should only be used with global simulations,
-i.e. with a `ClimaLand.LSMSphericalShellDomain.`
-"""
-struct BulkAlbedoStatic{FT, F <: ClimaCore.Fields.Field} <:
-       AbstractLandAlbedoModel{FT}
-    α_snow::FT
-    α_bareground::F
-end
-
-function BulkAlbedoStatic{FT}(α_snow::FT, α_bareground::F) where {FT, F}
-    return BulkAlbedoStatic(α_snow, α_bareground)
-end
 
 """
-    BulkAlbedoStatic{FT}(
-        regrid_dirpath::String,
-        surface_space::ClimaCore.Spaces.AbstractSpace;
-        α_snow = FT(0.8),
-        varname = ["sw_alb"],
-        get_infile::Function = Bucket.bareground_albedo_dataset_path,
-    ) where {FT}
+     PrescribedBaregroundAlbedo{FT}(α_snow::FT,
+                                    regrid_dirpath::String,
+                                    surface_space::ClimaCore.Spaces.AbstractSpace;
+                                    varnames = ["sw_alb"],
+                                    get_infile::Function = Bucket.bareground_albedo_dataset_path,
+                                    ) where{FT}
 
-Constructor for the BulkAlbedoStatic that implements a default albedo map,
-`comms` context, and value for `α_snow`.
-The `varname` must correspond to the name of the variable in the NetCDF
-file retrieved by `infile_path`.
-`infile_path` is a function that uses ArtifactWrappers.jl to return a path to
-the data file and download the data if it doesn't already exist on the machine.
+An outer constructor for the PrescribedBaregroundAlbedo model which uses data
+from a file obtained from a net cdf file for the bareground albedo.
 
-The `bareground_albedo_dataset_path` artifact will be used as a default with this type.
+This particular method can only be used with global runs.
 """
-function BulkAlbedoStatic{FT}(
+function PrescribedBaregroundAlbedo{FT}(
+    α_snow::FT,
     regrid_dirpath::String,
     surface_space::ClimaCore.Spaces.AbstractSpace;
-    α_snow = FT(0.8),
     varnames = ["sw_alb"],
     get_infile::Function = Bucket.bareground_albedo_dataset_path,
 ) where {FT}
@@ -158,12 +134,15 @@ function BulkAlbedoStatic{FT}(
     # Albedo file only has one variable, so access first `varname`
     varname = varnames[1]
     α_bareground = SpaceVaryingInput(α_bareground_data, varname, surface_space)
-    return BulkAlbedoStatic(α_snow, α_bareground)
+    return PrescribedBaregroundAlbedo{FT, typeof(α_bareground)}(
+        α_snow,
+        α_bareground,
+    )
 end
 
 """
-    BulkAlbedoTemporal{FT, FR <: FileReader.PrescribedDataTemporal}
-                       <: AbstractLandAlbedoModel
+    PrescribedSurfaceAlbedo{FT, FR <: FileReader.PrescribedDataTemporal}
+                       <: AbstractBucketAlbedoModel
 
 An albedo model where the albedo of different surface types
 is specified. Albedo is specified via a NetCDF file which is a function
@@ -173,13 +152,13 @@ This albedo type changes over time according to the input file.
 Note that this option should only be used with global simulations,
 i.e. with a `ClimaLand.LSMSphericalShellDomain.`
 """
-struct BulkAlbedoTemporal{FT, FR <: FileReader.PrescribedDataTemporal} <:
-       AbstractLandAlbedoModel{FT}
+struct PrescribedSurfaceAlbedo{FT, FR <: FileReader.PrescribedDataTemporal} <:
+       AbstractBucketAlbedoModel{FT}
     albedo_info::FR
 end
 
 """
-    BulkAlbedoTemporal{FT}(
+    PrescribedSurfaceAlbedo{FT}(
         regrid_dirpath::String,
         date_ref::Union{DateTime, DateTimeNoLeap},
         t_start,
@@ -188,15 +167,14 @@ end
         varname = "sw_alb"
     ) where {FT}
 
-Constructor for the BulkAlbedoTemporal struct.
+Constructor for the PrescribedSurfaceAlbedo struct.
 The `varname` must correspond to the name of the variable in the NetCDF
 file retrieved by the `get_infile` function.
 `get_infile` uses ArtifactWrappers.jl to return a path to the data file
 and download the data if it doesn't already exist on the machine.
-The input data file must have a time component; otherwise BulkAlbedoStatic
-should be used.
+The input data file must have a time component.
 """
-function BulkAlbedoTemporal{FT}(
+function PrescribedSurfaceAlbedo{FT}(
     regrid_dirpath::String,
     date_ref::Union{DateTime, DateTimeNoLeap},
     t_start,
@@ -218,7 +196,7 @@ function BulkAlbedoTemporal{FT}(
         t_start,
         space,
     )
-    return BulkAlbedoTemporal{FT, typeof(data_info)}(data_info)
+    return PrescribedSurfaceAlbedo{FT, typeof(data_info)}(data_info)
 end
 
 
@@ -237,7 +215,7 @@ $(DocStringExtensions.FIELDS)
 """
 struct BucketModelParameters{
     FT <: AbstractFloat,
-    AAM <: AbstractLandAlbedoModel,
+    AAM <: AbstractBucketAlbedoModel,
     PSE,
 }
     "Conductivity of the soil (W/K/m); constant"
@@ -345,7 +323,7 @@ function BucketModel(;
     atmosphere::ATM,
     radiation::RAD,
 ) where {FT, PSE, ATM, RAD, D <: ClimaLand.Domains.AbstractDomain}
-    if parameters.albedo isa Union{BulkAlbedoStatic, BulkAlbedoTemporal}
+    if parameters.albedo isa PrescribedSurfaceAlbedo
         typeof(domain) <: SphericalShell ? nothing :
         error("Using an albedo map requires a global run.")
     end
@@ -518,13 +496,10 @@ function make_update_aux(model::BucketModel{FT}) where {FT}
 end
 
 """
-    next_albedo(model_albedo::Union{BulkAlbedoFunction{FT}, BulkAlbedoStatic{FT}},
-        parameters, Y, p, t)
+    next_albedo(model_albedo::PrescribedBaregroundAlbedo{FT}, parameters, Y, p, t) where {FT}
 
-Update the surface albedo for time `t`. These albedo model types aren't explicitly
-dependent on `t`, but depend on quantities which may change over time.
-
-The albedo is calculated by linearly interpolating between the albedo
+Update the surface albedo for time `t`: the albedo is calculated by 
+linearly interpolating between the albedo
 of snow and of the bareground surface, based on the snow water equivalent `S` relative to
 the parameter `S_c`. The linear interpolation is taken from Lague et al 2019.
 
@@ -535,7 +510,7 @@ for 0 < σS < eps(FT) where the snow cover fraction is zero, but there is a smal
 contribution of snow to the albedo.
 """
 function next_albedo(
-    model_albedo::Union{BulkAlbedoFunction{FT}, BulkAlbedoStatic{FT}},
+    model_albedo::PrescribedBaregroundAlbedo{FT},
     parameters,
     Y,
     p,
@@ -550,13 +525,13 @@ function next_albedo(
 end
 
 """
-    next_albedo(model_albedo::BulkAlbedoTemporal{FT}, parameters, Y, p, t)
+    next_albedo(model_albedo::PrescribedSurfaceAlbedo{FT}, parameters, Y, p, t) where {FT}
 
-Update the surface albedo for time t. For a file containing albedo
+Update the surface albedo for time `t`: for a file containing surface albedo
 information over time, this reads in the value for time t.
 """
 function next_albedo(
-    model_albedo::BulkAlbedoTemporal{FT},
+    model_albedo::PrescribedSurfaceAlbedo{FT},
     parameters,
     Y,
     p,

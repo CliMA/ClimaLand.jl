@@ -8,7 +8,7 @@ using ClimaCore
 using ClimaLand.Bucket:
     BucketModel,
     BucketModelParameters,
-    BulkAlbedoFunction,
+    PrescribedBaregroundAlbedo,
     partition_snow_surface_fluxes
 using ClimaLand.Domains: coordinates, Column, HybridBox, SphericalShell
 using ClimaLand:
@@ -88,8 +88,11 @@ for FT in (Float32, Float64)
 
         τc = FT(10.0)
         surface_space = d.space.surface
-        albedo =
-            BulkAlbedoFunction{FT}(α_snow, α_bareground_func, surface_space)
+        albedo = PrescribedBaregroundAlbedo{FT}(
+            α_snow,
+            α_bareground_func,
+            surface_space,
+        )
         bucket_parameters = BucketModelParameters(
             κ_soil,
             ρc_soil,
@@ -211,8 +214,11 @@ for FT in (Float32, Float64)
 
             τc = FT(10.0)
             surface_space = bucket_domains[i].space.surface
-            albedo =
-                BulkAlbedoFunction{FT}(α_snow, α_bareground_func, surface_space)
+            albedo = PrescribedBaregroundAlbedo{FT}(
+                α_snow,
+                α_bareground_func,
+                surface_space,
+            )
             bucket_parameters = BucketModelParameters(
                 κ_soil,
                 ρc_soil,
@@ -330,8 +336,11 @@ for FT in (Float32, Float64)
 
             τc = FT(10.0)
             surface_space = bucket_domains[i].space.surface
-            albedo =
-                BulkAlbedoFunction{FT}(α_snow, α_bareground_func, surface_space)
+            albedo = PrescribedBaregroundAlbedo{FT}(
+                α_snow,
+                α_bareground_func,
+                surface_space,
+            )
             bucket_parameters = BucketModelParameters(
                 κ_soil,
                 ρc_soil,
@@ -449,8 +458,11 @@ for FT in (Float32, Float64)
 
         τc = FT(10.0)
         surface_space = bucket_domains[i].space.surface
-        albedo =
-            BulkAlbedoFunction{FT}(α_snow, α_bareground_func, surface_space)
+        albedo = PrescribedBaregroundAlbedo{FT}(
+            α_snow,
+            α_bareground_func,
+            surface_space,
+        )
         bucket_parameters = BucketModelParameters(
             κ_soil,
             ρc_soil,

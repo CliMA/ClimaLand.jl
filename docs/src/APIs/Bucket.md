@@ -7,9 +7,8 @@ CurrentModule = ClimaLand.Bucket
 
 ```@docs
 ClimaLand.Bucket.BucketModelParameters
-ClimaLand.Bucket.BulkAlbedoStatic
-ClimaLand.Bucket.BulkAlbedoTemporal
-ClimaLand.Bucket.BulkAlbedoFunction
+ClimaLand.Bucket.PrescribedBaregroundAlbedo
+ClimaLand.Bucket.PrescribedSurfaceAlbedo
 ClimaLand.Bucket.BucketModel
 ```
 
