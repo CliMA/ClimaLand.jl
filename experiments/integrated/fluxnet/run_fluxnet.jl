@@ -20,6 +20,7 @@ const FT = Float64
 earth_param_set = LP.LandParameters(FT)
 climaland_dir = pkgdir(ClimaLand)
 
+
 include(joinpath(climaland_dir, "experiments/integrated/fluxnet/data_tools.jl"))
 include(joinpath(climaland_dir, "experiments/integrated/fluxnet/plot_utils.jl"))
 
@@ -29,7 +30,17 @@ if length(ARGS) < 1
 end
 
 site_ID = ARGS[1]
+#create directories
+cor_savedir =
+    joinpath(climaland_dir, "experiments/integrated/fluxnet/$site_ID/results/")
+savedir =
+    joinpath(cor_savedir, "output/")
+savedir_in =
+    joinpath(cor_savedir, "input/")
 
+isdir(cor_savedir) || mkdir(cor_savedir)
+isdir(savedir) || mkdir(savedir)
+isdir(savedir_in) || mkdir(savedir_in)
 # Read all site-specific domain parameters from the simulation file for the site
 include(
     joinpath(
@@ -65,7 +76,12 @@ include(
         "experiments/integrated/fluxnet/met_drivers_FLUXNET.jl",
     ),
 )
-
+#if save, then inputs are plotted and saved
+if (length(ARGS) ≥ 1) && (ARGS[2] == "save")
+    plot_input=true
+    save_plots=true
+    plot_and_save(required, LOCAL_DATETIME, plot_input, save_plots, savedir_in)
+end
 # Now we set up the model. For the soil model, we pick
 # a model type and model args:
 soil_domain = land_domain
@@ -300,12 +316,8 @@ sol = SciMLBase.solve(
 
 # Plotting
 daily = sol.t ./ 3600 ./ 24
-savedir =
-    joinpath(climaland_dir, "experiments/integrated/fluxnet/$site_ID/out/")
 
-if !isdir(savedir)
-    mkdir(savedir)
-end
+
 
 # Number of days to plot
 num_days = N_days - N_spinup_days
@@ -799,7 +811,7 @@ Plots.plot!(plt1, margins = 10Plots.mm)
 Plots.savefig(joinpath(savedir, "temperature.png"))
 
 # Run script with comand line argument "save" to save model output to CSV
-if length(ARGS) ≥ 1 && ARGS[1] == "save"
+if (length(ARGS) ≥ 1) && (ARGS[2] == "save")
     # Formats fields as semicolon seperated strings
     field_to_array = (field) -> join(parent(field), ';')
     # Recursively unpacks a nested NamedTuple of fields into an array of strings
