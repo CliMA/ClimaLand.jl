@@ -415,7 +415,7 @@ end
         npolynomial::Int,
         dz_tuple::Union{Tuple{FT, FT}, Nothing} = nothing,
         comms_ctx = ClimaComms.SingletonCommsContext(),
-        land_mask_data = nothing
+        land_mask = nothing
     ) where {FT}
 Outer constructor for the `SphericalShell` domain, using keyword arguments.
 
@@ -434,7 +434,7 @@ function SphericalShell(;
                         npolynomial::Int,
                         dz_tuple::Union{Tuple{FT, FT}, Nothing} = nothing,
                         comms_ctx = ClimaComms.SingletonCommsContext(),
-                        land_mask_data = nothing,
+                        land_mask = nothing,
                         ) where {FT}
     @assert 0 < radius
     @assert 0 < depth
@@ -471,8 +471,8 @@ function SphericalShell(;
     )
     surface_space = obtain_surface_space(subsurface_space)
     space = (; surface = surface_space, subsurface = subsurface_space)
-    if ~(land_mask_data isa Nothing)
-        land_mask = get_data_at_date(land_mask_data.pds, surface_space, land_mask_data.varname)
+    if ~(land_mask isa Nothing)
+        @assert (axes(land_mask) == space.surface)
     else
         land_mask = ClimaCore.Fields.ones(space.surface)
     end
