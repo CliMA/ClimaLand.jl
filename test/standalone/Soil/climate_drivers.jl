@@ -126,6 +126,7 @@ for FT in (Float32, Float64)
                 :turbulent_fluxes,
                 :R_n,
                 :top_bc,
+                :infiltration,
                 :bottom_bc,
             )
             function init_soil!(Y, z, params)

@@ -65,8 +65,10 @@ ClimaLand.Soil.soil_tortuosity
 
 ```@docs
 ClimaLand.Soil.NoRunoff
+ClimaLand.Soil.TOPMODELRunoff
+ClimaLand.Soil.TOPMODELSubsurfaceRunoff
 ClimaLand.Soil.subsurface_runoff_source
-ClimaLand.Soil.soil_surface_infiltration
+ClimaLand.Soil.update_runoff!
 ```
 
 ## Soil BC Methods and Types
