@@ -116,20 +116,32 @@ function plot_avg_comp(
     Plots.savefig(joinpath(savedir, "$(var_name)_avg.png"))
 end
 
-function plot_and_save(required_input, local_time, plot_on, save_plots, save_folder)
+function plot_and_save(
+    required_input,
+    local_time,
+    plot_on,
+    save_plots,
+    save_folder,
+)
     """
     this functions plot the input components that are required for running CliMa land simulatons
         if plot_on is true and save them under savedir if save_plots is true versus local time
     """
     if plot_on
         for (nm, data) in required_input
-            plot(local_time, data.values, label=nm, title="$nm vs local time",dpi=250)
-            
+            plot(
+                local_time,
+                data.values,
+                label = nm,
+                title = "$nm vs local time",
+                dpi = 250,
+            )
+
             if save_plots
                 save_path = joinpath(save_folder, "$nm.png")
                 savefig(save_path)
             end
-            
+
             # Display the plot if plotting is enabled but not saving
             if !save_plots
                 display(current())

@@ -33,10 +33,8 @@ site_ID = ARGS[1]
 #create directories
 cor_savedir =
     joinpath(climaland_dir, "experiments/integrated/fluxnet/$site_ID/results/")
-savedir =
-    joinpath(cor_savedir, "output/")
-savedir_in =
-    joinpath(cor_savedir, "input/")
+savedir = joinpath(cor_savedir, "output/")
+savedir_in = joinpath(cor_savedir, "input/")
 
 isdir(cor_savedir) || mkdir(cor_savedir)
 isdir(savedir) || mkdir(savedir)
@@ -78,8 +76,8 @@ include(
 )
 #if save, then inputs are plotted and saved
 if (length(ARGS) ≥ 1) && (ARGS[2] == "save")
-    plot_input=true
-    save_plots=true
+    plot_input = true
+    save_plots = true
     plot_and_save(required, LOCAL_DATETIME, plot_input, save_plots, savedir_in)
 end
 # Now we set up the model. For the soil model, we pick
