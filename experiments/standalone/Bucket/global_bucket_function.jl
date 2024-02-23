@@ -25,7 +25,8 @@ import ClimaComms
 import ClimaLand
 import ClimaLand.Parameters as LP
 import CLIMAParameters
-using ClimaLand.Bucket: BucketModel, BucketModelParameters, BulkAlbedoFunction
+using ClimaLand.Bucket:
+    BucketModel, BucketModelParameters, PrescribedBaregroundAlbedo
 using ClimaLand.Domains: coordinates, Column
 using ClimaLand:
     initialize,
@@ -70,7 +71,8 @@ surface_space = bucket_domain.space.surface
 # Set up parameters
 α_bareground_func = (coordinate_point) -> 0.2;
 α_snow = FT(0.8);
-albedo = BulkAlbedoFunction{FT}(α_snow, α_bareground_func, surface_space);
+albedo =
+    PrescribedBaregroundAlbedo{FT}(α_snow, α_bareground_func, surface_space);
 σS_c = FT(0.2);
 W_f = FT(0.15);
 z_0m = FT(1e-2);

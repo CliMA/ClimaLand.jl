@@ -27,7 +27,8 @@ import ClimaComms
 import ClimaLand
 import ClimaLand.Parameters as LP
 import CLIMAParameters
-using ClimaLand.Bucket: BucketModel, BucketModelParameters, BulkAlbedoTemporal
+using ClimaLand.Bucket:
+    BucketModel, BucketModelParameters, PrescribedSurfaceAlbedo
 using ClimaLand.Domains: coordinates, Column
 using ClimaLand:
     initialize,
@@ -96,7 +97,7 @@ regrid_dir = joinpath(
 )
 !ispath(regrid_dir) && mkpath(regrid_dir)
 surface_space = bucket_domain.space.surface
-albedo = BulkAlbedoTemporal{FT}(regrid_dir, ref_time, t0, surface_space);
+albedo = PrescribedSurfaceAlbedo{FT}(regrid_dir, ref_time, t0, surface_space);
 
 bucket_parameters = BucketModelParameters(
     κ_soil,
