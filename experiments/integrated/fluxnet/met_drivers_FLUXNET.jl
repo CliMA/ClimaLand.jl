@@ -14,19 +14,10 @@ import ClimaComms
 context = ClimaComms.context()
 
 # Methods for reading in the LAI data from MODIS data
-include(
-    joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/pull_MODIS.jl"),
-)
+include(joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/pull_MODIS.jl"))
 
-af = ArtifactFile(
-    url = data_link,
-    filename = "AMF_$(site_ID)_FLUXNET_FULLSET.csv",
-)
-dataset = ArtifactWrapper(
-    "$(@__DIR__)" * "/$site_ID",
-    "ameriflux_data",
-    ArtifactFile[af],
-);
+af = ArtifactFile(url = data_link, filename = "AMF_$(site_ID)_FLUXNET_FULLSET.csv")
+dataset = ArtifactWrapper("$(@__DIR__)" * "/$site_ID", "ameriflux_data", ArtifactFile[af]);
 dataset_path = get_data_folder(dataset);
 data = joinpath(dataset_path, "AMF_$(site_ID)_FLUXNET_FULLSET.csv");
 driver_data = readdlm(data, ',')
@@ -82,11 +73,8 @@ drivers = (;
     zip(
         labels,
         [
-            transform_column(
-                filter_column(driver_data, name, ""),
-                transform,
-                unit,
-            ) for (name, transform, unit) in collect_args
+            transform_column(filter_column(driver_data, name, ""), transform, unit) for
+            (name, transform, unit) in collect_args
         ],
     )...
 )
@@ -123,7 +111,7 @@ q = @. 0.622 * e ./ (drivers.PA.values - 0.378 * e)
 
 # Create interpolators for each atmospheric driver needed for PrescribedAtmosphere and for
 # PrescribedRadiation
-seconds = FT.(0:DATA_DT:((length(UTC_DATETIME) - 1) * DATA_DT));
+seconds = FT.(0:DATA_DT:((length(UTC_DATETIME)-1)*DATA_DT));
 
 precip = TimeVaryingInput(seconds, -FT.(drivers.P.values[:]); context) # m/s
 atmos_q = TimeVaryingInput(seconds, FT.(q[:]); context)
@@ -169,15 +157,7 @@ function zenith_angle(
             )
         )
 
-    FT(
-        Insolation.instantaneous_zenith_angle(
-            d,
-            δ,
-            η_UTC,
-            longitude,
-            latitude,
-        )[1],
-    )
+    FT(Insolation.instantaneous_zenith_angle(d, δ, η_UTC, longitude, latitude)[1])
 end
 
 radiation = ClimaLand.PrescribedRadiativeFluxes(
@@ -207,7 +187,7 @@ MODIS_LAI = single_col_data_matrix(
 )
 
 LAI_dt = Second(MODIS_LAI[2, 1] - MODIS_LAI[1, 1]).value
-LAI_seconds = FT.(0:LAI_dt:((length(MODIS_LAI[:, 1]) - 1) * LAI_dt))
+LAI_seconds = FT.(0:LAI_dt:((length(MODIS_LAI[:, 1])-1)*LAI_dt))
 
 # LAI function for radiative transfer
 LAIfunction = TimeVaryingInput(LAI_seconds, FT.(MODIS_LAI[:, 2]); context)
