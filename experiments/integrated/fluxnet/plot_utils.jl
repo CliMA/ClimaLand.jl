@@ -14,7 +14,7 @@ hourly intervals."""
 function interp_to_hh(data::Vector, timeseries::Vector, num_days::Int64)
     # Rescale the data to a half hourly interval by linear interpolation
     interp = LinearInterpolation(timeseries, data)
-    half_hourly = (0.5*3600):(0.5*3600):(24*num_days*3600)
+    half_hourly = (0.5 * 3600):(0.5 * 3600):(24 * num_days * 3600)
     hh_data = [interp[i] for i in half_hourly]
     return hh_data
 end
@@ -57,7 +57,8 @@ function plot_daily_avg(
     label::String = "data",
 )
     # Rescale the data and take the average diurnal cycle
-    data_hh_avg = compute_diurnal_avg(data, [0:data_dt:(num_days*S_PER_DAY);], num_days)
+    data_hh_avg =
+        compute_diurnal_avg(data, [0:data_dt:(num_days * S_PER_DAY);], num_days)
 
     # Plot the data diurnal cycle
     plt = Plots.plot(size = (800, 400))
@@ -87,8 +88,13 @@ function plot_avg_comp(
     savedir::String,
 )
     # Rescale teh data and take the average diurnal cycle
-    model_hh_avg = compute_diurnal_avg(model, [0:model_dt:(num_days*S_PER_DAY);], num_days)
-    data_hh_avg = compute_diurnal_avg(data, [0:data_dt:(num_days*S_PER_DAY);], num_days)
+    model_hh_avg = compute_diurnal_avg(
+        model,
+        [0:model_dt:(num_days * S_PER_DAY);],
+        num_days,
+    )
+    data_hh_avg =
+        compute_diurnal_avg(data, [0:data_dt:(num_days * S_PER_DAY);], num_days)
 
     # Compute the GOF stats
     RMSD = StatsBase.rmsd(model_hh_avg, data_hh_avg)
@@ -110,7 +116,13 @@ function plot_avg_comp(
     Plots.savefig(joinpath(savedir, "$(var_name)_avg.png"))
 end
 
-function plot_and_save(required_input, local_time, plot_on, save_plots, save_folder)
+function plot_and_save(
+    required_input,
+    local_time,
+    plot_on,
+    save_plots,
+    save_folder,
+)
     """
     this functions plot the input components that are required for running CliMa land simulatons
         if plot_on is true and save them under savedir if save_plots is true versus local time

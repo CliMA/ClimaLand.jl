@@ -78,7 +78,7 @@ function column_status(driver_data::Matrix, column_name::String)
     col_dat = []
     column_names = driver_data[1, :]
     try
-        col_dat = driver_data[2:end, column_names.==column_name]
+        col_dat = driver_data[2:end, column_names .== column_name]
     catch _
         return col_dat, absent
     end
@@ -159,8 +159,8 @@ function filter_column(driver_data::Matrix, column_name::String, units::String)
             if percent_poor < quality_threshold
                 # Set thr based on the presence of "SWC" or "GPP" in col_name
                 thr =
-                    contains(column_name, "SWC") || contains(column_name, "GPP") ? 0.0 :
-                    -900.0
+                    contains(column_name, "SWC") ||
+                    contains(column_name, "GPP") ? 0.0 : -900.0
                 replace_with_longterm_mean!(col_dat, QC_col, time, bounds, thr)
                 #replace_poor_quality_with_mean!(col_dat, QC_col,bounds)#just to check everything is alright
                 @info "Warning: Data for $column_name $(round(percent_poor, sigdigits=3))% poor quality. Filled with mean value using QC flag"
@@ -196,7 +196,9 @@ function filter_column(driver_data::Matrix, column_name::String, units::String)
             @info "Information: Data for $column_name is complete and no QC flag present"
             return DataColumn(col_dat, units, status)
         end #in case QC is 
-        thr = contains(column_name, "SWC") || contains(column_name, "GPP") ? 0.0 : -900.0
+        thr =
+            contains(column_name, "SWC") || contains(column_name, "GPP") ? 0.0 :
+            -900.0
         replace_with_longterm_mean!(col_dat, QC_col, time, bounds, thr)
         #replace_missing_with_mean_by_value!(col_dat)
         status = complete
@@ -216,11 +218,21 @@ Returns a new DataColumn struct with the values of the input `column`
 transformed via the function `transform`. Useful for unit conversions. Sets 
 the units of the column to the string units.
 """
-function transform_column(column::DataColumn, transform::Function, units::String)
+function transform_column(
+    column::DataColumn,
+    transform::Function,
+    units::String,
+)
     return DataColumn(transform.(column.values), units, column.status)
 end
 
-function replace_with_longterm_mean!(field, flag, time, bounds::Vector, thr::Float64)
+function replace_with_longterm_mean!(
+    field,
+    flag,
+    time,
+    bounds::Vector,
+    thr::Float64,
+)
     """
     this function replaces field data element that are below thr or have flag quality out of bounds range replaced with long term mean of same hour of data acquired on daily, weekly, biweekly, monthly, or yearly 
     # input arguments
@@ -280,9 +292,14 @@ function replace_with_longterm_mean!(field, flag, time, bounds::Vector, thr::Flo
         for idx in indices
             dt = formatted_time[idx]
             time_criteria = [
-                x -> month(x) == month(dt) && day(x) == day(dt) && hour(x) == hour(dt),#same hour of the same day across all years
                 x ->
-                    month(x) == month(dt) && week(x) == week(dt) && hour(x) == hour(dt),#same hour of the same week of the year across all years
+                    month(x) == month(dt) &&
+                        day(x) == day(dt) &&
+                        hour(x) == hour(dt),#same hour of the same day across all years
+                x ->
+                    month(x) == month(dt) &&
+                        week(x) == week(dt) &&
+                        hour(x) == hour(dt),#same hour of the same week of the year across all years
                 x -> month(x) == month(dt) && hour(x) == hour(dt),#same hour of the same month across all years
                 x -> month(x) == month(dt) && day(x) == day(dt),#average across the same day  of the same month
                 x -> month(x) == month(dt) && week(x) == week(dt),#average across the same week of the same month

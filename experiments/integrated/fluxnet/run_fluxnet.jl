@@ -31,7 +31,8 @@ end
 
 site_ID = ARGS[1]
 #create directories
-cor_savedir = joinpath(climaland_dir, "experiments/integrated/fluxnet/$site_ID/results/")
+cor_savedir =
+    joinpath(climaland_dir, "experiments/integrated/fluxnet/$site_ID/results/")
 savedir = joinpath(cor_savedir, "output/")
 savedir_in = joinpath(cor_savedir, "input/")
 if (length(ARGS) > 1)
@@ -49,7 +50,9 @@ include(
     ),
 )
 
-include(joinpath(climaland_dir, "experiments/integrated/fluxnet/fluxnet_domain.jl"))
+include(
+    joinpath(climaland_dir, "experiments/integrated/fluxnet/fluxnet_domain.jl"),
+)
 
 # Read all site-specific parameters from the parameter file for the site
 include(
@@ -61,15 +64,31 @@ include(
 
 # This reads in the data from the flux tower site and creates
 # the atmospheric and radiative driver structs for the model
-include(joinpath(climaland_dir, "experiments/integrated/fluxnet/fluxnet_simulation.jl"))
+include(
+    joinpath(
+        climaland_dir,
+        "experiments/integrated/fluxnet/fluxnet_simulation.jl",
+    ),
+)
 
-include(joinpath(climaland_dir, "experiments/integrated/fluxnet/met_drivers_FLUXNET.jl"))
+include(
+    joinpath(
+        climaland_dir,
+        "experiments/integrated/fluxnet/met_drivers_FLUXNET.jl",
+    ),
+)
 #if save, then inputs are plotted and saved
 if (length(ARGS) > 1)
     if ARGS[2] == "save"
         plot_input = true
         save_plots = true
-        plot_and_save(required, LOCAL_DATETIME, plot_input, save_plots, savedir_in)
+        plot_and_save(
+            required,
+            LOCAL_DATETIME,
+            plot_input,
+            save_plots,
+            savedir_in,
+        )
     end
 end
 # Now we set up the model. For the soil model, we pick
@@ -152,7 +171,8 @@ canopy_component_types = (;
 )
 # Individual Component arguments
 # Set up autotrophic respiration
-autotrophic_respiration_args = (; parameters = AutotrophicRespirationParameters(FT))
+autotrophic_respiration_args =
+    (; parameters = AutotrophicRespirationParameters(FT))
 # Set up radiative transfer
 radiative_transfer_args = (;
     parameters = TwoStreamParameters{FT}(;
@@ -168,8 +188,13 @@ radiative_transfer_args = (;
     )
 )
 # Set up conductance
-conductance_args =
-    (; parameters = MedlynConductanceParameters{FT}(; g1 = g1, Drel = Drel, g0 = g0))
+conductance_args = (;
+    parameters = MedlynConductanceParameters{FT}(;
+        g1 = g1,
+        Drel = Drel,
+        g0 = g0,
+    )
+)
 # Set up photosynthesis
 photosynthesis_args =
     (; parameters = FarquharParameters(FT, Canopy.C3(); Vcmax25 = Vcmax25))
@@ -209,8 +234,11 @@ canopy_component_args = (;
 )
 
 # Other info needed
-shared_params =
-    SharedCanopyParameters{FT,typeof(earth_param_set)}(z0_m, z0_b, earth_param_set)
+shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
+    z0_m,
+    z0_b,
+    earth_param_set,
+)
 
 canopy_model_args = (; parameters = shared_params, domain = canopy_domain)
 
@@ -231,29 +259,38 @@ exp_tendency! = make_exp_tendency(land)
 
 #Initial conditions
 Y.soil.ϑ_l =
-    drivers.SWC.status != absent ? drivers.SWC.values[1+Int(round(t0 / DATA_DT))] :
-    soil_ν / 2 # Get soil water content at t0
+    drivers.SWC.status != absent ?
+    drivers.SWC.values[1 + Int(round(t0 / DATA_DT))] : soil_ν / 2 # Get soil water content at t0
 # Both data and simulation are reference to 2005-01-01-00 (LOCAL)
 # or 2005-01-01-06 (UTC)
 Y.soil.θ_i = FT(0.0)
 T_0 =
-    drivers.TS.status != absent ? drivers.TS.values[1+Int(round(t0 / DATA_DT))] :
-    drivers.TA.values[1+Int(round(t0 / DATA_DT))] + 40# Get soil temperature at t0
-ρc_s = volumetric_heat_capacity.(Y.soil.ϑ_l, Y.soil.θ_i, Ref(land.soil.parameters))
+    drivers.TS.status != absent ?
+    drivers.TS.values[1 + Int(round(t0 / DATA_DT))] :
+    drivers.TA.values[1 + Int(round(t0 / DATA_DT))] + 40# Get soil temperature at t0
+ρc_s =
+    volumetric_heat_capacity.(Y.soil.ϑ_l, Y.soil.θ_i, Ref(land.soil.parameters))
 Y.soil.ρe_int =
-    volumetric_internal_energy.(Y.soil.θ_i, ρc_s, T_0, Ref(land.soil.parameters))
+    volumetric_internal_energy.(
+        Y.soil.θ_i,
+        ρc_s,
+        T_0,
+        Ref(land.soil.parameters),
+    )
 Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
 ψ_stem_0 = FT(-1e5 / 9800) # pressure in the leaf divided by rho_liquid*gravitational acceleration [m] 
 ψ_leaf_0 = FT(-2e5 / 9800)
 ψ_comps = n_stem > 0 ? [ψ_stem_0, ψ_leaf_0] : ψ_leaf_0
 
-S_l_ini = inverse_water_retention_curve.(retention_model, ψ_comps, plant_ν, plant_S_s)
+S_l_ini =
+    inverse_water_retention_curve.(retention_model, ψ_comps, plant_ν, plant_S_s)
 
-for i = 1:(n_stem+n_leaf)
-    Y.canopy.hydraulics.ϑ_l.:($i) .= augmented_liquid_fraction.(plant_ν, S_l_ini[i])
+for i in 1:(n_stem + n_leaf)
+    Y.canopy.hydraulics.ϑ_l.:($i) .=
+        augmented_liquid_fraction.(plant_ν, S_l_ini[i])
 end
 
-Y.canopy.energy.T = drivers.TA.values[1+Int(round(t0 / DATA_DT))] # Get atmos temperature at t0
+Y.canopy.energy.T = drivers.TA.values[1 + Int(round(t0 / DATA_DT))] # Get atmos temperature at t0
 
 set_initial_cache! = make_set_initial_cache(land)
 set_initial_cache!(p, Y, t0);
@@ -271,7 +308,12 @@ updatefunc = ClimaLand.make_update_drivers(atmos, radiation)
 driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
 cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
 
-prob = SciMLBase.ODEProblem(CTS.ClimaODEFunction((T_exp!) = exp_tendency!), Y, (t0, tf), p);
+prob = SciMLBase.ODEProblem(
+    CTS.ClimaODEFunction((T_exp!) = exp_tendency!),
+    Y,
+    (t0, tf),
+    p,
+);
 sol = SciMLBase.solve(
     prob,
     ode_algo;
@@ -290,26 +332,37 @@ daily = sol.t ./ 3600 ./ 24
 num_days = N_days - N_spinup_days
 
 # Time series of model and data outputs
-data_times = [0:DATA_DT:(num_days*S_PER_DAY);]
-model_times = [0:(n*dt):(num_days*S_PER_DAY);]
+data_times = [0:DATA_DT:(num_days * S_PER_DAY);]
+model_times = [0:(n * dt):(num_days * S_PER_DAY);]
 
 # Plot model diurnal cycles without data comparisons
 # Autotrophic Respiration
 AR =
     [
         parent(sv.saveval[k].canopy.autotrophic_respiration.Ra)[1] for
-        k = 1:length(sv.saveval)
+        k in 1:length(sv.saveval)
     ] .* 1e6
 if (length(ARGS) > 1) #only plot if a second ARGS "save" is passed when running the code
     if ARGS[2] == "save"
-        plot_daily_avg("AutoResp", AR, dt * n, num_days, "μmol/m^2/s", savedir, "Model")
+        plot_daily_avg(
+            "AutoResp",
+            AR,
+            dt * n,
+            num_days,
+            "μmol/m^2/s",
+            savedir,
+            "Model",
+        )
     end
 end
 
 # Plot all comparisons of model diurnal cycles to data diurnal cycles
 # GPP
 model_GPP =
-    [parent(sv.saveval[k].canopy.photosynthesis.GPP)[1] for k = 1:length(sv.saveval)] .* 1e6
+    [
+        parent(sv.saveval[k].canopy.photosynthesis.GPP)[1] for
+        k in 1:length(sv.saveval)
+    ] .* 1e6
 if (length(ARGS) > 1) #only plot if a second ARGS "save" is passed when running the code
     if ARGS[2] == "save"
         if drivers.GPP.status == absent
@@ -324,7 +377,9 @@ if (length(ARGS) > 1) #only plot if a second ARGS "save" is passed when running 
             )
         else
             GPP_data =
-                drivers.GPP.values[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)] .* 1e6
+                drivers.GPP.values[Int64(t_spinup ÷ DATA_DT):Int64(
+                    tf ÷ DATA_DT,
+                )] .* 1e6
             plot_avg_comp(
                 "GPP",
                 model_GPP,
@@ -341,7 +396,7 @@ end
 
 
 # SW_OUT
-SW_out_model = [parent(sv.saveval[k].SW_out)[1] for k = 1:length(sv.saveval)]
+SW_out_model = [parent(sv.saveval[k].SW_out)[1] for k in 1:length(sv.saveval)]
 if (length(ARGS) > 1) #only plot if a second ARGS "save" is passed when running the code
     if ARGS[2] == "save"
 
@@ -357,7 +412,9 @@ if (length(ARGS) > 1) #only plot if a second ARGS "save" is passed when running 
             )
         else
             SW_out_data =
-                FT.(drivers.SW_OUT.values)[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)]
+                FT.(drivers.SW_OUT.values)[Int64(t_spinup ÷ DATA_DT):Int64(
+                    tf ÷ DATA_DT,
+                )]
             plot_avg_comp(
                 "SW OUT",
                 SW_out_model,
@@ -374,7 +431,7 @@ end
 
 
 # LW_OUT
-LW_out_model = [parent(sv.saveval[k].LW_out)[1] for k = 1:length(sv.saveval)]
+LW_out_model = [parent(sv.saveval[k].LW_out)[1] for k in 1:length(sv.saveval)]
 if (length(ARGS) > 1) #only plot if a second ARGS "save" is passed when running the code
     if ARGS[2] == "save"
         if drivers.LW_OUT.status == absent
@@ -389,7 +446,9 @@ if (length(ARGS) > 1) #only plot if a second ARGS "save" is passed when running 
             )
         else
             LW_out_data =
-                FT.(drivers.LW_OUT.values)[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)]
+                FT.(drivers.LW_OUT.values)[Int64(t_spinup ÷ DATA_DT):Int64(
+                    tf ÷ DATA_DT,
+                )]
             plot_avg_comp(
                 "LW OUT",
                 LW_out_model,
@@ -405,18 +464,33 @@ if (length(ARGS) > 1) #only plot if a second ARGS "save" is passed when running 
 end
 # ET
 T =
-    [parent(sv.saveval[k].canopy.conductance.transpiration)[1] for k = 1:length(sol.t)] .* (1e3 * 24 * 3600)
+    [
+        parent(sv.saveval[k].canopy.conductance.transpiration)[1] for
+        k in 1:length(sol.t)
+    ] .* (1e3 * 24 * 3600)
 E =
-    [parent(sv.saveval[k].soil.turbulent_fluxes.vapor_flux)[1] for k = 1:length(sol.t)] .* (1e3 * 24 * 3600)
+    [
+        parent(sv.saveval[k].soil.turbulent_fluxes.vapor_flux)[1] for
+        k in 1:length(sol.t)
+    ] .* (1e3 * 24 * 3600)
 ET_model = T .+ E
 if (length(ARGS) > 1) #only plot if a second ARGS "save" is passed when running the code
     if ARGS[2] == "save"
 
         if drivers.LE.status == absent
-            plot_daily_avg("ET", ET_model, dt * n, num_days, "mm/day", savedir, "Model")
+            plot_daily_avg(
+                "ET",
+                ET_model,
+                dt * n,
+                num_days,
+                "mm/day",
+                savedir,
+                "Model",
+            )
         else
             measured_T =
-                drivers.LE.values ./ (LP.LH_v0(earth_param_set) * 1000) .* (1e3 * 24 * 3600)
+                drivers.LE.values ./ (LP.LH_v0(earth_param_set) * 1000) .*
+                (1e3 * 24 * 3600)
             ET_data = measured_T[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)]
             plot_avg_comp(
                 "ET",
@@ -433,8 +507,12 @@ if (length(ARGS) > 1) #only plot if a second ARGS "save" is passed when running 
 end
 
 # Sensible Heat Flux
-SHF_soil = [parent(sv.saveval[k].soil.turbulent_fluxes.shf)[1] for k = 1:length(sol.t)]
-SHF_canopy = [parent(sv.saveval[k].canopy.energy.shf)[1] for k = 1:length(sol.t)]
+SHF_soil =
+    [parent(sv.saveval[k].soil.turbulent_fluxes.shf)[1] for k in 1:length(
+        sol.t,
+    )]
+SHF_canopy =
+    [parent(sv.saveval[k].canopy.energy.shf)[1] for k in 1:length(sol.t)]
 SHF_model = SHF_soil + SHF_canopy
 
 # Cumulative ET
@@ -444,22 +522,27 @@ dt_data = seconds[2] - seconds[1]
 # Find which index in the data our simulation starts at:
 idx = argmin(abs.(seconds .- sol.t[1]))
 # Latent Heat Flux
-LHF_soil = [parent(sv.saveval[k].soil.turbulent_fluxes.lhf)[1] for k = 1:length(sol.t)]
-LHF_canopy = [parent(sv.saveval[k].canopy.energy.lhf)[1] for k = 1:length(sol.t)]
+LHF_soil =
+    [parent(sv.saveval[k].soil.turbulent_fluxes.lhf)[1] for k in 1:length(
+        sol.t,
+    )]
+LHF_canopy =
+    [parent(sv.saveval[k].canopy.energy.lhf)[1] for k in 1:length(sol.t)]
 LHF_model = LHF_soil + LHF_canopy
 
-Δz = parent(cds.subsurface.z)[end] - parent(cds.subsurface.z)[end-2]
+Δz = parent(cds.subsurface.z)[end] - parent(cds.subsurface.z)[end - 2]
 first_layer_flux = [
-    -parent(sv.saveval[k].soil.κ)[1] *
-    (parent(sv.saveval[k].soil.T)[end] - parent(sv.saveval[k].soil.T)[end-2]) / Δz for
-    k = 1:length(sol.t)
+    -parent(sv.saveval[k].soil.κ)[1] * (
+        parent(sv.saveval[k].soil.T)[end] -
+        parent(sv.saveval[k].soil.T)[end - 2]
+    ) / Δz for k in 1:length(sol.t)
 ]
 G_model = [
     (
         parent(sv.saveval[k].soil.turbulent_fluxes.shf)[1] +
         parent(sv.saveval[k].soil.turbulent_fluxes.lhf)[1] -
         parent(sv.saveval[k].soil.R_n)[1]
-    ) for k = 1:length(sol.t)
+    ) for k in 1:length(sol.t)
 ]
 canopy_G = [
     (
@@ -467,22 +550,23 @@ canopy_G = [
         parent(sv.saveval[k].canopy.energy.lhf)[1] -
         parent(sv.saveval[k].canopy.radiative_transfer.LW_n)[1] -
         parent(sv.saveval[k].canopy.radiative_transfer.SW_n)[1]
-    ) for k = 1:length(sol.t)
+    ) for k in 1:length(sol.t)
 ]
 
 G_model_avg = compute_diurnal_avg(G_model, model_times, num_days)
 canopy_G_avg = compute_diurnal_avg(canopy_G, model_times, num_days)
 # Stomatal conductance
-g_stomata = [parent(sv.saveval[k].canopy.conductance.gs)[1] for k = 1:length(sol.t)]
+g_stomata =
+    [parent(sv.saveval[k].canopy.conductance.gs)[1] for k in 1:length(sol.t)]
 # Water stress factor
-β = [parent(sv.saveval[k].canopy.hydraulics.β)[1] for k = 1:length(sol.t)]
+β = [parent(sv.saveval[k].canopy.hydraulics.β)[1] for k in 1:length(sol.t)]
 
 # Soil Temperature
 
 # The second layer is ~ 5cm, third is at 11cm
-soil_T_5 = [parent(sv.saveval[k].soil.T)[end-1] for k = 1:length(sol.t)]
+soil_T_5 = [parent(sv.saveval[k].soil.T)[end - 1] for k in 1:length(sol.t)]
 soil_T_5_avg = compute_diurnal_avg(soil_T_5, model_times, num_days)
-soil_T_10 = [parent(sv.saveval[k].soil.T)[end-2] for k = 1:length(sol.t)]
+soil_T_10 = [parent(sv.saveval[k].soil.T)[end - 2] for k in 1:length(sol.t)]
 soil_T_10_avg = compute_diurnal_avg(soil_T_10, model_times, num_days)
 
 TA_avg = compute_diurnal_avg(
@@ -500,7 +584,7 @@ end
 
 
 # Temperatures
-soil_T_sfc = [parent(sv.saveval[k].soil.T)[end] for k = 1:length(sol.t)]
+soil_T_sfc = [parent(sv.saveval[k].soil.T)[end] for k in 1:length(sol.t)]
 soil_T_sfc_avg = compute_diurnal_avg(soil_T_sfc, model_times, num_days)
 
 canopy_T = [
@@ -512,7 +596,7 @@ canopy_T = [
             sv.saveval[k],
             sol.t[k],
         ),
-    )[1] for k = 1:length(sol.t)
+    )[1] for k in 1:length(sol.t)
 ]
 canopy_T_avg = compute_diurnal_avg(canopy_T, model_times, num_days)
 
@@ -534,21 +618,23 @@ if drivers.G.status != absent
             (drivers.SW_IN.values .- drivers.SW_OUT.values) .+
             (drivers.LW_IN.values .- drivers.LW_OUT.values)
         G_alternate_data_avg = compute_diurnal_avg(
-            FT.(drivers.H.values .+ drivers.LE.values .- Rn)[Int64(t_spinup ÷ DATA_DT):Int64(
-                tf ÷ DATA_DT,
-            )],
+            FT.(drivers.H.values .+ drivers.LE.values .- Rn)[Int64(
+                t_spinup ÷ DATA_DT,
+            ):Int64(tf ÷ DATA_DT)],
             data_times,
             num_days,
         )
         HplusL_avg = compute_diurnal_avg(
-            FT.(drivers.H.values .+ drivers.LE.values)[Int64(t_spinup ÷ DATA_DT):Int64(
-                tf ÷ DATA_DT,
-            )],
+            FT.(drivers.H.values .+ drivers.LE.values)[Int64(
+                t_spinup ÷ DATA_DT,
+            ):Int64(tf ÷ DATA_DT)],
             data_times,
             num_days,
         )
         RminusG_avg = compute_diurnal_avg(
-            FT.(Rn .- drivers.G.values)[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)],
+            FT.(Rn .- drivers.G.values)[Int64(t_spinup ÷ DATA_DT):Int64(
+                tf ÷ DATA_DT,
+            )],
             data_times,
             num_days,
         )
@@ -558,9 +644,18 @@ if (length(ARGS) > 1) #only plot if a second ARGS "save" is passed when running 
     if ARGS[2] == "save"
 
         if drivers.H.status == absent
-            plot_daily_avg("SHF", SHF_model, dt * n, num_days, "w/m^2", savedir, "Model")
+            plot_daily_avg(
+                "SHF",
+                SHF_model,
+                dt * n,
+                num_days,
+                "w/m^2",
+                savedir,
+                "Model",
+            )
         else
-            SHF_data = drivers.H.values[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)]
+            SHF_data =
+                drivers.H.values[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)]
             plot_avg_comp(
                 "SHF",
                 SHF_model,
@@ -575,7 +670,8 @@ if (length(ARGS) > 1) #only plot if a second ARGS "save" is passed when running 
         if drivers.LE.status == absent
             plot_daily_avg("LHF", LHF_model, dt * n, num_days, "w/m^2", savedir)
         else
-            LHF_data = drivers.LE.values[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)]
+            LHF_data =
+                drivers.LE.values[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)]
             plot_avg_comp(
                 "LHF",
                 LHF_model,
@@ -588,7 +684,11 @@ if (length(ARGS) > 1) #only plot if a second ARGS "save" is passed when running 
             )
         end
         plt1 = Plots.plot(0.5:0.5:24, -1 .* G_data_avg, label = "Data: -G")
-        Plots.plot!(plt1, ylabel = "Flux (W/m^2)", title = "Energy balance at the site")
+        Plots.plot!(
+            plt1,
+            ylabel = "Flux (W/m^2)",
+            title = "Energy balance at the site",
+        )
         if drivers.G.status != absent
             if drivers.LE.status != absent &&
                drivers.H.status != absent &&
@@ -648,7 +748,11 @@ if (length(ARGS) > 1) #only plot if a second ARGS "save" is passed when running 
         )
         Plots.savefig(joinpath(savedir, "ground_heat_flux.png"))
 
-        plt1 = Plots.plot(size = (1500, 400), xlabel = "Day of year", margin = 10Plots.mm)
+        plt1 = Plots.plot(
+            size = (1500, 400),
+            xlabel = "Day of year",
+            margin = 10Plots.mm,
+        )
         Plots.plot!(
             plt1,
             daily,
@@ -658,7 +762,11 @@ if (length(ARGS) > 1) #only plot if a second ARGS "save" is passed when running 
             title = "Moisture stress factor",
         )
         Plots.savefig(joinpath(savedir, "moisture_stress.png"))
-        plt1 = Plots.plot(size = (1500, 400), xlabel = "Day of year", margin = 10Plots.mm)
+        plt1 = Plots.plot(
+            size = (1500, 400),
+            xlabel = "Day of year",
+            margin = 10Plots.mm,
+        )
         Plots.plot!(
             plt1,
             daily,
@@ -675,7 +783,7 @@ if (length(ARGS) > 1) #only plot if a second ARGS "save" is passed when running 
         Plots.plot!(
             plt1,
             daily,
-            [parent(sol.u[k].soil.ϑ_l)[end-1] for k = 1:1:length(sol.t)],
+            [parent(sol.u[k].soil.ϑ_l)[end - 1] for k in 1:1:length(sol.t)],
             label = "5cm",
             xlim = [minimum(daily), maximum(daily)],
             ylim = [0.05, 0.55],
@@ -688,13 +796,18 @@ if (length(ARGS) > 1) #only plot if a second ARGS "save" is passed when running 
         plot!(
             plt1,
             daily,
-            [parent(sol.u[k].soil.θ_i)[end-1] for k = 1:1:length(sol.t)],
+            [parent(sol.u[k].soil.θ_i)[end - 1] for k in 1:1:length(sol.t)],
             color = "cyan",
             label = "Ice, 5cm",
         )
 
         if drivers.SWC.status != absent
-            Plots.plot!(plt1, seconds ./ 3600 ./ 24, drivers.SWC.values, label = "Data")
+            Plots.plot!(
+                plt1,
+                seconds ./ 3600 ./ 24,
+                drivers.SWC.values,
+                label = "Data",
+            )
         end
 
         plt2 = Plots.plot(
@@ -724,11 +837,16 @@ if (length(ARGS) > 1) #only plot if a second ARGS "save" is passed when running 
             )
             Plots.plot!(
                 daily,
-                cumsum(T .+ E) * dt_model .+ cumsum(measured_T[:])[idx] * dt_data,
+                cumsum(T .+ E) * dt_model .+
+                cumsum(measured_T[:])[idx] * dt_data,
                 label = "Model ET",
             )
 
-            Plots.plot!(ylabel = "∫ Water fluxes dt", xlabel = "Days", margins = 10Plots.mm)
+            Plots.plot!(
+                ylabel = "∫ Water fluxes dt",
+                xlabel = "Days",
+                margins = 10Plots.mm,
+            )
             Plots.savefig(joinpath(savedir, "cumul_p_et.png"))
 
             plt1 = Plots.plot(size = (1500, 400))
@@ -742,9 +860,23 @@ if (length(ARGS) > 1) #only plot if a second ARGS "save" is passed when running 
                 )
             end
             Plots.plot!(plt1, 0.5:0.5:24, TA_avg, label = "Tair (data)")
-            Plots.plot!(plt1, 0.5:0.5:24, soil_T_5_avg, label = "Tsoil (model; 5cm)")
-            Plots.plot!(plt1, 0.5:0.5:24, soil_T_10_avg, label = "Tsoil (model; 11cm)")
-            Plots.plot!(plt1, xlabel = "Hour of day", ylabel = "Average over Simulation")
+            Plots.plot!(
+                plt1,
+                0.5:0.5:24,
+                soil_T_5_avg,
+                label = "Tsoil (model; 5cm)",
+            )
+            Plots.plot!(
+                plt1,
+                0.5:0.5:24,
+                soil_T_10_avg,
+                label = "Tsoil (model; 11cm)",
+            )
+            Plots.plot!(
+                plt1,
+                xlabel = "Hour of day",
+                ylabel = "Average over Simulation",
+            )
             Plots.plot!(plt1, margins = 10Plots.mm)
             Plots.savefig(joinpath(savedir, "soil_temperature.png"))
 
@@ -760,10 +892,19 @@ if (length(ARGS) > 1) #only plot if a second ARGS "save" is passed when running 
             end
             Plots.plot!(plt1, 0.5:0.5:24, TA_avg, label = "Atmos-D")
 
-            Plots.plot!(plt1, 0.5:0.5:24, soil_T_sfc_avg, label = "Soil-M-2.5cm")
+            Plots.plot!(
+                plt1,
+                0.5:0.5:24,
+                soil_T_sfc_avg,
+                label = "Soil-M-2.5cm",
+            )
 
             Plots.plot!(plt1, 0.5:0.5:24, canopy_T_avg, label = "Canopy-M")
-            Plots.plot!(plt1, xlabel = "Hour of day", ylabel = "Average over Simulation")
+            Plots.plot!(
+                plt1,
+                xlabel = "Hour of day",
+                ylabel = "Average over Simulation",
+            )
             Plots.plot!(plt1, margins = 10Plots.mm)
             Plots.savefig(joinpath(savedir, "temperature.png"))
         end
@@ -816,4 +957,9 @@ if (length(ARGS) > 1)
     end
 end
 
-rm(joinpath(climaland_dir, "experiments/integrated/fluxnet/$site_ID/Artifacts.toml"))
+rm(
+    joinpath(
+        climaland_dir,
+        "experiments/integrated/fluxnet/$site_ID/Artifacts.toml",
+    ),
+)

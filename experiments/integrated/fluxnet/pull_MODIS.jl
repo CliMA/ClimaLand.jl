@@ -49,10 +49,12 @@ function single_col_data_matrix(JSON_data::Vector)
     cleansed_dat = [
         [
             chunk["data"][i] < 100 ? chunk["data"][i] : missing for
-            i = 1:length(chunk["data"])
+            i in 1:length(chunk["data"])
         ] for chunk in JSON_data
     ]
-    data_col = [mean(filter(!ismissing, day_dat)) / 10 for day_dat in cleansed_dat]
-    time_col = [DateTime(JSON_data[i]["calendar_date"]) for i = 1:length(JSON_data)]
+    data_col =
+        [mean(filter(!ismissing, day_dat)) / 10 for day_dat in cleansed_dat]
+    time_col =
+        [DateTime(JSON_data[i]["calendar_date"]) for i in 1:length(JSON_data)]
     return hcat(time_col, data_col)
 end

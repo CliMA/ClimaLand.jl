@@ -84,7 +84,8 @@ K_sat_plant = 5e-9 # m/s # seems much too small?
 ψ63 = FT(-2.7 / 0.0098) # / MPa to m, Holtzman's original parameter value is -4 MPa
 Weibull_param = FT(4) # unitless, Holtzman's original c param value
 a = FT(0.05 * 0.0098) # Holtzman's original parameter for the bulk modulus of elasticity
-conductivity_model = PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
+conductivity_model =
+    PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
 retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a)
 capacity = FT(2.0) # kg/m^2
 plant_S_s = FT(1e-2 * 0.0098) # m3/m3/MPa to m3/m3/m
