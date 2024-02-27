@@ -141,7 +141,8 @@ import CLIMAParameters as CP
 # Lastly, let's bring in the bucket model types (from ClimaLand) that we
 # will need access to.
 
-using ClimaLand.Bucket: BucketModel, BucketModelParameters, BulkAlbedoFunction
+using ClimaLand.Bucket:
+    BucketModel, BucketModelParameters, PrescribedBaregroundAlbedo
 using ClimaLand.Domains: coordinates, Column
 using ClimaLand:
     initialize,
@@ -179,16 +180,15 @@ soil_depth = FT(3.5);
 bucket_domain = Column(; zlim = (-soil_depth, FT(0.0)), nelements = 10);
 surface_space = bucket_domain.space.surface
 
-# Define our `BulkAlbedoFunction` model using a constant bareground surface and
+# Define our `PrescribedBaregroundAlbedo` model using a constant bareground surface and
 # snow albedo:
 # The bareground albedo is a function of coordinates, which would be
-# (x,y) on a plane, and (lat,lon) on a sphere. Another albedo
-# option is to specify a `BulkAlbedoStatic` or `BulkAlbedoFunction`,
-# which uses a NetCDF file to read in bareground albedo.
-# These options only applies when coordinates are (lat,lon).
+# (x,y) on a plane, and (lat,lon) on a sphere. It is also an option to supply
+# a netcdf file with the bareground albedo.
 α_bareground_func = (coordinate_point) -> 0.2;
 α_snow = FT(0.8);
-albedo = BulkAlbedoFunction{FT}(α_snow, α_bareground_func, surface_space);
+albedo =
+    PrescribedBaregroundAlbedo{FT}(α_snow, α_bareground_func, surface_space);
 # The critical snow level setting the scale for when we interpolate between
 # snow and surface albedo
 σS_c = FT(0.2);

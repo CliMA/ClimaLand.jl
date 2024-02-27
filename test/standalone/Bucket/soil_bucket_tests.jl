@@ -5,7 +5,8 @@ using Statistics
 
 using ClimaCore
 import CLIMAParameters as CP
-using ClimaLand.Bucket: BucketModel, BucketModelParameters, BulkAlbedoFunction
+using ClimaLand.Bucket:
+    BucketModel, BucketModelParameters, PrescribedBaregroundAlbedo
 using ClimaLand.Domains: coordinates, Column, HybridBox, SphericalShell
 using ClimaLand:
     initialize,
@@ -51,8 +52,11 @@ for FT in (Float32, Float64)
     init_temp(z::FT, value::FT) where {FT} = FT(value)
     for bucket_domain in bucket_domains
         surface_space = bucket_domain.space.surface
-        albedo =
-            BulkAlbedoFunction{FT}(α_snow, α_bareground_func, surface_space)
+        albedo = PrescribedBaregroundAlbedo{FT}(
+            α_snow,
+            α_bareground_func,
+            surface_space,
+        )
 
         @testset "Zero flux tendency, FT = $FT" begin
             # Radiation
