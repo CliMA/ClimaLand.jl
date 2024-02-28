@@ -64,6 +64,7 @@ ClimaLand.get_drivers
 ## Drivers
 ```@docs
 ClimaLand.PrescribedAtmosphere
+ClimaLand.PrescribedPrecipitation
 ClimaLand.PrescribedRadiativeFluxes
 ClimaLand.CoupledAtmosphere
 ClimaLand.CoupledRadiativeFluxes

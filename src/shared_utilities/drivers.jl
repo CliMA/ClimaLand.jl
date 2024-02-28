@@ -8,6 +8,7 @@ import ..Parameters as LP
 export AbstractAtmosphericDrivers,
     AbstractRadiativeDrivers,
     PrescribedAtmosphere,
+    PrescribedPrecipitation,
     CoupledAtmosphere,
     PrescribedRadiativeFluxes,
     CoupledRadiativeFluxes,
@@ -97,6 +98,21 @@ struct PrescribedAtmosphere{
         return new{typeof(h), typeof.(args)...}(args..., h, gustiness)
     end
 end
+
+"""
+    PrescribedPrecipitation{FT, LP} <: AbstractAtmosphericDrivers{FT}
+Container for holding prescribed precipitation driver
+for models which only require precipitation (RichardsModel).
+$(DocStringExtensions.FIELDS)
+"""
+struct PrescribedPrecipitation{FT, LP <: AbstractTimeVaryingInput} <:
+       AbstractAtmosphericDrivers{FT}
+    "Precipitation (m/s) function of time: positive by definition"
+    liquid_precip::LP
+end
+
+PrescribedPrecipitation{FT}(liquid_precip) where {FT} =
+    PrescribedPrecipitation{FT, typeof(liquid_precip)}(liquid_precip)
 
 """
     CoupledRadiativeFluxes{FT} <: AbstractRadiativeDrivers{FT}
@@ -657,6 +673,24 @@ function initialize_drivers(a::PrescribedAtmosphere{FT}, coords) where {FT}
 end
 
 """
+    initialize_drivers(a::PrescribedPrecipitation{FT}, coords) where {FT}
+Creates and returns a NamedTuple for the `PrescribedPrecipitation` driver,
+with variable `P_liq`.
+"""
+function initialize_drivers(a::PrescribedPrecipitation{FT}, coords) where {FT}
+    keys = (:P_liq,)
+    types = (FT,)
+    domain_names = (:surface,)
+    model_name = :drivers
+    # intialize_vars packages the variables as a named tuple,
+    # as part of a named tuple with `model_name` as the key.
+    # Here we just want the variable named tuple itself
+    vars =
+        ClimaLand.initialize_vars(keys, types, domain_names, coords, model_name)
+    return vars.drivers
+end
+
+"""
     initialize_drivers(r::CoupledAtmosphere{FT}, coords) where {FT}
 
 Creates and returns a NamedTuple for the `CoupledAtmosphere` driver,
@@ -766,7 +800,7 @@ make_update_drivers(
     make_update_drivers(a::PrescribedAtmosphere{FT}) where {FT}
 
 Creates and returns a function which updates the driver variables
-in the case of a PrescribedAtmosphere at a point.
+in the case of a PrescribedAtmosphere.
 """
 function make_update_drivers(a::PrescribedAtmosphere{FT}) where {FT}
     function update_drivers!(p, t)
@@ -782,10 +816,22 @@ function make_update_drivers(a::PrescribedAtmosphere{FT}) where {FT}
 end
 
 """
+    make_update_drivers(a::PrescribedPrecipitation{FT}) where {FT}
+Creates and returns a function which updates the driver variables
+in the case of a PrescribedPrecipitation.
+"""
+function make_update_drivers(a::PrescribedPrecipitation{FT}) where {FT}
+    function update_drivers!(p, t)
+        evaluate!(p.drivers.P_liq, a.liquid_precip, t)
+    end
+    return update_drivers!
+end
+
+"""
     make_update_drivers(r::PrescribedRadiativeFluxes{FT}) where {FT}
 
 Creates and returns a function which updates the driver variables
-in the case of a PrescribedRadiativeFluxes at a point.
+in the case of a PrescribedRadiativeFluxes.
 """
 function make_update_drivers(r::PrescribedRadiativeFluxes{FT}) where {FT}
     function update_drivers!(p, t)
