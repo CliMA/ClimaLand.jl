@@ -201,15 +201,22 @@ function plant_absorbed_pfd(
     frac_diff::FT,
 ) where {FT}
 
-    (; ld, Ω, n_layers) = RT.parameters
+    (; χl, Ω, n_layers) = RT.parameters
+
+    ϕ1 = 0.5 - 0.633 * χl - 0.33 * χl^2
+    ϕ2 = 0.877 * (1 - 2 * ϕ1)
+    μ = cos(θs)
 
     # Compute μ̄, the average inverse diffuse optical length per LAI
-    μ̄ = 1 / (2 * ld)
+    μ̄ = 1 / ϕ2 * (1 - (ϕ1 / ϕ2) * log((ϕ1 + ϕ2) / ϕ1))
+
+    # Compute the leaf angular distribution based on the leaf orientation index
+    ld = ϕ1 + ϕ2 * μ
 
     ω = α_leaf + τ_leaf
 
     # Compute aₛ, the single scattering albedo
-    aₛ = 0.5 * ω * (1 - cos(θs) * log((abs(cos(θs)) + 1) / abs(cos(θs))))
+    aₛ = 0.5 * ω * (ld / min(μ * ϕ2 + ld, 1e-6)) * (1 - (μ * ϕ1 / min(μ * ϕ2 + ld, 1e-6)) * log((μ * ϕ1 + min(μ * ϕ2 + ld, 1e-6)) / μ * ϕ1))
 
     # Compute β₀, the direct upscattering parameter
     β₀ = (1 / ω) * aₛ * (1 + μ̄ * K) / (μ̄ * K)

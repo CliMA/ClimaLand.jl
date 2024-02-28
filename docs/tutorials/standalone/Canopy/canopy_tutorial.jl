@@ -155,7 +155,7 @@ soil_driver = PrescribedSoil(
 # Provide arguments to each component, beginning with radiative transfer:
 
 rt_params = TwoStreamParameters{FT}(;
-    ld = FT(0.5),
+    χl = FT(0.25),
     α_PAR_leaf = FT(0.1),
     α_NIR_leaf = FT(0.45),
     τ_PAR_leaf = FT(0.05),

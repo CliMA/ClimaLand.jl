@@ -252,7 +252,7 @@ autotrophic_respiration_args =
 
 radiative_transfer_args = (;
     parameters = TwoStreamParameters{FT}(;
-        ld = FT(0.5),
+        χl = FT(0.25),
         α_PAR_leaf = FT(0.1),
         α_NIR_leaf = FT(0.45),
         τ_PAR_leaf = FT(0.05),

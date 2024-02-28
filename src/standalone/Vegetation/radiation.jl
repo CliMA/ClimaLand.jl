@@ -84,8 +84,8 @@ The required parameters for the two-stream radiative transfer model.
 $(DocStringExtensions.FIELDS)
 """
 struct TwoStreamParameters{FT <: AbstractFloat}
-    "Leaf angle distribution function (unitless)"
-    ld::FT
+    "Leaf/Stem Orientation Index (unitless)"
+    χl::FT
     "PAR leaf reflectance (unitless)"
     α_PAR_leaf::FT
     "PAR leaf element transmittance"
@@ -111,7 +111,7 @@ end
 
 """
     function TwoStreamParameters{FT}(;
-        ld = FT(0.5),
+        χl = FT(0.25),
         α_PAR_leaf = FT(0.3),
         τ_PAR_leaf = FT(0.2),
         α_NIR_leaf = FT(0.4),
@@ -126,7 +126,7 @@ end
 A constructor supplying default values for the TwoStreamParameters struct.
     """
 function TwoStreamParameters{FT}(;
-    ld = FT(0.5),
+    χl = FT(0.25),
     α_PAR_leaf = FT(0.3),
     τ_PAR_leaf = FT(0.2),
     α_NIR_leaf = FT(0.4),
@@ -138,7 +138,7 @@ function TwoStreamParameters{FT}(;
     n_layers = UInt64(20),
 ) where {FT}
     return TwoStreamParameters{FT}(
-        ld,
+        χl,
         α_PAR_leaf,
         τ_PAR_leaf,
         α_NIR_leaf,
