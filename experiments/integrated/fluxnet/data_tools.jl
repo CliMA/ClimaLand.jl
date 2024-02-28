@@ -127,7 +127,6 @@ the mean value per the QC flag.
 """
 
 function filter_column(driver_data::Matrix, column_name::String, units::String)
-    println(column_name)
     # Check that the data exists and read it in if so
     col_dat, status = column_status(driver_data, column_name)
     # Set missing data threshold above which column is treated as absent
