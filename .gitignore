@@ -3,6 +3,7 @@
 *.txt
 *#
 *~
+*.nc
 *.png
 *.mp4
 *.pdf

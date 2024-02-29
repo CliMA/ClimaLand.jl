@@ -16,7 +16,12 @@ FT = Float32
         FT(1);
     )
     pr = ClimaLand.PrescribedRadiativeFluxes(FT, nothing, nothing, nothing)
+    liquid_precip =
+        ClimaLand.TimeVaryingInputs.AnalyticTimeVaryingInput((t) -> -1.0)
+    pp = ClimaLand.PrescribedPrecipitation{FT}(liquid_precip)
     coords = (; surface = [1, 2, 3])
+    @test ClimaLand.initialize_drivers(pp, nothing, coords) ==
+          NamedTuple{(:P_liq,)}((zeros(FT, 3),))
     @test ClimaLand.initialize_drivers(nothing, nothing, coords) == (;)
     pa_keys = (:P_liq, :P_snow, :T, :P, :u, :q, :c_co2)
     pa_vals = ([zeros(FT, 3) for k in pa_keys]...,)
@@ -116,4 +121,12 @@ end
     @test p.drivers.SW_d == [FT(10)]
     @test p.drivers.LW_d == [FT(10)]
     @test p.drivers.θs == [FT(0)]
+
+    liquid_precip =
+        ClimaLand.TimeVaryingInputs.AnalyticTimeVaryingInput((t) -> -1.0)
+    pp = ClimaLand.PrescribedPrecipitation{FT}(liquid_precip)
+    precip_update! = ClimaLand.make_update_drivers(pp, nothing)
+    p = (; drivers = ClimaLand.initialize_drivers(pp, nothing, coords))
+    precip_update!(p, 0.0)
+    @test p.drivers.P_liq == [FT(-1.0)]
 end
