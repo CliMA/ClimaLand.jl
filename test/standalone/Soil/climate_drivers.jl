@@ -78,9 +78,15 @@ for FT in (Float32, Float64)
         )
         @test atmos.gustiness == FT(1)
         top_bc = ClimaLand.Soil.AtmosDrivenFluxBC(atmos, radiation)
-        zero_flux = FluxBC((p, t) -> 0.0)
-        boundary_fluxes =
-            (; top = top_bc, bottom = (water = zero_flux, heat = zero_flux))
+        zero_water_flux = WaterFluxBC((p, t) -> 0.0)
+        zero_heat_flux = HeatFluxBC((p, t) -> 0.0)
+        boundary_fluxes = (;
+            top = top_bc,
+            bottom = WaterHeatBC(;
+                water = zero_water_flux,
+                heat = zero_heat_flux,
+            ),
+        )
         params = ClimaLand.Soil.EnergyHydrologyParameters{FT}(;
             ν = ν,
             ν_ss_om = ν_ss_om,
@@ -225,7 +231,7 @@ for FT in (Float32, Float64)
             @test R_n == p.soil.R_n
             @test conditions == p.soil.turbulent_fluxes
 
-            fluxes = ClimaLand.Soil.soil_boundary_fluxes(
+            ClimaLand.Soil.soil_boundary_fluxes!(
                 top_bc,
                 ClimaLand.TopBoundary(),
                 model,
@@ -234,8 +240,8 @@ for FT in (Float32, Float64)
                 p,
                 t,
             )
-            computed_water_flux = fluxes.water
-            computed_energy_flux = fluxes.heat
+            computed_water_flux = p.soil.top_bc.water
+            computed_energy_flux = p.soil.top_bc.heat
             (; ν, θ_r, d_ds) = model.parameters
             _D_vapor = FT(LP.D_vapor(model.parameters.earth_param_set))
             S_l_sfc = ClimaLand.Domains.top_center_to_surface(

@@ -49,17 +49,17 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
 
     lsm_domain = Column(; zlim = (zmin, zmax), nelements = nelems)
 
-    top_flux_bc_w = Soil.FluxBC((p, t) -> -0.00001)
+    top_flux_bc_w = Soil.WaterFluxBC((p, t) -> -0.00001)
     bot_flux_bc_w = Soil.FreeDrainage()
 
-    top_flux_bc_h = Soil.FluxBC((p, t) -> 0.0)
-    bot_flux_bc_h = Soil.FluxBC((p, t) -> 0.0)
+    top_flux_bc_h = Soil.HeatFluxBC((p, t) -> 0.0)
+    bot_flux_bc_h = Soil.HeatFluxBC((p, t) -> 0.0)
 
 
     sources = (PhaseChange{FT}(Δz),)
     boundary_fluxes = (;
-        top = (water = top_flux_bc_w, heat = bot_flux_bc_h),
-        bottom = (water = bot_flux_bc_w, heat = bot_flux_bc_h),
+        top = WaterHeatBC(; water = top_flux_bc_w, heat = bot_flux_bc_h),
+        bottom = WaterHeatBC(; water = bot_flux_bc_w, heat = bot_flux_bc_h),
     )
     soil_args = (;
         boundary_conditions = boundary_fluxes,
@@ -79,8 +79,7 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
     co2_top_bc = Soil.Biogeochemistry.SoilCO2StateBC((p, t) -> 0.0)
     co2_bot_bc = Soil.Biogeochemistry.SoilCO2StateBC((p, t) -> 0.0)
     co2_sources = (MicrobeProduction{FT}(),)
-    co2_boundary_conditions =
-        (; top = (CO2 = co2_top_bc,), bottom = (CO2 = co2_bot_bc,))
+    co2_boundary_conditions = (; top = co2_top_bc, bottom = co2_bot_bc)
 
     # Make a PrescribedAtmosphere - we only care about atmos_p though
     precipitation_function = (t) -> 1.0

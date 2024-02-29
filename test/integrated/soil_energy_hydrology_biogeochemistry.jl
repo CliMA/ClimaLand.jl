@@ -1,5 +1,6 @@
 using Test
 using ClimaCore
+import ClimaParams
 using ClimaLand
 using ClimaLand.Domains: Column
 using ClimaLand.Soil
@@ -38,11 +39,18 @@ for FT in (Float32, Float64)
         zmin = FT(-1)
         nelems = 20
         lsm_domain = Column(; zlim = (zmin, zmax), nelements = nelems)
-        zero_flux_bc = Soil.FluxBC((p, t) -> 0.0)
-        sources = () # PhaseChange
+        zero_water_flux_bc = Soil.WaterFluxBC((p, t) -> 0.0)
+        zero_heat_flux_bc = Soil.HeatFluxBC((p, t) -> 0.0)
+        sources = ()
         boundary_fluxes = (;
-            top = (water = zero_flux_bc, heat = zero_flux_bc),
-            bottom = (water = zero_flux_bc, heat = zero_flux_bc),
+            top = WaterHeatBC(;
+                water = zero_water_flux_bc,
+                heat = zero_heat_flux_bc,
+            ),
+            bottom = WaterHeatBC(;
+                water = zero_water_flux_bc,
+                heat = zero_heat_flux_bc,
+            ),
         )
         soil_args = (;
             boundary_conditions = boundary_fluxes,
@@ -61,8 +69,7 @@ for FT in (Float32, Float64)
         co2_top_bc = Soil.Biogeochemistry.SoilCO2StateBC((p, t) -> C)
         co2_bot_bc = Soil.Biogeochemistry.SoilCO2StateBC((p, t) -> C)
         co2_sources = ()
-        co2_boundary_conditions =
-            (; (top = (; CO2 = co2_top_bc)), (bottom = (; CO2 = co2_bot_bc)))
+        co2_boundary_conditions = (; top = co2_top_bc, bottom = co2_bot_bc)
 
         # Make a PrescribedAtmosphere - we only care about atmos_p though
         precipitation_function = (t) -> 1.0

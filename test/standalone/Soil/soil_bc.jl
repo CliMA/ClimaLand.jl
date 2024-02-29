@@ -1,6 +1,7 @@
 using Test
 using Statistics
 using ClimaCore
+import ClimaParams
 using ClimaLand
 using ClimaLand.Soil
 using ClimaLand.Domains: HybridBox, SphericalShell, Column
@@ -221,13 +222,18 @@ end
     nelems = 200
     Δz = abs(zmax - zmin) / nelems
     soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems)
-    top_flux_bc = FluxBC((p, t) -> -1.0e-8)
-    bot_flux_bc = FluxBC((p, t) -> -2.0e-8)
+    top_heat_flux_bc = HeatFluxBC((p, t) -> -1.0e-8)
+    top_water_flux_bc = WaterFluxBC((p, t) -> -1.0e-8)
+    bot_heat_flux_bc = HeatFluxBC((p, t) -> -2.0e-8)
+    bot_water_flux_bc = WaterFluxBC((p, t) -> -2.0e-8)
     sources = ()
     # Use the same BCs for RRE and heat
     boundary_fluxes = (;
-        top = (water = top_flux_bc, heat = top_flux_bc),
-        bottom = (water = bot_flux_bc, heat = bot_flux_bc),
+        top = WaterHeatBC(; water = top_water_flux_bc, heat = top_heat_flux_bc),
+        bottom = WaterHeatBC(;
+            water = bot_water_flux_bc,
+            heat = bot_heat_flux_bc,
+        ),
     )
 
     parameters = Soil.EnergyHydrologyParameters{FT}(;
@@ -247,22 +253,30 @@ end
         boundary_conditions = boundary_fluxes,
         sources = sources,
     )
-    bc = boundary_fluxes
-    @test Soil.boundary_vars(bc, ClimaLand.TopBoundary()) == (:top_bc,)
-    @test Soil.boundary_var_domain_names(bc, ClimaLand.TopBoundary()) ==
-          (:surface,)
+
+    @test Soil.boundary_vars(boundary_fluxes.top, ClimaLand.TopBoundary()) ==
+          (:top_bc,)
+    @test Soil.boundary_var_domain_names(
+        boundary_fluxes.top,
+        ClimaLand.TopBoundary(),
+    ) == (:surface,)
     @test Soil.boundary_var_types(
         energy_hydrology,
-        bc,
+        boundary_fluxes.top,
         ClimaLand.TopBoundary(),
     ) == (NamedTuple{(:water, :heat), Tuple{Float32, Float32}},)
 
-    @test Soil.boundary_vars(bc, ClimaLand.BottomBoundary()) == (:bottom_bc,)
-    @test Soil.boundary_var_domain_names(bc, ClimaLand.BottomBoundary()) ==
-          (:surface,)
+    @test Soil.boundary_vars(
+        boundary_fluxes.bottom,
+        ClimaLand.BottomBoundary(),
+    ) == (:bottom_bc,)
+    @test Soil.boundary_var_domain_names(
+        boundary_fluxes.bottom,
+        ClimaLand.BottomBoundary(),
+    ) == (:surface,)
     @test Soil.boundary_var_types(
         energy_hydrology,
-        bc,
+        boundary_fluxes.bottom,
         ClimaLand.BottomBoundary(),
     ) == (NamedTuple{(:water, :heat), Tuple{Float32, Float32}},)
     Y, p, cds = initialize(energy_hydrology)
@@ -272,18 +286,17 @@ end
     update_boundary_vars! = make_update_boundary_fluxes(energy_hydrology)
     update_boundary_vars!(p, Y, FT(0))
     f = similar(p.soil.top_bc.water)
-    fill!(ClimaCore.Fields.field_values(f), FT(top_flux_bc.bc(p, FT(0))))
+    fill!(ClimaCore.Fields.field_values(f), FT(top_heat_flux_bc.bc(p, FT(0))))
     @test p.soil.top_bc.water == f
     @test p.soil.top_bc.heat == f
 
     f = similar(p.soil.bottom_bc.water)
-    fill!(ClimaCore.Fields.field_values(f), FT(bot_flux_bc.bc(p, FT(0))))
+    fill!(ClimaCore.Fields.field_values(f), FT(bot_heat_flux_bc.bc(p, FT(0))))
     @test p.soil.bottom_bc.water == f
     @test p.soil.bottom_bc.heat == f
 
 
-    boundary_fluxes =
-        (; top = (water = top_flux_bc,), bottom = (water = bot_flux_bc,))
+    boundary_fluxes = (; top = top_water_flux_bc, bottom = bot_water_flux_bc)
 
     parameters = Soil.RichardsParameters(;
         ν = ν,
@@ -292,7 +305,6 @@ end
         S_s = S_s,
         θ_r = θ_r,
     )
-    bc = boundary_fluxes
     rre = Soil.RichardsModel{FT}(;
         parameters = parameters,
         domain = soil_domain,
@@ -300,26 +312,44 @@ end
         sources = sources,
     )
 
-    @test Soil.boundary_vars(bc, ClimaLand.TopBoundary()) == (:top_bc,)
-    @test Soil.boundary_var_domain_names(bc, ClimaLand.TopBoundary()) ==
-          (:surface,)
-    @test Soil.boundary_var_types(rre, bc, ClimaLand.TopBoundary()) ==
-          (NamedTuple{(:water,), Tuple{Float32}},)
+    @test Soil.boundary_vars(boundary_fluxes.top, ClimaLand.TopBoundary()) ==
+          (:top_bc,)
+    @test Soil.boundary_var_domain_names(
+        boundary_fluxes.top,
+        ClimaLand.TopBoundary(),
+    ) == (:surface,)
+    @test Soil.boundary_var_types(
+        rre,
+        boundary_fluxes.top,
+        ClimaLand.TopBoundary(),
+    ) == (FT,)
 
-    @test Soil.boundary_vars(bc, ClimaLand.BottomBoundary()) == (:bottom_bc,)
-    @test Soil.boundary_var_domain_names(bc, ClimaLand.BottomBoundary()) ==
-          (:surface,)
-    @test Soil.boundary_var_types(rre, bc, ClimaLand.BottomBoundary()) ==
-          (NamedTuple{(:water,), Tuple{Float32}},)
+    @test Soil.boundary_vars(boundary_fluxes.top, ClimaLand.BottomBoundary()) ==
+          (:bottom_bc,)
+    @test Soil.boundary_var_domain_names(
+        boundary_fluxes.top,
+        ClimaLand.BottomBoundary(),
+    ) == (:surface,)
+    @test Soil.boundary_var_types(
+        rre,
+        boundary_fluxes.bottom,
+        ClimaLand.BottomBoundary(),
+    ) == (FT,)
 
     Y, p, cds = initialize(rre)
     Y.soil.ϑ_l .= ν
     update_boundary_vars! = make_update_boundary_fluxes(rre)
     update_boundary_vars!(p, Y, FT(0))
-    f = similar(p.soil.top_bc.water)
-    fill!(ClimaCore.Fields.field_values(f), FT(top_flux_bc.bc(p, FT(0))))
-    @test p.soil.top_bc.water == f
-    f = similar(p.soil.bottom_bc.water)
-    fill!(ClimaCore.Fields.field_values(f), FT(bot_flux_bc.bc(p, FT(0))))
-    @test p.soil.bottom_bc.water == f
+    f = similar(p.soil.top_bc)
+    fill!(
+        ClimaCore.Fields.field_values(f),
+        FT(boundary_fluxes.top.bc(p, FT(0))),
+    )
+    @test p.soil.top_bc == f
+    f = similar(p.soil.bottom_bc)
+    fill!(
+        ClimaCore.Fields.field_values(f),
+        FT(boundary_fluxes.bottom.bc(p, FT(0))),
+    )
+    @test p.soil.bottom_bc == f
 end

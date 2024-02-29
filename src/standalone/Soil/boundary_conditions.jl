@@ -1,14 +1,20 @@
-import ClimaLand: AbstractBC, AbstractBoundary, boundary_flux
-export TemperatureStateBC,
-    MoistureStateBC,
-    FreeDrainage,
-    FluxBC,
-    AtmosDrivenFluxBC,
-    RichardsAtmosDrivenFluxBC,
+import ClimaLand:
+    AbstractBoundary,
+    AbstractBC,
+    boundary_flux,
     boundary_vars,
     boundary_var_domain_names,
     boundary_var_types
+export TemperatureStateBC,
+    MoistureStateBC,
+    FreeDrainage,
+    HeatFluxBC,
+    WaterFluxBC,
+    AtmosDrivenFluxBC,
+    RichardsAtmosDrivenFluxBC,
+    WaterHeatBC
 
+# Helper functions
 """
     get_top_surface_field(
         center_field::ClimaCore.Fields.Field,
@@ -76,144 +82,45 @@ function get_bottom_surface_field(center_val, _)
     return center_val
 end
 
+# New BC type for Richards Equation (AbstractWaterBC)
 """
-    AbstractSoilBC <: ClimaLand. AbstractBC
+    AbstractWaterBC <: ClimaLand.AbstractBC
 
-An abstract type for soil-specific types of boundary conditions, like free drainage.
+An abstract type for boundary conditions for Richards equation.
 """
-abstract type AbstractSoilBC <: ClimaLand.AbstractBC end
-
-
-"""
-    boundary_vars(::NamedTuple, ::ClimaLand.TopBoundary)
-
-The list of symbols for additional variables to add to the soil
-model auxiliary state, which defaults to adding storage for the
- top boundary flux fields,
-but which can be extended depending on the type of boundary condition used.
-
-Note that `:top_bc` must be present, with the default type and domain name,
-for both the RichardsModel and the 
-EnergyHydrology soil models.
-
- Use this function in the exact same way you would use `auxiliary_vars`.
-"""
-boundary_vars(::NamedTuple, ::ClimaLand.TopBoundary) = (:top_bc,)
+abstract type AbstractWaterBC <: ClimaLand.AbstractBC end
 
 """
-    boundary_vars(::NamedTuple, ::ClimaLand.BottomBoundary)
-
-The list of symbols for additional variables to add to the soil
-model auxiliary state, which defaults to adding storage for the
- bottom boundary flux fields,
-but which can be extended depending on the type of boundary condition used.
-
-Use this function in the exact same way you would use `auxiliary_vars`.
-
-Note that `:bottom_bc` must be present, with the default type and domain name,
-for both the RichardsModel and the 
-EnergyHydrology soil models.
-"""
-boundary_vars(::NamedTuple, ::ClimaLand.BottomBoundary) = (:bottom_bc,)
-
-"""
-    boundary_var_domain_names(::AbstractSoilBC, ::ClimaLand.AbstractBoundary)
-
-The list of domain names for additional variables to add to the soil
-model auxiliary state,  which defaults to adding storage for the
- boundary flux fields,
-but which can be extended depending on the type of boundary condition used.
-Note that extensions to this function must still include a flux bc defined on
-the surface in addition to other variables.
-
-Use this function in the exact same way you would use `auxiliary_var_domain_names`.
-"""
-boundary_var_domain_names(::NamedTuple, ::ClimaLand.AbstractBoundary) =
-    (:surface,)
-
-"""
-    boundary_var_types(::Soil.EnergyHydrology{FT}, ::NamedTuple, ::ClimaLand.AbstractBoundary) where {FT}
-
-The list of variable types for additional variables to add to the EnergyHydrology
-model auxiliary state, which defaults to adding storage for the
- boundary flux fields,
-but which can be extended depending on the type of boundary condition used.
-
-Use this function in the exact same way you would use `auxiliary_types`.
-Note that extensions to this function must still include a flux bc defined on
-the surface in addition to other variables.
-"""
-function boundary_var_types(
-    ::Soil.EnergyHydrology{FT},
-    ::NamedTuple,
-    ::ClimaLand.AbstractBoundary,
-) where {FT}
-    (NamedTuple{(:water, :heat), Tuple{FT, FT}},)
-end
-
-"""
-    boundary_var_types(::Soil.RichardsModel{FT}, ::NamedTuple, ::ClimaLand.AbstractBoundary) where {FT}
-
-The list of variable types for additional variables to add to the Richards
-model auxiliary state,  which defaults to adding storage for the
- boundary flux fields,
-but which can be extended depending on the type of boundary condition used.
-
-Since the only prognostic variable for the Richards-Richardson equation is the
-volumetric water content, only a water flux boundary condition is required per boundary.
-
-Use this function in the exact same way you would use `auxiliary_types`.
-Note that extensions to this function must still include a flux bc defined on
-the surface in addition to other variables.
-"""
-boundary_var_types(
-    ::Soil.RichardsModel{FT},
-    ::NamedTuple,
-    ::ClimaLand.AbstractBoundary,
-) where {FT} = (NamedTuple{(:water,), Tuple{FT}},)
-
-
-"""
-   MoistureStateBC <: AbstractSoilBC
+   MoistureStateBC <: AbstractWaterBC
 
 A simple concrete type of boundary condition, which enforces a
 state boundary condition ϑ_l = f(p,t) at either the top or bottom of the domain.
 """
-struct MoistureStateBC{F <: Function} <: AbstractSoilBC
+struct MoistureStateBC{F <: Function} <: AbstractWaterBC
     bc::F
 end
 
 """
-   TemperatureStateBC <: AbstractSoilBC
-
-A simple concrete type of boundary condition, which enforces a
-state boundary condition T = f(p,t) at either the top or bottom of the domain.
-"""
-struct TemperatureStateBC{F <: Function} <: AbstractSoilBC
-    bc::F
-end
-
-"""
-   FluxBC <: AbstractSoilBC
+   WaterFluxBC <: AbstractWaterBC
 
 A simple concrete type of boundary condition, which enforces a
 normal flux boundary condition f(p,t) at either the top or bottom of the domain.
 """
-struct FluxBC{F <: Function} <: AbstractSoilBC
+struct WaterFluxBC{F <: Function} <: AbstractWaterBC
     bc::F
 end
 
 """
-    FreeDrainage <: AbstractSoilBC
+    FreeDrainage <: AbstractWaterBC
 A concrete type of soil boundary condition, for use at
 the BottomBoundary only, where the flux is set to be
 `F = -K∇h = -K`.
 """
-struct FreeDrainage <: AbstractSoilBC end
+struct FreeDrainage <: AbstractWaterBC end
 
 
 """
-   RichardsAtmosDrivenFluxBC{F <: Function, R <: AbstractRunoffModel} <: AbstractSoilBC
+   RichardsAtmosDrivenFluxBC{F <: PrescribedPrecipitation, R <: AbstractRunoffModel} <: AbstractSoilBC
 
 A concrete type of boundary condition intended only for use with the RichardsModel,
 which uses a prescribed precipitation rate (m/s) to compute the infiltration
@@ -228,196 +135,38 @@ If you wish to simulate precipitation and runoff in the full `EnergyHydrology` m
 you must use the `AtmosDrivenFluxBC` type.
 $(DocStringExtensions.FIELDS)
 """
-struct RichardsAtmosDrivenFluxBC{F <: Function, R <: AbstractRunoffModel} <:
-       AbstractSoilBC
+struct RichardsAtmosDrivenFluxBC{
+    F <: PrescribedPrecipitation,
+    R <: AbstractRunoffModel,
+} <: AbstractWaterBC
     "The prescribed liquid water precipitation rate f(t) (m/s); Negative by convention."
     precip::F
     "The runoff model. The default is no runoff."
     runoff::R
 end
 
-function RichardsAtmosDrivenFluxBC(precip::Function; runoff = NoRunoff())
+function RichardsAtmosDrivenFluxBC(
+    precip::PrescribedPrecipitation;
+    runoff = NoRunoff(),
+)
     return RichardsAtmosDrivenFluxBC{typeof(precip), typeof(runoff)}(
         precip,
         runoff,
     )
 end
 
-
-
-"""
-    AtmosDrivenFluxBC{
-        A <: AbstractAtmosphericDrivers,
-        B <: AbstractRadiativeDrivers,
-        R <: AbstractRunoffModel
-    } <: AbstractSoilBC
-
-A concrete type of soil boundary condition for use at the top
-of the domain. This holds the conditions for the atmosphere
-`AbstractAtmosphericDrivers`, for the radiation state
-`AbstractRadiativeDrivers`. This is only supported for the
-`EnergyHydrology` model.
-
-This choice indicates the Monin-Obukhov Surface Theory will
-be used to compute the sensible and latent heat fluxes, as
-well as evaporation,
- and that the net radiation and precipitation
-will also be computed. The net energy and water fluxes
-are used as boundary conditions.
-
-A runoff model is used
-to simulate surface and subsurface runoff and this is accounted
-for when setting boundary conditions. The default is to have no runoff
-accounted for.
-
-$(DocStringExtensions.FIELDS)
-"""
-struct AtmosDrivenFluxBC{
-    A <: AbstractAtmosphericDrivers,
-    B <: AbstractRadiativeDrivers,
-    R <: AbstractRunoffModel,
-} <: AbstractSoilBC
-    "The atmospheric conditions driving the model"
-    atmos::A
-    "The radiative fluxes driving the model"
-    radiation::B
-    "The runoff model. The default is no runoff."
-    runoff::R
-end
-
-
-function AtmosDrivenFluxBC(atmos, radiation; runoff = NoRunoff())
-    args = (atmos, radiation, runoff)
-    return AtmosDrivenFluxBC{typeof.(args)...}(args...)
-end
+# Methods
 
 """
-    create_soil_bc_named_tuple(water_flux, heat_flux)
-
-A helper function which takes in two scalar values of `water_flux`
-and `heat_flux`, and creates a named tuple out of them.
-
-When broadcasted over two ClimaCore.Fields.Field objects, 
-this returns a Field of NamedTuples which we can access like
-x.water, x.heat, to obtain the boundary condition fields.
-"""
-function create_soil_bc_named_tuple(water_flux, heat_flux)
-    return (; :water => water_flux, :heat => heat_flux)
-end
-
-"""
-    boundary_vars(::AtmosDrivenFluxBC, ::ClimaLand.TopBoundary)
-
-An extension of the `boundary_vars` method for AtmosDrivenFluxBC. This
-adds the surface conditions (SHF, LHF, evaporation, and resistance) and the
-net radiation to the auxiliary variables.
-
-These variables are updated in place in `soil_boundary_fluxes`.
-"""
-boundary_vars(bc::AtmosDrivenFluxBC, ::ClimaLand.TopBoundary) =
-    (:turbulent_fluxes, :R_n, :top_bc)
-
-"""
-    boundary_var_domain_names(::AtmosDrivenFluxBC, ::ClimaLand.TopBoundary))
-
-An extension of the `boundary_var_domain_names` method for AtmosDrivenFluxBC. This
-specifies the part of the domain on which the additional variables should be
-defined.
-"""
-boundary_var_domain_names(bc::AtmosDrivenFluxBC, ::ClimaLand.TopBoundary) =
-    (:surface, :surface, :surface)
-"""
-    boundary_var_types(
-        ::AtmosDrivenFluxBC{
-            <:PrescribedAtmosphere{FT},
-            <:AbstractRadiativeDrivers{FT},
-            <:AbstractRunoffModel,
-        }, ::ClimaLand.TopBoundary,
-    ) where {FT}
-
-An extension of the `boundary_var_types` method for AtmosDrivenFluxBC. This
-specifies the type of the additional variables.
-"""
-boundary_var_types(
-    model::EnergyHydrology{FT},
-    bc::AtmosDrivenFluxBC{
-        <:PrescribedAtmosphere{FT},
-        <:AbstractRadiativeDrivers{FT},
-        <:AbstractRunoffModel,
-    },
-    ::ClimaLand.TopBoundary,
-) where {FT} = (
-    NamedTuple{(:lhf, :shf, :vapor_flux, :r_ae), Tuple{FT, FT, FT, FT}},
-    FT,
-    NamedTuple{(:water, :heat), Tuple{FT, FT}},
-)
-
-
-"""
-    soil_boundary_fluxes(
-        bc::AtmosDrivenFluxBC{
-            <:PrescribedAtmosphere,
-            <:PrescribedRadiativeFluxes,
-        },
-        boundary::ClimaLand.TopBoundary,
-        model::EnergyHydrology,
-        Δz,
-        Y,
-        p,
-        t,
-    )
-
-Returns the net volumetric water flux (m/s) and net energy
-flux (W/m^2) for the soil `EnergyHydrology` model at the top
-of the soil domain.
-
-If you wish to compute surface fluxes taking into account the
-presence of a canopy, snow, etc, as in a land surface model,
-this is not the correct method to be using.
-
-This function calls the `turbulent_fluxes` and `net_radiation`
-functions, which use the soil surface conditions as well as
-the atmos and radiation conditions in order to
-compute the surface fluxes using Monin Obukhov Surface Theory.
-"""
-function soil_boundary_fluxes(
-    bc::AtmosDrivenFluxBC{<:PrescribedAtmosphere, <:PrescribedRadiativeFluxes},
-    boundary::ClimaLand.TopBoundary,
-    model::EnergyHydrology,
-    Δz,
-    Y,
-    p,
-    t,
-)
-
-    p.soil.turbulent_fluxes .= turbulent_fluxes(bc.atmos, model, Y, p, t)
-    p.soil.R_n .= net_radiation(bc.radiation, model, Y, p, t)
-    # We are ignoring sublimation for now
-    precip = p.drivers.P_liq
-    infiltration = soil_surface_infiltration(
-        bc.runoff,
-        precip .+ p.soil.turbulent_fluxes.vapor_flux,
-        Y,
-        p,
-        model.parameters,
-    )
-    # We do not model the energy flux from infiltration
-    return @. create_soil_bc_named_tuple(
-        infiltration,
-        p.soil.R_n + p.soil.turbulent_fluxes.lhf + p.soil.turbulent_fluxes.shf,
-    )
-end
-
-"""
-    ClimaLand.boundary_flux(bc::FluxBC,  _...)::ClimaCore.Fields.Field
+    boundary_flux(bc::WaterFluxBC,  _...)::ClimaCore.Fields.Field
 
 A method of boundary fluxes which returns the desired flux.
 
 We add a field of zeros in order to convert the bc (float) into
 a field.
 """
-function ClimaLand.boundary_flux(
-    bc::FluxBC,
+function boundary_flux(
+    bc::WaterFluxBC,
     boundary::ClimaLand.AbstractBoundary,
     model,
     Δz::ClimaCore.Fields.Field,
@@ -431,7 +180,7 @@ end
 
 
 """
-    ClimaLand.boundary_flux(bc::RichardsAtmosDrivenFluxBC,
+    boundary_flux(bc::RichardsAtmosDrivenFluxBC,
                            boundary::ClimaLand.AbstractBoundary,
                            model::RichardsModel{FT},
                            Δz::ClimaCore.Fields.Field,
@@ -447,7 +196,7 @@ precipitation flux.
 If `model.runoff` is not of type `NoRunoff`, surface runoff is accounted for
 when computing the infiltration.
 """
-function ClimaLand.boundary_flux(
+function boundary_flux(
     bc::RichardsAtmosDrivenFluxBC,
     boundary::ClimaLand.AbstractBoundary,
     model::RichardsModel,
@@ -462,7 +211,7 @@ function ClimaLand.boundary_flux(
 end
 
 """
-    ClimaLand.boundary_flux(rre_bc::MoistureStateBC,
+    boundary_flux(rre_bc::MoistureStateBC,
                            ::ClimaLand.TopBoundary,
                            model::AbstractSoilModel,
                            Δz::ClimaCore.Fields.Field,
@@ -474,7 +223,7 @@ end
 A method of boundary fluxes which converts a state boundary condition on θ_l at the top of the
 domain into a flux of liquid water.
 """
-function ClimaLand.boundary_flux(
+function boundary_flux(
     rre_bc::MoistureStateBC,
     ::ClimaLand.TopBoundary,
     model::AbstractSoilModel,
@@ -513,7 +262,7 @@ function ClimaLand.boundary_flux(
 end
 
 """
-    ClimaLand.boundary_flux(rre_bc::MoistureStateBC,
+    boundary_flux(rre_bc::MoistureStateBC,
                            ::ClimaLand.BottomBoundary,
                            model::AbstractSoilModel,
                            Δz::ClimaCore.Fields.Field,
@@ -525,7 +274,7 @@ end
 A method of boundary fluxes which converts a state boundary condition on θ_l at the bottom of the
 domain into a flux of liquid water.
 """
-function ClimaLand.boundary_flux(
+function boundary_flux(
     rre_bc::MoistureStateBC,
     ::ClimaLand.BottomBoundary,
     model::AbstractSoilModel,
@@ -566,75 +315,8 @@ function ClimaLand.boundary_flux(
     return ClimaLand.diffusive_flux(K_eff, ψ_c .+ Δz, ψ_bc, Δz)
 end
 
-
 """
-    ClimaLand.boundary_flux(heat_bc::TemperatureStateBC,
-                           ::ClimaLand.TopBoundary,
-                           model::EnergyHydrology,
-                           Δz::ClimaCore.Fields.Field,
-                           Y::ClimaCore.Fields.FieldVector,
-                           p::NamedTuple,
-                           t,
-                           )::ClimaCore.Fields.Field
-
-A method of boundary fluxes which converts a state boundary condition on temperature at the top of the
-domain into a flux of energy.
-"""
-function ClimaLand.boundary_flux(
-    heat_bc::TemperatureStateBC,
-    ::ClimaLand.TopBoundary,
-    model::EnergyHydrology,
-    Δz::ClimaCore.Fields.Field,
-    Y::ClimaCore.Fields.FieldVector,
-    p::NamedTuple,
-    t,
-)::ClimaCore.Fields.Field
-    FT = eltype(Δz)
-    # Approximate κ_bc ≈ κ_c (center closest to the boundary)
-    surface_space = axes(Δz)
-    # We need to project the center values onto the face space.
-    T_c = get_top_surface_space(p.soil.T, surface_space)
-    κ_c = get_top_surface_space(p.soil.κ, surface_space)
-
-    T_bc = FT.(heat_bc.bc(p, t))
-    return ClimaLand.diffusive_flux(κ_c, T_bc, T_c, Δz)
-end
-
-"""
-    ClimaLand.boundary_flux(heat_bc::TemperatureStateBC,
-                           ::ClimaLand.BottomBoundary,
-                           model::EnergyHydrology,
-                           Δz::ClimaCore.Fields.Field,
-                           Y::ClimaCore.Fields.FieldVector,
-                           p::NamedTuple,
-                           t,
-                           )::ClimaCore.Fields.Field
-
-A method of boundary fluxes which converts a state boundary condition on temperature at the bottom of the
-domain into a flux of energy.
-"""
-function ClimaLand.boundary_flux(
-    heat_bc::TemperatureStateBC,
-    ::ClimaLand.BottomBoundary,
-    model::EnergyHydrology,
-    Δz::ClimaCore.Fields.Field,
-    Y::ClimaCore.Fields.FieldVector,
-    p::NamedTuple,
-    t,
-)::ClimaCore.Fields.Field
-    FT = eltype(Δz)
-    # Approximate κ_bc ≈ κ_c (center closest to the boundary)
-    surface_space = axes(Δz)
-    # We need to project the center values onto the face space.
-    T_c = get_bottom_surface_space(p.soil.T, surface_space)
-    κ_c = get_bottom_surface_space(p.soil.κ, surface_space)
-    T_bc = FT.(heat_bc.bc(p, t))
-    return ClimaLand.diffusive_flux(κ_c, T_c, T_bc, Δz)
-end
-
-
-"""
-    ClimaLand.boundary_flux(bc::FreeDrainage,
+    boundary_flux(bc::FreeDrainage,
                            boundary::ClimaLand.BottomBoundary,
                            model::AbstractSoilModel,
                            Δz::ClimaCore.Fields.Field,
@@ -646,7 +328,7 @@ end
 A method of boundary fluxes which enforces free drainage at the bottom
 of the domain.
 """
-function ClimaLand.boundary_flux(
+function boundary_flux(
     bc::FreeDrainage,
     boundary::ClimaLand.BottomBoundary,
     model::AbstractSoilModel,
@@ -658,19 +340,6 @@ function ClimaLand.boundary_flux(
     FT = eltype(Δz)
     K_c = Fields.level(p.soil.K, 1)
     return FT.(-1 .* K_c)
-end
-
-"""
-    soil_boundary_fluxes(bc::NamedTuple, boundary, model, Δz, Y, p, t)
-
-Returns the boundary fluxes for ϑ_l and ρe_int, in that order.
-"""
-function soil_boundary_fluxes(bc::NamedTuple, boundary, model, Δz, Y, p, t)
-    params = model.parameters
-    return create_soil_bc_named_tuple.(
-        ClimaLand.boundary_flux(bc.water, boundary, model, Δz, Y, p, t),
-        ClimaLand.boundary_flux(bc.heat, boundary, model, Δz, Y, p, t),
-    )
 end
 
 """
@@ -721,8 +390,8 @@ end
 
 """
     ClimaLand.∂tendencyBC∂Y(
-        ::AbstractSoilModel,
-        ::AbstractSoilBC,
+        ::RichardsModel,
+        ::AbstractWaterBC,
         boundary::ClimaLand.TopBoundary,
         Δz,
         Y,
@@ -744,8 +413,8 @@ If `F_bc` can be approximated as independent of `Y_N`, the derivative
 is zero.
 """
 function ClimaLand.∂tendencyBC∂Y(
-    ::AbstractSoilModel,
-    ::AbstractSoilBC,
+    ::RichardsModel,
+    ::AbstractWaterBC,
     boundary::ClimaLand.TopBoundary,
     Δz,
     Y,
@@ -753,4 +422,344 @@ function ClimaLand.∂tendencyBC∂Y(
     t,
 )
     return ClimaCore.Fields.FieldVector(; :soil => (; :ϑ_l => zeros(axes(Δz))))
+end
+
+# BC type for the soil heat equation
+"""
+    AbstractHeatBC <: ClimaLand.AbstractBC
+
+An abstract type for boundary conditions for the soil heat equation.
+"""
+abstract type AbstractHeatBC <: ClimaLand.AbstractBC end
+
+"""
+   TemperatureStateBC <: AbstractHeatBC
+
+A simple concrete type of boundary condition, which enforces a
+state boundary condition T = f(p,t) at either the top or bottom of the domain.
+"""
+struct TemperatureStateBC{F <: Function} <: AbstractHeatBC
+    bc::F
+end
+
+"""
+   HeatFluxBC <: AbstractHeatBC
+
+A simple concrete type of boundary condition, which enforces a
+normal flux boundary condition f(p,t) at either the top or bottom of the domain.
+"""
+struct HeatFluxBC{F <: Function} <: AbstractHeatBC
+    bc::F
+end
+
+
+# Methods
+
+"""
+    boundary_flux(bc::HeatFluxBC,  _...)::ClimaCore.Fields.Field
+
+A method of boundary fluxes which returns the desired flux.
+
+We add a field of zeros in order to convert the bc (float) into
+a field.
+"""
+function boundary_flux(
+    bc::HeatFluxBC,
+    boundary::ClimaLand.AbstractBoundary,
+    model,
+    Δz::ClimaCore.Fields.Field,
+    Y::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
+    t,
+)::ClimaCore.Fields.Field
+    FT = eltype(Δz)
+    return FT.(bc.bc(p, t)) .+ FT.(ClimaCore.Fields.zeros(axes(Δz)))
+end
+
+
+
+"""
+    boundary_flux(heat_bc::TemperatureStateBC,
+                           ::ClimaLand.TopBoundary,
+                           model::EnergyHydrology,
+                           Δz::ClimaCore.Fields.Field,
+                           Y::ClimaCore.Fields.FieldVector,
+                           p::NamedTuple,
+                           t,
+                           )::ClimaCore.Fields.Field
+
+A method of boundary fluxes which converts a state boundary condition on temperature at the top of the
+domain into a flux of energy.
+"""
+function boundary_flux(
+    heat_bc::TemperatureStateBC,
+    ::ClimaLand.TopBoundary,
+    model::EnergyHydrology,
+    Δz::ClimaCore.Fields.Field,
+    Y::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
+    t,
+)::ClimaCore.Fields.Field
+    FT = eltype(Δz)
+    # Approximate κ_bc ≈ κ_c (center closest to the boundary)
+    surface_space = axes(Δz)
+    # We need to project the center values onto the face space.
+    T_c = get_top_surface_space(p.soil.T, surface_space)
+    κ_c = get_top_surface_space(p.soil.κ, surface_space)
+
+    T_bc = FT.(heat_bc.bc(p, t))
+    return ClimaLand.diffusive_flux(κ_c, T_bc, T_c, Δz)
+end
+
+"""
+    boundary_flux(heat_bc::TemperatureStateBC,
+                           ::ClimaLand.BottomBoundary,
+                           model::EnergyHydrology,
+                           Δz::ClimaCore.Fields.Field,
+                           Y::ClimaCore.Fields.FieldVector,
+                           p::NamedTuple,
+                           t,
+                           )::ClimaCore.Fields.Field
+
+A method of boundary fluxes which converts a state boundary condition on temperature at the bottom of the
+domain into a flux of energy.
+"""
+function boundary_flux(
+    heat_bc::TemperatureStateBC,
+    ::ClimaLand.BottomBoundary,
+    model::EnergyHydrology,
+    Δz::ClimaCore.Fields.Field,
+    Y::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
+    t,
+)::ClimaCore.Fields.Field
+    FT = eltype(Δz)
+    # Approximate κ_bc ≈ κ_c (center closest to the boundary)
+    surface_space = axes(Δz)
+    # We need to project the center values onto the face space.
+    T_c = get_bottom_surface_space(p.soil.T, surface_space)
+    κ_c = get_bottom_surface_space(p.soil.κ, surface_space)
+    T_bc = FT.(heat_bc.bc(p, t))
+    return ClimaLand.diffusive_flux(κ_c, T_c, T_bc, Δz)
+end
+
+
+# BC type for the combined energy-hydrology equations
+"""
+    AbstractEnergyHydrologyBC <: ClimaLand.AbstractBC
+
+An abstract type for boundary conditions for the combined energy
+and hydrology equations.
+
+In general these can consist of independent boundary conditions for
+water (<: AbstractWaterBC) and for heat (<: AbstractHeatBC) independently,
+, or a boundary condition type which sets both using the same parameterizations.
+"""
+abstract type AbstractEnergyHydrologyBC <: ClimaLand.AbstractBC end
+
+"""
+    WaterHeatBC{W <: AbstractWaterBC, H <: AbstractHeatBC} <:
+       AbstractEnergyHydrologyBC
+
+A general struct used to store the boundary conditions for Richards 
+and the soil heat equations separately; useful when the boundary
+conditions for each component are independent of each other.
+"""
+struct WaterHeatBC{W <: AbstractWaterBC, H <: AbstractHeatBC} <:
+       AbstractEnergyHydrologyBC
+    water::W
+    heat::H
+end
+function WaterHeatBC(; water, heat)
+    return WaterHeatBC{typeof(water), typeof(heat)}(water, heat)
+end
+
+
+
+"""
+    AtmosDrivenFluxBC{
+        A <: AbstractAtmosphericDrivers,
+        B <: AbstractRadiativeDrivers,
+        R <: AbstractRunoffModel
+    } <: AbstractEnergyHydrologyBC
+
+A concrete type of soil boundary condition for use at the top
+of the domain. This holds the conditions for the atmosphere
+`AbstractAtmosphericDrivers`, for the radiation state
+`AbstractRadiativeDrivers`. This is only supported for the
+`EnergyHydrology` model.
+
+This choice indicates the Monin-Obukhov Surface Theory will
+be used to compute the sensible and latent heat fluxes, as
+well as evaporation,
+ and that the net radiation and precipitation
+will also be computed. The net energy and water fluxes
+are used as boundary conditions.
+
+A runoff model is used
+to simulate surface and subsurface runoff and this is accounted
+for when setting boundary conditions. The default is to have no runoff
+accounted for.
+
+$(DocStringExtensions.FIELDS)
+"""
+struct AtmosDrivenFluxBC{
+    A <: AbstractAtmosphericDrivers,
+    B <: AbstractRadiativeDrivers,
+    R <: AbstractRunoffModel,
+} <: AbstractEnergyHydrologyBC
+    "The atmospheric conditions driving the model"
+    atmos::A
+    "The radiative fluxes driving the model"
+    radiation::B
+    "The runoff model. The default is no runoff."
+    runoff::R
+end
+
+
+function AtmosDrivenFluxBC(atmos, radiation; runoff = NoRunoff())
+    args = (atmos, radiation, runoff)
+    return AtmosDrivenFluxBC{typeof.(args)...}(args...)
+end
+
+# Special methods for EnergyHydrology BC
+"""
+    boundary_var_types(::Soil.EnergyHydrology{FT}, ::AbstractEnergyHydrologyBC, ::ClimaLand.AbstractBoundary) where {FT}
+
+The list of domain names for additional variables added to the
+EnergyHydrology model auxiliary state, which defaults to adding storage for the
+ boundary flux field. 
+
+Because we supply boundary conditions for water and heat, we found it convenient to
+have these stored as a NamedTuple under the names `top_bc` and `bottom_bc`.
+"""
+function boundary_var_types(
+    ::Soil.EnergyHydrology{FT},
+    ::AbstractEnergyHydrologyBC,
+    ::ClimaLand.AbstractBoundary,
+) where {FT}
+    (NamedTuple{(:water, :heat), Tuple{FT, FT}},)
+end
+
+"""
+    soil_boundary_fluxes!(bc::WaterHeatBC, boundary::TopBoundary, model, Δz, Y, p, t)
+
+updates the boundary fluxes for ϑ_l and ρe_int.
+"""
+function soil_boundary_fluxes!(
+    bc::WaterHeatBC,
+    boundary::AbstractBoundary,
+    model,
+    Δz,
+    Y,
+    p,
+    t,
+)
+    params = model.parameters
+    name = ClimaLand.bc_name(boundary)
+    water_bc = getproperty(p.soil, name).water
+    heat_bc = getproperty(p.soil, name).heat
+    water_bc .= boundary_flux(bc.water, boundary, model, Δz, Y, p, t)
+    heat_bc .= boundary_flux(bc.heat, boundary, model, Δz, Y, p, t)
+end
+
+# The AtmosDrivenFluxBC requires more boundary variables:
+"""
+    boundary_vars(::AtmosDrivenFluxBC, ::ClimaLand.TopBoundary)
+
+An extension of the `boundary_vars` method for AtmosDrivenFluxBC. This
+adds the surface conditions (SHF, LHF, evaporation, and resistance) and the
+net radiation to the auxiliary variables.
+
+These variables are updated in place in `soil_boundary_fluxes!`.
+"""
+boundary_vars(bc::AtmosDrivenFluxBC, ::ClimaLand.TopBoundary) =
+    (:turbulent_fluxes, :R_n, :top_bc)
+
+"""
+    boundary_var_domain_names(::AtmosDrivenFluxBC, ::ClimaLand.TopBoundary))
+
+An extension of the `boundary_var_domain_names` method for AtmosDrivenFluxBC. This
+specifies the part of the domain on which the additional variables should be
+defined.
+"""
+boundary_var_domain_names(bc::AtmosDrivenFluxBC, ::ClimaLand.TopBoundary) =
+    (:surface, :surface, :surface)
+"""
+    boundary_var_types(
+        ::AtmosDrivenFluxBC{
+            <:PrescribedAtmosphere{FT},
+            <:AbstractRadiativeDrivers{FT},
+            <:AbstractRunoffModel,
+        }, ::ClimaLand.TopBoundary,
+    ) where {FT}
+
+An extension of the `boundary_var_types` method for AtmosDrivenFluxBC. This
+specifies the type of the additional variables.
+"""
+boundary_var_types(
+    model::EnergyHydrology{FT},
+    bc::AtmosDrivenFluxBC{
+        <:PrescribedAtmosphere{FT},
+        <:AbstractRadiativeDrivers{FT},
+        <:AbstractRunoffModel,
+    },
+    ::ClimaLand.TopBoundary,
+) where {FT} = (
+    NamedTuple{(:lhf, :shf, :vapor_flux, :r_ae), Tuple{FT, FT, FT, FT}},
+    FT,
+    NamedTuple{(:water, :heat), Tuple{FT, FT}},
+)
+
+"""
+    soil_boundary_fluxes!(
+        bc::AtmosDrivenFluxBC{
+            <:PrescribedAtmosphere,
+            <:PrescribedRadiativeFluxes,
+        },
+        boundary::ClimaLand.TopBoundary,
+        model::EnergyHydrology,
+        Δz,
+        Y,
+        p,
+        t,
+    )
+
+Returns the net volumetric water flux (m/s) and net energy
+flux (W/m^2) for the soil `EnergyHydrology` model at the top
+of the soil domain.
+
+If you wish to compute surface fluxes taking into account the
+presence of a canopy, snow, etc, as in a land surface model,
+this is not the correct method to be using.
+
+This function calls the `turbulent_fluxes` and `net_radiation`
+functions, which use the soil surface conditions as well as
+the atmos and radiation conditions in order to
+compute the surface fluxes using Monin Obukhov Surface Theory.
+"""
+function soil_boundary_fluxes!(
+    bc::AtmosDrivenFluxBC{<:PrescribedAtmosphere, <:PrescribedRadiativeFluxes},
+    boundary::ClimaLand.TopBoundary,
+    model::EnergyHydrology,
+    Δz,
+    Y,
+    p,
+    t,
+)
+
+    p.soil.turbulent_fluxes .= turbulent_fluxes(bc.atmos, model, Y, p, t)
+    p.soil.R_n .= net_radiation(bc.radiation, model, Y, p, t)
+    # We are ignoring sublimation for now
+    precip = p.drivers.P_liq
+    # We do not model the energy flux from infiltration
+    p.soil.top_bc.water .= soil_surface_infiltration(
+        bc.runoff,
+        precip .+ p.soil.turbulent_fluxes.vapor_flux,
+        Y,
+        p,
+        model.parameters,
+    )
+    @. p.soil.top_bc.heat =
+        p.soil.R_n + p.soil.turbulent_fluxes.lhf + p.soil.turbulent_fluxes.shf
 end

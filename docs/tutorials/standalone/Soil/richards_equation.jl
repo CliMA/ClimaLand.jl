@@ -106,16 +106,21 @@ zmin = FT(-5)
 nelems = 10
 soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems);
 
-# We also need to specify the boundary conditions. The user can specify two conditions,
-# either at the top or at the bottom, and they can either be either
-# on the state `ϑ_l` or on the flux  `-K∇h`. Flux boundary conditions
+# We also need to specify the boundary conditions. The user must
+# specify two conditions,  at the top and at the bottom of the domain.
+# We currently support two broad types of boundary conditions: boundary
+# conditions on the state ϑ_l = ϑ_l_BC (`MoistureStateBC`) or on the
+# flux (`WaterFluxBC`, `FreeDrainag`e, or `RichardsAtmosDrivenFluxBC`).
+# Flux boundary conditions
 # are passed as the (scalar) z-component of the flux `f`, i.e. F⃗ = f ẑ.
-# In either case, the user must pass a function of the auxiliary variables `p` and time `t`:
-
-surface_flux = Soil.FluxBC((p, t) -> 0.0)
-bottom_flux = Soil.FluxBC((p, t) -> 0.0)
-boundary_conditions =
-    (; top = (water = surface_flux,), bottom = (water = bottom_flux,));
+# The flux BC `RichardsAtmosDrivenFluxBC` is for driving Richards
+# equation with a spatially and temporally varying map of precipitation.
+# `FreeDrainage` is an option only at the bottom of the domain.
+# Here, we set zero flux boundary conditons.
+# WaterFluxBCs require a function of the cache `p` and the simulation time `t`:
+surface_flux = Soil.WaterFluxBC((p, t) -> 0.0)
+bottom_flux = Soil.WaterFluxBC((p, t) -> 0.0)
+boundary_conditions = (; top = surface_flux, bottom = bottom_flux);
 
 # Lastly, in this case we don't have any sources, so we pass an empty tuple:
 sources = ();

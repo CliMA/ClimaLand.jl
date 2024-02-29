@@ -54,6 +54,9 @@ ClimaLand.BottomBoundary
 ClimaLand.boundary_flux
 ClimaLand.diffusive_flux
 ClimaLand.get_Δz
+ClimaLand.boundary_vars
+ClimaLand.boundary_var_domain_names
+ClimaLand.boundary_var_types
 ClimaLand.make_tendency_jacobian
 ClimaLand.make_update_jacobian
 ClimaLand.∂tendencyBC∂Y

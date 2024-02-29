@@ -117,8 +117,7 @@ soilco2_top_bc = Soil.Biogeochemistry.AtmosCO2StateBC()
 soilco2_bot_bc = Soil.Biogeochemistry.SoilCO2FluxBC((p, t) -> 0.0) # no flux
 soilco2_sources = (MicrobeProduction{FT}(),)
 
-soilco2_boundary_conditions =
-    (; top = (CO2 = soilco2_top_bc,), bottom = (CO2 = soilco2_bot_bc,))
+soilco2_boundary_conditions = (; top = soilco2_top_bc, bottom = soilco2_bot_bc)
 
 soilco2_drivers = Soil.Biogeochemistry.SoilDrivers(
     Soil.Biogeochemistry.PrognosticMet{FT}(),

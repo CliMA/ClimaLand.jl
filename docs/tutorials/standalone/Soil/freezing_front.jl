@@ -128,7 +128,7 @@ nelems = 20
 soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems);
 
 # Set the boundary conditions:
-zero_flux_bc = FluxBC((p, t) -> 0.0)
+zero_water_flux_bc = WaterFluxBC((p, t) -> 0.0)
 function top_heat_flux(p, t)
     FT = eltype(p.soil.T)
     p_len = ClimaCore.Spaces.nlevels(axes(p.soil.T))
@@ -140,11 +140,14 @@ function bottom_heat_flux(p, t)
     T_c = ClimaCore.Fields.level(p.soil.T, 1)
     return @. FT(-3 * (T_c - 279.85))
 end
-top_heat_flux_bc = FluxBC(top_heat_flux)
-bottom_heat_flux_bc = FluxBC(bottom_heat_flux)
+top_heat_flux_bc = HeatFluxBC(top_heat_flux)
+bottom_heat_flux_bc = HeatFluxBC(bottom_heat_flux)
 boundary_fluxes = (;
-    top = (water = zero_flux_bc, heat = top_heat_flux_bc),
-    bottom = (water = zero_flux_bc, heat = bottom_heat_flux_bc),
+    top = WaterHeatBC(; water = zero_water_flux_bc, heat = top_heat_flux_bc),
+    bottom = WaterHeatBC(;
+        water = zero_water_flux_bc,
+        heat = bottom_heat_flux_bc,
+    ),
 );
 
 # Create the source term instance. Our phase change model requires

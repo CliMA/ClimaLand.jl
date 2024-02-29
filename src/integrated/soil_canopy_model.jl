@@ -44,7 +44,7 @@ The only other alternative at this stage is
 ClimaLand.PrescribedRadiativeFluxes, where the prescribed downwelling
 short and longwave radiative fluxes are used directly,
 without accounting for the canopy. There is a different method
-of the function `soil_boundary_fluxes` in this case.
+of the function `soil_boundary_fluxes!` in this case.
 """
 struct CanopyRadiativeFluxes{FT} <: AbstractRadiativeDrivers{FT} end
 
@@ -100,10 +100,13 @@ function SoilCanopyModel{FT}(;
     # add heat BC
     top_bc =
         ClimaLand.Soil.AtmosDrivenFluxBC(atmos, CanopyRadiativeFluxes{FT}())
-    zero_flux = FluxBC((p, t) -> 0.0)
+    zero_flux = Soil.HeatFluxBC((p, t) -> 0.0)
     boundary_conditions = (;
         top = top_bc,
-        bottom = (water = Soil.FreeDrainage(), heat = zero_flux),
+        bottom = Soil.WaterHeatBC(;
+            water = Soil.FreeDrainage(),
+            heat = zero_flux,
+        ),
     )
     soil = soil_model_type(;
         boundary_conditions = boundary_conditions,
@@ -389,7 +392,7 @@ end
 
 ### Extensions of existing functions to account for prognostic soil/canopy
 """
-    soil_boundary_fluxes(
+    soil_boundary_fluxes!(
         bc::AtmosDrivenFluxBC{<:PrescribedAtmosphere, <:CanopyRadiativeFluxes},
         boundary::ClimaLand.TopBoundary,
         model::EnergyHydrology{FT},
@@ -404,7 +407,7 @@ integrated land surface models; this computes and returns the net
 energy and water flux at the surface of the soil for use as boundary
 conditions.
 """
-function soil_boundary_fluxes(
+function soil_boundary_fluxes!(
     bc::AtmosDrivenFluxBC{<:PrescribedAtmosphere, <:CanopyRadiativeFluxes},
     boundary::ClimaLand.TopBoundary,
     soil::EnergyHydrology{FT},
@@ -415,7 +418,7 @@ function soil_boundary_fluxes(
 ) where {FT}
     bc = soil.boundary_conditions.top
     soil_conditions = turbulent_fluxes(bc.atmos, soil, Y, p, t)
-    infiltration = soil_surface_infiltration(
+    p.soil.top_bc.water .= soil_surface_infiltration(
         bc.runoff,
         p.drivers.P_liq .+ p.soil.turbulent_fluxes.vapor_flux,
         Y,
@@ -423,10 +426,8 @@ function soil_boundary_fluxes(
         t,
         soil.parameters,
     )
-    return @. ClimaLand.Soil.create_soil_bc_named_tuple(
-        infiltration,
-        -p.soil.R_n + p.soil.turbulent_fluxes.lhf + p.soil.turbulent_fluxes.shf,
-    )
+    @. p.soil.top_bc.heat =
+        -p.soil.R_n + p.soil.turbulent_fluxes.lhf + p.soil.turbulent_fluxes.shf
 end
 
 

@@ -28,11 +28,10 @@ for FT in (Float32, Float64)
             nelements = (100, 2, 100),
             npolynomial = 3,
         )
-        top_flux_bc = FluxBC((p, t) -> 0.0)
-        bot_flux_bc = FluxBC((p, t) -> 0.0)
+        top_flux_bc = WaterFluxBC((p, t) -> 0.0)
+        bot_flux_bc = WaterFluxBC((p, t) -> 0.0)
         sources = ()
-        boundary_fluxes =
-            (; top = (water = top_flux_bc,), bottom = (water = bot_flux_bc,))
+        boundary_fluxes = (; top = top_flux_bc, bottom = bot_flux_bc)
         params = Soil.RichardsParameters(;
             ν = ν,
             hydrology_cm = hcm,
@@ -267,11 +266,17 @@ for FT in (Float32, Float64)
             npolynomial = 3,
         )
 
-        top_flux_bc = FluxBC((p, t) -> 0.0)
-        bot_flux_bc = FluxBC((p, t) -> 0.0)
+        zero_water_flux_bc = WaterFluxBC((p, t) -> 0.0)
+        zero_heat_flux_bc = HeatFluxBC((p, t) -> 0.0)
         boundary_fluxes = (;
-            top = (water = top_flux_bc, heat = top_flux_bc),
-            bottom = (water = bot_flux_bc, heat = bot_flux_bc),
+            top = WaterHeatBC(;
+                water = zero_water_flux_bc,
+                heat = zero_heat_flux_bc,
+            ),
+            bottom = WaterHeatBC(;
+                water = zero_water_flux_bc,
+                heat = zero_heat_flux_bc,
+            ),
         )
         sources = ()
 
@@ -360,11 +365,10 @@ for FT in (Float32, Float64)
             nelements = (1, 30),
             npolynomial = 3,
         )
-        top_flux_bc = FluxBC((p, t) -> K_sat)
-        bot_flux_bc = FluxBC((p, t) -> K_sat)
+        top_flux_bc = WaterFluxBC((p, t) -> K_sat)
+        bot_flux_bc = WaterFluxBC((p, t) -> K_sat)
         sources = ()
-        boundary_fluxes =
-            (; top = (water = top_flux_bc,), bottom = (water = bot_flux_bc,))
+        boundary_fluxes = (; top = top_flux_bc, bottom = bot_flux_bc)
 
         soil = Soil.RichardsModel{FT}(;
             parameters = parameters,
