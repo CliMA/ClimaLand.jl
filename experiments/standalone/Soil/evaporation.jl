@@ -4,7 +4,7 @@ import ClimaTimeSteppers as CTS
 using Thermodynamics
 
 using ClimaCore
-import CLIMAParameters as CP
+import ClimaParams as CP
 using RootSolvers
 using SurfaceFluxes
 using StaticArrays

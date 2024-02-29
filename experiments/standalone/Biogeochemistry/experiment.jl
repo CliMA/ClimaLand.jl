@@ -9,7 +9,7 @@ using ClimaLand.Soil.Biogeochemistry: MicrobeProduction
 using Dates
 
 import ClimaLand.Parameters as LP
-import CLIMAParameters
+import ClimaParams
 
 # Define simulation times
 t0 = Float64(0)

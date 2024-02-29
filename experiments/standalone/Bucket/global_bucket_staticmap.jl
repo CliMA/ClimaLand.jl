@@ -24,11 +24,10 @@ using Statistics
 import ClimaTimeSteppers as CTS
 using ClimaCore
 using ClimaCore: Remapping, Geometry
-import CLIMAParameters as CP
+import ClimaParams as CP
 import ClimaComms
 import ClimaLand
 import ClimaLand.Parameters as LP
-import CLIMAParameters
 using ClimaLand.Bucket:
     BucketModel, BucketModelParameters, PrescribedBaregroundAlbedo
 using ClimaLand.Domains: coordinates, Column

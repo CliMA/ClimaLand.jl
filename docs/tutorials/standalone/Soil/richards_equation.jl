@@ -58,7 +58,7 @@ using Plots
 # - Load CliMA packages and ClimaLand modules
 
 using ClimaCore
-import CLIMAParameters as CP
+import ClimaParams as CP
 import ClimaTimeSteppers as CTS
 
 using ClimaLand

@@ -1,7 +1,7 @@
 using Test
 using Statistics
 using ClimaCore
-import CLIMAParameters as CP
+import ClimaParams as CP
 using ClimaLand
 using ClimaLand.Domains: HybridBox, SphericalShell
 using ClimaLand.Soil

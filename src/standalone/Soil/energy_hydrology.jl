@@ -92,7 +92,7 @@ function EnergyHydrologyParameters{FT}(;
     γ = FT(2.64e-2)
     γT_ref = FT(288)
 
-    # Constants from Ballard and Arp paper - will be moved to ClimaParameters
+    # Constants from Ballard and Arp paper - will be moved to ClimaParams
     κ_minerals = FT(2.5)
     κ_om = FT(0.25)
     κ_quartz = FT(8.0)

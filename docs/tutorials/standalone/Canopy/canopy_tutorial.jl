@@ -43,7 +43,7 @@ using Insolation
 # Load CliMA Packages and ClimaLand Modules:
 
 using ClimaCore
-import CLIMAParameters as CP
+import ClimaParams as CP
 import ClimaTimeSteppers as CTS
 using StaticArrays
 using ClimaLand

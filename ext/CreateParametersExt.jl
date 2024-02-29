@@ -4,7 +4,7 @@ import Thermodynamics.Parameters.ThermodynamicsParameters
 import Insolation.Parameters.InsolationParameters
 import SurfaceFluxes.Parameters.SurfaceFluxesParameters
 import SurfaceFluxes.UniversalFunctions as UF
-import CLIMAParameters as CP
+import ClimaParams as CP
 
 import ClimaLand
 import ClimaLand.Parameters.LandParameters
@@ -116,7 +116,7 @@ ClimaLand.Canopy.FarquharParameters(Float64, ClimaLand.Canopy.C3())
 # Kwarg overrides
 ClimaLand.Canopy.FarquharParameters(Float64, ClimaLand.Canopy.C3(); Vcmax25 = 99999999, pc = 444444444)
 # TOML Dictionary:
-import CLIMAParameters as CP
+import ClimaParams as CP
 toml_dict = CP.create_toml_dict(Float32);
 ClimaLand.Canopy.FarquharParameters(toml_dict, ClimaLand.Canopy.C3(); Vcmax25 = 99999999, pc = 444444444)
 ```
@@ -182,7 +182,7 @@ ClimaLand.Canopy.OptimalityFarquharParameters(Float64)
 # Kwarg overrides
 ClimaLand.Canopy.OptimalityFarquharParameters(Float64; pc = 444444444)
 # Toml Dictionary:
-import CLIMAParameters as CP
+import ClimaParams as CP
 toml_dict = CP.create_toml_dict(Float32);
 ClimaLand.Canopy.OptimalityFarquharParameters(toml_dict; pc = 444444444)
 ```
