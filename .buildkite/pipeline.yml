@@ -1,18 +1,14 @@
 agents:
-  queue: central
-  modules: julia/1.10.0 cuda/12.2 ucx/1.14.1_cuda-12.2 openmpi/4.1.5_cuda-12.2 nsight-systems/2023.3.1
+  queue: new-central
+  slurm_mem: 8G
+  modules: climacommon/2024_02_27
 
 env:
   JULIA_LOAD_PATH: "${JULIA_LOAD_PATH}:${BUILDKITE_BUILD_CHECKOUT_PATH}/.buildkite"
   JULIA_NVTX_CALLBACKS: gc
   JULIA_CPU_TARGET: 'broadwell;skylake'
   OPENBLAS_NUM_THREADS: 1
-  OMPI_MCA_opal_warn_on_missing_libcuda: 0
   SLURM_KILL_BAD_EXIT: 1
-  JULIA_CUDA_MEMORY_POOL: none
-  JULIA_MPI_HAS_CUDA: "true"
-  MPITRAMPOLINE_LIB: "/groups/esm/software/MPIwrapper/ompi4.1.5_cuda-12.2/lib64/libmpiwrapper.so"
-  MPITRAMPOLINE_MPIEXEC: "/groups/esm/software/MPIwrapper/ompi4.1.5_cuda-12.2/bin/mpiwrapperexec"
 
 steps:
   - label: "init environment :computer:"
@@ -34,8 +30,7 @@ steps:
       - "julia --project=test -e 'using Pkg; Pkg.develop(;path=\".\"); Pkg.instantiate(;verbose=true)'"
       - "julia --project=test -e 'using Pkg; Pkg.status()'"
     agents:
-      slurm_cpus_per_task: 8
-      slurm_mem_per_cpu: 8G
+      slurm_ntasks: 1
     env:
       JULIA_NUM_PRECOMPILE_TASKS: 8
 
@@ -106,31 +101,31 @@ steps:
       - label: "GPU runtests"
         command: "julia --color=yes --project=test test/runtests.jl"
         agents:
-          slurm_mem_per_cpu: 8G
-          slurm_gpus: 1
+          slurm_ntasks: 1
+          slurm_gres: "gpu:1"
 
       - label: "Global Bucket on GPU (functional albedo)"
         key: "global_bucket_function_gpu"
         command: "julia --color=yes --project=experiments experiments/standalone/Bucket/global_bucket_function.jl"
         agents:
-          slurm_mem: 8G
-          slurm_gpus: 1
+          slurm_ntasks: 1
+          slurm_gres: "gpu:1"
         artifact_paths: "experiments/standalone/Bucket/artifacts/*gpu*"
 
       - label: "Global Bucket on GPU (static map albedo)"
         key: "global_bucket_staticmap_gpu"
         command: "julia --color=yes --project=experiments experiments/standalone/Bucket/global_bucket_staticmap.jl"
         agents:
-          slurm_mem: 8G
-          slurm_gpus: 1
+          slurm_ntasks: 1
+          slurm_gres: "gpu:1"
         artifact_paths: "experiments/standalone/Bucket/artifacts_staticmap/*gpu*"
 
       - label: "Global Bucket on GPU (temporal map albedo)"
         key: "global_bucket_temporalmap_gpu"
         command: "julia --color=yes --project=experiments experiments/standalone/Bucket/global_bucket_temporalmap.jl"
         agents:
-          slurm_mem: 8G
-          slurm_gpus: 1
+          slurm_ntasks: 1
+          slurm_gres: "gpu:1"
         artifact_paths: "experiments/standalone/Bucket/artifacts_temporalmap/*gpu*"
 
   - group: "CPU/GPU comparisons"
