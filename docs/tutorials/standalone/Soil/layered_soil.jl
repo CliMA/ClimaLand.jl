@@ -12,7 +12,7 @@ using Plots
 import SciMLBase
 import ClimaTimeSteppers as CTS
 using ClimaCore
-import CLIMAParameters as CP
+import ClimaParams as CP
 using ArtifactWrappers
 using DelimitedFiles: readdlm
 

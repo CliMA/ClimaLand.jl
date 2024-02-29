@@ -1,5 +1,5 @@
 using Test
-import CLIMAParameters
+import ClimaParams
 using ClimaCore
 using Thermodynamics
 using Dates

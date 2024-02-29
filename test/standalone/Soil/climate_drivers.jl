@@ -1,6 +1,6 @@
 using Test
 using ClimaCore
-import CLIMAParameters as CP
+import ClimaParams as CP
 using Thermodynamics
 using ClimaLand
 using ClimaLand.Soil

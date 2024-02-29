@@ -2,7 +2,7 @@ using Test
 using Statistics
 using NLsolve
 using ClimaCore
-import CLIMAParameters
+import ClimaParams
 using ClimaLand
 using ClimaLand.Domains: Point, Plane
 using ClimaLand.Canopy

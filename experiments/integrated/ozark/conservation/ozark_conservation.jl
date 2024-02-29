@@ -13,7 +13,7 @@ using ClimaLand.Canopy
 using ClimaLand.Canopy.PlantHydraulics
 import ClimaLand
 import ClimaLand.Parameters as LP
-import CLIMAParameters
+import ClimaParams
 
 climaland_dir = pkgdir(ClimaLand)
 

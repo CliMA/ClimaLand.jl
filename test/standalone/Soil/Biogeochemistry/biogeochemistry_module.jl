@@ -1,6 +1,6 @@
 using Test
 using Dates
-import CLIMAParameters as CP
+import ClimaParams as CP
 using ClimaCore
 using ClimaLand
 using ClimaLand.Domains: Column
