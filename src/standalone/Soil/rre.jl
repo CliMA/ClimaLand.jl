@@ -464,7 +464,7 @@ function ClimaLand.make_update_jacobian(model::RichardsModel{FT}) where {FT}
         Δz_top, Δz_bottom = get_Δz(z)
         ∂T_bc∂YN = ClimaLand.∂tendencyBC∂Y(
             model,
-            model.boundary_conditions.top.water,
+            model.boundary_conditions.top,
             ClimaLand.TopBoundary(),
             Δz_top,
             Y,
