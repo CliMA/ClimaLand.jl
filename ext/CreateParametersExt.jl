@@ -15,6 +15,9 @@ import ClimaLand.Soil.EnergyHydrologyParameters
 import ClimaLand.Canopy.AutotrophicRespirationParameters
 import ClimaLand.Canopy.FarquharParameters
 import ClimaLand.Canopy.OptimalityFarquharParameters
+import ClimaLand.Canopy.BeerLambertParameters
+import ClimaLand.Canopy.TwoStreamParameters
+import ClimaLand.Snow.SnowParameters
 import ClimaLand.Bucket.BucketModelParameters
 import ClimaLand.Soil.Biogeochemistry.SoilCO2ModelParameters
 
@@ -489,6 +492,175 @@ function SoilCO2ModelParameters(toml_dict::CP.AbstractTOMLDict; kwargs...)
         earth_param_set,
         θ_a100,
         b,
+        parameters...,
+        kwargs...,
+    )
+end
+
+"""
+    function MedlynConductanceParameters(FT::AbstractFloat;
+        g1 = 790,
+        kwargs...
+    )
+    function MedlynConductanceParameters(toml_dict;
+        g1 = 790,
+        kwargs...
+    )
+
+Floating-point and toml dict based constructor supplying default values
+for the MedlynConductanceParameters struct.
+Additional parameter values can be directly set via kwargs.
+"""
+MedlynConductanceParameters(::Type{FT}; kwargs...) where {FT <: AbstractFloat} =
+    MedlynConductanceParameters(CP.create_toml_dict(FT); kwargs...)
+
+function MedlynConductanceParameters(
+    toml_dict::CP.AbstractTOMLDict;
+    g1 = 790,
+    kwargs...,
+)
+    name_map = (;
+        :relative_diffusivity_of_water_vapor => :Drel,
+        :min_stomatal_conductance => :g0,
+    )
+
+    parameters = CP.get_parameter_values(toml_dict, name_map, "Land")
+    FT = CP.float_type(toml_dict)
+    return MedlynConductanceParameters{FT}(; g1, parameters..., kwargs...)
+end
+
+"""
+    function TwoStreamParameters(FT::AbstractFloat;
+        ld = 0.5,
+        α_PAR_leaf = 0.3,
+        τ_PAR_leaf = 0.2,
+        α_NIR_leaf = 0.4,
+        τ_NIR_leaf = 0.25,
+        Ω = 1,
+        n_layers = UInt64(20),
+        kwargs...
+    )
+    function TwoStreamParameters(toml_dict;
+        ld = 0.5,
+        α_PAR_leaf = 0.3,
+        τ_PAR_leaf = 0.2,
+        α_NIR_leaf = 0.4,
+        τ_NIR_leaf = 0.25,
+        Ω = 1,
+        n_layers = UInt64(20),
+        kwargs...
+    )
+
+Floating-point and toml dict based constructor supplying default values
+for the TwoStreamParameters struct. Additional parameter values can be directly set via kwargs.
+"""
+TwoStreamParameters(::Type{FT}; kwargs...) where {FT <: AbstractFloat} =
+    TwoStreamParameters(CP.create_toml_dict(FT); kwargs...)
+
+function TwoStreamParameters(
+    toml_dict::CP.AbstractTOMLDict;
+    ld = 0.5,
+    α_PAR_leaf = 0.3,
+    τ_PAR_leaf = 0.2,
+    α_NIR_leaf = 0.4,
+    τ_NIR_leaf = 0.25,
+    Ω = 1,
+    n_layers = UInt64(20),
+    kwargs...,
+)
+    name_map = (;
+        :wavelength_per_PAR_photon => :λ_γ_PAR,
+        :wavelength_per_NIR_photon => :λ_γ_NIR,
+        :canopy_emissivity => :ϵ_canopy,
+    )
+
+    parameters = CP.get_parameter_values(toml_dict, name_map, "Land")
+    FT = CP.float_type(toml_dict)
+    return TwoStreamParameters{FT}(;
+        ld,
+        α_PAR_leaf,
+        τ_PAR_leaf,
+        α_NIR_leaf,
+        τ_NIR_leaf,
+        Ω,
+        n_layers,
+        parameters...,
+        kwargs...,
+    )
+end
+
+"""
+    function BeerLambertParameters(FT::AbstractFloat;
+        ld = 0.5,
+        α_PAR_leaf = 0.1,
+        α_NIR_leaf = 0.4,
+        Ω = 1,
+        kwargs...
+    )
+    function BeerLambertParameters(toml_dict;
+        ld = 0.5,
+        α_PAR_leaf = 0.1,
+        α_NIR_leaf = 0.4,
+        Ω = 1,
+        kwargs...
+    )
+
+Floating-point and toml dict based constructor supplying default values
+for the BeerLambertParameters struct. Additional parameter values can be directly set via kwargs.
+"""
+BeerLambertParameters(::Type{FT}; kwargs...) where {FT <: AbstractFloat} =
+    BeerLambertParameters(CP.create_toml_dict(FT); kwargs...)
+
+function BeerLambertParameters(
+    toml_dict::CP.AbstractTOMLDict;
+    ld = 0.5,
+    α_PAR_leaf = 0.1,
+    α_NIR_leaf = 0.4,
+    Ω = 1,
+    kwargs...,
+)
+    name_map = (;
+        :wavelength_per_PAR_photon => :λ_γ_PAR,
+        :wavelength_per_NIR_photon => :λ_γ_NIR,
+        :canopy_emissivity => :ϵ_canopy,
+    )
+
+    parameters = CP.get_parameter_values(toml_dict, name_map, "Land")
+    FT = CP.float_type(toml_dict)
+    return BeerLambertParameters{FT}(;
+        ld,
+        α_PAR_leaf,
+        α_NIR_leaf,
+        Ω,
+        parameters...,
+        kwargs...,
+    )
+end
+
+
+SnowParameters(::Type{FT}, Δt; kwargs...) where {FT <: AbstractFloat} =
+    SnowParameters(CP.create_toml_dict(FT), Δt; kwargs...)
+
+function SnowParameters(toml_dict::CP.AbstractTOMLDict, Δt; kwargs...)
+    name_map = (;
+        :snow_momentum_roughness_length => :z_0m,
+        :snow_scalar_roughness_length => :z_0b,
+        :thermal_conductivity_of_water_ice => :κ_ice,
+        :snow_density => :ρ_snow,
+        :snow_albedo => :α_snow,
+        :snow_emissivity => :ϵ_snow,
+        :holding_capacity_of_water_in_snow => :θ_r,
+        :wet_snow_hydraulic_conductivity => :Ksat,
+        :snow_cover_fraction_crit_threshold => :fS_c,
+    )
+
+    parameters = CP.get_parameter_values(toml_dict, name_map, "Land")
+    FT = CP.float_type(toml_dict)
+    earth_param_set = LandParameters(toml_dict)
+    PSE = typeof(earth_param_set)
+    return SnowParameters{FT, PSE}(;
+        Δt,
+        earth_param_set,
         parameters...,
         kwargs...,
     )

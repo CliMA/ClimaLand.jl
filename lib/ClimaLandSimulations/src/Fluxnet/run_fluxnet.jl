@@ -111,7 +111,8 @@ function run_fluxnet(
     )
     # Set up radiative transfer
     radiative_transfer_args = (;
-        parameters = TwoStreamParameters{FT}(;
+        parameters = TwoStreamParameters(
+            FT;
             Ω = params.radiative_transfer.Ω,
             ld = params.radiative_transfer.ld,
             α_PAR_leaf = params.radiative_transfer.α_PAR_leaf,
@@ -126,7 +127,8 @@ function run_fluxnet(
     )
     # Set up conductance
     conductance_args = (;
-        parameters = MedlynConductanceParameters{FT}(;
+        parameters = MedlynConductanceParameters(
+            FT;
             g1 = params.conductance.g1,
             Drel = params.conductance.Drel,
             g0 = params.conductance.g0,

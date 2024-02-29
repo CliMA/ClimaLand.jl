@@ -225,25 +225,18 @@ autotrophic_respiration_args =
     (; parameters = AutotrophicRespirationParameters(FT))
 
 radiative_transfer_args = (;
-    parameters = TwoStreamParameters{FT}(;
-        ld = FT(0.5),
-        α_PAR_leaf = FT(0.1),
-        α_NIR_leaf = FT(0.45),
-        τ_PAR_leaf = FT(0.05),
-        τ_NIR_leaf = FT(0.25),
-        Ω = FT(0.69),
-        λ_γ_PAR = FT(5e-7),
-        λ_γ_NIR = FT(1.65e-6),
+    parameters = TwoStreamParameters(
+        FT;
+        ld = 0.5,
+        α_PAR_leaf = 0.1,
+        α_NIR_leaf = 0.45,
+        τ_PAR_leaf = 0.05,
+        τ_NIR_leaf = 0.25,
+        Ω = 0.69,
     )
 )
 
-conductance_args = (;
-    parameters = MedlynConductanceParameters{FT}(;
-        g1 = FT(141),
-        Drel = FT(1.6),
-        g0 = FT(1e-4),
-    )
-)
+conductance_args = (; parameters = MedlynConductanceParameters(FT; g1 = 141))
 
 photosynthesis_args =
     (; parameters = FarquharParameters(FT, Canopy.C3(); Vcmax25 = FT(5e-5)));

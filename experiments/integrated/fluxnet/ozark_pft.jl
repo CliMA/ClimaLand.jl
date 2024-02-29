@@ -177,26 +177,18 @@ autotrophic_respiration_args =
     (; parameters = AutotrophicRespirationParameters(FT))
 # Set up radiative transfer
 radiative_transfer_args = (;
-    parameters = TwoStreamParameters{FT}(;
-        Ω = Ω,
-        ld = ld,
-        α_PAR_leaf = α_PAR_leaf,
-        λ_γ_PAR = λ_γ_PAR,
-        λ_γ_NIR = λ_γ_NIR,
-        τ_PAR_leaf = τ_PAR_leaf,
-        α_NIR_leaf = α_NIR_leaf,
-        τ_NIR_leaf = τ_NIR_leaf,
-        ϵ_canopy = ϵ_canopy,
+    parameters = TwoStreamParameters(
+        FT;
+        Ω,
+        ld,
+        α_PAR_leaf,
+        τ_PAR_leaf,
+        α_NIR_leaf,
+        τ_NIR_leaf,
     )
 )
 # Set up conductance
-conductance_args = (;
-    parameters = MedlynConductanceParameters{FT}(;
-        g1 = g1,
-        Drel = Drel,
-        g0 = g0,
-    )
-)
+conductance_args = (; parameters = MedlynConductanceParameters(FT; g1))
 # Set up photosynthesis
 # Set up photosynthesis
 photosynthesis_args =
