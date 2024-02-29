@@ -24,4 +24,6 @@ Thermodynamics = "b60c26fb-14c3-4610-9d3e-2d17fe7ff00c"
 
 [compat]
 ClimaTimeSteppers = "0.7"
+Insolation = "=0.9.1"
 Statistics = "1"
+Thermodynamics = "=0.12.3"
