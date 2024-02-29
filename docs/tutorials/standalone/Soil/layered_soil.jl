@@ -95,7 +95,7 @@ function top_flux_function(p, t)
 end
 top_bc = ClimaLand.Soil.FluxBC(top_flux_function)
 bottom_bc = ClimaLand.Soil.FreeDrainage()
-boundary_fluxes = (; top = (water = top_bc,), bottom = (water = bottom_bc,))
+boundary_fluxes = (; top = top_bc, bottom = bottom_bc)
 soil = Soil.RichardsModel{FT}(;
     parameters = params,
     domain = soil_domain,

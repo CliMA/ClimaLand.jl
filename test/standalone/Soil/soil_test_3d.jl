@@ -31,8 +31,7 @@ for FT in (Float32, Float64)
         top_flux_bc = FluxBC((p, t) -> 0.0)
         bot_flux_bc = FluxBC((p, t) -> 0.0)
         sources = ()
-        boundary_fluxes =
-            (; top = (water = top_flux_bc,), bottom = (water = bot_flux_bc,))
+        boundary_fluxes = (; top = top_flux_bc, bottom = bot_flux_bc)
         params = Soil.RichardsParameters(;
             ν = ν,
             hydrology_cm = hcm,
@@ -363,8 +362,7 @@ for FT in (Float32, Float64)
         top_flux_bc = FluxBC((p, t) -> K_sat)
         bot_flux_bc = FluxBC((p, t) -> K_sat)
         sources = ()
-        boundary_fluxes =
-            (; top = (water = top_flux_bc,), bottom = (water = bot_flux_bc,))
+        boundary_fluxes = (; top = top_flux_bc, bottom = bot_flux_bc)
 
         soil = Soil.RichardsModel{FT}(;
             parameters = parameters,

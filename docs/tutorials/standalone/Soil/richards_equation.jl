@@ -114,8 +114,7 @@ soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems);
 
 surface_flux = Soil.FluxBC((p, t) -> 0.0)
 bottom_flux = Soil.FluxBC((p, t) -> 0.0)
-boundary_conditions =
-    (; top = (water = surface_flux,), bottom = (water = bottom_flux,));
+boundary_conditions = (; top = surface_flux, bottom = bottom_flux);
 
 # Lastly, in this case we don't have any sources, so we pass an empty tuple:
 sources = ();
