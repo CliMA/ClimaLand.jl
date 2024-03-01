@@ -239,21 +239,21 @@ for FT in (Float32, Float64)
         vg_n = FT(2.68)
         vg_α = FT(14.5) # inverse meters
         vg_m = 1 - 1 / vg_n
-        hcm = vanGenuchten{FT}(; α = vg_α, n = vg_n)
+        hydrology_cm = vanGenuchten{FT}(; α = vg_α, n = vg_n)
         θ_r = FT(0.045)
         ν_ss_om = FT(0.0)
         ν_ss_quartz = FT(1.0)
         ν_ss_gravel = FT(0.0)
-        parameters = Soil.EnergyHydrologyParameters{FT}(
-            ν = ν,
-            ν_ss_om = ν_ss_om,
-            ν_ss_quartz = ν_ss_quartz,
-            ν_ss_gravel = ν_ss_gravel,
-            hydrology_cm = hcm,
-            K_sat = K_sat,
-            S_s = S_s,
-            θ_r = θ_r,
-            earth_param_set = earth_param_set,
+        parameters = Soil.EnergyHydrologyParameters(
+            FT;
+            ν,
+            ν_ss_om,
+            ν_ss_quartz,
+            ν_ss_gravel,
+            hydrology_cm,
+            K_sat,
+            S_s,
+            θ_r,
         )
         zmax = FT(0)
         zmin = FT(-1)

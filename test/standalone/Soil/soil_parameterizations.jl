@@ -52,16 +52,16 @@ for FT in (Float32, Float64)
         κ_ice = FT(2.21)
         κ_liq = FT(0.57)
 
-        parameters = EnergyHydrologyParameters{FT}(;
-            ν = ν,
-            ν_ss_om = ν_ss_om,
-            ν_ss_quartz = ν_ss_quartz,
-            ν_ss_gravel = ν_ss_gravel,
+        parameters = EnergyHydrologyParameters(
+            FT;
+            ν,
+            ν_ss_om,
+            ν_ss_quartz,
+            ν_ss_gravel,
             hydrology_cm = hcm,
-            K_sat = K_sat,
-            S_s = S_s,
-            θ_r = θ_r,
-            earth_param_set = param_set,
+            K_sat,
+            S_s,
+            θ_r,
         )
         # Test that the preset params are set properly
         (; α, β, Ω, hydrology_cm, γ, γT_ref) = parameters
@@ -308,16 +308,16 @@ for FT in (Float32, Float64)
         ν_ss_om = FT(0.1)
         ν_ss_gravel = FT(0.1)
         ν_ss_quartz = FT(0.1)
-        parameters = EnergyHydrologyParameters{FT}(;
-            ν = ν,
-            ν_ss_om = ν_ss_om,
-            ν_ss_quartz = ν_ss_quartz,
-            ν_ss_gravel = ν_ss_gravel,
+        parameters = EnergyHydrologyParameters(
+            FT;
+            ν,
+            ν_ss_om,
+            ν_ss_quartz,
+            ν_ss_gravel,
             hydrology_cm = hcm,
-            K_sat = K_sat,
-            S_s = S_s,
-            θ_r = θ_r,
-            earth_param_set = param_set,
+            K_sat,
+            S_s,
+            θ_r,
         )
 
         Δz = FT(1.0)

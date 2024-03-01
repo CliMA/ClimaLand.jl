@@ -25,21 +25,20 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
     S_s = FT(1e-3) #inverse meters
     vg_n = FT(2.0)
     vg_α = FT(2.6) # inverse meters
-    hcm = vanGenuchten{FT}(; α = vg_α, n = vg_n)
     θ_r = FT(0.1)
     ν_ss_om = FT(0.0)
     ν_ss_quartz = FT(1.0)
     ν_ss_gravel = FT(0.0)
-    soil_ps = Soil.EnergyHydrologyParameters{FT}(;
-        ν = ν,
-        ν_ss_om = ν_ss_om,
-        ν_ss_quartz = ν_ss_quartz,
-        ν_ss_gravel = ν_ss_gravel,
-        hydrology_cm = hcm,
-        K_sat = K_sat,
-        S_s = S_s,
-        θ_r = θ_r,
-        earth_param_set = earth_param_set,
+    soil_ps = Soil.EnergyHydrologyParameters(
+        FT;
+        ν,
+        ν_ss_om,
+        ν_ss_quartz,
+        ν_ss_gravel,
+        hydrology_cm = vanGenuchten{FT}(; α = vg_α, n = vg_n),
+        K_sat,
+        S_s,
+        θ_r,
     )
 
     zmax = FT(0)

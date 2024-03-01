@@ -87,21 +87,21 @@ for FT in (Float32, Float64)
                 heat = zero_heat_flux,
             ),
         )
-        params = ClimaLand.Soil.EnergyHydrologyParameters{FT}(;
-            ν = ν,
-            ν_ss_om = ν_ss_om,
-            ν_ss_quartz = ν_ss_quartz,
-            ν_ss_gravel = ν_ss_gravel,
+        params = ClimaLand.Soil.EnergyHydrologyParameters(
+            FT;
+            ν,
+            ν_ss_om,
+            ν_ss_quartz,
+            ν_ss_gravel,
             hydrology_cm = hcm,
-            K_sat = K_sat,
-            S_s = S_s,
-            θ_r = θ_r,
-            PAR_albedo = PAR_albedo,
-            NIR_albedo = NIR_albedo,
-            emissivity = emissivity,
-            z_0m = z_0m,
-            z_0b = z_0b,
-            earth_param_set = earth_param_set,
+            K_sat,
+            S_s,
+            θ_r,
+            PAR_albedo,
+            NIR_albedo,
+            emissivity,
+            z_0m,
+            z_0b,
         )
 
         for domain in soil_domains

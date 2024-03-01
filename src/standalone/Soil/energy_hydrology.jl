@@ -9,7 +9,7 @@ A parameter structure for the integrated soil water and energy
  equation system. 
 $(DocStringExtensions.FIELDS)
 """
-struct EnergyHydrologyParameters{
+Base.@kwdef struct EnergyHydrologyParameters{
     FT <: AbstractFloat,
     F <: Union{<:AbstractFloat, ClimaCore.Fields.Field},
     C,
@@ -63,111 +63,6 @@ struct EnergyHydrologyParameters{
     d_ds::FT
     "Physical constants and clima-wide parameters"
     earth_param_set::PSE
-end
-
-function EnergyHydrologyParameters{FT}(;
-    ν::F,
-    ν_ss_om::F,
-    ν_ss_quartz::F,
-    ν_ss_gravel::F,
-    hydrology_cm::C,
-    K_sat::F,
-    S_s::F,
-    θ_r::F,
-    PAR_albedo = FT(0.2),
-    NIR_albedo = FT(0.4),
-    emissivity = FT(0.96),
-    z_0m = FT(0.01),
-    z_0b = FT(0.01),
-    d_ds = FT(0.015),
-    earth_param_set::PSE,
-) where {FT, F <: Union{FT, ClimaCore.Fields.FieldVector}, PSE, C}
-    # All below will be moved to CP
-    # These were determined in the Balland and Arp paper, from 2003.
-    α = FT(0.24)
-    β = FT(18.3)
-    # Lundin paper
-    Ω = FT(7)
-    # Unclear where these are from (design doc)
-    γ = FT(2.64e-2)
-    γT_ref = FT(288)
-
-    # Constants from Ballard and Arp paper - will be moved to ClimaParams
-    κ_minerals = FT(2.5)
-    κ_om = FT(0.25)
-    κ_quartz = FT(8.0)
-    #κ_gravel = κ_minerals implicitly in equation for κ_solid
-
-    ρp_quartz = FT(2.66e3)
-    ρp_minerals = FT(2.65e3)
-    ρp_om = FT(1.3e3)
-    ρp_gravel = ρp_minerals
-
-    ρc_quartz = FT(2.01e6)
-    ρc_om = FT(2.51e6)
-    ρc_minerals = FT(2.01e6)
-    ρc_gravel = ρc_minerals
-
-    # Thermal conductivity of dry air
-    κ_air = FT(LP.K_therm(earth_param_set))
-    κ_ice = FT(2.21)
-    κ_liq = FT(0.57)
-
-    # Particle density of the soil - per unit soil solids
-    # Denoted ρ_ds in the Clima Design Docs (Equation 2.3)
-    # where ν_ss_i = ν_i/(1-ν)
-    ρp = @. (
-        ν_ss_om * ρp_om +
-        ν_ss_quartz * ρp_quartz +
-        ν_ss_gravel * ρp_gravel +
-        (1 - ν_ss_om - ν_ss_quartz - ν_ss_gravel) * ρp_minerals
-    )
-
-    # Volumetric heat capacity of soil solids - per unit volume soil solids
-    # This is Equation 2.6a/2.10 in the Clima Design Docs
-    # where ν_ss_i = ν_i/(1-ν)
-    ρc_ss = @. (
-        ν_ss_om * ρc_om +
-        ν_ss_quartz * ρc_quartz +
-        ν_ss_gravel * ρc_gravel +
-        (1 - ν_ss_om - ν_ss_quartz - ν_ss_gravel) * ρc_minerals
-    )
-
-    # Volumetric heat capacity of dry soil - per unit volume of soil
-    # This is denoted č_ds (Equation 2.11) and is used in equation 2.9
-    ρc_ds = @. (1 - ν) * ρc_ss
-
-    κ_solid = Soil.κ_solid.(ν_ss_om, ν_ss_quartz, κ_om, κ_quartz, κ_minerals)
-    κ_dry = Soil.κ_dry.(ρp, ν, κ_solid, κ_air)
-    κ_sat_frozen = Soil.κ_sat_frozen.(κ_solid, ν, κ_ice)
-    κ_sat_unfrozen = Soil.κ_sat_unfrozen.(κ_solid, ν, κ_liq)
-
-    return EnergyHydrologyParameters{FT, F, C, PSE}(
-        κ_dry,
-        κ_sat_frozen,
-        κ_sat_unfrozen,
-        ρc_ds,
-        ν,
-        ν_ss_om,
-        ν_ss_quartz,
-        ν_ss_gravel,
-        α,
-        β,
-        hydrology_cm,
-        K_sat,
-        S_s,
-        θ_r,
-        Ω,
-        γ,
-        γT_ref,
-        PAR_albedo,
-        NIR_albedo,
-        emissivity,
-        z_0m,
-        z_0b,
-        d_ds,
-        earth_param_set,
-    )
 end
 
 Base.broadcastable(ps::EnergyHydrologyParameters) = tuple(ps)

@@ -69,16 +69,16 @@ include(
 # Now we set up the model. For the soil model, we pick
 # a model type and model args:
 soil_domain = land_domain
-soil_ps = Soil.EnergyHydrologyParameters{FT}(;
+soil_ps = Soil.EnergyHydrologyParameters(
+    FT;
     ν = soil_ν,
-    ν_ss_om = ν_ss_om,
-    ν_ss_quartz = ν_ss_quartz,
-    ν_ss_gravel = ν_ss_gravel,
+    ν_ss_om,
+    ν_ss_quartz,
+    ν_ss_gravel,
     hydrology_cm = vanGenuchten{FT}(; α = soil_vg_α, n = soil_vg_n),
     K_sat = soil_K_sat,
     S_s = soil_S_s,
-    θ_r = θ_r,
-    earth_param_set = earth_param_set,
+    θ_r,
     z_0m = z_0m_soil,
     z_0b = z_0b_soil,
     emissivity = soil_ϵ,

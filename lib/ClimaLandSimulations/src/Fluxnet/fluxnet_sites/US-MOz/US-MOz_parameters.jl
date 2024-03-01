@@ -87,21 +87,21 @@ function soil_ozark(; # Function that returns the src function, but with ozark d
     NIR_albedo = FT(0.2),
 )
     hydrology_cm = vanGenuchten{FT}(; α = vg_α, n = vg_n)
-    return EnergyHydrologyParameters{FT}(; # here, calls the src function, not the src struct    
-        ν = ν,
-        ν_ss_om = ν_ss_om,
-        ν_ss_quartz = ν_ss_quartz,
-        ν_ss_gravel = ν_ss_gravel,
-        hydrology_cm = hydrology_cm,
-        K_sat = K_sat,
-        S_s = S_s,
-        θ_r = θ_r,
-        PAR_albedo = PAR_albedo,
-        NIR_albedo = NIR_albedo,
-        emissivity = emissivity,
-        z_0m = z_0m,
-        z_0b = z_0b,
-        earth_param_set = earth_param_set,
+    return EnergyHydrologyParameters(
+        FT;
+        ν,
+        ν_ss_om,
+        ν_ss_quartz,
+        ν_ss_gravel,
+        hydrology_cm,
+        K_sat,
+        S_s,
+        θ_r,
+        PAR_albedo,
+        NIR_albedo,
+        emissivity,
+        z_0m,
+        z_0b,
     )
 end
 
