@@ -56,8 +56,7 @@ bonan_sand_dataset = ArtifactWrapper(
         top_state_bc = MoistureStateBC((p, t) -> ν - 1e-3)
         bot_flux_bc = FreeDrainage()
         sources = ()
-        boundary_states =
-            (; top = (water = top_state_bc,), bottom = (water = bot_flux_bc,))
+        boundary_states = (; top = top_state_bc, bottom = bot_flux_bc)
         params = Soil.RichardsParameters(;
             ν = ν,
             hydrology_cm = hcm,
@@ -161,8 +160,7 @@ end
         top_state_bc = MoistureStateBC((p, t) -> 0.267)
         bot_flux_bc = FreeDrainage()
         sources = ()
-        boundary_states =
-            (; top = (water = top_state_bc,), bottom = (water = bot_flux_bc,))
+        boundary_states = (; top = top_state_bc, bottom = bot_flux_bc)
 
         params =
             Soil.RichardsParameters{FT, typeof(hcm)}(ν, hcm, K_sat, S_s, θ_r)

@@ -324,7 +324,7 @@ using .Pond
 import .Pond: surface_runoff
 include("standalone/Soil/Soil.jl")
 using .Soil
-import .Soil: soil_boundary_fluxes
+import .Soil: soil_boundary_fluxes!
 import .Soil.Biogeochemistry: soil_temperature, soil_moisture
 include("standalone/Snow/Snow.jl")
 using .Snow

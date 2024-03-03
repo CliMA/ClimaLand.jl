@@ -20,8 +20,8 @@ import ClimaLand:
     auxiliary_domain_names,
     TopBoundary,
     BottomBoundary,
-    boundary_flux,
     AbstractBC,
+    boundary_flux,
     AbstractSource,
     source!
 export SoilCO2ModelParameters,
@@ -148,7 +148,7 @@ struct SoilCO2Model{FT, PS, D, BC, S, DT} <:
     parameters::PS
     "the soil domain, using ClimaCore.Domains"
     domain::D
-    "the boundary conditions, of type AbstractBoundaryConditions"
+    "the boundary conditions, of type NamedTuple"
     boundary_conditions::BC
     "A tuple of sources, each of type AbstractSource"
     sources::S
@@ -184,17 +184,53 @@ ClimaLand.prognostic_vars(::SoilCO2Model) = (:C,)
 ClimaLand.prognostic_types(::SoilCO2Model{FT}) where {FT} = (FT,)
 ClimaLand.prognostic_domain_names(::SoilCO2Model) = (:subsurface,)
 
-ClimaLand.auxiliary_vars(::SoilCO2Model) = (:D, :Sm, :top_bc, :bottom_bc)
-ClimaLand.auxiliary_types(::SoilCO2Model{FT}) where {FT} = (FT, FT, FT, FT)
-ClimaLand.auxiliary_domain_names(::SoilCO2Model) =
-    (:subsurface, :subsurface, :surface, :surface)
+ClimaLand.auxiliary_vars(model::SoilCO2Model) = (
+    :D,
+    :Sm,
+    ClimaLand.boundary_vars(
+        model.boundary_conditions.top,
+        ClimaLand.TopBoundary(),
+    )...,
+    ClimaLand.boundary_vars(
+        model.boundary_conditions.bottom,
+        ClimaLand.BottomBoundary(),
+    )...,
+)
+
+
+ClimaLand.auxiliary_types(model::SoilCO2Model{FT}) where {FT} = (
+    FT,
+    FT,
+    ClimaLand.boundary_var_types(
+        model,
+        model.boundary_conditions.top,
+        ClimaLand.TopBoundary(),
+    )...,
+    ClimaLand.boundary_var_types(
+        model,
+        model.boundary_conditions.bottom,
+        ClimaLand.BottomBoundary(),
+    )...,
+)
+ClimaLand.auxiliary_domain_names(model::SoilCO2Model) = (
+    :subsurface,
+    :subsurface,
+    ClimaLand.boundary_var_domain_names(
+        model.boundary_conditions.top,
+        ClimaLand.TopBoundary(),
+    )...,
+    ClimaLand.boundary_var_domain_names(
+        model.boundary_conditions.bottom,
+        ClimaLand.BottomBoundary(),
+    )...,
+)
 
 function make_update_boundary_fluxes(model::SoilCO2Model)
     function update_boundary_fluxes!(p, Y, t)
         z = ClimaCore.Fields.coordinate_field(model.domain.space.subsurface).z
         Δz_top, Δz_bottom = get_Δz(z)
         p.soilco2.top_bc .= boundary_flux(
-            model.boundary_conditions.top.CO2,
+            model.boundary_conditions.top,
             TopBoundary(),
             Δz_top,
             Y,
@@ -202,7 +238,7 @@ function make_update_boundary_fluxes(model::SoilCO2Model)
             t,
         )
         p.soilco2.bottom_bc .= boundary_flux(
-            model.boundary_conditions.bottom.CO2,
+            model.boundary_conditions.bottom,
             BottomBoundary(),
             Δz_bottom,
             Y,
@@ -438,21 +474,15 @@ function ClimaLand.make_update_aux(model::SoilCO2Model)
     return update_aux!
 end
 
+# Boundary condition types/methods for Soil CO2
 """
-    AbstractSoilCO2BC <: ClimaLand. AbstractBC
-
-An abstract type for co2-specific types of boundary conditions.
-"""
-abstract type AbstractSoilCO2BC <: ClimaLand.AbstractBC end
-
-"""
-    SoilCO2FluxBC <: AbstractSoilCO2BC
+    SoilCO2FluxBC <: ClimaLand.AbstractBC
 
 A container holding the CO2 flux boundary condition,
 which is a function `f(p,t)`, where `p` is the auxiliary state
 vector.
 """
-struct SoilCO2FluxBC{F <: Function} <: AbstractSoilCO2BC
+struct SoilCO2FluxBC{F <: Function} <: ClimaLand.AbstractBC
     bc::F
 end
 
@@ -483,13 +513,13 @@ function ClimaLand.boundary_flux(
 end
 
 """
-    SoilCO2StateBC <: AbstractSoilCO2BC
+    SoilCO2StateBC <: ClimaLand.AbstractBC
 
 A container holding the CO2 state boundary condition (kg CO2 m−3),
 which is a function `f(p,t)`, where `p` is the auxiliary state
 vector.
 """
-struct SoilCO2StateBC{F <: Function} <: AbstractSoilCO2BC
+struct SoilCO2StateBC{F <: Function} <: ClimaLand.AbstractBC
     bc::F
 end
 
@@ -567,11 +597,11 @@ function ClimaLand.boundary_flux(
 end
 
 """
-    AtmosCO2StateBC <: AbstractSoilCO2BC
+    AtmosCO2StateBC <: ClimaLand.AbstractBC
 
 Set the CO2 concentration to the atmospheric one.
 """
-struct AtmosCO2StateBC <: AbstractSoilCO2BC end
+struct AtmosCO2StateBC <: ClimaLand.AbstractBC end
 
 """
     ClimaLand.boundary_flux(

@@ -139,24 +139,27 @@ soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems);
 
 # The boundary value problem in this case
 # requires a boundary condition at the top and the bottom of the domain
-# for each equation being solved. These conditions can be on the state (`ϑ_l`
+# for each equation being solved. We support conditions on the state (`ϑ_l`
 # or `T`), or on the fluxes (`-K∇h` or `-κ∇T`). In the case of fluxes,
 # we return the magnitude of the flux, assumed to point along `ẑ`. And, in each case,
 # the boundary conditions are supplied in the form of a function of auxiliary variables
 # `p` and time `t`.
+#  Here we choose flux boundary conditions. The flux boundary condition
+# requires a function of the cache and simulation time which returns
+# the boundary flux.
 
 # Water boundary conditions:
-surface_water_flux = FluxBC((p, t) -> 0.0)
-bottom_water_flux = FluxBC((p, t) -> 0.0);
+surface_water_flux = WaterFluxBC((p, t) -> 0.0)
+bottom_water_flux = WaterFluxBC((p, t) -> 0.0);
 
 # The boundary conditions for the heat equation:
-surface_heat_flux = FluxBC((p, t) -> 0.0)
-bottom_heat_flux = FluxBC((p, t) -> 0.0);
+surface_heat_flux = HeatFluxBC((p, t) -> 0.0)
+bottom_heat_flux = HeatFluxBC((p, t) -> 0.0);
 
-# We wrap up all of those in a NamedTuple:
+# We wrap up all of those in a WaterHeatBC struct:
 boundary_fluxes = (;
-    top = (water = surface_water_flux, heat = surface_heat_flux),
-    bottom = (water = bottom_water_flux, heat = bottom_water_flux),
+    top = WaterHeatBC(; water = surface_water_flux, heat = surface_heat_flux),
+    bottom = WaterHeatBC(; water = bottom_water_flux, heat = bottom_heat_flux),
 );
 
 

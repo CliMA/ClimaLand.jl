@@ -23,11 +23,10 @@ for FT in (Float32, Float64)
         nelems = 50
 
         soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems)
-        top_flux_bc = FluxBC((p, t) -> 0.0)
-        bot_flux_bc = FluxBC((p, t) -> 0.0)
+        top_flux_bc = WaterFluxBC((p, t) -> 0.0)
+        bot_flux_bc = WaterFluxBC((p, t) -> 0.0)
         sources = ()
-        boundary_fluxes =
-            (; top = (water = top_flux_bc,), bottom = (water = bot_flux_bc,))
+        boundary_fluxes = (; top = top_flux_bc, bottom = bot_flux_bc)
         params = Soil.RichardsParameters(;
             ν = ν,
             hydrology_cm = hcm,
@@ -104,14 +103,20 @@ for FT in (Float32, Float64)
         nelems = 200
         Δz = abs(zmax - zmin) / nelems
         soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems)
-        top_flux_bc = FluxBC((p, t) -> 0.0)
-        bot_flux_bc = FluxBC((p, t) -> 0.0)
-        sources = ()
-        # Use the same BCs for RRE and heat
+
+        zero_water_flux_bc = WaterFluxBC((p, t) -> 0.0)
+        zero_heat_flux_bc = HeatFluxBC((p, t) -> 0.0)
         boundary_fluxes = (;
-            top = (water = top_flux_bc, heat = top_flux_bc),
-            bottom = (water = bot_flux_bc, heat = bot_flux_bc),
+            top = WaterHeatBC(;
+                water = zero_water_flux_bc,
+                heat = zero_heat_flux_bc,
+            ),
+            bottom = WaterHeatBC(;
+                water = zero_water_flux_bc,
+                heat = zero_heat_flux_bc,
+            ),
         )
+        sources = ()
 
 
         ###
@@ -319,9 +324,9 @@ for FT in (Float32, Float64)
         K_face = 0.5 .* (K.(θ[2:end]) .+ K.(θ[1:(end - 1)]))
         flux_interior = (@. -K_face * (1.0 + dψdθ(θ_face) * dθdz(Z_face)))
         flux = vcat(
-            [top_flux_bc.bc(p, FT(0.0))],
+            [zero_water_flux_bc.bc(p, FT(0.0))],
             flux_interior,
-            [bot_flux_bc.bc(p, FT(0.0))],
+            [zero_water_flux_bc.bc(p, FT(0.0))],
         )
 
         expected = -(flux[2:end] - flux[1:(end - 1)]) ./ Δz
@@ -341,9 +346,9 @@ for FT in (Float32, Float64)
         flux_interior =
             (@. -K_face * ρe_int_l_face * (1.0 + dψdθ(θ_face) * dθdz(Z_face)))
         flux = vcat(
-            [top_flux_bc.bc(p, FT(0.0))],
+            [zero_water_flux_bc.bc(p, FT(0.0))],
             flux_interior,
-            [bot_flux_bc.bc(p, FT(0.0))],
+            [zero_water_flux_bc.bc(p, FT(0.0))],
         )
         expected = -(flux[2:end] - flux[1:(end - 1)]) ./ Δz
 
@@ -497,9 +502,9 @@ for FT in (Float32, Float64)
         flux_interior =
             (@. -K_face * vf_face * (1.0 + dψdθ(θ_face) * dθdz(Z_face)))
         flux = vcat(
-            [top_flux_bc.bc(p, FT(0.0))],
+            [zero_water_flux_bc.bc(p, FT(0.0))],
             flux_interior,
-            [bot_flux_bc.bc(p, FT(0.0))],
+            [zero_water_flux_bc.bc(p, FT(0.0))],
         )
 
         expected = -(flux[2:end] - flux[1:(end - 1)]) ./ Δz
@@ -524,15 +529,15 @@ for FT in (Float32, Float64)
             ρe_int_l_face *
             (1.0 + dψdθ(θ_face) * dθdz(Z_face)))
         flux_one = vcat(
-            [top_flux_bc.bc(p, FT(0.0))],
+            [zero_water_flux_bc.bc(p, FT(0.0))],
             flux_interior,
-            [bot_flux_bc.bc(p, FT(0.0))],
+            [zero_water_flux_bc.bc(p, FT(0.0))],
         )
         flux_interior = (@. -κ_face * (Z_face + 0.5))
         flux_two = vcat(
-            [top_flux_bc.bc(p, FT(0.0))],
+            [zero_water_flux_bc.bc(p, FT(0.0))],
             flux_interior,
-            [bot_flux_bc.bc(p, FT(0.0))],
+            [zero_water_flux_bc.bc(p, FT(0.0))],
         )
         flux = flux_one .+ flux_two
         expected = -(flux[2:end] - flux[1:(end - 1)]) ./ Δz
@@ -560,11 +565,18 @@ for FT in (Float32, Float64)
         nelems = 200
         Δz = FT(0.005)
         soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems)
-        top_flux_bc = FluxBC((p, t) -> 0.0)
-        bot_flux_bc = FluxBC((p, t) -> 0.0)
+
+        zero_water_flux_bc = WaterFluxBC((p, t) -> 0.0)
+        zero_heat_flux_bc = HeatFluxBC((p, t) -> 0.0)
         boundary_fluxes = (;
-            top = (water = top_flux_bc, heat = top_flux_bc),
-            bottom = (water = bot_flux_bc, heat = bot_flux_bc),
+            top = WaterHeatBC(;
+                water = zero_water_flux_bc,
+                heat = zero_heat_flux_bc,
+            ),
+            bottom = WaterHeatBC(;
+                water = zero_water_flux_bc,
+                heat = zero_heat_flux_bc,
+            ),
         )
 
         sources = (PhaseChange{FT}(Δz),)

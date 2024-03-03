@@ -76,7 +76,7 @@ for FT in (Float32, Float64)
             # set cache values to those corresponding with Y(t=0)
             set_initial_cache! = make_set_initial_cache(land)
             set_initial_cache!(p, Y, t)
-            @test p.soil.top_bc.water == p.soil_infiltration
+            @test p.soil.top_bc == p.soil_infiltration
 
             if typeof(lsm_domain) <: ClimaLand.HybridBox
                 # test that the dss buffers are correctly added

@@ -89,9 +89,12 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
         gustiness = gustiness,
     )
     top_bc = ClimaLand.Soil.AtmosDrivenFluxBC(atmos, radiation)
-    zero_flux = FluxBC((p, t) -> 0)
-    boundary_fluxes =
-        (; top = top_bc, bottom = (water = zero_flux, heat = zero_flux))
+    zero_water_flux = WaterFluxBC((p, t) -> 0)
+    zero_heat_flux = HeatFluxBC((p, t) -> 0)
+    boundary_fluxes = (;
+        top = top_bc,
+        bottom = WaterHeatBC(; water = zero_water_flux, heat = zero_heat_flux),
+    )
     params = ClimaLand.Soil.EnergyHydrologyParameters{FT}(;
         ν = ν,
         ν_ss_om = ν_ss_om,

@@ -236,7 +236,7 @@ function make_update_boundary_fluxes(model::EnergyHydrology)
     function update_boundary_fluxes!(p, Y, t)
         z = ClimaCore.Fields.coordinate_field(model.domain.space.subsurface).z
         Δz_top, Δz_bottom = get_Δz(z)
-        p.soil.top_bc .= soil_boundary_fluxes(
+        soil_boundary_fluxes!(
             model.boundary_conditions.top,
             ClimaLand.TopBoundary(),
             model,
@@ -246,7 +246,7 @@ function make_update_boundary_fluxes(model::EnergyHydrology)
             t,
         )
 
-        p.soil.bottom_bc .= soil_boundary_fluxes(
+        soil_boundary_fluxes!(
             model.boundary_conditions.bottom,
             ClimaLand.BottomBoundary(),
             model,

@@ -69,7 +69,7 @@ function run_fluxnet(
     soilco2_sources = (MicrobeProduction{FT}(),)
 
     soilco2_boundary_conditions =
-        (; top = (CO2 = soilco2_top_bc,), bottom = (CO2 = soilco2_bot_bc,))
+        (; top = soilco2_top_bc, bottom = CO2 = soilco2_bot_bc)
 
     soilco2_drivers = Soil.Biogeochemistry.SoilDrivers(
         Soil.Biogeochemistry.PrognosticMet{FT}(),

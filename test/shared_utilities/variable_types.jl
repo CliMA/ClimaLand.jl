@@ -106,18 +106,18 @@ end
 end
 
 @testset "Variables, FT = $FT" begin
-    struct Model{FT, D} <: AbstractModel{FT}
+    struct Foo{FT, D} <: AbstractModel{FT}
         domain::D
     end
-    ClimaLand.name(m::Model) = :foo
-    ClimaLand.prognostic_vars(m::Model) = (:a, :b)
-    ClimaLand.auxiliary_vars(m::Model) = (:d, :e)
+    ClimaLand.name(m::Foo) = :foo
+    ClimaLand.prognostic_vars(m::Foo) = (:a, :b)
+    ClimaLand.auxiliary_vars(m::Foo) = (:d, :e)
 
-    ClimaLand.prognostic_types(m::Model{FT}) where {FT} = (FT, SVector{2, FT})
-    ClimaLand.auxiliary_types(m::Model{FT}) where {FT} = (FT, SVector{2, FT})
+    ClimaLand.prognostic_types(m::Foo{FT}) where {FT} = (FT, SVector{2, FT})
+    ClimaLand.auxiliary_types(m::Foo{FT}) where {FT} = (FT, SVector{2, FT})
 
-    ClimaLand.prognostic_domain_names(m::Model) = (:surface, :surface)
-    ClimaLand.auxiliary_domain_names(m::Model) = (:surface, :subsurface)
+    ClimaLand.prognostic_domain_names(m::Foo) = (:surface, :surface)
+    ClimaLand.auxiliary_domain_names(m::Foo) = (:surface, :subsurface)
 
     zmin = FT(1.0)
     zmax = FT(2.0)
@@ -125,10 +125,24 @@ end
     nelements = 5
 
     column = Column(; zlim = zlim, nelements = nelements)
-    m = Model{FT, typeof(column)}(column)
+    m = Foo{FT, typeof(column)}(column)
     Y, p, coords = initialize(m)
     @test Array(parent(Y.foo.a)) == zeros(FT, 1)
     @test Array(parent(Y.foo.b)) == zeros(FT, 2)
     @test Array(parent(p.foo.d)) == zeros(FT, 1)
     @test Array(parent(p.foo.e)) == zeros(FT, 5, 2)
+    @testset "Boundary variables default, FT = $FT" begin
+        struct BC <: ClimaLand.AbstractBC end
+        bc = BC()
+
+        # Test that bc variables added if invoked
+        @test boundary_vars(bc, ClimaLand.TopBoundary()) == (:top_bc,)
+        @test boundary_vars(bc, ClimaLand.BottomBoundary()) == (:bottom_bc,)
+        @test boundary_var_domain_names(bc, ClimaLand.TopBoundary()) ==
+              (:surface,)
+        @test boundary_var_domain_names(bc, ClimaLand.BottomBoundary()) ==
+              (:surface,)
+        @test boundary_var_types(m, bc, ClimaLand.TopBoundary()) == (FT,)
+        @test boundary_var_types(m, bc, ClimaLand.BottomBoundary()) == (FT,)
+    end
 end
