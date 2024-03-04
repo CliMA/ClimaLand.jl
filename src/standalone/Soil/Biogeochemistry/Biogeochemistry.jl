@@ -172,7 +172,7 @@ ClimaLand.auxiliary_domain_names(model::SoilCO2Model) = (
 function make_update_boundary_fluxes(model::SoilCO2Model)
     function update_boundary_fluxes!(p, Y, t)
         z = ClimaCore.Fields.coordinate_field(model.domain.space.subsurface).z
-        Δz_top, Δz_bottom = get_Δz(z)
+        Δz_top, Δz_bottom = ClimaLand.Domains.get_Δz(z)
         p.soilco2.top_bc .= boundary_flux(
             model.boundary_conditions.top,
             TopBoundary(),

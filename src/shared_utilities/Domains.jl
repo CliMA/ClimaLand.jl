@@ -677,6 +677,50 @@ function top_center_to_surface(center_field::ClimaCore.Fields.Field)
     )
 end
 
+"""
+    linear_interpolation_to_surface!(sfc_field, center_field, z)
+
+Linearly interpolate the center field `center_field` to the surface 
+defined by the top face coordinate of `z`; updates the `sfc_field`
+on the surface (face) space in place.
+"""
+function linear_interpolation_to_surface!(sfc_field, center_field, z)
+    Δz_top, _ = get_Δz(z)
+    surface_space = obtain_surface_space(axes(z))
+    Δz_top = ClimaCore.Fields.field_values(Δz_top)
+    nz = Spaces.nlevels(axes(center_field))
+    f1 = ClimaCore.Fields.field_values(ClimaCore.Fields.level(center_field, nz))
+    f2 = ClimaCore.Fields.field_values(
+        ClimaCore.Fields.level(center_field, nz - 1),
+    )
+    z1 = ClimaCore.Fields.field_values(ClimaCore.Fields.level(z, nz))
+    z2 = ClimaCore.Fields.field_values(ClimaCore.Fields.level(z, nz - 1))
+    sfc_field .= ClimaCore.Fields.Field(
+        (@. (f1 - f2) / (z1 - z2) * (Δz_top + z1 - z2) + f2),
+        surface_space,
+    )
+end
+
+"""
+    get_Δz(z::ClimaCore.Fields.Field)
+
+A function to return a tuple containing the distance between the top boundary
+and its closest center, and the bottom boundary and its closest center, 
+both as Fields.
+"""
+function get_Δz(z::ClimaCore.Fields.Field)
+    # Extract the differences between levels of the face space
+    fs = obtain_face_space(axes(z))
+    z_face = ClimaCore.Fields.coordinate_field(fs).z
+    Δz = ClimaCore.Fields.Δz_field(z_face)
+
+    Δz_top = ClimaCore.Fields.level(
+        Δz,
+        ClimaCore.Utilities.PlusHalf(ClimaCore.Spaces.nlevels(fs) - 1),
+    )
+    Δz_bottom = ClimaCore.Fields.level(Δz, ClimaCore.Utilities.PlusHalf(0))
+    return Δz_top ./ 2, Δz_bottom ./ 2
+end
 
 export AbstractDomain
 export Column, Plane, HybridBox, Point, SphericalShell, SphericalSurface
@@ -684,6 +728,7 @@ export coordinates,
     obtain_face_space,
     obtain_surface_space,
     top_center_to_surface,
-    obtain_surface_domain
-
+    obtain_surface_domain,
+    linear_interpolation_to_surface!,
+    get_Δz
 end

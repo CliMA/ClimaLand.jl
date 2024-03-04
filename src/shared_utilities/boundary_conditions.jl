@@ -4,7 +4,6 @@ export boundary_flux,
     TopBoundary,
     BottomBoundary,
     diffusive_flux,
-    get_Δz,
     boundary_var_domain_names,
     boundary_var_types,
     boundary_vars
@@ -54,27 +53,6 @@ struct BottomBoundary <: AbstractBoundary end
 
 bc_name(::BottomBoundary) = :bottom_bc
 bc_name(::TopBoundary) = :top_bc
-
-"""
-    get_Δz(z::ClimaCore.Fields.Field)
-
-A function to return a tuple containing the distance between the top boundary
-and its closest center, and the bottom boundary and its closest center, 
-both as Fields.
-"""
-function get_Δz(z::ClimaCore.Fields.Field)
-    # Extract the differences between levels of the face space
-    fs = ClimaLand.Domains.obtain_face_space(axes(z))
-    z_face = ClimaCore.Fields.coordinate_field(fs).z
-    Δz = ClimaCore.Fields.Δz_field(z_face)
-
-    Δz_top = Fields.level(
-        Δz,
-        ClimaCore.Utilities.PlusHalf(ClimaCore.Spaces.nlevels(fs) - 1),
-    )
-    Δz_bottom = Fields.level(Δz, ClimaCore.Utilities.PlusHalf(0))
-    return Δz_top ./ 2, Δz_bottom ./ 2
-end
 
 """
     diffusive_flux(K, x_2, x_1, Δz)
