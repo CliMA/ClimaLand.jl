@@ -4,7 +4,7 @@ using ClimaLandSimulations
 import SciMLBase
 import ClimaTimeSteppers as CTS
 using ClimaCore
-import CLIMAParameters as CP
+import ClimaParams as CP
 using Statistics
 using Dates
 using Insolation
@@ -31,7 +31,7 @@ using DataFrames
 climalandsimulations_dir = pkgdir(ClimaLandSimulations)
 climaland_dir = pkgdir(ClimaLand)
 
-# ClimaParameters
+# ClimaParams
 const FT = Float64
 earth_param_set = LP.LandParameters(FT)
 

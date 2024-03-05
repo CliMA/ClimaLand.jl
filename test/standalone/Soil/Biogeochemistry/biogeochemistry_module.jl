@@ -1,6 +1,6 @@
 using Test
 using Dates
-import CLIMAParameters as CP
+import ClimaParams as CP
 using ClimaCore
 using ClimaLand
 using ClimaLand.Domains: Column
@@ -30,8 +30,7 @@ for FT in (Float32, Float64)
         top_bc = SoilCO2StateBC((p, t) -> 3000.0)
         bot_bc = SoilCO2StateBC((p, t) -> 100.0)
         sources = (MicrobeProduction{FT}(),)
-        boundary_conditions =
-            (; top = (CO2 = top_bc,), bottom = (CO2 = bot_bc,))
+        boundary_conditions = (; top = top_bc, bottom = bot_bc)
 
         # Make a PrescribedAtmosphere - we only care about atmos_p though
         precipitation_function = (t) -> 1.0
@@ -101,8 +100,7 @@ for FT in (Float32, Float64)
         top_bc = SoilCO2StateBC((p, t) -> C)
         bot_bc = SoilCO2StateBC((p, t) -> C)
         sources = ()
-        boundary_conditions =
-            (; top = (CO2 = top_bc,), bottom = (CO2 = bot_bc,))
+        boundary_conditions = (; top = top_bc, bottom = bot_bc)
 
         # Make a PrescribedAtmosphere - we only care about atmos_p though
         precipitation_function = (t) -> 1.0

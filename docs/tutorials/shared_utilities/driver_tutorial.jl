@@ -45,7 +45,7 @@ using Dates
 using Insolation # for computing zenith angle given lat, lon, time.
 using ClimaLand
 import ClimaLand.Parameters as LP
-import CLIMAParameters
+import ClimaParams
 
 # Assume the local_datetime array is read in from the data file.
 local_datetime = DateTime(2013):Dates.Hour(1):DateTime(2013, 1, 7); # one week, hourly data

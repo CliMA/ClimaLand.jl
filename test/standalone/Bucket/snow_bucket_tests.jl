@@ -22,7 +22,7 @@ using ClimaLand:
 # Bucket model parameters
 import ClimaLand
 import ClimaLand.Parameters as LP
-import CLIMAParameters
+import ClimaParams
 
 for FT in (Float32, Float64)
     earth_param_set = LP.LandParameters(FT)

@@ -60,8 +60,7 @@ function LandHydrology{FT}(;
 
     sources = ()
     surface_runoff = PrognosticRunoff{FT}(precip)
-    boundary_conditions =
-        (; top = (water = RunoffBC(),), bottom = (water = Soil.FreeDrainage(),))
+    boundary_conditions = (; top = RunoffBC(), bottom = Soil.FreeDrainage())
 
     soil = soil_model_type(;
         boundary_conditions = boundary_conditions,
@@ -243,7 +242,7 @@ time,
 ensuring that the infiltration used for the boundary condition of soil
 is also used to compute the runoff for the surface water.
 """
-struct RunoffBC <: Soil.AbstractSoilBC end
+struct RunoffBC <: Soil.AbstractWaterBC end
 
 """
     function ClimaLand.boundary_flux(

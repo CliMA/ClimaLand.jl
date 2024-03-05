@@ -4,7 +4,7 @@ using Dates
 using Statistics
 
 using ClimaCore
-import CLIMAParameters as CP
+import ClimaParams as CP
 using ClimaLand.Bucket:
     BucketModel, BucketModelParameters, PrescribedBaregroundAlbedo
 using ClimaLand.Domains: coordinates, Column, HybridBox, SphericalShell

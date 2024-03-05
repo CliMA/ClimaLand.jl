@@ -3,7 +3,7 @@ using Test
 using ClimaCore
 using ClimaCore: Geometry, Meshes, Domains, Topologies, Spaces, Fields
 using ClimaComms
-import CLIMAParameters as CP
+import ClimaParams as CP
 
 using Dates
 using NCDatasets

@@ -24,7 +24,7 @@ using ClimaCore: Remapping, Geometry
 import ClimaComms
 import ClimaLand
 import ClimaLand.Parameters as LP
-import CLIMAParameters
+import ClimaParams
 using ClimaLand.Bucket:
     BucketModel, BucketModelParameters, PrescribedBaregroundAlbedo
 using ClimaLand.Domains: coordinates, Column

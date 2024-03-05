@@ -12,7 +12,7 @@ using Plots
 import SciMLBase
 import ClimaTimeSteppers as CTS
 using ClimaCore
-import CLIMAParameters as CP
+import ClimaParams as CP
 using ArtifactWrappers
 using DelimitedFiles: readdlm
 
@@ -93,9 +93,9 @@ params = ClimaLand.Soil.RichardsParameters(;
 function top_flux_function(p, t)
     return -0.0001033
 end
-top_bc = ClimaLand.Soil.FluxBC(top_flux_function)
+top_bc = ClimaLand.Soil.WaterFluxBC(top_flux_function)
 bottom_bc = ClimaLand.Soil.FreeDrainage()
-boundary_fluxes = (; top = (water = top_bc,), bottom = (water = bottom_bc,))
+boundary_fluxes = (; top = top_bc, bottom = bottom_bc)
 soil = Soil.RichardsModel{FT}(;
     parameters = params,
     domain = soil_domain,

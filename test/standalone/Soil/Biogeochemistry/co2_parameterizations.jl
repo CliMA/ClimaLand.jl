@@ -1,5 +1,5 @@
 using Test
-import CLIMAParameters as CP
+import ClimaParams as CP
 using ClimaLand.Soil.Biogeochemistry
 
 import ClimaLand

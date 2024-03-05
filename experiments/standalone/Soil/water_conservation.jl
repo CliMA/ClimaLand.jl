@@ -84,11 +84,11 @@ for FT in (Float32, Float64)
 
     # Set flux boundary conditions (used for calculating mass balance)
     flux_in = FT(-1e-7)
-    top_bc = Soil.FluxBC((p, t) -> flux_in)
+    top_bc = Soil.WaterFluxBC((p, t) -> flux_in)
     flux_out = FT(0)
-    bot_bc = Soil.FluxBC((p, t) -> flux_out)
+    bot_bc = Soil.WaterFluxBC((p, t) -> flux_out)
 
-    boundary_fluxes = (; top = (water = top_bc,), bottom = (water = bot_bc,))
+    boundary_fluxes = (; top = top_bc, bottom = bot_bc)
 
     soil = Soil.RichardsModel{FT}(;
         parameters = params,
@@ -195,11 +195,10 @@ for FT in (Float32, Float64)
 
 
     # Perform simulation with Dirichlet boundary conditions
-    top_state_bc = MoistureStateBC((p, t) -> ν - 1e-3)
+    top_state_bc = Soil.MoistureStateBC((p, t) -> ν - 1e-3)
     flux_out = FT(0)
-    bot_flux_bc = Soil.FluxBC((p, t) -> flux_out)
-    boundary_conds =
-        (; top = (water = top_state_bc,), bottom = (water = bot_flux_bc,))
+    bot_flux_bc = Soil.WaterFluxBC((p, t) -> flux_out)
+    boundary_conds = (; top = top_state_bc, bottom = bot_flux_bc)
 
     soil_dirichlet = Soil.RichardsModel{FT}(;
         parameters = params,
@@ -257,10 +256,8 @@ for FT in (Float32, Float64)
 
         # Calculate water mass balance over entire simulation
         # Because we use Backward Euler, compute fluxes at times[2:end]
-        flux_in_sim = [
-            parent(sv.saveval[k].soil.top_bc.water)[1] for
-            k in 2:length(sv.saveval)
-        ]
+        flux_in_sim =
+            [parent(sv.saveval[k].soil.top_bc)[1] for k in 2:length(sv.saveval)]
 
 
         mass_end = sum(sol.u[end].soil.ϑ_l)

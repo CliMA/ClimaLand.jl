@@ -42,7 +42,7 @@ using Insolation
 # Load CliMA Packages and ClimaLand Modules:
 
 using ClimaCore
-import CLIMAParameters as CP
+import ClimaParams as CP
 import ClimaTimeSteppers as CTS
 using ClimaLand
 using ClimaLand.Domains: Column, obtain_surface_domain
@@ -67,7 +67,7 @@ zmax = FT(0)
 f_root_to_shoot = FT(3.5)
 SAI = FT(0.00242)
 maxLAI = FT(4.2)
-capacity = FT(10) # kg/m^2
+plant_ν = FT(2.46e-4)
 n_stem = Int64(1)
 n_leaf = Int64(1)
 h_stem = FT(9)
@@ -209,8 +209,7 @@ soilco2_top_bc = Soil.Biogeochemistry.AtmosCO2StateBC()
 soilco2_bot_bc = Soil.Biogeochemistry.SoilCO2StateBC((p, t) -> 0.0);
 soilco2_sources = (MicrobeProduction{FT}(),);
 
-soilco2_boundary_conditions =
-    (; top = (CO2 = soilco2_top_bc,), bottom = (CO2 = soilco2_bot_bc,));
+soilco2_boundary_conditions = (; top = soilco2_top_bc, bottom = soilco2_bot_bc);
 
 soilco2_drivers = Soil.Biogeochemistry.SoilDrivers(
     Soil.Biogeochemistry.PrognosticMet{FT}(),

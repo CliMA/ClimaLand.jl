@@ -33,6 +33,7 @@ using .PlantHydraulics
 include("./stomatalconductance.jl")
 include("./photosynthesis.jl")
 include("./radiation.jl")
+include("./pfts.jl")
 include("./canopy_energy.jl")
 include("./canopy_parameterizations.jl")
 using Dates

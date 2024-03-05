@@ -105,7 +105,7 @@ struct TwoStreamParameters{FT <: AbstractFloat}
     "Number of layers to partition the canopy into when integrating the
     absorption over the canopy vertically. Unrelated to the number of layers in 
     the vertical discretization of the canopy for the plant hydraulics model.
-    (Constant, and should eventually move to ClimaParameters)"
+    (Constant, and should eventually move to ClimaParams)"
     n_layers::UInt64
 end
 

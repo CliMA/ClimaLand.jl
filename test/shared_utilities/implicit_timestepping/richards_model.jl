@@ -1,7 +1,7 @@
 using Test
 using LinearAlgebra
 using ClimaCore
-import CLIMAParameters as CP
+import ClimaParams as CP
 using ClimaLand
 using ClimaLand.Domains: Column, HybridBox
 using ClimaLand.Soil
@@ -35,8 +35,7 @@ for FT in (Float32, Float64)
         top_state_bc = MoistureStateBC((p, t) -> ν - 1e-3)
         bot_flux_bc = FreeDrainage()
         sources = ()
-        boundary_states =
-            (; top = (water = top_state_bc,), bottom = (water = bot_flux_bc,))
+        boundary_states = (; top = top_state_bc, bottom = bot_flux_bc)
         params = Soil.RichardsParameters(ν, hcm, K_sat, S_s, θ_r)
 
         for domain in soil_domains
@@ -143,11 +142,10 @@ for FT in (Float32, Float64)
                 npolynomial = 3,
             ),
         ]
-        top_flux_bc = FluxBC((p, t) -> -K_sat)
+        top_flux_bc = WaterFluxBC((p, t) -> -K_sat)
         bot_flux_bc = FreeDrainage()
         sources = ()
-        boundary_states =
-            (; top = (water = top_flux_bc,), bottom = (water = bot_flux_bc,))
+        boundary_states = (; top = top_flux_bc, bottom = bot_flux_bc)
         params = Soil.RichardsParameters(ν, hcm, K_sat, S_s, θ_r)
         for domain in soil_domains
             soil = Soil.RichardsModel{FT}(;

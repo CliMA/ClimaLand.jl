@@ -85,7 +85,7 @@ function RichardsModel{FT}(;
     sources::Tuple,
     lateral_flow::Bool = true,
 ) where {FT, D}
-    top_bc = boundary_conditions.top.water
+    top_bc = boundary_conditions.top
     if typeof(top_bc) <: RichardsAtmosDrivenFluxBC
         # If the top BC indicates precipitation is driving the model,
         # add baseflow as a sink/source term
@@ -100,8 +100,8 @@ function make_update_boundary_fluxes(model::RichardsModel)
     function update_boundary_fluxes!(p, Y, t)
         z = ClimaCore.Fields.coordinate_field(model.domain.space.subsurface).z
         Δz_top, Δz_bottom = get_Δz(z)
-        p.soil.top_bc.water .= boundary_flux(
-            model.boundary_conditions.top.water,
+        p.soil.top_bc .= boundary_flux(
+            model.boundary_conditions.top,
             TopBoundary(),
             model,
             Δz_top,
@@ -109,8 +109,8 @@ function make_update_boundary_fluxes(model::RichardsModel)
             p,
             t,
         )
-        p.soil.bottom_bc.water .= boundary_flux(
-            model.boundary_conditions.bottom.water,
+        p.soil.bottom_bc .= boundary_flux(
+            model.boundary_conditions.bottom,
             BottomBoundary(),
             model,
             Δz_bottom,
@@ -135,8 +135,8 @@ with that value.
 function ClimaLand.make_compute_imp_tendency(model::RichardsModel)
     function compute_imp_tendency!(dY, Y, p, t)
         z = ClimaCore.Fields.coordinate_field(model.domain.space.subsurface).z
-        top_flux_bc = p.soil.top_bc.water
-        bottom_flux_bc = p.soil.bottom_bc.water
+        top_flux_bc = p.soil.top_bc
+        bottom_flux_bc = p.soil.bottom_bc
 
         interpc2f = Operators.InterpolateC2F()
         gradc2f_water = Operators.GradientC2F()
@@ -464,7 +464,7 @@ function ClimaLand.make_update_jacobian(model::RichardsModel{FT}) where {FT}
         Δz_top, Δz_bottom = get_Δz(z)
         ∂T_bc∂YN = ClimaLand.∂tendencyBC∂Y(
             model,
-            model.boundary_conditions.top.water,
+            model.boundary_conditions.top,
             ClimaLand.TopBoundary(),
             Δz_top,
             Y,
@@ -479,4 +479,24 @@ function ClimaLand.make_update_jacobian(model::RichardsModel{FT}) where {FT}
 
     end
     return update_jacobian!
+end
+
+"""
+    ClimaLand.get_drivers(model::RichardsModel)
+
+Returns the driver variable symbols for the RichardsModel; these
+depend on the boundary condition type and currently only are required
+for the RichardsAtmosDrivenFluxBC, which is driven by
+a prescribed time and space varying precipitation.
+"""
+function ClimaLand.get_drivers(model::RichardsModel)
+    bc = model.boundary_conditions.top
+    if typeof(bc) <: RichardsAtmosDrivenFluxBC{
+        <:PrescribedPrecipitation,
+        <:AbstractRunoffModel,
+    }
+        return (bc.precip, nothing)
+    else
+        return (nothing, nothing)
+    end
 end

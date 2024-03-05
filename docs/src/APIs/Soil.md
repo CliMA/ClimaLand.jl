@@ -72,16 +72,15 @@ ClimaLand.Soil.soil_surface_infiltration
 ## Soil BC Methods and Types
 
 ```@docs
-ClimaLand.Soil.AbstractSoilBC
 ClimaLand.Soil.MoistureStateBC
-ClimaLand.Soil.FluxBC
+ClimaLand.Soil.HeatFluxBC
+ClimaLand.Soil.WaterFluxBC
 ClimaLand.Soil.TemperatureStateBC
 ClimaLand.Soil.FreeDrainage
 ClimaLand.Soil.RichardsAtmosDrivenFluxBC
 ClimaLand.Soil.AtmosDrivenFluxBC
-ClimaLand.Soil.boundary_vars
-ClimaLand.Soil.boundary_var_domain_names
-ClimaLand.Soil.boundary_var_types
+ClimaLand.Soil.WaterHeatBC
+ClimaLand.Soil.soil_boundary_fluxes!
 ```
 
 ## Soil Source Types

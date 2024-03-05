@@ -19,6 +19,7 @@ tutorials = [
             "standalone/Bucket/coupled_bucket.jl",
         ],
         "Soil modeling" => [
+            "Boundary conditions" => "standalone/Soil/boundary_conditions.jl",
             "Richards Equation" => "standalone/Soil/richards_equation.jl",
             "Energy and Hydrology" => "standalone/Soil/soil_energy_hydrology.jl",
             "Phase Changes" => "standalone/Soil/freezing_front.jl",

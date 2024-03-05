@@ -1,8 +1,8 @@
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.10.0"
+julia_version = "1.10.1"
 manifest_format = "2.0"
-project_hash = "e4ac6bea312835a3164dada4e2c292221b94bcfc"
+project_hash = "b49fdec5028be15016a5a3f1974d7c4af09f2d55"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "41c37aa88889c171f1300ceac1313c06e891d245"
@@ -216,12 +216,6 @@ git-tree-sha1 = "5afb5c5ba2688ca43a9ad2e5a91cbb93921ccfa1"
 uuid = "179af706-886a-5703-950a-314cd64e0468"
 version = "0.1.3"
 
-[[deps.CLIMAParameters]]
-deps = ["DocStringExtensions", "TOML", "Test"]
-git-tree-sha1 = "9fcb37be791b4762943cbbf15ccf35c99d91460c"
-uuid = "6eacf6c3-8458-43b9-ae03-caf5306d3d53"
-version = "0.9.1"
-
 [[deps.CPUSummary]]
 deps = ["CpuId", "IfElse", "PrecompileTools", "Static"]
 git-tree-sha1 = "601f7e7b3d36f18790e2caf83a882d88e9b71ff1"
@@ -351,10 +345,16 @@ deps = ["Adapt", "ArtifactWrappers", "CFTime", "CSV", "CUDA", "ClimaComms", "Cli
 path = ".."
 uuid = "08f4d4ce-cf43-44bb-ad95-9d2d5f413532"
 version = "0.10.0"
-weakdeps = ["CLIMAParameters"]
+weakdeps = ["ClimaParams"]
 
     [deps.ClimaLand.extensions]
-    CreateParametersExt = "CLIMAParameters"
+    CreateParametersExt = "ClimaParams"
+
+[[deps.ClimaParams]]
+deps = ["DocStringExtensions", "TOML", "Test"]
+git-tree-sha1 = "284afdfa1e8a3d42809ffaab8e411d20d4804560"
+uuid = "5c42b081-d73a-476f-9059-fd94b934656c"
+version = "0.10.1"
 
 [[deps.ClimaTimeSteppers]]
 deps = ["ClimaComms", "Colors", "DataStructures", "DiffEqBase", "DiffEqCallbacks", "KernelAbstractions", "Krylov", "LinearAlgebra", "LinearOperators", "NVTX", "SciMLBase", "StaticArrays"]
@@ -449,7 +449,7 @@ weakdeps = ["Dates", "LinearAlgebra"]
 [[deps.CompilerSupportLibraries_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "e66e0078-7015-5450-92f7-15fbd957f2ae"
-version = "1.0.5+1"
+version = "1.1.0+0"
 
 [[deps.CompositionsBase]]
 git-tree-sha1 = "802bb88cd69dfd1509f6670416bd4434015693ad"
@@ -552,9 +552,9 @@ version = "1.9.1"
 
 [[deps.DiffEqBase]]
 deps = ["ArrayInterface", "DataStructures", "DocStringExtensions", "EnumX", "EnzymeCore", "FastBroadcast", "ForwardDiff", "FunctionWrappers", "FunctionWrappersWrappers", "LinearAlgebra", "Logging", "Markdown", "MuladdMacro", "Parameters", "PreallocationTools", "PrecompileTools", "Printf", "RecursiveArrayTools", "Reexport", "SciMLBase", "SciMLOperators", "Setfield", "SparseArrays", "Static", "StaticArraysCore", "Statistics", "Tricks", "TruncatedStacktraces"]
-git-tree-sha1 = "2ad3a2dcd5f28f535aa884d199cc2f0a9d335729"
+git-tree-sha1 = "4b525a4fb824c7c3a98d5d1b18fbaee239dfed7c"
 uuid = "2b5f629d-d688-5b77-993f-72d75c75574e"
-version = "6.147.1"
+version = "6.147.2"
 
     [deps.DiffEqBase.extensions]
     DiffEqBaseChainRulesCoreExt = "ChainRulesCore"
@@ -1136,10 +1136,12 @@ deps = ["Artifacts", "Dates", "DelimitedFiles", "Interpolations"]
 git-tree-sha1 = "e5bd2e08d94737b3acd1c1c4e6ab737d2494571c"
 uuid = "e98cc03f-d57e-4e3c-b70c-8d51efe9e0d8"
 version = "0.9.1"
-weakdeps = ["CLIMAParameters"]
 
     [deps.Insolation.extensions]
     CreateParametersExt = "CLIMAParameters"
+
+    [deps.Insolation.weakdeps]
+    CLIMAParameters = "6eacf6c3-8458-43b9-ae03-caf5306d3d53"
 
 [[deps.IntegerMathUtils]]
 git-tree-sha1 = "b8ffb903da9f7b8cf695a8bead8e01814aa24b30"
@@ -1789,7 +1791,7 @@ version = "0.3.24+0"
 [[deps.OpenBLAS_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "Libdl"]
 uuid = "4536629a-c528-5b80-bd46-f80d51c5b363"
-version = "0.3.23+2"
+version = "0.3.23+4"
 
 [[deps.OpenEXR]]
 deps = ["Colors", "FileIO", "OpenEXR_jll"]
@@ -2036,9 +2038,9 @@ version = "1.2.0"
 
 [[deps.Preferences]]
 deps = ["TOML"]
-git-tree-sha1 = "00805cd429dcb4870060ff49ef443486c262e38e"
+git-tree-sha1 = "9e8fed0505b0c15b4c1295fd59ea47b411c019cf"
 uuid = "21216c6a-2e73-6563-6e65-726566657250"
-version = "1.4.1"
+version = "1.4.2"
 
 [[deps.PrettyPrint]]
 git-tree-sha1 = "632eb4abab3449ab30c5e1afaa874f0b98b586e4"
@@ -2512,13 +2514,13 @@ version = "7.2.1+1"
 
 [[deps.SurfaceFluxes]]
 deps = ["DocStringExtensions", "RootSolvers", "Thermodynamics"]
-git-tree-sha1 = "c2329f2ba04cfd7d93b1fa00d43822b1ccacaa4e"
+git-tree-sha1 = "24086f7e46de40dbd32a49d3fd51a534a5a9bcb0"
 uuid = "49b00bb7-8bd4-4f2b-b78c-51cd0450215f"
-version = "0.9.4"
-weakdeps = ["CLIMAParameters"]
+version = "0.10.0"
+weakdeps = ["ClimaParams"]
 
     [deps.SurfaceFluxes.extensions]
-    CreateParametersExt = "CLIMAParameters"
+    CreateParametersExt = "ClimaParams"
 
 [[deps.SymbolicIndexingInterface]]
 git-tree-sha1 = "251bb311585143931a306175c3b7ced220300578"
@@ -2575,13 +2577,13 @@ uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [[deps.Thermodynamics]]
 deps = ["DocStringExtensions", "KernelAbstractions", "Random", "RootSolvers"]
-git-tree-sha1 = "9c9ccbdb2ecb490fc69a0392c98766dcc2024eae"
+git-tree-sha1 = "a539e258008ed9275a91e0a374aa1d073e80e2bf"
 uuid = "b60c26fb-14c3-4610-9d3e-2d17fe7ff00c"
-version = "0.12.3"
-weakdeps = ["CLIMAParameters"]
+version = "0.12.4"
+weakdeps = ["ClimaParams"]
 
     [deps.Thermodynamics.extensions]
-    CreateParametersExt = "CLIMAParameters"
+    CreateParametersExt = "ClimaParams"
 
 [[deps.ThreadingUtilities]]
 deps = ["ManualMemory"]

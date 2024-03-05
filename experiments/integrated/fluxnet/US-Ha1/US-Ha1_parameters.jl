@@ -80,7 +80,7 @@ a = FT(0.05 * 0.0098) # Holtzman's original parameter for the bulk modulus of el
 conductivity_model =
     PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
 retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a)
-capacity = FT(10) # kg/m^2
+plant_ν = FT(2.46e-4)
 plant_S_s = FT(1e-2 * 0.0098) # m3/m3/MPa to m3/m3/m
 rooting_depth = FT(0.5) # from Natan
 z0_m = FT(0.13) * h_canopy
