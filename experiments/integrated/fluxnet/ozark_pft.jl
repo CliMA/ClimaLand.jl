@@ -1,3 +1,10 @@
+"""
+This experiment tests running the Ozark site (US-MOz) using plant parameters 
+defined by plant functional types instead of fully site-specific parameters.
+"""
+
+import ClimaLand
+
 import SciMLBase
 import ClimaTimeSteppers as CTS
 using ClimaCore
@@ -23,12 +30,7 @@ climaland_dir = pkgdir(ClimaLand)
 include(joinpath(climaland_dir, "experiments/integrated/fluxnet/data_tools.jl"))
 include(joinpath(climaland_dir, "experiments/integrated/fluxnet/plot_utils.jl"))
 
-# Read in the site to be run from the command line
-if length(ARGS) < 1
-    error("Must provide site ID on command line")
-end
-
-site_ID = ARGS[1]
+site_ID = "US-MOz"
 
 # Read all site-specific domain parameters from the simulation file for the site
 include(
@@ -42,13 +44,51 @@ include(
     joinpath(climaland_dir, "experiments/integrated/fluxnet/fluxnet_domain.jl"),
 )
 
-# Read all site-specific parameters from the parameter file for the site
+# Read in the site-specific parameters for all parameters not defined by the PFTs
 include(
     joinpath(
         climaland_dir,
         "experiments/integrated/fluxnet/$site_ID/$(site_ID)_parameters.jl",
     ),
 )
+
+# Define the PFT land cover percentages for the Ozark site. Currently we only
+# use the dominant PFT, which for Ozark is deciduous broadleaf temperate trees.
+pft_pcts = [
+    0.0, # NET_Temp
+    0.0, # NET_Bor
+    0.0, # NDT_Bor
+    0.0, # BET_Trop
+    0.0, # BET_Temp
+    0.0, # BDT_Trop
+    1.0, # BDT_Temp
+    0.0, # BDT_Bor
+    0.0, # BES_Temp
+    0.0, # BDS_Temp
+    0.0, # BDT_Bor
+    0.0, # C3G_A
+    0.0, # C3G_NA
+    0.0, # C4G
+]
+
+# Load the PFT parameters into the namespace
+(
+    Ω,
+    α_PAR_leaf,
+    α_NIR_leaf,
+    τ_PAR_leaf,
+    τ_NIR_leaf,
+    ϵ_canopy,
+    χl,
+    ac_canopy,
+    g1,
+    Vcmax25,
+    f_root_to_shoot,
+    K_sat_plant,
+    ψ63,
+    plant_ν,
+    rooting_depth,
+) = FT.(params_from_pfts(pft_pcts))
 
 # This reads in the data from the flux tower site and creates
 # the atmospheric and radiative driver structs for the model
@@ -65,7 +105,6 @@ include(
         "experiments/integrated/fluxnet/met_drivers_FLUXNET.jl",
     ),
 )
-
 # Now we set up the model. For the soil model, we pick
 # a model type and model args:
 soil_domain = land_domain
@@ -169,6 +208,7 @@ conductance_args = (;
         g0 = g0,
     )
 )
+# Set up photosynthesis
 # Set up photosynthesis
 photosynthesis_args =
     (; parameters = FarquharParameters(FT, Canopy.C3(); Vcmax25 = Vcmax25))
@@ -299,9 +339,15 @@ sol = SciMLBase.solve(
 
 # Plotting
 daily = sol.t ./ 3600 ./ 24
+if !isdir(
+    joinpath(climaland_dir, "experiments/integrated/fluxnet/$site_ID/out"),
+)
+    mkdir(
+        joinpath(climaland_dir, "experiments/integrated/fluxnet/$site_ID/out"),
+    )
+end
 savedir =
-    joinpath(climaland_dir, "experiments/integrated/fluxnet/$site_ID/out/")
-
+    joinpath(climaland_dir, "experiments/integrated/fluxnet/$site_ID/out/pft/")
 if !isdir(savedir)
     mkdir(savedir)
 end
