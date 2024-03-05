@@ -192,7 +192,7 @@ space = axes(coords.surface)
 longpts = range(-180.0, 180.0, 21)
 latpts = range(-90.0, 90.0, 21)
 hcoords = [Geometry.LatLongPoint(lat, long) for long in longpts, lat in latpts]
-remapper = Remapping.Remapper(hcoords, nothing, space)
+remapper = Remapping.Remapper(space, hcoords)
 
 W = [
     Remapping.interpolate(remapper, sol.u[k].bucket.W) for k in 1:length(sol.t)

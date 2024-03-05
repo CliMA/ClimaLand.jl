@@ -104,7 +104,7 @@ struct Column{FT} <: AbstractDomain{FT}
     "Tuple for mesh stretching specifying *target* (dz_bottom, dz_top) (m). If nothing, no stretching is applied."
     dz_tuple::Union{Tuple{FT, FT}, Nothing}
     "Boundary face identifiers"
-    boundary_tags::Tuple{Symbol, Symbol}
+    boundary_names::Tuple{Symbol, Symbol}
     "A NamedTuple of associated ClimaCore spaces: in this case, the surface space and subsurface center space"
     space::NamedTuple
 end
@@ -126,7 +126,7 @@ the elements of zlim be <=0. Additionally, the dz_tuple you supply may not be co
 with the domain boundaries in some cases, in which case you may need to choose
 different values.
 
-The `boundary_tags` field values are used to label the boundary faces
+The `boundary_names` field values are used to label the boundary faces
 at the top and bottom of the domain.
 """
 function Column(;
@@ -135,11 +135,11 @@ function Column(;
     dz_tuple::Union{Tuple{FT, FT}, Nothing} = nothing,
 ) where {FT}
     @assert zlim[1] < zlim[2]
-    boundary_tags = (:bottom, :top)
+    boundary_names = (:bottom, :top)
     column = ClimaCore.Domains.IntervalDomain(
         ClimaCore.Geometry.ZPoint{FT}(zlim[1]),
         ClimaCore.Geometry.ZPoint{FT}(zlim[2]);
-        boundary_tags = boundary_tags,
+        boundary_names = boundary_names,
     )
     if dz_tuple isa Nothing
         mesh = ClimaCore.Meshes.IntervalMesh(column; nelems = nelements)
@@ -159,7 +159,7 @@ function Column(;
     subsurface_space = ClimaCore.Spaces.CenterFiniteDifferenceSpace(mesh)
     surface_space = obtain_surface_space(subsurface_space)
     space = (; surface = surface_space, subsurface = subsurface_space)
-    return Column{FT}(zlim, (nelements,), dz_tuple, boundary_tags, space)
+    return Column{FT}(zlim, (nelements,), dz_tuple, boundary_names, space)
 end
 
 """
@@ -322,7 +322,7 @@ function HybridBox(;
     vertdomain = ClimaCore.Domains.IntervalDomain(
         ClimaCore.Geometry.ZPoint(zlim[1]),
         ClimaCore.Geometry.ZPoint(zlim[2]);
-        boundary_tags = (:bottom, :top),
+        boundary_names = (:bottom, :top),
     )
     if dz_tuple isa Nothing
         vertmesh =
@@ -435,7 +435,7 @@ function SphericalShell(;
     vertdomain = ClimaCore.Domains.IntervalDomain(
         ClimaCore.Geometry.ZPoint(FT(-depth)),
         ClimaCore.Geometry.ZPoint(FT(0));
-        boundary_tags = (:bottom, :top),
+        boundary_names = (:bottom, :top),
     )
     if dz_tuple isa Nothing
         vertmesh =
