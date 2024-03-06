@@ -91,7 +91,7 @@ for FT in (Float32, Float64)
         vg_n = FT(2.0)
         vg_α = FT(2.6) # inverse meters
         vg_m = FT(1) - FT(1) / vg_n
-        hcm = vanGenuchten{FT}(; α = vg_α, n = vg_n)
+        hydrology_cm = vanGenuchten{FT}(; α = vg_α, n = vg_n)
         θ_r = FT(0.1)
         ν_ss_om = FT(0.0)
         ν_ss_quartz = FT(1.0)
@@ -120,16 +120,16 @@ for FT in (Float32, Float64)
 
 
         ###
-        hyd_off_en_on = Soil.EnergyHydrologyParameters{FT}(;
-            ν = ν,
-            ν_ss_om = ν_ss_om,
-            ν_ss_quartz = ν_ss_quartz,
-            ν_ss_gravel = ν_ss_gravel,
-            hydrology_cm = hcm,
+        hyd_off_en_on = Soil.EnergyHydrologyParameters(
+            FT;
+            ν,
+            ν_ss_om,
+            ν_ss_quartz,
+            ν_ss_gravel,
+            hydrology_cm,
             K_sat = FT(0),
-            S_s = S_s,
-            θ_r = θ_r,
-            earth_param_set = earth_param_set,
+            S_s,
+            θ_r,
         )
         soil_heat_on = Soil.EnergyHydrology{FT}(;
             parameters = hyd_off_en_on,
@@ -189,7 +189,7 @@ for FT in (Float32, Float64)
         hyd_on_en_off = Soil.EnergyHydrologyParameters{
             FT,
             FT,
-            typeof(hcm),
+            typeof(hydrology_cm),
             typeof(earth_param_set),
         }(
             FT(0), # κ_dry
@@ -202,17 +202,17 @@ for FT in (Float32, Float64)
             ν_ss_gravel,
             FT(0.24), #α
             FT(18.3), #β
-            hcm,
+            hydrology_cm,
             K_sat,
             S_s,
             θ_r,
-            FT(7),#Ω
-            FT(2.64e-2),#γ
-            FT(288),#γT_ref
-            FT(0.2),# NIR_albedo
-            FT(0.2), #PAR_albedo
-            FT(0.96),#ϵ
-            FT(0.001),# z_0m
+            FT(7), # Ω
+            FT(2.64e-2), # γ
+            FT(288), # γT_ref
+            FT(0.2), # NIR_albedo
+            FT(0.2), # PAR_albedo
+            FT(0.96), # ϵ
+            FT(0.001), # z_0m
             FT(0.01), # z_0b
             FT(0.015), #d_ds
             earth_param_set,
@@ -361,7 +361,7 @@ for FT in (Float32, Float64)
         hyd_off_en_off = Soil.EnergyHydrologyParameters{
             FT,
             FT,
-            typeof(hcm),
+            typeof(hydrology_cm),
             typeof(earth_param_set),
         }(
             FT(0), # κ_dry
@@ -374,7 +374,7 @@ for FT in (Float32, Float64)
             ν_ss_gravel,
             FT(0.24), #α
             FT(18.3), #β
-            hcm,
+            hydrology_cm,
             FT(0), # K_sat
             S_s,
             θ_r,
@@ -434,16 +434,16 @@ for FT in (Float32, Float64)
 
 
         ### Test with both energy and hydrology on
-        hyd_on_en_on = Soil.EnergyHydrologyParameters{FT}(;
-            ν = ν,
-            ν_ss_om = ν_ss_om,
-            ν_ss_quartz = ν_ss_quartz,
-            ν_ss_gravel = ν_ss_gravel,
-            hydrology_cm = hcm,
-            K_sat = K_sat,
-            S_s = S_s,
-            θ_r = θ_r,
-            earth_param_set = earth_param_set,
+        hyd_on_en_on = Soil.EnergyHydrologyParameters(
+            FT;
+            ν,
+            ν_ss_om,
+            ν_ss_quartz,
+            ν_ss_gravel,
+            hydrology_cm,
+            K_sat,
+            S_s,
+            θ_r,
         )
 
         soil_both_on = Soil.EnergyHydrology{FT}(;
@@ -553,7 +553,7 @@ for FT in (Float32, Float64)
         S_s = FT(1e-3) #inverse meters
         vg_n = FT(2.0)
         vg_α = FT(2.6) # inverse meters
-        hcm = vanGenuchten{FT}(; α = vg_α, n = vg_n)
+        hydrology_cm = vanGenuchten{FT}(; α = vg_α, n = vg_n)
         θ_r = FT(0.1)
         ν_ss_om = FT(0.0)
         ν_ss_quartz = FT(1.0)
@@ -582,16 +582,16 @@ for FT in (Float32, Float64)
         sources = (PhaseChange{FT}(Δz),)
 
         ###
-        hyd_off_en_on = Soil.EnergyHydrologyParameters{FT}(;
-            ν = ν,
-            ν_ss_om = ν_ss_om,
-            ν_ss_quartz = ν_ss_quartz,
-            ν_ss_gravel = ν_ss_gravel,
-            hydrology_cm = hcm,
-            K_sat = K_sat,
-            S_s = S_s,
-            θ_r = θ_r,
-            earth_param_set = earth_param_set,
+        hyd_off_en_on = Soil.EnergyHydrologyParameters(
+            FT;
+            ν,
+            ν_ss_om,
+            ν_ss_quartz,
+            ν_ss_gravel,
+            hydrology_cm,
+            K_sat,
+            S_s,
+            θ_r,
         )
         soil_heat_on = Soil.EnergyHydrology{FT}(;
             parameters = hyd_off_en_on,

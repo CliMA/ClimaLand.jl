@@ -88,11 +88,10 @@ using ClimaLand.Soil
 import ClimaLand
 import ClimaLand.Parameters as LP
 
-# # Preliminary set-up
+# Preliminary set-up
 
 # Choose a floating point precision, and get the parameter set, which holds constants used across CliMA models:
 FT = Float32
-earth_param_set = LP.LandParameters(FT);
 
 # Set the values of other parameters required by the model:
 ν = FT(0.535)
@@ -100,7 +99,7 @@ K_sat = FT(3.2e-6) # m/s
 S_s = FT(1e-3) #inverse meters
 vg_n = FT(1.48)
 vg_α = FT(1.11) # inverse meters
-hcm = vanGenuchten{FT}(; α = vg_α, n = vg_n);
+hydrology_cm = vanGenuchten{FT}(; α = vg_α, n = vg_n);
 # You could also try the Brooks and Corey model:
 #ψb = FT(-0.6)
 #c = FT(0.43)
@@ -109,16 +108,16 @@ hcm = vanGenuchten{FT}(; α = vg_α, n = vg_n);
 ν_ss_om = FT(0.3)
 ν_ss_quartz = FT(0.7)
 ν_ss_gravel = FT(0.0)
-params = Soil.EnergyHydrologyParameters{FT}(;
-    ν = ν,
-    ν_ss_om = ν_ss_om,
-    ν_ss_quartz = ν_ss_quartz,
-    ν_ss_gravel = ν_ss_gravel,
-    hydrology_cm = hcm,
-    K_sat = K_sat,
-    S_s = S_s,
-    θ_r = θ_r,
-    earth_param_set = earth_param_set,
+params = Soil.EnergyHydrologyParameters(
+    FT;
+    ν,
+    ν_ss_om,
+    ν_ss_quartz,
+    ν_ss_gravel,
+    hydrology_cm,
+    K_sat,
+    S_s,
+    θ_r,
 );
 # Choose the domain and discretization:
 zmax = FT(0)

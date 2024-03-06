@@ -147,7 +147,8 @@ soil_α_PAR = FT(0.2)
 soil_α_NIR = FT(0.4)
 
 soil_domain = land_domain
-soil_ps = Soil.EnergyHydrologyParameters{FT}(;
+soil_ps = Soil.EnergyHydrologyParameters(
+    FT;
     ν = soil_ν,
     ν_ss_om = ν_ss_om,
     ν_ss_quartz = ν_ss_quartz,

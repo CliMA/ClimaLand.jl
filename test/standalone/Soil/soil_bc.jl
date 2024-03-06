@@ -6,6 +6,7 @@ using ClimaLand
 using ClimaLand.Soil
 using ClimaLand.Domains: HybridBox, SphericalShell, Column
 import ClimaLand.Parameters as LP
+import ClimaParams
 
 for FT in (Float32, Float64)
     @testset "WVector usage in gradient, FT = $FT" begin
@@ -136,21 +137,22 @@ for FT in (Float32, Float64)
         S_s = FT(1e-3) #inverse meters
         vg_n = FT(2.0)
         vg_α = FT(2.6) # inverse meters
-        hcm = vanGenuchten{FT}(; α = vg_α, n = vg_n)
+        hydrology_cm = vanGenuchten{FT}(; α = vg_α, n = vg_n)
         θ_r = FT(0.1)
         ν_ss_om = FT(0.0)
         ν_ss_quartz = FT(1.0)
         ν_ss_gravel = FT(0.0)
-        parameters = Soil.EnergyHydrologyParameters{FT}(;
-            ν = ν,
-            ν_ss_om = ν_ss_om,
-            ν_ss_quartz = ν_ss_quartz,
-            ν_ss_gravel = ν_ss_gravel,
-            hydrology_cm = hcm,
-            K_sat = K_sat,
-            S_s = S_s,
-            θ_r = θ_r,
-            earth_param_set = earth_param_set,
+
+        parameters = Soil.EnergyHydrologyParameters(
+            FT;
+            ν,
+            ν_ss_om,
+            ν_ss_quartz,
+            ν_ss_gravel,
+            hydrology_cm,
+            K_sat,
+            S_s,
+            θ_r,
         )
 
         zmax = FT(0)
@@ -198,7 +200,7 @@ end
     S_s = FT(1e-3) #inverse meters
     vg_n = FT(2.0)
     vg_α = FT(2.6) # inverse meters
-    hcm = vanGenuchten{FT}(; α = vg_α, n = vg_n)
+    hydrology_cm = vanGenuchten{FT}(; α = vg_α, n = vg_n)
     θ_r = FT(0.1)
     ν_ss_om = FT(0.0)
     ν_ss_quartz = FT(1.0)
@@ -206,16 +208,16 @@ end
     κ_minerals = FT(2.5)
     ρp = FT(2.66 / 1e3 * 1e6)
     ρc_ds = @. FT(2e6 * (1.0 - ν))
-    parameters = Soil.EnergyHydrologyParameters{FT}(;
-        ν = ν,
-        ν_ss_om = ν_ss_om,
-        ν_ss_quartz = ν_ss_quartz,
-        ν_ss_gravel = ν_ss_gravel,
-        hydrology_cm = hcm,
-        K_sat = K_sat,
-        S_s = S_s,
-        θ_r = θ_r,
-        earth_param_set = earth_param_set,
+    parameters = Soil.EnergyHydrologyParameters(
+        FT;
+        ν,
+        ν_ss_om,
+        ν_ss_quartz,
+        ν_ss_gravel,
+        hydrology_cm,
+        K_sat,
+        S_s,
+        θ_r,
     )
     zmax = FT(0)
     zmin = FT(-1)
@@ -236,16 +238,16 @@ end
         ),
     )
 
-    parameters = Soil.EnergyHydrologyParameters{FT}(;
-        ν = ν,
-        ν_ss_om = ν_ss_om,
-        ν_ss_quartz = ν_ss_quartz,
-        ν_ss_gravel = ν_ss_gravel,
-        hydrology_cm = hcm,
+    parameters = Soil.EnergyHydrologyParameters(
+        FT;
+        ν,
+        ν_ss_om,
+        ν_ss_quartz,
+        ν_ss_gravel,
+        hydrology_cm,
         K_sat = FT(0),
-        S_s = S_s,
-        θ_r = θ_r,
-        earth_param_set = earth_param_set,
+        S_s,
+        θ_r,
     )
     energy_hydrology = Soil.EnergyHydrology{FT}(;
         parameters = parameters,
@@ -300,7 +302,7 @@ end
 
     parameters = Soil.RichardsParameters(;
         ν = ν,
-        hydrology_cm = hcm,
+        hydrology_cm,
         K_sat = FT(0),
         S_s = S_s,
         θ_r = θ_r,

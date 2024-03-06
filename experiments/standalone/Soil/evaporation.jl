@@ -95,22 +95,22 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
         top = top_bc,
         bottom = WaterHeatBC(; water = zero_water_flux, heat = zero_heat_flux),
     )
-    params = ClimaLand.Soil.EnergyHydrologyParameters{FT}(;
-        ν = ν,
-        ν_ss_om = ν_ss_om,
-        ν_ss_quartz = ν_ss_quartz,
-        ν_ss_gravel = ν_ss_gravel,
+    params = ClimaLand.Soil.EnergyHydrologyParameters(
+        FT;
+        ν,
+        ν_ss_om,
+        ν_ss_quartz,
+        ν_ss_gravel,
         hydrology_cm = hcm,
-        K_sat = K_sat,
-        S_s = S_s,
-        θ_r = θ_r,
-        PAR_albedo = PAR_albedo,
-        NIR_albedo = NIR_albedo,
-        emissivity = emissivity,
-        z_0m = z_0m,
-        z_0b = z_0b,
-        earth_param_set = earth_param_set,
-        d_ds = d_ds,
+        K_sat,
+        S_s,
+        θ_r,
+        PAR_albedo,
+        NIR_albedo,
+        emissivity,
+        z_0m,
+        z_0b,
+        d_ds,
     )
 
     #TODO: Run with higher resolution once we have the implicit stepper

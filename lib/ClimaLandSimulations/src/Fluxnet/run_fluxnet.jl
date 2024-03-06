@@ -21,7 +21,8 @@ function run_fluxnet(
     # Now we set up the model. For the soil model, we pick
     # a model type and model args:
     soil_domain = domain.land_domain
-    soil_ps = Soil.EnergyHydrologyParameters{FT}(;
+    soil_ps = Soil.EnergyHydrologyParameters(
+        FT;
         ν = params.soil.ν,
         ν_ss_om = params.soil.ν_ss_om,
         ν_ss_quartz = params.soil.ν_ss_quartz,
@@ -30,7 +31,6 @@ function run_fluxnet(
         K_sat = params.soil.K_sat,
         S_s = params.soil.S_s,
         θ_r = params.soil.θ_r,
-        earth_param_set = earth_param_set,
         z_0m = params.soil.z_0m,
         z_0b = params.soil.z_0b,
         emissivity = params.soil.emissivity,

@@ -1,5 +1,6 @@
 module CreateParametersExt
 
+import ClimaCore
 import Thermodynamics.Parameters.ThermodynamicsParameters
 import Insolation.Parameters.InsolationParameters
 import SurfaceFluxes.Parameters.SurfaceFluxesParameters
@@ -12,10 +13,14 @@ import ClimaLand.Canopy.AutotrophicRespirationParameters
 import ClimaLand.Canopy.FarquharParameters
 import ClimaLand.Canopy.OptimalityFarquharParameters
 
-LandParameters(::Type{FT}) where {FT <: AbstractFloat} =
-    LandParameters(CP.create_toml_dict(FT))
+import ClimaLand.Soil
+import ClimaLand.Parameters as LP
+import ClimaLand.Soil.EnergyHydrologyParameters
 
-function LandParameters(toml_dict::CP.AbstractTOMLDict)
+LP.LandParameters(::Type{FT}) where {FT <: AbstractFloat} =
+    LP.LandParameters(CP.create_toml_dict(FT))
+
+function LP.LandParameters(toml_dict::CP.AbstractTOMLDict)
     thermo_params = ThermodynamicsParameters(toml_dict)
     TP = typeof(thermo_params)
 
@@ -46,9 +51,9 @@ function LandParameters(toml_dict::CP.AbstractTOMLDict)
         :stefan_boltzmann_constant => :Stefan,
     )
 
-    parameters = CP.get_parameter_values(toml_dict, name_map, "ClimaLand")
+    parameters = CP.get_parameter_values(toml_dict, name_map, "Land")
     FT = CP.float_type(toml_dict)
-    return LandParameters{FT, TP, SFP, IP}(;
+    return LP.LandParameters{FT, TP, SFP, IP}(;
         parameters...,
         thermo_params,
         surf_flux_params,
@@ -218,6 +223,156 @@ function OptimalityFarquharParameters(toml_dict; kwargs...)
     FT = CP.float_type(toml_dict)
     mechanism = ClimaLand.Canopy.C3()
     return OptimalityFarquharParameters{FT}(; params..., kwargs..., mechanism)
+end
+
+
+"""
+    EnergyHydrologyParameters(
+        ::Type{FT};
+        ν,
+        ν_ss_om,
+        ν_ss_quartz,
+        ν_ss_gravel,
+        hydrology_cm,
+        K_sat,
+        S_s,
+        θ_r,
+        kwargs...,)
+
+    EnergyHydrologyParameters(
+        toml_dict;
+        ν,
+        ν_ss_om,
+        ν_ss_quartz,
+        ν_ss_gravel,
+        hydrology_cm,
+        K_sat,
+        S_s,
+        θ_r,
+        kwargs...,)
+
+EnergyHydrologyParameters has two constructors: float-type and toml dict based.
+Additional parameters must be added manually: ν, ν_ss_om, ν_ss_quartz, ν_ss_gravel, hydrology_cm, K_sat, S_s, and θ_r
+All parameters can be manually overriden via keyword arguments.
+"""
+function EnergyHydrologyParameters(
+    ::Type{FT};
+    ν,
+    ν_ss_om,
+    ν_ss_quartz,
+    ν_ss_gravel,
+    hydrology_cm,
+    K_sat,
+    S_s,
+    θ_r,
+    kwargs...,
+) where {FT <: AbstractFloat}
+    return EnergyHydrologyParameters(
+        CP.create_toml_dict(FT);
+        ν,
+        ν_ss_om,
+        ν_ss_quartz,
+        ν_ss_gravel,
+        hydrology_cm,
+        K_sat,
+        S_s,
+        θ_r,
+        kwargs...,
+    )
+end
+
+function EnergyHydrologyParameters(
+    toml_dict::CP.AbstractTOMLDict;
+    ν::F,
+    ν_ss_om::F,
+    ν_ss_quartz::F,
+    ν_ss_gravel::F,
+    hydrology_cm::C,
+    K_sat::F,
+    S_s::F,
+    θ_r::F,
+    PAR_albedo = 0.2,
+    NIR_albedo = 0.4,
+    kwargs...,
+) where {F <: Union{<:AbstractFloat, ClimaCore.Fields.FieldVector}, C}
+    earth_param_set = LP.LandParameters(toml_dict)
+
+    # Obtain parameters needed to calculate the derived parameters
+    derived_param_name_map = (;
+        :thermal_conductivity_of_quartz => :κ_quartz,
+        :thermal_conductivity_of_soil_minerals => :κ_minerals,
+        :thermal_conductivity_of_water_ice => :κ_ice,
+        :thermal_conductivity_of_liquid_water => :κ_liq,
+        :thermal_conductivity_of_organic_matter => :κ_om,
+        :particle_density_quartz => :ρp_quartz,
+        :particle_density_minerals => :ρp_minerals,
+        :particle_density_organic_matter => :ρp_om,
+        :vol_heat_capacity_quartz => :ρc_quartz,
+        :vol_heat_capacity_organic_matter => :ρc_om,
+        :vol_heat_capacity_minerals => :ρc_minerals,
+    )
+    p = CP.get_parameter_values(toml_dict, derived_param_name_map, "Land")
+    # Particle density of the soil - per unit soil solids
+    # Denoted ρ_ds in the Clima Design Docs (Equation 2.3)
+    # where ν_ss_i = ν_i/(1-ν)
+    ρp = @. (
+        ν_ss_om * p.ρp_om +
+        ν_ss_quartz * p.ρp_quartz +
+        ν_ss_gravel * p.ρp_minerals +
+        (1 - ν_ss_om - ν_ss_quartz - ν_ss_gravel) * p.ρp_minerals
+    )
+    # Volumetric heat capacity of soil solids - per unit volume soil solids
+    # This is Equation 2.6a/2.10 in the Clima Design Docs
+    # where ν_ss_i = ν_i/(1-ν)
+    ρc_ss = @. (
+        ν_ss_om * p.ρc_om +
+        ν_ss_quartz * p.ρc_quartz +
+        ν_ss_gravel * p.ρc_minerals +
+        (1 - ν_ss_om - ν_ss_quartz - ν_ss_gravel) * p.ρc_minerals
+    )
+    # Volumetric heat capacity of dry soil - per unit volume of soil
+    # This is denoted č_ds (Equation 2.11) and is used in equation 2.9
+    ρc_ds = @. (1 - ν) * ρc_ss
+
+    κ_solid =
+        Soil.κ_solid.(ν_ss_om, ν_ss_quartz, p.κ_om, p.κ_quartz, p.κ_minerals)
+    κ_dry = Soil.κ_dry.(ρp, ν, κ_solid, LP.K_therm(earth_param_set))
+    κ_sat_frozen = Soil.κ_sat_frozen.(κ_solid, ν, p.κ_ice)
+    κ_sat_unfrozen = Soil.κ_sat_unfrozen.(κ_solid, ν, p.κ_liq)
+
+    name_map = (;
+        :kersten_number_alpha => :α,
+        :kersten_number_beta => :β,
+        :ice_impedance_omega => :Ω,
+        :temperature_factor_soil_hydraulic_conductivity => :γ,
+        :temperature_reference_soil_hydraulic_conductivity => :γT_ref,
+        :emissivity_bare_soil => :emissivity,
+        :maximum_dry_soil_layer_depth => :d_ds,
+        :soil_momentum_roughness_length => :z_0m,
+        :soil_scalar_roughness_length => :z_0b,
+    )
+    parameters = CP.get_parameter_values(toml_dict, name_map, "Land")
+    PSE = typeof(earth_param_set)
+    FT = CP.float_type(toml_dict)
+    EnergyHydrologyParameters{FT, F, C, PSE}(;
+        PAR_albedo,
+        NIR_albedo,
+        ν,
+        ν_ss_om,
+        ν_ss_quartz,
+        ν_ss_gravel,
+        hydrology_cm,
+        K_sat,
+        S_s,
+        θ_r,
+        κ_dry,
+        κ_sat_frozen,
+        κ_sat_unfrozen,
+        ρc_ds,
+        earth_param_set,
+        parameters...,
+        kwargs...,
+    )
 end
 
 end
