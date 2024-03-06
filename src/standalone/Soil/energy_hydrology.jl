@@ -492,11 +492,24 @@ function ClimaLand.surface_resistance(
     p,
     t,
 ) where {FT}
+    #  z = ClimaCore.Fields.coordinate_field(model.domain.space.subsurface)
+    #  Δz_top, _ = get_Δz(z)
+    #  vg_α = model.parameters.hydrology_cm.α
+    #  vg_n = model.parameters.hydrology_cm.n
+    #  L_G = 1/(vg_α*(vg_n-1))*((vg_n-1)/vg_n)^((1-vg_n)/vg_n)*((2*vg_n-1)/vg_n)^((2*vg_n-1)/vg_n)
+    #  if -parent(Δz_top)[1] > L_G # unresolved
+    #      ψ_c = Soil.matric_potential(hcm, model.parameters.hydrology_cm.S_c)
+    #      ψ_b = ψ_c- (-L_G)
+    #      S_c_eff = inverse_matric_potential(hydrology_cm, ψ_c*(1-Δz/L_G) + ψ_b*Δz/L_G)
+    #  else # resolved
+    S_c_eff = model.parameters.hydrology_cm.S_c
+    #  end
     return ClimaLand.Domains.top_center_to_surface(
         ClimaLand.Soil.soil_resistance.(
             p.soil.θ_l,
             Y.soil.ϑ_l,
             Y.soil.θ_i,
+            S_c_eff,
             model.parameters,
         ),
     )
@@ -578,7 +591,7 @@ function ClimaLand.surface_specific_humidity(
             ρ_sfc,
             Thermodynamics.Liquid(),
         )
-    return @. (q_sat * exp(g * ψ_sfc * M_w / (R * T_sfc)))
+    return @. q_sat * exp(g * ψ_sfc * M_w / (R * T_sfc))
 
 end
 
