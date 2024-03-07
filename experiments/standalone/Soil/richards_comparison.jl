@@ -81,7 +81,7 @@ bonan_sand_dataset = ArtifactWrapper(
         Y.soil.ϑ_l .= FT(0.24)
         exp_tendency! = make_exp_tendency(soil)
         imp_tendency! = ClimaLand.make_imp_tendency(soil)
-        update_jacobian! = ClimaLand.make_update_jacobian(soil)
+        tendency_jacobian! = ClimaLand.make_tendency_jacobian(soil)
         set_initial_cache!(p, Y, t0)
 
         stepper = CTS.ARS111()
@@ -98,8 +98,8 @@ bonan_sand_dataset = ArtifactWrapper(
 
         # set up jacobian info
         jac_kwargs = (;
-            jac_prototype = RichardsTridiagonalW(Y),
-            Wfact = update_jacobian!,
+            jac_prototype = ImplicitEquationJacobian(Y),
+            Wfact = tendency_jacobian!,
         )
 
         prob = SciMLBase.ODEProblem(
@@ -181,7 +181,7 @@ end
         Y.soil.ϑ_l .= FT(0.1)
         exp_tendency! = make_exp_tendency(soil)
         imp_tendency! = ClimaLand.make_imp_tendency(soil)
-        update_jacobian! = ClimaLand.make_update_jacobian(soil)
+        tendency_jacobian! = ClimaLand.make_tendency_jacobian(soil)
         set_initial_cache!(p, Y, t0)
 
         stepper = CTS.ARS111()
@@ -197,8 +197,8 @@ end
         )
         # set up jacobian info
         jac_kwargs = (;
-            jac_prototype = RichardsTridiagonalW(Y),
-            Wfact = update_jacobian!,
+            jac_prototype = ImplicitEquationJacobian(Y),
+            Wfact = tendency_jacobian!,
         )
 
         prob = SciMLBase.ODEProblem(

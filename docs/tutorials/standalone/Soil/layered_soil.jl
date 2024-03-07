@@ -29,7 +29,7 @@ t0 = Float64(0)
 tf = Float64(60 * 60)
 dt = Float64(30);
 
-# Define the domain 
+# Define the domain
 zmax = FT(0)
 zmin = FT(-1.1)
 nelems = 75
@@ -109,7 +109,7 @@ soil = Soil.RichardsModel{FT}(;
 Y, p, cds = initialize(soil);
 
 # Initial conditions
-Y.soil.ϑ_l .= 0.0353; # read from Figure 4 of Huang et al. 
+Y.soil.ϑ_l .= 0.0353; # read from Figure 4 of Huang et al.
 
 # We also set the initial conditions of the auxiliary state here:
 set_initial_cache! = make_set_initial_cache(soil)
@@ -131,9 +131,10 @@ ode_algo = CTS.IMEXAlgorithm(
 )
 exp_tendency! = make_exp_tendency(soil)
 imp_tendency! = make_imp_tendency(soil)
-update_jacobian! = make_update_jacobian(soil)
+tendency_jacobian! = make_tendency_jacobian(soil)
+
 jac_kwargs =
-    (; jac_prototype = RichardsTridiagonalW(Y), Wfact = update_jacobian!)
+    (; jac_prototype = ImplicitEquationJacobian(Y), Wfact = tendency_jacobian!)
 prob = SciMLBase.ODEProblem(
     CTS.ClimaODEFunction(
         T_exp! = exp_tendency!,

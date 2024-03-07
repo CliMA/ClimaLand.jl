@@ -61,8 +61,7 @@ ClimaLand.boundary_var_domain_names
 ClimaLand.boundary_var_types
 ClimaLand.make_tendency_jacobian
 ClimaLand.make_update_jacobian
-ClimaLand.∂tendencyBC∂Y
-ClimaLand.AbstractTridiagonalW
+ClimaLand.set_dfluxBCdY!
 ClimaLand.get_drivers
 ```
 

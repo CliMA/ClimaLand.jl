@@ -5,6 +5,8 @@ import ClimaLand:
     boundary_vars,
     boundary_var_domain_names,
     boundary_var_types
+using ClimaLand: Domains
+using ClimaCore: Geometry
 export TemperatureStateBC,
     MoistureStateBC,
     FreeDrainage,
@@ -161,7 +163,7 @@ end
                                               <:Runoff.TOPMODELRunoff,
                                               }, ::ClimaLand.TopBoundary)
 
-An extension of the `boundary_vars` method for RichardsAtmosDrivenFluxBC with 
+An extension of the `boundary_vars` method for RichardsAtmosDrivenFluxBC with
 TOPMODELRunoff.
 
 These variables are updated in place in `boundary_flux`.
@@ -181,7 +183,7 @@ boundary_vars(
                               ::ClimaLand.TopBoundary)
 
 An extension of the `boundary_var_domain_names` method for RichardsAtmosDrivenFluxBC
-with TOPMODELRunoff. 
+with TOPMODELRunoff.
 """
 boundary_var_domain_names(
     bc::RichardsAtmosDrivenFluxBC{
@@ -191,11 +193,12 @@ boundary_var_domain_names(
     ::ClimaLand.TopBoundary,
 ) = (:surface, :surface, :surface, :surface, :surface)
 """
-    boundary_var_types(::RichardsAtmosDrivenFluxBC{<:PrescribedPrecipitation,
+    boundary_var_types(::RichardsModel{FT},
+                        ::RichardsAtmosDrivenFluxBC{<:PrescribedPrecipitation,
                                                    <:Runoff.TOPMODELRunoff{FT},
                                                   },
-                       ::ClimaLand.TopBoundary,
-                       ) where {FT}
+                        ::ClimaLand.TopBoundary,
+                        ) where {FT}
 
 An extension of the `boundary_var_types` method for RichardsAtmosDrivenFluxBC
 with TOPMODELRunoff.
@@ -214,7 +217,7 @@ boundary_var_types(
                                               <:Runoff.AbstractRunoffModel,
                                               }, ::ClimaLand.TopBoundary)
 
-An extension of the `boundary_vars` method for RichardsAtmosDrivenFluxBC with 
+An extension of the `boundary_vars` method for RichardsAtmosDrivenFluxBC with
 no runoff modeled.
 
 These variables are updated in place in `boundary_flux`.
@@ -234,7 +237,7 @@ boundary_vars(
                               ::ClimaLand.TopBoundary)
 
 An extension of the `boundary_var_domain_names` method for RichardsAtmosDrivenFluxBC
-with no runoff modeled. 
+with no runoff modeled.
 """
 boundary_var_domain_names(
     bc::RichardsAtmosDrivenFluxBC{
@@ -244,11 +247,12 @@ boundary_var_domain_names(
     ::ClimaLand.TopBoundary,
 ) = (:surface, :surface)
 """
-    boundary_var_types(::RichardsAtmosDrivenFluxBC{<:PrescribedPrecipitation,
+    boundary_var_types(::RichardsModel{FT}
+                        ::RichardsAtmosDrivenFluxBC{<:PrescribedPrecipitation,
                                                    <:Runoff.AbstractRunoffModel,
                                                   },
-                       ::ClimaLand.TopBoundary,
-                       ) where {FT}
+                        ::ClimaLand.TopBoundary,
+                        ) where {FT}
 
 An extension of the `boundary_var_types` method for RichardsAtmosDrivenFluxBC
 with no runoff modeled.
@@ -447,7 +451,7 @@ function boundary_flux(
 end
 
 """
-    ClimaLand.∂tendencyBC∂Y(
+    ClimaLand.set_dfluxBCdY!(
         model::RichardsModel,
         ::MoistureStateBC,
         boundary::ClimaLand.TopBoundary,
@@ -457,16 +461,16 @@ end
         t,
 )
 
-Computes and returns the derivative of the part of the
-implicit tendency in the top layer, due to the boundary
-condition, with respect to the state variable in the top layer.
+Computes the derivative of the flux in the top layer (due to the
+boundary condition), with respect to the state variable in the top layer.
+This value is then updated in-place in the cache.
 
-For a diffusion equation like Richards equation with a single state
-variable, this is given by
-`∂T_N∂Y_N = [-∂/∂z(∂F_bc/∂Y_N)]_N`, where `N` indicates the top
-layer cell index.
+For Richards equation (a diffusion equation with a single state variable),
+this is given by `∂F_bc/∂Y_N= -K_N (∂ψ_bc/∂ϑ_N) / Δz`,
+where `N` indicates the top layer cell index and
+`ψ_bc` is the pressure head at the boundary condition.
 """
-function ClimaLand.∂tendencyBC∂Y(
+function ClimaLand.set_dfluxBCdY!(
     model::RichardsModel,
     ::MoistureStateBC,
     boundary::ClimaLand.TopBoundary,
@@ -476,56 +480,44 @@ function ClimaLand.∂tendencyBC∂Y(
     t,
 )
     (; ν, hydrology_cm, S_s, θ_r) = model.parameters
-    fs = ClimaLand.Domains.obtain_face_space(model.domain.space.subsurface)
-    face_len = ClimaCore.Utilities.PlusHalf(ClimaCore.Spaces.nlevels(fs) - 1)
-    interpc2f_op = Operators.InterpolateC2F(
-        bottom = Operators.Extrapolate(),
-        top = Operators.Extrapolate(),
+
+    # Copy center variables to top face space
+    KN = Domains.top_center_to_surface(p.soil.K)
+    hydrology_cmN = Domains.top_center_to_surface(hydrology_cm)
+    ϑ_lN = Domains.top_center_to_surface(Y.soil.ϑ_l)
+    νN = Domains.top_center_to_surface(ν)
+    θ_rN = Domains.top_center_to_surface(θ_r)
+    S_sN = Domains.top_center_to_surface(S_s)
+
+
+    # Get the local geometry of the face space, then extract the top level
+    levels = ClimaCore.Spaces.nlevels(Domains.obtain_face_space(axes(p.soil.K)))
+    local_geometry_faceN = ClimaCore.Fields.level(
+        Fields.local_geometry_field(Domains.obtain_face_space(axes(p.soil.K))),
+        levels - ClimaCore.Utilities.half,
     )
-    K = Fields.level(interpc2f_op.(p.soil.K), face_len)
-    dψ = Fields.level(
-        interpc2f_op.(dψdϑ.(hydrology_cm, Y.soil.ϑ_l, ν, θ_r, S_s)),
-        face_len,
-    )
-    return ClimaCore.Fields.FieldVector(;
-        :soil => (; :ϑ_l => @. -K / Δz * dψ / (2 * Δz)),
-    )
+
+    # Update dfluxBCdY at the top boundary in place
+    # Calculate the value and convert it to a Covariant3Vector
+    @. p.soil.dfluxBCdY =
+        covariant3_unit_vector(local_geometry_faceN) *
+        (KN * dψdϑ(hydrology_cmN, ϑ_lN, νN, θ_rN, S_sN) / Δz)
+    return nothing
 end
 
 """
-    ClimaLand.∂tendencyBC∂Y(
-        ::RichardsModel,
-        ::AbstractWaterBC,
-        boundary::ClimaLand.TopBoundary,
-        Δz,
-        Y,
-        p,
-        t,
-)
+    covariant3_unit_vector(local_geometry)
 
-A default method which computes and returns the zero for the
-derivative of the part of the
-implicit tendency in the top layer, due to the boundary
-condition, with respect to the state variable in the top layer.
+A function to compute the unit vector in the direction of the normal
+to the surface.
 
-For a diffusion equation like Richards equation with a single state
-variable, this is given by
-`∂T_N∂Y_N = [-∂/∂z(∂F_bc/∂Y_N)]_N`, where `N` indicates the top
-layer cell index.
-
-If `F_bc` can be approximated as independent of `Y_N`, the derivative
-is zero.
+Adapted from ClimaAtmos.jl's unit_basis_vector_data function.
 """
-function ClimaLand.∂tendencyBC∂Y(
-    ::RichardsModel,
-    ::AbstractWaterBC,
-    boundary::ClimaLand.TopBoundary,
-    Δz,
-    Y,
-    p,
-    t,
-)
-    return ClimaCore.Fields.FieldVector(; :soil => (; :ϑ_l => zeros(axes(Δz))))
+function covariant3_unit_vector(local_geometry)
+    FT = Geometry.undertype(typeof(local_geometry))
+    data =
+        FT(1) / Geometry._norm(Geometry.Covariant3Vector(FT(1)), local_geometry)
+    return Geometry.Covariant3Vector(data)
 end
 
 # BC type for the soil heat equation
@@ -665,7 +657,7 @@ abstract type AbstractEnergyHydrologyBC <: ClimaLand.AbstractBC end
     WaterHeatBC{W <: AbstractWaterBC, H <: AbstractHeatBC} <:
        AbstractEnergyHydrologyBC
 
-A general struct used to store the boundary conditions for Richards 
+A general struct used to store the boundary conditions for Richards
 and the soil heat equations separately; useful when the boundary
 conditions for each component are independent of each other.
 """
@@ -731,7 +723,7 @@ end
 
 The list of domain names for additional variables added to the
 EnergyHydrology model auxiliary state, which defaults to adding storage for the
- boundary flux field. 
+ boundary flux field.
 
 Because we supply boundary conditions for water and heat, we found it convenient to
 have these stored as a NamedTuple under the names `top_bc` and `bottom_bc`.
@@ -808,6 +800,7 @@ boundary_var_domain_names(
 ) = (:surface, :surface, :surface, :surface, :surface, :surface)
 """
     boundary_var_types(
+        ::EnergyHydrology{FT},
         ::AtmosDrivenFluxBC{
             <:PrescribedAtmosphere{FT},
             <:AbstractRadiativeDrivers{FT},
@@ -890,7 +883,7 @@ end
                                     <:Runoff.TOPMODELRunoff,
                                     }, ::ClimaLand.TopBoundary)
 
-An extension of the `boundary_vars` method for AtmosDrivenFluxBC with 
+An extension of the `boundary_vars` method for AtmosDrivenFluxBC with
 TOPMODELRunoff. This
 adds the surface conditions (SHF, LHF, evaporation, and resistance) and the
 net radiation to the auxiliary variables.
@@ -949,6 +942,7 @@ boundary_var_domain_names(
 
 """
     boundary_var_types(
+        model::EnergyHydrology{FT},
         ::AtmosDrivenFluxBC{
             <:PrescribedAtmosphere{FT},
             <:AbstractRadiativeDrivers{FT},
@@ -979,3 +973,37 @@ boundary_var_types(
     FT,
     FT,
 )
+
+"""
+    boundary_vars(::MoistureStateBC, ::ClimaLand.TopBoundary)
+
+An extension of the `boundary_vars` method for MoistureStateBC at the
+top boundary.
+
+These variables are updated in place in `boundary_flux`.
+"""
+boundary_vars(bc::MoistureStateBC, ::ClimaLand.TopBoundary) =
+    (:top_bc, :dfluxBCdY)
+
+"""
+    boundary_var_domain_names(::MoistureStateBC, ::ClimaLand.TopBoundary)
+
+An extension of the `boundary_var_domain_names` method for MoistureStateBC at the
+top boundary.
+"""
+boundary_var_domain_names(bc::MoistureStateBC, ::ClimaLand.TopBoundary) =
+    (:surface, :surface)
+"""
+    boundary_var_types(::RichardsModel{FT},
+                        ::MoistureStateBC,
+                        ::ClimaLand.TopBoundary,
+                        ) where {FT}
+
+An extension of the `boundary_var_types` method for MoistureStateBC at the
+    top boundary.
+"""
+boundary_var_types(
+    model::RichardsModel{FT},
+    bc::MoistureStateBC,
+    ::ClimaLand.TopBoundary,
+) where {FT} = (FT, ClimaCore.Geometry.Covariant3Vector{FT})

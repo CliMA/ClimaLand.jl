@@ -96,5 +96,5 @@ ClimaLand.Soil.RootExtraction
 ## Soil Jacobian Structures
 
 ```@docs
-ClimaLand.Soil.RichardsTridiagonalW
+ClimaLand.Soil.ImplicitEquationJacobian
 ```

@@ -164,7 +164,7 @@ end
      make_update_cache(model::AbstractModel)
 
 A helper function which updates all cache variables of a model;
-currently only used in `set_initial_cache` since not all 
+currently only used in `set_initial_cache` since not all
 cache variables are updated at the same time.
 """
 function make_update_cache(model::AbstractModel)
@@ -403,7 +403,6 @@ Returns the `driver` objects for the model - atmospheric and radiative forcing -
 function get_drivers(model::AbstractModel)
     return (nothing, nothing)
 end
-
 
 """
     initialize(model::AbstractModel)

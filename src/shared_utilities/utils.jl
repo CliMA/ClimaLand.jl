@@ -17,14 +17,6 @@ function heaviside(x::FT)::FT where {FT}
 end
 
 """
-    to_scalar_coefs(vector_coefs)
-
-Helper function used in computing tendencies of vertical diffusion terms.
-"""
-to_scalar_coefs(vector_coefs) = map(vector_coef -> vector_coef.u₃, vector_coefs)
-
-
-"""
     add_dss_buffer_to_aux(p::NamedTuple, domain::Domains.AbstractDomain)
 
 Fallback method for `add_dss_buffer_to_aux` which does not add a dss buffer.
