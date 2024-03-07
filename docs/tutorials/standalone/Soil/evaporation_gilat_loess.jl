@@ -20,23 +20,23 @@ import SurfaceFluxes.Parameters as SFP
 
 # Define simulation times
 t0 = Float64(0)
-tf = Float64(24 * 3600 * 13)
+tf = Float64(24 * 3600 * 15)
 FT = Float64
 
 earth_param_set = LP.LandParameters(FT)
 thermo_params = LP.thermodynamic_parameters(earth_param_set)
 # Coarse sand experiment described in Figures 7 and 8a
 # of Lehmann, Assouline, Or  (Phys Rev E 77, 2008)
-K_sat = FT(225.1 / 3600 / 24 / 1000)
+K_sat = FT(0.025 / 3600 / 24)
 # n and alpha estimated by matching vG curve.
-vg_n = FT(10.0)
-vg_α = FT(6.0)
+vg_n = FT(1.55)
+vg_α = FT(1.5)
 hcm = vanGenuchten{FT}(; α = vg_α, n = vg_n)
-ν = FT(0.43)
-θ_r = FT(0.045)
+ν = FT(0.42)
+θ_r = FT(0.075)
 S_s = FT(1e-3)
 ν_ss_om = FT(0.0)
-ν_ss_quartz = FT(1.0)
+ν_ss_quartz = FT(0.3)
 ν_ss_gravel = FT(0.0)
 emissivity = FT(1.0)
 PAR_albedo = FT(0.2)
@@ -109,9 +109,9 @@ params = ClimaLand.Soil.EnergyHydrologyParameters{FT}(;
 )
 
 zmax = FT(0)
-zmin = FT(-0.35)
-nelems = 5
-dt = Float64(2.0)
+zmin = FT(-1.6)
+nelems = 32
+dt = Float64(20.0)
 soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems)
 z = ClimaCore.Fields.coordinate_field(soil_domain.space.subsurface).z
 
@@ -123,18 +123,12 @@ soil = Soil.EnergyHydrology{FT}(;
 )
 
 Y, p, cds = initialize(soil) # begins saturated
-function hydrostatic_equilibrium(z, z_interface, params)
-    (; ν, S_s, hydrology_cm) = params
-    (; α, n, m) = hydrology_cm
-    if z < z_interface
-        return -S_s * (z - z_interface) + ν
-    else
-        return ν * (1 + (α * (z - z_interface))^n)^(-m)
-    end
+function estimated_ic(z)
+    z > -0.15 ? 0.4 : 0.1
 end
 function init_soil!(Y, z, params)
     FT = eltype(Y.soil.ϑ_l)
-    Y.soil.ϑ_l .= hydrostatic_equilibrium.(z, FT(-0.001), params)
+    Y.soil.ϑ_l .= estimated_ic.(z)
     Y.soil.θ_i .= 0
     T = FT(296.15)
     ρc_s = @. Soil.volumetric_heat_capacity(Y.soil.ϑ_l, FT(0), params)
@@ -180,38 +174,13 @@ evap = [
 
 savepath = joinpath(pkgdir(ClimaLand), "docs/tutorials/standalone/Soil/")
 
-# Read in reference solution from artifact
-evap_dataset = ArtifactWrapper(
-    @__DIR__,
-    "lehmann2008_fig8_evaporation",
-    ArtifactFile[ArtifactFile(
-        url = "https://caltech.box.com/shared/static/cgppw3tx6zdz7h02yt28ri44g1j088ju.csv",
-        filename = "lehmann2008_fig8_evaporation.csv",
-    ),],
-)
-evap_datapath = get_data_folder(evap_dataset)
-ref_soln_E =
-    readdlm(joinpath(evap_datapath, "lehmann2008_fig8_evaporation.csv"), ',')
-ref_soln_E_350mm = ref_soln_E[2:end, 1:2]
-data_dates = ref_soln_E_350mm[:, 1]
-data_e = ref_soln_E_350mm[:, 2]
-
-# Compare our data to Figure 8b of Lehmann, Assouline, Or  (Phys Rev E 77, 2008)
-fig = Figure(size = (800, 400))
+fig = Figure(size = (1200, 400))
 ax = Axis(
     fig[1, 1],
     xlabel = "Day",
     ylabel = "Evaporation rate (mm/d)",
-    title = "Bare soil evaporation",
 )
 CairoMakie.xlims!(minimum(data_dates), maximum(data_dates))
-CairoMakie.lines!(
-    ax,
-    FT.(data_dates),
-    FT.(data_e),
-    label = "Data",
-    color = :blue,
-)
 CairoMakie.lines!(
     ax,
     sol.t ./ 3600 ./ 24,
@@ -220,29 +189,37 @@ CairoMakie.lines!(
     color = :black,
 )
 CairoMakie.axislegend(ax)
-
-ax = Axis(
+ax2 = Axis(
     fig[1, 2],
-    xlabel = "Mass (g)",
-    yticksvisible = false,
-    yticklabelsvisible = false,
+    xlabel = "Day",
+    ylabel = "Cumulative evaporation (mm)",
 )
-A_col = π * (0.027)^2
-mass_0 = sum(sol.u[1].soil.ϑ_l) * 1e6 * A_col
-mass_loss =
-    [mass_0 - sum(sol.u[k].soil.ϑ_l) * 1e6 * A_col for k in 1:length(sol.t)]
+CairoMakie.xlims!(minimum(data_dates), maximum(data_dates))
 CairoMakie.lines!(
-    ax,
-    cumsum(FT.(data_e)) ./ (1000 * 24) .* A_col .* 1e6,
-    FT.(data_e),
-    label = "Data",
-    color = :blue,
-)
-CairoMakie.lines!(
-    ax,
-    mass_loss,
-    evap .* (1000 * 3600 * 24),
+    ax2,
+    sol.t ./ 3600 ./ 24,
+    cumsum(evap) .* (1000 * 3600),
     label = "Model",
     color = :black,
 )
-save(joinpath(savepath, "evaporation_lehmann2008_fig8b_5_elems_S_c_div_3.png"), fig)
+
+ax3 = Axis(
+    fig[1, 3],
+    xlabel = "Volumetric Water Content",
+    ylabel = "Depth(cm)",
+)
+CairoMakie.ylims!(-0.5,0)
+for i in [0, 1,2,3,6,14].*24
+    CairoMakie.lines!(
+        ax3,
+        parent(sol.u[i+1].soil.ϑ_l)[:],
+        parent(z)[:],
+        label = "$(i)",
+        color = :black,
+    )
+end
+CairoMakie.axislegend(ax3)
+
+
+
+save(joinpath(savepath, "evaporation_lehmann2024_figS6.png"), fig)

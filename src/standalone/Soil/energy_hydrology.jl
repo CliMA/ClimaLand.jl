@@ -492,8 +492,24 @@ function ClimaLand.surface_resistance(
     p,
     t,
 ) where {FT}
-    #  z = ClimaCore.Fields.coordinate_field(model.domain.space.subsurface)
-    #  Δz_top, _ = get_Δz(z)
+    z = ClimaCore.Fields.coordinate_field(model.domain.space.subsurface)
+    Δz_top, _ = get_Δz(z)
+    (; ν, θ_r, hydrology_cm) = model.parameters
+    S_l = effective_saturation.(ν, p.soil.θ_l, θ_r)
+
+    S_l_sfc = Soil.inverse_matric_potential.(model.parameters.hydrology_cm, -1 .* Δz_top .+ Soil.matric_potential.(model.parameters.hydrology_cm, ClimaLand.Domains.top_center_to_surface(S_l)))
+    θ_l_sfc = @. S_l_sfc * (ν-θ_r) + θ_r
+    θ_i_sfc = ClimaLand.Domains.top_center_to_surface(Y.soil.θ_i)
+    ϑ_l_sfc = θ_l_sfc
+    return  ClimaLand.Soil.soil_resistance.(
+        θ_l_sfc,
+        ϑ_l_sfc,
+        θ_i_sfc,
+        hydrology_cm.S_c/3,
+        model.parameters,)
+end
+
+#=
     #  vg_α = model.parameters.hydrology_cm.α
     #  vg_n = model.parameters.hydrology_cm.n
     #  L_G = 1/(vg_α*(vg_n-1))*((vg_n-1)/vg_n)^((1-vg_n)/vg_n)*((2*vg_n-1)/vg_n)^((2*vg_n-1)/vg_n)
@@ -514,7 +530,7 @@ function ClimaLand.surface_resistance(
         ),
     )
 end
-
+=#
 
 """
     ClimaLand.surface_emissivity(
