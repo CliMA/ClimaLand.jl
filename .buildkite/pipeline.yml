@@ -9,11 +9,14 @@ env:
   JULIA_CPU_TARGET: 'broadwell;skylake'
   OPENBLAS_NUM_THREADS: 1
   SLURM_KILL_BAD_EXIT: 1
+  JULIA_DEPOT_PATH: "${BUILDKITE_BUILD_PATH}/${BUILDKITE_PIPELINE_SLUG}/depot/default"
 
 steps:
   - label: "init environment :computer:"
     key: "init_cpu_env"
     command:
+      - "echo $$JULIA_DEPOT_PATH"
+
       - echo "--- Instantiate project"
       - "julia --project -e 'using Pkg; Pkg.instantiate(;verbose=true)'"
       - "julia --project -e 'using Pkg; Pkg.status()'"
