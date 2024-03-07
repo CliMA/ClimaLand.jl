@@ -94,32 +94,3 @@ function _ldiv_serial!(
     end
     return nothing
 end
-
-"""
-    thomas_algorithm!(A, b)
-
-Thomas algorithm for solving a linear system A x = b,
-where A is a tri-diagonal matrix.
-A and b are overwritten, solution is written to b.
-Pass this as linsolve to ODEFunction.
-"""
-function thomas_algorithm!(A, b)
-    nrows = size(A, 1)
-    # first row
-    @inbounds A[1, 2] /= A[1, 1]
-    @inbounds b[1] /= A[1, 1]
-    # interior rows
-    for row in 2:(nrows - 1)
-        @inbounds fac = A[row, row] - (A[row, row - 1] * A[row - 1, row])
-        @inbounds A[row, row + 1] /= fac
-        @inbounds b[row] = (b[row] - A[row, row - 1] * b[row - 1]) / fac
-    end
-    # last row
-    @inbounds fac = A[nrows, nrows] - A[nrows - 1, nrows] * A[nrows, nrows - 1]
-    @inbounds b[nrows] = (b[nrows] - A[nrows, nrows - 1] * b[nrows - 1]) / fac
-    # back substitution
-    for row in (nrows - 1):-1:1
-        @inbounds b[row] -= b[row + 1] * A[row, row + 1]
-    end
-    return nothing
-end

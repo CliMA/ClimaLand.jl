@@ -488,7 +488,7 @@ function ClimaLand.∂tendencyBC∂Y(
         face_len,
     )
     return ClimaCore.Fields.FieldVector(;
-        :soil => (; :ϑ_l => @. -K / Δz * dψ / (2 * Δz)),
+        soil = (; ϑ_l = @. -K / Δz * dψ / (2 * Δz)),
     )
 end
 
@@ -525,7 +525,7 @@ function ClimaLand.∂tendencyBC∂Y(
     p,
     t,
 )
-    return ClimaCore.Fields.FieldVector(; :soil => (; :ϑ_l => zeros(axes(Δz))))
+    return ClimaCore.Fields.FieldVector(; soil = (; ϑ_l = zeros(axes(Δz))))
 end
 
 # BC type for the soil heat equation
@@ -665,7 +665,7 @@ abstract type AbstractEnergyHydrologyBC <: ClimaLand.AbstractBC end
     WaterHeatBC{W <: AbstractWaterBC, H <: AbstractHeatBC} <:
        AbstractEnergyHydrologyBC
 
-A general struct used to store the boundary conditions for Richards 
+A general struct used to store the boundary conditions for Richards
 and the soil heat equations separately; useful when the boundary
 conditions for each component are independent of each other.
 """
@@ -731,7 +731,7 @@ end
 
 The list of domain names for additional variables added to the
 EnergyHydrology model auxiliary state, which defaults to adding storage for the
- boundary flux field. 
+ boundary flux field.
 
 Because we supply boundary conditions for water and heat, we found it convenient to
 have these stored as a NamedTuple under the names `top_bc` and `bottom_bc`.
