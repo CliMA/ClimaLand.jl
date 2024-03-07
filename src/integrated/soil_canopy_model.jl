@@ -395,14 +395,14 @@ end
     soil_boundary_fluxes!(
         bc::AtmosDrivenFluxBC{<:PrescribedAtmosphere, <:CanopyRadiativeFluxes},
         boundary::ClimaLand.TopBoundary,
-        model::EnergyHydrology{FT},
+        soil::EnergyHydrology{FT},
         Δz,
         Y,
         p,
         t,
     ) where {FT}
 
-A method of `ClimaLand.Soil.soil_boundary_fluxes` which is used for
+A method of `ClimaLand.Soil.soil_boundary_fluxes!` which is used for
 integrated land surface models; this computes and returns the net
 energy and water flux at the surface of the soil for use as boundary
 conditions.
@@ -418,14 +418,9 @@ function soil_boundary_fluxes!(
 ) where {FT}
     bc = soil.boundary_conditions.top
     soil_conditions = turbulent_fluxes(bc.atmos, soil, Y, p, t)
-    p.soil.top_bc.water .= soil_surface_infiltration(
-        bc.runoff,
-        p.drivers.P_liq .+ p.soil.turbulent_fluxes.vapor_flux,
-        Y,
-        p,
-        t,
-        soil.parameters,
-    )
+    Soil.Runoff.update_runoff!(p, bc.runoff, Y, t, soil)
+    @. p.soil.top_bc.water =
+        p.soil.infiltration + p.soil.turbulent_fluxes.vapor_flux
     @. p.soil.top_bc.heat =
         -p.soil.R_n + p.soil.turbulent_fluxes.lhf + p.soil.turbulent_fluxes.shf
 end

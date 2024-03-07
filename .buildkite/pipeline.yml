@@ -80,6 +80,10 @@ steps:
         command: "julia --color=yes --project=experiments experiments/standalone/Soil/water_conservation.jl"
         artifact_paths: "experiments/standalone/Soil/water_conservation*png"
 
+      - label: "Richards Runoff CPU"
+        command: "julia --color=yes --project=experiments experiments/standalone/Soil/richards_runoff.jl"
+        artifact_paths: "experiments/standalone/Soil/artifacts/*png"
+
   - group: "ClimaLandSimulations"
     steps:
       - label: "Ozark figures Makie"

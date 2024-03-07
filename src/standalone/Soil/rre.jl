@@ -500,3 +500,13 @@ function ClimaLand.get_drivers(model::RichardsModel)
         return (nothing, nothing)
     end
 end
+
+"""
+    is_saturated(Y, model::RichardsModel)
+
+A helper function which can be used to indicate whether a layer of soil is 
+saturated.
+"""
+function is_saturated(Y, model::RichardsModel)
+    return @. ClimaLand.heaviside(Y.soil.ϑ_l - model.parameters.ν)
+end
