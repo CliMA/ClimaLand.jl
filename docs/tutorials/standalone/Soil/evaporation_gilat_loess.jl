@@ -27,7 +27,7 @@ earth_param_set = LP.LandParameters(FT)
 thermo_params = LP.thermodynamic_parameters(earth_param_set)
 # Coarse sand experiment described in Figures 7 and 8a
 # of Lehmann, Assouline, Or  (Phys Rev E 77, 2008)
-K_sat = FT(0.025 / 3600 / 24)
+K_sat = FT(0.01 / 3600 / 24)
 # n and alpha estimated by matching vG curve.
 vg_n = FT(1.55)
 vg_α = FT(1.5)
@@ -87,7 +87,7 @@ zero_water_flux = WaterFluxBC((p, t) -> 0)
 zero_heat_flux = HeatFluxBC((p, t) -> 0)
 #top_water_flux = WaterFluxBC((p, t) -> 4.6296296296296295e-8)
 boundary_fluxes = (;
-    top = top_bc,#WaterHeatBC(; water = top_water_flux, heat = zero_heat_flux),#top_bc,
+    top = top_bc,#WaterHeatBC(; water = zero_water_flux, heat = zero_heat_flux),#top_bc,
     bottom = WaterHeatBC(; water = zero_water_flux, heat = zero_heat_flux),
 )
 params = ClimaLand.Soil.EnergyHydrologyParameters{FT}(;
@@ -110,8 +110,8 @@ params = ClimaLand.Soil.EnergyHydrologyParameters{FT}(;
 
 zmax = FT(0)
 zmin = FT(-1.6)
-nelems = 32
-dt = Float64(20.0)
+nelems = 64
+dt = Float64(10.0)
 soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems)
 z = ClimaCore.Fields.coordinate_field(soil_domain.space.subsurface).z
 
@@ -124,13 +124,13 @@ soil = Soil.EnergyHydrology{FT}(;
 
 Y, p, cds = initialize(soil) # begins saturated
 function estimated_ic(z)
-    z > -0.15 ? 0.4 : 0.1
+   0.3/(1+exp(-(z+0.15)/0.01))+0.09
 end
 function init_soil!(Y, z, params)
     FT = eltype(Y.soil.ϑ_l)
     Y.soil.ϑ_l .= estimated_ic.(z)
     Y.soil.θ_i .= 0
-    T = FT(296.15)
+    T = FT(294.15)
     ρc_s = @. Soil.volumetric_heat_capacity(Y.soil.ϑ_l, FT(0), params)
     Y.soil.ρe_int =
         Soil.volumetric_internal_energy.(FT(0), ρc_s, T, Ref(params))
@@ -167,6 +167,7 @@ sol = SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb, saveat = saveat)
 
 
 # Figures
+
 evap = [
     parent(sv.saveval[k].soil.turbulent_fluxes.vapor_flux)[1] for
     k in 1:length(sol.t)
@@ -180,7 +181,6 @@ ax = Axis(
     xlabel = "Day",
     ylabel = "Evaporation rate (mm/d)",
 )
-CairoMakie.xlims!(minimum(data_dates), maximum(data_dates))
 CairoMakie.lines!(
     ax,
     sol.t ./ 3600 ./ 24,
@@ -194,7 +194,6 @@ ax2 = Axis(
     xlabel = "Day",
     ylabel = "Cumulative evaporation (mm)",
 )
-CairoMakie.xlims!(minimum(data_dates), maximum(data_dates))
 CairoMakie.lines!(
     ax2,
     sol.t ./ 3600 ./ 24,
@@ -208,17 +207,20 @@ ax3 = Axis(
     xlabel = "Volumetric Water Content",
     ylabel = "Depth(cm)",
 )
-CairoMakie.ylims!(-0.5,0)
-for i in [0, 1,2,3,6,14].*24
+CairoMakie.ylims!(-0.3,0)
+CairoMakie.xlims!(0.0,0.4)
+for i in [0, 1,2,3,6,13].*24
     CairoMakie.lines!(
         ax3,
         parent(sol.u[i+1].soil.ϑ_l)[:],
         parent(z)[:],
-        label = "$(i)",
+        label = "$(div(i,24))",
         color = :black,
     )
 end
-CairoMakie.axislegend(ax3)
+
+CairoMakie.axislegend(ax3, position = :rb)
+
 
 
 

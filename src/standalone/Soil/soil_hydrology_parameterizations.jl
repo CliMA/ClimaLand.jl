@@ -276,5 +276,5 @@ this is used when computing the soil resistance to evaporation according to
 Swenson et al (2012).
 """
 function dry_soil_layer_thickness(S_l_sfc::FT, S_c::FT, d_ds::FT) where {FT}
-    return S_l_sfc < S_c ? d_ds * (S_c - S_l_sfc) / S_c : FT(0)
+    return S_l_sfc < S_c ? d_ds * ((S_c - S_l_sfc) / S_c) : FT(0)
 end

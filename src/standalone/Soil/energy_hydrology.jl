@@ -505,7 +505,7 @@ function ClimaLand.surface_resistance(
         θ_l_sfc,
         ϑ_l_sfc,
         θ_i_sfc,
-        hydrology_cm.S_c/3,
+        hydrology_cm.S_c,
         model.parameters,)
 end
 
@@ -599,7 +599,9 @@ function ClimaLand.surface_specific_humidity(
     M_w = LP.molar_mass_water(model.parameters.earth_param_set)
     thermo_params =
         LP.thermodynamic_parameters(model.parameters.earth_param_set)
-    ψ_sfc = ClimaLand.Domains.top_center_to_surface(p.soil.ψ)
+    z = ClimaCore.Fields.coordinate_field(model.domain.space.subsurface)
+    Δz_top, _ = get_Δz(z)
+    ψ_sfc = ClimaLand.Domains.top_center_to_surface(p.soil.ψ) .- 1 .* Δz_top
     q_sat =
         Thermodynamics.q_vap_saturation_generic.(
             thermo_params,
