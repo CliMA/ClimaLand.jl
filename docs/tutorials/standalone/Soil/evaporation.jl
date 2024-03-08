@@ -245,4 +245,4 @@ CairoMakie.lines!(
     label = "Model",
     color = :black,
 )
-save(joinpath(savepath, "evaporation_lehmann2008_fig8b.png"), fig)
+save(joinpath(savepath, "evaporation_lehmann2008_fig8b_sc1.png"), fig)

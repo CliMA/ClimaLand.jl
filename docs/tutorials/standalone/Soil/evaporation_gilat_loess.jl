@@ -224,4 +224,4 @@ CairoMakie.axislegend(ax3, position = :rb)
 
 
 
-save(joinpath(savepath, "evaporation_lehmann2024_figS6.png"), fig)
+save(joinpath(savepath, "evaporation_lehmann2024_figS6_sc1.png"), fig)
