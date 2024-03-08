@@ -7,7 +7,7 @@ using ClimaLand.Soil
 using ClimaLand.Soil.Biogeochemistry
 using Dates
 
-import CLIMAParameters
+import ClimaParams
 import ClimaLand.Parameters as LP
 
 for FT in (Float32, Float64)

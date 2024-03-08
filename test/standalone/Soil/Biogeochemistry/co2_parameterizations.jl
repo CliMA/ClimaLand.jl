@@ -40,6 +40,7 @@ for FT in (Float32, Float64)
 
         ms = microbe_source(T_soil, θ_l, Csom, parameters)
         # check that the value is correct
+        (; p_sx, D_liq, kM_o2, D_oa, kM_sx, O2_a, α_sx, Ea_sx) = parameters
         MM_sx =
             p_sx * Csom * D_liq * θ_l^3 / (kM_sx + p_sx * Csom * D_liq * θ_l^3)
         MM_o2 =
