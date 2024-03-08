@@ -442,7 +442,7 @@ function BucketModelParameters(
     parameters = CP.get_parameter_values(toml_dict, name_map, "Land")
 
     AAM = typeof(albedo)
-    earth_param_set = LandParameters(toml_dict)
+    earth_param_set = LP.LandParameters(toml_dict)
     PSE = typeof(earth_param_set)
     FT = CP.float_type(toml_dict)
     BucketModelParameters{FT, AAM, PSE}(;
@@ -485,7 +485,7 @@ function SoilCO2ModelParameters(toml_dict::CP.AbstractTOMLDict; kwargs...)
     )
     parameters = CP.get_parameter_values(toml_dict, name_map, "Land")
     FT = CP.float_type(toml_dict)
-    earth_param_set = LandParameters(toml_dict)
+    earth_param_set = LP.LandParameters(toml_dict)
     return SoilCO2ModelParameters{FT, typeof(earth_param_set)}(;
         earth_param_set,
         ν,
