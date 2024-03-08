@@ -41,7 +41,7 @@ export SoilCO2ModelParameters,
 A struct for storing parameters of the `SoilCO2Model`.
 $(DocStringExtensions.FIELDS)
 """
-struct SoilCO2ModelParameters{FT <: AbstractFloat, PSE}
+Base.@kwdef struct SoilCO2ModelParameters{FT <: AbstractFloat, PSE}
     "Soil porosity (m³ m⁻³)"
     ν::FT
     "Air-filled porosity at soil water potential of -100 cm H₂O (~ 10 Pa)"
@@ -69,62 +69,6 @@ struct SoilCO2ModelParameters{FT <: AbstractFloat, PSE}
     p_sx::FT
     "Physical constants used Clima-wide"
     earth_param_set::PSE
-end
-
-"""
-    SoilCO2ModelParameters{FT}(;
-                                ν = FT(0.556),
-                                θ_a100 = FT(0.1816),
-                                D_ref = FT(1.39e-5),
-                                b = FT(4.547),
-                                D_liq = FT(3.17),
-                                # DAMM
-                                α_sx = FT(194e3),
-                                Ea_sx = FT(61e3),
-                                kM_sx = FT(5e-3),
-                                kM_o2 = FT(0.004),
-                                O2_a = FT(0.209),
-                                D_oa = FT(1.67),
-                                p_sx = FT(0.024),
-                                earth_param_set::PSE
-                               ) where {FT, PSE}
-
-
-An outer constructor for creating the parameter struct of the `SoilCO2Model`,
-    based on keyword arguments.
-"""
-function SoilCO2ModelParameters{FT}(;
-    ν = FT(0.556),
-    θ_a100 = FT(0.1816),
-    D_ref = FT(1.39e-5),
-    b = FT(4.547),
-    D_liq = FT(3.17),
-    # DAMM
-    α_sx = FT(194e3), # kgC m⁻³ s⁻¹
-    Ea_sx = FT(61e3), # J mol⁻¹
-    kM_sx = FT(5e-3), # kgC m⁻³
-    kM_o2 = FT(0.004), # L L⁻¹
-    O2_a = FT(0.209),
-    D_oa = FT(1.67),
-    p_sx = FT(0.024),
-    earth_param_set::PSE,
-) where {FT, PSE}
-    return SoilCO2ModelParameters{FT, PSE}(
-        ν,
-        θ_a100,
-        D_ref,
-        b,
-        D_liq,
-        # DAMM
-        α_sx,
-        Ea_sx,
-        kM_sx,
-        kM_o2,
-        O2_a,
-        D_oa,
-        p_sx,
-        earth_param_set,
-    )
 end
 
 """

@@ -7,6 +7,7 @@ using ClimaLand.Soil
 using ClimaLand.Soil.Biogeochemistry
 using Dates
 
+import CLIMAParameters
 import ClimaLand.Parameters as LP
 
 for FT in (Float32, Float64)
@@ -62,9 +63,7 @@ for FT in (Float32, Float64)
         # Make biogeochemistry model args
         Csom = (z, t) -> eltype(z)(5.0)
 
-        co2_parameters = Soil.Biogeochemistry.SoilCO2ModelParameters{FT}(;
-            earth_param_set = earth_param_set,
-        )
+        co2_parameters = Soil.Biogeochemistry.SoilCO2ModelParameters(FT)
         C = FT(4)
         co2_top_bc = Soil.Biogeochemistry.SoilCO2StateBC((p, t) -> C)
         co2_bot_bc = Soil.Biogeochemistry.SoilCO2StateBC((p, t) -> C)
@@ -164,10 +163,8 @@ for FT in (Float32, Float64)
         )
 
         try
-            co2_parameters = Soil.Biogeochemistry.SoilCO2ModelParameters{FT}(;
-                ν = FT(0.2),
-                earth_param_set = earth_param_set,
-            )
+            co2_parameters =
+                Soil.Biogeochemistry.SoilCO2ModelParameters(FT; ν = 0.2)
             soil_drivers = Soil.Biogeochemistry.SoilDrivers(
                 Soil.Biogeochemistry.PrognosticMet{FT}(),
                 Soil.Biogeochemistry.PrescribedSOC{FT}(Csom),

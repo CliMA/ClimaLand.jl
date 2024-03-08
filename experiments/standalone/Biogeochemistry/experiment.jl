@@ -70,9 +70,7 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
     # Make biogeochemistry model args
     Csom = (z, t) -> eltype(z)(5.0)
 
-    co2_parameters = Soil.Biogeochemistry.SoilCO2ModelParameters{FT}(;
-        earth_param_set = earth_param_set,
-    )
+    co2_parameters = Soil.Biogeochemistry.SoilCO2ModelParameters(FT)
     C = FT(100)
 
     co2_top_bc = Soil.Biogeochemistry.SoilCO2StateBC((p, t) -> 0.0)

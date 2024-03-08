@@ -9,18 +9,7 @@ for FT in (Float32, Float64)
     @testset "Soil CO2 production and transport, FT = $FT" begin
         earth_param_set = LP.LandParameters(FT)
         # Parameters should be supplied in m/kg/s (Pa... etc)
-        D_liq = FT(3.17)
         ν = FT(0.556)
-        θ_a100 = FT(0.1846)
-        D_ref = FT(1.39e-5)
-        b = FT(4.547)
-        α_sx = FT(194e3)
-        Ea_sx = FT(61e3)
-        kM_sx = FT(5e-3)
-        kM_o2 = FT(0.004)
-        O2_a = FT(0.209)
-        D_oa = FT(1.67)
-        p_sx = FT(0.024)
         # Prognostic variables
         P_sfc = FT(101e3)
         T_soil = FT(303)
@@ -31,14 +20,7 @@ for FT in (Float32, Float64)
         T_ref = FT(LP.T_0(earth_param_set))
         R = FT(LP.gas_constant(earth_param_set))
 
-        parameters = SoilCO2ModelParameters{FT}(;
-            D_liq = D_liq,
-            ν = ν,
-            θ_a100 = θ_a100,
-            D_ref = D_ref,
-            b = b,
-            earth_param_set = earth_param_set,
-        )
+        parameters = SoilCO2ModelParameters(FT; ν)
 
         # Test that parameterizations functions are working properly
         θ_a = volumetric_air_content(θ_w, parameters)
