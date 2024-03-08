@@ -872,7 +872,7 @@ function soil_boundary_fluxes!(
     p.soil.turbulent_fluxes .= turbulent_fluxes(bc.atmos, model, Y, p, t)
     p.soil.R_n .= net_radiation(bc.radiation, model, Y, p, t)
     # We are ignoring sublimation for now
-    update_runoff!(p, bc.runoff, Y, t, model)
+    update_runoff!(p, bc.runoff, Y, t, model) # bc.runoff can be NoRunoff, TopmodelRunoff, InfiltrationExcess
     # We do not model the energy flux from infiltration
     @. p.soil.top_bc.water =
         p.soil.infiltration .+ p.soil.turbulent_fluxes.vapor_flux
@@ -949,6 +949,80 @@ boundary_var_types(
     NamedTuple{(:water, :heat), Tuple{FT, FT}},
     FT,
     FT,
+    FT,
+    FT,
+)
+
+
+# Infiltration excess
+
+"""
+    boundary_vars(::AtmosDrivenFluxBC{<:AbstractAtmosphericDrivers,
+                                    <:AbstractRadiativeDrivers,
+                                    <:Runoff.InfiltrationExcess,
+                                    }, ::ClimaLand.TopBoundary)
+
+An extension of the `boundary_vars` method for AtmosDrivenFluxBC with 
+InfiltrationExcess. This
+adds the surface conditions (SHF, LHF, evaporation, and resistance) and the
+net radiation to the auxiliary variables.
+
+These variables are updated in place in `soil_boundary_fluxes!`.
+"""
+boundary_vars(
+    bc::AtmosDrivenFluxBC{
+        <:AbstractAtmosphericDrivers,
+        <:AbstractRadiativeDrivers,
+        <:Runoff.InfiltrationExcess,
+    },
+    ::ClimaLand.TopBoundary,
+) = (:turbulent_fluxes, :R_n, :top_bc, :R_s, :infiltration)
+
+"""
+    boundary_var_domain_names(::AtmosDrivenFluxBC{<:AbstractAtmosphericDrivers,
+                                                  <:AbstractRadiativeDrivers,
+                                                  <:Runoff.InfiltrationExcess,
+                                                  },
+                              ::ClimaLand.TopBoundary)
+
+An extension of the `boundary_var_domain_names` method for AtmosDrivenFluxBC
+with InfiltrationExcess. This
+specifies the part of the domain on which the additional variables should be
+defined.
+"""
+boundary_var_domain_names(
+    bc::AtmosDrivenFluxBC{
+        <:AbstractAtmosphericDrivers,
+        <:AbstractRadiativeDrivers,
+        <:Runoff.InfiltrationExcess,
+    },
+    ::ClimaLand.TopBoundary,
+) = (:surface, :surface, :surface, :surface, :surface,)
+"""
+    boundary_var_types(
+        ::AtmosDrivenFluxBC{
+            <:PrescribedAtmosphere{FT},
+            <:AbstractRadiativeDrivers{FT},
+            <:Runoff.InfiltrationExcess{FT},
+        }, ::ClimaLand.TopBoundary,
+    ) where {FT}
+
+An extension of the `boundary_var_types` method for AtmosDrivenFluxBC
+with InfiltrationExcess. This
+specifies the type of the additional variables.
+"""
+boundary_var_types(
+    model::EnergyHydrology{FT},
+    bc::AtmosDrivenFluxBC{
+        <:AbstractAtmosphericDrivers{FT},
+        <:AbstractRadiativeDrivers{FT},
+        <:Runoff.InfiltrationExcess{FT},
+    },
+    ::ClimaLand.TopBoundary,
+) where {FT} = (
+    NamedTuple{(:lhf, :shf, :vapor_flux, :r_ae), Tuple{FT, FT, FT, FT}},
+    FT,
+    NamedTuple{(:water, :heat), Tuple{FT, FT}},
     FT,
     FT,
 )

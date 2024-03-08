@@ -68,6 +68,27 @@ in the case of NoRunoff: sets infiltration = precipitation.
 function update_runoff!(p, runoff::NoRunoff, _...)
     p.soil.infiltration .= p.drivers.P_liq
 end
+struct InfiltrationExcess <: AbstractRunoffModel
+    subsurface_source::Nothing
+    function InfiltrationExcess()
+        return new(nothing)
+    end
+end
+
+function update_runoff!(p, runoff::InfiltrationExcess, Y, t, model)
+    # compute infiltration capacity
+    precip = p.drivers.P_liq # + melt - interception.... eventually
+    flux_ic = soil_infiltration_capacity_flux(model, Y, p) # allocates
+   # flux_ic = -i_c
+    # If |P| > infiltration capacity i_c (i_c > 0)
+    # then infiltration = -i_c, runoff = P-i_c
+    # else infiltration = P
+    @. p.soil.infiltration = max(flux_ic, precip)
+    @. p.soil.R_s = abs(precip - p.soil.infiltration)
+# Precip = -20 mm/d, flux_ic = -10 mm/d
+# Precip = 0, flux_ic = -10mm/d
+end
+## Infiltration InfiltrationExcess
 
 # TOPMODEL
 
