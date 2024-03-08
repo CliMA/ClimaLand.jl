@@ -87,17 +87,8 @@ for FT in (Float32, Float64)
                 h_atmos,
             )
             τc = FT(1.0)
-            bucket_parameters = BucketModelParameters(
-                κ_soil,
-                ρc_soil,
-                albedo,
-                σS_c,
-                W_f,
-                z_0m,
-                z_0b,
-                τc,
-                earth_param_set,
-            )
+            bucket_parameters =
+                BucketModelParameters(FT; albedo, z_0m, z_0b, τc)
 
             model = BucketModel(
                 parameters = bucket_parameters,
@@ -185,17 +176,8 @@ for FT in (Float32, Float64)
                 h_atmos,
             )
             τc = FT(100.0)
-            bucket_parameters = BucketModelParameters(
-                κ_soil,
-                ρc_soil,
-                albedo,
-                σS_c,
-                W_f,
-                z_0m,
-                z_0b,
-                τc,
-                earth_param_set,
-            )
+            bucket_parameters =
+                BucketModelParameters(FT; albedo, z_0m, z_0b, τc)
             model = BucketModel(
                 parameters = bucket_parameters,
                 domain = bucket_domain,

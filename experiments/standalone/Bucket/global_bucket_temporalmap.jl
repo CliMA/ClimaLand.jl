@@ -98,17 +98,7 @@ regrid_dir = joinpath(
 surface_space = bucket_domain.space.surface
 albedo = PrescribedSurfaceAlbedo{FT}(regrid_dir, ref_time, t0, surface_space);
 
-bucket_parameters = BucketModelParameters(
-    κ_soil,
-    ρc_soil,
-    albedo,
-    σS_c,
-    W_f,
-    z_0m,
-    z_0b,
-    τc,
-    earth_param_set,
-);
+bucket_parameters = BucketModelParameters(FT; albedo, z_0m, z_0b, τc);
 
 # Precipitation:
 precip = (t) -> 0;

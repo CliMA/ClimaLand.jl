@@ -84,17 +84,7 @@ t0 = 0.0;
 tf = 7 * 86400;
 Δt = 3600.0;
 
-bucket_parameters = BucketModelParameters(
-    κ_soil,
-    ρc_soil,
-    albedo,
-    σS_c,
-    W_f,
-    z_0m,
-    z_0b,
-    τc,
-    earth_param_set,
-);
+bucket_parameters = BucketModelParameters(FT; albedo, z_0m, z_0b, τc);
 ref_time = DateTime(2005);
 
 # Precipitation:

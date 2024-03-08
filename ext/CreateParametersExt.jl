@@ -12,6 +12,7 @@ import ClimaLand.Parameters.LandParameters
 import ClimaLand.Canopy.AutotrophicRespirationParameters
 import ClimaLand.Canopy.FarquharParameters
 import ClimaLand.Canopy.OptimalityFarquharParameters
+import ClimaLand.Bucket.BucketModelParameters
 
 import ClimaLand.Soil
 import ClimaLand.Parameters as LP
@@ -374,5 +375,86 @@ function EnergyHydrologyParameters(
         kwargs...,
     )
 end
+
+
+"""
+    BucketModelParameters(
+        ::Type{FT};
+        albedo,
+        z_0m,
+        z_0b,
+        τc,
+        kwargs...,
+    )
+
+    BucketModelParameters(
+        toml_dict::CP.AbstractTOMLDict;
+        albedo,
+        z_0m,
+        z_0b,
+        τc,
+        kwargs...,
+    )
+
+BucketModelParameters has a float-type and a toml-dict based constructor.
+Keyword arguments can be used to manually override any of the values in the struct.
+```julia
+BucketModelParameters(Float64; albedo, z_0m, z_0b, τc)
+BucketModelParameters(toml_dict; albedo, z_0m, z_0b, τc)
+```
+"""
+function BucketModelParameters(
+    ::Type{FT};
+    albedo,
+    z_0m,
+    z_0b,
+    τc,
+    kwargs...,
+) where {FT <: AbstractFloat}
+    return BucketModelParameters(
+        CP.create_toml_dict(FT);
+        albedo,
+        z_0m,
+        z_0b,
+        τc,
+        kwargs...,
+    )
+end
+
+function BucketModelParameters(
+    toml_dict::CP.AbstractTOMLDict;
+    albedo,
+    z_0m,
+    z_0b,
+    τc,
+    kwargs...,
+)
+
+    name_map = (;
+        :soil_conductivity => :κ_soil,
+        :soil_heat_capacity => :ρc_soil,
+        :critical_snow_water_equivalent => :σS_c,
+        :land_bucket_capacity => :W_f,
+        :critical_snow_fraction => :f_snow,
+        :bucket_capacity_fraction => :f_bucket,
+        :bucket_beta_decay_exponent => :p,
+    )
+    parameters = CP.get_parameter_values(toml_dict, name_map, "Land")
+
+    AAM = typeof(albedo)
+    earth_param_set = LandParameters(toml_dict)
+    PSE = typeof(earth_param_set)
+    FT = CP.float_type(toml_dict)
+    BucketModelParameters{FT, AAM, PSE}(;
+        albedo,
+        z_0m,
+        z_0b,
+        τc,
+        earth_param_set,
+        parameters...,
+        kwargs...,
+    )
+end
+
 
 end
