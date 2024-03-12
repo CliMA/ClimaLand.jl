@@ -997,7 +997,7 @@ boundary_var_domain_names(
         <:Runoff.InfiltrationExcess,
     },
     ::ClimaLand.TopBoundary,
-) = (:surface, :surface, :surface, :surface, :surface,)
+) = (:surface, :surface, :surface, :surface, :surface)
 """
     boundary_var_types(
         ::AtmosDrivenFluxBC{
