@@ -11,6 +11,7 @@ using ..ClimaLand.Soil:
     EnergyHydrology,
     is_saturated
 export TOPMODELRunoff,
+    InfiltrationExcess,
     NoRunoff,
     AbstractRunoffModel,
     TOPMODELSubsurfaceRunoff,
@@ -68,6 +69,10 @@ in the case of NoRunoff: sets infiltration = precipitation.
 function update_runoff!(p, runoff::NoRunoff, _...)
     p.soil.infiltration .= p.drivers.P_liq
 end
+
+"""
+TO DO IN THIS PR, docstring
+"""
 struct InfiltrationExcess <: AbstractRunoffModel
     subsurface_source::Nothing
     function InfiltrationExcess()
@@ -75,6 +80,9 @@ struct InfiltrationExcess <: AbstractRunoffModel
     end
 end
 
+"""
+TO DO IN THIS PR, docstring
+"""
 function update_runoff!(p, runoff::InfiltrationExcess, Y, t, model)
     # compute infiltration capacity
     precip = p.drivers.P_liq # + melt - interception.... eventually
