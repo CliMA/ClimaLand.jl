@@ -23,6 +23,7 @@ steps:
 
       - echo "--- Instantiate experiments"
       - "julia --project=experiments -e 'using Pkg; Pkg.develop(;path=\".\"); Pkg.instantiate(;verbose=true)'"
+      - "julia --project=experiments -e 'using Pkg; Pkg.add(url=\"https://github.com/CliMA/ClimaCore.jl\")'"
       - "julia --project=experiments -e 'using Pkg; Pkg.status()'"
 
       - echo "--- Instantiate lib/ClimaLandSimulations"
@@ -83,6 +84,8 @@ steps:
       - label: "Richards Runoff CPU"
         command: "julia --color=yes --project=experiments experiments/standalone/Soil/richards_runoff.jl"
         artifact_paths: "experiments/standalone/Soil/artifacts/*png"
+        agents:
+          slurm_mem: 16G
 
   - group: "ClimaLandSimulations"
     steps:
