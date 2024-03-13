@@ -1016,7 +1016,7 @@ boundary_var_types(
     bc::AtmosDrivenFluxBC{
         <:AbstractAtmosphericDrivers{FT},
         <:AbstractRadiativeDrivers{FT},
-        <:Runoff.InfiltrationExcess{FT},
+        <:Runoff.InfiltrationExcess,
     },
     ::ClimaLand.TopBoundary,
 ) where {FT} = (
