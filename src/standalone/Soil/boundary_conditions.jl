@@ -161,7 +161,7 @@ end
                                               <:Runoff.TOPMODELRunoff,
                                               }, ::ClimaLand.TopBoundary)
 
-An extension of the `boundary_vars` method for RichardsAtmosDrivenFluxBC with 
+An extension of the `boundary_vars` method for RichardsAtmosDrivenFluxBC with
 TOPMODELRunoff.
 
 These variables are updated in place in `boundary_flux`.
@@ -181,7 +181,7 @@ boundary_vars(
                               ::ClimaLand.TopBoundary)
 
 An extension of the `boundary_var_domain_names` method for RichardsAtmosDrivenFluxBC
-with TOPMODELRunoff. 
+with TOPMODELRunoff.
 """
 boundary_var_domain_names(
     bc::RichardsAtmosDrivenFluxBC{
@@ -191,11 +191,12 @@ boundary_var_domain_names(
     ::ClimaLand.TopBoundary,
 ) = (:surface, :surface, :surface, :surface, :surface)
 """
-    boundary_var_types(::RichardsAtmosDrivenFluxBC{<:PrescribedPrecipitation,
+    boundary_var_types(::RichardsModel{FT},
+                        ::RichardsAtmosDrivenFluxBC{<:PrescribedPrecipitation,
                                                    <:Runoff.TOPMODELRunoff{FT},
                                                   },
-                       ::ClimaLand.TopBoundary,
-                       ) where {FT}
+                        ::ClimaLand.TopBoundary,
+                        ) where {FT}
 
 An extension of the `boundary_var_types` method for RichardsAtmosDrivenFluxBC
 with TOPMODELRunoff.
@@ -214,7 +215,7 @@ boundary_var_types(
                                               <:Runoff.AbstractRunoffModel,
                                               }, ::ClimaLand.TopBoundary)
 
-An extension of the `boundary_vars` method for RichardsAtmosDrivenFluxBC with 
+An extension of the `boundary_vars` method for RichardsAtmosDrivenFluxBC with
 no runoff modeled.
 
 These variables are updated in place in `boundary_flux`.
@@ -234,7 +235,7 @@ boundary_vars(
                               ::ClimaLand.TopBoundary)
 
 An extension of the `boundary_var_domain_names` method for RichardsAtmosDrivenFluxBC
-with no runoff modeled. 
+with no runoff modeled.
 """
 boundary_var_domain_names(
     bc::RichardsAtmosDrivenFluxBC{
@@ -244,11 +245,12 @@ boundary_var_domain_names(
     ::ClimaLand.TopBoundary,
 ) = (:surface, :surface)
 """
-    boundary_var_types(::RichardsAtmosDrivenFluxBC{<:PrescribedPrecipitation,
+    boundary_var_types(::RichardsModel{FT}
+                        ::RichardsAtmosDrivenFluxBC{<:PrescribedPrecipitation,
                                                    <:Runoff.AbstractRunoffModel,
                                                   },
-                       ::ClimaLand.TopBoundary,
-                       ) where {FT}
+                        ::ClimaLand.TopBoundary,
+                        ) where {FT}
 
 An extension of the `boundary_var_types` method for RichardsAtmosDrivenFluxBC
 with no runoff modeled.
@@ -447,7 +449,7 @@ function boundary_flux(
 end
 
 """
-    ClimaLand.∂tendencyBC∂Y(
+    ClimaLand.set_dfluxBCdY!(
         model::RichardsModel,
         ::MoistureStateBC,
         boundary::ClimaLand.TopBoundary,
@@ -466,7 +468,7 @@ variable, this is given by
 `∂T_N∂Y_N = [-∂/∂z(∂F_bc/∂Y_N)]_N`, where `N` indicates the top
 layer cell index.
 """
-function ClimaLand.∂tendencyBC∂Y(
+function ClimaLand.set_dfluxBCdY!(
     model::RichardsModel,
     ::MoistureStateBC,
     boundary::ClimaLand.TopBoundary,
@@ -487,13 +489,14 @@ function ClimaLand.∂tendencyBC∂Y(
         interpc2f_op.(dψdϑ.(hydrology_cm, Y.soil.ϑ_l, ν, θ_r, S_s)),
         face_len,
     )
-    return ClimaCore.Fields.FieldVector(;
-        soil = (; ϑ_l = @. -K / Δz * dψ / (2 * Δz)),
-    )
+    # Update `dfluxBCdY` in place
+    p.dfluxBCdY .=
+        ClimaCore.Fields.FieldVector(; soil = (; ϑ_l = @. -K * dψ / Δz))
+    return nothing
 end
 
 """
-    ClimaLand.∂tendencyBC∂Y(
+    ClimaLand.set_dfluxBCdY!(
         ::RichardsModel,
         ::AbstractWaterBC,
         boundary::ClimaLand.TopBoundary,
@@ -516,7 +519,8 @@ layer cell index.
 If `F_bc` can be approximated as independent of `Y_N`, the derivative
 is zero.
 """
-function ClimaLand.∂tendencyBC∂Y(
+# TODO do we even need to define this method? won't be called if not using MoistureStateBC at TopBoundary
+function ClimaLand.set_dfluxBCdY!(
     ::RichardsModel,
     ::AbstractWaterBC,
     boundary::ClimaLand.TopBoundary,
@@ -525,7 +529,7 @@ function ClimaLand.∂tendencyBC∂Y(
     p,
     t,
 )
-    return ClimaCore.Fields.FieldVector(; soil = (; ϑ_l = zeros(axes(Δz))))
+    return nothing
 end
 
 # BC type for the soil heat equation
@@ -808,6 +812,7 @@ boundary_var_domain_names(
 ) = (:surface, :surface, :surface, :surface)
 """
     boundary_var_types(
+        ::EnergyHydrology{FT},
         ::AtmosDrivenFluxBC{
             <:PrescribedAtmosphere{FT},
             <:AbstractRadiativeDrivers{FT},
@@ -886,7 +891,7 @@ end
                                     <:Runoff.TOPMODELRunoff,
                                     }, ::ClimaLand.TopBoundary)
 
-An extension of the `boundary_vars` method for AtmosDrivenFluxBC with 
+An extension of the `boundary_vars` method for AtmosDrivenFluxBC with
 TOPMODELRunoff. This
 adds the surface conditions (SHF, LHF, evaporation, and resistance) and the
 net radiation to the auxiliary variables.
@@ -924,6 +929,7 @@ boundary_var_domain_names(
 ) = (:surface, :surface, :surface, :surface, :surface, :surface, :surface)
 """
     boundary_var_types(
+        model::EnergyHydrology{FT},
         ::AtmosDrivenFluxBC{
             <:PrescribedAtmosphere{FT},
             <:AbstractRadiativeDrivers{FT},
@@ -952,3 +958,37 @@ boundary_var_types(
     FT,
     FT,
 )
+
+"""
+    boundary_vars(::MoistureStateBC, ::ClimaLand.TopBoundary)
+
+An extension of the `boundary_vars` method for MoistureStateBC at the
+top boundary.
+
+These variables are updated in place in `boundary_flux`.
+"""
+boundary_vars(bc::MoistureStateBC, ::ClimaLand.TopBoundary) =
+    (:top_bc, :dfluxBCdY)
+
+"""
+    boundary_var_domain_names(::MoistureStateBC, ::ClimaLand.TopBoundary)
+
+An extension of the `boundary_var_domain_names` method for MoistureStateBC at the
+top boundary.
+"""
+boundary_var_domain_names(bc::MoistureStateBC, ::ClimaLand.TopBoundary) =
+    (:surface, :surface)
+"""
+    boundary_var_types(::RichardsModel{FT},
+                        ::MoistureStateBC,
+                        ::ClimaLand.TopBoundary,
+                        ) where {FT}
+
+An extension of the `boundary_var_types` method for MoistureStateBC at the
+    top boundary.
+"""
+boundary_var_types(
+    model::RichardsModel{FT},
+    bc::MoistureStateBC,
+    ::ClimaLand.TopBoundary,
+) where {FT} = (FT, ClimaCore.MatrixFields.UpperBidiagonalMatrixRow{FT})

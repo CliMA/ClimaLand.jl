@@ -164,7 +164,7 @@ end
      make_update_cache(model::AbstractModel)
 
 A helper function which updates all cache variables of a model;
-currently only used in `set_initial_cache` since not all 
+currently only used in `set_initial_cache` since not all
 cache variables are updated at the same time.
 """
 function make_update_cache(model::AbstractModel)
@@ -404,6 +404,15 @@ function get_drivers(model::AbstractModel)
     return (nothing, nothing)
 end
 
+"""
+    add_dfluxBCdY_to_cache(p::NamedTuple, model::AbstractModel, _, _)
+
+We only need to add this field in the case of a `RichardsModel`, so we
+provide a fallback method for all other models which does nothing.
+"""
+function add_dfluxBCdY_to_cache(p::NamedTuple, model::AbstractModel, _, _)
+    return p
+end
 
 """
     initialize(model::AbstractModel)
@@ -418,5 +427,11 @@ function initialize(model::AbstractModel{FT}) where {FT}
     Y = initialize_prognostic(model, coords)
     p = initialize_auxiliary(model, coords)
     p = add_drivers_to_cache(p, model, coords)
+    p = add_dfluxBCdY_to_cache(
+        p,
+        model,
+        model.boundary_conditions.top,
+        ClimaLand.TopBoundary(),
+    )
     return Y, p, coords
 end

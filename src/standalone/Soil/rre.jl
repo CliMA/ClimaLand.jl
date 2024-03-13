@@ -326,6 +326,19 @@ function ClimaLand.make_update_aux(model::RichardsModel)
             effective_saturation(ν, Y.soil.ϑ_l, θ_r),
         )
         @. p.soil.ψ = pressure_head(hydrology_cm, θ_r, Y.soil.ϑ_l, ν, S_s)
+
+        # If p.soil.dfluxBCdY is present, update it
+        if haskey(p, :dfluxBCdY)
+            set_dfluxBCdY!(
+                model,
+                model.boundary_conditions.top,
+                TopBoundary(),
+                Δz_top,
+                Y,
+                p,
+                t,
+            )
+        end
     end
     return update_aux!
 end
@@ -425,26 +438,48 @@ function ClimaLand.make_update_jacobian(model::RichardsModel{FT}) where {FT}
         # The derivative of the residual with respect to the prognostic variable
         ∂ϑres∂ϑ =
             matrix[MatrixFields.@name(soil.ϑ_l), MatrixFields.@name(soil.ϑ_l)]
-        @. ∂ϑres∂ϑ =
-            divf2c_matrix() ⋅
-            MatrixFields.DiagonalMatrixRow(interpc2f_op(p.soil.K)) ⋅
-            gradc2f_matrix() ⋅ MatrixFields.DiagonalMatrixRow(
-                ClimaLand.Soil.dψdϑ(hydrology_cm, Y.soil.ϑ_l, ν, θ_r, S_s),
+        # If the top BC is a `MoistureStateBC`, add the term from the top BC
+        #  flux before applying divergence
+        if haskey(p, :dfluxBCdY)
+            dfluxBCdY = p.dfluxBCdY
+            # TODO not sure if this usage is correct
+            topBC_op = Operators.SetBoundaryOperator(
+                top = Operators.SetValue(Geometry.WVector(dfluxBCdY)),
+                bottom = Operators.SetValue(Geometry.WVector(zero(FT))),
             )
+            # Add term from top boundary condition before applying divergence
+            @. ∂ϑres∂ϑ =
+                divf2c_matrix() ⋅ (
+                    MatrixFields.DiagonalMatrixRow(interpc2f_op(p.soil.K)) ⋅
+                    gradc2f_matrix() ⋅ MatrixFields.DiagonalMatrixRow(
+                        ClimaLand.Soil.dψdϑ(
+                            hydrology_cm,
+                            Y.soil.ϑ_l,
+                            ν,
+                            θ_r,
+                            S_s,
+                        ),
+                    ) + MatrixFields.BidiagonalMatrixRow(topBC_op)
+                )
+        else
+            @. ∂ϑres∂ϑ =
+                divf2c_matrix() ⋅
+                MatrixFields.DiagonalMatrixRow(interpc2f_op(p.soil.K)) ⋅
+                gradc2f_matrix() ⋅ MatrixFields.DiagonalMatrixRow(
+                    ClimaLand.Soil.dψdϑ(hydrology_cm, Y.soil.ϑ_l, ν, θ_r, S_s),
+                )
+
+        end
+
 
         # Hardcoded for single column: FIX!
         # The derivative of the tendency may eventually live in boundary vars and be updated there. but TBD
         z = Fields.coordinate_field(axes(Y.soil.ϑ_l)).z
         Δz_top, Δz_bottom = get_Δz(z)
-        ∂T_bc∂YN = ClimaLand.∂tendencyBC∂Y(
-            model,
-            model.boundary_conditions.top,
-            ClimaLand.TopBoundary(),
-            Δz_top,
-            Y,
-            p,
-            t,
-        )
+
+
+        ∂T_bc∂YN = p.dfluxBCdY
+
         #TODO: allocate space in W? See how final implementation of stencils with boundaries works out
         N = ClimaCore.Spaces.nlevels(axes(Y.soil.ϑ_l))
         parent(ClimaCore.Fields.level(∂ϑₜ∂ϑ.coefs.:2, N)) .=
@@ -478,9 +513,44 @@ end
 """
     is_saturated(Y, model::RichardsModel)
 
-A helper function which can be used to indicate whether a layer of soil is 
+A helper function which can be used to indicate whether a layer of soil is
 saturated.
 """
 function is_saturated(Y, model::RichardsModel)
     return @. ClimaLand.heaviside(Y.soil.ϑ_l - model.parameters.ν)
+end
+
+
+"""
+    add_dfluxBCdY_to_cache(p::NamedTuple,
+                            model::RichardsModel,
+                            bc::MoistureStateBC,
+                            ::ClimaLand.TopBoundary,
+                        )
+
+Allocate space in `p` for the derivative of the top boundary condition with
+respect to the state variables, and merges it into `p` under the key `dfluxBCdY`.
+Specifically, this stores the derivative of the top face flux with respect to
+the state variable at the top cell center.
+This is used in the implicit solver for
+`RichardsModel` when using a `MoistureStateBC` at the top boundary, in which
+case we need to handle the boundary specially in computing the Jacobian.
+
+"""
+# TODO should this go in p.dfluxBCdY or p.soil.dfluxBCdY?
+function ClimaLand.add_dfluxBCdY_to_cache(
+    p::NamedTuple,
+    model::RichardsModel,
+    bc::MoistureStateBC,
+    ::ClimaLand.TopBoundary,
+)
+    surface_space = model.domain.space.surface
+    FT = ClimaCore.Spaces.undertype(surface_space)
+
+    # Allocate a field containing a `BidiagonalMatrixRow` at each point
+    dfluxBCdY_field = ClimaCore.Fields.Field(
+        ClimaCore.MatrixFields.UpperBidiagonalMatrixRow{FT},
+        surface_space,
+    )
+    return merge(p, (; dfluxBCdY = dfluxBCdY_field))
 end
