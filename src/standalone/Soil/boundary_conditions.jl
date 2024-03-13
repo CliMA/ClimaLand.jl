@@ -1003,7 +1003,7 @@ boundary_var_domain_names(
         ::AtmosDrivenFluxBC{
             <:PrescribedAtmosphere{FT},
             <:AbstractRadiativeDrivers{FT},
-            <:Runoff.InfiltrationExcess{FT},
+            <:Runoff.InfiltrationExcess,
         }, ::ClimaLand.TopBoundary,
     ) where {FT}
 
