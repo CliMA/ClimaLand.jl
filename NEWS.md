@@ -1,6 +1,12 @@
 ClimaLand.jl Release Notes
 ========================
 
+main
+--------
+
+- ![][badge-✨feature] Add option to profile albedo job. PR
+  [#505](https://github.com/CliMA/ClimaLand.jl/pull/551)
+
 v0.11.0
 -------
 - Update SurfaceFluxes compat to include 0.11: PR [#548](https://github.com/CliMA/ClimaLand.jl/pull/548)
@@ -16,7 +22,7 @@ v0.11.0
 - ![][badge-✨feature] Add infrastructure to use PFTs, add experiment running Ozark with PFTs: PR [#493](https://github.com/CliMA/ClimaLand.jl/pull/493)
 - ![][badge-💥breaking] Refactor boundary condition types to unify types/structure: PR [#535](https://github.com/CliMA/ClimaLand.jl/pull/535)
 - ![][badge-💥breaking] Update to ClimaParams v0.10, free Insolation and Thermodynamics, update SurfaceFluxes: PR [#508](https://github.com/CliMA/ClimaLand.jl/pull/508)
-- ![][badge-✨feature] Add PrescribedPrecipitation driver to be used in global simuluations: PR [#533](https://github.com/CliMA/ClimaLand.jl/pull/533)
+- ![][badge-✨feature] Add PrescribedPrecipitation driver to be used in global simulations: PR [#533](https://github.com/CliMA/ClimaLand.jl/pull/533)
 - Switch to use new-central, pin Insolation (0.9.1) and Thermodynamics (0.12.3) versions: PR [#526](https://github.com/CliMA/ClimaLand.jl/pull/526)
 - ![][badge-💥breaking] Refactor albedo parameterizations to have two albedo models, PrescribedBaregroundAlbedo and PrescribedSurfaceAlbedo: PR [#513](https://github.com/CliMA/ClimaLand.jl/pull/513)
 - Add documentation of standalone models: PR [#474](https://github.com/CliMA/ClimaLand.jl/pull/474)
