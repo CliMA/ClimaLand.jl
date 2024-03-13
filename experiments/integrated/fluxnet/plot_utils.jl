@@ -3,7 +3,7 @@
 using Interpolations
 using Plots
 using StatsBase
-
+dpi_res = 250
 S_PER_DAY = 86400 # Number of seconds in a day
 
 """This function uses interpolation to convert a time series of data at 
@@ -70,6 +70,7 @@ function plot_daily_avg(
         xlabel = "Hour of day",
         ylabel = "$var_name $(unit)",
         title = "$var_name",
+        dip = dpi_res,
     )
     Plots.savefig(joinpath(savedir, "$(var_name)_avg.png"))
 end
@@ -111,7 +112,43 @@ function plot_avg_comp(
         ylabel = "$var_name $(units)",
         title = "$var_name: RMSD = $(round(RMSD, digits = 2)), R² = $(round(R²[1][1], digits = 2))",
         legend = :topleft,
+        dip = dpi_res,
     )
-    Plots.plot!(plt, 0.5:0.5:24, data_hh_avg, label = "Data")
+    Plots.plot!(plt, 0.5:0.5:24, data_hh_avg, label = "Data", dip = dpi_res)
     Plots.savefig(joinpath(savedir, "$(var_name)_avg.png"))
+end
+
+function plot_and_save(
+    required_input::Vector{Pair{String, DataColumn}},
+    local_time::Vector{DateTime},
+    plot_on,
+    save_plots,
+    save_folder,
+)
+    """
+    this functions plot the input components that are required for running CliMa land simulatons
+        if plot_on is true and save them under savedir if save_plots is true versus local time
+    """
+    # Plots required_input versus local_time
+    if plot_on
+        for (nm, data) in required_input
+            Plots.plot(
+                local_time,
+                data.values,
+                label = nm,
+                title = "$nm vs local time",
+                dpi = dpi_res,
+            )
+            # The plots are saved if save_plots is true under save_folder
+            if save_plots
+                save_path = joinpath(save_folder, "$nm.png")
+                savefig(save_path)
+            end
+
+            # The plot are displayed if plotting is enabled but not saving
+            if !save_plots
+                display(current())
+            end
+        end
+    end
 end
