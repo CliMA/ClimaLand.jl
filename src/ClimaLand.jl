@@ -8,12 +8,13 @@ include("shared_utilities/Parameters.jl")
 import .Parameters as LP
 
 include("shared_utilities/general_utils.jl")
+include("shared_utilities/Domains.jl")
+include("shared_utilities/FileReaders.jl")
+include("shared_utilities/Regridders.jl")
+include("shared_utilities/DataHandling.jl")
 include("shared_utilities/TimeVaryingInputs.jl")
 using .TimeVaryingInputs
 export TimeVaryingInput, evaluate!
-include("shared_utilities/Regridder.jl")
-include("shared_utilities/Domains.jl")
-include("shared_utilities/FileReader.jl")
 include("shared_utilities/SpaceVaryingInputs.jl")
 using .SpaceVaryingInputs
 export SpaceVaryingInput

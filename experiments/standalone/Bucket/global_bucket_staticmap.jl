@@ -87,18 +87,9 @@ tf = 7 * 86400;
 Δt = 3600.0;
 
 # Construct albedo parameter object using static map
-# Use separate regridding directory for CPU and GPU runs to avoid race condition
-device_suffix =
-    typeof(ClimaComms.context().device) <: ClimaComms.CPUSingleThreaded ?
-    "cpu" : "gpu"
-regrid_dir = joinpath(
-    pkgdir(ClimaLand),
-    "experiments/standalone/Bucket/$device_suffix/regrid-static/",
-)
-!ispath(regrid_dir) && mkpath(regrid_dir)
 surface_space = bucket_domain.space.surface
 α_snow = FT(0.8)
-albedo = PrescribedBaregroundAlbedo{FT}(α_snow, regrid_dir, surface_space);
+albedo = PrescribedBaregroundAlbedo{FT}(α_snow, surface_space);
 
 bucket_parameters = BucketModelParameters(FT; albedo, z_0m, z_0b, τc);
 
@@ -213,6 +204,9 @@ F_sfc = [
 ];
 
 # save prognostic state to CSV - for comparison between GPU and CPU output
+device_suffix =
+    typeof(ClimaComms.context().device) <: ClimaComms.CPUSingleThreaded ?
+    "cpu" : "gpu"
 open(joinpath(outdir, "tf_state_$device_suffix.txt"), "w") do io
     writedlm(io, hcat(T_sfc[end][:], W[end][:], Ws[end][:], σS[end][:]), ',')
 end;
@@ -261,6 +255,3 @@ for (i, (field_ts, field_name)) in enumerate(
 end
 outfile = joinpath(outdir, string("ts_$device_suffix.png"))
 CairoMakie.save(outfile, fig_ts)
-
-# delete regrid directory
-rm(regrid_dir, recursive = true)

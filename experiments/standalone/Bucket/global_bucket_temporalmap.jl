@@ -68,20 +68,11 @@ outdir = joinpath(
     "experiments/standalone/Bucket/artifacts_temporalmap",
 )
 !ispath(outdir) && mkpath(outdir)
-# Use separate output directory for CPU and GPU runs to avoid race condition
-device_suffix =
-    typeof(ClimaComms.context().device) <: ClimaComms.CPUSingleThreaded ?
-    "cpu" : "gpu"
-regrid_dir = joinpath(
-    pkgdir(ClimaLand),
-    "experiments/standalone/Bucket/$device_suffix/regrid-temporal/",
-)
-!ispath(regrid_dir) && mkpath(regrid_dir)
+
 t0 = 0.0;
 # run for 50 days to test monthly file update
 tf = 50 * 86400;
 Δt = 3600.0;
-
 
 function setup_prob(t0, tf, Δt)
     # We set up the problem in a function so that we can make multiple copies (for profiling)
@@ -108,8 +99,7 @@ function setup_prob(t0, tf, Δt)
 
     surface_space = bucket_domain.space.surface
     # Construct albedo parameter object using temporal map
-    albedo =
-        PrescribedSurfaceAlbedo{FT}(regrid_dir, ref_time, t0, surface_space)
+    albedo = PrescribedSurfaceAlbedo{FT}(ref_time, t0, surface_space)
 
     bucket_parameters = BucketModelParameters(FT; albedo, z_0m, z_0b, τc)
 
@@ -147,7 +137,6 @@ function setup_prob(t0, tf, Δt)
         TimeVaryingInput(LW_d),
         ref_time,
     )
-
 
     model = BucketModel(
         parameters = bucket_parameters,
@@ -262,6 +251,9 @@ F_sfc = [
 ];
 
 # save prognostic state to CSV - for comparison between GPU and CPU output
+device_suffix =
+    typeof(ClimaComms.context().device) <: ClimaComms.CPUSingleThreaded ?
+    "cpu" : "gpu"
 open(joinpath(outdir, "tf_state_$device_suffix.txt"), "w") do io
     writedlm(io, hcat(T_sfc[end][:], W[end][:], Ws[end][:], σS[end][:]), ',')
 end;
@@ -310,6 +302,3 @@ for (i, (field_ts, field_name)) in enumerate(
 end
 outfile = joinpath(outdir, string("ts_$device_suffix.png"))
 CairoMakie.save(outfile, fig_ts)
-
-# delete regrid directory
-rm(regrid_dir, recursive = true)

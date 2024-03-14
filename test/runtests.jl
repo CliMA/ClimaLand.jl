@@ -14,8 +14,11 @@ end
 @safetestset "Domains module tests" begin
     include("shared_utilities/domains.jl")
 end
-@safetestset "FileReader module tests" begin
-    include("shared_utilities/file_reader.jl")
+@safetestset "FileReaders module tests" begin
+    include("shared_utilities/file_readers.jl")
+end
+@safetestset "DataHandling module tests" begin
+    include("shared_utilities/data_handling.jl")
 end
 @safetestset "SpaceVaryingInput module tests" begin
     include("shared_utilities/space_varying_inputs.jl")

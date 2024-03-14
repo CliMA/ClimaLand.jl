@@ -20,22 +20,22 @@ using ClimaComms
 using DocStringExtensions
 import ..searchsortednearest
 import ..linear_interpolation
-using ClimaLand.FileReader
+import ..DataHandling: DataHandler, regridded_snapshot
 export SpaceVaryingInput
 
 # Analytic case
 """
-    SpaceVaryingInput(data_function::Function, space::ClimaCore.Spaces.AbstractSpace) 
-  
+    SpaceVaryingInput(data_function::Function, space::ClimaCore.Spaces.AbstractSpace)
+
 Returns the parameter field to be used in the model; appropriate when
 a parameter is defined using a function of the coordinates of the space.
 
-Pass the ``data" as a function `data_function` which takes coordinates as arguments, 
+Pass the ``data" as a function `data_function` which takes coordinates as arguments,
 and  the ClimaCore space of the model simulation.
 
 This returns a scalar field.
 Note that data_function is broadcasted over the coordinate field. Internally, inside
-your function, this must be unpacked (coords.lat, coords.lon, e.g.) for 
+your function, this must be unpacked (coords.lat, coords.lon, e.g.) for
 use of the coordinate values directly.
 """
 function SpaceVaryingInput(
@@ -55,7 +55,7 @@ end
         space::S,
     ) where {S <: ClimaCore.Spaces.CenterFiniteDifferenceSpace}
 
-Given a set of depths `data_z` and the observed values `data_values` 
+Given a set of depths `data_z` and the observed values `data_values`
 at those depths, create an interpolated field of values at each value
 of z in the model grid - defined implicitly by `space`.
 
@@ -92,8 +92,8 @@ end
         DT,
     }
 
-Returns a field of parameter structs to be used in the model; 
-appropriate when the parameter struct values vary in depth; 
+Returns a field of parameter structs to be used in the model;
+appropriate when the parameter struct values vary in depth;
 the `dest_type` argument is the struct type - we assumed that
 your struct as a constructor which accepts the values of its arguments
 by kwarg,
@@ -137,29 +137,21 @@ function SpaceVaryingInput(
 end
 
 """
-    SpaceVaryingInput(data::PDS, varname::N; space::S) 
-    where {PDS <: FileReader.PrescribedDataStatic, N <: String, S <: ClimaCore.Spaces.SpectralElement2D}
-  
+    SpaceVaryingInput(data_handler::DataHandler)
+    SpaceVaryingInput(file_path::AbstractString, varname::AbstractString, target_space::Spaces.AbstractSpace;)
+
 Returns the parameter field to be used in the model; appropriate when
 a parameter is defined on the surface of the Earth.
-
-Pass the data as a `FileReader.PrescribedDataStatic` object
-as well as the variable name of the variable in the data file, and the ClimaCore space
-of the model simulation.
 
 Returns a ClimaCore.Fields.Field of scalars; analogous to the 1D case which also
 returns a ClimaCore.Fields.Field of scalars.
 """
-function SpaceVaryingInput(
-    data::PDS,
-    varname::N,
-    space::S,
-) where {
-    PDS <: FileReader.PrescribedDataStatic,
-    N <: String,
-    S <: ClimaCore.Spaces.SpectralElementSpace2D,
-}
-    return FileReader.get_data_at_date(data, space, varname)
+function SpaceVaryingInput(data_handler::DataHandler)
+    return regridded_snapshot(data_handler)
+end
+
+function SpaceVaryingInput(file_path, varname, target_space)
+    return SpaceVaryingInput(DataHandler(file_path, varname, target_space))
 end
 
 end

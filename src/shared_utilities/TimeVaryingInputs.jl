@@ -19,7 +19,7 @@
 # The three TimeVaryingInputs are:
 # - AnalyticTimeVaryingInput,
 # - InterpolatingTimeVaryingInput0D,
-# - InterpolatingTimeVaryingInput3D.
+# - InterpolatingTimeVaryingInput2D.
 #
 # Along side these TimeVaryingInputs, we also define InterpolationMethods that implement
 # specific interpolation strategies (e.g., linear interpolation).
@@ -81,19 +81,54 @@ When passing single-site data
 When a `times` and `vals` are passed, `times` have to be sorted and the two arrays have to
 have the same length.
 
+=======
+When the input is a function, the signature of the function can be `func(time, args...;
+kwargs...)`. The function will be called with the additional arguments and keyword arguments
+passed to `evaluate!`. This can be used to access the state and the cache and use those to
+set the output field.
+
+For example:
+```julia
+CO2fromp(time, Y, p) = p.atmos.co2
+input = TimeVaryingInput(CO2fromY)
+evaluate!(dest, input, t, Y, p)
+```
 """
 function TimeVaryingInput end
 
 """
-    evaluate!(dest, input, time)
+    evaluate!(dest, input, time, args...; kwargs...)
 
 Evaluate the `input` at the given `time`, writing the output in-place to `dest`.
 
 Depending on the details of `input`, this function might do I/O and communication.
+
+Extra arguments
+================
+
+`args` and `kwargs` are used only when the `input` is a non-interpolating function, e.g.,
+an analytic one. In that case, `args` and `kwargs` are passed down to the function itself.
 """
 function evaluate! end
 
 include("analytic_time_varying_input.jl")
+
+"""
+    NearestNeighbor
+
+Return the value corresponding to the point closest to the input time.
+"""
+struct NearestNeighbor <: AbstractInterpolationMethod end
+
+"""
+    LinearInterpolation
+
+Perform linear interpolation between the two neighboring points.
+"""
+struct LinearInterpolation <: AbstractInterpolationMethod end
+
 include("interpolating_time_varying_input0d.jl")
+include("interpolating_time_varying_input2d.jl")
+include("interpolating_time_varying_inputs.jl") # Shared stuff
 
 end

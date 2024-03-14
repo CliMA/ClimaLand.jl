@@ -1,19 +1,3 @@
-import CUDA
-
-"""
-    NearestNeighbor
-
-Return the value corresponding to the point closest to the input time.
-"""
-struct NearestNeighbor <: AbstractInterpolationMethod end
-
-"""
-    LinearInterpolation
-
-Perform linear interpolation between the two neighboring points.
-"""
-struct LinearInterpolation <: AbstractInterpolationMethod end
-
 """
     InterpolatingTimeVaryingInput0D
 
@@ -67,7 +51,13 @@ function Adapt.adapt_structure(to, itp::InterpolatingTimeVaryingInput0D)
     )
 end
 
-function evaluate!(destination, itp::InterpolatingTimeVaryingInput0D, time)
+function evaluate!(
+    destination,
+    itp::InterpolatingTimeVaryingInput0D,
+    time,
+    args...;
+    kwargs...,
+)
     time in itp || error("TimeVaryingInput does not cover time $time")
     if ClimaComms.device(itp.context) isa ClimaComms.CUDADevice
         CUDA.@cuda evaluate!(parent(destination), itp, time, itp.method)
@@ -100,16 +90,6 @@ function TimeVaryingInput(
         range,
     )
 end
-
-"""
-    in(time, itp::InterpolatingTimeVaryingInput0D)
-
-Check if the given `time` is in the range of definition for `itp`.
-"""
-function Base.in(time, itp::InterpolatingTimeVaryingInput0D)
-    return itp.range[1] <= time <= itp.range[2]
-end
-
 
 function evaluate!(
     dest,
