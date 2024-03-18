@@ -468,7 +468,6 @@ SoilCO2ModelParameters(::Type{FT}; kwargs...) where {FT <: AbstractFloat} =
 
 function SoilCO2ModelParameters(toml_dict::CP.AbstractTOMLDict; kwargs...)
     # These parameters have defaults that should not go in ClimaParams
-    ν = 0.556
     θ_a100 = 0.1816
     b = 4.547
 
@@ -488,7 +487,6 @@ function SoilCO2ModelParameters(toml_dict::CP.AbstractTOMLDict; kwargs...)
     earth_param_set = LP.LandParameters(toml_dict)
     return SoilCO2ModelParameters{FT, typeof(earth_param_set)}(;
         earth_param_set,
-        ν,
         θ_a100,
         b,
         parameters...,
