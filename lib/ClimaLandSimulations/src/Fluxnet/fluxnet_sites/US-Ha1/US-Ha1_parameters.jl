@@ -107,7 +107,7 @@ end
 
 function radiative_transfer_harvard(;
     Ω = FT(0.69),
-    ld = FT(0.5),
+    χl = FT(0.25),
     α_PAR_leaf = FT(0.1),
     λ_γ_PAR = FT(5e-7),
     λ_γ_NIR = FT(1.65e-6),
@@ -118,7 +118,7 @@ function radiative_transfer_harvard(;
     ϵ_canopy = FT(0.97),
 )
     return TwoStreamParameters(
-        ld,
+        χl,
         α_PAR_leaf,
         τ_PAR_leaf,
         α_NIR_leaf,

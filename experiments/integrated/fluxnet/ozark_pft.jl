@@ -8,7 +8,7 @@ import ClimaLand
 import SciMLBase
 import ClimaTimeSteppers as CTS
 using ClimaCore
-import ClimaParams as CP
+import CLIMAParameters as CP
 using Plots
 using Statistics
 using Dates
@@ -191,7 +191,7 @@ autotrophic_respiration_args =
 radiative_transfer_args = (;
     parameters = TwoStreamParameters{FT}(;
         Ω = Ω,
-        ld = ld,
+        χl = χl,
         α_PAR_leaf = α_PAR_leaf,
         λ_γ_PAR = λ_γ_PAR,
         λ_γ_NIR = λ_γ_NIR,
