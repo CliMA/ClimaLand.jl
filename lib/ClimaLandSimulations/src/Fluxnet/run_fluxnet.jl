@@ -44,7 +44,8 @@ function run_fluxnet(
     # Soil microbes model
     soilco2_type = Soil.Biogeochemistry.SoilCO2Model{FT}
 
-    soilco2_ps = SoilCO2ModelParameters{FT}(;
+    soilco2_ps = SoilCO2ModelParameters(
+        FT;
         ν = params.soil.ν,
         θ_a100 = params.hetero_resp.θ_a100,
         D_ref = params.hetero_resp.D_ref,

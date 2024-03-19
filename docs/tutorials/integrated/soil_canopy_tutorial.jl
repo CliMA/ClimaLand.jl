@@ -172,36 +172,9 @@ soil_model_type = Soil.EnergyHydrology{FT}
 # [documentation](https://clima.github.io/ClimaLand.jl/previews/PR214/dynamicdocs/pages/soil_biogeochemistry/microbial_respiration/)
 # to understand the parameterisation.
 # The domain is defined similarly to the soil domain described above.
-ν = soil_ν # defined above
-θ_a100 = FT(0.1816)
-D_ref = FT(1.39e-5)
-b = FT(4.547)
-D_liq = FT(3.17)
-α_sx = FT(194e3)
-Ea_sx = FT(61e3)
-kM_sx = FT(5e-3)
-kM_o2 = FT(0.004)
-O2_a = FT(0.209)
-D_oa = FT(1.67)
-p_sx = FT(0.024)
-
 soilco2_type = Soil.Biogeochemistry.SoilCO2Model{FT}
 
-soilco2_ps = SoilCO2ModelParameters{FT}(;
-    ν = soil_ν,
-    θ_a100 = θ_a100,
-    D_ref = D_ref,
-    b = b,
-    D_liq = D_liq,
-    α_sx = α_sx,
-    Ea_sx = Ea_sx,
-    kM_sx = kM_sx,
-    kM_o2 = kM_o2,
-    O2_a = O2_a,
-    D_oa = D_oa,
-    p_sx = p_sx,
-    earth_param_set = earth_param_set,
-);
+soilco2_ps = SoilCO2ModelParameters(FT; ν = soil_ν);
 
 # soil microbes args
 Csom = (z, t) -> eltype(z)(5); # kg C m⁻³, this is a guess, not measured at the site

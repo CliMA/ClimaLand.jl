@@ -8,15 +8,15 @@ import SurfaceFluxes.UniversalFunctions as UF
 import ClimaParams as CP
 
 import ClimaLand
-import ClimaLand.Parameters.LandParameters
+import ClimaLand.Soil
+# Parameter structs
+import ClimaLand.Parameters as LP
+import ClimaLand.Soil.EnergyHydrologyParameters
 import ClimaLand.Canopy.AutotrophicRespirationParameters
 import ClimaLand.Canopy.FarquharParameters
 import ClimaLand.Canopy.OptimalityFarquharParameters
 import ClimaLand.Bucket.BucketModelParameters
-
-import ClimaLand.Soil
-import ClimaLand.Parameters as LP
-import ClimaLand.Soil.EnergyHydrologyParameters
+import ClimaLand.Soil.Biogeochemistry.SoilCO2ModelParameters
 
 LP.LandParameters(::Type{FT}) where {FT <: AbstractFloat} =
     LP.LandParameters(CP.create_toml_dict(FT))
@@ -442,7 +442,7 @@ function BucketModelParameters(
     parameters = CP.get_parameter_values(toml_dict, name_map, "Land")
 
     AAM = typeof(albedo)
-    earth_param_set = LandParameters(toml_dict)
+    earth_param_set = LP.LandParameters(toml_dict)
     PSE = typeof(earth_param_set)
     FT = CP.float_type(toml_dict)
     BucketModelParameters{FT, AAM, PSE}(;
@@ -456,5 +456,42 @@ function BucketModelParameters(
     )
 end
 
+"""
+    SoilCO2ModelParameters(FT; kwargs...)
+    SoilCO2ModelParameters(toml_dict; kwargs...)
+
+SoilCO2ModelParameters has two constructors: float-type and toml dict based.
+Keywords arguments can be used to directly override any parameters.
+"""
+SoilCO2ModelParameters(::Type{FT}; kwargs...) where {FT <: AbstractFloat} =
+    SoilCO2ModelParameters(CP.create_toml_dict(FT); kwargs...)
+
+function SoilCO2ModelParameters(toml_dict::CP.AbstractTOMLDict; kwargs...)
+    # These parameters have defaults that should not go in ClimaParams
+    θ_a100 = 0.1816
+    b = 4.547
+
+    name_map = (;
+        :CO2_diffusion_coefficient => :D_ref,
+        :soil_C_substrate_diffusivity => :D_liq,
+        :soilCO2_pre_expontential_factor => :α_sx,
+        :soilCO2_activation_energy => :Ea_sx,
+        :michaelis_constant => :kM_sx,
+        :O2_michaelis_constant => :kM_o2,
+        :O2_volume_fraction => :O2_a,
+        :oxygen_diffusion_coefficient => :D_oa,
+        :soluble_soil_carbon_fraction => :p_sx,
+    )
+    parameters = CP.get_parameter_values(toml_dict, name_map, "Land")
+    FT = CP.float_type(toml_dict)
+    earth_param_set = LP.LandParameters(toml_dict)
+    return SoilCO2ModelParameters{FT, typeof(earth_param_set)}(;
+        earth_param_set,
+        θ_a100,
+        b,
+        parameters...,
+        kwargs...,
+    )
+end
 
 end

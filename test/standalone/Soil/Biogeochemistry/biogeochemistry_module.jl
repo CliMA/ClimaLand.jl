@@ -10,7 +10,6 @@ import ClimaLand.Parameters as LP
 
 for FT in (Float32, Float64)
     @testset "Soil co2 biogeochemistry sources, FT = $FT" begin
-        earth_param_set = LP.LandParameters(FT)
         # Prognostic variables
         P_sfc = (t) -> 101e3
         T_soil = (z, t) -> eltype(z)(t)
@@ -18,10 +17,7 @@ for FT in (Float32, Float64)
         θ_i = (z, t) -> eltype(z)(0)
         Csom = (z, t) -> eltype(z)(5.0) # 3 [kg C m-3] soil organic C content at depth z
         D_ref = FT(0.0)
-        parameters = SoilCO2ModelParameters{FT}(;
-            D_ref = D_ref,
-            earth_param_set = earth_param_set,
-        )
+        parameters = SoilCO2ModelParameters(FT; ν = 0.556, D_ref)
 
         nelems = 50 # number of layers in the vertical
         zmin = FT(-1) # 0 to 1 m depth
@@ -82,7 +78,6 @@ for FT in (Float32, Float64)
 
 
     @testset "Soil co2 biogeochemistry diffusion, FT = $FT" begin
-        earth_param_set = LP.LandParameters(FT)
         # Prognostic variables
         P_sfc = (t) -> 101e3
         T_soil = (z, t) -> eltype(z)(303)
@@ -90,8 +85,7 @@ for FT in (Float32, Float64)
         θ_i = (z, t) -> eltype(z)(0.0)
         Csom = (z, t) -> eltype(z)(5.0) # 3 [kg C m-3] soil organic C content at depth z
 
-        parameters =
-            SoilCO2ModelParameters{FT}(; earth_param_set = earth_param_set)
+        parameters = SoilCO2ModelParameters(FT; ν = 0.556)
         C = FT(4)
         nelems = 50 # number of layers in the vertical
         zmin = FT(-1) # 0 to 1 m depth

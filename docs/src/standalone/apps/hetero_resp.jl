@@ -21,19 +21,7 @@ function ParamViz.parameterisation(
     D_oa,
 ) # constants
 
-    params = SoilCO2ModelParameters{FT}(;
-        ν = ν,
-        θ_a100 = θ_a100,
-        D_liq = D_liq,
-        α_sx = α_sx,
-        Ea_sx = Ea_sx,
-        kM_sx = kM_sx,
-        kM_o2 = kM_O₂,
-        O2_a = O₂_a,
-        D_oa = D_oa,
-        p_sx = p_sx,
-        earth_param_set = earth_param_set,
-    )
+    params = SoilCO2ModelParameters(FT; ν)
     # θ has to be lower than porosity
     if θ > ν
         θ = ν

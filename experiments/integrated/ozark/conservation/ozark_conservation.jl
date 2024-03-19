@@ -93,22 +93,7 @@ for float_type in (Float32, Float64)
     # Soil microbes model
     soilco2_type = Soil.Biogeochemistry.SoilCO2Model{FT}
 
-    soilco2_ps = SoilCO2ModelParameters{FT}(;
-        ν = soil_ν,
-        θ_a100 = θ_a100,
-        D_ref = D_ref,
-        b = b,
-        D_liq = D_liq,
-        # DAMM
-        α_sx = α_sx,
-        Ea_sx = Ea_sx,
-        kM_sx = kM_sx,
-        kM_o2 = kM_o2,
-        O2_a = O2_a,
-        D_oa = D_oa,
-        p_sx = p_sx,
-        earth_param_set = earth_param_set,
-    )
+    soilco2_ps = SoilCO2ModelParameters(FT; ν = soil_ν)
 
     # soil microbes args
     Csom = (z, t) -> eltype(z)(5.0)
