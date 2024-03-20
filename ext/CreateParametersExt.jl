@@ -656,7 +656,7 @@ function SnowParameters(toml_dict::CP.AbstractTOMLDict, Δt; kwargs...)
 
     parameters = CP.get_parameter_values(toml_dict, name_map, "Land")
     FT = CP.float_type(toml_dict)
-    earth_param_set = LandParameters(toml_dict)
+    earth_param_set = LP.LandParameters(toml_dict)
     PSE = typeof(earth_param_set)
     return SnowParameters{FT, PSE}(;
         Δt,
