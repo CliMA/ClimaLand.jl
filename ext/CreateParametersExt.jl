@@ -15,6 +15,7 @@ import ClimaLand.Soil.EnergyHydrologyParameters
 import ClimaLand.Canopy.AutotrophicRespirationParameters
 import ClimaLand.Canopy.FarquharParameters
 import ClimaLand.Canopy.OptimalityFarquharParameters
+import ClimaLand.Canopy.MedlynConductanceParameters
 import ClimaLand.Canopy.BeerLambertParameters
 import ClimaLand.Canopy.TwoStreamParameters
 import ClimaLand.Snow.SnowParameters

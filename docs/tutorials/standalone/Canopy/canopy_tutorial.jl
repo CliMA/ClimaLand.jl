@@ -169,8 +169,7 @@ rt_params = TwoStreamParameters(
 rt_model = TwoStreamModel{FT}(rt_params);
 
 # Arguments for conductance model:
-
-cond_params = MedlynConductanceParameters(FT; g1 = 141.0)
+cond_params = MedlynConductanceParameters(FT; g1 = FT(141.0))
 
 stomatal_model = MedlynConductanceModel{FT}(cond_params);
 
