@@ -1,6 +1,6 @@
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.10.1"
+julia_version = "1.10.2"
 manifest_format = "2.0"
 project_hash = "960bdc0a1ed4b3f2aee66ed2e0c02065769614a9"
 
@@ -330,7 +330,9 @@ version = "0.5.7"
 
 [[deps.ClimaCore]]
 deps = ["Adapt", "BandedMatrices", "BlockArrays", "CUDA", "ClimaComms", "CubedSphere", "DataStructures", "DocStringExtensions", "ForwardDiff", "GaussQuadrature", "GilbertCurves", "HDF5", "InteractiveUtils", "IntervalSets", "KrylovKit", "LinearAlgebra", "PkgVersion", "RecursiveArrayTools", "RootSolvers", "SparseArrays", "Static", "StaticArrays", "Statistics", "Unrolled"]
-git-tree-sha1 = "bc6a0154e3bcc1657d3a75f697e216fb70121969"
+git-tree-sha1 = "4acc2c939e1449abffd87aa7f582353f87a2f7b8"
+repo-rev = "ck/cuda_inline"
+repo-url = "https://github.com/CliMA/ClimaCore.jl.git"
 uuid = "d414da3d-4745-48bb-8d80-42e94e092884"
 version = "0.13.2"
 weakdeps = ["Krylov"]
