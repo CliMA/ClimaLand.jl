@@ -4,6 +4,8 @@ ClimaLand.jl Release Notes
 main
 --------
 
+v0.11.1
+-------
 - ![][badge-✨feature] Add option to profile albedo job. PR
   [#505](https://github.com/CliMA/ClimaLand.jl/pull/551)
 
