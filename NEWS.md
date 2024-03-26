@@ -3,7 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 --------
-
+-  Add profiling of Ozark site level run to buildkite pipeline PR [#561](https://github.com/CliMA/ClimaLand.jl/pull/561)
 v0.11.1
 -------
 - ![][badge-✨feature] Add option to profile albedo job. PR

@@ -74,6 +74,10 @@ steps:
         command: "julia --color=yes --project=experiments experiments/integrated/ozark/conservation/ozark_conservation.jl"
         artifact_paths: "experiments/integrated/ozark/conservation/*png"
 
+      - label: "ozark_performance"
+        command: "julia --color=yes --project=experiments experiments/integrated/ozark/allocations/ozark_allocations.jl"
+        artifact_paths: "experiments/integrated/ozark/allocations/*html"
+
       - label: "Soilbiogeochem"
         command: "julia --color=yes --project=experiments experiments/standalone/Biogeochemistry/experiment.jl"
 

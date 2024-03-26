@@ -27,11 +27,11 @@ for float_type in (Float32, Float64)
     include(
         joinpath(climaland_dir, "experiments/integrated/fluxnet/data_tools.jl"),
     )
-    # Site-specific domain parameters
+    # Read simulation parameters for the conservation test
     include(
         joinpath(
             climaland_dir,
-            "experiments/integrated/fluxnet/$(site_ID)/$(site_ID)_simulation.jl",
+            "experiments/integrated/ozark/ozark_simulation.jl",
         ),
     )
     # Setup the domain for the simulation
@@ -46,13 +46,6 @@ for float_type in (Float32, Float64)
         joinpath(
             climaland_dir,
             "experiments/integrated/fluxnet/$(site_ID)/$(site_ID)_parameters.jl",
-        ),
-    )
-    # Read simulation parameters for the conservation test
-    include(
-        joinpath(
-            climaland_dir,
-            "experiments/integrated/ozark/conservation/ozark_simulation.jl",
         ),
     )
     # This reads in the data from the flux tower site and creates

@@ -1,3 +1,15 @@
+
+# Column dimensions - separation of layers at the top and bottom of the column:
+dz_bottom = FT(1.5)
+dz_top = FT(0.025)
+
+# Stem and leaf compartments and their heights:
+n_stem = Int64(1)
+n_leaf = Int64(1)
+h_stem = FT(9) # m
+h_leaf = FT(9.5) # m
+
+# TIME STEPPING:
 t0 = Float64(120 * 3600 * 24)# start mid year
 N_days = 10
 tf = t0 + Float64(3600 * 24 * N_days)
