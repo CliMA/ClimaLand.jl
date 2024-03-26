@@ -1,6 +1,8 @@
-<h1 align="center">
-  <img src="logo.png" width="400px"> <br>
-</h1>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="logo-white.svg">
+  <source media="(prefers-color-scheme: light)" srcset="logo.svg">
+  <img alt="Shows the logo of ClimaLand, with a drop and three leaves" src="logo.svg">
+</picture>
 <p align="center">
   <strong>Create and run  land models in integrated (multi-
 component) or standalone (single component) modes.  </strong>
