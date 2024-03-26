@@ -14,7 +14,7 @@ function main(; resolution)
     lat_count = Int(ceil((lat_max - lat_min) / resolution)) + 1
     lon_count = Int(ceil((lon_max - lon_min) / resolution)) + 1
 
-    parameters = zeros((lat_count, lon_count, 4))
+    parameters = zeros((lon_count, lat_count, 4))
 
     for lat_id in 1:1:lat_count
         @info lat_id / lat_count
@@ -30,18 +30,18 @@ function main(; resolution)
             #present_nonzero = .~(typeof.(ϕ) .<: Missing) .& (ϕ .> 0)
             if present_count / prod(size(ϕ)) > 0.5
                 # Land
-                parameters[lat_id, lon_id, 1] = zero_count ./ present_count
-                parameters[lat_id, lon_id, 2] = mean(ϕ[present])
+                parameters[lon_id, lat_id, 1] = zero_count ./ present_count
+                parameters[lon_id, lat_id, 2] = mean(ϕ[present])
                 fmax = sum(ϕ[present] .> mean(ϕ[present])) ./ sum(present)
-                parameters[lat_id, lon_id, 3] = fmax
-                parameters[lat_id, lon_id, 4] = 1.0
+                parameters[lon_id, lat_id, 3] = fmax
+                parameters[lon_id, lat_id, 4] = 1.0
             else
                 nothing # all set to zero
             end
 
         end
     end
-    ds = NCDataset("means_ll_$resolution.nc", "c")
+    ds = NCDataset("means_$(resolution)_new.nc", "c")
     defDim(ds, "lon", lon_count)
     defDim(ds, "lat", lat_count)
     ds.attrib["title"] = "Topographic Index Data"
@@ -54,13 +54,13 @@ function main(; resolution)
     lo[:] =
         (0.5:1:(lon_count - 0.5)) ./ lon_count .* (lon_max - lon_min) .+ lon_min
 
-    mean_ϕ = defVar(ds, "ϕ_mean", Float32, ("lat", "lon"))
+    mean_ϕ = defVar(ds, "ϕ_mean", Float32, ("lon", "lat"))
     mean_ϕ[:, :] = parameters[:, :, 2]
-    f0 = defVar(ds, "fraction_zero", Float32, ("lat", "lon"))
+    f0 = defVar(ds, "fraction_zero", Float32, ("lon", "lat"))
     f0[:, :] = parameters[:, :, 1]
-    fmax = defVar(ds, "fmax", Float32, ("lat", "lon"))
+    fmax = defVar(ds, "fmax", Float32, ("lon", "lat"))
     fmax[:, :] = parameters[:, :, 3]
-    mask = defVar(ds, "landsea_mask", Float32, ("lat", "lon"))
+    mask = defVar(ds, "landsea_mask", Float32, ("lon", "lat"))
     mask[:, :] = parameters[:, :, 4]
     mean_ϕ.attrib["units"] = "unitless"
     f0.attrib["units"] = "unitless"
