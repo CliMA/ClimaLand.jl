@@ -4,6 +4,8 @@ using ArtifactWrappers
 import SciMLBase
 import ClimaTimeSteppers as CTS
 using ClimaCore
+import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
+import NCDatasets
 import ClimaParams as CP
 using ClimaComms
 
@@ -11,7 +13,7 @@ using ClimaLand
 using ClimaLand.Soil
 import ClimaLand
 import ClimaLand.Parameters as LP
-import ClimaLand.SpaceVaryingInputs: SpaceVaryingInput
+
 
 context = ClimaComms.context()
 outdir = joinpath(pkgdir(ClimaLand), "experiments/standalone/Soil/artifacts")
@@ -73,7 +75,7 @@ soil_params = ClimaLand.Soil.RichardsParameters(;
 function precip_function(t)
     return -1e-6
 end
-precip = ClimaLand.TimeVaryingInput(precip_function)
+precip = TimeVaryingInput(precip_function)
 atmos = ClimaLand.PrescribedPrecipitation{FT, typeof(precip)}(precip)
 bottom_bc = ClimaLand.Soil.WaterFluxBC((p, t) -> 0.0)
 bc = (;

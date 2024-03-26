@@ -151,7 +151,8 @@ using ClimaLand:
     make_set_initial_cache,
     PrescribedAtmosphere,
     PrescribedRadiativeFluxes
-using ClimaLand.TimeVaryingInputs
+using ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
+
 # We also want to plot the solution
 using Plots
 
