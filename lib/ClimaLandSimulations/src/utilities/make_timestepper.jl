@@ -30,5 +30,6 @@ function make_timestepper(
         saveat = saveat,
         timestepper = timestepper,
         ode_algo = ode_algo,
+        N_spinup_days = N_spinup_days,
     )
 end

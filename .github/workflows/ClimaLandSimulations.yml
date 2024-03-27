@@ -1,0 +1,34 @@
+name: ClimaLandSimulations CI
+on:
+  pull_request:
+
+jobs:
+  lib-climalandsimulations:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@latest
+        with:
+          version: '1.10'
+      - uses: actions/cache@v3
+        env:
+          cache-name: cache-artifacts
+        with:
+          path: ~/.julia/artifacts
+          key: ${{ runner.os }}-test-${{ env.cache-name }}-${{ hashFiles('**/Project.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-test-${{ env.cache-name }}-
+            ${{ runner.os }}-test-
+            ${{ runner.os }}-
+      - name: Install Julia dependencies
+        run: >
+          julia --project=monorepo -e 'using Pkg; Pkg.develop(path="$(pwd())"); Pkg.develop(path="$(pwd())/lib/ClimaLandSimulations")'
+      - name: Run the tests
+        continue-on-error: true
+        env:
+            CI_OUTPUT_DIR: output
+        run: >
+          julia --project=monorepo -e 'using Pkg; Pkg.test("ClimaLandSimulations")'
+          && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV
