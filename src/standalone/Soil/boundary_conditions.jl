@@ -827,7 +827,7 @@ boundary_var_types(
     },
     ::ClimaLand.TopBoundary,
 ) where {FT} = (
-    NamedTuple{(:lhf, :shf, :vapor_flux, :r_ae), Tuple{FT, FT, FT, FT}},
+    NamedTuple{(:lhf, :shf, :evaporation, :sublimation), Tuple{FT, FT, FT, FT}},
     FT,
     NamedTuple{(:water, :heat), Tuple{FT, FT}},
     FT,
@@ -871,7 +871,6 @@ function soil_boundary_fluxes!(
 )
     p.soil.turbulent_fluxes .= turbulent_fluxes(bc.atmos, model, Y, p, t)
     p.soil.R_n .= net_radiation(bc.radiation, model, Y, p, t)
-    # We are ignoring sublimation for now
     update_runoff!(p, bc.runoff, Y, t, model)
     # We do not model the energy flux from infiltration
     @. p.soil.top_bc.water =
@@ -944,7 +943,7 @@ boundary_var_types(
     },
     ::ClimaLand.TopBoundary,
 ) where {FT} = (
-    NamedTuple{(:lhf, :shf, :vapor_flux, :r_ae), Tuple{FT, FT, FT, FT}},
+    NamedTuple{(:lhf, :shf, :evaporation, :sublimation), Tuple{FT, FT, FT, FT}},
     FT,
     NamedTuple{(:water, :heat), Tuple{FT, FT}},
     FT,
@@ -952,3 +951,74 @@ boundary_var_types(
     FT,
     FT,
 )
+
+
+
+function turbulent_fluxes(atmos::PrescribedAtmosphere, model::EnergyHydrology, Y, p, t)
+    thermo_params =
+        LP.thermodynamic_parameters(model.parameters.earth_param_set)
+    surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
+
+    # Surface properties common to liquid and ice in soil
+    T_sfc = surface_temperature(model, Y, p, t)
+    ρ_sfc = surface_air_density(atmos, model, Y, p, t, T_sfc)
+    β_sfc = surface_evaporative_scaling(model, Y, p)
+    h_sfc = surface_height(model, Y, p)
+    d_sfc = displacement_height(model, Y, p)
+
+
+    # atmos state
+    u_air = p.drivers.u
+    h_air = atmos.h
+    
+    # Liquid water specific properties
+    q_sfc_liq = surface_specific_humidity(model, Y, p, T_sfc, ρ_sfc)
+    r_sfc_liq = surface_resistance(model, Y, p, t)
+
+    # Ice specific properties
+    # what if this causes θ_i to be negative? Limit?
+    # If top layer is dry does the layer below sublimate? in that case, do we need a resistance?
+    q_sfc_ice = Thermodynamics.q_vap_saturation_generic.(thermo_params,
+                                                         T_sfc,
+                                                         ρ_sfc,
+                                                         Thermodynamics.Ice(),
+                                                         )
+    r_sfc_ice = ;
+    
+    conditions_liq = turbulent_fluxes_at_a_point.(
+        T_sfc,
+        q_sfc_liq,
+        ρ_sfc,
+        β_sfc,
+        h_sfc,
+        r_sfc_liq,
+        d_sfc,
+        ts_air,
+        u_air,
+        h_air,
+        atmos.gustiness,
+        model.parameters.z_0m,
+        model.parameters.z_0b,
+        Ref(model.parameters.earth_param_set),
+    )
+
+    conditions_ice = turbulent_fluxes_at_a_point.(
+        T_sfc,
+        q_sfc_ice,
+        ρ_sfc,
+        β_sfc,
+        h_sfc,
+        r_sfc_ice,
+        d_sfc,
+        ts_air,
+        u_air,
+        h_air,
+        atmos.gustiness,
+        model.parameters.z_0m,
+        model.parameters.z_0b,
+        Ref(model.parameters.earth_param_set),
+    )
+
+    return (lhf = conditions_liq.lhf .+ conditions_ice.lhf, shf = conditions_liq.shf .+ conditions_ice.shf, evaporation = conditions_liq.vapor_flux, sublimation = conditions_ice.vapor_flux)
+    
+end

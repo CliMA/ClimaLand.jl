@@ -119,7 +119,10 @@ function EnergyHydrology{FT}(;
     top_bc = boundary_conditions.top
     if typeof(top_bc) <: AtmosDrivenFluxBC
         # If the top BC indicates atmospheric conditions are driving the model
-        # add baseflow as a sink term
+        # add baseflow as a sink term, add sublimation as a sink term
+        z = ClimaCore.Fields.coordinate_field(domain.space.subsurface).z
+        Δz_top,_= get_Δz(z)
+        sublimation_source = SoilSublimation{FT}(Δz_top, d_ds)
         subsurface_source = subsurface_runoff_source(top_bc.runoff)
         sources = append_source(subsurface_source, sources)
     end
@@ -222,7 +225,7 @@ function ClimaLand.make_compute_exp_tendency(
         )
 
         for src in model.sources
-            ClimaLand.source!(dY, src, Y, p, model)
+            ClimaLSM.source!(dY, src, Y, p, model, t )
         end
     end
     return compute_exp_tendency!
@@ -415,6 +418,7 @@ end
              src::PhaseChange{FT},
              Y::ClimaCore.Fields.FieldVector,
              p::NamedTuple,
+             t,
              model
              )
 
@@ -426,6 +430,7 @@ function ClimaLand.source!(
     src::PhaseChange{FT},
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
+    t,
     model,
 ) where {FT}
     params = model.parameters
@@ -442,6 +447,42 @@ function ClimaLand.source!(
 end
 
 
+"""
+    SoilSublimation{FT} <: AbstractSoilSource{FT}
+
+SoilSublimation source type.
+"""
+struct SoilSublimation{FT} <: AbstractSoilSource{FT}
+    Δz::FT
+    d_ds::FT
+end
+
+
+"""
+     source!(dY::ClimaCore.Fields.FieldVector,
+             src::SoilSublimation{FT},
+             Y::ClimaCore.Fields.FieldVector,
+             p::NamedTuple,
+             t,
+             model
+             )
+
+Computes the source terms for phase change.
+
+"""
+function ClimaLSM.source!(
+    dY::ClimaCore.Fields.FieldVector,
+    src::SoilSublimation{FT},
+    Y::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
+    t,
+    model,
+) where {FT}
+    Δz = src.Δz
+    _ρ_i = FT(LSMP.ρ_cloud_ice(model.parameters.earth_param_set))
+    z = ClimaCore.Fields.coordinate_field(axes(Y.soil.θ_i))
+    @. dY.soil.θ_i += -p.soil.turbulent_fluxes.sublimation / _ρ_i * heaviside(z - Δz) # only apply to top layer
+end
 
 ## The functions below are required to be defined
 ## for use with the `AtmosDrivenFluxBC` upper

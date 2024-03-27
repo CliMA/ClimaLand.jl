@@ -13,7 +13,20 @@ export volumetric_internal_energy,
     thermal_time,
     phase_change_source,
     soil_tortuosity,
-    soil_resistance
+    soil_resistance,
+    dry_soil_layer_thickness
+
+"""
+    dry_soil_layer_thickness(S_l_sfc::FT, S_c::FT, d_ds::FT) where {FT}
+
+Returns the maximum dry soil layer thickness that can develop under evaporation; 
+this is used when computing the soil resistance to evaporation according to
+Swenson et al (2012).
+"""
+function dry_soil_layer_thickness(S_l_sfc::FT, S_c::FT, d_ds::FT) where {FT}
+    return S_l_sfc < S_c ? d_ds * (S_c - S_l_sfc) / S_c : FT(0)
+end
+
 
 """
     thermal_time(ρc::FT, Δz::FT, κ::FT) where {FT}
