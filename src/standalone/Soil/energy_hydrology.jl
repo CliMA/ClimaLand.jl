@@ -478,38 +478,10 @@ function ClimaLSM.source!(
     t,
     model,
 ) where {FT}
-    params = model.parameters
-    (; earth_param_set) = params
-    thermo_params =
-        LSMP.thermodynamic_parameters(model.parameters.earth_param_set)
-    _ρ_i = FT(LSMP.ρ_cloud_ice(earth_param_set))
-    T_sfc = ClimaLSM.Domains.top_center_to_surface(p.soil.T)
-    ρ_sfc = surface_air_density(model.boundary_conditions.top.atmos,
-                                model,
-                                Y,
-                                p,
-                                t,
-                                T_sfc)
-    q_sfc = Thermodynamics.q_vap_saturation_generic.(thermo_params,
-                                                     T_sfc,
-                                                     ρ_sfc,
-                                                     Thermodynamics.Ice(),
-                                                     )
-    h_sfc = surface_height(model, Y, p)
-    conditions = surface_fluxes_at_a_point.(T_sfc,
-                                            q_sfc,
-                                            ρ_sfc,
-                                            FT(1.0),
-                                            h_sfc,
-                                            FT(0),
-                                            FT(0),
-                                            t,
-                                            Ref(model.parameters),
-                                            Ref(atmos),
-                                            )
-    # what if this causes θ_i to be negative? Limit?
-    # If top layer is dry does the layer below sublimate? in that case, do we need a resistance?
-    @. dY.soil.θ_i += -conditions.vapor_flux / _ρ_i * heaviside(z - z_Δ) # only apply to top layer
+    Δz = src.Δz
+    _ρ_i = FT(LSMP.ρ_cloud_ice(model.parameters.earth_param_set))
+    z = ClimaCore.Fields.coordinate_field(axes(Y.soil.θ_i))
+    @. dY.soil.θ_i += -p.soil.turbulent_fluxes.sublimation / _ρ_i * heaviside(z - Δz) # only apply to top layer
 end
 
 ## The functions below are required to be defined
