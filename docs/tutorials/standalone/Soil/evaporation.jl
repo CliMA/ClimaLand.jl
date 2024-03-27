@@ -85,27 +85,27 @@ atmos = PrescribedAtmosphere(
 top_bc = ClimaLand.Soil.AtmosDrivenFluxBC(atmos, radiation)
 zero_water_flux = WaterFluxBC((p, t) -> 0)
 zero_heat_flux = HeatFluxBC((p, t) -> 0)
-#top_water_flux = WaterFluxBC((p, t) -> 4.6296296296296295e-8)
 boundary_fluxes = (;
-    top = top_bc,#WaterHeatBC(; water = top_water_flux, heat = zero_heat_flux),#top_bc,
+    top = top_bc,
     bottom = WaterHeatBC(; water = zero_water_flux, heat = zero_heat_flux),
 )
-params = ClimaLand.Soil.EnergyHydrologyParameters{FT}(;
-    ν = ν,
-    ν_ss_om = ν_ss_om,
-    ν_ss_quartz = ν_ss_quartz,
-    ν_ss_gravel = ν_ss_gravel,
+params = ClimaLand.Soil.EnergyHydrologyParameters(
+    FT;
+    ν,
+    ν_ss_om,
+    ν_ss_quartz,
+    ν_ss_gravel,
     hydrology_cm = hcm,
-    K_sat = K_sat,
-    S_s = S_s,
-    θ_r = θ_r,
-    PAR_albedo = PAR_albedo,
-    NIR_albedo = NIR_albedo,
-    emissivity = emissivity,
-    z_0m = z_0m,
-    z_0b = z_0b,
-    earth_param_set = earth_param_set,
-    d_ds = d_ds,
+    K_sat,
+    S_s,
+    θ_r,
+    PAR_albedo,
+    NIR_albedo,
+    emissivity,
+    z_0m,
+    z_0b,
+    earth_param_set,
+    d_ds,
 )
 
 zmax = FT(0)
@@ -170,10 +170,88 @@ updatefunc = ClimaLand.make_update_drivers(atmos, radiation)
 driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
 cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
 sol = SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb, saveat = saveat)
-
-
-# Figures
 evap = [
+    parent(sv.saveval[k].soil.turbulent_fluxes.vapor_flux)[1] for
+    k in 1:length(sol.t)
+]
+# Repeat with S_c more optimally chosen
+hcm_opt = vanGenuchten{FT}(hcm.α, hcm.n, hcm.m, 0.04)
+params_opt = ClimaLand.Soil.EnergyHydrologyParameters(
+    FT;
+    ν,
+    ν_ss_om,
+    ν_ss_quartz,
+    ν_ss_gravel,
+    hydrology_cm = hcm_opt,
+    K_sat,
+    S_s,
+    θ_r,
+    PAR_albedo,
+    NIR_albedo,
+    emissivity,
+    z_0m,
+    z_0b,
+    earth_param_set,
+    d_ds,
+)
+soil = Soil.EnergyHydrology{FT}(;
+    parameters = params_opt,
+    domain = soil_domain,
+    boundary_conditions = boundary_fluxes,
+    sources = (),
+)
+
+Y, p, cds = initialize(soil) # begins saturated
+function hydrostatic_equilibrium(z, z_interface, params)
+    (; ν, S_s, hydrology_cm) = params
+    (; α, n, m) = hydrology_cm
+    if z < z_interface
+        return -S_s * (z - z_interface) + ν
+    else
+        return ν * (1 + (α * (z - z_interface))^n)^(-m)
+    end
+end
+function init_soil!(Y, z, params)
+    FT = eltype(Y.soil.ϑ_l)
+    Y.soil.ϑ_l .= hydrostatic_equilibrium.(z, FT(-0.001), params)
+    Y.soil.θ_i .= 0
+    T = FT(296.15)
+    ρc_s = @. Soil.volumetric_heat_capacity(Y.soil.ϑ_l, FT(0), params)
+    Y.soil.ρe_int =
+        Soil.volumetric_internal_energy.(FT(0), ρc_s, T, Ref(params))
+end
+
+init_soil!(Y, z, soil.parameters)
+
+# We also set the initial conditions of the auxiliary state here:
+set_initial_cache! = make_set_initial_cache(soil)
+set_initial_cache!(p, Y, t0)
+
+# Timestepping:
+soil_exp_tendency! = make_exp_tendency(soil)
+timestepper = CTS.RK4()
+ode_algo = CTS.ExplicitAlgorithm(timestepper)
+
+prob = SciMLBase.ODEProblem(
+    CTS.ClimaODEFunction(T_exp! = soil_exp_tendency!, dss! = ClimaLand.dss!),
+    Y,
+    (t0, tf),
+    p,
+)
+saveat = Array(t0:3600.0:tf)
+sv = (;
+    t = Array{Float64}(undef, length(saveat)),
+    saveval = Array{NamedTuple}(undef, length(saveat)),
+)
+saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat)
+updateat = deepcopy(saveat)
+updatefunc = ClimaLand.make_update_drivers(atmos, radiation)
+driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
+cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
+sol_opt =
+    SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb, saveat = saveat)
+# Figures
+evap_opt = [
     parent(sv.saveval[k].soil.turbulent_fluxes.vapor_flux)[1] for
     k in 1:length(sol.t)
 ]
@@ -216,8 +294,16 @@ CairoMakie.lines!(
     ax,
     sol.t ./ 3600 ./ 24,
     evap .* (1000 * 3600 * 24),
-    label = "Model",
+    label = "Sc = 0.14",
     color = :black,
+)
+
+CairoMakie.lines!(
+    ax,
+    sol.t ./ 3600 ./ 24,
+    evap_opt .* (1000 * 3600 * 24),
+    label = "Sc = 0.05",
+    color = :gray,
 )
 CairoMakie.axislegend(ax)
 
@@ -231,6 +317,9 @@ A_col = π * (0.027)^2
 mass_0 = sum(sol.u[1].soil.ϑ_l) * 1e6 * A_col
 mass_loss =
     [mass_0 - sum(sol.u[k].soil.ϑ_l) * 1e6 * A_col for k in 1:length(sol.t)]
+mass_0 = sum(sol_opt.u[1].soil.ϑ_l) * 1e6 * A_col
+mass_loss_opt =
+    [mass_0 - sum(sol_opt.u[k].soil.ϑ_l) * 1e6 * A_col for k in 1:length(sol.t)]
 CairoMakie.lines!(
     ax,
     cumsum(FT.(data_e)) ./ (1000 * 24) .* A_col .* 1e6,
@@ -242,7 +331,14 @@ CairoMakie.lines!(
     ax,
     mass_loss,
     evap .* (1000 * 3600 * 24),
-    label = "Model",
+    label = "S_c = 0.14",
     color = :black,
 )
-save(joinpath(savepath, "evaporation_lehmann2008_fig8b_sc1.png"), fig)
+CairoMakie.lines!(
+    ax,
+    mass_loss_opt,
+    evap_opt .* (1000 * 3600 * 24),
+    label = "S_c = 0.04",
+    color = :gray,
+)
+save(joinpath(savepath, "evaporation_lehmann2008_fig8b.png"), fig)

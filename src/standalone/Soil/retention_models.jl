@@ -36,18 +36,14 @@ struct vanGenuchten{FT} <: AbstractSoilHydrologyClosure{FT}
     m::FT
     "A derived parameter: the critical saturation at which capillary flow no longer replenishes the surface"
     S_c::FT
-    function vanGenuchten{FT}(; α::FT, n::FT) where {FT}
-        m = 1 - 1 / n
-        S_c = (1+m^((m+1)/(m-1)))^(-m)
-#        S_c2 = (exp(1+1/m)/m)^(-m)
-#        h_c1 = ((n - 1) / n)^((1 - 2 * n)/n)/α
-#        h_c2 = ((exp(1+1/m)/m-1))^(1/n)/α
-#        h_c = 2/(1/h_c1 + 1/h_c2)
-#        S_c  = S_c1#(1+ (α*h_c)^n)^(-m)
-        return new{FT}(α, n, m, S_c)
-    end
-
 end
+
+function vanGenuchten{FT}(; α::FT, n::FT) where {FT}
+    m = 1 - 1 / n
+    S_c = (1 + m^((m + 1) / (m - 1)))^(-m)
+    return vanGenuchten{FT}(α, n, m, S_c)
+end
+
 
 """
    BrooksCorey{FT} <: AbstractSoilHydrologyClosure{FT}
