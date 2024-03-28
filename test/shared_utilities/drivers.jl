@@ -1,6 +1,7 @@
 using ClimaCore
 using Test
 using StaticArrays
+using ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
 using ClimaLand
 
 FT = Float32
@@ -16,8 +17,7 @@ FT = Float32
         FT(1);
     )
     pr = ClimaLand.PrescribedRadiativeFluxes(FT, nothing, nothing, nothing)
-    liquid_precip =
-        ClimaLand.TimeVaryingInputs.AnalyticTimeVaryingInput((t) -> -1.0)
+    liquid_precip = TimeVaryingInput((t) -> -1.0)
     pp = ClimaLand.PrescribedPrecipitation{FT}(liquid_precip)
     coords = (; surface = [1, 2, 3])
     @test ClimaLand.initialize_drivers(pp, nothing, coords) ==
@@ -122,8 +122,7 @@ end
     @test p.drivers.LW_d == [FT(10)]
     @test p.drivers.θs == [FT(0)]
 
-    liquid_precip =
-        ClimaLand.TimeVaryingInputs.AnalyticTimeVaryingInput((t) -> -1.0)
+    liquid_precip = TimeVaryingInput((t) -> -1.0)
     pp = ClimaLand.PrescribedPrecipitation{FT}(liquid_precip)
     precip_update! = ClimaLand.make_update_drivers(pp, nothing)
     p = (; drivers = ClimaLand.initialize_drivers(pp, nothing, coords))
