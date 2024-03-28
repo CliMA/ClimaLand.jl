@@ -1,3 +1,5 @@
+import ClimaUtilities.TimeVaryingInputs:
+    TimeVaryingInput, AbstractTimeVaryingInput
 using Thermodynamics
 using ClimaCore
 using DocStringExtensions

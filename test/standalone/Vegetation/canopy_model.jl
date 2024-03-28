@@ -6,7 +6,7 @@ using Dates
 using StaticArrays
 using ClimaLand
 using ClimaLand: PrescribedAtmosphere, PrescribedRadiativeFluxes
-using ClimaLand: TimeVaryingInput
+using ClimaUtilities.TimeVaryingInputs: TimeVaryingInput, evaluate!
 using ClimaLand.Canopy
 using ClimaLand.Canopy.PlantHydraulics
 using ClimaLand.Domains: Point
