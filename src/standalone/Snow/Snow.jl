@@ -81,9 +81,4 @@ end
 
 include("./snow_parameterizations.jl")
 
-include("./neural_snow/DataTools.jl")
-using .DataTools
-include("./neural_snow/ModelTools.jl")
-using .ModelTools
-
 end

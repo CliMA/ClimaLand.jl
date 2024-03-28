@@ -42,9 +42,14 @@
 
 # We begin by importing the developed code to create and run the neural network,
 # as well as some preliminary packages:
-using DataFrames, CSV, HTTP, Dates
-using ClimaLand.Snow.ModelTools
-using ClimaLand.Snow.DataTools
+using ClimaLand
+using DataFrames, CSV, HTTP, Dates, Flux, StatsBase, cuDNN
+
+# The code lives in an extenson that we have to manually load. The extension can
+# be loaded only if "CSV", "HTTP", "Flux", "StatsBase", "cuDNN" and "ClimaLand"
+# are loaded.
+DataTools = Base.get_extension(ClimaLand, :NeuralSnowExt).DataTools
+ModelTools = Base.get_extension(ClimaLand, :NeuralSnowExt).ModelTools
 
 # and also some purpose-made functions for analyzing and displaying the output.
 using ClimaLand
@@ -95,7 +100,7 @@ data = CSV.read(HTTP.get(data_download_link).body, DataFrame)
 # With this, we can begin the actual usage pipeline. First, we split the
 # precipitation feature into rain and snow constituents, and apply a set of physically-informed
 # filters before extracting the necessary features with `prep_data`:
-usedata = prep_data(data);
+usedata = DataTools.prep_data(data);
 
 # After this, we determine scalings for the input and target data
 # that are conducive to beneficial weight updates. In this case, the
@@ -107,38 +112,38 @@ usedata = prep_data(data);
 # a Flux `DataLoader` object, later, during training.
 out_scale = maximum(abs.(usedata[!, target]))
 in_scales = std.(eachcol(select(usedata, pred_vars)))
-x_train, y_train = make_data(usedata, pred_vars, target, out_scale);
+x_train, y_train = DataTools.make_data(usedata, pred_vars, target, out_scale);
 
 # We then create the model itself given the hyperparameters specified
 # above, and indicate which features are to be used to determine the
 # boundary constraints on the network, and return the trainable weights
 # for the overall model.
-model = make_model(nfeatures, n, z_idx, p_idx, in_scale = in_scales)
-ps = get_model_ps(model);
+model = ModelTools.make_model(nfeatures, n, z_idx, p_idx, in_scale = in_scales)
+ps = ModelTools.get_model_ps(model);
 
 # As training updates are better with the scaled data, we have to modify
 # the timescale and output scaling of the model structure prior to training.
 # This step is undone/reset after training is over.
-settimescale!(model, Dates.value(Δt) * out_scale)
-setoutscale!(model, 1.0);
+ModelTools.settimescale!(model, Dates.value(Δt) * out_scale)
+ModelTools.setoutscale!(model, 1.0);
 
 # With that, training is as simple as calling the `trainmodel!` function:
 print("\nTraining model!\n")
-trainmodel!(model, ps, x_train, y_train, n1, n2, verbose = true);
+ModelTools.trainmodel!(model, ps, x_train, y_train, n1, n2, verbose = true);
 
 # To show the model's output on some of our training data in physically meaningful
 # units, we first reset the timesacle and output scaling constants. From there,
 # all we do is pass the dataframe for a given SNOTEL site and the trained model
 # to the `make_timeseries` function, and we can compare the result to the actual data.
 print("\nGenerating Timeseries!\n")
-setoutscale!(model, out_scale)
-settimescale!(model, Dates.value(Δt));
+ModelTools.setoutscale!(model, out_scale)
+ModelTools.settimescale!(model, Dates.value(Δt));
 
 # For instance, let's show the results on site 1286 (Slagamount Lakes site, Montana):
 site_id = 1286
 sitedata = usedata[usedata[!, :id] .== site_id, :]
 true_series = sitedata[!, :z]
-pred_series, _, _ = make_timeseries(model, sitedata, Δt)
+pred_series, _, _ = ModelTools.make_timeseries(model, sitedata, Δt)
 display_scores(pred_series, true_series, timeseries = true)
 siteplot(
     sitedata[!, :date],
