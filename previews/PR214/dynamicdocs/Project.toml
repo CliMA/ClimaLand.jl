@@ -1,0 +1,11 @@
+[deps]
+CLIMAParameters = "6eacf6c3-8458-43b9-ae03-caf5306d3d53"
+ClimaLSM = "7884a58f-fab6-4fd0-82bb-ecfedb2d8430"
+Insolation = "e98cc03f-d57e-4e3c-b70c-8d51efe9e0d8"
+JSServe = "824d6782-a2ef-11e9-3a09-e5662e0c26f9"
+ParamViz = "9706fb73-1de9-418d-83da-fef8cd99bb4a"
+SurfaceFluxes = "49b00bb7-8bd4-4f2b-b78c-51cd0450215f"
+Thermodynamics = "b60c26fb-14c3-4610-9d3e-2d17fe7ff00c"
+UnicodeFun = "1cfade01-22cf-5700-b092-accc4b62d6e1"
+Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
+WGLMakie = "276b4fcb-3e11-5398-bf8b-a0c2d153d008"
