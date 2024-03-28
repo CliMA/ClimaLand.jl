@@ -450,6 +450,18 @@ end
 ## radiative, sensible and latent heat fluxes
 ## as well as evaporation.
 
+function linear_interpolation_to_surface(field, z, zval)
+    Δz_top, _ = get_Δz(z)
+    # TODO: Find cleaner way to do this
+    nz = Spaces.nlevels(axes(field))
+    f1 = ClimaCore.Fields.level(field, nz)
+    f2 = ClimaCore.Fields.level(field, nz - 1)
+    z1 = ClimaCore.Fields.level(z, nz)
+    z2 = ClimaCore.Fields.level(z, nz - 1)
+    return @. (f1 - f2) / (z1 - z2) * (Δz_top + z1 - z2) + f2
+end
+
+
 
 """
     ClimaLand.surface_temperature(
@@ -492,20 +504,12 @@ function ClimaLand.surface_resistance(
     p,
     t,
 ) where {FT}
-    z = ClimaCore.Fields.coordinate_field(model.domain.space.subsurface)
-    Δz_top, _ = get_Δz(z)
+    cds = ClimaCore.Fields.coordinate_field(model.domain.space.subsurface)
+    Δz_top, _ = get_Δz(cds)
     (; ν, θ_r, hydrology_cm) = model.parameters
     S_l = effective_saturation.(ν, p.soil.θ_l, θ_r)
 
-    S_l_sfc =
-        Soil.inverse_matric_potential.(
-            model.parameters.hydrology_cm,
-            -1 .* Δz_top .+
-            Soil.matric_potential.(
-                model.parameters.hydrology_cm,
-                ClimaLand.Domains.top_center_to_surface(S_l),
-            ),
-        )
+    S_l_sfc = linear_interpolation_to_surface(S_l, cds.z, Δz_top)
     θ_l_sfc = @. S_l_sfc * (ν - θ_r) + θ_r
     θ_i_sfc = ClimaLand.Domains.top_center_to_surface(Y.soil.θ_i)
     ϑ_l_sfc = θ_l_sfc
@@ -517,29 +521,6 @@ function ClimaLand.surface_resistance(
         model.parameters,
     )
 end
-
-#=
-    #  vg_α = model.parameters.hydrology_cm.α
-    #  vg_n = model.parameters.hydrology_cm.n
-    #  L_G = 1/(vg_α*(vg_n-1))*((vg_n-1)/vg_n)^((1-vg_n)/vg_n)*((2*vg_n-1)/vg_n)^((2*vg_n-1)/vg_n)
-    #  if -parent(Δz_top)[1] > L_G # unresolved
-    #      ψ_c = Soil.matric_potential(hcm, model.parameters.hydrology_cm.S_c)
-    #      ψ_b = ψ_c- (-L_G)
-    #      S_c_eff = inverse_matric_potential(hydrology_cm, ψ_c*(1-Δz/L_G) + ψ_b*Δz/L_G)
-    #  else # resolved
-    S_c_eff = model.parameters.hydrology_cm.S_c
-    #  end
-    return ClimaLand.Domains.top_center_to_surface(
-        ClimaLand.Soil.soil_resistance.(
-            p.soil.θ_l,
-            Y.soil.ϑ_l,
-            Y.soil.θ_i,
-            S_c_eff,
-            model.parameters,
-        ),
-    )
-end
-=#
 
 """
     ClimaLand.surface_emissivity(
@@ -608,9 +589,10 @@ function ClimaLand.surface_specific_humidity(
     M_w = LP.molar_mass_water(model.parameters.earth_param_set)
     thermo_params =
         LP.thermodynamic_parameters(model.parameters.earth_param_set)
-    z = ClimaCore.Fields.coordinate_field(model.domain.space.subsurface)
-    Δz_top, _ = get_Δz(z)
-    ψ_sfc = ClimaLand.Domains.top_center_to_surface(p.soil.ψ) .- 1 .* Δz_top
+    cds = ClimaCore.Fields.coordinate_field(model.domain.space.subsurface)
+    Δz_top, _ = get_Δz(cds)
+    ψ_sfc = linear_interpolation_to_surface(p.soil.ψ, cds.z, Δz_top)
+
     q_sat =
         Thermodynamics.q_vap_saturation_generic.(
             thermo_params,
