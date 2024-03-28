@@ -288,14 +288,15 @@ uuid = "d934ef94-cdd4-4710-83d6-720549644b70"
 version = "0.3.14"
 
 [[deps.ClimaLand]]
-deps = ["Adapt", "ArtifactWrappers", "CSV", "CUDA", "ClimaComms", "ClimaCore", "ClimaCoreTempestRemap", "ClimaUtilities", "DataFrames", "Dates", "DocStringExtensions", "Flux", "HTTP", "Insolation", "Interpolations", "IntervalSets", "LinearAlgebra", "NCDatasets", "SciMLBase", "StaticArrays", "StatsBase", "SurfaceFluxes", "Thermodynamics", "cuDNN"]
+deps = ["Adapt", "ArtifactWrappers", "CUDA", "ClimaComms", "ClimaCore", "ClimaCoreTempestRemap", "ClimaUtilities", "DataFrames", "Dates", "DocStringExtensions", "Insolation", "Interpolations", "IntervalSets", "LinearAlgebra", "NCDatasets", "SciMLBase", "StaticArrays", "SurfaceFluxes", "Thermodynamics"]
 path = ".."
 uuid = "08f4d4ce-cf43-44bb-ad95-9d2d5f413532"
 version = "0.11.1"
-weakdeps = ["ClimaParams"]
+weakdeps = ["CSV", "ClimaParams", "Flux", "HTTP", "StatsBase", "cuDNN"]
 
     [deps.ClimaLand.extensions]
     CreateParametersExt = "ClimaParams"
+    NeuralSnowExt = ["CSV", "HTTP", "Flux", "StatsBase", "cuDNN"]
 
 [[deps.ClimaParams]]
 deps = ["DocStringExtensions", "TOML", "Test"]
