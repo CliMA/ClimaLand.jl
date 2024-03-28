@@ -450,6 +450,18 @@ end
 ## radiative, sensible and latent heat fluxes
 ## as well as evaporation.
 
+function linear_interpolation_to_surface(field, z, zval)
+    Δz_top, _ = get_Δz(z)
+    # TODO: Find cleaner way to do this
+    nz = Spaces.nlevels(axes(field))
+    f1 = ClimaCore.Fields.level(field, nz)
+    f2 = ClimaCore.Fields.level(field, nz - 1)
+    z1 = ClimaCore.Fields.level(z, nz)
+    z2 = ClimaCore.Fields.level(z, nz - 1)
+    return @. (f1 - f2) / (z1 - z2) * (Δz_top + z1 - z2) + f2
+end
+
+
 
 """
     ClimaLand.surface_temperature(
@@ -492,16 +504,23 @@ function ClimaLand.surface_resistance(
     p,
     t,
 ) where {FT}
-    return ClimaLand.Domains.top_center_to_surface(
-        ClimaLand.Soil.soil_resistance.(
-            p.soil.θ_l,
-            Y.soil.ϑ_l,
-            Y.soil.θ_i,
-            model.parameters,
-        ),
+    cds = ClimaCore.Fields.coordinate_field(model.domain.space.subsurface)
+    Δz_top, _ = get_Δz(cds)
+    (; ν, θ_r, hydrology_cm) = model.parameters
+    S_l = effective_saturation.(ν, p.soil.θ_l, θ_r)
+
+    S_l_sfc = linear_interpolation_to_surface(S_l, cds.z, Δz_top)
+    θ_l_sfc = @. S_l_sfc * (ν - θ_r) + θ_r
+    θ_i_sfc = ClimaLand.Domains.top_center_to_surface(Y.soil.θ_i)
+    ϑ_l_sfc = θ_l_sfc
+    return ClimaLand.Soil.soil_resistance.(
+        θ_l_sfc,
+        ϑ_l_sfc,
+        θ_i_sfc,
+        hydrology_cm.S_c,
+        model.parameters,
     )
 end
-
 
 """
     ClimaLand.surface_emissivity(
@@ -570,7 +589,10 @@ function ClimaLand.surface_specific_humidity(
     M_w = LP.molar_mass_water(model.parameters.earth_param_set)
     thermo_params =
         LP.thermodynamic_parameters(model.parameters.earth_param_set)
-    ψ_sfc = ClimaLand.Domains.top_center_to_surface(p.soil.ψ)
+    cds = ClimaCore.Fields.coordinate_field(model.domain.space.subsurface)
+    Δz_top, _ = get_Δz(cds)
+    ψ_sfc = linear_interpolation_to_surface(p.soil.ψ, cds.z, Δz_top)
+
     q_sat =
         Thermodynamics.q_vap_saturation_generic.(
             thermo_params,
@@ -578,7 +600,7 @@ function ClimaLand.surface_specific_humidity(
             ρ_sfc,
             Thermodynamics.Liquid(),
         )
-    return @. (q_sat * exp(g * ψ_sfc * M_w / (R * T_sfc)))
+    return @. q_sat * exp(g * ψ_sfc * M_w / (R * T_sfc))
 
 end
 

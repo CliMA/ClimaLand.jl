@@ -344,10 +344,10 @@ function soil_resistance(
     θ_l::FT,
     ϑ_l::FT,
     θ_i::FT,
+    S_c::FT,
     parameters::EnergyHydrologyParameters{FT},
 ) where {FT}
     (; ν, hydrology_cm, θ_r, d_ds, earth_param_set) = parameters
-    (; S_c) = hydrology_cm
     _D_vapor = FT(LP.D_vapor(earth_param_set))
     S_l = effective_saturation(ν, ϑ_l, θ_r)
     τ_a = soil_tortuosity(θ_l, θ_i, ν)
