@@ -4,6 +4,8 @@ using ArtifactWrappers
 import SciMLBase
 import ClimaTimeSteppers as CTS
 using ClimaCore
+import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
+import NCDatasets
 import ClimaParams as CP
 using ClimaComms
 
@@ -11,6 +13,7 @@ using ClimaLand
 using ClimaLand.Soil
 import ClimaLand
 import ClimaLand.Parameters as LP
+
 
 context = ClimaComms.context()
 outdir = joinpath(pkgdir(ClimaLand), "experiments/standalone/Soil/artifacts")
@@ -37,31 +40,12 @@ topmodel_dataset = ArtifactWrapper(
     ),],
 )
 infile_path = joinpath(get_data_folder(topmodel_dataset), "means_2.5_new.nc")
-regrid_dirpath = "regrid"
 outfile_root =
     joinpath(pkgdir(ClimaLand), "experiments/standalone/Soil/static_data_cgll")
-ClimaLand.Regridder.hdwrite_regridfile_rll_to_cgll(
-    FT,
-    regrid_dirpath,
-    infile_path,
-    ["fmax", "landsea_mask"],
-    surface_space,
-    outfile_root;
-    mono = true,
-)
 
-file_info = ClimaLand.FileReader.FileInfo(
-    infile_path,
-    regrid_dirpath,
-    ["fmax", "landsea_mask"],
-    outfile_root,
-    [],
-    [],
-)
-data = ClimaLand.FileReader.PrescribedDataStatic{typeof(file_info)}(file_info)
-f_max = ClimaLand.FileReader.get_data_at_date(data, surface_space, "fmax")
-mask =
-    ClimaLand.FileReader.get_data_at_date(data, surface_space, "landsea_mask")
+f_max = SpaceVaryingInput(infile_path, "fmax", surface_space)
+mask = SpaceVaryingInput(infile_path, "landsea_mask", surface_space)
+
 oceans_to_zero(field, mask) = mask > 0.5 ? field : eltype(field)(0)
 f_over = FT(3.28) # 1/m
 R_sb = FT(1.484e-4 / 1000) # m/s
@@ -91,7 +75,7 @@ soil_params = ClimaLand.Soil.RichardsParameters(;
 function precip_function(t)
     return -1e-6
 end
-precip = ClimaLand.TimeVaryingInput(precip_function)
+precip = TimeVaryingInput(precip_function)
 atmos = ClimaLand.PrescribedPrecipitation{FT, typeof(precip)}(precip)
 bottom_bc = ClimaLand.Soil.WaterFluxBC((p, t) -> 0.0)
 bc = (;
@@ -311,7 +295,3 @@ CairoMakie.heatmap!(
 Colorbar(fig[1, 4], colorrange = clims2)
 outfile = joinpath(outdir, string("heatmap_∫ϑdz.png"))
 CairoMakie.save(outfile, fig)
-
-
-# Delete testing directory and files
-rm(regrid_dirpath; recursive = true, force = true)

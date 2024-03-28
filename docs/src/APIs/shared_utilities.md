@@ -85,14 +85,3 @@ ClimaLand.surface_resistance
 ClimaLand.surface_specific_humidity
 ClimaLand.make_update_drivers
 ```
-
-## TimeVaryingInput
-```@docs
-ClimaLand.TimeVaryingInput
-ClimaLand.evaluate!
-```
-
-## SpaceVaryingInput
-```@docs
-ClimaLand.SpaceVaryingInput
-```

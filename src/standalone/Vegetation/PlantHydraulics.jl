@@ -1,6 +1,9 @@
 module PlantHydraulics
 using ClimaLand
-using ClimaLand.TimeVaryingInputs
+using ClimaUtilities.TimeVaryingInputs
+import ClimaUtilities.TimeVaryingInputs:
+    TimeVaryingInput, AbstractTimeVaryingInput
+import NCDatasets, ClimaCore, Interpolations # Needed to load TimeVaryingInputs
 using ..ClimaLand.Canopy:
     AbstractCanopyComponent,
     update_canopy_prescribed_field!,

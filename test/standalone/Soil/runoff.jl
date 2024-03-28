@@ -1,6 +1,8 @@
+import ClimaUtilities
+import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
 using ClimaLand
 using Test
-using ClimaCore
+using ClimaCore, NCDatasets
 FT = Float32
 @testset "Base runoff functionality, FT = $FT" begin
     runoff = ClimaLand.Soil.Runoff.NoRunoff()
@@ -44,7 +46,7 @@ end
         return fieldvals
     end
 
-    precip = ClimaLand.TimeVaryingInput(precip_function)
+    precip = TimeVaryingInput(precip_function)
     atmos = ClimaLand.PrescribedPrecipitation{FT, typeof(precip)}(precip)
 
     noflux = ClimaLand.Soil.WaterFluxBC((p, t) -> 0.0)
@@ -115,7 +117,7 @@ end
         return fieldvals
     end
 
-    precip = ClimaLand.TimeVaryingInput(precip_function)
+    precip = TimeVaryingInput(precip_function)
     atmos = ClimaLand.PrescribedPrecipitation{FT, typeof(precip)}(precip)
 
     noflux = ClimaLand.Soil.WaterFluxBC((p, t) -> 0.0)

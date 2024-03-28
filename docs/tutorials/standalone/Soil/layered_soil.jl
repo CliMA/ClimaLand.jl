@@ -1,4 +1,4 @@
-# This shows how to run single colum soil model, in standalone mode
+# This shows how to run single column soil model, in standalone mode
 # with spatially varying properties. We are mimicking the experiment
 # carried out in Huang et. al.
 # Can. J. Soil Sci. (2011) 91: 169183 doi:10.4141/CJSS09118,
@@ -9,6 +9,8 @@
 # publication.
 
 using Plots
+import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
+import NCDatasets
 import SciMLBase
 import ClimaTimeSteppers as CTS
 using ClimaCore

@@ -4,6 +4,9 @@ ClimaLand.jl Release Notes
 main
 --------
 
+- ![][badge-✨feature] Use [ClimaUtilities](https://github.com/CliMA/ClimaUtilities.jl) for `Space`
+  and `Time` `VaryingInputs`. This adds support to non-conservative MPI/GPU compatible regridding of NetCDF input.  PR [#560](https://github.com/CliMA/ClimaLand.jl/pull/560)
+
 v0.11.1
 -------
 - ![][badge-✨feature] Add option to profile albedo job. PR

@@ -7,16 +7,15 @@ import ClimaCore: Fields, Spaces
 include("shared_utilities/Parameters.jl")
 import .Parameters as LP
 
-include("shared_utilities/general_utils.jl")
-include("shared_utilities/TimeVaryingInputs.jl")
-using .TimeVaryingInputs
-export TimeVaryingInput, evaluate!
-include("shared_utilities/Regridder.jl")
 include("shared_utilities/Domains.jl")
-include("shared_utilities/FileReader.jl")
-include("shared_utilities/SpaceVaryingInputs.jl")
-using .SpaceVaryingInputs
-export SpaceVaryingInput
+import ClimaUtilities.TimeVaryingInputs
+import ClimaUtilities.TimeVaryingInputs:
+    TimeVaryingInput, AbstractTimeVaryingInput, evaluate!
+export TimeVaryingInput, evaluate!
+import ClimaUtilities.SpaceVaryingInputs
+import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
+
+import NCDatasets # Needed to load the ClimaUtilities.*VaryingInput
 using .Domains
 include("shared_utilities/utils.jl")
 include("shared_utilities/models.jl")

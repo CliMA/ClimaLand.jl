@@ -3,6 +3,12 @@ using DocStringExtensions
 using Thermodynamics
 using Dates
 using NCDatasets
+import ClimaUtilities.TimeVaryingInputs
+import ClimaUtilities.DataHandling
+import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
+import ClimaUtilities.TimeVaryingInputs:
+    TimeVaryingInput, AbstractTimeVaryingInput
+import ClimaCoreTempestRemap
 using ClimaCore
 using ClimaCore.Fields: coordinate_field, level, FieldVector
 using ClimaCore.Operators: InterpolateC2F, DivergenceF2C, GradientC2F, SetValue
@@ -11,7 +17,6 @@ using ClimaComms
 
 using ClimaLand
 
-using ClimaLand.FileReader
 import ..Parameters as LP
 import ClimaLand.Domains: coordinates, SphericalShell
 using ClimaLand:
@@ -103,10 +108,9 @@ end
 
 """
      PrescribedBaregroundAlbedo{FT}(α_snow::FT,
-                                    regrid_dirpath::String,
                                     surface_space::ClimaCore.Spaces.AbstractSpace;
                                     varnames = ["sw_alb"],
-                                    get_infile::Function = Bucket.bareground_albedo_dataset_path,
+                                    albedo_file_path::AbstractString = Bucket.bareground_albedo_dataset_path(),
                                     ) where{FT}
 
 An outer constructor for the PrescribedBaregroundAlbedo model which uses data
@@ -116,24 +120,16 @@ This particular method can only be used with global runs.
 """
 function PrescribedBaregroundAlbedo{FT}(
     α_snow::FT,
-    regrid_dirpath::String,
     surface_space::ClimaCore.Spaces.AbstractSpace;
     varnames = ["sw_alb"],
-    get_infile::Function = Bucket.bareground_albedo_dataset_path,
+    albedo_file_path::AbstractString = Bucket.bareground_albedo_dataset_path(),
 ) where {FT}
     if surface_space isa ClimaCore.Spaces.PointSpace
         error("Using an albedo map requires a global run.")
     end
-    α_bareground_data = PrescribedDataStatic{FT}(
-        get_infile,
-        regrid_dirpath,
-        varnames,
-        surface_space,
-    )
-
     # Albedo file only has one variable, so access first `varname`
-    varname = varnames[1]
-    α_bareground = SpaceVaryingInput(α_bareground_data, varname, surface_space)
+    α_bareground =
+        SpaceVaryingInput(albedo_file_path, varnames[begin], surface_space)
     return PrescribedBaregroundAlbedo{FT, typeof(α_bareground)}(
         α_snow,
         α_bareground,
@@ -141,7 +137,7 @@ function PrescribedBaregroundAlbedo{FT}(
 end
 
 """
-    PrescribedSurfaceAlbedo{FT, FR <: FileReader.PrescribedDataTemporal}
+    PrescribedSurfaceAlbedo{FT, TV <: AbstractTimeVaryingInput}
                        <: AbstractBucketAlbedoModel
 
 An albedo model where the albedo of different surface types
@@ -152,14 +148,13 @@ This albedo type changes over time according to the input file.
 Note that this option should only be used with global simulations,
 i.e. with a `ClimaLand.LSMSphericalShellDomain.`
 """
-struct PrescribedSurfaceAlbedo{FT, FR <: FileReader.PrescribedDataTemporal} <:
+struct PrescribedSurfaceAlbedo{FT, TV <: AbstractTimeVaryingInput} <:
        AbstractBucketAlbedoModel{FT}
-    albedo_info::FR
+    albedo::TV
 end
 
 """
     PrescribedSurfaceAlbedo{FT}(
-        regrid_dirpath::String,
         date_ref::Union{DateTime, DateTimeNoLeap},
         t_start,
         Space::ClimaCore.Spaces.AbstractSpace;
@@ -175,11 +170,10 @@ and download the data if it doesn't already exist on the machine.
 The input data file must have a time component.
 """
 function PrescribedSurfaceAlbedo{FT}(
-    regrid_dirpath::String,
     date_ref::Union{DateTime, DateTimeNoLeap},
     t_start,
     space::ClimaCore.Spaces.AbstractSpace;
-    get_infile = Bucket.cesm2_albedo_dataset_path,
+    albedo_file_path = Bucket.cesm2_albedo_dataset_path(),
     varname = "sw_alb",
 ) where {FT}
     # Verify inputs
@@ -187,16 +181,17 @@ function PrescribedSurfaceAlbedo{FT}(
         error("Using an albedo map requires a global run.")
     end
 
-    # Construct object containing info to read in surface albedo over time
-    data_info = PrescribedDataTemporal{FT}(
-        regrid_dirpath,
-        get_infile,
-        [varname],
-        date_ref,
+    data_handler = DataHandling.DataHandler(
+        albedo_file_path,
+        varname,
+        space;
+        reference_date = date_ref,
         t_start,
-        space,
     )
-    return PrescribedSurfaceAlbedo{FT, typeof(data_info)}(data_info)
+
+    # Construct object containing info to read in surface albedo over time
+    albedo = TimeVaryingInput(data_handler)
+    return PrescribedSurfaceAlbedo{FT, typeof(albedo)}(albedo)
 end
 
 
@@ -460,16 +455,24 @@ function make_update_aux(model::BucketModel{FT}) where {FT}
         p.bucket.R_n .= net_radiation(model.radiation, model, Y, p, t)
 
         # Surface albedo
-        p.bucket.α_sfc .=
-            next_albedo(model.parameters.albedo, model.parameters, Y, p, t)
+        next_albedo!(
+            p.bucket.α_sfc,
+            model.parameters.albedo,
+            model.parameters,
+            Y,
+            p,
+            t,
+        )
     end
     return update_aux!
 end
 
 """
-    next_albedo(model_albedo::PrescribedBaregroundAlbedo{FT}, parameters, Y, p, t) where {FT}
+    next_albedo!(next_α_sfc,
+                 model_albedo::PrescribedBaregroundAlbedo{FT},
+                 parameters, Y, p, t)
 
-Update the surface albedo for time `t`: the albedo is calculated by 
+Update the surface albedo for time `t`: the albedo is calculated by
 linearly interpolating between the albedo
 of snow and of the bareground surface, based on the snow water equivalent `S` relative to
 the parameter `S_c`. The linear interpolation is taken from Lague et al 2019.
@@ -480,7 +483,8 @@ fractions that are not a heaviside function, we have a small inconsistency
 for 0 < σS < eps(FT) where the snow cover fraction is zero, but there is a small
 contribution of snow to the albedo.
 """
-function next_albedo(
+function next_albedo!(
+    next_α_sfc,
     model_albedo::PrescribedBaregroundAlbedo{FT},
     parameters,
     Y,
@@ -490,42 +494,25 @@ function next_albedo(
     (; α_snow, α_bareground) = model_albedo
     (; σS_c) = parameters
     σS = max.(Y.bucket.σS, FT(0))# if σS is small and negative, clip to zero for albedo estimation
-    return @. (
-        (1 - σS / (σS + σS_c)) * α_bareground + σS / (σS + σS_c) * α_snow
-    )
+    @. next_α_sfc =
+        ((1 - σS / (σS + σS_c)) * α_bareground + σS / (σS + σS_c) * α_snow)
 end
 
 """
-    next_albedo(model_albedo::PrescribedSurfaceAlbedo{FT}, parameters, Y, p, t) where {FT}
+    next_albedo!(next_α_sfc, model_albedo::PrescribedSurfaceAlbedo{FT}, parameters, Y, p, t)
 
 Update the surface albedo for time `t`: for a file containing surface albedo
 information over time, this reads in the value for time t.
 """
-function next_albedo(
+function next_albedo!(
+    next_α_sfc,
     model_albedo::PrescribedSurfaceAlbedo{FT},
     parameters,
     Y,
     p,
     t,
 ) where {FT}
-    # Get the current date from `t`
-    sim_info = model_albedo.albedo_info.sim_info
-    sim_date = to_datetime(
-        sim_info.date_ref + Second(round(sim_info.t_start)) + Second(round(t)),
-    )
-    # Read next data fields if initializing or next date is closest to current time
-    # This maintains `all_dates[date_idx]` <= `sim_date` < `all_dates[date_idx + 1]`
-    if t == sim_info.t_start ||
-       sim_date >= to_datetime(next_date_in_file(model_albedo.albedo_info))
-        read_data_fields!(model_albedo.albedo_info, sim_date, axes(Y.bucket.W))
-    end
-    # Interpolate data value to current time
-    return get_data_at_date(
-        model_albedo.albedo_info,
-        axes(Y.bucket.W),
-        "sw_alb",
-        sim_date,
-    )
+    TimeVaryingInputs.evaluate!(next_α_sfc, model_albedo.albedo, t)
 end
 
 function ClimaLand.get_drivers(model::BucketModel)

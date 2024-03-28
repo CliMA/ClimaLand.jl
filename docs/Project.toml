@@ -1,10 +1,11 @@
 [deps]
 ArtifactWrappers = "a14bc488-3040-4b00-9dc1-f6467924858a"
-ClimaParams = "5c42b081-d73a-476f-9059-fd94b934656c"
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 ClimaCore = "d414da3d-4745-48bb-8d80-42e94e092884"
 ClimaLand = "08f4d4ce-cf43-44bb-ad95-9d2d5f413532"
+ClimaParams = "5c42b081-d73a-476f-9059-fd94b934656c"
 ClimaTimeSteppers = "595c0a79-7f3d-439a-bc5a-b232dc3bde79"
+ClimaUtilities = "b3f4f4ca-9299-4f7f-bd9b-81e1242a7513"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 DiffEqBase = "2b5f629d-d688-5b77-993f-72d75c75574e"

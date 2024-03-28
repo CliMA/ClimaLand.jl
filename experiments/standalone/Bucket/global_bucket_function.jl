@@ -18,7 +18,10 @@ using Dates
 using DelimitedFiles
 using Statistics
 
+import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
+
 import ClimaTimeSteppers as CTS
+import NCDatasets
 using ClimaCore
 using ClimaCore: Remapping, Geometry
 import ClimaComms
@@ -35,7 +38,6 @@ using ClimaLand:
     make_set_initial_cache,
     PrescribedAtmosphere,
     PrescribedRadiativeFluxes
-using ClimaLand.TimeVaryingInputs
 
 """
    compute_extrema(v)

@@ -19,7 +19,10 @@ using Dates
 using DelimitedFiles
 using Statistics
 
+import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
+
 import ClimaTimeSteppers as CTS
+import NCDatasets
 using ClimaCore
 using ClimaCore: Remapping, Geometry
 import ClimaParams as CP
@@ -36,7 +39,6 @@ using ClimaLand:
     make_set_initial_cache,
     PrescribedAtmosphere,
     PrescribedRadiativeFluxes
-using ClimaLand.TimeVaryingInputs
 
 PROFILING = false
 try
@@ -67,6 +69,9 @@ outdir = joinpath(
     pkgdir(ClimaLand),
     "experiments/standalone/Bucket/artifacts_temporalmap",
 )
+device_suffix =
+    typeof(ClimaComms.context().device) <: ClimaComms.CPUSingleThreaded ?
+    "cpu" : "gpu"
 !ispath(outdir) && mkpath(outdir)
 # Use separate output directory for CPU and GPU runs to avoid race condition
 device_suffix =
@@ -108,8 +113,7 @@ function setup_prob(t0, tf, Δt)
 
     surface_space = bucket_domain.space.surface
     # Construct albedo parameter object using temporal map
-    albedo =
-        PrescribedSurfaceAlbedo{FT}(regrid_dir, ref_time, t0, surface_space)
+    albedo = PrescribedSurfaceAlbedo{FT}(ref_time, t0, surface_space)
 
     bucket_parameters = BucketModelParameters(FT; albedo, z_0m, z_0b, τc)
 

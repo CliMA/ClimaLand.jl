@@ -1,14 +1,17 @@
 using Test
 
+using ClimaUtilities.TimeManager
+using ClimaUtilities.DataHandling
+using ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
+using ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
 using ClimaCore
 using ClimaCore: Geometry, Meshes, Domains, Topologies, Spaces, Fields
 using ClimaComms
+import NCDatasets, ClimaCoreTempestRemap
 import ClimaParams as CP
 
 using Dates
 using NCDatasets
-using ClimaLand.Regridder: read_from_hdf5
-using ClimaLand.FileReader: next_date_in_file, to_datetime, get_data_at_date
 using ClimaLand.Bucket:
     BucketModel,
     BucketModelParameters,
@@ -16,15 +19,15 @@ using ClimaLand.Bucket:
     PrescribedSurfaceAlbedo,
     bareground_albedo_dataset_path,
     cesm2_albedo_dataset_path,
-    next_albedo
+    next_albedo!
 using ClimaLand.Domains: coordinates, Column, SphericalShell
 using ClimaLand:
     initialize,
     make_update_aux,
     make_set_initial_cache,
     PrescribedAtmosphere,
-    PrescribedRadiativeFluxes,
-    TimeVaryingInput
+    PrescribedRadiativeFluxes
+
 
 # Bucket model parameters
 import ClimaLand
@@ -55,11 +58,6 @@ function replace_nan_missing!(field::Fields.Field)
 end
 
 FT = Float32
-# Use two separate regrid dirs to avoid duplicate filenames since files have same varname
-regrid_dir_static = joinpath(pkgdir(ClimaLand), "test", "static")
-regrid_dir_temporal = joinpath(pkgdir(ClimaLand), "test", "temporal")
-isdir(regrid_dir_static) ? nothing : mkpath(regrid_dir_static)
-isdir(regrid_dir_temporal) ? nothing : mkpath(regrid_dir_temporal)
 
 @testset "Test next_albedo for PrescribedBaregroundAlbedo, from a function, FT = $FT" begin
     # set up each argument for function call
@@ -88,7 +86,9 @@ isdir(regrid_dir_temporal) ? nothing : mkpath(regrid_dir_temporal)
         Y_σS / (Y_σS + param_σS_c) * a_α_snow
     )
 
-    @test next_albedo(albedo, parameters, Y, p, FT(0)) == next_alb_manual
+    next_albedo!(p.bucket.α_sfc, albedo, parameters, Y, p, FT(0))
+
+    @test p.bucket.α_sfc == next_alb_manual
 end
 
 # Add tests which use TempestRemap here -
@@ -104,8 +104,7 @@ if !Sys.iswindows()
 
         # set up each argument for function call
         α_snow = FT(0.8)
-        albedo =
-            PrescribedBaregroundAlbedo{FT}(α_snow, regrid_dir_static, space)
+        albedo = PrescribedBaregroundAlbedo{FT}(α_snow, space)
 
         σS_c = FT(0.2)
         parameters = (; σS_c = σS_c)
@@ -126,7 +125,8 @@ if !Sys.iswindows()
             Y_σS / (Y_σS + param_σS_c) * a_α_snow
         )
 
-        @test next_albedo(albedo, parameters, Y, p, FT(0)) == next_alb_manual
+        next_albedo!(p.bucket.α_sfc, albedo, parameters, Y, p, FT(0))
+        @test p.bucket.α_sfc == next_alb_manual
     end
 
     @testset "Test next_albedo for PrescribedSurfaceAlbedo, FT = $FT" begin
@@ -136,24 +136,20 @@ if !Sys.iswindows()
         surface_coords = Fields.coordinate_field(space)
 
         infile_path = cesm2_albedo_dataset_path()
-        date_ref = to_datetime(NCDataset(infile_path, "r") do ds
+        date_ref_noleap = NCDataset(infile_path, "r") do ds
             ds["time"][1]
-        end)
+        end
+        date_ref = CFTime.reinterpret(DateTime, date_ref_noleap)
         t_start = Float64(0)
 
-        albedo = PrescribedSurfaceAlbedo{FT}(
-            regrid_dir_temporal,
-            date_ref,
-            t_start,
-            space,
-        )
+        albedo = PrescribedSurfaceAlbedo{FT}(date_ref, t_start, space)
 
         Y = (; bucket = (; W = Fields.zeros(space)))
         p = (; bucket = (; α_sfc = Fields.zeros(space)))
 
         # set up for manual data reading
         varname = "sw_alb"
-        file_dates = albedo.albedo_info.file_info.all_dates
+        file_dates = DataHandling.available_dates(albedo.albedo.data_handler)
 
         new_date = date_ref + Second(t_start)
         t_curr = t_start
@@ -161,12 +157,13 @@ if !Sys.iswindows()
             @assert new_date == file_dates[i]
 
             # manually read in data at this date (not testing interpolation)
-            field =
-                get_data_at_date(albedo.albedo_info, space, varname, new_date)
-            albedo_next = next_albedo(albedo, (;), Y, p, t_curr)
-            replace_nan_missing!(albedo_next)
-            replace_nan_missing!(field)
-            @test albedo_next == field
+            field = DataHandling.regridded_snapshot(
+                albedo.albedo.data_handler,
+                new_date,
+            )
+
+            next_albedo!(p.bucket.α_sfc, albedo, (;), Y, p, t_curr)
+            @test p.bucket.α_sfc == field
 
             # Update manual date to match next date in file
             dt = Second(file_dates[i + 1] - file_dates[i])
@@ -179,8 +176,6 @@ if !Sys.iswindows()
         earth_param_set = LP.LandParameters(FT)
         varname = "sw_alb"
         path = bareground_albedo_dataset_path()
-        regrid_dirpath = joinpath(pkgdir(ClimaLand), "test/albedo_tmpfiles/")
-        mkpath(regrid_dirpath)
         α_snow = FT(0.8)
         σS_c = FT(0.2)
         W_f = FT(0.15)
@@ -203,14 +198,10 @@ if !Sys.iswindows()
         for bucket_domain in bucket_domains
             if bucket_domain isa SphericalShell
                 surface_space = bucket_domain.space.surface
-                albedo = PrescribedBaregroundAlbedo{FT}(
-                    α_snow,
-                    regrid_dirpath,
-                    surface_space,
-                )
+                albedo = PrescribedBaregroundAlbedo{FT}(α_snow, surface_space)
 
                 # Radiation
-                ref_time = DateTime(2005)
+                ref_time = DateTime(2005, 1, 15, 12)
                 SW_d = (t) -> 0.0
                 LW_d = (t) -> 5.67e-8 * 280.0^4.0
                 bucket_rad = PrescribedRadiativeFluxes(
@@ -256,59 +247,25 @@ if !Sys.iswindows()
                 set_initial_cache!(p, Y, FT(0.0))
 
                 # Read in data manually
-                outfile_root = "static_data_cgll"
                 comms_ctx = ClimaComms.context(surface_space)
-                field = read_from_hdf5(
-                    regrid_dirpath,
-                    outfile_root,
-                    Dates.DateTime(0), # dummy date
-                    varname,
-                    surface_space,
-                )
-                replace_nan_missing!(field)
-                data_manual = field
-
-                @test p.bucket.α_sfc == data_manual
+                α_bareground = SpaceVaryingInput(path, varname, surface_space)
+                @test p.bucket.α_sfc == α_bareground
             else
                 surface_space = bucket_domain.space.surface
                 @test_throws "Using an albedo map requires a global run." PrescribedBaregroundAlbedo{
                     FT,
                 }(
                     α_snow,
-                    regrid_dirpath,
                     surface_space,
                 )
             end
         end
-        rm(regrid_dirpath, recursive = true)
-    end
-
-    @testset "Test PrescribedSurfaceAlbedo error with static map, FT = $FT" begin
-        get_infile = bareground_albedo_dataset_path
-        date_ref = Dates.DateTime(1900, 1, 1)
-        t_start = Float64(0)
-
-        # Test error for non-time varying data
-        domain = create_domain_2d(FT)
-        space = domain.space.surface
-
-        @test_throws "Using a temporal albedo map requires data with time dimension." PrescribedSurfaceAlbedo{
-            FT,
-        }(
-            regrid_dir_temporal,
-            date_ref,
-            t_start,
-            space,
-            get_infile = get_infile,
-        )
     end
 
     @testset "Test PrescribedSurfaceAlbedo - albedo from map over time, FT = $FT" begin
         earth_param_set = LP.LandParameters(FT)
         varname = "sw_alb"
         infile_path = cesm2_albedo_dataset_path()
-        regrid_dirpath = joinpath(pkgdir(ClimaLand), "test/albedo_tmpfiles/")
-        mkpath(regrid_dirpath)
 
         σS_c = FT(0.2)
         W_f = FT(0.15)
@@ -319,9 +276,10 @@ if !Sys.iswindows()
         init_temp(z::FT, value::FT) where {FT} = FT(value)
 
         t_start = Float64(0)
-        file_dates = to_datetime(NCDataset(infile_path, "r") do ds
+        file_dates_noleap = NCDataset(infile_path, "r") do ds
             ds["time"][:]
-        end)
+        end
+        file_dates = CFTime.reinterpret.(Ref(DateTime), file_dates_noleap)
         date_ref = file_dates[1]
 
         bucket_domains = [
@@ -337,14 +295,10 @@ if !Sys.iswindows()
         for bucket_domain in bucket_domains
             space = bucket_domain.space.surface
             if bucket_domain isa SphericalShell
-                albedo_model = PrescribedSurfaceAlbedo{FT}(
-                    regrid_dirpath,
-                    date_ref,
-                    t_start,
-                    space,
-                )
+                albedo_model =
+                    PrescribedSurfaceAlbedo{FT}(date_ref, t_start, space)
                 # Radiation
-                ref_time = DateTime(2005)
+                ref_time = DateTime(2005, 1, 15, 12)
                 SW_d = (t) -> 0
                 LW_d = (t) -> 5.67e-8 * 280.0^4.0
                 bucket_rad = PrescribedRadiativeFluxes(
@@ -360,7 +314,7 @@ if !Sys.iswindows()
                 q_atmos = (t) -> 0.0 # no atmos water
                 h_atmos = FT(1e-8)
                 P_atmos = (t) -> 101325
-                ref_time = DateTime(2005)
+                ref_time = DateTime(2005, 1, 15, 12)
                 bucket_atmos = PrescribedAtmosphere(
                     TimeVaryingInput(precip),
                     TimeVaryingInput(precip),
@@ -394,15 +348,11 @@ if !Sys.iswindows()
                 Y.bucket.σS .= 0.0
                 set_initial_cache! = make_set_initial_cache(model)
                 set_initial_cache!(p, Y, FT(0.0))
-                data_manual = get_data_at_date(
-                    albedo_model.albedo_info,
-                    model.domain.space.surface,
-                    varname,
+                data_manual = DataHandling.regridded_snapshot(
+                    albedo_model.albedo.data_handler,
                     date_ref,
                 )
-                # If there are any NaNs in the input data, replace them so we can compare results
-                replace_nan_missing!(p.bucket.α_sfc)
-                replace_nan_missing!(data_manual)
+
                 @test p.bucket.α_sfc == data_manual
 
                 update_aux! = make_update_aux(model)
@@ -412,14 +362,11 @@ if !Sys.iswindows()
                     @assert new_date == file_dates[i]
 
                     update_aux!(p, Y, t_curr)
-                    data_manual = get_data_at_date(
-                        albedo_model.albedo_info,
-                        model.domain.space.surface,
-                        varname,
-                        file_dates[i],
+                    data_manual = DataHandling.regridded_snapshot(
+                        albedo_model.albedo.data_handler,
+                        new_date,
                     )
-                    replace_nan_missing!(p.bucket.α_sfc)
-                    replace_nan_missing!(data_manual)
+
                     @test p.bucket.α_sfc == data_manual
 
                     # Update manual date to match next date in file
@@ -431,17 +378,11 @@ if !Sys.iswindows()
                 @test_throws "Using an albedo map requires a global run." PrescribedSurfaceAlbedo{
                     FT,
                 }(
-                    regrid_dirpath,
                     date_ref,
                     t_start,
                     space,
                 )
             end
         end
-        rm(regrid_dirpath, recursive = true)
     end
 end
-
-# Delete testing directory and files
-rm(regrid_dir_static; recursive = true, force = true)
-rm(regrid_dir_temporal; recursive = true, force = true)
