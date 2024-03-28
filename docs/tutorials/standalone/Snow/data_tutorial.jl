@@ -1,7 +1,7 @@
 # # Scraping SNOTEL Data
 
 # This tutorial shows you how to make use of the code developed
-# for scraping SNOTEL site data in order to generate datasets for use 
+# for scraping SNOTEL site data in order to generate datasets for use
 # in training artificial intelligence models for seasonal snow forecasting.
 # The code below contains a commented version of the code used to produce
 # `cleandata.csv`, which is used in the base tutorial for snow forecasting,
@@ -10,9 +10,15 @@
 # additional utility in creating alternative data sets for further investigation.
 
 # We begin by importing the data tools module, as well as other required packages:
-using ClimaLand.Snow.DataTools
 using ClimaLand
-using DataFrames, Dates, CSV #CSV is for saving, can leave out otherwise
+using DataFrames, CSV, HTTP, Dates, Flux, StatsBase, cuDNN
+
+# The code lives in an extenson that we have to manually load. The extension can
+# be loaded only if "CSV", "HTTP", "Flux", "StatsBase", "cuDNN" and "ClimaLand"
+# are loaded.
+DataTools = Base.get_extension(ClimaLand, :NeuralSnowExt).DataTools
+ModelTools = Base.get_extension(ClimaLand, :NeuralSnowExt).ModelTools
+
 
 # We then define constants that will be used in the cleaning of the SNOTEL data,
 # such as conversion constants from imperial to metric units, and the sensor limits
@@ -100,7 +106,7 @@ good_stations = Dict{Int, Tuple{String, String}}(
 # metadata that is used for analysis in the paper. This resulting `DataFrame`
 # can also be used to see other available SNOTEL station IDs for scraping,
 # in order to create custom datasets.
-metadata = snotel_metadata();
+metadata = DataTools.snotel_metadata();
 metacols = ["id", "state", "elev", "lat", "lon"]
 DataFrames.rename!(metadata, Symbol.(metacols));
 
@@ -120,19 +126,29 @@ for site in sort(collect(keys(good_stations)))
     state = metadata[metadata[!, :id] .== site, :state][1]
     start_date = good_stations[site][1]
     end_date = good_stations[site][2]
-    daily = apply_bounds(
-        sitedata_daily(site, state, start = start_date, finish = end_date),
+    daily = DataTools.apply_bounds(
+        DataTools.sitedata_daily(
+            site,
+            state,
+            start = start_date,
+            finish = end_date,
+        ),
         filter_val,
     )
-    hourly = apply_bounds(
-        sitedata_hourly(site, state, start = start_date, finish = end_date),
+    hourly = DataTools.apply_bounds(
+        DataTools.sitedata_hourly(
+            site,
+            state,
+            start = start_date,
+            finish = end_date,
+        ),
         filter_val,
     )
-    hourly_d = hourly2daily(hourly)
-    gap_daily = rectify_daily_hourly(daily, hourly_d)
-    daily_scaled = scale_cols(gap_daily, scales)
-    daily_clean = daily_scaled[completecases(daily_scaled), :]
-    daily_clean = makediffs(daily_clean, Day(1))
+    hourly_d = DataTools.hourly2daily(hourly)
+    gap_daily = DataTools.rectify_daily_hourly(daily, hourly_d)
+    daily_scaled = DataTools.scale_cols(gap_daily, scales)
+    daily_clean = daily_scaled[DataTools.completecases(daily_scaled), :]
+    daily_clean = DataTools.makediffs(daily_clean, Day(1))
     good_vals = daily_clean[!, :dprecipdt] .>= 0.0
     daily_clean = daily_clean[good_vals, Not(:precip)]
     #show(describe(daily_clean), allrows = true, allcols = true)

@@ -4,6 +4,9 @@ ClimaLand.jl Release Notes
 main
 --------
 
+- Moved neural snow to extension, reducing latency by a factor 2. PR
+  [#567](https://github.com/CliMA/ClimaLand.jl/pull/567)
+
 v0.11.1
 -------
 - ![][badge-✨feature] Add option to profile albedo job. PR
