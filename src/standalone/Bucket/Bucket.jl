@@ -45,7 +45,6 @@ import ClimaLand:
     initialize_vars,
     initialize,
     initialize_auxiliary,
-    make_set_initial_cache,
     surface_temperature,
     surface_air_density,
     surface_evaporative_scaling,
@@ -318,22 +317,6 @@ auxiliary_vars(::BucketModel) =
 auxiliary_domain_names(::BucketModel) =
     (:surface, :surface, :surface, :surface, :surface, :surface, :surface)
 
-"""
-    ClimaLand.make_set_initial_cache(model::BucketModel{FT}) where{FT}
-
-Returns the set_initial_cache! function, which updates the auxiliary
-state `p` in place with the initial values corresponding to Y(t=t0) = Y0.
-
-In this case, we also use this method to update the initial values for the
-spatially varying parameter fields, read in from data files.
-"""
-function ClimaLand.make_set_initial_cache(model::BucketModel)
-    update_cache! = make_update_cache(model)
-    function set_initial_cache!(p, Y0, t0)
-        update_cache!(p, Y0, t0)
-    end
-    return set_initial_cache!
-end
 
 """
     make_compute_exp_tendency(model::BucketModel{FT}) where {FT}

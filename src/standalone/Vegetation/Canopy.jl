@@ -20,12 +20,10 @@ import ClimaLand:
     make_update_boundary_fluxes,
     make_update_aux,
     make_compute_exp_tendency,
-    make_set_initial_cache,
     get_drivers
 
 using ClimaLand.Domains: Point, Plane, SphericalSurface
-export SharedCanopyParameters,
-    CanopyModel, set_canopy_prescribed_field!, update_canopy_prescribed_field!
+export SharedCanopyParameters, CanopyModel, set_canopy_prescribed_field!
 include("./component_models.jl")
 include("./soil_drivers.jl")
 include("./PlantHydraulics.jl")
@@ -359,25 +357,6 @@ function initialize_auxiliary(model::CanopyModel{FT}, coords) where {FT}
 end
 
 """
-    ClimaLand.make_set_initial_cache(model::CanopyModel)
-
-Returns the set_initial_cache! function, which updates the auxiliary
-state `p` in place with the initial values corresponding to Y(t=t0) = Y0.
-
-In this case, we also use this method to update the initial values for the
-spatially and temporally varying canopy parameter fields,
-read in from data files or otherwise prescribed.
-"""
-function ClimaLand.make_set_initial_cache(model::CanopyModel)
-    update_cache! = make_update_cache(model)
-    function set_initial_cache!(p, Y0, t0)
-        set_canopy_prescribed_field!(model.hydraulics, p, t0)
-        update_cache!(p, Y0, t0)
-    end
-    return set_initial_cache!
-end
-
-"""
      ClimaLand.make_update_aux(canopy::CanopyModel{FT,
                                                   <:AutotrophicRespirationModel,
                                                   <:Union{BeerLambertModel, TwoStreamModel},
@@ -416,7 +395,7 @@ function ClimaLand.make_update_aux(
         # Update the prescribed fields to the current time `t`,
         # prior to updating the rest of the auxiliary state to
         # the current time, as they depend on prescribed fields.
-        update_canopy_prescribed_field!(canopy.hydraulics, p, t)
+        set_canopy_prescribed_field!(canopy.hydraulics, p, t)
 
         # Other auxiliary variables being updated:
         Ra = p.canopy.autotrophic_respiration.Ra
