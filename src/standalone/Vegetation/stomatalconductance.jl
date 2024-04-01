@@ -11,7 +11,6 @@ $(DocStringExtensions.FIELDS)
 """
 Base.@kwdef struct MedlynConductanceParameters{FT <: AbstractFloat}
     "Relative diffusivity of water vapor (unitless)"
-    # TODO: move to ClimaParams"
     Drel::FT
     "Minimum stomatal conductance mol/m^2/s"
     g0::FT
