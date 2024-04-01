@@ -154,7 +154,8 @@ soil_driver = PrescribedSoil(
 # Now, setup the canopy model by component.
 # Provide arguments to each component, beginning with radiative transfer:
 
-rt_params = TwoStreamParameters{FT}(;
+rt_params = TwoStreamParameters(
+    FT;
     ld = FT(0.5),
     α_PAR_leaf = FT(0.1),
     α_NIR_leaf = FT(0.45),
@@ -168,12 +169,7 @@ rt_params = TwoStreamParameters{FT}(;
 rt_model = TwoStreamModel{FT}(rt_params);
 
 # Arguments for conductance model:
-
-cond_params = MedlynConductanceParameters{FT}(;
-    g1 = FT(141),
-    Drel = FT(1.6),
-    g0 = FT(1e-4),
-)
+cond_params = MedlynConductanceParameters(FT; g1 = FT(141.0))
 
 stomatal_model = MedlynConductanceModel{FT}(cond_params);
 

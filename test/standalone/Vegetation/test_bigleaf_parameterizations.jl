@@ -72,10 +72,10 @@ for FT in (Float32, Float64)
         earth_param_set = LP.LandParameters(FT)
         # Test with defaults
         ARparams = AutotrophicRespirationParameters(FT)
-        RTparams = BeerLambertParameters{FT}()
+        RTparams = BeerLambertParameters(FT)
         RT = BeerLambertModel{FT}(RTparams)
         photosynthesisparams = FarquharParameters(FT, C3())
-        stomatal_g_params = MedlynConductanceParameters{FT}()
+        stomatal_g_params = MedlynConductanceParameters(FT)
 
         LAI = FT(5.0) # m2 (leaf) m-2 (ground)
         RAI = FT(1.0)
