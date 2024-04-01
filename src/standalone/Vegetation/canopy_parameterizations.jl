@@ -206,7 +206,6 @@ function plant_absorbed_pfd(
     ϕ1 = 0.5 - 0.633 * χl - 0.33 * χl^2
     ϕ2 = 0.877 * (1 - 2 * ϕ1)
     μ = cos(θs)
-
     # Compute μ̄, the average inverse diffuse optical length per LAI
     μ̄ = 1 / ϕ2 * (1 - (ϕ1 / ϕ2) * log((ϕ1 + ϕ2) / ϕ1))
 
@@ -215,16 +214,18 @@ function plant_absorbed_pfd(
 
     ω = α_leaf + τ_leaf
 
+    divisor = isnan(μ * ϕ2 + ld) ? 1e-6 : min(μ * ϕ2 + ld, 1e-6)
+
     # Compute aₛ, the single scattering albedo
-    aₛ = 0.5 * ω * (ld / min(μ * ϕ2 + ld, 1e-6)) * (1 - (μ * ϕ1 / min(μ * ϕ2 + ld, 1e-6)) * log((μ * ϕ1 + min(μ * ϕ2 + ld, 1e-6)) / μ * ϕ1))
+    aₛ = 0.5 * ω * (ld / divisor) * (1 - (μ * ϕ1 / divisor) * log((μ * ϕ1 + divisor) / (μ * ϕ1)))
 
     # Compute β₀, the direct upscattering parameter
     β₀ = (1 / ω) * aₛ * (1 + μ̄ * K) / (μ̄ * K)
 
     # Compute β, the diffuse upscattering parameter
     diff = α_leaf - τ_leaf
-    # With uniform distribution, Dickinson integral becomes following:
-    c²θ̄ = pi * ld / 4
+    # Using the CLM approach with χl
+    c²θ̄ = ((1 + χl) / 2)^2
     β = 0.5 * (ω + diff * c²θ̄) / ω
 
     # Compute coefficients for two-stream solution 
@@ -405,11 +406,14 @@ end
                      θs::FT) where {FT}
 
 Computes the vegetation extinction coefficient (`K`), as a function
-of the sun zenith angle (`θs`), and the leaf angle distribution (`ld`).
+of the solar zenith angle (`θs`), and the leaf orientation index (`χl`).
 """
-function extinction_coeff(ld::FT, θs::FT) where {FT}
+function extinction_coeff(χl::FT, θs::FT) where {FT}
+    ϕ1 = 0.5 - 0.633 * χl - 0.33 * χl^2
+    ϕ2 = 0.877 * (1 - 2 * ϕ1)
+    ld = ϕ1 + ϕ2 * cos(θs)
     K = ld / max(cos(θs), eps(FT))
-    return K
+    return FT(K)
 end
 
 # 2. Photosynthesis, Farquhar model

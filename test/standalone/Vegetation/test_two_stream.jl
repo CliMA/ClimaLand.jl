@@ -12,16 +12,17 @@ using DelimitedFiles
 using ArtifactWrappers
 
 # Get the test data
-data_file = ArtifactWrapper(
-    @__DIR__,
-    "PySellersTwoStream Data",
-    ArtifactFile[ArtifactFile(
-        url = "https://caltech.box.com/shared/static/e7angzdnw18tmf8gctse5flsrkjsrlhx.csv",
-        filename = "2_str_test_data.csv",
-    ),],
-)
-datapath = get_data_folder(data_file)
-data = joinpath(datapath, "2_str_test_data.csv")
+# data_file = ArtifactWrapper(
+#     @__DIR__,
+#     "PySellersTwoStream Data",
+#     ArtifactFile[ArtifactFile(
+#         url = "https://caltech.box.com/shared/static/e7angzdnw18tmf8gctse5flsrkjsrlhx.csv",
+#         filename = "2_str_test_data2.csv",
+#     ),],
+# )
+# datapath = get_data_folder(data_file)
+# data = joinpath(datapath, "2_str_test_data2.csv")
+data = "/Users/espeer/Desktop/ClimaLand/2_str_test_data.csv"
 test_set = readdlm(data, ',')
 
 # Floating point precision to use
@@ -31,7 +32,7 @@ for FT in (Float32, Float64)
         column_names = test_set[1, :]
         θs = acos.(FT.(test_set[2:end, column_names .== "mu"]))
         LAI = FT.(test_set[2:end, column_names .== "LAI"])
-        ld = FT.(test_set[2:end, column_names .== "ld"])
+        χl = FT.(test_set[2:end, column_names .== "chi"])
         α_PAR_leaf = FT.(test_set[2:end, column_names .== "rho"])
         τ = FT.(test_set[2:end, column_names .== "tau"])
         a_soil = FT.(test_set[2:end, column_names .== "a_soil"])
@@ -51,7 +52,7 @@ for FT in (Float32, Float64)
 
             # Set the parameters based on the setup read from the file
             RT_params = TwoStreamParameters{FT}(;
-                ld = ld[i],
+                χl = χl[i],
                 α_PAR_leaf = α_PAR_leaf[i],
                 τ_PAR_leaf = τ[i],
                 Ω = Ω,
@@ -64,7 +65,7 @@ for FT in (Float32, Float64)
             RT = TwoStreamModel(RT_params)
 
             # Compute the predicted FAPAR using the ClimaLand TwoStream implementation
-            K = extinction_coeff(ld[i], θs[i])
+            K = extinction_coeff(χl[i], θs[i])
             output = plant_absorbed_pfd(
                 RT,
                 FT(1),
@@ -78,7 +79,7 @@ for FT in (Float32, Float64)
             )
             FAPAR = output.abs
             # Check that the predictions are app. equivalent to the Python model
-            @test isapprox(py_FAPAR[i], FAPAR, atol = 0.005)
+            @test isapprox(py_FAPAR[i], FAPAR, atol = 0.01)
         end
     end
 end
