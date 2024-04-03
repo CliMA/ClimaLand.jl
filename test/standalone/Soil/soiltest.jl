@@ -122,6 +122,7 @@ for FT in (Float32, Float64)
 
 
         ###
+        K_sat = FT(0)
         hyd_off_en_on = Soil.EnergyHydrologyParameters(
             FT;
             ν,
@@ -129,7 +130,7 @@ for FT in (Float32, Float64)
             ν_ss_quartz,
             ν_ss_gravel,
             hydrology_cm,
-            K_sat = FT(0),
+            K_sat,
             S_s,
             θ_r,
         )
@@ -152,13 +153,14 @@ for FT in (Float32, Float64)
             ρc_s = @. Soil.volumetric_heat_capacity(
                 Ysoil.soil.ϑ_l,
                 Ysoil.soil.θ_i,
-                params,
+                params.ρc_ds,
+                params.earth_param_set,
             )
             Ysoil.soil.ρe_int = @. Soil.volumetric_internal_energy.(
                 Ysoil.soil.θ_i,
                 ρc_s,
                 T,
-                params,
+                params.earth_param_set,
             )
         end
 
@@ -198,6 +200,7 @@ for FT in (Float32, Float64)
         ### the thermal conductivities to zero, but at the expense of being unreadable.
         ### Because this is only for a test, we tolerate it :)
         hyd_on_en_off = Soil.EnergyHydrologyParameters{
+            FT,
             FT,
             FT,
             typeof(hydrology_cm),
@@ -246,13 +249,14 @@ for FT in (Float32, Float64)
             ρc_s = @. Soil.volumetric_heat_capacity.(
                 Y.soil.ϑ_l,
                 Ysoil.soil.θ_i,
-                params,
+                params.ρc_ds,
+                params.earth_param_set,
             )
             Ysoil.soil.ρe_int = @. volumetric_internal_energy.(
                 Ysoil.soil.θ_i,
                 ρc_s,
                 FT(288),
-                params,
+                params.earth_param_set,
             )
         end
 
@@ -351,7 +355,7 @@ for FT in (Float32, Float64)
             parent(
                 Soil.volumetric_internal_energy_liq.(
                     p.soil.T,
-                    Ref(soil_water_on.parameters),
+                    Ref(soil_water_on.parameters.earth_param_set),
                 ),
             ),
         )
@@ -393,6 +397,7 @@ for FT in (Float32, Float64)
         ### the thermal conductivities to zero, but at the expense of being unreadable.
         ### Because this is only for a test, we tolerate it :)
         hyd_off_en_off = Soil.EnergyHydrologyParameters{
+            FT,
             FT,
             FT,
             typeof(hydrology_cm),
@@ -443,13 +448,14 @@ for FT in (Float32, Float64)
             ρc_s = @. Soil.volumetric_heat_capacity(
                 Ysoil.soil.ϑ_l,
                 Ysoil.soil.θ_i,
-                params,
+                params.ρc_ds,
+                params.earth_param_set,
             )
             Ysoil.soil.ρe_int = @. Soil.volumetric_internal_energy.(
                 Ysoil.soil.θ_i,
                 ρc_s,
                 T,
-                params,
+                params.earth_param_set,
             )
         end
 
@@ -508,10 +514,15 @@ for FT in (Float32, Float64)
             ρc_s = @. Soil.volumetric_heat_capacity.(
                 Y.soil.ϑ_l,
                 Ysoil.soil.θ_i,
-                params,
+                params.ρc_ds,
+                params.earth_param_set,
             )
-            Ysoil.soil.ρe_int =
-                @. volumetric_internal_energy.(Ysoil.soil.θ_i, ρc_s, T, params)
+            Ysoil.soil.ρe_int = @. volumetric_internal_energy.(
+                Ysoil.soil.θ_i,
+                ρc_s,
+                T,
+                params.earth_param_set,
+            )
         end
 
         t0 = FT(0)
@@ -533,7 +544,7 @@ for FT in (Float32, Float64)
             parent(
                 Soil.volumetric_internal_energy_liq.(
                     p.soil.T,
-                    Ref(soil_both_on.parameters),
+                    Ref(soil_both_on.parameters.earth_param_set),
                 ),
             ),
         )
@@ -681,13 +692,14 @@ for FT in (Float32, Float64)
             ρc_s = @. Soil.volumetric_heat_capacity(
                 Ysoil.soil.ϑ_l,
                 Ysoil.soil.θ_i,
-                params,
+                params.ρc_ds,
+                params.earth_param_set,
             )
             Ysoil.soil.ρe_int = @. Soil.volumetric_internal_energy.(
                 Ysoil.soil.θ_i,
                 ρc_s,
                 T,
-                params,
+                params.earth_param_set,
             )
         end
 

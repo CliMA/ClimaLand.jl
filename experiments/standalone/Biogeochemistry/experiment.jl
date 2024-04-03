@@ -132,9 +132,19 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
         Y.soil.ϑ_l .= FT(0.33)
         Y.soil.θ_i .= FT(0.1)
         T = FT(279.85)
-        ρc_s = Soil.volumetric_heat_capacity(FT(0.33), FT(0.1), params)
+        ρc_s = Soil.volumetric_heat_capacity(
+            FT(0.33),
+            FT(0.1),
+            params.ρc_ds,
+            params.earth_param_set,
+        )
         Y.soil.ρe_int .=
-            Soil.volumetric_internal_energy.(FT(0.0), ρc_s, T, Ref(params))
+            Soil.volumetric_internal_energy.(
+                FT(0.0),
+                ρc_s,
+                T,
+                params.earth_param_set,
+            )
     end
 
     function init_co2!(Y, z)

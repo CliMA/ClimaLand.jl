@@ -231,14 +231,14 @@ T_0 =
     drivers.TS.values[1 + Int(round(t0 / DATA_DT))] :
     drivers.TA.values[1 + Int(round(t0 / DATA_DT))] + 40# Get soil temperature at t0
 ρc_s =
-    volumetric_heat_capacity.(Y.soil.ϑ_l, Y.soil.θ_i, Ref(land.soil.parameters))
-Y.soil.ρe_int =
-    volumetric_internal_energy.(
+    volumetric_heat_capacity.(
+        Y.soil.ϑ_l,
         Y.soil.θ_i,
-        ρc_s,
-        T_0,
-        Ref(land.soil.parameters),
+        land.soil.parameters.ρc_ds,
+        earth_param_set,
     )
+Y.soil.ρe_int =
+    volumetric_internal_energy.(Y.soil.θ_i, ρc_s, T_0, earth_param_set)
 Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
 ψ_stem_0 = FT(-1e5 / 9800) # pressure in the leaf divided by rho_liquid*gravitational acceleration [m]
 ψ_leaf_0 = FT(-2e5 / 9800)

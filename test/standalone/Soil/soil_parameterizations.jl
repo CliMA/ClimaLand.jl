@@ -104,17 +104,21 @@ for FT in (Float32, Float64)
             FT(5.4e7),
             FT(0.05),
             FT(2.1415e6),
-            parameters,
+            param_set,
         ) == FT(_T_ref + (5.4e7 + 0.05 * _ρ_i * _LH_f0) / 2.1415e6)
 
-        @test volumetric_heat_capacity(FT(0.25), FT(0.05), parameters) ==
-              FT(ρc_ds + 0.25 * _ρcp_l + 0.05 * _ρcp_i)
+        @test volumetric_heat_capacity(
+            FT(0.25),
+            FT(0.05),
+            FT(ρc_ds),
+            param_set,
+        ) == FT(ρc_ds + 0.25 * _ρcp_l + 0.05 * _ρcp_i)
 
         @test volumetric_internal_energy(
             FT(0.05),
             FT(2.1415e6),
             FT(300),
-            parameters,
+            param_set,
         ) == FT(2.1415e6 * (300.0 - _T_ref) - 0.05 * _ρ_i * _LH_f0)
 
         @test κ_sat(FT(0.25), FT(0.05), FT(0.57), FT(2.29)) ≈
@@ -126,7 +130,15 @@ for FT in (Float32, Float64)
               FT((0.25 + 0.05) / 0.4)
 
         # ice fraction = 0
-        @test kersten_number(FT(0), FT(0.75), parameters) ≈ FT(
+        @test kersten_number(
+            FT(0),
+            FT(0.75),
+            parameters.α,
+            parameters.β,
+            ν_ss_om,
+            ν_ss_quartz,
+            ν_ss_gravel,
+        ) ≈ FT(
             0.75^((FT(1) + 0.1 - 0.24 * 0.1 - 0.1) / FT(2)) *
             (
                 (FT(1) + exp(-18.3 * 0.75))^(-FT(3)) -
@@ -135,13 +147,20 @@ for FT in (Float32, Float64)
         )
 
         # ice fraction ~= 0
-        @test kersten_number(FT(0.05), FT(0.75), parameters) ==
-              FT(0.75^(FT(1) + 0.1))
+        @test kersten_number(
+            FT(0.05),
+            FT(0.75),
+            parameters.α,
+            parameters.β,
+            ν_ss_om,
+            ν_ss_quartz,
+            ν_ss_gravel,
+        ) == FT(0.75^(FT(1) + 0.1))
 
         @test thermal_conductivity(FT(1.5), FT(0.7287), FT(0.7187)) ==
               FT(0.7287 * 0.7187 + (FT(1) - 0.7287) * 1.5)
 
-        @test volumetric_internal_energy_liq(FT(300), parameters) ==
+        @test volumetric_internal_energy_liq(FT(300), param_set) ==
               FT(_ρcp_l * (300.0 - _T_ref))
 
         @test Soil.κ_solid(FT(0.5), FT(0.25), FT(2.0), FT(3.0), FT(2.0)) ≈
@@ -171,12 +190,20 @@ for FT in (Float32, Float64)
         x = [0.35, 0.25, 0.0, 0.1]
         y = [0.0, 0.0, 0.1, 0.1 * 0.15 / 0.25]
         @test dry_soil_layer_thickness.(x, 0.25, 0.1) ≈ y
-        @test soil_resistance(θ_r, θ_r + eps(FT), parameters) ≈
+        @test soil_resistance(
+            θ_r + eps(FT),
+            θ_r,
+            parameters.hydrology_cm,
+            parameters.ν,
+            parameters.θ_r,
+            parameters.d_ds,
+            param_set,
+        ) ≈
               dry_soil_layer_thickness(
             Soil.effective_saturation(ν, 2 * θ_r + eps(FT), θ_r),
             hcm.S_c,
             parameters.d_ds,
-        ) / FT(LP.D_vapor(param_set)) / soil_tortuosity(θ_r, θ_r + eps(FT), ν)
+        ) / FT(LP.D_vapor(param_set)) / soil_tortuosity(θ_r + eps(FT), θ_r, ν)
     end
 
     @testset "Brooks and Corey closure, FT = $FT" begin
@@ -317,8 +344,8 @@ for FT in (Float32, Float64)
         )
 
         Δz = FT(1.0)
-        @test thermal_time(parameters.ρc_ds, Δz, parameters.κ_dry) ==
-              parameters.ρc_ds * Δz^2 / parameters.κ_dry
+        τ = thermal_time(parameters.ρc_ds, Δz, parameters.κ_dry)
+        @test τ == parameters.ρc_ds * Δz^2 / parameters.κ_dry
         θ_l = FT.([0.11, 0.15, ν])
         θ_i = FT(0.0)
         T = FT(273)
@@ -326,12 +353,14 @@ for FT in (Float32, Float64)
         ψ0 = @. matric_potential(hcm, Soil.effective_saturation(ν, θtot, θ_r))
         ψT = @.(_LH_f0 / _T_freeze / _grav * (T - _T_freeze))
         θ_star = @. inverse_matric_potential(hcm, ψ0 + ψT) * (ν - θ_r) + θ_r
+        ρc_s = volumetric_heat_capacity.(θ_l, θ_i, parameters.ρc_ds, param_set)
+        τ = thermal_time.(ρc_s, Δz, parameters.κ_dry)
         @test (
-            phase_change_source.(θ_l, θ_i, T, FT(1.0), Ref(parameters)) ≈
-            θ_l .- θ_star
+            phase_change_source.(θ_l, θ_i, T, τ, ν, θ_r, hcm, param_set) ≈
+            (θ_l .- θ_star) ./ τ
         )
         @test sum(
-            phase_change_source.(θ_l, θ_i, T, FT(1.0), Ref(parameters)) .> 0.0,
+            phase_change_source.(θ_l, θ_i, T, τ, ν, θ_r, hcm, param_set) .> 0.0,
         ) == 3
         # try θ_l = 0.1
 
@@ -342,8 +371,10 @@ for FT in (Float32, Float64)
         ψ0 = @. matric_potential(hcm, Soil.effective_saturation(ν, θtot, θ_r))
         ψT = FT(0.0)
         θ_star = @. inverse_matric_potential(hcm, ψ0 + ψT) * (ν - θ_r) + θ_r
+        ρc_s = volumetric_heat_capacity.(θ_l, θ_i, parameters.ρc_ds, param_set)
+        τ = thermal_time.(ρc_s, Δz, parameters.κ_dry)
         @test (
-            phase_change_source.(θ_l, θ_i, T, FT(1.0), Ref(parameters)) ≈
+            phase_change_source.(θ_l, θ_i, T, τ, ν, θ_r, hcm, param_set) ≈
             zeros(FT, 3)
         )
         @test (θ_star ≈ θ_l)
@@ -356,12 +387,14 @@ for FT in (Float32, Float64)
         ψ0 = @. matric_potential(hcm, Soil.effective_saturation(ν, θtot, θ_r))
         ψT = FT(0.0)
         θ_star = @. inverse_matric_potential(hcm, ψ0 + ψT) * (ν - θ_r) + θ_r
+        ρc_s = volumetric_heat_capacity.(θ_l, θ_i, parameters.ρc_ds, param_set)
+        τ = thermal_time.(ρc_s, Δz, parameters.κ_dry)
         @test (
-            phase_change_source.(θ_l, θ_i, T, FT(1.0), Ref(parameters)) ≈
-            θ_l .- θ_star
+            phase_change_source.(θ_l, θ_i, T, τ, ν, θ_r, hcm, param_set) ≈
+            (θ_l .- θ_star) ./ τ
         )
         @test sum(
-            phase_change_source.(θ_l, θ_i, T, FT(1.0), Ref(parameters)) .< 0.0,
+            phase_change_source.(θ_l, θ_i, T, τ, ν, θ_r, hcm, param_set) .< 0.0,
         ) == 2
 
 
@@ -372,12 +405,14 @@ for FT in (Float32, Float64)
         ψ0 = @. matric_potential(hcm, Soil.effective_saturation(ν, θtot, θ_r))
         ψT = @.(_LH_f0 / _T_freeze / _grav * (T - _T_freeze))
         θ_star = @. inverse_matric_potential(hcm, ψ0 + ψT) * (ν - θ_r) + θ_r
+        ρc_s = volumetric_heat_capacity.(θ_l, θ_i, parameters.ρc_ds, param_set)
+        τ = thermal_time.(ρc_s, Δz, parameters.κ_dry)
         @test (
-            phase_change_source.(θ_l, θ_i, T, FT(1.0), Ref(parameters)) ≈
-            θ_l .- θ_star
+            phase_change_source.(θ_l, θ_i, T, τ, ν, θ_r, hcm, param_set) ≈
+            (θ_l .- θ_star) ./ τ
         )
         @test sum(
-            phase_change_source.(θ_l, θ_i, T, FT(1.0), Ref(parameters)) .> 0.0,
+            phase_change_source.(θ_l, θ_i, T, τ, ν, θ_r, hcm, param_set) .> 0.0,
         ) == 2
     end
 end

@@ -236,8 +236,6 @@ function canopy_radiant_energy_fluxes!(
     @. p.canopy.radiative_transfer.SW_n =
         (energy_per_photon_PAR * N_a * APAR) +
         (energy_per_photon_NIR * N_a * ANIR)
-    LAI = p.canopy.hydraulics.area_index.leaf
-    SAI = p.canopy.hydraulics.area_index.stem
     ϵ_canopy = p.canopy.radiative_transfer.ϵ # this takes into account LAI/SAI
     # Long wave: use soil conditions from the PrescribedSoil driver
     T_soil::FT = s.T(t)

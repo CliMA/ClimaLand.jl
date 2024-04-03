@@ -174,7 +174,11 @@ for FT in (Float32, Float64)
                 kersten_number.(
                     θ_i,
                     relative_saturation.(ϑ_c, θ_i, ν),
-                    Ref(parameters),
+                    parameters.α,
+                    parameters.β,
+                    ν_ss_om,
+                    ν_ss_quartz,
+                    ν_ss_gravel,
                 ),
                 κ_sat.(
                     ϑ_c,

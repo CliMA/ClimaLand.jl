@@ -144,9 +144,14 @@ function init_soil!(Y, z, params)
     Y.soil.ϑ_l .= hydrostatic_equilibrium.(z, FT(-0.1), params)
     Y.soil.θ_i .= 0
     T = FT(275.0)
-    ρc_s = @. Soil.volumetric_heat_capacity(Y.soil.ϑ_l, FT(0), params)
+    ρc_s = @. Soil.volumetric_heat_capacity(
+        Y.soil.ϑ_l,
+        FT(0),
+        params.ρc_ds,
+        params.earth_param_set,
+    )
     Y.soil.ρe_int =
-        Soil.volumetric_internal_energy.(FT(0), ρc_s, T, Ref(params))
+        Soil.volumetric_internal_energy.(FT(0), ρc_s, T, params.earth_param_set)
 end
 init_soil!(Y, z, soil.parameters);
 

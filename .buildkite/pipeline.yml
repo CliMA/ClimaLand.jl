@@ -109,6 +109,12 @@ steps:
         agents:
           slurm_mem: 16G
 
+      - label: "Global Run CPU"
+        command: "julia --color=yes --project=.buildkite experiments/integrated/global/global_soil_canopy.jl"
+        artifact_paths: "experiments/integrated/global/plots/*png"
+        agents:
+          slurm_mem: 16G
+
   - group: "Experiments on GPU"
     steps:
       - label: "Richards Runoff GPU"

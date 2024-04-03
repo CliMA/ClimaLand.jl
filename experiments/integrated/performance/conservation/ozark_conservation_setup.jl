@@ -209,14 +209,14 @@ Y.soil.ϑ_l = drivers.SWC.values[1 + Int(round(t0 / 1800))] # Get soil water con
 Y.soil.θ_i = FT(0.0)
 T_0 = FT(drivers.TS.values[1 + Int(round(t0 / 1800))]) # Get soil temperature at t0
 ρc_s =
-    volumetric_heat_capacity.(Y.soil.ϑ_l, Y.soil.θ_i, Ref(land.soil.parameters))
-Y.soil.ρe_int =
-    volumetric_internal_energy.(
+    volumetric_heat_capacity.(
+        Y.soil.ϑ_l,
         Y.soil.θ_i,
-        ρc_s,
-        T_0,
-        Ref(land.soil.parameters),
+        land.soil.parameters.ρc_ds,
+        earth_param_set,
     )
+Y.soil.ρe_int =
+    volumetric_internal_energy.(Y.soil.θ_i, ρc_s, T_0, earth_param_set)
 
 Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
 
