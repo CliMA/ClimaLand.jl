@@ -21,7 +21,10 @@ using Dates
 using DelimitedFiles
 using Statistics
 
+import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
+
 import ClimaTimeSteppers as CTS
+import NCDatasets
 using ClimaCore
 using ClimaCore: Remapping, Geometry
 import ClimaParams as CP
@@ -38,7 +41,6 @@ using ClimaLand:
     make_set_initial_cache,
     PrescribedAtmosphere,
     PrescribedRadiativeFluxes
-using ClimaLand.TimeVaryingInputs
 
 """
    compute_extrema(v)
@@ -98,7 +100,7 @@ regrid_dir = joinpath(
 !ispath(regrid_dir) && mkpath(regrid_dir)
 surface_space = bucket_domain.space.surface
 α_snow = FT(0.8)
-albedo = PrescribedBaregroundAlbedo{FT}(α_snow, regrid_dir, surface_space);
+albedo = PrescribedBaregroundAlbedo{FT}(α_snow, surface_space);
 
 bucket_parameters = BucketModelParameters(FT; albedo, z_0m, z_0b, τc);
 

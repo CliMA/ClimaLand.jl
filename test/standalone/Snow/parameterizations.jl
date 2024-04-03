@@ -25,14 +25,15 @@ for FT in (Float32, Float64)
 
         ρ_snow = FT(200)
         z_0m = FT(0.0024)
-        z_0b = FT(0.00024)
         α_snow = FT(0.8)
-        ϵ_snow = FT(0.99)
+        # These values should match ClimaParams
+        ϵ_snow = FT(0.97)
+        z_0b = FT(0.08)
         θ_r = FT(0.08)
         Ksat = FT(1e-3)
         κ_ice = FT(2.21)
         Δt = Float64(180.0)
-        parameters = SnowParameters{FT}(Δt; earth_param_set = param_set)
+        parameters = SnowParameters(FT, Δt)
         @test parameters.ρ_snow == ρ_snow
         @test typeof(parameters.ρ_snow) == FT
         @test parameters.z_0m == z_0m

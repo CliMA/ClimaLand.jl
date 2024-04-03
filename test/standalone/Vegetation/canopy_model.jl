@@ -6,7 +6,7 @@ using Dates
 using StaticArrays
 using ClimaLand
 using ClimaLand: PrescribedAtmosphere, PrescribedRadiativeFluxes
-using ClimaLand: TimeVaryingInput
+using ClimaUtilities.TimeVaryingInputs: TimeVaryingInput, evaluate!
 using ClimaLand.Canopy
 using ClimaLand.Canopy.PlantHydraulics
 using ClimaLand.Domains: Point
@@ -14,15 +14,16 @@ import Insolation
 
 import ClimaLand
 import ClimaLand.Parameters as LP
+import ClimaParams
 
 for FT in (Float32, Float64)
     @testset "Canopy software pipes, FT = $FT" begin
         domain = Point(; z_sfc = FT(0.0))
 
         AR_params = AutotrophicRespirationParameters(FT)
-        RTparams = BeerLambertParameters{FT}()
+        RTparams = BeerLambertParameters(FT)
         photosynthesis_params = FarquharParameters(FT, C3())
-        stomatal_g_params = MedlynConductanceParameters{FT}()
+        stomatal_g_params = MedlynConductanceParameters(FT)
 
         AR_model = AutotrophicRespirationModel{FT}(AR_params)
         stomatal_model = MedlynConductanceModel{FT}(stomatal_g_params)
@@ -481,9 +482,9 @@ for FT in (Float32, Float64)
     @testset "Canopy software pipes with energy model, FT = $FT" begin
         domain = Point(; z_sfc = FT(0.0))
 
-        RTparams = BeerLambertParameters{FT}()
+        RTparams = BeerLambertParameters(FT)
         photosynthesis_params = FarquharParameters(FT, C3())
-        stomatal_g_params = MedlynConductanceParameters{FT}()
+        stomatal_g_params = MedlynConductanceParameters(FT)
 
         stomatal_model = MedlynConductanceModel{FT}(stomatal_g_params)
         photosynthesis_model = FarquharModel{FT}(photosynthesis_params)
@@ -658,7 +659,8 @@ for FT in (Float32, Float64)
             atmos = atmos,
             radiation = radiation,
         )
-        @test canopy.radiative_transfer.parameters.ϵ_canopy == FT(0.98)
+        # This test needs to match ClimaParams `canopy_emissivity`
+        @test canopy.radiative_transfer.parameters.ϵ_canopy == FT(0.97)
         @test canopy.energy.parameters.ac_canopy == FT(2.0e3)
         Y, p, coords = ClimaLand.initialize(canopy)
 

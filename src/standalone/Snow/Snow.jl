@@ -9,7 +9,7 @@ export SnowParameters
 A struct for storing parameters of the `SnowModel`.
 $(DocStringExtensions.FIELDS)
 """
-struct SnowParameters{FT <: AbstractFloat, PSE}
+Base.@kwdef struct SnowParameters{FT <: AbstractFloat, PSE}
     "Density of snow (kg/m^3)"
     ρ_snow::FT
     "Roughness length over snow for momentum (m)"
@@ -34,56 +34,6 @@ struct SnowParameters{FT <: AbstractFloat, PSE}
     earth_param_set::PSE
 end
 
-"""
-   SnowParameters{FT}(Δt;
-                      ρ_snow = FT(200),
-                      z_0m = FT(0.0024),
-                      z_0b = FT(0.00024),
-                      α_snow = FT(0.8),
-                      ϵ_snow = FT(0.99),
-                      θ_r = FT(0.08),
-                      Ksat = FT(1e-3),
-                      fS_c = FT(0.2),
-                      κ_ice = FT(2.21),
-                      earth_param_set::PSE) where {FT, PSE}
-
-An outer constructor for `SnowParameters` which supplies defaults for
-all arguments but `earth_param_set`.
-"""
-function SnowParameters{FT}(
-    Δt;
-    ρ_snow = FT(200),
-    z_0m = FT(0.0024),
-    z_0b = FT(0.00024),
-    α_snow = FT(0.8),
-    ϵ_snow = FT(0.99),
-    θ_r = FT(0.08),
-    Ksat = FT(1e-3),
-    fS_c = FT(0.2),
-    κ_ice = FT(2.21),
-    earth_param_set::PSE,
-) where {FT <: AbstractFloat, PSE}
-    return SnowParameters{FT, PSE}(
-        ρ_snow,
-        z_0m,
-        z_0b,
-        α_snow,
-        ϵ_snow,
-        θ_r,
-        Ksat,
-        fS_c,
-        κ_ice,
-        Δt,
-        earth_param_set,
-    )
-end
-
-
 include("./snow_parameterizations.jl")
-
-include("./neural_snow/DataTools.jl")
-using .DataTools
-include("./neural_snow/ModelTools.jl")
-using .ModelTools
 
 end

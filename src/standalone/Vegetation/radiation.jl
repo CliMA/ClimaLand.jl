@@ -14,7 +14,7 @@ abstract type AbstractRadiationModel{FT} <: AbstractCanopyComponent{FT} end
 The required parameters for the Beer-Lambert radiative transfer model.
 $(DocStringExtensions.FIELDS)
 """
-struct BeerLambertParameters{FT <: AbstractFloat}
+Base.@kwdef struct BeerLambertParameters{FT <: AbstractFloat}
     "Leaf angle distribution function (unitless)"
     ld::FT
     "PAR leaf reflectance (unitless)"
@@ -29,39 +29,6 @@ struct BeerLambertParameters{FT <: AbstractFloat}
     λ_γ_PAR::FT
     "Typical wavelength per NIR photon (m)"
     λ_γ_NIR::FT
-end
-
-"""
-    function BeerLambertParameters{FT}(;
-        ld = FT(0.5),
-        α_PAR_leaf = FT(0.1),
-        α_NIR_leaf = FT(0.4),
-        ϵ_canopy = FT(0.98),
-        Ω = FT(1),
-        λ_γ_PAR = FT(5e-7),
-        λ_γ_NIR = FT(1.65e-6),
-    ) where {FT}
-
-A constructor supplying default values for the BeerLambertParameters struct.
-        """
-function BeerLambertParameters{FT}(;
-    ld = FT(0.5),
-    α_PAR_leaf = FT(0.1),
-    α_NIR_leaf = FT(0.4),
-    ϵ_canopy = FT(0.98),
-    Ω = FT(1),
-    λ_γ_PAR = FT(5e-7),
-    λ_γ_NIR = FT(1.65e-6),
-) where {FT}
-    return BeerLambertParameters{FT}(
-        ld,
-        α_PAR_leaf,
-        α_NIR_leaf,
-        ϵ_canopy,
-        Ω,
-        λ_γ_PAR,
-        λ_γ_NIR,
-    )
 end
 
 Base.eltype(::BeerLambertParameters{FT}) where {FT} = FT
@@ -83,7 +50,7 @@ end
 The required parameters for the two-stream radiative transfer model.
 $(DocStringExtensions.FIELDS)
 """
-struct TwoStreamParameters{FT <: AbstractFloat}
+Base.@kwdef struct TwoStreamParameters{FT <: AbstractFloat}
     "Leaf angle distribution function (unitless)"
     ld::FT
     "PAR leaf reflectance (unitless)"
@@ -124,32 +91,7 @@ end
     ) where {FT}
 
 A constructor supplying default values for the TwoStreamParameters struct.
-    """
-function TwoStreamParameters{FT}(;
-    ld = FT(0.5),
-    α_PAR_leaf = FT(0.3),
-    τ_PAR_leaf = FT(0.2),
-    α_NIR_leaf = FT(0.4),
-    τ_NIR_leaf = FT(0.25),
-    ϵ_canopy = FT(0.98),
-    Ω = FT(1),
-    λ_γ_PAR = FT(5e-7),
-    λ_γ_NIR = FT(1.65e-6),
-    n_layers = UInt64(20),
-) where {FT}
-    return TwoStreamParameters{FT}(
-        ld,
-        α_PAR_leaf,
-        τ_PAR_leaf,
-        α_NIR_leaf,
-        τ_NIR_leaf,
-        ϵ_canopy,
-        Ω,
-        λ_γ_PAR,
-        λ_γ_NIR,
-        n_layers,
-    )
-end
+"""
 
 Base.eltype(::TwoStreamParameters{FT}) where {FT} = FT
 
