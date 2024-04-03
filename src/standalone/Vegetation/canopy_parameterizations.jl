@@ -27,6 +27,35 @@ export plant_absorbed_pfd,
 # 1. Radiative transfer
 
 """
+    compute_G(
+        G::ConstantGFunction{FT},
+        _::FT,
+    )
+
+Returns the constant leaf angle distribution value for the given G function.
+Takes in an arbitrary value for the solar zenith angle, which is not used.
+"""
+function compute_G(G::ConstantGFunction{FT}, _::FT) where {FT}
+    return G.ld
+end
+
+"""
+    compute_G(
+        G::CLMGFunction{FT},
+        θs::FT,
+    )
+
+Returns the leaf angle distribution value for CLM G function as a function of the 
+solar zenith angle and the leaf orientation index. See section 3.1 of 
+https://www2.cesm.ucar.edu/models/cesm2/land/CLM50_Tech_Note.pdf
+"""
+function compute_G(G::CLMGFunction{FT}, θs::FT) where {FT}
+    ϕ1 = 0.5 - 0.633 * G.χl - 0.33 * G.χl^2
+    ϕ2 = 0.877 * (1 - 2 * ϕ1)
+    return FT(ϕ1 + ϕ2 * cos(θs))
+end
+
+"""
     compute_absorbances(
         RT::BeerLambertModel{FT},
         PAR,
@@ -201,10 +230,13 @@ function plant_absorbed_pfd(
     frac_diff::FT,
 ) where {FT}
 
-    (; ld, Ω, n_layers) = RT.parameters
+    (; G_Function, Ω, n_layers) = RT.parameters
+
+    # Get the current leaf angular distribution value based on the solar zenith angle
+    G = compute_G(G_Function, θs)
 
     # Compute μ̄, the average inverse diffuse optical length per LAI
-    μ̄ = 1 / (2 * ld)
+    μ̄ = 1 / (2G)
 
     ω = α_leaf + τ_leaf
 
@@ -217,7 +249,7 @@ function plant_absorbed_pfd(
     # Compute β, the diffuse upscattering parameter
     diff = α_leaf - τ_leaf
     # With uniform distribution, Dickinson integral becomes following:
-    c²θ̄ = pi * ld / 4
+    c²θ̄ = pi * G / 4
     β = 0.5 * (ω + diff * c²θ̄) / ω
 
     # Compute coefficients for two-stream solution 
@@ -400,7 +432,11 @@ end
 Computes the vegetation extinction coefficient (`K`), as a function
 of the sun zenith angle (`θs`), and the leaf angle distribution (`ld`).
 """
-function extinction_coeff(ld::FT, θs::FT) where {FT}
+function extinction_coeff(
+    G::Union{ConstantGFunction{FT}, CLMGFunction{FT}},
+    θs::FT,
+) where {FT}
+    ld = FT(compute_G(G, θs))
     K = ld / max(cos(θs), eps(FT))
     return K
 end

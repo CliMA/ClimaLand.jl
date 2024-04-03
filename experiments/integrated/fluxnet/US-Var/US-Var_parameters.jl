@@ -44,6 +44,7 @@ soil_α_NIR = FT(0.4)
 # TwoStreamModel parameters
 Ω = FT(1.0)
 ld = FT(0.5)
+G_Function = ConstantGFunction(ld)
 α_PAR_leaf = FT(0.11)
 λ_γ_PAR = FT(5e-7)
 λ_γ_NIR = FT(1.65e-6)

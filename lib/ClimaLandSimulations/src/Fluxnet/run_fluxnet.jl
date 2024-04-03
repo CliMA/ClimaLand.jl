@@ -114,7 +114,7 @@ function run_fluxnet(
         parameters = TwoStreamParameters(
             FT;
             Ω = params.radiative_transfer.Ω,
-            ld = params.radiative_transfer.ld,
+            G_Function = params.radiative_transfer.G_Function,
             α_PAR_leaf = params.radiative_transfer.α_PAR_leaf,
             λ_γ_PAR = params.radiative_transfer.λ_γ_PAR,
             λ_γ_NIR = params.radiative_transfer.λ_γ_NIR,
