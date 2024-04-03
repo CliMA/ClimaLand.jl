@@ -1,39 +1,3 @@
-using ArtifactWrappers
-#currently not being used
-#=
-# Read in f_max data and land sea mask
-topmodel_dataset = ArtifactWrapper(
-    @__DIR__,
-    "processed_topographic_index 2.5 deg",
-    ArtifactFile[ArtifactFile(
-        url = "https://caltech.box.com/shared/static/dwa7g0uzhxd50a2z3thbx3a12n0r887s.nc",
-        filename = "means_2.5_new.nc",
-    ),],
-)
-infile_path = joinpath(get_data_folder(topmodel_dataset), "means_2.5_new.nc")
-
-f_max = SpaceVaryingInput(
-    infile_path,
-    "fmax",
-    surface_space;
-    regridder_type
-)
-mask = SpaceVaryingInput(
-    infile_path,
-    "landsea_mask",
-    surface_space;
-    regridder_type
-)
-
-oceans_to_zero(field, mask) = mask > 0.5 ? field : eltype(field)(0)
-f_over = FT(3.28) # 1/m
-R_sb = FT(1.484e-4 / 1000) # m/s
-runoff_model = ClimaLand.Soil.Runoff.TOPMODELRunoff{FT}(;
-    f_over = f_over,
-    f_max = f_max,
-    R_sb = R_sb,
-)
-=#
 soil_params_artifact_path =
     ClimaLand.Artifacts.soil_params_artifact_folder_path(; context)
 extrapolation_bc =
@@ -157,7 +121,27 @@ soil_params = Soil.EnergyHydrologyParameters(
     PAR_albedo = PAR_albedo,
     NIR_albedo = NIR_albedo,
 );
+soil_params_mask_sfc = ClimaLand.Domains.top_center_to_surface(soil_params_mask)
 
+# Read in f_max data and land sea mask
+infile_path = ClimaLand.Artifacts.topmodel_data_path()
+f_max = SpaceVaryingInput(infile_path, "fmax", surface_space; regridder_type)
+mask = SpaceVaryingInput(
+    infile_path,
+    "landsea_mask",
+    surface_space;
+    regridder_type,
+)
+# Unsure how to handle two masks
+f_max = oceans_to_value.(f_max, mask, FT(0.0))
+f_max = oceans_to_value.(f_max, soil_params_mask_sfc, FT(0.0))
+f_over = FT(3.28) # 1/m
+R_sb = FT(1.484e-4 / 1000) # m/s
+runoff_model = ClimaLand.Soil.Runoff.TOPMODELRunoff{FT}(;
+    f_over = f_over,
+    f_max = f_max,
+    R_sb = R_sb,
+)
 
 # TwoStreamModel parameters
 Ω = FT(0.69)
@@ -180,7 +164,7 @@ Vcmax25 = FT(9e-5) # from Yujie's paper 4.5e-5 , Natan used 9e-5
 SAI = FT(0.0) # m2/m2
 f_root_to_shoot = FT(3.5)
 RAI = FT(1.0)
-K_sat_plant = 5e-9 # m/s # seems much too small?
+K_sat_plant = FT(5e-9) # m/s # seems much too small?
 ψ63 = FT(-4 / 0.0098) # / MPa to m, Holtzman's original parameter value is -4 MPa
 Weibull_param = FT(4) # unitless, Holtzman's original c param value
 a = FT(0.05 * 0.0098) # Holtzman's original parameter for the bulk modulus of elasticity
@@ -192,9 +176,9 @@ plant_S_s = FT(1e-2 * 0.0098) # m3/m3/MPa to m3/m3/m
 rooting_depth = FT(0.5) # from Natan
 n_stem = 0
 n_leaf = 1
-h_stem = 0.0
-h_leaf = 1.0
-zmax = 0.0
+h_stem = FT(0.0)
+h_leaf = FT(1.0)
+zmax = FT(0.0)
 h_canopy = h_stem + h_leaf
 compartment_midpoints =
     n_stem > 0 ? [h_stem / 2, h_stem + h_leaf / 2] : [h_leaf / 2]

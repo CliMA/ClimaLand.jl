@@ -295,7 +295,7 @@ canopy_model_args = (;
 )
 
 # Integrated plant hydraulics and soil model
-land_input = (atmos = atmos, radiation = radiation)
+land_input = (atmos = atmos, radiation = radiation, runoff = runoff_model)
 land = SoilCanopyModel{FT}(;
     soilco2_type = soilco2_type,
     soilco2_args = soilco2_args,
@@ -332,8 +332,6 @@ Y.soil.ρe_int .=
         soil_params.earth_param_set,
     )
 Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
-# On the Caltech cluster, this is not permitted, so we allowscalar.
-# This operation is fine on clima cluster
 Y.canopy.hydraulics.ϑ_l.:1 .= plant_ν
 evaluate!(Y.canopy.energy.T, atmos.T, t0)
 
@@ -349,7 +347,7 @@ ode_algo = CTS.IMEXAlgorithm(
     stepper,
     CTS.NewtonsMethod(
         max_iters = 1,
-        update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
+        update_j = CTS.UpdateEvery(CTS.NewTimeStep),
         convergence_checker = conv_checker,
     ),
 )
@@ -415,8 +413,7 @@ if device_suffix == "cpu"
         "Incident SW",
     ]
     plotnames = ["S", "Sice", "temp", "gpp", "temp_canopy", "sw"]
-    mask_top = ClimaLand.Domains.top_center_to_surface(soil_params_mask)
-    mask_remap = ClimaCore.Remapping.interpolate(remapper, mask_top)
+    mask_remap = ClimaCore.Remapping.interpolate(remapper, soil_params_mask_sfc)
     for (id, x) in enumerate(fields)
         title = titles[id]
         plotname = plotnames[id]

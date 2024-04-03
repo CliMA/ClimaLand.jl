@@ -88,13 +88,19 @@ function SoilCanopyModel{FT}(;
     MM <: Soil.Biogeochemistry.SoilCO2Model{FT},
 }
 
-    # These may be passed in, or set, depending on use scenario.
     (; atmos, radiation) = land_args
     # These should always be set by the constructor.
     sources = (RootExtraction{FT}(), Soil.PhaseChange{FT}())
-    # How to add TOPMODEL??
-    top_bc =
-        ClimaLand.Soil.AtmosDrivenFluxBC(atmos, CanopyRadiativeFluxes{FT}())
+    if :runoff ∈ propertynames(land_args)
+        top_bc = ClimaLand.Soil.AtmosDrivenFluxBC(
+            atmos,
+            CanopyRadiativeFluxes{FT}(),
+            land_args.runoff,
+        )
+    else #no runoff model
+        top_bc =
+            ClimaLand.Soil.AtmosDrivenFluxBC(atmos, CanopyRadiativeFluxes{FT}())
+    end
     zero_flux = Soil.HeatFluxBC((p, t) -> 0.0)
     boundary_conditions = (;
         top = top_bc,
