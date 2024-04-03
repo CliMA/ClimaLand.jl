@@ -20,9 +20,10 @@ using CairoMakie
 using Dates
 using DelimitedFiles
 using Statistics
+using Artifacts
 
 import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
-
+import ClimaUtilities.DataHandling
 import ClimaTimeSteppers as CTS
 import NCDatasets
 using ClimaCore
@@ -104,6 +105,15 @@ albedo = PrescribedBaregroundAlbedo{FT}(α_snow, surface_space);
 
 bucket_parameters = BucketModelParameters(FT; albedo, z_0m, z_0b, τc);
 
+# Forcing data
+era5_artifact_path = ;
+precip_data_handler = DataHandling.DataHandler(
+    era5_artifact_path,
+    "Pliq",
+    space;
+    reference_date = date_ref,
+    t_start,
+)
 # Precipitation:
 precip = (t) -> 0;
 snow_precip = (t) -> -5e-7 * (t < 1 * 86400);
