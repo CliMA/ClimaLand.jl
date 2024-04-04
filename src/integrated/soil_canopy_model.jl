@@ -477,7 +477,7 @@ function PlantHydraulics.root_water_flux_per_ground_area!(
     p::NamedTuple,
     t,
 ) where {FT}
-    fa .= sum(p.root_extraction)
+    ClimaCore.Operators.column_integral_definite!(fa, p.root_extraction)
 end
 
 
@@ -511,7 +511,10 @@ function Canopy.root_energy_flux_per_ground_area!(
     p::NamedTuple,
     t,
 ) where {FT}
-    fa_energy .= sum(p.root_energy_extraction)
+    ClimaCore.Operators.column_integral_definite!(
+        fa_energy,
+        p.root_energy_extraction,
+    )
 end
 
 """

@@ -3,8 +3,11 @@ ClimaLand.jl Release Notes
 
 main
 --------
-
-
+-  Add profiling of soil/canopy model to buildkite pipeline. This was the
+   first global run of this model, and we also fixed dss! for tuple-valued fields,
+   changed how we compute the zenith angle to allow for 2d fields, and changed
+   instances of `sum` to a column integral.
+   PR [#561](https://github.com/CliMA/ClimaLand.jl/pull/561)
 - ![][badge-✨feature] Use
   [ClimaUtilities](https://github.com/CliMA/ClimaUtilities.jl) for `Space` and
   `Time` `VaryingInputs`. This adds support to non-conservative MPI/GPU

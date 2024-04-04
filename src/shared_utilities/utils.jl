@@ -165,7 +165,23 @@ function dss_helper!(
     p::NamedTuple,
 )
     buffer = p.dss_buffer_2d
-    ClimaCore.Spaces.weighted_dss!(field, buffer)
+    # The buffer is set up expecting a single scalar at each point in
+    # the space. if the field element type is a scalar, we are ready to
+    # compute the dss. However, if the field is Tuple-valued,
+    # we need to carry out the dss for each element of the tuple (each
+    # of which is equivalent to a scalar valued field)
+    field_element_type = eltype(field)
+    if field_element_type <: AbstractFloat
+        ClimaCore.Spaces.weighted_dss!(field, buffer)
+    elseif field_element_type <: Tuple
+        n = length(field_element_type.types)
+        for i in 1:n
+            ClimaCore.Spaces.weighted_dss!(field.:($i), buffer)
+        end
+    else
+        @error("No DSS method defined for your field type.")
+    end
+
 end
 
 """
