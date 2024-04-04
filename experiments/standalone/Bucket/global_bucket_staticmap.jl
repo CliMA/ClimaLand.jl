@@ -20,7 +20,8 @@ using CairoMakie
 using Dates
 using DelimitedFiles
 using Statistics
-using Artifacts
+using ClimaUtilities.ClimaArtifacts
+import Interpolations 
 
 import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
 import ClimaUtilities.DataHandling
@@ -56,7 +57,7 @@ function compute_extrema(v)
     return (minimum(mins), maximum(maxes))
 end
 
-anim_plots = false
+anim_plots = true
 FT = Float64;
 context = ClimaComms.context()
 earth_param_set = LP.LandParameters(FT);
@@ -71,11 +72,11 @@ soil_depth = FT(3.5);
 bucket_domain = ClimaLand.Domains.SphericalShell(;
     radius = FT(6.3781e6),
     depth = soil_depth,
-    nelements = (10, 10),
+    nelements = (100, 10),
     npolynomial = 1,
     dz_tuple = FT.((1.0, 0.05)),
 );
-ref_time = DateTime(2005);
+ref_time = DateTime(2021);
 
 # Set up parameters
 σS_c = FT(0.2);
@@ -87,18 +88,14 @@ z_0b = FT(1e-3);
 τc = FT(3600);
 t0 = 0.0;
 tf = 7 * 86400;
-Δt = 3600.0;
+Δt = 3600.0/3;
 
 # Construct albedo parameter object using static map
 # Use separate regridding directory for CPU and GPU runs to avoid race condition
 device_suffix =
     typeof(ClimaComms.context().device) <: ClimaComms.CPUSingleThreaded ?
     "cpu" : "gpu"
-regrid_dir = joinpath(
-    pkgdir(ClimaLand),
-    "experiments/standalone/Bucket/$device_suffix/regrid-static/",
-)
-!ispath(regrid_dir) && mkpath(regrid_dir)
+t_start = t0
 surface_space = bucket_domain.space.surface
 α_snow = FT(0.8)
 albedo = PrescribedBaregroundAlbedo{FT}(α_snow, surface_space);
@@ -106,46 +103,74 @@ albedo = PrescribedBaregroundAlbedo{FT}(α_snow, surface_space);
 bucket_parameters = BucketModelParameters(FT; albedo, z_0m, z_0b, τc);
 
 # Forcing data
-era5_artifact_path = ;
-precip_data_handler = DataHandling.DataHandler(
-    era5_artifact_path,
-    "Pliq",
-    space;
-    reference_date = date_ref,
-    t_start,
-)
+era5_artifact_path = "/groups/esm/ClimaArtifacts/artifacts/era5_land_forcing_data2021"# @clima_artifact("era5_land_forcing_data2021")
 # Precipitation:
-precip = (t) -> 0;
-snow_precip = (t) -> -5e-7 * (t < 1 * 86400);
-# Diurnal temperature variations:
-T_atmos = (t) -> 275.0 + 5.0 * sin(2.0 * π * t / 86400 - π / 2);
-# Constant otherwise:
-u_atmos = (t) -> 3.0;
-q_atmos = (t) -> 0.001;
-h_atmos = FT(2);
-P_atmos = (t) -> 101325;
+precip = TimeVaryingInput(joinpath(era5_artifact_path, "era5_2021_0.9x1.25_clima.nc"),
+                          "rf",
+                          surface_space;
+                          reference_date = ref_time,
+                          t_start,
+                          regridder_type = :InterpolationsRegridder)
 
-bucket_atmos = PrescribedAtmosphere(
-    TimeVaryingInput(precip),
-    TimeVaryingInput(snow_precip),
-    TimeVaryingInput(T_atmos),
-    TimeVaryingInput(u_atmos),
-    TimeVaryingInput(q_atmos),
-    TimeVaryingInput(P_atmos),
-    ref_time,
-    h_atmos,
+snow_precip = TimeVaryingInput(joinpath(era5_artifact_path, "era5_2021_0.9x1.25.nc"),
+"sf",
+surface_space;
+reference_date = ref_time,
+t_start,
+regridder_type = :InterpolationsRegridder)
+
+u_atmos = TimeVaryingInput(joinpath(era5_artifact_path, "era5_2021_0.9x1.25_clima.nc"),
+                          "ws",
+                          surface_space;
+                          reference_date = ref_time,
+                          t_start,
+                          regridder_type = :InterpolationsRegridder)
+                          q_atmos = TimeVaryingInput(joinpath(era5_artifact_path, "era5_2021_0.9x1.25_clima.nc"),
+                          "q",
+                          surface_space;
+                          reference_date = ref_time,
+                          t_start,
+                          regridder_type
+                           = :InterpolationsRegridder)
+                          P_atmos = TimeVaryingInput(joinpath(era5_artifact_path, "era5_2021_0.9x1.25.nc"),
+                          "sp",
+                          surface_space;
+                          reference_date = ref_time,
+                          t_start,
+                          regridder_type = :InterpolationsRegridder)
+
+                          T_atmos = TimeVaryingInput(joinpath(era5_artifact_path, "era5_2021_0.9x1.25.nc"),
+                          "t2m",
+                          surface_space;
+                          reference_date = ref_time,
+                          t_start,
+                          regridder_type = :InterpolationsRegridder)
+h_atmos = FT(10);
+
+
+bucket_atmos = PrescribedAtmosphere(precip,snow_precip, T_atmos, u_atmos,q_atmos,P_atmos,ref_time,h_atmos,
 );
 
 # Prescribed radiation -- a prescribed downwelling SW diurnal cycle, with a
 # peak at local noon, and a prescribed downwelling LW radiative
 # flux, assuming the air temperature is on average 275 degrees
 # K with a diurnal amplitude of 5 degrees K:
-SW_d = (t) -> max(1361 * sin(2π * t / 86400 - π / 2), 0.0);
-LW_d = (t) -> 5.67e-8 * (275.0 + 5.0 * sin(2.0 * π * t / 86400 - π / 2))^4;
+SW_d = TimeVaryingInput(joinpath(era5_artifact_path, "era5_2021_0.9x1.25.nc"),
+"ssrd",
+surface_space;
+reference_date = ref_time,
+t_start,
+regridder_type = :InterpolationsRegridder)
+LW_d =TimeVaryingInput(joinpath(era5_artifact_path, "era5_2021_0.9x1.25.nc"),
+"strd",
+surface_space;
+reference_date = ref_time,
+t_start,
+regridder_type = :InterpolationsRegridder)
 bucket_rad = PrescribedRadiativeFluxes(
     FT,
-    TimeVaryingInput(SW_d),
-    TimeVaryingInput(LW_d),
+SW_d,
+    LW_d,
     ref_time,
 );
 
@@ -224,18 +249,25 @@ F_sfc = [
     ) for k in 1:length(sol.t)
 ];
 
+sw_forcing = [
+    Remapping.interpolate(
+        remapper,
+        saved_values.saveval[k].drivers.SW_d,
+    ) for k in 1:length(sol.t)
+];
+
 # save prognostic state to CSV - for comparison between GPU and CPU output
 open(joinpath(outdir, "tf_state_$device_suffix.txt"), "w") do io
     writedlm(io, hcat(T_sfc[end][:], W[end][:], Ws[end][:], σS[end][:]), ',')
 end;
 # animation settings
-nframes = length(W)
+nframes = length(T_sfc)
 framerate = 2
 fig_ts = Figure(size = (1000, 1000))
 for (i, (field_ts, field_name)) in enumerate(
     zip(
-        [W, σS, T_sfc, evaporation, F_sfc],
-        ["W", "σS", "T_sfc", "evaporation", "F_sfc"],
+        [W, σS, T_sfc, evaporation, F_sfc,sw_forcing],
+        ["W", "σS", "T_sfc", "evaporation", "F_sfc", "SW forcing"],
     ),
 )
     if anim_plots
@@ -252,7 +284,7 @@ for (i, (field_ts, field_name)) in enumerate(
             outdir,
             string("anim_$(device_suffix)_", field_name, ".mp4"),
         )
-        record(fig, outfile, 1:nframes; framerate = framerate) do frame
+        record(fig, outfile, 1:3:nframes; framerate = framerate) do frame
             CairoMakie.heatmap!(
                 longpts,
                 latpts,
@@ -273,6 +305,3 @@ for (i, (field_ts, field_name)) in enumerate(
 end
 outfile = joinpath(outdir, string("ts_$device_suffix.png"))
 CairoMakie.save(outfile, fig_ts)
-
-# delete regrid directory
-rm(regrid_dir, recursive = true)
