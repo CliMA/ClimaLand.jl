@@ -1,10 +1,17 @@
 using CairoMakie
 using Statistics
 using ArtifactWrappers
+using Dates
 import SciMLBase
 import ClimaTimeSteppers as CTS
 using ClimaCore
+using ClimaUtilities.ClimaArtifacts
+import Interpolations
+
+import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
 import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
+
+import ClimaUtilities.DataHandling
 import NCDatasets
 import ClimaParams as CP
 using ClimaComms
@@ -43,8 +50,18 @@ infile_path = joinpath(get_data_folder(topmodel_dataset), "means_2.5_new.nc")
 outfile_root =
     joinpath(pkgdir(ClimaLand), "experiments/standalone/Soil/static_data_cgll")
 
-f_max = SpaceVaryingInput(infile_path, "fmax", surface_space)
-mask = SpaceVaryingInput(infile_path, "landsea_mask", surface_space)
+f_max = SpaceVaryingInput(
+    infile_path,
+    "fmax",
+    surface_space;
+    regridder_type = :InterpolationsRegridder,
+)
+mask = SpaceVaryingInput(
+    infile_path,
+    "landsea_mask",
+    surface_space;
+    regridder_type = :InterpolationsRegridder,
+)
 
 oceans_to_zero(field, mask) = mask > 0.5 ? field : eltype(field)(0)
 f_over = FT(3.28) # 1/m
@@ -72,10 +89,18 @@ soil_params = ClimaLand.Soil.RichardsParameters(;
     θ_r = θ_r,
 )
 
-function precip_function(t)
-    return -1e-6
-end
-precip = TimeVaryingInput(precip_function)
+era5_artifact_path = "/groups/esm/ClimaArtifacts/artifacts/era5_land_forcing_data2021"# @clima_artifact("era5_land_forcing_data2021")
+ref_time = DateTime(2021);
+t_start = 0.0
+# Precipitation:
+precip = TimeVaryingInput(
+    joinpath(era5_artifact_path, "era5_2021_0.9x1.25.nc"),
+    "tp",
+    surface_space;
+    reference_date = ref_time,
+    t_start,
+    regridder_type = :InterpolationsRegridder,
+)
 atmos = ClimaLand.PrescribedPrecipitation{FT, typeof(precip)}(precip)
 bottom_bc = ClimaLand.Soil.WaterFluxBC((p, t) -> 0.0)
 bc = (;
@@ -158,7 +183,7 @@ sv = (;
     saveval = Array{NamedTuple}(undef, length(saveat)),
 )
 saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat)
-updateat = deepcopy(saveat)
+updateat = Array(t0:dt:tf)
 updatefunc = ClimaLand.make_update_drivers(atmos, nothing)
 driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
 cb = SciMLBase.CallbackSet(driver_cb, saving_cb)

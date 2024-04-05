@@ -807,9 +807,9 @@ in the case of a PrescribedAtmosphere.
 function make_update_drivers(a::PrescribedAtmosphere{FT}) where {FT}
     function update_drivers!(p, t)
         evaluate!(p.drivers.P_liq, a.liquid_precip, t)
-        @. p.drivers.P_liq = -p.drivers.P_liq/3600
+        @. p.drivers.P_liq = -p.drivers.P_liq / 3600
         evaluate!(p.drivers.P_snow, a.snow_precip, t)
-        @. p.drivers.P_snow = -p.drivers.P_snow/3600
+        @. p.drivers.P_snow = -p.drivers.P_snow / 3600
         evaluate!(p.drivers.T, a.T, t)
         evaluate!(p.drivers.P, a.P, t)
         evaluate!(p.drivers.u, a.u, t)
@@ -827,6 +827,7 @@ in the case of a PrescribedPrecipitation.
 function make_update_drivers(a::PrescribedPrecipitation{FT}) where {FT}
     function update_drivers!(p, t)
         evaluate!(p.drivers.P_liq, a.liquid_precip, t)
+        @. p.drivers.P_liq = -p.drivers.P_liq / 3600
     end
     return update_drivers!
 end
@@ -840,9 +841,9 @@ in the case of a PrescribedRadiativeFluxes.
 function make_update_drivers(r::PrescribedRadiativeFluxes{FT}) where {FT}
     function update_drivers!(p, t)
         evaluate!(p.drivers.SW_d, r.SW_d, t)
-        @. p.drivers.SW_d = p.drivers.SW_d/3600
+        @. p.drivers.SW_d = p.drivers.SW_d / 3600
         evaluate!(p.drivers.LW_d, r.LW_d, t)
-        @. p.drivers.LW_d = p.drivers.LW_d/3600
+        @. p.drivers.LW_d = p.drivers.LW_d / 3600
         if !isnothing(r.θs)
             p.drivers.θs .= FT(r.θs(t, r.ref_time))
         else
