@@ -3,6 +3,9 @@ ClimaLand.jl Release Notes
 
 main
 --------
+
+v0.11.2
+--------
 -  Add profiling of soil/canopy model to buildkite pipeline. This was the
    first global run of this model, and we also fixed dss! for tuple-valued fields,
    changed how we compute the zenith angle to allow for 2d fields, and changed
