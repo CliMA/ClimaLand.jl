@@ -10,7 +10,7 @@ import Interpolations
 
 import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
 import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
-
+import ClimaUtilities.Regridders: InterpolationsRegridder
 import ClimaUtilities.DataHandling
 import NCDatasets
 import ClimaParams as CP
@@ -27,13 +27,13 @@ outdir = joinpath(pkgdir(ClimaLand), "experiments/standalone/Soil/artifacts")
 !ispath(outdir) && mkpath(outdir)
 FT = Float64
 radius = FT(6378.1e3);
-depth = FT(50)
+depth = FT(1)
 domain = ClimaLand.Domains.SphericalShell(;
     radius = radius,
     depth = depth,
-    nelements = (101, 15),
+    nelements = (101, 10),# (101,15)
     npolynomial = 1,
-    dz_tuple = FT.((10.0, 0.1)),
+   # dz_tuple = FT.((10.0, 0.1)),
 );
 surface_space = domain.space.surface
 subsurface_space = domain.space.subsurface
@@ -71,14 +71,52 @@ runoff_model = ClimaLand.Soil.Runoff.TOPMODELRunoff{FT}(;
     f_max = f_max,
     R_sb = R_sb,
 )
-vg_α = ClimaCore.Fields.ones(subsurface_space) .* FT(0.2)
-hydrology_cm = map(vg_α) do (α)
-    FT = typeof(α)
-    ClimaLand.Soil.vanGenuchten{FT}(; α = α, n = α + FT(2))
+#regridder = InterpolationsRegridder(subsurface_space; extrapolation_bc = (Interpolations.Periodic(), Interpolations.Flat(), Interpolations.Flat()))
+soil_params_artifact_path = "/groups/esm/ClimaArtifacts/artifacts/soil_params_Gupta2020_2022"# @clima_artifact("soil_params_Gupta2020_2022")
+function mask_vg(var, value)
+    if var <1e-14
+        return value
+    else
+        return var
+    end
 end
-θ_r = ClimaCore.Fields.zeros(subsurface_space)
-ν = ClimaCore.Fields.zeros(subsurface_space) .+ FT(0.5)
-K_sat = ClimaCore.Fields.zeros(subsurface_space) .+ FT(1e-6)
+vg_α  = SpaceVaryingInput(
+    joinpath(soil_params_artifact_path, "vGalpha_map_gupta_etal2020_2.5x2.5x4.nc"),
+    "α",
+    subsurface_space;
+    regridder_type = :InterpolationsRegridder,
+)
+vg_α .= mask_vg.(vg_α, 1e-3)
+
+vg_n  = SpaceVaryingInput(
+    joinpath(soil_params_artifact_path, "vGn_map_gupta_etal2020_2.5x2.5x4.nc"),
+    "n",
+    subsurface_space;
+    regridder_type = :InterpolationsRegridder,
+)
+vg_n .= mask_vg.(vg_n, log10(1.001))
+hydrology_cm = ClimaLand.Soil.vanGenuchten{FT}.(vg_α, vg_n)
+
+θ_r = SpaceVaryingInput(
+    joinpath(soil_params_artifact_path, "residual_map_gupta_etal2020_2.5x2.5x4.nc"),
+    "θ_r",
+    subsurface_space;
+    regridder_type = :InterpolationsRegridder,
+)
+
+ν = SpaceVaryingInput(
+    joinpath(soil_params_artifact_path, "porosity_map_gupta_etal2020_2.5x2.5x4.nc"),
+    "ν",
+    subsurface_space;
+    regridder_type = :InterpolationsRegridder,
+)
+ν .= mask_vg.(ν, 1.0)
+K_sat = SpaceVaryingInput(
+    joinpath(soil_params_artifact_path, "ksat_map_gupta_etal2020_2.5x2.5x4.nc"),
+    "Ksat",
+    subsurface_space;
+    regridder_type = :InterpolationsRegridder,
+)
 S_s = ClimaCore.Fields.zeros(subsurface_space) .+ FT(1e-3)
 
 soil_params = ClimaLand.Soil.RichardsParameters(;
@@ -128,10 +166,10 @@ function hydrostatic_profile(
     fmax,
 ) where {FT}
     m = 1 - 1 / n
-    zmin = FT(-50.0)
+    zmin = FT(-1.0)
     zmax = FT(0.0)
 
-    z_∇ = FT(zmin / 5.0 + (zmax - zmin) / 2.5 * (fmax - 0.35) / 0.7)
+    z_∇ = FT(zmin / 5.0 *2 + (zmax - zmin) / 10.0 * (fmax - 0.35) / 0.7)
     if z > z_∇
         S = FT((FT(1) + (α * (z - z_∇))^n)^(-m))
         ϑ_l = S * (ν - θ_r) + θ_r
@@ -141,9 +179,9 @@ function hydrostatic_profile(
     return FT(ϑ_l)
 end
 t0 = 0.0
-tf = 3600.0 * 24
+tf = 3600.0 * 24 * 2
 dt = 1800.0
-Y.soil.ϑ_l .= hydrostatic_profile.(lat, z, ν, θ_r, vg_α, vg_α .+ 2, S_s, f_max)
+Y.soil.ϑ_l .= hydrostatic_profile.(lat, z, ν, θ_r, vg_α, vg_n, S_s, f_max)
 @. Y.soil.ϑ_l = oceans_to_zero(Y.soil.ϑ_l, mask)
 set_initial_cache! = make_set_initial_cache(model)
 exp_tendency! = make_exp_tendency(model);
