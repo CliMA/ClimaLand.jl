@@ -1,7 +1,7 @@
 # ClimaLandSimulations
 
 A library of methods to run ClimaLand:
-- at single sites, such as FLUXNET
+- at single sites, such as FLUXNET2015
 - globally (WIP)
 
 ## Installation
