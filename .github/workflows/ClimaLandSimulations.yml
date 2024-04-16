@@ -1,0 +1,31 @@
+name: ClimaLandSimulations CI
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  lib-climalandsimulations:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@latest
+        with:
+          version: '1.10'
+      - uses: julia-actions/cache@v1
+      - name: Install Julia dependencies
+        run: >
+          julia --project= -e 'using Pkg; Pkg.develop(path="$(pwd())"); Pkg.develop(path="$(pwd())/lib/ClimaLandSimulations")'
+      - name: Run the tests
+        continue-on-error: true
+        env:
+            CI_OUTPUT_DIR: output
+        run: >
+          julia --project= -e 'using Pkg; Pkg.test("ClimaLandSimulations")'

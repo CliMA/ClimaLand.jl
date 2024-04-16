@@ -7,12 +7,20 @@ sv_test, sol_test, Y_test, p_test = run_fluxnet(
     params = ozark_default_params(; hetero_resp = hetero_resp_ozark(; b = 2)),
 )
 
+# defaults, except start time
+sv, sol, Y, p = run_fluxnet(
+    "US-MOz";
+    setup = make_setup(;
+        ozark_default_args(; t0 = Float64(125 * 3600 * 24))...,
+    ),
+)
+
 # default parameters
 sv, sol, Y, p = run_fluxnet("US-MOz")
 
 # DataFrame for input and output
 inputs, inputs_SI, inputs_commonly_used = make_inputs_df("US-MOz")
-simulation_output = make_output_df(sv, inputs)
+simulation_output = make_output_df("US-MOz", sv, inputs)
 
 # Will save figures in current repo /figures
 make_plots(inputs, simulation_output)
