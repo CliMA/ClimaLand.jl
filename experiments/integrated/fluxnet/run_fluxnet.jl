@@ -140,11 +140,11 @@ radiative_transfer_args = (;
     parameters = TwoStreamParameters(
         FT;
         Ω,
-        ld,
         α_PAR_leaf,
         τ_PAR_leaf,
         α_NIR_leaf,
         τ_NIR_leaf,
+        G_Function,
     )
 )
 # Set up conductance

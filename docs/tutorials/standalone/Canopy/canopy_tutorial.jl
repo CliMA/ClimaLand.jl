@@ -156,7 +156,7 @@ soil_driver = PrescribedSoil(
 
 rt_params = TwoStreamParameters(
     FT;
-    ld = FT(0.5),
+    G_Function = ConstantGFunction(FT(0.5)),
     α_PAR_leaf = FT(0.1),
     α_NIR_leaf = FT(0.45),
     τ_PAR_leaf = FT(0.05),

@@ -4,9 +4,41 @@ export BeerLambertParameters,
     BeerLambertModel,
     TwoStreamParameters,
     TwoStreamModel,
-    canopy_radiant_energy_fluxes!
+    canopy_radiant_energy_fluxes!,
+    ConstantGFunction,
+    CLMGFunction
 
 abstract type AbstractRadiationModel{FT} <: AbstractCanopyComponent{FT} end
+
+abstract type AbstractGFunction{FT} end
+
+"""
+    ConstantGFunction
+
+A type for a constant G function, which is used to represent the leaf angle
+distribution function in the radiative transfer models.
+"""
+struct ConstantGFunction{FT} <: AbstractGFunction{FT}
+    "Leaf angle distribution value (unitless)"
+    ld::FT
+end
+
+# Make the ConstantGFunction broadcastable
+Base.broadcastable(G::ConstantGFunction) = Ref(G)
+
+"""
+    CLMGFunction
+
+A type for a G function that is parameterized by the solar zenith angle,
+following the CLM approach to parameterizing the leaf angle distribution function.
+"""
+struct CLMGFunction{FT} <: AbstractGFunction{FT}
+    "Leaf orientation index (unitless)"
+    χl::FT
+end
+
+# Make the CLMGFunction broadcastable
+Base.broadcastable(G::CLMGFunction) = Ref(G)
 
 """
     BeerLambertParameters{FT <: AbstractFloat}
@@ -14,9 +46,10 @@ abstract type AbstractRadiationModel{FT} <: AbstractCanopyComponent{FT} end
 The required parameters for the Beer-Lambert radiative transfer model.
 $(DocStringExtensions.FIELDS)
 """
-Base.@kwdef struct BeerLambertParameters{FT <: AbstractFloat}
-    "Leaf angle distribution function (unitless)"
-    ld::FT
+Base.@kwdef struct BeerLambertParameters{
+    FT <: AbstractFloat,
+    G <: AbstractGFunction{FT},
+}
     "PAR leaf reflectance (unitless)"
     α_PAR_leaf::FT
     "NIR leaf reflectance"
@@ -29,6 +62,8 @@ Base.@kwdef struct BeerLambertParameters{FT <: AbstractFloat}
     λ_γ_PAR::FT
     "Typical wavelength per NIR photon (m)"
     λ_γ_NIR::FT
+    "Leaf angle distribution function"
+    G_Function::G
 end
 
 Base.eltype(::BeerLambertParameters{FT}) where {FT} = FT
@@ -50,9 +85,10 @@ end
 The required parameters for the two-stream radiative transfer model.
 $(DocStringExtensions.FIELDS)
 """
-Base.@kwdef struct TwoStreamParameters{FT <: AbstractFloat}
-    "Leaf angle distribution function (unitless)"
-    ld::FT
+Base.@kwdef struct TwoStreamParameters{
+    FT <: AbstractFloat,
+    G <: AbstractGFunction{FT},
+}
     "PAR leaf reflectance (unitless)"
     α_PAR_leaf::FT
     "PAR leaf element transmittance"
@@ -74,11 +110,12 @@ Base.@kwdef struct TwoStreamParameters{FT <: AbstractFloat}
     the vertical discretization of the canopy for the plant hydraulics model.
     (Constant, and should eventually move to ClimaParams)"
     n_layers::UInt64
+    "Leaf angle distribution function"
+    G_Function::G
 end
-
 """
-    function TwoStreamParameters{FT}(;
-        ld = FT(0.5),
+    function TwoStreamParameters{FT, G}(;
+        ld = ConstantGFunction(FT(0.5)),
         α_PAR_leaf = FT(0.3),
         τ_PAR_leaf = FT(0.2),
         α_NIR_leaf = FT(0.4),

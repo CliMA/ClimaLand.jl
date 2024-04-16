@@ -31,7 +31,7 @@ for FT in (Float32, Float64)
         column_names = test_set[1, :]
         θs = acos.(FT.(test_set[2:end, column_names .== "mu"]))
         LAI = FT.(test_set[2:end, column_names .== "LAI"])
-        ld = FT.(test_set[2:end, column_names .== "ld"])
+        lds = FT.(test_set[2:end, column_names .== "ld"])
         α_PAR_leaf = FT.(test_set[2:end, column_names .== "rho"])
         τ = FT.(test_set[2:end, column_names .== "tau"])
         a_soil = FT.(test_set[2:end, column_names .== "a_soil"])
@@ -48,7 +48,7 @@ for FT in (Float32, Float64)
             # Set the parameters based on the setup read from the file
             RT_params = TwoStreamParameters(
                 FT;
-                ld = ld[i],
+                G_Function = ConstantGFunction(FT(lds[i])),
                 α_PAR_leaf = α_PAR_leaf[i],
                 τ_PAR_leaf = τ[i],
                 Ω = FT(1),
@@ -59,7 +59,7 @@ for FT in (Float32, Float64)
             RT = TwoStreamModel(RT_params)
 
             # Compute the predicted FAPAR using the ClimaLand TwoStream implementation
-            K = extinction_coeff(ld[i], θs[i])
+            K = extinction_coeff(RT_params.G_Function, θs[i])
             output = plant_absorbed_pfd(
                 RT,
                 FT(1),

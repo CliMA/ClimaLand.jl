@@ -456,7 +456,8 @@ function ClimaLand.make_update_aux(
         ρ_l = FT(LP.ρ_cloud_liq(earth_param_set))
         R = FT(LP.gas_constant(earth_param_set))
         thermo_params = earth_param_set.thermo_params
-        (; ld, Ω, λ_γ_PAR, λ_γ_NIR) = canopy.radiative_transfer.parameters
+        (; G_Function, Ω, λ_γ_PAR, λ_γ_NIR) =
+            canopy.radiative_transfer.parameters
         energy_per_photon_PAR = planck_h * c / λ_γ_PAR
         energy_per_photon_NIR = planck_h * c / λ_γ_NIR
         (; g1, g0, Drel) = canopy.conductance.parameters
@@ -467,7 +468,7 @@ function ClimaLand.make_update_aux(
 
         # update radiative transfer
         RT = canopy.radiative_transfer
-        K = extinction_coeff.(ld, θs)
+        K = extinction_coeff.(G_Function, θs)
         PAR .= compute_PAR(RT, canopy.radiation, p, t)
         NIR .= compute_NIR(RT, canopy.radiation, p, t)
         e_sat =

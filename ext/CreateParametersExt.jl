@@ -18,6 +18,7 @@ import ClimaLand.Canopy.OptimalityFarquharParameters
 import ClimaLand.Canopy.MedlynConductanceParameters
 import ClimaLand.Canopy.BeerLambertParameters
 import ClimaLand.Canopy.TwoStreamParameters
+import ClimaLand.Canopy.ConstantGFunction
 import ClimaLand.Snow.SnowParameters
 import ClimaLand.Bucket.BucketModelParameters
 import ClimaLand.Soil.Biogeochemistry.SoilCO2ModelParameters
@@ -532,7 +533,7 @@ end
 
 """
     function TwoStreamParameters(FT::AbstractFloat;
-        ld = 0.5,
+        ld = (_) -> 0.5,
         α_PAR_leaf = 0.3,
         τ_PAR_leaf = 0.2,
         α_NIR_leaf = 0.4,
@@ -542,7 +543,7 @@ end
         kwargs...
     )
     function TwoStreamParameters(toml_dict;
-        ld = 0.5,
+        ld = (_) -> 0.5,
         α_PAR_leaf = 0.3,
         τ_PAR_leaf = 0.2,
         α_NIR_leaf = 0.4,
@@ -560,7 +561,7 @@ TwoStreamParameters(::Type{FT}; kwargs...) where {FT <: AbstractFloat} =
 
 function TwoStreamParameters(
     toml_dict::CP.AbstractTOMLDict;
-    ld = 0.5,
+    G_Function = ConstantGFunction(CP.float_type(toml_dict)(0.5)),
     α_PAR_leaf = 0.3,
     τ_PAR_leaf = 0.2,
     α_NIR_leaf = 0.4,
@@ -577,8 +578,8 @@ function TwoStreamParameters(
 
     parameters = CP.get_parameter_values(toml_dict, name_map, "Land")
     FT = CP.float_type(toml_dict)
-    return TwoStreamParameters{FT}(;
-        ld,
+    return TwoStreamParameters{FT, typeof(G_Function)}(;
+        G_Function,
         α_PAR_leaf,
         τ_PAR_leaf,
         α_NIR_leaf,
@@ -592,14 +593,14 @@ end
 
 """
     function BeerLambertParameters(FT::AbstractFloat;
-        ld = 0.5,
+        ld = (_) -> 0.5,
         α_PAR_leaf = 0.1,
         α_NIR_leaf = 0.4,
         Ω = 1,
         kwargs...
     )
     function BeerLambertParameters(toml_dict;
-        ld = 0.5,
+        ld = (_) -> 0.5,
         α_PAR_leaf = 0.1,
         α_NIR_leaf = 0.4,
         Ω = 1,
@@ -614,7 +615,7 @@ BeerLambertParameters(::Type{FT}; kwargs...) where {FT <: AbstractFloat} =
 
 function BeerLambertParameters(
     toml_dict::CP.AbstractTOMLDict;
-    ld = 0.5,
+    G_Function = ConstantGFunction(CP.float_type(toml_dict)(0.5)),
     α_PAR_leaf = 0.1,
     α_NIR_leaf = 0.4,
     Ω = 1,
@@ -628,8 +629,8 @@ function BeerLambertParameters(
 
     parameters = CP.get_parameter_values(toml_dict, name_map, "Land")
     FT = CP.float_type(toml_dict)
-    return BeerLambertParameters{FT}(;
-        ld,
+    return BeerLambertParameters{FT, typeof(G_Function)}(;
+        G_Function,
         α_PAR_leaf,
         α_NIR_leaf,
         Ω,

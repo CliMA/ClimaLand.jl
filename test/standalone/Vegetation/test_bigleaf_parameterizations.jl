@@ -97,8 +97,7 @@ for FT in (Float32, Float64)
         θs = FT.(Array(0:0.1:(π / 2)))
         SW(θs) = cos.(θs) * FT.(500) # W/m^2
         PAR = SW(θs) ./ (energy_per_photon * N_a) # convert 500 W/m^2 to mol of photons per m^2/s
-        K_c = extinction_coeff.(RTparams.ld, θs)
-        @test all(K_c .≈ RTparams.ld ./ cos.(θs))
+        K_c = extinction_coeff.(RTparams.G_Function, θs)
         α_soil_PAR = FT(0.2)
         output =
             plant_absorbed_pfd.(

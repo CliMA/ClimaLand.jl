@@ -176,11 +176,12 @@ canopy_component_types = (;
 autotrophic_respiration_args =
     (; parameters = AutotrophicRespirationParameters(FT))
 # Set up radiative transfer
+G_Function = CLMGFunction(χl)
 radiative_transfer_args = (;
     parameters = TwoStreamParameters(
         FT;
         Ω,
-        ld,
+        G_Function,
         α_PAR_leaf,
         τ_PAR_leaf,
         α_NIR_leaf,
