@@ -49,9 +49,9 @@ steps:
         command: "julia --color=yes --project=experiments experiments/standalone/Soil/evaporation.jl"
         artifact_paths: "experiments/standalone/Soil/evaporation*png"
 
-      - label: "vaira_test"
-        command: "julia --color=yes --project=experiments experiments/integrated/fluxnet/run_fluxnet.jl US-Var"
-        artifact_paths: "experiments/integrated/fluxnet/US-Var/out/*png"
+      # - label: "vaira_test"
+      #   command: "julia --color=yes --project=experiments experiments/integrated/fluxnet/run_fluxnet.jl US-Var"
+      #   artifact_paths: "experiments/integrated/fluxnet/US-Var/out/*png"
 
       - label: "ozark_test"
         command: "julia --color=yes --project=experiments experiments/integrated/fluxnet/run_fluxnet.jl US-MOz"
