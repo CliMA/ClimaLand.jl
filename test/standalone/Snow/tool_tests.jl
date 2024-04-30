@@ -3,22 +3,33 @@ using Test
 using BSON, Dates, HTTP
 using DataFrames, CSV, StatsBase, Flux, LinearAlgebra
 
-DataTools = Base.get_extension(ClimaLand, :NeuralSnowExt).DataTools
-ModelTools = Base.get_extension(ClimaLand, :NeuralSnowExt).ModelTools
+try
+    import CUDA
+    import cuDNN
+catch
+    nothing
+end
 
-@testset "Testing Data Utilities" begin
-    start_date = "2015-01-01"
-    end_date = "2015-02-01"
-    station_id = 1030
-    station_state = "CO"
-    real_link = "https://wcc.sc.egov.usda.gov/reportGenerator/view_csv/customSingleStationReport/daily/start_of_period/1030:CO:SNTL/2015-01-01,2015-02-01/SNWD::value,"
-    @test DataTools.data_url(
-        station_id,
-        station_state,
-        ["SNWD"],
-        start_date = start_date,
-        end_date = end_date,
-    ) == real_link
+DataToolsExt = Base.get_extension(ClimaLand, :NeuralSnowExt)
+ModelToolsExt = Base.get_extension(ClimaLand, :NeuralSnowExt)
+
+if !isnothing(DataToolsExt)
+    DataTools = DataToolsExt.DataTools
+    ModelTools = ModelToolsExt.ModelTools
+    @testset "Testing Data Utilities" begin
+        start_date = "2015-01-01"
+        end_date = "2015-02-01"
+        station_id = 1030
+        station_state = "CO"
+        real_link = "https://wcc.sc.egov.usda.gov/reportGenerator/view_csv/customSingleStationReport/daily/start_of_period/1030:CO:SNTL/2015-01-01,2015-02-01/SNWD::value,"
+        @test DataTools.data_url(
+            station_id,
+            station_state,
+            ["SNWD"],
+            start_date = start_date,
+            end_date = end_date,
+        ) == real_link
+>>>>>>> 5134168d (fixup)
 
     test_data1 = DataTools.get_data(
         station_id,

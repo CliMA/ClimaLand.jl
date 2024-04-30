@@ -14,6 +14,8 @@
 # surface temperature, evaporation, and surface energy flux.
 
 import SciMLBase
+import ClimaComms
+pkgversion(ClimaComms) >= v"0.6" && ClimaComms.@import_required_backends
 using CairoMakie
 using Dates
 using DelimitedFiles
@@ -77,11 +79,6 @@ device_suffix =
 device_suffix =
     typeof(ClimaComms.context().device) <: ClimaComms.CPUSingleThreaded ?
     "cpu" : "gpu"
-regrid_dir = joinpath(
-    pkgdir(ClimaLand),
-    "experiments/standalone/Bucket/$device_suffix/regrid-temporal/",
-)
-!ispath(regrid_dir) && mkpath(regrid_dir)
 t0 = 0.0;
 # run for 50 days to test monthly file update
 tf = 50 * 86400;
@@ -314,6 +311,3 @@ for (i, (field_ts, field_name)) in enumerate(
 end
 outfile = joinpath(outdir, string("ts_$device_suffix.png"))
 CairoMakie.save(outfile, fig_ts)
-
-# delete regrid directory
-rm(regrid_dir, recursive = true)

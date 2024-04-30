@@ -1,4 +1,6 @@
 using Test
+import ClimaComms
+pkgversion(ClimaComms) >= v"0.6" && ClimaComms.@import_required_backends
 using Dates
 import ClimaParams as CP
 using ClimaCore

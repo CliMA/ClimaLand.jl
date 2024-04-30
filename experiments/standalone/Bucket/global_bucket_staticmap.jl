@@ -16,6 +16,8 @@
 # surface temperature, evaporation, and surface energy flux.
 
 import SciMLBase
+import ClimaComms
+pkgversion(ClimaComms) >= v"0.6" && ClimaComms.@import_required_backends
 using CairoMakie
 using Dates
 using DelimitedFiles
