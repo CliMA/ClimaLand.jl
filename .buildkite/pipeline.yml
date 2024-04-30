@@ -171,7 +171,3 @@ steps:
         depends_on:
           - "global_bucket_temporalmap_cpu"
           - "global_bucket_temporalmap_gpu"
-
-  - wait
-
-  - command: "compact_depot"
