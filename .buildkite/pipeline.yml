@@ -13,6 +13,8 @@ env:
 steps:
   - label: "init environment :computer:"
     key: "init_cpu_env"
+    concurrency: 1
+    concurrency_group: 'depot/climaland-ci'
     command:
       - "echo $$JULIA_DEPOT_PATH"
 
@@ -171,7 +173,3 @@ steps:
         depends_on:
           - "global_bucket_temporalmap_cpu"
           - "global_bucket_temporalmap_gpu"
-
-  - wait
-
-  - command: "compact_depot"
