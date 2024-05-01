@@ -8,7 +8,7 @@ import ClimaUtilities.DataHandling
 import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
 import ClimaUtilities.TimeVaryingInputs:
     TimeVaryingInput, AbstractTimeVaryingInput
-import ClimaCoreTempestRemap
+import Interpolations
 using ClimaCore
 using ClimaCore.Fields: coordinate_field, level, FieldVector
 using ClimaCore.Operators: InterpolateC2F, DivergenceF2C, GradientC2F, SetValue
