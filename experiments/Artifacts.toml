@@ -1,0 +1,15 @@
+[lwp_pallardy_etal2018]
+git-tree-sha1 = "29ed37c288601ab353f4f5dc13cf652ec4aec305"
+
+["processed_topographic_index 2.5 deg"]
+git-tree-sha1 = "31d4110d008fcfb1ecfd77eb9675c983b650eedf"
+
+[era5_land_forcing_data2021]
+git-tree-sha1 = "ec424296df6b60cfe273ac8f981701fbbed0bd8a"
+
+[soil_params_Gupta2020_2022]
+git-tree-sha1 = "ffc4c3fa76ea632ba46ae5d58671d4161124af29"
+
+    [[soil_params_Gupta2020_2022.download]]
+    sha256 = "636db48ecb387a9aa59afbff8af86f0ccc092690c688f0cbb52041c133361e22"
+    url = "https://caltech.box.com/shared/static/f2y23qx0lggjskftzgh7ht7fsbh36gmm.gz"
