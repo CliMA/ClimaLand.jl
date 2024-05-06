@@ -182,6 +182,7 @@ bucket_atmos = PrescribedAtmosphere(
     P_atmos,
     ref_time,
     h_atmos,
+    earth_param_set,
 );
 
 # Prescribed radiation -- a prescribed downwelling SW diurnal cycle, with a

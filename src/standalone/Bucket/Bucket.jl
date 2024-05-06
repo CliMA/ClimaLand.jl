@@ -26,7 +26,6 @@ using ClimaLand:
     snow_precipitation,
     turbulent_fluxes,
     net_radiation,
-    construct_atmos_ts,
     compute_ρ_sfc,
     AbstractExpModel,
     heaviside,

@@ -15,7 +15,7 @@ export AbstractAtmosphericDrivers,
     PrescribedRadiativeFluxes,
     CoupledRadiativeFluxes,
     compute_ρ_sfc,
-    construct_atmos_ts,
+    set_atmos_ts!,
     turbulent_fluxes,
     net_radiation,
     turbulent_fluxes_at_a_point,
@@ -63,6 +63,7 @@ struct PrescribedAtmosphere{
     RA <: Union{Nothing, AbstractTimeVaryingInput},
     CA <: Union{Nothing, AbstractTimeVaryingInput},
     DT,
+    TP,
 } <: AbstractAtmosphericDrivers{FT}
     "Precipitation (m/s) function of time: positive by definition"
     liquid_precip::LP
@@ -84,6 +85,8 @@ struct PrescribedAtmosphere{
     h::FT
     "Minimum wind speed (gustiness; m/s)"
     gustiness::FT
+    "Thermodynamic parameters"
+    thermo_params::TP
     function PrescribedAtmosphere(
         liquid_precip,
         snow_precip,
@@ -92,12 +95,19 @@ struct PrescribedAtmosphere{
         q,
         P,
         ref_time,
-        h::FT;
+        h::FT,
+        earth_param_set;
         gustiness = FT(1),
         c_co2 = TimeVaryingInput((t) -> 4.2e-4),
     ) where {FT}
+        thermo_params = LP.thermodynamic_parameters(earth_param_set)
         args = (liquid_precip, snow_precip, T, u, q, P, c_co2, ref_time)
-        return new{typeof(h), typeof.(args)...}(args..., h, gustiness)
+        return new{typeof(h), typeof.(args)..., typeof(thermo_params)}(
+            args...,
+            h,
+            gustiness,
+            thermo_params,
+        )
     end
 end
 
@@ -152,29 +162,18 @@ function compute_ρ_sfc(thermo_params, ts_in, T_sfc)
 end
 
 """
-    construct_atmos_ts(
-        atmos::PrescribedAtmosphere,
-        p,
-        thermo_params,
-    )
+    set_atmos_ts!(ts_in, atmos::PrescribedAtmosphere{FT}, p)
 
-A helper function which constructs a Clima.Thermodynamics
-thermodynamic state given a PrescribedAtmosphere, the cache `p`,
- and a set of Clima.Thermodynamics
-parameters thermo_params.
+Fill the pre-allocated ts_in `Field` with a thermodynamic state computed from the
+atmosphere.
 """
-function construct_atmos_ts(
-    atmos::PrescribedAtmosphere{FT},
-    p,
-    thermo_params,
-) where {FT}
+function set_atmos_ts!(ts_in, atmos::PrescribedAtmosphere{FT}, p) where {FT}
     P = p.drivers.P
     T = p.drivers.T
     q = p.drivers.q
-    ts_in = Thermodynamics.PhaseEquil_pTq.(thermo_params, P, T, q)
-    return ts_in
+    ts_in .= Thermodynamics.PhaseEquil_pTq.(atmos.thermo_params, P, T, q)
+    return nothing
 end
-
 
 """
     turbulent_fluxes(atmos::PrescribedAtmosphere,
@@ -206,9 +205,6 @@ function turbulent_fluxes(
     h_sfc = surface_height(model, Y, p)
     r_sfc = surface_resistance(model, Y, p, t)
     d_sfc = displacement_height(model, Y, p)
-    thermo_params =
-        LP.thermodynamic_parameters(model.parameters.earth_param_set)
-    ts_air = construct_atmos_ts(atmos, p, thermo_params)
     u_air = p.drivers.u
     h_air = atmos.h
 
@@ -220,7 +216,7 @@ function turbulent_fluxes(
         h_sfc,
         r_sfc,
         d_sfc,
-        ts_air,
+        p.drivers.thermal_state,
         u_air,
         h_air,
         atmos.gustiness,
@@ -518,8 +514,7 @@ function surface_air_density(
 )
     thermo_params =
         LP.thermodynamic_parameters(model.parameters.earth_param_set)
-    ts_in = construct_atmos_ts(atmos, p, thermo_params)
-    return compute_ρ_sfc.(thermo_params, ts_in, T_sfc)
+    return compute_ρ_sfc.(thermo_params, p.drivers.thermal_state, T_sfc)
 end
 
 
@@ -662,8 +657,9 @@ horizontal wind speed `u`, specific humidity `q`, and CO2 concentration
 `c_co2`.
 """
 function initialize_drivers(a::PrescribedAtmosphere{FT}, coords) where {FT}
-    keys = (:P_liq, :P_snow, :T, :P, :u, :q, :c_co2)
-    types = ([FT for k in keys]...,)
+    keys = (:P_liq, :P_snow, :T, :P, :u, :q, :c_co2, :thermal_state)
+    # The thermal state is a different type
+    types = ([FT for k in keys[1:(end - 1)]]..., Thermodynamics.PhaseEquil{FT})
     domain_names = ([:surface for k in keys]...,)
     model_name = :drivers
     # intialize_vars packages the variables as a named tuple,
@@ -813,6 +809,7 @@ function make_update_drivers(a::PrescribedAtmosphere{FT}) where {FT}
         evaluate!(p.drivers.u, a.u, t)
         evaluate!(p.drivers.q, a.q, t)
         evaluate!(p.drivers.c_co2, a.c_co2, t)
+        set_atmos_ts!(p.drivers.thermal_state, a, p)
     end
     return update_drivers!
 end

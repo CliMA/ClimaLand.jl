@@ -101,7 +101,8 @@ for FT in (Float32, Float64)
             TimeVaryingInput(q_atmos),
             TimeVaryingInput(P_atmos),
             ref_time,
-            h_atmos;
+            h_atmos,
+            earth_param_set;
             c_co2 = TimeVaryingInput(c_atmos),
         )
         radiation = PrescribedRadiativeFluxes(
@@ -188,8 +189,19 @@ for FT in (Float32, Float64)
             radiation = radiation,
         )
         Y, p, coords = ClimaLand.initialize(canopy)
-        @test propertynames(p.drivers) ==
-              (:P_liq, :P_snow, :T, :P, :u, :q, :c_co2, :SW_d, :LW_d, :θs)
+        @test propertynames(p.drivers) == (
+            :P_liq,
+            :P_snow,
+            :T,
+            :P,
+            :u,
+            :q,
+            :c_co2,
+            :thermal_state,
+            :SW_d,
+            :LW_d,
+            :θs,
+        )
         # Check that structure of Y is value (will error if not)
         @test !isnothing(zero(Y))
         @test typeof(canopy.energy) == PrescribedCanopyTempModel{FT}
@@ -257,7 +269,13 @@ for FT in (Float32, Float64)
         Rn = FT(shortwave_radiation(t0))
         G = FT(0.0)
         thermo_params = canopy.parameters.earth_param_set.thermo_params
-        ts_in = construct_atmos_ts(atmos, p, thermo_params)
+        ts_in =
+            Thermodynamics.PhaseEquil_pTq.(
+                thermo_params,
+                p.drivers.P,
+                p.drivers.T,
+                p.drivers.q,
+            )
         ρa = Thermodynamics.air_density.(thermo_params, ts_in)
         cp =
             FT(cp_m(thermo_params, Thermodynamics.PhasePartition.(q_atmos(t0))))
@@ -561,7 +579,8 @@ for FT in (Float32, Float64)
             TimeVaryingInput(q_atmos),
             TimeVaryingInput(P_atmos),
             ref_time,
-            h_atmos;
+            h_atmos,
+            earth_param_set;
             c_co2 = TimeVaryingInput(c_atmos),
         )
         radiation = PrescribedRadiativeFluxes(

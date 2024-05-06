@@ -87,7 +87,8 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
         TimeVaryingInput(q_atmos),
         TimeVaryingInput(P_atmos),
         ref_time,
-        h_atmos;
+        h_atmos,
+        earth_param_set;
         gustiness = gustiness,
     )
     top_bc = ClimaLand.Soil.AtmosDrivenFluxBC(atmos, radiation)
@@ -210,7 +211,13 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
             )
             layer_thickness = Soil.dry_soil_layer_thickness.(S_l_sfc, S_c, d_ds)
             T_sfc = T_soil[i]
-            ts_in = ClimaLand.construct_atmos_ts(top_bc.atmos, p, thermo_params)
+            ts_in =
+                Thermodynamics.PhaseEquil_pTq.(
+                    thermo_params,
+                    p.drivers.P,
+                    p.drivers.T,
+                    p.drivers.q,
+                )
             ρ_sfc = compute_ρ_sfc.(thermo_params, ts_in, T_sfc)
             q_sat =
                 Thermodynamics.q_vap_saturation_generic.(

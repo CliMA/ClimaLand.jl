@@ -40,6 +40,7 @@ for FT in (Float32, Float64)
         UTC_DATETIME = Dates.now()
         atmos_h = FT(30)
         atmos_co2 = (t) -> 1.0
+        earth_param_set = LP.LandParameters(FT)
 
         atmos = ClimaLand.PrescribedAtmosphere(
             TimeVaryingInput(precipitation_function),
@@ -49,7 +50,8 @@ for FT in (Float32, Float64)
             TimeVaryingInput(atmos_q),
             TimeVaryingInput(atmos_p),
             UTC_DATETIME,
-            atmos_h;
+            atmos_h,
+            earth_param_set;
             c_co2 = TimeVaryingInput(atmos_co2),
         )
 
@@ -108,6 +110,7 @@ for FT in (Float32, Float64)
         UTC_DATETIME = Dates.now()
         atmos_h = FT(30)
         atmos_co2 = (t) -> 1.0
+        earth_param_set = LP.LandParameters(FT)
 
         atmos = ClimaLand.PrescribedAtmosphere(
             TimeVaryingInput(precipitation_function),
@@ -117,7 +120,8 @@ for FT in (Float32, Float64)
             TimeVaryingInput(atmos_q),
             TimeVaryingInput(atmos_p),
             UTC_DATETIME,
-            atmos_h;
+            atmos_h,
+            earth_param_set;
             c_co2 = TimeVaryingInput(atmos_co2),
         )
 

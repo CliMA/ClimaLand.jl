@@ -2,7 +2,7 @@
 
 julia_version = "1.10.3"
 manifest_format = "2.0"
-project_hash = "2bbfa2f663b4af45716f0653dbf2347a9562e36c"
+project_hash = "dae5b8a0ef6cad3a789e38991e9bafc7e71f7ab5"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "daf26bbdec60d9ca1c0003b70f389d821ddb4224"
@@ -373,7 +373,7 @@ weakdeps = ["CUDA", "Krylov"]
     KrylovExt = "Krylov"
 
 [[deps.ClimaLand]]
-deps = ["Adapt", "ArtifactWrappers", "ClimaComms", "ClimaCore", "ClimaUtilities", "DataFrames", "Dates", "DocStringExtensions", "Insolation", "Interpolations", "IntervalSets", "LinearAlgebra", "NCDatasets", "SciMLBase", "StaticArrays", "SurfaceFluxes", "Thermodynamics", "UnrolledUtilities"]
+deps = ["Adapt", "ArtifactWrappers", "ClimaComms", "ClimaCore", "ClimaUtilities", "DataFrames", "Dates", "DocStringExtensions", "Insolation", "Interpolations", "IntervalSets", "LazyArtifacts", "LinearAlgebra", "NCDatasets", "SciMLBase", "StaticArrays", "SurfaceFluxes", "Thermodynamics", "UnrolledUtilities"]
 path = ".."
 uuid = "08f4d4ce-cf43-44bb-ad95-9d2d5f413532"
 version = "0.12.1"

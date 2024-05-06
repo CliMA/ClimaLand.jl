@@ -86,6 +86,7 @@ for FT in (Float32, Float64)
             TimeVaryingInput(P_atmos),
             ref_time,
             h_atmos,
+            earth_param_set,
         )
 
         τc = FT(10.0)
@@ -202,6 +203,7 @@ for FT in (Float32, Float64)
                 TimeVaryingInput(P_atmos),
                 ref_time,
                 h_atmos,
+                earth_param_set,
             )
 
             τc = FT(10.0)
@@ -315,6 +317,7 @@ for FT in (Float32, Float64)
                 TimeVaryingInput(P_atmos),
                 ref_time,
                 h_atmos,
+                earth_param_set,
             )
 
             τc = FT(10.0)
@@ -428,6 +431,7 @@ for FT in (Float32, Float64)
             TimeVaryingInput(P_atmos),
             ref_time,
             h_atmos,
+            earth_param_set,
         )
 
         τc = FT(10.0)

@@ -191,7 +191,6 @@ driver variables in the cache.
 """
 add_drivers_to_cache(p, model::AbstractModel) = p
 
-
 """
     make_imp_tendency(model::AbstractImExModel)
 
@@ -387,6 +386,16 @@ are required, `p` is returned unchanged.
 """
 function add_drivers_to_cache(p::NamedTuple, model::AbstractModel, coords)
     (atmos, radiation) = get_drivers(model)
+    if hasproperty(model, :parameters) &&
+       hasproperty(model.parameters, :earth_param_set) &&
+       !isnothing(atmos)
+        if LP.thermodynamic_parameters(model.parameters.earth_param_set) !=
+           atmos.thermo_params
+            error(
+                "earth_param_set is inconsistent between the model and the atmosphere",
+            )
+        end
+    end
     driver_nt = initialize_drivers(atmos, radiation, coords)
     if driver_nt == (;)
         return p

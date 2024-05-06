@@ -2,6 +2,7 @@ using NCDatasets
 using ArtifactWrappers
 using Dates
 using ClimaLand: PrescribedAtmosphere, PrescribedRadiativeFluxes
+import ClimaLand.Parameters as LP
 using Thermodynamics
 using Statistics
 using Insolation
@@ -81,6 +82,7 @@ radiation = ClimaLand.PrescribedRadiativeFluxes(
 
 
 "Atmos"
+earth_param_set = LP.LandParameters(FT)
 liquid_precip = TimeVaryingInput(seconds, rainf; context)
 snow_precip = TimeVaryingInput(seconds, snowf; context)
 T_atmos = TimeVaryingInput(seconds, Tair; context)
@@ -98,6 +100,7 @@ atmos = PrescribedAtmosphere(
     P_atmos,
     ref_time,
     h_atmos,
+    earth_param_set,
 )
 # Meteorological data
 snow_af = ArtifactFile(

@@ -134,6 +134,7 @@ function setup_prob(t0, tf, Δt)
         TimeVaryingInput(P_atmos),
         ref_time,
         h_atmos,
+        earth_param_set,
     )
 
     # Prescribed radiation -- a prescribed downwelling SW diurnal cycle, with a
