@@ -198,33 +198,6 @@ function make_update_boundary_fluxes(land::AbstractLandModel)
 end
 
 """
-    make_set_initial_cache(land::AbstractLandModel)
-
-Creates and returns the function which sets the initial cache
-with the correct values given the initial conditions Y0 and initial
-time t0. 
-
-Note that this will call update_drivers! multiple times, once
-per component model.
-"""
-function make_set_initial_cache(land::AbstractLandModel)
-    components = land_components(land)
-    # These functions also call update_aux
-    (atmos, radiation) = get_drivers(land)
-    update_drivers! = make_update_drivers(atmos, radiation)
-    set_initial_cache_function_list =
-        map(x -> make_set_initial_cache(getproperty(land, x)), components)
-
-    function set_initial_cache!(p, Y0, t0)
-        update_drivers!(p, t0)
-        for f! in set_initial_cache_function_list
-            f!(p, Y0, t0)
-        end
-    end
-    return set_initial_cache!
-end
-
-"""
     land_components(land::AbstractLandModel)
 
 Returns the component names of the `land` model, by calling

@@ -445,7 +445,7 @@ for FT in (Float32, Float64)
         )
 
         # Test that LAI is updated
-        update_canopy_prescribed_field!(plant_hydraulics, p, FT(200))
+        set_canopy_prescribed_field!(plant_hydraulics, p, FT(200))
         @test all(
             Array(parent(p.canopy.hydraulics.area_index.leaf)) .==
             FT(LAI * sin(200 * 2π / 365)),
@@ -453,7 +453,7 @@ for FT in (Float32, Float64)
 
         struct Default{FT} <: ClimaLand.Canopy.AbstractCanopyComponent{FT} end
         set_canopy_prescribed_field!(Default{FT}(), p, t0)
-        update_canopy_prescribed_field!(Default{FT}(), p, t0)
+        set_canopy_prescribed_field!(Default{FT}(), p, t0)
         # Test that they are unchanged
         @test all(
             parent(p.canopy.hydraulics.area_index.leaf) .==
