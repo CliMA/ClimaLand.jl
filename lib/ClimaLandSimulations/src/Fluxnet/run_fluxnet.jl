@@ -295,6 +295,33 @@ function run_fluxnet(
     driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
     cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
 
+    ##### ClimaDiagnostics #####
+
+    dict_writer = ClimaDiagnostics.Writers.DictWriter()
+    
+    function compute_GPP!(out, Y, p, t)
+        if isnothing(out)
+            return copy(p[:canopy][:photosynthesis][:GPP])
+        else
+            out .= p[:canopy][:photosynthesis][:GPP]
+        end
+    end
+
+    GPP = ClimaDiagnostics.DiagnosticVariable(;
+        compute! = compute_GPP!,
+        short_name = "GPP",
+        long_name = "Gross Primary Productivity",
+        units = "g m^-2 s^-1",
+        comments = "this is the total photosynthesis",
+    )
+
+    inst_diagnostic = ClimaDiagnostics.ScheduledDiagnostic(
+        variable = GPP,
+        output_writer = dict_writer,
+    )
+
+    ############################
+    
     prob = SciMLBase.ODEProblem(
         CTS.ClimaODEFunction((T_exp!) = exp_tendency!),
         Y,
