@@ -785,7 +785,7 @@ boundary_vars(
         <:AbstractRunoffModel,
     },
     ::ClimaLand.TopBoundary,
-) = (:turbulent_fluxes, :R_n, :top_bc, :infiltration)
+) = (:turbulent_fluxes, :R_n, :top_bc, :infiltration, :sfc_scratch)
 
 """
     boundary_var_domain_names(::AtmosDrivenFluxBC{<:AbstractAtmosphericDrivers,
@@ -805,7 +805,7 @@ boundary_var_domain_names(
         <:AbstractRunoffModel,
     },
     ::ClimaLand.TopBoundary,
-) = (:surface, :surface, :surface, :surface)
+) = (:surface, :surface, :surface, :surface, :surface)
 """
     boundary_var_types(
         ::AtmosDrivenFluxBC{
@@ -830,6 +830,7 @@ boundary_var_types(
     NamedTuple{(:lhf, :shf, :vapor_flux, :r_ae), Tuple{FT, FT, FT, FT}},
     FT,
     NamedTuple{(:water, :heat), Tuple{FT, FT}},
+    FT,
     FT,
 )
 
@@ -900,7 +901,16 @@ boundary_vars(
         <:Runoff.TOPMODELRunoff,
     },
     ::ClimaLand.TopBoundary,
-) = (:turbulent_fluxes, :R_n, :top_bc, :h∇, :R_s, :R_ss, :infiltration)
+) = (
+    :turbulent_fluxes,
+    :R_n,
+    :top_bc,
+    :h∇,
+    :R_s,
+    :R_ss,
+    :infiltration,
+    :sfc_scratch,
+)
 
 """
     boundary_var_domain_names(::AtmosDrivenFluxBC{<:AbstractAtmosphericDrivers,
@@ -921,7 +931,7 @@ boundary_var_domain_names(
         <:Runoff.TOPMODELRunoff,
     },
     ::ClimaLand.TopBoundary,
-) = (:surface, :surface, :surface, :surface, :surface, :surface, :surface)
+) = (:surface, :surface, :surface, :surface, :surface, :surface, :surface, :sfc)
 """
     boundary_var_types(
         ::AtmosDrivenFluxBC{
@@ -947,6 +957,7 @@ boundary_var_types(
     NamedTuple{(:lhf, :shf, :vapor_flux, :r_ae), Tuple{FT, FT, FT, FT}},
     FT,
     NamedTuple{(:water, :heat), Tuple{FT, FT}},
+    FT,
     FT,
     FT,
     FT,

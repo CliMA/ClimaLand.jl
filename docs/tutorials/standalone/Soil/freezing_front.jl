@@ -76,7 +76,7 @@ import SciMLBase
 import ClimaTimeSteppers as CTS
 using ArtifactWrappers
 using DelimitedFiles
-using Plots
+using CairoMakie
 
 using ClimaCore
 import ClimaParams as CP
@@ -234,70 +234,64 @@ mask_12h = hours .== 12
 mask_24h = hours .== 24
 mask_50h = hours .== 50;
 
-z = parent(coords.subsurface.z)[:];
-plot1 = plot(
-    ylabel = "Soil depth (m)",
-    xlabel = "",
+fig = Figure(size = (900, 300))
+ax1 = Axis(
+    fig[1, 1],
     title = "12 hours",
-    xlim = [0.2, 0.55],
-    ylim = [-0.2, 0],
+    xlabel = L"θ_l + θ_i",
+    ylabel = "Soil depth (m)",
 )
-scatter!(plot1, vwc[mask_12h], -depth[mask_12h], label = "", color = "purple")
-plot!(
-    plot1,
+limits!(ax1, 0.2, 0.5, -0.2, 0.0)
+ax2 = Axis(
+    fig[1, 2],
+    title = "24 hours",
+    xlabel = L"θ_l + θ_i",
+    yticksvisible = false,
+    yticklabelsvisible = false,
+)
+limits!(ax2, 0.2, 0.5, -0.2, 0.0)
+ax3 = Axis(
+    fig[1, 3],
+    title = "50 hours",
+    xlabel = L"θ_l + θ_i",
+    yticksvisible = false,
+    yticklabelsvisible = false,
+)
+limits!(ax3, 0.2, 0.5, -0.2, 0.0)
+
+
+z = parent(coords.subsurface.z)[:];
+
+scatter!(ax1, vwc[mask_12h], -depth[mask_12h], label = "", color = "purple")
+lines!(
+    ax1,
     parent(sol.u[13].soil.ϑ_l .+ sol.u[13].soil.θ_i)[:],
     z,
     label = "",
     color = :green,
 )
 
-plot2 = plot(
-    ylabel = "",
-    xlabel = "Volumetric Water content",
-    title = "24 hours",
-    xlim = [0.2, 0.55],
-    ylim = [-0.2, 0],
-)
-scatter!(plot2, vwc[mask_24h], -depth[mask_24h], label = "", color = "purple")
-plot!(
-    plot2,
+
+scatter!(ax2, vwc[mask_24h], -depth[mask_24h], label = "", color = "purple")
+lines!(
+    ax2,
     parent(sol.u[25].soil.ϑ_l .+ sol.u[25].soil.θ_i)[:],
     z,
     label = "",
     color = :green,
 )
 
-plot3 = plot(
-    ylabel = "",
-    xlabel = "",
-    title = "50 hours",
-    xlim = [0.2, 0.55],
-    ylim = [-0.2, 0],
-)
-scatter!(
-    plot3,
-    vwc[mask_50h],
-    -depth[mask_50h],
-    label = "Data",
-    color = "purple",
-)
-plot!(
-    plot3,
+scatter!(ax3, vwc[mask_50h], -depth[mask_50h], label = "Data", color = "purple")
+lines!(
+    ax3,
     parent(sol.u[51].soil.ϑ_l .+ sol.u[51].soil.θ_i)[:],
     z,
     label = "Simulation",
     color = :green,
 )
-plot!(plot3, legend = :bottomright)
-plot(
-    plot1,
-    plot2,
-    plot3,
-    layout = (1, 3),
-    size = (1200, 500),
-    margin = 10Plots.mm,
-)
-savefig("mizoguchi_data_comparison.png");
+axislegend(ax3, position = :rb)
+
+save("mizoguchi_data_comparison.png", fig);
 # ![](mizoguchi_data_comparison.png)
 
 # # Discussion and Model Explanation

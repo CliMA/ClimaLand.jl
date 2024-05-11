@@ -99,7 +99,7 @@ end
 function make_update_boundary_fluxes(model::RichardsModel)
     function update_boundary_fluxes!(p, Y, t)
         z = ClimaCore.Fields.coordinate_field(model.domain.space.subsurface).z
-        Δz_top, Δz_bottom = get_Δz(z)
+        Δz_top, Δz_bottom = ClimaLand.Domains.get_Δz(z)
         p.soil.top_bc .= boundary_flux(
             model.boundary_conditions.top,
             TopBoundary(),
@@ -461,7 +461,7 @@ function ClimaLand.make_update_jacobian(model::RichardsModel{FT}) where {FT}
         # Hardcoded for single column: FIX!
         # The derivative of the tendency may eventually live in boundary vars and be updated there. but TBD
         z = Fields.coordinate_field(axes(Y.soil.ϑ_l)).z
-        Δz_top, Δz_bottom = get_Δz(z)
+        Δz_top, Δz_bottom = ClimaLand.Domains.get_Δz(z)
         ∂T_bc∂YN = ClimaLand.∂tendencyBC∂Y(
             model,
             model.boundary_conditions.top,

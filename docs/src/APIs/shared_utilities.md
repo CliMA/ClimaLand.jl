@@ -19,6 +19,9 @@ ClimaLand.Domains.obtain_face_space
 ClimaLand.Domains.obtain_surface_space
 ClimaLand.Domains.obtain_surface_domain
 ClimaLand.Domains.top_center_to_surface
+ClimaLand.Domains.linear_interpolation_to_surface!
+ClimaLand.Domains.get_Δz
+
 ```
 
 ## Models
@@ -53,7 +56,6 @@ ClimaLand.TopBoundary
 ClimaLand.BottomBoundary
 ClimaLand.boundary_flux
 ClimaLand.diffusive_flux
-ClimaLand.get_Δz
 ClimaLand.boundary_vars
 ClimaLand.boundary_var_domain_names
 ClimaLand.boundary_var_types

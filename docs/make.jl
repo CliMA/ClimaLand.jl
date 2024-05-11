@@ -24,6 +24,8 @@ tutorials = [
             "Energy and Hydrology" => "standalone/Soil/soil_energy_hydrology.jl",
             "Phase Changes" => "standalone/Soil/freezing_front.jl",
             "Layered Soil" => "standalone/Soil/layered_soil.jl",
+            "Coarse Sand Evaporation" => "standalone/Soil/evaporation.jl",
+            "Gilat Loess Evaporation" => "standalone/Soil/evaporation_gilat_loess.jl",
         ],
         "Canopy modeling" => [
             "Standalone Canopy" => "standalone/Canopy/canopy_tutorial.jl",

@@ -127,6 +127,7 @@ for FT in (Float32, Float64)
                 :R_n,
                 :top_bc,
                 :infiltration,
+                :sfc_scratch,
                 :bottom_bc,
             )
             function init_soil!(Y, z, params)
@@ -203,9 +204,12 @@ for FT in (Float32, Float64)
             g = LP.grav(model.parameters.earth_param_set)
             M_w = LP.molar_mass_water(model.parameters.earth_param_set)
             R = LP.gas_constant(model.parameters.earth_param_set)
-            ψ_sfc =
-                Array(parent(p.soil.ψ))[end] .+
-                ClimaCore.Fields.zeros(surface_space)
+            ψ_sfc = p.soil.sfc_scratch
+            ClimaLand.Domains.linear_interpolation_to_surface!(
+                ψ_sfc,
+                p.soil.ψ,
+                coords.subsurface.z,
+            )
             q_sfc = @. (q_sat * exp(g * ψ_sfc * M_w / (R * T_sfc)))
             @test ClimaLand.surface_specific_humidity(
                 model,
@@ -245,8 +249,11 @@ for FT in (Float32, Float64)
             computed_energy_flux = p.soil.top_bc.heat
             (; ν, θ_r, d_ds) = model.parameters
             _D_vapor = FT(LP.D_vapor(model.parameters.earth_param_set))
-            S_l_sfc = ClimaLand.Domains.top_center_to_surface(
+            S_l_sfc = p.soil.sfc_scratch
+            ClimaLand.Domains.linear_interpolation_to_surface!(
+                S_l_sfc,
                 Soil.effective_saturation.(ν, Y.soil.ϑ_l, θ_r),
+                coords.subsurface.z,
             )
             τ_a = ClimaLand.Domains.top_center_to_surface(
                 @. (ν - p.soil.θ_l - Y.soil.θ_i)^(FT(5 / 2)) / ν

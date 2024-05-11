@@ -108,7 +108,7 @@ for FT in (Float32, Float64)
         z = ClimaCore.Fields.coordinate_field(soil_domain.space.subsurface).z
         Δz = FT(abs(zmax - zmin) / nelems / 2.0)
 
-        top_Δz, bottom_Δz = get_Δz(z)
+        top_Δz, bottom_Δz = ClimaLand.Domains.get_Δz(z)
         @test (mean(abs.(parent(top_Δz) .- Δz)) < eps(FT))
         @test (mean(abs.(parent(bottom_Δz) .- Δz)) < 2 * eps(FT))
 

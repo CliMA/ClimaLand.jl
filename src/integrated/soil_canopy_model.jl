@@ -417,7 +417,7 @@ function soil_boundary_fluxes!(
     t,
 ) where {FT}
     bc = soil.boundary_conditions.top
-    soil_conditions = turbulent_fluxes(bc.atmos, soil, Y, p, t)
+    p.soil.turbulent_fluxes .= turbulent_fluxes(bc.atmos, soil, Y, p, t)
     Soil.Runoff.update_runoff!(p, bc.runoff, Y, t, soil)
     @. p.soil.top_bc.water =
         p.soil.infiltration + p.soil.turbulent_fluxes.vapor_flux
