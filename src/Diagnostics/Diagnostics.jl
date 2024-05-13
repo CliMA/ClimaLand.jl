@@ -12,6 +12,6 @@ import ClimaDiagnostics.Schedules: EveryStepSchedule, EveryDtSchedule
 
 import ClimaDiagnostics.Writers: HDF5Writer, NetCDFWriter, write_field!
 
-include("diagnostic.jl")
+# include("diagnostic.jl")
 
 end

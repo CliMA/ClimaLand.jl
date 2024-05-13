@@ -1,4 +1,5 @@
 import SciMLBase
+using ClimaDiagnostics
 import ClimaTimeSteppers as CTS
 using ClimaCore
 import ClimaParams as CP
@@ -268,6 +269,50 @@ prob = SciMLBase.ODEProblem(
     (t0, tf),
     p,
 );
+
+
+
+#### ClimaDiagnostics test ####
+
+dict_writer = ClimaDiagnostics.Writers.DictWriter()
+
+function compute_GPP!(out, Y, p, t)
+    if isnothing(out)
+        return copy(p[:canopy][:photosynthesis][:GPP])
+    else
+        out .= p[:canopy][:photosynthesis][:GPP]
+    end
+end
+
+GPP = ClimaDiagnostics.DiagnosticVariable(;
+    compute! = compute_GPP!,
+    short_name = "GPP",
+    long_name = "Gross Primary Productivity",
+    units = "g m^-2 s^-1",
+    comments = "this is the total photosynthesis",
+)
+
+inst_diagnostic = ClimaDiagnostics.ScheduledDiagnostic(
+    variable = GPP,
+    output_writer = dict_writer,
+)
+
+diagnostic_handler = ClimaDiagnostics.DiagnosticsHandler(
+    [inst_diagnostic],
+    Y,
+    p,
+    t0;
+    dt = dt,
+)
+
+diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler)
+
+sol_test = SciMLBase.solve(prob, ode_algo; dt = dt, callback = diag_cb)
+
+###############################
+
+
+
 sol = SciMLBase.solve(
     prob,
     ode_algo;
