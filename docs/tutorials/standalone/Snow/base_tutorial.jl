@@ -52,7 +52,7 @@ DataTools = Base.get_extension(ClimaLand, :NeuralSnowExt).DataTools
 ModelTools = Base.get_extension(ClimaLand, :NeuralSnowExt).ModelTools;
 
 # and also, for this tutorial, some purpose-made functions for displaying the output.
-# A similar ``analysis_tools.jl`` file exists alongside ``display_tools.jl`` for
+# A similar `analysis_tools.jl` file exists alongside `display_tools.jl` for
 # some basic functions for analyzing/scoring the model, if desired.
 using ClimaLand
 code_dir = joinpath(pkgdir(ClimaLand), "docs/tutorials/standalone/Snow")
@@ -89,7 +89,7 @@ z_idx = 1
 p_idx = 7;
 
 # We next read in the already-cleaned training dataset, though for custom datasets
-# there is plenty of functionality provided in the DataTools module
+# there is plenty of functionality provided in the `DataTools` module
 # to scrape SNOTEL data directly. We also set the
 # unit timestep seen in this data (daily, so 1 day) to be used for
 # setting the network's constraints as well as generating timeseries during usage.
@@ -100,8 +100,8 @@ training_data_download_link = "https://caltech.box.com/shared/static/1gfyh71c44l
 testing_data_download_link = "https://caltech.box.com/shared/static/qb2ze1wcc1a37fgt5k9wsj27gpoh39ax.csv"
 data_train = CSV.read(HTTP.get(training_data_download_link).body, DataFrame)
 valdata = CSV.read(HTTP.get(testing_data_download_link).body, DataFrame)
-Δt = Second(86400);
-hole_thresh = 5
+Δt = Second(86400)
+hole_thresh = 5;
 
 # With this, we can begin the actual usage pipeline. First, we split the
 # precipitation feature into rain and snow constituents, and apply a set of
@@ -182,7 +182,7 @@ siteplot(
 );
 # ![](base_tutorial_plot2.png)
 
-# Additional functionality can be explored through the optional arguments
+# Additional functionality can be explored through the [optional arguments](https://github.com/CliMA/ClimaLand.jl/blob/main/ext/neural_snow/ModelTools.jl)
 # to the developed functions, though creating timeseries for any validation
 # dataset can be handled with a similar call to `make_timeseries`. The timestep
 # `Δt` (as well as a matching call to the network with `settimescale!`) can

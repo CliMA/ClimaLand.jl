@@ -16,7 +16,7 @@ using DataFrames, CSV, HTTP, Dates, Flux, StatsBase, cuDNN
 # The code lives in an extenson that we have to manually load. The extension can
 # be loaded only if "CSV", "HTTP", "Flux", "StatsBase", "cuDNN" and "ClimaLand"
 # are loaded.
-DataTools = Base.get_extension(ClimaLand, :NeuralSnowExt).DataTools
+DataTools = Base.get_extension(ClimaLand, :NeuralSnowExt).DataTools;
 
 # We first extract a `DataFrame` matching station ID to various station metadata,
 # in order to automate some of the scraping process and pass some station
@@ -84,11 +84,16 @@ scales = Dict{Symbol, Real}(
 # `training_data.csv` used in the [base tutorial](../base_tutorial/). Stations were
 # selected based upon their availability of the features utilized in
 # creating the model used in the paper:
-# -`*` Indicates alternative handling of the `rectify_daily_hourly()` function.
-# -`^` Indicates usage of `RHUM` flag instead of `RHUMV` flag for relative humidity.
-# -`A` Indicates an Alaskan site, which is in the testing data, not the training data, and uses a lower temperature bound of -50 instead of -40 in `filter_val`.
-# -`T` Requires a site that already has had the temperature bias correction at the portal level as of May 2024.
-# -`X` Indicates a SNOTEL portal error when trying to scrape into 2024, as of May 2024.
+
+# - `*` Indicates alternative handling of the `rectify_daily_hourly()` function.
+
+# - `^` Indicates usage of `RHUM` flag instead of `RHUMV` flag for relative humidity.
+
+# - `A` Indicates an Alaskan site, which is in the testing data, not the training data, and uses a lower temperature bound of -50 instead of -40 in `filter_val`.
+
+# - `T` Requires a site that already has had the temperature bias correction at the portal level as of May 2024.
+
+# - `X` Indicates a SNOTEL portal error when trying to scrape into 2024, as of May 2024.
 
 good_stations = Dict{Int, Tuple{String, String}}(
     #306 => ("start", "end"), #*
@@ -221,4 +226,4 @@ end
 
 # Many of the functions above contain default or optional arguments which can
 # be explored to obtain a richer set of functionality, or implement some of
-# the special cases mentioned above. Such options can be explored in the API.
+# the special cases mentioned above. Such options can be explored in the [code documentation](https://github.com/CliMA/ClimaLand.jl/blob/main/ext/neural_snow/DataTools.jl).
