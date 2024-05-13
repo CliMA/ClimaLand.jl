@@ -295,6 +295,13 @@ function run_fluxnet(
     driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
     cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
 
+    prob = SciMLBase.ODEProblem(
+        CTS.ClimaODEFunction((T_exp!) = exp_tendency!),
+        Y,
+        (setup.t0, timestepper.tf),
+        p,
+    )
+
     ##### ClimaDiagnostics #####
 
     dict_writer = ClimaDiagnostics.Writers.DictWriter()
@@ -319,15 +326,21 @@ function run_fluxnet(
         variable = GPP,
         output_writer = dict_writer,
     )
+    
+    diagnostic_handler = ClimaDiagnostics.DiagnosticsHandler(
+        [inst_diagnostic],
+        Y,
+        p,
+        t0;
+        dt,
+    )
+
+    diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler)
+
+    sol_test = SciMLBase.solve(prob, algo, dt = dt, callback = diag_cb)
 
     ############################
     
-    prob = SciMLBase.ODEProblem(
-        CTS.ClimaODEFunction((T_exp!) = exp_tendency!),
-        Y,
-        (setup.t0, timestepper.tf),
-        p,
-    )
     sol = SciMLBase.solve(
         prob,
         timestepper.ode_algo;
