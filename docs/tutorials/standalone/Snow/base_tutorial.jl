@@ -49,20 +49,21 @@ using DataFrames, CSV, HTTP, Dates, Flux, StatsBase, cuDNN
 # be loaded only if "CSV", "HTTP", "Flux", "StatsBase", "cuDNN" and "ClimaLand"
 # are loaded.
 DataTools = Base.get_extension(ClimaLand, :NeuralSnowExt).DataTools
-ModelTools = Base.get_extension(ClimaLand, :NeuralSnowExt).ModelTools
+ModelTools = Base.get_extension(ClimaLand, :NeuralSnowExt).ModelTools;
 
-# and also some purpose-made functions for analyzing and displaying the output.
+# and also, for this tutorial, some purpose-made functions for displaying the output.
+# A similar ``analysis_tools.jl`` file exists alongside ``display_tools.jl`` for
+# some basic functions for analyzing/scoring the model, if desired.
 using ClimaLand
 code_dir = joinpath(pkgdir(ClimaLand), "docs/tutorials/standalone/Snow")
-include(joinpath(code_dir, "analysis_tools.jl"))
 include(joinpath(code_dir, "display_tools.jl"));
 
 # Next, we set up values of the network hyperparameters, including the
 # number of epochs to train it, as well as the width parameter ``n`` as outlined
 # in the associated parameter, and the two loss function hyperparameters ``n_1``, ``n_2``.
-n = 5
-n1 = 1
-n2 = 1;
+n = 4
+n1 = 2
+n2 = 4;
 
 # We next outline which variables in the dataset will be used as predictors,
 # calling them by their column name as a `Symbol`. The number and choice of these
@@ -87,20 +88,25 @@ nfeatures = length(pred_vars)
 z_idx = 1
 p_idx = 7;
 
-# We next read in the already-cleaned dataset, though for custom datasets
-# there is plenty of functionality provided in [`DataTools`](@ref
-# ClimaLand.Snow.DataTools) to scrape SNOTEL data directly. We also set the
+# We next read in the already-cleaned training dataset, though for custom datasets
+# there is plenty of functionality provided in the DataTools module
+# to scrape SNOTEL data directly. We also set the
 # unit timestep seen in this data (daily, so 1 day) to be used for
 # setting the network's constraints as well as generating timeseries during usage.
 # To see the code that generated this data file, check out the [data tutorial](../data_tutorial/).
-data_download_link = "https://caltech.box.com/shared/static/n59m3iqcgr60gllp65rsrd3k0mtnsfmg.csv"
-data = CSV.read(HTTP.get(data_download_link).body, DataFrame)
+# We also specify the maximum gap size in the data (in units of Δt) that the network can traverse
+# before requiring a reset, via `hole_thresh`.
+training_data_download_link = "https://caltech.box.com/shared/static/1gfyh71c44ljzb9xbnza3lbzj6p9723x.csv"
+testing_data_download_link = "https://caltech.box.com/shared/static/qb2ze1wcc1a37fgt5k9wsj27gpoh39ax.csv"
+data_train = CSV.read(HTTP.get(training_data_download_link).body, DataFrame)
+valdata = CSV.read(HTTP.get(testing_data_download_link).body, DataFrame)
 Δt = Second(86400);
+hole_thresh = 5
 
 # With this, we can begin the actual usage pipeline. First, we split the
-# precipitation feature into rain and snow constituents, and apply a set of physically-informed
-# filters before extracting the necessary features with `prep_data`:
-usedata = DataTools.prep_data(data);
+# precipitation feature into rain and snow constituents, and apply a set of
+# filters before extracting the necessary features with `prep_data` (the split already exists in the testing data):
+usedata = DataTools.prep_data(data_train);
 
 # After this, we determine scalings for the input and target data
 # that are conducive to beneficial weight updates. In this case, the
@@ -135,24 +141,46 @@ ModelTools.trainmodel!(model, ps, x_train, y_train, n1, n2, verbose = true);
 # units, we first reset the timesacle and output scaling constants. From there,
 # all we do is pass the dataframe for a given SNOTEL site and the trained model
 # to the `make_timeseries` function, and we can compare the result to the actual data.
-print("\nGenerating Timeseries!\n")
 ModelTools.setoutscale!(model, out_scale)
 ModelTools.settimescale!(model, Dates.value(Δt));
 
-# For instance, let's show the results on site 1286 (Slagamount Lakes site, Montana):
+# For instance, let's show the results on SNOTEL site 1286 (Slagamount Lakes site, Montana):
+
+# *Note that gaps in the data are shown as shaded regions on the plotted timeseries*.
 site_id = 1286
 sitedata = usedata[usedata[!, :id] .== site_id, :]
 true_series = sitedata[!, :z]
-pred_series, _, _ = ModelTools.make_timeseries(model, sitedata, Δt)
-display_scores(pred_series, true_series, timeseries = true)
+pred_series, _, _ =
+    ModelTools.make_timeseries(model, sitedata, Δt, hole_thresh = hole_thresh)
+ptitle = "Slagamount Lakes, Snow Depth (m)"
 siteplot(
+    ptitle,
     sitedata[!, :date],
-    pred_series,
-    true_series,
-    "SITE: " * string(site_id) * ", Snow Depth (m)",
-    savename = "base_tutorial_plot.png",
-)
-# ![](base_tutorial_plot.png)
+    [true_series, pred_series],
+    ["Data", "Neural Model"],
+    [:black, :red],
+    savename = "base_tutorial_plot1.png",
+    display_plot = false,
+);
+# ![](base_tutorial_plot1.png)
+
+# Or, alternatively, SNOTEL site 1070 (Anchorage Hillside, Alaska) from the testing data:
+site_id = "1070" #string format for the testing ids is due to non-numerical testing site codes.
+sitedata = valdata[valdata[!, :id] .== site_id, :]
+true_series = sitedata[!, :z]
+pred_series, _, _ =
+    ModelTools.make_timeseries(model, sitedata, Δt, hole_thresh = hole_thresh)
+ptitle = "Anchorage Hillside, Snow Depth (m)"
+siteplot(
+    ptitle,
+    sitedata[!, :date],
+    [true_series, pred_series],
+    ["Data", "Neural Model"],
+    [:black, :red],
+    savename = "base_tutorial_plot2.png",
+    display_plot = false,
+);
+# ![](base_tutorial_plot2.png)
 
 # Additional functionality can be explored through the optional arguments
 # to the developed functions, though creating timeseries for any validation
