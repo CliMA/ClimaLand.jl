@@ -174,30 +174,38 @@ hcoords = [Geometry.LatLongPoint(lat, long) for long in longpts, lat in latpts]
 remapper = Remapping.Remapper(space, hcoords)
 
 W = [
-    Remapping.interpolate(remapper, sol.u[k].bucket.W) for k in 1:length(sol.t)
+    Array(Remapping.interpolate(remapper, sol.u[k].bucket.W)) for
+    k in 1:length(sol.t)
 ];
 Ws = [
-    Remapping.interpolate(remapper, sol.u[k].bucket.Ws) for k in 1:length(sol.t)
+    Array(Remapping.interpolate(remapper, sol.u[k].bucket.Ws)) for
+    k in 1:length(sol.t)
 ];
 σS = [
-    Remapping.interpolate(remapper, sol.u[k].bucket.σS) for k in 1:length(sol.t)
+    Array(Remapping.interpolate(remapper, sol.u[k].bucket.σS)) for
+    k in 1:length(sol.t)
 ];
 T_sfc = [
-    Remapping.interpolate(remapper, saved_values.saveval[k].bucket.T_sfc)
-    for k in 1:length(sol.t)
+    Array(
+        Remapping.interpolate(remapper, saved_values.saveval[k].bucket.T_sfc),
+    ) for k in 1:length(sol.t)
 ];
 evaporation = [
-    Remapping.interpolate(
-        remapper,
-        saved_values.saveval[k].bucket.turbulent_fluxes.vapor_flux,
+    Array(
+        Remapping.interpolate(
+            remapper,
+            saved_values.saveval[k].bucket.turbulent_fluxes.vapor_flux,
+        ),
     ) for k in 1:length(sol.t)
 ];
 F_sfc = [
-    Remapping.interpolate(
-        remapper,
-        saved_values.saveval[k].bucket.R_n .+
-        saved_values.saveval[k].bucket.turbulent_fluxes.lhf .+
-        saved_values.saveval[k].bucket.turbulent_fluxes.shf,
+    Array(
+        Remapping.interpolate(
+            remapper,
+            saved_values.saveval[k].bucket.R_n .+
+            saved_values.saveval[k].bucket.turbulent_fluxes.lhf .+
+            saved_values.saveval[k].bucket.turbulent_fluxes.shf,
+        ),
     ) for k in 1:length(sol.t)
 ];
 
