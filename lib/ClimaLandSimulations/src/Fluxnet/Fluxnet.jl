@@ -10,6 +10,7 @@ using Dates
 using Insolation
 using StatsBase
 using Interpolations
+using ClimaDiagnostics
 using ClimaLand
 using ClimaLand.Domains: Column
 using ClimaLand.Soil

@@ -331,13 +331,13 @@ function run_fluxnet(
         [inst_diagnostic],
         Y,
         p,
-        t0;
-        dt,
+        setup.t0;
+        dt = setup.dt,
     )
 
     diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler)
 
-    sol_test = SciMLBase.solve(prob, algo, dt = dt, callback = diag_cb)
+    sol_test = SciMLBase.solve(prob, timestepper.ode_algo; dt = setup.dt, callback = diag_cb)
 
     ############################
     
