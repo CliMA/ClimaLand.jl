@@ -1,4 +1,6 @@
 using Test
+import ClimaComms
+pkgversion(ClimaComms) >= v"0.6" && ClimaComms.@import_required_backends
 
 using ClimaUtilities.TimeManager
 using ClimaUtilities.DataHandling
@@ -134,7 +136,16 @@ end
     date_ref_noleap = NCDataset(infile_path, "r") do ds
         ds["time"][1]
     end
-    date_ref = CFTime.reinterpret(DateTime, date_ref_noleap)
+    # Converting from NoLeap
+    date_ref = Dates.DateTime(
+        Dates.year(date_ref_noleap),
+        Dates.month(date_ref_noleap),
+        Dates.day(date_ref_noleap),
+        Dates.hour(date_ref_noleap),
+        Dates.minute(date_ref_noleap),
+        Dates.second(date_ref_noleap),
+        Dates.millisecond(date_ref_noleap),
+    )
     t_start = Float64(0)
 
     albedo = PrescribedSurfaceAlbedo{FT}(date_ref, t_start, space)
@@ -274,7 +285,16 @@ end
     file_dates_noleap = NCDataset(infile_path, "r") do ds
         ds["time"][:]
     end
-    file_dates = CFTime.reinterpret.(Ref(DateTime), file_dates_noleap)
+    to_datetime(date) = Dates.DateTime(
+        Dates.year(date),
+        Dates.month(date),
+        Dates.day(date),
+        Dates.hour(date),
+        Dates.minute(date),
+        Dates.second(date),
+        Dates.millisecond(date),
+    )
+    file_dates = to_datetime.(file_dates_noleap)
     date_ref = file_dates[1]
 
     bucket_domains = [

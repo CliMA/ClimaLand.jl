@@ -1,4 +1,6 @@
 using CairoMakie
+import ClimaComms
+pkgversion(ClimaComms) >= v"0.6" && ClimaComms.@import_required_backends
 using Statistics
 using ArtifactWrappers
 using Dates

@@ -23,17 +23,13 @@ steps:
       - "julia --project -e 'using Pkg; Pkg.status()'"
 
       - echo "--- Instantiate experiments"
-      - "julia --project=experiments -e 'using Pkg; Pkg.develop(;path=\".\"); Pkg.instantiate(;verbose=true)'"
-      - "julia --project=experiments -e 'using Pkg; Pkg.add(\"ProfileCanvas\")'"
-      - "julia --project=experiments -e 'using Pkg; Pkg.status()'"
+      - "julia --project=.buildkite -e 'using Pkg; Pkg.develop(;path=\".\"); Pkg.instantiate(;verbose=true)'"
+      - "julia --project=.buildkite -e 'using Pkg; Pkg.status()'"
 
       - echo "--- Instantiate lib/ClimaLandSimulations"
       - "julia --project=lib/ClimaLandSimulations -e 'using Pkg; Pkg.develop(;path=\".\"); Pkg.instantiate(;verbose=true)'"
       - "julia --project=lib/ClimaLandSimulations -e 'using Pkg; Pkg.status()'"
 
-      - echo "--- Instantiate test"
-      - "julia --project=test -e 'using Pkg; Pkg.develop(;path=\".\"); Pkg.instantiate(;verbose=true)'"
-      - "julia --project=test -e 'using Pkg; Pkg.status()'"
     agents:
       slurm_ntasks: 1
     env:
@@ -44,11 +40,11 @@ steps:
   - group: "Experiments"
     steps:
       - label: "Richards comparison to Bonan"
-        command: "julia --color=yes --project=experiments experiments/standalone/Soil/richards_comparison.jl"
+        command: "julia --color=yes --project=.buildkite experiments/standalone/Soil/richards_comparison.jl"
         artifact_paths: "experiments/standalone/Soil/comparison*png"
 
       - label: "Evaporation from sand"
-        command: "julia --color=yes --project=experiments experiments/standalone/Soil/evaporation.jl"
+        command: "julia --color=yes --project=.buildkite experiments/standalone/Soil/evaporation.jl"
         artifact_paths: "experiments/standalone/Soil/evaporation*png"
 
       # - label: "vaira_test"
@@ -56,38 +52,38 @@ steps:
       #   artifact_paths: "experiments/integrated/fluxnet/US-Var/out/*png"
 
       - label: "ozark_test"
-        command: "julia --color=yes --project=experiments experiments/integrated/fluxnet/run_fluxnet.jl US-MOz"
+        command: "julia --color=yes --project=.buildkite experiments/integrated/fluxnet/run_fluxnet.jl US-MOz"
         artifact_paths: "experiments/integrated/fluxnet/US-MOz/out/*png"
 
       - label: "niwot_test"
-        command: "julia --color=yes --project=experiments experiments/integrated/fluxnet/run_fluxnet.jl US-NR1"
+        command: "julia --color=yes --project=.buildkite experiments/integrated/fluxnet/run_fluxnet.jl US-NR1"
         artifact_paths: "experiments/integrated/fluxnet/US-NR1/out/*png"
 
       - label: "harvard_test"
-        command: "julia --color=yes --project=experiments experiments/integrated/fluxnet/run_fluxnet.jl US-Ha1"
+        command: "julia --color=yes --project=.buildkite experiments/integrated/fluxnet/run_fluxnet.jl US-Ha1"
         artifact_paths: "experiments/integrated/fluxnet/US-Ha1/out/*png"
 
       - label: "ozark_pft"
-        command: "julia --color=yes --project=experiments experiments/integrated/fluxnet/ozark_pft.jl"
+        command: "julia --color=yes --project=.buildkite experiments/integrated/fluxnet/ozark_pft.jl"
         artifact_paths: "experiments/integrated/fluxnet/US-MOz/out/pft/*png"
 
       - label: "ozark_conservation"
-        command: "julia --color=yes --project=experiments experiments/integrated/performance/conservation/ozark_conservation.jl"
+        command: "julia --color=yes --project=.buildkite experiments/integrated/performance/conservation/ozark_conservation.jl"
         artifact_paths: "experiments/integrated/performance/conservation/*png"
 
       - label: "soil/canopy lsm performance"
-        command: "julia --color=yes --project=experiments experiments/integrated/performance/profile_allocations.jl"
+        command: "julia --color=yes --project=.buildkite experiments/integrated/performance/profile_allocations.jl"
         artifact_paths: "experiments/integrated/performance/*cpu*html"
 
       - label: "Soilbiogeochem"
-        command: "julia --color=yes --project=experiments experiments/standalone/Biogeochemistry/experiment.jl"
+        command: "julia --color=yes --project=.buildkite experiments/standalone/Biogeochemistry/experiment.jl"
 
       - label: "Water conservation"
-        command: "julia --color=yes --project=experiments experiments/standalone/Soil/water_conservation.jl"
+        command: "julia --color=yes --project=.buildkite experiments/standalone/Soil/water_conservation.jl"
         artifact_paths: "experiments/standalone/Soil/water_conservation*png"
 
       - label: "Richards Runoff CPU"
-        command: "julia --color=yes --project=experiments experiments/standalone/Soil/richards_runoff.jl"
+        command: "julia --color=yes --project=.buildkite experiments/standalone/Soil/richards_runoff.jl"
         artifact_paths: "experiments/standalone/Soil/artifacts/*png"
         agents:
           slurm_mem: 16G
@@ -102,29 +98,29 @@ steps:
     steps:
       - label: "Global Bucket on CPU (functional albedo)"
         key: "global_bucket_function_cpu"
-        command: "julia --color=yes --project=experiments experiments/standalone/Bucket/global_bucket_function.jl"
+        command: "julia --color=yes --project=.buildkite experiments/standalone/Bucket/global_bucket_function.jl"
         artifact_paths: "experiments/standalone/Bucket/artifacts/*cpu*"
 
       - label: "Global Bucket on CPU (static map albedo)"
         key: "global_bucket_staticmap_cpu"
-        command: "julia --color=yes --project=experiments experiments/standalone/Bucket/global_bucket_staticmap.jl"
+        command: "julia --color=yes --project=.buildkite experiments/standalone/Bucket/global_bucket_staticmap.jl"
         artifact_paths: "experiments/standalone/Bucket/artifacts_staticmap/*cpu*"
 
       - label: "Global Bucket on CPU (temporal map albedo)"
         key: "global_bucket_temporalmap_cpu"
-        command: "julia --color=yes --project=experiments experiments/standalone/Bucket/global_bucket_temporalmap.jl"
+        command: "julia --color=yes --project=.buildkite experiments/standalone/Bucket/global_bucket_temporalmap.jl"
         artifact_paths: "experiments/standalone/Bucket/artifacts_temporalmap/*cpu*"
 
   - group: "GPU: unit tests and global bucket"
     steps:
       - label: "GPU runtests"
-        command: "julia --color=yes --project=test test/runtests.jl"
+        command: "julia --color=yes --project=.buildkite test/runtests.jl"
         agents:
           slurm_ntasks: 1
           slurm_gres: "gpu:1"
 
       - label: "soil/canopy lsm performance on GPU"
-        command: "julia --color=yes --project=experiments experiments/integrated/performance/profile_allocations.jl"
+        command: "julia --color=yes --project=.buildkite experiments/integrated/performance/profile_allocations.jl"
         agents:
           slurm_ntasks: 1
           slurm_gres: "gpu:1"
@@ -132,44 +128,50 @@ steps:
 
       - label: "Global Bucket on GPU (functional albedo)"
         key: "global_bucket_function_gpu"
-        command: "julia --color=yes --project=experiments experiments/standalone/Bucket/global_bucket_function.jl"
+        command: "julia --color=yes --project=.buildkite experiments/standalone/Bucket/global_bucket_function.jl"
         agents:
           slurm_ntasks: 1
           slurm_gres: "gpu:1"
+        env:
+          CLIMACOMMS_DEVICE: "CUDA"
         artifact_paths: "experiments/standalone/Bucket/artifacts/*gpu*"
 
       - label: "Global Bucket on GPU (static map albedo)"
         key: "global_bucket_staticmap_gpu"
-        command: "julia --color=yes --project=experiments experiments/standalone/Bucket/global_bucket_staticmap.jl"
+        command: "julia --color=yes --project=.buildkite experiments/standalone/Bucket/global_bucket_staticmap.jl"
         agents:
           slurm_ntasks: 1
           slurm_gres: "gpu:1"
+        env:
+          CLIMACOMMS_DEVICE: "CUDA"
         artifact_paths: "experiments/standalone/Bucket/artifacts_staticmap/*gpu*"
 
       - label: "Global Bucket on GPU (temporal map albedo)"
         key: "global_bucket_temporalmap_gpu"
-        command: "julia --color=yes --project=experiments experiments/standalone/Bucket/global_bucket_temporalmap.jl"
+        command: "julia --color=yes --project=.buildkite experiments/standalone/Bucket/global_bucket_temporalmap.jl"
         agents:
           slurm_ntasks: 1
           slurm_gres: "gpu:1"
+        env:
+          CLIMACOMMS_DEVICE: "CUDA"
         artifact_paths: "experiments/standalone/Bucket/artifacts_temporalmap/*gpu*"
 
   - group: "CPU/GPU comparisons"
     steps:
       - label: "Compare GPU bucket with CPU bucket (functional albedo)"
-        command: "julia --color=yes --project=experiments experiments/standalone/Bucket/compare_gpu_cpu_output.jl"
+        command: "julia --color=yes --project=.buildkite experiments/standalone/Bucket/compare_gpu_cpu_output.jl"
         depends_on:
           - "global_bucket_function_cpu"
           - "global_bucket_function_gpu"
 
       - label: "Compare GPU bucket with CPU bucket (static map albedo)"
-        command: "julia --color=yes --project=experiments experiments/standalone/Bucket/compare_gpu_cpu_output.jl"
+        command: "julia --color=yes --project=.buildkite experiments/standalone/Bucket/compare_gpu_cpu_output.jl"
         depends_on:
           - "global_bucket_staticmap_cpu"
           - "global_bucket_staticmap_gpu"
 
       - label: "Compare GPU bucket with CPU bucket (temporal map albedo)"
-        command: "julia --color=yes --project=experiments experiments/standalone/Bucket/compare_gpu_cpu_output.jl"
+        command: "julia --color=yes --project=.buildkite experiments/standalone/Bucket/compare_gpu_cpu_output.jl"
         depends_on:
           - "global_bucket_temporalmap_cpu"
           - "global_bucket_temporalmap_gpu"

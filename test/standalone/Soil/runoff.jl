@@ -1,3 +1,5 @@
+import ClimaComms
+pkgversion(ClimaComms) >= v"0.6" && ClimaComms.@import_required_backends
 import ClimaUtilities
 import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
 using ClimaLand

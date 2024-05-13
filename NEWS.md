@@ -4,6 +4,9 @@ ClimaLand.jl Release Notes
 main
 --------
 
+- Updated to ClimaComms 0.6 and ClimaCore 0.14. Now, `CUDA` and `MPI` are no
+  longer automatically installed.
+
 v0.11.2
 --------
 -  Add profiling of soil/canopy model to buildkite pipeline. This was the
