@@ -217,7 +217,24 @@ sol_test = SciMLBase.solve(
 
 ##########################
 
+#### ClimaAnalysis ####
 
+using ClimaAnalysis
+simdir = ClimaAnalysis.SimDir("output")
+println(summary(simdir))
+Ta = get(simdir; short_name = "T", reduction = "inst", period = "1it")
+Ta.dims
+import ClimaAnalysis.Visualize as viz
+fig = CairoMakie.Figure(size = (400, 600))
+viz.plot!(
+  fig,
+  Ta,
+  time = 3600.0,
+  z = 100.0
+)
+CairoMakie.save("Ta.png", fig)
+
+######################
 
 
 
