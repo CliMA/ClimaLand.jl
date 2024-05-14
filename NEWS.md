@@ -4,6 +4,8 @@ ClimaLand.jl Release Notes
 main
 --------
 
+v0.12.0
+--------
 - Updated to ClimaComms 0.6 and ClimaCore 0.14. Now, `CUDA` and `MPI` are no
   longer automatically installed.
 
