@@ -5,9 +5,9 @@ manifest_format = "2.0"
 project_hash = "2bbfa2f663b4af45716f0653dbf2347a9562e36c"
 
 [[deps.ADTypes]]
-git-tree-sha1 = "401c87ea437e9d5b74dc283a77198ad75e50811f"
+git-tree-sha1 = "9b3993053b87311e699ac9e1bcabec5ae7444f65"
 uuid = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
-version = "1.1.0"
+version = "1.2.0"
 weakdeps = ["ChainRulesCore", "EnzymeCore"]
 
     [deps.ADTypes.extensions]
@@ -375,7 +375,7 @@ weakdeps = ["CUDA", "Krylov"]
 deps = ["Adapt", "ArtifactWrappers", "ClimaComms", "ClimaCore", "ClimaUtilities", "DataFrames", "Dates", "DocStringExtensions", "Insolation", "Interpolations", "IntervalSets", "LinearAlgebra", "NCDatasets", "SciMLBase", "StaticArrays", "SurfaceFluxes", "Thermodynamics"]
 path = ".."
 uuid = "08f4d4ce-cf43-44bb-ad95-9d2d5f413532"
-version = "0.11.3"
+version = "0.12.0"
 weakdeps = ["CSV", "CUDA", "ClimaParams", "Flux", "HTTP", "StatsBase", "cuDNN"]
 
     [deps.ClimaLand.extensions]
@@ -390,9 +390,9 @@ version = "0.10.6"
 
 [[deps.ClimaTimeSteppers]]
 deps = ["ClimaComms", "Colors", "DataStructures", "DiffEqBase", "DiffEqCallbacks", "KernelAbstractions", "Krylov", "LinearAlgebra", "LinearOperators", "NVTX", "SciMLBase", "StaticArrays"]
-git-tree-sha1 = "c007c01f5a8dfe7e0ad4fc6231c181c7807d9d63"
+git-tree-sha1 = "bd0445edef423f0f274b574148481db48f8554a9"
 uuid = "595c0a79-7f3d-439a-bc5a-b232dc3bde79"
-version = "0.7.25"
+version = "0.7.26"
 
     [deps.ClimaTimeSteppers.extensions]
     ClimaTimeSteppersBenchmarkToolsExt = ["CUDA", "BenchmarkTools", "OrderedCollections", "StatsBase", "PrettyTables"]
@@ -1687,9 +1687,9 @@ uuid = "46d2c3a1-f734-5fdb-9937-b9b9aeba4221"
 version = "0.2.4"
 
 [[deps.MultiBroadcastFusion]]
-git-tree-sha1 = "406fdbe3bee646d409eb2eb355f52d13341fc699"
+git-tree-sha1 = "19b2f184b5882538bee0d5355b152212110e0fd2"
 uuid = "c3c07f87-98de-43f2-a76f-835b330b2cbb"
-version = "0.3.0"
+version = "0.3.1"
 weakdeps = ["Adapt", "CUDA"]
 
     [deps.MultiBroadcastFusion.extensions]
@@ -1963,9 +1963,9 @@ version = "1.40.4"
 
 [[deps.Polyester]]
 deps = ["ArrayInterface", "BitTwiddlingConvenienceFunctions", "CPUSummary", "IfElse", "ManualMemory", "PolyesterWeave", "Requires", "Static", "StaticArrayInterface", "StrideArraysCore", "ThreadingUtilities"]
-git-tree-sha1 = "2ba5f33cbb51a85ef58a850749492b08f9bf2193"
+git-tree-sha1 = "b3e2bae88cf07baf0a051fe09666b8ef97aefe93"
 uuid = "f517fe37-dbe3-4b94-8317-1923a5111588"
-version = "0.7.13"
+version = "0.7.14"
 
 [[deps.PolyesterWeave]]
 deps = ["BitTwiddlingConvenienceFunctions", "CPUSummary", "IfElse", "Static", "ThreadingUtilities"]
@@ -2244,9 +2244,9 @@ uuid = "c0aeaf25-5076-4817-a8d5-81caf7dfa961"
 version = "0.3.8"
 
 [[deps.SciMLStructures]]
-git-tree-sha1 = "5833c10ce83d690c124beedfe5f621b50b02ba4d"
+git-tree-sha1 = "d778a74df2f64059c38453b34abad1953b2b8722"
 uuid = "53ae85a6-f571-4167-b2af-e1d143709226"
-version = "1.1.0"
+version = "1.2.0"
 
 [[deps.Scratch]]
 deps = ["Dates"]
