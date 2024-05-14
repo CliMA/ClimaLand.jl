@@ -168,7 +168,7 @@ cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
 using ClimaDiagnostics 
 # dev /home/arenchon/GitHub/ClimaDiagnostics.jl/ 
 
-output_dir = "/output/" 
+output_dir = "output/" 
 
 nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(
                surface_space,
@@ -203,7 +203,7 @@ diagnostic_handler = ClimaDiagnostics.DiagnosticsHandler(
     Y,
     p,
     t0;
-    dt = dt,
+    dt = Δt,
 )
 
 diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler)
@@ -211,7 +211,7 @@ diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler)
 sol_test = SciMLBase.solve(
     prob,
     ode_algo;
-    dt = dt,
+    dt = Δt,
     callback = diag_cb
 )
 
