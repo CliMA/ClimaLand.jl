@@ -23,7 +23,7 @@ export plant_absorbed_pfd,
     nitrogen_content,
     plant_respiration_maintenance,
     plant_respiration_growth
-
+ 
 # 1. Radiative transfer
 
 """
@@ -1013,3 +1013,4 @@ function plant_respiration_growth(
     Rg = f2 * (GPP - Rpm)
     return Rg
 end
+

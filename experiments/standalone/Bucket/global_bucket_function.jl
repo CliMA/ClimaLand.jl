@@ -229,8 +229,8 @@ fig = CairoMakie.Figure(size = (400, 600))
 viz.plot!(
   fig,
   Ta,
-  time = 3600.0,
-  z = 100.0
+  time = 604800.0,
+  z = Ta.dims["z"][5]
 )
 CairoMakie.save("Ta.png", fig)
 
