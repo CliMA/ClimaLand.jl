@@ -275,26 +275,37 @@ prob = SciMLBase.ODEProblem(
 #### ClimaDiagnostics test ####
 
 dict_writer = ClimaDiagnostics.Writers.DictWriter()
+# nc_writer = ClimaDiagnostics.Writers.NetCDFWriter()
 
-function compute_GPP!(out, Y, p, t)
+# keys(dict_writer.dict) |> collect
+
+function compute_T!(out, Y, p, t)
     if isnothing(out)
-        return copy(p[:canopy][:photosynthesis][:GPP])
+        return copy(Y.canopy.energy.T)
     else
-        out .= p[:canopy][:photosynthesis][:GPP]
+        @show out .= Y.canopy.energy.T
     end
 end
 
-GPP = ClimaDiagnostics.DiagnosticVariable(;
-    compute! = compute_GPP!,
-    short_name = "GPP",
-    long_name = "Gross Primary Productivity",
-    units = "g m^-2 s^-1",
-    comments = "this is the total photosynthesis",
+#import SciMLBase
+# integrator = SciMLBase.init(prob, ode_algo; dt, callback = diag_cb)
+#SciMLBase.step!(integrator)
+
+#integrator.p.canopy.photosynthesis.GPP
+
+T = ClimaDiagnostics.DiagnosticVariable(;
+    compute! = compute_T!,
+    short_name = "T",
+    long_name = "Temperature",
+    units = "K",
 )
 
 inst_diagnostic = ClimaDiagnostics.ScheduledDiagnostic(
-    variable = GPP,
+    variable = T,
     output_writer = dict_writer,
+    # output_schedule = ClimaDiagnostics.Schedules.DivisorSchedule(10),
+    # time_reduction = +,
+    # pre_output_hook! = ClimaDiagnostics.average_hook!
 )
 
 diagnostic_handler = ClimaDiagnostics.DiagnosticsHandler(
@@ -306,10 +317,19 @@ diagnostic_handler = ClimaDiagnostics.DiagnosticsHandler(
 )
 
 diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler)
+#times = collect(keys(dict_writer.dict["GPP_1it_inst"]))
+#values = extrema([extrema(dict_writer.dict["GPP_1it_inst"][t]) for t in times])
 
-sol_test = SciMLBase.solve(prob, ode_algo; dt = dt, callback = diag_cb)
+
+sol_test = SciMLBase.solve(
+    prob,
+    ode_algo;
+    dt = dt,
+    callback = diag_cb
+)
 
 ###############################
+
 
 
 

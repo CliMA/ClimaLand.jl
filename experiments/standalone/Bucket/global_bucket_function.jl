@@ -161,6 +161,66 @@ updatefunc = ClimaLand.make_update_drivers(bucket_atmos, bucket_rad)
 driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
 cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
 
+
+
+#### ClimaDiagnostics ####
+
+using ClimaDiagnostics 
+# dev /home/arenchon/GitHub/ClimaDiagnostics.jl/ 
+
+output_dir = "/output/" 
+
+nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(
+               surface_space,
+               output_dir,
+              )
+
+function compute_T!(out, Y, p, t)
+    if isnothing(out)
+        return copy(Y.bucket.T)
+    else
+        out .= Y.bucket.T
+    end
+end
+
+T = ClimaDiagnostics.DiagnosticVariable(;
+    compute! = compute_T!,
+    short_name = "T",
+    long_name = "Temperature",
+    units = "K",
+)
+
+inst_diagnostic = ClimaDiagnostics.ScheduledDiagnostic(
+    variable = T,
+    output_writer = nc_writer,
+    # output_schedule = ClimaDiagnostics.Schedules.DivisorSchedule(10),
+    # time_reduction = +,
+    # pre_output_hook! = ClimaDiagnostics.average_hook!
+)
+
+diagnostic_handler = ClimaDiagnostics.DiagnosticsHandler(
+    [inst_diagnostic],
+    Y,
+    p,
+    t0;
+    dt = dt,
+)
+
+diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler)
+
+sol_test = SciMLBase.solve(
+    prob,
+    ode_algo;
+    dt = dt,
+    callback = diag_cb
+)
+
+##########################
+
+
+
+
+
 @time sol =
     SciMLBase.solve(prob, ode_algo; dt = Δt, saveat = saveat, callback = cb);
 
@@ -170,6 +230,8 @@ longpts = range(-180.0, 180.0, 21)
 latpts = range(-90.0, 90.0, 21)
 hcoords = [Geometry.LatLongPoint(lat, long) for long in longpts, lat in latpts]
 remapper = Remapping.Remapper(space, hcoords)
+
+p.start_date = 
 
 W = [
     Remapping.interpolate(remapper, sol.u[k].bucket.W) for k in 1:length(sol.t)
