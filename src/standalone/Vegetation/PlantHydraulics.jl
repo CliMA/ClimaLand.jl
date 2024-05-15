@@ -49,6 +49,9 @@ abstract type AbstractPlantHydraulicsModel{FT} <: AbstractCanopyComponent{FT} en
 
 ClimaLand.name(::AbstractPlantHydraulicsModel) = :hydraulics
 
+# Hydraulics models should be broadcastable
+Base.broadcastable(x::AbstractPlantHydraulicsModel) = tuple(x)
+
 """
     AbstractTranspiration{FT <: AbstractFloat}
 
