@@ -938,6 +938,7 @@ function root_water_flux_per_ground_area!(
                 (area_index.root + above_ground_area_index) / 2
         end
     end
+end
 
 
 """

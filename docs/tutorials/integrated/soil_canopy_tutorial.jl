@@ -215,7 +215,7 @@ canopy_component_types = (;
     radiative_transfer = Canopy.TwoStreamModel{FT},
     photosynthesis = Canopy.FarquharModel{FT},
     conductance = Canopy.MedlynConductanceModel{FT},
-    hydraulics = Canopy.PlantHydraulicsModel{FT},
+    hydraulics = Canopy.BigLeafHydraulicsModel{FT},
 );
 
 # Then provide arguments to the canopy radiative transfer, stomatal conductance,
@@ -272,10 +272,8 @@ plant_hydraulics_ps = PlantHydraulics.PlantHydraulicsParameters(;
 
 plant_hydraulics_args = (
     parameters = plant_hydraulics_ps,
-    n_stem = n_stem,
-    n_leaf = n_leaf,
-    compartment_midpoints = compartment_midpoints,
-    compartment_surfaces = compartment_surfaces,
+    h_stem = h_stem,
+    h_leaf = h_leaf,
 );
 
 # We may now collect all of the canopy component argument tuples into one
