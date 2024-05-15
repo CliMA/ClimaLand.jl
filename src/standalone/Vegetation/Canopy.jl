@@ -488,9 +488,7 @@ function ClimaLand.make_update_aux(
 
         # update plant hydraulics aux
         hydraulics = canopy.hydraulics
-        n_stem = hydraulics.n_stem
-        n_leaf = hydraulics.n_leaf
-        PlantHydraulics.lai_consistency_check.(n_stem, n_leaf, area_index)
+        PlantHydraulics.lai_consistency_check.(hydraulics, area_index)
         (; retention_model, conductivity_model, S_s, ν) = hydraulics.parameters
         # We can index into a field of Tuple{FT} to extract a field of FT
         # using the following notation: field.:index

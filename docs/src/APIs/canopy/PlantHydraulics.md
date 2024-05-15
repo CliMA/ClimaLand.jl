@@ -7,6 +7,7 @@ CurrentModule = ClimaLand.PlantHydraulics
 
 ```@docs
 ClimaLand.PlantHydraulics.PlantHydraulicsModel
+ClimaLand.PlantHydraulics.BigLeafHydraulicsModel
 ```
 
 ## Plant Hydraulics Diagnostic Variables

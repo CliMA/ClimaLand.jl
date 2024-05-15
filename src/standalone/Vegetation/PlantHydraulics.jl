@@ -22,6 +22,7 @@ import ClimaLand:
     prognostic_domain_names,
     name
 export PlantHydraulicsModel,
+    BigLeafHydraulicsModel,
     AbstractPlantHydraulicsModel,
     flux,
     effective_saturation,
@@ -87,9 +88,7 @@ end
 
 """
     lai_consistency_check(
-        n_stem::Int64,
-        n_leaf::Int64,
-        area_index::NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}},
+        model::PlantHydraulicsModel{FT},
     ) where {FT}
 
 Carries out consistency checks using the area indices supplied and the number of
@@ -106,10 +105,11 @@ Specifically, this checks that:
 be zero.
 """
 function lai_consistency_check(
-    n_stem::Int64,
-    n_leaf::Int64,
+    model::PlantHydraulicsModel{FT},
     area_index::NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}},
 ) where {FT}
+    n_stem = model.n_stem
+    n_leaf = model.n_leaf
     @assert n_leaf > 0
     if area_index.leaf > eps(FT) || area_index.stem > eps(FT)
         @assert area_index.root > eps(FT)
@@ -316,7 +316,7 @@ Sets the canopy prescribed fields pertaining to the PlantHydraulics
 component (the area indices) with their values at time t.
 """
 function ClimaLand.Canopy.set_canopy_prescribed_field!(
-    component::PlantHydraulicsModel{FT},
+    component::Union{PlantHydraulicsModel{FT}, BigLeafHydraulicsModel{FT}},
     p,
     t,
 ) where {FT}
@@ -324,6 +324,25 @@ function ClimaLand.Canopy.set_canopy_prescribed_field!(
     evaluate!(p.canopy.hydraulics.area_index.leaf, LAIfunction, t)
     @. p.canopy.hydraulics.area_index.stem = SAI
     @. p.canopy.hydraulics.area_index.root = RAI
+end
+
+
+"""
+    update_canopy_prescribed_field!(component::Union{PlantHydraulics{FT}, BigLeafHydraulicsModel{FT}},
+                                    p,
+                                    t,
+                                    ) where {FT}
+
+Updates the canopy prescribed fields pertaining to the PlantHydraulics
+component (the LAI only in this case) with their values at time t.
+"""
+function ClimaLand.Canopy.update_canopy_prescribed_field!(
+    component::Union{PlantHydraulicsModel{FT}, BigLeafHydraulicsModel{FT}},
+    p,
+    t,
+) where {FT}
+    (; LAIfunction) = component.parameters.ai_parameterization
+    evaluate!(p.canopy.hydraulics.area_index.leaf, LAIfunction, t)
 end
 
 
@@ -701,6 +720,258 @@ function transpiration_per_ground_area(
     t,
 )
     @inbounds return p.canopy.conductance.transpiration
+end
+
+# BIGLEAF HYDRAULICS MODEL
+
+"""
+    BigLeafHydraulicsModel{FT, PS, T} <: AbstractPlantHydraulicsModel{FT}
+
+Defines, and constructs instances of, the BigLeafHydraulicsModel type which is 
+used for simulation flux of water to/from the soil for the case of a big leaf
+model, meaning that the canopy is treated as a single stem and single leaf 
+compartment. Water flows along roots of different depths, along the stem, to
+the leaf, and ultimately being lost from the system through transpiration. Note 
+that the canopy height is specified as part of the BigLeafHydraulicsModel, along
+with the area indices of the leaves, roots, and stems.
+
+This model can also be combined with the soil model using ClimaLand, in which
+case the prognostic soil water content is used to determine root extraction, and
+the transpiration is also computed diagnostically. In a global run with patches
+of bare soil, you can "turn off" the canopy model (to get zero root extraction,
+zero absorption, and emission, zero transpiration, and sensible heat flux from
+the canopy) by setting the canopy heights to zero.
+
+Finally, the model can be used in Canopy standalone mode by prescribing
+the soil matric potential at the root tips or flux in the roots. There is also the
+option (intendend only for debugging) to use a prescribed transpiration rate.
+
+$(DocStringExtensions.FIELDS)
+"""
+struct BigLeafHydraulicsModel{FT, PS, T} <: AbstractPlantHydraulicsModel{FT}
+    "The height of the stem compartment, in meters"
+    h_stem::FT
+    "The height of the leaf compartment, in meters"
+    h_leaf::FT
+    "Parameters required by the BigLeafHydraulics model"
+    parameters::PS
+    "The transpiration mode, of type `AbstractTranspiration`"
+    transpiration::T
+end
+
+function BigLeafHydraulicsModel{FT}(;
+    h_stem::FT,
+    h_leaf::FT,
+    parameters::PlantHydraulicsParameters{FT},
+    transpiration::AbstractTranspiration{FT} = DiagnosticTranspiration{FT}(),
+) where {FT}
+    args = (parameters, transpiration)
+    @assert h_stem >= 0
+    @assert h_leaf >= 0
+    return BigLeafHydraulicsModel{
+        FT,
+        typeof.(args)...,
+    }(
+        h_stem,
+        h_leaf,
+        args...,
+    )
+end
+
+"""
+    prognostic_vars(model::BigLeafHydraulicsModel)
+
+A function which returns the names of the prognostic variables of the 
+`BigLeafHydraulicsModel`.
+"""
+prognostic_vars(model::BigLeafHydraulicsModel) = (:ϑ_l,)
+
+"""
+    auxiliary_vars(model::BigLeafHydraulicsModel)
+
+A function which returns the names of the auxiliary variables of the
+`BigLeafHydraulicsModel`, the transpiration stress factor `β` (unitless),
+the water potential `ψ` (m), the volume flux*cross section `fa` (1/s),
+and the volume flux*root cross section in the roots `fa_roots` (1/s),
+where the cross section can be represented by an area index.
+"""
+auxiliary_vars(model::BigLeafHydraulicsModel) =
+    (:β, :ψ, :fa, :fa_roots, :area_index)
+
+"""
+    ClimaLand.prognostic_types(model::BigLeafHydraulicsModel{FT}) where {FT}
+
+Defines the prognostic types for the BigLeafHydraulicsModel.
+"""
+ClimaLand.prognostic_types(model::BigLeafHydraulicsModel{FT}) where {FT} = 
+    (NTuple{2, FT},)
+ClimaLand.prognostic_domain_names(::BigLeafHydraulicsModel) = (:surface,)
+
+"""
+    ClimaLand.auxiliary_types(model::BigLeafHydraulicsModel{FT}) where {FT}
+
+Defines the auxiliary types for the BigLeafHydraulicsModel.
+"""
+ClimaLand.auxiliarty_types(model::BigLeafHydraulicsModel{FT}) where {FT} = (
+    FT,
+    NTuple{2, FT},
+    NTuple{2, FT},
+    FT,
+    NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}},
+)
+ClimaLand.auxiliary_domain_names(::BigLeafHydraulicsModel) =
+    (:surface, :surface, :surface, :surface, :surface)
+
+"""
+    make_compute_exp_tendency(model::BigLeafHydraulicsModel, _)
+
+A function which creates the compute_exp_tendency! function for the BigLeafHydraulicsModel.
+The compute_exp_tendency! function must comply with a rhs function of SciMLBase.jl.
+
+Below, `fa` denotes a flux multiplied by the relevant cross section
+(per unit area ground, or area index, AI). The tendency for the
+ith compartment can be written then as:
+∂ϑ[i]/∂t = 1/(AI*dz)[fa[i]-fa[i+1]).
+
+Note that if the area_index is zero because no plant is present,
+AIdz is zero, and the fluxes `fa` appearing in the numerator are
+zero because they are scaled by AI.
+
+To prevent dividing by zero, we change AI/(AI x dz)" to
+"AI/max(AI x dz, eps(FT))"
+"""
+function make_compute_exp_tendency(
+    model::BigLeafHydraulicsmodel{FT},
+    canopy,
+) where {FT}
+    function compute_exp_tendency!(dY, Y, p, t)
+        area_index = p.canopy.hydraulics.area_index
+        fa = p.canopy.hydraulics.fa
+        fa_roots = p.canopy.hydraulics.fa_roots
+        labels = model.parameters.h_stem > 0 ? [:stem, :leaf] : [:leaf]
+
+        @inbounds for i in eachindex(labels)
+            im1 = i - 1
+            ip1 = i + 1
+            compartment_type = labels[i]
+            dz = compartment_type == :stem ? model.h_stem : model.h_leaf - model.h_stem
+            # To prevent dividing by zero, change AI/(AI x dz)" to
+            # "AI/max(AI x dz, eps(FT))"
+            AIdz =
+                max.(getproperty(area_index, labels[i]) * (dz), eps(FT))
+            if i == 1
+                @inbounds @. dY.canopy.hydraulics.ϑ_l.:($$i) =
+                    1 / AIdz * (fa_roots - fa.:($$i))
+            else
+                @inbounds @. dY.canopy.hydraulics.ϑ_l.:($$i) =
+                    1 / AIdz * (fa.:($$im1) - fa.:($$i))
+            end
+        end
+    end
+    return compute_exp_tendency!
+end
+
+"""
+    root_water_flux_per_ground_area!(
+        fa::ClimaCore.Fields.Field,
+        s::PrescribedSoil,
+        model::BigLeafHydraulicsModel{FT},
+        Y::ClimaCore.Fields.FieldVector,
+        p::NamedTuple,
+        t,
+    ) where {FT}
+
+A method which computes the water flux between the soil and the stem, via the
+roots, and multiplied by the RAI, in the case of a big leaf model running 
+without an integrated soil model.
+
+The returned flux is per unit ground area. This assumes that the stem compartment
+is the first element of `Y.canopy.hydraulics.ϑ_l`.
+"""
+function root_water_flux_per_ground_area!(
+    fa::ClimaCore.Fields.Field,
+    s::PrescribedSoil,
+    model::BigLeafHydraulicsModel{FT},
+    Y::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
+    t,
+) where {FT}
+    (; conductivity_model, root_distribution) = model.parameters
+    area_index = p.canopy.hydraulics,area_index
+    # We can index into a field of Tuple{FT} to extract a field of FT
+    # using the following notation: field.:index
+    ψ_base = p.canopy.hydraulics.ψ.:1
+    root_depths = s.root_depths
+    n_root_layers = length(root_depths)
+    ψ_soil::FT = s.ψ(t)
+    fa .= FT(0.0)
+    labels = model.parameters.h_stem > 0 ? [:stem, :leaf] : [:leaf]
+    @inbounds for i in 1:n_root_layers
+        above_ground_area_index = getproperty(area_index, labels[1])
+        compartment = labels[i]
+        midpoint = compartment == :stem ? model.h_stem / 2 : model.h_stem + (model.h_leaf / 2)
+        if i != n_root_layers
+            @. fa +=
+                flux(
+                    root_depths[i],
+                    midpoint,
+                    ψ_soil,
+                    ψ_base,
+                    hydraulic_conductivity(conductivity_model, ψ_soil),
+                    hydraulic_conductivity(conductivity_model, ψ_base),
+                ) *
+                root_distribution(root_depths[i]) *
+                (root_depths[i + 1] - root_depths[i]) *
+                (area_index.root + above_ground_area_index) / 2
+        else
+            @. fa +=
+                flux(
+                    root_depths[i],
+                    midpoint,
+                    ψ_soil,
+                    ψ_base,
+                    hydraulic_conductivity(conductivity_model, ψ_soil),
+                    hydraulic_conductivity(conductivity_model, ψ_base),
+                ) *
+                root_distribution(root_depths[i]) *
+                (model.h_leaf - root_depths[n_root_layers]) *
+                (area_index.root + above_ground_area_index) / 2
+        end
+    end
+
+
+"""
+    lai_consistency_check(
+        model::BigLeafHydraulicsModel{FT},
+    ) where {FT}
+
+Carries out consistency checks using the area indices supplied and the heights 
+of the stem and leaf compartments.
+
+Note that it is possible to have a plant with 0 height stem compartment
+but with a leaf compartment, and that a plant must have leaf compartments
+(even if LAI = 0).
+
+Specifically, this checks that:
+1. n_leaf > 0
+2. if LAI is nonzero or SAI is nonzero, RAI must be nonzero.
+3. if SAI > 0, n_stem must be > 0 for consistency. If SAI == 0, n_stem must
+be zero.
+"""
+function lai_consistency_check(
+    model::PlantHydraulicsModel{FT},
+    area_index::NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}},
+) where {FT}
+    if area_index.leaf > esp(FT) || area_index.stem > eso(FT)
+        @assert area_index.root > eps(FT)
+    end
+    # If the SAI is 0, then the stem compartment should be height 0
+    if area_index.stem < eps(FT)
+        @assert model.h_stem == FT(0)
+    else
+        # if SAI is > 0, n_stem should be > 0 for consistency
+        @assert model.h_stem > 0
+    end
 end
 
 end
