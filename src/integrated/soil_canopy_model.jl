@@ -336,14 +336,16 @@ function make_update_boundary_fluxes(
             ClimaCore.Fields.coordinate_field(
                 land.soil.domain.space.subsurface,
             ).z
-        (; h_stem, h_leaf, conductivity_model) = land.canopy.hydraulics.parameters
-        (label, midpoint) = h_stem > 0 ? (:stem, h_stem / 2) : (:leaf, h_leaf / 2)
+        (; h_stem, h_leaf, conductivity_model) =
+            land.canopy.hydraulics.parameters
+        (label, midpoint) =
+            h_stem > 0 ? (:stem, h_stem / 2) : (:leaf, h_leaf / 2)
 
         area_index = p.canopy.hydraulics.area_index
 
         above_ground_area_index = getproperty(area_index, label)
 
-        @. p.root_extraction = 
+        @. p.root_extraction =
             PlantHydraulics.flux(
                 z,
                 midpoint,
@@ -357,14 +359,13 @@ function make_update_boundary_fluxes(
                     conductivity_model,
                     p.canopy.hydraulics.ψ.:1,
                 ),
-            ) *
-            (land.canopy.hydraulics.parameters.root_distribution(z))
+            ) * (land.canopy.hydraulics.parameters.root_distribution(z))
         @. p.root_energy_extraction =
             p.root_extraction * ClimaLand.Soil.volumetric_internal_energy_liq(
                 p.soil.T,
                 land.soil.parameters,
             )
-        
+
         # Radiation
         lsm_radiant_energy_fluxes!(
             p,
@@ -556,7 +557,10 @@ roots and soil at each soil layer.
 function PlantHydraulics.root_water_flux_per_ground_area!(
     fa::ClimaCore.Fields.Field,
     s::PrognosticSoil,
-    model::Union{Canopy.PlantHydraulics.PlantHydraulicsModel{FT}, Canopy.PlantHydraulics.BigLeafHydraulicsModel{FT}},
+    model::Union{
+        Canopy.PlantHydraulics.PlantHydraulicsModel{FT},
+        Canopy.PlantHydraulics.BigLeafHydraulicsModel{FT},
+    },
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
     t,

@@ -270,11 +270,8 @@ plant_hydraulics_ps = PlantHydraulics.PlantHydraulicsParameters(;
     retention_model = retention_model,
 )
 
-plant_hydraulics_args = (
-    parameters = plant_hydraulics_ps,
-    h_stem = h_stem,
-    h_leaf = h_leaf,
-);
+plant_hydraulics_args =
+    (parameters = plant_hydraulics_ps, h_stem = h_stem, h_leaf = h_leaf);
 
 # We may now collect all of the canopy component argument tuples into one
 # arguments tuple for the canopy component models.

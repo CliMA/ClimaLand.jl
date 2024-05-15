@@ -86,44 +86,6 @@ function PrescribedSiteAreaIndex{FT}(
     PrescribedSiteAreaIndex{FT, typeof(LAIfunction)}(LAIfunction, SAI, RAI)
 end
 
-"""
-    lai_consistency_check(
-        model::PlantHydraulicsModel{FT},
-    ) where {FT}
-
-Carries out consistency checks using the area indices supplied and the number of
-stem elements being modeled.
-
-Note that it is possible to have a plant with no stem compartments
-but with leaf compartments, and that a plant must have leaf compartments
-(even if LAI = 0).
-
-Specifically, this checks that:
-1. n_leaf > 0
-2. if LAI is nonzero or SAI is nonzero, RAI must be nonzero.
-3. if SAI > 0, n_stem must be > 0 for consistency. If SAI == 0, n_stem must
-be zero.
-"""
-function lai_consistency_check(
-    model::PlantHydraulicsModel{FT},
-    area_index::NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}},
-) where {FT}
-    n_stem = model.n_stem
-    n_leaf = model.n_leaf
-    @assert n_leaf > 0
-    if area_index.leaf > eps(FT) || area_index.stem > eps(FT)
-        @assert area_index.root > eps(FT)
-    end
-    # If there SAI is zero, there should be no stem compartment
-    if area_index.stem < eps(FT)
-        @assert n_stem == FT(0)
-    else
-        # if SAI is > 0, n_stem should be > 0 for consistency
-        @assert n_stem > 0
-    end
-
-end
-
 
 """
     PlantHydraulicsParameters
@@ -306,45 +268,42 @@ ClimaLand.auxiliary_domain_names(::PlantHydraulicsModel) =
 
 
 """
-    set_canopy_prescribed_field!(component::PlantHydraulics{FT},
-                                 p,
-                                 t,
-                                 ) where {FT}
+    lai_consistency_check(
+        model::PlantHydraulicsModel{FT},
+    ) where {FT}
 
+Carries out consistency checks using the area indices supplied and the number of
+stem elements being modeled.
 
-Sets the canopy prescribed fields pertaining to the PlantHydraulics
-component (the area indices) with their values at time t.
+Note that it is possible to have a plant with no stem compartments
+but with leaf compartments, and that a plant must have leaf compartments
+(even if LAI = 0).
+
+Specifically, this checks that:
+1. n_leaf > 0
+2. if LAI is nonzero or SAI is nonzero, RAI must be nonzero.
+3. if SAI > 0, n_stem must be > 0 for consistency. If SAI == 0, n_stem must
+be zero.
 """
-function ClimaLand.Canopy.set_canopy_prescribed_field!(
-    component::Union{PlantHydraulicsModel{FT}, BigLeafHydraulicsModel{FT}},
-    p,
-    t,
+function lai_consistency_check(
+    model::PlantHydraulicsModel{FT},
+    area_index::NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}},
 ) where {FT}
-    (; LAIfunction, SAI, RAI) = component.parameters.ai_parameterization
-    evaluate!(p.canopy.hydraulics.area_index.leaf, LAIfunction, t)
-    @. p.canopy.hydraulics.area_index.stem = SAI
-    @. p.canopy.hydraulics.area_index.root = RAI
+    n_stem = model.n_stem
+    n_leaf = model.n_leaf
+    @assert n_leaf > 0
+    if area_index.leaf > eps(FT) || area_index.stem > eps(FT)
+        @assert area_index.root > eps(FT)
+    end
+    # If there SAI is zero, there should be no stem compartment
+    if area_index.stem < eps(FT)
+        @assert n_stem == FT(0)
+    else
+        # if SAI is > 0, n_stem should be > 0 for consistency
+        @assert n_stem > 0
+    end
+
 end
-
-
-"""
-    update_canopy_prescribed_field!(component::Union{PlantHydraulics{FT}, BigLeafHydraulicsModel{FT}},
-                                    p,
-                                    t,
-                                    ) where {FT}
-
-Updates the canopy prescribed fields pertaining to the PlantHydraulics
-component (the LAI only in this case) with their values at time t.
-"""
-function ClimaLand.Canopy.update_canopy_prescribed_field!(
-    component::Union{PlantHydraulicsModel{FT}, BigLeafHydraulicsModel{FT}},
-    p,
-    t,
-) where {FT}
-    (; LAIfunction) = component.parameters.ai_parameterization
-    evaluate!(p.canopy.hydraulics.area_index.leaf, LAIfunction, t)
-end
-
 
 """
     flux(
@@ -768,14 +727,7 @@ function BigLeafHydraulicsModel{FT}(;
     args = (parameters, transpiration)
     @assert h_stem >= 0
     @assert h_leaf >= 0
-    return BigLeafHydraulicsModel{
-        FT,
-        typeof.(args)...,
-    }(
-        h_stem,
-        h_leaf,
-        args...,
-    )
+    return BigLeafHydraulicsModel{FT, typeof.(args)...}(h_stem, h_leaf, args...)
 end
 
 """
@@ -803,7 +755,7 @@ auxiliary_vars(model::BigLeafHydraulicsModel) =
 
 Defines the prognostic types for the BigLeafHydraulicsModel.
 """
-ClimaLand.prognostic_types(model::BigLeafHydraulicsModel{FT}) where {FT} = 
+ClimaLand.prognostic_types(model::BigLeafHydraulicsModel{FT}) where {FT} =
     (NTuple{2, FT},)
 ClimaLand.prognostic_domain_names(::BigLeafHydraulicsModel) = (:surface,)
 
@@ -812,7 +764,7 @@ ClimaLand.prognostic_domain_names(::BigLeafHydraulicsModel) = (:surface,)
 
 Defines the auxiliary types for the BigLeafHydraulicsModel.
 """
-ClimaLand.auxiliarty_types(model::BigLeafHydraulicsModel{FT}) where {FT} = (
+ClimaLand.auxiliary_types(model::BigLeafHydraulicsModel{FT}) where {FT} = (
     FT,
     NTuple{2, FT},
     NTuple{2, FT},
@@ -841,7 +793,7 @@ To prevent dividing by zero, we change AI/(AI x dz)" to
 "AI/max(AI x dz, eps(FT))"
 """
 function make_compute_exp_tendency(
-    model::BigLeafHydraulicsmodel{FT},
+    model::BigLeafHydraulicsModel{FT},
     canopy,
 ) where {FT}
     function compute_exp_tendency!(dY, Y, p, t)
@@ -854,11 +806,12 @@ function make_compute_exp_tendency(
             im1 = i - 1
             ip1 = i + 1
             compartment_type = labels[i]
-            dz = compartment_type == :stem ? model.h_stem : model.h_leaf - model.h_stem
+            dz =
+                compartment_type == :stem ? model.h_stem :
+                model.h_leaf - model.h_stem
             # To prevent dividing by zero, change AI/(AI x dz)" to
             # "AI/max(AI x dz, eps(FT))"
-            AIdz =
-                max.(getproperty(area_index, labels[i]) * (dz), eps(FT))
+            AIdz = max.(getproperty(area_index, labels[i]) * (dz), eps(FT))
             if i == 1
                 @inbounds @. dY.canopy.hydraulics.ϑ_l.:($$i) =
                     1 / AIdz * (fa_roots - fa.:($$i))
@@ -897,7 +850,7 @@ function root_water_flux_per_ground_area!(
     t,
 ) where {FT}
     (; conductivity_model, root_distribution) = model.parameters
-    area_index = p.canopy.hydraulics,area_index
+    area_index = p.canopy.hydraulics, area_index
     # We can index into a field of Tuple{FT} to extract a field of FT
     # using the following notation: field.:index
     ψ_base = p.canopy.hydraulics.ψ.:1
@@ -909,7 +862,9 @@ function root_water_flux_per_ground_area!(
     @inbounds for i in 1:n_root_layers
         above_ground_area_index = getproperty(area_index, labels[1])
         compartment = labels[i]
-        midpoint = compartment == :stem ? model.h_stem / 2 : model.h_stem + (model.h_leaf / 2)
+        midpoint =
+            compartment == :stem ? model.h_stem / 2 :
+            model.h_stem + (model.h_leaf / 2)
         if i != n_root_layers
             @. fa +=
                 flux(
@@ -960,7 +915,7 @@ Specifically, this checks that:
 be zero.
 """
 function lai_consistency_check(
-    model::PlantHydraulicsModel{FT},
+    model::BigLeafHydraulicsModel{FT},
     area_index::NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}},
 ) where {FT}
     if area_index.leaf > esp(FT) || area_index.stem > eso(FT)
@@ -973,6 +928,29 @@ function lai_consistency_check(
         # if SAI is > 0, n_stem should be > 0 for consistency
         @assert model.h_stem > 0
     end
+end
+
+# SHARED METHODS FOR BigLeafHydraulics AND PlantHydraulics
+
+"""
+    set_canopy_prescribed_field!(component::PlantHydraulics{FT},
+                                 p,
+                                 t,
+                                 ) where {FT}
+
+
+Sets the canopy prescribed fields pertaining to the PlantHydraulics
+component (the area indices) with their values at time t.
+"""
+function ClimaLand.Canopy.set_canopy_prescribed_field!(
+    component::Union{PlantHydraulicsModel{FT}, BigLeafHydraulicsModel{FT}},
+    p,
+    t,
+) where {FT}
+    (; LAIfunction, SAI, RAI) = component.parameters.ai_parameterization
+    evaluate!(p.canopy.hydraulics.area_index.leaf, LAIfunction, t)
+    @. p.canopy.hydraulics.area_index.stem = SAI
+    @. p.canopy.hydraulics.area_index.root = RAI
 end
 
 end
