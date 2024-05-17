@@ -6,7 +6,6 @@ import ClimaUtilities.TimeVaryingInputs:
 import NCDatasets, ClimaCore, Interpolations # Needed to load TimeVaryingInputs
 using ..ClimaLand.Canopy:
     AbstractCanopyComponent,
-    update_canopy_prescribed_field!,
     set_canopy_prescribed_field!,
     AbstractSoilDriver,
     PrescribedSoil
@@ -309,42 +308,22 @@ ClimaLand.auxiliary_domain_names(::PlantHydraulicsModel) =
 """
     set_canopy_prescribed_field!(component::PlantHydraulics{FT},
                                  p,
-                                 t0,
+                                 t,
                                  ) where {FT}
 
 
 Sets the canopy prescribed fields pertaining to the PlantHydraulics
-component (the area indices) with their initial values at time t0.
+component (the area indices) with their values at time t.
 """
 function ClimaLand.Canopy.set_canopy_prescribed_field!(
     component::PlantHydraulicsModel{FT},
     p,
-    t0,
-) where {FT}
-    (; LAIfunction, SAI, RAI) = component.parameters.ai_parameterization
-    evaluate!(p.canopy.hydraulics.area_index.leaf, LAIfunction, t0)
-
-    @. p.canopy.hydraulics.area_index.stem = SAI
-    @. p.canopy.hydraulics.area_index.root = RAI
-end
-
-
-"""
-    update_canopy_prescribed_field!(component::PlantHydraulics{FT},
-                                    p,
-                                    t,
-                                    ) where {FT}
-
-Updates the canopy prescribed fields pertaining to the PlantHydraulics
-component (the LAI only in this case) with their values at time t.
-"""
-function ClimaLand.Canopy.update_canopy_prescribed_field!(
-    component::PlantHydraulicsModel{FT},
-    p,
     t,
 ) where {FT}
-    (; LAIfunction) = component.parameters.ai_parameterization
+    (; LAIfunction, SAI, RAI) = component.parameters.ai_parameterization
     evaluate!(p.canopy.hydraulics.area_index.leaf, LAIfunction, t)
+    @. p.canopy.hydraulics.area_index.stem = SAI
+    @. p.canopy.hydraulics.area_index.root = RAI
 end
 
 
