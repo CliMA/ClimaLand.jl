@@ -84,11 +84,11 @@ regrid_dir = joinpath(
 !ispath(regrid_dir) && mkpath(regrid_dir)
 t0 = 0.0;
 # run for 50 days to test monthly file update
-tf = 50 * 86400;
+tf = 2 * 86400;
 Δt = 3600.0;
 
 
-function setup_prob(t0, tf, Δt)
+#function setup_prob(t0, tf, Δt)
     # We set up the problem in a function so that we can make multiple copies (for profiling)
 
     # Set up simulation domain
@@ -187,12 +187,106 @@ function setup_prob(t0, tf, Δt)
     driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
     cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
 
-    return prob, cb, saveat, saved_values
-end
+#    return prob, cb, saveat, saved_values
+#end
 
 prob, cb, saveat, saved_values = setup_prob(t0, tf, Δt);
 timestepper = CTS.RK4()
 ode_algo = CTS.ExplicitAlgorithm(timestepper)
+#=
+    soil_depth = FT(3.5)
+    bucket_domain = ClimaLand.Domains.SphericalShell(;
+        radius = FT(6.3781e6),
+        depth = soil_depth,
+        nelements = (10, 10), # this failed with (50,10)
+        npolynomial = 1,
+        dz_tuple = FT.((1.0, 0.05)),
+    )
+    surface_space = bucket_domain.space.surface
+=#
+
+#### ClimaDiagnostics ####
+
+using ClimaDiagnostics 
+# dev /home/arenchon/GitHub/ClimaDiagnostics.jl/ 
+mkdir("output_short")
+output_dir = "output_short/" 
+
+nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(
+               surface_space,
+               output_dir,
+              )
+
+function compute_T!(out, Y, p, t)
+    if isnothing(out)
+        return copy(p.bucket.α_sfc)
+    else
+        out .= p.bucket.α_sfc
+    end
+end
+
+T = ClimaDiagnostics.DiagnosticVariable(;
+    compute! = compute_T!,
+    short_name = "T",
+    long_name = "Temperature",
+    units = "K",
+)
+
+inst_diagnostic = ClimaDiagnostics.ScheduledDiagnostic(
+    variable = T,
+    output_writer = nc_writer,
+    output_schedule_func = ClimaDiagnostics.Schedules.DivisorSchedule(20),
+    # time_reduction = +,
+    # pre_output_hook! = ClimaDiagnostics.average_hook!
+)
+
+diagnostic_handler = ClimaDiagnostics.DiagnosticsHandler(
+    [inst_diagnostic],
+    Y,
+    p,
+    t0;
+    dt = Δt,
+)
+
+diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler)
+
+sol_test = SciMLBase.solve(
+    prob,
+    ode_algo;
+    dt = Δt,
+    callback = diag_cb
+)
+
+##########################
+
+
+#### ClimaAnalysis ####
+
+using ClimaAnalysis
+simdir = ClimaAnalysis.SimDir("output_short")
+println(summary(simdir))
+Ta = get(simdir; short_name = "T", reduction = "inst", period = "20it")
+Ta.dims
+import ClimaAnalysis.Visualize as viz
+fig = CairoMakie.Figure(size = (400, 600))
+viz.plot!(
+  fig,
+  Ta,
+  time = 2 * 86400,
+)
+CairoMakie.save("Ta.png", fig)
+
+######################
+
+
+
+
+
+
+
+
+
+
 
 @time sol =
     SciMLBase.solve(prob, ode_algo; dt = Δt, saveat = saveat, callback = cb)

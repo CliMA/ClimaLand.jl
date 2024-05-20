@@ -83,7 +83,7 @@ z_0b = FT(1e-3);
 ρc_soil = FT(2e6);
 τc = FT(3600);
 t0 = 0.0;
-tf = 7 * 86400;
+tf = 86400.0;
 Δt = 3600.0;
 
 bucket_parameters = BucketModelParameters(FT; albedo, z_0m, z_0b, τc);
@@ -167,8 +167,8 @@ cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
 
 using ClimaDiagnostics 
 # dev /home/arenchon/GitHub/ClimaDiagnostics.jl/ 
-
-output_dir = "output/" 
+mkdir("output_short")
+output_dir = "output_short/" 
 
 nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(
                surface_space,
@@ -177,9 +177,9 @@ nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(
 
 function compute_T!(out, Y, p, t)
     if isnothing(out)
-        return copy(Y.bucket.T)
+        return copy(p.bucket.T_sfc)
     else
-        out .= Y.bucket.T
+        out .= p.bucket.T_sfc
     end
 end
 
@@ -193,7 +193,7 @@ T = ClimaDiagnostics.DiagnosticVariable(;
 inst_diagnostic = ClimaDiagnostics.ScheduledDiagnostic(
     variable = T,
     output_writer = nc_writer,
-    # output_schedule = ClimaDiagnostics.Schedules.DivisorSchedule(10),
+    output_schedule_func = ClimaDiagnostics.Schedules.DivisorSchedule(20),
     # time_reduction = +,
     # pre_output_hook! = ClimaDiagnostics.average_hook!
 )
@@ -220,9 +220,9 @@ sol_test = SciMLBase.solve(
 #### ClimaAnalysis ####
 
 using ClimaAnalysis
-simdir = ClimaAnalysis.SimDir("output")
+simdir = ClimaAnalysis.SimDir("output_short")
 println(summary(simdir))
-Ta = get(simdir; short_name = "T", reduction = "inst", period = "1it")
+Ta = get(simdir; short_name = "T", reduction = "inst", period = "20it")
 Ta.dims
 import ClimaAnalysis.Visualize as viz
 fig = CairoMakie.Figure(size = (400, 600))
@@ -230,7 +230,6 @@ viz.plot!(
   fig,
   Ta,
   time = 604800.0,
-  z = Ta.dims["z"][5]
 )
 CairoMakie.save("Ta.png", fig)
 
