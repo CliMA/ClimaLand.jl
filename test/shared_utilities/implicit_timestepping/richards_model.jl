@@ -1,6 +1,6 @@
 using Test
 import ClimaComms
-pkgversion(ClimaComms) >= v"0.6" && ClimaComms.@import_required_backends
+@static pkgversion(ClimaComms) >= v"0.6" && ClimaComms.@import_required_backends
 using LinearAlgebra
 using ClimaCore
 import ClimaParams as CP

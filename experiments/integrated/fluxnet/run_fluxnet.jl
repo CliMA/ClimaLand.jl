@@ -1,7 +1,7 @@
 import SciMLBase
 import ClimaTimeSteppers as CTS
 import ClimaComms
-pkgversion(ClimaComms) >= v"0.6" && ClimaComms.@import_required_backends
+@static pkgversion(ClimaComms) >= v"0.6" && ClimaComms.@import_required_backends
 using ClimaCore
 import ClimaParams as CP
 using Plots

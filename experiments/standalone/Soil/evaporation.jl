@@ -1,6 +1,6 @@
 using Plots
 import ClimaComms
-pkgversion(ClimaComms) >= v"0.6" && ClimaComms.@import_required_backends
+@static pkgversion(ClimaComms) >= v"0.6" && ClimaComms.@import_required_backends
 import SciMLBase
 import ClimaTimeSteppers as CTS
 using Thermodynamics
