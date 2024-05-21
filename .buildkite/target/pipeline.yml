@@ -1,0 +1,37 @@
+agents:
+  queue: clima
+  modules: common
+
+env:
+  JULIA_NVTX_CALLBACKS: gc
+  OPENBLAS_NUM_THREADS: 1
+  SLURM_KILL_BAD_EXIT: 1
+
+steps:
+  - label: "init environment :computer:"
+    key: "init_env"
+    command:
+      - "echo $$JULIA_DEPOT_PATH"
+      - echo "--- Instantiate experiments"
+      - "julia --project=.buildkite -e 'using Pkg; Pkg.develop(;path=\".\"); Pkg.instantiate(;verbose=true)'"
+      - "julia --project=.buildkite -e 'using Pkg; Pkg.status()'"
+    agents:
+      slurm_gpus: 1
+      slurm_ntasks: 8
+    env:
+      JULIA_NUM_PRECOMPILE_TASKS: 8
+
+  - wait
+
+  - group: "Target Benchmark"
+    steps:
+      - label: ":bucket: Bucket"
+        command: "nsys launch julia --color=yes --project=.buildkite experiments/benchmarks/bucket.jl"
+        artifact_paths:
+          - "bucket_benchmark_gpu/*html"
+          - "bucket_benchmark_gpu/*nsys*"
+        env:
+          CLIMACOMMS_DEVICE: CUDA
+        agents:
+          slurm_mem: 8GB
+          slurm_gpus: 1

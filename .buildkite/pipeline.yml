@@ -31,7 +31,8 @@ steps:
       - "julia --project=lib/ClimaLandSimulations -e 'using Pkg; Pkg.status()'"
 
     agents:
-      slurm_ntasks: 1
+      slurm_gpus: 1
+      slurm_ntasks: 8
     env:
       JULIA_NUM_PRECOMPILE_TASKS: 8
 
