@@ -1,3 +1,87 @@
+
+# Starting to write the usual structure of our model, to apply to Yujie's RT
+
+struct SIFParameters{FT <: AbstractFloat, PSE}
+    # params
+    "Clima-wide parameters"
+    earth_param_set::PSE
+end
+
+function SIFParameters{FT}(
+                          ) where {FT <: AbstractFloat, PSE}
+    return SIFParameters{FT, PSE}(
+                                 )
+end
+
+# Here we define our RT model (need a name), which will be a subtype of AbstractRadiationModel
+# This is where modularity comes in. 
+# We already have BeerLambertModel <: AbstractRadiationModel and TwoStreamModel <: AbstractRadiationModel
+"""
+
+A container/type for the ?? radiation model, based on XX XX.
+"""
+struct SIFModel{
+                FT,
+                XXX, 
+                D,
+                ...,
+               } <: AbstractRadiationModel{FT}
+    ""
+    ????::XXX
+    "The domain of the model"
+    domain::D
+end
+
+function SIFModel{FT}(
+                      ????,
+                      domain,
+                      ...,
+                     ) where {FT, XXX, ...}
+    args = (????, domain, ...)
+    SIFModel{FT, typeof.(args)...}(args...)
+end
+
+prognostic_vars(::SIFModel) = () # if any prognostic vars?
+prognostic_types
+prognostic_domain_names() = ()
+auxiliary_vars(::SIFModel) = ()
+auxiliary_types() = ()
+
+ClimaLand.name(::SIFModel) = :SIF_RT # or something
+
+function ClimaLand.make_update_aux(model::SIFModel{FT}) where {FT}
+    function update_aux!(p, Y, t)
+        parameters = model.parameters
+       # here, we use our parameterisation functions
+    end
+end
+
+function ClimaLand.make_compute_exp_tendency(model::SIFModel{FT}) where {FT} # if any prognostic vars?
+    function compute_exp_tendency!(dY, Y, p, t)
+        
+    end
+    return compute_exp_tendency!
+end
+
+
+
+
+
+
+
+
+
+
+
+
+# Below this line is copy-paste of Yujie's code
+
+
+
+
+
+
+
 # Canopy Geometry
 
 """
