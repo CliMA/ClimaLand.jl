@@ -215,9 +215,11 @@ driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
 cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
 sol = SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb, saveat = saveat)
 evap = [
-    parent(sv.saveval[k].soil.turbulent_fluxes.vapor_flux)[1] for
-    k in 1:length(sol.t)
-];
+    parent(
+        sv.saveval[k].soil.turbulent_fluxes.vapor_flux .*
+        (1 .- sv.saveval[k].soil.ice_frac),
+    )[1] for k in 1:length(sol.t)
+]
 
 ## Repeat with no drainage (Ksat = 0, different BC), and with evaporation, in shorter domain
 # This requires different boundary conditions yet again:
@@ -264,9 +266,11 @@ cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
 sol_no_drainage =
     SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb, saveat = saveat)
 evap_no_drainage = [
-    parent(sv.saveval[k].soil.turbulent_fluxes.vapor_flux)[1] for
-    k in 1:length(sol_no_drainage.t)
-];
+    parent(
+        sv.saveval[k].soil.turbulent_fluxes.vapor_flux .*
+        (1 .- sv.saveval[k].soil.ice_frac),
+    )[1] for k in 1:length(sol.t)
+]
 
 
 # Figures

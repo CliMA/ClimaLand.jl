@@ -26,6 +26,7 @@ tutorials = [
             "Layered Soil" => "standalone/Soil/layered_soil.jl",
             "Coarse Sand Evaporation" => "standalone/Soil/evaporation.jl",
             "Gilat Loess Evaporation" => "standalone/Soil/evaporation_gilat_loess.jl",
+            "Bare soil site" => "standalone/Soil/sublimation.jl",
         ],
         "Canopy modeling" => [
             "Standalone Canopy" => "standalone/Canopy/canopy_tutorial.jl",
