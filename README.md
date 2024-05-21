@@ -34,9 +34,11 @@ EnergyHydrologyModel <: AbstractSoilModel <: AbstractImExModel <: AbstractModel 
 
 CanopyModel <: AbstractVegetationModel <: AbstractExpModel <: AbstractModel  [runnable w/o LandModel wrapper as well]
 
+SnowModel <: AbstractSnowModel <: AbstractExpModel <: AbstractModel [runnable w/o LandModel wrapper as well]
+
 Combined Models:
 
-SoilCanopyModel <: AbstractLandModel <: AbstractModel (constructs the individual ComponentModels based on arguments)
+SoilCanopyModel <: AbstractLandModel <: AbstractImExModel <: AbstractModel (constructs the individual ComponentModels based on arguments)
 
 |||
 |---------------------:|:----------------------------------------------|
