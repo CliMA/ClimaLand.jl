@@ -317,6 +317,10 @@ initialize.
 """
 lsm_aux_domain_names(m::AbstractLandModel) = ()
 
+# Diagnostics
+include(joinpath("Diagnostics", "Diagnostics.jl"))
+import .Diagnostics as CLD # ClimaLand Diagnostics
+
 # Methods extended by the LSM models we support
 include("standalone/SurfaceWater/Pond.jl")
 using .Pond
