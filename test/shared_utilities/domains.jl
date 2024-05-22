@@ -1,5 +1,5 @@
 import ClimaComms
-pkgversion(ClimaComms) >= v"0.6" && ClimaComms.@import_required_backends
+@static pkgversion(ClimaComms) >= v"0.6" && ClimaComms.@import_required_backends
 using ClimaCore
 using Test
 using ClimaLand

@@ -1,6 +1,6 @@
 using Test
 import ClimaComms
-pkgversion(ClimaComms) >= v"0.6" && ClimaComms.@import_required_backends
+@static pkgversion(ClimaComms) >= v"0.6" && ClimaComms.@import_required_backends
 import ClimaParams as CP
 using ClimaLand.Soil.Biogeochemistry
 

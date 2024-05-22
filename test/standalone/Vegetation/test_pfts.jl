@@ -6,7 +6,7 @@ on percentage PFT cover works as expected.
 
 using Test
 import ClimaComms
-pkgversion(ClimaComms) >= v"0.6" && ClimaComms.@import_required_backends
+@static pkgversion(ClimaComms) >= v"0.6" && ClimaComms.@import_required_backends
 import ClimaLand
 using ClimaLand.Canopy
 

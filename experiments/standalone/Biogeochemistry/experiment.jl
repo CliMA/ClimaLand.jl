@@ -1,6 +1,6 @@
 import SciMLBase
 import ClimaComms
-pkgversion(ClimaComms) >= v"0.6" && ClimaComms.@import_required_backends
+@static pkgversion(ClimaComms) >= v"0.6" && ClimaComms.@import_required_backends
 import ClimaTimeSteppers as CTS
 using ClimaCore
 using ClimaLand
