@@ -37,7 +37,7 @@ add_diagnostic_variable!(
     long_name = "Gross Primary Productivity",
     standard_name = "GPP",
     units = "gC m^-2 s^-1",
-    compute! = (out, state, cache, time) -> begin
+    compute! = (out, Y, p, t) -> begin
         if isnothing(out)
             return copy(p.canopy.photosynthesis.GPP)
         else
