@@ -23,11 +23,11 @@ function make_timestepper(
     site_setup_out;
     N_spinup_days = 30,
     N_days_sim = 30,
-    timestepper = CTS.ARS343(),
+    timestepper = CTS.ARS111(),
     ode_algo = CTS.IMEXAlgorithm(
         timestepper,
         CTS.NewtonsMethod(
-            max_iters = 1,
+            max_iters = 3,
             update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
         ),
     ),

@@ -31,6 +31,9 @@ tutorials = [
             "standalone/Snow/data_tutorial.jl",
         ],
     ],
+    "Calibrating your ClimaLand model" => [
+        "Recover parameters of a previous simulation" => "calibration/minimal_working_example.jl",
+    ],
     "For model developers" => [
         "Intro to standalone models" => "standalone/Usage/model_tutorial.jl",
         "Intro to multi-component models" => "standalone/Usage/LSM_single_column_tutorial.jl",
