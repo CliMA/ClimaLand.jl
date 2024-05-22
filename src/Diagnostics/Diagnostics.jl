@@ -1,5 +1,18 @@
 module Diagnostics
 
+import ClimaComms
+
+import LinearAlgebra: dot
+
+import ClimaCore:
+    Fields, Geometry, InputOutput, Meshes, Spaces, Operators, Domains, Grids
+
+import ClimaCore.Utilities: half
+
+import Thermodynamics as TD
+
+import ClimaLand
+
 import ClimaDiagnostics:
     DiagnosticVariable,
     ScheduledDiagnostic,
@@ -12,6 +25,6 @@ import ClimaDiagnostics.Schedules: EveryStepSchedule, EveryDtSchedule
 
 import ClimaDiagnostics.Writers: HDF5Writer, NetCDFWriter, write_field!
 
-# include("diagnostic.jl")
+include("diagnostic.jl")
 
 end
