@@ -13,7 +13,6 @@ import Interpolations
 import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
 import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
 import ClimaUtilities.Regridders: InterpolationsRegridder
-import ClimaUtilities.ClimaArtifacts: @clima_artifact
 import NCDatasets
 import ClimaParams as CP
 using ClimaComms
@@ -68,8 +67,8 @@ runoff_model = ClimaLand.Soil.Runoff.TOPMODELRunoff{FT}(;
     f_max = f_max,
     R_sb = R_sb,
 )
-# TODO: Change with @clima_artifact("soil_params_Gupta2020_2022", context)
-soil_params_artifact_path = "/groups/esm/ClimaArtifacts/artifacts/soil_params_Gupta2020_2022"
+soil_params_artifact_path =
+    ClimaLand.Artifacts.soil_params_artifact_folder_path(; context)
 
 extrapolation_bc =
     (Interpolations.Periodic(), Interpolations.Flat(), Interpolations.Flat())
@@ -153,8 +152,8 @@ soil_params = ClimaLand.Soil.RichardsParameters(;
     θ_r = θ_r,
 )
 
-# TODO: Change with era5_artifact_path = @clima_artifact("era5_land_forcing_data2021", context)
-era5_artifact_path = "/groups/esm/ClimaArtifacts/artifacts/era5_land_forcing_data2021"
+era5_artifact_path =
+    ClimaLand.Artifacts.era5_land_forcing_data2021_folder_path(; context)
 
 # Below, the preprocess_func argument is used to
 # 1. Convert precipitation to be negative (as it is downwards)
