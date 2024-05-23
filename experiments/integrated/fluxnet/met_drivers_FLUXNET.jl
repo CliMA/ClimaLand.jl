@@ -1,4 +1,3 @@
-using ArtifactWrappers
 using DelimitedFiles
 using Thermodynamics
 using Dates
@@ -18,18 +17,8 @@ include(
     joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/pull_MODIS.jl"),
 )
 
-af = ArtifactFile(
-    url = data_link,
-    filename = "AMF_$(site_ID)_FLUXNET_FULLSET.csv",
-)
-dataset = ArtifactWrapper(
-    "$(@__DIR__)" * "/$site_ID",
-    "ameriflux_data",
-    ArtifactFile[af],
-);
-dataset_path = get_data_folder(dataset);
-data = joinpath(dataset_path, "AMF_$(site_ID)_FLUXNET_FULLSET.csv");
-driver_data = readdlm(data, ',')
+data_path = ClimaLand.Artifacts.experiment_fluxnet_data_path(site_ID, data_link)
+driver_data = readdlm(data_path, ',')
 
 LOCAL_DATETIME = DateTime.(format.(driver_data[2:end, 1]), "yyyymmddHHMM")
 UTC_DATETIME = LOCAL_DATETIME .+ Dates.Hour(time_offset)
