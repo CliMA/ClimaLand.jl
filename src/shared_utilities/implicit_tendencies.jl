@@ -1,5 +1,4 @@
-export make_tendency_jacobian,
-    make_update_jacobian, AbstractTridiagonalW, ∂tendencyBC∂Y
+export make_tendency_jacobian, make_update_jacobian, set_dfluxBCdY!
 
 
 """
@@ -48,7 +47,7 @@ function make_update_jacobian(model::AbstractModel)
 end
 
 """
-    ∂tendencyBC∂Y(::AbstractModel,
+    set_dfluxBCdY!(::AbstractModel,
                   ::AbstractBC,
                   ::AbstractBoundary,
                   _...)::Union{ClimaCore.Fields.FieldVector, Nothing}
@@ -57,18 +56,9 @@ A function stub which returns the derivative of the implicit tendency
 term of the `model` arising from the boundary condition,
 with respect to the state Y.
 """
-function ∂tendencyBC∂Y(
+function set_dfluxBCdY!(
     ::AbstractModel,
     ::AbstractBC,
     ::AbstractBoundary,
     _...,
 )::Union{ClimaCore.Fields.FieldVector, Nothing} end
-
-"""
-    AbstractTridiagonalW
-
-An abstract type for tridiagonal Jacobian matrices.
-"""
-abstract type AbstractTridiagonalW end
-
-Base.similar(w::AbstractTridiagonalW) = w

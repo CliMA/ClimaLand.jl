@@ -218,7 +218,7 @@ Y.soil.ϑ_l .= hydrostatic_profile.(lat, z, ν, θ_r, vg_α, vg_n, S_s, f_max)
 set_initial_cache! = make_set_initial_cache(model)
 exp_tendency! = make_exp_tendency(model);
 imp_tendency! = ClimaLand.make_imp_tendency(model);
-update_jacobian! = ClimaLand.make_update_jacobian(model);
+tendency_jacobian! = ClimaLand.make_tendency_jacobian(model);
 
 set_initial_cache!(p, Y, t0)
 stepper = CTS.ARS111()
@@ -235,7 +235,7 @@ ode_algo = CTS.IMEXAlgorithm(
 
 # set up jacobian info
 jac_kwargs =
-    (; jac_prototype = RichardsTridiagonalW(Y), Wfact = update_jacobian!)
+    (; jac_prototype = ImplicitEquationJacobian(Y), Wfact = tendency_jacobian!)
 
 prob = SciMLBase.ODEProblem(
     CTS.ClimaODEFunction(

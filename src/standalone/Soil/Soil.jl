@@ -64,7 +64,6 @@ import ClimaCore: Fields, Operators, Geometry, Spaces
 using Thermodynamics
 
 import ClimaLand.Domains: Column, HybridBox, SphericalShell
-using ClimaLand: AbstractTridiagonalW
 import ClimaLand:
     AbstractImExModel,
     make_update_aux,
@@ -91,7 +90,7 @@ import ClimaLand:
     get_drivers
 export RichardsModel,
     RichardsParameters,
-    RichardsTridiagonalW,
+    ImplicitEquationJacobian,
     EnergyHydrology,
     EnergyHydrologyParameters,
     AbstractSoilModel,

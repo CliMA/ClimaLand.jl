@@ -658,29 +658,28 @@ extruded center finite difference space, this would return a 2D field
 corresponding to the surface, with values equal to the topmost level.
 """
 function top_center_to_surface(center_field::ClimaCore.Fields.Field)
-    cs = axes(center_field)
-    face_space = obtain_face_space(cs)
-    N = ClimaCore.Spaces.nlevels(face_space)
-    interp_c2f = ClimaCore.Operators.InterpolateC2F(
-        top = ClimaCore.Operators.Extrapolate(),
-        bottom = ClimaCore.Operators.Extrapolate(),
-    )
-    surface_space = obtain_surface_space(cs)
+    center_space = axes(center_field)
+    N_minus_half = ClimaCore.Spaces.nlevels(center_space)
+    surface_space = obtain_surface_space(center_space)
     return ClimaCore.Fields.Field(
         ClimaCore.Fields.field_values(
-            ClimaCore.Fields.level(
-                interp_c2f.(center_field),
-                ClimaCore.Utilities.PlusHalf(N - 1),
-            ),
+            ClimaCore.Fields.level(center_field, N_minus_half),
         ),
         surface_space,
     )
 end
 
 """
+    top_center_to_surface(val)
+
+When `val` is a scalar (e.g. a single float or struct), returns `val`.
+"""
+top_center_to_surface(val) = val
+
+"""
     linear_interpolation_to_surface!(sfc_field, center_field, z)
 
-Linearly interpolate the center field `center_field` to the surface 
+Linearly interpolate the center field `center_field` to the surface
 defined by the top face coordinate of `z`; updates the `sfc_field`
 on the surface (face) space in place.
 """
@@ -705,7 +704,7 @@ end
     get_Δz(z::ClimaCore.Fields.Field)
 
 A function to return a tuple containing the distance between the top boundary
-and its closest center, and the bottom boundary and its closest center, 
+and its closest center, and the bottom boundary and its closest center,
 both as Fields.
 """
 function get_Δz(z::ClimaCore.Fields.Field)

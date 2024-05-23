@@ -2,7 +2,7 @@ using Test
 import ClimaComms
 @static pkgversion(ClimaComms) >= v"0.6" && ClimaComms.@import_required_backends
 using LinearAlgebra
-using ClimaCore
+import ClimaCore: MatrixFields
 import ClimaParams as CP
 using ClimaLand
 using ClimaLand.Domains: Column, HybridBox
@@ -53,10 +53,10 @@ for FT in (Float32, Float64)
             # We do not set the initial aux state here because
             # we want to test that it is updated correctly in
             # the jacobian correctly.
-            W = RichardsTridiagonalW(Y)
-            Wfact! = make_tendency_jacobian(soil)
+            jacobian = ImplicitEquationJacobian(Y)
+            jac_tendency! = make_tendency_jacobian(soil)
             dtγ = FT(1.0)
-            Wfact!(W, Y, p, dtγ, FT(0.0))
+            jac_tendency!(jacobian, Y, p, dtγ, FT(0.0))
 
             K_ic = hydraulic_conductivity(
                 hcm,
@@ -66,57 +66,74 @@ for FT in (Float32, Float64)
             dz = FT(0.01)
             dψdϑ_ic = dψdϑ(hcm, FT(0.24), ν, θ_r, S_s)
 
-            @test all(parent(W.temp2) .== FT(0.0))
-            @test all(parent(W.temp2) .== FT(0.0))
-            @test W.transform == false
-            @test typeof(W.W_column_arrays) <:
-                  Vector{LinearAlgebra.Tridiagonal{FT, Vector{FT}}}
-            @test length(W.W_column_arrays) == 1
+            @test jacobian.solver isa MatrixFields.FieldMatrixSolver
+            @test jacobian.solver.alg isa MatrixFields.BlockDiagonalSolve
+            @test jacobian.matrix.keys.values ==
+                  ((MatrixFields.@name(soil.ϑ_l), MatrixFields.@name(soil.ϑ_l)),)
+
+            jac_ϑ_l = jacobian.matrix[
+                MatrixFields.@name(soil.ϑ_l),
+                MatrixFields.@name(soil.ϑ_l)
+            ]
             if typeof(domain) <: Column
+                # Check diagonals on either side of the main diagonal
                 @test all(
-                    parent(W.∂ϑₜ∂ϑ.coefs.:1)[2:end] .≈
-                    parent(W.∂ϑₜ∂ϑ.coefs.:3)[1:(end - 1)],
+                    parent(jac_ϑ_l.entries.:1)[2:end] .≈
+                    parent(jac_ϑ_l.entries.:3)[1:(end - 1)],
                 )
-                @test Array(parent(W.∂ϑₜ∂ϑ.coefs.:1))[1] == FT(0)
-                @test Array(parent(W.∂ϑₜ∂ϑ.coefs.:3))[end] == FT(0)
+                @test Array(parent(jac_ϑ_l.entries.:1))[1] == FT(0)
+                @test Array(parent(jac_ϑ_l.entries.:3))[end] == FT(0)
                 @test all(
-                    Array(parent(W.∂ϑₜ∂ϑ.coefs.:1))[2:end] .≈
-                    K_ic / dz^2 * dψdϑ_ic,
+                    Array(parent(jac_ϑ_l.entries.:1))[2:end] .≈
+                    dtγ * (K_ic / dz^2 * dψdϑ_ic),
                 )
-                @test Array(parent(W.∂ϑₜ∂ϑ.coefs.:2))[1] .≈
-                      -K_ic / dz^2 * dψdϑ_ic
+                # Check values on main diagonal: note jac_ϑ_l is I-γJ
+                @test Array(parent(jac_ϑ_l.entries.:2))[1] .≈
+                      dtγ * (-K_ic / dz^2 * dψdϑ_ic) - I
                 @test all(
-                    Array(parent(W.∂ϑₜ∂ϑ.coefs.:2))[2:(end - 1)] .≈
-                    -2 * K_ic / dz^2 * dψdϑ_ic,
+                    Array(parent(jac_ϑ_l.entries.:2))[2:(end - 1)] .≈
+                    dtγ * (-2 * K_ic / dz^2 * dψdϑ_ic) - I,
                 )
-                @test Array(parent(W.∂ϑₜ∂ϑ.coefs.:2))[end] .≈
-                      -K_ic / dz^2 * dψdϑ_ic - K_ic / (dz * dz / 2) * dψdϑ_ic
+                @test Array(parent(jac_ϑ_l.entries.:2))[end] .≈
+                      dtγ * (
+                    -K_ic / dz^2 * dψdϑ_ic - K_ic / (dz * dz / 2) * dψdϑ_ic
+                ) - I
             elseif typeof(domain) <: HybridBox
+                # Check diagonals on either side of the main diagonal
                 @test all(
-                    Array(parent(W.∂ϑₜ∂ϑ.coefs.:1))[2:end, :, 1, 1, 1] .≈
-                    Array(parent(W.∂ϑₜ∂ϑ.coefs.:3))[1:(end - 1), :, 1, 1, 1],
+                    Array(parent(jac_ϑ_l.entries.:1))[2:end, :, 1, 1, 1] .≈
+                    Array(parent(jac_ϑ_l.entries.:3))[1:(end - 1), :, 1, 1, 1],
                 )
                 @test all(
-                    Array(parent(W.∂ϑₜ∂ϑ.coefs.:1))[1, :, 1, 1, 1] .== FT(0),
+                    Array(parent(jac_ϑ_l.entries.:1))[1, :, 1, 1, 1] .== FT(0),
                 )
                 @test all(
-                    Array(parent(W.∂ϑₜ∂ϑ.coefs.:3))[end, :, 1, 1, 1] .== FT(0),
+                    Array(parent(jac_ϑ_l.entries.:3))[end, :, 1, 1, 1] .==
+                    FT(0),
                 )
                 @test all(
-                    Array(parent(W.∂ϑₜ∂ϑ.coefs.:1))[2:end, :, 1, 1, 1] .≈
-                    K_ic / dz^2 * dψdϑ_ic,
+                    Array(parent(jac_ϑ_l.entries.:1))[2:end, :, 1, 1, 1] .≈
+                    dtγ * (K_ic / dz^2 * dψdϑ_ic),
+                )
+                # Check values on main diagonal: note jac_ϑ_l is I-γJ
+                @test all(
+                    Array(parent(jac_ϑ_l.entries.:2))[1, :, 1, 1, 1] .≈
+                    dtγ * (-K_ic / dz^2 * dψdϑ_ic) - I,
                 )
                 @test all(
-                    Array(parent(W.∂ϑₜ∂ϑ.coefs.:2))[1, :, 1, 1, 1] .≈
-                    -K_ic / dz^2 * dψdϑ_ic,
+                    Array(parent(jac_ϑ_l.entries.:2))[
+                        2:(end - 1),
+                        :,
+                        1,
+                        1,
+                        1,
+                    ] .≈ dtγ * (-2 * K_ic / dz^2 * dψdϑ_ic) - I,
                 )
                 @test all(
-                    Array(parent(W.∂ϑₜ∂ϑ.coefs.:2))[2:(end - 1), :, 1, 1, 1] .≈
-                    -2 * K_ic / dz^2 * dψdϑ_ic,
-                )
-                @test all(
-                    Array(parent(W.∂ϑₜ∂ϑ.coefs.:2))[end, :, 1, 1, 1] .≈
-                    -K_ic / dz^2 * dψdϑ_ic - K_ic / (dz * dz / 2) * dψdϑ_ic,
+                    Array(parent(jac_ϑ_l.entries.:2))[end, :, 1, 1, 1] .≈
+                    dtγ *
+                    (-K_ic / dz^2 * dψdϑ_ic - K_ic / (dz * dz / 2) * dψdϑ_ic) -
+                    I,
                 )
             end
 
@@ -162,10 +179,10 @@ for FT in (Float32, Float64)
             # We do not set the initial aux state here because
             # we want to test that it is updated correctly in
             # the jacobian correctly.
-            W = RichardsTridiagonalW(Y)
-            Wfact! = make_tendency_jacobian(soil)
+            jacobian = ImplicitEquationJacobian(Y)
+            jacobian_tendency! = make_tendency_jacobian(soil)
             dtγ = FT(1.0)
-            Wfact!(W, Y, p, dtγ, FT(0.0))
+            jacobian_tendency!(jacobian, Y, p, dtγ, FT(0.0))
 
             K_ic = hydraulic_conductivity(
                 hcm,
@@ -174,27 +191,36 @@ for FT in (Float32, Float64)
             )
             dz = FT(0.01)
             dψdϑ_ic = dψdϑ(hcm, FT(0.24), ν, θ_r, S_s)
+            jac_ϑ_l = jacobian.matrix[
+                MatrixFields.@name(soil.ϑ_l),
+                MatrixFields.@name(soil.ϑ_l)
+            ]
             if typeof(domain) <: Column
-                @test Array(parent(W.∂ϑₜ∂ϑ.coefs.:2))[1] .≈
-                      -K_ic / dz^2 * dψdϑ_ic
+                @test Array(parent(jac_ϑ_l.entries.:2))[1] .≈
+                      dtγ * (-K_ic / dz^2 * dψdϑ_ic) - I
                 @test all(
-                    Array(parent(W.∂ϑₜ∂ϑ.coefs.:2))[2:(end - 1)] .≈
-                    -2 * K_ic / dz^2 * dψdϑ_ic,
+                    Array(parent(jac_ϑ_l.entries.:2))[2:(end - 1)] .≈
+                    dtγ * (-2 * K_ic / dz^2 * dψdϑ_ic) - I,
                 )
-                @test Array(parent(W.∂ϑₜ∂ϑ.coefs.:2))[end] .≈
-                      -K_ic / dz^2 * dψdϑ_ic
+                @test Array(parent(jac_ϑ_l.entries.:2))[end] .≈
+                      dtγ * (-K_ic / dz^2 * dψdϑ_ic) - I
             elseif typeof(domain) <: HybridBox
                 @test all(
-                    Array(parent(W.∂ϑₜ∂ϑ.coefs.:2))[1, :, 1, 1, 1] .≈
-                    -K_ic / dz^2 * dψdϑ_ic,
+                    Array(parent(jac_ϑ_l.entries.:2))[1, :, 1, 1, 1] .≈
+                    dtγ * (-K_ic / dz^2 * dψdϑ_ic) - I,
                 )
                 @test all(
-                    Array(parent(W.∂ϑₜ∂ϑ.coefs.:2))[2:(end - 1), :, 1, 1, 1] .≈
-                    -2 * K_ic / dz^2 * dψdϑ_ic,
+                    Array(parent(jac_ϑ_l.entries.:2))[
+                        2:(end - 1),
+                        :,
+                        1,
+                        1,
+                        1,
+                    ] .≈ dtγ * (-2 * K_ic / dz^2 * dψdϑ_ic) - I,
                 )
                 @test all(
-                    Array(parent(W.∂ϑₜ∂ϑ.coefs.:2))[end, :, 1, 1, 1] .≈
-                    -K_ic / dz^2 * dψdϑ_ic,
+                    Array(parent(jac_ϑ_l.entries.:2))[end, :, 1, 1, 1] .≈
+                    dtγ * (-K_ic / dz^2 * dψdϑ_ic) - I,
                 )
             end
         end

@@ -140,7 +140,7 @@ soil = Soil.RichardsModel{FT}(;
 # We also create the function which is used to update our Jacobian.
 exp_tendency! = make_exp_tendency(soil);
 imp_tendency! = ClimaLand.make_imp_tendency(soil);
-update_jacobian! = ClimaLand.make_update_jacobian(soil);
+tendency_jacobian! = ClimaLand.make_tendency_jacobian(soil);
 
 # # Set up the simulation
 # We can now initialize the prognostic and auxiliary variable vectors, and take
@@ -186,7 +186,7 @@ ode_algo = CTS.IMEXAlgorithm(
 
 # Here we set up the information used for our Jacobian.
 jac_kwargs =
-    (; jac_prototype = RichardsTridiagonalW(Y), Wfact = update_jacobian!);
+    (; jac_prototype = ImplicitEquationJacobian(Y), Wfact = tendency_jacobian!);
 
 # And then we can solve the system of equations, using
 # [SciMLBase.jl](https://github.com/SciML/SciMLBase.jl) and

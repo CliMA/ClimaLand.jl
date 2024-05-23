@@ -1,7 +1,11 @@
+using ClimaCore.MatrixFields
+import ClimaCore.MatrixFields: @name, ⋅
+import UnrolledUtilities
+
 """
     RichardsParameters{F <: Union{<: AbstractFloat, ClimaCore.Fields.Field}, C <: AbstractSoilHydrologyClosure}
 
-A struct for storing parameters of the `RichardModel`.
+A struct for storing parameters of the `RichardsModel`.
 $(DocStringExtensions.FIELDS)
 """
 struct RichardsParameters{
@@ -114,6 +118,17 @@ function make_update_boundary_fluxes(model::RichardsModel)
             BottomBoundary(),
             model,
             Δz_bottom,
+            Y,
+            p,
+            t,
+        )
+
+        # Update `p.soil.dfluxBCdY`
+        set_dfluxBCdY!(
+            model,
+            model.boundary_conditions.top,
+            TopBoundary(),
+            Δz_top,
             Y,
             p,
             t,
@@ -330,84 +345,76 @@ end
 
 
 """
-    RichardsTridiagonalW{R, J, W, T} <: ClimaLand.AbstractTridiagonalW
+    ImplicitEquationJacobian{M, S}
 
 A struct containing the necessary information for constructing a tridiagonal
 Jacobian matrix (`W`) for solving Richards equation, treating only the vertical
 diffusion term implicitly.
 
+`matrix` is a block matrix containing the tri-diagonal matrix `∂ϑres∂ϑ`
+in the RichardsModel case.
+`solver` is a diagonal solver for the RichardsModel case because our matrix is
+block diagonal.
+
 Note that the diagonal, upper diagonal, and lower diagonal entry values
 are stored in this struct and updated in place.
-$(DocStringExtensions.FIELDS)
 """
-struct RichardsTridiagonalW{R, J, JA, T, A} <: ClimaLand.AbstractTridiagonalW
-    "Reference to dtγ, which is specified by the ODE solver"
-    dtγ_ref::R
-    "Diagonal entries of the Jacobian stored as a ClimaCore.Fields.Field"
-    ∂ϑₜ∂ϑ::J
-    "Array of tridiagonal matrices containing W for each column"
-    W_column_arrays::JA
-    "An allocated cache used to evaluate ldiv!"
-    temp1::T
-    "An allocated cache used to evaluate ldiv!"
-    temp2::T
-    "A flag indicating whether this struct is used to compute Wfact_t or Wfact"
-    transform::Bool
-    "A pre-allocated cache storing ones on the face space"
-    ones_face_space::A
+struct ImplicitEquationJacobian{M, S}
+    "Jacobian matrix stored as a MatrixFields.FieldMatrix"
+    matrix::M
+    "Solver to use for solving the tridiagonal system"
+    solver::S
 end
 
 """
-    RichardsTridiagonalW(
+    ImplicitEquationJacobian(
         Y::ClimaCore.Fields.FieldVector;
-        transform::Bool = false
 )
 
-Outer constructor for the RichardsTridiagonalW Jacobian
+Outer constructor for the ImplicitEquationJacobian Jacobian
 matrix struct.
 
 Initializes all variables to zeros.
 """
-function RichardsTridiagonalW(
-    Y::ClimaCore.Fields.FieldVector;
-    transform::Bool = false,
-)
-    FT = eltype(Y.soil.ϑ_l)
+function ImplicitEquationJacobian(Y::ClimaCore.Fields.FieldVector)
+    FT = eltype(Y)
     center_space = axes(Y.soil.ϑ_l)
-    N = Spaces.nlevels(center_space)
 
-    tridiag_type = Operators.StencilCoefs{-1, 1, NTuple{3, FT}}
-    ∂ϑₜ∂ϑ = Fields.Field(tridiag_type, center_space)
+    # Cosntruct a tridiagonal matrix that will be used as the Jacobian
+    tridiag_type = MatrixFields.TridiagonalMatrixRow{FT}
+    # Create a field containing a `TridiagonalMatrixRow` at each point
+    tridiag_field = Fields.Field(tridiag_type, center_space)
+    fill!(parent(tridiag_field), NaN)
 
-    fill!(parent(∂ϑₜ∂ϑ), FT(0))
-
-    W_column_arrays = [
-        LinearAlgebra.Tridiagonal(
-            zeros(FT, N - 1) .+ FT(0),
-            zeros(FT, N) .+ FT(0),
-            zeros(FT, N - 1) .+ FT(0),
-        ) for _ in 1:Threads.nthreads()
-    ]
-    dtγ_ref = Ref(FT(0))
-    temp1 = similar(Y.soil.ϑ_l)
-    temp1 .= FT(0)
-    temp2 = similar(Y.soil.ϑ_l)
-    temp2 .= FT(0)
-
-    face_space = ClimaLand.Domains.obtain_face_space(center_space)
-    ones_face_space = ones(face_space)
-
-    return RichardsTridiagonalW(
-        dtγ_ref,
-        ∂ϑₜ∂ϑ,
-        W_column_arrays,
-        temp1,
-        temp2,
-        transform,
-        ones_face_space,
+    # Get all prognostic vars in soil, and create a tridiagonal matrix for each
+    soil_varnames = MatrixFields.top_level_names(Y.soil)
+    varnames = map(
+        name -> MatrixFields.append_internal_name(@name(soil), name),
+        soil_varnames,
     )
+    matrix = MatrixFields.FieldMatrix(
+        UnrolledUtilities.unrolled_map(
+            x -> (x, x) => copy(tridiag_field),
+            varnames,
+        )...,
+    )
+
+    # Set up block diagonal solver for block Jacobian
+    alg = MatrixFields.BlockDiagonalSolve()
+    solver = MatrixFields.FieldMatrixSolver(alg, matrix, Y)
+
+    return ImplicitEquationJacobian(matrix, solver)
 end
 
+Base.similar(w::ImplicitEquationJacobian) = w
+
+function LinearAlgebra.ldiv!(
+    x::Fields.FieldVector,
+    A::ImplicitEquationJacobian,
+    b::Fields.FieldVector,
+)
+    MatrixFields.field_matrix_solve!(A.solver, x, A.matrix, b)
+end
 
 """
     ClimaLand.make_update_jacobian(model::RichardsModel{FT}) where {FT}
@@ -418,35 +425,69 @@ Using this Jacobian with a backwards Euler timestepper is equivalent
 to using the modified Picard scheme of Celia et al. (1990).
 """
 function ClimaLand.make_update_jacobian(model::RichardsModel{FT}) where {FT}
-    update_aux! = make_update_aux(model)
-    update_boundary_fluxes! = make_update_boundary_fluxes(model)
-    function update_jacobian!(W::RichardsTridiagonalW, Y, p, dtγ, t)
-        (; dtγ_ref, ∂ϑₜ∂ϑ) = W
-        dtγ_ref[] = dtγ
+    function update_jacobian!(jacobian::ImplicitEquationJacobian, Y, p, dtγ, t)
+        (; matrix) = jacobian
         (; ν, hydrology_cm, S_s, θ_r) = model.parameters
-        update_aux!(p, Y, t)
-        update_boundary_fluxes!(p, Y, t)
-        divf2c_op = Operators.DivergenceF2C(
-            top = Operators.SetValue(Geometry.WVector.(FT(0))),
-            bottom = Operators.SetValue(Geometry.WVector.(FT(0))),
-        )
-        divf2c_stencil = Operators.Operator2Stencil(divf2c_op)
+
+        # Create divergence operator
+        divf2c_op = Operators.DivergenceF2C()
+        divf2c_matrix = MatrixFields.operator_matrix(divf2c_op)
+        # Create gradient operator, and set gradient at boundaries to 0
         gradc2f_op = Operators.GradientC2F(
-            top = Operators.SetGradient(Geometry.WVector.(FT(0))),
-            bottom = Operators.SetGradient(Geometry.WVector.(FT(0))),
+            top = Operators.SetGradient(Geometry.WVector(FT(0))),
+            bottom = Operators.SetGradient(Geometry.WVector(FT(0))),
         )
-        gradc2f_stencil = Operators.Operator2Stencil(gradc2f_op)
+        gradc2f_matrix = MatrixFields.operator_matrix(gradc2f_op)
+        # Create interpolation operator
         interpc2f_op = Operators.InterpolateC2F(
             bottom = Operators.Extrapolate(),
             top = Operators.Extrapolate(),
         )
-        compose = Operators.ComposeStencils()
 
-        @. ∂ϑₜ∂ϑ = compose(
-            divf2c_stencil(Geometry.Covariant3Vector(W.ones_face_space)),
-            (
-                interpc2f_op(p.soil.K) * ClimaLand.to_scalar_coefs(
-                    gradc2f_stencil(
+        # The derivative of the residual with respect to the prognostic variable
+        ∂ϑres∂ϑ = matrix[@name(soil.ϑ_l), @name(soil.ϑ_l)]
+
+        # If the top BC is a `MoistureStateBC`, add the term from the top BC
+        #  flux before applying divergence
+        if haskey(p.soil, :dfluxBCdY)
+            dfluxBCdY = p.soil.dfluxBCdY
+            topBC_op = Operators.SetBoundaryOperator(
+                top = Operators.SetValue(dfluxBCdY),
+                bottom = Operators.SetValue(
+                    Geometry.Covariant3Vector(zero(FT)),
+                ),
+            )
+            # Add term from top boundary condition before applying divergence
+            # Note: need to pass 3D field on faces to `topBC_op`. Interpolating `K` to faces
+            #  for this is inefficient - we should find a better solution.
+            @. ∂ϑres∂ϑ =
+                -dtγ * (
+                    divf2c_matrix() ⋅ (
+                        MatrixFields.DiagonalMatrixRow(
+                            interpc2f_op(-p.soil.K),
+                        ) ⋅ gradc2f_matrix() ⋅ MatrixFields.DiagonalMatrixRow(
+                            ClimaLand.Soil.dψdϑ(
+                                hydrology_cm,
+                                Y.soil.ϑ_l,
+                                ν,
+                                θ_r,
+                                S_s,
+                            ),
+                        ) + MatrixFields.LowerDiagonalMatrixRow(
+                            topBC_op(
+                                Geometry.Covariant3Vector(
+                                    zero(interpc2f_op(p.soil.K)),
+                                ),
+                            ),
+                        )
+                    )
+                ) - (I,)
+        else
+            @. ∂ϑres∂ϑ =
+                -dtγ * (
+                    divf2c_matrix() ⋅
+                    MatrixFields.DiagonalMatrixRow(interpc2f_op(-p.soil.K)) ⋅
+                    gradc2f_matrix() ⋅ MatrixFields.DiagonalMatrixRow(
                         ClimaLand.Soil.dψdϑ(
                             hydrology_cm,
                             Y.soil.ϑ_l,
@@ -454,29 +495,9 @@ function ClimaLand.make_update_jacobian(model::RichardsModel{FT}) where {FT}
                             θ_r,
                             S_s,
                         ),
-                    ),
-                )
-            ),
-        )
-        # Hardcoded for single column: FIX!
-        # The derivative of the tendency may eventually live in boundary vars and be updated there. but TBD
-        z = Fields.coordinate_field(axes(Y.soil.ϑ_l)).z
-        Δz_top, Δz_bottom = ClimaLand.Domains.get_Δz(z)
-        ∂T_bc∂YN = ClimaLand.∂tendencyBC∂Y(
-            model,
-            model.boundary_conditions.top,
-            ClimaLand.TopBoundary(),
-            Δz_top,
-            Y,
-            p,
-            t,
-        )
-        #TODO: allocate space in W? See how final implementation of stencils with boundaries works out
-        N = ClimaCore.Spaces.nlevels(axes(Y.soil.ϑ_l))
-        parent(ClimaCore.Fields.level(∂ϑₜ∂ϑ.coefs.:2, N)) .=
-            parent(ClimaCore.Fields.level(∂ϑₜ∂ϑ.coefs.:2, N)) .+
-            parent(∂T_bc∂YN.soil.ϑ_l)
-
+                    )
+                ) - (I,)
+        end
     end
     return update_jacobian!
 end
@@ -504,7 +525,7 @@ end
 """
     is_saturated(Y, model::RichardsModel)
 
-A helper function which can be used to indicate whether a layer of soil is 
+A helper function which can be used to indicate whether a layer of soil is
 saturated.
 """
 function is_saturated(Y, model::RichardsModel)
