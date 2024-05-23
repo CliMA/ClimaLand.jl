@@ -4,6 +4,15 @@ ClimaLand.jl Release Notes
 main
 --------
 
+v0.12.1
+--------
+- Add `regridder_type` option to albedo constructors.
+  PR [#662](https://github.com/CliMA/ClimaLand.jl/pull/622)
+- ![][badge-✨feature] Add simple snow model.
+  PR [#147](https://github.com/CliMA/ClimaLand.jl/pull/147)
+- ![][badge-✨feature] Implemented a simple sublimation model, which is now
+  included in the soil model. PR [#373](https://github.com/CliMA/ClimaLand.jl/pull/373)
+
 v0.12.0
 --------
 - Updated to ClimaComms 0.6 and ClimaCore 0.14. Now, `CUDA` and `MPI` are no
