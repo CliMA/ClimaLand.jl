@@ -235,7 +235,7 @@ T = ClimaDiagnostics.DiagnosticVariable(;
 =#
 
 inst_diagnostic = ClimaDiagnostics.ScheduledDiagnostic(
-    variable = ClimaLand.Diagnostics.get_diagnostic_variable("α"), # albedo
+    variable = ClimaLand.CLD.get_diagnostic_variable("α"), # albedo
     output_writer = nc_writer,
     output_schedule_func = ClimaDiagnostics.Schedules.DivisorSchedule(20),
     # time_reduction = +,
