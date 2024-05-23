@@ -207,7 +207,7 @@ ode_algo = CTS.ExplicitAlgorithm(timestepper)
 
 #### ClimaDiagnostics ####
 
-using ClimaDiagnostics 
+# using ClimaDiagnostics 
 # dev /home/arenchon/GitHub/ClimaDiagnostics.jl/ 
 mkdir("output_short")
 output_dir = "output_short/" 
@@ -217,6 +217,7 @@ nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(
                output_dir,
               )
 
+#=
 function compute_T!(out, Y, p, t)
     if isnothing(out)
         return copy(p.bucket.α_sfc)
@@ -231,9 +232,10 @@ T = ClimaDiagnostics.DiagnosticVariable(;
     long_name = "Temperature",
     units = "K",
 )
+=#
 
 inst_diagnostic = ClimaDiagnostics.ScheduledDiagnostic(
-    variable = T,
+    variable = ClimaLand.Diagnostics.get_diagnostic_variable("α"), # albedo
     output_writer = nc_writer,
     output_schedule_func = ClimaDiagnostics.Schedules.DivisorSchedule(20),
     # time_reduction = +,
@@ -265,16 +267,16 @@ sol_test = SciMLBase.solve(
 using ClimaAnalysis
 simdir = ClimaAnalysis.SimDir("output_short")
 println(summary(simdir))
-Ta = get(simdir; short_name = "T", reduction = "inst", period = "20it")
-Ta.dims
+α = get(simdir; short_name = "α", reduction = "inst", period = "20it")
+α.dims
 import ClimaAnalysis.Visualize as viz
 fig = CairoMakie.Figure(size = (400, 600))
 viz.plot!(
   fig,
-  Ta,
+  α,
   time = 2 * 86400,
 )
-CairoMakie.save("Ta.png", fig)
+CairoMakie.save("α.png", fig)
 
 ######################
 

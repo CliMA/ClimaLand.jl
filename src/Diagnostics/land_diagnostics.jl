@@ -29,9 +29,12 @@ propertynames(Y.canopy)
 (:hydraulics, :energy)
 =#
 
+# Integrated model
+
 ###
 # GPP
 ###
+
 add_diagnostic_variable!(
     short_name = "GPP",
     long_name = "Gross Primary Productivity",
@@ -46,23 +49,21 @@ add_diagnostic_variable!(
     end,
 )
 
+# Bucket model
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+add_diagnostic_variable!(
+    short_name = "α",
+    long_name = "Albedo",
+    standard_name = "Albedo",
+    units = "", # 0 to 1
+    compute! = (out, Y, p, t) -> begin
+        if isnothing(out)
+            return copy(p.bucket.α_sfc)
+        else
+            out .= p.bucket.α_sfc
+        end
+    end,
+)
 
 
 
