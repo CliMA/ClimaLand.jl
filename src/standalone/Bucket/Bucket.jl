@@ -122,13 +122,18 @@ function PrescribedBaregroundAlbedo{FT}(
     surface_space::ClimaCore.Spaces.AbstractSpace;
     varnames = ["sw_alb"],
     albedo_file_path::AbstractString = Bucket.bareground_albedo_dataset_path(),
+    regridder_type = :InterpolationsRegridder,
 ) where {FT}
     if surface_space isa ClimaCore.Spaces.PointSpace
         error("Using an albedo map requires a global run.")
     end
     # Albedo file only has one variable, so access first `varname`
-    α_bareground =
-        SpaceVaryingInput(albedo_file_path, varnames[begin], surface_space)
+    α_bareground = SpaceVaryingInput(
+        albedo_file_path,
+        varnames[begin],
+        surface_space;
+        regridder_type,
+    )
     return PrescribedBaregroundAlbedo{FT, typeof(α_bareground)}(
         α_snow,
         α_bareground,
@@ -174,6 +179,7 @@ function PrescribedSurfaceAlbedo{FT}(
     space::ClimaCore.Spaces.AbstractSpace;
     albedo_file_path = Bucket.cesm2_albedo_dataset_path(),
     varname = "sw_alb",
+    regridder_type = :InterpolationsRegridder,
 ) where {FT}
     # Verify inputs
     if typeof(space) <: ClimaCore.Spaces.PointSpace
@@ -186,6 +192,7 @@ function PrescribedSurfaceAlbedo{FT}(
         space;
         reference_date = date_ref,
         t_start,
+        regridder_type,
     )
 
     # Construct object containing info to read in surface albedo over time
