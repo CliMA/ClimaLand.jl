@@ -13,6 +13,7 @@ using ..ClimaLand.Soil:
 export TOPMODELRunoff,
     NoRunoff,
     AbstractRunoffModel,
+    SiteLevelSurfaceRunoff,
     TOPMODELSubsurfaceRunoff,
     subsurface_runoff_source,
     topmodel_ss_flux,
@@ -60,13 +61,13 @@ struct NoRunoff <: AbstractRunoffModel
 end
 
 """
-    update_runoff!(p, runoff::NoRunoff, _...)
+    update_runoff!(p, runoff::NoRunoff, input, _...)
 
 Updates the runoff variables in the cache `p.soil` in place
 in the case of NoRunoff: sets infiltration = precipitation.
 """
-function update_runoff!(p, runoff::NoRunoff, _...)
-    p.soil.infiltration .= p.drivers.P_liq
+function update_runoff!(p, runoff::NoRunoff, input, _...)
+    p.soil.infiltration .= input
 end
 
 # TOPMODEL
@@ -89,6 +90,45 @@ struct TOPMODELSubsurfaceRunoff{FT} <: AbstractSoilSource{FT}
     "A calibrated parameter defining how subsurface runoff decays with depth to water table (1/m ; calibrated)"
     f_over::FT
 end
+
+
+
+struct SiteLevelSurfaceRunoff <: AbstractRunoffModel
+    subsurface_source::Nothing
+    function SiteLevelSurfaceRunoff()
+        return new(nothing)
+    end
+end
+function sitelevel_surface_infiltration(
+    f_ic::FT,
+    input::FT,
+    saturation::FT,
+) where {FT}
+    return ClimaLand.heaviside(saturation - FT(1)) * max(f_ic, input)
+end
+
+function update_runoff!(
+    p,
+    runoff::SiteLevelSurfaceRunoff,
+    input,
+    Y,
+    t,
+    model::AbstractSoilModel,
+)
+
+    flux_ic = soil_infiltration_capacity_flux(model, Y, p) # allocates
+    surface_saturation = ClimaLand.Domains.top_center_to_surface(
+        ClimaLand.Soil.effective_saturation.(
+            model.parameters.ν,
+            Y.soil.θ_i .+ p.soil.θ_l,
+            model.parameters.θ_r,
+        ),
+    ) # allocates
+    @. p.soil.infiltration =
+        sitelevel_surface_infiltration(flux_ic, input, surface_saturation)
+end
+
+
 
 """
     TOPMODELRunoff{FT <: AbstractFloat, F <: ClimaCore.Fields.Field} <: AbstractRunoffModel
@@ -120,7 +160,7 @@ end
 
 
 """
-    update_runoff!(p, runoff::TOPMODELRunoff, Y,t, model::AbstractSoilModel)
+    update_runoff!(p, runoff::TOPMODELRunoff, input, Y,t, model::AbstractSoilModel)
 
 Updates the runoff model variables in place in `p.soil` for the TOPMODELRunoff
 parameterization:
@@ -132,6 +172,7 @@ p.soil.infiltration
 function update_runoff!(
     p,
     runoff::TOPMODELRunoff,
+    input,
     Y,
     t,
     model::AbstractSoilModel,
@@ -156,9 +197,9 @@ function update_runoff!(
         runoff.f_over,
         model.domain.depth - p.soil.h∇,
         ic,
-        precip,
+        input,
     )
-    @. p.soil.R_s = abs(precip - p.soil.infiltration)
+    @. p.soil.R_s = abs(input - p.soil.infiltration)
 
 end
 

@@ -31,6 +31,7 @@ model = ClimaLand.Snow.SnowModel(
     domain = domain,
     atmosphere = atmos,
     radiation = radiation,
+    boundary_conditions = StandaloneSnowBoundaryConditions{FT}(),
 )
 Y, p, coords = ClimaLand.initialize(model)
 

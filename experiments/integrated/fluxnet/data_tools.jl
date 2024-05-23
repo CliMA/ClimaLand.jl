@@ -11,6 +11,12 @@ using StatsBase
 # Define the valid data statuses
 @enum DataStatus complete = 1 absent = 2 incomplete = 3
 
+function replace_missing_with_zero_by_value!(field)
+    good_indices = .~(field .== -9999)
+    field[.~good_indices] .= 0.0
+    return field
+end
+
 """
     replace_poor_quality_with_mean!(field, flag)
 
@@ -35,10 +41,11 @@ end
 Replace values indicated to be missing
  with the mean value in the `field` (Array).
 
-This uses the Fluxnet convention of a value of -9999 indicating
+This uses the Fluxnet convention of a value of -9999 or Missing indicating
 missing data.
 """
 function replace_missing_with_mean_by_value!(field)
+    field[typeof.(field) .== Missing] .= -9999
     good_indices = .~(field .== -9999)
     fill_value = mean(field[good_indices])
     field[.~good_indices] .= fill_value

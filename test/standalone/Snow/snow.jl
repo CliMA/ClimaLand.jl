@@ -48,6 +48,7 @@ import ClimaLand.Parameters as LP
         domain = domain,
         atmosphere = atmos,
         radiation = rad,
+        boundary_conditions = :StandaloneSnowBoundaryConditions{FT}(),
     )
     Y, p, coords = ClimaLand.initialize(model)
     @test (Y.snow |> propertynames) == (:S, :U)
@@ -61,6 +62,8 @@ import ClimaLand.Parameters as LP
         :water_runoff,
         :total_energy_flux,
         :total_water_flux,
+        :applied_energy_flux,
+        :applied_water_flux,
     )
 
     Y.snow.S .= FT(0.1)
