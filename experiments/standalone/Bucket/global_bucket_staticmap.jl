@@ -25,7 +25,6 @@ using Statistics
 using ClimaUtilities.ClimaArtifacts
 import Interpolations
 import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
-import ClimaUtilities.ClimaArtifacts: @clima_artifact
 import ClimaTimeSteppers as CTS
 import NCDatasets
 using ClimaCore
@@ -111,8 +110,8 @@ albedo = PrescribedBaregroundAlbedo{FT}(α_snow, surface_space);
 bucket_parameters = BucketModelParameters(FT; albedo, z_0m, z_0b, τc);
 
 # Forcing data
-# TODO: Change with era5_artifact_path = @clima_artifact("era5_land_forcing_data2021", context)
-era5_artifact_path = "/groups/esm/ClimaArtifacts/artifacts/era5_land_forcing_data2021"
+era5_artifact_path =
+    ClimaLand.Artifacts.era5_land_forcing_data2021_folder_path(; context)
 
 # Below, the preprocess_func argument is used to
 # 1. Convert precipitation to be negative (as it is downwards)

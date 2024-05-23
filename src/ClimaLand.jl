@@ -17,6 +17,7 @@ import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
 
 import NCDatasets # Needed to load the ClimaUtilities.*VaryingInput
 using .Domains
+include("Artifacts.jl")
 include("shared_utilities/utils.jl")
 include("shared_utilities/models.jl")
 include("shared_utilities/drivers.jl")

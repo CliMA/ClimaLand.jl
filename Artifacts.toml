@@ -1,0 +1,9 @@
+[soil_params_Gupta2020_2022]
+git-tree-sha1 = "8e28b4274b10020b6cdd54b8e7585221379d9d33"
+
+    [[soil_params_Gupta2020_2022.download]]
+    sha256 = "97dcf1158cba03b1fd397262bdfaf85a523f57038c337bcce163e32664d3616b"
+    url = "https://caltech.box.com/shared/static/f2y23qx0lggjskftzgh7ht7fsbh36gmm.gz"
+
+[era5_land_forcing_data2021]
+git-tree-sha1 = "ec424296df6b60cfe273ac8f981701fbbed0bd8a"
