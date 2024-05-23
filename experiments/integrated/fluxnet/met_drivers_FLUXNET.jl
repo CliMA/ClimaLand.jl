@@ -109,12 +109,35 @@ esat =
     )
 e = @. esat - drivers.VPD.values
 q = @. 0.622 * e ./ (drivers.PA.values - 0.378 * e)
+RH = @. e / esat
 
+"""
+    snow_precip_fraction(air_temp, hum)
+
+Estimate the fraction of precipitation that is in snow form,
+given the air temperature at the surface in K and the relative humidity
+(between 0 and 1).
+
+See Jennings, K.S., Winchell, T.S., Livneh, B. et al. 
+Spatial variation of the rain–snow temperature threshold across the 
+Northern Hemisphere. Nat Commun 9, 1148 (2018). 
+https://doi.org/10.1038/s41467-018-03629-7
+"""
+function snow_precip_fraction(air_temp, hum)
+    air_temp_C = air_temp - 273.15
+    α = -10.04
+    β = 1.41
+    γ = 0.09
+    snow_frac = (1.0 / (1.0 + exp(α + β * air_temp_C + γ * hum)))
+    return snow_frac
+end
+snow_frac = snow_precip_fraction.(drivers.TA.values[:], RH[:])
 # Create interpolators for each atmospheric driver needed for PrescribedAtmosphere and for
 # PrescribedRadiation
 seconds = FT.(0:DATA_DT:((length(UTC_DATETIME) - 1) * DATA_DT));
 
-precip = TimeVaryingInput(seconds, -FT.(drivers.P.values[:]); context) # m/s
+P_liq = -FT.(drivers.P.values[:] .* (1 .- snow_frac))
+precip = TimeVaryingInput(seconds, P_liq; context) # m/s
 atmos_q = TimeVaryingInput(seconds, FT.(q[:]); context)
 atmos_T = TimeVaryingInput(seconds, FT.(drivers.TA.values[:]); context)
 atmos_p = TimeVaryingInput(seconds, FT.(drivers.PA.values[:]); context)
@@ -122,7 +145,8 @@ atmos_co2 = TimeVaryingInput(seconds, FT.(drivers.CO2.values[:]); context)
 atmos_u = TimeVaryingInput(seconds, FT.(drivers.WS.values[:]); context)
 LW_IN = TimeVaryingInput(seconds, FT.(drivers.LW_IN.values[:]); context)
 SW_IN = TimeVaryingInput(seconds, FT.(drivers.SW_IN.values[:]); context)
-snow_precip = TimeVaryingInput((t) -> FT(0))
+P_snow = -FT.(drivers.P.values[:] .* snow_frac)
+snow_precip = TimeVaryingInput(seconds, P_snow; context) # m/s
 
 # Construct the drivers. For the start date we will use the UTC time at the
 # start of the simulation

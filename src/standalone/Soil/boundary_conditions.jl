@@ -13,8 +13,10 @@ export TemperatureStateBC,
     HeatFluxBC,
     WaterFluxBC,
     AtmosDrivenFluxBC,
+    AbstractAtmosDrivenFluxBC,
     RichardsAtmosDrivenFluxBC,
-    WaterHeatBC
+    WaterHeatBC,
+    sublimation_source
 
 
 # New BC type for Richards Equation (AbstractWaterBC)
@@ -550,13 +552,15 @@ function WaterHeatBC(; water, heat)
     return WaterHeatBC{typeof(water), typeof(heat)}(water, heat)
 end
 
+abstract type AbstractAtmosDrivenFluxBC <: AbstractEnergyHydrologyBC end
+
 
 """
     AtmosDrivenFluxBC{
         A <: AbstractAtmosphericDrivers,
         B <: AbstractRadiativeDrivers,
         R <: AbstractRunoffModel
-    } <: AbstractEnergyHydrologyBC
+    } <: AbstractAtmosDrivenFluxBC
 
 A concrete type of soil boundary condition for use at the top
 of the domain. This holds the conditions for the atmosphere
@@ -582,7 +586,7 @@ struct AtmosDrivenFluxBC{
     A <: AbstractAtmosphericDrivers,
     B <: AbstractRadiativeDrivers,
     R <: AbstractRunoffModel,
-} <: AbstractEnergyHydrologyBC
+} <: AbstractAtmosDrivenFluxBC
     "The atmospheric conditions driving the model"
     atmos::A
     "The radiative fluxes driving the model"
@@ -642,7 +646,7 @@ function soil_boundary_fluxes!(
 end
 
 """
-    boundary_vars(::AtmosDrivenFluxBC{<:AbstractAtmosphericDrivers,
+    boundary_vars(::AbstractAtmosDrivenFluxBC{<:AbstractAtmosphericDrivers,
                                     <:AbstractRadiativeDrivers,
                                     <:AbstractRunoffModel,
                                     }, ::ClimaLand.TopBoundary)
@@ -653,14 +657,7 @@ net radiation to the auxiliary variables.
 
 These variables are updated in place in `soil_boundary_fluxes!`.
 """
-boundary_vars(
-    bc::AtmosDrivenFluxBC{
-        <:AbstractAtmosphericDrivers,
-        <:AbstractRadiativeDrivers,
-        <:AbstractRunoffModel,
-    },
-    ::ClimaLand.TopBoundary,
-) = (
+boundary_vars(bc::AbstractAtmosDrivenFluxBC, ::ClimaLand.TopBoundary) = (
     :turbulent_fluxes,
     :R_n,
     :top_bc,
@@ -669,10 +666,7 @@ boundary_vars(
 )
 
 """
-    boundary_var_domain_names(::AtmosDrivenFluxBC{<:AbstractAtmosphericDrivers,
-                                                  <:AbstractRadiativeDrivers,
-                                                  <:AbstractRunoffModel,
-                                                  },
+    boundary_var_domain_names(::AbstractAtmosDrivenFluxBC,
                               ::ClimaLand.TopBoundary)
 
 An extension of the `boundary_var_domain_names` method for AtmosDrivenFluxBC. This
@@ -680,11 +674,7 @@ specifies the part of the domain on which the additional variables should be
 defined.
 """
 boundary_var_domain_names(
-    bc::AtmosDrivenFluxBC{
-        <:AbstractAtmosphericDrivers,
-        <:AbstractRadiativeDrivers,
-        <:AbstractRunoffModel,
-    },
+    bc::AbstractAtmosDrivenFluxBC,
     ::ClimaLand.TopBoundary,
 ) = (
     :surface,
@@ -696,11 +686,8 @@ boundary_var_domain_names(
 """
     boundary_var_types(
         ::EnergyHydrology{FT},
-        ::AtmosDrivenFluxBC{
-            <:PrescribedAtmosphere{FT},
-            <:AbstractRadiativeDrivers{FT},
-            <:AbstractRunoffModel,
-        }, ::ClimaLand.TopBoundary,
+        ::AbstractAtmosDrivenFluxBC,
+        ::ClimaLand.TopBoundary,
     ) where {FT}
 
 An extension of the `boundary_var_types` method for AtmosDrivenFluxBC. This
@@ -708,11 +695,7 @@ specifies the type of the additional variables.
 """
 boundary_var_types(
     model::EnergyHydrology{FT},
-    bc::AtmosDrivenFluxBC{
-        <:AbstractAtmosphericDrivers{FT},
-        <:AbstractRadiativeDrivers{FT},
-        <:AbstractRunoffModel,
-    },
+    bc::AbstractAtmosDrivenFluxBC,
     ::ClimaLand.TopBoundary,
 ) where {FT} = (
     NamedTuple{
@@ -804,3 +787,14 @@ boundary_var_types(
     bc::MoistureStateBC,
     ::ClimaLand.TopBoundary,
 ) where {FT} = (FT, ClimaCore.Geometry.Covariant3Vector{FT})
+
+
+function sublimation_source(bc::AbstractEnergyHydrologyBC)
+    nothing
+end
+
+function sublimation_source(
+    bc::AtmosDrivenFluxBC{AbstractAtmosphericDrivers{FT}},
+) where {FT}
+    return SoilSublimation{FT}()
+end

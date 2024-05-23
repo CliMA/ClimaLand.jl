@@ -299,7 +299,7 @@ function ClimaLand.make_update_boundary_fluxes(model::SnowModel{FT}) where {FT}
         P_snow = p.drivers.P_snow
 
         @. p.snow.total_water_flux =
-            p.drivers.P_snow +
+            P_snow +
             (p.snow.turbulent_fluxes.vapor_flux - p.snow.water_runoff) *
             p.snow.snow_cover_fraction
 
@@ -310,6 +310,7 @@ function ClimaLand.make_update_boundary_fluxes(model::SnowModel{FT}) where {FT}
         _ρ_liq = FT(LP.ρ_cloud_liq(model.parameters.earth_param_set))
         ρe_falling_snow = -_LH_f0 * _ρ_liq # per unit vol of liquid water
 
+        # positive fluxes are TOWARDS atmos
         @. p.snow.total_energy_flux =
             P_snow * ρe_falling_snow +
             (
