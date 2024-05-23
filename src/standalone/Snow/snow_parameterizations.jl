@@ -216,7 +216,7 @@ function snow_liquid_mass_fraction(
     elseif U > Uplus
         FT(1)
     else
-        (U - Uminus) / (Uplus - Uminus)
+        (U - Uminus) / max((Uplus - Uminus), eps(FT))
     end
 end
 

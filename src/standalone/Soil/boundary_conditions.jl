@@ -14,7 +14,8 @@ export TemperatureStateBC,
     WaterFluxBC,
     AtmosDrivenFluxBC,
     RichardsAtmosDrivenFluxBC,
-    WaterHeatBC
+    WaterHeatBC,
+    sublimation_source
 
 
 # New BC type for Richards Equation (AbstractWaterBC)
@@ -550,12 +551,12 @@ function WaterHeatBC(; water, heat)
     return WaterHeatBC{typeof(water), typeof(heat)}(water, heat)
 end
 
-
 """
     AtmosDrivenFluxBC{
         A <: AbstractAtmosphericDrivers,
         B <: AbstractRadiativeDrivers,
-        R <: AbstractRunoffModel
+        R <: AbstractRunoffModel,
+        C::Tuple
     } <: AbstractEnergyHydrologyBC
 
 A concrete type of soil boundary condition for use at the top
@@ -576,12 +577,21 @@ to simulate surface and subsurface runoff and this is accounted
 for when setting boundary conditions. The default is to have no runoff
 accounted for.
 
+Finally, because this same boundary condition type is used for the soil
+in integrated land surface models, we also provide a tuple of symbols
+indicating the prognostic land components present, as these affect how the boundary
+conditions are computed. The default is
+a tuple containing only (:soil,), indicating a standalone soil run.
+
+For more information on the allowed values, please see
+the [documentation](https://clima.github.io/ClimaLand.jl/dev/generated/integrated/handling_soil_fluxes)
 $(DocStringExtensions.FIELDS)
 """
 struct AtmosDrivenFluxBC{
     A <: AbstractAtmosphericDrivers,
     B <: AbstractRadiativeDrivers,
     R <: AbstractRunoffModel,
+    C <: Tuple,
 } <: AbstractEnergyHydrologyBC
     "The atmospheric conditions driving the model"
     atmos::A
@@ -589,14 +599,21 @@ struct AtmosDrivenFluxBC{
     radiation::B
     "The runoff model. The default is no runoff."
     runoff::R
+    "Prognostic land components present"
+    prognostic_land_components::C
 end
 
 
-function AtmosDrivenFluxBC(atmos, radiation; runoff = NoRunoff())
+function AtmosDrivenFluxBC(
+    atmos,
+    radiation;
+    runoff = NoRunoff(),
+    prognostic_land_components = (:soil,),
+)
     if typeof(runoff) <: NoRunoff
         @info("Warning: No runoff model was provided; zero runoff generated.")
     end
-    args = (atmos, radiation, runoff)
+    args = (atmos, radiation, runoff, prognostic_land_components)
     return AtmosDrivenFluxBC{typeof.(args)...}(args...)
 end
 
@@ -653,14 +670,7 @@ net radiation to the auxiliary variables.
 
 These variables are updated in place in `soil_boundary_fluxes!`.
 """
-boundary_vars(
-    bc::AtmosDrivenFluxBC{
-        <:AbstractAtmosphericDrivers,
-        <:AbstractRadiativeDrivers,
-        <:AbstractRunoffModel,
-    },
-    ::ClimaLand.TopBoundary,
-) = (
+boundary_vars(bc::AtmosDrivenFluxBC, ::ClimaLand.TopBoundary) = (
     :turbulent_fluxes,
     :R_n,
     :top_bc,
@@ -669,24 +679,14 @@ boundary_vars(
 )
 
 """
-    boundary_var_domain_names(::AtmosDrivenFluxBC{<:AbstractAtmosphericDrivers,
-                                                  <:AbstractRadiativeDrivers,
-                                                  <:AbstractRunoffModel,
-                                                  },
+    boundary_var_domain_names(::AtmosDrivenFluxBC,
                               ::ClimaLand.TopBoundary)
 
 An extension of the `boundary_var_domain_names` method for AtmosDrivenFluxBC. This
 specifies the part of the domain on which the additional variables should be
 defined.
 """
-boundary_var_domain_names(
-    bc::AtmosDrivenFluxBC{
-        <:AbstractAtmosphericDrivers,
-        <:AbstractRadiativeDrivers,
-        <:AbstractRunoffModel,
-    },
-    ::ClimaLand.TopBoundary,
-) = (
+boundary_var_domain_names(bc::AtmosDrivenFluxBC, ::ClimaLand.TopBoundary) = (
     :surface,
     :surface,
     :surface,
@@ -696,11 +696,8 @@ boundary_var_domain_names(
 """
     boundary_var_types(
         ::EnergyHydrology{FT},
-        ::AtmosDrivenFluxBC{
-            <:PrescribedAtmosphere{FT},
-            <:AbstractRadiativeDrivers{FT},
-            <:AbstractRunoffModel,
-        }, ::ClimaLand.TopBoundary,
+        ::AtmosDrivenFluxBC,
+        ::ClimaLand.TopBoundary,
     ) where {FT}
 
 An extension of the `boundary_var_types` method for AtmosDrivenFluxBC. This
@@ -708,11 +705,7 @@ specifies the type of the additional variables.
 """
 boundary_var_types(
     model::EnergyHydrology{FT},
-    bc::AtmosDrivenFluxBC{
-        <:AbstractAtmosphericDrivers{FT},
-        <:AbstractRadiativeDrivers{FT},
-        <:AbstractRunoffModel,
-    },
+    bc::AtmosDrivenFluxBC,
     ::ClimaLand.TopBoundary,
 ) where {FT} = (
     NamedTuple{
@@ -743,20 +736,50 @@ Returns the net volumetric water flux (m/s) and net energy
 flux (W/m^2) for the soil `EnergyHydrology` model at the top
 of the soil domain.
 
-If you wish to compute surface fluxes taking into account the
-presence of a canopy, snow, etc, as in a land surface model,
-this is not the correct method to be using.
-
 This function calls the `turbulent_fluxes` and `net_radiation`
 functions, which use the soil surface conditions as well as
 the atmos and radiation conditions in order to
 compute the surface fluxes using Monin Obukhov Surface Theory.
+It also accounts for the presence of other components, if run as
+part of an integrated land model, and their affect on boundary conditions.
+"""
+function soil_boundary_fluxes!(
+    bc::AtmosDrivenFluxBC,
+    boundary::ClimaLand.TopBoundary,
+    soil::EnergyHydrology{FT},
+    Δz,
+    Y,
+    p,
+    t,
+) where {FT}
+    soil_boundary_fluxes!(bc, Val(bc.prognostic_land_components), soil, Y, p, t)
+end
+
+
+"""
+    soil_boundary_fluxes!(
+        bc::AtmosDrivenFluxBC{
+            <:PrescribedAtmosphere,
+            <:PrescribedRadiativeFluxes,
+        },
+        prognostic_land_components::Val{(:soil,)},
+        model::EnergyHydrology,
+        Y,
+        p,
+        t,
+    )
+
+Returns the net volumetric water flux (m/s) and net energy
+flux (W/m^2) for the soil `EnergyHydrology` model at the top
+of the soil domain.
+
+Here, the soil boundary fluxes are computed as if the soil is run
+in standalone mode.
 """
 function soil_boundary_fluxes!(
     bc::AtmosDrivenFluxBC{<:PrescribedAtmosphere, <:PrescribedRadiativeFluxes},
-    boundary::ClimaLand.TopBoundary,
+    prognostic_land_components::Val{(:soil,)},
     model::EnergyHydrology,
-    Δz,
     Y,
     p,
     t,
@@ -804,3 +827,8 @@ boundary_var_types(
     bc::MoistureStateBC,
     ::ClimaLand.TopBoundary,
 ) where {FT} = (FT, ClimaCore.Geometry.Covariant3Vector{FT})
+
+
+function sublimation_source(::Val{(:soil,)}, FT)
+    return SoilSublimation{FT}()
+end

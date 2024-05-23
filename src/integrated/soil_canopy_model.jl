@@ -32,21 +32,6 @@ struct SoilCanopyModel{
     canopy::VM
 end
 
-"""
-    CanopyRadiativeFluxes{FT} <: AbstractRadiativeDrivers{FT}
-
-A struct used to compute radiative fluxes in land surface models,
-indicating that
-canopy absorption and emission is taken into account when computing
-radiation at the surface of the soil or snow.
-
-The only other alternative at this stage is
-ClimaLand.PrescribedRadiativeFluxes, where the prescribed downwelling
-short and longwave radiative fluxes are used directly,
-without accounting for the canopy. There is a different method
-of the function `soil_boundary_fluxes!` in this case.
-"""
-struct CanopyRadiativeFluxes{FT} <: AbstractRadiativeDrivers{FT} end
 
 
 """
@@ -91,15 +76,21 @@ function SoilCanopyModel{FT}(;
     (; atmos, radiation, soil_organic_carbon) = land_args
     # These should always be set by the constructor.
     sources = (RootExtraction{FT}(), Soil.PhaseChange{FT}())
+    prognostic_land_components = (:canopy, :soil, :soilco2)
     if :runoff ∈ propertynames(land_args)
-        top_bc = ClimaLand.Soil.AtmosDrivenFluxBC(
+        top_bc = ClimaLand.AtmosDrivenFluxBC(
             atmos,
-            CanopyRadiativeFluxes{FT}(),
+            radiation,
             land_args.runoff,
+            prognostic_land_components,
         )
     else #no runoff model
-        top_bc =
-            ClimaLand.Soil.AtmosDrivenFluxBC(atmos, CanopyRadiativeFluxes{FT}())
+        top_bc = ClimaLand.AtmosDrivenFluxBC(
+            atmos,
+            radiation,
+            ClimaLand.Soil.Runoff.NoRunoff(),
+            prognostic_land_components,
+        )
     end
     zero_flux = Soil.HeatFluxBC((p, t) -> 0.0)
     boundary_conditions = (;
@@ -386,6 +377,7 @@ function lsm_radiant_energy_fluxes!(
     ϵ_canopy = p.canopy.radiative_transfer.ϵ # this takes into account LAI/SAI
     @. LW_d_canopy = ((1 - ϵ_canopy) * LW_d + ϵ_canopy * _σ * T_canopy^4) # double checked
     @. LW_u_soil = ϵ_soil * _σ * p.T_ground^4 + (1 - ϵ_soil) * LW_d_canopy # double checked
+    # This is a sign inconsistency. Here Rn is positive if towards soil. X_X
     @. R_net_soil += ϵ_soil * LW_d_canopy - ϵ_soil * _σ * p.T_ground^4 # double checked
     @. LW_net_canopy =
         ϵ_canopy * LW_d - 2 * ϵ_canopy * _σ * T_canopy^4 + ϵ_canopy * LW_u_soil
@@ -396,10 +388,9 @@ end
 ### Extensions of existing functions to account for prognostic soil/canopy
 """
     soil_boundary_fluxes!(
-        bc::AtmosDrivenFluxBC{<:PrescribedAtmosphere, <:CanopyRadiativeFluxes},
-        boundary::ClimaLand.TopBoundary,
+        bc::AtmosDrivenFluxBC{<:PrescribedAtmosphere, <:PrescribedRadiativeFluxes},
+        prognostic_land_components::Val{(:canopy, :soil,:soilco2,)},
         soil::EnergyHydrology{FT},
-        Δz,
         Y,
         p,
         t,
@@ -408,13 +399,13 @@ end
 A method of `ClimaLand.Soil.soil_boundary_fluxes!` which is used for
 integrated land surface models; this computes and returns the net
 energy and water flux at the surface of the soil for use as boundary
-conditions.
+conditions when a canopy and Soil CO2  model is also included, though only
+the presence of the canopy modifies the soil BC.
 """
 function soil_boundary_fluxes!(
-    bc::AtmosDrivenFluxBC{<:PrescribedAtmosphere, <:CanopyRadiativeFluxes},
-    boundary::ClimaLand.TopBoundary,
+    bc::AtmosDrivenFluxBC{<:PrescribedAtmosphere, <:PrescribedRadiativeFluxes},
+    prognostic_land_components::Val{(:canopy, :soil, :soilco2)},
     soil::EnergyHydrology{FT},
-    Δz,
     Y,
     p,
     t,
@@ -590,7 +581,12 @@ function Canopy.canopy_radiant_energy_fluxes!(
 ) where {F, PSE}
     nothing
 end
-
+function ClimaLand.Soil.sublimation_source(
+    ::Val{(:canopy, :soil, :soilco2)},
+    FT,
+)
+    return ClimaLand.Soil.SoilSublimation{FT}()
+end
 
 function ClimaLand.get_drivers(model::SoilCanopyModel)
     return (
