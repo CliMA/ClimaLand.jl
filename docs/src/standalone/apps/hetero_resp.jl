@@ -1,8 +1,3 @@
-import ClimaLSM.Parameters as LSMP
-include(joinpath(pkgdir(ClimaLSM), "parameters", "create_parameters.jl"))
-earth_param_set = create_lsm_parameters(FT)
-
-
 using Unitful: K, °C, mol, μmol, m, s, kg, J
 
 function ParamViz.parameterisation(
