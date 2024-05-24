@@ -2,7 +2,7 @@
 
 julia_version = "1.10.4"
 manifest_format = "2.0"
-project_hash = "bf43a7452b446a9ba967dab8eeb0bc21ba10184f"
+project_hash = "6c3f79ccae513840cc13b9ac947575c2305b507f"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "fa0822e5baee6e23081c2685ae27265dabee23d8"
@@ -375,8 +375,14 @@ weakdeps = ["CUDA", "Krylov"]
     ClimaCoreCUDAExt = "CUDA"
     KrylovExt = "Krylov"
 
+[[deps.ClimaDiagnostics]]
+deps = ["Accessors", "ClimaComms", "ClimaCore", "Dates", "NCDatasets", "SciMLBase"]
+git-tree-sha1 = "aff194804df0fcfcf69a80c58978b84777272619"
+uuid = "1ecacbb8-0713-4841-9a07-eb5aa8a2d53f"
+version = "0.2.2"
+
 [[deps.ClimaLand]]
-deps = ["Adapt", "ArtifactWrappers", "ClimaComms", "ClimaCore", "ClimaUtilities", "DataFrames", "Dates", "DocStringExtensions", "Insolation", "Interpolations", "IntervalSets", "LazyArtifacts", "LinearAlgebra", "NCDatasets", "SciMLBase", "StaticArrays", "SurfaceFluxes", "Thermodynamics", "UnrolledUtilities"]
+deps = ["Adapt", "ArtifactWrappers", "ClimaComms", "ClimaCore", "ClimaDiagnostics", "ClimaUtilities", "DataFrames", "Dates", "DocStringExtensions", "Insolation", "Interpolations", "IntervalSets", "LazyArtifacts", "LinearAlgebra", "NCDatasets", "SciMLBase", "StaticArrays", "SurfaceFluxes", "Thermodynamics", "UnrolledUtilities"]
 path = ".."
 uuid = "08f4d4ce-cf43-44bb-ad95-9d2d5f413532"
 version = "0.12.4"

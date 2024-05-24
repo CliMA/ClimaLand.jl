@@ -19,13 +19,14 @@ jobs:
       - uses: julia-actions/setup-julia@latest
         with:
           version: '1.10'
-      - uses: julia-actions/cache@v2
+#  julia-actions/cache@v2 did not seem to invalidate cache correctly...
+#    - uses: julia-actions/cache@v2
       - name: Install Julia dependencies
         run: >
-          julia --project= -e 'using Pkg; Pkg.develop(path="$(pwd())"); Pkg.develop(path="$(pwd())/lib/ClimaLandSimulations")'
+          julia --project=lib/ClimaLandSimulations -e 'using Pkg; Pkg.develop(path=".")'
       - name: Run the tests
         continue-on-error: true
         env:
             CI_OUTPUT_DIR: output
         run: >
-          julia --project= -e 'using Pkg; Pkg.test("ClimaLandSimulations")'
+          julia --project=lib/ClimaLandSimulations -e 'using Pkg; Pkg.test("ClimaLandSimulations")'

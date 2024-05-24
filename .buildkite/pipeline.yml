@@ -137,7 +137,9 @@ steps:
       - label: "Global Bucket on CPU (functional albedo)"
         key: "global_bucket_function_cpu"
         command: "julia --color=yes --project=.buildkite experiments/standalone/Bucket/global_bucket_function.jl"
-        artifact_paths: "experiments/standalone/Bucket/artifacts/*cpu*"
+        artifact_paths:
+          - "experiments/standalone/Bucket/artifacts/*cpu*"
+          - "experiments/global_bucket_function/output_active/*.png"
 
       - label: "Global Bucket on CPU (static map albedo)"
         key: "global_bucket_staticmap_cpu"

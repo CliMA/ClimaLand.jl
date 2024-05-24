@@ -1,6 +1,7 @@
 module ClimaLandSimulations
 
 using CairoMakie
+using ClimaDiagnostics
 using WGLMakie
 using DataFrames
 using LaTeXStrings

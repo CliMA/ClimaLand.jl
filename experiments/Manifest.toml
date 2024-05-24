@@ -2,7 +2,7 @@
 
 julia_version = "1.10.4"
 manifest_format = "2.0"
-project_hash = "973443a0a609649a9289253b6f5bc3de181d9006"
+project_hash = "306f35a5dfb80400ec575833e6ee1eaa425bdc2f"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "daf26bbdec60d9ca1c0003b70f389d821ddb4224"
@@ -256,6 +256,20 @@ weakdeps = ["SparseArrays"]
     [deps.ChainRulesCore.extensions]
     ChainRulesCoreSparseArraysExt = "SparseArrays"
 
+[[deps.ClimaAnalysis]]
+deps = ["NCDatasets", "OrderedCollections", "Statistics"]
+git-tree-sha1 = "c2e1c0d5c30a2519a4282988037b255dbc9aee00"
+uuid = "29b5916a-a76c-4e73-9657-3c8fd22e65e6"
+version = "0.5.3"
+
+    [deps.ClimaAnalysis.extensions]
+    CairoMakieExt = "CairoMakie"
+    GeoMakieExt = "GeoMakie"
+
+    [deps.ClimaAnalysis.weakdeps]
+    CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
+    GeoMakie = "db073c08-6b98-4ee5-b6a4-5efafb3259c6"
+
 [[deps.ClimaComms]]
 git-tree-sha1 = "f19a9d42ef27affa8d57a5702dcb8a318077aa86"
 uuid = "3a4d1b5c-c61d-41fd-a00a-5873ba7a1b0d"
@@ -283,11 +297,17 @@ version = "0.14.5"
     CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
     Krylov = "ba0b0d4f-ebba-5204-a429-3ac8c609bfb7"
 
+[[deps.ClimaDiagnostics]]
+deps = ["Accessors", "ClimaComms", "ClimaCore", "Dates", "NCDatasets", "SciMLBase"]
+git-tree-sha1 = "aff194804df0fcfcf69a80c58978b84777272619"
+uuid = "1ecacbb8-0713-4841-9a07-eb5aa8a2d53f"
+version = "0.2.2"
+
 [[deps.ClimaLand]]
-deps = ["Adapt", "ArtifactWrappers", "ClimaComms", "ClimaCore", "ClimaUtilities", "DataFrames", "Dates", "DocStringExtensions", "Insolation", "Interpolations", "IntervalSets", "LazyArtifacts", "LinearAlgebra", "NCDatasets", "SciMLBase", "StaticArrays", "SurfaceFluxes", "Thermodynamics", "UnrolledUtilities"]
+deps = ["Adapt", "ArtifactWrappers", "ClimaComms", "ClimaCore", "ClimaDiagnostics", "ClimaUtilities", "DataFrames", "Dates", "DocStringExtensions", "Insolation", "Interpolations", "IntervalSets", "LazyArtifacts", "LinearAlgebra", "NCDatasets", "SciMLBase", "StaticArrays", "SurfaceFluxes", "Thermodynamics", "UnrolledUtilities"]
 path = ".."
 uuid = "08f4d4ce-cf43-44bb-ad95-9d2d5f413532"
-version = "0.12.2"
+version = "0.12.3"
 
     [deps.ClimaLand.extensions]
     CreateParametersExt = "ClimaParams"

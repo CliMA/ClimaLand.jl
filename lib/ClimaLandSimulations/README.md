@@ -17,11 +17,11 @@ For examples, see the [experiments](https://github.com/CliMA/ClimaLand.jl/lib/Cl
 
 ### Development of the `ClimaLandSimulations` subpackage
 
-    cd ClimaCore/lib/ClimaLandSimulations
+    cd ClimaLand/lib/ClimaLandSimulations
 
-    # Add ClimaCore to subpackage environment
+    # Add ClimaLand to subpackage environment
     julia --project -e 'using Pkg; Pkg.develop(path="../../")'
 
-    # Instantiate ClimaCoreMakie project environment
+    # Instantiate ClimaLandSimulations project environment
     julia --project -e 'using Pkg; Pkg.instantiate()'
     julia --project -e 'using Pkg; Pkg.test()'
