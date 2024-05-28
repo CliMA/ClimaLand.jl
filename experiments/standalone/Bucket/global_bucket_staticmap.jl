@@ -182,6 +182,7 @@ bucket_atmos = PrescribedAtmosphere(
     P_atmos,
     ref_time,
     h_atmos,
+    earth_param_set,
 );
 
 # Prescribed radiation -- a prescribed downwelling SW diurnal cycle, with a
@@ -246,7 +247,7 @@ updatefunc = ClimaLand.make_update_drivers(bucket_atmos, bucket_rad)
 driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
 cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
 
-@time sol =
+ClimaComms.@time ClimaComms.device() sol =
     SciMLBase.solve(prob, ode_algo; dt = Δt, saveat = saveat, callback = cb);
 
 # Interpolate to grid

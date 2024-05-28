@@ -194,7 +194,8 @@ for FT in (Float32, Float64)
             TimeVaryingInput(q_atmos),
             TimeVaryingInput(P_atmos),
             ref_time,
-            h_atmos;
+            h_atmos,
+            earth_param_set;
             c_co2 = TimeVaryingInput(c_atmos),
         )
         radiation = PrescribedRadiativeFluxes(
@@ -487,7 +488,8 @@ for FT in (Float32, Float64)
             TimeVaryingInput(q_atmos),
             TimeVaryingInput(P_atmos),
             ref_time,
-            h_atmos;
+            h_atmos,
+            earth_param_set;
             c_co2 = TimeVaryingInput(c_atmos),
         )
         radiation = PrescribedRadiativeFluxes(

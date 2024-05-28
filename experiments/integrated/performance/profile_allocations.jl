@@ -129,7 +129,8 @@ atmos = ClimaLand.PrescribedAtmosphere(
     atmos_q,
     atmos_p,
     ref_time,
-    atmos_h;
+    atmos_h,
+    earth_param_set;
 )
 function zenith_angle(
     t,

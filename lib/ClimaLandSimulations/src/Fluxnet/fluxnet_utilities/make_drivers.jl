@@ -133,7 +133,8 @@ function make_drivers(site_ID, setup, config, params, context)
         atmos_q,
         atmos_p,
         UTC_DATETIME[1],
-        config.atmos_h;
+        config.atmos_h,
+        earth_param_set;
         c_co2 = atmos_co2,
     )
 

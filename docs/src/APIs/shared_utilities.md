@@ -77,7 +77,7 @@ ClimaLand.AbstractRadiativeDrivers
 ClimaLand.turbulent_fluxes
 ClimaLand.turbulent_fluxes_at_a_point
 ClimaLand.radiative_fluxes_at_a_point
-ClimaLand.construct_atmos_ts
+ClimaLand.set_atmos_ts!
 ClimaLand.surface_air_density
 ClimaLand.liquid_precipitation
 ClimaLand.snow_precipitation
