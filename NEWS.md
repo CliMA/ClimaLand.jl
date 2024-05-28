@@ -4,6 +4,13 @@ ClimaLand.jl Release Notes
 main
 --------
 
+v0.12.2
+--------
+- Add ClimaLand.Artifacts.
+  PR [#624](https://github.com/CliMA/ClimaLand.jl/pull/624)
+- Update implicit solver interface. 
+  PR [#542](https://github.com/CliMA/ClimaLand.jl/pull/542)
+
 v0.12.1
 --------
 - Add `regridder_type` option to albedo constructors.

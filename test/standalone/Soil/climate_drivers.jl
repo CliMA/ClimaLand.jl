@@ -76,6 +76,7 @@ for FT in (Float32, Float64)
             TimeVaryingInput(P_atmos),
             ref_time,
             h_atmos,
+            earth_param_set,
         )
         @test atmos.gustiness == FT(1)
         top_bc = ClimaLand.Soil.AtmosDrivenFluxBC(atmos, radiation)
@@ -114,8 +115,19 @@ for FT in (Float32, Float64)
             )
 
             Y, p, coords = initialize(model)
-            @test propertynames(p.drivers) ==
-                  (:P_liq, :P_snow, :T, :P, :u, :q, :c_co2, :SW_d, :LW_d, :θs)
+            @test propertynames(p.drivers) == (
+                :P_liq,
+                :P_snow,
+                :T,
+                :P,
+                :u,
+                :q,
+                :c_co2,
+                :thermal_state,
+                :SW_d,
+                :LW_d,
+                :θs,
+            )
             @test propertynames(p.soil.turbulent_fluxes) ==
                   (:lhf, :shf, :vapor_flux, :r_ae)
             @test propertynames(p.soil) == (
@@ -185,7 +197,13 @@ for FT in (Float32, Float64)
 
             thermo_params =
                 LP.thermodynamic_parameters(model.parameters.earth_param_set)
-            ts_in = construct_atmos_ts(atmos, p, thermo_params)
+            ts_in =
+                Thermodynamics.PhaseEquil_pTq.(
+                    thermo_params,
+                    p.drivers.P,
+                    p.drivers.T,
+                    p.drivers.q,
+                )
             ρ_sfc = compute_ρ_sfc.(thermo_params, ts_in, T_sfc)
             @test ClimaLand.surface_air_density(
                 model.boundary_conditions.top.atmos,

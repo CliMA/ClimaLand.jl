@@ -232,6 +232,7 @@ end
                 TimeVaryingInput(P_atmos),
                 ref_time,
                 h_atmos,
+                earth_param_set,
             )
             τc = FT(1.0)
             bucket_parameters =
@@ -338,6 +339,7 @@ end
                 TimeVaryingInput(P_atmos),
                 ref_time,
                 h_atmos,
+                earth_param_set,
             )
             τc = FT(1.0)
             bucket_parameters =

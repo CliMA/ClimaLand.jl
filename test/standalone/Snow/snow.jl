@@ -14,6 +14,8 @@ import ClimaLand.Parameters as LP
 
 @testset "Snow Model" begin
     FT = Float32
+    earth_param_set = LP.LandParameters(FT)
+
     ref_time = DateTime(2005)
     param_set = LP.LandParameters(FT)
     Δt = FT(180.0)
@@ -39,6 +41,7 @@ import ClimaLand.Parameters as LP
         P_atmos,
         ref_time,
         h_atmos,
+        earth_param_set,
     )
     model = ClimaLand.Snow.SnowModel(
         parameters = parameters,

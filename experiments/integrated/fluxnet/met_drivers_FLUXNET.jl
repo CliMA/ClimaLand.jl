@@ -145,7 +145,8 @@ atmos = ClimaLand.PrescribedAtmosphere(
     atmos_q,
     atmos_p,
     UTC_DATETIME[1],
-    atmos_h;
+    atmos_h,
+    earth_param_set;
     c_co2 = atmos_co2,
 )
 

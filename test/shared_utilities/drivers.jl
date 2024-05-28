@@ -1,13 +1,17 @@
 import ClimaComms
 @static pkgversion(ClimaComms) >= v"0.6" && ClimaComms.@import_required_backends
+import ClimaLand.Parameters as LP
 using ClimaCore
 using Test
 using StaticArrays
 using ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
 using ClimaLand
+import Thermodynamics
+import ClimaParams as CP
 
 FT = Float32
 @testset "Default model, FT = $FT" begin
+    earth_param_set = LP.LandParameters(FT)
     pa = ClimaLand.PrescribedAtmosphere(
         nothing,
         nothing,
@@ -16,7 +20,8 @@ FT = Float32
         nothing,
         nothing,
         nothing,
-        FT(1);
+        FT(1),
+        earth_param_set,
     )
     pr = ClimaLand.PrescribedRadiativeFluxes(FT, nothing, nothing, nothing)
     liquid_precip = TimeVaryingInput((t) -> -1.0)
@@ -26,13 +31,21 @@ FT = Float32
           NamedTuple{(:P_liq,)}((zeros(FT, 3),))
     @test ClimaLand.initialize_drivers(nothing, nothing, coords) == (;)
     pa_keys = (:P_liq, :P_snow, :T, :P, :u, :q, :c_co2)
+    zero_thermal_state = map(
+        _ -> ClimaCore.RecursiveApply.rzero(Thermodynamics.PhaseEquil{FT}),
+        coords.surface,
+    )
     pa_vals = ([zeros(FT, 3) for k in pa_keys]...,)
+    all_pa_keys = (pa_keys..., :thermal_state)
+    all_pa_vals = (pa_vals..., zero_thermal_state)
     @test ClimaLand.initialize_drivers(pa, nothing, coords) ==
-          NamedTuple{pa_keys}(pa_vals)
-    papr_keys = (:P_liq, :P_snow, :T, :P, :u, :q, :c_co2, :SW_d, :LW_d, :θs)
-    papr_vals = ([zeros(FT, 3) for k in papr_keys]...,)
+          NamedTuple{all_pa_keys}(all_pa_vals)
+    pr_keys = (:SW_d, :LW_d, :θs)
+    pr_vals = ([zeros(FT, 3) for k in pr_keys]...,)
+    all_papr_keys = (pa_keys..., :thermal_state, pr_keys...)
+    all_papr_vals = (pa_vals..., zero_thermal_state, pr_vals...)
     @test ClimaLand.initialize_drivers(pa, pr, coords) ==
-          NamedTuple{papr_keys}(papr_vals)
+          NamedTuple{all_papr_keys}(all_papr_vals)
 end
 
 ## Driver update callback tests
@@ -84,8 +97,19 @@ end
 end
 
 @testset "Driver update functions" begin
+    earth_param_set = LP.LandParameters(FT)
     f = TimeVaryingInput((t) -> 10.0)
-    pa = ClimaLand.PrescribedAtmosphere(f, f, f, f, f, f, f, FT(1);)
+    pa = ClimaLand.PrescribedAtmosphere(
+        f,
+        f,
+        f,
+        f,
+        f,
+        f,
+        f,
+        FT(1),
+        earth_param_set,
+    )
     pr = ClimaLand.PrescribedRadiativeFluxes(FT, f, f, f)
     coords = (; surface = [1])
     p = (; drivers = ClimaLand.initialize_drivers(nothing, nothing, coords))

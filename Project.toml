@@ -1,7 +1,7 @@
 name = "ClimaLand"
 uuid = "08f4d4ce-cf43-44bb-ad95-9d2d5f413532"
 authors = ["Clima Land Team"]
-version = "0.12.1"
+version = "0.12.2"
 
 [deps]
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
@@ -41,7 +41,7 @@ NeuralSnowExt = ["CSV", "HTTP", "Flux", "StatsBase", "cuDNN"]
 Adapt = "3, 4"
 ArtifactWrappers = "0.2"
 CSV = "0.10"
-CUDA = "5"
+CUDA = "<5.4"
 ClimaComms = "0.5.6, 0.6"
 ClimaCore = "0.13.2, 0.14"
 ClimaParams = "0.10.2"

@@ -87,6 +87,7 @@ for FT in (Float32, Float64)
                 TimeVaryingInput(P_atmos),
                 ref_time,
                 h_atmos,
+                earth_param_set,
             )
             τc = FT(1.0)
             bucket_parameters =
@@ -100,8 +101,19 @@ for FT in (Float32, Float64)
             )
             # Initial conditions with no moisture
             Y, p, coords = initialize(model)
-            @test propertynames(p.drivers) ==
-                  (:P_liq, :P_snow, :T, :P, :u, :q, :c_co2, :SW_d, :LW_d, :θs)
+            @test propertynames(p.drivers) == (
+                :P_liq,
+                :P_snow,
+                :T,
+                :P,
+                :u,
+                :q,
+                :c_co2,
+                :thermal_state,
+                :SW_d,
+                :LW_d,
+                :θs,
+            )
             # test if the correct dss buffers were added to aux.
             # We only need to add a dss buffer when there is a horizontal
             # space (spectral element space). So, we check that it is added
@@ -176,6 +188,7 @@ for FT in (Float32, Float64)
                 TimeVaryingInput(P_atmos),
                 ref_time,
                 h_atmos,
+                earth_param_set,
             )
             τc = FT(100.0)
             bucket_parameters =

@@ -92,7 +92,8 @@ for FT in (Float32, Float64)
             TimeVaryingInput(atmos_q),
             TimeVaryingInput(atmos_p),
             UTC_DATETIME,
-            atmos_h;
+            atmos_h,
+            earth_param_set;
             c_co2 = TimeVaryingInput(atmos_co2),
         )
 
@@ -116,7 +117,7 @@ for FT in (Float32, Float64)
         )
         Y, p, coords = initialize(model)
         @test propertynames(p.drivers) ==
-              (:P_liq, :P_snow, :T, :P, :u, :q, :c_co2)
+              (:P_liq, :P_snow, :T, :P, :u, :q, :c_co2, :thermal_state)
         function init_soil!(Y, z, params)
             ν = params.ν
             FT = eltype(Y.soil.ϑ_l)

@@ -62,7 +62,8 @@ atmos = PrescribedAtmosphere(
     TimeVaryingInput(q_atmos),
     TimeVaryingInput(P_atmos),
     ref_time,
-    h_atmos;
+    h_atmos,
+    earth_param_set;
     gustiness = gustiness,
 );
 
