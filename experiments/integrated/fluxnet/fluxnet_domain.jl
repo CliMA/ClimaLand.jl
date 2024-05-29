@@ -4,8 +4,8 @@ given in the {site-ID}_simulation.jl file in each site directory."""
 
 # Domain setup
 # For soil column
-nelements = 20
-zmin = FT(-10)
+nelements = 60
+zmin = FT(-20)
 zmax = FT(0)
 h_canopy = h_stem + h_leaf
 compartment_midpoints =

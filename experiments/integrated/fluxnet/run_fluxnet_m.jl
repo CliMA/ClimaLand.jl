@@ -19,9 +19,10 @@ using ClimaLand.Canopy.PlantHydraulics
 import ClimaLand
 import ClimaLand.Parameters as LP
 using Base
+Base.ARGS = ["US-Cop","save"]
 const FT = Float64
 earth_param_set = LP.LandParameters(FT)
-climaland_dir = pkgdir(ClimaLand)
+climaland_dir ="/Users/mitraasadollahi/Projects/ClimaLand.jl/" #pkgdir(ClimaLand)
 
 include(joinpath(climaland_dir, "experiments/integrated/fluxnet/data_tools.jl"))
 include(joinpath(climaland_dir, "experiments/integrated/fluxnet/plot_utils.jl"))
@@ -65,7 +66,7 @@ include(
 include(
     joinpath(
         climaland_dir,
-        "experiments/integrated/fluxnet/met_drivers_FLUXNET.jl",
+        "experiments/integrated/fluxnet/met_drivers_FLUXNET_m.jl",
     ),
 )
 
@@ -271,23 +272,51 @@ prob = SciMLBase.ODEProblem(
     (t0, tf),
     p,
 );
-sol = SciMLBase.solve(
-    prob,
-    ode_algo;
-    dt = dt,
-    callback = cb,
-    adaptive = false,
-    saveat = saveat,
-)
 
-# Plotting
-daily = sol.t ./ 3600 ./ 24
 savedir =
     joinpath(climaland_dir, "experiments/integrated/fluxnet/$site_ID/out/")
+
 
 if !isdir(savedir)
     mkdir(savedir)
 end
+
+global error_log_file = joinpath(savedir, "error_log.txt")
+
+sol = SciMLBase.solve(
+        prob,
+        ode_algo;
+        dt = dt,
+        callback = cb,
+        adaptive = false,
+        saveat = saveat,
+    )
+
+
+try
+    sol = SciMLBase.solve(
+        prob,
+        ode_algo;
+        dt = dt,
+        callback = cb,
+        adaptive = false,
+        saveat = saveat,
+    )
+    error("The file was run successfully")
+catch e
+    open(error_log_file, "w") do f
+        write(f, "An error occurred during the solution process:\n")
+        write(f, string(e), "\n")  # Use string(e) to get the error message
+        write(f, "\nStacktrace:\n")
+        for (i, s) in enumerate(stacktrace(catch_backtrace()))
+            write(f, "[$i] $s\n")
+        end
+    end
+end
+
+
+# Plotting
+daily = sol.t ./ 3600 ./ 24
 
 # Number of days to plot
 num_days = N_days - N_spinup_days
