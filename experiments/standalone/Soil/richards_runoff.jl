@@ -23,7 +23,17 @@ import ClimaLand.Parameters as LP
 
 regridder_type = :InterpolationsRegridder
 context = ClimaComms.context()
-outdir = joinpath(pkgdir(ClimaLand), "experiments/standalone/Soil/artifacts")
+device_suffix =
+    typeof(ClimaComms.context().device) <: ClimaComms.CPUSingleThreaded ?
+    "cpu" : "gpu"
+outdir = joinpath(
+    pkgdir(ClimaLand),
+    "experiments",
+    "standalone",
+    "Soil",
+    "artifacts",
+    device_suffix,
+)
 !ispath(outdir) && mkpath(outdir)
 FT = Float64
 radius = FT(6378.1e3);
@@ -235,7 +245,8 @@ prob = SciMLBase.ODEProblem(
     (t0, tf),
     p,
 )
-saveat = Array(t0:dt:tf)
+save_every = 100
+saveat = Array(t0:(save_every * dt):tf)
 sv = (;
     t = Array{Float64}(undef, length(saveat)),
     saveval = Array{NamedTuple}(undef, length(saveat)),
@@ -247,139 +258,150 @@ driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
 cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
 @time sol = SciMLBase.solve(prob, ode_algo; dt = dt, saveat = dt, callback = cb)
 
-longpts = range(-180.0, 180.0, 101)
-latpts = range(-90.0, 90.0, 101)
-hcoords = [
-    ClimaCore.Geometry.LatLongPoint(lat, long) for long in longpts,
-    lat in latpts
-]
-remapper = ClimaCore.Remapping.Remapper(surface_space, hcoords)
+# Make plots on CPU
+if context.device isa ClimaComms.CPUSingleThreaded
+    longpts = range(-180.0, 180.0, 101)
+    latpts = range(-90.0, 90.0, 101)
+    hcoords = [
+        ClimaCore.Geometry.LatLongPoint(lat, long) for long in longpts,
+        lat in latpts
+    ]
+    remapper = ClimaCore.Remapping.Remapper(surface_space, hcoords)
 
-h∇_end = ClimaCore.Remapping.interpolate(
-    remapper,
-    oceans_to_zero.(sv.saveval[end].soil.h∇, mask),
-)
-fig = Figure(size = (600, 400))
-ax = Axis(
-    fig[1, 1],
-    xlabel = "Longitude",
-    ylabel = "Latitude",
-    title = "Water table thickness",
-)
-clims = extrema(h∇_end)
-CairoMakie.heatmap!(ax, longpts, latpts, h∇_end, colorrange = clims)
-Colorbar(fig[:, end + 1], colorrange = clims)
-outfile = joinpath(outdir, string("heatmap_h∇.png"))
-CairoMakie.save(outfile, fig)
+    h∇_end = ClimaCore.Remapping.interpolate(
+        remapper,
+        oceans_to_zero.(sv.saveval[end].soil.h∇, mask),
+    )
+    fig = Figure(size = (600, 400))
+    ax = Axis(
+        fig[1, 1],
+        xlabel = "Longitude",
+        ylabel = "Latitude",
+        title = "Water table thickness",
+    )
+    clims = extrema(h∇_end)
+    CairoMakie.heatmap!(ax, longpts, latpts, h∇_end, colorrange = clims)
+    Colorbar(fig[:, end + 1], colorrange = clims)
+    outfile = joinpath(outdir, string("heatmap_h∇.png"))
+    CairoMakie.save(outfile, fig)
 
-R_s_end = ClimaCore.Remapping.interpolate(
-    remapper,
-    oceans_to_zero.(sv.saveval[end].soil.R_s, mask),
-)
-fig = Figure(size = (600, 400))
-ax = Axis(
-    fig[1, 1],
-    xlabel = "Longitude",
-    ylabel = "Latitude",
-    title = "Surface Runoff",
-)
-clims = extrema(R_s_end)
-CairoMakie.heatmap!(ax, longpts, latpts, R_s_end, colorrange = clims)
-Colorbar(fig[:, end + 1], colorrange = clims)
-outfile = joinpath(outdir, string("heatmap_R_s.png"))
-CairoMakie.save(outfile, fig)
+    R_s_end = ClimaCore.Remapping.interpolate(
+        remapper,
+        oceans_to_zero.(sv.saveval[end].soil.R_s, mask),
+    )
+    fig = Figure(size = (600, 400))
+    ax = Axis(
+        fig[1, 1],
+        xlabel = "Longitude",
+        ylabel = "Latitude",
+        title = "Surface Runoff",
+    )
+    clims = extrema(R_s_end)
+    CairoMakie.heatmap!(ax, longpts, latpts, R_s_end, colorrange = clims)
+    Colorbar(fig[:, end + 1], colorrange = clims)
+    outfile = joinpath(outdir, string("heatmap_R_s.png"))
+    CairoMakie.save(outfile, fig)
 
-R_ss_end = ClimaCore.Remapping.interpolate(
-    remapper,
-    oceans_to_zero.(sv.saveval[end].soil.R_ss, mask),
-)
+    R_ss_end = ClimaCore.Remapping.interpolate(
+        remapper,
+        oceans_to_zero.(sv.saveval[end].soil.R_ss, mask),
+    )
 
-fig = Figure(size = (600, 400))
-ax = Axis(
-    fig[1, 1],
-    xlabel = "Longitude",
-    ylabel = "Latitude",
-    title = "Subsurface Runoff",
-)
-clims = extrema(R_ss_end)
-CairoMakie.heatmap!(ax, longpts, latpts, R_ss_end, colorrange = clims)
-Colorbar(fig[:, end + 1], colorrange = clims)
-outfile = joinpath(outdir, string("heatmap_R_ss.png"))
-CairoMakie.save(outfile, fig)
-field_to_error(field) = field < 1 & ~isnan(field) ? field : eltype(field)(-0.1)
+    fig = Figure(size = (600, 400))
+    ax = Axis(
+        fig[1, 1],
+        xlabel = "Longitude",
+        ylabel = "Latitude",
+        title = "Subsurface Runoff",
+    )
+    clims = extrema(R_ss_end)
+    CairoMakie.heatmap!(ax, longpts, latpts, R_ss_end, colorrange = clims)
+    Colorbar(fig[:, end + 1], colorrange = clims)
+    outfile = joinpath(outdir, string("heatmap_R_ss.png"))
+    CairoMakie.save(outfile, fig)
+    field_to_error(field) =
+        field < 1 & ~isnan(field) ? field : eltype(field)(-0.1)
 
-θ_sfc_end = ClimaCore.Remapping.interpolate(
-    remapper,
-    ClimaLand.Soil.get_top_surface_field(
-        oceans_to_zero.(field_to_error.(sol.u[end].soil.ϑ_l), mask),
-        surface_space,
-    ),
-)
-
-fig = Figure(size = (1000, 400))
-ax = Axis(fig[1, 1], xlabel = "Longitude", ylabel = "Latitude", title = "θ_sfc")
-clims1 = extrema(θ_sfc_end)
-CairoMakie.heatmap!(ax, longpts, latpts, θ_sfc_end, colorrange = clims1)
-Colorbar(fig[1, 2], colorrange = clims1)
-
-Δθ_sfc = ClimaCore.Remapping.interpolate(
-    remapper,
-    ClimaLand.Soil.get_top_surface_field(
-        oceans_to_zero.(
-            field_to_error.(sol.u[end].soil.ϑ_l .- sol.u[1].soil.ϑ_l),
-            mask,
+    θ_sfc_end = ClimaCore.Remapping.interpolate(
+        remapper,
+        ClimaLand.Soil.get_top_surface_field(
+            oceans_to_zero.(field_to_error.(sol.u[end].soil.ϑ_l), mask),
+            surface_space,
         ),
-        surface_space,
-    ),
-)
-ax2 = Axis(fig[1, 3], xlabel = "Longitude", title = "θ_sfc Δ")
-clims2 = extrema(Δθ_sfc)
-CairoMakie.heatmap!(ax2, longpts, latpts, Δθ_sfc, colorrange = clims2)
-Colorbar(fig[1, 4], colorrange = clims2)
-outfile = joinpath(outdir, string("heatmap_θ_sfc.png"))
-CairoMakie.save(outfile, fig)
+    )
+
+    fig = Figure(size = (1000, 400))
+    ax = Axis(
+        fig[1, 1],
+        xlabel = "Longitude",
+        ylabel = "Latitude",
+        title = "θ_sfc",
+    )
+    clims1 = extrema(θ_sfc_end)
+    CairoMakie.heatmap!(ax, longpts, latpts, θ_sfc_end, colorrange = clims1)
+    Colorbar(fig[1, 2], colorrange = clims1)
+
+    Δθ_sfc = ClimaCore.Remapping.interpolate(
+        remapper,
+        ClimaLand.Soil.get_top_surface_field(
+            oceans_to_zero.(
+                field_to_error.(sol.u[end].soil.ϑ_l .- sol.u[1].soil.ϑ_l),
+                mask,
+            ),
+            surface_space,
+        ),
+    )
+    ax2 = Axis(fig[1, 3], xlabel = "Longitude", title = "θ_sfc Δ")
+    clims2 = extrema(Δθ_sfc)
+    CairoMakie.heatmap!(ax2, longpts, latpts, Δθ_sfc, colorrange = clims2)
+    Colorbar(fig[1, 4], colorrange = clims2)
+    outfile = joinpath(outdir, string("heatmap_θ_sfc.png"))
+    CairoMakie.save(outfile, fig)
 
 
-int_ϑ_end = similar(sv.saveval[1].soil.h∇)
-ClimaCore.Operators.column_integral_definite!(
-    int_ϑ_end,
-    oceans_to_zero.(field_to_error.(sol.u[end].soil.ϑ_l), mask),
-)
-normalized_int_ϑ_end =
-    ClimaCore.Remapping.interpolate(remapper, int_ϑ_end ./ 50.0)
-fig = Figure(size = (1000, 400))
-ax = Axis(
-    fig[1, 1],
-    xlabel = "Longitude",
-    ylabel = "Latitude",
-    title = "∫θ dz/Δz",
-)
-clims1 = extrema(normalized_int_ϑ_end)
-CairoMakie.heatmap!(
-    ax,
-    longpts,
-    latpts,
-    normalized_int_ϑ_end,
-    colorrange = clims1,
-)
-Colorbar(fig[1, 2], colorrange = clims1)
+    int_ϑ_end = similar(sv.saveval[1].soil.h∇)
+    ClimaCore.Operators.column_integral_definite!(
+        int_ϑ_end,
+        oceans_to_zero.(field_to_error.(sol.u[end].soil.ϑ_l), mask),
+    )
+    normalized_int_ϑ_end =
+        ClimaCore.Remapping.interpolate(remapper, int_ϑ_end ./ 50.0)
+    fig = Figure(size = (1000, 400))
+    ax = Axis(
+        fig[1, 1],
+        xlabel = "Longitude",
+        ylabel = "Latitude",
+        title = "∫θ dz/Δz",
+    )
+    clims1 = extrema(normalized_int_ϑ_end)
+    CairoMakie.heatmap!(
+        ax,
+        longpts,
+        latpts,
+        normalized_int_ϑ_end,
+        colorrange = clims1,
+    )
+    Colorbar(fig[1, 2], colorrange = clims1)
 
-int_ϑ_1 = similar(sv.saveval[1].soil.h∇)
-ClimaCore.Operators.column_integral_definite!(
-    int_ϑ_1,
-    oceans_to_zero.(field_to_error.(sol.u[1].soil.ϑ_l), mask),
-)
-Δ_normalized_int_ϑ =
-    ClimaCore.Remapping.interpolate(remapper, (int_ϑ_end .- int_ϑ_1) ./ 50.0)
-ax2 = Axis(fig[1, 3], xlabel = "Longitude", title = "Δ∫θ dz /Δz")
-clims2 = extrema(Δ_normalized_int_ϑ)
-CairoMakie.heatmap!(
-    ax2,
-    longpts,
-    latpts,
-    Δ_normalized_int_ϑ,
-    colorrange = clims2,
-)
-Colorbar(fig[1, 4], colorrange = clims2)
-outfile = joinpath(outdir, string("heatmap_∫ϑdz.png"))
-CairoMakie.save(outfile, fig)
+    int_ϑ_1 = similar(sv.saveval[1].soil.h∇)
+    ClimaCore.Operators.column_integral_definite!(
+        int_ϑ_1,
+        oceans_to_zero.(field_to_error.(sol.u[1].soil.ϑ_l), mask),
+    )
+    Δ_normalized_int_ϑ = ClimaCore.Remapping.interpolate(
+        remapper,
+        (int_ϑ_end .- int_ϑ_1) ./ 50.0,
+    )
+    ax2 = Axis(fig[1, 3], xlabel = "Longitude", title = "Δ∫θ dz /Δz")
+    clims2 = extrema(Δ_normalized_int_ϑ)
+    CairoMakie.heatmap!(
+        ax2,
+        longpts,
+        latpts,
+        Δ_normalized_int_ϑ,
+        colorrange = clims2,
+    )
+    Colorbar(fig[1, 4], colorrange = clims2)
+    outfile = joinpath(outdir, string("heatmap_∫ϑdz.png"))
+    CairoMakie.save(outfile, fig)
+end
