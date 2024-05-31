@@ -27,7 +27,7 @@ function ParamViz.parameterisation(
     f,
     ΔHRd,
 )
-    K = extinction_coeff(ld, θs)
+    K = extinction_coeff(RTparams.G_Function, θs)
     # APAR = plant_absorbed_ppfd(PAR, ρ_leaf, K, LAI, Ω)
     APAR = PAR * (1 - ρ_leaf) * (1 - exp(-K * LAI * Ω)) # not sure how to call new plant_absorbed_pfd
     Jmax = max_electron_transport(Vcmax25, ΔHJmax, T, To, R)
