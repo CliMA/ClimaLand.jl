@@ -555,7 +555,7 @@ function root_water_flux_per_ground_area!(
     t,
 ) where {FT}
     (; conductivity_model, root_distribution) = model.parameters
-    area_index = p.canopy.hydraulics, area_index
+    area_index = p.canopy.hydraulics.area_index
     # We can index into a field of Tuple{FT} to extract a field of FT
     # using the following notation: field.:index
     ψ_base = p.canopy.hydraulics.ψ.:1

@@ -519,7 +519,7 @@ function ClimaLand.make_update_aux(
             areaip1 = getproperty(area_index, labels[ip1])
 
             midpoint = hydraulics.h_stem / 2
-            midpointip1 = hydraulics.h_stem + (model.h_leaf / 2)
+            midpointip1 = hydraulics.h_stem + (hydraulics.h_leaf / 2)
 
             # Compute the flux*area between the current compartment `i`
             # and the compartment above.
@@ -568,7 +568,7 @@ function ClimaLand.make_update_aux(
         @. GPP = compute_GPP(An, K, LAI, Ω)
         @. gs = medlyn_conductance(g0, Drel, medlyn_factor, An, c_co2_air)
         # update autotrophic respiration
-        h_canopy = hydraulics.compartment_surfaces[end]
+        h_canopy = hydraulics.h_stem + hydraulics.h_leaf
         @. Ra = compute_autrophic_respiration(
             canopy.autotrophic_respiration,
             Vcmax25,
