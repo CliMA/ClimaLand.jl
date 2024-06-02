@@ -505,8 +505,9 @@ function ClimaLand.make_update_aux(
         # field.:($index) .= value # works
         # @ field.:($$index) = value # works
         labels = hydraulics.h_stem > 0 ? [:stem, :leaf] : [:leaf]
-        @inbounds for i in eachindex(labels)
-            ip1 = i + 1
+        if hydraulics.h_stem > 0
+            i = 1
+            ip1 = 2
             @. ψ.:($$ip1) = PlantHydraulics.water_retention_curve(
                 retention_model,
                 PlantHydraulics.effective_saturation(ν, ϑ_l.:($$ip1)),
