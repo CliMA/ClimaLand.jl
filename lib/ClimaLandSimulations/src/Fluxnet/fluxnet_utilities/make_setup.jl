@@ -12,15 +12,7 @@ setup site specific domain and time stepping:
 - dt, the time step (s)
 - n, the number of time step between saving outputs
 """
-function make_setup(;
-    dz_bottom,
-    dz_top,
-    h_stem,
-    h_leaf,
-    t0,
-    dt,
-    n,
-)
+function make_setup(; dz_bottom, dz_top, h_stem, h_leaf, t0, dt, n)
     return (
         dz_bottom = dz_bottom,
         dz_top = dz_top,

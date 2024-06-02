@@ -169,11 +169,8 @@ plant_hydraulics_ps = PlantHydraulics.PlantHydraulicsParameters(;
     conductivity_model = conductivity_model,
     retention_model = retention_model,
 )
-plant_hydraulics_args = (
-    parameters = plant_hydraulics_ps,
-    h_stem = h_stem,
-    h_leaf = h_leaf,
-)
+plant_hydraulics_args =
+    (parameters = plant_hydraulics_ps, h_stem = h_stem, h_leaf = h_leaf)
 
 energy_args = (parameters = Canopy.BigLeafEnergyParameters{FT}(ac_canopy),)
 

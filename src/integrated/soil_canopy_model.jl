@@ -242,7 +242,7 @@ function make_update_boundary_fluxes(
     FT,
     MM <: Soil.Biogeochemistry.SoilCO2Model{FT},
     SM <: Soil.EnergyHydrology{FT},
-    RM <: Canopy.CanopyModel{FT, PlantHydraulics.BigLeadHydraulicsModel{FT}},
+    RM <: Canopy.CanopyModel{FT, PlantHydraulics.BigLeafHydraulicsModel{FT}},
 }
     update_soil_bf! = make_update_boundary_fluxes(land.soil)
     update_soilco2_bf! = make_update_boundary_fluxes(land.soilco2)
@@ -257,18 +257,16 @@ function make_update_boundary_fluxes(
 
         area_index = p.canopy.hydraulics.area_index
 
-        labels = land.canopy.hydraulics.parameters.h_stem > 0 ? [:stem, :leaf] : [:leaf]
+        labels =
+            land.canopy.hydraulics.parameters.h_stem > 0 ? [:stem, :leaf] :
+            [:leaf]
 
-        above_ground_area_index = getproperty(
-            area_index,
-            labels[1],
-        )
+        above_ground_area_index = getproperty(area_index, labels[1])
 
         h_stem = land.canopy.hydraulics.parameters.h_stem
         h_leaf = land.canopy.hydraulics.parameters.h_leaf
 
-        midpoint =
-            labels[1] == :stem ? h_stem / 2 : model.h_leaf / 2
+        midpoint = labels[1] == :stem ? h_stem / 2 : model.h_leaf / 2
 
         @. p.root_extraction =
             (area_index.root + above_ground_area_index) / 2 *

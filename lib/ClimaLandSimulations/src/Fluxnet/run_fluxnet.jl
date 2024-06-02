@@ -180,11 +180,7 @@ function run_fluxnet(
         conductivity_model = params.plant_hydraulics.conductivity_model,
         retention_model = params.plant_hydraulics.retention_model,
     )
-    plant_hydraulics_args = (
-        parameters = plant_hydraulics_ps,
-        h_stem,
-        h_leaf,
-    )
+    plant_hydraulics_args = (parameters = plant_hydraulics_ps, h_stem, h_leaf)
 
     energy_args = (
         parameters = Canopy.BigLeafEnergyParameters{FT}(

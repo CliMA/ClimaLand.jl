@@ -515,8 +515,7 @@ function ClimaLand.make_update_aux(
             )
 
             areai = getproperty(area_index, labels[i])
-            areaip1 =
-                getproperty(area_index, labels[ip1])
+            areaip1 = getproperty(area_index, labels[ip1])
 
             midpoint = hydraulics.h_stem / 2
             midpointip1 = hydraulics.h_stem + (model.h_leaf / 2)

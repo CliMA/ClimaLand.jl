@@ -622,7 +622,7 @@ function lai_consistency_check(
     model::BigLeafHydraulicsModel{FT},
     area_index::NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}},
 ) where {FT}
-    if area_index.leaf > esp(FT) || area_index.stem > eso(FT)
+    if area_index.leaf > eps(FT) || area_index.stem > eps(FT)
         @assert area_index.root > eps(FT)
     end
     # If the SAI is 0, then the stem compartment should be height 0

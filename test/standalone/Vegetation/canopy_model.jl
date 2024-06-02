@@ -382,7 +382,7 @@ for FT in (Float32, Float64)
         )
         h_stem = FT(0.0)
         h_leaf = FT(1.0)
-        
+
         plant_hydraulics = PlantHydraulics.BigLeafHydraulicsModel{FT}(;
             parameters = param_set,
             h_stem = h_stem,
