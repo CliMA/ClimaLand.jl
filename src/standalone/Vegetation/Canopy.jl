@@ -548,7 +548,7 @@ function ClimaLand.make_update_aux(
         T_canopy = canopy_temperature(canopy.energy, canopy, Y, p, t)
 
         # update moisture stress
-        i_end = hydraulics.h_stem > 0 + 1
+        i_end = (hydraulics.h_stem > 0 ? 1 : 0) + 1
         @. β = moisture_stress(ψ.:($$i_end) * ρ_l * grav, sc, pc)
 
         # Update Rd, An, Vcmax25 (if applicable to model) in place
