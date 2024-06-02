@@ -68,12 +68,8 @@ f_root_to_shoot = FT(3.5)
 SAI = FT(0.00242)
 maxLAI = FT(4.2)
 plant_ν = FT(2.46e-4)
-n_stem = Int64(1)
-n_leaf = Int64(1)
 h_stem = FT(9)
 h_leaf = FT(9.5)
-compartment_midpoints = [h_stem / 2, h_stem + h_leaf / 2]
-compartment_surfaces = [zmax, h_stem, h_stem + h_leaf]
 land_domain = Column(; zlim = (zmin, zmax), nelements = nelements);
 
 # - We will be using prescribed atmospheric and radiative drivers from the

@@ -6,7 +6,6 @@ CurrentModule = ClimaLand.PlantHydraulics
 ## Models
 
 ```@docs
-ClimaLand.PlantHydraulics.PlantHydraulicsModel
 ClimaLand.PlantHydraulics.BigLeafHydraulicsModel
 ```
 

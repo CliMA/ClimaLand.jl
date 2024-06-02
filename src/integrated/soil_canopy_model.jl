@@ -224,7 +224,7 @@ lsm_aux_domain_names(m::SoilCanopyModel) =
         FT,
         MM <: Soil.Biogeochemistry.SoilCO2Model{FT},
         SM <: Soil.RichardsModel{FT},
-        RM <: Canopy.CanopyModel{FT, PlantHydraulics.PlantHydraulicsModel{FT}}
+        RM <: Canopy.CanopyModel{FT, PlantHydraulics.BigLeafHydraulicsModel{FT}}
         }
 
 A method which makes a function; the returned function
@@ -242,7 +242,7 @@ function make_update_boundary_fluxes(
     FT,
     MM <: Soil.Biogeochemistry.SoilCO2Model{FT},
     SM <: Soil.EnergyHydrology{FT},
-    RM <: Canopy.CanopyModel{FT, PlantHydraulics.PlantHydraulicsModel{FT}},
+    RM <: Canopy.CanopyModel{FT, PlantHydraulics.BigLeadHydraulicsModel{FT}},
 }
     update_soil_bf! = make_update_boundary_fluxes(land.soil)
     update_soilco2_bf! = make_update_boundary_fluxes(land.soilco2)
@@ -257,16 +257,24 @@ function make_update_boundary_fluxes(
 
         area_index = p.canopy.hydraulics.area_index
 
+        labels = land.canopy.hydraulics.parameters.h_stem > 0 ? [:stem, :leaf] : [:leaf]
+
         above_ground_area_index = getproperty(
             area_index,
-            land.canopy.hydraulics.compartment_labels[1],
+            labels[1],
         )
+
+        h_stem = land.canopy.hydraulics.parameters.h_stem
+        h_leaf = land.canopy.hydraulics.parameters.h_leaf
+
+        midpoint =
+            labels[1] == :stem ? h_stem / 2 : model.h_leaf / 2
 
         @. p.root_extraction =
             (area_index.root + above_ground_area_index) / 2 *
             PlantHydraulics.flux(
                 z,
-                land.canopy.hydraulics.compartment_midpoints[1],
+                midpoint,
                 p.soil.ψ,
                 p.canopy.hydraulics.ψ.:1,
                 PlantHydraulics.hydraulic_conductivity(
@@ -538,7 +546,7 @@ end
     PlantHydraulics.root_water_flux_per_ground_area!(
         fa::ClimaCore.Fields.Field,
         s::PrognosticSoil,
-        model::Canopy.PlantHydraulics.PlantHydraulicsModel{FT},
+        model::Canopy.PlantHydraulics.BigLeafHydraulicsModel{FT},
         Y::ClimaCore.Fields.FieldVector,
         p::NamedTuple,
         t,
@@ -557,10 +565,7 @@ roots and soil at each soil layer.
 function PlantHydraulics.root_water_flux_per_ground_area!(
     fa::ClimaCore.Fields.Field,
     s::PrognosticSoil,
-    model::Union{
-        Canopy.PlantHydraulics.PlantHydraulicsModel{FT},
-        Canopy.PlantHydraulics.BigLeafHydraulicsModel{FT},
-    },
+    model::Canopy.PlantHydraulics.BigLeafHydraulicsModel{FT},
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
     t,

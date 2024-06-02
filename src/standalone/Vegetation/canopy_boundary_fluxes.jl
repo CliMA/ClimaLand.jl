@@ -110,7 +110,7 @@ end
                                 <:Union{BeerLambertModel, TwoStreamModel},
                                 <:Union{FarquharModel,OptimalityFarquharModel},
                                 <:MedlynConductanceModel,
-                                <:PlantHydraulicsModel,
+                                <:BigLeafHydraulicsModel,
                                 <:Union{PrescribedCanopyTempModel,BigLeafEnergyModel}
                             },
                             radiation::PrescribedRadiativeFluxes,
@@ -141,7 +141,7 @@ function canopy_boundary_fluxes!(
         <:Union{BeerLambertModel, TwoStreamModel},
         <:Union{FarquharModel, OptimalityFarquharModel},
         <:MedlynConductanceModel,
-        <:PlantHydraulicsModel,
+        <:BigLeafHydraulicsModel,
         <:Union{PrescribedCanopyTempModel, BigLeafEnergyModel},
     },
     radiation::PrescribedRadiativeFluxes,
@@ -157,7 +157,7 @@ function canopy_boundary_fluxes!(
     shf = p.canopy.energy.shf
     lhf = p.canopy.energy.lhf
     r_ae = p.canopy.energy.r_ae
-    i_end = canopy.hydraulics.n_stem + canopy.hydraulics.n_leaf
+    i_end = canopy.hydraulics.h_stem > 0 + 1
 
     # Compute transpiration, SHF, LHF
     canopy_turbulent_fluxes = turbulent_fluxes(atmos, canopy, Y, p, t)

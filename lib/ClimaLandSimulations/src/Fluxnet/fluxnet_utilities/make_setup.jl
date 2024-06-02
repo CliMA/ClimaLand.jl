@@ -6,8 +6,6 @@ export make_setup
 setup site specific domain and time stepping:
 - dz_bottom, the bottom of the soil domain (m)
 - dz_top, the top of the soil domain (m)
-- n_stem, the number of stems
-- n_leaf, the number of leaves
 - h_stem, the height of each stem (m)
 - h_leaf, the height of each leaf (m)
 - t0, the start time of the simulation (s)
@@ -17,8 +15,6 @@ setup site specific domain and time stepping:
 function make_setup(;
     dz_bottom,
     dz_top,
-    n_stem,
-    n_leaf,
     h_stem,
     h_leaf,
     t0,
@@ -28,8 +24,6 @@ function make_setup(;
     return (
         dz_bottom = dz_bottom,
         dz_top = dz_top,
-        n_stem = n_stem,
-        n_leaf = n_leaf,
         h_stem = h_stem,
         h_leaf = h_leaf,
         t0 = t0,

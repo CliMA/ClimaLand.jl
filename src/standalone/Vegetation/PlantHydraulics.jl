@@ -21,8 +21,7 @@ import ClimaLand:
     auxiliary_domain_names,
     prognostic_domain_names,
     name
-export PlantHydraulicsModel,
-    BigLeafHydraulicsModel,
+export BigLeafHydraulicsModel,
     AbstractPlantHydraulicsModel,
     flux,
     effective_saturation,
@@ -139,173 +138,6 @@ function PlantHydraulicsParameters(;
         retention_model,
         root_distribution,
     )
-end
-
-"""
-    PlantHydraulicsModel{FT, PS, T, AA} <: AbstractPlantHydraulicsModel{FT}
-
-Defines, and constructs instances of, the PlantHydraulicsModel type, which is used
-for simulation flux of water to/from soil, along roots of different depths,
-along a stem, to a leaf, and ultimately being lost from the system by
-transpiration. Note that the canopy height is specified as part of the
-PlantHydraulicsModel, along with the area indices of the leaves, roots, and
-stems.
-
-This model can also be combined with the soil model using ClimaLand, in which
-case the prognostic soil water content is used to determine root extraction, and
-the transpiration is also computed diagnostically. In  global run with patches
-of bare soil, you can "turn off" the canopy model (to get zero root extraction, zero absorption and
-emission, zero transpiration and sensible heat flux from the canopy), by setting:
-- n_leaf = 1
-- n_stem = 0
-- LAI = SAI = RAI = 0.
-
-A plant model can have leaves but no stem, but not vice versa. If n_stem = 0, SAI must be zero.
-
-Finally, the model can be used in Canopy standalone mode by prescribing
-the soil matric potential at the root tips or flux in the roots. There is also the
-option (intendend only for debugging) to use a prescribed transpiration rate.
-
-$(DocStringExtensions.FIELDS)
-"""
-struct PlantHydraulicsModel{FT, PS, T, AA <: AbstractArray{FT}} <:
-       AbstractPlantHydraulicsModel{FT}
-    "The number of stem compartments for the plant; can be zero"
-    n_stem::Int64
-    "The number of leaf compartments for the plant; must be >=1"
-    n_leaf::Int64
-    "The height of the center of each leaf compartment/stem compartment, in meters"
-    compartment_midpoints::AA
-    "The height of the compartments' top faces, in meters. The canopy height is the last element of the vector."
-    compartment_surfaces::AA
-    "The label (:stem or :leaf) of each compartment"
-    compartment_labels::Vector{Symbol}
-    "Parameters required by the Plant Hydraulics model"
-    parameters::PS
-    "The transpiration model, of type `AbstractTranspiration`"
-    transpiration::T
-end
-
-function PlantHydraulicsModel{FT}(;
-    n_stem::Int64,
-    n_leaf::Int64,
-    compartment_midpoints::Vector{FT},
-    compartment_surfaces::Vector{FT},
-    parameters::PlantHydraulicsParameters{FT},
-    transpiration::AbstractTranspiration{FT} = DiagnosticTranspiration{FT}(),
-) where {FT}
-    args = (parameters, transpiration)
-    @assert (n_leaf + n_stem) == length(compartment_midpoints)
-    @assert (n_leaf + n_stem) + 1 == length(compartment_surfaces)
-    for i in 1:length(compartment_midpoints)
-        @assert compartment_midpoints[i] ==
-                ((compartment_surfaces[i + 1] - compartment_surfaces[i]) / 2) +
-                compartment_surfaces[i]
-    end
-    compartment_labels = Vector{Symbol}(undef, n_stem + n_leaf)
-    for i in 1:(n_stem + n_leaf)
-        if i <= n_stem
-            compartment_labels[i] = :stem
-        else
-            compartment_labels[i] = :leaf
-        end
-    end
-    return PlantHydraulicsModel{
-        FT,
-        typeof.(args)...,
-        typeof(compartment_midpoints),
-    }(
-        n_stem,
-        n_leaf,
-        compartment_midpoints,
-        compartment_surfaces,
-        compartment_labels,
-        args...,
-    )
-end
-
-"""
-    prognostic_vars(model::PlantHydraulicsModel)
-
-A function which returns the names of the prognostic
-variables of the `PlantHydraulicsModel`.
-"""
-prognostic_vars(model::PlantHydraulicsModel) = (:ϑ_l,)
-
-"""
-    auxiliary_vars(model::PlantHydraulicsModel)
-
-A function which returns the names of the auxiliary
-variables of the `PlantHydraulicsModel`,
-the transpiration stress factor `β` (unitless),
-the water potential `ψ` (m), the volume flux*cross section `fa` (1/s),
-and the volume flux*root cross section in the roots `fa_roots` (1/s),
-where the cross section can be represented by an area index.
-"""
-auxiliary_vars(model::PlantHydraulicsModel) =
-    (:β, :ψ, :fa, :fa_roots, :area_index)
-
-"""
-    ClimaLand.prognostic_types(model::PlantHydraulicsModel{FT}) where {FT}
-
-Defines the prognostic types for the PlantHydraulicsModel.
-"""
-ClimaLand.prognostic_types(model::PlantHydraulicsModel{FT}) where {FT} =
-    (NTuple{model.n_stem + model.n_leaf, FT},)
-ClimaLand.prognostic_domain_names(::PlantHydraulicsModel) = (:surface,)
-
-"""
-    ClimaLand.auxiliary_types(model::PlantHydraulicsModel{FT}) where {FT}
-
-Defines the auxiliary types for the PlantHydraulicsModel.
-"""
-ClimaLand.auxiliary_types(model::PlantHydraulicsModel{FT}) where {FT} = (
-    FT,
-    NTuple{model.n_stem + model.n_leaf, FT},
-    NTuple{model.n_stem + model.n_leaf, FT},
-    FT,
-    NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}},
-)
-ClimaLand.auxiliary_domain_names(::PlantHydraulicsModel) =
-    (:surface, :surface, :surface, :surface, :surface)
-
-
-"""
-    lai_consistency_check(
-        model::PlantHydraulicsModel{FT},
-    ) where {FT}
-
-Carries out consistency checks using the area indices supplied and the number of
-stem elements being modeled.
-
-Note that it is possible to have a plant with no stem compartments
-but with leaf compartments, and that a plant must have leaf compartments
-(even if LAI = 0).
-
-Specifically, this checks that:
-1. n_leaf > 0
-2. if LAI is nonzero or SAI is nonzero, RAI must be nonzero.
-3. if SAI > 0, n_stem must be > 0 for consistency. If SAI == 0, n_stem must
-be zero.
-"""
-function lai_consistency_check(
-    model::PlantHydraulicsModel{FT},
-    area_index::NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}},
-) where {FT}
-    n_stem = model.n_stem
-    n_leaf = model.n_leaf
-    @assert n_leaf > 0
-    if area_index.leaf > eps(FT) || area_index.stem > eps(FT)
-        @assert area_index.root > eps(FT)
-    end
-    # If there SAI is zero, there should be no stem compartment
-    if area_index.stem < eps(FT)
-        @assert n_stem == FT(0)
-    else
-        # if SAI is > 0, n_stem should be > 0 for consistency
-        @assert n_stem > 0
-    end
-
 end
 
 """
@@ -488,135 +320,6 @@ function effective_saturation(ν::FT, ϑ_l::FT) where {FT}
     S_l = ϑ_l / ν # S_l can be > 1
     safe_S_l = max(S_l, eps(FT))
     return safe_S_l # (m3 m-3)
-end
-
-"""
-    make_compute_exp_tendency(model::PlantHydraulicsModel, _)
-
-A function which creates the compute_exp_tendency! function for the PlantHydraulicsModel.
-The compute_exp_tendency! function must comply with a rhs function of SciMLBase.jl.
-
-Below, `fa` denotes a flux multiplied by the relevant cross section
-(per unit area ground, or area index, AI). The tendency for the
-ith compartment can be written then as:
-∂ϑ[i]/∂t = 1/(AI*dz)[fa[i]-fa[i+1]).
-
-Note that if the area_index is zero because no plant is present,
-AIdz is zero, and the fluxes `fa` appearing in the numerator are
-zero because they are scaled by AI.
-
-To prevent dividing by zero, we change AI/(AI x dz)" to
-"AI/max(AI x dz, eps(FT))"
-"""
-function make_compute_exp_tendency(
-    model::PlantHydraulicsModel{FT},
-    canopy,
-) where {FT}
-    function compute_exp_tendency!(dY, Y, p, t)
-        area_index = p.canopy.hydraulics.area_index
-        n_stem = model.n_stem
-        n_leaf = model.n_leaf
-        fa = p.canopy.hydraulics.fa
-        fa_roots = p.canopy.hydraulics.fa_roots
-
-        # Inside of a loop, we need to use a single dollar sign
-        # for indexing into Fields of Tuples in non broadcasted
-        # expressions, and two dollar signs for
-        # for broadcasted expressions using the macro @.
-        # field.:($index) .= value # works
-        # @ field.:($$index) = value # works
-        @inbounds for i in 1:(n_stem + n_leaf)
-            im1 = i - 1
-            ip1 = i + 1
-            # To prevent dividing by zero, change AI/(AI x dz)" to
-            # "AI/max(AI x dz, eps(FT))"
-            AIdz =
-                max.(
-                    getproperty(area_index, model.compartment_labels[i]) .* (
-                        model.compartment_surfaces[ip1] -
-                        model.compartment_surfaces[i]
-                    ),
-                    eps(FT),
-                )
-            if i == 1
-                @inbounds @. dY.canopy.hydraulics.ϑ_l.:($$i) =
-                    1 / AIdz * (fa_roots - fa.:($$i))
-            else
-                @inbounds @. dY.canopy.hydraulics.ϑ_l.:($$i) =
-                    1 / AIdz * (fa.:($$im1) - fa.:($$i))
-            end
-        end
-    end
-    return compute_exp_tendency!
-end
-
-"""
-    root_water_flux_per_ground_area!(
-        fa::ClimaCore.Fields.Field,
-        s::PrescribedSoil,
-        model::PlantHydraulicsModel{FT},
-        Y::ClimaCore.Fields.FieldVector,
-        p::NamedTuple,
-        t,
-    ) where {FT}
-
-A method which computes the water flux between the soil and the stem, via the roots,
-and multiplied by the RAI, in the case of a model running without an integrated
-soil model.
-
-The returned flux is per unit ground area. This assumes that the stem compartment
-is the first element of `Y.canopy.hydraulics.ϑ_l`.
-"""
-function root_water_flux_per_ground_area!(
-    fa::ClimaCore.Fields.Field,
-    s::PrescribedSoil,
-    model::PlantHydraulicsModel{FT},
-    Y::ClimaCore.Fields.FieldVector,
-    p::NamedTuple,
-    t,
-) where {FT}
-
-    (; conductivity_model, root_distribution) = model.parameters
-    area_index = p.canopy.hydraulics.area_index
-    # We can index into a field of Tuple{FT} to extract a field of FT
-    # using the following notation: field.:index
-    ψ_base = p.canopy.hydraulics.ψ.:1
-    root_depths = s.root_depths
-    n_root_layers = length(root_depths)
-    ψ_soil::FT = s.ψ(t)
-    fa .= FT(0.0)
-    @inbounds for i in 1:n_root_layers
-        above_ground_area_index =
-            getproperty(area_index, model.compartment_labels[1])
-
-        if i != n_root_layers
-            @. fa +=
-                flux(
-                    root_depths[i],
-                    model.compartment_midpoints[1],
-                    ψ_soil,
-                    ψ_base,
-                    hydraulic_conductivity(conductivity_model, ψ_soil),
-                    hydraulic_conductivity(conductivity_model, ψ_base),
-                ) *
-                root_distribution(root_depths[i]) *
-                (root_depths[i + 1] - root_depths[i]) *
-                (area_index.root + above_ground_area_index) / 2
-        else
-            @. fa +=
-                flux(
-                    root_depths[i],
-                    model.compartment_midpoints[1],
-                    ψ_soil,
-                    ψ_base,
-                    hydraulic_conductivity(conductivity_model, ψ_soil),
-                    hydraulic_conductivity(conductivity_model, ψ_base),
-                ) *
-                root_distribution(root_depths[i]) *
-                (model.compartment_surfaces[1] - root_depths[n_root_layers]) *
-                (area_index.root + above_ground_area_index) / 2
-        end
-    end
 end
 
 """
@@ -807,7 +510,6 @@ function make_compute_exp_tendency(
 
         @inbounds for i in eachindex(labels)
             im1 = i - 1
-            ip1 = i + 1
             compartment_type = labels[i]
             dz =
                 compartment_type == :stem ? model.h_stem :
@@ -912,9 +614,8 @@ but with a leaf compartment, and that a plant must have leaf compartments
 (even if LAI = 0).
 
 Specifically, this checks that:
-1. n_leaf > 0
-2. if LAI is nonzero or SAI is nonzero, RAI must be nonzero.
-3. if SAI > 0, n_stem must be > 0 for consistency. If SAI == 0, n_stem must
+1. if LAI is nonzero or SAI is nonzero, RAI must be nonzero.
+2. if SAI > 0, h_stem must be > 0 for consistency. If SAI == 0, h_stem must
 be zero.
 """
 function lai_consistency_check(
@@ -928,7 +629,7 @@ function lai_consistency_check(
     if area_index.stem < eps(FT)
         @assert model.h_stem == FT(0)
     else
-        # if SAI is > 0, n_stem should be > 0 for consistency
+        # if SAI is > 0, h_stem should be > 0 for consistency
         @assert model.h_stem > 0
     end
 end
@@ -946,7 +647,7 @@ Sets the canopy prescribed fields pertaining to the PlantHydraulics
 component (the area indices) with their values at time t.
 """
 function ClimaLand.Canopy.set_canopy_prescribed_field!(
-    component::Union{PlantHydraulicsModel{FT}, BigLeafHydraulicsModel{FT}},
+    component::BigLeafHydraulicsModel{FT},
     p,
     t,
 ) where {FT}
