@@ -258,13 +258,13 @@ function make_update_boundary_fluxes(
         area_index = p.canopy.hydraulics.area_index
 
         labels =
-            land.canopy.hydraulics.parameters.h_stem > 0 ? [:stem, :leaf] :
+            land.canopy.hydraulics.h_stem > 0 ? [:stem, :leaf] :
             [:leaf]
 
         above_ground_area_index = getproperty(area_index, labels[1])
 
-        h_stem = land.canopy.hydraulics.parameters.h_stem
-        h_leaf = land.canopy.hydraulics.parameters.h_leaf
+        h_stem = land.canopy.hydraulics.h_stem
+        h_leaf = land.canopy.hydraulics.h_leaf
 
         midpoint = labels[1] == :stem ? h_stem / 2 : model.h_leaf / 2
 

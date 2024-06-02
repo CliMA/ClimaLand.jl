@@ -506,7 +506,7 @@ function make_compute_exp_tendency(
         area_index = p.canopy.hydraulics.area_index
         fa = p.canopy.hydraulics.fa
         fa_roots = p.canopy.hydraulics.fa_roots
-        labels = model.parameters.h_stem > 0 ? [:stem, :leaf] : [:leaf]
+        labels = model.h_stem > 0 ? [:stem, :leaf] : [:leaf]
 
         @inbounds for i in eachindex(labels)
             im1 = i - 1
@@ -563,7 +563,7 @@ function root_water_flux_per_ground_area!(
     n_root_layers = length(root_depths)
     ψ_soil::FT = s.ψ(t)
     fa .= FT(0.0)
-    labels = model.parameters.h_stem > 0 ? [:stem, :leaf] : [:leaf]
+    labels = model.h_stem > 0 ? [:stem, :leaf] : [:leaf]
     @inbounds for i in 1:n_root_layers
         above_ground_area_index = getproperty(area_index, labels[1])
         compartment = labels[i]

@@ -504,7 +504,7 @@ function ClimaLand.make_update_aux(
         # for broadcasted expressions using the macro @.
         # field.:($index) .= value # works
         # @ field.:($$index) = value # works
-        labels = hydraulics.parameters.h_stem > 0 ? [:stem, :leaf] : [:leaf]
+        labels = hydraulics.h_stem > 0 ? [:stem, :leaf] : [:leaf]
         @inbounds for i in eachindex(labels)
             ip1 = i + 1
             @. ψ.:($$ip1) = PlantHydraulics.water_retention_curve(
