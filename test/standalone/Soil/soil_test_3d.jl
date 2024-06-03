@@ -229,8 +229,8 @@ for FT in (Float32, Float64)
                 K(θX) * dψdθ(θX) * d2θdx2(XX, myZ) +
                 K(θX) * dθdx(XX, myZ)^2.0 * d2ψdθ2(θX)
             )
-            @show "YOOO", FT, eps(FT)
-            @test maximum(abs.(dYX .- expected)) < 10^11 * eps(FT)
+            @show "YOOO", FT, eps(FT), 10^11 * eps(FT), maximum(abs.(dYX .- expected))
+            @test maximum(abs.(dYX .- expected)) / 10^11 < eps(FT)
         end
     end
 
