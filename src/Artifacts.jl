@@ -221,6 +221,137 @@ function topmodel_data_path(; context = nothing)
     )
     path = joinpath(get_data_folder(topmodel_dataset), "means_2.5_new.nc")
     return path
+
+end
+
+"""
+    lehmann_assouline_or2008_evaporation_data(; context=nothing)
+
+Local path to file containing measured evaporation rate as a function of time
+for bare soil.
+
+Data was originally collected by Lehmann, Peter, Shmuel Assouline, 
+and Dani Or. "Characteristic lengths affecting evaporative drying of 
+porous media." Physical Review E 77.5 (2008): 056309 and presented
+in Figure 8 of that work.
+
+https://doi.org/10.1103/PhysRevE.77.056309
+"""
+function lehmann_assouline_or2008_evaporation_data(; context = nothing)
+    dir = joinpath(@__DIR__, "../")
+    evap_dataset = ArtifactWrapper(
+        dir,
+        "lehmann2008_fig8_evaporation",
+        ArtifactFile[ArtifactFile(
+            url = "https://caltech.box.com/shared/static/cgppw3tx6zdz7h02yt28ri44g1j088ju.csv",
+            filename = "lehmann2008_fig8_evaporation.csv",
+        ),],
+    )
+    evap_datapath = get_data_folder(evap_dataset)
+    return joinpath(evap_datapath, "lehmann2008_fig8_evaporation.csv")
+end
+
+"""
+    huang_et_al2011_soil_van_genuchten_data(; context=nothing)
+
+Local path to file containing soil van Genuchten parameters as a 
+function of depth for soil
+from site SV62 in Fort McMurray, Alberta, Canada.
+
+Data was originally collected by Huang, Mingbin, et al. 
+"Infiltration and drainage processes in multi-layered coarse soils." 
+Canadian Journal of Soil Science 91.2 (2011): 169-183 
+and presented in Table 1b of that work.
+
+https://doi.org/10.4141/cjss09118
+"""
+function huang_et_al2011_soil_van_genuchten_data(; context = nothing)
+    dir = joinpath(@__DIR__, "../")
+    af = ArtifactFile(
+        url = "https://caltech.box.com/shared/static/qvbt37xkwz8gveyi6tzzbs0e18trpcsq.csv",
+        filename = "sv_62.csv",
+    )
+    dataset = ArtifactWrapper(dir, "sv62", ArtifactFile[af])
+    dataset_path = get_data_folder(dataset)
+    return joinpath(dataset_path, af.filename)
+end
+
+"""
+    mizoguchi1990_soil_freezing_data(; context=nothing)
+
+Local path to file containing soil volumetric content as a function 
+of depth and time during a freezing 
+soil column experiment.
+
+Data was originally collected in Mizoguchi, M. 1990. Water, heat and 
+salt transport in freezing soil, Ph.D. thesis. (In Japanese.) 
+University of Tokyo, Tokyo.
+
+Data was obtained by us from Figure 4 of Hansson, Klas, et al. 
+"Water flow and heat transport in frozen soil: Numerical solution 
+and freeze–thaw applications." Vadose Zone Journal 3.2 (2004): 693-704 
+using a plot digitizer; we did not quantify uncertainties introduced 
+in this process.
+"""
+function mizoguchi1990_soil_freezing_data(; context = nothing)
+    dir = joinpath(@__DIR__, "../")
+    af = ArtifactFile(
+        url = "https://caltech.box.com/shared/static/3xbo4rlam8u390vmucc498cao6wmqlnd.csv",
+        filename = "mizoguchi_all_data.csv",
+    )
+    dataset = ArtifactWrapper(dir, "mizoguchi", ArtifactFile[af])
+    dataset_path = joinpath(get_data_folder(dataset), "mizoguchi_all_data.csv")
+    return dataset_path
+end
+
+"""
+    cesm2_albedo_dataset_path()
+
+Triggers the download of the CESM2 land albedo dataset, if not
+already downloaded, using Julia Artifacts, and returns the path to
+this file.
+
+This dataset contains monthly albedo data from 15/01/1850
+to 15/12/2014.
+"""
+function cesm2_albedo_dataset_path(; context = nothing)
+    dir = joinpath(@__DIR__, "../")
+    land_albedo_dataset = ArtifactWrapper(
+        dir,
+        "land_albedo",
+        ArtifactFile[ArtifactFile(
+            url = "https://caltech.box.com/shared/static/eesee8iv3c21z3pysizcgnuncfp5xykv.nc",
+            filename = "esw_albedo_Amon_CESM2_historical_r1i1p1f1_gn_185001-201412_v2.nc",
+        ),],
+    )
+    path = get_data_folder(land_albedo_dataset)
+    return joinpath(
+        path,
+        "esw_albedo_Amon_CESM2_historical_r1i1p1f1_gn_185001-201412_v2.nc",
+    )
+end
+
+"""
+    bareground_albedo_dataset_path()
+
+Triggers the download of the average bareground land albedo dataset, if not
+already downloaded, using Julia Artifacts, and returns the path to
+this file.
+
+This dataset does not contain a time component.
+"""
+function bareground_albedo_dataset_path(; context = nothing)
+    dir = joinpath(@__DIR__, "../")
+    bareground_albedo_dataset = ArtifactWrapper(
+        dir,
+        "bareground_albedo",
+        ArtifactFile[ArtifactFile(
+            url = "https://caltech.box.com/shared/static/ga9385kyl82t955dylsbnn4x51b412md.nc",
+            filename = "bareground_albedo.nc",
+        ),],
+    )
+    path = get_data_folder(bareground_albedo_dataset)
+    return joinpath(path, "bareground_albedo.nc")
 end
 
 end

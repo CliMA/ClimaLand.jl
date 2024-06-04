@@ -1,5 +1,4 @@
 [deps]
-ArtifactWrappers = "a14bc488-3040-4b00-9dc1-f6467924858a"
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 ClimaCore = "d414da3d-4745-48bb-8d80-42e94e092884"

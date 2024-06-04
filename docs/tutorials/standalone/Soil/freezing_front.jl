@@ -74,7 +74,6 @@
 # # Import necessary modules
 import SciMLBase
 import ClimaTimeSteppers as CTS
-using ArtifactWrappers
 using DelimitedFiles
 using CairoMakie
 
@@ -219,14 +218,8 @@ sol = SciMLBase.solve(prob, ode_algo; dt = dt, saveat = 0:3600:tf);
 # This data was obtained by us from the figures of Hansson et al. (2004), but was originally obtained
 # by Mizoguchi (1990). No error bars were reported, and we haven't quantified the error in our
 # estimation of the data from images.
-af = ArtifactFile(
-    url = "https://caltech.box.com/shared/static/3xbo4rlam8u390vmucc498cao6wmqlnd.csv",
-    filename = "mizoguchi_all_data.csv",
-)
-dataset = ArtifactWrapper(@__DIR__, "mizoguchi", ArtifactFile[af]);
-dataset_path = get_data_folder(dataset);
-data = joinpath(dataset_path, "mizoguchi_all_data.csv")
-ds = readdlm(data, ',')
+dataset_path = ClimaLand.Artifacts.mizoguchi1990_soil_freezing_data();
+ds = readdlm(dataset_path, ',')
 hours = ds[:, 1][2:end]
 vwc = ds[:, 2][2:end] ./ 100.0
 depth = ds[:, 3][2:end]

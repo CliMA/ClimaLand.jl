@@ -19,8 +19,3 @@ ClimaLand.Bucket.surface_albedo
 ClimaLand.Bucket.beta_factor
 ```
 
-## Artifact Path Functions
-
-```@docs
-ClimaLand.Bucket.cesm2_albedo_dataset_path
-```

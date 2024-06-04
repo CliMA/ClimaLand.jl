@@ -108,7 +108,7 @@ end
      PrescribedBaregroundAlbedo{FT}(α_snow::FT,
                                     surface_space::ClimaCore.Spaces.AbstractSpace;
                                     varnames = ["sw_alb"],
-                                    albedo_file_path::AbstractString = Bucket.bareground_albedo_dataset_path(),
+                                    albedo_file_path::AbstractString = ClimaLand.Artifacts.bareground_albedo_dataset_path(),
                                     ) where{FT}
 
 An outer constructor for the PrescribedBaregroundAlbedo model which uses data
@@ -120,7 +120,7 @@ function PrescribedBaregroundAlbedo{FT}(
     α_snow::FT,
     surface_space::ClimaCore.Spaces.AbstractSpace;
     varnames = ["sw_alb"],
-    albedo_file_path::AbstractString = Bucket.bareground_albedo_dataset_path(),
+    albedo_file_path::AbstractString = ClimaLand.Artifacts.bareground_albedo_dataset_path(),
     regridder_type = :InterpolationsRegridder,
 ) where {FT}
     if surface_space isa ClimaCore.Spaces.PointSpace
@@ -161,7 +161,7 @@ end
         date_ref::Union{DateTime, DateTimeNoLeap},
         t_start,
         Space::ClimaCore.Spaces.AbstractSpace;
-        get_infile = Bucket.cesm2_albedo_dataset_path,
+        get_infile = ClimaLand.Artifacts.cesm2_albedo_dataset_path,
         varname = "sw_alb"
     ) where {FT}
 
@@ -176,7 +176,7 @@ function PrescribedSurfaceAlbedo{FT}(
     date_ref::Union{DateTime, DateTimeNoLeap},
     t_start,
     space::ClimaCore.Spaces.AbstractSpace;
-    albedo_file_path = Bucket.cesm2_albedo_dataset_path(),
+    albedo_file_path = ClimaLand.Artifacts.cesm2_albedo_dataset_path(),
     varname = "sw_alb",
     regridder_type = :InterpolationsRegridder,
 ) where {FT}

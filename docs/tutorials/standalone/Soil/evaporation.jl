@@ -13,7 +13,6 @@ import ClimaParams as CP
 using SurfaceFluxes
 using StaticArrays
 using Dates
-using ArtifactWrappers
 using DelimitedFiles: readdlm
 
 using ClimaLand
@@ -208,17 +207,9 @@ evap = [
     )[1] for k in 1:length(sol.t)
 ]
 savepath = joinpath(pkgdir(ClimaLand), "docs/tutorials/standalone/Soil/")
-evap_dataset = ArtifactWrapper(
-    @__DIR__,
-    "lehmann2008_fig8_evaporation",
-    ArtifactFile[ArtifactFile(
-        url = "https://caltech.box.com/shared/static/cgppw3tx6zdz7h02yt28ri44g1j088ju.csv",
-        filename = "lehmann2008_fig8_evaporation.csv",
-    ),],
-)
-evap_datapath = get_data_folder(evap_dataset)
-ref_soln_E =
-    readdlm(joinpath(evap_datapath, "lehmann2008_fig8_evaporation.csv"), ',')
+evaporation_data =
+    ClimaLand.Artifacts.lehmann_assouline_or2008_evaporation_data();
+ref_soln_E = readdlm(evaporation_data, ',')
 ref_soln_E_350mm = ref_soln_E[2:end, 1:2]
 data_dates = ref_soln_E_350mm[:, 1]
 data_e = ref_soln_E_350mm[:, 2];
