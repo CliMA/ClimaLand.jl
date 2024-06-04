@@ -1,5 +1,6 @@
 FT = Float64
 using Test
+using REPL, InteractiveUtils
 x = (10 ^ 11) * eps(FT)
 # x - 2eps() ≤ x ≤ x + 2eps()
 # @test 2.220446049205904e-5 ≤ x ≤ 2.220446049294722e-5
@@ -22,14 +23,26 @@ x = (10 ^ 11) * eps(Float64)
 # @test 2.220446049205904e-5 ≤ x ≤ 2.220446049294722e-5
 
 @show eps(Float64)
-@show (10 ^ 1) * eps(Float64)
-@show (10 ^ 2) * eps(Float64)
-@show (10 ^ 3) * eps(Float64)
-@show (10 ^ 4) * eps(Float64)
-@show (10 ^ 5) * eps(Float64)
-@show (10 ^ 6) * eps(Float64)
-@show (10 ^ 7) * eps(Float64)
-@show (10 ^ 8) * eps(Float64)
-@show (10 ^ 9) * eps(Float64)
-@show (10 ^ 10) * eps(Float64)
-@show (10 ^ 11) * eps(Float64)
+@show (10. ^ 1) * eps(Float64)
+@show (10. ^ 2) * eps(Float64)
+@show (10. ^ 3) * eps(Float64)
+@show (10. ^ 4) * eps(Float64)
+@show (10. ^ 5) * eps(Float64)
+@show (10. ^ 6) * eps(Float64)
+@show (10. ^ 7) * eps(Float64)
+@show (10. ^ 8) * eps(Float64)
+@show (10. ^ 9) * eps(Float64)
+@show (10. ^ 10) * eps(Float64)
+@show (10. ^ 11) * eps(Float64)
+
+@code_native (10 ^ 9) * eps(Float64)
+@info "A"
+@code_native (10 ^ 10) * eps(Float64)
+@info "B"
+@code_llvm (10 ^ 9) * eps(Float64)
+@info "C"
+@code_llvm (10 ^ 10) * eps(Float64)
+@info "D"
+@code_lowered (10 ^ 9) * eps(Float64)
+@info "E"
+@code_lowered (10 ^ 10) * eps(Float64)
