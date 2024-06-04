@@ -1,9 +1,13 @@
 FT = Float64
 using Test
-using REPL, InteractiveUtils
+using InteractiveUtils
 x = (10 ^ 11) * eps(FT)
 # x - 2eps() ≤ x ≤ x + 2eps()
 # @test 2.220446049205904e-5 ≤ x ≤ 2.220446049294722e-5
+@show typeof(10^10)
+@show typeof(10^9)
+
+@show versioninfo()
 
 @show eps(FT)
 @show (10 ^ 1) * eps(FT)
