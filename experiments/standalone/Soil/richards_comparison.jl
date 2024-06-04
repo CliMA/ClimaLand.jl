@@ -4,7 +4,6 @@ import ClimaComms
 using Plots
 using DelimitedFiles
 using Statistics
-using ArtifactWrappers
 import SciMLBase
 import ClimaTimeSteppers as CTS
 using ClimaCore
@@ -16,24 +15,8 @@ using ClimaLand.Soil
 import ClimaLand
 import ClimaLand.Parameters as LP
 
-
-# Read in reference solutions from artifacts
-bonan_clay_dataset = ArtifactWrapper(
-    @__DIR__,
-    "richards_clay",
-    ArtifactFile[ArtifactFile(
-        url = "https://caltech.box.com/shared/static/nk89znth59gcsdb65lnywnzjnuno3h6k.txt",
-        filename = "clay_bonan_sp801_22323.txt",
-    ),],
-)
-bonan_sand_dataset = ArtifactWrapper(
-    @__DIR__,
-    "richards_sand",
-    ArtifactFile[ArtifactFile(
-        url = "https://caltech.box.com/shared/static/2vk7bvyjah8xd5b7wxcqy72yfd2myjss.csv",
-        filename = "sand_bonan_sp801.csv",
-    ),],
-)
+clay_datapath, sand_datapath =
+    ClimaLand.Artifacts.richards_eqn_bonan_data_path()
 
 @testset "Richards comparison to Bonan; clay" begin
     # Define simulation times
@@ -121,9 +104,7 @@ bonan_sand_dataset = ArtifactWrapper(
         if FT == Float64
             N = length(sol.t)
             ϑ_l = parent(sol.u[N].soil.ϑ_l)
-            datapath = get_data_folder(bonan_clay_dataset)
-            data = joinpath(datapath, "clay_bonan_sp801_22323.txt")
-            ds_bonan = readdlm(data)
+            ds_bonan = readdlm(clay_datapath)
             bonan_moisture = reverse(ds_bonan[:, 1])
             bonan_z = reverse(ds_bonan[:, 2]) ./ 100.0
             @test sqrt.(mean((bonan_moisture .- ϑ_l) .^ 2.0)) < FT(1e-3)
@@ -220,9 +201,7 @@ end
         if FT == Float64
             N = length(sol.t)
             ϑ_l = parent(sol.u[N].soil.ϑ_l)
-            datapath = get_data_folder(bonan_sand_dataset)
-            data = joinpath(datapath, "sand_bonan_sp801.csv")
-            ds_bonan = readdlm(data, ',')
+            ds_bonan = readdlm(sand_datapath, ',')
             bonan_moisture = reverse(ds_bonan[:, 1])
             bonan_z = reverse(ds_bonan[:, 2]) ./ 100.0
             @test sqrt.(mean((bonan_moisture .- ϑ_l) .^ 2.0)) < FT(1e-3)

@@ -6,7 +6,6 @@ import ClimaTimeSteppers as CTS
 using Plots
 using Statistics
 using DelimitedFiles
-using ArtifactWrappers
 
 using ClimaLand
 using ClimaLand.Soil
@@ -15,26 +14,9 @@ using ClimaLand.Domains: Column
 rmse(v1, v2) = sqrt(mean((v1 .- v2) .^ 2))
 
 # Read in reference solutions from artifacts
-flux_dataset = ArtifactWrapper(
-    @__DIR__,
-    "richards_flux_bc",
-    ArtifactFile[ArtifactFile(
-        url = "https://caltech.box.com/shared/static/bsfokpg0wvxoq04e8na0t3o0u6x5yw9n.csv",
-        filename = "ref_soln_flux.csv",
-    ),],
-)
-flux_datapath = get_data_folder(flux_dataset)
+flux_datapath, dirichlet_datapath =
+    ClimaLand.Artifacts.water_conservation_test_data_path()
 ref_soln_flux = readdlm(joinpath(flux_datapath, "ref_soln_flux.csv"))
-
-dirichlet_dataset = ArtifactWrapper(
-    @__DIR__,
-    "richards_dirichlet_bc",
-    ArtifactFile[ArtifactFile(
-        url = "https://caltech.box.com/shared/static/w6q30flbgj68lr0ncvoco10okrupmab1.csv",
-        filename = "ref_soln_dirichlet.csv",
-    ),],
-)
-dirichlet_datapath = get_data_folder(dirichlet_dataset)
 ref_soln_dirichlet =
     readdlm(joinpath(dirichlet_datapath, "ref_soln_dirichlet.csv"))
 

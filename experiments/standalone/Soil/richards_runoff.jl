@@ -2,7 +2,6 @@ using CairoMakie
 import ClimaComms
 @static pkgversion(ClimaComms) >= v"0.6" && ClimaComms.@import_required_backends
 using Statistics
-using ArtifactWrappers
 using Dates
 import SciMLBase
 import ClimaTimeSteppers as CTS
@@ -39,18 +38,8 @@ domain = ClimaLand.Domains.SphericalShell(;
 surface_space = domain.space.surface
 subsurface_space = domain.space.subsurface
 # Read in f_max data and land sea mask
-topmodel_dataset = ArtifactWrapper(
-    @__DIR__,
-    "processed_topographic_index 2.5 deg",
-    ArtifactFile[ArtifactFile(
-        url = "https://caltech.box.com/shared/static/dwa7g0uzhxd50a2z3thbx3a12n0r887s.nc",
-        filename = "means_2.5_new.nc",
-    ),],
-)
-infile_path = joinpath(get_data_folder(topmodel_dataset), "means_2.5_new.nc")
-outfile_root =
-    joinpath(pkgdir(ClimaLand), "experiments/standalone/Soil/static_data_cgll")
 
+infile_path = ClimaLand.Artifacts.topmodel_data_path()
 f_max = SpaceVaryingInput(infile_path, "fmax", surface_space; regridder_type)
 mask = SpaceVaryingInput(
     infile_path,

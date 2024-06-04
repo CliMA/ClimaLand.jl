@@ -1,5 +1,4 @@
 using NCDatasets
-using ArtifactWrappers
 using Dates
 using ClimaLand: PrescribedAtmosphere, PrescribedRadiativeFluxes
 import ClimaLand.Parameters as LP
@@ -7,15 +6,12 @@ using Thermodynamics
 using Statistics
 using Insolation
 
-# Meteorological data
-af = ArtifactFile(
-    url = "https://caltech.box.com/shared/static/q8ju0yy782j3f3jjrqowakpm5s3qf40v.nc",
-    filename = "met_insitu_cdp_1994_2014.nc",
-)
-dataset = ArtifactWrapper(@__DIR__, "driver", ArtifactFile[af]);
-dataset_path = get_data_folder(dataset);
-met_data = NCDataset(joinpath(dataset_path, af.filename))
+# Data
+met_data_path, snow_data_path = ClimaLand.Artifacts.esm_snowmip_data_path()
+met_data = NCDataset(met_data_path)
+snow_data = NCDataset(snow_data_path)
 
+# Process Met Data
 timestamp = met_data["time"][:]
 year = Dates.year.(timestamp)
 # convert from milliseconds to seconds
@@ -102,15 +98,8 @@ atmos = PrescribedAtmosphere(
     h_atmos,
     earth_param_set,
 )
-# Meteorological data
-snow_af = ArtifactFile(
-    url = "https://caltech.box.com/shared/static/umwr6wqjhsz3zq6acht68m4d28a64ueb.nc",
-    filename = "obs_insitu_cdp_1994_2014.nc",
-)
-snow_dataset = ArtifactWrapper(@__DIR__, "snow_driver", ArtifactFile[snow_af]);
-snow_dataset_path = get_data_folder(snow_dataset);
-snow_data = NCDataset(joinpath(snow_dataset_path, snow_af.filename))
 
+# Process Snow Data
 albedo = snow_data["albs"][:][mask]
 z = snow_data["snd_man"][:][mask]
 mass = snow_data["snw_man"][:][mask]

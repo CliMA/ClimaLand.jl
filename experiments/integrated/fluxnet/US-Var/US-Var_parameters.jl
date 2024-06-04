@@ -10,8 +10,7 @@ fluxtower site."""
 # Bonan, G. Climate change and terrestrial ecosystem modeling. Cambridge University Press, 2019.
 
 # Data download link
-data_link = "https://caltech.box.com/shared/static/dx0p5idbsbrdebsda10t9pfv2lbdaz95.csv"
-LAI_link = "https://caltech.box.com/shared/static/y5vf8s9qkoogglc1bc2eyu1k95sbjsc3.csv"
+data_link = "https://caltech.box.com/shared/static/54huhy74kxnn23i6w1s54vddo2j4hl71.csv"
 
 # Height of sensor
 atmos_h = FT(2)
