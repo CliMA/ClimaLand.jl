@@ -262,7 +262,7 @@ function make_update_boundary_fluxes(
         )
 
         @. p.root_extraction =
-            (area_index.root + above_ground_area_index) / 2 *
+            above_ground_area_index *
             PlantHydraulics.flux(
                 z,
                 land.canopy.hydraulics.compartment_midpoints[1],
@@ -335,7 +335,7 @@ function lsm_radiant_energy_fluxes!(
     c = LP.light_speed(earth_param_set)
     h = LP.planck_constant(earth_param_set)
     N_a = LP.avogadro_constant(earth_param_set)
-    (; λ_γ_PAR, λ_γ_NIR, ϵ_canopy) = canopy_radiation.parameters
+    (; λ_γ_PAR, λ_γ_NIR) = canopy_radiation.parameters
     energy_per_photon_PAR = h * c / λ_γ_PAR
     energy_per_photon_NIR = h * c / λ_γ_NIR
     T_canopy =
@@ -380,8 +380,8 @@ function lsm_radiant_energy_fluxes!(
         N_a *
         p.canopy.radiative_transfer.tpar *
         (1 - α_soil_PAR)
-
-    @. LW_d_canopy = (1 - ϵ_canopy) * LW_d + ϵ_canopy * _σ * T_canopy^4 # double checked
+    ϵ_canopy = p.canopy.radiative_transfer.ϵ # this takes into account LAI/SAI
+    @. LW_d_canopy = ((1 - ϵ_canopy) * LW_d + ϵ_canopy * _σ * T_canopy^4) # double checked
     @. LW_u_soil = ϵ_soil * _σ * p.T_ground^4 + (1 - ϵ_soil) * LW_d_canopy # double checked
     @. R_net_soil += ϵ_soil * LW_d_canopy - ϵ_soil * _σ * p.T_ground^4 # double checked
     @. LW_net_canopy =

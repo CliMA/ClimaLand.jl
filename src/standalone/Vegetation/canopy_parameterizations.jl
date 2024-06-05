@@ -935,6 +935,7 @@ end
                      ne::FT, # Mean leaf nitrogen concentration (kg N (kg C)-1)
                      Vcmax25::FT, #
                      LAI::FT, # Leaf area index
+                     SAI::FT,
                      RAI::FT,
                      ηsl::FT, # live stem  wood coefficient (kg C m-3) 
                      h::FT, # canopy height (m)
@@ -943,15 +944,13 @@ end
                      μs::FT, # Ratio stem nitrogen to top leaf nitrogen (-), typical value 0.1 
                     ) where {FT}
 
-Computes the nitrogen content of leafs (Nl), roots (Nr) and stems (Ns)
-as a function of leaf area index (LAI), specific leaf density (σl),
-the carbon content of roots (Rc), the carbon content of stems (Rs), 
-and mean leaf nitrogen concentration (nm).
+Computes the nitrogen content of leafs (Nl), roots (Nr) and stems (Ns).
 """
 function nitrogen_content(
     ne::FT, # Mean leaf nitrogen concentration (kg N (kg C)-1)
     Vcmax25::FT, #
     LAI::FT, # Leaf area index
+    SAI::FT,
     RAI::FT,
     ηsl::FT, # live stem  wood coefficient (kg C m-3) 
     h::FT, # canopy height (m)
@@ -959,7 +958,7 @@ function nitrogen_content(
     μr::FT, # Ratio root nitrogen to top leaf nitrogen (-), typical value 1.0
     μs::FT, # Ratio stem nitrogen to top leaf nitrogen (-), typical value 0.1 
 ) where {FT}
-    Sc = ηsl * h * LAI
+    Sc = ηsl * h * LAI * ClimaLand.heaviside(SAI)
     Rc = σl * RAI
     nm = Vcmax25 / ne
     Nl = nm * σl * LAI
@@ -998,18 +997,14 @@ end
 """
     plant_respiration_growth(
         f::FT, # Factor of relative contribution
-        GPP::FT, # Gross primary productivity
+        An::FT, # Net photosynthesis
         Rpm::FT # Plant maintenance respiration
         ) where {FT}
 
-Computes plant growth respiration as a function of gross primary productivity (GPP),
+Computes plant growth respiration as a function of net photosynthesis (An),
 plant maintenance respiration (Rpm), and a relative contribution factor, f.
 """
-function plant_respiration_growth(
-    f2::FT, # Factor of relative contribution, usually 0.25
-    GPP::FT, # Gross primary productivity
-    Rpm::FT, # Plant maintenance respiration
-) where {FT}
-    Rg = f2 * (GPP - Rpm)
+function plant_respiration_growth(f2::FT, An::FT, Rpm::FT) where {FT}
+    Rg = f2 * (An - Rpm)
     return Rg
 end

@@ -113,22 +113,6 @@ Base.@kwdef struct TwoStreamParameters{
     "Leaf angle distribution function"
     G_Function::G
 end
-"""
-    function TwoStreamParameters{FT, G}(;
-        ld = ConstantGFunction(FT(0.5)),
-        α_PAR_leaf = FT(0.3),
-        τ_PAR_leaf = FT(0.2),
-        α_NIR_leaf = FT(0.4),
-        τ_NIR_leaf = FT(0.25),
-        ϵ_canopy = FT(0.98),
-        Ω = FT(1),
-        λ_γ_PAR = FT(5e-7),
-        λ_γ_NIR = FT(1.65e-6),
-        n_layers = UInt64(20),
-    ) where {FT}
-
-A constructor supplying default values for the TwoStreamParameters struct.
-"""
 
 Base.eltype(::TwoStreamParameters{FT}) where {FT} = FT
 
@@ -192,11 +176,12 @@ Base.broadcastable(RT::AbstractRadiationModel) = tuple(RT)
 
 ClimaLand.name(model::AbstractRadiationModel) = :radiative_transfer
 ClimaLand.auxiliary_vars(model::Union{BeerLambertModel, TwoStreamModel}) =
-    (:apar, :par, :rpar, :tpar, :anir, :nir, :rnir, :tnir, :LW_n, :SW_n)
+    (:apar, :par, :rpar, :tpar, :anir, :nir, :rnir, :tnir, :LW_n, :SW_n, :ϵ)
 ClimaLand.auxiliary_types(
     model::Union{BeerLambertModel{FT}, TwoStreamModel{FT}},
-) where {FT} = (FT, FT, FT, FT, FT, FT, FT, FT, FT, FT)
+) where {FT} = (FT, FT, FT, FT, FT, FT, FT, FT, FT, FT, FT)
 ClimaLand.auxiliary_domain_names(::Union{BeerLambertModel, TwoStreamModel}) = (
+    :surface,
     :surface,
     :surface,
     :surface,
@@ -243,8 +228,7 @@ function canopy_radiant_energy_fluxes!(
     c = FT(LP.light_speed(earth_param_set))
     h = FT(LP.planck_constant(earth_param_set))
     N_a = FT(LP.avogadro_constant(earth_param_set))
-    (; α_PAR_leaf, λ_γ_PAR, λ_γ_NIR, ϵ_canopy) =
-        canopy.radiative_transfer.parameters
+    (; α_PAR_leaf, λ_γ_PAR, λ_γ_NIR) = canopy.radiative_transfer.parameters
     APAR = p.canopy.radiative_transfer.apar
     ANIR = p.canopy.radiative_transfer.anir
     energy_per_photon_PAR = h * c / λ_γ_PAR
@@ -252,13 +236,14 @@ function canopy_radiant_energy_fluxes!(
     @. p.canopy.radiative_transfer.SW_n =
         (energy_per_photon_PAR * N_a * APAR) +
         (energy_per_photon_NIR * N_a * ANIR)
-
+    LAI = p.canopy.hydraulics.area_index.leaf
+    SAI = p.canopy.hydraulics.area_index.stem
+    ϵ_canopy = p.canopy.radiative_transfer.ϵ # this takes into account LAI/SAI
     # Long wave: use soil conditions from the PrescribedSoil driver
     T_soil::FT = s.T(t)
     ϵ_soil = s.ϵ
     _σ = FT(LP.Stefan(earth_param_set))
     LW_d = p.drivers.LW_d
-
     T_canopy = canopy_temperature(canopy.energy, canopy, Y, p, t)
     LW_d_canopy = @. (1 - ϵ_canopy) * LW_d + ϵ_canopy * _σ * T_canopy^4
     LW_u_soil = @. ϵ_soil * _σ * T_soil^4 + (1 - ϵ_soil) * LW_d_canopy

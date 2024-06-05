@@ -232,7 +232,13 @@ for FT in (Float32, Float64)
         # check that this is updated correctly:
         # @test p.canopy.autotrophic_respiration.Ra ==
         exp_tendency!(dY, Y, p, t0)
-        turb_fluxes = ClimaLand.turbulent_fluxes(canopy.atmos, canopy, Y, p, t0)
+        turb_fluxes = ClimaLand.Canopy.canopy_turbulent_fluxes(
+            canopy.atmos,
+            canopy,
+            Y,
+            p,
+            t0,
+        )
 
         @test p.canopy.hydraulics.fa.:1 == turb_fluxes.vapor_flux
         @test p.canopy.energy.shf == turb_fluxes.shf
@@ -242,8 +248,7 @@ for FT in (Float32, Float64)
         h = FT(LP.planck_constant(earth_param_set))
         N_a = FT(LP.avogadro_constant(earth_param_set))
         _σ = FT(LP.Stefan(earth_param_set))
-        (; α_PAR_leaf, λ_γ_PAR, λ_γ_NIR, ϵ_canopy) =
-            canopy.radiative_transfer.parameters
+        (; α_PAR_leaf, λ_γ_PAR, λ_γ_NIR) = canopy.radiative_transfer.parameters
         APAR = p.canopy.radiative_transfer.apar
         ANIR = p.canopy.radiative_transfer.anir
         energy_per_photon_PAR = h * c / λ_γ_PAR
@@ -252,16 +257,17 @@ for FT in (Float32, Float64)
         @test p.canopy.radiative_transfer.SW_n ==
               @. (energy_per_photon_PAR * N_a * APAR) +
                  (energy_per_photon_NIR * N_a * ANIR)
-
+        ϵ_canopy = p.canopy.radiative_transfer.ϵ
         T_canopy = FT.(T_atmos(t0))
         T_soil = FT.(soil_driver.T(t0))
         ϵ_soil = FT.(soil_driver.ϵ)
         LW_d = FT.(longwave_radiation(t0))
-        LW_d_canopy = (1 - ϵ_canopy) * LW_d + ϵ_canopy * _σ * T_canopy^4
-        LW_u_soil = ϵ_soil * _σ * T_soil^4 + (1 - ϵ_soil) * LW_d_canopy
-        @test Array(parent(p.canopy.radiative_transfer.LW_n))[1] ≈
-              ϵ_canopy * LW_d - 2 * ϵ_canopy * _σ * T_canopy^4 +
-              ϵ_canopy * LW_u_soil
+        LW_d_canopy = @. (1 - ϵ_canopy) * LW_d + ϵ_canopy * _σ * T_canopy^4
+        LW_u_soil = @. ϵ_soil * _σ * T_soil^4 + (1 - ϵ_soil) * LW_d_canopy
+        @test p.canopy.radiative_transfer.LW_n == @. (
+            ϵ_canopy * LW_d - 2 * ϵ_canopy * _σ * T_canopy^4 +
+            ϵ_canopy * LW_u_soil
+        )
 
 
         # Penman-monteith
@@ -715,7 +721,13 @@ for FT in (Float32, Float64)
         exp_tendency! = make_exp_tendency(canopy)
         dY = similar(Y)
         exp_tendency!(dY, Y, p, t0)
-        turb_fluxes = turbulent_fluxes(canopy.atmos, canopy, Y, p, t0)
+        turb_fluxes = ClimaLand.Canopy.canopy_turbulent_fluxes(
+            canopy.atmos,
+            canopy,
+            Y,
+            p,
+            t0,
+        )
         @test p.canopy.hydraulics.fa.:1 == turb_fluxes.vapor_flux
         @test p.canopy.energy.lhf == turb_fluxes.lhf
         @test p.canopy.energy.shf == turb_fluxes.shf
@@ -738,5 +750,234 @@ for FT in (Float32, Float64)
                 ),
             ) .== FT(289),
         )
+    end
+
+
+    @testset "Zero LAI; FT = $FT" begin
+        domain = Point(; z_sfc = FT(0.0))
+
+        BeerLambertparams = BeerLambertParameters(FT)
+        # TwoStreamModel parameters
+        Ω = FT(0.69)
+        χl = FT(0.1)
+        G_Function = CLMGFunction(χl)
+        α_PAR_leaf = FT(0.1)
+        λ_γ_PAR = FT(5e-7)
+        λ_γ_NIR = FT(1.65e-6)
+        τ_PAR_leaf = FT(0.05)
+        α_NIR_leaf = FT(0.45)
+        τ_NIR_leaf = FT(0.25)
+        ϵ_canopy = FT(0.97)
+        TwoStreamparams = TwoStreamParameters(
+            FT;
+            Ω,
+            α_PAR_leaf,
+            τ_PAR_leaf,
+            α_NIR_leaf,
+            τ_NIR_leaf,
+            G_Function,
+        )
+        photosynthesis_params = FarquharParameters(FT, C3())
+        stomatal_g_params = MedlynConductanceParameters(FT)
+
+        stomatal_model = MedlynConductanceModel{FT}(stomatal_g_params)
+        photosynthesis_model = FarquharModel{FT}(photosynthesis_params)
+        rt_models = (
+            BeerLambertModel{FT}(BeerLambertparams),
+            TwoStreamModel{FT}(TwoStreamparams),
+        )
+        energy_model = BigLeafEnergyModel{FT}(BigLeafEnergyParameters{FT}())
+        earth_param_set = LP.LandParameters(FT)
+        LAI = FT(0.0) # m2 [leaf] m-2 [ground]
+        z_0m = FT(2.0) # m, Roughness length for momentum - value from tall forest ChatGPT
+        z_0b = FT(0.1) # m, Roughness length for scalars - value from tall forest ChatGPT
+        h_int = FT(30.0) # m, "where measurements would be taken at a typical flux tower of a 20m canopy"
+        shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
+            z_0m,
+            z_0b,
+            earth_param_set,
+        )
+        lat = FT(0.0) # degree
+        long = FT(-180) # degree
+
+        function zenith_angle(
+            t,
+            ref_time;
+            latitude = lat,
+            longitude = long,
+            insol_params = earth_param_set.insol_params,
+        )
+            current_datetime = ref_time + Dates.Second(round(t))
+            d, δ, η_UTC =
+                FT.(
+                    Insolation.helper_instantaneous_zenith_angle(
+                        current_datetime,
+                        ref_time,
+                        insol_params,
+                    )
+                )
+            return Insolation.instantaneous_zenith_angle(
+                d,
+                δ,
+                η_UTC,
+                longitude,
+                latitude,
+            )[1]
+        end
+
+        function shortwave_radiation(
+            t;
+            latitude = lat,
+            longitude = long,
+            insol_params = earth_param_set.insol_params,
+        )
+            return 1000 # W/m^2
+        end
+
+        function longwave_radiation(t)
+            return 200 # W/m^2
+        end
+
+        u_atmos = t -> 10 #m.s-1
+
+        liquid_precip = (t) -> 0 # m
+        snow_precip = (t) -> 0 # m
+        T_atmos = t -> 290 # Kelvin
+        q_atmos = t -> 0.001 # kg/kg
+        P_atmos = t -> 1e5 # Pa
+        h_atmos = h_int # m
+        c_atmos = (t) -> 4.11e-4 # mol/mol
+        ref_time = DateTime(2005)
+        atmos = PrescribedAtmosphere(
+            TimeVaryingInput(liquid_precip),
+            TimeVaryingInput(snow_precip),
+            TimeVaryingInput(T_atmos),
+            TimeVaryingInput(u_atmos),
+            TimeVaryingInput(q_atmos),
+            TimeVaryingInput(P_atmos),
+            ref_time,
+            h_atmos,
+            earth_param_set;
+            c_co2 = TimeVaryingInput(c_atmos),
+        )
+        radiation = PrescribedRadiativeFluxes(
+            FT,
+            TimeVaryingInput(shortwave_radiation),
+            TimeVaryingInput(longwave_radiation),
+            ref_time;
+            θs = zenith_angle,
+        )
+
+        # Plant Hydraulics
+        RAI = FT(0)
+        SAI = FT(0)
+        lai_fun = t -> LAI
+        ai_parameterization = PlantHydraulics.PrescribedSiteAreaIndex{FT}(
+            TimeVaryingInput(lai_fun),
+            SAI,
+            RAI,
+        )
+        K_sat_plant = FT(1.8e-8) # m/s
+        ψ63 = FT(-4 / 0.0098) # / MPa to m, Holtzman's original parameter value
+        Weibull_param = FT(4) # unitless, Holtzman's original c param value
+        a = FT(0.05 * 0.0098) # Holtzman's original parameter for the bulk modulus of elasticity
+        plant_ν = FT(0.7) # m3/m3
+        plant_S_s = FT(1e-2 * 0.0098) # m3/m3/MPa to m3/m3/m
+        conductivity_model =
+            PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
+        retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a)
+        root_depths = SVector{10, FT}(-(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0) # 1st element is the deepest root depth
+        function root_distribution(z::T) where {T}
+            return T(1.0 / 0.5) * exp(z / T(0.5)) # (1/m)
+        end
+        param_set = PlantHydraulics.PlantHydraulicsParameters(;
+            ai_parameterization = ai_parameterization,
+            ν = plant_ν,
+            S_s = plant_S_s,
+            root_distribution = root_distribution,
+            conductivity_model = conductivity_model,
+            retention_model = retention_model,
+        )
+        Δz = FT(1.0) # height of compartments
+        n_stem = Int64(0) # number of stem elements
+        n_leaf = Int64(1) # number of leaf elements
+        compartment_centers =
+            FT.(
+                Vector(
+                    range(
+                        start = Δz / 2,
+                        step = Δz,
+                        stop = Δz * (n_stem + n_leaf) - (Δz / 2),
+                    ),
+                ),
+            )
+        compartment_faces =
+            FT.(
+                Vector(
+                    range(
+                        start = 0.0,
+                        step = Δz,
+                        stop = Δz * (n_stem + n_leaf),
+                    ),
+                )
+            )
+
+        ψ_soil0 = FT(0.0)
+        T_soil0 = FT(290)
+        soil_driver = PrescribedSoil(
+            root_depths,
+            (t) -> ψ_soil0,
+            (t) -> T_soil0,
+            FT(0.2),
+            FT(0.4),
+            FT(0.98),
+        )
+
+        plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
+            parameters = param_set,
+            n_stem = n_stem,
+            n_leaf = n_leaf,
+            compartment_surfaces = compartment_faces,
+            compartment_midpoints = compartment_centers,
+        )
+        autotrophic_parameters = AutotrophicRespirationParameters(FT)
+        autotrophic_respiration_model =
+            AutotrophicRespirationModel{FT}(autotrophic_parameters)
+        for rt_model in rt_models
+            canopy = ClimaLand.Canopy.CanopyModel{FT}(;
+                parameters = shared_params,
+                domain = domain,
+                radiative_transfer = rt_model,
+                photosynthesis = photosynthesis_model,
+                conductance = stomatal_model,
+                autotrophic_respiration = autotrophic_respiration_model,
+                energy = energy_model,
+                hydraulics = plant_hydraulics,
+                soil_driver = soil_driver,
+                atmos = atmos,
+                radiation = radiation,
+            )
+
+            Y, p, coords = ClimaLand.initialize(canopy)
+            Y.canopy.hydraulics .= plant_ν
+            Y.canopy.energy.T = FT(289)
+            set_initial_cache! = make_set_initial_cache(canopy)
+            t0 = FT(0.0)
+            set_initial_cache!(p, Y, t0)
+
+            @test all(parent(p.canopy.hydraulics.fa.:1) .== FT(0))
+            @test all(parent(p.canopy.energy.lhf) .== FT(0))
+            @test all(parent(p.canopy.energy.shf) .== FT(0))
+            @test all(parent(p.canopy.energy.fa_energy_roots) .== FT(0))
+            @test all(parent(p.canopy.hydraulics.fa_roots) .== FT(0))
+            @test all(parent(p.canopy.conductance.transpiration) .== FT(0))
+            @test all(parent(p.canopy.radiative_transfer.LW_n) .== FT(0))
+            @test all(parent(p.canopy.radiative_transfer.SW_n) .== FT(0))
+            @test all(parent(p.canopy.radiative_transfer.apar) .== FT(0))
+            @test all(parent(p.canopy.radiative_transfer.anir) .== FT(0))
+            @test all(parent(p.canopy.autotrophic_respiration.Ra) .== FT(0))
+        end
+
+
     end
 end
