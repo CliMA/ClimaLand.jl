@@ -4,7 +4,7 @@
 # Can. J. Soil Sci. (2011) 91: 169183 doi:10.4141/CJSS09118,
 # which measured the infiltration of layered soil in Fort McMurray,
 # Alberta, Canada. We thank Mingbin Huang and S. Lee Barbour for
-# correspondence and support, including sharing of data, with us
+# correspondence and support, including sharing of data, with us.
 # Note that all data used in this tutorial is available in their
 # publication.
 
@@ -15,7 +15,6 @@ import SciMLBase
 import ClimaTimeSteppers as CTS
 using ClimaCore
 import ClimaParams as CP
-using ArtifactWrappers
 using DelimitedFiles: readdlm
 
 using ClimaLand
@@ -41,14 +40,8 @@ soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems);
 # Infiltration and drainage processes in multi-layered coarse soils
 # Mingbin Huang et. al.
 # Can. J. Soil Sci. (2011) 91: 169183 doi:10.4141/CJSS09118
-af = ArtifactFile(
-    url = "https://caltech.box.com/shared/static/qvbt37xkwz8gveyi6tzzbs0e18trpcsq.csv",
-    filename = "sv_62.csv",
-)
-dataset = ArtifactWrapper(@__DIR__, "sv62", ArtifactFile[af]);
-dataset_path = get_data_folder(dataset);
-data = joinpath(dataset_path, af.filename)
-parameter_data = readdlm(data, ',');
+data_file = ClimaLand.Artifacts.huang_et_al2011_soil_van_genuchten_data();
+parameter_data = readdlm(data_file, ',');
 # Our model treats z as increasing in the upwards direction.
 # Values below the surface are negative.
 # Because of this, we convert the (positive-valued) depth

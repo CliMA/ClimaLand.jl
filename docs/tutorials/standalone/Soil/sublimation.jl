@@ -12,7 +12,6 @@ import ClimaParams as CP
 using SurfaceFluxes
 using StaticArrays
 using Dates
-using ArtifactWrappers
 using DelimitedFiles: readdlm
 
 using ClimaLand

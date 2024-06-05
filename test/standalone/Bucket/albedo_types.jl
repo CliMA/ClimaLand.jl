@@ -19,8 +19,6 @@ using ClimaLand.Bucket:
     BucketModelParameters,
     PrescribedBaregroundAlbedo,
     PrescribedSurfaceAlbedo,
-    bareground_albedo_dataset_path,
-    cesm2_albedo_dataset_path,
     next_albedo!
 using ClimaLand.Domains: coordinates, Column, SphericalShell
 using ClimaLand:
@@ -132,7 +130,7 @@ end
     space = domain.space.surface
     surface_coords = Fields.coordinate_field(space)
 
-    infile_path = cesm2_albedo_dataset_path()
+    infile_path = ClimaLand.Artifacts.cesm2_albedo_dataset_path()
     date_ref_noleap = NCDataset(infile_path, "r") do ds
         ds["time"][1]
     end
@@ -181,7 +179,7 @@ end
 @testset "Test PrescribedBaregroundAlbedo - albedo from map, FT = $FT" begin
     earth_param_set = LP.LandParameters(FT)
     varname = "sw_alb"
-    path = bareground_albedo_dataset_path()
+    path = ClimaLand.Artifacts.bareground_albedo_dataset_path()
     α_snow = FT(0.8)
     σS_c = FT(0.2)
     W_f = FT(0.15)
@@ -272,7 +270,7 @@ end
 @testset "Test PrescribedSurfaceAlbedo - albedo from map over time, FT = $FT" begin
     earth_param_set = LP.LandParameters(FT)
     varname = "sw_alb"
-    infile_path = cesm2_albedo_dataset_path()
+    infile_path = ClimaLand.Artifacts.cesm2_albedo_dataset_path()
 
     σS_c = FT(0.2)
     W_f = FT(0.15)
