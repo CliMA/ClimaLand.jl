@@ -218,6 +218,44 @@ for FT in (Float32, Float64)
                 p.bucket.turbulent_fluxes.shf .+ p.bucket.R_n
             surface_space = model.domain.space.surface
             A_sfc = sum(ones(surface_space))
+
+            _T_freeze = LP.T_freeze(earth_param_set)
+            _LH_f0 = LP.LH_f0(earth_param_set)
+            _ρ_liq = LP.ρ_cloud_liq(earth_param_set)
+            _ρLH_f0 = _ρ_liq * _LH_f0
+
+            @test p.bucket.snow_cover_fraction ==
+                  ClimaLand.heaviside.(Y.bucket.σS)
+            @test p.bucket.F_sfc == F_sfc
+            @test p.bucket.partitioned_fluxes ==
+                  ClimaLand.Bucket.partition_snow_surface_fluxes.(
+                Y.bucket.σS,
+                p.bucket.T_sfc,
+                model.parameters.τc,
+                p.bucket.snow_cover_fraction,
+                p.bucket.turbulent_fluxes.vapor_flux,
+                p.bucket.F_sfc,
+                _ρLH_f0,
+                _T_freeze,
+            )
+            @test p.bucket.G ==
+                  F_sfc .* (1 .- p.bucket.snow_cover_fraction) .+
+                  p.bucket.partitioned_fluxes.G_under_snow .*
+                  p.bucket.snow_cover_fraction
+            @test p.bucket.snow_melt ==
+                  p.bucket.partitioned_fluxes.F_melt ./ _ρLH_f0
+            liquid_precip = ClimaLand.liquid_precipitation(model.atmos, p, t0)
+
+            @test p.bucket.infiltration ==
+                  ClimaLand.Bucket.infiltration_at_point.(
+                Y.bucket.W,
+                p.bucket.snow_cover_fraction .* p.bucket.snow_melt,
+                liquid_precip,
+                (1 .- p.bucket.snow_cover_fraction) .*
+                p.bucket.turbulent_fluxes.vapor_flux,
+                model.parameters.W_f,
+            )
+
             # For the point space, we actually want the flux itself, since our variables are per unit area.
             # Divide by A_sfc
             if typeof(model.domain.space.surface) <: ClimaCore.Spaces.PointSpace

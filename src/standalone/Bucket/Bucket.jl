@@ -317,11 +317,41 @@ auxiliary_types(::BucketModel{FT}) where {FT} = (
     FT,
     FT,
     FT,
+    FT,
+    FT,
+    NamedTuple{(:F_melt, :F_into_snow, :G_under_snow), Tuple{FT, FT, FT}},
+    FT,
+    FT,
+    FT,
 )
-auxiliary_vars(::BucketModel) =
-    (:q_sfc, :turbulent_fluxes, :R_n, :T_sfc, :α_sfc, :ρ_sfc)
-auxiliary_domain_names(::BucketModel) =
-    (:surface, :surface, :surface, :surface, :surface, :surface, :surface)
+auxiliary_vars(::BucketModel) = (
+    :q_sfc,
+    :turbulent_fluxes,
+    :R_n,
+    :T_sfc,
+    :α_sfc,
+    :ρ_sfc,
+    :snow_cover_fraction,
+    :F_sfc,
+    :partitioned_fluxes,
+    :G,
+    :snow_melt,
+    :infiltration,
+)
+auxiliary_domain_names(::BucketModel) = (
+    :surface,
+    :surface,
+    :surface,
+    :surface,
+    :surface,
+    :surface,
+    :surface,
+    :surface,
+    :surface,
+    :surface,
+    :surface,
+    :surface,
+)
 
 
 """
@@ -331,46 +361,14 @@ Creates the compute_exp_tendency! function for the bucket model.
 """
 function make_compute_exp_tendency(model::BucketModel{FT}) where {FT}
     function compute_exp_tendency!(dY, Y, p, t)
-        (; κ_soil, ρc_soil, σS_c, W_f) = model.parameters
+        (; κ_soil, ρc_soil, σS_c) = model.parameters
 
-        #Currently, the entire surface is assumed to be
-        # snow covered entirely or not at all.
-        snow_cover_fraction = heaviside.(Y.bucket.σS)
-
-        # In this case, there is just one set of surface fluxes to compute.
-        # Since q_sfc itself has already been modified to account for
-        # snow covered regions, and since the surface temperature is
-        # assumed to be the same for snow and underlying land,
-        # the returned fluxes are computed correctly for the cell
-        # regardless of snow-coverage.
-
-        # The below must be adjusted to compute F_sfc over snow and over soil
-        # if we want the snow cover fraction to be intermediate between 0 and 1.
-        (; turbulent_fluxes, R_n) = p.bucket
-        F_sfc = @. (turbulent_fluxes.shf .+ turbulent_fluxes.lhf + R_n) # Eqn (21)
-        _T_freeze = LP.T_freeze(model.parameters.earth_param_set)
-        _LH_f0 = LP.LH_f0(model.parameters.earth_param_set)
-        _ρ_liq = LP.ρ_cloud_liq(model.parameters.earth_param_set)
-        _ρLH_f0 = _ρ_liq * _LH_f0 # Latent heat per unit volume.
-        # partition energy fluxes for snow covered area
-        partitioned_fluxes =
-            partition_snow_surface_fluxes.(
-                Y.bucket.σS,
-                p.bucket.T_sfc,
-                model.parameters.τc,
-                snow_cover_fraction,
-                turbulent_fluxes.vapor_flux,
-                F_sfc,
-                _ρLH_f0,
-                _T_freeze,
-            )
-        (; F_melt, F_into_snow, G_under_snow) = partitioned_fluxes
-        G = @. F_sfc * (1 - snow_cover_fraction) +
-           G_under_snow * snow_cover_fraction # Equation 22
         # Temperature profile of soil.
         gradc2f = ClimaCore.Operators.GradientC2F()
         divf2c = ClimaCore.Operators.DivergenceF2C(
-            top = ClimaCore.Operators.SetValue(ClimaCore.Geometry.WVector.(G)),
+            top = ClimaCore.Operators.SetValue(
+                ClimaCore.Geometry.WVector.(p.bucket.G),
+            ),
             bottom = ClimaCore.Operators.SetValue(
                 ClimaCore.Geometry.WVector.(FT(0.0)),
             ),
@@ -378,33 +376,24 @@ function make_compute_exp_tendency(model::BucketModel{FT}) where {FT}
 
         @. dY.bucket.T = -1 / ρc_soil * (divf2c(-κ_soil * gradc2f(Y.bucket.T))) # Simple heat equation, Eq 10
 
-        # Partition water fluxes
-        liquid_precip = liquid_precipitation(model.atmos, p, t) # always negative
-        snow_precip = snow_precipitation(model.atmos, p, t) # always negative
-        # F_melt is negative as it is a downward welling flux warming the snow
-        snow_melt = @. F_melt / _ρLH_f0 # defined after Equation (22)
-
-        infiltration = @. infiltration_at_point(
-            Y.bucket.W,
-            snow_cover_fraction * snow_melt,
-            liquid_precip,
-            (1 - snow_cover_fraction) * turbulent_fluxes.vapor_flux,
-            W_f,
-        ) # Equation (2) of the text.
-
         # Positive infiltration -> net (negative) flux into soil
-        @. dY.bucket.W = -infiltration # Equation (2) of the text.
+        @. dY.bucket.W = -p.bucket.infiltration # Equation (2) of the text.
+
+        liquid_precip = liquid_precipitation(model.atmos, p, t) # always negative
+        snow_precip = snow_precipitation(model.atmos, p, t)
 
         dY.bucket.Ws = @. -(
             liquid_precip +
-            snow_cover_fraction * snow_melt +
-            (1 - snow_cover_fraction) * turbulent_fluxes.vapor_flux -
-            infiltration
+            p.bucket.snow_cover_fraction * p.bucket.snow_melt +
+            (1 - p.bucket.snow_cover_fraction) *
+            p.bucket.turbulent_fluxes.vapor_flux - p.bucket.infiltration
         ) # Equation (3) of the text
 
         dY.bucket.σS = @. -(
-            snow_precip + snow_cover_fraction * turbulent_fluxes.vapor_flux -
-            snow_cover_fraction * snow_melt
+            snow_precip +
+            p.bucket.snow_cover_fraction *
+            p.bucket.turbulent_fluxes.vapor_flux -
+            p.bucket.snow_cover_fraction * p.bucket.snow_melt
         ) # Equation (6)
     end
     return compute_exp_tendency!
@@ -435,7 +424,6 @@ function make_update_aux(model::BucketModel{FT}) where {FT}
                     ),
                 ),
             )
-
         # Compute turbulent surface fluxes
         p.bucket.turbulent_fluxes .=
             turbulent_fluxes(model.atmos, model, Y, p, t)
@@ -452,6 +440,59 @@ function make_update_aux(model::BucketModel{FT}) where {FT}
             p,
             t,
         )
+
+        #Currently, the entire surface is assumed to be
+        # snow covered entirely or not at all.
+        p.bucket.snow_cover_fraction .= heaviside.(Y.bucket.σS)
+
+        # In this case, there is just one set of surface fluxes to compute.
+        # Since q_sfc itself has already been modified to account for
+        # snow covered regions, and since the surface temperature is
+        # assumed to be the same for snow and underlying land,
+        # the returned fluxes are computed correctly for the cell
+        # regardless of snow-coverage.
+
+        # The below must be adjusted to compute F_sfc over snow and over soil
+        # if we want the snow cover fraction to be intermediate between 0 and 1.
+        @. p.bucket.F_sfc = (
+            p.bucket.turbulent_fluxes.shf .+ p.bucket.turbulent_fluxes.lhf +
+            p.bucket.R_n
+        ) # Eqn (21)
+        _T_freeze = LP.T_freeze(model.parameters.earth_param_set)
+        _LH_f0 = LP.LH_f0(model.parameters.earth_param_set)
+        _ρ_liq = LP.ρ_cloud_liq(model.parameters.earth_param_set)
+        _ρLH_f0 = _ρ_liq * _LH_f0 # Latent heat per unit volume.
+        # partition energy fluxes for snow covered area
+        p.bucket.partitioned_fluxes .=
+            partition_snow_surface_fluxes.(
+                Y.bucket.σS,
+                p.bucket.T_sfc,
+                model.parameters.τc,
+                p.bucket.snow_cover_fraction,
+                p.bucket.turbulent_fluxes.vapor_flux,
+                p.bucket.F_sfc,
+                _ρLH_f0,
+                _T_freeze,
+            )
+        @. p.bucket.G =
+            p.bucket.F_sfc * (1 - p.bucket.snow_cover_fraction) +
+            p.bucket.partitioned_fluxes.G_under_snow *
+            p.bucket.snow_cover_fraction # Equation 22
+
+        # Partition water fluxes
+        liquid_precip = liquid_precipitation(model.atmos, p, t) # always negative
+        # F_melt is negative as it is a downward welling flux warming the snow
+        @.p.bucket.snow_melt = p.bucket.partitioned_fluxes.F_melt / _ρLH_f0 # defined after Equation (22)
+
+        @. p.bucket.infiltration = infiltration_at_point(
+            Y.bucket.W,
+            p.bucket.snow_cover_fraction * p.bucket.snow_melt,
+            liquid_precip,
+            (1 - p.bucket.snow_cover_fraction) *
+            p.bucket.turbulent_fluxes.vapor_flux,
+            model.parameters.W_f,
+        ) # Equation (2) of the text.
+
     end
     return update_aux!
 end
