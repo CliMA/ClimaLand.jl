@@ -46,7 +46,7 @@ earth_param_set = ClimaLand.Parameters.LandParameters(FT);
 outdir = "bucket_benchmark_$(device_suffix)"
 !ispath(outdir) && mkpath(outdir)
 
-function setup_prob(t0, tf, Δt)
+function setup_prob(t0, tf, Δt; nelements = (100, 10))
     # We set up the problem in a function so that we can make multiple copies (for profiling)
 
     # Set up simulation domain
@@ -54,7 +54,7 @@ function setup_prob(t0, tf, Δt)
     bucket_domain = ClimaLand.Domains.SphericalShell(;
         radius = FT(6.3781e6),
         depth = soil_depth,
-        nelements = (100, 10),
+        nelements = nelements,
         npolynomial = 1,
         dz_tuple = FT.((1.0, 0.05)),
     )
@@ -111,7 +111,6 @@ function setup_prob(t0, tf, Δt)
         ref_time,
     )
 
-
     model = BucketModel(
         parameters = bucket_parameters,
         domain = bucket_domain,
@@ -143,21 +142,29 @@ function setup_prob(t0, tf, Δt)
     return prob, cb
 end
 
-function setup_and_solve_problem()
+function setup_and_solve_problem(; greet = false)
     # We profile the setup phase as well here. This is not intended, but it is the easiest
     # to set up for both CPU/GPU at the same time
     t0 = 0.0
     tf = 7 * 86400
     Δt = 3600.0
-    prob, cb = setup_prob(t0, tf, Δt)
+    nelements = (100, 10)
+    if greet
+        @info "Run: Bucket with temporal map"
+        @info "Resolution: $nelements"
+        @info "Timestep: $Δt s"
+        @info "Duration: $(tf - t0) s"
+    end
+
+    prob, cb = setup_prob(t0, tf, Δt; nelements)
     timestepper = CTS.RK4()
     ode_algo = CTS.ExplicitAlgorithm(timestepper)
     SciMLBase.solve(prob, ode_algo; dt = Δt, callback = cb)
     return nothing
 end
 
-# Warm up
-setup_and_solve_problem()
+# Warm up and greet
+setup_and_solve_problem(; greet = true)
 
 @info "Starting profiling"
 # Stop when we profile for MAX_PROFILING_TIME_SECONDS or MAX_PROFILING_SAMPLES
