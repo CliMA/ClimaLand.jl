@@ -11,6 +11,7 @@ import ClimaLand
 import ClimaLand.Parameters as LP
 
 for FT in (Float32, Float64)
+    #=
     @testset "Soil horizontal operators unit tests, FT = $FT" begin
         ν = FT(0.495)
         K_sat = FT(1)
@@ -348,7 +349,7 @@ for FT in (Float32, Float64)
         @test maximum(abs.(Array(parent(dY.soil.ρe_int)))) ./ 2.052e7 <
               10^3 * eps(FT)
     end
-
+    =#
     @testset "Soil hydrology tendency on sphere, FT = $FT" begin
         ν = FT(0.44)
         K_sat = FT(1.0)

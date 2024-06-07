@@ -14,16 +14,16 @@
 # between CPU and GPU runs.
 # Plots of the temporal evolution of water content, snow cover fraction,
 # surface temperature, evaporation, and surface energy flux.
-
 import SciMLBase
 import ClimaComms
 @static pkgversion(ClimaComms) >= v"0.6" && ClimaComms.@import_required_backends
-using CairoMakie
 using Dates
 using DelimitedFiles
 using Statistics
 using ClimaUtilities.ClimaArtifacts
 import Interpolations
+import ClimaCoreMakie
+using CairoMakie
 import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
 import ClimaTimeSteppers as CTS
 import NCDatasets
@@ -349,3 +349,22 @@ for (i, (field_ts, field_name)) in enumerate(
 end
 outfile = joinpath(outdir, string("ts_$device_suffix.png"))
 CairoMakie.save(outfile, fig_ts)
+
+if device_suffix == "cpu"
+    W_raw = sol.u[end].bucket.W
+    σS_raw = sol.u[end].bucket.σS
+    T_sfc_raw = saved_values.saveval[end].bucket.T_sfc
+    fields = [W_raw, σS_raw, T_sfc_raw]
+    titles = ["W", "σS", "T_sfc"]
+    for (f, n) in zip(fields, titles)
+        fig = Figure(size = (1000, 1000))
+        ax = Axis(fig[1, 1])
+        clims = extrema(f)
+        ClimaCoreMakie.fieldheatmap!(ax, f, title = n)
+        Colorbar(fig[:, end + 1], colorrange = clims)
+        CairoMakie.save(
+            joinpath(outdir, string(n, "raw_$(device_suffix).png")),
+            fig,
+        )
+    end
+end

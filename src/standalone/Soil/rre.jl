@@ -83,7 +83,7 @@ function RichardsModel{FT}(;
     domain::D,
     boundary_conditions::NamedTuple,
     sources::Tuple,
-    lateral_flow::Bool = true,
+    lateral_flow::Bool = false,
 ) where {FT, D}
     top_bc = boundary_conditions.top
     if typeof(top_bc) <: RichardsAtmosDrivenFluxBC
@@ -92,6 +92,7 @@ function RichardsModel{FT}(;
         subsurface_source = subsurface_runoff_source(top_bc.runoff)
         sources = append_source(subsurface_source, sources)
     end
+    @assert !lateral_flow
     args = (parameters, domain, boundary_conditions, sources)
     RichardsModel{FT, typeof.(args)...}(args..., lateral_flow)
 end
