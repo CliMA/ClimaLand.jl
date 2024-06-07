@@ -45,7 +45,16 @@ steps:
 
       - label: "Richards comparison to Bonan"
         command: "julia --color=yes --project=.buildkite experiments/standalone/Soil/richards_comparison.jl"
-        artifact_paths: "experiments/standalone/Soil/comparison*png"
+        artifact_paths: "experiments/standalone/Soil/cpu/comparison*png"
+
+      - label: "Richards comparison to Bonan: GPU"
+        command: "julia --color=yes --project=.buildkite experiments/standalone/Soil/richards_comparison.jl"
+        artifact_paths: "experiments/standalone/Soil/gpu/comparison*png"
+        agents:
+          slurm_ntasks: 1
+          slurm_gres: "gpu:1"
+        env:
+          CLIMACOMMS_DEVICE: "CUDA"
 
       - label: "vaira_test"
         command: "julia --color=yes --project=.buildkite experiments/integrated/fluxnet/run_fluxnet.jl US-Var"
@@ -84,9 +93,20 @@ steps:
 
       - label: "Richards Runoff CPU"
         command: "julia --color=yes --project=.buildkite experiments/standalone/Soil/richards_runoff.jl"
-        artifact_paths: "experiments/standalone/Soil/artifacts/*png"
+        artifact_paths: "experiments/standalone/Soil/artifacts/cpu/*png"
         agents:
           slurm_mem: 16G
+
+  - group: "Experiments on GPU"
+    steps:
+      - label: "Richards Runoff GPU"
+        command: "julia --color=yes --project=.buildkite experiments/standalone/Soil/richards_runoff.jl"
+        artifact_paths: "experiments/standalone/Soil/artifacts/gpu/*png"
+        agents:
+          slurm_ntasks: 1
+          slurm_gres: "gpu:1"
+        env:
+          CLIMACOMMS_DEVICE: "CUDA"
 
   - group: "ClimaLandSimulations"
     steps:

@@ -18,6 +18,19 @@ import ClimaLand.Parameters as LP
 clay_datapath, sand_datapath =
     ClimaLand.Artifacts.richards_eqn_bonan_data_path()
 
+context = ClimaComms.context()
+device_suffix =
+    typeof(ClimaComms.context().device) <: ClimaComms.CPUSingleThreaded ?
+    "cpu" : "gpu"
+outdir = joinpath(
+    pkgdir(ClimaLand),
+    "experiments",
+    "standalone",
+    "Soil",
+    device_suffix,
+)
+!ispath(outdir) && mkpath(outdir)
+
 @testset "Richards comparison to Bonan; clay" begin
     # Define simulation times
     t0 = Float64(0)
@@ -100,8 +113,8 @@ clay_datapath, sand_datapath =
         # Check that simulation still has correct float type
         @assert eltype(sol.u[end].soil) == FT
 
-        # Check results and plot for Float64 simulation
-        if FT == Float64
+        # Check results and plot for Float64 simulation on CPU
+        if FT == Float64 && context.device isa ClimaComms.CPUSingleThreaded
             N = length(sol.t)
             ϑ_l = parent(sol.u[N].soil.ϑ_l)
             ds_bonan = readdlm(clay_datapath)
@@ -111,9 +124,7 @@ clay_datapath, sand_datapath =
 
             plot(ϑ_l, parent(z), label = "Clima")
             plot!(bonan_moisture, bonan_z, label = "Bonan's Matlab code")
-            savefig(
-                "./experiments/standalone/Soil/comparison_clay_bonan_matlab.png",
-            )
+            savefig(joinpath(outdir, "comparison_clay_bonan_matlab.png"))
         end
     end
 end
@@ -197,8 +208,8 @@ end
         # Check that simulation still has correct float type
         @assert eltype(sol.u[end].soil) == FT
 
-        # Check results and plot for Float64 simulation
-        if FT == Float64
+        # Check results and plot for Float64 simulation on CPU
+        if FT == Float64 && context.device isa ClimaComms.CPUSingleThreaded
             N = length(sol.t)
             ϑ_l = parent(sol.u[N].soil.ϑ_l)
             ds_bonan = readdlm(sand_datapath, ',')
@@ -208,9 +219,7 @@ end
 
             plot(ϑ_l, parent(z), label = "Clima")
             plot!(bonan_moisture, bonan_z, label = "Bonan's Matlab code")
-            savefig(
-                "./experiments/standalone/Soil/comparison_sand_bonan_matlab.png",
-            )
+            savefig(joinpath(outdir, "comparison_sand_bonan_matlab.png"))
         end
     end
 end
