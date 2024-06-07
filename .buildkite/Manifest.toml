@@ -1,8 +1,8 @@
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.10.4"
+julia_version = "1.10.3"
 manifest_format = "2.0"
-project_hash = "dae5b8a0ef6cad3a789e38991e9bafc7e71f7ab5"
+project_hash = "39ff6a24bc7df56339cc9e0fb329189ee5854805"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "fc02d55798c1af91123d07915a990fbb9a10d146"
@@ -372,6 +372,12 @@ weakdeps = ["CUDA", "Krylov"]
     ClimaCoreCUDAExt = "CUDA"
     KrylovExt = "Krylov"
 
+[[deps.ClimaCoreTempestRemap]]
+deps = ["ClimaComms", "ClimaCore", "CommonDataModel", "Dates", "LinearAlgebra", "NCDatasets", "PkgVersion", "TempestRemap_jll"]
+git-tree-sha1 = "d85c3a7b457b6d8b54d82499aa6df3b34140ea4d"
+uuid = "d934ef94-cdd4-4710-83d6-720549644b70"
+version = "0.3.15"
+
 [[deps.ClimaLand]]
 deps = ["Adapt", "ArtifactWrappers", "ClimaComms", "ClimaCore", "ClimaUtilities", "DataFrames", "Dates", "DocStringExtensions", "Insolation", "Interpolations", "IntervalSets", "LazyArtifacts", "LinearAlgebra", "NCDatasets", "SciMLBase", "StaticArrays", "SurfaceFluxes", "Thermodynamics", "UnrolledUtilities"]
 path = ".."
@@ -410,6 +416,7 @@ deps = ["Artifacts", "Dates"]
 git-tree-sha1 = "af4af7e14e02861c1a13c9ee0efade4c863fab9a"
 uuid = "b3f4f4ca-9299-4f7f-bd9b-81e1242a7513"
 version = "0.1.8"
+weakdeps = ["Adapt", "CUDA", "ClimaComms", "ClimaCore", "ClimaCoreTempestRemap", "Interpolations", "NCDatasets"]
 
     [deps.ClimaUtilities.extensions]
     CUDAUtilsExt = ["ClimaCore", "CUDA"]
@@ -421,15 +428,6 @@ version = "0.1.8"
     TempestRegridderExt = "ClimaCoreTempestRemap"
     TimeVaryingInputs0DExt = "ClimaCore"
     TimeVaryingInputsExt = ["ClimaCore", "NCDatasets"]
-
-    [deps.ClimaUtilities.weakdeps]
-    Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
-    CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
-    ClimaComms = "3a4d1b5c-c61d-41fd-a00a-5873ba7a1b0d"
-    ClimaCore = "d414da3d-4745-48bb-8d80-42e94e092884"
-    ClimaCoreTempestRemap = "d934ef94-cdd4-4710-83d6-720549644b70"
-    Interpolations = "a98d9a8b-a2ab-59e6-89dd-64a1c18fca59"
-    NCDatasets = "85f8d34a-cbdd-5861-8df4-14fed0d494ab"
 
 [[deps.CloseOpenIntervals]]
 deps = ["Static", "StaticArrayInterface"]
@@ -1823,6 +1821,12 @@ git-tree-sha1 = "963a3f28a2e65bb87a68033ea4a616002406037d"
 uuid = "0b1bfda6-eb8a-41d2-88d8-f5af5cad476f"
 version = "0.2.5"
 
+[[deps.OpenBLAS32_jll]]
+deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl"]
+git-tree-sha1 = "6065c4cff8fee6c6770b277af45d5082baacdba1"
+uuid = "656ef2d0-ae68-5445-9ca0-591084a874a2"
+version = "0.3.24+0"
+
 [[deps.OpenBLAS_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "Libdl"]
 uuid = "4536629a-c528-5b80-bd46-f80d51c5b363"
@@ -2540,6 +2544,12 @@ weakdeps = ["IntervalArithmetic"]
 
     [deps.TaylorSeries.extensions]
     TaylorSeriesIAExt = "IntervalArithmetic"
+
+[[deps.TempestRemap_jll]]
+deps = ["Artifacts", "HDF5_jll", "JLLWrappers", "Libdl", "NetCDF_jll", "OpenBLAS32_jll"]
+git-tree-sha1 = "723112218783928a20e0d865932694acfb7a7571"
+uuid = "8573a8c5-1df0-515e-a024-abad257ee284"
+version = "2.2.0+0"
 
 [[deps.TensorCore]]
 deps = ["LinearAlgebra"]

@@ -24,6 +24,7 @@ using DelimitedFiles
 using Statistics
 using ClimaUtilities.ClimaArtifacts
 import Interpolations
+import ClimaCoreTempestRemap
 import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
 import ClimaTimeSteppers as CTS
 import NCDatasets
@@ -64,7 +65,7 @@ function compute_clims(v)
 end
 
 anim_plots = true
-regridder_type = :InterpolationsRegridder
+regridder_type = :TempestRegridder
 FT = Float64;
 context = ClimaComms.context()
 earth_param_set = LP.LandParameters(FT);

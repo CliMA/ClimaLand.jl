@@ -11,7 +11,8 @@ import Interpolations
 
 import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
 import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
-import ClimaUtilities.Regridders: InterpolationsRegridder
+import ClimaUtilities.Regridders: InterpolationsRegridder, TempestRegridder
+import ClimaCoreTempestRemap
 import NCDatasets
 import ClimaParams as CP
 using ClimaComms
@@ -21,7 +22,7 @@ using ClimaLand.Soil
 import ClimaLand
 import ClimaLand.Parameters as LP
 
-regridder_type = :InterpolationsRegridder
+regridder_type = :TempestRegridder
 context = ClimaComms.context()
 device_suffix =
     typeof(ClimaComms.context().device) <: ClimaComms.CPUSingleThreaded ?
@@ -88,7 +89,7 @@ vg_α = SpaceVaryingInput(
     "α",
     subsurface_space;
     regridder_type,
-    regridder_kwargs = (; extrapolation_bc,),
+    # regridder_kwargs = (; extrapolation_bc,),
 )
 vg_α .= mask_vg.(vg_α, 1e-3)
 # We use this mask to set values of this parameter over the ocean, in order
