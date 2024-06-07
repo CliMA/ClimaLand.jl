@@ -35,3 +35,13 @@ steps:
         agents:
           slurm_mem: 8GB
           slurm_gpus: 1
+
+      - label: ":droplet: RichardsModel"
+        command: "julia --color=yes --project=.buildkite experiments/benchmarks/richards.jl"
+        artifact_paths:
+          - "richards_benchmark_gpu/*html"
+        env:
+          CLIMACOMMS_DEVICE: CUDA
+        agents:
+          slurm_mem: 8GB
+          slurm_gpus: 1
