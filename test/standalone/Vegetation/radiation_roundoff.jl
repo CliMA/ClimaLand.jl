@@ -25,6 +25,7 @@ for FT in (Float32, Float64)
             λ_γ_NIR,
             UInt64(20),
             G_Function,
+            FT(0.05),
         )
 
         BL_params = ClimaLand.Canopy.BeerLambertParameters(
@@ -35,6 +36,7 @@ for FT in (Float32, Float64)
             λ_γ_PAR,
             λ_γ_NIR,
             G_Function,
+            FT(0.05),
         )
 
         RTmodels = [
@@ -64,7 +66,7 @@ for FT in (Float32, Float64)
         )[1]
         # INC - OUT = CANOPY_ABS + (1-α_soil)*CANOPY_TRANS
         # OUT = REFL
-        @test canopy_par_ts.abs ≈ FT(0)
+        @test canopy_par_ts.abs < eps(FT)
         @test canopy_par_ts.refl ≈ FT(α_soil_PAR)
         @test canopy_par_ts.trans ≈ FT(1)
 
@@ -79,7 +81,7 @@ for FT in (Float32, Float64)
         )[1]
         # INC - OUT = CANOPY_ABS + (1-α_soil)*CANOPY_TRANS
         # OUT = REFL
-        @test canopy_par_bl.abs ≈ FT(0)
+        @test canopy_par_bl.abs < eps(FT)
         @test canopy_par_bl.refl ≈ FT(α_soil_PAR)
         @test canopy_par_bl.trans ≈ FT(1)
 

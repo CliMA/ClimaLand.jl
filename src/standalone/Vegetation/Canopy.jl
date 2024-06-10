@@ -435,7 +435,7 @@ function ClimaLand.make_update_aux(
         ρ_l = FT(LP.ρ_cloud_liq(earth_param_set))
         R = FT(LP.gas_constant(earth_param_set))
         thermo_params = earth_param_set.thermo_params
-        (; G_Function, Ω, λ_γ_PAR, λ_γ_NIR) =
+        (; G_Function, Ω, λ_γ_PAR, λ_γ_NIR, LS_c) =
             canopy.radiative_transfer.parameters
         energy_per_photon_PAR = planck_h * c / λ_γ_PAR
         energy_per_photon_NIR = planck_h * c / λ_γ_NIR
@@ -563,7 +563,7 @@ function ClimaLand.make_update_aux(
             c_co2_air,
             R,
         )
-        @. GPP = compute_GPP(An, K, LAI, Ω)
+        @. GPP = compute_GPP(An, K, LAI, Ω, LS_c)
         @. gs = medlyn_conductance(g0, Drel, medlyn_factor, An, c_co2_air)
         # update autotrophic respiration
         h_canopy = hydraulics.compartment_surfaces[end]
