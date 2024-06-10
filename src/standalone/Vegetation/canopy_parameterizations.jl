@@ -188,8 +188,15 @@ function plant_absorbed_pfd(
     α_soil::FT,
 ) where {FT}
     RTP = RT.parameters
-    AR = SW_IN * (1 - α_leaf) * (1 - exp(-K * LAI * RTP.Ω)) * (1 - α_soil)
-    TR = SW_IN * exp(-K * LAI * RTP.Ω)
+
+    if LAI < FT(0.05)
+        exp_factor = FT(1)
+    else
+        exp_factor = exp(-K * LAI * RTP.Ω)
+    end
+
+    AR = SW_IN * (1 - α_leaf) * (1 - exp_factor) * (1 - α_soil)
+    TR = SW_IN * exp_factor
     RR = SW_IN - AR - TR * (1 - α_soil)
     return (; abs = AR, refl = RR, trans = TR)
 end
@@ -229,156 +236,164 @@ function plant_absorbed_pfd(
     α_soil::FT,
     frac_diff::FT,
 ) where {FT}
-
-    (; G_Function, Ω, n_layers) = RT.parameters
-
-    # Get the current leaf angular distribution value based on the solar zenith angle
-    G = compute_G(G_Function, θs)
-
-    # Compute μ̄, the average inverse diffuse optical length per LAI
-    μ̄ = 1 / (2G)
-
-    ω = α_leaf + τ_leaf
-
-    # Compute aₛ, the single scattering albedo
-    aₛ = 0.5 * ω * (1 - cos(θs) * log((abs(cos(θs)) + 1) / abs(cos(θs))))
-
-    # Compute β₀, the direct upscattering parameter
-    β₀ = (1 / ω) * aₛ * (1 + μ̄ * K) / (μ̄ * K)
-
-    # Compute β, the diffuse upscattering parameter
-    diff = α_leaf - τ_leaf
-    # With uniform distribution, Dickinson integral becomes following:
-    c²θ̄ = pi * G / 4
-    β = 0.5 * (ω + diff * c²θ̄) / ω
-
-    # Compute coefficients for two-stream solution 
-    b = 1 - ω + ω * β
-    c = ω * β
-    d = ω * β₀ * μ̄ * K
-    f = ω * μ̄ * K * (1 - β₀)
-    h = √(b^2 - c^2) / μ̄
-    σ = (μ̄ * K)^2 + c^2 - b^2
-
-    u₁ = b - c / α_soil
-    u₂ = b - c * α_soil
-    u₃ = f + c * α_soil
-
-    s₁ = exp(-h * LAI * Ω)
-    s₂ = exp(-K * LAI * Ω)
-
-    p₁ = b + μ̄ * h
-    p₂ = b - μ̄ * h
-    p₃ = b + μ̄ * K
-    p₄ = b - μ̄ * K
-
-    d₁ = p₁ * (u₁ - μ̄ * h) / s₁ - p₂ * (u₁ + μ̄ * h) * s₁
-    d₂ = (u₂ + μ̄ * h) / s₁ - (u₂ - μ̄ * h) * s₁
-
-    # h coefficients for direct upward flux
-    h₁ = -d * p₄ - c * f
-    h₂ =
-        1 / d₁ * (
-            (d - h₁ / σ * p₃) * (u₁ - μ̄ * h) / s₁ -
-            p₂ * s₂ * (d - c - h₁ / σ * (u₁ + μ̄ * K))
+    if LAI < 0.05
+        F_abs = FT(0)
+        F_refl = α_soil
+        F_trans = (1 - F_abs - F_refl) / (1 - α_soil)
+        return (;
+            abs = FT(SW_IN * F_abs),
+            refl = FT(SW_IN * F_refl),
+            trans = FT(SW_IN * F_trans),
         )
-    h₃ =
-        -1 / d₁ * (
-            (d - h₁ / σ * p₃) * (u₁ + μ̄ * h) * s₁ -
-            p₁ * s₂ * (d - c - h₁ / σ * (u₁ + μ̄ * K))
+    else
+
+        (; G_Function, Ω, n_layers) = RT.parameters
+
+        # Get the current leaf angular distribution value based on the solar zenith angle
+        G = compute_G(G_Function, θs)
+
+        # Compute μ̄, the average inverse diffuse optical length per LAI
+        μ̄ = 1 / (2G)
+
+        ω = α_leaf + τ_leaf
+
+        # Compute aₛ, the single scattering albedo
+        # if θs = π/2 this seems OK
+        aₛ = 0.5 * ω * (1 - cos(θs) * log((abs(cos(θs)) + 1) / abs(cos(θs))))
+
+        # Compute β₀, the direct upscattering parameter
+        β₀ = (1 / ω) * aₛ * (1 + μ̄ * K) / (μ̄ * K)
+
+        # Compute β, the diffuse upscattering parameter
+        diff = α_leaf - τ_leaf
+        # With uniform distribution, Dickinson integral becomes following:
+        c²θ̄ = pi * G / 4
+        β = 0.5 * (ω + diff * c²θ̄) / ω
+
+        # Compute coefficients for two-stream solution 
+        b = 1 - ω + ω * β
+        c = ω * β
+        d = ω * β₀ * μ̄ * K
+        f = ω * μ̄ * K * (1 - β₀)
+        h = √(b^2 - c^2) / μ̄
+        σ = (μ̄ * K)^2 + c^2 - b^2
+
+        u₁ = b - c / α_soil
+        u₂ = b - c * α_soil
+        u₃ = f + c * α_soil
+
+        s₁ = exp(-h * LAI * Ω)
+        s₂ = LAI > 0.05 ? exp(-K * LAI * Ω) : FT(1)
+
+        p₁ = b + μ̄ * h
+        p₂ = b - μ̄ * h
+        p₃ = b + μ̄ * K
+        p₄ = b - μ̄ * K
+
+        d₁ = p₁ * (u₁ - μ̄ * h) / s₁ - p₂ * (u₁ + μ̄ * h) * s₁
+        d₂ = (u₂ + μ̄ * h) / s₁ - (u₂ - μ̄ * h) * s₁
+
+        # h coefficients for direct upward flux
+        h₁ = -d * p₄ - c * f
+        h₂ =
+            1 / d₁ * (
+                (d - h₁ / σ * p₃) * (u₁ - μ̄ * h) / s₁ -
+                p₂ * s₂ * (d - c - h₁ / σ * (u₁ + μ̄ * K))
+            )
+        h₃ =
+            -1 / d₁ * (
+                (d - h₁ / σ * p₃) * (u₁ + μ̄ * h) * s₁ -
+                p₁ * s₂ * (d - c - h₁ / σ * (u₁ + μ̄ * K))
+            )
+
+        # h coefficients for direct downward flux 
+        h₄ = -f * p₃ - c * d
+        h₅ =
+            -1 / d₂ *
+            (h₄ * (u₂ + μ̄ * h) / (σ * s₁) + (u₃ - h₄ / σ * (u₂ - μ̄ * K)) * s₂)
+        h₆ =
+            1 / d₂ *
+            (h₄ / σ * (u₂ - μ̄ * h) * s₁ + (u₃ - h₄ / σ * (u₂ - μ̄ * K)) * s₂)
+
+        # h coefficients for diffuse upward flux
+        h₇ = c * (u₁ - μ̄ * h) / (d₁ * s₁)
+        h₈ = -c * s₁ * (u₁ + μ̄ * h) / d₁
+
+        # h coefficients for diffuse downward flux
+        h₉ = (u₂ + μ̄ * h) / (d₂ * s₁)
+        h₁₀ = -s₁ * (u₂ - μ̄ * h) / d₂
+
+        # Compute the LAI per layer for this canopy
+        Lₗ = LAI / n_layers
+
+        # Initialize the fraction absorbed value and layer counter
+        F_abs = 0
+        i = 0
+
+        # Total light reflected form top of canopy
+        F_refl = 0
+
+        # Intialize vars to save computed fluxes from each layer for the next layer
+        I_dir_up_prev = 0
+        I_dir_dn_prev = 0
+        I_dif_up_prev = 0
+        I_dif_dn_prev = 0
+
+
+        # Compute F_abs in each canopy layer
+        while i <= n_layers
+
+            # Compute cumulative LAI at this layer
+            L = i * Lₗ
+            exp_factor = LAI > 0.05 ? exp(-K * L * Ω) : FT(1)
+            # Compute the direct fluxes into/out of the layer 
+            I_dir_up =
+                h₁ * exp_factor / σ + h₂ * exp(-h * L * Ω) + h₃ * exp(h * L * Ω)
+            I_dir_dn =
+                h₄ * exp_factor / σ + h₅ * exp(-h * L * Ω) + h₆ * exp(h * L * Ω)
+
+            # Add collimated radiation to downard flux
+            I_dir_dn += exp_factor
+
+            # Compute the diffuse fluxes into/out of the layer
+            I_dif_up = h₇ * exp(-h * L * Ω) + h₈ * exp(h * L * Ω)
+            I_dif_dn = h₉ * exp(-h * L * Ω) + h₁₀ * exp(h * L * Ω)
+
+            # Energy balance giving radiation absorbed in the layer 
+            if i == 0
+                I_dir_abs = 0
+                I_dif_abs = 0
+            else
+                I_dir_abs = I_dir_up - I_dir_up_prev - I_dir_dn + I_dir_dn_prev
+                I_dif_abs = I_dif_up - I_dif_up_prev - I_dif_dn + I_dif_dn_prev
+            end
+
+            if i == 1
+                F_refl = (1 - frac_diff) * I_dir_up + (frac_diff) * I_dif_up
+            end
+
+
+            # Add radiation absorbed in the layer to total absorbed radiation
+            F_abs += (1 - frac_diff) * I_dir_abs + (frac_diff) * I_dif_abs
+
+            # Save input/output values to compute energy balance of next layer 
+            I_dir_up_prev = I_dir_up
+            I_dir_dn_prev = I_dir_dn
+            I_dif_up_prev = I_dif_up
+            I_dif_dn_prev = I_dif_dn
+
+            # Move on to the next layer
+            i += 1
+        end
+        # Convert fractional absorption into absorption and return
+        # Ensure floating point precision is correct (it may be different for PAR)
+        F_trans = (1 - F_abs - F_refl) / (1 - α_soil)
+        return (;
+            abs = FT(SW_IN * F_abs),
+            refl = FT(SW_IN * F_refl),
+            trans = FT(SW_IN * F_trans),
         )
-
-    # h coefficients for direct downward flux 
-    h₄ = -f * p₃ - c * d
-    h₅ =
-        -1 / d₂ *
-        (h₄ * (u₂ + μ̄ * h) / (σ * s₁) + (u₃ - h₄ / σ * (u₂ - μ̄ * K)) * s₂)
-    h₆ =
-        1 / d₂ *
-        (h₄ / σ * (u₂ - μ̄ * h) * s₁ + (u₃ - h₄ / σ * (u₂ - μ̄ * K)) * s₂)
-
-    # h coefficients for diffuse upward flux
-    h₇ = c * (u₁ - μ̄ * h) / (d₁ * s₁)
-    h₈ = -c * s₁ * (u₁ + μ̄ * h) / d₁
-
-    # h coefficients for diffuse downward flux
-    h₉ = (u₂ + μ̄ * h) / (d₂ * s₁)
-    h₁₀ = -s₁ * (u₂ - μ̄ * h) / d₂
-
-    # Compute the LAI per layer for this canopy
-    Lₗ = LAI / n_layers
-
-    # Initialize the fraction absorbed value and layer counter
-    F_abs = 0
-    i = 0
-
-    # Total light reflected form top of canopy
-    F_refl = 0
-
-    # Intialize vars to save computed fluxes from each layer for the next layer
-    I_dir_up_prev = 0
-    I_dir_dn_prev = 0
-    I_dif_up_prev = 0
-    I_dif_dn_prev = 0
-
-    # Compute F_abs in each canopy layer
-    while i <= n_layers
-
-        # Compute cumulative LAI at this layer
-        L = i * Lₗ
-
-        # Compute the direct fluxes into/out of the layer 
-        I_dir_up =
-            h₁ * exp(-K * L * Ω) / σ +
-            h₂ * exp(-h * L * Ω) +
-            h₃ * exp(h * L * Ω)
-        I_dir_dn =
-            h₄ * exp(-K * L * Ω) / σ +
-            h₅ * exp(-h * L * Ω) +
-            h₆ * exp(h * L * Ω)
-
-        # Add collimated radiation to downard flux
-        I_dir_dn += exp(-K * L * Ω)
-
-        # Compute the diffuse fluxes into/out of the layer
-        I_dif_up = h₇ * exp(-h * L * Ω) + h₈ * exp(h * L * Ω)
-        I_dif_dn = h₉ * exp(-h * L * Ω) + h₁₀ * exp(h * L * Ω)
-
-        # Energy balance giving radiation absorbed in the layer 
-        if i == 0
-            I_dir_abs = 0
-            I_dif_abs = 0
-        else
-            I_dir_abs = I_dir_up - I_dir_up_prev - I_dir_dn + I_dir_dn_prev
-            I_dif_abs = I_dif_up - I_dif_up_prev - I_dif_dn + I_dif_dn_prev
-        end
-
-        if i == 1
-            F_refl = (1 - frac_diff) * I_dir_up + (frac_diff) * I_dif_up
-        end
-
-
-        # Add radiation absorbed in the layer to total absorbed radiation
-        F_abs += (1 - frac_diff) * I_dir_abs + (frac_diff) * I_dif_abs
-
-        # Save input/output values to compute energy balance of next layer 
-        I_dir_up_prev = I_dir_up
-        I_dir_dn_prev = I_dir_dn
-        I_dif_up_prev = I_dif_up
-        I_dif_dn_prev = I_dif_dn
-
-        # Move on to the next layer
-        i += 1
     end
-
-    # Convert fractional absorption into absorption and return
-    # Ensure floating point precision is correct (it may be different for PAR)
-    F_trans = (1 - F_abs - F_refl) / (1 - α_soil)
-    return (;
-        abs = FT(SW_IN * F_abs),
-        refl = FT(SW_IN * F_refl),
-        trans = FT(SW_IN * F_trans),
-    )
 end
 
 """
