@@ -180,7 +180,13 @@ soil = Soil.EnergyHydrology{FT}(;
     sources = sources,
 );
 
+# Here we create the explicit and implicit tendencies, which update prognostic
+# variable components that are stepped explicitly and implicitly, respectively.
+# We also create the function which is used to update our Jacobian.
 exp_tendency! = make_exp_tendency(soil);
+imp_tendency! = make_imp_tendency(soil);
+tendency_jacobian! = ClimaLand.make_tendency_jacobian(soil);
+
 # # Set up the simulation
 # We can now initialize the prognostic and auxiliary variable vectors, and take
 # a peek at what those variables are:
@@ -234,21 +240,35 @@ set_initial_cache!(p, Y, t0);
 # We use [ClimaTimesteppers.jl](https://github.com/CliMA/ClimaTimesteppers.jl) for carrying out the time integration.
 
 # Choose a timestepper and set up the ODE problem:
-dt = Float64(30.0);
-timestepper = CTS.RK4();
-ode_algo = CTS.ExplicitAlgorithm(timestepper)
+dt = Float64(60.0);
+timestepper = CTS.ARS111();
+ode_algo = CTS.IMEXAlgorithm(
+    timestepper,
+    CTS.NewtonsMethod(
+        max_iters = 1,
+        update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
+    ),
+);
+
+jac_kwargs =
+    (; jac_prototype = ImplicitEquationJacobian(Y), Wfact = tendency_jacobian!);
+
 prob = SciMLBase.ODEProblem(
-    CTS.ClimaODEFunction(T_exp! = exp_tendency!, dss! = ClimaLand.dss!),
+    CTS.ClimaODEFunction(
+        T_exp! = exp_tendency!,
+        T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
+        dss! = ClimaLand.dss!,
+    ),
     Y,
     (t0, tf),
     p,
 );
 
 
-#By default, it
+# By default, it
 # only returns Y and t at each time we request output (`saveat`, below). We use
 # a callback in order to also get the auxiliary vector `p` back:
-saveat = collect(t0:FT(1000 * dt):tf)
+saveat = collect(t0:FT(30000):tf)
 saved_values = (;
     t = Array{Float64}(undef, length(saveat)),
     saveval = Array{NamedTuple}(undef, length(saveat)),

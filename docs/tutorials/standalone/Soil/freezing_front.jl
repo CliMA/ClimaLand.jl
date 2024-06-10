@@ -201,11 +201,29 @@ set_initial_cache! = make_set_initial_cache(soil);
 set_initial_cache!(p, Y, t0);
 # Create the tendency function, and choose a timestep, and timestepper:
 exp_tendency! = make_exp_tendency(soil)
-dt = Float64(60)
-timestepper = CTS.RK4()
-ode_algo = CTS.ExplicitAlgorithm(timestepper)
+imp_tendency! = make_imp_tendency(soil);
+tendency_jacobian! = ClimaLand.make_tendency_jacobian(soil);
+jac_kwargs =
+    (; jac_prototype = ImplicitEquationJacobian(Y), Wfact = tendency_jacobian!);
+
+dt = Float64(10)
+
+timestepper = CTS.ARS111();
+ode_algo = CTS.IMEXAlgorithm(
+    timestepper,
+    CTS.NewtonsMethod(
+        max_iters = 3,
+        update_j = CTS.UpdateEvery(CTS.NewTimeStep),
+    ),
+);
+
+# Problem definition and callbacks
 prob = SciMLBase.ODEProblem(
-    CTS.ClimaODEFunction(T_exp! = exp_tendency!, dss! = ClimaLand.dss!),
+    CTS.ClimaODEFunction(
+        T_exp! = exp_tendency!,
+        T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
+        dss! = ClimaLand.dss!,
+    ),
     Y,
     (t0, tf),
     p,

@@ -59,6 +59,9 @@ using ClimaLand
 using DocStringExtensions
 using LinearAlgebra
 using ClimaCore
+using ClimaCore.MatrixFields
+import ClimaCore.MatrixFields: @name, ⋅
+import UnrolledUtilities
 import ..Parameters as LP
 import ClimaCore: Fields, Operators, Geometry, Spaces
 using Thermodynamics
@@ -167,6 +170,78 @@ append_source(src::AbstractSoilSource, srcs::Tuple)::Tuple = (srcs..., src)
 Appends `src` to the tuple of sources `srcs` if `src` is of type `AbstractSoilSource`.
 """
 append_source(src::Nothing, srcs::Tuple)::Tuple = srcs
+
+"""
+    ImplicitEquationJacobian{M, S}
+
+A struct containing the necessary information for constructing a tridiagonal
+Jacobian matrix (`W`) for solving Richards equation, treating only the vertical
+diffusion term implicitly.
+
+`matrix` is a block matrix containing the tri-diagonal matrix `∂ϑres∂ϑ`
+in the RichardsModel case.
+`solver` is a diagonal solver for the RichardsModel case because our matrix is
+block diagonal.
+
+Note that the diagonal, upper diagonal, and lower diagonal entry values
+are stored in this struct and updated in place.
+"""
+struct ImplicitEquationJacobian{M, S}
+    "Jacobian matrix stored as a MatrixFields.FieldMatrix"
+    matrix::M
+    "Solver to use for solving the tridiagonal system"
+    solver::S
+end
+
+"""
+    ImplicitEquationJacobian(
+        Y::ClimaCore.Fields.FieldVector;
+)
+
+Outer constructor for the ImplicitEquationJacobian Jacobian
+matrix struct.
+
+Initializes all variables to zeros.
+"""
+function ImplicitEquationJacobian(Y::ClimaCore.Fields.FieldVector)
+    FT = eltype(Y)
+    center_space = axes(Y.soil.ϑ_l)
+
+    # Cosntruct a tridiagonal matrix that will be used as the Jacobian
+    tridiag_type = MatrixFields.TridiagonalMatrixRow{FT}
+    # Create a field containing a `TridiagonalMatrixRow` at each point
+    tridiag_field = Fields.Field(tridiag_type, center_space)
+    fill!(parent(tridiag_field), NaN)
+
+    # Get all prognostic vars in soil, and create a tridiagonal matrix for each
+    soil_varnames = MatrixFields.top_level_names(Y.soil)
+    varnames = map(
+        name -> MatrixFields.append_internal_name(@name(soil), name),
+        soil_varnames,
+    )
+    matrix = MatrixFields.FieldMatrix(
+        UnrolledUtilities.unrolled_map(
+            x -> (x, x) => copy(tridiag_field),
+            varnames,
+        )...,
+    )
+
+    # Set up block diagonal solver for block Jacobian
+    alg = MatrixFields.BlockDiagonalSolve()
+    solver = MatrixFields.FieldMatrixSolver(alg, matrix, Y)
+
+    return ImplicitEquationJacobian(matrix, solver)
+end
+
+Base.similar(w::ImplicitEquationJacobian) = w
+
+function LinearAlgebra.ldiv!(
+    x::Fields.FieldVector,
+    A::ImplicitEquationJacobian,
+    b::Fields.FieldVector,
+)
+    MatrixFields.field_matrix_solve!(A.solver, x, A.matrix, b)
+end
 
 include("./retention_models.jl")
 include("./rre.jl")

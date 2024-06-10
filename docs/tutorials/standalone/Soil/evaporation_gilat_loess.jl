@@ -156,17 +156,32 @@ set_initial_cache! = make_set_initial_cache(soil)
 set_initial_cache!(p, Y, t0);
 
 # Timestepping:
-soil_exp_tendency! = make_exp_tendency(soil)
-timestepper = CTS.RK4()
-ode_algo = CTS.ExplicitAlgorithm(timestepper);
+exp_tendency! = make_exp_tendency(soil)
+imp_tendency! = make_imp_tendency(soil);
+tendency_jacobian! = ClimaLand.make_tendency_jacobian(soil);
+jac_kwargs =
+    (; jac_prototype = ImplicitEquationJacobian(Y), Wfact = tendency_jacobian!);
+
+timestepper = CTS.ARS111();
+ode_algo = CTS.IMEXAlgorithm(
+    timestepper,
+    CTS.NewtonsMethod(
+        max_iters = 1,
+        update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
+    ),
+);
 
 # Problem definition and callbacks
 prob = SciMLBase.ODEProblem(
-    CTS.ClimaODEFunction(T_exp! = soil_exp_tendency!, dss! = ClimaLand.dss!),
+    CTS.ClimaODEFunction(
+        T_exp! = exp_tendency!,
+        T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
+        dss! = ClimaLand.dss!,
+    ),
     Y,
     (t0, tf),
     p,
-)
+);
 saveat = Array(t0:3600.0:tf)
 sv = (;
     t = Array{Float64}(undef, length(saveat)),
@@ -197,12 +212,29 @@ init_soil!(Y, z, soil.parameters)
 set_initial_cache! = make_set_initial_cache(soil)
 set_initial_cache!(p, Y, t0)
 soil_exp_tendency! = make_exp_tendency(soil)
+exp_tendency! = make_exp_tendency(soil)
+imp_tendency! = make_imp_tendency(soil);
+tendency_jacobian! = ClimaLand.make_tendency_jacobian(soil);
+timestepper = CTS.ARS111();
+ode_algo = CTS.IMEXAlgorithm(
+    timestepper,
+    CTS.NewtonsMethod(
+        max_iters = 1,
+        update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
+    ),
+);
+jac_kwargs =
+    (; jac_prototype = ImplicitEquationJacobian(Y), Wfact = tendency_jacobian!);
 prob = SciMLBase.ODEProblem(
-    CTS.ClimaODEFunction(T_exp! = soil_exp_tendency!, dss! = ClimaLand.dss!),
+    CTS.ClimaODEFunction(
+        T_exp! = exp_tendency!,
+        T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
+        dss! = ClimaLand.dss!,
+    ),
     Y,
     (t0, tf),
     p,
-)
+);
 saveat = Array(t0:3600.0:tf)
 sv = (;
     t = Array{Float64}(undef, length(saveat)),
@@ -246,13 +278,29 @@ Y, p, cds = initialize(soil)
 init_soil!(Y, z_no_evap, soil.parameters)
 set_initial_cache! = make_set_initial_cache(soil)
 set_initial_cache!(p, Y, t0)
-soil_exp_tendency! = make_exp_tendency(soil)
+exp_tendency! = make_exp_tendency(soil)
+imp_tendency! = make_imp_tendency(soil);
+tendency_jacobian! = ClimaLand.make_tendency_jacobian(soil);
+timestepper = CTS.ARS111();
+ode_algo = CTS.IMEXAlgorithm(
+    timestepper,
+    CTS.NewtonsMethod(
+        max_iters = 1,
+        update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
+    ),
+);
+jac_kwargs =
+    (; jac_prototype = ImplicitEquationJacobian(Y), Wfact = tendency_jacobian!);
 prob = SciMLBase.ODEProblem(
-    CTS.ClimaODEFunction(T_exp! = soil_exp_tendency!, dss! = ClimaLand.dss!),
+    CTS.ClimaODEFunction(
+        T_exp! = exp_tendency!,
+        T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
+        dss! = ClimaLand.dss!,
+    ),
     Y,
     (t0, tf),
     p,
-)
+);
 saveat = Array(t0:3600.0:tf)
 sv = (;
     t = Array{Float64}(undef, length(saveat)),
