@@ -192,8 +192,13 @@ prob, cb, saveat, saved_values = setup_prob(t0, tf, Δt);
 timestepper = CTS.RK4()
 ode_algo = CTS.ExplicitAlgorithm(timestepper)
 
-ClimaComms.@time ClimaComms.device() sol =
-    SciMLBase.solve(prob, ode_algo; dt = Δt, saveat = saveat, callback = cb)
+sol = ClimaComms.@time ClimaComms.device() SciMLBase.solve(
+    prob,
+    ode_algo;
+    dt = Δt,
+    saveat = saveat,
+    callback = cb,
+)
 if PROFILING
     # Now that we compiled, solve again but collect profiling information
 

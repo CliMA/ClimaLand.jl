@@ -256,7 +256,7 @@ updateat = Array(t0:dt:tf)
 updatefunc = ClimaLand.make_update_drivers(atmos, nothing)
 driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
 cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
-@time sol = SciMLBase.solve(prob, ode_algo; dt = dt, saveat = dt, callback = cb)
+sol = @time SciMLBase.solve(prob, ode_algo; dt = dt, saveat = dt, callback = cb)
 
 # Make plots on CPU
 if context.device isa ClimaComms.CPUSingleThreaded
