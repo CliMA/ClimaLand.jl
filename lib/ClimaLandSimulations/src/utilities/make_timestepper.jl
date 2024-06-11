@@ -4,20 +4,33 @@ export make_timestepper
     make_timestepper(site_setup_out;
         N_spinup_days = 30,
         N_days_sim = 30,
-        timestepper = CTS.RK4(),
-        ode_algo = CTS.ExplicitAlgorith(timestepper)
-        )
+        timestepper = CTS.ARS343(),
+        ode_algo = CTS.IMEXAlgorithm(
+            timestepper,
+            CTS.NewtonsMethod(
+                max_iters = 1,
+                update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
+            ),
+        ),
+    )
 
-Define the setup for the simulation timestepper. 
-the default timestepper is 4th order Runge Kutta method,
- other timesteppers from ClimaTimeSteppers.jl can be used. 
+Define the setup for the simulation timestepper.
+The default timestepper (ARS343) is an IMEX ARK algorithm with
+3 implicit stages, 4 implicit stages, and 3rd order accuracy.
+Other IMEX timesteppers from ClimaTimeSteppers.jl can be used.
 """
 function make_timestepper(
     site_setup_out;
     N_spinup_days = 30,
     N_days_sim = 30,
-    timestepper = CTS.RK4(),
-    ode_algo = CTS.ExplicitAlgorithm(timestepper),
+    timestepper = CTS.ARS343(),
+    ode_algo = CTS.IMEXAlgorithm(
+        timestepper,
+        CTS.NewtonsMethod(
+            max_iters = 1,
+            update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
+        ),
+    ),
 )
     N_days = N_spinup_days + N_days_sim
     tf = Float64(site_setup_out.t0 + 3600 * 24 * N_days)

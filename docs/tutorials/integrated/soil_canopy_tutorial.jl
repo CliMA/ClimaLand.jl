@@ -82,7 +82,7 @@ land_domain = Column(; zlim = (zmin, zmax), nelements = nelements);
 #   the simulation with atmospheric and radiative flux models. We also
 # read in the observed LAI and let that vary in time in a prescribed manner.
 
-# Use the data tools for reading FLUXNET data sets 
+# Use the data tools for reading FLUXNET data sets
 include(
     joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/data_tools.jl"),
 );
@@ -326,6 +326,12 @@ land = SoilCanopyModel{FT}(;
 
 Y, p, coords = initialize(land);
 exp_tendency! = make_exp_tendency(land);
+imp_tendency! = make_imp_tendency(land);
+tendency_jacobian! = make_tendency_jacobian(land);
+jac_kwargs = (;
+    jac_prototype = ClimaLand.ImplicitEquationJacobian(Y),
+    Wfact = tendency_jacobian!,
+);
 
 # We need to provide initial conditions for the soil and canopy hydraulics
 # models:
@@ -370,8 +376,14 @@ dt = Float64(30)
 n = 120
 saveat = Array(t0:(n * dt):tf)
 
-timestepper = CTS.RK4()
-ode_algo = CTS.ExplicitAlgorithm(timestepper);
+timestepper = CTS.ARS343()
+ode_algo = CTS.IMEXAlgorithm(
+    timestepper,
+    CTS.NewtonsMethod(
+        max_iters = 1,
+        update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
+    ),
+);
 
 # Now set the initial values for the cache variables for the combined soil and plant model.
 
@@ -394,7 +406,11 @@ cb = SciMLBase.CallbackSet(driver_cb, saving_cb);
 
 # Carry out the simulation
 prob = SciMLBase.ODEProblem(
-    CTS.ClimaODEFunction(T_exp! = exp_tendency!),
+    CTS.ClimaODEFunction(
+        T_exp! = exp_tendency!,
+        T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
+        dss! = ClimaLand.dss!,
+    ),
     Y,
     (t0, tf),
     p,

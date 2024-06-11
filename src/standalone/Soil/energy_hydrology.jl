@@ -347,26 +347,6 @@ function ClimaLand.make_update_jacobian(model::EnergyHydrology{FT}) where {FT}
                     )
                 ) - (I,)
         end
-
-        # Use the negative identity matrix for variables we step explicitly
-        ∂θ_ires∂θ_i = matrix[@name(soil.θ_i), @name(soil.θ_i)]
-        @. ∂θ_ires∂θ_i = -1 * (I,)
-        ∂ρeres∂ρe = matrix[@name(soil.ρe_int), @name(soil.ρe_int)]
-        @. ∂ρeres∂ρe = -1 * (I,)
-
-
-        # # Set the off-diagonal terms to zero
-        # ∂ρeres∂ρϑ_l = matrix[@name(soil.ρe_int), @name(soil.ϑ_l)]
-        # ∂ρeres∂ρθ_i = matrix[@name(soil.ρe_int), @name(soil.θ_i)]
-        # ∂θ_ires∂ϑ_l = matrix[@name(soil.θ_i), @name(soil.ϑ_l)]
-        # ∂θ_ires∂ρe = matrix[@name(soil.θ_i), @name(soil.ρe_int)]
-        # ∂ϑ_lres∂θ_i = matrix[@name(soil.ϑ_l), @name(soil.θ_i)]
-        # ∂ϑ_lres∂ρe = matrix[@name(soil.ϑ_l), @name(soil.ρe_int)]
-
-        # off_diagonals = [∂ρeres∂ρϑ_l, ∂ρeres∂ρθ_i, ∂θ_ires∂ϑ_l, ∂θ_ires∂ρe, ∂ϑ_lres∂θ_i, ∂ϑ_lres∂ρe]
-        # for mat in off_diagonals
-        #     mat .= 0
-        # end
     end
     return update_jacobian!
 end
