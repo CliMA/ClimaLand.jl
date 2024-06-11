@@ -4,6 +4,17 @@ ClimaLand.jl Release Notes
 main
 --------
 
+v0.12.3
+--------
+- Add benchmark pipeline 
+  PR [#592](https://github.com/CliMA/ClimaLand.jl/pull/592)
+  PR [#642](https://github.com/CliMA/ClimaLand.jl/pull/642)
+- Removed ArtifactWrappers
+  PR [#627](https://github.com/CliMA/ClimaLand.jl/pull/627)
+  PR [#540](https://github.com/CliMA/ClimaLand.jl/pull/640)
+- Run RichardsModel on GPU
+  PR [#638](https://github.com/CliMA/ClimaLand.jl/pull/638)
+
 v0.12.2
 --------
 - Update implicit solver interface 
