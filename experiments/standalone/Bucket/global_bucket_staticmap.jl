@@ -247,8 +247,13 @@ updatefunc = ClimaLand.make_update_drivers(bucket_atmos, bucket_rad)
 driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
 cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
 
-ClimaComms.@time ClimaComms.device() sol =
-    SciMLBase.solve(prob, ode_algo; dt = Δt, saveat = saveat, callback = cb);
+sol = ClimaComms.@time ClimaComms.device() SciMLBase.solve(
+    prob,
+    ode_algo;
+    dt = Δt,
+    saveat = saveat,
+    callback = cb,
+);
 
 # Interpolate to grid
 space = axes(coords.surface)
