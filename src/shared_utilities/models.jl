@@ -388,7 +388,7 @@ function add_drivers_to_cache(p::NamedTuple, model::AbstractModel, coords)
     (atmos, radiation) = get_drivers(model)
     if hasproperty(model, :parameters) &&
        hasproperty(model.parameters, :earth_param_set) &&
-       !isnothing(atmos)
+       atmos isa ClimaLand.PrescribedAtmosphere
         if LP.thermodynamic_parameters(model.parameters.earth_param_set) !=
            atmos.thermo_params
             error(
