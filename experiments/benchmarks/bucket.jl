@@ -206,11 +206,11 @@ ProfileCanvas.html_file(alloc_flame_file, profile)
 
 if ClimaComms.device() isa ClimaComms.CUDADevice
     import CUDA
-    CUDA.@profile external = true setup_and_solve_problem()
+    CUDA.@profile setup_and_solve_problem()
 end
 
 if get(ENV, "BUILDKITE_PIPELINE_SLUG", nothing) == "climaland-benchmark"
-    PREVIOUS_BEST_TIME = 5.4
+    PREVIOUS_BEST_TIME = 3.6
     if average_timing_s > 1.1PREVIOUS_BEST_TIME
         @info "Possible performance regression, previous average time was $(PREVIOUS_BEST_TIME)"
     elseif average_timing_s < 0.8PREVIOUS_BEST_TIME

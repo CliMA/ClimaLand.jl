@@ -27,10 +27,9 @@ steps:
   - group: "Target Benchmark"
     steps:
       - label: ":bucket: Bucket"
-        command: "nsys launch julia --color=yes --project=.buildkite experiments/benchmarks/bucket.jl"
+        command: "julia --color=yes --project=.buildkite experiments/benchmarks/bucket.jl"
         artifact_paths:
           - "bucket_benchmark_gpu/*html"
-          - "bucket_benchmark_gpu/*nsys*"
         env:
           CLIMACOMMS_DEVICE: CUDA
         agents:
