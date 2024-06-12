@@ -206,7 +206,7 @@ ProfileCanvas.html_file(alloc_flame_file, profile)
 
 if ClimaComms.device() isa ClimaComms.CUDADevice
     import CUDA
-    CUDA.@profile external = true setup_and_solve_problem()
+    CUDA.@profile setup_and_solve_problem()
 end
 
 if get(ENV, "BUILDKITE_PIPELINE_SLUG", nothing) == "climaland-benchmark"
