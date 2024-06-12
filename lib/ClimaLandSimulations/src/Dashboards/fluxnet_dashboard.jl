@@ -10,7 +10,7 @@ function fluxnet_dashboard(menu, menu2)
         @info value
         sv = run_fluxnet(value)[1]
         simulation_inputs = make_inputs_df(value)[1]
-        simulation_outputs = make_output_df(sv, simulation_inputs)
+        simulation_outputs = make_output_df(value, sv, simulation_inputs)
         figs = make_plots(
             simulation_inputs,
             simulation_outputs;
