@@ -1,3 +1,8 @@
+using SurfaceFluxes
+using Thermodynamics
+using StaticArrays
+import SurfaceFluxes.Parameters as SFP
+
 import ClimaLand:
     surface_temperature,
     surface_specific_humidity,
@@ -26,7 +31,7 @@ end
         p,
         t,
     ) where {FT}
-Returns the surface resistance field of the
+Returns the stomatal resistance field of the
 `CanopyModel` canopy.
 """
 function ClimaLand.surface_resistance(
@@ -49,6 +54,7 @@ function ClimaLand.surface_resistance(
             R,
             P_air,
         )
+
     return 1 ./ canopy_conductance # [s/m]
 end
 
@@ -153,6 +159,8 @@ function canopy_boundary_fluxes!(
     root_water_flux = p.canopy.hydraulics.fa_roots
     root_energy_flux = p.canopy.energy.fa_energy_roots
     fa = p.canopy.hydraulics.fa
+    LAI = p.canopy.hydraulics.area_index.leaf
+    SAI = p.canopy.hydraulics.area_index.stem
     transpiration = p.canopy.conductance.transpiration
     shf = p.canopy.energy.shf
     lhf = p.canopy.energy.lhf
@@ -160,11 +168,11 @@ function canopy_boundary_fluxes!(
     i_end = canopy.hydraulics.n_stem + canopy.hydraulics.n_leaf
 
     # Compute transpiration, SHF, LHF
-    canopy_turbulent_fluxes = turbulent_fluxes(atmos, canopy, Y, p, t)
-    transpiration .= canopy_turbulent_fluxes.vapor_flux
-    shf .= canopy_turbulent_fluxes.shf
-    lhf .= canopy_turbulent_fluxes.lhf
-    r_ae .= canopy_turbulent_fluxes.r_ae
+    canopy_tf = canopy_turbulent_fluxes(atmos, canopy, Y, p, t)
+    transpiration .= canopy_tf.vapor_flux
+    shf .= canopy_tf.shf
+    lhf .= canopy_tf.lhf
+    r_ae .= canopy_tf.r_ae
 
     # Transpiration is per unit ground area, not leaf area (mult by LAI)
     fa.:($i_end) .= PlantHydraulics.transpiration_per_ground_area(
@@ -202,4 +210,139 @@ function canopy_boundary_fluxes!(
         t,
     )
 
+end
+
+"""
+    function canopy_turbulent_fluxes(
+        atmos::PrescribedAtmosphere,
+        model::CanopyModel,
+        Y::ClimaCore.Fields.FieldVector,
+        p::NamedTuple,
+        t,
+    )
+
+A canopy specific function for compute turbulent fluxes with the atmosphere;
+returns the latent heat flux, sensible heat flux, vapor flux, and aerodynamic resistance.
+
+ We cannot use the default version in src/shared_utilities/drivers.jl
+because the canopy requires a different resistance for vapor and sensible heat
+fluxes, and the resistances depend on ustar, which we must compute using
+SurfaceFluxes before adjusting to account for these resistances.
+"""
+function canopy_turbulent_fluxes(
+    atmos::PrescribedAtmosphere,
+    model::CanopyModel,
+    Y::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
+    t,
+)
+    T_sfc = ClimaLand.surface_temperature(model, Y, p, t)
+    ρ_sfc = ClimaLand.surface_air_density(atmos, model, Y, p, t, T_sfc)
+    q_sfc = ClimaLand.surface_specific_humidity(model, Y, p, T_sfc, ρ_sfc)
+    h_sfc = ClimaLand.surface_height(model, Y, p)
+    leaf_r_stomata = ClimaLand.surface_resistance(model, Y, p, t)
+    d_sfc = ClimaLand.displacement_height(model, Y, p)
+    u_air = p.drivers.u
+    h_air = atmos.h
+    return canopy_turbulent_fluxes_at_a_point.(
+        T_sfc,
+        q_sfc,
+        ρ_sfc,
+        h_sfc,
+        leaf_r_stomata,
+        d_sfc,
+        p.drivers.thermal_state,
+        u_air,
+        h_air,
+        p.canopy.hydraulics.area_index.leaf,
+        p.canopy.hydraulics.area_index.stem,
+        atmos.gustiness,
+        model.parameters.z_0m,
+        model.parameters.z_0b,
+        Ref(model.parameters.earth_param_set),
+    )
+end
+
+"""
+    function canopy_turbulent_fluxes_at_a_point(
+        T_sfc::FT,
+        q_sfc::FT,
+        ρ_sfc::FT,
+        h_sfc::FT,
+        leaf_r_stomata::FT,
+        d_sfc::FT,
+        ts_in,
+        u::FT,
+        h::FT,
+        LAI::FT,
+        SAI::FT,
+        gustiness::FT,
+        z_0m::FT,
+        z_0b::FT,
+        earth_param_set::EP,
+    ) where {FT <: AbstractFloat, EP}
+
+Computes the turbulent surface fluxes for the canopy at a point
+and returns the fluxes in a named tuple.
+"""
+function canopy_turbulent_fluxes_at_a_point(
+    T_sfc::FT,
+    q_sfc::FT,
+    ρ_sfc::FT,
+    h_sfc::FT,
+    leaf_r_stomata::FT,
+    d_sfc::FT,
+    ts_in,
+    u::FT,
+    h::FT,
+    LAI::FT,
+    SAI::FT,
+    gustiness::FT,
+    z_0m::FT,
+    z_0b::FT,
+    earth_param_set::EP,
+) where {FT <: AbstractFloat, EP}
+    thermo_params = LP.thermodynamic_parameters(earth_param_set)
+    ts_sfc = Thermodynamics.PhaseEquil_ρTq(thermo_params, ρ_sfc, T_sfc, q_sfc)
+
+    state_sfc = SurfaceFluxes.StateValues(FT(0), SVector{2, FT}(0, 0), ts_sfc)
+    state_in = SurfaceFluxes.StateValues(
+        h - d_sfc - h_sfc,
+        SVector{2, FT}(u, 0),
+        ts_in,
+    )
+
+    # State containers
+    sc = SurfaceFluxes.ValuesOnly(
+        state_in,
+        state_sfc,
+        z_0m,
+        z_0b,
+        beta = FT(1),
+        gustiness = gustiness,
+    )
+    surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
+    conditions = SurfaceFluxes.surface_conditions(
+        surface_flux_params,
+        sc;
+        tol_neutral = SFP.cp_d(surface_flux_params) / 100000,
+    )
+    _LH_v0::FT = LP.LH_v0(earth_param_set)
+    _ρ_liq::FT = LP.ρ_cloud_liq(earth_param_set)
+
+    cp_m::FT = Thermodynamics.cp_m(thermo_params, ts_in)
+    T_in::FT = Thermodynamics.air_temperature(thermo_params, ts_in)
+    ΔT = T_in - T_sfc
+    r_ae::FT = 1 / (conditions.Ch * SurfaceFluxes.windspeed(sc))
+    ρ_air::FT = Thermodynamics.air_density(thermo_params, ts_in)
+    ustar::FT = conditions.ustar
+    r_b::FT = FT(1 / 0.01 * (ustar / 0.04)^(-1 / 2)) # CLM 5, tech note Equation 5.122
+    leaf_r_b = r_b / LAI
+    canopy_r_b = r_b / (LAI + SAI)
+    E0::FT = SurfaceFluxes.evaporation(surface_flux_params, sc, conditions.Ch)
+    E = E0 * r_ae / (leaf_r_b + leaf_r_stomata + r_ae) # CLM 5, tech note Equation 5.101, and fig 5.2b, assuming all sunlit, f_wet = 0
+    Ẽ = E / _ρ_liq
+    H = -ρ_air * cp_m * ΔT / (canopy_r_b + r_ae) # CLM 5, tech note Equation 5.88, setting H_v = H and solving to remove T_s
+    LH = _LH_v0 * E
+    return (lhf = LH, shf = H, vapor_flux = Ẽ, r_ae = r_ae)
 end

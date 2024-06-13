@@ -442,10 +442,14 @@ function ClimaLand.make_update_aux(
         (; g1, g0, Drel) = canopy.conductance.parameters
         area_index = p.canopy.hydraulics.area_index
         LAI = area_index.leaf
+        SAI = area_index.stem
         RAI = area_index.root
         (; sc, pc) = canopy.photosynthesis.parameters
 
         # update radiative transfer
+        @. p.canopy.radiative_transfer.ϵ =
+            canopy.radiative_transfer.parameters.ϵ_canopy *
+            (1 - exp(-(LAI + SAI))) #from CLM 5.0, Tech note 4.20
         RT = canopy.radiative_transfer
         K = extinction_coeff.(G_Function, θs)
         PAR .= compute_PAR(RT, canopy.radiation, p, t)
@@ -535,7 +539,7 @@ function ClimaLand.make_update_aux(
                         conductivity_model,
                         ψ.:($$ip1),
                     ),
-                ) * (areai + areaip1) / 2
+                ) * areaip1
         end
         # We update the fa[n_stem+n_leaf] element once we have computed transpiration, below
         # update photosynthesis and conductance terms
@@ -571,8 +575,11 @@ function ClimaLand.make_update_aux(
             canopy.autotrophic_respiration,
             Vcmax25,
             LAI,
+            SAI,
             RAI,
-            GPP,
+            K,
+            Ω,
+            An,
             Rd,
             β,
             h_canopy,
