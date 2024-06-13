@@ -9,7 +9,8 @@ export volumetric_liquid_fraction,
     dψdϑ,
     dry_soil_layer_thickness,
     soil_resistance,
-    soil_tortuosity
+    soil_tortuosity,
+    is_saturated
 """
     volumetric_liquid_fraction(ϑ_l::FT, ν_eff::FT, θ_r::FT) where {FT}
 
@@ -339,4 +340,15 @@ Swenson et al (2012)/Sakaguchi and Zeng (2009).
 """
 function dry_soil_layer_thickness(S_w::FT, S_c::FT, d_ds::FT)::FT where {FT}
     return S_w < S_c ? d_ds * (S_c - S_w) / S_c : FT(0)
+end
+
+"""
+    is_saturated(twc::FT, ν::FT) where {FT}
+
+A helper function which can be used to indicate whether a layer of soil is 
+saturated based on if the total volumetric water content, `twc` is greater
+than porosity `ν`.
+"""
+function is_saturated(twc::FT, ν::FT) where {FT}
+    return ClimaLand.heaviside(twc - ν)
 end

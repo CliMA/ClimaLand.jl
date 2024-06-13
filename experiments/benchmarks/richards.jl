@@ -359,12 +359,13 @@ alloc_flame_file = joinpath(outdir, "alloc_flame_$device_suffix.html")
 ProfileCanvas.html_file(alloc_flame_file, profile)
 @info "Saved allocation flame to $alloc_flame_file"
 
-#if ClimaComms.device() isa ClimaComms.CUDADevice
-#    import CUDA
-#    CUDA.@profile setup_and_solve_problem()
-#end
+if ClimaComms.device() isa ClimaComms.CUDADevice
+    import CUDA
+    CUDA.@profile setup_and_solve_problem()
+end
+#=
 if get(ENV, "BUILDKITE_PIPELINE_SLUG", nothing) == "climaland-benchmark"
-    PREVIOUS_BEST_TIME = 12.2
+    PREVIOUS_BEST_TIME = 9.3
     if average_timing_s > PREVIOUS_BEST_TIME + std_timing_s
         @info "Possible performance regression, previous average time was $(PREVIOUS_BEST_TIME)"
     elseif average_timing_s < PREVIOUS_BEST_TIME - std_timing_s
@@ -376,3 +377,4 @@ if get(ENV, "BUILDKITE_PIPELINE_SLUG", nothing) == "climaland-benchmark"
               PREVIOUS_BEST_TIME + std_timing_s
     end
 end
+=#

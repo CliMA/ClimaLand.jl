@@ -136,21 +136,26 @@ function update_runoff!(
     t,
     model::AbstractSoilModel,
 )
-    column_integral_definite!(p.soil.h∇, is_saturated(Y, model))
+
+    ϑ_l = Y.soil.ϑ_l
+    FT = eltype(ϑ_l)
+    θ_i = model_agnostic_volumetric_ice_content(Y, FT)
+    @. p.soil.is_saturated = is_saturated(ϑ_l + θ_i, model.parameters.ν)
+    column_integral_definite!(p.soil.h∇, p.soil.is_saturated)
     @. p.soil.R_ss = topmodel_ss_flux(
         runoff.subsurface_source.R_sb,
         runoff.f_over,
         model.domain.depth - p.soil.h∇,
     )
-    precip = p.drivers.P_liq
-    flux_ic = soil_infiltration_capacity_flux(model, Y, p) # allocates
+    ic = soil_infiltration_capacity(model, Y, p) # should be non-allocating
 
+    precip = p.drivers.P_liq
     @. p.soil.infiltration = topmodel_surface_infiltration(
         p.soil.h∇,
         runoff.f_max,
         runoff.f_over,
         model.domain.depth - p.soil.h∇,
-        flux_ic,
+        ic,
         precip,
     )
     @. p.soil.R_s = abs(precip - p.soil.infiltration)
@@ -158,34 +163,45 @@ function update_runoff!(
 end
 
 """
+    model_agnostic_volumetric_ice_content(Y, FT)
+
+Helper function which returns the volumetric ice content stored
+in Y.soil.θ_i, if present, as it is for EnergyHydrologyModels, or
+else returns a scalar zero of type FT if it is not present,
+as it is not for RichardsModel.
+"""
+model_agnostic_volumetric_ice_content(Y, FT) =
+    :θ_i ∈ propertynames(Y.soil) ? Y.soil.θ_i : zero(FT)
+
+"""
     ClimaLand.source!(
         dY::ClimaCore.Fields.FieldVector,
         src::TOPMODELSubsurfaceRunoff,
         Y::ClimaCore.Fields.FieldVector,
         p::NamedTuple,
-        model::AbstractSoilModel,
-    )
+        model::AbstractSoilModel{FT},
+    ) where {FT}
 
 Adjusts dY.soil.ϑ_l in place to account for the loss of
 water due to subsurface runoff.
 
-The sink term is given by - R_ss/h∇ H(ϑ_l+θ_i - ν),
+The sink term is given by - R_ss/h∇ H(twc - ν),
 where H is the Heaviside function, h∇ is the water table
-thickness (defined to be where ϑ_l+θ_i>ν), and R_ss is the runoff as a
+thickness (defined to be where twc>ν), where twc is the total water content,
+ and R_ss is the runoff as a
 flux(m/s).
-
-The θ_i contribution is not include for RichardsModel.
 """
 function ClimaLand.source!(
     dY::ClimaCore.Fields.FieldVector,
     src::TOPMODELSubsurfaceRunoff,
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
-    model::AbstractSoilModel,
-)
-    FT = eltype(Y.soil.ϑ_l)
+    model::AbstractSoilModel{FT},
+) where {FT}
+    ϑ_l = Y.soil.ϑ_l
     h∇ = p.soil.h∇
-    dY.soil.ϑ_l .-= @.(p.soil.R_ss / max(h∇, eps(FT))) .* is_saturated(Y, model) # apply only to saturated layers
+    ϵ = eps(FT)
+    @. dY.soil.ϑ_l -= (p.soil.R_ss / max(h∇, ϵ)) * p.soil.is_saturated  # apply only to saturated layers
 end
 
 """
@@ -206,38 +222,45 @@ function topmodel_surface_infiltration(h∇, f_max, f_over, z∇, f_ic, precip)
 end
 
 """
-    soil_infiltration_capacity_flux(model::RichardsModel, Y, p)
+    soil_infiltration_capacity(model::RichardsModel, Y, p)
 
-Computes the soil infiltration capacity as as flux for Richards model.
+Computes the soil infiltration capacity on the surface space
+ for Richards model.
 
 Currently approximates i_c = -K_sat at the surface.
 """
-function soil_infiltration_capacity_flux(model::RichardsModel, Y, p)
+function soil_infiltration_capacity(model::RichardsModel, Y, p)
+    surface_space = model.domain.space.surface
+    @. p.soil.subsfc_scratch = -1 * model.parameters.K_sat
     return ClimaLand.Soil.get_top_surface_field(
-        -1 .* model.parameters.K_sat,
-        model.domain.space.surface,
+        p.soil.subsfc_scratch,
+        surface_space,
     )
 end
 
 """
-    soil_infiltration_capacity_flux(model::EnergyHydrology, Y, p)
+    soil_infiltration_capacity(model::EnergyHydrology, Y, p)
 
-Computes the soil infiltration capacity as as flux for the full soil model.
+Computes the soil infiltration capacity on the surface space
+ for the full soil model.
 
 Currently approximates i_c = -K_sat*F(θ_i)*G(T) at the surface, where F and G
 are the functions which adjust the conductivity for the presence ice and taking into
 account the temperature dependence of the viscosity of water.
 """
-function soil_infiltration_capacity_flux(model::EnergyHydrology, Y, p)
-    (; Ksat, θ_r, Ω, γ, γT_ref) = model.parameters
-    K_eff = @. Ksat *
-       impedance_factor(Y.soil.θ_i / (p.soil.θ_l + Y.soil.θ_i - θ_r), Ω) *
-       viscosity_factor(p.soil.T, γ, γT_ref)
+function soil_infiltration_capacity(model::EnergyHydrology, Y, p)
+    (; K_sat, θ_r, Ω, γ, γT_ref) = model.parameters
+    surface_space = model.domain.space.surface
+    @. p.soil.subsfc_scratch =
+        -K_sat *
+        impedance_factor(Y.soil.θ_i / (p.soil.θ_l + Y.soil.θ_i - θ_r), Ω) *
+        viscosity_factor(p.soil.T, γ, γT_ref)
     return ClimaLand.Soil.get_top_surface_field(
-        -1 .* Keff,
-        model.domain.space.surface,
+        p.soil.subsfc_scratch,
+        surface_space,
     )
 end
+
 
 """
     topmodel_ss_flux(R_sb::FT, f_over::FT, z∇::FT) where {FT}

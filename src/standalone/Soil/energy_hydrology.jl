@@ -800,13 +800,3 @@ function ClimaLand.get_drivers(model::EnergyHydrology)
         return (nothing, nothing)
     end
 end
-
-"""
-    is_saturated(Y, model::EnergyHydrology)
-
-A helper function which can be used to indicate whether a layer of soil is
-saturated.
-"""
-function is_saturated(Y, model::EnergyHydrology)
-    return @. ClimaLand.heaviside(Y.soil.ϑ_l + Y.soil.θ_i - model.parameters.ν)
-end
