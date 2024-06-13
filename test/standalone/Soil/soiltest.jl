@@ -72,10 +72,10 @@ for FT in (Float32, Float64)
         set_initial_cache!(p, Y, t0)
         dY = similar(Y)
 
-        imp_tendency! = make_imp_tendency(soil)
         exp_tendency! = make_exp_tendency(soil)
-        imp_tendency!(dY, Y, p, t0)
+        imp_tendency! = make_imp_tendency(soil)
         exp_tendency!(dY, Y, p, t0)
+        imp_tendency!(dY, Y, p, t0)
         ClimaLand.dss!(dY, p, t0)
 
         @test mean(Array(parent(dY.soil.ϑ_l))) < eps(FT)
@@ -166,6 +166,8 @@ for FT in (Float32, Float64)
         init_soil_heat!(Y, coords.subsurface.z, soil_heat_on.parameters)
         set_initial_cache! = make_set_initial_cache(soil_heat_on)
         set_initial_cache!(p, Y, t0)
+
+        # Test explicit tendency - should update internal energy, set others to 0
         exp_tendency! = make_exp_tendency(soil_heat_on)
         dY = similar(Y)
         exp_tendency!(dY, Y, p, t0)
@@ -182,6 +184,13 @@ for FT in (Float32, Float64)
         expected[end] = dY_top
         @test mean(abs.(expected .- Array(parent(dY.soil.ρe_int)))) /
               median(parent(Y.soil.ρe_int)) < eps(FT)
+        @test maximum(abs.(Array(parent(dY.soil.ϑ_l)))) == FT(0)
+        @test maximum(abs.(Array(parent(dY.soil.θ_i)))) == FT(0)
+
+        # Test implicit tendency - should set all variables to 0
+        imp_tendency! = make_imp_tendency(soil_heat_on)
+        imp_tendency!(dY, Y, p, t0)
+        @test maximum(abs.(Array(parent(dY.soil.ρe_int)))) == FT(0)
         @test maximum(abs.(Array(parent(dY.soil.ϑ_l)))) == FT(0)
         @test maximum(abs.(Array(parent(dY.soil.θ_i)))) == FT(0)
 
@@ -252,9 +261,15 @@ for FT in (Float32, Float64)
         set_initial_cache! = make_set_initial_cache(soil_water_on)
         set_initial_cache!(p, Y, t0)
         exp_tendency! = make_exp_tendency(soil_water_on)
+        imp_tendency! = make_imp_tendency(soil_water_on)
         dY = similar(Y)
+
+        # Test explicit tendency - should update internal energy, set others to 0
         exp_tendency!(dY, Y, p, t0)
         ClimaLand.dss!(dY, p, t0)
+
+        @test maximum(abs.(Array(parent(dY.soil.θ_i)))) == FT(0)
+        @test maximum(abs.(Array(parent(dY.soil.ϑ_l)))) == FT(0)
 
         function dKdθ(θ::FT)::FT where {FT}
             S = (θ - θ_r) / (ν - θ_r)
@@ -332,10 +347,6 @@ for FT in (Float32, Float64)
         )
 
         expected = -(flux[2:end] - flux[1:(end - 1)]) ./ Δz
-        @test mean(abs.(expected .- Array(parent(dY.soil.ϑ_l)))) / ν <
-              10^2 * eps(FT)
-        @test maximum(abs.(Array(parent(dY.soil.θ_i)))) == FT(0)
-
         ρe_int_l = Array(
             parent(
                 Soil.volumetric_internal_energy_liq.(
@@ -356,6 +367,27 @@ for FT in (Float32, Float64)
 
         @test mean(abs.(expected .- Array(parent(dY.soil.ρe_int)))) /
               median(Array(parent(Y.soil.ρe_int))) < 10^2 * eps(FT)
+
+        # Test implicit tendency - should update liquid water content, set others to 0
+        imp_tendency!(dY, Y, p, t0)
+        @test maximum(abs.(Array(parent(dY.soil.θ_i)))) == FT(0)
+        @test maximum(abs.(Array(parent(dY.soil.ρe_int)))) == FT(0)
+
+        θ = Array(parent(Y.soil.ϑ_l))# on the center
+        θ_face = 0.5 * (θ[2:end] + θ[1:(end - 1)])
+        Z = Array(parent(coords.subsurface.z))
+        Z_face = 0.5 * (Z[2:end] + Z[1:(end - 1)])
+        K_face = 0.5 .* (K.(θ[2:end]) .+ K.(θ[1:(end - 1)]))
+        flux_interior = (@. -K_face * (1.0 + dψdθ(θ_face) * dθdz(Z_face)))
+        flux = vcat(
+            [zero_water_flux_bc.bc(p, FT(0.0))],
+            flux_interior,
+            [zero_water_flux_bc.bc(p, FT(0.0))],
+        )
+
+        expected = -(flux[2:end] - flux[1:(end - 1)]) ./ Δz
+        @test mean(abs.(expected .- Array(parent(dY.soil.ϑ_l)))) / ν <
+              10^2 * eps(FT)
 
         ### Here we bypass the outer constructor to use the default. this makes it possible to set
         ### the thermal conductivities to zero, but at the expense of being unreadable.
@@ -427,6 +459,8 @@ for FT in (Float32, Float64)
         set_initial_cache!(p, Y, t0)
         exp_tendency! = make_exp_tendency(soil_both_off)
         dY = similar(Y)
+
+        # Test explicit tendency - expect all variables to be 0
         exp_tendency!(dY, Y, p, t0)
         ClimaLand.dss!(dY, p, t0)
 
@@ -434,6 +468,13 @@ for FT in (Float32, Float64)
         @test maximum(abs.(Array(parent(dY.soil.ϑ_l)))) == FT(0)
         @test maximum(abs.(Array(parent(dY.soil.θ_i)))) == FT(0)
 
+        imp_tendency! = make_imp_tendency(soil_both_off)
+        imp_tendency!(dY, Y, p, t0)
+
+        # Test implicit tendency - expect all variables to be 0
+        @test maximum(abs.(Array(parent(dY.soil.ρe_int)))) == FT(0)
+        @test maximum(abs.(Array(parent(dY.soil.ϑ_l)))) == FT(0)
+        @test maximum(abs.(Array(parent(dY.soil.θ_i)))) == FT(0)
 
         ### Test with both energy and hydrology on
         hyd_on_en_on = Soil.EnergyHydrologyParameters(
@@ -480,10 +521,69 @@ for FT in (Float32, Float64)
 
         exp_tendency! = make_exp_tendency(soil_both_on)
         dY = similar(Y)
+
+        # Test explicit tendency - expect internal energy to be updated, set others to 0
         exp_tendency!(dY, Y, p, t0)
         ClimaLand.dss!(dY, p, t0)
 
         @test maximum(abs.(Array(parent(dY.soil.θ_i)))) == FT(0)
+        @test maximum(abs.(Array(parent(dY.soil.ϑ_l)))) == FT(0)
+
+        ρe_int_l = Array(
+            parent(
+                Soil.volumetric_internal_energy_liq.(
+                    p.soil.T,
+                    Ref(soil_both_on.parameters),
+                ),
+            ),
+        )
+        ρe_int_l_face = 0.5 * (ρe_int_l[2:end] + ρe_int_l[1:(end - 1)])
+        κ = Array(parent(p.soil.κ))
+        κ_face = 0.5 * (κ[2:end] + κ[1:(end - 1)])
+
+        θ = Array(parent(Y.soil.ϑ_l))# on the center
+        θ_face = 0.5 * (θ[2:end] + θ[1:(end - 1)])
+        Z = Array(parent(coords.subsurface.z))
+        Z_face = 0.5 * (Z[2:end] + Z[1:(end - 1)])
+        K_face = 0.5 .* (K.(θ[2:end]) .+ K.(θ[1:(end - 1)]))
+        vf = Array(
+            parent(
+                Soil.viscosity_factor.(
+                    p.soil.T,
+                    hyd_on_en_on.γ,
+                    hyd_on_en_on.γT_ref,
+                ),
+            ),
+        )
+        vf_face = 0.5 .* (vf[2:end] .+ vf[1:(end - 1)])
+
+        flux_interior = (@. -K_face *
+            vf_face *
+            ρe_int_l_face *
+            (1.0 + dψdθ(θ_face) * dθdz(Z_face)))
+        flux_one = vcat(
+            [zero_water_flux_bc.bc(p, FT(0.0))],
+            flux_interior,
+            [zero_water_flux_bc.bc(p, FT(0.0))],
+        )
+        flux_interior = (@. -κ_face * (Z_face + 0.5))
+        flux_two = vcat(
+            [zero_water_flux_bc.bc(p, FT(0.0))],
+            flux_interior,
+            [zero_water_flux_bc.bc(p, FT(0.0))],
+        )
+        flux = flux_one .+ flux_two
+        expected = -(flux[2:end] - flux[1:(end - 1)]) ./ Δz
+
+        @test mean(abs.(expected .- Array(parent(dY.soil.ρe_int)))) /
+              median(Array(parent(Y.soil.ρe_int))) < 10^2 * eps(FT)
+
+        # Test implicit tendency - expect liquid water content to be updated, set others to 0
+        imp_tendency! = make_imp_tendency(soil_both_on)
+        imp_tendency!(dY, Y, p, t0)
+
+        @test maximum(abs.(Array(parent(dY.soil.θ_i)))) == FT(0)
+        @test maximum(abs.(Array(parent(dY.soil.ρe_int)))) == FT(0)
 
         θ = Array(parent(Y.soil.ϑ_l))# on the center
         θ_face = 0.5 * (θ[2:end] + θ[1:(end - 1)])
@@ -513,39 +613,6 @@ for FT in (Float32, Float64)
         @test mean(abs.(expected .- Array(parent(dY.soil.ϑ_l)))) / ν <
               10^2 * eps(FT)
 
-        ρe_int_l = Array(
-            parent(
-                Soil.volumetric_internal_energy_liq.(
-                    p.soil.T,
-                    Ref(soil_both_on.parameters),
-                ),
-            ),
-        )
-        ρe_int_l_face = 0.5 * (ρe_int_l[2:end] + ρe_int_l[1:(end - 1)])
-        κ = Array(parent(p.soil.κ))
-        κ_face = 0.5 * (κ[2:end] + κ[1:(end - 1)])
-
-
-        flux_interior = (@. -K_face *
-            vf_face *
-            ρe_int_l_face *
-            (1.0 + dψdθ(θ_face) * dθdz(Z_face)))
-        flux_one = vcat(
-            [zero_water_flux_bc.bc(p, FT(0.0))],
-            flux_interior,
-            [zero_water_flux_bc.bc(p, FT(0.0))],
-        )
-        flux_interior = (@. -κ_face * (Z_face + 0.5))
-        flux_two = vcat(
-            [zero_water_flux_bc.bc(p, FT(0.0))],
-            flux_interior,
-            [zero_water_flux_bc.bc(p, FT(0.0))],
-        )
-        flux = flux_one .+ flux_two
-        expected = -(flux[2:end] - flux[1:(end - 1)]) ./ Δz
-
-        @test mean(abs.(expected .- Array(parent(dY.soil.ρe_int)))) /
-              median(Array(parent(Y.soil.ρe_int))) < 10^2 * eps(FT)
     end
 
     @testset "Phase change source term, FT = $FT" begin

@@ -46,8 +46,8 @@ for float_type in (Float32, Float64)
     prob = SciMLBase.ODEProblem(
         CTS.ClimaODEFunction(
             T_exp! = exp_tendency!,
+            T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
             dss! = ClimaLand.dss!,
-            T_imp! = nothing,
         ),
         Y,
         (t0, tf),

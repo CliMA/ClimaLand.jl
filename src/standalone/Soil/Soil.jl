@@ -59,6 +59,8 @@ using ClimaLand
 using DocStringExtensions
 using LinearAlgebra
 using ClimaCore
+using ClimaCore.MatrixFields
+import ClimaCore.MatrixFields: @name, ⋅
 import ..Parameters as LP
 import ClimaCore: Fields, Operators, Geometry, Spaces
 using Thermodynamics
@@ -66,6 +68,7 @@ using Thermodynamics
 import ClimaLand.Domains: Column, HybridBox, SphericalShell
 import ClimaLand:
     AbstractImExModel,
+    ImplicitEquationJacobian,
     make_update_aux,
     make_compute_exp_tendency,
     make_compute_imp_tendency,
@@ -90,7 +93,6 @@ import ClimaLand:
     get_drivers
 export RichardsModel,
     RichardsParameters,
-    ImplicitEquationJacobian,
     EnergyHydrology,
     EnergyHydrologyParameters,
     AbstractSoilModel,

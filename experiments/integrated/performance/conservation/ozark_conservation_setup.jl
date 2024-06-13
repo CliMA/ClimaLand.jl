@@ -192,8 +192,15 @@ land = SoilCanopyModel{FT}(;
     canopy_model_args = canopy_model_args,
 )
 exp_tendency! = make_exp_tendency(land)
+imp_tendency! = make_imp_tendency(land);
+tendency_jacobian! = make_tendency_jacobian(land);
 set_initial_cache! = make_set_initial_cache(land)
 Y, p, cds = initialize(land)
+jac_kwargs = (;
+    jac_prototype = ClimaLand.ImplicitEquationJacobian(Y),
+    Wfact = tendency_jacobian!,
+);
+
 #Initial conditions
 Y.soil.ϑ_l = drivers.SWC.values[1 + Int(round(t0 / 1800))] # Get soil water content at t0
 # recalling that the data is in intervals of 1800 seconds. Both the data

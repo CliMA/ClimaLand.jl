@@ -23,7 +23,7 @@ include("shared_utilities/models.jl")
 include("shared_utilities/drivers.jl")
 include("shared_utilities/boundary_conditions.jl")
 include("shared_utilities/sources.jl")
-include("shared_utilities/implicit_tendencies.jl")
+include("shared_utilities/implicit_timestepping.jl")
 include("standalone/Bucket/Bucket.jl")
 
 """
@@ -134,27 +134,18 @@ end
 
 function make_imp_tendency(land::AbstractLandModel)
     components = land_components(land)
-
-    # If all component models are stepped explicitly, do nothing in imp_tendency!
-    if all(c -> typeof(c) .<: AbstractExpModel, components)
-        function do_nothing_imp_tendency!(dY, Y, p, t) end
-        return do_nothing_imp_tendency!
-    else
-        compute_imp_tendency_list = map(
-            x -> make_compute_imp_tendency(getproperty(land, x)),
-            components,
-        )
-        update_aux! = make_update_aux(land)
-        update_boundary_fluxes! = make_update_boundary_fluxes(land)
-        function imp_tendency!(dY, Y, p, t)
-            update_aux!(p, Y, t)
-            update_boundary_fluxes!(p, Y, t)
-            for f! in compute_imp_tendency_list
-                f!(dY, Y, p, t)
-            end
+    compute_imp_tendency_list =
+        map(x -> make_compute_imp_tendency(getproperty(land, x)), components)
+    update_aux! = make_update_aux(land)
+    update_boundary_fluxes! = make_update_boundary_fluxes(land)
+    function imp_tendency!(dY, Y, p, t)
+        update_aux!(p, Y, t)
+        update_boundary_fluxes!(p, Y, t)
+        for f! in compute_imp_tendency_list
+            f!(dY, Y, p, t)
         end
-        return imp_tendency!
     end
+    return imp_tendency!
 end
 
 function make_exp_tendency(land::AbstractLandModel)
@@ -195,6 +186,18 @@ function make_update_boundary_fluxes(land::AbstractLandModel)
         end
     end
     return update_boundary_fluxes!
+end
+
+function make_update_jacobian(land::AbstractLandModel)
+    components = land_components(land)
+    update_jacobian_function_list =
+        map(x -> make_update_jacobian(getproperty(land, x)), components)
+    function update_jacobian!(jacobian, Y, p, dtγ, t)
+        for f! in update_jacobian_function_list
+            f!(jacobian, Y, p, dtγ, t)
+        end
+    end
+    return update_jacobian!
 end
 
 """

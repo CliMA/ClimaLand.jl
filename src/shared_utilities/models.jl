@@ -218,7 +218,10 @@ Returns an `imp_tendency` that does nothing. This model type is not
 stepped explicity.
 """
 function make_imp_tendency(model::AbstractModel)
-    function imp_tendency!(dY, Y, p, t) end
+    compute_imp_tendency! = make_compute_imp_tendency(model)
+    function imp_tendency!(dY, Y, p, t)
+        compute_imp_tendency!(dY, Y, p, t)
+    end
 end
 
 """
@@ -246,11 +249,17 @@ end
 
 Return a `compute_imp_tendency!` function that updates state variables
 that we will be stepped implicitly.
+This fallback sets all tendencies of this model to zero, which is appropriate
+for models that do not have any implicit tendencies to update.
+Note that we cannot set `dY .= 0` here because this would overwrite the
+tendencies of all models in the case of an integrated LSM.
 
 `compute_imp_tendency!` should be compatible with SciMLBase.jl solvers.
 """
 function make_compute_imp_tendency(model::AbstractModel)
-    function compute_imp_tendency!(dY, Y, p, t) end
+    function compute_imp_tendency!(dY, Y, p, t)
+        getproperty(dY, name(model)) .= 0
+    end
     return compute_imp_tendency!
 end
 
@@ -259,11 +268,17 @@ end
 
 Return a `compute_exp_tendency!` function that updates state variables
 that we will be stepped explicitly.
+This fallback sets all tendencies of this model to zero, which is appropriate
+for models that do not have any explicit tendencies to update.
+Note that we cannot set `dY .= 0` here because this would overwrite the
+tendencies of all models in the case of an integrated LSM.
 
 `compute_exp_tendency!` should be compatible with SciMLBase.jl solvers.
 """
 function make_compute_exp_tendency(model::AbstractModel)
-    function compute_exp_tendency!(dY, Y, p, t) end
+    function compute_exp_tendency!(dY, Y, p, t)
+        getproperty(dY, name(model)) .= 0
+    end
     return compute_exp_tendency!
 end
 

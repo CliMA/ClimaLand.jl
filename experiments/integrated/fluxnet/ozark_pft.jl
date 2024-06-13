@@ -1,5 +1,5 @@
 """
-This experiment tests running the Ozark site (US-MOz) using plant parameters 
+This experiment tests running the Ozark site (US-MOz) using plant parameters
 defined by plant functional types instead of fully site-specific parameters.
 """
 
@@ -252,6 +252,12 @@ land = SoilCanopyModel{FT}(;
 )
 Y, p, cds = initialize(land)
 exp_tendency! = make_exp_tendency(land)
+imp_tendency! = make_imp_tendency(land);
+tendency_jacobian! = make_tendency_jacobian(land);
+jac_kwargs = (;
+    jac_prototype = ClimaLand.ImplicitEquationJacobian(Y),
+    Wfact = tendency_jacobian!,
+);
 
 #Initial conditions
 Y.soil.ϑ_l =
@@ -274,7 +280,7 @@ Y.soil.ρe_int =
         Ref(land.soil.parameters),
     )
 Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
-ψ_stem_0 = FT(-1e5 / 9800) # pressure in the leaf divided by rho_liquid*gravitational acceleration [m] 
+ψ_stem_0 = FT(-1e5 / 9800) # pressure in the leaf divided by rho_liquid*gravitational acceleration [m]
 ψ_leaf_0 = FT(-2e5 / 9800)
 ψ_comps = n_stem > 0 ? [ψ_stem_0, ψ_leaf_0] : ψ_leaf_0
 
@@ -302,10 +308,15 @@ saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat)
 updateat = Array(t0:DATA_DT:tf)
 updatefunc = ClimaLand.make_update_drivers(atmos, radiation)
 driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
-cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
+cb = SciMLBase.CallbackSet(driver_cb, saving_cb);
 
+# Problem definition and solve
 prob = SciMLBase.ODEProblem(
-    CTS.ClimaODEFunction((T_exp!) = exp_tendency!),
+    CTS.ClimaODEFunction(
+        T_exp! = exp_tendency!,
+        T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
+        dss! = ClimaLand.dss!,
+    ),
     Y,
     (t0, tf),
     p,

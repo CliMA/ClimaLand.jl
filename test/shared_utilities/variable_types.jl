@@ -22,6 +22,7 @@ using ClimaLand.Canopy: AbstractCanopyComponent
 FT = Float32
 @testset "Default model, FT = $FT" begin
     struct DefaultModel{FT} <: AbstractModel{FT} end
+    ClimaLand.name(::DefaultModel) = :default
     dm = DefaultModel{FT}()
     @test ClimaLand.prognostic_vars(dm) == ()
     @test ClimaLand.prognostic_types(dm) == ()
@@ -30,26 +31,30 @@ FT = Float32
     @test ClimaLand.auxiliary_types(dm) == ()
     @test ClimaLand.auxiliary_domain_names(dm) == ()
 
-    x = [0, 1, 2, 3]
+    tendency_args = ((default = [1],), 2, 3, 4)
     dm_exp_tendency! = make_exp_tendency(dm)
-    @test dm_exp_tendency!(x[1], x[2], x[3], x[4]) == nothing
-    @test x == [0, 1, 2, 3]
+    @test dm_exp_tendency!(tendency_args...) == [0]
+    @test tendency_args == ((default = [0],), 2, 3, 4)
 
+    tendency_args = ((default = [1],), 2, 3, 4)
     dm_compute_exp_tendency! = make_compute_exp_tendency(dm)
-    @test dm_compute_exp_tendency!(x[1], x[2], x[3], x[4]) == nothing
-    @test x == [0, 1, 2, 3]
+    @test dm_compute_exp_tendency!(tendency_args...) == [0]
+    @test tendency_args == ((default = [0],), 2, 3, 4)
 
+    tendency_args = ((default = [1],), 2, 3, 4)
     dm_imp_tendency! = make_imp_tendency(dm)
-    @test dm_imp_tendency!(x[1], x[2], x[3], x[4]) == nothing
-    @test x == [0, 1, 2, 3]
+    @test dm_imp_tendency!(tendency_args...) == [0]
+    @test tendency_args == ((default = [0],), 2, 3, 4)
 
+    tendency_args = ((default = [1],), 2, 3, 4)
     dm_compute_imp_tendency! = make_compute_imp_tendency(dm)
-    @test dm_compute_imp_tendency!(x[1], x[2], x[3], x[4]) == nothing
-    @test x == [0, 1, 2, 3]
+    @test dm_compute_imp_tendency!(tendency_args...) == [0]
+    @test tendency_args == ((default = [0],), 2, 3, 4)
 
+    x = [1, 2, 3]
     dm_update_aux! = make_update_aux(dm)
-    @test dm_update_aux!(x[1], x[2], x[3]) == nothing
-    @test x == [0, 1, 2, 3]
+    @test isnothing(dm_update_aux!(x...))
+    @test x == [1, 2, 3]
 
     @test ClimaLand.get_drivers(dm) == (nothing, nothing)
     @test ClimaLand.add_drivers_to_cache((;), dm, nothing) == (;)
@@ -58,16 +63,17 @@ end
 @testset "Default ImEx model, FT = $FT" begin
     struct DefaultImExModel{FT} <: AbstractImExModel{FT} end
     dm_imex = DefaultImExModel{FT}()
+    ClimaLand.name(::DefaultImExModel) = :default_imex
 
-    x = [0, 1, 2, 3]
+    tendency_args = ((default_imex = [1],), 2, 3, 4)
     dm_imp_tendency! = make_imp_tendency(dm_imex)
-    @test dm_imp_tendency!(x[1], x[2], x[3], x[4]) == nothing
-    @test x == [0, 1, 2, 3]
+    @test dm_imp_tendency!(tendency_args...) == [0]
+    @test tendency_args == ((default_imex = [0],), 2, 3, 4)
 
+    tendency_args = ((default_imex = [1],), 2, 3, 4)
     dm_compute_imp_tendency! = make_compute_imp_tendency(dm_imex)
-    @test dm_compute_imp_tendency!(x[1], x[2], x[3], x[4]) == nothing
-    @test x == [0, 1, 2, 3]
-
+    @test dm_compute_imp_tendency!(tendency_args...) == [0]
+    @test tendency_args == ((default_imex = [0],), 2, 3, 4)
 end
 
 @testset "Default canopy component" begin

@@ -1,12 +1,12 @@
 """
-    EnergyHydrologyParameters{FT <: AbstractFloat, 
+    EnergyHydrologyParameters{FT <: AbstractFloat,
                               F <: Union{<:AbstractFloat,
                                          ClimaCore.Fields.Field},
                               C,
                               PSE,}
 
 A parameter structure for the integrated soil water and energy
- equation system. 
+ equation system.
 $(DocStringExtensions.FIELDS)
 """
 Base.@kwdef struct EnergyHydrologyParameters{
@@ -176,9 +176,7 @@ function ClimaLand.make_compute_exp_tendency(
 ) where {FT}
     function compute_exp_tendency!(dY, Y, p, t)
         z = ClimaCore.Fields.coordinate_field(model.domain.space.subsurface).z
-        rre_top_flux_bc = p.soil.top_bc.water
         heat_top_flux_bc = p.soil.top_bc.heat
-        rre_bottom_flux_bc = p.soil.bottom_bc.water
         heat_bottom_flux_bc = p.soil.bottom_bc.heat
 
         interpc2f = Operators.InterpolateC2F()
@@ -189,16 +187,9 @@ function ClimaLand.make_compute_exp_tendency(
         # In spherical coordinates, W (r^) = Cov3 (r^) = Contra3 (n^ = r^)
         # Passing WVector to gradient BC is passing a normal flux.
 
-
-        # Richards-Richardson RHS
-        divf2c_rre = Operators.DivergenceF2C(
-            top = Operators.SetValue(Geometry.WVector.(rre_top_flux_bc)),
-            bottom = Operators.SetValue(Geometry.WVector.(rre_bottom_flux_bc)),
-        )
-        # GradC2F returns a Covariant3Vector, so no need to convert.
-        @. dY.soil.ϑ_l =
-            -(divf2c_rre(-interpc2f(p.soil.K) * gradc2f(p.soil.ψ + z)))
-        dY.soil.θ_i .= ClimaCore.Fields.zeros(FT, axes(Y.soil.θ_i))
+        # Reset liquid water and ice content
+        dY.soil.ϑ_l .= 0
+        dY.soil.θ_i .= 0
 
         # Heat equation RHS
         divf2c_heat = Operators.DivergenceF2C(
@@ -228,6 +219,136 @@ function ClimaLand.make_compute_exp_tendency(
         end
     end
     return compute_exp_tendency!
+end
+
+"""
+    make_compute_imp_tendency(model::EnergyHydrology)
+
+An extension of the function `make_compute_imp_tendency`, for the integrated
+soil energy and heat equations, including phase change.
+
+This version of this function computes the right hand side of the PDE for
+`Y.soil.ϑ_l`, which is the only quantity we currently step implicitly.
+
+This has been written so as to work with Differential Equations.jl.
+"""
+function ClimaLand.make_compute_imp_tendency(
+    model::EnergyHydrology{FT},
+) where {FT}
+    function compute_imp_tendency!(dY, Y, p, t)
+        z = ClimaCore.Fields.coordinate_field(model.domain.space.subsurface).z
+        rre_top_flux_bc = p.soil.top_bc.water
+        rre_bottom_flux_bc = p.soil.bottom_bc.water
+
+        interpc2f = Operators.InterpolateC2F()
+        gradc2f = Operators.GradientC2F()
+
+        # Without topography only
+        # In Cartesian coordinates, W (z^) = Cov3 (z^)= Contra3 (n^ = z^)
+        # In spherical coordinates, W (r^) = Cov3 (r^) = Contra3 (n^ = r^)
+        # Passing WVector to gradient BC is passing a normal flux.
+
+        # Richards-Richardson RHS
+        divf2c_rre = Operators.DivergenceF2C(
+            top = Operators.SetValue(Geometry.WVector.(rre_top_flux_bc)),
+            bottom = Operators.SetValue(Geometry.WVector.(rre_bottom_flux_bc)),
+        )
+        # GradC2F returns a Covariant3Vector, so no need to convert.
+        @. dY.soil.ϑ_l =
+            -(divf2c_rre(-interpc2f(p.soil.K) * gradc2f(p.soil.ψ + z)))
+
+        # Don't update the prognostic variables we're stepping explicitly
+        @. dY.soil.θ_i = 0
+        @. dY.soil.ρe_int = 0
+    end
+    return compute_imp_tendency!
+end
+
+"""
+    ClimaLand.make_update_jacobian(model::EnergyHydrology{FT}) where {FT}
+
+Creates and returns the update_jacobian! function for the EnergyHydrology model.
+This updates the contribution for the soil liquid water content only.
+
+Using this Jacobian with a backwards Euler timestepper is equivalent
+to using the modified Picard scheme of Celia et al. (1990).
+"""
+function ClimaLand.make_update_jacobian(model::EnergyHydrology{FT}) where {FT}
+    function update_jacobian!(jacobian::ImplicitEquationJacobian, Y, p, dtγ, t)
+        (; matrix) = jacobian
+        (; ν, hydrology_cm, S_s, θ_r) = model.parameters
+
+        # Create divergence operator
+        divf2c_op = Operators.DivergenceF2C()
+        divf2c_matrix = MatrixFields.operator_matrix(divf2c_op)
+        # Create gradient operator, and set gradient at boundaries to 0
+        gradc2f_op = Operators.GradientC2F(
+            top = Operators.SetGradient(Geometry.WVector(FT(0))),
+            bottom = Operators.SetGradient(Geometry.WVector(FT(0))),
+        )
+        gradc2f_matrix = MatrixFields.operator_matrix(gradc2f_op)
+        # Create interpolation operator
+        interpc2f_op = Operators.InterpolateC2F(
+            bottom = Operators.Extrapolate(),
+            top = Operators.Extrapolate(),
+        )
+
+        # The derivative of the residual with respect to the prognostic variable
+        ∂ϑres∂ϑ = matrix[@name(soil.ϑ_l), @name(soil.ϑ_l)]
+
+        # If the top BC is a `MoistureStateBC`, add the term from the top BC
+        #  flux before applying divergence
+        if haskey(p.soil, :dfluxBCdY)
+            dfluxBCdY = p.soil.dfluxBCdY
+            topBC_op = Operators.SetBoundaryOperator(
+                top = Operators.SetValue(dfluxBCdY),
+                bottom = Operators.SetValue(
+                    Geometry.Covariant3Vector(zero(FT)),
+                ),
+            )
+            # Add term from top boundary condition before applying divergence
+            # Note: need to pass 3D field on faces to `topBC_op`. Interpolating `K` to faces
+            #  for this is inefficient - we should find a better solution.
+            @. ∂ϑres∂ϑ =
+                -dtγ * (
+                    divf2c_matrix() ⋅ (
+                        MatrixFields.DiagonalMatrixRow(
+                            interpc2f_op(-p.soil.K),
+                        ) ⋅ gradc2f_matrix() ⋅ MatrixFields.DiagonalMatrixRow(
+                            ClimaLand.Soil.dψdϑ(
+                                hydrology_cm,
+                                Y.soil.ϑ_l,
+                                ν,
+                                θ_r,
+                                S_s,
+                            ),
+                        ) + MatrixFields.LowerDiagonalMatrixRow(
+                            topBC_op(
+                                Geometry.Covariant3Vector(
+                                    zero(interpc2f_op(p.soil.K)),
+                                ),
+                            ),
+                        )
+                    )
+                ) - (I,)
+        else
+            @. ∂ϑres∂ϑ =
+                -dtγ * (
+                    divf2c_matrix() ⋅
+                    MatrixFields.DiagonalMatrixRow(interpc2f_op(-p.soil.K)) ⋅
+                    gradc2f_matrix() ⋅ MatrixFields.DiagonalMatrixRow(
+                        ClimaLand.Soil.dψdϑ(
+                            hydrology_cm,
+                            Y.soil.ϑ_l,
+                            ν,
+                            θ_r,
+                            S_s,
+                        ),
+                    )
+                ) - (I,)
+        end
+    end
+    return update_jacobian!
 end
 
 """
@@ -474,7 +595,7 @@ function ClimaLand.source!(
     _ρ_i = FT(LP.ρ_cloud_ice(model.parameters.earth_param_set))
     _ρ_l = FT(LP.ρ_cloud_liq(model.parameters.earth_param_set))
     z = ClimaCore.Fields.coordinate_field(axes(Y.soil.θ_i)).z
-    Δz, _ = ClimaLand.Domains.get_Δz(z) # center to face distance, we need a factor of two 
+    Δz, _ = ClimaLand.Domains.get_Δz(z) # center to face distance, we need a factor of two
     @. dY.soil.θ_i +=
         -p.soil.turbulent_fluxes.vapor_flux * p.soil.ice_frac * _ρ_l / _ρ_i *
         heaviside(z + 2 * Δz) # only apply to top layer
@@ -599,7 +720,7 @@ Over the soil ice, the specific humidity is the saturated value.
 
 The total surface specific humidity of the soil is approximated by
 q = q_over_ice * f + q_over_water * (1-f), where `f` is given by
-the function `ice_fraction`. 
+the function `ice_fraction`.
 """
 function ClimaLand.surface_specific_humidity(
     model::EnergyHydrology{FT},
@@ -683,7 +804,7 @@ end
 """
     is_saturated(Y, model::EnergyHydrology)
 
-A helper function which can be used to indicate whether a layer of soil is 
+A helper function which can be used to indicate whether a layer of soil is
 saturated.
 """
 function is_saturated(Y, model::EnergyHydrology)

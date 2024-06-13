@@ -325,26 +325,43 @@ land = SoilCanopyModel{FT}(;
     canopy_component_args = canopy_component_args,
     canopy_model_args = canopy_model_args,
 )
+
+# Define explicit and implicit tendencies, and the jacobian
 exp_tendency! = make_exp_tendency(land)
+imp_tendency! = make_imp_tendency(land);
+tendency_jacobian! = make_tendency_jacobian(land);
+
 # Set up timestepping and simulation callbacks
 dt = Float64(150)
 tf = Float64(t0 + 100dt)
 saveat = Array(t0:dt:tf)
 updateat = Array(t0:dt:tf)
-timestepper = CTS.RK4()
-ode_algo = CTS.ExplicitAlgorithm(timestepper)
+timestepper = CTS.ARS343()
+ode_algo = CTS.IMEXAlgorithm(
+    timestepper,
+    CTS.NewtonsMethod(
+        max_iters = 1,
+        update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
+    ),
+);
 
 updatefunc = ClimaLand.make_update_drivers(atmos, radiation)
 driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
 # Set initial conditions
 Y, p = set_initial_conditions(land, t0)
 
+# Set up jacobian info
+jac_kwargs = (;
+    jac_prototype = ClimaLand.ImplicitEquationJacobian(Y),
+    Wfact = tendency_jacobian!,
+);
+
 # Solve simulation
 prob = SciMLBase.ODEProblem(
     CTS.ClimaODEFunction(
         T_exp! = exp_tendency!,
+        T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
         dss! = ClimaLand.dss!,
-        T_imp! = nothing,
     ),
     Y,
     (t0, tf),
