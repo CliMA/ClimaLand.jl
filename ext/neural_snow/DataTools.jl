@@ -1019,12 +1019,11 @@ function livneh_bc(input::DataFrame)
             if swe_tot_7day > precip_tot_7day
                 precips_7day[dswes_7day .>= 0] .= dswes_7day[dswes_7day .>= 0]
                 precips_7day[dswes_7day .< 0] .=
-                 [maximum([x, 0.0]) for x in precips_7day[dswes_7day .< 0]]
+                    [maximum([x, 0.0]) for x in precips_7day[dswes_7day .< 0]]
             else
                 temp2 = (precips_7day .== 0)
-                precips_7day = maximum(
-                    cat(precips_7day, dswes_7day, dims = 2), dims = 2
-                )
+                precips_7day =
+                    maximum(cat(precips_7day, dswes_7day, dims = 2), dims = 2)
                 precips_7day[temp2] .= 0.0
             end
             precips[idx_start:(temp - 1)] = precips_7day

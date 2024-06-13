@@ -29,7 +29,7 @@ if !isnothing(DataToolsExt)
             start_date = start_date,
             end_date = end_date,
         ) == real_link
-    
+
         colnames = [
             "date",
             "SWE",
@@ -54,7 +54,7 @@ if !isnothing(DataToolsExt)
         @test typeof(test_data1[1, 1]) == Date
         @test sum(test_data1[!, 2]) == 1168
         =#
-    
+
         download_link = "https://caltech.box.com/shared/static/4tih9hiydrc7bcvrpkr2x727b5l54oiq.csv"
         download_data = CSV.read(HTTP.get(download_link).body, DataFrame)
         test_data2 = deepcopy(download_data)
@@ -70,9 +70,9 @@ if !isnothing(DataToolsExt)
         @test size(test_data2) == (32, 8)
         @test DataFrames.names(test_data2) == colnames
         @test typeof(test_data2[1, 1]) == Date
-        @test sum(test_data2[!, :z]) == 1168    
+        @test sum(test_data2[!, :z]) == 1168
         #@test isequal(download_data, test_data2)
-        
+
         download_link_hr = "https://caltech.box.com/shared/static/4q7qtnc2nv8rwh4q8s0afe238ydzfl93.csv"
         download_data = CSV.read(HTTP.get(download_link_hr).body, DataFrame)
         test_data3 = deepcopy(download_data)
@@ -94,7 +94,7 @@ if !isnothing(DataToolsExt)
         @test sum(skipmissing(test_data3[!, :z])) == 25063
         @test sum(skipmissing(test_data3[!, :rel_hum_avg])) == 62232
         #@test isequal(download_data, test_data3)
-    
+
         test_bounds = Dict{Symbol, Tuple{Real, Real}}(
             :z => (0, 37),
             :rel_hum_avg => (84, 100),
@@ -102,12 +102,12 @@ if !isnothing(DataToolsExt)
         test_data4 = DataTools.apply_bounds(test_data3, test_bounds)
         @test sum(skipmissing(test_data4[!, :z])) == 19007
         @test sum(skipmissing(test_data4[!, :rel_hum_avg])) == 45973
-    
+
         test_data5 = DataTools.hourly2daily(test_data3)
         @test sum(test_data5[!, :z]) == 1168
         @test sum(test_data5[!, :rel_hum_avg]) == 2593
         @test sum(describe(test_data5, :nmissing)[!, 2]) == 0
-    
+
         test_data6 = DataTools.rectify_daily_hourly(test_data2, test_data5)
         @test sum(test_data6[!, :z]) == 1168
         @test sum(test_data6[!, :rel_hum_avg]) == 2593
@@ -127,14 +127,14 @@ if !isnothing(DataToolsExt)
         @test mean(test_data8[!, :dzdt]) ≈ 0 atol = 1e-7
         @test mean(test_data8[!, :dSWEdt]) ≈ 0 atol = 1e-7
         @test minimum(test_data8[!, :dprecipdt]) == 0
-    
+
         test_data9 = DataTools.rolldata(test_data8, Day(1), 7)
         @test size(test_data9) == (25, 12)
         @test mean(test_data9[!, :dzdt]) ≈ 0 atol = 1e-8
         @test mean(test_data9[!, :dSWEdt]) ≈ 0 atol = 1e-8
         @test minimum(test_data9[!, :dprecipdt]) == 0
         @test minimum(test_data9[!, :z]) ≈ 0.8636 atol = 1e-4
-    
+
         test_data10 = DataTools.prep_data(
             test_data8,
             extract_vars = [:dprecipdt_rain, :dprecipdt_snow],
@@ -145,12 +145,13 @@ if !isnothing(DataToolsExt)
             :dprecipdt_snow,
             1.0,
         )
-        @test test_data10[!, 1] .+ test_data10[!, 2] == test_data8[!, :dprecipdt]
+        @test test_data10[!, 1] .+ test_data10[!, 2] ==
+              test_data8[!, :dprecipdt]
         @test size(x_train) == (1, 31)
         @test size(y_train) == (1, 31)
-    
+
         @test DataTools.fix_temp([10.0], alaska = true)[1] ≈ 9.968 atol = 1e-3
-    
+
         x = ones(366, 7)
         x = Float32.(x)
         x = DataFrame(
@@ -215,7 +216,7 @@ if !isnothing(DataToolsExt)
         for item in ps
             item[:] .= Float32(1.0)
         end
-    
+
         test_input = Matrix{Float32}(ones(nfeatures, 8))
         @test model(test_input)[1] == 1968
         @test size(model(test_input)) == (1, 8)
@@ -230,7 +231,7 @@ if !isnothing(DataToolsExt)
         @test model[:final_scale].weight[2, 2] == Float32(1 / 1968)
         @test ModelTools.evaluate(model, Vector{Float32}(ones(nfeatures)))[1] ==
               1968
-    
+
         test_constants = [1.0, 2.0, 3.0, 4.0, 5.0]
         x = zeros(6, 5)
         x[1:5, 1:5] = diagm([1, 2, 3, 4, 5])
@@ -239,21 +240,23 @@ if !isnothing(DataToolsExt)
         x_dataframe = DataFrame(x, :auto)
         x_dataframe[!, :y] = y
         answer = [1.0, 2.0, 3.0, 4.0, 5.0, 0.0]
-        model2 = ModelTools.LinearModel(x_dataframe, [:x1, :x2, :x3, :x4, :x5], :y)
+        model2 =
+            ModelTools.LinearModel(x_dataframe, [:x1, :x2, :x3, :x4, :x5], :y)
         model3 = ModelTools.LinearModel(x, y)
         @test model2 ≈ answer
         @test model3 ≈ answer
         @test ModelTools.evaluate(model2, Vector{Float32}(ones(5)))[1] == 15
-        @test typeof(ModelTools.evaluate(model2, Vector{Float32}(ones(5)))[1]) ==
-              Float32
-    
+        @test typeof(
+            ModelTools.evaluate(model2, Vector{Float32}(ones(5)))[1],
+        ) == Float32
+
         temp(x) = x
         test_loss_check(x, y) = ModelTools.custom_loss(x, y, temp, 2, 1)
         input_x = Vector{Float32}([1, 2, 3, 4, 5])
         input_y = Vector{Float32}([2, 3, 5, 2, 3])
         @test test_loss_check(input_x, input_y) == 11.8f0
         @test typeof(test_loss_check(input_x, input_y)) == Float32
-    
+
         data_download_link = "https://caltech.box.com/shared/static/1gfyh71c44ljzb9xbnza3lbzj6p9723x.csv"
         modelz_download_link = "https://caltech.box.com/shared/static/ay7cv0rhuiytrqbongpeq2y7m3cimhm4.bson"
         modelswe_download_link = "https://caltech.box.com/shared/static/fe3cghffl0vz3xlzi3jsg3sb2ptyxlai.bson"
@@ -275,11 +278,13 @@ if !isnothing(DataToolsExt)
         test_loss(x, y) = ModelTools.custom_loss(x, y, zmodel, 2, 1)
         series_err =
             sqrt(sum((pred_series .- true_series) .^ 2) ./ length(pred_series))
-        direct_err =
-            test_loss(Matrix{Float32}(select(data, pred_vars))', data[!, :dzdt]')
+        direct_err = test_loss(
+            Matrix{Float32}(select(data, pred_vars))',
+            data[!, :dzdt]',
+        )
         @test series_err ≈ 0.15 atol = 0.05
         @test direct_err ≈ 0 atol = 1e-12
-    
+
         zseries, sweseries, _, _ =
             ModelTools.paired_timeseries(zmodel, swemodel, data, Day(1))
         true_swes = data[!, :SWE]
@@ -287,9 +292,10 @@ if !isnothing(DataToolsExt)
         sweerr = sqrt(sum((sweseries .- true_swes) .^ 2) ./ length(true_series))
         @test zerr ≈ 0.1 atol = 0.05
         @test sweerr ≈ 0.05 atol = 0.03
-    
+
         out_scale = maximum(abs.(data[!, :dzdt]))
-        x_train, y_train = DataTools.make_data(data, pred_vars, :dzdt, out_scale)
+        x_train, y_train =
+            DataTools.make_data(data, pred_vars, :dzdt, out_scale)
         ps = ModelTools.get_model_ps(zmodel)
         ModelTools.settimescale!(zmodel, 86400 * out_scale)
         ModelTools.setoutscale!(zmodel, 1.0)
