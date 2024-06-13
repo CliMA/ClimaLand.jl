@@ -25,9 +25,9 @@ DataTools = Base.get_extension(ClimaLand, :NeuralSnowExt).DataTools;
 # in order to create custom datasets.
 
 # ```julia
-#metadata = DataTools.snotel_metadata();
-#metacols = ["id", "name", "state", "elev", "lat", "lon"]
-#DataFrames.rename!(metadata, Symbol.(metacols));
+# metadata = DataTools.snotel_metadata();
+# metacols = ["id", "name", "state", "elev", "lat", "lon"]
+# DataFrames.rename!(metadata, Symbol.(metacols));
 # ```
 
 # At the most user-friendly level, the function `scrape_site_paper()` provides
