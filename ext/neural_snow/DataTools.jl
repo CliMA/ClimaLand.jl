@@ -1,3 +1,33 @@
+#=
+The following functions are used for scraping data:
+    - `sitedata_daily`
+    - `sitedata_hourly`
+    - `snotel_metadata`
+    - `scrape_site_paper` (follow same process as paper)
+
+The following functions are used for filtering/processing scraped data:
+    - `apply_bounds`
+    - `hourly2daily`
+    - `rectify_daily_hourly`
+    - `scale_cols`
+    - `makediffs`
+    - `rolldata`
+
+The following functions are used for quality control:
+    - `serreze_qc`
+    - `yan_qc`
+    - `fix_temp`
+    - `bcqc_daily` (wrapper around all steps for daily data)
+    - `bcqc_hourly` (wrapper around all steps for hourly data)
+    - `d_impute`
+    - `qc_filter`
+
+The following functions are used for data preprocessing for a model:
+    - `snowsplit`
+    - `train_filter`
+    - `prep_data`
+    - `make_data`
+=#
 module DataTools
 using DataFrames, CSV, HTTP, Dates, StatsBase
 export sitedata_daily,
@@ -675,7 +705,8 @@ end
 
 Apply basic quality control measures to the daily data, using procedures
 as developed by Serreze et. al. (1999), as well as an additional step to the
-second filter, as applied by Yan et. al. (2018)
+second filter, as applied by Yan et. al. (2018).
+This function can only be applied over a valid SNOTEL site.
 
 **Note: requires column names of at least "date", "SWE", "precip", "air_temp_avg" in the data, with data in sequential order.
 
@@ -886,6 +917,7 @@ end
     yan_qc(input)
 
 Apply quality control for inconsistent water years as proposed by Yan et. al. (2018).
+This filter was designed for SNOTEl data but could be applied over any snow series data.
 
 **Note: requires column names of at least "date", "SWE", "precip" in the data
 
@@ -932,7 +964,9 @@ end
     livneh_bc(input)
 
 Apply undercatch bias control for water years in the manner outlined by Livneh (2014),
-as is done by Yan et. al. (2019)
+as is done by Yan et. al. (2019).
+This filter was originally applied to SNOTEL data but can be applied over any site, though the paper
+recommends to avoid applying to maritime climate with greater occurrence of storms with mixed precipitation.
 
 **Note: requires column names of at least "date", "SWE", "precip" in the data, ordered sequentially.
 
@@ -956,39 +990,49 @@ function livneh_bc(input::DataFrame)
         if sum(valid_idx) <= 2
             continue
         end
-        aprec = yeardata[valid_idx, :precip]
+        accum_precip = yeardata[valid_idx, :precip]
         swe = yeardata[valid_idx, :SWE]
-        precs = aprec[2:end] .- aprec[1:(end - 1)]
-        cswes = swe[2:end] .- swe[1:(end - 1)]
+        precips = accum_precip[2:end] .- accum_precip[1:(end - 1)]
+        Δswes = swe[2:end] .- swe[1:(end - 1)]
 
-        sidx = -6
-        eidx = 1
+        idx_start = -6
+        idx_end = 1
         while true
-            sidx += 7
-            eidx += 7
-            temp = minimum([eidx, length(aprec)])
-            p7n = aprec[temp] - aprec[sidx]
-            swe7n = swe[temp] - swe[sidx]
-            ps = precs[sidx:(temp - 1)]
-            dswes = cswes[sidx:(temp - 1)]
-            if ismissing(p7n) | ismissing(swe7n)
-                (eidx <= length(aprec)) || break
+            idx_start += 7
+            idx_end += 7
+            temp = minimum([idx_end, length(accum_precip)])
+            #=
+            The following variables are from those in the paper:
+            . precip_tot_7day = P7n in paper
+            . swe_tot_7day = SWE7n in paper
+            . precips_7day = P in paper
+            . dswes_7day = dSWE in paper
+            =#
+            precip_tot_7day = accum_precip[temp] - accum_precip[idx_start]
+            swe_tot_7day = swe[temp] - swe[idx_start]
+            precips_7day = precips[idx_start:(temp - 1)]
+            dswes_7day = Δswes[idx_start:(temp - 1)]
+            if ismissing(precip_tot_7day) | ismissing(swe_tot_7day)
+                (idx_end <= length(accum_precip)) || break
                 continue
             end
-            if swe7n > p7n
-                ps[dswes .>= 0] .= dswes[dswes .>= 0]
-                ps[dswes .< 0] .= [maximum([x, 0.0]) for x in ps[dswes .< 0]]
+            if swe_tot_7day > precip_tot_7day
+                precips_7day[dswes_7day .>= 0] .= dswes_7day[dswes_7day .>= 0]
+                precips_7day[dswes_7day .< 0] .=
+                 [maximum([x, 0.0]) for x in precips_7day[dswes_7day .< 0]]
             else
-                temp2 = (ps .== 0)
-                ps = maximum(cat(ps, dswes, dims = 2), dims = 2)
-                ps[temp2] .= 0.0
+                temp2 = (precips_7day .== 0)
+                precips_7day = maximum(
+                    cat(precips_7day, dswes_7day, dims = 2), dims = 2
+                )
+                precips_7day[temp2] .= 0.0
             end
-            precs[sidx:(temp - 1)] = ps
-            (eidx <= length(aprec)) || break
+            precips[idx_start:(temp - 1)] = precips_7day
+            (idx_end <= length(accum_precip)) || break
         end
-        pushfirst!(precs, aprec[1])
-        newaprec = cumsum(precs)
-        yeardata[valid_idx, :precip] .= newaprec
+        pushfirst!(precips, accum_precip[1])
+        new_accum_precip = cumsum(precips)
+        yeardata[valid_idx, :precip] .= new_accum_precip
         data[precipdates, :precip] .= yeardata[!, :precip]
     end
 

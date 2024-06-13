@@ -23,9 +23,12 @@ DataTools = Base.get_extension(ClimaLand, :NeuralSnowExt).DataTools;
 # metadata that is used for analysis in the paper. This resulting `DataFrame`
 # can also be used to see other available SNOTEL station IDs for scraping,
 # in order to create custom datasets.
-metadata = DataTools.snotel_metadata();
-metacols = ["id", "name", "state", "elev", "lat", "lon"]
-DataFrames.rename!(metadata, Symbol.(metacols));
+
+# ```julia
+#metadata = DataTools.snotel_metadata();
+#metacols = ["id", "name", "state", "elev", "lat", "lon"]
+#DataFrames.rename!(metadata, Symbol.(metacols));
+# ```
 
 # At the most user-friendly level, the function `scrape_site_paper()` provides
 # a wrapper to scrape SNOTEL data in the exact same manner as the paper (it may take
@@ -35,9 +38,11 @@ DataFrames.rename!(metadata, Symbol.(metacols));
 # unexpected results for sites not used in the paper. Here is an example for
 # how to use the metadata to streamline the process:
 
-example_ID = 1030
-example_state = metadata[findfirst(==(example_ID), metadata[!, :id]), :state]
-example_data = DataTools.scrape_site_paper(example_ID, example_state);
+# ```julia
+# example_ID = 1030
+# example_state = metadata[findfirst(==(example_ID), metadata[!, :id]), :state]
+# example_data = DataTools.scrape_site_paper(example_ID, example_state);
+# ```
 
 # And that's it! This can be iterated within a loop to gather the data for all
 # sites. However, while straightforward, this wrapper obfuscates many of the
@@ -164,63 +169,68 @@ good_stations = Dict{Int, Tuple{String, String}}(
 # A few steps are commented out, which indicate steps implemented in `scrape_site_paper()` 
 # like quality-control measures, which could be substituted with other user-defined steps.
 
-allsites = Any[];
-for site in sort(collect(keys(good_stations)))
-    state = metadata[metadata[!, :id] .== site, :state][1]
-    start_date = good_stations[site][1]
-    end_date = good_stations[site][2]
-
-    hourly = DataTools.apply_bounds(
-        DataTools.sitedata_hourly(
-            site,
-            state,
-            start = start_date,
-            finish = end_date,
-        ),
-        filter_val,
-    )
-    hourly[!, :id] .= site
-    #hourly = DataTools.bcqc_hourly(hourly)
-    hourly_d = DataTools.hourly2daily(hourly)
-    #DataFrames.allowmissing!(hourly_d) 
-    #sflags = DataTools.qc_filter(hourly_d, :sol_rad_avg, t1 = 2)
-    #hourly_d[sflags, :sol_rad_avg] .= missing
-
-    daily = DataTools.apply_bounds(
-        DataTools.sitedata_daily(
-            site,
-            state,
-            start = start_date,
-            finish = end_date,
-        ),
-        filter_val,
-    )
-    daily[!, :id] .= site
-    gap_daily = DataTools.rectify_daily_hourly(daily, hourly_d)
-    #gap_daily = DataTools.bcqc_daily(gap_daily, site, state)
-    #gap_daily = DataTools.d_impute(gap_daily)
-    daily_scaled = DataTools.scale_cols(gap_daily, scales)
-    daily_clean = daily_scaled[completecases(daily_scaled), :]
-    daily_clean = DataTools.makediffs(daily_clean, Day(1))
-    good_vals = daily_clean[!, :dprecipdt] .>= 0.0
-    daily_clean[(!).(good_vals), :dprecipdt] .= 0.0
-    daily_clean = daily_clean[!, Not(:precip)]
-    #show(describe(daily_clean), allrows = true, allcols = true)
-    #print("\nSIZE: ", nrow(daily_clean), "\n")
-
-    daily_clean[!, :id] .= site
-    daily_clean[!, :elev] .= metadata[metadata[!, :id] .== site, :elev][1]
-    daily_clean[!, :lat] .= metadata[metadata[!, :id] .== site, :lat][1]
-    daily_clean[!, :lon] .= metadata[metadata[!, :id] .== site, :lon][1]
-
-    push!(allsites, daily_clean)
-end;
+# ```julia
+# allsites = Any[];
+# for site in sort(collect(keys(good_stations)))
+#     state = metadata[metadata[!, :id] .== site, :state][1]
+#     start_date = good_stations[site][1]
+#     end_date = good_stations[site][2]
+# 
+#     hourly = DataTools.apply_bounds(
+#         DataTools.sitedata_hourly(
+#              site,
+#             state,
+#             start = start_date,
+#             finish = end_date,
+#         ),
+#        filter_val,
+#     )
+#     hourly[!, :id] .= site
+#     #hourly = DataTools.bcqc_hourly(hourly)
+#     hourly_d = DataTools.hourly2daily(hourly)
+#     #DataFrames.allowmissing!(hourly_d) 
+#     #sflags = DataTools.qc_filter(hourly_d, :sol_rad_avg, t1 = 2)
+#    #hourly_d[sflags, :sol_rad_avg] .= missing
+# 
+#     daily = DataTools.apply_bounds(
+#         DataTools.sitedata_daily(
+#             site,
+#             state,
+#             start = start_date,
+#             finish = end_date,
+#         ),
+#         filter_val,
+#     )
+#     daily[!, :id] .= site
+#     gap_daily = DataTools.rectify_daily_hourly(daily, hourly_d)
+#     #gap_daily = DataTools.bcqc_daily(gap_daily, site, state)
+#     #gap_daily = DataTools.d_impute(gap_daily)
+#     daily_scaled = DataTools.scale_cols(gap_daily, scales)
+#     daily_clean = daily_scaled[completecases(daily_scaled), :]
+#     daily_clean = DataTools.makediffs(daily_clean, Day(1))
+#     good_vals = daily_clean[!, :dprecipdt] .>= 0.0
+#     daily_clean[(!).(good_vals), :dprecipdt] .= 0.0
+#     daily_clean = daily_clean[!, Not(:precip)]
+#     #show(describe(daily_clean), allrows = true, allcols = true)
+#     #print("\nSIZE: ", nrow(daily_clean), "\n")
+# 
+#     daily_clean[!, :id] .= site
+#     daily_clean[!, :elev] .= metadata[metadata[!, :id] .== site, :elev][1]
+#     daily_clean[!, :lat] .= metadata[metadata[!, :id] .== site, :lat][1]
+#     daily_clean[!, :lon] .= metadata[metadata[!, :id] .== site, :lon][1]
+# 
+#     push!(allsites, daily_clean)
+# end;
+# ```
 
 # With the sites complete, we condense all sites into a single `DataFrame`,
-totaldata = deepcopy(allsites[1])
-for site in allsites[2:end]
-    append!(totaldata, site)
-end
+# ```julia
+# totaldata = deepcopy(allsites[1])
+# for site in allsites[2:end]
+#     append!(totaldata, site)
+# end
+# ```
+
 # and a final `CSV.write("data.csv", totaldata)` call will
 # save the file.
 

@@ -301,8 +301,8 @@ function paired_timeseries(
     swe_sweidx = findfirst(SWE_inputvars .== :SWE)
     check_dates =
         (timeseries[2:end, timevar] - timeseries[1:(end - 1), timevar]) ./ dt
-    pred_dzs = zeros(nrow(timeseries) - 1)
-    pred_dswes = zeros(nrow(timeseries) - 1)
+    pred_dzdts = zeros(nrow(timeseries) - 1)
+    pred_dswedts = zeros(nrow(timeseries) - 1)
     pred_zs = zeros(nrow(timeseries))
     pred_swes = zeros(nrow(timeseries))
     pred_zs[1] = timeseries[1, :z]
@@ -315,14 +315,14 @@ function paired_timeseries(
         zinput[z_sweidx] = pred_swes[j - 1]
         sweinput[swe_zidx] = pred_zs[j - 1]
         sweinput[swe_sweidx] = pred_swes[j - 1]
-        zpred = evaluate(zmodel, zinput)[1]
-        swepred = evaluate(swemodel, sweinput)[1]
-        pred_dzs[j - 1] = zpred
-        pred_dswes[j - 1] = swepred
+        dzdtpred = evaluate(zmodel, zinput)[1]
+        dswedtpred = evaluate(swemodel, sweinput)[1]
+        pred_dzdts[j - 1] = dzdtpred
+        pred_dswedts[j - 1] = dswedtpred
         nperiods = check_dates[j - 1]
-        new_z = pred_zs[j - 1] + nperiods * Dates.value(Second(dt)) * zpred
+        new_z = pred_zs[j - 1] + nperiods * Dates.value(Second(dt)) * dzdtpred
         new_swe =
-            pred_swes[j - 1] + nperiods * Dates.value(Second(dt)) * swepred
+            pred_swes[j - 1] + nperiods * Dates.value(Second(dt)) * dswedtpred
         pred_swes[j] =
             (nperiods <= hole_thresh) ? max(0.0, new_swe) : timeseries[j, :SWE]
         pred_zs[j] =
@@ -332,7 +332,7 @@ function paired_timeseries(
             countresets += 1
         end
     end
-    return pred_zs, pred_swes, pred_dzs, pred_dswes, countresets
+    return pred_zs, pred_swes, pred_dzdts, pred_dswedts, countresets
 end
 
 
