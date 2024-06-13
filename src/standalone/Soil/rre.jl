@@ -98,8 +98,9 @@ end
 
 function make_update_boundary_fluxes(model::RichardsModel)
     function update_boundary_fluxes!(p, Y, t)
-        z = ClimaCore.Fields.coordinate_field(model.domain.space.subsurface).z
-        Δz_top, Δz_bottom = ClimaLand.Domains.get_Δz(z)
+        z = model.domain.fields.z
+        Δz_top = model.domain.fields.Δz_top
+        Δz_bottom = model.domain.fields.Δz_bottom
         p.soil.top_bc .= boundary_flux(
             model.boundary_conditions.top,
             TopBoundary(),
@@ -145,7 +146,7 @@ with that value.
 """
 function ClimaLand.make_compute_imp_tendency(model::RichardsModel)
     function compute_imp_tendency!(dY, Y, p, t)
-        z = ClimaCore.Fields.coordinate_field(model.domain.space.subsurface).z
+        z = model.domain.fields.z
         top_flux_bc = p.soil.top_bc
         bottom_flux_bc = p.soil.bottom_bc
 
@@ -193,7 +194,7 @@ function ClimaLand.make_compute_exp_tendency(model::Soil.RichardsModel)
     function compute_exp_tendency!(dY, Y, p, t)
         # set dY before updating it
         dY.soil.ϑ_l .= eltype(dY.soil.ϑ_l)(0)
-        z = ClimaCore.Fields.coordinate_field(model.domain.space.subsurface).z
+        z = model.domain.fields.z
 
         horizontal_components!(
             dY,

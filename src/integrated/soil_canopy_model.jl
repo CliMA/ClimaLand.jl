@@ -91,12 +91,7 @@ function SoilCanopyModel{FT}(;
     # These may be passed in, or set, depending on use scenario.
     (; atmos, radiation) = land_args
     # These should always be set by the constructor.
-    Δz = minimum(
-        ClimaCore.Fields.Δz_field(
-            ClimaLand.coordinates(soil_args.domain).subsurface,
-        ),
-    )
-    sources = (RootExtraction{FT}(), Soil.PhaseChange{FT}(Δz))
+    sources = (RootExtraction{FT}(), Soil.PhaseChange{FT}())
     # add heat BC
     top_bc =
         ClimaLand.Soil.AtmosDrivenFluxBC(atmos, CanopyRadiativeFluxes{FT}())

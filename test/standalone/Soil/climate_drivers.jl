@@ -115,6 +115,7 @@ for FT in (Float32, Float64)
             )
 
             Y, p, coords = initialize(model)
+            Δz_top = model.domain.fields.Δz_top
             @test propertynames(p.drivers) == (
                 :P_liq,
                 :P_snow,
@@ -229,6 +230,7 @@ for FT in (Float32, Float64)
                 ψ_sfc,
                 p.soil.ψ,
                 coords.subsurface.z,
+                Δz_top,
             )
             q_sfc = @. (q_sat * exp(g * ψ_sfc * M_w / (R * T_sfc)))
             @test ClimaLand.surface_specific_humidity(
@@ -274,6 +276,7 @@ for FT in (Float32, Float64)
                 S_l_sfc,
                 Soil.effective_saturation.(ν, Y.soil.ϑ_l, θ_r),
                 coords.subsurface.z,
+                Δz_top,
             )
             τ_a = ClimaLand.Domains.top_center_to_surface(
                 @. (ν - p.soil.θ_l - Y.soil.θ_i)^(FT(5 / 2)) / ν

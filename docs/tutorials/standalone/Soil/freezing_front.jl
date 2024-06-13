@@ -122,7 +122,6 @@ params = Soil.EnergyHydrologyParameters(
 zmax = FT(0)
 zmin = FT(-0.2)
 nelems = 20
-Δz = FT(0.01)
 soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems);
 
 # Set the boundary conditions:
@@ -155,7 +154,7 @@ boundary_fluxes = (;
 # Sources are added as elements of a list of sources. Here we just add freezing
 # and thawing.
 
-sources = (PhaseChange{FT}(Δz),);
+sources = (PhaseChange{FT}(),);
 
 # Now we can package this up in the
 # [`EnergyHydrology`](@ref ClimaLand.Soil.EnergyHydrology) model

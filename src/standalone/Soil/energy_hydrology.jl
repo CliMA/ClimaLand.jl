@@ -131,8 +131,8 @@ end
 
 function make_update_boundary_fluxes(model::EnergyHydrology)
     function update_boundary_fluxes!(p, Y, t)
-        z = ClimaCore.Fields.coordinate_field(model.domain.space.subsurface).z
-        Δz_top, Δz_bottom = ClimaLand.Domains.get_Δz(z)
+        Δz_top = model.domain.fields.Δz_top
+        Δz_bottom = model.domain.fields.Δz_bottom
         soil_boundary_fluxes!(
             model.boundary_conditions.top,
             ClimaLand.TopBoundary(),
@@ -175,7 +175,7 @@ function ClimaLand.make_compute_exp_tendency(
     model::EnergyHydrology{FT},
 ) where {FT}
     function compute_exp_tendency!(dY, Y, p, t)
-        z = ClimaCore.Fields.coordinate_field(model.domain.space.subsurface).z
+        z = model.domain.fields.z
         heat_top_flux_bc = p.soil.top_bc.heat
         heat_bottom_flux_bc = p.soil.bottom_bc.heat
 
@@ -236,7 +236,7 @@ function ClimaLand.make_compute_imp_tendency(
     model::EnergyHydrology{FT},
 ) where {FT}
     function compute_imp_tendency!(dY, Y, p, t)
-        z = ClimaCore.Fields.coordinate_field(model.domain.space.subsurface).z
+        z = model.domain.fields.z
         rre_top_flux_bc = p.soil.top_bc.water
         rre_bottom_flux_bc = p.soil.bottom_bc.water
 
@@ -379,11 +379,12 @@ function horizontal_components!(
     hgrad = Operators.Gradient()
     # The flux is already covariant, from hgrad, so no need to convert.
     @. dY.soil.ϑ_l += -hdiv(-p.soil.K * hgrad(p.soil.ψ + z))
-    ρe_int_l = volumetric_internal_energy_liq.(p.soil.T, model.parameters)
     @. dY.soil.ρe_int +=
         -hdiv(
             -p.soil.κ * hgrad(p.soil.T) -
-            p.soil.K * ρe_int_l * hgrad(p.soil.ψ + z),
+            p.soil.K *
+            volumetric_internal_energy_liq(p.soil.T, model.parameters) *
+            hgrad(p.soil.ψ + z),
         )
 end
 
@@ -528,9 +529,7 @@ end
 
 PhaseChange source type.
 """
-struct PhaseChange{FT} <: AbstractSoilSource{FT}
-    Δz::FT
-end
+struct PhaseChange{FT} <: AbstractSoilSource{FT} end
 
 
 """
@@ -555,13 +554,31 @@ function ClimaLand.source!(
     (; ν, earth_param_set) = params
     _ρ_l = FT(LP.ρ_cloud_liq(earth_param_set))
     _ρ_i = FT(LP.ρ_cloud_ice(earth_param_set))
-    ρc = volumetric_heat_capacity.(p.soil.θ_l, Y.soil.θ_i, params)
-    τ = thermal_time.(ρc, src.Δz, p.soil.κ)
-
-    liquid_source =
-        phase_change_source.(p.soil.θ_l, Y.soil.θ_i, p.soil.T, τ, params)
-    @. dY.soil.ϑ_l += -liquid_source
-    @. dY.soil.θ_i += (_ρ_l / _ρ_i) * liquid_source
+    Δz_top = model.domain.fields.Δz_top # center face distance
+    @. dY.soil.ϑ_l +=
+        -phase_change_source(
+            p.soil.θ_l,
+            Y.soil.θ_i,
+            p.soil.T,
+            thermal_time(
+                volumetric_heat_capacity(p.soil.θ_l, Y.soil.θ_i, params),
+                2 * Δz_top, # the factor of 2 appears to get the face-face/layer thickness, Δz_top is center-face distance
+                p.soil.κ,
+            ),
+            params,
+        )
+    @. dY.soil.θ_i +=
+        (_ρ_l / _ρ_i) * phase_change_source(
+            p.soil.θ_l,
+            Y.soil.θ_i,
+            p.soil.T,
+            thermal_time(
+                volumetric_heat_capacity(p.soil.θ_l, Y.soil.θ_i, params),
+                2 * Δz_top, #the factor of 2 appears to get the face-face/layer thickness, Δz_top is center-face distance
+                p.soil.κ,
+            ),
+            params,
+        )
 end
 
 
@@ -594,11 +611,11 @@ function ClimaLand.source!(
 ) where {FT}
     _ρ_i = FT(LP.ρ_cloud_ice(model.parameters.earth_param_set))
     _ρ_l = FT(LP.ρ_cloud_liq(model.parameters.earth_param_set))
-    z = ClimaCore.Fields.coordinate_field(axes(Y.soil.θ_i)).z
-    Δz, _ = ClimaLand.Domains.get_Δz(z) # center to face distance, we need a factor of two
+    z = model.domain.fields.z
+    Δz_top = model.domain.fields.Δz_top # this returns the center-face distance, not layer thickness
     @. dY.soil.θ_i +=
         -p.soil.turbulent_fluxes.vapor_flux * p.soil.ice_frac * _ρ_l / _ρ_i *
-        heaviside(z + 2 * Δz) # only apply to top layer
+        heaviside(z + 2 * Δz_top) # only apply to top layer, recall that z is negative
 end
 
 ## The functions below are required to be defined
@@ -649,13 +666,13 @@ function ClimaLand.surface_resistance(
     p,
     t,
 ) where {FT}
-    cds = ClimaCore.Fields.coordinate_field(model.domain.space.subsurface)
     (; ν, θ_r, hydrology_cm) = model.parameters
     θ_l_sfc = p.soil.sfc_scratch
     ClimaLand.Domains.linear_interpolation_to_surface!(
         θ_l_sfc,
         p.soil.θ_l,
-        cds.z,
+        model.domain.fields.z,
+        model.domain.fields.Δz_top,
     )
     θ_i_sfc = ClimaLand.Domains.top_center_to_surface(Y.soil.θ_i)
     return ClimaLand.Soil.soil_resistance.(θ_l_sfc, θ_i_sfc, model.parameters)
@@ -734,9 +751,13 @@ function ClimaLand.surface_specific_humidity(
     M_w = LP.molar_mass_water(model.parameters.earth_param_set)
     thermo_params =
         LP.thermodynamic_parameters(model.parameters.earth_param_set)
-    cds = ClimaCore.Fields.coordinate_field(model.domain.space.subsurface)
     ψ_sfc = p.soil.sfc_scratch
-    ClimaLand.Domains.linear_interpolation_to_surface!(ψ_sfc, p.soil.ψ, cds.z)
+    ClimaLand.Domains.linear_interpolation_to_surface!(
+        ψ_sfc,
+        p.soil.ψ,
+        model.domain.fields.z,
+        model.domain.fields.Δz_top,
+    )
     q_over_ice =
         Thermodynamics.q_vap_saturation_generic.(
             thermo_params,
@@ -772,20 +793,7 @@ end
 Returns the surface height of the `EnergyHydrology` model.
 """
 function ClimaLand.surface_height(model::EnergyHydrology{FT}, Y, p) where {FT}
-    face_space =
-        ClimaLand.Domains.obtain_face_space(model.domain.space.subsurface)
-    N = ClimaCore.Spaces.nlevels(face_space)
-    surface_space = model.domain.space.surface
-    z_sfc = ClimaCore.Fields.Field(
-        ClimaCore.Fields.field_values(
-            ClimaCore.Fields.level(
-                ClimaCore.Fields.coordinate_field(face_space).z,
-                ClimaCore.Utilities.PlusHalf(N - 1),
-            ),
-        ),
-        surface_space,
-    )
-    return z_sfc
+    return model.domain.fields.z_sfc
 end
 
 function ClimaLand.get_drivers(model::EnergyHydrology)
