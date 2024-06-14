@@ -29,6 +29,19 @@ if !isnothing(DataToolsExt)
             start_date = start_date,
             end_date = end_date,
         ) == real_link
+
+        colnames = [
+            "date",
+            "SWE",
+            "z",
+            "precip",
+            "rel_hum_avg",
+            "sol_rad_avg",
+            "wind_speed_avg",
+            "air_temp_avg",
+        ]
+        # Leave out tests that scrape data, to limit failed builds due to SNOTEL site being down:
+        #=
         test_data1 = DataTools.get_data(
             station_id,
             station_state,
@@ -40,45 +53,47 @@ if !isnothing(DataToolsExt)
         @test size(test_data1) == (32, 2)
         @test typeof(test_data1[1, 1]) == Date
         @test sum(test_data1[!, 2]) == 1168
+        =#
 
+        download_link = "https://caltech.box.com/shared/static/4tih9hiydrc7bcvrpkr2x727b5l54oiq.csv"
+        download_data = CSV.read(HTTP.get(download_link).body, DataFrame)
+        test_data2 = deepcopy(download_data)
+        #=
         test_data2 = DataTools.sitedata_daily(
             station_id,
             station_state,
             start = start_date,
             finish = end_date,
         )
+        =#
         @test typeof(test_data2) === DataFrame
         @test size(test_data2) == (32, 8)
-        colnames = [
-            "date",
-            "SWE",
-            "z",
-            "precip",
-            "rel_hum_avg",
-            "sol_rad_avg",
-            "wind_speed_avg",
-            "air_temp_avg",
-        ]
         @test DataFrames.names(test_data2) == colnames
         @test typeof(test_data2[1, 1]) == Date
         @test sum(test_data2[!, :z]) == 1168
+        #@test isequal(download_data, test_data2)
 
-        download_link = "https://caltech.box.com/shared/static/4tih9hiydrc7bcvrpkr2x727b5l54oiq.csv"
-        download_data = CSV.read(HTTP.get(download_link).body, DataFrame)
-        @test isequal(download_data, test_data2)
-
+        download_link_hr = "https://caltech.box.com/shared/static/4q7qtnc2nv8rwh4q8s0afe238ydzfl93.csv"
+        download_data = CSV.read(HTTP.get(download_link_hr).body, DataFrame)
+        test_data3 = deepcopy(download_data)
+        #=
         test_data3 = DataTools.sitedata_hourly(
             station_id,
             station_state,
             start = start_date,
             finish = end_date,
         )
+        =#
+        test_data3[!, :id] .= station_id
+        test_data2[!, :id] .= station_id
+        push!(colnames, "id")
         @test typeof(test_data3) === DataFrame
-        @test size(test_data3) == (768, 8)
+        @test size(test_data3) == (768, 9)
         @test DataFrames.names(test_data3) == colnames
         @test typeof(test_data3[1, 1]) == DateTime
         @test sum(skipmissing(test_data3[!, :z])) == 25063
         @test sum(skipmissing(test_data3[!, :rel_hum_avg])) == 62232
+        #@test isequal(download_data, test_data3)
 
         test_bounds = Dict{Symbol, Tuple{Real, Real}}(
             :z => (0, 37),
@@ -108,19 +123,18 @@ if !isnothing(DataToolsExt)
         test_data7 = DataTools.scale_cols(test_data6, scales)
         @test sum(test_data7[!, :rel_hum_avg]) ≈ 25.93 atol = 1e-3
         test_data8 = DataTools.makediffs(test_data7, Day(1))
-        @test size(test_data8) == (31, 11)
+        @test size(test_data8) == (31, 12)
         @test mean(test_data8[!, :dzdt]) ≈ 0 atol = 1e-7
         @test mean(test_data8[!, :dSWEdt]) ≈ 0 atol = 1e-7
         @test minimum(test_data8[!, :dprecipdt]) == 0
 
         test_data9 = DataTools.rolldata(test_data8, Day(1), 7)
-        @test size(test_data9) == (25, 11)
+        @test size(test_data9) == (25, 12)
         @test mean(test_data9[!, :dzdt]) ≈ 0 atol = 1e-8
         @test mean(test_data9[!, :dSWEdt]) ≈ 0 atol = 1e-8
         @test minimum(test_data9[!, :dprecipdt]) == 0
         @test minimum(test_data9[!, :z]) ≈ 0.8636 atol = 1e-4
 
-        test_data8[!, :id] .= station_id
         test_data10 = DataTools.prep_data(
             test_data8,
             extract_vars = [:dprecipdt_rain, :dprecipdt_snow],
@@ -135,6 +149,51 @@ if !isnothing(DataToolsExt)
               test_data8[!, :dprecipdt]
         @test size(x_train) == (1, 31)
         @test size(y_train) == (1, 31)
+
+        @test DataTools.fix_temp([10.0], alaska = true)[1] ≈ 9.968 atol = 1e-3
+
+        x = ones(366, 7)
+        x = Float32.(x)
+        x = DataFrame(
+            x,
+            [
+                :SWE,
+                :z,
+                :precip,
+                :rel_hum_avg,
+                :sol_rad_avg,
+                :wind_speed_avg,
+                :air_temp_avg,
+            ],
+        )
+        x[!, :id] .= station_id
+        x[!, :date] .= collect(Date("2015-10-01"):Day(1):Date("2016-09-30"))
+        x[200, :precip] = 2.0
+        x[49, :precip] = 2.0
+        x[49, :SWE] = 3.0
+        allowmissing!(x)
+        x[[3, 4, 10], :sol_rad_avg] .= missing
+        x[100, :wind_speed_avg] = 1000.0
+        #x1 = DataTools.serreze_qc(x, station_id, station_state)
+        #@test size(x1) == (365, 9)
+        #@test count(ismissing, x1[!, :air_temp_avg]) == 365
+        #@test sum(x1[!, :precip]) == 365
+        x1, n1 = DataTools.yan_qc(x)
+        @test count(ismissing, x1[!, :SWE]) == 366
+        @test n1 == 1.5
+        x1 = DataTools.livneh_bc(x)
+        @test sum(x1[!, :precip]) == 852
+        @test sum(x1[!, :SWE]) == 368
+        x1 = DataTools.z_qc(x)
+        @test sum(x1) == 153
+        x1, x2, x3 = DataTools.manual_filter(x)
+        @test sum(x1) == 0
+        @test sum(x2) == 30
+        @test sum(x3) == 0
+        x1 = DataTools.impute_data(x, t1 = 1, t2 = 2, dt = Day(1))
+        @test sum(x1) == 366
+        x1 = DataTools.qc_filter(x)
+        @test sum(x1) == 1
     end
 
     @testset "Testing Model Utilities" begin
@@ -150,6 +209,7 @@ if !isnothing(DataToolsExt)
             :dprecipdt_snow,
         ]
         z_idx = 1
+        swe_idx = 2
         p_idx = 7
         model = ModelTools.make_model(nfeatures, n, z_idx, p_idx)
         ps = ModelTools.get_model_ps(model)
@@ -197,41 +257,55 @@ if !isnothing(DataToolsExt)
         @test test_loss_check(input_x, input_y) == 11.8f0
         @test typeof(test_loss_check(input_x, input_y)) == Float32
 
-        data_download_link = "https://caltech.box.com/shared/static/n59m3iqcgr60gllp65rsrd3k0mtnsfmg.csv"
-        model_download_link = "https://caltech.box.com/shared/static/bbu12b518i49aj3pl6b8t9t05twl5teq.bson"
+        data_download_link = "https://caltech.box.com/shared/static/1gfyh71c44ljzb9xbnza3lbzj6p9723x.csv"
+        modelz_download_link = "https://caltech.box.com/shared/static/ay7cv0rhuiytrqbongpeq2y7m3cimhm4.bson"
+        modelswe_download_link = "https://caltech.box.com/shared/static/fe3cghffl0vz3xlzi3jsg3sb2ptyxlai.bson"
         data = CSV.read(HTTP.get(data_download_link).body, DataFrame)
         data = data[data[!, :id] .== 1286, :]
         data = DataTools.prep_data(data)
-        nmodel = ModelTools.make_model(nfeatures, n, z_idx, p_idx)
-        model_state =
-            BSON.load(IOBuffer(HTTP.get(model_download_link).body))[:model_state]
-        Flux.loadmodel!(nmodel, model_state)
-        ModelTools.settimescale!(model, 86400.0)
-        pred_series, _, _ = ModelTools.make_timeseries(nmodel, data, Day(1))
+        zmodel = ModelTools.make_model(nfeatures, 4, z_idx, p_idx)
+        swemodel = ModelTools.make_model(nfeatures, 5, swe_idx, p_idx)
+        zmodel_state =
+            BSON.load(IOBuffer(HTTP.get(modelz_download_link).body))[:zstate]
+        swemodel_state =
+            BSON.load(IOBuffer(HTTP.get(modelswe_download_link).body))[:swestate]
+        Flux.loadmodel!(zmodel, zmodel_state)
+        Flux.loadmodel!(swemodel, swemodel_state)
+        ModelTools.settimescale!(zmodel, 86400.0)
+        ModelTools.settimescale!(swemodel, 86400.0)
+        pred_series, _, _ = ModelTools.make_timeseries(zmodel, data, Day(1))
         true_series = data[!, :z]
-        test_loss(x, y) = ModelTools.custom_loss(x, y, nmodel, 2, 1)
+        test_loss(x, y) = ModelTools.custom_loss(x, y, zmodel, 2, 1)
         series_err =
             sqrt(sum((pred_series .- true_series) .^ 2) ./ length(pred_series))
         direct_err = test_loss(
             Matrix{Float32}(select(data, pred_vars))',
             data[!, :dzdt]',
         )
-        @test series_err ≈ 0.1 atol = 0.05
+        @test series_err ≈ 0.15 atol = 0.05
         @test direct_err ≈ 0 atol = 1e-12
+
+        zseries, sweseries, _, _ =
+            ModelTools.paired_timeseries(zmodel, swemodel, data, Day(1))
+        true_swes = data[!, :SWE]
+        zerr = sqrt(sum((zseries .- true_series) .^ 2) ./ length(true_series))
+        sweerr = sqrt(sum((sweseries .- true_swes) .^ 2) ./ length(true_series))
+        @test zerr ≈ 0.1 atol = 0.05
+        @test sweerr ≈ 0.05 atol = 0.03
 
         out_scale = maximum(abs.(data[!, :dzdt]))
         x_train, y_train =
             DataTools.make_data(data, pred_vars, :dzdt, out_scale)
-        ps = ModelTools.get_model_ps(nmodel)
-        ModelTools.settimescale!(nmodel, 86400 * out_scale)
-        ModelTools.setoutscale!(nmodel, 1.0)
+        ps = ModelTools.get_model_ps(zmodel)
+        ModelTools.settimescale!(zmodel, 86400 * out_scale)
+        ModelTools.setoutscale!(zmodel, 1.0)
         callback_check = [0.0]
         function call_check(val = callback_check)
             val[1] += 1
         end
         nepochs = 10
         ModelTools.trainmodel!(
-            nmodel,
+            zmodel,
             ps,
             x_train,
             y_train,
@@ -241,9 +315,9 @@ if !isnothing(DataToolsExt)
             cb = call_check,
         )
         @test callback_check[1] == nepochs
-        ModelTools.setoutscale!(nmodel, out_scale)
-        ModelTools.settimescale!(nmodel, 86400)
-        pred_series, _, _ = ModelTools.make_timeseries(nmodel, data, Day(1))
+        ModelTools.setoutscale!(zmodel, out_scale)
+        ModelTools.settimescale!(zmodel, 86400.0)
+        pred_series, _, _ = ModelTools.make_timeseries(zmodel, data, Day(1))
         series_err =
             sqrt(sum((pred_series .- true_series) .^ 2) ./ length(pred_series))
         @test series_err <= 0.2

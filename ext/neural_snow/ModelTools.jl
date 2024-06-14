@@ -7,7 +7,10 @@ export make_model,
     setoutscale!,
     LinearModel,
     make_timeseries,
-    trainmodel!
+    trainmodel!,
+    custom_loss,
+    evaluate,
+    paired_timeseries
 
 """
     make_model(nfeatures, n, z_idx, p_idx; in_scale, dtype)
@@ -20,7 +23,7 @@ Create the neural network to be trained, with initial scaling weights.
 - `z_idx::Int`: The index of the data vectors pertaining to the depth (z) values.
 - `p_idx::Int`: The index of the data vectors pertaining to the precipitation values.
 -  `in_scale::Vector{<:Real}`: Optional scaling constants for each input feature.
-- `dtype::Type`: Sets type of output model. Default is Float32.
+- `dtype::Type`: Sets type of output model. Default is `Float32`.
 """
 function make_model(
     nfeatures::Int,
@@ -44,7 +47,7 @@ function make_model(
                 l2 = Dense(n * nfeatures, nfeatures, elu),
                 l3 = Dense(nfeatures, 1),
             ),
-            vcat, #returns [predicted value, input...]
+            vcat, #returns [predicted_value, input...]
         ),
         get_boundaries = Parallel(
             vcat,
@@ -85,7 +88,7 @@ Set the timescale parameter for model usage.
 # Arguments
 - `model::Chain`: the neural model to be used.
 - `dt::Real`: the number of seconds per timestep for usage.
-- `dtype::Type`: Sets type, consistent with neural model. Default is Float32.
+- `dtype::Type`: Sets type, consistent with neural model. Default is `Float32`.
 """
 function settimescale!(model, dt::Real; dtype::Type = Float32)
     model[:final_scale].weight[2, 2] = dtype(1.0 / dt)
@@ -99,7 +102,7 @@ Set the physical scaling parameter for model usage (i.e. rectifying scaling done
 # Arguments
 - `model::Chain`: the neural model to be used.
 - `scale::Real`: the scaling parameter to return data to applicable units.
-- `dtype::Type`: Sets type, consistent with neural model. Default is Float32.
+- `dtype::Type`: Sets type, consistent with neural model. Default is `Float32`.
 """
 function setoutscale!(model, scale::Real; dtype::Type = Float32)
     model[:final_scale].weight[3, 3] = dtype(scale)
@@ -115,7 +118,7 @@ Returns the coefficients for the model.
 - `data::DataFrame`: The data set to be utilized.
 - `vars::Vector{Symbol}`: The input variables to be used in the model creation.
 -  `target::Symbol`: The target variable to be used in the model ceation.
-- `dtype::Type`: Sets type, consistent with neural model. Default is Float32.
+- `dtype::Type`: Sets type, consistent with neural model. Default is `Float32`.
 - `scale_const`: Optional scaling constant for model output. Default is 1.0.
 """
 function LinearModel(
@@ -136,12 +139,12 @@ end
 
 Create a linear regression model on a training matrix for comparison to neural model.
 Returns the coefficients for the model.
-**Note: using the same matrices input to the neural model will require a transpose of x_train, y_train
+**Note: using the same matrices input to the neural model will require a transpose of `x_train`, `y_train`
 
 # Arguments
 - `x_train::Matrix`: The input to be utilized.
 - `y_train::Vector`: The output data to be utilized.
-- `dtype::Type`: Sets type, consistent with neural model. Default is Float32.
+- `dtype::Type`: Sets type, consistent with neural model. Default is `Float32`.
 - `scale_const`: Optional scaling constant for model output. Default is 1.0.
 """
 function LinearModel(
@@ -190,14 +193,14 @@ end
 Generate a predicted timeseries given forcing data and the timestep present in that data (holes acceptable).
 
 # Arguments
-- `model`: The model used for forecasting (can be any model with a defined "evaluate" call).
+- `model`: The model used for forecasting (can be any model with a defined `evaluate` call).
 - `timeseries::DataFrame`: The input data frame used to generate predictions, including a time variable.
-- `dt::Period`: The unit timestep present in the dataframe (i.e. daily dataframe, dt = Day(1) or Second(86400)).
-- `predictvar::Symbol`: The variable to predict from the timeseries. Default is :z.
-- `timevar::Symbol`: The variable giving the time of each forcing. Default is :date.
+- `dt::Period`: The unit timestep present in the dataframe (i.e. daily dataframe, `dt = Day(1)` or `Second(86400)`).
+- `predictvar::Symbol`: The variable to predict from the timeseries. Default is `:z`.
+- `timevar::Symbol`: The variable giving the time of each forcing. Default is `:date`.
 - `inputvars::Vector{Symbol}`: The variables (in order), to extract from the data to use for predictions.
-Default is [:z, :SWE, :rel_hum_avg, :sol_rad_avg, :wind_speed_avg, :air_temp_avg, :dprecipdt_snow] like the paper.
-- `dtype::Type`: The data type required for input to the model. Default is Float32.
+Default is `[:z, :SWE, :rel_hum_avg, :sol_rad_avg, :wind_speed_avg, :air_temp_avg, :dprecipdt_snow]` like the paper.
+- `dtype::Type`: The data type required for input to the model. Default is `Float32`.
 - `hole_thresh::Int`: The acceptable number of "holes" in the timeseries for the model to skip over. Default is 30.
 """
 function make_timeseries(
@@ -235,13 +238,101 @@ function make_timeseries(
         new_val = pred_series[j - 1] + nperiods * Dates.value(Second(dt)) * pred
         pred_series[j] =
             (nperiods <= hole_thresh) ? max(0.0, new_val) :
-            timeseries[j, predictvar]  #the "max" is only in the case of holes for a non-negative system and does not generalize
+            timeseries[j, predictvar]  #the "max" is only in the case of holes for a non-negative system, and does not generalize
         #pred_series[j] = (nperiods <= hole_thresh) ? new_val : true_series[j]  #for showing no thresholds
         if nperiods > hole_thresh
             countresets += 1
         end
     end
     return pred_series, pred_vals, countresets
+end
+
+"""
+    paired_timeseries(zmodel, swemodel, timeseries, dt; timevar, z_inputvars, SWE_inputvars, dtype, hole_thresh)
+
+Generate a predicted timeseries given forcing data and the timestep present in that data (holes acceptable), with a coupled
+z and SWE model. Used in the paper for combined timeseries.
+
+# Arguments
+- `zmodel`: The model used for depth forecasting (can be any model with a defined `evaluate` call).
+- `swemodel`: The model used for SWE forecasting (can be any model with a defined `evaluate` call).
+- `timeseries::DataFrame`: The input data frame used to generate predictions, including a time variable.
+- `dt::Period`: The unit timestep present in the dataframe (i.e. daily dataframe, `dt = Day(1)` or `Second(86400)`).
+- `timevar::Symbol`: The variable giving the time of each forcing. Default is `:date`.
+- `z_inputvars::Vector{Symbol}`: The variables (in order), to extract from the data to use for depth predictions.
+Default is `[:z, :SWE, :rel_hum_avg, :sol_rad_avg, :wind_speed_avg, :air_temp_avg, :dprecipdt_snow]` like the paper.
+- `SWE_inputvars::Vector{Symbol}`: The variables (in order), to extract from the data to use for SWE predictions.
+Default is `[:z, :SWE, :rel_hum_avg, :sol_rad_avg, :wind_speed_avg, :air_temp_avg, :dprecipdt_snow]` like the paper.
+- `dtype::Type`: The data type required for input to the model. Default is `Float32`.
+- `hole_thresh::Int`: The acceptable number of "holes" in the timeseries for the model to skip over. Default is 30.
+"""
+function paired_timeseries(
+    zmodel,
+    swemodel,
+    timeseries::DataFrame,
+    dt::Period;
+    timevar::Symbol = :date,
+    z_inputvars::Vector{Symbol} = [
+        :z,
+        :SWE,
+        :rel_hum_avg,
+        :sol_rad_avg,
+        :wind_speed_avg,
+        :air_temp_avg,
+        :dprecipdt_snow,
+    ],
+    SWE_inputvars::Vector{Symbol} = [
+        :z,
+        :SWE,
+        :rel_hum_avg,
+        :sol_rad_avg,
+        :wind_speed_avg,
+        :air_temp_avg,
+        :dprecipdt_snow,
+    ],
+    dtype::Type = Float32,
+    hole_thresh::Int = 30,
+)
+    zforcings = Matrix{dtype}(select(timeseries, z_inputvars))
+    sweforcings = Matrix{dtype}(select(timeseries, SWE_inputvars))
+    z_zidx = findfirst(z_inputvars .== :z)
+    z_sweidx = findfirst(z_inputvars .== :SWE)
+    swe_zidx = findfirst(SWE_inputvars .== :z)
+    swe_sweidx = findfirst(SWE_inputvars .== :SWE)
+    check_dates =
+        (timeseries[2:end, timevar] - timeseries[1:(end - 1), timevar]) ./ dt
+    pred_dzdts = zeros(nrow(timeseries) - 1)
+    pred_dswedts = zeros(nrow(timeseries) - 1)
+    pred_zs = zeros(nrow(timeseries))
+    pred_swes = zeros(nrow(timeseries))
+    pred_zs[1] = timeseries[1, :z]
+    pred_swes[1] = timeseries[1, :SWE]
+    countresets = 0
+    for j in 2:length(pred_zs)
+        zinput = zforcings[j - 1, :]
+        sweinput = sweforcings[j - 1, :]
+        zinput[z_zidx] = pred_zs[j - 1]
+        zinput[z_sweidx] = pred_swes[j - 1]
+        sweinput[swe_zidx] = pred_zs[j - 1]
+        sweinput[swe_sweidx] = pred_swes[j - 1]
+        dzdtpred = evaluate(zmodel, zinput)[1]
+        dswedtpred = evaluate(swemodel, sweinput)[1]
+        pred_dzdts[j - 1] = dzdtpred
+        pred_dswedts[j - 1] = dswedtpred
+        nperiods = check_dates[j - 1]
+        new_z = pred_zs[j - 1] + nperiods * Dates.value(Second(dt)) * dzdtpred
+        new_swe =
+            pred_swes[j - 1] + nperiods * Dates.value(Second(dt)) * dswedtpred
+        pred_swes[j] =
+            (nperiods <= hole_thresh) ? max(0.0, new_swe) : timeseries[j, :SWE]
+        pred_zs[j] =
+            (nperiods <= hole_thresh) ? max(pred_swes[j], new_z) :
+            timeseries[j, :z]
+        if nperiods > hole_thresh
+            countresets += 1
+        end
+    end
+    return pred_zs, pred_swes, pred_dzdts, pred_dswedts, countresets
 end
 
 
@@ -258,7 +349,7 @@ Creates a loss function to be used during training specified by two hyperparamet
 - `n2::Int`: the hyperparameter dictating the weighting of a given mismatch error by the target magnitude.
 """
 function custom_loss(x, y, model, n1, n2)
-    sum(abs.(model(x) - y) .^ n1 .* (1 .+ abs.(y) .^ n2)) ./ length(y)
+    sum(abs.((model(x) .- y)) .^ n1 .* (1 .+ abs.(y) .^ n2)) ./ length(y)
 end
 
 """
@@ -275,7 +366,7 @@ A training function for a neural model, permitting usage of a callback function.
 - `n2`: the weighting hyperparameter used to generate custom loss functions.
 - `nepochs::Int`: the number of epochs. Default is 100.
 - `nbatch::Int`: The number of data points to be used per batch. Default is 64.
-- `opt`: the Flux optimizer to be used. Default is RMSProp()
+- `opt`: the Flux optimizer to be used. Default is `RMSProp()`.
 - `verbose::Bool`: indicates whether to print the training loss every 10 epochs
 - `cb`: Allows utlization of a callback function (must take no required
 input arguments, but default optional args are permitted). Default is Nothing.

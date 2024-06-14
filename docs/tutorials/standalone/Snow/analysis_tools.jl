@@ -15,16 +15,16 @@ function show_mem_usage(ret::Bool = false)
     used_mem =
         ((Sys.total_memory() / 2^20) - (Sys.free_memory() / 2^20)) / 1000.0
     perc = 100.0 * (1.0 - Sys.free_memory() / Sys.total_memory())
-    print(
-        "RAM Usage: ",
-        round(used_mem, digits = 3),
-        " GB (",
-        round(perc, digits = 2),
-        "%)\n",
-    )
+    ret_string =
+        "RAM Usage: " *
+        string(round(used_mem, digits = 3)) *
+        " GB (" *
+        string(round(perc, digits = 2)) *
+        "%)"
     if ret
-        return used_mem
+        return round(used_mem, digits = 3)
     end
+    return ret_string
 end
 
 """
@@ -221,128 +221,5 @@ function display_scores(
             round(100 * pack_percent_err(pred, truth), digits = 2),
             "%\n",
         )
-    end
-end
-
-"""
-    feature_importance(data, input_vars, target, loss; dtype, ret, verbose)
-
-Calculate the feature importance metrics via a random shuffling of input features (direct model outuput).
-
-# Arguments
-- `data::DataFrame`: the dataframe including input and target data.
-- `input_vars::Vector{Symbol}`: the variables used for prediction.
-- `target::Symbol`: the variable used as a target.
-- `loss`: the loss function used to evaluate model performance.
-- `dtype::Type`: the data type consistent with model output. Default is Float32.
-- `ret::Bool`: indicates whether to return the scores as a vector. Default is true.
-- `verbose::Bool`: indicates whether to print the scores as they are generated. Default is false.
-"""
-function feature_importance(
-    data::DataFrame,
-    input_vars::Vector{Symbol},
-    target::Symbol,
-    loss;
-    dtype::Type = Float32,
-    ret::Bool = true,
-    verbose::Bool = false,
-)
-    #temp = model[:final_scale].weight[3,3]
-    input_base = Matrix{dtype}(select(data, input_vars))'
-    output = Vector{dtype}(data[!, target])'
-    #setoutscale!(model, 1.0);
-    baseline = loss(input_base, output)
-    scores = Vector{dtype}()
-    for feature in input_vars
-        newtrain = deepcopy(data)
-        shuffle_feature = Flux.Random.shuffle(newtrain[!, feature])
-        newtrain[!, feature] .= shuffle_feature
-        newinput = Matrix{dtype}(select(newtrain, input_vars))'
-        newloss = loss(newinput, output)
-        if verbose
-            print(
-                "Importance Score of ",
-                string(feature),
-                ": ",
-                newloss / baseline,
-                "\n",
-            )
-        end
-        push!(scores, newloss / baseline)
-    end
-    #setoutscale!(model, temp);
-    if ret
-        return scores
-    end
-end
-
-"""
-    feature_importance_series(data, input_vars, target, loss; dtype, ret, verbose)
-
-Calculate the feature importance metrics via a random shuffling of input features (model outuput as timeseries).
-
-# Arguments
-- `data::DataFrame`: the dataframe including input and target data.
-- `input_vars::Vector{Symbol}`: the variables used for prediction.
-- `target::Symbol`: the variable used as a target.
-- `loss`: the loss function used to evaluate model performance.
-- `dtype::Type`: the data type consistent with model output. Default is Float32.
-- `ret::Bool`: indicates whether to return the scores as a vector. Default is true.
-- `verbose::Bool`: indicates whether to print the scores as they are generated. Default is false.
-"""
-function feature_importance_series(
-    data::DataFrame,
-    input_vars::Vector{Symbol},
-    target::Symbol,
-    model,
-    loss;
-    dtype = Float32,
-    ret = true,
-    verbose = false,
-)
-    scores = zeros(length(input_vars))
-    for site in unique(data[!, :id])
-        sitedata = data[data[!, :id] .== site, :]
-        true_out = sitedata[!, target]
-        pred_zs_base, _, _ = make_timeseries(
-            model,
-            sitedata,
-            target,
-            :date,
-            input_vars,
-            Second(86400),
-        )
-        baseline = loss(pred_zs_base, true_out)
-        for i in 1:length(input_vars)
-            feature = input_vars[i]
-            newdata = deepcopy(sitedata)
-            shuffle_feature = Flux.Random.shuffle(newdata[!, feature])
-            newdata[!, feature] .= shuffle_feature
-            pred_zs_new, _, _ = make_timeseries(
-                model,
-                newdata,
-                target,
-                :date,
-                input_vars,
-                Second(86400),
-            )
-            newloss = loss(pred_zs_new, true_out)
-            scores[i] += newloss / baseline
-        end
-    end
-    scores /= length(unique(data[!, :id]))
-    for i in 1:length(scores)
-        if verbose
-            print(
-                "Importance Score of ",
-                string(input_vars[i]),
-                ": ",
-                scores[i],
-                "\n",
-            )
-        end
-    end
-    if ret
-        return scores
     end
 end
