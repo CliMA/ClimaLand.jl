@@ -43,6 +43,18 @@ steps:
         command: "julia --color=yes --project=.buildkite experiments/standalone/Snow/snow_cdp.jl"
         artifact_paths: "experiments/standalone/Snow/*png"
 
+      - label: "Varying LAI, no stem compartment"
+        command: "julia --color=yes --project=.buildkite experiments/standalone/Vegetation/varying_lai.jl"
+        artifact_paths: "experiments/standalone/Vegetation/varying_lai_no_stem*png"
+
+      - label: "Varying LAI, with stem compartment"
+        command: "julia --color=yes --project=.buildkite experiments/standalone/Vegetation/varying_lai_with_stem.jl"
+        artifact_paths: "experiments/standalone/Vegetation/varying_lai_with_stem*png"
+
+      - label: "zero LAI, zero SAI"
+        command: "julia --color=yes --project=.buildkite experiments/standalone/Vegetation/no_vegetation.jl"
+        artifact_paths: "experiments/standalone/Vegetation/no_veg*png"
+
       - label: "Richards comparison to Bonan"
         command: "julia --color=yes --project=.buildkite experiments/standalone/Soil/richards_comparison.jl"
         artifact_paths: "experiments/standalone/Soil/cpu/comparison*png"

@@ -81,6 +81,7 @@ for FT in (Float32, Float64)
 
         LAI = FT(5.0) # m2 (leaf) m-2 (ground)
         RAI = FT(1.0)
+        SAI = FT(1.0)
         thermo_params = LP.thermodynamic_parameters(earth_param_set)
         c = FT(LP.light_speed(earth_param_set))
         h = FT(LP.planck_constant(earth_param_set))
@@ -282,6 +283,7 @@ for FT in (Float32, Float64)
             ARparams.ne,
             photosynthesisparams.Vcmax25,
             LAI,
+            SAI,
             RAI,
             ARparams.ηsl,
             h_canopy,
@@ -290,7 +292,7 @@ for FT in (Float32, Float64)
             ARparams.μs,
         )
         Rpm = plant_respiration_maintenance(Rd, β, Nl, Nr, Ns, ARparams.f1)
-        Rg = plant_respiration_growth.(ARparams.f2, GPP, Rpm)
+        Rg = plant_respiration_growth.(ARparams.f2, An, Rpm)
 
         @test Nl ==
               photosynthesisparams.Vcmax25 / ARparams.ne * ARparams.σl * LAI
@@ -302,9 +304,10 @@ for FT in (Float32, Float64)
               ARparams.μs * photosynthesisparams.Vcmax25 / ARparams.ne *
               ARparams.ηsl *
               h_canopy *
-              LAI # == gives a very small error
+              LAI *
+              ClimaLand.heaviside(SAI)# == gives a very small error
         @test Rpm == ARparams.f1 * Rd * (β + (Nr + Ns) / Nl)
-        @test all(@.(Rg ≈ ARparams.f2 * (GPP - Rpm)))
+        @test all(@.(Rg ≈ ARparams.f2 * (An - Rpm)))
 
     end
 end

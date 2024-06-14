@@ -620,7 +620,7 @@ function root_water_flux_per_ground_area!(
                 ) *
                 root_distribution(root_depths[i]) *
                 (root_depths[i + 1] - root_depths[i]) *
-                (area_index.root + above_ground_area_index) / 2
+                above_ground_area_index
         else
             @. fa +=
                 flux(
@@ -633,7 +633,7 @@ function root_water_flux_per_ground_area!(
                 ) *
                 root_distribution(root_depths[i]) *
                 (model.compartment_surfaces[1] - root_depths[n_root_layers]) *
-                (area_index.root + above_ground_area_index) / 2
+                above_ground_area_index
         end
     end
 end

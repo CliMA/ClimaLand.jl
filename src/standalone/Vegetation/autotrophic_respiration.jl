@@ -6,7 +6,9 @@ abstract type AbstractAutotrophicRespirationModel{FT} <:
 """
     AutotrophicRespirationParameters{FT<:AbstractFloat}
 
-The required parameters for the autrophic respiration model.
+The required parameters for the autrophic respiration model, which is based 
+off of the JULES model.
+Clark, D. B., et al. "The Joint UK Land Environment Simulator (JULES), model description–Part 2: carbon fluxes and vegetation dynamics." Geoscientific Model Development 4.3 (2011): 701-722.
 $(DocStringExtensions.FIELDS)
 """
 Base.@kwdef struct AutotrophicRespirationParameters{FT <: AbstractFloat}
@@ -20,7 +22,7 @@ Base.@kwdef struct AutotrophicRespirationParameters{FT <: AbstractFloat}
     μr::FT
     "Ratio stem nitrogen to top leaf nitrogen (-), typical value 0.1"
     μs::FT
-    "Factor to convert from mol CO2 to kg C" # Definitely not a parameter. not sure what to do.
+    "Factor to convert from mol CO2 to kg C"
     f1::FT
     "Factor of relative contribution or Rgrowth (-)"
     f2::FT
@@ -28,10 +30,17 @@ end
 
 Base.eltype(::AutotrophicRespirationParameters{FT}) where {FT} = FT
 
+"""
+    AutotrophicRespirationModel{FT, ARP <: AutotrophicRespirationParameters{FT},} <: AbstractAutotrophicRespirationModel{FT} 
+
+The JULES autotrophic respiration model.
+
+Clark, D. B., et al. "The Joint UK Land Environment Simulator (JULES), model description–Part 2: carbon fluxes and vegetation dynamics." Geoscientific Model Development 4.3 (2011): 701-722.
+"""
 struct AutotrophicRespirationModel{
     FT,
     ARP <: AutotrophicRespirationParameters{FT},
-} <: AbstractAutotrophicRespirationModel{FT} # we could give it a more specific name...
+} <: AbstractAutotrophicRespirationModel{FT}
     parameters::ARP
 end
 
@@ -51,26 +60,45 @@ ClimaLand.auxiliary_types(model::AutotrophicRespirationModel{FT}) where {FT} =
 ClimaLand.auxiliary_domain_names(::AutotrophicRespirationModel) = (:surface,)
 
 """
+    compute_autrophic_respiration(model::AutotrophicRespirationModel,
+                                  Vcmax25,
+                                  LAI,
+                                  SAI,
+                                  RAI,
+                                  K,
+                                  Ω,
+                                  An,
+                                  Rd,
+                                  β,
+                                  h,
+                                 )
 
+Computes the autotrophic respiration as the sum of the plant maintenance
+and growth respirations, according to the JULES model.
+
+Clark, D. B., et al. "The Joint UK Land Environment Simulator (JULES), model description–Part 2: carbon fluxes and vegetation dynamics." Geoscientific Model Development 4.3 (2011): 701-722.
 """
 function compute_autrophic_respiration(
     model::AutotrophicRespirationModel,
     Vcmax25,
     LAI,
+    SAI,
     RAI,
-    GPP,
+    K,
+    Ω,
+    An,
     Rd,
     β,
     h,
 )
 
     (; ne, ηsl, σl, μr, μs, f1, f2) = model.parameters
-
-    Nl, Nr, Ns = nitrogen_content(ne, Vcmax25, LAI, RAI, ηsl, h, σl, μr, μs)
+    Nl, Nr, Ns =
+        nitrogen_content(ne, Vcmax25, LAI, SAI, RAI, ηsl, h, σl, μr, μs)
     Rpm = plant_respiration_maintenance(Rd, β, Nl, Nr, Ns, f1)
-    Rg = plant_respiration_growth(f2, GPP, Rpm)
-    Ra = Rpm + Rg # Should this be a function in canopy_parameterizations.jl or is it ok here?
-    return Ra
+    Rg = plant_respiration_growth(f2, An, Rpm)
+    Ra = Rpm + Rg
+    return Ra * (1 - exp(-K * LAI * Ω)) / (K * Ω) # adjust to canopy level
 end
 
 Base.broadcastable(model::AutotrophicRespirationModel) = tuple(model) # this is so that @. does not broadcast on Ref(canopy.autotrophic_respiration)
