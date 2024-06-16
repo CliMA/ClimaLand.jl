@@ -47,8 +47,8 @@ domain = ClimaLand.Domains.SphericalShell(;
 );
 surface_space = domain.space.surface
 subsurface_space = domain.space.subsurface
-# Read in f_max data and land sea mask
 
+# Read in f_max data and land sea mask
 infile_path = ClimaLand.Artifacts.topmodel_data_path()
 f_max = SpaceVaryingInput(infile_path, "fmax", surface_space; regridder_type)
 mask = SpaceVaryingInput(

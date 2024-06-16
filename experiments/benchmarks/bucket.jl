@@ -20,12 +20,10 @@ import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
 import ClimaTimeSteppers as CTS
 import NCDatasets
 using ClimaCore
-import ClimaComms
 import ClimaLand
 using ClimaParams
 using ClimaLand.Bucket:
     BucketModel, BucketModelParameters, PrescribedSurfaceAlbedo
-using ClimaLand.Domains: coordinates, Column
 using ClimaLand:
     initialize,
     make_update_aux,
@@ -211,12 +209,14 @@ end
 
 if get(ENV, "BUILDKITE_PIPELINE_SLUG", nothing) == "climaland-benchmark"
     PREVIOUS_BEST_TIME = 3.6
-    if average_timing_s > 1.1PREVIOUS_BEST_TIME
+    if average_timing_s > PREVIOUS_BEST_TIME + std_timing_s
         @info "Possible performance regression, previous average time was $(PREVIOUS_BEST_TIME)"
-    elseif average_timing_s < 0.8PREVIOUS_BEST_TIME
+    elseif average_timing_s < PREVIOUS_BEST_TIME - std_timing_s
         @info "Possible significant performance improvement, please update PREVIOUS_BEST_TIME in $(@__DIR__)"
     end
     @testset "Performance" begin
-        @test 0.8PREVIOUS_BEST_TIME <= average_timing_s ≤ 1.1PREVIOUS_BEST_TIME
+        @test PREVIOUS_BEST_TIME - std_timing_s <=
+              average_timing_s ≤
+              PREVIOUS_BEST_TIME + std_timing_s
     end
 end
