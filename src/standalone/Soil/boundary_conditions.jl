@@ -30,7 +30,6 @@ function get_top_surface_field(
     center_field::ClimaCore.Fields.Field,
     surface_space,
 )
-    # TODO: Find cleaner way to do this
     nz = Spaces.nlevels(axes(center_field))
     return Fields.Field(
         Fields.field_values(Fields.level(center_field, nz)),
@@ -64,7 +63,6 @@ function get_bottom_surface_field(
     center_field::ClimaCore.Fields.Field,
     bottom_space,
 )
-    # TODO: Find cleaner way to do this
     return Fields.Field(
         Fields.field_values(Fields.level(center_field, 1)),
         bottom_space,
@@ -174,7 +172,7 @@ boundary_vars(
         <:Runoff.TOPMODELRunoff,
     },
     ::ClimaLand.TopBoundary,
-) = (:top_bc, :h∇, :R_s, :R_ss, :infiltration)
+) = (:top_bc, :h∇, :R_s, :R_ss, :infiltration, :is_saturated, :subsfc_scratch)
 
 """
     boundary_var_domain_names(::RichardsAtmosDrivenFluxBC{<:PrescribedPrecipitation,
@@ -191,7 +189,7 @@ boundary_var_domain_names(
         <:Runoff.TOPMODELRunoff,
     },
     ::ClimaLand.TopBoundary,
-) = (:surface, :surface, :surface, :surface, :surface)
+) = (:surface, :surface, :surface, :surface, :surface, :subsurface, :subsurface)
 """
     boundary_var_types(::RichardsModel{FT},
                         ::RichardsAtmosDrivenFluxBC{<:PrescribedPrecipitation,
@@ -210,7 +208,7 @@ boundary_var_types(
         <:Runoff.TOPMODELRunoff{FT},
     },
     ::ClimaLand.TopBoundary,
-) where {FT} = (FT, FT, FT, FT, FT)
+) where {FT} = (FT, FT, FT, FT, FT, FT, FT)
 
 """
     boundary_vars(::RichardsAtmosDrivenFluxBC{<:PrescribedPrecipitation,
@@ -906,6 +904,8 @@ boundary_vars(
     :R_s,
     :R_ss,
     :infiltration,
+    :is_saturated,
+    :subsfc_scratch,
     :sfc_scratch,
 )
 
@@ -937,6 +937,8 @@ boundary_var_domain_names(
     :surface,
     :surface,
     :surface,
+    :subsurface,
+    :subsurface,
     :surface,
 )
 
@@ -967,6 +969,8 @@ boundary_var_types(
     FT,
     FT,
     NamedTuple{(:water, :heat), Tuple{FT, FT}},
+    FT,
+    FT,
     FT,
     FT,
     FT,

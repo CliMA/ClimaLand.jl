@@ -157,15 +157,15 @@ end
         runoff_model.f_over,
         model.domain.depth .- p.soil.h∇,
     )
-    ic_flux = ClimaLand.Soil.Runoff.soil_infiltration_capacity_flux(model, Y, p)
-    @test ic_flux == ClimaCore.Fields.zeros(surface_space) .- FT(1e-6)
+    ic = ClimaLand.Soil.Runoff.soil_infiltration_capacity(model, Y, p)
+    @test ic == ClimaCore.Fields.zeros(surface_space) .- FT(1e-6) #Ksat
     @test p.soil.infiltration ==
           @. ClimaLand.Soil.Runoff.topmodel_surface_infiltration(
         p.soil.h∇,
         f_max,
         f_over,
         model.domain.depth - p.soil.h∇,
-        ic_flux,
+        ic,
         precip_field,
     )
     @test p.soil.R_s == abs.(precip_field .- p.soil.infiltration)
