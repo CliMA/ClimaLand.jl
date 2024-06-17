@@ -23,6 +23,7 @@ export AbstractAtmosphericDrivers,
     snow_precipitation,
     vapor_pressure_deficit,
     displacement_height,
+    relative_humidity,
     make_update_drivers
 
 """
@@ -647,6 +648,33 @@ function vapor_pressure_deficit(T_air, P_air, q_air, thermo_params)
     )
     return es - ea
 end
+
+"""
+    relative_humidity(T_air, P_air, q_air, thermo_params)
+
+Computes the vapor pressure deficit for air with temperature T_air,
+pressure P_air, and specific humidity q_air, using thermo_params,
+a Thermodynamics.jl param set.
+"""
+function relative_humidity(
+    T_air::FT,
+    P_air::FT,
+    q_air::FT,
+    thermo_params,
+) where {FT}
+    es = Thermodynamics.saturation_vapor_pressure(
+        thermo_params,
+        T_air,
+        Thermodynamics.Liquid(),
+    )
+    ea = Thermodynamics.partial_pressure_vapor(
+        thermo_params,
+        P_air,
+        Thermodynamics.PhasePartition(q_air),
+    )
+    return es / ea
+end
+
 
 """
     initialize_drivers(a::PrescribedAtmosphere{FT}, coords) where {FT}

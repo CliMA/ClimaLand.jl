@@ -3,6 +3,10 @@ ClimaLand.jl Release Notes
 
 main
 --------
+Improve Performance of soil canopy model
+- PR [#666]
+Add base global soil canopy run to benchmark and experiments
+- PR [#591]
 
 v0.12.4
 --------

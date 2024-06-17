@@ -342,9 +342,6 @@ function lsm_radiant_energy_fluxes!(
     ϵ_soil = ground_model.parameters.emissivity
 
     # in W/m^2
-    PAR = p.canopy.radiative_transfer.par
-    NIR = p.canopy.radiative_transfer.nir
-
     LW_d_canopy = p.scratch1
     LW_u_soil = p.scratch2
     LW_net_canopy = p.canopy.radiative_transfer.LW_n
@@ -355,24 +352,24 @@ function lsm_radiant_energy_fluxes!(
     # in total: INC - OUT = CANOPY_ABS + (1-α_soil)*CANOPY_TRANS
     # SW out  = reflected par + reflected nir
     @. SW_out =
-        energy_per_photon_NIR * N_a * p.canopy.radiative_transfer.rnir +
-        energy_per_photon_PAR * N_a * p.canopy.radiative_transfer.rpar
+        energy_per_photon_NIR * N_a * p.canopy.radiative_transfer.nir.refl +
+        energy_per_photon_PAR * N_a * p.canopy.radiative_transfer.par.refl
 
     # net canopy
     @. SW_net_canopy =
-        energy_per_photon_NIR * N_a * p.canopy.radiative_transfer.anir +
-        energy_per_photon_PAR * N_a * p.canopy.radiative_transfer.apar
+        energy_per_photon_NIR * N_a * p.canopy.radiative_transfer.nir.abs +
+        energy_per_photon_PAR * N_a * p.canopy.radiative_transfer.par.abs
 
 
     # net soil = (1-α)*trans for par and nir
     @. R_net_soil .=
         energy_per_photon_NIR *
         N_a *
-        p.canopy.radiative_transfer.tnir *
+        p.canopy.radiative_transfer.nir.trans *
         (1 - α_soil_NIR) +
         energy_per_photon_PAR *
         N_a *
-        p.canopy.radiative_transfer.tpar *
+        p.canopy.radiative_transfer.par.trans *
         (1 - α_soil_PAR)
     ϵ_canopy = p.canopy.radiative_transfer.ϵ # this takes into account LAI/SAI
     @. LW_d_canopy = ((1 - ϵ_canopy) * LW_d + ϵ_canopy * _σ * T_canopy^4) # double checked

@@ -84,6 +84,47 @@ ClimaLand.auxiliary_types(model::FarquharModel{FT}) where {FT} =
 ClimaLand.auxiliary_domain_names(::FarquharModel) =
     (:surface, :surface, :surface, :surface)
 
+
+function photosynthesis_at_a_point_Farquhar(
+    T,
+    β,
+    Rd,
+    APAR,
+    c_co2,
+    medlyn_factor,
+    R,
+    parameters,
+)
+    (;
+        Vcmax25,
+        Γstar25,
+        ΔHJmax,
+        ΔHVcmax,
+        ΔHΓstar,
+        f,
+        ΔHRd,
+        To,
+        θj,
+        ϕ,
+        mechanism,
+        oi,
+        Kc25,
+        Ko25,
+        ΔHkc,
+        ΔHko,
+    ) = parameters
+    Jmax = max_electron_transport(Vcmax25, ΔHJmax, T, To, R)
+    J = electron_transport(APAR, Jmax, θj, ϕ)
+    Vcmax = compute_Vcmax(Vcmax25, T, To, R, ΔHVcmax)
+    Γstar = co2_compensation(Γstar25, ΔHΓstar, T, To, R)
+    ci = intercellular_co2(c_co2, Γstar, medlyn_factor)
+    Aj = light_assimilation(mechanism, J, ci, Γstar)
+    Kc = MM_Kc(Kc25, ΔHkc, T, To, R)
+    Ko = MM_Ko(Ko25, ΔHko, T, To, R)
+    Ac = rubisco_assimilation(mechanism, Vcmax, ci, Γstar, Kc, Ko, oi)
+    return net_photosynthesis(Ac, Aj, Rd, β)
+end
+
 """
     update_photosynthesis!(Rd, An, Vcmax25,
         model::FarquharModel,
@@ -115,37 +156,22 @@ function update_photosynthesis!(
     c_co2,
     R,
 )
-    (;
-        Vcmax25,
-        Γstar25,
-        ΔHJmax,
-        ΔHVcmax,
-        ΔHΓstar,
-        f,
-        ΔHRd,
-        To,
-        θj,
-        ϕ,
-        mechanism,
-        oi,
-        Kc25,
-        Ko25,
-        ΔHkc,
-        ΔHko,
-    ) = model.parameters
-    Jmax = max_electron_transport.(Vcmax25, ΔHJmax, T, To, R)
-    J = electron_transport.(APAR, Jmax, θj, ϕ)
-    Vcmax = compute_Vcmax.(Vcmax25, T, To, R, ΔHVcmax)
-    Γstar = co2_compensation.(Γstar25, ΔHΓstar, T, To, R)
-    ci = intercellular_co2.(c_co2, Γstar, medlyn_factor)
-    Aj = light_assimilation.(mechanism, J, ci, Γstar)
-    Kc = MM_Kc.(Kc25, ΔHkc, T, To, R)
-    Ko = MM_Ko.(Ko25, ΔHko, T, To, R)
-    Ac = rubisco_assimilation.(mechanism, Vcmax, ci, Γstar, Kc, Ko, oi)
+    (; Vcmax25, f, ΔHRd, To) = model.parameters
+
     @. Rd = dark_respiration(Vcmax25, β, f, ΔHRd, T, To, R)
-    @. An = net_photosynthesis(Ac, Aj, Rd, β)
+    @. An = photosynthesis_at_a_point_Farquhar(
+        T,
+        β,
+        Rd,
+        APAR,
+        c_co2,
+        medlyn_factor,
+        R,
+        model.parameters,
+    )
     Vcmax25field .= Vcmax25
 end
-Base.broadcastable(m::AbstractPhotosynthesisMechanism) = tuple(m) # this is so that @. does not broadcast on Ref(canopy.autotrophic_respiration)
+Base.broadcastable(m::AbstractPhotosynthesisMechanism) = tuple(m)
+Base.broadcastable(m::FarquharParameters) = tuple(m)
 
 include("./optimality_farquhar.jl")

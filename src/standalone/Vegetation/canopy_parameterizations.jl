@@ -64,6 +64,9 @@ end
         K,
         α_soil_PAR,
         α_soil_NIR,
+        energy_per_photon_PAR,
+        energy_per_photon_NIR,
+        N_a,
         _,
         _,
     )
@@ -71,13 +74,14 @@ end
 Computes the PAR and NIR absorbances, reflectances, and tranmittances
 for a canopy in the case of the 
 Beer-Lambert model. The absorbances are a function of the radiative transfer 
-model, as well as the magnitude of incident PAR and NIR radiation in moles of 
-photons, the leaf area index, the extinction coefficient, and the
+model, as well as the magnitude of incident PAR and NIR radiation in W/m^2,
+ the leaf area index, the extinction coefficient, and the
 soil albedo in the PAR and NIR bands. Returns a
 NamedTuple of NamedTuple, of the form:
 (; par = (; refl = , trans = , abs = ),  nir = (; refl = , trans = , abs = ))
 """
-function compute_absorbances(
+function compute_absorbances!(
+    p,
     RT::BeerLambertModel{FT},
     PAR,
     NIR,
@@ -85,18 +89,32 @@ function compute_absorbances(
     K,
     α_soil_PAR,
     α_soil_NIR,
+    energy_per_photon_PAR,
+    energy_per_photon_NIR,
+    N_a,
     _...,
 ) where {FT}
     RTP = RT.parameters
-    canopy_par =
-        @. plant_absorbed_pfd(RT, PAR, RTP.α_PAR_leaf, LAI, K, α_soil_PAR)
-    canopy_nir =
-        @. plant_absorbed_pfd(RT, NIR, RTP.α_NIR_leaf, LAI, K, α_soil_NIR)
-    return (; par = canopy_par, nir = canopy_nir)
+    @. p.canopy.radiative_transfer.par = plant_absorbed_pfd(
+        RT,
+        PAR / (N_a * energy_per_photon_PAR),
+        RTP.α_PAR_leaf,
+        LAI,
+        K,
+        α_soil_PAR,
+    )
+    @. p.canopy.radiative_transfer.nir = plant_absorbed_pfd(
+        RT,
+        NIR / (N_a * energy_per_photon_NIR),
+        RTP.α_NIR_leaf,
+        LAI,
+        K,
+        α_soil_NIR,
+    )
 end
 
 """
-    compute_absorbances(
+    compute_absorbances!(p,
         RT::TwoStreamModel{FT},
         PAR,
         NIR,
@@ -104,6 +122,9 @@ end
         K,
         α_soil_PAR,
         α_soil_NIR,
+        energy_per_photon_PAR,
+        energy_per_photon_NIR,
+        N_a,
         θs,
         frac_diff,
     )
@@ -111,8 +132,8 @@ end
 Computes the PAR and NIR absorbances, reflectances, and tranmittances
 for a canopy in the case of the 
 Beer-Lambert model. The absorbances are a function of the radiative transfer 
-model, as well as the magnitude of incident PAR and NIR radiation in moles of 
-photons, the leaf area index, the extinction coefficient, and the
+model, as well as the magnitude of incident PAR and NIR radiation in W/m^2, 
+the leaf area index, the extinction coefficient, and the
 soil albedo in the PAR and NIR bands. 
 
 This model also depends on the diffuse fraction and the zenith angle.
@@ -120,7 +141,8 @@ Returns a
 NamedTuple of NamedTuple, of the form:
 (; par = (; refl = , trans = , abs = ),  nir = (; refl = , trans = , abs = ))
 """
-function compute_absorbances(
+function compute_absorbances!(
+    p,
     RT::TwoStreamModel{FT},
     PAR,
     NIR,
@@ -128,13 +150,16 @@ function compute_absorbances(
     K,
     α_soil_PAR,
     α_soil_NIR,
+    energy_per_photon_PAR,
+    energy_per_photon_NIR,
+    N_a,
     θs,
     frac_diff,
 ) where {FT}
     RTP = RT.parameters
-    canopy_par = @. plant_absorbed_pfd(
+    @. p.canopy.radiative_transfer.par = plant_absorbed_pfd(
         RT,
-        PAR,
+        PAR / (energy_per_photon_PAR * N_a),
         RTP.α_PAR_leaf,
         RTP.τ_PAR_leaf,
         LAI,
@@ -143,9 +168,9 @@ function compute_absorbances(
         α_soil_PAR,
         frac_diff,
     )
-    canopy_nir = @. plant_absorbed_pfd(
+    @. p.canopy.radiative_transfer.nir = plant_absorbed_pfd(
         RT,
-        NIR,
+        NIR / (energy_per_photon_NIR * N_a),
         RTP.α_NIR_leaf,
         RTP.τ_NIR_leaf,
         LAI,
@@ -154,7 +179,6 @@ function compute_absorbances(
         α_soil_NIR,
         frac_diff,
     )
-    return (; par = canopy_par, nir = canopy_nir)
 end
 
 """
@@ -382,11 +406,11 @@ function plant_absorbed_pfd(
 end
 
 """
-    diffuse_fraction(td::FT, T::FT, SW_IN::FT, RH::FT, θs::FT) where {FT}
+    diffuse_fraction(td::FT, T::FT, P, q, SW_IN::FT, θs::FT, thermo_params) where {FT}
 
 Computes the fraction of diffuse radiation (`diff_frac`) as a function
 of the solar zenith angle (`θs`), the total surface incident shortwave radiation (`SW_IN`),
-the air temperature (`T`), the relative humidity (`RH`), and the day of the year
+the air temperature (`T`), air pressure (`P`), specific humidity (`q`), and the day of the year
 (`td`). 
 
 See Appendix A of Braghiere, "Evaluation of turbulent fluxes of CO2, sensible heat,
@@ -403,7 +427,16 @@ can become large negative numbers.
 
 Because of that, we cap the returned value to lie within [0,1].
 """
-function diffuse_fraction(td, T::FT, SW_IN::FT, RH::FT, θs::FT) where {FT}
+function diffuse_fraction(
+    td,
+    T::FT,
+    P::FT,
+    q::FT,
+    SW_IN::FT,
+    θs::FT,
+    thermo_params,
+) where {FT}
+    RH = ClimaLand.relative_humidity(T, P, q, thermo_params)
     k₀ = FT(1370 * (1 + 0.033 * cos(2π * td / 365))) * cos(θs)
     kₜ = SW_IN / k₀
     if kₜ ≤ 0.3
