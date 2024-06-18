@@ -156,7 +156,9 @@ function Column(;
         )
     end
 
-    subsurface_space = ClimaCore.Spaces.CenterFiniteDifferenceSpace(mesh)
+    device = ClimaComms.device()
+    subsurface_space =
+        ClimaCore.Spaces.CenterFiniteDifferenceSpace(device, mesh)
     surface_space = obtain_surface_space(subsurface_space)
     space = (; surface = surface_space, subsurface = subsurface_space)
     return Column{FT}(zlim, (nelements,), dz_tuple, boundary_names, space)
@@ -339,7 +341,9 @@ function HybridBox(;
             reverse_mode = true,
         )
     end
-    vert_center_space = ClimaCore.Spaces.CenterFiniteDifferenceSpace(vertmesh)
+    device = ClimaComms.device()
+    vert_center_space =
+        ClimaCore.Spaces.CenterFiniteDifferenceSpace(device, vertmesh)
 
     horzdomain = Plane(;
         xlim = xlim,
@@ -451,7 +455,9 @@ function SphericalShell(;
             reverse_mode = true,
         )
     end
-    vert_center_space = ClimaCore.Spaces.CenterFiniteDifferenceSpace(vertmesh)
+    device = ClimaComms.device()
+    vert_center_space =
+        ClimaCore.Spaces.CenterFiniteDifferenceSpace(device, vertmesh)
 
     horzdomain = ClimaCore.Domains.SphereDomain(radius)
     horzmesh = ClimaCore.Meshes.EquiangularCubedSphere(horzdomain, nelements[1])
