@@ -118,9 +118,8 @@ zmin = FT(-0.35)
 nelems = 12
 soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems);
 z = ClimaCore.Fields.coordinate_field(soil_domain.space.subsurface).z;
-Δz = parent(z)[end]
 # Soil model, and create the prognostic vector Y and cache p:
-sources = (PhaseChange{FT}(Δz),);
+sources = (PhaseChange{FT}(),);
 soil = Soil.EnergyHydrology{FT}(;
     parameters = params,
     domain = soil_domain,

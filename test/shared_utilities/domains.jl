@@ -14,7 +14,9 @@ using ClimaLand.Domains:
     coordinates,
     obtain_surface_space,
     obtain_face_space,
-    obtain_surface_domain
+    obtain_surface_domain,
+    get_Δz,
+    top_face_to_surface
 
 FT = Float32
 @testset "Clima Core Domains, FT = $FT" begin
@@ -35,6 +37,14 @@ FT = Float32
         nelements = n_elements_sphere,
         npolynomial = npoly_sphere,
     )
+    @test shell.fields.z ==
+          ClimaCore.Fields.coordinate_field(shell.space.subsurface).z
+    face_space = obtain_face_space(shell.space.subsurface)
+    z_face = ClimaCore.Fields.coordinate_field(face_space).z
+    @test shell.fields.z_sfc == top_face_to_surface(z_face, shell.space.surface)
+    Δz_top, Δz_bottom = get_Δz(shell.fields.z)
+    @test shell.fields.Δz_top == Δz_top
+    @test shell.fields.Δz_bottom == Δz_bottom
     @test shell.radius == radius
     @test shell.depth == depth
     @test shell.nelements == n_elements_sphere
@@ -85,41 +95,46 @@ FT = Float32
 
 
     # HybridBox
-    xyz_column_box = HybridBox(;
+    box = HybridBox(;
         xlim = xlim,
         ylim = ylim,
         zlim = zlim,
         nelements = nelements,
         npolynomial = 0,
     )
-    box_coords = coordinates(xyz_column_box).subsurface
+    @test box.fields.z ==
+          ClimaCore.Fields.coordinate_field(box.space.subsurface).z
+    face_space = obtain_face_space(box.space.subsurface)
+    z_face = ClimaCore.Fields.coordinate_field(face_space).z
+    @test box.fields.z_sfc == top_face_to_surface(z_face, box.space.surface)
+    Δz_top, Δz_bottom = get_Δz(box.fields.z)
+    @test box.fields.Δz_top == Δz_top
+    @test box.fields.Δz_bottom == Δz_bottom
+    box_coords = coordinates(box).subsurface
     @test eltype(box_coords) == ClimaCore.Geometry.XYZPoint{FT}
     @test typeof(box_coords) <: ClimaCore.Fields.Field
-    @test xyz_column_box.xlim == FT.(xlim)
-    @test xyz_column_box.ylim == FT.(ylim)
-    @test xyz_column_box.zlim == FT.(zlim)
-    @test xyz_column_box.nelements == nelements
-    @test xyz_column_box.npolynomial == 0
-    @test xyz_column_box.periodic == (true, true)
-    @test typeof(
-        ClimaCore.Spaces.horizontal_space(xyz_column_box.space.subsurface),
-    ) <: ClimaCore.Spaces.SpectralElementSpace2D
-    @test typeof(xyz_column_box.space.subsurface) <:
-          ClimaCore.Spaces.CenterExtrudedFiniteDifferenceSpace
-    @test typeof(xyz_column_box.space.surface) <:
+    @test box.xlim == FT.(xlim)
+    @test box.ylim == FT.(ylim)
+    @test box.zlim == FT.(zlim)
+    @test box.nelements == nelements
+    @test box.npolynomial == 0
+    @test box.periodic == (true, true)
+    @test typeof(ClimaCore.Spaces.horizontal_space(box.space.subsurface)) <:
           ClimaCore.Spaces.SpectralElementSpace2D
-    @test obtain_surface_space(xyz_column_box.space.subsurface) ==
-          xyz_column_box.space.surface
-    @test obtain_surface_domain(xyz_column_box) == Plane{FT}(
+    @test typeof(box.space.subsurface) <:
+          ClimaCore.Spaces.CenterExtrudedFiniteDifferenceSpace
+    @test typeof(box.space.surface) <: ClimaCore.Spaces.SpectralElementSpace2D
+    @test obtain_surface_space(box.space.subsurface) == box.space.surface
+    @test obtain_surface_domain(box) == Plane{FT}(
         xlim,
         ylim,
         nelements[1:2],
         (true, true),
         0,
-        (; surface = xyz_column_box.space.surface),
+        (; surface = box.space.surface),
     )
 
-    xyz_stretch_column_box = HybridBox(;
+    stretch_box = HybridBox(;
         xlim = xlim,
         ylim = ylim,
         zlim = zlim,
@@ -127,7 +142,7 @@ FT = Float32
         nelements = nelements,
         npolynomial = 0,
     )
-    box_coords_stretch = coordinates(xyz_stretch_column_box).subsurface
+    box_coords_stretch = coordinates(stretch_box).subsurface
     dz =
         Array(parent(box_coords_stretch.z))[:][2:end] .-
         Array(parent(box_coords_stretch.z))[:][1:(end - 1)]
@@ -157,6 +172,15 @@ FT = Float32
     # Column
 
     z_column = Column(; zlim = zlim, nelements = nelements[3])
+    @test z_column.fields.z ==
+          ClimaCore.Fields.coordinate_field(z_column.space.subsurface).z
+    face_space = obtain_face_space(z_column.space.subsurface)
+    z_face = ClimaCore.Fields.coordinate_field(face_space).z
+    @test z_column.fields.z_sfc ==
+          top_face_to_surface(z_face, z_column.space.surface)
+    Δz_top, Δz_bottom = get_Δz(z_column.fields.z)
+    @test z_column.fields.Δz_top == Δz_top
+    @test z_column.fields.Δz_bottom == Δz_bottom
     column_coords = coordinates(z_column).subsurface
     @test z_column.zlim == FT.(zlim)
     @test z_column.nelements[1] == nelements[3]

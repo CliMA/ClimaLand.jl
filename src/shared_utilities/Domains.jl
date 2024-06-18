@@ -107,6 +107,8 @@ struct Column{FT} <: AbstractDomain{FT}
     boundary_names::Tuple{Symbol, Symbol}
     "A NamedTuple of associated ClimaCore spaces: in this case, the surface space and subsurface center space"
     space::NamedTuple
+    "Fields associated with the coordinates of the domain that are useful to store"
+    fields::NamedTuple
 end
 
 """
@@ -159,8 +161,17 @@ function Column(;
     subsurface_space = ClimaCore.Spaces.CenterFiniteDifferenceSpace(mesh)
     surface_space = obtain_surface_space(subsurface_space)
     space = (; surface = surface_space, subsurface = subsurface_space)
-    return Column{FT}(zlim, (nelements,), dz_tuple, boundary_names, space)
+    fields = get_additional_domain_fields(subsurface_space)
+    return Column{FT}(
+        zlim,
+        (nelements,),
+        dz_tuple,
+        boundary_names,
+        space,
+        fields,
+    )
 end
+
 
 """
     Plane{FT} <: AbstractDomain{FT}
@@ -275,6 +286,8 @@ struct HybridBox{FT} <: AbstractDomain{FT}
     periodic::Tuple{Bool, Bool}
     "A NamedTuple of associated ClimaCore spaces: in this case, the surface space and subsurface center space"
     space::NamedTuple
+    "Fields associated with the coordinates of the domain that are useful to store"
+    fields::NamedTuple
 end
 
 """
@@ -357,6 +370,7 @@ function HybridBox(;
 
     surface_space = obtain_surface_space(subsurface_space)
     space = (; surface = surface_space, subsurface = subsurface_space)
+    fields = get_additional_domain_fields(subsurface_space)
     return HybridBox{FT}(
         xlim,
         ylim,
@@ -366,6 +380,7 @@ function HybridBox(;
         npolynomial,
         periodic,
         space,
+        fields,
     )
 end
 
@@ -401,6 +416,8 @@ struct SphericalShell{FT} <: AbstractDomain{FT}
     npolynomial::Int
     "A NamedTuple of associated ClimaCore spaces: in this case, the surface space and subsurface center space"
     space::NamedTuple
+    "Fields associated with the coordinates of the domain that are useful to store"
+    fields::NamedTuple
 end
 
 """
@@ -465,6 +482,7 @@ function SphericalShell(;
     )
     surface_space = obtain_surface_space(subsurface_space)
     space = (; surface = surface_space, subsurface = subsurface_space)
+    fields = get_additional_domain_fields(subsurface_space)
     return SphericalShell{FT}(
         radius,
         depth,
@@ -472,6 +490,7 @@ function SphericalShell(;
         nelements,
         npolynomial,
         space,
+        fields,
     )
 end
 
@@ -677,15 +696,15 @@ When `val` is a scalar (e.g. a single float or struct), returns `val`.
 top_center_to_surface(val) = val
 
 """
-    linear_interpolation_to_surface!(sfc_field, center_field, z)
+    linear_interpolation_to_surface!(sfc_field, center_field, z, Δz_top)
 
 Linearly interpolate the center field `center_field` to the surface
-defined by the top face coordinate of `z`; updates the `sfc_field`
+defined by the top face coordinate of `z` with a center to face distance
+`Δz_top` in the first layer; updates the `sfc_field`
 on the surface (face) space in place.
 """
-function linear_interpolation_to_surface!(sfc_field, center_field, z)
-    Δz_top, _ = get_Δz(z)
-    surface_space = obtain_surface_space(axes(z))
+function linear_interpolation_to_surface!(sfc_field, center_field, z, Δz_top)
+    surface_space = axes(sfc_field)
     Δz_top = ClimaCore.Fields.field_values(Δz_top)
     nz = Spaces.nlevels(axes(center_field))
     f1 = ClimaCore.Fields.field_values(ClimaCore.Fields.level(center_field, nz))
@@ -694,10 +713,8 @@ function linear_interpolation_to_surface!(sfc_field, center_field, z)
     )
     z1 = ClimaCore.Fields.field_values(ClimaCore.Fields.level(z, nz))
     z2 = ClimaCore.Fields.field_values(ClimaCore.Fields.level(z, nz - 1))
-    sfc_field .= ClimaCore.Fields.Field(
-        (@. (f1 - f2) / (z1 - z2) * (Δz_top + z1 - z2) + f2),
-        surface_space,
-    )
+    ClimaCore.Fields.field_values(sfc_field) .=
+        @. (f1 - f2) / (z1 - z2) * (Δz_top + z1 - z2) + f2
 end
 
 """
@@ -721,12 +738,61 @@ function get_Δz(z::ClimaCore.Fields.Field)
     return Δz_top ./ 2, Δz_bottom ./ 2
 end
 
+"""
+    top_face_to_surface(face_field::ClimaCore.Fields.Field, surface_space)
+
+Creates and returns a ClimaCore.Fields.Field defined on the space
+corresponding to the surface of the space on which `face_field`
+is defined, with values equal to the those at the level of the top
+face.
+
+Given a `face_field` defined on a 3D
+extruded face finite difference space, this would return a 2D field
+corresponding to the surface, with values equal to the topmost level.
+ """
+function top_face_to_surface(face_field::ClimaCore.Fields.Field, surface_space)
+    face_space = axes(face_field)
+    N = ClimaCore.Spaces.nlevels(face_space)
+    sfc_level =
+        ClimaCore.Fields.level(face_field, ClimaCore.Utilities.PlusHalf(N - 1))
+    # Project onto surface space
+    return ClimaCore.Fields.Field(
+        ClimaCore.Fields.field_values(sfc_level),
+        surface_space,
+    )
+end
+
+"""
+    get_additional_domain_fields(subsurface_space)
+
+A helper function which returns additional fields corresponding to ClimaLand
+domains which have a subsurface_space (Column, HybridBox, SphericalShell);
+these fields are the center coordinates of the subsurface space, the spacing between
+the top center and top surface and bottom center and bottom surface, as well as the
+field corresponding to the surface height z.
+
+We allocate these once, upon domain construction, so that they are accessible
+during the simulation.
+"""
+function get_additional_domain_fields(subsurface_space)
+    surface_space = obtain_surface_space(subsurface_space)
+    z = ClimaCore.Fields.coordinate_field(subsurface_space).z
+    Δz_top, Δz_bottom = get_Δz(z)
+    face_space = obtain_face_space(subsurface_space)
+    z_face = ClimaCore.Fields.coordinate_field(face_space).z
+    z_sfc = top_face_to_surface(z_face, surface_space)
+    fields = (; z = z, Δz_top = Δz_top, Δz_bottom = Δz_bottom, z_sfc = z_sfc)
+    return fields
+end
+
+
 export AbstractDomain
 export Column, Plane, HybridBox, Point, SphericalShell, SphericalSurface
 export coordinates,
     obtain_face_space,
     obtain_surface_space,
     top_center_to_surface,
+    top_face_to_surface,
     obtain_surface_domain,
     linear_interpolation_to_surface!,
     get_Δz

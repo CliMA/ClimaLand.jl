@@ -171,8 +171,8 @@ ClimaLand.auxiliary_domain_names(model::SoilCO2Model) = (
 
 function make_update_boundary_fluxes(model::SoilCO2Model)
     function update_boundary_fluxes!(p, Y, t)
-        z = ClimaCore.Fields.coordinate_field(model.domain.space.subsurface).z
-        Δz_top, Δz_bottom = ClimaLand.Domains.get_Δz(z)
+        Δz_top = model.domain.fields.Δz_top
+        Δz_bottom = model.domain.fields.Δz_bottom
         p.soilco2.top_bc .= boundary_flux(
             model.boundary_conditions.top,
             TopBoundary(),
@@ -405,7 +405,7 @@ function ClimaLand.make_update_aux(model::SoilCO2Model)
         # get FT to enforce types of variables not stored directly in `p`
         FT = eltype(Y.soilco2.C)
         params = model.parameters
-        z = ClimaCore.Fields.coordinate_field(model.domain.space.subsurface).z
+        z = model.domain.fields.z
         T_soil = FT.(soil_temperature(model.driver.met, p, Y, t, z))
         θ_l = FT.(soil_moisture(model.driver.met, p, Y, t, z))
         Csom = FT.(soil_SOM_C(model.driver.soc, p, Y, t, z))

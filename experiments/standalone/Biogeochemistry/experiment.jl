@@ -46,7 +46,6 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
     zmax = FT(0)
     zmin = FT(-1)
     nelems = 20
-    Δz = abs(zmax - zmin) / nelems
 
     lsm_domain = Column(; zlim = (zmin, zmax), nelements = nelems)
 
@@ -57,7 +56,7 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
     bot_flux_bc_h = Soil.HeatFluxBC((p, t) -> 0.0)
 
 
-    sources = (PhaseChange{FT}(Δz),)
+    sources = (PhaseChange{FT}(),)
     boundary_fluxes = (;
         top = WaterHeatBC(; water = top_flux_bc_w, heat = bot_flux_bc_h),
         bottom = WaterHeatBC(; water = bot_flux_bc_w, heat = bot_flux_bc_h),

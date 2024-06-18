@@ -648,7 +648,7 @@ for FT in (Float32, Float64)
             ),
         )
 
-        sources = (PhaseChange{FT}(Δz),)
+        sources = (PhaseChange{FT}(),)
 
         ###
         hyd_off_en_on = Soil.EnergyHydrologyParameters(
