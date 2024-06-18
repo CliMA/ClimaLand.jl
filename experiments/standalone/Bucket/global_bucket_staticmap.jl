@@ -65,7 +65,7 @@ function compute_clims(v)
 end
 
 anim_plots = true
-regridder_type = :TempestRegridder
+regridder_type = :InterpolationsRegridder
 FT = Float64;
 context = ClimaComms.context()
 earth_param_set = LP.LandParameters(FT);
@@ -144,7 +144,7 @@ u_atmos = TimeVaryingInput(
     surface_space;
     reference_date = ref_time,
     t_start,
-    regridder_type,
+    regridder_type = :TempestRegridder,
 )
 q_atmos = TimeVaryingInput(
     joinpath(era5_artifact_path, "era5_2021_0.9x1.25_clima.nc"),
@@ -152,7 +152,7 @@ q_atmos = TimeVaryingInput(
     surface_space;
     reference_date = ref_time,
     t_start,
-    regridder_type,
+    regridder_type = :TempestRegridder,
 )
 P_atmos = TimeVaryingInput(
     joinpath(era5_artifact_path, "era5_2021_0.9x1.25.nc"),
@@ -160,7 +160,7 @@ P_atmos = TimeVaryingInput(
     surface_space;
     reference_date = ref_time,
     t_start,
-    regridder_type,
+    regridder_type = :TempestRegridder,
 )
 
 T_atmos = TimeVaryingInput(
@@ -169,7 +169,7 @@ T_atmos = TimeVaryingInput(
     surface_space;
     reference_date = ref_time,
     t_start,
-    regridder_type,
+    regridder_type = :TempestRegridder,
 )
 h_atmos = FT(10);
 

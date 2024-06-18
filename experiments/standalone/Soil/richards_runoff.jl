@@ -22,7 +22,7 @@ using ClimaLand.Soil
 import ClimaLand
 import ClimaLand.Parameters as LP
 
-regridder_type = :TempestRegridder
+regridder_type = :InterpolationsRegridder
 context = ClimaComms.context()
 device_suffix =
     typeof(ClimaComms.context().device) <: ClimaComms.CPUSingleThreaded ?
@@ -51,12 +51,12 @@ subsurface_space = domain.space.subsurface
 
 # Read in f_max data and land sea mask
 infile_path = ClimaLand.Artifacts.topmodel_data_path()
-f_max = SpaceVaryingInput(infile_path, "fmax", surface_space; regridder_type)
+f_max = SpaceVaryingInput(infile_path, "fmax", surface_space; regridder_type = :TempestRegridder)
 mask = SpaceVaryingInput(
     infile_path,
     "landsea_mask",
     surface_space;
-    regridder_type,
+    regridder_type = :TempestRegridder,
 )
 
 oceans_to_zero(field, mask) = mask > 0.5 ? field : eltype(field)(0)
@@ -89,7 +89,7 @@ vg_α = SpaceVaryingInput(
     "α",
     subsurface_space;
     regridder_type,
-    # regridder_kwargs = (; extrapolation_bc,),
+    regridder_kwargs = (; extrapolation_bc,),
 )
 vg_α .= mask_vg.(vg_α, 1e-3)
 # We use this mask to set values of this parameter over the ocean, in order
