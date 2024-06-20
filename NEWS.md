@@ -4,6 +4,17 @@ ClimaLand.jl Release Notes
 main
 --------
 
+v0.12.4
+--------
+- Fix various canopy flux bugs
+  PR [#641](https://github.com/CliMA/ClimaLand.jl/pull/641)
+- Adds Richards to benchmark
+  PR [#648](https://github.com/CliMA/ClimaLand.jl/pull/648)
+- Reduce allocations in update runoffs 
+  PR [#664](https://github.com/CliMA/ClimaLand.jl/pull/664)
+- Store z in cache instead of model
+  PR [#658](https://github.com/CliMA/ClimaLand.jl/pull/658)
+
 v0.12.3
 --------
 - Add benchmark pipeline 
