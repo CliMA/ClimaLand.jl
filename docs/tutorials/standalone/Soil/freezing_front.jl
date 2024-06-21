@@ -183,9 +183,19 @@ function init_soil!(Ysoil, z, params)
     Ysoil.soil.ϑ_l .= FT(0.33)
     Ysoil.soil.θ_i .= FT(0.0)
     T = FT(279.85)
-    ρc_s = Soil.volumetric_heat_capacity(FT(0.33), FT(0.0), params)
+    ρc_s = Soil.volumetric_heat_capacity(
+        FT(0.33),
+        FT(0.0),
+        params.ρc_ds,
+        params.earth_param_set,
+    )
     Ysoil.soil.ρe_int .=
-        Soil.volumetric_internal_energy.(FT(0.0), ρc_s, T, Ref(params))
+        Soil.volumetric_internal_energy.(
+            FT(0.0),
+            ρc_s,
+            T,
+            params.earth_param_set,
+        )
 end
 
 init_soil!(Y, coords.subsurface.z, soil.parameters);

@@ -316,14 +316,19 @@ for FT in (Float32, Float64)
 
         θ_l = Soil.volumetric_liquid_fraction.(Y.soil.ϑ_l, ν, θ_r)
         volumetric_heat_capacity =
-            Soil.volumetric_heat_capacity.(θ_l, Y.soil.θ_i, Ref(parameters))
+            Soil.volumetric_heat_capacity.(
+                θ_l,
+                Y.soil.θ_i,
+                parameters.ρc_ds,
+                parameters.earth_param_set,
+            )
         Y.soil.ρe_int .=
             ClimaCore.Fields.zeros(FT, axes(Y.soil.ρe_int)) .+
             volumetric_internal_energy.(
                 FT(0),
                 volumetric_heat_capacity,
                 FT(280),
-                Ref(parameters),
+                parameters.earth_param_set,
             )
 
 

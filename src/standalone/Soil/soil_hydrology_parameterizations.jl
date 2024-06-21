@@ -89,7 +89,8 @@ function pressure_head(
     ν_eff::FT,
     S_s::FT,
 ) where {FT}
-    S_l_eff = effective_saturation(ν_eff, ϑ_l, θ_r)
+    ϑ_l_safe = max(ϑ_l, θ_r + eps(FT))
+    S_l_eff = effective_saturation(ν_eff, ϑ_l_safe, θ_r)
     if S_l_eff <= FT(1.0)
         ψ = matric_potential(cm, S_l_eff)
     else
@@ -308,7 +309,14 @@ function soil_tortuosity(θ_l::FT, θ_i::FT, ν::FT) where {FT}
 end
 
 """
-    soil_resistance(θ_l, θ_i, parameters::EnergyHydrologyParameters::FT)
+    soil_resistance(θ_l::FT,
+                    θ_i::FT,
+                    hydrology_cm::C,
+                    ν::FT,
+                    θ_r::FT,
+                    d_ds::FT,
+                    earth_param_set::EP,
+                   ) where {FT, EP, C}
 
 Computes the resistance of the top of the soil column to
 water vapor diffusion, as a function of the surface 
@@ -319,9 +327,12 @@ fraction `θ_i`, and other soil parameters.
 function soil_resistance(
     θ_l::FT,
     θ_i::FT,
-    parameters::EnergyHydrologyParameters{FT},
-) where {FT}
-    (; ν, hydrology_cm, θ_r, d_ds, earth_param_set) = parameters
+    hydrology_cm::C,
+    ν::FT,
+    θ_r::FT,
+    d_ds::FT,
+    earth_param_set::EP,
+) where {FT, EP, C}
     (; S_c) = hydrology_cm
     _D_vapor = FT(LP.D_vapor(earth_param_set))
     S_w = effective_saturation(ν, θ_l + θ_i, θ_r)

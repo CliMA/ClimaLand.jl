@@ -66,6 +66,7 @@ function LP.LandParameters(toml_dict::CP.AbstractTOMLDict)
         insol_params,
     )
 end
+Base.broadcastable(ps::LP.LandParameters) = tuple(ps)
 
 """
     AutotrophicRespirationParameters(FT; kwargs...)
@@ -259,7 +260,14 @@ end
 
 EnergyHydrologyParameters has two constructors: float-type and toml dict based.
 Additional parameters must be added manually: ν, ν_ss_om, ν_ss_quartz, ν_ss_gravel, hydrology_cm, K_sat, S_s, and θ_r
-All parameters can be manually overriden via keyword arguments.
+All parameters can be manually overriden via keyword arguments. Note, however,
+that certain parameters must have the same type (e.g, if a field is 
+supplied for porosity, it must be supplied for all other parameters
+defined in the interior of the domain). Some parameters are defined only
+on the surface of the domain (e.g albedo), while other are defined everywhere
+(e.g. porosity). These are indicated with types `F` and `SF`.
+
+Please see the EnergyHydrologyParameters documentation for a complete list.
 """
 function EnergyHydrologyParameters(
     ::Type{FT};
@@ -297,10 +305,14 @@ function EnergyHydrologyParameters(
     K_sat::F,
     S_s::F,
     θ_r::F,
-    PAR_albedo = 0.2,
-    NIR_albedo = 0.4,
+    PAR_albedo::SF = 0.2,
+    NIR_albedo::SF = 0.4,
     kwargs...,
-) where {F <: Union{<:AbstractFloat, ClimaCore.Fields.FieldVector}, C}
+) where {
+    F <: Union{<:AbstractFloat, ClimaCore.Fields.Field},
+    SF <: Union{<:AbstractFloat, ClimaCore.Fields.Field},
+    C,
+}
     earth_param_set = LP.LandParameters(toml_dict)
 
     # Obtain parameters needed to calculate the derived parameters
@@ -360,7 +372,7 @@ function EnergyHydrologyParameters(
     parameters = CP.get_parameter_values(toml_dict, name_map, "Land")
     PSE = typeof(earth_param_set)
     FT = CP.float_type(toml_dict)
-    EnergyHydrologyParameters{FT, F, C, PSE}(;
+    EnergyHydrologyParameters{FT, F, SF, C, PSE}(;
         PAR_albedo,
         NIR_albedo,
         ν,

@@ -45,3 +45,13 @@ steps:
         agents:
           slurm_mem: 8GB
           slurm_gpus: 1
+
+      - label: "Soil/Canopy"
+        command: "julia --color=yes --project=.buildkite experiments/benchmarks/land.jl"
+        artifact_paths:
+          - "land_benchmark_gpu/*html"
+        env:
+          CLIMACOMMS_DEVICE: CUDA
+        agents:
+          slurm_mem: 8GB
+          slurm_gpus: 1

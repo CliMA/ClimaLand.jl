@@ -151,13 +151,18 @@ for FT in (Float32, Float64)
                 Y.soil.ϑ_l .= ν / 2
                 Y.soil.θ_i .= 0
                 T = FT(280)
-                ρc_s = Soil.volumetric_heat_capacity(ν / 2, FT(0), params)
+                ρc_s = Soil.volumetric_heat_capacity(
+                    ν / 2,
+                    FT(0),
+                    params.ρc_ds,
+                    params.earth_param_set,
+                )
                 Y.soil.ρe_int =
                     Soil.volumetric_internal_energy.(
                         FT(0),
                         ρc_s,
                         T,
-                        Ref(params),
+                        params.earth_param_set,
                     )
             end
 
