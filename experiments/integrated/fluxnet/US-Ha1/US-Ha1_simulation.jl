@@ -20,7 +20,4 @@ h_stem = FT(14) # m
 t0 = Float64(120 * 3600 * 24)# start mid year to avoid snow
 
 # Time step size:
-dt = Float64(40)
-
-# Number of timesteps between saving output:
-n = 45
+dt = Float64(450)
