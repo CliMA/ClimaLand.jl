@@ -326,7 +326,7 @@ imp_tendency! = make_imp_tendency(land);
 jacobian! = make_jacobian(land);
 
 # Set up timestepping and simulation callbacks
-dt = Float64(150)
+dt = Float64(900)
 tf = Float64(t0 + 100dt)
 saveat = Array(t0:dt:tf)
 updateat = Array(t0:dt:tf)
@@ -334,7 +334,7 @@ timestepper = CTS.ARS343()
 ode_algo = CTS.IMEXAlgorithm(
     timestepper,
     CTS.NewtonsMethod(
-        max_iters = 1,
+        max_iters = 2,
         update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
     ),
 );

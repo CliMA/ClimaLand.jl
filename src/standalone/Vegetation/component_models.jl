@@ -123,11 +123,48 @@ may be needed and passed in (via the `canopy` model itself).
 The right hand side for the entire canopy model can make use of
 these functions for the individual components.
 """
-function ClimaLand.make_compute_exp_tendency(::AbstractCanopyComponent, canopy)
-    function compute_exp_tendency!(dY, Y, p, t) end
+function ClimaLand.make_compute_exp_tendency(
+    component::AbstractCanopyComponent,
+    canopy,
+)
+    function compute_exp_tendency!(dY, Y, p, t)
+        vars = prognostic_vars(component)
+        if vars != ()
+            getproperty(getproperty(dY, name(canopy)), name(component)) .= 0
+        end
+    end
     return compute_exp_tendency!
 end
 
+"""
+     ClimaLand.make_compute_imp_tendency(component::AbstractCanopyComponent, canopy)
+
+Creates the compute_imp_tendency!(dY,Y,p,t) function for the canopy `component`.
+
+Since component models are not standalone models, other information
+may be needed and passed in (via the `canopy` model itself).
+The right hand side for the entire canopy model can make use of
+these functions for the individual components.
+"""
+function ClimaLand.make_compute_imp_tendency(
+    component::AbstractCanopyComponent,
+    canopy,
+)
+    function compute_imp_tendency!(dY, Y, p, t)
+        vars = prognostic_vars(component)
+        if vars != ()
+            getproperty(getproperty(dY, name(canopy)), name(component)) .= 0
+        end
+
+    end
+    return compute_imp_tendency!
+end
+
+
+function make_compute_jacobian(component::AbstractCanopyComponent, canopy)
+    function compute_jacobian!(W, Y, p, dtγ, t) end
+    return compute_jacobian!
+end
 
 """
      set_canopy_prescribed_field!(component::AbstractCanopyComponent,
