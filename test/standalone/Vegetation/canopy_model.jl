@@ -719,6 +719,14 @@ for FT in (Float32, Float64)
         t0 = FT(0.0)
         set_initial_cache!(p, Y, t0)
         exp_tendency! = make_exp_tendency(canopy)
+        imp_tendency! = ClimaLand.make_imp_tendency(canopy)
+        tendency_jacobian! = ClimaLand.make_tendency_jacobian(canopy)
+        # set up jacobian info
+        jac_kwargs = (;
+            jac_prototype = ImplicitEquationJacobian(Y),
+            Wfact = tendency_jacobian!,
+        )
+
         dY = similar(Y)
         exp_tendency!(dY, Y, p, t0)
         turb_fluxes = ClimaLand.Canopy.canopy_turbulent_fluxes(
