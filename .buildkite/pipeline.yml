@@ -127,6 +127,10 @@ steps:
         agents:
           slurm_mem: 16G
 
+      - label: "Canopy Implicit Stepping CPU"
+        command: "julia --color=yes --project=.buildkite experiments/standalone/Vegetation/timestep_test.jl"
+        artifact_paths: "experiments/standalone/Vegetation/errors.png"
+
   - group: "Experiments on GPU"
     steps:
       - label: "Richards Runoff GPU"
