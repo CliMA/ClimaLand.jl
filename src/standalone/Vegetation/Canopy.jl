@@ -3,11 +3,13 @@ using DocStringExtensions
 using Thermodynamics
 using ClimaLand
 using ClimaCore
+using ClimaCore.MatrixFields
+import ClimaCore.MatrixFields: @name, ⋅
+import LinearAlgebra: I
 using ClimaLand: AbstractRadiativeDrivers, AbstractAtmosphericDrivers
 import ..Parameters as LP
 
 import ClimaLand:
-    AbstractExpModel,
     name,
     prognostic_vars,
     prognostic_types,
@@ -20,6 +22,8 @@ import ClimaLand:
     make_update_boundary_fluxes,
     make_update_aux,
     make_compute_exp_tendency,
+    make_compute_imp_tendency,
+    make_compute_jacobian,
     get_drivers
 
 using ClimaLand.Domains: Point, Plane, SphericalSurface
@@ -54,7 +58,7 @@ struct SharedCanopyParameters{FT <: AbstractFloat, PSE}
 end
 
 """
-     CanopyModel{FT, AR, RM, PM, SM, PHM, EM, SM, A, R, S, PS, D} <: AbstractExpModel{FT}
+     CanopyModel{FT, AR, RM, PM, SM, PHM, EM, SM, A, R, S, PS, D} <: ClimaLand.AbstractImExModel{FT}
 
 The model struct for the canopy, which contains
 - the canopy model domain (a point for site-level simulations, or
@@ -98,7 +102,7 @@ treated differently.
 $(DocStringExtensions.FIELDS)
 """
 struct CanopyModel{FT, AR, RM, PM, SM, PHM, EM, SIFM, A, R, S, PS, D} <:
-       AbstractExpModel{FT}
+       ClimaLand.AbstractImExModel{FT}
     "Autotrophic respiration model, a canopy component model"
     autotrophic_respiration::AR
     "Radiative transfer model, a canopy component model"
@@ -627,13 +631,72 @@ function make_compute_exp_tendency(
     end
     return compute_exp_tendency!
 end
-function ClimaLand.get_drivers(model::CanopyModel)
-    return (model.atmos, model.radiation)
+
+"""
+    make_compute_imp_tendency(canopy::CanopyModel)
+
+Creates and returns the compute_imp_tendency! for the `CanopyModel`.
+"""
+function make_compute_imp_tendency(
+    canopy::CanopyModel{
+        FT,
+        <:AutotrophicRespirationModel,
+        <:Union{BeerLambertModel, TwoStreamModel},
+        <:Union{FarquharModel, OptimalityFarquharModel},
+        <:MedlynConductanceModel,
+        <:PlantHydraulicsModel,
+        <:Union{PrescribedCanopyTempModel, BigLeafEnergyModel},
+    },
+) where {FT}
+    components = canopy_components(canopy)
+    compute_imp_tendency_list = map(
+        x -> make_compute_imp_tendency(getproperty(canopy, x), canopy),
+        components,
+    )
+    function compute_imp_tendency!(dY, Y, p, t)
+        for f! in compute_imp_tendency_list
+            f!(dY, Y, p, t)
+        end
+
+    end
+    return compute_imp_tendency!
+end
+
+"""
+    ClimaLand.make_compute_jacobian(canopy::CanopyModel)
+
+Creates and returns the compute_jacobian! for the `CanopyModel`.
+"""
+function ClimaLand.make_compute_jacobian(
+    canopy::CanopyModel{
+        FT,
+        <:AutotrophicRespirationModel,
+        <:Union{BeerLambertModel, TwoStreamModel},
+        <:Union{FarquharModel, OptimalityFarquharModel},
+        <:MedlynConductanceModel,
+        <:PlantHydraulicsModel,
+        <:Union{PrescribedCanopyTempModel, BigLeafEnergyModel},
+    },
+) where {FT}
+    components = canopy_components(canopy)
+    update_jacobian_list = map(
+        x -> make_compute_jacobian(getproperty(canopy, x), canopy),
+        components,
+    )
+    function compute_jacobian!(W, Y, p, dtγ, t)
+        for f! in update_jacobian_list
+            f!(W, Y, p, dtγ, t)
+        end
+
+    end
+    return compute_jacobian!
 end
 
 
+function ClimaLand.get_drivers(model::CanopyModel)
+    return (model.atmos, model.radiation)
+end
 include("./canopy_boundary_fluxes.jl")
-
 #Make the canopy model broadcastable
 Base.broadcastable(C::CanopyModel) = tuple(C)
 end

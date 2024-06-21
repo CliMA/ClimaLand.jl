@@ -78,8 +78,14 @@ end
 
 @testset "Default canopy component" begin
     FT = Float64
+    struct DefaultCanopy{FT} <: AbstractImExModel{FT} end
+    ClimaLand.name(::DefaultCanopy) where {FT} = :canopy
+    dc = DefaultCanopy{FT}()
+
     struct DefaultCanopyComponent{FT} <: AbstractCanopyComponent{FT} end
+    ClimaLand.name(::DefaultCanopyComponent) where {FT} = :component
     dcc = DefaultCanopyComponent{FT}()
+
     @test ClimaLand.prognostic_vars(dcc) == ()
     @test ClimaLand.prognostic_types(dcc) == ()
     @test ClimaLand.prognostic_domain_names(dcc) == ()
@@ -88,10 +94,9 @@ end
     @test ClimaLand.auxiliary_types(dcc) == ()
     @test ClimaLand.auxiliary_domain_names(dcc) == ()
 
-    x = [0, 1, 2, 3]
-    dcc_compute_exp_tendency! = make_compute_exp_tendency(dcc, nothing)
+    x = [(canopy = (component = [1],),), 1, 2, 3]
+    dcc_compute_exp_tendency! = make_compute_exp_tendency(dcc, dc)
     @test dcc_compute_exp_tendency!(x[1], x[2], x[3], x[4]) == nothing
-    @test x == [0, 1, 2, 3]
 
     @test_throws MethodError make_compute_imp_tendency(dcc)
 end

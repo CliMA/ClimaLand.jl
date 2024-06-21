@@ -6,6 +6,7 @@ main
 - Add a longrun simulation for the bucket PR[#807](https://github.com/CliMA/ClimaLand.jl/pull/807)
 - Add ground heat flux to snow-soil model PR[#796](https://github.com/CliMA/ClimaLand.jl/pull/796)
 - Add snow-soil model PR [#779](https://github.com/CliMA/ClimaLand.jl/pull/779)
+- Step canopy temperature implicitly. PR [#675](https://github.com/CliMA/ClimaLand.jl/pull/675)
 
 v0.15.0
 --------

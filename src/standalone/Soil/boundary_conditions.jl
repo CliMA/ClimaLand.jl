@@ -603,6 +603,15 @@ struct AtmosDrivenFluxBC{
     prognostic_land_components::C
 end
 
+function AtmosDrivenFluxBC(
+    atmos,
+    radiation,
+    runoff;
+    prognostic_land_components = (:soil,),
+)
+    args = (atmos, radiation, runoff, prognostic_land_components)
+    return AtmosDrivenFluxBC{typeof.(args)...}(args...)
+end
 
 function AtmosDrivenFluxBC(
     atmos,

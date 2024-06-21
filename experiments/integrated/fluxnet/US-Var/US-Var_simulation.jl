@@ -20,7 +20,4 @@ h_stem = FT(0) # m
 t0 = Float64(21 * 3600 * 24)# start day 21 of the year
 
 # Time step size:
-dt = Float64(20)
-
-# Number of timesteps between saving output:
-n = 45
+dt = Float64(900)
