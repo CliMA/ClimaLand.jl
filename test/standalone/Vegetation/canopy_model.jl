@@ -249,8 +249,8 @@ for FT in (Float32, Float64)
         N_a = FT(LP.avogadro_constant(earth_param_set))
         _σ = FT(LP.Stefan(earth_param_set))
         (; α_PAR_leaf, λ_γ_PAR, λ_γ_NIR) = canopy.radiative_transfer.parameters
-        APAR = p.canopy.radiative_transfer.apar
-        ANIR = p.canopy.radiative_transfer.anir
+        APAR = p.canopy.radiative_transfer.par.abs
+        ANIR = p.canopy.radiative_transfer.nir.abs
         energy_per_photon_PAR = h * c / λ_γ_PAR
         energy_per_photon_NIR = h * c / λ_γ_NIR
 
@@ -973,8 +973,8 @@ for FT in (Float32, Float64)
             @test all(parent(p.canopy.conductance.transpiration) .== FT(0))
             @test all(parent(p.canopy.radiative_transfer.LW_n) .== FT(0))
             @test all(parent(p.canopy.radiative_transfer.SW_n) .== FT(0))
-            @test all(parent(p.canopy.radiative_transfer.apar) .== FT(0))
-            @test all(parent(p.canopy.radiative_transfer.anir) .== FT(0))
+            @test all(parent(p.canopy.radiative_transfer.par.abs) .== FT(0))
+            @test all(parent(p.canopy.radiative_transfer.nir.abs) .== FT(0))
             @test all(parent(p.canopy.autotrophic_respiration.Ra) .== FT(0))
         end
 

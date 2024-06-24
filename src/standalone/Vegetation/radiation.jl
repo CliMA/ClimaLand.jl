@@ -128,47 +128,49 @@ function TwoStreamModel{FT}(
 end
 
 """
-    compute_PAR(
+    compute_PAR!(par,
         model::AbstractRadiationModel,
         solar_radiation::ClimaLand.PrescribedRadiativeFluxes,
         p,
         t,
     )
 
-Returns the estimated PAR (W/m^2) given the input solar radiation
+Updates `par` with the estimated PAR (W/,m^2) given the input solar radiation
 for a radiative transfer model.
 
 The estimated PAR is half of the incident shortwave radiation.
 """
-function compute_PAR(
+function compute_PAR!(
+    par,
     model::AbstractRadiationModel,
     solar_radiation::ClimaLand.PrescribedRadiativeFluxes,
     p,
     t,
 )
-    return p.drivers.SW_d ./ 2
+    @. par = p.drivers.SW_d / 2
 end
 
 """
-    compute_NIR(
+    compute_NIR!(nir,
         model::AbstractRadiationModel,
         solar_radiation::ClimaLand.PrescribedRadiativeFluxes,
         p,
         t,
     )
 
-Returns the estimated NIR (W/m^2) given the input solar radiation
+Update `nir` with the estimated NIR (W/m^2) given the input solar radiation
 for a radiative transfer model.
 
 The estimated PNIR is half of the incident shortwave radiation.
 """
-function compute_NIR(
+function compute_NIR!(
+    nir,
     model::AbstractRadiationModel,
     solar_radiation::ClimaLand.PrescribedRadiativeFluxes,
     p,
     t,
 )
-    return p.drivers.SW_d ./ 2
+    @. nir = p.drivers.SW_d / 2
 end
 
 # Make radiation models broadcastable
@@ -176,14 +178,20 @@ Base.broadcastable(RT::AbstractRadiationModel) = tuple(RT)
 
 ClimaLand.name(model::AbstractRadiationModel) = :radiative_transfer
 ClimaLand.auxiliary_vars(model::Union{BeerLambertModel, TwoStreamModel}) =
-    (:apar, :par, :rpar, :tpar, :anir, :nir, :rnir, :tnir, :LW_n, :SW_n, :ϵ)
+    (:inc_nir, :inc_par, :nir, :par, :LW_n, :SW_n, :ϵ, :frac_diff)
 ClimaLand.auxiliary_types(
     model::Union{BeerLambertModel{FT}, TwoStreamModel{FT}},
-) where {FT} = (FT, FT, FT, FT, FT, FT, FT, FT, FT, FT, FT)
+) where {FT} = (
+    FT,
+    FT,
+    NamedTuple{(:abs, :refl, :trans), Tuple{FT, FT, FT}},
+    NamedTuple{(:abs, :refl, :trans), Tuple{FT, FT, FT}},
+    FT,
+    FT,
+    FT,
+    FT,
+)
 ClimaLand.auxiliary_domain_names(::Union{BeerLambertModel, TwoStreamModel}) = (
-    :surface,
-    :surface,
-    :surface,
     :surface,
     :surface,
     :surface,
@@ -229,8 +237,8 @@ function canopy_radiant_energy_fluxes!(
     h = FT(LP.planck_constant(earth_param_set))
     N_a = FT(LP.avogadro_constant(earth_param_set))
     (; α_PAR_leaf, λ_γ_PAR, λ_γ_NIR) = canopy.radiative_transfer.parameters
-    APAR = p.canopy.radiative_transfer.apar
-    ANIR = p.canopy.radiative_transfer.anir
+    APAR = p.canopy.radiative_transfer.par.abs
+    ANIR = p.canopy.radiative_transfer.nir.abs
     energy_per_photon_PAR = h * c / λ_γ_PAR
     energy_per_photon_NIR = h * c / λ_γ_NIR
     @. p.canopy.radiative_transfer.SW_n =

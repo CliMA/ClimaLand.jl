@@ -399,14 +399,6 @@ function ClimaLand.make_update_aux(
 
         # Other auxiliary variables being updated:
         Ra = p.canopy.autotrophic_respiration.Ra
-        APAR = p.canopy.radiative_transfer.apar
-        PAR = p.canopy.radiative_transfer.par
-        TPAR = p.canopy.radiative_transfer.tpar
-        RPAR = p.canopy.radiative_transfer.rpar
-        ANIR = p.canopy.radiative_transfer.anir
-        NIR = p.canopy.radiative_transfer.nir
-        RNIR = p.canopy.radiative_transfer.rnir
-        TNIR = p.canopy.radiative_transfer.tnir
         β = p.canopy.hydraulics.β
         medlyn_factor = p.canopy.conductance.medlyn_term
         gs = p.canopy.conductance.gs
@@ -416,6 +408,9 @@ function ClimaLand.make_update_aux(
         ψ = p.canopy.hydraulics.ψ
         ϑ_l = Y.canopy.hydraulics.ϑ_l
         fa = p.canopy.hydraulics.fa
+        inc_par = p.canopy.radiative_transfer.inc_par
+        inc_nir = p.canopy.radiative_transfer.inc_nir
+        frac_diff = p.canopy.radiative_transfer.frac_diff
 
         # Current atmospheric conditions
         θs = p.drivers.θs
@@ -451,44 +446,37 @@ function ClimaLand.make_update_aux(
             canopy.radiative_transfer.parameters.ϵ_canopy *
             (1 - exp(-(LAI + SAI))) #from CLM 5.0, Tech note 4.20
         RT = canopy.radiative_transfer
+        compute_PAR!(inc_par, RT, canopy.radiation, p, t)
+        compute_NIR!(inc_nir, RT, canopy.radiation, p, t)
         K = extinction_coeff.(G_Function, θs)
-        PAR .= compute_PAR(RT, canopy.radiation, p, t)
-        NIR .= compute_NIR(RT, canopy.radiation, p, t)
-        e_sat =
-            Thermodynamics.saturation_vapor_pressure.(
-                thermo_params,
-                T_air,
-                Ref(Thermodynamics.Liquid()),
-            )
-        e =
-            Thermodynamics.partial_pressure_vapor.(
-                thermo_params,
-                P_air,
-                PhasePartition.(q_air),
-            )
-        rel_hum = e ./ e_sat
         DOY = Dates.dayofyear(
             canopy.atmos.ref_time + Dates.Second(floor(Int64, t)),
         )
-        frac_diff = @. diffuse_fraction(DOY, T_air, PAR + NIR, rel_hum, θs)
-        absorbance_tuple = compute_absorbances(
+        @. frac_diff = diffuse_fraction(
+            DOY,
+            T_air,
+            P_air,
+            q_air,
+            p.drivers.SW_d,
+            θs,
+            thermo_params,
+        )
+
+        compute_absorbances!(
+            p,
             RT,
-            PAR ./ (energy_per_photon_PAR * N_a),
-            NIR ./ (energy_per_photon_NIR * N_a),
+            inc_par,
+            inc_nir,
             LAI,
             K,
             ground_albedo_PAR(canopy.soil_driver, Y, p, t),
             ground_albedo_NIR(canopy.soil_driver, Y, p, t),
+            energy_per_photon_PAR,
+            energy_per_photon_NIR,
+            N_a,
             θs,
             frac_diff,
         )
-        APAR .= absorbance_tuple.par.abs
-        ANIR .= absorbance_tuple.nir.abs
-        TPAR .= absorbance_tuple.par.trans
-        TNIR .= absorbance_tuple.nir.trans
-        RPAR .= absorbance_tuple.par.refl
-        RNIR .= absorbance_tuple.nir.refl
-
 
         # update plant hydraulics aux
         hydraulics = canopy.hydraulics
@@ -561,7 +549,7 @@ function ClimaLand.make_update_aux(
             Vcmax25,
             canopy.photosynthesis,
             T_canopy,
-            APAR,
+            p.canopy.radiative_transfer.par.abs,
             β,
             medlyn_factor,
             c_co2_air,
