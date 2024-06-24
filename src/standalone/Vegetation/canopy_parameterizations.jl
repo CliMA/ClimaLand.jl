@@ -212,11 +212,14 @@ function plant_absorbed_pfd(
     α_soil::FT,
 ) where {FT}
     RTP = RT.parameters
-    AR = SW_IN * (1 - α_leaf) * (1 - exp(-K * LAI * RTP.Ω)) * (1 - α_soil)
-    TR = SW_IN * exp(-K * LAI * RTP.Ω)
+    KLAIΩ = LAI > RTP.LS_c ? K * LAI * RTP.Ω : FT(0)
+    AR = SW_IN * (1 - α_leaf) * (1 - exp(-KLAIΩ)) * (1 - α_soil)
+    TR = SW_IN * exp(-KLAIΩ)
     RR = SW_IN - AR - TR * (1 - α_soil)
     return (; abs = AR, refl = RR, trans = TR)
+
 end
+
 
 """
     plant_absorbed_pfd(
@@ -253,8 +256,8 @@ function plant_absorbed_pfd(
     α_soil::FT,
     frac_diff::FT,
 ) where {FT}
-
-    (; G_Function, Ω, n_layers) = RT.parameters
+    RTP = RT.parameters
+    (; G_Function, Ω, n_layers) = RTP
 
     # Get the current leaf angular distribution value based on the solar zenith angle
     G = compute_G(G_Function, θs)
@@ -265,6 +268,7 @@ function plant_absorbed_pfd(
     ω = α_leaf + τ_leaf
 
     # Compute aₛ, the single scattering albedo
+    # if θs = π/2 this seems OK
     aₛ = 0.5 * ω * (1 - cos(θs) * log((abs(cos(θs)) + 1) / abs(cos(θs))))
 
     # Compute β₀, the direct upscattering parameter
@@ -288,8 +292,10 @@ function plant_absorbed_pfd(
     u₂ = b - c * α_soil
     u₃ = f + c * α_soil
 
-    s₁ = exp(-h * LAI * Ω)
-    s₂ = exp(-K * LAI * Ω)
+    hLAIΩ = LAI > RTP.LS_c ? h * LAI * Ω : FT(0)
+    KLAIΩ = LAI > RTP.LS_c ? K * LAI * Ω : FT(0)
+    s₁ = exp(-hLAIΩ)
+    s₂ = exp(-KLAIΩ)
 
     p₁ = b + μ̄ * h
     p₂ = b - μ̄ * h
@@ -330,7 +336,7 @@ function plant_absorbed_pfd(
     h₁₀ = -s₁ * (u₂ - μ̄ * h) / d₂
 
     # Compute the LAI per layer for this canopy
-    Lₗ = LAI / n_layers
+    LAI_per_layer = LAI / n_layers
 
     # Initialize the fraction absorbed value and layer counter
     F_abs = 0
@@ -345,28 +351,24 @@ function plant_absorbed_pfd(
     I_dif_up_prev = 0
     I_dif_dn_prev = 0
 
+
     # Compute F_abs in each canopy layer
     while i <= n_layers
 
         # Compute cumulative LAI at this layer
-        L = i * Lₗ
-
+        L = i * LAI_per_layer
+        KΩL = LAI > RTP.LS_c ? K * L * Ω : FT(0)
+        hΩL = LAI > RTP.LS_c ? h * L * Ω : FT(0)
         # Compute the direct fluxes into/out of the layer 
-        I_dir_up =
-            h₁ * exp(-K * L * Ω) / σ +
-            h₂ * exp(-h * L * Ω) +
-            h₃ * exp(h * L * Ω)
-        I_dir_dn =
-            h₄ * exp(-K * L * Ω) / σ +
-            h₅ * exp(-h * L * Ω) +
-            h₆ * exp(h * L * Ω)
+        I_dir_up = h₁ * exp(-KΩL) / σ + h₂ * exp(-hΩL) + h₃ * exp(hΩL)
+        I_dir_dn = h₄ * exp(-KΩL) / σ + h₅ * exp(-hΩL) + h₆ * exp(hΩL)
 
         # Add collimated radiation to downard flux
-        I_dir_dn += exp(-K * L * Ω)
+        I_dir_dn += exp(-KΩL)
 
         # Compute the diffuse fluxes into/out of the layer
-        I_dif_up = h₇ * exp(-h * L * Ω) + h₈ * exp(h * L * Ω)
-        I_dif_dn = h₉ * exp(-h * L * Ω) + h₁₀ * exp(h * L * Ω)
+        I_dif_up = h₇ * exp(-hΩL) + h₈ * exp(hΩL)
+        I_dif_dn = h₉ * exp(-hΩL) + h₁₀ * exp(hΩL)
 
         # Energy balance giving radiation absorbed in the layer 
         if i == 0
@@ -394,7 +396,6 @@ function plant_absorbed_pfd(
         # Move on to the next layer
         i += 1
     end
-
     # Convert fractional absorption into absorption and return
     # Ensure floating point precision is correct (it may be different for PAR)
     F_trans = (1 - F_abs - F_refl) / (1 - α_soil)
@@ -403,6 +404,7 @@ function plant_absorbed_pfd(
         refl = FT(SW_IN * F_refl),
         trans = FT(SW_IN * F_trans),
     )
+
 end
 
 """
@@ -464,6 +466,9 @@ end
 
 Computes the vegetation extinction coefficient (`K`), as a function
 of the sun zenith angle (`θs`), and the leaf angle distribution (`ld`).
+
+In order to prevent errors as zenith angle → π/2, we clip K
+to a maximum value of 100.
 """
 function extinction_coeff(
     G::Union{ConstantGFunction{FT}, CLMGFunction{FT}},
@@ -471,7 +476,7 @@ function extinction_coeff(
 ) where {FT}
     ld = FT(compute_G(G, θs))
     K = ld / max(cos(θs), eps(FT))
-    return K
+    return min(K, FT(1e2))
 end
 
 # 2. Photosynthesis, Farquhar model
@@ -771,7 +776,8 @@ Computes the total canopy photosynthesis (`GPP`) as a function of
 the total net carbon assimilation (`An`), the extinction coefficient (`K`),
 leaf area index (`LAI`) and the clumping index (`Ω`).
 """
-function compute_GPP(An::FT, K::FT, LAI::FT, Ω::FT) where {FT}
+function compute_GPP(An::FT, K::FT, LAI::FT, Ω::FT, LS_c::FT) where {FT}
+    KLAIΩ = K * LAI * Ω#LAI > LS_c ? K * LAI * Ω : FT(0)
     GPP = An * (1 - exp(-K * LAI * Ω)) / (K * Ω)
     return GPP
 end

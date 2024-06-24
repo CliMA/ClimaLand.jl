@@ -64,6 +64,8 @@ Base.@kwdef struct BeerLambertParameters{
     λ_γ_NIR::FT
     "Leaf angle distribution function"
     G_Function::G
+    "Critical value of LAI+SAI below which land is treated as unvegetated"
+    LS_c::FT
 end
 
 Base.eltype(::BeerLambertParameters{FT}) where {FT} = FT
@@ -112,6 +114,8 @@ Base.@kwdef struct TwoStreamParameters{
     n_layers::UInt64
     "Leaf angle distribution function"
     G_Function::G
+    "Critical value of LAI+SAI below which land is treated as unvegetated"
+    LS_c::FT
 end
 
 Base.eltype(::TwoStreamParameters{FT}) where {FT} = FT

@@ -551,6 +551,7 @@ end
         α_NIR_leaf = 0.4,
         τ_NIR_leaf = 0.25,
         Ω = 1,
+        LS_c = 0.05,
         n_layers = UInt64(20),
         kwargs...
     )
@@ -561,6 +562,7 @@ end
         α_NIR_leaf = 0.4,
         τ_NIR_leaf = 0.25,
         Ω = 1,
+        LS_c = 0.05,
         n_layers = UInt64(20),
         kwargs...
     )
@@ -568,7 +570,11 @@ end
 Floating-point and toml dict based constructor supplying default values
 for the TwoStreamParameters struct. Additional parameter values can be directly set via kwargs.
 """
-TwoStreamParameters(::Type{FT}; kwargs...) where {FT <: AbstractFloat} =
+TwoStreamParameters(
+    ::Type{FT};
+    LS_c = FT(0.05),
+    kwargs...,
+) where {FT <: AbstractFloat} =
     TwoStreamParameters(CP.create_toml_dict(FT); kwargs...)
 
 function TwoStreamParameters(
@@ -579,6 +585,7 @@ function TwoStreamParameters(
     α_NIR_leaf = 0.4,
     τ_NIR_leaf = 0.25,
     Ω = 1,
+    LS_c = 0.05,
     n_layers = UInt64(20),
     kwargs...,
 )
@@ -597,6 +604,7 @@ function TwoStreamParameters(
         α_NIR_leaf,
         τ_NIR_leaf,
         Ω,
+        LS_c,
         n_layers,
         parameters...,
         kwargs...,
@@ -609,6 +617,7 @@ end
         α_PAR_leaf = 0.1,
         α_NIR_leaf = 0.4,
         Ω = 1,
+        LS_c = 0.05,
         kwargs...
     )
     function BeerLambertParameters(toml_dict;
@@ -616,13 +625,18 @@ end
         α_PAR_leaf = 0.1,
         α_NIR_leaf = 0.4,
         Ω = 1,
+        LS_c = 0.05,
         kwargs...
     )
 
 Floating-point and toml dict based constructor supplying default values
 for the BeerLambertParameters struct. Additional parameter values can be directly set via kwargs.
 """
-BeerLambertParameters(::Type{FT}; kwargs...) where {FT <: AbstractFloat} =
+BeerLambertParameters(
+    ::Type{FT};
+    LS_c = FT(0.05),
+    kwargs...,
+) where {FT <: AbstractFloat} =
     BeerLambertParameters(CP.create_toml_dict(FT); kwargs...)
 
 function BeerLambertParameters(
@@ -631,6 +645,7 @@ function BeerLambertParameters(
     α_PAR_leaf = 0.1,
     α_NIR_leaf = 0.4,
     Ω = 1,
+    LS_c = 0.05,
     kwargs...,
 )
     name_map = (;
@@ -646,6 +661,7 @@ function BeerLambertParameters(
         α_PAR_leaf,
         α_NIR_leaf,
         Ω,
+        LS_c,
         parameters...,
         kwargs...,
     )
