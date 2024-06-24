@@ -330,6 +330,30 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
         NIR_albedo = NIR_albedo,
     )
 
+    soil_params_mask_sfc =
+        ClimaLand.Domains.top_center_to_surface(soil_params_mask)
+
+    # Read in f_max data and land sea mask
+    infile_path = ClimaLand.Artifacts.topmodel_data_path()
+    f_max =
+        SpaceVaryingInput(infile_path, "fmax", surface_space; regridder_type)
+    mask = SpaceVaryingInput(
+        infile_path,
+        "landsea_mask",
+        surface_space;
+        regridder_type,
+    )
+    # Unsure how to handle two masks
+    f_max = oceans_to_value.(f_max, mask, FT(0.0))
+    f_max = oceans_to_value.(f_max, soil_params_mask_sfc, FT(0.0))
+    f_over = FT(3.28) # 1/m
+    R_sb = FT(1.484e-4 / 1000) # m/s
+    runoff_model = ClimaLand.Soil.Runoff.TOPMODELRunoff{FT}(;
+        f_over = f_over,
+        f_max = f_max,
+        R_sb = R_sb,
+    )
+
 
     # TwoStreamModel parameters
     Ω = FT(0.69)
@@ -352,7 +376,7 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
     SAI = FT(0.0) # m2/m2
     f_root_to_shoot = FT(3.5)
     RAI = FT(1.0)
-    K_sat_plant = 5e-9 # m/s # seems much too small?
+    K_sat_plant = FT(5e-9) # m/s # seems much too small?
     ψ63 = FT(-4 / 0.0098) # / MPa to m, Holtzman's original parameter value is -4 MPa
     Weibull_param = FT(4) # unitless, Holtzman's original c param value
     a = FT(0.05 * 0.0098) # Holtzman's original parameter for the bulk modulus of elasticity
@@ -364,9 +388,9 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
     rooting_depth = FT(0.5) # from Natan
     n_stem = 0
     n_leaf = 1
-    h_stem = 0.0
-    h_leaf = 1.0
-    zmax = 0.0
+    h_stem = FT(0.0)
+    h_leaf = FT(1.0)
+    zmax = FT(0.0)
     h_canopy = h_stem + h_leaf
     compartment_midpoints =
         n_stem > 0 ? [h_stem / 2, h_stem + h_leaf / 2] : [h_leaf / 2]
@@ -515,7 +539,7 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
     )
 
     # Integrated plant hydraulics and soil model
-    land_input = (atmos = atmos, radiation = radiation)
+    land_input = (atmos = atmos, radiation = radiation, runoff = runoff_model)
     land = SoilCanopyModel{FT}(;
         soilco2_type = soilco2_type,
         soilco2_args = soilco2_args,
@@ -604,7 +628,7 @@ function setup_and_solve_problem(; greet = false)
         stepper,
         CTS.NewtonsMethod(
             max_iters = 1,
-            update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
+            update_j = CTS.UpdateEvery(CTS.NewTimeStep),
             convergence_checker = conv_checker,
         ),
     )

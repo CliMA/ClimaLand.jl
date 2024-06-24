@@ -253,8 +253,11 @@ function soil_infiltration_capacity(model::EnergyHydrology, Y, p)
     surface_space = model.domain.space.surface
     @. p.soil.subsfc_scratch =
         -K_sat *
-        impedance_factor(Y.soil.θ_i / (p.soil.θ_l + Y.soil.θ_i - θ_r), Ω) *
-        viscosity_factor(p.soil.T, γ, γT_ref)
+        ClimaLand.Soil.impedance_factor(
+            Y.soil.θ_i / (p.soil.θ_l + Y.soil.θ_i - θ_r),
+            Ω,
+        ) *
+        ClimaLand.Soil.viscosity_factor(p.soil.T, γ, γT_ref)
     return ClimaLand.Soil.get_top_surface_field(
         p.soil.subsfc_scratch,
         surface_space,

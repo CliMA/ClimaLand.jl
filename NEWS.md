@@ -6,7 +6,8 @@ main
 Improve Performance of soil canopy model
 - PR [#666]
 Add base global soil canopy run to benchmark and experiments
-- PR [#591]
+- PR [#591] adds benchmark run
+- PR [#669] adds topmodel runoff
 
 v0.12.4
 --------

@@ -711,6 +711,9 @@ end
 
 
 function AtmosDrivenFluxBC(atmos, radiation; runoff = NoRunoff())
+    if typeof(runoff) <: NoRunoff
+        @info("Warning: No runoff model was provided; zero runoff generated.")
+    end
     args = (atmos, radiation, runoff)
     return AtmosDrivenFluxBC{typeof.(args)...}(args...)
 end
