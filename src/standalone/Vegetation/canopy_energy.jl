@@ -87,11 +87,11 @@ where the canopy temperature is modeled prognostically.
 canopy_temperature(model::BigLeafEnergyModel, canopy, Y, p, t) =
     Y.canopy.energy.T
 
-function make_compute_exp_tendency(
+function make_compute_imp_tendency(
     model::BigLeafEnergyModel{FT},
     canopy,
 ) where {FT}
-    function compute_exp_tendency!(dY, Y, p, t)
+    function compute_imp_tendency!(dY, Y, p, t)
         area_index = p.canopy.hydraulics.area_index
         ac_canopy = model.parameters.ac_canopy
         # Energy Equation:
@@ -114,7 +114,7 @@ function make_compute_exp_tendency(
             @. ac_canopy * max(area_index.leaf + area_index.stem, eps(FT))
         @. dY.canopy.energy.T = -net_energy_flux / c_per_ground_area
     end
-    return compute_exp_tendency!
+    return compute_imp_tendency!
 end
 
 """
@@ -150,4 +150,18 @@ function root_energy_flux_per_ground_area!(
     t,
 ) where {FT}
     fa_energy .= FT(0)
+end
+
+function ClimaLand.make_update_jacobian(
+    model::BigLeafEnergyModel{FT},
+    canopy,
+) where {FT}
+    function update_jacobian!(jacobian::ImplicitEquationJacobian, Y, p, dtγ, t)
+        (; matrix) = jacobian
+
+        # The derivative of the residual with respect to the prognostic variable
+        ∂Tres∂T = matrix[@name(canopy.energy.T), @name(canopy.energy.T)]
+        @. ∂Tres∂T = dtγ * 1 - (I,)
+    end
+    return update_jacobian!
 end

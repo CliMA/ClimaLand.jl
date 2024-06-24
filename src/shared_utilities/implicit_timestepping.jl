@@ -1,5 +1,6 @@
 using ClimaCore.MatrixFields
 import ClimaCore.MatrixFields: @name, ⋅
+using ClimaCore: Spaces
 import UnrolledUtilities
 import LinearAlgebra
 import LinearAlgebra: I
@@ -108,52 +109,64 @@ to the `explicit_names` tuple.
 """
 function ImplicitEquationJacobian(Y::ClimaCore.Fields.FieldVector)
     FT = eltype(Y)
-    center_space = axes(Y.soil.ϑ_l)
-
-    # Construct a tridiagonal matrix that will be used as the Jacobian
-    tridiag_type = MatrixFields.TridiagonalMatrixRow{FT}
-    # Create a field containing a `TridiagonalMatrixRow` at each point
-    tridiag_field = Fields.Field(tridiag_type, center_space)
-    fill!(parent(tridiag_field), NaN)
-
     # Only add jacobian blocks for fields that are in Y for this model
-    is_in_Y(name) = MatrixFields.has_field(Y, name)
+    is_in_Y(var) = MatrixFields.has_field(Y, var)
 
     # Define the implicit and explicit variables of any model we use
-    implicit_names = (@name(soil.ϑ_l),)
-    explicit_names = (
+    implicit_vars = (@name(soil.ϑ_l), @name(canopy.energy.T))
+    explicit_vars = (
         @name(soilco2.C),
         @name(soil.θ_i),
         @name(soil.ρe_int),
         @name(canopy.hydraulics.ϑ_l),
-        @name(canopy.energy.T),
     )
 
     # Filter out the variables that are not in this model's state, `Y`
-    available_implicit_names =
-        MatrixFields.unrolled_filter(is_in_Y, implicit_names)
-    available_explicit_names =
-        MatrixFields.unrolled_filter(is_in_Y, explicit_names)
+    available_implicit_vars =
+        MatrixFields.unrolled_filter(is_in_Y, implicit_vars)
+    available_explicit_vars =
+        MatrixFields.unrolled_filter(is_in_Y, explicit_vars)
 
+
+    function get_j_field(
+        space::Union{
+            Spaces.FiniteDifferenceSpace,
+            Spaces.ExtrudedFiniteDifferenceSpace,
+        },
+    )
+        # Construct a tridiagonal matrix that will be used as the Jacobian
+        tridiag_type = MatrixFields.TridiagonalMatrixRow{FT}
+        # Create a field containing a `TridiagonalMatrixRow` at each point
+        tridiag_field = ClimaCore.Fields.Field(tridiag_type, space)
+        fill!(parent(tridiag_field), 0)
+        return tridiag_field
+    end
+
+    function get_j_field(
+        space::Union{Spaces.PointSpace, Spaces.SpectralElementSpace2D},
+    )
+        diag_type = (I,)
+        diag_field = ClimaCore.Fields.Field(diag_type, space)
+        fill!(parent(diag_field), 0)
+        return diag_field
+    end
+
+    implicit_blocks = MatrixFields.unrolled_map(
+        var ->
+            (var, var) => get_j_field(axes(MatrixFields.get_field(Y, var))),
+        available_implicit_vars,
+    )
     # For explicitly-stepped variables, use the negative identity matrix
     # Note: We have to use FT(-1) * I instead of -I because inv(-1) == -1.0,
     # which means that multiplying inv(-1) by a Float32 will yield a Float64.
-    identity_blocks = MatrixFields.unrolled_map(
-        name -> (name, name) => FT(-1) * I,
-        available_explicit_names,
+    explicit_blocks = MatrixFields.unrolled_map(
+        var -> (var, var) => FT(-1) * I,
+        available_explicit_vars,
     )
 
-    # For implicitly-stepped variables, use a tridiagonal matrix
-    tridiagonal_blocks = MatrixFields.unrolled_map(
-        name ->
-            (name, name) => Fields.Field(
-                tridiag_type,
-                axes(MatrixFields.get_field(Y, name)),
-            ),
-        available_implicit_names,
-    )
 
-    matrix = MatrixFields.FieldMatrix(identity_blocks..., tridiagonal_blocks...)
+
+    matrix = MatrixFields.FieldMatrix(implicit_blocks..., explicit_blocks...)
 
     # Set up block diagonal solver for block Jacobian
     alg = MatrixFields.BlockDiagonalSolve()
