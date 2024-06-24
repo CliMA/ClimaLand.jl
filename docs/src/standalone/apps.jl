@@ -17,7 +17,7 @@ port = 9385
 server = Server(
     IPa,
     port;
-    # proxy_url = "https://clima.westus3.cloudapp.azure.com/jsserve/",
+    proxy_url = "https://clima.westus3.cloudapp.azure.com/jsserve/",
 )
 
 # Load and create apps
