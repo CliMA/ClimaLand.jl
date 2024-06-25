@@ -1,17 +1,29 @@
+# import Pkg; Pkg.add("ClimaUtilities");
+# import ClimaUtilities.ClimaArtifacts: @clima_artifact
+
 using NCDatasets
+using ArtifactWrappers
 using Dates
 using ClimaLand: PrescribedAtmosphere, PrescribedRadiativeFluxes
-import ClimaLand.Parameters as LP
 using Thermodynamics
 using Statistics
 using Insolation
 
-# Data
-met_data_path, snow_data_path = ClimaLand.Artifacts.esm_snowmip_data_path()
-met_data = NCDataset(met_data_path)
-snow_data = NCDataset(snow_data_path)
+# Site specific quantitities
+site_data = "insitu_oas_1997_2010.nc" # change this root
+# double check!
+lat = FT(54.05) # check site_metadata file for these values
+long = FT(-106.3333)
 
-# Process Met Data
+# Meteorological data
+dataset_path = "/Users/sarahzhang/Downloads/snowmip/"
+filename = join(["met_", site_data])
+met_data = NCDataset(joinpath(dataset_path, filename))
+
+# println("here")
+# path = @clima_artifact("snowmip", nothing)
+# println(path)
+
 timestamp = met_data["time"][:]
 year = Dates.year.(timestamp)
 # convert from milliseconds to seconds
@@ -33,9 +45,7 @@ snowf = -met_data["Snowf"][:][mask] ./ 1000.0 # convert to dS/dt
 # "Radiation"
 SW_d = TimeVaryingInput(seconds, SWdown; context)
 LW_d = TimeVaryingInput(seconds, LWdown; context)
-# double check!
-lat = FT(45.28)
-long = FT(5.77)
+
 ref_time = DateTime("2009-01-01-00", "yyyy-mm-dd-HH")
 function zenith_angle(
     t,
@@ -99,16 +109,9 @@ atmos = PrescribedAtmosphere(
     earth_param_set,
 )
 # Meteorological data
-snow_af = ArtifactFile(
-    url = "https://caltech.box.com/shared/static/umwr6wqjhsz3zq6acht68m4d28a64ueb.nc",
-    filename = "obs_insitu_cdp_1994_2014.nc",
-)
-snow_dataset = ArtifactWrapper(@__DIR__, "snow_driver", ArtifactFile[snow_af]);
-snow_dataset_path = get_data_folder(snow_dataset);
-snow_data = NCDataset(joinpath(snow_dataset_path, snow_af.filename))
+filename = join(["obs_", site_data])
+snow_data = NCDataset(joinpath(dataset_path, filename))
 
-
-# Process Snow Data
 albedo = snow_data["albs"][:][mask]
 z = snow_data["snd_man"][:][mask]
 mass = snow_data["snw_man"][:][mask]

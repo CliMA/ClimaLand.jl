@@ -15,7 +15,8 @@ FT = Float32
 param_set = LP.LandParameters(FT)
 context = ClimaComms.context()
 # This reads in the data and sets up the drivers, as well as computes the IC from the data
-include(joinpath(climaland_dir, "experiments/standalone/Snow/process_cdp.jl"))
+# include(joinpath(climaland_dir, "experiments/standalone/Snow/process_cdp.jl")) # original code, comparing with cdp
+include(joinpath(climaland_dir, "experiments/standalone/Snow/process_snowmip.jl")) # for comparing with other snowmip sites
 savedir = joinpath(climaland_dir, "experiments/standalone/Snow/")
 t0 = FT(0.0)
 tf = FT(seconds[end])
