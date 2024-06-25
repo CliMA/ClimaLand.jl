@@ -1,23 +1,40 @@
-using NCDatasets
-using Dates
-using ClimaLand: PrescribedAtmosphere, PrescribedRadiativeFluxes
-import ClimaLand.Parameters as LP
-using Thermodynamics
-using Statistics
-using Insolation
+# Fetch site data
+path = ClimaLand.Artifacts.esm_snowmip_data_path(; context = context)
+metadata_path = joinpath(path, "site_metadata.txt")
+site_metadata = readdlm(metadata_path, '\t', skipstart = 1)
+# Get the latitude, longitude, start year, and end year for a given site from the metadata file
+function get_loc_yr(metadata::Array{Any}, site::String)
+    try
+        i_site = findfirst(isequal(site), metadata[:, 1])
 
-# Data
-met_data_path, snow_data_path = ClimaLand.Artifacts.esm_snowmip_data_path()
-met_data = NCDataset(met_data_path)
-snow_data = NCDataset(snow_data_path)
+        if i_site === nothing
+            throw(ErrorException("No metadata found for $site in $metadata_fp"))
+        end
 
-# Process Met Data
+        lat, lon, start_yr, end_yr = metadata[i_site, 2],
+        metadata[i_site, 3],
+        metadata[i_site, 6],
+        metadata[i_site, 7]
+
+        return lat, lon, start_yr, end_yr
+    catch e
+        println(e)
+        return nothing
+    end
+end
+lat, long, start_year, end_year = get_loc_yr(site_metadata, SITE_NAME)
+site_data_stem = "insitu_$(SITE_NAME)_$(start_year)_$(end_year).nc"
+met_filename = join(["met_", site_data_stem])
+obs_filename = join(["obs_", site_data_stem])
+
+
+# Meteorological data
+met_data = NCDataset(joinpath(path, met_filename))
 timestamp = met_data["time"][:]
 year = Dates.year.(timestamp)
 # convert from milliseconds to seconds
 mask = (year .== 2009) .| (year .== 2010) .| (year .== 2011)
 seconds = Dates.value.(timestamp[mask] .- timestamp[mask][1]) / 1000
-
 
 LWdown = met_data["LWdown"][:][mask]
 SWdown = met_data["SWdown"][:][mask]
@@ -33,15 +50,13 @@ snowf = -met_data["Snowf"][:][mask] ./ 1000.0 # convert to dS/dt
 # "Radiation"
 SW_d = TimeVaryingInput(seconds, SWdown; context)
 LW_d = TimeVaryingInput(seconds, LWdown; context)
-# double check!
-lat = FT(45.28)
-long = FT(5.77)
-ref_time = DateTime("2009-01-01-00", "yyyy-mm-dd-HH")
+
+ref_time = timestamp[mask][1]
 function zenith_angle(
     t,
     ref_time;
-    latitude = lat,
-    longitude = long,
+    latitude = FT(lat),
+    longitude = FT(long),
     insol_params::Insolation.Parameters.InsolationParameters{FT} = param_set.insol_params,
 ) where {FT}
     # This should be time in UTC
@@ -98,8 +113,9 @@ atmos = PrescribedAtmosphere(
     h_atmos,
     earth_param_set,
 )
+# Snow data
+snow_data = NCDataset(joinpath(path, obs_filename))
 
-# Process Snow Data
 albedo = snow_data["albs"][:][mask]
 z = snow_data["snd_man"][:][mask]
 mass = snow_data["snw_man"][:][mask]
