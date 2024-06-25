@@ -251,7 +251,7 @@ set_initial_cache!(p, Y, t0);
 # We use [ClimaTimesteppers.jl](https://github.com/CliMA/ClimaTimesteppers.jl) for carrying out the time integration.
 
 # Choose a timestepper and set up the ODE problem:
-dt = Float64(60.0);
+dt = Float64(1000.0);
 timestepper = CTS.ARS111();
 ode_algo = CTS.IMEXAlgorithm(
     timestepper,
