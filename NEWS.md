@@ -5,6 +5,7 @@ main
 --------
 Improve Performance of soil canopy model
 - PR [#666]
+- PR [#677] Remove norm condition
 Add base global soil canopy run to benchmark and experiments
 - PR [#591] adds benchmark run
 - PR [#669] adds topmodel runoff

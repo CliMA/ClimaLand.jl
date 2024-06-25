@@ -341,14 +341,11 @@ imp_tendency! = ClimaLand.make_imp_tendency(land);
 tendency_jacobian! = ClimaLand.make_tendency_jacobian(land);
 set_initial_cache!(p, Y, t0)
 stepper = CTS.ARS343()
-norm_condition = CTS.MaximumError(FT(1e-8))
-conv_checker = CTS.ConvergenceChecker(; norm_condition = norm_condition)
 ode_algo = CTS.IMEXAlgorithm(
     stepper,
     CTS.NewtonsMethod(
         max_iters = 1,
         update_j = CTS.UpdateEvery(CTS.NewTimeStep),
-        convergence_checker = conv_checker,
     ),
 )
 

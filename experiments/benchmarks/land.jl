@@ -17,8 +17,7 @@
 # Simulation duration: 6 hours
 # Timestep: 180 s
 # Timestepper: ARS343
-# Maximum iterations: 1
-# Convergence criterion: 1e-8
+# Fixed number of iterations: 1
 # Jacobian update: Every Newton iteration
 # Precipitation data update: every timestep
 import SciMLBase
@@ -622,14 +621,11 @@ function setup_and_solve_problem(; greet = false)
 
     # Define timestepper and ODE algorithm
     stepper = CTS.ARS343()
-    norm_condition = CTS.MaximumError(FT(1e-8))
-    conv_checker = CTS.ConvergenceChecker(; norm_condition = norm_condition)
     ode_algo = CTS.IMEXAlgorithm(
         stepper,
         CTS.NewtonsMethod(
             max_iters = 1,
             update_j = CTS.UpdateEvery(CTS.NewTimeStep),
-            convergence_checker = conv_checker,
         ),
     )
 

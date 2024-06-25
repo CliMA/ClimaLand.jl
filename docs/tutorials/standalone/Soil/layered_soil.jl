@@ -10,7 +10,6 @@
 
 using Plots
 import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
-import NCDatasets
 import SciMLBase
 import ClimaTimeSteppers as CTS
 using ClimaCore
@@ -117,7 +116,7 @@ conv_checker = CTS.ConvergenceChecker(norm_condition = convergence_cond)
 ode_algo = CTS.IMEXAlgorithm(
     stepper,
     CTS.NewtonsMethod(
-        max_iters = 50,
+        max_iters = 10,
         update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
         convergence_checker = conv_checker,
     ),
