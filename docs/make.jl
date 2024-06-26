@@ -84,6 +84,7 @@ ext_jl2md(x) = joinpath(basename(GENERATED_DIR), replace(x, ".jl" => ".md"))
 tutorials = transform_second(x -> ext_jl2md(x), tutorials)
 include("list_of_apis.jl")
 include("list_standalone_models.jl")
+include("list_diagnostics.jl")
 pages = Any[
     "Home" => "index.md",
     "APIs" => apis,
@@ -91,6 +92,7 @@ pages = Any[
     "Tutorials" => tutorials,
     "Repository structure" => "folderstructure.md",
     "Standalone models" => standalone_models,
+    "Diagnostics" => diagnostics,
 ]
 
 

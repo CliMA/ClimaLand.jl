@@ -8,6 +8,7 @@
 component) or standalone (single component) modes.  </strong>
 </p>
 
+[![Downloads](https://img.shields.io/badge/dynamic/json?url=http%3A%2F%2Fjuliapkgstats.com%2Fapi%2Fv1%2Ftotal_downloads%2FClimaLand&query=total_requests&suffix=%2Ftotal&label=Downloads)](http://juliapkgstats.com/pkg/ClimaLand)
 
 Recommended Julia Version: Stable release v1.10.0. CI no longer tests earlier
 versions of Julia.
