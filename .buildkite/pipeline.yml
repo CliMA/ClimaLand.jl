@@ -198,20 +198,12 @@ steps:
 
   - group: "CPU/GPU comparisons"
     steps:
-      - label: "Compare GPU bucket with CPU bucket (functional albedo)"
+      - label: "Compare GPU bucket with CPU bucket"
         command: "julia --color=yes --project=.buildkite experiments/standalone/Bucket/compare_gpu_cpu_output.jl"
         depends_on:
           - "global_bucket_function_cpu"
           - "global_bucket_function_gpu"
-
-      - label: "Compare GPU bucket with CPU bucket (static map albedo)"
-        command: "julia --color=yes --project=.buildkite experiments/standalone/Bucket/compare_gpu_cpu_output.jl"
-        depends_on:
           - "global_bucket_staticmap_cpu"
           - "global_bucket_staticmap_gpu"
-
-      - label: "Compare GPU bucket with CPU bucket (temporal map albedo)"
-        command: "julia --color=yes --project=.buildkite experiments/standalone/Bucket/compare_gpu_cpu_output.jl"
-        depends_on:
           - "global_bucket_temporalmap_cpu"
           - "global_bucket_temporalmap_gpu"

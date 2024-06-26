@@ -305,7 +305,7 @@ sw_forcing = [
 ];
 
 # save prognostic state to CSV - for comparison between GPU and CPU output
-open(joinpath(outdir, "tf_state_$device_suffix.txt"), "w") do io
+open(joinpath(outdir, "tf_state_$(device_suffix)_staticmap.txt"), "w") do io
     writedlm(io, hcat(T_sfc[end][:], W[end][:], Ws[end][:], σS[end][:]), ',')
 end;
 # animation settings
