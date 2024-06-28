@@ -70,6 +70,7 @@ function default_diagnostics(land_model::BucketModel, t_start; output_writer)
 end
 
 # SoilCanopyModel
+# TO DO: short and long list of variables
 function default_diagnostics(
     land_model::SoilCanopyModel,
     t_start;
