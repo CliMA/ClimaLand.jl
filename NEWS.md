@@ -3,12 +3,17 @@ ClimaLand.jl Release Notes
 
 main
 --------
-Improve Performance of soil canopy model
-- PR [#666]
-- PR [#677] Remove norm condition
-Add base global soil canopy run to benchmark and experiments
-- PR [#591] adds benchmark run
-- PR [#669] adds topmodel runoff
+
+v0.12.5
+--------
+- Adds ClimaLand.Diagnostics
+  PR [#628](https://github.com/CliMA/ClimaLand.jl/pull/628)
+- Improve Performance of soil canopy model
+  PR [#666](https://github.com/CliMA/ClimaLand.jl/pull/666)
+  PR [#677](https://github.com/CliMA/ClimaLand.jl/pull/677)
+- Add base global soil canopy run to benchmark and experiments
+  PR [#591](https://github.com/CliMA/ClimaLand.jl/pull/591)
+  PR [#669](https://github.com/CliMA/ClimaLand.jl/pull/669)
 
 v0.12.4
 --------
