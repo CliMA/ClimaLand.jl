@@ -3,6 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 --------
+<<<<<<< HEAD
 Improve Performance of soil canopy model
 - PR [#666]
 - PR [#677] Remove norm condition
@@ -14,6 +15,24 @@ Soil implicit solver
 Misc
 - PR [#685] Renames jacobian update functions to align with our convention
             for tendency functions
+=======
+
+v0.12.5
+--------
+- Turn of dss
+  PR[#650](https://github.com/CliMA/ClimaLand.jl/pull/650)
+- Add ClimaCoupler downstream test
+  PR [#680](https://github.com/CliMA/ClimaLand.jl/pull/680)
+- Adds ClimaLand.Diagnostics
+  PR [#628](https://github.com/CliMA/ClimaLand.jl/pull/628)
+- Improve Performance of soil canopy model
+  PR [#666](https://github.com/CliMA/ClimaLand.jl/pull/666)
+  PR [#677](https://github.com/CliMA/ClimaLand.jl/pull/677)
+- Add base global soil canopy run to benchmark and experiments
+  PR [#591](https://github.com/CliMA/ClimaLand.jl/pull/591)
+  PR [#669](https://github.com/CliMA/ClimaLand.jl/pull/669)
+
+>>>>>>> 668f23f0 (tag v0.12.5)
 v0.12.4
 --------
 - Fix various canopy flux bugs
