@@ -14,7 +14,8 @@ export TemperatureStateBC,
     WaterFluxBC,
     AtmosDrivenFluxBC,
     RichardsAtmosDrivenFluxBC,
-    WaterHeatBC
+    WaterHeatBC,
+    sublimation_source
 
 # Helper functions
 """
@@ -312,7 +313,7 @@ function boundary_flux(
     p::NamedTuple,
     t,
 )::ClimaCore.Fields.Field
-    update_runoff!(p, bc.runoff, Y, t, model)
+    update_runoff!(p, bc.runoff, p.drivers.P_liq, Y, t, model)
     return p.soil.infiltration
 end
 
@@ -867,7 +868,7 @@ function soil_boundary_fluxes!(
 )
     p.soil.turbulent_fluxes .= turbulent_fluxes(bc.atmos, model, Y, p, t)
     p.soil.R_n .= net_radiation(bc.radiation, model, Y, p, t)
-    update_runoff!(p, bc.runoff, Y, t, model)
+    update_runoff!(p, bc.runoff, p.drivers.P_liq, Y, t, model)
     # We do not model the energy flux from infiltration. We multiply
     # the vapor flux by the ice fraction in order to get the contribution
     # from liquid water
@@ -1014,3 +1015,12 @@ boundary_var_types(
     bc::MoistureStateBC,
     ::ClimaLand.TopBoundary,
 ) where {FT} = (FT, ClimaCore.Geometry.Covariant3Vector{FT})
+
+
+function sublimation_source(bc::AbstractEnergyHydrologyBC)
+    nothing
+end
+
+function sublimation_source(bc::AtmosDrivenFluxBC)
+    return SoilSublimation{FT}()
+end
