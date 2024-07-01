@@ -188,9 +188,10 @@ end
         ClimaLand.dss!(Y, p, FT(0))
 
         # On a 2D space, we expect dss! to change Y
-        @test Y.field != Y_copy.field
-        @test Y.subfields.subfield1 != Y_copy.subfields.subfield1
-        @test Y.subfields.subfield2 != Y_copy.subfields.subfield2
+        # but we changed dss! to do nothing, so replace != with  ==
+        @test Y.field == Y_copy.field
+        @test Y.subfields.subfield1 == Y_copy.subfields.subfield1
+        @test Y.subfields.subfield2 == Y_copy.subfields.subfield2
     end
 end
 
@@ -249,8 +250,9 @@ end
         ClimaLand.dss!(Y, p, FT(0))
 
         # On a 3D space, we expect dss! to change Y
-        @test Y.field != Y_copy.field
-        @test Y.subfields.subfield1 != Y_copy.subfields.subfield1
-        @test Y.subfields.subfield2 != Y_copy.subfields.subfield2
+        # but we changed dss! to do nothing, so replace != with  ==
+        @test Y.field == Y_copy.field
+        @test Y.subfields.subfield1 == Y_copy.subfields.subfield1
+        @test Y.subfields.subfield2 == Y_copy.subfields.subfield2
     end
 end

@@ -199,6 +199,7 @@ sol = ClimaComms.@time ClimaComms.device() SciMLBase.solve(
     saveat = saveat,
     callback = cb,
 )
+
 if PROFILING
     # Now that we compiled, solve again but collect profiling information
 
