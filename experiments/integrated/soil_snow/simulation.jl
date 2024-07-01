@@ -91,7 +91,7 @@ snow_parameters = SnowParameters{FT}(
 );
 snow_args = (; domain = snow_domain, parameters = snow_parameters);
 snow_model_type = Snow.SnowModel
-land_input = (atmos = atmos, radiation = radiation)
+land_input = (atmos = atmos, radiation = radiation, runoff = ClimaLand.Soil.SiteLevelSurfaceRunoff())
 land = ClimaLand.LandHydrologyModel{FT}(;
     land_args = land_input,
     soil_model_type = soil_model_type,

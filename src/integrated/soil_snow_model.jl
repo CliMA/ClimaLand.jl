@@ -12,7 +12,11 @@ struct AtmosDrivenFluxBCwithSnow{
     "The radiative fluxes driving the model"
     radiation::B
     "The runoff model. The default is no runoff."
-    runoff::R
+    runoff::R    
+end
+
+function AtmosDrivenFluxBCwithSnow(atmos, radiation)
+    return AtmosDrivenFluxBCwithSnow{typeof(atmos), typeof(radiation), ClimaLand.Soil.Runoff.NoRunoff}(atmos, radiation, ClimaLand.Soil.Runoff.NoRunoff())
 end
 
 """
@@ -72,14 +76,14 @@ function LandHydrologyModel{FT}(;
 ) where {FT, SnM <: Snow.SnowModel, SoM <: Soil.EnergyHydrology{FT}}
     (; atmos, radiation) = land_args
      if :runoff ∈ propertynames(land_args)
-        top_bc = ClimaLand.Soil.AtmosDrivenFluxBCwithSnow(
+        top_bc = ClimaLand.AtmosDrivenFluxBCwithSnow(
             atmos,
             radiation,
             land_args.runoff,
         )
     else #no runoff model
         top_bc =
-            ClimaLand.Soil.AtmosDrivenFluxBCwithSnow(atmos, radiation)
+            ClimaLand.AtmosDrivenFluxBCwithSnow(atmos, radiation)
     end
     sources = (Soil.PhaseChange{FT}(),)
     zero_flux = Soil.HeatFluxBC((p, t) -> 0.0)

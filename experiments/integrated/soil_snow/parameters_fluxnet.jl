@@ -5,8 +5,17 @@
 ## And Forest Meteorology, 147(3-4), 157-171. https://doi.org/10.1016/j.agrformet.2007.07.008 
 ## CLM 5.0 Tech Note: https://www2.cesm.ucar.edu/models/cesm2/land/CLM50_Tech_Note.pdf
 # Bonan, G. Climate change and terrestrial ecosystem modeling. Cambridge University Press, 2019.
+ data_link = "https://caltech.box.com/shared/static/7r0ci9pacsnwyo0o9c25mhhcjhsu6d72.csv"
+site_ID = "US-MOz"
+# Timezone (offset from UTC in hrs)
+time_offset = 7
 
+# Height of sensor on flux tower
+atmos_h = FT(32)
 
+# Site latitude and longitude
+lat = FT(38.7441) # degree
+long = FT(-92.2000) # degree
 # Soil parameters
 soil_ν = FT(0.5) # m3/m3
 soil_K_sat = FT(0.45 / 3600 / 100) # m/s,

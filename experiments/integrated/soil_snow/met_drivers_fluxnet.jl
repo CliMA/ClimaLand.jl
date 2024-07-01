@@ -109,12 +109,23 @@ esat =
     )
 e = @. esat - drivers.VPD.values
 q = @. 0.622 * e ./ (drivers.PA.values - 0.378 * e)
-
+RH = @. e/esat
+function snowsplit(air_temp, hum)
+    air_temp_C = air_temp - 273.15
+    α = -10.04
+    β = 1.41
+    γ = 0.09
+    snow_frac = (1.0 / (1.0 + exp(α + β * air_temp_C + γ * hum)))
+    return snow_frac
+end
+snow_frac = snowsplit.(drivers.TA.values[:], RH[:])
+P_liq = -FT.(drivers.P.values[:] .* (1 .- snow_frac))
+P_snow = -FT.(drivers.P.values[:] .* snow_frac)
 # Create interpolators for each atmospheric driver needed for PrescribedAtmosphere and for
 # PrescribedRadiation
 seconds = FT.(0:DATA_DT:((length(UTC_DATETIME) - 1) * DATA_DT));
 
-precip = TimeVaryingInput(seconds, -FT.(drivers.P.values[:]); context) # m/s
+precip = TimeVaryingInput(seconds, P_liq; context) # m/s
 atmos_q = TimeVaryingInput(seconds, FT.(q[:]); context)
 atmos_T = TimeVaryingInput(seconds, FT.(drivers.TA.values[:]); context)
 atmos_p = TimeVaryingInput(seconds, FT.(drivers.PA.values[:]); context)
@@ -122,8 +133,7 @@ atmos_co2 = TimeVaryingInput(seconds, FT.(drivers.CO2.values[:]); context)
 atmos_u = TimeVaryingInput(seconds, FT.(drivers.WS.values[:]); context)
 LW_IN = TimeVaryingInput(seconds, FT.(drivers.LW_IN.values[:]); context)
 SW_IN = TimeVaryingInput(seconds, FT.(drivers.SW_IN.values[:]); context)
-#NEEDED
-snow_precip = TimeVaryingInput((t) -> FT(0))
+snow_precip = TimeVaryingInput(seconds, P_snow; context) # m/s
 
 # Construct the drivers. For the reference time we will use the UTC time at the
 # start of the simulation
@@ -139,9 +149,7 @@ atmos = ClimaLand.PrescribedAtmosphere(
     earth_param_set;
     c_co2 = atmos_co2,
 )
-#NEEDED
-lat = ;
-lon = ;
+
 function zenith_angle(
     t,
     ref_time;
