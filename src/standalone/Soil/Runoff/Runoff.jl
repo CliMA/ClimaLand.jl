@@ -102,9 +102,9 @@ end
 function sitelevel_surface_infiltration(
     f_ic::FT,
     input::FT,
-    saturation::FT,
+    is_saturated::FT,
 ) where {FT}
-    return ClimaLand.heaviside(saturation - FT(1)) * max(f_ic, input)
+    return (1-is_saturated) *  max(f_ic, input)
 end
 
 function update_runoff!(
@@ -116,16 +116,19 @@ function update_runoff!(
     model::AbstractSoilModel,
 )
 
-    flux_ic = soil_infiltration_capacity_flux(model, Y, p) # allocates
-    surface_saturation = ClimaLand.Domains.top_center_to_surface(
-        ClimaLand.Soil.effective_saturation.(
-            model.parameters.ν,
-            Y.soil.θ_i .+ p.soil.θ_l,
-            model.parameters.θ_r,
-        ),
-    ) # allocates
+    ic = soil_infiltration_capacity(model, Y, p) # should be non-allocating
+    ϑ_l = Y.soil.ϑ_l
+    FT = eltype(ϑ_l)
+    θ_i = model_agnostic_volumetric_ice_content(Y, FT)
+    @. p.soil.subsfc_scratch = is_saturated(ϑ_l + θ_i, model.parameters.ν)
+    surface_space = model.domain.space.surface
+    is_saturated_sfc = ClimaLand.Soil.get_top_surface_field(
+         p.soil.subsfc_scratch,
+        surface_space,
+    ) # a view
+
     @. p.soil.infiltration =
-        sitelevel_surface_infiltration(flux_ic, input, surface_saturation)
+        sitelevel_surface_infiltration(ic, input, is_saturated_sfc)
 end
 
 

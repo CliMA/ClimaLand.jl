@@ -212,7 +212,7 @@ function make_update_boundary_fluxes(
 
         conductance = @. (p.snow.κ / Δz_sfc * κ_sfc_soil / Δz_sfc) /
            (p.snow.κ / Δz_sfc + κ_sfc_soil / Δz_sfc)
-        @. p.ground_heat_flux = -conductance * (p.snow.T - T_sfc_soil)
+        @. p.ground_heat_flux = 0#-conductance * (p.snow.T - T_sfc_soil)
         update_snow_bf!(p, Y, t)
         # Now we have access to the actual applied and initially computed fluxes for snow
         @. p.excess_dSdt =
@@ -232,7 +232,7 @@ end
 
 ### Extensions of existing functions to account for prognostic soil/snow
 boundary_vars(bc::AtmosDrivenFluxBCwithSnow, ::ClimaLand.TopBoundary) =
-    (:turbulent_fluxes, :ice_frac, :R_n, :top_bc, :infiltration, :sfc_scratch)
+    (:turbulent_fluxes, :ice_frac, :R_n, :top_bc, :infiltration, :sfc_scratch, :subsfc_scratch)
 
 """
     boundary_var_domain_names(::AtmosDrivenFluxBCwithSnow,
@@ -245,7 +245,7 @@ defined.
 boundary_var_domain_names(
     bc::AtmosDrivenFluxBCwithSnow,
     ::ClimaLand.TopBoundary,
-) = (:surface, :surface, :surface, :surface, :surface, :surface)
+) = (:surface, :surface, :surface, :surface, :surface, :surface, :subsurface, )
 """
     boundary_var_types(
         ::AtmosDrivenFluxBCwithSnow
@@ -265,6 +265,7 @@ boundary_var_types(
     NamedTuple{(:water, :heat), Tuple{FT, FT}},
     FT,
     FT,
+    FT
 )
 """
     soil_boundary_fluxes!(
@@ -297,7 +298,7 @@ function soil_boundary_fluxes!(
     Soil.Runoff.update_runoff!(
         p,
         bc.runoff,
-        p.drivers.P_liq .+ p.snow.water_runoff .* p.snow.snow_cover_fraction,
+        p.drivers.P_liq .+ p.snow.water_runoff .* p.snow.snow_cover_fraction,# .+ p.excess_dSdt,
         Y,
         t,
         soil,
@@ -315,11 +316,9 @@ function soil_boundary_fluxes!(
             -p.soil.R_n +
             p.soil.turbulent_fluxes.lhf +
             p.soil.turbulent_fluxes.shf
-        ) + p.ground_heat_flux * p.snow.snow_cover_fraction
+        ) + p.ground_heat_flux * p.snow.snow_cover_fraction #.+ p.excess_dUdt
 end
 
-#p.excess_dUdt +
-#end
 
 function snow_boundary_fluxes!(
     bc::SnowSoilBoundaryConditions,

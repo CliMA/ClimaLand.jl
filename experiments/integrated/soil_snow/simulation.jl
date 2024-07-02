@@ -39,7 +39,7 @@ land_domain = Column(;
 # TIME STEPS:
 t0 = FT(1800)
 N_days_spinup = 0
-N_days = N_days_spinup + 360
+N_days = N_days_spinup + 150
 dt = FT(60)
 tf = t0 + FT(3600 * 24 * N_days)
 
@@ -102,21 +102,26 @@ land = ClimaLand.LandHydrologyModel{FT}(;
 Y, p, cds = initialize(land)
 exp_tendency! = make_exp_tendency(land)
 imp_tendency! = make_imp_tendency(land)
-tendency_jacobian! = ClimaLand.make_tendency_jacobian(soil);
+tendency_jacobian! = ClimaLand.make_tendency_jacobian(land);
 jac_kwargs =
     (; jac_prototype = ImplicitEquationJacobian(Y), Wfact = tendency_jacobian!);
 set_initial_cache! = make_set_initial_cache(land)
 
 
 #Initial conditions
-Y.soil.ϑ_l = SWC_1[1 + Int(round(t0 / DATA_DT))]
-Y.soil.θ_i = maximum(SWC_1) .- SWC_1[1 + Int(round(t0 / DATA_DT))]
-T_0 = FT(TS_3[1 + Int(round(t0 / DATA_DT))]) # Get soil temperature at t0
-ρc_s = volumetric_heat_capacity.(Y.soil.ϑ_l, Y.soil.θ_i, soil_ps)
-Y.soil.ρe_int = volumetric_internal_energy.(Y.soil.θ_i, ρc_s, T_0, soil_ps)
+Y.soil.ϑ_l =
+    drivers.SWC.status != absent ?
+    drivers.SWC.values[1 + Int(round(t0 / DATA_DT))] : soil_ν / 2
+Y.soil.θ_i = 0
+T_0 =
+    drivers.TS.status != absent ?
+    drivers.TS.values[1 + Int(round(t0 / DATA_DT))] :
+    drivers.TA.values[1 + Int(round(t0 / DATA_DT))]
+ρc_s = volumetric_heat_capacity.(Y.soil.ϑ_l, Y.soil.θ_i, soil_ps.ρc_ds, earth_param_set)
+Y.soil.ρe_int = volumetric_internal_energy.(Y.soil.θ_i, ρc_s, T_0, earth_param_set)
 
-Y.snow.S .= FT(0.0)
-Y.snow.U .= FT(0.0)
+Y.snow.S .= 0.0
+Y.snow.U .= 0.0
 set_initial_cache!(p, Y, t0)
 
 saveat = Array(t0:(3 * 3600):tf)
@@ -151,7 +156,7 @@ prob = SciMLBase.ODEProblem(
     (t0, tf),
     p,
 );
-sol = SciMLBase.solve(prob, ode_algo; dt = dt, saveat = 0:3600:tf);
+sol = SciMLBase.solve(prob, ode_algo;    callback = cb, dt = dt, saveat = t0:3*3600:tf);
 
 # Plotting
 daily = sol.t ./ 3600 ./ 24
@@ -178,36 +183,23 @@ Plots.plot!(
     [parent(sol.u[k].soil.θ_i)[end - 1] for k in 1:1:length(sol.t)],
     label = "6cm, ice",
 )
-Plots.plot!(
-    plt1,
-    daily,
-    [parent(sol.u[k].soil.ϑ_l)[end - 4] for k in 1:1:length(sol.t)],
-    label = "25cm",
-)
-Plots.plot!(
-    plt1,
-    daily,
-    [parent(sol.u[k].soil.θ_i)[end - 4] for k in 1:1:length(sol.t)],
-    label = "25cm, ice",
-)
 
-Plots.plot!(plt1, seconds ./ 3600 ./ 24, SWC_1, label = "Data, ?cm")
-Plots.plot!(plt1, seconds ./ 3600 ./ 24, SWC_2, label = "Data, ?cm")
+Plots.plot!(plt1, seconds ./ 3600 ./ 24, drivers.SWC.values[:], label = "Data, ?cm")
 
 plt2 = Plots.plot(
-    arm_seconds ./ 3600 ./ 24,
-    P .* (-1e3 * 24 * 3600) .* (1 .- snow_frac),
+    seconds ./ 3600 ./ 24,
+    P_liq .* (1e3 * 24 * 3600),
     label = "Liquid",
     ylabel = "Precipitation [mm/day]",
     xlim = [minimum(daily), maximum(daily)],
     margin = 10Plots.mm,
-    ylim = [-800, 0],
+    ylim = [-1300, 0],
     size = (1500, 400),
 )
 Plots.plot!(
     plt2,
-    arm_seconds ./ 3600 ./ 24,
-    P .* (-1e3 * 24 * 3600) .* snow_frac,
+    seconds ./ 3600 ./ 24,
+    P_snow .* (1e3 * 24 * 3600),
     label = "Snow",
 )
 
@@ -255,9 +247,7 @@ Plots.plot!(
     [parent(sv.saveval[k].snow.T)[1] for k in 1:1:length(sv.t)],
     label = "Tsnow",
 )
-Plots.plot!(plt3, seconds ./ 3600 ./ 24, TS_1, label = "Data, 1")
-Plots.plot!(plt3, seconds ./ 3600 ./ 24, TS_2, label = "Data, 2")
-Plots.plot!(plt3, seconds ./ 3600 ./ 24, TS_3, label = "Data, 3")
+Plots.plot!(plt3, seconds ./ 3600 ./ 24, drivers.TS.values[:], label = "Data, ?cm")
 
 
 # LHF
