@@ -402,14 +402,12 @@ This has been written so as to work with Differential Equations.jl.
 """
 function ClimaLand.make_update_aux(model::SoilCO2Model)
     function update_aux!(p, Y, t)
-        # get FT to enforce types of variables not stored directly in `p`
-        FT = eltype(Y.soilco2.C)
         params = model.parameters
         z = model.domain.fields.z
-        T_soil = FT.(soil_temperature(model.driver.met, p, Y, t, z))
-        θ_l = FT.(soil_moisture(model.driver.met, p, Y, t, z))
-        Csom = FT.(soil_SOM_C(model.driver.soc, p, Y, t, z))
-        P_sfc = FT.(air_pressure(model.driver.atmos, p, Y, t))
+        T_soil = soil_temperature(model.driver.met, p, Y, t, z)
+        θ_l = soil_moisture(model.driver.met, p, Y, t, z)
+        Csom = soil_SOM_C(model.driver.soc, p, Y, t, z)
+        P_sfc = air_pressure(model.driver.atmos, p, Y, t)
         θ_w = θ_l
 
         p.soilco2.D .= co2_diffusivity.(T_soil, θ_w, P_sfc, Ref(params))
