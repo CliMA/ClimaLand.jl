@@ -103,16 +103,19 @@ function make_compute_exp_tendency(
         # area index on the LHF, as ac_canopy [J/m^2/K]
         # is per unit area plant.
 
-        net_energy_flux = @. -p.canopy.radiative_transfer.LW_n -
-           p.canopy.radiative_transfer.SW_n +
-           p.canopy.energy.shf +
-           p.canopy.energy.lhf - p.canopy.energy.fa_energy_roots
-
         # To prevent dividing by zero, change AI" to
         # "max(AI, eps(FT))"
         c_per_ground_area =
             @. ac_canopy * max(area_index.leaf + area_index.stem, eps(FT))
-        @. dY.canopy.energy.T = -net_energy_flux / c_per_ground_area
+
+        # d(energy.T) = - net_energy_flux / specific_heat_capacity
+        @. dY.canopy.energy.T =
+            -(
+                -p.canopy.radiative_transfer.LW_n -
+                p.canopy.radiative_transfer.SW_n +
+                p.canopy.energy.shf +
+                p.canopy.energy.lhf - p.canopy.energy.fa_energy_roots
+            ) / c_per_ground_area
     end
     return compute_exp_tendency!
 end
