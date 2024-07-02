@@ -62,7 +62,7 @@ soil = Soil.EnergyHydrology{FT}(;
 
 exp_tendency! = make_exp_tendency(soil);
 imp_tendency! = make_imp_tendency(soil);
-tendency_jacobian! = ClimaLand.make_tendency_jacobian(soil);
+jacobian! = ClimaLand.make_jacobian(soil);
 
 
 function init_soil!(Y, z, Trange, params)
@@ -138,10 +138,8 @@ for experiment in [no_phase_change, phase_change]
     Y, p, coords = initialize(soil)
     init_soil!(Y, coords.subsurface.z, Trange, soil.parameters)
     set_initial_cache!(p, Y, t0)
-    jac_kwargs = (;
-        jac_prototype = ImplicitEquationJacobian(Y),
-        Wfact = tendency_jacobian!,
-    )
+    jac_kwargs =
+        (; jac_prototype = ImplicitEquationJacobian(Y), Wfact = jacobian!)
 
     prob = SciMLBase.ODEProblem(
         CTS.ClimaODEFunction(
@@ -166,10 +164,8 @@ for experiment in [no_phase_change, phase_change]
         Y, p, coords = initialize(soil)
         init_soil!(Y, coords.subsurface.z, Trange, soil.parameters)
         set_initial_cache!(p, Y, t0)
-        jac_kwargs = (;
-            jac_prototype = ImplicitEquationJacobian(Y),
-            Wfact = tendency_jacobian!,
-        )
+        jac_kwargs =
+            (; jac_prototype = ImplicitEquationJacobian(Y), Wfact = jacobian!)
 
         prob = SciMLBase.ODEProblem(
             CTS.ClimaODEFunction(

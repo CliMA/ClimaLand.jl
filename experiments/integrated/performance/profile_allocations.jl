@@ -330,7 +330,7 @@ land = SoilCanopyModel{FT}(;
 # Define explicit and implicit tendencies, and the jacobian
 exp_tendency! = make_exp_tendency(land)
 imp_tendency! = make_imp_tendency(land);
-tendency_jacobian! = make_tendency_jacobian(land);
+jacobian! = make_jacobian(land);
 
 # Set up timestepping and simulation callbacks
 dt = Float64(150)
@@ -352,10 +352,8 @@ driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
 Y, p = set_initial_conditions(land, t0)
 
 # Set up jacobian info
-jac_kwargs = (;
-    jac_prototype = ClimaLand.ImplicitEquationJacobian(Y),
-    Wfact = tendency_jacobian!,
-);
+jac_kwargs =
+    (; jac_prototype = ClimaLand.ImplicitEquationJacobian(Y), Wfact = jacobian!);
 
 # Solve simulation
 prob = SciMLBase.ODEProblem(

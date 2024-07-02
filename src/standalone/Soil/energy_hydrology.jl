@@ -278,16 +278,16 @@ function ClimaLand.make_compute_imp_tendency(
 end
 
 """
-    ClimaLand.make_update_jacobian(model::EnergyHydrology{FT}) where {FT}
+    ClimaLand.make_compute_jacobian(model::EnergyHydrology{FT}) where {FT}
 
-Creates and returns the update_jacobian! function for the EnergyHydrology model.
+Creates and returns the compute_jacobian! function for the EnergyHydrology model.
 This updates the contribution for the soil liquid water content only.
 
 Using this Jacobian with a backwards Euler timestepper is equivalent
 to using the modified Picard scheme of Celia et al. (1990).
 """
-function ClimaLand.make_update_jacobian(model::EnergyHydrology{FT}) where {FT}
-    function update_jacobian!(jacobian::ImplicitEquationJacobian, Y, p, dtγ, t)
+function ClimaLand.make_compute_jacobian(model::EnergyHydrology{FT}) where {FT}
+    function compute_jacobian!(jacobian::ImplicitEquationJacobian, Y, p, dtγ, t)
         (; matrix) = jacobian
         (; ν, hydrology_cm, S_s, θ_r, ρc_ds, earth_param_set) = model.parameters
 
@@ -374,7 +374,7 @@ function ClimaLand.make_update_jacobian(model::EnergyHydrology{FT}) where {FT}
                 )
             ) - (I,)
     end
-    return update_jacobian!
+    return compute_jacobian!
 end
 
 """
