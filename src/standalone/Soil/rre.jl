@@ -342,16 +342,16 @@ function ClimaLand.make_update_aux(model::RichardsModel)
 end
 
 """
-    ClimaLand.make_update_jacobian(model::RichardsModel{FT}) where {FT}
+    ClimaLand.make_compute_jacobian(model::RichardsModel{FT}) where {FT}
 
-Creates and returns the update_jacobian! function for RichardsModel.
+Creates and returns the compute_jacobian! function for RichardsModel.
 This updates the contribution for the soil liquid water content.
 
 Using this Jacobian with a backwards Euler timestepper is equivalent
 to using the modified Picard scheme of Celia et al. (1990).
 """
-function ClimaLand.make_update_jacobian(model::RichardsModel{FT}) where {FT}
-    function update_jacobian!(jacobian::ImplicitEquationJacobian, Y, p, dtγ, t)
+function ClimaLand.make_compute_jacobian(model::RichardsModel{FT}) where {FT}
+    function compute_jacobian!(jacobian::ImplicitEquationJacobian, Y, p, dtγ, t)
         (; matrix) = jacobian
         (; ν, hydrology_cm, S_s, θ_r) = model.parameters
 
@@ -425,7 +425,7 @@ function ClimaLand.make_update_jacobian(model::RichardsModel{FT}) where {FT}
                 ) - (I,)
         end
     end
-    return update_jacobian!
+    return compute_jacobian!
 end
 
 """

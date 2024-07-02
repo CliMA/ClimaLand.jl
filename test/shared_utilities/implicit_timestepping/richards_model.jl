@@ -54,7 +54,7 @@ for FT in (Float32, Float64)
             # we want to test that it is updated correctly in
             # the jacobian correctly.
             jacobian = ImplicitEquationJacobian(Y)
-            jac_tendency! = make_tendency_jacobian(soil)
+            jac_tendency! = make_jacobian(soil)
             dtγ = FT(1.0)
             jac_tendency!(jacobian, Y, p, dtγ, FT(0.0))
 
@@ -180,7 +180,7 @@ for FT in (Float32, Float64)
             # we want to test that it is updated correctly in
             # the jacobian correctly.
             jacobian = ImplicitEquationJacobian(Y)
-            jacobian_tendency! = make_tendency_jacobian(soil)
+            jacobian_tendency! = make_jacobian(soil)
             dtγ = FT(1.0)
             jacobian_tendency!(jacobian, Y, p, dtγ, FT(0.0))
 

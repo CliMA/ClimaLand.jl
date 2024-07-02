@@ -123,10 +123,9 @@ ode_algo = CTS.IMEXAlgorithm(
 )
 exp_tendency! = make_exp_tendency(soil)
 imp_tendency! = make_imp_tendency(soil)
-tendency_jacobian! = make_tendency_jacobian(soil)
+jacobian! = make_jacobian(soil)
 
-jac_kwargs =
-    (; jac_prototype = ImplicitEquationJacobian(Y), Wfact = tendency_jacobian!)
+jac_kwargs = (; jac_prototype = ImplicitEquationJacobian(Y), Wfact = jacobian!)
 prob = SciMLBase.ODEProblem(
     CTS.ClimaODEFunction(
         T_exp! = exp_tendency!,

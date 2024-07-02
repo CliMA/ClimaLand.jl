@@ -44,7 +44,7 @@ using ClimaLand:
     make_update_aux,
     make_exp_tendency,
     make_imp_tendency,
-    make_tendency_jacobian,
+    make_jacobian,
     make_set_initial_cache
 
 import Profile, ProfileCanvas
@@ -256,14 +256,14 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
     set_initial_cache! = make_set_initial_cache(model)
     exp_tendency! = make_exp_tendency(model)
     imp_tendency! = make_imp_tendency(model)
-    tendency_jacobian! = make_tendency_jacobian(model)
+    jacobian! = make_jacobian(model)
 
     set_initial_cache!(p, Y, t0)
 
     # set up jacobian info
     jac_kwargs = (;
         jac_prototype = ClimaLand.Soil.ImplicitEquationJacobian(Y),
-        Wfact = tendency_jacobian!,
+        Wfact = jacobian!,
     )
 
     prob = SciMLBase.ODEProblem(

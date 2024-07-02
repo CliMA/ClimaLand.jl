@@ -60,8 +60,8 @@ ClimaLand.diffusive_flux
 ClimaLand.boundary_vars
 ClimaLand.boundary_var_domain_names
 ClimaLand.boundary_var_types
-ClimaLand.make_tendency_jacobian
-ClimaLand.make_update_jacobian
+ClimaLand.make_jacobian
+ClimaLand.make_compute_jacobian
 ClimaLand.set_dfluxBCdY!
 ClimaLand.get_drivers
 ```
