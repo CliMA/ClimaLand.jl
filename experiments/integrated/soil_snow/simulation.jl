@@ -39,7 +39,7 @@ land_domain = Column(;
 # TIME STEPS:
 t0 = FT(1800)
 N_days_spinup = 0
-N_days = N_days_spinup + 150
+N_days = N_days_spinup + 100
 dt = FT(60)
 tf = t0 + FT(3600 * 24 * N_days)
 
@@ -229,18 +229,7 @@ Plots.plot!(
     color = "blue",
     margin = 10Plots.mm,
 )
-Plots.plot!(
-    sv.t ./ 24 ./ 3600,
-    [parent(sv.saveval[k].soil.T)[end - 2] for k in 1:1:length(sv.t)],
-    label = "25cm",
-)
 
-Plots.plot!(
-    plt3,
-    sv.t ./ 24 ./ 3600,
-    [parent(sv.saveval[k].soil.T)[end - 6] for k in 1:1:length(sv.t)],
-    label = "45cm",
-)
 Plots.plot!(
     plt3,
     sv.t ./ 24 ./ 3600,
@@ -248,6 +237,7 @@ Plots.plot!(
     label = "Tsnow",
 )
 Plots.plot!(plt3, seconds ./ 3600 ./ 24, drivers.TS.values[:], label = "Data, ?cm")
+Plots.plot!(plt3, seconds ./ 3600 ./ 24, drivers.TA.values[:], label = "Air")
 
 
 # LHF
