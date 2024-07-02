@@ -374,6 +374,34 @@ updateat = Array(t0:(3600 * 3):tf)
 updatefunc = ClimaLand.make_update_drivers(atmos, radiation)
 driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
 cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
+
+# ClimaDiagnostic
+
+base_output_dir = "global_soil_canopy/"
+output_dir =
+    ClimaUtilities.OutputPathGenerator.generate_output_path(base_output_dir)
+
+nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(subsurface_space, output_dir)
+
+diags = ClimaLand.CLD.default_diagnostics(model, t0; output_writer = nc_writer, output_vars = "short")
+
+diagnostic_handler =
+    ClimaDiagnostics.DiagnosticsHandler(diags, Y, p, t0; dt = Δt)
+
+diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler)
+
+sol = ClimaComms.@time ClimaComms.device() SciMLBase.solve(
+    prob,
+    ode_algo;
+    dt = Δt,
+    callback = diag_cb,
+)
+
+
+
+
+#########
+
 @time sol = SciMLBase.solve(
     prob,
     ode_algo;
