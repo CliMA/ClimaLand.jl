@@ -25,24 +25,26 @@ component) or standalone (single component) modes.  </strong>
 This is the repository of the CliMA land model code. Here are some notable features:
 - ClimaLand has a modular design, models can be run as standalone (e.g., soil moisture only) or integrated (e.g., soil moisture and energy AND canopy AND snow, etc.)
 - ClimaLand is CPU and GPU compatible
-- ClimaLand welcome contributions: we welcome users to create a branch and extend our code. For example, a modeler might want to test a new stomatal conductance model. 
+- ClimaLand welcome contributions: please feel free to reach out to us with questions about how to get started, create a branch, and extend our code. For example, a modeler might want to test a new stomatal conductance model. 
 - ClimaLand provides APIs and UIs at multiple levels. 
 
 ## Models
 
+In our code base, a "model" define a set of prognostic variables which must be timestepped. The equations which govern the time evolution likely contain parameters and are informed by parameterization and physical domain choices. Any ClimaLand model contains all of the information needed to evaluate these equations. Below are the current models we support:
+
 <strong> Component Models: </strong>
 
-- RichardsModel <: AbstractSoilModel <: AbstractImExModel <: AbstractModel [runnable w/o LandModel wrapper as well]
+- RichardsModel <: AbstractSoilModel <: AbstractModel (runnable in standalone mode, or as part of a land model)
 
-- EnergyHydrologyModel <: AbstractSoilModel <: AbstractImExModel <: AbstractModel [runnable w/o LandModel wrapper as well]
+- EnergyHydrologyModel <: AbstractSoilModel <: AbstractModel (runnable in standalone mode, or as part of a land model)
 
-- CanopyModel <: AbstractVegetationModel <: AbstractExpModel <: AbstractModel  [runnable w/o LandModel wrapper as well]
+- CanopyModel <: AbstractVegetationModel <: AbstractModel  (runnable in standalone mode, or as part of a land model)
 
-- SnowModel <: AbstractSnowModel <: AbstractExpModel <: AbstractModel [runnable w/o LandModel wrapper as well]
+- SnowModel <: AbstractSnowModel <: AbstractModel (runnable in standalone mode, or as part of a land model)
 
 <strong> Combined Models: </strong>
 
-- SoilCanopyModel <: AbstractLandModel <: AbstractImExModel <: AbstractModel (constructs the individual ComponentModels based on arguments)
+- SoilCanopyModel <: AbstractLandModel <: AbstractModel (an example of a land model, made of individual component models which are solved simultaneously but taking into account interactions between the components)
 
 ## Notes
 
