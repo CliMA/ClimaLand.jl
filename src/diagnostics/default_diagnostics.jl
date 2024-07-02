@@ -74,42 +74,49 @@ function default_diagnostics(
     land_model::SoilCanopyModel,
     t_start;
     output_writer,
+    output_vars = :long,
 )
 
     define_diagnostics!(land_model)
 
-    soilcanopy_diagnostics = [
-        "rn",
-        "lhf",
-        "rae",
-        "shf",
-        "vflux",
-        "tsoil",
-        "slw",
-        "infil",
-        "scd",
-        "scms",
-        "gs",
-        "mt",
-        "trans",
-        "rain", # do we want?
-        "an",
-        "gpp",
-        "rd",
-        "vcmax25",
-        "par",
-        "apar",
-        "rpar",
-        "tpar",
-        "nir",
-        "anir",
-        "rnir",
-        "tnir",
-        "swn",
-        "lwn",
-        "ra",
-        "soilco2",
-    ]
+    if output_vars == :long
+        soilcanopy_diagnostics = [
+            "rn_canopy",
+            "rn_soil",
+            "lhf_soil",
+            "lhf_canopy",
+            "shf_canopy",
+            "shf_soil",
+            "vflux",
+            "tsoil",
+            "slw",
+            "infil",
+            "scd",
+            "scms",
+            "gs",
+            "mt",
+            "trans",
+            "rain", # do we want?
+            "an",
+            "gpp",
+            "rd",
+            "vcmax25",
+            "par",
+            "apar",
+            "rpar",
+            "tpar",
+            "nir",
+            "anir",
+            "rnir",
+            "tnir",
+            "swn",
+            "lwn",
+            "ra",
+            "soilco2",
+        ]
+    elseif output_vars == :short
+        soilcanopy_diagnostics = ["gpp", "ct", "ai", "slw", "si"]
+    end
 
     default_outputs =
         hourly_averages(soilcanopy_diagnostics...; output_writer, t_start)

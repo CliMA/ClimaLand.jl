@@ -6,6 +6,8 @@ using ..Bucket: BucketModel
 
 import ..SoilCanopyModel
 
+import ..Domains: top_center_to_surface
+
 import ClimaDiagnostics:
     DiagnosticVariable, ScheduledDiagnostic, average_pre_output_hook!
 

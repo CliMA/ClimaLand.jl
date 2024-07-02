@@ -588,7 +588,7 @@ function define_diagnostics!(land_model)
         long_name = "Area Index",
         standard_name = "area_index",
         units = "",
-        comments = "The area index.", #?? of steam, leaves, roots?
+        comments = "The area index of leaves.",
         compute! = (out, Y, p, t) ->
             compute_area_index!(out, Y, p, t, land_model),
     )
@@ -627,7 +627,7 @@ function define_diagnostics!(land_model)
         short_name = "ct",
         long_name = "Canopy Temperature",
         standard_name = "canopy_temperature",
-        units = "",
+        units = "K",
         comments = "Canopy temperature.", #?? of steam, leaves, roots?
         compute! = (out, Y, p, t) ->
             compute_canopy_temperature!(out, Y, p, t, land_model),
@@ -638,7 +638,7 @@ function define_diagnostics!(land_model)
         long_name = "Soil Ice",
         standard_name = "soil_ice",
         units = "m^3 m^-3",
-        comments = "soil ice.", #?? of steam, leaves, roots?
+        comments = "soil ice.",
         compute! = (out, Y, p, t) ->
             compute_soil_ice!(out, Y, p, t, land_model),
     )

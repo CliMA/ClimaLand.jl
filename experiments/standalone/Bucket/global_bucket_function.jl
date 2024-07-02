@@ -177,11 +177,15 @@ diagnostic_handler =
 
 diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler)
 
+updateat = collect(t0:(Δt * 3):tf);
+updatefunc = ClimaLand.make_update_drivers(bucket_atmos, bucket_rad)
+driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
+
 sol = ClimaComms.@time ClimaComms.device() SciMLBase.solve(
     prob,
     ode_algo;
     dt = Δt,
-    callback = diag_cb,
+    callback = SciMLBase.CallbackSet(driver_cb, diag_cb),
 )
 
 #### ClimaAnalysis ####
