@@ -230,12 +230,8 @@ Computes the soil infiltration capacity on the surface space
 Currently approximates i_c = -K_sat at the surface.
 """
 function soil_infiltration_capacity(model::RichardsModel, Y, p)
-    surface_space = model.domain.space.surface
     @. p.soil.subsfc_scratch = -1 * model.parameters.K_sat
-    return ClimaLand.Soil.get_top_surface_field(
-        p.soil.subsfc_scratch,
-        surface_space,
-    )
+    return ClimaLand.Domains.top_center_to_surface(p.soil.subsfc_scratch)
 end
 
 """
@@ -258,10 +254,7 @@ function soil_infiltration_capacity(model::EnergyHydrology, Y, p)
             Ω,
         ) *
         ClimaLand.Soil.viscosity_factor(p.soil.T, γ, γT_ref)
-    return ClimaLand.Soil.get_top_surface_field(
-        p.soil.subsfc_scratch,
-        surface_space,
-    )
+    return ClimaLand.Domains.top_center_to_surface(p.soil.subsfc_scratch)
 end
 
 

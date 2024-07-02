@@ -16,71 +16,6 @@ export TemperatureStateBC,
     RichardsAtmosDrivenFluxBC,
     WaterHeatBC
 
-# Helper functions
-"""
-    get_top_surface_field(
-        center_field::ClimaCore.Fields.Field,
-        surface_space,
-    )
-
-A helper function to extract the top level of a center field and
-cast it onto the surface face space.
-"""
-function get_top_surface_field(
-    center_field::ClimaCore.Fields.Field,
-    surface_space,
-)
-    nz = Spaces.nlevels(axes(center_field))
-    return Fields.Field(
-        Fields.field_values(Fields.level(center_field, nz)),
-        surface_space,
-    )
-end
-
-"""
-    get_top_surface_field(
-        center_val,
-        _,
-    )
-
-A helper function for the case where we use `get_top_surface_field` on
-a parameter that is a scalar rather than a field. Returns the scalar value.
-"""
-function get_top_surface_field(center_val, _)
-    return center_val
-end
-
-"""
-    get_bottom_surface_field(
-        center_field::ClimaCore.Fields.Field,
-        bottom_space,
-    )
-
-A helper function to extract the bottom level of a center field and
-cast it onto the bottom face space.
-"""
-function get_bottom_surface_field(
-    center_field::ClimaCore.Fields.Field,
-    bottom_space,
-)
-    return Fields.Field(
-        Fields.field_values(Fields.level(center_field, 1)),
-        bottom_space,
-    )
-end
-
-"""
-    get_bottom_surface_field(
-        center_val,
-        _,
-    )
-
-A helper function for the case where we use `get_bottom_surface_field` on
-a parameter that is a scalar rather than a field. Returns the scalar value.
-"""
-function get_bottom_surface_field(center_val, _)
-    return center_val
-end
 
 # New BC type for Richards Equation (AbstractWaterBC)
 """
@@ -339,19 +274,18 @@ function boundary_flux(
     t,
 )::ClimaCore.Fields.Field
     FT = eltype(Δz)
-    surface_space = axes(Δz)
     # First extract the value of the top layer of the pressure head
     # and cast onto the face space
-    ψ_c = get_top_surface_field(p.soil.ψ, surface_space)
+    ψ_c = ClimaLand.Domains.top_center_to_surface(p.soil.ψ)
 
     # Calculate pressure head using boundary condition on ϑ_l = θ_bc
     # We first need to extract the parameters of the soil in the top layer
     # Again, we need to cast them onto the face space
     (; hydrology_cm, θ_r, ν, S_s) = model.parameters
-    hcm_bc = get_top_surface_field(hydrology_cm, surface_space)
-    θ_r_bc = get_top_surface_field(θ_r, surface_space)
-    ν_bc = get_top_surface_field(ν, surface_space)
-    S_s_bc = get_top_surface_field(S_s, surface_space)
+    hcm_bc = ClimaLand.Domains.top_center_to_surface(hydrology_cm)
+    θ_r_bc = ClimaLand.Domains.top_center_to_surface(θ_r)
+    ν_bc = ClimaLand.Domains.top_center_to_surface(ν)
+    S_s_bc = ClimaLand.Domains.top_center_to_surface(S_s)
 
     θ_bc = FT.(rre_bc.bc(p, t))
     ψ_bc = @. pressure_head(hcm_bc, θ_r_bc, θ_bc, ν_bc, S_s_bc)
@@ -361,7 +295,7 @@ function boundary_flux(
     # currently we approximate this as equal to the center value at the top layer (K_c)
     # More accurate would be to compute the mean between K_c and K evaluated at the boundary
     # condition.
-    K_eff = get_top_surface_field(p.soil.K, surface_space)
+    K_eff = ClimaLand.Domains.top_center_to_surface(p.soil.K)
 
     # Pass in (ψ_bc .+ Δz) as to account for contribution of gravity (∂(ψ+z)/∂z
     return ClimaLand.diffusive_flux(K_eff, ψ_bc .+ Δz, ψ_c, Δz)
@@ -390,20 +324,19 @@ function boundary_flux(
     t,
 )::ClimaCore.Fields.Field
     FT = eltype(Δz)
-    surface_space = axes(Δz)
     # First extract the value of the bottom layer of the pressure head
     # and cast onto the face space
-    ψ_c = get_bottom_surface_field(p.soil.ψ, surface_space)
+    ψ_c = ClimaLand.Domains.bottom_center_to_surface(p.soil.ψ)
 
 
     # Calculate pressure head using boundary condition on ϑ_l = θ_bc
     # We first need to extract the parameters of the soil in the bottom layer
     # Again, we need to cast them onto the face space
     (; hydrology_cm, θ_r, ν, S_s) = model.parameters
-    hcm_bc = get_bottom_surface_field(hydrology_cm, surface_space)
-    θ_r_bc = get_bottom_surface_field(θ_r, surface_space)
-    ν_bc = get_bottom_surface_field(ν, surface_space)
-    S_s_bc = get_bottom_surface_field(S_s, surface_space)
+    hcm_bc = ClimaLand.Domains.bottom_center_to_surface(hydrology_cm)
+    θ_r_bc = ClimaLand.Domains.bottom_center_to_surface(θ_r)
+    ν_bc = ClimaLand.Domains.bottom_center_to_surface(ν)
+    S_s_bc = ClimaLand.Domains.bottom_center_to_surface(S_s)
 
     θ_bc = FT.(rre_bc.bc(p, t))
     ψ_bc = @. pressure_head(hcm_bc, θ_r_bc, θ_bc, ν_bc, S_s_bc)
@@ -413,7 +346,7 @@ function boundary_flux(
     # currently we approximate this as equal to the center value at the top layer (K_c)
     # More accurate would be to compute the mean between K_c and K evaluated at the boundary
     # condition.
-    K_eff = get_bottom_surface_field(p.soil.K, surface_space)
+    K_eff = ClimaLand.Domains.bottom_center_to_surface(p.soil.K)
 
     # At the bottom boundary, ψ_c is at larger z than ψ_bc
     #  so we swap their order in the derivative calc
@@ -596,10 +529,9 @@ function boundary_flux(
 )::ClimaCore.Fields.Field
     FT = eltype(Δz)
     # Approximate κ_bc ≈ κ_c (center closest to the boundary)
-    surface_space = axes(Δz)
     # We need to project the center values onto the face space.
-    T_c = get_top_surface_space(p.soil.T, surface_space)
-    κ_c = get_top_surface_space(p.soil.κ, surface_space)
+    T_c = ClimaLand.Domains.top_center_to_surface(p.soil.T)
+    κ_c = ClimaLand.Domains.top_center_to_surface(p.soil.κ)
 
     T_bc = FT.(heat_bc.bc(p, t))
     return ClimaLand.diffusive_flux(κ_c, T_bc, T_c, Δz)
@@ -629,10 +561,9 @@ function boundary_flux(
 )::ClimaCore.Fields.Field
     FT = eltype(Δz)
     # Approximate κ_bc ≈ κ_c (center closest to the boundary)
-    surface_space = axes(Δz)
     # We need to project the center values onto the face space.
-    T_c = get_bottom_surface_space(p.soil.T, surface_space)
-    κ_c = get_bottom_surface_space(p.soil.κ, surface_space)
+    T_c = ClimaLand.Domains.bottom_center_to_surface(p.soil.T)
+    κ_c = ClimaLand.Domains.bottom_center_to_surface(p.soil.κ)
     T_bc = FT.(heat_bc.bc(p, t))
     return ClimaLand.diffusive_flux(κ_c, T_c, T_bc, Δz)
 end

@@ -320,9 +320,8 @@ if context.device isa ClimaComms.CPUSingleThreaded
 
     θ_sfc_end = ClimaCore.Remapping.interpolate(
         remapper,
-        ClimaLand.Soil.get_top_surface_field(
+        ClimaLand.Domains.top_center_to_surface(
             oceans_to_zero.(field_to_error.(sol.u[end].soil.ϑ_l), mask),
-            surface_space,
         ),
     )
 
@@ -339,12 +338,11 @@ if context.device isa ClimaComms.CPUSingleThreaded
 
     Δθ_sfc = ClimaCore.Remapping.interpolate(
         remapper,
-        ClimaLand.Soil.get_top_surface_field(
+        ClimaLand.Domains.top_center_to_surface(
             oceans_to_zero.(
                 field_to_error.(sol.u[end].soil.ϑ_l .- sol.u[1].soil.ϑ_l),
                 mask,
             ),
-            surface_space,
         ),
     )
     ax2 = Axis(fig[1, 3], xlabel = "Longitude", title = "θ_sfc Δ")
