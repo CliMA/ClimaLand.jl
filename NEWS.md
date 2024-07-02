@@ -11,7 +11,9 @@ Add base global soil canopy run to benchmark and experiments
 - PR [#669] adds topmodel runoff
 Soil implicit solver
 - PR [#678] updates Jacobian for soil energy
-
+Misc
+- PR [#685] Renames jacobian update functions to align with our convention
+            for tendency functions
 v0.12.4
 --------
 - Fix various canopy flux bugs

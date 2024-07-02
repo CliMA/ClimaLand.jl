@@ -188,16 +188,16 @@ function make_update_boundary_fluxes(land::AbstractLandModel)
     return update_boundary_fluxes!
 end
 
-function make_update_jacobian(land::AbstractLandModel)
+function make_compute_jacobian(land::AbstractLandModel)
     components = land_components(land)
-    update_jacobian_function_list =
-        map(x -> make_update_jacobian(getproperty(land, x)), components)
-    function update_jacobian!(jacobian, Y, p, dtγ, t)
-        for f! in update_jacobian_function_list
+    compute_jacobian_function_list =
+        map(x -> make_compute_jacobian(getproperty(land, x)), components)
+    function compute_jacobian!(jacobian, Y, p, dtγ, t)
+        for f! in compute_jacobian_function_list
             f!(jacobian, Y, p, dtγ, t)
         end
     end
-    return update_jacobian!
+    return compute_jacobian!
 end
 
 """

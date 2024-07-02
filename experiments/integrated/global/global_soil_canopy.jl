@@ -338,7 +338,7 @@ evaluate!(Y.canopy.energy.T, atmos.T, t0)
 set_initial_cache! = make_set_initial_cache(land)
 exp_tendency! = make_exp_tendency(land);
 imp_tendency! = ClimaLand.make_imp_tendency(land);
-tendency_jacobian! = ClimaLand.make_tendency_jacobian(land);
+jacobian! = ClimaLand.make_jacobian(land);
 set_initial_cache!(p, Y, t0)
 stepper = CTS.ARS343()
 ode_algo = CTS.IMEXAlgorithm(
@@ -350,8 +350,7 @@ ode_algo = CTS.IMEXAlgorithm(
 )
 
 # set up jacobian info
-jac_kwargs =
-    (; jac_prototype = ImplicitEquationJacobian(Y), Wfact = tendency_jacobian!)
+jac_kwargs = (; jac_prototype = ImplicitEquationJacobian(Y), Wfact = jacobian!)
 
 prob = SciMLBase.ODEProblem(
     CTS.ClimaODEFunction(

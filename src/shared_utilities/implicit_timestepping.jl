@@ -4,12 +4,12 @@ import UnrolledUtilities
 import LinearAlgebra
 import LinearAlgebra: I
 
-export make_tendency_jacobian,
-    make_update_jacobian, set_dfluxBCdY!, ImplicitEquationJacobian
+export make_jacobian,
+    make_compute_jacobian, set_dfluxBCdY!, ImplicitEquationJacobian
 
 
 """
-   make_tendency_jacobian(model::AbstractModel)
+   make_jacobian(model::AbstractModel)
 
 Creates and returns a function which updates the auxiliary
 variables `p` in place and then updates the entries of the
@@ -18,25 +18,25 @@ Jacobian matrix `W` for the `model` in place.
 The default is that no updates are required, no implicit tendency is
 present, and hence the timestepping is entirely explicit.
 
-Note that the returned function `tendency_jacobian!` should be
+Note that the returned function `jacobian!` should be
 used as `Wfact!` in `ClimaTimeSteppers.jl` and `SciMLBase.jl`.
 """
-function make_tendency_jacobian(model::AbstractModel)
+function make_jacobian(model::AbstractModel)
     update_aux! = make_update_aux(model)
     update_boundary_fluxes! = make_update_boundary_fluxes(model)
-    update_jacobian! = make_update_jacobian(model)
-    function tendency_jacobian!(W, Y, p, dtγ, t)
+    compute_jacobian! = make_compute_jacobian(model)
+    function jacobian!(W, Y, p, dtγ, t)
         update_aux!(p, Y, t)
         update_boundary_fluxes!(p, Y, t)
-        update_jacobian!(W, Y, p, dtγ, t)
+        compute_jacobian!(W, Y, p, dtγ, t)
     end
-    return tendency_jacobian!
+    return jacobian!
 end
 
 """
-    make_update_jacobian(model::AbstractModel)
+    make_compute_jacobian(model::AbstractModel)
 
-Creates and returns a function which updates the entries
+Creates and returns a function which computes the entries
 of the Jacobian matrix `W` in place.
 
 If the implicit tendency function is given by
@@ -48,9 +48,9 @@ and `T!_i` is the implicit tendency of the `i-th` state variable.
 The default is that no updates are required, but this function
 must be extended for models that use implicit timestepping.
 """
-function make_update_jacobian(model::AbstractModel)
-    function update_jacobian!(W, Y, p, dtγ, t) end
-    return update_jacobian!
+function make_compute_jacobian(model::AbstractModel)
+    function compute_jacobian!(W, Y, p, dtγ, t) end
+    return compute_jacobian!
 end
 
 """

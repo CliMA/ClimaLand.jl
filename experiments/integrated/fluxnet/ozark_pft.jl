@@ -256,11 +256,9 @@ land = SoilCanopyModel{FT}(;
 Y, p, cds = initialize(land)
 exp_tendency! = make_exp_tendency(land)
 imp_tendency! = make_imp_tendency(land);
-tendency_jacobian! = make_tendency_jacobian(land);
-jac_kwargs = (;
-    jac_prototype = ClimaLand.ImplicitEquationJacobian(Y),
-    Wfact = tendency_jacobian!,
-);
+jacobian! = make_jacobian(land);
+jac_kwargs =
+    (; jac_prototype = ClimaLand.ImplicitEquationJacobian(Y), Wfact = jacobian!);
 
 #Initial conditions
 Y.soil.ϑ_l =

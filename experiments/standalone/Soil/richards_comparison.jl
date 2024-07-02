@@ -77,7 +77,7 @@ outdir = joinpath(
         Y.soil.ϑ_l .= FT(0.24)
         exp_tendency! = make_exp_tendency(soil)
         imp_tendency! = ClimaLand.make_imp_tendency(soil)
-        tendency_jacobian! = ClimaLand.make_tendency_jacobian(soil)
+        jacobian! = ClimaLand.make_jacobian(soil)
         set_initial_cache!(p, Y, t0)
 
         stepper = CTS.ARS111()
@@ -93,10 +93,8 @@ outdir = joinpath(
         )
 
         # set up jacobian info
-        jac_kwargs = (;
-            jac_prototype = ImplicitEquationJacobian(Y),
-            Wfact = tendency_jacobian!,
-        )
+        jac_kwargs =
+            (; jac_prototype = ImplicitEquationJacobian(Y), Wfact = jacobian!)
 
         prob = SciMLBase.ODEProblem(
             CTS.ClimaODEFunction(
@@ -173,7 +171,7 @@ end
         Y.soil.ϑ_l .= FT(0.1)
         exp_tendency! = make_exp_tendency(soil)
         imp_tendency! = ClimaLand.make_imp_tendency(soil)
-        tendency_jacobian! = ClimaLand.make_tendency_jacobian(soil)
+        jacobian! = ClimaLand.make_jacobian(soil)
         set_initial_cache!(p, Y, t0)
 
         stepper = CTS.ARS111()
@@ -188,10 +186,8 @@ end
             ),
         )
         # set up jacobian info
-        jac_kwargs = (;
-            jac_prototype = ImplicitEquationJacobian(Y),
-            Wfact = tendency_jacobian!,
-        )
+        jac_kwargs =
+            (; jac_prototype = ImplicitEquationJacobian(Y), Wfact = jacobian!)
 
         prob = SciMLBase.ODEProblem(
             CTS.ClimaODEFunction(
