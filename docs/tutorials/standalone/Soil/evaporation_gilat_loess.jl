@@ -121,7 +121,7 @@ no_flux_boundary_fluxes = (;
 
 t0 = Float64(0)
 tf = Float64(24 * 3600 * 15)
-dt = Float64(10.0)
+dt = Float64(900.0)
 Δz = 0.01
 zmax = FT(0)
 zmin = FT(-1.6)
@@ -168,9 +168,8 @@ set_initial_cache!(p, Y, t0);
 # Timestepping:
 exp_tendency! = make_exp_tendency(soil)
 imp_tendency! = make_imp_tendency(soil);
-tendency_jacobian! = ClimaLand.make_tendency_jacobian(soil);
-jac_kwargs =
-    (; jac_prototype = ImplicitEquationJacobian(Y), Wfact = tendency_jacobian!);
+jacobian! = ClimaLand.make_jacobian(soil);
+jac_kwargs = (; jac_prototype = ImplicitEquationJacobian(Y), Wfact = jacobian!);
 
 timestepper = CTS.ARS111();
 ode_algo = CTS.IMEXAlgorithm(
@@ -224,7 +223,7 @@ set_initial_cache!(p, Y, t0)
 soil_exp_tendency! = make_exp_tendency(soil)
 exp_tendency! = make_exp_tendency(soil)
 imp_tendency! = make_imp_tendency(soil);
-tendency_jacobian! = ClimaLand.make_tendency_jacobian(soil);
+jacobian! = ClimaLand.make_jacobian(soil);
 timestepper = CTS.ARS111();
 ode_algo = CTS.IMEXAlgorithm(
     timestepper,
@@ -233,8 +232,7 @@ ode_algo = CTS.IMEXAlgorithm(
         update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
     ),
 );
-jac_kwargs =
-    (; jac_prototype = ImplicitEquationJacobian(Y), Wfact = tendency_jacobian!);
+jac_kwargs = (; jac_prototype = ImplicitEquationJacobian(Y), Wfact = jacobian!);
 prob = SciMLBase.ODEProblem(
     CTS.ClimaODEFunction(
         T_exp! = exp_tendency!,
@@ -261,7 +259,7 @@ evap = [
         sv.saveval[k].soil.turbulent_fluxes.vapor_flux .*
         (1 .- sv.saveval[k].soil.ice_frac),
     )[1] for k in 1:length(sol.t)
-]
+];
 
 ## Repeat with no drainage (Ksat = 0, different BC), and with evaporation, in shorter domain
 # This requires different boundary conditions yet again:
@@ -290,7 +288,7 @@ set_initial_cache! = make_set_initial_cache(soil)
 set_initial_cache!(p, Y, t0)
 exp_tendency! = make_exp_tendency(soil)
 imp_tendency! = make_imp_tendency(soil);
-tendency_jacobian! = ClimaLand.make_tendency_jacobian(soil);
+jacobian! = ClimaLand.make_jacobian(soil);
 timestepper = CTS.ARS111();
 ode_algo = CTS.IMEXAlgorithm(
     timestepper,
@@ -299,8 +297,7 @@ ode_algo = CTS.IMEXAlgorithm(
         update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
     ),
 );
-jac_kwargs =
-    (; jac_prototype = ImplicitEquationJacobian(Y), Wfact = tendency_jacobian!);
+jac_kwargs = (; jac_prototype = ImplicitEquationJacobian(Y), Wfact = jacobian!);
 prob = SciMLBase.ODEProblem(
     CTS.ClimaODEFunction(
         T_exp! = exp_tendency!,
@@ -328,7 +325,7 @@ evap_no_drainage = [
         sv.saveval[k].soil.turbulent_fluxes.vapor_flux .*
         (1 .- sv.saveval[k].soil.ice_frac),
     )[1] for k in 1:length(sol.t)
-]
+];
 
 
 # Figures

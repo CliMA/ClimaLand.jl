@@ -15,7 +15,7 @@
 # Number of spatial elements: 101 in horizontal, 15 in vertical
 # Soil depth: 50 m
 # Simulation duration: 6 hours
-# Timestep: 180 s
+# Timestep: 900 s
 # Timestepper: ARS343
 # Fixed number of iterations: 1
 # Jacobian update: Every Newton iteration
@@ -363,7 +363,7 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
     τ_NIR_leaf = FT(0.25)
 
     # Energy Balance model
-    ac_canopy = FT(2.5e5)
+    ac_canopy = FT(2.5e3)
 
     # Conductance Model
     g1 = FT(141) # Wang et al: 141 sqrt(Pa) for Medlyn model; Natan used 300.
@@ -577,14 +577,12 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
     set_initial_cache! = make_set_initial_cache(land)
     exp_tendency! = make_exp_tendency(land)
     imp_tendency! = ClimaLand.make_imp_tendency(land)
-    tendency_jacobian! = ClimaLand.make_tendency_jacobian(land)
+    jacobian! = ClimaLand.make_jacobian(land)
     set_initial_cache!(p, Y, t0)
 
     # set up jacobian info
-    jac_kwargs = (;
-        jac_prototype = ImplicitEquationJacobian(Y),
-        Wfact = tendency_jacobian!,
-    )
+    jac_kwargs =
+        (; jac_prototype = ImplicitEquationJacobian(Y), Wfact = jacobian!)
 
     prob = SciMLBase.ODEProblem(
         CTS.ClimaODEFunction(
@@ -608,7 +606,7 @@ function setup_and_solve_problem(; greet = false)
     # to set up for both CPU/GPU at the same time
     t0 = 0.0
     tf = 60 * 60.0 * 6
-    Δt = 180.0
+    Δt = 900.0
     nelements = (101, 15)
     if greet
         @info "Run: Global RichardsModel"

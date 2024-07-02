@@ -172,7 +172,7 @@ init_soil!(Y, z, soil.parameters);
 # Timestepping:
 t0 = Float64(0)
 tf = Float64(24 * 3600 * 13)
-dt = Float64(2.0)
+dt = Float64(900.0)
 
 # We also set the initial conditions of the cache here:
 set_initial_cache! = make_set_initial_cache(soil)
@@ -181,9 +181,8 @@ set_initial_cache!(p, Y, t0);
 # Define the tendency functions
 exp_tendency! = make_exp_tendency(soil)
 imp_tendency! = make_imp_tendency(soil);
-tendency_jacobian! = ClimaLand.make_tendency_jacobian(soil);
-jac_kwargs =
-    (; jac_prototype = ImplicitEquationJacobian(Y), Wfact = tendency_jacobian!);
+jacobian! = ClimaLand.make_jacobian(soil);
+jac_kwargs = (; jac_prototype = ImplicitEquationJacobian(Y), Wfact = jacobian!);
 
 timestepper = CTS.ARS111();
 ode_algo = CTS.IMEXAlgorithm(

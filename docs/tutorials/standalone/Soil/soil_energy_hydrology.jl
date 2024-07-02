@@ -185,7 +185,7 @@ soil = Soil.EnergyHydrology{FT}(;
 # We also create the function which is used to update our Jacobian.
 exp_tendency! = make_exp_tendency(soil);
 imp_tendency! = make_imp_tendency(soil);
-tendency_jacobian! = ClimaLand.make_tendency_jacobian(soil);
+jacobian! = ClimaLand.make_jacobian(soil);
 
 # # Set up the simulation
 # We can now initialize the prognostic and auxiliary variable vectors, and take
@@ -251,7 +251,7 @@ set_initial_cache!(p, Y, t0);
 # We use [ClimaTimesteppers.jl](https://github.com/CliMA/ClimaTimesteppers.jl) for carrying out the time integration.
 
 # Choose a timestepper and set up the ODE problem:
-dt = Float64(60.0);
+dt = Float64(1000.0);
 timestepper = CTS.ARS111();
 ode_algo = CTS.IMEXAlgorithm(
     timestepper,
@@ -261,8 +261,7 @@ ode_algo = CTS.IMEXAlgorithm(
     ),
 );
 
-jac_kwargs =
-    (; jac_prototype = ImplicitEquationJacobian(Y), Wfact = tendency_jacobian!);
+jac_kwargs = (; jac_prototype = ImplicitEquationJacobian(Y), Wfact = jacobian!);
 
 prob = SciMLBase.ODEProblem(
     CTS.ClimaODEFunction(

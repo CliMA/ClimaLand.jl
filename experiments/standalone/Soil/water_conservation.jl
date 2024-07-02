@@ -84,7 +84,7 @@ for FT in (Float32, Float64)
     exp_tendency! = make_exp_tendency(soil)
     set_initial_cache! = make_set_initial_cache(soil)
     imp_tendency! = make_imp_tendency(soil)
-    tendency_jacobian! = make_tendency_jacobian(soil)
+    jacobian! = make_jacobian(soil)
 
     rmses = Array{FT}(undef, length(dts))
     mass_errors = Array{FT}(undef, length(dts))
@@ -95,10 +95,8 @@ for FT in (Float32, Float64)
         @. Y.soil.ϑ_l = FT(0.24)
         set_initial_cache!(p, Y, FT(0.0))
 
-        jac_kwargs = (;
-            jac_prototype = ImplicitEquationJacobian(Y),
-            Wfact = tendency_jacobian!,
-        )
+        jac_kwargs =
+            (; jac_prototype = ImplicitEquationJacobian(Y), Wfact = jacobian!)
 
         prob = SciMLBase.ODEProblem(
             CTS.ClimaODEFunction(
@@ -195,7 +193,7 @@ for FT in (Float32, Float64)
     exp_tendency! = make_exp_tendency(soil_dirichlet)
     set_initial_cache! = make_set_initial_cache(soil_dirichlet)
     imp_tendency! = make_imp_tendency(soil_dirichlet)
-    tendency_jacobian! = make_tendency_jacobian(soil_dirichlet)
+    jacobian! = make_jacobian(soil_dirichlet)
     update_aux! = make_update_aux(soil_dirichlet)
 
     rmses_dirichlet = Array{FT}(undef, length(dts))
@@ -207,10 +205,8 @@ for FT in (Float32, Float64)
         @. Y.soil.ϑ_l = FT(0.24)
         set_initial_cache!(p, Y, FT(0.0))
 
-        jac_kwargs = (;
-            jac_prototype = ImplicitEquationJacobian(Y),
-            Wfact = tendency_jacobian!,
-        )
+        jac_kwargs =
+            (; jac_prototype = ImplicitEquationJacobian(Y), Wfact = jacobian!)
 
         prob = SciMLBase.ODEProblem(
             CTS.ClimaODEFunction(

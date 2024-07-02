@@ -11,6 +11,9 @@ end
 @safetestset "Richards model implicit timestepping tests" begin
     include("shared_utilities/implicit_timestepping/richards_model.jl")
 end
+@safetestset "Full soil model implicit timestepping tests" begin
+    include("shared_utilities/implicit_timestepping/energy_hydrology_model.jl")
+end
 @safetestset "Domains module tests" begin
     include("shared_utilities/domains.jl")
 end
