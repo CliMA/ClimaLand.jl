@@ -530,7 +530,7 @@ function compute_canopy_latent_heat_flux(
     if isnothing(out)
         return copy(p.canopy.energy.lhf)
     else
-        p.canopy.canopy.lhf
+        p.canopy.energy.lhf
     end
 end
 
@@ -544,7 +544,7 @@ function compute_canopy_sensible_heat_flux(
     if isnothing(out)
         return copy(p.canopy.energy.shf)
     else
-        p.canopy.canopy.shf
+        p.canopy.energy.shf
     end
 end
 
@@ -558,7 +558,7 @@ function compute_canopy_aerodynamic_resistance(
     if isnothing(out)
         return copy(p.canopy.energy.r_ae)
     else
-        p.canopy.canopy.r_ae
+        p.canopy.energy.r_ae
     end
 end
 
