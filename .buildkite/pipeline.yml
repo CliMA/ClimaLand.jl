@@ -103,6 +103,10 @@ steps:
         command: "julia --color=yes --project=.buildkite experiments/standalone/Soil/water_conservation.jl"
         artifact_paths: "experiments/standalone/Soil/water_conservation*png"
 
+      - label: "Water conservation in Full Soil Model"
+        command: "julia --color=yes --project=.buildkite experiments/standalone/Soil/water_energy_conservation.jl"
+        artifact_paths: "experiments/standalone/Soil/*full_soil_*png"
+
       - label: "Richards Runoff CPU"
         command: "julia --color=yes --project=.buildkite experiments/standalone/Soil/richards_runoff.jl"
         artifact_paths: "experiments/standalone/Soil/artifacts/cpu/*png"

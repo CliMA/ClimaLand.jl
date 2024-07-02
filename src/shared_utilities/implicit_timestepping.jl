@@ -120,11 +120,10 @@ function ImplicitEquationJacobian(Y::ClimaCore.Fields.FieldVector)
     is_in_Y(name) = MatrixFields.has_field(Y, name)
 
     # Define the implicit and explicit variables of any model we use
-    implicit_names = (@name(soil.ϑ_l),)
+    implicit_names = (@name(soil.ϑ_l), @name(soil.ρe_int))
     explicit_names = (
         @name(soilco2.C),
         @name(soil.θ_i),
-        @name(soil.ρe_int),
         @name(canopy.hydraulics.ϑ_l),
         @name(canopy.energy.T),
     )

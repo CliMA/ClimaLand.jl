@@ -172,7 +172,7 @@ init_soil!(Y, z, soil.parameters);
 # Timestepping:
 t0 = Float64(0)
 tf = Float64(24 * 3600 * 13)
-dt = Float64(2.0)
+dt = Float64(900.0)
 
 # We also set the initial conditions of the cache here:
 set_initial_cache! = make_set_initial_cache(soil)

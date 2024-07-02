@@ -90,6 +90,9 @@ pft_pcts = [
     rooting_depth,
 ) = FT.(params_from_pfts(pft_pcts))
 
+# For now, replace ac_canopy with larger value in order to increase
+# stability of timestepping
+ac_canopy = ac_canopy * 3
 # This reads in the data from the flux tower site and creates
 # the atmospheric and radiative driver structs for the model
 include(

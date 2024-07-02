@@ -215,7 +215,7 @@ tendency_jacobian! = ClimaLand.make_tendency_jacobian(soil);
 jac_kwargs =
     (; jac_prototype = ImplicitEquationJacobian(Y), Wfact = tendency_jacobian!);
 
-dt = Float64(10)
+dt = Float64(100)
 
 timestepper = CTS.ARS111();
 ode_algo = CTS.IMEXAlgorithm(

@@ -189,38 +189,15 @@ function ClimaLand.make_compute_exp_tendency(
 ) where {FT}
     function compute_exp_tendency!(dY, Y, p, t)
         z = model.domain.fields.z
-        heat_top_flux_bc = p.soil.top_bc.heat
-        heat_bottom_flux_bc = p.soil.bottom_bc.heat
 
-        interpc2f = Operators.InterpolateC2F()
-        gradc2f = Operators.GradientC2F()
-
-        # Without topography only
-        # In Cartesian coordinates, W (z^) = Cov3 (z^)= Contra3 (n^ = z^)
-        # In spherical coordinates, W (r^) = Cov3 (r^) = Contra3 (n^ = r^)
-        # Passing WVector to gradient BC is passing a normal flux.
-
-        # Reset liquid water and ice content
+        # Don't update the prognostic variables we're stepping implicitly
         dY.soil.ϑ_l .= 0
+        dY.soil.ρe_int .= 0
+
+        # Note that soil ice content is only updated via source terms,
+        # which are plus-added to dY.soil.θ_i, so we must zero it out here first.
         dY.soil.θ_i .= 0
 
-        # Heat equation RHS
-        divf2c_heat = Operators.DivergenceF2C(
-            top = Operators.SetValue(Geometry.WVector.(heat_top_flux_bc)),
-            bottom = Operators.SetValue(Geometry.WVector.(heat_bottom_flux_bc)),
-        )
-
-        # GradC2F returns a Covariant3Vector, so no need to convert.
-        @. dY.soil.ρe_int =
-            -divf2c_heat(
-                -interpc2f(p.soil.κ) * gradc2f(p.soil.T) -
-                interpc2f(
-                    volumetric_internal_energy_liq(
-                        p.soil.T,
-                        model.parameters.earth_param_set,
-                    ) * p.soil.K,
-                ) * gradc2f(p.soil.ψ + z),
-            )
         # Horizontal contributions
         horizontal_components!(
             dY,
@@ -230,7 +207,7 @@ function ClimaLand.make_compute_exp_tendency(
             p,
             z,
         )
-
+        # Source terms
         for src in model.sources
             ClimaLand.source!(dY, src, Y, p, model)
         end
@@ -256,6 +233,8 @@ function ClimaLand.make_compute_imp_tendency(
         z = model.domain.fields.z
         rre_top_flux_bc = p.soil.top_bc.water
         rre_bottom_flux_bc = p.soil.bottom_bc.water
+        heat_top_flux_bc = p.soil.top_bc.heat
+        heat_bottom_flux_bc = p.soil.bottom_bc.heat
 
         interpc2f = Operators.InterpolateC2F()
         gradc2f = Operators.GradientC2F()
@@ -274,9 +253,26 @@ function ClimaLand.make_compute_imp_tendency(
         @. dY.soil.ϑ_l =
             -(divf2c_rre(-interpc2f(p.soil.K) * gradc2f(p.soil.ψ + z)))
 
+        # Heat equation RHS
+        divf2c_heat = Operators.DivergenceF2C(
+            top = Operators.SetValue(Geometry.WVector.(heat_top_flux_bc)),
+            bottom = Operators.SetValue(Geometry.WVector.(heat_bottom_flux_bc)),
+        )
+
+        # GradC2F returns a Covariant3Vector, so no need to convert.
+        @. dY.soil.ρe_int =
+            -divf2c_heat(
+                -interpc2f(p.soil.κ) * gradc2f(p.soil.T) -
+                interpc2f(
+                    volumetric_internal_energy_liq(
+                        p.soil.T,
+                        model.parameters.earth_param_set,
+                    ) * p.soil.K,
+                ) * gradc2f(p.soil.ψ + z),
+            )
+
         # Don't update the prognostic variables we're stepping explicitly
         @. dY.soil.θ_i = 0
-        @. dY.soil.ρe_int = 0
     end
     return compute_imp_tendency!
 end
@@ -293,7 +289,7 @@ to using the modified Picard scheme of Celia et al. (1990).
 function ClimaLand.make_update_jacobian(model::EnergyHydrology{FT}) where {FT}
     function update_jacobian!(jacobian::ImplicitEquationJacobian, Y, p, dtγ, t)
         (; matrix) = jacobian
-        (; ν, hydrology_cm, S_s, θ_r) = model.parameters
+        (; ν, hydrology_cm, S_s, θ_r, ρc_ds, earth_param_set) = model.parameters
 
         # Create divergence operator
         divf2c_op = Operators.DivergenceF2C()
@@ -312,7 +308,7 @@ function ClimaLand.make_update_jacobian(model::EnergyHydrology{FT}) where {FT}
 
         # The derivative of the residual with respect to the prognostic variable
         ∂ϑres∂ϑ = matrix[@name(soil.ϑ_l), @name(soil.ϑ_l)]
-
+        ∂ρeres∂ρe = matrix[@name(soil.ρe_int), @name(soil.ρe_int)]
         # If the top BC is a `MoistureStateBC`, add the term from the top BC
         #  flux before applying divergence
         if haskey(p.soil, :dfluxBCdY)
@@ -364,6 +360,19 @@ function ClimaLand.make_update_jacobian(model::EnergyHydrology{FT}) where {FT}
                     )
                 ) - (I,)
         end
+        @. ∂ρeres∂ρe =
+            -dtγ * (
+                divf2c_matrix() ⋅
+                MatrixFields.DiagonalMatrixRow(interpc2f_op(-p.soil.κ)) ⋅
+                gradc2f_matrix() ⋅ MatrixFields.DiagonalMatrixRow(
+                    1 / ClimaLand.Soil.volumetric_heat_capacity(
+                        p.soil.θ_l,
+                        Y.soil.θ_i,
+                        ρc_ds,
+                        earth_param_set,
+                    ),
+                )
+            ) - (I,)
     end
     return update_jacobian!
 end

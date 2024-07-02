@@ -85,6 +85,11 @@ for FT in (Float32, Float64)
         ) < 2eps(FT)
     end
 
+    # This next test suite tests the full soil model right-hand-side functions
+    # with various parameter choices: Ksat = 0 (hydrology off) and/or κ = 0 (heat conduction off).
+    # Note that the Darcy flux and heat diffusion terms are stepped implicitly, and there is no phase change
+    # in these tests. That means that the liquid water and energy have zero explicit tendency, but nonzero
+    # implicit tendencies, while ice content has zero tendency at all.
     @testset "Soil Energy and Water tendency unit tests, FT = $FT" begin
         earth_param_set = LP.LandParameters(FT)
         ν = FT(0.495)
@@ -169,10 +174,10 @@ for FT in (Float32, Float64)
         set_initial_cache! = make_set_initial_cache(soil_heat_on)
         set_initial_cache!(p, Y, t0)
 
-        # Test explicit tendency - should update internal energy, set others to 0
-        exp_tendency! = make_exp_tendency(soil_heat_on)
+        # Test implicit tendency - should update internal energy only (Ksat = 0 for hydrology)
+        imp_tendency! = make_imp_tendency(soil_heat_on)
         dY = similar(Y)
-        exp_tendency!(dY, Y, p, t0)
+        imp_tendency!(dY, Y, p, t0)
         ClimaLand.dss!(dY, p, t0)
 
         F_face = FT(0)
@@ -189,9 +194,9 @@ for FT in (Float32, Float64)
         @test maximum(abs.(Array(parent(dY.soil.ϑ_l)))) == FT(0)
         @test maximum(abs.(Array(parent(dY.soil.θ_i)))) == FT(0)
 
-        # Test implicit tendency - should set all variables to 0
-        imp_tendency! = make_imp_tendency(soil_heat_on)
-        imp_tendency!(dY, Y, p, t0)
+        # Test explicit tendency - should set all variables to 0
+        exp_tendency! = make_exp_tendency(soil_heat_on)
+        exp_tendency!(dY, Y, p, t0)
         @test maximum(abs.(Array(parent(dY.soil.ρe_int)))) == FT(0)
         @test maximum(abs.(Array(parent(dY.soil.ϑ_l)))) == FT(0)
         @test maximum(abs.(Array(parent(dY.soil.θ_i)))) == FT(0)
@@ -268,12 +273,16 @@ for FT in (Float32, Float64)
         imp_tendency! = make_imp_tendency(soil_water_on)
         dY = similar(Y)
 
-        # Test explicit tendency - should update internal energy, set others to 0
+        # Test explicit tendency - all should be zero, since water is treated implicitly
         exp_tendency!(dY, Y, p, t0)
         ClimaLand.dss!(dY, p, t0)
-
+        @test maximum(abs.(Array(parent(dY.soil.ρe_int)))) == FT(0)
         @test maximum(abs.(Array(parent(dY.soil.θ_i)))) == FT(0)
         @test maximum(abs.(Array(parent(dY.soil.ϑ_l)))) == FT(0)
+
+        # Test implicit tendency - should update liquid water content and energy, no phase change so ice has zero change
+        imp_tendency!(dY, Y, p, t0)
+        @test maximum(abs.(Array(parent(dY.soil.θ_i)))) == FT(0)
 
         function dKdθ(θ::FT)::FT where {FT}
             S = (θ - θ_r) / (ν - θ_r)
@@ -372,10 +381,6 @@ for FT in (Float32, Float64)
         @test mean(abs.(expected .- Array(parent(dY.soil.ρe_int)))) /
               median(Array(parent(Y.soil.ρe_int))) < 10^2 * eps(FT)
 
-        # Test implicit tendency - should update liquid water content, set others to 0
-        imp_tendency!(dY, Y, p, t0)
-        @test maximum(abs.(Array(parent(dY.soil.θ_i)))) == FT(0)
-        @test maximum(abs.(Array(parent(dY.soil.ρe_int)))) == FT(0)
 
         θ = Array(parent(Y.soil.ϑ_l))# on the center
         θ_face = 0.5 * (θ[2:end] + θ[1:(end - 1)])
@@ -533,13 +538,17 @@ for FT in (Float32, Float64)
         exp_tendency! = make_exp_tendency(soil_both_on)
         dY = similar(Y)
 
-        # Test explicit tendency - expect internal energy to be updated, set others to 0
+        # Test explicit tendency - expect all to be zero as no phase change
         exp_tendency!(dY, Y, p, t0)
         ClimaLand.dss!(dY, p, t0)
 
+        @test maximum(abs.(Array(parent(dY.soil.ρe_int)))) == FT(0)
         @test maximum(abs.(Array(parent(dY.soil.θ_i)))) == FT(0)
         @test maximum(abs.(Array(parent(dY.soil.ϑ_l)))) == FT(0)
 
+        # Test implicit tendency - expect liquid water content and energy to be updated, set ice change to zero
+        imp_tendency! = make_imp_tendency(soil_both_on)
+        imp_tendency!(dY, Y, p, t0)
         ρe_int_l = Array(
             parent(
                 Soil.volumetric_internal_energy_liq.(
@@ -589,12 +598,7 @@ for FT in (Float32, Float64)
         @test mean(abs.(expected .- Array(parent(dY.soil.ρe_int)))) /
               median(Array(parent(Y.soil.ρe_int))) < 10^2 * eps(FT)
 
-        # Test implicit tendency - expect liquid water content to be updated, set others to 0
-        imp_tendency! = make_imp_tendency(soil_both_on)
-        imp_tendency!(dY, Y, p, t0)
-
         @test maximum(abs.(Array(parent(dY.soil.θ_i)))) == FT(0)
-        @test maximum(abs.(Array(parent(dY.soil.ρe_int)))) == FT(0)
 
         θ = Array(parent(Y.soil.ϑ_l))# on the center
         θ_face = 0.5 * (θ[2:end] + θ[1:(end - 1)])

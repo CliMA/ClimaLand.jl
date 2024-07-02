@@ -121,7 +121,7 @@ no_flux_boundary_fluxes = (;
 
 t0 = Float64(0)
 tf = Float64(24 * 3600 * 15)
-dt = Float64(10.0)
+dt = Float64(900.0)
 Δz = 0.01
 zmax = FT(0)
 zmin = FT(-1.6)
@@ -261,7 +261,7 @@ evap = [
         sv.saveval[k].soil.turbulent_fluxes.vapor_flux .*
         (1 .- sv.saveval[k].soil.ice_frac),
     )[1] for k in 1:length(sol.t)
-]
+];
 
 ## Repeat with no drainage (Ksat = 0, different BC), and with evaporation, in shorter domain
 # This requires different boundary conditions yet again:
@@ -328,7 +328,7 @@ evap_no_drainage = [
         sv.saveval[k].soil.turbulent_fluxes.vapor_flux .*
         (1 .- sv.saveval[k].soil.ice_frac),
     )[1] for k in 1:length(sol.t)
-]
+];
 
 
 # Figures
