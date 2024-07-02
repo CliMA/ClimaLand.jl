@@ -45,7 +45,7 @@ G_Function = CLMGFunction(χl)
 ϵ_canopy = FT(0.97)
 
 # Energy Balance model
-ac_canopy = FT(2.5e3)
+ac_canopy = FT(7.5e3)
 
 # Conductance Model
 g1 = FT(141) # Wang et al: 141 sqrt(Pa) for Medlyn model; Natan used 300.

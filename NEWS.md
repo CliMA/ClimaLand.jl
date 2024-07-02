@@ -9,6 +9,8 @@ Improve Performance of soil canopy model
 Add base global soil canopy run to benchmark and experiments
 - PR [#591] adds benchmark run
 - PR [#669] adds topmodel runoff
+Soil implicit solver
+- PR [#678] updates Jacobian for soil energy
 
 v0.12.4
 --------

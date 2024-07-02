@@ -310,7 +310,7 @@ land = SoilCanopyModel{FT}(;
 Y, p, cds = initialize(land)
 
 t0 = 0.0
-dt = 180.0
+dt = 900.0
 tf = 3600
 
 init_soil(ν, θ_r) = θ_r + (ν - θ_r) / 2
