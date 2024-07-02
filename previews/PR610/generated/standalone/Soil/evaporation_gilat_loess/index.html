@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Gilat Loess Evaporation · ClimaLand.jl</title><meta name="title" content="Gilat Loess Evaporation · ClimaLand.jl"/><meta property="og:title" content="Gilat Loess Evaporation · ClimaLand.jl"/><meta property="twitter:title" content="Gilat Loess Evaporation · ClimaLand.jl"/><meta name="description" content="Documentation for ClimaLand.jl."/><meta property="og:description" content="Documentation for ClimaLand.jl."/><meta property="twitter:description" content="Documentation for ClimaLand.jl."/><script data-outdated-warner src="../../../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../../../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../../../assets/documenter.js"></script><script src="../../../../search_index.js"></script><script src="../../../../siteinfo.js"></script><script src="../../../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../../../"><img src="../../../../assets/logo.svg" alt="ClimaLand.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../../../">ClimaLand.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../../../">Home</a></li><li><input class="collapse-toggle" id="menuitem-2" type="checkbox"/><label class="tocitem" for="menuitem-2"><span class="docs-label">APIs</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><input class="collapse-toggle" id="menuitem-2-1" type="checkbox"/><label class="tocitem" for="menuitem-2-1"><span class="docs-label">ClimaLand</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../../APIs/ClimaLand/">ClimaLand</a></li><li><a class="tocitem" href="../../../../APIs/Regridder/">Parameter Dataset Tools</a></li><li><a class="tocitem" href="../../../../APIs/shared_utilities/">Shared Utilities</a></li><li><input class="collapse-toggle" id="menuitem-2-1-4" type="checkbox"/><label class="tocitem" for="menuitem-2-1-4"><span class="docs-label">Soil</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../../APIs/Soil/">Soil Energy and Hydrology</a></li><li><a class="tocitem" href="../../../../APIs/SoilBiogeochemistry/">Soil Biogeochemistry</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-2-1-5" type="checkbox"/><label class="tocitem" for="menuitem-2-1-5"><span class="docs-label">Canopy</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../../APIs/canopy/Canopy/">Canopy Models</a></li><li><a class="tocitem" href="../../../../APIs/canopy/PlantHydraulics/">Plant Hydraulics</a></li><li><a class="tocitem" href="../../../../APIs/canopy/Photosynthesis/">Canopy Photosynthesis</a></li><li><a class="tocitem" href="../../../../APIs/canopy/RadiativeTransfer/">Canopy RT</a></li><li><a class="tocitem" href="../../../../APIs/canopy/CanopyEnergy/">Canopy Energy</a></li><li><a class="tocitem" href="../../../../APIs/canopy/StomatalConductance/">Canopy Stomatal Conductance</a></li><li><a class="tocitem" href="../../../../APIs/canopy/AutotrophicRespiration/">Canopy Autotrophic Respiration</a></li></ul></li><li><a class="tocitem" href="../../../../APIs/SurfaceWater/">Surface Water Models</a></li><li><a class="tocitem" href="../../../../APIs/Bucket/">Bucket Model</a></li><li><a class="tocitem" href="../../../../APIs/Snow/">Snow Model</a></li></ul></li></ul></li><li><a class="tocitem" href="../../../../Contributing/">Contribution guide</a></li><li><input class="collapse-toggle" id="menuitem-4" type="checkbox" checked/><label class="tocitem" for="menuitem-4"><span class="docs-label">Tutorials</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><input class="collapse-toggle" id="menuitem-4-1" type="checkbox"/><label class="tocitem" for="menuitem-4-1"><span class="docs-label">For model developers</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../Usage/model_tutorial/">Intro to standalone models</a></li><li><a class="tocitem" href="../../Usage/LSM_single_column_tutorial/">Intro to multi-component models</a></li><li><a class="tocitem" href="../../Usage/domain_tutorial/">Intro to ClimaLand Domains</a></li><li><a class="tocitem" href="../../../shared_utilities/driver_tutorial/">Intro to forced site-level runs</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-4-2" type="checkbox" checked/><label class="tocitem" for="menuitem-4-2"><span class="docs-label">Running simulations</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><input class="collapse-toggle" id="menuitem-4-2-1" type="checkbox"/><label class="tocitem" for="menuitem-4-2-1"><span class="docs-label">Bucket LSM</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../Bucket/bucket_tutorial/">Introduction to the Land Bucket Model</a></li><li><a class="tocitem" href="../../Bucket/coupled_bucket/">Setting up a Coupled Simulation</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-4-2-2" type="checkbox" checked/><label class="tocitem" for="menuitem-4-2-2"><span class="docs-label">Soil modeling</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../boundary_conditions/">Boundary conditions</a></li><li><a class="tocitem" href="../richards_equation/">Richards Equation</a></li><li><a class="tocitem" href="../soil_energy_hydrology/">Energy and Hydrology</a></li><li><a class="tocitem" href="../freezing_front/">Phase Changes</a></li><li><a class="tocitem" href="../layered_soil/">Layered Soil</a></li><li><a class="tocitem" href="../evaporation/">Coarse Sand Evaporation</a></li><li class="is-active"><a class="tocitem" href>Gilat Loess Evaporation</a></li><li><a class="tocitem" href="../sublimation/">Bare soil site</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-4-2-3" type="checkbox"/><label class="tocitem" for="menuitem-4-2-3"><span class="docs-label">Canopy modeling</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../Canopy/canopy_tutorial/">Standalone Canopy</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-4-2-4" type="checkbox"/><label class="tocitem" for="menuitem-4-2-4"><span class="docs-label">Integrated soil+canopy modeling</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../integrated/soil_canopy_tutorial/">Coupled Canopy and Soil</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-4-2-5" type="checkbox"/><label class="tocitem" for="menuitem-4-2-5"><span class="docs-label">Bucket LSM</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../Bucket/bucket_tutorial/">Introduction to the Land Bucket Model</a></li><li><a class="tocitem" href="../../Bucket/coupled_bucket/">Setting up a Coupled Simulation</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-4-2-6" type="checkbox"/><label class="tocitem" for="menuitem-4-2-6"><span class="docs-label">Snow Modeling</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../Snow/base_tutorial/">Seasonal Snow Timeseries Generation with a Neural Network</a></li><li><a class="tocitem" href="../../Snow/data_tutorial/">Scraping SNOTEL Data</a></li></ul></li></ul></li></ul></li><li><a class="tocitem" href="../../../../folderstructure/">Repository structure</a></li><li><input class="collapse-toggle" id="menuitem-6" type="checkbox"/><label class="tocitem" for="menuitem-6"><span class="docs-label">Standalone models</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><input class="collapse-toggle" id="menuitem-6-1" type="checkbox"/><label class="tocitem" for="menuitem-6-1"><span class="docs-label">Vegetation</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><input class="collapse-toggle" id="menuitem-6-1-1" type="checkbox"/><label class="tocitem" for="menuitem-6-1-1"><span class="docs-label">Radiative transfer</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../../standalone/pages/vegetation/radiative_transfer/beer_model/">Beer model</a></li><li><a class="tocitem" href="../../../../standalone/pages/vegetation/radiative_transfer/twostream_model/">Two-Stream model</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-6-1-2" type="checkbox"/><label class="tocitem" for="menuitem-6-1-2"><span class="docs-label">Photosynthesis</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../../standalone/pages/vegetation/photosynthesis/farquhar_model/">Farquhar model</a></li><li><a class="tocitem" href="../../../../standalone/pages/vegetation/photosynthesis/optimality_model/">Optimality model</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-6-1-3" type="checkbox"/><label class="tocitem" for="menuitem-6-1-3"><span class="docs-label">Stomatal conductance</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../../standalone/pages/vegetation/stomatal_conductance/medlyn_model/">Medlyn model</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-6-1-4" type="checkbox"/><label class="tocitem" for="menuitem-6-1-4"><span class="docs-label">Plant hydraulics</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../../standalone/pages/vegetation/plant_hydraulics/van_genuchten_model/">Van Genuchten model</a></li></ul></li></ul></li><li><input class="collapse-toggle" id="menuitem-6-2" type="checkbox"/><label class="tocitem" for="menuitem-6-2"><span class="docs-label">Soil</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><input class="collapse-toggle" id="menuitem-6-2-1" type="checkbox"/><label class="tocitem" for="menuitem-6-2-1"><span class="docs-label">Biogeochemistry</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../../standalone/pages/soil/biogeochemistry/DAMM_model/">DAMM model</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-6-2-2" type="checkbox"/><label class="tocitem" for="menuitem-6-2-2"><span class="docs-label">Hydrology</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../../standalone/pages/soil/hydrology/richards_model/">Richards model</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-6-2-3" type="checkbox"/><label class="tocitem" for="menuitem-6-2-3"><span class="docs-label">Energy</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../../standalone/pages/soil/energy/energy_model/">Energy model</a></li></ul></li></ul></li><li><input class="collapse-toggle" id="menuitem-6-3" type="checkbox"/><label class="tocitem" for="menuitem-6-3"><span class="docs-label">Snow</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../../standalone/pages/snow/snow_model/">Snow model</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-6-4" type="checkbox"/><label class="tocitem" for="menuitem-6-4"><span class="docs-label">SurfaceWater</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../../standalone/pages/surface_water/surface_water_model/">Surface water model</a></li></ul></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Tutorials</a></li><li><a class="is-disabled">Running simulations</a></li><li><a class="is-disabled">Soil modeling</a></li><li class="is-active"><a href>Gilat Loess Evaporation</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Gilat Loess Evaporation</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/CliMA/ClimaLand.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/CliMA/ClimaLand.jl/../../../../.." title="View source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><p>This sets up the simulation that mimicks the lab experiment presented in Gardener 1970b and modeled also by Lehmann and Or, 2024.</p><p>For further details on how to setup a simulation, please see our other Soil tutorials. This one is very terse and does not provide complete explanations</p><p>The same experiment is carried out 3 times</p><ol><li>No evaporation (zero flux boundary conditions)</li><li>With evaporation but no drainage (Ksat = 0)</li><li>With evaporation and drainage</li></ol><pre><code class="language-julia hljs">using CairoMakie
+import SciMLBase
+import ClimaTimeSteppers as CTS
+using Thermodynamics
+
+using ClimaCore
+import ClimaParams as CP
+using SurfaceFluxes
+using StaticArrays
+using Dates
+using ArtifactWrappers
+using DelimitedFiles: readdlm
+
+using ClimaLand
+using ClimaLand.Domains: Column
+using ClimaLand.Soil
+import ClimaLand
+import ClimaLand.Parameters as LP
+import SurfaceFluxes.Parameters as SFP
+
+FT = Float64;
+earth_param_set = LP.LandParameters(FT)
+thermo_params = LP.thermodynamic_parameters(earth_param_set);</code></pre><p>Parameters</p><pre><code class="language-julia hljs">K_sat = FT(0.01 / 3600 / 24)
+vg_n = FT(1.45)
+vg_α = FT(1.5)
+hcm = vanGenuchten{FT}(; α = vg_α, n = vg_n)
+ν = FT(0.4)
+θ_r = FT(0.04)
+S_s = FT(1e-3)
+ν_ss_om = FT(0.0)
+ν_ss_quartz = FT(0.3)
+ν_ss_gravel = FT(0.0)
+emissivity = FT(1.0)
+PAR_albedo = FT(0.2)
+NIR_albedo = FT(0.4)
+z_0m = FT(1e-3)
+z_0b = FT(1e-4)
+d_ds = FT(0.01)# 10mm
+params = ClimaLand.Soil.EnergyHydrologyParameters(
+    FT;
+    ν,
+    ν_ss_om,
+    ν_ss_quartz,
+    ν_ss_gravel,
+    hydrology_cm = hcm,
+    K_sat,
+    S_s,
+    θ_r,
+    PAR_albedo,
+    NIR_albedo,
+    emissivity,
+    z_0m,
+    z_0b,
+    earth_param_set,
+    d_ds,
+);
+
+ref_time = DateTime(2005)
+SW_d = (t) -&gt; 0
+LW_d = (t) -&gt; 294.15^4 * 5.67e-8
+radiation = PrescribedRadiativeFluxes(
+    FT,
+    TimeVaryingInput(SW_d),
+    TimeVaryingInput(LW_d),
+    ref_time,
+)</code></pre><pre><code class="nohighlight hljs">PrescribedRadiativeFluxes{Float64, TimeVaryingInputsExt.AnalyticTimeVaryingInput{Main.var&quot;##321&quot;.var&quot;#1#2&quot;}, TimeVaryingInputsExt.AnalyticTimeVaryingInput{Main.var&quot;##321&quot;.var&quot;#3#4&quot;}, Dates.DateTime, Nothing}(TimeVaryingInputsExt.AnalyticTimeVaryingInput{Main.var&quot;##321&quot;.var&quot;#1#2&quot;}(Main.var&quot;##321&quot;.var&quot;#1#2&quot;()), TimeVaryingInputsExt.AnalyticTimeVaryingInput{Main.var&quot;##321&quot;.var&quot;#3#4&quot;}(Main.var&quot;##321&quot;.var&quot;#3#4&quot;()), Dates.DateTime(&quot;2005-01-01T00:00:00&quot;), nothing)</code></pre><p>Atmos</p><pre><code class="language-julia hljs">T_air = FT(301.15)
+rh = FT(0.38)
+esat = Thermodynamics.saturation_vapor_pressure(
+    thermo_params,
+    T_air,
+    Thermodynamics.Liquid(),
+)
+e = rh * esat
+q = FT(0.622 * e / (101325 - 0.378 * e))
+precip = (t) -&gt; 0.0
+T_atmos = (t) -&gt; T_air
+u_atmos = (t) -&gt; 1.0
+q_atmos = (t) -&gt; q
+h_atmos = FT(0.1)
+P_atmos = (t) -&gt; 101325
+gustiness = FT(1e-2)
+atmos = PrescribedAtmosphere(
+    TimeVaryingInput(precip),
+    TimeVaryingInput(precip),
+    TimeVaryingInput(T_atmos),
+    TimeVaryingInput(u_atmos),
+    TimeVaryingInput(q_atmos),
+    TimeVaryingInput(P_atmos),
+    ref_time,
+    h_atmos;
+    gustiness = gustiness,
+)</code></pre><pre><code class="nohighlight hljs">PrescribedAtmosphere{Float64, TimeVaryingInputsExt.AnalyticTimeVaryingInput{Main.var&quot;##321&quot;.var&quot;#5#6&quot;}, TimeVaryingInputsExt.AnalyticTimeVaryingInput{Main.var&quot;##321&quot;.var&quot;#5#6&quot;}, TimeVaryingInputsExt.AnalyticTimeVaryingInput{Main.var&quot;##321&quot;.var&quot;#7#8&quot;}, TimeVaryingInputsExt.AnalyticTimeVaryingInput{Main.var&quot;##321&quot;.var&quot;#9#10&quot;}, TimeVaryingInputsExt.AnalyticTimeVaryingInput{Main.var&quot;##321&quot;.var&quot;#11#12&quot;}, TimeVaryingInputsExt.AnalyticTimeVaryingInput{Main.var&quot;##321&quot;.var&quot;#13#14&quot;}, TimeVaryingInputsExt.AnalyticTimeVaryingInput{ClimaLand.var&quot;#22#25&quot;}, Dates.DateTime}(TimeVaryingInputsExt.AnalyticTimeVaryingInput{Main.var&quot;##321&quot;.var&quot;#5#6&quot;}(Main.var&quot;##321&quot;.var&quot;#5#6&quot;()), TimeVaryingInputsExt.AnalyticTimeVaryingInput{Main.var&quot;##321&quot;.var&quot;#5#6&quot;}(Main.var&quot;##321&quot;.var&quot;#5#6&quot;()), TimeVaryingInputsExt.AnalyticTimeVaryingInput{Main.var&quot;##321&quot;.var&quot;#7#8&quot;}(Main.var&quot;##321&quot;.var&quot;#7#8&quot;()), TimeVaryingInputsExt.AnalyticTimeVaryingInput{Main.var&quot;##321&quot;.var&quot;#9#10&quot;}(Main.var&quot;##321&quot;.var&quot;#9#10&quot;()), TimeVaryingInputsExt.AnalyticTimeVaryingInput{Main.var&quot;##321&quot;.var&quot;#11#12&quot;}(Main.var&quot;##321&quot;.var&quot;#11#12&quot;()), TimeVaryingInputsExt.AnalyticTimeVaryingInput{Main.var&quot;##321&quot;.var&quot;#13#14&quot;}(Main.var&quot;##321&quot;.var&quot;#13#14&quot;()), TimeVaryingInputsExt.AnalyticTimeVaryingInput{ClimaLand.var&quot;#22#25&quot;}(ClimaLand.var&quot;#22#25&quot;()), Dates.DateTime(&quot;2005-01-01T00:00:00&quot;), 0.1, 0.01)</code></pre><p>Simulation setup - no evaporation Boundary conditions</p><pre><code class="language-julia hljs">zero_water_flux = WaterFluxBC((p, t) -&gt; 0)
+zero_heat_flux = HeatFluxBC((p, t) -&gt; 0)
+no_flux_boundary_fluxes = (;
+    top = WaterHeatBC(; water = zero_water_flux, heat = zero_heat_flux),
+    bottom = WaterHeatBC(; water = zero_water_flux, heat = zero_heat_flux),
+);
+
+t0 = Float64(0)
+tf = Float64(24 * 3600 * 15)
+dt = Float64(10.0)
+Δz = 0.01
+zmax = FT(0)
+zmin = FT(-1.6)
+nelems = Int((zmax - zmin) / Δz)
+soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems)
+z = ClimaCore.Fields.coordinate_field(soil_domain.space.subsurface).z
+
+soil = Soil.EnergyHydrology{FT}(;
+    parameters = params,
+    domain = soil_domain,
+    boundary_conditions = no_flux_boundary_fluxes,
+    sources = (),
+);</code></pre><p>Initial conditions</p><pre><code class="language-julia hljs">Y, p, cds = initialize(soil)
+function estimated_ic(z)
+    0.34 / (1 + exp(-(z + 0.165) / 0.005)) + 0.05
+end
+function init_soil!(Y, z, params)
+    FT = eltype(Y.soil.ϑ_l)
+    Y.soil.ϑ_l .= estimated_ic.(z)
+    Y.soil.θ_i .= 0
+    T = FT(294.15)
+    ρc_s = @. Soil.volumetric_heat_capacity(Y.soil.ϑ_l, Y.soil.θ_i, params)
+    Y.soil.ρe_int =
+        Soil.volumetric_internal_energy.(Y.soil.θ_i, ρc_s, T, Ref(params))
+end
+
+init_soil!(Y, z, soil.parameters)
+set_initial_cache! = make_set_initial_cache(soil)
+set_initial_cache!(p, Y, t0);</code></pre><p>Timestepping:</p><pre><code class="language-julia hljs">soil_exp_tendency! = make_exp_tendency(soil)
+timestepper = CTS.RK4()
+ode_algo = CTS.ExplicitAlgorithm(timestepper);</code></pre><p>Problem definition and callbacks</p><pre><code class="language-julia hljs">prob = SciMLBase.ODEProblem(
+    CTS.ClimaODEFunction(T_exp! = soil_exp_tendency!, dss! = ClimaLand.dss!),
+    Y,
+    (t0, tf),
+    p,
+)
+saveat = Array(t0:3600.0:tf)
+sv = (;
+    t = Array{Float64}(undef, length(saveat)),
+    saveval = Array{NamedTuple}(undef, length(saveat)),
+)
+saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat)
+cb = SciMLBase.CallbackSet(saving_cb);
+
+sol_no_evap =
+    SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb, saveat = saveat);</code></pre><p>Repeat with evaporation and drainage This requires different initial conditions</p><pre><code class="language-julia hljs">top_bc = ClimaLand.Soil.AtmosDrivenFluxBC(atmos, radiation)
+evap_boundary_fluxes = (;
+    top = top_bc,
+    bottom = WaterHeatBC(; water = zero_water_flux, heat = zero_heat_flux),
+)
+
+soil = Soil.EnergyHydrology{FT}(;
+    parameters = params,
+    domain = soil_domain,
+    boundary_conditions = evap_boundary_fluxes,
+    sources = (),
+)
+Y, p, cds = initialize(soil)
+init_soil!(Y, z, soil.parameters)
+set_initial_cache! = make_set_initial_cache(soil)
+set_initial_cache!(p, Y, t0)
+soil_exp_tendency! = make_exp_tendency(soil)
+prob = SciMLBase.ODEProblem(
+    CTS.ClimaODEFunction(T_exp! = soil_exp_tendency!, dss! = ClimaLand.dss!),
+    Y,
+    (t0, tf),
+    p,
+)
+saveat = Array(t0:3600.0:tf)
+sv = (;
+    t = Array{Float64}(undef, length(saveat)),
+    saveval = Array{NamedTuple}(undef, length(saveat)),
+)
+saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat)
+updateat = deepcopy(saveat)
+updatefunc = ClimaLand.make_update_drivers(atmos, radiation)
+driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
+cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
+sol = SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb, saveat = saveat)
+evap = [
+    parent(
+        sv.saveval[k].soil.turbulent_fluxes.vapor_flux .*
+        (1 .- sv.saveval[k].soil.ice_frac),
+    )[1] for k in 1:length(sol.t)
+]
+
+# Repeat with no drainage (Ksat = 0, different BC), and with evaporation, in shorter domain</code></pre><pre><code class="nohighlight hljs">361-element Vector{Float64}:
+ 5.2420741318383e-8
+ 4.3637157827960686e-8
+ 4.181661428739082e-8
+ 4.0792639443564077e-8
+ 4.008678998514818e-8
+ 3.9548454519182866e-8
+ 3.911389333891116e-8
+ 3.875095491092084e-8
+ 3.84410841289315e-8
+ 3.8172428188770123e-8
+ 3.793685530720402e-8
+ 3.772849820027062e-8
+ 3.754293828188138e-8
+ 3.737671791821851e-8
+ 3.722705526700233e-8
+ 3.709167343333934e-8
+ 3.696868861664308e-8
+ 3.685653079883968e-8
+ 3.675388486571023e-8
+ 3.6659645349599225e-8
+ 3.657287915756551e-8
+ 3.649279194544653e-8
+ 3.641869806898155e-8
+ 3.634999721766372e-8
+ 3.628615878786472e-8
+ 3.6226711834680694e-8
+ 3.617123791369029e-8
+ 3.611936521861573e-8
+ 3.607076340004983e-8
+ 3.602513890902295e-8
+ 3.598223084811122e-8
+ 3.594180732438703e-8
+ 3.5903662259875445e-8
+ 3.5867612543705727e-8
+ 3.583349533328046e-8
+ 3.580116531097296e-8
+ 3.5770491860301e-8
+ 3.5741356373119333e-8
+ 3.571365001325137e-8
+ 3.5687272127067775e-8
+ 3.5662129250559e-8
+ 3.563813451434697e-8
+ 3.561520724262138e-8
+ 3.559327261123308e-8
+ 3.557226130265391e-8
+ 3.55521091420318e-8
+ 3.553275671993744e-8
+ 3.551414901344438e-8
+ 3.549623501628047e-8
+ 3.18965380030116e-8
+ 2.734509423212533e-8
+ 2.5801283359680707e-8
+ 2.4615343706145374e-8
+ 2.3634564200510492e-8
+ 2.2792332663589533e-8
+ 2.2051237040093225e-8
+ 2.1387891019434722e-8
+ 2.0786576556138493e-8
+ 2.023615179430365e-8
+ 1.972839093673837e-8
+ 1.925702335012063e-8
+ 1.8817143464329798e-8
+ 1.8404830691560636e-8
+ 1.801689486223958e-8
+ 1.7650700081248056e-8
+ 1.730403943917488e-8
+ 1.6975043763777032e-8
+ 1.6662113785777735e-8
+ 1.636386879609748e-8
+ 1.607910716253909e-8
+ 1.580677553328464e-8
+ 1.5545944508623003e-8
+ 1.5295789200387027e-8
+ 1.5055573534321405e-8
+ 1.4824637453553594e-8
+ 1.4602386395657991e-8
+ 1.4388282569659621e-8
+ 1.418183767131374e-8
+ 1.3982606757661396e-8
+ 1.3790183063432642e-8
+ 1.3604193588432403e-8
+ 1.3424295320446915e-8
+ 1.3250171985533739e-8
+ 1.308153123870383e-8
+ 1.2918102224577314e-8
+ 1.2759633450628169e-8
+ 1.2605890925888689e-8
+ 1.2456656526089382e-8
+ 1.2311726552643958e-8
+ 1.2170910458013268e-8
+ 1.2034029714152354e-8
+ 1.1900916804268897e-8
+ 1.1771414321137312e-8
+ 1.1645374157860936e-8
+ 1.1522656779266695e-8
+ 1.1403130564074937e-8
+ 1.1286671209558427e-8
+ 1.1173161191679364e-8
+ 1.106248927469131e-8
+ 1.0954550064961445e-8
+ 1.0849243604406712e-8
+ 1.0746474999461052e-8
+ 1.0646154081933663e-8
+ 1.05481950985203e-8
+ 1.0452516426086766e-8
+ 1.0359040310148614e-8
+ 1.0267692624272471e-8
+ 1.0178402648363392e-8
+ 1.0091102864041184e-8
+ 1.0005728765491072e-8
+ 9.922218684368117e-9
+ 9.840513627478178e-9
+ 9.760557126095154e-9
+ 9.682295095898577e-9
+ 9.605675706616827e-9
+ 9.53064926055812e-9
+ 9.457168079291948e-9
+ 9.385186397819791e-9
+ 9.314660265638544e-9
+ 9.24554745416048e-9
+ 9.177807370010034e-9
+ 9.11140097376167e-9
+ 9.04629070373223e-9
+ 8.982440404470994e-9
+ 8.919815259639193e-9
+ 8.858381728979376e-9
+ 8.798107489113105e-9
+ 8.738961377913001e-9
+ 8.680913342201185e-9
+ 8.623934388543102e-9
+ 8.567996536891997e-9
+ 8.513072776859683e-9
+ 8.459137026377998e-9
+ 8.406164092539658e-9
+ 8.354129634412434e-9
+ 8.303010127658048e-9
+ 8.25278283079653e-9
+ 8.203425753002912e-9
+ 8.154917623335423e-9
+ 8.10723786132644e-9
+ 8.060366548880218e-9
+ 8.014284403433902e-9
+ 7.96897275234339e-9
+ 7.924413508457192e-9
+ 7.880589146841426e-9
+ 7.837482682613452e-9
+ 7.795077649840154e-9
+ 7.753358081456253e-9
+ 7.712308490150215e-9
+ 7.671913850169859e-9
+ 7.632159579996564e-9
+ 7.593031525841772e-9
+ 7.554515945914122e-9
+ 7.516599495416616e-9
+ 7.479269212228656e-9
+ 7.44251250323223e-9
+ 7.406317131247768e-9
+ 7.370671202541623e-9
+ 7.335563154874716e-9
+ 7.3009817460626115e-9
+ 7.266916043016712e-9
+ 7.233355411244334e-9
+ 7.200289504779927e-9
+ 7.167708256527928e-9
+ 7.135601868994859e-9
+ 7.103960805392104e-9
+ 7.072775781089867e-9
+ 7.042037755407913e-9
+ 7.0117379237241556e-9
+ 6.981867709889399e-9
+ 6.952418758932201e-9
+ 6.92338293004165e-9
+ 6.8947522898172176e-9
+ 6.866519105773747e-9
+ 6.838675840090994e-9
+ 6.811215143599073e-9
+ 6.78412984999046e-9
+ 6.757412970250468e-9
+ 6.731057687299424e-9
+ 6.7050573508380915e-9
+ 6.679405472390251e-9
+ 6.6540957205358906e-9
+ 6.6291219163278225e-9
+ 6.604478028885587e-9
+ 6.580158171158568e-9
+ 6.55615659585197e-9
+ 6.532467691506842e-9
+ 6.509085978725847e-9
+ 6.486006106536017e-9
+ 6.463222848879335e-9
+ 6.440731101221574e-9
+ 6.418525877270244e-9
+ 6.39660230579368e-9
+ 6.374955627531715e-9
+ 6.353581192193122e-9
+ 6.3324744555315924e-9
+ 6.311630976496697e-9
+ 6.291046414456879e-9
+ 6.270716526490034e-9
+ 6.250637164742693e-9
+ 6.230804273855253e-9
+ 6.211213888454327e-9
+ 6.191862130711585e-9
+ 6.172745207970423e-9
+ 6.153859410440064e-9
+ 6.135201108957911e-9
+ 6.1167667528188756e-9
+ 6.098552867673421e-9
+ 6.080556053491138e-9
+ 6.062772982590421e-9
+ 6.045200397733295e-9
+ 6.027835110281335e-9
+ 6.010673998413322e-9
+ 5.9937140054022616e-9
+ 5.976952137948221e-9
+ 5.9603854645667214e-9
+ 5.9440111140291275e-9
+ 5.9278262738532496e-9
+ 5.911828188843259e-9
+ 5.896014159674499e-9
+ 5.88038154152356e-9
+ 5.864927742740238e-9
+ 5.849650223559998e-9
+ 5.834546494855532e-9
+ 5.8196141169254425e-9
+ 5.8048506983184635e-9
+ 5.790253894692222e-9
+ 5.7758214077046e-9
+ 5.761550983936872e-9
+ 5.74744041384685e-9
+ 5.7334875307521654e-9
+ 5.719690209840461e-9
+ 5.706046367207718e-9
+ 5.692553958922226e-9
+ 5.679210980114171e-9
+ 5.6660154640890035e-9
+ 5.65296548146534e-9
+ 5.640059139334586e-9
+ 5.6272945804433e-9
+ 5.6146699823969555e-9
+ 5.602183556883752e-9
+ 5.589833548919153e-9
+ 5.5776182361095955e-9
+ 5.565535927935001e-9
+ 5.5535849650500505e-9
+ 5.541763718602756e-9
+ 5.5300705895709746e-9
+ 5.51850400811555e-9
+ 5.507062432950351e-9
+ 5.4957443507279525e-9
+ 5.484548275441253e-9
+ 5.473472747841322e-9
+ 5.462516334869093e-9
+ 5.451677629102886e-9
+ 5.4409552482198225e-9
+ 5.430347834472071e-9
+ 5.4198540541766e-9
+ 5.4094725972184935e-9
+ 5.399202176568042e-9
+ 5.3890415278104924e-9
+ 5.378989408688754e-9
+ 5.3690445986583165e-9
+ 5.359205898454093e-9
+ 5.349472129668567e-9
+ 5.339842134341726e-9
+ 5.330314774560447e-9
+ 5.320888932069055e-9
+ 5.311563507888326e-9
+ 5.302337421944447e-9
+ 5.2932096127055e-9
+ 5.284179036826271e-9
+ 5.275244668800027e-9
+ 5.266405500617135e-9
+ 5.2576605414299986e-9
+ 5.249008817223496e-9
+ 5.240449370491211e-9
+ 5.231981259916092e-9
+ 5.2236035600567795e-9
+ 5.215315361037647e-9
+ 5.207115768243859e-9
+ 5.1990039020204585e-9
+ 5.190978897375823e-9
+ 5.183039903689708e-9
+ 5.175186084425152e-9
+ 5.167416616845232e-9
+ 5.159730691734391e-9
+ 5.1521275131238115e-9
+ 5.144606298022224e-9
+ 5.137166276151274e-9
+ 5.1298066896855515e-9
+ 5.1225267929979834e-9
+ 5.115325852410113e-9
+ 5.108203145947296e-9
+ 5.101157963099278e-9
+ 5.094189604585646e-9
+ 5.087297382126216e-9
+ 5.08048061821677e-9
+ 5.073738645909252e-9
+ 5.067070808597266e-9
+ 5.060476459805964e-9
+ 5.053954962986723e-9
+ 5.0475056913163336e-9
+ 5.041128027500875e-9
+ 5.034821363583075e-9
+ 5.02858510075494e-9
+ 5.022418649173422e-9
+ 5.016321427780573e-9
+ 5.010292864127449e-9
+ 5.004332394201193e-9
+ 4.998439462256381e-9
+ 4.992613520649074e-9
+ 4.986854029674681e-9
+ 4.981160457408739e-9
+ 4.9755322795508404e-9
+ 4.969968979271772e-9
+ 4.964470047062963e-9
+ 4.959034980589414e-9
+ 4.9536632845448965e-9
+ 4.94835447050997e-9
+ 4.943108056812285e-9
+ 4.9379235683898866e-9
+ 4.9328005366561965e-9
+ 4.927738499368011e-9
+ 4.9227370004953275e-9
+ 4.917795590093417e-9
+ 4.912913824177395e-9
+ 4.908091264598298e-9
+ 4.903327478921833e-9
+ 4.898622040308504e-9
+ 4.893974527396193e-9
+ 4.889384524184329e-9
+ 4.884851619919914e-9
+ 4.880375408985547e-9
+ 4.8759554907890684e-9
+ 4.871591469654903e-9
+ 4.867282954717144e-9
+ 4.863029559814444e-9
+ 4.8588309033861694e-9
+ 4.854686608370652e-9
+ 4.85059630210439e-9
+ 4.8465596162233334e-9
+ 4.84257618656541e-9
+ 4.838645653074625e-9
+ 4.834767659706398e-9
+ 4.830941854334752e-9
+ 4.827167888660425e-9
+ 4.823445418120835e-9
+ 4.819774101801118e-9
+ 4.816153602346552e-9
+ 4.812583585876447e-9
+ 4.809063721899225e-9
+ 4.8055936832288234e-9
+ 4.802173145902583e-9
+ 4.79880178910002e-9
+ 4.795479295063236e-9
+ 4.792205349018215e-9
+ 4.788979639097837e-9
+ 4.785801856265529e-9
+ 4.7826716942405955e-9
+ 4.779588849424368e-9
+ 4.776553020827827e-9</code></pre><p>This requires different boundary conditions yet again: Wet boundary at bottom, zero heat flux at bottom, the previously defined atmos driven evaporation at the top.</p><pre><code class="language-julia hljs">bottom_water_bc = MoistureStateBC((p, t) -&gt; 0.35)
+no_drainage_boundary_fluxes = (;
+    top = top_bc,
+    bottom = WaterHeatBC(; water = bottom_water_bc, heat = zero_heat_flux),
+)
+zmax = FT(0)
+zmin = FT(-0.16)
+nelems = Int((zmax - zmin) / Δz)
+dt = Float64(10.0)
+soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems)
+z_no_evap = ClimaCore.Fields.coordinate_field(soil_domain.space.subsurface).z
+soil = Soil.EnergyHydrology{FT}(;
+    parameters = params,
+    domain = soil_domain,
+    boundary_conditions = no_drainage_boundary_fluxes,
+    sources = (),
+)
+Y, p, cds = initialize(soil)
+init_soil!(Y, z_no_evap, soil.parameters)
+set_initial_cache! = make_set_initial_cache(soil)
+set_initial_cache!(p, Y, t0)
+soil_exp_tendency! = make_exp_tendency(soil)
+prob = SciMLBase.ODEProblem(
+    CTS.ClimaODEFunction(T_exp! = soil_exp_tendency!, dss! = ClimaLand.dss!),
+    Y,
+    (t0, tf),
+    p,
+)
+saveat = Array(t0:3600.0:tf)
+sv = (;
+    t = Array{Float64}(undef, length(saveat)),
+    saveval = Array{NamedTuple}(undef, length(saveat)),
+)
+saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat)
+updateat = deepcopy(saveat)
+updatefunc = ClimaLand.make_update_drivers(atmos, radiation)
+driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
+cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
+sol_no_drainage =
+    SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb, saveat = saveat)
+evap_no_drainage = [
+    parent(
+        sv.saveval[k].soil.turbulent_fluxes.vapor_flux .*
+        (1 .- sv.saveval[k].soil.ice_frac),
+    )[1] for k in 1:length(sol.t)
+]</code></pre><pre><code class="nohighlight hljs">361-element Vector{Float64}:
+ 5.2420741318383e-8
+ 4.366868022376674e-8
+ 4.2062995403079494e-8
+ 4.125326890597965e-8
+ 4.066244987001461e-8
+ 4.0148525866980145e-8
+ 3.967606045152951e-8
+ 3.92369326082866e-8
+ 3.882931899086497e-8
+ 3.8452326175287344e-8
+ 3.810483144845644e-8
+ 3.778538017225999e-8
+ 3.7492296116053464e-8
+ 3.7223798383744225e-8
+ 3.69780869076761e-8
+ 3.6753398217567135e-8
+ 3.654803960056692e-8
+ 3.636040868744964e-8
+ 3.618900345416944e-8
+ 3.6032425985014596e-8
+ 3.588938221344997e-8
+ 3.575867911163507e-8
+ 3.563922031116734e-8
+ 3.553000081496501e-8
+ 3.543010124449097e-8
+ 3.533868192058552e-8
+ 3.525497697639553e-8
+ 3.5178288632129384e-8
+ 3.510798171372069e-8
+ 3.504347846441495e-8
+ 3.4984253675334434e-8
+ 3.4929830145246716e-8
+ 3.487977446894438e-8
+ 3.4833693146384734e-8
+ 3.4791229000020435e-8
+ 3.475205788480788e-8
+ 3.4715885673737085e-8
+ 3.46824455009671e-8
+ 3.4651495244520134e-8
+ 3.462281523078592e-8
+ 3.459620614368617e-8
+ 3.457148712212346e-8
+ 3.454849403022245e-8
+ 3.452707788582878e-8
+ 3.450710343369903e-8
+ 3.4488447850773965e-8
+ 3.447099957188257e-8
+ 3.445465722511098e-8
+ 3.443932866694908e-8
+ 3.4424930108130065e-8
+ 3.4411385321849706e-8
+ 3.439862492674215e-8
+ 3.438658573768357e-8
+ 3.4375210178067894e-8
+ 3.436444574778606e-8
+ 3.435424454165282e-8
+ 3.434456281348945e-8
+ 3.433536058152488e-8
+ 3.432660127115171e-8
+ 3.4318251391462855e-8
+ 3.431028024229951e-8
+ 3.430265964886496e-8
+ 3.3173607677698435e-8
+ 2.8667688188328113e-8
+ 2.755849829763702e-8
+ 2.6721798352014506e-8
+ 2.6041614644947958e-8
+ 2.5467077911414962e-8
+ 2.496914316511075e-8
+ 2.4529537442813492e-8
+ 2.4135991706074465e-8
+ 2.3779853504005787e-8
+ 2.345478074644414e-8
+ 2.315597811966525e-8
+ 2.28797264050731e-8
+ 2.2623079295244294e-8
+ 2.2383660702831863e-8
+ 2.2159524881065644e-8
+ 2.1949057218074643e-8
+ 2.1750902194498203e-8
+ 2.1563909978498e-8
+ 2.1387096116385178e-8
+ 2.121961062108012e-8
+ 2.106071393280676e-8
+ 2.0909757990432067e-8
+ 2.07661711614474e-8
+ 2.0629446125311125e-8
+ 2.0499130045289223e-8
+ 2.037481653339598e-8
+ 2.0256139034450505e-8
+ 2.0142765343424878e-8
+ 2.0034393035241317e-8
+ 1.9930745634567196e-8
+ 1.9831569389747993e-8
+ 1.9736630542886393e-8
+ 1.9645713009583328e-8
+ 1.9558616398566145e-8
+ 1.947515431462876e-8
+ 1.939515289862416e-8
+ 1.9318449566606685e-8
+ 1.9244891916885732e-8
+ 1.9174336779092754e-8
+ 1.910664938375054e-8
+ 1.9041702634418145e-8
+ 1.8979376467419632e-8
+ 1.8919557286530918e-8
+ 1.8862137462056335e-8
+ 1.8807014885307688e-8
+ 1.875409257098034e-8
+ 1.8703278300951e-8
+ 1.865448430405331e-8
+ 1.860762696722131e-8
+ 1.8562626573985116e-8
+ 1.851940706694404e-8
+ 1.8477895831301323e-8
+ 1.843802349697021e-8
+ 1.8399723757057058e-8
+ 1.836293320092075e-8
+ 1.8327591160124633e-8
+ 1.8293639565960918e-8
+ 1.8261022817267423e-8
+ 1.8229687657521384e-8
+ 1.8199583060279292e-8
+ 1.8170660122144006e-8
+ 1.814287196256043e-8
+ 1.811617362981164e-8
+ 1.8090522012678663e-8
+ 1.806587575724836e-8
+ 1.8042195188484034e-8
+ 1.8019442236132254e-8
+ 1.799758036464676e-8
+ 1.7976574506834475e-8
+ 1.7956391000919538e-8
+ 1.7936997530819808e-8
+ 1.791836306937694e-8
+ 1.7900457824368048e-8
+ 1.7883253187107414e-8
+ 1.7866721683471657e-8
+ 1.78508369272086e-8
+ 1.783557357538377e-8
+ 1.7820907285839822e-8
+ 1.7806814676564422e-8
+ 1.779327328685352e-8
+ 1.778026154016321e-8
+ 1.776775870858456e-8
+ 1.7755744878832706e-8
+ 1.7744200919690822e-8
+ 1.7733108450823044e-8
+ 1.77224498128975e-8
+ 1.771220803895654e-8
+ 1.7702366826969903e-8
+ 1.7692910513524212e-8
+ 1.7683824048573017e-8
+ 1.7675092971243266e-8
+ 1.766670338660918e-8
+ 1.7658641943397077e-8
+ 1.7650895812613694e-8
+ 1.764345266700254e-8
+ 1.7636300661362326e-8
+ 1.76294284136115e-8
+ 1.762282498662851e-8
+ 1.7616479870817954e-8
+ 1.7610382967361015e-8
+ 1.7604524572123363e-8
+ 1.759889536021468e-8
+ 1.7593486371146326e-8
+ 1.7588288994577085e-8
+ 1.7583294956628483e-8
+ 1.7578496306718703e-8
+ 1.7573885404932897e-8
+ 1.7569454909889134e-8
+ 1.7565197767064903e-8
+ 1.75611071975918e-8
+ 1.755717668749093e-8
+ 1.7553399977328386e-8
+ 1.7549771052265223e-8
+ 1.754628413251468e-8
+ 1.754293366415923e-8
+ 1.7539714310330073e-8
+ 1.7536620942731853e-8
+ 1.7533648633500752e-8
+ 1.75307926473734e-8
+ 1.752804843416937e-8
+ 1.7525411621561305e-8
+ 1.75228780081377e-8
+ 1.7520443556713605e-8
+ 1.7518104387933147e-8
+ 1.7515856774096085e-8
+ 1.751369713323794e-8
+ 1.75116220234406e-8
+ 1.7509628137356183e-8
+ 1.7507712296956504e-8
+ 1.7505871448477873e-8
+ 1.7504102657571882e-8
+ 1.75024031046369e-8
+ 1.7500770080332114e-8
+ 1.7499200981277708e-8
+ 1.74976933059093e-8
+ 1.749624465049764e-8
+ 1.749485270533522e-8
+ 1.7493515251049192e-8
+ 1.7492230155081336e-8
+ 1.749099536829242e-8
+ 1.7489808921697103e-8
+ 1.7488668923340285e-8
+ 1.7487573555276026e-8
+ 1.7486521070681997e-8
+ 1.748550979107635e-8
+ 1.7484538103645813e-8
+ 1.7483604458679103e-8
+ 1.7482707367098313e-8
+ 1.7481845398092427e-8
+ 1.7481017176833402e-8
+ 1.7480221382287753e-8
+ 1.747945674511714e-8
+ 1.7478722045656166e-8
+ 1.7478016111965965e-8
+ 1.7477337817967538e-8
+ 1.747668608165425e-8
+ 1.747605986336024e-8
+ 1.7475458164111932e-8
+ 1.7474880024030028e-8
+ 1.747432452080138e-8
+ 1.747379076821465e-8
+ 1.7473277914740482e-8
+ 1.747278514218008e-8
+ 1.7472311664356722e-8
+ 1.7471856725872037e-8
+ 1.747141960088802e-8
+ 1.7470999591985263e-8
+ 1.7470596029035834e-8
+ 1.7470208268148804e-8
+ 1.746983569063443e-8
+ 1.7469477702024823e-8
+ 1.7469133731119842e-8
+ 1.74688032290832e-8
+ 1.746848566856154e-8
+ 1.746818054284112e-8
+ 1.7467887365054493e-8
+ 1.74676056673887e-8
+ 1.7467335000343863e-8
+ 1.7467074932020323e-8
+ 1.7466825047422672e-8
+ 1.7466584947808494e-8
+ 1.7466354250042193e-8
+ 1.7466132585990556e-8
+ 1.746591960192863e-8
+ 1.7465714957985337e-8
+ 1.7465518327594103e-8
+ 1.7465329396972443e-8
+ 1.746514786462518e-8
+ 1.746497344086347e-8
+ 1.7464805847332647e-8
+ 1.7464644816584853e-8
+ 1.7464490091641584e-8
+ 1.7464341425585086e-8
+ 1.7464198581163993e-8
+ 1.7464061330418308e-8
+ 1.7463929454311694e-8
+ 1.7463802742388684e-8
+ 1.7463680992427894e-8
+ 1.7463564010131338e-8
+ 1.74634516088029e-8
+ 1.7463343609063986e-8
+ 1.7463239838556046e-8
+ 1.7463140131664867e-8
+ 1.7463044329271134e-8
+ 1.7462952278475866e-8
+ 1.7462863832375292e-8
+ 1.746277884981072e-8
+ 1.746269719515607e-8
+ 1.7462618738091986e-8
+ 1.746254335340682e-8
+ 1.7462470920788184e-8
+ 1.7462401324633626e-8
+ 1.7462334453871433e-8
+ 1.7462270201778833e-8
+ 1.7462208465809366e-8
+ 1.7462149147431768e-8
+ 1.7462092151974993e-8
+ 1.7462037388474694e-8
+ 1.7461984769530094e-8
+ 1.7461934211159295e-8
+ 1.7461885632671978e-8
+ 1.7461838956537098e-8
+ 1.746179410825629e-8
+ 1.74617510162525e-8
+ 1.7461709611751257e-8
+ 1.746166982866814e-8
+ 1.746163160351246e-8
+ 1.7461594875271607e-8
+ 1.746155958532791e-8
+ 1.746152567735898e-8
+ 1.7461493097243685e-8
+ 1.7461461792983326e-8
+ 1.7461431714619137e-8
+ 1.7461402814140354e-8
+ 1.7461375045424127e-8
+ 1.7461348364146265e-8
+ 1.7461322727726577e-8
+ 1.7461298095247534e-8
+ 1.746127442739204e-8
+ 1.7461251686385152e-8
+ 1.7461229835932842e-8
+ 1.746120884116172e-8
+ 1.7461188668560197e-8
+ 1.7461169285934405e-8
+ 1.746115066234451e-8
+ 1.746113276807008e-8
+ 1.7461115574549463e-8
+ 1.746109905434101e-8
+ 1.7461083181077238e-8
+ 1.746106792942228e-8
+ 1.7461053275034973e-8
+ 1.7461039194527213e-8
+ 1.7461025665422097e-8
+ 1.7461012666129947e-8
+ 1.746100017590001e-8
+ 1.7460988174796872e-8
+ 1.7460976643669223e-8
+ 1.7460965564110485e-8
+ 1.7460954918436738e-8
+ 1.7460944689658235e-8
+ 1.746093486144576e-8
+ 1.746092541811494e-8
+ 1.746091634459502e-8
+ 1.7460907626400485e-8
+ 1.7460899249620514e-8
+ 1.74608912008823e-8
+ 1.7460883467339443e-8
+ 1.746087603665114e-8
+ 1.7460868896954248e-8
+ 1.7460862036853526e-8
+ 1.7460855445403742e-8
+ 1.7460849112080973e-8
+ 1.7460843026775125e-8
+ 1.7460837179775872e-8
+ 1.74608315617524e-8
+ 1.7460826163733997e-8
+ 1.7460820977109592e-8
+ 1.7460815993598526e-8
+ 1.746081120524372e-8
+ 1.746080660440791e-8
+ 1.746080218374392e-8
+ 1.746079793619942e-8
+ 1.7460793854990964e-8
+ 1.7460789933607036e-8
+ 1.7460786165789052e-8
+ 1.746078254552266e-8
+ 1.746077906702893e-8
+ 1.746077572475633e-8
+ 1.7460772513370516e-8
+ 1.7460769427743544e-8
+ 1.746076646295722e-8
+ 1.7460763614273383e-8
+ 1.74607608771478e-8
+ 1.746075824720932e-8
+ 1.746075572026261e-8
+ 1.7460753292273408e-8
+ 1.7460750959366853e-8
+ 1.7460748717819056e-8</code></pre><p>Figures</p><pre><code class="language-julia hljs">savepath = joinpath(pkgdir(ClimaLand), &quot;docs/tutorials/standalone/Soil/&quot;)
+
+fig = Figure(size = (800, 400))
+ax = Axis(fig[1, 1], xlabel = &quot;Day&quot;, ylabel = &quot;Evaporation rate (mm/d)&quot;)
+CairoMakie.lines!(
+    ax,
+    sol.t ./ 3600 ./ 24,
+    evap .* (1000 * 3600 * 24),
+    label = &quot;With drainage&quot;,
+    color = :red,
+)
+CairoMakie.lines!(
+    ax,
+    sol_no_drainage.t ./ 3600 ./ 24,
+    evap_no_drainage .* (1000 * 3600 * 24),
+    label = &quot;No drainage&quot;,
+    color = :blue,
+)
+
+CairoMakie.axislegend(ax)
+ax2 = Axis(fig[1, 2], xlabel = &quot;Day&quot;, ylabel = &quot;Cumulative evaporation (mm)&quot;)
+CairoMakie.lines!(
+    ax2,
+    sol.t ./ 3600 ./ 24,
+    cumsum(evap) .* (1000 * 3600),
+    color = :red,
+)
+CairoMakie.lines!(
+    ax2,
+    sol_no_drainage.t ./ 3600 ./ 24,
+    cumsum(evap_no_drainage) .* (1000 * 3600),
+    color = :blue,
+)
+save(&quot;evaporation_lehmann2024_figS6.png&quot;, fig);</code></pre><p><img src="../evaporation_lehmann2024_figS6.png" alt/></p><pre><code class="language-julia hljs">fig2 = Figure(size = (800, 1200))
+ax1 = Axis(fig2[1, 1], title = &quot;Drainage only&quot;)
+CairoMakie.ylims!(-0.35, 0)
+CairoMakie.xlims!(0.0, 0.4)
+linestyles = [:solid, :dash, :dashdot, :dashdotdot, :dot]
+days = [0, 1, 2, 10]
+for i in 1:1:4
+    CairoMakie.lines!(
+        ax1,
+        parent(sol_no_evap.u[days[i] * 24 + 1].soil.ϑ_l)[:],
+        parent(z)[:],
+        label = &quot;$(days[i]) days&quot;,
+        color = :black,
+        linestyle = linestyles[i],
+    )
+end
+ax2 = Axis(fig2[2, 1], title = &quot;Evap+Drainage&quot;, ylabel = &quot;Depth(cm)&quot;)
+
+CairoMakie.ylims!(-0.3, 0)
+CairoMakie.xlims!(0.0, 0.4)
+days = [0, 1, 2, 5, 13]
+for i in 1:1:5
+    CairoMakie.lines!(
+        ax2,
+        parent(sol.u[days[i] * 24 + 1].soil.ϑ_l)[:],
+        parent(z)[:],
+        label = &quot;$(days[i]) days&quot;,
+        color = :black,
+        linestyle = linestyles[i],
+    )
+end
+ax3 = Axis(fig2[3, 1], title = &quot;Evap only&quot;, xlabel = &quot;Volumetric Water Content&quot;)
+CairoMakie.ylims!(-0.15, 0)
+CairoMakie.xlims!(0.0, 0.4)
+days = [0, 2, 9, 14]
+for i in 1:1:4
+    CairoMakie.lines!(
+        ax3,
+        parent(sol_no_drainage.u[days[i] * 24 + 1].soil.ϑ_l)[:],
+        label = &quot;$(days[i]) days&quot;,
+        parent(z_no_evap)[:],
+        color = :black,
+        linestyle = linestyles[i],
+    )
+end
+
+CairoMakie.axislegend(ax3, position = :lt)
+CairoMakie.axislegend(ax2, position = :lt)
+CairoMakie.axislegend(ax1, position = :lt)
+save(&quot;evaporation_gardner_fig1.png&quot;, fig2);</code></pre><p><img src="../evaporation_gardner_fig1.png" alt/></p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../evaporation/">« Coarse Sand Evaporation</a><a class="docs-footer-nextpage" href="../sublimation/">Bare soil site »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.4.1 on <span class="colophon-date" title="Tuesday 21 May 2024 04:36">Tuesday 21 May 2024</span>. Using Julia version 1.10.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
