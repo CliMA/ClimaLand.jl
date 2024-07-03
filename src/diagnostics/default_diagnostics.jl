@@ -80,7 +80,7 @@ function default_diagnostics(
 
     define_diagnostics!(land_model)
     
-    if output_vars == "short"
+    if output_vars == "long"
         soilcanopy_diagnostics = [
             "rn",
             "lhf",

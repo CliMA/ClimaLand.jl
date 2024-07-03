@@ -218,7 +218,7 @@ function compute_photosynthesis_net_leaf(
     end
 end
 
-function compute_photosynthesis_net_canopy(
+function compute_photosynthesis_net_canopy!(
     out,
     Y,
     p,

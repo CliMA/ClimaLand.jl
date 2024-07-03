@@ -250,7 +250,7 @@ LAIfunction = TimeVaryingInput(
 )
 ai_parameterization = Canopy.PrescribedSiteAreaIndex{FT}(LAIfunction, SAI, RAI)
 
-function root_distribution(z::T; rooting_depth = rooting_depth) where {T}
+function root_distribution(z::T; rooting_depth = 0.5) where {T}
     return T(1.0 / rooting_depth) * exp(z / T(rooting_depth)) # 1/m
 end
 
@@ -376,6 +376,8 @@ driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
 cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
 
 # ClimaDiagnostic
+import ClimaDiagnostics
+import ClimaUtilities
 
 base_output_dir = "global_soil_canopy/"
 output_dir =
@@ -383,17 +385,17 @@ output_dir =
 
 nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(subsurface_space, output_dir)
 
-diags = ClimaLand.CLD.default_diagnostics(model, t0; output_writer = nc_writer, output_vars = "short")
+diags = ClimaLand.CLD.default_diagnostics(land, t0; output_writer = nc_writer, output_vars = "short")
 
 diagnostic_handler =
-    ClimaDiagnostics.DiagnosticsHandler(diags, Y, p, t0; dt = Δt)
+    ClimaDiagnostics.DiagnosticsHandler(diags, Y, p, t0; dt = dt)
 
 diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler)
 
 sol = ClimaComms.@time ClimaComms.device() SciMLBase.solve(
     prob,
     ode_algo;
-    dt = Δt,
+    dt = dt,
     callback = diag_cb,
 )
 

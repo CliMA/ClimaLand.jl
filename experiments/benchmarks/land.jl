@@ -639,7 +639,7 @@ setup_and_solve_problem(; greet = true)
 @info "Starting profiling"
 # Stop when we profile for MAX_PROFILING_TIME_SECONDS or MAX_PROFILING_SAMPLES
 MAX_PROFILING_TIME_SECONDS = 1000
-MAX_PROFILING_SAMPLES = 100
+MAX_PROFILING_SAMPLES = 1
 time_now = time()
 timings_s = Float64[]
 while (time() - time_now) < MAX_PROFILING_TIME_SECONDS &&
