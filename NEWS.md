@@ -3,19 +3,13 @@ ClimaLand.jl Release Notes
 
 main
 --------
-<<<<<<< HEAD
-Improve Performance of soil canopy model
-- PR [#666]
-- PR [#677] Remove norm condition
-Add base global soil canopy run to benchmark and experiments
-- PR [#591] adds benchmark run
-- PR [#669] adds topmodel runoff
-Soil implicit solver
-- PR [#678] updates Jacobian for soil energy
-Misc
-- PR [#685] Renames jacobian update functions to align with our convention
-            for tendency functions
-=======
+
+v0.13.0
+--------
+- NOTE: the breaking PR below was merged by accident in v0.12.5
+- ![][badge-💥breaking] rename update_jacobian to compute_jacobian
+  and tendency_jacobian to jacobian
+  PR[#685](https://github.com/CliMA/ClimaLand.jl/pull/685)
 
 v0.12.5
 --------
@@ -32,7 +26,6 @@ v0.12.5
   PR [#591](https://github.com/CliMA/ClimaLand.jl/pull/591)
   PR [#669](https://github.com/CliMA/ClimaLand.jl/pull/669)
 
->>>>>>> 668f23f0 (tag v0.12.5)
 v0.12.4
 --------
 - Fix various canopy flux bugs
