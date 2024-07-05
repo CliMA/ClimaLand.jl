@@ -27,10 +27,8 @@ end
 # or, another example, parameters calculated from other parameters (e.g., κ_solid)
 # the structs below only contain unique params, that are given as number (not computed FTwhere)
 
-struct HeteroRespP # differs from SoilCO2ModelParameters because of porosity
-    θ_a100::FT
+struct HeteroRespP
     D_ref::FT
-    b::FT
     D_liq::FT
     α_sx::FT
     Ea_sx::FT

@@ -66,6 +66,19 @@ function inverse_matric_potential(cm::vanGenuchten{FT}, ψ::FT) where {FT}
 end
 
 
+"""
+     approximate_ψ_S_slope(cm::vanGenuchten)
+
+An estimate of the slope of the absolute value of the logψ-logS curve.
+Following Lehmann, Assouline, and Or (2008), we linearize the ψ(S) curve about the inflection point (where d²ψ/dS² = 0, at S = (1+m)^(-m)). 
+"""
+function approximate_ψ_S_slope(cm::vanGenuchten)
+    m = cm.m
+    n = cm.n
+    return (1 + m) / (n * m * m)
+end
+
+
 
 """
     pressure_head(
@@ -166,6 +179,18 @@ function inverse_matric_potential(cm::BrooksCorey{FT}, ψ::FT) where {FT}
     S = (ψ / ψb)^(-c)
     return S
 end
+
+
+"""
+     approximate_ψ_S_slope(cm::BrooksCorey)
+
+The slope of the logψ-logS curve for the Brooks and Corey
+model.
+"""
+function approximate_ψ_S_slope(cm::BrooksCorey)
+    return 1 / cm.c
+end
+
 
 """
    dψdϑ(cm::BrooksCorey{FT}, ϑ, ν, θ_r, S_s)

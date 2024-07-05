@@ -71,7 +71,7 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
     # Make biogeochemistry model args
     Csom = (z, t) -> eltype(z)(5.0)
 
-    co2_parameters = Soil.Biogeochemistry.SoilCO2ModelParameters(FT; ν = 0.556)
+    co2_parameters = Soil.Biogeochemistry.SoilCO2ModelParameters(FT)
     C = FT(100)
 
     co2_top_bc = Soil.Biogeochemistry.SoilCO2StateBC((p, t) -> 0.0)
@@ -102,23 +102,17 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
         earth_param_set;
         c_co2 = TimeVaryingInput(atmos_co2),
     )
-
-    soil_drivers = Soil.Biogeochemistry.SoilDrivers(
-        Soil.Biogeochemistry.PrognosticMet{FT}(),
-        Soil.Biogeochemistry.PrescribedSOC{FT}(Csom),
-        atmos,
-    )
-
     soilco2_args = (;
         boundary_conditions = co2_boundary_conditions,
         sources = co2_sources,
         domain = lsm_domain,
         parameters = co2_parameters,
-        drivers = soil_drivers,
     )
 
     # Create integrated model instance
+    land_args = (atmos = atmos, soil_organic_carbon = Csom)
     model = LandSoilBiogeochemistry{FT}(;
+        land_args = land_args,
         soil_args = soil_args,
         soilco2_args = soilco2_args,
     )

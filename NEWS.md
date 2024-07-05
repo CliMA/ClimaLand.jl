@@ -3,6 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 --------
+- PR[#690] Use the soil parameters in creating the biogeochemistry SoilMet driver for consistency.
 
 v0.13.0
 --------

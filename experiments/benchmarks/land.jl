@@ -400,10 +400,7 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
     z0_b = FT(0.1) * z0_m
 
 
-    soilco2_ps = Soil.Biogeochemistry.SoilCO2ModelParameters(
-        FT;
-        ν = 1.0,# INCORRECT!
-    )
+    soilco2_ps = Soil.Biogeochemistry.SoilCO2ModelParameters(FT)
 
     soil_args = (domain = domain, parameters = soil_params)
     soil_model_type = Soil.EnergyHydrology{FT}
@@ -422,18 +419,11 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
     soilco2_boundary_conditions =
         (; top = soilco2_top_bc, bottom = soilco2_bot_bc)
 
-    soilco2_drivers = Soil.Biogeochemistry.SoilDrivers(
-        Soil.Biogeochemistry.PrognosticMet{FT}(),
-        Soil.Biogeochemistry.PrescribedSOC{FT}(Csom),
-        atmos,
-    )
-
     soilco2_args = (;
         boundary_conditions = soilco2_boundary_conditions,
         sources = soilco2_sources,
         domain = domain,
         parameters = soilco2_ps,
-        drivers = soilco2_drivers,
     )
 
     # Now we set up the canopy model, which we set up by component:
@@ -538,7 +528,12 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
     )
 
     # Integrated plant hydraulics and soil model
-    land_input = (atmos = atmos, radiation = radiation, runoff = runoff_model)
+    land_input = (
+        atmos = atmos,
+        radiation = radiation,
+        runoff = runoff_model,
+        soil_organic_carbon = Csom,
+    )
     land = SoilCanopyModel{FT}(;
         soilco2_type = soilco2_type,
         soilco2_args = soilco2_args,

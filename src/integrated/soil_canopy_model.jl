@@ -88,7 +88,7 @@ function SoilCanopyModel{FT}(;
     MM <: Soil.Biogeochemistry.SoilCO2Model{FT},
 }
 
-    (; atmos, radiation) = land_args
+    (; atmos, radiation, soil_organic_carbon) = land_args
     # These should always be set by the constructor.
     sources = (RootExtraction{FT}(), Soil.PhaseChange{FT}())
     if :runoff ∈ propertynames(land_args)
@@ -116,7 +116,7 @@ function SoilCanopyModel{FT}(;
     )
 
     transpiration = Canopy.PlantHydraulics.DiagnosticTranspiration{FT}()
-    soil_driver = PrognosticSoil{typeof(soil.parameters.PAR_albedo)}(
+    canopy_soil_driver = PrognosticSoil{typeof(soil.parameters.PAR_albedo)}(
         soil.parameters.PAR_albedo,
         soil.parameters.NIR_albedo,
     )
@@ -142,7 +142,7 @@ function SoilCanopyModel{FT}(;
             energy = canopy_component_types.energy(
                 canopy_component_args.energy.parameters,
             ),
-            soil_driver = soil_driver,
+            soil_driver = canopy_soil_driver,
             atmos = atmos,
             radiation = radiation,
             canopy_model_args...,
@@ -165,18 +165,20 @@ function SoilCanopyModel{FT}(;
                 transpiration = transpiration,
                 canopy_component_args.hydraulics...,
             ),
-            soil_driver = soil_driver,
+            soil_driver = canopy_soil_driver,
             atmos = atmos,
             radiation = radiation,
             canopy_model_args...,
         )
     end
 
-    soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(; soilco2_args...)
-
-    if !(soilco2_args.drivers.met isa PrognosticMet)
-        throw(AssertionError("Must be of type PrognosticMet."))
-    end
+    co2_prognostic_soil = Soil.Biogeochemistry.PrognosticMet(soil.parameters)
+    soilco2_drivers = Soil.Biogeochemistry.SoilDrivers(
+        co2_prognostic_soil,
+        Soil.Biogeochemistry.PrescribedSOC{FT}(soil_organic_carbon),
+        atmos,
+    )
+    soilco2 = soilco2_type(; soilco2_args..., drivers = soilco2_drivers)
 
     return SoilCanopyModel{FT, typeof(soilco2), typeof(soil), typeof(canopy)}(
         soilco2,

@@ -4,7 +4,7 @@ using ClimaLandSimulations.Fluxnet
 # default parameters, except for custom parameter hetero_resp.b
 sv_test, sol_test, Y_test, p_test = run_fluxnet(
     "US-MOz";
-    params = ozark_default_params(; hetero_resp = hetero_resp_ozark(; b = 2)),
+    params = ozark_default_params(; hetero_resp = hetero_resp_ozark()),
 )
 
 # defaults, except start time

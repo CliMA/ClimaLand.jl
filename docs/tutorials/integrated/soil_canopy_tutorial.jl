@@ -174,7 +174,7 @@ soil_model_type = Soil.EnergyHydrology{FT}
 # The domain is defined similarly to the soil domain described above.
 soilco2_type = Soil.Biogeochemistry.SoilCO2Model{FT}
 
-soilco2_ps = SoilCO2ModelParameters(FT; ν = soil_ν);
+soilco2_ps = SoilCO2ModelParameters(FT);
 
 # soil microbes args
 Csom = (z, t) -> eltype(z)(5); # kg C m⁻³, this is a guess, not measured at the site
@@ -185,18 +185,11 @@ soilco2_sources = (MicrobeProduction{FT}(),);
 
 soilco2_boundary_conditions = (; top = soilco2_top_bc, bottom = soilco2_bot_bc);
 
-soilco2_drivers = Soil.Biogeochemistry.SoilDrivers(
-    Soil.Biogeochemistry.PrognosticMet{FT}(),
-    Soil.Biogeochemistry.PrescribedSOC{FT}(Csom),
-    atmos,
-);
-
 soilco2_args = (;
     boundary_conditions = soilco2_boundary_conditions,
     sources = soilco2_sources,
     domain = soil_domain,
     parameters = soilco2_ps,
-    drivers = soilco2_drivers,
 );
 
 # Next we need to set up the [`CanopyModel`](https://clima.github.io/ClimaLand.jl/dev/APIs/canopy/Canopy/#Canopy-Model-Structs).
@@ -306,7 +299,7 @@ canopy_model_args = (; parameters = shared_params, domain = canopy_domain);
 # atmospheric and radiative flux conditions from the observations at the Ozark
 # site as was done in the previous tutorial.
 
-land_input = (atmos = atmos, radiation = radiation)
+land_input = (atmos = atmos, radiation = radiation, soil_organic_carbon = Csom)
 
 land = SoilCanopyModel{FT}(;
     soilco2_type = soilco2_type,
