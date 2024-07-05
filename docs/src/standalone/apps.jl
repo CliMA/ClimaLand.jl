@@ -6,6 +6,7 @@ using ClimaLand.Canopy
 using ClimaLand.Soil.Biogeochemistry
 import ClimaParams as CP
 import ClimaLand.Parameters as LP
+using ClimaLandSimulations
 FT = Float64
 earth_param_set = LP.LandParameters(FT)
 RTparams = BeerLambertParameters(FT)
@@ -32,11 +33,15 @@ Rh_app = Rh_app_f();
 include("apps/leaf_an_ci.jl");
 An_ci_app = An_ci_app_f();
 An_ci_app = An_ci_app_f();
+# Fluxnet DashBoard
+fluxnet_app = ClimaLandSimulations.Dashboards.fluxnet_app();
+fluxnet_app = ClimaLandSimulations.Dashboards.fluxnet_app();
 
 # Route apps
 route!(server, "/leaf_An" => An_app)
 route!(server, "/beer_APAR" => beer_app)
 route!(server, "/leaf_An_ci" => An_ci_app)
 route!(server, "/Rh" => Rh_app)
+route!(server, "/fluxnet" => fluxnet_app)
 
 wait()
