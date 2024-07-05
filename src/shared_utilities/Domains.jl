@@ -718,6 +718,37 @@ function linear_interpolation_to_surface!(sfc_field, center_field, z, Δz_top)
 end
 
 """
+    bottom_center_to_surface(center_field::ClimaCore.Fields.Field)
+
+Creates and returns a ClimaCore.Fields.Field defined on the space
+corresponding to the bottom surface of the space on which `center_field`
+is defined, with values equal to the those at the level of the bottom
+center.
+
+For example, given a `center_field` defined on 1D center finite difference space,
+this would return a field defined on the Point space of the bottom surface of
+the column. The value would be the value of the original `center_field`
+at the bottommost location. Given a `center_field` defined on a 3D
+extruded center finite difference space, this would return a 2D field
+corresponding to the bottom surface, with values equal to the bottommost level.
+"""
+function bottom_center_to_surface(center_field::ClimaCore.Fields.Field)
+    center_space = axes(center_field)
+    surface_space = obtain_surface_space(center_space)
+    return ClimaCore.Fields.Field(
+        ClimaCore.Fields.field_values(ClimaCore.Fields.level(center_field, 1)),
+        surface_space,
+    )
+end
+
+"""
+    bottom_center_to_surface(val)
+
+When `val` is a scalar (e.g. a single float or struct), returns `val`.
+"""
+bottom_center_to_surface(val) = val
+
+"""
     get_Δz(z::ClimaCore.Fields.Field)
 
 A function to return a tuple containing the distance between the top boundary
@@ -792,6 +823,7 @@ export coordinates,
     obtain_face_space,
     obtain_surface_space,
     top_center_to_surface,
+    bottom_center_to_surface,
     top_face_to_surface,
     obtain_surface_domain,
     linear_interpolation_to_surface!,

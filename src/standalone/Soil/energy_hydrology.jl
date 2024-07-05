@@ -846,11 +846,11 @@ function ClimaLand.surface_specific_humidity(
             Thermodynamics.Liquid(),
         ) .* (@. exp(g * ψ_sfc * M_w / (R * T_sfc)))
     ice_frac = p.soil.ice_frac
-    surface_space = model.domain.space.surface
-    ν_sfc = get_top_surface_field(model.parameters.ν, surface_space)
-    θ_r_sfc = get_top_surface_field(model.parameters.θ_r, surface_space)
-    S_c_sfc =
-        get_top_surface_field(model.parameters.hydrology_cm.S_c, surface_space)
+    ν_sfc = ClimaLand.Domains.top_center_to_surface(model.parameters.ν)
+    θ_r_sfc = ClimaLand.Domains.top_center_to_surface(model.parameters.θ_r)
+    S_c_sfc = ClimaLand.Domains.top_center_to_surface(
+        model.parameters.hydrology_cm.S_c,
+    )
     θ_l_sfc = ClimaLand.Domains.top_center_to_surface(p.soil.θ_l)
     θ_i_sfc = ClimaLand.Domains.top_center_to_surface(Y.soil.θ_i)
     @. ice_frac = ice_fraction(θ_l_sfc, θ_i_sfc, ν_sfc, θ_r_sfc)
