@@ -103,6 +103,8 @@ for FT in (Float32, Float64)
             atmosphere = bucket_atmos,
             radiation = bucket_rad,
         )
+        drivers = ClimaLand.get_drivers(model)
+        @test drivers == (bucket_atmos, bucket_rad)
         _LH_f0 = LP.LH_f0(model.parameters.earth_param_set)
         _ρ_liq = LP.ρ_cloud_liq(model.parameters.earth_param_set)
         _ρLH_f0 = _ρ_liq * _LH_f0 # Latent heat per unit volume

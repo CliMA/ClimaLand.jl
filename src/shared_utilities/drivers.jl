@@ -11,6 +11,7 @@ export AbstractAtmosphericDrivers,
     AbstractRadiativeDrivers,
     PrescribedAtmosphere,
     PrescribedPrecipitation,
+    PrescribedSoilOrganicCarbon,
     CoupledAtmosphere,
     PrescribedRadiativeFluxes,
     CoupledRadiativeFluxes,
@@ -27,18 +28,64 @@ export AbstractAtmosphericDrivers,
     make_update_drivers
 
 """
-     AbstractAtmosphericDrivers{FT <: AbstractFloat}
-
-An abstract type of atmospheric drivers of land models.
-"""
-abstract type AbstractAtmosphericDrivers{FT <: AbstractFloat} end
-
-"""
-     AbstractRadiativeDrivers{FT <: AbstractFloat}
+     AbstractClimaLandDrivers{FT <: AbstractFloat}
 
 An abstract type of radiative drivers of land models.
 """
-abstract type AbstractRadiativeDrivers{FT <: AbstractFloat} end
+abstract type AbstractClimaLandDrivers{FT <: AbstractFloat} end
+
+"""
+    initialize_drivers(::AbstractClimaLandDrivers, coords)
+
+Creates and returns a default empty NamedTuple for AbstractClimaLandDrivers.
+More generally this should return a named tuple of the driver fields, which will
+then be stored in the cache under `p.drivers`.
+"""
+initialize_drivers(::AbstractClimaLandDrivers, coords) = (;)
+
+
+"""
+    make_update_drivers(::AbstractClimaLandDrivers)
+
+Creates and returns a function which updates the driver variables
+in the default case of no drivers. More generally, this should return
+a function which updates the driver fields stored in `p.drivers`.
+"""
+function make_update_drivers(::AbstractClimaLandDrivers)
+    update_drivers!(p, t) = nothing
+    return update_drivers!
+end
+
+
+"""
+     AbstractAtmosphericDrivers{FT}
+
+An abstract type of atmospheric drivers of land models.
+"""
+abstract type AbstractAtmosphericDrivers{FT} <: AbstractClimaLandDrivers{FT} end
+
+"""
+     AbstractRadiativeDrivers{FT}
+
+An abstract type of radiative drivers of land models.
+"""
+abstract type AbstractRadiativeDrivers{FT} <: AbstractClimaLandDrivers{FT} end
+
+
+"""
+     PrescribedSoilOrganicCarbon{FT}
+
+A type for prescribing soil organic carbon.
+$(DocStringExtensions.FIELDS)
+"""
+struct PrescribedSoilOrganicCarbon{FT, SOC <: AbstractTimeVaryingInput} <:
+       AbstractClimaLandDrivers{FT}
+    "Soil organic carbon, function of time and space: kg C/m^3"
+    soc::SOC
+end
+
+PrescribedSoilOrganicCarbon{FT}(soc) where {FT} =
+    PrescribedSoilOrganicCarbon{FT, typeof(soc)}(soc)
 
 """
     PrescribedAtmosphere{FT, CA, DT} <: AbstractAtmosphericDrivers{FT}
@@ -759,68 +806,71 @@ function initialize_drivers(r::PrescribedRadiativeFluxes{FT}, coords) where {FT}
 end
 
 """
-    initialize_drivers(d::Union{AbstractAtmosphericDrivers, AbstractRadiativeDrivers, Nothing}, coords)
+    initialize_drivers(r::PrescribedSoilOrganicCarbon{FT}, coords) where {FT}
 
-Creates and returns a NamedTuple with `nothing` when no driver cache variables are needed.
+Creates and returns a NamedTuple for the `PrescribedSoilOrganicCarbon` driver,
+ with variable `soc`.
 """
 function initialize_drivers(
-    d::Union{AbstractAtmosphericDrivers, AbstractRadiativeDrivers, Nothing},
+    r::PrescribedSoilOrganicCarbon{FT},
     coords,
-)
-    return (;)
+) where {FT}
+    keys = (:soc,)
+    types = (FT,)
+    domain_names = (:subsurface,)
+    model_name = :drivers
+    # intialize_vars packages the variables as a named tuple,
+    # as part of a named tuple with `model_name` as the key.
+    # Here we just want the variable named tuple itself
+    vars =
+        ClimaLand.initialize_vars(keys, types, domain_names, coords, model_name)
+    return vars.drivers
 end
 
 """
-    initialize_drivers(a::Union{AbstractAtmosphericDrivers, Nothing},
-                       r::Union{AbstractRadiativeDrivers, Nothing},
+    initialize_drivers(driver_tuple::Tuple,
                        coords)
 
 Creates and returns a NamedTuple with the cache variables required by the
-atmospheric and radiative drivers.
+model drivers.
 
-If no forcing is required, `a` and `r` are type `Nothing` and an
+If no forcing is required,  driver_tuple is an empty tuple, and an
 empty NamedTuple is returned.
 """
-function initialize_drivers(
-    a::Union{AbstractAtmosphericDrivers, Nothing},
-    r::Union{AbstractRadiativeDrivers, Nothing},
-    coords,
-)
-    atmos_drivers = initialize_drivers(a, coords)
-    radiation_drivers = initialize_drivers(r, coords)
-    merge(atmos_drivers, radiation_drivers)
-end
-
-"""
-    make_update_drivers(a::Union{AbstractAtmosphericDrivers, Nothing},
-                          r::Union{AbstractRadiativeDrivers, Nothing},
-                         )
-
-Creates and returns a function which updates the atmospheric
-and radiative forcing variables ("drivers").
-"""
-function make_update_drivers(
-    a::Union{AbstractAtmosphericDrivers, Nothing},
-    r::Union{AbstractRadiativeDrivers, Nothing},
-)
-    update_atmos! = make_update_drivers(a)
-    update_radiation! = make_update_drivers(r)
-    function update_drivers!(p, t)
-        update_atmos!(p, t)
-        update_radiation!(p, t)
+function initialize_drivers(driver_tuple::Tuple, coords)
+    if isempty(driver_tuple)
+        return (;)
+    else
+        tmp = map(driver_tuple) do (driver)
+            nt = initialize_drivers(driver, coords)
+        end
+        merge(tmp...)
     end
-    return update_drivers!
+
 end
 
 """
-    make_update_drivers(d::Union{AbstractAtmosphericDrivers, AbstractRadiativeDrivers, Nothing})
+    make_update_drivers(driver_tuple)
 
-Creates and returns a function which updates the driver variables
-in the case of no driver variables. This is also the default.
+Creates and returns a function which updates the forcing variables ("drivers"). If no drivers are being used, driver_tuple is empty, and the update
+function does nothing.
 """
-make_update_drivers(
-    d::Union{AbstractAtmosphericDrivers, AbstractRadiativeDrivers, Nothing},
-) = (p, t) -> nothing
+function make_update_drivers(driver_tuple::Tuple)
+    if isempty(driver_tuple)
+        return (p, t) -> nothing
+    else
+        update_driver_list = map(driver_tuple) do (driver)
+            make_update_drivers(driver)
+        end
+        function update_drivers!(p, t)
+            for ud! in update_driver_list
+                ud!(p, t)
+            end
+        end
+        return update_drivers!
+    end
+end
+
 
 """
     make_update_drivers(a::PrescribedAtmosphere{FT}) where {FT}
@@ -869,6 +919,18 @@ function make_update_drivers(r::PrescribedRadiativeFluxes{FT}) where {FT}
         else
             p.drivers.θs .= FT(0)
         end
+    end
+    return update_drivers!
+end
+
+"""
+    make_update_drivers(d::PrescribedSoilOrganicCarbon{FT}) where {FT}
+Creates and returns a function which updates the driver variables
+in the case of a PrescribedSoilOrganicCarbon.
+"""
+function make_update_drivers(d::PrescribedSoilOrganicCarbon{FT}) where {FT}
+    function update_drivers!(p, t)
+        evaluate!(p.drivers.soc, d.soc, t)
     end
     return update_drivers!
 end

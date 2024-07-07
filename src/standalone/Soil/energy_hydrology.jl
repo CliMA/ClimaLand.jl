@@ -880,6 +880,6 @@ function ClimaLand.get_drivers(model::EnergyHydrology)
     }
         return (bc.atmos, bc.radiation)
     else
-        return (nothing, nothing)
+        return ()
     end
 end

@@ -17,7 +17,9 @@ for FT in (Float32, Float64)
         T_soil = (z, t) -> eltype(z)(t)
         θ_l = (z, t) -> eltype(z)(0.3)
         θ_i = (z, t) -> eltype(z)(0)
-        Csom = (z, t) -> eltype(z)(5.0) # 3 [kg C m-3] soil organic C content at depth z
+        Csom = ClimaLand.PrescribedSoilOrganicCarbon{FT}(
+            TimeVaryingInput((t) -> 5),
+        )
         D_ref = FT(0.0)
         parameters = SoilCO2ModelParameters(FT; D_ref)
 
@@ -59,11 +61,8 @@ for FT in (Float32, Float64)
         α = FT(0.1)
         n = FT(2)
         hcm = ClimaLand.Soil.vanGenuchten{FT}(; α = α, n = n)
-        soil_drivers = SoilDrivers(
-            PrescribedMet{FT}(T_soil, θ_l, ν, θ_r, hcm),
-            PrescribedSOC{FT}(Csom),
-            atmos,
-        )
+        prescribed_met = PrescribedMet{FT}(T_soil, θ_l, ν, θ_r, hcm)
+        soil_drivers = SoilDrivers(prescribed_met, Csom, atmos)
 
         model = SoilCO2Model{FT}(;
             parameters = parameters,
@@ -91,7 +90,9 @@ for FT in (Float32, Float64)
         T_soil = (z, t) -> eltype(z)(303)
         θ_l = (z, t) -> eltype(z)(0.3)
         θ_i = (z, t) -> eltype(z)(0.0)
-        Csom = (z, t) -> eltype(z)(5.0) # 3 [kg C m-3] soil organic C content at depth z
+        Csom = ClimaLand.PrescribedSoilOrganicCarbon{FT}(
+            TimeVaryingInput((t) -> 5),
+        )
 
         parameters = SoilCO2ModelParameters(FT)
         C = FT(4)
@@ -135,7 +136,7 @@ for FT in (Float32, Float64)
         hcm = ClimaLand.Soil.vanGenuchten{FT}(; α = α, n = n)
         soil_drivers = SoilDrivers(
             PrescribedMet{FT}(T_soil, θ_l, ν, θ_r, hcm),
-            PrescribedSOC{FT}(Csom),
+            Csom,
             atmos, # need to create some functions
         )
 

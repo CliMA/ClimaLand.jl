@@ -58,7 +58,8 @@ sv = (;
 );
 saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat);
 updateat = copy(saveat)
-updatefunc = ClimaLand.make_update_drivers(atmos, radiation)
+drivers = ClimaLand.get_drivers(model)
+updatefunc = ClimaLand.make_update_drivers(drivers)
 driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
 cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
 

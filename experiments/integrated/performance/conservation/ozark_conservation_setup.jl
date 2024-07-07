@@ -82,7 +82,7 @@ soilco2_type = Soil.Biogeochemistry.SoilCO2Model{FT}
 soilco2_ps = SoilCO2ModelParameters(FT)
 
 # soil microbes args
-Csom = (z, t) -> eltype(z)(5.0)
+Csom = ClimaLand.PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5))
 
 # Set the soil CO2 BC to being atmospheric CO2
 soilco2_top_bc = Soil.Biogeochemistry.AtmosCO2StateBC()

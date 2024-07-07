@@ -43,7 +43,8 @@ for FT in (Float32, Float64)
             boundary_conditions = boundary_fluxes,
             sources = sources,
         )
-
+        drivers = ClimaLand.get_drivers(soil)
+        @test drivers == ()
         Y, p, coords = initialize(soil)
         # Here we do not add a dss buffer: check that `initialize`
         # has not added a buffer to `p` and that it only contains the

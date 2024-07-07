@@ -170,8 +170,8 @@ cache variables are updated at the same time.
 function make_update_cache(model::AbstractModel)
     # if not forced using atmospheric/radiatiave drivers
     # this return (nothing, nothing)
-    (atmos, radiation) = get_drivers(model)
-    update_drivers! = make_update_drivers(atmos, radiation)
+    drivers = get_drivers(model)
+    update_drivers! = make_update_drivers(drivers)
     update_aux! = make_update_aux(model)
     update_boundary_fluxes! = make_update_boundary_fluxes(model)
     function update_cache!(p, Y, t)
@@ -395,23 +395,24 @@ Domains.coordinates(model::AbstractModel) = Domains.coordinates(model.domain)
 """
     add_drivers_to_cache(p::NamedTuple, model::AbstractModel, coords)
 
-Creates the driver variable NamedTuple (atmospheric and radiative forcing),
+Creates the driver variable NamedTuple (atmospheric and radiative forcing, etc),
 and merges it into `p` under the key `drivers`. If no driver variables
 are required, `p` is returned unchanged.
 """
 function add_drivers_to_cache(p::NamedTuple, model::AbstractModel, coords)
-    (atmos, radiation) = get_drivers(model)
+    drivers = get_drivers(model)
     if hasproperty(model, :parameters) &&
        hasproperty(model.parameters, :earth_param_set) &&
-       atmos isa ClimaLand.PrescribedAtmosphere
+       hasproperty(drivers, :atmos) &&
+       drivers.atmos isa ClimaLand.PrescribedAtmosphere
         if LP.thermodynamic_parameters(model.parameters.earth_param_set) !=
-           atmos.thermo_params
+           drivers.atmos.thermo_params
             error(
                 "earth_param_set is inconsistent between the model and the atmosphere",
             )
         end
     end
-    driver_nt = initialize_drivers(atmos, radiation, coords)
+    driver_nt = initialize_drivers(drivers, coords)
     if driver_nt == (;)
         return p
     else
@@ -422,10 +423,11 @@ end
 """
     get_drivers(model::AbstractModel)
 
-Returns the `driver` objects for the model - atmospheric and radiative forcing - as a tuple (atmos, radiation).
+Returns the `driver` objects for the model - atmospheric and radiative forcing, etc - as a tuple (atmos, radiation, ...). If no drivers are needed
+by a model, an empty tuple should be returned
 """
 function get_drivers(model::AbstractModel)
-    return (nothing, nothing)
+    return ()
 end
 
 """

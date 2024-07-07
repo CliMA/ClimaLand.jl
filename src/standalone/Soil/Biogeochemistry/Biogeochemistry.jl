@@ -27,7 +27,6 @@ import ClimaLand:
 export SoilCO2ModelParameters,
     SoilCO2Model,
     PrescribedMet,
-    PrescribedSOC,
     MicrobeProduction,
     SoilCO2FluxBC,
     AtmosCO2StateBC,
@@ -286,7 +285,7 @@ $(DocStringExtensions.FIELDS)
 struct SoilDrivers{
     FT,
     MET <: AbstractSoilDriver,
-    SOC <: AbstractSoilDriver,
+    SOC <: PrescribedSoilOrganicCarbon{FT},
     ATM <: PrescribedAtmosphere{FT},
 }
     "Soil temperature and moisture drivers - Prescribed or Prognostic"
@@ -359,25 +358,6 @@ function PrescribedMet{FT}(
 end
 
 """
-    PrescribedSOC <: AbstractSoilDriver
-
-A container which holds the prescribed function for soil organic carbon
-
-This is meant for use when running the biogeochemistry model without a soil
-organic carbon model.
-
-$(DocStringExtensions.FIELDS)
-"""
-struct PrescribedSOC{FT, F <: Function} <: AbstractSoilDriver
-    "Carbon content of soil organic matter, of the form f(z::FT, t) where FT <: AbstractFloat"
-    soil_organic_carbon::F
-end
-
-function PrescribedSOC{FT}(Csom) where {FT <: AbstractFloat}
-    return PrescribedSOC{FT, typeof(Csom)}(Csom)
-end
-
-"""
     soil_temperature(driver::PrescribedMet, p, Y, t, z)
 
 Returns the soil temperature at location (z) and time (t) for the prescribed
@@ -398,17 +378,6 @@ function soil_moisture(driver::PrescribedMet, p, Y, t, z)
 end
 
 """
-    soil_som_C(driver::PrescribedSOC, p, Y, t, z)
-
-Returns the carbon soil organic matter (SOM) at location (z) and time (t) for the prescribed
-soil case.
-"""
-function soil_SOM_C(driver::PrescribedSOC, p, Y, t, z)
-    return driver.soil_organic_carbon.(z, t)
-end
-
-
-"""
     make_update_aux(model::SoilCO2Model)
 
 An extension of the function `make_update_aux`, for the soilco2 equation.
@@ -422,7 +391,7 @@ function ClimaLand.make_update_aux(model::SoilCO2Model)
         z = model.domain.fields.z
         T_soil = soil_temperature(model.drivers.met, p, Y, t, z)
         θ_l = soil_moisture(model.drivers.met, p, Y, t, z)
-        Csom = soil_SOM_C(model.drivers.soc, p, Y, t, z)
+        Csom = p.drivers.soc
         P_sfc = p.drivers.P
         θ_w = θ_l
         ν = model.drivers.met.ν
@@ -601,7 +570,7 @@ function ClimaLand.boundary_flux(
 end
 
 function ClimaLand.get_drivers(model::SoilCO2Model)
-    return (model.drivers.atmos, nothing)
+    return (model.drivers.atmos, model.drivers.soc)
 end
 
 Base.broadcastable(ps::SoilCO2ModelParameters) = tuple(ps)

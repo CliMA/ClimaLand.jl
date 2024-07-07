@@ -27,9 +27,9 @@ FT = Float32
     liquid_precip = TimeVaryingInput((t) -> -1.0)
     pp = ClimaLand.PrescribedPrecipitation{FT}(liquid_precip)
     coords = (; surface = [1, 2, 3])
-    @test ClimaLand.initialize_drivers(pp, nothing, coords) ==
+    @test ClimaLand.initialize_drivers((pp,), coords) ==
           NamedTuple{(:P_liq,)}((zeros(FT, 3),))
-    @test ClimaLand.initialize_drivers(nothing, nothing, coords) == (;)
+    @test ClimaLand.initialize_drivers((), coords) == (;)
     pa_keys = (:P_liq, :P_snow, :T, :P, :u, :q, :c_co2)
     zero_thermal_state = map(
         _ -> ClimaCore.RecursiveApply.rzero(Thermodynamics.PhaseEquil{FT}),
@@ -38,13 +38,13 @@ FT = Float32
     pa_vals = ([zeros(FT, 3) for k in pa_keys]...,)
     all_pa_keys = (pa_keys..., :thermal_state)
     all_pa_vals = (pa_vals..., zero_thermal_state)
-    @test ClimaLand.initialize_drivers(pa, nothing, coords) ==
+    @test ClimaLand.initialize_drivers((pa,), coords) ==
           NamedTuple{all_pa_keys}(all_pa_vals)
     pr_keys = (:SW_d, :LW_d, :θs)
     pr_vals = ([zeros(FT, 3) for k in pr_keys]...,)
     all_papr_keys = (pa_keys..., :thermal_state, pr_keys...)
     all_papr_vals = (pa_vals..., zero_thermal_state, pr_vals...)
-    @test ClimaLand.initialize_drivers(pa, pr, coords) ==
+    @test ClimaLand.initialize_drivers((pa, pr), coords) ==
           NamedTuple{all_papr_keys}(all_papr_vals)
 end
 
@@ -111,13 +111,13 @@ end
         earth_param_set,
     )
     pr = ClimaLand.PrescribedRadiativeFluxes(FT, f, f, f)
-    coords = (; surface = [1])
-    p = (; drivers = ClimaLand.initialize_drivers(nothing, nothing, coords))
-    nothing_update! = ClimaLand.make_update_drivers(nothing, nothing)
+    coords = (; surface = [1], subsurface = [1, 2])
+    p = (; drivers = ClimaLand.initialize_drivers((), coords))
+    nothing_update! = ClimaLand.make_update_drivers(())
     nothing_update!(p, 0.0)
     @test p.drivers == (;)
-    p = (; drivers = ClimaLand.initialize_drivers(pa, nothing, coords))
-    atmos_only_update! = ClimaLand.make_update_drivers(pa, nothing)
+    p = (; drivers = ClimaLand.initialize_drivers((pa,), coords))
+    atmos_only_update! = ClimaLand.make_update_drivers((pa,))
     atmos_only_update!(p, 0.0)
     @test p.drivers.P_liq == [FT(10)]
     @test p.drivers.P_snow == [FT(10)]
@@ -127,8 +127,8 @@ end
     @test p.drivers.u == [FT(10)]
     @test p.drivers.c_co2 == [FT(4.2e-4)]
 
-    p = (; drivers = ClimaLand.initialize_drivers(pa, pr, coords))
-    update! = ClimaLand.make_update_drivers(pa, pr)
+    p = (; drivers = ClimaLand.initialize_drivers((pa, pr), coords))
+    update! = ClimaLand.make_update_drivers((pa, pr))
     update!(p, 0.0)
     @test p.drivers.P_liq == [FT(10)]
     @test p.drivers.P_snow == [FT(10)]
@@ -141,8 +141,8 @@ end
     @test p.drivers.LW_d == [FT(10)]
     @test p.drivers.θs == [FT(0)]
 
-    p = (; drivers = ClimaLand.initialize_drivers(nothing, pr, coords))
-    rad_only_update! = ClimaLand.make_update_drivers(nothing, pr)
+    p = (; drivers = ClimaLand.initialize_drivers((pr,), coords))
+    rad_only_update! = ClimaLand.make_update_drivers((pr,))
     rad_only_update!(p, 0.0)
     @test p.drivers.SW_d == [FT(10)]
     @test p.drivers.LW_d == [FT(10)]
@@ -150,8 +150,16 @@ end
 
     liquid_precip = TimeVaryingInput((t) -> -1.0)
     pp = ClimaLand.PrescribedPrecipitation{FT}(liquid_precip)
-    precip_update! = ClimaLand.make_update_drivers(pp, nothing)
-    p = (; drivers = ClimaLand.initialize_drivers(pp, nothing, coords))
+    precip_update! = ClimaLand.make_update_drivers((pp,))
+    p = (; drivers = ClimaLand.initialize_drivers((pp,), coords))
     precip_update!(p, 0.0)
     @test p.drivers.P_liq == [FT(-1.0)]
+
+
+    soc = TimeVaryingInput((t) -> 1.0)
+    soc_driver = ClimaLand.PrescribedSoilOrganicCarbon{FT}(soc)
+    soc_update! = ClimaLand.make_update_drivers((soc_driver,))
+    soc_p = (; drivers = ClimaLand.initialize_drivers((soc_driver,), coords))
+    soc_update!(soc_p, 0.0)
+    @test soc_p.drivers.soc == [FT(1.0), FT(1.0)]
 end

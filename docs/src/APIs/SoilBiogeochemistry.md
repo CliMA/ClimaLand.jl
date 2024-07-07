@@ -25,7 +25,6 @@ ClimaLand.Soil.Biogeochemistry.AtmosCO2StateBC
 ClimaLand.Soil.Biogeochemistry.AbstractSoilDriver
 ClimaLand.Soil.Biogeochemistry.SoilDrivers
 ClimaLand.Soil.Biogeochemistry.PrescribedMet
-ClimaLand.Soil.Biogeochemistry.PrescribedSOC
 ```
 
 ## Functions of State
