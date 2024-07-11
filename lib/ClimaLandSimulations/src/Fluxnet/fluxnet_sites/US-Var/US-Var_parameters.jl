@@ -31,9 +31,7 @@ function vairaranch_default_params(;
 end
 
 function hetero_resp_vairaranch(;
-    θ_a100 = FT(0.1816),
     D_ref = FT(1.39e-5),
-    b = FT(4.547),
     D_liq = FT(3.17),
     α_sx = FT(194e3),
     Ea_sx = FT(61e3),
@@ -44,9 +42,7 @@ function hetero_resp_vairaranch(;
     p_sx = FT(0.024),
 )
     return HeteroRespP(
-        θ_a100,
         D_ref,
-        b,
         D_liq,
         α_sx,
         Ea_sx,

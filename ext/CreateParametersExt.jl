@@ -484,10 +484,6 @@ SoilCO2ModelParameters(::Type{FT}; kwargs...) where {FT <: AbstractFloat} =
     SoilCO2ModelParameters(CP.create_toml_dict(FT); kwargs...)
 
 function SoilCO2ModelParameters(toml_dict::CP.AbstractTOMLDict; kwargs...)
-    # These parameters have defaults that should not go in ClimaParams
-    θ_a100 = 0.1816
-    b = 4.547
-
     name_map = (;
         :CO2_diffusion_coefficient => :D_ref,
         :soil_C_substrate_diffusivity => :D_liq,
@@ -504,8 +500,6 @@ function SoilCO2ModelParameters(toml_dict::CP.AbstractTOMLDict; kwargs...)
     earth_param_set = LP.LandParameters(toml_dict)
     return SoilCO2ModelParameters{FT, typeof(earth_param_set)}(;
         earth_param_set,
-        θ_a100,
-        b,
         parameters...,
         kwargs...,
     )

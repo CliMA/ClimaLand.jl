@@ -39,17 +39,13 @@ export SoilCO2ModelParameters,
     SoilCO2ModelParameters{FT <: AbstractFloat, PSE}
 
 A struct for storing parameters of the `SoilCO2Model`.
+
+All of these parameters are currently treated as global constants.
 $(DocStringExtensions.FIELDS)
 """
 Base.@kwdef struct SoilCO2ModelParameters{FT <: AbstractFloat, PSE}
-    "Soil porosity (m³ m⁻³)"
-    ν::FT
-    "Air-filled porosity at soil water potential of -100 cm H₂O (~ 10 Pa)"
-    θ_a100::FT
     "Diffusion coefficient for CO₂ in air at standard temperature and pressure (m² s⁻¹)"
     D_ref::FT
-    "Absolute value of the slope of the line relating log(ψ) versus log(θ) (unitless)"
-    b::FT
     "Diffusivity of soil C substrate in liquid (unitless)"
     D_liq::FT
     # DAMM
@@ -97,7 +93,7 @@ struct SoilCO2Model{FT, PS, D, BC, S, DT} <:
     "A tuple of sources, each of type AbstractSource"
     sources::S
     "Drivers"
-    driver::DT
+    drivers::DT
 end
 
 
@@ -312,27 +308,55 @@ without a prognostic soil model.
 
 $(DocStringExtensions.FIELDS)
 """
-struct PrescribedMet{FT, F1 <: Function, F2 <: Function} <: AbstractSoilDriver
+struct PrescribedMet{
+    FT,
+    F1 <: Function,
+    F2 <: Function,
+    F <: Union{AbstractFloat, ClimaCore.Fields.Field},
+} <: AbstractSoilDriver
     "The temperature of the soil, of the form f(z::FT,t) where FT <: AbstractFloat"
     temperature::F1
     "Soil moisture, of the form f(z::FT,t) FT <: AbstractFloat"
     volumetric_liquid_fraction::F2
+    "Soil porosity (m³ m⁻³)"
+    ν::F
+    "Air-filled porosity at soil water potential of -100 cm H₂O (~ 10 Pa)"
+    θ_a100::F
+    "Absolute value of the slope of the line relating log(ψ) versus log(S) (unitless)"
+    b::F
 end
 
 function PrescribedMet{FT}(
     temperature::Function,
     volumetric_liquid_fraction::Function,
-) where {FT <: AbstractFloat}
+    ν::F,
+    θ_r::F,
+    hcm::CF,
+) where {FT <: AbstractFloat, F, CF}
+    if F <: AbstractFloat
+        θ_a100 =
+            ClimaLand.Soil.inverse_matric_potential(hcm, -FT(1)) * (ν - θ_r) +
+            θ_r
+        b = ClimaLand.Soil.approximate_ψ_S_slope(hcm)
+    else
+        θ_a100 = @. ClimaLand.Soil.inverse_matric_potential(hcm, -FT(1)) *
+           (ν - θ_r) + θ_r
+        b = @. ClimaLand.Soil.approximate_ψ_S_slope(hcm)
+    end
+
     return PrescribedMet{
         FT,
         typeof(temperature),
         typeof(volumetric_liquid_fraction),
+        F,
     }(
         temperature,
         volumetric_liquid_fraction,
+        ν,
+        θ_a100,
+        b,
     )
 end
-
 
 """
     PrescribedSOC <: AbstractSoilDriver
@@ -383,14 +407,6 @@ function soil_SOM_C(driver::PrescribedSOC, p, Y, t, z)
     return driver.soil_organic_carbon.(z, t)
 end
 
-"""
-    air_pressure(driver::PrescribedAtmosphere, t)
-
-Returns the prescribed air pressure at the top boundary condition at time (t).
-"""
-function air_pressure(driver::PrescribedAtmosphere, p, Y, t) # not sure if/why p and Y are needed?
-    return p.drivers.P
-end
 
 """
     make_update_aux(model::SoilCO2Model)
@@ -404,14 +420,18 @@ function ClimaLand.make_update_aux(model::SoilCO2Model)
     function update_aux!(p, Y, t)
         params = model.parameters
         z = model.domain.fields.z
-        T_soil = soil_temperature(model.driver.met, p, Y, t, z)
-        θ_l = soil_moisture(model.driver.met, p, Y, t, z)
-        Csom = soil_SOM_C(model.driver.soc, p, Y, t, z)
-        P_sfc = air_pressure(model.driver.atmos, p, Y, t)
+        T_soil = soil_temperature(model.drivers.met, p, Y, t, z)
+        θ_l = soil_moisture(model.drivers.met, p, Y, t, z)
+        Csom = soil_SOM_C(model.drivers.soc, p, Y, t, z)
+        P_sfc = p.drivers.P
         θ_w = θ_l
+        ν = model.drivers.met.ν
+        θ_a100 = model.drivers.met.θ_a100
+        b = model.drivers.met.b
 
-        p.soilco2.D .= co2_diffusivity.(T_soil, θ_w, P_sfc, Ref(params))
-        p.soilco2.Sm .= microbe_source.(T_soil, θ_l, Csom, Ref(params))
+        p.soilco2.D .=
+            co2_diffusivity.(T_soil, θ_w, P_sfc, θ_a100, b, ν, params)
+        p.soilco2.Sm .= microbe_source.(T_soil, θ_l, Csom, ν, params)
     end
     return update_aux!
 end
@@ -581,8 +601,10 @@ function ClimaLand.boundary_flux(
 end
 
 function ClimaLand.get_drivers(model::SoilCO2Model)
-    return (model.driver.atmos, nothing)
+    return (model.drivers.atmos, nothing)
 end
+
+Base.broadcastable(ps::SoilCO2ModelParameters) = tuple(ps)
 
 include("./co2_parameterizations.jl")
 

@@ -1,4 +1,3 @@
-
 export volumetric_air_content, co2_diffusivity, microbe_source
 
 
@@ -6,6 +5,7 @@ export volumetric_air_content, co2_diffusivity, microbe_source
     microbe_source(T_soil::FT,
                    θ_l::FT,
                    Csom::FT,
+                   ν::FT,
                    params::SoilCO2ModelParameters{FT}
                    ) where {FT}
 
@@ -16,9 +16,10 @@ function microbe_source(
     T_soil::FT,
     θ_l::FT,
     Csom::FT,
+    ν::FT,
     params::SoilCO2ModelParameters{FT},
 ) where {FT}
-    (; α_sx, Ea_sx, kM_sx, kM_o2, ν, D_liq, p_sx, D_oa, O2_a, earth_param_set) =
+    (; α_sx, Ea_sx, kM_sx, kM_o2, D_liq, p_sx, D_oa, O2_a, earth_param_set) =
         params
     R = FT(LP.gas_constant(earth_param_set))
     Vmax = α_sx * exp(-Ea_sx / (R * T_soil)) # Maximum potential rate of respiration
@@ -33,18 +34,15 @@ end
 
 """
     volumetric_air_content(θ_w::FT,
-                           params::SoilCO2ModelParameters{FT}
+                           ν::FT,
                            ) where {FT}
 
 Computes the volumetric air content (`θ_a`) in the soil,
 which is related to the total soil porosity (`ν`) and
 volumetric soil water content (`θ_w = θ_l+θ_i`).
 """
-function volumetric_air_content(
-    θ_w::FT,
-    params::SoilCO2ModelParameters{FT},
-) where {FT}
-    θ_a = params.ν - θ_w
+function volumetric_air_content(θ_w::FT, ν::FT) where {FT}
+    θ_a = ν - θ_w
     return θ_a
 end
 
@@ -53,7 +51,10 @@ end
                     T_soil::FT,
                     θ_w::FT,
                     P_sfc::FT,
-                    params::SoilCO2ModelParameters{FT}
+                    θ_a100::FT,
+                    b::FT,
+                    ν::FT,
+                    params::SoilCO2ModelParameters{FT},
                     ) where {FT}
 
 Computes the diffusivity of CO₂ within the soil (D).
@@ -64,17 +65,23 @@ values of `T_ref` and `P_ref` (273 K and 101325 Pa). Here, `θ_a` is the
 volumetric air content and `θ_a100` is the volumetric air content
 at a soil water potential of
 100cm, and b is the pore size distribution of the soil.
+
+This parameterization is from Ryan et al., GMD 11, 1909-1928, 2018,
+https://doi.org/10.5194/gmd-11-1909-2018.
 """
 function co2_diffusivity(
     T_soil::FT,
     θ_w::FT,
     P_sfc::FT,
+    θ_a100::FT,
+    b::FT,
+    ν::FT,
     params::SoilCO2ModelParameters{FT},
 ) where {FT}
-    (; D_ref, θ_a100, b, ν, earth_param_set) = params
+    (; D_ref, earth_param_set) = params
     T_ref = FT(LP.T_0(earth_param_set))
     P_ref = FT(LP.P_ref(earth_param_set))
-    θ_a = volumetric_air_content(θ_w, params)
+    θ_a = volumetric_air_content(θ_w, ν)
     D0 = D_ref * (T_soil / T_ref)^FT(1.75) * (P_ref / P_sfc)
     D =
         D0 *

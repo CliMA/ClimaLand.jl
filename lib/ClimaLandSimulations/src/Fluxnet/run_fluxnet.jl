@@ -46,10 +46,7 @@ function run_fluxnet(
 
     soilco2_ps = SoilCO2ModelParameters(
         FT;
-        ν = params.soil.ν,
-        θ_a100 = params.hetero_resp.θ_a100,
         D_ref = params.hetero_resp.D_ref,
-        b = params.hetero_resp.b,
         D_liq = params.hetero_resp.D_liq,
         # DAMM
         α_sx = params.hetero_resp.α_sx,
@@ -72,18 +69,11 @@ function run_fluxnet(
     soilco2_boundary_conditions =
         (; top = soilco2_top_bc, bottom = CO2 = soilco2_bot_bc)
 
-    soilco2_drivers = Soil.Biogeochemistry.SoilDrivers(
-        Soil.Biogeochemistry.PrognosticMet{FT}(),
-        Soil.Biogeochemistry.PrescribedSOC{FT}(Csom),
-        drivers.atmos,
-    )
-
     soilco2_args = (;
         boundary_conditions = soilco2_boundary_conditions,
         sources = soilco2_sources,
         domain = soil_domain,
         parameters = soilco2_ps,
-        drivers = soilco2_drivers,
     )
 
     # Now we set up the canopy model, which we set up by component:
@@ -218,7 +208,11 @@ function run_fluxnet(
         (; parameters = shared_params, domain = domain.canopy_domain)
 
     # Integrated plant hydraulics and soil model
-    land_input = (atmos = drivers.atmos, radiation = drivers.radiation)
+    land_input = (
+        atmos = drivers.atmos,
+        radiation = drivers.radiation,
+        soil_organic_carbon = Csom,
+    )
     land = SoilCanopyModel{FT}(;
         soilco2_type = soilco2_type,
         soilco2_args = soilco2_args,

@@ -190,18 +190,11 @@ soilco2_sources = (Soil.Biogeochemistry.MicrobeProduction{FT}(),)
 
 soilco2_boundary_conditions = (; top = soilco2_top_bc, bottom = soilco2_bot_bc)
 
-soilco2_drivers = Soil.Biogeochemistry.SoilDrivers(
-    Soil.Biogeochemistry.PrognosticMet{FT}(),
-    Soil.Biogeochemistry.PrescribedSOC{FT}(Csom),
-    atmos,
-)
-
 soilco2_args = (;
     boundary_conditions = soilco2_boundary_conditions,
     sources = soilco2_sources,
     domain = domain,
     parameters = soilco2_ps,
-    drivers = soilco2_drivers,
 )
 
 # Now we set up the canopy model, which we set up by component:
@@ -295,7 +288,12 @@ canopy_model_args = (;
 )
 
 # Integrated plant hydraulics and soil model
-land_input = (atmos = atmos, radiation = radiation, runoff = runoff_model)
+land_input = (
+    atmos = atmos,
+    radiation = radiation,
+    runoff = runoff_model,
+    soil_organic_carbon = Csom,
+)
 land = SoilCanopyModel{FT}(;
     soilco2_type = soilco2_type,
     soilco2_args = soilco2_args,

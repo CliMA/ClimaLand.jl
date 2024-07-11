@@ -19,7 +19,7 @@ for FT in (Float32, Float64)
         θ_i = (z, t) -> eltype(z)(0)
         Csom = (z, t) -> eltype(z)(5.0) # 3 [kg C m-3] soil organic C content at depth z
         D_ref = FT(0.0)
-        parameters = SoilCO2ModelParameters(FT; ν = 0.556, D_ref)
+        parameters = SoilCO2ModelParameters(FT; D_ref)
 
         nelems = 50 # number of layers in the vertical
         zmin = FT(-1) # 0 to 1 m depth
@@ -54,9 +54,13 @@ for FT in (Float32, Float64)
             earth_param_set;
             c_co2 = TimeVaryingInput(atmos_co2),
         )
-
+        ν = FT(0.6)
+        θ_r = FT(0.0)
+        α = FT(0.1)
+        n = FT(2)
+        hcm = ClimaLand.Soil.vanGenuchten{FT}(; α = α, n = n)
         soil_drivers = SoilDrivers(
-            PrescribedMet{FT}(T_soil, θ_l),
+            PrescribedMet{FT}(T_soil, θ_l, ν, θ_r, hcm),
             PrescribedSOC{FT}(Csom),
             atmos,
         )
@@ -89,7 +93,7 @@ for FT in (Float32, Float64)
         θ_i = (z, t) -> eltype(z)(0.0)
         Csom = (z, t) -> eltype(z)(5.0) # 3 [kg C m-3] soil organic C content at depth z
 
-        parameters = SoilCO2ModelParameters(FT; ν = 0.556)
+        parameters = SoilCO2ModelParameters(FT)
         C = FT(4)
         nelems = 50 # number of layers in the vertical
         zmin = FT(-1) # 0 to 1 m depth
@@ -124,9 +128,13 @@ for FT in (Float32, Float64)
             earth_param_set;
             c_co2 = TimeVaryingInput(atmos_co2),
         )
-
+        ν = FT(0.6)
+        θ_r = FT(0.0)
+        α = FT(0.1)
+        n = FT(2)
+        hcm = ClimaLand.Soil.vanGenuchten{FT}(; α = α, n = n)
         soil_drivers = SoilDrivers(
-            PrescribedMet{FT}(T_soil, θ_l),
+            PrescribedMet{FT}(T_soil, θ_l, ν, θ_r, hcm),
             PrescribedSOC{FT}(Csom),
             atmos, # need to create some functions
         )

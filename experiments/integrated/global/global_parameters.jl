@@ -188,8 +188,4 @@ z0_m = FT(0.13) * h_canopy
 z0_b = FT(0.1) * z0_m
 
 
-soilco2_ps = Soil.Biogeochemistry.SoilCO2ModelParameters(
-    FT;
-    ν = 1.0,# INCORRECT! This should be the same as the soil porosity, but
-    # currently, SoilCO2 does not support spatially varying parameters
-)
+soilco2_ps = Soil.Biogeochemistry.SoilCO2ModelParameters(FT)
