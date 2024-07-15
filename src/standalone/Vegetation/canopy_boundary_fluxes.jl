@@ -173,7 +173,8 @@ function canopy_boundary_fluxes!(
     shf .= canopy_tf.shf
     lhf .= canopy_tf.lhf
     r_ae .= canopy_tf.r_ae
-
+    p.canopy.energy.∂LHF∂qc .= canopy_tf.∂LHF∂qc
+    p.canopy.energy.∂SHF∂Tc .= canopy_tf.∂SHF∂Tc
     # Transpiration is per unit ground area, not leaf area (mult by LAI)
     fa.:($i_end) .= PlantHydraulics.transpiration_per_ground_area(
         canopy.hydraulics.transpiration,
@@ -334,7 +335,7 @@ function canopy_turbulent_fluxes_at_a_point(
     T_in::FT = Thermodynamics.air_temperature(thermo_params, ts_in)
     ΔT = T_in - T_sfc
     r_ae::FT = 1 / (conditions.Ch * SurfaceFluxes.windspeed(sc))
-    ρ_air::FT = Thermodynamics.air_density(thermo_params, ts_in)
+    ρ_air::FT = Thermodynamics.air_density(thermo_params, ts_sfc)
     ustar::FT = conditions.ustar
     r_b::FT = FT(1 / 0.01 * (ustar / 0.04)^(-1 / 2)) # CLM 5, tech note Equation 5.122
     leaf_r_b = r_b / LAI
@@ -344,5 +345,14 @@ function canopy_turbulent_fluxes_at_a_point(
     Ẽ = E / _ρ_liq
     H = -ρ_air * cp_m * ΔT / (canopy_r_b + r_ae) # CLM 5, tech note Equation 5.88, setting H_v = H and solving to remove T_s
     LH = _LH_v0 * E
-    return (lhf = LH, shf = H, vapor_flux = Ẽ, r_ae = r_ae)
+    ∂LHF∂qc = ρ_air * _LH_v0 / (leaf_r_b + leaf_r_stomata + r_ae)
+    ∂SHF∂Tc = ρ_air * cp_m / (canopy_r_b + r_ae)
+    return (
+        lhf = LH,
+        shf = H,
+        vapor_flux = Ẽ,
+        r_ae = r_ae,
+        ∂LHF∂qc = ∂LHF∂qc,
+        ∂SHF∂Tc = ∂SHF∂Tc,
+    )
 end

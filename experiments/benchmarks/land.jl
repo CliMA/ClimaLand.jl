@@ -602,10 +602,10 @@ function setup_and_solve_problem(; greet = false)
     # to set up for both CPU/GPU at the same time
     t0 = 0.0
     tf = 60 * 60.0 * 6
-    Δt = 900.0
+    Δt = 1800.0
     nelements = (101, 15)
     if greet
-        @info "Run: Global RichardsModel"
+        @info "Run: Global Land Model"
         @info "Resolution: $nelements"
         @info "Timestep: $Δt s"
         @info "Duration: $(tf - t0) s"
