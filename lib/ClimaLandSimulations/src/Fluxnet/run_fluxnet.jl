@@ -60,7 +60,7 @@ function run_fluxnet(
     )
 
     # soil microbes args
-    Csom = (z, t) -> eltype(z)(5.0)
+    Csom = ClimaLand.PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5))
 
     soilco2_top_bc = Soil.Biogeochemistry.AtmosCO2StateBC()
     soilco2_bot_bc = Soil.Biogeochemistry.SoilCO2FluxBC((p, t) -> 0.0) # no flux
@@ -286,7 +286,8 @@ function run_fluxnet(
     ## How often we want to update the drivers. Note that this uses the defined `t0` and `tf`
     ## defined in the simulatons file
     updateat = Array((setup.t0):(drivers.DATA_DT):(timestepper.tf))
-    updatefunc = ClimaLand.make_update_drivers(drivers.atmos, drivers.radiation)
+    land_drivers = ClimaLand.get_drivers(land)
+    updatefunc = ClimaLand.make_update_drivers(land_drivers)
     driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
     cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
 

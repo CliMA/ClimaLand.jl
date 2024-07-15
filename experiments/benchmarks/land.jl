@@ -205,7 +205,7 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
     soil_params_mask = SpaceVaryingInput(
         joinpath(
             soil_params_artifact_path,
-            "vGalpha_map_gupta_etal2020_2.5x2.5x4.nc",
+            "vGalpha_map_gupta_etal2020_1.0x1.0x4.nc",
         ),
         "α",
         subsurface_space;
@@ -219,7 +219,7 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
     vg_α = SpaceVaryingInput(
         joinpath(
             soil_params_artifact_path,
-            "vGalpha_map_gupta_etal2020_2.5x2.5x4.nc",
+            "vGalpha_map_gupta_etal2020_1.0x1.0x4.nc",
         ),
         "α",
         subsurface_space;
@@ -229,7 +229,7 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
     vg_n = SpaceVaryingInput(
         joinpath(
             soil_params_artifact_path,
-            "vGn_map_gupta_etal2020_2.5x2.5x4.nc",
+            "vGn_map_gupta_etal2020_1.0x1.0x4.nc",
         ),
         "n",
         subsurface_space;
@@ -251,7 +251,7 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
     θ_r = SpaceVaryingInput(
         joinpath(
             soil_params_artifact_path,
-            "residual_map_gupta_etal2020_2.5x2.5x4.nc",
+            "residual_map_gupta_etal2020_1.0x1.0x4.nc",
         ),
         "θ_r",
         subsurface_space;
@@ -262,7 +262,7 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
     ν = SpaceVaryingInput(
         joinpath(
             soil_params_artifact_path,
-            "porosity_map_gupta_etal2020_2.5x2.5x4.nc",
+            "porosity_map_gupta_etal2020_1.0x1.0x4.nc",
         ),
         "ν",
         subsurface_space;
@@ -272,7 +272,7 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
     K_sat = SpaceVaryingInput(
         joinpath(
             soil_params_artifact_path,
-            "ksat_map_gupta_etal2020_2.5x2.5x4.nc",
+            "ksat_map_gupta_etal2020_1.0x1.0x4.nc",
         ),
         "Ksat",
         subsurface_space;
@@ -409,7 +409,7 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
     soilco2_type = Soil.Biogeochemistry.SoilCO2Model{FT}
 
     # soil microbes args
-    Csom = (z, t) -> eltype(z)(5.0)
+    Csom = ClimaLand.PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5))
 
     # Set the soil CO2 BC to being atmospheric CO2
     soilco2_top_bc = Soil.Biogeochemistry.AtmosCO2StateBC()
@@ -591,7 +591,8 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
     )
 
     updateat = Array(t0:(3600 * 3):tf)
-    updatefunc = ClimaLand.make_update_drivers(atmos, radiation)
+    drivers = ClimaLand.get_drivers(land)
+    updatefunc = ClimaLand.make_update_drivers(drivers)
     cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
     return prob, cb
 end

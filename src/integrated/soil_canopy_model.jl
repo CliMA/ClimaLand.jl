@@ -175,7 +175,7 @@ function SoilCanopyModel{FT}(;
     co2_prognostic_soil = Soil.Biogeochemistry.PrognosticMet(soil.parameters)
     soilco2_drivers = Soil.Biogeochemistry.SoilDrivers(
         co2_prognostic_soil,
-        Soil.Biogeochemistry.PrescribedSOC{FT}(soil_organic_carbon),
+        soil_organic_carbon,
         atmos,
     )
     soilco2 = soilco2_type(; soilco2_args..., drivers = soilco2_drivers)
@@ -592,5 +592,9 @@ end
 
 
 function ClimaLand.get_drivers(model::SoilCanopyModel)
-    return (model.canopy.atmos, model.canopy.radiation)
+    return (
+        model.canopy.atmos,
+        model.canopy.radiation,
+        model.soilco2.drivers.soc,
+    )
 end

@@ -3,9 +3,13 @@ ClimaLand.jl Release Notes
 
 main
 --------
-- PR[#690] Use the soil parameters in creating the biogeochemistry SoilMet driver for consistency.
+- Use the soil parameters in creating the biogeochemistry SoilMet driver for consistency.
+  PR[#690](https://github.com/CliMA/ClimaLand.jl/pull/690)
+- ![][badge-💥breaking] Generalize our forcing ``drivers" to include prescribed soil organic carbon
+  PR[#692](https://github.com/CliMA/ClimaLand.jl/pull/692)
 - Add a long run with diagnostics
   PR[#688](https://github.com/CliMA/ClimaLand.jl/pull/688)
+
 v0.13.0
 --------
 - NOTE: the breaking PR below was merged by accident in v0.12.5

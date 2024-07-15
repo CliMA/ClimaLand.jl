@@ -113,7 +113,8 @@ for FT in (Float32, Float64)
                 boundary_conditions = boundary_fluxes,
                 sources = (),
             )
-
+            drivers = ClimaLand.get_drivers(model)
+            @test drivers == (atmos, radiation)
             Y, p, coords = initialize(model)
             Δz_top = model.domain.fields.Δz_top
             @test propertynames(p.drivers) == (

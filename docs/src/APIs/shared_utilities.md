@@ -71,6 +71,7 @@ ClimaLand.get_drivers
 ClimaLand.PrescribedAtmosphere
 ClimaLand.PrescribedPrecipitation
 ClimaLand.PrescribedRadiativeFluxes
+ClimaLand.PrescribedSoilOrganicCarbon
 ClimaLand.CoupledAtmosphere
 ClimaLand.CoupledRadiativeFluxes
 ClimaLand.AbstractAtmosphericDrivers

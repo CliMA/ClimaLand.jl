@@ -96,8 +96,7 @@ soilco2_type = Soil.Biogeochemistry.SoilCO2Model{FT}
 
 soilco2_ps = SoilCO2ModelParameters(FT)
 
-# soil microbes args
-Csom = (z, t) -> eltype(z)(5.0)
+Csom = ClimaLand.PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5))
 
 # Set the soil CO2 BC to being atmospheric CO2
 soilco2_top_bc = Soil.Biogeochemistry.AtmosCO2StateBC()
@@ -254,7 +253,8 @@ saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat)
 ## How often we want to update the drivers. Note that this uses the defined `t0` and `tf`
 ## defined in the simulatons file
 updateat = Array(t0:DATA_DT:tf)
-updatefunc = ClimaLand.make_update_drivers(atmos, radiation)
+model_drivers = ClimaLand.get_drivers(land)
+updatefunc = ClimaLand.make_update_drivers(model_drivers)
 driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
 cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
 

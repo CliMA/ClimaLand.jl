@@ -229,7 +229,7 @@ soilco2_type = Soil.Biogeochemistry.SoilCO2Model{FT}
 soilco2_ps = SoilCO2ModelParameters(FT)
 
 # soil microbes args
-Csom = (z, t) -> eltype(z)(5.0)
+Csom = ClimaLand.PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5))
 
 # Set the soil CO2 BC to being atmospheric CO2
 soilco2_top_bc = Soil.Biogeochemistry.AtmosCO2StateBC()
@@ -339,7 +339,8 @@ ode_algo = CTS.IMEXAlgorithm(
     ),
 );
 
-updatefunc = ClimaLand.make_update_drivers(atmos, radiation)
+drivers = ClimaLand.get_drivers(land)
+updatefunc = ClimaLand.make_update_drivers(drivers)
 driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
 # Set initial conditions
 Y, p = set_initial_conditions(land, t0)
@@ -370,7 +371,8 @@ if PROFILING
     # Now that we compiled, solve again but collect profiling information
     Y, p = set_initial_conditions(land, t0)
     updateat = Array(t0:dt:tf)
-    updatefunc = ClimaLand.make_update_drivers(atmos, radiation)
+    drivers = ClimaLand.get_drivers(land)
+    updatefunc = ClimaLand.make_update_drivers(drivers)
     driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
     prob = SciMLBase.ODEProblem(
         CTS.ClimaODEFunction(
@@ -394,7 +396,8 @@ if PROFILING
     @info "Save compute flame to flame_file"
     Y, p = set_initial_conditions(land, t0)
     updateat = Array(t0:dt:tf)
-    updatefunc = ClimaLand.make_update_drivers(atmos, radiation)
+    drivers = ClimaLand.get_drivers(land)
+    updatefunc = ClimaLand.make_update_drivers(drivers)
     driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
     prob = SciMLBase.ODEProblem(
         CTS.ClimaODEFunction(

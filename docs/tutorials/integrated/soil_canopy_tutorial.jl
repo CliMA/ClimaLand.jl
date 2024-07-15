@@ -177,7 +177,7 @@ soilco2_type = Soil.Biogeochemistry.SoilCO2Model{FT}
 soilco2_ps = SoilCO2ModelParameters(FT);
 
 # soil microbes args
-Csom = (z, t) -> eltype(z)(5); # kg C m⁻³, this is a guess, not measured at the site
+Csom = ClimaLand.PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5))
 
 soilco2_top_bc = Soil.Biogeochemistry.AtmosCO2StateBC()
 soilco2_bot_bc = Soil.Biogeochemistry.SoilCO2StateBC((p, t) -> 0.0);
@@ -390,7 +390,8 @@ sv = (;
     saveval = Array{NamedTuple}(undef, length(saveat)),
 )
 saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat)
-updatefunc = ClimaLand.make_update_drivers(atmos, radiation)
+model_drivers = ClimaLand.get_drivers(land)
+updatefunc = ClimaLand.make_update_drivers(model_drivers)
 updateat = Array(t0:1800:tf)
 driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
 cb = SciMLBase.CallbackSet(driver_cb, saving_cb);

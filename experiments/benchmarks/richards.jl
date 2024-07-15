@@ -115,7 +115,7 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
     vg_α = SpaceVaryingInput(
         joinpath(
             soil_params_artifact_path,
-            "vGalpha_map_gupta_etal2020_2.5x2.5x4.nc",
+            "vGalpha_map_gupta_etal2020_1.0x1.0x4.nc",
         ),
         "α",
         subsurface_space;
@@ -135,7 +135,7 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
     vg_n = SpaceVaryingInput(
         joinpath(
             soil_params_artifact_path,
-            "vGn_map_gupta_etal2020_2.5x2.5x4.nc",
+            "vGn_map_gupta_etal2020_1.0x1.0x4.nc",
         ),
         "n",
         subsurface_space;
@@ -150,7 +150,7 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
     θ_r = SpaceVaryingInput(
         joinpath(
             soil_params_artifact_path,
-            "residual_map_gupta_etal2020_2.5x2.5x4.nc",
+            "residual_map_gupta_etal2020_1.0x1.0x4.nc",
         ),
         "θ_r",
         subsurface_space;
@@ -161,7 +161,7 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
     ν = SpaceVaryingInput(
         joinpath(
             soil_params_artifact_path,
-            "porosity_map_gupta_etal2020_2.5x2.5x4.nc",
+            "porosity_map_gupta_etal2020_1.0x1.0x4.nc",
         ),
         "ν",
         subsurface_space;
@@ -172,7 +172,7 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
     K_sat = SpaceVaryingInput(
         joinpath(
             soil_params_artifact_path,
-            "ksat_map_gupta_etal2020_2.5x2.5x4.nc",
+            "ksat_map_gupta_etal2020_1.0x1.0x4.nc",
         ),
         "Ksat",
         subsurface_space;
@@ -277,7 +277,8 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
         p,
     )
     updateat = Array(t0:(2Δt):tf)
-    updatefunc = ClimaLand.make_update_drivers(atmos, nothing)
+    drivers = ClimaLand.get_drivers(model)
+    updatefunc = ClimaLand.make_update_drivers(drivers)
     driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
     cb = SciMLBase.CallbackSet(driver_cb)
 

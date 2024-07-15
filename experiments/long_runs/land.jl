@@ -408,7 +408,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     soilco2_type = Soil.Biogeochemistry.SoilCO2Model{FT}
 
     # soil microbes args
-    Csom = (z, t) -> eltype(z)(5.0)
+    Csom = ClimaLand.PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5))
 
     # Set the soil CO2 BC to being atmospheric CO2
     soilco2_top_bc = Soil.Biogeochemistry.AtmosCO2StateBC()
@@ -590,7 +590,8 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     )
 
     updateat = Array(t0:(3600 * 3):tf)
-    updatefunc = ClimaLand.make_update_drivers(atmos, radiation)
+    drivers = ClimaLand.get_drivers(land)
+    updatefunc = ClimaLand.make_update_drivers(drivers)
 
     # ClimaDiagnostics
 

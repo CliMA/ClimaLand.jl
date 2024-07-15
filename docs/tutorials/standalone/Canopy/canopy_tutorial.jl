@@ -314,7 +314,8 @@ saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat);
 # Create the callback function which updates the forcing variables,
 # or drivers.
 updateat = Array(t0:1800:tf)
-updatefunc = ClimaLand.make_update_drivers(atmos, radiation)
+model_drivers = ClimaLand.get_drivers(canopy)
+updatefunc = ClimaLand.make_update_drivers(model_drivers)
 driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
 cb = SciMLBase.CallbackSet(driver_cb, saving_cb);
 

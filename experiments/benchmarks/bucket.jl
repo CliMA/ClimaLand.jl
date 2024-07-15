@@ -133,7 +133,8 @@ function setup_prob(t0, tf, Δt; nelements = (100, 10))
         p,
     )
     updateat = collect(t0:(3Δt):tf)
-    updatefunc = ClimaLand.make_update_drivers(bucket_atmos, bucket_rad)
+    drivers = ClimaLand.get_drivers(model)
+    updatefunc = ClimaLand.make_update_drivers(drivers)
     driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
     cb = SciMLBase.CallbackSet(driver_cb)
 

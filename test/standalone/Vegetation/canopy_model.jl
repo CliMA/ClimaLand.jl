@@ -188,6 +188,8 @@ for FT in (Float32, Float64)
             atmos = atmos,
             radiation = radiation,
         )
+        drivers = ClimaLand.get_drivers(canopy)
+        @test drivers == (atmos, radiation)
         Y, p, coords = ClimaLand.initialize(canopy)
         @test propertynames(p.drivers) == (
             :P_liq,

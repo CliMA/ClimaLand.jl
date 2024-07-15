@@ -49,6 +49,8 @@ import ClimaLand.Parameters as LP
         atmosphere = atmos,
         radiation = rad,
     )
+    drivers = ClimaLand.get_drivers(model)
+    @test drivers == (atmos, rad)
     Y, p, coords = ClimaLand.initialize(model)
     @test (Y.snow |> propertynames) == (:S, :U)
     @test (p.snow |> propertynames) == (

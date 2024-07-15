@@ -63,7 +63,9 @@ for FT in (Float32, Float64)
         )
 
         # Make biogeochemistry model args
-        Csom = (z, t) -> eltype(z)(5.0)
+        Csom = ClimaLand.PrescribedSoilOrganicCarbon{FT}(
+            TimeVaryingInput((t) -> 5),
+        )
 
         co2_parameters = Soil.Biogeochemistry.SoilCO2ModelParameters(FT)
         C = FT(4)
@@ -111,9 +113,11 @@ for FT in (Float32, Float64)
         )
         @test model.soilco2.drivers.met.ν == model.soil.parameters.ν
         @test model.soilco2.drivers.met isa ClimaLand.PrognosticMet
+        drivers = ClimaLand.get_drivers(model)
+        @test drivers == (atmos, Csom)
         Y, p, coords = initialize(model)
         @test propertynames(p.drivers) ==
-              (:P_liq, :P_snow, :T, :P, :u, :q, :c_co2, :thermal_state)
+              (:P_liq, :P_snow, :T, :P, :u, :q, :c_co2, :thermal_state, :soc)
         function init_soil!(Y, z, params)
             ν = params.ν
             FT = eltype(Y.soil.ϑ_l)
@@ -156,17 +160,7 @@ for FT in (Float32, Float64)
             t0,
             z,
         )
-        @test all(
-            parent(
-                Soil.Biogeochemistry.soil_SOM_C(
-                    model.soilco2.drivers.soc,
-                    p,
-                    Y,
-                    t0,
-                    z,
-                ),
-            ) .== FT(5.0),
-        )
+        @test all(parent(p.drivers.soc) .== FT(5.0))
         @test p.soil.θ_l ≈ Soil.Biogeochemistry.soil_moisture(
             model.soilco2.drivers.met,
             p,

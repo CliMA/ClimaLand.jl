@@ -442,8 +442,8 @@ function ClimaLand.get_drivers(model::RichardsModel)
         <:PrescribedPrecipitation,
         <:AbstractRunoffModel,
     }
-        return (bc.precip, nothing)
+        return (bc.precip,)
     else
-        return (nothing, nothing)
+        return ()
     end
 end

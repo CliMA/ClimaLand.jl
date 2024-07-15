@@ -69,7 +69,7 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
     )
 
     # Make biogeochemistry model args
-    Csom = (z, t) -> eltype(z)(5.0)
+    Csom = ClimaLand.PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5))
 
     co2_parameters = Soil.Biogeochemistry.SoilCO2ModelParameters(FT)
     C = FT(100)
@@ -165,7 +165,8 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
     )
     saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat)
     updateat = deepcopy(saveat)
-    updatefunc = ClimaLand.make_update_drivers(atmos, nothing)
+    drivers = ClimaLand.get_drivers(model)
+    updatefunc = ClimaLand.make_update_drivers(drivers)
     driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
     cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
 

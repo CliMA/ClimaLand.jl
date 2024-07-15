@@ -56,7 +56,7 @@ FT = Float32
     @test isnothing(dm_update_aux!(x...))
     @test x == [1, 2, 3]
 
-    @test ClimaLand.get_drivers(dm) == (nothing, nothing)
+    @test ClimaLand.get_drivers(dm) == ()
     @test ClimaLand.add_drivers_to_cache((;), dm, nothing) == (;)
 end
 

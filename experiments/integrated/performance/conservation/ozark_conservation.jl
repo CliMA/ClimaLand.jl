@@ -41,7 +41,8 @@ for float_type in (Float32, Float64)
     saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat)
 
     updateat = deepcopy(saveat)
-    updatefunc = ClimaLand.make_update_drivers(atmos, radiation)
+    drivers = ClimaLand.get_drivers(land)
+    updatefunc = ClimaLand.make_update_drivers(drivers)
     driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
     prob = SciMLBase.ODEProblem(
         CTS.ClimaODEFunction(

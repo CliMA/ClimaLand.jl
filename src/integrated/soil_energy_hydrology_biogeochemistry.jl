@@ -50,7 +50,7 @@ function LandSoilBiogeochemistry{FT}(;
     prognostic_soil = Soil.Biogeochemistry.PrognosticMet(soil.parameters)
     soil_co2_drivers = Soil.Biogeochemistry.SoilDrivers(
         prognostic_soil,
-        Soil.Biogeochemistry.PrescribedSOC{FT}(soil_organic_carbon),
+        soil_organic_carbon,
         atmos,
     )
     soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(;
@@ -115,8 +115,8 @@ function ClimaLand.get_drivers(model::LandSoilBiogeochemistry)
         <:AbstractRadiativeDrivers,
         <:Soil.AbstractRunoffModel,
     }
-        return (bc.atmos, bc.radiation)
+        return (bc.atmos, bc.radiation, model.soilco2.drivers.soc)
     else
-        return (model.soilco2.drivers.atmos, nothing)
+        return (model.soilco2.drivers.atmos, model.soilco2.drivers.soc)
     end
 end
