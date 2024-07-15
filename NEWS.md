@@ -4,14 +4,14 @@ ClimaLand.jl Release Notes
 main
 --------
 - PR[#690] Use the soil parameters in creating the biogeochemistry SoilMet driver for consistency.
-
+- Add a long run with diagnostics
+  PR[#688](https://github.com/CliMA/ClimaLand.jl/pull/688)
 v0.13.0
 --------
 - NOTE: the breaking PR below was merged by accident in v0.12.5
 - ![][badge-💥breaking] rename update_jacobian to compute_jacobian
   and tendency_jacobian to jacobian
   PR[#685](https://github.com/CliMA/ClimaLand.jl/pull/685)
-
 v0.12.5
 --------
 - Turn of dss
@@ -26,6 +26,8 @@ v0.12.5
 - Add base global soil canopy run to benchmark and experiments
   PR [#591](https://github.com/CliMA/ClimaLand.jl/pull/591)
   PR [#669](https://github.com/CliMA/ClimaLand.jl/pull/669)
+- updates Jacobian for soil energy
+  PR[#678](https://github.com/CliMA/ClimaLand.jl/pull/678)
 
 v0.12.4
 --------

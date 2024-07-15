@@ -5,7 +5,7 @@ extrapolation_bc =
 soil_params_mask = SpaceVaryingInput(
     joinpath(
         soil_params_artifact_path,
-        "vGalpha_map_gupta_etal2020_2.5x2.5x4.nc",
+        "vGalpha_map_gupta_etal2020_1.0x1.0x4.nc",
     ),
     "α",
     subsurface_space;
@@ -18,7 +18,7 @@ oceans_to_value(field, mask, value) = mask == 1.0 ? field : eltype(field)(value)
 vg_α = SpaceVaryingInput(
     joinpath(
         soil_params_artifact_path,
-        "vGalpha_map_gupta_etal2020_2.5x2.5x4.nc",
+        "vGalpha_map_gupta_etal2020_1.0x1.0x4.nc",
     ),
     "α",
     subsurface_space;
@@ -26,7 +26,7 @@ vg_α = SpaceVaryingInput(
     regridder_kwargs = (; extrapolation_bc,),
 )
 vg_n = SpaceVaryingInput(
-    joinpath(soil_params_artifact_path, "vGn_map_gupta_etal2020_2.5x2.5x4.nc"),
+    joinpath(soil_params_artifact_path, "vGn_map_gupta_etal2020_1.0x1.0x4.nc"),
     "n",
     subsurface_space;
     regridder_type,
@@ -47,7 +47,7 @@ hydrology_cm = vg_fields_to_hcm_field.(vg_α, vg_n)
 θ_r = SpaceVaryingInput(
     joinpath(
         soil_params_artifact_path,
-        "residual_map_gupta_etal2020_2.5x2.5x4.nc",
+        "residual_map_gupta_etal2020_1.0x1.0x4.nc",
     ),
     "θ_r",
     subsurface_space;
@@ -58,7 +58,7 @@ hydrology_cm = vg_fields_to_hcm_field.(vg_α, vg_n)
 ν = SpaceVaryingInput(
     joinpath(
         soil_params_artifact_path,
-        "porosity_map_gupta_etal2020_2.5x2.5x4.nc",
+        "porosity_map_gupta_etal2020_1.0x1.0x4.nc",
     ),
     "ν",
     subsurface_space;
@@ -66,7 +66,7 @@ hydrology_cm = vg_fields_to_hcm_field.(vg_α, vg_n)
     regridder_kwargs = (; extrapolation_bc,),
 )
 K_sat = SpaceVaryingInput(
-    joinpath(soil_params_artifact_path, "ksat_map_gupta_etal2020_2.5x2.5x4.nc"),
+    joinpath(soil_params_artifact_path, "ksat_map_gupta_etal2020_1.0x1.0x4.nc"),
     "Ksat",
     subsurface_space;
     regridder_type,

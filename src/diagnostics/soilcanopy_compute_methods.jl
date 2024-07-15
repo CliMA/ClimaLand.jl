@@ -60,17 +60,17 @@ end
 
 function compute_soil_temperature!(out, Y, p, t, land_model::SoilCanopyModel)
     if isnothing(out)
-        return copy(p.drivers.T) # or is it p.soil.T?
+        return copy(p.soil.T) # or is it p.soil.T?
     else
-        out .= p.drivers.T
+        out .= p.soil.T
     end
 end
 
-function compute_soil_water_liquid(out, Y, p, t, land_model::SoilCanopyModel)
+function compute_soil_water_liquid!(out, Y, p, t, land_model::SoilCanopyModel)
     if isnothing(out)
-        return copy(p.soil.θ_l) # or is it in Y.soil?
+        return copy(top_center_to_surface(p.soil.θ_l)) # or is it in Y.soil?
     else
-        out .= p.soil.θ_l
+        out .= top_center_to_surface(p.soil.θ_l)
     end
 end
 
@@ -218,7 +218,7 @@ function compute_photosynthesis_net_leaf(
     end
 end
 
-function compute_photosynthesis_net_canopy(
+function compute_photosynthesis_net_canopy!(
     out,
     Y,
     p,
@@ -512,11 +512,11 @@ function compute_cross_section_roots(out, Y, p, t, land_model::SoilCanopyModel)
     end
 end
 
-function compute_area_index(out, Y, p, t, land_model::SoilCanopyModel)
+function compute_area_index!(out, Y, p, t, land_model::SoilCanopyModel)
     if isnothing(out)
-        return copy(p.canopy.hydraulics.area_index)
+        return copy(p.canopy.hydraulics.area_index.leaf)
     else
-        p.canopy.hydraulics.area_index
+        out .= p.canopy.hydraulics.area_index.leaf
     end
 end
 
@@ -562,18 +562,18 @@ function compute_canopy_aerodynamic_resistance(
     end
 end
 
-function compute_canopy_temperature(out, Y, p, t, land_model::SoilCanopyModel)
+function compute_canopy_temperature!(out, Y, p, t, land_model::SoilCanopyModel)
     if isnothing(out)
         return copy(Y.canopy.energy.T)
     else
-        Y.canopy.energy.T
+        out .= Y.canopy.energy.T
     end
 end
 
-function compute_soil_ice(out, Y, p, t, land_model::SoilCanopyModel)
+function compute_soil_ice!(out, Y, p, t, land_model::SoilCanopyModel)
     if isnothing(out)
-        return copy(Y.soil.θ_i)
+        return copy(top_center_to_surface(Y.soil.θ_i))
     else
-        Y.soil.θ_i
+        out .= top_center_to_surface(Y.soil.θ_i)
     end
 end
