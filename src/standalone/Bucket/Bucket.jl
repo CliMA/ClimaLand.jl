@@ -22,8 +22,6 @@ import ClimaLand.Domains: coordinates, SphericalShell
 using ClimaLand:
     AbstractAtmosphericDrivers,
     AbstractRadiativeDrivers,
-    liquid_precipitation,
-    snow_precipitation,
     turbulent_fluxes,
     net_radiation,
     compute_ρ_sfc,
@@ -379,8 +377,8 @@ function make_compute_exp_tendency(model::BucketModel{FT}) where {FT}
         # Positive infiltration -> net (negative) flux into soil
         @. dY.bucket.W = -p.bucket.infiltration # Equation (2) of the text.
 
-        liquid_precip = liquid_precipitation(model.atmos, p, t) # always negative
-        snow_precip = snow_precipitation(model.atmos, p, t)
+        liquid_precip = p.drivers.P_liq
+        snow_precip = p.drivers.P_snow
 
         dY.bucket.Ws = @. -(
             liquid_precip +
@@ -480,7 +478,7 @@ function make_update_aux(model::BucketModel{FT}) where {FT}
             p.bucket.snow_cover_fraction # Equation 22
 
         # Partition water fluxes
-        liquid_precip = liquid_precipitation(model.atmos, p, t) # always negative
+        liquid_precip = p.drivers.P_liq
         # F_melt is negative as it is a downward welling flux warming the snow
         @.p.bucket.snow_melt = p.bucket.partitioned_fluxes.F_melt / _ρLH_f0 # defined after Equation (22)
 

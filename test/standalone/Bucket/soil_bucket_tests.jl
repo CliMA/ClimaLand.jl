@@ -244,7 +244,7 @@ for FT in (Float32, Float64)
                   p.bucket.snow_cover_fraction
             @test p.bucket.snow_melt ==
                   p.bucket.partitioned_fluxes.F_melt ./ _ρLH_f0
-            liquid_precip = ClimaLand.liquid_precipitation(model.atmos, p, t0)
+            liquid_precip = p.drivers.P_liq
 
             @test p.bucket.infiltration ==
                   ClimaLand.Bucket.infiltration_at_point.(

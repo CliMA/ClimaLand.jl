@@ -20,8 +20,6 @@ export AbstractAtmosphericDrivers,
     turbulent_fluxes,
     net_radiation,
     turbulent_fluxes_at_a_point,
-    liquid_precipitation,
-    snow_precipitation,
     vapor_pressure_deficit,
     displacement_height,
     relative_humidity,
@@ -479,25 +477,6 @@ function ClimaLand.net_radiation(
     model_name = ClimaLand.name(model)
     model_cache = getproperty(p, model_name)
     return model_cache.R_n
-end
-
-
-"""
-    liquid_precipitation(atmos::AbstractAtmosphericDrivers, p, t)
-
-Returns the liquid precipitation (m/s) at the surface.
-"""
-function liquid_precipitation(atmos::AbstractAtmosphericDrivers, p, t)
-    return p.drivers.P_liq
-end
-
-"""
-    snow_precipitation(atmos::AbstractAtmosphericDrivers, p, t)
-
-Returns the precipitation in snow (m of liquid water/s) at the surface.
-"""
-function snow_precipitation(atmos::AbstractAtmosphericDrivers, p, t)
-    return p.drivers.P_snow
 end
 
 """
