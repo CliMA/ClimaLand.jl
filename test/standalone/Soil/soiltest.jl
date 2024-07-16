@@ -663,8 +663,8 @@ for FT in (Float32, Float64)
                 heat = zero_heat_flux_bc,
             ),
         )
-
-        sources = (PhaseChange{FT}(),)
+        Δt = FT(1000)# doesnt matter what this is here, we are checking dY.liquid water and dY.ice are in sync
+        sources = (PhaseChange{FT}(Δt),)
 
         ###
         hyd_off_en_on = Soil.EnergyHydrologyParameters(

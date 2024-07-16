@@ -18,9 +18,12 @@ export volumetric_internal_energy,
 
 Returns the thermal timescale for temperature differences across
 a typical thickness Δz to equilibrate.
+
+Clip to 10x the timestep in order to respect CFL condition,
+given that phase change is stepped explicitly.
 """
-function thermal_time(ρc::FT, Δz::FT, κ::FT) where {FT}
-    return ρc * Δz^2 / κ
+function thermal_time(ρc::FT, Δz::FT, κ::FT, Δt::FT) where {FT}
+    return max(ρc * Δz^2 / κ, 10 * Δt)
 end
 
 """
@@ -209,7 +212,7 @@ Compute the expression for relative saturation.
 This is referred to as θ_sat in Balland and Arp's paper.
 """
 function relative_saturation(θ_l::FT, θ_i::FT, ν::FT) where {FT}
-    return (θ_l + θ_i) / ν
+    return max((θ_l + θ_i) / ν, eps(FT))
 end
 
 """
