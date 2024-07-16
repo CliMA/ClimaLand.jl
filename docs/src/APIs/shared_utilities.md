@@ -81,8 +81,6 @@ ClimaLand.turbulent_fluxes_at_a_point
 ClimaLand.radiative_fluxes_at_a_point
 ClimaLand.set_atmos_ts!
 ClimaLand.surface_air_density
-ClimaLand.liquid_precipitation
-ClimaLand.snow_precipitation
 ClimaLand.surface_temperature
 ClimaLand.surface_resistance
 ClimaLand.surface_specific_humidity
