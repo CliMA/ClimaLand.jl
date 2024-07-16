@@ -857,20 +857,22 @@ bottom_center_to_surface(val) = val
 
 A function to return a tuple containing the distance between the top boundary
 and its closest center, and the bottom boundary and its closest center,
-both as Fields.
+both as Fields. It also returns the widths of each layer as a field.
 """
 function get_Δz(z::ClimaCore.Fields.Field)
     # Extract the differences between levels of the face space
     fs = obtain_face_space(axes(z))
     z_face = ClimaCore.Fields.coordinate_field(fs).z
-    Δz = ClimaCore.Fields.Δz_field(z_face)
-
+    Δz_face = ClimaCore.Fields.Δz_field(z_face)
     Δz_top = ClimaCore.Fields.level(
-        Δz,
+        Δz_face,
         ClimaCore.Utilities.PlusHalf(ClimaCore.Spaces.nlevels(fs) - 1),
     )
-    Δz_bottom = ClimaCore.Fields.level(Δz, ClimaCore.Utilities.PlusHalf(0))
-    return Δz_top ./ 2, Δz_bottom ./ 2
+    Δz_bottom = ClimaCore.Fields.level(Δz_face, ClimaCore.Utilities.PlusHalf(0))
+
+    #Layer widths:
+    Δz_center = ClimaCore.Fields.Δz_field(z)
+    return Δz_top ./ 2, Δz_bottom ./ 2, Δz_center
 end
 
 """
@@ -912,7 +914,7 @@ during the simulation.
 function get_additional_domain_fields(subsurface_space)
     surface_space = obtain_surface_space(subsurface_space)
     z = ClimaCore.Fields.coordinate_field(subsurface_space).z
-    Δz_top, Δz_bottom = get_Δz(z)
+    Δz_top, Δz_bottom, Δz = get_Δz(z)
     face_space = obtain_face_space(subsurface_space)
     z_face = ClimaCore.Fields.coordinate_field(face_space).z
     z_sfc = top_face_to_surface(z_face, surface_space)
@@ -923,6 +925,7 @@ function get_additional_domain_fields(subsurface_space)
         Δz_bottom = Δz_bottom,
         z_sfc = z_sfc,
         depth = d,
+        Δz = Δz,
     )
     return fields
 end
