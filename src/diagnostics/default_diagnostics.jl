@@ -122,3 +122,20 @@ function default_diagnostics(
         hourly_averages(soilcanopy_diagnostics...; output_writer, t_start)
     return [default_outputs...]
 end
+
+
+# SoilModel
+function default_diagnostics(
+    land_model::EnergyHydrology,
+    t_start;
+    output_writer,
+)
+
+    define_diagnostics!(land_model)
+
+    soil_diagnostics = ["slw", "si", "tsoil"]
+
+    default_outputs =
+        daily_averages(soil_diagnostics...; output_writer, t_start)
+    return [default_outputs...]
+end
