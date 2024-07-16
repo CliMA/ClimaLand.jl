@@ -62,7 +62,7 @@ function default_diagnostics(land_model::BucketModel, t_start; output_writer)
         "wsoil",
         "wsfc",
         "ssfc",
-    ] # TO DO: would it be helpful to return this list?
+    ]
 
     default_outputs =
         hourly_averages(bucket_diagnostics...; output_writer, t_start)
@@ -75,6 +75,7 @@ function default_diagnostics(
     t_start;
     output_writer,
     output_vars = :long,
+    average_period = :hourly,
 )
 
     define_diagnostics!(land_model)
@@ -96,7 +97,7 @@ function default_diagnostics(
             "gs",
             "mt",
             "trans",
-            "rain", # do we want?
+            "rain",
             "an",
             "gpp",
             "rd",
@@ -118,8 +119,17 @@ function default_diagnostics(
         soilcanopy_diagnostics = ["gpp", "ct", "ai", "slw", "si"]
     end
 
-    default_outputs =
-        hourly_averages(soilcanopy_diagnostics...; output_writer, t_start)
+    if average_period == :hourly
+        default_outputs =
+            hourly_averages(soilcanopy_diagnostics...; output_writer, t_start)
+    elseif average_period == :daily
+        default_outputs =
+            daily_averages(soilcanopy_diagnostics...; output_writer, t_start)
+    elseif average_period == :monthly # !! this is currently 30 days, not exact month
+        default_outputs =
+            monthly_averages(soilcanopy_diagnostics...; output_writer, t_start)
+    end
+
     return [default_outputs...]
 end
 

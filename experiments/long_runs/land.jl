@@ -601,7 +601,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         land,
         t0;
         output_writer = nc_writer,
-        output_vars = :short,
+        output_vars = :long,
     )
 
     diagnostic_handler =
