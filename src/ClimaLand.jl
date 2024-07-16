@@ -320,6 +320,6 @@ include("integrated/soil_canopy_model.jl")
 
 # Diagnostics
 include(joinpath("diagnostics", "Diagnostics.jl"))
-import .Diagnostics as CLD # ClimaLand Diagnostics
+import .Diagnostics: default_diagnostics
 
 end

@@ -119,7 +119,7 @@ steps:
 
       - label: "Global Run CPU"
         command: "julia --color=yes --project=.buildkite experiments/integrated/global/global_soil_canopy.jl"
-        artifact_paths: "experiments/integrated/global/plots/*png"
+        artifact_paths: "experiments/integrated/global/output_active/*png"
         agents:
           slurm_mem: 16G
 
@@ -147,7 +147,7 @@ steps:
         command: "julia --color=yes --project=.buildkite experiments/standalone/Bucket/global_bucket_function.jl"
         artifact_paths:
           - "experiments/standalone/Bucket/artifacts/*cpu*"
-          - "experiments/global_bucket_function/output_active/*.png"
+          - "experiments/standalone/Bucket/artifacts_function/output_active/*.png"
 
       - label: "Global Bucket on CPU (static map albedo)"
         key: "bucket_era5_cpu"

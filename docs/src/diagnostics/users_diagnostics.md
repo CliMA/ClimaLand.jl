@@ -24,7 +24,7 @@ output_dir = ClimaUtilities.OutputPathGenerator.generate_output_path("base_outpu
 
 2. define a space
 
-Your diagnostics will be written in time and space. These may be defined in your model, but usually land model space is a sphere with no vertical dimension. 
+Your diagnostics will be written in time and space. These may be defined in your model, but usually land model space is a sphere with no vertical dimension.
 You may have variables varying with soil depth, and so you will need:
 
 ```
@@ -46,7 +46,7 @@ providing the space and output_dir defined in steps 1. and 2.
 Now that you defined your model and your writter, you can create a callback function to be called when solving your model. For example:
 
 ```
-diags = ClimaLand.CLD.default_diagnostics(model, 1.0; output_writer = nc_writer)
+diags = ClimaLand.default_diagnostics(model, 1.0; output_writer = nc_writer)
 
 diagnostic_handler =
     ClimaDiagnostics.DiagnosticsHandler(diags, Y, p, t0; dt = Δt)
@@ -57,6 +57,10 @@ sol = SciMLBase.solve(prob, ode_algo; dt = Δt, callback = diag_cb)
 ```
 
 Your diagnostics have now been written in netcdf files in your output folder.
+
+Note that by default, `default_diagnostics` assign two optional kwargs: `output_vars = :long` and `average_period` = :daily.
+`output_vars = :long` will write all available diagnostics, whereas `output_vars = :short` will only write essentials diagnostics.
+`average_period` defines the period over which diagnostics are averaged, it can be set to `:hourly`, `:daily` and `:monthly`.
 
 # Custom Diagnostics
 
@@ -82,7 +86,7 @@ end
         compute! = (out, Y, p, t) -> compute_bowen_ratio!(out, Y, p, t, land_model),
     )
  ```
- - Define how to schedule your variables. For example, you want the seasonal maximum of your variables, where season is defined as 90 days. 
+ - Define how to schedule your variables. For example, you want the seasonal maximum of your variables, where season is defined as 90 days.
  ```
  seasonal_maxs(short_names...; output_writer, t_start) = common_diagnostics(
     90 * 24 * 60 * 60 * one(t_start),

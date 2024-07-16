@@ -62,7 +62,7 @@ function default_diagnostics(land_model::BucketModel, t_start; output_writer)
         "wsoil",
         "wsfc",
         "ssfc",
-    ] # TO DO: would it be helpful to return this list?
+    ]
 
     default_outputs =
         hourly_averages(bucket_diagnostics...; output_writer, t_start)
@@ -75,51 +75,84 @@ function default_diagnostics(
     t_start;
     output_writer,
     output_vars = :long,
+    average_period = :daily,
 )
 
     define_diagnostics!(land_model)
 
     if output_vars == :long
         soilcanopy_diagnostics = [
-            "rn_canopy",
-            "rn_soil",
-            "lhf_soil",
-            "lhf_canopy",
-            "shf_canopy",
-            "shf_soil",
-            "vflux",
-            "tsoil",
-            "slw",
-            "infil",
-            "scd",
-            "scms",
+            "sif",
+            "ra",
             "gs",
-            "mt",
             "trans",
-            "rain", # do we want?
-            "an",
+            "crae",
+            "clhf",
+            "cshf",
+            # "lwp", # last(p.canopy.hydraulics.ψ) errors
+            # "fa", # return a Tuple
+            "far",
+            "lai",
+            "msf",
+            "rai",
+            "sai",
             "gpp",
+            "an",
             "rd",
             "vcmax25",
-            "par",
-            "apar",
-            "rpar",
-            "tpar",
             "nir",
             "anir",
             "rnir",
             "tnir",
-            "swn",
+            "par",
+            "apar",
+            "rpar",
+            "tpar",
             "lwn",
-            "ra",
-            "soilco2",
+            "swn",
+            "soc",
+            "airp",
+            "rain",
+            "lwd",
+            "swd",
+            "snow",
+            "sza",
+            "qsfc",
+            "ws",
+            "infil",
+            "shc",
+            "stc",
+            "swp",
+            "soilrn",
+            "tsoil",
+            "soilrae",
+            "soillhf",
+            "soilshf",
+            "hr",
+            "scd",
+            "scms",
+            "ct",
+            "sco2",
+            "swc",
+            # "pwc", # return a Tuple
+            "si",
+            "sie",
         ]
     elseif output_vars == :short
-        soilcanopy_diagnostics = ["gpp", "ct", "ai", "slw", "si"]
+        soilcanopy_diagnostics = ["gpp", "ct", "lai", "swc", "si"]
     end
 
-    default_outputs =
-        hourly_averages(soilcanopy_diagnostics...; output_writer, t_start)
+    if average_period == :hourly
+        default_outputs =
+            hourly_averages(soilcanopy_diagnostics...; output_writer, t_start)
+    elseif average_period == :daily
+        default_outputs =
+            daily_averages(soilcanopy_diagnostics...; output_writer, t_start)
+    elseif average_period == :monthly # !! this is currently 30 days, not exact month
+        default_outputs =
+            monthly_averages(soilcanopy_diagnostics...; output_writer, t_start)
+    end
+
     return [default_outputs...]
 end
 
@@ -133,7 +166,7 @@ function default_diagnostics(
 
     define_diagnostics!(land_model)
 
-    soil_diagnostics = ["slw", "si", "tsoil"]
+    soil_diagnostics = ["swc", "si", "sie"]
 
     default_outputs =
         daily_averages(soil_diagnostics...; output_writer, t_start)
