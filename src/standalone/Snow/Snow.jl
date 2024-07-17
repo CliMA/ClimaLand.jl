@@ -16,6 +16,7 @@ using ClimaLand:
 import ClimaLand:
     make_update_aux,
     make_compute_exp_tendency,
+    make_update_boundary_fluxes,
     prognostic_vars,
     auxiliary_vars,
     name,
@@ -39,6 +40,7 @@ Currently, the only supported concrete example is called `SnowModel`
 and is used as a bulk snow model.
 """
 abstract type AbstractSnowModel{FT} <: ClimaLand.AbstractExpModel{FT} end
+
 
 """
     SnowParameters{FT <: AbstractFloat, PSE}
@@ -156,10 +158,10 @@ end
 function SnowModel(;
     parameters::SnowParameters{FT, PSE},
     domain::ClimaLand.Domains.AbstractDomain,
-    atmosphere::ATM,
+    atmos::ATM,
     radiation::RAD,
 ) where {FT, PSE, ATM, RAD}
-    args = (parameters, atmosphere, radiation, domain)
+    args = (parameters, atmos, radiation, domain)
     SnowModel{FT, typeof.(args)...}(args...)
 end
 
@@ -201,6 +203,11 @@ the bulk temperature (`T`, K), the surface temperature (`T_sfc`, K),
 the SHF, LHF, and vapor flux (`turbulent_fluxes.shf`, etc),
 the net radiation (`R_n, J/m^2/s)`, the energy flux in liquid water runoff
 (`energy_runoff`, J/m^2/s), the water volume in runoff (`water_runoff`, m/s), and the total energy and water fluxes applied to the snowpack.
+
+Since the snow can melt completely in one timestep, we clip the water and energy fluxes
+such that SWE cannot become negative and U cannot become unphysical. The
+clipped values are what are actually applied as boundary fluxes, and are stored in
+`applied_` fluxes.
 """
 auxiliary_vars(::SnowModel) = (
     :q_l,
@@ -212,6 +219,9 @@ auxiliary_vars(::SnowModel) = (
     :water_runoff,
     :total_energy_flux,
     :total_water_flux,
+    :applied_energy_flux,
+    :applied_water_flux,
+    :snow_cover_fraction,
 )
 
 auxiliary_types(::SnowModel{FT}) where {FT} = (
@@ -219,6 +229,9 @@ auxiliary_types(::SnowModel{FT}) where {FT} = (
     FT,
     FT,
     NamedTuple{(:lhf, :shf, :vapor_flux, :r_ae), Tuple{FT, FT, FT, FT}},
+    FT,
+    FT,
+    FT,
     FT,
     FT,
     FT,
@@ -236,10 +249,26 @@ auxiliary_domain_names(::SnowModel) = (
     :surface,
     :surface,
     :surface,
+    :surface,
+    :surface,
+    :surface,
 )
 
 
 ClimaLand.name(::SnowModel) = :snow
+
+"""
+    scf(x::FT; α = FT(1e-3))::FT where {FT}
+
+Returns the snow cover fraction, assuming it is a heaviside
+function at 1e-3 meters.
+
+In the future we can play around with other forms, this makes it a bit more
+explicit.
+"""
+function scf(x::FT; α = FT(1e-3))::FT where {FT}
+    return heaviside(x - α)
+end
 
 function ClimaLand.make_update_aux(model::SnowModel{FT}) where {FT}
     function update_aux!(p, Y, t)
@@ -253,20 +282,19 @@ function ClimaLand.make_update_aux(model::SnowModel{FT}) where {FT}
 
         @. p.snow.T_sfc = snow_surface_temperature(p.snow.T)
 
-        p.snow.turbulent_fluxes .= turbulent_fluxes(model.atmos, model, Y, p, t)
-
-        p.snow.R_n .= net_radiation(model.radiation, model, Y, p, t)
-
         @. p.snow.water_runoff =
             compute_water_runoff(Y.snow.S, p.snow.q_l, p.snow.T, parameters)
 
         @. p.snow.energy_runoff =
             p.snow.water_runoff * volumetric_internal_energy_liq(FT, parameters)
+        @. p.snow.snow_cover_fraction = scf(Y.snow.S)
     end
 end
 
-function ClimaLand.make_compute_exp_tendency(model::SnowModel{FT}) where {FT}
-    function compute_exp_tendency!(dY, Y, p, t)
+function ClimaLand.make_update_boundary_fluxes(model::SnowModel{FT}) where {FT}
+    function update_boundary_fluxes!(p, Y, t)
+        p.snow.turbulent_fluxes .= turbulent_fluxes(model.atmos, model, Y, p, t)
+        p.snow.R_n .= net_radiation(model.radiation, model, Y, p, t)
         # How does rain affect the below?
         P_snow = p.drivers.P_snow
 
@@ -292,15 +320,22 @@ function ClimaLand.make_compute_exp_tendency(model::SnowModel{FT}) where {FT}
                 p.snow.R_n + p.snow.energy_runoff
             ) * heaviside(Y.snow.S - eps(FT))
 
-        @. dY.snow.S =
+        @. p.snow.applied_water_flux =
             clip_dSdt(Y.snow.S, p.snow.total_water_flux, model.parameters.Δt)
-        @. dY.snow.U = clip_dUdt(
+        @. p.snow.applied_energy_flux = clip_dUdt(
             Y.snow.U,
             Y.snow.S,
             p.snow.total_energy_flux,
             p.snow.total_water_flux,
             model.parameters.Δt,
         )
+    end
+end
+
+function ClimaLand.make_compute_exp_tendency(model::SnowModel{FT}) where {FT}
+    function compute_exp_tendency!(dY, Y, p, t)
+        @. dY.snow.S = p.snow.applied_water_flux
+        @. dY.snow.U = p.snow.applied_energy_flux
     end
     return compute_exp_tendency!
 end
@@ -323,7 +358,7 @@ end
     clip_dUdt(U, S, dUdt, dSdt, Δt)
 
 A helper function which clips the tendency of U such that 
-U will not become negative, and which ensures that if S
+U will not become positive, and which ensures that if S
 goes to zero in a step, U will too.
 """
 function clip_dUdt(U, S, dUdt, dSdt, Δt)
