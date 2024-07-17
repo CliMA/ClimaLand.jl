@@ -29,7 +29,7 @@ parameters =
 model = ClimaLand.Snow.SnowModel(
     parameters = parameters,
     domain = domain,
-    atmosphere = atmos,
+    atmos = atmos,
     radiation = radiation,
 )
 Y, p, coords = ClimaLand.initialize(model)

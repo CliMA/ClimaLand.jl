@@ -46,7 +46,7 @@ import ClimaLand.Parameters as LP
     model = ClimaLand.Snow.SnowModel(
         parameters = parameters,
         domain = domain,
-        atmosphere = atmos,
+        atmos = atmos,
         radiation = rad,
     )
     drivers = ClimaLand.get_drivers(model)
@@ -63,6 +63,9 @@ import ClimaLand.Parameters as LP
         :water_runoff,
         :total_energy_flux,
         :total_water_flux,
+        :applied_energy_flux,
+        :applied_water_flux,
+        :snow_cover_fraction,
     )
 
     Y.snow.S .= FT(0.1)
