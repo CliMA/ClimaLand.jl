@@ -142,8 +142,8 @@ for FT in (Float32, Float64)
                 :ice_frac,
                 :R_n,
                 :top_bc,
-                :infiltration,
                 :sfc_scratch,
+                :infiltration,
                 :bottom_bc,
             )
             function init_soil!(Y, z, params)

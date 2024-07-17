@@ -12,6 +12,7 @@ using ..ClimaLand.Soil:
     is_saturated
 export TOPMODELRunoff,
     NoRunoff,
+    SurfaceRunoff,
     AbstractRunoffModel,
     TOPMODELSubsurfaceRunoff,
     subsurface_runoff_source,
@@ -68,6 +69,89 @@ in the case of NoRunoff: sets infiltration = precipitation.
 function update_runoff!(p, runoff::NoRunoff, _...)
     p.soil.infiltration .= p.drivers.P_liq
 end
+
+runoff_vars(::NoRunoff) = (:infiltration,)
+runoff_var_domain_names(::NoRunoff) = (:surface,)
+runoff_var_types(::NoRunoff, FT) = (FT,)
+
+"""
+    SurfaceRunoff <: AbstractRunoffModel
+
+A simple model for runoff appropriate for single column runs.
+
+Only surface runoff is computed, using a combination of Dunne 
+and Hortonian runoff.
+"""
+struct SurfaceRunoff <: AbstractRunoffModel
+    subsurface_source::Nothing
+    function SurfaceRunoff()
+        return new(nothing)
+    end
+end
+
+"""
+    surface_infiltration(
+        f_ic::FT,
+        input::FT,
+        is_saturated::FT,
+    ) where {FT}
+
+Computes the surface infiltration for the simple surface
+runoff model. If the soil is saturated at the surface,
+all input is converted to runoff (infiltration is zero).
+
+If the soil is not saturated, the maximum of the infiltration
+capacity or the input is used as infiltration. Recall that
+both are negative (towards the soil).
+"""
+function surface_infiltration(f_ic::FT, input::FT, is_saturated::FT) where {FT}
+    return (1 - is_saturated) * max(f_ic, input)
+end
+
+"""
+    update_runoff!(
+        p,
+        runoff::SurfaceRunoff,
+        Y,
+        t,
+        model::AbstractSoilModel,
+)
+
+The update_runoff! function for the SurfaceRunoff model.
+
+Updates the runoff model variables in place in `p.soil` for the SurfaceRunoff 
+parameterization:
+p.soil.R_s
+p.soil.is_saturated
+p.soil.infiltration
+"""
+function update_runoff!(
+    p,
+    runoff::SurfaceRunoff,
+    Y,
+    t,
+    model::AbstractSoilModel,
+)
+
+    ic = soil_infiltration_capacity(model, Y, p) # should be non-allocating
+    ϑ_l = Y.soil.ϑ_l
+    FT = eltype(ϑ_l)
+    θ_i = model_agnostic_volumetric_ice_content(Y, FT)
+    @. p.soil.is_saturated = is_saturated(ϑ_l + θ_i, model.parameters.ν)
+    surface_space = model.domain.space.surface
+    is_saturated_sfc =
+        ClimaLand.Domains.top_center_to_surface(p.soil.is_saturated) # a view
+
+    @. p.soil.infiltration =
+        surface_infiltration(ic, p.drivers.P_liq, is_saturated_sfc)
+    @. p.soil.R_s = abs(p.drivers.P_liq .- p.soil.infiltration)
+end
+
+runoff_vars(::SurfaceRunoff) =
+    (:is_saturated, :R_s, :infiltration, :subsfc_scratch)
+runoff_var_domain_names(::SurfaceRunoff) =
+    (:subsurface, :surface, :surface, :subsurface)
+runoff_var_types(::SurfaceRunoff, FT) = (FT, FT, FT, FT)
 
 # TOPMODEL
 
@@ -136,7 +220,6 @@ function update_runoff!(
     t,
     model::AbstractSoilModel,
 )
-
     ϑ_l = Y.soil.ϑ_l
     FT = eltype(ϑ_l)
     θ_i = model_agnostic_volumetric_ice_content(Y, FT)
@@ -161,6 +244,12 @@ function update_runoff!(
     @. p.soil.R_s = abs(precip - p.soil.infiltration)
 
 end
+
+runoff_vars(::TOPMODELRunoff) =
+    (:infiltration, :is_saturated, :R_s, :R_ss, :h∇, :subsfc_scratch)
+runoff_var_domain_names(::TOPMODELRunoff) =
+    (:surface, :subsurface, :surface, :surface, :surface, :subsurface)
+runoff_var_types(::TOPMODELRunoff, FT) = (FT, FT, FT, FT, FT, FT)
 
 """
     model_agnostic_volumetric_ice_content(Y, FT)
@@ -193,7 +282,7 @@ flux(m/s).
 """
 function ClimaLand.source!(
     dY::ClimaCore.Fields.FieldVector,
-    src::TOPMODELSubsurfaceRunoff,
+    src::TOPMODELSubsurfaceRunoff{FT},
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
     model::AbstractSoilModel{FT},

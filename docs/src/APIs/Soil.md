@@ -65,6 +65,7 @@ ClimaLand.Soil.soil_tortuosity
 
 ```@docs
 ClimaLand.Soil.NoRunoff
+ClimaLand.Soil.SurfaceRunoff
 ClimaLand.Soil.TOPMODELRunoff
 ClimaLand.Soil.TOPMODELSubsurfaceRunoff
 ClimaLand.Soil.subsurface_runoff_source

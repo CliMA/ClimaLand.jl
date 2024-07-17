@@ -84,6 +84,10 @@ function RichardsAtmosDrivenFluxBC(
     precip::PrescribedPrecipitation;
     runoff = NoRunoff(),
 )
+    if typeof(runoff) <: NoRunoff
+        @info("Warning: No runoff model was provided; zero runoff generated.")
+    end
+
     return RichardsAtmosDrivenFluxBC{typeof(precip), typeof(runoff)}(
         precip,
         runoff,
@@ -93,102 +97,48 @@ end
 # Methods
 """
     boundary_vars(::RichardsAtmosDrivenFluxBC{<:PrescribedPrecipitation,
-                                              <:Runoff.TOPMODELRunoff,
+                                              <:Runoff.AbstractRunoffModel,
                                               }, ::ClimaLand.TopBoundary)
 
 An extension of the `boundary_vars` method for RichardsAtmosDrivenFluxBC with
-TOPMODELRunoff.
+runoff.
 
 These variables are updated in place in `boundary_flux`.
 """
 boundary_vars(
     bc::RichardsAtmosDrivenFluxBC{
         <:PrescribedPrecipitation,
-        <:Runoff.TOPMODELRunoff,
+        <:Runoff.AbstractRunoffModel,
     },
     ::ClimaLand.TopBoundary,
-) = (:top_bc, :h∇, :R_s, :R_ss, :infiltration, :is_saturated, :subsfc_scratch)
+) = (:top_bc, Runoff.runoff_vars(bc.runoff)...)
 
 """
     boundary_var_domain_names(::RichardsAtmosDrivenFluxBC{<:PrescribedPrecipitation,
-                                              <:Runoff.TOPMODELRunoff,
+                                              <:Runoff.AbstractRunoffModel,
                                               },
                               ::ClimaLand.TopBoundary)
 
 An extension of the `boundary_var_domain_names` method for RichardsAtmosDrivenFluxBC
-with TOPMODELRunoff.
+with runoff.
 """
 boundary_var_domain_names(
     bc::RichardsAtmosDrivenFluxBC{
         <:PrescribedPrecipitation,
-        <:Runoff.TOPMODELRunoff,
+        <:Runoff.AbstractRunoffModel,
     },
     ::ClimaLand.TopBoundary,
-) = (:surface, :surface, :surface, :surface, :surface, :subsurface, :subsurface)
+) = (:surface, Runoff.runoff_var_domain_names(bc.runoff)...)
 """
     boundary_var_types(::RichardsModel{FT},
                         ::RichardsAtmosDrivenFluxBC{<:PrescribedPrecipitation,
-                                                   <:Runoff.TOPMODELRunoff{FT},
+                                                    <: Runoff.AbstractRunoffModel,
                                                   },
                         ::ClimaLand.TopBoundary,
                         ) where {FT}
 
 An extension of the `boundary_var_types` method for RichardsAtmosDrivenFluxBC
-with TOPMODELRunoff.
-"""
-boundary_var_types(
-    model::RichardsModel{FT},
-    bc::RichardsAtmosDrivenFluxBC{
-        <:PrescribedPrecipitation,
-        <:Runoff.TOPMODELRunoff{FT},
-    },
-    ::ClimaLand.TopBoundary,
-) where {FT} = (FT, FT, FT, FT, FT, FT, FT)
-
-"""
-    boundary_vars(::RichardsAtmosDrivenFluxBC{<:PrescribedPrecipitation,
-                                              <:Runoff.AbstractRunoffModel,
-                                              }, ::ClimaLand.TopBoundary)
-
-An extension of the `boundary_vars` method for RichardsAtmosDrivenFluxBC with
-no runoff modeled.
-
-These variables are updated in place in `boundary_flux`.
-"""
-boundary_vars(
-    bc::RichardsAtmosDrivenFluxBC{
-        <:PrescribedPrecipitation,
-        <:Runoff.AbstractRunoffModel,
-    },
-    ::ClimaLand.TopBoundary,
-) = (:top_bc, :infiltration)
-
-"""
-    boundary_var_domain_names(::RichardsAtmosDrivenFluxBC{<:PrescribedPrecipitation,
-                                              <:Runoff.AbstractRunoffModel,
-                                              },
-                              ::ClimaLand.TopBoundary)
-
-An extension of the `boundary_var_domain_names` method for RichardsAtmosDrivenFluxBC
-with no runoff modeled.
-"""
-boundary_var_domain_names(
-    bc::RichardsAtmosDrivenFluxBC{
-        <:PrescribedPrecipitation,
-        <:Runoff.AbstractRunoffModel,
-    },
-    ::ClimaLand.TopBoundary,
-) = (:surface, :surface)
-"""
-    boundary_var_types(::RichardsModel{FT}
-                        ::RichardsAtmosDrivenFluxBC{<:PrescribedPrecipitation,
-                                                   <:Runoff.AbstractRunoffModel,
-                                                  },
-                        ::ClimaLand.TopBoundary,
-                        ) where {FT}
-
-An extension of the `boundary_var_types` method for RichardsAtmosDrivenFluxBC
-with no runoff modeled.
+with runoff.
 """
 boundary_var_types(
     model::RichardsModel{FT},
@@ -197,7 +147,8 @@ boundary_var_types(
         <:Runoff.AbstractRunoffModel,
     },
     ::ClimaLand.TopBoundary,
-) where {FT} = (FT, FT)
+) where {FT} = (FT, Runoff.runoff_var_types(bc.runoff, FT)...)
+
 
 """
     boundary_flux(bc::WaterFluxBC,  _...)::ClimaCore.Fields.Field
@@ -709,7 +660,14 @@ boundary_vars(
         <:AbstractRunoffModel,
     },
     ::ClimaLand.TopBoundary,
-) = (:turbulent_fluxes, :ice_frac, :R_n, :top_bc, :infiltration, :sfc_scratch)
+) = (
+    :turbulent_fluxes,
+    :ice_frac,
+    :R_n,
+    :top_bc,
+    :sfc_scratch,
+    Runoff.runoff_vars(bc.runoff)...,
+)
 
 """
     boundary_var_domain_names(::AtmosDrivenFluxBC{<:AbstractAtmosphericDrivers,
@@ -729,7 +687,14 @@ boundary_var_domain_names(
         <:AbstractRunoffModel,
     },
     ::ClimaLand.TopBoundary,
-) = (:surface, :surface, :surface, :surface, :surface, :surface)
+) = (
+    :surface,
+    :surface,
+    :surface,
+    :surface,
+    :surface,
+    Runoff.runoff_var_domain_names(bc.runoff)...,
+)
 """
     boundary_var_types(
         ::EnergyHydrology{FT},
@@ -757,7 +722,7 @@ boundary_var_types(
     FT,
     NamedTuple{(:water, :heat), Tuple{FT, FT}},
     FT,
-    FT,
+    Runoff.runoff_var_types(bc.runoff, FT)...,
 )
 
 """
@@ -808,109 +773,6 @@ function soil_boundary_fluxes!(
     @. p.soil.top_bc.heat =
         p.soil.R_n + p.soil.turbulent_fluxes.lhf + p.soil.turbulent_fluxes.shf
 end
-
-"""
-    boundary_vars(::AtmosDrivenFluxBC{<:AbstractAtmosphericDrivers,
-                                    <:AbstractRadiativeDrivers,
-                                    <:Runoff.TOPMODELRunoff,
-                                    }, ::ClimaLand.TopBoundary)
-
-An extension of the `boundary_vars` method for AtmosDrivenFluxBC with
-TOPMODELRunoff. This
-adds the surface conditions (SHF, LHF, evaporation, and resistance) and the
-net radiation to the auxiliary variables.
-
-These variables are updated in place in `soil_boundary_fluxes!`.
-"""
-boundary_vars(
-    bc::AtmosDrivenFluxBC{
-        <:AbstractAtmosphericDrivers,
-        <:AbstractRadiativeDrivers,
-        <:Runoff.TOPMODELRunoff,
-    },
-    ::ClimaLand.TopBoundary,
-) = (
-    :turbulent_fluxes,
-    :ice_frac,
-    :R_n,
-    :top_bc,
-    :h∇,
-    :R_s,
-    :R_ss,
-    :infiltration,
-    :is_saturated,
-    :subsfc_scratch,
-    :sfc_scratch,
-)
-
-"""
-    boundary_var_domain_names(::AtmosDrivenFluxBC{<:AbstractAtmosphericDrivers,
-                                                  <:AbstractRadiativeDrivers,
-                                                  <:Runoff.TOPMODELRunoff,
-                                                  },
-                              ::ClimaLand.TopBoundary)
-
-An extension of the `boundary_var_domain_names` method for AtmosDrivenFluxBC
-with TOPMODELRunoff. This
-specifies the part of the domain on which the additional variables should be
-defined.
-"""
-boundary_var_domain_names(
-    bc::AtmosDrivenFluxBC{
-        <:AbstractAtmosphericDrivers,
-        <:AbstractRadiativeDrivers,
-        <:Runoff.TOPMODELRunoff,
-    },
-    ::ClimaLand.TopBoundary,
-) = (
-    :surface,
-    :surface,
-    :surface,
-    :surface,
-    :surface,
-    :surface,
-    :surface,
-    :surface,
-    :subsurface,
-    :subsurface,
-    :surface,
-)
-
-"""
-    boundary_var_types(
-        model::EnergyHydrology{FT},
-        ::AtmosDrivenFluxBC{
-            <:PrescribedAtmosphere{FT},
-            <:AbstractRadiativeDrivers{FT},
-            <:Runoff.TOPMODELRunoff{FT},
-        }, ::ClimaLand.TopBoundary,
-    ) where {FT}
-
-An extension of the `boundary_var_types` method for AtmosDrivenFluxBC
-with TOPMODELRunoff. This
-specifies the type of the additional variables.
-"""
-boundary_var_types(
-    model::EnergyHydrology{FT},
-    bc::AtmosDrivenFluxBC{
-        <:AbstractAtmosphericDrivers{FT},
-        <:AbstractRadiativeDrivers{FT},
-        <:Runoff.TOPMODELRunoff{FT},
-    },
-    ::ClimaLand.TopBoundary,
-) where {FT} = (
-    NamedTuple{(:lhf, :shf, :vapor_flux, :r_ae), Tuple{FT, FT, FT, FT}},
-    FT,
-    FT,
-    NamedTuple{(:water, :heat), Tuple{FT, FT}},
-    FT,
-    FT,
-    FT,
-    FT,
-    FT,
-    FT,
-    FT,
-)
 
 """
     boundary_vars(::MoistureStateBC, ::ClimaLand.TopBoundary)

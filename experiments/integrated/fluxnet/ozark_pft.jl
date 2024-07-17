@@ -231,7 +231,12 @@ shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
 canopy_model_args = (; parameters = shared_params, domain = canopy_domain)
 
 # Integrated plant hydraulics and soil model
-land_input = (atmos = atmos, radiation = radiation, soil_organic_carbon = Csom)
+land_input = (
+    atmos = atmos,
+    radiation = radiation,
+    soil_organic_carbon = Csom,
+    runoff = ClimaLand.Soil.Runoff.SurfaceRunoff(),
+)
 land = SoilCanopyModel{FT}(;
     soilco2_type = soilco2_type,
     soilco2_args = soilco2_args,
