@@ -452,7 +452,7 @@ function setup_and_solve_problem(; greet = false)
     ode_algo = CTS.IMEXAlgorithm(
         stepper,
         CTS.NewtonsMethod(
-            max_iters = 3,
+            max_iters = 1,
             update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
         ),
     )
@@ -466,12 +466,14 @@ setup_and_solve_problem(; greet = true);
 simdir = ClimaAnalysis.SimDir(outdir)
 short_names_2D = ["slw", "si", "tsoil"]
 times = 0.0:(60.0 * 60.0 * 24 * 20):(60.0 * 60.0 * 24 * 60)
+var_limits = [(0,1),(0,1),(270,320)]
 for t in times
-    for short_name in short_names_2D
+    for (short_name, limits) in zip(short_names_2D, var_limits)
         var = get(simdir; short_name)
         fig = CairoMakie.Figure(size = (800, 600))
-        kwargs = short_name in short_names_2D ? Dict() : Dict(:z => 1)
-        viz.plot!(fig, var, time = t; kwargs...)
+        more_kwargs = Dict(:plot => Dict(:colorrange => limits),)
+        kwargs = Dict(:time => t)
+        viz.plot!(fig, var;more_kwargs = more_kwargs,time = t)
         CairoMakie.save(joinpath(root_path, "$short_name $t.png"), fig)
     end
 end
