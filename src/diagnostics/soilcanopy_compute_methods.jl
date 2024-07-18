@@ -58,15 +58,27 @@ function compute_vapor_flux!(out, Y, p, t, land_model::SoilCanopyModel)
     end
 end
 
-function compute_soil_temperature!(out, Y, p, t, land_model::SoilCanopyModel)
+function compute_soil_temperature!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::Union{SoilCanopyModel, EnergyHydrology},
+)
     if isnothing(out)
-        return copy(p.soil.T) # or is it p.soil.T?
+        return copy(top_center_to_surface(p.soil.T))
     else
-        out .= p.soil.T
+        out .= top_center_to_surface(p.soil.T)
     end
 end
 
-function compute_soil_water_liquid!(out, Y, p, t, land_model::SoilCanopyModel)
+function compute_soil_water_liquid!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::Union{SoilCanopyModel, EnergyHydrology},
+)
     if isnothing(out)
         return copy(top_center_to_surface(p.soil.θ_l)) # or is it in Y.soil?
     else
@@ -74,7 +86,13 @@ function compute_soil_water_liquid!(out, Y, p, t, land_model::SoilCanopyModel)
     end
 end
 
-function compute_infiltration(out, Y, p, t, land_model::SoilCanopyModel)
+function compute_infiltration(
+    out,
+    Y,
+    p,
+    t,
+    land_model::Union{SoilCanopyModel, EnergyHydrology},
+)
     if isnothing(out)
         return copy(p.soil.infiltration)
     else
@@ -570,7 +588,13 @@ function compute_canopy_temperature!(out, Y, p, t, land_model::SoilCanopyModel)
     end
 end
 
-function compute_soil_ice!(out, Y, p, t, land_model::SoilCanopyModel)
+function compute_soil_ice!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::Union{SoilCanopyModel, EnergyHydrology},
+)
     if isnothing(out)
         return copy(top_center_to_surface(Y.soil.θ_i))
     else
