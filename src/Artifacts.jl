@@ -5,7 +5,6 @@ import ClimaUtilities.ClimaArtifacts: @clima_artifact
 import LazyArtifacts
 
 using ArtifactWrappers
-
 """
     era5_land_forcing_data2021_path(; context)
 
@@ -84,36 +83,17 @@ function experiment_fluxnet_data_path(site_ID, data_link; context = nothing)
 end
 
 """
-    esm_snowmip_data_path(; site_ID = "cdp", context = nothing)
+    esm_snowmip_data_path(; context = nothing)
 
-Returns the paths to the Col de Porte met data file and snow data file from the
-ESM-SnowMIP data set.
+Returns the path to the ESM-Snowmip data set.
 
 Citation:
 Menard, Cecile; Essery, Richard (2019): ESM-SnowMIP meteorological and evaluation datasets at ten reference sites (in situ and bias corrected reanalysis data) [dataset]. PANGAEA, https://doi.org/10.1594/PANGAEA.897575, Supplement to: Menard, Cecile; Essery, Richard; Barr, Alan; Bartlett, Paul; Derry, Jeff; Dumont, Marie; Fierz, Charles; Kim, Hyungjun; Kontu, Anna; Lejeune, Yves; Marks, Danny; Niwano, Masashi; Raleigh, Mark; Wang, Libo; Wever, Nander (2019): Meteorological and evaluation datasets for snow modelling at 10 reference sites: description of in situ and bias-corrected reanalysis data. Earth System Science Data, 11(2), 865-880, https://doi.org/10.5194/essd-11-865-2019
 
 Creative Commons Attribution-NonCommercial 4.0 International (CC-BY-NC-4.0)
-
-This dataset is soon to be in ClimaArtifacts and then we can update this function.
 """
-function esm_snowmip_data_path(; site_ID = "cdp", context = nothing)
-    dir = joinpath(@__DIR__, "../")
-    met_af = ArtifactFile(
-        url = "https://caltech.box.com/shared/static/q8ju0yy782j3f3jjrqowakpm5s3qf40v.nc",
-        filename = "met_insitu_$(site_ID)_1994_2014.nc",
-    )
-    dataset = ArtifactWrapper(dir, "met drivers cdp", ArtifactFile[met_af])
-    met_folder = get_data_folder(dataset)
-    met_data_path = joinpath(met_folder, met_af.filename)
-
-    snow_af = ArtifactFile(
-        url = "https://caltech.box.com/shared/static/umwr6wqjhsz3zq6acht68m4d28a64ueb.nc",
-        filename = "obs_insitu_$(site_ID)_1994_2014.nc",
-    )
-    snow_dataset = ArtifactWrapper(dir, "snow data cdp", ArtifactFile[snow_af])
-    snow_folder = get_data_folder(snow_dataset)
-    snow_data_path = joinpath(snow_folder, snow_af.filename)
-    return met_data_path, snow_data_path
+function esm_snowmip_data_path(; context = nothing)
+    return @clima_artifact("snowmip", context)
 end
 
 """

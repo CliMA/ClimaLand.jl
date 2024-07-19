@@ -25,6 +25,10 @@ steps:
       - "julia --project=.buildkite -e 'using Pkg; Pkg.develop(;path=\".\"); Pkg.instantiate(;verbose=true)'"
       - "julia --project=.buildkite -e 'using Pkg; Pkg.status()'"
 
+      - echo "--- Instantiate test"
+      - "julia --project=test -e 'using Pkg; Pkg.develop(;path=\".\"); Pkg.instantiate(;verbose=true)'"
+      - "julia --project=test -e 'using Pkg; Pkg.status()'"
+
       - echo "--- Instantiate lib/ClimaLandSimulations"
       - "julia --project=lib/ClimaLandSimulations -e 'using Pkg; Pkg.develop(;path=\".\"); Pkg.instantiate(;verbose=true)'"
       - "julia --project=lib/ClimaLandSimulations -e 'using Pkg; Pkg.status()'"
@@ -40,7 +44,7 @@ steps:
   - group: "Experiments"
     steps:
       - label: "Snow Col de Porte"
-        command: "julia --color=yes --project=.buildkite experiments/standalone/Snow/snow_cdp.jl"
+        command: "julia --color=yes --project=.buildkite experiments/standalone/Snow/snowmip_simulation.jl cdp"
         artifact_paths: "experiments/standalone/Snow/*png"
 
       - label: "Varying LAI, no stem compartment"
@@ -158,7 +162,7 @@ steps:
   - group: "GPU: unit tests and global bucket"
     steps:
       - label: "GPU runtests"
-        command: "julia --color=yes --project=.buildkite test/runtests.jl"
+        command: "julia --color=yes --project=test test/runtests.jl"
         agents:
           slurm_ntasks: 1
           slurm_gres: "gpu:p100:1"
