@@ -81,9 +81,9 @@ function compute_soil_water_liquid!(
 )
     soil_params = typeof(land_model) <: SoilCanopyModel ? land_model.soil.parameters : land_model.parameters
     if isnothing(out)
-        return copy(top_center_to_surface((Y.soil.ϑ_l .- soil_params.θ_r) ./ (soil_params.ν - soil_params.θ_r)))
+        return copy(top_center_to_surface((Y.soil.ϑ_l .- soil_params.θ_r) ./ (soil_params.ν .- soil_params.θ_r)))
     else
-        out .= top_center_to_surface((Y.soil.ϑ_l .- soil_params.θ_r) ./ (soil_params.ν - soil_params.θ_r))
+        out .= top_center_to_surface((Y.soil.ϑ_l .- soil_params.θ_r) ./ (soil_params.ν .- soil_params.θ_r))
     end
 end
 
@@ -598,8 +598,8 @@ function compute_soil_ice!(
 )
     soil_params = typeof(land_model) <: SoilCanopyModel ? land_model.soil.parameters : land_model.parameters
     if isnothing(out)
-        return copy(top_center_to_surface((Y.soil.θ_i .- soil_params.θ_r) ./ (soil_params.ν - soil_params.θ_r)))
+        return copy(top_center_to_surface((Y.soil.θ_i .- soil_params.θ_r) ./ (soil_params.ν .- soil_params.θ_r)))
     else
-        out .= top_center_to_surface((Y.soil.θ_i .- soil_params.θ_r) ./ (soil_params.ν - soil_params.θ_r))
+        out .= top_center_to_surface((Y.soil.θ_i .- soil_params.θ_r) ./ (soil_params.ν .- soil_params.θ_r))
     end
 end
