@@ -353,7 +353,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
 
     soil_args = (domain = domain, parameters = soil_params)
     soil_model_type = Soil.EnergyHydrology{FT}
-    sources = (Soil.PhaseChange{FT}(Δt),)# sublimation and subsurface runoff are added automatically
+    sources = (Soil.PhaseChange{FT}(FT(3600)),)# sublimation and subsurface runoff are added automatically
     top_bc = ClimaLand.Soil.AtmosDrivenFluxBC(atmos, radiation, runoff_model)
     zero_flux = Soil.HeatFluxBC((p, t) -> 0.0)
     boundary_conditions = (;
@@ -452,8 +452,8 @@ function setup_and_solve_problem(; greet = false)
     ode_algo = CTS.IMEXAlgorithm(
         stepper,
         CTS.NewtonsMethod(
-            max_iters = 1,
-            update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
+            max_iters = 5,
+            update_j = CTS.UpdateEvery(CTS.NewTimeStep),
         ),
     )
     SciMLBase.solve(prob, ode_algo; dt = Δt, callback = cb, adaptive = false)
