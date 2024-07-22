@@ -578,6 +578,10 @@ struct PhaseChange{FT} <: AbstractSoilSource{FT}
     Δt::FT
 end
 
+function PhaseChange{FT}() where {FT}
+    return PhaseChange{FT}(FT(0))
+end
+
 
 """
      source!(dY::ClimaCore.Fields.FieldVector,

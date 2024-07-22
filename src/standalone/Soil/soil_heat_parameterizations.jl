@@ -14,16 +14,16 @@ export volumetric_internal_energy,
     phase_change_source
 
 """
-    thermal_time(ρc::FT, Δz::FT, κ::FT) where {FT}
+    thermal_time(ρc::FT, Δz::FT, κ::FT, τ_min) where {FT}
 
 Returns the thermal timescale for temperature differences across
 a typical thickness Δz to equilibrate.
 
-Clip to 10x the timestep in order to respect CFL condition,
+Clip to a minimum timescale in order to respect CFL condition,
 given that phase change is stepped explicitly.
 """
-function thermal_time(ρc::FT, Δz::FT, κ::FT, Δt::FT) where {FT}
-    return max(ρc * Δz^2 / κ, 10 * Δt)
+function thermal_time(ρc::FT, Δz::FT, κ::FT, τ_min::FT) where {FT}
+    return max(ρc * Δz^2 / κ, τ_min)
 end
 
 """
