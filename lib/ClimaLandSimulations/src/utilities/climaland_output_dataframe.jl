@@ -57,6 +57,7 @@ function make_output_df(
         collect(map(i -> (i, :soil, :T), 1:20)), # 20 shouldn't be hard-coded, but an arg, equal to n layers
         collect(map(i -> (i, :soil, :θ_l), 1:20)),
         (1, :soil, :turbulent_fluxes, :vapor_flux),
+        (1, :canopy, :sif, :SIF),
     )
 
     output_vectors = [getoutput(sv, args...) for args in output_list]

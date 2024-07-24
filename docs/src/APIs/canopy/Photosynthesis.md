@@ -7,6 +7,7 @@ CurrentModule = ClimaLand.Canopy
 ## Parameters
 
 ```@docs
+ClimaLand.Canopy.SIFParameters
 ClimaLand.Canopy.FarquharParameters
 ClimaLand.Canopy.OptimalityFarquharParameters
 ```
