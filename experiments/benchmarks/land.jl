@@ -597,9 +597,7 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
     return prob, cb
 end
 
-function setup_and_solve_problem(; greet = false)
-    # We profile the setup phase as well here. This is not intended, but it is the easiest
-    # to set up for both CPU/GPU at the same time
+function setup_simulation(; greet = false)
     t0 = 0.0
     tf = 60 * 60.0 * 6
     Δt = 900.0
@@ -622,13 +620,12 @@ function setup_and_solve_problem(; greet = false)
             update_j = CTS.UpdateEvery(CTS.NewTimeStep),
         ),
     )
-
-    SciMLBase.solve(prob, ode_algo; dt = Δt, callback = cb)
-    return nothing
+    return prob, ode_algo, Δt, cb
 end
 
 # Warm up and greet
-setup_and_solve_problem(; greet = true)
+prob, ode_algo, Δt, cb = setup_simulation(; greet = true)
+SciMLBase.solve(prob, ode_algo; dt = Δt, callback = cb)
 
 @info "Starting profiling"
 # Stop when we profile for MAX_PROFILING_TIME_SECONDS or MAX_PROFILING_SAMPLES
@@ -638,7 +635,16 @@ time_now = time()
 timings_s = Float64[]
 while (time() - time_now) < MAX_PROFILING_TIME_SECONDS &&
     length(timings_s) < MAX_PROFILING_SAMPLES
-    push!(timings_s, ClimaComms.@elapsed device setup_and_solve_problem())
+    lprob, lode_algo, lΔt, lcb = setup_simulation()
+    push!(
+        timings_s,
+        ClimaComms.@elapsed device SciMLBase.solve(
+            lprob,
+            lode_algo;
+            dt = lΔt,
+            callback = lcb,
+        )
+    )
 end
 num_samples = length(timings_s)
 average_timing_s = round(sum(timings_s) / num_samples, sigdigits = 3)
@@ -655,13 +661,20 @@ std_timing_s = round(
 @info "Standard deviation time: $(std_timing_s) s"
 @info "Done profiling"
 
-Profile.@profile setup_and_solve_problem()
+prob, ode_algo, Δt, cb = setup_simulation()
+Profile.@profile SciMLBase.solve(prob, ode_algo; dt = Δt, callback = cb)
 results = Profile.fetch()
 flame_file = joinpath(outdir, "flame_$device_suffix.html")
 ProfileCanvas.html_file(flame_file, results)
 @info "Saved compute flame to $flame_file"
 
-Profile.Allocs.@profile sample_rate = 0.01 setup_and_solve_problem()
+prob, ode_algo, Δt, cb = setup_simulation()
+Profile.Allocs.@profile sample_rate = 0.01 SciMLBase.solve(
+    prob,
+    ode_algo;
+    dt = Δt,
+    callback = cb,
+)
 results = Profile.Allocs.fetch()
 profile = ProfileCanvas.view_allocs(results)
 alloc_flame_file = joinpath(outdir, "alloc_flame_$device_suffix.html")
@@ -671,7 +684,8 @@ ProfileCanvas.html_file(alloc_flame_file, profile)
 #=
 if ClimaComms.device() isa ClimaComms.CUDADevice
     import CUDA
-    CUDA.@profile setup_and_solve_problem()
+    lprob, lode_algo, lΔt, lcb = setup_simulation()
+    CUDA.@profile SciMLBase.solve(lprob, lode_algo; dt = lΔt, callback = lcb)
 end
 
 if get(ENV, "BUILDKITE_PIPELINE_SLUG", nothing) == "climaland-benchmark"
