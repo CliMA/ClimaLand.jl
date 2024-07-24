@@ -1,5 +1,4 @@
-import ClimaUtilities.TimeVaryingInputs:
-    TimeVaryingInput, AbstractTimeVaryingInput
+import ClimaUtilities.TimeVaryingInputs: AbstractTimeVaryingInput
 using Thermodynamics
 using ClimaCore
 using DocStringExtensions
@@ -73,12 +72,15 @@ abstract type AbstractRadiativeDrivers{FT} <: AbstractClimaLandDrivers{FT} end
 """
      PrescribedSoilOrganicCarbon{FT}
 
-A type for prescribing soil organic carbon.
+A type for prescribing soil organic carbon. Note that soil organic carbon
+must be defined on the same domain as soil model (subsurface).
 $(DocStringExtensions.FIELDS)
 """
-struct PrescribedSoilOrganicCarbon{FT, SOC <: AbstractTimeVaryingInput} <:
-       AbstractClimaLandDrivers{FT}
-    "Soil organic carbon, function of time and space: kg C/m^3"
+struct PrescribedSoilOrganicCarbon{
+    FT,
+    SOC <: Union{AbstractTimeVaryingInput, ClimaCore.Fields.Field},
+} <: AbstractClimaLandDrivers{FT}
+    "Soil organic carbon [kg C/m^3]: spatially or spatio-temporally varying"
     soc::SOC
 end
 
@@ -803,6 +805,7 @@ function initialize_drivers(
     # Here we just want the variable named tuple itself
     vars =
         ClimaLand.initialize_vars(keys, types, domain_names, coords, model_name)
+    # set
     return vars.drivers
 end
 
@@ -907,9 +910,25 @@ end
 Creates and returns a function which updates the driver variables
 in the case of a PrescribedSoilOrganicCarbon.
 """
-function make_update_drivers(d::PrescribedSoilOrganicCarbon{FT}) where {FT}
+function make_update_drivers(
+    d::PrescribedSoilOrganicCarbon{FT, <:AbstractTimeVaryingInput},
+) where {FT}
     function update_drivers!(p, t)
         evaluate!(p.drivers.soc, d.soc, t)
+    end
+    return update_drivers!
+end
+
+"""
+    make_update_drivers(d::PrescribedSoilOrganicCarbon{FT}) where {FT}
+Creates and returns a function which updates the driver variables
+in the case of a PrescribedSoilOrganicCarbon.
+"""
+function make_update_drivers(
+    d::PrescribedSoilOrganicCarbon{FT, <:ClimaCore.Fields.Field},
+) where {FT}
+    function update_drivers!(p, t)
+        p.drivers.soc .= d.soc # not needed, since this doesnt change in time, but this doesnt cost us anything
     end
     return update_drivers!
 end

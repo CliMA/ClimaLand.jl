@@ -162,4 +162,13 @@ end
     soc_p = (; drivers = ClimaLand.initialize_drivers((soc_driver,), coords))
     soc_update!(soc_p, 0.0)
     @test soc_p.drivers.soc == [FT(1.0), FT(1.0)]
+
+    column = ClimaLand.Domains.Column(; zlim = (FT(-1), FT(0)), nelements = 10)
+    soc = ClimaCore.Fields.ones(column.space.subsurface)
+    soc_driver = ClimaLand.PrescribedSoilOrganicCarbon{FT}(soc)
+    soc_update! = ClimaLand.make_update_drivers((soc_driver,))
+    coords = ClimaLand.Domains.coordinates(column)
+    soc_p = (; drivers = ClimaLand.initialize_drivers((soc_driver,), coords))
+    soc_update!(soc_p, 0.0)
+    @test soc_p.drivers.soc == soc
 end

@@ -3,6 +3,8 @@ ClimaLand.jl Release Notes
 
 main
 --------
+- Allow for simple spatially varying prescribed organic carbon, rather than require temporal variation as well.
+  PR[#705](https://github.com/CliMA/ClimaLand.jl/pull/705)
 
 v0.14.0
 --------
