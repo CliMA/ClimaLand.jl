@@ -6,7 +6,6 @@ import Insolation.Parameters.InsolationParameters
 import SurfaceFluxes.Parameters.SurfaceFluxesParameters
 import SurfaceFluxes.UniversalFunctions as UF
 import ClimaParams as CP
-
 import ClimaLand
 import ClimaLand.Soil
 # Parameter structs
@@ -15,6 +14,7 @@ import ClimaLand.Soil.EnergyHydrologyParameters
 import ClimaLand.Canopy.AutotrophicRespirationParameters
 import ClimaLand.Canopy.FarquharParameters
 import ClimaLand.Canopy.OptimalityFarquharParameters
+import ClimaLand.Canopy.SIFParameters
 import ClimaLand.Canopy.MedlynConductanceParameters
 import ClimaLand.Canopy.BeerLambertParameters
 import ClimaLand.Canopy.TwoStreamParameters
@@ -133,16 +133,24 @@ toml_dict = CP.create_toml_dict(Float32);
 ClimaLand.Canopy.FarquharParameters(toml_dict, ClimaLand.Canopy.C3(); Vcmax25 = 99999999, pc = 444444444)
 ```
 """
-FarquharParameters(
+function FarquharParameters(
     ::Type{FT},
     mechanism;
     kwargs...,
-) where {FT <: AbstractFloat} =
-    FarquharParameters(CP.create_toml_dict(FT), mechanism; kwargs...)
+) where {FT <: AbstractFloat}
+    sif_parameters = SIFParameters{FT}()
+    FarquharParameters(
+        CP.create_toml_dict(FT),
+        mechanism,
+        sif_parameters;
+        kwargs...,
+    )
+end
 
 function FarquharParameters(
     toml_dict::CP.AbstractTOMLDict,
-    mechanism;
+    mechanism,
+    sif_parameters;
     Vcmax25 = 5e-5,
     kwargs...,
 )
@@ -167,9 +175,11 @@ function FarquharParameters(
     parameters = CP.get_parameter_values(toml_dict, name_map, "Land")
     FT = CP.float_type(toml_dict)
     MECH = typeof(mechanism)
-    return FarquharParameters{FT, MECH}(;
+    SP = typeof(sif_parameters)
+    return FarquharParameters{FT, MECH, SP}(;
         mechanism,
         Vcmax25,
+        sif_parameters,
         parameters...,
         kwargs...,
     )
@@ -199,13 +209,19 @@ toml_dict = CP.create_toml_dict(Float32);
 ClimaLand.Canopy.OptimalityFarquharParameters(toml_dict; pc = 444444444)
 ```
 """
-OptimalityFarquharParameters(
+function OptimalityFarquharParameters(
     ::Type{FT};
     kwargs...,
-) where {FT <: AbstractFloat} =
-    OptimalityFarquharParameters(CP.create_toml_dict(FT); kwargs...)
+) where {FT <: AbstractFloat}
+    sif_parameters = SIFParameters{FT}()
+    OptimalityFarquharParameters(
+        CP.create_toml_dict(FT),
+        sif_parameters;
+        kwargs...,
+    )
+end
 
-function OptimalityFarquharParameters(toml_dict; kwargs...)
+function OptimalityFarquharParameters(toml_dict, sif_parameters; kwargs...)
     name_map = (;
         :Jmax_activation_energy => :ΔHJmax,
         :intercellular_O2_concentration => :oi,
@@ -229,7 +245,12 @@ function OptimalityFarquharParameters(toml_dict; kwargs...)
     params = CP.get_parameter_values(toml_dict, name_map, "Land")
     FT = CP.float_type(toml_dict)
     mechanism = ClimaLand.Canopy.C3()
-    return OptimalityFarquharParameters{FT}(; params..., kwargs..., mechanism)
+    return OptimalityFarquharParameters{FT, typeof(sif_parameters)}(;
+        sif_parameters,
+        params...,
+        kwargs...,
+        mechanism,
+    )
 end
 
 

@@ -1,4 +1,33 @@
-export FarquharParameters, FarquharModel, C3, C4
+export SIFParameters, FarquharParameters, FarquharModel, C3, C4
+
+abstract type AbstractPhotosynthesisModel{FT} <: AbstractCanopyComponent{FT} end
+
+"""
+    SIFParameters{FT<:AbstractFloat}
+
+The required parameters for the SIF parameterisation [give citation].
+$(DocStringExtensions.FIELDS)
+"""
+@kwdef struct SIFParameters{FT <: AbstractFloat}
+    ""
+    kf::FT = FT(0.05)
+    ""
+    kd_p1::FT = FT(0.03)
+    ""
+    kd_p2::FT = FT(0.0273)
+    ""
+    min_kd::FT = FT(0.087)
+    ""
+    kn_p1::FT = FT(6.2473)
+    ""
+    kn_p2::FT = FT(0.5944)
+    ""
+    kp::FT = FT(4.0)
+    ""
+    kappa_p1::FT = FT(0.045)
+    ""
+    kappa_p2::FT = FT(7.85)
+end
 
 abstract type AbstractPhotosynthesisMechanism end
 """
@@ -17,7 +46,7 @@ struct C4 <: AbstractPhotosynthesisMechanism end
 
 abstract type AbstractPhotosynthesisModel{FT} <: AbstractCanopyComponent{FT} end
 """
-    FarquharParameters{FT<:AbstractFloat, MECH <: AbstractPhotosynthesisMechanism}
+    FarquharParameters{FT<:AbstractFloat, MECH <: AbstractPhotosynthesisMechanism, SP <: SIFParameters}
 
 The required parameters for the Farquhar photosynthesis model.
 $(DocStringExtensions.FIELDS)
@@ -25,6 +54,7 @@ $(DocStringExtensions.FIELDS)
 Base.@kwdef struct FarquharParameters{
     FT <: AbstractFloat,
     MECH <: AbstractPhotosynthesisMechanism,
+    SP <: SIFParameters,
 }
     "Vcmax at 25 °C (mol CO2/m^2/s)"
     Vcmax25::FT
@@ -62,6 +92,8 @@ Base.@kwdef struct FarquharParameters{
     pc::FT
     "Photosynthesis mechanism: C3 or C4"
     mechanism::MECH
+    ""
+    sif_parameters::SP
 end
 
 Base.eltype(::FarquharParameters{FT}) where {FT} = FT
@@ -78,12 +110,12 @@ function FarquharModel{FT}(
 end
 
 ClimaLand.name(model::AbstractPhotosynthesisModel) = :photosynthesis
-ClimaLand.auxiliary_vars(model::FarquharModel) = (:An, :GPP, :Rd, :Vcmax25)
+ClimaLand.auxiliary_vars(model::FarquharModel) =
+    (:An, :GPP, :Rd, :Vcmax25, :SIF)
 ClimaLand.auxiliary_types(model::FarquharModel{FT}) where {FT} =
-    (FT, FT, FT, FT)
+    (FT, FT, FT, FT, FT)
 ClimaLand.auxiliary_domain_names(::FarquharModel) =
-    (:surface, :surface, :surface, :surface)
-
+    (:surface, :surface, :surface, :surface, :surface)
 
 function photosynthesis_at_a_point_Farquhar(
     T,
@@ -126,7 +158,7 @@ function photosynthesis_at_a_point_Farquhar(
 end
 
 """
-    update_photosynthesis!(Rd, An, Vcmax25,
+    update_photosynthesis!(Rd, An, Vcmax25, SIF,
         model::FarquharModel,
         T,
         APAR,
@@ -148,6 +180,7 @@ function update_photosynthesis!(
     Rd,
     An,
     Vcmax25field,
+    SIF,
     model::FarquharModel,
     T,
     APAR,
@@ -170,8 +203,11 @@ function update_photosynthesis!(
         model.parameters,
     )
     Vcmax25field .= Vcmax25
+    @. SIF = compute_SIF_at_a_point(APAR, T, Vcmax25, R, model.parameters)
+
 end
 Base.broadcastable(m::AbstractPhotosynthesisMechanism) = tuple(m)
 Base.broadcastable(m::FarquharParameters) = tuple(m)
+Base.broadcastable(m::SIFParameters) = tuple(m)
 
 include("./optimality_farquhar.jl")

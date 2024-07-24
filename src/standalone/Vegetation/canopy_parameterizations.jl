@@ -1041,3 +1041,40 @@ function plant_respiration_growth(f2::FT, An::FT, Rpm::FT) where {FT}
     Rg = f2 * (An - Rpm)
     return Rg
 end
+
+# 4 Solar Induced Fluorescence (SIF)
+
+# call function below inside photosynthesis.jl p
+
+"""
+    compute_SIF_at_a_point(Tc::FT,APAR::FT, Vcmax25::FT)
+
+Computes observed SIF at 755 nm in W/m^2. Note that Tc is in Kelvin, and photo
+synthetic rates are in mol/m^2/s, and APAR is in PPFD.
+"""
+function compute_SIF_at_a_point(
+    APAR::FT,
+    Tc::FT,
+    Vcmax25::FT,
+    R::FT,
+    photosynthesis_parameters,
+) where {FT}
+
+    (; ΔHJmax, To, θj, ϕ, sif_parameters) = photosynthesis_parameters
+    Jmax = max_electron_transport(Vcmax25, ΔHJmax, Tc, To, R)
+    J = electron_transport(APAR, Jmax, θj, ϕ)
+    (; kf, kd_p1, kd_p2, min_kd, kn_p1, kn_p2, kp, kappa_p1, kappa_p2) =
+        sif_parameters
+    Tf = FT(273.15)
+    kd = max(kd_p1 * (Tc - Tf) + kd_p2, min_kd)
+    x = 1 - J / Jmax
+    kn = (kn_p1 * x - kn_p2) * x
+    ϕp0 = kp / (kf + kp + kn)
+    ϕp = J / Jmax * ϕp0
+    ϕf = kf / (kf + kd + kn) * (1 - ϕp)
+    κ = kappa_p1 * Vcmax25 * FT(1e6) + kappa_p2 # formula expects Vcmax25 in μmol/m^2/s
+    F = APAR * ϕf
+    SIF_755 = F / κ
+
+    return SIF_755
+end

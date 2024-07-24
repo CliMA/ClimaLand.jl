@@ -41,13 +41,15 @@ for FT in (Float32, Float64)
         params = OptimalityFarquharParameters(FT)
         @test params.mechanism == C3()
         model = OptimalityFarquharModel(params)
-        @test ClimaLand.auxiliary_vars(model) == (:An, :GPP, :Rd, :Vcmax25)
-        @test ClimaLand.auxiliary_types(model) == (FT, FT, FT, FT)
+        @test ClimaLand.auxiliary_vars(model) ==
+              (:An, :GPP, :Rd, :Vcmax25, :SIF)
+        @test ClimaLand.auxiliary_types(model) == (FT, FT, FT, FT, FT)
         @test ClimaLand.auxiliary_domain_names(model) ==
-              (:surface, :surface, :surface, :surface)
+              (:surface, :surface, :surface, :surface, :surface)
         Rd = zeros(FT, 1)
         An = similar(Rd)
         Vcmax25 = similar(An)
+        SIF = similar(An)
         T = FT(280)
         β = FT(1)
         medlyn_factor = FT(10.0)
@@ -57,6 +59,7 @@ for FT in (Float32, Float64)
             Rd,
             An,
             Vcmax25,
+            SIF,
             model,
             T,
             APAR,
@@ -68,6 +71,7 @@ for FT in (Float32, Float64)
         @test Rd[1] != 0.0
         @test Vcmax25[1] != 0.0
         @test An[1] != 0.0
+        @test SIF[1] != 0.0
     end
 
     @testset "Big Leaf Parameterizations, FT = $FT" begin

@@ -543,10 +543,12 @@ function ClimaLand.make_update_aux(
 
         # Update Rd, An, Vcmax25 (if applicable to model) in place
         Vcmax25 = p.canopy.photosynthesis.Vcmax25
+        SIF = p.canopy.photosynthesis.SIF
         update_photosynthesis!(
             Rd,
             An,
             Vcmax25,
+            SIF,
             canopy.photosynthesis,
             T_canopy,
             p.canopy.radiative_transfer.par.abs,

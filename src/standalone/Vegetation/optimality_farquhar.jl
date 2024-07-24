@@ -8,7 +8,7 @@ The required parameters for the optimality Farquhar photosynthesis model.
 Currently, only C3 photosynthesis is supported.
 $(DocStringExtensions.FIELDS)
 """
-Base.@kwdef struct OptimalityFarquharParameters{FT <: AbstractFloat}
+Base.@kwdef struct OptimalityFarquharParameters{FT <: AbstractFloat, SP}
     "Photosynthesis mechanism: C3 only"
     mechanism::C3
     "Γstar at 25 °C (mol/mol)"
@@ -45,6 +45,8 @@ Base.@kwdef struct OptimalityFarquharParameters{FT <: AbstractFloat}
     pc::FT
     "Constant describing cost of maintaining electron transport (unitless)"
     c::FT
+    "SIF Parameters"
+    sif_parameters::SP
 end
 
 Base.eltype(::OptimalityFarquharParameters{FT}) where {FT} = FT
@@ -72,14 +74,14 @@ function OptimalityFarquharModel{FT}(
 end
 
 ClimaLand.auxiliary_vars(model::OptimalityFarquharModel) =
-    (:An, :GPP, :Rd, :Vcmax25)
+    (:An, :GPP, :Rd, :Vcmax25, :SIF)
 ClimaLand.auxiliary_types(model::OptimalityFarquharModel{FT}) where {FT} =
-    (FT, FT, FT, FT)
+    (FT, FT, FT, FT, FT)
 ClimaLand.auxiliary_domain_names(::OptimalityFarquharModel) =
-    (:surface, :surface, :surface, :surface)
+    (:surface, :surface, :surface, :surface, :surface)
 
 """
-    update_photosynthesis!(Rd, An, Vcmax25,
+    update_photosynthesis!(Rd, An, Vcmax25,SIF,
         model::OptimalityFarquharModel,
         T,
         APAR,
@@ -101,6 +103,7 @@ function update_photosynthesis!(
     Rd,
     An,
     Vcmax25,
+    SIF,
     model::OptimalityFarquharModel,
     T,
     APAR,
@@ -152,4 +155,6 @@ function update_photosynthesis!(
     @. Vcmax25 = Vcmax / arrhenius_function(T, To, R, ΔHVcmax)
     @. Rd = dark_respiration(Vcmax25, β, f, ΔHRd, T, To, R)
     @. An = net_photosynthesis(Ac, Aj, Rd, β)
+    @. SIF = compute_SIF_at_a_point(APAR, T, Vcmax25, R, model.parameters)
 end
+Base.broadcastable(m::OptimalityFarquharParameters) = tuple(m)

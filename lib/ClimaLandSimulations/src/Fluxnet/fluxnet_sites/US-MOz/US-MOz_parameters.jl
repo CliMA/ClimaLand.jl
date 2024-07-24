@@ -158,6 +158,7 @@ function photosynthesis_ozark(;
     ΔHΓstar = FT(37830),
     ΔHJmax = FT(43540),
     ΔHRd = FT(46390),
+    sif_parameters = SIFParameters{FT}(),
 )
     return FarquharParameters(
         Vcmax25,
@@ -178,6 +179,7 @@ function photosynthesis_ozark(;
         sc,
         pc,
         mechanism,
+        sif_parameters,
     )
 end
 
