@@ -401,10 +401,7 @@ function diurnals_fig(inputs, climaland, earth_param_set; dashboard = false) # w
         ylabel = L"\text{CO}_{2} \, (\mu\text{mol m}^{-2} \, \text{s}^{-1})",
     ) # C fluxes
     ax_W = Axis(fig[2, 1], ylabel = L"\text{H}_{2}\text{O} \, \text{(mm)}") # h2o fluxes
-    ax_SIF = Axis(
-        fig[3, 1],
-        ylabel = L"\text{SIF}"
-       ) # SIF
+    ax_SIF = Axis(fig[3, 1], ylabel = L"\text{SIF}") # SIF
     ax_E = Axis(
         fig[4, 1],
         ylabel = L"\text{Radiation} \, (\text{W} \, \text{m}^{-2})",
@@ -461,13 +458,8 @@ function diurnals_fig(inputs, climaland, earth_param_set; dashboard = false) # w
     )
 
     # SIF
-    p_SIF_m = diurnal_plot!(
-        fig,
-        ax_SIF,
-        climaland.DateTime,
-        climaland.SIF,
-        :black,
-       )
+    p_SIF_m =
+        diurnal_plot!(fig, ax_SIF, climaland.DateTime, climaland.SIF, :black)
 
 
     # Energy fluxes
@@ -511,7 +503,7 @@ function diurnals_fig(inputs, climaland, earth_param_set; dashboard = false) # w
         "",
         position = :rt,
         orientation = :vertical,
-       )
+    )
     axislegend(
         ax_E,
         [p_SWout_d, p_SWout_m],

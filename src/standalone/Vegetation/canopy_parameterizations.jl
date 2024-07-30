@@ -1047,10 +1047,17 @@ end
 # call function below inside photosynthesis.jl p
 
 """
-    compute_SIF_at_a_point(Tc::FT,APAR::FT, Vcmax25::FT)
+    compute_SIF_at_a_point(
+        APAR::FT,
+        Tc::FT,
+        Vcmax25::FT,
+        R::FT,
+        photosynthesis_parameters,
+    ) 
 
 Computes observed SIF at 755 nm in W/m^2. Note that Tc is in Kelvin, and photo
 synthetic rates are in mol/m^2/s, and APAR is in PPFD.
+Lee et al, 2015. Global Change Biology 21, 3469-3477, doi:10.1111/gcb.12948
 """
 function compute_SIF_at_a_point(
     APAR::FT,

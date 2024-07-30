@@ -24,4 +24,3 @@ simulation_output = make_output_df("US-MOz", sv, inputs)
 
 # Will save figures in current repo /figures
 make_plots(inputs, simulation_output)
-

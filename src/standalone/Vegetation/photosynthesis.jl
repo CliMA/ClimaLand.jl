@@ -5,27 +5,28 @@ abstract type AbstractPhotosynthesisModel{FT} <: AbstractCanopyComponent{FT} end
 """
     SIFParameters{FT<:AbstractFloat}
 
-The required parameters for the SIF parameterisation [give citation].
+The required parameters for the SIF parameterisation 
+Lee et al, 2015. Global Change Biology 21, 3469-3477, doi:10.1111/gcb.12948.
 $(DocStringExtensions.FIELDS)
 """
 @kwdef struct SIFParameters{FT <: AbstractFloat}
-    ""
+    "The rate coefficient for florescence, unitless"
     kf::FT = FT(0.05)
-    ""
+    "Parameter used to compute the rate coefficient for heat loss in dark-adapted conditions, Tol et al. 2014, unitless"
     kd_p1::FT = FT(0.03)
-    ""
+    "Parameter used to compute the rate coefficient for heat loss in dark-adapted conditions, Tol et al. 2014, unitless"
     kd_p2::FT = FT(0.0273)
-    ""
+    "Parameter used to compute the rate coefficient for heat loss in dark-adapted conditions, Tol et al. 2014, unitless"
     min_kd::FT = FT(0.087)
-    ""
+    "Parameter used to compute the rate coefficient for heat loss in light-adapted conditions, Lee et al 2013 (unitless)"
     kn_p1::FT = FT(6.2473)
-    ""
+    "Parameter used to compute the rate coefficient for heat loss in light-adapted conditions, Lee et al 2013 (unitless)"
     kn_p2::FT = FT(0.5944)
-    ""
+    "Rate coefficient for photochemical quenching"
     kp::FT = FT(4.0)
-    ""
+    "Slope of line relating leaf-level fluorescence to spectrometer-observed fluorescence as a function of Vcmax 25. Lee et al 2015."
     kappa_p1::FT = FT(0.045)
-    ""
+    "Intercept of line relating leaf-level fluorescence to spectrometer-observed fluorescence as a function of Vcmax 25.  Lee et al 2015."
     kappa_p2::FT = FT(7.85)
 end
 
@@ -92,7 +93,7 @@ Base.@kwdef struct FarquharParameters{
     pc::FT
     "Photosynthesis mechanism: C3 or C4"
     mechanism::MECH
-    ""
+    "Parameters of the sif model, Lee et al 2015"
     sif_parameters::SP
 end
 
