@@ -401,8 +401,12 @@ function diurnals_fig(inputs, climaland, earth_param_set; dashboard = false) # w
         ylabel = L"\text{CO}_{2} \, (\mu\text{mol m}^{-2} \, \text{s}^{-1})",
     ) # C fluxes
     ax_W = Axis(fig[2, 1], ylabel = L"\text{H}_{2}\text{O} \, \text{(mm)}") # h2o fluxes
-    ax_E = Axis(
+    ax_SIF = Axis(
         fig[3, 1],
+        ylabel = L"\text{SIF}"
+       ) # SIF
+    ax_E = Axis(
+        fig[4, 1],
         ylabel = L"\text{Radiation} \, (\text{W} \, \text{m}^{-2})",
         xlabel = L"\text{Hour of the day}",
         xgridvisible = false,
@@ -456,6 +460,16 @@ function diurnals_fig(inputs, climaland, earth_param_set; dashboard = false) # w
         linestyle = :dot,
     )
 
+    # SIF
+    p_SIF_m = diurnal_plot!(
+        fig,
+        ax_SIF,
+        climaland.DateTime,
+        climaland.SIF,
+        :black,
+       )
+
+
     # Energy fluxes
     # model
     # diurnal_plot!(fig, ax_E, climaland.DateTime, climaland.LW_out, :red)
@@ -472,7 +486,7 @@ function diurnals_fig(inputs, climaland, earth_param_set; dashboard = false) # w
         linestyle = :dot,
     )
 
-    [xlims!(axes, (0, 24)) for axes in [ax_C, ax_W, ax_E]]
+    [xlims!(axes, (0, 24)) for axes in [ax_C, ax_W, ax_SIF, ax_E]]
 
     axislegend(
         ax_C,
@@ -491,6 +505,14 @@ function diurnals_fig(inputs, climaland, earth_param_set; dashboard = false) # w
         orientation = :vertical,
     )
     axislegend(
+        ax_SIF,
+        [p_SIF_m],
+        ["SIF model"],
+        "",
+        position = :rt,
+        orientation = :vertical,
+       )
+    axislegend(
         ax_E,
         [p_SWout_d, p_SWout_m],
         ["SWout obs.", "SWout model"],
@@ -501,6 +523,7 @@ function diurnals_fig(inputs, climaland, earth_param_set; dashboard = false) # w
 
     hidexdecorations!(ax_C)
     hidexdecorations!(ax_W)
+    hidexdecorations!(ax_SIF)
 
     fig
     return fig
