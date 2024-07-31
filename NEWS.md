@@ -4,6 +4,10 @@ ClimaLand.jl Release Notes
 main
 --------
 
+- Add support for regional simulations, box runs centered around a given
+  longitude and latitude.
+  PR [#710](https://github.com/CliMA/ClimaLand.jl/pull/710)
+
 v0.14.1
 --------
 - Site level runoff

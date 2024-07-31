@@ -184,7 +184,9 @@ end
 A struct holding the necessary information
 to construct a domain, a mesh, a 2d spectral
 element space, and the resulting coordinate field.
-Note that only periodic domains are currently supported.
+
+When `longlat` is not nothing, the plane is assumed to be centered around these
+coordinates. In this case, the curvature of the Earth is not accounted for.
 
 `space` is a NamedTuple holding the surface space (in this case,
 the entire Plane space).
@@ -196,9 +198,11 @@ struct Plane{FT} <: AbstractDomain{FT}
     xlim::Tuple{FT, FT}
     "Domain interval limits along y axis, in meters"
     ylim::Tuple{FT, FT}
+    "When not `nothing`, a Tuple that contains the center `long` and `lat`."
+    longlat::Union{Nothing, Tuple{FT, FT}}
     "Number of elements to discretize interval, (nx, ny)"
     nelements::Tuple{Int, Int}
-    "Flags for periodic boundaries; only true is supported"
+    "Flags for periodic boundaries"
     periodic::Tuple{Bool, Bool}
     "Polynomial order for both x and y"
     npolynomial::Int
@@ -213,31 +217,62 @@ end
         nelements::Tuple{Int,Int},
         periodic::Tuple{Bool,Bool},
         npolynomial::Int,
+        longlat = nothing,
         comms_ctx = ClimaComms.SingletonCommsContext(),
         ) where {FT}
 Outer constructor for the `Plane` domain, using keyword arguments.
+
+When not nothing, `longlat` is a Tuple that specifies the center of the plane on the Earth. Example: `longlat = (FT(-118.14452), FT(34.14778))`.
+
+The radius of Earth is assumed to be `6.378e6` meters and curvature is not included.
 """
 function Plane(;
     xlim::Tuple{FT, FT},
     ylim::Tuple{FT, FT},
     nelements::Tuple{Int, Int},
-    periodic::Tuple{Bool, Bool} = (true, true),
+    longlat = nothing,
+    periodic::Tuple{Bool, Bool} = isnothing(longlat) ? (true, true) :
+                                  (false, false),
     npolynomial::Int,
     comms_ctx = ClimaComms.SingletonCommsContext(),
 ) where {FT}
-    @assert xlim[1] < xlim[2]
-    @assert ylim[1] < ylim[2]
-    @assert periodic == (true, true)
-    domain_x = ClimaCore.Domains.IntervalDomain(
-        ClimaCore.Geometry.XPoint(xlim[1]),
-        ClimaCore.Geometry.XPoint(xlim[2]);
-        periodic = periodic[1],
-    )
-    domain_y = ClimaCore.Domains.IntervalDomain(
-        ClimaCore.Geometry.YPoint(ylim[1]),
-        ClimaCore.Geometry.YPoint(ylim[2]);
-        periodic = periodic[2],
-    )
+    if isnothing(longlat)
+        @assert xlim[1] < xlim[2]
+        @assert ylim[1] < ylim[2]
+        @assert periodic == (true, true)
+        domain_x = ClimaCore.Domains.IntervalDomain(
+            ClimaCore.Geometry.XPoint(xlim[1]),
+            ClimaCore.Geometry.XPoint(xlim[2]);
+            periodic = periodic[1],
+        )
+        domain_y = ClimaCore.Domains.IntervalDomain(
+            ClimaCore.Geometry.YPoint(ylim[1]),
+            ClimaCore.Geometry.YPoint(ylim[2]);
+            periodic = periodic[2],
+        )
+    else
+        @assert periodic == (false, false)
+        # TODO: Do not hardcode the radius of the Earth
+        radius_earth = FT(6.378e6)
+        long, lat = longlat
+        xlim =
+            (long - xlim[1] / (2radius_earth), long + xlim[2] / (2radius_earth))
+        ylim =
+            (lat - ylim[1] / (2radius_earth), lat + ylim[2] / (2radius_earth))
+        @assert xlim[1] < xlim[2]
+        @assert ylim[1] < ylim[2]
+
+        domain_x = ClimaCore.Domains.IntervalDomain(
+            ClimaCore.Geometry.LongPoint(xlim[1]),
+            ClimaCore.Geometry.LongPoint(xlim[2]);
+            boundary_names = (:west, :east),
+        )
+        domain_y = ClimaCore.Domains.IntervalDomain(
+            ClimaCore.Geometry.LatPoint(ylim[1]),
+            ClimaCore.Geometry.LatPoint(ylim[2]);
+            boundary_names = (:north, :south),
+        )
+    end
     plane = ClimaCore.Domains.RectangleDomain(domain_x, domain_y)
 
     mesh = ClimaCore.Meshes.RectilinearMesh(plane, nelements[1], nelements[2])
@@ -249,7 +284,15 @@ function Plane(;
     end
     space = ClimaCore.Spaces.SpectralElementSpace2D(grid_topology, quad)
     space = (; surface = space)
-    return Plane{FT}(xlim, ylim, nelements, periodic, npolynomial, space)
+    return Plane{FT}(
+        xlim,
+        ylim,
+        longlat,
+        nelements,
+        periodic,
+        npolynomial,
+        space,
+    )
 end
 
 """
@@ -257,6 +300,7 @@ end
         xlim::Tuple{FT, FT}
         ylim::Tuple{FT, FT}
         zlim::Tuple{FT, FT}
+        longlat::Union{Nothing, Tuple{FT, FT}},
         dz_tuple::Union{Tuple{FT, FT}, Nothing}
         nelements::Tuple{Int, Int, Int}
         npolynomial::Int
@@ -268,6 +312,9 @@ a 2d spectral element space (horizontal) x a 1d finite difference space
 This domain is not periodic along the z-axis. Note that
 only periodic domains are supported
 in the horizontal.
+
+When `longlat` is not `nothing`, assume that the box describes a region on the
+globe centered around the `long` and `lat`.
 
 `space` is a NamedTuple holding the surface space (in this case,
 the top face space) and the center space for the subsurface.
@@ -282,13 +329,15 @@ struct HybridBox{FT} <: AbstractDomain{FT}
     ylim::Tuple{FT, FT}
     "Domain interval limits along z axis, in meters"
     zlim::Tuple{FT, FT}
+    "When not `nothing`, a Tuple that contains the center `long` and `lat`."
+    longlat::Union{Nothing, Tuple{FT, FT}}
     "Tuple for mesh stretching specifying *target* (dz_bottom, dz_top) (m). If nothing, no stretching is applied."
     dz_tuple::Union{Tuple{FT, FT}, Nothing}
     "Number of elements to discretize interval, (nx, ny,nz)"
     nelements::Tuple{Int, Int, Int}
     " Polynomial order for the horizontal directions"
     npolynomial::Int
-    "Flag indicating periodic boundaries in horizontal. only true is supported"
+    "Flag indicating periodic boundaries in horizontal"
     periodic::Tuple{Bool, Bool}
     "A NamedTuple of associated ClimaCore spaces: in this case, the surface space and subsurface center space"
     space::NamedTuple
@@ -301,6 +350,7 @@ end
         xlim::Tuple{FT, FT},
         ylim::Tuple{FT, FT},
         zlim::Tuple{FT, FT},
+        longlat = nothing,
         nelements::Tuple{Int, Int, Int},
         npolynomial::Int,
         dz_tuple::Union{Tuple{FT, FT}, Nothing} = nothing,
@@ -315,6 +365,10 @@ to the x-axis, the second corresponding to the y-axis, and the third
 corresponding to the z-axis. The domain is periodic at the (xy) boundaries,
 and the function space is of polynomial order `npolynomial` in the
 horizontal directions.
+
+When `longlat` is not `nothing`, assume that the box describes a region on the
+globe centered around the `long` and `lat`. In this case, the radius of Earth is
+assumed to be `6.378e6` meters and curvature is not included.
 
 Using `ClimaCore` tools, the coordinate
 mesh can be stretched such that the top of the domain has finer resolution
@@ -332,12 +386,16 @@ function HybridBox(;
     nelements::Tuple{Int, Int, Int},
     npolynomial::Int,
     dz_tuple::Union{Tuple{FT, FT}, Nothing} = nothing,
-    periodic = (true, true),
+    longlat = nothing,
+    periodic::Tuple{Bool, Bool} = isnothing(longlat) ? (true, true) :
+                                  (false, false),
 ) where {FT}
-    @assert xlim[1] < xlim[2]
-    @assert ylim[1] < ylim[2]
     @assert zlim[1] < zlim[2]
-    @assert periodic == (true, true)
+    if isnothing(longlat)
+        @assert xlim[1] < xlim[2]
+        @assert ylim[1] < ylim[2]
+        @assert periodic == (true, true)
+    end
     vertdomain = ClimaCore.Domains.IntervalDomain(
         ClimaCore.Geometry.ZPoint(zlim[1]),
         ClimaCore.Geometry.ZPoint(zlim[2]);
@@ -358,8 +416,8 @@ function HybridBox(;
             reverse_mode = true,
         )
     end
-    device = ClimaComms.device()
     if pkgversion(ClimaCore) >= v"0.14.10"
+        device = ClimaComms.device()
         vert_center_space =
             ClimaCore.Spaces.CenterFiniteDifferenceSpace(device, vertmesh)
     else
@@ -370,6 +428,7 @@ function HybridBox(;
     horzdomain = Plane(;
         xlim = xlim,
         ylim = ylim,
+        longlat,
         nelements = nelements[1:2],
         periodic = periodic,
         npolynomial = npolynomial,
@@ -385,9 +444,10 @@ function HybridBox(;
     space = (; surface = surface_space, subsurface = subsurface_space)
     fields = get_additional_domain_fields(subsurface_space)
     return HybridBox{FT}(
-        xlim,
-        ylim,
+        horzdomain.xlim,
+        horzdomain.ylim,
         zlim,
+        longlat,
         dz_tuple,
         nelements,
         npolynomial,
@@ -596,6 +656,7 @@ function obtain_surface_domain(b::HybridBox{FT}) where {FT}
     surface_domain = Plane{FT}(
         b.xlim,
         b.ylim,
+        b.longlat,
         b.nelements[1:2],
         b.periodic,
         b.npolynomial,
