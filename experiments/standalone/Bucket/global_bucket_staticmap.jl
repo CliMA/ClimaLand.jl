@@ -64,6 +64,12 @@ function compute_clims(v)
 end
 
 anim_plots = true
+
+# Set to true if you want to run a regional simulation. By default, it is false,
+# unless the `CLIMALAND_CI_REGIONAL_BUCKET` environment variable is defined.
+regional_simulation = haskey(ENV, "CLIMALAND_CI_REGIONAL_BUCKET")
+regional_str = regional_simulation ? "_regional" : ""
+
 regridder_type = :InterpolationsRegridder
 FT = Float64;
 context = ClimaComms.context()

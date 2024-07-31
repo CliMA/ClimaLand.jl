@@ -168,6 +168,25 @@ FT = Float32
     @test typeof(xy_plane.space.surface) <:
           ClimaCore.Spaces.SpectralElementSpace2D
 
+    # Plane latlong
+    longlat_plane = Plane(;
+        xlim = xlim,
+        ylim = ylim,
+        longlat = (FT(-118.14452), FT(34.14778)),
+        nelements = nelements[1:2],
+        npolynomial = 0,
+    )
+    plane_coords = coordinates(longlat_plane).surface
+    @test eltype(plane_coords) == ClimaCore.Geometry.LongLatPoint{FT}
+    @test typeof(plane_coords) <: ClimaCore.Fields.Field
+    @test xy_plane.xlim == FT.(xlim)
+    @test xy_plane.ylim == FT.(ylim)
+    @test xy_plane.nelements == nelements[1:2]
+    @test xy_plane.npolynomial == 0
+    @test xy_plane.periodic == (false, false)
+    @test typeof(xy_plane.space.surface) <:
+          ClimaCore.Spaces.SpectralElementSpace2D
+
 
     # Column
 
