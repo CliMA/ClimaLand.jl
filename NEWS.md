@@ -4,6 +4,17 @@ ClimaLand.jl Release Notes
 main
 --------
 
+v0.14.1
+--------
+- Site level runoff
+  PR[#702](https://github.com/CliMA/ClimaLand.jl/pull/702)
+- Snowmip sites
+  PR[#694](https://github.com/CliMA/ClimaLand.jl/pull/694)
+- Soil long run 
+  PR[#700](https://github.com/CliMA/ClimaLand.jl/pull/700)
+- Boundary flux for snow
+  PR[#701](https://github.com/CliMA/ClimaLand.jl/pull/701)
+
 v0.14.0
 --------
 - Use the soil parameters in creating the biogeochemistry SoilMet driver for consistency.
