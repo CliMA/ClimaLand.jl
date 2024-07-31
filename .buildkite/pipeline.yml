@@ -150,9 +150,16 @@ steps:
           - "experiments/global_bucket_function/output_active/*.png"
 
       - label: "Global Bucket on CPU (static map albedo)"
-        key: "global_bucket_staticmap_cpu"
-        command: "julia --color=yes --project=.buildkite experiments/standalone/Bucket/global_bucket_staticmap.jl"
+        key: "bucket_era5_cpu"
+        command: "julia --color=yes --project=.buildkite experiments/standalone/Bucket/bucket_era5.jl"
         artifact_paths: "experiments/standalone/Bucket/artifacts_staticmap/*cpu*"
+
+      - label: "Regional Bucket on CPU (static map albedo)"
+        key: "regional_bucket_era5_cpu"
+        command: "julia --color=yes --project=.buildkite experiments/standalone/Bucket/bucket_era5.jl"
+        artifact_paths: "experiments/standalone/Bucket/artifacts_staticmap_regional/*cpu*"
+        env:
+          CLIMALAND_CI_REGIONAL_BUCKET: true
 
       - label: "Global Bucket on CPU (temporal map albedo)"
         key: "global_bucket_temporalmap_cpu"
@@ -185,8 +192,8 @@ steps:
         artifact_paths: "experiments/standalone/Bucket/artifacts/*gpu*"
 
       - label: "Global Bucket on GPU (static map albedo)"
-        key: "global_bucket_staticmap_gpu"
-        command: "julia --color=yes --project=.buildkite experiments/standalone/Bucket/global_bucket_staticmap.jl"
+        key: "bucket_era5_gpu"
+        command: "julia --color=yes --project=.buildkite experiments/standalone/Bucket/bucket_era5.jl"
         agents:
           slurm_ntasks: 1
           slurm_gres: "gpu:p100:1"
@@ -211,7 +218,7 @@ steps:
         depends_on:
           - "global_bucket_function_cpu"
           - "global_bucket_function_gpu"
-          - "global_bucket_staticmap_cpu"
-          - "global_bucket_staticmap_gpu"
+          - "bucket_era5_cpu"
+          - "bucket_era5_gpu"
           - "global_bucket_temporalmap_cpu"
           - "global_bucket_temporalmap_gpu"
