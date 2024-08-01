@@ -31,6 +31,7 @@ using .PlantHydraulics
 include("./stomatalconductance.jl")
 include("./photosynthesis.jl")
 include("./radiation.jl")
+include("./solar_induced_fluorescence.jl")
 include("./pfts.jl")
 include("./canopy_energy.jl")
 include("./canopy_parameterizations.jl")
@@ -53,7 +54,7 @@ struct SharedCanopyParameters{FT <: AbstractFloat, PSE}
 end
 
 """
-     CanopyModel{FT, AR, RM, PM, SM, PHM, EM, A, R, S, PS, D} <: AbstractExpModel{FT}
+     CanopyModel{FT, AR, RM, PM, SM, PHM, EM, SM, A, R, S, PS, D} <: AbstractExpModel{FT}
 
 The model struct for the canopy, which contains
 - the canopy model domain (a point for site-level simulations, or
@@ -72,6 +73,8 @@ prognostically solves Richards equation in the plant is available.
 - subcomponent model type for canopy energy. This is of type
  `AbstractCanopyEnergyModel` and currently we support a version where
   the canopy temperature is prescribed, and one where it is solved for
+  prognostically.
+- subcomponent model type for canopy SIF.
   prognostically.
 - canopy model parameters, which include parameters that are shared
 between canopy model components or those needed to compute boundary
@@ -94,7 +97,7 @@ treated differently.
 
 $(DocStringExtensions.FIELDS)
 """
-struct CanopyModel{FT, AR, RM, PM, SM, PHM, EM, A, R, S, PS, D} <:
+struct CanopyModel{FT, AR, RM, PM, SM, PHM, EM, SIFM, A, R, S, PS, D} <:
        AbstractExpModel{FT}
     "Autotrophic respiration model, a canopy component model"
     autotrophic_respiration::AR
@@ -108,6 +111,8 @@ struct CanopyModel{FT, AR, RM, PM, SM, PHM, EM, A, R, S, PS, D} <:
     hydraulics::PHM
     "Energy balance model, a canopy component model"
     energy::EM
+    "SIF model, a canopy component model"
+    sif::SIFM
     "Atmospheric forcing: prescribed or coupled"
     atmos::A
     "Radiative forcing: prescribed or coupled"
@@ -128,6 +133,7 @@ end
         conductance::AbstractStomatalConductanceModel{FT},
         hydraulics::AbstractPlantHydraulicsModel{FT},
         energy::AbstractCanopyEnergyModel{FT},
+        sif::AbstractSIFModel{FT},
         atmos::AbstractAtmosphericDrivers{FT},
         radiation::AbstractRadiativeDrivers{FT},
         soil::AbstractSoilDriver,
@@ -153,6 +159,7 @@ function CanopyModel{FT}(;
     conductance::AbstractStomatalConductanceModel{FT},
     hydraulics::AbstractPlantHydraulicsModel{FT},
     energy = PrescribedCanopyTempModel{FT}(),
+    sif = Lee2015SIFModel{FT}(),
     atmos::AbstractAtmosphericDrivers{FT},
     radiation::AbstractRadiativeDrivers{FT},
     soil_driver::AbstractSoilDriver,
@@ -175,6 +182,7 @@ function CanopyModel{FT}(;
         conductance,
         hydraulics,
         energy,
+        sif,
         atmos,
         radiation,
         soil_driver,
@@ -203,6 +211,7 @@ canopy_components(::CanopyModel) = (
     :radiative_transfer,
     :autotrophic_respiration,
     :energy,
+    :sif,
 )
 
 """
@@ -429,6 +438,7 @@ function ClimaLand.make_update_aux(
         grav = FT(LP.grav(earth_param_set))
         ρ_l = FT(LP.ρ_cloud_liq(earth_param_set))
         R = FT(LP.gas_constant(earth_param_set))
+        T_freeze = FT(LP.T_freeze(earth_param_set))
         thermo_params = earth_param_set.thermo_params
         (; G_Function, Ω, λ_γ_PAR, λ_γ_NIR) =
             canopy.radiative_transfer.parameters
@@ -554,6 +564,18 @@ function ClimaLand.make_update_aux(
             medlyn_factor,
             c_co2_air,
             R,
+        )
+        # update SIF
+        SIF = p.canopy.sif.SIF
+        update_SIF!(
+            SIF,
+            canopy.sif,
+            p.canopy.radiative_transfer.par.abs,
+            T_canopy,
+            Vcmax25,
+            R,
+            T_freeze,
+            canopy.photosynthesis.parameters,
         )
         @. GPP = compute_GPP(An, K, LAI, Ω)
         @. gs = medlyn_conductance(g0, Drel, medlyn_factor, An, c_co2_air)
