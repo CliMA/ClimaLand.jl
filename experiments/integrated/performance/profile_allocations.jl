@@ -398,7 +398,7 @@ if PROFILING
     results = Profile.fetch()
     flame_file = joinpath(savedir, "flame_$(device_suffix).html")
     ProfileCanvas.html_file(flame_file, results)
-    @info "Save compute flame to flame_file"
+    @info "Save compute flame to $(flame_file)"
     Y, p = set_initial_conditions(land, t0)
     updateat = Array(t0:dt:tf)
     drivers = ClimaLand.get_drivers(land)
@@ -424,5 +424,5 @@ if PROFILING
     profile = ProfileCanvas.view_allocs(results)
     alloc_flame_file = joinpath(savedir, "alloc_flame_$(device_suffix).html")
     ProfileCanvas.html_file(alloc_flame_file, profile)
-    @info "Save allocation flame to alloc_flame_file"
+    @info "Save allocation flame to $(alloc_flame_file)"
 end
