@@ -95,8 +95,11 @@ function compute_SIF_at_a_point(
     Vcmax25::FT,
     R::FT,
     T_freeze::FT,
-    photosynthesis_parameters,
-    sif_parameters,
+    photosynthesis_parameters::Union{
+        FarquharParameters,
+        OptimalityFarquharParameters,
+    },
+    sif_parameters::SIFParameters,
 ) where {FT}
     (; ΔHJmax, To, θj, ϕ) = photosynthesis_parameters
     Jmax = max_electron_transport(Vcmax25, ΔHJmax, Tc, To, R)
