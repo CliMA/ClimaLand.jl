@@ -172,7 +172,7 @@ steps:
         agents:
           slurm_ntasks: 1
           slurm_gres: "gpu:p100:1"
-        artifact_paths: "experiments/integrated/performance/*gpu*html"
+        artifact_paths: "experiments/integrated/performance/flame*html"
 
       - label: "Global Bucket on GPU (functional albedo)"
         key: "global_bucket_function_gpu"
