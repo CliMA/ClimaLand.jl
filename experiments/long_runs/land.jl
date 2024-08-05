@@ -469,7 +469,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     # or PR #645 for details.
     # For now, this clipping is similar to what CLM does.
     LAIfunction = TimeVaryingInput(
-        joinpath(era5_artifact_path, "era5_2021_0.9x1.25_clima.nc"),
+        joinpath(era5_artifact_path, "era5_lai_2021_0.9x1.25_clima.nc"),
         "lai",
         surface_space;
         reference_date = ref_time,
