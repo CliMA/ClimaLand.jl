@@ -462,6 +462,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         )
     )
     # Set up plant hydraulics
+
     # Note that we clip all values of LAI below 0.05 to zero.
     # This is because we currently run into issues when LAI is
     # of order eps(FT) in the SW radiation code.
