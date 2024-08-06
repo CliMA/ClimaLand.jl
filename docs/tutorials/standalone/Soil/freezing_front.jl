@@ -154,7 +154,7 @@ boundary_fluxes = (;
 # Sources are added as elements of a list of sources. Here we just add freezing
 # and thawing.
 
-sources = (PhaseChange{FT}(),);
+sources = (PhaseChange{FT}(FT(3600)),);
 
 # Now we can package this up in the
 # [`EnergyHydrology`](@ref ClimaLand.Soil.EnergyHydrology) model
@@ -214,13 +214,13 @@ imp_tendency! = make_imp_tendency(soil);
 jacobian! = ClimaLand.make_jacobian(soil);
 jac_kwargs = (; jac_prototype = ImplicitEquationJacobian(Y), Wfact = jacobian!);
 
-dt = Float64(100)
+dt = Float64(900)
 
 timestepper = CTS.ARS111();
 ode_algo = CTS.IMEXAlgorithm(
     timestepper,
     CTS.NewtonsMethod(
-        max_iters = 3,
+        max_iters = 5,
         update_j = CTS.UpdateEvery(CTS.NewTimeStep),
     ),
 );

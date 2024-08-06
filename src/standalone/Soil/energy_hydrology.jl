@@ -331,7 +331,7 @@ function ClimaLand.make_compute_jacobian(model::EnergyHydrology{FT}) where {FT}
                             ClimaLand.Soil.dψdϑ(
                                 hydrology_cm,
                                 Y.soil.ϑ_l,
-                                ν,
+                                ν - Y.soil.θ_i, #ν_eff
                                 θ_r,
                                 S_s,
                             ),
@@ -353,7 +353,7 @@ function ClimaLand.make_compute_jacobian(model::EnergyHydrology{FT}) where {FT}
                         ClimaLand.Soil.dψdϑ(
                             hydrology_cm,
                             Y.soil.ϑ_l,
-                            ν,
+                            ν - Y.soil.θ_i, #ν_eff
                             θ_r,
                             S_s,
                         ),
@@ -572,9 +572,15 @@ end
 """
     PhaseChange{FT} <: AbstractSoilSource{FT}
 
-PhaseChange source type.
+PhaseChange source type
 """
-struct PhaseChange{FT} <: AbstractSoilSource{FT} end
+struct PhaseChange{FT} <: AbstractSoilSource{FT}
+    Δt::FT
+end
+
+function PhaseChange{FT}() where {FT}
+    return PhaseChange{FT}(FT(0))
+end
 
 
 """
@@ -599,7 +605,7 @@ function ClimaLand.source!(
     (; ν, ρc_ds, θ_r, hydrology_cm, earth_param_set) = params
     _ρ_l = FT(LP.ρ_cloud_liq(earth_param_set))
     _ρ_i = FT(LP.ρ_cloud_ice(earth_param_set))
-    Δz_top = model.domain.fields.Δz_top # center face distance
+    Δz = model.domain.fields.Δz # center face distance
     @. dY.soil.ϑ_l +=
         -phase_change_source(
             p.soil.θ_l,
@@ -612,8 +618,9 @@ function ClimaLand.source!(
                     ρc_ds,
                     earth_param_set,
                 ),
-                2 * Δz_top, # the factor of 2 appears to get the face-face/layer thickness, Δz_top is center-face distance
+                Δz,
                 p.soil.κ,
+                src.Δt,
             ),
             ν,
             θ_r,
@@ -632,8 +639,9 @@ function ClimaLand.source!(
                     ρc_ds,
                     earth_param_set,
                 ),
-                2 * Δz_top, #the factor of 2 appears to get the face-face/layer thickness, Δz_top is center-face distance
+                Δz,
                 p.soil.κ,
+                src.Δt,
             ),
             ν,
             θ_r,

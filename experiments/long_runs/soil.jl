@@ -353,7 +353,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
 
     soil_args = (domain = domain, parameters = soil_params)
     soil_model_type = Soil.EnergyHydrology{FT}
-    sources = (Soil.PhaseChange{FT}(),)# sublimation and subsurface runoff are added automatically
+    sources = (Soil.PhaseChange{FT}(FT(3600)),)# sublimation and subsurface runoff are added automatically
     top_bc = ClimaLand.Soil.AtmosDrivenFluxBC(atmos, radiation, runoff_model)
     zero_flux = Soil.HeatFluxBC((p, t) -> 0.0)
     boundary_conditions = (;
@@ -452,8 +452,8 @@ function setup_and_solve_problem(; greet = false)
     ode_algo = CTS.IMEXAlgorithm(
         stepper,
         CTS.NewtonsMethod(
-            max_iters = 3,
-            update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
+            max_iters = 5,
+            update_j = CTS.UpdateEvery(CTS.NewTimeStep),
         ),
     )
     SciMLBase.solve(prob, ode_algo; dt = Δt, callback = cb, adaptive = false)
@@ -466,12 +466,14 @@ setup_and_solve_problem(; greet = true);
 simdir = ClimaAnalysis.SimDir(outdir)
 short_names_2D = ["slw", "si", "tsoil"]
 times = 0.0:(60.0 * 60.0 * 24 * 20):(60.0 * 60.0 * 24 * 60)
+var_limits = [(0, 1), (0, 1), (270, 320)]
 for t in times
-    for short_name in short_names_2D
+    for (short_name, limits) in zip(short_names_2D, var_limits)
         var = get(simdir; short_name)
         fig = CairoMakie.Figure(size = (800, 600))
-        kwargs = short_name in short_names_2D ? Dict() : Dict(:z => 1)
-        viz.plot!(fig, var, time = t; kwargs...)
+        more_kwargs = Dict(:plot => Dict(:colorrange => limits))
+        kwargs = Dict(:time => t)
+        viz.plot!(fig, var; more_kwargs = more_kwargs, time = t)
         CairoMakie.save(joinpath(root_path, "$short_name $t.png"), fig)
     end
 end

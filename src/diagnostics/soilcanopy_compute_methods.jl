@@ -79,10 +79,21 @@ function compute_soil_water_liquid!(
     t,
     land_model::Union{SoilCanopyModel, EnergyHydrology},
 )
+    soil_params =
+        typeof(land_model) <: SoilCanopyModel ? land_model.soil.parameters :
+        land_model.parameters
     if isnothing(out)
-        return copy(top_center_to_surface(p.soil.θ_l)) # or is it in Y.soil?
+        return copy(
+            top_center_to_surface(
+                (Y.soil.ϑ_l .- soil_params.θ_r) ./
+                (soil_params.ν .- soil_params.θ_r),
+            ),
+        )
     else
-        out .= top_center_to_surface(p.soil.θ_l)
+        out .= top_center_to_surface(
+            (Y.soil.ϑ_l .- soil_params.θ_r) ./
+            (soil_params.ν .- soil_params.θ_r),
+        )
     end
 end
 
@@ -595,9 +606,20 @@ function compute_soil_ice!(
     t,
     land_model::Union{SoilCanopyModel, EnergyHydrology},
 )
+    soil_params =
+        typeof(land_model) <: SoilCanopyModel ? land_model.soil.parameters :
+        land_model.parameters
     if isnothing(out)
-        return copy(top_center_to_surface(Y.soil.θ_i))
+        return copy(
+            top_center_to_surface(
+                (Y.soil.θ_i .- soil_params.θ_r) ./
+                (soil_params.ν .- soil_params.θ_r),
+            ),
+        )
     else
-        out .= top_center_to_surface(Y.soil.θ_i)
+        out .= top_center_to_surface(
+            (Y.soil.θ_i .- soil_params.θ_r) ./
+            (soil_params.ν .- soil_params.θ_r),
+        )
     end
 end
