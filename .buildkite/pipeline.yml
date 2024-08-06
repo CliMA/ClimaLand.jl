@@ -43,6 +43,10 @@ steps:
 
   - group: "Experiments"
     steps:
+      - label: "Snow/Soil Ozark"
+        command: "julia --color=yes --project=.buildkite experiments/integrated/fluxnet/snow_soil/simulation.jl"
+        artifact_paths: "experiments/integrated/fluxnet/snow_soil/results.png"
+
       - label: "Snow Col de Porte"
         command: "julia --color=yes --project=.buildkite experiments/standalone/Snow/snowmip_simulation.jl cdp"
         artifact_paths: "experiments/standalone/Snow/*png"

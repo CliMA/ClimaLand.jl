@@ -382,6 +382,7 @@ function lsm_radiant_energy_fluxes!(
     ϵ_canopy = p.canopy.radiative_transfer.ϵ # this takes into account LAI/SAI
     @. LW_d_canopy = ((1 - ϵ_canopy) * LW_d + ϵ_canopy * _σ * T_canopy^4) # double checked
     @. LW_u_soil = ϵ_soil * _σ * p.T_ground^4 + (1 - ϵ_soil) * LW_d_canopy # double checked
+    # This is a sign inconsistency. Here Rn is positive if towards soil. X_X
     @. R_net_soil += ϵ_soil * LW_d_canopy - ϵ_soil * _σ * p.T_ground^4 # double checked
     @. LW_net_canopy =
         ϵ_canopy * LW_d - 2 * ϵ_canopy * _σ * T_canopy^4 + ϵ_canopy * LW_u_soil
@@ -417,7 +418,7 @@ function soil_boundary_fluxes!(
 ) where {FT}
     bc = soil.boundary_conditions.top
     p.soil.turbulent_fluxes .= turbulent_fluxes(bc.atmos, soil, Y, p, t)
-    Soil.Runoff.update_runoff!(p, bc.runoff, Y, t, soil)
+    Soil.Runoff.update_runoff!(p, bc.runoff, p.drivers.P_liq, Y, t, soil)
     # Multiply the vapor flux by 1 - p.soil.ice_frac to get
     # the approximated evaporation of liquid water
     @. p.soil.top_bc.water =

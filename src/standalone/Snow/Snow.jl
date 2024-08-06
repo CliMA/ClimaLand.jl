@@ -300,10 +300,11 @@ function ClimaLand.make_update_boundary_fluxes(model::SnowModel{FT}) where {FT}
 
         # Heaviside function because we cannot change the water content of the snow by
         # sublimation, evap, melting, or rain
-        # unless there is already snow on the ground. 
+        # unless there is already snow on the ground.
+        # positive fluxes are TOWARDS atmos
         @. p.snow.total_water_flux =
-            -P_snow +
-            (-p.snow.turbulent_fluxes.vapor_flux + p.snow.water_runoff) *
+            P_snow +
+            (p.snow.turbulent_fluxes.vapor_flux - p.snow.water_runoff) *
             heaviside(Y.snow.S - eps(FT))
 
         # I think we want dU/dt to include energy of falling snow.
@@ -313,20 +314,22 @@ function ClimaLand.make_update_boundary_fluxes(model::SnowModel{FT}) where {FT}
         _ρ_liq = FT(LP.ρ_cloud_liq(model.parameters.earth_param_set))
         ρe_falling_snow = -_LH_f0 * _ρ_liq # per unit vol of liquid water
 
+        # positive fluxes are TOWARDS atmos
         @. p.snow.total_energy_flux =
-            -P_snow * ρe_falling_snow +
+            P_snow * ρe_falling_snow +
             (
-                -p.snow.turbulent_fluxes.lhf - p.snow.turbulent_fluxes.shf -
-                p.snow.R_n + p.snow.energy_runoff
+                p.snow.turbulent_fluxes.lhf +
+                p.snow.turbulent_fluxes.shf +
+                p.snow.R_n - p.snow.energy_runoff
             ) * heaviside(Y.snow.S - eps(FT))
 
         @. p.snow.applied_water_flux =
-            clip_dSdt(Y.snow.S, p.snow.total_water_flux, model.parameters.Δt)
+            clip_dSdt(Y.snow.S, -p.snow.total_water_flux, model.parameters.Δt)
         @. p.snow.applied_energy_flux = clip_dUdt(
             Y.snow.U,
             Y.snow.S,
-            p.snow.total_energy_flux,
-            p.snow.total_water_flux,
+            -p.snow.total_energy_flux,
+            -p.snow.total_water_flux,
             model.parameters.Δt,
         )
     end
@@ -334,8 +337,9 @@ end
 
 function ClimaLand.make_compute_exp_tendency(model::SnowModel{FT}) where {FT}
     function compute_exp_tendency!(dY, Y, p, t)
-        @. dY.snow.S = p.snow.applied_water_flux
-        @. dY.snow.U = p.snow.applied_energy_flux
+        # positive fluxes are TOWARDS atmos
+        @. dY.snow.S = -p.snow.applied_water_flux
+        @. dY.snow.U = -p.snow.applied_energy_flux
     end
     return compute_exp_tendency!
 end
@@ -348,9 +352,9 @@ S will not become negative.
 """
 function clip_dSdt(S, dSdt, Δt)
     if S + dSdt * Δt < 0
-        return -S / Δt
+        return S / Δt
     else
-        return dSdt
+        return -dSdt
     end
 end
 
@@ -363,11 +367,11 @@ goes to zero in a step, U will too.
 """
 function clip_dUdt(U, S, dUdt, dSdt, Δt)
     if (U + dUdt * Δt) > 0
-        return -U / Δt
+        return U / Δt
     elseif S + dSdt * Δt < 0
-        return -U / Δt
+        return U / Δt
     else
-        return dUdt
+        return -dUdt
     end
 end
 
