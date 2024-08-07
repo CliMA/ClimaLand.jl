@@ -37,7 +37,7 @@ struct Lee2015SIFModel{FT, SP <: SIFParameters{FT}} <: AbstractSIFModel{FT}
 end
 
 function Lee2015SIFModel{FT}(
-    parameters = SIFParameters{FT},
+    parameters::SIFParameters{FT},
    ) where {FT <: AbstractFloat}
     return Lee2015SIFModel{eltype(parameters), typeof(parameters)}(parameters)
 end
