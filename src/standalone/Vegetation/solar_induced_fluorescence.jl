@@ -34,10 +34,12 @@ Base.eltype(::SIFParameters{FT}) where {FT} = FT
 
 struct Lee2015SIFModel{FT, SP <: SIFParameters{FT}} <: AbstractSIFModel{FT}
     parameters::SP
-    function Lee2015SIFModel{FT}() where {FT}
-        parameters = SIFParameters{FT}()
-        new{FT, typeof(parameters)}(parameters)
-    end
+end
+
+function Lee2015SIFModel{FT}(
+    parameters = SIFParameters{FT},
+   ) where {FT <: AbstractFloat}
+    return Lee2015SIFModel{eltype(parameters), typeof(parameters)}(parameters)
 end
 
 ClimaLand.name(model::AbstractSIFModel) = :sif
