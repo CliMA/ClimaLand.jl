@@ -128,6 +128,7 @@ FT = Float32
     @test obtain_surface_domain(box) == Plane{FT}(
         xlim,
         ylim,
+        nothing,
         nelements[1:2],
         (true, true),
         0,
@@ -168,6 +169,83 @@ FT = Float32
     @test typeof(xy_plane.space.surface) <:
           ClimaCore.Spaces.SpectralElementSpace2D
 
+    # Plane latlong
+    dxlim = (FT(-50_000), FT(80_000))
+    dylim = (FT(-30_000), FT(40_000))
+    longlat = (FT(-118.14452), FT(34.14778))
+    radius_earth = FT(6.378e6)
+    xlim_longlat = (
+        longlat[1] - dxlim[1] / 2radius_earth,
+        longlat[1] + dxlim[2] / 2radius_earth,
+    )
+    ylim_longlat = (
+        longlat[2] - dylim[1] / 2radius_earth,
+        longlat[2] + dylim[2] / (2radius_earth),
+    )
+
+    longlat_plane = Plane(;
+        xlim = dxlim,
+        ylim = dylim,
+        longlat,
+        nelements = nelements[1:2],
+        npolynomial = 0,
+    )
+    plane_coords = coordinates(longlat_plane).surface
+    @test eltype(plane_coords) == ClimaCore.Geometry.LatLongPoint{FT}
+    @test typeof(plane_coords) <: ClimaCore.Fields.Field
+    @test longlat_plane.xlim == FT.(xlim_longlat)
+    @test longlat_plane.ylim == FT.(ylim_longlat)
+    @test longlat_plane.nelements == nelements[1:2]
+    @test longlat_plane.npolynomial == 0
+    @test longlat_plane.periodic == (false, false)
+    @test typeof(longlat_plane.space.surface) <:
+          ClimaCore.Spaces.SpectralElementSpace2D
+
+    # Box latlong
+    longlat_box = HybridBox(;
+        xlim = dxlim,
+        ylim = dylim,
+        zlim = zlim,
+        longlat,
+        nelements = nelements,
+        npolynomial = 0,
+    )
+    @test longlat_box.fields.z ==
+          ClimaCore.Fields.coordinate_field(longlat_box.space.subsurface).z
+    face_space = obtain_face_space(longlat_box.space.subsurface)
+    z_face = ClimaCore.Fields.coordinate_field(face_space).z
+    @test longlat_box.fields.z_sfc ==
+          top_face_to_surface(z_face, longlat_box.space.surface)
+    Δz_top, Δz_bottom = get_Δz(longlat_box.fields.z)
+    @test longlat_box.fields.Δz_top == Δz_top
+    @test longlat_box.fields.Δz_bottom == Δz_bottom
+    longlat_box_coords = coordinates(longlat_box).subsurface
+    @test eltype(longlat_box_coords) == ClimaCore.Geometry.LatLongZPoint{FT}
+    @test typeof(longlat_box_coords) <: ClimaCore.Fields.Field
+    @test longlat_box.xlim == FT.(xlim_longlat)
+    @test longlat_box.ylim == FT.(ylim_longlat)
+    @test longlat_box.zlim == FT.(zlim)
+    @test longlat_box.nelements == nelements
+    @test longlat_box.npolynomial == 0
+    @test longlat_box.periodic == (false, false)
+    @test typeof(
+        ClimaCore.Spaces.horizontal_space(longlat_box.space.subsurface),
+    ) <: ClimaCore.Spaces.SpectralElementSpace2D
+    @test typeof(longlat_box.space.subsurface) <:
+          ClimaCore.Spaces.CenterExtrudedFiniteDifferenceSpace
+    @test typeof(longlat_box.space.surface) <:
+          ClimaCore.Spaces.SpectralElementSpace2D
+    @test obtain_surface_space(longlat_box.space.subsurface) ==
+          longlat_box.space.surface
+    @test obtain_surface_domain(longlat_box) == Plane{FT}(
+        xlim_longlat,
+        ylim_longlat,
+        longlat,
+        nelements[1:2],
+        (false, false),
+        0,
+        (; surface = longlat_box.space.surface),
+    )
 
     # Column
 

@@ -1,7 +1,7 @@
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="logo-white.svg">
   <source media="(prefers-color-scheme: light)" srcset="logo.svg">
-  <img alt="Shows the logo of ClimaLand, with a drop and three leaves" src="logo.svg">
+  <img alt="Shows the logo of ClimaLand, with a water drop and three leaves" src="logo.svg">
 </picture>
 <p align="center">
   <strong>Create and run  land models in integrated (multi-
@@ -23,6 +23,7 @@ component) or standalone (single component) modes.  </strong>
 
 This is the repository of the CliMA land model code. Here are some notable features:
 - ClimaLand has a modular design, models can be run as standalone (e.g., soil moisture only) or integrated (e.g., soil moisture and energy AND canopy AND snow, etc.)
+- ClimaLand can simulate single columns, regional boxes, and global runs
 - ClimaLand is CPU and GPU compatible
 - ClimaLand welcome contributions: please feel free to reach out to us with questions about how to get started, create a branch, and extend our code. For example, a modeler might want to test a new stomatal conductance model. 
 - ClimaLand provides APIs and UIs at multiple levels. 
