@@ -93,7 +93,8 @@ AR_model = AutotrophicRespirationModel{FT}(AR_params);
 f_root_to_shoot = FT(3.5)
 SAI = FT(1.0)
 RAI = FT(3 * f_root_to_shoot)
-ai_parameterization = PrescribedSiteAreaIndex{FT}(LAIfunction, SAI, RAI)
+ai_parameterization =
+    PrescribedSiteAreaIndex{FT}(LAIfunction, SAI, RAI)
 rooting_depth = FT(1.0);
 
 function root_distribution(z::T; rooting_depth = rooting_depth) where {T}
@@ -177,24 +178,14 @@ Y.canopy.hydraulics.ϑ_l.:2 .= augmented_liquid_fraction.(ν, S_l_ini[2])
 t0 = 0.0
 N_days = 360
 tf = t0 + 3600 * 24 * N_days
-dt = 3600.0;
 evaluate!(Y.canopy.energy.T, atmos.T, t0)
 set_initial_cache! = make_set_initial_cache(canopy)
 set_initial_cache!(p, Y, t0);
 
-
-
-saveat = Array(t0:dt:tf)
-sv = (;
-    t = Array{Float64}(undef, length(saveat)),
-    saveval = Array{NamedTuple}(undef, length(saveat)),
-)
-saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat);
-
-updateat = Array(t0:(3600 * 3):tf)
+saveat = Array(t0:3*3600:tf)
+updateat = Array(t0:3600*3:tf)
 updatefunc = ClimaLand.make_update_drivers(atmos, radiation)
-driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
-cb = SciMLBase.CallbackSet(driver_cb, saving_cb);
+cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
 
 timestepper = CTS.ARS111();
 ode_algo = CTS.IMEXAlgorithm(
@@ -216,70 +207,38 @@ prob = SciMLBase.ODEProblem(
     p,
 );
 
-@time sol =
-    SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb, saveat = saveat);
+ref_dt = 60.0
+ref_sol = SciMLBase.solve(prob, ode_algo; dt = ref_dt, callback = cb, saveat = saveat);
+ref_T = [parent(ref_sol.u[k].canopy.energy.T)[1] for k in 1:length(ref_sol.t)]
+max_err = []
+mean_err = []
+std_err = []
+p95_err = []
+p99_err = []
+dts = [225.0, 450.0,900.0, 1800.0, 3600.0]
+for dt in dts
+    saveat = Array(t0:3*3600:tf)
+    evaluate!(Y.canopy.energy.T, atmos.T, t0)
+    updateat = Array(t0:3600*3:tf)
+    updatefunc = ClimaLand.make_update_drivers(atmos, radiation)
+    cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
 
+    sol = SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb, saveat = saveat);
+    T = [parent(sol.u[k].canopy.energy.T)[1] for k in 1:length(sol.t)]
+    ΔT = abs.(T .- ref_T)
+    push!(max_err, maximum(ΔT))
+    push!(mean_err, mean(ΔT))
+    push!(std_err, std(ΔT))
+    push!(p95_err, percentile(ΔT, 95))
+    push!(p99_err, percentile(ΔT, 99))
+end
 savedir = joinpath(pkgdir(ClimaLand), "experiments/standalone/Vegetation");
-T = [parent(sol.u[k].canopy.energy.T)[1] for k in 1:length(sol.t)]
-
-T_atmos = [parent(sv.saveval[k].drivers.T)[1] for k in 1:length(sol.t)]
-ϑ_l = [parent(sol.u[k].canopy.hydraulics.ϑ_l.:2)[1] for k in 1:length(sol.t)]
-ϑ_s = [parent(sol.u[k].canopy.hydraulics.ϑ_l.:1)[1] for k in 1:length(sol.t)]
-GPP = [
-    parent(sv.saveval[k].canopy.photosynthesis.GPP)[1] * 1e6 for
-    k in 1:length(sol.t)
-]
-resp = [
-    parent(sv.saveval[k].canopy.autotrophic_respiration.Ra)[1] * 1e6 for
-    k in 1:length(sol.t)
-]
-SW_abs = [
-    parent(sv.saveval[k].canopy.radiative_transfer.SW_n)[1] for
-    k in 1:length(sol.t)
-]
-LW_abs = [
-    parent(sv.saveval[k].canopy.radiative_transfer.LW_n)[1] for
-    k in 1:length(sol.t)
-]
-SHF = [parent(sv.saveval[k].canopy.energy.shf)[1] for k in 1:length(sol.t)]
-LHF = [parent(sv.saveval[k].canopy.energy.lhf)[1] for k in 1:length(sol.t)]
-RE = [
-    parent(sv.saveval[k].canopy.energy.fa_energy_roots)[1] for
-    k in 1:length(sol.t)
-]
-R = [
-    parent(sv.saveval[k].canopy.hydraulics.fa_roots)[1] for k in 1:length(sol.t)
-]
-R_stem_leaf =
-    [parent(sv.saveval[k].canopy.hydraulics.fa.:1)[1] for k in 1:length(sol.t)]
-Tr = [parent(sv.saveval[k].canopy.hydraulics.fa.:2)[1] for k in 1:length(sol.t)]
 fig = Figure()
-ax = Axis(fig[1, 1], xlabel = "Time (days)", ylabel = "Temperature (K)")
-lines!(ax, sol.t ./ 24 ./ 3600, T, label = "Canopy")
-lines!(ax, sol.t ./ 24 ./ 3600, T_atmos, label = "Atmos")
+ax = Axis(fig[1, 1], xlabel = "Time (seconds)", ylabel = "Temperature (K)",xscale = log2, yscale = log10)
+lines!(ax, dts, FT.(max_err), label = "Max Error")
+lines!(ax, dts, FT.(mean_err), label = "Mean Error")
+lines!(ax, dts, FT.(std_err), label = "Std Error")
+lines!(ax, dts, FT.(p95_err), label = "95th% Error")
+lines!(ax, dts, FT.(p99_err), label = "99th% Error")
 axislegend(ax)
-ax = Axis(fig[2, 1], xlabel = "Time (days)", ylabel = "Volumetric Water")
-lines!(ax, sol.t ./ 24 ./ 3600, ϑ_l, label = "Leaf")
-lines!(ax, sol.t ./ 24 ./ 3600, ϑ_s, label = "Stem")
-axislegend(ax)
-save(joinpath(savedir, "test2_imp.png"), fig)
-fig2 = Figure()
-ax = Axis(fig2[1, 1], xlabel = "Time (days)", ylabel = "Energy Fluxes")
-lines!(ax, sol.t ./ 24 ./ 3600, SW_abs, label = "SW")
-lines!(ax, sol.t ./ 24 ./ 3600, LW_abs, label = "LW")
-lines!(ax, sol.t ./ 24 ./ 3600, SHF, label = "SHF")
-lines!(ax, sol.t ./ 24 ./ 3600, LHF, label = "LHF")
-lines!(ax, sol.t ./ 24 ./ 3600, RE, label = "RE")
-axislegend(ax)
-ax = Axis(fig2[2, 1], xlabel = "Time (days)", ylabel = "Water Fluxes")
-ylims!(ax, (0, 1e-7))
-lines!(ax, sol.t ./ 24 ./ 3600, Tr, label = "Transpiration")
-lines!(ax, sol.t ./ 24 ./ 3600, R, label = "R")
-lines!(ax, sol.t ./ 24 ./ 3600, R_stem_leaf, label = "R_stem_leaf")
-
-axislegend(ax)
-ax = Axis(fig2[3, 1], xlabel = "Time (days)", ylabel = "Carbon Fluxes")
-lines!(ax, sol.t ./ 24 ./ 3600, GPP, label = "GPP")
-lines!(ax, sol.t ./ 24 ./ 3600, resp, label = "Respiration")
-axislegend(ax)
-save(joinpath(savedir, "test_imp.png"), fig2)
+save(joinpath(savedir, "errors.png"), fig)

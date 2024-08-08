@@ -6,14 +6,14 @@ N_spinup_days = 30
 N_days = N_spinup_days + 30
 tf = Float64(t0 + 3600 * 24 * N_days)
 t_spinup = Float64(t0 + N_spinup_days * 3600 * 24)
-saveat = Array(t_spinup:(n * dt):tf)
+saveat = Array(t_spinup:3600:tf)
 
 # Set up timestepper
-timestepper = CTS.ARS343();
+timestepper = CTS.ARS111();
 ode_algo = CTS.IMEXAlgorithm(
     timestepper,
     CTS.NewtonsMethod(
-        max_iters = 2,
-        update_j = CTS.UpdateEvery(CTS.NewTimeStep),
+        max_iters = 6,
+        update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
     ),
 );

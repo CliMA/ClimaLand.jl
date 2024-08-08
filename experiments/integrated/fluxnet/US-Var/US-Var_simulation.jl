@@ -21,6 +21,3 @@ t0 = Float64(21 * 3600 * 24)# start day 21 of the year
 
 # Time step size:
 dt = Float64(900)
-
-# Number of timesteps between saving output:
-n = 1

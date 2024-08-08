@@ -601,7 +601,7 @@ function setup_and_solve_problem(; greet = false)
     # to set up for both CPU/GPU at the same time
     t0 = 0.0
     tf = 60 * 60.0 * 6
-    Δt = 1800.0
+    Δt = 900.0
     nelements = (101, 15)
     if greet
         @info "Run: Global Land Model"
@@ -613,12 +613,12 @@ function setup_and_solve_problem(; greet = false)
     prob, cb = setup_prob(t0, tf, Δt; nelements)
 
     # Define timestepper and ODE algorithm
-    stepper = CTS.ARS343()
+    stepper = CTS.ARS111()
     ode_algo = CTS.IMEXAlgorithm(
         stepper,
         CTS.NewtonsMethod(
-            max_iters = 1,
-            update_j = CTS.UpdateEvery(CTS.NewTimeStep),
+            max_iters = 6,
+            update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
         ),
     )
 
@@ -631,7 +631,7 @@ setup_and_solve_problem(; greet = true)
 
 @info "Starting profiling"
 # Stop when we profile for MAX_PROFILING_TIME_SECONDS or MAX_PROFILING_SAMPLES
-MAX_PROFILING_TIME_SECONDS = 1000
+MAX_PROFILING_TIME_SECONDS = 500
 MAX_PROFILING_SAMPLES = 100
 time_now = time()
 timings_s = Float64[]
