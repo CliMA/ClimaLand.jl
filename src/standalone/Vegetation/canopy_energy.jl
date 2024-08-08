@@ -188,9 +188,13 @@ function ClimaLand.make_compute_jacobian(
         area_index = p.canopy.hydraulics.area_index
         ac_canopy = model.parameters.ac_canopy
         earth_param_set = canopy.parameters.earth_param_set
+        _T_freeze = FT(LP.T_freeze(earth_param_set))
         _σ = FT(LP.Stefan(earth_param_set))
         @. ∂LW_n∂Tc = -2 * 4 * _σ * ϵ_c * Y.canopy.energy.T^3 # ≈ ϵ_ground = 1
-        @. ∂qc∂Tc = partial_q_sat_partial_T_liq(p.drivers.P, Y.canopy.energy.T)# use atmos air pressure as approximation for surface air pressure
+        @. ∂qc∂Tc = partial_q_sat_partial_T_liq(
+            p.drivers.P,
+            Y.canopy.energy.T - _T_freeze,
+        )# use atmos air pressure as approximation for surface air pressure
         @. ∂Tres∂T =
             dtγ * MatrixFields.DiagonalMatrixRow(
                 (∂LW_n∂Tc - ∂SHF∂Tc - ∂LHF∂qc * ∂qc∂Tc) /
@@ -204,7 +208,7 @@ end
     partial_q_sat_partial_T_liq(P::FT, T::FT) where {FT}
 
 Computes the quantity ∂q_sat∂T at temperature T and pressure P,
-over liquid water. 
+over liquid water. The temperature must be in Celsius.
 
 Uses the polynomial approximation from Flatau et al. (1992).
 """

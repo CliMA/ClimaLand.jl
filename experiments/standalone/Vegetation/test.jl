@@ -184,7 +184,7 @@ set_initial_cache!(p, Y, t0);
 
 
 
-saveat = Array(t0:dt:tf)
+saveat = Array(t0:(3 * 3600):tf)
 sv = (;
     t = Array{Float64}(undef, length(saveat)),
     saveval = Array{NamedTuple}(undef, length(saveat)),
@@ -253,18 +253,36 @@ R = [
 R_stem_leaf =
     [parent(sv.saveval[k].canopy.hydraulics.fa.:1)[1] for k in 1:length(sol.t)]
 Tr = [parent(sv.saveval[k].canopy.hydraulics.fa.:2)[1] for k in 1:length(sol.t)]
+r_ae = [parent(sv.saveval[k].canopy.energy.r_ae)[1] for k in 1:length(sol.t)]
+
+fig = Figure()
+ax = Axis(
+    fig[1, 1],
+    xlabel = "Resistance (s/m)",
+    ylabel = "Error in T",
+    yscale = log10,
+    xscale = log10,
+)
+scatter!(ax, r_ae, ΔT .+ 1e-4, label = "Error")
+axislegend(ax)
+save(joinpath(savedir, "error_plot.png"), fig)
+
+
 fig = Figure()
 ax = Axis(fig[1, 1], xlabel = "Time (days)", ylabel = "Temperature (K)")
+xlims!(ax, 235, 250)
 lines!(ax, sol.t ./ 24 ./ 3600, T, label = "Canopy")
 lines!(ax, sol.t ./ 24 ./ 3600, T_atmos, label = "Atmos")
 axislegend(ax)
 ax = Axis(fig[2, 1], xlabel = "Time (days)", ylabel = "Volumetric Water")
+xlims!(ax, 235, 250)
 lines!(ax, sol.t ./ 24 ./ 3600, ϑ_l, label = "Leaf")
 lines!(ax, sol.t ./ 24 ./ 3600, ϑ_s, label = "Stem")
 axislegend(ax)
 save(joinpath(savedir, "test2_imp.png"), fig)
 fig2 = Figure()
 ax = Axis(fig2[1, 1], xlabel = "Time (days)", ylabel = "Energy Fluxes")
+xlims!(ax, 235, 250)
 lines!(ax, sol.t ./ 24 ./ 3600, SW_abs, label = "SW")
 lines!(ax, sol.t ./ 24 ./ 3600, LW_abs, label = "LW")
 lines!(ax, sol.t ./ 24 ./ 3600, SHF, label = "SHF")
@@ -272,6 +290,7 @@ lines!(ax, sol.t ./ 24 ./ 3600, LHF, label = "LHF")
 lines!(ax, sol.t ./ 24 ./ 3600, RE, label = "RE")
 axislegend(ax)
 ax = Axis(fig2[2, 1], xlabel = "Time (days)", ylabel = "Water Fluxes")
+xlims!(ax, 235, 250)
 ylims!(ax, (0, 1e-7))
 lines!(ax, sol.t ./ 24 ./ 3600, Tr, label = "Transpiration")
 lines!(ax, sol.t ./ 24 ./ 3600, R, label = "R")
@@ -279,6 +298,7 @@ lines!(ax, sol.t ./ 24 ./ 3600, R_stem_leaf, label = "R_stem_leaf")
 
 axislegend(ax)
 ax = Axis(fig2[3, 1], xlabel = "Time (days)", ylabel = "Carbon Fluxes")
+xlims!(ax, 235, 250)
 lines!(ax, sol.t ./ 24 ./ 3600, GPP, label = "GPP")
 lines!(ax, sol.t ./ 24 ./ 3600, resp, label = "Respiration")
 axislegend(ax)

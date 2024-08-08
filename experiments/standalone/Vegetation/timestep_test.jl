@@ -93,8 +93,7 @@ AR_model = AutotrophicRespirationModel{FT}(AR_params);
 f_root_to_shoot = FT(3.5)
 SAI = FT(1.0)
 RAI = FT(3 * f_root_to_shoot)
-ai_parameterization =
-    PrescribedSiteAreaIndex{FT}(LAIfunction, SAI, RAI)
+ai_parameterization = PrescribedSiteAreaIndex{FT}(LAIfunction, SAI, RAI)
 rooting_depth = FT(1.0);
 
 function root_distribution(z::T; rooting_depth = rooting_depth) where {T}
@@ -182,8 +181,8 @@ evaluate!(Y.canopy.energy.T, atmos.T, t0)
 set_initial_cache! = make_set_initial_cache(canopy)
 set_initial_cache!(p, Y, t0);
 
-saveat = Array(t0:3*3600:tf)
-updateat = Array(t0:3600*3:tf)
+saveat = Array(t0:(3 * 3600):tf)
+updateat = Array(t0:(3600 * 3):tf)
 updatefunc = ClimaLand.make_update_drivers(atmos, radiation)
 cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
 
@@ -208,22 +207,24 @@ prob = SciMLBase.ODEProblem(
 );
 
 ref_dt = 60.0
-ref_sol = SciMLBase.solve(prob, ode_algo; dt = ref_dt, callback = cb, saveat = saveat);
+ref_sol =
+    SciMLBase.solve(prob, ode_algo; dt = ref_dt, callback = cb, saveat = saveat);
 ref_T = [parent(ref_sol.u[k].canopy.energy.T)[1] for k in 1:length(ref_sol.t)]
 max_err = []
 mean_err = []
 std_err = []
 p95_err = []
 p99_err = []
-dts = [225.0, 450.0,900.0, 1800.0, 3600.0]
+dts = [225.0, 450.0, 900.0, 1800.0, 3600.0]
 for dt in dts
-    saveat = Array(t0:3*3600:tf)
+    saveat = Array(t0:(3 * 3600):tf)
     evaluate!(Y.canopy.energy.T, atmos.T, t0)
-    updateat = Array(t0:3600*3:tf)
+    updateat = Array(t0:(3600 * 3):tf)
     updatefunc = ClimaLand.make_update_drivers(atmos, radiation)
     cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
 
-    sol = SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb, saveat = saveat);
+    @time sol =
+        SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb, saveat = saveat)
     T = [parent(sol.u[k].canopy.energy.T)[1] for k in 1:length(sol.t)]
     ΔT = abs.(T .- ref_T)
     push!(max_err, maximum(ΔT))
@@ -234,7 +235,14 @@ for dt in dts
 end
 savedir = joinpath(pkgdir(ClimaLand), "experiments/standalone/Vegetation");
 fig = Figure()
-ax = Axis(fig[1, 1], xlabel = "Time (seconds)", ylabel = "Temperature (K)",xscale = log2, yscale = log10)
+ax = Axis(
+    fig[1, 1],
+    xlabel = "Time (minutes)",
+    ylabel = "Temperature (K)",
+    xscale = log10,
+    yscale = log10,
+)
+dts = dts ./ 60
 lines!(ax, dts, FT.(max_err), label = "Max Error")
 lines!(ax, dts, FT.(mean_err), label = "Mean Error")
 lines!(ax, dts, FT.(std_err), label = "Std Error")

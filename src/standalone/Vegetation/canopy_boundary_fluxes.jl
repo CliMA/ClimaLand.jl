@@ -335,7 +335,7 @@ function canopy_turbulent_fluxes_at_a_point(
     T_in::FT = Thermodynamics.air_temperature(thermo_params, ts_in)
     ΔT = T_in - T_sfc
     r_ae::FT = 1 / (conditions.Ch * SurfaceFluxes.windspeed(sc))
-    ρ_air::FT = Thermodynamics.air_density(thermo_params, ts_sfc)
+    ρ_sfc::FT = Thermodynamics.air_density(thermo_params, ts_sfc)
     ustar::FT = conditions.ustar
     r_b::FT = FT(1 / 0.01 * (ustar / 0.04)^(-1 / 2)) # CLM 5, tech note Equation 5.122
     leaf_r_b = r_b / LAI
@@ -343,10 +343,10 @@ function canopy_turbulent_fluxes_at_a_point(
     E0::FT = SurfaceFluxes.evaporation(surface_flux_params, sc, conditions.Ch)
     E = E0 * r_ae / (leaf_r_b + leaf_r_stomata + r_ae) # CLM 5, tech note Equation 5.101, and fig 5.2b, assuming all sunlit, f_wet = 0
     Ẽ = E / _ρ_liq
-    H = -ρ_air * cp_m * ΔT / (canopy_r_b + r_ae) # CLM 5, tech note Equation 5.88, setting H_v = H and solving to remove T_s
+    H = -ρ_sfc * cp_m * ΔT / (canopy_r_b + r_ae) # CLM 5, tech note Equation 5.88, setting H_v = H and solving to remove T_s
     LH = _LH_v0 * E
-    ∂LHF∂qc = ρ_air * _LH_v0 / (leaf_r_b + leaf_r_stomata + r_ae)
-    ∂SHF∂Tc = ρ_air * cp_m / (canopy_r_b + r_ae)
+    ∂LHF∂qc = ρ_sfc * _LH_v0 / (leaf_r_b + leaf_r_stomata + r_ae)
+    ∂SHF∂Tc = ρ_sfc * cp_m / (canopy_r_b + r_ae)
     return (
         lhf = LH,
         shf = H,
