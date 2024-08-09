@@ -34,10 +34,10 @@ Base.eltype(::SIFParameters{FT}) where {FT} = FT
 
 struct Lee2015SIFModel{FT, SP <: SIFParameters{FT}} <: AbstractSIFModel{FT}
     parameters::SP
-end
-
-function Lee2015SIFModel{FT}(parameters = SIFParameters{FT}()) where {FT <: AbstractFloat}
-    return Lee2015SIFModel{eltype(parameters), typeof(parameters)}(parameters)
+    function Lee2015SIFModel{FT}() where {FT}
+        parameters = SIFParameters{FT}()
+        new{FT, typeof(parameters)}(parameters)
+    end
 end
 
 ClimaLand.name(model::AbstractSIFModel) = :sif
@@ -49,33 +49,6 @@ ClimaLand.auxiliary_domain_names(::Lee2015SIFModel) = (:surface,)
 # 4 Solar Induced Fluorescence (SIF)
 
 # call function below inside photosynthesis.jl p
-
-function compute_SIF_at_a_point(
-    APAR,
-    Tc,
-    Vcmax25,
-    R,
-    T_freeze,
-    photosynthesis_parameters,
-    sif_parameters,
-)
-    (; ΔHJmax, To, θj, ϕ) = photosynthesis_parameters
-    Jmax = max_electron_transport(Vcmax25, ΔHJmax, Tc, To, R)
-    J = electron_transport(APAR, Jmax, θj, ϕ)
-    (; kf, kd_p1, kd_p2, min_kd, kn_p1, kn_p2, kp, kappa_p1, kappa_p2) =
-        sif_parameters
-    kd = max(kd_p1 * (Tc - T_freeze) + kd_p2, min_kd)
-    x = 1 - J / Jmax
-    kn = (kn_p1 * x - kn_p2) * x
-    ϕp0 = kp / (kf + kp + kn)
-    ϕp = J / Jmax * ϕp0
-    ϕf = kf / (kf + kd + kn) * (1 - ϕp)
-    κ = kappa_p1 * Vcmax25 * 1e6 + kappa_p2 # formula expects Vcmax25 in μmol/m^2/s
-    F = APAR * ϕf
-    SIF_755 = F / κ
-
-    return SIF_755
-end
 
 """
     update_SIF!(
@@ -116,4 +89,29 @@ function update_SIF!(
 end
 
 Base.broadcastable(m::SIFParameters) = tuple(m)
+function compute_SIF_at_a_point(
+    APAR::FT,
+    Tc::FT,
+    Vcmax25::FT,
+    R::FT,
+    T_freeze::FT,
+    photosynthesis_parameters,
+    sif_parameters,
+) where {FT}
+    (; ΔHJmax, To, θj, ϕ) = photosynthesis_parameters
+    Jmax = max_electron_transport(Vcmax25, ΔHJmax, Tc, To, R)
+    J = electron_transport(APAR, Jmax, θj, ϕ)
+    (; kf, kd_p1, kd_p2, min_kd, kn_p1, kn_p2, kp, kappa_p1, kappa_p2) =
+        sif_parameters
+    kd = max(kd_p1 * (Tc - T_freeze) + kd_p2, min_kd)
+    x = 1 - J / Jmax
+    kn = (kn_p1 * x - kn_p2) * x
+    ϕp0 = kp / (kf + kp + kn)
+    ϕp = J / Jmax * ϕp0
+    ϕf = kf / (kf + kd + kn) * (1 - ϕp)
+    κ = kappa_p1 * Vcmax25 * FT(1e6) + kappa_p2 # formula expects Vcmax25 in μmol/m^2/s
+    F = APAR * ϕf
+    SIF_755 = F / κ
 
+    return SIF_755
+end
