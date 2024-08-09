@@ -76,6 +76,7 @@ function update_SIF!(
     T_freeze,
     photosynthesis_parameters,
 )
+    (; ΔHJmax, To, θj, ϕ) = photosynthesis_parameters
     sif_parameters = sif_model.parameters
     @. SIF = compute_SIF_at_a_point(
         APAR,
@@ -83,7 +84,7 @@ function update_SIF!(
         Vcmax25,
         R,
         T_freeze,
-        photosynthesis_parameters,
+        ΔHJmax, To, θj, ϕ,
         sif_parameters,
     )
 end
@@ -95,10 +96,9 @@ function compute_SIF_at_a_point(
     Vcmax25::FT,
     R::FT,
     T_freeze::FT,
-    photosynthesis_parameters,
+    ΔHJmax::FT, To::FT, θj::FT, ϕ::FT,
     sif_parameters,
 ) where {FT}
-    (; ΔHJmax, To, θj, ϕ) = photosynthesis_parameters
     Jmax = max_electron_transport(Vcmax25, ΔHJmax, Tc, To, R)
     J = electron_transport(APAR, Jmax, θj, ϕ)
     (; kf, kd_p1, kd_p2, min_kd, kn_p1, kn_p2, kp, kappa_p1, kappa_p2) =
@@ -115,3 +115,4 @@ function compute_SIF_at_a_point(
 
     return SIF_755
 end
+
