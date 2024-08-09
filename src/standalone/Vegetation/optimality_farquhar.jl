@@ -153,3 +153,4 @@ function update_photosynthesis!(
     @. Rd = dark_respiration(Vcmax25, β, f, ΔHRd, T, To, R)
     @. An = net_photosynthesis(Ac, Aj, Rd, β)
 end
+Base.broadcastable(m::OptimalityFarquharParameters) = tuple(m)
