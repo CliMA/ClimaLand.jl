@@ -248,7 +248,7 @@ https://doi.org/10.4141/cjss09118
 function huang_et_al2011_soil_van_genuchten_data(; context = nothing)
     dir = joinpath(@__DIR__, "../")
     af = ArtifactFile(
-        url = "https://caltech.box.com/shared/static/qvbt37xkwz8gveyi6tzzbs0e18trpcsq.csv",
+        url = "https://caltech.box.com/shared/static/kbgxc8r2j6uzboxgg9h2ydi5145wdpxh.csv",
         filename = "sv_62.csv",
     )
     dataset = ArtifactWrapper(dir, "sv62", ArtifactFile[af])
@@ -300,7 +300,7 @@ function cesm2_albedo_dataset_path(; context = nothing)
         dir,
         "land_albedo",
         ArtifactFile[ArtifactFile(
-            url = "https://caltech.box.com/shared/static/eesee8iv3c21z3pysizcgnuncfp5xykv.nc",
+            url = "https://caltech.box.com/shared/static/1uhqspj4xujkyz661x0pio59hvmgsi5c.nc",
             filename = "esw_albedo_Amon_CESM2_historical_r1i1p1f1_gn_185001-201412_v2.nc",
         ),],
     )
