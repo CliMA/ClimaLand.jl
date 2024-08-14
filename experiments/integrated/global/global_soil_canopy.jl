@@ -231,7 +231,7 @@ photosynthesis_args = (;
 # Set up plant hydraulics
 # Not ideal
 LAIfunction = TimeVaryingInput(
-    joinpath(era5_artifact_path, "era5_2021_0.9x1.25_clima.nc"),
+    joinpath(era5_artifact_path, "era5_lai_2021_0.9x1.25_clima.nc"),
     "lai",
     surface_space;
     reference_date = ref_time,
