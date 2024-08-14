@@ -18,8 +18,9 @@ import ClimaLand
 import ClimaLand.Parameters as LP
 import ClimaParams
 
-for FT in (Float32, Float64)
-    @testset "Canopy software pipes, FT = $FT" begin
+
+@testset "Canopy software pipes" begin
+    for FT in (Float32, Float64)
         domain = Point(; z_sfc = FT(0.0))
 
         AR_params = AutotrophicRespirationParameters(FT)
@@ -376,10 +377,12 @@ for FT in (Float32, Float64)
         )
         @test ρ_sfc == compute_ρ_sfc.(thermo_params, ts_in, T_sfc)
     end
+end
 
 
-    @testset "Component prescribed fields, FT = $FT" begin
-        FT = Float32
+@testset "Component prescribed fields" begin
+    struct Default{FT} <: ClimaLand.Canopy.AbstractCanopyComponent{FT} end
+    for FT in (Float32, Float64)
         # Plant Hydraulics
         LAI = FT(2)
         RAI = FT(1)
@@ -479,7 +482,6 @@ for FT in (Float32, Float64)
             FT(LAI * sin(200 * 2π / 365)),
         )
 
-        struct Default{FT} <: ClimaLand.Canopy.AbstractCanopyComponent{FT} end
         set_canopy_prescribed_field!(Default{FT}(), p, t0)
         set_canopy_prescribed_field!(Default{FT}(), p, t0)
         # Test that they are unchanged
@@ -494,8 +496,10 @@ for FT in (Float32, Float64)
             Array(parent(p.canopy.hydraulics.area_index.root)) .== FT(1.0),
         )
     end
+end
 
-    @testset "PrescribedSoil, FT = $FT" begin
+@testset "PrescribedSoil" begin
+    for FT in (Float32, Float64)
         soil_driver = PrescribedSoil(FT)
         @test ground_albedo_PAR(soil_driver, nothing, nothing, nothing) ==
               FT(0.2)
@@ -506,8 +510,10 @@ for FT in (Float32, Float64)
         @test FT.(soil_driver.ψ(2.0)) == FT.(0.0)
         @test FT.(soil_driver.T(2.0)) == FT.(298.0)
     end
+end
 
-    @testset "Canopy software pipes with energy model, FT = $FT" begin
+@testset "Canopy software pipes with energy model" begin
+    for FT in (Float32, Float64)
         domain = Point(; z_sfc = FT(0.0))
 
         RTparams = BeerLambertParameters(FT)
@@ -753,9 +759,11 @@ for FT in (Float32, Float64)
             ) .== FT(289),
         )
     end
+end
 
 
-    @testset "Zero LAI; FT = $FT" begin
+@testset "Zero LAI;" begin
+    for FT in (Float32, Float64)
         domain = Point(; z_sfc = FT(0.0))
 
         BeerLambertparams = BeerLambertParameters(FT)
@@ -979,7 +987,5 @@ for FT in (Float32, Float64)
             @test all(parent(p.canopy.radiative_transfer.nir.abs) .== FT(0))
             @test all(parent(p.canopy.autotrophic_respiration.Ra) .== FT(0))
         end
-
-
     end
 end
