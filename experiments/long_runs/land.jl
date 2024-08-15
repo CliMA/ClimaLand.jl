@@ -362,7 +362,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     τ_NIR_leaf = FT(0.25)
 
     # Energy Balance model
-    ac_canopy = FT(2.5e4) # this will likely be 10x smaller!
+    ac_canopy = FT(2.5e3)
 
     # Conductance Model
     g1 = FT(141) # Wang et al: 141 sqrt(Pa) for Medlyn model; Natan used 300.
