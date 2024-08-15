@@ -664,8 +664,7 @@ function setup_and_solve_problem(; greet = false)
 end
 
 setup_and_solve_problem(; greet = true);
-# read in diagnostics and make some plots!
-#### ClimaAnalysis ####
+
 simdir = ClimaAnalysis.SimDir(outdir)
 short_names = ["gpp", "ct", "lai", "swc", "si"]
 for short_name in short_names
