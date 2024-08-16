@@ -2,7 +2,7 @@
 
 [ClimaLand](https://github.com/CliMA/ClimaLand.jl) home directory has 5 main folders:
 
-- docs: contains files to generate [the documentation website](clima.github.io/ClimaLand.jl/).  
+- docs: contains files to generate [the documentation website](clima.github.io/ClimaLand.jl/).
 - experiments: contains simple runs of `ClimaLand` models. 
 - parameters: contains a file to retrieve constants such as avogadro's number, the speed of light, etc. 
 - src: contains the code of `ClimaLand` models. 
@@ -45,7 +45,7 @@ For example, `/experiments/LSM/ozark/` contains:
 
 The `/src` folder contains the source code of `ClimaLand` models. It contains 3 folders:
 - shared_utilities: This is a core folder that defines functions and data structures used across all modules and models types of `ClimaLand`. For example, `shared_utilities/models.jl` defines and export the function `make_update_aux` which will be used to create a function which updates the auxiliary parameters, stored in the vector `p`, `shared_utilities/boundary_conditions.jl` defines functions for setting boundary condition for PDE domains, etc.
-- standalone: This folder contains standalone models, which are submodels that can be run independently of each other. This is an important aspect of `ClimaLand` code design: to maximise modularity, sub-models can be run alone, and many different methods of the same sub-model can be defined via Julia multiple-disptach. The standalone folder is independent from the integrated folder. 
+- standalone: This folder contains standalone models, which are submodels that can be run independently of each other. This is an important aspect of `ClimaLand` code design: to maximize modularity, sub-models can be run alone, and many different methods of the same sub-model can be defined via Julia multiple dispatch. The standalone folder is independent from the integrated folder. 
 - integrated: This folder contains integrated models. It assembles standalone models together, as one would assemble pieces of a puzzle. Thanks to the modularity of `ClimaLand` design, many configuration of LSM can be assembled in integrated models. The same functions (`update_aux!`, `exp_tendency!`, etc.) can be used for standalone and integrated models, and an can be stepped  in the same way.
 
 As well as one file:

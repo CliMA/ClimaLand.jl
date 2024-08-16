@@ -1,7 +1,7 @@
-# # Global bucket run using spatial map albedo
+# # Global/regional bucket run using spatial map albedo
 
 # The code sets up and runs the bucket for 7 days using albedo read in from
-# a file containing static data over the globe, and analytic atmospheric and
+# a file containing static data over the globe or on a region, and ERA5 atmospheric and
 # radiative forcings.
 # Moving forward, this driver will serve as our more complex global bucket run,
 # eventually running for a longer time period (1+ year) and using temporally
@@ -64,25 +64,45 @@ function compute_clims(v)
 end
 
 anim_plots = true
+# Set to true if you want to run a regional simulation. By default, it is false,
+# unless the `CLIMALAND_CI_REGIONAL_BUCKET` environment variable is defined.
+regional_simulation = haskey(ENV, "CLIMALAND_CI_REGIONAL_BUCKET")
+regional_str = regional_simulation ? "_regional" : ""
+
 regridder_type = :InterpolationsRegridder
 FT = Float64;
 context = ClimaComms.context()
 earth_param_set = LP.LandParameters(FT);
 outdir = joinpath(
     pkgdir(ClimaLand),
-    "experiments/standalone/Bucket/artifacts_staticmap",
+    "experiments/standalone/Bucket/artifacts_staticmap$(regional_str)",
 )
 !ispath(outdir) && mkpath(outdir)
 
 # Set up simulation domain
 soil_depth = FT(3.5);
-bucket_domain = ClimaLand.Domains.SphericalShell(;
-    radius = FT(6.3781e6),
-    depth = soil_depth,
-    nelements = (30, 10),
-    npolynomial = 1,
-    dz_tuple = FT.((1.0, 0.05)),
-);
+if regional_simulation
+    @info "Running regional simulation"
+    center_long, center_lat = FT(-118.14452), FT(34.14778)
+    # Half size of the grid in meters
+    delta_m = FT(50_000)
+    bucket_domain = ClimaLand.Domains.HybridBox(;
+        xlim = (delta_m, delta_m),
+        ylim = (delta_m, delta_m),
+        zlim = (-soil_depth, FT(0.0)),
+        longlat = (center_long, center_lat),
+        nelements = (30, 30, 10),
+        npolynomial = 1,
+    )
+else
+    bucket_domain = ClimaLand.Domains.SphericalShell(;
+        radius = FT(6.3781e6),
+        depth = soil_depth,
+        nelements = (30, 10),
+        npolynomial = 1,
+        dz_tuple = FT.((1.0, 0.05)),
+    )
+end
 ref_time = DateTime(2021);
 
 # Set up parameters
@@ -258,8 +278,38 @@ sol = ClimaComms.@time ClimaComms.device() SciMLBase.solve(
 
 # Interpolate to grid
 space = axes(coords.surface)
-longpts = range(-180.0, 180.0, 21)
-latpts = range(-90.0, 90.0, 21)
+num_pts = 21
+if regional_simulation
+    radius_earth = FT(6.378e6)
+    xlim = (
+        center_long - delta_m / (2radius_earth),
+        center_long + delta_m / (2radius_earth),
+    )
+    ylim = (
+        center_lat - delta_m / (2radius_earth),
+        center_lat + delta_m / (2radius_earth),
+    )
+    longpts = range(xlim[1], xlim[2], num_pts)
+    latpts = range(ylim[1], ylim[2], num_pts)
+
+    # Temporary monkey patch until we use the new diagnostics.
+    # This is used somewhere internally by the remapper.
+    # TODO: Remove this and use ClimaDiagnostics instead
+    ClimaCore.Geometry._coordinate(
+        pt::ClimaCore.Geometry.LatLongPoint,
+        ::Val{1},
+    ) = ClimaCore.Geometry.LongPoint(pt.long)
+    ClimaCore.Geometry._coordinate(
+        pt::ClimaCore.Geometry.LatLongPoint,
+        ::Val{2},
+    ) = ClimaCore.Geometry.LatPoint(pt.lat)
+
+else
+    longpts = range(-180.0, 180.0, num_pts)
+    latpts = range(-90.0, 90.0, num_pts)
+    hcoords =
+        [Geometry.LatLongPoint(lat, long) for long in longpts, lat in latpts]
+end
 hcoords = [Geometry.LatLongPoint(lat, long) for long in longpts, lat in latpts]
 remapper = Remapping.Remapper(space, hcoords)
 
