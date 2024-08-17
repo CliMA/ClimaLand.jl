@@ -21,15 +21,23 @@ end
 """
 macro diagnostic_compute(name, model, compute)
     function_name = Symbol("compute_", name, "!")
-    return esc(quote
-        function $function_name(out, Y, p, t, land_model::$model)
-            if isnothing(out)
-                return copy($compute)
-            else
-                out .= $compute
+    return esc(
+        quote
+            @with_error function $function_name(
+                out,
+                Y,
+                p,
+                t,
+                land_model::$model,
+            )
+                if isnothing(out)
+                    return copy($compute)
+                else
+                    out .= $compute
+                end
             end
-        end
-    end)
+        end,
+    )
 end
 
 

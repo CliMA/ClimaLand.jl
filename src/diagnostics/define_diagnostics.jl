@@ -1,28 +1,3 @@
-# General helper functions for undefined diagnostics for a particular model 
-error_diagnostic_variable(variable, land_model::T) where {T} =
-    error("Cannot compute $variable with model = $T")
-
-# generate_error_functions is helper macro that generates the error message
-# when the user tries calling something that is incompatible with the model
-macro generate_error_functions(variable_names...)
-    functions = Expr[]
-    for variable in variable_names
-        function_name_sym = Symbol("compute_", variable, "!")
-        body = esc(quote
-            function $function_name_sym(_, _, _, _, land_model)
-                error_diagnostic_variable($variable, land_model)
-            end
-        end)
-        push!(functions, body)
-    end
-    return quote
-        $(functions...)
-    end
-end
-
-# TODO: Automatically generate this list from the names of the diagnostics
-@generate_error_functions "soil_net_radiation" "soil_latent_heat_flux" "soil_aerodynamic_resistance" "soil_sensible_heat_flux" "vapor_flux" "soil_temperature" "soil_water_liquid" "infiltration" "soilco2_diffusivity" "soilco2_source_microbe" "stomatal_conductance" "medlyn_term" "canopy_transpiration" "rainfall" "snowfall" "pressure" "wind_speed" "specific_humidity" "air_co2" "radiation_shortwave_down" "radiation_longwave_down" "photosynthesis_net_leaf" "photosynthesis_net_canopy" "respiration_leaf" "vcmax25" "photosynthetically_active_radiation" "photosynthetically_active_radiation_absorbed" "photosynthetically_active_radiation_reflected" "photosynthetically_active_radiation_transmitted" "near_infrared_radiation" "near_infrared_radiation_absorbed" "near_infrared_radiation_reflected" "near_infrared_radiation_transmitted" "radiation_shortwave_net" "radiation_longwave_net" "autotrophic_respiration" "soilco2" "heterotrophic_respiration" "soil_hydraulic_conductivity" "soil_water_potential" "soil_thermal_conductivity" "solar_zenith_angle" "moisture_stress_factor" "canopy_water_potential" "cross_section" "cross_section_roots" "area_index" "canopy_latent_heat_flux" "canopy_sensible_heat_flux" "canopy_aerodynamic_resistance" "canopy_temperature" "soil_ice"
-
 """
     define_diagnostics!(land_model)
 
