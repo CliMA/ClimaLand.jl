@@ -23,10 +23,10 @@ using ClimaUtilities.ClimaArtifacts
 import Interpolations
 using Insolation
 
-using ClimaDiagnostics
-using ClimaAnalysis
+import ClimaDiagnostics
+import ClimaAnalysis
 import ClimaAnalysis.Visualize as viz
-using ClimaUtilities
+import ClimaUtilities
 
 import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
 import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
@@ -42,6 +42,7 @@ import ClimaLand.Parameters as LP
 
 using Statistics
 using CairoMakie
+import GeoMakie
 using Dates
 import NCDatasets
 
@@ -598,11 +599,11 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
 
     nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(subsurface_space, outdir)
 
-    diags = ClimaLand.CLD.default_diagnostics(
+    diags = ClimaLand.default_diagnostics(
         land,
         t0;
         output_writer = nc_writer,
-        output_vars = :short,
+        output_vars = :long,
     )
 
     diagnostic_handler =
@@ -646,14 +647,17 @@ setup_and_solve_problem(; greet = true);
 # read in diagnostics and make some plots!
 #### ClimaAnalysis ####
 simdir = ClimaAnalysis.SimDir(outdir)
-short_names_2D = ["gpp", "ct", "slw", "si"]
-times = 0.0:(60.0 * 60.0 * 12):(60.0 * 60.0 * 24 * 7)
-for t in times
-    for short_name in short_names_2D
-        var = get(simdir; short_name)
+short_names = ["gpp", "swc", "si", "sie"]
+for short_name in short_names
+    var = get(simdir; short_name)
+    times = ClimaAnalysis.times(var)
+    for t in times
         fig = CairoMakie.Figure(size = (800, 600))
-        kwargs = short_name in short_names_2D ? Dict() : Dict(:z => 1)
-        viz.plot!(fig, var, time = t; kwargs...)
-        CairoMakie.save(joinpath(root_path, "$short_name $t.png"), fig)
+        kwargs = ClimaAnalysis.has_altitude(var) ? Dict(:z => 1) : Dict()
+        viz.heatmap2D_on_globe!(
+            fig,
+            ClimaAnalysis.slice(var, time = t; kwargs...),
+        )
+        CairoMakie.save(joinpath(root_path, "$(short_name)_$t.png"), fig)
     end
 end

@@ -162,15 +162,13 @@ prob = SciMLBase.ODEProblem(
 );
 
 # ClimaDiagnostics
-base_output_dir = "global_bucket_function/"
-output_dir =
-    ClimaUtilities.OutputPathGenerator.generate_output_path(base_output_dir)
+output_dir = ClimaUtilities.OutputPathGenerator.generate_output_path(outdir)
 
 space = bucket_domain.space.subsurface
 
 nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(space, output_dir)
 
-diags = ClimaLand.CLD.default_diagnostics(model, t0; output_writer = nc_writer)
+diags = ClimaLand.default_diagnostics(model, t0; output_writer = nc_writer)
 
 diagnostic_handler =
     ClimaDiagnostics.DiagnosticsHandler(diags, Y, p, t0; dt = Δt)
@@ -212,7 +210,7 @@ for short_name in vcat(short_names_2D..., short_names_3D...)
     var = get(simdir; short_name)
     fig = CairoMakie.Figure(size = (800, 600))
     kwargs = short_name in short_names_2D ? Dict() : Dict(:z => 1)
-    viz.plot!(fig, var, lat = 0; kwargs...)
+    viz.plot!(fig, var, lon = 0, lat = 0; kwargs...)
     CairoMakie.save(joinpath(output_dir, "$short_name.png"), fig)
 end
 

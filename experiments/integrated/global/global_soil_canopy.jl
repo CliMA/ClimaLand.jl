@@ -19,16 +19,22 @@ using ClimaLand.Canopy
 import ClimaLand
 import ClimaLand.Parameters as LP
 
-using CairoMakie
+import CairoMakie
+import GeoMakie
 using Statistics
 using Dates
 import NCDatasets
+
+import ClimaDiagnostics
+import ClimaAnalysis
+import ClimaAnalysis.Visualize as viz
+import ClimaUtilities
 
 regridder_type = :InterpolationsRegridder
 extrapolation_bc =
     (Interpolations.Periodic(), Interpolations.Flat(), Interpolations.Flat())
 context = ClimaComms.context()
-outdir = joinpath(pkgdir(ClimaLand), "experiments/integrated/global/plots")
+outdir = joinpath(pkgdir(ClimaLand), "experiments/integrated/global")
 !ispath(outdir) && mkpath(outdir)
 
 device_suffix =
@@ -361,76 +367,48 @@ prob = SciMLBase.ODEProblem(
     p,
 )
 
-saveat = [t0, tf]
-sv = (;
-    t = Array{Float64}(undef, length(saveat)),
-    saveval = Array{NamedTuple}(undef, length(saveat)),
+# ClimaDiagnostics
+output_dir = ClimaUtilities.OutputPathGenerator.generate_output_path(outdir)
+
+nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(subsurface_space, output_dir)
+
+diags = ClimaLand.default_diagnostics(
+    land,
+    t0;
+    output_writer = nc_writer,
+    average_period = :hourly,
 )
-saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat)
+
+diagnostic_handler =
+    ClimaDiagnostics.DiagnosticsHandler(diags, Y, p, t0; dt = dt)
+
+diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler)
+
 updateat = Array(t0:(3600 * 3):tf)
 drivers = ClimaLand.get_drivers(land)
 updatefunc = ClimaLand.make_update_drivers(drivers)
 driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
-cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
-@time sol = SciMLBase.solve(
+
+sol = ClimaComms.@time ClimaComms.device() SciMLBase.solve(
     prob,
     ode_algo;
     dt = dt,
-    callback = cb,
-    adaptive = false,
-    saveat = saveat,
+    callback = SciMLBase.CallbackSet(driver_cb, diag_cb),
 )
 
-if device_suffix == "cpu"
-    longpts = range(-180.0, 180.0, 101)
-    latpts = range(-90.0, 90.0, 101)
-    hcoords = [
-        ClimaCore.Geometry.LatLongPoint(lat, long) for long in longpts,
-        lat in reverse(latpts)
-    ]
-    remapper = ClimaCore.Remapping.Remapper(surface_space, hcoords)
-    S = ClimaLand.Domains.top_center_to_surface(
-        (sol.u[end].soil.ϑ_l .- θ_r) ./ (ν .- θ_r),
-    )
-    S_ice = ClimaLand.Domains.top_center_to_surface(sol.u[end].soil.θ_i ./ ν)
-    T_soil = ClimaLand.Domains.top_center_to_surface(sv.saveval[end].soil.T)
-    SW = sv.saveval[end].drivers.SW_d
+# ClimaAnalysis
+simdir = ClimaAnalysis.SimDir(output_dir)
 
-    GPP = sv.saveval[end].canopy.photosynthesis.GPP .* 1e6
-    T_canopy = sol.u[end].canopy.energy.T
-    fields = [S, S_ice, T_soil, GPP, T_canopy, SW]
-    titles = [
-        "Effective saturation",
-        "Effective ice saturation",
-        "Temperature (K) - Soil",
-        "GPP",
-        "Temperature (K) - Canopy",
-        "Incident SW",
-    ]
-    plotnames = ["S", "Sice", "temp", "gpp", "temp_canopy", "sw"]
-    mask_remap = ClimaCore.Remapping.interpolate(remapper, soil_params_mask_sfc)
-    for (id, x) in enumerate(fields)
-        title = titles[id]
-        plotname = plotnames[id]
-        x_remap = ClimaCore.Remapping.interpolate(remapper, x)
-
-        fig = Figure(size = (600, 400))
-        ax = Axis(
-            fig[1, 1],
-            xlabel = "Longitude",
-            ylabel = "Latitude",
-            title = title,
+for short_name in ClimaAnalysis.available_vars(simdir)
+    var = get(simdir; short_name)
+    times = var.dims["time"]
+    for t in times
+        fig = CairoMakie.Figure(size = (800, 600))
+        kwargs = ClimaAnalysis.has_altitude(var) ? Dict(:z => 1) : Dict()
+        viz.heatmap2D_on_globe!(
+            fig,
+            ClimaAnalysis.slice(var, time = t; kwargs...),
         )
-        clims = extrema(x_remap)
-        CairoMakie.heatmap!(
-            ax,
-            longpts,
-            latpts,
-            oceans_to_value.(x_remap, mask_remap, 0.0),
-            colorrange = clims,
-        )
-        Colorbar(fig[:, end + 1], colorrange = clims)
-        outfile = joinpath(outdir, "$plotname.png")
-        CairoMakie.save(outfile, fig)
+        CairoMakie.save(joinpath(output_dir, "$short_name.png"), fig)
     end
 end
