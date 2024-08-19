@@ -228,7 +228,7 @@ function update_runoff!(
     @. p.soil.R_ss = topmodel_ss_flux(
         runoff.subsurface_source.R_sb,
         runoff.f_over,
-        model.domain.depth - p.soil.h∇,
+        model.domain.fields.depth - p.soil.h∇,
     )
     ic = soil_infiltration_capacity(model, Y, p) # should be non-allocating
 
@@ -237,7 +237,7 @@ function update_runoff!(
         p.soil.h∇,
         runoff.f_max,
         runoff.f_over,
-        model.domain.depth - p.soil.h∇,
+        model.domain.fields.depth - p.soil.h∇,
         ic,
         precip,
     )

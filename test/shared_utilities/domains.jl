@@ -37,6 +37,7 @@ FT = Float32
         nelements = n_elements_sphere,
         npolynomial = npoly_sphere,
     )
+    @test shell.fields.depth == depth
     @test shell.fields.z ==
           ClimaCore.Fields.coordinate_field(shell.space.subsurface).z
     face_space = obtain_face_space(shell.space.subsurface)
@@ -102,6 +103,7 @@ FT = Float32
         nelements = nelements,
         npolynomial = 0,
     )
+    @test box.fields.depth == zlim[2] - zlim[1]
     @test box.fields.z ==
           ClimaCore.Fields.coordinate_field(box.space.subsurface).z
     face_space = obtain_face_space(box.space.subsurface)
@@ -210,6 +212,7 @@ FT = Float32
         nelements = nelements,
         npolynomial = 0,
     )
+    @test longlat_box.fields.depth == zlim[2] - zlim[1]
     @test longlat_box.fields.z ==
           ClimaCore.Fields.coordinate_field(longlat_box.space.subsurface).z
     face_space = obtain_face_space(longlat_box.space.subsurface)
@@ -252,6 +255,7 @@ FT = Float32
     z_column = Column(; zlim = zlim, nelements = nelements[3])
     @test z_column.fields.z ==
           ClimaCore.Fields.coordinate_field(z_column.space.subsurface).z
+    @test z_column.fields.depth == zlim[2] - zlim[1]
     face_space = obtain_face_space(z_column.space.subsurface)
     z_face = ClimaCore.Fields.coordinate_field(face_space).z
     @test z_column.fields.z_sfc ==
