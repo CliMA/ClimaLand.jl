@@ -4,7 +4,6 @@ authors = ["Clima Land Team"]
 version = "0.14.2"
 
 [deps]
-Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
 ArtifactWrappers = "a14bc488-3040-4b00-9dc1-f6467924858a"
 ClimaComms = "3a4d1b5c-c61d-41fd-a00a-5873ba7a1b0d"
 ClimaCore = "d414da3d-4745-48bb-8d80-42e94e092884"
@@ -23,7 +22,6 @@ SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 SurfaceFluxes = "49b00bb7-8bd4-4f2b-b78c-51cd0450215f"
 Thermodynamics = "b60c26fb-14c3-4610-9d3e-2d17fe7ff00c"
-UnrolledUtilities = "0fe1646c-419e-43be-ac14-22321958931b"
 
 [weakdeps]
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
@@ -39,7 +37,6 @@ CreateParametersExt = "ClimaParams"
 NeuralSnowExt = ["CSV", "HTTP", "Flux", "StatsBase", "cuDNN"]
 
 [compat]
-Adapt = "3, 4"
 ArtifactWrappers = "0.2"
 CSV = "0.10"
 CUDA = "5.3"
@@ -64,6 +61,5 @@ StaticArrays = "1"
 StatsBase = "0.33, 0.34"
 SurfaceFluxes = "0.10, 0.11"
 Thermodynamics = "0.12"
-UnrolledUtilities = "0.1"
 cuDNN = "1"
 julia = "1.9"
