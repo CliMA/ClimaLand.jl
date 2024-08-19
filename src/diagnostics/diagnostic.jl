@@ -88,6 +88,43 @@ function get_diagnostic_variable(short_name)
     return ALL_DIAGNOSTICS[short_name]
 end
 
+# General helper functions for undefined diagnostics for a particular model
+error_diagnostic_variable(variable, land_model::T) where {T} =
+    error("Cannot compute $variable with model = $(nameof(T))")
+
+# with_error is a helper macro that generates the error message
+# when the user tries calling something that is incompatible with the model.
+# It should be called when defining compute functions
+macro with_error(compute_function_expr)
+    compute_function_expr.head == :function ||
+        error("Cannot parse this function, head is not a :function")
+
+    # Two firsts:
+    # 1st: extract the function signature
+    # 2nd: extract the name
+    function_name = first(first(compute_function_expr.args).args)
+    function_name isa Symbol || error("Cannot parse this function!")
+
+    # qualified_name ensures that this macro can be used outside of this module while
+    # still defining compute functions in this module
+    qualified_name = GlobalRef(Diagnostics, function_name)
+    # Assuming the convention that functions are called "compute_variable!",
+    # otherwise the error might look a little less informative
+    variable_name = replace(string(function_name), "compute_" => "", "!" => "")
+    return esc(
+        quote
+            # Paste back the definition of the function
+            $compute_function_expr
+            # And add the error method, unless it was added by another macro call
+            if !(hasmethod($qualified_name, (Any, Any, Any, Any, Any)))
+                function $qualified_name(_, _, _, _, land_model)
+                    error_diagnostic_variable($variable_name, land_model)
+                end
+            end
+        end,
+    )
+end
+
 # Do you want to define more diagnostics? Add them here
 include("land_compute_methods.jl")
 
