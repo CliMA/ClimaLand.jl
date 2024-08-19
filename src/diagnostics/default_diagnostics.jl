@@ -15,6 +15,7 @@ export default_diagnostics
                                 reduction,
                                 output_writer,
                                 t_start,
+                                reference_date,
                                 short_names...;
                                 pre_output_hook! = nothing,
                                )
@@ -26,25 +27,37 @@ function common_diagnostics(
     reduction,
     output_writer,
     t_start,
+    reference_date,
     short_names...;
     pre_output_hook! = nothing,
 )
-    return [
-        ScheduledDiagnostic(
-            variable = get_diagnostic_variable(short_name),
-            compute_schedule_func = EveryStepSchedule(),
-            output_schedule_func = EveryDtSchedule(period; t_start),
-            reduction_time_func = reduction,
-            output_writer = output_writer,
-            pre_output_hook! = pre_output_hook!,
-        ) for short_name in short_names
-    ]
+    return vcat(
+        map(short_names) do short_name
+            output_schedule_func =
+                period isa Period ?
+                EveryCalendarDtSchedule(period; t_start, reference_date) :
+                EveryDtSchedule(period; t_start)
+            return ScheduledDiagnostic(
+                variable = get_diagnostic_variable(short_name),
+                compute_schedule_func = EveryStepSchedule(),
+                output_schedule_func = output_schedule_func,
+                reduction_time_func = reduction,
+                output_writer = output_writer,
+                pre_output_hook! = pre_output_hook!,
+            )
+        end...,
+    )
 end
 
 include("standard_diagnostic_frequencies.jl")
 
 # Bucket
-function default_diagnostics(land_model::BucketModel, t_start; output_writer)
+function default_diagnostics(
+    land_model::BucketModel,
+    t_start,
+    reference_date;
+    output_writer,
+)
 
     define_diagnostics!(land_model)
 
@@ -64,15 +77,21 @@ function default_diagnostics(land_model::BucketModel, t_start; output_writer)
         "ssfc",
     ]
 
-    default_outputs =
-        hourly_averages(bucket_diagnostics...; output_writer, t_start)
+    default_outputs = hourly_averages(
+        bucket_diagnostics...;
+        output_writer,
+        t_start,
+        reference_date,
+    )
+
     return [default_outputs...]
 end
 
 # SoilCanopyModel
 function default_diagnostics(
     land_model::SoilCanopyModel,
-    t_start;
+    t_start,
+    reference_date;
     output_writer,
     output_vars = :long,
     average_period = :daily,
@@ -143,14 +162,26 @@ function default_diagnostics(
     end
 
     if average_period == :hourly
-        default_outputs =
-            hourly_averages(soilcanopy_diagnostics...; output_writer, t_start)
+        default_outputs = hourly_averages(
+            soilcanopy_diagnostics...;
+            output_writer,
+            t_start,
+            reference_date,
+        )
     elseif average_period == :daily
-        default_outputs =
-            daily_averages(soilcanopy_diagnostics...; output_writer, t_start)
-    elseif average_period == :monthly # !! this is currently 30 days, not exact month
-        default_outputs =
-            monthly_averages(soilcanopy_diagnostics...; output_writer, t_start)
+        default_outputs = daily_averages(
+            soilcanopy_diagnostics...;
+            output_writer,
+            t_start,
+            reference_date,
+        )
+    elseif average_period == :monthly
+        default_outputs = monthly_averages(
+            soilcanopy_diagnostics...;
+            output_writer,
+            t_start,
+            reference_date,
+        )
     end
 
     return [default_outputs...]
@@ -160,7 +191,8 @@ end
 # SoilModel
 function default_diagnostics(
     land_model::EnergyHydrology,
-    t_start;
+    t_start,
+    reference_date;
     output_writer,
 )
 
@@ -168,7 +200,11 @@ function default_diagnostics(
 
     soil_diagnostics = ["swc", "si", "sie"]
 
-    default_outputs =
-        daily_averages(soil_diagnostics...; output_writer, t_start)
+    default_outputs = daily_averages(
+        soil_diagnostics...;
+        output_writer,
+        t_start,
+        reference_date,
+    )
     return [default_outputs...]
 end

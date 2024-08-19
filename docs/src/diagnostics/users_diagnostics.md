@@ -46,7 +46,7 @@ providing the space and output_dir defined in steps 1. and 2.
 Now that you defined your model and your writter, you can create a callback function to be called when solving your model. For example:
 
 ```
-diags = ClimaLand.default_diagnostics(model, 1.0; output_writer = nc_writer)
+diags = ClimaLand.default_diagnostics(model, 1.0, reference_date; output_writer = nc_writer)
 
 diagnostic_handler =
     ClimaDiagnostics.DiagnosticsHandler(diags, Y, p, t0; dt = Δt)

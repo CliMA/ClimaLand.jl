@@ -374,7 +374,8 @@ nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(subsurface_space, output_dir)
 
 diags = ClimaLand.default_diagnostics(
     land,
-    t0;
+    t0,
+    ref_time;
     output_writer = nc_writer,
     average_period = :hourly,
 )
