@@ -910,10 +910,39 @@ function get_additional_domain_fields(subsurface_space)
     face_space = obtain_face_space(subsurface_space)
     z_face = ClimaCore.Fields.coordinate_field(face_space).z
     z_sfc = top_face_to_surface(z_face, surface_space)
-    fields = (; z = z, Δz_top = Δz_top, Δz_bottom = Δz_bottom, z_sfc = z_sfc)
+    d = depth(subsurface_space)
+    fields = (;
+        z = z,
+        Δz_top = Δz_top,
+        Δz_bottom = Δz_bottom,
+        z_sfc = z_sfc,
+        depth = d,
+    )
     return fields
 end
 
+"""
+    depth(space::Union{ClimaCore.Spaces.CenterFiniteDifferenceSpace,
+                       ClimaCore.Spaces.CenterExtrudedFiniteDifferenceSpace}) 
+
+Returns the depth of the domain as a scalar. Note that these functions
+will need to be modified upon the introduction of 
+- topography at surface
+- depth to bedrock (topography at bottom)
+
+Since the depth will be a field in this case, it should be allocated and
+stored in domain.fields, which is why we store it there now even though it is not a field.
+"""
+depth(space::ClimaCore.Spaces.CenterExtrudedFiniteDifferenceSpace) =
+    (
+        space.grid.vertical_grid.topology.mesh.domain.coord_max -
+        space.grid.vertical_grid.topology.mesh.domain.coord_min
+    ).z
+depth(space::ClimaCore.Spaces.CenterFiniteDifferenceSpace) =
+    (
+        space.grid.topology.mesh.domain.coord_max -
+        space.grid.topology.mesh.domain.coord_min
+    ).z
 
 export AbstractDomain
 export Column, Plane, HybridBox, Point, SphericalShell, SphericalSurface
