@@ -116,7 +116,7 @@ end
         domain::D,
         boundary_conditions::NamedTuple,
         sources::Tuple,
-        lateral_flow::Bool = true
+        lateral_flow::Bool = false
     ) where {FT, D, PS}
 
 A constructor for a `EnergyHydrology` model, which sets the default value
@@ -127,8 +127,9 @@ function EnergyHydrology{FT}(;
     domain::D,
     boundary_conditions::NamedTuple,
     sources::Tuple,
-    lateral_flow::Bool = true,
+    lateral_flow::Bool = false,
 ) where {FT, D, PSE}
+    @assert !lateral_flow
     top_bc = boundary_conditions.top
     if typeof(top_bc) <: AtmosDrivenFluxBC
         # If the top BC indicates atmospheric conditions are driving the model
