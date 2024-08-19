@@ -168,7 +168,12 @@ space = bucket_domain.space.subsurface
 
 nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(space, output_dir)
 
-diags = ClimaLand.default_diagnostics(model, t0; output_writer = nc_writer)
+diags = ClimaLand.default_diagnostics(
+    model,
+    t0,
+    ref_time;
+    output_writer = nc_writer,
+)
 
 diagnostic_handler =
     ClimaDiagnostics.DiagnosticsHandler(diags, Y, p, t0; dt = Δt)

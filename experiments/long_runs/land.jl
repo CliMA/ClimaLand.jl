@@ -601,7 +601,8 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
 
     diags = ClimaLand.default_diagnostics(
         land,
-        t0;
+        t0,
+        ref_time;
         output_writer = nc_writer,
         output_vars = :long,
     )

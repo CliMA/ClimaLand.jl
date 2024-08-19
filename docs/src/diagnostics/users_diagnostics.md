@@ -46,7 +46,7 @@ providing the space and output_dir defined in steps 1. and 2.
 Now that you defined your model and your writter, you can create a callback function to be called when solving your model. For example:
 
 ```
-diags = ClimaLand.default_diagnostics(model, 1.0; output_writer = nc_writer)
+diags = ClimaLand.default_diagnostics(model, 1.0, reference_date; output_writer = nc_writer)
 
 diagnostic_handler =
     ClimaDiagnostics.DiagnosticsHandler(diags, Y, p, t0; dt = Δt)
@@ -66,34 +66,16 @@ Note that by default, `default_diagnostics` assign two optional kwargs: `output_
 
 When defining a custom diagnostic, follow these steps:
  - Define how to compute your diagnostic variable from your model state and cache.
-For example, let's say you want the Bowen ratio (ratio between sensible heat and latent heat) in the Bucket model.
-```
-function compute_bowen_ratio!(out, Y, p, t, land_model::BucketModel)
+ For example, let's say you want the bowen ratio (ratio between sensible heat and latent heat) in the Bucket model.
+ ```
+ function compute_bowen_ratio!(out, Y, p, t, land_model::BucketModel)
     if isnothing(out)
         return copy(p.bucket.turbulent_fluxes.shf / p.bucket.turbulent_fluxes.lhf)
     else
         out .= p.bucket.turbulent_fluxes.shf / p.bucket.turbulent_fluxes.lhf
     end
 end
-```
-It is good practice to add error messages to inform other users that a diagnostic variable makes sense only with a
-specific `land_model`. This can be accomplished by prepending the `@with_error` macro at the function declaration,
-as in
-```
-import ClimaLand.Diagnostics: @witherror
-
-@with_error function compute_bowen_ratio!(out, Y, p, t, land_model::BucketModel)
-    if isnothing(out)
-        return copy(p.bucket.turbulent_fluxes.shf / p.bucket.turbulent_fluxes.lhf)
-    else
-        out .= p.bucket.turbulent_fluxes.shf / p.bucket.turbulent_fluxes.lhf
-    end
-end
-```
-So, when someone tries outputting the Bowen ratio with a different model (e.g., `SnowModel`), `ClimaLand` will produce the following message:
-```
-Cannot compute albedo with model = SnowModel
-```
+ ```
  - Add that diagnostic variable to your list of variables
  ```
  add_diagnostic_variable!(

@@ -420,7 +420,12 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
 
     nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(subsurface_space, outdir)
 
-    diags = ClimaLand.default_diagnostics(soil, t0; output_writer = nc_writer)
+    diags = ClimaLand.default_diagnostics(
+        soil,
+        t0,
+        ref_time;
+        output_writer = nc_writer,
+    )
 
     diagnostic_handler =
         ClimaDiagnostics.DiagnosticsHandler(diags, Y, p, t0; dt = Δt)
