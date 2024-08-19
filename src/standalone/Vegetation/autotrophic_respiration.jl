@@ -22,10 +22,8 @@ Base.@kwdef struct AutotrophicRespirationParameters{FT <: AbstractFloat}
     μr::FT
     "Ratio stem nitrogen to top leaf nitrogen (-), typical value 0.1"
     μs::FT
-    "Factor to convert from mol CO2 to kg C"
-    f1::FT
-    "Factor of relative contribution or Rgrowth (-)"
-    f2::FT
+    "Relative contribution or Rgrowth (-)"
+    Rel::FT
 end
 
 Base.eltype(::AutotrophicRespirationParameters{FT}) where {FT} = FT
@@ -73,7 +71,7 @@ ClimaLand.auxiliary_domain_names(::AutotrophicRespirationModel) = (:surface,)
                                   h,
                                  )
 
-Computes the autotrophic respiration as the sum of the plant maintenance
+Computes the autotrophic respiration (mol co2 m^-2 s^-1) as the sum of the plant maintenance
 and growth respirations, according to the JULES model.
 
 Clark, D. B., et al. "The Joint UK Land Environment Simulator (JULES), model description–Part 2: carbon fluxes and vegetation dynamics." Geoscientific Model Development 4.3 (2011): 701-722.
@@ -92,11 +90,11 @@ function compute_autrophic_respiration(
     h,
 )
 
-    (; ne, ηsl, σl, μr, μs, f1, f2) = model.parameters
+    (; ne, ηsl, σl, μr, μs, Rel) = model.parameters
     Nl, Nr, Ns =
         nitrogen_content(ne, Vcmax25, LAI, SAI, RAI, ηsl, h, σl, μr, μs)
-    Rpm = plant_respiration_maintenance(Rd, β, Nl, Nr, Ns, f1)
-    Rg = plant_respiration_growth(f2, An, Rpm)
+    Rpm = plant_respiration_maintenance(Rd, β, Nl, Nr, Ns)
+    Rg = plant_respiration_growth(Rel, An, Rpm)
     Ra = Rpm + Rg
     return Ra * (1 - exp(-K * LAI * Ω)) / (K * Ω) # adjust to canopy level
 end

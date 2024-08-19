@@ -167,7 +167,7 @@ function define_diagnostics!(land_model)
         short_name = "ra",
         long_name = "Autotrophic Respiration",
         standard_name = "autotrophic_respiration",
-        units = "kg C m^-2 s^-1",
+        units = "mol CO2 m^-2 s^-1",
         comments = "The canopy autotrophic respiration, the sum of leaves, stems and roots respiration.",
         compute! = (out, Y, p, t) ->
             compute_autotrophic_respiration!(out, Y, p, t, land_model),
@@ -720,7 +720,7 @@ function define_diagnostics!(land_model)
         short_name = "scms",
         long_name = "Soil CO2 Microbial Source",
         standard_name = "soil_co2_microbial_source",
-        units = "kg C m^-2 s^-1",
+        units = "kg C m^-3 s^-1",
         comments = "The production of CO2 by microbes in the soil. Vary by layers of soil depth.",
         compute! = (out, Y, p, t) ->
             compute_soilco2_source_microbe!(out, Y, p, t, land_model),

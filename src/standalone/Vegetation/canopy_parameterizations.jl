@@ -1007,7 +1007,6 @@ end
         Nl::FT, # Nitrogen content of leafs
         Nr::FT, # Nitrogen content of roots
         Ns::FT, # Nitrogen content of stems
-        f::FT # Factor to convert from mol CO2 to kg C
         ) where {FT}
 
 Computes plant maintenance respiration as a function of dark respiration (Rd),
@@ -1020,24 +1019,23 @@ function plant_respiration_maintenance(
     Nl::FT, # Nitrogen content of leafs
     Nr::FT, # Nitrogen content of roots
     Ns::FT, # Nitrogen content of stems
-    f1::FT, # Factor to convert from mol CO2 to kg C
 ) where {FT}
     # When LAI is zero, Nl = 0
-    Rpm = f1 * Rd * (β + (Nr + Ns) / max(Nl, eps(FT)))
+    Rpm = Rd * (β + (Nr + Ns) / max(Nl, eps(FT)))
     return Rpm
 end
 
 """
     plant_respiration_growth(
-        f::FT, # Factor of relative contribution
+        Rel::FT, # Factor of relative contribution
         An::FT, # Net photosynthesis
         Rpm::FT # Plant maintenance respiration
         ) where {FT}
 
 Computes plant growth respiration as a function of net photosynthesis (An),
-plant maintenance respiration (Rpm), and a relative contribution factor, f.
+plant maintenance respiration (Rpm), and a relative contribution factor, Rel.
 """
-function plant_respiration_growth(f2::FT, An::FT, Rpm::FT) where {FT}
-    Rg = f2 * (An - Rpm)
+function plant_respiration_growth(Rel::FT, An::FT, Rpm::FT) where {FT}
+    Rg = Rel * (An - Rpm)
     return Rg
 end

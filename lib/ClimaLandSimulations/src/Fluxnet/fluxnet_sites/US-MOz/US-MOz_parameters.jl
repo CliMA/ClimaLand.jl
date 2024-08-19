@@ -60,10 +60,9 @@ function auto_resp_ozark(;
     σl = FT(0.05),
     μr = FT(1.0),
     μs = FT(0.1),
-    f1 = FT(0.012),
-    f2 = FT(0.25),
+    Rel = FT(0.25),
 )
-    return AutotrophicRespirationParameters(ne, ηsl, σl, μr, μs, f1, f2)
+    return AutotrophicRespirationParameters(ne, ηsl, σl, μr, μs, Rel)
 end
 
 function soil_ozark(; # Function that returns the src function, but with ozark default args
