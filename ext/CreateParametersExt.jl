@@ -96,8 +96,7 @@ function AutotrophicRespirationParameters(
         :live_stem_wood_coeff => :ηsl,
         :specific_leaf_density => :σl,
         :root_leaf_nitrogen_ratio => :μr,
-        :mol_CO2_to_kg_C_factor => :f1,
-        :relative_contribution_factor => :f2,
+        :relative_contribution_factor => :Rel,
         :stem_leaf_nitrogen_ratio => :μs,
     )
     parameters = CP.get_parameter_values(toml_dict, name_map, "Land")

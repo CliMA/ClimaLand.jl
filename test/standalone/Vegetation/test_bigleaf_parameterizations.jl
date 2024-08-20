@@ -291,8 +291,8 @@ for FT in (Float32, Float64)
             ARparams.μr,
             ARparams.μs,
         )
-        Rpm = plant_respiration_maintenance(Rd, β, Nl, Nr, Ns, ARparams.f1)
-        Rg = plant_respiration_growth.(ARparams.f2, An, Rpm)
+        Rpm = plant_respiration_maintenance(Rd, β, Nl, Nr, Ns)
+        Rg = plant_respiration_growth.(ARparams.Rel, An, Rpm)
 
         @test Nl ==
               photosynthesisparams.Vcmax25 / ARparams.ne * ARparams.σl * LAI
@@ -306,8 +306,8 @@ for FT in (Float32, Float64)
               h_canopy *
               LAI *
               ClimaLand.heaviside(SAI)# == gives a very small error
-        @test Rpm == ARparams.f1 * Rd * (β + (Nr + Ns) / Nl)
-        @test all(@.(Rg ≈ ARparams.f2 * (An - Rpm)))
+        @test Rpm == Rd * (β + (Nr + Ns) / Nl)
+        @test all(@.(Rg ≈ ARparams.Rel * (An - Rpm)))
 
     end
 end

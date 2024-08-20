@@ -139,7 +139,22 @@ end
 @diagnostic_compute "vapor_flux" SoilCanopyModel p.soil.turbulent_fluxes.vapor_flux
 
 # Soil - SoilCO2
-@diagnostic_compute "heterotrophic_respiration" SoilCanopyModel p.soilco2.top_bc
+function compute_heterotrophic_respiration!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::SoilCanopyModel{FT},
+) where {FT}
+    if isnothing(out)
+        return p.soilco2.top_bc .* FT(83.26)
+    else
+        out .= p.soilco2.top_bc .* FT(83.26)
+    end
+end # Convert from kg C to mol CO2. 
+# To convert from kg C to mol CO2, we need to multiply by:
+# [3.664 kg CO2/ kg C] x [10^3 g CO2/ kg CO2] x [1 mol CO2/44.009 g CO2] = 83.26 mol CO2/kg C
+
 @diagnostic_compute "soilco2_diffusivity" SoilCanopyModel p.soilco2.D
 @diagnostic_compute "soilco2_source_microbe" SoilCanopyModel p.soilco2.Sm
 

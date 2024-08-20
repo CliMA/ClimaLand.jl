@@ -95,8 +95,7 @@ function run_fluxnet(
             σl = params.auto_resp.σl,
             μr = params.auto_resp.μr,
             μs = params.auto_resp.μs,
-            f1 = params.auto_resp.f1,
-            f2 = params.auto_resp.f2,
+            Rel = params.auto_resp.Rel,
         )
     )
     # Set up radiative transfer
