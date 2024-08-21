@@ -188,8 +188,8 @@ function ClimaLand.make_compute_jacobian(
         area_index = p.canopy.hydraulics.area_index
         ac_canopy = model.parameters.ac_canopy
         earth_param_set = canopy.parameters.earth_param_set
-        _T_freeze = FT(LP.T_freeze(earth_param_set))
-        _σ = FT(LP.Stefan(earth_param_set))
+        _T_freeze = LP.T_freeze(earth_param_set)
+        _σ = LP.Stefan(earth_param_set)
         @. ∂LW_n∂Tc = -2 * 4 * _σ * ϵ_c * Y.canopy.energy.T^3 # ≈ ϵ_ground = 1
         @. ∂qc∂Tc = partial_q_sat_partial_T_liq(
             p.drivers.P,
