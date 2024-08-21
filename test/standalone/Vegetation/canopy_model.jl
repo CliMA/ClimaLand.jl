@@ -1032,7 +1032,7 @@ end
             ) ./ ΔT
         estimated_LW = p.canopy.energy.∂LW_n∂Tc
         @test parent(abs.(finitediff_LW .- estimated_LW) ./ finitediff_LW)[1] <
-              0.05
+              0.01
 
         finitediff_SHF = (p_2.canopy.energy.shf .- p.canopy.energy.shf) ./ ΔT
         estimated_SHF = p.canopy.energy.∂SHF∂Tc

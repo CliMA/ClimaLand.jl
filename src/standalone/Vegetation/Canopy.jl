@@ -10,7 +10,6 @@ using ClimaLand: AbstractRadiativeDrivers, AbstractAtmosphericDrivers
 import ..Parameters as LP
 
 import ClimaLand:
-    AbstractExpModel,
     name,
     prognostic_vars,
     prognostic_types,
@@ -59,7 +58,7 @@ struct SharedCanopyParameters{FT <: AbstractFloat, PSE}
 end
 
 """
-     CanopyModel{FT, AR, RM, PM, SM, PHM, EM, SM, A, R, S, PS, D} <: AbstractExpModel{FT}
+     CanopyModel{FT, AR, RM, PM, SM, PHM, EM, SM, A, R, S, PS, D} <: ClimaLand.AbstractImExModel{FT}
 
 The model struct for the canopy, which contains
 - the canopy model domain (a point for site-level simulations, or
@@ -103,7 +102,7 @@ treated differently.
 $(DocStringExtensions.FIELDS)
 """
 struct CanopyModel{FT, AR, RM, PM, SM, PHM, EM, SIFM, A, R, S, PS, D} <:
-       AbstractExpModel{FT}
+       ClimaLand.AbstractImExModel{FT}
     "Autotrophic respiration model, a canopy component model"
     autotrophic_respiration::AR
     "Radiative transfer model, a canopy component model"
@@ -697,10 +696,7 @@ end
 function ClimaLand.get_drivers(model::CanopyModel)
     return (model.atmos, model.radiation)
 end
-
-
 include("./canopy_boundary_fluxes.jl")
-
 #Make the canopy model broadcastable
 Base.broadcastable(C::CanopyModel) = tuple(C)
 end

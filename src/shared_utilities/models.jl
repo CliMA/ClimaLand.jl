@@ -212,19 +212,6 @@ function make_imp_tendency(model::AbstractImExModel)
 end
 
 """
-    make_imp_tendency(model::AbstractModel)
-
-Returns an `imp_tendency` that does nothing. This model type is not
-stepped explicity.
-"""
-function make_imp_tendency(model::AbstractModel)
-    compute_imp_tendency! = make_compute_imp_tendency(model)
-    function imp_tendency!(dY, Y, p, t)
-        compute_imp_tendency!(dY, Y, p, t)
-    end
-end
-
-"""
     make_exp_tendency(model::AbstractModel)
 
 Returns an `exp_tendency` that updates auxiliary variables and
