@@ -105,7 +105,7 @@ function define_diagnostics!(land_model)
         long_name = "Soil temperature",
         standard_name = "soil_temperature",
         units = "K",
-        comments = "Soil temperature at multiple soil depth.",
+        comments = "Soil temperature at multiple soil depth. (depth resolved)",
         compute! = (out, Y, p, t) ->
             compute_soil_temperature!(out, Y, p, t, land_model),
     )
@@ -509,7 +509,7 @@ function define_diagnostics!(land_model)
         long_name = "Soil organic carbon",
         standard_name = "soil_organic_carbon",
         units = "kg C m^-3",
-        comments = "Mass of organic carbon per volume of soil.",
+        comments = "Mass of organic carbon per volume of soil. (depth resolved)",
         compute! = (out, Y, p, t) ->
             compute_soil_organic_carbon!(out, Y, p, t, land_model),
     )
@@ -620,7 +620,7 @@ function define_diagnostics!(land_model)
         long_name = "Soil Hydraulic Conductivity",
         standard_name = "soil_hydraulic_conductivity",
         units = "m s^-1",
-        comments = "Soil hydraulic conductivity.",
+        comments = "Soil hydraulic conductivity. (depth resolved)",
         compute! = (out, Y, p, t) ->
             compute_soil_hydraulic_conductivity!(out, Y, p, t, land_model),
     )
@@ -631,7 +631,7 @@ function define_diagnostics!(land_model)
         long_name = "Soil Thermal Conductivity",
         standard_name = "soil_thermal_conductivity",
         units = "W m^-1 K^-1",
-        comments = "Soil thermal conductivity.",
+        comments = "Soil thermal conductivity. (depth resolved)",
         compute! = (out, Y, p, t) ->
             compute_soil_thermal_conductivity!(out, Y, p, t, land_model),
     )
@@ -642,7 +642,7 @@ function define_diagnostics!(land_model)
         long_name = "Soil Water Potential",
         standard_name = "soil_water_potential",
         units = "Pa",
-        comments = "Soil water potential.",
+        comments = "Soil water potential. (depth resolved)",
         compute! = (out, Y, p, t) ->
             compute_soil_water_potential!(out, Y, p, t, land_model),
     )
@@ -710,7 +710,7 @@ function define_diagnostics!(land_model)
         long_name = "Soil CO2 Diffusivity",
         standard_name = "soil_co2_diffusivity",
         units = "m^2 s^-1",
-        comments = "The diffusivity of CO2 in the porous phase of the soil. Depends on soil texture, moisture, and temperature.",
+        comments = "The diffusivity of CO2 in the porous phase of the soil. Depends on soil texture, moisture, and temperature. (depth resolved)",
         compute! = (out, Y, p, t) ->
             compute_soilco2_diffusivity!(out, Y, p, t, land_model),
     )
@@ -721,7 +721,7 @@ function define_diagnostics!(land_model)
         long_name = "Soil CO2 Microbial Source",
         standard_name = "soil_co2_microbial_source",
         units = "kg C m^-3 s^-1",
-        comments = "The production of CO2 by microbes in the soil. Vary by layers of soil depth.",
+        comments = "The production of CO2 by microbes in the soil. Vary by layers of soil depth. (depth resolved)",
         compute! = (out, Y, p, t) ->
             compute_soilco2_source_microbe!(out, Y, p, t, land_model),
     )
@@ -745,7 +745,7 @@ function define_diagnostics!(land_model)
         long_name = "Soil CO2",
         standard_name = "soil_co2",
         units = "kg C m^3",
-        comments = "Concentration of CO2 in the porous air space of the soil.",
+        comments = "Concentration of CO2 in the porous air space of the soil. (depth resolved)",
         compute! = (out, Y, p, t) -> compute_soilco2!(out, Y, p, t, land_model),
     )
 
@@ -755,7 +755,7 @@ function define_diagnostics!(land_model)
         long_name = "Soil Water Content",
         standard_name = "soil_water_content",
         units = "m^3 m^-3",
-        comments = "The volume of soil water per volume of soil.",
+        comments = "The volume of soil water per volume of soil. (depth resolved)",
         compute! = (out, Y, p, t) ->
             compute_soil_water_content!(out, Y, p, t, land_model),
     )
@@ -781,7 +781,7 @@ function define_diagnostics!(land_model)
         long_name = "Soil Ice",
         standard_name = "soil_ice",
         units = "m^3 m^-3",
-        comments = "The volume of soil ice per volume of soil.",
+        comments = "The volume of soil ice per volume of soil. (depth resolved)",
         compute! = (out, Y, p, t) ->
             compute_soil_ice_content!(out, Y, p, t, land_model),
     )
@@ -792,7 +792,7 @@ function define_diagnostics!(land_model)
         long_name = "Soil Internal Energy",
         standard_name = "soil_internal_energy",
         units = "W m^-2",
-        comments = "The energy per volume of soil.",
+        comments = "The energy per volume of soil. (depth resolved)",
         compute! = (out, Y, p, t) ->
             compute_soil_internal_energy!(out, Y, p, t, land_model),
     )
