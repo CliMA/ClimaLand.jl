@@ -399,8 +399,10 @@ T =
     ] .* (1e3 * 24 * 3600)
 E =
     [
-        parent(sv.saveval[k].soil.turbulent_fluxes.vapor_flux)[1] for
-        k in 1:length(sol.t)
+        parent(
+            sv.saveval[k].soil.turbulent_fluxes.vapor_flux_liq .+
+            sv.saveval[k].soil.turbulent_fluxes.vapor_flux_ice,
+        )[1] for k in 1:length(sol.t)
     ] .* (1e3 * 24 * 3600)
 ET_model = T .+ E
 if drivers.LE.status == absent

@@ -9,7 +9,8 @@ import ClimaLand:
     surface_evaporative_scaling,
     surface_height,
     surface_resistance,
-    displacement_height
+    displacement_height,
+    turbulent_fluxes
 
 
 """
@@ -168,7 +169,7 @@ function canopy_boundary_fluxes!(
     i_end = canopy.hydraulics.n_stem + canopy.hydraulics.n_leaf
 
     # Compute transpiration, SHF, LHF
-    canopy_tf = canopy_turbulent_fluxes(atmos, canopy, Y, p, t)
+    canopy_tf = ClimaLand.turbulent_fluxes(atmos, canopy, Y, p, t)
     transpiration .= canopy_tf.vapor_flux
     shf .= canopy_tf.shf
     lhf .= canopy_tf.lhf
@@ -213,7 +214,7 @@ function canopy_boundary_fluxes!(
 end
 
 """
-    function canopy_turbulent_fluxes(
+    function ClimaLand.turbulent_fluxes(
         atmos::PrescribedAtmosphere,
         model::CanopyModel,
         Y::ClimaCore.Fields.FieldVector,
@@ -229,7 +230,7 @@ because the canopy requires a different resistance for vapor and sensible heat
 fluxes, and the resistances depend on ustar, which we must compute using
 SurfaceFluxes before adjusting to account for these resistances.
 """
-function canopy_turbulent_fluxes(
+function ClimaLand.turbulent_fluxes(
     atmos::PrescribedAtmosphere,
     model::CanopyModel,
     Y::ClimaCore.Fields.FieldVector,

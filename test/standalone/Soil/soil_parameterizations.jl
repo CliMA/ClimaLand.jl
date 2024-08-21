@@ -184,26 +184,6 @@ for FT in (Float32, Float64)
         @test viscosity_factor.(T, parameters.γ, parameters.γT_ref) ≈
               exp.(parameters.γ .* (T .- parameters.γT_ref))
 
-        x = [0.0, 0.2, 0.4]
-        @test soil_tortuosity.(x, 0.0, 0.3) ≈
-              [0.3^1.5, 0.1^2.5 / 0.3, eps(FT)^2.5 / 0.3]
-        x = [0.35, 0.25, 0.0, 0.1]
-        y = [0.0, 0.0, 0.1, 0.1 * 0.15 / 0.25]
-        @test dry_soil_layer_thickness.(x, 0.25, 0.1) ≈ y
-        @test soil_resistance(
-            θ_r + eps(FT),
-            θ_r,
-            parameters.hydrology_cm,
-            parameters.ν,
-            parameters.θ_r,
-            parameters.d_ds,
-            param_set,
-        ) ≈
-              dry_soil_layer_thickness(
-            Soil.effective_saturation(ν, 2 * θ_r + eps(FT), θ_r),
-            hcm.S_c,
-            parameters.d_ds,
-        ) / FT(LP.D_vapor(param_set)) / soil_tortuosity(θ_r + eps(FT), θ_r, ν)
     end
 
     @testset "Brooks and Corey closure, FT = $FT" begin

@@ -613,7 +613,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         t0,
         ref_time;
         output_writer = nc_writer,
-        output_vars = :long,
+        output_vars = :short,
     )
 
     diagnostic_handler =
@@ -628,7 +628,7 @@ end
 function setup_and_solve_problem(; greet = false)
 
     t0 = 0.0
-    tf = 60 * 60.0 * 24 * 7 # keep short until it runs! * 365
+    tf = 60 * 60.0 * 24 * 14
     Δt = 900.0
     nelements = (101, 15)
     if greet
@@ -641,12 +641,12 @@ function setup_and_solve_problem(; greet = false)
     prob, cb = setup_prob(t0, tf, Δt; nelements)
 
     # Define timestepper and ODE algorithm
-    stepper = CTS.ARS343()
+    stepper = CTS.ARS111()
     ode_algo = CTS.IMEXAlgorithm(
         stepper,
         CTS.NewtonsMethod(
-            max_iters = 1,
-            update_j = CTS.UpdateEvery(CTS.NewTimeStep),
+            max_iters = 3,
+            update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
         ),
     )
     SciMLBase.solve(prob, ode_algo; dt = Δt, callback = cb, adaptive = false)
@@ -657,7 +657,7 @@ setup_and_solve_problem(; greet = true);
 # read in diagnostics and make some plots!
 #### ClimaAnalysis ####
 simdir = ClimaAnalysis.SimDir(outdir)
-short_names = ["gpp", "swc", "si", "sie"]
+short_names = ["gpp", "ct", "lai", "swc", "si"]
 for short_name in short_names
     var = get(simdir; short_name)
     times = ClimaAnalysis.times(var)

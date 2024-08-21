@@ -223,10 +223,8 @@ sol = SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb, saveat = saveat);
 
 # Extract the evaporation at each saved step
 evap = [
-    parent(
-        sv.saveval[k].soil.turbulent_fluxes.vapor_flux .*
-        (1 .- sv.saveval[k].soil.ice_frac),
-    )[1] for k in 1:length(sol.t)
+    parent(sv.saveval[k].soil.turbulent_fluxes.vapor_flux_liq)[1] for
+    k in 1:length(sol.t)
 ]
 savepath = joinpath(pkgdir(ClimaLand), "docs/tutorials/standalone/Soil/")
 evaporation_data =

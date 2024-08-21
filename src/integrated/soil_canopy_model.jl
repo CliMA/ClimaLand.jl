@@ -418,11 +418,8 @@ function soil_boundary_fluxes!(
     bc = soil.boundary_conditions.top
     p.soil.turbulent_fluxes .= turbulent_fluxes(bc.atmos, soil, Y, p, t)
     Soil.Runoff.update_runoff!(p, bc.runoff, Y, t, soil)
-    # Multiply the vapor flux by 1 - p.soil.ice_frac to get
-    # the approximated evaporation of liquid water
     @. p.soil.top_bc.water =
-        p.soil.infiltration +
-        p.soil.turbulent_fluxes.vapor_flux * (1 - p.soil.ice_frac)
+        p.soil.infiltration + p.soil.turbulent_fluxes.vapor_flux_liq
     @. p.soil.top_bc.heat =
         -p.soil.R_n + p.soil.turbulent_fluxes.lhf + p.soil.turbulent_fluxes.shf
 end

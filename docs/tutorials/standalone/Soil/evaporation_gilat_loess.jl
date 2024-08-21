@@ -37,7 +37,7 @@ thermo_params = LP.thermodynamic_parameters(earth_param_set);
 
 # Parameters
 K_sat = FT(0.01 / 3600 / 24)
-vg_n = FT(1.45)
+vg_n = FT(1.55)
 vg_α = FT(1.5)
 hcm = vanGenuchten{FT}(; α = vg_α, n = vg_n)
 ν = FT(0.4)
@@ -256,10 +256,8 @@ driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
 cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
 sol = SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb, saveat = saveat)
 evap = [
-    parent(
-        sv.saveval[k].soil.turbulent_fluxes.vapor_flux .*
-        (1 .- sv.saveval[k].soil.ice_frac),
-    )[1] for k in 1:length(sol.t)
+    parent(sv.saveval[k].soil.turbulent_fluxes.vapor_flux_liq)[1] for
+    k in 1:length(sol.t)
 ];
 
 ## Repeat with no drainage (Ksat = 0, different BC), and with evaporation, in shorter domain
@@ -323,10 +321,8 @@ cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
 sol_no_drainage =
     SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb, saveat = saveat)
 evap_no_drainage = [
-    parent(
-        sv.saveval[k].soil.turbulent_fluxes.vapor_flux .*
-        (1 .- sv.saveval[k].soil.ice_frac),
-    )[1] for k in 1:length(sol.t)
+    parent(sv.saveval[k].soil.turbulent_fluxes.vapor_flux_liq)[1] for
+    k in 1:length(sol.t)
 ];
 
 

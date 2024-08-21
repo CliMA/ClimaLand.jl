@@ -53,14 +53,6 @@ ClimaLand.Soil.phase_change_source
 ClimaLand.Soil.thermal_time
 ```
 
-## Soil Surface Parameterizations
-
-```@docs
-ClimaLand.soil.soil_resistance
-ClimaLand.Soil.dry_soil_layer_thickness
-ClimaLand.Soil.soil_tortuosity
-```
-
 ## Soil Runoff Types and Methods
 
 ```@docs
