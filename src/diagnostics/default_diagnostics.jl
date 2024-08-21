@@ -194,17 +194,35 @@ function default_diagnostics(
     t_start,
     reference_date;
     output_writer,
+    average_period = :daily,
 )
 
     define_diagnostics!(land_model)
 
     soil_diagnostics = ["swc", "si", "sie"]
 
-    default_outputs = daily_averages(
-        soil_diagnostics...;
-        output_writer,
-        t_start,
-        reference_date,
-    )
+    if average_period == :hourly
+        default_outputs = hourly_averages(
+            soil_diagnostics...;
+            output_writer,
+            t_start,
+            reference_date,
+        )
+    elseif average_period == :daily
+        default_outputs = daily_averages(
+            soil_diagnostics...;
+            output_writer,
+            t_start,
+            reference_date,
+        )
+    elseif average_period == :monthly
+        default_outputs = monthly_averages(
+            soil_diagnostics...;
+            output_writer,
+            t_start,
+            reference_date,
+        )
+    end
+
     return [default_outputs...]
 end
