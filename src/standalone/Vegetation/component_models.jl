@@ -129,8 +129,9 @@ function ClimaLand.make_compute_exp_tendency(
 )
     function compute_exp_tendency!(dY, Y, p, t)
         vars = prognostic_vars(component)
-        if vars != ()
-            getproperty(getproperty(dY, name(canopy)), name(component)) .= 0
+        dY_canopy = getproperty(dY, name(canopy))
+        if !isempty(vars)
+            getproperty(dY_canopy, name(component)) .= 0
         end
     end
     return compute_exp_tendency!
@@ -152,8 +153,9 @@ function ClimaLand.make_compute_imp_tendency(
 )
     function compute_imp_tendency!(dY, Y, p, t)
         vars = prognostic_vars(component)
-        if vars != ()
-            getproperty(getproperty(dY, name(canopy)), name(component)) .= 0
+        dY_canopy = getproperty(dY, name(canopy))
+        if !isempty(vars)
+            getproperty(dY_canopy, name(component)) .= 0
         end
 
     end

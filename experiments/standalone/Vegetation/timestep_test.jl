@@ -18,7 +18,7 @@ using ClimaLand.Canopy
 using ClimaLand.Canopy.PlantHydraulics
 import ClimaLand
 import ClimaLand.Parameters as LP
-const FT = Float32;
+const FT = Float64;
 earth_param_set = LP.LandParameters(FT);
 f_root_to_shoot = FT(3.5)
 plant_ν = FT(2.46e-4) # kg/m^2
@@ -94,13 +94,12 @@ AR_model = AutotrophicRespirationModel{FT}(AR_params);
 
 f_root_to_shoot = FT(3.5)
 SAI = FT(1.0)
-RAI = FT(3 * f_root_to_shoot)
+RAI = FT(3f_root_to_shoot)
 ai_parameterization = PrescribedSiteAreaIndex{FT}(LAIfunction, SAI, RAI)
-
-function root_distribution(z::T) where {T}
-    rooting_depth = T(1.0)
-    return T(1.0 / rooting_depth) * exp(z / T(rooting_depth))
-end;
+rooting_depth = FT(1.0)
+function root_distribution(z::T; rooting_depth = rooting_depth) where {T}
+    return T(1.0 / rooting_depth) * exp(z / T(rooting_depth)) # 1/m
+end
 
 K_sat_plant = FT(1.8e-6)
 ψ63 = FT(-4 / 0.0098)
@@ -132,9 +131,9 @@ plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
     compartment_surfaces = compartment_surfaces,
     compartment_midpoints = compartment_midpoints,
 );
-
+ac_canopy = FT(1e3)
 energy_model = ClimaLand.Canopy.BigLeafEnergyModel{FT}(
-    BigLeafEnergyParameters{FT}(FT(1e3)),
+    BigLeafEnergyParameters{FT}(ac_canopy),
 )
 
 canopy = ClimaLand.Canopy.CanopyModel{FT}(;
@@ -175,10 +174,10 @@ Y.canopy.hydraulics.ϑ_l.:1 .= augmented_liquid_fraction.(ν, S_l_ini[1])
 Y.canopy.hydraulics.ϑ_l.:2 .= augmented_liquid_fraction.(ν, S_l_ini[2])
 
 
-
-t0 = 150 * 3600 * 24.0
+seconds_per_day = 3600 * 24.0
+t0 = 150seconds_per_day
 N_days = 100
-tf = t0 + 3600 * 24 * N_days
+tf = t0 + N_days * seconds_per_day
 evaluate!(Y.canopy.energy.T, atmos.T, t0)
 set_initial_cache! = make_set_initial_cache(canopy)
 set_initial_cache!(p, Y, t0);
@@ -216,8 +215,9 @@ ref_T = [parent(ref_sol.u[k].canopy.energy.T)[1] for k in 1:length(ref_sol.t)]
 mean_err = []
 p95_err = []
 p99_err = []
-dts = [225.0, 450.0, 900.0, 1800.0, 3600.0]
+dts = [12.0, 24.0, 48.0, 100.0, 225.0, 450.0, 900.0, 1800.0, 3600.0]
 for dt in dts
+    @info dt
     saveat = Array(t0:(3 * 3600):tf)
     evaluate!(Y.canopy.energy.T, atmos.T, t0)
     updateat = Array(t0:(3600 * 3):tf)
