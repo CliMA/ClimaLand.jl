@@ -2,7 +2,7 @@
 
 julia_version = "1.10.5"
 manifest_format = "2.0"
-project_hash = "6c3f79ccae513840cc13b9ac947575c2305b507f"
+project_hash = "6b19e20727d983c28286d493d461a6afa5ff8e8c"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "99a6f5d0ce1c7c6afdb759daa30226f71c54f6b0"
@@ -18,6 +18,16 @@ weakdeps = ["ChainRulesCore", "EnzymeCore"]
 git-tree-sha1 = "574baf8110975760d391c710b6341da1afa48d8c"
 uuid = "a4c015fc-c6ff-483c-b24f-f7ea428134e9"
 version = "0.0.1"
+
+[[deps.About]]
+deps = ["InteractiveUtils", "JuliaSyntaxHighlighting", "PrecompileTools", "StyledStrings"]
+git-tree-sha1 = "3a94c01a1d7678f1c29b7d97216f5046f1ed1768"
+uuid = "69d22d85-9f48-4c46-bbbe-7ad8341ff72a"
+version = "1.0.0"
+weakdeps = ["Pkg"]
+
+    [deps.About.extensions]
+    PkgExt = "Pkg"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -1421,6 +1431,17 @@ git-tree-sha1 = "af433a10f3942e882d3c671aacb203e006a5808f"
 uuid = "9c1d0b0a-7046-5b2e-a33f-ea22f176ac7e"
 version = "0.2.1+0"
 
+[[deps.JuliaSyntax]]
+git-tree-sha1 = "956ac689b31cd871a48fbb70978b798c5e95018a"
+uuid = "70703baa-626e-46a2-a12c-08ffd08c73b4"
+version = "0.4.9"
+
+[[deps.JuliaSyntaxHighlighting]]
+deps = ["JuliaSyntax", "StyledStrings"]
+git-tree-sha1 = "19ecee1ea81c60156486a92b062e443b6bba60b7"
+uuid = "ac6e5ff7-fb65-4e79-a425-ec3bc9c03011"
+version = "0.1.0"
+
 [[deps.JuliaVariables]]
 deps = ["MLStyle", "NameResolution"]
 git-tree-sha1 = "49fb3cb53362ddadb4415e9b73926d6b40709e70"
@@ -1870,6 +1891,12 @@ version = "2.28.2+1"
 git-tree-sha1 = "c13304c81eec1ed3af7fc20e75fb6b26092a1102"
 uuid = "442fdcdd-2543-5da2-b0f3-8c86c306513e"
 version = "0.3.2"
+
+[[deps.MethodAnalysis]]
+deps = ["AbstractTrees"]
+git-tree-sha1 = "c2ee9b8f036c951f9ed0a47503a7f7dc0905b256"
+uuid = "85b6ec6f-f7df-4429-9514-a64bcd9ee824"
+version = "0.4.13"
 
 [[deps.MicroCollections]]
 deps = ["BangBang", "InitialValues", "Setfield"]
@@ -2796,6 +2823,12 @@ weakdeps = ["Adapt", "GPUArraysCore", "SparseArrays", "StaticArrays"]
     StructArraysGPUArraysCoreExt = "GPUArraysCore"
     StructArraysSparseArraysExt = "SparseArrays"
     StructArraysStaticArraysExt = "StaticArrays"
+
+[[deps.StyledStrings]]
+deps = ["PrecompileTools", "TOML"]
+git-tree-sha1 = "711c9650010c95814911c2005ea04e70e70e65ed"
+uuid = "f489334b-da3d-4c2e-b8f0-e476e12c162b"
+version = "1.0.3"
 
 [[deps.SuiteSparse]]
 deps = ["Libdl", "LinearAlgebra", "Serialization", "SparseArrays"]
