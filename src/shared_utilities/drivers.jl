@@ -339,6 +339,7 @@ function turbulent_fluxes_at_a_point(
         SVector{2, FT}(u, 0),
         ts_in,
     )
+    q_in::FT = Thermodynamics.total_specific_humidity(thermo_params, ts_in);
 
     # State containers
     sc = SurfaceFluxes.ValuesOnly(
@@ -366,6 +367,9 @@ function turbulent_fluxes_at_a_point(
 
     E0::FT = SurfaceFluxes.evaporation(surface_flux_params, sc, conditions.Ch)
     E = E0 * r_ae / (r_sfc + r_ae)
+    if q_sfc < q_in # condensation breaks things
+        E *= 0
+    end
     Ẽ = E / _ρ_liq
     H = -ρ_air * cp_m * ΔT / r_ae
     LH = _LH_v0 * E

@@ -90,6 +90,7 @@ import ClimaLand:
     surface_emissivity,
     surface_height,
     surface_resistance,
+    surface_evaporative_scaling,
     get_drivers
 export RichardsModel,
     RichardsParameters,

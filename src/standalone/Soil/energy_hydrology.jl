@@ -712,6 +712,23 @@ function ClimaLand.surface_temperature(
 end
 
 """
+"""
+function ClimaLand.surface_evaporative_scaling(model::EnergyHydrology{FT}, Y, p) where {FT}
+    (; ν, θ_r, d_ds, earth_param_set, hydrology_cm) = model.parameters
+    θ_l_sfc = p.soil.sfc_scratch
+    ClimaLand.Domains.linear_interpolation_to_surface!(
+        θ_l_sfc,
+        p.soil.θ_l,
+        model.domain.fields.z,
+        model.domain.fields.Δz_top,
+    )
+    θ_i_sfc = ClimaLand.Domains.top_center_to_surface(Y.soil.θ_i)
+    hydrology_cm_sfc = ClimaLand.Domains.top_center_to_surface(hydrology_cm)
+    ν_sfc = ClimaLand.Domains.top_center_to_surface(ν)
+    θ_r_sfc = ClimaLand.Domains.top_center_to_surface(θ_r)
+    return @. 1 - exp(-effective_saturation(ν_sfc,θ_i_sfc + θ_l_sfc, θ_r_sfc)/FT(5e-2))
+end
+"""
     ClimaLand.surface_resistance(
         model::EnergyHydrology{FT},
         Y,
@@ -825,13 +842,13 @@ function ClimaLand.surface_specific_humidity(
     M_w = LP.molar_mass_water(model.parameters.earth_param_set)
     thermo_params =
         LP.thermodynamic_parameters(model.parameters.earth_param_set)
-    ψ_sfc = p.soil.sfc_scratch
-    ClimaLand.Domains.linear_interpolation_to_surface!(
-        ψ_sfc,
-        p.soil.ψ,
-        model.domain.fields.z,
-        model.domain.fields.Δz_top,
-    )
+    ψ_sfc = ClimaLand.Domains.top_center_to_surface(p.soil.ψ)#p.soil.sfc_scratch
+    #ClimaLand.Domains.linear_interpolation_to_surface!(
+    #    ψ_sfc,
+     #   p.soil.ψ,
+     #   model.domain.fields.z,
+      #  model.domain.fields.Δz_top,
+    #)
     q_over_ice =
         Thermodynamics.q_vap_saturation_generic.(
             thermo_params,
