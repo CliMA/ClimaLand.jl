@@ -370,6 +370,12 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
 
     #Photosynthesis model
     Vcmax25 = FT(9e-5) # from Yujie's paper 4.5e-5 , Natan used 9e-5
+#     Vcmax25 =  SpaceVaryingInput(
+#         "/net/sampo/data1/ClimaArtifacts/artifacts/clm_data/vegetation_properties_map.nc",
+#         "vcmx25",
+#         surface_space;
+#         regridder_type
+#    )
 
     # Plant Hydraulics and general plant parameters
     SAI = FT(0.0) # m2/m2

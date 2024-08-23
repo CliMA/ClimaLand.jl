@@ -489,6 +489,11 @@ function intercellular_co2(ca::FT, Γstar::FT, medlyn_term::FT) where {FT}
     return c_i
 end
 
+function intercellular_co2(ca::ClimaCore.Fields.Field, Γstar::ClimaCore.Fields.Field, medlyn_term::ClimaCore.Fields.Field)
+    c_i = (max).(ca .* (1 .- 1 ./ medlyn_term), Γstar)
+    return c_i
+end
+
 """
     co2_compensation(Γstar25::FT,
                      ΔHΓstar::FT,
@@ -507,11 +512,11 @@ See Table 11.5 of G. Bonan's textbook, Climate Change and Terrestrial Ecosystem 
 function co2_compensation(
     Γstar25::FT,
     ΔHΓstar::FT,
-    T::FT,
+    T::Union{FT, ClimaCore.Fields.Field},
     To::FT,
     R::FT,
 ) where {FT}
-    Γstar = Γstar25 * arrhenius_function(T, To, R, ΔHΓstar)
+    Γstar = Γstar25 .* arrhenius_function(T, To, R, ΔHΓstar)
     return Γstar
 end
 
@@ -536,14 +541,14 @@ See Table 11.5 of G. Bonan's textbook, Climate Change and Terrestrial Ecosystem 
 """
 function rubisco_assimilation(
     ::C3,
-    Vcmax::FT,
-    ci::FT,
-    Γstar::FT,
-    Kc::FT,
-    Ko::FT,
+    Vcmax::Union{FT, ClimaCore.Fields.Field},
+    ci::Union{FT, ClimaCore.Fields.Field},
+    Γstar::Union{FT, ClimaCore.Fields.Field},
+    Kc::Union{FT, ClimaCore.Fields.Field},
+    Ko::Union{FT, ClimaCore.Fields.Field},
     oi::FT,
 ) where {FT}
-    Ac = Vcmax * (ci - Γstar) / (ci + Kc * (1 + oi / Ko))
+    Ac = Vcmax .* (ci .- Γstar) ./ (ci .+ Kc .* (1 .+ oi ./ Ko))
     return Ac
 end
 
@@ -555,6 +560,10 @@ in units of moles CO2/m^2/s,
 as equal to the maximum rate of carboxylation of Rubisco (`Vcmax`).
 """
 function rubisco_assimilation(::C4, Vcmax::FT, _...) where {FT}
+    Ac = Vcmax
+    return Ac
+end
+function rubisco_assimilation(::C4, Vcmax::ClimaCore.Fields.Field, _...)
     Ac = Vcmax
     return Ac
 end
@@ -576,6 +585,10 @@ function light_assimilation(::C3, J::FT, ci::FT, Γstar::FT) where {FT}
     Aj = J * (ci - Γstar) / (4 * (ci + 2 * Γstar))
     return Aj
 end
+function light_assimilation(::C3, J::ClimaCore.Fields.Field, ci::ClimaCore.Fields.Field, Γstar::ClimaCore.Fields.Field)
+    Aj = J .* ((ci .- Γstar) ./ (4 .* (ci .+ 2 .* Γstar)))
+    return Aj
+end
 
 """
     light_assimilation(::C4, J::FT, _...) where {FT}
@@ -585,6 +598,11 @@ in units of moles CO2/m^2/s, for C4 plants, as equal to
 the rate of electron transport (`J`).
 """
 function light_assimilation(::C4, J::FT, _...) where {FT}
+    Aj = J
+    return Aj
+end
+
+function light_assimilation(::C4, J::ClimaCore.Fields.Field, _...) 
     Aj = J
     return Aj
 end
@@ -602,14 +620,14 @@ See Table 11.5 of G. Bonan's textbook,
 Climate Change and Terrestrial Ecosystem Modeling (2019).
 """
 function max_electron_transport(
-    Vcmax25::FT,
+    Vcmax25::Union{FT, ClimaCore.Fields.Field},
     ΔHJmax::FT,
-    T::FT,
+    T::Union{FT, ClimaCore.Fields.Field},
     To::FT,
     R::FT,
 ) where {FT}
-    Jmax25 = Vcmax25 * FT(exp(1))
-    Jmax = Jmax25 * arrhenius_function(T, To, R, ΔHJmax)
+    Jmax25 = FT(exp(1)) .* Vcmax25 
+    Jmax = arrhenius_function(T, To, R, ΔHJmax) .* Jmax25
     return Jmax
 end
 
@@ -628,17 +646,16 @@ and the quantum yield of photosystem II (`ϕ`).
 
 See Ch 11, G. Bonan's textbook, Climate Change and Terrestrial Ecosystem Modeling (2019).
 """
-function electron_transport(APAR::FT, Jmax::FT, θj::FT, ϕ::FT) where {FT}
+function electron_transport(APAR::Union{FT, ClimaCore.Fields.Field}, Jmax::Union{FT, ClimaCore.Fields.Field}, θj::FT, ϕ::FT) where {FT}
     # Light utilization of APAR
-    IPSII = ϕ * APAR / 2
+    IPSII = ϕ .* APAR ./ 2
     # This is a solution to a quadratic equation
     # θj *J^2 - (IPSII+Jmax)*J+IPSII*Jmax = 0, Equation 11.21
     J =
-        (IPSII + Jmax - sqrt((IPSII + Jmax)^2 - 4 * θj * IPSII * Jmax)) /
+        (IPSII .+ Jmax .- (sqrt).((^).(IPSII .+ Jmax, 2) .- 4 * θj .* IPSII .* Jmax)) ./
         (2 * θj)
     return J
 end
-
 """
 optimality_max_photosynthetic_rates(APAR::FT,  θj::FT, ϕ::FT, oi::FT, ci::FT, Γstar::FT, Kc::FT, Ko::FT)
 
@@ -707,8 +724,8 @@ dark respiration (`Rd`), and the moisture stress factor (`β`).
 
 See Table 11.5 of G. Bonan's textbook, Climate Change and Terrestrial Ecosystem Modeling (2019).
 """
-function net_photosynthesis(Ac::FT, Aj::FT, Rd::FT, β::FT) where {FT}
-    An = max(0, min(Ac, Aj) * β - Rd)
+function net_photosynthesis(Ac::Union{FT, ClimaCore.Fields.Field}, Aj::Union{FT, ClimaCore.Fields.Field}, Rd::FT, β::FT) where {FT}
+    An = (max).(0, (min).(Ac, Aj) .* β .- Rd)
     return An
 end
 
@@ -809,8 +826,8 @@ gas constant `R`, and the energy activation `ΔH`.
 See Table 11.5 of G. Bonan's textbook, 
 Climate Change and Terrestrial Ecosystem Modeling (2019).
 """
-function arrhenius_function(T::FT, To::FT, R::FT, ΔH::FT) where {FT}
-    return exp(ΔH * (T - To) / (To * R * T))
+function arrhenius_function(T::Union{FT, ClimaCore.Fields.Field}, To::FT, R::FT, ΔH::FT) where {FT}
+    return (exp).(ΔH .* (T .- To) ./ (To * R .* T))
 end
 
 """
@@ -829,8 +846,8 @@ the unversal gas constant (`R`), and the temperature (`T`).
 See Table 11.5 of G. Bonan's textbook, 
 Climate Change and Terrestrial Ecosystem Modeling (2019).
 """
-function MM_Kc(Kc25::FT, ΔHkc::FT, T::FT, To::FT, R::FT) where {FT}
-    Kc = Kc25 * arrhenius_function(T, To, R, ΔHkc)
+function MM_Kc(Kc25::FT, ΔHkc::FT, T::Union{FT, ClimaCore.Fields.Field}, To::FT, R::FT) where {FT}
+    Kc = Kc25 .* arrhenius_function(T, To, R, ΔHkc)
     return Kc
 end
 
@@ -850,8 +867,8 @@ the universal gas constant (`R`), and the temperature (`T`).
 See Table 11.5 of G. Bonan's textbook, 
 Climate Change and Terrestrial Ecosystem Modeling (2019).
 """
-function MM_Ko(Ko25::FT, ΔHko::FT, T::FT, To::FT, R::FT) where {FT}
-    Ko = Ko25 * arrhenius_function(T, To, R, ΔHko)
+function MM_Ko(Ko25::FT, ΔHko::FT, T::Union{FT, ClimaCore.Fields.Field}, To::FT, R::FT) where {FT}
+    Ko = Ko25 .* arrhenius_function(T, To, R, ΔHko)
     return Ko
 end
 
@@ -871,13 +888,13 @@ See Table 11.5 of G. Bonan's textbook,
 Climate Change and Terrestrial Ecosystem Modeling (2019).
 """
 function compute_Vcmax(
-    Vcmax25::FT,
-    T::FT,
+    Vcmax25::Union{FT, ClimaCore.Fields.Field},
+    T::Union{FT, ClimaCore.Fields.Field},
     To::FT,
     R::FT,
     ΔHVcmax::FT,
 ) where {FT}
-    Vcmax = Vcmax25 * arrhenius_function(T, To, R, ΔHVcmax)
+    Vcmax = Vcmax25 .* arrhenius_function(T, To, R, ΔHVcmax)
     return Vcmax
 end
 

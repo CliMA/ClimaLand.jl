@@ -143,7 +143,16 @@ FarquharParameters(
 function FarquharParameters(
     toml_dict::CP.AbstractTOMLDict,
     mechanism;
-    Vcmax25 = 5e-5,
+    kwargs...,
+)
+    FT = CP.float_type(toml_dict)
+    FarquharParameters(toml_dict, mechanism, FT(5e-5); kwargs...)
+end
+
+function FarquharParameters(
+    toml_dict::CP.AbstractTOMLDict,
+    mechanism,
+    Vcmax25;
     kwargs...,
 )
     name_map = (;
@@ -167,7 +176,8 @@ function FarquharParameters(
     parameters = CP.get_parameter_values(toml_dict, name_map, "Land")
     FT = CP.float_type(toml_dict)
     MECH = typeof(mechanism)
-    return FarquharParameters{FT, MECH}(;
+    VC = typeof(Vcmax25)
+    return FarquharParameters{FT, MECH, VC}(;
         mechanism,
         Vcmax25,
         parameters...,

@@ -25,9 +25,12 @@ $(DocStringExtensions.FIELDS)
 Base.@kwdef struct FarquharParameters{
     FT <: AbstractFloat,
     MECH <: AbstractPhotosynthesisMechanism,
+    VCMAX <: Union{FT, ClimaCore.Fields.Field}
 }
     "Vcmax at 25 °C (mol CO2/m^2/s)"
-    Vcmax25::FT
+    # Vcmax25::Union{FT, ClimaCore.Fields.Field{FT, ClimaCore.Spaces.AbstractSpace}}
+    Vcmax25::VCMAX
+
     "Γstar at 25 °C (mol/mol)"
     Γstar25::FT
     "Michaelis-Menten parameter for CO2 at 25 °C (mol/mol)"
@@ -157,9 +160,18 @@ function update_photosynthesis!(
     R,
 )
     (; Vcmax25, f, ΔHRd, To) = model.parameters
-
     @. Rd = dark_respiration(Vcmax25, β, f, ΔHRd, T, To, R)
-    @. An = photosynthesis_at_a_point_Farquhar(
+    # @. An = photosynthesis_at_a_point_Farquhar(
+    #     T,
+    #     β,
+    #     Rd,
+    #     APAR,
+    #     c_co2,
+    #     medlyn_factor,
+    #     R,
+    #     model.parameters,
+    # )
+    An .= photosynthesis_at_a_point_Farquhar(
         T,
         β,
         Rd,
@@ -171,6 +183,7 @@ function update_photosynthesis!(
     )
     Vcmax25field .= Vcmax25
 end
+
 Base.broadcastable(m::AbstractPhotosynthesisMechanism) = tuple(m)
 Base.broadcastable(m::FarquharParameters) = tuple(m)
 
