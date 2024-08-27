@@ -23,7 +23,7 @@ struct ConstantGFunction{F <: Union{AbstractFloat, ClimaCore.Fields.Field}} <:
 end
 
 # Make the ConstantGFunction broadcastable
-Base.broadcastable(G::ConstantGFunction) = Ref(G)
+Base.broadcastable(G::ConstantGFunction) = tuple(G)
 
 """
     CLMGFunction
@@ -38,7 +38,7 @@ struct CLMGFunction{F <: Union{AbstractFloat, ClimaCore.Fields.Field}} <:
 end
 
 # Make the CLMGFunction broadcastable
-Base.broadcastable(G::CLMGFunction) = Ref(G)
+Base.broadcastable(G::CLMGFunction) = tuple(G)
 
 """
     BeerLambertParameters{FT <: AbstractFloat}

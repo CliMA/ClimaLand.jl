@@ -66,7 +66,6 @@ function LP.LandParameters(toml_dict::CP.AbstractTOMLDict)
         insol_params,
     )
 end
-Base.broadcastable(ps::LP.LandParameters) = tuple(ps)
 
 """
     AutotrophicRespirationParameters(FT; kwargs...)
