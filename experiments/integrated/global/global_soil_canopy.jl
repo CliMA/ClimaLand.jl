@@ -145,14 +145,14 @@ function zenith_angle(
     start_date;
     latitude = ClimaCore.Fields.coordinate_field(surface_space).lat,
     longitude = ClimaCore.Fields.coordinate_field(surface_space).long,
-    insol_params::Insolation.Parameters.InsolationParameters{FT} = earth_param_set.insol_params,
-) where {FT}
+    insol_params::Insolation.Parameters.InsolationParameters{_FT} = earth_param_set.insol_params,
+) where {_FT}
     # This should be time in UTC
     current_datetime = start_date + Dates.Second(round(t))
 
     # Orbital Data uses Float64, so we need to convert to our sim FT
     d, δ, η_UTC =
-        FT.(
+        _FT.(
             Insolation.helper_instantaneous_zenith_angle(
                 current_datetime,
                 start_date,

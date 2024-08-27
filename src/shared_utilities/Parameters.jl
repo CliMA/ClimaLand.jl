@@ -28,6 +28,7 @@ Base.@kwdef struct LandParameters{FT, TP, SFP, IP} <: ALP
 end
 
 Base.eltype(::LandParameters{FT}) where {FT} = FT
+Base.broadcastable(ps::LandParameters) = tuple(ps)
 
 # wrapper methods:
 P_ref(ps::ALP) = ps.MSLP

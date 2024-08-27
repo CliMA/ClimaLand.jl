@@ -24,7 +24,7 @@ struct ConstantGFunction{FT} <: AbstractGFunction{FT}
 end
 
 # Make the ConstantGFunction broadcastable
-Base.broadcastable(G::ConstantGFunction) = Ref(G)
+Base.broadcastable(G::ConstantGFunction) = tuple(G)
 
 """
     CLMGFunction
@@ -38,7 +38,7 @@ struct CLMGFunction{FT} <: AbstractGFunction{FT}
 end
 
 # Make the CLMGFunction broadcastable
-Base.broadcastable(G::CLMGFunction) = Ref(G)
+Base.broadcastable(G::CLMGFunction) = tuple(G)
 
 """
     BeerLambertParameters{FT <: AbstractFloat}
@@ -106,7 +106,7 @@ Base.@kwdef struct TwoStreamParameters{
     "Typical wavelength per NIR photon (m)"
     λ_γ_NIR::FT
     "Number of layers to partition the canopy into when integrating the
-    absorption over the canopy vertically. Unrelated to the number of layers in 
+    absorption over the canopy vertically. Unrelated to the number of layers in
     the vertical discretization of the canopy for the plant hydraulics model.
     (Constant, and should eventually move to ClimaParams)"
     n_layers::UInt64
