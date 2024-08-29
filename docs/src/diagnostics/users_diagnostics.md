@@ -137,3 +137,28 @@ my_custom_diagnostics = ["lhf", "bor"]
 diags = seasonal_maxs(my_custom_diagnostics...; output_writer, t_start)
 ```
 
+### Analyze your simulation output
+
+Once you've run your simulation and created an output folder (e.g., output\_dir) with diagnostics, you can use [ClimaAnalysis](https://github.com/CliMA/ClimaAnalysis.jl)
+to access and analyze your data. For in depth documentation about ClimaAnalysis, see its [documentation](https://clima.github.io/ClimaAnalysis.jl/stable/).
+
+Here is an example of how to plot a variable:
+
+```Julia
+import ClimaAnalysis
+
+import ClimaAnalysis.Visualize as viz
+
+import CairoMakie # the plotting package used by ClimaAnalysis
+
+simdir = ClimaAnalysis.SimDir(output_dir) # where output_dir is where you saved your diagnostics.
+
+var = get(simdir; "lhf") # assuming lhf, latent_heat_flux used as an example above, is one of your diagnostics variables.
+
+fig = CairoMakie.Figure() # creates an empty figure object
+
+viz.plot!(fig, var) # creates an axis inside fig, and plot your var in it.
+
+CairoMakie.save(fig) # saves the figure in current working directory
+```
+

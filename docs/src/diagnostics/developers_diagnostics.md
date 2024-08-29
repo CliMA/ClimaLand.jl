@@ -40,10 +40,10 @@ It defines how to access your diagnostic (here, p.bucket.α\_sfc) with the land\
 Note that you can also use the @diagnostic\_compute macro to do the same thing:
 
 ```Julia
-@diagnostic\_compute "albedo" BucketModel p.bucket.α\_sfc
+@diagnostic_compute "albedo" BucketModel p.bucket.α\_sfc
 ```
 
-The @with\_error macro define helper functions returning error messages if a user tries to compute a diagnostic variable that doesn't exist in their model type.
+The `@with_error` macro define helper functions returning error messages if a user tries to compute a diagnostic variable that doesn't exist in their model type.
 
 # Define diagnostics
 
