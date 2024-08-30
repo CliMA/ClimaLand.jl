@@ -4,9 +4,13 @@ ClimaLand.jl Release Notes
 main
 --------
 
+v0.14.3
+--------
 - Add support for regional simulations, box runs centered around a given
   longitude and latitude.
   PR [#710](https://github.com/CliMA/ClimaLand.jl/pull/710)
+- Add support for SoilCanopyModel diagnostics
+  PR [#699](https://github.com/CliMA/ClimaLand.jl/pull/699)
 
 v0.14.1
 --------
@@ -51,14 +55,14 @@ v0.12.4
   PR [#641](https://github.com/CliMA/ClimaLand.jl/pull/641)
 - Adds Richards to benchmark
   PR [#648](https://github.com/CliMA/ClimaLand.jl/pull/648)
-- Reduce allocations in update runoffs 
+- Reduce allocations in update runoffs
   PR [#664](https://github.com/CliMA/ClimaLand.jl/pull/664)
 - Store z in cache instead of model
   PR [#658](https://github.com/CliMA/ClimaLand.jl/pull/658)
 
 v0.12.3
 --------
-- Add benchmark pipeline 
+- Add benchmark pipeline
   PR [#592](https://github.com/CliMA/ClimaLand.jl/pull/592)
   PR [#642](https://github.com/CliMA/ClimaLand.jl/pull/642)
 - Removed ArtifactWrappers
@@ -69,7 +73,7 @@ v0.12.3
 
 v0.12.2
 --------
-- Update implicit solver interface 
+- Update implicit solver interface
   PR [#542](https://github.com/CliMA/ClimaLand.jl/pull/542)
 - Add ClimaLand.Artifacts
   PR [#624](https://github.com/CliMA/ClimaLand.jl/pull/624)
