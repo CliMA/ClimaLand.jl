@@ -6,40 +6,8 @@ using Distributed
 @everywhere using Literate
 using ClimaLand
 include("pages_helper.jl")
-tutorials = [
-    "For model developers" => [
-        "Intro to standalone models" => "standalone/Usage/model_tutorial.jl",
-        "Intro to multi-component models" => "standalone/Usage/LSM_single_column_tutorial.jl",
-        "Intro to ClimaLand Domains" => "standalone/Usage/domain_tutorial.jl",
-        "Intro to forced site-level runs" => "shared_utilities/driver_tutorial.jl",
-    ],
-    "Running simulations" => [
-        "Bucket LSM" => [
-            "standalone/Bucket/bucket_tutorial.jl",
-            "standalone/Bucket/coupled_bucket.jl",
-        ],
-        "Soil modeling" => [
-            "Boundary conditions" => "standalone/Soil/boundary_conditions.jl",
-            "Richards Equation" => "standalone/Soil/richards_equation.jl",
-            "Energy and Hydrology" => "standalone/Soil/soil_energy_hydrology.jl",
-            "Phase Changes" => "standalone/Soil/freezing_front.jl",
-            "Layered Soil" => "standalone/Soil/layered_soil.jl",
-            "Coarse Sand Evaporation" => "standalone/Soil/evaporation.jl",
-            "Gilat Loess Evaporation" => "standalone/Soil/evaporation_gilat_loess.jl",
-            "Bare soil site" => "standalone/Soil/sublimation.jl",
-        ],
-        "Canopy modeling" => [
-            "Standalone Canopy" => "standalone/Canopy/canopy_tutorial.jl",
-        ],
-        "Integrated soil+canopy modeling" => [
-            "Coupled Canopy and Soil" => "integrated/soil_canopy_tutorial.jl",
-        ],
-        "Snow Modeling" => [
-            "standalone/Snow/base_tutorial.jl",
-            "standalone/Snow/data_tutorial.jl",
-        ],
-    ],
-]
+include("list_tutorials.jl")
+
 @everywhere const clima_dir = dirname(dirname(pathof(ClimaLand)));
 @everywhere source_dir = joinpath(@__DIR__, "src")
 @everywhere GENERATED_DIR = joinpath(source_dir, "generated") # generated files directory
@@ -83,15 +51,14 @@ include("list_standalone_models.jl")
 include("list_diagnostics.jl")
 pages = Any[
     "Home" => "index.md",
-    "APIs" => apis,
-    "Contribution guide" => "Contributing.md",
+    "Getting Started" => "getting_started.md",
     "Tutorials" => tutorials,
-    "Repository structure" => "folderstructure.md",
     "Standalone models" => standalone_models,
     "Diagnostics" => diagnostics,
+    "Contribution guide" => "Contributing.md",
+    "Repository structure" => "folderstructure.md",
+    "APIs" => apis,
 ]
-
-
 
 mathengine = MathJax(
     Dict(
@@ -101,7 +68,6 @@ mathengine = MathJax(
         ),
     ),
 )
-
 
 format = Documenter.HTML(
     prettyurls = !isempty(get(ENV, "CI", "")),
