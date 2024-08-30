@@ -269,6 +269,62 @@ prob = SciMLBase.ODEProblem(
     (t0, tf),
     p,
 );
+
+# ClimaDiagnostics
+using ClimaDiagnostics
+using ClimaUtilities
+
+outdir = joinpath(pkgdir(ClimaLand),
+                  "experiments/integrated/fluxnet/out",
+                 )
+output_dir = ClimaUtilities.OutputPathGenerator.generate_output_path(outdir)
+
+d_writer = ClimaDiagnostics.Writers.DictWriter()
+
+ref_time = DateTime(2005) # random. not sure what it should be
+
+diags = ClimaLand.default_diagnostics(
+    land,
+    t0,
+    ref_time;
+    output_writer = d_writer,
+    output_vars = :short,
+    average_period = :hourly,
+   )
+
+diagnostic_handler = ClimaDiagnostics.DiagnosticsHandler(diags, Y, p, t0, dt = dt);
+
+diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler);
+
+drivers = ClimaLand.get_drivers(land)
+updatefunc = ClimaLand.make_update_drivers(drivers)
+driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
+
+sol = SciMLBase.solve(
+    prob,
+    ode_algo;
+    dt = dt,
+    callback = SciMLBase.CallbackSet(driver_cb, diag_cb),
+);
+
+ClimaLand.Diagnostics.diagnostic_as_vectors(d_writer, "gpp_1h_average")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 sol = SciMLBase.solve(
     prob,
     ode_algo;
