@@ -1,5 +1,6 @@
 using Test
 using ClimaLand
+using ClimaLand.Diagnostics: @with_error
 
 @test isdefined(ClimaLand.Diagnostics, :compute_albedo!)
 
@@ -9,7 +10,22 @@ using ClimaLand
 )
 
 # Define some diagnostics for a DummyModel
+
+@test ClimaLand.Diagnostics.ALL_DIAGNOSTICS isa Dict
+@test length(ClimaLand.Diagnostics.ALL_DIAGNOSTICS) == 0
 struct DummyModel end
+ClimaLand.Diagnostics.@diagnostic_compute "albedo" DummyModel p.foo.bar
+
+ClimaLand.Diagnostics.add_diagnostic_variable!(
+    short_name = "alpha",
+    long_name = "Albedo",
+    standard_name = "albedo",
+    units = "",
+    compute! = (out, Y, p, t) -> compute_albedo!(out, Y, p, t, land_model),
+)
+
+@test length(ClimaLand.Diagnostics.ALL_DIAGNOSTICS) == 1
+
 ClimaLand.Diagnostics.define_diagnostics!(DummyModel())
 
 # Just to trigger the error
