@@ -1,7 +1,7 @@
 using Test
 import ClimaParams
 import ClimaComms
-@static pkgversion(ClimaComms) >= v"0.6" && ClimaComms.@import_required_backends
+ClimaComms.@import_required_backends
 using ClimaCore
 using Thermodynamics
 using Dates

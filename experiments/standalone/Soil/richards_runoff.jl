@@ -1,6 +1,6 @@
 using CairoMakie
 import ClimaComms
-@static pkgversion(ClimaComms) >= v"0.6" && ClimaComms.@import_required_backends
+ClimaComms.@import_required_backends
 using Statistics
 using Dates
 import SciMLBase
