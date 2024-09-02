@@ -36,8 +36,6 @@ are used in the comments in the code below.
 
 export Pft, default_pfts, params_from_pfts, pft_param_list
 
-using DataFrames
-
 # List of parameters that PFTs need to define in order to be valid
 pft_param_list = [
     # TwoStreamModel parameters
@@ -504,31 +502,25 @@ function params_from_pfts(
     pfts::Vector{Pft} = default_pfts,
 )
     """
-    This function takes in a vector of PFT cover percentages and returns the correct
-    parameter set corresponding to the most dominant PFT by cover percentage.
+    Takes in a vector of PFT cover percentages and returns the correct parameter set
+    corresponding to the most dominant PFT by cover percentage.
 
     May optionally take in a vector of PFTs to use instead of the default PFTs.
-    In this case the pfts_cover vector must be the same length and in the
-    corresponding order to the PFTs in the pfts vector. This allows a user to 
+    In this case, the pfts_cover vector must be the same length and in the
+    corresponding order to the PFTs in the pfts vector. This allows a user to
     define their own PFT scheme and plug it into the model.
     """
-    # Construct the PFT DataFrame from the specified PFTs
-    pft_df = DataFrame()
-    for pft in pfts
-        # Push the internal NamedTuple of parameters to a row in the df. Since
-        # the PFT is stored as a NamedTuple conversion to a DF row is ensured 
-        # to work and ensure the ordering of the parameters.
-        push!(pft_df, pft.parameters)
-    end
-
     # Find the index of the dominant PFT by cover percentage
     max_ind = argmax(pft_cover)
 
-    # Instantiate a variable with the correct name for the weighted average of 
-    # each parameter.
+    # Extract the parameter set for the dominant PFT
     param_set = []
+    dominant_pft_params = pfts[max_ind].parameters
+
+    # Collect the parameters in the correct order
     for param in pft_param_list
-        append!(param_set, pft_df[max_ind, param])
+        append!(param_set, getfield(dominant_pft_params, param))
     end
+
     return param_set
 end
