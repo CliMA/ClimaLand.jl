@@ -10,7 +10,7 @@ makedocs(;
     format=DocumenterVitepress.MarkdownVitepress(
         repo = "https://github.com/CliMA/ClimaLand.jl",
         devurl = "dev",
-        deploy_url = "CliMA.github.io/ClimaLand.jl",
+        deploy_url = "https://CliMA.github.io/ClimaLand.jl",
     ),
     pages=[
         "Home" => "index.md",
