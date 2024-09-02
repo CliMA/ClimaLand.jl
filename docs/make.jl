@@ -6,7 +6,7 @@ makedocs(;
     modules=[ClimaLand],
     authors="ClimaLand team",
     repo="https://github.com/CliMA/ClimaLand.jl",
-    sitename="Chairmarks.jl",
+    sitename="ClimaLand.jl",
     format=DocumenterVitepress.MarkdownVitepress(
         repo = "https://github.com/CliMA/ClimaLand.jl",
         devurl = "dev",
