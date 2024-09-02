@@ -1,8 +1,17 @@
+[ameriflux_data_US-MOz]
+git-tree-sha1 = "37177736bb2a1d14416961561911e06c24942c4a"
+
 [era5_land_forcing_data2021]
 git-tree-sha1 = "ec424296df6b60cfe273ac8f981701fbbed0bd8a"
 
 [land_albedo]
 git-tree-sha1 = "3f07b70ab43a05123e93753a45e094dcf7a66b5b"
+
+[lehmann2008_fig8_evaporation]
+git-tree-sha1 = "49386718eda19d2fa00ae6981d83948c6664057a"
+
+[mizoguchi]
+git-tree-sha1 = "c35ba0e899040cb8153226ab751f69100f475d39"
 
 [snowmip]
 git-tree-sha1 = "230f00823299e7e33d276d9b57cba985fc04eaae"
@@ -17,3 +26,6 @@ git-tree-sha1 = "c10e8f877603bfa2c018eb2dd0c51dd078abe5df"
     [[soil_params_Gupta2020_2022.download]]
     sha256 = "6205d96ae7724c469eef5cd1cf3b99e186637427b6fb65ecc659fb808fc6cacf"
     url = "https://caltech.box.com/shared/static/7c6yx62tzjivxfmhqyy03r6e9l1glyu1.gz"
+
+[sv62]
+git-tree-sha1 = "39a344685d74346f89c4858c183565554494fc01"
