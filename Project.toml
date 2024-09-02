@@ -9,7 +9,6 @@ ClimaComms = "3a4d1b5c-c61d-41fd-a00a-5873ba7a1b0d"
 ClimaCore = "d414da3d-4745-48bb-8d80-42e94e092884"
 ClimaDiagnostics = "1ecacbb8-0713-4841-9a07-eb5aa8a2d53f"
 ClimaUtilities = "b3f4f4ca-9299-4f7f-bd9b-81e1242a7513"
-DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 DocStringExtensions = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
 Insolation = "e98cc03f-d57e-4e3c-b70c-8d51efe9e0d8"
@@ -26,6 +25,7 @@ Thermodynamics = "b60c26fb-14c3-4610-9d3e-2d17fe7ff00c"
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 ClimaParams = "5c42b081-d73a-476f-9059-fd94b934656c"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
 HTTP = "cd3eb016-35fb-5094-929b-558a96fad6f3"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
@@ -33,7 +33,7 @@ cuDNN = "02a925ec-e4fe-4b08-9a7e-0d78e3d38ccd"
 
 [extensions]
 CreateParametersExt = "ClimaParams"
-NeuralSnowExt = ["CSV", "HTTP", "Flux", "StatsBase", "cuDNN"]
+NeuralSnowExt = ["CSV", "DataFrames", "HTTP", "Flux", "StatsBase", "cuDNN"]
 
 [compat]
 ArtifactWrappers = "0.2"
