@@ -1,7 +1,6 @@
 module Domains
 using ClimaCore
 using ClimaComms
-using IntervalSets
 using DocStringExtensions
 
 import ClimaCore: Meshes, Spaces, Topologies, Geometry

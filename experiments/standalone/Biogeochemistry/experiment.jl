@@ -1,6 +1,6 @@
 import SciMLBase
 import ClimaComms
-@static pkgversion(ClimaComms) >= v"0.6" && ClimaComms.@import_required_backends
+ClimaComms.@import_required_backends
 import ClimaTimeSteppers as CTS
 using ClimaCore
 using ClimaLand
@@ -183,7 +183,7 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
     @assert eltype(sol.u[end].soilco2) == FT
 
     # Animation
-    # You will need to ]add GLMakie to your base Julia Project.toml
+    # You will need to ]add GlMakie to your base Julia Project.toml
     #=
     if FT == Float64
         using GLMakie
