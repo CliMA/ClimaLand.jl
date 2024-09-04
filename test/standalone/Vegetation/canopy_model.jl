@@ -22,10 +22,11 @@ import ClimaParams
 @testset "Canopy software pipes" begin
     for FT in (Float32, Float64)
         domain = Point(; z_sfc = FT(0.0))
-
+        # create new field with constant value everywhere
+        Vcmax25 = fill(FT(9e-5), domain.space.surface)
         AR_params = AutotrophicRespirationParameters(FT)
         RTparams = BeerLambertParameters(FT)
-        photosynthesis_params = FarquharParameters(FT, C3())
+        photosynthesis_params = FarquharParameters(FT, C3(); Vcmax25 = Vcmax25)
         stomatal_g_params = MedlynConductanceParameters(FT)
 
         AR_model = AutotrophicRespirationModel{FT}(AR_params)
@@ -515,9 +516,10 @@ end
 @testset "Canopy software pipes with energy model" begin
     for FT in (Float32, Float64)
         domain = Point(; z_sfc = FT(0.0))
-
+        # create new field with constant value everywhere
+        Vcmax25 = fill(FT(9e-5), domain.space.surface)
         RTparams = BeerLambertParameters(FT)
-        photosynthesis_params = FarquharParameters(FT, C3())
+        photosynthesis_params = FarquharParameters(FT, C3(); Vcmax25 = Vcmax25)
         stomatal_g_params = MedlynConductanceParameters(FT)
 
         stomatal_model = MedlynConductanceModel{FT}(stomatal_g_params)
@@ -765,7 +767,8 @@ end
 @testset "Zero LAI;" begin
     for FT in (Float32, Float64)
         domain = Point(; z_sfc = FT(0.0))
-
+        # create new field with constant value everywhere
+        Vcmax25 = fill(FT(9e-5), domain.space.surface)
         BeerLambertparams = BeerLambertParameters(FT)
         # TwoStreamModel parameters
         Ω = FT(0.69)
@@ -787,7 +790,7 @@ end
             τ_NIR_leaf,
             G_Function,
         )
-        photosynthesis_params = FarquharParameters(FT, C3())
+        photosynthesis_params = FarquharParameters(FT, C3(); Vcmax25 = Vcmax25)
         stomatal_g_params = MedlynConductanceParameters(FT)
 
         stomatal_model = MedlynConductanceModel{FT}(stomatal_g_params)

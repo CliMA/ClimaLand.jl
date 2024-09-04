@@ -369,7 +369,16 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
     g1 = FT(141) # Wang et al: 141 sqrt(Pa) for Medlyn model; Natan used 300.
 
     #Photosynthesis model
-    Vcmax25 = FT(9e-5) # from Yujie's paper 4.5e-5 , Natan used 9e-5
+    clm_artifact_path = ClimaLand.Artifacts.clm_data_folder_path(; context)
+    # vcmax is read in units of umol CO2/m^2/s and then converted to mol CO2/m^2/s
+    Vcmax25 = SpaceVaryingInput(
+        joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
+        "vcmx25",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc,),
+        file_reader_kwargs = (; preprocess_func = (data) -> data / 1_000_000,),
+    )
 
     # Plant Hydraulics and general plant parameters
     SAI = FT(0.0) # m2/m2
