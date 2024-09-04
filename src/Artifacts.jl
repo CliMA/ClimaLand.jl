@@ -43,9 +43,9 @@ Return the path to the file that contains a year of fluxnet data
 corresponding to a `site_ID` in the set (US-MOz, US-NR1, US-Ha1, US-Var).
 
 Site publications and licenses:
-US-Ha1: 
+US-Ha1:
 
-Urbanski, S., Barford, C., Wofsy, S., Kucharik, C., Pyle, E., Budney, J., McKain, K., Fitzjarrald, D., Czikowsky, M., Munger, J. W. 2007. Factors Controlling CO2 Exchange On Timescales From Hourly To Decadal At Harvard Forest, Journal Of Geophysical Research, 112:G2, . 
+Urbanski, S., Barford, C., Wofsy, S., Kucharik, C., Pyle, E., Budney, J., McKain, K., Fitzjarrald, D., Czikowsky, M., Munger, J. W. 2007. Factors Controlling CO2 Exchange On Timescales From Hourly To Decadal At Harvard Forest, Journal Of Geophysical Research, 112:G2, .
 
 AmeriFlux FLUXNET: https://doi.org/10.17190/AMF/1871137
 Citation: J. William Munger (2022), AmeriFlux FLUXNET-1F US-Ha1 Harvard Forest EMS Tower (HFR1), Ver. 3-5, AmeriFlux AMP, (Dataset). https://doi.org/10.17190/AMF/1871137
@@ -54,7 +54,7 @@ AmeriFlux CC-BY-4.0 Policy
 
 US-MOz
 
-Gu, L., Pallardy, S. G., Yang, B., Hosman, K. P., Mao, J., Ricciuto, D., Shi, X., Sun, Y. 2016. Testing a Land Model In Ecosystem Functional Space via a Comparison of Observed and Modeled Ecosystem Responses to Precipitation Regimes and Associated Stresses in a Central U.S. Forest, Journal Of Geophysical Research: Biogeosciences, 121:7, 1884-1902. 
+Gu, L., Pallardy, S. G., Yang, B., Hosman, K. P., Mao, J., Ricciuto, D., Shi, X., Sun, Y. 2016. Testing a Land Model In Ecosystem Functional Space via a Comparison of Observed and Modeled Ecosystem Responses to Precipitation Regimes and Associated Stresses in a Central U.S. Forest, Journal Of Geophysical Research: Biogeosciences, 121:7, 1884-1902.
 
 AmeriFlux FLUXNET: https://doi.org/10.17190/AMF/1854370
 Citation: Jeffrey Wood, Lianhong Gu (2021), AmeriFlux FLUXNET-1F US-MOz Missouri Ozark Site, Ver. 3-5, AmeriFlux AMP, (Dataset). https://doi.org/10.17190/AMF/1854370
@@ -63,7 +63,7 @@ AmeriFlux CC-BY-4.0 Policy
 
 US-NR1
 
-Burns, S. P., Blanken, P. D., Turnipseed, A. A., Hu, J., Monson, R. K. 2015. The Influence Of Warm-Season Precipitation On The Diel Cycle Of The Surface Energy Balance And Carbon Dioxide At A Colorado Subalpine Forest Site, Biogeosciences, 12:23, 7349-7377. 
+Burns, S. P., Blanken, P. D., Turnipseed, A. A., Hu, J., Monson, R. K. 2015. The Influence Of Warm-Season Precipitation On The Diel Cycle Of The Surface Energy Balance And Carbon Dioxide At A Colorado Subalpine Forest Site, Biogeosciences, 12:23, 7349-7377.
 
 AmeriFlux FLUXNET: https://doi.org/10.17190/AMF/1871141
 Citation: Peter D. Blanken, Russel K. Monson, Sean P. Burns, David R. Bowling, Andrew A. Turnipseed (2022), AmeriFlux FLUXNET-1F US-NR1 Niwot Ridge Forest (LTER NWT1), Ver. 3-5, AmeriFlux AMP, (Dataset). https://doi.org/10.17190/AMF/1871141
@@ -186,7 +186,7 @@ end
 Returns the path to the file which contains the necessary information for the TOPMODEL
 runoff parameterization at 2.5 degrees resolution.
 
-This file was created with 
+This file was created with
 https://github.com/CliMA/ClimaLand.jl/blob/main/src/standalone/Soil/Runoff/preprocess_topographic_index_simple.jl
 
 using the data provided by
@@ -219,8 +219,8 @@ end
 Local path to file containing measured evaporation rate as a function of time
 for bare soil.
 
-Data was originally collected by Lehmann, Peter, Shmuel Assouline, 
-and Dani Or. "Characteristic lengths affecting evaporative drying of 
+Data was originally collected by Lehmann, Peter, Shmuel Assouline,
+and Dani Or. "Characteristic lengths affecting evaporative drying of
 porous media." Physical Review E 77.5 (2008): 056309 and presented
 in Figure 8 of that work.
 
@@ -243,13 +243,13 @@ end
 """
     huang_et_al2011_soil_van_genuchten_data(; context=nothing)
 
-Local path to file containing soil van Genuchten parameters as a 
+Local path to file containing soil van Genuchten parameters as a
 function of depth for soil
 from site SV62 in Fort McMurray, Alberta, Canada.
 
-Data was originally collected by Huang, Mingbin, et al. 
-"Infiltration and drainage processes in multi-layered coarse soils." 
-Canadian Journal of Soil Science 91.2 (2011): 169-183 
+Data was originally collected by Huang, Mingbin, et al.
+"Infiltration and drainage processes in multi-layered coarse soils."
+Canadian Journal of Soil Science 91.2 (2011): 169-183
 and presented in Table 1b of that work.
 
 https://doi.org/10.4141/cjss09118
@@ -268,18 +268,18 @@ end
 """
     mizoguchi1990_soil_freezing_data(; context=nothing)
 
-Local path to file containing soil volumetric content as a function 
-of depth and time during a freezing 
+Local path to file containing soil volumetric content as a function
+of depth and time during a freezing
 soil column experiment.
 
-Data was originally collected in Mizoguchi, M. 1990. Water, heat and 
-salt transport in freezing soil, Ph.D. thesis. (In Japanese.) 
+Data was originally collected in Mizoguchi, M. 1990. Water, heat and
+salt transport in freezing soil, Ph.D. thesis. (In Japanese.)
 University of Tokyo, Tokyo.
 
-Data was obtained by us from Figure 4 of Hansson, Klas, et al. 
-"Water flow and heat transport in frozen soil: Numerical solution 
-and freeze–thaw applications." Vadose Zone Journal 3.2 (2004): 693-704 
-using a plot digitizer; we did not quantify uncertainties introduced 
+Data was obtained by us from Figure 4 of Hansson, Klas, et al.
+"Water flow and heat transport in frozen soil: Numerical solution
+and freeze–thaw applications." Vadose Zone Journal 3.2 (2004): 693-704
+using a plot digitizer; we did not quantify uncertainties introduced
 in this process.
 """
 function mizoguchi1990_soil_freezing_data(; context = nothing)
