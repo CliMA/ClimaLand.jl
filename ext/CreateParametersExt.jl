@@ -106,19 +106,19 @@ end
 
 """
     function FarquharParameters(
-        FT, 
+        FT,
         mechanism::AbstractPhotosynthesisMechanism;
         Vcmax25 = FT(5e-5),
         kwargs...  # For individual parameter overrides
     )
 
     function FarquharParameters(
-        toml_dict::CP.AbstractTOMLDict, 
+        toml_dict::CP.AbstractTOMLDict,
         mechanism::AbstractPhotosynthesisMechanism;
         Vcmax25 = FT(5e-5),
         kwargs...  # For individual parameter overrides
     )
-    
+
 Constructors for the FarquharParameters struct. Two variants:
 1. Pass in the float-type and retrieve parameter values from the default TOML dict.
 2. Pass in a TOML dictionary to retrieve parameter values.Possible calls:
@@ -183,7 +183,7 @@ end
     )
 
     function OptimalityFarquharParameters(
-        toml_dict::CP.AbstractTOMLDict, 
+        toml_dict::CP.AbstractTOMLDict,
         kwargs...  # For individual parameter overrides
     )
 
@@ -262,7 +262,7 @@ end
 EnergyHydrologyParameters has two constructors: float-type and toml dict based.
 Additional parameters must be added manually: ν, ν_ss_om, ν_ss_quartz, ν_ss_gravel, hydrology_cm, K_sat, S_s, and θ_r
 All parameters can be manually overriden via keyword arguments. Note, however,
-that certain parameters must have the same type (e.g, if a field is 
+that certain parameters must have the same type (e.g, if a field is
 supplied for porosity, it must be supplied for all other parameters
 defined in the interior of the domain). Some parameters are defined only
 on the surface of the domain (e.g albedo), while other are defined everywhere
