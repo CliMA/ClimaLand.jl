@@ -15,6 +15,15 @@ function era5_land_forcing_data2021_folder_path(; context = nothing)
 end
 
 """
+    clm_data__folder_path(; context)
+
+Return the path to the folder that contains the clm data.
+"""
+function clm_data_folder_path(; context = nothing)
+    return @clima_artifact("clm_data", context)
+end
+
+"""
     soil_params_artifact_path(; context)
 
 Return the path to the folder that contains the soil parameters.
