@@ -37,7 +37,7 @@ steps:
         artifact_paths: "land_longrun_gpu/*png"
         agents:
           slurm_gpus: 1
-          slurm_time: 01:00:00
+          slurm_time: 03:00:00
         env:
           CLIMACOMMS_DEVICE: "CUDA"
 
@@ -47,6 +47,6 @@ steps:
         artifact_paths: "soil_longrun_gpu/*png"
         agents:
           slurm_gpus: 1
-          slurm_time: 01:00:00
+          slurm_time: 03:00:00
         env:
           CLIMACOMMS_DEVICE: "CUDA"
