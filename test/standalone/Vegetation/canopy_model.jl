@@ -26,7 +26,7 @@ import ClimaParams
         Vcmax25 = fill(FT(9e-5), domain.space.surface)
         AR_params = AutotrophicRespirationParameters(FT)
         RTparams = BeerLambertParameters(FT)
-        photosynthesis_params = FarquharParameters(FT, C3(); Vcmax25 = Vcmax25)
+        photosynthesis_params = FarquharParameters(FT, C3(); Vcmax25)
         stomatal_g_params = MedlynConductanceParameters(FT)
 
         AR_model = AutotrophicRespirationModel{FT}(AR_params)
@@ -513,7 +513,7 @@ end
         # create new field with constant value everywhere
         Vcmax25 = fill(FT(9e-5), domain.space.surface)
         RTparams = BeerLambertParameters(FT)
-        photosynthesis_params = FarquharParameters(FT, C3(); Vcmax25 = Vcmax25)
+        photosynthesis_params = FarquharParameters(FT, C3(); Vcmax25)
         stomatal_g_params = MedlynConductanceParameters(FT)
 
         stomatal_model = MedlynConductanceModel{FT}(stomatal_g_params)
@@ -778,7 +778,7 @@ end
             τ_NIR_leaf,
             G_Function,
         )
-        photosynthesis_params = FarquharParameters(FT, C3(); Vcmax25 = Vcmax25)
+        photosynthesis_params = FarquharParameters(FT, C3(); Vcmax25)
         stomatal_g_params = MedlynConductanceParameters(FT)
 
         stomatal_model = MedlynConductanceModel{FT}(stomatal_g_params)
