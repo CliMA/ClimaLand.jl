@@ -425,6 +425,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         t0,
         ref_time;
         output_writer = nc_writer,
+        average_period = :monthly,
     )
 
     diagnostic_handler =
@@ -439,7 +440,7 @@ end
 function setup_and_solve_problem(; greet = false)
 
     t0 = 0.0
-    tf = 60 * 60.0 * 24 * 60 # keep short until it runs! * 365
+    tf = 60 * 60.0 * 24 * 340
     Δt = 900.0
     nelements = (101, 15)
     if greet

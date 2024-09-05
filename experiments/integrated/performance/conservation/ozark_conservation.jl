@@ -104,8 +104,10 @@ for float_type in (Float32, Float64)
 
         # Evaporation
         E = [
-            parent(sv.saveval[k].soil.turbulent_fluxes.vapor_flux)[1] for
-            k in 2:length(sol.t)
+            parent(
+                sv.saveval[k].soil.turbulent_fluxes.vapor_flux_liq .+
+                sv.saveval[k].soil.turbulent_fluxes.vapor_flux_ice,
+            )[1] for k in 2:length(sol.t)
         ]
         # Root sink term: a positive root extraction is a sink term for soil; add minus sign
         root_sink =

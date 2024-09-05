@@ -72,7 +72,7 @@ function timeseries_fluxes_fig(
     p_ET_m = lines!(
         ax_W,
         datetime2unix.(climaland.DateTime),
-        (climaland.vapor_flux .* 1e3 .* 24 .* 3600) .+
+        (climaland.vapor_flux_liq .* 1e3 .* 24 .* 3600) .+
         (climaland.transpiration .* 1e3 .* 24 .* 3600),
         color = :blue,
     ) # not sure about units

@@ -136,7 +136,7 @@ end
 @diagnostic_compute "soil_aerodynamic_resistance" SoilCanopyModel p.soil.turbulent_fluxes.r_ae
 @diagnostic_compute "soil_latent_heat_flux" SoilCanopyModel p.soil.turbulent_fluxes.lhf
 @diagnostic_compute "soil_sensible_heat_flux" SoilCanopyModel p.soil.turbulent_fluxes.shf
-@diagnostic_compute "vapor_flux" SoilCanopyModel p.soil.turbulent_fluxes.vapor_flux
+@diagnostic_compute "vapor_flux" SoilCanopyModel p.soil.turbulent_fluxes.vapor_flux_liq # should add ice here
 
 # Soil - SoilCO2
 function compute_heterotrophic_respiration!(

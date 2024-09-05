@@ -676,7 +676,7 @@ function ClimaLand.source!(
     z = model.domain.fields.z
     Δz_top = model.domain.fields.Δz_top # this returns the center-face distance, not layer thickness
     @. dY.soil.θ_i +=
-        -p.soil.turbulent_fluxes.vapor_flux * p.soil.ice_frac * _ρ_l / _ρ_i *
+        -p.soil.turbulent_fluxes.vapor_flux_ice * _ρ_l / _ρ_i *
         heaviside(z + 2 * Δz_top) # only apply to top layer, recall that z is negative
 end
 
@@ -711,6 +711,319 @@ function ClimaLand.surface_temperature(
     return ClimaLand.Domains.top_center_to_surface(p.soil.T)
 end
 
+"""
+    ClimaLand.surface_emissivity(
+        model::EnergyHydrology{FT},
+        Y,
+        p,
+    ) where {FT}
+
+Returns the surface emissivity field of the
+`EnergyHydrology` soil model.
+"""
+function ClimaLand.surface_emissivity(
+    model::EnergyHydrology{FT},
+    Y,
+    p,
+) where {FT}
+    return model.parameters.emissivity
+end
+
+"""
+    ClimaLand.surface_albedo(
+        model::EnergyHydrology{FT},
+        Y,
+        p,
+    ) where {FT}
+
+Returns the surface albedo field of the
+`EnergyHydrology` soil model.
+"""
+function ClimaLand.surface_albedo(model::EnergyHydrology{FT}, Y, p) where {FT}
+    return @. FT(
+        0.5 * model.parameters.PAR_albedo + 0.5 * model.parameters.NIR_albedo,
+    )
+end
+
+"""
+    ClimaLand.surface_height(
+        model::EnergyHydrology{FT},
+        Y,
+        p,
+    ) where {FT}
+
+Returns the surface height of the `EnergyHydrology` model.
+"""
+function ClimaLand.surface_height(model::EnergyHydrology{FT}, Y, p) where {FT}
+    return model.domain.fields.z_sfc
+end
+
+function ClimaLand.get_drivers(model::EnergyHydrology)
+    bc = model.boundary_conditions.top
+    if typeof(bc) <: AtmosDrivenFluxBC{
+        <:PrescribedAtmosphere,
+        <:AbstractRadiativeDrivers,
+        <:AbstractRunoffModel,
+    }
+        return (bc.atmos, bc.radiation)
+    else
+        return ()
+    end
+end
+
+
+
+function turbulent_fluxes(
+    atmos::PrescribedAtmosphere,
+    model::EnergyHydrology{FT},
+    Y::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
+    t,
+) where {FT}
+    # Obtain surface quantities needed for computation; these should not allocate
+    T_sfc = ClimaLand.surface_temperature(model, Y, p, t)
+    h_sfc = ClimaLand.surface_height(model, Y, p)
+    d_sfc = ClimaLand.displacement_height(model, Y, p)
+    u_air = p.drivers.u
+    h_air = atmos.h
+    (; K_sat, ν, θ_r, hydrology_cm, z_0m, z_0b, Ω, γ, γT_ref, earth_param_set) =
+        model.parameters
+    hydrology_cm_sfc = ClimaLand.Domains.top_center_to_surface(hydrology_cm)
+    K_sat_sfc = ClimaLand.Domains.top_center_to_surface(K_sat)
+    θ_i_sfc = ClimaLand.Domains.top_center_to_surface(Y.soil.θ_i)
+    ν_sfc = ClimaLand.Domains.top_center_to_surface(ν)
+    θ_r_sfc = ClimaLand.Domains.top_center_to_surface(θ_r)
+    θ_l_sfc = p.soil.sfc_scratch
+    ClimaLand.Domains.linear_interpolation_to_surface!(
+        θ_l_sfc,
+        p.soil.θ_l,
+        model.domain.fields.z,
+        model.domain.fields.Δz_top,
+    )
+    return soil_turbulent_fluxes_at_a_point.(
+        T_sfc,
+        θ_l_sfc,
+        θ_i_sfc,
+        h_sfc,
+        d_sfc,
+        hydrology_cm_sfc,
+        ν_sfc,
+        θ_r_sfc,
+        K_sat_sfc,
+        p.drivers.thermal_state,
+        u_air,
+        h_air,
+        atmos.gustiness,
+        z_0m,
+        z_0b,
+        Ω,
+        γ,
+        γT_ref,
+        Ref(earth_param_set),
+    )
+end
+
+"""
+    soil_turbulent_fluxes_at_a_point(
+                                T_sfc::FT,
+                                θ_l_sfc::FT,
+                                θ_i_sfc::FT,
+                                h_sfc::FT,
+                                d_sfc::FT,
+                                hydrology_cm_sfc::C,
+                                ν_sfc::FT,
+                                θ_r_sfc::FT,
+                                K_sat_sfc::FT,
+                                thermal_state_air::Thermodynamics.PhaseEquil{FT},
+                                u_air::FT,
+                                h_air::FT,
+                                gustiness::FT,
+                                z_0m::FT,
+                                z_0b::FT,
+                                Ω::FT,
+                                γ::FT,
+                                γT_ref,::FT
+                                earth_param_set::EP
+                               ) where {FT <: AbstractFloat, C, EP}
+
+Computes turbulent surface fluxes for soil at a point on a surface given
+(1) Surface state conditions (`T_sfc`, `θ_l_sfc`, `θ_i_sfc`)
+(2) Surface properties, such as the topographical height of the surface (`h_sfc`),  
+    the displacement height (`d_sfc`), hydraulic parameters (`hydrology_cm_sfc`,
+    `ν_sfc, `θ_r_sfc`, `K_sat_sfc`)
+(4) Atmospheric state conditions (`thermal_state_air`, `u_air`)
+(5) Height corresponding to where atmospheric state is measured (`h_air`)
+(6) Parameters: `gustiness`, roughness lengths `z_0m`, `z_0b`, several
+    required to compute the soil conductivity `Ω`, γ`, γT_ref`, and the
+    `earth_param_set`
+
+This returns an energy flux and a liquid water volume flux, stored in
+a tuple with self explanatory keys.
+"""
+function soil_turbulent_fluxes_at_a_point(
+    T_sfc::FT,
+    θ_l_sfc::FT,
+    θ_i_sfc::FT,
+    h_sfc::FT,
+    d_sfc::FT,
+    hydrology_cm_sfc,
+    ν_sfc::FT,
+    θ_r_sfc::FT,
+    K_sat_sfc::FT,
+    thermal_state_air::Thermodynamics.PhaseEquil{FT},
+    u_air::FT,
+    h_air::FT,
+    gustiness::FT,
+    z_0m::FT,
+    z_0b::FT,
+    Ω::FT,
+    γ::FT,
+    γT_ref::FT,
+    earth_param_set::P,
+) where {FT <: AbstractFloat, P}
+    thermo_params = LP.thermodynamic_parameters(earth_param_set)
+    # Estimate surface air density
+    ρ_sfc::FT = ClimaLand.compute_ρ_sfc(thermo_params, thermal_state_air, T_sfc)
+    # Compute saturated specific humidities at surface over ice and liquid water
+    q_sat_ice::FT = Thermodynamics.q_vap_saturation_generic(
+        thermo_params,
+        T_sfc,
+        ρ_sfc,
+        Thermodynamics.Ice(),
+    )
+    q_sat_liq::FT = Thermodynamics.q_vap_saturation_generic(
+        thermo_params,
+        T_sfc,
+        ρ_sfc,
+        Thermodynamics.Liquid(),
+    )
+
+    # Evaporation:
+    thermal_state_sfc::Thermodynamics.PhaseEquil{FT} =
+        Thermodynamics.PhaseEquil_ρTq(thermo_params, ρ_sfc, T_sfc, q_sat_liq)# use to get potential evaporation E0, r_ae (weak dependence on q).
+
+    # SurfaceFluxes.jl expects a relative difference between where u_air = 0
+    # and the atmosphere height. Here, we assume h and h_sfc are measured
+    # relative to a common reference. Then d_sfc + h_sfc + z_0m is the apparent
+    # source of momentum, and
+    # Δh ≈ h_air - d_sfc - h_sfc is the relative height difference between the
+    # apparent source of momentum and the atmosphere height.
+
+    # In this we have neglected z_0m and z_0b (i.e. assumed they are small
+    # compared to Δh).
+    state_sfc = SurfaceFluxes.StateValues(
+        FT(0),
+        SVector{2, FT}(0, 0),
+        thermal_state_sfc,
+    )
+    state_air = SurfaceFluxes.StateValues(
+        h_air - d_sfc - h_sfc,
+        SVector{2, FT}(u_air, 0),
+        thermal_state_air,
+    )
+
+    # State containers
+    states = SurfaceFluxes.ValuesOnly(
+        state_air,
+        state_sfc,
+        z_0m,
+        z_0b,
+        gustiness = gustiness,
+    )
+    surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
+    conditions = SurfaceFluxes.surface_conditions(
+        surface_flux_params,
+        states;
+        tol_neutral = SFP.cp_d(surface_flux_params) / 100000,
+    )
+    _LH_v0::FT = LP.LH_v0(earth_param_set)
+    _ρ_liq::FT = LP.ρ_cloud_liq(earth_param_set)
+    cp_m::FT = Thermodynamics.cp_m(thermo_params, thermal_state_air)
+    T_air::FT = Thermodynamics.air_temperature(thermo_params, thermal_state_air)
+    ρ_air::FT = Thermodynamics.air_density(thermo_params, thermal_state_air)
+    q_air::FT =
+        Thermodynamics.total_specific_humidity(thermo_params, thermal_state_air)
+
+    ΔT::FT = T_air - T_sfc
+    r_ae_liq::FT = 1 / (conditions.Ch * SurfaceFluxes.windspeed(states))
+
+    E0::FT =
+        SurfaceFluxes.evaporation(surface_flux_params, states, conditions.Ch)# potential evaporation rate, mass flux
+    Ẽ0::FT = E0 / _ρ_liq
+    Ẽ::FT = Ẽ0
+    if q_air < q_sat_liq # adjust potential evaporation rate to account for soil resistance
+        K_sfc::FT =
+            impedance_factor(θ_i_sfc / (θ_l_sfc + θ_i_sfc - θ_r_sfc), Ω) *
+            viscosity_factor(T_sfc, γ, γT_ref) *
+            hydraulic_conductivity(
+                hydrology_cm_sfc,
+                K_sat_sfc,
+                effective_saturation(ν_sfc, θ_l_sfc, θ_r_sfc),
+            )
+        K_c::FT = hydraulic_conductivity(
+            hydrology_cm_sfc,
+            K_sat_sfc,
+            hydrology_cm_sfc.S_c,
+        )
+        x::FT = 4 * K_sfc * (1 + Ẽ0 / (4 * K_c))
+        Ẽ *= x / (Ẽ0 + x)
+    else
+        Ẽ *= 0 # condensation, set to zero
+    end
+    H_liq::FT = -ρ_air * cp_m * ΔT / r_ae_liq
+
+    # Sublimation:
+    thermal_state_sfc =
+        Thermodynamics.PhaseEquil_ρTq(thermo_params, ρ_sfc, T_sfc, q_sat_ice)
+    β_i::FT = FT(1)
+    if q_air < q_sat_ice # sublimation, adjust β
+        β_i *= (θ_i_sfc / ν_sfc)^4
+    else
+        β_i *= 0 # frost, set to zero
+    end
+
+    state_sfc = SurfaceFluxes.StateValues(
+        FT(0),
+        SVector{2, FT}(0, 0),
+        thermal_state_sfc,
+    )
+
+    states = SurfaceFluxes.ValuesOnly(
+        state_air,
+        state_sfc,
+        z_0m,
+        z_0b,
+        beta = β_i,
+        gustiness = gustiness,
+    )
+    conditions = SurfaceFluxes.surface_conditions(
+        surface_flux_params,
+        states;
+        tol_neutral = SFP.cp_d(surface_flux_params) / 100000,
+    )
+    S::FT =
+        SurfaceFluxes.evaporation(surface_flux_params, states, conditions.Ch)# sublimation rate, mass flux
+    S̃::FT = S / _ρ_liq
+
+    r_ae_ice::FT = 1 / (conditions.Ch * SurfaceFluxes.windspeed(states))
+    H_ice::FT = -ρ_air * cp_m * ΔT / r_ae_ice
+
+    # Heat fluxes
+    LH::FT = _LH_v0 * (Ẽ + S̃) * _ρ_liq
+    H::FT = (H_ice + H_liq) / 2
+    r_ae::FT = 2 * r_ae_liq * r_ae_ice / (r_ae_liq + r_ae_ice) # implied by definition of H
+    return (
+        lhf = LH,
+        shf = H,
+        vapor_flux_liq = Ẽ,
+        r_ae = r_ae,
+        vapor_flux_ice = S̃,
+    )
+end
+
+
+# For Swenson/Lawrence 2014 resistance parameterization
+#=
 """
     ClimaLand.surface_resistance(
         model::EnergyHydrology{FT},
@@ -752,39 +1065,6 @@ function ClimaLand.surface_resistance(
     )
 end
 
-"""
-    ClimaLand.surface_emissivity(
-        model::EnergyHydrology{FT},
-        Y,
-        p,
-    ) where {FT}
-
-Returns the surface emissivity field of the
-`EnergyHydrology` soil model.
-"""
-function ClimaLand.surface_emissivity(
-    model::EnergyHydrology{FT},
-    Y,
-    p,
-) where {FT}
-    return model.parameters.emissivity
-end
-
-"""
-    ClimaLand.surface_albedo(
-        model::EnergyHydrology{FT},
-        Y,
-        p,
-    ) where {FT}
-
-Returns the surface albedo field of the
-`EnergyHydrology` soil model.
-"""
-function ClimaLand.surface_albedo(model::EnergyHydrology{FT}, Y, p) where {FT}
-    return @. FT(
-        0.5 * model.parameters.PAR_albedo + 0.5 * model.parameters.NIR_albedo,
-    )
-end
 
 """
     ClimaLand.surface_specific_humidity(
@@ -858,29 +1138,84 @@ function ClimaLand.surface_specific_humidity(
     return @. (1 - ice_frac) * q_over_liq + ice_frac * q_over_ice
 end
 
-
 """
-    ClimaLand.surface_height(
-        model::EnergyHydrology{FT},
-        Y,
-        p,
-    ) where {FT}
+    ice_fraction(θ_l::FT, θ_i::FT, ν::FT, θ_r::FT)::FT where {FT}
 
-Returns the surface height of the `EnergyHydrology` model.
+Computes and returns the ice fraction, which is the
+fraction  of the vapor flux that is due to sublimation, and 
+the fraction of the humidity in the air due to ice, as
+
+f = S_i/(S_i+S_l)
+
+This same fraction is used to estimate the specific humidity, i.e.
+q = q_over_ice * f + q_over_water * (1-f).
 """
-function ClimaLand.surface_height(model::EnergyHydrology{FT}, Y, p) where {FT}
-    return model.domain.fields.z_sfc
+function ice_fraction(θ_l::FT, θ_i::FT, ν::FT, θ_r::FT)::FT where {FT}
+    S_l = effective_saturation(ν, θ_l, θ_r)
+    S_i = effective_saturation(ν, θ_i, θ_r)
+    f = S_i / (S_i + S_l)
+    return f
 end
 
-function ClimaLand.get_drivers(model::EnergyHydrology)
-    bc = model.boundary_conditions.top
-    if typeof(bc) <: AtmosDrivenFluxBC{
-        <:PrescribedAtmosphere,
-        <:AbstractRadiativeDrivers,
-        <:AbstractRunoffModel,
-    }
-        return (bc.atmos, bc.radiation)
-    else
-        return ()
-    end
+"""
+    soil_tortuosity(θ_l::FT, θ_i::FT, ν::FT) where {FT}
+
+Computes the tortuosity of water vapor in a porous medium,
+as a function of porosity `ν` and the volumetric liquid water
+and ice contents, `θ_l` and `θ_i`.
+
+See Equation (1) of : Shokri, N., P. Lehmann, and
+D. Or (2008), Effects of hydrophobic layers on evaporation from
+porous media, Geophys. Res. Lett., 35, L19407, doi:10.1029/
+2008GL035230.
+"""
+function soil_tortuosity(θ_l::FT, θ_i::FT, ν::FT) where {FT}
+    safe_θ_a = max(ν - θ_l - θ_i, eps(FT))
+    return safe_θ_a^(FT(2.5)) / ν
 end
+
+"""
+    soil_resistance(θ_l::FT,
+                    θ_i::FT,
+                    hydrology_cm::C,
+                    ν::FT,
+                    θ_r::FT,
+                    d_ds::FT,
+                    earth_param_set::EP,
+                   ) where {FT, EP, C}
+
+Computes the resistance of the top of the soil column to
+water vapor diffusion, as a function of the surface 
+volumetric liquid water fraction `θ_l`, the augmented
+liquid water fraction `ϑ_l`,  the volumetric ice water
+fraction `θ_i`, and other soil parameters.
+"""
+function soil_resistance(
+    θ_l::FT,
+    θ_i::FT,
+    hydrology_cm::C,
+    ν::FT,
+    θ_r::FT,
+    d_ds::FT,
+    earth_param_set::EP,
+) where {FT, EP, C}
+    (; S_c) = hydrology_cm
+    _D_vapor = FT(LP.D_vapor(earth_param_set))
+    S_w = effective_saturation(ν, θ_l + θ_i, θ_r)
+    τ_a = soil_tortuosity(θ_l, θ_i, ν)
+    dsl::FT = dry_soil_layer_thickness(S_w, S_c, d_ds)
+    r_soil = dsl / (_D_vapor * τ_a) # [s\m]
+    return r_soil
+end
+
+"""
+    dry_soil_layer_thickness(S_w::FT, S_c::FT, d_ds::FT)::FT where {FT}
+
+Returns the maximum dry soil layer thickness that can develop under vapor flux; 
+this is used when computing the soil resistance to vapor flux according to
+Swenson et al (2012)/Sakaguchi and Zeng (2009).
+"""
+function dry_soil_layer_thickness(S_w::FT, S_c::FT, d_ds::FT)::FT where {FT}
+    return S_w < S_c ? d_ds * (S_c - S_w) / S_c : FT(0)
+end
+=#

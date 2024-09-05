@@ -64,7 +64,9 @@ import ClimaCore.MatrixFields: @name, ⋅
 import ..Parameters as LP
 import ClimaCore: Fields, Operators, Geometry, Spaces
 using Thermodynamics
-
+using SurfaceFluxes
+using StaticArrays
+import SurfaceFluxes.Parameters as SFP
 import ClimaLand.Domains: Column, HybridBox, SphericalShell
 import ClimaLand:
     AbstractImExModel,
@@ -90,6 +92,7 @@ import ClimaLand:
     surface_emissivity,
     surface_height,
     surface_resistance,
+    turbulent_fluxes,
     get_drivers
 export RichardsModel,
     RichardsParameters,
