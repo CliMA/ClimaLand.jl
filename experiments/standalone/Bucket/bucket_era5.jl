@@ -289,11 +289,11 @@ if regional_simulation
     ClimaCore.Geometry._coordinate(
         pt::ClimaCore.Geometry.LatLongPoint,
         ::Val{1},
-    ) = ClimaCore.Geometry.LongPoint(pt.long)
+    ) = ClimaCore.Geometry.LatPoint(pt.lat)
     ClimaCore.Geometry._coordinate(
         pt::ClimaCore.Geometry.LatLongPoint,
         ::Val{2},
-    ) = ClimaCore.Geometry.LatPoint(pt.lat)
+    ) = ClimaCore.Geometry.LongPoint(pt.long)
 
 else
     longpts = range(-180.0, 180.0, num_pts)
