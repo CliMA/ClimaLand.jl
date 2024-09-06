@@ -28,7 +28,8 @@ using ClimaAnalysis
 import ClimaAnalysis.Visualize as viz
 using ClimaUtilities
 
-import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
+import ClimaUtilities.TimeVaryingInputs:
+    TimeVaryingInput, LinearInterpolation, PeriodicCalendar
 import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
 import ClimaUtilities.Regridders: InterpolationsRegridder
 import ClimaUtilities.ClimaArtifacts: @clima_artifact
@@ -45,7 +46,7 @@ using Dates
 import NCDatasets
 
 const FT = Float64;
-
+time_interpolation_method = LinearInterpolation(PeriodicCalendar())
 regridder_type = :InterpolationsRegridder
 context = ClimaComms.context()
 device = ClimaComms.device()
@@ -81,6 +82,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         reference_date = start_date,
         regridder_type,
         file_reader_kwargs = (; preprocess_func = (data) -> -data / 3600,),
+        method = time_interpolation_method,
     )
 
     snow_precip = TimeVaryingInput(
@@ -90,6 +92,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         reference_date = start_date,
         regridder_type,
         file_reader_kwargs = (; preprocess_func = (data) -> -data / 3600,),
+        method = time_interpolation_method,
     )
 
     u_atmos = TimeVaryingInput(
@@ -98,6 +101,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         surface_space;
         reference_date = start_date,
         regridder_type,
+        method = time_interpolation_method,
     )
     q_atmos = TimeVaryingInput(
         joinpath(era5_artifact_path, "era5_2021_0.9x1.25_clima.nc"),
@@ -105,6 +109,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         surface_space;
         reference_date = start_date,
         regridder_type,
+        method = time_interpolation_method,
     )
     P_atmos = TimeVaryingInput(
         joinpath(era5_artifact_path, "era5_2021_0.9x1.25.nc"),
@@ -112,6 +117,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         surface_space;
         reference_date = start_date,
         regridder_type,
+        method = time_interpolation_method,
     )
 
     T_atmos = TimeVaryingInput(
@@ -120,6 +126,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         surface_space;
         reference_date = start_date,
         regridder_type,
+        method = time_interpolation_method,
     )
     h_atmos = FT(10)
 
@@ -143,6 +150,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         reference_date = start_date,
         regridder_type,
         file_reader_kwargs = (; preprocess_func = (data) -> data / 3600,),
+        method = time_interpolation_method,
     )
     LW_d = TimeVaryingInput(
         joinpath(era5_artifact_path, "era5_2021_0.9x1.25.nc"),
@@ -151,6 +159,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         reference_date = start_date,
         regridder_type,
         file_reader_kwargs = (; preprocess_func = (data) -> data / 3600,),
+        method = time_interpolation_method,
     )
 
     function zenith_angle(
@@ -430,7 +439,7 @@ end
 function setup_and_solve_problem(; greet = false)
 
     t0 = 0.0
-    tf = 60 * 60.0 * 24 * 340
+    tf = 60 * 60.0 * 24 * 365
     Δt = 900.0
     nelements = (101, 15)
     if greet

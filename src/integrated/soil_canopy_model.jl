@@ -263,18 +263,22 @@ function make_update_boundary_fluxes(
             area_index,
             land.canopy.hydraulics.compartment_labels[1],
         )
+        # Note that we model the flux between each soil layer and the canopy as:
+        # Flux = -K_eff x [(ψ_canopy - ψ_soil)/(z_canopy - z_soil) + 1], where
+        # K_eff = K_soil K_canopy /(K_canopy + K_soil)
+
+        # Note that in `PrescribedSoil` mode, we compute the flux using K_soil = K_plant(ψ_soil)
+        # and K_canopy = K_plant(ψ_canopy). In `PrognosticSoil` mode here, we compute the flux using
+        # K_soil = K_soil(ψ_soil) and K_canopy = K_plant(ψ_canopy).
 
         @. p.root_extraction =
             above_ground_area_index *
-            PlantHydraulics.flux(
+            PlantHydraulics.water_flux(
                 z,
                 land.canopy.hydraulics.compartment_midpoints[1],
                 p.soil.ψ,
                 p.canopy.hydraulics.ψ.:1,
-                PlantHydraulics.hydraulic_conductivity(
-                    conductivity_model,
-                    p.soil.ψ,
-                ),
+                p.soil.K,
                 PlantHydraulics.hydraulic_conductivity(
                     conductivity_model,
                     p.canopy.hydraulics.ψ.:1,
