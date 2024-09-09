@@ -638,7 +638,7 @@ end
 function setup_and_solve_problem(; greet = false)
 
     t0 = 0.0
-    tf = 60 * 60.0 * 24 * 7 # keep short until it runs! * 365
+    tf = 60 * 60.0 * 24 * 60 # keep short until it runs! * 365
     Δt = 900.0
     nelements = (101, 15)
     if greet
