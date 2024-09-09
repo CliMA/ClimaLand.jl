@@ -365,11 +365,21 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
     # Energy Balance model
     ac_canopy = FT(2.5e3)
 
+    #clm_data is used for g1 and vcmax maps
+    clm_artifact_path = ClimaLand.Artifacts.clm_data_folder_path(; context)
+
     # Conductance Model
-    g1 = FT(141) # Wang et al: 141 sqrt(Pa) for Medlyn model; Natan used 300.
+    # g1 is read in units of sqrt(kPa) and then converted to sqrt(Pa)
+    g1 = SpaceVaryingInput(
+        joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
+        "medlynslope",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc,),
+        file_reader_kwargs = (; preprocess_func = (data) -> data * 10^(3 / 2),),
+    )
 
     #Photosynthesis model
-    clm_artifact_path = ClimaLand.Artifacts.clm_data_folder_path(; context)
     # vcmax is read in units of umol CO2/m^2/s and then converted to mol CO2/m^2/s
     Vcmax25 = SpaceVaryingInput(
         joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
