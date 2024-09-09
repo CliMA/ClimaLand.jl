@@ -213,7 +213,7 @@ ref_T = [parent(ref_sol.u[k].canopy.energy.T)[1] for k in 1:length(ref_sol.t)]
 
 
 savedir = joinpath(pkgdir(ClimaLand), "experiments/standalone/Vegetation");
-save(joinpath(savedir, "ref_T.txt"), ref_T)
+# save(joinpath(savedir, "ref_T.txt"), ref_T)
 
 open(joinpath(savedir, "ref_T_dt$ref_dt.txt"), "w") do io
     writedlm(io, ref_T, ',')
