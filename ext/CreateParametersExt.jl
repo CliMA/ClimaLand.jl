@@ -535,7 +535,9 @@ function MedlynConductanceParameters(
 
     parameters = CP.get_parameter_values(toml_dict, name_map, "Land")
     FT = CP.float_type(toml_dict)
-    return MedlynConductanceParameters{FT}(; g1, parameters..., kwargs...)
+    g1 = FT.(g1)
+    G1 = typeof(g1)
+    return MedlynConductanceParameters{FT, G1}(; g1, parameters..., kwargs...)
 end
 
 """

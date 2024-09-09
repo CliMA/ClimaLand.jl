@@ -9,13 +9,16 @@ abstract type AbstractStomatalConductanceModel{FT} <:
 The required parameters for the Medlyn stomatal conductance model.
 $(DocStringExtensions.FIELDS)
 """
-Base.@kwdef struct MedlynConductanceParameters{FT <: AbstractFloat}
+Base.@kwdef struct MedlynConductanceParameters{
+    FT <: AbstractFloat,
+    G1 <: Union{FT, ClimaCore.Fields.Field},
+}
     "Relative diffusivity of water vapor (unitless)"
     Drel::FT
     "Minimum stomatal conductance mol/m^2/s"
     g0::FT
     "Slope parameter, inversely proportional to the square root of marginal water use efficiency (Pa^{1/2})"
-    g1::FT
+    g1::G1
 end
 
 Base.eltype(::MedlynConductanceParameters{FT}) where {FT} = FT
