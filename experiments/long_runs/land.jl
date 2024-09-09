@@ -363,7 +363,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     τ_NIR_leaf = FT(0.25)
 
     # Energy Balance model
-    ac_canopy = FT(2.5e3)
+    ac_canopy = FT(2.5e4)
 
     #clm_data is used for g1 and vcmax maps
     clm_artifact_path = ClimaLand.Artifacts.clm_data_folder_path(; context)
