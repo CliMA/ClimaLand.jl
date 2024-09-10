@@ -2,6 +2,7 @@ agents:
   queue: new-central
   slurm_mem: 8G
   modules: climacommon/2024_05_27
+  slurm_time: 10:00:00
 
 timeout_in_minutes: 600
 
