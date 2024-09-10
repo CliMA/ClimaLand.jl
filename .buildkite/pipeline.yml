@@ -3,6 +3,8 @@ agents:
   slurm_mem: 8G
   modules: climacommon/2024_05_27
 
+timeout_in_minutes: 600
+
 env:
   JULIA_NVTX_CALLBACKS: gc
   OPENBLAS_NUM_THREADS: 1
