@@ -206,7 +206,7 @@ prob = SciMLBase.ODEProblem(
     p,
 );
 
-ref_dt = 6.0
+ref_dt = 0.1
 ref_sol =
     SciMLBase.solve(prob, ode_algo; dt = ref_dt, callback = cb, saveat = saveat);
 ref_T = [parent(ref_sol.u[k].canopy.energy.T)[1] for k in 1:length(ref_sol.t)]
