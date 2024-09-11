@@ -3,9 +3,20 @@ ClimaLand.jl Release Notes
 
 main
 --------
- - Add regional simulation example PR [#757](https://github.com/CliMA/ClimaLand.jl/pull/757)
- - ![][badge-💥breaking] Extend photosynthesis mechanism parameter to support fields.
+
+v0.15.0
+--------
+- Add regional simulation example PR [#757](https://github.com/CliMA/ClimaLand.jl/pull/757)
+- ![][badge-💥breaking] Extend photosynthesis mechanism parameter to support fields.
   PR[#774](https://github.com/CliMA/ClimaLand.jl/pull/774)
+- Reduced number of dependencies, leading to faster instantiation and import time,
+- Improved compatibility of ClimaLand with older versions of packages.
+  PR[#749](https://github.com/CliMA/ClimaLand.jl/pull/749)
+  PR[#748](https://github.com/CliMA/ClimaLand.jl/pull/748)
+- Added more inputs varying in space (MedlynConductance and Vcmax).
+  PR[#759](https://github.com/CliMA/ClimaLand.jl/pull/759)
+- Added a regional run example.
+  PR[#757](https://github.com/CliMA/ClimaLand.jl/pull/757)
 
 v0.14.3
 --------
@@ -35,6 +46,7 @@ v0.13.0
 - ![][badge-💥breaking] rename update_jacobian to compute_jacobian
   and tendency_jacobian to jacobian
   PR[#685](https://github.com/CliMA/ClimaLand.jl/pull/685)
+
 v0.12.5
 --------
 - Turn of dss
