@@ -73,7 +73,6 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     subsurface_space = domain.space.subsurface
 
     ref_time = DateTime(2021)
-    t_start = t0
     # Forcing data
     era5_artifact_path =
         ClimaLand.Artifacts.era5_land_forcing_data2021_folder_path(; context)    # Precipitation:
@@ -82,7 +81,6 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         "rf",
         surface_space;
         reference_date = ref_time,
-        t_start,
         regridder_type,
         file_reader_kwargs = (; preprocess_func = (data) -> -data / 3600,),
     )
@@ -92,7 +90,6 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         "sf",
         surface_space;
         reference_date = ref_time,
-        t_start,
         regridder_type,
         file_reader_kwargs = (; preprocess_func = (data) -> -data / 3600,),
     )
@@ -102,7 +99,6 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         "ws",
         surface_space;
         reference_date = ref_time,
-        t_start,
         regridder_type,
     )
     q_atmos = TimeVaryingInput(
@@ -110,7 +106,6 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         "q",
         surface_space;
         reference_date = ref_time,
-        t_start,
         regridder_type,
     )
     P_atmos = TimeVaryingInput(
@@ -118,7 +113,6 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         "sp",
         surface_space;
         reference_date = ref_time,
-        t_start,
         regridder_type,
     )
 
@@ -127,7 +121,6 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         "t2m",
         surface_space;
         reference_date = ref_time,
-        t_start,
         regridder_type,
     )
     h_atmos = FT(10)
@@ -150,7 +143,6 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         "ssrd",
         surface_space;
         reference_date = ref_time,
-        t_start,
         regridder_type,
         file_reader_kwargs = (; preprocess_func = (data) -> data / 3600,),
     )
@@ -159,7 +151,6 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         "strd",
         surface_space;
         reference_date = ref_time,
-        t_start,
         regridder_type,
         file_reader_kwargs = (; preprocess_func = (data) -> data / 3600,),
     )
@@ -494,7 +485,6 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         "lai",
         surface_space;
         reference_date = ref_time,
-        t_start,
         regridder_type,
         file_reader_kwargs = (;
             preprocess_func = (data) -> data > 0.05 ? data : 0.0,
@@ -620,7 +610,6 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
 
     diags = ClimaLand.default_diagnostics(
         land,
-        t0,
         ref_time;
         output_writer = nc_writer,
         output_vars = :short,

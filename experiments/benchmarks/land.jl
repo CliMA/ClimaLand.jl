@@ -72,7 +72,6 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
     subsurface_space = domain.space.subsurface
 
     ref_time = DateTime(2021)
-    t_start = 0.0
 
     # Forcing data
     era5_artifact_path =
@@ -82,7 +81,6 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
         "rf",
         surface_space;
         reference_date = ref_time,
-        t_start,
         regridder_type,
         file_reader_kwargs = (; preprocess_func = (data) -> -data / 3600,),
     )
@@ -92,7 +90,6 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
         "sf",
         surface_space;
         reference_date = ref_time,
-        t_start,
         regridder_type,
         file_reader_kwargs = (; preprocess_func = (data) -> -data / 3600,),
     )
@@ -102,7 +99,6 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
         "ws",
         surface_space;
         reference_date = ref_time,
-        t_start,
         regridder_type,
     )
     q_atmos = TimeVaryingInput(
@@ -110,7 +106,6 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
         "q",
         surface_space;
         reference_date = ref_time,
-        t_start,
         regridder_type,
     )
     P_atmos = TimeVaryingInput(
@@ -118,7 +113,6 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
         "sp",
         surface_space;
         reference_date = ref_time,
-        t_start,
         regridder_type,
     )
 
@@ -127,7 +121,6 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
         "t2m",
         surface_space;
         reference_date = ref_time,
-        t_start,
         regridder_type,
     )
     h_atmos = FT(10)
@@ -150,7 +143,6 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
         "ssrd",
         surface_space;
         reference_date = ref_time,
-        t_start,
         regridder_type,
         file_reader_kwargs = (; preprocess_func = (data) -> data / 3600,),
     )
@@ -159,7 +151,6 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
         "strd",
         surface_space;
         reference_date = ref_time,
-        t_start,
         regridder_type,
         file_reader_kwargs = (; preprocess_func = (data) -> data / 3600,),
     )
@@ -493,7 +484,6 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
         "lai",
         surface_space;
         reference_date = ref_time,
-        t_start,
         regridder_type,
         file_reader_kwargs = (;
             preprocess_func = (data) -> data > 0.05 ? data : 0.0,

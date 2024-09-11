@@ -110,7 +110,7 @@ function setup_prob(t0, tf, Δt)
 
     surface_space = bucket_domain.space.surface
     # Construct albedo parameter object using temporal map
-    albedo = PrescribedSurfaceAlbedo{FT}(ref_time, t0, surface_space)
+    albedo = PrescribedSurfaceAlbedo{FT}(ref_time, surface_space)
 
     bucket_parameters = BucketModelParameters(FT; albedo, z_0m, z_0b, τc)
 

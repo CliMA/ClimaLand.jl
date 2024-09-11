@@ -14,7 +14,6 @@ export default_diagnostics
                                 period,
                                 reduction,
                                 output_writer,
-                                t_start,
                                 reference_date,
                                 short_names...;
                                 pre_output_hook! = nothing,
@@ -26,7 +25,6 @@ function common_diagnostics(
     period,
     reduction,
     output_writer,
-    t_start,
     reference_date,
     short_names...;
     pre_output_hook! = nothing,
@@ -35,8 +33,8 @@ function common_diagnostics(
         map(short_names) do short_name
             output_schedule_func =
                 period isa Period ?
-                EveryCalendarDtSchedule(period; t_start, reference_date) :
-                EveryDtSchedule(period; t_start)
+                EveryCalendarDtSchedule(period; reference_date) :
+                EveryDtSchedule(period)
             return ScheduledDiagnostic(
                 variable = get_diagnostic_variable(short_name),
                 compute_schedule_func = EveryStepSchedule(),
@@ -53,11 +51,10 @@ include("standard_diagnostic_frequencies.jl")
 
 # Bucket
 function default_diagnostics(
-    land_model::BucketModel,
-    t_start,
+    land_model::BucketModel{FT},
     reference_date;
     output_writer,
-)
+) where {FT}
 
     define_diagnostics!(land_model)
 
@@ -78,9 +75,9 @@ function default_diagnostics(
     ]
 
     default_outputs = hourly_averages(
+        FT,
         bucket_diagnostics...;
         output_writer,
-        t_start,
         reference_date,
     )
 
@@ -89,13 +86,12 @@ end
 
 # SoilCanopyModel
 function default_diagnostics(
-    land_model::SoilCanopyModel,
-    t_start,
+    land_model::SoilCanopyModel{FT},
     reference_date;
     output_writer,
     output_vars = :long,
     average_period = :daily,
-)
+) where {FT}
 
     define_diagnostics!(land_model)
 
@@ -163,23 +159,23 @@ function default_diagnostics(
 
     if average_period == :hourly
         default_outputs = hourly_averages(
+            FT,
             soilcanopy_diagnostics...;
             output_writer,
-            t_start,
             reference_date,
         )
     elseif average_period == :daily
         default_outputs = daily_averages(
+            FT,
             soilcanopy_diagnostics...;
             output_writer,
-            t_start,
             reference_date,
         )
     elseif average_period == :monthly
         default_outputs = monthly_averages(
+            FT,
             soilcanopy_diagnostics...;
             output_writer,
-            t_start,
             reference_date,
         )
     end
@@ -190,12 +186,11 @@ end
 
 # SoilModel
 function default_diagnostics(
-    land_model::EnergyHydrology,
-    t_start,
+    land_model::EnergyHydrology{FT},
     reference_date;
     output_writer,
     average_period = :daily,
-)
+) where {FT}
 
     define_diagnostics!(land_model)
 
@@ -203,23 +198,23 @@ function default_diagnostics(
 
     if average_period == :hourly
         default_outputs = hourly_averages(
+            FT,
             soil_diagnostics...;
             output_writer,
-            t_start,
             reference_date,
         )
     elseif average_period == :daily
         default_outputs = daily_averages(
+            FT,
             soil_diagnostics...;
             output_writer,
-            t_start,
             reference_date,
         )
     elseif average_period == :monthly
         default_outputs = monthly_averages(
+            FT,
             soil_diagnostics...;
             output_writer,
-            t_start,
             reference_date,
         )
     end

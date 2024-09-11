@@ -122,7 +122,6 @@ tf = 14 * 86400;
 device_suffix =
     typeof(ClimaComms.context().device) <: ClimaComms.CPUSingleThreaded ?
     "cpu" : "gpu"
-t_start = t0
 surface_space = bucket_domain.space.surface
 α_snow = FT(0.8)
 albedo = PrescribedBaregroundAlbedo{FT}(α_snow, surface_space);
@@ -142,7 +141,6 @@ precip = TimeVaryingInput(
     "rf",
     surface_space;
     reference_date = ref_time,
-    t_start,
     regridder_type,
     file_reader_kwargs = (; preprocess_func = (data) -> -data / 3600,),
 )
@@ -152,7 +150,6 @@ snow_precip = TimeVaryingInput(
     "sf",
     surface_space;
     reference_date = ref_time,
-    t_start,
     regridder_type,
     file_reader_kwargs = (; preprocess_func = (data) -> -data / 3600,),
 )
@@ -162,7 +159,6 @@ u_atmos = TimeVaryingInput(
     "ws",
     surface_space;
     reference_date = ref_time,
-    t_start,
     regridder_type,
 )
 q_atmos = TimeVaryingInput(
@@ -170,7 +166,6 @@ q_atmos = TimeVaryingInput(
     "q",
     surface_space;
     reference_date = ref_time,
-    t_start,
     regridder_type,
 )
 P_atmos = TimeVaryingInput(
@@ -178,7 +173,6 @@ P_atmos = TimeVaryingInput(
     "sp",
     surface_space;
     reference_date = ref_time,
-    t_start,
     regridder_type,
 )
 
@@ -187,7 +181,6 @@ T_atmos = TimeVaryingInput(
     "t2m",
     surface_space;
     reference_date = ref_time,
-    t_start,
     regridder_type,
 )
 h_atmos = FT(10);
@@ -214,7 +207,6 @@ SW_d = TimeVaryingInput(
     "ssrd",
     surface_space;
     reference_date = ref_time,
-    t_start,
     regridder_type,
     file_reader_kwargs = (; preprocess_func = (data) -> data / 3600,),
 )
@@ -223,7 +215,6 @@ LW_d = TimeVaryingInput(
     "strd",
     surface_space;
     reference_date = ref_time,
-    t_start,
     regridder_type,
     file_reader_kwargs = (; preprocess_func = (data) -> data / 3600,),
 )

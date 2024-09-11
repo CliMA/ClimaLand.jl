@@ -146,7 +146,7 @@ end
     )
     t_start = Float64(0)
 
-    albedo = PrescribedSurfaceAlbedo{FT}(date_ref, t_start, space)
+    albedo = PrescribedSurfaceAlbedo{FT}(date_ref, space)
 
     Y = (; bucket = (; W = Fields.zeros(space)))
     p = (; bucket = (; α_sfc = Fields.zeros(space)))
@@ -309,7 +309,7 @@ end
     for bucket_domain in bucket_domains
         space = bucket_domain.space.surface
         if bucket_domain isa SphericalShell
-            albedo_model = PrescribedSurfaceAlbedo{FT}(date_ref, t_start, space)
+            albedo_model = PrescribedSurfaceAlbedo{FT}(date_ref, space)
             # Radiation
             ref_time = DateTime(2005, 1, 15, 12)
             SW_d = (t) -> 0
@@ -388,7 +388,6 @@ end
                 FT,
             }(
                 date_ref,
-                t_start,
                 space,
             )
         end
