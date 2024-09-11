@@ -25,14 +25,14 @@ FT = Float64;
 earth_param_set = LP.LandParameters(FT)
 thermo_params = LP.thermodynamic_parameters(earth_param_set);
 
-ref_time = DateTime(2005)
+start_date = DateTime(2005)
 SW_d = (t) -> 0
 LW_d = (t) -> 270.0^4 * 5.67e-8
 radiation = PrescribedRadiativeFluxes(
     FT,
     TimeVaryingInput(SW_d),
     TimeVaryingInput(LW_d),
-    ref_time,
+    start_date,
 );
 # Set up atmospheric conditions that result in the potential evaporation
 # rate obsereved in the experiment.
@@ -60,7 +60,7 @@ atmos = PrescribedAtmosphere(
     TimeVaryingInput(u_atmos),
     TimeVaryingInput(q_atmos),
     TimeVaryingInput(P_atmos),
-    ref_time,
+    start_date,
     h_atmos,
     earth_param_set;
     gustiness = gustiness,

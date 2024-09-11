@@ -131,22 +131,22 @@ end
     surface_coords = Fields.coordinate_field(space)
 
     infile_path = ClimaLand.Artifacts.cesm2_albedo_dataset_path()
-    date_ref_noleap = NCDataset(infile_path, "r") do ds
+    start_date_noleap = NCDataset(infile_path, "r") do ds
         ds["time"][1]
     end
     # Converting from NoLeap
-    date_ref = Dates.DateTime(
-        Dates.year(date_ref_noleap),
-        Dates.month(date_ref_noleap),
-        Dates.day(date_ref_noleap),
-        Dates.hour(date_ref_noleap),
-        Dates.minute(date_ref_noleap),
-        Dates.second(date_ref_noleap),
-        Dates.millisecond(date_ref_noleap),
+    start_date = Dates.DateTime(
+        Dates.year(start_date_noleap),
+        Dates.month(start_date_noleap),
+        Dates.day(start_date_noleap),
+        Dates.hour(start_date_noleap),
+        Dates.minute(start_date_noleap),
+        Dates.second(start_date_noleap),
+        Dates.millisecond(start_date_noleap),
     )
     t_start = Float64(0)
 
-    albedo = PrescribedSurfaceAlbedo{FT}(date_ref, space)
+    albedo = PrescribedSurfaceAlbedo{FT}(start_date, space)
 
     Y = (; bucket = (; W = Fields.zeros(space)))
     p = (; bucket = (; α_sfc = Fields.zeros(space)))
@@ -155,7 +155,7 @@ end
     varname = "sw_alb"
     file_dates = DataHandling.available_dates(albedo.albedo.data_handler)
 
-    new_date = date_ref + Second(t_start)
+    new_date = start_date + Second(t_start)
     t_curr = t_start
     for i in 1:5
         @assert new_date == file_dates[i]
@@ -205,14 +205,14 @@ end
             albedo = PrescribedBaregroundAlbedo{FT}(α_snow, surface_space)
 
             # Radiation
-            ref_time = DateTime(2005, 1, 15, 12)
+            start_date = DateTime(2005, 1, 15, 12)
             SW_d = (t) -> 0.0
             LW_d = (t) -> 5.67e-8 * 280.0^4.0
             bucket_rad = PrescribedRadiativeFluxes(
                 FT,
                 TimeVaryingInput(SW_d),
                 TimeVaryingInput(LW_d),
-                ref_time,
+                start_date,
             )
             # Atmos
             precip = (t) -> 0 # no precipitation
@@ -228,7 +228,7 @@ end
                 TimeVaryingInput(u_atmos),
                 TimeVaryingInput(q_atmos),
                 TimeVaryingInput(P_atmos),
-                ref_time,
+                start_date,
                 h_atmos,
                 earth_param_set,
             )
@@ -294,7 +294,7 @@ end
         Dates.millisecond(date),
     )
     file_dates = to_datetime.(file_dates_noleap)
-    date_ref = file_dates[1]
+    start_date_in_file = file_dates[1]
 
     bucket_domains = [
         Column(; zlim = FT.((-100.0, 0.0)), nelements = 10),
@@ -309,16 +309,17 @@ end
     for bucket_domain in bucket_domains
         space = bucket_domain.space.surface
         if bucket_domain isa SphericalShell
-            albedo_model = PrescribedSurfaceAlbedo{FT}(date_ref, space)
+            albedo_model =
+                PrescribedSurfaceAlbedo{FT}(start_date_in_file, space)
             # Radiation
-            ref_time = DateTime(2005, 1, 15, 12)
+            start_date = DateTime(2005, 1, 15, 12)
             SW_d = (t) -> 0
             LW_d = (t) -> 5.67e-8 * 280.0^4.0
             bucket_rad = PrescribedRadiativeFluxes(
                 FT,
                 TimeVaryingInput(SW_d),
                 TimeVaryingInput(LW_d),
-                ref_time,
+                start_date,
             )
             # Atmos
             precip = (t) -> 0 # no precipitation
@@ -327,7 +328,7 @@ end
             q_atmos = (t) -> 0.0 # no atmos water
             h_atmos = FT(1e-8)
             P_atmos = (t) -> 101325
-            ref_time = DateTime(2005, 1, 15, 12)
+            start_date = DateTime(2005, 1, 15, 12)
             bucket_atmos = PrescribedAtmosphere(
                 TimeVaryingInput(precip),
                 TimeVaryingInput(precip),
@@ -335,7 +336,7 @@ end
                 TimeVaryingInput(u_atmos),
                 TimeVaryingInput(q_atmos),
                 TimeVaryingInput(P_atmos),
-                ref_time,
+                start_date,
                 h_atmos,
                 earth_param_set,
             )
@@ -359,13 +360,13 @@ end
             set_initial_cache!(p, Y, FT(0.0))
             data_manual = DataHandling.regridded_snapshot(
                 albedo_model.albedo.data_handler,
-                date_ref,
+                start_date_in_file,
             )
 
             @test p.bucket.α_sfc == data_manual
 
             update_aux! = make_update_aux(model)
-            new_date = date_ref + Second(t_start)
+            new_date = start_date_in_file + Second(t_start)
             t_curr = t_start
             for i in 1:5
                 @assert new_date == file_dates[i]
@@ -387,7 +388,7 @@ end
             @test_throws "Using an albedo map requires a global run." PrescribedSurfaceAlbedo{
                 FT,
             }(
-                date_ref,
+                start_date_in_file,
                 space,
             )
         end

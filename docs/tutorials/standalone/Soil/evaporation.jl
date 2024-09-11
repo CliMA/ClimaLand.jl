@@ -39,14 +39,14 @@ thermo_params = LP.thermodynamic_parameters(earth_param_set);
 # Our assumption is that in the lab experiment there was no radiative heating
 # or cooling of the soil.
 
-ref_time = DateTime(2005) # required argument, but not used in this case
+start_date = DateTime(2005) # required argument, but not used in this case
 SW_d = (t) -> 0
 LW_d = (t) -> 301.15^4 * 5.67e-8
 radiation = PrescribedRadiativeFluxes(
     FT,
     TimeVaryingInput(SW_d),
     TimeVaryingInput(LW_d),
-    ref_time,
+    start_date,
 );
 # Set up atmospheric conditions that result in the potential evaporation
 # rate obsereved in the experiment.
@@ -74,7 +74,7 @@ atmos = PrescribedAtmosphere(
     TimeVaryingInput(u_atmos),
     TimeVaryingInput(q_atmos),
     TimeVaryingInput(P_atmos),
-    ref_time,
+    start_date,
     h_atmos,
     earth_param_set;
     gustiness = gustiness,

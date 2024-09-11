@@ -19,7 +19,7 @@ end
           @NamedTuple{t::Vector{Float64}, saveval::Vector{NamedTuple}}
 end
 
-@testset "Fluxnet single site, custom start time" begin
+@testset "Fluxnet single site, custom start date" begin
     sv, sol, Y, p = run_fluxnet(
         "US-MOz";
         setup = make_setup(;

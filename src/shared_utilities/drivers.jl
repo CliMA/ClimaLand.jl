@@ -125,8 +125,8 @@ struct PrescribedAtmosphere{
     P::RA
     "CO2 concentration in atmosphere (mol/mol)"
     c_co2::CA
-    "Reference time - the datetime corresponding to t=0 for the simulation"
-    ref_time::DT
+    "Start date - the datetime corresponding to t=0 for the simulation"
+    start_date::DT
     "Reference height (m), relative to surface elevation"
     h::FT
     "Minimum wind speed (gustiness; m/s)"
@@ -140,14 +140,14 @@ struct PrescribedAtmosphere{
         u,
         q,
         P,
-        ref_time,
+        start_date,
         h::FT,
         earth_param_set;
         gustiness = FT(1),
         c_co2 = TimeVaryingInput((t) -> 4.2e-4),
     ) where {FT}
         thermo_params = LP.thermodynamic_parameters(earth_param_set)
-        args = (liquid_precip, snow_precip, T, u, q, P, c_co2, ref_time)
+        args = (liquid_precip, snow_precip, T, u, q, P, c_co2, start_date)
         return new{typeof(h), typeof.(args)..., typeof(thermo_params)}(
             args...,
             h,
@@ -412,12 +412,12 @@ struct PrescribedRadiativeFluxes{
     SW_d::SW
     "Downward longwave radiation function of time (W/m^2): positive indicates towards surface"
     LW_d::LW
-    "Reference time - the datetime corresponding to t=0 for the simulation"
-    ref_time::DT
+    "Start date - the datetime corresponding to t=0 for the simulation"
+    start_date::DT
     "Sun zenith angle, in radians"
     θs::T
-    function PrescribedRadiativeFluxes(FT, SW_d, LW_d, ref_time; θs = nothing)
-        args = (SW_d, LW_d, ref_time, θs)
+    function PrescribedRadiativeFluxes(FT, SW_d, LW_d, start_date; θs = nothing)
+        args = (SW_d, LW_d, start_date, θs)
         return new{FT, typeof.(args)...}(args...)
     end
 end
@@ -894,7 +894,7 @@ function make_update_drivers(r::PrescribedRadiativeFluxes{FT}) where {FT}
         evaluate!(p.drivers.SW_d, r.SW_d, t)
         evaluate!(p.drivers.LW_d, r.LW_d, t)
         if !isnothing(r.θs)
-            p.drivers.θs .= FT.(r.θs(t, r.ref_time))
+            p.drivers.θs .= FT.(r.θs(t, r.start_date))
         else
             p.drivers.θs .= FT(0)
         end

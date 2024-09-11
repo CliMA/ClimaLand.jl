@@ -97,7 +97,7 @@ tf = 7 * 86400;
 Δt = 3600.0;
 
 bucket_parameters = BucketModelParameters(FT; albedo, z_0m, z_0b, τc);
-ref_time = DateTime(2005);
+start_date = DateTime(2005);
 
 # Precipitation:
 precip = (t) -> 0;
@@ -117,7 +117,7 @@ bucket_atmos = PrescribedAtmosphere(
     TimeVaryingInput(u_atmos),
     TimeVaryingInput(q_atmos),
     TimeVaryingInput(P_atmos),
-    ref_time,
+    start_date,
     h_atmos,
     earth_param_set,
 );
@@ -132,7 +132,7 @@ bucket_rad = PrescribedRadiativeFluxes(
     FT,
     TimeVaryingInput(SW_d),
     TimeVaryingInput(LW_d),
-    ref_time,
+    start_date,
 );
 
 model = BucketModel(
@@ -169,7 +169,7 @@ space = bucket_domain.space.subsurface
 nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(space, output_dir)
 
 diags =
-    ClimaLand.default_diagnostics(model, ref_time; output_writer = nc_writer)
+    ClimaLand.default_diagnostics(model, start_date; output_writer = nc_writer)
 
 diagnostic_handler =
     ClimaDiagnostics.DiagnosticsHandler(diags, Y, p, t0; dt = Δt)

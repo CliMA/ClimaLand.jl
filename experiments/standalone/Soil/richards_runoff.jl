@@ -157,13 +157,13 @@ era5_artifact_path =
 # Below, the preprocess_func argument is used to
 # 1. Convert precipitation to be negative (as it is downwards)
 # 2. Convert accumulations over an hour to a rate per second
-ref_time = DateTime(2021);
+start_date = DateTime(2021);
 # Precipitation:
 precip = TimeVaryingInput(
     joinpath(era5_artifact_path, "era5_2021_0.9x1.25.nc"),
     "tp",
     surface_space;
-    reference_date = ref_time,
+    reference_date = start_date,
     regridder_type,
     file_reader_kwargs = (; preprocess_func = (data) -> -data / 3600,),
 )

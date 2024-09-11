@@ -16,7 +16,7 @@ import ClimaLand.Parameters as LP
     FT = Float32
     earth_param_set = LP.LandParameters(FT)
 
-    ref_time = DateTime(2005)
+    start_date = DateTime(2005)
     param_set = LP.LandParameters(FT)
     Δt = FT(180.0)
     parameters = SnowParameters{FT}(Δt; earth_param_set = param_set)
@@ -24,7 +24,7 @@ import ClimaLand.Parameters as LP
     "Radiation"
     SW_d = TimeVaryingInput((t) -> eltype(t)(20.0))
     LW_d = TimeVaryingInput((t) -> eltype(t)(20.0))
-    rad = ClimaLand.PrescribedRadiativeFluxes(FT, SW_d, LW_d, ref_time)
+    rad = ClimaLand.PrescribedRadiativeFluxes(FT, SW_d, LW_d, start_date)
     "Atmos"
     precip = TimeVaryingInput((t) -> eltype(t)(0)) # no precipitation
     T_atmos = TimeVaryingInput((t) -> eltype(t)(290.0))
@@ -39,7 +39,7 @@ import ClimaLand.Parameters as LP
         u_atmos,
         q_atmos,
         P_atmos,
-        ref_time,
+        start_date,
         h_atmos,
         earth_param_set,
     )

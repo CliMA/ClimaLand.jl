@@ -460,7 +460,7 @@ function ClimaLand.make_update_aux(
         compute_NIR!(inc_nir, RT, canopy.radiation, p, t)
         K = extinction_coeff.(G_Function, θs)
         DOY = Dates.dayofyear(
-            canopy.atmos.ref_time + Dates.Second(floor(Int64, t)),
+            canopy.atmos.start_date + Dates.Second(floor(Int64, t)),
         )
         @. frac_diff = diffuse_fraction(
             DOY,

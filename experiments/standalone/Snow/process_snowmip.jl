@@ -51,23 +51,23 @@ snowf = -met_data["Snowf"][:][mask] ./ 1000.0 # convert to dS/dt
 SW_d = TimeVaryingInput(seconds, SWdown; context)
 LW_d = TimeVaryingInput(seconds, LWdown; context)
 
-ref_time = timestamp[mask][1]
+start_date = timestamp[mask][1]
 function zenith_angle(
     t,
-    ref_time;
+    start_date;
     latitude = FT(lat),
     longitude = FT(long),
     insol_params::Insolation.Parameters.InsolationParameters{FT} = param_set.insol_params,
 ) where {FT}
     # This should be time in UTC
-    current_datetime = ref_time + Dates.Second(round(t))
+    current_datetime = start_date + Dates.Second(round(t))
 
     # Orbital Data uses Float64, so we need to convert to our sim FT
     d, δ, η_UTC =
         FT.(
             Insolation.helper_instantaneous_zenith_angle(
                 current_datetime,
-                ref_time,
+                start_date,
                 insol_params,
             )
         )
@@ -87,7 +87,7 @@ radiation = ClimaLand.PrescribedRadiativeFluxes(
     FT,
     SW_d,
     LW_d,
-    ref_time;
+    start_date;
     θs = zenith_angle,
 )
 
@@ -109,7 +109,7 @@ atmos = PrescribedAtmosphere(
     u_atmos,
     q_atmos,
     P_atmos,
-    ref_time,
+    start_date,
     h_atmos,
     earth_param_set,
 )

@@ -46,11 +46,11 @@ providing the space and output_dir defined in steps 1. and 2.
 Now that you defined your model and your writter, you can create a callback function to be called when solving your model. For example:
 
 ```Julia
-t0 = 0 # the starting time of your simulation
+t0 = 0 # the start date of your simulation
 
-reference_date = DateTime(2024) # reference_date is the DateTime of your starting time
+start_date = DateTime(2024) # start_date is the DateTime of your start date
 
-diags = ClimaLand.default_diagnostics(model, reference_date; output_writer = nc_writer)
+diags = ClimaLand.default_diagnostics(model, start_date; output_writer = nc_writer)
 
 diagnostic_handler =
     ClimaDiagnostics.DiagnosticsHandler(diags, Y, p, t0; dt = Δt)
