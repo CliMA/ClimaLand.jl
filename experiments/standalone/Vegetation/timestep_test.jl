@@ -220,7 +220,7 @@ prob = SciMLBase.ODEProblem(
 
 # Read in solution from saved delimited file (experiment run explicitly with dt = 0.1s)
 savedir = joinpath(pkgdir(ClimaLand), "experiments/standalone/Vegetation");
-ref_file = joinpath(savedir, "ref_T_dt0p1_0p5days.txt")
+ref_file = joinpath(savedir, "ref_T_dt0p01_0p5days.txt")
 ref_T = vec(readdlm(ref_file, ','))
 
 mean_err = []
