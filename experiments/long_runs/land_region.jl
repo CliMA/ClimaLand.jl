@@ -143,7 +143,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (10, 10, 15))
         u_atmos,
         q_atmos,
         P_atmos,
-        ref_time,
+        start_date,
         h_atmos,
         earth_param_set,
     )
@@ -170,20 +170,20 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (10, 10, 15))
 
     function zenith_angle(
         t,
-        ref_time;
+        start_date;
         latitude = ClimaCore.Fields.coordinate_field(surface_space).lat,
         longitude = ClimaCore.Fields.coordinate_field(surface_space).long,
         insol_params::Insolation.Parameters.InsolationParameters{FT} = earth_param_set.insol_params,
     ) where {FT}
         # This should be time in UTC
-        current_datetime = ref_time + Dates.Second(round(t))
+        current_datetime = start_date + Dates.Second(round(t))
 
         # Orbital Data uses Float64, so we need to convert to our sim FT
         d, δ, η_UTC =
             FT.(
                 Insolation.helper_instantaneous_zenith_angle(
                     current_datetime,
-                    ref_time,
+                    start_date,
                     insol_params,
                 )
             )
@@ -197,7 +197,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (10, 10, 15))
         ).:1
     end
     radiation =
-        PrescribedRadiativeFluxes(FT, SW_d, LW_d, ref_time; θs = zenith_angle)
+        PrescribedRadiativeFluxes(FT, SW_d, LW_d, start_date; θs = zenith_angle)
 
     soil_params_artifact_path =
         ClimaLand.Artifacts.soil_params_artifact_folder_path(; context)
