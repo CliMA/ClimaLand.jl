@@ -176,7 +176,7 @@ Y.canopy.hydraulics.ϑ_l.:2 .= augmented_liquid_fraction.(ν, S_l_ini[2])
 
 seconds_per_day = 3600 * 24.0
 t0 = 150seconds_per_day
-N_days = 100
+N_days = 0.5
 tf = t0 + N_days * seconds_per_day
 evaluate!(Y.canopy.energy.T, atmos.T, t0)
 set_initial_cache! = make_set_initial_cache(canopy)
