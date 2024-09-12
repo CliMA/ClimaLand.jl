@@ -5,6 +5,7 @@ using CairoMakie
 using Statistics
 using Dates
 using Insolation
+using DelimitedFiles
 
 # Load CliMA Packages and ClimaLand Modules:
 
@@ -176,7 +177,7 @@ Y.canopy.hydraulics.ϑ_l.:2 .= augmented_liquid_fraction.(ν, S_l_ini[2])
 
 seconds_per_day = 3600 * 24.0
 t0 = 150seconds_per_day
-N_days = 100
+N_days = 0.5
 tf = t0 + N_days * seconds_per_day
 evaluate!(Y.canopy.energy.T, atmos.T, t0)
 set_initial_cache! = make_set_initial_cache(canopy)
@@ -189,11 +190,15 @@ updatefunc = ClimaLand.make_update_drivers(drivers)
 cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
 
 timestepper = CTS.ARS111();
+err = (FT == Float64) ? 1e-8 : 1e-4
+convergence_cond = CTS.MaximumError(err)
+conv_checker = CTS.ConvergenceChecker(norm_condition = convergence_cond)
 ode_algo = CTS.IMEXAlgorithm(
     timestepper,
     CTS.NewtonsMethod(
         max_iters = 6,
         update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
+        # convergence_checker = conv_checker,
     ),
 );
 
@@ -208,19 +213,28 @@ prob = SciMLBase.ODEProblem(
     p,
 );
 
-ref_dt = 6.0
-ref_sol =
-    SciMLBase.solve(prob, ode_algo; dt = ref_dt, callback = cb, saveat = saveat);
-ref_T = [parent(ref_sol.u[k].canopy.energy.T)[1] for k in 1:length(ref_sol.t)]
+# ref_dt = 6.0
+# ref_sol =
+#     SciMLBase.solve(prob, ode_algo; dt = ref_dt, callback = cb, saveat = saveat);
+# ref_T = [parent(ref_sol.u[k].canopy.energy.T)[1] for k in 1:length(ref_sol.t)]
+
+# Read in solution from saved delimited file (experiment run explicitly with dt = 0.1s)
+savedir = joinpath(pkgdir(ClimaLand), "experiments/standalone/Vegetation");
+ref_file = joinpath(savedir, "ref_T_dt0p1_0p5days.txt")
+ref_T = vec(readdlm(ref_file, ','))
+
 mean_err = []
 p95_err = []
 p99_err = []
-dts = [12.0, 24.0, 48.0, 100.0, 225.0, 450.0, 900.0, 1800.0, 3600.0]
+dts = [3600.0, 5400.0, 7200.0, 9000.0, 10800.0, 12600.0, 13500.0, 14040.0]#[12.0, 24.0, 48.0, 100.0, 225.0, 450.0, 900.0, 1800.0, 3600.0, 7200.0, 14400.0]
+sol_ends = []
+T_states = []
+times = []
 for dt in dts
     @info dt
     saveat = Array(t0:(3 * 3600):tf)
     evaluate!(Y.canopy.energy.T, atmos.T, t0)
-    updateat = Array(t0:(3600 * 3):tf)
+    updateat = Array(t0:(3600 * 0.5):tf)
     updatefunc = ClimaLand.make_update_drivers(drivers)
     cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
 
@@ -231,12 +245,16 @@ for dt in dts
     push!(mean_err, mean(ΔT))
     push!(p95_err, percentile(ΔT, 95))
     push!(p99_err, percentile(ΔT, 99))
+    push!(sol_ends, T[end])
+    push!(T_states, T)
+    push!(times, sol.t)
 end
-savedir = joinpath(pkgdir(ClimaLand), "experiments/standalone/Vegetation");
+
+# Create plot with statistics
 fig = Figure()
 ax = Axis(
     fig[1, 1],
-    xlabel = "Time (minutes)",
+    xlabel = "Timestep (minutes)",
     ylabel = "Temperature (K)",
     xscale = log10,
     yscale = log10,
@@ -247,3 +265,27 @@ lines!(ax, dts, FT.(p95_err), label = "95th% Error")
 lines!(ax, dts, FT.(p99_err), label = "99th% Error")
 axislegend(ax)
 save(joinpath(savedir, "errors.png"), fig)
+
+# Create convergence plot
+errors = abs.(sol_ends .- ref_T[end])
+fig2 = Figure()
+ax2 = Axis(
+    fig2[1, 1],
+    xlabel = "log(dt)",
+    ylabel = "log(|T[end] - T_ref[end]|)",
+    xscale = log10,
+    yscale = log10,
+)
+scatter!(ax2, dts, FT.(errors))
+lines!(ax2, dts, dts)
+save(joinpath(savedir, "convergence.png"), fig2)
+
+# Create states plot
+fig3 = Figure()
+ax3 = Axis(fig3[1, 1], xlabel = "time (min)", ylabel = "T (K)")
+times = times ./ 60.0
+for i in 1:length(times)
+    lines!(ax3, times[i], T_states[i], label = "dt $(dts[i]) min")
+end
+axislegend(ax3, position = :lt)
+save(joinpath(savedir, "states.png"), fig3)
