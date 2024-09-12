@@ -172,17 +172,17 @@ FT = Float32
           ClimaCore.Spaces.SpectralElementSpace2D
 
     # Plane latlong
-    dxlim = (FT(-50_000), FT(80_000))
-    dylim = (FT(-30_000), FT(40_000))
+    dxlim = (FT(50_000), FT(80_000))
+    dylim = (FT(30_000), FT(40_000))
     longlat = (FT(-118.14452), FT(34.14778))
     radius_earth = FT(6.378e6)
     xlim_longlat = (
-        longlat[1] - dxlim[1] / 2radius_earth,
-        longlat[1] + dxlim[2] / 2radius_earth,
+        longlat[2] - dylim[1] / 2radius_earth,
+        longlat[2] + dylim[2] / 2radius_earth,
     )
     ylim_longlat = (
-        longlat[2] - dylim[1] / 2radius_earth,
-        longlat[2] + dylim[2] / (2radius_earth),
+        longlat[1] - dxlim[1] / 2radius_earth,
+        longlat[1] + dxlim[2] / 2radius_earth,
     )
 
     longlat_plane = Plane(;

@@ -267,22 +267,29 @@ function Plane(;
         @assert periodic == (false, false)
         radius_earth = FT(radius_earth)
         long, lat = longlat
+        dxlim = xlim # long bounds
+        dylim = ylim # lat bounds
+        # Now make x refer to lat, and y refer to long,
+        # for compatibility with ClimaCore
         xlim =
-            (long - xlim[1] / (2radius_earth), long + xlim[2] / (2radius_earth))
-        ylim =
-            (lat - ylim[1] / (2radius_earth), lat + ylim[2] / (2radius_earth))
+            (lat - dylim[1] / (2radius_earth), lat + dylim[2] / (2radius_earth))
+        ylim = (
+            long - dxlim[1] / (2radius_earth),
+            long + dxlim[2] / (2radius_earth),
+        )
         @assert xlim[1] < xlim[2]
         @assert ylim[1] < ylim[2]
 
+        # NOTE: We have LatLong instead of the other way because of ClimaCore
         domain_x = ClimaCore.Domains.IntervalDomain(
-            ClimaCore.Geometry.LongPoint(xlim[1]),
-            ClimaCore.Geometry.LongPoint(xlim[2]);
-            boundary_names = (:west, :east),
+            ClimaCore.Geometry.LatPoint(xlim[1]),
+            ClimaCore.Geometry.LatPoint(xlim[2]);
+            boundary_names = (:north, :south),
         )
         domain_y = ClimaCore.Domains.IntervalDomain(
-            ClimaCore.Geometry.LatPoint(ylim[1]),
-            ClimaCore.Geometry.LatPoint(ylim[2]);
-            boundary_names = (:north, :south),
+            ClimaCore.Geometry.LongPoint(ylim[1]),
+            ClimaCore.Geometry.LongPoint(ylim[2]);
+            boundary_names = (:west, :east),
         )
     end
     plane = ClimaCore.Domains.RectangleDomain(domain_x, domain_y)
@@ -922,10 +929,10 @@ end
 
 """
     depth(space::Union{ClimaCore.Spaces.CenterFiniteDifferenceSpace,
-                       ClimaCore.Spaces.CenterExtrudedFiniteDifferenceSpace}) 
+                       ClimaCore.Spaces.CenterExtrudedFiniteDifferenceSpace})
 
 Returns the depth of the domain as a scalar. Note that these functions
-will need to be modified upon the introduction of 
+will need to be modified upon the introduction of
 - topography at surface
 - depth to bedrock (topography at bottom)
 

@@ -3,6 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 --------
+ - Add regional simulation example PR [#757](https://github.com/CliMA/ClimaLand.jl/pull/757)
 
 v0.14.3
 --------
