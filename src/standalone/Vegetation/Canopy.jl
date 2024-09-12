@@ -524,7 +524,7 @@ function ClimaLand.make_update_aux(
             # Compute the flux*area between the current compartment `i`
             # and the compartment above.
             @. fa.:($$i) =
-                PlantHydraulics.flux(
+                PlantHydraulics.water_flux(
                     hydraulics.compartment_midpoints[i],
                     hydraulics.compartment_midpoints[ip1],
                     ψ.:($$i),

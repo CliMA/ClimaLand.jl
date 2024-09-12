@@ -23,7 +23,7 @@ import ClimaLand:
     name
 export PlantHydraulicsModel,
     AbstractPlantHydraulicsModel,
-    flux,
+    water_flux,
     effective_saturation,
     augmented_liquid_fraction,
     water_retention_curve,
@@ -328,7 +328,7 @@ end
 
 
 """
-    flux(
+    water_flux(
         z1,
         z2,
         ψ1,
@@ -337,18 +337,25 @@ end
         K2,
     ) where {FT}
 
-Computes the water flux given the absolute potential (pressure/(ρg))
- at the center of the two compartments z1 and z2,
-and the conductivity along
-the flow path between these two points.
+Computes the water flux given the absolute potential ψ (pressure/(ρg))
+ and the conductivity K (m/s) at the center of the two layers
+with midpoints z1 and z2.
 
-We currently assuming an arithmetic
-mean for mean K_sat between the two points (Bonan, 2019; Zhu, 2008)
-to take into account the change in K_sat halfway
-between z1 and z2; this is incorrect for compartments of differing sizes.
+We currently assuming a harmonic
+mean for effective conducticity between the two layers
+(see CLM Technical Documentation).
+
+To account for different path lengths in the two compartments Δz1 and
+Δz2, we would require the following conductance k (1/s)
+k_eff = K1/Δz1*K2/Δz2/(K1/Δz1+K2/Δz2) 
+and a water flux of
+F = -k_eff * (ψ1 +z1 - ψ2 - z2) (m/s).
+
+This currently assumes the path lengths are equal.
 """
-function flux(z1, z2, ψ1, ψ2, K1, K2)
-    flux = -(K1 + K2) / 2 * ((ψ2 - ψ1) / (z2 - z1) + 1)
+function water_flux(z1::FT, z2::FT, ψ1::FT, ψ2::FT, K1::FT, K2::FT) where {FT}
+    K_eff = K1 * K2 / max(K1 + K2, eps(FT))
+    flux = -K_eff * ((ψ2 - ψ1) / (z2 - z1) + 1)
     return flux # (m/s)
 end
 
@@ -580,8 +587,16 @@ end
     ) where {FT}
 
 A method which computes the water flux between the soil and the stem, via the roots,
-and multiplied by the RAI, in the case of a model running without an integrated
-soil model.
+and multiplied by the RAI, in the case of a model running without a prognostic
+soil model:
+
+Flux = -K_eff x [(ψ_stem - ψ_soil)/(z_stem - z_soil) + 1], where
+K_eff = K_soil K_stem /(K_stem + K_soil)
+
+Note that in `PrescribedSoil` mode, we compute the flux using K_soil = K_plant(ψ_soil)
+and K_stem = K_plant(ψ_stem). In `PrognosticSoil` mode, we compute the flux using
+K_soil = K_soil(ψ_soil) and K_stem = K_plant(ψ_stem). The latter is a better model, but
+our `PrescribedSoil` struct does not store K_soil, only ψ_soil.
 
 The returned flux is per unit ground area. This assumes that the stem compartment
 is the first element of `Y.canopy.hydraulics.ϑ_l`.
@@ -610,7 +625,7 @@ function root_water_flux_per_ground_area!(
 
         if i != n_root_layers
             @. fa +=
-                flux(
+                water_flux(
                     root_depths[i],
                     model.compartment_midpoints[1],
                     ψ_soil,
@@ -623,7 +638,7 @@ function root_water_flux_per_ground_area!(
                 above_ground_area_index
         else
             @. fa +=
-                flux(
+                water_flux(
                     root_depths[i],
                     model.compartment_midpoints[1],
                     ψ_soil,

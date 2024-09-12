@@ -284,13 +284,13 @@ for FT in (Float32, Float64)
             )
             # Set system to hydrostatic equilibrium state by setting fluxes to zero, and setting LHS of both ODEs to 0
             function initial_compute_exp_tendency!(F, Y)
-                AI = (; leaf = LAI(0.0), root = RAI, stem = SAI)
+                AI = (; leaf = LAI(1.0), root = RAI, stem = SAI)
                 T0A = FT(1e-8) * AI[:leaf]
                 for i in 1:(n_leaf + n_stem)
                     if i == 1
                         fa =
                             sum(
-                                flux.(
+                                water_flux.(
                                     root_depths,
                                     plant_hydraulics.compartment_midpoints[i],
                                     ψ_soil0,
@@ -307,26 +307,23 @@ for FT in (Float32, Float64)
                                     vcat(root_depths, [0.0])[2:end] -
                                     vcat(root_depths, [0.0])[1:(end - 1)]
                                 ),
-                            ) * AI[:root]
+                            ) * AI[:stem]
                     else
                         fa =
-                            flux(
+                            water_flux(
                                 plant_hydraulics.compartment_midpoints[i - 1],
                                 plant_hydraulics.compartment_midpoints[i],
                                 Y[i - 1],
                                 Y[i],
                                 PlantHydraulics.hydraulic_conductivity(
                                     conductivity_model,
-                                    ψ_soil0,
+                                    Y[i - 1],
                                 ),
                                 PlantHydraulics.hydraulic_conductivity(
                                     conductivity_model,
                                     Y[i],
                                 ),
-                            ) * (
-                                AI[plant_hydraulics.compartment_labels[1]] +
-                                AI[plant_hydraulics.compartment_labels[2]]
-                            ) / 2
+                            ) * AI[plant_hydraulics.compartment_labels[i]]
                     end
                     F[i] = fa - T0A
                 end
@@ -335,7 +332,9 @@ for FT in (Float32, Float64)
             soln = nlsolve(
                 initial_compute_exp_tendency!,
                 Vector{FT}(-0.03:0.01:0.07);
-                ftol = 1e-11,
+                ftol = eps(FT),
+                method = :newton,
+                iterations = 20,
             )
 
             S_l =
@@ -372,12 +371,8 @@ for FT in (Float32, Float64)
             canopy_exp_tendency! = make_exp_tendency(model)
             canopy_exp_tendency!(dY, Y, p, 0.0)
 
-            m = similar(dY.canopy.hydraulics.ϑ_l.:1)
-            m .= FT(0)
-            for i in 1:(n_stem + n_leaf)
-                @. m += sqrt(dY.canopy.hydraulics.ϑ_l.:($$i)^2.0)
-            end
-            @test maximum(parent(m)) < 200 * eps(FT) # starts in equilibrium
+            tolerance = sqrt(eps(FT))
+            @test all(parent(dY.canopy.hydraulics.ϑ_l) .< tolerance) # starts in equilibrium
 
 
             # repeat using the plant hydraulics model directly
@@ -394,13 +389,12 @@ for FT in (Float32, Float64)
             standalone_exp_tendency! =
                 make_compute_exp_tendency(model.hydraulics, model)
             standalone_exp_tendency!(standalone_dY, Y, p, 0.0)
-
-            m = similar(dY.canopy.hydraulics.ϑ_l.:1)
-            m .= FT(0)
-            for i in 1:(n_stem + n_leaf)
-                @. m += sqrt(dY.canopy.hydraulics.ϑ_l.:($$i)^2.0)
-            end
-            @test maximum(parent(m)) < 10^2.1 * eps(FT) # starts in equilibrium
+            @test all(
+                parent(
+                    standalone_dY.canopy.hydraulics.ϑ_l .-
+                    dY.canopy.hydraulics.ϑ_l,
+                ) .≈ FT(0),
+            )
         end
     end
 

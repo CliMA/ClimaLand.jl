@@ -17,7 +17,7 @@ ClimaLand.PlantHydraulics.augmented_liquid_fraction
 ClimaLand.PlantHydraulics.water_retention_curve
 ClimaLand.PlantHydraulics.inverse_water_retention_curve
 ClimaLand.PlantHydraulics.root_water_flux_per_ground_area!
-ClimaLand.PlantHydraulics.flux
+ClimaLand.PlantHydraulics.water_flux
 ClimaLand.PlantHydraulics.hydraulic_conductivity
 ```
 
