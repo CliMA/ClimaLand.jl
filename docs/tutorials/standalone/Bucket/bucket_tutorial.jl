@@ -156,7 +156,7 @@ using ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
 # We also want to plot the solution
 using Plots
 
-# And we need to use the DateTime type to store reference times
+# And we need to use the DateTime type to store start dates
 using Dates
 
 FT = Float32;
@@ -203,7 +203,7 @@ z_0b = FT(1e-3);
 ρc_soil = FT(2e6);
 # Snow melt timescale
 τc = FT(3600);
-# Simulation start time, end time, and timestep
+# Simulation start date, end time, and timestep
 t0 = 0.0;
 tf = 7 * 86400;
 Δt = 3600.0;
@@ -214,7 +214,7 @@ bucket_parameters = BucketModelParameters(FT; albedo, z_0m, z_0b, τc);
 # The PrescribedAtmosphere and PrescribedRadiation need to take in a reference
 # time, the date of the start of the simulation. In this tutorial we will
 # consider this January 1, 2005.
-ref_time = DateTime(2005);
+start_date = DateTime(2005);
 
 # To drive the system in standalone mode,
 # the user must provide
@@ -247,7 +247,7 @@ bucket_atmos = PrescribedAtmosphere(
     TimeVaryingInput(u_atmos),
     TimeVaryingInput(q_atmos),
     TimeVaryingInput(P_atmos),
-    ref_time,
+    start_date,
     h_atmos,
     earth_param_set,
 );
@@ -262,7 +262,7 @@ bucket_rad = PrescribedRadiativeFluxes(
     FT,
     TimeVaryingInput(SW_d),
     TimeVaryingInput(LW_d),
-    ref_time,
+    start_date,
 );
 
 

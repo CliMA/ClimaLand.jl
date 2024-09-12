@@ -48,14 +48,14 @@ for FT in (Float32, Float64)
         z_0m = FT(0.001)
         z_0b = z_0m
         # Radiation
-        ref_time = DateTime(2005)
+        start_date = DateTime(2005)
         SW_d = (t) -> 500
         LW_d = (t) -> 5.67e-8 * 280.0^4.0
         radiation = PrescribedRadiativeFluxes(
             FT,
             TimeVaryingInput(SW_d),
             TimeVaryingInput(LW_d),
-            ref_time,
+            start_date,
         )
         # Atmos
         precip = (t) -> 1e-8
@@ -72,7 +72,7 @@ for FT in (Float32, Float64)
             TimeVaryingInput(u_atmos),
             TimeVaryingInput(q_atmos),
             TimeVaryingInput(P_atmos),
-            ref_time,
+            start_date,
             h_atmos,
             earth_param_set,
         )

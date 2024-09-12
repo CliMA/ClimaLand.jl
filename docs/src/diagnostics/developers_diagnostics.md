@@ -17,7 +17,7 @@ Internally, this is done by using the [`ClimaDiagnostics.jl`](https://github.com
  `add_diagnostic_variable!`, and dispatch off the type of land\_model to define how to compute a diagnostic (for example, surface temperature is computed in `p.bucket.T_sfc` in the bucket model).
  - compute methods are defined in a separate file, for example, `bucket_compute_methods.jl`.
  - `standard_diagnostic_frequencies.jl` defines standard functions to schedule diagnostics, for example, hourly average or monthly max, these functions are called on a list of diagnostic variables. As developers, we can add more standard functions that users may want to have access to easily in this file.
- - `default_diagnostics.jl` defines default diagnostics functions to use on a model simulation. For example, `default_diagnostics(land_model::BucketModel, t_start; output_writer)`.
+ - `default_diagnostics.jl` defines default diagnostics functions to use on a model simulation. For example, `default_diagnostics(land_model::BucketModel, output_writer)`.
  will return a `ScheduledDiagnostics` that computes hourly averages for all Bucket variables, along with their metadata, ready to be written on a NetCDF file when running a Bucket simulation.
 
 The following section give more details on these functions, along with examples. As developers, we want to extand these functionality as ClimaLand progresses.
@@ -66,7 +66,7 @@ For each model, we define a function `default_diagnostics` which will define wha
 on what schedule (for example, hourly average). For example,
 
 ```Julia
-function default_diagnostics(land_model::BucketModel, t_start; output_writer)
+function default_diagnostics(land_model::BucketModel{FT}; output_writer) where {FT}
 
     define_diagnostics!(land_model)
 
@@ -87,7 +87,7 @@ function default_diagnostics(land_model::BucketModel, t_start; output_writer)
     ]
 
     default_outputs =
-        hourly_averages(bucket_diagnostics...; output_writer, t_start)
+        hourly_averages(FT, bucket_diagnostics...; output_writer)
     return [default_outputs...]
 end
 ```
@@ -103,11 +103,10 @@ If `average_period = :hourly`, `default_outputs` calls `hourly_averages`, et cet
 We defined some functions of diagnostic schedule that may often be used in `standard_diagnostic_frequencies.jl`, for example
 
 ```Julia
-hourly_averages(short_names...; output_writer, t_start) = common_diagnostics(
-    60 * 60 * one(t_start),
+hourly_averages(FT, short_names...; output_writer) = common_diagnostics(
+    60 * 60 * one(FT),
     (+),
     output_writer,
-    t_start,
     short_names...;
     pre_output_hook! = average_pre_output_hook!,
 )

@@ -97,7 +97,7 @@ function setup_prob(t0, tf, Δt)
         npolynomial = 1,
         dz_tuple = FT.((1.0, 0.05)),
     )
-    ref_time = DateTime(2005)
+    start_date = DateTime(2005)
 
     # Initialize parameters
     σS_c = FT(0.2)
@@ -110,7 +110,7 @@ function setup_prob(t0, tf, Δt)
 
     surface_space = bucket_domain.space.surface
     # Construct albedo parameter object using temporal map
-    albedo = PrescribedSurfaceAlbedo{FT}(ref_time, t0, surface_space)
+    albedo = PrescribedSurfaceAlbedo{FT}(start_date, surface_space)
 
     bucket_parameters = BucketModelParameters(FT; albedo, z_0m, z_0b, τc)
 
@@ -132,7 +132,7 @@ function setup_prob(t0, tf, Δt)
         TimeVaryingInput(u_atmos),
         TimeVaryingInput(q_atmos),
         TimeVaryingInput(P_atmos),
-        ref_time,
+        start_date,
         h_atmos,
         earth_param_set,
     )
@@ -147,7 +147,7 @@ function setup_prob(t0, tf, Δt)
         FT,
         TimeVaryingInput(SW_d),
         TimeVaryingInput(LW_d),
-        ref_time,
+        start_date,
     )
 
 

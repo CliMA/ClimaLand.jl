@@ -156,8 +156,7 @@ end
 
 """
     PrescribedSurfaceAlbedo{FT}(
-        date_ref::Union{DateTime, DateTimeNoLeap},
-        t_start,
+        start_date::Union{DateTime, DateTimeNoLeap},
         Space::ClimaCore.Spaces.AbstractSpace;
         get_infile = ClimaLand.Artifacts.cesm2_albedo_dataset_path,
         varname = "sw_alb"
@@ -171,8 +170,7 @@ and download the data if it doesn't already exist on the machine.
 The input data file must have a time component.
 """
 function PrescribedSurfaceAlbedo{FT}(
-    date_ref::Union{DateTime, DateTimeNoLeap},
-    t_start,
+    start_date::Union{DateTime, DateTimeNoLeap},
     space::ClimaCore.Spaces.AbstractSpace;
     albedo_file_path = ClimaLand.Artifacts.cesm2_albedo_dataset_path(),
     varname = "sw_alb",
@@ -187,8 +185,7 @@ function PrescribedSurfaceAlbedo{FT}(
         albedo_file_path,
         varname,
         space;
-        reference_date = date_ref,
-        t_start,
+        reference_date = start_date,
         regridder_type,
     )
 

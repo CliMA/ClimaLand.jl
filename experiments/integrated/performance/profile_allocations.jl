@@ -105,9 +105,9 @@ land_domain = ClimaLand.Domains.SphericalShell(;
 );
 canopy_domain = ClimaLand.Domains.obtain_surface_domain(land_domain)
 sfc_cds = ClimaCore.Fields.coordinate_field(land_domain.space.surface)
-# First pick the reference time and start time of the simulation, since time varying input depends on that
-t0 = Float64(0)# start at reference time
-ref_time = DateTime("202001010000", "yyyymmddHHMM")
+# First pick the start date and time of the simulation, since time varying input depends on that
+t0 = Float64(0) # start at start date
+start_date = DateTime("202001010000", "yyyymmddHHMM")
 # Time varying input
 LAIfunction = TimeVaryingInput((t) -> 2.0)
 # Atmospheric and radiative forcing
@@ -120,7 +120,7 @@ LW_IN = TimeVaryingInput((t) -> 5.67e-8 * 298.0^4)
 SW_IN = TimeVaryingInput((t) -> 500.0)
 snow_precip = TimeVaryingInput((t) -> 0.0)
 atmos_h = FT(32)
-# Construct the drivers. For the reference time we will use the UTC time at the
+# Construct the drivers. For the start date we will use the UTC time at the
 # start of the simulation
 atmos = ClimaLand.PrescribedAtmosphere(
     precip,
@@ -129,25 +129,25 @@ atmos = ClimaLand.PrescribedAtmosphere(
     atmos_u,
     atmos_q,
     atmos_p,
-    ref_time,
+    start_date,
     atmos_h,
     earth_param_set;
 )
 function zenith_angle(
     t,
-    ref_time;
+    start_date;
     cd_field = sfc_cds,
     insol_params::Insolation.Parameters.InsolationParameters{FT} = earth_param_set.insol_params,
 ) where {FT}
     # This should be time in UTC
-    current_datetime = ref_time + Dates.Second(round(t))
+    current_datetime = start_date + Dates.Second(round(t))
 
     # Orbital Data uses Float64, so we need to convert to our sim FT
     d, δ, η_UTC =
         FT.(
             Insolation.helper_instantaneous_zenith_angle(
                 current_datetime,
-                ref_time,
+                start_date,
                 insol_params,
             )
         )
@@ -165,7 +165,7 @@ radiation = ClimaLand.PrescribedRadiativeFluxes(
     FT,
     SW_IN,
     LW_IN,
-    ref_time,
+    start_date,
     θs = zenith_angle,
 )
 

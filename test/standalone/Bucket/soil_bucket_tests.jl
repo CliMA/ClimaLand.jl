@@ -62,14 +62,14 @@ for FT in (Float32, Float64)
 
         @testset "Zero flux tendency, FT = $FT" begin
             # Radiation
-            ref_time = DateTime(2005)
+            start_date = DateTime(2005)
             SW_d = (t) -> 0
             LW_d = (t) -> 5.67e-8 * 280.0^4.0
             bucket_rad = PrescribedRadiativeFluxes(
                 FT,
                 TimeVaryingInput(SW_d),
                 TimeVaryingInput(LW_d),
-                ref_time,
+                start_date,
             )
             # Atmos
             precip = (t) -> 0 # no precipitation
@@ -85,7 +85,7 @@ for FT in (Float32, Float64)
                 TimeVaryingInput(u_atmos),
                 TimeVaryingInput(q_atmos),
                 TimeVaryingInput(P_atmos),
-                ref_time,
+                start_date,
                 h_atmos,
                 earth_param_set,
             )
@@ -162,14 +162,14 @@ for FT in (Float32, Float64)
 
         @testset "Energy + Moisture Conservation, FT = $FT" begin
             # Radiation
-            ref_time = DateTime(2005)
+            start_date = DateTime(2005)
             SW_d = (t) -> 10
             LW_d = (t) -> 300
             bucket_rad = PrescribedRadiativeFluxes(
                 FT,
                 TimeVaryingInput(SW_d),
                 TimeVaryingInput(LW_d),
-                ref_time,
+                start_date,
             )
             # Atmos
             precip = (t) -> -1e-6
@@ -186,7 +186,7 @@ for FT in (Float32, Float64)
                 TimeVaryingInput(u_atmos),
                 TimeVaryingInput(q_atmos),
                 TimeVaryingInput(P_atmos),
-                ref_time,
+                start_date,
                 h_atmos,
                 earth_param_set,
             )

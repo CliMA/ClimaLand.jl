@@ -103,7 +103,7 @@ else
         dz_tuple = FT.((1.0, 0.05)),
     )
 end
-ref_time = DateTime(2021);
+start_date = DateTime(2021);
 
 # Set up parameters
 σS_c = FT(0.2);
@@ -122,7 +122,6 @@ tf = 14 * 86400;
 device_suffix =
     typeof(ClimaComms.context().device) <: ClimaComms.CPUSingleThreaded ?
     "cpu" : "gpu"
-t_start = t0
 surface_space = bucket_domain.space.surface
 α_snow = FT(0.8)
 albedo = PrescribedBaregroundAlbedo{FT}(α_snow, surface_space);
@@ -141,8 +140,7 @@ precip = TimeVaryingInput(
     joinpath(era5_artifact_path, "era5_2021_0.9x1.25_clima.nc"),
     "rf",
     surface_space;
-    reference_date = ref_time,
-    t_start,
+    reference_date = start_date,
     regridder_type,
     file_reader_kwargs = (; preprocess_func = (data) -> -data / 3600,),
 )
@@ -151,8 +149,7 @@ snow_precip = TimeVaryingInput(
     joinpath(era5_artifact_path, "era5_2021_0.9x1.25.nc"),
     "sf",
     surface_space;
-    reference_date = ref_time,
-    t_start,
+    reference_date = start_date,
     regridder_type,
     file_reader_kwargs = (; preprocess_func = (data) -> -data / 3600,),
 )
@@ -161,24 +158,21 @@ u_atmos = TimeVaryingInput(
     joinpath(era5_artifact_path, "era5_2021_0.9x1.25_clima.nc"),
     "ws",
     surface_space;
-    reference_date = ref_time,
-    t_start,
+    reference_date = start_date,
     regridder_type,
 )
 q_atmos = TimeVaryingInput(
     joinpath(era5_artifact_path, "era5_2021_0.9x1.25_clima.nc"),
     "q",
     surface_space;
-    reference_date = ref_time,
-    t_start,
+    reference_date = start_date,
     regridder_type,
 )
 P_atmos = TimeVaryingInput(
     joinpath(era5_artifact_path, "era5_2021_0.9x1.25.nc"),
     "sp",
     surface_space;
-    reference_date = ref_time,
-    t_start,
+    reference_date = start_date,
     regridder_type,
 )
 
@@ -186,8 +180,7 @@ T_atmos = TimeVaryingInput(
     joinpath(era5_artifact_path, "era5_2021_0.9x1.25.nc"),
     "t2m",
     surface_space;
-    reference_date = ref_time,
-    t_start,
+    reference_date = start_date,
     regridder_type,
 )
 h_atmos = FT(10);
@@ -200,7 +193,7 @@ bucket_atmos = PrescribedAtmosphere(
     u_atmos,
     q_atmos,
     P_atmos,
-    ref_time,
+    start_date,
     h_atmos,
     earth_param_set,
 );
@@ -213,8 +206,7 @@ SW_d = TimeVaryingInput(
     joinpath(era5_artifact_path, "era5_2021_0.9x1.25.nc"),
     "ssrd",
     surface_space;
-    reference_date = ref_time,
-    t_start,
+    reference_date = start_date,
     regridder_type,
     file_reader_kwargs = (; preprocess_func = (data) -> data / 3600,),
 )
@@ -222,13 +214,12 @@ LW_d = TimeVaryingInput(
     joinpath(era5_artifact_path, "era5_2021_0.9x1.25.nc"),
     "strd",
     surface_space;
-    reference_date = ref_time,
-    t_start,
+    reference_date = start_date,
     regridder_type,
     file_reader_kwargs = (; preprocess_func = (data) -> data / 3600,),
 )
 
-bucket_rad = PrescribedRadiativeFluxes(FT, SW_d, LW_d, ref_time);
+bucket_rad = PrescribedRadiativeFluxes(FT, SW_d, LW_d, start_date);
 
 model = BucketModel(
     parameters = bucket_parameters,

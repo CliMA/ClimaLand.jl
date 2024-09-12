@@ -56,8 +56,7 @@ domain = ClimaLand.Domains.SphericalShell(;
 surface_space = domain.space.surface
 subsurface_space = domain.space.subsurface
 
-ref_time = DateTime(2021);
-t_start = 0.0
+start_date = DateTime(2021);
 
 # Forcing data
 era5_artifact_path =
@@ -66,8 +65,7 @@ precip = TimeVaryingInput(
     joinpath(era5_artifact_path, "era5_2021_0.9x1.25_clima.nc"),
     "rf",
     surface_space;
-    reference_date = ref_time,
-    t_start,
+    reference_date = start_date,
     regridder_type,
     file_reader_kwargs = (; preprocess_func = (data) -> -data / 3600,),
 )
@@ -76,8 +74,7 @@ snow_precip = TimeVaryingInput(
     joinpath(era5_artifact_path, "era5_2021_0.9x1.25.nc"),
     "sf",
     surface_space;
-    reference_date = ref_time,
-    t_start,
+    reference_date = start_date,
     regridder_type,
     file_reader_kwargs = (; preprocess_func = (data) -> -data / 3600,),
 )
@@ -86,24 +83,21 @@ u_atmos = TimeVaryingInput(
     joinpath(era5_artifact_path, "era5_2021_0.9x1.25_clima.nc"),
     "ws",
     surface_space;
-    reference_date = ref_time,
-    t_start,
+    reference_date = start_date,
     regridder_type,
 )
 q_atmos = TimeVaryingInput(
     joinpath(era5_artifact_path, "era5_2021_0.9x1.25_clima.nc"),
     "q",
     surface_space;
-    reference_date = ref_time,
-    t_start,
+    reference_date = start_date,
     regridder_type,
 )
 P_atmos = TimeVaryingInput(
     joinpath(era5_artifact_path, "era5_2021_0.9x1.25.nc"),
     "sp",
     surface_space;
-    reference_date = ref_time,
-    t_start,
+    reference_date = start_date,
     regridder_type,
 )
 
@@ -111,8 +105,7 @@ T_atmos = TimeVaryingInput(
     joinpath(era5_artifact_path, "era5_2021_0.9x1.25.nc"),
     "t2m",
     surface_space;
-    reference_date = ref_time,
-    t_start,
+    reference_date = start_date,
     regridder_type,
 )
 h_atmos = FT(10);
@@ -124,7 +117,7 @@ atmos = PrescribedAtmosphere(
     u_atmos,
     q_atmos,
     P_atmos,
-    ref_time,
+    start_date,
     h_atmos,
     earth_param_set,
 );
@@ -134,8 +127,7 @@ SW_d = TimeVaryingInput(
     joinpath(era5_artifact_path, "era5_2021_0.9x1.25.nc"),
     "ssrd",
     surface_space;
-    reference_date = ref_time,
-    t_start,
+    reference_date = start_date,
     regridder_type,
     file_reader_kwargs = (; preprocess_func = (data) -> data / 3600,),
 )
@@ -143,28 +135,27 @@ LW_d = TimeVaryingInput(
     joinpath(era5_artifact_path, "era5_2021_0.9x1.25.nc"),
     "strd",
     surface_space;
-    reference_date = ref_time,
-    t_start,
+    reference_date = start_date,
     regridder_type,
     file_reader_kwargs = (; preprocess_func = (data) -> data / 3600,),
 )
 
 function zenith_angle(
     t,
-    ref_time;
+    start_date;
     latitude = ClimaCore.Fields.coordinate_field(surface_space).lat,
     longitude = ClimaCore.Fields.coordinate_field(surface_space).long,
     insol_params::Insolation.Parameters.InsolationParameters{FT} = earth_param_set.insol_params,
 ) where {FT}
     # This should be time in UTC
-    current_datetime = ref_time + Dates.Second(round(t))
+    current_datetime = start_date + Dates.Second(round(t))
 
     # Orbital Data uses Float64, so we need to convert to our sim FT
     d, δ, η_UTC =
         FT.(
             Insolation.helper_instantaneous_zenith_angle(
                 current_datetime,
-                ref_time,
+                start_date,
                 insol_params,
             )
         )
@@ -172,7 +163,7 @@ function zenith_angle(
     Insolation.instantaneous_zenith_angle.(d, δ, η_UTC, longitude, latitude).:1
 end
 radiation =
-    PrescribedRadiativeFluxes(FT, SW_d, LW_d, ref_time; θs = zenith_angle);
+    PrescribedRadiativeFluxes(FT, SW_d, LW_d, start_date; θs = zenith_angle);
 
 include(
     joinpath(
@@ -240,8 +231,7 @@ LAIfunction = TimeVaryingInput(
     joinpath(era5_artifact_path, "era5_lai_2021_0.9x1.25_clima.nc"),
     "lai",
     surface_space;
-    reference_date = ref_time,
-    t_start,
+    reference_date = start_date,
     regridder_type,
     file_reader_kwargs = (;
         preprocess_func = (data) -> data > 0.05 ? data : 0.0,
@@ -374,8 +364,7 @@ nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(subsurface_space, output_dir)
 
 diags = ClimaLand.default_diagnostics(
     land,
-    t0,
-    ref_time;
+    start_date;
     output_writer = nc_writer,
     average_period = :hourly,
 )

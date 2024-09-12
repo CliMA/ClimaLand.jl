@@ -124,7 +124,7 @@ LW_IN = TimeVaryingInput(seconds, FT.(drivers.LW_IN.values[:]); context)
 SW_IN = TimeVaryingInput(seconds, FT.(drivers.SW_IN.values[:]); context)
 snow_precip = TimeVaryingInput((t) -> FT(0))
 
-# Construct the drivers. For the reference time we will use the UTC time at the
+# Construct the drivers. For the start date we will use the UTC time at the
 # start of the simulation
 atmos = ClimaLand.PrescribedAtmosphere(
     precip,
@@ -141,20 +141,20 @@ atmos = ClimaLand.PrescribedAtmosphere(
 
 function zenith_angle(
     t,
-    ref_time;
+    start_date;
     latitude = lat,
     longitude = long,
     insol_params::Insolation.Parameters.InsolationParameters{FT} = earth_param_set.insol_params,
 ) where {FT}
     # This should be time in UTC
-    current_datetime = ref_time + Dates.Second(round(t))
+    current_datetime = start_date + Dates.Second(round(t))
 
     # Orbital Data uses Float64, so we need to convert to our sim FT
     d, δ, η_UTC =
         FT.(
             Insolation.helper_instantaneous_zenith_angle(
                 current_datetime,
-                ref_time,
+                start_date,
                 insol_params,
             )
         )

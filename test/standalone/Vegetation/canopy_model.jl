@@ -50,17 +50,17 @@ import ClimaParams
 
             function zenith_angle(
                 t,
-                ref_time;
+                start_date;
                 latitude = lat,
                 longitude = long,
                 insol_params = earth_param_set.insol_params,
             )
-                current_datetime = ref_time + Dates.Second(round(t))
+                current_datetime = start_date + Dates.Second(round(t))
                 d, δ, η_UTC =
                     FT.(
                         Insolation.helper_instantaneous_zenith_angle(
                             current_datetime,
-                            ref_time,
+                            start_date,
                             insol_params,
                         )
                     )
@@ -95,7 +95,7 @@ import ClimaParams
             P_atmos = t -> 1e5 # Pa
             h_atmos = h_int # m
             c_atmos = (t) -> 4.11e-4 # mol/mol
-            ref_time = DateTime(2005)
+            start_date = DateTime(2005)
             atmos = PrescribedAtmosphere(
                 TimeVaryingInput(liquid_precip),
                 TimeVaryingInput(snow_precip),
@@ -103,7 +103,7 @@ import ClimaParams
                 TimeVaryingInput(u_atmos),
                 TimeVaryingInput(q_atmos),
                 TimeVaryingInput(P_atmos),
-                ref_time,
+                start_date,
                 h_atmos,
                 earth_param_set;
                 c_co2 = TimeVaryingInput(c_atmos),
@@ -112,7 +112,7 @@ import ClimaParams
                 FT,
                 TimeVaryingInput(shortwave_radiation),
                 TimeVaryingInput(longwave_radiation),
-                ref_time;
+                start_date;
                 θs = zenith_angle,
             )
 
@@ -560,17 +560,17 @@ end
 
             function zenith_angle(
                 t,
-                ref_time;
+                start_date;
                 latitude = lat,
                 longitude = long,
                 insol_params = earth_param_set.insol_params,
             )
-                current_datetime = ref_time + Dates.Second(round(t))
+                current_datetime = start_date + Dates.Second(round(t))
                 d, δ, η_UTC =
                     FT.(
                         Insolation.helper_instantaneous_zenith_angle(
                             current_datetime,
-                            ref_time,
+                            start_date,
                             insol_params,
                         )
                     )
@@ -605,7 +605,7 @@ end
             P_atmos = t -> 1e5 # Pa
             h_atmos = h_int # m
             c_atmos = (t) -> 4.11e-4 # mol/mol
-            ref_time = DateTime(2005)
+            start_date = DateTime(2005)
             atmos = PrescribedAtmosphere(
                 TimeVaryingInput(liquid_precip),
                 TimeVaryingInput(snow_precip),
@@ -613,7 +613,7 @@ end
                 TimeVaryingInput(u_atmos),
                 TimeVaryingInput(q_atmos),
                 TimeVaryingInput(P_atmos),
-                ref_time,
+                start_date,
                 h_atmos,
                 earth_param_set;
                 c_co2 = TimeVaryingInput(c_atmos),
@@ -622,7 +622,7 @@ end
                 FT,
                 TimeVaryingInput(shortwave_radiation),
                 TimeVaryingInput(longwave_radiation),
-                ref_time;
+                start_date;
                 θs = zenith_angle,
             )
 
@@ -836,17 +836,17 @@ end
 
             function zenith_angle(
                 t,
-                ref_time;
+                start_date;
                 latitude = lat,
                 longitude = long,
                 insol_params = earth_param_set.insol_params,
             )
-                current_datetime = ref_time + Dates.Second(round(t))
+                current_datetime = start_date + Dates.Second(round(t))
                 d, δ, η_UTC =
                     FT.(
                         Insolation.helper_instantaneous_zenith_angle(
                             current_datetime,
-                            ref_time,
+                            start_date,
                             insol_params,
                         )
                     )
@@ -881,7 +881,7 @@ end
             P_atmos = t -> 1e5 # Pa
             h_atmos = h_int # m
             c_atmos = (t) -> 4.11e-4 # mol/mol
-            ref_time = DateTime(2005)
+            start_date = DateTime(2005)
             atmos = PrescribedAtmosphere(
                 TimeVaryingInput(liquid_precip),
                 TimeVaryingInput(snow_precip),
@@ -889,7 +889,7 @@ end
                 TimeVaryingInput(u_atmos),
                 TimeVaryingInput(q_atmos),
                 TimeVaryingInput(P_atmos),
-                ref_time,
+                start_date,
                 h_atmos,
                 earth_param_set;
                 c_co2 = TimeVaryingInput(c_atmos),
@@ -898,7 +898,7 @@ end
                 FT,
                 TimeVaryingInput(shortwave_radiation),
                 TimeVaryingInput(longwave_radiation),
-                ref_time;
+                start_date;
                 θs = zenith_angle,
             )
 

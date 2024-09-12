@@ -113,7 +113,7 @@ end
 
 ## Drivers Module ##
 
-@diagnostic_compute "soil_organic_carbon" SoilCanopyModel p.drivers.soc # need to fix this in src/shared_utilities/drivers 
+@diagnostic_compute "soil_organic_carbon" SoilCanopyModel p.drivers.soc # need to fix this in src/shared_utilities/drivers
 @diagnostic_compute "pressure" SoilCanopyModel p.drivers.P
 @diagnostic_compute "rainfall" SoilCanopyModel p.drivers.P_liq
 @diagnostic_compute "radiation_longwave_down" SoilCanopyModel p.drivers.LW_d
@@ -151,7 +151,7 @@ function compute_heterotrophic_respiration!(
     else
         out .= p.soilco2.top_bc .* FT(83.26)
     end
-end # Convert from kg C to mol CO2. 
+end # Convert from kg C to mol CO2.
 # To convert from kg C to mol CO2, we need to multiply by:
 # [3.664 kg CO2/ kg C] x [10^3 g CO2/ kg CO2] x [1 mol CO2/44.009 g CO2] = 83.26 mol CO2/kg C
 

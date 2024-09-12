@@ -46,11 +46,11 @@ providing the space and output_dir defined in steps 1. and 2.
 Now that you defined your model and your writter, you can create a callback function to be called when solving your model. For example:
 
 ```Julia
-t0 = 0 # the starting time of your simulation
+t0 = 0 # the start date of your simulation
 
-reference_date = DateTime(2024) # reference_date is the DateTime of your starting time
+start_date = DateTime(2024) # start_date is the DateTime of your start date
 
-diags = ClimaLand.default_diagnostics(model, t0, reference_date; output_writer = nc_writer)
+diags = ClimaLand.default_diagnostics(model, start_date; output_writer = nc_writer)
 
 diagnostic_handler =
     ClimaDiagnostics.DiagnosticsHandler(diags, Y, p, t0; dt = Δt)
@@ -118,11 +118,10 @@ add_diagnostic_variable!(
 ### Define how to schedule your variables. For example, you want the seasonal maximum of your variables, where season is defined as 90 days.
 
 ```Julia
-seasonal_maxs(short_names...; output_writer, t_start) = common_diagnostics(
-    90 * 24 * 60 * 60 * one(t_start),
+seasonal_maxs(FT, short_names...; output_writer) = common_diagnostics(
+    90 * 24 * 60 * 60 * one(FT),
     max,
     output_writer,
-    t_start,
     short_names...,
 )
 ```
@@ -134,7 +133,7 @@ Now, you can call your schedule with your variables.
 ```Julia
 my_custom_diagnostics = ["lhf", "bor"]
 
-diags = seasonal_maxs(my_custom_diagnostics...; output_writer, t_start)
+diags = seasonal_maxs(FT, my_custom_diagnostics...; output_writer)
 ```
 
 ### Analyze your simulation output

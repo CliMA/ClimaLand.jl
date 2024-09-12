@@ -10,7 +10,7 @@ setup site specific domain and time stepping:
 - n_leaf, the number of leaves
 - h_stem, the height of each stem (m)
 - h_leaf, the height of each leaf (m)
-- t0, the start time of the simulation (s)
+- t0, the start date of the simulation (s)
 - dt, the time step (s)
 - n, the number of time step between saving outputs
 """

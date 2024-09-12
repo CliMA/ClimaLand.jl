@@ -71,14 +71,14 @@ params = ClimaLand.Soil.EnergyHydrologyParameters(
     d_ds,
 );
 
-ref_time = DateTime(2005)
+start_date = DateTime(2005)
 SW_d = (t) -> 0
 LW_d = (t) -> 294.15^4 * 5.67e-8
 radiation = PrescribedRadiativeFluxes(
     FT,
     TimeVaryingInput(SW_d),
     TimeVaryingInput(LW_d),
-    ref_time,
+    start_date,
 )
 # Atmos
 T_air = FT(301.15)
@@ -104,7 +104,7 @@ atmos = PrescribedAtmosphere(
     TimeVaryingInput(u_atmos),
     TimeVaryingInput(q_atmos),
     TimeVaryingInput(P_atmos),
-    ref_time,
+    start_date,
     h_atmos,
     earth_param_set;
     gustiness = gustiness,

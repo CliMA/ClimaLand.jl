@@ -7,7 +7,7 @@ sv_test, sol_test, Y_test, p_test = run_fluxnet(
     params = ozark_default_params(; hetero_resp = hetero_resp_ozark()),
 )
 
-# defaults, except start time
+# defaults, except start date
 sv, sol, Y, p = run_fluxnet(
     "US-MOz";
     setup = make_setup(;
