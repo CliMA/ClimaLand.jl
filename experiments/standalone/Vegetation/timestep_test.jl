@@ -169,62 +169,22 @@ savedir = joinpath(pkgdir(ClimaLand), "experiments/standalone/Vegetation");
 
 ref_dt = 0.001
 
-timestepper = CTS.RK4();
-ode_algo = CTS.ExplicitAlgorithm(timestepper)
+timestepper = CTS.ARS222();
+ode_algo = CTS.IMEXAlgorithm(
+    timestepper,
+    CTS.NewtonsMethod(
+        max_iters = 6,
+        update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
+    ),
+);
+# timestepper = CTS.RK4();
+# ode_algo = CTS.ExplicitAlgorithm(timestepper)
 
-############ Initial setup for ref solution
-# Y, p, coords = ClimaLand.initialize(canopy)
+# ref_T = readdlm(joinpath(savedir, "exp_T_dt$(ref_dt)_$(N_days)days.txt"))
 
-# ψ_leaf_0 = FT(-2e5 / 9800)
-# ψ_stem_0 = FT(-1e5 / 9800)
-
-# S_l_ini =
-#     inverse_water_retention_curve.(
-#         retention_model,
-#         [ψ_stem_0, ψ_leaf_0],
-#         ν,
-#         S_s,
-#     )
-
-# Y.canopy.hydraulics.ϑ_l.:1 .= augmented_liquid_fraction.(ν, S_l_ini[1])
-# Y.canopy.hydraulics.ϑ_l.:2 .= augmented_liquid_fraction.(ν, S_l_ini[2])
-
-# evaluate!(Y.canopy.energy.T, atmos.T, t0)
-# set_initial_cache!(p, Y, t0);
-
-# saveat = Array(t0:(3 * 3600):tf)
-# updateat = Array(t0:(3600 * 3):tf)
-# updatefunc = ClimaLand.make_update_drivers(drivers)
-# cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
-
-# # timestepper = CTS.ARS111();
-# # ode_algo = CTS.IMEXAlgorithm(
-# #     timestepper,
-# #     CTS.NewtonsMethod(
-# #         max_iters = 6,
-# #         update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
-# #     ),
-# # );
-
-
-# prob = SciMLBase.ODEProblem(
-#     CTS.ClimaODEFunction(T_exp! = exp_tendency!, dss! = ClimaLand.dss!),
-#     Y,
-#     (t0, tf),
-#     p,
-# );
-# ref_sol =
-#     SciMLBase.solve(prob, ode_algo; dt = ref_dt, callback = cb, saveat = saveat);
-# ref_T = [parent(ref_sol.u[k].canopy.energy.T)[1] for k in 1:length(ref_sol.t)]
-# open(joinpath(savedir, "exp_T_dt$(ref_dt)_$(N_days)days.txt"), "w") do io
-#     writedlm(io, ref_T, ',')
-# end;
-###############
-
-ref_T = readdlm(joinpath(savedir, "exp_T_dt$(ref_dt)_$(N_days)days.txt"))
-
-dts = [1.0, 0.1, 0.01]
+dts = [0.001, 1.0, 0.1, 0.01]
 sols = []
+ref_T = []
 for dt in dts
     @info dt
 
@@ -255,7 +215,11 @@ for dt in dts
 
     # Construct problem using newly-initialized values
     prob = SciMLBase.ODEProblem(
-        CTS.ClimaODEFunction(T_exp! = exp_tendency!, dss! = ClimaLand.dss!),
+            CTS.ClimaODEFunction(
+            T_exp! = exp_tendency!,
+            T_imp! = nothing,
+            dss! = ClimaLand.dss!,
+        ),
         Y,
         (t0, tf),
         p,
@@ -267,7 +231,12 @@ for dt in dts
     open(joinpath(savedir, "exp_T_dt$(dt)_$(N_days)days.txt"), "w") do io
         writedlm(io, T, ',')
     end
-    push!(sols, T)
+
+    if dt == ref_dt
+        ref_T = T
+    else
+        push!(sols, T)
+    end
 end
 
 ##########
@@ -293,7 +262,7 @@ ax2 = Axis(
     yscale = log10,
 )
 scatter!(ax2, dts, FT.(errors))
-lines!(ax2, dts, dts)
+lines!(ax2, dts, dts / 1e8)
 save(joinpath(savedir, "convergence_exp.png"), fig2)
 ##########
 
