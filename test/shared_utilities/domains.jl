@@ -177,12 +177,12 @@ FT = Float32
     longlat = (FT(-118.14452), FT(34.14778))
     radius_earth = FT(6.378e6)
     xlim_longlat = (
-        longlat[2] - dylim[1] / 2radius_earth,
-        longlat[2] + dylim[2] / 2radius_earth,
+        longlat[2] - dylim[1] / FT(2π * radius_earth) * 360,
+        longlat[2] + dylim[2] / FT(2π * radius_earth) * 360,
     )
     ylim_longlat = (
-        longlat[1] - dxlim[1] / 2radius_earth,
-        longlat[1] + dxlim[2] / 2radius_earth,
+        longlat[1] - dxlim[1] / FT(2π * radius_earth) * 360,
+        longlat[1] + dxlim[2] / FT(2π * radius_earth) * 360,
     )
 
     longlat_plane = Plane(;
