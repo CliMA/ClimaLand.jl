@@ -68,7 +68,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         depth = depth,
         nelements = nelements,
         npolynomial = 1,
-        dz_tuple = FT.((10.0, 0.05)),# top layer should ideally be only a few cm!
+        dz_tuple = FT.((10.0, 0.05)),
     )
     surface_space = domain.space.surface
     subsurface_space = domain.space.subsurface

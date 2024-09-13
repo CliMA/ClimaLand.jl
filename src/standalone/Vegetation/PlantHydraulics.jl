@@ -304,7 +304,9 @@ ClimaLand.auxiliary_types(model::PlantHydraulicsModel{FT}) where {FT} = (
 ClimaLand.auxiliary_domain_names(::PlantHydraulicsModel) =
     (:surface, :surface, :surface, :surface, :surface)
 
-
+function clip(x::FT, threshold::FT) where {FT}
+    x > threshold ? x : FT(0)
+end
 """
     set_canopy_prescribed_field!(component::PlantHydraulics{FT},
                                  p,
@@ -322,6 +324,8 @@ function ClimaLand.Canopy.set_canopy_prescribed_field!(
 ) where {FT}
     (; LAIfunction, SAI, RAI) = component.parameters.ai_parameterization
     evaluate!(p.canopy.hydraulics.area_index.leaf, LAIfunction, floor(t))
+    p.canopy.hydraulics.area_index.leaf .=
+        clip.(p.canopy.hydraulics.area_index.leaf, FT(0.05))
     @. p.canopy.hydraulics.area_index.stem = SAI
     @. p.canopy.hydraulics.area_index.root = RAI
 end
