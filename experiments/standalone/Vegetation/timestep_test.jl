@@ -219,6 +219,36 @@ open(joinpath(savedir, "ref_T_dt$ref_dt.txt"), "w") do io
     writedlm(io, ref_T, ',')
 end;
 
+
+##########
+# # Generate convergence plot for explicit solutions
+# savedir = joinpath(pkgdir(ClimaLand), "experiments/standalone/Vegetation");
+
+# ref_T_dt1 = readdlm(joinpath(savedir, "ref_T_dt1_0p5days.txt"))
+# ref_T_dt0p1 = readdlm(joinpath(savedir, "ref_T_dt0p1_0p5days.txt"))
+# ref_T_dt0p01 = readdlm(joinpath(savedir, "ref_T_dt0p01_0p5days.txt"))
+# ref_T_dt0p001 = readdlm(joinpath(savedir, "ref_T_dt0p001_0p5days.txt"))
+
+# ref_T = ref_T_dt0p001
+# sols = [ref_T_dt1, ref_T_dt0p1, ref_T_dt0p01]
+# dts = [1.0, 0.1, 0.01]
+# sol_ends = [sol[end] for sol in sols]
+
+# # Create convergence plot
+# errors = abs.(sol_ends .- ref_T[end])
+# fig2 = Figure()
+# ax2 = Axis(
+#     fig2[1, 1],
+#     xlabel = "log(dt)",
+#     ylabel = "log(|T[end] - T_ref[end]|)",
+#     xscale = log10,
+#     yscale = log10,
+# )
+# scatter!(ax2, dts, FT.(errors))
+# lines!(ax2, dts, dts)
+# save(joinpath(savedir, "convergence_exp.png"), fig2)
+##########
+
 # mean_err = []
 # p95_err = []
 # p99_err = []
