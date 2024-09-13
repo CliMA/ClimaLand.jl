@@ -154,8 +154,6 @@ canopy = ClimaLand.Canopy.CanopyModel{FT}(;
 exp_tendency! = make_exp_tendency(canopy)
 imp_tendency! = make_imp_tendency(canopy)
 jacobian! = make_jacobian(canopy);
-jac_kwargs =
-    (; jac_prototype = ClimaLand.ImplicitEquationJacobian(Y), Wfact = jacobian!);
 
 seconds_per_day = 3600 * 24.0
 t0 = 150seconds_per_day
@@ -198,6 +196,8 @@ for dt in dts
 
     # Initialize model before each simulation
     Y, p, coords = ClimaLand.initialize(canopy)
+    jac_kwargs =
+        (; jac_prototype = ClimaLand.ImplicitEquationJacobian(Y), Wfact = jacobian!);
 
     ψ_leaf_0 = FT(-2e5 / 9800)
     ψ_stem_0 = FT(-1e5 / 9800)
