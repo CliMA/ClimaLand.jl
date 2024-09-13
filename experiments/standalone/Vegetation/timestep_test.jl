@@ -151,43 +151,17 @@ canopy = ClimaLand.Canopy.CanopyModel{FT}(;
     radiation = radiation,
 );
 
-
-Y, p, coords = ClimaLand.initialize(canopy)
 exp_tendency! = make_exp_tendency(canopy)
 imp_tendency! = make_imp_tendency(canopy)
 jacobian! = make_jacobian(canopy);
 jac_kwargs =
     (; jac_prototype = ClimaLand.ImplicitEquationJacobian(Y), Wfact = jacobian!);
 
-
-ψ_leaf_0 = FT(-2e5 / 9800)
-ψ_stem_0 = FT(-1e5 / 9800)
-
-S_l_ini =
-    inverse_water_retention_curve.(
-        retention_model,
-        [ψ_stem_0, ψ_leaf_0],
-        ν,
-        S_s,
-    )
-
-Y.canopy.hydraulics.ϑ_l.:1 .= augmented_liquid_fraction.(ν, S_l_ini[1])
-Y.canopy.hydraulics.ϑ_l.:2 .= augmented_liquid_fraction.(ν, S_l_ini[2])
-
-
 seconds_per_day = 3600 * 24.0
 t0 = 150seconds_per_day
 N_days = 0.5
 tf = t0 + N_days * seconds_per_day
-evaluate!(Y.canopy.energy.T, atmos.T, t0)
 set_initial_cache! = make_set_initial_cache(canopy)
-set_initial_cache!(p, Y, t0);
-
-saveat = Array(t0:(3 * 3600):tf)
-updateat = Array(t0:(3600 * 3):tf)
-drivers = ClimaLand.get_drivers(canopy)
-updatefunc = ClimaLand.make_update_drivers(drivers)
-cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
 
 timestepper = CTS.ARS111();
 err = (FT == Float64) ? 1e-8 : 1e-4
@@ -202,39 +176,58 @@ ode_algo = CTS.IMEXAlgorithm(
     ),
 );
 
-prob = SciMLBase.ODEProblem(
-    CTS.ClimaODEFunction(
-        T_exp! = exp_tendency!,
-        T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
-        dss! = ClimaLand.dss!,
-    ),
-    Y,
-    (t0, tf),
-    p,
-);
-
-# ref_dt = 6.0
+ref_dt = 0.001
 # ref_sol =
 #     SciMLBase.solve(prob, ode_algo; dt = ref_dt, callback = cb, saveat = saveat);
 # ref_T = [parent(ref_sol.u[k].canopy.energy.T)[1] for k in 1:length(ref_sol.t)]
 
 # Read in solution from saved delimited file (experiment run explicitly with dt = 0.1s)
 savedir = joinpath(pkgdir(ClimaLand), "experiments/standalone/Vegetation");
-ref_file = joinpath(savedir, "ref_T_dt0p01_0p5days.txt")
+ref_file = joinpath(savedir, "exp_T_dt($ref_dt)_($N_days)days.txt")
 ref_T = vec(readdlm(ref_file, ','))
 
 mean_err = []
 p95_err = []
 p99_err = []
-dts = [3600.0, 5400.0, 7200.0, 9000.0, 10800.0, 12600.0, 13500.0, 14040.0]#[12.0, 24.0, 48.0, 100.0, 225.0, 450.0, 900.0, 1800.0, 3600.0, 7200.0, 14400.0]
+dts = [12.0, 24.0, 48.0, 100.0, 225.0, 450.0, 900.0, 1800.0, 3600.0]
 sol_ends = []
 T_states = []
 times = []
 for dt in dts
     @info dt
-    saveat = Array(t0:(3 * 3600):tf)
+
+    # Initialize model before each simulation
+    Y, p, coords = ClimaLand.initialize(canopy)
+
+    ψ_leaf_0 = FT(-2e5 / 9800)
+    ψ_stem_0 = FT(-1e5 / 9800)
+    S_l_ini =
+        inverse_water_retention_curve.(
+            retention_model,
+            [ψ_stem_0, ψ_leaf_0],
+            ν,
+            S_s,
+        )
+
+    Y.canopy.hydraulics.ϑ_l.:1 .= augmented_liquid_fraction.(ν, S_l_ini[1])
+    Y.canopy.hydraulics.ϑ_l.:2 .= augmented_liquid_fraction.(ν, S_l_ini[2])
+
     evaluate!(Y.canopy.energy.T, atmos.T, t0)
-    updateat = Array(t0:(3600 * 0.5):tf)
+    set_initial_cache!(p, Y, t0)
+
+    prob = SciMLBase.ODEProblem(
+        CTS.ClimaODEFunction(
+            T_exp! = exp_tendency!,
+            T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
+            dss! = ClimaLand.dss!,
+        ),
+        Y,
+        (t0, tf),
+        p,
+    )
+
+    saveat = Array(t0:(3 * 3600):tf)
+    updateat = Array(t0:(3600 * 3):tf)
     updatefunc = ClimaLand.make_update_drivers(drivers)
     cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
 
