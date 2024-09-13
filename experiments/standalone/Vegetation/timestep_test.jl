@@ -223,8 +223,10 @@ sols = []
 for dt in dts
     @info dt
 
-    saveat = Array(t0:(3 * 3600):tf)
+    Y, p, coords = ClimaLand.initialize(canopy)
     evaluate!(Y.canopy.energy.T, atmos.T, t0)
+    set_initial_cache!(p, Y, t0);
+    saveat = Array(t0:(3 * 3600):tf)
     updateat = Array(t0:(3600 * 3):tf)
     updatefunc = ClimaLand.make_update_drivers(drivers)
     cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
