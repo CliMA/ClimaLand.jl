@@ -181,7 +181,7 @@ ref_dt = 0.001
 
 # Read in solution from saved delimited file (experiment run explicitly with dt = 0.1s)
 savedir = joinpath(pkgdir(ClimaLand), "experiments/standalone/Vegetation");
-ref_file = joinpath(savedir, "exp_T_dt($ref_dt)_($N_days)days.txt")
+ref_file = joinpath(savedir, "exp_T_dt$(ref_dt)_$(N_days)days.txt")
 ref_T = vec(readdlm(ref_file, ','))
 
 mean_err = []
