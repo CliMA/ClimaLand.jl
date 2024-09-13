@@ -209,12 +209,14 @@ prob = SciMLBase.ODEProblem(
 savedir = joinpath(pkgdir(ClimaLand), "experiments/standalone/Vegetation");
 
 ref_dt = 0.001
-ref_sol =
-    SciMLBase.solve(prob, ode_algo; dt = ref_dt, callback = cb, saveat = saveat);
-ref_T = [parent(ref_sol.u[k].canopy.energy.T)[1] for k in 1:length(ref_sol.t)]
-open(joinpath(savedir, "exp_T_dt$(ref_dt)_$(N_days)days.txt"), "w") do io
-    writedlm(io, ref_T, ',')
-end;
+# ref_sol =
+#     SciMLBase.solve(prob, ode_algo; dt = ref_dt, callback = cb, saveat = saveat);
+# ref_T = [parent(ref_sol.u[k].canopy.energy.T)[1] for k in 1:length(ref_sol.t)]
+# open(joinpath(savedir, "exp_T_dt$(ref_dt)_$(N_days)days.txt"), "w") do io
+#     writedlm(io, ref_T, ',')
+# end;
+
+ref_T = readdlm(joinpath(savedir, "exp_T_dt$(ref_dt)_$(N_days)days.txt"))
 
 dts = [1.0, 0.1, 0.01]
 sols = []
