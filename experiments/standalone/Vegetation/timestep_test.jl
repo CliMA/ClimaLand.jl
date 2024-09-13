@@ -154,6 +154,7 @@ set_initial_cache! = make_set_initial_cache(canopy)
 exp_tendency! = make_exp_tendency(canopy)
 drivers = ClimaLand.get_drivers(canopy)
 
+
 # imp_tendency! = make_imp_tendency(canopy)
 # jacobian! = make_jacobian(canopy);
 # jac_kwargs =
@@ -167,6 +168,9 @@ tf = t0 + N_days * seconds_per_day
 savedir = joinpath(pkgdir(ClimaLand), "experiments/standalone/Vegetation");
 
 ref_dt = 0.001
+
+timestepper = CTS.RK4();
+ode_algo = CTS.ExplicitAlgorithm(timestepper)
 
 ############ Initial setup for ref solution
 # Y, p, coords = ClimaLand.initialize(canopy)
@@ -201,8 +205,7 @@ ref_dt = 0.001
 # #         update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
 # #     ),
 # # );
-# timestepper = CTS.RK4();
-# ode_algo = CTS.ExplicitAlgorithm(timestepper)
+
 
 # prob = SciMLBase.ODEProblem(
 #     CTS.ClimaODEFunction(T_exp! = exp_tendency!, dss! = ClimaLand.dss!),
