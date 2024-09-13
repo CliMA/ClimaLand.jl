@@ -235,7 +235,7 @@ Example: `longlat = (FT(-118.14452), FT(34.14778))`. `longlat` is in degrees, wi
 is not accounted for. We compute `xlim` and `ylim` as
 
 ```julia
-xlim = (long - xlim[1] / (2radius_earth), long + xlim[2] / (2radius_earth))
+xlim = (long - xlim[1] / (2π*radius_earth) * 360, long + xlim[2] / (2π*radius_earth) * 360)
 ```
 """
 function Plane(;
@@ -271,11 +271,13 @@ function Plane(;
         dylim = ylim # lat bounds
         # Now make x refer to lat, and y refer to long,
         # for compatibility with ClimaCore
-        xlim =
-            (lat - dylim[1] / (2radius_earth), lat + dylim[2] / (2radius_earth))
+        xlim = (
+            lat - dylim[1] / FT(2π * radius_earth) * 360,
+            lat + dylim[2] / FT(2π * radius_earth) * 360,
+        )
         ylim = (
-            long - dxlim[1] / (2radius_earth),
-            long + dxlim[2] / (2radius_earth),
+            long - dxlim[1] / FT(2π * radius_earth) * 360,
+            long + dxlim[2] / FT(2π * radius_earth) * 360,
         )
         @assert xlim[1] < xlim[2]
         @assert ylim[1] < ylim[2]
@@ -390,7 +392,7 @@ globe centered around the `long` and `lat`. In this case, the radius of Earth is
 assumed to be `6.378e6` meters and curvature is not included. We compute `xlim` and `ylim` as
 
 ```julia
-xlim = (long - xlim[1] / (2radius_earth), long + xlim[2] / (2radius_earth))
+xlim = (long - xlim[1] / (2π*radius_earth) * 360, long + xlim[2] / (2π*radius_earth) * 360)
 ```
 
 Using `ClimaCore` tools, the coordinate

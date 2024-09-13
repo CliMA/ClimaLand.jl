@@ -63,7 +63,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (10, 10, 15))
     radius = FT(6378.1e3)
     depth = FT(50)
     center_long, center_lat = FT(-117.59736), FT(34.23375)
-    delta_m = FT(100_000) # in meters
+    delta_m = FT(200_000) # in meters, this is about a 2 degree simulation
     domain = ClimaLand.Domains.HybridBox(;
         xlim = (delta_m, delta_m),
         ylim = (delta_m, delta_m),
@@ -71,7 +71,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (10, 10, 15))
         nelements = nelements,
         npolynomial = 1,
         longlat = (center_long, center_lat),
-        dz_tuple = FT.((10.0, 0.5)),
+        dz_tuple = FT.((10.0, 0.05)),
     )
     surface_space = domain.space.surface
     subsurface_space = domain.space.subsurface
@@ -369,9 +369,6 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (10, 10, 15))
     # Energy Balance model
     ac_canopy = FT(2.5e4) # this will likely be 10x smaller!
 
-    # Conductance Model
-    g1 = FT(141) # Wang et al: 141 sqrt(Pa) for Medlyn model; Natan used 300.
-
     clm_artifact_path = ClimaLand.Artifacts.clm_data_folder_path(; context)
     # vcmax is read in units of umol CO2/m^2/s and then converted to mol CO2/m^2/s
     Vcmax25 = SpaceVaryingInput(
@@ -381,6 +378,16 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (10, 10, 15))
         regridder_type,
         regridder_kwargs = (; extrapolation_bc,),
         file_reader_kwargs = (; preprocess_func = (data) -> data / 1_000_000,),
+    )
+
+    # g1 is read in units of sqrt(kPa) and then converted to sqrt(Pa)
+    g1 = SpaceVaryingInput(
+        joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
+        "medlynslope",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc,),
+        file_reader_kwargs = (; preprocess_func = (data) -> data * 10^(3 / 2),),
     )
 
     # Plant Hydraulics and general plant parameters
