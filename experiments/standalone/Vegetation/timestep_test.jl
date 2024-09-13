@@ -206,24 +206,38 @@ prob = SciMLBase.ODEProblem(
     p,
 );
 
+savedir = joinpath(pkgdir(ClimaLand), "experiments/standalone/Vegetation");
+
 ref_dt = 0.001
 ref_sol =
     SciMLBase.solve(prob, ode_algo; dt = ref_dt, callback = cb, saveat = saveat);
 ref_T = [parent(ref_sol.u[k].canopy.energy.T)[1] for k in 1:length(ref_sol.t)]
-
-
-savedir = joinpath(pkgdir(ClimaLand), "experiments/standalone/Vegetation");
-# save(joinpath(savedir, "ref_T.txt"), ref_T)
-
-open(joinpath(savedir, "ref_T_dt$ref_dt.txt"), "w") do io
+open(joinpath(savedir, "exp_T_dt$(ref_dt)_$(N_days)days.txt"), "w") do io
     writedlm(io, ref_T, ',')
 end;
 
+dts = [1.0, 0.1, 0.01]
+sols = []
+for dt in dts
+    @info dt
+
+    saveat = Array(t0:(3 * 3600):tf)
+    evaluate!(Y.canopy.energy.T, atmos.T, t0)
+    updateat = Array(t0:(3600 * 3):tf)
+    updatefunc = ClimaLand.make_update_drivers(drivers)
+    cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
+
+    @time sol =
+        SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb, saveat = saveat)
+    T = [parent(sol.u[k].canopy.energy.T)[1] for k in 1:length(sol.t)]
+    open(joinpath(savedir, "exp_T_dt$(dt)_$(N_days)days.txt"), "w") do io
+        writedlm(io, T, ',')
+    end
+    push!(sols, T)
+end
 
 ##########
-# # Generate convergence plot for explicit solutions
-# savedir = joinpath(pkgdir(ClimaLand), "experiments/standalone/Vegetation");
-
+# Generate convergence plot for explicit solutions
 # ref_T_dt1 = readdlm(joinpath(savedir, "ref_T_dt1_0p5days.txt"))
 # ref_T_dt0p1 = readdlm(joinpath(savedir, "ref_T_dt0p1_0p5days.txt"))
 # ref_T_dt0p01 = readdlm(joinpath(savedir, "ref_T_dt0p01_0p5days.txt"))
@@ -232,22 +246,31 @@ end;
 # ref_T = ref_T_dt0p001
 # sols = [ref_T_dt1, ref_T_dt0p1, ref_T_dt0p01]
 # dts = [1.0, 0.1, 0.01]
-# sol_ends = [sol[end] for sol in sols]
+sol_ends = [sol[end] for sol in sols]
 
-# # Create convergence plot
-# errors = abs.(sol_ends .- ref_T[end])
-# fig2 = Figure()
-# ax2 = Axis(
-#     fig2[1, 1],
-#     xlabel = "log(dt)",
-#     ylabel = "log(|T[end] - T_ref[end]|)",
-#     xscale = log10,
-#     yscale = log10,
-# )
-# scatter!(ax2, dts, FT.(errors))
-# lines!(ax2, dts, dts)
-# save(joinpath(savedir, "convergence_exp.png"), fig2)
+# Create convergence plot
+errors = abs.(sol_ends .- ref_T[end])
+fig2 = Figure()
+ax2 = Axis(
+    fig2[1, 1],
+    xlabel = "log(dt)",
+    ylabel = "log(|T[end] - T_ref[end]|)",
+    xscale = log10,
+    yscale = log10,
+)
+scatter!(ax2, dts, FT.(errors))
+lines!(ax2, dts, dts)
+save(joinpath(savedir, "convergence_exp.png"), fig2)
 ##########
+
+
+# savedir = joinpath(pkgdir(ClimaLand), "experiments/standalone/Vegetation");
+# # save(joinpath(savedir, "ref_T.txt"), ref_T)
+
+# open(joinpath(savedir, "ref_T_dt$ref_dt.txt"), "w") do io
+#     writedlm(io, ref_T, ',')
+# end;
+
 
 # mean_err = []
 # p95_err = []
