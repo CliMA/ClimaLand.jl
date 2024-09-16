@@ -316,6 +316,13 @@ end
 
 Sets the canopy prescribed fields pertaining to the PlantHydraulics
 component (the area indices) with their values at time t.
+
+Note that we clip all values of LAI below 0.05 to zero.
+This is because we currently run into issues when LAI is
+of order eps(FT) in the SW radiation code.
+Please see Issue #644
+or PR #645 for details.
+For now, this clipping is similar to what CLM and NOAH MP do.
 """
 function ClimaLand.Canopy.set_canopy_prescribed_field!(
     component::PlantHydraulicsModel{FT},

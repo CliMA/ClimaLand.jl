@@ -483,21 +483,12 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     )
     # Set up plant hydraulics
 
-    # Note that we clip all values of LAI below 0.05 to zero.
-    # This is because we currently run into issues when LAI is
-    # of order eps(FT) in the SW radiation code.
-    # Please see Issue #644
-    # or PR #645 for details.
-    # For now, this clipping is similar to what CLM does.
     LAIfunction = TimeVaryingInput(
         joinpath(era5_artifact_path, "era5_lai_2021_0.9x1.25_clima.nc"),
         "lai",
         surface_space;
         reference_date = start_date,
         regridder_type,
-        file_reader_kwargs = (;
-            preprocess_func = (data) -> data > 0.05 ? data : 0.0,
-        ),
         method = time_interpolation_method,
     )
     ai_parameterization =

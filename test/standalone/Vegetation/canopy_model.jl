@@ -498,7 +498,10 @@ end
         set_canopy_prescribed_field!(plant_hydraulics, p, FT(200))
         @test all(
             Array(parent(p.canopy.hydraulics.area_index.leaf)) .==
-            FT(LAI * sin(200 * 2π / 365)),
+            ClimaLand.Canopy.PlantHydraulics.clip(
+                FT(LAI * sin(200 * 2π / 365)),
+                FT(0.05),
+            ),
         )
 
         set_canopy_prescribed_field!(Default{FT}(), p, t0)
@@ -506,7 +509,10 @@ end
         # Test that they are unchanged
         @test all(
             parent(p.canopy.hydraulics.area_index.leaf) .==
-            FT(LAI * sin(200 * 2π / 365)),
+            ClimaLand.Canopy.PlantHydraulics.clip(
+                FT(LAI * sin(200 * 2π / 365)),
+                FT(0.05),
+            ),
         )
         @test all(
             Array(parent(p.canopy.hydraulics.area_index.stem)) .== FT(1.0),
