@@ -45,8 +45,8 @@ end
         θs::FT,
     )
 
-Returns the leaf angle distribution value for CLM G function as a function of the 
-solar zenith angle and the leaf orientation index. See section 3.1 of 
+Returns the leaf angle distribution value for CLM G function as a function of the
+solar zenith angle and the leaf orientation index. See section 3.1 of
 https://www2.cesm.ucar.edu/models/cesm2/land/CLM50_Tech_Note.pdf
 """
 function compute_G(G::CLMGFunction{FT}, θs::FT) where {FT}
@@ -72,8 +72,8 @@ end
     )
 
 Computes the PAR and NIR absorbances, reflectances, and tranmittances
-for a canopy in the case of the 
-Beer-Lambert model. The absorbances are a function of the radiative transfer 
+for a canopy in the case of the
+Beer-Lambert model. The absorbances are a function of the radiative transfer
 model, as well as the magnitude of incident PAR and NIR radiation in W/m^2,
  the leaf area index, the extinction coefficient, and the
 soil albedo in the PAR and NIR bands. Returns a
@@ -130,11 +130,11 @@ end
     )
 
 Computes the PAR and NIR absorbances, reflectances, and tranmittances
-for a canopy in the case of the 
-Beer-Lambert model. The absorbances are a function of the radiative transfer 
-model, as well as the magnitude of incident PAR and NIR radiation in W/m^2, 
+for a canopy in the case of the
+Beer-Lambert model. The absorbances are a function of the radiative transfer
+model, as well as the magnitude of incident PAR and NIR radiation in W/m^2,
 the leaf area index, the extinction coefficient, and the
-soil albedo in the PAR and NIR bands. 
+soil albedo in the PAR and NIR bands.
 
 This model also depends on the diffuse fraction and the zenith angle.
 Returns a
@@ -191,14 +191,14 @@ end
         α_soil::FT
     )
 
-Computes the absorbed, reflected, and transmitted photon flux density 
-in terms of mol photons per m^2 per 
+Computes the absorbed, reflected, and transmitted photon flux density
+in terms of mol photons per m^2 per
 second for a radiation band.
 
-This applies the Beer-Lambert law, which is a function of incident 
+This applies the Beer-Lambert law, which is a function of incident
 radiation (`SW_IN`; moles of photons/m^2/), leaf reflectance
 (`α_leaf`), the extinction coefficient (`K`), leaf area index (`LAI`),
-and the albedo of the soil (`α_soil`). 
+and the albedo of the soil (`α_soil`).
 
 Returns a tuple of reflected, absorbed, and transmitted radiation in
 mol photons/m^2/s.
@@ -230,13 +230,13 @@ end
         α_soil::FT,
     )
 
-Computes the absorbed, transmitted, and reflected  photon flux density 
-in terms of mol photons  per m^2 per second for a radiation band. 
+Computes the absorbed, transmitted, and reflected  photon flux density
+in terms of mol photons  per m^2 per second for a radiation band.
 
 This applies the two-stream radiative transfer solution which takes into account
-the impacts of scattering within the canopy. The function takes in all 
-parameters from the parameter struct of a TwoStreamModel, along with the 
-incident radiation, LAI, extinction coefficient K, soil albedo from the 
+the impacts of scattering within the canopy. The function takes in all
+parameters from the parameter struct of a TwoStreamModel, along with the
+incident radiation, LAI, extinction coefficient K, soil albedo from the
 canopy soil_driver, solar zenith angle, and τ.
 
 Returns a tuple of reflected, absorbed, and transmitted radiation in
@@ -276,7 +276,7 @@ function plant_absorbed_pfd(
     c²θ̄ = pi * G / 4
     β = 0.5 * (ω + diff * c²θ̄) / ω
 
-    # Compute coefficients for two-stream solution 
+    # Compute coefficients for two-stream solution
     b = 1 - ω + ω * β
     c = ω * β
     d = ω * β₀ * μ̄ * K
@@ -312,7 +312,7 @@ function plant_absorbed_pfd(
             p₁ * s₂ * (d - c - h₁ / σ * (u₁ + μ̄ * K))
         )
 
-    # h coefficients for direct downward flux 
+    # h coefficients for direct downward flux
     h₄ = -f * p₃ - c * d
     h₅ =
         -1 / d₂ *
@@ -351,7 +351,7 @@ function plant_absorbed_pfd(
         # Compute cumulative LAI at this layer
         L = i * Lₗ
 
-        # Compute the direct fluxes into/out of the layer 
+        # Compute the direct fluxes into/out of the layer
         I_dir_up =
             h₁ * exp(-K * L * Ω) / σ +
             h₂ * exp(-h * L * Ω) +
@@ -368,7 +368,7 @@ function plant_absorbed_pfd(
         I_dif_up = h₇ * exp(-h * L * Ω) + h₈ * exp(h * L * Ω)
         I_dif_dn = h₉ * exp(-h * L * Ω) + h₁₀ * exp(h * L * Ω)
 
-        # Energy balance giving radiation absorbed in the layer 
+        # Energy balance giving radiation absorbed in the layer
         if i == 0
             I_dir_abs = 0
             I_dif_abs = 0
@@ -385,7 +385,7 @@ function plant_absorbed_pfd(
         # Add radiation absorbed in the layer to total absorbed radiation
         F_abs += (1 - frac_diff) * I_dir_abs + (frac_diff) * I_dif_abs
 
-        # Save input/output values to compute energy balance of next layer 
+        # Save input/output values to compute energy balance of next layer
         I_dir_up_prev = I_dir_up
         I_dir_dn_prev = I_dir_dn
         I_dif_up_prev = I_dif_up
@@ -411,7 +411,7 @@ end
 Computes the fraction of diffuse radiation (`diff_frac`) as a function
 of the solar zenith angle (`θs`), the total surface incident shortwave radiation (`SW_IN`),
 the air temperature (`T`), air pressure (`P`), specific humidity (`q`), and the day of the year
-(`td`). 
+(`td`).
 
 See Appendix A of Braghiere, "Evaluation of turbulent fluxes of CO2, sensible heat,
 and latent heat as a function of aerosol optical depth over the course of deforestation
@@ -419,10 +419,10 @@ in the Brazilian Amazon" 2013.
 
 Note that cos(θs) is equal to zero when θs = π/2, and this is a coefficient
 of k₀, which we divide by in this expression. This can amplify small errors
-when θs is near π/2. 
+when θs is near π/2.
 
-This formula is empirical and can yied negative numbers depending on the 
-input, which, when dividing by something very near zero, 
+This formula is empirical and can yied negative numbers depending on the
+input, which, when dividing by something very near zero,
 can become large negative numbers.
 
 Because of that, we cap the returned value to lie within [0,1].
@@ -481,7 +481,7 @@ end
     intercellular_co2(ca::FT, Γstar::FT, medlyn_factor::FT) where{FT}
 
 Computes the intercellular CO2 concentration (mol/mol) given the
-atmospheric concentration (`ca`, mol/mol), the CO2 compensation (`Γstar`, 
+atmospheric concentration (`ca`, mol/mol), the CO2 compensation (`Γstar`,
  mol/mol), and the Medlyn factor (unitless).
 """
 function intercellular_co2(ca::FT, Γstar::FT, medlyn_term::FT) where {FT}
@@ -539,8 +539,8 @@ end
 
 Computes the Rubisco limiting rate of photosynthesis for C3 plants (`Ac`),
 in units of moles CO2/m^2/s,
-as a function of the maximum rate of carboxylation of Rubisco (`Vcmax`), 
-the leaf internal carbon dioxide partial pressure (`ci`), 
+as a function of the maximum rate of carboxylation of Rubisco (`Vcmax`),
+the leaf internal carbon dioxide partial pressure (`ci`),
 the CO2 compensation point (`Γstar`), and Michaelis-Menten parameters
 for CO2 and O2, respectively, (`Kc`) and (`Ko`).
 
@@ -618,12 +618,12 @@ end
     max_electron_transport(Vcmax::FT) where {FT}
 
 Computes the maximum potential rate of electron transport (`Jmax`),
-in units of mol/m^2/s, 
+in units of mol/m^2/s,
 as a function of Vcmax at 25 °C (`Vcmax25`),
 a constant (`ΔHJmax`), a standard temperature (`To`),
 the unversal gas constant (`R`), and the temperature (`T`).
 
-See Table 11.5 of G. Bonan's textbook, 
+See Table 11.5 of G. Bonan's textbook,
 Climate Change and Terrestrial Ecosystem Modeling (2019).
 """
 function max_electron_transport(
@@ -649,7 +649,7 @@ in units of mol/m^2/s, as a function of
 the maximum potential rate of electron transport (`Jmax`),
 absorbed photosynthetically active radiation (`APAR`),
 an empirical "curvature parameter" (`θj`; Bonan Eqn 11.21)
-and the quantum yield of photosystem II (`ϕ`). 
+and the quantum yield of photosystem II (`ϕ`).
 
 See Ch 11, G. Bonan's textbook, Climate Change and Terrestrial Ecosystem Modeling (2019).
 """
@@ -726,9 +726,9 @@ end
                        β::FT) where {FT}
 
 Computes the total net carbon assimilation (`An`),
-in units of mol CO2/m^2/s, as a function of 
+in units of mol CO2/m^2/s, as a function of
 the Rubisco limiting factor (`Ac`), the electron transport limiting rate (`Aj`),
-dark respiration (`Rd`), and the moisture stress factor (`β`). 
+dark respiration (`Rd`), and the moisture stress factor (`β`).
 
 See Table 11.5 of G. Bonan's textbook, Climate Change and Terrestrial Ecosystem Modeling (2019).
 """
@@ -744,10 +744,10 @@ end
 
 Computes the moisture stress factor (`β`), which is unitless,
  as a function of
-a constant (`sc`, 1/Pa), a reference pressure (`pc`, Pa), and 
-the leaf water pressure (`pl`, Pa) . 
+a constant (`sc`, 1/Pa), a reference pressure (`pc`, Pa), and
+the leaf water pressure (`pl`, Pa) .
 
-See Eqn 12.57 of G. Bonan's textbook, 
+See Eqn 12.57 of G. Bonan's textbook,
 Climate Change and Terrestrial Ecosystem Modeling (2019).
 """
 function moisture_stress(pl::FT, sc::FT, pc::FT) where {FT}
@@ -770,7 +770,7 @@ and the moisture stress factor (`β`), an empirical factor `f` is equal to 0.015
 a constant (`ΔHRd`), a standard temperature (`To`),
 the unversal gas constant (`R`), and the temperature (`T`).
 
-See Table 11.5 of G. Bonan's textbook, 
+See Table 11.5 of G. Bonan's textbook,
 Climate Change and Terrestrial Ecosystem Modeling (2019).
 """
 function dark_respiration(
@@ -792,7 +792,7 @@ end
              LAI::FT,
              Ω::FT) where {FT}
 
-Computes the total canopy photosynthesis (`GPP`) as a function of 
+Computes the total canopy photosynthesis (`GPP`) as a function of
 the total net carbon assimilation (`An`), the extinction coefficient (`K`),
 leaf area index (`LAI`) and the clumping index (`Ω`).
 """
@@ -810,7 +810,7 @@ and (1) converts it to m/s, (2) upscales to the entire canopy, by assuming
 the leaves in the canopy are in parallel and hence multiplying
 by LAI.
 
-TODO: Check what CLM does, and check if we can use the same function 
+TODO: Check what CLM does, and check if we can use the same function
 for GPP from An, and make more general.
 """
 function upscale_leaf_conductance(
@@ -828,10 +828,10 @@ end
     arrhenius_function(T::FT, To::FT, R::FT, ΔH::FT)
 
 Computes the Arrhenius function at temperature `T` given
-the reference temperature `To=298.15K`, the universal 
+the reference temperature `To=298.15K`, the universal
 gas constant `R`, and the energy activation `ΔH`.
 
-See Table 11.5 of G. Bonan's textbook, 
+See Table 11.5 of G. Bonan's textbook,
 Climate Change and Terrestrial Ecosystem Modeling (2019).
 """
 function arrhenius_function(T::FT, To::FT, R::FT, ΔH::FT) where {FT}
@@ -851,7 +851,7 @@ as a function of its value at 25 °C (`Kc25`),
 a constant (`ΔHkc`), a standard temperature (`To`),
 the unversal gas constant (`R`), and the temperature (`T`).
 
-See Table 11.5 of G. Bonan's textbook, 
+See Table 11.5 of G. Bonan's textbook,
 Climate Change and Terrestrial Ecosystem Modeling (2019).
 """
 function MM_Kc(Kc25::FT, ΔHkc::FT, T::FT, To::FT, R::FT) where {FT}
@@ -872,7 +872,7 @@ as a function of its value at 25 °C (`Ko25`),
 a constant (`ΔHko`), a standard temperature (`To`),
 the universal gas constant (`R`), and the temperature (`T`).
 
-See Table 11.5 of G. Bonan's textbook, 
+See Table 11.5 of G. Bonan's textbook,
 Climate Change and Terrestrial Ecosystem Modeling (2019).
 """
 function MM_Ko(Ko25::FT, ΔHko::FT, T::FT, To::FT, R::FT) where {FT}
@@ -888,11 +888,11 @@ end
            ep5::FT) where {FT}
 
 Computes the maximum rate of carboxylation of Rubisco (`Vcmax`),
-in units of mol/m^2/s, 
+in units of mol/m^2/s,
 as a function of temperature (`T`), Vcmax at the reference temperature 25 °C (`Vcmax25`),
 the universal gas constant (`R`), and the reference temperature (`To`).
 
-See Table 11.5 of G. Bonan's textbook, 
+See Table 11.5 of G. Bonan's textbook,
 Climate Change and Terrestrial Ecosystem Modeling (2019).
 """
 function compute_Vcmax(
@@ -936,13 +936,13 @@ end
                        An::FT,
                        ca::FT) where {FT}
 
-Computes the stomatal conductance according to Medlyn, as a function of 
-the minimum stomatal conductance (`g0`), 
+Computes the stomatal conductance according to Medlyn, as a function of
+the minimum stomatal conductance (`g0`),
 the relative diffusivity of water vapor with respect to CO2 (`Drel`),
 the Medlyn term (unitless), the biochemical demand for CO2 (`An`), and the
 atmospheric concentration of CO2 (`ca`).
 
-This returns the conductance in units of mol/m^2/s. It must be converted to 
+This returns the conductance in units of mol/m^2/s. It must be converted to
 m/s using the molar density of water prior to use in SurfaceFluxes.jl.
 """
 function medlyn_conductance(
@@ -958,11 +958,11 @@ end
 
 """
     penman_monteith(
-        Δ::FT, # Rate of change of saturation vapor pressure with air temperature. (Pa K−1)  
+        Δ::FT, # Rate of change of saturation vapor pressure with air temperature. (Pa K−1)
         Rn::FT, # Net irradiance (W m−2)
         G::FT, # Ground heat flux (W m−2)
         ρa::FT, # Dry air density (kg m−3)
-        cp::FT, # Specific heat capacity of air (J kg−1 K−1) 
+        cp::FT, # Specific heat capacity of air (J kg−1 K−1)
         VPD::FT, # vapor pressure deficit (Pa)
         ga::FT, # atmospheric conductance (m s−1)
         γ::FT, # Psychrometric constant (γ ≈ 66 Pa K−1)
@@ -970,7 +970,7 @@ end
         Lv::FT, # Volumetric latent heat of vaporization (J m-3)
         ) where {FT}
 
-Computes the evapotranspiration in m/s using the Penman-Monteith equation.       
+Computes the evapotranspiration in m/s using the Penman-Monteith equation.
 """
 function penman_monteith(
     Δ::FT,
@@ -995,11 +995,11 @@ end
                      LAI::FT, # Leaf area index
                      SAI::FT,
                      RAI::FT,
-                     ηsl::FT, # live stem  wood coefficient (kg C m-3) 
+                     ηsl::FT, # live stem  wood coefficient (kg C m-3)
                      h::FT, # canopy height (m)
                      σl::FT # Specific leaf density (kg C m-2 [leaf])
                      μr::FT, # Ratio root nitrogen to top leaf nitrogen (-), typical value 1.0
-                     μs::FT, # Ratio stem nitrogen to top leaf nitrogen (-), typical value 0.1 
+                     μs::FT, # Ratio stem nitrogen to top leaf nitrogen (-), typical value 0.1
                     ) where {FT}
 
 Computes the nitrogen content of leafs (Nl), roots (Nr) and stems (Ns).
@@ -1010,11 +1010,11 @@ function nitrogen_content(
     LAI::FT, # Leaf area index
     SAI::FT,
     RAI::FT,
-    ηsl::FT, # live stem  wood coefficient (kg C m-3) 
+    ηsl::FT, # live stem  wood coefficient (kg C m-3)
     h::FT, # canopy height (m)
     σl::FT, # Specific leaf density (kg C m-2 [leaf])
     μr::FT, # Ratio root nitrogen to top leaf nitrogen (-), typical value 1.0
-    μs::FT, # Ratio stem nitrogen to top leaf nitrogen (-), typical value 0.1 
+    μs::FT, # Ratio stem nitrogen to top leaf nitrogen (-), typical value 0.1
 ) where {FT}
     Sc = ηsl * h * LAI * ClimaLand.heaviside(SAI)
     Rc = σl * RAI
@@ -1035,7 +1035,7 @@ end
         ) where {FT}
 
 Computes plant maintenance respiration as a function of dark respiration (Rd),
-the nitrogen content of leafs (Nl), roots (Nr) and stems (Ns), 
+the nitrogen content of leafs (Nl), roots (Nr) and stems (Ns),
 and the soil moisture factor (β).
 """
 function plant_respiration_maintenance(
