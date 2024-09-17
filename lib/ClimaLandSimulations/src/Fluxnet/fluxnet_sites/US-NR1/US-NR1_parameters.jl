@@ -139,7 +139,7 @@ function conductance_niwotridge(;
 end
 
 function photosynthesis_niwotridge(;
-    mechanism = Canopy.C3(),
+    is_c3 = FT(1),
     oi = FT(0.209),
     ϕ = FT(0.6),
     θj = FT(0.9),
@@ -176,7 +176,7 @@ function photosynthesis_niwotridge(;
         f,
         sc,
         pc,
-        mechanism,
+        is_c3,
     )
 end
 

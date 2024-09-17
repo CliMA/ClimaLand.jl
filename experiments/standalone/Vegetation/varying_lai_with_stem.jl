@@ -82,8 +82,8 @@ cond_params = MedlynConductanceParameters(FT; g1 = FT(141.0))
 
 stomatal_model = MedlynConductanceModel{FT}(cond_params);
 
-
-photo_params = FarquharParameters(FT, Canopy.C3(); Vcmax25 = FT(5e-5))
+is_c3 = FT(1) # set the photosynthesis mechanism to C3
+photo_params = FarquharParameters(FT, is_c3; Vcmax25 = FT(5e-5))
 
 photosynthesis_model = FarquharModel{FT}(photo_params);
 

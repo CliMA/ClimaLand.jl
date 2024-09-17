@@ -39,7 +39,7 @@ for FT in (Float32, Float64)
         @test typeof(Jmax) == FT
         @test typeof(Vcmax) == FT
         params = OptimalityFarquharParameters(FT)
-        @test params.mechanism == C3()
+        @test params.is_c3 ≈ 1.0
         model = OptimalityFarquharModel(params)
         @test ClimaLand.auxiliary_vars(model) == (:An, :GPP, :Rd, :Vcmax25)
         @test ClimaLand.auxiliary_types(model) == (FT, FT, FT, FT)
@@ -76,7 +76,8 @@ for FT in (Float32, Float64)
         ARparams = AutotrophicRespirationParameters(FT)
         RTparams = BeerLambertParameters(FT)
         RT = BeerLambertModel{FT}(RTparams)
-        photosynthesisparams = FarquharParameters(FT, C3())
+        is_c3 = FT(1) # set the photosynthesis mechanism to C3
+        photosynthesisparams = FarquharParameters(FT, is_c3)
         stomatal_g_params = MedlynConductanceParameters(FT)
 
         LAI = FT(5.0) # m2 (leaf) m-2 (ground)
@@ -165,7 +166,7 @@ for FT in (Float32, Float64)
         @test intercellular_co2(ca, FT(1), m_t) == FT(1)
 
         Ac = rubisco_assimilation(
-            photosynthesisparams.mechanism,
+            photosynthesisparams.is_c3,
             Vcmax,
             ci,
             Γstar,
@@ -202,13 +203,7 @@ for FT in (Float32, Float64)
             )
         )
 
-        Aj =
-            light_assimilation.(
-                Ref(photosynthesisparams.mechanism),
-                J,
-                ci,
-                Γstar,
-            )
+        Aj = light_assimilation.(Ref(photosynthesisparams.is_c3), J, ci, Γstar)
         @test all(@.(Aj == J * (ci - Γstar) / (4 * (ci + 2 * Γstar))))
         β = moisture_stress(
             p_l,
@@ -220,8 +215,9 @@ for FT in (Float32, Float64)
             1 + exp(photosynthesisparams.sc * (p_l - photosynthesisparams.pc))
         )
         #    C4 tests
+        is_c3 = 0.0
         @test rubisco_assimilation(
-            C4(),
+            is_c3,
             Vcmax,
             ci,
             Γstar,
@@ -229,7 +225,7 @@ for FT in (Float32, Float64)
             Ko,
             photosynthesisparams.oi,
         ) == Vcmax
-        @test light_assimilation(C4(), J, ci, Γstar) == J
+        @test light_assimilation(is_c3, J, ci, Γstar) == J
 
         Rd = dark_respiration(
             photosynthesisparams.Vcmax25,

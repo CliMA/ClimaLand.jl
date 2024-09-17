@@ -389,7 +389,14 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         regridder_kwargs = (; extrapolation_bc,),
         file_reader_kwargs = (; preprocess_func = (data) -> data / 1_000_000,),
     )
-
+    # photosynthesis mechanism is read as a float, where 1.0 indicates c3 and 0.0 c4
+    is_c3 = SpaceVaryingInput(
+        joinpath(clm_artifact_path, "mechanism_map.nc"),
+        "c3_dominant",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc,),
+    )
     # Plant Hydraulics and general plant parameters
     SAI = FT(0.0) # m2/m2
     f_root_to_shoot = FT(3.5)
@@ -474,13 +481,8 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     conductance_args =
         (; parameters = Canopy.MedlynConductanceParameters(FT; g1))
     # Set up photosynthesis
-    photosynthesis_args = (;
-        parameters = Canopy.FarquharParameters(
-            FT,
-            Canopy.C3();
-            Vcmax25 = Vcmax25,
-        )
-    )
+    photosynthesis_args =
+        (; parameters = Canopy.FarquharParameters(FT, is_c3; Vcmax25 = Vcmax25))
     # Set up plant hydraulics
 
     LAIfunction = TimeVaryingInput(

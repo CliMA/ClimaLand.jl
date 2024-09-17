@@ -266,8 +266,9 @@ radiative_transfer_args = (; parameters = TwoStreamParameters(FT))
 # Set up conductance
 conductance_args = (; parameters = MedlynConductanceParameters(FT; g1))
 # Set up photosynthesis
+is_c3 = FT(1) # set the photosynthesis mechanism to C3
 photosynthesis_args =
-    (; parameters = FarquharParameters(FT, Canopy.C3(); Vcmax25 = Vcmax25))
+    (; parameters = FarquharParameters(FT, is_c3; Vcmax25 = Vcmax25))
 # Set up plant hydraulics
 ai_parameterization = PrescribedSiteAreaIndex{FT}(LAIfunction, SAI, RAI)
 function root_distribution(z::T) where {T}

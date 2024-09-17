@@ -107,14 +107,14 @@ end
 """
     function FarquharParameters(
         FT,
-        mechanism::AbstractPhotosynthesisMechanism;
+        is_c3::Union{FT, ClimaCore.Fields.Field};
         Vcmax25 = FT(5e-5),
         kwargs...  # For individual parameter overrides
     )
 
     function FarquharParameters(
         toml_dict::CP.AbstractTOMLDict,
-        mechanism::AbstractPhotosynthesisMechanism;
+        is_c3::Union{AbstractFloat, ClimaCore.Fields.Field};
         Vcmax25 = FT(5e-5),
         kwargs...  # For individual parameter overrides
     )
@@ -123,25 +123,25 @@ Constructors for the FarquharParameters struct. Two variants:
 1. Pass in the float-type and retrieve parameter values from the default TOML dict.
 2. Pass in a TOML dictionary to retrieve parameter values.Possible calls:
 ```julia
-ClimaLand.Canopy.FarquharParameters(Float64, ClimaLand.Canopy.C3())
+ClimaLand.Canopy.FarquharParameters(Float64, 1.0)
 # Kwarg overrides
-ClimaLand.Canopy.FarquharParameters(Float64, ClimaLand.Canopy.C3(); Vcmax25 = 99999999, pc = 444444444)
+ClimaLand.Canopy.FarquharParameters(Float64, 1.0; Vcmax25 = 99999999, pc = 444444444)
 # TOML Dictionary:
 import ClimaParams as CP
 toml_dict = CP.create_toml_dict(Float32);
-ClimaLand.Canopy.FarquharParameters(toml_dict, ClimaLand.Canopy.C3(); Vcmax25 = 99999999, pc = 444444444)
+ClimaLand.Canopy.FarquharParameters(toml_dict, 1.0f0; Vcmax25 = 99999999, pc = 444444444)
 ```
 """
 FarquharParameters(
     ::Type{FT},
-    mechanism;
+    is_c3::Union{FT, ClimaCore.Fields.Field};
     kwargs...,
 ) where {FT <: AbstractFloat} =
-    FarquharParameters(CP.create_toml_dict(FT), mechanism; kwargs...)
+    FarquharParameters(CP.create_toml_dict(FT), is_c3; kwargs...)
 
 function FarquharParameters(
     toml_dict::CP.AbstractTOMLDict,
-    mechanism;
+    is_c3::Union{AbstractFloat, ClimaCore.Fields.Field};
     Vcmax25 = 5e-5,
     kwargs...,
 )
@@ -165,11 +165,24 @@ function FarquharParameters(
     )
     parameters = CP.get_parameter_values(toml_dict, name_map, "Land")
     FT = CP.float_type(toml_dict)
-    MECH = typeof(mechanism)
+    if maximum(is_c3) > 1
+        error(
+            "is_c3 has maximum of $(maximum(is_c3)). is_c3 should be between 0 and 1",
+        )
+    end
+    if minimum(is_c3) < 0
+        error(
+            "is_c3 has minimum of $(minimum(is_c3)). is_c3 should be between 0 and 1",
+        )
+    end
+    # if is_c3 is a field, is_c3 may contain values between 0.0 and 1.0 after regridding
+    # this deals with that possibility by rounding to the closest int
+    is_c3 = round.(is_c3)
+    MECH = typeof(is_c3)
     Vcmax25 = FT.(Vcmax25)
     VC = typeof(Vcmax25)
     return FarquharParameters{FT, MECH, VC}(;
-        mechanism,
+        is_c3,
         Vcmax25,
         parameters...,
         kwargs...,
@@ -229,8 +242,8 @@ function OptimalityFarquharParameters(toml_dict; kwargs...)
 
     params = CP.get_parameter_values(toml_dict, name_map, "Land")
     FT = CP.float_type(toml_dict)
-    mechanism = ClimaLand.Canopy.C3()
-    return OptimalityFarquharParameters{FT}(; params..., kwargs..., mechanism)
+    is_c3 = FT(1)
+    return OptimalityFarquharParameters{FT, FT}(; params..., kwargs..., is_c3)
 end
 
 

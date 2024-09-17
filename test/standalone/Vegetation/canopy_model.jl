@@ -21,13 +21,26 @@ import ClimaParams
 
 @testset "Canopy software pipes" begin
     for FT in (Float32, Float64)
-        domain = Point(; z_sfc = FT(0.0))
-        for g1 in (FT(790), fill(FT(790), domain.space.surface))
-            # create new field with constant value everywhere
-            Vcmax25 = fill(FT(9e-5), domain.space.surface)
+        domain = ClimaLand.Domains.SphericalSurface(;
+            radius = FT(100.0),
+            nelements = 10,
+            npolynomial = 1,
+        )
+        # create a field with both 1.0s and 0.0s
+        mechanism_field = ClimaCore.Fields.Field(FT, domain.space.surface)
+        ClimaCore.Fields.set!(
+            x -> x.coordinates.lat > 0 ? 0.0 : 1.0,
+            mechanism_field,
+        )
+        # create one case where parameters are spatially varying and one where not
+        g1_cases = (FT(790), fill(FT(790), domain.space.surface))
+        Vcmax25_cases = (FT(9e-5), fill(FT(9e-5), domain.space.surface))
+        mechanism_cases = (FT(1), mechanism_field)
+        zipped = zip(g1_cases, Vcmax25_cases, mechanism_cases)
+        for (g1, Vcmax25, is_c3) in zipped
             AR_params = AutotrophicRespirationParameters(FT)
             RTparams = BeerLambertParameters(FT)
-            photosynthesis_params = FarquharParameters(FT, C3(); Vcmax25)
+            photosynthesis_params = FarquharParameters(FT, is_c3; Vcmax25)
             stomatal_g_params = MedlynConductanceParameters(FT; g1)
 
             AR_model = AutotrophicRespirationModel{FT}(AR_params)
@@ -211,7 +224,7 @@ import ClimaParams
             # Check that structure of Y is value (will error if not)
             @test !isnothing(zero(Y))
             @test typeof(canopy.energy) == PrescribedCanopyTempModel{FT}
-            @test propertynames(p) == (:canopy, :drivers)
+            @test propertynames(p) == (:canopy, :dss_buffer_2d, :drivers)
             for component in ClimaLand.Canopy.canopy_components(canopy)
                 # Only hydraulics has a prognostic variable
                 if component == :hydraulics
@@ -348,22 +361,26 @@ import ClimaParams
             @test ClimaLand.surface_evaporative_scaling(canopy, Y, p) == FT(1.0)
             @test ClimaLand.surface_height(canopy, Y, p) == compartment_faces[1]
             T_sfc = FT.(T_atmos(t0))
-            @test Array(
-                parent(ClimaLand.surface_temperature(canopy, Y, p, t0)),
-            ) == [T_sfc]
+            @test all(
+                Array(
+                    parent(ClimaLand.surface_temperature(canopy, Y, p, t0)),
+                ) .== [T_sfc],
+            )
             @test ClimaLand.surface_temperature(canopy, Y, p, t0) isa
                   ClimaCore.Fields.Field
-            @test Array(
-                parent(
-                    ClimaLand.Canopy.canopy_temperature(
-                        canopy.energy,
-                        canopy,
-                        Y,
-                        p,
-                        t0,
+            @test all(
+                Array(
+                    parent(
+                        ClimaLand.Canopy.canopy_temperature(
+                            canopy.energy,
+                            canopy,
+                            Y,
+                            p,
+                            t0,
+                        ),
                     ),
-                ),
-            ) == [T_sfc]
+                ) .== [T_sfc],
+            )
             @test ClimaLand.Canopy.canopy_temperature(
                 canopy.energy,
                 canopy,
@@ -539,12 +556,25 @@ end
 
 @testset "Canopy software pipes with energy model" begin
     for FT in (Float32, Float64)
-        domain = Point(; z_sfc = FT(0.0))
-        for g1 in (FT(790), fill(FT(790), domain.space.surface))
-            # create new field with constant value everywhere
-            Vcmax25 = fill(FT(9e-5), domain.space.surface)
+        domain = ClimaLand.Domains.SphericalSurface(;
+            radius = FT(100.0),
+            nelements = 10,
+            npolynomial = 1,
+        )
+        # create a field with both 1.0s and 0.0s
+        mechanism_field = ClimaCore.Fields.Field(FT, domain.space.surface)
+        ClimaCore.Fields.set!(
+            x -> x.coordinates.lat > 0 ? 0.0 : 1.0,
+            mechanism_field,
+        )
+        # create one case where parameters are spatially varying and one where not
+        g1_cases = (FT(790), fill(FT(790), domain.space.surface))
+        Vcmax25_cases = (FT(9e-5), fill(FT(9e-5), domain.space.surface))
+        mechanism_cases = (FT(1), mechanism_field)
+        zipped = zip(g1_cases, Vcmax25_cases, mechanism_cases)
+        for (g1, Vcmax25, is_c3) in zipped
             RTparams = BeerLambertParameters(FT)
-            photosynthesis_params = FarquharParameters(FT, C3(); Vcmax25)
+            photosynthesis_params = FarquharParameters(FT, is_c3; Vcmax25)
             stomatal_g_params = MedlynConductanceParameters(FT; g1)
 
             stomatal_model = MedlynConductanceModel{FT}(stomatal_g_params)
@@ -729,7 +759,7 @@ end
 
             # Check that structure of Y is value (will error if not)
             @test !isnothing(zero(Y))
-            @test propertynames(p) == (:canopy, :drivers)
+            @test propertynames(p) == (:canopy, :dss_buffer_2d, :drivers)
             for component in ClimaLand.Canopy.canopy_components(canopy)
                 # Only hydraulics has a prognostic variable
                 if component == :hydraulics
@@ -792,10 +822,23 @@ end
 
 @testset "Zero LAI;" begin
     for FT in (Float32, Float64)
-        domain = Point(; z_sfc = FT(0.0))
-        for g1 in (FT(790), fill(FT(790), domain.space.surface))
-            # create new field with constant value everywhere
-            Vcmax25 = fill(FT(9e-5), domain.space.surface)
+        domain = ClimaLand.Domains.SphericalSurface(;
+            radius = FT(100.0),
+            nelements = 10,
+            npolynomial = 1,
+        )
+        # create a field with both 1.0s and 0.0s
+        mechanism_field = ClimaCore.Fields.Field(FT, domain.space.surface)
+        ClimaCore.Fields.set!(
+            x -> x.coordinates.lat > 0 ? 0.0 : 1.0,
+            mechanism_field,
+        )
+        # create one case where parameters are spatially varying and one where not
+        g1_cases = (FT(790), fill(FT(790), domain.space.surface))
+        Vcmax25_cases = (FT(9e-5), fill(FT(9e-5), domain.space.surface))
+        mechanism_cases = (FT(1), mechanism_field)
+        zipped = zip(g1_cases, Vcmax25_cases, mechanism_cases)
+        for (g1, Vcmax25, is_c3) in zipped
             BeerLambertparams = BeerLambertParameters(FT)
             # TwoStreamModel parameters
             Ω = FT(0.69)
@@ -817,7 +860,7 @@ end
                 τ_NIR_leaf,
                 G_Function,
             )
-            photosynthesis_params = FarquharParameters(FT, C3(); Vcmax25)
+            photosynthesis_params = FarquharParameters(FT, is_c3; Vcmax25)
             stomatal_g_params = MedlynConductanceParameters(FT; g1)
 
             stomatal_model = MedlynConductanceModel{FT}(stomatal_g_params)

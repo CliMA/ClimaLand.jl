@@ -516,8 +516,21 @@ function co2_compensation(
 end
 
 """
-    rubisco_assimilation(::C3,
-                         Vcmax::FT,
+    rubisco_assimilation(is_c3::AbstractFloat, args...)
+
+Calls the correct rubisco assimilation function based on the `is_c3`.
+
+A `is_c3` value of 1.0 corresponds to C3 photosynthesis and calls
+`c3_rubisco_assimilation`, while 0.0 corresponds to C4 photsynthesis and calls
+`c4_rubisco_assimilation`.
+"""
+function rubisco_assimilation(is_c3::AbstractFloat, args...)
+    is_c3 > 0.5 ? c3_rubisco_assimilation(args...) :
+    c4_rubisco_assimilation(args...)
+end
+
+"""
+    c3_rubisco_assimilation(Vcmax::FT,
                          ci::FT,
                          Γstar::FT,
                          Kc::FT,
@@ -534,8 +547,7 @@ for CO2 and O2, respectively, (`Kc`) and (`Ko`).
 The empirical parameter oi is equal to 0.209 (mol/mol).
 See Table 11.5 of G. Bonan's textbook, Climate Change and Terrestrial Ecosystem Modeling (2019).
 """
-function rubisco_assimilation(
-    ::C3,
+function c3_rubisco_assimilation(
     Vcmax::FT,
     ci::FT,
     Γstar::FT,
@@ -548,19 +560,32 @@ function rubisco_assimilation(
 end
 
 """
-    rubisco_assimilation(::C4, Vcmax::FT,_...) where {FT}
+    c4_rubisco_assimilation(Vcmax::FT,_...) where {FT}
 
 Computes the Rubisco limiting rate of photosynthesis for C4 plants (`Ac`)
 in units of moles CO2/m^2/s,
 as equal to the maximum rate of carboxylation of Rubisco (`Vcmax`).
 """
-function rubisco_assimilation(::C4, Vcmax::FT, _...) where {FT}
+function c4_rubisco_assimilation(Vcmax::FT, _...) where {FT}
     Ac = Vcmax
     return Ac
 end
 
 """
-    light_assimilation(::C3,
+    light_assimilation(is_c3::AbstractFloat, args...)
+
+Calls the correct light assimilation function based on the `is_c3`.
+
+A `is_c3` value of 1.0 corresponds to C3 photosynthesis and calls
+`c3_light_assimilation`, while 0.0 corresponds to C4 photsynthesis and calls
+`c4_light_assimilation`.
+"""
+function light_assimilation(is_c3::AbstractFloat, args...)
+    is_c3 > 0.5 ? c3_light_assimilation(args...) :
+    c4_light_assimilation(args...)
+end
+"""
+    c3_light_assimilation(
                        J::FT,
                        ci::FT,
                        Γstar::FT) where {FT}
@@ -572,19 +597,19 @@ and the CO2 compensation point (`Γstar`).
 
 See Table 11.5 of G. Bonan's textbook, Climate Change and Terrestrial Ecosystem Modeling (2019).
 """
-function light_assimilation(::C3, J::FT, ci::FT, Γstar::FT) where {FT}
+function c3_light_assimilation(J::FT, ci::FT, Γstar::FT) where {FT}
     Aj = J * (ci - Γstar) / (4 * (ci + 2 * Γstar))
     return Aj
 end
 
 """
-    light_assimilation(::C4, J::FT, _...) where {FT}
+    light_assimilation(J::FT, _...) where {FT}
 
 Computes the electron transport limiting rate (`Aj`),
 in units of moles CO2/m^2/s, for C4 plants, as equal to
 the rate of electron transport (`J`).
 """
-function light_assimilation(::C4, J::FT, _...) where {FT}
+function c4_light_assimilation(J::FT, _...) where {FT}
     Aj = J
     return Aj
 end

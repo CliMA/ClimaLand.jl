@@ -1,25 +1,11 @@
-export FarquharParameters, FarquharModel, C3, C4
-
-abstract type AbstractPhotosynthesisMechanism end
-"""
-    C3 <: AbstractPhotosynthesisMechanism
-
-Helper struct for dispatching between C3 and C4 photosynthesis.
-"""
-struct C3 <: AbstractPhotosynthesisMechanism end
-
-"""
-    C4 <: AbstractPhotosynthesisMechanism
-
-Helper struct for dispatching between C3 and C4 photosynthesis.
-"""
-struct C4 <: AbstractPhotosynthesisMechanism end
+export FarquharParameters, FarquharModel
 
 abstract type AbstractPhotosynthesisModel{FT} <: AbstractCanopyComponent{FT} end
+
 """
     FarquharParameters{
         FT<:AbstractFloat,
-        MECH <: AbstractPhotosynthesisMechanism,
+        MECH <: Union{FT, ClimaCore.Fields.Field},
         VC <: Union{FT, ClimaCore.Fields.Field},
     }
 
@@ -28,7 +14,7 @@ $(DocStringExtensions.FIELDS)
 """
 Base.@kwdef struct FarquharParameters{
     FT <: AbstractFloat,
-    MECH <: AbstractPhotosynthesisMechanism,
+    MECH <: Union{FT, ClimaCore.Fields.Field},
     VC <: Union{FT, ClimaCore.Fields.Field},
 }
     "Vcmax at 25 °C (mol CO2/m^2/s)"
@@ -65,8 +51,8 @@ Base.@kwdef struct FarquharParameters{
     sc::FT
     "Reference water pressure for the moisture stress factor (Pa) [Tuzet et al. (2003)]"
     pc::FT
-    "Photosynthesis mechanism: C3 or C4"
-    mechanism::MECH
+    "Photosynthesis mechanism: 1.0 indicates C3, 0.0 indicates C4"
+    is_c3::MECH
 end
 
 Base.eltype(::FarquharParameters{FT}) where {FT} = FT
@@ -108,7 +94,7 @@ function photosynthesis_at_a_point_Farquhar(
     To,
     θj,
     ϕ,
-    mechanism,
+    is_c3,
     oi,
     Kc25,
     Ko25,
@@ -120,10 +106,10 @@ function photosynthesis_at_a_point_Farquhar(
     Vcmax = compute_Vcmax(Vcmax25, T, To, R, ΔHVcmax)
     Γstar = co2_compensation(Γstar25, ΔHΓstar, T, To, R)
     ci = intercellular_co2(c_co2, Γstar, medlyn_factor)
-    Aj = light_assimilation(mechanism, J, ci, Γstar)
+    Aj = light_assimilation(is_c3, J, ci, Γstar)
     Kc = MM_Kc(Kc25, ΔHkc, T, To, R)
     Ko = MM_Ko(Ko25, ΔHko, T, To, R)
-    Ac = rubisco_assimilation(mechanism, Vcmax, ci, Γstar, Kc, Ko, oi)
+    Ac = rubisco_assimilation(is_c3, Vcmax, ci, Γstar, Kc, Ko, oi)
     return net_photosynthesis(Ac, Aj, Rd, β)
 end
 
@@ -172,7 +158,7 @@ function update_photosynthesis!(
         To,
         θj,
         ϕ,
-        mechanism,
+        is_c3,
         oi,
         Kc25,
         Ko25,
@@ -198,7 +184,7 @@ function update_photosynthesis!(
         To,
         θj,
         ϕ,
-        mechanism,
+        is_c3,
         oi,
         Kc25,
         Ko25,
@@ -207,7 +193,6 @@ function update_photosynthesis!(
     )
     Vcmax25field .= Vcmax25
 end
-Base.broadcastable(m::AbstractPhotosynthesisMechanism) = tuple(m)
 Base.broadcastable(m::FarquharParameters) = tuple(m)
 
 include("./optimality_farquhar.jl")
