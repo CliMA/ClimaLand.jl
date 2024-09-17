@@ -396,12 +396,12 @@ else
     )
 end
 
-# SW_OUT
-SW_out_model = [parent(sv.saveval[k].SW_out)[1] for k in 1:length(sv.saveval)]
+# Upwelling shortwave radiation - referred to as "outgoing" in the data
+SW_u_model = [parent(sv.saveval[k].SW_u)[1] for k in 1:length(sv.saveval)]
 if drivers.SW_OUT.status == absent
     plot_daily_avg(
-        "SW OUT",
-        SW_out_model,
+        "SW_up",
+        SW_u_model,
         dt_save,
         num_days,
         "w/m^2",
@@ -409,14 +409,14 @@ if drivers.SW_OUT.status == absent
         "model",
     )
 else
-    SW_out_data = FT.(drivers.SW_OUT.values)[Int64(t_spinup ÷ DATA_DT):Int64(
+    SW_u_data = FT.(drivers.SW_OUT.values)[Int64(t_spinup ÷ DATA_DT):Int64(
         tf ÷ DATA_DT,
     )]
     plot_avg_comp(
-        "SW OUT",
-        SW_out_model,
+        "SW up",
+        SW_u_model,
         dt_save,
-        SW_out_data,
+        SW_u_data,
         FT(DATA_DT),
         num_days,
         drivers.SW_OUT.units,
@@ -424,12 +424,12 @@ else
     )
 end
 
-# LW_OUT
-LW_out_model = [parent(sv.saveval[k].LW_out)[1] for k in 1:length(sv.saveval)]
+# Upwelling longwave radiation - referred to as "outgoing" in the data
+LW_u_model = [parent(sv.saveval[k].LW_u)[1] for k in 1:length(sv.saveval)]
 if drivers.LW_OUT.status == absent
     plot_daily_avg(
-        "LW OUT",
-        LW_out_model,
+        "LW up",
+        LW_u_model,
         dt_save,
         num_days,
         "w/m^2",
@@ -437,14 +437,14 @@ if drivers.LW_OUT.status == absent
         "model",
     )
 else
-    LW_out_data = FT.(drivers.LW_OUT.values)[Int64(t_spinup ÷ DATA_DT):Int64(
+    LW_u_data = FT.(drivers.LW_OUT.values)[Int64(t_spinup ÷ DATA_DT):Int64(
         tf ÷ DATA_DT,
     )]
     plot_avg_comp(
-        "LW OUT",
-        LW_out_model,
+        "LW up",
+        LW_u_model,
         dt_save,
-        LW_out_data,
+        LW_u_data,
         FT(DATA_DT),
         num_days,
         drivers.LW_OUT.units,

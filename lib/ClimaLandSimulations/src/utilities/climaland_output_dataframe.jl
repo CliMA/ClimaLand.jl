@@ -43,8 +43,8 @@ function make_output_df(
 )
     # List of output that we want
     output_list = vcat(
-        (1, :SW_out),
-        (1, :LW_out),
+        (1, :SW_u),
+        (1, :LW_u),
         (1, :canopy, :conductance, :gs),
         (1, :canopy, :conductance, :transpiration),
         (1, :canopy, :autotrophic_respiration, :Ra),

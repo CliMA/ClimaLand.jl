@@ -60,7 +60,7 @@ function default_diagnostics(
     define_diagnostics!(land_model)
 
     bucket_diagnostics = [
-        "alpha",
+        "sw_alpha",
         "rn",
         "tsfc",
         "qsfc",
@@ -114,6 +114,7 @@ function default_diagnostics(
 
     if output_vars == :long
         soilcanopy_diagnostics = [
+            "sw_alpha",
             "sif",
             "ra",
             "gs",
@@ -169,15 +170,25 @@ function default_diagnostics(
             # "pwc", # return a Tuple
             "si",
             "sie",
-            "swo",
-            "lwo",
+            "swu",
+            "lwu",
             "er",
             "et",
             "sr",
         ]
     elseif output_vars == :short
-        soilcanopy_diagnostics =
-            ["gpp", "ct", "lai", "swc", "si", "swo", "lwo", "et", "er", "sr"]
+        soilcanopy_diagnostics = [
+            "gpp",
+            "ct",
+            "lai",
+            "swc",
+            "si",
+            "sw_alpha",
+            "lwu",
+            "et",
+            "er",
+            "sr",
+        ]
     end
 
     if average_period == :hourly
