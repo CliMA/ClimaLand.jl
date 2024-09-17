@@ -4,6 +4,8 @@ ClimaLand.jl Release Notes
 main
 --------
  - Add regional simulation example PR [#757](https://github.com/CliMA/ClimaLand.jl/pull/757)
+ - ![][badge-💥breaking] Extend photosynthesis mechanism parameter to support fields.
+  PR[#774](https://github.com/CliMA/ClimaLand.jl/pull/774)
 
 v0.14.3
 --------

@@ -127,7 +127,7 @@ function run_fluxnet(
     photosynthesis_args = (;
         parameters = FarquharParameters(
             FT,
-            Canopy.C3();
+            FT(1);
             oi = params.photosynthesis.oi,
             ϕ = params.photosynthesis.ϕ,
             θj = params.photosynthesis.θj,
@@ -253,7 +253,7 @@ function run_fluxnet(
             land.soil.parameters.earth_param_set,
         )
     Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
-    ψ_stem_0 = FT(-1e5 / 9800) # pressure in the leaf divided by rho_liquid*gravitational acceleration [m] 
+    ψ_stem_0 = FT(-1e5 / 9800) # pressure in the leaf divided by rho_liquid*gravitational acceleration [m]
     ψ_leaf_0 = FT(-2e5 / 9800)
     ψ_comps = setup.n_stem > 0 ? [ψ_stem_0, ψ_leaf_0] : ψ_leaf_0
 

@@ -231,8 +231,9 @@ radiative_transfer_args = (;
 
 conductance_args = (; parameters = MedlynConductanceParameters(FT; g1 = 141))
 
+is_c3 = FT(1) # set the photosynthesis mechanism to C3
 photosynthesis_args =
-    (; parameters = FarquharParameters(FT, Canopy.C3(); Vcmax25 = FT(5e-5)));
+    (; parameters = FarquharParameters(FT, is_c3; Vcmax25 = FT(5e-5)));
 
 K_sat_plant = FT(1.8e-8)
 RAI = (SAI + maxLAI) * f_root_to_shoot;

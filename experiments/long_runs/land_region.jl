@@ -368,8 +368,18 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (10, 10, 15))
 
     # Energy Balance model
     ac_canopy = FT(2.5e4) # this will likely be 10x smaller!
-
     clm_artifact_path = ClimaLand.Artifacts.clm_data_folder_path(; context)
+    # Conductance Model
+    # g1 is read in units of sqrt(kPa) and then converted to sqrt(Pa)
+    g1 = SpaceVaryingInput(
+        joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
+        "medlynslope",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc,),
+        file_reader_kwargs = (; preprocess_func = (data) -> data * 10^(3 / 2),),
+    )
+
     # vcmax is read in units of umol CO2/m^2/s and then converted to mol CO2/m^2/s
     Vcmax25 = SpaceVaryingInput(
         joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
@@ -380,14 +390,13 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (10, 10, 15))
         file_reader_kwargs = (; preprocess_func = (data) -> data / 1_000_000,),
     )
 
-    # g1 is read in units of sqrt(kPa) and then converted to sqrt(Pa)
-    g1 = SpaceVaryingInput(
-        joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
-        "medlynslope",
+    # c3 is read in as a float
+    is_c3 = SpaceVaryingInput(
+        joinpath(clm_artifact_path, "mechanism_map.nc"),
+        "c3_dominant",
         surface_space;
         regridder_type,
         regridder_kwargs = (; extrapolation_bc,),
-        file_reader_kwargs = (; preprocess_func = (data) -> data * 10^(3 / 2),),
     )
 
     # Plant Hydraulics and general plant parameters
@@ -474,13 +483,8 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (10, 10, 15))
     conductance_args =
         (; parameters = Canopy.MedlynConductanceParameters(FT; g1))
     # Set up photosynthesis
-    photosynthesis_args = (;
-        parameters = Canopy.FarquharParameters(
-            FT,
-            Canopy.C3();
-            Vcmax25 = Vcmax25,
-        )
-    )
+    photosynthesis_args =
+        (; parameters = Canopy.FarquharParameters(FT, is_c3; Vcmax25 = Vcmax25))
     # Set up plant hydraulics
 
     # Note that we clip all values of LAI below 0.05 to zero.

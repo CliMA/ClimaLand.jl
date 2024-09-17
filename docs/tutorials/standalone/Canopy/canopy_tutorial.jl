@@ -98,7 +98,7 @@ land_domain = Point(; z_sfc = FT(0.0))
 #   the simulation with atmospheric and radiative flux models. We also
 # read in the observed LAI and let that vary in time in a prescribed manner.
 
-# Use the data tools for reading FLUXNET data sets 
+# Use the data tools for reading FLUXNET data sets
 include(
     joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/data_tools.jl"),
 );
@@ -174,8 +174,8 @@ cond_params = MedlynConductanceParameters(FT; g1 = FT(141.0))
 stomatal_model = MedlynConductanceModel{FT}(cond_params);
 
 # Arguments for photosynthesis model:
-
-photo_params = FarquharParameters(FT, Canopy.C3(); Vcmax25 = FT(5e-5))
+is_c3 = FT(1) # set the photosynthesis mechanism to C3
+photo_params = FarquharParameters(FT, is_c3; Vcmax25 = FT(5e-5))
 
 photosynthesis_model = FarquharModel{FT}(photo_params);
 

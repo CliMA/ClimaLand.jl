@@ -8,9 +8,12 @@ The required parameters for the optimality Farquhar photosynthesis model.
 Currently, only C3 photosynthesis is supported.
 $(DocStringExtensions.FIELDS)
 """
-Base.@kwdef struct OptimalityFarquharParameters{FT <: AbstractFloat}
+Base.@kwdef struct OptimalityFarquharParameters{
+    FT <: AbstractFloat,
+    MECH <: Union{FT, ClimaCore.Fields.Field},
+}
     "Photosynthesis mechanism: C3 only"
-    mechanism::C3
+    is_c3::MECH
     "Γstar at 25 °C (mol/mol)"
     Γstar25::FT
     "Michaelis-Menten parameter for CO2 at 25 °C (mol/mol)"
@@ -91,7 +94,7 @@ ClimaLand.auxiliary_domain_names(::OptimalityFarquharModel) =
 
 Computes the net photosynthesis rate `An` for the Optimality Farquhar model, along with the
 dark respiration `Rd`, and the value of `Vcmax25`, and updates them in place.
-        
+
  To do so, we require the canopy leaf temperature `T`, Medlyn factor, `APAR` in
 photons per m^2 per second, CO2 concentration in the atmosphere,
 moisture stress factor `β` (unitless), and the universal gas constant
@@ -118,7 +121,7 @@ function update_photosynthesis!(
         To,
         θj,
         ϕ,
-        mechanism,
+        is_c3,
         oi,
         Kc25,
         Ko25,
@@ -146,8 +149,8 @@ function update_photosynthesis!(
     Jmax = rates.:1
     Vcmax = rates.:2
     J = electron_transport.(APAR, Jmax, θj, ϕ)
-    Aj = light_assimilation.(mechanism, J, ci, Γstar)
-    Ac = rubisco_assimilation.(mechanism, Vcmax, ci, Γstar, Kc, Ko, oi)
+    Aj = light_assimilation.(is_c3, J, ci, Γstar)
+    Ac = rubisco_assimilation.(is_c3, Vcmax, ci, Γstar, Kc, Ko, oi)
 
     @. Vcmax25 = Vcmax / arrhenius_function(T, To, R, ΔHVcmax)
     @. Rd = dark_respiration(Vcmax25, β, f, ΔHRd, T, To, R)
