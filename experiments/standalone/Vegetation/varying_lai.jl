@@ -217,11 +217,11 @@ resp = [
     parent(sv.saveval[k].canopy.autotrophic_respiration.Ra)[1] * 1e6 for
     k in 1:length(sol.t)
 ]
-SW_abs = [
+SW_n = [
     parent(sv.saveval[k].canopy.radiative_transfer.SW_n)[1] for
     k in 1:length(sol.t)
 ]
-LW_abs = [
+LW_n = [
     parent(sv.saveval[k].canopy.radiative_transfer.LW_n)[1] for
     k in 1:length(sol.t)
 ]
@@ -249,8 +249,8 @@ axislegend(ax)
 save(joinpath(savedir, "varying_lai_state.png"), fig)
 fig2 = Figure()
 ax = Axis(fig2[1, 1], xlabel = "Time (days)", ylabel = "Energy Fluxes")
-lines!(ax, sol.t ./ 24 ./ 3600, SW_abs, label = "SW")
-lines!(ax, sol.t ./ 24 ./ 3600, LW_abs, label = "LW")
+lines!(ax, sol.t ./ 24 ./ 3600, SW_n, label = "SW_n")
+lines!(ax, sol.t ./ 24 ./ 3600, LW_n, label = "LW_n")
 lines!(ax, sol.t ./ 24 ./ 3600, SHF, label = "SHF")
 lines!(ax, sol.t ./ 24 ./ 3600, LHF, label = "LHF")
 lines!(ax, sol.t ./ 24 ./ 3600, RE, label = "RE")

@@ -8,7 +8,7 @@ By default, get output from sv.saveval, but user can specify e.g., result = sol.
 By default, get surface value, but user can specify depth for e.g., soil temperature
 
 example 1: 
-julia> getoutput(sv, 1, :SW_out)
+julia> getoutput(sv, 1, :SW_u)
 
 example 2: 
 julia> getoutput(sv, 1, :canopy, :conductance, :gs)
@@ -30,7 +30,7 @@ function getoutput(
 end
 
 """
-    make_output_df(sv, inputs)
+    make_ouput_df(sv, inputs)
 
 Return a dataframe containing climaland outputs
 """
@@ -43,8 +43,8 @@ function make_output_df(
 )
     # List of output that we want
     output_list = vcat(
-        (1, :SW_out),
-        (1, :LW_out),
+        (1, :SW_u),
+        (1, :LW_u),
         (1, :canopy, :conductance, :gs),
         (1, :canopy, :conductance, :transpiration),
         (1, :canopy, :autotrophic_respiration, :Ra),

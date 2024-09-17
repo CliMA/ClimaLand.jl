@@ -90,7 +90,7 @@ end
 Computes the PAR and NIR absorbances, reflectances, and tranmittances
 for a canopy in the case of the
 Beer-Lambert model. The absorbances are a function of the radiative transfer
-model, as well as the magnitude of incident PAR and NIR radiation in W/m^2,
+model, as well as the magnitude of downwelling PAR and NIR radiation in W/m^2,
  the leaf area index, the extinction coefficient, and the
 soil albedo in the PAR and NIR bands. Returns a
 NamedTuple of NamedTuple, of the form:
@@ -148,7 +148,7 @@ end
 Computes the PAR and NIR absorbances, reflectances, and tranmittances
 for a canopy in the case of the
 Beer-Lambert model. The absorbances are a function of the radiative transfer
-model, as well as the magnitude of incident PAR and NIR radiation in W/m^2,
+model, as well as the magnitude of downwelling PAR and NIR radiation in W/m^2,
 the leaf area index, the extinction coefficient, and the
 soil albedo in the PAR and NIR bands.
 
@@ -204,7 +204,7 @@ end
 """
     plant_absorbed_pfd_beer_lambert(
         Ω::FT,
-        SW_IN:FT,
+        SW_d:FT,
         α_leaf::FT,
         LAI::FT,
         K::FT,
@@ -215,8 +215,8 @@ Computes the absorbed, reflected, and transmitted photon flux density
 in terms of mol photons per m^2 per
 second for a radiation band.
 
-This applies the Beer-Lambert law, which is a function of incident
-radiation (`SW_IN`; moles of photons/m^2/), leaf reflectance
+This applies the Beer-Lambert law, which is a function of downwelling
+radiation (`SW_d`; moles of photons/m^2/), leaf reflectance
 (`α_leaf`), the extinction coefficient (`K`), leaf area index (`LAI`),
 and the albedo of the soil (`α_soil`).
 
@@ -225,15 +225,15 @@ mol photons/m^2/s.
 """
 function plant_absorbed_pfd_beer_lambert(
     Ω::FT,
-    SW_IN::FT,
+    SW_d::FT,
     α_leaf::FT,
     LAI::FT,
     K::FT,
     α_soil::FT,
 ) where {FT}
-    AR = SW_IN * (1 - α_leaf) * (1 - exp(-K * LAI * Ω)) * (1 - α_soil)
-    TR = SW_IN * exp(-K * LAI * Ω)
-    RR = SW_IN - AR - TR * (1 - α_soil)
+    AR = SW_d * (1 - α_leaf) * (1 - exp(-K * LAI * Ω)) * (1 - α_soil)
+    TR = SW_d * exp(-K * LAI * Ω)
+    RR = SW_d - AR - TR * (1 - α_soil)
     return (; abs = AR, refl = RR, trans = TR)
 end
 
@@ -242,7 +242,7 @@ end
         G::FT,
         Ω::FT,
         n_layers::UInt64,
-        SW_IN::FT,
+        SW_d::FT,
         α_leaf::FT,
         τ_leaf::FT,
         LAI::FT,
@@ -268,7 +268,7 @@ function plant_absorbed_pfd_two_stream(
     G::FT,
     Ω::FT,
     n_layers::UInt64,
-    SW_IN::FT,
+    SW_d::FT,
     α_leaf::FT,
     τ_leaf::FT,
     LAI::FT,
@@ -420,17 +420,17 @@ function plant_absorbed_pfd_two_stream(
     # Ensure floating point precision is correct (it may be different for PAR)
     F_trans = (1 - F_abs - F_refl) / (1 - α_soil)
     return (;
-        abs = FT(SW_IN * F_abs),
-        refl = FT(SW_IN * F_refl),
-        trans = FT(SW_IN * F_trans),
+        abs = FT(SW_d * F_abs),
+        refl = FT(SW_d * F_refl),
+        trans = FT(SW_d * F_trans),
     )
 end
 
 """
-    diffuse_fraction(td::FT, T::FT, P, q, SW_IN::FT, θs::FT, thermo_params) where {FT}
+    diffuse_fraction(td::FT, T::FT, P, q, SW_d::FT, θs::FT, thermo_params) where {FT}
 
 Computes the fraction of diffuse radiation (`diff_frac`) as a function
-of the solar zenith angle (`θs`), the total surface incident shortwave radiation (`SW_IN`),
+of the solar zenith angle (`θs`), the total surface downwelling shortwave radiation (`SW_d`),
 the air temperature (`T`), air pressure (`P`), specific humidity (`q`), and the day of the year
 (`td`).
 
@@ -453,13 +453,13 @@ function diffuse_fraction(
     T::FT,
     P::FT,
     q::FT,
-    SW_IN::FT,
+    SW_d::FT,
     θs::FT,
     thermo_params,
 ) where {FT}
     RH = ClimaLand.relative_humidity(T, P, q, thermo_params)
     k₀ = FT(1370 * (1 + 0.033 * cos(2π * td / 365))) * cos(θs)
-    kₜ = SW_IN / k₀
+    kₜ = SW_d / k₀
     if kₜ ≤ 0.3
         diff_frac = FT(
             kₜ *

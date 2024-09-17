@@ -193,7 +193,7 @@ sol = ClimaComms.@time ClimaComms.device() SciMLBase.solve(
 # all
 simdir = ClimaAnalysis.SimDir(output_dir)
 short_names_2D = [
-    "alpha",
+    "swa",
     "rn",
     "tsfc",
     "qsfc",

@@ -10,14 +10,15 @@ function define_diagnostics!(land_model)
 
     ## Stored in p (diagnostics variables stored in the cache) ##
 
-    # Albedo
+    # Shortwave Albedo
     add_diagnostic_variable!(
-        short_name = "alpha",
-        long_name = "Albedo",
-        standard_name = "albedo",
+        short_name = "swa",
+        long_name = "Shortwave Albedo",
+        standard_name = "sw_albedo",
         units = "",
-        comments = "The fraction of incoming radiation reflected by the land surface.",
-        compute! = (out, Y, p, t) -> compute_albedo!(out, Y, p, t, land_model),
+        comments = "The fraction of downwelling shortwave radiation reflected by the land surface.",
+        compute! = (out, Y, p, t) ->
+            compute_sw_albedo!(out, Y, p, t, land_model),
     )
 
     # Net radiation
@@ -26,7 +27,7 @@ function define_diagnostics!(land_model)
         long_name = "Net Radiation",
         standard_name = "net_radiation",
         units = "W m^-2",
-        comments = "Difference between incoming and outgoing shortwave and longwave radiation at the land surface.",
+        comments = "Difference between downwelling and upwelling shortwave and longwave radiation at the land surface.",
         compute! = (out, Y, p, t) ->
             compute_net_radiation!(out, Y, p, t, land_model),
     )
@@ -486,7 +487,7 @@ function define_diagnostics!(land_model)
         long_name = "Net Longwave Radiation",
         standard_name = "net_longwave_radiation",
         units = "W m^-2",
-        comments = "The net (in minus out) longwave radiation at the surface.",
+        comments = "The net (down minus up) longwave radiation at the surface.",
         compute! = (out, Y, p, t) ->
             compute_radiation_longwave_net!(out, Y, p, t, land_model),
     )
@@ -497,7 +498,7 @@ function define_diagnostics!(land_model)
         long_name = "Net Shortwave Radiation",
         standard_name = "net_shortwave_radiation",
         units = "W m^-2",
-        comments = "The net (in minus out) shortwave radiation at the surface.",
+        comments = "The net (down minus up) shortwave radiation at the surface.",
         compute! = (out, Y, p, t) ->
             compute_radiation_shortwave_net!(out, Y, p, t, land_model),
     )
@@ -542,7 +543,7 @@ function define_diagnostics!(land_model)
         long_name = "Down Longwave Radiation",
         standard_name = "down_longwave_radiation",
         units = "W m^-2",
-        comments = "The down (in) longwave radiation at the surface.",
+        comments = "The downwelling longwave radiation at the surface.",
         compute! = (out, Y, p, t) ->
             compute_radiation_longwave_down!(out, Y, p, t, land_model),
     )
@@ -553,7 +554,7 @@ function define_diagnostics!(land_model)
         long_name = "Short Longwave Radiation",
         standard_name = "short_longwave_radiation",
         units = "W m^-2",
-        comments = "The short (in) longwave radiation at the surface.",
+        comments = "The downwelling shortwave radiation at the surface.",
         compute! = (out, Y, p, t) ->
             compute_radiation_shortwave_down!(out, Y, p, t, land_model),
     )
@@ -729,22 +730,22 @@ function define_diagnostics!(land_model)
     ## Other ##
     # Longwave out
     add_diagnostic_variable!(
-        short_name = "lwo",
-        long_name = "Longwave Radiation Out",
-        standard_name = "longwave radiation out",
+        short_name = "lwu",
+        long_name = "Longwave Radiation Up",
+        standard_name = "longwave_radiation_up",
         units = "W m^-2",
-        comments = "Longwave radiation going out of the land surface.",
-        compute! = (out, Y, p, t) -> compute_lw_out!(out, Y, p, t, land_model),
+        comments = "Upwelling longwave radiation.",
+        compute! = (out, Y, p, t) -> compute_lw_up!(out, Y, p, t, land_model),
     )
 
     # Shortwave out
     add_diagnostic_variable!(
-        short_name = "swo",
-        long_name = "Shortwave Radiation Out",
-        standard_name = "shortwave radiation out",
+        short_name = "swu",
+        long_name = "Shortwave Radiation Up",
+        standard_name = "shortwave_radiation_up",
         units = "W m^-2",
-        comments = "Shortwave radiation going out of the land surface.",
-        compute! = (out, Y, p, t) -> compute_sw_out!(out, Y, p, t, land_model),
+        comments = "Upwelling shortwave radiation",
+        compute! = (out, Y, p, t) -> compute_sw_up!(out, Y, p, t, land_model),
     )
 
     # Evapotranspiration

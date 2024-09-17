@@ -183,13 +183,24 @@ end
 
 The names of the additional auxiliary variables that are
 included in the integrated Soil-Canopy model.
+
+These include the broadband albedo of the land surface
+`α_sfc`, defined as the ratio of SW_u/SW_d,
+and `T_sfc`, defined as the temperature a blackbody with emissivity
+`ϵ_sfc` would have
+in order to emit the same LW_u as the land surface does. This is called the 
+[effective temperature](https://en.wikipedia.org/wiki/Effective_temperature) in some fields,
+and is not the same as the skin temperature (defined e.g. Equation 7.13 of  Bonan, 2019, Climate Change and Terrestrial Ecosystem Modeling.  DOI: 10.1017/9781107339217).
 """
 lsm_aux_vars(m::SoilCanopyModel) = (
     :root_extraction,
     :root_energy_extraction,
     :T_ground,
-    :LW_out,
-    :SW_out,
+    :LW_u,
+    :SW_u,
+    :T_sfc,
+    :ϵ_sfc,
+    :α_sfc,
     :scratch1,
     :scratch2,
 )
@@ -200,7 +211,8 @@ lsm_aux_vars(m::SoilCanopyModel) = (
 The types of the additional auxiliary variables that are
 included in the integrated Soil-Canopy model.
 """
-lsm_aux_types(m::SoilCanopyModel{FT}) where {FT} = (FT, FT, FT, FT, FT, FT, FT)
+lsm_aux_types(m::SoilCanopyModel{FT}) where {FT} =
+    (FT, FT, FT, FT, FT, FT, FT, FT, FT, FT)
 
 """
     lsm_aux_domain_names(m::SoilCanopyModel)
@@ -208,8 +220,18 @@ lsm_aux_types(m::SoilCanopyModel{FT}) where {FT} = (FT, FT, FT, FT, FT, FT, FT)
 The domain names of the additional auxiliary variables that are
 included in the integrated Soil-Canopy model.
 """
-lsm_aux_domain_names(m::SoilCanopyModel) =
-    (:subsurface, :subsurface, :surface, :surface, :surface, :surface, :surface)
+lsm_aux_domain_names(m::SoilCanopyModel) = (
+    :subsurface,
+    :subsurface,
+    :surface,
+    :surface,
+    :surface,
+    :surface,
+    :surface,
+    :surface,
+    :surface,
+    :surface,
+)
 
 """
     make_update_boundary_fluxes(
@@ -311,8 +333,8 @@ end
 
 
 A function which computes the net radiation at the ground surface
-give the canopy radiation model, as well as the outgoing radiation,
-and the net canopy radiation.
+given the canopy radiation model, as well as the upwelling radiation - and hence
+effective albedo, emissivity, and temperature -  and the net canopy radiation.
 
 Returns the correct radiative fluxes for bare ground in the case
 where the canopy LAI is zero. Note also that this serves the role of
@@ -352,11 +374,11 @@ function lsm_radiant_energy_fluxes!(
     LW_net_canopy = p.canopy.radiative_transfer.LW_n
     SW_net_canopy = p.canopy.radiative_transfer.SW_n
     R_net_soil = p.soil.R_n
-    LW_out = p.LW_out
-    SW_out = p.SW_out
-    # in total: INC - OUT = CANOPY_ABS + (1-α_soil)*CANOPY_TRANS
-    # SW out  = reflected par + reflected nir
-    @. SW_out =
+    LW_u = p.LW_u
+    SW_u = p.SW_u
+    # in total: d - u = CANOPY_ABS + (1-α_soil)*CANOPY_TRANS
+    # SW upwelling  = reflected par + reflected nir
+    @. SW_u =
         energy_per_photon_NIR * N_a * p.canopy.radiative_transfer.nir.refl +
         energy_per_photon_PAR * N_a * p.canopy.radiative_transfer.par.refl
 
@@ -376,6 +398,7 @@ function lsm_radiant_energy_fluxes!(
         N_a *
         p.canopy.radiative_transfer.par.trans *
         (1 - α_soil_PAR)
+
     ϵ_canopy = p.canopy.radiative_transfer.ϵ # this takes into account LAI/SAI
     @. LW_d_canopy = ((1 - ϵ_canopy) * LW_d + ϵ_canopy * _σ * T_canopy^4) # double checked
     @. LW_u_soil = ϵ_soil * _σ * p.T_ground^4 + (1 - ϵ_soil) * LW_d_canopy # double checked
@@ -383,7 +406,13 @@ function lsm_radiant_energy_fluxes!(
     @. R_net_soil += ϵ_soil * LW_d_canopy - ϵ_soil * _σ * p.T_ground^4 # double checked
     @. LW_net_canopy =
         ϵ_canopy * LW_d - 2 * ϵ_canopy * _σ * T_canopy^4 + ϵ_canopy * LW_u_soil
-    @. LW_out = (1 - ϵ_canopy) * LW_u_soil + ϵ_canopy * _σ * T_canopy^4 # double checked
+
+    @. LW_u = (1 - ϵ_canopy) * LW_u_soil + ϵ_canopy * _σ * T_canopy^4 # double checked
+
+    # Effective (radiative) land properties 
+    @. p.α_sfc = SW_u / max(SW_d, eps(FT)) # TODO: replace with fraction reflected as compute by canopy
+    @. p.ϵ_sfc = 1
+    @. p.T_sfc = (LW_u / (p.ϵ_sfc * _σ))^(1 / 4)
 end
 
 
