@@ -198,7 +198,7 @@ function boundary_flux(
     p::NamedTuple,
     t,
 )::ClimaCore.Fields.Field
-    update_runoff!(p, bc.runoff, Y, t, model)
+    update_runoff!(p, bc.runoff, p.drivers.P_liq, Y, t, model)
     return p.soil.infiltration
 end
 
@@ -763,7 +763,7 @@ function soil_boundary_fluxes!(
 )
     p.soil.turbulent_fluxes .= turbulent_fluxes(bc.atmos, model, Y, p, t)
     p.soil.R_n .= net_radiation(bc.radiation, model, Y, p, t)
-    update_runoff!(p, bc.runoff, Y, t, model)
+    update_runoff!(p, bc.runoff, p.drivers.P_liq, Y, t, model)
     # We do not model the energy flux from infiltration.
     @. p.soil.top_bc.water =
         p.soil.infiltration + p.soil.turbulent_fluxes.vapor_flux_liq

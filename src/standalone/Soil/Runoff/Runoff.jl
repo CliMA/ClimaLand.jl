@@ -61,13 +61,13 @@ struct NoRunoff <: AbstractRunoffModel
 end
 
 """
-    update_runoff!(p, runoff::NoRunoff, _...)
+    update_runoff!(p, runoff::NoRunoff, input, _...)
 
 Updates the runoff variables in the cache `p.soil` in place
 in the case of NoRunoff: sets infiltration = precipitation.
 """
-function update_runoff!(p, runoff::NoRunoff, _...)
-    p.soil.infiltration .= p.drivers.P_liq
+function update_runoff!(p, runoff::NoRunoff, input, _...)
+    p.soil.infiltration .= input
 end
 
 runoff_vars(::NoRunoff) = (:infiltration,)
@@ -112,6 +112,7 @@ end
     update_runoff!(
         p,
         runoff::SurfaceRunoff,
+        input,
         Y,
         t,
         model::AbstractSoilModel,
@@ -128,6 +129,7 @@ p.soil.infiltration
 function update_runoff!(
     p,
     runoff::SurfaceRunoff,
+    input,
     Y,
     t,
     model::AbstractSoilModel,
@@ -142,9 +144,8 @@ function update_runoff!(
     is_saturated_sfc =
         ClimaLand.Domains.top_center_to_surface(p.soil.is_saturated) # a view
 
-    @. p.soil.infiltration =
-        surface_infiltration(ic, p.drivers.P_liq, is_saturated_sfc)
-    @. p.soil.R_s = abs(p.drivers.P_liq .- p.soil.infiltration)
+    @. p.soil.infiltration = surface_infiltration(ic, input, is_saturated_sfc)
+    @. p.soil.R_s = abs(input .- p.soil.infiltration)
 end
 
 runoff_vars(::SurfaceRunoff) =
@@ -204,7 +205,7 @@ end
 
 
 """
-    update_runoff!(p, runoff::TOPMODELRunoff, Y,t, model::AbstractSoilModel)
+    update_runoff!(p, runoff::TOPMODELRunoff, input, Y,t, model::AbstractSoilModel)
 
 Updates the runoff model variables in place in `p.soil` for the TOPMODELRunoff
 parameterization:
@@ -216,6 +217,7 @@ p.soil.infiltration
 function update_runoff!(
     p,
     runoff::TOPMODELRunoff,
+    input,
     Y,
     t,
     model::AbstractSoilModel,
@@ -239,9 +241,9 @@ function update_runoff!(
         runoff.f_over,
         model.domain.fields.depth - p.soil.h∇,
         ic,
-        precip,
+        input,
     )
-    @. p.soil.R_s = abs(precip - p.soil.infiltration)
+    @. p.soil.R_s = abs(input - p.soil.infiltration)
 
 end
 
