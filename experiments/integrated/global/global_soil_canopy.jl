@@ -226,16 +226,12 @@ photosynthesis_args = (;
     parameters = Canopy.FarquharParameters(FT, Canopy.C3(); Vcmax25 = Vcmax25)
 )
 # Set up plant hydraulics
-# Not ideal
 LAIfunction = TimeVaryingInput(
     joinpath(era5_artifact_path, "era5_lai_2021_0.9x1.25_clima.nc"),
     "lai",
     surface_space;
     reference_date = start_date,
     regridder_type,
-    file_reader_kwargs = (;
-        preprocess_func = (data) -> data > 0.05 ? data : 0.0,
-    ),
 )
 ai_parameterization = Canopy.PrescribedSiteAreaIndex{FT}(LAIfunction, SAI, RAI)
 
