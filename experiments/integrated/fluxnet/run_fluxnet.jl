@@ -4,7 +4,6 @@ import ClimaComms
 ClimaComms.@import_required_backends
 using ClimaCore
 import ClimaParams as CP
-using Plots
 using Statistics
 using Dates
 using Insolation
@@ -287,7 +286,7 @@ diags = ClimaLand.default_diagnostics(
     land,
     ref_time;
     output_writer = d_writer,
-    output_vars = :short,
+    output_vars = :long,
     average_period = :hourly,
    )
 
@@ -306,6 +305,13 @@ sol = SciMLBase.solve(
     callback = SciMLBase.CallbackSet(driver_cb, diag_cb),
 );
 
+short_names = ["sif", "ra", "gs", "trans", "gpp", "swc", "tsoil", "hr", "clhf", "soillhf",
+              "cshf", "soilshf", "msf"]
+# note: it looks like shortwave out and longwave out are missing from diagnostics
+# note2: it would be usefull to add total (soil + canopy) lhf and shf to diagnostics
+
+hourly_diag_name = short_names .* "_1h_average"
+
 gpp = Float64.(ClimaLand.Diagnostics.diagnostic_as_vectors(d_writer, "gpp_1h_average")[1])
 
 # Plotting
@@ -314,4 +320,11 @@ fig = Figure()
 ax = Axis(fig[1,1])
 lines!(ax, gpp)
 save("gpp.pdf", fig)
+
+# to do:
+# 1. filter out indices with missing input data
+# 2. function to make diurnal plots, can get from ClimaLandSimulations
+# 3. use unitful or ClimaAnalysis to convert units
+# 4. all plots in one pdf
+# 5. we need :daily diags too
 
