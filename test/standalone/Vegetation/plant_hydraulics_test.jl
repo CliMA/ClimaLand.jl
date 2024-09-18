@@ -226,9 +226,6 @@ for FT in (Float32, Float64)
             PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
         retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a)
         root_depths = FT.(-Array{FT}(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0) # 1st element is the deepest root depth
-        function root_distribution(z::T) where {T}
-            return T(1.0 / 0.5) * exp(z / T(0.5)) # (1/m)
-        end
         compartment_midpoints = Vector{FT}(
             range(
                 start = Δz / 2,
@@ -245,7 +242,7 @@ for FT in (Float32, Float64)
             ai_parameterization = ai_parameterization,
             ν = plant_ν,
             S_s = plant_S_s,
-            root_distribution = root_distribution,
+            rooting_depth = FT(0.5),
             conductivity_model = conductivity_model,
             retention_model = retention_model,
         )
@@ -304,7 +301,11 @@ for FT in (Float32, Float64)
                                         conductivity_model,
                                         Y[i],
                                     ),
-                                ) .* root_distribution.(root_depths) .* (
+                                ) .*
+                                ClimaLand.Canopy.PlantHydraulics.root_distribution.(
+                                    root_depths,
+                                    plant_hydraulics.parameters.rooting_depth,
+                                ) .* (
                                     vcat(root_depths, [0.0])[2:end] -
                                     vcat(root_depths, [0.0])[1:(end - 1)]
                                 ),
@@ -516,17 +517,14 @@ for FT in (Float32, Float64)
             PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
         retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a)
         root_depths = [FT(0.0)]# 1st element is the deepest root depth
-        function root_distribution(z::T) where {T}
-            return T(0) # (1/m)
-        end
         compartment_midpoints = [h_canopy]
         compartment_surfaces = [FT(0.0), h_canopy]
-
+        # set rooting_depth param to largest possible value to test no roots
         param_set = PlantHydraulics.PlantHydraulicsParameters(;
             ai_parameterization = ai_parameterization,
             ν = plant_ν,
             S_s = plant_S_s,
-            root_distribution = root_distribution,
+            rooting_depth = maxintfloat(FT),
             conductivity_model = conductivity_model,
             retention_model = retention_model,
         )

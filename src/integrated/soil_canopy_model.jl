@@ -224,7 +224,7 @@ lsm_aux_domain_names(m::SoilCanopyModel) =
 A method which makes a function; the returned function
 updates the additional auxiliary variables for the integrated model,
 as well as updates the boundary auxiliary variables for all component
-models. 
+models.
 
 This function is called each ode function evaluation, prior to the tendency function
 evaluation.
@@ -275,7 +275,10 @@ function make_update_boundary_fluxes(
                     p.canopy.hydraulics.ψ.:1,
                 ),
             ) *
-            (land.canopy.hydraulics.parameters.root_distribution(z))
+            (ClimaLand.Canopy.PlantHydraulics.root_distribution(
+                z,
+                land.canopy.hydraulics.parameters.rooting_depth,
+            ))
         @. p.root_energy_extraction =
             p.root_extraction * ClimaLand.Soil.volumetric_internal_energy_liq(
                 p.soil.T,
