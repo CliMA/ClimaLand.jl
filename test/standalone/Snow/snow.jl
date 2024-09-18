@@ -144,7 +144,10 @@ import ClimaLand.Parameters as LP
     exp_tendency!(dY, Y, p, t0)
     @test dY.snow.S == @.(-Y.snow.S / Δt)
     @test all(
-        ClimaLand.Snow.clip_dSdt.([0.1, 1.0, 2.0], [-1.0, -1.0, -1.0], 1.0) .==
-        [-0.1, -1.0, -1.0],
+        ClimaLand.Snow.clip_total_snow_water_flux.(
+            [0.1, 1.0, 2.0],
+            [1.0, 1.0, 1.0],
+            1.0,
+        ) .== [0.1, 1.0, 1.0],
     )
 end

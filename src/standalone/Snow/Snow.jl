@@ -170,8 +170,9 @@ end
 
 Returns the prognostic variable names of the snow model.
 
-For this model, we track the snow water equivalent S [m] and
-the energy per unit area U [J/m^2] prognostically.
+For this model, we track the snow water equivalent S [m] (liquid 
+water volume per ground area) and
+the energy per unit ground area U [J/m^2] prognostically.
 """
 prognostic_vars(::SnowModel) = (:S, :U)
 
@@ -263,10 +264,9 @@ ClimaLand.name(::SnowModel) = :snow
 Returns the snow cover fraction, assuming it is a heaviside
 function at 1e-3 meters.
 
-In the future we can play around with other forms, this makes it a bit more
-explicit.
+In the future we can play around with other forms.
 """
-function scf(x::FT; α = FT(1e-3))::FT where {FT}
+function scf(x::FT; α = FT(1e-4))::FT where {FT}
     return heaviside(x - α)
 end
 
@@ -298,13 +298,10 @@ function ClimaLand.make_update_boundary_fluxes(model::SnowModel{FT}) where {FT}
         # How does rain affect the below?
         P_snow = p.drivers.P_snow
 
-        # Heaviside function because we cannot change the water content of the snow by
-        # sublimation, evap, melting, or rain
-        # unless there is already snow on the ground. 
         @. p.snow.total_water_flux =
-            -P_snow +
-            (-p.snow.turbulent_fluxes.vapor_flux + p.snow.water_runoff) *
-            heaviside(Y.snow.S - eps(FT))
+            p.drivers.P_snow +
+            (p.snow.turbulent_fluxes.vapor_flux - p.snow.water_runoff) *
+            p.snow.snow_cover_fraction
 
         # I think we want dU/dt to include energy of falling snow.
         # otherwise snow can fall but energy wont change
@@ -314,15 +311,19 @@ function ClimaLand.make_update_boundary_fluxes(model::SnowModel{FT}) where {FT}
         ρe_falling_snow = -_LH_f0 * _ρ_liq # per unit vol of liquid water
 
         @. p.snow.total_energy_flux =
-            -P_snow * ρe_falling_snow +
+            P_snow * ρe_falling_snow +
             (
-                -p.snow.turbulent_fluxes.lhf - p.snow.turbulent_fluxes.shf -
-                p.snow.R_n + p.snow.energy_runoff
-            ) * heaviside(Y.snow.S - eps(FT))
+                p.snow.turbulent_fluxes.lhf +
+                p.snow.turbulent_fluxes.shf +
+                p.snow.R_n - p.snow.energy_runoff
+            ) * p.snow.snow_cover_fraction
 
-        @. p.snow.applied_water_flux =
-            clip_dSdt(Y.snow.S, p.snow.total_water_flux, model.parameters.Δt)
-        @. p.snow.applied_energy_flux = clip_dUdt(
+        @. p.snow.applied_water_flux = clip_total_snow_water_flux(
+            Y.snow.S,
+            p.snow.total_water_flux,
+            model.parameters.Δt,
+        )
+        @. p.snow.applied_energy_flux = clip_total_snow_energy_flux(
             Y.snow.U,
             Y.snow.S,
             p.snow.total_energy_flux,
@@ -334,40 +335,48 @@ end
 
 function ClimaLand.make_compute_exp_tendency(model::SnowModel{FT}) where {FT}
     function compute_exp_tendency!(dY, Y, p, t)
-        @. dY.snow.S = p.snow.applied_water_flux
-        @. dY.snow.U = p.snow.applied_energy_flux
+        # positive fluxes are TOWARDS atmos; negative fluxes increase quantity in snow
+        @. dY.snow.S = -p.snow.applied_water_flux
+        @. dY.snow.U = -p.snow.applied_energy_flux
     end
     return compute_exp_tendency!
 end
 
 """
-    clip_dSdt(S, dSdt, Δt)
+    clip_total_snow_water_flux(S, total_water_flux, Δt)
 
-A helper function which clips the tendency of S such that 
-S will not become negative.
+A helper function which clips the total water flux so that
+snow water equivalent S will not become negative in a timestep Δt.
 """
-function clip_dSdt(S, dSdt, Δt)
-    if S + dSdt * Δt < 0
-        return -S / Δt
+function clip_total_snow_water_flux(S, total_water_flux, Δt)
+    if S - total_water_flux * Δt < 0
+        return S / Δt
     else
-        return dSdt
+        return total_water_flux
     end
 end
 
 """
-    clip_dUdt(U, S, dUdt, dSdt, Δt)
+     clip_total_snow_energy_flux(U, S, total_energy_flux, total_water_flux, Δt)
 
-A helper function which clips the tendency of U such that 
-U will not become positive, and which ensures that if S
-goes to zero in a step, U will too.
+A helper function which clips the total energy flux such that 
+snow energy per unit ground area U will not become positive, and 
+which ensures that if the snow water equivalent S goes to zero in a step, 
+U will too.
 """
-function clip_dUdt(U, S, dUdt, dSdt, Δt)
-    if (U + dUdt * Δt) > 0
-        return -U / Δt
-    elseif S + dSdt * Δt < 0
-        return -U / Δt
+function clip_total_snow_energy_flux(
+    U,
+    S,
+    total_energy_flux,
+    total_water_flux,
+    Δt,
+)
+    if (U - total_energy_flux * Δt) > 0
+        return U / Δt
+    elseif S - total_water_flux * Δt < 0
+        return U / Δt
     else
-        return dUdt
+        return total_energy_flux
     end
 end
 
