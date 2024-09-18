@@ -108,10 +108,6 @@ ai_parameterization =
     PrescribedSiteAreaIndex{FT}(TimeVaryingInput(fakeLAIfunction), SAI, RAI)
 rooting_depth = FT(1.0);
 
-function root_distribution(z::T; rooting_depth = rooting_depth) where {T}
-    return T(1.0 / rooting_depth) * exp(z / T(rooting_depth))
-end;
-
 K_sat_plant = FT(1.8e-8)
 ψ63 = FT(-4 / 0.0098)
 Weibull_param = FT(4)
@@ -129,7 +125,7 @@ plant_hydraulics_ps = PlantHydraulics.PlantHydraulicsParameters(;
     ai_parameterization = ai_parameterization,
     ν = ν,
     S_s = S_s,
-    root_distribution = root_distribution,
+    rooting_depth = rooting_depth,
     conductivity_model = conductivity_model,
     retention_model = retention_model,
 );
