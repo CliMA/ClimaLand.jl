@@ -19,14 +19,36 @@ component) or standalone (single component) modes.  </strong>
 
 </div>
 
-# ClimaLand.jl
+ClimaLand.jl visualized with [ClimaScope](https://www.caltech.edu/about/news/data-to-discovery-art-climate) web dashboard:
+![ClimaScope-page41-JPEG original](https://github.com/user-attachments/assets/07eb1914-cdcb-45bc-9cd6-21408b77b59c)
+
+# Introduction
 
 This is the repository of the CliMA land model code. Here are some notable features:
 - ClimaLand has a modular design, models can be run as standalone (e.g., soil moisture only) or integrated (e.g., soil moisture and energy AND canopy AND snow, etc.)
 - ClimaLand can simulate single columns, regional boxes, and global runs
 - ClimaLand is CPU and GPU compatible
-- ClimaLand welcome contributions: please feel free to reach out to us with questions about how to get started, create a branch, and extend our code. For example, a modeler might want to test a new stomatal conductance model. 
-- ClimaLand provides APIs and UIs at multiple levels. 
+- ClimaLand welcome contributions: please feel free to reach out to us with questions about how to get started, create a branch, and extend our code. For example, a modeler might want to test a new stomatal conductance model.
+- ClimaLand provides APIs and UIs at multiple levels.
+
+## Installation
+
+To use ClimaLand.jl, first you need to [install Julia](https://julialang.org/downloads/).
+Then, you can install ClimaLand.jl by doing:
+
+```Julia
+julia> using Pkg
+julia> Pkg.add(ClimaLand)
+```
+
+Which is equivalent to doing
+
+```Julia
+julia> ] # typing the ] key with go into package REPL mode
+pkg> add ClimaLand
+```
+
+You are now ready to use `ClimaLand.jl`. To get started, we recommend reading the [documentation](https://clima.github.io/ClimaLand.jl/dev/).
 
 ## Models
 
