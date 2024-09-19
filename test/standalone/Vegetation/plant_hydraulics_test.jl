@@ -13,6 +13,7 @@ import ClimaLand
 import ClimaLand.Parameters as LP
 import Insolation
 using Dates
+using Statistics
 
 
 for FT in (Float32, Float64)
@@ -238,15 +239,6 @@ for FT in (Float32, Float64)
             range(start = 0.0, step = Δz, stop = Δz * (n_stem + n_leaf)),
         )
 
-        param_set = PlantHydraulics.PlantHydraulicsParameters(;
-            ai_parameterization = ai_parameterization,
-            ν = plant_ν,
-            S_s = plant_S_s,
-            rooting_depth = FT(0.5),
-            conductivity_model = conductivity_model,
-            retention_model = retention_model,
-        )
-
         function leaf_transpiration(t)
             T = FT(1e-8) # m/s
         end
@@ -256,18 +248,28 @@ for FT in (Float32, Float64)
 
         soil_driver = PrescribedSoil(FT)
 
-        plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
-            parameters = param_set,
-            transpiration = transpiration,
-            n_stem = n_stem,
-            n_leaf = n_leaf,
-            compartment_surfaces = compartment_surfaces,
-            compartment_midpoints = compartment_midpoints,
-        )
         autotrophic_parameters = AutotrophicRespirationParameters(FT)
         autotrophic_respiration_model =
             AutotrophicRespirationModel{FT}(autotrophic_parameters)
         for domain in domains
+            param_set = PlantHydraulics.PlantHydraulicsParameters(;
+                ai_parameterization = ai_parameterization,
+                ν = plant_ν,
+                S_s = plant_S_s,
+                rooting_depth = fill(FT(0.5), domain.space.surface),
+                conductivity_model = conductivity_model,
+                retention_model = retention_model,
+            )
+
+            plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
+                parameters = param_set,
+                transpiration = transpiration,
+                n_stem = n_stem,
+                n_leaf = n_leaf,
+                compartment_surfaces = compartment_surfaces,
+                compartment_midpoints = compartment_midpoints,
+            )
+
             model = ClimaLand.Canopy.CanopyModel{FT}(;
                 parameters = shared_params,
                 domain = domain,
@@ -282,14 +284,15 @@ for FT in (Float32, Float64)
             )
             # Set system to hydrostatic equilibrium state by setting fluxes to zero, and setting LHS of both ODEs to 0
             function initial_compute_exp_tendency!(F, Y)
-                AI = (; leaf = LAI(1.0), root = RAI, stem = SAI)
+                AI = (; leaf = FT(LAI(1.0)), root = FT(RAI), stem = FT(SAI))
                 T0A = FT(1e-8) * AI[:leaf]
                 for i in 1:(n_leaf + n_stem)
-                    if i == 1
-                        fa =
-                            sum(
+                    fa = fill(FT(0), domain.space.surface)
+                    for j in length(root_depths)
+                        if i == 1
+                            fa .+=
                                 water_flux.(
-                                    root_depths,
+                                    root_depths[j],
                                     plant_hydraulics.compartment_midpoints[i],
                                     ψ_soil0,
                                     Y[i],
@@ -303,31 +306,31 @@ for FT in (Float32, Float64)
                                     ),
                                 ) .*
                                 ClimaLand.Canopy.PlantHydraulics.root_distribution.(
-                                    root_depths,
+                                    root_depths[j],
                                     plant_hydraulics.parameters.rooting_depth,
-                                ) .* (
-                                    vcat(root_depths, [0.0])[2:end] -
-                                    vcat(root_depths, [0.0])[1:(end - 1)]
-                                ),
-                            ) * AI[:stem]
-                    else
-                        fa =
-                            water_flux(
-                                plant_hydraulics.compartment_midpoints[i - 1],
-                                plant_hydraulics.compartment_midpoints[i],
-                                Y[i - 1],
-                                Y[i],
-                                PlantHydraulics.hydraulic_conductivity(
-                                    conductivity_model,
+                                ) .* FT(
+                                    j != length(root_depths) ?
+                                    root_depths[j + 1] : 0.0,
+                                ) .* root_depths[j] .* AI[:stem]
+                        else
+                            fa .+=
+                                water_flux(
+                                    plant_hydraulics.compartment_midpoints[i - 1],
+                                    plant_hydraulics.compartment_midpoints[i],
                                     Y[i - 1],
-                                ),
-                                PlantHydraulics.hydraulic_conductivity(
-                                    conductivity_model,
                                     Y[i],
-                                ),
-                            ) * AI[plant_hydraulics.compartment_labels[i]]
+                                    PlantHydraulics.hydraulic_conductivity(
+                                        conductivity_model,
+                                        Y[i - 1],
+                                    ),
+                                    PlantHydraulics.hydraulic_conductivity(
+                                        conductivity_model,
+                                        Y[i],
+                                    ),
+                                ) * AI[plant_hydraulics.compartment_labels[i]]
+                        end
+                        F[i] = mean(fa .- T0A)
                     end
-                    F[i] = fa - T0A
                 end
             end
 
