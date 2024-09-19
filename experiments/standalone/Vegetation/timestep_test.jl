@@ -154,11 +154,13 @@ canopy = ClimaLand.Canopy.CanopyModel{FT}(;
 exp_tendency! = make_exp_tendency(canopy)
 imp_tendency! = make_imp_tendency(canopy)
 jacobian! = make_jacobian(canopy);
+drivers = ClimaLand.get_drivers(canopy)
 
 seconds_per_day = 3600 * 24.0
 t0 = 150seconds_per_day
-N_days = 0.5
+N_days = 100.0
 tf = t0 + N_days * seconds_per_day
+sim_time = round((tf - t0) / 3600, digits = 4) # simulation length in hours
 set_initial_cache! = make_set_initial_cache(canopy)
 
 timestepper = CTS.ARS111();
@@ -174,20 +176,26 @@ ode_algo = CTS.IMEXAlgorithm(
     ),
 );
 
-ref_dt = 0.001
+ref_dt = 0.5
 # ref_sol =
 #     SciMLBase.solve(prob, ode_algo; dt = ref_dt, callback = cb, saveat = saveat);
 # ref_T = [parent(ref_sol.u[k].canopy.energy.T)[1] for k in 1:length(ref_sol.t)]
 
-# Read in solution from saved delimited file (experiment run explicitly with dt = 0.1s)
+# Read in solution from saved delimited file (experiment run explicitly)
 savedir = joinpath(pkgdir(ClimaLand), "experiments/standalone/Vegetation");
-ref_file = joinpath(savedir, "exp_T_dt$(ref_dt)_$(N_days)days.txt")
-ref_T = vec(readdlm(ref_file, ','))
+# ref_file = joinpath(
+#     savedir,
+#     "refs",
+#     "exp_T_dt$(ref_dt)_$(sim_time)hours_updateat3hours.txt",
+# )
+# ref_T = vec(readdlm(ref_file, ','))
 
 mean_err = []
 p95_err = []
 p99_err = []
-dts = [12.0, 24.0, 48.0, 100.0, 225.0, 450.0, 900.0, 1800.0, 3600.0]
+# dts = [12.0, 24.0, 48.0, 100.0, 225.0, 450.0, 900.0, 1800.0, 3600.0]
+# dts = [24.0, 100.0, 450., 900., 1800., 3600., 7200., 10800.]
+dts = [10.0, 1800.0]
 sol_ends = []
 T_states = []
 times = []
@@ -196,8 +204,10 @@ for dt in dts
 
     # Initialize model before each simulation
     Y, p, coords = ClimaLand.initialize(canopy)
-    jac_kwargs =
-        (; jac_prototype = ClimaLand.ImplicitEquationJacobian(Y), Wfact = jacobian!);
+    jac_kwargs = (;
+        jac_prototype = ClimaLand.ImplicitEquationJacobian(Y),
+        Wfact = jacobian!,
+    )
 
     ψ_leaf_0 = FT(-2e5 / 9800)
     ψ_stem_0 = FT(-1e5 / 9800)
@@ -215,6 +225,11 @@ for dt in dts
     evaluate!(Y.canopy.energy.T, atmos.T, t0)
     set_initial_cache!(p, Y, t0)
 
+    saveat = vcat(Array(t0:(3 * 3600):tf), tf)
+    updateat = vcat(Array(t0:(3 * 3600):tf), tf)
+    updatefunc = ClimaLand.make_update_drivers(drivers)
+    cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
+
     prob = SciMLBase.ODEProblem(
         CTS.ClimaODEFunction(
             T_exp! = exp_tendency!,
@@ -226,59 +241,65 @@ for dt in dts
         p,
     )
 
-    saveat = Array(t0:(3 * 3600):tf)
-    updateat = Array(t0:(3600 * 3):tf)
-    updatefunc = ClimaLand.make_update_drivers(drivers)
-    cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
-
     @time sol =
         SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb, saveat = saveat)
     T = [parent(sol.u[k].canopy.energy.T)[1] for k in 1:length(sol.t)]
-    ΔT = abs.(T .- ref_T)
-    push!(mean_err, mean(ΔT))
-    push!(p95_err, percentile(ΔT, 95))
-    push!(p99_err, percentile(ΔT, 99))
+    # TODO add this back if ref created with fixed saveat dt
+    # ΔT = abs.(T .- ref_T)
+    # push!(mean_err, mean(ΔT))
+    # push!(p95_err, percentile(ΔT, 95))
+    # push!(p99_err, percentile(ΔT, 99))
     push!(sol_ends, T[end])
     push!(T_states, T)
     push!(times, sol.t)
 end
 
 # Create plot with statistics
+# Compare T state computed with small vs large dt
+ΔT = abs.(T_states[1] .- T_states[2])
+mean_err = FT(mean(ΔT))
+p95_err = FT(percentile(ΔT, 95))
+p99_err = FT(percentile(ΔT, 99))
 fig = Figure()
 ax = Axis(
     fig[1, 1],
     xlabel = "Timestep (minutes)",
     ylabel = "Temperature (K)",
-    xscale = log10,
-    yscale = log10,
+    # xscale = log10,
+    # yscale = log10,
+    title = "Error in T over $(sim_time / 24) day sim; $(dts[1])s vs $(dts[end])s timestep",
 )
-dts = dts ./ 60
-lines!(ax, dts, FT.(mean_err), label = "Mean Error")
-lines!(ax, dts, FT.(p95_err), label = "95th% Error")
-lines!(ax, dts, FT.(p99_err), label = "99th% Error")
+# dts = dts ./ 60
+# lines!(ax, dts, FT.(mean_err), label = "Mean Error")
+# lines!(ax, dts, FT.(p95_err), label = "95th% Error")
+# lines!(ax, dts, FT.(p99_err), label = "99th% Error")
+scatter!(ax, 1800.0, mean_err, label = "Mean Error")
+scatter!(ax, 1800.0, p95_err, label = "95th% Error")
+scatter!(ax, 1800.0, p99_err, label = "99th% Error")
 axislegend(ax)
 save(joinpath(savedir, "errors.png"), fig)
 
-# Create convergence plot
-errors = abs.(sol_ends .- ref_T[end])
-fig2 = Figure()
-ax2 = Axis(
-    fig2[1, 1],
-    xlabel = "log(dt)",
-    ylabel = "log(|T[end] - T_ref[end]|)",
-    xscale = log10,
-    yscale = log10,
-)
-scatter!(ax2, dts, FT.(errors))
-lines!(ax2, dts, dts)
-save(joinpath(savedir, "convergence.png"), fig2)
+# # Create convergence plot
+# errors = abs.(sol_ends .- ref_T[end])
+# fig2 = Figure()
+# ax2 = Axis(
+#     fig2[1, 1],
+#     xlabel = "log(dt)",
+#     ylabel = "log(|T[end] - T_ref[end]|)",
+#     xscale = log10,
+#     yscale = log10,
+#     title = "Convergence of T; ac_canopy = $(ac_canopy), sim time = $(sim_time) hours, dts in [$(dts[1]), $(dts[end])]",
+# )
+# scatter!(ax2, dts, FT.(errors))
+# lines!(ax2, dts, dts / 1e3)
+# save(joinpath(savedir, "convergence.png"), fig2)
 
 # Create states plot
 fig3 = Figure()
 ax3 = Axis(fig3[1, 1], xlabel = "time (min)", ylabel = "T (K)")
 times = times ./ 60.0
-for i in 1:length(times)
+for i in 3:(length(times) - 1)
     lines!(ax3, times[i], T_states[i], label = "dt $(dts[i]) min")
 end
-axislegend(ax3, position = :lt)
+axislegend(ax3, position = :rt)
 save(joinpath(savedir, "states.png"), fig3)
