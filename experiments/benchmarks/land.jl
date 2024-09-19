@@ -402,7 +402,13 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
     retention_model = Canopy.PlantHydraulics.LinearRetentionCurve{FT}(a)
     plant_ν = FT(1.44e-4)
     plant_S_s = FT(1e-2 * 0.0098) # m3/m3/MPa to m3/m3/m
-    rooting_depth = FT(0.5) # from Natan
+    rooting_depth = SpaceVaryingInput(
+        joinpath(clm_artifact_path, "root_map.nc"),
+        "rooting_depth",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc,),
+    )
     n_stem = 0
     n_leaf = 1
     h_stem = FT(0.0)
