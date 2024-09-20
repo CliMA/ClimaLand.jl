@@ -600,7 +600,20 @@ function TwoStreamParameters(
 
     parameters = CP.get_parameter_values(toml_dict, name_map, "Land")
     FT = CP.float_type(toml_dict)
-    return TwoStreamParameters{FT, typeof(G_Function)}(;
+    # default value for keyword args must be converted manually
+    # automatic conversion not possible to Union types
+    α_PAR_leaf = FT.(α_PAR_leaf)
+    τ_PAR_leaf = FT.(τ_PAR_leaf)
+    α_NIR_leaf = FT.(α_NIR_leaf)
+    τ_NIR_leaf = FT.(τ_NIR_leaf)
+    return TwoStreamParameters{
+        FT,
+        typeof(G_Function),
+        typeof(α_PAR_leaf),
+        typeof(τ_PAR_leaf),
+        typeof(α_NIR_leaf),
+        typeof(τ_NIR_leaf),
+    }(;
         G_Function,
         α_PAR_leaf,
         τ_PAR_leaf,
@@ -651,7 +664,16 @@ function BeerLambertParameters(
 
     parameters = CP.get_parameter_values(toml_dict, name_map, "Land")
     FT = CP.float_type(toml_dict)
-    return BeerLambertParameters{FT, typeof(G_Function)}(;
+    # default value for keyword args must be converted manually
+    # automatic conversion not possible to Union types
+    α_PAR_leaf = FT.(α_PAR_leaf)
+    α_NIR_leaf = FT.(α_NIR_leaf)
+    return BeerLambertParameters{
+        FT,
+        typeof(G_Function),
+        typeof(α_PAR_leaf),
+        typeof(α_NIR_leaf),
+    }(;
         G_Function,
         α_PAR_leaf,
         α_NIR_leaf,

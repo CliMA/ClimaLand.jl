@@ -49,11 +49,13 @@ $(DocStringExtensions.FIELDS)
 Base.@kwdef struct BeerLambertParameters{
     FT <: AbstractFloat,
     G <: AbstractGFunction{FT},
+    APAR <: Union{FT, ClimaCore.Fields.Field},
+    ANIR <: Union{FT, ClimaCore.Fields.Field},
 }
     "PAR leaf reflectance (unitless)"
-    α_PAR_leaf::FT
+    α_PAR_leaf::APAR
     "NIR leaf reflectance"
-    α_NIR_leaf::FT
+    α_NIR_leaf::ANIR
     "Emissivity of the canopy"
     ϵ_canopy::FT
     "Clumping index following Braghiere (2021) (unitless)"
@@ -88,15 +90,19 @@ $(DocStringExtensions.FIELDS)
 Base.@kwdef struct TwoStreamParameters{
     FT <: AbstractFloat,
     G <: AbstractGFunction{FT},
+    APAR <: Union{FT, ClimaCore.Fields.Field},
+    TPAR <: Union{FT, ClimaCore.Fields.Field},
+    ANIR <: Union{FT, ClimaCore.Fields.Field},
+    TNIR <: Union{FT, ClimaCore.Fields.Field},
 }
     "PAR leaf reflectance (unitless)"
-    α_PAR_leaf::FT
+    α_PAR_leaf::APAR
     "PAR leaf element transmittance"
-    τ_PAR_leaf::FT
+    τ_PAR_leaf::TPAR
     "NIR leaf reflectance"
-    α_NIR_leaf::FT
+    α_NIR_leaf::ANIR
     "NIR leaf element transmittance"
-    τ_NIR_leaf::FT
+    τ_NIR_leaf::TNIR
     "Emissivity of the canopy"
     ϵ_canopy::FT
     "Clumping index following Braghiere 2021 (unitless)"
@@ -106,7 +112,7 @@ Base.@kwdef struct TwoStreamParameters{
     "Typical wavelength per NIR photon (m)"
     λ_γ_NIR::FT
     "Number of layers to partition the canopy into when integrating the
-    absorption over the canopy vertically. Unrelated to the number of layers in 
+    absorption over the canopy vertically. Unrelated to the number of layers in
     the vertical discretization of the canopy for the plant hydraulics model.
     (Constant, and should eventually move to ClimaParams)"
     n_layers::UInt64
