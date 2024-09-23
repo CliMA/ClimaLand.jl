@@ -392,7 +392,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (10, 10, 15))
 
     # c3 is read in as a float
     is_c3 = SpaceVaryingInput(
-        joinpath(clm_artifact_path, "mechanism_map.nc"),
+        joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
         "c3_dominant",
         surface_space;
         regridder_type,

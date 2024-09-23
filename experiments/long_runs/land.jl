@@ -391,7 +391,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     )
     # photosynthesis mechanism is read as a float, where 1.0 indicates c3 and 0.0 c4
     is_c3 = SpaceVaryingInput(
-        joinpath(clm_artifact_path, "mechanism_map.nc"),
+        joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
         "c3_dominant",
         surface_space;
         regridder_type,
