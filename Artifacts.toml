@@ -1,5 +1,9 @@
 [clm_data]
-git-tree-sha1 = "9d6f7207023958b74c1b2079cb29e4f17e19a196"
+git-tree-sha1 = "5fcb868a751f4a2e32181612bb0c123e9a8e7e97"
+
+    [[clm_data.download]]
+    sha256 = "bd8b53d691507e746e1de6dd2cc97178510c1d8944df1c23e4737bbb7ac7f8dd"
+    url = "https://caltech.box.com/shared/static/hbi0w0hbz8chaab4ym3kdpthc0d1blfc.gz"
 
 [era5_land_forcing_data2021]
 git-tree-sha1 = "ec424296df6b60cfe273ac8f981701fbbed0bd8a"
