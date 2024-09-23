@@ -353,21 +353,43 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         R_sb = R_sb,
     )
 
+    # Energy Balance model
+    ac_canopy = FT(2.5e3)
+
+    #clm_data is used for g1, vcmax, rooting, and two_stream param maps
+    clm_artifact_path = ClimaLand.Artifacts.clm_data_folder_path(; context)
 
     # TwoStreamModel parameters
     Ω = FT(0.69)
     ld = FT(0.5)
-    α_PAR_leaf = FT(0.1)
-    τ_PAR_leaf = FT(0.05)
-    α_NIR_leaf = FT(0.45)
-    τ_NIR_leaf = FT(0.25)
-
-    # Energy Balance model
-    ac_canopy = FT(2.5e3)
-
-    #clm_data is used for g1 and vcmax maps
-    clm_artifact_path = ClimaLand.Artifacts.clm_data_folder_path(; context)
-
+    α_PAR_leaf = SpaceVaryingInput(
+        joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
+        "rholvis",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc,),
+    )
+    τ_PAR_leaf = SpaceVaryingInput(
+        joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
+        "taulvis",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc,),
+    )
+    α_NIR_leaf = SpaceVaryingInput(
+        joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
+        "rholnir",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc,),
+    )
+    τ_NIR_leaf = SpaceVaryingInput(
+        joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
+        "taulnir",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc,),
+    )
     # Conductance Model
     # g1 is read in units of sqrt(kPa) and then converted to sqrt(Pa)
     g1 = SpaceVaryingInput(
