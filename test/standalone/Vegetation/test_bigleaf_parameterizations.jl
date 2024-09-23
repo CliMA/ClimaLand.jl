@@ -104,8 +104,8 @@ for FT in (Float32, Float64)
         K_c = extinction_coeff.(RTparams.G_Function, θs)
         α_soil_PAR = FT(0.2)
         output =
-            plant_absorbed_pfd.(
-                RT,
+            plant_absorbed_pfd_beer_lambert.(
+                RTparams.Ω,
                 PAR,
                 RTparams.α_PAR_leaf,
                 LAI,

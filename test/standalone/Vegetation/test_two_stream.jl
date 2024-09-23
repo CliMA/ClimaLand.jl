@@ -74,8 +74,10 @@ for FT in (Float32, Float64)
                 # Compute the predicted FAPAR using the ClimaLand TwoStream implementation
                 K = extinction_coeff(RT_params.G_Function, θs[i])
                 output =
-                    plant_absorbed_pfd.(
-                        Ref(RT),
+                    plant_absorbed_pfd_two_stream.(
+                        RT_params.G_Function,
+                        RT_params.Ω,
+                        RT_params.n_layers,
                         FT(1),
                         RT_params.α_PAR_leaf,
                         RT_params.τ_PAR_leaf,
