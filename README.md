@@ -19,9 +19,6 @@ component) or standalone (single component) modes.  </strong>
 
 </div>
 
-ClimaLand.jl visualized with [ClimaScope](https://www.caltech.edu/about/news/data-to-discovery-art-climate) web dashboard:
-![ClimaScope-page41-JPEG original](https://github.com/user-attachments/assets/07eb1914-cdcb-45bc-9cd6-21408b77b59c)
-
 # Introduction
 
 This is the repository of the CliMA land model code. Here are some notable features:
