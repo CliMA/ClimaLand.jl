@@ -149,7 +149,7 @@ struct PlantHydraulicsParameters{
     conductivity_model::CP
     "Water retention model and parameters"
     retention_model::RP
-    "Rooting depth parameter (m) - used to calculate root_distribution"
+    "Rooting depth parameter (m) - a characteristic depth below which 1/e of the root mass lies"
     rooting_depth::RD
 end
 
@@ -374,10 +374,18 @@ end
 """
     root_distribution(z::FT, rooting_depth::FT)
 
-Compute value of rooting probabilty density function at `z`
+Computes value of rooting probabilty density function at `z`.
+
+The rooting probabilty density function is derived from the
+cumulative distribution function F(z) = 1 - beta^(100z), which is described
+by Equation 2.23 of
+Bonan, "Climate Change and Terrestrial Ecosystem Modeling", 2019 Cambridge University Press.
+This probability distribution function is equivalent to the derivative of the
+cumulative distribution function with respect to z,
+where `rooting_depth` replaces (-1)/(100ln(beta)).
 """
 function root_distribution(z::FT, rooting_depth::FT) where {FT <: AbstractFloat}
-    return FT(1.0 / rooting_depth) * exp(z / FT(rooting_depth)) # 1/m
+    return (1 / rooting_depth) * exp(z / rooting_depth) # 1/m
 end
 
 """

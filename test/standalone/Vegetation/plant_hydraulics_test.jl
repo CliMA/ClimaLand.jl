@@ -329,6 +329,7 @@ for FT in (Float32, Float64)
                                     ),
                                 ) * AI[plant_hydraulics.compartment_labels[i]]
                         end
+                        # take the mean because nlsolve does not play well with fields
                         F[i] = mean(fa .- T0A)
                     end
                 end
