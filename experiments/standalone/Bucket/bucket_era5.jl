@@ -25,6 +25,7 @@ import Interpolations
 import ClimaCoreMakie
 using CairoMakie
 import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
+import ClimaUtilities.OutputPathGenerator: generate_output_path
 import ClimaTimeSteppers as CTS
 import NCDatasets
 using ClimaCore
@@ -73,8 +74,7 @@ regridder_type = :InterpolationsRegridder
 FT = Float64;
 context = ClimaComms.context()
 earth_param_set = LP.LandParameters(FT);
-outdir = joinpath(
-    pkgdir(ClimaLand),
+generate_output_path(
     "experiments/standalone/Bucket/artifacts_staticmap$(regional_str)",
 )
 !ispath(outdir) && mkpath(outdir)

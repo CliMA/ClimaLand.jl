@@ -22,6 +22,7 @@ using DelimitedFiles
 using Statistics
 
 import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
+import ClimaUtilities.OutputPathGenerator: generate_output_path
 
 import ClimaTimeSteppers as CTS
 import NCDatasets
@@ -67,10 +68,8 @@ anim_plots = false
 FT = Float64;
 context = ClimaComms.context()
 earth_param_set = LP.LandParameters(FT);
-outdir = joinpath(
-    pkgdir(ClimaLand),
-    "experiments/standalone/Bucket/artifacts_temporalmap",
-)
+outdir =
+    generate_output_path("experiments/standalone/Bucket/artifacts_temporalmap")
 device_suffix =
     typeof(ClimaComms.context().device) <: ClimaComms.CPUSingleThreaded ?
     "cpu" : "gpu"

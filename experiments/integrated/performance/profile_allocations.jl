@@ -5,6 +5,7 @@ using Dates
 using Insolation
 import ClimaComms
 import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
+import ClimaUtilities.OutputPathGenerator: generate_output_path
 
 using ClimaLand
 using ClimaLand.Domains
@@ -78,8 +79,7 @@ device_suffix =
     typeof(ClimaComms.context().device) <: ClimaComms.CPUSingleThreaded ?
     "cpu" : "gpu"
 const FT = Float64
-climaland_dir = pkgdir(ClimaLand)
-savedir = joinpath(climaland_dir, "experiments/integrated/performance")
+savedir = generate_output_path("experiments/integrated/performance")
 earth_param_set = LP.LandParameters(FT)
 
 # Set the model domain

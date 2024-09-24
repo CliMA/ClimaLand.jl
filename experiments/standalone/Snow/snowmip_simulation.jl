@@ -3,6 +3,7 @@ import ClimaTimeSteppers as CTS
 using CairoMakie
 import ClimaParams as CP
 import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
+import ClimaUtilities.OutputPathGenerator: generate_output_path
 import ClimaUtilities.ClimaArtifacts: @clima_artifact
 using ClimaCore
 using ClimaLand.Snow
@@ -37,7 +38,7 @@ context = ClimaComms.context()
 include(
     joinpath(climaland_dir, "experiments/standalone/Snow/process_snowmip.jl"),
 )
-savedir = joinpath(climaland_dir, "experiments/standalone/Snow/")
+savedir = generate_output_path("experiments/standalone/Snow/")
 t0 = FT(0.0)
 tf = FT(seconds[end])
 ndays = (tf - t0) / 3600 / 24

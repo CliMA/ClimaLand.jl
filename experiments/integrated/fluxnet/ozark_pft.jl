@@ -23,6 +23,7 @@ using ClimaLand.Canopy
 using ClimaLand.Canopy.PlantHydraulics
 import ClimaLand
 import ClimaLand.Parameters as LP
+import ClimaUtilities.OutputPathGenerator: generate_output_path
 const FT = Float64
 earth_param_set = LP.LandParameters(FT)
 climaland_dir = pkgdir(ClimaLand)
@@ -338,7 +339,7 @@ if !isdir(
     )
 end
 savedir =
-    joinpath(climaland_dir, "experiments/integrated/fluxnet/$site_ID/out/pft/")
+    generate_output_path("experiments/integrated/fluxnet/$site_ID/out/pft/")
 if !isdir(savedir)
     mkdir(savedir)
 end

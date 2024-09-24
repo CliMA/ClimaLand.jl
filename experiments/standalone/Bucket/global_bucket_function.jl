@@ -21,6 +21,7 @@ using DelimitedFiles
 using Statistics
 
 import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
+import ClimaUtilities.OutputPathGenerator: generate_output_path
 
 import ClimaTimeSteppers as CTS
 import NCDatasets
@@ -63,10 +64,8 @@ anim_plots = false
 FT = Float64;
 context = ClimaComms.context()
 earth_param_set = LP.LandParameters(FT);
-outdir = joinpath(
-    pkgdir(ClimaLand),
-    "experiments/standalone/Bucket/artifacts_function",
-)
+outdir =
+    generate_output_path("experiments/standalone/Bucket/artifacts_function")
 !ispath(outdir) && mkpath(outdir)
 
 # Construct simulation domain

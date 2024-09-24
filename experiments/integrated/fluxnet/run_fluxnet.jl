@@ -18,6 +18,7 @@ using ClimaLand.Canopy
 using ClimaLand.Canopy.PlantHydraulics
 import ClimaLand
 import ClimaLand.Parameters as LP
+import ClimaUtilities.OutputPathGenerator: generate_output_path
 const FT = Float64
 earth_param_set = LP.LandParameters(FT)
 climaland_dir = pkgdir(ClimaLand)
@@ -280,8 +281,7 @@ sol = SciMLBase.solve(
 
 # Plotting
 daily = sol.t ./ 3600 ./ 24
-savedir =
-    joinpath(climaland_dir, "experiments/integrated/fluxnet/$site_ID/out/")
+savedir = generate_output_path("experiments/integrated/fluxnet/$site_ID/out/")
 
 if !isdir(savedir)
     mkdir(savedir)

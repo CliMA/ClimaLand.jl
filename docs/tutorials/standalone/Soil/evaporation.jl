@@ -21,6 +21,7 @@ using ClimaLand.Soil
 import ClimaLand
 import ClimaLand.Parameters as LP
 import SurfaceFluxes.Parameters as SFP
+import ClimaUtilities.OutputPathGenerator: generate_output_path
 
 FT = Float64;
 earth_param_set = LP.LandParameters(FT)
@@ -226,7 +227,7 @@ evap = [
     parent(sv.saveval[k].soil.turbulent_fluxes.vapor_flux_liq)[1] for
     k in 1:length(sol.t)
 ]
-savepath = joinpath(pkgdir(ClimaLand), "docs/tutorials/standalone/Soil/")
+savepath = generate_output_path("docs/tutorials/standalone/Soil/")
 evaporation_data =
     ClimaLand.Artifacts.lehmann_assouline_or2008_evaporation_data();
 ref_soln_E = readdlm(evaporation_data, ',')
