@@ -403,7 +403,7 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
     plant_ν = FT(1.44e-4)
     plant_S_s = FT(1e-2 * 0.0098) # m3/m3/MPa to m3/m3/m
     rooting_depth = SpaceVaryingInput(
-        joinpath(clm_artifact_path, "root_map.nc"),
+        joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
         "rooting_depth",
         surface_space;
         regridder_type,
