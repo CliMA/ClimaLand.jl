@@ -374,15 +374,15 @@ end
 """
     root_distribution(z::FT, rooting_depth::FT)
 
-Computes value of rooting probabilty density function at `z`.
+Computes value of rooting probability density function at `z`.
 
-The rooting probabilty density function is derived from the
-cumulative distribution function F(z) = 1 - beta^(100z), which is described
+The rooting probability density function is derived from the
+cumulative distribution function F(z) = 1 - β^(100z), which is described
 by Equation 2.23 of
 Bonan, "Climate Change and Terrestrial Ecosystem Modeling", 2019 Cambridge University Press.
 This probability distribution function is equivalent to the derivative of the
 cumulative distribution function with respect to z,
-where `rooting_depth` replaces (-1)/(100ln(beta)).
+where `rooting_depth` replaces (-1)/(100ln(β)) and z is expected to be negative.
 """
 function root_distribution(z::FT, rooting_depth::FT) where {FT <: AbstractFloat}
     return (1 / rooting_depth) * exp(z / rooting_depth) # 1/m
