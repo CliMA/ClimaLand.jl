@@ -157,24 +157,42 @@ function PlantHydraulicsParameters(;
     ai_parameterization::PrescribedSiteAreaIndex{FT},
     ν::FT,
     S_s::FT,
-    rooting_depth::Union{FT, ClimaCore.Fields.Field},
+    rooting_depth::Union{Nothing, FT, ClimaCore.Fields.Field} = nothing,
+    root_distribution::Union{Nothing, Function} = nothing,
     conductivity_model,
     retention_model,
 ) where {FT}
-    return PlantHydraulicsParameters{
-        FT,
-        typeof(ai_parameterization),
-        typeof(conductivity_model),
-        typeof(retention_model),
-        typeof(rooting_depth),
-    }(
-        ai_parameterization,
-        ν,
-        S_s,
-        conductivity_model,
-        retention_model,
-        rooting_depth,
-    )
+    if root_distribution isa Nothing
+        return PlantHydraulicsParameters{
+            FT,
+            typeof(ai_parameterization),
+            typeof(conductivity_model),
+            typeof(retention_model),
+            typeof(rooting_depth),
+        }(
+            ai_parameterization,
+            ν,
+            S_s,
+            conductivity_model,
+            retention_model,
+            rooting_depth,
+        )
+    else
+        return PlantHydraulicsParameters{
+            FT,
+            typeof(ai_parameterization),
+            typeof(conductivity_model),
+            typeof(retention_model),
+            FT,
+        }(
+            ai_parameterization,
+            ν,
+            S_s,
+            conductivity_model,
+            retention_model,
+            FT(1.0 / root_distribution(0.0)),
+        )
+    end
 end
 
 """
