@@ -116,7 +116,7 @@ end
         domain::D,
         boundary_conditions::NamedTuple,
         sources::Tuple,
-        lateral_flow::Bool = false
+        lateral_flow::Bool = false,
     ) where {FT, D, PS}
 
 A constructor for a `EnergyHydrology` model, which sets the default value
@@ -134,10 +134,11 @@ function EnergyHydrology{FT}(;
     if typeof(top_bc) <: AtmosDrivenFluxBC
         # If the top BC indicates atmospheric conditions are driving the model
         # add baseflow as a sink term, add sublimation as a sink term
-        sublimation_source = SoilSublimation{FT}()
+        subl_source =
+            sublimation_source(Val(top_bc.prognostic_land_components), FT)
         subsurface_source = subsurface_runoff_source(top_bc.runoff)
         sources = append_source(subsurface_source, sources)
-        sources = append_source(sublimation_source, sources)
+        sources = append_source(subl_source, sources)
     end
     args = (parameters, domain, boundary_conditions, sources)
     EnergyHydrology{FT, typeof.(args)...}(args..., lateral_flow)
@@ -1019,7 +1020,6 @@ function soil_turbulent_fluxes_at_a_point(
         vapor_flux_ice = S̃,
     )
 end
-
 
 # For Swenson/Lawrence 2014 resistance parameterization
 #=

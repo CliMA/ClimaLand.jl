@@ -105,3 +105,6 @@ end
 @safetestset "Integrated soil energy/hydrology/biogeochem LSM tests" begin
     include("integrated/soil_energy_hydrology_biogeochemistry.jl")
 end
+@safetestset "Integrated soil and snow" begin
+    include("integrated/soil_snow.jl")
+end
