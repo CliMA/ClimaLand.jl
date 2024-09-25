@@ -49,13 +49,12 @@ $(DocStringExtensions.FIELDS)
 Base.@kwdef struct BeerLambertParameters{
     FT <: AbstractFloat,
     G <: AbstractGFunction{FT},
-    APAR <: Union{FT, ClimaCore.Fields.Field},
-    ANIR <: Union{FT, ClimaCore.Fields.Field},
+    F <: Union{FT, ClimaCore.Fields.Field},
 }
     "PAR leaf reflectance (unitless)"
-    α_PAR_leaf::APAR
+    α_PAR_leaf::F
     "NIR leaf reflectance"
-    α_NIR_leaf::ANIR
+    α_NIR_leaf::F
     "Emissivity of the canopy"
     ϵ_canopy::FT
     "Clumping index following Braghiere (2021) (unitless)"
@@ -90,19 +89,16 @@ $(DocStringExtensions.FIELDS)
 Base.@kwdef struct TwoStreamParameters{
     FT <: AbstractFloat,
     G <: AbstractGFunction{FT},
-    APAR <: Union{FT, ClimaCore.Fields.Field},
-    TPAR <: Union{FT, ClimaCore.Fields.Field},
-    ANIR <: Union{FT, ClimaCore.Fields.Field},
-    TNIR <: Union{FT, ClimaCore.Fields.Field},
+    F <: Union{FT, ClimaCore.Fields.Field},
 }
     "PAR leaf reflectance (unitless)"
-    α_PAR_leaf::APAR
+    α_PAR_leaf::F
     "PAR leaf element transmittance"
-    τ_PAR_leaf::TPAR
+    τ_PAR_leaf::F
     "NIR leaf reflectance"
-    α_NIR_leaf::ANIR
+    α_NIR_leaf::F
     "NIR leaf element transmittance"
-    τ_NIR_leaf::TNIR
+    τ_NIR_leaf::F
     "Emissivity of the canopy"
     ϵ_canopy::FT
     "Clumping index following Braghiere 2021 (unitless)"

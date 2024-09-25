@@ -584,14 +584,14 @@ TwoStreamParameters(::Type{FT}; kwargs...) where {FT <: AbstractFloat} =
 function TwoStreamParameters(
     toml_dict::CP.AbstractTOMLDict;
     G_Function = ConstantGFunction(CP.float_type(toml_dict)(0.5)),
-    α_PAR_leaf = 0.3,
-    τ_PAR_leaf = 0.2,
-    α_NIR_leaf = 0.4,
-    τ_NIR_leaf = 0.25,
+    α_PAR_leaf::F = 0.3,
+    τ_PAR_leaf::F = 0.2,
+    α_NIR_leaf::F = 0.4,
+    τ_NIR_leaf::F = 0.25,
     Ω = 1,
     n_layers = UInt64(20),
     kwargs...,
-)
+) where {F}
     name_map = (;
         :wavelength_per_PAR_photon => :λ_γ_PAR,
         :wavelength_per_NIR_photon => :λ_γ_NIR,
@@ -606,14 +606,7 @@ function TwoStreamParameters(
     τ_PAR_leaf = FT.(τ_PAR_leaf)
     α_NIR_leaf = FT.(α_NIR_leaf)
     τ_NIR_leaf = FT.(τ_NIR_leaf)
-    return TwoStreamParameters{
-        FT,
-        typeof(G_Function),
-        typeof(α_PAR_leaf),
-        typeof(τ_PAR_leaf),
-        typeof(α_NIR_leaf),
-        typeof(τ_NIR_leaf),
-    }(;
+    return TwoStreamParameters{FT, typeof(G_Function), typeof(α_PAR_leaf)}(;
         G_Function,
         α_PAR_leaf,
         τ_PAR_leaf,
@@ -651,11 +644,11 @@ BeerLambertParameters(::Type{FT}; kwargs...) where {FT <: AbstractFloat} =
 function BeerLambertParameters(
     toml_dict::CP.AbstractTOMLDict;
     G_Function = ConstantGFunction(CP.float_type(toml_dict)(0.5)),
-    α_PAR_leaf = 0.1,
-    α_NIR_leaf = 0.4,
+    α_PAR_leaf::F = 0.1,
+    α_NIR_leaf::F = 0.4,
     Ω = 1,
     kwargs...,
-)
+) where {F}
     name_map = (;
         :wavelength_per_PAR_photon => :λ_γ_PAR,
         :wavelength_per_NIR_photon => :λ_γ_NIR,
@@ -668,12 +661,7 @@ function BeerLambertParameters(
     # automatic conversion not possible to Union types
     α_PAR_leaf = FT.(α_PAR_leaf)
     α_NIR_leaf = FT.(α_NIR_leaf)
-    return BeerLambertParameters{
-        FT,
-        typeof(G_Function),
-        typeof(α_PAR_leaf),
-        typeof(α_NIR_leaf),
-    }(;
+    return BeerLambertParameters{FT, typeof(G_Function), typeof(α_PAR_leaf)}(;
         G_Function,
         α_PAR_leaf,
         α_NIR_leaf,

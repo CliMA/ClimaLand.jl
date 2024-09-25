@@ -48,9 +48,16 @@ for FT in (Float32, Float64)
         τ_fields = map(x -> fill(x, domain.space.surface), τ_scalars)
         # loop through once with params as floats, then with params as fields
         α_PAR_leaf_cases = (α_PAR_leaf_scalars, α_PAR_leaf_fields)
-        τ_cases = (τ_scalars, τ_scalars)
-        zipped_params = zip(α_PAR_leaf_cases, τ_cases)
-        for (α_PAR_leaf, τ) in zipped_params
+        τ_PAR_leaf_cases = (τ_scalars, τ_fields)
+        α_NIR_leaf_cases = (FT(0.4), fill(FT(0.4), domain.space.surface))
+        τ_NIR_leaf_cases = (FT(0.25), fill(FT(0.24), domain.space.surface))
+        zipped_params = zip(
+            α_PAR_leaf_cases,
+            τ_PAR_leaf_cases,
+            α_NIR_leaf_cases,
+            τ_NIR_leaf_cases,
+        )
+        for (α_PAR_leaf, τ_PAR_leaf, α_NIR_leaf, τ_NIR_leaf) in zipped_params
             # Read the result for each setup from the Python output
             py_FAPAR = FT.(test_set[2:end, column_names .== "FAPAR"])
 
@@ -63,7 +70,9 @@ for FT in (Float32, Float64)
                     FT;
                     G_Function = ConstantGFunction(FT(lds[i])),
                     α_PAR_leaf = α_PAR_leaf[i],
-                    τ_PAR_leaf = τ[i],
+                    τ_PAR_leaf = τ_PAR_leaf[i],
+                    α_NIR_leaf = α_NIR_leaf,
+                    τ_NIR_leaf = τ_NIR_leaf,
                     Ω = FT(1),
                     n_layers = n_layers[i],
                 )
