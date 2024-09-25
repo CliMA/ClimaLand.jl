@@ -40,7 +40,7 @@ land_domain = Column(;
 t0 = FT(1800)
 N_days_spinup = 0
 N_days = N_days_spinup + 360
-dt = FT(180)
+dt = FT(900)
 tf = t0 + FT(3600 * 24 * N_days)
 
 # Read in the parameters for the site
@@ -97,7 +97,7 @@ land_input = (
     atmos = atmos,
     radiation = radiation,
     domain = land_domain,
-    runoff = ClimaLand.Soil.NoRunoff(),#SiteLevelSurfaceRunoff(),
+    runoff = ClimaLand.Soil.SurfaceRunoff(),
 )
 land = ClimaLand.LandHydrologyModel{FT}(;
     land_args = land_input,
@@ -184,14 +184,17 @@ ax1 = Axis(fig[2, 2], ylabel = "SWC", xlabel = "Days")
 lines!(
     ax1,
     daily,
-    [parent(sol.u[k].soil.ϑ_l)[end] for k in 1:1:length(sol.t)],
-    label = "2cm",
+    [parent(sol.u[k].soil.ϑ_l)[end - 2] for k in 1:1:length(sol.t)],
+    label = "10cm",
 )
 lines!(
     ax1,
     daily,
-    [parent(sol.u[k].soil.θ_i)[end] for k in 1:1:length(sol.t)],
-    label = "2cm, ice",
+    [
+        parent(sol.u[k].soil.θ_i .+ sol.u[k].soil.ϑ_l)[end - 2] for
+        k in 1:1:length(sol.t)
+    ],
+    label = "10cm, liq+ice",
 )
 
 lines!(
@@ -214,11 +217,12 @@ lines!(ax3, daily, [parent(sol.u[k].snow.S)[1] for k in 1:1:length(sol.t)])
 # Temp
 ax4 = Axis(fig[1, 1], ylabel = "T (K)")
 hidexdecorations!(ax4, ticks = false)
+lines!(ax4, seconds ./ 3600 ./ 24, drivers.TA.values[:], label = "Data, Air")
 lines!(
     ax4,
     sv.t ./ 24 ./ 3600,
-    [parent(sv.saveval[k].soil.T)[end] for k in 1:1:length(sv.t)],
-    label = "Soil, 2cm",
+    [parent(sv.saveval[k].soil.T)[end - 2] for k in 1:1:length(sv.t)],
+    label = "Model 10 cm",
 )
 
 lines!(
@@ -227,8 +231,12 @@ lines!(
     [parent(sv.saveval[k].snow.T)[1] for k in 1:1:length(sv.t)],
     label = "Snow",
 )
-lines!(ax4, seconds ./ 3600 ./ 24, drivers.TS.values[:], label = "Data, ?cm")
-lines!(ax4, seconds ./ 3600 ./ 24, drivers.TA.values[:], label = "Data, Air")
+lines!(
+    ax4,
+    seconds ./ 3600 ./ 24,
+    drivers.TS.values[:],
+    label = "Data, Unknown depth",
+)
 axislegend(ax4, position = :rt)
 CairoMakie.save(joinpath(savedir, "results.png"), fig)
 
@@ -255,7 +263,7 @@ E_measured = [
         -1 .* [
             parent(
                 sv.saveval[k].atmos_water_flux .-
-                sv.saveval[k].soil.bottom_bc.water,
+                sv.saveval[k].soil.bottom_bc.water .+ sv.saveval[k].soil.R_s,
             )[end] for k in 1:1:(length(sv.t) - 1)
         ],
     ) * (sv.t[2] - sv.t[1])

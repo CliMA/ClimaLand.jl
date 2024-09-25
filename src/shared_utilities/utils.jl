@@ -6,10 +6,20 @@ export FTfromY
 """
      heaviside(x::FT)::FT where {FT}
 
-Computes the heaviside function.
+Computes the heaviside function H(x) = 1 (x ≥0), 0 (x < 0)
 """
 function heaviside(x::FT)::FT where {FT}
-    if x > eps(FT)
+    heaviside(x, FT(0))
+end
+
+"""
+     heaviside(x::FT, a::FT)::FT where {FT}
+
+Computes the heaviside function H(y) = 1 (y ≥0), 0 (y < 0),
+where y = x-a.
+"""
+function heaviside(x::FT, a::FT)::FT where {FT}
+    if x - a > eps(FT)
         return FT(1.0)
     else
         return FT(0.0)

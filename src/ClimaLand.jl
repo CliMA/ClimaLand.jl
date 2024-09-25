@@ -303,6 +303,7 @@ import .Soil: soil_boundary_fluxes!, sublimation_source
 import .Soil.Biogeochemistry: soil_temperature, soil_moisture
 include("standalone/Snow/Snow.jl")
 using .Snow
+import .Snow: snow_boundary_fluxes!
 include("standalone/Vegetation/Canopy.jl")
 using .Canopy
 using .Canopy.PlantHydraulics

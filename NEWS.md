@@ -3,6 +3,8 @@ ClimaLand.jl Release Notes
 
 main
 --------
+- Add ground heat flux to snow-soil model PR[#796](https://github.com/CliMA/ClimaLand.jl/pull/796)
+- Add snow-soil model PR [#779](https://github.com/CliMA/ClimaLand.jl/pull/779)
 
 v0.15.0
 --------
