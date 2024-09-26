@@ -1,4 +1,4 @@
-# # Global run of land model
+# # Global run of land model 
 
 # The code sets up and runs the soil/canopy model for 6 hours on a spherical domain,
 # using ERA5 data. In this simulation, we have
