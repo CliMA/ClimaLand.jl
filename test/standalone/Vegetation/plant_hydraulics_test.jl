@@ -13,7 +13,6 @@ import ClimaLand
 import ClimaLand.Parameters as LP
 import Insolation
 using Dates
-using Statistics
 
 
 for FT in (Float32, Float64)
@@ -339,7 +338,8 @@ for FT in (Float32, Float64)
             nlsolve does not solve systems of equations that return fields, so each cell
             must have its own system of equations that is solved for. ClimaCore fields
             cannot hold vectors, so multiple fields must be used to hold the vector solution
-            to the system of equations.
+            to the system of equations. Here we solve for the steady state of the hydraulics
+            system.
             =======================#
             # dict to prevent recalculation when returning different index of solution
             solutions_for_rooting_depth = Dict{FT, Vector{FT}}()
