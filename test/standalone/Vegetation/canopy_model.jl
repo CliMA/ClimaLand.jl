@@ -40,6 +40,7 @@ import ClimaParams
         # test default values as field
         α_PAR_leaf_cases = (FT(0.1), fill(FT(0.1), domain.space.surface))
         α_NIR_leaf_cases = (FT(0.4), fill(FT(0.4), domain.space.surface))
+        ld_cases = (FT(0.5), fill(FT(0.5), domain.space.surface))
         zipped_params = zip(
             g1_cases,
             Vcmax25_cases,
@@ -47,11 +48,14 @@ import ClimaParams
             rooting_cases,
             α_PAR_leaf_cases,
             α_NIR_leaf_cases,
+            ld_cases,
         )
-        for (g1, Vcmax25, is_c3, rooting_depth, α_PAR_leaf, α_NIR_leaf) in
+        for (g1, Vcmax25, is_c3, rooting_depth, α_PAR_leaf, α_NIR_leaf, ld) in
             zipped_params
             AR_params = AutotrophicRespirationParameters(FT)
-            RTparams = BeerLambertParameters(FT; α_PAR_leaf, α_NIR_leaf)
+            G_Function = ConstantGFunction(ld)
+            RTparams =
+                BeerLambertParameters(FT; α_PAR_leaf, α_NIR_leaf, G_Function)
             photosynthesis_params = FarquharParameters(FT, is_c3; Vcmax25)
             stomatal_g_params = MedlynConductanceParameters(FT; g1)
             AR_model = AutotrophicRespirationModel{FT}(AR_params)
@@ -588,6 +592,7 @@ end
         # test default values as field
         α_PAR_leaf_cases = (FT(0.1), fill(FT(0.1), domain.space.surface))
         α_NIR_leaf_cases = (FT(0.4), fill(FT(0.4), domain.space.surface))
+        ld_cases = (FT(0.5), fill(FT(0.5), domain.space.surface))
         zipped_params = zip(
             g1_cases,
             Vcmax25_cases,
@@ -595,10 +600,13 @@ end
             rooting_cases,
             α_PAR_leaf_cases,
             α_NIR_leaf_cases,
+            ld_cases,
         )
-        for (g1, Vcmax25, is_c3, rooting_depth, α_PAR_leaf, α_NIR_leaf) in
+        for (g1, Vcmax25, is_c3, rooting_depth, α_PAR_leaf, α_NIR_leaf, ld) in
             zipped_params
-            RTparams = BeerLambertParameters(FT; α_PAR_leaf, α_NIR_leaf)
+            G_Function = ConstantGFunction(ld)
+            RTparams =
+                BeerLambertParameters(FT; α_PAR_leaf, α_NIR_leaf, G_Function)
             photosynthesis_params = FarquharParameters(FT, is_c3; Vcmax25)
             stomatal_g_params = MedlynConductanceParameters(FT; g1)
 
@@ -1143,6 +1151,7 @@ end
         τ_PAR_leaf_cases = (FT(0.05), fill(FT(0.05), domain.space.surface))
         α_NIR_leaf_cases = (FT(0.45), fill(FT(0.45), domain.space.surface))
         τ_NIR_leaf_cases = (FT(0.25), fill(FT(0.25), domain.space.surface))
+        χl_cases = (FT(0.1), fill(FT(0.1), domain.space.surface))
         zipped_params = zip(
             g1_cases,
             Vcmax25_cases,
@@ -1152,6 +1161,7 @@ end
             τ_PAR_leaf_cases,
             α_NIR_leaf_cases,
             τ_NIR_leaf_cases,
+            χl_cases,
         )
         for (
             g1,
@@ -1162,11 +1172,11 @@ end
             τ_PAR_leaf,
             α_NIR_leaf,
             τ_NIR_leaf,
+            χl,
         ) in zipped_params
             BeerLambertparams = BeerLambertParameters(FT)
             # TwoStreamModel parameters
             Ω = FT(0.69)
-            χl = FT(0.1)
             G_Function = CLMGFunction(χl)
             λ_γ_PAR = FT(5e-7)
             λ_γ_NIR = FT(1.65e-6)

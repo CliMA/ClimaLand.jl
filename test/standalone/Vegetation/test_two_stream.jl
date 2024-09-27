@@ -34,13 +34,14 @@ for FT in (Float32, Float64)
         column_names = test_set[1, :]
         θs = acos.(FT.(test_set[2:end, column_names .== "mu"]))
         LAI = FT.(test_set[2:end, column_names .== "LAI"])
-        lds = FT.(test_set[2:end, column_names .== "ld"])
         a_soil = FT.(test_set[2:end, column_names .== "a_soil"])
         n_layers = UInt64.(test_set[2:end, column_names .== "n_layers"])
         PropDif = FT.(test_set[2:end, column_names .== "prop_diffuse"])
 
         # setup spatially varying params as both float and spatially varying
         domain = Point(; z_sfc = FT(0.0))
+        lds = FT.(test_set[2:end, column_names .== "ld"])
+        lds_field = map(x -> fill(x, domain.space.surface), lds)
         α_PAR_leaf_scalars = FT.(test_set[2:end, column_names .== "rho"])
         α_PAR_leaf_fields =
             map(x -> fill(x, domain.space.surface), α_PAR_leaf_scalars)
@@ -51,13 +52,16 @@ for FT in (Float32, Float64)
         τ_PAR_leaf_cases = (τ_scalars, τ_fields)
         α_NIR_leaf_cases = (FT(0.4), fill(FT(0.4), domain.space.surface))
         τ_NIR_leaf_cases = (FT(0.25), fill(FT(0.24), domain.space.surface))
+        lds_cases = (lds, lds_field)
         zipped_params = zip(
             α_PAR_leaf_cases,
             τ_PAR_leaf_cases,
             α_NIR_leaf_cases,
             τ_NIR_leaf_cases,
+            lds_cases,
         )
-        for (α_PAR_leaf, τ_PAR_leaf, α_NIR_leaf, τ_NIR_leaf) in zipped_params
+        for (α_PAR_leaf, τ_PAR_leaf, α_NIR_leaf, τ_NIR_leaf, lds) in
+            zipped_params
             # Read the result for each setup from the Python output
             py_FAPAR = FT.(test_set[2:end, column_names .== "FAPAR"])
 
@@ -68,7 +72,7 @@ for FT in (Float32, Float64)
                 # Set the parameters based on the setup read from the file
                 RT_params = TwoStreamParameters(
                     FT;
-                    G_Function = ConstantGFunction(FT(lds[i])),
+                    G_Function = ConstantGFunction(FT.(lds[i])),
                     α_PAR_leaf = α_PAR_leaf[i],
                     τ_PAR_leaf = τ_PAR_leaf[i],
                     α_NIR_leaf = α_NIR_leaf,
@@ -81,10 +85,11 @@ for FT in (Float32, Float64)
                 RT = TwoStreamModel(RT_params)
 
                 # Compute the predicted FAPAR using the ClimaLand TwoStream implementation
-                K = extinction_coeff(RT_params.G_Function, θs[i])
+                G = compute_G(RT_params.G_Function, θs)
+                K = extinction_coeff.(G, θs[i])
                 output =
                     plant_absorbed_pfd_two_stream.(
-                        RT_params.G_Function,
+                        G,
                         RT_params.Ω,
                         RT_params.n_layers,
                         FT(1),

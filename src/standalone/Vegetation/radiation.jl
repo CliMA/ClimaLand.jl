@@ -18,9 +18,10 @@ abstract type AbstractGFunction{FT} end
 A type for a constant G function, which is used to represent the leaf angle
 distribution function in the radiative transfer models.
 """
-struct ConstantGFunction{FT} <: AbstractGFunction{FT}
+struct ConstantGFunction{F <: Union{AbstractFloat, ClimaCore.Fields.Field}} <:
+       AbstractGFunction{F}
     "Leaf angle distribution value (unitless)"
-    ld::FT
+    ld::F
 end
 
 # Make the ConstantGFunction broadcastable
@@ -32,9 +33,10 @@ Base.broadcastable(G::ConstantGFunction) = Ref(G)
 A type for a G function that is parameterized by the solar zenith angle,
 following the CLM approach to parameterizing the leaf angle distribution function.
 """
-struct CLMGFunction{FT} <: AbstractGFunction{FT}
+struct CLMGFunction{F <: Union{AbstractFloat, ClimaCore.Fields.Field}} <:
+       AbstractGFunction{F}
     "Leaf orientation index (unitless)"
-    χl::FT
+    χl::F
 end
 
 # Make the CLMGFunction broadcastable
@@ -48,7 +50,7 @@ $(DocStringExtensions.FIELDS)
 """
 Base.@kwdef struct BeerLambertParameters{
     FT <: AbstractFloat,
-    G <: AbstractGFunction{FT},
+    G <: AbstractGFunction,
     F <: Union{FT, ClimaCore.Fields.Field},
 }
     "PAR leaf reflectance (unitless)"
@@ -88,7 +90,7 @@ $(DocStringExtensions.FIELDS)
 """
 Base.@kwdef struct TwoStreamParameters{
     FT <: AbstractFloat,
-    G <: AbstractGFunction{FT},
+    G <: AbstractGFunction,
     F <: Union{FT, ClimaCore.Fields.Field},
 }
     "PAR leaf reflectance (unitless)"
@@ -180,7 +182,7 @@ Base.broadcastable(RT::AbstractRadiationModel) = tuple(RT)
 
 ClimaLand.name(model::AbstractRadiationModel) = :radiative_transfer
 ClimaLand.auxiliary_vars(model::Union{BeerLambertModel, TwoStreamModel}) =
-    (:inc_nir, :inc_par, :nir, :par, :LW_n, :SW_n, :ϵ, :frac_diff)
+    (:inc_nir, :inc_par, :nir, :par, :LW_n, :SW_n, :ϵ, :frac_diff, :G)
 ClimaLand.auxiliary_types(
     model::Union{BeerLambertModel{FT}, TwoStreamModel{FT}},
 ) where {FT} = (
@@ -192,8 +194,10 @@ ClimaLand.auxiliary_types(
     FT,
     FT,
     FT,
+    FT,
 )
 ClimaLand.auxiliary_domain_names(::Union{BeerLambertModel, TwoStreamModel}) = (
+    :surface,
     :surface,
     :surface,
     :surface,
