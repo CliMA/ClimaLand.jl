@@ -283,7 +283,7 @@ for FT in (Float32, Float64)
             )
             # Create a system of equations for a given rooting_depth for each cell
             function create_exp_tendency_func(rooting_depth)
-                # Set system to hydrostatic equilibrium state by setting fluxes to zero, and setting LHS of both ODEs to 0
+                # Solve for hydrostatic equilibrium
                 return function initial_compute_exp_tendency!(F, Y)
                     AI = (; leaf = LAI(1.0), root = RAI, stem = SAI)
                     T0A = FT(1e-8) * AI[:leaf]
@@ -339,7 +339,9 @@ for FT in (Float32, Float64)
             must have its own system of equations that is solved for. ClimaCore fields
             cannot hold vectors, so multiple fields must be used to hold the vector solution
             to the system of equations. Here we solve for the steady state of the hydraulics
-            system.
+            system. Then, the solution is used to check that evaluating the
+            tendecy of the model also results in a steady state. This check is repeated using
+            the plant hydraulics model directly.
             =======================#
             # dict to prevent recalculation when returning different index of solution
             solutions_for_rooting_depth = Dict{FT, Vector{FT}}()
