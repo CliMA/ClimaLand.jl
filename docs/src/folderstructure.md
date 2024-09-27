@@ -3,13 +3,13 @@
 [ClimaLand](https://github.com/CliMA/ClimaLand.jl) home directory has 6 main folders:
 
 - docs: contains files to generate [the documentation website](clima.github.io/ClimaLand.jl/).
-- experiments: contains simple runs of `ClimaLand` models.
+- experiments: contains simple runs of `ClimaLand` models. Most of these experiments is run as part of our CI.
 - src: contains the code of `ClimaLand` models.
-- ext: contains a package extension for Nueral Snow and an extension with constructors for model paramaters
+- ext: contains a package extension for Neural Snow and an extension with constructors for model parameters
 - lib: contains two packages that extend ClimaLand functionality: ClimaLandSimulations and ClimaLandDashboards
 - test: contains [unit tests](https://en.wikipedia.org/wiki/Unit_testing), which are meant to ensure small pieces of ClimaLand source code work as intended before merging pull requests.
 
-and 3 GitHub actions folders. GitHub actions are `.yml` files, which are bash scripts that runs on a remote computer on each git push.
+and 3 GitHub actions folders. GitHub actions are `.yml` files that define workflows that are run at each pull request.
 
 - .buildkite: contains a script building outputs such as figures from experiments and tests folders. These runs are carried out as part of CI and must run without error in order to merge a PR.
 - .dev: contains useful tools for developers, such as a format checker for Julia (which is run as part of CI and must pass before a PR can be merged into main).
