@@ -312,7 +312,9 @@ short_names = ["sif", "ra", "gs", "trans", "gpp", "swc", "tsoil", "hr", "clhf", 
 
 hourly_diag_name = short_names .* "_1h_average"
 
-gpp = Float64.(ClimaLand.Diagnostics.diagnostic_as_vectors(d_writer, "gpp_1h_average")[1])
+sif, ra, gs, trans, gpp = [ClimaLand.Diagnostics.diagnostic_as_vectors(d_writer, diag_name)[2] for diag_name in hourly_diag_name[1:5]]
+
+swc = ClimaLand.Diagnostics.diagnostic_as_vectors(d_writer, "swc_1h_average")[2] # bug because depth resolved. need to change to diagnostic_as_arrays
 
 # Plotting
 using CairoMakie
