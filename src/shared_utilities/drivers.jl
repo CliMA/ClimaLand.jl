@@ -304,6 +304,11 @@ Computes turbulent surface fluxes at a point on a surface given
 
 This returns an energy flux and a liquid water volume flux, stored in
 a tuple with self explanatory keys.
+
+Please note that this function, if r_sfc is set to zero, makes no alteration
+to the output of the `SurfaceFluxes.surface_conditions` call, aside
+from unit conversion of evaporation from a mass to a liquid water volume
+flux.
 """
 function turbulent_fluxes_at_a_point(
     T_sfc::FT,
@@ -341,7 +346,7 @@ function turbulent_fluxes_at_a_point(
     )
 
     # State containers
-    sc = SurfaceFluxes.ValuesOnly(
+    states = SurfaceFluxes.ValuesOnly(
         state_in,
         state_sfc,
         z_0m,
@@ -350,26 +355,33 @@ function turbulent_fluxes_at_a_point(
         gustiness = gustiness,
     )
     surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
-    conditions = SurfaceFluxes.surface_conditions(
-        surface_flux_params,
-        sc;
-        tol_neutral = SFP.cp_d(surface_flux_params) / 100000,
-    )
+    scheme = SurfaceFluxes.PointValueScheme()
+    conditions =
+        SurfaceFluxes.surface_conditions(surface_flux_params, states, scheme)
     _LH_v0::FT = LP.LH_v0(earth_param_set)
     _ρ_liq::FT = LP.ρ_cloud_liq(earth_param_set)
 
-    cp_m::FT = Thermodynamics.cp_m(thermo_params, ts_in)
-    T_in::FT = Thermodynamics.air_temperature(thermo_params, ts_in)
-    ΔT = T_in - T_sfc
-    r_ae::FT = 1 / (conditions.Ch * SurfaceFluxes.windspeed(sc))
-    ρ_air::FT = Thermodynamics.air_density(thermo_params, ts_in)
+    # aerodynamic resistance
+    r_ae::FT = 1 / (conditions.Ch * SurfaceFluxes.windspeed(states))
 
-    E0::FT = SurfaceFluxes.evaporation(surface_flux_params, sc, conditions.Ch)
-    E = E0 * r_ae / (r_sfc + r_ae)
+    # latent heat flux
+    E0::FT =
+        SurfaceFluxes.evaporation(surface_flux_params, states, conditions.Ch) # mass flux at potential evaporation rate
+    E = E0 * r_ae / (r_sfc + r_ae) # mass flux accounting for additional surface resistance
+    LH = _LH_v0 * E # Latent heat flux
+
+    # sensible heat flux
+    SH = SurfaceFluxes.sensible_heat_flux(
+        surface_flux_params,
+        conditions.Ch,
+        states,
+        scheme,
+    )
+
+    # vapor flux in volume of liquid water with density 1000kg/m^3
     Ẽ = E / _ρ_liq
-    H = -ρ_air * cp_m * ΔT / r_ae
-    LH = _LH_v0 * E
-    return (lhf = LH, shf = H, vapor_flux = Ẽ, r_ae = r_ae)
+
+    return (lhf = LH, shf = SH, vapor_flux = Ẽ, r_ae = r_ae)
 end
 
 """
