@@ -153,6 +153,18 @@ struct PlantHydraulicsParameters{
     rooting_depth::RD
 end
 
+"""
+    PlantHydraulicsParameters(;
+        ai_parameterization::PrescribedSiteAreaIndex{FT},
+        ν::FT,
+        S_s::FT,
+        rooting_depth::Union{FT, ClimaCore.Fields.Field},
+        conductivity_model,
+        retention_model,
+    )
+
+Constructor for PlantHydraulicsParameters.
+"""
 function PlantHydraulicsParameters(;
     ai_parameterization::PrescribedSiteAreaIndex{FT},
     ν::FT,
