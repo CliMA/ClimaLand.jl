@@ -187,7 +187,7 @@ function PlantHydraulicsParameters(;
             )
         else
             Base.depwarn(
-                "root_distribution keyword argument is deprecated",
+                "root_distribution keyword argument is deprecated. Use rooting_depth instead.",
                 :PlantHydraulicsParameters,
             )
         end
