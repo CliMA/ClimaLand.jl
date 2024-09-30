@@ -132,17 +132,18 @@ Extract `diagnostic` from given `writer` as tuple of vectors (time and value).
 
 `diagnostic` is typically a string with the short name of the diagnostic.
 """
-function diagnostic_as_vectors(writer::DictWriter, diagnostic)
-    axes(first(values(writer[diagnostic]))) isa ClimaCore.Spaces.PointSpace || error("diagnostic_as_vectors works only on PointSpaces")
+function diagnostic_as_vectors(writer::DictWriter, diagnostic, layer)
+    # axes(first(values(writer[diagnostic]))) isa ClimaCore.Spaces.PointSpace || error("diagnostic_as_vectors works only on PointSpaces")
 
     # writer[diagnostic] is a dictionary with keys the times and with values Fields. We need
     # to be a little careful because dictionaries are not ordered, so we have to sort them
     # by time.
     times = collect(keys(writer[diagnostic]))
     sort_indices = sortperm(times)
-    values_1 = first.(parent.(values(writer[diagnostic]))[sort_indices])
+    values_all = parent.(values(writer[diagnostic]))[sort_indices]
+    vector_layer_n = vcat([values_all[i][layer, :] for i in 1:length(values_all)]...)
 
-    return times, values_1
+    return times, vector_layer_n
 end
 
 # Do you want to define more diagnostics? Add them here

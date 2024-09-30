@@ -305,16 +305,18 @@ sol = SciMLBase.solve(
     callback = SciMLBase.CallbackSet(driver_cb, diag_cb),
 );
 
-short_names = ["sif", "ra", "gs", "trans", "gpp", "swc", "tsoil", "hr", "clhf", "soillhf",
+short_names_1D = ["sif", "ra", "gs", "trans", "gpp", "hr", "clhf", "soillhf",
               "cshf", "soilshf", "msf"]
 # note: it looks like shortwave out and longwave out are missing from diagnostics
 # note2: it would be usefull to add total (soil + canopy) lhf and shf to diagnostics
 
-hourly_diag_name = short_names .* "_1h_average"
+short_names_2D = ["swc", "tsoil"]
 
-sif, ra, gs, trans, gpp = [ClimaLand.Diagnostics.diagnostic_as_vectors(d_writer, diag_name)[2] for diag_name in hourly_diag_name[1:5]]
+hourly_diag_name = short_names_1D .* "_1h_average"
 
-swc = ClimaLand.Diagnostics.diagnostic_as_vectors(d_writer, "swc_1h_average")[2] # bug because depth resolved. need to change to diagnostic_as_arrays
+sif, ra, gs, trans, gpp, hr, clhf, soillhf, cshf, soilshf, msf = [ClimaLand.Diagnostics.diagnostic_as_vectors(d_writer, diag_name, 1)[2] for diag_name in hourly_diag_name]
+
+swc = ClimaLand.Diagnostics.diagnostic_as_vectors(d_writer, "swc_1h_average", 2)[2] # example to get layer 2 of swc which is depth resolved
 
 # Plotting
 using CairoMakie
