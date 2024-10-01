@@ -74,7 +74,7 @@ regridder_type = :InterpolationsRegridder
 FT = Float64;
 context = ClimaComms.context()
 earth_param_set = LP.LandParameters(FT);
-generate_output_path(
+outdir = generate_output_path(
     "experiments/standalone/Bucket/artifacts_staticmap$(regional_str)",
 )
 !ispath(outdir) && mkpath(outdir)
