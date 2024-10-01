@@ -30,7 +30,6 @@ using ClimaLand.Soil
 import ClimaLand
 import ClimaLand.Parameters as LP
 import SurfaceFluxes.Parameters as SFP
-import ClimaUtilities.OutputPathGenerator: generate_output_path
 
 FT = Float64;
 earth_param_set = LP.LandParameters(FT)
@@ -328,7 +327,6 @@ evap_no_drainage = [
 
 
 # Figures
-savepath = generate_output_path("docs/tutorials/standalone/Soil/")
 
 fig = Figure(size = (800, 400))
 ax = Axis(fig[1, 1], xlabel = "Day", ylabel = "Evaporation rate (mm/d)")
