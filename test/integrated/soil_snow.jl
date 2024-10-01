@@ -93,6 +93,11 @@ for lsm_aux_var in (
     :excess_heat_flux,
     :atmos_energy_flux,
     :atmos_water_flux,
+    :ground_heat_flux,
+    :effective_soil_sfc_T,
+    :sfc_scratch,
+    :subsfc_scratch,
+    :effective_soil_sfc_depth,
 )
     @test lsm_aux_var ∈ propertynames(p)
 end
@@ -136,6 +141,9 @@ init_snow!(Y, 0.0f0)
 
 set_initial_cache! = make_set_initial_cache(land_model)
 set_initial_cache!(p, Y, t)
+# Make sure snow boundary fluxes are zero
+@test all(parent(p.snow.total_energy_flux) .≈ 0)
+@test all(parent(p.snow.total_water_flux) .≈ 0)
 # Make sure the boundary conditions match bare soil result
 set_soil_initial_cache! = make_set_initial_cache(land_model.soil)
 set_soil_initial_cache!(p_soil_alone, Y, t)
@@ -162,7 +170,11 @@ set_initial_cache!(p, Y, t)
     parent(p.soil.top_bc.water) .≈
     parent(p.excess_water_flux .+ p.drivers.P_liq .+ p.snow.water_runoff),
 )
-@test all(parent(p.soil.top_bc.heat) .≈ parent(p.excess_heat_flux))
+@test all(
+    parent(p.soil.top_bc.heat) .≈ parent(
+        p.excess_heat_flux .+ p.snow.snow_cover_fraction .* p.ground_heat_flux,
+    ),
+)
 dY_soil_snow = deepcopy(Y) .* 0
 ClimaLand.source!(dY_soil_snow, src, Y, p, land_model.soil)
 @test all(parent(dY_soil_snow.soil.θ_i) .≈ 0)
@@ -190,3 +202,26 @@ _ρ_liq = FT(LP.ρ_cloud_liq(earth_param_set))
              p.snow.R_n
          ) +
          p.drivers.P_snow * ρe_falling_snow
+# Make sure soil boundary flux method also worked
+G = deepcopy(p.ground_heat_flux)
+p_snow_alone = deepcopy(p)
+ClimaLand.Snow.snow_boundary_fluxes!(
+    land_model.snow.boundary_conditions,
+    Val((:snow,)),
+    land_model.snow,
+    Y,
+    p_snow_alone,
+    t,
+)
+ClimaLand.Snow.snow_boundary_fluxes!(
+    land_model.snow.boundary_conditions,
+    Val((:snow, :soil)),
+    land_model.snow,
+    Y,
+    p,
+    t,
+)
+@test all(
+    parent(p_snow_alone.snow.total_energy_flux .- p.snow.total_energy_flux) .≈
+    parent(p.snow.snow_cover_fraction .* p.ground_heat_flux),
+)

@@ -9,6 +9,7 @@ tutorials = [
         ],
         "Handling interactions between model components" => [
             "Adjusting boundary conditions for the soil" => "integrated/handling_soil_fluxes.jl",
+            "Adjusting boundary conditions for the snow" => "integrated/handling_snow_fluxes.jl",
         ],
     ],
     "Running standalone component simulations" => [

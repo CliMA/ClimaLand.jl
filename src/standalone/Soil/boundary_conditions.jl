@@ -741,7 +741,7 @@ functions, which use the soil surface conditions as well as
 the atmos and radiation conditions in order to
 compute the surface fluxes using Monin Obukhov Surface Theory.
 It also accounts for the presence of other components, if run as
-part of an integrated land model, and their affect on boundary conditions.
+part of an integrated land model, and their effect on boundary conditions.
 """
 function soil_boundary_fluxes!(
     bc::AtmosDrivenFluxBC,

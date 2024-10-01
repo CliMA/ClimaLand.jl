@@ -8,7 +8,20 @@ export snow_surface_temperature,
     runoff_timescale,
     compute_water_runoff,
     energy_from_q_l_and_swe,
-    energy_from_T_and_swe
+    energy_from_T_and_swe,
+    snow_cover_fraction
+
+"""
+    snow_cover_fraction(x::FT; α = FT(1e-3))::FT where {FT}
+
+Returns the snow cover fraction, assuming it is a heaviside
+function at 1e-3 meters.
+
+In the future we can play around with other forms.
+"""
+function snow_cover_fraction(x::FT; α = FT(1e-3))::FT where {FT}
+    return heaviside(x - α)
+end
 
 """
     ClimaLand.surface_height(

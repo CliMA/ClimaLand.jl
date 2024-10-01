@@ -14,6 +14,7 @@ using ClimaLand:
     heaviside
 
 import ClimaLand:
+    AbstractBC,
     make_update_aux,
     make_compute_exp_tendency,
     make_update_boundary_fluxes,
@@ -30,7 +31,7 @@ import ClimaLand:
     surface_albedo,
     surface_emissivity,
     get_drivers
-export SnowParameters, SnowModel
+export SnowParameters, SnowModel, AtmosDrivenSnowBC, snow_boundary_fluxes!
 
 """
     AbstractSnowModel{FT} <: ClimaLand.AbstractExpModel{FT}
@@ -130,27 +131,18 @@ Base.broadcastable(ps::SnowParameters) = tuple(ps)
     struct SnowModel{
         FT,
         PS <: SnowParameters{FT},
-        ATM <: AbstractAtmosphericDrivers{FT},
-        RAD <: AbstractRadiativeDrivers{FT},
+        BC,
         D,
     } <: AbstractSnowModel{FT}
 
 A container/type for the bulk snow model, based on the UEB snow model
 of Tarboton et al. (1995) and Tarboton and Luce (1996).
 """
-struct SnowModel{
-    FT,
-    PS <: SnowParameters{FT},
-    ATM <: AbstractAtmosphericDrivers{FT},
-    RAD <: AbstractRadiativeDrivers{FT},
-    D,
-} <: AbstractSnowModel{FT}
+struct SnowModel{FT, PS <: SnowParameters{FT}, BC, D} <: AbstractSnowModel{FT}
     "Parameters required by the snow model"
     parameters::PS
-    "The atmospheric drivers: Prescribed or Coupled"
-    atmos::ATM
-    "The radiation drivers: Prescribed or Coupled"
-    radiation::RAD
+    "Boundary conditions"
+    boundary_conditions::BC
     "The domain of the model"
     domain::D
 end
@@ -158,10 +150,9 @@ end
 function SnowModel(;
     parameters::SnowParameters{FT, PSE},
     domain::ClimaLand.Domains.AbstractDomain,
-    atmos::ATM,
-    radiation::RAD,
-) where {FT, PSE, ATM, RAD}
-    args = (parameters, atmos, radiation, domain)
+    boundary_conditions::BC,
+) where {FT, PSE, BC}
+    args = (parameters, boundary_conditions, domain)
     SnowModel{FT, typeof.(args)...}(args...)
 end
 
@@ -200,7 +191,9 @@ prognostic_domain_names(::SnowModel) = (:surface, :surface)
 
 Returns the auxiliary variable names for the snow model. These
 include the mass fraction in liquid water (`q_l`, unitless),
+the thermal conductivity (`κ`, W/m/K),
 the bulk temperature (`T`, K), the surface temperature (`T_sfc`, K),
+the depth (`z`, m),
 the SHF, LHF, and vapor flux (`turbulent_fluxes.shf`, etc),
 the net radiation (`R_n, J/m^2/s)`, the energy flux in liquid water runoff
 (`energy_runoff`, J/m^2/s), the water volume in runoff (`water_runoff`, m/s), and the total energy and water fluxes applied to the snowpack.
@@ -212,8 +205,10 @@ clipped values are what are actually applied as boundary fluxes, and are stored 
 """
 auxiliary_vars(::SnowModel) = (
     :q_l,
+    :κ,
     :T,
     :T_sfc,
+    :z,
     :turbulent_fluxes,
     :R_n,
     :energy_runoff,
@@ -226,6 +221,8 @@ auxiliary_vars(::SnowModel) = (
 )
 
 auxiliary_types(::SnowModel{FT}) where {FT} = (
+    FT,
+    FT,
     FT,
     FT,
     FT,
@@ -253,27 +250,20 @@ auxiliary_domain_names(::SnowModel) = (
     :surface,
     :surface,
     :surface,
+    :surface,
+    :surface,
 )
 
 
 ClimaLand.name(::SnowModel) = :snow
 
-"""
-    scf(x::FT; α = FT(1e-3))::FT where {FT}
-
-Returns the snow cover fraction, assuming it is a heaviside
-function at 1e-3 meters.
-
-In the future we can play around with other forms.
-"""
-function scf(x::FT; α = FT(1e-4))::FT where {FT}
-    return heaviside(x - α)
-end
-
 function ClimaLand.make_update_aux(model::SnowModel{FT}) where {FT}
     function update_aux!(p, Y, t)
         parameters = model.parameters
+        _ρ_liq = FT(LP.ρ_cloud_liq(parameters.earth_param_set))
 
+        p.snow.κ .= snow_thermal_conductivity(parameters.ρ_snow, parameters)
+        @. p.snow.z = snow_depth(Y.snow.S, parameters.ρ_snow, _ρ_liq)
         @. p.snow.q_l =
             snow_liquid_mass_fraction(Y.snow.U, Y.snow.S, parameters)
 
@@ -287,38 +277,15 @@ function ClimaLand.make_update_aux(model::SnowModel{FT}) where {FT}
 
         @. p.snow.energy_runoff =
             p.snow.water_runoff * volumetric_internal_energy_liq(FT, parameters)
-        @. p.snow.snow_cover_fraction = scf(Y.snow.S)
+        @. p.snow.snow_cover_fraction = snow_cover_fraction(Y.snow.S)
     end
 end
 
 function ClimaLand.make_update_boundary_fluxes(model::SnowModel{FT}) where {FT}
     function update_boundary_fluxes!(p, Y, t)
-        p.snow.turbulent_fluxes .= turbulent_fluxes(model.atmos, model, Y, p, t)
-        p.snow.R_n .= net_radiation(model.radiation, model, Y, p, t)
-        # How does rain affect the below?
-        P_snow = p.drivers.P_snow
-
-        @. p.snow.total_water_flux =
-            P_snow +
-            (p.snow.turbulent_fluxes.vapor_flux - p.snow.water_runoff) *
-            p.snow.snow_cover_fraction
-
-        # I think we want dU/dt to include energy of falling snow.
-        # otherwise snow can fall but energy wont change
-        # We are assuming that the sensible heat portion of snow is negligible.
-        _LH_f0 = FT(LP.LH_f0(model.parameters.earth_param_set))
-        _ρ_liq = FT(LP.ρ_cloud_liq(model.parameters.earth_param_set))
-        ρe_falling_snow = -_LH_f0 * _ρ_liq # per unit vol of liquid water
-
-        # positive fluxes are TOWARDS atmos
-        @. p.snow.total_energy_flux =
-            P_snow * ρe_falling_snow +
-            (
-                p.snow.turbulent_fluxes.lhf +
-                p.snow.turbulent_fluxes.shf +
-                p.snow.R_n - p.snow.energy_runoff
-            ) * p.snow.snow_cover_fraction
-
+        # First compute the boundary fluxes
+        snow_boundary_fluxes!(model.boundary_conditions, model, Y, p, t)
+        # Next, clip them in case the snow will melt in this timestep
         @. p.snow.applied_water_flux = clip_total_snow_water_flux(
             Y.snow.S,
             p.snow.total_water_flux,
@@ -387,8 +354,12 @@ end
 Returns the driver variable symbols for the SnowModel.
 """
 function ClimaLand.get_drivers(model::SnowModel)
-    return (model.atmos, model.radiation)
+    return (
+        model.boundary_conditions.atmos,
+        model.boundary_conditions.radiation,
+    )
 end
 
 include("./snow_parameterizations.jl")
+include("./boundary_fluxes.jl")
 end
