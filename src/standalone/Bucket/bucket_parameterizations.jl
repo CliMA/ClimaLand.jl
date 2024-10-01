@@ -185,27 +185,29 @@ function β(x::FT, x_c::FT, p::FT) where {FT}
 end
 
 """
-    saturation_specific_humidity(T::FT, σS::FT, ρ_sfc::FT, thermo_parameters::TPE)::FT where {FT, TPE}
+    saturation_specific_humidity(T::FT, ρ_sfc::FT, thermo_parameters::TPE)::FT where {FT, TPE}
 
 Computes the saturation specific humidity for the land surface, over ice
-if snow is present (σS>0), and over water for a snow-free surface.
+if the temperature is below freezing, and over water otherwise.
 """
 function saturation_specific_humidity(
     T::FT,
-    σS::FT,
     ρ_sfc::FT,
     thermo_params::TPE,
 )::FT where {FT, TPE}
-    return (1 - heaviside(σS)) * Thermodynamics.q_vap_saturation_generic(
-        thermo_params,
-        T,
-        ρ_sfc,
-        Thermodynamics.Liquid(),
-    ) +
-           heaviside(σS) * Thermodynamics.q_vap_saturation_generic(
-        thermo_params,
-        T,
-        ρ_sfc,
-        Thermodynamics.Ice(),
-    )
+    if T > TP.T_freeze(thermo_params)
+        Thermodynamics.q_vap_saturation_generic(
+            thermo_params,
+            T,
+            ρ_sfc,
+            Thermodynamics.Liquid(),
+        )
+    else
+        Thermodynamics.q_vap_saturation_generic(
+            thermo_params,
+            T,
+            ρ_sfc,
+            Thermodynamics.Ice(),
+        )
+    end
 end
