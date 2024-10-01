@@ -361,7 +361,14 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
 
     # TwoStreamModel parameters
     Ω = FT(0.69)
-    ld = FT(0.5)
+    χl = SpaceVaryingInput(
+        joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
+        "xl",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc,),
+    )
+    G_Function = CLMGFunction(χl)
     α_PAR_leaf = SpaceVaryingInput(
         joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
         "rholvis",
@@ -503,6 +510,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
             τ_PAR_leaf,
             α_NIR_leaf,
             τ_NIR_leaf,
+            G_Function,
         )
     )
     # Set up conductance
