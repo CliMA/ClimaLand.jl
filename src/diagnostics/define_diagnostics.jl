@@ -149,7 +149,7 @@ function define_diagnostics!(land_model)
 
     ## Canopy Module ##
 
-    ### Canopy - Solar Induced Fluorescence 
+    ### Canopy - Solar Induced Fluorescence
     # Solar Induced Fluorescence
     add_diagnostic_variable!(
         short_name = "sif",
@@ -256,7 +256,7 @@ function define_diagnostics!(land_model)
     )
     =#
 
-    # Root flux per ground area 
+    # Root flux per ground area
     add_diagnostic_variable!(
         short_name = "far",
         long_name = "Root flux per ground area",
@@ -724,6 +724,29 @@ function define_diagnostics!(land_model)
         comments = "The production of CO2 by microbes in the soil. Vary by layers of soil depth. (depth resolved)",
         compute! = (out, Y, p, t) ->
             compute_soilco2_source_microbe!(out, Y, p, t, land_model),
+    )
+
+    ## Other ##
+    # Longwave out
+    add_diagnostic_variable!(
+        short_name = "lwo",
+        long_name = "Longwave Radiation Out",
+        standard_name = "longwave radiation out",
+        units = "W m^-2",
+        comments = "Longwave radiation going out of the land surface.",
+        compute! = (out, Y, p, t) ->
+            compute_lw_out!(out, Y, p, t, land_model),
+    )
+
+    # Shortwave out
+    add_diagnostic_variable!(
+        short_name = "swo",
+        long_name = "Shortwave Radiation Out",
+        standard_name = "shortwave radiation out",
+        units = "W m^-2",
+        comments = "Shortwave radiation going out of the land surface.",
+        compute! = (out, Y, p, t) ->
+            compute_sw_out!(out, Y, p, t, land_model),
     )
 
     ## Stored in Y (prognostic or state variables) ##

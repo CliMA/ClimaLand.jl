@@ -305,16 +305,68 @@ sol = SciMLBase.solve(
     callback = SciMLBase.CallbackSet(driver_cb, diag_cb),
 );
 
-short_names_1D = ["sif", "ra", "gs", "trans", "gpp", "hr", "clhf", "soillhf",
-              "cshf", "soilshf", "msf"]
-# note: it looks like shortwave out and longwave out are missing from diagnostics
-# note2: it would be usefull to add total (soil + canopy) lhf and shf to diagnostics
+short_names_1D = [
+            "sif",
+            "ra",
+            "gs",
+            "trans",
+            "crae",
+            "clhf",
+            "cshf",
+            "far",
+            "lai",
+            "msf",
+            "rai",
+            "sai",
+            "gpp",
+            "an",
+            "rd",
+            "vcmax25",
+            "nir",
+            "anir",
+            "rnir",
+            "tnir",
+            "par",
+            "apar",
+            "rpar",
+            "tpar",
+            "lwn",
+            "swn",
+            "soc",
+            "airp",
+            "rain",
+            "lwd",
+            "swd",
+            "snow",
+            "sza",
+            "qsfc",
+            "ws",
+            "infil",
+            "shc",
+            "stc",
+            "swp",
+            "soilrn",
+            "soilrae",
+            "soillhf",
+            "soilshf",
+            "hr",
+            "scd",
+            "scms",
+            "ct",
+            "sco2",
+            "si",
+            "sie",
+            "swo",
+            "lwo",
+        ]
+
+# note: it would be usefull to add total (soil + canopy) lhf and shf to diagnostics
 
 short_names_2D = ["swc", "tsoil"]
 
 hourly_diag_name = short_names_1D .* "_1h_average"
 
-sif, ra, gs, trans, gpp, hr, clhf, soillhf, cshf, soilshf, msf = [ClimaLand.Diagnostics.diagnostic_as_vectors(d_writer, diag_name, 1)[2] for diag_name in hourly_diag_name]
+sif, AR, gs, trans, model_GPP, hr, clhf, soillhf, cshf, soilshf, msf = [ClimaLand.Diagnostics.diagnostic_as_vectors(d_writer, diag_name, 1)[2] for diag_name in hourly_diag_name]
 
 swc = ClimaLand.Diagnostics.diagnostic_as_vectors(d_writer, "swc_1h_average", 2)[2] # example to get layer 2 of swc which is depth resolved
 
