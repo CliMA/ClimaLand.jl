@@ -412,7 +412,13 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (10, 10, 15))
     retention_model = Canopy.PlantHydraulics.LinearRetentionCurve{FT}(a)
     plant_ν = FT(1.44e-4)
     plant_S_s = FT(1e-2 * 0.0098) # m3/m3/MPa to m3/m3/m
-    rooting_depth = FT(0.5) # from Natan
+    rooting_depth = SpaceVaryingInput(
+        joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
+        "rooting_depth",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc,),
+    )
     n_stem = 0
     n_leaf = 1
     h_stem = FT(0.0)
@@ -498,15 +504,11 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (10, 10, 15))
     ai_parameterization =
         Canopy.PrescribedSiteAreaIndex{FT}(LAIfunction, SAI, RAI)
 
-    function root_distribution(z::T; rooting_depth = rooting_depth) where {T}
-        return T(1.0 / rooting_depth) * exp(z / T(rooting_depth)) # 1/m
-    end
-
     plant_hydraulics_ps = Canopy.PlantHydraulics.PlantHydraulicsParameters(;
         ai_parameterization = ai_parameterization,
         ν = plant_ν,
         S_s = plant_S_s,
-        root_distribution = root_distribution,
+        rooting_depth = rooting_depth,
         conductivity_model = conductivity_model,
         retention_model = retention_model,
     )

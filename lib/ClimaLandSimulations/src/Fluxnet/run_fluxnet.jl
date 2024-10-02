@@ -154,18 +154,12 @@ function run_fluxnet(
         drivers.RAI,
     )
 
-    function root_distribution(
-        z::T;
-        rooting_depth = params.plant_hydraulics.rooting_depth,
-    ) where {T}
-        return T(1.0 / rooting_depth) * exp(z / T(rooting_depth)) # 1/m
-    end
 
     plant_hydraulics_ps = PlantHydraulics.PlantHydraulicsParameters(;
         ai_parameterization = ai_parameterization,
         ν = drivers.plant_ν,
         S_s = params.plant_hydraulics.S_s,
-        root_distribution = root_distribution,
+        rooting_depth = params.plant_hydraulics.rooting_depth,
         conductivity_model = params.plant_hydraulics.conductivity_model,
         retention_model = params.plant_hydraulics.retention_model,
     )

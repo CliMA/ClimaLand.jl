@@ -271,14 +271,11 @@ photosynthesis_args =
     (; parameters = FarquharParameters(FT, is_c3; Vcmax25 = Vcmax25))
 # Set up plant hydraulics
 ai_parameterization = PrescribedSiteAreaIndex{FT}(LAIfunction, SAI, RAI)
-function root_distribution(z::T) where {T}
-    return T(1.0 / 0.5 * exp(z / 0.5)) # 1/m
-end
 plant_hydraulics_ps = PlantHydraulics.PlantHydraulicsParameters(;
     ai_parameterization = ai_parameterization,
     ν = plant_ν,
     S_s = plant_S_s,
-    root_distribution = root_distribution,
+    rooting_depth = FT(0.5),
     conductivity_model = conductivity_model,
     retention_model = retention_model,
 )

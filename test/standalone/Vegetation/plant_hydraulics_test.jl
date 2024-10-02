@@ -226,9 +226,6 @@ for FT in (Float32, Float64)
             PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
         retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a)
         root_depths = FT.(-Array{FT}(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0) # 1st element is the deepest root depth
-        function root_distribution(z::T) where {T}
-            return T(1.0 / 0.5) * exp(z / T(0.5)) # (1/m)
-        end
         compartment_midpoints = Vector{FT}(
             range(
                 start = Δz / 2,
@@ -241,15 +238,6 @@ for FT in (Float32, Float64)
             range(start = 0.0, step = Δz, stop = Δz * (n_stem + n_leaf)),
         )
 
-        param_set = PlantHydraulics.PlantHydraulicsParameters(;
-            ai_parameterization = ai_parameterization,
-            ν = plant_ν,
-            S_s = plant_S_s,
-            root_distribution = root_distribution,
-            conductivity_model = conductivity_model,
-            retention_model = retention_model,
-        )
-
         function leaf_transpiration(t)
             T = FT(1e-8) # m/s
         end
@@ -259,18 +247,28 @@ for FT in (Float32, Float64)
 
         soil_driver = PrescribedSoil(FT)
 
-        plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
-            parameters = param_set,
-            transpiration = transpiration,
-            n_stem = n_stem,
-            n_leaf = n_leaf,
-            compartment_surfaces = compartment_surfaces,
-            compartment_midpoints = compartment_midpoints,
-        )
         autotrophic_parameters = AutotrophicRespirationParameters(FT)
         autotrophic_respiration_model =
             AutotrophicRespirationModel{FT}(autotrophic_parameters)
         for domain in domains
+            param_set = PlantHydraulics.PlantHydraulicsParameters(;
+                ai_parameterization = ai_parameterization,
+                ν = plant_ν,
+                S_s = plant_S_s,
+                rooting_depth = fill(FT(0.5), domain.space.surface),
+                conductivity_model = conductivity_model,
+                retention_model = retention_model,
+            )
+
+            plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
+                parameters = param_set,
+                transpiration = transpiration,
+                n_stem = n_stem,
+                n_leaf = n_leaf,
+                compartment_surfaces = compartment_surfaces,
+                compartment_midpoints = compartment_midpoints,
+            )
+
             model = ClimaLand.Canopy.CanopyModel{FT}(;
                 parameters = shared_params,
                 domain = domain,
@@ -283,70 +281,110 @@ for FT in (Float32, Float64)
                 atmos = atmos,
                 radiation = radiation,
             )
-            # Set system to hydrostatic equilibrium state by setting fluxes to zero, and setting LHS of both ODEs to 0
-            function initial_compute_exp_tendency!(F, Y)
-                AI = (; leaf = LAI(1.0), root = RAI, stem = SAI)
-                T0A = FT(1e-8) * AI[:leaf]
-                for i in 1:(n_leaf + n_stem)
-                    if i == 1
-                        fa =
-                            sum(
-                                water_flux.(
-                                    root_depths,
+            # Create a system of equations for a given rooting_depth for each cell
+            function create_exp_tendency_func(rooting_depth)
+                # Solve for hydrostatic equilibrium
+                return function initial_compute_exp_tendency!(F, Y)
+                    AI = (; leaf = LAI(1.0), root = RAI, stem = SAI)
+                    T0A = FT(1e-8) * AI[:leaf]
+                    for i in 1:(n_leaf + n_stem)
+                        if i == 1
+                            fa =
+                                sum(
+                                    water_flux.(
+                                        root_depths,
+                                        plant_hydraulics.compartment_midpoints[i],
+                                        ψ_soil0,
+                                        Y[i],
+                                        PlantHydraulics.hydraulic_conductivity(
+                                            conductivity_model,
+                                            ψ_soil0,
+                                        ),
+                                        PlantHydraulics.hydraulic_conductivity(
+                                            conductivity_model,
+                                            Y[i],
+                                        ),
+                                    ) .*
+                                    ClimaLand.Canopy.PlantHydraulics.root_distribution.(
+                                        root_depths,
+                                        rooting_depth,
+                                    ) .* (
+                                        vcat(root_depths, [0.0])[2:end] -
+                                        vcat(root_depths, [0.0])[1:(end - 1)]
+                                    ),
+                                ) * AI[:stem]
+                        else
+                            fa =
+                                water_flux(
+                                    plant_hydraulics.compartment_midpoints[i - 1],
                                     plant_hydraulics.compartment_midpoints[i],
-                                    ψ_soil0,
+                                    Y[i - 1],
                                     Y[i],
                                     PlantHydraulics.hydraulic_conductivity(
                                         conductivity_model,
-                                        ψ_soil0,
+                                        Y[i - 1],
                                     ),
                                     PlantHydraulics.hydraulic_conductivity(
                                         conductivity_model,
                                         Y[i],
                                     ),
-                                ) .* root_distribution.(root_depths) .* (
-                                    vcat(root_depths, [0.0])[2:end] -
-                                    vcat(root_depths, [0.0])[1:(end - 1)]
-                                ),
-                            ) * AI[:stem]
-                    else
-                        fa =
-                            water_flux(
-                                plant_hydraulics.compartment_midpoints[i - 1],
-                                plant_hydraulics.compartment_midpoints[i],
-                                Y[i - 1],
-                                Y[i],
-                                PlantHydraulics.hydraulic_conductivity(
-                                    conductivity_model,
-                                    Y[i - 1],
-                                ),
-                                PlantHydraulics.hydraulic_conductivity(
-                                    conductivity_model,
-                                    Y[i],
-                                ),
-                            ) * AI[plant_hydraulics.compartment_labels[i]]
+                                ) * AI[plant_hydraulics.compartment_labels[i]]
+                        end
+                        F[i] = fa - T0A
                     end
-                    F[i] = fa - T0A
                 end
             end
+            #=======================
+            nlsolve does not solve systems of equations that return fields, so each cell
+            must have its own system of equations that is solved for. ClimaCore fields
+            cannot hold vectors, so multiple fields must be used to hold the vector solution
+            to the system of equations. Here we solve for the steady state of the hydraulics
+            system. Then, the solution is used to check that evaluating the
+            tendecy of the model also results in a steady state. This check is repeated using
+            the plant hydraulics model directly.
+            =======================#
+            # dict to prevent recalculation when returning different index of solution
+            solutions_for_rooting_depth = Dict{FT, Vector{FT}}()
+            # solves system of equations at each cell and returns specific index of solution
+            function solve_sys_for_i(rooting_depth::FT, i) where {FT}
+                if haskey(solutions_for_rooting_depth, rooting_depth)
+                    return get(
+                        solutions_for_rooting_depth,
+                        rooting_depth,
+                        FT(i),
+                    )[i]
+                else
+                    soln = nlsolve(
+                        create_exp_tendency_func(rooting_depth),
+                        Vector{FT}(-0.03:0.01:0.07);
+                        ftol = eps(FT),
+                        method = :newton,
+                        iterations = 20,
+                    )
+                    return get!(
+                        solutions_for_rooting_depth,
+                        rooting_depth,
+                        soln.zero,
+                    )[i]
+                end
+            end
+            # instead of a field of vectors, we have a vector of fields
+            soln_field_vector = map(1:(n_stem + n_leaf)) do i
+                solve_sys_for_i.(plant_hydraulics.parameters.rooting_depth, i)
+            end
 
-            soln = nlsolve(
-                initial_compute_exp_tendency!,
-                Vector{FT}(-0.03:0.01:0.07);
-                ftol = eps(FT),
-                method = :newton,
-                iterations = 20,
-            )
-
-            S_l =
+            S_l = map(soln_field_vector) do soln_i_field
                 inverse_water_retention_curve.(
                     retention_model,
-                    soln.zero,
+                    soln_i_field,
                     plant_ν,
                     plant_S_s,
                 )
+            end
 
-            ϑ_l_0 = augmented_liquid_fraction.(plant_ν, S_l)
+            ϑ_l_0 = map(S_l) do S_l_i
+                augmented_liquid_fraction.(plant_ν, S_l_i)
+            end
 
             Y, p, coords = initialize(model)
             if typeof(domain) <: ClimaLand.Domains.Point
@@ -516,17 +554,14 @@ for FT in (Float32, Float64)
             PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
         retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a)
         root_depths = [FT(0.0)]# 1st element is the deepest root depth
-        function root_distribution(z::T) where {T}
-            return T(0) # (1/m)
-        end
         compartment_midpoints = [h_canopy]
         compartment_surfaces = [FT(0.0), h_canopy]
-
+        # set rooting_depth param to largest possible value to test no roots
         param_set = PlantHydraulics.PlantHydraulicsParameters(;
             ai_parameterization = ai_parameterization,
             ν = plant_ν,
             S_s = plant_S_s,
-            root_distribution = root_distribution,
+            rooting_depth = maxintfloat(FT),
             conductivity_model = conductivity_model,
             retention_model = retention_model,
         )
