@@ -187,12 +187,12 @@ function setup_prob(t0, tf, Δt,params, outdir; nelements = (101, 7))
         PrescribedRadiativeFluxes(FT, SW_d, LW_d, start_date; θs = zenith_angle)
 
     # Set up parameters
+    (; κ_soil, ρc_soil, f_bucket, W_f, p, z_0m) = params
     z_0b = z_0m
     τc = FT(Δt)
     α_snow = FT(0.8)
-    (; κ_soil, ρc_soil, f_bucket, W_f, p, z_0m) = params
     albedo = PrescribedBaregroundAlbedo{FT}(α_snow, surface_space)
-    bucket_parameters = BucketModelParameters(FT; albedo, z_0m, z_0b, τc, f_bucket, σS_c, p, W_f, κ_soil, ρc_soil)
+    bucket_parameters = BucketModelParameters(FT; albedo, z_0m, z_0b, τc, f_bucket, p, W_f, κ_soil, ρc_soil)
     bucket = BucketModel(
         parameters = bucket_parameters,
         domain = domain,
@@ -244,13 +244,14 @@ function setup_prob(t0, tf, Δt,params, outdir; nelements = (101, 7))
     return prob, SciMLBase.CallbackSet(driver_cb, diag_cb)
 end
 
+#     (; κ_soil, ρc_soil, f_bucket, W_f, p, z_0m) = params
+# The truth params = (;κ_soil = FT(1.5), ρc_soil = FT(2e6), f_bucket = FT(0.75), W_f = FT(0.2), p = FT(1), z_0m = FT(1e-2))
 function bucket_turbulent_fluxes(params)
     t0 = 0.0
     tf = 60 * 60.0 * 24 * 365
     Δt = 900.0
     nelements = (101, 7)
-    output_id = ?#
-    diagnostics_outdir = joinpath(root_path, "global_diagnostics", output_id)
+    diagnostics_outdir = joinpath(root_path, "global_diagnostics")
     outdir =
         ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
     prob, cb = setup_prob(t0, tf, Δt, params, outdir; nelements)
@@ -258,25 +259,17 @@ function bucket_turbulent_fluxes(params)
     timestepper = CTS.RK4()
     ode_algo = CTS.ExplicitAlgorithm(timestepper)
     SciMLBase.solve(prob, ode_algo; dt = Δt, callback = cb, adaptive = false)
-
-    # read in output
-    simdir = ClimaAnalysis.SimDir(outdir)
-    short_names =
-        ["lhf", "shf"]
-    timeseries_list = [[],[]]
-    # First read in a monthly average of one variable to obtain size of data
-    var = get(simdir; "lhf")
-    
-    for short_name, timeseries in zip(short_names,timeseries_list)
-        var = get(simdir; short_name)
-        kwargs = ClimaAnalysis.has_altitude(var) ? Dict(:z => 1) : Dict()
-        times = ClimaAnalysis.times(var)
-        for t in times
-            data = ClimaAnalysis.slice(var, time = t; kwargs...)
-            push!(timeseries, data)
-        end
-    end
-    return timeseries_list
 end
 
-# not sure about mask, output_id
+# Things to consider:
+# - masking out the ocean when comparing to data
+# - output paths matching to parameters
+
+# Priors:
+# κ_soil = FT(1.5): Gaussian with mean = 2, std dev = 1, cannot be negative [ or uniform from 0.5 to 2.5]
+# ρc_soil = FT(2e6); Gaussian with mean = 4e6, std dev = 2e6, cannot be negative [ or uniform from 1e5 to 5e6]
+# f_bucket = FT(0.75); Gaussian with mean = 0.5, std_dev = 0.3, cannot be negative, cannot be greater than 1 [ or uniform from 0.2 to 0.9]
+# W_f = FT(0.2); Gaussian with mean = 0.4, std_dev = 0.4, cannot be negative [ or uniform from 0.05 to 1]
+# p = FT(1); we can range uniform 1 to 2.5, cannot be smaller than 1
+#z_0m = FT(1e-2); can we sample from log normal ranging from z_0m = 1e-3 to z_0m = 0.1?
+
