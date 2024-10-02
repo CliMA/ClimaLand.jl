@@ -17,7 +17,7 @@ h_stem = FT(7.5) # m
 # TIME STEPPING:
 
 # Starting time:
-t0 = Float64(120 * 3600 * 24)# start mid year to avoid snow
+t0 = Float64(0)
 
 # Time step size:
-dt = Float64(450)
+dt = Float64(200)

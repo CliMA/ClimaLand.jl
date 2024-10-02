@@ -25,7 +25,7 @@ precip_snow = (t) -> 0
 T_atmos = (t) -> 285
 u_atmos = (t) -> 3
 q_atmos = (t) -> 0.005
-h_atmos = FT(3)
+h_atmos = FT(10)
 P_atmos = (t) -> 101325
 atmos = PrescribedAtmosphere(
     TimeVaryingInput(precip),

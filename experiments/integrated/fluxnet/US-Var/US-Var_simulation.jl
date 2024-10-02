@@ -17,7 +17,7 @@ h_stem = FT(0) # m
 # TIME STEPPING:
 
 # Starting time:
-t0 = Float64(21 * 3600 * 24)# start day 21 of the year
+t0 = Float64(0)
 
 # Time step size:
 dt = Float64(900)

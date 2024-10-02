@@ -32,13 +32,13 @@ function define_diagnostics!(land_model)
             compute_net_radiation!(out, Y, p, t, land_model),
     )
 
-    # Surface temperature
+    # Bucket Surface temperature
     add_diagnostic_variable!(
         short_name = "tsfc",
-        long_name = "Surface Temperature",
+        long_name = "Bucket Surface Temperature",
         standard_name = "surface_temperature",
         units = "K",
-        comments = "Temperature of the land surface.",
+        comments = "Temperature of the bucket-land surface.",
         compute! = (out, Y, p, t) ->
             compute_surface_temperature!(out, Y, p, t, land_model),
     )
@@ -841,6 +841,17 @@ function define_diagnostics!(land_model)
         comments = "The energy per volume of soil. (depth resolved)",
         compute! = (out, Y, p, t) ->
             compute_soil_internal_energy!(out, Y, p, t, land_model),
+    )
+
+    # SWE
+    add_diagnostic_variable!(
+        short_name = "swe",
+        long_name = "Snow water equivalent",
+        standard_name = "snow_water_equivalent",
+        units = "m",
+        comments = "The height of liquid water if all snow melted",
+        compute! = (out, Y, p, t) ->
+            compute_snow_water_equivalent!(out, Y, p, t, land_model),
     )
 
 end

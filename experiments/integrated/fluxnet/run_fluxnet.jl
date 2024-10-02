@@ -12,6 +12,7 @@ using StatsBase
 
 using ClimaLand
 using ClimaLand.Domains: Column
+using ClimaLand.Snow
 using ClimaLand.Soil
 using ClimaLand.Soil.Biogeochemistry
 using ClimaLand.Canopy
@@ -186,6 +187,11 @@ shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
 )
 
 canopy_model_args = (; parameters = shared_params, domain = canopy_domain)
+
+# Snow model
+snow_parameters = SnowParameters{FT}(dt; earth_param_set = earth_param_set);
+snow_args = (; parameters = snow_parameters, domain = canopy_domain);
+snow_model_type = Snow.SnowModel
 # Integrated plant hydraulics and soil model
 land_input = (
     atmos = atmos,
@@ -193,7 +199,7 @@ land_input = (
     soil_organic_carbon = Csom,
     runoff = ClimaLand.Soil.Runoff.SurfaceRunoff(),
 )
-land = SoilCanopyModel{FT}(;
+land = LandModel{FT}(;
     soilco2_type = soilco2_type,
     soilco2_args = soilco2_args,
     land_args = land_input,
@@ -202,6 +208,8 @@ land = SoilCanopyModel{FT}(;
     canopy_component_types = canopy_component_types,
     canopy_component_args = canopy_component_args,
     canopy_model_args = canopy_model_args,
+    snow_args = snow_args,
+    snow_model_type = snow_model_type,
 )
 
 Y, p, cds = initialize(land)
@@ -240,6 +248,10 @@ for i in 1:(n_stem + n_leaf)
 end
 
 Y.canopy.energy.T = drivers.TA.values[1 + Int(round(t0 / DATA_DT))] # Get atmos temperature at t0
+
+Y.snow.S .= 0.0
+Y.snow.U .= 0.0
+
 set_initial_cache! = make_set_initial_cache(land)
 set_initial_cache!(p, Y, t0);
 
@@ -309,6 +321,7 @@ short_names_1D = [
     "lhf", # LHF
     "ghf", # G
     "rn", # Rn
+    "swe",
 ]
 short_names_2D = [
     "swc", # swc_sfc or swc_5 or swc_10
@@ -323,11 +336,11 @@ hourly_diag_name_2D = short_names_2D .* "_1h_average"
 # diagnostic_as_vectors()[2] is a vector of a variable,
 # whereas diagnostic_as_vectors()[1] is a vector or time associated with that variable.
 # We index to only extract the period post-spinup.
-SIF, AR, g_stomata, GPP, canopy_T, SW_u, LW_u, ER, ET, β, SHF, LHF, G, Rn = [
-    ClimaLand.Diagnostics.diagnostic_as_vectors(d_writer, diag_name)[2][(N_spinup_days * 24):end]
-    for diag_name in hourly_diag_name
-]
-
+SIF, AR, g_stomata, GPP, canopy_T, SW_u, LW_u, ER, ET, β, SHF, LHF, G, Rn, SWE =
+    [
+        ClimaLand.Diagnostics.diagnostic_as_vectors(d_writer, diag_name)[2][(N_spinup_days * 24):end]
+        for diag_name in hourly_diag_name
+    ]
 
 swc, soil_T, si = [
     ClimaLand.Diagnostics.diagnostic_as_vectors(
@@ -510,7 +523,7 @@ if isfile(
     )
 end
 
-# Water content in soil
+# Water content in soil and snow
 # Soil water content
 # Current resolution has the first layer at 0.1 cm, the second at 5cm.
 plt1 = Plots.plot(size = (1500, 800))
@@ -546,7 +559,23 @@ if drivers.SWC.status != absent
         label = "Data",
     )
 end
-plt2 = Plots.plot(
+plt2 = Plots.plot(size = (1500, 800))
+Plots.plot!(
+    plt2,
+    model_times ./ 3600 ./ 24,
+    SWE,
+    label = "Model",
+    xlim = [
+        minimum(model_times ./ 3600 ./ 24),
+        maximum(model_times ./ 3600 ./ 24),
+    ],
+    ylim = [0.0, 0.15],
+    xlabel = "Days",
+    ylabel = "SWE [m]",
+    color = "blue",
+    margin = 10Plots.mm,
+)
+plt3 = Plots.plot(
     data_times ./ 3600 ./ 24,
     (drivers.P.values .* (-1e3 * 24 * 3600) .* (1 .- snow_frac))[data_id_post_spinup],
     label = "Rain (data)",
@@ -560,13 +589,13 @@ plt2 = Plots.plot(
     size = (1500, 400),
 )
 Plots.plot!(
-    plt2,
+    plt3,
     data_times ./ 3600 ./ 24,
     (drivers.P.values .* (-1e3 * 24 * 3600) .* snow_frac)[data_id_post_spinup],
     label = "Snow (data)",
     ylabel = "Precipitation [mm/day]",
 )
-Plots.plot(plt2, plt1, layout = grid(2, 1, heights = [0.3, 0.7]))
+Plots.plot(plt3, plt2, plt1, layout = grid(3, 1, heights = [0.2, 0.4, 0.4]))
 Plots.savefig(joinpath(savedir, "ground_water_content.png"))
 
 plt1 = Plots.plot(size = (1500, 800))
