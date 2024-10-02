@@ -135,7 +135,6 @@ for FT in (Float32, Float64)
         @test p.bucket.q_sfc ==
               ClimaLand.Bucket.saturation_specific_humidity.(
             p.bucket.T_sfc,
-            FT(0.0),
             p.bucket.ρ_sfc,
             earth_param_set.thermo_params,
         )

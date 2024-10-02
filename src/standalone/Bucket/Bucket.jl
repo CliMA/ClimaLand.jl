@@ -16,8 +16,8 @@ using ClimaCore.Geometry: WVector
 using ClimaComms
 
 using ClimaLand
-
 import ..Parameters as LP
+import Thermodynamics.Parameters as TP
 import ClimaLand.Domains: coordinates, SphericalShell
 using ClimaLand:
     AbstractAtmosphericDrivers,
@@ -411,7 +411,6 @@ function make_update_aux(model::BucketModel{FT}) where {FT}
         p.bucket.q_sfc .=
             saturation_specific_humidity.(
                 p.bucket.T_sfc,
-                Y.bucket.σS,
                 p.bucket.ρ_sfc,
                 Ref(
                     LP.thermodynamic_parameters(

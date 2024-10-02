@@ -354,7 +354,12 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     soil_args = (domain = domain, parameters = soil_params)
     soil_model_type = Soil.EnergyHydrology{FT}
     sources = (Soil.PhaseChange{FT}(),)# sublimation and subsurface runoff are added automatically
-    top_bc = ClimaLand.Soil.AtmosDrivenFluxBC(atmos, radiation, runoff_model)
+    top_bc = ClimaLand.Soil.AtmosDrivenFluxBC(
+        atmos,
+        radiation,
+        runoff_model,
+        (:soil,),
+    )
     zero_flux = Soil.HeatFluxBC((p, t) -> 0.0)
     boundary_conditions = (;
         top = top_bc,

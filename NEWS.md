@@ -3,6 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 --------
+- Add a longrun simulation for the bucket PR[#807](https://github.com/CliMA/ClimaLand.jl/pull/807)
 - Add ground heat flux to snow-soil model PR[#796](https://github.com/CliMA/ClimaLand.jl/pull/796)
 - Add snow-soil model PR [#779](https://github.com/CliMA/ClimaLand.jl/pull/779)
 
