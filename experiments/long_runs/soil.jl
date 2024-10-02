@@ -41,6 +41,7 @@ import ClimaLand
 import ClimaLand.Parameters as LP
 
 using Statistics
+import GeoMakie
 using CairoMakie
 using Dates
 import NCDatasets
@@ -481,7 +482,14 @@ for short_name in short_names
         var = get(simdir; short_name)
         fig = CairoMakie.Figure(size = (800, 600))
         kwargs = ClimaAnalysis.has_altitude(var) ? Dict(:z => 1) : Dict()
-        viz.plot!(fig, var, time = t; kwargs...)
+        viz.heatmap2D_on_globe!(
+            fig,
+            ClimaAnalysis.slice(var, time = t; kwargs...),
+            mask = viz.oceanmask(),
+            more_kwargs = Dict(
+                :mask => ClimaAnalysis.Utils.kwargs(color = :white),
+            ),
+        )
         CairoMakie.save(joinpath(root_path, "$(short_name)_$t.png"), fig)
     end
 end
