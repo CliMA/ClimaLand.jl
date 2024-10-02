@@ -292,6 +292,8 @@ set_initial_cache! = make_set_initial_cache(land)
 set_initial_cache!(p, Y, t0);
 
 # Simulation
+dt_save = 3600.0
+saveat = Array(t0:dt_save:tf)
 sv = (;
     t = Array{Float64}(undef, length(saveat)),
     saveval = Array{NamedTuple}(undef, length(saveat)),
@@ -342,7 +344,6 @@ end
 
 # Number of days to plot
 num_days = N_days - N_spinup_days
-
 # Time series of model and data outputs
 data_times = [0:DATA_DT:(num_days * S_PER_DAY);]
 model_times = [0:dt_save:(num_days * S_PER_DAY);]

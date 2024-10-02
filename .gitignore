@@ -5,6 +5,7 @@
 *html
 *~
 *.nc
+experiments/integrated/fluxnet/out/*
 *.png
 *.mp4
 *.hdf5

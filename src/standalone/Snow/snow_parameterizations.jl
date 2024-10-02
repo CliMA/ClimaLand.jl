@@ -33,8 +33,7 @@ end
 Returns the surface height of the `Snow` model.
 """
 function ClimaLand.surface_height(model::SnowModel{FT}, Y, p) where {FT}
-    z_sfc = ClimaCore.Fields.coordinate_field(model.domain.space.surface).z
-    return z_sfc
+    return p.snow.z
 end
 
 

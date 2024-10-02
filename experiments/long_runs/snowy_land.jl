@@ -35,6 +35,7 @@ import ClimaUtilities.ClimaArtifacts: @clima_artifact
 import ClimaParams as CP
 
 using ClimaLand
+using ClimaLand.Snow
 using ClimaLand.Soil
 using ClimaLand.Canopy
 import ClimaLand
@@ -474,6 +475,21 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         domain = ClimaLand.obtain_surface_domain(domain),
     )
 
+    # Snow model
+    ρ_snow = FT(300.0)
+    α_snow = FT(0.8)
+    snow_parameters = SnowParameters{FT}(
+        Δt;
+        α_snow = α_snow,
+        ρ_snow = ρ_snow,
+        earth_param_set = earth_param_set,
+    )
+    snow_args = (;
+        parameters = snow_parameters,
+        domain = ClimaLand.obtain_surface_domain(domain),
+    )
+    snow_model_type = Snow.SnowModel
+
     # Integrated plant hydraulics and soil model
     land_input = (
         atmos = atmos,
@@ -481,7 +497,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         runoff = runoff_model,
         soil_organic_carbon = Csom,
     )
-    land = SoilCanopyModel{FT}(;
+    land = LandModel{FT}(;
         soilco2_type = soilco2_type,
         soilco2_args = soilco2_args,
         land_args = land_input,
@@ -490,6 +506,8 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         canopy_component_types = canopy_component_types,
         canopy_component_args = canopy_component_args,
         canopy_model_args = canopy_model_args,
+        snow_args = snow_args,
+        snow_model_type = snow_model_type,
     )
 
     Y, p, cds = initialize(land)
@@ -515,6 +533,9 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
     Y.canopy.hydraulics.ϑ_l.:1 .= plant_ν
     evaluate!(Y.canopy.energy.T, atmos.T, t0)
+
+    Y.snow.S .= 0.0
+    Y.snow.U .= 0.0
 
     set_initial_cache! = make_set_initial_cache(land)
     exp_tendency! = make_exp_tendency(land)
@@ -569,7 +590,7 @@ function setup_and_solve_problem(; greet = false)
     Δt = 450.0
     nelements = (101, 15)
     if greet
-        @info "Run: Global Soil-Canopy Model"
+        @info "Run: Global Soil-Canopy-Snow Model"
         @info "Resolution: $nelements"
         @info "Timestep: $Δt s"
         @info "Duration: $(tf - t0) s"
@@ -594,34 +615,48 @@ setup_and_solve_problem(; greet = true);
 # read in diagnostics and make some plots!
 #### ClimaAnalysis ####
 simdir = ClimaAnalysis.SimDir(outdir)
-short_names = [
-    "gpp",
-    "ct",
-    "lai",
-    "swc",
-    "si",
-    "swa",
-    "lwu",
-    "et",
-    "er",
-    "sr",
-    "sif",
-    "eff_tsfc",
-]
-for short_name in short_names
-    var = get(simdir; short_name)
-    times = ClimaAnalysis.times(var)
-    for t in times
-        fig = CairoMakie.Figure(size = (800, 600))
-        kwargs = ClimaAnalysis.has_altitude(var) ? Dict(:z => 1) : Dict()
-        viz.heatmap2D_on_globe!(
-            fig,
-            ClimaAnalysis.slice(var, time = t; kwargs...),
-            mask = viz.oceanmask(),
-            more_kwargs = Dict(
-                :mask => ClimaAnalysis.Utils.kwargs(color = :white),
-            ),
+short_names_bio = ["gpp", "ct", "lai"]
+short_names_water = ["swc", "si", "sr", "swe"]
+short_names_other = ["swu", "lwu", "et"]
+group_names = ["bio", "water", "other"]
+months_id = [1, 4, 7, 10]
+for (group_id, group) in
+    enumerate([short_names_bio, short_names_water, short_names_other])
+    fig =
+        CairoMakie.Figure(size = (600 * length(months_id), 300 * length(group)))
+    for (var_id, short_name) in enumerate(group)
+        var = get(simdir; short_name)
+        times = ClimaAnalysis.times(var)
+        CairoMakie.Label(
+            fig[var_id, 0],
+            short_name,
+            tellheight = false,
+            tellwidth = false,
+            fontsize = 20,
         )
-        CairoMakie.save(joinpath(root_path, "$(short_name)_$t.png"), fig)
+        for (t_id, t) in pairs(times[months_id])
+            layout = fig[var_id, t_id] = CairoMakie.GridLayout()
+            kwargs = ClimaAnalysis.has_altitude(var) ? Dict(:z => 1) : Dict()
+            ClimaAnalysis.Visualize.heatmap2D_on_globe!(
+                layout,
+                ClimaAnalysis.slice(var, time = t; kwargs...),
+                mask = ClimaAnalysis.Visualize.oceanmask(),
+                more_kwargs = Dict(
+                    :mask => ClimaAnalysis.Utils.kwargs(color = :white),
+                ),
+            )
+        end
     end
+    months = Dates.monthname.(1:12) .|> x -> x[1:3]
+    for (idx, m_id) in enumerate(months_id)
+        CairoMakie.Label(
+            fig[0, idx],
+            months[m_id],
+            tellwidth = false,
+            fontsize = 20,
+        )
+    end
+    group_name = group_names[group_id]
+
+    CairoMakie.save(joinpath(root_path, "$(group_name).png"), fig)
 end
