@@ -197,7 +197,7 @@ import ClimaParams
                 )
 
             ψ_soil0 = FT(0.0)
-            soil_driver = PrescribedSoil(FT)
+            soil_driver = PrescribedGroundConditions(FT)
             plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
                 parameters = param_set,
                 n_stem = n_stem,
@@ -213,9 +213,11 @@ import ClimaParams
                 photosynthesis = photosynthesis_model,
                 conductance = stomatal_model,
                 hydraulics = plant_hydraulics,
-                soil_driver = soil_driver,
-                atmos = atmos,
-                radiation = radiation,
+                boundary_conditions = Canopy.AtmosDrivenCanopyBC(
+                    atmos,
+                    radiation,
+                    soil_driver,
+                ),
             )
             drivers = ClimaLand.get_drivers(canopy)
             @test drivers == (atmos, radiation)
@@ -273,8 +275,7 @@ import ClimaParams
             # check that this is updated correctly:
             # @test p.canopy.autotrophic_respiration.Ra ==
             exp_tendency!(dY, Y, p, t0)
-            turb_fluxes =
-                ClimaLand.turbulent_fluxes(canopy.atmos, canopy, Y, p, t0)
+            turb_fluxes = ClimaLand.turbulent_fluxes(atmos, canopy, Y, p, t0)
 
             @test p.canopy.hydraulics.fa.:1 == turb_fluxes.vapor_flux
             @test p.canopy.energy.shf == turb_fluxes.shf
@@ -409,14 +410,8 @@ import ClimaParams
                 t0,
             ) isa ClimaCore.Fields.Field
 
-            ρ_sfc = ClimaLand.surface_air_density(
-                canopy.atmos,
-                canopy,
-                Y,
-                p,
-                t0,
-                T_sfc,
-            )
+            ρ_sfc =
+                ClimaLand.surface_air_density(atmos, canopy, Y, p, t0, T_sfc)
             @test ClimaLand.surface_specific_humidity(
                 canopy,
                 Y,
@@ -557,13 +552,23 @@ end
     end
 end
 
-@testset "PrescribedSoil" begin
+@testset "PrescribedGroundConditions" begin
     for FT in (Float32, Float64)
-        soil_driver = PrescribedSoil(FT)
-        @test ground_albedo_PAR(soil_driver, nothing, nothing, nothing) ==
-              FT(0.2)
-        @test ground_albedo_NIR(soil_driver, nothing, nothing, nothing) ==
-              FT(0.4)
+        soil_driver = PrescribedGroundConditions(FT)
+        @test ground_albedo_PAR(
+            Val((:canopy,)),
+            soil_driver,
+            nothing,
+            nothing,
+            nothing,
+        ) == FT(0.2)
+        @test ground_albedo_NIR(
+            Val((:canopy,)),
+            soil_driver,
+            nothing,
+            nothing,
+            nothing,
+        ) == FT(0.4)
         @test soil_driver.root_depths ==
               SVector{10, FT}(-(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0)
         @test FT.(soil_driver.ψ(2.0)) == FT.(0.0)
@@ -750,7 +755,7 @@ end
 
             ψ_soil0 = FT(0.0)
             T_soil0 = FT(290)
-            soil_driver = PrescribedSoil(
+            soil_driver = PrescribedGroundConditions(
                 root_depths,
                 (t) -> ψ_soil0,
                 (t) -> T_soil0,
@@ -779,9 +784,11 @@ end
                 autotrophic_respiration = autotrophic_respiration_model,
                 energy = energy_model,
                 hydraulics = plant_hydraulics,
-                soil_driver = soil_driver,
-                atmos = atmos,
-                radiation = radiation,
+                boundary_conditions = Canopy.AtmosDrivenCanopyBC(
+                    atmos,
+                    radiation,
+                    soil_driver,
+                ),
             )
             # This test needs to match ClimaParams `canopy_emissivity`
             @test canopy.radiative_transfer.parameters.ϵ_canopy == FT(0.97)
@@ -828,8 +835,7 @@ end
 
             dY = similar(Y)
             exp_tendency!(dY, Y, p, t0)
-            turb_fluxes =
-                ClimaLand.turbulent_fluxes(canopy.atmos, canopy, Y, p, t0)
+            turb_fluxes = ClimaLand.turbulent_fluxes(atmos, canopy, Y, p, t0)
 
             @test p.canopy.hydraulics.fa.:1 == turb_fluxes.vapor_flux
             @test p.canopy.energy.lhf == turb_fluxes.lhf
@@ -1008,7 +1014,7 @@ end
 
         ψ_soil0 = FT(0.0)
         T_soil0 = FT(290)
-        soil_driver = PrescribedSoil(
+        soil_driver = PrescribedGroundConditions(
             root_depths,
             (t) -> ψ_soil0,
             (t) -> T_soil0,
@@ -1037,9 +1043,11 @@ end
             autotrophic_respiration = autotrophic_respiration_model,
             energy = energy_model,
             hydraulics = plant_hydraulics,
-            soil_driver = soil_driver,
-            atmos = atmos,
-            radiation = radiation,
+            boundary_conditions = Canopy.AtmosDrivenCanopyBC(
+                atmos,
+                radiation,
+                soil_driver,
+            ),
         )
 
         Y, p, coords = ClimaLand.initialize(canopy)
@@ -1054,8 +1062,14 @@ end
 
         set_initial_cache!(p, Y, t0)
         T_sfc = ClimaLand.surface_temperature(canopy, Y, p, t0)
-        ρ_sfc =
-            ClimaLand.surface_air_density(canopy.atmos, canopy, Y, p, t0, T_sfc)
+        ρ_sfc = ClimaLand.surface_air_density(
+            canopy.boundary_conditions.atmos,
+            canopy,
+            Y,
+            p,
+            t0,
+            T_sfc,
+        )
         q_sfc = ClimaLand.surface_specific_humidity(canopy, Y, p, T_sfc, ρ_sfc)
         dY = similar(Y)
         imp_tendency!(dY, Y, p, t0)
@@ -1071,7 +1085,7 @@ end
         set_initial_cache!(p_2, Y_2, t0)
         T_sfc2 = ClimaLand.surface_temperature(canopy, Y_2, p_2, t0)
         ρ_sfc2 = ClimaLand.surface_air_density(
-            canopy.atmos,
+            canopy.boundary_conditions.atmos,
             canopy,
             Y_2,
             p_2,
@@ -1342,7 +1356,7 @@ end
 
             ψ_soil0 = FT(0.0)
             T_soil0 = FT(290)
-            soil_driver = PrescribedSoil(
+            soil_driver = PrescribedGroundConditions(
                 root_depths,
                 (t) -> ψ_soil0,
                 (t) -> T_soil0,
@@ -1371,9 +1385,11 @@ end
                     autotrophic_respiration = autotrophic_respiration_model,
                     energy = energy_model,
                     hydraulics = plant_hydraulics,
-                    soil_driver = soil_driver,
-                    atmos = atmos,
-                    radiation = radiation,
+                    boundary_conditions = Canopy.AtmosDrivenCanopyBC(
+                        atmos,
+                        radiation,
+                        soil_driver,
+                    ),
                 )
 
                 Y, p, coords = ClimaLand.initialize(canopy)

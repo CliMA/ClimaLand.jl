@@ -246,7 +246,8 @@ for FT in (Float32, Float64)
         ψ_soil0 = FT(0.0)
         transpiration = PrescribedTranspiration{FT}(leaf_transpiration)
 
-        soil_driver = PrescribedSoil(FT)
+        soil_driver = PrescribedGroundConditions(FT)
+
         autotrophic_parameters = AutotrophicRespirationParameters(FT)
         autotrophic_respiration_model =
             AutotrophicRespirationModel{FT}(autotrophic_parameters)
@@ -279,9 +280,11 @@ for FT in (Float32, Float64)
                     photosynthesis = photosynthesis_model,
                     conductance = stomatal_model,
                     hydraulics = plant_hydraulics,
-                    soil_driver = soil_driver,
-                    atmos = atmos,
-                    radiation = radiation,
+                    boundary_conditions = Canopy.AtmosDrivenCanopyBC(
+                        atmos,
+                        radiation,
+                        soil_driver,
+                    ),
                 )
                 # Set system to hydrostatic equilibrium
                 function initial_compute_exp_tendency!(F, Y)
@@ -541,7 +544,7 @@ for FT in (Float32, Float64)
         )
 
         transpiration = DiagnosticTranspiration{FT}()
-        soil_driver = PrescribedSoil(FT)
+        soil_driver = PrescribedGroundConditions(FT)
         plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
             parameters = param_set,
             transpiration = transpiration,
@@ -563,9 +566,11 @@ for FT in (Float32, Float64)
             photosynthesis = photosynthesis_model,
             conductance = stomatal_model,
             hydraulics = plant_hydraulics,
-            soil_driver = soil_driver,
-            atmos = atmos,
-            radiation = radiation,
+            boundary_conditions = Canopy.AtmosDrivenCanopyBC(
+                atmos,
+                radiation,
+                soil_driver,
+            ),
         )
 
         Y, p, coords = initialize(model)

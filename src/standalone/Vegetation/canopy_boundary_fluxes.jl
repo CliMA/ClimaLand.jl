@@ -10,8 +10,79 @@ import ClimaLand:
     surface_height,
     surface_resistance,
     displacement_height,
-    turbulent_fluxes
+    turbulent_fluxes,
+    AbstractBC
 
+"""
+    AbstractCanopyBC <: ClimaLand.AbstractBC
+
+An abstract type for boundary conditions for the canopy model.
+"""
+abstract type AbstractCanopyBC <: ClimaLand.AbstractBC end
+"""
+    AtmosDrivenCanopyBC{
+        A <: AbstractAtmosphericDrivers,
+        B <: AbstractRadiativeDrivers,
+        G <: AbstractGroundConditions,
+        C::Tuple
+    } <: AbstractCanopyBC
+
+A struct used to specify the canopy fluxes, referred
+to as ``boundary conditions", at the surface and
+bottom of the canopy, for water and energy.
+
+These fluxes include turbulent surface fluxes
+computed with Monin-Obukhov theory, radiative fluxes, 
+and root extraction.
+$(DocStringExtensions.FIELDS)
+"""
+struct AtmosDrivenCanopyBC{
+    A <: AbstractAtmosphericDrivers,
+    B <: AbstractRadiativeDrivers,
+    G <: AbstractGroundConditions,
+    C <: Tuple,
+} <: AbstractCanopyBC
+    "The atmospheric conditions driving the model"
+    atmos::A
+    "The radiative fluxes driving the model"
+    radiation::B
+    "Ground conditions"
+    ground::G
+    "Prognostic land components present"
+    prognostic_land_components::C
+end
+
+"""
+    AtmosDrivenCanopyBC(
+        atmos,
+        radiation,
+        ground;
+        prognostic_land_components = (:canopy,),
+    )
+
+An outer constructor for `AtmosDrivenCanopyBC` which is
+intended for use as a default when running standlone canopy
+models. 
+
+This is also checks the logic that:
+- If the `ground` field is Prescribed, :soil should not be a prognostic_land_component
+- If the `ground` field is not Prescribed, :soil should be modeled prognostically.
+"""
+function AtmosDrivenCanopyBC(
+    atmos,
+    radiation,
+    ground;
+    prognostic_land_components = (:canopy,),
+)
+    if typeof(ground) <: PrescribedGroundConditions
+        @assert !(:soil ∈ prognostic_land_components)
+    else
+        @assert :soil ∈ prognostic_land_components
+    end
+
+    args = (atmos, radiation, ground, prognostic_land_components)
+    return AtmosDrivenCanopyBC(args...)
+end
 
 """
     ClimaLand.displacment_height(model::CanopyModel, Y, p)
@@ -104,7 +175,7 @@ end
 
 function make_update_boundary_fluxes(canopy::CanopyModel)
     function update_boundary_fluxes!(p, Y, t)
-        canopy_boundary_fluxes!(p, canopy, canopy.radiation, canopy.atmos, Y, t)
+        canopy_boundary_fluxes!(p, canopy, Y, t)
     end
     return update_boundary_fluxes!
 end
@@ -120,8 +191,6 @@ end
                                 <:PlantHydraulicsModel,
                                 <:Union{PrescribedCanopyTempModel,BigLeafEnergyModel}
                             },
-                            radiation::PrescribedRadiativeFluxes,
-                            atmos::PrescribedAtmosphere,
                             Y::ClimaCore.Fields.FieldVector,
                             t,
                             ) where {FT}
@@ -138,7 +207,6 @@ within the explicit tendency of the canopy model.
 - `p.canopy.hydraulics.fa_roots`: Root water flux
 - `p.canopy.radiative_transfer.LW_n`: net long wave radiation
 - `p.canopy.radiative_transfer.SW_n`: net short wave radiation
-
 """
 function canopy_boundary_fluxes!(
     p::NamedTuple,
@@ -151,12 +219,12 @@ function canopy_boundary_fluxes!(
         <:PlantHydraulicsModel,
         <:Union{PrescribedCanopyTempModel, BigLeafEnergyModel},
     },
-    radiation::PrescribedRadiativeFluxes,
-    atmos::PrescribedAtmosphere,
     Y::ClimaCore.Fields.FieldVector,
     t,
 ) where {FT}
-
+    bc = canopy.boundary_conditions
+    radiation = bc.radiation
+    atmos = bc.atmos
     root_water_flux = p.canopy.hydraulics.fa_roots
     root_energy_flux = p.canopy.energy.fa_energy_roots
     fa = p.canopy.hydraulics.fa
@@ -167,7 +235,6 @@ function canopy_boundary_fluxes!(
     lhf = p.canopy.energy.lhf
     r_ae = p.canopy.energy.r_ae
     i_end = canopy.hydraulics.n_stem + canopy.hydraulics.n_leaf
-
     # Compute transpiration, SHF, LHF
     canopy_tf = ClimaLand.turbulent_fluxes(atmos, canopy, Y, p, t)
     transpiration .= canopy_tf.vapor_flux
@@ -183,30 +250,35 @@ function canopy_boundary_fluxes!(
         p,
         t,
     )
+    # Note that in the three functions below,
+    # we dispatch off of the ground conditions `bc.ground`
+    # to handle standalone canopy simulations vs integrated ones
+
     # Update the root flux of water per unit ground area in place
     root_water_flux_per_ground_area!(
         root_water_flux,
-        canopy.soil_driver,
+        bc.ground,
         canopy.hydraulics,
         Y,
         p,
         t,
     )
-
+    # Update the root flux of energy per unit ground area in place
     root_energy_flux_per_ground_area!(
         root_energy_flux,
-        canopy.soil_driver,
+        bc.ground,
         canopy.energy,
         Y,
         p,
         t,
     )
 
+    # Update the canopy radiation
     canopy_radiant_energy_fluxes!(
         p,
-        canopy.soil_driver,
+        bc.ground,
         canopy,
-        canopy.radiation,
+        bc.radiation,
         canopy.parameters.earth_param_set,
         Y,
         t,
