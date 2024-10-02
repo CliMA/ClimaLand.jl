@@ -169,6 +169,8 @@ function default_diagnostics(
             # "pwc", # return a Tuple
             "si",
             "sie",
+            "lwo",
+            "swo",
         ]
     elseif output_vars == :short
         soilcanopy_diagnostics = ["gpp", "ct", "lai", "swc", "si"]

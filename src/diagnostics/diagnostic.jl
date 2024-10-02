@@ -24,7 +24,7 @@ If possible, please follow the naming scheme outline in
 https://airtable.com/appYNLuWqAgzLbhSq/shrKcLEdssxb8Yvcp/tblL7dJkC3vl5zQLb
 
 Keyword arguments
-=================
+ =================
 
 - `short_name`: Name used to identify the variable in the output files and in the file
                 names. Short but descriptive. `ClimaLand` diagnostics are identified by the
@@ -123,6 +123,27 @@ macro with_error(compute_function_expr)
             end
         end,
     )
+end
+
+"""
+    diagnostic_as_vectors(writer::ClimaDiagnostics.DictWriter, diagnostic)
+
+Extract `diagnostic` from given `writer` as tuple of vectors (time and value).
+
+`diagnostic` is typically a string with the short name of the diagnostic.
+"""
+function diagnostic_as_vectors(writer::DictWriter, diagnostic, layer)
+    # axes(first(values(writer[diagnostic]))) isa ClimaCore.Spaces.PointSpace || error("diagnostic_as_vectors works only on PointSpaces")
+
+    # writer[diagnostic] is a dictionary with keys the times and with values Fields. We need
+    # to be a little careful because dictionaries are not ordered, so we have to sort them
+    # by time.
+    times = collect(keys(writer[diagnostic]))
+    sort_indices = sortperm(times)
+    values_all = parent.(values(writer[diagnostic]))[sort_indices]
+    vector_layer_n = vcat([values_all[i][layer, :] for i in 1:length(values_all)]...)
+
+    return times, vector_layer_n
 end
 
 # Do you want to define more diagnostics? Add them here

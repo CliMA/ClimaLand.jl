@@ -158,6 +158,12 @@ end # Convert from kg C to mol CO2.
 @diagnostic_compute "soilco2_diffusivity" SoilCanopyModel p.soilco2.D
 @diagnostic_compute "soilco2_source_microbe" SoilCanopyModel p.soilco2.Sm
 
+## Other ##
+
+@diagnostic_compute "lw_out" SoilCanopyModel p.LW_out
+@diagnostic_compute "sw_out" SoilCanopyModel p.SW_out
+
+
 # variables stored in Y (prognostic or state variables)
 
 @diagnostic_compute "canopy_temperature" SoilCanopyModel Y.canopy.energy.T

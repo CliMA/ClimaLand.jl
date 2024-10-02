@@ -1,5 +1,7 @@
 module Diagnostics
 
+import ClimaCore
+
 import Dates: Month, Period
 
 import ClimaComms
@@ -18,7 +20,7 @@ import ClimaDiagnostics:
 import ClimaDiagnostics.Schedules:
     EveryStepSchedule, EveryDtSchedule, EveryCalendarDtSchedule
 
-import ClimaDiagnostics.Writers: HDF5Writer, NetCDFWriter
+import ClimaDiagnostics.Writers: HDF5Writer, NetCDFWriter, DictWriter
 
 include("diagnostic.jl")
 
