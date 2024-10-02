@@ -107,10 +107,11 @@ function SoilCanopyModel{FT}(;
     )
 
     transpiration = Canopy.PlantHydraulics.DiagnosticTranspiration{FT}()
-    canopy_soil_driver = PrognosticSoil{typeof(soil.parameters.PAR_albedo)}(
-        soil.parameters.PAR_albedo,
-        soil.parameters.NIR_albedo,
-    )
+    ground_conditions =
+        PrognosticSoilConditions{typeof(soil.parameters.PAR_albedo)}(
+            soil.parameters.PAR_albedo,
+            soil.parameters.NIR_albedo,
+        )
     if :energy in propertynames(canopy_component_args)
 
         canopy = Canopy.CanopyModel{FT}(;
@@ -133,9 +134,12 @@ function SoilCanopyModel{FT}(;
             energy = canopy_component_types.energy(
                 canopy_component_args.energy.parameters,
             ),
-            soil_driver = canopy_soil_driver,
-            atmos = atmos,
-            radiation = radiation,
+            boundary_conditions = Canopy.AtmosDrivenCanopyBC(
+                atmos,
+                radiation,
+                ground_conditions,
+                prognostic_land_components,
+            ),
             canopy_model_args...,
         )
     else
@@ -156,9 +160,12 @@ function SoilCanopyModel{FT}(;
                 transpiration = transpiration,
                 canopy_component_args.hydraulics...,
             ),
-            soil_driver = canopy_soil_driver,
-            atmos = atmos,
-            radiation = radiation,
+            boundary_conditions = Canopy.AtmosDrivenCanopyBC(
+                atmos,
+                radiation,
+                ground_conditions,
+                prognostic_land_components,
+            ),
             canopy_model_args...,
         )
     end
@@ -187,7 +194,6 @@ included in the integrated Soil-Canopy model.
 lsm_aux_vars(m::SoilCanopyModel) = (
     :root_extraction,
     :root_energy_extraction,
-    :T_ground,
     :LW_out,
     :SW_out,
     :scratch1,
@@ -200,7 +206,7 @@ lsm_aux_vars(m::SoilCanopyModel) = (
 The types of the additional auxiliary variables that are
 included in the integrated Soil-Canopy model.
 """
-lsm_aux_types(m::SoilCanopyModel{FT}) where {FT} = (FT, FT, FT, FT, FT, FT, FT)
+lsm_aux_types(m::SoilCanopyModel{FT}) where {FT} = (FT, FT, FT, FT, FT, FT)
 
 """
     lsm_aux_domain_names(m::SoilCanopyModel)
@@ -209,7 +215,7 @@ The domain names of the additional auxiliary variables that are
 included in the integrated Soil-Canopy model.
 """
 lsm_aux_domain_names(m::SoilCanopyModel) =
-    (:subsurface, :subsurface, :surface, :surface, :surface, :surface, :surface)
+    (:subsurface, :subsurface, :surface, :surface, :surface, :surface)
 
 """
     make_update_boundary_fluxes(
@@ -242,54 +248,12 @@ function make_update_boundary_fluxes(
     update_canopy_bf! = make_update_boundary_fluxes(land.canopy)
     function update_boundary_fluxes!(p, Y, t)
         # update root extraction
-        z =
-            ClimaCore.Fields.coordinate_field(
-                land.soil.domain.space.subsurface,
-            ).z
-        (; conductivity_model) = land.canopy.hydraulics.parameters
-
-        area_index = p.canopy.hydraulics.area_index
-
-        above_ground_area_index = getproperty(
-            area_index,
-            land.canopy.hydraulics.compartment_labels[1],
-        )
-        # Note that we model the flux between each soil layer and the canopy as:
-        # Flux = -K_eff x [(ψ_canopy - ψ_soil)/(z_canopy - z_soil) + 1], where
-        # K_eff = K_soil K_canopy /(K_canopy + K_soil)
-
-        # Note that in `PrescribedSoil` mode, we compute the flux using K_soil = K_plant(ψ_soil)
-        # and K_canopy = K_plant(ψ_canopy). In `PrognosticSoil` mode here, we compute the flux using
-        # K_soil = K_soil(ψ_soil) and K_canopy = K_plant(ψ_canopy).
-        @. p.root_extraction =
-            above_ground_area_index *
-            PlantHydraulics.water_flux(
-                z,
-                land.canopy.hydraulics.compartment_midpoints[1],
-                p.soil.ψ,
-                p.canopy.hydraulics.ψ.:1,
-                p.soil.K,
-                PlantHydraulics.hydraulic_conductivity(
-                    conductivity_model,
-                    p.canopy.hydraulics.ψ.:1,
-                ),
-            ) *
-            (root_distribution(
-                z,
-                land.canopy.hydraulics.parameters.rooting_depth,
-            ))
-        @. p.root_energy_extraction =
-            p.root_extraction * ClimaLand.Soil.volumetric_internal_energy_liq(
-                p.soil.T,
-                land.soil.parameters.earth_param_set,
-            )
-
+        update_root_extraction!(p, Y, t, land)
         # Radiation
         lsm_radiant_energy_fluxes!(
             p,
+            land,
             land.canopy.radiative_transfer,
-            land.canopy,
-            land.soil,
             Y,
             t,
         )
@@ -301,10 +265,53 @@ function make_update_boundary_fluxes(
 end
 
 """
-    lsm_radiant_energy_fluxes!(p,
+    update_root_extraction!(p, Y, t, land)
+
+Updates p.root_extraction and p.root_energy_extraction in place to account
+for the flux of water and energy between the soil and the canopy via
+root extraction.
+"""
+function update_root_extraction!(p, Y, t, land)
+    z = land.soil.domain.fields.z
+    (; conductivity_model) = land.canopy.hydraulics.parameters
+    area_index = p.canopy.hydraulics.area_index
+
+    above_ground_area_index =
+        getproperty(area_index, land.canopy.hydraulics.compartment_labels[1])
+    # Note that we model the flux between each soil layer and the canopy as:
+    # Flux = -K_eff x [(ψ_canopy - ψ_soil)/(z_canopy - z_soil) + 1], where
+    # K_eff = K_soil K_canopy /(K_canopy + K_soil)
+
+    # Note that in `PrescribedSoil` mode, we compute the flux using K_soil = K_plant(ψ_soil)
+    # and K_canopy = K_plant(ψ_canopy). In `PrognosticSoil` mode here, we compute the flux using
+    # K_soil = K_soil(ψ_soil) and K_canopy = K_plant(ψ_canopy).
+    @. p.root_extraction =
+        above_ground_area_index *
+        PlantHydraulics.water_flux(
+            z,
+            land.canopy.hydraulics.compartment_midpoints[1],
+            p.soil.ψ,
+            p.canopy.hydraulics.ψ.:1,
+            p.soil.K,
+            PlantHydraulics.hydraulic_conductivity(
+                conductivity_model,
+                p.canopy.hydraulics.ψ.:1,
+            ),
+        ) *
+        Canopy.PlantHydraulics.root_distribution(
+            z,
+            land.canopy.hydraulics.parameters.rooting_depth,
+        )
+    @. p.root_energy_extraction =
+        p.root_extraction * ClimaLand.Soil.volumetric_internal_energy_liq(
+            p.soil.T,
+            land.soil.parameters.earth_param_set,
+        )
+end
+
+"""
+    lsm_radiant_energy_fluxes!(p, land::SoilCanopyModel{FT},
                                 canopy_radiation::Canopy.AbstractRadiationModel{FT},
-                                canopy,
-                                ground_model::Soil.EnergyHydrology,
                                 Y,
                                 t,
                                 ) where {FT}
@@ -321,13 +328,14 @@ when the Canopy is run in standalone mode.
 """
 function lsm_radiant_energy_fluxes!(
     p,
+    land::SoilCanopyModel{FT},
     canopy_radiation::Canopy.AbstractRadiationModel{FT},
-    canopy,
-    ground_model::Soil.EnergyHydrology,
     Y,
     t,
 ) where {(FT)}
-    radiation = canopy.radiation
+    canopy = land.canopy
+    canopy_bc = canopy.boundary_conditions
+    radiation = canopy_bc.radiation
     earth_param_set = canopy.parameters.earth_param_set
     _σ = LP.Stefan(earth_param_set)
     LW_d = p.drivers.LW_d
@@ -340,11 +348,23 @@ function lsm_radiant_energy_fluxes!(
     energy_per_photon_NIR = h * c / λ_γ_NIR
     T_canopy =
         ClimaLand.Canopy.canopy_temperature(canopy.energy, canopy, Y, p, t)
-    p.T_ground .= surface_temperature(ground_model, Y, p, t)
 
-    α_soil_PAR = Canopy.ground_albedo_PAR(canopy.soil_driver, Y, p, t)
-    α_soil_NIR = Canopy.ground_albedo_NIR(canopy.soil_driver, Y, p, t)
-    ϵ_soil = ground_model.parameters.emissivity
+    α_soil_PAR = Canopy.ground_albedo_PAR(
+        Val(canopy_bc.prognostic_land_components),
+        canopy_bc.ground,
+        Y,
+        p,
+        t,
+    )
+    α_soil_NIR = Canopy.ground_albedo_NIR(
+        Val(canopy_bc.prognostic_land_components),
+        canopy_bc.ground,
+        Y,
+        p,
+        t,
+    )
+    ϵ_soil = land.soil.parameters.emissivity
+    T_soil = ClimaLand.Domains.top_center_to_surface(p.soil.T)
 
     # in W/m^2
     LW_d_canopy = p.scratch1
@@ -378,9 +398,9 @@ function lsm_radiant_energy_fluxes!(
         (1 - α_soil_PAR)
     ϵ_canopy = p.canopy.radiative_transfer.ϵ # this takes into account LAI/SAI
     @. LW_d_canopy = ((1 - ϵ_canopy) * LW_d + ϵ_canopy * _σ * T_canopy^4) # double checked
-    @. LW_u_soil = ϵ_soil * _σ * p.T_ground^4 + (1 - ϵ_soil) * LW_d_canopy # double checked
+    @. LW_u_soil = ϵ_soil * _σ * T_soil^4 + (1 - ϵ_soil) * LW_d_canopy # double checked
     # This is a sign inconsistency. Here Rn is positive if towards soil. X_X
-    @. R_net_soil += ϵ_soil * LW_d_canopy - ϵ_soil * _σ * p.T_ground^4 # double checked
+    @. R_net_soil += ϵ_soil * LW_d_canopy - ϵ_soil * _σ * T_soil^4 # double checked
     @. LW_net_canopy =
         ϵ_canopy * LW_d - 2 * ϵ_canopy * _σ * T_canopy^4 + ϵ_canopy * LW_u_soil
     @. LW_out = (1 - ϵ_canopy) * LW_u_soil + ϵ_canopy * _σ * T_canopy^4 # double checked
@@ -421,36 +441,76 @@ function soil_boundary_fluxes!(
         -p.soil.R_n + p.soil.turbulent_fluxes.lhf + p.soil.turbulent_fluxes.shf
 end
 
-
 """
-     PrognosticSoil{FT} <: AbstractSoilDriver
+     PrognosticSoilConditions{F <: Union{AbstractFloat, ClimaCore.Fields.Field}} <: Canopy.AbstractGroundConditions
 
-Concrete type of AbstractSoilDriver used for dispatch in cases where both
-a canopy model and soil model are run.
-$(DocStringExtensions.FIELDS)
+A type of Canopy.AbstractGroundConditions to use when the soil model is prognostic and
+of type `EnergyHydrology`. This is required because the canopy model needs albedo of the ground
+in order to compute its update_aux! function, and that function must only depend on the canopy model.
+
+In the future, we will allocate space for albedo in the cache. In that case, we would *not*
+store them here, twice. `PrognosticSoilConditions` would
+then just be a flag, essentially.
+
+Note that this struct is linked with the EnergyHydrology model. If we ever had a different
+soil model, we might need to construct a different `PrognosticSoilConditions` because
+the fields may be stored in different places.
 """
-struct PrognosticSoil{F <: Union{AbstractFloat, ClimaCore.Fields.Field}} <:
-       AbstractSoilDriver
-    "Soil albedo for PAR"
+struct PrognosticSoilConditions{
+    F <: Union{AbstractFloat, ClimaCore.Fields.Field},
+} <: Canopy.AbstractGroundConditions
     α_PAR::F
-    "Soil albedo for NIR"
     α_NIR::F
 end
 
-function Canopy.ground_albedo_PAR(soil_driver::PrognosticSoil, Y, p, t)
-    return soil_driver.α_PAR
+"""
+    Canopy.ground_albedo_PAR(
+        prognostic_land_components::Val{(:canopy, :soil, :soilco2)},
+        ground::PrognosticSoilConditions,
+        Y,
+        p,
+        t,
+    )
+
+A method of Canopy.ground_albedo_PAR for a prognostic soil.
+"""
+function Canopy.ground_albedo_PAR(
+    prognostic_land_components::Val{(:canopy, :soil, :soilco2)},
+    ground::PrognosticSoilConditions,
+    Y,
+    p,
+    t,
+)
+    return ground.α_PAR
 end
 
-function Canopy.ground_albedo_NIR(soil_driver::PrognosticSoil, Y, p, t)
-    return soil_driver.α_NIR
+"""
+    Canopy.ground_albedo_NIR(
+        prognostic_land_components::Val{(:canopy, :soil, :soilco2)},
+        ground::PrognosticSoilConditions,
+        Y,
+        p,
+        t,
+    )
+
+A method of Canopy.ground_albedo_NIR for a prognostic soil.
+"""
+function Canopy.ground_albedo_NIR(
+    prognostic_land_components::Val{(:canopy, :soil, :soilco2)},
+    ground::PrognosticSoilConditions,
+    Y,
+    p,
+    t,
+)
+    return ground.α_NIR
 end
 
 
 """
     PlantHydraulics.root_water_flux_per_ground_area!(
         fa::ClimaCore.Fields.Field,
-        s::PrognosticSoil,
-        model::Canopy.PlantHydraulics.PlantHydraulicsModel{FT},
+        s::PrognosticSoilConditions,
+        model::Canopy.PlantHydraulics.PlantHydraulicsModel,
         Y::ClimaCore.Fields.FieldVector,
         p::NamedTuple,
         t,
@@ -468,12 +528,13 @@ roots and soil at each soil layer.
 """
 function PlantHydraulics.root_water_flux_per_ground_area!(
     fa::ClimaCore.Fields.Field,
-    s::PrognosticSoil,
-    model::Canopy.PlantHydraulics.PlantHydraulicsModel{FT},
+    ::Val{(:canopy, :soil, :soilco2),},
+    s::PrognosticSoilConditions,
+    model::Canopy.PlantHydraulics.PlantHydraulicsModel,
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
     t,
-) where {FT}
+)
     ClimaCore.Operators.column_integral_definite!(fa, p.root_extraction)
 end
 
@@ -481,12 +542,12 @@ end
 """
     root_energy_flux_per_ground_area!(
         fa_energy::ClimaCore.Fields.Field,
-        s::PrognosticSoil{F},
-        model::Canopy.AbstractCanopyEnergyModel{FT},
+        s::PrognosticSoilConditions,
+        model::Canopy.AbstractCanopyEnergyModel,
         Y::ClimaCore.Fields.FieldVector,
         p::NamedTuple,
         t,
-    ) where {FT, F}
+    )
 
 
 A method computing the energy flux associated with the root-soil
@@ -502,12 +563,13 @@ must account for it as well.
 """
 function Canopy.root_energy_flux_per_ground_area!(
     fa_energy::ClimaCore.Fields.Field,
-    s::PrognosticSoil{F},
-    model::Canopy.AbstractCanopyEnergyModel{FT},
+    ::Val{(:canopy, :soil, :soilco2),},
+    s::PrognosticSoilConditions,
+    model::Canopy.AbstractCanopyEnergyModel,
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
     t,
-) where {FT, F}
+)
     ClimaCore.Operators.column_integral_definite!(
         fa_energy,
         p.root_energy_extraction,
@@ -574,17 +636,18 @@ and `p.canopy.radiative_transfer.SW_n`.
 """
 function Canopy.canopy_radiant_energy_fluxes!(
     p::NamedTuple,
-    s::PrognosticSoil{F},
+    prognostic_land_components::Val{(:canopy, :soil, :soilco2)},
+    s::PrognosticSoilConditions,
     canopy,
     radiation::PrescribedRadiativeFluxes,
     earth_param_set::PSE,
     Y::ClimaCore.Fields.FieldVector,
     t,
-) where {F, PSE}
+) where {PSE}
     nothing
 end
 function ClimaLand.Soil.sublimation_source(
-    ::Val{(:canopy, :soil, :soilco2)},
+    prognostic_land_components::Val{(:canopy, :soil, :soilco2)},
     FT,
 )
     return ClimaLand.Soil.SoilSublimation{FT}()
@@ -592,8 +655,8 @@ end
 
 function ClimaLand.get_drivers(model::SoilCanopyModel)
     return (
-        model.canopy.atmos,
-        model.canopy.radiation,
+        model.canopy.boundary_conditions.atmos,
+        model.canopy.boundary_conditions.radiation,
         model.soilco2.drivers.soc,
     )
 end
