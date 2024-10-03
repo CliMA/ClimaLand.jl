@@ -22,8 +22,8 @@ steps:
       - "julia --project -e 'using Pkg; Pkg.status()'"
 
       - echo "--- Instantiate experiments"
-      - "julia --project=.buildkite -e 'using Pkg; 
-       Pkg.develop(;path=\".\"); Pkg.instantiate(;verbose=true)'"
+      - "git clone --depth 1 --branch v0.1.11 https://github.com/CliMA/ClimaUtilities.jl.git"
+      - "julia --project=.buildkite -e 'using Pkg; Pkg.develop(;path=\".\"); Pkg.develop(;path=\"ClimaUtilities.jl\"); Pkg.instantiate(;verbose=true)'"
       - "julia --project=.buildkite -e 'using Pkg; Pkg.status()'"
 
       - echo "--- Instantiate test"
