@@ -158,6 +158,51 @@ end # Convert from kg C to mol CO2.
 @diagnostic_compute "soilco2_diffusivity" SoilCanopyModel p.soilco2.D
 @diagnostic_compute "soilco2_source_microbe" SoilCanopyModel p.soilco2.Sm
 
+## Other ##
+
+@diagnostic_compute "lw_out" SoilCanopyModel p.LW_out
+@diagnostic_compute "sw_out" SoilCanopyModel p.SW_out
+@diagnostic_compute "surface_runoff" SoilCanopyModel p.soil.R_s
+
+function compute_evapotranspiration!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::SoilCanopyModel{FT},
+) where {FT}
+    if isnothing(out)
+        return (
+            p.soil.turbulent_fluxes.vapor_flux_liq .+
+            p.soil.turbulent_fluxes.vapor_flux_ice .+
+            p.canopy.conductance.transpiration
+        ) .* 1000 # density of liquid water (1000kg/m^3)
+    else
+        out .=
+            (
+                p.soil.turbulent_fluxes.vapor_flux_liq .+
+                p.soil.turbulent_fluxes.vapor_flux_ice .+
+                p.canopy.conductance.transpiration
+            ) .* 1000 # density of liquid water (1000kg/m^3)
+    end
+end
+
+function compute_total_respiration!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::SoilCanopyModel{FT},
+) where {FT}
+    if isnothing(out)
+        return p.soilco2.top_bc .* FT(83.26) .+ # [3.664 kg CO2/ kg C] x [10^3 g CO2/ kg CO2] x [1 mol CO2/44.009 g CO2] = 83.26 mol CO2/kg C
+               p.canopy.autotrophic_respiration.Ra
+    else
+        out .=
+            p.soilco2.top_bc .* FT(83.26) .+ p.canopy.autotrophic_respiration.Ra
+    end
+end
+
 # variables stored in Y (prognostic or state variables)
 
 @diagnostic_compute "canopy_temperature" SoilCanopyModel Y.canopy.energy.T
