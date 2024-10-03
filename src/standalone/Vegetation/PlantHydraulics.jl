@@ -137,8 +137,7 @@ struct PlantHydraulicsParameters{
     PSAI <: PrescribedSiteAreaIndex{FT},
     CP,
     RP,
-    RDTH <: Union{FT, ClimaCore.Fields.Field, Nothing},
-    RDST <: Union{Function, Nothing},
+    RDTH <: Union{FT, ClimaCore.Fields.Field},
 }
     "The area index model for LAI, SAI, RAI"
     ai_parameterization::PSAI
@@ -152,8 +151,6 @@ struct PlantHydraulicsParameters{
     retention_model::RP
     "Rooting depth parameter (m) - a characteristic depth below which 1/e of the root mass lies"
     rooting_depth::RDTH
-    "DEPRECATED: Root distribution function P(z)"
-    root_distribution::RDST
 end
 
 """
@@ -163,12 +160,10 @@ end
         S_s::FT,
         conductivity_model,
         retention_model,
-        rooting_depth::Union{Nothing, FT, ClimaCore.Fields.Field} = nothing,
-        root_distribution::Union{Nothing, Function} = nothing, # DEPRECATED
+        rooting_depth::Union{FT, ClimaCore.Fields.Field},
     )
 
-Constructor for PlantHydraulicsParameters. The root_distribution parameter is deprecated.
-If root_distribution and rooting_depth are both provided, root_distribution is ignored.
+Constructor for PlantHydraulicsParameters.
 """
 function PlantHydraulicsParameters(;
     ai_parameterization::PrescribedSiteAreaIndex{FT},
@@ -176,31 +171,14 @@ function PlantHydraulicsParameters(;
     S_s::FT,
     conductivity_model,
     retention_model,
-    rooting_depth::Union{Nothing, FT, ClimaCore.Fields.Field} = nothing,
-    root_distribution::Union{Nothing, Function} = nothing, # DEPRECATED
+    rooting_depth::Union{Nothing, FT, ClimaCore.Fields.Field},
 ) where {FT}
-    if !isnothing(root_distribution)
-        if !isnothing(rooting_depth)
-            Base.depwarn(
-                "root_distribution is deprecated and will be ignored when rooting_depth is provided",
-                :PlantHydraulicsParameters,
-            )
-        else
-            Base.depwarn(
-                "root_distribution keyword argument is deprecated. Use rooting_depth instead.",
-                :PlantHydraulicsParameters,
-            )
-        end
-    elseif isnothing(rooting_depth)
-        error("rooting_depth must be provided")
-    end
     return PlantHydraulicsParameters{
         FT,
         typeof(ai_parameterization),
         typeof(conductivity_model),
         typeof(retention_model),
         typeof(rooting_depth),
-        typeof(root_distribution),
     }(
         ai_parameterization,
         ν,
@@ -208,7 +186,6 @@ function PlantHydraulicsParameters(;
         conductivity_model,
         retention_model,
         rooting_depth,
-        root_distribution,
     )
 end
 
@@ -683,11 +660,6 @@ function root_water_flux_per_ground_area!(
     n_root_layers = length(root_depths)
     ψ_soil::FT = s.ψ(t)
     fa .= FT(0.0)
-    # if rooting_depth param is not nothing, use root_distribution from source
-    # otherwise use root_distribution from params
-    root_likelihood(z::FT, rd::Union{FT, Nothing}) =
-        !isnothing(rd) ? root_distribution(z, rd) :
-        model.parameters.root_distribution(z)
     @inbounds for i in 1:n_root_layers
         above_ground_area_index =
             getproperty(area_index, model.compartment_labels[1])
@@ -702,7 +674,7 @@ function root_water_flux_per_ground_area!(
                     hydraulic_conductivity(conductivity_model, ψ_soil),
                     hydraulic_conductivity(conductivity_model, ψ_base),
                 ) *
-                root_likelihood(root_depths[i], rooting_depth) *
+                root_distribution(root_depths[i], rooting_depth) *
                 (root_depths[i + 1] - root_depths[i]) *
                 above_ground_area_index
         else
@@ -715,7 +687,7 @@ function root_water_flux_per_ground_area!(
                     hydraulic_conductivity(conductivity_model, ψ_soil),
                     hydraulic_conductivity(conductivity_model, ψ_base),
                 ) *
-                root_likelihood(root_depths[i], rooting_depth) *
+                root_distribution(root_depths[i], rooting_depth) *
                 (model.compartment_surfaces[1] - root_depths[n_root_layers]) *
                 above_ground_area_index
         end

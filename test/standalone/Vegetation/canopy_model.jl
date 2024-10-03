@@ -36,8 +36,9 @@ import ClimaParams
         g1_cases = (FT(790), fill(FT(790), domain.space.surface))
         Vcmax25_cases = (FT(9e-5), fill(FT(9e-5), domain.space.surface))
         mechanism_cases = (FT(1), mechanism_field)
-        zipped = zip(g1_cases, Vcmax25_cases, mechanism_cases)
-        for (g1, Vcmax25, is_c3) in zipped
+        rooting_cases = (FT(0.5), fill(FT(0.5), domain.space.surface))
+        zipped = zip(g1_cases, Vcmax25_cases, mechanism_cases, rooting_cases)
+        for (g1, Vcmax25, is_c3, rooting_depth) in zipped
             AR_params = AutotrophicRespirationParameters(FT)
             RTparams = BeerLambertParameters(FT)
             photosynthesis_params = FarquharParameters(FT, is_c3; Vcmax25)
@@ -149,14 +150,11 @@ import ClimaParams
             retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a)
             root_depths =
                 SVector{10, FT}(-(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0) # 1st element is the deepest root depth
-            function root_distribution(z::T) where {T}
-                return T(1.0 / 0.5) * exp(z / T(0.5)) # (1/m)
-            end
             param_set = PlantHydraulics.PlantHydraulicsParameters(;
                 ai_parameterization = ai_parameterization,
                 ν = plant_ν,
                 S_s = plant_S_s,
-                root_distribution = root_distribution,
+                rooting_depth = rooting_depth,
                 conductivity_model = conductivity_model,
                 retention_model = retention_model,
             )

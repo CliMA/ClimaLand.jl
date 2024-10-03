@@ -261,11 +261,6 @@ function make_update_boundary_fluxes(
         # Note that in `PrescribedSoil` mode, we compute the flux using K_soil = K_plant(ψ_soil)
         # and K_canopy = K_plant(ψ_canopy). In `PrognosticSoil` mode here, we compute the flux using
         # K_soil = K_soil(ψ_soil) and K_canopy = K_plant(ψ_canopy).
-        # if rooting_depth param is not nothing, use root_distribution from source
-        # otherwise use root_distribution from params
-        root_likelihood(z::FT, rd::Union{FT, Nothing}) =
-            !isnothing(rd) ? root_distribution(z, rd) :
-            model.parameters.root_distribution(z)
         @. p.root_extraction =
             above_ground_area_index *
             PlantHydraulics.water_flux(
@@ -279,7 +274,7 @@ function make_update_boundary_fluxes(
                     p.canopy.hydraulics.ψ.:1,
                 ),
             ) *
-            (root_likelihood(
+            (root_distribution(
                 z,
                 land.canopy.hydraulics.parameters.rooting_depth,
             ))
