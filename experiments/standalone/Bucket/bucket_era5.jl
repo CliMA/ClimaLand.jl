@@ -74,8 +74,14 @@ regridder_type = :InterpolationsRegridder
 FT = Float64;
 context = ClimaComms.context()
 earth_param_set = LP.LandParameters(FT);
+device_suffix =
+    typeof(ClimaComms.context().device) <: ClimaComms.CPUSingleThreaded ?
+    "cpu" : "gpu"
 outdir = generate_output_path(
-    "experiments/standalone/Bucket/artifacts_staticmap$(regional_str)",
+    joinpath(
+        "experiments/standalone/Bucket/artifacts_staticmap$(regional_str)",
+        device_suffix,
+    ),
 )
 !ispath(outdir) && mkpath(outdir)
 
@@ -119,9 +125,6 @@ tf = 14 * 86400;
 
 # Construct albedo parameter object using static map
 # Use separate regridding directory for CPU and GPU runs to avoid race condition
-device_suffix =
-    typeof(ClimaComms.context().device) <: ClimaComms.CPUSingleThreaded ?
-    "cpu" : "gpu"
 surface_space = bucket_domain.space.surface
 α_snow = FT(0.8)
 albedo = PrescribedBaregroundAlbedo{FT}(α_snow, surface_space);

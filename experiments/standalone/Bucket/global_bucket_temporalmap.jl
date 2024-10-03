@@ -68,11 +68,15 @@ anim_plots = false
 FT = Float64;
 context = ClimaComms.context()
 earth_param_set = LP.LandParameters(FT);
-outdir =
-    generate_output_path("experiments/standalone/Bucket/artifacts_temporalmap")
 device_suffix =
     typeof(ClimaComms.context().device) <: ClimaComms.CPUSingleThreaded ?
     "cpu" : "gpu"
+outdir = generate_output_path(
+    joinpath(
+        "experiments/standalone/Bucket/artifacts_temporalmap",
+        device_suffix,
+    ),
+)
 !ispath(outdir) && mkpath(outdir)
 # Use separate output directory for CPU and GPU runs to avoid race condition
 device_suffix =

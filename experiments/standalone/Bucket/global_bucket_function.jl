@@ -64,8 +64,13 @@ anim_plots = false
 FT = Float64;
 context = ClimaComms.context()
 earth_param_set = LP.LandParameters(FT);
-outdir =
-    generate_output_path("experiments/standalone/Bucket/artifacts_function")
+# GPU and CPU output
+device_suffix =
+    typeof(ClimaComms.context().device) <: ClimaComms.CPUSingleThreaded ?
+    "cpu" : "gpu"
+outdir = generate_output_path(
+    joinpath("experiments/standalone/Bucket/artifacts_function", device_suffix),
+)
 !ispath(outdir) && mkpath(outdir)
 
 # Construct simulation domain
@@ -228,10 +233,6 @@ T_sfc = Array(Remapping.interpolate(remapper, prob.p.bucket.T_sfc))
 
 
 # save prognostic state to CSV - for comparison between
-# GPU and CPU output
-device_suffix =
-    typeof(ClimaComms.context().device) <: ClimaComms.CPUSingleThreaded ?
-    "cpu" : "gpu"
 open(joinpath(outdir, "tf_state_$(device_suffix)_function.txt"), "w") do io
     writedlm(io, hcat(T_sfc[:], W[:], Ws[:], σS[:]), ',')
 end;
