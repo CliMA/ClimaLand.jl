@@ -400,9 +400,9 @@ if device_suffix == "cpu"
     titles = ["W", "σS", "T_sfc"]
     for (f, n) in zip(fields, titles)
         fig = Figure(size = (1000, 1000))
-        ax = Axis(fig[1, 1])
+        ax = Axis(fig[1, 1], title = n)
         clims = extrema(f)
-        ClimaCoreMakie.fieldheatmap!(ax, f, title = n)
+        ClimaCoreMakie.fieldheatmap!(ax, f)
         Colorbar(fig[:, end + 1], colorrange = clims)
         CairoMakie.save(
             joinpath(outdir, string(n, "raw_$(device_suffix).png")),

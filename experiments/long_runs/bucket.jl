@@ -38,6 +38,7 @@ import ClimaLand
 import ClimaLand.Parameters as LP
 
 using Statistics
+import GeoMakie
 using CairoMakie
 using Dates
 import NCDatasets
@@ -290,10 +291,10 @@ for short_name in short_names
         viz.heatmap2D_on_globe!(
             fig,
             ClimaAnalysis.slice(var, time = t; kwargs...),
-            #            mask = viz.oceanmask(),
-            #            more_kwargs = Dict(
-            #                :mask => ClimaAnalysis.Utils.kwargs(color = :black),
-            #            ),
+            mask = viz.oceanmask(),
+            more_kwargs = Dict(
+                :mask => ClimaAnalysis.Utils.kwargs(color = :white),
+            ),
         )
         CairoMakie.save(joinpath(root_path, "$(short_name)_$t.png"), fig)
     end
