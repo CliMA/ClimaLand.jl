@@ -27,7 +27,7 @@ function make_timestepper(
     ode_algo = CTS.IMEXAlgorithm(
         timestepper,
         CTS.NewtonsMethod(
-            max_iters = 3,
+            max_iters = 6,
             update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
         ),
     ),
@@ -35,7 +35,7 @@ function make_timestepper(
     N_days = N_spinup_days + N_days_sim
     tf = Float64(site_setup_out.t0 + 3600 * 24 * N_days)
     t_spinup = Float64(site_setup_out.t0 + N_spinup_days * 3600 * 24)
-    saveat = Array(t_spinup:(site_setup_out.n * site_setup_out.dt):tf)
+    saveat = Array(t_spinup:1800.0:tf)
     return (
         N_days = N_days,
         tf = tf,

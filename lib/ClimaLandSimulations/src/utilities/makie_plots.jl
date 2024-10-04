@@ -179,7 +179,7 @@ function timeseries_H2O_fig(
     p_H2O_m = lines!(
         ax_H2O,
         datetime2unix.(climaland.DateTime),
-        climaland.θ_l,
+        climaland.θ_l_depth_10,
         color = :green,
     )
     p_H2O_d = lines!(

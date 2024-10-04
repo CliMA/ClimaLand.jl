@@ -130,11 +130,7 @@ function canopy_energy_balance_ozark(; ac_canopy = FT(2.5e3))
     return BigLeafEnergyParameters(ac_canopy)
 end
 
-function conductance_ozark(;
-    g1 = FT(141), # Wang et al: 141 sqrt(Pa) for Medlyn model; Natan used 300.
-    Drel = FT(1.6),
-    g0 = FT(1e-4),
-)
+function conductance_ozark(; g1 = FT(32.894), Drel = FT(1.6), g0 = FT(1e-4))
     return MedlynConductanceParameters(Drel, g0, g1)
 end
 
@@ -144,8 +140,8 @@ function photosynthesis_ozark(;
     ϕ = FT(0.6),
     θj = FT(0.9),
     f = FT(0.015),
-    sc = FT(2e-6), # Bonan's book: range of 2-5e-6
-    pc = FT(-2e6), # Bonan's book: -2e6
+    sc = FT(4.47e-5),
+    pc = FT(-2.31e6),
     Vcmax25 = FT(9e-5), # from Yujie's paper 4.5e-5 , Natan used 9e-5
     Γstar25 = FT(4.275e-5),
     Kc25 = FT(4.049e-4),
