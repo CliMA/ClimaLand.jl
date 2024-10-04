@@ -294,6 +294,20 @@ function mizoguchi1990_soil_freezing_data(; context = nothing)
 end
 
 """
+    cesm2_albedo_dataset_folder()
+
+Triggers the download of the CESM2 albedo folder, if not
+already downloaded, using Julia Artifacts, and returns the path to
+this file.
+
+This dataset contains monthly albedo data from 15/01/1850
+to 15/12/2014.
+"""
+function cesm2_albedo_dataset_folder(; context = nothing)
+    return artifact_path = @clima_artifact("cesm2_albedo", context)
+end
+
+"""
     cesm2_albedo_dataset_path()
 
 Triggers the download of the CESM2 land albedo dataset, if not
@@ -304,9 +318,8 @@ This dataset contains monthly albedo data from 15/01/1850
 to 15/12/2014.
 """
 function cesm2_albedo_dataset_path(; context = nothing)
-    artifact_path = @clima_artifact("cesm2_albedo", context)
     return joinpath(
-        artifact_path,
+        cesm2_albedo_dataset_folder(; context),
         "sw_albedo_Amon_CESM2_historical_r1i1p1f1_gn_185001-201412_v2_no-nans.nc",
     )
 end
@@ -321,8 +334,10 @@ this file.
 This dataset does not contain a time component.
 """
 function bareground_albedo_dataset_path(; context = nothing)
-    artifact_path = @clima_artifact("cesm2_albedo", context)
-    return joinpath(artifact_path, "bareground_albedo.nc")
+    return joinpath(
+        cesm2_albedo_dataset_folder(; context),
+        "bareground_albedo.nc",
+    )
 end
 
 end
