@@ -44,19 +44,19 @@ end;
 LHF_target = Ozark_LatentHeatFlux([141.0, 0.0001]);
 
 # ## Parameters prior
-# We chooae the prior for each parameter distribution to be a Gaussian distribution,
+# We choose the prior for each parameter distribution to be a Gaussian distribution,
 # for example for g1, with a mean of 221 sqrt(Pa) = 7 sqrt(kPa), std of 100 (3 kPa).
 # Returns μ=5.3, σ=0.4 (values are transformed).
-prior_g1 = EKP.constrained_gaussian("g1", 221, 1000, 0, Inf);
+prior_g1 = EKP.constrained_gaussian("g1", 221, 100, 0, Inf);
 prior_g0 = EKP.constrained_gaussian("g0", 0.00015, 0.01, 0, Inf);
 prior = EKP.combine_distributions([prior_g1, prior_g0]);
 
 # ## Calibration
 
 # Generate the initial ensemble and set up the ensemble Kalman inversion
-N_ensemble = 5
+N_ensemble = 10
 N_iterations = 5
-Γ = 20.0 * EKP.I # Γ adds random noise. About 10% of output average.
+Γ = 5.0 * EKP.I # Γ adds random noise. About 10% of output average.
 initial_ensemble = EKP.construct_initial_ensemble(prior, N_ensemble);
 ensemble_kalman_process =
     EKP.EnsembleKalmanProcess(initial_ensemble, LHF_target, Γ, EKP.Inversion());
@@ -113,7 +113,7 @@ xlims!(ax, (0, 48))
 save("fig.png", fig);
 # ![](fig.png)
 
-# Note that the  figure contains one black line, and 5 red and blue lines,
-# drawn from the prior and posterior distrubution of parameters.
-# The EKI process is an interative process that, when successful, leads to
+# Note that the figure contains one black line, 10 red and 10 blue lines,
+# drawn from the prior and posterior distribution of parameters.
+# EKI is an interative process that, when successful, leads to the
 # convergence in the ensemble members to a small region of parameter space.
