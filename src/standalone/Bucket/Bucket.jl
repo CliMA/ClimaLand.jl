@@ -56,9 +56,6 @@ export BucketModelParameters,
     surface_albedo,
     partition_snow_surface_fluxes
 
-include(
-    joinpath(pkgdir(ClimaLand), "src/standalone/Bucket/artifacts/artifacts.jl"),
-)
 
 abstract type AbstractBucketModel{FT} <: AbstractExpModel{FT} end
 

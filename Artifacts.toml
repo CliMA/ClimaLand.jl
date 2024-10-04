@@ -1,3 +1,10 @@
+[cesm2_albedo]
+git-tree-sha1 = "316096635acaa8102477820f480ca02fe66eb828"
+
+    [[cesm2_albedo.download]]
+    sha256 = "5ac358d4485f6ba7bae129d4570cabc712b793d4a3e22caa8808de147b2c8f9b"
+    url = "https://caltech.box.com/shared/static/awz2lku3ngoto6t78muktzfk3kjloxsw.gz"
+
 [clm_data]
 git-tree-sha1 = "5fcb868a751f4a2e32181612bb0c123e9a8e7e97"
 

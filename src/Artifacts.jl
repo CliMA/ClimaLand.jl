@@ -304,19 +304,10 @@ This dataset contains monthly albedo data from 15/01/1850
 to 15/12/2014.
 """
 function cesm2_albedo_dataset_path(; context = nothing)
-    dir = joinpath(@__DIR__, "../")
-    land_albedo_dataset = ArtifactWrapper(
-        dir,
-        "land_albedo",
-        ArtifactFile[ArtifactFile(
-            url = "https://caltech.box.com/shared/static/1uhqspj4xujkyz661x0pio59hvmgsi5c.nc",
-            filename = "esw_albedo_Amon_CESM2_historical_r1i1p1f1_gn_185001-201412_v2.nc",
-        ),],
-    )
-    path = get_data_folder(land_albedo_dataset)
+    artifact_path = @clima_artifact("cesm2_albedo", context)
     return joinpath(
-        path,
-        "esw_albedo_Amon_CESM2_historical_r1i1p1f1_gn_185001-201412_v2.nc",
+        artifact_path,
+        "sw_albedo_Amon_CESM2_historical_r1i1p1f1_gn_185001-201412_v2_no-nans.nc",
     )
 end
 
@@ -330,17 +321,8 @@ this file.
 This dataset does not contain a time component.
 """
 function bareground_albedo_dataset_path(; context = nothing)
-    dir = joinpath(@__DIR__, "../")
-    bareground_albedo_dataset = ArtifactWrapper(
-        dir,
-        "bareground_albedo",
-        ArtifactFile[ArtifactFile(
-            url = "https://caltech.box.com/shared/static/ga9385kyl82t955dylsbnn4x51b412md.nc",
-            filename = "bareground_albedo.nc",
-        ),],
-    )
-    path = get_data_folder(bareground_albedo_dataset)
-    return joinpath(path, "bareground_albedo.nc")
+    artifact_path = @clima_artifact("cesm2_albedo", context)
+    return joinpath(artifact_path, "bareground_albedo.nc")
 end
 
 end
