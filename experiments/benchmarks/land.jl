@@ -608,7 +608,7 @@ function setup_simulation(; greet = false)
     Δt = 900.0
     nelements = (101, 15)
     if greet
-        @info "Run: Global RichardsModel"
+        @info "Run: Global Land Model"
         @info "Resolution: $nelements"
         @info "Timestep: $Δt s"
         @info "Duration: $(tf - t0) s"
@@ -617,12 +617,12 @@ function setup_simulation(; greet = false)
     prob, cb = setup_prob(t0, tf, Δt; nelements)
 
     # Define timestepper and ODE algorithm
-    stepper = CTS.ARS343()
+    stepper = CTS.ARS111()
     ode_algo = CTS.IMEXAlgorithm(
         stepper,
         CTS.NewtonsMethod(
-            max_iters = 1,
-            update_j = CTS.UpdateEvery(CTS.NewTimeStep),
+            max_iters = 6,
+            update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
         ),
     )
     return prob, ode_algo, Δt, cb
@@ -634,7 +634,7 @@ SciMLBase.solve(prob, ode_algo; dt = Δt, callback = cb)
 
 @info "Starting profiling"
 # Stop when we profile for MAX_PROFILING_TIME_SECONDS or MAX_PROFILING_SAMPLES
-MAX_PROFILING_TIME_SECONDS = 1000
+MAX_PROFILING_TIME_SECONDS = 500
 MAX_PROFILING_SAMPLES = 100
 time_now = time()
 timings_s = Float64[]

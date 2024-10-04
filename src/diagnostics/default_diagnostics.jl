@@ -169,9 +169,15 @@ function default_diagnostics(
             # "pwc", # return a Tuple
             "si",
             "sie",
+            "swo",
+            "lwo",
+            "er",
+            "et",
+            "sr",
         ]
     elseif output_vars == :short
-        soilcanopy_diagnostics = ["gpp", "ct", "lai", "swc", "si"]
+        soilcanopy_diagnostics =
+            ["gpp", "ct", "lai", "swc", "si", "swo", "lwo", "et", "er", "sr"]
     end
 
     if average_period == :hourly

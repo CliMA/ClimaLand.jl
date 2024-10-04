@@ -20,8 +20,6 @@ ClimaLand.Canopy.intercellular_co2
 ClimaLand.Canopy.co2_compensation
 ClimaLand.Canopy.rubisco_assimilation
 ClimaLand.Canopy.light_assimilation
-ClimaLand.Canopy.C3
-ClimaLand.Canopy.C4
 ClimaLand.Canopy.max_electron_transport
 ClimaLand.Canopy.electron_transport
 ClimaLand.Canopy.net_photosynthesis

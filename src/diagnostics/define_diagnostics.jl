@@ -149,7 +149,7 @@ function define_diagnostics!(land_model)
 
     ## Canopy Module ##
 
-    ### Canopy - Solar Induced Fluorescence 
+    ### Canopy - Solar Induced Fluorescence
     # Solar Induced Fluorescence
     add_diagnostic_variable!(
         short_name = "sif",
@@ -256,7 +256,7 @@ function define_diagnostics!(land_model)
     )
     =#
 
-    # Root flux per ground area 
+    # Root flux per ground area
     add_diagnostic_variable!(
         short_name = "far",
         long_name = "Root flux per ground area",
@@ -724,6 +724,60 @@ function define_diagnostics!(land_model)
         comments = "The production of CO2 by microbes in the soil. Vary by layers of soil depth. (depth resolved)",
         compute! = (out, Y, p, t) ->
             compute_soilco2_source_microbe!(out, Y, p, t, land_model),
+    )
+
+    ## Other ##
+    # Longwave out
+    add_diagnostic_variable!(
+        short_name = "lwo",
+        long_name = "Longwave Radiation Out",
+        standard_name = "longwave radiation out",
+        units = "W m^-2",
+        comments = "Longwave radiation going out of the land surface.",
+        compute! = (out, Y, p, t) -> compute_lw_out!(out, Y, p, t, land_model),
+    )
+
+    # Shortwave out
+    add_diagnostic_variable!(
+        short_name = "swo",
+        long_name = "Shortwave Radiation Out",
+        standard_name = "shortwave radiation out",
+        units = "W m^-2",
+        comments = "Shortwave radiation going out of the land surface.",
+        compute! = (out, Y, p, t) -> compute_sw_out!(out, Y, p, t, land_model),
+    )
+
+    # Evapotranspiration
+    add_diagnostic_variable!(
+        short_name = "et",
+        long_name = "Evapotranspiration",
+        standard_name = "evapotranspiration",
+        units = "kg m^-2 s^-1",
+        comments = "Total flux of water mass out of the surface.",
+        compute! = (out, Y, p, t) ->
+            compute_evapotranspiration!(out, Y, p, t, land_model),
+    )
+
+    # Ecosystem respiration
+    add_diagnostic_variable!(
+        short_name = "er",
+        long_name = "Ecosystem Respiration",
+        standard_name = "ecosystem respiration",
+        units = "mol CO2 m^-2 s^-1",
+        comments = "Total respiration flux out of the surface.",
+        compute! = (out, Y, p, t) ->
+            compute_total_respiration!(out, Y, p, t, land_model),
+    )
+
+    # Surface runoff
+    add_diagnostic_variable!(
+        short_name = "sr",
+        long_name = "Surface Runoff",
+        standard_name = "surface_runoff",
+        units = "m s^-1",
+        comments = "Water runoff at the surface, this is the water flowing horizontally above the ground.",
+        compute! = (out, Y, p, t) ->
+            compute_surface_runoff!(out, Y, p, t, land_model),
     )
 
     ## Stored in Y (prognostic or state variables) ##

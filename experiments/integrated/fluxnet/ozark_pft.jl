@@ -344,7 +344,7 @@ num_days = N_days - N_spinup_days
 
 # Time series of model and data outputs
 data_times = [0:DATA_DT:(num_days * S_PER_DAY);]
-model_times = [0:(n * dt):(num_days * S_PER_DAY);]
+model_times = [0:dt_save:(num_days * S_PER_DAY);]
 
 # Plot model diurnal cycles without data comparisons
 # Autotrophic Respiration
@@ -353,7 +353,15 @@ AR =
         parent(sv.saveval[k].canopy.autotrophic_respiration.Ra)[1] for
         k in 1:length(sv.saveval)
     ] .* 1e6
-plot_daily_avg("AutoResp", AR, dt * n, num_days, "μmol/m^2/s", savedir, "Model")
+plot_daily_avg(
+    "AutoResp",
+    AR,
+    dt_save,
+    num_days,
+    "μmol/m^2/s",
+    savedir,
+    "Model",
+)
 
 # Plot all comparisons of model diurnal cycles to data diurnal cycles
 # GPP
@@ -367,7 +375,7 @@ if drivers.GPP.status == absent
     plot_daily_avg(
         "GPP",
         model_GPP,
-        dt * n,
+        dt_save,
         num_days,
         "μmol/m^2/s",
         savedir,
@@ -379,7 +387,7 @@ else
     plot_avg_comp(
         "GPP",
         model_GPP,
-        dt * n,
+        dt_save,
         GPP_data,
         FT(DATA_DT),
         num_days,
@@ -394,7 +402,7 @@ if drivers.SW_OUT.status == absent
     plot_daily_avg(
         "SW OUT",
         SW_out_model,
-        dt * n,
+        dt_save,
         num_days,
         "w/m^2",
         savedir,
@@ -407,7 +415,7 @@ else
     plot_avg_comp(
         "SW OUT",
         SW_out_model,
-        dt * n,
+        dt_save,
         SW_out_data,
         FT(DATA_DT),
         num_days,
@@ -422,7 +430,7 @@ if drivers.LW_OUT.status == absent
     plot_daily_avg(
         "LW OUT",
         LW_out_model,
-        dt * n,
+        dt_save,
         num_days,
         "w/m^2",
         savedir,
@@ -435,7 +443,7 @@ else
     plot_avg_comp(
         "LW OUT",
         LW_out_model,
-        dt * n,
+        dt_save,
         LW_out_data,
         FT(DATA_DT),
         num_days,
@@ -459,7 +467,15 @@ E =
     ] .* (1e3 * 24 * 3600)
 ET_model = T .+ E
 if drivers.LE.status == absent
-    plot_daily_avg("ET", ET_model, dt * n, num_days, "mm/day", savedir, "Model")
+    plot_daily_avg(
+        "ET",
+        ET_model,
+        dt_save,
+        num_days,
+        "mm/day",
+        savedir,
+        "Model",
+    )
 else
     measured_T =
         drivers.LE.values ./ (LP.LH_v0(earth_param_set) * 1000) .*
@@ -468,7 +484,7 @@ else
     plot_avg_comp(
         "ET",
         ET_model,
-        dt * n,
+        dt_save,
         ET_data,
         FT(DATA_DT),
         num_days,
@@ -488,7 +504,7 @@ if drivers.H.status == absent
     plot_daily_avg(
         "SHF",
         SHF_model,
-        dt * n,
+        dt_save,
         num_days,
         "w/m^2",
         savedir,
@@ -499,7 +515,7 @@ else
     plot_avg_comp(
         "SHF",
         SHF_model,
-        dt * n,
+        dt_save,
         SHF_data,
         FT(DATA_DT),
         N_days - N_spinup_days,
@@ -516,13 +532,13 @@ LHF_canopy =
     [parent(sv.saveval[k].canopy.energy.lhf)[1] for k in 1:length(sol.t)]
 LHF_model = LHF_soil + LHF_canopy
 if drivers.LE.status == absent
-    plot_daily_avg("LHF", LHF_model, dt * n, num_days, "w/m^2", savedir)
+    plot_daily_avg("LHF", LHF_model, dt_save, num_days, "w/m^2", savedir)
 else
     LHF_data = drivers.LE.values[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)]
     plot_avg_comp(
         "LHF",
         LHF_model,
-        dt * n,
+        dt_save,
         LHF_data,
         FT(DATA_DT),
         N_days - N_spinup_days,
