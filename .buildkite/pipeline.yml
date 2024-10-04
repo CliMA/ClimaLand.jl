@@ -26,6 +26,7 @@ steps:
       - "julia --project=.buildkite -e 'using Pkg; Pkg.develop(;path=\".\"); Pkg.develop(;path=\"ClimaUtilities.jl\"); Pkg.instantiate(;verbose=true)'"
       - "julia --project=.buildkite -e 'using Pkg; Pkg.status()'"
 
+
       - echo "--- Instantiate test"
       - "julia --project=test -e 'using Pkg; Pkg.develop(;path=\".\"); Pkg.instantiate(;verbose=true)'"
       - "julia --project=test -e 'using Pkg; Pkg.status()'"
