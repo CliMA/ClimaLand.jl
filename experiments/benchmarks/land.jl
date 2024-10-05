@@ -15,7 +15,7 @@
 # Number of spatial elements: 101 in horizontal, 15 in vertical
 # Soil depth: 50 m
 # Simulation duration: 6 hours
-# Timestep: 900 s
+# Timestep: 450 s
 # Timestepper: ARS343
 # Fixed number of iterations: 1
 # Jacobian update: Every Newton iteration
@@ -57,7 +57,7 @@ device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
 outdir = "land_benchmark_$(device_suffix)"
 !ispath(outdir) && mkpath(outdir)
 
-function setup_prob(t0, tf, Δt; nelements = (101, 15))
+function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
 
     earth_param_set = LP.LandParameters(FT)
     radius = FT(6378.1e3)
@@ -67,13 +67,12 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
         depth = depth,
         nelements = nelements,
         npolynomial = 1,
-        dz_tuple = FT.((10.0, 0.1)),
+        dz_tuple = FT.((10.0, 0.05)),
     )
     surface_space = domain.space.surface
     subsurface_space = domain.space.subsurface
 
     start_date = DateTime(2021)
-
     # Forcing data
     era5_artifact_path =
         ClimaLand.Artifacts.era5_land_forcing_data2021_folder_path(; context)
@@ -320,7 +319,6 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
         regridder_type,
         regridder_kwargs = (; extrapolation_bc,),
     )
-
     # Plant Hydraulics and general plant parameters
     SAI = FT(0.0) # m2/m2
     f_root_to_shoot = FT(3.5)
@@ -531,14 +529,15 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
     updateat = Array(t0:(3600 * 3):tf)
     drivers = ClimaLand.get_drivers(land)
     updatefunc = ClimaLand.make_update_drivers(drivers)
-    cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
-    return prob, cb
+
+    driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
+    return prob, driver_cb
 end
 
 function setup_simulation(; greet = false)
     t0 = 0.0
     tf = 60 * 60.0 * 6
-    Δt = 900.0
+    Δt = 450.0
     nelements = (101, 15)
     if greet
         @info "Run: Global Land Model"
@@ -554,7 +553,7 @@ function setup_simulation(; greet = false)
     ode_algo = CTS.IMEXAlgorithm(
         stepper,
         CTS.NewtonsMethod(
-            max_iters = 6,
+            max_iters = 3,
             update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
         ),
     )
