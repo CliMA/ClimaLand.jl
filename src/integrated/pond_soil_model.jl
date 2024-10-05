@@ -245,7 +245,7 @@ is also used to compute the runoff for the surface water.
 struct RunoffBC <: Soil.AbstractWaterBC end
 
 """
-    function ClimaLand.boundary_flux(
+    function ClimaLand.boundary_flux!(bc_field,
         bc::RunoffBC,
         ::TopBoundary,
         model::Soil.RichardsModel,
@@ -254,14 +254,15 @@ struct RunoffBC <: Soil.AbstractWaterBC end
         p::NamedTuple,
         t,
         params,
-    )::ClimaCore.Fields.Field
+    )
 
 Extension of the `ClimaLand.boundary_flux` function, which returns the water volume
 boundary flux for the soil.
 At the top boundary, return the soil infiltration (computed each step and
 stored in `p.soil_infiltration`).
 """
-function ClimaLand.boundary_flux(
+function ClimaLand.boundary_flux!(
+    bc_field,
     bc::RunoffBC,
     ::TopBoundary,
     model::Soil.RichardsModel,
@@ -269,6 +270,6 @@ function ClimaLand.boundary_flux(
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
     t,
-)::ClimaCore.Fields.Field
-    return p.soil_infiltration
+)
+    bc_field .= p.soil_infiltration
 end

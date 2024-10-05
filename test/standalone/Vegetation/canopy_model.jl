@@ -409,23 +409,6 @@ import ClimaParams
                 p,
                 t0,
             ) isa ClimaCore.Fields.Field
-
-            ρ_sfc =
-                ClimaLand.surface_air_density(atmos, canopy, Y, p, t0, T_sfc)
-            @test ClimaLand.surface_specific_humidity(
-                canopy,
-                Y,
-                p,
-                T_sfc,
-                ρ_sfc,
-            ) ==
-                  Thermodynamics.q_vap_saturation_generic.(
-                Ref(thermo_params),
-                T_sfc,
-                ρ_sfc,
-                Ref(Thermodynamics.Liquid()),
-            )
-            @test ρ_sfc == compute_ρ_sfc.(thermo_params, ts_in, T_sfc)
         end
     end
 end
@@ -1070,7 +1053,14 @@ end
             t0,
             T_sfc,
         )
-        q_sfc = ClimaLand.surface_specific_humidity(canopy, Y, p, T_sfc, ρ_sfc)
+        thermo_params = canopy.parameters.earth_param_set.thermo_params
+        q_sfc =
+            Thermodynamics.q_vap_saturation_generic.(
+                thermo_params,
+                T_sfc,
+                ρ_sfc,
+                Thermodynamics.Liquid(),
+            )
         dY = similar(Y)
         imp_tendency!(dY, Y, p, t0)
         jac = ImplicitEquationJacobian(Y)
@@ -1092,13 +1082,13 @@ end
             t0,
             T_sfc2,
         )
-        q_sfc2 = ClimaLand.surface_specific_humidity(
-            canopy,
-            Y_2,
-            p_2,
-            T_sfc2,
-            ρ_sfc2,
-        )
+        q_sfc2 =
+            Thermodynamics.q_vap_saturation_generic.(
+                thermo_params,
+                T_sfc2,
+                ρ_sfc2,
+                Thermodynamics.Liquid(),
+            )
         dY_2 = similar(Y_2)
         imp_tendency!(dY_2, Y_2, p_2, t0)
 

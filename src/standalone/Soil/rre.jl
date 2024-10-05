@@ -102,7 +102,8 @@ function make_update_boundary_fluxes(model::RichardsModel)
         z = model.domain.fields.z
         Δz_top = model.domain.fields.Δz_top
         Δz_bottom = model.domain.fields.Δz_bottom
-        p.soil.top_bc .= boundary_flux(
+        boundary_flux!(
+            p.soil.top_bc,
             model.boundary_conditions.top,
             TopBoundary(),
             model,
@@ -111,7 +112,8 @@ function make_update_boundary_fluxes(model::RichardsModel)
             p,
             t,
         )
-        p.soil.bottom_bc .= boundary_flux(
+        boundary_flux!(
+            p.soil.bottom_bc,
             model.boundary_conditions.bottom,
             BottomBoundary(),
             model,
