@@ -26,7 +26,7 @@ steps:
       - "julia --project=.buildkite -e 'using Pkg; Pkg.status()'"
 
       - echo "--- Instantiate test"
-      - "julia --project=test -e 'using Pkg; Pkg.develop(;path=\".\"); Pkg.instantiate(;verbose=true)'"
+      - "julia --project=test -e 'using Pkg; Pkg.develop(;path=\".\"); Pkg.add(\"MPI\"); Pkg.add(\"CUDA\"); Pkg.instantiate(;verbose=true)'"
       - "julia --project=test -e 'using Pkg; Pkg.status()'"
 
       - echo "--- Instantiate lib/ClimaLandSimulations"
@@ -66,15 +66,6 @@ steps:
       - label: "Richards comparison to Bonan"
         command: "julia --color=yes --project=.buildkite experiments/standalone/Soil/richards_comparison.jl"
         artifact_paths: "experiments/standalone/Soil/cpu/comparison*png"
-
-      - label: "Richards comparison to Bonan: GPU"
-        command: "julia --color=yes --project=.buildkite experiments/standalone/Soil/richards_comparison.jl"
-        artifact_paths: "experiments/standalone/Soil/gpu/comparison*png"
-        agents:
-          slurm_ntasks: 1
-          slurm_gres: "gpu:1"
-        env:
-          CLIMACOMMS_DEVICE: "CUDA"
 
       - label: "vaira_test"
         command: "julia --color=yes --project=.buildkite experiments/integrated/fluxnet/run_fluxnet.jl US-Var"
@@ -142,7 +133,16 @@ steps:
         artifact_paths: "experiments/standalone/Soil/artifacts/gpu/*png"
         agents:
           slurm_ntasks: 1
-          slurm_gres: "gpu:1"
+          slurm_gpus: 1
+        env:
+          CLIMACOMMS_DEVICE: "CUDA"
+
+      - label: "Richards comparison to Bonan: GPU"
+        command: "julia --color=yes --project=.buildkite experiments/standalone/Soil/richards_comparison.jl"
+        artifact_paths: "experiments/standalone/Soil/gpu/comparison*png"
+        agents:
+          slurm_ntasks: 1
+          slurm_gpus: 1
         env:
           CLIMACOMMS_DEVICE: "CUDA"
 
@@ -184,13 +184,17 @@ steps:
         command: "julia --color=yes --project=test test/runtests.jl"
         agents:
           slurm_ntasks: 1
-          slurm_gres: "gpu:p100:1"
+          slurm_gpus: 1
+        env:
+          CLIMACOMMS_DEVICE: "CUDA"
 
       - label: "soil/canopy lsm performance on GPU"
         command: "julia --color=yes --project=.buildkite experiments/integrated/performance/profile_allocations.jl"
+        env:
+          CLIMACOMMS_DEVICE: "CUDA"
         agents:
           slurm_ntasks: 1
-          slurm_gres: "gpu:p100:1"
+          slurm_gpus: 1
         artifact_paths: "experiments/integrated/performance/flame*html"
 
       - label: "Global Bucket on GPU (functional albedo)"
@@ -198,7 +202,7 @@ steps:
         command: "julia --color=yes --project=.buildkite experiments/standalone/Bucket/global_bucket_function.jl"
         agents:
           slurm_ntasks: 1
-          slurm_gres: "gpu:p100:1"
+          slurm_gpus: 1
         env:
           CLIMACOMMS_DEVICE: "CUDA"
         artifact_paths: "experiments/standalone/Bucket/artifacts/*gpu*"
@@ -208,7 +212,7 @@ steps:
         command: "julia --color=yes --project=.buildkite experiments/standalone/Bucket/bucket_era5.jl"
         agents:
           slurm_ntasks: 1
-          slurm_gres: "gpu:p100:1"
+          slurm_gpus: 1
         env:
           CLIMACOMMS_DEVICE: "CUDA"
         artifact_paths: "experiments/standalone/Bucket/artifacts_staticmap/*gpu*"
@@ -218,7 +222,7 @@ steps:
         command: "julia --color=yes --project=.buildkite experiments/standalone/Bucket/global_bucket_temporalmap.jl"
         agents:
           slurm_ntasks: 1
-          slurm_gres: "gpu:p100:1"
+          slurm_gpus: 1
         env:
           CLIMACOMMS_DEVICE: "CUDA"
         artifact_paths: "experiments/standalone/Bucket/artifacts_temporalmap/*gpu*"
