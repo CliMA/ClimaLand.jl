@@ -24,12 +24,13 @@ import SciMLBase
 import ClimaComms
 ClimaComms.@import_required_backends
 import ClimaTimeSteppers as CTS
+using Test
 using ClimaCore
 using ClimaUtilities.ClimaArtifacts
 import Interpolations
-using Insolation
 
-import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
+import ClimaUtilities.TimeVaryingInputs:
+    TimeVaryingInput, LinearInterpolation, PeriodicCalendar
 import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
 import ClimaUtilities.Regridders: InterpolationsRegridder
 import ClimaUtilities.ClimaArtifacts: @clima_artifact
@@ -47,7 +48,7 @@ import NCDatasets
 import Profile, ProfileCanvas
 
 const FT = Float64;
-
+time_interpolation_method = LinearInterpolation(PeriodicCalendar())
 regridder_type = :InterpolationsRegridder
 context = ClimaComms.context()
 device = ClimaComms.device()
@@ -75,116 +76,17 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
 
     # Forcing data
     era5_artifact_path =
-        ClimaLand.Artifacts.era5_land_forcing_data2021_folder_path(; context)    # Precipitation:
-    precip = TimeVaryingInput(
-        joinpath(era5_artifact_path, "era5_2021_0.9x1.25_clima.nc"),
-        "rf",
-        surface_space;
-        reference_date = start_date,
-        regridder_type,
-        file_reader_kwargs = (; preprocess_func = (data) -> -data / 3600,),
-    )
-
-    snow_precip = TimeVaryingInput(
-        joinpath(era5_artifact_path, "era5_2021_0.9x1.25.nc"),
-        "sf",
-        surface_space;
-        reference_date = start_date,
-        regridder_type,
-        file_reader_kwargs = (; preprocess_func = (data) -> -data / 3600,),
-    )
-
-    u_atmos = TimeVaryingInput(
-        joinpath(era5_artifact_path, "era5_2021_0.9x1.25_clima.nc"),
-        "ws",
-        surface_space;
-        reference_date = start_date,
-        regridder_type,
-    )
-    q_atmos = TimeVaryingInput(
-        joinpath(era5_artifact_path, "era5_2021_0.9x1.25_clima.nc"),
-        "q",
-        surface_space;
-        reference_date = start_date,
-        regridder_type,
-    )
-    P_atmos = TimeVaryingInput(
-        joinpath(era5_artifact_path, "era5_2021_0.9x1.25.nc"),
-        "sp",
-        surface_space;
-        reference_date = start_date,
-        regridder_type,
-    )
-
-    T_atmos = TimeVaryingInput(
-        joinpath(era5_artifact_path, "era5_2021_0.9x1.25.nc"),
-        "t2m",
-        surface_space;
-        reference_date = start_date,
-        regridder_type,
-    )
-    h_atmos = FT(10)
-
-    atmos = PrescribedAtmosphere(
-        precip,
-        snow_precip,
-        T_atmos,
-        u_atmos,
-        q_atmos,
-        P_atmos,
+        ClimaLand.Artifacts.era5_land_forcing_data2021_folder_path(; context)
+    era5_ncdata_path = joinpath(era5_artifact_path, "era5_2021_0.9x1.25.nc")
+    atmos, radiation = ClimaLand.prescribed_forcing_era5(
+        era5_ncdata_path,
+        surface_space,
         start_date,
-        h_atmos,
         earth_param_set,
+        FT;
+        time_interpolation_method = time_interpolation_method,
+        regridder_type = regridder_type,
     )
-
-    # Prescribed radiation
-    SW_d = TimeVaryingInput(
-        joinpath(era5_artifact_path, "era5_2021_0.9x1.25.nc"),
-        "ssrd",
-        surface_space;
-        reference_date = start_date,
-        regridder_type,
-        file_reader_kwargs = (; preprocess_func = (data) -> data / 3600,),
-    )
-    LW_d = TimeVaryingInput(
-        joinpath(era5_artifact_path, "era5_2021_0.9x1.25.nc"),
-        "strd",
-        surface_space;
-        reference_date = start_date,
-        regridder_type,
-        file_reader_kwargs = (; preprocess_func = (data) -> data / 3600,),
-    )
-
-    function zenith_angle(
-        t,
-        start_date;
-        latitude = ClimaCore.Fields.coordinate_field(surface_space).lat,
-        longitude = ClimaCore.Fields.coordinate_field(surface_space).long,
-        insol_params::Insolation.Parameters.InsolationParameters{FT} = earth_param_set.insol_params,
-    ) where {FT}
-        # This should be time in UTC
-        current_datetime = start_date + Dates.Second(round(t))
-
-        # Orbital Data uses Float64, so we need to convert to our sim FT
-        d, δ, η_UTC =
-            FT.(
-                Insolation.helper_instantaneous_zenith_angle(
-                    current_datetime,
-                    start_date,
-                    insol_params,
-                )
-            )
-
-        Insolation.instantaneous_zenith_angle.(
-            d,
-            δ,
-            η_UTC,
-            longitude,
-            latitude,
-        ).:1
-    end
-    radiation =
-        PrescribedRadiativeFluxes(FT, SW_d, LW_d, start_date; θs = zenith_angle)
 
     soil_params_artifact_path =
         ClimaLand.Artifacts.soil_params_artifact_folder_path(; context)
@@ -513,12 +415,12 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
     photosynthesis_args =
         (; parameters = Canopy.FarquharParameters(FT, is_c3; Vcmax25 = Vcmax25))
     # Set up plant hydraulics
-    LAIfunction = TimeVaryingInput(
-        joinpath(era5_artifact_path, "era5_lai_2021_0.9x1.25_clima.nc"),
-        "lai",
-        surface_space;
-        reference_date = start_date,
-        regridder_type,
+    LAIfunction = ClimaLand.prescribed_lai_era5(
+        era5_ncdata_path,
+        surface_space,
+        start_date;
+        time_interpolation_method = time_interpolation_method,
+        regridder_type = regridder_type,
     )
     ai_parameterization =
         Canopy.PrescribedSiteAreaIndex{FT}(LAIfunction, SAI, RAI)
@@ -717,7 +619,7 @@ alloc_flame_file = joinpath(outdir, "alloc_flame_$device_suffix.html")
 ProfileCanvas.html_file(alloc_flame_file, profile)
 @info "Saved allocation flame to $alloc_flame_file"
 
-#=
+
 if ClimaComms.device() isa ClimaComms.CUDADevice
     import CUDA
     lprob, lode_algo, lΔt, lcb = setup_simulation()
@@ -725,7 +627,7 @@ if ClimaComms.device() isa ClimaComms.CUDADevice
 end
 
 if get(ENV, "BUILDKITE_PIPELINE_SLUG", nothing) == "climaland-benchmark"
-    PREVIOUS_BEST_TIME = 9.3
+    PREVIOUS_BEST_TIME = 4.8
     if average_timing_s > PREVIOUS_BEST_TIME + std_timing_s
         @info "Possible performance regression, previous average time was $(PREVIOUS_BEST_TIME)"
     elseif average_timing_s < PREVIOUS_BEST_TIME - std_timing_s
@@ -737,4 +639,3 @@ if get(ENV, "BUILDKITE_PIPELINE_SLUG", nothing) == "climaland-benchmark"
               PREVIOUS_BEST_TIME + std_timing_s
     end
 end
-=#
