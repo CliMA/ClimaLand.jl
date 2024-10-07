@@ -4,6 +4,10 @@ ClimaLand.jl Release Notes
 main
 --------
 
+v0.15.2
+--------
+
+- Artifacts for the bucket model are now automatically downloaded. PR [#820](https://github.com/CliMA/ClimaLand.jl/pull/820)
 
 v0.15.1
 --------
