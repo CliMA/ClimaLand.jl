@@ -54,8 +54,10 @@
 # The user first creates the prescribed atmosphere and prescribed radiation drivers. In
 # pseudo code, this might look something like:
 
-# ` prescribed_atmos = PrescribedAtmosphere{FT}(*driver data passed in here*)`
-# ` prescribed_radiation = PrescribedRadiativeFluxes{FT}(*driver data passed in here*) `
+# ```julia
+# prescribed_atmos = PrescribedAtmosphere{FT}(*driver data passed in here*)
+# prescribed_radiation = PrescribedRadiativeFluxes{FT}(*driver data passed in here*)
+# ```
 
 # These are stored in the [BucketModel](https://clima.github.io/ClimaLand.jl/dev/APIs/Bucket/#ClimaLand.Bucket.BucketModel) object,
 # along with [BucketParameters](https://clima.github.io/ClimaLand.jl/dev/APIs/Bucket/#ClimaLand.Bucket.BucketParameters).
@@ -64,15 +66,19 @@
 # using MOST. We have a similar function for [net_radiation](https://clima.github.io/ClimaLand.jl/dev/APIs/shared_utilities/#ClimaLand.net_radiation) and which computes the net radiation based on the prescribed downwelling radiative fluxes, stored in an argument
 # `prescribed_radiation`, which is of type `PrescribedRadiation`.
 
-# In the coupled case, we want different behavior. We have defined new ``coupled`` types to
+# In the coupled case, we want different behavior. We have defined new _coupled_ types to
 # use instead of the "prescribed" types:
 
+# ```julia
 # struct CoupledAtmosphere{FT} <: AbstractAtmosphericDrivers{FT} end
 # struct CoupledRadiativeFluxes{FT} <: AbstractRadiativeDrivers{FT} end
+# ```
 
 # Then, we have defined a new method for `turbulent_fluxes` and `net_radiation` which dispatch for these types,
 # and simply return the fluxes that the coupler has updated `p.bucket.turbulent_fluxes` and `p.bucket.R_n` with.
 # In pseudo code:
+#
+# ```julia
 # function ClimaLand.turbulent_fluxes(
 #    atmos::CoupledAtmosphere,
 #    model::BucketModel,
@@ -83,15 +89,18 @@
 #         vapor_flux = p.bucket.turbulent_fluxes.vapor_flux,
 #     )
 # end
+# ```
 
 # similarily: 
 
+# ```julia
 # function ClimaLand.net_radiation(
 #     radiation::CoupledRadiativeFluxes{FT},
 #     model::BucketModel{FT},
 #     p)
 #     return p.bucket.R_n
 # end
+# ```
 
 # These methods simply returns the values stored in the auxiliary state `p`. Importantly, these functions are
 # called by the bucket model
@@ -107,13 +116,14 @@
 # and by extrapolating from the air density at the lowest level of the atmosphere.
 
 # In the coupled case, we need to extend these functions with a `CoupledAtmosphere` method:
+# ```julia
 # function ClimaLand.surface_air_density(
 #     atmos::CoupledAtmosphere,
 #     model::BucketModel,
 #     p)
 #     return p.bucket.ρ_sfc
 # end
-
+# ```
 
 # Again, this functions is called in the ODE function of the bucket model *after* the coupler
 # has updated the values of `p` with the correct values at that timestep.
