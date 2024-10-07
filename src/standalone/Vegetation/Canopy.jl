@@ -414,8 +414,7 @@ function ClimaLand.make_update_aux(
         Ra = p.canopy.autotrophic_respiration.Ra
         β = p.canopy.hydraulics.β
         medlyn_factor = p.canopy.conductance.medlyn_term
-        gs = p.canopy.conductance.gs # leaf level
-        rs_canopy = p.canopy.conductance.r_stomata_canopy
+        gs = p.canopy.conductance.gs
         An = p.canopy.photosynthesis.An
         GPP = p.canopy.photosynthesis.GPP
         Rd = p.canopy.photosynthesis.Rd
@@ -584,7 +583,6 @@ function ClimaLand.make_update_aux(
         )
         @. GPP = compute_GPP(An, K, LAI, Ω)
         @. gs = medlyn_conductance(g0, Drel, medlyn_factor, An, c_co2_air)
-        @. rs_canopy = 1 / upscale_leaf_conductance(gs, LAI, T_air, R, P_air)
         # update autotrophic respiration
         h_canopy = hydraulics.compartment_surfaces[end]
         @. Ra = compute_autrophic_respiration(

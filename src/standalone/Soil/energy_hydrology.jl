@@ -866,7 +866,7 @@ function soil_turbulent_fluxes_at_a_point(
     θ_i_sfc::FT,
     h_sfc::FT,
     d_sfc::FT,
-    hydrology_cm_sfc::C,
+    hydrology_cm_sfc,
     ν_sfc::FT,
     θ_r_sfc::FT,
     K_sat_sfc::FT,
@@ -880,7 +880,7 @@ function soil_turbulent_fluxes_at_a_point(
     γ::FT,
     γT_ref::FT,
     earth_param_set::P,
-) where {FT <: AbstractFloat, C <: AbstractSoilHydrologyClosure{FT}, P}
+) where {FT <: AbstractFloat, P}
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
     # Estimate surface air density
     ρ_sfc::FT = ClimaLand.compute_ρ_sfc(thermo_params, thermal_state_air, T_sfc)
