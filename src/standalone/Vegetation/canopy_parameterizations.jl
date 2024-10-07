@@ -30,28 +30,28 @@ export plant_absorbed_pfd_beer_lambert,
 
 """
     compute_G(
-        G::ConstantGFunction{FT},
-        _::FT,
+        G::ConstantGFunction,
+        _,
     )
 
 Returns the constant leaf angle distribution value for the given G function.
 Takes in an arbitrary value for the solar zenith angle, which is not used.
 """
-function compute_G(G::ConstantGFunction, _::FT) where {FT}
+function compute_G(G::ConstantGFunction, _)
     return G.ld
 end
 
 """
     compute_G(
-        G::CLMGFunction{FT},
-        θs::FT,
+        G::CLMGFunction,
+        θs,
     )
 
 Returns the leaf angle distribution value for CLM G function as a function of the
 solar zenith angle and the leaf orientation index. See section 3.1 of
 https://www2.cesm.ucar.edu/models/cesm2/land/CLM50_Tech_Note.pdf
 """
-function compute_G(G::CLMGFunction, θs::FT) where {FT}
+function compute_G(G::CLMGFunction, θs)
     return compute_G_CLMG.(G.χl, θs)
 end
 
@@ -61,8 +61,8 @@ end
         θs::FT,
     )
 
-Returns the leaf angle distribution value for CLM G function as a function of the
-solar zenith angle and the leaf orientation index. See section 3.1 of
+Returns the leaf angle distribution value for CLM G function at a point as a function of the
+solar zenith angle at the point and the leaf orientation index at the point. See section 3.1 of
 https://www2.cesm.ucar.edu/models/cesm2/land/CLM50_Tech_Note.pdf
 """
 function compute_G_CLMG(χl::FT, θs::FT) where {FT}
@@ -483,7 +483,7 @@ end
                      θs::FT) where {FT}
 
 Computes the vegetation extinction coefficient (`K`), as a function
-of the sun zenith angle (`θs`), and the leaf angle distribution (`ld`).
+of the sun zenith angle (`θs`), and the leaf angle distribution (`G`).
 """
 function extinction_coeff(G::FT, θs::FT) where {FT}
     K = G / max(cos(θs), eps(FT))
