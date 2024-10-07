@@ -367,7 +367,7 @@ imp_tendency! = make_imp_tendency(land);
 jacobian! = make_jacobian(land);
 
 # Timestepping information
-N_hours = 12.5
+N_hours = 8
 tf = Float64(t0 + N_hours * 3600.0)
 sim_time = round((tf - t0) / 3600, digits = 2) # simulation length in hours
 
