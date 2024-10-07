@@ -182,7 +182,7 @@ Base.broadcastable(RT::AbstractRadiationModel) = tuple(RT)
 
 ClimaLand.name(model::AbstractRadiationModel) = :radiative_transfer
 ClimaLand.auxiliary_vars(model::Union{BeerLambertModel, TwoStreamModel}) =
-    (:inc_nir, :inc_par, :nir, :par, :LW_n, :SW_n, :ϵ, :frac_diff, :G)
+    (:inc_nir, :inc_par, :nir, :par, :LW_n, :SW_n, :ϵ, :frac_diff, :G, :K)
 ClimaLand.auxiliary_types(
     model::Union{BeerLambertModel{FT}, TwoStreamModel{FT}},
 ) where {FT} = (
@@ -195,8 +195,10 @@ ClimaLand.auxiliary_types(
     FT,
     FT,
     FT,
+    FT,
 )
 ClimaLand.auxiliary_domain_names(::Union{BeerLambertModel, TwoStreamModel}) = (
+    :surface,
     :surface,
     :surface,
     :surface,
