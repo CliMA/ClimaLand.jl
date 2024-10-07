@@ -1070,12 +1070,12 @@ end
         finitediff_SHF = (p_2.canopy.energy.shf .- p.canopy.energy.shf) ./ ΔT
         estimated_SHF = p.canopy.energy.∂SHF∂Tc
         @test parent(abs.(finitediff_SHF .- estimated_SHF) ./ finitediff_SHF)[1] <
-              0.05
+              0.15
 
         finitediff_LHF = (p_2.canopy.energy.lhf .- p.canopy.energy.lhf) ./ ΔT
         estimated_LHF = p.canopy.energy.∂LHF∂qc .* p.canopy.energy.∂qc∂Tc
         @test parent(abs.(finitediff_LHF .- estimated_LHF) ./ finitediff_LHF)[1] <
-              0.5
+              0.3
 
         # Error in `q` derivative is large
         finitediff_q = (q_sfc2 .- q_sfc) ./ ΔT

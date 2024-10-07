@@ -286,6 +286,10 @@ end
 
 Computes the turbulent surface fluxes for the canopy at a point
 and returns the fluxes in a named tuple.
+
+Note that an additiontal resistance is used in computing both
+evaporation and sensible heat flux, and this modifies the output
+of `SurfaceFluxes.surface_conditions`.
 """
 function canopy_turbulent_fluxes_at_a_point(
     T_sfc::FT,
@@ -315,7 +319,7 @@ function canopy_turbulent_fluxes_at_a_point(
     )
 
     # State containers
-    sc = SurfaceFluxes.ValuesOnly(
+    states = SurfaceFluxes.ValuesOnly(
         state_in,
         state_sfc,
         z_0m,
@@ -324,37 +328,62 @@ function canopy_turbulent_fluxes_at_a_point(
         gustiness = gustiness,
     )
     surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
-    conditions = SurfaceFluxes.surface_conditions(
-        surface_flux_params,
-        sc;
-        tol_neutral = SFP.cp_d(surface_flux_params) / 100000,
-    )
+    scheme = SurfaceFluxes.PointValueScheme()
+    conditions =
+        SurfaceFluxes.surface_conditions(surface_flux_params, states, scheme)
     _LH_v0::FT = LP.LH_v0(earth_param_set)
     _ρ_liq::FT = LP.ρ_cloud_liq(earth_param_set)
-
-    cp_m::FT = Thermodynamics.cp_m(thermo_params, ts_in)
-    T_in::FT = Thermodynamics.air_temperature(thermo_params, ts_in)
-    ΔT = T_in - T_sfc
-    r_ae::FT = 1 / (conditions.Ch * SurfaceFluxes.windspeed(sc))
-    ρ_sfc::FT = Thermodynamics.air_density(thermo_params, ts_sfc)
+    cp_m_sfc::FT = Thermodynamics.cp_m(thermo_params, ts_sfc)
+    r_ae::FT = 1 / (conditions.Ch * SurfaceFluxes.windspeed(states))
     ustar::FT = conditions.ustar
+    ρ_sfc = Thermodynamics.air_density(thermo_params, ts_sfc)
+    T_int = Thermodynamics.air_temperature(thermo_params, ts_in)
+    Rm_int = Thermodynamics.gas_constant_air(thermo_params, ts_in)
+    ρ_air = Thermodynamics.air_density(thermo_params, ts_in)
+
     r_b::FT = FT(1 / 0.01 * (ustar / 0.04)^(-1 / 2)) # CLM 5, tech note Equation 5.122
     leaf_r_b = r_b / LAI
     canopy_r_b = r_b / (LAI + SAI)
-    E0::FT = SurfaceFluxes.evaporation(surface_flux_params, sc, conditions.Ch)
+
+    E0::FT =
+        SurfaceFluxes.evaporation(surface_flux_params, states, conditions.Ch)
     E = E0 * r_ae / (leaf_r_b + leaf_r_stomata + r_ae) # CLM 5, tech note Equation 5.101, and fig 5.2b, assuming all sunlit, f_wet = 0
     Ẽ = E / _ρ_liq
-    H = -ρ_sfc * cp_m * ΔT / (canopy_r_b + r_ae) # CLM 5, tech note Equation 5.88, setting H_v = H and solving to remove T_s
+
+    SH =
+        SurfaceFluxes.sensible_heat_flux(
+            surface_flux_params,
+            conditions.Ch,
+            states,
+            scheme,
+        ) * r_ae / (canopy_r_b + r_ae)
+    # The above follows from CLM 5, tech note Equation 5.88, setting H_v = SH and solving to remove T_s, ignoring difference between cp in atmos and above canopy. 
     LH = _LH_v0 * E
-    # We ignore ∂r_ae/∂T_sfc, ∂u*/∂T_sfc
-    ∂LHF∂qc = ρ_sfc * _LH_v0 / (leaf_r_b + leaf_r_stomata + r_ae) # Note that our estimate of ρ_sfc depends on T_sfc, but we ignore the derivative here.
-    ∂SHF∂Tc = ρ_sfc * cp_m / (canopy_r_b + r_ae) # Same approximation re: ρ_sfc(T_sfc)
+
+    # Derivatives
+    # We ignore ∂r_ae/∂T_sfc, ∂u*/∂T_sfc, ∂r_stomata∂Tc
+    ∂ρsfc∂Tc =
+        ρ_air *
+        (Thermodynamics.cv_m(thermo_params, ts_in) / Rm_int) *
+        (T_sfc / T_int)^(Thermodynamics.cv_m(thermo_params, ts_in) / Rm_int - 1) /
+        T_int
+    ∂cp_m_sfc∂Tc = 0 # Possibly can address at a later date
+
+    ∂LHF∂qc =
+        ρ_sfc * _LH_v0 / (leaf_r_b + leaf_r_stomata + r_ae) +
+        LH / ρ_sfc * ∂ρsfc∂Tc
+
+    ∂SHF∂Tc =
+        ρ_sfc * cp_m_sfc / (canopy_r_b + r_ae) +
+        SH / ρ_sfc * ∂ρsfc∂Tc +
+        SH / cp_m_sfc * ∂cp_m_sfc∂Tc
     return (
         lhf = LH,
-        shf = H,
+        shf = SH,
         vapor_flux = Ẽ,
         r_ae = r_ae,
         ∂LHF∂qc = ∂LHF∂qc,
         ∂SHF∂Tc = ∂SHF∂Tc,
     )
+
 end
