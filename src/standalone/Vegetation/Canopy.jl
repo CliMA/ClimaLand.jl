@@ -459,10 +459,12 @@ function ClimaLand.make_update_aux(
         @. p.canopy.radiative_transfer.ϵ =
             canopy.radiative_transfer.parameters.ϵ_canopy *
             (1 - exp(-(LAI + SAI))) #from CLM 5.0, Tech note 4.20
+        p.canopy.radiative_transfer.G .= compute_G(G_Function, θs)
         RT = canopy.radiative_transfer
         compute_PAR!(inc_par, RT, canopy.radiation, p, t)
         compute_NIR!(inc_nir, RT, canopy.radiation, p, t)
-        K = extinction_coeff.(G_Function, θs)
+        K = p.canopy.radiative_transfer.K
+        @. K = extinction_coeff(p.canopy.radiative_transfer.G, θs)
         DOY = Dates.dayofyear(
             canopy.atmos.start_date + Dates.Second(floor(Int64, t)),
         )

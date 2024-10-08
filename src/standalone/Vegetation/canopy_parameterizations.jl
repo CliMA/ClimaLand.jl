@@ -1,6 +1,8 @@
 using ..ClimaLand.Canopy
-export plant_absorbed_pfd,
+export plant_absorbed_pfd_beer_lambert,
+    plant_absorbed_pfd_two_stream,
     extinction_coeff,
+    compute_G,
     arrhenius_function,
     intercellular_co2,
     co2_compensation,
@@ -28,29 +30,43 @@ export plant_absorbed_pfd,
 
 """
     compute_G(
-        G::ConstantGFunction{FT},
-        _::FT,
+        G::ConstantGFunction,
+        _,
     )
 
 Returns the constant leaf angle distribution value for the given G function.
 Takes in an arbitrary value for the solar zenith angle, which is not used.
 """
-function compute_G(G::ConstantGFunction{FT}, _::FT) where {FT}
+function compute_G(G::ConstantGFunction, _)
     return G.ld
 end
 
 """
     compute_G(
-        G::CLMGFunction{FT},
-        θs::FT,
+        G::CLMGFunction,
+        θs,
     )
 
 Returns the leaf angle distribution value for CLM G function as a function of the
 solar zenith angle and the leaf orientation index. See section 3.1 of
 https://www2.cesm.ucar.edu/models/cesm2/land/CLM50_Tech_Note.pdf
 """
-function compute_G(G::CLMGFunction{FT}, θs::FT) where {FT}
-    ϕ1 = 0.5 - 0.633 * G.χl - 0.33 * G.χl^2
+function compute_G(G::CLMGFunction, θs)
+    return compute_G_CLMG.(G.χl, θs)
+end
+
+"""
+    compute_G_CLMG(
+        χl::FT,
+        θs::FT,
+    )
+
+Returns the leaf angle distribution value for CLM G function at a point as a function of the
+solar zenith angle at the point and the leaf orientation index at the point. See section 3.1 of
+https://www2.cesm.ucar.edu/models/cesm2/land/CLM50_Tech_Note.pdf
+"""
+function compute_G_CLMG(χl::FT, θs::FT) where {FT}
+    ϕ1 = 0.5 - 0.633 * χl - 0.33 * χl^2
     ϕ2 = 0.877 * (1 - 2 * ϕ1)
     return FT(ϕ1 + ϕ2 * cos(θs))
 end
@@ -95,16 +111,16 @@ function compute_absorbances!(
     _...,
 ) where {FT}
     RTP = RT.parameters
-    @. p.canopy.radiative_transfer.par = plant_absorbed_pfd(
-        RT,
+    @. p.canopy.radiative_transfer.par = plant_absorbed_pfd_beer_lambert(
+        RTP.Ω,
         PAR / (N_a * energy_per_photon_PAR),
         RTP.α_PAR_leaf,
         LAI,
         K,
         α_soil_PAR,
     )
-    @. p.canopy.radiative_transfer.nir = plant_absorbed_pfd(
-        RT,
+    @. p.canopy.radiative_transfer.nir = plant_absorbed_pfd_beer_lambert(
+        RTP.Ω,
         NIR / (N_a * energy_per_photon_NIR),
         RTP.α_NIR_leaf,
         LAI,
@@ -157,8 +173,10 @@ function compute_absorbances!(
     frac_diff,
 ) where {FT}
     RTP = RT.parameters
-    @. p.canopy.radiative_transfer.par = plant_absorbed_pfd(
-        RT,
+    @. p.canopy.radiative_transfer.par = plant_absorbed_pfd_two_stream(
+        p.canopy.radiative_transfer.G,
+        RTP.Ω,
+        RTP.n_layers,
         PAR / (energy_per_photon_PAR * N_a),
         RTP.α_PAR_leaf,
         RTP.τ_PAR_leaf,
@@ -168,8 +186,10 @@ function compute_absorbances!(
         α_soil_PAR,
         frac_diff,
     )
-    @. p.canopy.radiative_transfer.nir = plant_absorbed_pfd(
-        RT,
+    @. p.canopy.radiative_transfer.nir = plant_absorbed_pfd_two_stream(
+        p.canopy.radiative_transfer.G,
+        RTP.Ω,
+        RTP.n_layers,
         NIR / (energy_per_photon_NIR * N_a),
         RTP.α_NIR_leaf,
         RTP.τ_NIR_leaf,
@@ -182,8 +202,8 @@ function compute_absorbances!(
 end
 
 """
-    plant_absorbed_pfd(
-        RT::BeerLambertModel{FT},
+    plant_absorbed_pfd_beer_lambert(
+        Ω::FT,
         SW_IN:FT,
         α_leaf::FT,
         LAI::FT,
@@ -203,31 +223,33 @@ and the albedo of the soil (`α_soil`).
 Returns a tuple of reflected, absorbed, and transmitted radiation in
 mol photons/m^2/s.
 """
-function plant_absorbed_pfd(
-    RT::BeerLambertModel{FT},
+function plant_absorbed_pfd_beer_lambert(
+    Ω::FT,
     SW_IN::FT,
     α_leaf::FT,
     LAI::FT,
     K::FT,
     α_soil::FT,
 ) where {FT}
-    RTP = RT.parameters
-    AR = SW_IN * (1 - α_leaf) * (1 - exp(-K * LAI * RTP.Ω)) * (1 - α_soil)
-    TR = SW_IN * exp(-K * LAI * RTP.Ω)
+    AR = SW_IN * (1 - α_leaf) * (1 - exp(-K * LAI * Ω)) * (1 - α_soil)
+    TR = SW_IN * exp(-K * LAI * Ω)
     RR = SW_IN - AR - TR * (1 - α_soil)
     return (; abs = AR, refl = RR, trans = TR)
 end
 
 """
-    plant_absorbed_pfd(
-        RT::TwoStreamModel{FT},
-        α_leaf,
+    plant_absorbed_pfd_two_stream(
+        G::FT,
+        Ω::FT,
+        n_layers::UInt64,
         SW_IN::FT,
+        α_leaf::FT,
+        τ_leaf::FT,
         LAI::FT,
         K::FT,
-        τ_leaf,
         θs::FT,
         α_soil::FT,
+        frac_diff::FT,
     )
 
 Computes the absorbed, transmitted, and reflected  photon flux density
@@ -242,8 +264,10 @@ canopy soil_driver, solar zenith angle, and τ.
 Returns a tuple of reflected, absorbed, and transmitted radiation in
 mol photons/m^2/s.
 """
-function plant_absorbed_pfd(
-    RT::TwoStreamModel{FT},
+function plant_absorbed_pfd_two_stream(
+    G::FT,
+    Ω::FT,
+    n_layers::UInt64,
     SW_IN::FT,
     α_leaf::FT,
     τ_leaf::FT,
@@ -253,11 +277,6 @@ function plant_absorbed_pfd(
     α_soil::FT,
     frac_diff::FT,
 ) where {FT}
-
-    (; G_Function, Ω, n_layers) = RT.parameters
-
-    # Get the current leaf angular distribution value based on the solar zenith angle
-    G = compute_G(G_Function, θs)
 
     # Compute μ̄, the average inverse diffuse optical length per LAI
     μ̄ = 1 / (2G)
@@ -344,6 +363,7 @@ function plant_absorbed_pfd(
     I_dir_dn_prev = 0
     I_dif_up_prev = 0
     I_dif_dn_prev = 0
+
 
     # Compute F_abs in each canopy layer
     while i <= n_layers
@@ -463,14 +483,10 @@ end
                      θs::FT) where {FT}
 
 Computes the vegetation extinction coefficient (`K`), as a function
-of the sun zenith angle (`θs`), and the leaf angle distribution (`ld`).
+of the sun zenith angle (`θs`), and the leaf angle distribution (`G`).
 """
-function extinction_coeff(
-    G::Union{ConstantGFunction{FT}, CLMGFunction{FT}},
-    θs::FT,
-) where {FT}
-    ld = FT(compute_G(G, θs))
-    K = ld / max(cos(θs), eps(FT))
+function extinction_coeff(G::FT, θs::FT) where {FT}
+    K = G / max(cos(θs), eps(FT))
     return K
 end
 
