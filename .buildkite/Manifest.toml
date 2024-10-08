@@ -396,7 +396,7 @@ version = "0.2.8"
 deps = ["ArtifactWrappers", "ClimaComms", "ClimaCore", "ClimaDiagnostics", "ClimaUtilities", "Dates", "DocStringExtensions", "Insolation", "Interpolations", "LazyArtifacts", "LinearAlgebra", "NCDatasets", "SciMLBase", "StaticArrays", "SurfaceFluxes", "Thermodynamics"]
 path = ".."
 uuid = "08f4d4ce-cf43-44bb-ad95-9d2d5f413532"
-version = "0.15.0"
+version = "0.15.2"
 
     [deps.ClimaLand.extensions]
     CreateParametersExt = "ClimaParams"
