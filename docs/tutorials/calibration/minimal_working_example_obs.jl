@@ -60,8 +60,8 @@ prior = EKP.combine_distributions([prior_g1, prior_sc, prior_pc]);
 
 # generate the initial ensemble and set up the ensemble Kalman inversion
 N_ensemble = 30
-N_iterations = 5
-Γ = 0.1 * EKP.I
+N_iterations = 10
+Γ = 5.0 * EKP.I
 
 initial_ensemble = EKP.construct_initial_ensemble(prior, N_ensemble);
 
