@@ -642,3 +642,40 @@ function ClimaLand.get_drivers(model::LandModel)
         model.soilco2.drivers.soc,
     )
 end
+function PlantHydraulics.root_water_flux_per_ground_area!(
+    fa::ClimaCore.Fields.Field,
+    s::PrognosticGroundConditions,
+    model::Canopy.PlantHydraulics.PlantHydraulicsModel,
+    Y::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
+    t,
+)
+    ClimaCore.Operators.column_integral_definite!(fa, p.root_extraction)
+end
+
+function Canopy.root_energy_flux_per_ground_area!(
+    fa_energy::ClimaCore.Fields.Field,
+    s::PrognosticGroundConditions,
+    model::Canopy.AbstractCanopyEnergyModel,
+    Y::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
+    t,
+)
+    ClimaCore.Operators.column_integral_definite!(
+        fa_energy,
+        p.root_energy_extraction,
+    )
+end
+
+
+function Canopy.canopy_radiant_energy_fluxes!(
+    p::NamedTuple,
+    s::PrognosticGroundConditions,
+    canopy,
+    radiation::PrescribedRadiativeFluxes,
+    earth_param_set::PSE,
+    Y::ClimaCore.Fields.FieldVector,
+    t,
+) where {PSE}
+    nothing
+end
