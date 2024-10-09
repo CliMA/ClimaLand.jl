@@ -204,8 +204,24 @@ function compute_total_respiration!(
 end
 
 # variables stored in Y (prognostic or state variables)
+nan_if_no_canopy(T::FT, AI::FT) where {FT <: Real} = AI > 0 ? T : FT(NaN)
+function compute_canopy_temperature!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::SoilCanopyModel{FT},
+) where {FT}
+    AI =
+        p.canopy.hydraulics.area_index.leaf .+
+        p.canopy.hydraulics.area_index.stem
+    if isnothing(out)
+        return nan_if_no_canopy.(Y.canopy.energy.T, AI)
+    else
+        out .= nan_if_no_canopy.(Y.canopy.energy.T, AI)
+    end
+end
 
-@diagnostic_compute "canopy_temperature" SoilCanopyModel Y.canopy.energy.T
 @diagnostic_compute "soilco2" SoilCanopyModel Y.soilco2.C
 @diagnostic_compute "soil_water_content" SoilCanopyModel Y.soil.ϑ_l
 # @diagnostic_compute "plant_water_content" SoilCanopyModel Y.canopy.hydraulics.ϑ_l # return a Tuple

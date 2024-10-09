@@ -281,7 +281,8 @@ function plant_absorbed_pfd_two_stream(
     # Compute μ̄, the average inverse diffuse optical length per LAI
     μ̄ = 1 / (2G)
 
-    ω = α_leaf + τ_leaf
+    # Clip this to eps(FT) to prevent dividing by zero
+    ω = max(α_leaf + τ_leaf, eps(FT))
 
     # Compute aₛ, the single scattering albedo
     aₛ = 0.5 * ω * (1 - cos(θs) * log((abs(cos(θs)) + 1) / abs(cos(θs))))
