@@ -125,5 +125,5 @@ function snow_boundary_fluxes!(
             p.snow.turbulent_fluxes.lhf +
             p.snow.turbulent_fluxes.shf +
             p.snow.R_n - p.snow.energy_runoff
-        ) * p.snow.snow_cover_fraction
+         + p.snow.ΔF) * p.snow.snow_cover_fraction
 end

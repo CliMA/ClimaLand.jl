@@ -12,7 +12,7 @@ using ClimaLand:
     net_radiation,
     AbstractModel,
     heaviside
-
+using SurfaceFluxes
 import ClimaLand:
     AbstractBC,
     make_update_aux,
@@ -218,6 +218,7 @@ auxiliary_vars(::SnowModel) = (
     :applied_energy_flux,
     :applied_water_flux,
     :snow_cover_fraction,
+    :ΔF,
 )
 
 auxiliary_types(::SnowModel{FT}) where {FT} = (
@@ -227,6 +228,7 @@ auxiliary_types(::SnowModel{FT}) where {FT} = (
     FT,
     FT,
     NamedTuple{(:lhf, :shf, :vapor_flux, :r_ae), Tuple{FT, FT, FT, FT}},
+    FT,
     FT,
     FT,
     FT,
@@ -270,7 +272,27 @@ function ClimaLand.make_update_aux(model::SnowModel{FT}) where {FT}
         @. p.snow.T =
             snow_bulk_temperature(Y.snow.U, Y.snow.S, p.snow.q_l, parameters)
 
-        @. p.snow.T_sfc = snow_surface_temperature(p.snow.T)
+        # original Tsfc code (Ts = Tbulk):
+        # @. p.snow.T_sfc = snow_surface_temperature_bulk(p.snow.T)
+        output =
+            snow_surface_temperature.(
+                p.drivers.u,
+                p.drivers.T,
+                p.drivers.P,
+                parameters.z_0m,
+                parameters.z_0b,
+                p.drivers.q,
+                model.atmos.h,
+                Y.snow.S,
+                p.snow.T,
+                p.drivers.thermal_state.ρ,
+                p.snow.energy_runoff,
+                p.drivers.LW_d,
+                p.drivers.SW_d,
+                parameters,
+            )
+        @. p.snow.T_sfc = output.T_s
+        @. p.snow.ΔF = output.ΔF
 
         @. p.snow.water_runoff =
             compute_water_runoff(Y.snow.S, p.snow.q_l, p.snow.T, parameters)
