@@ -25,7 +25,7 @@ function microbe_source(
     Vmax = α_sx * exp(-Ea_sx / (R * T_soil)) # Maximum potential rate of respiration
     Sx = p_sx * Csom * D_liq * θ_l^3 # All soluble substrate, kgC m⁻³
     MM_sx = Sx / (kM_sx + Sx) # Availability of substrate factor, 0-1
-    O2 = D_oa * O2_a * ((ν - θ_l)^(FT(4 / 3))) # Oxygen concentration
+    O2 = D_oa * O2_a * (max((ν - θ_l), 0)^(FT(4 / 3))) # Oxygen concentration
     MM_o2 = O2 / (kM_o2 + O2) # Oxygen limitation factor, 0-1
     R_sm = Vmax * MM_sx * MM_o2 # Respiration, kg C m⁻³ s⁻¹
     return R_sm
