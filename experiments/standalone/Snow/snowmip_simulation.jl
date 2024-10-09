@@ -96,6 +96,7 @@ sol = SciMLBase.solve(
 # Plotting
 q_l = [parent(sv.saveval[k].snow.q_l)[1] for k in 1:length(sol.t)];
 T = [parent(sv.saveval[k].snow.T)[1] for k in 1:length(sol.t)];
+T_sfc = [parent(sv.saveval[k].snow.T_sfc)[1] for k in 1:length(sol.t)];
 evaporation = [
     parent(sv.saveval[k].snow.turbulent_fluxes.vapor_flux)[1] for
     k in 1:length(sol.t)
@@ -114,7 +115,6 @@ t = sol.t;
 start_day = 1
 days = start_day .+ floor.(t ./ 3600 ./ 24)
 doys = days .% 365 # doesn't account for leap year
-
 obs_swes = Vector{Union{Float64, Missing}}(missing, length(doys))
 obs_swes[snow_data_avail] .= mass[snow_data_avail] ./ 1000
 
@@ -125,12 +125,29 @@ obs_df = DataFrame(
     doy = doys,
     model_swe = S,
     obs_swe = obs_swes,
-    model_tsnow = T,
+    model_tsnow = T_sfc,
     obs_tsnow = obs_tsnows,
 )
 function missingmean(x)
     return mean(skipmissing(x))
 end
+
+function rmse(model_vals, obs_vals)
+    return sqrt(mean((model_vals .- obs_vals) .^ 2))
+end
+
+filtered_df = obs_df[snow_data_avail .== 1, :]
+println(
+    SITE_NAME,
+    " SWE RMSE: ",
+    rmse(filtered_df[!, :model_swe], filtered_df[!, :obs_swe]),
+)
+snowtemp_obs = filtered_df[.!ismissing.(filtered_df[!, :obs_tsnow]), :]
+println(
+    SITE_NAME,
+    " Tsfc RMSE: ",
+    rmse(snowtemp_obs[!, :model_tsnow], snowtemp_obs[!, :obs_tsnow]),
+)
 
 mean_obs_df = combine(
     groupby(obs_df, :doy),
@@ -145,7 +162,7 @@ plot!(
     S,
     label = "Model",
     legend = :topright,
-    xticks = :none,
+    # xticks = :none,
     ylabel = "Snow water",
     xlim = (0, ndays),
 )
@@ -179,10 +196,9 @@ plot2a = plot(xlim = (0, ndays), ylim = (250, 280))
 plot!(
     plot2a,
     t ./ 3600 ./ 24,
-    T,
-    label = "Model",
+    T_sfc,
     legend = :bottomright,
-    xticks = :none,
+    label = "Model",
     ylabel = "Snow Temperature",
 )
 scatter!(
@@ -192,12 +208,12 @@ scatter!(
     label = "Data",
 )
 # Plot the observed atmospheric temperature
-scatter!(
-    plot2a,
-    seconds[snow_data_avail] ./ 3600 ./ 24,
-    Tair[snow_data_avail],
-    label = "Atmospheric Temperature",
-)
+# scatter!(
+#     plot2a,
+#     seconds[snow_data_avail] ./ 3600 ./ 24,
+#     Tair[snow_data_avail],
+#     label = "Atmospheric Temperature",
+# )
 
 plot2b = plot(xlim = (0, ndays))
 plot!(
@@ -216,7 +232,8 @@ plot!(
     mean_obs_df.model_tsnow,
     label = "Model",
     xlabel = "Day of year",
-    ylabel = "Average snow temperature",
+    ylabel = "Avg snow surface temperature",
+    ylim = (245, 281),
 )
 scatter!(plot2c, mean_obs_df.doy, mean_obs_df.obs_tsnow, label = "Data")
 
@@ -252,3 +269,25 @@ plot!(
     color = "blue",
 )
 savefig(joinpath(savedir, "water_fluxes_$(SITE_NAME).png"))
+
+plot4 = plot(
+    xlabel = "Time (days)",
+    ylabel = "Snow Temperature",
+    xlim = (420, 434),
+    ylim = (260, 280),
+)
+plot!(
+    plot4,
+    t ./ 3600 ./ 24,
+    T_sfc,
+    legend = :bottomright,
+    label = "Model",
+    ylabel = "Snow Temperature",
+)
+scatter!(
+    plot4,
+    seconds[snow_data_avail] ./ 3600 ./ 24,
+    T_snow .+ 273.15,
+    label = "Data",
+)
+savefig(joinpath(savedir, "tsfc_1week_$(SITE_NAME).png"))
