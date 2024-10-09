@@ -10,6 +10,7 @@ using Insolation
 import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
 import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
 import ClimaUtilities.Regridders: InterpolationsRegridder
+import ClimaUtilities.OutputPathGenerator: generate_output_path
 import ClimaUtilities.ClimaArtifacts: @clima_artifact
 import ClimaParams as CP
 
@@ -34,7 +35,7 @@ regridder_type = :InterpolationsRegridder
 extrapolation_bc =
     (Interpolations.Periodic(), Interpolations.Flat(), Interpolations.Flat())
 context = ClimaComms.context()
-outdir = joinpath(pkgdir(ClimaLand), "experiments/integrated/global")
+outdir = generate_output_path("experiments/integrated/global")
 !ispath(outdir) && mkpath(outdir)
 
 device_suffix =
