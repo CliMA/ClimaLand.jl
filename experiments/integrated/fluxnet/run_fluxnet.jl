@@ -366,9 +366,42 @@ short_names_2D = ["swc", "tsoil"]
 
 hourly_diag_name = short_names_1D .* "_1h_average"
 
-sif, AR, gs, trans, model_GPP, hr, clhf, soillhf, cshf, soilshf, msf = [ClimaLand.Diagnostics.diagnostic_as_vectors(d_writer, diag_name, 1)[2] for diag_name in hourly_diag_name]
+sif, AR, gs, trans, model_GPP, hr, clhf, soillhf, cshf, soilshf, msf =
+[ClimaLand.Diagnostics.diagnostic_as_vectors(d_writer, diag_name, 1)[2] for diag_name in hourly_diag_name]
 
 swc = ClimaLand.Diagnostics.diagnostic_as_vectors(d_writer, "swc_1h_average", 2)[2] # example to get layer 2 of swc which is depth resolved
+
+# What we currently plot in run_fluxnet:
+#=
+AR
+GPP
+SW_OUT
+LW_OUT
+ET
+SHF
+LHF
+Rn
+G (ground heat flux) --> need to be added
+(what is canopy G? Kat?)
+β (water stress factor)
+gs (stomatal conductance)
+soil water content at depth
+soil ice content at depth
+soil temperature at depth
+canopy temperature
+=#
+
+# TO DO .vimrc
+# no autocomplete when enter is pressed (only tab)
+# show all content of long line
+
+
+
+
+
+
+
+
 
 # Plotting
 using CairoMakie
