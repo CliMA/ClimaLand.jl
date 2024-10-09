@@ -644,7 +644,6 @@ is the first element of `Y.canopy.hydraulics.ϑ_l`.
 """
 function root_water_flux_per_ground_area!(
     fa::ClimaCore.Fields.Field,
-    ::Val{(:canopy,)},
     ground::PrescribedGroundConditions,
     model::PlantHydraulicsModel{FT},
     Y::ClimaCore.Fields.FieldVector,

@@ -528,7 +528,6 @@ roots and soil at each soil layer.
 """
 function PlantHydraulics.root_water_flux_per_ground_area!(
     fa::ClimaCore.Fields.Field,
-    ::Val{(:canopy, :soil, :soilco2),},
     s::PrognosticSoilConditions,
     model::Canopy.PlantHydraulics.PlantHydraulicsModel,
     Y::ClimaCore.Fields.FieldVector,
@@ -563,7 +562,6 @@ must account for it as well.
 """
 function Canopy.root_energy_flux_per_ground_area!(
     fa_energy::ClimaCore.Fields.Field,
-    ::Val{(:canopy, :soil, :soilco2),},
     s::PrognosticSoilConditions,
     model::Canopy.AbstractCanopyEnergyModel,
     Y::ClimaCore.Fields.FieldVector,
@@ -616,13 +614,13 @@ end
 
 """
     Canopy.canopy_radiant_energy_fluxes!(p::NamedTuple,
-                                         s::PrognosticSoil{F},
+                                         s::PrognosticSoilConditions,
                                          canopy,
                                          radiation::PrescribedRadiativeFluxes,
                                          earth_param_set::PSE,
                                          Y::ClimaCore.Fields.FieldVector,
                                          t,
-                                        ) where {FT, PSE}
+                                        ) where { PSE}
 
 In standalone mode, this function computes and stores the net
 long and short wave radition, in W/m^2,
@@ -636,7 +634,6 @@ and `p.canopy.radiative_transfer.SW_n`.
 """
 function Canopy.canopy_radiant_energy_fluxes!(
     p::NamedTuple,
-    prognostic_land_components::Val{(:canopy, :soil, :soilco2)},
     s::PrognosticSoilConditions,
     canopy,
     radiation::PrescribedRadiativeFluxes,

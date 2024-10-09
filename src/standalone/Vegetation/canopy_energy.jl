@@ -139,7 +139,6 @@ end
 """
     root_energy_flux_per_ground_area!(
         fa_energy::ClimaCore.Fields.Field,
-        prognostic_land_components::Val{(:canopy,)},
         ground::PrescribedGroundConditions{FT},
         model::AbstractCanopyEnergyModel{FT},
         Y::ClimaCore.Fields.FieldVector,
@@ -163,7 +162,6 @@ must account for it as well.
 """
 function root_energy_flux_per_ground_area!(
     fa_energy::ClimaCore.Fields.Field,
-    prognostic_land_components::Val{(:canopy,)},
     ground::PrescribedGroundConditions{FT},
     model::AbstractCanopyEnergyModel{FT},
     Y::ClimaCore.Fields.FieldVector,

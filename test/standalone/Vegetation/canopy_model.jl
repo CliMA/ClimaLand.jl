@@ -1014,7 +1014,7 @@ end
 
         ψ_soil0 = FT(0.0)
         T_soil0 = FT(290)
-        soil_driver = PrescribedSoil(
+        soil_driver = PrescribedGroundConditions(
             root_depths,
             (t) -> ψ_soil0,
             (t) -> T_soil0,
@@ -1043,9 +1043,11 @@ end
             autotrophic_respiration = autotrophic_respiration_model,
             energy = energy_model,
             hydraulics = plant_hydraulics,
-            soil_driver = soil_driver,
-            atmos = atmos,
-            radiation = radiation,
+            boundary_conditions = Canopy.AtmosDrivenCanopyBC(
+                atmos,
+                radiation,
+                soil_driver,
+            ),
         )
 
         Y, p, coords = ClimaLand.initialize(canopy)
@@ -1060,8 +1062,14 @@ end
 
         set_initial_cache!(p, Y, t0)
         T_sfc = ClimaLand.surface_temperature(canopy, Y, p, t0)
-        ρ_sfc =
-            ClimaLand.surface_air_density(canopy.atmos, canopy, Y, p, t0, T_sfc)
+        ρ_sfc = ClimaLand.surface_air_density(
+            canopy.boundary_conditions.atmos,
+            canopy,
+            Y,
+            p,
+            t0,
+            T_sfc,
+        )
         q_sfc = ClimaLand.surface_specific_humidity(canopy, Y, p, T_sfc, ρ_sfc)
         dY = similar(Y)
         imp_tendency!(dY, Y, p, t0)
@@ -1077,7 +1085,7 @@ end
         set_initial_cache!(p_2, Y_2, t0)
         T_sfc2 = ClimaLand.surface_temperature(canopy, Y_2, p_2, t0)
         ρ_sfc2 = ClimaLand.surface_air_density(
-            canopy.atmos,
+            canopy.boundary_conditions.atmos,
             canopy,
             Y_2,
             p_2,
