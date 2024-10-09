@@ -284,7 +284,7 @@ for FT in (Float32, Float64)
                         atmos,
                         radiation,
                         soil_driver,
-                ),
+                    ),
                 )
                 # Set system to hydrostatic equilibrium
                 function initial_compute_exp_tendency!(F, Y)
