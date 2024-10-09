@@ -210,7 +210,6 @@ ClimaLand.auxiliary_domain_names(::Union{BeerLambertModel, TwoStreamModel}) = (
 
 """
     canopy_radiant_energy_fluxes!(p::NamedTuple,
-                                  prognostic_land_components::Val{(:canopy,)},
                                   ground::PrescribedGroundConditions
                                   canopy,
                                   radiation::PrescribedRadiativeFluxes,
@@ -230,7 +229,6 @@ and `p.canopy.radiative_transfer.SW_n`.
 """
 function canopy_radiant_energy_fluxes!(
     p::NamedTuple,
-    prognostic_land_components::Val{(:canopy,)},
     ground::PrescribedGroundConditions,
     canopy,
     radiation::PrescribedRadiativeFluxes,
