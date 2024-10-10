@@ -372,9 +372,9 @@ if ClimaComms.device() isa ClimaComms.CUDADevice
     lprob, lode_algo, lΔt, lcb = setup_simulation()
     CUDA.@profile SciMLBase.solve(lprob, lode_algo; dt = lΔt, callback = lcb)
 end
-#=
+
 if get(ENV, "BUILDKITE_PIPELINE_SLUG", nothing) == "climaland-benchmark"
-    PREVIOUS_BEST_TIME = 9.3
+    PREVIOUS_BEST_TIME = 6.0
     if average_timing_s > PREVIOUS_BEST_TIME + std_timing_s
         @info "Possible performance regression, previous average time was $(PREVIOUS_BEST_TIME)"
     elseif average_timing_s < PREVIOUS_BEST_TIME - std_timing_s
@@ -386,4 +386,3 @@ if get(ENV, "BUILDKITE_PIPELINE_SLUG", nothing) == "climaland-benchmark"
               PREVIOUS_BEST_TIME + std_timing_s
     end
 end
-=#

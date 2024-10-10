@@ -21,15 +21,13 @@ import ClimaTimeSteppers as CTS
 using ClimaCore
 using ClimaUtilities.ClimaArtifacts
 import Interpolations
-using Insolation
 
 using ClimaDiagnostics
 using ClimaAnalysis
 import ClimaAnalysis.Visualize as viz
 using ClimaUtilities
 
-import ClimaUtilities.TimeVaryingInputs:
-    TimeVaryingInput, LinearInterpolation, PeriodicCalendar
+import ClimaUtilities.TimeVaryingInputs: LinearInterpolation, PeriodicCalendar
 import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
 import ClimaUtilities.Regridders: InterpolationsRegridder
 import ClimaUtilities.ClimaArtifacts: @clima_artifact
@@ -75,124 +73,16 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     start_date = DateTime(2021)
     # Forcing data
     era5_artifact_path =
-        ClimaLand.Artifacts.era5_land_forcing_data2021_folder_path(; context)    # Precipitation:
-    precip = TimeVaryingInput(
-        joinpath(era5_artifact_path, "era5_2021_0.9x1.25_clima.nc"),
-        "rf",
-        surface_space;
-        reference_date = start_date,
-        regridder_type,
-        file_reader_kwargs = (; preprocess_func = (data) -> -data / 3600,),
-        method = time_interpolation_method,
-    )
-
-    snow_precip = TimeVaryingInput(
+        ClimaLand.Artifacts.era5_land_forcing_data2021_folder_path(; context)
+    atmos, radiation = ClimaLand.prescribed_forcing_era5(
         joinpath(era5_artifact_path, "era5_2021_0.9x1.25.nc"),
-        "sf",
-        surface_space;
-        reference_date = start_date,
-        regridder_type,
-        file_reader_kwargs = (; preprocess_func = (data) -> -data / 3600,),
-        method = time_interpolation_method,
-    )
-
-    u_atmos = TimeVaryingInput(
-        joinpath(era5_artifact_path, "era5_2021_0.9x1.25_clima.nc"),
-        "ws",
-        surface_space;
-        reference_date = start_date,
-        regridder_type,
-        method = time_interpolation_method,
-    )
-    q_atmos = TimeVaryingInput(
-        joinpath(era5_artifact_path, "era5_2021_0.9x1.25_clima.nc"),
-        "q",
-        surface_space;
-        reference_date = start_date,
-        regridder_type,
-        method = time_interpolation_method,
-    )
-    P_atmos = TimeVaryingInput(
-        joinpath(era5_artifact_path, "era5_2021_0.9x1.25.nc"),
-        "sp",
-        surface_space;
-        reference_date = start_date,
-        regridder_type,
-        method = time_interpolation_method,
-    )
-
-    T_atmos = TimeVaryingInput(
-        joinpath(era5_artifact_path, "era5_2021_0.9x1.25.nc"),
-        "t2m",
-        surface_space;
-        reference_date = start_date,
-        regridder_type,
-        method = time_interpolation_method,
-    )
-    h_atmos = FT(10)
-
-    atmos = PrescribedAtmosphere(
-        precip,
-        snow_precip,
-        T_atmos,
-        u_atmos,
-        q_atmos,
-        P_atmos,
+        surface_space,
         start_date,
-        h_atmos,
         earth_param_set,
+        FT;
+        time_interpolation_method = time_interpolation_method,
+        regridder_type = regridder_type,
     )
-
-    # Prescribed radiation
-    SW_d = TimeVaryingInput(
-        joinpath(era5_artifact_path, "era5_2021_0.9x1.25.nc"),
-        "ssrd",
-        surface_space;
-        reference_date = start_date,
-        regridder_type,
-        file_reader_kwargs = (; preprocess_func = (data) -> data / 3600,),
-        method = time_interpolation_method,
-    )
-    LW_d = TimeVaryingInput(
-        joinpath(era5_artifact_path, "era5_2021_0.9x1.25.nc"),
-        "strd",
-        surface_space;
-        reference_date = start_date,
-        regridder_type,
-        file_reader_kwargs = (; preprocess_func = (data) -> data / 3600,),
-        method = time_interpolation_method,
-    )
-
-    function zenith_angle(
-        t,
-        start_date;
-        latitude = ClimaCore.Fields.coordinate_field(surface_space).lat,
-        longitude = ClimaCore.Fields.coordinate_field(surface_space).long,
-        insol_params::Insolation.Parameters.InsolationParameters{FT} = earth_param_set.insol_params,
-    ) where {FT}
-        # This should be time in UTC
-        current_datetime = start_date + Dates.Second(round(t))
-
-        # Orbital Data uses Float64, so we need to convert to our sim FT
-        d, δ, η_UTC =
-            FT.(
-                Insolation.helper_instantaneous_zenith_angle(
-                    current_datetime,
-                    start_date,
-                    insol_params,
-                )
-            )
-
-        Insolation.instantaneous_zenith_angle.(
-            d,
-            δ,
-            η_UTC,
-            longitude,
-            latitude,
-        ).:1
-    end
-    radiation =
-        PrescribedRadiativeFluxes(FT, SW_d, LW_d, start_date; θs = zenith_angle)
 
     soil_params_artifact_path =
         ClimaLand.Artifacts.soil_params_artifact_folder_path(; context)

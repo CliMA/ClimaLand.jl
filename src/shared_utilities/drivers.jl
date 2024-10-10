@@ -1,8 +1,14 @@
 import ClimaUtilities.TimeVaryingInputs:
-    TimeVaryingInput, AbstractTimeVaryingInput
+    TimeVaryingInput,
+    AbstractTimeVaryingInput,
+    LinearInterpolation,
+    PeriodicCalendar
+import ClimaUtilities.Regridders: InterpolationsRegridder
 using Thermodynamics
 using ClimaCore
+using Dates
 using DocStringExtensions
+using Insolation
 using SurfaceFluxes
 import SurfaceFluxes.Parameters as SFP
 using StaticArrays
@@ -23,7 +29,10 @@ export AbstractAtmosphericDrivers,
     vapor_pressure_deficit,
     displacement_height,
     relative_humidity,
-    make_update_drivers
+    specific_humidity_from_dewpoint,
+    make_update_drivers,
+    prescribed_lai_era5,
+    prescribed_forcing_era5
 
 """
      AbstractClimaLandDrivers{FT <: AbstractFloat}
@@ -308,7 +317,8 @@ a tuple with self explanatory keys.
 Please note that this function, if r_sfc is set to zero, makes no alteration
 to the output of the `SurfaceFluxes.surface_conditions` call, aside
 from unit conversion of evaporation from a mass to a liquid water volume
-flux.
+flux. When r_sfc is nonzero, an additional resistance is applied in series
+to the vapor flux (and hence also the latent heat flux).
 """
 function turbulent_fluxes_at_a_point(
     T_sfc::FT,
@@ -713,6 +723,69 @@ function relative_humidity(
     return es / ea
 end
 
+"""
+    specific_humidity_from_dewpoint(dewpoint_temperature, temperature, air_pressure, earth_param_set)
+
+Estimates the specific humidity given the dewpoint temperature, temperature of the air
+in Kelvin, and air pressure in Pa, along with the ClimaLand earth_param_set. This is useful 
+for creating the PrescribedAtmosphere - which needs specific humidity - from ERA5 reanalysis data.
+
+We first compute the relative humidity using the Magnus formula, then the saturated vapor pressure, and then
+we compute q from vapor pressure and saturated vapor pressure.
+
+For more information on the Magnus formula, see e.g. 
+Lawrence, Mark G. (1 February 2005). 
+"The Relationship between Relative Humidity and the Dewpoint Temperature in Moist Air: 
+A Simple Conversion and Applications". 
+Bulletin of the American Meteorological Society. 86 (2): 225–234.
+"""
+function specific_humidity_from_dewpoint(
+    T_dew_air::data_FT,
+    T_air::data_FT,
+    P_air::data_FT,
+    earth_param_set,
+) where {data_FT <: Real}
+    thermo_params = LP.thermodynamic_parameters(earth_param_set)
+    _T_freeze = LP.T_freeze(earth_param_set)
+    sim_FT = typeof(_T_freeze)
+    # Obtain the relative humidity. This function requires temperatures in Celsius
+    rh::sim_FT = rh_from_dewpoint(
+        sim_FT(T_dew_air) - _T_freeze,
+        sim_FT(T_air) - _T_freeze,
+    )
+
+    # In the future, we will use Thermodynamics functions for all of the below. Note that the type of T_air must match the type of the parameters in thermo_params.
+    esat::sim_FT = Thermodynamics.saturation_vapor_pressure(
+        thermo_params,
+        sim_FT(T_air),
+        Thermodynamics.Liquid(),
+    )
+
+    e = rh * esat
+    q = data_FT(0.622 * e / (P_air - 0.378 * e))
+    return q
+end
+
+"""
+    rh_from_dewpoint(Td_C, T_C)
+
+Returns the relative humidity given the dewpoint temperature in Celsius and the 
+air temperature in Celsius, using the Magnus formula.
+
+For more information on the Magnus formula, see e.g. 
+Lawrence, Mark G. (1 February 2005). 
+"The Relationship between Relative Humidity and the Dewpoint Temperature in Moist Air: 
+A Simple Conversion and Applications". 
+Bulletin of the American Meteorological Society. 86 (2): 225–234.
+"""
+function rh_from_dewpoint(Td_C::FT, T_C::FT) where {FT <: Real}
+    c = FT(243.04) # C
+    b = FT(17.625) # unitless
+    γ = Td_C * b / (c + Td_C)
+    rh = exp(γ - b * T_C / (c + T_C))
+    return rh
+end
+
 
 """
     initialize_drivers(a::PrescribedAtmosphere{FT}, coords) where {FT}
@@ -924,4 +997,188 @@ function make_update_drivers(d::PrescribedSoilOrganicCarbon{FT}) where {FT}
         evaluate!(p.drivers.soc, d.soc, t)
     end
     return update_drivers!
+end
+
+"""
+     prescribed_forcing_era5(era5_ncdata_path,
+                             surface_space,
+                             start_date,
+                             earth_param_set,
+                             FT;
+                             gustiness=1,
+                             c_co2 = TimeVaryingInput((t) -> 4.2e-4),
+                             time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
+                             regridder_type = :InterpolationsRegridder)
+
+A helper function which constructs the `PrescribedAtmosphere` and `PrescribedRadiativeFluxes` 
+from a file path pointing to the ERA5 data in a netcdf file, the surface_space, the start date,
+and the earth_param_set.
+"""
+function prescribed_forcing_era5(
+    era5_ncdata_path,
+    surface_space,
+    start_date,
+    earth_param_set,
+    FT;
+    gustiness = 1,
+    c_co2 = TimeVaryingInput((t) -> 4.2e-4),
+    time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
+    regridder_type = :InterpolationsRegridder,
+)
+
+    precip = TimeVaryingInput(
+        era5_ncdata_path,
+        ["tp", "sf"],
+        surface_space;
+        reference_date = start_date,
+        regridder_type,
+        file_reader_kwargs = (; preprocess_func = (data) -> -data / 3600,),
+        method = time_interpolation_method,
+        compose_function = (tp, sf) -> tp - sf,
+    )
+
+    snow_precip = TimeVaryingInput(
+        era5_ncdata_path,
+        "sf",
+        surface_space;
+        reference_date = start_date,
+        regridder_type,
+        file_reader_kwargs = (; preprocess_func = (data) -> -data / 3600,),
+        method = time_interpolation_method,
+    )
+
+    u_atmos = TimeVaryingInput(
+        era5_ncdata_path,
+        ["u10n", "v10n"],
+        surface_space;
+        reference_date = start_date,
+        regridder_type,
+        compose_function = (u, v) -> sqrt.(u .^ 2 .+ v .^ 2),
+        method = time_interpolation_method,
+    )
+    specific_humidity(Td, T, P; params = earth_param_set) =
+        ClimaLand.specific_humidity_from_dewpoint.(Td, T, P, params)
+    q_atmos = TimeVaryingInput(
+        era5_ncdata_path,
+        ["d2m", "t2m", "sp"],
+        surface_space;
+        reference_date = start_date,
+        regridder_type,
+        compose_function = specific_humidity,
+        method = time_interpolation_method,
+    )
+    P_atmos = TimeVaryingInput(
+        era5_ncdata_path,
+        "sp",
+        surface_space;
+        reference_date = start_date,
+        regridder_type,
+        method = time_interpolation_method,
+    )
+
+    T_atmos = TimeVaryingInput(
+        era5_ncdata_path,
+        "t2m",
+        surface_space;
+        reference_date = start_date,
+        regridder_type,
+        method = time_interpolation_method,
+    )
+    h_atmos = FT(10)
+
+    atmos = PrescribedAtmosphere(
+        precip,
+        snow_precip,
+        T_atmos,
+        u_atmos,
+        q_atmos,
+        P_atmos,
+        start_date,
+        h_atmos,
+        earth_param_set;
+        gustiness = FT(gustiness),
+        c_co2 = c_co2,
+    )
+
+    SW_d = TimeVaryingInput(
+        era5_ncdata_path,
+        "ssrd",
+        surface_space;
+        reference_date = start_date,
+        regridder_type,
+        file_reader_kwargs = (; preprocess_func = (data) -> data / 3600,),
+        method = time_interpolation_method,
+    )
+    LW_d = TimeVaryingInput(
+        era5_ncdata_path,
+        "strd",
+        surface_space;
+        reference_date = start_date,
+        regridder_type,
+        file_reader_kwargs = (; preprocess_func = (data) -> data / 3600,),
+        method = time_interpolation_method,
+    )
+
+    function zenith_angle(
+        t,
+        start_date;
+        latitude = ClimaCore.Fields.coordinate_field(surface_space).lat,
+        longitude = ClimaCore.Fields.coordinate_field(surface_space).long,
+        insol_params::Insolation.Parameters.InsolationParameters{FT} = earth_param_set.insol_params,
+    ) where {FT}
+        # This should be time in UTC
+        current_datetime = start_date + Dates.Second(round(t))
+
+        # Orbital Data uses Float64, so we need to convert to our sim FT
+        d, δ, η_UTC =
+            FT.(
+                Insolation.helper_instantaneous_zenith_angle(
+                    current_datetime,
+                    start_date,
+                    insol_params,
+                )
+            )
+
+        Insolation.instantaneous_zenith_angle.(
+            d,
+            δ,
+            η_UTC,
+            longitude,
+            latitude,
+        ).:1
+    end
+    radiation =
+        PrescribedRadiativeFluxes(FT, SW_d, LW_d, start_date; θs = zenith_angle)
+    return atmos, radiation
+end
+
+
+"""
+     prescribed_lai_era5(era5_lai_ncdata_path,
+                         surface_space,
+                         start_date,
+                         earth_param_set;
+                         time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
+                         regridder_type = :InterpolationsRegridder)
+
+A helper function which constructs the TimeVaryingInput object for Leaf Area Index,  
+from a file path pointing to the ERA5 LAI data in a netcdf file, the surface_space, the start date,
+and the earth_param_set.
+"""
+function prescribed_lai_era5(
+    era5_lai_ncdata_path,
+    surface_space,
+    start_date;
+    time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
+    regridder_type = :InterpolationsRegridder,
+)
+    return TimeVaryingInput(
+        era5_lai_ncdata_path,
+        ["lai_hv", "lai_lv"],
+        surface_space;
+        reference_date = start_date,
+        regridder_type,
+        method = time_interpolation_method,
+        compose_function = (hv, lv) -> hv + lv,
+    )
 end

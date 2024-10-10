@@ -24,7 +24,8 @@ using ClimaUtilities.ClimaArtifacts
 import Interpolations
 import ClimaCoreMakie
 using CairoMakie
-import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
+import ClimaUtilities.TimeVaryingInputs:
+    TimeVaryingInput, LinearInterpolation, PeriodicCalendar
 import ClimaTimeSteppers as CTS
 import NCDatasets
 using ClimaCore
@@ -68,7 +69,7 @@ anim_plots = true
 # unless the `CLIMALAND_CI_REGIONAL_BUCKET` environment variable is defined.
 regional_simulation = haskey(ENV, "CLIMALAND_CI_REGIONAL_BUCKET")
 regional_str = regional_simulation ? "_regional" : ""
-
+time_interpolation_method = LinearInterpolation(PeriodicCalendar())
 regridder_type = :InterpolationsRegridder
 FT = Float64;
 context = ClimaComms.context()
@@ -131,95 +132,16 @@ bucket_parameters = BucketModelParameters(FT; albedo, z_0m, z_0b, τc);
 # Forcing data
 era5_artifact_path =
     ClimaLand.Artifacts.era5_land_forcing_data2021_folder_path(; context)
-
-# Below, the preprocess_func argument is used to
-# 1. Convert precipitation to be negative (as it is downwards)
-# 2. Convert accumulations over an hour to a rate per second
-# Precipitation:
-precip = TimeVaryingInput(
-    joinpath(era5_artifact_path, "era5_2021_0.9x1.25_clima.nc"),
-    "rf",
-    surface_space;
-    reference_date = start_date,
-    regridder_type,
-    file_reader_kwargs = (; preprocess_func = (data) -> -data / 3600,),
-)
-
-snow_precip = TimeVaryingInput(
-    joinpath(era5_artifact_path, "era5_2021_0.9x1.25.nc"),
-    "sf",
-    surface_space;
-    reference_date = start_date,
-    regridder_type,
-    file_reader_kwargs = (; preprocess_func = (data) -> -data / 3600,),
-)
-
-u_atmos = TimeVaryingInput(
-    joinpath(era5_artifact_path, "era5_2021_0.9x1.25_clima.nc"),
-    "ws",
-    surface_space;
-    reference_date = start_date,
-    regridder_type,
-)
-q_atmos = TimeVaryingInput(
-    joinpath(era5_artifact_path, "era5_2021_0.9x1.25_clima.nc"),
-    "q",
-    surface_space;
-    reference_date = start_date,
-    regridder_type,
-)
-P_atmos = TimeVaryingInput(
-    joinpath(era5_artifact_path, "era5_2021_0.9x1.25.nc"),
-    "sp",
-    surface_space;
-    reference_date = start_date,
-    regridder_type,
-)
-
-T_atmos = TimeVaryingInput(
-    joinpath(era5_artifact_path, "era5_2021_0.9x1.25.nc"),
-    "t2m",
-    surface_space;
-    reference_date = start_date,
-    regridder_type,
-)
-h_atmos = FT(10);
-
-
-bucket_atmos = PrescribedAtmosphere(
-    precip,
-    snow_precip,
-    T_atmos,
-    u_atmos,
-    q_atmos,
-    P_atmos,
+era5_ncdata_path = joinpath(era5_artifact_path, "era5_2021_0.9x1.25.nc")
+bucket_atmos, bucket_rad = ClimaLand.prescribed_forcing_era5(
+    era5_ncdata_path,
+    surface_space,
     start_date,
-    h_atmos,
     earth_param_set,
-);
-
-# Prescribed radiation -- a prescribed downwelling SW diurnal cycle, with a
-# peak at local noon, and a prescribed downwelling LW radiative
-# flux, assuming the air temperature is on average 275 degrees
-# K with a diurnal amplitude of 5 degrees K:
-SW_d = TimeVaryingInput(
-    joinpath(era5_artifact_path, "era5_2021_0.9x1.25.nc"),
-    "ssrd",
-    surface_space;
-    reference_date = start_date,
-    regridder_type,
-    file_reader_kwargs = (; preprocess_func = (data) -> data / 3600,),
+    FT;
+    time_interpolation_method = time_interpolation_method,
+    regridder_type = regridder_type,
 )
-LW_d = TimeVaryingInput(
-    joinpath(era5_artifact_path, "era5_2021_0.9x1.25.nc"),
-    "strd",
-    surface_space;
-    reference_date = start_date,
-    regridder_type,
-    file_reader_kwargs = (; preprocess_func = (data) -> data / 3600,),
-)
-
-bucket_rad = PrescribedRadiativeFluxes(FT, SW_d, LW_d, start_date);
 
 model = BucketModel(
     parameters = bucket_parameters,

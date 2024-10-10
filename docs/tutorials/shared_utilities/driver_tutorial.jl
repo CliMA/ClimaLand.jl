@@ -139,3 +139,31 @@ updatefunc = update_radiation!;
 cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc);
 
 # This callback must then be provided to the simulation [`solve`](https://docs.sciml.ai/DiffEqCallbacks/stable/) function.
+
+# # Using ERA5 data
+# If you wish to force your ClimaLand simulation with ERA5 reanalysis data, there is a helper function
+# which can make this easier than specifying each atmospheric variable as individual `TimeVaryingInput`
+# objects, and then making the `PrescribedAtmosphere` struct.
+# You first need a local path to the netcdf file with the ERA5 data. This file must have the following variables:
+# - "tp" Total precipitation as a mass/m^2/hour (accumulated over an hour)
+# - "sf" Snow precipitation as a mass/m^2/hour (accumulated over an hour)
+# - "u10n", "v10n", Neutral wind speed components in the horizontal, at 10m, in m/s
+# - "d2m", Dewpoint temperature at 2m in K
+# - "t2m", Air temperature at 2m in K
+# - "sp", Surface pressure in Pa
+# - "ssrd", Downwelling shortwave radiation in J/m^2/hour (accumulated over an hour)
+# - "strd", Downwelling longwave radiation J/m^2/hour (accumulated over an hour)
+
+# You also need the `surface_space` of your simulation (corresponding to the grid being used), the floating point
+# type of the simulation `FT`, the ClimaLand `earth_param_set`, and the `start_date`,
+# which should be a date after the first date
+# in your ERA5 netcdf file and before the last date. Then you can access the atmospheric and radiative
+# drivers like:
+
+# ```julia
+# atmos, radiation = ClimaLand.prescribed_forcing_era5(era5_ncdata_path,
+#                                                      surface_space,
+#                                                      start_date,
+#                                                      earth_param_set,
+#                                                      FT)
+# ```
