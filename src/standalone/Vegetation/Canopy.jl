@@ -29,7 +29,7 @@ import ClimaLand:
 using ClimaLand.Domains: Point, Plane, SphericalSurface
 export SharedCanopyParameters, CanopyModel, set_canopy_prescribed_field!
 include("./component_models.jl")
-include("./soil_drivers.jl")
+include("./ground_drivers.jl")
 include("./PlantHydraulics.jl")
 using .PlantHydraulics
 include("./stomatalconductance.jl")
@@ -83,15 +83,14 @@ prognostically solves Richards equation in the plant is available.
 - canopy model parameters, which include parameters that are shared
 between canopy model components or those needed to compute boundary
 fluxes.
-- The atmospheric conditions, which are either prescribed
-(of type `PrescribedAtmosphere`) or computed via a coupled simulation
-(of type `CoupledAtmosphere`).
-- The radiative flux conditions, which are either prescribed
-(of type `PrescribedRadiativeFluxes`) or computed via a coupled simulation
-(of type `CoupledRadiativeFluxes`).
-- The soil conditions, which are either prescribed (of type PrecribedSoil, for
-running the canopy model in standalone mode), or prognostic (of type
-PrognosticSoil, for running integrated soil+canopy models)
+- The boundary conditions, which contain:
+    - The atmospheric conditions, which are either prescribed
+      (of type `PrescribedAtmosphere`) or computed via a coupled simulation
+      (of type `CoupledAtmosphere`).
+    - The radiative flux conditions, which are either prescribed
+      (of type `PrescribedRadiativeFluxes`) or computed via a coupled simulation
+      (of type `CoupledRadiativeFluxes`).
+    - The ground conditions, which are either prescribed or prognostic
 
 Note that the canopy height is specified as part of the
 PlantHydraulicsModel, along with the area indices of the leaves, roots, and
@@ -101,7 +100,7 @@ treated differently.
 
 $(DocStringExtensions.FIELDS)
 """
-struct CanopyModel{FT, AR, RM, PM, SM, PHM, EM, SIFM, A, R, S, PS, D} <:
+struct CanopyModel{FT, AR, RM, PM, SM, PHM, EM, SIFM, B, PS, D} <:
        ClimaLand.AbstractImExModel{FT}
     "Autotrophic respiration model, a canopy component model"
     autotrophic_respiration::AR
@@ -117,12 +116,8 @@ struct CanopyModel{FT, AR, RM, PM, SM, PHM, EM, SIFM, A, R, S, PS, D} <:
     energy::EM
     "SIF model, a canopy component model"
     sif::SIFM
-    "Atmospheric forcing: prescribed or coupled"
-    atmos::A
-    "Radiative forcing: prescribed or coupled"
-    radiation::R
-    "Soil pressure: prescribed or prognostic"
-    soil_driver::S
+    "Boundary Conditions"
+    boundary_conditions::B
     "Shared canopy parameters between component models"
     parameters::PS
     "Canopy model domain"
@@ -138,9 +133,7 @@ end
         hydraulics::AbstractPlantHydraulicsModel{FT},
         energy::AbstractCanopyEnergyModel{FT},
         sif::AbstractSIFModel{FT},
-        atmos::AbstractAtmosphericDrivers{FT},
-        radiation::AbstractRadiativeDrivers{FT},
-        soil::AbstractSoilDriver,
+        boundary_conditions::B,
         parameters::SharedCanopyParameters{FT, PSE},
         domain::Union{
             ClimaLand.Domains.Point,
@@ -164,19 +157,17 @@ function CanopyModel{FT}(;
     hydraulics::AbstractPlantHydraulicsModel{FT},
     energy = PrescribedCanopyTempModel{FT}(),
     sif = Lee2015SIFModel{FT}(),
-    atmos::AbstractAtmosphericDrivers{FT},
-    radiation::AbstractRadiativeDrivers{FT},
-    soil_driver::AbstractSoilDriver,
+    boundary_conditions::B,
     parameters::SharedCanopyParameters{FT, PSE},
     domain::Union{
         ClimaLand.Domains.Point,
         ClimaLand.Domains.Plane,
         ClimaLand.Domains.SphericalSurface,
     },
-) where {FT, PSE}
+) where {FT, B, PSE}
     if typeof(energy) <: PrescribedCanopyTempModel{FT}
         @info "Using the PrescribedAtmosphere air temperature as the canopy temperature"
-        @assert typeof(atmos) <: PrescribedAtmosphere{FT}
+        @assert typeof(boundary_conditions.atmos) <: PrescribedAtmosphere{FT}
     end
 
     args = (
@@ -187,9 +178,7 @@ function CanopyModel{FT}(;
         hydraulics,
         energy,
         sif,
-        atmos,
-        radiation,
-        soil_driver,
+        boundary_conditions,
         parameters,
         domain,
     )
@@ -404,6 +393,7 @@ function ClimaLand.make_update_aux(
     },
 ) where {FT}
     function update_aux!(p, Y, t)
+
         # Extend to other fields when necessary
         # Update the prescribed fields to the current time `t`,
         # prior to updating the rest of the auxiliary state to
@@ -425,13 +415,14 @@ function ClimaLand.make_update_aux(
         inc_nir = p.canopy.radiative_transfer.inc_nir
         frac_diff = p.canopy.radiative_transfer.frac_diff
 
+        bc = canopy.boundary_conditions
         # Current atmospheric conditions
         θs = p.drivers.θs
         c_co2_air = p.drivers.c_co2
         P_air = p.drivers.P
         T_air = p.drivers.T
         q_air = p.drivers.q
-        h::FT = canopy.atmos.h
+        h::FT = bc.atmos.h
 
 
         # unpack parameters
@@ -461,13 +452,12 @@ function ClimaLand.make_update_aux(
             (1 - exp(-(LAI + SAI))) #from CLM 5.0, Tech note 4.20
         p.canopy.radiative_transfer.G .= compute_G(G_Function, θs)
         RT = canopy.radiative_transfer
-        compute_PAR!(inc_par, RT, canopy.radiation, p, t)
-        compute_NIR!(inc_nir, RT, canopy.radiation, p, t)
+        compute_PAR!(inc_par, RT, bc.radiation, p, t)
+        compute_NIR!(inc_nir, RT, bc.radiation, p, t)
         K = p.canopy.radiative_transfer.K
         @. K = extinction_coeff(p.canopy.radiative_transfer.G, θs)
-        DOY = Dates.dayofyear(
-            canopy.atmos.start_date + Dates.Second(floor(Int64, t)),
-        )
+        DOY =
+            Dates.dayofyear(bc.atmos.start_date + Dates.Second(floor(Int64, t)))
         @. frac_diff = diffuse_fraction(
             DOY,
             T_air,
@@ -485,8 +475,20 @@ function ClimaLand.make_update_aux(
             inc_nir,
             LAI,
             K,
-            ground_albedo_PAR(canopy.soil_driver, Y, p, t),
-            ground_albedo_NIR(canopy.soil_driver, Y, p, t),
+            ground_albedo_PAR(
+                Val(bc.prognostic_land_components),
+                bc.ground,
+                Y,
+                p,
+                t,
+            ),
+            ground_albedo_NIR(
+                Val(bc.prognostic_land_components),
+                bc.ground,
+                Y,
+                p,
+                t,
+            ),
             energy_per_photon_PAR,
             energy_per_photon_NIR,
             N_a,
@@ -696,7 +698,10 @@ end
 
 
 function ClimaLand.get_drivers(model::CanopyModel)
-    return (model.atmos, model.radiation)
+    return (
+        model.boundary_conditions.atmos,
+        model.boundary_conditions.radiation,
+    )
 end
 include("./canopy_boundary_fluxes.jl")
 #Make the canopy model broadcastable

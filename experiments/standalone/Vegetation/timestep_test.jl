@@ -93,7 +93,7 @@ shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
 );
 ψ_soil0 = FT(0.0)
 
-soil_driver = PrescribedSoil(
+soil_driver = PrescribedGroundConditions(
     FT;
     root_depths = SVector{10, FT}(-(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0),
     ψ = t -> ψ_soil0,
@@ -175,9 +175,11 @@ canopy = ClimaLand.Canopy.CanopyModel{FT}(;
     conductance = stomatal_model,
     energy = energy_model,
     hydraulics = plant_hydraulics,
-    soil_driver = soil_driver,
-    atmos = atmos,
-    radiation = radiation,
+    boundary_conditions = Canopy.AtmosDrivenCanopyBC(
+        atmos,
+        radiation,
+        soil_driver,
+    ),
 );
 
 exp_tendency! = make_exp_tendency(canopy)

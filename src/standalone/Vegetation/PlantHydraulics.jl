@@ -7,8 +7,8 @@ import NCDatasets, ClimaCore, Interpolations # Needed to load TimeVaryingInputs
 using ..ClimaLand.Canopy:
     AbstractCanopyComponent,
     set_canopy_prescribed_field!,
-    AbstractSoilDriver,
-    PrescribedSoil
+    AbstractGroundConditions,
+    PrescribedGroundConditions
 using ClimaCore
 using DocStringExtensions
 
@@ -620,7 +620,7 @@ end
 """
     root_water_flux_per_ground_area!(
         fa::ClimaCore.Fields.Field,
-        s::PrescribedSoil,
+        ground::PrescribedGroundConditions,
         model::PlantHydraulicsModel{FT},
         Y::ClimaCore.Fields.FieldVector,
         p::NamedTuple,
@@ -644,7 +644,7 @@ is the first element of `Y.canopy.hydraulics.ϑ_l`.
 """
 function root_water_flux_per_ground_area!(
     fa::ClimaCore.Fields.Field,
-    s::PrescribedSoil,
+    ground::PrescribedGroundConditions,
     model::PlantHydraulicsModel{FT},
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
@@ -656,9 +656,9 @@ function root_water_flux_per_ground_area!(
     # We can index into a field of Tuple{FT} to extract a field of FT
     # using the following notation: field.:index
     ψ_base = p.canopy.hydraulics.ψ.:1
-    root_depths = s.root_depths
+    root_depths = ground.root_depths
     n_root_layers = length(root_depths)
-    ψ_soil::FT = s.ψ(t)
+    ψ_soil::FT = ground.ψ(t)
     fa .= FT(0.0)
     @inbounds for i in 1:n_root_layers
         above_ground_area_index =
