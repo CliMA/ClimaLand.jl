@@ -46,7 +46,7 @@ end
 
 # variables stored in p (diagnostics variables stored in the cache)
 @diagnostic_compute "aerodynamic_resistance" BucketModel p.bucket.turbulent_fluxes.r_ae
-@diagnostic_compute "albedo" BucketModel p.bucket.α_sfc
+@diagnostic_compute "sw_albedo" BucketModel p.bucket.α_sfc
 @diagnostic_compute "latent_heat_flux" BucketModel p.bucket.turbulent_fluxes.lhf
 @diagnostic_compute "net_radiation" BucketModel p.bucket.R_n
 @diagnostic_compute "sensible_heat_flux" BucketModel p.bucket.turbulent_fluxes.shf
@@ -159,9 +159,9 @@ end # Convert from kg C to mol CO2.
 @diagnostic_compute "soilco2_source_microbe" SoilCanopyModel p.soilco2.Sm
 
 ## Other ##
-
-@diagnostic_compute "lw_out" SoilCanopyModel p.LW_out
-@diagnostic_compute "sw_out" SoilCanopyModel p.SW_out
+@diagnostic_compute "sw_albedo" SoilCanopyModel p.α_sfc
+@diagnostic_compute "lw_up" SoilCanopyModel p.LW_u
+@diagnostic_compute "sw_up" SoilCanopyModel p.SW_u
 @diagnostic_compute "surface_runoff" SoilCanopyModel p.soil.R_s
 
 function compute_evapotranspiration!(
