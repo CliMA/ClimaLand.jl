@@ -84,6 +84,9 @@ for FT in (Float32, Float64)
         @test mean(
             Array(parent(p.soil.ψ .+ coords.subsurface.z))[:] .+ FT(10),
         ) < 2eps(FT)
+        @test p.soil.top_bc_wvec == ClimaCore.Geometry.WVector.(p.soil.top_bc)
+        @test p.soil.bottom_bc_wvec ==
+              ClimaCore.Geometry.WVector.(p.soil.bottom_bc)
     end
 
     # This next test suite tests the full soil model right-hand-side functions
@@ -628,6 +631,13 @@ for FT in (Float32, Float64)
         expected = -(flux[2:end] - flux[1:(end - 1)]) ./ Δz
         @test mean(abs.(expected .- Array(parent(dY.soil.ϑ_l)))) / ν <
               10^2 * eps(FT)
+        # We reuse the same wvec scratch space for heat and water boundary fluxes
+        # and heat is updated last. so here we check that the Wvec cache matches the Wvec
+        # of the heat flux cache
+        @test p.soil.top_bc_wvec ==
+              ClimaCore.Geometry.WVector.(p.soil.top_bc.heat)
+        @test p.soil.bottom_bc_wvec ==
+              ClimaCore.Geometry.WVector.(p.soil.bottom_bc.heat)
 
     end
 

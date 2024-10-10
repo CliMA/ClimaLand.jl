@@ -81,6 +81,10 @@ for FT in (Float32, Float64)
         set_initial_cache!(p, Y, t)
         exp_tendency!(dY, Y, p, t)
         @test dY.soilco2.C ≈ p.soilco2.Sm
+        @test p.soilco2.top_bc_wvec ==
+              ClimaCore.Geometry.WVector.(p.soilco2.top_bc)
+        @test p.soilco2.bottom_bc_wvec ==
+              ClimaCore.Geometry.WVector.(p.soilco2.bottom_bc)
     end
 
 
@@ -157,5 +161,9 @@ for FT in (Float32, Float64)
         set_initial_cache!(p, Y, t)
         exp_tendency!(dY, Y, p, t)
         @test sum(dY.soilco2.C) ≈ FT(0.0)
+        @test p.soilco2.top_bc_wvec ==
+              ClimaCore.Geometry.WVector.(p.soilco2.top_bc)
+        @test p.soilco2.bottom_bc_wvec ==
+              ClimaCore.Geometry.WVector.(p.soilco2.bottom_bc)
     end
 end

@@ -149,13 +149,17 @@ end
         bc = BC()
 
         # Test that bc variables added if invoked
-        @test boundary_vars(bc, ClimaLand.TopBoundary()) == (:top_bc,)
-        @test boundary_vars(bc, ClimaLand.BottomBoundary()) == (:bottom_bc,)
+        @test boundary_vars(bc, ClimaLand.TopBoundary()) ==
+              (:top_bc, :top_bc_wvec)
+        @test boundary_vars(bc, ClimaLand.BottomBoundary()) ==
+              (:bottom_bc, :bottom_bc_wvec)
         @test boundary_var_domain_names(bc, ClimaLand.TopBoundary()) ==
-              (:surface,)
+              (:surface, :surface)
         @test boundary_var_domain_names(bc, ClimaLand.BottomBoundary()) ==
-              (:surface,)
-        @test boundary_var_types(m, bc, ClimaLand.TopBoundary()) == (FT,)
-        @test boundary_var_types(m, bc, ClimaLand.BottomBoundary()) == (FT,)
+              (:surface, :surface)
+        @test boundary_var_types(m, bc, ClimaLand.TopBoundary()) ==
+              (FT, ClimaCore.Geometry.WVector{FT})
+        @test boundary_var_types(m, bc, ClimaLand.BottomBoundary()) ==
+              (FT, ClimaCore.Geometry.WVector{FT})
     end
 end
