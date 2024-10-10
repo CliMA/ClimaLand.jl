@@ -15,11 +15,11 @@
 # Number of spatial elements: 101 in horizontal, 15 in vertical
 # Soil depth: 50 m
 # Simulation duration: 6 hours
-# Timestep: 900 s
-# Timestepper: ARS343
-# Fixed number of iterations: 1
+# Timestep: 450 s
+# Timestepper: ARS111
+# Fixed number of iterations: 3
 # Jacobian update: Every Newton iteration
-# Precipitation data update: every timestep
+# Atmos forcing update: every 3 hours
 import SciMLBase
 import ClimaComms
 ClimaComms.@import_required_backends
@@ -67,7 +67,7 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
         depth = depth,
         nelements = nelements,
         npolynomial = 1,
-        dz_tuple = FT.((10.0, 0.1)),
+        dz_tuple = FT.((10.0, 0.05)),
     )
     surface_space = domain.space.surface
     subsurface_space = domain.space.subsurface
@@ -538,7 +538,7 @@ end
 function setup_simulation(; greet = false)
     t0 = 0.0
     tf = 60 * 60.0 * 6
-    Δt = 900.0
+    Δt = 450.0
     nelements = (101, 15)
     if greet
         @info "Run: Global Land Model"
@@ -554,7 +554,7 @@ function setup_simulation(; greet = false)
     ode_algo = CTS.IMEXAlgorithm(
         stepper,
         CTS.NewtonsMethod(
-            max_iters = 6,
+            max_iters = 3,
             update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
         ),
     )
