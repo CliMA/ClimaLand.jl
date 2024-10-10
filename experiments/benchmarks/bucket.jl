@@ -44,7 +44,7 @@ earth_param_set = ClimaLand.Parameters.LandParameters(FT);
 outdir = "bucket_benchmark_$(device_suffix)"
 !ispath(outdir) && mkpath(outdir)
 
-function setup_prob(t0, tf, Δt; nelements = (100, 10))
+function setup_prob(t0, tf, Δt; nelements = (101, 7))
     # We set up the problem in a function so that we can make multiple copies (for profiling)
 
     # Set up simulation domain
@@ -145,7 +145,7 @@ function setup_simulation(; greet = false)
     t0 = 0.0
     tf = 7 * 86400
     Δt = 3600.0
-    nelements = (100, 10)
+    nelements = (101, 7)
     if greet
         @info "Run: Bucket with temporal map"
         @info "Resolution: $nelements"

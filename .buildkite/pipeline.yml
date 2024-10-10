@@ -100,10 +100,6 @@ steps:
         command: "julia --color=yes --project=.buildkite experiments/integrated/performance/conservation/ozark_conservation.jl"
         artifact_paths: "experiments/integrated/performance/conservation/*png"
 
-      - label: "soil/canopy lsm performance"
-        command: "julia --color=yes --project=.buildkite experiments/integrated/performance/profile_allocations.jl"
-        artifact_paths: "experiments/integrated/performance/*cpu*html"
-
       - label: "Soilbiogeochem"
         command: "julia --color=yes --project=.buildkite experiments/standalone/Biogeochemistry/experiment.jl"
 
@@ -185,13 +181,6 @@ steps:
         agents:
           slurm_ntasks: 1
           slurm_gpus: 1
-
-      - label: "soil/canopy lsm performance on GPU"
-        command: "julia --color=yes --project=.buildkite experiments/integrated/performance/profile_allocations.jl"
-        agents:
-          slurm_ntasks: 1
-          slurm_gpus: 1
-        artifact_paths: "experiments/integrated/performance/flame*html"
 
       - label: "Global Bucket on GPU (functional albedo)"
         key: "global_bucket_function_gpu"
