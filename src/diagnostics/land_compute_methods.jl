@@ -75,12 +75,12 @@ end
 
 # Canopy - Conductance
 @diagnostic_compute "stomatal_conductance" SoilCanopyModel p.canopy.conductance.gs
-@diagnostic_compute "canopy_transpiration" SoilCanopyModel p.canopy.conductance.transpiration
+@diagnostic_compute "canopy_transpiration" SoilCanopyModel p.canopy.energy.turbulent_fluxes.transpiration
 
 # Canopy - Energy
 @diagnostic_compute "canopy_aerodynamic_resistance" SoilCanopyModel p.canopy.energy.r_ae
-@diagnostic_compute "canopy_latent_heat_flux" SoilCanopyModel p.canopy.energy.lhf
-@diagnostic_compute "canopy_sensible_heat_flux" SoilCanopyModel p.canopy.energy.shf
+@diagnostic_compute "canopy_latent_heat_flux" SoilCanopyModel p.canopy.energy.turbulent_fluxes.lhf
+@diagnostic_compute "canopy_sensible_heat_flux" SoilCanopyModel p.canopy.energy.turbulent_fluxes.shf
 
 # Canopy - Hydraulics
 #@diagnostic_compute "leaf_water_potential" SoilCanopyModel last(
@@ -175,14 +175,14 @@ function compute_evapotranspiration!(
         return (
             p.soil.turbulent_fluxes.vapor_flux_liq .+
             p.soil.turbulent_fluxes.vapor_flux_ice .+
-            p.canopy.conductance.transpiration
+            p.canopy.energy.turbulent_fluxes.transpiration
         ) .* 1000 # density of liquid water (1000kg/m^3)
     else
         out .=
             (
                 p.soil.turbulent_fluxes.vapor_flux_liq .+
                 p.soil.turbulent_fluxes.vapor_flux_ice .+
-                p.canopy.conductance.transpiration
+                p.canopyenergy.turbulent_fluxes.transpiration
             ) .* 1000 # density of liquid water (1000kg/m^3)
     end
 end
