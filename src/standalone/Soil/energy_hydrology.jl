@@ -247,18 +247,23 @@ function ClimaLand.make_compute_imp_tendency(
         # Passing WVector to gradient BC is passing a normal flux.
 
         # Richards-Richardson RHS
+        @. p.soil.top_bc_wvec = Geometry.WVector(rre_top_flux_bc)
+        @. p.soil.bottom_bc_wvec = Geometry.WVector(rre_bottom_flux_bc)
         divf2c_rre = Operators.DivergenceF2C(
-            top = Operators.SetValue(Geometry.WVector.(rre_top_flux_bc)),
-            bottom = Operators.SetValue(Geometry.WVector.(rre_bottom_flux_bc)),
+            top = Operators.SetValue(p.soil.top_bc_wvec),
+            bottom = Operators.SetValue(p.soil.bottom_bc_wvec),
         )
         # GradC2F returns a Covariant3Vector, so no need to convert.
         @. dY.soil.ϑ_l =
             -(divf2c_rre(-interpc2f(p.soil.K) * gradc2f(p.soil.ψ + z)))
 
         # Heat equation RHS
+        # Reuse the same scratch space:
+        @. p.soil.top_bc_wvec = Geometry.WVector(heat_top_flux_bc)
+        @. p.soil.bottom_bc_wvec = Geometry.WVector(heat_bottom_flux_bc)
         divf2c_heat = Operators.DivergenceF2C(
-            top = Operators.SetValue(Geometry.WVector.(heat_top_flux_bc)),
-            bottom = Operators.SetValue(Geometry.WVector.(heat_bottom_flux_bc)),
+            top = Operators.SetValue(p.soil.top_bc_wvec),
+            bottom = Operators.SetValue(p.soil.bottom_bc_wvec),
         )
 
         # GradC2F returns a Covariant3Vector, so no need to convert.

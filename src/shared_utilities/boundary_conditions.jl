@@ -93,9 +93,12 @@ update_boundary_fluxes functions are coded to access the field
 this is the default.  If this is not your (PDE) model's 
 desired behavior, you can extend this function with a new method.
 
+The field `top_bc_wvec` is created to prevent allocations only; it is used
+in the tendency function only.
+
 Use this function in the exact same way you would use `auxiliary_vars`.
 """
-boundary_vars(::AbstractBC, ::ClimaLand.TopBoundary) = (:top_bc,)
+boundary_vars(::AbstractBC, ::ClimaLand.TopBoundary) = (:top_bc, :top_bc_wvec)
 
 """
     boundary_vars(::AbstractBC, ::ClimaLand.BottomBoundary)
@@ -113,9 +116,13 @@ update_boundary_fluxes functions are coded to access the field
 this is the default.  If this is not your (PDE) model's 
 desired behavior, you can extend this function with a new method.
 
+The field `bottom_bc_wvec` is created to prevent allocations only; it is used
+in the tendency function only.
+
 Use this function in the exact same way you would use `auxiliary_vars`.
 """
-boundary_vars(::AbstractBC, ::ClimaLand.BottomBoundary) = (:bottom_bc,)
+boundary_vars(::AbstractBC, ::ClimaLand.BottomBoundary) =
+    (:bottom_bc, :bottom_bc_wvec)
 
 """
     boundary_var_domain_names(::AbstractBC, ::ClimaLand.AbstractBoundary)
@@ -131,7 +138,7 @@ Use in conjunction with `boundary_vars`, in the same way you would use
 `auxiliary_var_domain_names`. 
 """
 boundary_var_domain_names(::AbstractBC, ::ClimaLand.AbstractBoundary) =
-    (:surface,)
+    (:surface, :surface)
 
 """
     boundary_var_types(model::AbstractModel{FT}, ::AbstractBC, ::ClimaLand.AbstractBoundary) where {FT}
@@ -153,5 +160,5 @@ function boundary_var_types(
     ::AbstractBC,
     ::ClimaLand.AbstractBoundary,
 ) where {FT}
-    (FT,)
+    (FT, ClimaCore.Geometry.WVector{FT})
 end
