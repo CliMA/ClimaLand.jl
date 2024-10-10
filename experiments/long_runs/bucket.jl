@@ -166,7 +166,7 @@ setup_and_solve_problem(; greet = true);
 #### ClimaAnalysis ####
 simdir = ClimaAnalysis.SimDir(outdir)
 short_names =
-    ["alpha", "rn", "tsfc", "qsfc", "lhf", "shf", "wsoil", "wsfc", "ssfc"]
+    ["swa", "rn", "tsfc", "qsfc", "lhf", "shf", "wsoil", "wsfc", "ssfc"]
 for short_name in short_names
     var = get(simdir; short_name)
     times = ClimaAnalysis.times(var)

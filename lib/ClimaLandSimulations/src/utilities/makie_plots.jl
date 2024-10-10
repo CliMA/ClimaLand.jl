@@ -18,7 +18,7 @@ export timeseries_fluxes_fig,
 # 9. Wavelet coherence
 # to do in another script: animations
 
-# 1. Time series of GPP, ET and SW_OUT
+# 1. Time series of GPP, ET and SW_u
 function timeseries_fluxes_fig(
     inputs,
     climaland,
@@ -43,10 +43,8 @@ function timeseries_fluxes_fig(
         ylabel = L"\text{GPP} \, (\mu\text{mol m}^{-2} \, \text{s}^{-1})",
     ) # C fluxes
     ax_W = Axis(fig[2, 1], ylabel = L"\text{ET (mm)}") # h2o fluxes
-    ax_SWOUT = Axis(
-        fig[3, 1],
-        ylabel = L"\text{SW OUT} \, (\text{W} \, \text{m}^{-2})",
-    ) # shortwave out
+    ax_SW_up =
+        Axis(fig[3, 1], ylabel = L"\text{SW up} \, (\text{W} \, \text{m}^{-2})") # shortwave up
     # ax_T = Axis(fig[4, 1]) # air, canopy, and soil temperature
 
     # for time series, CairoMakie should allow DateTime type soon (but not yet)
@@ -84,15 +82,15 @@ function timeseries_fluxes_fig(
         color = :black,
     ) # not sure units
 
-    # ax_SW_OUT
-    p_SWOUT_m = lines!(
-        ax_SWOUT,
+    # ax_SW_up
+    p_SW_up_m = lines!(
+        ax_SW_up,
         datetime2unix.(climaland.DateTime),
-        climaland.SW_out,
+        climaland.SW_u,
         color = :blue,
     )
-    p_SWOUT_d = lines!(
-        ax_SWOUT,
+    p_SW_up_d = lines!(
+        ax_SW_up,
         datetime2unix.(inputs.DateTime[index_t_start:index_t_end]),
         inputs.SW_OUT[index_t_start:index_t_end],
         color = :black,
@@ -103,7 +101,7 @@ function timeseries_fluxes_fig(
         (datetime2unix.(dateticks), Dates.format.(dateticks, "mm/dd"))
     ax_W.xticks[] =
         (datetime2unix.(dateticks), Dates.format.(dateticks, "mm/dd"))
-    ax_SWOUT.xticks[] =
+    ax_SW_up.xticks[] =
         (datetime2unix.(dateticks), Dates.format.(dateticks, "mm/dd"))
 
     axislegend(
@@ -117,7 +115,7 @@ function timeseries_fluxes_fig(
 
     ylims!(ax_C, (0, 40))
     ylims!(ax_W, (0, 30))
-    ylims!(ax_SWOUT, (0, 200))
+    ylims!(ax_SW_up, (0, 200))
 
     [
         xlims!(
@@ -126,7 +124,7 @@ function timeseries_fluxes_fig(
                 datetime2unix(climaland.DateTime[1]),
                 datetime2unix(climaland.DateTime[end]),
             ),
-        ) for axes in [ax_C, ax_W, ax_SWOUT]
+        ) for axes in [ax_C, ax_W, ax_SW_up]
     ]
 
     fig
@@ -237,7 +235,7 @@ function timeseries_H2O_fig(
 
     #ylims!(ax_C, (0, 40))
     #ylims!(ax_W, (0, 30))
-    #ylims!(ax_SWOUT, (0, 200))
+    #ylims!(ax_SW_up, (0, 200))
 
     [
         xlims!(
@@ -407,7 +405,7 @@ function diurnals_fig(inputs, climaland, earth_param_set; dashboard = false) # w
         ylabel = L"\text{Radiation} \, (\text{W} \, \text{m}^{-2})",
         xlabel = L"\text{Hour of the day}",
         xgridvisible = false,
-    ) # shortwave out
+    ) # shortwave up
 
     # CO2 fluxes
     # model
@@ -464,11 +462,11 @@ function diurnals_fig(inputs, climaland, earth_param_set; dashboard = false) # w
 
     # Energy fluxes
     # model
-    # diurnal_plot!(fig, ax_E, climaland.DateTime, climaland.LW_out, :red)
-    p_SWout_m =
-        diurnal_plot!(fig, ax_E, climaland.DateTime, climaland.SW_out, :red)
+    # diurnal_plot!(fig, ax_E, climaland.DateTime, climaland.LW_u, :red)
+    p_SW_up_m =
+        diurnal_plot!(fig, ax_E, climaland.DateTime, climaland.SW_u, :red)
     # data
-    p_SWout_d = diurnal_plot!(
+    p_SW_up_d = diurnal_plot!(
         fig,
         ax_E,
         inputs.DateTime[index_t_start:index_t_end],
@@ -506,8 +504,8 @@ function diurnals_fig(inputs, climaland, earth_param_set; dashboard = false) # w
     )
     axislegend(
         ax_E,
-        [p_SWout_d, p_SWout_m],
-        ["SWout obs.", "SWout model"],
+        [p_SW_up_d, p_SW_up_m],
+        ["SWup obs.", "SWup model"],
         "",
         position = :rt,
         orientation = :vertical,
