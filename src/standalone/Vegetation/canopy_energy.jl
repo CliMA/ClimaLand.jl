@@ -139,7 +139,7 @@ end
 """
     root_energy_flux_per_ground_area!(
         fa_energy::ClimaCore.Fields.Field,
-        s::PrescribedSoil,
+        ground::PrescribedGroundConditions{FT},
         model::AbstractCanopyEnergyModel{FT},
         Y::ClimaCore.Fields.FieldVector,
         p::NamedTuple,
@@ -150,7 +150,7 @@ end
 A method which updates the ClimaCore.Fields.Field `fa_energy` in place
 with  the energy flux associated with the root-soil
 water flux for the `CanopyModel` run in standalone mode,
-with a `PrescribedSoil` model.This value is ignored and set to zero
+with a `PrescribedGroundConditions`.This value is ignored and set to zero
 in this case.
 
 Background information: This energy
@@ -162,7 +162,7 @@ must account for it as well.
 """
 function root_energy_flux_per_ground_area!(
     fa_energy::ClimaCore.Fields.Field,
-    s::PrescribedSoil,
+    ground::PrescribedGroundConditions{FT},
     model::AbstractCanopyEnergyModel{FT},
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
