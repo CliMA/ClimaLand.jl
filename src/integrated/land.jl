@@ -230,6 +230,9 @@ lsm_aux_vars(m::LandModel) = (
     :sfc_scratch,
     :subsfc_scratch,
     :effective_soil_sfc_depth,
+    :T_sfc,
+    :ϵ_sfc,
+    :α_sfc,
 )
 
 """
@@ -239,7 +242,7 @@ The types of the additional auxiliary variables that are
 included in the land model.
 """
 lsm_aux_types(m::LandModel{FT}) where {FT} =
-    (FT, FT, FT, FT, FT, FT, FT, FT, FT, FT, FT, FT, FT, FT, FT, FT)
+    (FT, FT, FT, FT, FT, FT, FT, FT, FT, FT, FT, FT, FT, FT, FT, FT, FT, FT, FT)
 
 """
     lsm_aux_domain_names(m::LandModel)
@@ -263,6 +266,9 @@ lsm_aux_domain_names(m::LandModel) = (
     :surface,
     :surface,
     :subsurface,
+    :surface,
+    :surface,
+    :surface,
     :surface,
 )
 
@@ -474,6 +480,11 @@ function lsm_radiant_energy_fluxes!(
         (1 - ϵ_canopy) * LW_u_soil * (1 - p.snow.snow_cover_fraction) +
         (1 - ϵ_canopy) * LW_u_snow * p.snow.snow_cover_fraction +
         ϵ_canopy * _σ * T_canopy^4 # check
+
+    # Effective (radiative) land properties 
+    @. p.α_sfc = SW_u / max(SW_d, eps(FT)) # TODO: replace with fraction reflected as compute by canopy
+    @. p.ϵ_sfc = 1
+    @. p.T_sfc = (LW_u / (p.ϵ_sfc * _σ))^(1 / 4)
 end
 
 
