@@ -9,6 +9,7 @@ import ClimaUtilities.TimeVaryingInputs:
     TimeVaryingInput, LinearInterpolation, PeriodicCalendar
 import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
 import ClimaUtilities.Regridders: InterpolationsRegridder
+import ClimaUtilities.OutputPathGenerator: generate_output_path
 import ClimaUtilities.ClimaArtifacts: @clima_artifact
 import ClimaParams as CP
 
@@ -33,8 +34,7 @@ regridder_type = :InterpolationsRegridder
 extrapolation_bc =
     (Interpolations.Periodic(), Interpolations.Flat(), Interpolations.Flat())
 context = ClimaComms.context()
-outdir = joinpath(pkgdir(ClimaLand), "experiments/integrated/global")
-!ispath(outdir) && mkpath(outdir)
+outdir = generate_output_path("experiments/integrated/global")
 
 device_suffix =
     typeof(ClimaComms.context().device) <: ClimaComms.CPUSingleThreaded ?
@@ -256,9 +256,7 @@ prob = SciMLBase.ODEProblem(
 )
 
 # ClimaDiagnostics
-output_dir = ClimaUtilities.OutputPathGenerator.generate_output_path(outdir)
-
-nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(subsurface_space, output_dir)
+nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(subsurface_space, outdir)
 
 diags = ClimaLand.default_diagnostics(
     land,
@@ -285,7 +283,7 @@ sol = ClimaComms.@time ClimaComms.device() SciMLBase.solve(
 )
 
 # ClimaAnalysis
-simdir = ClimaAnalysis.SimDir(output_dir)
+simdir = ClimaAnalysis.SimDir(outdir)
 
 for short_name in ClimaAnalysis.available_vars(simdir)
     var = get(simdir; short_name)
@@ -297,6 +295,6 @@ for short_name in ClimaAnalysis.available_vars(simdir)
             fig,
             ClimaAnalysis.slice(var, time = t; kwargs...),
         )
-        CairoMakie.save(joinpath(output_dir, "$short_name.png"), fig)
+        CairoMakie.save(joinpath(outdir, "$short_name.png"), fig)
     end
 end

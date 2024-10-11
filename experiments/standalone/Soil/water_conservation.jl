@@ -10,6 +10,7 @@ using DelimitedFiles
 using ClimaLand
 using ClimaLand.Soil
 using ClimaLand.Domains: Column
+import ClimaUtilities.OutputPathGenerator: generate_output_path
 
 rmse(v1, v2) = sqrt(mean((v1 .- v2) .^ 2))
 
@@ -136,7 +137,7 @@ for FT in (Float32, Float64)
 
     if FT == Float64
         # Save flux BC mass conservation error and RMSE as artifact
-        savedir = joinpath(pkgdir(ClimaLand), "experiments/standalone/Soil")
+        savedir = generate_output_path("experiments/standalone/Soil")
         plt = Plots.plot(margin = 10Plots.mm)
         plt_twin = twinx(plt)
         Plots.plot!(

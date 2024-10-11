@@ -12,6 +12,7 @@ import Interpolations
 import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
 import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
 import ClimaUtilities.Regridders: InterpolationsRegridder
+import ClimaUtilities.OutputPathGenerator: generate_output_path
 import NCDatasets
 import ClimaParams as CP
 using ClimaComms
@@ -26,13 +27,8 @@ context = ClimaComms.context()
 device_suffix =
     typeof(ClimaComms.context().device) <: ClimaComms.CPUSingleThreaded ?
     "cpu" : "gpu"
-outdir = joinpath(
-    pkgdir(ClimaLand),
-    "experiments",
-    "standalone",
-    "Soil",
-    "artifacts",
-    device_suffix,
+outdir = generate_output_path(
+    joinpath("experiments", "standalone", "Soil", "artifacts", device_suffix),
 )
 !ispath(outdir) && mkpath(outdir)
 FT = Float64
