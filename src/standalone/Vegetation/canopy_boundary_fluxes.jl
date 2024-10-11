@@ -143,7 +143,6 @@ end
 
 """
     canopy_boundary_fluxes!(p::NamedTuple,
-                            bc::Canopy.AtmosDrivenCanopyBC{FT},
                             canopy::CanopyModel{
                                 FT,
                                 <:AutotrophicRespirationModel,
@@ -206,9 +205,6 @@ function canopy_boundary_fluxes!(
     # to handle standalone canopy simulations vs integrated ones
 
     # Update the root flux of water per unit ground area in place
-    # Note that here we dispatch off of the ground conditions `bc.ground`
-    # and value of the prognostic_land_components
-    # to handle standalone canopy simulations vs integrated ones
     root_water_flux_per_ground_area!(
         root_water_flux,
         bc.ground,
