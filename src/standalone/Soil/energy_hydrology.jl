@@ -247,18 +247,23 @@ function ClimaLand.make_compute_imp_tendency(
         # Passing WVector to gradient BC is passing a normal flux.
 
         # Richards-Richardson RHS
+        @. p.soil.top_bc_wvec = Geometry.WVector(rre_top_flux_bc)
+        @. p.soil.bottom_bc_wvec = Geometry.WVector(rre_bottom_flux_bc)
         divf2c_rre = Operators.DivergenceF2C(
-            top = Operators.SetValue(Geometry.WVector.(rre_top_flux_bc)),
-            bottom = Operators.SetValue(Geometry.WVector.(rre_bottom_flux_bc)),
+            top = Operators.SetValue(p.soil.top_bc_wvec),
+            bottom = Operators.SetValue(p.soil.bottom_bc_wvec),
         )
         # GradC2F returns a Covariant3Vector, so no need to convert.
         @. dY.soil.ϑ_l =
             -(divf2c_rre(-interpc2f(p.soil.K) * gradc2f(p.soil.ψ + z)))
 
         # Heat equation RHS
+        # Reuse the same scratch space:
+        @. p.soil.top_bc_wvec = Geometry.WVector(heat_top_flux_bc)
+        @. p.soil.bottom_bc_wvec = Geometry.WVector(heat_bottom_flux_bc)
         divf2c_heat = Operators.DivergenceF2C(
-            top = Operators.SetValue(Geometry.WVector.(heat_top_flux_bc)),
-            bottom = Operators.SetValue(Geometry.WVector.(heat_bottom_flux_bc)),
+            top = Operators.SetValue(p.soil.top_bc_wvec),
+            bottom = Operators.SetValue(p.soil.bottom_bc_wvec),
         )
 
         # GradC2F returns a Covariant3Vector, so no need to convert.
@@ -859,6 +864,17 @@ Computes turbulent surface fluxes for soil at a point on a surface given
 
 This returns an energy flux and a liquid water volume flux, stored in
 a tuple with self explanatory keys.
+
+Notes:
+In this function, we call SF twice - once for ice, and once for water. 
+We then combine the fluxes from them to get the total SH, LH. 
+The vapor fluxes are applied to ice and water differently - as either a source term
+or a boundary condition-  so they are kept separate.
+
+For ice, we supply a beta factor and do not need an additional surface resistance, 
+and so we use the output of surface_conditions directly. 
+For water, we do, and it's a little complicated how we handle it. 
+But once we correct E, we compute SH and LH the same as SurfaceFluxes.jl does.
 """
 function soil_turbulent_fluxes_at_a_point(
     T_sfc::FT,
@@ -881,24 +897,31 @@ function soil_turbulent_fluxes_at_a_point(
     γT_ref::FT,
     earth_param_set::P,
 ) where {FT <: AbstractFloat, P}
+    # Parameters
+    surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
+    _LH_v0::FT = LP.LH_v0(earth_param_set)
+    _ρ_liq::FT = LP.ρ_cloud_liq(earth_param_set)
+
+    # Atmos air state
+    state_air = SurfaceFluxes.StateValues(
+        h_air - d_sfc - h_sfc,
+        SVector{2, FT}(u_air, 0),
+        thermal_state_air,
+    )
+    q_air::FT =
+        Thermodynamics.total_specific_humidity(thermo_params, thermal_state_air)
+
     # Estimate surface air density
     ρ_sfc::FT = ClimaLand.compute_ρ_sfc(thermo_params, thermal_state_air, T_sfc)
-    # Compute saturated specific humidities at surface over ice and liquid water
-    q_sat_ice::FT = Thermodynamics.q_vap_saturation_generic(
-        thermo_params,
-        T_sfc,
-        ρ_sfc,
-        Thermodynamics.Ice(),
-    )
+
+    # Now compute surface fluxes from liquid water component:
     q_sat_liq::FT = Thermodynamics.q_vap_saturation_generic(
         thermo_params,
         T_sfc,
         ρ_sfc,
         Thermodynamics.Liquid(),
     )
-
-    # Evaporation:
     thermal_state_sfc::Thermodynamics.PhaseEquil{FT} =
         Thermodynamics.PhaseEquil_ρTq(thermo_params, ρ_sfc, T_sfc, q_sat_liq)# use to get potential evaporation E0, r_ae (weak dependence on q).
 
@@ -916,12 +939,6 @@ function soil_turbulent_fluxes_at_a_point(
         SVector{2, FT}(0, 0),
         thermal_state_sfc,
     )
-    state_air = SurfaceFluxes.StateValues(
-        h_air - d_sfc - h_sfc,
-        SVector{2, FT}(u_air, 0),
-        thermal_state_air,
-    )
-
     # State containers
     states = SurfaceFluxes.ValuesOnly(
         state_air,
@@ -930,21 +947,9 @@ function soil_turbulent_fluxes_at_a_point(
         z_0b,
         gustiness = gustiness,
     )
-    surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
-    conditions = SurfaceFluxes.surface_conditions(
-        surface_flux_params,
-        states;
-        tol_neutral = SFP.cp_d(surface_flux_params) / 100000,
-    )
-    _LH_v0::FT = LP.LH_v0(earth_param_set)
-    _ρ_liq::FT = LP.ρ_cloud_liq(earth_param_set)
-    cp_m::FT = Thermodynamics.cp_m(thermo_params, thermal_state_air)
-    T_air::FT = Thermodynamics.air_temperature(thermo_params, thermal_state_air)
-    ρ_air::FT = Thermodynamics.air_density(thermo_params, thermal_state_air)
-    q_air::FT =
-        Thermodynamics.total_specific_humidity(thermo_params, thermal_state_air)
-
-    ΔT::FT = T_air - T_sfc
+    scheme = SurfaceFluxes.PointValueScheme()
+    conditions =
+        SurfaceFluxes.surface_conditions(surface_flux_params, states, scheme)
     r_ae_liq::FT = 1 / (conditions.Ch * SurfaceFluxes.windspeed(states))
 
     E0::FT =
@@ -970,9 +975,22 @@ function soil_turbulent_fluxes_at_a_point(
     else
         Ẽ *= 0 # condensation, set to zero
     end
-    H_liq::FT = -ρ_air * cp_m * ΔT / r_ae_liq
 
-    # Sublimation:
+    # sensible heat flux
+    SH_liq = SurfaceFluxes.sensible_heat_flux(
+        surface_flux_params,
+        conditions.Ch,
+        states,
+        scheme,
+    )
+
+    # Repeat for ice component:
+    q_sat_ice::FT = Thermodynamics.q_vap_saturation_generic(
+        thermo_params,
+        T_sfc,
+        ρ_sfc,
+        Thermodynamics.Ice(),
+    )
     thermal_state_sfc =
         Thermodynamics.PhaseEquil_ρTq(thermo_params, ρ_sfc, T_sfc, q_sat_ice)
     β_i::FT = FT(1)
@@ -996,25 +1014,28 @@ function soil_turbulent_fluxes_at_a_point(
         beta = β_i,
         gustiness = gustiness,
     )
-    conditions = SurfaceFluxes.surface_conditions(
-        surface_flux_params,
-        states;
-        tol_neutral = SFP.cp_d(surface_flux_params) / 100000,
-    )
+    conditions =
+        SurfaceFluxes.surface_conditions(surface_flux_params, states, scheme)
     S::FT =
         SurfaceFluxes.evaporation(surface_flux_params, states, conditions.Ch)# sublimation rate, mass flux
     S̃::FT = S / _ρ_liq
 
     r_ae_ice::FT = 1 / (conditions.Ch * SurfaceFluxes.windspeed(states))
-    H_ice::FT = -ρ_air * cp_m * ΔT / r_ae_ice
+    # sensible heat flux from ice
+    SH_ice = SurfaceFluxes.sensible_heat_flux(
+        surface_flux_params,
+        conditions.Ch,
+        states,
+        scheme,
+    )
 
-    # Heat fluxes
+    # Heat fluxes for soil
     LH::FT = _LH_v0 * (Ẽ + S̃) * _ρ_liq
-    H::FT = (H_ice + H_liq) / 2
+    SH::FT = (SH_ice + SH_liq) / 2
     r_ae::FT = 2 * r_ae_liq * r_ae_ice / (r_ae_liq + r_ae_ice) # implied by definition of H
     return (
         lhf = LH,
-        shf = H,
+        shf = SH,
         vapor_flux_liq = Ẽ,
         r_ae = r_ae,
         vapor_flux_ice = S̃,

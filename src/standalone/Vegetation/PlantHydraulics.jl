@@ -7,8 +7,8 @@ import NCDatasets, ClimaCore, Interpolations # Needed to load TimeVaryingInputs
 using ..ClimaLand.Canopy:
     AbstractCanopyComponent,
     set_canopy_prescribed_field!,
-    AbstractSoilDriver,
-    PrescribedSoil
+    AbstractGroundConditions,
+    PrescribedGroundConditions
 using ClimaCore
 using DocStringExtensions
 
@@ -37,7 +37,8 @@ export PlantHydraulicsModel,
     LinearRetentionCurve,
     Weibull,
     hydraulic_conductivity,
-    PrescribedSiteAreaIndex
+    PrescribedSiteAreaIndex,
+    root_distribution
 
 """
     AbstractPlantHydraulicsModel{FT} <: AbstractCanopyComponent{FT}
@@ -136,7 +137,7 @@ struct PlantHydraulicsParameters{
     PSAI <: PrescribedSiteAreaIndex{FT},
     CP,
     RP,
-    F <: Function,
+    RDTH <: Union{FT, ClimaCore.Fields.Field},
 }
     "The area index model for LAI, SAI, RAI"
     ai_parameterization::PSAI
@@ -148,31 +149,43 @@ struct PlantHydraulicsParameters{
     conductivity_model::CP
     "Water retention model and parameters"
     retention_model::RP
-    "Root distribution function P(z)"
-    root_distribution::F
+    "Rooting depth parameter (m) - a characteristic depth below which 1/e of the root mass lies"
+    rooting_depth::RDTH
 end
 
+"""
+    PlantHydraulicsParameters(;
+        ai_parameterization::PrescribedSiteAreaIndex{FT},
+        ν::FT,
+        S_s::FT,
+        conductivity_model,
+        retention_model,
+        rooting_depth::Union{FT, ClimaCore.Fields.Field},
+    )
+
+Constructor for PlantHydraulicsParameters.
+"""
 function PlantHydraulicsParameters(;
     ai_parameterization::PrescribedSiteAreaIndex{FT},
     ν::FT,
     S_s::FT,
-    root_distribution::Function,
     conductivity_model,
     retention_model,
+    rooting_depth::Union{Nothing, FT, ClimaCore.Fields.Field},
 ) where {FT}
     return PlantHydraulicsParameters{
         FT,
         typeof(ai_parameterization),
         typeof(conductivity_model),
         typeof(retention_model),
-        typeof(root_distribution),
+        typeof(rooting_depth),
     }(
         ai_parameterization,
         ν,
         S_s,
         conductivity_model,
         retention_model,
-        root_distribution,
+        rooting_depth,
     )
 end
 
@@ -358,7 +371,7 @@ mean for effective conducticity between the two layers
 
 To account for different path lengths in the two compartments Δz1 and
 Δz2, we would require the following conductance k (1/s)
-k_eff = K1/Δz1*K2/Δz2/(K1/Δz1+K2/Δz2) 
+k_eff = K1/Δz1*K2/Δz2/(K1/Δz1+K2/Δz2)
 and a water flux of
 F = -k_eff * (ψ1 +z1 - ψ2 - z2) (m/s).
 
@@ -368,6 +381,23 @@ function water_flux(z1::FT, z2::FT, ψ1::FT, ψ2::FT, K1::FT, K2::FT) where {FT}
     K_eff = K1 * K2 / max(K1 + K2, eps(FT))
     flux = -K_eff * ((ψ2 - ψ1) / (z2 - z1) + 1)
     return flux # (m/s)
+end
+
+"""
+    root_distribution(z::FT, rooting_depth::FT)
+
+Computes value of rooting probability density function at `z`.
+
+The rooting probability density function is derived from the
+cumulative distribution function F(z) = 1 - β^(100z), which is described
+by Equation 2.23 of
+Bonan, "Climate Change and Terrestrial Ecosystem Modeling", 2019 Cambridge University Press.
+This probability distribution function is equivalent to the derivative of the
+cumulative distribution function with respect to z,
+where `rooting_depth` replaces (-1)/(100ln(β)) and z is expected to be negative.
+"""
+function root_distribution(z::FT, rooting_depth::FT) where {FT <: AbstractFloat}
+    return (1 / rooting_depth) * exp(z / rooting_depth) # 1/m
 end
 
 """
@@ -590,7 +620,7 @@ end
 """
     root_water_flux_per_ground_area!(
         fa::ClimaCore.Fields.Field,
-        s::PrescribedSoil,
+        ground::PrescribedGroundConditions,
         model::PlantHydraulicsModel{FT},
         Y::ClimaCore.Fields.FieldVector,
         p::NamedTuple,
@@ -614,21 +644,21 @@ is the first element of `Y.canopy.hydraulics.ϑ_l`.
 """
 function root_water_flux_per_ground_area!(
     fa::ClimaCore.Fields.Field,
-    s::PrescribedSoil,
+    ground::PrescribedGroundConditions,
     model::PlantHydraulicsModel{FT},
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
     t,
 ) where {FT}
 
-    (; conductivity_model, root_distribution) = model.parameters
+    (; conductivity_model, rooting_depth) = model.parameters
     area_index = p.canopy.hydraulics.area_index
     # We can index into a field of Tuple{FT} to extract a field of FT
     # using the following notation: field.:index
     ψ_base = p.canopy.hydraulics.ψ.:1
-    root_depths = s.root_depths
+    root_depths = ground.root_depths
     n_root_layers = length(root_depths)
-    ψ_soil::FT = s.ψ(t)
+    ψ_soil::FT = ground.ψ(t)
     fa .= FT(0.0)
     @inbounds for i in 1:n_root_layers
         above_ground_area_index =
@@ -644,7 +674,7 @@ function root_water_flux_per_ground_area!(
                     hydraulic_conductivity(conductivity_model, ψ_soil),
                     hydraulic_conductivity(conductivity_model, ψ_base),
                 ) *
-                root_distribution(root_depths[i]) *
+                root_distribution(root_depths[i], rooting_depth) *
                 (root_depths[i + 1] - root_depths[i]) *
                 above_ground_area_index
         else
@@ -657,7 +687,7 @@ function root_water_flux_per_ground_area!(
                     hydraulic_conductivity(conductivity_model, ψ_soil),
                     hydraulic_conductivity(conductivity_model, ψ_base),
                 ) *
-                root_distribution(root_depths[i]) *
+                root_distribution(root_depths[i], rooting_depth) *
                 (model.compartment_surfaces[1] - root_depths[n_root_layers]) *
                 above_ground_area_index
         end

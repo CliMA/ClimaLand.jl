@@ -263,30 +263,36 @@ end
     )
 
     @test Soil.boundary_vars(boundary_fluxes.top, ClimaLand.TopBoundary()) ==
-          (:top_bc,)
+          (:top_bc, :top_bc_wvec)
     @test Soil.boundary_var_domain_names(
         boundary_fluxes.top,
         ClimaLand.TopBoundary(),
-    ) == (:surface,)
+    ) == (:surface, :surface)
     @test Soil.boundary_var_types(
         energy_hydrology,
         boundary_fluxes.top,
         ClimaLand.TopBoundary(),
-    ) == (NamedTuple{(:water, :heat), Tuple{Float32, Float32}},)
+    ) == (
+        NamedTuple{(:water, :heat), Tuple{Float32, Float32}},
+        ClimaCore.Geometry.WVector{Float32},
+    )
 
     @test Soil.boundary_vars(
         boundary_fluxes.bottom,
         ClimaLand.BottomBoundary(),
-    ) == (:bottom_bc,)
+    ) == (:bottom_bc, :bottom_bc_wvec)
     @test Soil.boundary_var_domain_names(
         boundary_fluxes.bottom,
         ClimaLand.BottomBoundary(),
-    ) == (:surface,)
+    ) == (:surface, :surface)
     @test Soil.boundary_var_types(
         energy_hydrology,
         boundary_fluxes.bottom,
         ClimaLand.BottomBoundary(),
-    ) == (NamedTuple{(:water, :heat), Tuple{Float32, Float32}},)
+    ) == (
+        NamedTuple{(:water, :heat), Tuple{Float32, Float32}},
+        ClimaCore.Geometry.WVector{Float32},
+    )
     Y, p, cds = initialize(energy_hydrology)
     Y.soil.ϑ_l .= ν
     Y.soil.θ_i .= 0
@@ -321,28 +327,28 @@ end
     )
 
     @test Soil.boundary_vars(boundary_fluxes.top, ClimaLand.TopBoundary()) ==
-          (:top_bc,)
+          (:top_bc, :top_bc_wvec)
     @test Soil.boundary_var_domain_names(
         boundary_fluxes.top,
         ClimaLand.TopBoundary(),
-    ) == (:surface,)
+    ) == (:surface, :surface)
     @test Soil.boundary_var_types(
         rre,
         boundary_fluxes.top,
         ClimaLand.TopBoundary(),
-    ) == (FT,)
+    ) == (FT, ClimaCore.Geometry.WVector{Float32})
 
     @test Soil.boundary_vars(boundary_fluxes.top, ClimaLand.BottomBoundary()) ==
-          (:bottom_bc,)
+          (:bottom_bc, :bottom_bc_wvec)
     @test Soil.boundary_var_domain_names(
         boundary_fluxes.top,
         ClimaLand.BottomBoundary(),
-    ) == (:surface,)
+    ) == (:surface, :surface)
     @test Soil.boundary_var_types(
         rre,
         boundary_fluxes.bottom,
         ClimaLand.BottomBoundary(),
-    ) == (FT,)
+    ) == (FT, ClimaCore.Geometry.WVector{FT})
 
     Y, p, cds = initialize(rre)
     Y.soil.ϑ_l .= ν

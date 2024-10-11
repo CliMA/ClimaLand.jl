@@ -239,9 +239,6 @@ K_sat_plant = FT(1.8e-8)
 RAI = (SAI + maxLAI) * f_root_to_shoot;
 # Note: LAIfunction was determined from data in the script we included above.
 ai_parameterization = PrescribedSiteAreaIndex{FT}(LAIfunction, SAI, RAI)
-function root_distribution(z::T; rooting_depth = FT(1.0)) where {T}
-    return T(1.0 / rooting_depth) * exp(z / T(rooting_depth)) # 1/m
-end
 
 ψ63 = FT(-4 / 0.0098)
 Weibull_param = FT(4)
@@ -259,7 +256,7 @@ plant_hydraulics_ps = PlantHydraulics.PlantHydraulicsParameters(;
     ai_parameterization = ai_parameterization,
     ν = plant_ν,
     S_s = plant_S_s,
-    root_distribution = root_distribution,
+    rooting_depth = FT(1.0),
     conductivity_model = conductivity_model,
     retention_model = retention_model,
 )

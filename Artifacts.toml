@@ -1,9 +1,16 @@
+[cesm2_albedo]
+git-tree-sha1 = "316096635acaa8102477820f480ca02fe66eb828"
+
+    [[cesm2_albedo.download]]
+    sha256 = "5ac358d4485f6ba7bae129d4570cabc712b793d4a3e22caa8808de147b2c8f9b"
+    url = "https://caltech.box.com/shared/static/awz2lku3ngoto6t78muktzfk3kjloxsw.gz"
+
 [clm_data]
-git-tree-sha1 = "5fcb868a751f4a2e32181612bb0c123e9a8e7e97"
+git-tree-sha1 = "459bca9591a26a48864240d2a37de8b5eb66530d"
 
     [[clm_data.download]]
-    sha256 = "bd8b53d691507e746e1de6dd2cc97178510c1d8944df1c23e4737bbb7ac7f8dd"
-    url = "https://caltech.box.com/shared/static/hbi0w0hbz8chaab4ym3kdpthc0d1blfc.gz"
+    sha256 = "dc3c0fc1c84935faf0770ba5e2b85ee7cf943d68f14783b29919c8ef44470fe3"
+    url = "https://caltech.box.com/shared/static/6pu2f6c99g29qawvjjh3j56drkonpd3z.gz"
 
 [era5_land_forcing_data2021]
 git-tree-sha1 = "ec424296df6b60cfe273ac8f981701fbbed0bd8a"

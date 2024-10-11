@@ -46,8 +46,7 @@ import ClimaLand.Parameters as LP
     model = ClimaLand.Snow.SnowModel(
         parameters = parameters,
         domain = domain,
-        atmos = atmos,
-        radiation = rad,
+        boundary_conditions = ClimaLand.Snow.AtmosDrivenSnowBC(atmos, rad),
     )
     drivers = ClimaLand.get_drivers(model)
     @test drivers == (atmos, rad)
@@ -55,8 +54,10 @@ import ClimaLand.Parameters as LP
     @test (Y.snow |> propertynames) == (:S, :U)
     @test (p.snow |> propertynames) == (
         :q_l,
+        :κ,
         :T,
         :T_sfc,
+        :z,
         :turbulent_fluxes,
         :R_n,
         :energy_runoff,
@@ -84,8 +85,13 @@ import ClimaLand.Parameters as LP
     # Check if aux update occurred correctly
     @test p.snow.R_n ==
           @. (-(1 - α_snow) * 20.0f0 - ϵ_snow * (20.0f0 - _σ * p.snow.T_sfc^4))
-    @test p.snow.R_n ==
-          ClimaLand.net_radiation(model.radiation, model, Y, p, t0)
+    @test p.snow.R_n == ClimaLand.net_radiation(
+        model.boundary_conditions.radiation,
+        model,
+        Y,
+        p,
+        t0,
+    )
     @test p.snow.q_l ==
           snow_liquid_mass_fraction.(Y.snow.U, Y.snow.S, Ref(model.parameters))
     @test p.snow.T_sfc ==
@@ -99,7 +105,7 @@ import ClimaLand.Parameters as LP
     )
 
     ρ_sfc = ClimaLand.surface_air_density(
-        model.atmos,
+        model.boundary_conditions.atmos,
         model,
         Y,
         p,
@@ -115,7 +121,13 @@ import ClimaLand.Parameters as LP
             ρ_sfc,
             Ref(Thermodynamics.Ice()),
         )
-    turb_fluxes = ClimaLand.turbulent_fluxes(model.atmos, model, Y, p, t0)
+    turb_fluxes = ClimaLand.turbulent_fluxes(
+        model.boundary_conditions.atmos,
+        model,
+        Y,
+        p,
+        t0,
+    )
     @test turb_fluxes.shf == p.snow.turbulent_fluxes.shf
     @test turb_fluxes.lhf == p.snow.turbulent_fluxes.lhf
     @test turb_fluxes.vapor_flux == p.snow.turbulent_fluxes.vapor_flux

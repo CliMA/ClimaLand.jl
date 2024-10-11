@@ -150,7 +150,8 @@ function ClimaLand.make_compute_imp_tendency(model::RichardsModel)
         z = model.domain.fields.z
         top_flux_bc = p.soil.top_bc
         bottom_flux_bc = p.soil.bottom_bc
-
+        @. p.soil.top_bc_wvec = Geometry.WVector(top_flux_bc)
+        @. p.soil.bottom_bc_wvec = Geometry.WVector(bottom_flux_bc)
         interpc2f = Operators.InterpolateC2F()
         gradc2f_water = Operators.GradientC2F()
 
@@ -167,8 +168,8 @@ function ClimaLand.make_compute_imp_tendency(model::RichardsModel)
         # the bc is WVector(F) or Covariant3Vector(F*Δr) or Contravariant3Vector(F/Δr)
 
         divf2c_water = Operators.DivergenceF2C(
-            top = Operators.SetValue(Geometry.WVector.(top_flux_bc)),
-            bottom = Operators.SetValue(Geometry.WVector.(bottom_flux_bc)),
+            top = Operators.SetValue(p.soil.top_bc_wvec),
+            bottom = Operators.SetValue(p.soil.bottom_bc_wvec),
         )
 
         # GradC2F returns a Covariant3Vector, so no need to convert.

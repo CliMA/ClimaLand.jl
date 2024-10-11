@@ -54,12 +54,13 @@ function default_diagnostics(
     land_model::BucketModel{FT},
     reference_date;
     output_writer,
+    average_period = :daily,
 ) where {FT}
 
     define_diagnostics!(land_model)
 
     bucket_diagnostics = [
-        "alpha",
+        "swa",
         "rn",
         "tsfc",
         "qsfc",
@@ -74,12 +75,28 @@ function default_diagnostics(
         "ssfc",
     ]
 
-    default_outputs = hourly_averages(
-        FT,
-        bucket_diagnostics...;
-        output_writer,
-        reference_date,
-    )
+    if average_period == :hourly
+        default_outputs = hourly_averages(
+            FT,
+            bucket_diagnostics...;
+            output_writer,
+            reference_date,
+        )
+    elseif average_period == :daily
+        default_outputs = daily_averages(
+            FT,
+            bucket_diagnostics...;
+            output_writer,
+            reference_date,
+        )
+    elseif average_period == :monthly
+        default_outputs = monthly_averages(
+            FT,
+            bucket_diagnostics...;
+            output_writer,
+            reference_date,
+        )
+    end
 
     return [default_outputs...]
 end
@@ -97,6 +114,7 @@ function default_diagnostics(
 
     if output_vars == :long
         soilcanopy_diagnostics = [
+            "swa",
             "sif",
             "ra",
             "gs",
@@ -152,9 +170,15 @@ function default_diagnostics(
             # "pwc", # return a Tuple
             "si",
             "sie",
+            "swu",
+            "lwu",
+            "er",
+            "et",
+            "sr",
         ]
     elseif output_vars == :short
-        soilcanopy_diagnostics = ["gpp", "ct", "lai", "swc", "si"]
+        soilcanopy_diagnostics =
+            ["gpp", "ct", "lai", "swc", "si", "swa", "lwu", "et", "er", "sr"]
     end
 
     if average_period == :hourly

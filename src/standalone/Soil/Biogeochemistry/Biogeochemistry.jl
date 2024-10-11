@@ -203,16 +203,13 @@ function ClimaLand.make_compute_exp_tendency(model::SoilCO2Model)
     function compute_exp_tendency!(dY, Y, p, t)
         top_flux_bc = p.soilco2.top_bc
         bottom_flux_bc = p.soilco2.bottom_bc
-
+        @. p.soilco2.top_bc_wvec = Geometry.WVector(top_flux_bc)
+        @. p.soilco2.bottom_bc_wvec = Geometry.WVector(bottom_flux_bc)
         interpc2f = ClimaCore.Operators.InterpolateC2F()
         gradc2f_C = ClimaCore.Operators.GradientC2F()
         divf2c_C = ClimaCore.Operators.DivergenceF2C(
-            top = ClimaCore.Operators.SetValue(
-                ClimaCore.Geometry.WVector.(top_flux_bc),
-            ),
-            bottom = ClimaCore.Operators.SetValue(
-                ClimaCore.Geometry.WVector.(bottom_flux_bc),
-            ),
+            top = ClimaCore.Operators.SetValue(p.soilco2.top_bc_wvec),
+            bottom = ClimaCore.Operators.SetValue(p.soilco2.bottom_bc_wvec),
         ) # -∇ ⋅ (-D∇C), where -D∇C is a flux of CO2. ∇C point in direction of increasing C, so the flux is - this.
         @. dY.soilco2.C =
             -divf2c_C(-interpc2f(p.soilco2.D) * gradc2f_C(Y.soilco2.C))

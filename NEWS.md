@@ -4,11 +4,22 @@ ClimaLand.jl Release Notes
 main
 --------
 
+v0.15.2
+--------
+
+- Artifacts for the bucket model are now automatically downloaded. PR [#820](https://github.com/CliMA/ClimaLand.jl/pull/820)
+
+v0.15.1
+--------
+- Add a tutorial of a single site calibration of a perfect model PR[#621](https://github.com/CliMA/ClimaLand.jl/pull/621)
+- Add a longrun simulation for the bucket PR[#807](https://github.com/CliMA/ClimaLand.jl/pull/807)
+- Add ground heat flux to snow-soil model PR[#796](https://github.com/CliMA/ClimaLand.jl/pull/796)
+- Add snow-soil model PR [#779](https://github.com/CliMA/ClimaLand.jl/pull/779)
+- Step canopy temperature implicitly. PR [#675](https://github.com/CliMA/ClimaLand.jl/pull/675)
+
 v0.15.0
 --------
 - Add regional simulation example PR [#757](https://github.com/CliMA/ClimaLand.jl/pull/757)
-- ![][badge-💥breaking] Extend photosynthesis mechanism parameter to support fields.
-  PR[#774](https://github.com/CliMA/ClimaLand.jl/pull/774)
 - Reduced number of dependencies, leading to faster instantiation and import time,
 - Improved compatibility of ClimaLand with older versions of packages.
   PR[#749](https://github.com/CliMA/ClimaLand.jl/pull/749)
@@ -17,6 +28,9 @@ v0.15.0
   PR[#759](https://github.com/CliMA/ClimaLand.jl/pull/759)
 - Added a regional run example.
   PR[#757](https://github.com/CliMA/ClimaLand.jl/pull/757)
+- ![breaking change][badge-💥breaking] Extend photosynthesis mechanism parameter to support fields.
+PR[#774](https://github.com/CliMA/ClimaLand.jl/pull/774)
+  - C3/C4 structs are removed. Now C3 is represented by a float of 1.0 and C4 by a float of 0.0
 
 v0.14.3
 --------

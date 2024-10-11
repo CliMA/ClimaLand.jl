@@ -55,7 +55,7 @@ shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
 );
 ψ_soil0 = FT(0.0)
 
-soil_driver = PrescribedSoil(
+soil_driver = PrescribedGroundConditions(
     FT;
     root_depths = SVector{10, FT}(-(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0),
     ψ = t -> ψ_soil0,
@@ -109,10 +109,6 @@ ai_parameterization =
     PrescribedSiteAreaIndex{FT}(TimeVaryingInput(fakeLAIfunction), SAI, RAI)
 rooting_depth = FT(1.0);
 
-function root_distribution(z::T; rooting_depth = rooting_depth) where {T}
-    return T(1.0 / rooting_depth) * exp(z / T(rooting_depth))
-end;
-
 K_sat_plant = FT(1.8e-8)
 ψ63 = FT(-4 / 0.0098)
 Weibull_param = FT(4)
@@ -130,7 +126,7 @@ plant_hydraulics_ps = PlantHydraulics.PlantHydraulicsParameters(;
     ai_parameterization = ai_parameterization,
     ν = ν,
     S_s = S_s,
-    root_distribution = root_distribution,
+    rooting_depth = rooting_depth,
     conductivity_model = conductivity_model,
     retention_model = retention_model,
 );
@@ -157,9 +153,11 @@ canopy = ClimaLand.Canopy.CanopyModel{FT}(;
     conductance = stomatal_model,
     energy = energy_model,
     hydraulics = plant_hydraulics,
-    soil_driver = soil_driver,
-    atmos = atmos,
-    radiation = radiation,
+    boundary_conditions = Canopy.AtmosDrivenCanopyBC(
+        atmos,
+        radiation,
+        soil_driver,
+    ),
 );
 
 
@@ -222,11 +220,11 @@ resp = [
     parent(sv.saveval[k].canopy.autotrophic_respiration.Ra)[1] * 1e6 for
     k in 1:length(sol.t)
 ]
-SW_abs = [
+SW_n = [
     parent(sv.saveval[k].canopy.radiative_transfer.SW_n)[1] for
     k in 1:length(sol.t)
 ]
-LW_abs = [
+LW_n = [
     parent(sv.saveval[k].canopy.radiative_transfer.LW_n)[1] for
     k in 1:length(sol.t)
 ]
@@ -254,8 +252,8 @@ axislegend(ax)
 save(joinpath(savedir, "varying_lai_state.png"), fig)
 fig2 = Figure()
 ax = Axis(fig2[1, 1], xlabel = "Time (days)", ylabel = "Energy Fluxes")
-lines!(ax, sol.t ./ 24 ./ 3600, SW_abs, label = "SW")
-lines!(ax, sol.t ./ 24 ./ 3600, LW_abs, label = "LW")
+lines!(ax, sol.t ./ 24 ./ 3600, SW_n, label = "SW_n")
+lines!(ax, sol.t ./ 24 ./ 3600, LW_n, label = "LW_n")
 lines!(ax, sol.t ./ 24 ./ 3600, SHF, label = "SHF")
 lines!(ax, sol.t ./ 24 ./ 3600, LHF, label = "LHF")
 lines!(ax, sol.t ./ 24 ./ 3600, RE, label = "RE")

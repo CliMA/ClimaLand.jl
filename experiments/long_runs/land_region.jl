@@ -21,7 +21,6 @@ import ClimaTimeSteppers as CTS
 using ClimaCore
 using ClimaUtilities.ClimaArtifacts
 import Interpolations
-using Insolation
 
 import ClimaDiagnostics
 import ClimaAnalysis
@@ -80,125 +79,16 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (10, 10, 15))
     # Forcing data
     era5_artifact_path =
         ClimaLand.Artifacts.era5_land_forcing_data2021_folder_path(; context)
-    # Precipitation:
-    precip = TimeVaryingInput(
-        joinpath(era5_artifact_path, "era5_2021_0.9x1.25_clima.nc"),
-        "rf",
-        surface_space;
-        reference_date = start_date,
-        regridder_type,
-        file_reader_kwargs = (; preprocess_func = (data) -> -data / 3600,),
-        method = time_interpolation_method,
-    )
-
-    snow_precip = TimeVaryingInput(
-        joinpath(era5_artifact_path, "era5_2021_0.9x1.25.nc"),
-        "sf",
-        surface_space;
-        reference_date = start_date,
-        regridder_type,
-        file_reader_kwargs = (; preprocess_func = (data) -> -data / 3600,),
-        method = time_interpolation_method,
-    )
-
-    u_atmos = TimeVaryingInput(
-        joinpath(era5_artifact_path, "era5_2021_0.9x1.25_clima.nc"),
-        "ws",
-        surface_space;
-        reference_date = start_date,
-        regridder_type,
-        method = time_interpolation_method,
-    )
-    q_atmos = TimeVaryingInput(
-        joinpath(era5_artifact_path, "era5_2021_0.9x1.25_clima.nc"),
-        "q",
-        surface_space;
-        reference_date = start_date,
-        regridder_type,
-        method = time_interpolation_method,
-    )
-    P_atmos = TimeVaryingInput(
-        joinpath(era5_artifact_path, "era5_2021_0.9x1.25.nc"),
-        "sp",
-        surface_space;
-        reference_date = start_date,
-        regridder_type,
-        method = time_interpolation_method,
-    )
-
-    T_atmos = TimeVaryingInput(
-        joinpath(era5_artifact_path, "era5_2021_0.9x1.25.nc"),
-        "t2m",
-        surface_space;
-        reference_date = start_date,
-        regridder_type,
-        method = time_interpolation_method,
-    )
-    h_atmos = FT(10)
-
-    atmos = PrescribedAtmosphere(
-        precip,
-        snow_precip,
-        T_atmos,
-        u_atmos,
-        q_atmos,
-        P_atmos,
+    era5_ncdata_path = joinpath(era5_artifact_path, "era5_2021_0.9x1.25.nc")
+    atmos, radiation = ClimaLand.prescribed_forcing_era5(
+        era5_ncdata_path,
+        surface_space,
         start_date,
-        h_atmos,
         earth_param_set,
+        FT;
+        time_interpolation_method = time_interpolation_method,
+        regridder_type = regridder_type,
     )
-
-    # Prescribed radiation
-    SW_d = TimeVaryingInput(
-        joinpath(era5_artifact_path, "era5_2021_0.9x1.25.nc"),
-        "ssrd",
-        surface_space;
-        reference_date = start_date,
-        regridder_type,
-        file_reader_kwargs = (; preprocess_func = (data) -> data / 3600,),
-        method = time_interpolation_method,
-    )
-    LW_d = TimeVaryingInput(
-        joinpath(era5_artifact_path, "era5_2021_0.9x1.25.nc"),
-        "strd",
-        surface_space;
-        reference_date = start_date,
-        regridder_type,
-        file_reader_kwargs = (; preprocess_func = (data) -> data / 3600,),
-        method = time_interpolation_method,
-    )
-
-    function zenith_angle(
-        t,
-        start_date;
-        latitude = ClimaCore.Fields.coordinate_field(surface_space).lat,
-        longitude = ClimaCore.Fields.coordinate_field(surface_space).long,
-        insol_params::Insolation.Parameters.InsolationParameters{FT} = earth_param_set.insol_params,
-    ) where {FT}
-        # This should be time in UTC
-        current_datetime = start_date + Dates.Second(round(t))
-
-        # Orbital Data uses Float64, so we need to convert to our sim FT
-        d, δ, η_UTC =
-            FT.(
-                Insolation.helper_instantaneous_zenith_angle(
-                    current_datetime,
-                    start_date,
-                    insol_params,
-                )
-            )
-
-        Insolation.instantaneous_zenith_angle.(
-            d,
-            δ,
-            η_UTC,
-            longitude,
-            latitude,
-        ).:1
-    end
-    radiation =
-        PrescribedRadiativeFluxes(FT, SW_d, LW_d, start_date; θs = zenith_angle)
-
     soil_params_artifact_path =
         ClimaLand.Artifacts.soil_params_artifact_folder_path(; context)
     extrapolation_bc = (
@@ -357,18 +247,50 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (10, 10, 15))
         R_sb = R_sb,
     )
 
+    # Energy Balance model
+    ac_canopy = FT(2.5e4) # this will likely be 10x smaller!
+    #clm_data is used for g1, vcmax, rooting, and two_stream param maps
+    clm_artifact_path = ClimaLand.Artifacts.clm_data_folder_path(; context)
 
     # TwoStreamModel parameters
     Ω = FT(0.69)
-    ld = FT(0.5)
-    α_PAR_leaf = FT(0.1)
-    τ_PAR_leaf = FT(0.05)
-    α_NIR_leaf = FT(0.45)
-    τ_NIR_leaf = FT(0.25)
+    χl = SpaceVaryingInput(
+        joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
+        "xl",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc,),
+    )
+    G_Function = CLMGFunction(χl)
+    α_PAR_leaf = SpaceVaryingInput(
+        joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
+        "rholvis",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc,),
+    )
+    τ_PAR_leaf = SpaceVaryingInput(
+        joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
+        "taulvis",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc,),
+    )
+    α_NIR_leaf = SpaceVaryingInput(
+        joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
+        "rholnir",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc,),
+    )
+    τ_NIR_leaf = SpaceVaryingInput(
+        joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
+        "taulnir",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc,),
+    )
 
-    # Energy Balance model
-    ac_canopy = FT(2.5e4) # this will likely be 10x smaller!
-    clm_artifact_path = ClimaLand.Artifacts.clm_data_folder_path(; context)
     # Conductance Model
     # g1 is read in units of sqrt(kPa) and then converted to sqrt(Pa)
     g1 = SpaceVaryingInput(
@@ -412,7 +334,13 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (10, 10, 15))
     retention_model = Canopy.PlantHydraulics.LinearRetentionCurve{FT}(a)
     plant_ν = FT(1.44e-4)
     plant_S_s = FT(1e-2 * 0.0098) # m3/m3/MPa to m3/m3/m
-    rooting_depth = FT(0.5) # from Natan
+    rooting_depth = SpaceVaryingInput(
+        joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
+        "rooting_depth",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc,),
+    )
     n_stem = 0
     n_leaf = 1
     h_stem = FT(0.0)
@@ -477,6 +405,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (10, 10, 15))
             τ_PAR_leaf,
             α_NIR_leaf,
             τ_NIR_leaf,
+            G_Function,
         )
     )
     # Set up conductance
@@ -486,27 +415,21 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (10, 10, 15))
     photosynthesis_args =
         (; parameters = Canopy.FarquharParameters(FT, is_c3; Vcmax25 = Vcmax25))
     # Set up plant hydraulics
-
-    LAIfunction = TimeVaryingInput(
-        joinpath(era5_artifact_path, "era5_lai_2021_0.9x1.25_clima.nc"),
-        "lai",
-        surface_space;
-        reference_date = start_date,
-        regridder_type,
-        method = time_interpolation_method,
+    LAIfunction = ClimaLand.prescribed_lai_era5(
+        era5_ncdata_path,
+        surface_space,
+        start_date;
+        time_interpolation_method = time_interpolation_method,
+        regridder_type = regridder_type,
     )
     ai_parameterization =
         Canopy.PrescribedSiteAreaIndex{FT}(LAIfunction, SAI, RAI)
-
-    function root_distribution(z::T; rooting_depth = rooting_depth) where {T}
-        return T(1.0 / rooting_depth) * exp(z / T(rooting_depth)) # 1/m
-    end
 
     plant_hydraulics_ps = Canopy.PlantHydraulics.PlantHydraulicsParameters(;
         ai_parameterization = ai_parameterization,
         ν = plant_ν,
         S_s = plant_S_s,
-        root_distribution = root_distribution,
+        rooting_depth = rooting_depth,
         conductivity_model = conductivity_model,
         retention_model = retention_model,
     )

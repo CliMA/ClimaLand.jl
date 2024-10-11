@@ -139,9 +139,11 @@ for FT in (Float32, Float64)
                 :turbulent_fluxes,
                 :R_n,
                 :top_bc,
+                :top_bc_wvec,
                 :sfc_scratch,
                 :infiltration,
                 :bottom_bc,
+                :bottom_bc_wvec,
             )
             function init_soil!(Y, z, params)
                 ν = params.ν

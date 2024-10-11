@@ -20,7 +20,4 @@ h_leaf = FT(9.5) # m
 t0 = Float64(120 * 3600 * 24)# start mid year to avoid snow
 
 # Time step size:
-dt = Float64(450)
-
-# Number of timesteps between saving output:
-n = 4
+dt = Float64(900)

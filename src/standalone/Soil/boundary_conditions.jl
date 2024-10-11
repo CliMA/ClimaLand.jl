@@ -112,7 +112,7 @@ boundary_vars(
         <:Runoff.AbstractRunoffModel,
     },
     ::ClimaLand.TopBoundary,
-) = (:top_bc, Runoff.runoff_vars(bc.runoff)...)
+) = (:top_bc, :top_bc_wvec, Runoff.runoff_vars(bc.runoff)...)
 
 """
     boundary_var_domain_names(::RichardsAtmosDrivenFluxBC{<:PrescribedPrecipitation,
@@ -129,7 +129,7 @@ boundary_var_domain_names(
         <:Runoff.AbstractRunoffModel,
     },
     ::ClimaLand.TopBoundary,
-) = (:surface, Runoff.runoff_var_domain_names(bc.runoff)...)
+) = (:surface, :surface, Runoff.runoff_var_domain_names(bc.runoff)...)
 """
     boundary_var_types(::RichardsModel{FT},
                         ::RichardsAtmosDrivenFluxBC{<:PrescribedPrecipitation,
@@ -148,7 +148,11 @@ boundary_var_types(
         <:Runoff.AbstractRunoffModel,
     },
     ::ClimaLand.TopBoundary,
-) where {FT} = (FT, Runoff.runoff_var_types(bc.runoff, FT)...)
+) where {FT} = (
+    FT,
+    ClimaCore.Geometry.WVector{FT},
+    Runoff.runoff_var_types(bc.runoff, FT)...,
+)
 
 
 """
@@ -603,6 +607,15 @@ struct AtmosDrivenFluxBC{
     prognostic_land_components::C
 end
 
+function AtmosDrivenFluxBC(
+    atmos,
+    radiation,
+    runoff;
+    prognostic_land_components = (:soil,),
+)
+    args = (atmos, radiation, runoff, prognostic_land_components)
+    return AtmosDrivenFluxBC{typeof.(args)...}(args...)
+end
 
 function AtmosDrivenFluxBC(
     atmos,
@@ -633,7 +646,7 @@ function boundary_var_types(
     ::AbstractEnergyHydrologyBC,
     ::ClimaLand.AbstractBoundary,
 ) where {FT}
-    (NamedTuple{(:water, :heat), Tuple{FT, FT}},)
+    (NamedTuple{(:water, :heat), Tuple{FT, FT}}, ClimaCore.Geometry.WVector{FT})
 end
 
 """
@@ -674,6 +687,7 @@ boundary_vars(bc::AtmosDrivenFluxBC, ::ClimaLand.TopBoundary) = (
     :turbulent_fluxes,
     :R_n,
     :top_bc,
+    :top_bc_wvec,
     :sfc_scratch,
     Runoff.runoff_vars(bc.runoff)...,
 )
@@ -687,6 +701,7 @@ specifies the part of the domain on which the additional variables should be
 defined.
 """
 boundary_var_domain_names(bc::AtmosDrivenFluxBC, ::ClimaLand.TopBoundary) = (
+    :surface,
     :surface,
     :surface,
     :surface,
@@ -714,6 +729,7 @@ boundary_var_types(
     },
     FT,
     NamedTuple{(:water, :heat), Tuple{FT, FT}},
+    ClimaCore.Geometry.WVector{FT},
     FT,
     Runoff.runoff_var_types(bc.runoff, FT)...,
 )
@@ -741,7 +757,7 @@ functions, which use the soil surface conditions as well as
 the atmos and radiation conditions in order to
 compute the surface fluxes using Monin Obukhov Surface Theory.
 It also accounts for the presence of other components, if run as
-part of an integrated land model, and their affect on boundary conditions.
+part of an integrated land model, and their effect on boundary conditions.
 """
 function soil_boundary_fluxes!(
     bc::AtmosDrivenFluxBC,
@@ -803,7 +819,7 @@ top boundary.
 These variables are updated in place in `boundary_flux`.
 """
 boundary_vars(bc::MoistureStateBC, ::ClimaLand.TopBoundary) =
-    (:top_bc, :dfluxBCdY)
+    (:top_bc, :top_bc_wvec, :dfluxBCdY)
 
 """
     boundary_var_domain_names(::MoistureStateBC, ::ClimaLand.TopBoundary)
@@ -812,7 +828,7 @@ An extension of the `boundary_var_domain_names` method for MoistureStateBC at th
 top boundary.
 """
 boundary_var_domain_names(bc::MoistureStateBC, ::ClimaLand.TopBoundary) =
-    (:surface, :surface)
+    (:surface, :surface, :surface)
 """
     boundary_var_types(::RichardsModel{FT},
                         ::MoistureStateBC,
@@ -826,7 +842,11 @@ boundary_var_types(
     model::RichardsModel{FT},
     bc::MoistureStateBC,
     ::ClimaLand.TopBoundary,
-) where {FT} = (FT, ClimaCore.Geometry.Covariant3Vector{FT})
+) where {FT} = (
+    FT,
+    ClimaCore.Geometry.WVector{FT},
+    ClimaCore.Geometry.Covariant3Vector{FT},
+)
 
 
 function sublimation_source(::Val{(:soil,)}, FT)

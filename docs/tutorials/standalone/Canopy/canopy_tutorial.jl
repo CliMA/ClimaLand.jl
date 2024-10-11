@@ -141,7 +141,7 @@ shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
 
 ψ_soil0 = FT(0.0)
 
-soil_driver = PrescribedSoil(
+soil_driver = PrescribedGroundConditions(
     FT;
     root_depths = SVector{10, FT}(-(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0),
     ψ = t -> ψ_soil0,
@@ -197,11 +197,6 @@ ai_parameterization =
     PrescribedSiteAreaIndex{FT}(TimeVaryingInput(LAIfunction), SAI, RAI)
 rooting_depth = FT(1.0);
 
-# Define the root distribution function p(z):
-
-function root_distribution(z::T; rooting_depth = rooting_depth) where {T}
-    return T(1.0 / rooting_depth) * exp(z / T(rooting_depth))
-end;
 
 # Create the component conductivity and retention models of the hydraulics
 # model. In ClimaLand, a Weibull parameterization is used for the conductivity as
@@ -226,7 +221,7 @@ plant_hydraulics_ps = PlantHydraulics.PlantHydraulicsParameters(;
     ai_parameterization = ai_parameterization,
     ν = ν,
     S_s = S_s,
-    root_distribution = root_distribution,
+    rooting_depth = rooting_depth,
     conductivity_model = conductivity_model,
     retention_model = retention_model,
 );
@@ -255,9 +250,11 @@ canopy = ClimaLand.Canopy.CanopyModel{FT}(;
     photosynthesis = photosynthesis_model,
     conductance = stomatal_model,
     hydraulics = plant_hydraulics,
-    soil_driver = soil_driver,
-    atmos = atmos,
-    radiation = radiation,
+    boundary_conditions = Canopy.AtmosDrivenCanopyBC(
+        atmos,
+        radiation,
+        soil_driver,
+    ),
 );
 
 # Initialize the state vectors and obtain the model coordinates, then get the

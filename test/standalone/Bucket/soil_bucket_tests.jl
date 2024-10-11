@@ -157,6 +157,8 @@ for FT in (Float32, Float64)
             @test mean(Array(parent(dY.bucket.W))) < eps(FT)
             @test mean(Array(parent(dY.bucket.Ws))) < eps(FT)
             @test mean(Array(parent(dY.bucket.σS))) < eps(FT)
+            @test p.bucket.top_bc_wvec ==
+                  ClimaCore.Geometry.WVector.(p.bucket.G)
         end
 
 

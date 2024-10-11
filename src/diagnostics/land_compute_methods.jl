@@ -46,7 +46,7 @@ end
 
 # variables stored in p (diagnostics variables stored in the cache)
 @diagnostic_compute "aerodynamic_resistance" BucketModel p.bucket.turbulent_fluxes.r_ae
-@diagnostic_compute "albedo" BucketModel p.bucket.α_sfc
+@diagnostic_compute "sw_albedo" BucketModel p.bucket.α_sfc
 @diagnostic_compute "latent_heat_flux" BucketModel p.bucket.turbulent_fluxes.lhf
 @diagnostic_compute "net_radiation" BucketModel p.bucket.R_n
 @diagnostic_compute "sensible_heat_flux" BucketModel p.bucket.turbulent_fluxes.shf
@@ -158,9 +158,70 @@ end # Convert from kg C to mol CO2.
 @diagnostic_compute "soilco2_diffusivity" SoilCanopyModel p.soilco2.D
 @diagnostic_compute "soilco2_source_microbe" SoilCanopyModel p.soilco2.Sm
 
-# variables stored in Y (prognostic or state variables)
+## Other ##
+@diagnostic_compute "sw_albedo" SoilCanopyModel p.α_sfc
+@diagnostic_compute "lw_up" SoilCanopyModel p.LW_u
+@diagnostic_compute "sw_up" SoilCanopyModel p.SW_u
+@diagnostic_compute "surface_runoff" SoilCanopyModel p.soil.R_s
 
-@diagnostic_compute "canopy_temperature" SoilCanopyModel Y.canopy.energy.T
+function compute_evapotranspiration!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::SoilCanopyModel{FT},
+) where {FT}
+    if isnothing(out)
+        return (
+            p.soil.turbulent_fluxes.vapor_flux_liq .+
+            p.soil.turbulent_fluxes.vapor_flux_ice .+
+            p.canopy.conductance.transpiration
+        ) .* 1000 # density of liquid water (1000kg/m^3)
+    else
+        out .=
+            (
+                p.soil.turbulent_fluxes.vapor_flux_liq .+
+                p.soil.turbulent_fluxes.vapor_flux_ice .+
+                p.canopy.conductance.transpiration
+            ) .* 1000 # density of liquid water (1000kg/m^3)
+    end
+end
+
+function compute_total_respiration!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::SoilCanopyModel{FT},
+) where {FT}
+    if isnothing(out)
+        return p.soilco2.top_bc .* FT(83.26) .+ # [3.664 kg CO2/ kg C] x [10^3 g CO2/ kg CO2] x [1 mol CO2/44.009 g CO2] = 83.26 mol CO2/kg C
+               p.canopy.autotrophic_respiration.Ra
+    else
+        out .=
+            p.soilco2.top_bc .* FT(83.26) .+ p.canopy.autotrophic_respiration.Ra
+    end
+end
+
+# variables stored in Y (prognostic or state variables)
+nan_if_no_canopy(T::FT, AI::FT) where {FT <: Real} = AI > 0 ? T : FT(NaN)
+function compute_canopy_temperature!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::SoilCanopyModel{FT},
+) where {FT}
+    AI =
+        p.canopy.hydraulics.area_index.leaf .+
+        p.canopy.hydraulics.area_index.stem
+    if isnothing(out)
+        return nan_if_no_canopy.(Y.canopy.energy.T, AI)
+    else
+        out .= nan_if_no_canopy.(Y.canopy.energy.T, AI)
+    end
+end
+
 @diagnostic_compute "soilco2" SoilCanopyModel Y.soilco2.C
 @diagnostic_compute "soil_water_content" SoilCanopyModel Y.soil.ϑ_l
 # @diagnostic_compute "plant_water_content" SoilCanopyModel Y.canopy.hydraulics.ϑ_l # return a Tuple

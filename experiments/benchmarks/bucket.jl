@@ -44,7 +44,7 @@ earth_param_set = ClimaLand.Parameters.LandParameters(FT);
 outdir = "bucket_benchmark_$(device_suffix)"
 !ispath(outdir) && mkpath(outdir)
 
-function setup_prob(t0, tf, Δt; nelements = (100, 10))
+function setup_prob(t0, tf, Δt; nelements = (101, 7))
     # We set up the problem in a function so that we can make multiple copies (for profiling)
 
     # Set up simulation domain
@@ -145,7 +145,7 @@ function setup_simulation(; greet = false)
     t0 = 0.0
     tf = 7 * 86400
     Δt = 3600.0
-    nelements = (100, 10)
+    nelements = (101, 7)
     if greet
         @info "Run: Bucket with temporal map"
         @info "Resolution: $nelements"
@@ -224,7 +224,7 @@ if ClimaComms.device() isa ClimaComms.CUDADevice
 end
 
 if get(ENV, "BUILDKITE_PIPELINE_SLUG", nothing) == "climaland-benchmark"
-    PREVIOUS_BEST_TIME = 2.8
+    PREVIOUS_BEST_TIME = 1.5
     if average_timing_s > PREVIOUS_BEST_TIME + std_timing_s
         @info "Possible performance regression, previous average time was $(PREVIOUS_BEST_TIME)"
     elseif average_timing_s < PREVIOUS_BEST_TIME - std_timing_s

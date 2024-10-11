@@ -16,8 +16,8 @@ using ClimaCore.Geometry: WVector
 using ClimaComms
 
 using ClimaLand
-
 import ..Parameters as LP
+import Thermodynamics.Parameters as TP
 import ClimaLand.Domains: coordinates, SphericalShell
 using ClimaLand:
     AbstractAtmosphericDrivers,
@@ -56,9 +56,6 @@ export BucketModelParameters,
     surface_albedo,
     partition_snow_surface_fluxes
 
-include(
-    joinpath(pkgdir(ClimaLand), "src/standalone/Bucket/artifacts/artifacts.jl"),
-)
 
 abstract type AbstractBucketModel{FT} <: AbstractExpModel{FT} end
 
@@ -318,6 +315,7 @@ auxiliary_types(::BucketModel{FT}) where {FT} = (
     FT,
     FT,
     FT,
+    ClimaCore.Geometry.WVector{FT},
 )
 auxiliary_vars(::BucketModel) = (
     :q_sfc,
@@ -332,8 +330,10 @@ auxiliary_vars(::BucketModel) = (
     :G,
     :snow_melt,
     :infiltration,
+    :top_bc_wvec,
 )
 auxiliary_domain_names(::BucketModel) = (
+    :surface,
     :surface,
     :surface,
     :surface,
@@ -360,16 +360,15 @@ function make_compute_exp_tendency(model::BucketModel{FT}) where {FT}
 
         # Temperature profile of soil.
         gradc2f = ClimaCore.Operators.GradientC2F()
+        @. p.bucket.top_bc_wvec = ClimaCore.Geometry.WVector(p.bucket.G)
         divf2c = ClimaCore.Operators.DivergenceF2C(
-            top = ClimaCore.Operators.SetValue(
-                ClimaCore.Geometry.WVector.(p.bucket.G),
-            ),
+            top = ClimaCore.Operators.SetValue(p.bucket.top_bc_wvec),
             bottom = ClimaCore.Operators.SetValue(
-                ClimaCore.Geometry.WVector.(FT(0.0)),
+                ClimaCore.Geometry.WVector(zero(FT)),
             ),
         )
 
-        @. dY.bucket.T = -1 / ρc_soil * (divf2c(-κ_soil * gradc2f(Y.bucket.T))) # Simple heat equation, Eq 10
+        @. dY.bucket.T = -1 / ρc_soil * divf2c(-κ_soil * gradc2f(Y.bucket.T)) # Simple heat equation, Eq 10
 
         # Positive infiltration -> net (negative) flux into soil
         @. dY.bucket.W = -p.bucket.infiltration # Equation (2) of the text.
@@ -411,7 +410,6 @@ function make_update_aux(model::BucketModel{FT}) where {FT}
         p.bucket.q_sfc .=
             saturation_specific_humidity.(
                 p.bucket.T_sfc,
-                Y.bucket.σS,
                 p.bucket.ρ_sfc,
                 Ref(
                     LP.thermodynamic_parameters(

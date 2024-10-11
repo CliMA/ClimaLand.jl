@@ -1,11 +1,51 @@
+# # Timestep test for integrated SoilCanopyModel
+
+# This experiment runs the standalone canopy model for 12.5 hours on a spherical domain
+# and outputs useful plots related to the timestepping and stability of
+# the simulation using different timesteps. This information can be used to
+# determine the optimal timestep for a this simulation setup.
+
+# The simulation is run multiple times: first, with a small reference timestep,
+# then with increasing timestep sizes. The goal here is to see which timesteps
+# are small enough to produce a stable simulation, and which timesteps are too
+# large to produce accurate results.
+
+# The runs with larger timesteps are compared with the reference timestep run
+# using multiple metrics, including:
+# - mean, 99%th, and 95th% error over the course of the simulation
+# - T at the end of the simulation (used to test convergence with each dt)
+# - T throughout the entire simulation
+
+# Note that the simulation is run for 12.5 hours to allow us to test the
+# convergence behavior of the solver.
+# Convergence behavior must be assessed when T is actively changing, rather
+# than when it is in equilibrium. T changes in the time period after a driver
+# update, which occurs every 3 hours (so exactly at 12 hours). Running for
+# just longer than 12 hours allows us to observe convergence behavior at a time
+# when T is actively changing. See the discussion in
+# https://github.com/CliMA/ClimaLand.jl/pull/675 for more information.
+
+# Simulation Setup
+# Number of spatial elements: 10 in horizontal, 5 in vertical
+# Soil depth: 5 m
+# Simulation duration: 12.5 hours
+# Timestep: variable, ranging from 0.6s to 3600s
+# Timestepper: ARS111
+# Fixed number of iterations: 6
+# Jacobian update: Every Newton iteration
+# Atmospheric and radiation driver updates: Every 3 hours
+
 import SciMLBase
 import ClimaTimeSteppers as CTS
 using ClimaCore
 using Dates
 using Insolation
+using Statistics
+import StatsBase: percentile
+using CairoMakie
 import ClimaComms
+@static pkgversion(ClimaComms) >= v"0.6" && ClimaComms.@import_required_backends
 import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
-import ClimaUtilities.OutputPathGenerator: generate_output_path
 
 using ClimaLand
 using ClimaLand.Domains
@@ -72,14 +112,11 @@ function set_initial_conditions(land, t0)
     return Y, p
 end
 
-
-
 context = ClimaComms.context()
 device_suffix =
     typeof(ClimaComms.context().device) <: ClimaComms.CPUSingleThreaded ?
     "cpu" : "gpu"
 const FT = Float64
-savedir = generate_output_path("experiments/integrated/performance")
 earth_param_set = LP.LandParameters(FT)
 
 # Set the model domain
@@ -105,6 +142,7 @@ land_domain = ClimaLand.Domains.SphericalShell(;
 );
 canopy_domain = ClimaLand.Domains.obtain_surface_domain(land_domain)
 sfc_cds = ClimaCore.Fields.coordinate_field(land_domain.space.surface)
+
 # First pick the start date and time of the simulation, since time varying input depends on that
 t0 = Float64(0) # start at start date
 start_date = DateTime("202001010000", "yyyymmddHHMM")
@@ -271,14 +309,11 @@ photosynthesis_args =
     (; parameters = FarquharParameters(FT, is_c3; Vcmax25 = Vcmax25))
 # Set up plant hydraulics
 ai_parameterization = PrescribedSiteAreaIndex{FT}(LAIfunction, SAI, RAI)
-function root_distribution(z::T) where {T}
-    return T(1.0 / 0.5 * exp(z / 0.5)) # 1/m
-end
 plant_hydraulics_ps = PlantHydraulics.PlantHydraulicsParameters(;
     ai_parameterization = ai_parameterization,
     ν = plant_ν,
     S_s = plant_S_s,
-    root_distribution = root_distribution,
+    rooting_depth = FT(0.5),
     conductivity_model = conductivity_model,
     retention_model = retention_model,
 )
@@ -331,99 +366,138 @@ exp_tendency! = make_exp_tendency(land)
 imp_tendency! = make_imp_tendency(land);
 jacobian! = make_jacobian(land);
 
-# Set up timestepping and simulation callbacks
-dt = Float64(150)
-tf = Float64(t0 + 100dt)
-saveat = Array(t0:dt:tf)
-updateat = Array(t0:dt:tf)
-timestepper = CTS.ARS343()
+# Timestepping information
+N_hours = 8
+tf = Float64(t0 + N_hours * 3600.0)
+sim_time = round((tf - t0) / 3600, digits = 2) # simulation length in hours
+
+timestepper = CTS.ARS111()
 ode_algo = CTS.IMEXAlgorithm(
     timestepper,
     CTS.NewtonsMethod(
-        max_iters = 1,
+        max_iters = 6,
         update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
     ),
 );
 
+# Set up simulation callbacks
 drivers = ClimaLand.get_drivers(land)
 updatefunc = ClimaLand.make_update_drivers(drivers)
-driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
-# Set initial conditions
-Y, p = set_initial_conditions(land, t0)
 
-# Set up jacobian info
-jac_kwargs =
-    (; jac_prototype = ClimaLand.ImplicitEquationJacobian(Y), Wfact = jacobian!);
+# Choose timesteps and set up arrays to store information
+ref_dt = 50.0
+dts = [ref_dt, 100.0, 200.0, 450.0, 900.0, 1800.0, 3600.0]
 
-# Solve simulation
-prob = SciMLBase.ODEProblem(
-    CTS.ClimaODEFunction(
-        T_exp! = exp_tendency!,
-        T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
-        dss! = ClimaLand.dss!,
-    ),
-    Y,
-    (t0, tf),
-    p,
-)
-sol = SciMLBase.solve(
-    prob,
-    ode_algo;
-    dt = dt,
-    callback = driver_cb,
-    adaptive = false,
-)
-if PROFILING
-    # Now that we compiled, solve again but collect profiling information
+ref_T = []
+mean_err = []
+p95_err = []
+p99_err = []
+sol_err = []
+T_states = []
+times = []
+ΔT = FT(0)
+for dt in dts
+    @info dt
+    # Initialize model and set initial conditions before each simulation
     Y, p = set_initial_conditions(land, t0)
-    updateat = Array(t0:dt:tf)
-    drivers = ClimaLand.get_drivers(land)
-    updatefunc = ClimaLand.make_update_drivers(drivers)
+    jac_kwargs = (;
+        jac_prototype = ClimaLand.ImplicitEquationJacobian(Y),
+        Wfact = jacobian!,
+    )
+
+    # Create callback for driver updates
+    saveat = vcat(Array(t0:(3 * 3600):tf), tf)
+    updateat = vcat(Array(t0:(3 * 3600):tf), tf)
     driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
+
+    # Solve simulation
     prob = SciMLBase.ODEProblem(
         CTS.ClimaODEFunction(
             T_exp! = exp_tendency!,
+            T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
             dss! = ClimaLand.dss!,
-            T_imp! = nothing,
         ),
         Y,
         (t0, tf),
         p,
     )
-    Profile.@profile SciMLBase.solve(
+    @time sol = SciMLBase.solve(
         prob,
         ode_algo;
         dt = dt,
         callback = driver_cb,
+        saveat = saveat,
     )
-    results = Profile.fetch()
-    flame_file = joinpath(savedir, "flame_$(device_suffix).html")
-    ProfileCanvas.html_file(flame_file, results)
-    @info "Save compute flame to $(flame_file)"
-    Y, p = set_initial_conditions(land, t0)
-    updateat = Array(t0:dt:tf)
-    drivers = ClimaLand.get_drivers(land)
-    updatefunc = ClimaLand.make_update_drivers(drivers)
-    driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
-    prob = SciMLBase.ODEProblem(
-        CTS.ClimaODEFunction(
-            T_exp! = exp_tendency!,
-            dss! = ClimaLand.dss!,
-            T_imp! = nothing,
-        ),
-        Y,
-        (t0, tf),
-        p,
-    )
-    Profile.Allocs.@profile sample_rate = 0.01 SciMLBase.solve(
-        prob,
-        ode_algo;
-        dt = dt,
-        callback = driver_cb,
-    )
-    results = Profile.Allocs.fetch()
-    profile = ProfileCanvas.view_allocs(results)
-    alloc_flame_file = joinpath(savedir, "alloc_flame_$(device_suffix).html")
-    ProfileCanvas.html_file(alloc_flame_file, profile)
-    @info "Save allocation flame to $(alloc_flame_file)"
+
+    # Save results for comparison
+    if dt == ref_dt
+        global ref_T =
+            [parent(sol.u[k].canopy.energy.T)[1] for k in 1:length(sol.t)]
+    else
+        T = [parent(sol.u[k].canopy.energy.T)[1] for k in 1:length(sol.t)]
+
+        ΔT = abs.(T .- ref_T)
+        push!(mean_err, FT(mean(ΔT)))
+        push!(p95_err, FT(percentile(ΔT, 95)))
+        push!(p99_err, FT(percentile(ΔT, 99)))
+        push!(sol_err, ΔT[end])
+        push!(T_states, T)
+        push!(times, sol.t)
+    end
 end
+
+savedir = joinpath(
+    pkgdir(ClimaLand),
+    "experiments",
+    "integrated",
+    "performance",
+    "integrated_timestep_test",
+);
+!ispath(savedir) && mkpath(savedir)
+
+# Create plot with statistics
+# Compare T state computed with small vs large dt
+fig = Figure()
+ax = Axis(
+    fig[1, 1],
+    xlabel = "Timestep (sec)",
+    ylabel = "Temperature (K)",
+    xscale = log10,
+    yscale = log10,
+    title = "Error in T over $(sim_time) hour sim, dts in [$(dts[1]), $(dts[end])]",
+)
+dts = dts[2:end]
+lines!(ax, dts, FT.(mean_err), label = "Mean Error")
+lines!(ax, dts, FT.(p95_err), label = "95th% Error")
+lines!(ax, dts, FT.(p99_err), label = "99th% Error")
+axislegend(ax)
+save(joinpath(savedir, "errors.png"), fig)
+
+# Create convergence plot
+fig2 = Figure()
+ax2 = Axis(
+    fig2[1, 1],
+    xlabel = "log(dt)",
+    ylabel = "log(|T[end] - T_ref[end]|)",
+    xscale = log10,
+    yscale = log10,
+    title = "Convergence of T; sim time = $(sim_time) hours, dts in [$(dts[1]), $(dts[end])]",
+)
+scatter!(ax2, dts, FT.(sol_err))
+lines!(ax2, dts, dts / 1e3)
+save(joinpath(savedir, "convergence.png"), fig2)
+
+# Plot T throughout full simulation for each run
+fig3 = Figure()
+ax3 = Axis(
+    fig3[1, 1],
+    xlabel = "time (hr)",
+    ylabel = "T (K)",
+    title = "T throughout simulation; length = $(sim_time) hours, dts in [$(dts[1]), $(dts[end])]",
+)
+times = times ./ 3600.0 # hours
+for i in 1:length(times)
+    lines!(ax3, times[i], T_states[i], label = "dt $(dts[i]) s")
+end
+axislegend(ax3, position = :rt)
+save(joinpath(savedir, "states.png"), fig3)

@@ -10,8 +10,79 @@ import ClimaLand:
     surface_height,
     surface_resistance,
     displacement_height,
-    turbulent_fluxes
+    turbulent_fluxes,
+    AbstractBC
 
+"""
+    AbstractCanopyBC <: ClimaLand.AbstractBC
+
+An abstract type for boundary conditions for the canopy model.
+"""
+abstract type AbstractCanopyBC <: ClimaLand.AbstractBC end
+"""
+    AtmosDrivenCanopyBC{
+        A <: AbstractAtmosphericDrivers,
+        B <: AbstractRadiativeDrivers,
+        G <: AbstractGroundConditions,
+        C::Tuple
+    } <: AbstractCanopyBC
+
+A struct used to specify the canopy fluxes, referred
+to as ``boundary conditions", at the surface and
+bottom of the canopy, for water and energy.
+
+These fluxes include turbulent surface fluxes
+computed with Monin-Obukhov theory, radiative fluxes, 
+and root extraction.
+$(DocStringExtensions.FIELDS)
+"""
+struct AtmosDrivenCanopyBC{
+    A <: AbstractAtmosphericDrivers,
+    B <: AbstractRadiativeDrivers,
+    G <: AbstractGroundConditions,
+    C <: Tuple,
+} <: AbstractCanopyBC
+    "The atmospheric conditions driving the model"
+    atmos::A
+    "The radiative fluxes driving the model"
+    radiation::B
+    "Ground conditions"
+    ground::G
+    "Prognostic land components present"
+    prognostic_land_components::C
+end
+
+"""
+    AtmosDrivenCanopyBC(
+        atmos,
+        radiation,
+        ground;
+        prognostic_land_components = (:canopy,),
+    )
+
+An outer constructor for `AtmosDrivenCanopyBC` which is
+intended for use as a default when running standlone canopy
+models. 
+
+This is also checks the logic that:
+- If the `ground` field is Prescribed, :soil should not be a prognostic_land_component
+- If the `ground` field is not Prescribed, :soil should be modeled prognostically.
+"""
+function AtmosDrivenCanopyBC(
+    atmos,
+    radiation,
+    ground;
+    prognostic_land_components = (:canopy,),
+)
+    if typeof(ground) <: PrescribedGroundConditions
+        @assert !(:soil ∈ prognostic_land_components)
+    else
+        @assert :soil ∈ prognostic_land_components
+    end
+
+    args = (atmos, radiation, ground, prognostic_land_components)
+    return AtmosDrivenCanopyBC(args...)
+end
 
 """
     ClimaLand.displacment_height(model::CanopyModel, Y, p)
@@ -104,7 +175,7 @@ end
 
 function make_update_boundary_fluxes(canopy::CanopyModel)
     function update_boundary_fluxes!(p, Y, t)
-        canopy_boundary_fluxes!(p, canopy, canopy.radiation, canopy.atmos, Y, t)
+        canopy_boundary_fluxes!(p, canopy, Y, t)
     end
     return update_boundary_fluxes!
 end
@@ -120,8 +191,6 @@ end
                                 <:PlantHydraulicsModel,
                                 <:Union{PrescribedCanopyTempModel,BigLeafEnergyModel}
                             },
-                            radiation::PrescribedRadiativeFluxes,
-                            atmos::PrescribedAtmosphere,
                             Y::ClimaCore.Fields.FieldVector,
                             t,
                             ) where {FT}
@@ -138,7 +207,6 @@ within the explicit tendency of the canopy model.
 - `p.canopy.hydraulics.fa_roots`: Root water flux
 - `p.canopy.radiative_transfer.LW_n`: net long wave radiation
 - `p.canopy.radiative_transfer.SW_n`: net short wave radiation
-
 """
 function canopy_boundary_fluxes!(
     p::NamedTuple,
@@ -151,12 +219,12 @@ function canopy_boundary_fluxes!(
         <:PlantHydraulicsModel,
         <:Union{PrescribedCanopyTempModel, BigLeafEnergyModel},
     },
-    radiation::PrescribedRadiativeFluxes,
-    atmos::PrescribedAtmosphere,
     Y::ClimaCore.Fields.FieldVector,
     t,
 ) where {FT}
-
+    bc = canopy.boundary_conditions
+    radiation = bc.radiation
+    atmos = bc.atmos
     root_water_flux = p.canopy.hydraulics.fa_roots
     root_energy_flux = p.canopy.energy.fa_energy_roots
     fa = p.canopy.hydraulics.fa
@@ -167,14 +235,14 @@ function canopy_boundary_fluxes!(
     lhf = p.canopy.energy.lhf
     r_ae = p.canopy.energy.r_ae
     i_end = canopy.hydraulics.n_stem + canopy.hydraulics.n_leaf
-
     # Compute transpiration, SHF, LHF
     canopy_tf = ClimaLand.turbulent_fluxes(atmos, canopy, Y, p, t)
     transpiration .= canopy_tf.vapor_flux
     shf .= canopy_tf.shf
     lhf .= canopy_tf.lhf
     r_ae .= canopy_tf.r_ae
-
+    p.canopy.energy.∂LHF∂qc .= canopy_tf.∂LHF∂qc
+    p.canopy.energy.∂SHF∂Tc .= canopy_tf.∂SHF∂Tc
     # Transpiration is per unit ground area, not leaf area (mult by LAI)
     fa.:($i_end) .= PlantHydraulics.transpiration_per_ground_area(
         canopy.hydraulics.transpiration,
@@ -182,30 +250,35 @@ function canopy_boundary_fluxes!(
         p,
         t,
     )
+    # Note that in the three functions below,
+    # we dispatch off of the ground conditions `bc.ground`
+    # to handle standalone canopy simulations vs integrated ones
+
     # Update the root flux of water per unit ground area in place
     root_water_flux_per_ground_area!(
         root_water_flux,
-        canopy.soil_driver,
+        bc.ground,
         canopy.hydraulics,
         Y,
         p,
         t,
     )
-
+    # Update the root flux of energy per unit ground area in place
     root_energy_flux_per_ground_area!(
         root_energy_flux,
-        canopy.soil_driver,
+        bc.ground,
         canopy.energy,
         Y,
         p,
         t,
     )
 
+    # Update the canopy radiation
     canopy_radiant_energy_fluxes!(
         p,
-        canopy.soil_driver,
+        bc.ground,
         canopy,
-        canopy.radiation,
+        bc.radiation,
         canopy.parameters.earth_param_set,
         Y,
         t,
@@ -285,6 +358,10 @@ end
 
 Computes the turbulent surface fluxes for the canopy at a point
 and returns the fluxes in a named tuple.
+
+Note that an additiontal resistance is used in computing both
+evaporation and sensible heat flux, and this modifies the output
+of `SurfaceFluxes.surface_conditions`.
 """
 function canopy_turbulent_fluxes_at_a_point(
     T_sfc::FT,
@@ -314,7 +391,7 @@ function canopy_turbulent_fluxes_at_a_point(
     )
 
     # State containers
-    sc = SurfaceFluxes.ValuesOnly(
+    states = SurfaceFluxes.ValuesOnly(
         state_in,
         state_sfc,
         z_0m,
@@ -323,27 +400,62 @@ function canopy_turbulent_fluxes_at_a_point(
         gustiness = gustiness,
     )
     surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
-    conditions = SurfaceFluxes.surface_conditions(
-        surface_flux_params,
-        sc;
-        tol_neutral = SFP.cp_d(surface_flux_params) / 100000,
-    )
+    scheme = SurfaceFluxes.PointValueScheme()
+    conditions =
+        SurfaceFluxes.surface_conditions(surface_flux_params, states, scheme)
     _LH_v0::FT = LP.LH_v0(earth_param_set)
     _ρ_liq::FT = LP.ρ_cloud_liq(earth_param_set)
-
-    cp_m::FT = Thermodynamics.cp_m(thermo_params, ts_in)
-    T_in::FT = Thermodynamics.air_temperature(thermo_params, ts_in)
-    ΔT = T_in - T_sfc
-    r_ae::FT = 1 / (conditions.Ch * SurfaceFluxes.windspeed(sc))
-    ρ_air::FT = Thermodynamics.air_density(thermo_params, ts_in)
+    cp_m_sfc::FT = Thermodynamics.cp_m(thermo_params, ts_sfc)
+    r_ae::FT = 1 / (conditions.Ch * SurfaceFluxes.windspeed(states))
     ustar::FT = conditions.ustar
+    ρ_sfc = Thermodynamics.air_density(thermo_params, ts_sfc)
+    T_int = Thermodynamics.air_temperature(thermo_params, ts_in)
+    Rm_int = Thermodynamics.gas_constant_air(thermo_params, ts_in)
+    ρ_air = Thermodynamics.air_density(thermo_params, ts_in)
+
     r_b::FT = FT(1 / 0.01 * (ustar / 0.04)^(-1 / 2)) # CLM 5, tech note Equation 5.122
     leaf_r_b = r_b / LAI
     canopy_r_b = r_b / (LAI + SAI)
-    E0::FT = SurfaceFluxes.evaporation(surface_flux_params, sc, conditions.Ch)
+
+    E0::FT =
+        SurfaceFluxes.evaporation(surface_flux_params, states, conditions.Ch)
     E = E0 * r_ae / (leaf_r_b + leaf_r_stomata + r_ae) # CLM 5, tech note Equation 5.101, and fig 5.2b, assuming all sunlit, f_wet = 0
     Ẽ = E / _ρ_liq
-    H = -ρ_air * cp_m * ΔT / (canopy_r_b + r_ae) # CLM 5, tech note Equation 5.88, setting H_v = H and solving to remove T_s
+
+    SH =
+        SurfaceFluxes.sensible_heat_flux(
+            surface_flux_params,
+            conditions.Ch,
+            states,
+            scheme,
+        ) * r_ae / (canopy_r_b + r_ae)
+    # The above follows from CLM 5, tech note Equation 5.88, setting H_v = SH and solving to remove T_s, ignoring difference between cp in atmos and above canopy. 
     LH = _LH_v0 * E
-    return (lhf = LH, shf = H, vapor_flux = Ẽ, r_ae = r_ae)
+
+    # Derivatives
+    # We ignore ∂r_ae/∂T_sfc, ∂u*/∂T_sfc, ∂r_stomata∂Tc
+    ∂ρsfc∂Tc =
+        ρ_air *
+        (Thermodynamics.cv_m(thermo_params, ts_in) / Rm_int) *
+        (T_sfc / T_int)^(Thermodynamics.cv_m(thermo_params, ts_in) / Rm_int - 1) /
+        T_int
+    ∂cp_m_sfc∂Tc = 0 # Possibly can address at a later date
+
+    ∂LHF∂qc =
+        ρ_sfc * _LH_v0 / (leaf_r_b + leaf_r_stomata + r_ae) +
+        LH / ρ_sfc * ∂ρsfc∂Tc
+
+    ∂SHF∂Tc =
+        ρ_sfc * cp_m_sfc / (canopy_r_b + r_ae) +
+        SH / ρ_sfc * ∂ρsfc∂Tc +
+        SH / cp_m_sfc * ∂cp_m_sfc∂Tc
+    return (
+        lhf = LH,
+        shf = SH,
+        vapor_flux = Ẽ,
+        r_ae = r_ae,
+        ∂LHF∂qc = ∂LHF∂qc,
+        ∂SHF∂Tc = ∂SHF∂Tc,
+    )
+
 end
