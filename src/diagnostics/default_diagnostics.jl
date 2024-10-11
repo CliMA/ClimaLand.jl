@@ -175,19 +175,8 @@ function default_diagnostics(
             "sr",
         ]
     elseif output_vars == :short
-        soilcanopy_diagnostics = [
-            "gpp",
-            "ct",
-            "lai",
-            "swc",
-            "si",
-            "swa",
-            "lwu",
-            "et",
-            "er",
-            "sr",
-            "tsfc",
-        ]
+        soilcanopy_diagnostics =
+            ["gpp", "ct", "lai", "swc", "si", "swa", "lwu", "et", "er", "sr"]
     end
 
     if average_period == :hourly
@@ -253,99 +242,4 @@ function default_diagnostics(
     end
 
     return [default_outputs...]
-end
-
-# Land Model
-function default_diagnostics(
-    land_model::LandModel{FT},
-    reference_date;
-    output_writer,
-    output_vars = :long,
-    average_period = :daily,
-) where {FT}
-
-    define_diagnostics!(land_model)
-
-    if output_vars == :long
-        snowyland_diagnostics = [
-            "swa",
-            "sif",
-            "ra",
-            "gs",
-            "trans",
-            "crae",
-            "clhf",
-            "cshf",
-            # "lwp", # last(p.canopy.hydraulics.ψ) errors
-            # "fa", # return a Tuple
-            "far",
-            "lai",
-            "msf",
-            "rai",
-            "sai",
-            "gpp",
-            "an",
-            "rd",
-            "vcmax25",
-            "nir",
-            "anir",
-            "rnir",
-            "tnir",
-            "par",
-            "apar",
-            "rpar",
-            "tpar",
-            "lwn",
-            "swn",
-            "soc",
-            "airp",
-            "rain",
-            "lwd",
-            "swd",
-            "snow",
-            "sza",
-            "qsfc",
-            "ws",
-            "infil",
-            "shc",
-            "stc",
-            "swp",
-            "soilrn",
-            "tsoil",
-            "soilrae",
-            "soillhf",
-            "soilshf",
-            "hr",
-            "scd",
-            "scms",
-            "ct",
-            "sco2",
-            "swc",
-            # "pwc", # return a Tuple
-            "si",
-            "sie",
-            "swu",
-            "lwu",
-            "er",
-            "et",
-            "sr",
-            "tsfc",
-            "swe",
-        ]
-    elseif output_vars == :short
-        snowyland_diagnostics = [
-            "gpp",
-            "ct",
-            "lai",
-            "swc",
-            "si",
-            "swa",
-            "lwu",
-            "et",
-            "er",
-            "sr",
-            "tsfc",
-            "swe",
-        ]
-    end
 end

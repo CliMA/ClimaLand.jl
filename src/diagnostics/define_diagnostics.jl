@@ -32,13 +32,13 @@ function define_diagnostics!(land_model)
             compute_net_radiation!(out, Y, p, t, land_model),
     )
 
-    # Bucket Surface temperature
+    # Surface temperature
     add_diagnostic_variable!(
         short_name = "tsfc",
-        long_name = "Bucket Surface Temperature",
-        standard_name = "bucket_surface_temperature",
+        long_name = "Surface Temperature",
+        standard_name = "surface_temperature",
         units = "K",
-        comments = "Temperature of the bucket-land surface.",
+        comments = "Temperature of the land surface.",
         compute! = (out, Y, p, t) ->
             compute_surface_temperature!(out, Y, p, t, land_model),
     )
@@ -832,24 +832,4 @@ function define_diagnostics!(land_model)
             compute_soil_internal_energy!(out, Y, p, t, land_model),
     )
 
-    # SWE
-    add_diagnostic_variable!(
-        short_name = "swe",
-        long_name = "Snow water equivalent",
-        standard_name = "snow_water_equivalent",
-        units = "m",
-        comments = "The height of liquid water if all snow melted",
-        compute! = (out, Y, p, t) ->
-            compute_snow_water_equivalent!(out, Y, p, t, land_model),
-    )
-
-    add_diagnostic_variable!(
-        short_name = "tsfc",
-        long_name = "Effective surface temperature",
-        standard_name = "t_sfc_eff",
-        units = "K",
-        comments = "The effective surface temperature computed from upwelling longwave radiation, assuming emissivity is 1",
-        compute! = (out, Y, p, t) ->
-            compute_t_sfc_eff!(out, Y, p, t, land_model),
-    )
 end
