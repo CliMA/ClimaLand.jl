@@ -98,14 +98,14 @@ steps:
 
       - label: "ozark_conservation"
         command: "julia --color=yes --project=.buildkite experiments/integrated/performance/conservation/ozark_conservation.jl"
-        artifact_paths: "experiments/integrated/performance/conservation/*png"
+        artifact_paths: "experiments/integrated/performance/conservation/output_active/*png"
 
       - label: "Soilbiogeochem"
         command: "julia --color=yes --project=.buildkite experiments/standalone/Biogeochemistry/experiment.jl"
 
       - label: "Water conservation"
         command: "julia --color=yes --project=.buildkite experiments/standalone/Soil/water_conservation.jl"
-        artifact_paths: "experiments/standalone/Soil/water_conservation*png"
+        artifact_paths: "experiments/standalone/Soil/output_active/water_conservation*png"
 
       - label: "Water conservation in Full Soil Model"
         command: "julia --color=yes --project=.buildkite experiments/standalone/Soil/water_energy_conservation.jl"

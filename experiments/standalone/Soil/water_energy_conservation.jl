@@ -134,6 +134,8 @@ phase_change = (;
     exp_name = "pc",
 )
 
+savedir = generate_output_path("experiments/standalone/Soil")
+
 for experiment in [no_phase_change, phase_change]
     (; t0, tf, dt_ref, Trange, dts, exp_name) = experiment
     Y, p, coords = initialize(soil)
@@ -214,7 +216,6 @@ for experiment in [no_phase_change, phase_change]
     end
 
     # Save flux BC mass conservation error and RMSE as artifact
-    savedir = generate_output_path("experiments/standalone/Soil")
     plt = Plots.plot(margin = 10Plots.mm)
     plt_twin = twinx(plt)
     Plots.plot!(
