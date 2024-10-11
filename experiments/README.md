@@ -17,11 +17,10 @@ julia --project=.buildkite path_to_experiment_script
 
 Many of the outputs from the experiments are saved using a non-destructive approach called
 `ActiveLinkStyle`. Each experiment has some unique save directory. For example, an experiment might have an
-output directory of `example_outdir`. When ran, if the directory does
+output directory of `example_outdir`. When run, if the directory does
 not exist relative to the working directory, then `example_outdir` is created. The results of the latest experiment
-run will be saved into `example_outdir/output_xxx`, where xxxx is the greatest
-index. The lower indices store the outputs of previous runs. The latest results are also linked to
-in `example_outdir/output_active`. More details on this style of output directory handeling
+run will be saved into `example_outdir/output_xxx`, where xxxx is an increasing counter. The lower indices store the outputs of previous runs. The latest results are also linked to
+in `example_outdir/output_active`, which can be assumed to always contain the most recent ouput. More details on this style of output directory handeling
 can be found [here](https://clima.github.io/ClimaUtilities.jl/dev/outputpathgenerator/#ActiveLinkStyle-(Non-Destructive))
 
 ### benchmarks
