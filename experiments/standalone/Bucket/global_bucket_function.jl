@@ -71,7 +71,6 @@ device_suffix =
 outdir = generate_output_path(
     joinpath("experiments/standalone/Bucket/artifacts_function", device_suffix),
 )
-!ispath(outdir) && mkpath(outdir)
 
 # Construct simulation domain
 soil_depth = FT(3.5);
@@ -166,11 +165,9 @@ prob = SciMLBase.ODEProblem(
 );
 
 # ClimaDiagnostics
-output_dir = ClimaUtilities.OutputPathGenerator.generate_output_path(outdir)
-
 space = bucket_domain.space.subsurface
 
-nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(space, output_dir)
+nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(space, outdir)
 
 diags =
     ClimaLand.default_diagnostics(model, start_date; output_writer = nc_writer)
@@ -195,7 +192,7 @@ sol = ClimaComms.@time ClimaComms.device() SciMLBase.solve(
 #### ClimaAnalysis ####
 
 # all
-simdir = ClimaAnalysis.SimDir(output_dir)
+simdir = ClimaAnalysis.SimDir(outdir)
 short_names_2D = [
     "alpha",
     "rn",
@@ -216,7 +213,7 @@ for short_name in vcat(short_names_2D..., short_names_3D...)
     fig = CairoMakie.Figure(size = (800, 600))
     kwargs = short_name in short_names_2D ? Dict() : Dict(:z => 1)
     viz.plot!(fig, var, lon = 0, lat = 0; kwargs...)
-    CairoMakie.save(joinpath(output_dir, "$short_name.png"), fig)
+    CairoMakie.save(joinpath(outdir, "$short_name.png"), fig)
 end
 
 # Interpolate to grid
