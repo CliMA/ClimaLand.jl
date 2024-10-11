@@ -80,7 +80,7 @@ function LandModel{FT}(;
     snow_args::NamedTuple = (;),
 ) where {
     FT,
-    SM <: Soil.EnergyHydrology,
+    SM <: Soil.EnergyHydrology{FT},
     MM <: Soil.Biogeochemistry.SoilCO2Model{FT},
     SnM <: Snow.SnowModel,
 
@@ -124,7 +124,7 @@ function LandModel{FT}(;
             heat = zero_flux,
         ),
     )
-    soil = soil_model_type{FT}(;
+    soil = soil_model_type(;
         boundary_conditions = boundary_conditions,
         sources = sources,
         soil_args...,
@@ -302,7 +302,7 @@ function make_update_boundary_fluxes(
     function update_boundary_fluxes!(p, Y, t)
         earth_param_set = land.soil.parameters.earth_param_set
         # update root extraction
-        update_root_extraction!(p, Y, t, land) # defined in src/integrated/soil_canopy_model.jl
+        update_root_extraction!(p, Y, t, land) # defined in src/integrated/soil_canopy_root_interactions.jl
 
         # Radiation - updates Rn for soil and snow also
         lsm_radiant_energy_fluxes!(
@@ -344,16 +344,17 @@ function make_update_boundary_fluxes(
         ρe_falling_snow = -_LH_f0 * _ρ_liq # per unit vol of liquid water
         @. p.atmos_energy_flux =
             (1 - p.snow.snow_cover_fraction) * (
-                p.soil.turbulent_fluxes.lhf +
-                p.soil.turbulent_fluxes.shf +
+                p.soil.turbulent_fluxes.lhf + p.soil.turbulent_fluxes.shf -
                 p.soil.R_n
             ) +
             p.snow.snow_cover_fraction * (
-                p.snow.turbulent_fluxes.lhf +
-                p.snow.turbulent_fluxes.shf +
+                p.snow.turbulent_fluxes.lhf + p.snow.turbulent_fluxes.shf -
                 p.snow.R_n
             ) +
-            p.drivers.P_snow * ρe_falling_snow
+            p.drivers.P_snow * ρe_falling_snow +
+            p.canopy.energy.shf +
+            p.canopy.energy.lhf - p.canopy.radiative_transfer.SW_n -
+            p.canopy.radiative_transfer.LW_n
         @. p.atmos_water_flux =
             p.drivers.P_snow +
             p.drivers.P_liq +
@@ -361,7 +362,8 @@ function make_update_boundary_fluxes(
                 p.soil.turbulent_fluxes.vapor_flux_liq +
                 p.soil.turbulent_fluxes.vapor_flux_ice
             ) +
-            p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.vapor_flux
+            p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.vapor_flux +
+            p.canopy.conductance.transpiration
 
     end
     return update_boundary_fluxes!
@@ -549,7 +551,7 @@ function snow_boundary_fluxes!(
     _ρ_liq = FT(LP.ρ_cloud_liq(model.parameters.earth_param_set))
     ρe_falling_snow = -_LH_f0 * _ρ_liq # per unit vol of liquid water
 
-    # positive fluxes are TOWARDS atmos
+    # positive fluxes are TOWARDS atmos, but R_n positive if snow absorbs energy
     @. p.snow.total_energy_flux =
         P_snow * ρe_falling_snow +
         (
@@ -640,30 +642,6 @@ function ClimaLand.get_drivers(model::LandModel)
         model.canopy.boundary_conditions.atmos,
         model.canopy.boundary_conditions.radiation,
         model.soilco2.drivers.soc,
-    )
-end
-function PlantHydraulics.root_water_flux_per_ground_area!(
-    fa::ClimaCore.Fields.Field,
-    s::PrognosticGroundConditions,
-    model::Canopy.PlantHydraulics.PlantHydraulicsModel,
-    Y::ClimaCore.Fields.FieldVector,
-    p::NamedTuple,
-    t,
-)
-    ClimaCore.Operators.column_integral_definite!(fa, p.root_extraction)
-end
-
-function Canopy.root_energy_flux_per_ground_area!(
-    fa_energy::ClimaCore.Fields.Field,
-    s::PrognosticGroundConditions,
-    model::Canopy.AbstractCanopyEnergyModel,
-    Y::ClimaCore.Fields.FieldVector,
-    p::NamedTuple,
-    t,
-)
-    ClimaCore.Operators.column_integral_definite!(
-        fa_energy,
-        p.root_energy_extraction,
     )
 end
 

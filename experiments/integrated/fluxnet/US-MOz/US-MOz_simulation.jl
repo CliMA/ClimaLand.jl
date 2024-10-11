@@ -17,7 +17,7 @@ h_leaf = FT(9.5) # m
 # TIME STEPPING:
 
 # Starting time:
-t0 = Float64(0 * 3600 * 24)# start mid year to avoid snow
+t0 = Float64(0 * 3600 * 24)
 
 # Time step size:
 dt = Float64(450)

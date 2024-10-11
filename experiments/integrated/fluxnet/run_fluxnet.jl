@@ -27,11 +27,11 @@ include(joinpath(climaland_dir, "experiments/integrated/fluxnet/data_tools.jl"))
 include(joinpath(climaland_dir, "experiments/integrated/fluxnet/plot_utils.jl"))
 
 # Read in the site to be run from the command line
-#if length(ARGS) < 1
-#    error("Must provide site ID on command line")
-#end
+if length(ARGS) < 1
+    error("Must provide site ID on command line")
+end
 
-site_ID = "US-MOz"#ARGS[1]
+site_ID = ARGS[1]
 
 # Read all site-specific domain parameters from the simulation file for the site
 include(
@@ -90,7 +90,7 @@ soil_ps = Soil.EnergyHydrologyParameters(
 );
 
 soil_args = (domain = soil_domain, parameters = soil_ps)
-soil_model_type = Soil.EnergyHydrology
+soil_model_type = Soil.EnergyHydrology{FT}
 
 # Soil microbes model
 soilco2_type = Soil.Biogeochemistry.SoilCO2Model{FT}
@@ -453,10 +453,10 @@ if drivers.LE.status == absent
         "Model",
     )
 else
-    measured_T =
+    measured_ET =
         drivers.LE.values ./ (LP.LH_v0(earth_param_set) * 1000) .*
         (1e3 * 24 * 3600)
-    ET_data = measured_T[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)]
+    ET_data = measured_ET[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)]
     plot_avg_comp(
         "ET",
         ET_model,
@@ -491,7 +491,7 @@ if drivers.H.status == absent
         SHF_model,
         dt_save,
         num_days,
-        "w/m^2",
+        "W/m^2",
         savedir,
         "Model",
     )
@@ -765,7 +765,7 @@ idx = argmin(abs.(seconds .- sol.t[1]))
 if drivers.LE.status != absent
     Plots.plot(
         seconds ./ 24 ./ 3600,
-        cumsum(measured_T[:]) * dt_data,
+        cumsum(measured_ET[:]) * dt_data,
         label = "Data ET",
     )
 
@@ -774,11 +774,7 @@ if drivers.LE.status != absent
         cumsum(drivers.P.values[:]) * dt_data * (1e3 * 24 * 3600),
         label = "Data P",
     )
-    Plots.plot!(
-        daily,
-        cumsum(T .+ E) * dt_model .+ cumsum(measured_T[:])[idx] * dt_data,
-        label = "Model ET",
-    )
+    Plots.plot!(daily, cumsum(T .+ E .+ S) * dt_model, label = "Model ET")
 
     Plots.plot!(
         ylabel = "∫ Water fluxes dt",
@@ -918,3 +914,87 @@ if isfile(
         ),
     )
 end
+
+using CairoMakie # future PR: convert all to CairoMakie instead of Plots
+# Assess conservation
+_ρ_i = FT(LP.ρ_cloud_ice(earth_param_set))
+_ρ_l = FT(LP.ρ_cloud_liq(earth_param_set))
+fig = CairoMakie.Figure(size = (1600, 1200), fontsize = 26)
+ax1 = CairoMakie.Axis(fig[2, 1], ylabel = "ΔEnergy (J/A)", xlabel = "Days")
+ΔE_expected =
+    cumsum(
+        -1 .* [
+            parent(
+                sv.saveval[k].atmos_energy_flux .-
+                sv.saveval[k].soil.bottom_bc.heat,
+            )[end] for k in 1:1:(length(sv.t) - 1)
+        ],
+    ) * (sv.t[2] - sv.t[1])
+E_measured = [
+    sum(sol.u[k].soil.ρe_int) +
+    parent(sol.u[k].snow.U)[end] +
+    parent(
+        sol.u[k].canopy.energy.T .* ac_canopy .*
+        max.(
+            sv.saveval[k].canopy.hydraulics.area_index.leaf .+
+            sv.saveval[k].canopy.hydraulics.area_index.stem,
+            eps(FT),
+        ),
+    )[end] for k in 1:1:length(sv.t)
+]
+ΔW_expected =
+    cumsum(
+        -1 .* [
+            parent(
+                sv.saveval[k].atmos_water_flux .-
+                sv.saveval[k].soil.bottom_bc.water .+ sv.saveval[k].soil.R_s,
+            )[end] for k in 1:1:(length(sv.t) - 1)
+        ],
+    ) * (sv.t[2] - sv.t[1])
+
+W_measured = [
+    sum(sol.u[k].soil.ϑ_l) +
+    sum(sol.u[k].soil.θ_i) * _ρ_i / _ρ_l +
+    sum(parent(sol.u[k].canopy.hydraulics.ϑ_l) .* [h_stem, h_leaf]) +
+    parent(sol.u[k].snow.S)[end] for k in 1:1:length(sv.t)
+]
+CairoMakie.lines!(
+    ax1,
+    daily[2:end],
+    E_measured[2:end] .- E_measured[1],
+    label = "Simulated",
+)
+CairoMakie.lines!(ax1, daily[2:end], ΔE_expected, label = "Expected")
+CairoMakie.axislegend(ax1, position = :rt)
+
+# Temp
+ax4 = CairoMakie.Axis(fig[1, 1], ylabel = "ΔWater (m)")
+CairoMakie.hidexdecorations!(ax4, ticks = false)
+CairoMakie.lines!(
+    ax4,
+    daily[2:end],
+    W_measured[2:end] .- W_measured[1],
+    label = "Simulated",
+)
+
+CairoMakie.lines!(ax4, daily[2:end], ΔW_expected, label = "Expected")
+CairoMakie.axislegend(ax4, position = :rt)
+
+
+ax3 =
+    CairoMakie.Axis(fig[2, 2], ylabel = "ΔE/E", xlabel = "Days", yscale = log10)
+CairoMakie.lines!(
+    ax3,
+    daily[2:end],
+    abs.(E_measured[2:end] .- E_measured[1] .- ΔE_expected) ./ mean(E_measured),
+)
+
+ax2 = CairoMakie.Axis(fig[1, 2], ylabel = "ΔW/W", yscale = log10)
+CairoMakie.hidexdecorations!(ax2, ticks = false)
+CairoMakie.lines!(
+    ax2,
+    daily[2:end],
+    abs.(W_measured[2:end] .- W_measured[1] .- ΔW_expected) ./ mean(W_measured),
+)
+
+CairoMakie.save(joinpath(savedir, "results_conservation.png"), fig)
