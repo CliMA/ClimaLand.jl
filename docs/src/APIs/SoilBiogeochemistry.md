@@ -40,5 +40,4 @@ ClimaLand.Soil.Biogeochemistry.microbe_source
 ```@docs
 ClimaLand.Soil.Biogeochemistry.soil_moisture
 ClimaLand.Soil.Biogeochemistry.soil_temperature
-ClimaLand.Soil.Biogeochemistry.soil_SOM_C
 ```
