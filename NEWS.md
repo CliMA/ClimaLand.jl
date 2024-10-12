@@ -6,7 +6,8 @@ main
 
 v0.15.2
 --------
-
+- Boundary fluxes are non-allocating
+PR[#819](https://github.com/CliMA/ClimaLand.jl/pull/819)
 - Artifacts for the bucket model are now automatically downloaded. PR [#820](https://github.com/CliMA/ClimaLand.jl/pull/820)
 
 v0.15.1

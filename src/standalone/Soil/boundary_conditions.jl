@@ -1,7 +1,7 @@
 import ClimaLand:
     AbstractBoundary,
     AbstractBC,
-    boundary_flux,
+    boundary_flux!,
     boundary_vars,
     boundary_var_domain_names,
     boundary_var_types
@@ -104,7 +104,7 @@ end
 An extension of the `boundary_vars` method for RichardsAtmosDrivenFluxBC with
 runoff.
 
-These variables are updated in place in `boundary_flux`.
+These variables are updated in place in `boundary_flux!`.
 """
 boundary_vars(
     bc::RichardsAtmosDrivenFluxBC{
@@ -156,14 +156,12 @@ boundary_var_types(
 
 
 """
-    boundary_flux(bc::WaterFluxBC,  _...)::ClimaCore.Fields.Field
+    boundary_flux!(bc_field, bc::WaterFluxBC,  _...)
 
-A method of boundary fluxes which returns the desired flux.
-
-We add a field of zeros in order to convert the bc (float) into
-a field.
+A method of boundary fluxes which updates the desired flux.
 """
-function boundary_flux(
+function boundary_flux!(
+    bc_field,
     bc::WaterFluxBC,
     boundary::ClimaLand.AbstractBoundary,
     model,
@@ -171,21 +169,21 @@ function boundary_flux(
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
     t,
-)::ClimaCore.Fields.Field
+)
     FT = eltype(Δz)
-    return FT.(bc.bc(p, t)) .+ FT.(ClimaCore.Fields.zeros(axes(Δz)))
+    bc_field .= FT.(bc.bc(p, t))
 end
 
 
 """
-    boundary_flux(bc::RichardsAtmosDrivenFluxBC,
+    boundary_flux!(bc_field, bc::RichardsAtmosDrivenFluxBC,
                            boundary::ClimaLand.AbstractBoundary,
                            model::RichardsModel{FT},
                            Δz::ClimaCore.Fields.Field,
                            Y::ClimaCore.Fields.FieldVector,
                            p::NamedTuple,
                            t,
-                           )::ClimaCore.Fields.Field where {FT}
+                           ) where {FT}
 
 A method of boundary fluxes which returns the desired water volume flux for
 the RichardsModel, at the top of the domain, in the case of a prescribed
@@ -194,7 +192,8 @@ precipitation flux.
 If `model.runoff` is not of type `NoRunoff`, surface runoff is accounted for
 when computing the infiltration.
 """
-function boundary_flux(
+function boundary_flux!(
+    bc_field,
     bc::RichardsAtmosDrivenFluxBC,
     boundary::ClimaLand.AbstractBoundary,
     model::RichardsModel,
@@ -202,25 +201,26 @@ function boundary_flux(
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
     t,
-)::ClimaCore.Fields.Field
+)
     update_runoff!(p, bc.runoff, p.drivers.P_liq, Y, t, model)
-    return p.soil.infiltration
+    bc_field .= p.soil.infiltration
 end
 
 """
-    boundary_flux(rre_bc::MoistureStateBC,
+    boundary_flux!(bc_field, rre_bc::MoistureStateBC,
                            ::ClimaLand.TopBoundary,
                            model::AbstractSoilModel,
                            Δz::ClimaCore.Fields.Field,
                            Y::ClimaCore.Fields.FieldVector,
                            p::NamedTuple,
                            t,
-                           )::ClimaCore.Fields.Field
+                           )
 
 A method of boundary fluxes which converts a state boundary condition on θ_l at the top of the
 domain into a flux of liquid water.
 """
-function boundary_flux(
+function boundary_flux!(
+    bc_field,
     rre_bc::MoistureStateBC,
     ::ClimaLand.TopBoundary,
     model::AbstractSoilModel,
@@ -228,7 +228,7 @@ function boundary_flux(
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
     t,
-)::ClimaCore.Fields.Field
+)
     FT = eltype(Δz)
     # First extract the value of the top layer of the pressure head
     # and cast onto the face space
@@ -244,7 +244,6 @@ function boundary_flux(
     S_s_bc = ClimaLand.Domains.top_center_to_surface(S_s)
 
     θ_bc = FT.(rre_bc.bc(p, t))
-    ψ_bc = @. pressure_head(hcm_bc, θ_r_bc, θ_bc, ν_bc, S_s_bc)
 
     # Lastly, we need an effective conductivity to compute the flux that results from
     # the gradient in pressure.
@@ -254,23 +253,29 @@ function boundary_flux(
     K_eff = ClimaLand.Domains.top_center_to_surface(p.soil.K)
 
     # Pass in (ψ_bc .+ Δz) as to account for contribution of gravity (∂(ψ+z)/∂z
-    return ClimaLand.diffusive_flux(K_eff, ψ_bc .+ Δz, ψ_c, Δz)
+    @. bc_field = ClimaLand.diffusive_flux(
+        K_eff,
+        pressure_head(hcm_bc, θ_r_bc, θ_bc, ν_bc, S_s_bc) + Δz,
+        ψ_c,
+        Δz,
+    )
 end
 
 """
-    boundary_flux(rre_bc::MoistureStateBC,
+    boundary_flux!(bc_field, rre_bc::MoistureStateBC,
                            ::ClimaLand.BottomBoundary,
                            model::AbstractSoilModel,
                            Δz::ClimaCore.Fields.Field,
                            Y::ClimaCore.Fields.FieldVector,
                            p::NamedTuple,
                            t,
-                           )::ClimaCore.Fields.Field
+                           )
 
 A method of boundary fluxes which converts a state boundary condition on θ_l at the bottom of the
 domain into a flux of liquid water.
 """
-function boundary_flux(
+function boundary_flux!(
+    bc_field,
     rre_bc::MoistureStateBC,
     ::ClimaLand.BottomBoundary,
     model::AbstractSoilModel,
@@ -278,7 +283,7 @@ function boundary_flux(
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
     t,
-)::ClimaCore.Fields.Field
+)
     FT = eltype(Δz)
     # First extract the value of the bottom layer of the pressure head
     # and cast onto the face space
@@ -295,7 +300,6 @@ function boundary_flux(
     S_s_bc = ClimaLand.Domains.bottom_center_to_surface(S_s)
 
     θ_bc = FT.(rre_bc.bc(p, t))
-    ψ_bc = @. pressure_head(hcm_bc, θ_r_bc, θ_bc, ν_bc, S_s_bc)
 
     # Lastly, we need an effective conductivity to compute the flux that results from
     # the gradient in pressure.
@@ -307,23 +311,29 @@ function boundary_flux(
     # At the bottom boundary, ψ_c is at larger z than ψ_bc
     #  so we swap their order in the derivative calc
     # Pass in (ψ_c .+ Δz)  to account for contribution of gravity  (∂(ψ+z)/∂z
-    return ClimaLand.diffusive_flux(K_eff, ψ_c .+ Δz, ψ_bc, Δz)
+    @. bc_field = ClimaLand.diffusive_flux(
+        K_eff,
+        ψ_c + Δz,
+        pressure_head(hcm_bc, θ_r_bc, θ_bc, ν_bc, S_s_bc),
+        Δz,
+    )
 end
 
 """
-    boundary_flux(bc::FreeDrainage,
+    boundary_flux!(bc_field, bc::FreeDrainage,
                            boundary::ClimaLand.BottomBoundary,
                            model::AbstractSoilModel,
                            Δz::ClimaCore.Fields.Field,
                            Y::ClimaCore.Fields.FieldVector,
                            p::NamedTuple,
                            t,
-                           )::ClimaCore.Fields.Field
+                           )
 
 A method of boundary fluxes which enforces free drainage at the bottom
 of the domain.
 """
-function boundary_flux(
+function boundary_flux!(
+    bc_field,
     bc::FreeDrainage,
     boundary::ClimaLand.BottomBoundary,
     model::AbstractSoilModel,
@@ -331,10 +341,10 @@ function boundary_flux(
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
     t,
-)::ClimaCore.Fields.Field
+)
     FT = eltype(Δz)
     K_c = Fields.level(p.soil.K, 1)
-    return FT.(-1 .* K_c)
+    @. bc_field = -1 * K_c
 end
 
 """
@@ -439,14 +449,13 @@ end
 # Methods
 
 """
-    boundary_flux(bc::HeatFluxBC,  _...)::ClimaCore.Fields.Field
+    boundary_flux!(bc_field, bc::HeatFluxBC,  _...)
 
-A method of boundary fluxes which returns the desired flux.
+A method of boundary fluxes which updates the desired flux.
 
-We add a field of zeros in order to convert the bc (float) into
-a field.
 """
-function boundary_flux(
+function boundary_flux!(
+    bc_field,
     bc::HeatFluxBC,
     boundary::ClimaLand.AbstractBoundary,
     model,
@@ -454,27 +463,28 @@ function boundary_flux(
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
     t,
-)::ClimaCore.Fields.Field
+)
     FT = eltype(Δz)
-    return FT.(bc.bc(p, t)) .+ FT.(ClimaCore.Fields.zeros(axes(Δz)))
+    bc_field .= FT.(bc.bc(p, t))
 end
 
 
 
 """
-    boundary_flux(heat_bc::TemperatureStateBC,
+    boundary_flux!(bc_field, heat_bc::TemperatureStateBC,
                            ::ClimaLand.TopBoundary,
                            model::EnergyHydrology,
                            Δz::ClimaCore.Fields.Field,
                            Y::ClimaCore.Fields.FieldVector,
                            p::NamedTuple,
                            t,
-                           )::ClimaCore.Fields.Field
+                           ):
 
 A method of boundary fluxes which converts a state boundary condition on temperature at the top of the
 domain into a flux of energy.
 """
-function boundary_flux(
+function boundary_flux!(
+    bc_field,
     heat_bc::TemperatureStateBC,
     ::ClimaLand.TopBoundary,
     model::EnergyHydrology,
@@ -482,7 +492,7 @@ function boundary_flux(
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
     t,
-)::ClimaCore.Fields.Field
+)
     FT = eltype(Δz)
     # Approximate κ_bc ≈ κ_c (center closest to the boundary)
     # We need to project the center values onto the face space.
@@ -490,23 +500,24 @@ function boundary_flux(
     κ_c = ClimaLand.Domains.top_center_to_surface(p.soil.κ)
 
     T_bc = FT.(heat_bc.bc(p, t))
-    return ClimaLand.diffusive_flux(κ_c, T_bc, T_c, Δz)
+    @. bc_field = ClimaLand.diffusive_flux(κ_c, T_bc, T_c, Δz)
 end
 
 """
-    boundary_flux(heat_bc::TemperatureStateBC,
+    boundary_flux!(bc_field, heat_bc::TemperatureStateBC,
                            ::ClimaLand.BottomBoundary,
                            model::EnergyHydrology,
                            Δz::ClimaCore.Fields.Field,
                            Y::ClimaCore.Fields.FieldVector,
                            p::NamedTuple,
                            t,
-                           )::ClimaCore.Fields.Field
+                           )
 
 A method of boundary fluxes which converts a state boundary condition on temperature at the bottom of the
 domain into a flux of energy.
 """
-function boundary_flux(
+function boundary_flux!(
+    bc_field,
     heat_bc::TemperatureStateBC,
     ::ClimaLand.BottomBoundary,
     model::EnergyHydrology,
@@ -514,14 +525,14 @@ function boundary_flux(
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
     t,
-)::ClimaCore.Fields.Field
+)
     FT = eltype(Δz)
     # Approximate κ_bc ≈ κ_c (center closest to the boundary)
     # We need to project the center values onto the face space.
     T_c = ClimaLand.Domains.bottom_center_to_surface(p.soil.T)
     κ_c = ClimaLand.Domains.bottom_center_to_surface(p.soil.κ)
     T_bc = FT.(heat_bc.bc(p, t))
-    return ClimaLand.diffusive_flux(κ_c, T_c, T_bc, Δz)
+    @. bc_field = ClimaLand.diffusive_flux(κ_c, T_c, T_bc, Δz)
 end
 
 
@@ -650,7 +661,7 @@ function boundary_var_types(
 end
 
 """
-    soil_boundary_fluxes!(bc::WaterHeatBC, boundary::TopBoundary, model, Δz, Y, p, t)
+    soil_boundary_fluxes!(bc::WaterHeatBC, boundary::AbstractBoundary, model, Δz, Y, p, t)
 
 updates the boundary fluxes for ϑ_l and ρe_int.
 """
@@ -667,8 +678,8 @@ function soil_boundary_fluxes!(
     name = ClimaLand.bc_name(boundary)
     water_bc = getproperty(p.soil, name).water
     heat_bc = getproperty(p.soil, name).heat
-    water_bc .= boundary_flux(bc.water, boundary, model, Δz, Y, p, t)
-    heat_bc .= boundary_flux(bc.heat, boundary, model, Δz, Y, p, t)
+    boundary_flux!(water_bc, bc.water, boundary, model, Δz, Y, p, t)
+    boundary_flux!(heat_bc, bc.heat, boundary, model, Δz, Y, p, t)
 end
 
 """
@@ -816,7 +827,7 @@ end
 An extension of the `boundary_vars` method for MoistureStateBC at the
 top boundary.
 
-These variables are updated in place in `boundary_flux`.
+These variables are updated in place in `boundary_flux!`.
 """
 boundary_vars(bc::MoistureStateBC, ::ClimaLand.TopBoundary) =
     (:top_bc, :top_bc_wvec, :dfluxBCdY)
