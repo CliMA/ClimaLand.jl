@@ -119,7 +119,6 @@ function default_diagnostics(
             "ra",
             "gs",
             "trans",
-            "crae",
             "clhf",
             "cshf",
             # "lwp", # last(p.canopy.hydraulics.ψ) errors
@@ -158,7 +157,6 @@ function default_diagnostics(
             "swp",
             "soilrn",
             "tsoil",
-            "soilrae",
             "soillhf",
             "soilshf",
             "hr",

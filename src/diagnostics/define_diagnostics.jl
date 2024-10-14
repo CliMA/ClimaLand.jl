@@ -198,16 +198,6 @@ function define_diagnostics!(land_model)
     )
 
     ### Canopy - Energy
-    # Canopy aerodynamic resistance
-    add_diagnostic_variable!(
-        short_name = "crae",
-        long_name = "Canopy Aerodynamic Resistance",
-        standard_name = "canopy_aerodynamic_resistance",
-        units = "s m^-1",
-        comments = "The canopy aerodynamic resistance. Aerodynamic resistance (r_a) is a measure of how much the air near the Earth's surface resists the movement of water vapor and heat from the surface into the air.",
-        compute! = (out, Y, p, t) ->
-            compute_canopy_aerodynamic_resistance!(out, Y, p, t, land_model),
-    )
 
     # Canopy latent heat flux
     add_diagnostic_variable!(
@@ -660,16 +650,6 @@ function define_diagnostics!(land_model)
     )
 
     ### Soil - Turbulent Fluxes
-    # Soil aerodynamic resistance
-    add_diagnostic_variable!(
-        short_name = "soilrae",
-        long_name = "Soil Aerodynamic Resistance",
-        standard_name = "soil_aerodynamic_resistance",
-        units = "s m^-1",
-        comments = "The soil aerodynamic resistance. Aerodynamic resistance is a measure of how much the air near the Earth's surface resists the movement of water vapor and heat from the surface into the air.",
-        compute! = (out, Y, p, t) ->
-            compute_soil_aerodynamic_resistance!(out, Y, p, t, land_model),
-    )
 
     # Soil latent heat flux
     add_diagnostic_variable!(

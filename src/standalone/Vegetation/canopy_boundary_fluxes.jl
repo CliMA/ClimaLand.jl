@@ -161,10 +161,8 @@ equations; updates the specific fields in the auxiliary
 state `p` which hold these variables. This function is called
 within the explicit tendency of the canopy model.
 
-- `p.canopy.energy.shf`: Canopy SHF
-- `p.canopy.energy.lhf`: Canopy LHF
+- `p.canopy.energy.turbulent_fluxes`: Canopy SHF, LHF, transpiration, derivatives of these with respect to T,q
 - `p.canopy.hydraulics.fa[end]`: Transpiration
-- `p.canopy.conductance.transpiration`: Transpiration (stored twice; to be addressed in a future PR)
 - `p.canopy.hydraulics.fa_roots`: Root water flux
 - `p.canopy.radiative_transfer.LW_n`: net long wave radiation
 - `p.canopy.radiative_transfer.SW_n`: net short wave radiation
@@ -191,19 +189,10 @@ function canopy_boundary_fluxes!(
     fa = p.canopy.hydraulics.fa
     LAI = p.canopy.hydraulics.area_index.leaf
     SAI = p.canopy.hydraulics.area_index.stem
-    transpiration = p.canopy.conductance.transpiration
-    shf = p.canopy.energy.shf
-    lhf = p.canopy.energy.lhf
-    r_ae = p.canopy.energy.r_ae
+    canopy_tf = p.canopy.energy.turbulent_fluxes
     i_end = canopy.hydraulics.n_stem + canopy.hydraulics.n_leaf
     # Compute transpiration, SHF, LHF
-    canopy_tf = ClimaLand.turbulent_fluxes(atmos, canopy, Y, p, t)
-    transpiration .= canopy_tf.vapor_flux
-    shf .= canopy_tf.shf
-    lhf .= canopy_tf.lhf
-    r_ae .= canopy_tf.r_ae
-    p.canopy.energy.∂LHF∂qc .= canopy_tf.∂LHF∂qc
-    p.canopy.energy.∂SHF∂Tc .= canopy_tf.∂SHF∂Tc
+    canopy_tf .= ClimaLand.turbulent_fluxes(atmos, canopy, Y, p, t)
     # Transpiration is per unit ground area, not leaf area (mult by LAI)
     fa.:($i_end) .= PlantHydraulics.transpiration_per_ground_area(
         canopy.hydraulics.transpiration,
@@ -413,7 +402,7 @@ function canopy_turbulent_fluxes_at_a_point(
     return (
         lhf = LH,
         shf = SH,
-        vapor_flux = Ẽ,
+        transpiration = Ẽ,
         r_ae = r_ae,
         ∂LHF∂qc = ∂LHF∂qc,
         ∂SHF∂Tc = ∂SHF∂Tc,

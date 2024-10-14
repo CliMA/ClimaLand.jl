@@ -399,8 +399,8 @@ end
 # ET
 T =
     [
-        parent(sv.saveval[k].canopy.conductance.transpiration)[1] for
-        k in 1:length(sol.t)
+        parent(sv.saveval[k].canopy.energy.turbulent_fluxes.transpiration)[1]
+        for k in 1:length(sol.t)
     ] .* (1e3 * 24 * 3600)
 E =
     [
@@ -441,8 +441,10 @@ end
 SHF_soil = [
     parent(sv.saveval[k].soil.turbulent_fluxes.shf)[1] for k in 1:length(sol.t)
 ]
-SHF_canopy =
-    [parent(sv.saveval[k].canopy.energy.shf)[1] for k in 1:length(sol.t)]
+SHF_canopy = [
+    parent(sv.saveval[k].canopy.energy.turbulent_fluxes.shf)[1] for
+    k in 1:length(sol.t)
+]
 SHF_model = SHF_soil + SHF_canopy
 if drivers.H.status == absent
     plot_daily_avg(
@@ -472,8 +474,10 @@ end
 LHF_soil = [
     parent(sv.saveval[k].soil.turbulent_fluxes.lhf)[1] for k in 1:length(sol.t)
 ]
-LHF_canopy =
-    [parent(sv.saveval[k].canopy.energy.lhf)[1] for k in 1:length(sol.t)]
+LHF_canopy = [
+    parent(sv.saveval[k].canopy.energy.turbulent_fluxes.lhf)[1] for
+    k in 1:length(sol.t)
+]
 LHF_model = LHF_soil + LHF_canopy
 if drivers.LE.status == absent
     plot_daily_avg("LHF", LHF_model, dt_save, num_days, "w/m^2", savedir)
@@ -571,8 +575,8 @@ G_model = [
 ]
 canopy_G = [
     (
-        parent(sv.saveval[k].canopy.energy.shf)[1] +
-        parent(sv.saveval[k].canopy.energy.lhf)[1] -
+        parent(sv.saveval[k].canopy.energy.turbulent_fluxes.shf)[1] +
+        parent(sv.saveval[k].canopy.energy.turbulent_fluxes.lhf)[1] -
         parent(sv.saveval[k].canopy.radiative_transfer.LW_n)[1] -
         parent(sv.saveval[k].canopy.radiative_transfer.SW_n)[1]
     ) for k in 1:length(sol.t)
