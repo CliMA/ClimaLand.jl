@@ -293,12 +293,7 @@ function lsm_radiant_energy_fluxes!(
     _σ = LP.Stefan(earth_param_set)
     LW_d = p.drivers.LW_d
     SW_d = p.drivers.SW_d
-    c = LP.light_speed(earth_param_set)
-    h = LP.planck_constant(earth_param_set)
-    N_a = LP.avogadro_constant(earth_param_set)
-    (; λ_γ_PAR, λ_γ_NIR) = canopy_radiation.parameters
-    energy_per_photon_PAR = h * c / λ_γ_PAR
-    energy_per_photon_NIR = h * c / λ_γ_NIR
+
     T_canopy =
         ClimaLand.Canopy.canopy_temperature(canopy.energy, canopy, Y, p, t)
 
@@ -315,27 +310,25 @@ function lsm_radiant_energy_fluxes!(
     R_net_soil = p.soil.R_n
     LW_u = p.LW_u
     SW_u = p.SW_u
+    par_d = p.canopy.radiative_transfer.par_d
+    nir_d = p.canopy.radiative_transfer.nir_d
+    f_abs_par = p.canopy.radiative_transfer.par.abs
+    f_abs_nir = p.canopy.radiative_transfer.nir.abs
+    f_refl_par = p.canopy.radiative_transfer.par.refl
+    f_refl_nir = p.canopy.radiative_transfer.nir.refl
+    f_trans_par = p.canopy.radiative_transfer.par.trans
+    f_trans_nir = p.canopy.radiative_transfer.nir.trans
     # in total: d - u = CANOPY_ABS + (1-α_soil)*CANOPY_TRANS
     # SW upwelling  = reflected par + reflected nir
-    @. SW_u =
-        energy_per_photon_NIR * N_a * p.canopy.radiative_transfer.nir.refl +
-        energy_per_photon_PAR * N_a * p.canopy.radiative_transfer.par.refl
+    @. SW_u = par_d * f_refl_par + f_refl_nir * nir_d
 
     # net canopy
-    @. SW_net_canopy =
-        energy_per_photon_NIR * N_a * p.canopy.radiative_transfer.nir.abs +
-        energy_per_photon_PAR * N_a * p.canopy.radiative_transfer.par.abs
+    @. SW_net_canopy = f_abs_par * par_d + f_abs_nir * nir_d
 
     # net soil = (1-α)*trans for par and nir
     @. R_net_soil .=
-        energy_per_photon_NIR *
-        N_a *
-        p.canopy.radiative_transfer.nir.trans *
-        (1 - α_soil_NIR) +
-        energy_per_photon_PAR *
-        N_a *
-        p.canopy.radiative_transfer.par.trans *
-        (1 - α_soil_PAR)
+        f_trans_nir * nir_d * (1 - α_soil_NIR) +
+        f_trans_par * par_d * (1 - α_soil_PAR)
 
     # Working through the math, this satisfies: LW_d - LW_u = LW_c + LW_soil
     ϵ_canopy = p.canopy.radiative_transfer.ϵ # this takes into account LAI/SAI

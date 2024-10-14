@@ -105,7 +105,6 @@ function radiative_transfer_ozark(;
     ld = ConstantGFunction(FT(0.5)),
     α_PAR_leaf = FT(0.1),
     λ_γ_PAR = FT(5e-7),
-    λ_γ_NIR = FT(1.65e-6),
     τ_PAR_leaf = FT(0.05),
     α_NIR_leaf = FT(0.45),
     τ_NIR_leaf = FT(0.25),
@@ -121,7 +120,6 @@ function radiative_transfer_ozark(;
         ϵ_canopy = ϵ_canopy,
         Ω = Ω,
         λ_γ_PAR = λ_γ_PAR,
-        λ_γ_NIR = λ_γ_NIR,
         n_layers = n_layers,
     )
 end

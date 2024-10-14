@@ -61,8 +61,6 @@ Base.@kwdef struct BeerLambertParameters{
     Ω::FT
     "Typical wavelength per PAR photon (m)"
     λ_γ_PAR::FT
-    "Typical wavelength per NIR photon (m)"
-    λ_γ_NIR::FT
     "Leaf angle distribution function"
     G_Function::G
 end
@@ -105,8 +103,6 @@ Base.@kwdef struct TwoStreamParameters{
     Ω::F
     "Typical wavelength per PAR photon (m)"
     λ_γ_PAR::FT
-    "Typical wavelength per NIR photon (m)"
-    λ_γ_NIR::FT
     "Number of layers to partition the canopy into when integrating the
     absorption over the canopy vertically. Unrelated to the number of layers in
     the vertical discretization of the canopy for the plant hydraulics model.
@@ -180,7 +176,7 @@ Base.broadcastable(RT::AbstractRadiationModel) = tuple(RT)
 
 ClimaLand.name(model::AbstractRadiationModel) = :radiative_transfer
 ClimaLand.auxiliary_vars(model::Union{BeerLambertModel, TwoStreamModel}) =
-    (:inc_nir, :inc_par, :nir, :par, :LW_n, :SW_n, :ϵ, :frac_diff, :G, :K)
+    (:nir_d, :par_d, :nir, :par, :LW_n, :SW_n, :ϵ, :frac_diff, :G, :K)
 ClimaLand.auxiliary_types(
     model::Union{BeerLambertModel{FT}, TwoStreamModel{FT}},
 ) where {FT} = (
@@ -219,7 +215,7 @@ ClimaLand.auxiliary_domain_names(::Union{BeerLambertModel, TwoStreamModel}) = (
                                  ) where {PSE}
 
 
-Computes and stores the net long and short wave radition, in W/m^2,
+Computes and stores the net long and short wave radiation, in W/m^2, over all bands,
 absorbed by the canopy when the canopy is run in standalone mode, with only
 a :canopy model as a prognostic component,
 with PrescribedGroundConditions.
@@ -237,20 +233,11 @@ function canopy_radiant_energy_fluxes!(
     t,
 ) where {PSE}
     FT = eltype(earth_param_set)
-
-    # Short wave makes use of precomputed APAR and ANIR
-    # in moles of photons per m^2 per s
-    c = FT(LP.light_speed(earth_param_set))
-    h = FT(LP.planck_constant(earth_param_set))
-    N_a = FT(LP.avogadro_constant(earth_param_set))
-    (; α_PAR_leaf, λ_γ_PAR, λ_γ_NIR) = canopy.radiative_transfer.parameters
-    APAR = p.canopy.radiative_transfer.par.abs
-    ANIR = p.canopy.radiative_transfer.nir.abs
-    energy_per_photon_PAR = h * c / λ_γ_PAR
-    energy_per_photon_NIR = h * c / λ_γ_NIR
-    @. p.canopy.radiative_transfer.SW_n =
-        (energy_per_photon_PAR * N_a * APAR) +
-        (energy_per_photon_NIR * N_a * ANIR)
+    par_d = p.canopy.radiative_transfer.par_d
+    nir_d = p.canopy.radiative_transfer.nir_d
+    f_abs_par = p.canopy.radiative_transfer.par.abs
+    f_abs_nir = p.canopy.radiative_transfer.nir.abs
+    @. p.canopy.radiative_transfer.SW_n = f_abs_par * par_d + f_abs_nir * nir_d
     ϵ_canopy = p.canopy.radiative_transfer.ϵ # this takes into account LAI/SAI
     # Long wave: use ground conditions from the ground driver
     T_ground::FT = ground.T(t)

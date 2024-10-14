@@ -114,7 +114,7 @@ end
 @diagnostic_compute "near_infrared_radiation_down" Union{
     SoilCanopyModel,
     LandModel,
-} p.canopy.radiative_transfer.inc_nir
+} p.canopy.radiative_transfer.nir_d
 @diagnostic_compute "near_infrared_radiation_absorbed" Union{
     SoilCanopyModel,
     LandModel,
@@ -130,7 +130,7 @@ end
 @diagnostic_compute "photosynthetically_active_radiation_down" Union{
     SoilCanopyModel,
     LandModel,
-} p.canopy.radiative_transfer.inc_par
+} p.canopy.radiative_transfer.par_d
 @diagnostic_compute "photosynthetically_active_radiation_absorbed" Union{
     SoilCanopyModel,
     LandModel,

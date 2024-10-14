@@ -60,6 +60,7 @@ ClimaLand.auxiliary_domain_names(::Lee2015SIFModel) = (:surface,)
         R::FT,
         T_freeze::FT,
         photosynthesis_parameters,
+        energy_per_mole_photon_PAR,
     ) where {FT}
 
 Updates observed SIF at 755 nm in W/m^2. Note that Tc is in Kelvin, and photo
@@ -69,17 +70,19 @@ Lee et al, 2015. Global Change Biology 21, 3469-3477, doi:10.1111/gcb.12948
 function update_SIF!(
     SIF,
     sif_model::Lee2015SIFModel,
-    APAR,
+    f_abs_par,
     Tc,
     Vcmax25,
     R,
     T_freeze,
     photosynthesis_parameters,
+    energy_per_mole_photon_par,
+    par_d,
 )
     (; ΔHJmax, To, θj, ϕ) = photosynthesis_parameters
     sif_parameters = sif_model.parameters
     @. SIF = compute_SIF_at_a_point(
-        APAR,
+        par_d * f_abs_par / energy_per_mole_photon_par,
         Tc,
         Vcmax25,
         R,

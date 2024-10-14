@@ -1,6 +1,6 @@
 using ..ClimaLand.Canopy
-export plant_absorbed_pfd_beer_lambert,
-    plant_absorbed_pfd_two_stream,
+export canopy_sw_rt_beer_lambert,
+    canopy_sw_rt_two_stream,
     extinction_coeff,
     compute_G,
     arrhenius_function,
@@ -72,84 +72,55 @@ function compute_G_CLMG(χl::FT, θs::FT) where {FT}
 end
 
 """
-    compute_absorbances!(
+    compute_fractional_absorbances(
         RT::BeerLambertModel{FT},
-        PAR,
-        NIR,
         LAI,
         K,
         α_soil_PAR,
         α_soil_NIR,
-        energy_per_photon_PAR,
-        energy_per_photon_NIR,
-        N_a,
         _,
         _,
     )
 
-Computes the PAR and NIR absorbances, reflectances, and tranmittances
+Computes the PAR and NIR fractional absorbances, reflectances, and tranmittances
 for a canopy in the case of the
 Beer-Lambert model. The absorbances are a function of the radiative transfer
-model, as well as the magnitude of downwelling PAR and NIR radiation in W/m^2,
- the leaf area index, the extinction coefficient, and the
+model, as well as the leaf area index, the extinction coefficient, and the
 soil albedo in the PAR and NIR bands. Returns a
 NamedTuple of NamedTuple, of the form:
 (; par = (; refl = , trans = , abs = ),  nir = (; refl = , trans = , abs = ))
 """
-function compute_absorbances!(
+function compute_fractional_absorbances!(
     p,
     RT::BeerLambertModel{FT},
-    PAR,
-    NIR,
     LAI,
     K,
     α_soil_PAR,
     α_soil_NIR,
-    energy_per_photon_PAR,
-    energy_per_photon_NIR,
-    N_a,
     _...,
 ) where {FT}
     RTP = RT.parameters
-    @. p.canopy.radiative_transfer.par = plant_absorbed_pfd_beer_lambert(
-        RTP.Ω,
-        PAR / (N_a * energy_per_photon_PAR),
-        RTP.α_PAR_leaf,
-        LAI,
-        K,
-        α_soil_PAR,
-    )
-    @. p.canopy.radiative_transfer.nir = plant_absorbed_pfd_beer_lambert(
-        RTP.Ω,
-        NIR / (N_a * energy_per_photon_NIR),
-        RTP.α_NIR_leaf,
-        LAI,
-        K,
-        α_soil_NIR,
-    )
+    @. p.canopy.radiative_transfer.par =
+        canopy_sw_rt_beer_lambert(RTP.Ω, RTP.α_PAR_leaf, LAI, K, α_soil_PAR)
+    @. p.canopy.radiative_transfer.nir =
+        canopy_sw_rt_beer_lambert(RTP.Ω, RTP.α_NIR_leaf, LAI, K, α_soil_NIR)
 end
 
 """
-    compute_absorbances!(p,
+    compute_fractional_absorbances!(p,
         RT::TwoStreamModel{FT},
-        PAR,
-        NIR,
         LAI,
         K,
         α_soil_PAR,
         α_soil_NIR,
-        energy_per_photon_PAR,
-        energy_per_photon_NIR,
-        N_a,
         θs,
         frac_diff,
     )
 
-Computes the PAR and NIR absorbances, reflectances, and tranmittances
+Computes the PAR and NIR fractional absorbances, reflectances, and tranmittances
 for a canopy in the case of the
-Beer-Lambert model. The absorbances are a function of the radiative transfer
-model, as well as the magnitude of downwelling PAR and NIR radiation in W/m^2,
-the leaf area index, the extinction coefficient, and the
+Two-stream model. The absorbances are a function of the radiative transfer
+model, as well as the leaf area index, the extinction coefficient, and the
 soil albedo in the PAR and NIR bands.
 
 This model also depends on the diffuse fraction and the zenith angle.
@@ -157,27 +128,21 @@ Returns a
 NamedTuple of NamedTuple, of the form:
 (; par = (; refl = , trans = , abs = ),  nir = (; refl = , trans = , abs = ))
 """
-function compute_absorbances!(
+function compute_fractional_absorbances!(
     p,
     RT::TwoStreamModel{FT},
-    PAR,
-    NIR,
     LAI,
     K,
     α_soil_PAR,
     α_soil_NIR,
-    energy_per_photon_PAR,
-    energy_per_photon_NIR,
-    N_a,
     θs,
     frac_diff,
 ) where {FT}
     RTP = RT.parameters
-    @. p.canopy.radiative_transfer.par = plant_absorbed_pfd_two_stream(
+    @. p.canopy.radiative_transfer.par = canopy_sw_rt_two_stream(
         p.canopy.radiative_transfer.G,
         RTP.Ω,
         RTP.n_layers,
-        PAR / (energy_per_photon_PAR * N_a),
         RTP.α_PAR_leaf,
         RTP.τ_PAR_leaf,
         LAI,
@@ -186,11 +151,10 @@ function compute_absorbances!(
         α_soil_PAR,
         frac_diff,
     )
-    @. p.canopy.radiative_transfer.nir = plant_absorbed_pfd_two_stream(
+    @. p.canopy.radiative_transfer.nir = canopy_sw_rt_two_stream(
         p.canopy.radiative_transfer.G,
         RTP.Ω,
         RTP.n_layers,
-        NIR / (energy_per_photon_NIR * N_a),
         RTP.α_NIR_leaf,
         RTP.τ_NIR_leaf,
         LAI,
@@ -202,7 +166,7 @@ function compute_absorbances!(
 end
 
 """
-    plant_absorbed_pfd_beer_lambert(
+    canopy_sw_rt_beer_lambert(
         Ω::FT,
         SW_d:FT,
         α_leaf::FT,
@@ -211,34 +175,29 @@ end
         α_soil::FT
     )
 
-Computes the absorbed, reflected, and transmitted photon flux density
-in terms of mol photons per m^2 per
-second for a radiation band.
+Computes the absorbed, reflected, and transmitted flux fractions by radiation band.
 
-This applies the Beer-Lambert law, which is a function of downwelling
-radiation (`SW_d`; moles of photons/m^2/), leaf reflectance
+This applies the Beer-Lambert law, which is a function of leaf reflectance
 (`α_leaf`), the extinction coefficient (`K`), leaf area index (`LAI`),
 and the albedo of the soil (`α_soil`).
 
-Returns a tuple of reflected, absorbed, and transmitted radiation in
-mol photons/m^2/s.
+Returns a tuple of reflected, absorbed, and transmitted radiation fractions.
 """
-function plant_absorbed_pfd_beer_lambert(
+function canopy_sw_rt_beer_lambert(
     Ω::FT,
-    SW_d::FT,
     α_leaf::FT,
     LAI::FT,
     K::FT,
     α_soil::FT,
 ) where {FT}
-    AR = SW_d * (1 - α_leaf) * (1 - exp(-K * LAI * Ω)) * (1 - α_soil)
-    TR = SW_d * exp(-K * LAI * Ω)
-    RR = SW_d - AR - TR * (1 - α_soil)
+    AR = (1 - α_leaf) * (1 - exp(-K * LAI * Ω)) * (1 - α_soil)
+    TR = exp(-K * LAI * Ω)
+    RR = FT(1) - AR - TR * (1 - α_soil)
     return (; abs = AR, refl = RR, trans = TR)
 end
 
 """
-    plant_absorbed_pfd_two_stream(
+    canopy_sw_rt_two_stream(
         G::FT,
         Ω::FT,
         n_layers::UInt64,
@@ -252,8 +211,7 @@ end
         frac_diff::FT,
     )
 
-Computes the absorbed, transmitted, and reflected  photon flux density
-in terms of mol photons  per m^2 per second for a radiation band.
+Computes the absorbed, reflected, and transmitted flux fractions by radiation band.
 
 This applies the two-stream radiative transfer solution which takes into account
 the impacts of scattering within the canopy. The function takes in all
@@ -261,14 +219,12 @@ parameters from the parameter struct of a TwoStreamModel, along with the
 incident radiation, LAI, extinction coefficient K, soil albedo from the
 canopy soil_driver, solar zenith angle, and τ.
 
-Returns a tuple of reflected, absorbed, and transmitted radiation in
-mol photons/m^2/s.
+Returns a tuple of reflected, absorbed, and transmitted radiation fractions.
 """
-function plant_absorbed_pfd_two_stream(
+function canopy_sw_rt_two_stream(
     G::FT,
     Ω::FT,
     n_layers::UInt64,
-    SW_d::FT,
     α_leaf::FT,
     τ_leaf::FT,
     LAI::FT,
@@ -419,11 +375,7 @@ function plant_absorbed_pfd_two_stream(
     # Convert fractional absorption into absorption and return
     # Ensure floating point precision is correct (it may be different for PAR)
     F_trans = (1 - F_abs - F_refl) / (1 - α_soil)
-    return (;
-        abs = FT(SW_d * F_abs),
-        refl = FT(SW_d * F_refl),
-        trans = FT(SW_d * F_trans),
-    )
+    return (; abs = FT(F_abs), refl = FT(F_refl), trans = FT(F_trans))
 end
 
 """
