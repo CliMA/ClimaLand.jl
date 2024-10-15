@@ -1,5 +1,7 @@
 import ClimaCore
 import SciMLBase
+import ClimaDiagnostics.Schedules: EveryCalendarDtSchedule
+import Dates
 
 export FTfromY
 
@@ -266,6 +268,75 @@ function DriverUpdateCallback(updateat::Vector{FT}, updatefunc) where {FT}
 end
 
 """
+    CheckpointCallback(checkpoint_frequency::Union{AbstractFloat, Dates.Period},
+                        output_dir, start_date, t_start; model, dt)
+
+Constructs a DiscreteCallback which saves the state to disk with the
+`save_checkpoint` function.
+
+# Arguments
+- `checkpoint_frequency`: The frequency at which checkpoints are saved. Can be
+  specified as a float (in seconds) or a `Dates.Period`.
+- `output_dir`: The directory where the checkpoint files will be saved.
+- `start_date`: The start date of the simulation.
+- `t_start`: The starting time of the simulation (in seconds).
+- `model`: The ClimaLand model object.
+- `dt`: The timestep of the model (optional), used to check for consistency.
+
+The callback uses `ClimaDiagnostics.EveryCalendarDtSchedule` to determine when
+to save checkpoints based on the `checkpoint_frequency`. The schedule is
+initialized with the `start_date` and `t_start` to ensure that the first
+checkpoint is saved at the correct time.
+
+The `save_checkpoint` function is called with the current state vector `u`, the
+current time `t`, and the `output_dir` to save the checkpoint to disk.
+"""
+function CheckpointCallback(
+    checkpoint_frequency::Union{AbstractFloat, Dates.Period},
+    output_dir,
+    start_date,
+    t_start;
+    model,
+    dt = nothing,
+)
+    # TODO: Move to a more general callback system. For the time being, we use
+    # the ClimaDiagnostics one because it is flexible and it supports calendar
+    # dates.
+
+    if checkpoint_frequency isa AbstractFloat
+        # Assume it is in seconds, but go through Millisecond to support
+        # fractional seconds
+        checkpoint_frequency_period =
+            Dates.Millisecond(1000checkpoint_frequency)
+    else
+        checkpoint_frequency_period = checkpoint_frequency
+    end
+
+    schedule = EveryCalendarDtSchedule(
+        checkpoint_frequency_period;
+        reference_date = start_date,
+        date_last = start_date + Dates.Millisecond(1000t_start),
+    )
+
+    if !isnothing(dt)
+        dt_period = Dates.Millisecond(1000dt)
+        if !isdivisible(checkpoint_frequency_period / dt_period)
+            @warn "Checkpoint frequency ($(checkpoint_frequency_period)) is not an integer multiple of dt $(dt_period)"
+        end
+    end
+
+    cond = let schedule = schedule
+        (u, t, integrator) -> schedule(integrator)
+    end
+    affect! = let output_dir = output_dir, model = model
+        (integrator) ->
+            save_checkpoint(integrator.u, integrator.t, output_dir; model)
+    end
+
+    SciMLBase.DiscreteCallback(cond, affect!)
+end
+
+"""
     driver_initialize(cb, u, t, integrator)
 
 This function updates `p.drivers` at the start of the simulation.
@@ -278,8 +349,9 @@ end
     update_condition(updateat)
 
 This function returns a function with the type signature expected by
-`SciMLBase.DiscreteCallback`, and determines whether `affect!` gets
-called in the callback. This implementation simply checks if the current time of the simulation is within the (inclusive) bounds of `updateat`.
+`SciMLBase.DiscreteCallback`, and determines whether `affect!` gets called in
+the callback. This implementation simply checks if the current time of the
+simulation is within the (inclusive) bounds of `updateat`.
 """
 update_condition(updateat) =
     (_, t, _) -> t >= minimum(updateat) && t <= maximum(updateat)
@@ -367,4 +439,56 @@ condition(saveat) = (_, t, _) -> t in saveat
 
 function FTfromY(Y::ClimaCore.Fields.FieldVector)
     return eltype(Y)
+end
+
+
+"""
+    isdivisible(dt_large::Dates.Period, dt_small::Dates.Period)
+
+Check if two periods are evenly divisible, i.e., if the larger period can be
+expressed as an integer multiple of the smaller period.
+
+In this, take into account the case when periods do not have fixed size, e.g.,
+one month is a variable number of days.
+
+# Examples
+```
+julia> isdivisible(Dates.Year(1), Dates.Month(1))
+true
+
+julia> isdivisible(Dates.Month(1), Dates.Day(1))
+true
+
+julia> isdivisible(Dates.Month(1), Dates.Week(1))
+false
+```
+
+## Notes
+
+Not all the combinations are fully implemented. If something is missing, please
+consider adding it.
+"""
+function isdivisible(dt_large::Dates.Period, dt_small::Dates.Period)
+    @warn "The combination $(typeof(dt_large)) and $(dt_small) was not covered. Please add a method to handle this case."
+    return false
+end
+
+# For FixedPeriod and OtherPeriod, it is easy, we can directly divide the two
+# (as long as they are both the same)
+function isdivisible(dt_large::Dates.FixedPeriod, dt_small::Dates.FixedPeriod)
+    return isinteger(dt_large / dt_small)
+end
+
+function isdivisible(dt_large::Dates.OtherPeriod, dt_small::Dates.OtherPeriod)
+    return isinteger(dt_large / dt_small)
+end
+
+function isdivisible(
+    dt_large::Union{Dates.Month, Dates.Year},
+    dt_small::Dates.FixedPeriod,
+)
+    # The only case where periods are commensurate for Month/Year is when we
+    # have a Day or an integer divisor of a day. (Note that 365 and 366 don't
+    # have any common divisor)
+    return isinteger(Dates.Day(1) / dt_small)
 end
