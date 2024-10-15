@@ -266,6 +266,27 @@ function DriverUpdateCallback(updateat::Vector{FT}, updatefunc) where {FT}
 end
 
 """
+    CheckpointCallback(checkpointat::Vector{FT}, checkpointfunc)
+
+Constructs a DiscreteCallback which saves the state to disk with the `checkpointfunc`
+function. `checkpointfunc` takes arguments (p,t).
+"""
+function CheckpointCallback(checkpointat::Vector{FT}, checkpointfunc) where {FT}
+    cond = update_condition(checkpointat)
+    # We repurpose the DriverAffect structure to schedule callbacks
+    # TODO: Move to a more general callback system
+    affect! = DriverAffect(checkpointat, checkpointfunc)
+
+    SciMLBase.DiscreteCallback(
+        cond,
+        affect!;
+        initialize = driver_initialize,
+        save_positions = (false, false),
+    )
+end
+
+
+"""
     driver_initialize(cb, u, t, integrator)
 
 This function updates `p.drivers` at the start of the simulation.
