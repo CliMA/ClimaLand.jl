@@ -73,7 +73,6 @@ rt_params = TwoStreamParameters(
     τ_NIR_leaf = FT(0.25),
     Ω = FT(0.69),
     λ_γ_PAR = FT(5e-7),
-    λ_γ_NIR = FT(1.65e-6),
 )
 
 rt_model = TwoStreamModel{FT}(rt_params);
