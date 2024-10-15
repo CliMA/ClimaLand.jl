@@ -94,6 +94,8 @@ FT = Float32
     @test typeof(shell_surface.space.surface) <:
           ClimaCore.Spaces.SpectralElementSpace2D
 
+    @test ClimaComms.context(shell_surface) == ClimaComms.context()
+    @test ClimaComms.device(shell_surface) == ClimaComms.device()
 
     # HybridBox
     box = HybridBox(;
