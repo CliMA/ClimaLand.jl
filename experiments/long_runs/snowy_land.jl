@@ -35,6 +35,7 @@ import ClimaUtilities.ClimaArtifacts: @clima_artifact
 import ClimaParams as CP
 
 using ClimaLand
+using ClimaLand.Snow
 using ClimaLand.Soil
 using ClimaLand.Canopy
 import ClimaLand
@@ -181,26 +182,30 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     θ_r .= oceans_to_value.(θ_r, soil_params_mask, 0)
 
 
-    S_s = oceans_to_value.(
-        ClimaCore.Fields.zeros(subsurface_space) .+ FT(1e-3),
-        soil_params_mask,
-        1,
-    )
-    ν_ss_om = oceans_to_value.(
-        ClimaCore.Fields.zeros(subsurface_space) .+ FT(0.1),
-        soil_params_mask,
-        0,
-    )
-    ν_ss_quartz = oceans_to_value.(
-        ClimaCore.Fields.zeros(subsurface_space) .+ FT(0.1),
-        soil_params_mask,
-        0,
-    )
-    ν_ss_gravel = oceans_to_value.(
-        ClimaCore.Fields.zeros(subsurface_space) .+ FT(0.1),
-        soil_params_mask,
-        0,
-    )
+    S_s =
+        oceans_to_value.(
+            ClimaCore.Fields.zeros(subsurface_space) .+ FT(1e-3),
+            soil_params_mask,
+            1,
+        )
+    ν_ss_om =
+        oceans_to_value.(
+            ClimaCore.Fields.zeros(subsurface_space) .+ FT(0.1),
+            soil_params_mask,
+            0,
+        )
+    ν_ss_quartz =
+        oceans_to_value.(
+            ClimaCore.Fields.zeros(subsurface_space) .+ FT(0.1),
+            soil_params_mask,
+            0,
+        )
+    ν_ss_gravel =
+        oceans_to_value.(
+            ClimaCore.Fields.zeros(subsurface_space) .+ FT(0.1),
+            soil_params_mask,
+            0,
+        )
     PAR_albedo = ClimaCore.Fields.zeros(surface_space) .+ FT(0.2)
     NIR_albedo = ClimaCore.Fields.zeros(surface_space) .+ FT(0.2)
     soil_params = Soil.EnergyHydrologyParameters(
@@ -459,6 +464,21 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         domain = ClimaLand.obtain_surface_domain(domain),
     )
 
+    # Snow model
+    ρ_snow = FT(300.0)
+    α_snow = FT(0.8)
+    snow_parameters = SnowParameters{FT}(
+        dt;
+        α_snow = α_snow,
+        ρ_snow = ρ_snow,
+        earth_param_set = earth_param_set,
+    )
+    snow_args = (;
+        parameters = snow_parameters,
+        domain = ClimaLand.obtain_surface_domain(domain),
+    )
+    snow_model_type = Snow.SnowModel
+
     # Integrated plant hydraulics and soil model
     land_input = (
         atmos = atmos,
@@ -466,7 +486,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         runoff = runoff_model,
         soil_organic_carbon = Csom,
     )
-    land = SoilCanopyModel{FT}(;
+    land = LandModel{FT}(;
         soilco2_type = soilco2_type,
         soilco2_args = soilco2_args,
         land_args = land_input,
@@ -475,6 +495,8 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         canopy_component_types = canopy_component_types,
         canopy_component_args = canopy_component_args,
         canopy_model_args = canopy_model_args,
+        snow_args = snow_args,
+        snow_model_type = snow_model_type,
     )
 
     Y, p, cds = initialize(land)
@@ -483,21 +505,26 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     Y.soil.ϑ_l .= init_soil.(ν, θ_r)
     Y.soil.θ_i .= FT(0.0)
     T = FT(276.85)
-    ρc_s = Soil.volumetric_heat_capacity.(
-        Y.soil.ϑ_l,
-        Y.soil.θ_i,
-        soil_params.ρc_ds,
-        soil_params.earth_param_set,
-    )
-    Y.soil.ρe_int .= Soil.volumetric_internal_energy.(
-        Y.soil.θ_i,
-        ρc_s,
-        T,
-        soil_params.earth_param_set,
-    )
+    ρc_s =
+        Soil.volumetric_heat_capacity.(
+            Y.soil.ϑ_l,
+            Y.soil.θ_i,
+            soil_params.ρc_ds,
+            soil_params.earth_param_set,
+        )
+    Y.soil.ρe_int .=
+        Soil.volumetric_internal_energy.(
+            Y.soil.θ_i,
+            ρc_s,
+            T,
+            soil_params.earth_param_set,
+        )
     Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
     Y.canopy.hydraulics.ϑ_l.:1 .= plant_ν
     evaluate!(Y.canopy.energy.T, atmos.T, t0)
+
+    Y.snow.S .= 0.0
+    Y.snow.U .= 0.0
 
     set_initial_cache! = make_set_initial_cache(land)
     exp_tendency! = make_exp_tendency(land)
@@ -520,7 +547,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         p,
     )
 
-    updateat = Array(t0:(3600*3):tf)
+    updateat = Array(t0:(3600 * 3):tf)
     drivers = ClimaLand.get_drivers(land)
     updatefunc = ClimaLand.make_update_drivers(drivers)
 
@@ -548,11 +575,11 @@ end
 function setup_and_solve_problem(; greet = false)
 
     t0 = 0.0
-    tf = 60 * 60.0 * 24 * 365
+    tf = 60 * 60.0 * 24 * 180
     Δt = 450.0
     nelements = (101, 15)
     if greet
-        @info "Run: Global Soil-Canopy Model"
+        @info "Run: Global Soil-Canopy-Snow Model"
         @info "Resolution: $nelements"
         @info "Timestep: $Δt s"
         @info "Duration: $(tf - t0) s"
@@ -577,8 +604,20 @@ setup_and_solve_problem(; greet = true);
 # read in diagnostics and make some plots!
 #### ClimaAnalysis ####
 simdir = ClimaAnalysis.SimDir(outdir)
-short_names =
-    ["gpp", "ct", "lai", "swc", "si", "swa", "lwu", "et", "er", "sr", "tsfc"]
+short_names = [
+    "gpp",
+    "ct",
+    "lai",
+    "swc",
+    "si",
+    "swa",
+    "lwu",
+    "et",
+    "er",
+    "sr",
+    "swe",
+    "tsfc",
+]
 for short_name in short_names
     var = get(simdir; short_name)
     times = ClimaAnalysis.times(var)
