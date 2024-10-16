@@ -547,9 +547,9 @@ function cumulative_H2O_fig(
         (LP.LH_v0(earth_param_set) * 1000) .* (1e3 * 24 * 3600)
     P_obs = inputs.P[index_t_start:index_t_end] .* 1e3 .* 24 .* 3600
 
-    p_P = lines!(ax, (1 / 48):(1 / 48):(length(P_obs) / 48), cumsum(P_obs)) # Precip
-    p_ET_m = lines!(ax, (1 / 48):(1 / 48):(length(ET_m) / 48), cumsum(ET_m)) # ET model
-    p_ET_d = lines!(ax, (1 / 48):(1 / 48):(length(ET_obs) / 48), cumsum(ET_obs)) # ET observations
+    p_P = lines!(ax, (1/48):(1/48):(length(P_obs)/48), cumsum(P_obs)) # Precip
+    p_ET_m = lines!(ax, (1/48):(1/48):(length(ET_m)/48), cumsum(ET_m)) # ET model
+    p_ET_d = lines!(ax, (1/48):(1/48):(length(ET_obs)/48), cumsum(ET_obs)) # ET observations
 
     axislegend(
         ax,

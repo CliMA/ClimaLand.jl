@@ -517,7 +517,7 @@ function ClimaLand.make_update_aux(
         # for broadcasted expressions using the macro @.
         # field.:($index) .= value # works
         # @ field.:($$index) = value # works
-        @inbounds for i in 1:(n_stem + n_leaf - 1)
+        @inbounds for i in 1:(n_stem+n_leaf-1)
             ip1 = i + 1
             @. ψ.:($$ip1) = PlantHydraulics.water_retention_curve(
                 retention_model,

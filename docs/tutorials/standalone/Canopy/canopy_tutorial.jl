@@ -269,13 +269,12 @@ exp_tendency! = make_exp_tendency(canopy);
 ψ_stem_0 = FT(-1e5 / 9800)
 ψ_leaf_0 = FT(-2e5 / 9800)
 
-S_l_ini =
-    inverse_water_retention_curve.(
-        retention_model,
-        [ψ_stem_0, ψ_leaf_0],
-        ν,
-        S_s,
-    )
+S_l_ini = inverse_water_retention_curve.(
+    retention_model,
+    [ψ_stem_0, ψ_leaf_0],
+    ν,
+    S_s,
+)
 
 for i in 1:2
     Y.canopy.hydraulics.ϑ_l.:($i) .= augmented_liquid_fraction.(ν, S_l_ini[i])
@@ -301,7 +300,7 @@ set_initial_cache!(p, Y, t0);
 # and create the callback which saves it at each element in saveat.
 
 n = 16
-saveat = Array(t0:(n * dt):tf)
+saveat = Array(t0:(n*dt):tf)
 sv = (;
     t = Array{Float64}(undef, length(saveat)),
     saveval = Array{NamedTuple}(undef, length(saveat)),

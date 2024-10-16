@@ -174,7 +174,7 @@ function setup_prob(t0, tf, Δt)
         (t0, tf),
         p,
     )
-    saveat = collect(t0:(Δt * 3):tf)
+    saveat = collect(t0:(Δt*3):tf)
     saved_values = (;
         t = Array{Float64}(undef, length(saveat)),
         saveval = Array{NamedTuple}(undef, length(saveat)),

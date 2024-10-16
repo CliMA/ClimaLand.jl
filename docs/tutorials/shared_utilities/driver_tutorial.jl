@@ -58,7 +58,7 @@ long = -92.2000; # degree
 # vector into a vector of seconds since the start date
 start_date = local_datetime[1] + Dates.Hour(time_offset);
 data_dt = 3600.0;
-seconds = 0:data_dt:((length(local_datetime) - 1) * data_dt);
+seconds = 0:data_dt:((length(local_datetime)-1)*data_dt);
 
 # Assume the downwelling long and shortwave radiation are read in from the file
 # and are measured at the times in local_datetime. Here, we'll just make them up
@@ -134,7 +134,7 @@ update_radiation!(p, t0);
 # In general, then, we don't update drivers every timestep, but less frequently.
 # For example, the simulation timestep may be 10 minutes, but we may only update
 # the drivers every three hours:
-updateat = collect(seconds[1]:(3600 * 3):seconds[end]);
+updateat = collect(seconds[1]:(3600*3):seconds[end]);
 updatefunc = update_radiation!;
 cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc);
 

@@ -121,13 +121,8 @@ for FT in (Float32, Float64)
                     dtγ * (-K_ic / dz^2 * dψdϑ_ic) - I,
                 )
                 @test all(
-                    Array(parent(jac_ϑ_l.entries.:2))[
-                        2:(end - 1),
-                        :,
-                        1,
-                        1,
-                        1,
-                    ] .≈ dtγ * (-2 * K_ic / dz^2 * dψdϑ_ic) - I,
+                    Array(parent(jac_ϑ_l.entries.:2))[2:(end - 1), :, 1, 1, 1] .≈
+                    dtγ * (-2 * K_ic / dz^2 * dψdϑ_ic) - I,
                 )
                 @test all(
                     Array(parent(jac_ϑ_l.entries.:2))[end, :, 1, 1, 1] .≈
@@ -210,13 +205,8 @@ for FT in (Float32, Float64)
                     dtγ * (-K_ic / dz^2 * dψdϑ_ic) - I,
                 )
                 @test all(
-                    Array(parent(jac_ϑ_l.entries.:2))[
-                        2:(end - 1),
-                        :,
-                        1,
-                        1,
-                        1,
-                    ] .≈ dtγ * (-2 * K_ic / dz^2 * dψdϑ_ic) - I,
+                    Array(parent(jac_ϑ_l.entries.:2))[2:(end - 1), :, 1, 1, 1] .≈
+                    dtγ * (-2 * K_ic / dz^2 * dψdϑ_ic) - I,
                 )
                 @test all(
                     Array(parent(jac_ϑ_l.entries.:2))[end, :, 1, 1, 1] .≈

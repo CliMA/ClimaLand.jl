@@ -949,16 +949,14 @@ will need to be modified upon the introduction of
 Since the depth will be a field in this case, it should be allocated and
 stored in domain.fields, which is why we store it there now even though it is not a field.
 """
-depth(space::ClimaCore.Spaces.CenterExtrudedFiniteDifferenceSpace) =
-    (
-        space.grid.vertical_grid.topology.mesh.domain.coord_max -
-        space.grid.vertical_grid.topology.mesh.domain.coord_min
-    ).z
-depth(space::ClimaCore.Spaces.CenterFiniteDifferenceSpace) =
-    (
-        space.grid.topology.mesh.domain.coord_max -
-        space.grid.topology.mesh.domain.coord_min
-    ).z
+depth(space::ClimaCore.Spaces.CenterExtrudedFiniteDifferenceSpace) = (
+    space.grid.vertical_grid.topology.mesh.domain.coord_max -
+    space.grid.vertical_grid.topology.mesh.domain.coord_min
+).z
+depth(space::ClimaCore.Spaces.CenterFiniteDifferenceSpace) = (
+    space.grid.topology.mesh.domain.coord_max -
+    space.grid.topology.mesh.domain.coord_min
+).z
 
 export AbstractDomain
 export Column, Plane, HybridBox, Point, SphericalShell, SphericalSurface

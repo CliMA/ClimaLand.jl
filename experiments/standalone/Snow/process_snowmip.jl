@@ -63,14 +63,13 @@ function zenith_angle(
     current_datetime = start_date + Dates.Second(round(t))
 
     # Orbital Data uses Float64, so we need to convert to our sim FT
-    d, δ, η_UTC =
-        FT.(
-            Insolation.helper_instantaneous_zenith_angle(
-                current_datetime,
-                start_date,
-                insol_params,
-            )
-        )
+    d, δ, η_UTC = FT.(
+        Insolation.helper_instantaneous_zenith_angle(
+            current_datetime,
+            start_date,
+            insol_params,
+        ),
+    )
 
     FT(
         Insolation.instantaneous_zenith_angle(
@@ -120,11 +119,11 @@ albedo = snow_data["albs"][:][mask]
 z = snow_data["snd_man"][:][mask]
 mass = snow_data["snw_man"][:][mask]
 
-snow_data_avail = .!(typeof.(mass) .<: Missing)
+snow_data_avail = .! (typeof.(mass) .<: Missing)
 T_snow = snow_data["ts"][:][mask][snow_data_avail]
 ρ_snow = mass[snow_data_avail] ./ z[snow_data_avail]
 SWE = z[snow_data_avail] .* ρ_snow ./ 1000.0
 α = median(
-    albedo[snow_data_avail][.!(typeof.(albedo[snow_data_avail]) .<: Missing)],
+    albedo[snow_data_avail][.! (typeof.(albedo[snow_data_avail]) .<: Missing)],
 )
-ρ = median(ρ_snow[.~isnan.(ρ_snow)])
+ρ = median(ρ_snow[.~ isnan.(ρ_snow)])

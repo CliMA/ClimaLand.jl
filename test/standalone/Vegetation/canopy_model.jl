@@ -52,6 +52,7 @@ import ClimaParams
         )
         for (g1, Vcmax25, is_c3, rooting_depth, α_PAR_leaf, α_NIR_leaf, ld) in
             zipped_params
+
             AR_params = AutotrophicRespirationParameters(FT)
             G_Function = ConstantGFunction(ld)
             RTparams =
@@ -84,14 +85,13 @@ import ClimaParams
                 insol_params = earth_param_set.insol_params,
             )
                 current_datetime = start_date + Dates.Second(round(t))
-                d, δ, η_UTC =
-                    FT.(
-                        Insolation.helper_instantaneous_zenith_angle(
-                            current_datetime,
-                            start_date,
-                            insol_params,
-                        )
-                    )
+                d, δ, η_UTC = FT.(
+                    Insolation.helper_instantaneous_zenith_angle(
+                        current_datetime,
+                        start_date,
+                        insol_params,
+                    ),
+                )
                 return Insolation.instantaneous_zenith_angle(
                     d,
                     δ,
@@ -175,26 +175,24 @@ import ClimaParams
             Δz = FT(1.0) # height of compartments
             n_stem = Int64(0) # number of stem elements
             n_leaf = Int64(1) # number of leaf elements
-            compartment_centers =
-                FT.(
-                    Vector(
-                        range(
-                            start = Δz / 2,
-                            step = Δz,
-                            stop = Δz * (n_stem + n_leaf) - (Δz / 2),
-                        ),
+            compartment_centers = FT.(
+                Vector(
+                    range(
+                        start = Δz / 2,
+                        step = Δz,
+                        stop = Δz * (n_stem + n_leaf) - (Δz / 2),
                     ),
-                )
-            compartment_faces =
-                FT.(
-                    Vector(
-                        range(
-                            start = 0.0,
-                            step = Δz,
-                            stop = Δz * (n_stem + n_leaf),
-                        ),
-                    )
-                )
+                ),
+            )
+            compartment_faces = FT.(
+                Vector(
+                    range(
+                        start = 0.0,
+                        step = Δz,
+                        stop = Δz * (n_stem + n_leaf),
+                    ),
+                ),
+            )
 
             ψ_soil0 = FT(0.0)
             soil_driver = PrescribedGroundConditions(FT)
@@ -314,13 +312,12 @@ import ClimaParams
             Rn = FT(shortwave_radiation(t0))
             G = FT(0.0)
             thermo_params = canopy.parameters.earth_param_set.thermo_params
-            ts_in =
-                Thermodynamics.PhaseEquil_pTq.(
-                    thermo_params,
-                    p.drivers.P,
-                    p.drivers.T,
-                    p.drivers.q,
-                )
+            ts_in = Thermodynamics.PhaseEquil_pTq.(
+                thermo_params,
+                p.drivers.P,
+                p.drivers.T,
+                p.drivers.q,
+            )
             ρa = Thermodynamics.air_density.(thermo_params, ts_in)
             cp = FT(
                 cp_m(
@@ -329,18 +326,16 @@ import ClimaParams
                 ),
             )
 
-            es =
-                Thermodynamics.saturation_vapor_pressure.(
-                    Ref(thermo_params),
-                    FT.(T_atmos(t0)),
-                    Ref(Thermodynamics.Liquid()),
-                )
-            ea =
-                Thermodynamics.partial_pressure_vapor.(
-                    thermo_params,
-                    FT(P_atmos(t0)),
-                    Thermodynamics.PhasePartition.(FT.(q_atmos(t0))),
-                )
+            es = Thermodynamics.saturation_vapor_pressure.(
+                Ref(thermo_params),
+                FT.(T_atmos(t0)),
+                Ref(Thermodynamics.Liquid()),
+            )
+            ea = Thermodynamics.partial_pressure_vapor.(
+                thermo_params,
+                FT(P_atmos(t0)),
+                Thermodynamics.PhasePartition.(FT.(q_atmos(t0))),
+            )
 
             VPD = es .- ea
 
@@ -384,9 +379,8 @@ import ClimaParams
             @test ClimaLand.surface_height(canopy, Y, p) == compartment_faces[1]
             T_sfc = FT.(T_atmos(t0))
             @test all(
-                Array(
-                    parent(ClimaLand.surface_temperature(canopy, Y, p, t0)),
-                ) .== [T_sfc],
+                Array(parent(ClimaLand.surface_temperature(canopy, Y, p, t0))) .==
+                [T_sfc],
             )
             @test ClimaLand.surface_temperature(canopy, Y, p, t0) isa
                   ClimaCore.Fields.Field
@@ -449,26 +443,20 @@ end
         Δz = FT(1.0) # height of compartments
         n_stem = Int64(0) # number of stem elements
         n_leaf = Int64(1) # number of leaf elements
-        compartment_centers =
-            FT.(
-                Vector(
-                    range(
-                        start = Δz / 2,
-                        step = Δz,
-                        stop = Δz * (n_stem + n_leaf) - (Δz / 2),
-                    ),
+        compartment_centers = FT.(
+            Vector(
+                range(
+                    start = Δz / 2,
+                    step = Δz,
+                    stop = Δz * (n_stem + n_leaf) - (Δz / 2),
                 ),
-            )
-        compartment_faces =
-            FT.(
-                Vector(
-                    range(
-                        start = 0.0,
-                        step = Δz,
-                        stop = Δz * (n_stem + n_leaf),
-                    ),
-                )
-            )
+            ),
+        )
+        compartment_faces = FT.(
+            Vector(
+                range(start = 0.0, step = Δz, stop = Δz * (n_stem + n_leaf)),
+            ),
+        )
 
         plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
             parameters = param_set,
@@ -593,6 +581,7 @@ end
         )
         for (g1, Vcmax25, is_c3, rooting_depth, α_PAR_leaf, α_NIR_leaf, ld) in
             zipped_params
+
             G_Function = ConstantGFunction(ld)
             RTparams =
                 BeerLambertParameters(FT; α_PAR_leaf, α_NIR_leaf, G_Function)
@@ -624,14 +613,13 @@ end
                 insol_params = earth_param_set.insol_params,
             )
                 current_datetime = start_date + Dates.Second(round(t))
-                d, δ, η_UTC =
-                    FT.(
-                        Insolation.helper_instantaneous_zenith_angle(
-                            current_datetime,
-                            start_date,
-                            insol_params,
-                        )
-                    )
+                d, δ, η_UTC = FT.(
+                    Insolation.helper_instantaneous_zenith_angle(
+                        current_datetime,
+                        start_date,
+                        insol_params,
+                    ),
+                )
                 return Insolation.instantaneous_zenith_angle(
                     d,
                     δ,
@@ -716,26 +704,24 @@ end
             Δz = FT(1.0) # height of compartments
             n_stem = Int64(0) # number of stem elements
             n_leaf = Int64(1) # number of leaf elements
-            compartment_centers =
-                FT.(
-                    Vector(
-                        range(
-                            start = Δz / 2,
-                            step = Δz,
-                            stop = Δz * (n_stem + n_leaf) - (Δz / 2),
-                        ),
+            compartment_centers = FT.(
+                Vector(
+                    range(
+                        start = Δz / 2,
+                        step = Δz,
+                        stop = Δz * (n_stem + n_leaf) - (Δz / 2),
                     ),
-                )
-            compartment_faces =
-                FT.(
-                    Vector(
-                        range(
-                            start = 0.0,
-                            step = Δz,
-                            stop = Δz * (n_stem + n_leaf),
-                        ),
-                    )
-                )
+                ),
+            )
+            compartment_faces = FT.(
+                Vector(
+                    range(
+                        start = 0.0,
+                        step = Δz,
+                        stop = Δz * (n_stem + n_leaf),
+                    ),
+                ),
+            )
 
             ψ_soil0 = FT(0.0)
             T_soil0 = FT(290)
@@ -827,9 +813,8 @@ end
             @test all(Array(parent(p.canopy.energy.fa_energy_roots)) .== FT(0))
 
             @test all(
-                Array(
-                    parent(ClimaLand.surface_temperature(canopy, Y, p, t0)),
-                ) .== FT(289),
+                Array(parent(ClimaLand.surface_temperature(canopy, Y, p, t0))) .==
+                FT(289),
             )
             @test all(
                 Array(
@@ -884,14 +869,13 @@ end
             insol_params = earth_param_set.insol_params,
         )
             current_datetime = start_date + Dates.Second(round(t))
-            d, δ, η_UTC =
-                FT.(
-                    Insolation.helper_instantaneous_zenith_angle(
-                        current_datetime,
-                        start_date,
-                        insol_params,
-                    )
-                )
+            d, δ, η_UTC = FT.(
+                Insolation.helper_instantaneous_zenith_angle(
+                    current_datetime,
+                    start_date,
+                    insol_params,
+                ),
+            )
             return Insolation.instantaneous_zenith_angle(
                 d,
                 δ,
@@ -975,26 +959,20 @@ end
         Δz = FT(1.0) # height of compartments
         n_stem = Int64(0) # number of stem elements
         n_leaf = Int64(1) # number of leaf elements
-        compartment_centers =
-            FT.(
-                Vector(
-                    range(
-                        start = Δz / 2,
-                        step = Δz,
-                        stop = Δz * (n_stem + n_leaf) - (Δz / 2),
-                    ),
+        compartment_centers = FT.(
+            Vector(
+                range(
+                    start = Δz / 2,
+                    step = Δz,
+                    stop = Δz * (n_stem + n_leaf) - (Δz / 2),
                 ),
-            )
-        compartment_faces =
-            FT.(
-                Vector(
-                    range(
-                        start = 0.0,
-                        step = Δz,
-                        stop = Δz * (n_stem + n_leaf),
-                    ),
-                )
-            )
+            ),
+        )
+        compartment_faces = FT.(
+            Vector(
+                range(start = 0.0, step = Δz, stop = Δz * (n_stem + n_leaf)),
+            ),
+        )
 
         ψ_soil0 = FT(0.0)
         T_soil0 = FT(290)
@@ -1055,13 +1033,12 @@ end
             T_sfc,
         )
         thermo_params = canopy.parameters.earth_param_set.thermo_params
-        q_sfc =
-            Thermodynamics.q_vap_saturation_generic.(
-                thermo_params,
-                T_sfc,
-                ρ_sfc,
-                Thermodynamics.Liquid(),
-            )
+        q_sfc = Thermodynamics.q_vap_saturation_generic.(
+            thermo_params,
+            T_sfc,
+            ρ_sfc,
+            Thermodynamics.Liquid(),
+        )
         dY = similar(Y)
         imp_tendency!(dY, Y, p, t0)
         jac = ImplicitEquationJacobian(Y)
@@ -1083,13 +1060,12 @@ end
             t0,
             T_sfc2,
         )
-        q_sfc2 =
-            Thermodynamics.q_vap_saturation_generic.(
-                thermo_params,
-                T_sfc2,
-                ρ_sfc2,
-                Thermodynamics.Liquid(),
-            )
+        q_sfc2 = Thermodynamics.q_vap_saturation_generic.(
+            thermo_params,
+            T_sfc2,
+            ρ_sfc2,
+            Thermodynamics.Liquid(),
+        )
         dY_2 = similar(Y_2)
         imp_tendency!(dY_2, Y_2, p_2, t0)
 
@@ -1138,7 +1114,7 @@ end
         # Recall jac = ∂Ṫ∂T - 1 [dtγ = 1]
         ∂Ṫ∂T = jac_value .+ 1
         @test (abs.(
-            parent((dY_2.canopy.energy.T .- dY.canopy.energy.T) ./ ΔT) - ∂Ṫ∂T
+            parent((dY_2.canopy.energy.T .- dY.canopy.energy.T) ./ ΔT) - ∂Ṫ∂T,
         ) / ∂Ṫ∂T)[1] < 0.25 # Error propagates here from ∂LHF∂T
     end
 end
@@ -1189,6 +1165,7 @@ end
             τ_NIR_leaf,
             χl,
         ) in zipped_params
+
             BeerLambertparams = BeerLambertParameters(FT)
             # TwoStreamModel parameters
             Ω = FT(0.69)
@@ -1243,14 +1220,13 @@ end
                 insol_params = earth_param_set.insol_params,
             )
                 current_datetime = start_date + Dates.Second(round(t))
-                d, δ, η_UTC =
-                    FT.(
-                        Insolation.helper_instantaneous_zenith_angle(
-                            current_datetime,
-                            start_date,
-                            insol_params,
-                        )
-                    )
+                d, δ, η_UTC = FT.(
+                    Insolation.helper_instantaneous_zenith_angle(
+                        current_datetime,
+                        start_date,
+                        insol_params,
+                    ),
+                )
                 return Insolation.instantaneous_zenith_angle(
                     d,
                     δ,
@@ -1334,26 +1310,24 @@ end
             Δz = FT(1.0) # height of compartments
             n_stem = Int64(0) # number of stem elements
             n_leaf = Int64(1) # number of leaf elements
-            compartment_centers =
-                FT.(
-                    Vector(
-                        range(
-                            start = Δz / 2,
-                            step = Δz,
-                            stop = Δz * (n_stem + n_leaf) - (Δz / 2),
-                        ),
+            compartment_centers = FT.(
+                Vector(
+                    range(
+                        start = Δz / 2,
+                        step = Δz,
+                        stop = Δz * (n_stem + n_leaf) - (Δz / 2),
                     ),
-                )
-            compartment_faces =
-                FT.(
-                    Vector(
-                        range(
-                            start = 0.0,
-                            step = Δz,
-                            stop = Δz * (n_stem + n_leaf),
-                        ),
-                    )
-                )
+                ),
+            )
+            compartment_faces = FT.(
+                Vector(
+                    range(
+                        start = 0.0,
+                        step = Δz,
+                        stop = Δz * (n_stem + n_leaf),
+                    ),
+                ),
+            )
 
             ψ_soil0 = FT(0.0)
             T_soil0 = FT(290)

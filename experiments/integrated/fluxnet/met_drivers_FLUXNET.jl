@@ -101,12 +101,11 @@ if length(missing_drivers) != 0
 end
 
 thermo_params = LP.thermodynamic_parameters(earth_param_set)
-esat =
-    Thermodynamics.saturation_vapor_pressure.(
-        Ref(thermo_params),
-        FT.(drivers.TA.values),
-        Ref(Thermodynamics.Liquid()),
-    )
+esat = Thermodynamics.saturation_vapor_pressure.(
+    Ref(thermo_params),
+    FT.(drivers.TA.values),
+    Ref(Thermodynamics.Liquid()),
+)
 e = @. esat - drivers.VPD.values
 q = @. 0.622 * e ./ (drivers.PA.values - 0.378 * e)
 RH = @. e / esat
@@ -134,7 +133,7 @@ end
 snow_frac = snow_precip_fraction.(drivers.TA.values[:], RH[:])
 # Create interpolators for each atmospheric driver needed for PrescribedAtmosphere and for
 # PrescribedRadiation
-seconds = FT.(0:DATA_DT:((length(UTC_DATETIME) - 1) * DATA_DT));
+seconds = FT.(0:DATA_DT:((length(UTC_DATETIME)-1)*DATA_DT));
 
 P_liq = -FT.(drivers.P.values[:] .* (1 .- snow_frac))
 precip = TimeVaryingInput(seconds, P_liq; context) # m/s
@@ -174,14 +173,13 @@ function zenith_angle(
     current_datetime = start_date + Dates.Second(round(t))
 
     # Orbital Data uses Float64, so we need to convert to our sim FT
-    d, δ, η_UTC =
-        FT.(
-            Insolation.helper_instantaneous_zenith_angle(
-                current_datetime,
-                start_date,
-                insol_params,
-            )
-        )
+    d, δ, η_UTC = FT.(
+        Insolation.helper_instantaneous_zenith_angle(
+            current_datetime,
+            start_date,
+            insol_params,
+        ),
+    )
 
     FT(
         Insolation.instantaneous_zenith_angle(
@@ -221,7 +219,7 @@ MODIS_LAI = single_col_data_matrix(
 )
 
 LAI_dt = Second(MODIS_LAI[2, 1] - MODIS_LAI[1, 1]).value
-LAI_seconds = FT.(0:LAI_dt:((length(MODIS_LAI[:, 1]) - 1) * LAI_dt))
+LAI_seconds = FT.(0:LAI_dt:((length(MODIS_LAI[:, 1])-1)*LAI_dt))
 
 # LAI function for radiative transfer
 LAIfunction = TimeVaryingInput(LAI_seconds, FT.(MODIS_LAI[:, 2]); context)
