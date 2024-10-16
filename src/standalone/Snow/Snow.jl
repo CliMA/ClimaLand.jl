@@ -254,6 +254,7 @@ auxiliary_domain_names(::SnowModel) = (
     :surface,
     :surface,
     :surface,
+    :surface,
 )
 
 
@@ -271,28 +272,6 @@ function ClimaLand.make_update_aux(model::SnowModel{FT}) where {FT}
 
         @. p.snow.T =
             snow_bulk_temperature(Y.snow.U, Y.snow.S, p.snow.q_l, parameters)
-
-        # original Tsfc code (Ts = Tbulk):
-        # @. p.snow.T_sfc = snow_surface_temperature_bulk(p.snow.T)
-        output =
-            snow_surface_temperature.(
-                p.drivers.u,
-                p.drivers.T,
-                p.drivers.P,
-                parameters.z_0m,
-                parameters.z_0b,
-                p.drivers.q,
-                model.atmos.h,
-                Y.snow.S,
-                p.snow.T,
-                p.drivers.thermal_state.ρ,
-                p.snow.energy_runoff,
-                p.drivers.LW_d,
-                p.drivers.SW_d,
-                parameters,
-            )
-        @. p.snow.T_sfc = output.T_s
-        @. p.snow.ΔF = output.ΔF
 
         @. p.snow.water_runoff =
             compute_water_runoff(Y.snow.S, p.snow.q_l, p.snow.T, parameters)

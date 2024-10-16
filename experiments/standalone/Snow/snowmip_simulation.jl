@@ -22,7 +22,7 @@ using DelimitedFiles
 # Site-specific quantities
 # Error if no site argument is provided
 if length(ARGS) < 1
-    @error("Please provide a site name as command line argument")
+    SITE_NAME = "cdp"#@error("Please provide a site name as command line argument")
 else
     SITE_NAME = ARGS[1]
 end
@@ -67,7 +67,7 @@ timestepper = CTS.ARS111()
 ode_algo = CTS.IMEXAlgorithm(
     timestepper,
     CTS.NewtonsMethod(
-        max_iters = 1,
+        max_iters = 3,
         update_j = CTS.UpdateEvery(CTS.NewTimeStep),
     ),
 );
@@ -245,7 +245,7 @@ ax3 = CairoMakie.Axis(
     ylabel = "Average Snow Temperature",
     xlabel = "Day of Year",
 )
-xlims!(ax3, 245, 281)
+ylims!(ax3, 245, 281)
 CairoMakie.lines!(
     ax3,
     mean_obs_df.doy,

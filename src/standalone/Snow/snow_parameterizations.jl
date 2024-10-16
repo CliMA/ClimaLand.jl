@@ -68,7 +68,6 @@ a helper function which returns the surface temperature for the snow
 model, which is stored in the aux state.
 """
 function ClimaLand.surface_temperature(model::SnowModel{FT}, Y, p, t) where {FT}
-    # return max.(p.snow.T_sfc, FT(250))
     return p.snow.T_sfc
 end
 
@@ -174,6 +173,201 @@ function calc_U(ρ_l::FT, d::FT, c::FT, T::FT, T0::FT)::FT where {FT} # assuming
     return ρ_l * d * c * (T - T0)
 end
 
+function snow_turbulent_fluxes_at_a_point(
+    T_sfc::FT,
+    h_sfc::FT,
+    d_sfc::FT,
+    thermal_state_air,
+    u::FT,
+    h::FT,
+    gustiness::FT,
+    z_0m::FT,
+    z_0b::FT,
+    earth_param_set::EP,
+) where {FT <: AbstractFloat, EP}
+    thermo_params = LP.thermodynamic_parameters(earth_param_set)
+    surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
+    _T_freeze = LP.T_freeze(earth_param_set)
+    ρ_sfc = ClimaLand.compute_ρ_sfc(thermo_params, thermal_state_air, T_sfc)
+    qsat_over_ice = Thermodynamics.q_vap_saturation_generic(
+        thermo_params,
+        T_sfc,
+        ρ_sfc,
+        Thermodynamics.Ice(),
+    )
+    qsat_over_liq = Thermodynamics.q_vap_saturation_generic(
+        thermo_params,
+        T_sfc,
+        ρ_sfc,
+        Thermodynamics.Liquid(),
+    )
+    q_sfc = T_sfc >= _T_freeze ? qsat_over_liq : qsat_over_ice
+    thermal_state_sfc =
+        Thermodynamics.PhaseEquil_ρTq(thermo_params, ρ_sfc, T_sfc, q_sfc)
+    ρ_air = Thermodynamics.air_density(thermo_params, thermal_state_air)
+    _LH_v0::FT = LP.LH_v0(earth_param_set)
+    _ρ_liq::FT = LP.ρ_cloud_liq(earth_param_set)
+    cp_m_sfc::FT = Thermodynamics.cp_m(thermo_params, thermal_state_sfc)
+    T_air = Thermodynamics.air_temperature(thermo_params, thermal_state_air)
+    P_sfc = Thermodynamics.air_pressure(thermo_params, thermal_state_sfc)
+    Rm_air = Thermodynamics.gas_constant_air(thermo_params, thermal_state_air)
+
+    # SurfaceFluxes.jl expects a relative difference between where u = 0
+    # and the atmosphere height. Here, we assume h and h_sfc are measured
+    # relative to a common reference. Then d_sfc + h_sfc + z_0m is the apparent
+    # source of momentum, and
+    # Δh ≈ h - d_sfc - h_sfc is the relative height difference between the
+    # apparent source of momentum and the atmosphere height.
+
+    # In this we have neglected z_0m and z_0b (i.e. assumed they are small
+    # compared to Δh).
+    state_sfc = SurfaceFluxes.StateValues(
+        FT(0),
+        SVector{2, FT}(0, 0),
+        thermal_state_sfc,
+    )
+    state_in = SurfaceFluxes.StateValues(
+        h - d_sfc - h_sfc,
+        SVector{2, FT}(u, 0),
+        thermal_state_air,
+    )
+
+    # State containers
+    states = SurfaceFluxes.ValuesOnly(
+        state_in,
+        state_sfc,
+        z_0m,
+        z_0b,
+        gustiness = gustiness,
+    )
+    scheme = SurfaceFluxes.PointValueScheme()
+    conditions =
+        SurfaceFluxes.surface_conditions(surface_flux_params, states, scheme)
+
+    # aerodynamic resistance
+    r_ae::FT = 1 / (conditions.Ch * SurfaceFluxes.windspeed(states))
+
+    # latent heat flux
+    E0::FT =
+        SurfaceFluxes.evaporation(surface_flux_params, states, conditions.Ch) # mass flux at potential evaporation rate
+    LH = _LH_v0 * E0 # Latent heat flux
+
+    # sensible heat flux
+    SH = SurfaceFluxes.sensible_heat_flux(
+        surface_flux_params,
+        conditions.Ch,
+        states,
+        scheme,
+    )
+
+    # vapor flux in volume of liquid water with density 1000kg/m^3
+    Ẽ = E0 / _ρ_liq
+
+    # Derivatives
+    # We ignore ∂r_ae/∂T_sfc, ∂u*/∂T_sfc
+    ∂ρsfc∂T =
+        ρ_air *
+        (Thermodynamics.cv_m(thermo_params, thermal_state_air) / Rm_air) *
+        (
+            T_sfc / T_air
+        )^(Thermodynamics.cv_m(thermo_params, thermal_state_air) / Rm_air - 1) /
+        T_air
+    ∂cp_m_sfc∂T = 0 # Possibly can address at a later date
+
+    ∂LHF∂q = ρ_sfc * _LH_v0 / r_ae + LH / ρ_sfc * ∂ρsfc∂T
+
+    ∂SHF∂T =
+        ρ_sfc * cp_m_sfc / r_ae +
+        SH / ρ_sfc * ∂ρsfc∂T +
+        SH / cp_m_sfc * ∂cp_m_sfc∂T
+
+    ∂q∂T = ClimaLand.Snow.partial_q_sat_partial_T_ice(P_sfc, T_sfc - _T_freeze)
+
+    return (
+        lhf = LH,
+        shf = SH,
+        vapor_flux = Ẽ,
+        ∂LHF∂T = ∂LHF∂q * ∂q∂T,
+        ∂SHF∂T = ∂SHF∂T,
+    )
+end
+
+function kat_snow_surface_temperature(
+    u_air::FT,
+    thermal_state_air::Thermodynamics.PhaseEquil,
+    h_air::FT,
+    SWE::FT,
+    T_bulk::FT,
+    LW_d::FT,
+    SW_d::FT,
+    q_l::FT,
+    t,
+    parameters,
+) where {FT}
+    (; z_0m, z_0b, earth_param_set) = parameters
+    thermo_params = LP.thermodynamic_parameters(earth_param_set)
+    _ρ_liq::FT = LP.ρ_cloud_liq(earth_param_set)
+    _σ = LP.Stefan(earth_param_set)
+    _T_freeze = LP.T_freeze(earth_param_set)
+    _T_ref::FT = FT(LP.T_0(earth_param_set))
+    _LH_f0::FT = LP.LH_f0(earth_param_set)
+
+    T_air::FT = Thermodynamics.air_temperature(thermo_params, thermal_state_air)
+    ϵ_sfc::FT = parameters.ϵ_snow
+    α_sfc::FT = parameters.α_snow
+    d_sfc = FT(0)
+
+    ρ_snow::FT = parameters.ρ_snow
+    h_sfc::FT = snow_depth(SWE, ρ_snow, _ρ_liq)
+    d = FT(0.1)
+    if h_sfc < d
+        return (T_s = T_bulk, ΔF = FT(0))
+    end
+    gustiness = FT(1)
+
+    function sum_fluxes(T_sfc)
+        turb_fluxes = snow_turbulent_fluxes_at_a_point(
+            T_sfc,
+            FT(0),#h_sfc,
+            d_sfc,
+            thermal_state_air,
+            u_air,
+            h_air,
+            gustiness,
+            z_0m,
+            z_0b,
+            earth_param_set,
+        )
+        F_R = -(1 - α_sfc) * SW_d - ϵ_sfc * (LW_d - _σ * T_sfc^4) # positive up
+        F_h = turb_fluxes.shf + turb_fluxes.lhf + F_R # positive up
+        κ = ClimaLand.Snow.snow_thermal_conductivity(
+            parameters.ρ_snow,
+            parameters,
+        )
+        f_total = κ * (T_sfc - T_bulk) / (h_sfc / 2) + F_h # Fh = - k(T_sfc - T_bulk)/(h/2)
+
+        # Derivatives
+        F_R_prime = 4 * ϵ_sfc * _σ * T_sfc^3
+        F_h_prime = turb_fluxes.∂SHF∂T + turb_fluxes.∂LHF∂T + F_R_prime
+        f_total_prime = (2 * κ / h_sfc) + F_h_prime
+        return (f_total, f_total_prime)
+    end
+    T_s = solve_Ts(sum_fluxes, T_air)
+    # adjust T_s and internal energy accordingly if T_s > freezing temperature
+    if T_s > _T_freeze
+        c_sfc = specific_heat_capacity(FT(1), parameters)
+        c_bulk = specific_heat_capacity(q_l, parameters)
+        U_Ts::FT = _ρ_liq * d * c_sfc * (T_s - _T_ref)#calc_U(_ρ_liq, d, c_sfc, T_s, _T0)
+        U_Tf::FT =
+            _ρ_liq * d * c_bulk * (_T_freeze - _T_ref) - (1 - q_l) * _LH_f0# calc_U(_ρ_liq, d, c_sfc, _T_freeze, _T0)
+        ΔU::FT = U_Tf - U_Ts
+        ΔF::FT = ΔU / parameters.Δt
+        @show(ΔF)
+        return (T_s = _T_freeze, ΔF = ΔF)
+    else
+        return (T_s = T_s, ΔF = FT(0))
+    end
+end
 function snow_surface_temperature(
     u_air::FT,
     T_air::FT,
@@ -195,7 +389,7 @@ function snow_surface_temperature(
     _ρ_liq::FT = LP.ρ_cloud_liq(earth_param_set)
     ρ_snow::FT = parameters.ρ_snow
     h_sfc::FT = snow_depth(SWE, ρ_snow, _ρ_liq)
-    d = FT(0.2)
+    d = FT(0.1)
     if h_sfc < d
         return (T_s = T_bulk, ΔF = FT(0))
     end
@@ -263,10 +457,13 @@ function snow_surface_temperature(
         ΔU::FT = U_Ts - U_Tf
         ΔF::FT = ΔU / parameters.Δt
         return (T_s = T_s_new, ΔF = ΔF)
+    elseif T_s < 250.0
+        return (T_s = FT(250), ΔF = FT(0))
     else
         return (T_s = T_s, ΔF = FT(0))
     end
 end
+
 
 """
     ClimaLand.surface_specific_humidity(model::BucketModel, Y, p)
@@ -299,9 +496,10 @@ function ClimaLand.surface_specific_humidity(
             Ref(Thermodynamics.Liquid()),
         )
     q_l = p.snow.q_l
-    return @. qsat_over_ice * (1 - q_l) + q_l * (qsat_over_liq)
+    helper.(T_sfc, qsat_over_liq, qsat_over_ice)
+    #return @. qsat_over_ice * (1 - q_l) + q_l * (qsat_over_liq)
 end
-
+helper(x, o1, o2) = x >= 273.15 ? o1 : o2
 
 
 """
