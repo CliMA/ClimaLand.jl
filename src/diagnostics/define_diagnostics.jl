@@ -752,14 +752,15 @@ function define_diagnostics!(land_model)
 
     # Surface runoff
     add_diagnostic_variable!(
-        short_name = "sr",
-        long_name = "Surface Runoff",
-        standard_name = "surface_runoff",
-        units = "m s^-1",
-        comments = "Water runoff at the surface, this is the water flowing horizontally above the ground.",
+        short_name = "tr",
+        long_name = "Total Runoff",
+        standard_name = "total_runoff",
+        units = "kg m^-2 s^-1",
+        comments = "Total Water runoff",
         compute! = (out, Y, p, t) ->
-            compute_surface_runoff!(out, Y, p, t, land_model),
+            compute_total_runoff!(out, Y, p, t, land_model),
     )
+
 
     ## Stored in Y (prognostic or state variables) ##
 
@@ -793,6 +794,16 @@ function define_diagnostics!(land_model)
         comments = "The volume of soil water per volume of soil. (depth resolved)",
         compute! = (out, Y, p, t) ->
             compute_soil_water_content!(out, Y, p, t, land_model),
+    )
+
+    add_diagnostic_variable!(
+        short_name = "seff",
+        long_name = "Effective saturation",
+        standard_name = "effective_saturation",
+        units = "unitless",
+        comments = "The amount of soil water/ice relative to porosity (depth resolved)",
+        compute! = (out, Y, p, t) ->
+            compute_effective_saturation!(out, Y, p, t, land_model),
     )
 
     # Plant water content

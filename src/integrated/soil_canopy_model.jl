@@ -92,13 +92,11 @@ function SoilCanopyModel{FT}(;
             prognostic_land_components,
         )
     end
-    zero_flux = Soil.HeatFluxBC((p, t) -> 0.0)
+    hzero_flux = Soil.HeatFluxBC((p, t) -> 0.0)
+    wzero_flux = Soil.WaterFluxBC((p, t) -> 0.0)
     boundary_conditions = (;
         top = top_bc,
-        bottom = Soil.WaterHeatBC(;
-            water = Soil.FreeDrainage(),
-            heat = zero_flux,
-        ),
+        bottom = Soil.WaterHeatBC(; water = wzero_flux, heat = hzero_flux),
     )
     soil = soil_model_type(;
         boundary_conditions = boundary_conditions,

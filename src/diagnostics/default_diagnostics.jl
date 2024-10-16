@@ -173,10 +173,41 @@ function default_diagnostics(
             "er",
             "et",
             "sr",
+            "seff",
         ]
     elseif output_vars == :short
-        soilcanopy_diagnostics =
-            ["gpp", "ct", "lai", "swc", "si", "swa", "lwu", "et", "er", "sr"]
+        soilcanopy_diagnostics = [
+            "gpp",
+            "ct",
+            "lai",
+            "swc",
+            "si",
+            "swu",
+            "swd",
+            "lwu",
+            "et",
+            "er",
+            "sr",
+            "seff",
+        ]
+    elseif output_vars == :ilamb
+        soilcanopy_diagnostics = [
+            "gpp",
+            "ct",
+            "lai",
+            "swc",
+            "si",
+            "swu",
+            "swd",
+            "tsoil",
+            "lwd",
+            "lwu",
+            "et",
+            "hr",
+            "ar",
+            "tr",
+            "seff",
+        ]
     end
 
     if average_period == :hourly
@@ -216,7 +247,7 @@ function default_diagnostics(
 
     define_diagnostics!(land_model)
 
-    soil_diagnostics = ["swc", "si", "sie"]
+    soil_diagnostics = ["swc", "si", "sie", "seff"]
 
     if average_period == :hourly
         default_outputs = hourly_averages(
