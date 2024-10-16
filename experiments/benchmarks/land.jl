@@ -601,7 +601,7 @@ ProfileCanvas.html_file(flame_file, results)
 @info "Saved compute flame to $flame_file"
 
 prob, ode_algo, Δt, cb = setup_simulation()
-Profile.Allocs.@profile sample_rate = 0.01 SciMLBase.solve(
+Profile.Allocs.@profile sample_rate = 0.005 SciMLBase.solve(
     prob,
     ode_algo;
     dt = Δt,
