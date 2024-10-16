@@ -1130,22 +1130,15 @@ function prescribed_forcing_era5(
         current_datetime = start_date + Dates.Second(round(t))
 
         # Orbital Data uses Float64, so we need to convert to our sim FT
-        d, δ, η_UTC =
-            FT.(
-                Insolation.helper_instantaneous_zenith_angle(
-                    current_datetime,
-                    start_date,
-                    insol_params,
-                )
-            )
+        d, δ, η_UTC = FT.(
+            Insolation.helper_instantaneous_zenith_angle(
+                current_datetime,
+                start_date,
+                insol_params,
+            ),
+        )
 
-        Insolation.instantaneous_zenith_angle.(
-            d,
-            δ,
-            η_UTC,
-            longitude,
-            latitude,
-        ).:1
+        Insolation.instantaneous_zenith_angle.(d, δ, η_UTC, longitude, latitude).:1
     end
     radiation =
         PrescribedRadiativeFluxes(FT, SW_d, LW_d, start_date; θs = zenith_angle)

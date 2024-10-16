@@ -262,13 +262,12 @@ T_0 =
     drivers.TS.status != absent ?
     drivers.TS.values[1 + Int(round(t0 / DATA_DT))] :
     drivers.TA.values[1 + Int(round(t0 / DATA_DT))] + 40# Get soil temperature at t0
-ρc_s =
-    volumetric_heat_capacity.(
-        Y.soil.ϑ_l,
-        Y.soil.θ_i,
-        land.soil.parameters.ρc_ds,
-        earth_param_set,
-    )
+ρc_s = volumetric_heat_capacity.(
+    Y.soil.ϑ_l,
+    Y.soil.θ_i,
+    land.soil.parameters.ρc_ds,
+    earth_param_set,
+)
 Y.soil.ρe_int =
     volumetric_internal_energy.(Y.soil.θ_i, ρc_s, T_0, earth_param_set)
 
@@ -280,7 +279,7 @@ Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
 S_l_ini =
     inverse_water_retention_curve.(retention_model, ψ_comps, plant_ν, plant_S_s)
 
-for i in 1:(n_stem + n_leaf)
+for i in 1:(n_stem+n_leaf)
     Y.canopy.hydraulics.ϑ_l.:($i) .=
         augmented_liquid_fraction.(plant_ν, S_l_ini[i])
 end
@@ -343,8 +342,8 @@ end
 num_days = N_days - N_spinup_days
 
 # Time series of model and data outputs
-data_times = [0:DATA_DT:(num_days * S_PER_DAY);]
-model_times = [0:dt_save:(num_days * S_PER_DAY);]
+data_times = [0:DATA_DT:(num_days*S_PER_DAY);]
+model_times = [0:dt_save:(num_days*S_PER_DAY);]
 
 # Plot model diurnal cycles without data comparisons
 # Autotrophic Respiration
@@ -409,9 +408,9 @@ if drivers.SW_OUT.status == absent
         "model",
     )
 else
-    SW_u_data = FT.(drivers.SW_OUT.values)[Int64(t_spinup ÷ DATA_DT):Int64(
-        tf ÷ DATA_DT,
-    )]
+    SW_u_data = FT.(drivers.SW_OUT.values)[Int64(
+        t_spinup ÷ DATA_DT,
+    ):Int64(tf ÷ DATA_DT)]
     plot_avg_comp(
         "SW up",
         SW_u_model,
@@ -437,9 +436,9 @@ if drivers.LW_OUT.status == absent
         "model",
     )
 else
-    LW_u_data = FT.(drivers.LW_OUT.values)[Int64(t_spinup ÷ DATA_DT):Int64(
-        tf ÷ DATA_DT,
-    )]
+    LW_u_data = FT.(drivers.LW_OUT.values)[Int64(
+        t_spinup ÷ DATA_DT,
+    ):Int64(tf ÷ DATA_DT)]
     plot_avg_comp(
         "LW up",
         LW_u_model,
@@ -589,9 +588,9 @@ if drivers.G.status != absent
             num_days,
         )
         RminusG_avg = compute_diurnal_avg(
-            FT.(Rn .- drivers.G.values)[Int64(t_spinup ÷ DATA_DT):Int64(
-                tf ÷ DATA_DT,
-            )],
+            FT.(Rn .- drivers.G.values)[Int64(
+                t_spinup ÷ DATA_DT,
+            ):Int64(tf ÷ DATA_DT)],
             data_times,
             num_days,
         )

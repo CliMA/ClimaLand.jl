@@ -70,12 +70,11 @@ import ClimaLand.Parameters as LP
     )
 
     Y.snow.S .= FT(0.1)
-    Y.snow.U .=
-        ClimaLand.Snow.energy_from_T_and_swe.(
-            Y.snow.S,
-            FT(273.0),
-            Ref(model.parameters),
-        )
+    Y.snow.U .= ClimaLand.Snow.energy_from_T_and_swe.(
+        Y.snow.S,
+        FT(273.0),
+        Ref(model.parameters),
+    )
     set_initial_cache! = ClimaLand.make_set_initial_cache(model)
     t0 = FT(0.0)
     set_initial_cache!(p, Y, t0)
@@ -94,14 +93,13 @@ import ClimaLand.Parameters as LP
     )
     @test p.snow.q_l ==
           snow_liquid_mass_fraction.(Y.snow.U, Y.snow.S, Ref(model.parameters))
-    @test p.snow.T_sfc ==
-          snow_surface_temperature.(
+    @test p.snow.T_sfc == snow_surface_temperature.(
         snow_bulk_temperature.(
             Y.snow.U,
             Y.snow.S,
             p.snow.q_l,
             Ref(model.parameters),
-        )
+        ),
     )
 
     ρ_sfc = ClimaLand.surface_air_density(
@@ -114,13 +112,12 @@ import ClimaLand.Parameters as LP
     )
     thermo_params =
         LP.thermodynamic_parameters(model.parameters.earth_param_set)
-    q_sfc =
-        Thermodynamics.q_vap_saturation_generic.(
-            Ref(thermo_params),
-            p.snow.T_sfc,
-            ρ_sfc,
-            Ref(Thermodynamics.Ice()),
-        )
+    q_sfc = Thermodynamics.q_vap_saturation_generic.(
+        Ref(thermo_params),
+        p.snow.T_sfc,
+        ρ_sfc,
+        Ref(Thermodynamics.Ice()),
+    )
     turb_fluxes = ClimaLand.turbulent_fluxes(
         model.boundary_conditions.atmos,
         model,

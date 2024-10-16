@@ -169,7 +169,7 @@ prob = SciMLBase.ODEProblem(
     p,
 );
 
-saveat = collect(t0:(Δt * 3):tf);
+saveat = collect(t0:(Δt*3):tf);
 saved_values = (;
     t = Array{Float64}(undef, length(saveat)),
     saveval = Array{NamedTuple}(undef, length(saveat)),
@@ -295,12 +295,7 @@ for (i, (field_ts, field_name)) in enumerate(
             outdir,
             string("anim_$(device_suffix)_", field_name, ".mp4"),
         )
-        record(
-            fig,
-            outfile,
-            (nframes - 7 * 24):2:nframes;
-            framerate = 3,
-        ) do frame
+        record(fig, outfile, (nframes-7*24):2:nframes; framerate = 3) do frame
             CairoMakie.heatmap!(
                 longpts,
                 latpts,

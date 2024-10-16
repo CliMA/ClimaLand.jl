@@ -83,20 +83,18 @@ function ClimaLand.surface_specific_humidity(
 )
     thermo_params =
         LP.thermodynamic_parameters(model.parameters.earth_param_set)
-    qsat_over_ice =
-        Thermodynamics.q_vap_saturation_generic.(
-            Ref(thermo_params),
-            T_sfc,
-            ρ_sfc,
-            Ref(Thermodynamics.Ice()),
-        )
-    qsat_over_liq =
-        Thermodynamics.q_vap_saturation_generic.(
-            Ref(thermo_params),
-            T_sfc,
-            ρ_sfc,
-            Ref(Thermodynamics.Liquid()),
-        )
+    qsat_over_ice = Thermodynamics.q_vap_saturation_generic.(
+        Ref(thermo_params),
+        T_sfc,
+        ρ_sfc,
+        Ref(Thermodynamics.Ice()),
+    )
+    qsat_over_liq = Thermodynamics.q_vap_saturation_generic.(
+        Ref(thermo_params),
+        T_sfc,
+        ρ_sfc,
+        Ref(Thermodynamics.Liquid()),
+    )
     q_l = p.snow.q_l
     return @. qsat_over_ice * (1 - q_l) + q_l * (qsat_over_liq)
 end

@@ -176,7 +176,7 @@ diagnostic_handler =
 
 diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler)
 
-updateat = collect(t0:(Δt * 3):tf);
+updateat = collect(t0:(Δt*3):tf);
 drivers = ClimaLand.get_drivers(model)
 updatefunc = ClimaLand.make_update_drivers(drivers)
 driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)

@@ -24,9 +24,9 @@ function main(; resolution)
             lon_indices =
                 Array(1:1:length(lon))[(lon .>= lon_min + resolution * (lon_id - 1)) .& (lon .< lon_min + resolution * lon_id)]
             ϕ = data["Band1"][lon_indices, lat_indices][:]
-            present = .~(typeof.(ϕ) .<: Missing)
+            present = .~ (typeof.(ϕ) .<: Missing)
             present_count = sum(present)
-            zero_count = sum(.~(typeof.(ϕ) .<: Missing) .& (ϕ .== 0))
+            zero_count = sum(.~ (typeof.(ϕ) .<: Missing) .& (ϕ .== 0))
             #present_nonzero = .~(typeof.(ϕ) .<: Missing) .& (ϕ .> 0)
             if present_count / prod(size(ϕ)) > 0.5
                 # Land
@@ -48,11 +48,11 @@ function main(; resolution)
 
     la = defVar(ds, "lat", Float32, ("lat",))
     la[:] =
-        (0.5:1:(lat_count - 0.5)) ./ lat_count .* (lat_max - lat_min) .+ lat_min
+        (0.5:1:(lat_count-0.5)) ./ lat_count .* (lat_max - lat_min) .+ lat_min
 
     lo = defVar(ds, "lon", Float32, ("lon",))
     lo[:] =
-        (0.5:1:(lon_count - 0.5)) ./ lon_count .* (lon_max - lon_min) .+ lon_min
+        (0.5:1:(lon_count-0.5)) ./ lon_count .* (lon_max - lon_min) .+ lon_min
 
     mean_ϕ = defVar(ds, "ϕ_mean", Float32, ("lon", "lat"))
     mean_ϕ[:, :] = parameters[:, :, 2]

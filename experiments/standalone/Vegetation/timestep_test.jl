@@ -190,13 +190,12 @@ updatefunc = ClimaLand.make_update_drivers(drivers)
 
 ψ_leaf_0 = FT(-2e5 / 9800)
 ψ_stem_0 = FT(-1e5 / 9800)
-S_l_ini =
-    inverse_water_retention_curve.(
-        retention_model,
-        [ψ_stem_0, ψ_leaf_0],
-        ν,
-        S_s,
-    )
+S_l_ini = inverse_water_retention_curve.(
+    retention_model,
+    [ψ_stem_0, ψ_leaf_0],
+    ν,
+    S_s,
+)
 
 seconds_per_day = 3600 * 24.0
 t0 = 150seconds_per_day
@@ -242,8 +241,8 @@ for dt in dts
     set_initial_cache!(p, Y, t0)
 
     # Create callback for driver updates
-    saveat = vcat(Array(t0:(3 * 3600):tf), tf)
-    updateat = vcat(Array(t0:(3 * 3600):tf), tf)
+    saveat = vcat(Array(t0:(3*3600):tf), tf)
+    updateat = vcat(Array(t0:(3*3600):tf), tf)
     cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
 
     # Solve simulation

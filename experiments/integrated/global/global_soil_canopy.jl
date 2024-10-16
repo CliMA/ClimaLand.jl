@@ -209,20 +209,18 @@ init_soil(ν, θ_r) = θ_r + (ν - θ_r) / 2
 Y.soil.ϑ_l .= init_soil.(ν, θ_r)
 Y.soil.θ_i .= FT(0.0)
 T = FT(276.85)
-ρc_s =
-    Soil.volumetric_heat_capacity.(
-        Y.soil.ϑ_l,
-        Y.soil.θ_i,
-        soil_params.ρc_ds,
-        soil_params.earth_param_set,
-    )
-Y.soil.ρe_int .=
-    Soil.volumetric_internal_energy.(
-        Y.soil.θ_i,
-        ρc_s,
-        T,
-        soil_params.earth_param_set,
-    )
+ρc_s = Soil.volumetric_heat_capacity.(
+    Y.soil.ϑ_l,
+    Y.soil.θ_i,
+    soil_params.ρc_ds,
+    soil_params.earth_param_set,
+)
+Y.soil.ρe_int .= Soil.volumetric_internal_energy.(
+    Y.soil.θ_i,
+    ρc_s,
+    T,
+    soil_params.earth_param_set,
+)
 Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
 Y.canopy.hydraulics.ϑ_l.:1 .= plant_ν
 evaluate!(Y.canopy.energy.T, atmos.T, t0)
@@ -272,7 +270,7 @@ diagnostic_handler =
 
 diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler)
 
-updateat = Array(t0:(3600 * 3):tf)
+updateat = Array(t0:(3600*3):tf)
 drivers = ClimaLand.get_drivers(land)
 updatefunc = ClimaLand.make_update_drivers(drivers)
 driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)

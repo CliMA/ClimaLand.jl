@@ -182,7 +182,7 @@ set_initial_cache!(p, Y, t0);
 
 
 n = 16
-saveat = Array(t0:(n * dt):tf)
+saveat = Array(t0:(n*dt):tf)
 sv = (;
     t = Array{Float64}(undef, length(saveat)),
     saveval = Array{NamedTuple}(undef, length(saveat)),

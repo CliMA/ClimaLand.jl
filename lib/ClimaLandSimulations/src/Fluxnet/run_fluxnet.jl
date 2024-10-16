@@ -67,7 +67,7 @@ function run_fluxnet(
     soilco2_sources = (MicrobeProduction{FT}(),)
 
     soilco2_boundary_conditions =
-        (; top = soilco2_top_bc, bottom = CO2 = soilco2_bot_bc)
+        (; top = soilco2_top_bc, bottom =  CO2 = soilco2_bot_bc )
 
     soilco2_args = (;
         boundary_conditions = soilco2_boundary_conditions,
@@ -232,32 +232,29 @@ function run_fluxnet(
         drivers.drivers.TS.values[1 + Int(round(setup.t0 / drivers.DATA_DT))] :
         drivers.drivers.TA.values[1 + Int(round(setup.t0 / drivers.DATA_DT))] +
         40# Get soil temperature at t0
-    ρc_s =
-        volumetric_heat_capacity.(
-            Y.soil.ϑ_l,
-            Y.soil.θ_i,
-            land.soil.parameters.ρc_ds,
-            land.soil.parameters.earth_param_set,
-        )
-    Y.soil.ρe_int =
-        volumetric_internal_energy.(
-            Y.soil.θ_i,
-            ρc_s,
-            T_0,
-            land.soil.parameters.earth_param_set,
-        )
+    ρc_s = volumetric_heat_capacity.(
+        Y.soil.ϑ_l,
+        Y.soil.θ_i,
+        land.soil.parameters.ρc_ds,
+        land.soil.parameters.earth_param_set,
+    )
+    Y.soil.ρe_int = volumetric_internal_energy.(
+        Y.soil.θ_i,
+        ρc_s,
+        T_0,
+        land.soil.parameters.earth_param_set,
+    )
     Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
     ψ_stem_0 = FT(-1e5 / 9800) # pressure in the leaf divided by rho_liquid*gravitational acceleration [m]
     ψ_leaf_0 = FT(-2e5 / 9800)
     ψ_comps = setup.n_stem > 0 ? [ψ_stem_0, ψ_leaf_0] : ψ_leaf_0
 
-    S_l_ini =
-        inverse_water_retention_curve.(
-            params.plant_hydraulics.retention_model,
-            ψ_comps,
-            drivers.plant_ν,
-            params.plant_hydraulics.S_s,
-        )
+    S_l_ini = inverse_water_retention_curve.(
+        params.plant_hydraulics.retention_model,
+        ψ_comps,
+        drivers.plant_ν,
+        params.plant_hydraulics.S_s,
+    )
 
     for i in 1:(setup.n_stem + setup.n_leaf)
         Y.canopy.hydraulics.ϑ_l.:($i) .=

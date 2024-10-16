@@ -157,13 +157,12 @@ for FT in (Float32, Float64)
                     params.ρc_ds,
                     params.earth_param_set,
                 )
-                Y.soil.ρe_int =
-                    Soil.volumetric_internal_energy.(
-                        FT(0),
-                        ρc_s,
-                        T,
-                        params.earth_param_set,
-                    )
+                Y.soil.ρe_int = Soil.volumetric_internal_energy.(
+                    FT(0),
+                    ρc_s,
+                    T,
+                    params.earth_param_set,
+                )
             end
 
             t = Float64(0)

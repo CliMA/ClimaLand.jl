@@ -134,18 +134,17 @@ function update_photosynthesis!(
     ci = intercellular_co2.(c_co2, Γstar, medlyn_factor)# may change?
     Kc = MM_Kc.(Kc25, ΔHkc, T, To, R)
     Ko = MM_Ko.(Ko25, ΔHko, T, To, R)
-    rates =
-        optimality_max_photosynthetic_rates.(
-            APAR,
-            θj,
-            ϕ,
-            oi,
-            ci,
-            Γstar,
-            Kc,
-            Ko,
-            c,
-        )
+    rates = optimality_max_photosynthetic_rates.(
+        APAR,
+        θj,
+        ϕ,
+        oi,
+        ci,
+        Γstar,
+        Kc,
+        Ko,
+        c,
+    )
     Jmax = rates.:1
     Vcmax = rates.:2
     J = electron_transport.(APAR, Jmax, θj, ϕ)

@@ -123,13 +123,12 @@ Y.soil.θ_i = 0
 T_0 =
     drivers.TS.status != absent ? drivers.TS.values[t0_idx] :
     drivers.TA.values[t0_idx]
-ρc_s =
-    volumetric_heat_capacity.(
-        Y.soil.ϑ_l,
-        Y.soil.θ_i,
-        soil_ps.ρc_ds,
-        earth_param_set,
-    )
+ρc_s = volumetric_heat_capacity.(
+    Y.soil.ϑ_l,
+    Y.soil.θ_i,
+    soil_ps.ρc_ds,
+    earth_param_set,
+)
 Y.soil.ρe_int =
     volumetric_internal_energy.(Y.soil.θ_i, ρc_s, T_0, earth_param_set)
 
@@ -251,7 +250,7 @@ ax1 = Axis(fig[2, 1], ylabel = "ΔEnergy (J/A)", xlabel = "Days")
             parent(
                 sv.saveval[k].atmos_energy_flux .-
                 sv.saveval[k].soil.bottom_bc.heat,
-            )[end] for k in 1:1:(length(sv.t) - 1)
+            )[end] for k in 1:1:(length(sv.t)-1)
         ],
     ) * (sv.t[2] - sv.t[1])
 E_measured = [
@@ -264,7 +263,7 @@ E_measured = [
             parent(
                 sv.saveval[k].atmos_water_flux .-
                 sv.saveval[k].soil.bottom_bc.water .+ sv.saveval[k].soil.R_s,
-            )[end] for k in 1:1:(length(sv.t) - 1)
+            )[end] for k in 1:1:(length(sv.t)-1)
         ],
     ) * (sv.t[2] - sv.t[1])
 W_measured = [

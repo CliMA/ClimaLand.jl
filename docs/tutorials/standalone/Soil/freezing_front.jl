@@ -189,13 +189,12 @@ function init_soil!(Ysoil, z, params)
         params.ρc_ds,
         params.earth_param_set,
     )
-    Ysoil.soil.ρe_int .=
-        Soil.volumetric_internal_energy.(
-            FT(0.0),
-            ρc_s,
-            T,
-            params.earth_param_set,
-        )
+    Ysoil.soil.ρe_int .= Soil.volumetric_internal_energy.(
+        FT(0.0),
+        ρc_s,
+        T,
+        params.earth_param_set,
+    )
 end
 
 init_soil!(Y, coords.subsurface.z, soil.parameters);

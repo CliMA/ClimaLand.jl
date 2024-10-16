@@ -85,20 +85,18 @@ function init_soil!(Y, z, Trange, params)
     T = @.(T_min + (T_max - T_min) * exp(-(z - zmax) / (zmin - zmax) * c))
 
     θ_l = Soil.volumetric_liquid_fraction.(Y.soil.ϑ_l, ν, θ_r)
-    ρc_s =
-        Soil.volumetric_heat_capacity.(
-            θ_l,
-            Y.soil.θ_i,
-            params.ρc_ds,
-            params.earth_param_set,
-        )
-    Y.soil.ρe_int .=
-        Soil.volumetric_internal_energy.(
-            Y.soil.θ_i,
-            ρc_s,
-            T,
-            params.earth_param_set,
-        )
+    ρc_s = Soil.volumetric_heat_capacity.(
+        θ_l,
+        Y.soil.θ_i,
+        params.ρc_ds,
+        params.earth_param_set,
+    )
+    Y.soil.ρe_int .= Soil.volumetric_internal_energy.(
+        Y.soil.θ_i,
+        ρc_s,
+        T,
+        params.earth_param_set,
+    )
 end
 set_initial_cache! = make_set_initial_cache(soil);
 

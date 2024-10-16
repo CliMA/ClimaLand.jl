@@ -25,7 +25,7 @@ data with QC flag = 2,3.
 function replace_poor_quality_with_mean!(field, flag)
     good_indices = (flag .== 0) .|| (flag .== 1)
     fill_value = mean(field[good_indices])
-    field[.~good_indices] .= fill_value
+    field[.~ good_indices] .= fill_value
     return field
 end
 
@@ -39,9 +39,9 @@ This uses the Fluxnet convention of a value of -9999 indicating
 missing data.
 """
 function replace_missing_with_mean_by_value!(field)
-    good_indices = .~(field .== -9999)
+    good_indices = .~ (field .== -9999)
     fill_value = mean(field[good_indices])
-    field[.~good_indices] .= fill_value
+    field[.~ good_indices] .= fill_value
     return field
 end
 

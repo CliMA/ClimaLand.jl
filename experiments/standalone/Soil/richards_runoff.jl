@@ -240,7 +240,7 @@ prob = SciMLBase.ODEProblem(
     p,
 )
 save_every = 100
-saveat = Array(t0:(save_every * dt):tf)
+saveat = Array(t0:(save_every*dt):tf)
 sv = (;
     t = Array{Float64}(undef, length(saveat)),
     saveval = Array{NamedTuple}(undef, length(saveat)),
@@ -258,8 +258,8 @@ if context.device isa ClimaComms.CPUSingleThreaded
     longpts = range(-180.0, 180.0, 101)
     latpts = range(-90.0, 90.0, 101)
     hcoords = [
-        ClimaCore.Geometry.LatLongPoint(lat, long) for long in longpts,
-        lat in latpts
+        ClimaCore.Geometry.LatLongPoint(lat, long) for
+        long in longpts, lat in latpts
     ]
     remapper = ClimaCore.Remapping.Remapper(surface_space, hcoords)
 

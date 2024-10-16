@@ -251,7 +251,7 @@ function PlantHydraulicsModel{FT}(;
                 compartment_surfaces[i]
     end
     compartment_labels = Vector{Symbol}(undef, n_stem + n_leaf)
-    for i in 1:(n_stem + n_leaf)
+    for i in 1:(n_stem+n_leaf)
         if i <= n_stem
             compartment_labels[i] = :stem
         else
@@ -592,19 +592,18 @@ function make_compute_exp_tendency(
         # for broadcasted expressions using the macro @.
         # field.:($index) .= value # works
         # @ field.:($$index) = value # works
-        @inbounds for i in 1:(n_stem + n_leaf)
+        @inbounds for i in 1:(n_stem+n_leaf)
             im1 = i - 1
             ip1 = i + 1
             # To prevent dividing by zero, change AI/(AI x dz)" to
             # "AI/max(AI x dz, eps(FT))"
-            AIdz =
-                max.(
-                    getproperty(area_index, model.compartment_labels[i]) .* (
-                        model.compartment_surfaces[ip1] -
-                        model.compartment_surfaces[i]
-                    ),
-                    eps(FT),
-                )
+            AIdz = max.(
+                getproperty(area_index, model.compartment_labels[i]) .* (
+                    model.compartment_surfaces[ip1] -
+                    model.compartment_surfaces[i]
+                ),
+                eps(FT),
+            )
             if i == 1
                 @inbounds @. dY.canopy.hydraulics.ϑ_l.:($$i) =
                     1 / AIdz * (fa_roots - fa.:($$i))
