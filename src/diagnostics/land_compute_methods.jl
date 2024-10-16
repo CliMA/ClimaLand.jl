@@ -82,7 +82,10 @@ end
 
 # Canopy - Energy
 @diagnostic_compute "canopy_latent_heat_flux" Union{SoilCanopyModel, LandModel} p.canopy.energy.turbulent_fluxes.lhf
-@diagnostic_compute "canopy_sensible_heat_flux" Union{SoilCanopyModel, LandModel} p.canopy.energy.turbulent_fluxes.shf
+@diagnostic_compute "canopy_sensible_heat_flux" Union{
+    SoilCanopyModel,
+    LandModel,
+} p.canopy.energy.turbulent_fluxes.shf
 
 # Canopy - Hydraulics
 #@diagnostic_compute "leaf_water_potential" Union{SoilCanopyModel, LandModel} last(

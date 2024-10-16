@@ -83,7 +83,6 @@ function LandModel{FT}(;
     SM <: Soil.EnergyHydrology{FT},
     MM <: Soil.Biogeochemistry.SoilCO2Model{FT},
     SnM <: Snow.SnowModel,
-
 }
 
     (; atmos, radiation, soil_organic_carbon) = land_args

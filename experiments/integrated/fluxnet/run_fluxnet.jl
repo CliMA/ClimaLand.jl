@@ -482,8 +482,10 @@ SHF_snow = [
         sv.saveval[k].snow.snow_cover_fraction,
     )[1] for k in 1:length(sol.t)
 ]
-SHF_canopy =
-    [parent(sv.saveval[k].canopy.energy.turbulent_fluxes.shf)[1] for k in 1:length(sol.t)]
+SHF_canopy = [
+    parent(sv.saveval[k].canopy.energy.turbulent_fluxes.shf)[1] for
+    k in 1:length(sol.t)
+]
 SHF_model = SHF_soil + SHF_canopy + SHF_snow
 if drivers.H.status == absent
     plot_daily_avg(
@@ -522,8 +524,10 @@ LHF_snow = [
         sv.saveval[k].snow.turbulent_fluxes.lhf,
     )[1] for k in 1:length(sol.t)
 ]
-LHF_canopy =
-    [parent(sv.saveval[k].canopy.energy.turbulent_fluxes.lhf)[1] for k in 1:length(sol.t)]
+LHF_canopy = [
+    parent(sv.saveval[k].canopy.energy.turbulent_fluxes.lhf)[1] for
+    k in 1:length(sol.t)
+]
 LHF_model = LHF_soil + LHF_canopy + LHF_snow
 
 if drivers.LE.status == absent
@@ -927,15 +931,14 @@ ax1 = CairoMakie.Axis(fig[2, 1], ylabel = "ΔEnergy (J/A)", xlabel = "Days")
             parent(
                 sv.saveval[k].atmos_energy_flux .-
                 sv.saveval[k].soil.bottom_bc.heat,
-            )[end] for k in 1:1:(length(sv.t) - 1)
+            )[end] for k in 1:1:(length(sv.t)-1)
         ],
     ) * (sv.t[2] - sv.t[1])
 E_measured = [
     sum(sol.u[k].soil.ρe_int) +
     parent(sol.u[k].snow.U)[end] +
     parent(
-        sol.u[k].canopy.energy.T .* ac_canopy .*
-        max.(
+        sol.u[k].canopy.energy.T .* ac_canopy .* max.(
             sv.saveval[k].canopy.hydraulics.area_index.leaf .+
             sv.saveval[k].canopy.hydraulics.area_index.stem,
             eps(FT),
@@ -948,7 +951,7 @@ E_measured = [
             parent(
                 sv.saveval[k].atmos_water_flux .-
                 sv.saveval[k].soil.bottom_bc.water .+ sv.saveval[k].soil.R_s,
-            )[end] for k in 1:1:(length(sv.t) - 1)
+            )[end] for k in 1:1:(length(sv.t)-1)
         ],
     ) * (sv.t[2] - sv.t[1])
 
