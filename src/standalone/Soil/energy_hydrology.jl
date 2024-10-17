@@ -548,7 +548,9 @@ function ClimaLand.make_update_aux(model::EnergyHydrology)
         if model.boundary_conditions.top isa AtmosDrivenFluxBC
             update_albedo!(
                 p,
+                Y,
                 model.domain,
+                ν,
                 PAR_albedo_dry,
                 NIR_albedo_dry,
                 PAR_albedo_wet,
