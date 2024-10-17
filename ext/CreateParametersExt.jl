@@ -280,7 +280,8 @@ supplied for porosity, it must be supplied for all other parameters
 defined in the interior of the domain). Some parameters are defined only
 on the surface of the domain (e.g albedo), while other are defined everywhere
 (e.g. porosity). These are indicated with types `F` and `SF`. If both dry/wet albedos
-and
+and general albedos are given as keywords, the general albedos will override the dry/wet
+albedos.
 
 Please see the EnergyHydrologyParameters documentation for a complete list.
 """
