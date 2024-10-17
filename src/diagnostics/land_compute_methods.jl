@@ -201,6 +201,71 @@ function compute_total_respiration!(
     end
 end
 
+function compute_latent_heat_flux!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::SoilCanopyModel{FT},
+) where {FT}
+    if isnothing(out)
+        return p.soil.turbulent_fluxes.lhf .+
+               p.canopy.energy.turbulent_fluxes.lhf
+    else
+        out .=
+            p.soil.turbulent_fluxes.lhf .+ p.canopy.energy.turbulent_fluxes.lhf
+    end
+end
+
+function compute_sensible_heat_flux!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::SoilCanopyModel{FT},
+) where {FT}
+    if isnothing(out)
+        return p.soil.turbulent_fluxes.shf .+
+               p.canopy.energy.turbulent_fluxes.shf
+    else
+        out .=
+            p.soil.turbulent_fluxes.shf .+ p.canopy.energy.turbulent_fluxes.shf
+    end
+end
+
+function compute_net_radiation!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::SoilCanopyModel{FT},
+) where {FT}
+    if isnothing(out)
+        return p.drivers.LW_d .- p.LW_u .+ p.drivers.SW_d .- p.SW_u
+
+    else
+        out .= p.drivers.LW_d .- p.LW_u .+ p.drivers.SW_d .- p.SW_u
+
+    end
+end
+
+function compute_ground_heat_flux!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::SoilCanopyModel{FT},
+) where {FT}
+    if isnothing(out)
+        return p.soil.turbulent_fluxes.shf .+
+               p.canopy.energy.turbulent_fluxes.shf .- p.soil.R_n
+    else
+        out .=
+            p.soil.turbulent_fluxes.shf .+
+            p.canopy.energy.turbulent_fluxes.shf .- p.soil.R_n
+    end
+end
+
 # variables stored in Y (prognostic or state variables)
 nan_if_no_canopy(T::FT, AI::FT) where {FT <: Real} = AI > 0 ? T : FT(NaN)
 function compute_canopy_temperature!(
