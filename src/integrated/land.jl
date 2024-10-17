@@ -357,9 +357,9 @@ function make_update_boundary_fluxes(
                 p.snow.R_n
             ) +
             p.drivers.P_snow * ρe_falling_snow +
-            p.canopy.energy.shf +
-            p.canopy.energy.lhf - p.canopy.radiative_transfer.SW_n -
-            p.canopy.radiative_transfer.LW_n
+            p.canopy.energy.turbulent_fluxes.shf +
+            p.canopy.energy.turbulent_fluxes.lhf -
+            p.canopy.radiative_transfer.SW_n - p.canopy.radiative_transfer.LW_n
         @. p.atmos_water_flux =
             p.drivers.P_snow +
             p.drivers.P_liq +
@@ -368,7 +368,7 @@ function make_update_boundary_fluxes(
                 p.soil.turbulent_fluxes.vapor_flux_ice
             ) +
             p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.vapor_flux +
-            p.canopy.conductance.transpiration
+            p.canopy.energy.turbulent_fluxes.transpiration
 
     end
     return update_boundary_fluxes!
