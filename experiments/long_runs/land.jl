@@ -619,13 +619,7 @@ for short_name in short_3d_names
     times = ClimaAnalysis.times(var)
     zvals = ClimaAnalysis.altitudes(var)
     for t in [times[end - 6], times[end]]
-        for z in [
-            zvals[end],
-            zvals[end - 1],
-            zvals[end - 2],
-            zvals[end - 3],
-            zvals[end - 4],
-        ]
+        for z in zvals
             fig = CairoMakie.Figure(size = (800, 600))
             viz.heatmap2D_on_globe!(
                 fig,
