@@ -40,7 +40,7 @@ function define_diagnostics!(land_model)
         units = "K",
         comments = "Temperature of the bucket-land surface.",
         compute! = (out, Y, p, t) ->
-            compute_surface_temperature!(out, Y, p, t, land_model),
+            compute_bucket_surface_temperature!(out, Y, p, t, land_model),
     )
 
     # Latent heat flux
