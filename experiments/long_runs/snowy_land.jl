@@ -464,7 +464,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     ρ_snow = FT(300.0)
     α_snow = FT(0.8)
     snow_parameters = SnowParameters{FT}(
-        dt;
+        Δt;
         α_snow = α_snow,
         ρ_snow = ρ_snow,
         earth_param_set = earth_param_set,
