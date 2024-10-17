@@ -12,6 +12,7 @@ using StatsBase
 
 using ClimaLand
 using ClimaLand.Domains: Column
+using ClimaLand.Snow
 using ClimaLand.Soil
 using ClimaLand.Soil.Biogeochemistry
 using ClimaLand.Canopy
@@ -184,9 +185,25 @@ shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
 
 canopy_model_args = (; parameters = shared_params, domain = canopy_domain)
 
+# Snow model
+ρ_snow = FT(300.0)
+α_snow = FT(0.8)
+snow_parameters = SnowParameters{FT}(
+    dt;
+    α_snow = α_snow,
+    ρ_snow = ρ_snow,
+    earth_param_set = earth_param_set,
+);
+snow_args = (; parameters = snow_parameters, domain = canopy_domain);
+snow_model_type = Snow.SnowModel
 # Integrated plant hydraulics and soil model
-land_input = (atmos = atmos, radiation = radiation, soil_organic_carbon = Csom)
-land = SoilCanopyModel{FT}(;
+land_input = (
+    atmos = atmos,
+    radiation = radiation,
+    soil_organic_carbon = Csom,
+    runoff = ClimaLand.Soil.SurfaceRunoff(),
+)
+land = LandModel{FT}(;
     soilco2_type = soilco2_type,
     soilco2_args = soilco2_args,
     land_args = land_input,
@@ -195,13 +212,10 @@ land = SoilCanopyModel{FT}(;
     canopy_component_types = canopy_component_types,
     canopy_component_args = canopy_component_args,
     canopy_model_args = canopy_model_args,
+    snow_args = snow_args,
+    snow_model_type = snow_model_type,
 )
 Y, p, cds = initialize(land)
-exp_tendency! = make_exp_tendency(land)
-imp_tendency! = make_imp_tendency(land)
-jacobian! = make_jacobian(land);
-jac_kwargs =
-    (; jac_prototype = ClimaLand.ImplicitEquationJacobian(Y), Wfact = jacobian!);
 
 #Initial conditions
 Y.soil.ϑ_l =
@@ -237,8 +251,18 @@ end
 
 Y.canopy.energy.T = drivers.TA.values[1 + Int(round(t0 / DATA_DT))] # Get atmos temperature at t0
 
+Y.snow.S .= 0.0
+Y.snow.U .= 0.0
+
 set_initial_cache! = make_set_initial_cache(land)
 set_initial_cache!(p, Y, t0);
+
+exp_tendency! = make_exp_tendency(land)
+imp_tendency! = make_imp_tendency(land)
+jacobian! = make_jacobian(land);
+jac_kwargs =
+    (; jac_prototype = ClimaLand.ImplicitEquationJacobian(Y), Wfact = jacobian!);
+
 
 # Simulation
 sv = (;
@@ -404,11 +428,20 @@ T =
 E =
     [
         parent(
-            sv.saveval[k].soil.turbulent_fluxes.vapor_flux_liq .+
-            sv.saveval[k].soil.turbulent_fluxes.vapor_flux_ice,
+            (1 .- sv.saveval[k].snow.snow_cover_fraction) .* (
+                sv.saveval[k].soil.turbulent_fluxes.vapor_flux_liq .+
+                sv.saveval[k].soil.turbulent_fluxes.vapor_flux_ice
+            ),
         )[1] for k in 1:length(sol.t)
     ] .* (1e3 * 24 * 3600)
-ET_model = T .+ E
+S =
+    [
+        parent(
+            sv.saveval[k].snow.snow_cover_fraction .*
+            sv.saveval[k].snow.turbulent_fluxes.vapor_flux,
+        )[1] for k in 1:length(sol.t)
+    ] .* (1e3 * 24 * 3600)
+ET_model = T .+ E .+ S
 if drivers.LE.status == absent
     plot_daily_avg(
         "ET",
@@ -420,10 +453,10 @@ if drivers.LE.status == absent
         "Model",
     )
 else
-    measured_T =
+    measured_ET =
         drivers.LE.values ./ (LP.LH_v0(earth_param_set) * 1000) .*
         (1e3 * 24 * 3600)
-    ET_data = measured_T[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)]
+    ET_data = measured_ET[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)]
     plot_avg_comp(
         "ET",
         ET_model,
@@ -438,20 +471,29 @@ end
 
 # Sensible Heat Flux
 SHF_soil = [
-    parent(sv.saveval[k].soil.turbulent_fluxes.shf)[1] for k in 1:length(sol.t)
+    parent(
+        (1 .- sv.saveval[k].snow.snow_cover_fraction) .*
+        sv.saveval[k].soil.turbulent_fluxes.shf,
+    )[1] for k in 1:length(sol.t)
+]
+SHF_snow = [
+    parent(
+        sv.saveval[k].snow.turbulent_fluxes.shf .*
+        sv.saveval[k].snow.snow_cover_fraction,
+    )[1] for k in 1:length(sol.t)
 ]
 SHF_canopy = [
     parent(sv.saveval[k].canopy.energy.turbulent_fluxes.shf)[1] for
     k in 1:length(sol.t)
 ]
-SHF_model = SHF_soil + SHF_canopy
+SHF_model = SHF_soil + SHF_canopy + SHF_snow
 if drivers.H.status == absent
     plot_daily_avg(
         "SHF",
         SHF_model,
         dt_save,
         num_days,
-        "w/m^2",
+        "W/m^2",
         savedir,
         "Model",
     )
@@ -471,13 +513,23 @@ end
 
 # Latent Heat Flux
 LHF_soil = [
-    parent(sv.saveval[k].soil.turbulent_fluxes.lhf)[1] for k in 1:length(sol.t)
+    parent(
+        (1 .- sv.saveval[k].snow.snow_cover_fraction) .*
+        sv.saveval[k].soil.turbulent_fluxes.lhf,
+    )[1] for k in 1:length(sol.t)
+]
+LHF_snow = [
+    parent(
+        sv.saveval[k].snow.snow_cover_fraction .*
+        sv.saveval[k].snow.turbulent_fluxes.lhf,
+    )[1] for k in 1:length(sol.t)
 ]
 LHF_canopy = [
     parent(sv.saveval[k].canopy.energy.turbulent_fluxes.lhf)[1] for
     k in 1:length(sol.t)
 ]
-LHF_model = LHF_soil + LHF_canopy
+LHF_model = LHF_soil + LHF_canopy + LHF_snow
+
 if drivers.LE.status == absent
     plot_daily_avg("LHF", LHF_model, dt_save, num_days, "w/m^2", savedir)
 else
@@ -570,7 +622,9 @@ G_model = [
         parent(sv.saveval[k].soil.turbulent_fluxes.shf)[1] +
         parent(sv.saveval[k].soil.turbulent_fluxes.lhf)[1] -
         parent(sv.saveval[k].soil.R_n)[1]
-    ) for k in 1:length(sol.t)
+    ) * (1 - parent(sv.saveval[k].snow.snow_cover_fraction)[1]) +
+    parent(sv.saveval[k].snow.snow_cover_fraction)[1] *
+    parent(sv.saveval[k].ground_heat_flux)[1] for k in 1:length(sol.t)
 ]
 canopy_G = [
     (
@@ -648,18 +702,21 @@ Plots.plot!(
 )
 Plots.savefig(joinpath(savedir, "stomatal_conductance.png"))
 
-# Soil water content
+# Ground water content
 # Current resolution has the first layer at 0.1 cm, the second at 5cm.
 plt1 = Plots.plot(size = (1500, 800))
 Plots.plot!(
     plt1,
     daily,
-    [parent(sol.u[k].soil.ϑ_l)[end - 1] for k in 1:1:length(sol.t)],
+    [
+        parent(sol.u[k].soil.ϑ_l)[end - 1] + parent(sol.u[k].soil.θ_i)[end - 1]
+        for k in 1:1:length(sol.t)
+    ],
     label = "5cm",
     xlim = [minimum(daily), maximum(daily)],
     ylim = [0.05, 0.55],
     xlabel = "Days",
-    ylabel = "SWC [m/m]",
+    ylabel = "Total water [m/m]",
     color = "blue",
     margin = 10Plots.mm,
 )
@@ -678,16 +735,30 @@ end
 
 plt2 = Plots.plot(
     seconds ./ 3600 ./ 24,
-    drivers.P.values .* (-1e3 * 24 * 3600),
-    label = "Data",
-    ylabel = "Precipitation [mm/day]",
+    P_liq .* (1e3 * 24 * 3600),
+    label = "Rain",
     xlim = [minimum(daily), maximum(daily)],
     margin = 10Plots.mm,
     ylim = [-200, 0],
     size = (1500, 400),
 )
-Plots.plot(plt2, plt1, layout = grid(2, 1, heights = [0.2, 0.8]))
-Plots.savefig(joinpath(savedir, "soil_water_content.png"))
+Plots.plot!(
+    plt2,
+    seconds ./ 3600 ./ 24,
+    P_snow .* (1e3 * 24 * 3600),
+    label = "Snow",
+    ylabel = "Data [mm/day]",
+)
+plt3 = Plots.plot(
+    daily,
+    [parent(sol.u[k].snow.S)[1] for k in 1:1:length(sol.t)],
+    xlim = [minimum(daily), maximum(daily)],
+    xlabel = "Days",
+    ylabel = "SWE [m]",
+    color = "blue",
+)
+Plots.plot(plt2, plt3, plt1, layout = grid(3, 1, heights = [0.2, 0.4, 0.4]))
+Plots.savefig(joinpath(savedir, "ground_water_content.png"))
 
 # Cumulative ET
 
@@ -698,7 +769,7 @@ idx = argmin(abs.(seconds .- sol.t[1]))
 if drivers.LE.status != absent
     Plots.plot(
         seconds ./ 24 ./ 3600,
-        cumsum(measured_T[:]) * dt_data,
+        cumsum(measured_ET[:]) * dt_data,
         label = "Data ET",
     )
 
@@ -707,11 +778,7 @@ if drivers.LE.status != absent
         cumsum(drivers.P.values[:]) * dt_data * (1e3 * 24 * 3600),
         label = "Data P",
     )
-    Plots.plot!(
-        daily,
-        cumsum(T .+ E) * dt_model .+ cumsum(measured_T[:])[idx] * dt_data,
-        label = "Model ET",
-    )
+    Plots.plot!(daily, cumsum(T .+ E .+ S) * dt_model, label = "Model ET")
 
     Plots.plot!(
         ylabel = "∫ Water fluxes dt",
@@ -762,6 +829,8 @@ Plots.savefig(joinpath(savedir, "soil_temperature.png"))
 # Temperatures
 soil_T_sfc = [parent(sv.saveval[k].soil.T)[end] for k in 1:length(sol.t)]
 soil_T_sfc_avg = compute_diurnal_avg(soil_T_sfc, model_times, num_days)
+snow_T_sfc = [parent(sv.saveval[k].snow.T_sfc)[end] for k in 1:length(sol.t)]
+snow_T_sfc_avg = compute_diurnal_avg(snow_T_sfc, model_times, num_days)
 
 canopy_T = [
     parent(
@@ -789,6 +858,7 @@ end
 Plots.plot!(plt1, 0.5:0.5:24, TA_avg, label = "Atmos-D")
 
 Plots.plot!(plt1, 0.5:0.5:24, soil_T_sfc_avg, label = "Soil-M-2.5cm")
+Plots.plot!(plt1, 0.5:0.5:24, snow_T_sfc_avg, label = "Snow")
 
 Plots.plot!(plt1, 0.5:0.5:24, canopy_T_avg, label = "Canopy-M")
 Plots.plot!(plt1, xlabel = "Hour of day", ylabel = "Average over Simulation")
@@ -848,3 +918,86 @@ if isfile(
         ),
     )
 end
+
+using CairoMakie # future PR: convert all to CairoMakie instead of Plots
+# Assess conservation
+_ρ_i = FT(LP.ρ_cloud_ice(earth_param_set))
+_ρ_l = FT(LP.ρ_cloud_liq(earth_param_set))
+fig = CairoMakie.Figure(size = (1600, 1200), fontsize = 26)
+ax1 = CairoMakie.Axis(fig[2, 1], ylabel = "ΔEnergy (J/A)", xlabel = "Days")
+ΔE_expected =
+    cumsum(
+        -1 .* [
+            parent(
+                sv.saveval[k].atmos_energy_flux .-
+                sv.saveval[k].soil.bottom_bc.heat,
+            )[end] for k in 1:1:(length(sv.t)-1)
+        ],
+    ) * (sv.t[2] - sv.t[1])
+E_measured = [
+    sum(sol.u[k].soil.ρe_int) +
+    parent(sol.u[k].snow.U)[end] +
+    parent(
+        sol.u[k].canopy.energy.T .* ac_canopy .* max.(
+            sv.saveval[k].canopy.hydraulics.area_index.leaf .+
+            sv.saveval[k].canopy.hydraulics.area_index.stem,
+            eps(FT),
+        ),
+    )[end] for k in 1:1:length(sv.t)
+]
+ΔW_expected =
+    cumsum(
+        -1 .* [
+            parent(
+                sv.saveval[k].atmos_water_flux .-
+                sv.saveval[k].soil.bottom_bc.water .+ sv.saveval[k].soil.R_s,
+            )[end] for k in 1:1:(length(sv.t)-1)
+        ],
+    ) * (sv.t[2] - sv.t[1])
+
+W_measured = [
+    sum(sol.u[k].soil.ϑ_l) +
+    sum(sol.u[k].soil.θ_i) * _ρ_i / _ρ_l +
+    sum(parent(sol.u[k].canopy.hydraulics.ϑ_l) .* [h_stem, h_leaf]) +
+    parent(sol.u[k].snow.S)[end] for k in 1:1:length(sv.t)
+]
+CairoMakie.lines!(
+    ax1,
+    daily[2:end],
+    E_measured[2:end] .- E_measured[1],
+    label = "Simulated",
+)
+CairoMakie.lines!(ax1, daily[2:end], ΔE_expected, label = "Expected")
+CairoMakie.axislegend(ax1, position = :rt)
+
+# Temp
+ax4 = CairoMakie.Axis(fig[1, 1], ylabel = "ΔWater (m)")
+CairoMakie.hidexdecorations!(ax4, ticks = false)
+CairoMakie.lines!(
+    ax4,
+    daily[2:end],
+    W_measured[2:end] .- W_measured[1],
+    label = "Simulated",
+)
+
+CairoMakie.lines!(ax4, daily[2:end], ΔW_expected, label = "Expected")
+CairoMakie.axislegend(ax4, position = :rt)
+
+
+ax3 =
+    CairoMakie.Axis(fig[2, 2], ylabel = "ΔE/E", xlabel = "Days", yscale = log10)
+CairoMakie.lines!(
+    ax3,
+    daily[2:end],
+    abs.(E_measured[2:end] .- E_measured[1] .- ΔE_expected) ./ mean(E_measured),
+)
+
+ax2 = CairoMakie.Axis(fig[1, 2], ylabel = "ΔW/W", yscale = log10)
+CairoMakie.hidexdecorations!(ax2, ticks = false)
+CairoMakie.lines!(
+    ax2,
+    daily[2:end],
+    abs.(W_measured[2:end] .- W_measured[1] .- ΔW_expected) ./ mean(W_measured),
+)
+
+CairoMakie.save(joinpath(savedir, "results_conservation.png"), fig)
