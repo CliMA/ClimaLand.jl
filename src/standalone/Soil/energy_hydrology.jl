@@ -23,8 +23,8 @@ $(DocStringExtensions.FIELDS)
 """
 Base.@kwdef struct EnergyHydrologyParameters{
     FT <: AbstractFloat,
-    F <: Union{<:AbstractFloat, ClimaCore.Fields.Field},
-    SF <: Union{<:AbstractFloat, ClimaCore.Fields.Field},
+    F <: Union{<:FT, ClimaCore.Fields.Field},
+    SF <: Union{<:FT, ClimaCore.Fields.Field},
     C,
     PSE,
 }
@@ -62,10 +62,14 @@ Base.@kwdef struct EnergyHydrologyParameters{
     γ::FT
     "Reference temperature for the viscosity factor"
     γT_ref::FT
-    "Soil PAR Albedo"
-    PAR_albedo::SF
-    "Soil NIR Albedo"
-    NIR_albedo::SF
+    "Soil PAR Albedo dry"
+    PAR_albedo_dry::SF
+    "Soil NIR Albedo dry"
+    NIR_albedo_dry::SF
+    "Soil PAR Albedo wet"
+    PAR_albedo_wet::SF
+    "Soil NIR Albedo wet"
+    NIR_albedo_wet::SF
     "Soil Emissivity"
     emissivity::FT
     "Roughness length for momentum"
@@ -531,10 +535,26 @@ function ClimaLand.make_update_aux(model::EnergyHydrology)
             κ_sat_unfrozen,
             ρc_ds,
             earth_param_set,
+            PAR_albedo_dry,
+            NIR_albedo_dry,
+            PAR_albedo_wet,
+            NIR_albedo_wet,
         ) = model.parameters
 
         @. p.soil.θ_l =
             volumetric_liquid_fraction(Y.soil.ϑ_l, ν - Y.soil.θ_i, θ_r)
+        # Only update albedo when top boundry condition is AtmosDrivenFluxBC. Otherwise
+        # albedo is not used
+        if model.boundary_conditions.top isa AtmosDrivenFluxBC
+            update_albedo!(
+                p,
+                model.domain,
+                PAR_albedo_dry,
+                NIR_albedo_dry,
+                PAR_albedo_wet,
+                NIR_albedo_wet,
+            )
+        end
 
         @. p.soil.κ = thermal_conductivity(
             model.parameters.κ_dry,
@@ -745,9 +765,7 @@ Returns the surface albedo field of the
 `EnergyHydrology` soil model.
 """
 function ClimaLand.surface_albedo(model::EnergyHydrology{FT}, Y, p) where {FT}
-    return @. FT(
-        0.5 * model.parameters.PAR_albedo + 0.5 * model.parameters.NIR_albedo,
-    )
+    return @. FT(0.5 * p.soil.PAR_albedo + 0.5 * p.soil.NIR_albedo)
 end
 
 """
@@ -853,7 +871,7 @@ end
 
 Computes turbulent surface fluxes for soil at a point on a surface given
 (1) Surface state conditions (`T_sfc`, `θ_l_sfc`, `θ_i_sfc`)
-(2) Surface properties, such as the topographical height of the surface (`h_sfc`),  
+(2) Surface properties, such as the topographical height of the surface (`h_sfc`),
     the displacement height (`d_sfc`), hydraulic parameters (`hydrology_cm_sfc`,
     `ν_sfc, `θ_r_sfc`, `K_sat_sfc`)
 (4) Atmospheric state conditions (`thermal_state_air`, `u_air`)
@@ -866,14 +884,14 @@ This returns an energy flux and a liquid water volume flux, stored in
 a tuple with self explanatory keys.
 
 Notes:
-In this function, we call SF twice - once for ice, and once for water. 
-We then combine the fluxes from them to get the total SH, LH. 
+In this function, we call SF twice - once for ice, and once for water.
+We then combine the fluxes from them to get the total SH, LH.
 The vapor fluxes are applied to ice and water differently - as either a source term
 or a boundary condition-  so they are kept separate.
 
-For ice, we supply a beta factor and do not need an additional surface resistance, 
-and so we use the output of surface_conditions directly. 
-For water, we do, and it's a little complicated how we handle it. 
+For ice, we supply a beta factor and do not need an additional surface resistance,
+and so we use the output of surface_conditions directly.
+For water, we do, and it's a little complicated how we handle it.
 But once we correct E, we compute SH and LH the same as SurfaceFluxes.jl does.
 """
 function soil_turbulent_fluxes_at_a_point(
@@ -1162,7 +1180,7 @@ end
     ice_fraction(θ_l::FT, θ_i::FT, ν::FT, θ_r::FT)::FT where {FT}
 
 Computes and returns the ice fraction, which is the
-fraction  of the vapor flux that is due to sublimation, and 
+fraction  of the vapor flux that is due to sublimation, and
 the fraction of the humidity in the air due to ice, as
 
 f = S_i/(S_i+S_l)
@@ -1205,7 +1223,7 @@ end
                    ) where {FT, EP, C}
 
 Computes the resistance of the top of the soil column to
-water vapor diffusion, as a function of the surface 
+water vapor diffusion, as a function of the surface
 volumetric liquid water fraction `θ_l`, the augmented
 liquid water fraction `ϑ_l`,  the volumetric ice water
 fraction `θ_i`, and other soil parameters.
@@ -1231,7 +1249,7 @@ end
 """
     dry_soil_layer_thickness(S_w::FT, S_c::FT, d_ds::FT)::FT where {FT}
 
-Returns the maximum dry soil layer thickness that can develop under vapor flux; 
+Returns the maximum dry soil layer thickness that can develop under vapor flux;
 this is used when computing the soil resistance to vapor flux according to
 Swenson et al (2012)/Sakaguchi and Zeng (2009).
 """

@@ -7,7 +7,65 @@ export volumetric_liquid_fraction,
     impedance_factor,
     viscosity_factor,
     dψdϑ,
-    is_saturated
+    is_saturated,
+    update_albedo!
+
+"""
+    albedo_from_moisture(surface_liquid_fraction::FT, albedo_dry::FT, albedo_wet::FT)
+
+Calculates pointwise albedo for any band as a function of volumetric soil water content given
+the dry and wet albedo values for that band. Implements eq.1 from Braghiere, R. K et al.
+"""
+function albedo_from_moisture(
+    surface_liquid_fraction::FT,
+    albedo_dry::FT,
+    albedo_wet::FT,
+) where {FT}
+    return albedo_dry * (1 - surface_liquid_fraction) +
+           albedo_wet * surface_liquid_fraction
+end
+
+"""
+    update_albedo!(p, soil_domain, PAR_albedo_dry::SF, NIR_albedo_dry::SF, PAR_albedo_wet::SF, NIR_albedo_wet::SF)
+
+Calculates and updates PAR and NIR albedo as a function of volumetric soil water content at
+the top of the soil. If the soil layers are very large, the water content of the top layer
+is used in the calclulation
+"""
+function update_albedo!(
+    p,
+    soil_domain,
+    PAR_albedo_dry::SF,
+    NIR_albedo_dry::SF,
+    PAR_albedo_wet::SF,
+    NIR_albedo_wet::SF,
+) where {SF}
+    @. p.soil.depths = soil_domain.fields.z_sfc - soil_domain.fields.z
+    FT = eltype(soil_domain.fields.Δz_top)
+    # When no soil layer is centered within the top 7 cm of the soil, use the top layer
+    # otherwise use all layers centered in the top 7 cm
+    @. p.soil.sfc_scratch =
+        max(soil_domain.fields.Δz_top, FT(0.07)) + sqrt(eps(FT))
+    ∫H_θ_l_dz = p.soil.sfc_θ_l
+    ∫H_dz = p.soil.sfc_volume
+    # get total volume of each column in soil top
+    @. p.soil.clipped_values =
+        ClimaLand.heaviside.(p.soil.sfc_scratch, p.soil.depths)
+    ClimaCore.Operators.column_integral_definite!(∫H_dz, p.soil.clipped_values)
+    # get soil water content in soil top
+    @. p.soil.clipped_values =
+        ClimaLand.heaviside.(p.soil.sfc_scratch, p.soil.depths) * p.soil.θ_l
+    ClimaCore.Operators.column_integral_definite!(
+        ∫H_θ_l_dz,
+        p.soil.clipped_values,
+    )
+    @. p.soil.sfc_scratch = ∫H_θ_l_dz / ∫H_dz
+    @. p.soil.PAR_albedo =
+        albedo_from_moisture(p.soil.sfc_scratch, PAR_albedo_dry, PAR_albedo_wet)
+    @. p.soil.NIR_albedo =
+        albedo_from_moisture(p.soil.sfc_scratch, NIR_albedo_dry, NIR_albedo_wet)
+end
+
 """
     volumetric_liquid_fraction(ϑ_l::FT, ν_eff::FT, θ_r::FT) where {FT}
 
@@ -67,7 +125,7 @@ end
      approximate_ψ_S_slope(cm::vanGenuchten)
 
 An estimate of the slope of the absolute value of the logψ-logS curve.
-Following Lehmann, Assouline, and Or (2008), we linearize the ψ(S) curve about the inflection point (where d²ψ/dS² = 0, at S = (1+m)^(-m)). 
+Following Lehmann, Assouline, and Or (2008), we linearize the ψ(S) curve about the inflection point (where d²ψ/dS² = 0, at S = (1+m)^(-m)).
 """
 function approximate_ψ_S_slope(cm::vanGenuchten)
     m = cm.m
@@ -87,7 +145,7 @@ end
     ) where {FT}
 
 A point-wise function returning the pressure head in
-variably saturated soil, using the van Genuchten matric potential 
+variably saturated soil, using the van Genuchten matric potential
 if the soil is not saturated, and
 an approximation of the positive pressure in the soil if the
 soil is saturated.
@@ -112,7 +170,7 @@ end
 """
    dψdϑ(cm::vanGenuchten{FT}, ϑ, ν, θ_r, S_s)
 
-Computes and returns the derivative of the pressure head 
+Computes and returns the derivative of the pressure head
 with respect to ϑ for the van Genuchten formulation.
 """
 function dψdϑ(cm::vanGenuchten{FT}, ϑ, ν, θ_r, S_s) where {FT}
@@ -192,7 +250,7 @@ end
 """
    dψdϑ(cm::BrooksCorey{FT}, ϑ, ν, θ_r, S_s)
 
-Computes and returns the derivative of the pressure head 
+Computes and returns the derivative of the pressure head
 with respect to ϑ for the Brooks and Corey formulation.
 """
 function dψdϑ(cm::BrooksCorey{FT}, ϑ, ν, θ_r, S_s) where {FT}
@@ -237,7 +295,7 @@ end
     ) where {FT}
 
 A point-wise function returning the pressure head in
-variably saturated soil, using the Brooks and Corey matric potential 
+variably saturated soil, using the Brooks and Corey matric potential
 if the soil is not saturated, and
 an approximation of the positive pressure in the soil if the
 soil is saturated.
@@ -265,7 +323,7 @@ end
         f_i::FT,
         Ω::FT
     ) where {FT}
-Returns the multiplicative factor reducing conductivity when 
+Returns the multiplicative factor reducing conductivity when
 a fraction of ice `f_i` is present.
 
 Only for use with the `EnergyHydrology` model.
@@ -297,7 +355,7 @@ end
 """
     is_saturated(twc::FT, ν::FT) where {FT}
 
-A helper function which can be used to indicate whether a layer of soil is 
+A helper function which can be used to indicate whether a layer of soil is
 saturated based on if the total volumetric water content, `twc` is greater
 than porosity `ν`.
 """
