@@ -8,6 +8,8 @@ using ..Bucket: BucketModel
 
 import ..SoilCanopyModel
 
+import ..LandModel
+
 import ..Soil: EnergyHydrology
 
 import ..Domains: top_center_to_surface
