@@ -478,9 +478,17 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     )
 
     Y, p, cds = initialize(land)
-
-    init_soil(ν, θ_r) = θ_r + 3 * (ν - θ_r) / 4
-    Y.soil.ϑ_l .= init_soil.(ν, θ_r)
+    function hydrostatic_equilibrium(z, ν, θ_r, hydrology_cm, z_interface)
+        S_s = 1e-3
+        (; α, m, n) = hydrology_cm
+        if z < z_interface
+            return -S_s * (z - z_interface) + ν
+        else
+            return (ν-θ_r) * (1 + (α * (z - z_interface))^n)^(-m) + θ_r
+        end
+    end
+    z = cds.subsurface.z
+    Y.soil.ϑ_l .= hydrostatic_equilibrium.(z, ν, θ_r, hydrology_cm, FT(-2))
     Y.soil.θ_i .= FT(0.0)
     T = FT(276.85)
     ρc_s = Soil.volumetric_heat_capacity.(
@@ -548,7 +556,7 @@ end
 function setup_and_solve_problem(; greet = false)
 
     t0 = 0.0
-    tf = 60 * 60.0 * 24 * 365
+    tf = 60 * 60.0 * 24 * 180
     Δt = 360.0
     nelements = (101, 15)
     if greet
@@ -577,7 +585,8 @@ setup_and_solve_problem(; greet = true);
 # read in diagnostics and make some plots!
 #### ClimaAnalysis ####
 simdir = ClimaAnalysis.SimDir(outdir)
-short_2d_names = ["gpp", "ct", "lai", "swu", "swd", "lwu", "et", "er", "tr"]
+short_2d_names =
+    ["gpp", "ct", "lai", "swu", "swd", "lwu", "et", "hr", "ra", "tr"]
 short_3d_names = ["swc", "si", "seff", "tsoil"]
 
 for short_name in short_2d_names

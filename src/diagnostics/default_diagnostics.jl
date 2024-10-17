@@ -204,7 +204,7 @@ function default_diagnostics(
             "lwu",
             "et",
             "hr",
-            "ar",
+            "ra",
             "tr",
             "seff",
         ]
