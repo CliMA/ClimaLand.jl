@@ -184,7 +184,7 @@ function compute_heterotrophic_respiration!(
     Y,
     p,
     t,
-    land_model::Union{SoilCanopyModel, LandModel}{FT},
+    land_model::Union{SoilCanopyModel{FT}, LandModel{FT}},
 ) where {FT}
     if isnothing(out)
         return p.soilco2.top_bc .* FT(83.26)
@@ -258,7 +258,7 @@ function compute_total_respiration!(
     Y,
     p,
     t,
-    land_model::Union{SoilCanopyModel, LandModel}{FT},
+    land_model::Union{SoilCanopyModel{FT}, LandModel{FT}},
 ) where {FT}
     if isnothing(out)
         return p.soilco2.top_bc .* FT(83.26) .+ # [3.664 kg CO2/ kg C] x [10^3 g CO2/ kg CO2] x [1 mol CO2/44.009 g CO2] = 83.26 mol CO2/kg C
@@ -276,7 +276,7 @@ function compute_canopy_temperature!(
     Y,
     p,
     t,
-    land_model::Union{SoilCanopyModel, LandModel}{FT},
+    land_model::Union{SoilCanopyModel{FT}, LandModel{FT}},
 ) where {FT}
     AI =
         p.canopy.hydraulics.area_index.leaf .+
