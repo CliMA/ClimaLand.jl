@@ -478,9 +478,23 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     )
 
     Y, p, cds = initialize(land)
-
-    init_soil(ν, θ_r) = θ_r + (ν - θ_r) / 2
-    Y.soil.ϑ_l .= init_soil.(ν, θ_r)
+    function hydrostatic_equilibrium(
+        z::F,
+        ν::F,
+        θ_r::F,
+        S_s::F,
+        hydrology_cm,
+        z_interface::F,
+    )::F where {F <: Real}
+        (; α, m, n) = hydrology_cm
+        if z < z_interface
+            return -S_s * (z - z_interface) + ν
+        else
+            return (ν-θ_r) * (1 + (α * (z - z_interface))^n)^(-m) + θ_r
+        end
+    end
+    z = cds.subsurface.z
+    Y.soil.ϑ_l .= hydrostatic_equilibrium.(z, ν, θ_r, S_s, hydrology_cm, FT(-2))
     Y.soil.θ_i .= FT(0.0)
     T = FT(276.85)
     ρc_s = Soil.volumetric_heat_capacity.(
@@ -532,7 +546,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         land,
         start_date;
         output_writer = nc_writer,
-        output_vars = :short,
+        output_vars = :ilamb,
         average_period = :monthly,
     )
 
@@ -548,8 +562,8 @@ end
 function setup_and_solve_problem(; greet = false)
 
     t0 = 0.0
-    tf = 60 * 60.0 * 24 * 365
-    Δt = 450.0
+    tf = 60 * 60.0 * 24 * 180
+    Δt = 360.0
     nelements = (101, 15)
     if greet
         @info "Run: Global Soil-Canopy Model"
@@ -577,21 +591,49 @@ setup_and_solve_problem(; greet = true);
 # read in diagnostics and make some plots!
 #### ClimaAnalysis ####
 simdir = ClimaAnalysis.SimDir(outdir)
-short_names = ["gpp", "ct", "lai", "swc", "si", "swa", "lwu", "et", "er", "sr"]
-for short_name in short_names
+short_2d_names =
+    ["gpp", "ct", "lai", "swu", "swd", "lwu", "et", "hr", "ra", "tr"]
+short_3d_names = ["swc", "si", "seff", "tsoil"]
+
+for short_name in short_2d_names
     var = get(simdir; short_name)
     times = ClimaAnalysis.times(var)
-    for t in times
+    for t in [times[end - 6], times[end]]
         fig = CairoMakie.Figure(size = (800, 600))
-        kwargs = ClimaAnalysis.has_altitude(var) ? Dict(:z => 1) : Dict()
         viz.heatmap2D_on_globe!(
             fig,
-            ClimaAnalysis.slice(var, time = t; kwargs...),
+            ClimaAnalysis.slice(var, time = t),
             mask = viz.oceanmask(),
             more_kwargs = Dict(
                 :mask => ClimaAnalysis.Utils.kwargs(color = :white),
+                :plot => Dict(:shading => CairoMakie.NoShading),
             ),
         )
         CairoMakie.save(joinpath(root_path, "$(short_name)_$t.png"), fig)
+    end
+end
+
+
+for short_name in short_3d_names
+    var = get(simdir; short_name)
+    times = ClimaAnalysis.times(var)
+    zvals = ClimaAnalysis.altitudes(var)
+    for t in [times[end - 6], times[end]]
+        for z in zvals
+            fig = CairoMakie.Figure(size = (800, 600))
+            viz.heatmap2D_on_globe!(
+                fig,
+                ClimaAnalysis.slice(var, time = t, z = z),
+                mask = viz.oceanmask(),
+                more_kwargs = Dict(
+                    :mask => ClimaAnalysis.Utils.kwargs(color = :white),
+                    :plot => Dict(:shading => CairoMakie.NoShading),
+                ),
+            )
+            CairoMakie.save(
+                joinpath(root_path, "$(short_name)_$(t)_$(z).png"),
+                fig,
+            )
+        end
     end
 end

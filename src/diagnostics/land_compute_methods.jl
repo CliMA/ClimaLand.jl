@@ -160,7 +160,21 @@ end # Convert from kg C to mol CO2.
 @diagnostic_compute "sw_albedo" SoilCanopyModel p.α_sfc
 @diagnostic_compute "lw_up" SoilCanopyModel p.LW_u
 @diagnostic_compute "sw_up" SoilCanopyModel p.SW_u
-@diagnostic_compute "surface_runoff" SoilCanopyModel p.soil.R_s
+
+function compute_total_runoff!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::SoilCanopyModel{FT},
+) where {FT}
+    if isnothing(out)
+        return (p.soil.R_s .+ p.soil.R_ss) .* 1000 # convert volume flux to mass flux
+    else
+        @. out = (p.soil.R_s + p.soil.R_ss) * 1000 # convert volume flux to mass flux
+    end
+end
+
 
 function compute_evapotranspiration!(
     out,
@@ -232,3 +246,35 @@ end
 @diagnostic_compute "soil_ice_content" EnergyHydrology Y.soil.θ_i
 @diagnostic_compute "soil_internal_energy" EnergyHydrology Y.soil.ρe_int
 @diagnostic_compute "soil_temperature" EnergyHydrology p.soil.T
+
+function compute_effective_saturation!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::SoilCanopyModel{FT},
+) where {FT}
+    ν = land_model.soil.parameters.ν
+    θ_r = land_model.soil.parameters.θ_r
+    if isnothing(out)
+        return @. (Y.soil.ϑ_l + Y.soil.θ_i - θ_r) / (ν - θ_r)
+    else
+        @. out = (Y.soil.ϑ_l + Y.soil.θ_i - θ_r) / (ν - θ_r)
+    end
+end
+
+function compute_effective_saturation!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::EnergyHydrology{FT},
+) where {FT}
+    ν = land_model.parameters.ν
+    θ_r = land_model.parameters.θ_r
+    if isnothing(out)
+        return @. (Y.soil.ϑ_l + Y.soil.θ_i - θ_r) / (ν - θ_r)
+    else
+        @. out = (Y.soil.ϑ_l + Y.soil.θ_i - θ_r) / (ν - θ_r)
+    end
+end
