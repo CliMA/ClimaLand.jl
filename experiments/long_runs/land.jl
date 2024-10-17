@@ -478,8 +478,14 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     )
 
     Y, p, cds = initialize(land)
-    function hydrostatic_equilibrium(z, ν, θ_r, hydrology_cm, z_interface)
-        S_s = 1e-3
+    function hydrostatic_equilibrium(
+        z::F,
+        ν::F,
+        θ_r::F,
+        S_s::F,
+        hydrology_cm,
+        z_interface::F,
+    )::F where {F <: Real}
         (; α, m, n) = hydrology_cm
         if z < z_interface
             return -S_s * (z - z_interface) + ν
@@ -488,7 +494,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         end
     end
     z = cds.subsurface.z
-    Y.soil.ϑ_l .= hydrostatic_equilibrium.(z, ν, θ_r, hydrology_cm, FT(-2))
+    Y.soil.ϑ_l .= hydrostatic_equilibrium.(z, ν, θ_r, S_s, hydrology_cm, FT(-2))
     Y.soil.θ_i .= FT(0.0)
     T = FT(276.85)
     ρc_s = Soil.volumetric_heat_capacity.(
