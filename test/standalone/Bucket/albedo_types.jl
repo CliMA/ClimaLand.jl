@@ -242,6 +242,9 @@ end
                 atmosphere = bucket_atmos,
                 radiation = bucket_rad,
             )
+            @test ClimaComms.context(model) == ClimaComms.context()
+            @test ClimaComms.device(model) == ClimaComms.device()
+
             # Initial conditions with no moisture
             Y, p, coords = initialize(model)
             Y.bucket.T .= init_temp.(coords.subsurface.z, FT(280.0))

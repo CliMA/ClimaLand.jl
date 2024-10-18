@@ -277,10 +277,11 @@ import ClimaParams
             exp_tendency!(dY, Y, p, t0)
             turb_fluxes = ClimaLand.turbulent_fluxes(atmos, canopy, Y, p, t0)
 
-            @test p.canopy.hydraulics.fa.:1 == turb_fluxes.vapor_flux
-            @test p.canopy.energy.shf == turb_fluxes.shf
-            @test p.canopy.energy.lhf == turb_fluxes.lhf
-            @test p.canopy.conductance.transpiration == turb_fluxes.vapor_flux
+            @test p.canopy.hydraulics.fa.:1 == turb_fluxes.transpiration
+            @test p.canopy.energy.turbulent_fluxes.shf == turb_fluxes.shf
+            @test p.canopy.energy.turbulent_fluxes.lhf == turb_fluxes.lhf
+            @test p.canopy.energy.turbulent_fluxes.transpiration ==
+                  turb_fluxes.transpiration
             c = FT(LP.light_speed(earth_param_set))
             h = FT(LP.planck_constant(earth_param_set))
             N_a = FT(LP.avogadro_constant(earth_param_set))
@@ -375,8 +376,8 @@ import ClimaParams
             )
 
             @test abs(
-                (Array(parent(turb_fluxes.vapor_flux .- ET))[1]) /
-                Array(parent(turb_fluxes.vapor_flux))[1],
+                (Array(parent(turb_fluxes.transpiration .- ET))[1]) /
+                Array(parent(turb_fluxes.transpiration))[1],
             ) < 0.5
 
             @test ClimaLand.surface_evaporative_scaling(canopy, Y, p) == FT(1.0)
@@ -409,23 +410,6 @@ import ClimaParams
                 p,
                 t0,
             ) isa ClimaCore.Fields.Field
-
-            ρ_sfc =
-                ClimaLand.surface_air_density(atmos, canopy, Y, p, t0, T_sfc)
-            @test ClimaLand.surface_specific_humidity(
-                canopy,
-                Y,
-                p,
-                T_sfc,
-                ρ_sfc,
-            ) ==
-                  Thermodynamics.q_vap_saturation_generic.(
-                Ref(thermo_params),
-                T_sfc,
-                ρ_sfc,
-                Ref(Thermodynamics.Liquid()),
-            )
-            @test ρ_sfc == compute_ρ_sfc.(thermo_params, ts_in, T_sfc)
         end
     end
 end
@@ -837,9 +821,9 @@ end
             exp_tendency!(dY, Y, p, t0)
             turb_fluxes = ClimaLand.turbulent_fluxes(atmos, canopy, Y, p, t0)
 
-            @test p.canopy.hydraulics.fa.:1 == turb_fluxes.vapor_flux
-            @test p.canopy.energy.lhf == turb_fluxes.lhf
-            @test p.canopy.energy.shf == turb_fluxes.shf
+            @test p.canopy.hydraulics.fa.:1 == turb_fluxes.transpiration
+            @test p.canopy.energy.turbulent_fluxes.lhf == turb_fluxes.lhf
+            @test p.canopy.energy.turbulent_fluxes.shf == turb_fluxes.shf
             @test all(Array(parent(p.canopy.energy.fa_energy_roots)) .== FT(0))
 
             @test all(
@@ -1070,7 +1054,14 @@ end
             t0,
             T_sfc,
         )
-        q_sfc = ClimaLand.surface_specific_humidity(canopy, Y, p, T_sfc, ρ_sfc)
+        thermo_params = canopy.parameters.earth_param_set.thermo_params
+        q_sfc =
+            Thermodynamics.q_vap_saturation_generic.(
+                thermo_params,
+                T_sfc,
+                ρ_sfc,
+                Thermodynamics.Liquid(),
+            )
         dY = similar(Y)
         imp_tendency!(dY, Y, p, t0)
         jac = ImplicitEquationJacobian(Y)
@@ -1092,13 +1083,13 @@ end
             t0,
             T_sfc2,
         )
-        q_sfc2 = ClimaLand.surface_specific_humidity(
-            canopy,
-            Y_2,
-            p_2,
-            T_sfc2,
-            ρ_sfc2,
-        )
+        q_sfc2 =
+            Thermodynamics.q_vap_saturation_generic.(
+                thermo_params,
+                T_sfc2,
+                ρ_sfc2,
+                Thermodynamics.Liquid(),
+            )
         dY_2 = similar(Y_2)
         imp_tendency!(dY_2, Y_2, p_2, t0)
 
@@ -1111,13 +1102,22 @@ end
         @test parent(abs.(finitediff_LW .- estimated_LW) ./ finitediff_LW)[1] <
               0.01
 
-        finitediff_SHF = (p_2.canopy.energy.shf .- p.canopy.energy.shf) ./ ΔT
-        estimated_SHF = p.canopy.energy.∂SHF∂Tc
+        finitediff_SHF =
+            (
+                p_2.canopy.energy.turbulent_fluxes.shf .-
+                p.canopy.energy.turbulent_fluxes.shf
+            ) ./ ΔT
+        estimated_SHF = p.canopy.energy.turbulent_fluxes.∂SHF∂Tc
         @test parent(abs.(finitediff_SHF .- estimated_SHF) ./ finitediff_SHF)[1] <
               0.15
 
-        finitediff_LHF = (p_2.canopy.energy.lhf .- p.canopy.energy.lhf) ./ ΔT
-        estimated_LHF = p.canopy.energy.∂LHF∂qc .* p.canopy.energy.∂qc∂Tc
+        finitediff_LHF =
+            (
+                p_2.canopy.energy.turbulent_fluxes.lhf .-
+                p.canopy.energy.turbulent_fluxes.lhf
+            ) ./ ΔT
+        estimated_LHF =
+            p.canopy.energy.turbulent_fluxes.∂LHF∂qc .* p.canopy.energy.∂qc∂Tc
         @test parent(abs.(finitediff_LHF .- estimated_LHF) ./ finitediff_LHF)[1] <
               0.3
 
@@ -1128,7 +1128,8 @@ end
               0.25
 
         # Im not sure why this is not smaller! There must be an error in ∂LHF∂qc also.
-        estimated_LHF_with_correct_q = p.canopy.energy.∂LHF∂qc .* finitediff_q
+        estimated_LHF_with_correct_q =
+            p.canopy.energy.turbulent_fluxes.∂LHF∂qc .* finitediff_q
         @test parent(
             abs.(finitediff_LHF .- estimated_LHF_with_correct_q) ./
             finitediff_LHF,
@@ -1400,11 +1401,18 @@ end
                 set_initial_cache!(p, Y, t0)
 
                 @test all(parent(p.canopy.hydraulics.fa.:1) .== FT(0))
-                @test all(parent(p.canopy.energy.lhf) .== FT(0))
-                @test all(parent(p.canopy.energy.shf) .== FT(0))
+                @test all(
+                    parent(p.canopy.energy.turbulent_fluxes.lhf) .== FT(0),
+                )
+                @test all(
+                    parent(p.canopy.energy.turbulent_fluxes.shf) .== FT(0),
+                )
                 @test all(parent(p.canopy.energy.fa_energy_roots) .== FT(0))
                 @test all(parent(p.canopy.hydraulics.fa_roots) .== FT(0))
-                @test all(parent(p.canopy.conductance.transpiration) .== FT(0))
+                @test all(
+                    parent(p.canopy.energy.turbulent_fluxes.transpiration) .==
+                    FT(0),
+                )
                 @test all(parent(p.canopy.radiative_transfer.LW_n) .== FT(0))
                 @test all(parent(p.canopy.radiative_transfer.SW_n) .== FT(0))
                 @test all(parent(p.canopy.radiative_transfer.par.abs) .== FT(0))

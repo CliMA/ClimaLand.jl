@@ -21,7 +21,7 @@ import ClimaLand:
     TopBoundary,
     BottomBoundary,
     AbstractBC,
-    boundary_flux,
+    boundary_flux!,
     AbstractSource,
     source!
 export SoilCO2ModelParameters,
@@ -168,7 +168,8 @@ function make_update_boundary_fluxes(model::SoilCO2Model)
     function update_boundary_fluxes!(p, Y, t)
         Δz_top = model.domain.fields.Δz_top
         Δz_bottom = model.domain.fields.Δz_bottom
-        p.soilco2.top_bc .= boundary_flux(
+        boundary_flux!(
+            p.soilco2.top_bc,
             model.boundary_conditions.top,
             TopBoundary(),
             Δz_top,
@@ -176,7 +177,8 @@ function make_update_boundary_fluxes(model::SoilCO2Model)
             p,
             t,
         )
-        p.soilco2.bottom_bc .= boundary_flux(
+        boundary_flux!(
+            p.soilco2.bottom_bc,
             model.boundary_conditions.bottom,
             BottomBoundary(),
             Δz_bottom,
@@ -415,29 +417,30 @@ struct SoilCO2FluxBC{F <: Function} <: ClimaLand.AbstractBC
 end
 
 """
-    ClimaLand.boundary_flux(
+    ClimaLand.boundary_flux!(bc_field,
         bc::SoilCO2FluxBC,
         boundary::ClimaLand.AbstractBoundary,
         Δz::ClimaCore.Fields.Field,
         Y::ClimaCore.Fields.FieldVector,
         p::NamedTuple,
         t,
-    )::ClimaCore.Fields.Field
+    )
 
-A method of ClimaLand.boundary_flux which returns the soilco2
+A method of ClimaLand.boundary_flux which updates the soilco2
 flux (kg CO2 /m^2/s) in the case of a prescribed flux BC at either the top
 or bottom of the domain.
 """
-function ClimaLand.boundary_flux(
+function ClimaLand.boundary_flux!(
+    bc_field,
     bc::SoilCO2FluxBC,
     boundary::ClimaLand.AbstractBoundary,
     Δz::ClimaCore.Fields.Field,
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
     t,
-)::ClimaCore.Fields.Field
+)
     FT = eltype(Δz)
-    return FT.(bc.bc(p, t)) .+ FT.(ClimaCore.Fields.zeros(axes(Δz)))
+    bc_field .= FT.(bc.bc(p, t))
 end
 
 """
@@ -452,76 +455,65 @@ struct SoilCO2StateBC{F <: Function} <: ClimaLand.AbstractBC
 end
 
 """
-    ClimaLand.boundary_flux(
+    ClimaLand.boundary_flux!(bc_field,
     bc::SoilCO2StateBC,
     boundary::ClimaLand.TopBoundary,
     Δz::ClimaCore.Fields.Field,
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
     t,
-    )::ClimaCore.Fields.Field
+    )
 
 A method of ClimaLand.boundary_flux which returns the soilco2
 flux in the case of a prescribed state BC at
  top of the domain.
 """
-function ClimaLand.boundary_flux(
+function ClimaLand.boundary_flux!(
+    bc_field,
     bc::SoilCO2StateBC,
     boundary::ClimaLand.TopBoundary,
     Δz::ClimaCore.Fields.Field,
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
     t,
-)::ClimaCore.Fields.Field
+)
     FT = eltype(Δz)
-    p_len = Spaces.nlevels(axes(p.soilco2.D))
+
     # We need to project center values onto the face space
-    D_c = Fields.Field(
-        Fields.field_values(Fields.level(p.soilco2.D, p_len)),
-        axes(Δz),
-    )
-    C_c = Fields.Field(
-        Fields.field_values(Fields.level(Y.soilco2.C, p_len)),
-        axes(Δz),
-    )
+    D_c = ClimaLand.Domains.top_center_to_surface(p.soilco2.D)
+    C_c = ClimaLand.Domains.top_center_to_surface(Y.soilco2.C)
     C_bc = FT.(bc.bc(p, t))
-    return ClimaLand.diffusive_flux(D_c, C_bc, C_c, Δz)
+    @. bc_field = ClimaLand.diffusive_flux(D_c, C_bc, C_c, Δz)
 end
 
 """
-    ClimaLand.boundary_flux(
+    ClimaLand.boundary_flux!(bc_field,
         bc::SoilCO2StateBC,
         boundary::ClimaLand.BottomBoundary,
         Δz::ClimaCore.Fields.Field,
         Y::ClimaCore.Fields.FieldVector,
         p::NamedTuple,
         t,
-    )::ClimaCore.Fields.Field
+    )
 
 A method of ClimaLand.boundary_flux which returns the soilco2
 flux in the case of a prescribed state BC at
 bottom of the domain.
 """
-function ClimaLand.boundary_flux(
+function ClimaLand.boundary_flux!(
+    bc_field,
     bc::SoilCO2StateBC,
     ::ClimaLand.BottomBoundary,
     Δz::ClimaCore.Fields.Field,
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
     t,
-)::ClimaCore.Fields.Field
+)
     FT = eltype(Δz)
-    # We need to project center values onto the face space
-    D_c = Fields.Field(
-        Fields.field_values(Fields.level(p.soilco2.D, 1)),
-        axes(Δz),
-    )
-    C_c = Fields.Field(
-        Fields.field_values(Fields.level(Y.soilco2.C, 1)),
-        axes(Δz),
-    )
+    D_c = ClimaLand.Domains.bottom_center_to_surface(p.soilco2.D)
+    C_c = ClimaLand.Domains.bottom_center_to_surface(Y.soilco2.C)
     C_bc = FT.(bc.bc(p, t))
-    return ClimaLand.diffusive_flux(D_c, C_c, C_bc, Δz)
+    @. bc_field = ClimaLand.diffusive_flux(D_c, C_c, C_bc, Δz)
 end
 
 """
@@ -532,38 +524,31 @@ Set the CO2 concentration to the atmospheric one.
 struct AtmosCO2StateBC <: ClimaLand.AbstractBC end
 
 """
-    ClimaLand.boundary_flux(
+    ClimaLand.boundary_flux!(bc_field,
     bc::AtmosCO2StateBC,
     boundary::ClimaLand.TopBoundary,
     Δz::ClimaCore.Fields.Field,
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
     t,
-    )::ClimaCore.Fields.Field
+    )
 
 A method of ClimaLand.boundary_flux which returns the soilco2 flux in the case when the
 atmospheric CO2 is ued at top of the domain.
 """
-function ClimaLand.boundary_flux(
+function ClimaLand.boundary_flux!(
+    bc_field,
     bc::AtmosCO2StateBC,
     boundary::ClimaLand.TopBoundary,
     Δz::ClimaCore.Fields.Field,
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
     t,
-)::ClimaCore.Fields.Field
-    p_len = Spaces.nlevels(axes(p.soilco2.D))
-    # We need to project center values onto the face space
-    D_c = Fields.Field(
-        Fields.field_values(Fields.level(p.soilco2.D, p_len)),
-        axes(Δz),
-    )
-    C_c = Fields.Field(
-        Fields.field_values(Fields.level(Y.soilco2.C, p_len)),
-        axes(Δz),
-    )
+)
+    D_c = ClimaLand.Domains.top_center_to_surface(p.soilco2.D)
+    C_c = ClimaLand.Domains.top_center_to_surface(Y.soilco2.C)
     C_bc = p.drivers.c_co2
-    return ClimaLand.diffusive_flux(D_c, C_bc, C_c, Δz)
+    @. bc_field = ClimaLand.diffusive_flux(D_c, C_bc, C_c, Δz)
 end
 
 function ClimaLand.get_drivers(model::SoilCO2Model)

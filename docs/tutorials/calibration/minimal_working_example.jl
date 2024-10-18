@@ -34,7 +34,10 @@ function Ozark_LatentHeatFlux(params) # params is a 2 element Array
     simulation_output = CLS.make_output_df("US-MOz", sv, inputs)
     LHF_soil =
         [parent(sv.saveval[k].soil.turbulent_fluxes.lhf)[1] for k in 1:1441]
-    LHF_canopy = [parent(sv.saveval[k].canopy.energy.lhf)[1] for k in 1:1441]
+    LHF_canopy = [
+        parent(sv.saveval[k].canopy.energy.turbulent_fluxes.lhf)[1] for
+        k in 1:1441
+    ]
     LHF = LHF_soil + LHF_canopy
     return LHF
 end;

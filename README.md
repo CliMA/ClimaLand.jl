@@ -67,8 +67,7 @@ In our code base, a "model" define a set of prognostic variables which must be t
 
 ## Notes
 
-Recommended Julia Version: Stable release v1.10.0. CI no longer tests earlier
-versions of Julia.
+Recommended Julia Version: Stable release v1.11.1. CI tests Julia v1.10 and 1.11.
 
 ClimaLand.jl is a different model from the original CliMA Land,
 which aims to utilize remote sensing data through more complex canopy RT

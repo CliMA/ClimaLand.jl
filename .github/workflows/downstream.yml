@@ -25,22 +25,15 @@ jobs:
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v2
         with:
-          version: '1.10'
+          version:
+            - '1.10'
+            - '1.11'
       - uses: julia-actions/cache@v2
       - uses: julia-actions/julia-buildpkg@v1
       - uses: actions/checkout@v4
         with:
           repository: 'CliMA/ClimaCoupler.jl'
           path: ClimaCoupler.jl
-
-        # Hash/links found in ClimaArtifacts
-        # TODO: Remove this when ClimaCoupler can provide a small collections of test files
-      - name: Create SST/SIC artifact folder
-        run: mkdir -p ~/.julia/artifacts/c4f82cd33fb26513ee45bff78330c6b606630fa5
-      - name: Download SST/SIC files
-        run: |
-          wget -q -O ~/.julia/artifacts/c4f82cd33fb26513ee45bff78330c6b606630fa5/MODEL.ICE.HAD187001-198110.OI198111-202206.nc https://gdex.ucar.edu/dataset/158_asphilli/file/MODEL.ICE.HAD187001-198110.OI198111-202206.nc
-          wget -q -O ~/.julia/artifacts/c4f82cd33fb26513ee45bff78330c6b606630fa5/MODEL.SST.HAD187001-198110.OI198111-202206.nc https://gdex.ucar.edu/dataset/158_asphilli/file/MODEL.SST.HAD187001-198110.OI198111-202206.nc
 
       - run: |
           julia --color=yes --project=ClimaCoupler.jl/experiments/ClimaEarth/ -e 'using Pkg; Pkg.instantiate()'

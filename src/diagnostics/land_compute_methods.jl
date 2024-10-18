@@ -75,12 +75,11 @@ end
 
 # Canopy - Conductance
 @diagnostic_compute "stomatal_conductance" SoilCanopyModel p.canopy.conductance.gs
-@diagnostic_compute "canopy_transpiration" SoilCanopyModel p.canopy.conductance.transpiration
+@diagnostic_compute "canopy_transpiration" SoilCanopyModel p.canopy.energy.turbulent_fluxes.transpiration
 
 # Canopy - Energy
-@diagnostic_compute "canopy_aerodynamic_resistance" SoilCanopyModel p.canopy.energy.r_ae
-@diagnostic_compute "canopy_latent_heat_flux" SoilCanopyModel p.canopy.energy.lhf
-@diagnostic_compute "canopy_sensible_heat_flux" SoilCanopyModel p.canopy.energy.shf
+@diagnostic_compute "canopy_latent_heat_flux" SoilCanopyModel p.canopy.energy.turbulent_fluxes.lhf
+@diagnostic_compute "canopy_sensible_heat_flux" SoilCanopyModel p.canopy.energy.turbulent_fluxes.shf
 
 # Canopy - Hydraulics
 #@diagnostic_compute "leaf_water_potential" SoilCanopyModel last(
@@ -133,7 +132,6 @@ end
 @diagnostic_compute "soil_temperature" SoilCanopyModel p.soil.T
 
 # Soil - Turbulent Fluxes
-@diagnostic_compute "soil_aerodynamic_resistance" SoilCanopyModel p.soil.turbulent_fluxes.r_ae
 @diagnostic_compute "soil_latent_heat_flux" SoilCanopyModel p.soil.turbulent_fluxes.lhf
 @diagnostic_compute "soil_sensible_heat_flux" SoilCanopyModel p.soil.turbulent_fluxes.shf
 @diagnostic_compute "vapor_flux" SoilCanopyModel p.soil.turbulent_fluxes.vapor_flux_liq # should add ice here
@@ -175,14 +173,14 @@ function compute_evapotranspiration!(
         return (
             p.soil.turbulent_fluxes.vapor_flux_liq .+
             p.soil.turbulent_fluxes.vapor_flux_ice .+
-            p.canopy.conductance.transpiration
+            p.canopy.energy.turbulent_fluxes.transpiration
         ) .* 1000 # density of liquid water (1000kg/m^3)
     else
         out .=
             (
                 p.soil.turbulent_fluxes.vapor_flux_liq .+
                 p.soil.turbulent_fluxes.vapor_flux_ice .+
-                p.canopy.conductance.transpiration
+                p.canopy.energy.turbulent_fluxes.transpiration
             ) .* 1000 # density of liquid water (1000kg/m^3)
     end
 end
@@ -200,6 +198,71 @@ function compute_total_respiration!(
     else
         out .=
             p.soilco2.top_bc .* FT(83.26) .+ p.canopy.autotrophic_respiration.Ra
+    end
+end
+
+function compute_latent_heat_flux!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::SoilCanopyModel{FT},
+) where {FT}
+    if isnothing(out)
+        return p.soil.turbulent_fluxes.lhf .+
+               p.canopy.energy.turbulent_fluxes.lhf
+    else
+        out .=
+            p.soil.turbulent_fluxes.lhf .+ p.canopy.energy.turbulent_fluxes.lhf
+    end
+end
+
+function compute_sensible_heat_flux!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::SoilCanopyModel{FT},
+) where {FT}
+    if isnothing(out)
+        return p.soil.turbulent_fluxes.shf .+
+               p.canopy.energy.turbulent_fluxes.shf
+    else
+        out .=
+            p.soil.turbulent_fluxes.shf .+ p.canopy.energy.turbulent_fluxes.shf
+    end
+end
+
+function compute_net_radiation!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::SoilCanopyModel{FT},
+) where {FT}
+    if isnothing(out)
+        return p.drivers.LW_d .- p.LW_u .+ p.drivers.SW_d .- p.SW_u
+
+    else
+        out .= p.drivers.LW_d .- p.LW_u .+ p.drivers.SW_d .- p.SW_u
+
+    end
+end
+
+function compute_ground_heat_flux!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::SoilCanopyModel{FT},
+) where {FT}
+    if isnothing(out)
+        return p.soil.turbulent_fluxes.shf .+
+               p.canopy.energy.turbulent_fluxes.shf .- p.soil.R_n
+    else
+        out .=
+            p.soil.turbulent_fluxes.shf .+
+            p.canopy.energy.turbulent_fluxes.shf .- p.soil.R_n
     end
 end
 

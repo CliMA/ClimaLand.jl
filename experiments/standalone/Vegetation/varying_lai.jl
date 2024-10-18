@@ -228,8 +228,14 @@ LW_n = [
     parent(sv.saveval[k].canopy.radiative_transfer.LW_n)[1] for
     k in 1:length(sol.t)
 ]
-SHF = [parent(sv.saveval[k].canopy.energy.shf)[1] for k in 1:length(sol.t)]
-LHF = [parent(sv.saveval[k].canopy.energy.lhf)[1] for k in 1:length(sol.t)]
+SHF = [
+    parent(sv.saveval[k].canopy.energy.turbulent_fluxes.shf)[1] for
+    k in 1:length(sol.t)
+]
+LHF = [
+    parent(sv.saveval[k].canopy.energy.turbulent_fluxes.lhf)[1] for
+    k in 1:length(sol.t)
+]
 RE = [
     parent(sv.saveval[k].canopy.energy.fa_energy_roots)[1] for
     k in 1:length(sol.t)
@@ -237,7 +243,10 @@ RE = [
 R = [
     parent(sv.saveval[k].canopy.hydraulics.fa_roots)[1] for k in 1:length(sol.t)
 ]
-Tr = [parent(sv.saveval[k].canopy.hydraulics.fa.:1)[1] for k in 1:length(sol.t)]
+Tr = [
+    parent(sv.saveval[k].canopy.energy.turbulent_fluxes.transpiration)[1]
+    for k in 1:length(sol.t)
+]
 fig = Figure()
 ax = Axis(fig[1, 1], xlabel = "Time (days)", ylabel = "Temperature (K)")
 lines!(ax, sol.t ./ 24 ./ 3600, T, label = "Canopy")

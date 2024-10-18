@@ -756,7 +756,7 @@ function transpiration_per_ground_area(
     p,
     t,
 )
-    @inbounds return p.canopy.conductance.transpiration
+    return p.canopy.energy.turbulent_fluxes.transpiration
 end
 
 end

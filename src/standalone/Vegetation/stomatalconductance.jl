@@ -37,8 +37,9 @@ function MedlynConductanceModel{FT}(
 end
 
 ClimaLand.name(model::AbstractStomatalConductanceModel) = :conductance
+
 ClimaLand.auxiliary_vars(model::MedlynConductanceModel) =
-    (:medlyn_term, :gs, :transpiration)
+    (:medlyn_term, :gs, :r_stomata_canopy)
 ClimaLand.auxiliary_types(model::MedlynConductanceModel{FT}) where {FT} =
     (FT, FT, FT)
 ClimaLand.auxiliary_domain_names(::MedlynConductanceModel) =
