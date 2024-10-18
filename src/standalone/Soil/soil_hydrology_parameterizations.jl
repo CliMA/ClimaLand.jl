@@ -34,7 +34,6 @@ is used in the calclulation
 """
 function update_albedo!(
     p,
-    Y,
     soil_domain,
     ν,
     PAR_albedo_dry::SF,
@@ -56,8 +55,7 @@ function update_albedo!(
     ClimaCore.Operators.column_integral_definite!(∫H_dz, p.soil.clipped_values)
     # get soil water content in soil top
     @. p.soil.clipped_values =
-        ClimaLand.heaviside.(p.soil.sfc_scratch, p.soil.depths) *
-        relative_saturation(p.soil.θ_l, Y.soil.θ_i, ν)
+        ClimaLand.heaviside.(p.soil.sfc_scratch, p.soil.depths) * p.soil.θ_l / ν
     ClimaCore.Operators.column_integral_definite!(
         ∫H_θ_l_dz,
         p.soil.clipped_values,
