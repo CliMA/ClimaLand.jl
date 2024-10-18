@@ -6,10 +6,10 @@ git-tree-sha1 = "316096635acaa8102477820f480ca02fe66eb828"
     url = "https://caltech.box.com/shared/static/awz2lku3ngoto6t78muktzfk3kjloxsw.gz"
 
 [clm_data]
-git-tree-sha1 = "459bca9591a26a48864240d2a37de8b5eb66530d"
+git-tree-sha1 = "3f6873a3e67722bda1fd23f7d5a05f5e2df1fe8c"
 
     [[clm_data.download]]
-    sha256 = "dc3c0fc1c84935faf0770ba5e2b85ee7cf943d68f14783b29919c8ef44470fe3"
+    sha256 = "830136abec15551a343b7884d657fb6a79b16a37237681a2becf65bd845aa692"
     url = "https://caltech.box.com/shared/static/6pu2f6c99g29qawvjjh3j56drkonpd3z.gz"
 
 [era5_land_forcing_data2021]
