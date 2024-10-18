@@ -113,6 +113,7 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
         PAR_albedo = PAR_albedo,
         NIR_albedo = NIR_albedo,
     )
+
     f_over = FT(3.28) # 1/m
     R_sb = FT(1.484e-4 / 1000) # m/s
     runoff_model = ClimaLand.Soil.Runoff.TOPMODELRunoff{FT}(;
@@ -137,6 +138,7 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
 
     # Energy Balance model
     ac_canopy = FT(2.5e3)
+
     # Plant Hydraulics and general plant parameters
     SAI = FT(0.0) # m2/m2
     f_root_to_shoot = FT(3.5)
