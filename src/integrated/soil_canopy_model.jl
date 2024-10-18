@@ -387,17 +387,8 @@ end
 """
      PrognosticSoilConditions <: Canopy.AbstractGroundConditions
 
-A type of Canopy.AbstractGroundConditions to use when the soil model is prognostic and
-of type `EnergyHydrology`. This is required because the canopy model needs albedo of the ground
-in order to compute its update_aux! function, and that function must only depend on the canopy model.
-
-In the future, we will allocate space for albedo in the cache. In that case, we would *not*
-store them here, twice. `PrognosticSoilConditions` would
-then just be a flag, essentially.
-
-Note that this struct is linked with the EnergyHydrology model. If we ever had a different
-soil model, we might need to construct a different `PrognosticSoilConditions` because
-the fields may be stored in different places.
+ A type of Canopy.AbstractGroundConditions to use when the soil model is prognostic and
+of type `EnergyHydrology`. `PrognosticSoilConditions` functions as a flag and is used for dispatch
 """
 struct PrognosticSoilConditions <: Canopy.AbstractGroundConditions end
 
