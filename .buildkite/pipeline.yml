@@ -35,7 +35,9 @@ steps:
 
     agents:
       slurm_gpus: 1
-      slurm_ntasks: 8
+      # Ensures that we have all the 8 tasks on the same node
+      slurm_nodes: 1
+      slurm_ntasks_per_node: 8
     env:
       JULIA_NUM_PRECOMPILE_TASKS: 8
 
