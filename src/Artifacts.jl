@@ -24,6 +24,15 @@ function clm_data_folder_path(; context = nothing)
 end
 
 """
+    modis_ci_data_folder_path(; context = nothing)
+
+Return the path to the folder that contains the MODIS clumping index data.
+"""
+function modis_ci_data_folder_path(; context = nothing)
+    return @clima_artifact("modis_clumping_index", context)
+end
+
+"""
     soil_params_artifact_path(; context)
 
 Return the path to the folder that contains the soil parameters.

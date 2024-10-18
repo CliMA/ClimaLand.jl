@@ -102,7 +102,7 @@ Base.@kwdef struct TwoStreamParameters{
     "Emissivity of the canopy"
     ϵ_canopy::FT
     "Clumping index following Braghiere 2021 (unitless)"
-    Ω::FT
+    Ω::F
     "Typical wavelength per PAR photon (m)"
     λ_γ_PAR::FT
     "Typical wavelength per NIR photon (m)"
