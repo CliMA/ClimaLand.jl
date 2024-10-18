@@ -173,6 +173,8 @@ function default_diagnostics(
             "er",
             "et",
             "sr",
+            "αPAR",
+            "αNIR",
             "rn",
             "lhf",
             "shf",

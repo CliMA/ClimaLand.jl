@@ -207,8 +207,37 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (10, 10, 15))
             soil_params_mask,
             0,
         )
-    PAR_albedo = ClimaCore.Fields.zeros(surface_space) .+ FT(0.2)
-    NIR_albedo = ClimaCore.Fields.zeros(surface_space) .+ FT(0.2)
+    #clm_data is used for g1, vcmax, rooting, soil albedo,  and two_stream param maps
+    clm_artifact_path = ClimaLand.Artifacts.clm_data_folder_path(; context)
+
+    PAR_albedo_dry = SpaceVaryingInput(
+        joinpath(clm_artifact_path, "soil_properties_map.nc"),
+        "PAR_albedo_dry",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc,),
+    )
+    NIR_albedo_dry = SpaceVaryingInput(
+        joinpath(clm_artifact_path, "soil_properties_map.nc"),
+        "NIR_albedo_dry",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc,),
+    )
+    PAR_albedo_wet = SpaceVaryingInput(
+        joinpath(clm_artifact_path, "soil_properties_map.nc"),
+        "PAR_albedo_wet",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc,),
+    )
+    NIR_albedo_wet = SpaceVaryingInput(
+        joinpath(clm_artifact_path, "soil_properties_map.nc"),
+        "NIR_albedo_wet",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc,),
+    )
     soil_params = Soil.EnergyHydrologyParameters(
         FT;
         ν,
@@ -219,8 +248,10 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (10, 10, 15))
         K_sat,
         S_s,
         θ_r,
-        PAR_albedo = PAR_albedo,
-        NIR_albedo = NIR_albedo,
+        PAR_albedo_dry,
+        NIR_albedo_dry,
+        PAR_albedo_wet,
+        NIR_albedo_wet,
     )
 
     soil_params_mask_sfc =
@@ -249,8 +280,6 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (10, 10, 15))
 
     # Energy Balance model
     ac_canopy = FT(2.5e4) # this will likely be 10x smaller!
-    #clm_data is used for g1, vcmax, rooting, and two_stream param maps
-    clm_artifact_path = ClimaLand.Artifacts.clm_data_folder_path(; context)
 
     # TwoStreamModel parameters
     Ω = FT(0.69)
