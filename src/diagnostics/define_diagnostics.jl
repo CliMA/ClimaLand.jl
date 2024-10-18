@@ -607,7 +607,7 @@ function define_diagnostics!(land_model)
 
     # Soil albedo
     add_diagnostic_variable!(
-        short_name = "α_PAR",
+        short_name = "αPAR",
         long_name = "PAR_albedo",
         standard_name = "Visible spectrum albedo",
         units = "0 to 1",
@@ -617,7 +617,7 @@ function define_diagnostics!(land_model)
     )
 
     add_diagnostic_variable!(
-        short_name = "α_NIR",
+        short_name = "αNIR",
         long_name = "NIR_albedo",
         standard_name = "Near-infrared spectrum albedo",
         units = "0 to 1",
