@@ -21,6 +21,7 @@ using DelimitedFiles
 using Statistics
 
 import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
+import ClimaUtilities.OutputPathGenerator: generate_output_path
 
 import ClimaTimeSteppers as CTS
 import NCDatasets
@@ -63,11 +64,13 @@ anim_plots = false
 FT = Float64;
 context = ClimaComms.context()
 earth_param_set = LP.LandParameters(FT);
-outdir = joinpath(
-    pkgdir(ClimaLand),
-    "experiments/standalone/Bucket/artifacts_function",
+# GPU and CPU output
+device_suffix =
+    typeof(ClimaComms.context().device) <: ClimaComms.CPUSingleThreaded ?
+    "cpu" : "gpu"
+outdir = generate_output_path(
+    joinpath("experiments/standalone/Bucket/artifacts_function", device_suffix),
 )
-!ispath(outdir) && mkpath(outdir)
 
 # Construct simulation domain
 soil_depth = FT(3.5);
@@ -162,11 +165,9 @@ prob = SciMLBase.ODEProblem(
 );
 
 # ClimaDiagnostics
-output_dir = ClimaUtilities.OutputPathGenerator.generate_output_path(outdir)
-
 space = bucket_domain.space.subsurface
 
-nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(space, output_dir)
+nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(space, outdir)
 
 diags =
     ClimaLand.default_diagnostics(model, start_date; output_writer = nc_writer)
@@ -191,7 +192,7 @@ sol = ClimaComms.@time ClimaComms.device() SciMLBase.solve(
 #### ClimaAnalysis ####
 
 # all
-simdir = ClimaAnalysis.SimDir(output_dir)
+simdir = ClimaAnalysis.SimDir(outdir)
 short_names_2D = [
     "swa",
     "rn",
@@ -212,7 +213,7 @@ for short_name in vcat(short_names_2D..., short_names_3D...)
     fig = CairoMakie.Figure(size = (800, 600))
     kwargs = short_name in short_names_2D ? Dict() : Dict(:z => 1)
     viz.plot!(fig, var, lon = 0, lat = 0; kwargs...)
-    CairoMakie.save(joinpath(output_dir, "$short_name.png"), fig)
+    CairoMakie.save(joinpath(outdir, "$short_name.png"), fig)
 end
 
 # Interpolate to grid
@@ -229,10 +230,6 @@ T_sfc = Array(Remapping.interpolate(remapper, prob.p.bucket.T_sfc))
 
 
 # save prognostic state to CSV - for comparison between
-# GPU and CPU output
-device_suffix =
-    typeof(ClimaComms.context().device) <: ClimaComms.CPUSingleThreaded ?
-    "cpu" : "gpu"
 open(joinpath(outdir, "tf_state_$(device_suffix)_function.txt"), "w") do io
     writedlm(io, hcat(T_sfc[:], W[:], Ws[:], σS[:]), ',')
 end;

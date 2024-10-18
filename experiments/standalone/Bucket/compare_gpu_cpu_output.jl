@@ -2,12 +2,21 @@ using DelimitedFiles
 using Statistics
 import ClimaLand
 function check(job)
-    outdir = joinpath(
-        pkgdir(ClimaLand),
-        "experiments/standalone/Bucket/artifacts_$job",
+    outdir = "experiments/standalone/Bucket/artifacts_$job"
+    cpu_state = readdlm(
+        joinpath(
+            joinpath(outdir, joinpath("cpu", "output_active")),
+            "tf_state_cpu_$job.txt",
+        ),
+        ',',
     )
-    cpu_state = readdlm(joinpath(outdir, "tf_state_cpu_$job.txt"), ',')
-    gpu_state = readdlm(joinpath(outdir, "tf_state_gpu_$job.txt"), ',')
+    gpu_state = readdlm(
+        joinpath(
+            joinpath(outdir, joinpath("gpu", "output_active")),
+            "tf_state_gpu_$job.txt",
+        ),
+        ',',
+    )
     @show abs(maximum(cpu_state .- gpu_state))
     @show abs(median(cpu_state .- gpu_state))
     @show abs(mean(cpu_state .- gpu_state))
