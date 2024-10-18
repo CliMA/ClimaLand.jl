@@ -147,13 +147,14 @@ for FT in (Float32, Float64)
             insol_params = earth_param_set.insol_params,
         )
             current_datetime = start_date + Dates.Second(round(t))
-            d, δ, η_UTC = FT.(
-                Insolation.helper_instantaneous_zenith_angle(
-                    current_datetime,
-                    start_date,
-                    insol_params,
-                ),
-            )
+            d, δ, η_UTC =
+                FT.(
+                    Insolation.helper_instantaneous_zenith_angle(
+                        current_datetime,
+                        start_date,
+                        insol_params,
+                    )
+                )
             return Insolation.instantaneous_zenith_angle(
                 d,
                 δ,
@@ -289,7 +290,7 @@ for FT in (Float32, Float64)
                 function initial_compute_exp_tendency!(F, Y)
                     AI = (; leaf = LAI(1.0), root = RAI, stem = SAI)
                     T0A = FT(1e-8) * AI[:leaf]
-                    for i in 1:(n_leaf+n_stem)
+                    for i in 1:(n_leaf + n_stem)
                         if i == 1
                             fa =
                                 sum(
@@ -350,12 +351,13 @@ for FT in (Float32, Float64)
                     iterations = 20,
                 )
 
-                S_l = inverse_water_retention_curve.(
-                    retention_model,
-                    soln.zero,
-                    plant_ν,
-                    plant_S_s,
-                )
+                S_l =
+                    inverse_water_retention_curve.(
+                        retention_model,
+                        soln.zero,
+                        plant_ν,
+                        plant_S_s,
+                    )
 
                 ϑ_l_0 = augmented_liquid_fraction.(plant_ν, S_l)
 
@@ -373,7 +375,7 @@ for FT in (Float32, Float64)
                 end
 
                 dY = similar(Y)
-                for i in 1:(n_stem+n_leaf)
+                for i in 1:(n_stem + n_leaf)
                     Y.canopy.hydraulics.ϑ_l.:($i) .= ϑ_l_0[i]
                     p.canopy.hydraulics.ψ.:($i) .= NaN
                     p.canopy.hydraulics.fa.:($i) .= NaN
@@ -392,7 +394,7 @@ for FT in (Float32, Float64)
                 # make sure it agrees with what we get when use the canopy model ODE
                 Y, p, coords = initialize(model)
                 standalone_dY = similar(Y)
-                for i in 1:(n_stem+n_leaf)
+                for i in 1:(n_stem + n_leaf)
                     Y.canopy.hydraulics.ϑ_l.:($i) .= ϑ_l_0[i]
                     p.canopy.hydraulics.ψ.:($i) .= NaN
                     p.canopy.hydraulics.fa.:($i) .= NaN
@@ -449,13 +451,14 @@ for FT in (Float32, Float64)
             insol_params = earth_param_set.insol_params,
         )
             current_datetime = start_date + Dates.Second(round(t))
-            d, δ, η_UTC = FT.(
-                Insolation.helper_instantaneous_zenith_angle(
-                    current_datetime,
-                    start_date,
-                    insol_params,
-                ),
-            )
+            d, δ, η_UTC =
+                FT.(
+                    Insolation.helper_instantaneous_zenith_angle(
+                        current_datetime,
+                        start_date,
+                        insol_params,
+                    )
+                )
             return Insolation.instantaneous_zenith_angle(
                 d,
                 δ,
@@ -572,7 +575,7 @@ for FT in (Float32, Float64)
 
         Y, p, coords = initialize(model)
         dY = similar(Y)
-        for i in 1:(n_stem+n_leaf)
+        for i in 1:(n_stem + n_leaf)
             Y.canopy.hydraulics.ϑ_l.:($i) .= FT(0.1)
             p.canopy.hydraulics.ψ.:($i) .= NaN
             p.canopy.hydraulics.fa.:($i) .= NaN

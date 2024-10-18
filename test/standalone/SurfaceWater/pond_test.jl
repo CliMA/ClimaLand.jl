@@ -52,7 +52,7 @@ for FT in (Float32, Float64)
             if t % 40 == 0
                 @test abs.(
                     FT(expected_pond_height(t)) .-
-                    Array(parent(Y.surface_water.η))[1],
+                    Array(parent(Y.surface_water.η))[1]
                 ) < eps(FT)
             end
         end

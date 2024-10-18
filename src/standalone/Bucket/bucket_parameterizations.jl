@@ -55,13 +55,14 @@ a helper function which computes and returns the surface evaporative scaling
  factor for the bucket model.
 """
 function ClimaLand.surface_evaporative_scaling(model::BucketModel, Y, p)
-    beta = beta_factor.(
-        Y.bucket.W,
-        Y.bucket.σS,
-        model.parameters.f_bucket * model.parameters.W_f,
-        model.parameters.f_snow * model.parameters.σS_c,
-        model.parameters.p,
-    )
+    beta =
+        beta_factor.(
+            Y.bucket.W,
+            Y.bucket.σS,
+            model.parameters.f_bucket * model.parameters.W_f,
+            model.parameters.f_snow * model.parameters.σS_c,
+            model.parameters.p,
+        )
     return beta
 end
 

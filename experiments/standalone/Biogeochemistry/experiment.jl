@@ -132,12 +132,13 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
             params.ρc_ds,
             params.earth_param_set,
         )
-        Y.soil.ρe_int .= Soil.volumetric_internal_energy.(
-            FT(0.0),
-            ρc_s,
-            T,
-            params.earth_param_set,
-        )
+        Y.soil.ρe_int .=
+            Soil.volumetric_internal_energy.(
+                FT(0.0),
+                ρc_s,
+                T,
+                params.earth_param_set,
+            )
     end
 
     function init_co2!(Y, z)
@@ -157,7 +158,7 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
     timestepper = CTS.RK4()
     ode_algo = CTS.ExplicitAlgorithm(timestepper)
 
-    saveat = collect(t0:FT(10*dt):tf)
+    saveat = collect(t0:FT(10 * dt):tf)
     sv = (;
         t = Array{Float64}(undef, length(saveat)),
         saveval = Array{NamedTuple}(undef, length(saveat)),

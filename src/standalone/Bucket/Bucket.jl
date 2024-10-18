@@ -407,11 +407,16 @@ function make_update_aux(model::BucketModel{FT}) where {FT}
         # This relies on the surface specific humidity being computed
         # entirely over snow or over soil. i.e. the snow cover fraction must be a heaviside
         # here, otherwise we would need two values of q_sfc!
-        p.bucket.q_sfc .= saturation_specific_humidity.(
-            p.bucket.T_sfc,
-            p.bucket.ρ_sfc,
-            Ref(LP.thermodynamic_parameters(model.parameters.earth_param_set)),
-        )
+        p.bucket.q_sfc .=
+            saturation_specific_humidity.(
+                p.bucket.T_sfc,
+                p.bucket.ρ_sfc,
+                Ref(
+                    LP.thermodynamic_parameters(
+                        model.parameters.earth_param_set,
+                    ),
+                ),
+            )
         # Compute turbulent surface fluxes
         p.bucket.turbulent_fluxes .=
             turbulent_fluxes(model.atmos, model, Y, p, t)
@@ -451,16 +456,17 @@ function make_update_aux(model::BucketModel{FT}) where {FT}
         _ρ_liq = LP.ρ_cloud_liq(model.parameters.earth_param_set)
         _ρLH_f0 = _ρ_liq * _LH_f0 # Latent heat per unit volume.
         # partition energy fluxes for snow covered area
-        p.bucket.partitioned_fluxes .= partition_snow_surface_fluxes.(
-            Y.bucket.σS,
-            p.bucket.T_sfc,
-            model.parameters.τc,
-            p.bucket.snow_cover_fraction,
-            p.bucket.turbulent_fluxes.vapor_flux,
-            p.bucket.F_sfc,
-            _ρLH_f0,
-            _T_freeze,
-        )
+        p.bucket.partitioned_fluxes .=
+            partition_snow_surface_fluxes.(
+                Y.bucket.σS,
+                p.bucket.T_sfc,
+                model.parameters.τc,
+                p.bucket.snow_cover_fraction,
+                p.bucket.turbulent_fluxes.vapor_flux,
+                p.bucket.F_sfc,
+                _ρLH_f0,
+                _T_freeze,
+            )
         @. p.bucket.G =
             p.bucket.F_sfc * (1 - p.bucket.snow_cover_fraction) +
             p.bucket.partitioned_fluxes.G_under_snow *

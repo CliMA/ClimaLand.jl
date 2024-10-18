@@ -83,8 +83,10 @@ for FT in (Float32, Float64)
         @test all(q_l[T_bulk .== _T_freeze] .> FT(0.0)) &&
               all(q_l[T_bulk .== _T_freeze] .< FT(1.1))
         Upred =
-            (_ρ_l .* SWE .* specific_heat_capacity.(q_l, parameters) .+ ρcD_g) .*
-            (T_bulk .- _T_ref) .- _ρ_l .* SWE .* (1.0f0 .- q_l) .* _LH_f0
+            (
+                _ρ_l .* SWE .* specific_heat_capacity.(q_l, parameters) .+
+                ρcD_g
+            ) .* (T_bulk .- _T_ref) .- _ρ_l .* SWE .* (1.0f0 .- q_l) .* _LH_f0
 
         q_lpred = snow_liquid_mass_fraction.(Upred, SWE, parameters)
         T_pred = snow_bulk_temperature.(Upred, SWE, q_lpred, parameters)

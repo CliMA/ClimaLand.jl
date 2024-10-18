@@ -67,7 +67,7 @@ for FT in (Float32, Float64)
 
             # Python code does not use clumping index, and λ_γ does not impact FAPAR
             # Test over all rows in the stored output from the Python module
-            for i in 2:(size(test_set, 1)-1)
+            for i in 2:(size(test_set, 1) - 1)
 
                 # Set the parameters based on the setup read from the file
                 RT_params = TwoStreamParameters(
@@ -87,19 +87,20 @@ for FT in (Float32, Float64)
                 # Compute the predicted FAPAR using the ClimaLand TwoStream implementation
                 G = compute_G(RT_params.G_Function, θs)
                 K = extinction_coeff.(G, θs[i])
-                output = plant_absorbed_pfd_two_stream.(
-                    G,
-                    RT_params.Ω,
-                    RT_params.n_layers,
-                    FT(1),
-                    RT_params.α_PAR_leaf,
-                    RT_params.τ_PAR_leaf,
-                    LAI[i],
-                    K,
-                    θs[i],
-                    a_soil[i],
-                    PropDif[i],
-                )
+                output =
+                    plant_absorbed_pfd_two_stream.(
+                        G,
+                        RT_params.Ω,
+                        RT_params.n_layers,
+                        FT(1),
+                        RT_params.α_PAR_leaf,
+                        RT_params.τ_PAR_leaf,
+                        LAI[i],
+                        K,
+                        θs[i],
+                        a_soil[i],
+                        PropDif[i],
+                    )
                 FAPAR = output.abs
                 # Check that the predictions are app. equivalent to the Python model
                 # Create a field of the expect value because isapprox cannot be broadcast

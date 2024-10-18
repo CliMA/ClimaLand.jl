@@ -119,7 +119,7 @@ for float_type in (Float32, Float64)
         p_mutable = Vector{FT}(undef, 1)
 
         precip =
-            map(sol.t[k] for k in 1:(length(sol.t)-1)) do time
+            map(sol.t[k] for k in 1:(length(sol.t) - 1)) do time
                 ClimaLand.evaluate!(p_mutable, atmos.liquid_precip, time)
                 return p_mutable[]
             end |> collect
@@ -188,18 +188,20 @@ for float_type in (Float32, Float64)
         Plots.plot!(
             plt2,
             daily,
-            eps(FT) .+ abs.(
+            eps(FT) .+
+            abs.(
                 (soil_mass_change_actual - soil_mass_change_exp) ./
-                soil_mass_change_exp,
+                soil_mass_change_exp
             ),
             label = "Soil Water Balance",
         )
         Plots.plot!(
             plt2,
             daily,
-            eps(FT) .+ abs.(
+            eps(FT) .+
+            abs.(
                 (canopy_mass_change_actual - canopy_mass_change_exp) ./
-                canopy_mass_change_exp,
+                canopy_mass_change_exp
             ),
             label = "Canopy Water Balance",
         )
@@ -255,9 +257,10 @@ for float_type in (Float32, Float64)
         Plots.plot!(
             plt2,
             daily,
-            eps(FT) .+ abs.(
+            eps(FT) .+
+            abs.(
                 (soil_energy_change_actual - soil_energy_change_exp) ./
-                soil_energy_change_exp,
+                soil_energy_change_exp
             ),
             label = "Soil Energy Balance",
         )

@@ -27,9 +27,9 @@ FT = Float32
     # specify when to save in the callback (test different dts)
     saveats = (
         collect(t0:dt:tf),
-        collect(t0:(2*dt):tf),
-        collect(t0:(tf-t0):tf),
-        collect(t0:(0.5*dt):tf),
+        collect(t0:(2 * dt):tf),
+        collect(t0:(tf - t0):tf),
+        collect(t0:(0.5 * dt):tf),
     )
     for saveat in saveats
         # note: delete non-multiples of dt in saveat before calling callback

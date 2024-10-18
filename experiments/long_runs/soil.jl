@@ -178,26 +178,30 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     θ_r .= oceans_to_value.(θ_r, soil_params_mask, 0)
 
 
-    S_s = oceans_to_value.(
-        ClimaCore.Fields.zeros(subsurface_space) .+ FT(1e-3),
-        soil_params_mask,
-        1,
-    )
-    ν_ss_om = oceans_to_value.(
-        ClimaCore.Fields.zeros(subsurface_space) .+ FT(0.1),
-        soil_params_mask,
-        0,
-    )
-    ν_ss_quartz = oceans_to_value.(
-        ClimaCore.Fields.zeros(subsurface_space) .+ FT(0.1),
-        soil_params_mask,
-        0,
-    )
-    ν_ss_gravel = oceans_to_value.(
-        ClimaCore.Fields.zeros(subsurface_space) .+ FT(0.1),
-        soil_params_mask,
-        0,
-    )
+    S_s =
+        oceans_to_value.(
+            ClimaCore.Fields.zeros(subsurface_space) .+ FT(1e-3),
+            soil_params_mask,
+            1,
+        )
+    ν_ss_om =
+        oceans_to_value.(
+            ClimaCore.Fields.zeros(subsurface_space) .+ FT(0.1),
+            soil_params_mask,
+            0,
+        )
+    ν_ss_quartz =
+        oceans_to_value.(
+            ClimaCore.Fields.zeros(subsurface_space) .+ FT(0.1),
+            soil_params_mask,
+            0,
+        )
+    ν_ss_gravel =
+        oceans_to_value.(
+            ClimaCore.Fields.zeros(subsurface_space) .+ FT(0.1),
+            soil_params_mask,
+            0,
+        )
     PAR_albedo = ClimaCore.Fields.zeros(surface_space) .+ FT(0.2)
     NIR_albedo = ClimaCore.Fields.zeros(surface_space) .+ FT(0.2)
     soil_params = Soil.EnergyHydrologyParameters(
@@ -268,18 +272,20 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     Y.soil.ϑ_l .= init_soil.(ν, θ_r)
     Y.soil.θ_i .= FT(0.0)
     T = FT(276.85)
-    ρc_s = Soil.volumetric_heat_capacity.(
-        Y.soil.ϑ_l,
-        Y.soil.θ_i,
-        soil_params.ρc_ds,
-        soil_params.earth_param_set,
-    )
-    Y.soil.ρe_int .= Soil.volumetric_internal_energy.(
-        Y.soil.θ_i,
-        ρc_s,
-        T,
-        soil_params.earth_param_set,
-    )
+    ρc_s =
+        Soil.volumetric_heat_capacity.(
+            Y.soil.ϑ_l,
+            Y.soil.θ_i,
+            soil_params.ρc_ds,
+            soil_params.earth_param_set,
+        )
+    Y.soil.ρe_int .=
+        Soil.volumetric_internal_energy.(
+            Y.soil.θ_i,
+            ρc_s,
+            T,
+            soil_params.earth_param_set,
+        )
 
     set_initial_cache! = make_set_initial_cache(soil)
     exp_tendency! = make_exp_tendency(soil)
@@ -302,7 +308,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         p,
     )
 
-    updateat = Array(t0:(3600*3):tf)
+    updateat = Array(t0:(3600 * 3):tf)
     drivers = ClimaLand.get_drivers(soil)
     updatefunc = ClimaLand.make_update_drivers(drivers)
 
