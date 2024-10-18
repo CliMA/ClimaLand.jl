@@ -172,6 +172,8 @@ end
 @diagnostic_compute "soil_water_potential" Union{SoilCanopyModel, LandModel} p.soil.ψ
 @diagnostic_compute "soil_net_radiation" Union{SoilCanopyModel, LandModel} p.soil.R_n
 @diagnostic_compute "soil_temperature" Union{SoilCanopyModel, LandModel} p.soil.T
+@diagnostic_compute "soil_PAR_albedo" SoilCanopyModel p.soil.PAR_albedo
+@diagnostic_compute "soil_NIR_albedo" SoilCanopyModel p.soil.NIR_albedo
 
 # Soil - Turbulent Fluxes
 @diagnostic_compute "soil_latent_heat_flux" Union{SoilCanopyModel, LandModel} p.soil.turbulent_fluxes.lhf
