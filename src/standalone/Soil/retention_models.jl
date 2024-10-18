@@ -1,10 +1,10 @@
 export AbstractSoilHydrologyClosure, vanGenuchten, BrooksCorey
 
 """
-    AbstractSoilHydrologyClosure{FT <: AbstractFloat} 
+    AbstractSoilHydrologyClosure{FT <: AbstractFloat}
 
 The abstract type of soil hydrology closure, of which
-vanGenuchten{FT} and BrooksCorey{FT} are the two supported 
+vanGenuchten{FT} and BrooksCorey{FT} are the two supported
 concrete types.
 
 To add a new parameterization, methods are required for:
@@ -20,7 +20,7 @@ Base.broadcastable(x::AbstractSoilHydrologyClosure) = tuple(x)
 """
     vanGenuchten{FT} <: AbstractSoilHydrologyClosure{FT}
 
-The van Genuchten soil hydrology closure, chosen when the 
+The van Genuchten soil hydrology closure, chosen when the
 hydraulic conductivity and matric potential are modeled
 using the van Genuchten parameterization (van Genuchten 1980;
 see also Table 8.2 of G. Bonan 2019).
@@ -43,11 +43,12 @@ struct vanGenuchten{FT} <: AbstractSoilHydrologyClosure{FT}
     end
 
 end
+Base.broadcastable(VG::vanGenuchten) = Ref(VG)
 
 """
    BrooksCorey{FT} <: AbstractSoilHydrologyClosure{FT}
 
-The Brooks and Corey soil hydrology closure, chosen when the 
+The Brooks and Corey soil hydrology closure, chosen when the
 hydraulic conductivity and matric potential are modeled
 using the Brooks and Corey parameterization (Brooks and Corey,
 1964, 1966; see also Table 8.2 of G. Bonan 2019).
@@ -66,3 +67,4 @@ struct BrooksCorey{FT} <: AbstractSoilHydrologyClosure{FT}
         return new{FT}(c, ψb, S_c)
     end
 end
+Base.broadcastable(BC::vanGenuchten) = Ref(BC)
