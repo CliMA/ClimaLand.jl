@@ -1,6 +1,6 @@
 agents:
   queue: clima
-  modules: common
+  modules: climacommon/2024_10_09
 
 env:
   JULIA_DEPOT_PATH: "${BUILDKITE_BUILD_PATH}/${BUILDKITE_PIPELINE_SLUG}/depot/default"

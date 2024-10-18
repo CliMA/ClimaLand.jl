@@ -1,7 +1,7 @@
 agents:
   queue: clima
   slurm_mem: 8G
-  modules: common
+  modules: climacommon/2024_10_09
 
 timeout_in_minutes: 1440
 

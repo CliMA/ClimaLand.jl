@@ -175,6 +175,10 @@ function default_diagnostics(
             "sr",
             "α_PAR",
             "α_NIR",
+            "rn",
+            "lhf",
+            "shf",
+            "ghf",
         ]
     elseif output_vars == :short
         soilcanopy_diagnostics =
