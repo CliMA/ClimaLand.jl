@@ -125,6 +125,29 @@ macro with_error(compute_function_expr)
     )
 end
 
+"""
+    diagnostic_as_vectors(writer::ClimaDiagnostics.DictWriter, diagnostic; layer = 1)
+
+Extract `diagnostic` from given `writer` as tuple of vectors (time and value).
+By default, gets the surface values (layer = 1).
+For variables resolved in depth, layer can be 1 or more, up to the maximum layer.
+
+`diagnostic` is typically a string with the short name of the diagnostic.
+"""
+function diagnostic_as_vectors(writer::DictWriter, diagnostic; layer = 1)
+
+    # writer[diagnostic] is a dictionary with keys the times and with values Fields. We need
+    # to be a little careful because dictionaries are not ordered, so we have to sort them
+    # by time.
+    times = collect(keys(writer[diagnostic]))
+    sort_indices = sortperm(times)
+    values_all = parent.(values(writer[diagnostic]))[sort_indices]
+    vector_layer_n =
+        vcat([values_all[i][layer, :] for i in 1:length(values_all)]...)
+
+    return times, vector_layer_n
+end
+
 # Do you want to define more diagnostics? Add them here
 include("land_compute_methods.jl")
 

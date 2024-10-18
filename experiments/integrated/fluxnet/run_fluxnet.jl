@@ -185,7 +185,12 @@ shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
 canopy_model_args = (; parameters = shared_params, domain = canopy_domain)
 
 # Integrated plant hydraulics and soil model
-land_input = (atmos = atmos, radiation = radiation, soil_organic_carbon = Csom)
+land_input = (
+    atmos = atmos,
+    radiation = radiation,
+    soil_organic_carbon = Csom,
+    runoff = ClimaLand.Soil.Runoff.SurfaceRunoff(),
+)
 land = SoilCanopyModel{FT}(;
     soilco2_type = soilco2_type,
     soilco2_args = soilco2_args,
@@ -265,14 +270,89 @@ prob = SciMLBase.ODEProblem(
     (t0, tf),
     p,
 );
+
+using ClimaDiagnostics
+using ClimaUtilities
+
+outdir = joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/out")
+output_dir = ClimaUtilities.OutputPathGenerator.generate_output_path(outdir)
+
+d_writer = ClimaDiagnostics.Writers.DictWriter()
+
+ref_time = DateTime(2005) # random. not sure what it should be
+
+diags = ClimaLand.default_diagnostics(
+    land,
+    ref_time;
+    output_writer = d_writer,
+    output_vars = :long,
+    average_period = :hourly,
+)
+
+diagnostic_handler =
+    ClimaDiagnostics.DiagnosticsHandler(diags, Y, p, t0, dt = dt);
+
+diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler);
+
+drivers_diag = ClimaLand.get_drivers(land)
+updatefunc = ClimaLand.make_update_drivers(drivers_diag)
+driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
+
 sol = SciMLBase.solve(
     prob,
     ode_algo;
     dt = dt,
-    callback = cb,
-    adaptive = false,
-    saveat = saveat,
-)
+    callback = SciMLBase.CallbackSet(driver_cb, diag_cb),
+);
+
+short_names_1D = [
+    "sif", # SIF
+    "ra", # AR
+    "gs", # g_stomata
+    "gpp", # GPP
+    "ct", # canopy_T
+    "swu", # SW_u
+    "lwu", # LW_u
+    "er", # ER
+    "et", # ET
+    "msf", # β
+    "shf", # SHF
+    "lhf", # LHF
+    "ghf", # G
+    "rn", # Rn
+]
+
+short_names_2D = [
+    "swc", # swc_sfc or swc_5 or swc_10
+    "tsoil", # soil_T_sfc or soil_T_5 or soil_T_10
+    "si", # si_sfc or si_5 or si_10
+]
+
+hourly_diag_name = short_names_1D .* "_1h_average"
+hourly_diag_name_2D = short_names_2D .* "_1h_average"
+
+# diagnostic_as_vectors()[2] is a vector of a variable,
+# whereas diagnostic_as_vectors()[1] is a vector or time associated with that variable.
+SIF, AR, g_stomata, GPP, canopy_T, SW_u, LW_u, ER, ET, β, SHF, LHF, G, Rn = [
+    ClimaLand.Diagnostics.diagnostic_as_vectors(d_writer, diag_name)[2][1:721]
+    for diag_name in hourly_diag_name
+] # [1:721] only because summer subset of model output
+
+swc_5, soil_T_5, si_5 = [
+    ClimaLand.Diagnostics.diagnostic_as_vectors(
+        d_writer,
+        diag_name;
+        layer = 5,
+    )[2][1:721] for diag_name in hourly_diag_name_2D
+]
+
+times_diag =
+    ClimaLand.Diagnostics.diagnostic_as_vectors(d_writer, "swc_1h_average")[1][1:721]
+
+# convert units for GPP and ET
+GPP = GPP .* 1e6 # mol to μmol
+AR = AR .* 1e6
+ET = ET .* 24 .* 3600
 
 # Plotting
 daily = sol.t ./ 3600 ./ 24
@@ -292,11 +372,6 @@ model_times = [0:dt_save:(num_days * S_PER_DAY);]
 
 # Plot model diurnal cycles without data comparisons
 # Autotrophic Respiration
-AR =
-    [
-        parent(sv.saveval[k].canopy.autotrophic_respiration.Ra)[1] for
-        k in 1:length(sv.saveval)
-    ] .* 1e6
 plot_daily_avg(
     "AutoResp",
     AR,
@@ -309,16 +384,10 @@ plot_daily_avg(
 
 # Plot all comparisons of model diurnal cycles to data diurnal cycles
 # GPP
-model_GPP =
-    [
-        parent(sv.saveval[k].canopy.photosynthesis.GPP)[1] for
-        k in 1:length(sv.saveval)
-    ] .* 1e6
-
 if drivers.GPP.status == absent
     plot_daily_avg(
         "GPP",
-        model_GPP,
+        GPP,
         dt_save,
         num_days,
         "μmol/m^2/s",
@@ -330,7 +399,7 @@ else
         drivers.GPP.values[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)] .* 1e6
     plot_avg_comp(
         "GPP",
-        model_GPP,
+        GPP,
         dt_save,
         GPP_data,
         FT(DATA_DT),
@@ -341,24 +410,15 @@ else
 end
 
 # Upwelling shortwave radiation is referred to as outgoing in the data
-SW_u_model = [parent(sv.saveval[k].SW_u)[1] for k in 1:length(sv.saveval)]
 if drivers.SW_OUT.status == absent
-    plot_daily_avg(
-        "SW up",
-        SW_u_model,
-        dt_save,
-        num_days,
-        "w/m^2",
-        savedir,
-        "model",
-    )
+    plot_daily_avg("SW up", SW_u, dt_save, num_days, "w/m^2", savedir, "model")
 else
     SW_u_data = FT.(drivers.SW_OUT.values)[Int64(t_spinup ÷ DATA_DT):Int64(
         tf ÷ DATA_DT,
     )]
     plot_avg_comp(
         "SW up",
-        SW_u_model,
+        SW_u,
         dt_save,
         SW_u_data,
         FT(DATA_DT),
@@ -369,24 +429,15 @@ else
 end
 
 # Upwelling longwave radiation is referred to outgoing in the data
-LW_u_model = [parent(sv.saveval[k].LW_u)[1] for k in 1:length(sv.saveval)]
 if drivers.LW_OUT.status == absent
-    plot_daily_avg(
-        "LW up",
-        LW_u_model,
-        dt_save,
-        num_days,
-        "w/m^2",
-        savedir,
-        "model",
-    )
+    plot_daily_avg("LW up", LW_u, dt_save, num_days, "w/m^2", savedir, "model")
 else
     LW_u_data = FT.(drivers.LW_OUT.values)[Int64(t_spinup ÷ DATA_DT):Int64(
         tf ÷ DATA_DT,
     )]
     plot_avg_comp(
         "LW up",
-        LW_u_model,
+        LW_u,
         dt_save,
         LW_u_data,
         FT(DATA_DT),
@@ -397,29 +448,8 @@ else
 end
 
 # ET
-T =
-    [
-        parent(sv.saveval[k].canopy.energy.turbulent_fluxes.transpiration)[1]
-        for k in 1:length(sol.t)
-    ] .* (1e3 * 24 * 3600)
-E =
-    [
-        parent(
-            sv.saveval[k].soil.turbulent_fluxes.vapor_flux_liq .+
-            sv.saveval[k].soil.turbulent_fluxes.vapor_flux_ice,
-        )[1] for k in 1:length(sol.t)
-    ] .* (1e3 * 24 * 3600)
-ET_model = T .+ E
 if drivers.LE.status == absent
-    plot_daily_avg(
-        "ET",
-        ET_model,
-        dt_save,
-        num_days,
-        "mm/day",
-        savedir,
-        "Model",
-    )
+    plot_daily_avg("ET", ET, dt_save, num_days, "mm/day", savedir, "Model")
 else
     measured_T =
         drivers.LE.values ./ (LP.LH_v0(earth_param_set) * 1000) .*
@@ -427,7 +457,7 @@ else
     ET_data = measured_T[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)]
     plot_avg_comp(
         "ET",
-        ET_model,
+        ET,
         dt_save,
         ET_data,
         FT(DATA_DT),
@@ -438,29 +468,13 @@ else
 end
 
 # Sensible Heat Flux
-SHF_soil = [
-    parent(sv.saveval[k].soil.turbulent_fluxes.shf)[1] for k in 1:length(sol.t)
-]
-SHF_canopy = [
-    parent(sv.saveval[k].canopy.energy.turbulent_fluxes.shf)[1] for
-    k in 1:length(sol.t)
-]
-SHF_model = SHF_soil + SHF_canopy
 if drivers.H.status == absent
-    plot_daily_avg(
-        "SHF",
-        SHF_model,
-        dt_save,
-        num_days,
-        "w/m^2",
-        savedir,
-        "Model",
-    )
+    plot_daily_avg("SHF", SHF, dt_save, num_days, "w/m^2", savedir, "Model")
 else
     SHF_data = drivers.H.values[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)]
     plot_avg_comp(
         "SHF",
-        SHF_model,
+        SHF,
         dt_save,
         SHF_data,
         FT(DATA_DT),
@@ -471,21 +485,13 @@ else
 end
 
 # Latent Heat Flux
-LHF_soil = [
-    parent(sv.saveval[k].soil.turbulent_fluxes.lhf)[1] for k in 1:length(sol.t)
-]
-LHF_canopy = [
-    parent(sv.saveval[k].canopy.energy.turbulent_fluxes.lhf)[1] for
-    k in 1:length(sol.t)
-]
-LHF_model = LHF_soil + LHF_canopy
 if drivers.LE.status == absent
-    plot_daily_avg("LHF", LHF_model, dt_save, num_days, "w/m^2", savedir)
+    plot_daily_avg("LHF", LHF, dt_save, num_days, "w/m^2", savedir)
 else
     LHF_data = drivers.LE.values[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)]
     plot_avg_comp(
         "LHF",
-        LHF_model,
+        LHF,
         dt_save,
         LHF_data,
         FT(DATA_DT),
@@ -515,11 +521,11 @@ if drivers.G.status != absent
        drivers.H.status != absent &&
        drivers.SW_OUT.status != absent &&
        drivers.LW_OUT.status != absent
-        Rn =
+        Rn_data =
             (drivers.SW_IN.values .- drivers.SW_OUT.values) .+
             (drivers.LW_IN.values .- drivers.LW_OUT.values)
         G_alternate_data_avg = compute_diurnal_avg(
-            FT.(drivers.H.values .+ drivers.LE.values .- Rn)[Int64(
+            FT.(drivers.H.values .+ drivers.LE.values .- Rn_data)[Int64(
                 t_spinup ÷ DATA_DT,
             ):Int64(tf ÷ DATA_DT)],
             data_times,
@@ -533,7 +539,7 @@ if drivers.G.status != absent
             num_days,
         )
         RminusG_avg = compute_diurnal_avg(
-            FT.(Rn .- drivers.G.values)[Int64(t_spinup ÷ DATA_DT):Int64(
+            FT.(Rn_data .- drivers.G.values)[Int64(t_spinup ÷ DATA_DT):Int64(
                 tf ÷ DATA_DT,
             )],
             data_times,
@@ -559,282 +565,20 @@ end
 
 Plots.savefig(joinpath(savedir, "energy_balance_data.png"))
 
-Δz = parent(cds.subsurface.z)[end] - parent(cds.subsurface.z)[end - 2]
-first_layer_flux = [
-    -parent(sv.saveval[k].soil.κ)[1] * (
-        parent(sv.saveval[k].soil.T)[end] -
-        parent(sv.saveval[k].soil.T)[end - 2]
-    ) / Δz for k in 1:length(sol.t)
-]
-G_model = [
-    (
-        parent(sv.saveval[k].soil.turbulent_fluxes.shf)[1] +
-        parent(sv.saveval[k].soil.turbulent_fluxes.lhf)[1] -
-        parent(sv.saveval[k].soil.R_n)[1]
-    ) for k in 1:length(sol.t)
-]
-canopy_G = [
-    (
-        parent(sv.saveval[k].canopy.energy.turbulent_fluxes.shf)[1] +
-        parent(sv.saveval[k].canopy.energy.turbulent_fluxes.lhf)[1] -
-        parent(sv.saveval[k].canopy.radiative_transfer.LW_n)[1] -
-        parent(sv.saveval[k].canopy.radiative_transfer.SW_n)[1]
-    ) for k in 1:length(sol.t)
-]
-
-G_model_avg = compute_diurnal_avg(G_model, model_times, num_days)
-canopy_G_avg = compute_diurnal_avg(canopy_G, model_times, num_days)
-
-plt1 = Plots.plot(size = (1500, 400))
-Plots.plot!(
-    plt1,
-    0.5:0.5:24,
-    canopy_G_avg,
-    label = "Model: (H+L-Rn)_canopy",
-    margins = 10Plots.mm,
-    xlabel = "Hour of day",
-)
-Plots.plot!(
-    plt1,
-    0.5:0.5:24,
-    G_model_avg,
-    label = "Model: (H+L-Rn)_soil",
-    title = "Ground Heat Flux [W/m^2]",
-)
-if drivers.LE.status != absent &&
-   drivers.H.status != absent &&
-   drivers.SW_OUT.status != absent &&
-   drivers.LW_OUT.status != absent
-    Plots.plot!(
-        plt1,
-        0.5:0.5:24,
-        G_alternate_data_avg,
-        label = "Data: (H+L-Rn)_site",
-    )
-end
-Plots.plot!(
-    plt1,
-    0.5:0.5:24,
-    compute_diurnal_avg(first_layer_flux, model_times, num_days),
-    label = "Model: -κ∂T∂z|_5cm",
-)
-Plots.savefig(joinpath(savedir, "ground_heat_flux.png"))
 
 # Water stress factor
-β = [parent(sv.saveval[k].canopy.hydraulics.β)[1] for k in 1:length(sol.t)]
-plt1 =
-    Plots.plot(size = (1500, 400), xlabel = "Day of year", margin = 10Plots.mm)
-Plots.plot!(
-    plt1,
-    daily,
-    β,
-    label = "Model",
-    xlim = [minimum(daily), maximum(daily)],
-    title = "Moisture stress factor",
-)
-Plots.savefig(joinpath(savedir, "moisture_stress.png"))
+plot_daily_avg("moisture_stress", β, dt_save, num_days, "", savedir, "Model")
 
 # Stomatal conductance
-g_stomata =
-    [parent(sv.saveval[k].canopy.conductance.gs)[1] for k in 1:length(sol.t)]
-plt1 =
-    Plots.plot(size = (1500, 400), xlabel = "Day of year", margin = 10Plots.mm)
-Plots.plot!(
-    plt1,
-    daily,
+plot_daily_avg(
+    "stomatal conductance",
     g_stomata,
-    label = "Model",
-    xlim = [minimum(daily), maximum(daily)],
-    title = "Stomatal conductance (mol/m^2/s)",
-)
-Plots.savefig(joinpath(savedir, "stomatal_conductance.png"))
-
-# Soil water content
-# Current resolution has the first layer at 0.1 cm, the second at 5cm.
-plt1 = Plots.plot(size = (1500, 800))
-Plots.plot!(
-    plt1,
-    daily,
-    [parent(sol.u[k].soil.ϑ_l)[end - 1] for k in 1:1:length(sol.t)],
-    label = "5cm",
-    xlim = [minimum(daily), maximum(daily)],
-    ylim = [0.05, 0.55],
-    xlabel = "Days",
-    ylabel = "SWC [m/m]",
-    color = "blue",
-    margin = 10Plots.mm,
-)
-
-plot!(
-    plt1,
-    daily,
-    [parent(sol.u[k].soil.θ_i)[end - 1] for k in 1:1:length(sol.t)],
-    color = "cyan",
-    label = "Ice, 5cm",
-)
-
-if drivers.SWC.status != absent
-    Plots.plot!(plt1, seconds ./ 3600 ./ 24, drivers.SWC.values, label = "Data")
-end
-
-plt2 = Plots.plot(
-    seconds ./ 3600 ./ 24,
-    drivers.P.values .* (-1e3 * 24 * 3600),
-    label = "Data",
-    ylabel = "Precipitation [mm/day]",
-    xlim = [minimum(daily), maximum(daily)],
-    margin = 10Plots.mm,
-    ylim = [-200, 0],
-    size = (1500, 400),
-)
-Plots.plot(plt2, plt1, layout = grid(2, 1, heights = [0.2, 0.8]))
-Plots.savefig(joinpath(savedir, "soil_water_content.png"))
-
-# Cumulative ET
-
-dt_model = sol.t[2] - sol.t[1]
-dt_data = seconds[2] - seconds[1]
-# Find which index in the data our simulation starts at:
-idx = argmin(abs.(seconds .- sol.t[1]))
-if drivers.LE.status != absent
-    Plots.plot(
-        seconds ./ 24 ./ 3600,
-        cumsum(measured_T[:]) * dt_data,
-        label = "Data ET",
-    )
-
-    Plots.plot!(
-        seconds ./ 24 ./ 3600,
-        cumsum(drivers.P.values[:]) * dt_data * (1e3 * 24 * 3600),
-        label = "Data P",
-    )
-    Plots.plot!(
-        daily,
-        cumsum(T .+ E) * dt_model .+ cumsum(measured_T[:])[idx] * dt_data,
-        label = "Model ET",
-    )
-
-    Plots.plot!(
-        ylabel = "∫ Water fluxes dt",
-        xlabel = "Days",
-        margins = 10Plots.mm,
-    )
-    Plots.savefig(joinpath(savedir, "cumul_p_et.png"))
-end
-
-# Soil Temperature
-
-# The second layer is ~ 5cm, third is at 11cm
-soil_T_5 = [parent(sv.saveval[k].soil.T)[end - 1] for k in 1:length(sol.t)]
-soil_T_5_avg = compute_diurnal_avg(soil_T_5, model_times, num_days)
-soil_T_10 = [parent(sv.saveval[k].soil.T)[end - 2] for k in 1:length(sol.t)]
-soil_T_10_avg = compute_diurnal_avg(soil_T_10, model_times, num_days)
-
-TA_avg = compute_diurnal_avg(
-    FT.(drivers.TA.values)[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)],
-    data_times,
+    dt_save,
     num_days,
+    "m s^-1",
+    savedir,
+    "Model",
 )
-if drivers.TS.status != absent
-    TS_avg = compute_diurnal_avg(
-        FT.(drivers.TS.values)[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)],
-        data_times,
-        num_days,
-    )
-end
-
-plt1 = Plots.plot(size = (1500, 400))
-if drivers.TS.status != absent
-    Plots.plot!(
-        plt1,
-        0.5:0.5:24,
-        TS_avg,
-        label = "Tsoil (data)",
-        title = "Temperature",
-    )
-end
-Plots.plot!(plt1, 0.5:0.5:24, TA_avg, label = "Tair (data)")
-Plots.plot!(plt1, 0.5:0.5:24, soil_T_5_avg, label = "Tsoil (model; 5cm)")
-Plots.plot!(plt1, 0.5:0.5:24, soil_T_10_avg, label = "Tsoil (model; 11cm)")
-Plots.plot!(plt1, xlabel = "Hour of day", ylabel = "Average over Simulation")
-Plots.plot!(plt1, margins = 10Plots.mm)
-Plots.savefig(joinpath(savedir, "soil_temperature.png"))
-
-# Temperatures
-soil_T_sfc = [parent(sv.saveval[k].soil.T)[end] for k in 1:length(sol.t)]
-soil_T_sfc_avg = compute_diurnal_avg(soil_T_sfc, model_times, num_days)
-
-canopy_T = [
-    parent(
-        ClimaLand.Canopy.canopy_temperature(
-            land.canopy.energy,
-            land.canopy,
-            sol.u[k],
-            sv.saveval[k],
-            sol.t[k],
-        ),
-    )[1] for k in 1:length(sol.t)
-]
-canopy_T_avg = compute_diurnal_avg(canopy_T, model_times, num_days)
-
-plt1 = Plots.plot(size = (1500, 400))
-if drivers.TS.status != absent
-    Plots.plot!(
-        plt1,
-        0.5:0.5:24,
-        TS_avg,
-        label = "Soil-D",
-        title = "Temperature",
-    )
-end
-Plots.plot!(plt1, 0.5:0.5:24, TA_avg, label = "Atmos-D")
-
-Plots.plot!(plt1, 0.5:0.5:24, soil_T_sfc_avg, label = "Soil-M-2.5cm")
-
-Plots.plot!(plt1, 0.5:0.5:24, canopy_T_avg, label = "Canopy-M")
-Plots.plot!(plt1, xlabel = "Hour of day", ylabel = "Average over Simulation")
-Plots.plot!(plt1, margins = 10Plots.mm)
-Plots.savefig(joinpath(savedir, "temperature.png"))
-
-# Run script with comand line argument "save" to save model output to CSV
-if length(ARGS) ≥ 1 && ARGS[1] == "save"
-    # Formats fields as semicolon seperated strings
-    field_to_array = (field) -> join(parent(field), ';')
-    # Recursively unpacks a nested NamedTuple of fields into an array of strings
-    function unpack(tup, data)
-        for entry in tup
-            if entry isa NamedTuple
-                unpack(entry, data)
-            else
-                push!(data, field_to_array(entry))
-            end
-        end
-    end
-    # Recursively extracts the names of all fields in a nested namedTuple
-    function extract_names(nt, names)
-        for entry in pairs(nt)
-            if entry[2] isa NamedTuple
-                extract_names(entry[2], names)
-            else
-                push!(names, entry[1])
-            end
-        end
-    end
-    # Collect unpacked data from each timestep into an array
-    timestamps = [[]]
-    push!(timestamps[1], "Timestep")
-    extract_names(sv.saveval[1], timestamps[1])
-    local cnt = 0
-    for timestamp in sv.saveval
-        cnt = cnt + 1
-        save_data = Any[cnt]
-        unpack(timestamp, save_data)
-        push!(timestamps, save_data)
-    end
-    # Write all data to a csv file
-    writedlm(joinpath(savedir, "model_output.csv"), timestamps, ',')
-    @info "Saved model output to $(savedir)model_output.csv"
-end
 
 if isfile(
     joinpath(

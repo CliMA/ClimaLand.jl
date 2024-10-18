@@ -173,6 +173,10 @@ function default_diagnostics(
             "er",
             "et",
             "sr",
+            "rn",
+            "lhf",
+            "shf",
+            "ghf",
         ]
     elseif output_vars == :short
         soilcanopy_diagnostics =

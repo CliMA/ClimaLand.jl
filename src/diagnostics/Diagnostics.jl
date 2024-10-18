@@ -18,7 +18,7 @@ import ClimaDiagnostics:
 import ClimaDiagnostics.Schedules:
     EveryStepSchedule, EveryDtSchedule, EveryCalendarDtSchedule
 
-import ClimaDiagnostics.Writers: HDF5Writer, NetCDFWriter
+import ClimaDiagnostics.Writers: HDF5Writer, NetCDFWriter, DictWriter
 
 include("diagnostic.jl")
 

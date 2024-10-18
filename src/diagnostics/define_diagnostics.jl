@@ -761,6 +761,17 @@ function define_diagnostics!(land_model)
             compute_surface_runoff!(out, Y, p, t, land_model),
     )
 
+    # Ground heat flux
+    add_diagnostic_variable!(
+        short_name = "ghf",
+        long_name = "Ground Heat Flux",
+        standard_name = "ground_heat_flux",
+        units = "W m^-2",
+        comments = "Transfer of heat between the surface and deeper soil layers.",
+        compute! = (out, Y, p, t) ->
+            compute_ground_heat_flux!(out, Y, p, t, land_model),
+    )
+
     ## Stored in Y (prognostic or state variables) ##
 
     # Canopy temperature
