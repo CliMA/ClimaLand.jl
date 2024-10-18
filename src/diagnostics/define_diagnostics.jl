@@ -605,6 +605,28 @@ function define_diagnostics!(land_model)
             compute_infiltration!(out, Y, p, t, land_model),
     )
 
+    # Soil albedo
+    add_diagnostic_variable!(
+        short_name = "α_PAR",
+        long_name = "PAR_albedo",
+        standard_name = "Visible spectrum albedo",
+        units = "0 to 1",
+        comments = "Dependent on soil moisture",
+        compute! = (out, Y, p, t) ->
+            compute_soil_PAR_albedo!(out, Y, p, t, land_model),
+    )
+
+    add_diagnostic_variable!(
+        short_name = "α_NIR",
+        long_name = "NIR_albedo",
+        standard_name = "Near-infrared spectrum albedo",
+        units = "0 to 1",
+        comments = "Dependent on soil moisture",
+        compute! = (out, Y, p, t) ->
+            compute_soil_NIR_albedo!(out, Y, p, t, land_model),
+    )
+
+
     # Soil hydraulic conductivity
     add_diagnostic_variable!(
         short_name = "shc",
