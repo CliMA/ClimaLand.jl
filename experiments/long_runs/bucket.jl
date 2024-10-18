@@ -115,7 +115,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 7))
         p,
     )
 
-    updateat = Array(t0:(3600*3):tf)
+    updateat = Array(t0:(3600 * 3):tf)
     drivers = ClimaLand.get_drivers(bucket)
     updatefunc = ClimaLand.make_update_drivers(drivers)
 

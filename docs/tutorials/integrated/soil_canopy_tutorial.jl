@@ -327,12 +327,13 @@ jac_kwargs =
 Y.soil.ϑ_l = FT(0.4)
 Y.soil.θ_i = FT(0.0)
 T_0 = FT(288.7)
-ρc_s = volumetric_heat_capacity.(
-    Y.soil.ϑ_l,
-    Y.soil.θ_i,
-    land.soil.parameters.ρc_ds,
-    earth_param_set,
-)
+ρc_s =
+    volumetric_heat_capacity.(
+        Y.soil.ϑ_l,
+        Y.soil.θ_i,
+        land.soil.parameters.ρc_ds,
+        earth_param_set,
+    )
 Y.soil.ρe_int =
     volumetric_internal_energy.(Y.soil.θ_i, ρc_s, T_0, earth_param_set)
 
@@ -341,12 +342,13 @@ Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
 ψ_stem_0 = FT(-1e5 / 9800)
 ψ_leaf_0 = FT(-2e5 / 9800)
 
-S_l_ini = inverse_water_retention_curve.(
-    retention_model,
-    [ψ_stem_0, ψ_leaf_0],
-    plant_ν,
-    plant_S_s,
-)
+S_l_ini =
+    inverse_water_retention_curve.(
+        retention_model,
+        [ψ_stem_0, ψ_leaf_0],
+        plant_ν,
+        plant_S_s,
+    )
 
 for i in 1:2
     Y.canopy.hydraulics.ϑ_l.:($i) .=
@@ -361,7 +363,7 @@ N_days = 100
 tf = t0 + Float64(3600 * 24 * N_days)
 dt = Float64(30)
 n = 120
-saveat = Array(t0:(n*dt):tf)
+saveat = Array(t0:(n * dt):tf)
 
 timestepper = CTS.ARS343()
 ode_algo = CTS.IMEXAlgorithm(

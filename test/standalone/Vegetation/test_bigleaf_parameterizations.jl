@@ -98,20 +98,21 @@ for FT in (Float32, Float64)
         p_l = FT(-2e6) # Pa
         ca = FT(4.11e-4) # mol/mol
         R = FT(LP.gas_constant(earth_param_set))
-        θs = FT.(Array(0:0.1:(π/2)))
+        θs = FT.(Array(0:0.1:(π / 2)))
         SW(θs) = cos.(θs) * FT.(500) # W/m^2
         PAR = SW(θs) ./ (energy_per_photon * N_a) # convert 500 W/m^2 to mol of photons per m^2/s
         G = compute_G(RTparams.G_Function, θs)
         K_c = extinction_coeff.(G, θs)
         α_soil_PAR = FT(0.2)
-        output = plant_absorbed_pfd_beer_lambert.(
-            RTparams.Ω,
-            PAR,
-            RTparams.α_PAR_leaf,
-            LAI,
-            K_c,
-            α_soil_PAR,
-        )
+        output =
+            plant_absorbed_pfd_beer_lambert.(
+                RTparams.Ω,
+                PAR,
+                RTparams.α_PAR_leaf,
+                LAI,
+                K_c,
+                α_soil_PAR,
+            )
         APAR = getproperty.(output, :abs)
         TPAR = getproperty.(output, :trans)
         RPAR = getproperty.(output, :refl)
@@ -188,12 +189,13 @@ for FT in (Float32, Float64)
               photosynthesisparams.Vcmax25 *
               FT(exp(1)) *
               arrhenius_function(T, To, R, photosynthesisparams.ΔHJmax)
-        J = electron_transport.(
-            APAR,
-            Jmax,
-            photosynthesisparams.θj,
-            photosynthesisparams.ϕ,
-        ) # mol m-2 s-1
+        J =
+            electron_transport.(
+                APAR,
+                Jmax,
+                photosynthesisparams.θj,
+                photosynthesisparams.ϕ,
+            ) # mol m-2 s-1
         @test all(
             @.(
                 photosynthesisparams.θj * J^2 -
@@ -241,13 +243,14 @@ for FT in (Float32, Float64)
               photosynthesisparams.f *
               arrhenius_function(T, To, R, photosynthesisparams.ΔHRd)
         An = net_photosynthesis.(Ac, Aj, Rd, β)
-        stomatal_conductance = medlyn_conductance.(
-            stomatal_g_params.g0,
-            stomatal_g_params.Drel,
-            m_t,
-            An,
-            ca,
-        )
+        stomatal_conductance =
+            medlyn_conductance.(
+                stomatal_g_params.g0,
+                stomatal_g_params.Drel,
+                m_t,
+                An,
+                ca,
+            )
         @test all(
             @.(
                 stomatal_conductance ≈ (

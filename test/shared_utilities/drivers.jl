@@ -66,7 +66,7 @@ end
     t_range = collect(t0:dt:tf)
     nsteps = Int((tf - t0) / dt)
     # specify when to update in the callback
-    updateat = collect((t0+dt*0.5):(5.5*dt):tf)
+    updateat = collect((t0 + dt * 0.5):(5.5 * dt):tf)
 
     # set up components of callback
     cond = ClimaLand.update_condition(updateat)

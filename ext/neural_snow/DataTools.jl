@@ -386,15 +386,17 @@ function rectify_daily_hourly(
         elseif Symbol(var) in hourly_only
             combined[!, Symbol(var)] .= combined[!, Symbol(var * "_1")]
         elseif Symbol(var) in prioritize_hour
-            combined[!, Symbol(var)] .= coalesce.(
-                combined[!, Symbol(var * "_1")],
-                combined[!, Symbol(var)],
-            )
+            combined[!, Symbol(var)] .=
+                coalesce.(
+                    combined[!, Symbol(var * "_1")],
+                    combined[!, Symbol(var)],
+                )
         else
-            combined[!, Symbol(var)] .= coalesce.(
-                combined[!, Symbol(var)],
-                combined[!, Symbol(var * "_1")],
-            )
+            combined[!, Symbol(var)] .=
+                coalesce.(
+                    combined[!, Symbol(var)],
+                    combined[!, Symbol(var * "_1")],
+                )
         end
     end
     return sort(select(combined, vars), :date)
@@ -546,7 +548,8 @@ and remove days when z != 0 but SWE = 0. Defauly eps is 0.005 m (5 cm, since z i
 """
 function train_filter(data::DataFrame; eps::Real = 0.005)
     zero_condition1 =
-        (data[!, :SWE] .< eps) .& (data[!, :z] .< eps) .&
+        (data[!, :SWE] .< eps) .&
+        (data[!, :z] .< eps) .&
         (data[!, :dprecipdt] .< eps / 86400.0)
     data = data[Not(zero_condition1), :]
     zero_condition2 = (data[!, :z] .!= 0.0f0) .& (data[!, :SWE] .== 0.0f0)
@@ -736,7 +739,7 @@ function serreze_qc(input::DataFrame, id::Int, state::AbstractString)
             continue
         end
         precips = data[allyear, :precip]
-        for i in 2:(length(precips)-1)
+        for i in 2:(length(precips) - 1)
             if sum(ismissing.(precips[(i - 1):(i + 1)])) == 0
                 if 0 <= precips[i + 1] - precips[i - 1] <= 0.5
                     if (precips[i] < precips[i - 1]) |
@@ -756,9 +759,10 @@ function serreze_qc(input::DataFrame, id::Int, state::AbstractString)
     data = data[in.(data[!, :date], [overlap]), :]
     data[!, :tmin] = maxmin[!, :tmin]
     data[!, :tmax] = maxmin[!, :tmax]
-    flags = ismissing.(
-        data[1:(end - 1), [:SWE, :precip, :air_temp_avg, :tmin, :tmax]],
-    )
+    flags =
+        ismissing.(
+            data[1:(end - 1), [:SWE, :precip, :air_temp_avg, :tmin, :tmax]]
+        )
     flags[!, :date] = data[1:(end - 1), :date]
 
     dswes = data[2:end, :SWE] - data[1:(end - 1), :SWE]
@@ -1068,7 +1072,7 @@ function z_filter(
     wait_for_zero = false
     n_rut = 0
     spring_thaw = (Dates.month(ts[1]) in 4:8)
-    for i in 2:(size(zs)[1]-1)
+    for i in 2:(size(zs)[1] - 1)
         z = zs[i]
         dzp = zs[i + 1] - zs[i]
         dzm = zs[i] - zs[i - 1]
@@ -1485,7 +1489,7 @@ function impute_data(
             )
             newvar[(idx_miss - 1):idx_next] .= interp
         elseif Δt <= t2
-            for k in idx_miss:(idx_next-1)
+            for k in idx_miss:(idx_next - 1)
                 a = bwk[k]
                 if dt == Hour(1)
                     b = Dates.hour(data[k, :date]) + 1

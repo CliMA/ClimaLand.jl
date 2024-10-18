@@ -74,30 +74,33 @@ function set_initial_conditions(land, t0)
     Y.soil.ϑ_l = FT(0.3)
     Y.soil.θ_i = FT(0.0)
     T_0 = FT(297.5)
-    ρc_s = volumetric_heat_capacity.(
-        Y.soil.ϑ_l,
-        Y.soil.θ_i,
-        land.soil.parameters.ρc_ds,
-        land.soil.parameters.earth_param_set,
-    )
-    Y.soil.ρe_int = volumetric_internal_energy.(
-        Y.soil.θ_i,
-        ρc_s,
-        T_0,
-        land.soil.parameters.earth_param_set,
-    )
+    ρc_s =
+        volumetric_heat_capacity.(
+            Y.soil.ϑ_l,
+            Y.soil.θ_i,
+            land.soil.parameters.ρc_ds,
+            land.soil.parameters.earth_param_set,
+        )
+    Y.soil.ρe_int =
+        volumetric_internal_energy.(
+            Y.soil.θ_i,
+            ρc_s,
+            T_0,
+            land.soil.parameters.earth_param_set,
+        )
 
     Y.soilco2.C = FT(0.000412) # set to atmospheric co2, mol co2 per mol air
 
     ψ_stem_0 = FT(-1e5 / 9800)
     ψ_leaf_0 = FT(-2e5 / 9800)
     canopy_params = land.canopy.hydraulics.parameters
-    S_l_ini = inverse_water_retention_curve.(
-        canopy_params.retention_model,
-        [ψ_stem_0, ψ_leaf_0],
-        canopy_params.ν,
-        canopy_params.S_s,
-    )
+    S_l_ini =
+        inverse_water_retention_curve.(
+            canopy_params.retention_model,
+            [ψ_stem_0, ψ_leaf_0],
+            canopy_params.ν,
+            canopy_params.S_s,
+        )
 
     for i in 1:2
         Y.canopy.hydraulics.ϑ_l.:($i) .=
@@ -178,13 +181,14 @@ function zenith_angle(
     current_datetime = start_date + Dates.Second(round(t))
 
     # Orbital Data uses Float64, so we need to convert to our sim FT
-    d, δ, η_UTC = FT.(
-        Insolation.helper_instantaneous_zenith_angle(
-            current_datetime,
-            start_date,
-            insol_params,
-        ),
-    )
+    d, δ, η_UTC =
+        FT.(
+            Insolation.helper_instantaneous_zenith_angle(
+                current_datetime,
+                start_date,
+                insol_params,
+            )
+        )
 
     Insolation.instantaneous_zenith_angle.(
         d,
@@ -402,8 +406,8 @@ for dt in dts
     )
 
     # Create callback for driver updates
-    saveat = vcat(Array(t0:(3*3600):tf), tf)
-    updateat = vcat(Array(t0:(3*3600):tf), tf)
+    saveat = vcat(Array(t0:(3 * 3600):tf), tf)
+    updateat = vcat(Array(t0:(3 * 3600):tf), tf)
     driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
 
     # Solve simulation

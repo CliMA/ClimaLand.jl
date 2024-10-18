@@ -152,12 +152,13 @@ function init_soil!(Y, z, params)
         params.ρc_ds,
         params.earth_param_set,
     )
-    Y.soil.ρe_int = Soil.volumetric_internal_energy.(
-        Y.soil.θ_i,
-        ρc_s,
-        T,
-        params.earth_param_set,
-    )
+    Y.soil.ρe_int =
+        Soil.volumetric_internal_energy.(
+            Y.soil.θ_i,
+            ρc_s,
+            T,
+            params.earth_param_set,
+        )
 end
 
 init_soil!(Y, z, soil.parameters)

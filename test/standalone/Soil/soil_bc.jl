@@ -168,24 +168,25 @@ for FT in (Float32, Float64)
         T_bc = FT(298)
         T_c = FT(290)
 
-        κ_c = thermal_conductivity.(
-            parameters.κ_dry,
-            kersten_number.(
-                θ_i,
-                relative_saturation.(ϑ_c, θ_i, ν),
-                parameters.α,
-                parameters.β,
-                ν_ss_om,
-                ν_ss_quartz,
-                ν_ss_gravel,
-            ),
-            κ_sat.(
-                ϑ_c,
-                θ_i,
-                parameters.κ_sat_unfrozen,
-                parameters.κ_sat_frozen,
-            ),
-        )
+        κ_c =
+            thermal_conductivity.(
+                parameters.κ_dry,
+                kersten_number.(
+                    θ_i,
+                    relative_saturation.(ϑ_c, θ_i, ν),
+                    parameters.α,
+                    parameters.β,
+                    ν_ss_om,
+                    ν_ss_quartz,
+                    ν_ss_gravel,
+                ),
+                κ_sat.(
+                    ϑ_c,
+                    θ_i,
+                    parameters.κ_sat_unfrozen,
+                    parameters.κ_sat_frozen,
+                ),
+            )
 
         flux_int = diffusive_flux(κ_c, T_bc, T_c, Δz)
         flux_expected = -κ_c * (T_bc - T_c) / Δz

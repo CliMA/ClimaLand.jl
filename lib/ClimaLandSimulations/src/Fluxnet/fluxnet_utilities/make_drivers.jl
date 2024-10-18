@@ -101,17 +101,18 @@ function make_drivers(site_ID, setup, config, params, context)
     end
 
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
-    esat = Thermodynamics.saturation_vapor_pressure.(
-        Ref(thermo_params),
-        FT.(drivers.TA.values),
-        Ref(Thermodynamics.Liquid()),
-    )
+    esat =
+        Thermodynamics.saturation_vapor_pressure.(
+            Ref(thermo_params),
+            FT.(drivers.TA.values),
+            Ref(Thermodynamics.Liquid()),
+        )
     e = @. esat - drivers.VPD.values
     q = @. 0.622 * e ./ (drivers.PA.values - 0.378 * e)
 
     # Create interpolators for each atmospheric driver needed for PrescribedAtmosphere and
     # for PrescribedRadiation
-    seconds = FT.(0:DATA_DT:((length(UTC_DATETIME)-1)*DATA_DT))
+    seconds = FT.(0:DATA_DT:((length(UTC_DATETIME) - 1) * DATA_DT))
     precip = TimeVaryingInput(seconds, -FT.(drivers.P.values[:]); context) # m/s
     atmos_q = TimeVaryingInput(seconds, FT.(q[:]); context)
     atmos_T = TimeVaryingInput(seconds, FT.(drivers.TA.values[:]); context)
@@ -148,13 +149,14 @@ function make_drivers(site_ID, setup, config, params, context)
         current_datetime = start_date + Dates.Second(round(t))
 
         # Orbital Data uses Float64, so we need to convert to our sim FT
-        d, δ, η_UTC = FT.(
-            Insolation.helper_instantaneous_zenith_angle(
-                current_datetime,
-                start_date,
-                insol_params,
-            ),
-        )
+        d, δ, η_UTC =
+            FT.(
+                Insolation.helper_instantaneous_zenith_angle(
+                    current_datetime,
+                    start_date,
+                    insol_params,
+                )
+            )
 
         FT(
             Insolation.instantaneous_zenith_angle(
@@ -194,7 +196,7 @@ function make_drivers(site_ID, setup, config, params, context)
     )
 
     LAI_dt = Second(MODIS_LAI[2, 1] - MODIS_LAI[1, 1]).value
-    LAI_seconds = FT.(0:LAI_dt:((length(MODIS_LAI[:, 1])-1)*LAI_dt))
+    LAI_seconds = FT.(0:LAI_dt:((length(MODIS_LAI[:, 1]) - 1) * LAI_dt))
 
     # LAI for radiative transfer
     LAIfunction = TimeVaryingInput(LAI_seconds, FT.(MODIS_LAI[:, 2]); context)

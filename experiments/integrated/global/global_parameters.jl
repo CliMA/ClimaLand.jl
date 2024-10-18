@@ -82,26 +82,30 @@ K_sat .= oceans_to_value.(K_sat, soil_params_mask, 10.0^μ)
 θ_r .= oceans_to_value.(θ_r, soil_params_mask, 0)
 
 
-S_s = oceans_to_value.(
-    ClimaCore.Fields.zeros(subsurface_space) .+ FT(1e-3),
-    soil_params_mask,
-    1,
-)
-ν_ss_om = oceans_to_value.(
-    ClimaCore.Fields.zeros(subsurface_space) .+ FT(0.1),
-    soil_params_mask,
-    0,
-)
-ν_ss_quartz = oceans_to_value.(
-    ClimaCore.Fields.zeros(subsurface_space) .+ FT(0.1),
-    soil_params_mask,
-    0,
-)
-ν_ss_gravel = oceans_to_value.(
-    ClimaCore.Fields.zeros(subsurface_space) .+ FT(0.1),
-    soil_params_mask,
-    0,
-)
+S_s =
+    oceans_to_value.(
+        ClimaCore.Fields.zeros(subsurface_space) .+ FT(1e-3),
+        soil_params_mask,
+        1,
+    )
+ν_ss_om =
+    oceans_to_value.(
+        ClimaCore.Fields.zeros(subsurface_space) .+ FT(0.1),
+        soil_params_mask,
+        0,
+    )
+ν_ss_quartz =
+    oceans_to_value.(
+        ClimaCore.Fields.zeros(subsurface_space) .+ FT(0.1),
+        soil_params_mask,
+        0,
+    )
+ν_ss_gravel =
+    oceans_to_value.(
+        ClimaCore.Fields.zeros(subsurface_space) .+ FT(0.1),
+        soil_params_mask,
+        0,
+    )
 PAR_albedo = ClimaCore.Fields.zeros(surface_space) .+ FT(0.2)
 NIR_albedo = ClimaCore.Fields.zeros(surface_space) .+ FT(0.2)
 soil_params = Soil.EnergyHydrologyParameters(
