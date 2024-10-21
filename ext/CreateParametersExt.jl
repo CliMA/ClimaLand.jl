@@ -329,11 +329,13 @@ function EnergyHydrologyParameters(
     PAR_albedo::SFD = nothing,
     NIR_albedo::SFD = nothing,
     ####################################
+    top_depth::TD = 0.035,
     kwargs...,
 ) where {
     F <: Union{<:AbstractFloat, ClimaCore.Fields.Field},
     SF <: Union{<:AbstractFloat, ClimaCore.Fields.Field},
     SFD <: Union{<:AbstractFloat, ClimaCore.Fields.Field, Nothing},
+    TD <: AbstractFloat,
     C,
 }
     earth_param_set = LP.LandParameters(toml_dict)
@@ -408,11 +410,13 @@ function EnergyHydrologyParameters(
         NIR_albedo_wet = NIR_albedo
         ####################################
     end
+    top_depth = FT(top_depth)
     EnergyHydrologyParameters{FT, F, typeof(PAR_albedo_dry), C, PSE}(;
         PAR_albedo_wet,
         NIR_albedo_wet,
         PAR_albedo_dry,
         NIR_albedo_dry,
+        top_depth,
         ν,
         ν_ss_om,
         ν_ss_quartz,

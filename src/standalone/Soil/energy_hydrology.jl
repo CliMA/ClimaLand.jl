@@ -70,6 +70,8 @@ Base.@kwdef struct EnergyHydrologyParameters{
     PAR_albedo_wet::SF
     "Soil NIR Albedo wet"
     NIR_albedo_wet::SF
+    "Thickness of top of soil used in albedo calculations (m)"
+    top_depth::FT
     "Soil Emissivity"
     emissivity::FT
     "Roughness length for momentum"
@@ -543,20 +545,13 @@ function ClimaLand.make_update_aux(model::EnergyHydrology)
 
         @. p.soil.θ_l =
             volumetric_liquid_fraction(Y.soil.ϑ_l, ν - Y.soil.θ_i, θ_r)
-        # Only update albedo when top boundry condition is AtmosDrivenFluxBC. Otherwise
-        # albedo is not used
-        if model.boundary_conditions.top isa AtmosDrivenFluxBC
-            update_albedo!(
-                p,
-                model.domain,
-                ν,
-                θ_r,
-                PAR_albedo_dry,
-                NIR_albedo_dry,
-                PAR_albedo_wet,
-                NIR_albedo_wet,
-            )
-        end
+
+        update_albedo!(
+            model.boundary_conditions.top,
+            p,
+            model.domain,
+            model.parameters,
+        )
 
         @. p.soil.κ = thermal_conductivity(
             model.parameters.κ_dry,
