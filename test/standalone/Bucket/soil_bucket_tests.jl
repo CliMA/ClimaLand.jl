@@ -62,33 +62,7 @@ for FT in (Float32, Float64)
 
         @testset "Zero flux tendency, FT = $FT" begin
             # Radiation
-            start_date = DateTime(2005)
-            SW_d = (t) -> 0
-            LW_d = (t) -> 5.67e-8 * 280.0^4.0
-            bucket_rad = PrescribedRadiativeFluxes(
-                FT,
-                TimeVaryingInput(SW_d),
-                TimeVaryingInput(LW_d),
-                start_date,
-            )
-            # Atmos
-            precip = (t) -> 0 # no precipitation
-            T_atmos = (t) -> 280.0
-            u_atmos = (t) -> 1.0
-            q_atmos = (t) -> 0.0 # no atmos water
-            h_atmos = FT(1e-8)
-            P_atmos = (t) -> 101325
-            bucket_atmos = PrescribedAtmosphere(
-                TimeVaryingInput(precip),
-                TimeVaryingInput(precip),
-                TimeVaryingInput(T_atmos),
-                TimeVaryingInput(u_atmos),
-                TimeVaryingInput(q_atmos),
-                TimeVaryingInput(P_atmos),
-                start_date,
-                h_atmos,
-                earth_param_set,
-            )
+            bucket_atmos, bucket_rad = ClimaLand.prescribed_analytic_forcing(FT)
             τc = FT(1.0)
             bucket_parameters =
                 BucketModelParameters(FT; albedo, z_0m, z_0b, τc)
