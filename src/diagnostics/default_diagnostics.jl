@@ -152,6 +152,7 @@ function default_diagnostics(
             "qsfc",
             "ws",
             "infil",
+            "salb",
             "shc",
             "stc",
             "swp",
