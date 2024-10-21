@@ -45,6 +45,8 @@ using CairoMakie
 using Dates
 import NCDatasets
 
+using Poppler_jll: pdfunite
+
 const FT = Float64;
 time_interpolation_method = LinearInterpolation(PeriodicCalendar())
 regridder_type = :InterpolationsRegridder
@@ -597,6 +599,7 @@ setup_and_solve_problem(; greet = true);
 #### ClimaAnalysis ####
 simdir = ClimaAnalysis.SimDir(outdir)
 short_names = ["gpp", "ct", "swc", "si"]
+tmpdir = mktempdir(root_path)
 for short_name in short_names
     var = get(simdir; short_name)
     times = ClimaAnalysis.times(var)
@@ -606,7 +609,11 @@ for short_name in short_names
         tmp = ClimaAnalysis.slice(var, time = t; kwargs...)
         if !all(isnan.(tmp.data))
             viz.heatmap2D!(fig, tmp)
-            CairoMakie.save(joinpath(root_path, "$(short_name)_$t.png"), fig)
+            CairoMakie.save(joinpath(tmpdir, "$(short_name)_$t.pdf"), fig)
         end
     end
+end
+figures = readdir(tmpdir)
+pdfunite() do unite
+    run(Cmd([unite, figures..., "figures.pdf"]))
 end
