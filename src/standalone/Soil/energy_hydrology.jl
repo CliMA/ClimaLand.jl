@@ -550,6 +550,7 @@ function ClimaLand.make_update_aux(model::EnergyHydrology)
                 p,
                 model.domain,
                 ν,
+                θ_r,
                 PAR_albedo_dry,
                 NIR_albedo_dry,
                 PAR_albedo_wet,
