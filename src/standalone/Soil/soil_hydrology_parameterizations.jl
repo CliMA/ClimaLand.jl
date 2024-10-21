@@ -7,14 +7,13 @@ export volumetric_liquid_fraction,
     impedance_factor,
     viscosity_factor,
     dψdϑ,
-    is_saturated,
     update_albedo!
 
 """
     albedo_from_moisture(surface_liquid_fraction::FT, albedo_dry::FT, albedo_wet::FT)
 
-Calculates pointwise albedo for any band as a function of volumetric soil water content given
-the dry and wet albedo values for that band. Implements eq.1 from Braghiere, R. K et al.
+Calculates pointwise albedo for any band as a function of soil effective saturation given
+the dry and wet albedo values for that band.
 """
 function albedo_from_moisture(
     surface_liquid_fraction::FT,
@@ -25,50 +24,90 @@ function albedo_from_moisture(
            albedo_wet * surface_liquid_fraction
 end
 
+
 """
-    update_albedo!(p, soil_domain, PAR_albedo_dry::SF, NIR_albedo_dry::SF, PAR_albedo_wet::SF, NIR_albedo_wet::SF)
+    update_albedo!(bc::AtmosDrivenFluxBC, p, soil_domain, model_parameters)
 
 Calculates and updates PAR and NIR albedo as a function of volumetric soil water content at
 the top of the soil. If the soil layers are very large, the water content of the top layer
-is used in the calclulation
+is used in the calclulation. For the PAR and NIR bands,
+
+α_band = α_{band,dry} * (1 - S_e) +  α_{band,wet} * (S_e)
+
+where S_e is the relative soil wetness above some depth, `albedo_calc_top_thickness`. This
+is a modified version of Equation (1) of:
+
+Braghiere, R. K., Wang, Y., Gagné-Landmann, A., Brodrick, P. G., Bloom, A. A., Norton,
+A. J., et al. (2023). The importance of hyperspectral soil albedo information for improving
+Earth system model projections. AGU Advances, 4, e2023AV000910. https://doi.org/10.1029/2023AV000910
+
+where effective saturation is used in place of volumetric soil water content.The dry and wet
+albedo values come from a global soil color map and soil color to albedo map from CLM.
+
+CLM reference: Lawrence, P.J., and Chase, T.N. 2007. Representing a MODIS consistent land surface in the Community Land Model
+(CLM 3.0). J. Geophys. Res. 112:G01023. DOI:10.1029/2006JG000168.
 """
-function update_albedo!(
-    p,
-    soil_domain,
-    ν,
-    θ_r,
-    PAR_albedo_dry::SF,
-    NIR_albedo_dry::SF,
-    PAR_albedo_wet::SF,
-    NIR_albedo_wet::SF,
-) where {SF}
-    @. p.soil.depths = soil_domain.fields.z_sfc - soil_domain.fields.z
+function update_albedo!(bc::AtmosDrivenFluxBC, p, soil_domain, model_parameters)
+    (;
+        ν,
+        θ_r,
+        PAR_albedo_dry,
+        NIR_albedo_dry,
+        PAR_albedo_wet,
+        NIR_albedo_wet,
+        albedo_calc_top_thickness,
+    ) = model_parameters
+    S_sfc = p.soil.sfc_S_e
     FT = eltype(soil_domain.fields.Δz_top)
-    # When no soil layer is centered within the top 7 cm of the soil, use the top layer
-    # otherwise use all layers centered in the top 7 cm
-    @. p.soil.sfc_scratch =
-        max(soil_domain.fields.Δz_top, FT(0.07)) + sqrt(eps(FT))
-    ∫H_θ_l_dz = p.soil.sfc_θ_l
-    ∫H_dz = p.soil.sfc_volume
-    # get total volume of each column in soil top
-    @. p.soil.clipped_values =
-        ClimaLand.heaviside.(p.soil.sfc_scratch, p.soil.depths)
-    ClimaCore.Operators.column_integral_definite!(∫H_dz, p.soil.clipped_values)
-    # get soil water content in soil top
-    @. p.soil.clipped_values =
-        ClimaLand.heaviside.(p.soil.sfc_scratch, p.soil.depths) *
-        effective_saturation(ν, p.soil.θ_l, θ_r)
-    ClimaCore.Operators.column_integral_definite!(
-        ∫H_θ_l_dz,
-        p.soil.clipped_values,
-    )
-    @. p.soil.sfc_scratch = ∫H_θ_l_dz / ∫H_dz
+    # checks if there is at least 1 layer centered within the top soil depth
+    if minimum(soil_domain.fields.Δz_top) < albedo_calc_top_thickness
+        # ∫H_S_e_dz is the integral of effective saturation from (surface-albedo_calc_top_thickness) to surface
+        ∫H_S_e_dz = p.soil.sfc_S_e
+        # ∫H_dz is integral of 1 from (surface-albedo_calc_top_thickness) to surface
+        ∫H_dz = p.soil.sfc_scratch
+        # zero all centers lower than boundary, set everything above to one
+        @. p.soil.sub_sfc_scratch = ClimaLand.heaviside(
+            albedo_calc_top_thickness + sqrt(eps(FT)),
+            soil_domain.fields.z_sfc - soil_domain.fields.z,
+        )
+        ClimaCore.Operators.column_integral_definite!(
+            ∫H_dz,
+            p.soil.sub_sfc_scratch,
+        )
+        # zeros all effective saturation at levels centered lower than boundary
+        @. p.soil.sub_sfc_scratch =
+            ClimaLand.heaviside(
+                albedo_calc_top_thickness + sqrt(eps(FT)),
+                soil_domain.fields.z_sfc - soil_domain.fields.z,
+            ) * effective_saturation(ν, p.soil.θ_l, θ_r)
+        ClimaCore.Operators.column_integral_definite!(
+            ∫H_S_e_dz,
+            p.soil.sub_sfc_scratch,
+        )
+        @. S_sfc = ∫H_S_e_dz / ∫H_dz
+    else
+        # in the case where no layer is centered above boundary, use the values of the top layer
+        S_sfc .= ClimaLand.Domains.top_center_to_surface(
+            effective_saturation.(ν, p.soil.θ_l, θ_r),
+        )
+    end
     @. p.soil.PAR_albedo =
-        albedo_from_moisture(p.soil.sfc_scratch, PAR_albedo_dry, PAR_albedo_wet)
+        albedo_from_moisture(S_sfc, PAR_albedo_dry, PAR_albedo_wet)
     @. p.soil.NIR_albedo =
-        albedo_from_moisture(p.soil.sfc_scratch, NIR_albedo_dry, NIR_albedo_wet)
+        albedo_from_moisture(S_sfc, NIR_albedo_dry, NIR_albedo_wet)
 end
 
+"""
+update_albedo!(bc::AbstractWaterBC, p, soil_domain, model_parameters)
+
+    Does nothing for boundary conditions where albedo is not used
+"""
+function update_albedo!(
+    bc::BC,
+    p,
+    soil_domain,
+    model_parameters,
+) where {BC <: AbstractEnergyHydrologyBC} end
 """
     volumetric_liquid_fraction(ϑ_l::FT, ν_eff::FT, θ_r::FT) where {FT}
 
@@ -353,15 +392,4 @@ function viscosity_factor(T::FT, γ::FT, γT_ref::FT) where {FT}
     factor = FT(γ * (T - γT_ref))
     Theta = FT(exp(factor))
     return Theta
-end
-
-"""
-    is_saturated(twc::FT, ν::FT) where {FT}
-
-A helper function which can be used to indicate whether a layer of soil is
-saturated based on if the total volumetric water content, `twc` is greater
-than porosity `ν`.
-"""
-function is_saturated(twc::FT, ν::FT) where {FT}
-    return ClimaLand.heaviside(twc - ν)
 end

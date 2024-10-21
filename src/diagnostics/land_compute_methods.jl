@@ -183,7 +183,7 @@ function compute_soil_albedo!(
     if isnothing(out)
         return FT(0.5) .* p.soil.PAR_albedo .+ FT(0.5) .* p.soil.NIR_albedo
     else
-        @. out = FT(0.5) .* p.soil.PAR_albedo .+ FT(0.5) .* p.soil.NIR_albedo
+        @. out = FT(0.5) * p.soil.PAR_albedo + FT(0.5) * p.soil.NIR_albedo
     end
 end
 

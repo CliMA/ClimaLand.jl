@@ -70,6 +70,8 @@ Base.@kwdef struct EnergyHydrologyParameters{
     PAR_albedo_wet::SF
     "Soil NIR Albedo wet"
     NIR_albedo_wet::SF
+    "Thickness of top of soil used in albedo calculations (m)"
+    albedo_calc_top_thickness::FT
     "Soil Emissivity"
     emissivity::FT
     "Roughness length for momentum"
@@ -543,20 +545,13 @@ function ClimaLand.make_update_aux(model::EnergyHydrology)
 
         @. p.soil.θ_l =
             volumetric_liquid_fraction(Y.soil.ϑ_l, ν - Y.soil.θ_i, θ_r)
-        # Only update albedo when top boundry condition is AtmosDrivenFluxBC. Otherwise
-        # albedo is not used
-        if model.boundary_conditions.top isa AtmosDrivenFluxBC
-            update_albedo!(
-                p,
-                model.domain,
-                ν,
-                θ_r,
-                PAR_albedo_dry,
-                NIR_albedo_dry,
-                PAR_albedo_wet,
-                NIR_albedo_wet,
-            )
-        end
+
+        update_albedo!(
+            model.boundary_conditions.top,
+            p,
+            model.domain,
+            model.parameters,
+        )
 
         @. p.soil.κ = thermal_conductivity(
             model.parameters.κ_dry,
@@ -1062,6 +1057,66 @@ function soil_turbulent_fluxes_at_a_point(
     )
 end
 
+"""
+    create_soil_albedo_vars(
+        path::String,
+        surface_space;
+        regridder_type = nothing,
+        regrider_kwargs = (),
+        file_reader_kwargs = (),
+        compose_function = identity,
+    )
+
+A convenience function to create the soil albedo variables given a path to the file containing
+the variables PAR_albedo_dry, NIR_albedo_dry, PAR_albedo_wet, NIR_albedo_wet.
+"""
+function create_soil_albedo_vars(
+    path::String,
+    surface_space;
+    regridder_type = nothing,
+    regridder_kwargs = (),
+    file_reader_kwargs = (),
+    compose_function = identity,
+)
+    PAR_albedo_dry = SpaceVaryingInput(
+        path,
+        "PAR_albedo_dry",
+        surface_space;
+        regridder_type,
+        regridder_kwargs,
+        file_reader_kwargs,
+        compose_function,
+    )
+    NIR_albedo_dry = SpaceVaryingInput(
+        path,
+        "NIR_albedo_dry",
+        surface_space;
+        regridder_type,
+        regridder_kwargs,
+        file_reader_kwargs,
+        compose_function,
+    )
+    PAR_albedo_wet = SpaceVaryingInput(
+        path,
+        "PAR_albedo_wet",
+        surface_space;
+        regridder_type,
+        regridder_kwargs,
+        file_reader_kwargs,
+        compose_function,
+    )
+    NIR_albedo_wet = SpaceVaryingInput(
+        path,
+        "NIR_albedo_wet",
+        surface_space;
+        regridder_type,
+        regridder_kwargs,
+        file_reader_kwargs,
+        compose_function,
+    )
+
+    return PAR_albedo_dry, NIR_albedo_dry, PAR_albedo_wet, NIR_albedo_wet
+end
 # For Swenson/Lawrence 2014 resistance parameterization
 #=
 """
@@ -1182,7 +1237,7 @@ end
     ice_fraction(θ_l::FT, θ_i::FT, ν::FT, θ_r::FT)::FT where {FT}
 
 Computes and returns the ice fraction, which is the
-fraction  of the vapor flux that is due to sublimation, and
+fraction of the vapor flux that is due to sublimation, and
 the fraction of the humidity in the air due to ice, as
 
 f = S_i/(S_i+S_l)

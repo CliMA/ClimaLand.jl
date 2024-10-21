@@ -236,6 +236,7 @@ for FT in (Float32, Float64)
             FT(0.2), # PAR_albedo_dry
             FT(0.2), # NIR_albedo_wet
             FT(0.2), # PAR_albedo_wet
+            FT(0.035), # top_depth
             FT(0.96), # ϵ
             FT(0.001), # z_0m
             FT(0.01), # z_0b
@@ -435,6 +436,7 @@ for FT in (Float32, Float64)
             FT(0.2), #PAR_albedo_dry
             FT(0.2),# NIR_albedo_wet
             FT(0.2), #PAR_albedo_wet
+            FT(0.035), # top_depth
             FT(0.96),#ϵ
             FT(0.001),# z_0m
             FT(0.01), # z_0b
