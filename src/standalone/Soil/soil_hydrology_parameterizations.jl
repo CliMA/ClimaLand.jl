@@ -36,6 +36,7 @@ function update_albedo!(
     p,
     soil_domain,
     ν,
+    θ_r,
     PAR_albedo_dry::SF,
     NIR_albedo_dry::SF,
     PAR_albedo_wet::SF,
@@ -55,7 +56,8 @@ function update_albedo!(
     ClimaCore.Operators.column_integral_definite!(∫H_dz, p.soil.clipped_values)
     # get soil water content in soil top
     @. p.soil.clipped_values =
-        ClimaLand.heaviside.(p.soil.sfc_scratch, p.soil.depths) * p.soil.θ_l / ν
+        ClimaLand.heaviside.(p.soil.sfc_scratch, p.soil.depths) *
+        effective_saturation(ν, p.soil.θ_l, θ_r)
     ClimaCore.Operators.column_integral_definite!(
         ∫H_θ_l_dz,
         p.soil.clipped_values,
