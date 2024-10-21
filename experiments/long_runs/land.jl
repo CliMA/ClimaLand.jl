@@ -598,7 +598,7 @@ short_3d_names = ["swc", "si", "seff", "tsoil"]
 for short_name in short_2d_names
     var = get(simdir; short_name)
     times = ClimaAnalysis.times(var)
-    for t in [times[end - 6], times[end]]
+    for t in [times[end],]
         fig = CairoMakie.Figure(size = (800, 600))
         viz.heatmap2D_on_globe!(
             fig,
