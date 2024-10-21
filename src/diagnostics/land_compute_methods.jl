@@ -99,11 +99,11 @@ end
 @diagnostic_compute "vcmax25" SoilCanopyModel p.canopy.photosynthesis.Vcmax25
 
 # Canopy - Radiative Transfer
-@diagnostic_compute "near_infrared_radiation_down" SoilCanopyModel p.canopy.radiative_transfer.inc_nir
+@diagnostic_compute "near_infrared_radiation_down" SoilCanopyModel p.canopy.radiative_transfer.nir_d
 @diagnostic_compute "near_infrared_radiation_absorbed" SoilCanopyModel p.canopy.radiative_transfer.nir.abs
 @diagnostic_compute "near_infrared_radiation_reflected" SoilCanopyModel p.canopy.radiative_transfer.nir.refl
 @diagnostic_compute "near_infrared_radiation_transmitted" SoilCanopyModel p.canopy.radiative_transfer.nir.trans
-@diagnostic_compute "photosynthetically_active_radiation_down" SoilCanopyModel p.canopy.radiative_transfer.inc_par
+@diagnostic_compute "photosynthetically_active_radiation_down" SoilCanopyModel p.canopy.radiative_transfer.par_d
 @diagnostic_compute "photosynthetically_active_radiation_absorbed" SoilCanopyModel p.canopy.radiative_transfer.par.abs
 @diagnostic_compute "photosynthetically_active_radiation_reflected" SoilCanopyModel p.canopy.radiative_transfer.par.refl
 @diagnostic_compute "photosynthetically_active_radiation_transmitted" SoilCanopyModel p.canopy.radiative_transfer.par.trans

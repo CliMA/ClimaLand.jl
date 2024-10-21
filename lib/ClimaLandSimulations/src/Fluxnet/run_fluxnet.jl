@@ -106,7 +106,6 @@ function run_fluxnet(
             G_Function = params.radiative_transfer.G_Function,
             α_PAR_leaf = params.radiative_transfer.α_PAR_leaf,
             λ_γ_PAR = params.radiative_transfer.λ_γ_PAR,
-            λ_γ_NIR = params.radiative_transfer.λ_γ_NIR,
             τ_PAR_leaf = params.radiative_transfer.τ_PAR_leaf,
             α_NIR_leaf = params.radiative_transfer.α_NIR_leaf,
             τ_NIR_leaf = params.radiative_transfer.τ_NIR_leaf,

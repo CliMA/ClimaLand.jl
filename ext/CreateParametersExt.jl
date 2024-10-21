@@ -594,7 +594,6 @@ function TwoStreamParameters(
 ) where {F}
     name_map = (;
         :wavelength_per_PAR_photon => :λ_γ_PAR,
-        :wavelength_per_NIR_photon => :λ_γ_NIR,
         :canopy_emissivity => :ϵ_canopy,
     )
 
@@ -651,7 +650,6 @@ function BeerLambertParameters(
 ) where {F}
     name_map = (;
         :wavelength_per_PAR_photon => :λ_γ_PAR,
-        :wavelength_per_NIR_photon => :λ_γ_NIR,
         :canopy_emissivity => :ϵ_canopy,
     )
 

@@ -13,7 +13,8 @@ using ClimaLand.Canopy
 using DelimitedFiles
 using ArtifactWrappers
 using ClimaLand.Domains: Point
-
+import ClimaLand.Parameters as LP
+import ClimaParams
 # Get the test data
 data_file = ArtifactWrapper(
     @__DIR__,
@@ -90,11 +91,10 @@ for FT in (Float32, Float64)
                 G = compute_G(RT_params.G_Function, θs)
                 K = extinction_coeff.(G, θs[i])
                 output =
-                    plant_absorbed_pfd_two_stream.(
+                    canopy_sw_rt_two_stream.(
                         G,
                         RT_params.Ω,
                         RT_params.n_layers,
-                        FT(1),
                         RT_params.α_PAR_leaf,
                         RT_params.τ_PAR_leaf,
                         LAI[i],
