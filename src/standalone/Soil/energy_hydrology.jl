@@ -1057,6 +1057,53 @@ function soil_turbulent_fluxes_at_a_point(
     )
 end
 
+function create_soil_albedo_vars(
+    path::String,
+    surface_space;
+    regridder_type = nothing,
+    regrider_kwargs = (),
+    file_reader_kwargs = (),
+    compose_function = identity,
+)
+    PAR_albedo_dry = SpaceVaryingInput(
+        path,
+        "PAR_albedo_dry",
+        surface_space;
+        regridder_type,
+        regrider_kwargs,
+        file_reader_kwargs,
+        identity,
+    )
+    NIR_albedo_dry = SpaceVaryingInput(
+        path,
+        "NIR_albedo_dry",
+        surface_space;
+        regridder_type,
+        regrider_kwargs,
+        file_reader_kwargs,
+        identity,
+    )
+    PAR_albedo_wet = SpaceVaryingInput(
+        path,
+        "PAR_albedo_wet",
+        surface_space;
+        regridder_type,
+        regrider_kwargs,
+        file_reader_kwargs,
+        identity,
+    )
+    NIR_albedo_wet = SpaceVaryingInput(
+        path,
+        "NIR_albedo_wet",
+        surface_space;
+        regridder_type,
+        regrider_kwargs,
+        file_reader_kwargs,
+        identity,
+    )
+
+    return PAR_albedo_dry, NIR_albedo_dry, PAR_albedo_wet, NIR_albedo_wet
+end
 # For Swenson/Lawrence 2014 resistance parameterization
 #=
 """

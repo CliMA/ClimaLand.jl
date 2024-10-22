@@ -209,34 +209,13 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
     #clm_data is used for g1, vcmax, rooting, soil albedo,  and two_stream param maps
     clm_artifact_path = ClimaLand.Artifacts.clm_data_folder_path(; context)
 
-    PAR_albedo_dry = SpaceVaryingInput(
-        joinpath(clm_artifact_path, "soil_properties_map.nc"),
-        "PAR_albedo_dry",
-        surface_space;
-        regridder_type,
-        regridder_kwargs = (; extrapolation_bc,),
-    )
-    NIR_albedo_dry = SpaceVaryingInput(
-        joinpath(clm_artifact_path, "soil_properties_map.nc"),
-        "NIR_albedo_dry",
-        surface_space;
-        regridder_type,
-        regridder_kwargs = (; extrapolation_bc,),
-    )
-    PAR_albedo_wet = SpaceVaryingInput(
-        joinpath(clm_artifact_path, "soil_properties_map.nc"),
-        "PAR_albedo_wet",
-        surface_space;
-        regridder_type,
-        regridder_kwargs = (; extrapolation_bc,),
-    )
-    NIR_albedo_wet = SpaceVaryingInput(
-        joinpath(clm_artifact_path, "soil_properties_map.nc"),
-        "NIR_albedo_wet",
-        surface_space;
-        regridder_type,
-        regridder_kwargs = (; extrapolation_bc,),
-    )
+    PAR_albedo_dry, NIR_albedo_dry, PAR_albedo_wet, NIR_albedo_wet =
+        create_soil_albedo_vars(
+            clm_artifact_path,
+            surface_space;
+            regridder_type,
+            regridder_kwargs = (; extrapolation_bc,),
+        )
     soil_params = Soil.EnergyHydrologyParameters(
         FT;
         ν,
