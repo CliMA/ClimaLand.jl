@@ -211,7 +211,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (10, 10, 15))
     clm_artifact_path = ClimaLand.Artifacts.clm_data_folder_path(; context)
 
     PAR_albedo_dry, NIR_albedo_dry, PAR_albedo_wet, NIR_albedo_wet =
-        create_soil_albedo_vars(
+        Soil.create_soil_albedo_vars(
             clm_artifact_path,
             surface_space;
             regridder_type,

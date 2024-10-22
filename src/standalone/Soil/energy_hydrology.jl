@@ -1057,6 +1057,19 @@ function soil_turbulent_fluxes_at_a_point(
     )
 end
 
+"""
+    create_soil_albedo_vars(
+        path::String,
+        surface_space;
+        regridder_type = nothing,
+        regrider_kwargs = (),
+        file_reader_kwargs = (),
+        compose_function = identity,
+    )
+
+A convenience function to create the soil albedo variables given a path to the file containing
+the variables PAR_albedo_dry, NIR_albedo_dry, PAR_albedo_wet, NIR_albedo_wet.
+"""
 function create_soil_albedo_vars(
     path::String,
     surface_space;
