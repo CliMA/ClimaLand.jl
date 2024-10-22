@@ -1177,7 +1177,7 @@ end
     ice_fraction(θ_l::FT, θ_i::FT, ν::FT, θ_r::FT)::FT where {FT}
 
 Computes and returns the ice fraction, which is the
-fraction  of the vapor flux that is due to sublimation, and
+fraction of the vapor flux that is due to sublimation, and
 the fraction of the humidity in the air due to ice, as
 
 f = S_i/(S_i+S_l)

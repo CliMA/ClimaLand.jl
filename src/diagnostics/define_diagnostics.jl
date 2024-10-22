@@ -610,7 +610,7 @@ function define_diagnostics!(land_model)
         short_name = "salb",
         long_name = "Soil Albedo",
         standard_name = "surface albedo",
-        units = "0 to 1",
+        units = "",
         comments = "Dependent on soil moisture",
         compute! = (out, Y, p, t) ->
             compute_soil_albedo!(out, Y, p, t, land_model),
