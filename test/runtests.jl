@@ -108,3 +108,8 @@ end
 @safetestset "Integrated soil and snow" begin
     include("integrated/soil_snow.jl")
 end
+
+# Diagnostics
+@safetestset "Diagnostics" begin
+    include("diagnostics/diagnostics_tests.jl")
+end
