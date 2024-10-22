@@ -258,7 +258,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     Ω = SpaceVaryingInput(
         joinpath(modis_ci_artifact_path, "He_et_al_2012_1x1.nc"),
         "ci",
-        surface_space,
+        surface_space;
         regridder_type,
         regridder_kwargs = (; extrapolation_bc,),
     )
