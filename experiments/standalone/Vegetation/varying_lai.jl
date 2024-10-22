@@ -208,7 +208,7 @@ prob = SciMLBase.ODEProblem(
 
 sol = SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb, saveat = saveat);
 
-savedir = generate_output_path("experiments/standalone/Vegetation");
+savedir = generate_output_path("experiments/standalone/Vegetation/varying_lai");
 T = [parent(sol.u[k].canopy.energy.T)[1] for k in 1:length(sol.t)]
 T_atmos = [parent(sv.saveval[k].drivers.T)[1] for k in 1:length(sol.t)]
 ϑ = [parent(sol.u[k].canopy.hydraulics.ϑ_l.:1)[1] for k in 1:length(sol.t)]

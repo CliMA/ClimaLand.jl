@@ -134,7 +134,9 @@ phase_change = (;
     exp_name = "pc",
 )
 
-savedir = generate_output_path("experiments/standalone/Soil")
+savedir = generate_output_path(
+    "experiments/standalone/Soil/water_energy_conservation",
+)
 
 for experiment in [no_phase_change, phase_change]
     (; t0, tf, dt_ref, Trange, dts, exp_name) = experiment

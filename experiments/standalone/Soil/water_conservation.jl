@@ -137,7 +137,9 @@ for FT in (Float32, Float64)
 
     if FT == Float64
         # Save flux BC mass conservation error and RMSE as artifact
-        savedir = generate_output_path("experiments/standalone/Soil")
+        savedir = generate_output_path(
+            "experiments/standalone/Soil/water_conservation",
+        )
         plt = Plots.plot(margin = 10Plots.mm)
         plt_twin = twinx(plt)
         Plots.plot!(
