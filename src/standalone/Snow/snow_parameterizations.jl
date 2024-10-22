@@ -182,7 +182,7 @@ function snow_surface_temperature(
     _ρ_liq::FT = LP.ρ_cloud_liq(earth_param_set)
     ρ_snow::FT = parameters.ρ_snow
     h_sfc::FT = snow_depth(SWE, ρ_snow, _ρ_liq)
-    d = FT(0.2)
+    d = FT(0.1)
     if h_sfc < d
         return (T_s = T_bulk, ΔF = FT(0))
     end
@@ -222,8 +222,8 @@ function snow_surface_temperature(
     F_R(T_s) = -(1 - α_sfc) * SW_d - ϵ_sfc * (LW_d - _σ * T_s^4)
 
     F_h(T_s) = SH(T_s) + LH(T_s) + F_R(T_s) + energy_runoff
-    # κ = parameters.κ_ice
-    κ = snow_thermal_conductivity(ρ_snow, parameters)
+    κ = parameters.κ_ice
+    # κ = snow_thermal_conductivity(ρ_snow, parameters)
     f(T_s) = κ * (T_s - T_bulk) / (h_sfc / 2) + F_h(T_s)
 
     # derivatives for Newton's method
