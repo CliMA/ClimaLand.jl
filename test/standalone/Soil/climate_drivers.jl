@@ -147,7 +147,7 @@ for FT in (Float32, Float64)
                 :sfc_scratch,
                 :PAR_albedo,
                 :NIR_albedo,
-                :sfc_θ_l,
+                :sfc_S_e,
                 :sub_sfc_scratch,
                 :infiltration,
                 :bottom_bc,

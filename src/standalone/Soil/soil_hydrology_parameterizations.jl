@@ -42,60 +42,44 @@ function update_albedo!(bc::AtmosDrivenFluxBC, p, soil_domain, model_parameters)
         NIR_albedo_wet,
         albedo_calc_top_thickness,
     ) = model_parameters
-    # ∫H_S_e_dz is the integral of effective saturation from (surface-albedo_calc_top_thickness) to surface
-    ∫H_S_e_dz = p.soil.sfc_θ_l
+    S_sfc = p.soil.sfc_S_e
     FT = eltype(soil_domain.fields.Δz_top)
     # checks if there is at least 1 layer centered within the top soil depth
-    if maximum(soil_domain.fields.Δz_top) < FT(0.5) * albedo_calc_top_thickness
+    if minimum(soil_domain.fields.Δz_top) < albedo_calc_top_thickness
+        # ∫H_S_e_dz is the integral of effective saturation from (surface-albedo_calc_top_thickness) to surface
+        ∫H_S_e_dz = p.soil.sfc_S_e
         # ∫H_dz is integral of 1 from (surface-albedo_calc_top_thickness) to surface
         ∫H_dz = p.soil.sfc_scratch
-        # calculate depths of layer centers
-        @. p.soil.sub_sfc_scratch =
-            soil_domain.fields.z_sfc - soil_domain.fields.z
         # zero all centers lower than boundary, set everything above to one
-        @. p.soil.sub_sfc_scratch =
-            ClimaLand.heaviside.(
-                FT(0.5) * albedo_calc_top_thickness + sqrt(eps(FT)),
-                p.soil.sub_sfc_scratch,
-            )
+        @. p.soil.sub_sfc_scratch = ClimaLand.heaviside(
+            albedo_calc_top_thickness + sqrt(eps(FT)),
+            soil_domain.fields.z_sfc - soil_domain.fields.z,
+        )
         ClimaCore.Operators.column_integral_definite!(
             ∫H_dz,
             p.soil.sub_sfc_scratch,
         )
-        # calculate depths again
+        # zeros all effective saturation at levels centered lower than boundary
         @. p.soil.sub_sfc_scratch =
-            soil_domain.fields.z_sfc - soil_domain.fields.z
-        # zeros all θ_l lower than boundary
-        @. p.soil.sub_sfc_scratch =
-            ClimaLand.heaviside.(
-                FT(0.5) * albedo_calc_top_thickness + sqrt(eps(FT)),
-                p.soil.sub_sfc_scratch,
+            ClimaLand.heaviside(
+                albedo_calc_top_thickness + sqrt(eps(FT)),
+                soil_domain.fields.z_sfc - soil_domain.fields.z,
             ) * effective_saturation(ν, p.soil.θ_l, θ_r)
         ClimaCore.Operators.column_integral_definite!(
             ∫H_S_e_dz,
             p.soil.sub_sfc_scratch,
         )
+        @. S_sfc = ∫H_S_e_dz / ∫H_dz
     else
-        # in the case where no layer is centered above boundary, use the top layer
-        ∫H_dz = soil_domain.fields.Δz_top
-        @. p.soil.sfc_scratch = soil_domain.fields.Δz_top + sqrt(eps(FT))
-        @. p.soil.sub_sfc_scratch =
-            soil_domain.fields.z_sfc - soil_domain.fields.z
-        # zeros all θ_l other than surface
-        @. p.soil.sub_sfc_scratch =
-            ClimaLand.heaviside.(p.soil.sfc_scratch, p.soil.sub_sfc_scratch) *
-            effective_saturation(ν, p.soil.θ_l, θ_r)
-        ClimaCore.Operators.column_integral_definite!(
-            ∫H_S_e_dz,
-            p.soil.sub_sfc_scratch,
+        # in the case where no layer is centered above boundary, use the values of the top layer
+        S_sfc .= ClimaLand.Domains.top_center_to_surface(
+            effective_saturation.(ν, p.soil.θ_l, θ_r),
         )
-        # here ∫H_S_e_dz is equivalent to the effective_saturation of the top layer
     end
-    @. p.soil.sfc_scratch = ∫H_S_e_dz / ∫H_dz
     @. p.soil.PAR_albedo =
-        albedo_from_moisture(p.soil.sfc_scratch, PAR_albedo_dry, PAR_albedo_wet)
+        albedo_from_moisture(S_sfc, PAR_albedo_dry, PAR_albedo_wet)
     @. p.soil.NIR_albedo =
-        albedo_from_moisture(p.soil.sfc_scratch, NIR_albedo_dry, NIR_albedo_wet)
+        albedo_from_moisture(S_sfc, NIR_albedo_dry, NIR_albedo_wet)
 end
 
 """
@@ -108,7 +92,7 @@ function update_albedo!(
     p,
     soil_domain,
     model_parameters,
-) where {BC <: AbstractBC} end
+) where {BC <: AbstractEnergyHydrologyBC} end
 """
     volumetric_liquid_fraction(ϑ_l::FT, ν_eff::FT, θ_r::FT) where {FT}
 

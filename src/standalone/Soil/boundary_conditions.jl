@@ -702,7 +702,7 @@ boundary_vars(bc::AtmosDrivenFluxBC, ::ClimaLand.TopBoundary) = (
     :sfc_scratch,
     :PAR_albedo,
     :NIR_albedo,
-    :sfc_θ_l,
+    :sfc_S_e,
     :sub_sfc_scratch,
     Runoff.runoff_vars(bc.runoff)...,
 )

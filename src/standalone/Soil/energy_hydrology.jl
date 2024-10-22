@@ -1074,7 +1074,7 @@ function create_soil_albedo_vars(
     path::String,
     surface_space;
     regridder_type = nothing,
-    regrider_kwargs = (),
+    regridder_kwargs = (),
     file_reader_kwargs = (),
     compose_function = identity,
 )
@@ -1083,7 +1083,7 @@ function create_soil_albedo_vars(
         "PAR_albedo_dry",
         surface_space;
         regridder_type,
-        regrider_kwargs,
+        regridder_kwargs,
         file_reader_kwargs,
         identity,
     )
@@ -1092,7 +1092,7 @@ function create_soil_albedo_vars(
         "NIR_albedo_dry",
         surface_space;
         regridder_type,
-        regrider_kwargs,
+        regridder_kwargs,
         file_reader_kwargs,
         identity,
     )
@@ -1101,7 +1101,7 @@ function create_soil_albedo_vars(
         "PAR_albedo_wet",
         surface_space;
         regridder_type,
-        regrider_kwargs,
+        regridder_kwargs,
         file_reader_kwargs,
         identity,
     )
@@ -1110,7 +1110,7 @@ function create_soil_albedo_vars(
         "NIR_albedo_wet",
         surface_space;
         regridder_type,
-        regrider_kwargs,
+        regridder_kwargs,
         file_reader_kwargs,
         identity,
     )
