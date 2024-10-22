@@ -71,7 +71,7 @@ Base.@kwdef struct EnergyHydrologyParameters{
     "Soil NIR Albedo wet"
     NIR_albedo_wet::SF
     "Thickness of top of soil used in albedo calculations (m)"
-    top_depth::FT
+    alebdo_calc_top_thickness::FT
     "Soil Emissivity"
     emissivity::FT
     "Roughness length for momentum"
