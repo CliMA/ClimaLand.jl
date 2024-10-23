@@ -212,21 +212,17 @@ simdir = ClimaAnalysis.SimDir(output_dir)
 short_names = ["rn", "tsfc", "qsfc", "lhf", "shf", "wsoil", "wsfc", "ssfc"]
 for short_name in short_names
     var = get(simdir; short_name)
-    times = ClimaAnalysis.times(var)
-    for t in times
-        var = get(simdir; short_name)
-        fig = CairoMakie.Figure(size = (800, 600))
-        kwargs = ClimaAnalysis.has_altitude(var) ? Dict(:z => 1) : Dict()
-        viz.heatmap2D_on_globe!(
-            fig,
-            ClimaAnalysis.slice(var, time = t; kwargs...),
-            mask = viz.oceanmask(),
-            more_kwargs = Dict(
-                :mask => ClimaAnalysis.Utils.kwargs(color = :white),
-            ),
-        )
-        CairoMakie.save(joinpath(output_dir, "$(short_name)_$t.png"), fig)
-    end
+    t = ClimaAnalysis.times(var)[end]
+    var = get(simdir; short_name)
+    fig = CairoMakie.Figure(size = (800, 600))
+    kwargs = ClimaAnalysis.has_altitude(var) ? Dict(:z => 1) : Dict()
+    viz.heatmap2D_on_globe!(
+        fig,
+        ClimaAnalysis.slice(var, time = t; kwargs...),
+        mask = viz.oceanmask(),
+        more_kwargs = Dict(:mask => ClimaAnalysis.Utils.kwargs(color = :white)),
+    )
+    CairoMakie.save(joinpath(output_dir, "$(short_name)_$t.png"), fig)
 end
 
 # Interpolate to grid
@@ -272,6 +268,6 @@ Ws = Array(Remapping.interpolate(remapper, sol.u[end].bucket.Ws))
 T_sfc = Array(Remapping.interpolate(remapper, prob.p.bucket.T_sfc))
 
 # save prognostic state to CSV - for comparison between GPU and CPU output
-open(joinpath(output_dir, "tf_state_$(device_suffix)_staticmap.txt"), "w") do io
+open(joinpath(output_dir, "tf_state_$(device_suffix)_era5.txt"), "w") do io
     writedlm(io, hcat(T_sfc[:], W[:], Ws[:], σS[:]), ',')
 end;

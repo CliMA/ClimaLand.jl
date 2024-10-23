@@ -224,21 +224,17 @@ simdir = ClimaAnalysis.SimDir(output_dir)
 short_names = ["rn", "tsfc", "qsfc", "lhf", "shf", "wsoil", "wsfc", "ssfc"]
 for short_name in short_names
     var = get(simdir; short_name)
-    times = ClimaAnalysis.times(var)
-    for t in times
-        var = get(simdir; short_name)
-        fig = CairoMakie.Figure(size = (800, 600))
-        kwargs = ClimaAnalysis.has_altitude(var) ? Dict(:z => 1) : Dict()
-        viz.heatmap2D_on_globe!(
-            fig,
-            ClimaAnalysis.slice(var, time = t; kwargs...),
-            mask = viz.oceanmask(),
-            more_kwargs = Dict(
-                :mask => ClimaAnalysis.Utils.kwargs(color = :white),
-            ),
-        )
-        CairoMakie.save(joinpath(output_dir, "$(short_name)_$t.png"), fig)
-    end
+    t = ClimaAnalysis.times(var)[end]
+    var = get(simdir; short_name)
+    fig = CairoMakie.Figure(size = (800, 600))
+    kwargs = ClimaAnalysis.has_altitude(var) ? Dict(:z => 1) : Dict()
+    viz.heatmap2D_on_globe!(
+        fig,
+        ClimaAnalysis.slice(var, time = t; kwargs...),
+        mask = viz.oceanmask(),
+        more_kwargs = Dict(:mask => ClimaAnalysis.Utils.kwargs(color = :white)),
+    )
+    CairoMakie.save(joinpath(output_dir, "$(short_name)_$t.png"), fig)
 end
 
 if PROFILING

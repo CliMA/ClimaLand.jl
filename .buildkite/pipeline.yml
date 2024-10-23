@@ -178,8 +178,8 @@ steps:
         artifact_paths:
         artifact_paths:
           - "experiments/standalone/Bucket/artifacts_temporalmap_cpu/output_0000/*png"
-          - "experiments/standalone/Bucket/artifacts_temporalmap_cpu/output_0001/*html"
-          - "experiments/standalone/Bucket/artifacts_temporalmap_cpu/output_0002/*html"
+          - "experiments/standalone/Bucket/artifacts_temporalmap_cpu/*html"
+          - "experiments/standalone/Bucket/artifacts_temporalmap_cpu/*html"
 
   - group: "GPU: unit tests and global bucket"
     steps:
@@ -220,8 +220,8 @@ steps:
           CLIMACOMMS_DEVICE: "CUDA"
         artifact_paths:
           - "experiments/standalone/Bucket/artifacts_temporalmap_gpu/output_0000/*png"
-          - "experiments/standalone/Bucket/artifacts_temporalmap_gpu/output_0001/*html"
-          - "experiments/standalone/Bucket/artifacts_temporalmap_gpu/output_0002/*html"
+          - "experiments/standalone/Bucket/artifacts_temporalmap_gpu/*html"
+          - "experiments/standalone/Bucket/artifacts_temporalmap_gpu/*html"
 
   - group: "CPU/GPU comparisons"
     steps:
