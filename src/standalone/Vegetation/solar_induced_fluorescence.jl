@@ -110,14 +110,14 @@ function compute_SIF_at_a_point(
     (; kf, kd_p1, kd_p2, min_kd, kn_p1, kn_p2, kp, kappa_p1, kappa_p2) =
         sif_parameters
     kd = max(kd_p1 * (Tc - T_freeze) + kd_p2, min_kd)
-    x = 1 - J / Jmax
+    x = 1 - J / max(Jmax, eps(FT))
     kn = (kn_p1 * x - kn_p2) * x
-    ϕp0 = kp / (kf + kp + kn)
-    ϕp = J / Jmax * ϕp0
-    ϕf = kf / (kf + kd + kn) * (1 - ϕp)
+    ϕp0 = kp / max(kf + kp + kn, eps(FT))
+    ϕp = J / max(Jmax, eps(FT)) * ϕp0
+    ϕf = kf / max(kf + kp + kn, eps(FT)) * (1 - ϕp)
     κ = kappa_p1 * Vcmax25 * FT(1e6) + kappa_p2 # formula expects Vcmax25 in μmol/m^2/s
     F = APAR * ϕf
-    SIF_755 = F / κ
+    SIF_755 = F / max(κ, eps(FT))
 
     return SIF_755
 end

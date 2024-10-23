@@ -179,8 +179,19 @@ function default_diagnostics(
             "ghf",
         ]
     elseif output_vars == :short
-        soilcanopy_diagnostics =
-            ["gpp", "ct", "lai", "swc", "si", "swa", "lwu", "et", "er", "sr"]
+        soilcanopy_diagnostics = [
+            "gpp",
+            "ct",
+            "lai",
+            "swc",
+            "si",
+            "swa",
+            "lwu",
+            "et",
+            "er",
+            "sr",
+            "sif",
+        ]
     end
 
     if average_period == :hourly
