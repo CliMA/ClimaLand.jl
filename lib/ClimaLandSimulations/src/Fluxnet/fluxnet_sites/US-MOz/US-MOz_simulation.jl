@@ -25,7 +25,7 @@ export ozark_default_args
 		)
 	end
 
-Named Tuple containing default simulation parameter for the Ozark site. 
+Named Tuple containing default simulation parameter for the Ozark site.
 """
 function ozark_default_args(;
     dz_bottom = FT(1.5),
@@ -35,7 +35,7 @@ function ozark_default_args(;
     h_stem = FT(9),
     h_leaf = FT(9.5),
     t0 = Float64(120 * 3600 * 24),
-    dt = Float64(120),
+    dt = Float64(900),
     n = 15,
 )
     return (

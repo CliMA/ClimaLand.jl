@@ -20,10 +20,15 @@ ClimaComms.@import_required_backends
 using Dates
 using DelimitedFiles
 using Statistics
+using ClimaDiagnostics
 using ClimaUtilities.ClimaArtifacts
 import Interpolations
-import ClimaCoreMakie
+import ClimaAnalysis
+import ClimaAnalysis
+import GeoMakie
+import ClimaAnalysis.Visualize as viz
 using CairoMakie
+import ClimaUtilities
 import ClimaUtilities.TimeVaryingInputs:
     TimeVaryingInput, LinearInterpolation, PeriodicCalendar
 import ClimaUtilities.OutputPathGenerator: generate_output_path
@@ -65,7 +70,6 @@ function compute_clims(v)
     return (minimum(means) - maximum(sigmas), maximum(means) + maximum(sigmas))
 end
 
-anim_plots = true
 # Set to true if you want to run a regional simulation. By default, it is false,
 # unless the `CLIMALAND_CI_REGIONAL_BUCKET` environment variable is defined.
 regional_simulation = haskey(ENV, "CLIMALAND_CI_REGIONAL_BUCKET")
@@ -75,16 +79,15 @@ regridder_type = :InterpolationsRegridder
 FT = Float64;
 context = ClimaComms.context()
 earth_param_set = LP.LandParameters(FT);
+# Use separate output directory for CPU and GPU runs to avoid race condition
 device_suffix =
     typeof(ClimaComms.context().device) <: ClimaComms.CPUSingleThreaded ?
     "cpu" : "gpu"
-outdir = generate_output_path(
-    joinpath(
-        "experiments/standalone/Bucket/artifacts_staticmap$(regional_str)",
-        device_suffix,
-    ),
+outdir = joinpath(
+    pkgdir(ClimaLand),
+    "experiments/standalone/Bucket/artifacts_era5$(regional_str)_$(device_suffix)",
 )
-!ispath(outdir) && mkpath(outdir)
+output_dir = ClimaUtilities.OutputPathGenerator.generate_output_path(outdir)
 
 # Set up simulation domain
 soil_depth = FT(3.5);
@@ -125,8 +128,8 @@ tf = 14 * 86400;
 Δt = 3600.0 / 3;
 
 # Construct albedo parameter object using static map
-# Use separate regridding directory for CPU and GPU runs to avoid race condition
 surface_space = bucket_domain.space.surface
+subsurface_space = bucket_domain.space.subsurface
 α_snow = FT(0.8)
 albedo = PrescribedBaregroundAlbedo{FT}(α_snow, surface_space);
 
@@ -182,7 +185,21 @@ updateat = copy(saveat)
 drivers = ClimaLand.get_drivers(model)
 updatefunc = ClimaLand.make_update_drivers(drivers)
 driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
-cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
+
+# Diagnostics
+nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(subsurface_space, output_dir)
+diags = ClimaLand.default_diagnostics(
+    model,
+    start_date;
+    output_writer = nc_writer,
+    average_period = :daily,
+)
+
+diagnostic_handler =
+    ClimaDiagnostics.DiagnosticsHandler(diags, Y, p, t0; dt = Δt)
+
+diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler)
+cb = SciMLBase.CallbackSet(driver_cb, saving_cb, diag_cb)
 
 sol = ClimaComms.@time ClimaComms.device() SciMLBase.solve(
     prob,
@@ -191,6 +208,23 @@ sol = ClimaComms.@time ClimaComms.device() SciMLBase.solve(
     saveat = saveat,
     callback = cb,
 );
+
+simdir = ClimaAnalysis.SimDir(output_dir)
+short_names = ["rn", "tsfc", "qsfc", "lhf", "shf", "wsoil", "wsfc", "ssfc"]
+for short_name in short_names
+    var = get(simdir; short_name)
+    t = ClimaAnalysis.times(var)[end]
+    var = get(simdir; short_name)
+    fig = CairoMakie.Figure(size = (800, 600))
+    kwargs = ClimaAnalysis.has_altitude(var) ? Dict(:z => 1) : Dict()
+    viz.heatmap2D_on_globe!(
+        fig,
+        ClimaAnalysis.slice(var, time = t; kwargs...),
+        mask = viz.oceanmask(),
+        more_kwargs = Dict(:mask => ClimaAnalysis.Utils.kwargs(color = :white)),
+    )
+    CairoMakie.save(joinpath(output_dir, "$(short_name)_$t.png"), fig)
+end
 
 # Interpolate to grid
 space = axes(coords.surface)
@@ -229,109 +263,12 @@ end
 hcoords = [Geometry.LatLongPoint(lat, long) for long in longpts, lat in latpts]
 remapper = Remapping.Remapper(space, hcoords)
 
-W = [
-    Array(Remapping.interpolate(remapper, sol.u[k].bucket.W)) for
-    k in 1:length(sol.t)
-];
-Ws = [
-    Array(Remapping.interpolate(remapper, sol.u[k].bucket.Ws)) for
-    k in 1:length(sol.t)
-];
-σS = [
-    Array(Remapping.interpolate(remapper, sol.u[k].bucket.σS)) for
-    k in 1:length(sol.t)
-];
-T_sfc = [
-    Array(
-        Remapping.interpolate(remapper, saved_values.saveval[k].bucket.T_sfc),
-    ) for k in 1:length(sol.t)
-];
-evaporation = [
-    Array(
-        Remapping.interpolate(
-            remapper,
-            saved_values.saveval[k].bucket.turbulent_fluxes.vapor_flux,
-        ),
-    ) for k in 1:length(sol.t)
-];
-F_sfc = [
-    Array(
-        Remapping.interpolate(
-            remapper,
-            saved_values.saveval[k].bucket.R_n .+
-            saved_values.saveval[k].bucket.turbulent_fluxes.lhf .+
-            saved_values.saveval[k].bucket.turbulent_fluxes.shf,
-        ),
-    ) for k in 1:length(sol.t)
-];
-
-sw_forcing = [
-    Array(
-        Remapping.interpolate(remapper, saved_values.saveval[k].drivers.SW_d),
-    ) for k in 1:length(sol.t)
-];
+W = Array(Remapping.interpolate(remapper, sol.u[end].bucket.W))
+Ws = Array(Remapping.interpolate(remapper, sol.u[end].bucket.Ws))
+σS = Array(Remapping.interpolate(remapper, sol.u[end].bucket.σS))
+T_sfc = Array(Remapping.interpolate(remapper, prob.p.bucket.T_sfc))
 
 # save prognostic state to CSV - for comparison between GPU and CPU output
-open(joinpath(outdir, "tf_state_$(device_suffix)_staticmap.txt"), "w") do io
-    writedlm(io, hcat(T_sfc[end][:], W[end][:], Ws[end][:], σS[end][:]), ',')
+open(joinpath(output_dir, "tf_state_$(device_suffix)_era5.txt"), "w") do io
+    writedlm(io, hcat(T_sfc[:], W[:], Ws[:], σS[:]), ',')
 end;
-# animation settings
-nframes = length(T_sfc) # hourly data
-fig_ts = Figure(size = (1000, 1000))
-for (i, (field_ts, field_name)) in enumerate(
-    zip(
-        [W, σS, T_sfc, evaporation, F_sfc, sw_forcing],
-        ["W", "σS", "T_sfc", "evaporation", "F_sfc", "SW forcing"],
-    ),
-)
-    if anim_plots
-        fig = Figure(size = (1000, 1000))
-        ax = Axis(
-            fig[1, 1],
-            xlabel = "Longitude",
-            ylabel = "Latitude",
-            title = field_name,
-        )
-        clims = compute_clims(field_ts)
-        CairoMakie.Colorbar(fig[:, end + 1], colorrange = clims)
-        outfile = joinpath(
-            outdir,
-            string("anim_$(device_suffix)_", field_name, ".mp4"),
-        )
-        record(
-            fig,
-            outfile,
-            (nframes - 7 * 24):2:nframes;
-            framerate = 3,
-        ) do frame
-            CairoMakie.heatmap!(
-                longpts,
-                latpts,
-                field_ts[frame],
-                colorrange = clims,
-            )
-        end
-    end
-
-end
-outfile = joinpath(outdir, string("ts_$device_suffix.png"))
-CairoMakie.save(outfile, fig_ts)
-
-if device_suffix == "cpu"
-    W_raw = sol.u[end].bucket.W
-    σS_raw = sol.u[end].bucket.σS
-    T_sfc_raw = saved_values.saveval[end].bucket.T_sfc
-    fields = [W_raw, σS_raw, T_sfc_raw]
-    titles = ["W", "σS", "T_sfc"]
-    for (f, n) in zip(fields, titles)
-        fig = Figure(size = (1000, 1000))
-        ax = Axis(fig[1, 1], title = n)
-        clims = extrema(f)
-        ClimaCoreMakie.fieldheatmap!(ax, f)
-        Colorbar(fig[:, end + 1], colorrange = clims)
-        CairoMakie.save(
-            joinpath(outdir, string(n, "raw_$(device_suffix).png")),
-            fig,
-        )
-    end
-end

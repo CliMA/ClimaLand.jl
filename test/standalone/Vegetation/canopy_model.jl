@@ -1158,6 +1158,7 @@ end
             mechanism_field,
         )
         # create one case where parameters are spatially varying and one where not
+        Ω_cases = (FT(0.69), fill(FT(0.69), domain.space.surface))
         g1_cases = (FT(790), fill(FT(790), domain.space.surface))
         Vcmax25_cases = (FT(9e-5), fill(FT(9e-5), domain.space.surface))
         mechanism_cases = (FT(1), mechanism_field)
@@ -1168,6 +1169,7 @@ end
         τ_NIR_leaf_cases = (FT(0.25), fill(FT(0.25), domain.space.surface))
         χl_cases = (FT(0.1), fill(FT(0.1), domain.space.surface))
         zipped_params = zip(
+            Ω_cases,
             g1_cases,
             Vcmax25_cases,
             mechanism_cases,
@@ -1179,6 +1181,7 @@ end
             χl_cases,
         )
         for (
+            Ω,
             g1,
             Vcmax25,
             is_c3,
@@ -1191,7 +1194,6 @@ end
         ) in zipped_params
             BeerLambertparams = BeerLambertParameters(FT)
             # TwoStreamModel parameters
-            Ω = FT(0.69)
             G_Function = CLMGFunction(χl)
             λ_γ_PAR = FT(5e-7)
             λ_γ_NIR = FT(1.65e-6)

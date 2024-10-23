@@ -218,6 +218,12 @@ function run_fluxnet(
     )
     Y, p, cds = initialize(land)
     exp_tendency! = make_exp_tendency(land)
+    imp_tendency! = make_imp_tendency(land)
+    jacobian! = make_jacobian(land)
+    jac_kwargs = (;
+        jac_prototype = ClimaLand.ImplicitEquationJacobian(Y),
+        Wfact = jacobian!,
+    )
 
     #Initial conditions
     Y.soil.ϑ_l =
@@ -285,7 +291,11 @@ function run_fluxnet(
     cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
 
     prob = SciMLBase.ODEProblem(
-        CTS.ClimaODEFunction((T_exp!) = exp_tendency!),
+        CTS.ClimaODEFunction(
+            T_exp! = exp_tendency!,
+            T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
+            dss! = ClimaLand.dss!,
+        ),
         Y,
         (setup.t0, timestepper.tf),
         p,

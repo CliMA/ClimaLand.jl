@@ -32,7 +32,8 @@ export AbstractAtmosphericDrivers,
     specific_humidity_from_dewpoint,
     make_update_drivers,
     prescribed_lai_era5,
-    prescribed_forcing_era5
+    prescribed_forcing_era5,
+    prescribed_analytic_forcing
 
 """
      AbstractClimaLandDrivers{FT <: AbstractFloat}
@@ -1181,4 +1182,72 @@ function prescribed_lai_era5(
         method = time_interpolation_method,
         compose_function = (hv, lv) -> hv + lv,
     )
+end
+
+
+"""
+     prescribed_analytic_forcing(FT = Float32;
+                                 earth_param_set = LP.LandParameters(FT),
+                                 start_date = DateTime(2005),
+                                 SW_d = (t) -> 0,
+                                 LW_d = (t) -> 5.67e-8 * 280.0^4.0,
+                                 precip = (t) -> 0, # no precipitation
+                                 T_atmos = (t) -> 280.0,
+                                 u_atmos = (t) -> 1.0,
+                                 q_atmos = (t) -> 0.0, # no atmos water
+                                 h_atmos = FT(1e-8),
+                                 P_atmos = (t) -> 101325,
+                                 atmos = PrescribedAtmosphere(
+                                     TimeVaryingInput(precip),
+                                     TimeVaryingInput(precip),
+                                     TimeVaryingInput(T_atmos),
+                                     TimeVaryingInput(u_atmos),
+                                     TimeVaryingInput(q_atmos),
+                                     TimeVaryingInput(P_atmos),
+                                     start_date,
+                                     h_atmos,
+                                     earth_param_set,
+                                 ),
+                                 radiation = PrescribedRadiativeFluxes(
+                                     FT,
+                                     TimeVaryingInput(SW_d),
+                                     TimeVaryingInput(LW_d),
+                                     start_date,
+                                 ),
+                             )
+
+A helper function which constructs the `PrescribedAtmosphere` and `PrescribedRadiativeFluxes`
+for a simple analytic case.
+"""
+function prescribed_analytic_forcing(
+    FT = Float32;
+    earth_param_set = LP.LandParameters(FT),
+    start_date = DateTime(2005),
+    SW_d = (t) -> 0,
+    LW_d = (t) -> 5.67e-8 * 280.0^4.0,
+    precip = (t) -> 0, # no precipitation
+    T_atmos = (t) -> 280.0,
+    u_atmos = (t) -> 1.0,
+    q_atmos = (t) -> 0.0, # no atmos water
+    h_atmos = FT(1e-8),
+    P_atmos = (t) -> 101325,
+    atmos = PrescribedAtmosphere(
+        TimeVaryingInput(precip),
+        TimeVaryingInput(precip),
+        TimeVaryingInput(T_atmos),
+        TimeVaryingInput(u_atmos),
+        TimeVaryingInput(q_atmos),
+        TimeVaryingInput(P_atmos),
+        start_date,
+        h_atmos,
+        earth_param_set,
+    ),
+    radiation = PrescribedRadiativeFluxes(
+        FT,
+        TimeVaryingInput(SW_d),
+        TimeVaryingInput(LW_d),
+        start_date,
+    ),
+)
+    return atmos, radiation
 end
