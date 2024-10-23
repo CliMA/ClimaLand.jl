@@ -43,6 +43,7 @@ import StatsBase: percentile
 using Dates
 using Insolation
 using StaticArrays
+import ClimaUtilities.OutputPathGenerator: generate_output_path
 
 # Load CliMA Packages and ClimaLand Modules:
 
@@ -276,15 +277,9 @@ for dt in dts
         push!(times, sol.t)
     end
 end
-
-savedir = joinpath(
-    pkgdir(ClimaLand),
-    "experiments",
-    "standalone",
-    "Vegetation",
-    "timestep_test",
+savedir = generate_output_path(
+    joinpath("experiments", "standalone", "Vegetation", "timestep_test"),
 );
-!ispath(savedir) && mkpath(savedir)
 
 # Create plot with statistics
 # Compare T state computed with small vs large dt

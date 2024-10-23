@@ -127,11 +127,11 @@ steps:
 
       - label: "Canopy Implicit Stepping CPU"
         command: "julia --color=yes --project=.buildkite experiments/standalone/Vegetation/timestep_test.jl"
-        artifact_paths: "experiments/standalone/Vegetation/timestep_test/*"
+        artifact_paths: "experiments/standalone/Vegetation/timestep_test/output_active/*"
 
       - label: "SoilCanopy Implicit Stepping CPU"
         command: "julia --color=yes --project=.buildkite experiments/integrated/performance/integrated_timestep_test.jl"
-        artifact_paths: "experiments/integrated/performance/integrated_timestep_test/*"
+        artifact_paths: "experiments/integrated/performance/integrated_timestep_test/output_active*"
 
   - group: "Experiments on GPU"
     steps:
