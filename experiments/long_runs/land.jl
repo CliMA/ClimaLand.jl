@@ -74,13 +74,10 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         dz_tuple = FT.((10.0, 0.05)),
     )
     surface_space = domain.space.surface
-    
+
     # Land Mask Example
-    extrapolation_bc = (
-        Interpolations.Periodic(),
-        Interpolations.Flat(),
-    )
-    comms_ctx = ClimaComms.context(surface_space);
+    extrapolation_bc = (Interpolations.Periodic(), Interpolations.Flat())
+    comms_ctx = ClimaComms.context(surface_space)
     soil_params_mask = SpaceVaryingInput(
         ClimaLand.Artifacts.earth_orography_file_path(; context = comms_ctx),
         "z",
@@ -89,9 +86,9 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         file_reader_kwargs = (; preprocess_func = (data) -> data >= 0),
     )
     # TODO : Define smoothing operation in preprocess pipeline
-    
+
     subsurface_space = domain.space.subsurface
-    
+
     start_date = DateTime(2021)
     # Forcing data
     era5_artifact_path =
