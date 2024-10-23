@@ -76,9 +76,8 @@ earth_param_set = LP.LandParameters(FT);
 device_suffix =
     typeof(ClimaComms.context().device) <: ClimaComms.CPUSingleThreaded ?
     "cpu" : "gpu"
-outdir =
-    "experiments/standalone/Bucket/artifacts_temporalmap_$(device_suffix)", t0 =
-        0.0;
+outdir = "experiments/standalone/Bucket/artifacts_temporalmap_$(device_suffix)"
+t0 = 0.0;
 # run for 50 days to test monthly file update
 tf = 50 * 86400;
 Δt = 3600.0;

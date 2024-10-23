@@ -192,7 +192,7 @@ sol = ClimaComms.@time ClimaComms.device() SciMLBase.solve(
 #### ClimaAnalysis ####
 
 # all
-simdir = ClimaAnalysis.SimDir(outdir)
+simdir = ClimaAnalysis.SimDir(output_dir)
 short_names_2D = [
     "swa",
     "rn",
@@ -213,7 +213,7 @@ for short_name in vcat(short_names_2D..., short_names_3D...)
     fig = CairoMakie.Figure(size = (800, 600))
     kwargs = short_name in short_names_2D ? Dict() : Dict(:z => 1)
     viz.plot!(fig, var, lon = 0, lat = 0; kwargs...)
-    CairoMakie.save(joinpath(outdir, "$short_name.png"), fig)
+    CairoMakie.save(joinpath(output_dir, "$short_name.png"), fig)
 end
 
 # Interpolate to grid

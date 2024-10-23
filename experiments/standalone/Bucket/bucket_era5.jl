@@ -83,9 +83,8 @@ earth_param_set = LP.LandParameters(FT);
 device_suffix =
     typeof(ClimaComms.context().device) <: ClimaComms.CPUSingleThreaded ?
     "cpu" : "gpu"
-outdir =
-    "experiments/standalone/Bucket/artifacts_era5$(regional_str)_$(device_suffix)",
-    output_dir = ClimaUtilities.OutputPathGenerator.generate_output_path(outdir)
+outdir = "experiments/standalone/Bucket/artifacts_era5$(regional_str)_$(device_suffix)"
+output_dir = ClimaUtilities.OutputPathGenerator.generate_output_path(outdir)
 
 # Set up simulation domain
 soil_depth = FT(3.5);
