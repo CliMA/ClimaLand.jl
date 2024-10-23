@@ -68,10 +68,7 @@ earth_param_set = LP.LandParameters(FT);
 device_suffix =
     typeof(ClimaComms.context().device) <: ClimaComms.CPUSingleThreaded ?
     "cpu" : "gpu"
-outdir = joinpath(
-    pkgdir(ClimaLand),
-    "experiments/standalone/Bucket/artifacts_function_$(device_suffix)",
-)
+outdir = "experiments/standalone/Bucket/artifacts_function_$(device_suffix)"
 
 # Construct simulation domain
 soil_depth = FT(3.5);
@@ -166,9 +163,11 @@ prob = SciMLBase.ODEProblem(
 );
 
 # ClimaDiagnostics
+output_dir = ClimaUtilities.OutputPathGenerator.generate_output_path(outdir)
+
 space = bucket_domain.space.subsurface
 
-nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(space, outdir)
+nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(space, output_dir)
 
 diags =
     ClimaLand.default_diagnostics(model, start_date; output_writer = nc_writer)
