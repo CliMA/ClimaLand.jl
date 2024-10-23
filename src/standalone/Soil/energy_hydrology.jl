@@ -1085,7 +1085,7 @@ function create_soil_albedo_vars(
         regridder_type,
         regridder_kwargs,
         file_reader_kwargs,
-        identity,
+        compose_function,
     )
     NIR_albedo_dry = SpaceVaryingInput(
         path,
@@ -1094,7 +1094,7 @@ function create_soil_albedo_vars(
         regridder_type,
         regridder_kwargs,
         file_reader_kwargs,
-        identity,
+        compose_function,
     )
     PAR_albedo_wet = SpaceVaryingInput(
         path,
@@ -1103,7 +1103,7 @@ function create_soil_albedo_vars(
         regridder_type,
         regridder_kwargs,
         file_reader_kwargs,
-        identity,
+        compose_function,
     )
     NIR_albedo_wet = SpaceVaryingInput(
         path,
@@ -1112,7 +1112,7 @@ function create_soil_albedo_vars(
         regridder_type,
         regridder_kwargs,
         file_reader_kwargs,
-        identity,
+        compose_function,
     )
 
     return PAR_albedo_dry, NIR_albedo_dry, PAR_albedo_wet, NIR_albedo_wet

@@ -67,6 +67,7 @@ using Thermodynamics
 using SurfaceFluxes
 using StaticArrays
 import SurfaceFluxes.Parameters as SFP
+import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
 import ClimaLand.Domains: Column, HybridBox, SphericalShell
 import ClimaLand:
     AbstractImExModel,

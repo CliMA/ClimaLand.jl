@@ -212,7 +212,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (10, 10, 15))
 
     PAR_albedo_dry, NIR_albedo_dry, PAR_albedo_wet, NIR_albedo_wet =
         Soil.create_soil_albedo_vars(
-            clm_artifact_path,
+            joinpath(clm_artifact_path, "soil_properties_map.nc"),
             surface_space;
             regridder_type,
             regridder_kwargs = (; extrapolation_bc,),
