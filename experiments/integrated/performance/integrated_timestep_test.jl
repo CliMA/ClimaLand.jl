@@ -103,8 +103,9 @@ function set_initial_conditions(land, t0)
         )
 
     for i in 1:2
+        S_l = S_l_ini[i]
         Y.canopy.hydraulics.ϑ_l.:($i) .=
-            augmented_liquid_fraction.(canopy_params.ν, S_l_ini[i])
+            augmented_liquid_fraction.(canopy_params.ν, S_l)
     end
 
     Y.canopy.energy.T = FT(297.5)
@@ -175,14 +176,14 @@ function zenith_angle(
     t,
     start_date;
     cd_field = sfc_cds,
-    insol_params::Insolation.Parameters.InsolationParameters{FT} = earth_param_set.insol_params,
-) where {FT}
+    insol_params::Insolation.Parameters.InsolationParameters{_FT} = earth_param_set.insol_params,
+) where {_FT}
     # This should be time in UTC
     current_datetime = start_date + Dates.Second(round(t))
 
     # Orbital Data uses Float64, so we need to convert to our sim FT
     d, δ, η_UTC =
-        FT.(
+        _FT.(
             Insolation.helper_instantaneous_zenith_angle(
                 current_datetime,
                 start_date,

@@ -521,7 +521,7 @@ end
         set_canopy_prescribed_field!(Default{FT}(), p, t0)
         # Test that they are unchanged
         @test all(
-            parent(p.canopy.hydraulics.area_index.leaf) .==
+            Array(parent(p.canopy.hydraulics.area_index.leaf)) .==
             ClimaLand.Canopy.PlantHydraulics.clip(
                 FT(LAI * sin(200 * 2π / 365)),
                 FT(0.05),
@@ -1066,8 +1066,7 @@ end
         imp_tendency!(dY, Y, p, t0)
         jac = ImplicitEquationJacobian(Y)
         jacobian!(jac, Y, p, FT(1), t0)
-        jac_value =
-            parent(jac.matrix[@name(canopy.energy.T), @name(canopy.energy.T)])
+        jac_value = jac.matrix[@name(canopy.energy.T), @name(canopy.energy.T)]
         ΔT = FT(0.01)
 
         Y_2 = deepcopy(Y)
@@ -1099,8 +1098,9 @@ end
                 p.canopy.radiative_transfer.LW_n
             ) ./ ΔT
         estimated_LW = p.canopy.energy.∂LW_n∂Tc
-        @test parent(abs.(finitediff_LW .- estimated_LW) ./ finitediff_LW)[1] <
-              0.01
+        @test Array(
+            parent(abs.(finitediff_LW .- estimated_LW) ./ finitediff_LW),
+        )[1] < 0.01
 
         finitediff_SHF =
             (
@@ -1108,8 +1108,9 @@ end
                 p.canopy.energy.turbulent_fluxes.shf
             ) ./ ΔT
         estimated_SHF = p.canopy.energy.turbulent_fluxes.∂SHF∂Tc
-        @test parent(abs.(finitediff_SHF .- estimated_SHF) ./ finitediff_SHF)[1] <
-              0.15
+        @test Array(
+            parent(abs.(finitediff_SHF .- estimated_SHF) ./ finitediff_SHF),
+        )[1] < 0.15
 
         finitediff_LHF =
             (
@@ -1118,27 +1119,32 @@ end
             ) ./ ΔT
         estimated_LHF =
             p.canopy.energy.turbulent_fluxes.∂LHF∂qc .* p.canopy.energy.∂qc∂Tc
-        @test parent(abs.(finitediff_LHF .- estimated_LHF) ./ finitediff_LHF)[1] <
-              0.3
+        @test Array(
+            parent(abs.(finitediff_LHF .- estimated_LHF) ./ finitediff_LHF),
+        )[1] < 0.3
 
         # Error in `q` derivative is large
         finitediff_q = (q_sfc2 .- q_sfc) ./ ΔT
         estimated_q = p.canopy.energy.∂qc∂Tc
-        @test parent(abs.(finitediff_q .- estimated_q) ./ finitediff_q)[1] <
-              0.25
+        @test Array(
+            parent(abs.(finitediff_q .- estimated_q) ./ finitediff_q),
+        )[1] < 0.25
 
         # Im not sure why this is not smaller! There must be an error in ∂LHF∂qc also.
         estimated_LHF_with_correct_q =
             p.canopy.energy.turbulent_fluxes.∂LHF∂qc .* finitediff_q
-        @test parent(
-            abs.(finitediff_LHF .- estimated_LHF_with_correct_q) ./
-            finitediff_LHF,
+        @test Array(
+            parent(
+                abs.(finitediff_LHF .- estimated_LHF_with_correct_q) ./
+                finitediff_LHF,
+            ),
         )[1] < 0.5
 
         # Recall jac = ∂Ṫ∂T - 1 [dtγ = 1]
-        ∂Ṫ∂T = jac_value .+ 1
+        ∂Ṫ∂T = Array(parent(jac_value)) .+ 1
         @test (abs.(
-            parent((dY_2.canopy.energy.T .- dY.canopy.energy.T) ./ ΔT) - ∂Ṫ∂T
+            Array(parent((dY_2.canopy.energy.T .- dY.canopy.energy.T) ./ ΔT)) -
+            ∂Ṫ∂T
         ) / ∂Ṫ∂T)[1] < 0.25 # Error propagates here from ∂LHF∂T
     end
 end
@@ -1402,24 +1408,42 @@ end
                 t0 = FT(0.0)
                 set_initial_cache!(p, Y, t0)
 
-                @test all(parent(p.canopy.hydraulics.fa.:1) .== FT(0))
+                @test all(Array(parent(p.canopy.hydraulics.fa.:1)) .== FT(0))
                 @test all(
-                    parent(p.canopy.energy.turbulent_fluxes.lhf) .== FT(0),
-                )
-                @test all(
-                    parent(p.canopy.energy.turbulent_fluxes.shf) .== FT(0),
-                )
-                @test all(parent(p.canopy.energy.fa_energy_roots) .== FT(0))
-                @test all(parent(p.canopy.hydraulics.fa_roots) .== FT(0))
-                @test all(
-                    parent(p.canopy.energy.turbulent_fluxes.transpiration) .==
+                    Array(parent(p.canopy.energy.turbulent_fluxes.lhf)) .==
                     FT(0),
                 )
-                @test all(parent(p.canopy.radiative_transfer.LW_n) .== FT(0))
-                @test all(parent(p.canopy.radiative_transfer.SW_n) .== FT(0))
-                @test all(parent(p.canopy.radiative_transfer.par.abs) .== FT(0))
-                @test all(parent(p.canopy.radiative_transfer.nir.abs) .== FT(0))
-                @test all(parent(p.canopy.autotrophic_respiration.Ra) .== FT(0))
+                @test all(
+                    Array(parent(p.canopy.energy.turbulent_fluxes.shf)) .==
+                    FT(0),
+                )
+                @test all(
+                    Array(parent(p.canopy.energy.fa_energy_roots)) .== FT(0),
+                )
+                @test all(Array(parent(p.canopy.hydraulics.fa_roots)) .== FT(0))
+                @test all(
+                    Array(
+                        parent(p.canopy.energy.turbulent_fluxes.transpiration),
+                    ) .== FT(0),
+                )
+                @test all(
+                    Array(parent(p.canopy.radiative_transfer.LW_n)) .== FT(0),
+                )
+                @test all(
+                    Array(parent(p.canopy.radiative_transfer.SW_n)) .== FT(0),
+                )
+                @test all(
+                    Array(parent(p.canopy.radiative_transfer.par.abs)) .==
+                    FT(0),
+                )
+                @test all(
+                    Array(parent(p.canopy.radiative_transfer.nir.abs)) .==
+                    FT(0),
+                )
+                @test all(
+                    Array(parent(p.canopy.autotrophic_respiration.Ra)) .==
+                    FT(0),
+                )
             end
         end
     end
