@@ -35,7 +35,7 @@ All other outputs are saved using `ActiveLinkStyle` to (experiment_name)\_longru
 
 ### integrated and standalone
 
-Th experiments in experiments/long_runs and experiments/standalone have save paths that use `ActiveLinkStyle` and assume the experiments are being run from
+The experiments in experiments/long_runs and experiments/standalone have save paths that use `ActiveLinkStyle` and assume the experiments are being run from
 the ClimaLand.jl directory. If run from the ClimaLand.jl directory, then the outputs of an experiment will be saved into
 the same directory the experiment script is found in. Otherwise the outputs will be saved to
 the path of the script relative to the ClimaLand.jl directory.
