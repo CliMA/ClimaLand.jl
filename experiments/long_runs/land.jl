@@ -262,6 +262,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         regridder_type,
         regridder_kwargs = (; extrapolation_bc,),
     )
+    Ω .= ifelse.(Ω .== 0, 1.0, Ω)
     χl = SpaceVaryingInput(
         joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
         "xl",
