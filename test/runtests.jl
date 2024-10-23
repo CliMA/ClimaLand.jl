@@ -111,3 +111,8 @@ end
 @safetestset "Integrated soil and snow" begin
     include("integrated/soil_snow.jl")
 end
+
+# Simulations
+@safetestset "Default parameters" begin
+    include("simulations/spatial_parameters.jl")
+end

@@ -20,7 +20,6 @@ ClimaComms.@import_required_backends
 import ClimaTimeSteppers as CTS
 using ClimaCore
 using ClimaUtilities.ClimaArtifacts
-import Interpolations
 
 import ClimaDiagnostics
 import ClimaAnalysis
@@ -29,8 +28,6 @@ import ClimaUtilities
 
 import ClimaUtilities.TimeVaryingInputs:
     TimeVaryingInput, LinearInterpolation, PeriodicCalendar
-import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
-import ClimaUtilities.Regridders: InterpolationsRegridder
 import ClimaUtilities.ClimaArtifacts: @clima_artifact
 import ClimaParams as CP
 
@@ -47,7 +44,6 @@ import NCDatasets
 
 const FT = Float64;
 time_interpolation_method = LinearInterpolation(PeriodicCalendar())
-regridder_type = :InterpolationsRegridder
 context = ClimaComms.context()
 device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
@@ -57,7 +53,6 @@ outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
 
 function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (10, 10, 15))
-
     earth_param_set = LP.LandParameters(FT)
     radius = FT(6378.1e3)
     depth = FT(50)
@@ -85,130 +80,27 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (10, 10, 15))
         surface_space,
         start_date,
         earth_param_set,
-        FT;
-        time_interpolation_method = time_interpolation_method,
-        regridder_type = regridder_type,
+        FT,
     )
-    soil_params_artifact_path =
-        ClimaLand.Artifacts.soil_params_artifact_folder_path(; context)
-    extrapolation_bc = (
-        Interpolations.Periodic(),
-        Interpolations.Flat(),
-        Interpolations.Flat(),
-    )
-    soil_params_mask = SpaceVaryingInput(
-        joinpath(
-            soil_params_artifact_path,
-            "vGalpha_map_gupta_etal2020_1.0x1.0x4.nc",
-        ),
-        "α",
-        subsurface_space;
-        regridder_type,
-        regridder_kwargs = (; extrapolation_bc,),
-        file_reader_kwargs = (; preprocess_func = (data) -> data > 0,),
-    )
-    oceans_to_value(field, mask, value) =
-        mask == 1.0 ? field : eltype(field)(value)
-
-    vg_α = SpaceVaryingInput(
-        joinpath(
-            soil_params_artifact_path,
-            "vGalpha_map_gupta_etal2020_1.0x1.0x4.nc",
-        ),
-        "α",
-        subsurface_space;
-        regridder_type,
-        regridder_kwargs = (; extrapolation_bc,),
-    )
-    vg_n = SpaceVaryingInput(
-        joinpath(
-            soil_params_artifact_path,
-            "vGn_map_gupta_etal2020_1.0x1.0x4.nc",
-        ),
-        "n",
-        subsurface_space;
-        regridder_type,
-        regridder_kwargs = (; extrapolation_bc,),
-    )
-    x = parent(vg_α)
-    μ = mean(log10.(x[x .> 0]))
-    vg_α .= oceans_to_value.(vg_α, soil_params_mask, 10.0^μ)
-
-    x = parent(vg_n)
-    μ = mean(x[x .> 0])
-    vg_n .= oceans_to_value.(vg_n, soil_params_mask, μ)
-
-    vg_fields_to_hcm_field(α::FT, n::FT) where {FT} =
-        ClimaLand.Soil.vanGenuchten{FT}(; @NamedTuple{α::FT, n::FT}((α, n))...)
-    hydrology_cm = vg_fields_to_hcm_field.(vg_α, vg_n)
-
-    θ_r = SpaceVaryingInput(
-        joinpath(
-            soil_params_artifact_path,
-            "residual_map_gupta_etal2020_1.0x1.0x4.nc",
-        ),
-        "θ_r",
-        subsurface_space;
-        regridder_type,
-        regridder_kwargs = (; extrapolation_bc,),
-    )
-
-    ν = SpaceVaryingInput(
-        joinpath(
-            soil_params_artifact_path,
-            "porosity_map_gupta_etal2020_1.0x1.0x4.nc",
-        ),
-        "ν",
-        subsurface_space;
-        regridder_type,
-        regridder_kwargs = (; extrapolation_bc,),
-    )
-    K_sat = SpaceVaryingInput(
-        joinpath(
-            soil_params_artifact_path,
-            "ksat_map_gupta_etal2020_1.0x1.0x4.nc",
-        ),
-        "Ksat",
-        subsurface_space;
-        regridder_type,
-        regridder_kwargs = (; extrapolation_bc,),
-    )
-
-    x = parent(K_sat)
-    μ = mean(log10.(x[x .> 0]))
-    K_sat .= oceans_to_value.(K_sat, soil_params_mask, 10.0^μ)
-
-    ν .= oceans_to_value.(ν, soil_params_mask, 1)
-
-    θ_r .= oceans_to_value.(θ_r, soil_params_mask, 0)
-
-
-    S_s =
-        oceans_to_value.(
-            ClimaCore.Fields.zeros(subsurface_space) .+ FT(1e-3),
-            soil_params_mask,
-            1,
+    spatially_varying_soil_params =
+        ClimaLand.default_spatially_varying_soil_parameters(
+            subsurface_space,
+            surface_space,
+            FT,
         )
-    ν_ss_om =
-        oceans_to_value.(
-            ClimaCore.Fields.zeros(subsurface_space) .+ FT(0.1),
-            soil_params_mask,
-            0,
-        )
-    ν_ss_quartz =
-        oceans_to_value.(
-            ClimaCore.Fields.zeros(subsurface_space) .+ FT(0.1),
-            soil_params_mask,
-            0,
-        )
-    ν_ss_gravel =
-        oceans_to_value.(
-            ClimaCore.Fields.zeros(subsurface_space) .+ FT(0.1),
-            soil_params_mask,
-            0,
-        )
-    PAR_albedo = ClimaCore.Fields.zeros(surface_space) .+ FT(0.2)
-    NIR_albedo = ClimaCore.Fields.zeros(surface_space) .+ FT(0.2)
+    (;
+        ν,
+        ν_ss_om,
+        ν_ss_quartz,
+        ν_ss_gravel,
+        hydrology_cm,
+        K_sat,
+        S_s,
+        θ_r,
+        PAR_albedo,
+        NIR_albedo,
+        f_max,
+    ) = spatially_varying_soil_params
     soil_params = Soil.EnergyHydrologyParameters(
         FT;
         ν,
@@ -222,23 +114,6 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (10, 10, 15))
         PAR_albedo = PAR_albedo,
         NIR_albedo = NIR_albedo,
     )
-
-    soil_params_mask_sfc =
-        ClimaLand.Domains.top_center_to_surface(soil_params_mask)
-
-    # Read in f_max data and land sea mask
-    infile_path = ClimaLand.Artifacts.topmodel_data_path()
-    f_max =
-        SpaceVaryingInput(infile_path, "fmax", surface_space; regridder_type)
-    mask = SpaceVaryingInput(
-        infile_path,
-        "landsea_mask",
-        surface_space;
-        regridder_type,
-    )
-    # Unsure how to handle two masks
-    f_max = oceans_to_value.(f_max, mask, FT(0.0))
-    f_max = oceans_to_value.(f_max, soil_params_mask_sfc, FT(0.0))
     f_over = FT(3.28) # 1/m
     R_sb = FT(1.484e-4 / 1000) # m/s
     runoff_model = ClimaLand.Soil.Runoff.TOPMODELRunoff{FT}(;
@@ -247,93 +122,22 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (10, 10, 15))
         R_sb = R_sb,
     )
 
+    # Spatially varying canopy parameters from CLM
+    clm_parameters = ClimaLand.clm_canopy_parameters(surface_space)
+    (;
+        Ω,
+        rooting_depth,
+        is_c3,
+        Vcmax25,
+        g1,
+        G_Function,
+        α_PAR_leaf,
+        τ_PAR_leaf,
+        α_NIR_leaf,
+        τ_NIR_leaf,
+    ) = clm_parameters
     # Energy Balance model
-    ac_canopy = FT(2.5e4) # this will likely be 10x smaller!
-    #clm_data is used for g1, vcmax, rooting, and two_stream param maps
-    clm_artifact_path = ClimaLand.Artifacts.clm_data_folder_path(; context)
-
-    # Foliage clumping index data derived from MODIS
-    modis_ci_artifact_path =
-        ClimaLand.Artifacts.modis_ci_data_folder_path(; context)
-
-    # TwoStreamModel parameters
-    nans_to_one(x) = isnan(x) ? eltype(x)(1) : x
-    Ω = SpaceVaryingInput(
-        joinpath(modis_ci_artifact_path, "He_et_al_2012_1x1.nc"),
-        "ci",
-        surface_space;
-        regridder_type,
-        regridder_kwargs = (; extrapolation_bc,),
-        file_reader_kwargs = (; preprocess_func = nans_to_one,),
-    )
-
-    χl = SpaceVaryingInput(
-        joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
-        "xl",
-        surface_space;
-        regridder_type,
-        regridder_kwargs = (; extrapolation_bc,),
-    )
-    G_Function = CLMGFunction(χl)
-    α_PAR_leaf = SpaceVaryingInput(
-        joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
-        "rholvis",
-        surface_space;
-        regridder_type,
-        regridder_kwargs = (; extrapolation_bc,),
-    )
-    τ_PAR_leaf = SpaceVaryingInput(
-        joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
-        "taulvis",
-        surface_space;
-        regridder_type,
-        regridder_kwargs = (; extrapolation_bc,),
-    )
-    α_NIR_leaf = SpaceVaryingInput(
-        joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
-        "rholnir",
-        surface_space;
-        regridder_type,
-        regridder_kwargs = (; extrapolation_bc,),
-    )
-    τ_NIR_leaf = SpaceVaryingInput(
-        joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
-        "taulnir",
-        surface_space;
-        regridder_type,
-        regridder_kwargs = (; extrapolation_bc,),
-    )
-
-    # Conductance Model
-    # g1 is read in units of sqrt(kPa) and then converted to sqrt(Pa)
-    g1 = SpaceVaryingInput(
-        joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
-        "medlynslope",
-        surface_space;
-        regridder_type,
-        regridder_kwargs = (; extrapolation_bc,),
-        file_reader_kwargs = (; preprocess_func = (data) -> data * 10^(3 / 2),),
-    )
-
-    # vcmax is read in units of umol CO2/m^2/s and then converted to mol CO2/m^2/s
-    Vcmax25 = SpaceVaryingInput(
-        joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
-        "vcmx25",
-        surface_space;
-        regridder_type,
-        regridder_kwargs = (; extrapolation_bc,),
-        file_reader_kwargs = (; preprocess_func = (data) -> data / 1_000_000,),
-    )
-
-    # c3 is read in as a float
-    is_c3 = SpaceVaryingInput(
-        joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
-        "c3_dominant",
-        surface_space;
-        regridder_type,
-        regridder_kwargs = (; extrapolation_bc,),
-    )
-
+    ac_canopy = FT(2.5e3)
     # Plant Hydraulics and general plant parameters
     SAI = FT(0.0) # m2/m2
     f_root_to_shoot = FT(3.5)
@@ -347,13 +151,6 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (10, 10, 15))
     retention_model = Canopy.PlantHydraulics.LinearRetentionCurve{FT}(a)
     plant_ν = FT(1.44e-4)
     plant_S_s = FT(1e-2 * 0.0098) # m3/m3/MPa to m3/m3/m
-    rooting_depth = SpaceVaryingInput(
-        joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
-        "rooting_depth",
-        surface_space;
-        regridder_type,
-        regridder_kwargs = (; extrapolation_bc,),
-    )
     n_stem = 0
     n_leaf = 1
     h_stem = FT(0.0)
@@ -433,7 +230,6 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (10, 10, 15))
         surface_space,
         start_date;
         time_interpolation_method = time_interpolation_method,
-        regridder_type = regridder_type,
     )
     ai_parameterization =
         Canopy.PrescribedSiteAreaIndex{FT}(LAIfunction, SAI, RAI)
