@@ -257,12 +257,14 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
         ClimaLand.Artifacts.modis_ci_data_folder_path(; context)
 
     # TwoStreamModel parameters
+    nans_to_one(x) = isnan(x) ? eltype(x)(1) : x
     Ω = SpaceVaryingInput(
         joinpath(modis_ci_artifact_path, "He_et_al_2012_1x1.nc"),
         "ci",
-        surface_space,
+        surface_space;
         regridder_type,
         regridder_kwargs = (; extrapolation_bc,),
+        file_reader_kwargs = (; preprocess_func = nans_to_one,),
     )
     χl = SpaceVaryingInput(
         joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
