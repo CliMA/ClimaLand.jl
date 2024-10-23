@@ -325,4 +325,7 @@ include("integrated/soil_snow_model.jl")
 include(joinpath("diagnostics", "Diagnostics.jl"))
 import .Diagnostics: default_diagnostics
 
+# Simulations
+include(joinpath("simulations", "spatial_parameters.jl"))
+
 end

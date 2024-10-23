@@ -128,7 +128,6 @@ radiative_transfer_args = (;
 # Set up conductance
 conductance_args = (; parameters = Canopy.MedlynConductanceParameters(FT; g1))
 # Set up photosynthesis
-is_c3 = FT(1) # set the photosynthesis mechanism to C3
 photosynthesis_args =
     (; parameters = Canopy.FarquharParameters(FT, is_c3; Vcmax25 = Vcmax25))
 # Set up plant hydraulics
