@@ -13,16 +13,18 @@ jobs:
   lib-climalandsimulations:
     runs-on: ubuntu-20.04
     timeout-minutes: 45
+    strategy:
+      matrix:
+        version:
+          - '1.10'
+          - '1.11'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@latest
         with:
-          version:
-            - '1.10'
-            - '1.11'
-#  julia-actions/cache@v2 did not seem to invalidate cache correctly...
-#    - uses: julia-actions/cache@v2
+          version: ${{ matrix.version }}
+      - uses: julia-actions/cache@v2
       - name: Install Julia dependencies
         run: >
           julia --project=lib/ClimaLandSimulations -e 'using Pkg; Pkg.develop(path=".")'

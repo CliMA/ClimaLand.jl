@@ -21,13 +21,15 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
+      matrix:
+        version:
+          - '1.10'
+          - '1.11'
     steps:
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v2
         with:
-          version:
-            - '1.10'
-            - '1.11'
+          version: ${{ matrix.version }}
       - uses: julia-actions/cache@v2
       - uses: julia-actions/julia-buildpkg@v1
       - uses: actions/checkout@v4
@@ -38,4 +40,4 @@ jobs:
       - run: |
           julia --color=yes --project=ClimaCoupler.jl/experiments/ClimaEarth/ -e 'using Pkg; Pkg.instantiate()'
           julia --color=yes --project=ClimaCoupler.jl/experiments/ClimaEarth/ -e 'using Pkg; Pkg.develop(; path = ".")'
-          julia --color=yes --project=ClimaCoupler.jl/experiments/ClimaEarth/ ClimaCoupler.jl/experiments/ClimaEarth/run_amip.jl --config_file ClimaCoupler.jl/config/ci_configs/target_amip_albedo_function.yml --job_id target_amip_albedo_function
+          julia --color=yes --project=ClimaCoupler.jl/experiments/ClimaEarth/ ClimaCoupler.jl/experiments/ClimaEarth/test/runtests.jl

@@ -35,7 +35,9 @@ steps:
 
     agents:
       slurm_gpus: 1
-      slurm_ntasks: 8
+      # Ensures that we have all the 8 tasks on the same node
+      slurm_nodes: 1
+      slurm_ntasks_per_node: 8
     env:
       JULIA_NUM_PRECOMPILE_TASKS: 8
 
@@ -154,25 +156,30 @@ steps:
         key: "global_bucket_function_cpu"
         command: "julia --color=yes --project=.buildkite experiments/standalone/Bucket/global_bucket_function.jl"
         artifact_paths:
-          - "experiments/standalone/Bucket/artifacts/*cpu*"
-          - "experiments/standalone/Bucket/artifacts_function/output_active/*.png"
+          - "experiments/standalone/Bucket/artifacts_function_cpu/output_active/*.png"
 
       - label: "Global Bucket on CPU (static map albedo)"
         key: "bucket_era5_cpu"
         command: "julia --color=yes --project=.buildkite experiments/standalone/Bucket/bucket_era5.jl"
-        artifact_paths: "experiments/standalone/Bucket/artifacts_staticmap/*cpu*"
+        artifact_paths:
+          - "experiments/standalone/Bucket/artifacts_era5_cpu/output_active/*.png"
 
       - label: "Regional Bucket on CPU (static map albedo)"
         key: "regional_bucket_era5_cpu"
         command: "julia --color=yes --project=.buildkite experiments/standalone/Bucket/bucket_era5.jl"
-        artifact_paths: "experiments/standalone/Bucket/artifacts_staticmap_regional/*cpu*"
+        artifact_paths:
+          - "experiments/standalone/Bucket/artifacts_era5_regional_cpu/output_active/*.png"
         env:
           CLIMALAND_CI_REGIONAL_BUCKET: true
 
       - label: "Global Bucket on CPU (temporal map albedo)"
         key: "global_bucket_temporalmap_cpu"
         command: "julia --color=yes --project=.buildkite experiments/standalone/Bucket/global_bucket_temporalmap.jl"
-        artifact_paths: "experiments/standalone/Bucket/artifacts_temporalmap/*cpu*"
+        artifact_paths:
+        artifact_paths:
+          - "experiments/standalone/Bucket/artifacts_temporalmap_cpu/output_0000/*png"
+          - "experiments/standalone/Bucket/artifacts_temporalmap_cpu/*html"
+          - "experiments/standalone/Bucket/artifacts_temporalmap_cpu/*html"
 
   - group: "GPU: unit tests and global bucket"
     steps:
@@ -190,7 +197,8 @@ steps:
           slurm_gpus: 1
         env:
           CLIMACOMMS_DEVICE: "CUDA"
-        artifact_paths: "experiments/standalone/Bucket/artifacts/*gpu*"
+        artifact_paths:
+          - "experiments/standalone/Bucket/artifacts_function_gpu/output_active/*png"
 
       - label: "Global Bucket on GPU (static map albedo)"
         key: "bucket_era5_gpu"
@@ -200,7 +208,7 @@ steps:
           slurm_gpus: 1
         env:
           CLIMACOMMS_DEVICE: "CUDA"
-        artifact_paths: "experiments/standalone/Bucket/artifacts_staticmap/*gpu*"
+        artifact_paths: "experiments/standalone/Bucket/artifacts_era5_gpu/output_active/*png"
 
       - label: "Global Bucket on GPU (temporal map albedo)"
         key: "global_bucket_temporalmap_gpu"
@@ -210,7 +218,10 @@ steps:
           slurm_gpus: 1
         env:
           CLIMACOMMS_DEVICE: "CUDA"
-        artifact_paths: "experiments/standalone/Bucket/artifacts_temporalmap/*gpu*"
+        artifact_paths:
+          - "experiments/standalone/Bucket/artifacts_temporalmap_gpu/output_0000/*png"
+          - "experiments/standalone/Bucket/artifacts_temporalmap_gpu/*html"
+          - "experiments/standalone/Bucket/artifacts_temporalmap_gpu/*html"
 
   - group: "CPU/GPU comparisons"
     steps:
