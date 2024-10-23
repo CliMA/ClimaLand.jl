@@ -131,7 +131,7 @@ steps:
 
       - label: "SoilCanopy Implicit Stepping CPU"
         command: "julia --color=yes --project=.buildkite experiments/integrated/performance/integrated_timestep_test.jl"
-        artifact_paths: "experiments/integrated/performance/integrated_timestep_test/output_active*"
+        artifact_paths: "experiments/integrated/performance/integrated_timestep_test/output_active/*"
 
   - group: "Experiments on GPU"
     steps:
