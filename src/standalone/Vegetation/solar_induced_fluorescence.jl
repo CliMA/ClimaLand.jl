@@ -114,7 +114,7 @@ function compute_SIF_at_a_point(
     kn = (kn_p1 * x - kn_p2) * x
     ϕp0 = kp / max(kf + kp + kn, eps(FT))
     ϕp = J / max(Jmax, eps(FT)) * ϕp0
-    ϕf = kf / max(kf + kp + kn, eps(FT)) * (1 - ϕp)
+    ϕf = kf / max(kf + kd + kn, eps(FT)) * (1 - ϕp)
     κ = kappa_p1 * Vcmax25 * FT(1e6) + kappa_p2 # formula expects Vcmax25 in μmol/m^2/s
     F = APAR * ϕf
     SIF_755 = F / max(κ, eps(FT))
