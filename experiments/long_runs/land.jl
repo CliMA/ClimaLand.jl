@@ -57,6 +57,10 @@ diagnostics_outdir = joinpath(root_path, "global_diagnostics")
 outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
 
+function mask_land_tendencies(Yₜ, land_mask)
+    @. Yₜ *= land_mask
+end
+
 function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
 
     earth_param_set = LP.LandParameters(FT)
@@ -70,6 +74,19 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         dz_tuple = FT.((10.0, 0.05)),
     )
     surface_space = domain.space.surface
+
+    # Land Mask Example
+    extrapolation_bc = (Interpolations.Periodic(), Interpolations.Flat())
+    comms_ctx = ClimaComms.context(surface_space)
+    soil_params_mask = SpaceVaryingInput(
+        ClimaLand.Artifacts.earth_orography_file_path(; context = comms_ctx),
+        "z",
+        surface_space;
+        regridder_kwargs = (; extrapolation_bc,),
+        file_reader_kwargs = (; preprocess_func = (data) -> data >= 0),
+    )
+    # TODO : Define smoothing operation in preprocess pipeline
+
     subsurface_space = domain.space.subsurface
 
     start_date = DateTime(2021)
@@ -94,17 +111,17 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         Interpolations.Flat(),
         Interpolations.Flat(),
     )
-    soil_params_mask = SpaceVaryingInput(
-        joinpath(
-            soil_params_artifact_path,
-            "vGalpha_map_gupta_etal2020_1.0x1.0x4.nc",
-        ),
-        "α",
-        subsurface_space;
-        regridder_type,
-        regridder_kwargs = (; extrapolation_bc,),
-        file_reader_kwargs = (; preprocess_func = (data) -> data > 0,),
-    )
+    #soil_params_mask = SpaceVaryingInput(
+    #    joinpath(
+    #        soil_params_artifact_path,
+    #        "vGalpha_map_gupta_etal2020_1.0x1.0x4.nc",
+    #    ),
+    #    "α",
+    #    subsurface_space;
+    #    regridder_type,
+    #    regridder_kwargs = (; extrapolation_bc,),
+    #    file_reader_kwargs = (; preprocess_func = (data) -> data > 0,),
+    #)
     oceans_to_value(field, mask, value) =
         mask == 1.0 ? field : eltype(field)(value)
 
