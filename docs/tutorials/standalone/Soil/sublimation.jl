@@ -217,8 +217,6 @@ sub = [
     k in 1:length(sol.t)
 ]
 
-savepath = joinpath(pkgdir(ClimaLand), "docs/tutorials/standalone/Soil/")
-
 fig = Figure(size = (400, 400))
 ax = Axis(
     fig[1, 1],

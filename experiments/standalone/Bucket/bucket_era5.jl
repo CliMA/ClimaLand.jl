@@ -31,6 +31,7 @@ using CairoMakie
 import ClimaUtilities
 import ClimaUtilities.TimeVaryingInputs:
     TimeVaryingInput, LinearInterpolation, PeriodicCalendar
+import ClimaUtilities.OutputPathGenerator: generate_output_path
 import ClimaTimeSteppers as CTS
 import NCDatasets
 using ClimaCore
@@ -82,10 +83,7 @@ earth_param_set = LP.LandParameters(FT);
 device_suffix =
     typeof(ClimaComms.context().device) <: ClimaComms.CPUSingleThreaded ?
     "cpu" : "gpu"
-outdir = joinpath(
-    pkgdir(ClimaLand),
-    "experiments/standalone/Bucket/artifacts_era5$(regional_str)_$(device_suffix)",
-)
+outdir = "experiments/standalone/Bucket/artifacts_era5$(regional_str)_$(device_suffix)"
 output_dir = ClimaUtilities.OutputPathGenerator.generate_output_path(outdir)
 
 # Set up simulation domain

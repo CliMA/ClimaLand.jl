@@ -23,6 +23,7 @@ using Statistics
 
 import ClimaUtilities
 import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
+import ClimaUtilities.OutputPathGenerator: generate_output_path
 
 import ClimaTimeSteppers as CTS
 using ClimaDiagnostics
@@ -75,11 +76,7 @@ earth_param_set = LP.LandParameters(FT);
 device_suffix =
     typeof(ClimaComms.context().device) <: ClimaComms.CPUSingleThreaded ?
     "cpu" : "gpu"
-outdir = joinpath(
-    pkgdir(ClimaLand),
-    "experiments/standalone/Bucket/artifacts_temporalmap_$(device_suffix)",
-)
-
+outdir = "experiments/standalone/Bucket/artifacts_temporalmap_$(device_suffix)"
 t0 = 0.0;
 # run for 50 days to test monthly file update
 tf = 50 * 86400;

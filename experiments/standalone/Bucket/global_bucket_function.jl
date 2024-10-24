@@ -21,6 +21,7 @@ using DelimitedFiles
 using Statistics
 
 import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
+import ClimaUtilities.OutputPathGenerator: generate_output_path
 
 import ClimaTimeSteppers as CTS
 import NCDatasets
@@ -67,10 +68,7 @@ earth_param_set = LP.LandParameters(FT);
 device_suffix =
     typeof(ClimaComms.context().device) <: ClimaComms.CPUSingleThreaded ?
     "cpu" : "gpu"
-outdir = joinpath(
-    pkgdir(ClimaLand),
-    "experiments/standalone/Bucket/artifacts_function_$(device_suffix)",
-)
+outdir = "experiments/standalone/Bucket/artifacts_function_$(device_suffix)"
 
 # Construct simulation domain
 soil_depth = FT(3.5);

@@ -16,6 +16,7 @@ using ClimaLand.Canopy
 using ClimaLand.Canopy.PlantHydraulics
 import ClimaLand
 import ClimaLand.Parameters as LP
+import ClimaUtilities.OutputPathGenerator: generate_output_path
 const FT = Float32;
 earth_param_set = LP.LandParameters(FT);
 f_root_to_shoot = FT(3.5)
@@ -207,7 +208,7 @@ prob = SciMLBase.ODEProblem(
 
 sol = SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb, saveat = saveat);
 
-savedir = joinpath(pkgdir(ClimaLand), "experiments/standalone/Vegetation");
+savedir = generate_output_path("experiments/standalone/Vegetation/varying_lai");
 T = [parent(sol.u[k].canopy.energy.T)[1] for k in 1:length(sol.t)]
 T_atmos = [parent(sv.saveval[k].drivers.T)[1] for k in 1:length(sol.t)]
 ϑ = [parent(sol.u[k].canopy.hydraulics.ϑ_l.:1)[1] for k in 1:length(sol.t)]
