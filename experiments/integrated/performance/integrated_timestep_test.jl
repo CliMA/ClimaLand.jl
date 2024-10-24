@@ -46,6 +46,7 @@ using CairoMakie
 import ClimaComms
 @static pkgversion(ClimaComms) >= v"0.6" && ClimaComms.@import_required_backends
 import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
+import ClimaUtilities.OutputPathGenerator: generate_output_path
 
 using ClimaLand
 using ClimaLand.Domains
@@ -445,15 +446,9 @@ for dt in dts
         push!(times, sol.t)
     end
 end
-
-savedir = joinpath(
-    pkgdir(ClimaLand),
-    "experiments",
-    "integrated",
-    "performance",
-    "integrated_timestep_test",
-);
-!ispath(savedir) && mkpath(savedir)
+savedir = generate_output_path(
+    "experiments/integrated/performance/integrated_timestep_test",
+)
 
 # Create plot with statistics
 # Compare T state computed with small vs large dt

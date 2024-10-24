@@ -327,7 +327,6 @@ evap_no_drainage = [
 
 
 # Figures
-savepath = joinpath(pkgdir(ClimaLand), "docs/tutorials/standalone/Soil/")
 
 fig = Figure(size = (800, 400))
 ax = Axis(fig[1, 1], xlabel = "Day", ylabel = "Evaporation rate (mm/d)")

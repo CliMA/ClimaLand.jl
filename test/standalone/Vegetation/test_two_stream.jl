@@ -48,19 +48,21 @@ for FT in (Float32, Float64)
         τ_scalars = FT.(test_set[2:end, column_names .== "tau"])
         τ_fields = map(x -> fill(x, domain.space.surface), τ_scalars)
         # loop through once with params as floats, then with params as fields
+        Ω_cases = (FT(1), fill(FT(1), domain.space.surface))
         α_PAR_leaf_cases = (α_PAR_leaf_scalars, α_PAR_leaf_fields)
         τ_PAR_leaf_cases = (τ_scalars, τ_fields)
         α_NIR_leaf_cases = (FT(0.4), fill(FT(0.4), domain.space.surface))
         τ_NIR_leaf_cases = (FT(0.25), fill(FT(0.24), domain.space.surface))
         lds_cases = (lds, lds_field)
         zipped_params = zip(
+            Ω_cases,
             α_PAR_leaf_cases,
             τ_PAR_leaf_cases,
             α_NIR_leaf_cases,
             τ_NIR_leaf_cases,
             lds_cases,
         )
-        for (α_PAR_leaf, τ_PAR_leaf, α_NIR_leaf, τ_NIR_leaf, lds) in
+        for (Ω, α_PAR_leaf, τ_PAR_leaf, α_NIR_leaf, τ_NIR_leaf, lds) in
             zipped_params
             # Read the result for each setup from the Python output
             py_FAPAR = FT.(test_set[2:end, column_names .== "FAPAR"])
@@ -72,12 +74,12 @@ for FT in (Float32, Float64)
                 # Set the parameters based on the setup read from the file
                 RT_params = TwoStreamParameters(
                     FT;
+                    Ω = Ω,
                     G_Function = ConstantGFunction(FT.(lds[i])),
                     α_PAR_leaf = α_PAR_leaf[i],
                     τ_PAR_leaf = τ_PAR_leaf[i],
                     α_NIR_leaf = α_NIR_leaf,
                     τ_NIR_leaf = τ_NIR_leaf,
-                    Ω = FT(1),
                     n_layers = n_layers[i],
                 )
 

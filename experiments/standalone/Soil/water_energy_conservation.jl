@@ -11,6 +11,7 @@ import ClimaParams as CP
 using ClimaLand
 using ClimaLand.Soil
 using ClimaLand.Domains: Column
+import ClimaUtilities.OutputPathGenerator: generate_output_path
 
 rmse(v1, v2) = sqrt(mean((v1 .- v2) .^ 2))
 FT = Float64
@@ -133,6 +134,10 @@ phase_change = (;
     exp_name = "pc",
 )
 
+savedir = generate_output_path(
+    "experiments/standalone/Soil/water_energy_conservation",
+)
+
 for experiment in [no_phase_change, phase_change]
     (; t0, tf, dt_ref, Trange, dts, exp_name) = experiment
     Y, p, coords = initialize(soil)
@@ -213,7 +218,6 @@ for experiment in [no_phase_change, phase_change]
     end
 
     # Save flux BC mass conservation error and RMSE as artifact
-    savedir = joinpath(pkgdir(ClimaLand), "experiments/standalone/Soil")
     plt = Plots.plot(margin = 10Plots.mm)
     plt_twin = twinx(plt)
     Plots.plot!(
