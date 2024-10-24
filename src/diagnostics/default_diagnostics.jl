@@ -152,7 +152,6 @@ function default_diagnostics(
             "qsfc",
             "ws",
             "infil",
-            "salb",
             "shc",
             "stc",
             "swp",
@@ -178,8 +177,7 @@ function default_diagnostics(
             "lhf",
             "shf",
             "ghf",
-            "α_PAR",
-            "α_NIR",
+            "salb",
         ]
     elseif output_vars == :short
         soilcanopy_diagnostics = [

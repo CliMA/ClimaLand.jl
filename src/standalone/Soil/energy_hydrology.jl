@@ -23,8 +23,8 @@ $(DocStringExtensions.FIELDS)
 """
 Base.@kwdef struct EnergyHydrologyParameters{
     FT <: AbstractFloat,
-    F <: Union{<:FT, ClimaCore.Fields.Field},
-    SF <: Union{<:FT, ClimaCore.Fields.Field},
+    F <: Union{FT, ClimaCore.Fields.Field},
+    SF <: Union{FT, ClimaCore.Fields.Field},
     C,
     PSE,
 }
@@ -762,7 +762,7 @@ Returns the surface albedo field of the
 `EnergyHydrology` soil model.
 """
 function ClimaLand.surface_albedo(model::EnergyHydrology{FT}, Y, p) where {FT}
-    return @. FT(0.5 * p.soil.PAR_albedo + 0.5 * p.soil.NIR_albedo)
+    return @. (p.soil.PAR_albedo + p.soil.NIR_albedo) / 2
 end
 
 """
@@ -1058,64 +1058,42 @@ function soil_turbulent_fluxes_at_a_point(
 end
 
 """
-    create_soil_albedo_vars(
-        path::String,
+    clm_soil_albedo_properties(
         surface_space;
         regridder_type = nothing,
         regrider_kwargs = (),
         file_reader_kwargs = (),
-        compose_function = identity,
     )
 
-A convenience function to create the soil albedo variables given a path to the file containing
-the variables PAR_albedo_dry, NIR_albedo_dry, PAR_albedo_wet, NIR_albedo_wet.
+A convenience function to create the soil albedo variables given a surface space.
+Returns PAR_albedo_dry, NIR_albedo_dry, PAR_albedo_wet, and NIR_albedo_wet from the
+clm_data artifact.
 """
-function create_soil_albedo_vars(
-    path::String,
+function clm_soil_albedo_properties(
     surface_space;
     regridder_type = nothing,
     regridder_kwargs = (),
     file_reader_kwargs = (),
-    compose_function = identity,
 )
-    PAR_albedo_dry = SpaceVaryingInput(
-        path,
-        "PAR_albedo_dry",
-        surface_space;
-        regridder_type,
-        regridder_kwargs,
-        file_reader_kwargs,
-        compose_function,
+    return map(
+        s -> SpaceVaryingInput(
+            joinpath(
+                ClimaLand.Artifacts.clm_data_folder_path(),
+                "soil_properties_map.nc",
+            ),
+            s,
+            surface_space;
+            regridder_type,
+            regridder_kwargs,
+            file_reader_kwargs,
+        ),
+        (
+            "PAR_albedo_dry",
+            "NIR_albedo_dry",
+            "PAR_albedo_wet",
+            "NIR_albedo_wet",
+        ),
     )
-    NIR_albedo_dry = SpaceVaryingInput(
-        path,
-        "NIR_albedo_dry",
-        surface_space;
-        regridder_type,
-        regridder_kwargs,
-        file_reader_kwargs,
-        compose_function,
-    )
-    PAR_albedo_wet = SpaceVaryingInput(
-        path,
-        "PAR_albedo_wet",
-        surface_space;
-        regridder_type,
-        regridder_kwargs,
-        file_reader_kwargs,
-        compose_function,
-    )
-    NIR_albedo_wet = SpaceVaryingInput(
-        path,
-        "NIR_albedo_wet",
-        surface_space;
-        regridder_type,
-        regridder_kwargs,
-        file_reader_kwargs,
-        compose_function,
-    )
-
-    return PAR_albedo_dry, NIR_albedo_dry, PAR_albedo_wet, NIR_albedo_wet
 end
 # For Swenson/Lawrence 2014 resistance parameterization
 #=

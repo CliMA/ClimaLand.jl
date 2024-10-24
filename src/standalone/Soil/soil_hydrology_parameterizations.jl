@@ -10,18 +10,17 @@ export volumetric_liquid_fraction,
     update_albedo!
 
 """
-    albedo_from_moisture(surface_liquid_fraction::FT, albedo_dry::FT, albedo_wet::FT)
+    albedo_from_moisture(surface_eff_sat::FT, albedo_dry::FT, albedo_wet::FT)
 
 Calculates pointwise albedo for any band as a function of soil effective saturation given
 the dry and wet albedo values for that band.
 """
 function albedo_from_moisture(
-    surface_liquid_fraction::FT,
+    surface_eff_sat::FT,
     albedo_dry::FT,
     albedo_wet::FT,
 ) where {FT}
-    return albedo_dry * (1 - surface_liquid_fraction) +
-           albedo_wet * surface_liquid_fraction
+    return albedo_dry * (1 - surface_eff_sat) + albedo_wet * surface_eff_sat
 end
 
 
@@ -29,8 +28,8 @@ end
     update_albedo!(bc::AtmosDrivenFluxBC, p, soil_domain, model_parameters)
 
 Calculates and updates PAR and NIR albedo as a function of volumetric soil water content at
-the top of the soil. If the soil layers are very large, the water content of the top layer
-is used in the calclulation. For the PAR and NIR bands,
+the top of the soil. If the soil layers are larger than the specified `albedo_calc_top_thickness`,
+the water content of the top layer is used in the calclulation. For the PAR and NIR bands,
 
 α_band = α_{band,dry} * (1 - S_e) +  α_{band,wet} * (S_e)
 

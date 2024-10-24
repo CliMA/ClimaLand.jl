@@ -181,9 +181,9 @@ function compute_soil_albedo!(
     land_model::SoilCanopyModel{FT},
 ) where {FT}
     if isnothing(out)
-        return FT(0.5) .* p.soil.PAR_albedo .+ FT(0.5) .* p.soil.NIR_albedo
+        return (p.soil.PAR_albedo .+ p.soil.NIR_albedo) ./ 2
     else
-        @. out = FT(0.5) * p.soil.PAR_albedo + FT(0.5) * p.soil.NIR_albedo
+        @. out = (p.soil.PAR_albedo + p.soil.NIR_albedo) / 2
     end
 end
 
