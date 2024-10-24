@@ -611,7 +611,7 @@ function define_diagnostics!(land_model)
         long_name = "Soil Albedo",
         standard_name = "surface albedo",
         units = "",
-        comments = "Dependent on soil moisture",
+        comments = "The mean of PAR and NIR albedo, which are calculated as α_soil_band = α_band_dry * (1 - S_e) + α_band_wet * S_e.",
         compute! = (out, Y, p, t) ->
             compute_soil_albedo!(out, Y, p, t, land_model),
     )
