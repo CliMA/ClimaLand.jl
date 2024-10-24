@@ -447,6 +447,26 @@ function initialize(model::AbstractModel{FT}) where {FT}
     return Y, p, coords
 end
 
+
+"""
+    initialize_from_checkpoint(restart_file; model::AbstractModel)
+
+Creates the prognostic and auxiliary states structures, but with unset
+values; constructs and returns the coordinates for the `model` domain.
+We may need to consider this default more as we add diverse components and
+`Simulations`.
+
+TODO: Combine this function with initialize. We don't really need two.
+"""
+function initialize_from_checkpoint(restart_file; model)
+    Y, t_checkpoint = read_checkpoint(restart_file; model)
+    coords = Domains.coordinates(model)
+    p = initialize_auxiliary(model, coords)
+    p = add_drivers_to_cache(p, model, coords)
+    return Y, p, coords, t_checkpoint
+end
+
+
 function ClimaComms.context(model::AbstractModel)
     if :domain ∈ propertynames(model)
         return ClimaComms.context(model.domain)
