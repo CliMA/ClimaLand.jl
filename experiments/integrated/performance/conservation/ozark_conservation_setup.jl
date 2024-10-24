@@ -169,9 +169,25 @@ shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
 
 canopy_model_args = (; parameters = shared_params, domain = canopy_domain)
 
+# Snow model
+ρ_snow = FT(300.0)
+α_snow = FT(0.8)
+snow_parameters = SnowParameters{FT}(
+    dt;
+    α_snow = α_snow,
+    ρ_snow = ρ_snow,
+    earth_param_set = earth_param_set,
+);
+snow_args = (; parameters = snow_parameters, domain = canopy_domain);
+snow_model_type = Snow.SnowModel
 # Integrated plant hydraulics and soil model
-land_input = (atmos = atmos, radiation = radiation, soil_organic_carbon = Csom)
-land = SoilCanopyModel{FT}(;
+land_input = (
+    atmos = atmos,
+    radiation = radiation,
+    soil_organic_carbon = Csom,
+    runoff = ClimaLand.Soil.Runoff.SurfaceRunoff(),
+)
+land = LandModel{FT}(;
     soilco2_type = soilco2_type,
     soilco2_args = soilco2_args,
     land_args = land_input,
@@ -180,6 +196,8 @@ land = SoilCanopyModel{FT}(;
     canopy_component_types = canopy_component_types,
     canopy_component_args = canopy_component_args,
     canopy_model_args = canopy_model_args,
+    snow_args = snow_args,
+    snow_model_type = snow_model_type,
 )
 exp_tendency! = make_exp_tendency(land)
 imp_tendency! = make_imp_tendency(land);
@@ -190,6 +208,8 @@ jac_kwargs =
     (; jac_prototype = ClimaLand.ImplicitEquationJacobian(Y), Wfact = jacobian!);
 
 #Initial conditions
+Y.snow.S .= 0.0
+Y.snow.U .= 0.0
 Y.soil.ϑ_l = drivers.SWC.values[1 + Int(round(t0 / 1800))] # Get soil water content at t0
 # recalling that the data is in intervals of 1800 seconds. Both the data
 # and simulation are reference to 2005-01-01-00 (LOCAL)

@@ -31,6 +31,16 @@ steps:
   - group: "Global Land Models"
     steps:
 
+      - label: "Snowy Land"
+        command:
+          - julia --color=yes --project=.buildkite experiments/long_runs/snowy_land.jl
+        artifact_paths: "snowy_land_longrun_gpu/*png"
+        agents:
+          slurm_gpus: 1
+          slurm_time: 03:30:00
+        env:
+          CLIMACOMMS_DEVICE: "CUDA"
+
       - label: ":seedling: Soil-Canopy"
         command:
           - julia --color=yes --project=.buildkite experiments/long_runs/land.jl

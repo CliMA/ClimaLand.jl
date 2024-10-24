@@ -320,6 +320,8 @@ include("integrated/soil_energy_hydrology_biogeochemistry.jl")
 include("integrated/pond_soil_model.jl")
 include("integrated/soil_canopy_model.jl")
 include("integrated/soil_snow_model.jl")
+include("integrated/land.jl")
+include("integrated/soil_canopy_root_interactions.jl")
 
 # Diagnostics
 include(joinpath("diagnostics", "Diagnostics.jl"))

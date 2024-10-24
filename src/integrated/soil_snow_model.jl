@@ -280,16 +280,16 @@ function update_soil_snow_ground_heat_flux!(
 
     H = p.subsfc_scratch
     @. H = ClimaLand.heaviside(
-        soil_domain.fields.z_sfc - soil_domain.fields.z,
         Δz_soil,
+        soil_domain.fields.z_sfc - soil_domain.fields.z,
     )
     column_integral_definite!(∫H_dz, H)
 
     H_T = p.subsfc_scratch
     @. H_T =
         ClimaLand.heaviside(
-            soil_domain.fields.z_sfc - soil_domain.fields.z,
             Δz_soil,
+            soil_domain.fields.z_sfc - soil_domain.fields.z,
         ) * p.soil.T
     column_integral_definite!(∫H_T_dz, H_T)
 
