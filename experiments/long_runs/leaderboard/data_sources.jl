@@ -20,7 +20,6 @@ for short_name in ["et", "lwu"]
             # Remove the line below later when start_date is added to the diagnostics
             haskey(sim_var.attributes, "start_date") || (sim_var.attributes["start_date"] = "2012-01-01T00:00:00")
             sim_var = ClimaAnalysis.shift_to_start_of_previous_month(sim_var)
-            sim_var = ClimaAnalysis.shift_by_years(sim_var, 9) # TODO: REMOVE LATER
             return sim_var
         end
 end
@@ -35,7 +34,6 @@ for short_name in ["gpp"]
             # Remove the line below later when start_date is added to the diagnostics
             haskey(sim_var.attributes, "start_date") || (sim_var.attributes["start_date"] = "2012-01-01T00:00:00")
             sim_var = ClimaAnalysis.shift_to_start_of_previous_month(sim_var)
-            sim_var = ClimaAnalysis.shift_by_years(sim_var, 9) # TODO: REMOVE LATER
             sim_var = ClimaAnalysis.convert_units(
                 sim_var,
                 "g m-2 day-1",
@@ -50,7 +48,7 @@ obs_var_dict = Dict{String,Any}()
 obs_var_dict["et"] =
     (start_date) -> begin
         obs_var = ClimaAnalysis.OutputVar(
-            "obs_data/evspsbl/GLEAMv3.3a/et.nc",
+            "/home/kphan2/worktree/ClimaLand.jl/ilamb_data_artifact/evspsbl_MODIS_et_0.5x0.5.nc",
             "et",
             new_start_date = start_date,
             shift_by = Dates.firstdayofmonth,
@@ -64,7 +62,7 @@ obs_var_dict["et"] =
 obs_var_dict["gpp"] =
     (start_date) -> begin
         obs_var = ClimaAnalysis.OutputVar(
-            "obs_data/gpp/FLUXCOMM/gpp_reverse_dims_flux_comm.nc",
+            "/home/kphan2/worktree/ClimaLand.jl/ilamb_data_artifact/gpp_FLUXCOM_gpp.nc",
             "gpp",
             new_start_date = start_date,
             shift_by = Dates.firstdayofmonth,
@@ -80,7 +78,7 @@ obs_var_dict["gpp"] =
 obs_var_dict["lwu"] =
     (start_date) -> begin
         obs_var = ClimaAnalysis.OutputVar(
-            "obs_data/rlus/CERESed4.2/rlus.nc",
+            "/home/kphan2/worktree/ClimaLand.jl/ilamb_data_artifact/rlus_CERESed4.2_rlus.nc",
             "rlus",
             new_start_date = start_date,
             shift_by = Dates.firstdayofmonth,

@@ -8,7 +8,7 @@
 # Simulation Setup
 # Number of spatial elements: 101 in horizontal, 15 in vertical
 # Soil depth: 50 m
-# Simulation duration: 365 d
+# Simulation duration: 2 * 365 d
 # Timestep: 450 s
 # Timestepper: ARS111
 # Fixed number of iterations: 3
@@ -72,7 +72,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     surface_space = domain.space.surface
     subsurface_space = domain.space.subsurface
 
-    start_date = DateTime(2021)
+    start_date = DateTime(2012)
     # Forcing data
     era5_artifact_path =
         ClimaLand.Artifacts.era5_land_forcing_data2021_folder_path(; context)
@@ -563,7 +563,7 @@ end
 function setup_and_solve_problem(; greet = false)
 
     t0 = 0.0
-    tf = 60 * 60.0 * 24 * 365
+    tf = 2.0 * 60 * 60.0 * 24 * 365
     Δt = 450.0
     nelements = (101, 15)
     if greet
