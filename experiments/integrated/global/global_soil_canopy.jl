@@ -128,7 +128,6 @@ radiative_transfer_args = (;
 # Set up conductance
 conductance_args = (; parameters = Canopy.MedlynConductanceParameters(FT; g1))
 # Set up photosynthesis
-is_c3 = FT(1) # set the photosynthesis mechanism to C3
 photosynthesis_args =
     (; parameters = Canopy.FarquharParameters(FT, is_c3; Vcmax25 = Vcmax25))
 # Set up plant hydraulics
@@ -202,7 +201,7 @@ land = SoilCanopyModel{FT}(;
 Y, p, cds = initialize(land)
 
 t0 = 0.0
-dt = 900.0
+dt = 450.0
 tf = 3600
 
 init_soil(ν, θ_r) = θ_r + (ν - θ_r) / 2
