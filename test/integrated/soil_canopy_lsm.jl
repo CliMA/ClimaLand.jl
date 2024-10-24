@@ -29,24 +29,7 @@ for FT in (Float32, Float64)
         hcm = vanGenuchten{FT}(; α = FT(0), n = FT(0))
         # Radiation
         start_date = DateTime(2005)
-        radiation = PrescribedRadiativeFluxes(
-            FT,
-            TimeVaryingInput(identity),
-            TimeVaryingInput(identity),
-            start_date,
-        )
-        # Atmos
-        atmos = PrescribedAtmosphere(
-            TimeVaryingInput(identity),
-            TimeVaryingInput(identity),
-            TimeVaryingInput(identity),
-            TimeVaryingInput(identity),
-            TimeVaryingInput(identity),
-            TimeVaryingInput(identity),
-            start_date,
-            FT(0),
-            earth_param_set,
-        )
+        atmos, radiation = ClimaLand.prescribed_analytic_forcing(FT)
         top_bc = ClimaLand.Soil.AtmosDrivenFluxBC(atmos, radiation)
         zero_water_flux = WaterFluxBC((p, t) -> 0.0)
         zero_heat_flux = HeatFluxBC((p, t) -> 0.0)

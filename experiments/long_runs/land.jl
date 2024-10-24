@@ -209,13 +209,11 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     clm_artifact_path = ClimaLand.Artifacts.clm_data_folder_path(; context)
 
     PAR_albedo_dry, NIR_albedo_dry, PAR_albedo_wet, NIR_albedo_wet =
-        Soil.create_soil_albedo_vars(
-            joinpath(clm_artifact_path, "soil_properties_map.nc"),
+        Soil.clm_soil_albedo_properties(
             surface_space;
             regridder_type,
             regridder_kwargs = (; extrapolation_bc,),
         )
-
     soil_params = Soil.EnergyHydrologyParameters(
         FT;
         ν,
@@ -231,7 +229,6 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         PAR_albedo_wet,
         NIR_albedo_wet,
     )
-
     soil_params_mask_sfc =
         ClimaLand.Domains.top_center_to_surface(soil_params_mask)
 
@@ -558,7 +555,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         land,
         start_date;
         output_writer = nc_writer,
-        output_vars = :short,
+        output_vars = :long,
         average_period = :monthly,
     )
 
