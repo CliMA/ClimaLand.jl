@@ -134,7 +134,6 @@ dt = 1800.0
 vg_α = hydrology_cm.α
 vg_n = hydrology_cm.n
 Y.soil.ϑ_l .= hydrostatic_profile.(lat, z, ν, θ_r, vg_α, vg_n, S_s, f_max)
-@. Y.soil.ϑ_l = oceans_to_zero(Y.soil.ϑ_l, mask)
 set_initial_cache! = make_set_initial_cache(model)
 exp_tendency! = make_exp_tendency(model);
 imp_tendency! = ClimaLand.make_imp_tendency(model);
