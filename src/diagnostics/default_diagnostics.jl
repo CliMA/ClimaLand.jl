@@ -152,7 +152,6 @@ function default_diagnostics(
             "qsfc",
             "ws",
             "infil",
-            "salb",
             "shc",
             "stc",
             "swp",
@@ -192,6 +191,7 @@ function default_diagnostics(
             "er",
             "sr",
             "sif",
+            "salb",
         ]
     end
 
