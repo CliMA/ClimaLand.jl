@@ -293,7 +293,7 @@ set_initial_cache!(p, Y, t0);
 
 # Simulation
 dt_save = 3600.0
-saveat = Array(t0:dt_save:tf)
+saveat = Array(t_spinup:dt_save:tf)
 sv = (;
     t = Array{Float64}(undef, length(saveat)),
     saveval = Array{NamedTuple}(undef, length(saveat)),

@@ -186,14 +186,12 @@ function default_diagnostics(
             "lai",
             "swc",
             "si",
-            "swu",
-            "swd",
+            "swa",
             "lwu",
             "et",
             "er",
             "sr",
             "sif",
-            "eff_tsfc",
         ]
     end
 

@@ -355,7 +355,8 @@ swc, soil_T, si = [
     )[2][(N_spinup_days * 24):end] for diag_name in hourly_diag_name_2D
 ]
 dt_save = 3600.0 # hourly diagnostics
-times_diag = Array(0:dt_save:(num_days * 24 * dt_save))
+times_diag =
+    Array(0:dt_save:(num_days * 24 * dt_save)) .+ N_spinup_days * 3600 * 24
 
 # convert units for GPP and ET
 GPP = GPP .* 1e6 # mol to μmol
@@ -371,7 +372,7 @@ end
 
 # Number of days to plot
 num_days = N_days - N_spinup_days
-dt_save = 3600 # diagnostic output frequency
+
 # Plot model diurnal cycles without data comparisons
 # Autotrophic Respiration
 plot_daily_avg(
@@ -480,7 +481,7 @@ else
         dt_save,
         SHF_data,
         FT(DATA_DT),
-        N_days - N_spinup_days,
+        num_days,
         drivers.H.units,
         savedir,
     )
@@ -497,7 +498,7 @@ else
         dt_save,
         LHF_data,
         FT(DATA_DT),
-        N_days - N_spinup_days,
+        num_days,
         drivers.LE.units,
         savedir,
     )
@@ -507,13 +508,10 @@ end
 # In the land model, positive fluxes are always in the upwards direction
 # In the data, a positive G indicates a flux into the soil, so we adjust the sign
 # on the data G
-data_times = [0:DATA_DT:(num_days * S_PER_DAY);]
+data_times = [0:DATA_DT:(N_days * S_PER_DAY);]
 if drivers.G.status != absent
-    G_data_avg = compute_diurnal_avg(
-        FT.(drivers.G.values)[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)],
-        data_times,
-        num_days,
-    )
+    G_data_avg =
+        compute_diurnal_avg(FT.(drivers.G.values), data_times, num_days)
     plt1 = Plots.plot(0.5:0.5:24, -1 .* G_data_avg, label = "Data: -G")
     Plots.plot!(
         plt1,
@@ -528,23 +526,17 @@ if drivers.G.status != absent
             (drivers.SW_IN.values .- drivers.SW_OUT.values) .+
             (drivers.LW_IN.values .- drivers.LW_OUT.values)
         G_alternate_data_avg = compute_diurnal_avg(
-            FT.(drivers.H.values .+ drivers.LE.values .- Rn_data)[Int64(
-                t_spinup ÷ DATA_DT,
-            ):Int64(tf ÷ DATA_DT)],
+            FT.(drivers.H.values .+ drivers.LE.values .- Rn_data),
             data_times,
             num_days,
         )
         HplusL_avg = compute_diurnal_avg(
-            FT.(drivers.H.values .+ drivers.LE.values)[Int64(
-                t_spinup ÷ DATA_DT,
-            ):Int64(tf ÷ DATA_DT)],
+            FT.(drivers.H.values .+ drivers.LE.values),
             data_times,
             num_days,
         )
         RminusG_avg = compute_diurnal_avg(
-            FT.(Rn_data .- drivers.G.values)[Int64(t_spinup ÷ DATA_DT):Int64(
-                tf ÷ DATA_DT,
-            )],
+            FT.(Rn_data .- drivers.G.values),
             data_times,
             num_days,
         )
@@ -620,7 +612,7 @@ if drivers.SWC.status != absent
     Plots.plot!(
         plt1,
         data_times ./ 3600 ./ 24,
-        drivers.SWC.values[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)],
+        drivers.SWC.values,
         label = "Data",
     )
 end
@@ -639,9 +631,7 @@ Plots.plot!(
 )
 plt3 = Plots.plot(
     data_times ./ 3600 ./ 24,
-    (drivers.P.values .* (-1e3 * 24 * 3600) .* (1 .- snow_frac))[Int64(
-        t_spinup ÷ DATA_DT,
-    ):Int64(tf ÷ DATA_DT)],
+    (drivers.P.values .* (-1e3 * 24 * 3600) .* (1 .- snow_frac)),
     label = "Rain (data)",
     ylabel = "Precipitation [mm/day]",
     xlim = [minimum(model_times), maximum(model_times)],
@@ -652,9 +642,7 @@ plt3 = Plots.plot(
 Plots.plot!(
     plt3,
     data_times ./ 3600 ./ 24,
-    (drivers.P.values .* (-1e3 * 24 * 3600) .* snow_frac)[Int64(
-        t_spinup ÷ DATA_DT,
-    ):Int64(tf ÷ DATA_DT)],
+    (drivers.P.values .* (-1e3 * 24 * 3600) .* snow_frac),
     label = "Snow (data)",
     ylabel = "Precipitation [mm/day]",
 )
@@ -677,7 +665,7 @@ if drivers.TS.status != absent
     Plots.plot!(
         plt1,
         data_times ./ 3600 ./ 24,
-        drivers.TS.values[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)],
+        drivers.TS.values,
         label = "Data",
     )
 end

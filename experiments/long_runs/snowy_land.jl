@@ -53,7 +53,7 @@ regridder_type = :InterpolationsRegridder
 context = ClimaComms.context()
 device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
-root_path = "land_longrun_$(device_suffix)"
+root_path = "snowy_land_longrun_$(device_suffix)"
 diagnostics_outdir = joinpath(root_path, "global_diagnostics")
 outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
