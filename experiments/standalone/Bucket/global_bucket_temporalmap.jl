@@ -21,9 +21,15 @@ using Dates
 using DelimitedFiles
 using Statistics
 
+import ClimaUtilities
 import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
+import ClimaUtilities.OutputPathGenerator: generate_output_path
 
 import ClimaTimeSteppers as CTS
+using ClimaDiagnostics
+import ClimaAnalysis
+import GeoMakie
+import ClimaAnalysis.Visualize as viz
 import NCDatasets
 using ClimaCore
 using ClimaCore: Remapping, Geometry
@@ -63,30 +69,24 @@ function compute_extrema(v)
     return (minimum(mins), maximum(maxes))
 end
 
-anim_plots = false
 FT = Float64;
 context = ClimaComms.context()
 earth_param_set = LP.LandParameters(FT);
-outdir = joinpath(
-    pkgdir(ClimaLand),
-    "experiments/standalone/Bucket/artifacts_temporalmap",
-)
-device_suffix =
-    typeof(ClimaComms.context().device) <: ClimaComms.CPUSingleThreaded ?
-    "cpu" : "gpu"
-!ispath(outdir) && mkpath(outdir)
 # Use separate output directory for CPU and GPU runs to avoid race condition
 device_suffix =
     typeof(ClimaComms.context().device) <: ClimaComms.CPUSingleThreaded ?
     "cpu" : "gpu"
+outdir = "experiments/standalone/Bucket/artifacts_temporalmap_$(device_suffix)"
 t0 = 0.0;
 # run for 50 days to test monthly file update
 tf = 50 * 86400;
 Δt = 3600.0;
 
 
-function setup_prob(t0, tf, Δt)
+function setup_prob(t0, tf, Δt, outdir)
     # We set up the problem in a function so that we can make multiple copies (for profiling)
+
+    output_dir = ClimaUtilities.OutputPathGenerator.generate_output_path(outdir)
 
     # Set up simulation domain
     soil_depth = FT(3.5)
@@ -109,6 +109,7 @@ function setup_prob(t0, tf, Δt)
     τc = FT(3600)
 
     surface_space = bucket_domain.space.surface
+    subsurface_space = bucket_domain.space.subsurface
     # Construct albedo parameter object using temporal map
     albedo = PrescribedSurfaceAlbedo{FT}(start_date, surface_space)
 
@@ -183,13 +184,26 @@ function setup_prob(t0, tf, Δt)
     updateat = copy(saveat)
     drivers = ClimaLand.get_drivers(model)
     updatefunc = ClimaLand.make_update_drivers(drivers)
-    driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
-    cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
+    nc_writer =
+        ClimaDiagnostics.Writers.NetCDFWriter(subsurface_space, output_dir)
+    diags = ClimaLand.default_diagnostics(
+        model,
+        start_date;
+        output_writer = nc_writer,
+        average_period = :daily,
+    )
 
-    return prob, cb, saveat, saved_values
+    diagnostic_handler =
+        ClimaDiagnostics.DiagnosticsHandler(diags, Y, p, t0; dt = Δt)
+
+    diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler)
+    driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
+    cb = SciMLBase.CallbackSet(driver_cb, saving_cb, diag_cb)
+
+    return prob, cb, saveat, saved_values, nc_writer
 end
 
-prob, cb, saveat, saved_values = setup_prob(t0, tf, Δt);
+prob, cb, saveat, saved_values, nc_writer = setup_prob(t0, tf, Δt, outdir);
 timestepper = CTS.RK4()
 ode_algo = CTS.ExplicitAlgorithm(timestepper)
 
@@ -200,13 +214,32 @@ sol = ClimaComms.@time ClimaComms.device() SciMLBase.solve(
     saveat = saveat,
     callback = cb,
 )
+close(nc_writer)
+output_dir = nc_writer.output_dir
+
+simdir = ClimaAnalysis.SimDir(output_dir)
+short_names = ["rn", "tsfc", "qsfc", "lhf", "shf", "wsoil", "wsfc", "ssfc"]
+for short_name in short_names
+    var = get(simdir; short_name)
+    t = ClimaAnalysis.times(var)[end]
+    var = get(simdir; short_name)
+    fig = CairoMakie.Figure(size = (800, 600))
+    kwargs = ClimaAnalysis.has_altitude(var) ? Dict(:z => 1) : Dict()
+    viz.heatmap2D_on_globe!(
+        fig,
+        ClimaAnalysis.slice(var, time = t; kwargs...),
+        mask = viz.oceanmask(),
+        more_kwargs = Dict(:mask => ClimaAnalysis.Utils.kwargs(color = :white)),
+    )
+    CairoMakie.save(joinpath(output_dir, "$(short_name)_$t.png"), fig)
+end
 
 if PROFILING
     # Now that we compiled, solve again but collect profiling information
 
     # We run only for one day for profiling
     tf = 86400.0
-    prob, cb, saveat, _ = setup_prob(t0, tf, Δt)
+    prob, cb, saveat, _, nc_writer = setup_prob(t0, tf, Δt, outdir)
 
     Profile.@profile SciMLBase.solve(
         prob,
@@ -219,9 +252,10 @@ if PROFILING
     flame_file = joinpath(outdir, "flame_$device_suffix.html")
     ProfileCanvas.html_file(flame_file, results)
     @info "Save compute flame to $flame_file"
+    close(nc_writer)
 
-    prob, cb, saveat, _ = setup_prob(t0, tf, Δt)
-    Profile.Allocs.@profile sample_rate = 1.0 SciMLBase.solve(
+    prob, cb, saveat, _, nc_writer = setup_prob(t0, tf, Δt, outdir)
+    Profile.Allocs.@profile sample_rate = 0.1 SciMLBase.solve(
         prob,
         ode_algo;
         dt = Δt,
@@ -233,6 +267,7 @@ if PROFILING
     alloc_flame_file = joinpath(outdir, "alloc_flame_$device_suffix.html")
     ProfileCanvas.html_file(alloc_flame_file, profile)
     @info "Save allocation flame to $alloc_flame_file"
+    close(nc_writer)
 end
 
 # Interpolate to grid
@@ -242,88 +277,15 @@ latpts = range(-90.0, 90.0, 21)
 hcoords = [Geometry.LatLongPoint(lat, long) for long in longpts, lat in latpts]
 remapper = Remapping.Remapper(space, hcoords)
 
-W = [
-    Array(Remapping.interpolate(remapper, sol.u[k].bucket.W)) for
-    k in 1:length(sol.t)
-];
-Ws = [
-    Array(Remapping.interpolate(remapper, sol.u[k].bucket.Ws)) for
-    k in 1:length(sol.t)
-];
-σS = [
-    Array(Remapping.interpolate(remapper, sol.u[k].bucket.σS)) for
-    k in 1:length(sol.t)
-];
-T_sfc = [
-    Array(
-        Remapping.interpolate(remapper, saved_values.saveval[k].bucket.T_sfc),
-    ) for k in 1:length(sol.t)
-];
-evaporation = [
-    Array(
-        Remapping.interpolate(
-            remapper,
-            saved_values.saveval[k].bucket.turbulent_fluxes.vapor_flux,
-        ),
-    ) for k in 1:length(sol.t)
-];
-F_sfc = [
-    Array(
-        Remapping.interpolate(
-            remapper,
-            saved_values.saveval[k].bucket.R_n .+
-            saved_values.saveval[k].bucket.turbulent_fluxes.lhf .+
-            saved_values.saveval[k].bucket.turbulent_fluxes.shf,
-        ),
-    ) for k in 1:length(sol.t)
-];
+W = Array(Remapping.interpolate(remapper, sol.u[end].bucket.W))
+Ws = Array(Remapping.interpolate(remapper, sol.u[end].bucket.Ws))
+σS = Array(Remapping.interpolate(remapper, sol.u[end].bucket.σS))
+T_sfc = Array(Remapping.interpolate(remapper, prob.p.bucket.T_sfc))
 
 # save prognostic state to CSV - for comparison between GPU and CPU output
-open(joinpath(outdir, "tf_state_$(device_suffix)_temporalmap.txt"), "w") do io
-    writedlm(io, hcat(T_sfc[end][:], W[end][:], Ws[end][:], σS[end][:]), ',')
+open(
+    joinpath(output_dir, "tf_state_$(device_suffix)_temporalmap.txt"),
+    "w",
+) do io
+    writedlm(io, hcat(T_sfc[:], W[:], Ws[:], σS[:]), ',')
 end;
-# animation settings
-nframes = length(W)
-framerate = 2
-fig_ts = Figure(size = (1000, 1000))
-for (i, (field_ts, field_name)) in enumerate(
-    zip(
-        [W, σS, T_sfc, evaporation, F_sfc],
-        ["W", "σS", "T_sfc", "evaporation", "F_sfc"],
-    ),
-)
-    if anim_plots
-        fig = Figure(size = (1000, 1000))
-        ax = Axis(
-            fig[1, 1],
-            xlabel = "Longitude",
-            ylabel = "Latitude",
-            title = field_name,
-        )
-        clims = compute_extrema(field_ts)
-        CairoMakie.Colorbar(fig[:, end + 1], colorrange = clims)
-        outfile = joinpath(
-            outdir,
-            string("anim_$(device_suffix)_", field_name, ".mp4"),
-        )
-        record(fig, outfile, 1:nframes; framerate = framerate) do frame
-            CairoMakie.heatmap!(
-                longpts,
-                latpts,
-                field_ts[frame],
-                colorrange = clims,
-            )
-        end
-    end
-    # Plot the timeseries of the mean value as well.
-    xlabel = i == 5 ? "Time (days)" : ""
-    ax2 = Axis(
-        fig_ts[i, 1],
-        xlabel = xlabel,
-        ylabel = field_name,
-        title = "Global bucket with temporal map albedo",
-    )
-    CairoMakie.lines!(ax2, sol.t ./ 3600 ./ 24, [mean(x) for x in field_ts])
-end
-outfile = joinpath(outdir, string("ts_$device_suffix.png"))
-CairoMakie.save(outfile, fig_ts)

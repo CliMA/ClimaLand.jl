@@ -198,16 +198,6 @@ function define_diagnostics!(land_model)
     )
 
     ### Canopy - Energy
-    # Canopy aerodynamic resistance
-    add_diagnostic_variable!(
-        short_name = "crae",
-        long_name = "Canopy Aerodynamic Resistance",
-        standard_name = "canopy_aerodynamic_resistance",
-        units = "s m^-1",
-        comments = "The canopy aerodynamic resistance. Aerodynamic resistance (r_a) is a measure of how much the air near the Earth's surface resists the movement of water vapor and heat from the surface into the air.",
-        compute! = (out, Y, p, t) ->
-            compute_canopy_aerodynamic_resistance!(out, Y, p, t, land_model),
-    )
 
     # Canopy latent heat flux
     add_diagnostic_variable!(
@@ -660,16 +650,6 @@ function define_diagnostics!(land_model)
     )
 
     ### Soil - Turbulent Fluxes
-    # Soil aerodynamic resistance
-    add_diagnostic_variable!(
-        short_name = "soilrae",
-        long_name = "Soil Aerodynamic Resistance",
-        standard_name = "soil_aerodynamic_resistance",
-        units = "s m^-1",
-        comments = "The soil aerodynamic resistance. Aerodynamic resistance is a measure of how much the air near the Earth's surface resists the movement of water vapor and heat from the surface into the air.",
-        compute! = (out, Y, p, t) ->
-            compute_soil_aerodynamic_resistance!(out, Y, p, t, land_model),
-    )
 
     # Soil latent heat flux
     add_diagnostic_variable!(
@@ -779,6 +759,17 @@ function define_diagnostics!(land_model)
         comments = "Water runoff at the surface, this is the water flowing horizontally above the ground.",
         compute! = (out, Y, p, t) ->
             compute_surface_runoff!(out, Y, p, t, land_model),
+    )
+
+    # Ground heat flux
+    add_diagnostic_variable!(
+        short_name = "ghf",
+        long_name = "Ground Heat Flux",
+        standard_name = "ground_heat_flux",
+        units = "W m^-2",
+        comments = "Transfer of heat between the surface and deeper soil layers.",
+        compute! = (out, Y, p, t) ->
+            compute_ground_heat_flux!(out, Y, p, t, land_model),
     )
 
     ## Stored in Y (prognostic or state variables) ##

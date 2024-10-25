@@ -54,7 +54,7 @@ ClimaLand.source!
 ClimaLand.AbstractBoundary
 ClimaLand.TopBoundary
 ClimaLand.BottomBoundary
-ClimaLand.boundary_flux
+ClimaLand.boundary_flux!
 ClimaLand.diffusive_flux
 ClimaLand.boundary_vars
 ClimaLand.boundary_var_domain_names

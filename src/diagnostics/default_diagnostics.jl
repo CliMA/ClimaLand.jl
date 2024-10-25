@@ -119,7 +119,6 @@ function default_diagnostics(
             "ra",
             "gs",
             "trans",
-            "crae",
             "clhf",
             "cshf",
             # "lwp", # last(p.canopy.hydraulics.ψ) errors
@@ -158,7 +157,6 @@ function default_diagnostics(
             "swp",
             "soilrn",
             "tsoil",
-            "soilrae",
             "soillhf",
             "soilshf",
             "hr",
@@ -175,10 +173,25 @@ function default_diagnostics(
             "er",
             "et",
             "sr",
+            "rn",
+            "lhf",
+            "shf",
+            "ghf",
         ]
     elseif output_vars == :short
-        soilcanopy_diagnostics =
-            ["gpp", "ct", "lai", "swc", "si", "swa", "lwu", "et", "er", "sr"]
+        soilcanopy_diagnostics = [
+            "gpp",
+            "ct",
+            "lai",
+            "swc",
+            "si",
+            "swa",
+            "lwu",
+            "et",
+            "er",
+            "sr",
+            "sif",
+        ]
     end
 
     if average_period == :hourly

@@ -24,6 +24,11 @@ element), and the top face space where surface fluxes are computed.
 abstract type AbstractDomain{FT <: AbstractFloat} end
 Base.eltype(::AbstractDomain{FT}) where {FT} = FT
 
+ClimaComms.context(domain::AbstractDomain) =
+    ClimaComms.context(first(domain.space))
+ClimaComms.device(domain::AbstractDomain) =
+    ClimaComms.device(first(domain.space))
+
 """
     coordinates(domain::AbstractDomain)
 

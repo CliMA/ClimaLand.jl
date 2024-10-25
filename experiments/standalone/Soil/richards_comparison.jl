@@ -11,6 +11,7 @@ import ClimaParams as CP
 using ClimaLand
 using ClimaLand.Domains: Column
 using ClimaLand.Soil
+import ClimaUtilities.OutputPathGenerator: generate_output_path
 
 import ClimaLand
 import ClimaLand.Parameters as LP
@@ -22,12 +23,8 @@ context = ClimaComms.context()
 device_suffix =
     typeof(ClimaComms.context().device) <: ClimaComms.CPUSingleThreaded ?
     "cpu" : "gpu"
-outdir = joinpath(
-    pkgdir(ClimaLand),
-    "experiments",
-    "standalone",
-    "Soil",
-    device_suffix,
+outdir = generate_output_path(
+    joinpath("experiments", "standalone", "Soil", device_suffix),
 )
 !ispath(outdir) && mkpath(outdir)
 

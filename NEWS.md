@@ -4,9 +4,20 @@ ClimaLand.jl Release Notes
 main
 --------
 
+
+v0.15.3
+-------
+- It is now possible to call `ClimaComms.context` and `ClimaComms.device` Models
+  and Domains. This provides a unambiguous way to determine the context and
+  device for general simulations.
+  PR[#852](https://github.com/CliMA/ClimaLand.jl/pull/852)
+- `prescribed_analytic_forcing` is now available to simplify setting up analytic experiments.
+  PR[#870](https://github.com/CliMA/ClimaLand.jl/pull/870)
+
 v0.15.2
 --------
-
+- Boundary fluxes are non-allocating
+PR[#819](https://github.com/CliMA/ClimaLand.jl/pull/819)
 - Artifacts for the bucket model are now automatically downloaded. PR [#820](https://github.com/CliMA/ClimaLand.jl/pull/820)
 
 v0.15.1

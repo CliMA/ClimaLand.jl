@@ -5,7 +5,6 @@ import SurfaceFluxes.Parameters as SFP
 
 import ClimaLand:
     surface_temperature,
-    surface_specific_humidity,
     surface_evaporative_scaling,
     surface_height,
     surface_resistance,
@@ -112,22 +111,7 @@ function ClimaLand.surface_resistance(
     p,
     t,
 ) where {FT}
-    earth_param_set = model.parameters.earth_param_set
-    R = FT(LP.gas_constant(earth_param_set))
-    ρ_liq = FT(LP.ρ_cloud_liq(earth_param_set))
-    P_air = p.drivers.P
-    T_air = p.drivers.T
-    leaf_conductance = p.canopy.conductance.gs
-    canopy_conductance =
-        upscale_leaf_conductance.(
-            leaf_conductance,
-            p.canopy.hydraulics.area_index.leaf,
-            T_air,
-            R,
-            P_air,
-        )
-
-    return 1 ./ canopy_conductance # [s/m]
+    return p.canopy.conductance.r_stomata_canopy
 end
 
 """
@@ -148,29 +132,6 @@ model, which is stored in the parameter struct.
 """
 function ClimaLand.surface_height(model::CanopyModel, _...)
     return model.hydraulics.compartment_surfaces[1]
-end
-
-"""
-    ClimaLand.surface_specific_humidity(model::CanopyModel, Y, p)
-
-A helper function which returns the surface specific humidity for the canopy
-model, which is stored in the aux state.
-"""
-function ClimaLand.surface_specific_humidity(
-    model::CanopyModel,
-    Y,
-    p,
-    T_canopy,
-    ρ_canopy,
-)
-    thermo_params =
-        LP.thermodynamic_parameters(model.parameters.earth_param_set)
-    return Thermodynamics.q_vap_saturation_generic.(
-        Ref(thermo_params),
-        T_canopy,
-        ρ_canopy,
-        Ref(Thermodynamics.Liquid()),
-    )
 end
 
 function make_update_boundary_fluxes(canopy::CanopyModel)
@@ -200,10 +161,8 @@ equations; updates the specific fields in the auxiliary
 state `p` which hold these variables. This function is called
 within the explicit tendency of the canopy model.
 
-- `p.canopy.energy.shf`: Canopy SHF
-- `p.canopy.energy.lhf`: Canopy LHF
+- `p.canopy.energy.turbulent_fluxes`: Canopy SHF, LHF, transpiration, derivatives of these with respect to T,q
 - `p.canopy.hydraulics.fa[end]`: Transpiration
-- `p.canopy.conductance.transpiration`: Transpiration (stored twice; to be addressed in a future PR)
 - `p.canopy.hydraulics.fa_roots`: Root water flux
 - `p.canopy.radiative_transfer.LW_n`: net long wave radiation
 - `p.canopy.radiative_transfer.SW_n`: net short wave radiation
@@ -230,19 +189,10 @@ function canopy_boundary_fluxes!(
     fa = p.canopy.hydraulics.fa
     LAI = p.canopy.hydraulics.area_index.leaf
     SAI = p.canopy.hydraulics.area_index.stem
-    transpiration = p.canopy.conductance.transpiration
-    shf = p.canopy.energy.shf
-    lhf = p.canopy.energy.lhf
-    r_ae = p.canopy.energy.r_ae
+    canopy_tf = p.canopy.energy.turbulent_fluxes
     i_end = canopy.hydraulics.n_stem + canopy.hydraulics.n_leaf
     # Compute transpiration, SHF, LHF
-    canopy_tf = ClimaLand.turbulent_fluxes(atmos, canopy, Y, p, t)
-    transpiration .= canopy_tf.vapor_flux
-    shf .= canopy_tf.shf
-    lhf .= canopy_tf.lhf
-    r_ae .= canopy_tf.r_ae
-    p.canopy.energy.∂LHF∂qc .= canopy_tf.∂LHF∂qc
-    p.canopy.energy.∂SHF∂Tc .= canopy_tf.∂SHF∂Tc
+    canopy_tf .= ClimaLand.turbulent_fluxes(atmos, canopy, Y, p, t)
     # Transpiration is per unit ground area, not leaf area (mult by LAI)
     fa.:($i_end) .= PlantHydraulics.transpiration_per_ground_area(
         canopy.hydraulics.transpiration,
@@ -311,19 +261,15 @@ function ClimaLand.turbulent_fluxes(
     t,
 )
     T_sfc = ClimaLand.surface_temperature(model, Y, p, t)
-    ρ_sfc = ClimaLand.surface_air_density(atmos, model, Y, p, t, T_sfc)
-    q_sfc = ClimaLand.surface_specific_humidity(model, Y, p, T_sfc, ρ_sfc)
     h_sfc = ClimaLand.surface_height(model, Y, p)
-    leaf_r_stomata = ClimaLand.surface_resistance(model, Y, p, t)
+    r_stomata_canopy = ClimaLand.surface_resistance(model, Y, p, t)
     d_sfc = ClimaLand.displacement_height(model, Y, p)
     u_air = p.drivers.u
     h_air = atmos.h
     return canopy_turbulent_fluxes_at_a_point.(
         T_sfc,
-        q_sfc,
-        ρ_sfc,
         h_sfc,
-        leaf_r_stomata,
+        r_stomata_canopy,
         d_sfc,
         p.drivers.thermal_state,
         u_air,
@@ -340,8 +286,6 @@ end
 """
     function canopy_turbulent_fluxes_at_a_point(
         T_sfc::FT,
-        q_sfc::FT,
-        ρ_sfc::FT,
         h_sfc::FT,
         leaf_r_stomata::FT,
         d_sfc::FT,
@@ -365,8 +309,6 @@ of `SurfaceFluxes.surface_conditions`.
 """
 function canopy_turbulent_fluxes_at_a_point(
     T_sfc::FT,
-    q_sfc::FT,
-    ρ_sfc::FT,
     h_sfc::FT,
     leaf_r_stomata::FT,
     d_sfc::FT,
@@ -381,14 +323,22 @@ function canopy_turbulent_fluxes_at_a_point(
     earth_param_set::EP,
 ) where {FT <: AbstractFloat, EP}
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
-    ts_sfc = Thermodynamics.PhaseEquil_ρTq(thermo_params, ρ_sfc, T_sfc, q_sfc)
-
-    state_sfc = SurfaceFluxes.StateValues(FT(0), SVector{2, FT}(0, 0), ts_sfc)
     state_in = SurfaceFluxes.StateValues(
         h - d_sfc - h_sfc,
         SVector{2, FT}(u, 0),
         ts_in,
     )
+
+    ρ_sfc = compute_ρ_sfc(thermo_params, ts_in, T_sfc)
+    q_sfc = Thermodynamics.q_vap_saturation_generic(
+        thermo_params,
+        T_sfc,
+        ρ_sfc,
+        Thermodynamics.Liquid(),
+    )
+    ts_sfc = Thermodynamics.PhaseEquil_ρTq(thermo_params, ρ_sfc, T_sfc, q_sfc)
+
+    state_sfc = SurfaceFluxes.StateValues(FT(0), SVector{2, FT}(0, 0), ts_sfc)
 
     # State containers
     states = SurfaceFluxes.ValuesOnly(
@@ -452,7 +402,7 @@ function canopy_turbulent_fluxes_at_a_point(
     return (
         lhf = LH,
         shf = SH,
-        vapor_flux = Ẽ,
+        transpiration = Ẽ,
         r_ae = r_ae,
         ∂LHF∂qc = ∂LHF∂qc,
         ∂SHF∂Tc = ∂SHF∂Tc,

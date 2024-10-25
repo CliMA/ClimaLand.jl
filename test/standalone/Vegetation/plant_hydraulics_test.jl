@@ -585,7 +585,9 @@ for FT in (Float32, Float64)
         set_initial_cache!(p, Y, FT(0.0))
         @test all(parent(p.canopy.hydraulics.fa) .≈ FT(0.0))
         @test all(parent(p.canopy.hydraulics.fa_roots) .≈ FT(0.0))
-        @test all(parent(p.canopy.conductance.transpiration) .≈ FT(0.0))
+        @test all(
+            parent(p.canopy.energy.turbulent_fluxes.transpiration) .≈ FT(0.0),
+        )
         @test all(parent(p.canopy.radiative_transfer.par.abs) .≈ FT(0.0))
         exp_tend! = make_exp_tendency(model)
         exp_tend!(dY, Y, p, FT(0))

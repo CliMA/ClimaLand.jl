@@ -111,6 +111,9 @@ for FT in (Float32, Float64)
             soil_args = soil_args,
             soilco2_args = soilco2_args,
         )
+        @test_throws ErrorException ClimaComms.context(model)
+        @test_throws ErrorException ClimaComms.device(model)
+
         @test model.soilco2.drivers.met.ν == model.soil.parameters.ν
         @test model.soilco2.drivers.met isa ClimaLand.PrognosticMet
         drivers = ClimaLand.get_drivers(model)

@@ -23,6 +23,7 @@ export AbstractModel,
     get_drivers,
     name
 
+import ClimaComms
 import .Domains: coordinates
 ## Default methods for all models - to be in a seperate module at some point.
 """
@@ -444,4 +445,24 @@ function initialize(model::AbstractModel{FT}) where {FT}
     p = initialize_auxiliary(model, coords)
     p = add_drivers_to_cache(p, model, coords)
     return Y, p, coords
+end
+
+function ClimaComms.context(model::AbstractModel)
+    if :domain ∈ propertynames(model)
+        return ClimaComms.context(model.domain)
+    else
+        error(
+            "Your model does not contain a domain. If this is intended, you will need a new method of ClimaComms.context.",
+        )
+    end
+end
+
+function ClimaComms.device(model::AbstractModel)
+    if :domain ∈ propertynames(model)
+        return ClimaComms.device(model.domain)
+    else
+        error(
+            "Your model does not contain a domain. If this is intended, you will need a new method of ClimaComms.device.",
+        )
+    end
 end

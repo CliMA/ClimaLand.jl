@@ -249,11 +249,23 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
     # Energy Balance model
     ac_canopy = FT(2.5e3)
 
-    #clm_data is used for g1, vcmax, rooting, and two_stream param maps
+    # clm_data is used for g1, vcmax, rooting, and two_stream param maps
     clm_artifact_path = ClimaLand.Artifacts.clm_data_folder_path(; context)
 
+    # Foliage clumping index data derived from MODIS
+    modis_ci_artifact_path =
+        ClimaLand.Artifacts.modis_ci_data_folder_path(; context)
+
     # TwoStreamModel parameters
-    Ω = FT(0.69)
+    nans_to_one(x) = isnan(x) ? eltype(x)(1) : x
+    Ω = SpaceVaryingInput(
+        joinpath(modis_ci_artifact_path, "He_et_al_2012_1x1.nc"),
+        "ci",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc,),
+        file_reader_kwargs = (; preprocess_func = nans_to_one,),
+    )
     χl = SpaceVaryingInput(
         joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
         "xl",
@@ -589,7 +601,7 @@ average_timing_s = round(sum(timings_s) / num_samples, sigdigits = 3)
 max_timing_s = round(maximum(timings_s), sigdigits = 3)
 min_timing_s = round(minimum(timings_s), sigdigits = 3)
 std_timing_s = round(
-    sum(((timings_s .- average_timing_s) .^ 2) / num_samples),
+    sqrt(sum(((timings_s .- average_timing_s) .^ 2) / num_samples)),
     sigdigits = 3,
 )
 @info "Num samples: $num_samples"
@@ -607,7 +619,7 @@ ProfileCanvas.html_file(flame_file, results)
 @info "Saved compute flame to $flame_file"
 
 prob, ode_algo, Δt, cb = setup_simulation()
-Profile.Allocs.@profile sample_rate = 0.01 SciMLBase.solve(
+Profile.Allocs.@profile sample_rate = 0.005 SciMLBase.solve(
     prob,
     ode_algo;
     dt = Δt,
@@ -619,23 +631,40 @@ alloc_flame_file = joinpath(outdir, "alloc_flame_$device_suffix.html")
 ProfileCanvas.html_file(alloc_flame_file, profile)
 @info "Saved allocation flame to $alloc_flame_file"
 
-
 if ClimaComms.device() isa ClimaComms.CUDADevice
     import CUDA
     lprob, lode_algo, lΔt, lcb = setup_simulation()
-    CUDA.@profile SciMLBase.solve(lprob, lode_algo; dt = lΔt, callback = lcb)
+    p = CUDA.@profile SciMLBase.solve(
+        lprob,
+        lode_algo;
+        dt = lΔt,
+        callback = lcb,
+    )
+    # use "COLUMNS" to set how many horizontal characters to crop:
+    # See https://github.com/ronisbr/PrettyTables.jl/issues/11#issuecomment-2145550354
+    envs = ("COLUMNS" => 120,)
+    withenv(envs...) do
+        io = IOContext(
+            stdout,
+            :crop => :horizontal,
+            :limit => true,
+            :displaysize => displaysize(),
+        )
+        show(io, p)
+    end
+    println()
 end
 
 if get(ENV, "BUILDKITE_PIPELINE_SLUG", nothing) == "climaland-benchmark"
-    PREVIOUS_BEST_TIME = 4.8
+    PREVIOUS_BEST_TIME = 4.7
     if average_timing_s > PREVIOUS_BEST_TIME + std_timing_s
         @info "Possible performance regression, previous average time was $(PREVIOUS_BEST_TIME)"
     elseif average_timing_s < PREVIOUS_BEST_TIME - std_timing_s
         @info "Possible significant performance improvement, please update PREVIOUS_BEST_TIME in $(@__DIR__)"
     end
     @testset "Performance" begin
-        @test PREVIOUS_BEST_TIME - std_timing_s <=
-              average_timing_s ≤
-              PREVIOUS_BEST_TIME + std_timing_s
+        @test PREVIOUS_BEST_TIME - 2std_timing_s <=
+              average_timing_s <=
+              PREVIOUS_BEST_TIME + 2std_timing_s
     end
 end

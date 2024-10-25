@@ -1,4 +1,4 @@
-export boundary_flux,
+export boundary_flux!,
     AbstractBC,
     AbstractBoundary,
     TopBoundary,
@@ -61,20 +61,21 @@ Calculates the diffusive flux of a quantity x (water content, temp, etc).
 Here, x_2 = x(z + Δz) and x_1 = x(z), so x_2 is at a larger z by convention.
 """
 function diffusive_flux(K, x_2, x_1, Δz)
-    return @. -K * (x_2 - x_1) / Δz
+    return -K * (x_2 - x_1) / Δz
 end
 
 """
-    boundary_flux(bc::AbstractBC, bound_type::AbstractBoundary, Δz, _...)::ClimaCore.Fields.Field
-A function which returns the correct boundary flux  given
-    any boundary condition (BC). 
+    boundary_flux!(bc_field, bc::AbstractBC, bound_type::AbstractBoundary, Δz, _...)
+A function which updates bc_field with the correct boundary flux  given
+any boundary condition (BC). 
 """
-function boundary_flux(
+function boundary_flux!(
+    bc_field,
     bc::AbstractBC,
     bound_type::AbstractBoundary,
     Δz,
     _...,
-)::ClimaCore.Fields.Field end
+) end
 
 
 """

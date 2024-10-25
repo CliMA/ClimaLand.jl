@@ -16,6 +16,7 @@ using ClimaLand.Canopy
 using ClimaLand.Canopy.PlantHydraulics
 import ClimaLand
 import ClimaLand.Parameters as LP
+import ClimaUtilities.OutputPathGenerator: generate_output_path
 const FT = Float32;
 earth_param_set = LP.LandParameters(FT);
 f_root_to_shoot = FT(3.5)
@@ -207,7 +208,8 @@ prob = SciMLBase.ODEProblem(
 
 sol = SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb, saveat = saveat);
 
-savedir = joinpath(pkgdir(ClimaLand), "experiments/standalone/Vegetation");
+savedir =
+    generate_output_path("experiments/standalone/Vegetation/no_vegetation");
 T = [parent(sol.u[k].canopy.energy.T)[1] for k in 1:length(sol.t)]
 T_atmos = [parent(sv.saveval[k].drivers.T)[1] for k in 1:length(sol.t)]
 ϑ = [parent(sol.u[k].canopy.hydraulics.ϑ_l.:1)[1] for k in 1:length(sol.t)]
@@ -227,8 +229,14 @@ LW_n = [
     parent(sv.saveval[k].canopy.radiative_transfer.LW_n)[1] for
     k in 1:length(sol.t)
 ]
-SHF = [parent(sv.saveval[k].canopy.energy.shf)[1] for k in 1:length(sol.t)]
-LHF = [parent(sv.saveval[k].canopy.energy.lhf)[1] for k in 1:length(sol.t)]
+SHF = [
+    parent(sv.saveval[k].canopy.energy.turbulent_fluxes.shf)[1] for
+    k in 1:length(sol.t)
+]
+LHF = [
+    parent(sv.saveval[k].canopy.energy.turbulent_fluxes.lhf)[1] for
+    k in 1:length(sol.t)
+]
 RE = [
     parent(sv.saveval[k].canopy.energy.fa_energy_roots)[1] for
     k in 1:length(sol.t)
@@ -236,7 +244,10 @@ RE = [
 R = [
     parent(sv.saveval[k].canopy.hydraulics.fa_roots)[1] for k in 1:length(sol.t)
 ]
-Tr = [parent(sv.saveval[k].canopy.hydraulics.fa.:1)[1] for k in 1:length(sol.t)]
+Tr = [
+    parent(sv.saveval[k].canopy.energy.turbulent_fluxes.transpiration)[1]
+    for k in 1:length(sol.t)
+]
 fig = Figure()
 ax = Axis(fig[1, 1], xlabel = "Time (days)", ylabel = "Temperature (K)")
 lines!(ax, sol.t ./ 24 ./ 3600, T, label = "Canopy")

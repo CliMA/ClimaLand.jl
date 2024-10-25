@@ -14,6 +14,7 @@ using ClimaLand.Canopy.PlantHydraulics
 import ClimaLand
 import ClimaLand.Parameters as LP
 import ClimaParams
+import ClimaUtilities.OutputPathGenerator: generate_output_path
 
 global climaland_dir = pkgdir(ClimaLand)
 global site_ID = "US-MOz"
@@ -89,8 +90,7 @@ for float_type in (Float32, Float64)
         @assert mean(abs.(atmos_T .- cache_Tair)) < eps(FT)
 
         daily = sol.t[2:end] ./ 3600 ./ 24
-        savedir = joinpath(
-            climaland_dir,
+        savedir = generate_output_path(
             "experiments/integrated/performance/conservation",
         )
 
@@ -159,8 +159,7 @@ for float_type in (Float32, Float64)
         ]
         # Top boundary flux (transpiration)
         T = [
-            parent(sv.saveval[k].canopy.conductance.transpiration)[1] for
-            k in 2:length(sol.t)
+            parent(sv.saveval[k].canopy.energy.turbulent_fluxes.transpiration)[1] for k in 2:length(sol.t)
         ]
 
         # Water balance equation

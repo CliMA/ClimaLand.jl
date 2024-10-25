@@ -21,6 +21,7 @@ using DelimitedFiles
 using Statistics
 
 import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
+import ClimaUtilities.OutputPathGenerator: generate_output_path
 
 import ClimaTimeSteppers as CTS
 import NCDatasets
@@ -63,11 +64,11 @@ anim_plots = false
 FT = Float64;
 context = ClimaComms.context()
 earth_param_set = LP.LandParameters(FT);
-outdir = joinpath(
-    pkgdir(ClimaLand),
-    "experiments/standalone/Bucket/artifacts_function",
-)
-!ispath(outdir) && mkpath(outdir)
+# Use separate output directory for CPU and GPU runs to avoid race condition
+device_suffix =
+    typeof(ClimaComms.context().device) <: ClimaComms.CPUSingleThreaded ?
+    "cpu" : "gpu"
+outdir = "experiments/standalone/Bucket/artifacts_function_$(device_suffix)"
 
 # Construct simulation domain
 soil_depth = FT(3.5);
@@ -230,9 +231,6 @@ T_sfc = Array(Remapping.interpolate(remapper, prob.p.bucket.T_sfc))
 
 # save prognostic state to CSV - for comparison between
 # GPU and CPU output
-device_suffix =
-    typeof(ClimaComms.context().device) <: ClimaComms.CPUSingleThreaded ?
-    "cpu" : "gpu"
-open(joinpath(outdir, "tf_state_$(device_suffix)_function.txt"), "w") do io
+open(joinpath(output_dir, "tf_state_$(device_suffix)_function.txt"), "w") do io
     writedlm(io, hcat(T_sfc[:], W[:], Ws[:], σS[:]), ',')
 end;

@@ -441,8 +441,8 @@ Plots.plot!(
 # Transpiration plot:
 
 T = [
-    parent(sv.saveval[k].canopy.conductance.transpiration)[1] for
-    k in 1:length(sv.saveval)
+    parent(sv.saveval[k].canopy.energy.turbulent_fluxes.transpiration)[1]
+    for k in 1:length(sv.saveval)
 ]
 T = T .* (1e3 * 24 * 3600)
 
