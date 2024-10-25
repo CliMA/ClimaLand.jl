@@ -2,7 +2,7 @@
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="logo-white.svg">
     <source media="(prefers-color-scheme: light)" srcset="logo.svg">
-    <img alt="Shows the logo of ClimaLand, with a water drop and three leaves" src="logo.svg" width="400">
+    <img alt="Shows the logo of ClimaLand, with a water drop and three leaves" src="logo.svg" width="500">
   </picture>
 </h1>
 <p align="center">
