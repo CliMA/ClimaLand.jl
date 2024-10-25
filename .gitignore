@@ -4,6 +4,8 @@
 *#
 *html
 *~
+experiments/integrated/fluxnet/out/*
+experiments/integrated/fluxnet/US-*/out/*
 *.nc
 *.png
 *.mp4

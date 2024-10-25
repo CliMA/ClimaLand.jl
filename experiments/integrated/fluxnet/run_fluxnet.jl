@@ -19,6 +19,8 @@ using ClimaLand.Canopy.PlantHydraulics
 import ClimaLand
 import ClimaLand.Parameters as LP
 import ClimaUtilities.OutputPathGenerator: generate_output_path
+using ClimaDiagnostics
+using ClimaUtilities
 const FT = Float64
 earth_param_set = LP.LandParameters(FT)
 climaland_dir = pkgdir(ClimaLand)
@@ -184,7 +186,6 @@ shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
 )
 
 canopy_model_args = (; parameters = shared_params, domain = canopy_domain)
-
 # Integrated plant hydraulics and soil model
 land_input = (
     atmos = atmos,
@@ -202,12 +203,8 @@ land = SoilCanopyModel{FT}(;
     canopy_component_args = canopy_component_args,
     canopy_model_args = canopy_model_args,
 )
+
 Y, p, cds = initialize(land)
-exp_tendency! = make_exp_tendency(land)
-imp_tendency! = make_imp_tendency(land)
-jacobian! = make_jacobian(land);
-jac_kwargs =
-    (; jac_prototype = ClimaLand.ImplicitEquationJacobian(Y), Wfact = jacobian!);
 
 #Initial conditions
 Y.soil.ϑ_l =
@@ -243,38 +240,17 @@ for i in 1:(n_stem + n_leaf)
 end
 
 Y.canopy.energy.T = drivers.TA.values[1 + Int(round(t0 / DATA_DT))] # Get atmos temperature at t0
-
 set_initial_cache! = make_set_initial_cache(land)
 set_initial_cache!(p, Y, t0);
 
-# Simulation
-sv = (;
-    t = Array{Float64}(undef, length(saveat)),
-    saveval = Array{NamedTuple}(undef, length(saveat)),
-)
-saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat)
-## How often we want to update the drivers. Note that this uses the defined `t0` and `tf`
-## defined in the simulatons file
-updateat = Array(t0:DATA_DT:tf)
-model_drivers = ClimaLand.get_drivers(land)
-updatefunc = ClimaLand.make_update_drivers(model_drivers)
-driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
-cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
+exp_tendency! = make_exp_tendency(land)
+imp_tendency! = make_imp_tendency(land)
+jacobian! = make_jacobian(land);
+jac_kwargs =
+    (; jac_prototype = ClimaLand.ImplicitEquationJacobian(Y), Wfact = jacobian!);
 
-prob = SciMLBase.ODEProblem(
-    CTS.ClimaODEFunction(
-        T_exp! = exp_tendency!,
-        T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
-        dss! = ClimaLand.dss!,
-    ),
-    Y,
-    (t0, tf),
-    p,
-);
 
-using ClimaDiagnostics
-using ClimaUtilities
-
+# Callbacks
 outdir = joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/out")
 output_dir = ClimaUtilities.OutputPathGenerator.generate_output_path(outdir)
 
@@ -295,17 +271,29 @@ diagnostic_handler =
 
 diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler);
 
-drivers_diag = ClimaLand.get_drivers(land)
-updatefunc = ClimaLand.make_update_drivers(drivers_diag)
+## How often we want to update the drivers. Note that this uses the defined `t0` and `tf`
+## defined in the simulatons file
+updateat = Array(t0:DATA_DT:tf)
+model_drivers = ClimaLand.get_drivers(land)
+updatefunc = ClimaLand.make_update_drivers(model_drivers)
 driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
+cb = SciMLBase.CallbackSet(driver_cb, diag_cb)
 
-sol = SciMLBase.solve(
-    prob,
-    ode_algo;
-    dt = dt,
-    callback = SciMLBase.CallbackSet(driver_cb, diag_cb),
+
+prob = SciMLBase.ODEProblem(
+    CTS.ClimaODEFunction(
+        T_exp! = exp_tendency!,
+        T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
+        dss! = ClimaLand.dss!,
+    ),
+    Y,
+    (t0, tf),
+    p,
 );
 
+sol = SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb);
+
+# Extract model output from the saved diagnostics
 short_names_1D = [
     "sif", # SIF
     "ra", # AR
@@ -322,7 +310,6 @@ short_names_1D = [
     "ghf", # G
     "rn", # Rn
 ]
-
 short_names_2D = [
     "swc", # swc_sfc or swc_5 or swc_10
     "tsoil", # soil_T_sfc or soil_T_5 or soil_T_10
@@ -332,43 +319,42 @@ short_names_2D = [
 hourly_diag_name = short_names_1D .* "_1h_average"
 hourly_diag_name_2D = short_names_2D .* "_1h_average"
 
+
 # diagnostic_as_vectors()[2] is a vector of a variable,
 # whereas diagnostic_as_vectors()[1] is a vector or time associated with that variable.
+# We index to only extract the period post-spinup.
 SIF, AR, g_stomata, GPP, canopy_T, SW_u, LW_u, ER, ET, β, SHF, LHF, G, Rn = [
-    ClimaLand.Diagnostics.diagnostic_as_vectors(d_writer, diag_name)[2][1:721]
+    ClimaLand.Diagnostics.diagnostic_as_vectors(d_writer, diag_name)[2][(N_spinup_days * 24):end]
     for diag_name in hourly_diag_name
-] # [1:721] only because summer subset of model output
+]
 
-swc_5, soil_T_5, si_5 = [
+
+swc, soil_T, si = [
     ClimaLand.Diagnostics.diagnostic_as_vectors(
         d_writer,
         diag_name;
-        layer = 5,
-    )[2][1:721] for diag_name in hourly_diag_name_2D
+        layer = 20, #surface layer
+    )[2][(N_spinup_days * 24):end] for diag_name in hourly_diag_name_2D
 ]
-
-times_diag =
-    ClimaLand.Diagnostics.diagnostic_as_vectors(d_writer, "swc_1h_average")[1][1:721]
+dt_save = 3600.0 # hourly diagnostics
+# Number of days to plot post spinup
+num_days = N_days - N_spinup_days
+model_times = Array(0:dt_save:(num_days * S_PER_DAY)) .+ t_spinup # post spin-up
 
 # convert units for GPP and ET
 GPP = GPP .* 1e6 # mol to μmol
 AR = AR .* 1e6
 ET = ET .* 24 .* 3600
 
+# For the data, we also restrict to post-spinup period
+data_id_post_spinup = Array(Int64(t_spinup ÷ DATA_DT):1:Int64(tf ÷ DATA_DT))
+data_times = Array(0:DATA_DT:(num_days * S_PER_DAY)) .+ t_spinup
 # Plotting
-daily = sol.t ./ 3600 ./ 24
 savedir = generate_output_path("experiments/integrated/fluxnet/$site_ID/out/")
 
 if !isdir(savedir)
     mkdir(savedir)
 end
-
-# Number of days to plot
-num_days = N_days - N_spinup_days
-
-# Time series of model and data outputs
-data_times = [0:DATA_DT:(num_days * S_PER_DAY);]
-model_times = [0:dt_save:(num_days * S_PER_DAY);]
 
 # Plot model diurnal cycles without data comparisons
 # Autotrophic Respiration
@@ -395,8 +381,7 @@ if drivers.GPP.status == absent
         "Model",
     )
 else
-    GPP_data =
-        drivers.GPP.values[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)] .* 1e6
+    GPP_data = drivers.GPP.values[data_id_post_spinup] .* 1e6
     plot_avg_comp(
         "GPP",
         GPP,
@@ -413,9 +398,7 @@ end
 if drivers.SW_OUT.status == absent
     plot_daily_avg("SW up", SW_u, dt_save, num_days, "w/m^2", savedir, "model")
 else
-    SW_u_data = FT.(drivers.SW_OUT.values)[Int64(t_spinup ÷ DATA_DT):Int64(
-        tf ÷ DATA_DT,
-    )]
+    SW_u_data = drivers.SW_OUT.values[data_id_post_spinup]
     plot_avg_comp(
         "SW up",
         SW_u,
@@ -432,9 +415,7 @@ end
 if drivers.LW_OUT.status == absent
     plot_daily_avg("LW up", LW_u, dt_save, num_days, "w/m^2", savedir, "model")
 else
-    LW_u_data = FT.(drivers.LW_OUT.values)[Int64(t_spinup ÷ DATA_DT):Int64(
-        tf ÷ DATA_DT,
-    )]
+    LW_u_data = drivers.LW_OUT.values[data_id_post_spinup]
     plot_avg_comp(
         "LW up",
         LW_u,
@@ -454,7 +435,7 @@ else
     measured_T =
         drivers.LE.values ./ (LP.LH_v0(earth_param_set) * 1000) .*
         (1e3 * 24 * 3600)
-    ET_data = measured_T[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)]
+    ET_data = measured_T[data_id_post_spinup]
     plot_avg_comp(
         "ET",
         ET,
@@ -471,14 +452,14 @@ end
 if drivers.H.status == absent
     plot_daily_avg("SHF", SHF, dt_save, num_days, "w/m^2", savedir, "Model")
 else
-    SHF_data = drivers.H.values[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)]
+    SHF_data = drivers.H.values[data_id_post_spinup]
     plot_avg_comp(
         "SHF",
         SHF,
         dt_save,
         SHF_data,
         FT(DATA_DT),
-        N_days - N_spinup_days,
+        num_days,
         drivers.H.units,
         savedir,
     )
@@ -488,90 +469,25 @@ end
 if drivers.LE.status == absent
     plot_daily_avg("LHF", LHF, dt_save, num_days, "w/m^2", savedir)
 else
-    LHF_data = drivers.LE.values[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)]
+    LHF_data = drivers.LE.values[data_id_post_spinup]
     plot_avg_comp(
         "LHF",
         LHF,
         dt_save,
         LHF_data,
         FT(DATA_DT),
-        N_days - N_spinup_days,
+        num_days,
         drivers.LE.units,
         savedir,
     )
 end
-
-# Ground Heat Flux
-# In the land model, positive fluxes are always in the upwards direction
-# In the data, a positive G indicates a flux into the soil, so we adjust the sign
-# on the data G
-if drivers.G.status != absent
-    G_data_avg = compute_diurnal_avg(
-        FT.(drivers.G.values)[Int64(t_spinup ÷ DATA_DT):Int64(tf ÷ DATA_DT)],
-        data_times,
-        num_days,
-    )
-    plt1 = Plots.plot(0.5:0.5:24, -1 .* G_data_avg, label = "Data: -G")
-    Plots.plot!(
-        plt1,
-        ylabel = "Flux (W/m^2)",
-        title = "Energy balance at the site",
-    )
-    if drivers.LE.status != absent &&
-       drivers.H.status != absent &&
-       drivers.SW_OUT.status != absent &&
-       drivers.LW_OUT.status != absent
-        Rn_data =
-            (drivers.SW_IN.values .- drivers.SW_OUT.values) .+
-            (drivers.LW_IN.values .- drivers.LW_OUT.values)
-        G_alternate_data_avg = compute_diurnal_avg(
-            FT.(drivers.H.values .+ drivers.LE.values .- Rn_data)[Int64(
-                t_spinup ÷ DATA_DT,
-            ):Int64(tf ÷ DATA_DT)],
-            data_times,
-            num_days,
-        )
-        HplusL_avg = compute_diurnal_avg(
-            FT.(drivers.H.values .+ drivers.LE.values)[Int64(
-                t_spinup ÷ DATA_DT,
-            ):Int64(tf ÷ DATA_DT)],
-            data_times,
-            num_days,
-        )
-        RminusG_avg = compute_diurnal_avg(
-            FT.(Rn_data .- drivers.G.values)[Int64(t_spinup ÷ DATA_DT):Int64(
-                tf ÷ DATA_DT,
-            )],
-            data_times,
-            num_days,
-        )
-        Plots.plot!(
-            plt1,
-            0.5:0.5:24,
-            G_alternate_data_avg,
-            label = "Data: (H+L-Rn)_site",
-            xlabel = "Hour of day",
-        )
-        plt2 = Plots.scatter(
-            HplusL_avg,
-            RminusG_avg,
-            label = "Diurnally averaged data",
-            xlabel = "H+L",
-            ylabel = "R-G",
-        )
-        Plots.plot(plt1, plt2, layout = (2, 1))
-    end
-end
-
-Plots.savefig(joinpath(savedir, "energy_balance_data.png"))
-
 
 # Water stress factor
 plot_daily_avg("moisture_stress", β, dt_save, num_days, "", savedir, "Model")
 
 # Stomatal conductance
 plot_daily_avg(
-    "stomatal conductance",
+    "stomatal_conductance",
     g_stomata,
     dt_save,
     num_days,
@@ -593,3 +509,88 @@ if isfile(
         ),
     )
 end
+
+# Water content in soil
+# Soil water content
+# Current resolution has the first layer at 0.1 cm, the second at 5cm.
+plt1 = Plots.plot(size = (1500, 800))
+Plots.plot!(
+    plt1,
+    model_times ./ 3600 ./ 24,
+    swc,
+    label = "1.25cm",
+    xlim = [
+        minimum(model_times ./ 3600 ./ 24),
+        maximum(model_times ./ 3600 ./ 24),
+    ],
+    ylim = [0.05, 0.55],
+    xlabel = "Days",
+    ylabel = "SWC [m/m]",
+    color = "blue",
+    margin = 10Plots.mm,
+)
+
+plot!(
+    plt1,
+    model_times ./ 3600 ./ 24,
+    si,
+    color = "cyan",
+    label = "Ice, 1.25cm",
+)
+
+if drivers.SWC.status != absent
+    Plots.plot!(
+        plt1,
+        data_times ./ 3600 ./ 24,
+        drivers.SWC.values[data_id_post_spinup],
+        label = "Data",
+    )
+end
+plt2 = Plots.plot(
+    data_times ./ 3600 ./ 24,
+    (drivers.P.values .* (-1e3 * 24 * 3600) .* (1 .- snow_frac))[data_id_post_spinup],
+    label = "Rain (data)",
+    ylabel = "Precipitation [mm/day]",
+    xlim = [
+        minimum(model_times ./ 3600 ./ 24),
+        maximum(model_times ./ 3600 ./ 24),
+    ],
+    margin = 10Plots.mm,
+    ylim = [-200, 0],
+    size = (1500, 400),
+)
+Plots.plot!(
+    plt2,
+    data_times ./ 3600 ./ 24,
+    (drivers.P.values .* (-1e3 * 24 * 3600) .* snow_frac)[data_id_post_spinup],
+    label = "Snow (data)",
+    ylabel = "Precipitation [mm/day]",
+)
+Plots.plot(plt2, plt1, layout = grid(2, 1, heights = [0.3, 0.7]))
+Plots.savefig(joinpath(savedir, "ground_water_content.png"))
+
+plt1 = Plots.plot(size = (1500, 800))
+Plots.plot!(
+    plt1,
+    model_times ./ 3600 ./ 24,
+    soil_T,
+    label = "1.25cm",
+    xlim = [
+        minimum(model_times ./ 3600 ./ 24),
+        maximum(model_times ./ 3600 ./ 24),
+    ],
+    xlabel = "Days",
+    ylabel = "Temperature (K)",
+    color = "blue",
+    margin = 10Plots.mm,
+)
+if drivers.TS.status != absent
+    Plots.plot!(
+        plt1,
+        data_times ./ 3600 ./ 24,
+        drivers.TS.values[data_id_post_spinup],
+        label = "Data",
+    )
+end
+
+Plots.savefig(joinpath(savedir, "soil_temperature.png"))
