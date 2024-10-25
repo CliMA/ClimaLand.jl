@@ -603,7 +603,7 @@ plt2 = Plots.plot(
     size = (1500, 400),
 )
 
-Plots.plot(plt2, plt1, layout = grid(3, 1, heights = [0.3, 0.7]))
+Plots.plot(plt2, plt1, layout = grid(2, 1, heights = [0.3, 0.7]))
 Plots.savefig(joinpath(savedir, "ground_water_content.png"))
 
 plt1 = Plots.plot(size = (1500, 800))
