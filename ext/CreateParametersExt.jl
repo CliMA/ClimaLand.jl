@@ -279,7 +279,9 @@ that certain parameters must have the same type (e.g, if a field is
 supplied for porosity, it must be supplied for all other parameters
 defined in the interior of the domain). Some parameters are defined only
 on the surface of the domain (e.g albedo), while other are defined everywhere
-(e.g. porosity). These are indicated with types `F` and `SF`.
+(e.g. porosity). These are indicated with types `F` and `SF`. If both dry/wet albedos
+and general albedos are given as keywords, the dry/wet albedos will override the general
+albedos.
 
 Please see the EnergyHydrologyParameters documentation for a complete list.
 """
@@ -319,12 +321,19 @@ function EnergyHydrologyParameters(
     K_sat::F,
     S_s::F,
     θ_r::F,
-    PAR_albedo::SF = 0.2,
-    NIR_albedo::SF = 0.4,
+    PAR_albedo_dry::SF = nothing,
+    NIR_albedo_dry::SF = nothing,
+    PAR_albedo_wet::SF = nothing,
+    NIR_albedo_wet::SF = nothing,
+    PAR_albedo::SFD = 0.2,
+    NIR_albedo::SFD = 0.4,
+    albedo_calc_top_thickness::TD = 0.07,
     kwargs...,
 ) where {
     F <: Union{<:AbstractFloat, ClimaCore.Fields.Field},
-    SF <: Union{<:AbstractFloat, ClimaCore.Fields.Field},
+    SF <: Union{<:AbstractFloat, ClimaCore.Fields.Field, Nothing},
+    SFD <: Union{<:AbstractFloat, ClimaCore.Fields.Field},
+    TD <: AbstractFloat,
     C,
 }
     earth_param_set = LP.LandParameters(toml_dict)
@@ -386,9 +395,19 @@ function EnergyHydrologyParameters(
     parameters = CP.get_parameter_values(toml_dict, name_map, "Land")
     PSE = typeof(earth_param_set)
     FT = CP.float_type(toml_dict)
-    EnergyHydrologyParameters{FT, F, SF, C, PSE}(;
-        PAR_albedo,
-        NIR_albedo,
+    if isnothing(PAR_albedo_dry)
+        PAR_albedo_dry = FT.(PAR_albedo)
+        NIR_albedo_dry = FT.(NIR_albedo)
+        PAR_albedo_wet = FT.(PAR_albedo)
+        NIR_albedo_wet = FT.(NIR_albedo)
+    end
+    albedo_calc_top_thickness = FT(albedo_calc_top_thickness)
+    EnergyHydrologyParameters{FT, F, typeof(PAR_albedo_dry), C, PSE}(;
+        PAR_albedo_wet,
+        NIR_albedo_wet,
+        PAR_albedo_dry,
+        NIR_albedo_dry,
+        albedo_calc_top_thickness,
         ν,
         ν_ss_om,
         ν_ss_quartz,

@@ -205,8 +205,15 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
             soil_params_mask,
             0,
         )
-    PAR_albedo = ClimaCore.Fields.zeros(surface_space) .+ FT(0.2)
-    NIR_albedo = ClimaCore.Fields.zeros(surface_space) .+ FT(0.2)
+    # clm_data is used for g1, vcmax, rooting, soil albedo,  and two_stream param maps
+    clm_artifact_path = ClimaLand.Artifacts.clm_data_folder_path(; context)
+
+    PAR_albedo_dry, NIR_albedo_dry, PAR_albedo_wet, NIR_albedo_wet =
+        Soil.clm_soil_albedo_properties(
+            surface_space;
+            regridder_type,
+            regridder_kwargs = (; extrapolation_bc,),
+        )
     soil_params = Soil.EnergyHydrologyParameters(
         FT;
         ν,
@@ -217,10 +224,11 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         K_sat,
         S_s,
         θ_r,
-        PAR_albedo = PAR_albedo,
-        NIR_albedo = NIR_albedo,
+        PAR_albedo_dry,
+        NIR_albedo_dry,
+        PAR_albedo_wet,
+        NIR_albedo_wet,
     )
-
     soil_params_mask_sfc =
         ClimaLand.Domains.top_center_to_surface(soil_params_mask)
 
@@ -248,8 +256,6 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     # Energy Balance model
     ac_canopy = FT(2.5e3)
 
-    #clm_data is used for g1, vcmax, rooting, and two_stream param maps
-    clm_artifact_path = ClimaLand.Artifacts.clm_data_folder_path(; context)
     # Foliage clumping index data derived from MODIS
     modis_ci_artifact_path =
         ClimaLand.Artifacts.modis_ci_data_folder_path(; context)
@@ -594,8 +600,20 @@ setup_and_solve_problem(; greet = true);
 # read in diagnostics and make some plots!
 #### ClimaAnalysis ####
 simdir = ClimaAnalysis.SimDir(outdir)
-short_names =
-    ["gpp", "ct", "lai", "swc", "si", "swa", "lwu", "et", "er", "sr", "sif"]
+short_names = [
+    "gpp",
+    "ct",
+    "lai",
+    "swc",
+    "si",
+    "swa",
+    "lwu",
+    "et",
+    "er",
+    "sr",
+    "sif",
+    "salb",
+]
 for short_name in short_names
     var = get(simdir; short_name)
     times = ClimaAnalysis.times(var)

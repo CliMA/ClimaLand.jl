@@ -107,11 +107,7 @@ function SoilCanopyModel{FT}(;
     )
 
     transpiration = Canopy.PlantHydraulics.DiagnosticTranspiration{FT}()
-    ground_conditions =
-        PrognosticSoilConditions{typeof(soil.parameters.PAR_albedo)}(
-            soil.parameters.PAR_albedo,
-            soil.parameters.NIR_albedo,
-        )
+    ground_conditions = PrognosticSoilConditions()
     if :energy in propertynames(canopy_component_args)
 
         canopy = Canopy.CanopyModel{FT}(;
@@ -195,7 +191,7 @@ These include the broadband albedo of the land surface
 `α_sfc`, defined as the ratio of SW_u/SW_d,
 and `T_sfc`, defined as the temperature a blackbody with emissivity
 `ϵ_sfc` would have
-in order to emit the same LW_u as the land surface does. This is called the 
+in order to emit the same LW_u as the land surface does. This is called the
 [effective temperature](https://en.wikipedia.org/wiki/Effective_temperature) in some fields,
 and is not the same as the skin temperature (defined e.g. Equation 7.13 of  Bonan, 2019, Climate Change and Terrestrial Ecosystem Modeling.  DOI: 10.1017/9781107339217).
 """
@@ -428,7 +424,7 @@ function lsm_radiant_energy_fluxes!(
 
     @. LW_u = (1 - ϵ_canopy) * LW_u_soil + ϵ_canopy * _σ * T_canopy^4 # double checked
 
-    # Effective (radiative) land properties 
+    # Effective (radiative) land properties
     @. p.α_sfc = SW_u / max(SW_d, eps(FT)) # TODO: replace with fraction reflected as compute by canopy
     @. p.ϵ_sfc = 1
     @. p.T_sfc = (LW_u / (p.ϵ_sfc * _σ))^(1 / 4)
@@ -470,26 +466,12 @@ function soil_boundary_fluxes!(
 end
 
 """
-     PrognosticSoilConditions{F <: Union{AbstractFloat, ClimaCore.Fields.Field}} <: Canopy.AbstractGroundConditions
+     PrognosticSoilConditions <: Canopy.AbstractGroundConditions
 
-A type of Canopy.AbstractGroundConditions to use when the soil model is prognostic and
-of type `EnergyHydrology`. This is required because the canopy model needs albedo of the ground
-in order to compute its update_aux! function, and that function must only depend on the canopy model.
-
-In the future, we will allocate space for albedo in the cache. In that case, we would *not*
-store them here, twice. `PrognosticSoilConditions` would
-then just be a flag, essentially.
-
-Note that this struct is linked with the EnergyHydrology model. If we ever had a different
-soil model, we might need to construct a different `PrognosticSoilConditions` because
-the fields may be stored in different places.
+ A type of Canopy.AbstractGroundConditions to use when the soil model is prognostic and
+of type `EnergyHydrology`. `PrognosticSoilConditions` functions as a flag and is used for dispatch
 """
-struct PrognosticSoilConditions{
-    F <: Union{AbstractFloat, ClimaCore.Fields.Field},
-} <: Canopy.AbstractGroundConditions
-    α_PAR::F
-    α_NIR::F
-end
+struct PrognosticSoilConditions <: Canopy.AbstractGroundConditions end
 
 """
     Canopy.ground_albedo_PAR(
@@ -509,7 +491,7 @@ function Canopy.ground_albedo_PAR(
     p,
     t,
 )
-    return ground.α_PAR
+    return p.soil.PAR_albedo
 end
 
 """
@@ -530,7 +512,7 @@ function Canopy.ground_albedo_NIR(
     p,
     t,
 )
-    return ground.α_NIR
+    return p.soil.NIR_albedo
 end
 
 

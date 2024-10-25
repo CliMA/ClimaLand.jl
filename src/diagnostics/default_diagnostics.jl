@@ -191,6 +191,7 @@ function default_diagnostics(
             "er",
             "sr",
             "sif",
+            "salb",
         ]
     end
 
