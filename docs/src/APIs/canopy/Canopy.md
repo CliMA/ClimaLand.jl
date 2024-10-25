@@ -15,10 +15,3 @@ ClimaLand.Canopy.SharedCanopyParameters
 ```@docs
 ClimaLand.Canopy.DiagnosticTranspiration
 ```
-
-## Canopy Model Soil Drivers
-
-```@docs
-ClimaLand.Canopy.AbstractSoilDriver
-ClimaLand.Canopy.PrescribedSoil
-```

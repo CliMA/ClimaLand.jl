@@ -1,7 +1,7 @@
 # Stomatal conductance
 Stomata play an important role in uptaking CO2 for photosynthesis while limiting water loss during transpiration. Consequently, an accurate depiction of stomatal conductance is required to study leaf energy fluxes, transpiration, and photosynthesis.
 
-This section describes multiple models of stomatal conductance implemented in ClimaLand. 
+This section describes multiple models of stomatal conductance implemented in ClimaLand.
 
 ## Medlyn Model
 
@@ -33,10 +33,10 @@ g_s &= \frac{g_{s,m}}{\rho_m}
 where $D_{rel} =1.6$ (unitless) is the relative diffusivity of water vapor with respect to CO$_2$, $\rho_m$ is the molar density of water, and $m$ is the Medlyn factor,
 ```math
 \begin{equation}
-    m = \left( 1 + \frac{g_1}{\sqrt{VPD}} \right), 
+    m = \left( 1 + \frac{g_1}{\sqrt{VPD}} \right),
 \end{equation}
 ```
-where g1 is the slope parameter, inversely proportional to the square root of marginal water use efficiency (Medlyn, 2011). We also have A$_n$ as the biochemical demand for CO$_2$ calculated using the photosynthesis model (Farquhar, 1980; Equation \eqref{eq:a_n}; units of molar flux). The resulting units are $m/s$. $g_{0,m}$ is a minimum molar conductivity. (subscript $m$ indicates molar).
+where g1 is the slope parameter, inversely proportional to the square root of marginal water use efficiency (Medlyn, 2011). We also have A$_n$ as the biochemical demand for CO$_2$ calculated using the photosynthesis model (Farquhar, 1980; Equation \eqref{eq:a_n}; units of molar flux). The resulting units are $m/s$. g$_{0,m}$ is a minimum molar conductivity. (subscript $m$ indicates molar).
 
 The model has the following parameters:
 

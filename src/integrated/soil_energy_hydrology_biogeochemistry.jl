@@ -60,7 +60,14 @@ function LandSoilBiogeochemistry{FT}(;
     args = (soil, soilco2)
     return LandSoilBiogeochemistry{FT, typeof.(args)...}(args...)
 end
+"""
+    PrognosticMet <: AbstractSoilDriver
 
+A container which holds the soil parameters needed for running biogeochemistry model with the
+soil model.
+
+$(DocStringExtensions.FIELDS)
+"""
 struct PrognosticMet{FT, F <: Union{AbstractFloat, ClimaCore.Fields.Field}} <:
        Soil.Biogeochemistry.AbstractSoilDriver
     "Soil porosity (m³ m⁻³)"

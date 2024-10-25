@@ -2,7 +2,7 @@
 
 [ClimaLand](https://github.com/CliMA/ClimaLand.jl) home directory has 5 main folders:
 
-- docs: contains files to generate [the documentation website](clima.github.io/ClimaLand.jl/).
+- docs: contains files to generate [the documentation website](https://clima.github.io/ClimaLand.jl/dev/).
 - experiments: contains simple runs of `ClimaLand` models. 
 - parameters: contains a file to retrieve constants such as avogadro's number, the speed of light, etc. 
 - src: contains the code of `ClimaLand` models. 

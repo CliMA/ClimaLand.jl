@@ -72,7 +72,7 @@ function compute_G_CLMG(χl::FT, θs::FT) where {FT}
 end
 
 """
-    compute_absorbances(
+    compute_absorbances!(
         RT::BeerLambertModel{FT},
         PAR,
         NIR,
