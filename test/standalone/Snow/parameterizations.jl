@@ -3,6 +3,9 @@ import ClimaParams as CP
 using ClimaLand.Snow
 import ClimaLand
 import ClimaLand.Parameters as LP
+import Random
+
+Random.seed!(1234)
 
 for FT in (Float32, Float64)
     @testset "Snow Parameterizations, FT = $FT" begin
