@@ -1,4 +1,4 @@
-# Shared Utilities
+<!-- # Shared Utilities
 
 ```@meta
 CurrentModule = ClimaLand
@@ -7,7 +7,6 @@ CurrentModule = ClimaLand
 
 ```@docs
 ClimaLand.Domains.AbstractDomain
-ClimaLand.Domains.AbstractLSMDomain
 ClimaLand.Domains.SphericalShell
 ClimaLand.Domains.SphericalSurface
 ClimaLand.Domains.HybridBox
@@ -78,11 +77,9 @@ ClimaLand.AbstractAtmosphericDrivers
 ClimaLand.AbstractRadiativeDrivers
 ClimaLand.turbulent_fluxes
 ClimaLand.turbulent_fluxes_at_a_point
-ClimaLand.radiative_fluxes_at_a_point
 ClimaLand.set_atmos_ts!
 ClimaLand.surface_air_density
 ClimaLand.surface_temperature
 ClimaLand.surface_resistance
 ClimaLand.surface_specific_humidity
-ClimaLand.make_update_drivers
-```
+``` -->

@@ -14,7 +14,7 @@ component) or standalone (single component) modes.  </strong>
 
 |||
 |---------------------:|:----------------------------------------------|
-| **Documentation**    | [![dev][docs-dev-img]][docs-dev-url]          |
+| **Documentation**    | [![dev][docs-stable-img]][docs-stable-url]          |
 | **GHA CI**           | [![gha ci][gha-ci-img]][gha-ci-url]           |
 | **Code Coverage**    | [![codecov][codecov-img]][codecov-url]        |
 | **Downloads**        | [![downloads][downloads-img]][downloads-url]  |
@@ -88,6 +88,9 @@ https://github.com/CliMA/Land.
 
 [docs-dev-img]: https://img.shields.io/badge/docs-dev-blue.svg
 [docs-dev-url]: https://CliMA.github.io/ClimaLand.jl/dev/
+
+[docs-stable-img]: https://img.shields.io/badge/docs-stable-blue.svg
+[docs-stable-url]: https://CliMA.github.io/ClimaLand.jl/stable/
 
 [gha-ci-img]: https://github.com/CliMA/ClimaLand.jl/actions/workflows/ci.yml/badge.svg
 [gha-ci-url]: https://github.com/CliMA/ClimaLand.jl/actions/workflows/ci.yml

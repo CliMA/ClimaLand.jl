@@ -25,7 +25,7 @@ using ClimaLand
 @doc ClimaLand.Canopy.compute_GPP
 ```
 
-As you can see, our parameterization for GPP is located in the [`Canopy`](@ref ClimaLand.Canopy) Module, and requires four arguments.
+As you can see, our parameterization for GPP is located in the [`Canopy`](@ref Photosynthesis) Module, and requires four arguments.
 For example, with An = 5 µmol m⁻² s⁻¹, K = 0.5, LAI = 3 m² m⁻², Ω = 0.7, you can compute GPP like below:
 
 ```@repl

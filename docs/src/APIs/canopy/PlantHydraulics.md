@@ -32,7 +32,5 @@ ClimaLand.PlantHydraulics.LinearRetentionCurve
 ## Plant Hydraulics Methods and Types
 
 ```@docs
-ClimaLand.PlantHydraulics.PrescribedSoilPressure
 ClimaLand.PlantHydraulics.PrescribedTranspiration
-ClimaLand.PlantHydraulics.AbstractRootExtraction
 ```

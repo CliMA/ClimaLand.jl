@@ -2,7 +2,7 @@
 
 [ClimaLand](https://github.com/CliMA/ClimaLand.jl) home directory has 6 main folders:
 
-- docs: contains files to generate [the documentation website](clima.github.io/ClimaLand.jl/).
+- docs: contains files to generate [the documentation website](https://clima.github.io/ClimaLand.jl/stable/).
 - experiments: contains simple runs of `ClimaLand` models. Most of these experiments is run as part of our CI.
 - src: contains the code of `ClimaLand` models.
 - ext: contains a package extension for Neural Snow and an extension with constructors for model parameters

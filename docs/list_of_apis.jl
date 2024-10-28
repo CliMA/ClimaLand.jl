@@ -5,7 +5,6 @@
 apis = [
     "ClimaLand" => [
         "ClimaLand" => "APIs/ClimaLand.md",
-        "Parameter Dataset Tools" => "APIs/Regridder.md",
         "Shared Utilities" => "APIs/shared_utilities.md",
         "Soil" => [
             "Soil Energy and Hydrology" => "APIs/Soil.md",

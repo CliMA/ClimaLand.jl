@@ -1,7 +1,7 @@
 ```@eval
 using Pkg
 io = IOBuffer()
-v = Pkg.installed()["ClimaLand"]
+v = filter(x-> x.second.name == "ClimaLand", Pkg.dependencies()) |> x -> first(x)[2].version
 print(io, """
     # ClimaLand.jl Documentation (v$(v))
 
