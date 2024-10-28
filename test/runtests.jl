@@ -37,6 +37,9 @@ end
 @safetestset "Bucket soil tests" begin
     include("standalone/Bucket/soil_bucket_tests.jl")
 end
+@safetestset "Restart tests" begin
+    include("standalone/Bucket/restart.jl")
+end
 
 # Standalone Snow model tests
 @safetestset "Snow parameterization tests" begin
