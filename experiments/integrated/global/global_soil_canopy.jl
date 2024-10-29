@@ -4,11 +4,8 @@ ClimaComms.@import_required_backends
 import ClimaTimeSteppers as CTS
 using ClimaCore
 using ClimaUtilities.ClimaArtifacts
-import Interpolations
 import ClimaUtilities.TimeVaryingInputs:
     TimeVaryingInput, LinearInterpolation, PeriodicCalendar
-import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
-import ClimaUtilities.Regridders: InterpolationsRegridder
 import ClimaUtilities.OutputPathGenerator: generate_output_path
 import ClimaUtilities.ClimaArtifacts: @clima_artifact
 import ClimaParams as CP
@@ -30,9 +27,6 @@ import ClimaAnalysis
 import ClimaAnalysis.Visualize as viz
 import ClimaUtilities
 time_interpolation_method = LinearInterpolation(PeriodicCalendar())
-regridder_type = :InterpolationsRegridder
-extrapolation_bc =
-    (Interpolations.Periodic(), Interpolations.Flat(), Interpolations.Flat())
 context = ClimaComms.context()
 outdir = generate_output_path("experiments/integrated/global")
 
@@ -68,7 +62,6 @@ atmos, radiation = ClimaLand.prescribed_forcing_era5(
     earth_param_set,
     FT;
     time_interpolation_method = time_interpolation_method,
-    regridder_type = regridder_type,
 )
 
 include(
@@ -128,7 +121,6 @@ radiative_transfer_args = (;
 # Set up conductance
 conductance_args = (; parameters = Canopy.MedlynConductanceParameters(FT; g1))
 # Set up photosynthesis
-is_c3 = FT(1) # set the photosynthesis mechanism to C3
 photosynthesis_args =
     (; parameters = Canopy.FarquharParameters(FT, is_c3; Vcmax25 = Vcmax25))
 # Set up plant hydraulics
@@ -137,7 +129,6 @@ LAIfunction = ClimaLand.prescribed_lai_era5(
     surface_space,
     start_date;
     time_interpolation_method = time_interpolation_method,
-    regridder_type = regridder_type,
 )
 ai_parameterization = Canopy.PrescribedSiteAreaIndex{FT}(LAIfunction, SAI, RAI)
 
@@ -202,7 +193,7 @@ land = SoilCanopyModel{FT}(;
 Y, p, cds = initialize(land)
 
 t0 = 0.0
-dt = 900.0
+dt = 450.0
 tf = 3600
 
 init_soil(ν, θ_r) = θ_r + (ν - θ_r) / 2

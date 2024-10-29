@@ -10,7 +10,6 @@ using ClimaUtilities.ClimaArtifacts
 import Interpolations
 
 import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
-import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
 import ClimaUtilities.Regridders: InterpolationsRegridder
 import ClimaUtilities.OutputPathGenerator: generate_output_path
 import NCDatasets
@@ -43,18 +42,15 @@ domain = ClimaLand.Domains.SphericalShell(;
 );
 surface_space = domain.space.surface
 subsurface_space = domain.space.subsurface
+spatially_varying_soil_params =
+    ClimaLand.default_spatially_varying_soil_parameters(
+        subsurface_space,
+        surface_space,
+        FT,
+    )
+(; ν, hydrology_cm, K_sat, S_s, θ_r, f_max, mask) =
+    spatially_varying_soil_params
 
-# Read in f_max data and land sea mask
-infile_path = ClimaLand.Artifacts.topmodel_data_path()
-f_max = SpaceVaryingInput(infile_path, "fmax", surface_space; regridder_type)
-mask = SpaceVaryingInput(
-    infile_path,
-    "landsea_mask",
-    surface_space;
-    regridder_type,
-)
-
-oceans_to_zero(field, mask) = mask > 0.5 ? field : eltype(field)(0)
 f_over = FT(3.28) # 1/m
 R_sb = FT(1.484e-4 / 1000) # m/s
 runoff_model = ClimaLand.Soil.Runoff.TOPMODELRunoff{FT}(;
@@ -62,83 +58,6 @@ runoff_model = ClimaLand.Soil.Runoff.TOPMODELRunoff{FT}(;
     f_max = f_max,
     R_sb = R_sb,
 )
-soil_params_artifact_path =
-    ClimaLand.Artifacts.soil_params_artifact_folder_path(; context)
-
-extrapolation_bc =
-    (Interpolations.Periodic(), Interpolations.Flat(), Interpolations.Flat())
-# We use this mask to set values of these parameters over the ocean, in order
-# to keep them in the physical range
-function mask_vg(var, value)
-    if var < 1e-8
-        return value
-    else
-        return var
-    end
-end
-vg_α = SpaceVaryingInput(
-    joinpath(
-        soil_params_artifact_path,
-        "vGalpha_map_gupta_etal2020_1.0x1.0x4.nc",
-    ),
-    "α",
-    subsurface_space;
-    regridder_type,
-    regridder_kwargs = (; extrapolation_bc,),
-)
-vg_α .= mask_vg.(vg_α, 1e-3)
-# We use this mask to set values of this parameter over the ocean, in order
-# to keep it in the physical range
-function mask_vg_n(var, value)
-    if var < 1
-        return value
-    else
-        return var
-    end
-end
-vg_n = SpaceVaryingInput(
-    joinpath(soil_params_artifact_path, "vGn_map_gupta_etal2020_1.0x1.0x4.nc"),
-    "n",
-    subsurface_space;
-    regridder_type,
-    regridder_kwargs = (; extrapolation_bc,),
-)
-vg_n .= mask_vg_n.(vg_n, 1.001)
-vg_fields_to_hcm_field(α::FT, n::FT) where {FT} =
-    ClimaLand.Soil.vanGenuchten{FT}(; @NamedTuple{α::FT, n::FT}((α, n))...)
-hydrology_cm = vg_fields_to_hcm_field.(vg_α, vg_n)
-
-θ_r = SpaceVaryingInput(
-    joinpath(
-        soil_params_artifact_path,
-        "residual_map_gupta_etal2020_1.0x1.0x4.nc",
-    ),
-    "θ_r",
-    subsurface_space;
-    regridder_type,
-    regridder_kwargs = (; extrapolation_bc,),
-)
-
-ν = SpaceVaryingInput(
-    joinpath(
-        soil_params_artifact_path,
-        "porosity_map_gupta_etal2020_1.0x1.0x4.nc",
-    ),
-    "ν",
-    subsurface_space;
-    regridder_type,
-    regridder_kwargs = (; extrapolation_bc,),
-)
-ν .= mask_vg.(ν, 1.0)
-K_sat = SpaceVaryingInput(
-    joinpath(soil_params_artifact_path, "ksat_map_gupta_etal2020_1.0x1.0x4.nc"),
-    "Ksat",
-    subsurface_space;
-    regridder_type,
-    regridder_kwargs = (; extrapolation_bc,),
-)
-S_s = ClimaCore.Fields.zeros(subsurface_space) .+ FT(1e-3)
-
 soil_params = ClimaLand.Soil.RichardsParameters(;
     hydrology_cm = hydrology_cm,
     ν = ν,
@@ -205,8 +124,9 @@ end
 t0 = 0.0
 tf = 3600.0 * 24 * 2
 dt = 1800.0
+vg_α = hydrology_cm.α
+vg_n = hydrology_cm.n
 Y.soil.ϑ_l .= hydrostatic_profile.(lat, z, ν, θ_r, vg_α, vg_n, S_s, f_max)
-@. Y.soil.ϑ_l = oceans_to_zero(Y.soil.ϑ_l, mask)
 set_initial_cache! = make_set_initial_cache(model)
 exp_tendency! = make_exp_tendency(model);
 imp_tendency! = ClimaLand.make_imp_tendency(model);
@@ -250,6 +170,7 @@ cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
 sol = @time SciMLBase.solve(prob, ode_algo; dt = dt, saveat = dt, callback = cb)
 
 # Make plots on CPU
+oceans_to_zero(x, mask) = mask == 1 ? x : eltype(x)(0)
 if context.device isa ClimaComms.CPUSingleThreaded
     longpts = range(-180.0, 180.0, 101)
     latpts = range(-90.0, 90.0, 101)

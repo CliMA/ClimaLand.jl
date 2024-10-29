@@ -26,12 +26,10 @@ import SciMLBase
 using Dates
 using Test
 import NCDatasets
-import Interpolations
 
 import ClimaComms
 ClimaComms.@import_required_backends
 import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
-import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
 import ClimaUtilities.Regridders: InterpolationsRegridder
 import ClimaTimeSteppers as CTS
 using ClimaCore
@@ -55,14 +53,10 @@ regridder_type = :InterpolationsRegridder
 context = ClimaComms.context()
 device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
-
 outdir = "richards_benchmark_$(device_suffix)"
 !ispath(outdir) && mkpath(outdir)
 
 function setup_prob(t0, tf, Δt; nelements = (101, 15))
-    # We set up the problem in a function so that we can make multiple copies (for profiling)
-
-    # Set up simulation domain
     soil_depth = FT(50)
     domain = ClimaLand.Domains.SphericalShell(;
         radius = FT(6.3781e6),
@@ -75,19 +69,13 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
     subsurface_space = domain.space.subsurface
 
     start_date = DateTime(2021)
-
-    # Read in f_max data and land sea mask
-    infile_path = ClimaLand.Artifacts.topmodel_data_path()
-    f_max =
-        SpaceVaryingInput(infile_path, "fmax", surface_space; regridder_type)
-    mask = SpaceVaryingInput(
-        infile_path,
-        "landsea_mask",
-        surface_space;
-        regridder_type,
-    )
-
-    oceans_to_zero(field, mask) = mask > 0.5 ? field : eltype(field)(0)
+    spatially_varying_soil_params =
+        ClimaLand.default_spatially_varying_soil_parameters(
+            subsurface_space,
+            surface_space,
+            FT,
+        )
+    (; ν, hydrology_cm, K_sat, S_s, θ_r, f_max) = spatially_varying_soil_params
     f_over = FT(3.28) # 1/m
     R_sb = FT(1.484e-4 / 1000) # m/s
     runoff_model = ClimaLand.Soil.Runoff.TOPMODELRunoff{FT}(;
@@ -95,92 +83,6 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
         f_max = f_max,
         R_sb = R_sb,
     )
-    soil_params_artifact_path =
-        ClimaLand.Artifacts.soil_params_artifact_folder_path(; context)
-
-    extrapolation_bc = (
-        Interpolations.Periodic(),
-        Interpolations.Flat(),
-        Interpolations.Flat(),
-    )
-    # We use this mask to set values of these parameters over the ocean, in order
-    # to keep them in the physical range
-    function mask_vg(var, value)
-        if var < 1e-8
-            return value
-        else
-            return var
-        end
-    end
-    vg_α = SpaceVaryingInput(
-        joinpath(
-            soil_params_artifact_path,
-            "vGalpha_map_gupta_etal2020_1.0x1.0x4.nc",
-        ),
-        "α",
-        subsurface_space;
-        regridder_type,
-        regridder_kwargs = (; extrapolation_bc,),
-    )
-    vg_α .= mask_vg.(vg_α, 1e-3)
-    # We use this mask to set values of this parameter over the ocean, in order
-    # to keep it in the physical range
-    function mask_vg_n(var, value)
-        if var < 1
-            return value
-        else
-            return var
-        end
-    end
-    vg_n = SpaceVaryingInput(
-        joinpath(
-            soil_params_artifact_path,
-            "vGn_map_gupta_etal2020_1.0x1.0x4.nc",
-        ),
-        "n",
-        subsurface_space;
-        regridder_type,
-        regridder_kwargs = (; extrapolation_bc,),
-    )
-    vg_n .= mask_vg_n.(vg_n, 1.001)
-    vg_fields_to_hcm_field(α::FT, n::FT) where {FT} =
-        ClimaLand.Soil.vanGenuchten{FT}(; @NamedTuple{α::FT, n::FT}((α, n))...)
-    hydrology_cm = vg_fields_to_hcm_field.(vg_α, vg_n)
-
-    θ_r = SpaceVaryingInput(
-        joinpath(
-            soil_params_artifact_path,
-            "residual_map_gupta_etal2020_1.0x1.0x4.nc",
-        ),
-        "θ_r",
-        subsurface_space;
-        regridder_type,
-        regridder_kwargs = (; extrapolation_bc,),
-    )
-
-    ν = SpaceVaryingInput(
-        joinpath(
-            soil_params_artifact_path,
-            "porosity_map_gupta_etal2020_1.0x1.0x4.nc",
-        ),
-        "ν",
-        subsurface_space;
-        regridder_type,
-        regridder_kwargs = (; extrapolation_bc,),
-    )
-    ν .= mask_vg.(ν, 1.0)
-    K_sat = SpaceVaryingInput(
-        joinpath(
-            soil_params_artifact_path,
-            "ksat_map_gupta_etal2020_1.0x1.0x4.nc",
-        ),
-        "Ksat",
-        subsurface_space;
-        regridder_type,
-        regridder_kwargs = (; extrapolation_bc,),
-    )
-    S_s = ClimaCore.Fields.zeros(subsurface_space) .+ FT(1e-3)
-
     soil_params = ClimaLand.Soil.RichardsParameters(;
         hydrology_cm = hydrology_cm,
         ν = ν,
@@ -219,8 +121,8 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
         lateral_flow = false,
     )
 
-    Y, p, t = initialize(model)
-    z = ClimaCore.Fields.coordinate_field(domain.space.subsurface).z
+    Y, p, cds = initialize(model)
+    z = ClimaCore.Fields.coordinate_field(cds.subsurface).z
     lat = ClimaCore.Fields.coordinate_field(domain.space.subsurface).lat
     function hydrostatic_profile(
         lat::FT,
@@ -247,9 +149,9 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
     end
 
     # Set initial state values
+    vg_α = hydrology_cm.α
+    vg_n = hydrology_cm.n
     Y.soil.ϑ_l .= hydrostatic_profile.(lat, z, ν, θ_r, vg_α, vg_n, S_s, f_max)
-    @. Y.soil.ϑ_l = oceans_to_zero(Y.soil.ϑ_l, mask)
-
     # Create model update functions
     set_initial_cache! = make_set_initial_cache(model)
     exp_tendency! = make_exp_tendency(model)
