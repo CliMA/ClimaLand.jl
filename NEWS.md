@@ -4,6 +4,12 @@ ClimaLand.jl Release Notes
 main
 --------
 
+v0.15.4
+-------
+- Add functions to save simulations to checkpoints and read them back.
+  PR[#853](https://github.com/CliMA/ClimaLand.jl/pull/853)
+- Add start_date to output NetCDF files.
+  PR[#853](https://github.com/CliMA/ClimaLand.jl/pull/853)
 
 v0.15.3
 -------

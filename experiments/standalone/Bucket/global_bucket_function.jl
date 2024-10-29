@@ -167,7 +167,7 @@ output_dir = ClimaUtilities.OutputPathGenerator.generate_output_path(outdir)
 
 space = bucket_domain.space.subsurface
 
-nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(space, output_dir)
+nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(space, output_dir; start_date)
 
 diags =
     ClimaLand.default_diagnostics(model, start_date; output_writer = nc_writer)

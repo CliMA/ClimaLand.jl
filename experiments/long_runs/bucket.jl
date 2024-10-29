@@ -121,7 +121,11 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 7))
 
     # ClimaDiagnostics
 
-    nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(subsurface_space, outdir)
+    nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(
+        subsurface_space,
+        outdir;
+        start_date,
+    )
 
     diags = ClimaLand.default_diagnostics(
         bucket,
