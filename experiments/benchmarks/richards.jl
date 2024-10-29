@@ -310,10 +310,12 @@ function setup_simulation(; greet = false)
 end
 
 # Warm up and greet
+@info now()
 prob, ode_algo, Δt, cb = setup_simulation(; greet = true)
 SciMLBase.solve(prob, ode_algo; dt = Δt, callback = cb)
 
 @info "Starting profiling"
+@info now()
 # Stop when we profile for MAX_PROFILING_TIME_SECONDS or MAX_PROFILING_SAMPLES
 MAX_PROFILING_TIME_SECONDS = 500
 MAX_PROFILING_SAMPLES = 100
@@ -346,6 +348,7 @@ std_timing_s = round(
 @info "Min time: $(min_timing_s) s"
 @info "Standard deviation time: $(std_timing_s) s"
 @info "Done profiling"
+@info now()
 
 prob, ode_algo, Δt, cb = setup_simulation()
 Profile.@profile SciMLBase.solve(prob, ode_algo; dt = Δt, callback = cb)
@@ -353,7 +356,7 @@ results = Profile.fetch()
 flame_file = joinpath(outdir, "flame_$device_suffix.html")
 ProfileCanvas.html_file(flame_file, results)
 @info "Saved compute flame to $flame_file"
-
+@info now()
 prob, ode_algo, Δt, cb = setup_simulation()
 Profile.Allocs.@profile sample_rate = 0.005 SciMLBase.solve(
     prob,
@@ -366,16 +369,20 @@ profile = ProfileCanvas.view_allocs(results)
 alloc_flame_file = joinpath(outdir, "alloc_flame_$device_suffix.html")
 ProfileCanvas.html_file(alloc_flame_file, profile)
 @info "Saved allocation flame to $alloc_flame_file"
-
+@info now()
 if ClimaComms.device() isa ClimaComms.CUDADevice
     import CUDA
+    @info now()
     lprob, lode_algo, lΔt, lcb = setup_simulation()
+    @info now()
+    @info "profiling with cuda"
     p = CUDA.@profile SciMLBase.solve(
         lprob,
         lode_algo;
         dt = lΔt,
         callback = lcb,
     )
+    @info now()
     # use "COLUMNS" to set how many horizontal characters to crop:
     # See https://github.com/ronisbr/PrettyTables.jl/issues/11#issuecomment-2145550354
     envs = ("COLUMNS" => 120,)
