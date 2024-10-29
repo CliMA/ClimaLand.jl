@@ -184,8 +184,11 @@ function setup_prob(t0, tf, Δt, outdir)
     updateat = copy(saveat)
     drivers = ClimaLand.get_drivers(model)
     updatefunc = ClimaLand.make_update_drivers(drivers)
-    nc_writer =
-        ClimaDiagnostics.Writers.NetCDFWriter(subsurface_space, output_dir)
+    nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(
+        subsurface_space,
+        output_dir;
+        start_date,
+    )
     diags = ClimaLand.default_diagnostics(
         model,
         start_date;

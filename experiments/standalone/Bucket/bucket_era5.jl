@@ -184,7 +184,11 @@ updatefunc = ClimaLand.make_update_drivers(drivers)
 driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
 
 # Diagnostics
-nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(subsurface_space, output_dir)
+nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(
+    subsurface_space,
+    output_dir;
+    start_date,
+)
 diags = ClimaLand.default_diagnostics(
     model,
     start_date;

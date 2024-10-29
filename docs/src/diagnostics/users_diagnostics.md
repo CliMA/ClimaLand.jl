@@ -36,7 +36,7 @@ space = bucket_domain.space.subsurface
 Your diagnostics will be written in a Julia Dict or a netcdf file, for example. This is up to you. For a netcdf file, you define your writter like this:
 
 ```Julia
-nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(space, output_dir)
+nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(space, output_dir; start_date)
 ```
 
 providing the space and output_dir defined in steps 1. and 2.

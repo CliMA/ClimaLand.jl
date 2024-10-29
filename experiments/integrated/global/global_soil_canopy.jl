@@ -256,7 +256,8 @@ prob = SciMLBase.ODEProblem(
 )
 
 # ClimaDiagnostics
-nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(subsurface_space, outdir)
+nc_writer =
+    ClimaDiagnostics.Writers.NetCDFWriter(subsurface_space, outdir; start_date)
 
 diags = ClimaLand.default_diagnostics(
     land,
