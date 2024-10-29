@@ -6,9 +6,13 @@ main
 
 v0.15.4
 -------
+- The foliage clumping index of the radiative transfer model now varies spatially, using MODIS data
+  PR[#863](https://github.com/CliMA/ClimaLand.jl/pull/863)
+- All outputs directories use activelink, described [here](https://clima.github.io/ClimaUtilities.jl/dev/outputpathgenerator/)
+  PR[#804](https://github.com/CliMA/ClimaLand.jl/pull/804)
 - Add functions to save simulations to checkpoints and read them back.
   PR[#853](https://github.com/CliMA/ClimaLand.jl/pull/853)
-- Add start_date to output NetCDF files.
+- Add `start_date` to output NetCDF files.
   PR[#853](https://github.com/CliMA/ClimaLand.jl/pull/853)
 
 v0.15.3
