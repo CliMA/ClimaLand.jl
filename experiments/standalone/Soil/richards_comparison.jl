@@ -138,7 +138,9 @@ end
         S_s = FT(1e-3) #inverse meters
         vg_n = FT(3.96)
         vg_α = FT(2.7) # inverse meters
-        hcm = vanGenuchten{FT}(; α = vg_α, n = vg_n)
+        vg_m = FT(1)
+        S_c = ν + 1
+        hcm = vanGenuchten(vg_α, vg_n, vg_m, S_c)
         θ_r = FT(0.075)
         zmax = FT(0)
         zmin = FT(-1.5)
