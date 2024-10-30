@@ -61,80 +61,122 @@ end
 @diagnostic_compute "subsurface_water_storage" BucketModel Y.bucket.W
 @diagnostic_compute "surface_water_content" BucketModel Y.bucket.Ws
 
-### SoilCanopyModel ###
+### Union{SoilCanopyModel, LandModel} ###
 
 # variables stored in p (diagnostics variables stored in the cache)
 
 ## Canopy Module ##
 
 # Canopy - Solar Induced Fluorescence
-@diagnostic_compute "solar_induced_fluorescence" SoilCanopyModel p.canopy.sif.SIF
+@diagnostic_compute "solar_induced_fluorescence" Union{
+    SoilCanopyModel,
+    LandModel,
+} p.canopy.sif.SIF
 
 # Canopy - Autotrophic respiration
-@diagnostic_compute "autotrophic_respiration" SoilCanopyModel p.canopy.autotrophic_respiration.Ra
+@diagnostic_compute "autotrophic_respiration" Union{SoilCanopyModel, LandModel} p.canopy.autotrophic_respiration.Ra
 
 # Canopy - Conductance
-@diagnostic_compute "stomatal_conductance" SoilCanopyModel p.canopy.conductance.gs
-@diagnostic_compute "canopy_transpiration" SoilCanopyModel p.canopy.energy.turbulent_fluxes.transpiration
+@diagnostic_compute "stomatal_conductance" Union{SoilCanopyModel, LandModel} p.canopy.conductance.gs
+@diagnostic_compute "canopy_transpiration" Union{SoilCanopyModel, LandModel} p.canopy.energy.turbulent_fluxes.transpiration
 
 # Canopy - Energy
-@diagnostic_compute "canopy_latent_heat_flux" SoilCanopyModel p.canopy.energy.turbulent_fluxes.lhf
-@diagnostic_compute "canopy_sensible_heat_flux" SoilCanopyModel p.canopy.energy.turbulent_fluxes.shf
+@diagnostic_compute "canopy_latent_heat_flux" Union{SoilCanopyModel, LandModel} p.canopy.energy.turbulent_fluxes.lhf
+@diagnostic_compute "canopy_sensible_heat_flux" Union{
+    SoilCanopyModel,
+    LandModel,
+} p.canopy.energy.turbulent_fluxes.shf
 
 # Canopy - Hydraulics
-#@diagnostic_compute "leaf_water_potential" SoilCanopyModel last(
+#@diagnostic_compute "leaf_water_potential" Union{SoilCanopyModel, LandModel} last(
 #    p.canopy.hydraulics.ψ,
 #)
-# @diagnostic_compute "flux_per_ground_area" SoilCanopyModel p.canopy.hydraulics.fa # return a Tuple
-@diagnostic_compute "root_flux_per_ground_area" SoilCanopyModel p.canopy.hydraulics.fa_roots
-@diagnostic_compute "leaf_area_index" SoilCanopyModel p.canopy.hydraulics.area_index.leaf
-@diagnostic_compute "moisture_stress_factor" SoilCanopyModel p.canopy.hydraulics.β
-@diagnostic_compute "root_area_index" SoilCanopyModel p.canopy.hydraulics.area_index.root
-@diagnostic_compute "stem_area_index" SoilCanopyModel p.canopy.hydraulics.area_index.stem
+# @diagnostic_compute "flux_per_ground_area" Union{SoilCanopyModel, LandModel} p.canopy.hydraulics.fa # return a Tuple
+@diagnostic_compute "root_flux_per_ground_area" Union{
+    SoilCanopyModel,
+    LandModel,
+} p.canopy.hydraulics.fa_roots
+@diagnostic_compute "leaf_area_index" Union{SoilCanopyModel, LandModel} p.canopy.hydraulics.area_index.leaf
+@diagnostic_compute "moisture_stress_factor" Union{SoilCanopyModel, LandModel} p.canopy.hydraulics.β
+@diagnostic_compute "root_area_index" Union{SoilCanopyModel, LandModel} p.canopy.hydraulics.area_index.root
+@diagnostic_compute "stem_area_index" Union{SoilCanopyModel, LandModel} p.canopy.hydraulics.area_index.stem
 
 # Canopy - Photosynthesis
-@diagnostic_compute "photosynthesis_net_canopy" SoilCanopyModel p.canopy.photosynthesis.GPP
-@diagnostic_compute "photosynthesis_net_leaf" SoilCanopyModel p.canopy.photosynthesis.An
-@diagnostic_compute "respiration_leaf" SoilCanopyModel p.canopy.photosynthesis.Rd
-@diagnostic_compute "vcmax25" SoilCanopyModel p.canopy.photosynthesis.Vcmax25
+@diagnostic_compute "photosynthesis_net_canopy" Union{
+    SoilCanopyModel,
+    LandModel,
+} p.canopy.photosynthesis.GPP
+@diagnostic_compute "photosynthesis_net_leaf" Union{SoilCanopyModel, LandModel} p.canopy.photosynthesis.An
+@diagnostic_compute "respiration_leaf" Union{SoilCanopyModel, LandModel} p.canopy.photosynthesis.Rd
+@diagnostic_compute "vcmax25" Union{SoilCanopyModel, LandModel} p.canopy.photosynthesis.Vcmax25
 
 # Canopy - Radiative Transfer
-@diagnostic_compute "near_infrared_radiation_down" SoilCanopyModel p.canopy.radiative_transfer.inc_nir
-@diagnostic_compute "near_infrared_radiation_absorbed" SoilCanopyModel p.canopy.radiative_transfer.nir.abs
-@diagnostic_compute "near_infrared_radiation_reflected" SoilCanopyModel p.canopy.radiative_transfer.nir.refl
-@diagnostic_compute "near_infrared_radiation_transmitted" SoilCanopyModel p.canopy.radiative_transfer.nir.trans
-@diagnostic_compute "photosynthetically_active_radiation_down" SoilCanopyModel p.canopy.radiative_transfer.inc_par
-@diagnostic_compute "photosynthetically_active_radiation_absorbed" SoilCanopyModel p.canopy.radiative_transfer.par.abs
-@diagnostic_compute "photosynthetically_active_radiation_reflected" SoilCanopyModel p.canopy.radiative_transfer.par.refl
-@diagnostic_compute "photosynthetically_active_radiation_transmitted" SoilCanopyModel p.canopy.radiative_transfer.par.trans
-@diagnostic_compute "radiation_longwave_net" SoilCanopyModel p.canopy.radiative_transfer.LW_n
-@diagnostic_compute "radiation_shortwave_net" SoilCanopyModel p.canopy.radiative_transfer.SW_n
+@diagnostic_compute "near_infrared_radiation_down" Union{
+    SoilCanopyModel,
+    LandModel,
+} p.canopy.radiative_transfer.inc_nir
+@diagnostic_compute "near_infrared_radiation_absorbed" Union{
+    SoilCanopyModel,
+    LandModel,
+} p.canopy.radiative_transfer.nir.abs
+@diagnostic_compute "near_infrared_radiation_reflected" Union{
+    SoilCanopyModel,
+    LandModel,
+} p.canopy.radiative_transfer.nir.refl
+@diagnostic_compute "near_infrared_radiation_transmitted" Union{
+    SoilCanopyModel,
+    LandModel,
+} p.canopy.radiative_transfer.nir.trans
+@diagnostic_compute "photosynthetically_active_radiation_down" Union{
+    SoilCanopyModel,
+    LandModel,
+} p.canopy.radiative_transfer.inc_par
+@diagnostic_compute "photosynthetically_active_radiation_absorbed" Union{
+    SoilCanopyModel,
+    LandModel,
+} p.canopy.radiative_transfer.par.abs
+@diagnostic_compute "photosynthetically_active_radiation_reflected" Union{
+    SoilCanopyModel,
+    LandModel,
+} p.canopy.radiative_transfer.par.refl
+@diagnostic_compute "photosynthetically_active_radiation_transmitted" Union{
+    SoilCanopyModel,
+    LandModel,
+} p.canopy.radiative_transfer.par.trans
+@diagnostic_compute "radiation_longwave_net" Union{SoilCanopyModel, LandModel} p.canopy.radiative_transfer.LW_n
+@diagnostic_compute "radiation_shortwave_net" Union{SoilCanopyModel, LandModel} p.canopy.radiative_transfer.SW_n
 
 ## Drivers Module ##
 
-@diagnostic_compute "soil_organic_carbon" SoilCanopyModel p.drivers.soc # need to fix this in src/shared_utilities/drivers
-@diagnostic_compute "pressure" SoilCanopyModel p.drivers.P
-@diagnostic_compute "rainfall" SoilCanopyModel p.drivers.P_liq
-@diagnostic_compute "radiation_longwave_down" SoilCanopyModel p.drivers.LW_d
-@diagnostic_compute "radiation_shortwave_down" SoilCanopyModel p.drivers.SW_d
-@diagnostic_compute "snowfall" SoilCanopyModel p.drivers.P_snow
-@diagnostic_compute "solar_zenith_angle" SoilCanopyModel p.drivers.θs
-@diagnostic_compute "specific_humidity" SoilCanopyModel p.drivers.q
-@diagnostic_compute "wind_speed" SoilCanopyModel p.drivers.u
+@diagnostic_compute "soil_organic_carbon" Union{SoilCanopyModel, LandModel} p.drivers.soc # need to fix this in src/shared_utilities/drivers
+@diagnostic_compute "pressure" Union{SoilCanopyModel, LandModel} p.drivers.P
+@diagnostic_compute "rainfall" Union{SoilCanopyModel, LandModel} p.drivers.P_liq
+@diagnostic_compute "radiation_longwave_down" Union{SoilCanopyModel, LandModel} p.drivers.LW_d
+@diagnostic_compute "radiation_shortwave_down" Union{SoilCanopyModel, LandModel} p.drivers.SW_d
+@diagnostic_compute "snowfall" Union{SoilCanopyModel, LandModel} p.drivers.P_snow
+@diagnostic_compute "solar_zenith_angle" Union{SoilCanopyModel, LandModel} p.drivers.θs
+@diagnostic_compute "specific_humidity" Union{SoilCanopyModel, LandModel} p.drivers.q
+@diagnostic_compute "wind_speed" Union{SoilCanopyModel, LandModel} p.drivers.u
 
 ## Soil Module ##
 
-@diagnostic_compute "infiltration" SoilCanopyModel p.soil.infiltration
-@diagnostic_compute "soil_hydraulic_conductivity" SoilCanopyModel p.soil.K
-@diagnostic_compute "soil_thermal_conductivity" SoilCanopyModel p.soil.κ
-@diagnostic_compute "soil_water_potential" SoilCanopyModel p.soil.ψ
-@diagnostic_compute "soil_net_radiation" SoilCanopyModel p.soil.R_n
-@diagnostic_compute "soil_temperature" SoilCanopyModel p.soil.T
+@diagnostic_compute "infiltration" Union{SoilCanopyModel, LandModel} p.soil.infiltration
+@diagnostic_compute "soil_hydraulic_conductivity" Union{
+    SoilCanopyModel,
+    LandModel,
+} p.soil.K
+@diagnostic_compute "soil_thermal_conductivity" Union{
+    SoilCanopyModel,
+    LandModel,
+} p.soil.κ
+@diagnostic_compute "soil_water_potential" Union{SoilCanopyModel, LandModel} p.soil.ψ
+@diagnostic_compute "soil_net_radiation" Union{SoilCanopyModel, LandModel} p.soil.R_n
+@diagnostic_compute "soil_temperature" Union{SoilCanopyModel, LandModel} p.soil.T
 
 # Soil - Turbulent Fluxes
-@diagnostic_compute "soil_latent_heat_flux" SoilCanopyModel p.soil.turbulent_fluxes.lhf
-@diagnostic_compute "soil_sensible_heat_flux" SoilCanopyModel p.soil.turbulent_fluxes.shf
-@diagnostic_compute "vapor_flux" SoilCanopyModel p.soil.turbulent_fluxes.vapor_flux_liq # should add ice here
+@diagnostic_compute "soil_latent_heat_flux" Union{SoilCanopyModel, LandModel} p.soil.turbulent_fluxes.lhf
+@diagnostic_compute "soil_sensible_heat_flux" Union{SoilCanopyModel, LandModel} p.soil.turbulent_fluxes.shf
+@diagnostic_compute "vapor_flux" Union{SoilCanopyModel, LandModel} p.soil.turbulent_fluxes.vapor_flux_liq # should add ice here
 
 # Soil - SoilCO2
 function compute_heterotrophic_respiration!(
@@ -142,7 +184,7 @@ function compute_heterotrophic_respiration!(
     Y,
     p,
     t,
-    land_model::SoilCanopyModel{FT},
+    land_model::Union{SoilCanopyModel{FT}, LandModel{FT}},
 ) where {FT}
     if isnothing(out)
         return p.soilco2.top_bc .* FT(83.26)
@@ -153,14 +195,14 @@ end # Convert from kg C to mol CO2.
 # To convert from kg C to mol CO2, we need to multiply by:
 # [3.664 kg CO2/ kg C] x [10^3 g CO2/ kg CO2] x [1 mol CO2/44.009 g CO2] = 83.26 mol CO2/kg C
 
-@diagnostic_compute "soilco2_diffusivity" SoilCanopyModel p.soilco2.D
-@diagnostic_compute "soilco2_source_microbe" SoilCanopyModel p.soilco2.Sm
+@diagnostic_compute "soilco2_diffusivity" Union{SoilCanopyModel, LandModel} p.soilco2.D
+@diagnostic_compute "soilco2_source_microbe" Union{SoilCanopyModel, LandModel} p.soilco2.Sm
 
 ## Other ##
-@diagnostic_compute "sw_albedo" SoilCanopyModel p.α_sfc
-@diagnostic_compute "lw_up" SoilCanopyModel p.LW_u
-@diagnostic_compute "sw_up" SoilCanopyModel p.SW_u
-@diagnostic_compute "surface_runoff" SoilCanopyModel p.soil.R_s
+@diagnostic_compute "sw_albedo" Union{SoilCanopyModel, LandModel} p.α_sfc
+@diagnostic_compute "lw_up" Union{SoilCanopyModel, LandModel} p.LW_u
+@diagnostic_compute "sw_up" Union{SoilCanopyModel, LandModel} p.SW_u
+@diagnostic_compute "surface_runoff" Union{SoilCanopyModel, LandModel} p.soil.R_s
 
 function compute_evapotranspiration!(
     out,
@@ -185,12 +227,41 @@ function compute_evapotranspiration!(
     end
 end
 
+function compute_evapotranspiration!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::LandModel{FT},
+) where {FT}
+    if isnothing(out)
+        return @. (
+            (1 - p.snow.snow_cover_fraction) *
+            p.soil.turbulent_fluxes.vapor_flux_liq +
+            (1 - p.snow.snow_cover_fraction) *
+            p.soil.turbulent_fluxes.vapor_flux_ice +
+            p.canopy.energy.turbulent_fluxes.transpiration +
+            p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.vapor_flux
+        ) * 1000 # density of liquid water (1000kg/m^3)
+    else
+        @. out =
+            (
+                (1 - p.snow.snow_cover_fraction) *
+                p.soil.turbulent_fluxes.vapor_flux_liq +
+                (1 - p.snow.snow_cover_fraction) *
+                p.soil.turbulent_fluxes.vapor_flux_ice +
+                p.canopy.energy.turbulent_fluxes.transpiration +
+                p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.vapor_flux
+            ) * 1000 # density of liquid water (1000kg/m^3)
+    end
+end
+
 function compute_total_respiration!(
     out,
     Y,
     p,
     t,
-    land_model::SoilCanopyModel{FT},
+    land_model::Union{SoilCanopyModel{FT}, LandModel{FT}},
 ) where {FT}
     if isnothing(out)
         return p.soilco2.top_bc .* FT(83.26) .+ # [3.664 kg CO2/ kg C] x [10^3 g CO2/ kg CO2] x [1 mol CO2/44.009 g CO2] = 83.26 mol CO2/kg C
@@ -233,12 +304,52 @@ function compute_sensible_heat_flux!(
     end
 end
 
+function compute_latent_heat_flux!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::LandModel{FT},
+) where {FT}
+    if isnothing(out)
+        return @. p.soil.turbulent_fluxes.lhf *
+                  (1 - p.snow.snow_cover_fraction) +
+                  p.canopy.energy.turbulent_fluxes.lhf +
+                  p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.lhf
+    else
+        @. out =
+            p.soil.turbulent_fluxes.lhf * (1 - p.snow.snow_cover_fraction) +
+            p.canopy.energy.turbulent_fluxes.lhf +
+            p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.lhf
+    end
+end
+
+function compute_sensible_heat_flux!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::LandModel{FT},
+) where {FT}
+    if isnothing(out)
+        return @. p.soil.turbulent_fluxes.shf *
+                  (1 - p.snow.snow_cover_fraction) +
+                  p.canopy.energy.turbulent_fluxes.shf +
+                  p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.shf
+    else
+        @. out =
+            p.soil.turbulent_fluxes.shf * (1 - p.snow.snow_cover_fraction) +
+            p.canopy.energy.turbulent_fluxes.shf +
+            p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.shf
+    end
+end
+
 function compute_net_radiation!(
     out,
     Y,
     p,
     t,
-    land_model::SoilCanopyModel{FT},
+    land_model::Union{SoilCanopyModel{FT}, LandModel{FT}},
 ) where {FT}
     if isnothing(out)
         return p.drivers.LW_d .- p.LW_u .+ p.drivers.SW_d .- p.SW_u
@@ -254,7 +365,7 @@ function compute_ground_heat_flux!(
     Y,
     p,
     t,
-    land_model::SoilCanopyModel{FT},
+    land_model::Union{SoilCanopyModel{FT}, LandModel{FT}},
 ) where {FT}
     if isnothing(out)
         return p.soil.turbulent_fluxes.shf .+
@@ -273,7 +384,7 @@ function compute_canopy_temperature!(
     Y,
     p,
     t,
-    land_model::SoilCanopyModel{FT},
+    land_model::Union{SoilCanopyModel{FT}, LandModel{FT}},
 ) where {FT}
     AI =
         p.canopy.hydraulics.area_index.leaf .+
@@ -285,11 +396,13 @@ function compute_canopy_temperature!(
     end
 end
 
-@diagnostic_compute "soilco2" SoilCanopyModel Y.soilco2.C
-@diagnostic_compute "soil_water_content" SoilCanopyModel Y.soil.ϑ_l
-# @diagnostic_compute "plant_water_content" SoilCanopyModel Y.canopy.hydraulics.ϑ_l # return a Tuple
-@diagnostic_compute "soil_ice_content" SoilCanopyModel Y.soil.θ_i
-@diagnostic_compute "soil_internal_energy" SoilCanopyModel Y.soil.ρe_int
+@diagnostic_compute "soilco2" Union{SoilCanopyModel, LandModel} Y.soilco2.C
+@diagnostic_compute "soil_water_content" Union{SoilCanopyModel, LandModel} Y.soil.ϑ_l
+# @diagnostic_compute "plant_water_content" Union{SoilCanopyModel, LandModel} Y.canopy.hydraulics.ϑ_l # return a Tuple
+@diagnostic_compute "soil_ice_content" Union{SoilCanopyModel, LandModel} Y.soil.θ_i
+@diagnostic_compute "soil_internal_energy" Union{SoilCanopyModel, LandModel} Y.soil.ρe_int
+
+@diagnostic_compute "snow_water_equivalent" LandModel Y.snow.S
 
 ### EnergyHydrology ###
 

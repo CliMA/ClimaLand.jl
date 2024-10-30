@@ -20,11 +20,11 @@ atmos_h = FT(21.5)
 
 # Soil parameters
 soil_ν = FT(0.45) # m3/m3
-soil_K_sat = FT(4e-7) # m/s, matches Natan
+soil_K_sat = FT(4e-7) # m/s,
 soil_S_s = FT(1e-3) # 1/m, guess
 soil_vg_n = FT(2.05) # unitless
 soil_vg_α = FT(0.04) # inverse meters
-θ_r = FT(0.067) # m3/m3, from Wang et al. 2021 https://doi.org/10.5194/gmd-14-6741-2021
+θ_r = FT(0.0) # m3/m3, 
 
 # Soil makeup
 ν_ss_quartz = FT(0.1)

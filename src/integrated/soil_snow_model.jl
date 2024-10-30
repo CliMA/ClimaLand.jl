@@ -60,20 +60,16 @@ function LandHydrologyModel{FT}(;
     (; atmos, radiation, domain) = land_args
     prognostic_land_components = (:snow, :soil)
     if :runoff ∈ propertynames(land_args)
-        top_bc = ClimaLand.AtmosDrivenFluxBC(
-            atmos,
-            radiation,
-            land_args.runoff,
-            prognostic_land_components,
-        )
-    else #no runoff model
-        top_bc = AtmosDrivenFluxBC(
-            atmos,
-            radiation,
-            ClimaLand.Soil.Runoff.NoRunoff(),
-            prognostic_land_components,
-        )
+        runoff_model = land_args.runoff
+    else
+        runoff_model = ClimaLand.Soil.Runoff.NoRunoff()
     end
+    top_bc = ClimaLand.AtmosDrivenFluxBC(
+        atmos,
+        radiation,
+        runoff_model,
+        prognostic_land_components,
+    )
     sources = (Soil.PhaseChange{FT}(),)
     zero_flux = Soil.HeatFluxBC((p, t) -> 0.0)
     boundary_conditions = (;
@@ -280,16 +276,16 @@ function update_soil_snow_ground_heat_flux!(
 
     H = p.subsfc_scratch
     @. H = ClimaLand.heaviside(
-        soil_domain.fields.z_sfc - soil_domain.fields.z,
         Δz_soil,
+        soil_domain.fields.z_sfc - soil_domain.fields.z,
     )
     column_integral_definite!(∫H_dz, H)
 
     H_T = p.subsfc_scratch
     @. H_T =
         ClimaLand.heaviside(
-            soil_domain.fields.z_sfc - soil_domain.fields.z,
             Δz_soil,
+            soil_domain.fields.z_sfc - soil_domain.fields.z,
         ) * p.soil.T
     column_integral_definite!(∫H_T_dz, H_T)
 

@@ -4,6 +4,9 @@ ClimaLand.jl Release Notes
 main
 --------
 
+- Integrated land model with snow, soil, canopy
+  PR[#863](https://github.com/CliMA/ClimaLand.jl/pull/834)
+
 v0.15.4
 -------
 - The foliage clumping index of the radiative transfer model now varies spatially, using MODIS data

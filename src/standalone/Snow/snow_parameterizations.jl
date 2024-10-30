@@ -30,11 +30,19 @@ end
         p,
     ) where {FT}
 
-Returns the surface height of the `Snow` model.
+Returns the surface height of the `Snow` model; this returns the depth
+of the snow and hence implicitly treats the surface (ground) elevation as
+at zero.
+
+Once topography or land ice is incorporated, this will need to change to
+z_sfc + land_ice_depth + snow_depth. Note that land ice can 
+be ~1-3 km thick on Greenland/
+
+In order to compute surface fluxes, this cannot be large than the 
+height of the atmosphere measurement location (z_atmos > z_land always). 
 """
 function ClimaLand.surface_height(model::SnowModel{FT}, Y, p) where {FT}
-    z_sfc = ClimaCore.Fields.coordinate_field(model.domain.space.surface).z
-    return z_sfc
+    return p.snow.z
 end
 
 
