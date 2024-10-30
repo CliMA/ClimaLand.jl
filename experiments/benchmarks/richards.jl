@@ -314,61 +314,61 @@ end
 prob, ode_algo, Δt, cb = setup_simulation(; greet = true)
 SciMLBase.solve(prob, ode_algo; dt = Δt, callback = cb)
 
-@info "Starting profiling"
-@info now()
-# Stop when we profile for MAX_PROFILING_TIME_SECONDS or MAX_PROFILING_SAMPLES
-MAX_PROFILING_TIME_SECONDS = 500
-MAX_PROFILING_SAMPLES = 100
-time_now = time()
-timings_s = Float64[]
-while (time() - time_now) < MAX_PROFILING_TIME_SECONDS &&
-    length(timings_s) < MAX_PROFILING_SAMPLES
-    lprob, lode_algo, lΔt, lcb = setup_simulation()
-    push!(
-        timings_s,
-        ClimaComms.@elapsed device SciMLBase.solve(
-            lprob,
-            lode_algo;
-            dt = lΔt,
-            callback = lcb,
-        )
-    )
-end
-num_samples = length(timings_s)
-average_timing_s = round(sum(timings_s) / num_samples, sigdigits = 3)
-max_timing_s = round(maximum(timings_s), sigdigits = 3)
-min_timing_s = round(minimum(timings_s), sigdigits = 3)
-std_timing_s = round(
-    sqrt(sum(((timings_s .- average_timing_s) .^ 2) / num_samples)),
-    sigdigits = 3,
-)
-@info "Num samples: $num_samples"
-@info "Average time: $(average_timing_s) s"
-@info "Max time: $(max_timing_s) s"
-@info "Min time: $(min_timing_s) s"
-@info "Standard deviation time: $(std_timing_s) s"
-@info "Done profiling"
-@info now()
+# @info "Starting profiling"
+# @info now()
+# # Stop when we profile for MAX_PROFILING_TIME_SECONDS or MAX_PROFILING_SAMPLES
+# MAX_PROFILING_TIME_SECONDS = 500
+# MAX_PROFILING_SAMPLES = 100
+# time_now = time()
+# timings_s = Float64[]
+# while (time() - time_now) < MAX_PROFILING_TIME_SECONDS &&
+#     length(timings_s) < MAX_PROFILING_SAMPLES
+#     lprob, lode_algo, lΔt, lcb = setup_simulation()
+#     push!(
+#         timings_s,
+#         ClimaComms.@elapsed device SciMLBase.solve(
+#             lprob,
+#             lode_algo;
+#             dt = lΔt,
+#             callback = lcb,
+#         )
+#     )
+# end
+# num_samples = length(timings_s)
+# average_timing_s = round(sum(timings_s) / num_samples, sigdigits = 3)
+# max_timing_s = round(maximum(timings_s), sigdigits = 3)
+# min_timing_s = round(minimum(timings_s), sigdigits = 3)
+# std_timing_s = round(
+#     sqrt(sum(((timings_s .- average_timing_s) .^ 2) / num_samples)),
+#     sigdigits = 3,
+# )
+# @info "Num samples: $num_samples"
+# @info "Average time: $(average_timing_s) s"
+# @info "Max time: $(max_timing_s) s"
+# @info "Min time: $(min_timing_s) s"
+# @info "Standard deviation time: $(std_timing_s) s"
+# @info "Done profiling"
+# @info now()
 
-prob, ode_algo, Δt, cb = setup_simulation()
-Profile.@profile SciMLBase.solve(prob, ode_algo; dt = Δt, callback = cb)
-results = Profile.fetch()
-flame_file = joinpath(outdir, "flame_$device_suffix.html")
-ProfileCanvas.html_file(flame_file, results)
-@info "Saved compute flame to $flame_file"
-@info now()
-prob, ode_algo, Δt, cb = setup_simulation()
-Profile.Allocs.@profile sample_rate = 0.005 SciMLBase.solve(
-    prob,
-    ode_algo;
-    dt = Δt,
-    callback = cb,
-)
-results = Profile.Allocs.fetch()
-profile = ProfileCanvas.view_allocs(results)
-alloc_flame_file = joinpath(outdir, "alloc_flame_$device_suffix.html")
-ProfileCanvas.html_file(alloc_flame_file, profile)
-@info "Saved allocation flame to $alloc_flame_file"
+# prob, ode_algo, Δt, cb = setup_simulation()
+# Profile.@profile SciMLBase.solve(prob, ode_algo; dt = Δt, callback = cb)
+# results = Profile.fetch()
+# flame_file = joinpath(outdir, "flame_$device_suffix.html")
+# ProfileCanvas.html_file(flame_file, results)
+# @info "Saved compute flame to $flame_file"
+# @info now()
+# prob, ode_algo, Δt, cb = setup_simulation()
+# Profile.Allocs.@profile sample_rate = 0.005 SciMLBase.solve(
+#     prob,
+#     ode_algo;
+#     dt = Δt,
+#     callback = cb,
+# )
+# results = Profile.Allocs.fetch()
+# profile = ProfileCanvas.view_allocs(results)
+# alloc_flame_file = joinpath(outdir, "alloc_flame_$device_suffix.html")
+# ProfileCanvas.html_file(alloc_flame_file, profile)
+# @info "Saved allocation flame to $alloc_flame_file"
 @info now()
 if ClimaComms.device() isa ClimaComms.CUDADevice
     import CUDA
