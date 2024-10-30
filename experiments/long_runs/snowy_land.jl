@@ -82,7 +82,6 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         earth_param_set,
         FT;
         time_interpolation_method = time_interpolation_method,
-        regridder_type = regridder_type,
     )
 
     spatially_varying_soil_params =
@@ -235,7 +234,6 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         surface_space,
         start_date;
         time_interpolation_method = time_interpolation_method,
-        regridder_type = regridder_type,
     )
     ai_parameterization =
         Canopy.PrescribedSiteAreaIndex{FT}(LAIfunction, SAI, RAI)

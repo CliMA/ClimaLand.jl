@@ -323,8 +323,9 @@ function canopy_turbulent_fluxes_at_a_point(
     earth_param_set::EP,
 ) where {FT <: AbstractFloat, EP}
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
-    h - d_sfc - h_sfc < 0 &&
-        @error("Surface height is larger than atmos height in surface fluxes")
+    # The following will not run on GPU
+    #    h - d_sfc - h_sfc < 0 &&
+    #        @error("Surface height is larger than atmos height in surface fluxes")
     state_in = SurfaceFluxes.StateValues(
         h - d_sfc - h_sfc,
         SVector{2, FT}(u, 0),

@@ -355,8 +355,9 @@ function turbulent_fluxes_at_a_point(
         SVector{2, FT}(u, 0),
         ts_in,
     )
-    h - d_sfc - h_sfc < 0 &&
-        @error("Surface height is larger than atmos height in surface fluxes")
+    # The following line wont work on GPU
+    #    h - d_sfc - h_sfc < 0 &&
+    #        @error("Surface height is larger than atmos height in surface fluxes")
     # State containers
     states = SurfaceFluxes.ValuesOnly(
         state_in,

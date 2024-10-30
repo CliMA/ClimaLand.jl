@@ -144,6 +144,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
 
     Y, p, cds = initialize(soil)
     z = ClimaCore.Fields.coordinate_field(cds.subsurface).z
+    lat = ClimaCore.Fields.coordinate_field(cds.subsurface).lat
     # This function approximates the hydrostatic equilibrium solution in
     # the vadose and unsaturated regimes by solving for ∂(ψ+z)/∂z = 0,
     # assuming the transition between the two is at a coordinate of z_∇.
