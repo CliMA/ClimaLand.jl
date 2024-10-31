@@ -41,6 +41,8 @@ using CairoMakie
 using Dates
 import NCDatasets
 
+using Poppler_jll: pdfunite
+
 const FT = Float64;
 time_interpolation_method = LinearInterpolation(PeriodicCalendar())
 context = ClimaComms.context()
@@ -278,21 +280,28 @@ setup_and_solve_problem(; greet = true);
 #### ClimaAnalysis ####
 simdir = ClimaAnalysis.SimDir(outdir)
 short_names = ["swc", "si", "sie"]
-for short_name in short_names
-    var = get(simdir; short_name)
-    times = ClimaAnalysis.times(var)
-    for t in times
+mktempdir(root_path) do tmpdir
+    for short_name in short_names
         var = get(simdir; short_name)
-        fig = CairoMakie.Figure(size = (800, 600))
-        kwargs = ClimaAnalysis.has_altitude(var) ? Dict(:z => 1) : Dict()
-        viz.heatmap2D_on_globe!(
-            fig,
-            ClimaAnalysis.slice(var, time = t; kwargs...),
-            mask = viz.oceanmask(),
-            more_kwargs = Dict(
-                :mask => ClimaAnalysis.Utils.kwargs(color = :white),
-            ),
-        )
-        CairoMakie.save(joinpath(root_path, "$(short_name)_$t.png"), fig)
+        times = [ClimaAnalysis.times(var)[1], ClimaAnalysis.times(var)[end]]
+        for t in times
+            var = get(simdir; short_name)
+            fig = CairoMakie.Figure(size = (600, 400))
+            kwargs = ClimaAnalysis.has_altitude(var) ? Dict(:z => 1) : Dict()
+            viz.heatmap2D_on_globe!(
+                fig,
+                ClimaAnalysis.slice(var, time = t; kwargs...),
+                mask = viz.oceanmask(),
+                more_kwargs = Dict(
+                    :mask => ClimaAnalysis.Utils.kwargs(color = :white),
+                    :plot => ClimaAnalysis.Utils.kwargs(rasterize = true),
+                ),
+            )
+            CairoMakie.save(joinpath(tmpdir, "$(short_name)_$t.pdf"), fig)
+        end
+    end
+    figures = readdir(tmpdir, join = true)
+    pdfunite() do unite
+        run(Cmd([unite, figures..., joinpath(root_path, "figures.pdf")]))
     end
 end
