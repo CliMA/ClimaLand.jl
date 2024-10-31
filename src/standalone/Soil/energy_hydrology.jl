@@ -1057,44 +1057,6 @@ function soil_turbulent_fluxes_at_a_point(
     )
 end
 
-"""
-    clm_soil_albedo_properties(
-        surface_space;
-        regridder_type = nothing,
-        regrider_kwargs = (),
-        file_reader_kwargs = (),
-    )
-
-A convenience function to create the soil albedo variables given a surface space.
-Returns PAR_albedo_dry, NIR_albedo_dry, PAR_albedo_wet, and NIR_albedo_wet from the
-clm_data artifact.
-"""
-function clm_soil_albedo_properties(
-    surface_space;
-    regridder_type = nothing,
-    regridder_kwargs = (),
-    file_reader_kwargs = (),
-)
-    return map(
-        s -> SpaceVaryingInput(
-            joinpath(
-                ClimaLand.Artifacts.clm_data_folder_path(),
-                "soil_properties_map.nc",
-            ),
-            s,
-            surface_space;
-            regridder_type,
-            regridder_kwargs,
-            file_reader_kwargs,
-        ),
-        (
-            "PAR_albedo_dry",
-            "NIR_albedo_dry",
-            "PAR_albedo_wet",
-            "NIR_albedo_wet",
-        ),
-    )
-end
 # For Swenson/Lawrence 2014 resistance parameterization
 #=
 """

@@ -22,22 +22,22 @@ end
 Reads spatially varying parameters for the canopy, from NetCDF files
 based on CLM and MODIS data, and regrids them to the grid defined by the
 `surface_space` of the Clima simulation. Returns a NamedTuple of ClimaCore
-Fields. 
+Fields.
 
-In particular, this file returns a field for 
+In particular, this file returns a field for
 - clumping index Ω
 - albedo and transmissitivy in PAR and NIR bands
 - leaf angle distribution G function parameter χl
 - Medlyn g1
-- C3 flag 
+- C3 flag
 - VCmax25
 
 The values correspond to the value of the dominant PFT at each point.
 
 The NetCDF files are stored in ClimaArtifacts and more detail on their origin
-is provided there. The keyword arguments `regridder_type` and `extrapolation_bc` 
-affect the regridding by (1) changing how we interpolate to ClimaCore points which 
-are not in the data, and (2) changing how extrapolate to points beyond the range of the 
+is provided there. The keyword arguments `regridder_type` and `extrapolation_bc`
+affect the regridding by (1) changing how we interpolate to ClimaCore points which
+are not in the data, and (2) changing how extrapolate to points beyond the range of the
 data.
 """
 function clm_canopy_parameters(
@@ -166,10 +166,11 @@ end
 Reads spatially varying parameters for the soil model, from NetCDF files
 based on SoilGrids and the van Genuchten data product from Gupta et al 2020,
  and regrids them to the grid defined by the
-`subsurface_space` and `surface_space` of the Clima simulation, as appropriate. 
-Returns a NamedTuple of ClimaCore Fields. 
+`subsurface_space` and `surface_space` of the Clima simulation, as appropriate.
+Returns a NamedTuple of ClimaCore Fields. The albedo parameters are read from
+CLM data.
 
-In particular, this file returns a field for 
+In particular, this file returns a field for
 - (α, n, m) (van Genuchten parameters)
 - Ksat
 - porosity
@@ -180,9 +181,9 @@ In particular, this file returns a field for
 - specific storativity.
 
 The NetCDF files are stored in ClimaArtifacts and more detail on their origin
-is provided there. The keyword arguments `regridder_type` and `extrapolation_bc` 
-affect the regridding by (1) changing how we interpolate to ClimaCore points which 
-are not in the data, and (2) changing how extrapolate to points beyond the range of the 
+is provided there. The keyword arguments `regridder_type` and `extrapolation_bc`
+affect the regridding by (1) changing how we interpolate to ClimaCore points which
+are not in the data, and (2) changing how extrapolate to points beyond the range of the
 data.
 """
 function default_spatially_varying_soil_parameters(
@@ -329,6 +330,25 @@ function default_spatially_varying_soil_parameters(
     # Unsure how to handle two masks
     f_max = oceans_to_value.(f_max, mask, FT(0.0))
     f_max = oceans_to_value.(f_max, soil_params_mask_sfc, FT(0.0))
+    PAR_albedo_dry, NIR_albedo_dry, PAR_albedo_wet, NIR_albedo_wet = map(
+        s -> SpaceVaryingInput(
+            joinpath(
+                ClimaLand.Artifacts.clm_data_folder_path(),
+                "soil_properties_map.nc",
+            ),
+            s,
+            surface_space;
+            regridder_type,
+            regridder_kwargs = (; extrapolation_bc,),
+        ),
+        (
+            "PAR_albedo_dry",
+            "NIR_albedo_dry",
+            "PAR_albedo_wet",
+            "NIR_albedo_wet",
+        ),
+    )
+
     return (;
         ν = ν,
         ν_ss_om = ν_ss_om,
@@ -338,8 +358,10 @@ function default_spatially_varying_soil_parameters(
         K_sat = K_sat,
         S_s = S_s,
         θ_r = θ_r,
-        PAR_albedo = PAR_albedo,
-        NIR_albedo = NIR_albedo,
+        PAR_albedo_wet = PAR_albedo_wet,
+        NIR_albedo_wet = NIR_albedo_wet,
+        PAR_albedo_dry = PAR_albedo_dry,
+        NIR_albedo_dry = NIR_albedo_dry,
         f_max = f_max,
         mask = mask,
     )

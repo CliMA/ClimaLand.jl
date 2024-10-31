@@ -302,8 +302,8 @@ function lsm_radiant_energy_fluxes!(
     T_canopy =
         ClimaLand.Canopy.canopy_temperature(canopy.energy, canopy, Y, p, t)
 
-    α_soil_PAR = land.soil.parameters.PAR_albedo
-    α_soil_NIR = land.soil.parameters.NIR_albedo
+    α_soil_PAR = p.soil.PAR_albedo
+    α_soil_NIR = p.soil.NIR_albedo
     ϵ_soil = land.soil.parameters.emissivity
     T_soil = ClimaLand.Domains.top_center_to_surface(p.soil.T)
 

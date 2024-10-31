@@ -96,8 +96,10 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
         K_sat,
         S_s,
         θ_r,
-        PAR_albedo,
-        NIR_albedo,
+        PAR_albedo_dry,
+        NIR_albedo_dry,
+        PAR_albedo_wet,
+        NIR_albedo_wet,
         f_max,
     ) = spatially_varying_soil_params
     soil_params = Soil.EnergyHydrologyParameters(
@@ -110,8 +112,10 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
         K_sat,
         S_s,
         θ_r,
-        PAR_albedo = PAR_albedo,
-        NIR_albedo = NIR_albedo,
+        PAR_albedo_dry = PAR_albedo_dry,
+        NIR_albedo_dry = NIR_albedo_dry,
+        PAR_albedo_wet = PAR_albedo_wet,
+        NIR_albedo_wet = NIR_albedo_wet,
     )
 
     f_over = FT(3.28) # 1/m
