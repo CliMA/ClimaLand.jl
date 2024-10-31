@@ -153,6 +153,8 @@ end
 Returns the file path for data created solving Richards equation
 with G. Bonan's matlab code, found here:
 https://github.com/gbonan/bonanmodeling/tree/master/sp_08_01
+This folder contains two data files: bonan_data_clay.txt and
+bonan_data_sand.txt.
 
 The data files correspond to the clay and sand data set described in
 that code and in G. Bonan's book,
@@ -162,31 +164,7 @@ Publisher: Cambridge University Press
 Print publication year: 2019
 """
 function richards_eqn_bonan_data_path(; context = nothing)
-    dir = joinpath(@__DIR__, "../")
-    bonan_clay_dataset = ArtifactWrapper(
-        dir,
-        "richards_clay_bonan_ref_soln",
-        ArtifactFile[ArtifactFile(
-            url = "https://caltech.box.com/shared/static/nk89znth59gcsdb65lnywnzjnuno3h6k.txt",
-            filename = "clay_bonan_sp801_22323.txt",
-        ),],
-    )
-    clay_datapath = joinpath(
-        get_data_folder(bonan_clay_dataset),
-        "clay_bonan_sp801_22323.txt",
-    )
-
-    bonan_sand_dataset = ArtifactWrapper(
-        dir,
-        "richards_sand_bonan_ref_soln",
-        ArtifactFile[ArtifactFile(
-            url = "https://caltech.box.com/shared/static/2vk7bvyjah8xd5b7wxcqy72yfd2myjss.csv",
-            filename = "sand_bonan_sp801.csv",
-        ),],
-    )
-    sand_datapath =
-        joinpath(get_data_folder(bonan_sand_dataset), "sand_bonan_sp801.csv")
-    return clay_datapath, sand_datapath
+    return @clima_artifact("bonan_richards_eqn", context)
 end
 
 """
