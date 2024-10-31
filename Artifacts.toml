@@ -38,3 +38,24 @@ git-tree-sha1 = "b849eb95c09190095e7bf021494ddeda8858af01"
     [[modis_clumping_index.download]]
     sha256 = "e4c766a93a673e5dc22540687ef5616416d65bb13a0f4a67789b95d49ccbb158"
     url = "https://caltech.box.com/shared/static/ec2y3k5kqpl9wjvtsx3584wgkp5q8dyw.gz"
+
+[earth_orography_30arcseconds]
+git-tree-sha1 = "03dd08fcbf363ed055a176dd7adefb60ff1c3493"
+
+[earth_orography_60arcseconds]
+git-tree-sha1 = "fe19d8dbe7a18ff39588e1f718014b0479d9c0f7"
+lazy = true
+
+    [[earth_orography_60arcseconds.download]]
+    sha256 = "eca66c0701d1c2b9e271742314915ffbf4a0fae92709df611c323f38e019966e"
+    url = "https://caltech.box.com/shared/static/4asrxcgl6xsgenfcug9p0wkkyhtqilgk.gz"
+
+[bedrock_depth_30arcseconds]
+git-tree-sha1 = "cf5d2f9c2e04f930cd30c6ea1a063078113e2a22"
+
+[bedrock_depth_60arcseconds]
+git-tree-sha1 = "4cc329093b0dbc3443db36e7c01133267ac94d37"
+
+    [[bedrock_depth_60arcseconds.download]]
+    sha256 = "6eb359e900141de837c41c0082257f7cf082e06e1371d45b07b1078f07e96c53"
+    url = "https://caltech.box.com/shared/static/k1zq0w1psqu8dk0s9jotrfuu6hm8kxfp.gz"
