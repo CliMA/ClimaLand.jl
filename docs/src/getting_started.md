@@ -55,6 +55,8 @@ using About
 about(ClimaLand.Soil.Biogeochemistry)
 ```
 
+Where modules are shown in red, functions are shown in blue, and types are shown in yellow.
+
 To see the documentation about a particular module, function or type, you can use ? to go in help mode
 in the REPL, or `@doc` as in [Parameterization above](#Parameterization).
 

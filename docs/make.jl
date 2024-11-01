@@ -74,6 +74,7 @@ format = Documenter.HTML(
     prettyurls = !isempty(get(ENV, "CI", "")),
     collapselevel = 1,
     mathengine = mathengine,
+    ansicolor = true,
 )
 
 makedocs(
