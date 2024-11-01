@@ -173,6 +173,20 @@ end
 @diagnostic_compute "soil_net_radiation" Union{SoilCanopyModel, LandModel} p.soil.R_n
 @diagnostic_compute "soil_temperature" Union{SoilCanopyModel, LandModel} p.soil.T
 
+function compute_soil_albedo!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::SoilCanopyModel{FT},
+) where {FT}
+    if isnothing(out)
+        return (p.soil.PAR_albedo .+ p.soil.NIR_albedo) ./ 2
+    else
+        @. out = (p.soil.PAR_albedo + p.soil.NIR_albedo) / 2
+    end
+end
+
 # Soil - Turbulent Fluxes
 @diagnostic_compute "soil_latent_heat_flux" Union{SoilCanopyModel, LandModel} p.soil.turbulent_fluxes.lhf
 @diagnostic_compute "soil_sensible_heat_flux" Union{SoilCanopyModel, LandModel} p.soil.turbulent_fluxes.shf

@@ -177,6 +177,7 @@ function default_diagnostics(
             "lhf",
             "shf",
             "ghf",
+            "salb",
         ]
     elseif output_vars == :short
         soilcanopy_diagnostics = [

@@ -40,7 +40,14 @@ spatially_varying_soil_params =
         extrapolation_bc = extrapolation_bc,
     )
 param_names3d = (:ν, :ν_ss_om, :ν_ss_quartz, :ν_ss_gravel, :K_sat, :S_s, :θ_r)
-param_names2d = (:PAR_albedo, :NIR_albedo, :f_max, :mask)
+param_names2d = (
+    :PAR_albedo_dry,
+    :NIR_albedo_dry,
+    :PAR_albedo_wet,
+    :NIR_albedo_wet,
+    :f_max,
+    :mask,
+)
 for p in param_names3d
     @test p ∈ propertynames(spatially_varying_soil_params)
     @test axes(getproperty(spatially_varying_soil_params, p)) ==

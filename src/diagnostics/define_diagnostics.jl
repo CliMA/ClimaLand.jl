@@ -605,6 +605,18 @@ function define_diagnostics!(land_model)
             compute_infiltration!(out, Y, p, t, land_model),
     )
 
+    # Soil albedo
+    add_diagnostic_variable!(
+        short_name = "salb",
+        long_name = "Soil Albedo",
+        standard_name = "surface albedo",
+        units = "",
+        comments = "The mean of PAR and NIR albedo, which are calculated as α_soil_band = α_band_dry * (1 - S_e) + α_band_wet * S_e.",
+        compute! = (out, Y, p, t) ->
+            compute_soil_albedo!(out, Y, p, t, land_model),
+    )
+
+
     # Soil hydraulic conductivity
     add_diagnostic_variable!(
         short_name = "shc",

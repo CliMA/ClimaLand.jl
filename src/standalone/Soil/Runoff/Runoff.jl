@@ -5,11 +5,7 @@ using ClimaCore.Operators: column_integral_definite!
 using ClimaLand
 import ClimaLand: source!
 using ..ClimaLand.Soil:
-    AbstractSoilSource,
-    AbstractSoilModel,
-    RichardsModel,
-    EnergyHydrology,
-    is_saturated
+    AbstractSoilSource, AbstractSoilModel, RichardsModel, EnergyHydrology
 export TOPMODELRunoff,
     NoRunoff,
     SurfaceRunoff,
@@ -17,7 +13,8 @@ export TOPMODELRunoff,
     TOPMODELSubsurfaceRunoff,
     subsurface_runoff_source,
     topmodel_ss_flux,
-    update_runoff!
+    update_runoff!,
+    is_saturated
 
 
 """
@@ -362,6 +359,17 @@ use in global climate models", Equations (12).
 """
 function topmodel_ss_flux(R_sb::FT, f_over::FT, z∇::FT) where {FT}
     return R_sb * exp(-f_over * z∇)
+end
+
+"""
+    is_saturated(twc::FT, ν::FT) where {FT}
+
+A helper function which can be used to indicate whether a layer of soil is
+saturated based on if the total volumetric water content, `twc` is greater
+than porosity `ν`.
+"""
+function is_saturated(twc::FT, ν::FT) where {FT}
+    return ClimaLand.heaviside(twc - ν)
 end
 
 end

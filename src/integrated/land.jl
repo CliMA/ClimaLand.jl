@@ -17,7 +17,7 @@ export LandModel
         snow::SnM
     end
 
-A concrete type of land model used for simulating systems with 
+A concrete type of land model used for simulating systems with
 soil, canopy, snow, soilco2.
 $(DocStringExtensions.FIELDS)
 """
@@ -129,10 +129,8 @@ function LandModel{FT}(;
 
     transpiration = Canopy.PlantHydraulics.DiagnosticTranspiration{FT}()
     ground_conditions =
-        PrognosticGroundConditions{FT, typeof(soil.parameters.PAR_albedo)}(
+        PrognosticGroundConditions{FT, typeof(snow.parameters.α_snow)}(
             snow.parameters.α_snow,
-            soil.parameters.PAR_albedo,
-            soil.parameters.NIR_albedo,
         )
     if :energy in propertynames(canopy_component_args)
         energy_model = canopy_component_types.energy(
@@ -260,7 +258,7 @@ lsm_aux_domain_names(m::LandModel) = (
 A method which makes a function; the returned function
 updates the additional auxiliary variables for the integrated model,
 as well as updates the boundary auxiliary variables for all component
-models. 
+models.
 
 This function is called each ode function evaluation, prior to the tendency function
 evaluation.
@@ -293,7 +291,7 @@ function make_update_boundary_fluxes(
             t,
         )
 
-        # Effective (radiative) land properties 
+        # Effective (radiative) land properties
         set_eff_land_radiation_properties!(
             p,
             land.soil.parameters.earth_param_set,
@@ -396,8 +394,8 @@ function lsm_radiant_energy_fluxes!(
     T_canopy =
         ClimaLand.Canopy.canopy_temperature(canopy.energy, canopy, Y, p, t)
 
-    α_soil_PAR = land.soil.parameters.PAR_albedo
-    α_soil_NIR = land.soil.parameters.NIR_albedo
+    α_soil_PAR = p.soil.PAR_albedo
+    α_soil_NIR = p.soil.NIR_albedo
     ϵ_soil = land.soil.parameters.emissivity
     T_soil = ClimaLand.Domains.top_center_to_surface(p.soil.T)
     α_snow_NIR = land.snow.parameters.α_snow
@@ -579,8 +577,6 @@ struct PrognosticGroundConditions{
     F <: Union{FT, ClimaCore.Fields.Field},
 } <: Canopy.AbstractGroundConditions
     α_snow::FT
-    α_soil_PAR::F
-    α_soil_NIR::F
 end
 
 """
@@ -601,7 +597,7 @@ function Canopy.ground_albedo_PAR(
     p,
     t,
 )
-    return @. (1 - p.snow.snow_cover_fraction) * ground.α_soil_PAR +
+    return @. (1 - p.snow.snow_cover_fraction) * p.soil.PAR_albedo +
               p.snow.snow_cover_fraction * ground.α_snow
 end
 
@@ -623,7 +619,7 @@ function Canopy.ground_albedo_NIR(
     p,
     t,
 )
-    return @. (1 - p.snow.snow_cover_fraction) * ground.α_soil_NIR +
+    return @. (1 - p.snow.snow_cover_fraction) * p.soil.NIR_albedo +
               p.snow.snow_cover_fraction * ground.α_snow
 end
 
@@ -632,7 +628,7 @@ end
 
 Returns the "drivers", or forcing variables, for the LandModel.
 
-These consist of atmospheric and radiative forcing, as well as 
+These consist of atmospheric and radiative forcing, as well as
 soil organic carbon.
 """
 function ClimaLand.get_drivers(model::LandModel)

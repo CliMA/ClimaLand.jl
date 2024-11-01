@@ -20,7 +20,7 @@ Many of the outputs from the experiments are saved using a non-destructive appro
 output directory of `example_outdir`. When run, if the directory does
 not exist relative to the working directory, then `example_outdir` is created. The results of the latest experiment
 run will be saved into `example_outdir/output_xxx`, where xxxx is an increasing counter. The lower indices store the outputs of previous runs. The latest results are also linked to
-in `example_outdir/output_active`, which can be assumed to always contain the most recent ouput. More details on this style of output directory handeling
+in `example_outdir/output_active`, which can be assumed to always contain the most recent output. More details on this style of output directory handling
 can be found [here](https://clima.github.io/ClimaUtilities.jl/dev/outputpathgenerator/#ActiveLinkStyle-(Non-Destructive))
 
 ### benchmarks
@@ -30,7 +30,7 @@ When a benchmark is run, its outputs are saved using `ActiveLinkStyle` into (ben
 
 ### long_runs
 
-The expirements in experiments/long_runs save its image outputs to (experiment_name)\_longrun\_(device_suffix).
+The experiments in experiments/long_runs save its image outputs to (experiment_name)\_longrun\_(device_suffix).
 All other outputs are saved using `ActiveLinkStyle` to (experiment_name)\_longrun\_(device_suffix)/global_diagnostics.
 
 ### integrated and standalone
