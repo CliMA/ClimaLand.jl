@@ -20,6 +20,10 @@ using Statistics
 using Insolation
 using DelimitedFiles
 
+using CSV, HTTP, Flux, cuDNN, BSON, StatsBase
+ModelTools = Base.get_extension(ClimaLand, :NeuralSnowExt).ModelTools;
+NeuralSnow = Base.get_extension(ClimaLand, :NeuralSnowExt).NeuralSnow;
+
 # Site-specific quantities
 # Error if no site argument is provided
 if length(ARGS) < 1
@@ -46,8 +50,16 @@ ndays = (tf - t0) / 3600 / 24
 
 domain = ClimaLand.Domains.Point(; z_sfc = FT(0))
 
-parameters =
-    SnowParameters{FT}(Δt; α_snow = α, ρ_snow = ρ, earth_param_set = param_set)
+#dens_neural = NeuralSnow.NeuralDepthModel(FT)
+dens_constant = Snow.ConstantDensityModel(ρ)
+depths = z[snow_data_avail]
+
+parameters = SnowParameters{FT}(
+    Δt;
+    α_snow = α,
+    density = dens_constant,
+    earth_param_set = param_set,
+)
 model = ClimaLand.Snow.SnowModel(
     parameters = parameters,
     domain = domain,
@@ -57,6 +69,8 @@ Y, p, coords = ClimaLand.initialize(model)
 
 # Set initial conditions
 Y.snow.S .= FT(SWE[1]) # first data point
+#Y.snow.Z .= FT(depths[1]) #uncomment if using dens_neural, not dens_constant
+p.snow.ρ_snow .= FT(SWE[1] / depths[1] * 1000.0)
 Y.snow.U .=
     ClimaLand.Snow.energy_from_q_l_and_swe(FT(SWE[1]), FT(0), parameters) # with q_l = 0
 
