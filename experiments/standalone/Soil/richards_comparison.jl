@@ -16,8 +16,9 @@ import ClimaUtilities.OutputPathGenerator: generate_output_path
 import ClimaLand
 import ClimaLand.Parameters as LP
 
-clay_datapath, sand_datapath =
-    ClimaLand.Artifacts.richards_eqn_bonan_data_path()
+bonan_data_folder = ClimaLand.Artifacts.richards_eqn_bonan_data_path()
+clay_datapath = joinpath(bonan_data_folder, "bonan_data_clay.txt")
+sand_datapath = joinpath(bonan_data_folder, "bonan_data_sand.txt")
 
 context = ClimaComms.context()
 device_suffix =
@@ -138,7 +139,9 @@ end
         S_s = FT(1e-3) #inverse meters
         vg_n = FT(3.96)
         vg_α = FT(2.7) # inverse meters
-        hcm = vanGenuchten{FT}(; α = vg_α, n = vg_n)
+        vg_m = FT(1)
+        S_c = ν + 1
+        hcm = vanGenuchten(vg_α, vg_n, vg_m, S_c)
         θ_r = FT(0.075)
         zmax = FT(0)
         zmin = FT(-1.5)
@@ -205,7 +208,7 @@ end
         if FT == Float64 && context.device isa ClimaComms.CPUSingleThreaded
             N = length(sol.t)
             ϑ_l = parent(sol.u[N].soil.ϑ_l)
-            ds_bonan = readdlm(sand_datapath, ',')
+            ds_bonan = readdlm(sand_datapath)
             bonan_moisture = reverse(ds_bonan[:, 1])
             bonan_z = reverse(ds_bonan[:, 2]) ./ 100.0
             @test sqrt.(mean((bonan_moisture .- ϑ_l) .^ 2.0)) < FT(1e-3)
