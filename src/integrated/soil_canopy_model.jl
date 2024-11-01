@@ -2,17 +2,16 @@ export SoilCanopyModel
 """
     struct SoilCanopyModel{
         FT,
-        MM <: Soil.Biogeochemistry.SoilCO2Model{FT},
-        SM <: Soil.EnergyHydrology{FT},
         VM <: Canopy.CanopyModel{FT},
+        SM <: Soil.EnergyHydrology{FT},
+        MM <: Soil.Biogeochemistry.SoilCO2Model{FT},
     } <: AbstractLandModel{FT}
-        "The soil microbe model to be used"
-        soilco2::MM
-        "The soil model to be used"
-        soil::SM
         "The canopy model to be used"
         canopy::VM
-    end
+        "The soil model to be used"
+        soil::SM
+        "The soil microbe model to be used"
+        soilco2::MM
 
 A concrete type of land model used for simulating systems with a
 canopy and a soil component.
@@ -20,31 +19,31 @@ $(DocStringExtensions.FIELDS)
 """
 struct SoilCanopyModel{
     FT,
-    MM <: Soil.Biogeochemistry.SoilCO2Model{FT},
+    CM <: Canopy.CanopyModel{FT},
     SM <: Soil.EnergyHydrology{FT},
-    VM <: Canopy.CanopyModel{FT},
+    MM <: Soil.Biogeochemistry.SoilCO2Model{FT},
 } <: AbstractLandModel{FT}
-    "The soil microbe model to be used"
-    soilco2::MM
+    "The canopy model to be used"
+    canopy::CM
     "The soil model to be used"
     soil::SM
-    "The canopy model to be used"
-    canopy::VM
+    "The soil microbe model to be used"
+    soilco2::MM
 end
 
 
 
 """
     SoilCanopyModel{FT}(;
-        soilco2_type::Type{MM},
-        soilco2_args::NamedTuple = (;),
-        land_args::NamedTuple = (;),
-        soil_model_type::Type{SM},
-        soil_args::NamedTuple = (;),
-        canopy_component_types::NamedTuple = (;),
-        canopy_component_args::NamedTuple = (;),
-        canopy_model_args::NamedTuple = (;),
-        ) where {
+                         land_args::NamedTuple = (;),
+                         canopy_component_types::NamedTuple = (;),
+                         canopy_component_args::NamedTuple = (;),
+                         canopy_model_args::NamedTuple = (;),
+                         soil_model_type::Type{SM},
+                         soil_args::NamedTuple = (;),
+                         soilco2_type::Type{MM},
+                         soilco2_args::NamedTuple = (;),
+                        ) where {
             FT,
             SM <: Soil.EnergyHydrology{FT},
             MM <: Soil.Biogeochemistry.SoilCO2Model{FT},
@@ -59,14 +58,14 @@ forward in time, including boundary conditions, source terms, and interaction
 terms.
 """
 function SoilCanopyModel{FT}(;
-    soilco2_type::Type{MM},
-    soilco2_args::NamedTuple = (;),
     land_args::NamedTuple = (;),
-    soil_model_type::Type{SM},
-    soil_args::NamedTuple = (;),
     canopy_component_types::NamedTuple = (;),
     canopy_component_args::NamedTuple = (;),
     canopy_model_args::NamedTuple = (;),
+    soil_model_type::Type{SM},
+    soil_args::NamedTuple = (;),
+    soilco2_type::Type{MM},
+    soilco2_args::NamedTuple = (;),
 ) where {
     FT,
     SM <: Soil.EnergyHydrology{FT},
@@ -147,12 +146,8 @@ function SoilCanopyModel{FT}(;
         atmos,
     )
     soilco2 = soilco2_type(; soilco2_args..., drivers = soilco2_drivers)
-
-    return SoilCanopyModel{FT, typeof(soilco2), typeof(soil), typeof(canopy)}(
-        soilco2,
-        soil,
-        canopy,
-    )
+    args = (canopy, soil, soilco2)
+    return SoilCanopyModel{FT, typeof.(args)...}(args...)
 end
 
 """
@@ -210,12 +205,12 @@ lsm_aux_domain_names(m::SoilCanopyModel) = (
 
 """
     make_update_boundary_fluxes(
-        land::SoilCanopyModel{FT, MM, SM, RM},
+        land::SoilCanopyModel{FT, CM, SM, MM}
     ) where {
         FT,
-        MM <: Soil.Biogeochemistry.SoilCO2Model{FT},
+        CM <: Canopy.CanopyModel{FT}
         SM <: Soil.RichardsModel{FT},
-        RM <: Canopy.CanopyModel{FT}
+        MM <: Soil.Biogeochemistry.SoilCO2Model{FT},
         }
 
 A method which makes a function; the returned function
@@ -227,12 +222,12 @@ This function is called each ode function evaluation, prior to the tendency func
 evaluation.
 """
 function make_update_boundary_fluxes(
-    land::SoilCanopyModel{FT, MM, SM, RM},
+    land::SoilCanopyModel{FT, CM, SM, MM},
 ) where {
     FT,
-    MM <: Soil.Biogeochemistry.SoilCO2Model{FT},
+    CM <: Canopy.CanopyModel{FT},
     SM <: Soil.EnergyHydrology{FT},
-    RM <: Canopy.CanopyModel{FT},
+    MM <: Soil.Biogeochemistry.SoilCO2Model{FT},
 }
     update_soil_bf! = make_update_boundary_fluxes(land.soil)
     update_soilco2_bf! = make_update_boundary_fluxes(land.soilco2)

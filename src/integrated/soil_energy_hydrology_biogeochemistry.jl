@@ -3,8 +3,8 @@ export LandSoilBiogeochemistry, PrognosticMet
 """
     struct LandSoilBiogeochemistry{
         FT,
-        SEH <: Soil.EnergyHydrology{FT},
-        SB <: Soil.Biogeochemistry.SoilCO2Model{FT},
+        SM <: Soil.EnergyHydrology{FT},
+        MM <: Soil.Biogeochemistry.SoilCO2Model{FT},
     } <: AbstractLandModel{FT}
 
 A concrete type of land model used for simulating systems with a
@@ -12,19 +12,20 @@ soil energy, hydrology, and biogeochemistry component.
 $(DocStringExtensions.FIELDS)"""
 struct LandSoilBiogeochemistry{
     FT,
-    SEH <: Soil.Soil.EnergyHydrology{FT},
-    SB <: Soil.Biogeochemistry.SoilCO2Model{FT},
+    SM <: Soil.Soil.EnergyHydrology{FT},
+    MM <: Soil.Biogeochemistry.SoilCO2Model{FT},
 } <: AbstractLandModel{FT}
     "The soil model"
-    soil::SEH
+    soil::SM
     "The biochemistry model"
-    soilco2::SB
+    soilco2::MM
 end
 
 """
     LandSoilBiogeochemistry{FT}(;
+        land_args::NamedTuple,
         soil_args::NamedTuple = (;),
-        biogeochemistry_args::NamedTuple = (;),
+        soilco2_args::NamedTuple = (;),
     ) where {FT}
 A constructor for the `LandSoilBiogeochemistry` model, which takes in
 the required arguments for each component, constructs those models,

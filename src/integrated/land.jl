@@ -2,20 +2,20 @@ export LandModel
 """
     struct LandModel{
         FT,
-        MM <: Soil.Biogeochemistry.SoilCO2Model{FT},
-        SM <: Soil.EnergyHydrology{FT},
-        VM <: Canopy.CanopyModel{FT},
+        CM <: Canopy.CanopyModel{FT},
         SnM <: Snow.SnowModel{FT},
+        SM <: Soil.EnergyHydrology{FT},
+        MM <: Soil.Biogeochemistry.SoilCO2Model{FT},
     } <: AbstractLandModel{FT}
-        "The soil microbe model to be used"
-        soilco2::MM
-        "The soil model to be used"
-        soil::SM
         "The canopy model to be used"
-        canopy::VM
+        canopy::CM
         "The snow model to be used"
         snow::SnM
-    end
+        "The soil model to be used"
+        soil::SM
+        "The soil microbe model to be used"
+        soilco2::MM
+
 
 A concrete type of land model used for simulating systems with
 soil, canopy, snow, soilco2.
@@ -23,40 +23,40 @@ $(DocStringExtensions.FIELDS)
 """
 struct LandModel{
     FT,
-    MM <: Soil.Biogeochemistry.SoilCO2Model{FT},
-    SM <: Soil.EnergyHydrology{FT},
-    VM <: Canopy.CanopyModel{FT},
+    CM <: Canopy.CanopyModel{FT},
     SnM <: Snow.SnowModel{FT},
+    SM <: Soil.EnergyHydrology{FT},
+    MM <: Soil.Biogeochemistry.SoilCO2Model{FT},
 } <: AbstractLandModel{FT}
-    "The soil microbe model to be used"
-    soilco2::MM
-    "The soil model to be used"
-    soil::SM
     "The canopy model to be used"
-    canopy::VM
+    canopy::CM
     "The snow model to be used"
     snow::SnM
+    "The soil model to be used"
+    soil::SM
+    "The soil microbe model to be used"
+    soilco2::MM
 end
 
 
 
 """
     LandModel{FT}(;
-        soilco2_type::Type{MM},
-        soilco2_args::NamedTuple = (;),
         land_args::NamedTuple = (;),
-        soil_model_type::Type{SM},
-        soil_args::NamedTuple = (;),
         canopy_component_types::NamedTuple = (;),
         canopy_component_args::NamedTuple = (;),
         canopy_model_args::NamedTuple = (;),
         snow_model_type::Type{SnM},
         snow_args::NamedTuple = (;),
+        soil_model_type::Type{SM},
+        soil_args::NamedTuple = (;),
+        soilco2_type::Type{MM},
+        soilco2_args::NamedTuple = (;),
         ) where {
             FT,
+            SnM <: Snow.SnowModel,
             SM <: Soil.EnergyHydrology{FT},
             MM <: Soil.Biogeochemistry.SoilCO2Model{FT},
-            SnM <: Snow.SnowModel{FT}
             }
 
 A constructor for the `LandModel`, which takes in the concrete model
@@ -68,23 +68,22 @@ forward in time, including boundary conditions, source terms, and interaction
 terms.
 """
 function LandModel{FT}(;
-    soilco2_type::Type{MM},
-    soilco2_args::NamedTuple = (;),
     land_args::NamedTuple = (;),
-    soil_model_type::Type{SM},
-    soil_args::NamedTuple = (;),
     canopy_component_types::NamedTuple = (;),
     canopy_component_args::NamedTuple = (;),
     canopy_model_args::NamedTuple = (;),
     snow_model_type::Type{SnM},
+    soil_model_type::Type{SM},
+    soil_args::NamedTuple = (;),
     snow_args::NamedTuple = (;),
+    soilco2_type::Type{MM},
+    soilco2_args::NamedTuple = (;),
 ) where {
     FT,
+    SnM <: Snow.SnowModel,
     SM <: Soil.EnergyHydrology{FT},
     MM <: Soil.Biogeochemistry.SoilCO2Model{FT},
-    SnM <: Snow.SnowModel,
 }
-
     (; atmos, radiation, soil_organic_carbon) = land_args
     # These should always be set by the constructor.
     prognostic_land_components = (:canopy, :snow, :soil, :soilco2)
@@ -175,7 +174,7 @@ function LandModel{FT}(;
     )
     soilco2 = soilco2_type(; soilco2_args..., drivers = soilco2_drivers)
 
-    args = (soilco2, soil, canopy, snow)
+    args = (canopy, snow, soil, soilco2)
     return LandModel{FT, typeof.(args)...}(args...)
 end
 
@@ -246,13 +245,13 @@ lsm_aux_domain_names(m::LandModel) = (
 
 """
     make_update_boundary_fluxes(
-        land::LandModel{FT, MM, SM, RM, SnM},
+        land::LandModel{FT, CM, SnM, SM, MM},
     ) where {
         FT,
+        CM <: Canopy.CanopyModel{FT},
+        SnM <: Snow.SnowModel{FT},
+        SM <: Soil.EnergyHydrology{FT},
         MM <: Soil.Biogeochemistry.SoilCO2Model{FT},
-        SM <: Soil.RichardsModel{FT},
-        RM <: Canopy.CanopyModel{FT}
-        SnM <: Snow.SnowModel{FT}
         }
 
 A method which makes a function; the returned function
@@ -264,13 +263,13 @@ This function is called each ode function evaluation, prior to the tendency func
 evaluation.
 """
 function make_update_boundary_fluxes(
-    land::LandModel{FT, MM, SM, RM, SnM},
+    land::LandModel{FT, CM, SnM, SM, MM},
 ) where {
     FT,
-    MM <: Soil.Biogeochemistry.SoilCO2Model{FT},
-    SM <: Soil.EnergyHydrology{FT},
-    RM <: Canopy.CanopyModel{FT},
+    CM <: Canopy.CanopyModel{FT},
     SnM <: Snow.SnowModel{FT},
+    SM <: Soil.EnergyHydrology{FT},
+    MM <: Soil.Biogeochemistry.SoilCO2Model{FT},
 }
     update_soil_bf! = make_update_boundary_fluxes(land.soil)
     update_soilco2_bf! = make_update_boundary_fluxes(land.soilco2)

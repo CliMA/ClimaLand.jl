@@ -6,12 +6,12 @@ using ClimaCore.Operators: column_integral_definite!
     struct LandHydrologyModel{
         FT,
         SnM <: Snow.SnowModel{FT},
-        SoM <: Soil.EnergyHydrology{FT},
+        SM <: Soil.EnergyHydrology{FT},
     } <: AbstractLandModel{FT}
         "The snow model to be used"
         snow::SnM
         "The soil model to be used"
-        soil::SoM
+        soil::SM
     end
 
 A concrete type of land model used for simulating systems with
@@ -21,12 +21,12 @@ $(DocStringExtensions.FIELDS)
 struct LandHydrologyModel{
     FT,
     SnM <: Snow.SnowModel{FT},
-    SoM <: Soil.EnergyHydrology{FT},
+    SM <: Soil.EnergyHydrology{FT},
 } <: AbstractLandModel{FT}
     "The snow model to be used"
     snow::SnM
     "The soil model to be used"
-    soil::SoM
+    soil::SM
 end
 
 """
@@ -34,12 +34,12 @@ end
         land_args::NamedTuple = (;),
         snow_model_type::Type{SnM},
         snow_args::NamedTuple = (;),
-        soil_model_type::Type{SoM},
+        soil_model_type::Type{SM},
         soil_args::NamedTuple = (;),
         ) where {
             FT,
             SnM <: Snow.SnowModel{FT},
-            SoM <: Soil.EnergyHydrology{FT},
+            SM <: Soil.EnergyHydrology{FT},
             }
 
 A constructor for the `LandHydrology`, which takes in the concrete model
@@ -54,9 +54,9 @@ function LandHydrologyModel{FT}(;
     land_args::NamedTuple = (;),
     snow_model_type::Type{SnM},
     snow_args::NamedTuple = (;),
-    soil_model_type::Type{SoM},
+    soil_model_type::Type{SM},
     soil_args::NamedTuple = (;),
-) where {FT, SnM <: Snow.SnowModel, SoM <: Soil.EnergyHydrology}
+) where {FT, SnM <: Snow.SnowModel, SM <: Soil.EnergyHydrology}
     (; atmos, radiation, domain) = land_args
     prognostic_land_components = (:snow, :soil)
     if :runoff ∈ propertynames(land_args)
@@ -144,11 +144,11 @@ lsm_aux_domain_names(m::LandHydrologyModel) = (
 
 """
     make_update_boundary_fluxes(
-        land::LandHydrologyModel{FT, SnM, SoM},
+        land::LandHydrologyModel{FT, SnM, SM},
     ) where {
         FT,
         SnM <: Snow.SnowModel{FT},
-        SoM <: Soil.EnergyHydrology{FT},
+        SM <: Soil.EnergyHydrology{FT},
         }
 
 A method which makes a function; the returned function
@@ -167,8 +167,8 @@ completely melts in a step. In this case, that excess must go to the soil for co
 4. Compute the net flux for the atmosphere, which is useful for assessing conservation.
 """
 function make_update_boundary_fluxes(
-    land::LandHydrologyModel{FT, SnM, SoM},
-) where {FT, SnM <: Snow.SnowModel{FT}, SoM <: Soil.EnergyHydrology{FT}}
+    land::LandHydrologyModel{FT, SnM, SM},
+) where {FT, SnM <: Snow.SnowModel{FT}, SM <: Soil.EnergyHydrology{FT}}
     update_soil_bf! = make_update_boundary_fluxes(land.soil)
     update_snow_bf! = make_update_boundary_fluxes(land.snow)
     function update_boundary_fluxes!(p, Y, t)
