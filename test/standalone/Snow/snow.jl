@@ -57,7 +57,7 @@ import ClimaLand.Parameters as LP
         :κ,
         :T,
         :T_sfc,
-        :z,
+        :ρ_snow,
         :turbulent_fluxes,
         :R_n,
         :energy_runoff,

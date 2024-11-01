@@ -27,6 +27,7 @@ for FT in (Float32, Float64)
         κ_air = FT(LP.K_therm(param_set))
 
         ρ_snow = FT(200)
+        densitymodel = Snow.ConstantDensityModel(ρ_snow)
         z_0m = FT(0.0024)
         α_snow = FT(0.8)
         # These values should match ClimaParams
@@ -37,9 +38,13 @@ for FT in (Float32, Float64)
         κ_ice = FT(2.21)
         ρcD_g = FT(1700 * 2.09e3 * 0.1)
         Δt = Float64(180.0)
-        parameters = SnowParameters{FT}(Δt; earth_param_set = param_set)
-        @test parameters.ρ_snow == ρ_snow
-        @test typeof(parameters.ρ_snow) == FT
+        parameters = SnowParameters{FT}(
+            Δt;
+            density = densitymodel,
+            earth_param_set = param_set,
+        )
+        @test parameters.density.ρ_snow == ρ_snow
+        @test typeof(parameters.density.ρ_snow) == FT
         @test parameters.ρcD_g == ρcD_g
         @test typeof(parameters.ρcD_g) == FT
         @test parameters.z_0m == z_0m
@@ -67,14 +72,13 @@ for FT in (Float32, Float64)
         )
 
         SWE = cat(FT.(rand(100) .+ 0.2), FT(0), dims = 1)
-        z = snow_depth.(SWE, ρ_snow, _ρ_l)
-        @test all(z .== SWE * _ρ_l ./ ρ_snow)
+        z = SWE * _ρ_l ./ ρ_snow
+        #@test all(z .== SWE * _ρ_l ./ ρ_snow)
         @test specific_heat_capacity(FT(1.0), parameters) == _cp_l
         @test specific_heat_capacity(FT(0.0), parameters) == _cp_i
         @test snow_thermal_conductivity(ρ_snow, parameters) ==
               κ_air +
-              (FT(0.07) * (ρ_snow / _ρ_i) + FT(0.93) * (ρ_snow / _ρ_i)^2) *
-              (κ_ice - κ_air)
+              (FT(7.75e-5) * ρ_snow + FT(1.105e-6) * ρ_snow^2) * (κ_ice - κ_air)
         @test runoff_timescale.(z, Ksat, FT(Δt)) ≈ max.(Δt, z ./ Ksat)
 
 

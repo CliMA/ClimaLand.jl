@@ -1,5 +1,7 @@
 [deps]
+About = "69d22d85-9f48-4c46-bbbe-7ad8341ff72a"
 AbstractTrees = "1520ce14-60c1-5f80-bbc7-55ef81b5835c"
+BSON = "fbb218c0-5317-5bc6-957e-2ee96dd4b1f0"
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 ClimaCore = "d414da3d-4745-48bb-8d80-42e94e092884"
