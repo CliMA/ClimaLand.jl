@@ -253,7 +253,7 @@ function update_soil_snow_ground_heat_flux!(
     κ_soil = ClimaLand.Domains.top_center_to_surface(p.soil.κ)
 
     # Depth of snow and soil layers interacting thermally at interface
-    Δz_snow = p.snow.z # Snow depth
+    Δz_snow = Snow.snow_depth(snow_params.density, Y, p, snow_params) # Snow depth
     Δz_soil = p.effective_soil_sfc_depth
     (; ρc_ds, earth_param_set) = soil_params
 

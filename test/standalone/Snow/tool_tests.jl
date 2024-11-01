@@ -3,6 +3,17 @@ using Test
 using BSON, Dates, HTTP
 using DataFrames, CSV, StatsBase, Flux, LinearAlgebra
 
+import ClimaParams as CP
+import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
+using Thermodynamics
+using SurfaceFluxes
+using StaticArrays
+using Dates
+using ClimaLand.Snow
+using ClimaLand.Domains
+import ClimaLand.Parameters as LP
+
+
 try
     import CUDA
     import cuDNN
@@ -12,10 +23,12 @@ end
 
 DataToolsExt = Base.get_extension(ClimaLand, :NeuralSnowExt)
 ModelToolsExt = Base.get_extension(ClimaLand, :NeuralSnowExt)
+NeuralSnowExt = Base.get_extension(ClimaLand, :NeuralSnowExt)
 
 if !isnothing(DataToolsExt)
     DataTools = DataToolsExt.DataTools
     ModelTools = ModelToolsExt.ModelTools
+    NeuralSnow = NeuralSnowExt.NeuralSnow
     @testset "Testing Data Utilities" begin
         start_date = "2015-01-01"
         end_date = "2015-02-01"
@@ -321,5 +334,115 @@ if !isnothing(DataToolsExt)
         series_err =
             sqrt(sum((pred_series .- true_series) .^ 2) ./ length(pred_series))
         @test series_err <= 0.2
+    end
+
+    @testset "Testing NeuralSnow module" begin
+        #Model setup:
+        FT = Float32
+        earth_param_set = LP.LandParameters(FT)
+        start_date = DateTime(2005)
+        param_set = LP.LandParameters(FT)
+        Δt = FT(180.0)
+        domain = Point(; z_sfc = FT(0))
+        "Radiation"
+        SW_d = TimeVaryingInput((t) -> eltype(t)(20.0))
+        LW_d = TimeVaryingInput((t) -> eltype(t)(20.0))
+        rad = ClimaLand.PrescribedRadiativeFluxes(FT, SW_d, LW_d, start_date)
+        "Atmos"
+        precip = TimeVaryingInput((t) -> eltype(t)(0.01 / Δt))
+        T_atmos = TimeVaryingInput((t) -> eltype(t)(278.0))
+        u_atmos = TimeVaryingInput((t) -> eltype(t)(10.0))
+        q_atmos = TimeVaryingInput((t) -> eltype(t)(0.03))
+        h_atmos = FT(3)
+        P_atmos = TimeVaryingInput((t) -> eltype(t)(101325))
+        atmos = ClimaLand.PrescribedAtmosphere(
+            precip,
+            precip,
+            T_atmos,
+            u_atmos,
+            q_atmos,
+            P_atmos,
+            start_date,
+            h_atmos,
+            earth_param_set,
+        )
+
+        #Test extension utilities
+        z_model = NeuralSnow.get_znetwork()
+        @test typeof(z_model) <: Flux.Chain
+        z32 = NeuralSnow.converted_model_type(z_model, FT)
+        @test eltype(z32[1].layers[1].weight) == FT
+        z64 = NeuralSnow.converted_model_type(z_model, Float64)
+        @test eltype(z64[1].layers[1].weight) == Float64
+        dens_model1 = NeuralSnow.NeuralDepthModel(FT)
+        @test prod(Flux.params(dens_model1.z_model) .== Flux.params(z32))
+        @test eltype(dens_model1.α) == FT
+        test_alph = 3 / 86400
+        dens_model2 = NeuralSnow.NeuralDepthModel(FT, α = test_alph, Δt = Δt)
+        @test dens_model2.α == FT(test_alph)
+        @test dens_model2.z_model[:final_scale].weight[2, 2] == FT(1 / Δt)
+
+        parameters = SnowParameters{FT}(
+            Δt;
+            earth_param_set = param_set,
+            density = dens_model2,
+        )
+        model = ClimaLand.Snow.SnowModel(
+            parameters = parameters,
+            domain = domain,
+            boundary_conditions = ClimaLand.Snow.AtmosDrivenSnowBC(atmos, rad),
+        )
+
+        drivers = ClimaLand.get_drivers(model)
+        Y, p, coords = ClimaLand.initialize(model)
+        @test (Y.snow |> propertynames) ==
+              (:S, :U, :Z, :P_avg, :T_avg, :R_avg, :Qrel_avg, :u_avg)
+
+        Y.snow.S .= FT(0.1)
+        Y.snow.U .=
+            ClimaLand.Snow.energy_from_T_and_swe.(
+                Y.snow.S,
+                FT(273.0),
+                Ref(model.parameters),
+            )
+        Y.snow.Z .= FT(0.2)
+        set_initial_cache! = ClimaLand.make_set_initial_cache(model)
+        t0 = FT(0.0)
+        set_initial_cache!(p, Y, t0)
+        @test snow_depth(model.parameters.density, Y, p, parameters) == Y.snow.Z
+
+        output1 = NeuralSnow.eval_nn(
+            dens_model2.z_model,
+            FT.([0, 0, 0, 0, 0, 0, 0])...,
+        )
+
+        @test eltype(output1) == FT
+        @test output1 == 0.0f0
+
+        zerofield = similar(Y.snow.Z)
+        zerofield .= FT(0)
+        @test NeuralSnow.dzdt(dens_model2, Y) == zerofield
+
+        Z = FT(0.5)
+        S = FT(0.1)
+        dzdt = FT(1 / Δt)
+        dsdt = FT(1 / Δt)
+        @test NeuralSnow.clip_dZdt(S, Z, dsdt, dzdt, Δt) == dzdt
+
+        @test NeuralSnow.clip_dZdt(Z, S, dsdt, dzdt, Δt) ≈ FT(1.4 / Δt)
+
+        @test NeuralSnow.clip_dZdt(S, Z, FT(-S / Δt), dzdt, Δt) ≈ FT(-Z / Δt)
+
+        oldρ = p.snow.ρ_snow
+        Snow.update_density!(dens_model2, model.parameters, Y, p)
+        @test p.snow.ρ_snow == oldρ
+
+        dY = similar(Y)
+        dswe_by_precip = 0.1
+        Y.snow.P_avg .= FT(dswe_by_precip / Δt)
+        NeuralSnow.update_density_prog!(dens_model2, model, dY, Y, p)
+        @test parent(dY.snow.Z)[1] * Δt > dswe_by_precip
+        new_dYP = FT(test_alph) .* (p.drivers.P_snow .- Y.snow.P_avg)
+        @test dY.snow.P_avg == new_dYP
     end
 end
