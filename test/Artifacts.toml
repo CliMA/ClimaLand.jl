@@ -1,0 +1,6 @@
+[twostr_test]
+git-tree-sha1 = "b0986aa28e7970a9c080461f5e52fb125cda9c3d"
+
+    [[twostr_test.download]]
+    sha256 = "c972f3ff4e041a4443c6e970021f1084a1cc176c2aeeda453f3351ef7cffa60b"
+    url = "https://caltech.box.com/shared/static/zh7wb0ar8kwg4sio64id9e6otzcsfhad.gz"

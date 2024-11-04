@@ -11,20 +11,14 @@ import ClimaComms
 ClimaComms.@import_required_backends
 using ClimaLand.Canopy
 using DelimitedFiles
-using ArtifactWrappers
 using ClimaLand.Domains: Point
 
-# Get the test data
-data_file = ArtifactWrapper(
-    @__DIR__,
-    "PySellersTwoStream Data",
-    ArtifactFile[ArtifactFile(
-        url = "https://caltech.box.com/shared/static/e7angzdnw18tmf8gctse5flsrkjsrlhx.csv",
-        filename = "2_str_test_data.csv",
-    ),],
-)
-datapath = get_data_folder(data_file)
-data = joinpath(datapath, "2_str_test_data.csv")
+include("../../Artifacts.jl")
+
+# Read the test data from the ClimaArtifact
+datapath = twostr_test_data_path()
+
+data = joinpath(datapath, "twostr_test.csv")
 test_set = readdlm(data, ',')
 
 # Floating point precision to use
