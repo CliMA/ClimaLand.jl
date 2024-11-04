@@ -37,7 +37,7 @@ steps:
         artifact_paths: "snowy_land_longrun_gpu/*png"
         agents:
           slurm_gpus: 1
-          slurm_time: 03:30:00
+          slurm_time: 24:00:00
         env:
           CLIMACOMMS_DEVICE: "CUDA"
 
