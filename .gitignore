@@ -6,6 +6,7 @@
 *~
 experiments/integrated/fluxnet/out/*
 experiments/integrated/fluxnet/US-*/out/*
+*_longrun_*/
 *.nc
 *.png
 *.mp4
