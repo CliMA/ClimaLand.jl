@@ -63,12 +63,21 @@ function phase_change_source(
     θtot = min(_ρ_i / _ρ_l * θ_i + θ_l, ν)
     # This is consistent with Equation (22) of Dall'Amico
     ψw0 = matric_potential(hydrology_cm, effective_saturation(ν, θtot, θ_r))
-
-    ψT = _LH_f0 / _T_freeze / _grav * (T - _T_freeze) * heaviside(_T_freeze - T)
+    # Freezing point depression
+    T_freeze_star = _T_freeze * (1 + _grav / _LH_f0 * ψw0)
+    # Change in potential below T_freeze_star
+    ψT =
+        _LH_f0 / _T_freeze / _grav *
+        (T - T_freeze_star) *
+        heaviside(T_freeze_star - T)
     # Equation (23) of Dall'Amico
     θstar = inverse_matric_potential(hydrology_cm, ψw0 + ψT) * (ν - θ_r) + θ_r
-
-    return (θ_l - θstar) / τ
+    stefan_multiplier = max(
+        T_freeze_star * abs(θ_l - θstar) /
+        max(abs(T_freeze_star - T), FT(0.001)),
+        FT(1),
+    )
+    return (θ_l - θstar) / (τ * stefan_multiplier)
 end
 
 
