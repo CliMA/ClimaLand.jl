@@ -72,6 +72,8 @@ function phase_change_source(
         heaviside(T_freeze_star - T)
     # Equation (23) of Dall'Amico
     θstar = inverse_matric_potential(hydrology_cm, ψw0 + ψT) * (ν - θ_r) + θ_r
+    # Estimate how the local Stefan number affects the phase change timescale
+    # but limit so that the timescale cannot be smaller than τ
     stefan_multiplier = max(
         T_freeze_star * abs(θ_l - θstar) /
         max(abs(T_freeze_star - T), FT(0.001)),
