@@ -2,12 +2,12 @@ export SoilCanopyModel
 """
     struct SoilCanopyModel{
         FT,
-        VM <: Canopy.CanopyModel{FT},
+        CM <: Canopy.CanopyModel{FT},
         SM <: Soil.EnergyHydrology{FT},
         MM <: Soil.Biogeochemistry.SoilCO2Model{FT},
     } <: AbstractLandModel{FT}
         "The canopy model to be used"
-        canopy::VM
+        canopy::CM
         "The soil model to be used"
         soil::SM
         "The soil microbe model to be used"

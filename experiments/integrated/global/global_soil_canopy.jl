@@ -223,12 +223,12 @@ exp_tendency! = make_exp_tendency(land);
 imp_tendency! = ClimaLand.make_imp_tendency(land);
 jacobian! = ClimaLand.make_jacobian(land);
 set_initial_cache!(p, Y, t0)
-stepper = CTS.ARS343()
+stepper = CTS.ARS111()
 ode_algo = CTS.IMEXAlgorithm(
     stepper,
     CTS.NewtonsMethod(
-        max_iters = 1,
-        update_j = CTS.UpdateEvery(CTS.NewTimeStep),
+        max_iters = 3,
+        update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
     ),
 )
 
@@ -286,6 +286,11 @@ for short_name in ClimaAnalysis.available_vars(simdir)
         viz.heatmap2D_on_globe!(
             fig,
             ClimaAnalysis.slice(var, time = t; kwargs...),
+            mask = viz.oceanmask(),
+            more_kwargs = Dict(
+                :mask => ClimaAnalysis.Utils.kwargs(color = :white),
+                :plot => ClimaAnalysis.Utils.kwargs(rasterize = true),
+            ),
         )
         CairoMakie.save(joinpath(outdir, "$short_name.png"), fig)
     end
