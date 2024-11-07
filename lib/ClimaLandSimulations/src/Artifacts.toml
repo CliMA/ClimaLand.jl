@@ -1,0 +1,6 @@
+[fluxnet_sites]
+git-tree-sha1 = "2fc70601badf6f83dee2b84ba9c386ad041de8e2"
+
+    [[fluxnet_sites.download]]
+    sha256 = "f05b4c01b57afe9c0f59095b39cea1c0cf46b20deecd5c7afb44f474d9cd9966"
+    url = "https://caltech.box.com/shared/static/otrr2y0rgjct7hqhmq214nb8qjsvqj5p.gz"

@@ -17,7 +17,7 @@ include(
     joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/pull_MODIS.jl"),
 )
 
-data_path = ClimaLand.Artifacts.experiment_fluxnet_data_path(site_ID, data_link)
+data_path = ClimaLand.Artifacts.experiment_fluxnet_data_path(site_ID)
 driver_data = readdlm(data_path, ',')
 
 LOCAL_DATETIME = DateTime.(format.(driver_data[2:end, 1]), "yyyymmddHHMM")
