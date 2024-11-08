@@ -1,19 +1,12 @@
 export make_drivers
 
+import ClimaUtilities.ClimaArtifacts: @clima_artifact
+
 function make_drivers(site_ID, setup, config, params, context)
     #earth_param_set = create_lsm_parameters(FT)
 
-    af = ArtifactFile(
-        url = config.data_link,
-        filename = "AMF_$(site_ID)_FLUXNET_FULLSET.csv",
-    )
-    dataset = ArtifactWrapper(
-        "$climalandsimulations_dir/src/Fluxnet/fluxnet_sites/$site_ID",
-        "ameriflux_data",
-        ArtifactFile[af],
-    )
-    dataset_path = get_data_folder(dataset)
-    data = joinpath(dataset_path, "AMF_$(site_ID)_FLUXNET_FULLSET.csv")
+    dataset_path = @clima_artifact("fluxnet_sites", context)
+    data = joinpath(dataset_path, "$(site_ID).csv")
     driver_data = readdlm(data, ',')
 
     LOCAL_DATETIME = DateTime.(format.(driver_data[2:end, 1]), "yyyymmddHHMM")

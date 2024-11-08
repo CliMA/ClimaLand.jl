@@ -44,3 +44,10 @@ git-tree-sha1 = "043f9354b961fd3ef6ac4cf71d0c99930e177a92"
     [[bonan_richards_eqn.download]]
     sha256 = "50f1739dfd8193742488f249bd1ba8a157dfc7c1d8a27392ba7edbe9b4c0db03"
     url = "https://caltech.box.com/shared/static/4jcz9c1lp6rt750q28kx3qvihi8393tv.gz"
+
+[fluxnet_sites]
+git-tree-sha1 = "2fc70601badf6f83dee2b84ba9c386ad041de8e2"
+
+    [[fluxnet_sites.download]]
+    sha256 = "f05b4c01b57afe9c0f59095b39cea1c0cf46b20deecd5c7afb44f474d9cd9966"
+    url = "https://caltech.box.com/shared/static/otrr2y0rgjct7hqhmq214nb8qjsvqj5p.gz"

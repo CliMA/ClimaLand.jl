@@ -43,8 +43,7 @@ end
 
 """
     experiment_fluxnet_data_path(
-        site_ID,
-        data_link;
+        site_ID;
         context = nothing,
     )
 
@@ -86,17 +85,11 @@ Citation: Siyan Ma, Liukang Xu, Joseph Verfaillie, Dennis Baldocchi (2023), Amer
 
 AmeriFlux CC-BY-4.0 License
 """
-function experiment_fluxnet_data_path(site_ID, data_link; context = nothing)
+function experiment_fluxnet_data_path(site_ID; context = nothing)
     @assert site_ID ∈ ("US-MOz", "US-Var", "US-NR1", "US-Ha1")
-    dir = joinpath(@__DIR__, "../")
-    af = ArtifactFile(
-        url = data_link,
-        filename = "AMF_$(site_ID)_FLUXNET_FULLSET.csv",
-    )
-    dataset =
-        ArtifactWrapper(dir, "ameriflux_data_$(site_ID)", ArtifactFile[af])
-    folder_path = get_data_folder(dataset)
-    data_path = joinpath(folder_path, "AMF_$(site_ID)_FLUXNET_FULLSET.csv")
+
+    folder_path = @clima_artifact("fluxnet_sites", context)
+    data_path = joinpath(folder_path, "$(site_ID).csv")
     return data_path
 end
 
