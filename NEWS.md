@@ -1,7 +1,7 @@
 ClimaLand.jl Release Notes
 ========================
 
-main foo 
+main foo trigger long run
 --------
 
 v0.15.4
