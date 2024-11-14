@@ -3,7 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 --------
-
+test
 v0.15.4
 -------
 - The foliage clumping index of the radiative transfer model now varies spatially, using MODIS data
