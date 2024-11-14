@@ -68,7 +68,7 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
     surface_space = domain.space.surface
     subsurface_space = domain.space.subsurface
 
-    start_date = DateTime(2021)
+    start_date = DateTime(2008)
     spatially_varying_soil_params =
         ClimaLand.default_spatially_varying_soil_parameters(
             subsurface_space,
@@ -92,20 +92,18 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
     )
 
     era5_artifact_path =
-        ClimaLand.Artifacts.era5_land_forcing_data2021_folder_path(; context)
+        ClimaLand.Artifacts.era5_land_forcing_data2008_folder_path(; context)
 
     # Below, the preprocess_func argument is used to
     # 1. Convert precipitation to be negative (as it is downwards)
-    # 2. Convert accumulations over an hour to a rate per second
-    start_date = DateTime(2021)
     # Precipitation:
     precip = TimeVaryingInput(
-        joinpath(era5_artifact_path, "era5_2021_0.9x1.25.nc"),
-        "tp",
+        joinpath(era5_artifact_path, "era5_2008_1.0x1.0.nc"),
+        "mtpr",
         surface_space;
         start_date,
         regridder_type,
-        file_reader_kwargs = (; preprocess_func = (data) -> -data / 3600,),
+        file_reader_kwargs = (; preprocess_func = (data) -> -data),
     )
     atmos = ClimaLand.PrescribedPrecipitation{FT, typeof(precip)}(precip)
     bottom_bc = ClimaLand.Soil.WaterFluxBC((p, t) -> 0.0)

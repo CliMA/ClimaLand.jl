@@ -12,8 +12,21 @@ git-tree-sha1 = "3f6873a3e67722bda1fd23f7d5a05f5e2df1fe8c"
     sha256 = "830136abec15551a343b7884d657fb6a79b16a37237681a2becf65bd845aa692"
     url = "https://caltech.box.com/shared/static/6pu2f6c99g29qawvjjh3j56drkonpd3z.gz"
 
-[era5_land_forcing_data2021]
-git-tree-sha1 = "ec424296df6b60cfe273ac8f981701fbbed0bd8a"
+[era5_land_forcing_data2008]
+git-tree-sha1 = "93d2e93f491e77cb8fba2a1b8b3946f38bde469e"
+[era5_land_forcing_data2008_lowres]
+git-tree-sha1 = "67b6daae491c1fa55406dd6a65f6b197b9bd4728"
+
+    [[era5_land_forcing_data2008_lowres.download]]
+    sha256 = "f1ec64818faad37cf681caa86832b77c68f93784bf105dc85dd57079e8673b10"
+    url = "https://caltech.box.com/shared/static/6zk5fa3ka5ib62jsrs6tx35sqwe8xv2k.gz"
+
+[era5_land_forcing_data2008_lai]
+git-tree-sha1 = "f998a8db24647caf5f1693ad4a1e46bdf356a752"
+
+    [[era5_land_forcing_data2008_lai.download]]
+    sha256 = "81b357e97daf18d998c003dc00db14a7ffdd431520f2c5c4e41a1f0254864a8d"
+    url = "https://caltech.box.com/shared/static/m82r23e67x04a3hb6p79dfltlumvg9z0.gz"
 
 [land_albedo]
 git-tree-sha1 = "3f07b70ab43a05123e93753a45e094dcf7a66b5b"

@@ -1031,28 +1031,28 @@ function prescribed_forcing_era5(
 
     precip = TimeVaryingInput(
         era5_ncdata_path,
-        ["tp", "sf"],
+        ["mtpr", "msr"],
         surface_space;
         start_date,
         regridder_type,
-        file_reader_kwargs = (; preprocess_func = (data) -> -data / 3600,),
+        file_reader_kwargs = (; preprocess_func = (data) -> -data,),
         method = time_interpolation_method,
-        compose_function = (tp, sf) -> tp - sf,
+        compose_function = (mtpr, msr) -> mtpr - msr,
     )
 
     snow_precip = TimeVaryingInput(
         era5_ncdata_path,
-        "sf",
+        "msr",
         surface_space;
         start_date,
         regridder_type,
-        file_reader_kwargs = (; preprocess_func = (data) -> -data / 3600,),
+        file_reader_kwargs = (; preprocess_func = (data) -> -data,),
         method = time_interpolation_method,
     )
 
     u_atmos = TimeVaryingInput(
         era5_ncdata_path,
-        ["u10n", "v10n"],
+        ["u10", "v10"],
         surface_space;
         start_date,
         regridder_type,
@@ -1105,20 +1105,18 @@ function prescribed_forcing_era5(
 
     SW_d = TimeVaryingInput(
         era5_ncdata_path,
-        "ssrd",
+        "msdwswrf",
         surface_space;
         start_date,
         regridder_type,
-        file_reader_kwargs = (; preprocess_func = (data) -> data / 3600,),
         method = time_interpolation_method,
     )
     LW_d = TimeVaryingInput(
         era5_ncdata_path,
-        "strd",
+        "msdwlwrf",
         surface_space;
         start_date,
         regridder_type,
-        file_reader_kwargs = (; preprocess_func = (data) -> data / 3600,),
         method = time_interpolation_method,
     )
 
