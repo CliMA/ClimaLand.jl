@@ -21,6 +21,9 @@ for FT in (Float32, Float64)
         Kc = FT(41.03) / P# convert from Pa to mol/mol
         Ko = FT(28210) / P# convert from Pa to mol/mol
         c = FT(0.05336251)
+        c_light = FT(LP.light_speed(earth_param_set))
+        planck_h = FT(LP.planck_constant(earth_param_set))
+        N_a = FT(LP.avogadro_constant(earth_param_set))
         Jmax, Vcmax = ClimaLand.Canopy.optimality_max_photosynthetic_rates(
             APAR,
             θj,
@@ -53,17 +56,23 @@ for FT in (Float32, Float64)
         medlyn_factor = FT(10.0)
         c_co2 = FT(4.8e-4)
         R = FT(LP.gas_constant(earth_param_set))
+        f_abs = FT(0.5)
+        par_d = FT(1)
+        λ_γ_PAR = FT(5e-7)
+        energy_per_mole_photon_par = planck_h * c_light / λ_γ_PAR * N_a
         ClimaLand.Canopy.update_photosynthesis!(
             Rd,
             An,
             Vcmax25,
             model,
             T,
-            APAR,
+            f_abs,
             β,
             medlyn_factor,
             c_co2,
             R,
+            energy_per_mole_photon_par,
+            par_d,
         )
         @test Rd[1] != 0.0
         @test Vcmax25[1] != 0.0
@@ -100,29 +109,27 @@ for FT in (Float32, Float64)
         R = FT(LP.gas_constant(earth_param_set))
         θs = FT.(Array(0:0.1:(π / 2)))
         SW(θs) = cos.(θs) * FT.(500) # W/m^2
-        PAR = SW(θs) ./ (energy_per_photon * N_a) # convert 500 W/m^2 to mol of photons per m^2/s
         G = compute_G(RTparams.G_Function, θs)
         K_c = extinction_coeff.(G, θs)
         α_soil_PAR = FT(0.2)
         output =
-            plant_absorbed_pfd_beer_lambert.(
+            canopy_sw_rt_beer_lambert.(
                 RTparams.Ω,
-                PAR,
                 RTparams.α_PAR_leaf,
                 LAI,
                 K_c,
                 α_soil_PAR,
             )
-        APAR = getproperty.(output, :abs)
-        TPAR = getproperty.(output, :trans)
-        RPAR = getproperty.(output, :refl)
-        @test all(@. TPAR ≈ PAR * exp(-K_c * LAI * RTparams.Ω))
-        @test all(@. RPAR ≈ PAR - APAR - TPAR * (1 - α_soil_PAR))
+        FAPAR = getproperty.(output, :abs)
+        FTPAR = getproperty.(output, :trans)
+        FRPAR = getproperty.(output, :refl)
+        @test all(@. FTPAR ≈ exp(-K_c * LAI * RTparams.Ω))
+        @test all(@. FRPAR ≈ FT(1) - FAPAR - FTPAR * (1 - α_soil_PAR))
 
         @test all(
-            @. APAR ≈
-               PAR * (1 - RTparams.α_PAR_leaf) .*
-               (1 - exp(-K_c * LAI * RTparams.Ω)) * (1 - α_soil_PAR)
+            @. FAPAR ≈
+               (1 - RTparams.α_PAR_leaf) .* (1 - exp(-K_c * LAI * RTparams.Ω)) *
+               (1 - α_soil_PAR)
         )
         To = photosynthesisparams.To
         Vcmax =
@@ -189,6 +196,7 @@ for FT in (Float32, Float64)
               photosynthesisparams.Vcmax25 *
               FT(exp(1)) *
               arrhenius_function(T, To, R, photosynthesisparams.ΔHJmax)
+        APAR = FT(1)
         J =
             electron_transport.(
                 APAR,

@@ -114,23 +114,31 @@ function photosynthesis_at_a_point_Farquhar(
 end
 
 """
-    update_photosynthesis!(Rd, An, Vcmax25,
+    update_photosynthesis!(
+        Rd,
+        An,
+        Vcmax25field,
         model::FarquharModel,
         T,
-        APAR,
+        f_abs,
         β,
         medlyn_factor,
         c_co2,
         R,
-    )
+        energy_per_mole_photon_par,
+        par_d,
+)
 
 Computes the net photosynthesis rate `An` for the Farquhar model, along with the
 dark respiration `Rd`, and updates them in place.
 
-To do so, we require the canopy leaf temperature `T`, Medlyn factor, `APAR` in
-photons per m^2 per second, CO2 concentration in the atmosphere,
+To do so, we require the canopy leaf temperature `T`, Medlyn factor, fraction
+of `par_d` aborbed `f_abs`, CO2 concentration in the atmosphere,
 moisture stress factor `β` (unitless), and the universal gas constant
 `R`.
+
+The typical `energy_per_mole_photon_par` is used to convert from an absorbed energy
+flux to a flux of moles of photons, as needed by photosynthetic rate computations.
 """
 function update_photosynthesis!(
     Rd,
@@ -138,11 +146,13 @@ function update_photosynthesis!(
     Vcmax25field,
     model::FarquharModel,
     T,
-    APAR,
+    f_abs,
     β,
     medlyn_factor,
     c_co2,
     R,
+    energy_per_mole_photon_par,
+    par_d,
 )
     (;
         Vcmax25,
@@ -170,7 +180,7 @@ function update_photosynthesis!(
         T,
         β,
         Rd,
-        APAR,
+        f_abs * par_d / energy_per_mole_photon_par, # This function requires flux in moles of photons, not J
         c_co2,
         medlyn_factor,
         R,
