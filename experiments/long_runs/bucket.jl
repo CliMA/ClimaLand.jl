@@ -154,7 +154,12 @@ end
 function setup_and_solve_problem(; greet = false)
 
     t0 = 0.0
-    tf = 60 * 60.0 * 24 * 365
+    seconds = 1.0
+    minutes = 60seconds
+    hours = 60minutes # hours in seconds
+    days = 24hours # days in seconds
+    years = 366days # years in seconds - 366 to make sure we capture at least full years
+    tf = 1years # 2 years in seconds
     Δt = 900.0
     nelements = (101, 7)
     if greet
@@ -176,30 +181,13 @@ end
 setup_and_solve_problem(; greet = true);
 # read in diagnostics and make some plots!
 #### ClimaAnalysis ####
-simdir = ClimaAnalysis.SimDir(outdir)
 short_names = ["tsfc", "lhf", "shf", "wsoil"]
-mktempdir(root_path) do tmpdir
-    for short_name in short_names
-        var = get(simdir; short_name)
-        times = [ClimaAnalysis.times(var)[1], ClimaAnalysis.times(var)[end]]
-        for t in times
-            var = get(simdir; short_name)
-            fig = CairoMakie.Figure(size = (600, 400))
-            kwargs = ClimaAnalysis.has_altitude(var) ? Dict(:z => 1) : Dict()
-            viz.heatmap2D_on_globe!(
-                fig,
-                ClimaAnalysis.slice(var, time = t; kwargs...),
-                mask = viz.oceanmask(),
-                more_kwargs = Dict(
-                    :mask => ClimaAnalysis.Utils.kwargs(color = :white),
-                    :plot => ClimaAnalysis.Utils.kwargs(rasterize = true),
-                ),
-            )
-            CairoMakie.save(joinpath(tmpdir, "$(short_name)_$t.pdf"), fig)
-        end
-    end
-    figures = readdir(tmpdir, join = true)
-    pdfunite() do unite
-        run(Cmd([unite, figures..., joinpath(root_path, "figures.pdf")]))
-    end
-end
+include(
+    joinpath(
+        pkgdir(ClimaLand),
+        "experiments",
+        "long_runs",
+        "figures_function.jl",
+    ),
+)
+make_figures(root_path, outdir, short_names)
