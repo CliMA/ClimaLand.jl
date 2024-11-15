@@ -1,7 +1,7 @@
 ClimaLand.jl Release Notes
 ========================
 
-main
+main - foo
 --------
 
 v0.15.4
