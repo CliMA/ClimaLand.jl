@@ -107,6 +107,7 @@ hourly_averages(FT, short_names...; output_writer) = common_diagnostics(
     60 * 60 * one(FT),
     (+),
     output_writer,
+    nothing, # start_date
     short_names...;
     pre_output_hook! = average_pre_output_hook!,
 )

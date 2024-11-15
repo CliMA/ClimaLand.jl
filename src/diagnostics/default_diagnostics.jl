@@ -14,7 +14,7 @@ export default_diagnostics
                                 period,
                                 reduction,
                                 output_writer,
-                                reference_date,
+                                start_date,
                                 short_names...;
                                 pre_output_hook! = nothing,
                                )
@@ -25,7 +25,7 @@ function common_diagnostics(
     period,
     reduction,
     output_writer,
-    reference_date,
+    start_date,
     short_names...;
     pre_output_hook! = nothing,
 )
@@ -33,7 +33,7 @@ function common_diagnostics(
         map(short_names) do short_name
             output_schedule_func =
                 period isa Period ?
-                EveryCalendarDtSchedule(period; reference_date) :
+                EveryCalendarDtSchedule(period; start_date) :
                 EveryDtSchedule(period)
             return ScheduledDiagnostic(
                 variable = get_diagnostic_variable(short_name),
@@ -52,7 +52,7 @@ include("standard_diagnostic_frequencies.jl")
 # Bucket
 function default_diagnostics(
     land_model::BucketModel{FT},
-    reference_date;
+    start_date;
     output_writer,
     average_period = :daily,
 ) where {FT}
@@ -80,21 +80,17 @@ function default_diagnostics(
             FT,
             bucket_diagnostics...;
             output_writer,
-            reference_date,
+            start_date,
         )
     elseif average_period == :daily
-        default_outputs = daily_averages(
-            FT,
-            bucket_diagnostics...;
-            output_writer,
-            reference_date,
-        )
+        default_outputs =
+            daily_averages(FT, bucket_diagnostics...; output_writer, start_date)
     elseif average_period == :monthly
         default_outputs = monthly_averages(
             FT,
             bucket_diagnostics...;
             output_writer,
-            reference_date,
+            start_date,
         )
     end
 
@@ -104,7 +100,7 @@ end
 # SoilCanopyModel
 function default_diagnostics(
     land_model::SoilCanopyModel{FT},
-    reference_date;
+    start_date;
     output_writer,
     output_vars = :long,
     average_period = :daily,
@@ -200,21 +196,21 @@ function default_diagnostics(
             FT,
             soilcanopy_diagnostics...;
             output_writer,
-            reference_date,
+            start_date,
         )
     elseif average_period == :daily
         default_outputs = daily_averages(
             FT,
             soilcanopy_diagnostics...;
             output_writer,
-            reference_date,
+            start_date,
         )
     elseif average_period == :monthly
         default_outputs = monthly_averages(
             FT,
             soilcanopy_diagnostics...;
             output_writer,
-            reference_date,
+            start_date,
         )
     end
 
@@ -225,7 +221,7 @@ end
 # SoilModel
 function default_diagnostics(
     land_model::EnergyHydrology{FT},
-    reference_date;
+    start_date;
     output_writer,
     average_period = :daily,
 ) where {FT}
@@ -235,26 +231,14 @@ function default_diagnostics(
     soil_diagnostics = ["swc", "si", "sie"]
 
     if average_period == :hourly
-        default_outputs = hourly_averages(
-            FT,
-            soil_diagnostics...;
-            output_writer,
-            reference_date,
-        )
+        default_outputs =
+            hourly_averages(FT, soil_diagnostics...; output_writer, start_date)
     elseif average_period == :daily
-        default_outputs = daily_averages(
-            FT,
-            soil_diagnostics...;
-            output_writer,
-            reference_date,
-        )
+        default_outputs =
+            daily_averages(FT, soil_diagnostics...; output_writer, start_date)
     elseif average_period == :monthly
-        default_outputs = monthly_averages(
-            FT,
-            soil_diagnostics...;
-            output_writer,
-            reference_date,
-        )
+        default_outputs =
+            monthly_averages(FT, soil_diagnostics...; output_writer, start_date)
     end
 
     return [default_outputs...]
@@ -263,7 +247,7 @@ end
 # Land Model
 function default_diagnostics(
     land_model::LandModel{FT},
-    reference_date;
+    start_date;
     output_writer,
     output_vars = :long,
     average_period = :daily,
@@ -360,21 +344,21 @@ function default_diagnostics(
             FT,
             snowyland_diagnostics...;
             output_writer,
-            reference_date,
+            start_date,
         )
     elseif average_period == :daily
         default_outputs = daily_averages(
             FT,
             snowyland_diagnostics...;
             output_writer,
-            reference_date,
+            start_date,
         )
     elseif average_period == :monthly
         default_outputs = monthly_averages(
             FT,
             snowyland_diagnostics...;
             output_writer,
-            reference_date,
+            start_date,
         )
     end
 end

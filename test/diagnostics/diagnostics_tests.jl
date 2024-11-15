@@ -99,7 +99,7 @@ out = ClimaLand.Diagnostics.hourly_averages(
     FT,
     diags...;
     output_writer = nc_writer,
-    reference_date = DateTime(2005),
+    start_date = DateTime(2005),
 )
 
 diagnostic_handler = ClimaDiagnostics.DiagnosticsHandler(out, Y, p, t0; dt = Δt)

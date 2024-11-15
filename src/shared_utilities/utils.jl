@@ -314,7 +314,7 @@ function CheckpointCallback(
 
     schedule = EveryCalendarDtSchedule(
         checkpoint_frequency_period;
-        reference_date = start_date,
+        start_date,
         date_last = start_date + Dates.Millisecond(1000t_start),
     )
 

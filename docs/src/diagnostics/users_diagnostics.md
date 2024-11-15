@@ -122,6 +122,7 @@ seasonal_maxs(FT, short_names...; output_writer) = common_diagnostics(
     90 * 24 * 60 * 60 * one(FT),
     max,
     output_writer,
+    nothing, # start_date
     short_names...,
 )
 ```
