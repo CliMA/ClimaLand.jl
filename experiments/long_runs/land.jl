@@ -376,7 +376,12 @@ end
 function setup_and_solve_problem(; greet = false)
 
     t0 = 0.0
-    tf = 60 * 60.0 * 24 * 365
+    seconds = 1.0
+    minutes = 60seconds
+    hours = 60minutes
+    days = 24hours
+    years = 365days
+    tf = 1years
     Δt = 450.0
     nelements = (101, 15)
     if greet
@@ -410,6 +415,17 @@ mktempdir(root_path) do tmpdir
     for short_name in short_names
         var = get(simdir; short_name)
         times = [ClimaAnalysis.times(var)[1], ClimaAnalysis.times(var)[end]]
+        kwarg_z = ClimaAnalysis.has_altitude(var) ? Dict(:z => 1) : Dict() # if has altitude, take first layer
+        var_sliced = ClimaAnalysis.slice(var; kwarg_z...)
+        var_global_average =
+            ClimaAnalysis.average_lon(ClimaAnalysis.average_lat(var_sliced))
+        fig_seasonal_cycle = CairoMakie.Figure(size = (600, 400))
+        ax = Axis(fig_seasonal_cycle[1, 1])
+        CairoMakie.lines!(ax, 1:1:12, var_global_average.data)
+        CairoMakie.save(
+            joinpath(tmpdir, "$(short_name)_global_monthly.pdf"),
+            fig_seasonal_cycle,
+        )
         for t in times
             fig = CairoMakie.Figure(size = (600, 400))
             kwargs = ClimaAnalysis.has_altitude(var) ? Dict(:z => 1) : Dict()
