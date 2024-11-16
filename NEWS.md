@@ -4,6 +4,9 @@ ClimaLand.jl Release Notes
 main
 --------
 
+
+v0.15.5
+-------
 - Integrated land model with snow, soil, canopy
   PR[#863](https://github.com/CliMA/ClimaLand.jl/pull/834)
 
