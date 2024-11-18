@@ -19,8 +19,8 @@ assuming the `ActiveLinkStyle` is used for managing output folders.
 """
 function find_restart(output_dir)
     return ClimaUtilities.OutputPathGenerator.detect_restart_file(
-        ClimaUtilities.OutputPathGenerator.ActiveLinkStyle(),
-        output_dir,
+        output_dir;
+        style = ClimaUtilities.OutputPathGenerator.ActiveLinkStyle(),
     )
 end
 
