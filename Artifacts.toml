@@ -51,3 +51,10 @@ git-tree-sha1 = "2fc70601badf6f83dee2b84ba9c386ad041de8e2"
     [[fluxnet_sites.download]]
     sha256 = "f05b4c01b57afe9c0f59095b39cea1c0cf46b20deecd5c7afb44f474d9cd9966"
     url = "https://caltech.box.com/shared/static/otrr2y0rgjct7hqhmq214nb8qjsvqj5p.gz"
+
+[topmodel]
+git-tree-sha1 = "10855ff977cc948a92c7a83915895d27650649a1"
+
+    [[topmodel.download]]
+    sha256 = "03de8f42fedf3836c6792571f04b55fbaca321919ecd761b846286dc56bfa2e8"
+    url = "https://caltech.box.com/shared/static/bfjxp72vre6b5ncm7jqf9w8hyj4ab4yr.gz"
