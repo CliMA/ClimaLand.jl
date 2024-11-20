@@ -1033,7 +1033,7 @@ function prescribed_forcing_era5(
         era5_ncdata_path,
         ["tp", "sf"],
         surface_space;
-        reference_date = start_date,
+        start_date,
         regridder_type,
         file_reader_kwargs = (; preprocess_func = (data) -> -data / 3600,),
         method = time_interpolation_method,
@@ -1044,7 +1044,7 @@ function prescribed_forcing_era5(
         era5_ncdata_path,
         "sf",
         surface_space;
-        reference_date = start_date,
+        start_date,
         regridder_type,
         file_reader_kwargs = (; preprocess_func = (data) -> -data / 3600,),
         method = time_interpolation_method,
@@ -1054,7 +1054,7 @@ function prescribed_forcing_era5(
         era5_ncdata_path,
         ["u10n", "v10n"],
         surface_space;
-        reference_date = start_date,
+        start_date,
         regridder_type,
         compose_function = (u, v) -> sqrt.(u .^ 2 .+ v .^ 2),
         method = time_interpolation_method,
@@ -1065,7 +1065,7 @@ function prescribed_forcing_era5(
         era5_ncdata_path,
         ["d2m", "t2m", "sp"],
         surface_space;
-        reference_date = start_date,
+        start_date,
         regridder_type,
         compose_function = specific_humidity,
         method = time_interpolation_method,
@@ -1074,7 +1074,7 @@ function prescribed_forcing_era5(
         era5_ncdata_path,
         "sp",
         surface_space;
-        reference_date = start_date,
+        start_date,
         regridder_type,
         method = time_interpolation_method,
     )
@@ -1083,7 +1083,7 @@ function prescribed_forcing_era5(
         era5_ncdata_path,
         "t2m",
         surface_space;
-        reference_date = start_date,
+        start_date,
         regridder_type,
         method = time_interpolation_method,
     )
@@ -1107,7 +1107,7 @@ function prescribed_forcing_era5(
         era5_ncdata_path,
         "ssrd",
         surface_space;
-        reference_date = start_date,
+        start_date,
         regridder_type,
         file_reader_kwargs = (; preprocess_func = (data) -> data / 3600,),
         method = time_interpolation_method,
@@ -1116,7 +1116,7 @@ function prescribed_forcing_era5(
         era5_ncdata_path,
         "strd",
         surface_space;
-        reference_date = start_date,
+        start_date,
         regridder_type,
         file_reader_kwargs = (; preprocess_func = (data) -> data / 3600,),
         method = time_interpolation_method,
@@ -1164,7 +1164,7 @@ end
                          time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
                          regridder_type = :InterpolationsRegridder)
 
-A helper function which constructs the TimeVaryingInput object for Leaf Area Index,  
+A helper function which constructs the TimeVaryingInput object for Leaf Area Index,
 from a file path pointing to the ERA5 LAI data in a netcdf file, the surface_space, the start date,
 and the earth_param_set.
 """
@@ -1179,7 +1179,7 @@ function prescribed_lai_era5(
         era5_lai_ncdata_path,
         ["lai_hv", "lai_lv"],
         surface_space;
-        reference_date = start_date,
+        start_date,
         regridder_type,
         method = time_interpolation_method,
         compose_function = (hv, lv) -> hv + lv,

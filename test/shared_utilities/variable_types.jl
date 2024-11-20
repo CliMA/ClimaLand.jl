@@ -79,11 +79,11 @@ end
 @testset "Default canopy component" begin
     FT = Float64
     struct DefaultCanopy{FT} <: AbstractImExModel{FT} end
-    ClimaLand.name(::DefaultCanopy) where {FT} = :canopy
+    ClimaLand.name(::DefaultCanopy) = :canopy
     dc = DefaultCanopy{FT}()
 
     struct DefaultCanopyComponent{FT} <: AbstractCanopyComponent{FT} end
-    ClimaLand.name(::DefaultCanopyComponent) where {FT} = :component
+    ClimaLand.name(::DefaultCanopyComponent) = :component
     dcc = DefaultCanopyComponent{FT}()
 
     @test ClimaLand.prognostic_vars(dcc) == ()

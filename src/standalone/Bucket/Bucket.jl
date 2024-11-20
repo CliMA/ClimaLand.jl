@@ -182,7 +182,7 @@ function PrescribedSurfaceAlbedo{FT}(
         albedo_file_path,
         varname,
         space;
-        reference_date = start_date,
+        start_date,
         regridder_type,
     )
 

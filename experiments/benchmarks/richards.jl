@@ -103,7 +103,7 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
         joinpath(era5_artifact_path, "era5_2021_0.9x1.25.nc"),
         "tp",
         surface_space;
-        reference_date = start_date,
+        start_date,
         regridder_type,
         file_reader_kwargs = (; preprocess_func = (data) -> -data / 3600,),
     )
