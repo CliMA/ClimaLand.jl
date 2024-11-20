@@ -24,6 +24,18 @@ function snow_cover_fraction(x::FT; α = FT(1e-3))::FT where {FT}
 end
 
 """
+    snow_depth(model::AbstractDensityModel, Y, p, params)
+
+A default function which returns the snow depth through the scaling of SWE by the snow density.
+This can be extended for additional types of parameterizations.
+"""
+function snow_depth(density::AbstractDensityModel{FT}, Y, p, params) where {FT}
+    ρ_l = FT(LP.ρ_cloud_liq(params.earth_param_set))
+    return ρ_l .* Y.snow.S ./ p.snow.ρ_snow
+end
+
+
+"""
     ClimaLand.surface_height(
         model::SnowModel{FT},
         Y,
@@ -41,9 +53,8 @@ be ~1-3 km thick on Greenland/
 In order to compute surface fluxes, this cannot be large than the 
 height of the atmosphere measurement location (z_atmos > z_land always). 
 """
-function ClimaLand.surface_height(model::SnowModel{FT}, Y, p) where {FT}
-    _ρ_l = FT(LP.ρ_cloud_liq(model.parameters.earth_param_set))
-    return _ρ_l .* Y.snow.S ./ p.snow.ρ_snow
+function ClimaLand.surface_height(model::SnowModel, Y, p)
+    return snow_depth(model.parameters.density, Y, p, model.parameters)
 end
 
 
@@ -77,7 +88,7 @@ end
 
 
 """
-    ClimaLand.surface_specific_humidity(model::BucketModel, Y, p)
+    ClimaLand.surface_specific_humidity(model::SnowModel, Y, p)
 
 Computes and returns the specific humidity over snow as a weighted
 fraction of the saturated specific humidity over liquid and frozen
@@ -119,19 +130,6 @@ Returns the snow surface temperature assuming it is the same
 as the bulk temperature T.
 """
 snow_surface_temperature(T::FT) where {FT} = T
-
-
-"""
-    snow_depth(SWE::FT, ρ_snow::FT, ρ_l::FT) where {FT}
-
-Returns the snow depth given SWE, snow density ρ_snow, and
-the density of liquid water ρ_l.
-
-"""
-function snow_depth(SWE::FT, ρ_snow::FT, ρ_l::FT)::FT where {FT}
-    return SWE * ρ_l / ρ_snow
-end
-
 
 
 """
@@ -195,16 +193,31 @@ function snow_bulk_temperature(
     q_l::FT,
     parameters::SnowParameters{FT},
 ) where {FT}
-    _ρ_i = FT(LP.ρ_cloud_ice(parameters.earth_param_set)) #why do we define this if we never use it?
     _ρ_l = FT(LP.ρ_cloud_liq(parameters.earth_param_set))
     _T_ref = FT(LP.T_0(parameters.earth_param_set))
     _LH_f0 = FT(LP.LH_f0(parameters.earth_param_set))
     cp_s = specific_heat_capacity(q_l, parameters)
-    _T_freeze = FT(LP.T_freeze(parameters.earth_param_set)) #why do we define this if we never use it?
     _ρcD_g = parameters.ρcD_g
     return _T_ref +
            (U + (1 - q_l) * _LH_f0 * _ρ_l * SWE) / (_ρ_l * SWE * cp_s + _ρcD_g)
 
+end
+
+"""
+    snow_bulk_density(SWE::FT, z::FT, parameters::SnowParameters{FT}) where {FT}
+Returns the snow density given the current model state when depth and SWE are available.
+"""
+function snow_bulk_density(
+    SWE::FT,
+    z::FT,
+    parameters::SnowParameters{FT},
+)::FT where {FT}
+    ρ_l = FT(LP.ρ_cloud_liq(parameters.earth_param_set))
+    if SWE <= eps(FT) #if there is no snowpack, aka avoid NaN
+        return FT(ρ_l)
+    end
+    ρ_new = SWE / z * ρ_l
+    return ρ_new
 end
 
 """
@@ -219,15 +232,12 @@ function snow_liquid_mass_fraction(
     parameters::SnowParameters{FT},
 ) where {FT}
     #if SWE < eps(FT) return FT(1) end #do this to speed up computation or not, compared to the max() in the final line?
-    #_ρ_i = FT(LP.ρ_cloud_ice(parameters.earth_param_set)) #why do we define this if we never use it?
     _ρ_l = FT(LP.ρ_cloud_liq(parameters.earth_param_set))
     _T_ref = FT(LP.T_0(parameters.earth_param_set))
     _T_freeze = FT(LP.T_freeze(parameters.earth_param_set))
     _LH_f0 = FT(LP.LH_f0(parameters.earth_param_set))
     _cp_i = FT(LP.cp_i(parameters.earth_param_set))
     _cp_l = FT(LP.cp_l(parameters.earth_param_set))
-
-    #ΔT = _T_freeze - _T_ref #why do we define this if we never use it?
 
     _ρcD_g = parameters.ρcD_g
     Uminus =
@@ -309,13 +319,10 @@ function compute_water_runoff(
     q_l::FT,
     T::FT,
     ρ_snow::FT,
+    z::FT,
     parameters,
 ) where {FT}
-    _ρ_l = FT(LP.ρ_cloud_liq(parameters.earth_param_set))
-    Ksat::FT = parameters.Ksat
-    Δt::FT = parameters.Δt
-    depth = snow_depth(S, ρ_snow, _ρ_l) #is it fine to calculate depth like this every time even if Y.snow.Z exists, or should we dispatch this function off the parameterization types to not calculate this if already calculated?
-    τ = runoff_timescale(depth, Ksat, Δt)
+    τ = runoff_timescale(z, parameters.Ksat, parameters.Δt)
     q_l_max::FT = maximum_liquid_mass_fraction(T, ρ_snow, parameters)
     return -(q_l - q_l_max) * heaviside(q_l - q_l_max) / τ * S /
            max(1 - q_l, FT(0.01))
@@ -354,7 +361,6 @@ If T = T_freeze, we return the energy as if q_l = 0.
 
 """
 function energy_from_T_and_swe(S::FT, T::FT, parameters) where {FT}
-    _ρ_i = FT(LP.ρ_cloud_ice(parameters.earth_param_set)) #unused?
     _ρ_l = FT(LP.ρ_cloud_liq(parameters.earth_param_set))
     _T_ref = FT(LP.T_0(parameters.earth_param_set))
     _T_freeze = FT(LP.T_freeze(parameters.earth_param_set))
@@ -372,11 +378,64 @@ function energy_from_T_and_swe(S::FT, T::FT, parameters) where {FT}
 end
 
 """
-    compat_density(W_i::FT, sliq::FT, ρ::FT, Δt_t::FT, Tsnow::FT, density::Anderson1976) where {FT}
+    update_density!(density::AbstractDensityModel, params::SnowParameters, Y, p)
+Updates the snow density given the current model state. Default for all model types,
+can be extended for alternative density paramterizations.
+"""
+function update_density!(
+    density::AbstractDensityModel,
+    params::SnowParameters,
+    Y,
+    p,
+)
+    p.snow.ρ_snow .=
+        snow_bulk_density.(Y.snow.S, snow_depth(density, Y, p, params), params)
+end
+
+"""
+    update_density!(density::ConstantDensityModel, params::SnowParameters, Y, p)
+Extends the update_density! function for the ConstantDensityModel type.
+"""
+function update_density!(
+    density::ConstantDensityModel,
+    params::SnowParameters,
+    Y,
+    p,
+)
+    p.snow.ρ_snow .= density.ρ_snow
+end
+
+"""
+    update_density_prog!(density::ConstantDensityModel{FT}, model::SnowModel{FT}, Y, p) where {FT}
+Updates all prognostic variables associated with density/depth given the current model state.
+This is the default method for all density model types, which can be extended for alternative paramterizations.
+"""
+function update_density_prog!(
+    density::AbstractDensityModel,
+    model::SnowModel,
+    dY,
+    Y,
+    p,
+)
+    return nothing
+end
+
+"""
+    snow_depth(density::Anderson1976, Y, p, params)
+
+An extension of the `snow_depth` function to the Anderson1976 density parameterization, which includes the prognostic depth variable
+and thus does not need to derive snow depth from SWE and density.
+This is sufficient to enable dynamics of the auxillary variable ρ_snow without extension of update_density!, and avoids
+redundant computations in the computation of runoff.
+"""
+snow_depth(density::Anderson1976, Y, p, params) = Y.snow.Z
+
+"""
+    compact_density(W_i::FT, sliq::FT, ρ::FT, Δt_t::FT, Tsnow::FT, density::Anderson1976) where {FT}
 Returns the new compressed density ρ_new from the input ρ under the compaction model defined
 by Snow17 for a given `Anderson1976` parameterization configuration.
 """
-function compat_density(
+function compact_density(
     W_i::FT,
     sliq::FT,
     ρ::FT,
@@ -384,16 +443,11 @@ function compat_density(
     Tsnow::FT,
     density::Anderson1976,
 )::FT where {FT}
-    c5 = (sliq > FT(0)) ? FT(2) : density.c5
+    c5 = (sliq > 0) ? FT(2) : density.c5
     cx = (ρ > density.ρ_d) ? density.cx : FT(0)
 
-    B =
-        FT(100) *
-        W_i *
-        density.c1 *
-        Δt_t *
-        exp(FT(0.08) * Tsnow - density.c2 * ρ)
-    factor = (W_i > FT(0.001)) ? (exp(B) - FT(1)) / B : FT(1)
+    B = 100 * W_i * density.c1 * Δt_t * exp(FT(0.08) * Tsnow - density.c2 * ρ)
+    factor = (W_i > 0.001) ? (exp(B) - 1) / B : FT(1)
     A = exp(
         density.c3 *
         c5 *
@@ -408,14 +462,12 @@ function compat_density(
 end
 
 """
-    newsnow_dens(air_temp::FT)::FT where {FT}
-Helper function for dzdt under an `Anderson1976` density parameterization.
-A model for estimating the (as a fraction of liquid water density)
-density of newly fallen snow, given air temperature. Uses the model implemented
-in Snow17.
+    newsnow_density(air_temp::FT)::FT where {FT}
+Estimates the density of newly fallen snow as a function of air temperature, according to the Snow17 model.
+Used in computing the time derivative of snow depth under the Anderson1976 density parameterization.
 """
-function newsnow_dens(air_temp::FT)::FT where {FT}
-    if air_temp < FT(-15.0)
+function newsnow_density(air_temp::FT)::FT where {FT}
+    if air_temp < -15
         return FT(0.05)
     else
         return FT(0.05) + FT(0.0017) * FT((air_temp + FT(15.0))^1.5)
@@ -423,31 +475,30 @@ function newsnow_dens(air_temp::FT)::FT where {FT}
 end
 
 """
-    newsnow_dens(air_temp::FT)::FT where {FT}
-Helper function for dzdt under an `Anderson1976` density parameterization.
-A model for estimating the tempearature of newly fallen snow,
-given air temperature. Uses the model implemented in Snow17.
+    newsnow_temp(air_temp::FT)::FT where {FT}
+Estimates the temperature of newly fallen snow as a function of air temperature, according to the Snow17 model.
+Used in computing the time derivative of snow depth under the Anderson1976 density parameterization.
 """
 function newsnow_temp(air_temp::FT)::FT where {FT}
-    return (air_temp > FT(0)) ? FT(0) : air_temp
+    return (air_temp > 0) ? FT(0) : air_temp
 end
 
 """
-    dzdt(density::Anderson1976, model::SnowModel{FT}, Y, p, t) where {FT}
+    dzdt(density::Anderson1976{FT}, model::SnowModel{FT}, Y, p, t) where {FT}
 Returns the change in snow depth (rate) given the current model state and the `Anderson1976`
 density paramterization, which estimates contributions from new snowfall, as well as compaction
 effects from the existing and newly fallen snow.
 """
-function dzdt(density::Anderson1976, model::SnowModel{FT}, Y, p) where {FT}
-    Δt_t = model.parameters.Δt / FT(3600) #in hours (when Δt in SnowParameters is ::FT instead of ::Period)
+function dzdt(density::Anderson1976{FT}, model::SnowModel{FT}, Y, p) where {FT}
+    Δt_t = model.parameters.Δt / 3600 #in hours (when Δt in SnowParameters is ::FT instead of ::Period)
 
-    #Contribution from new snowfall: (uses parameterization of newsnow_temp, newsnow_dens)
+    #Contribution from new snowfall: (uses parameterization of newsnow_temp, newsnow_density)
     air_temp = p.drivers.T .- model.parameters.earth_param_set.T_freeze
     snowfall = abs.(p.drivers.P_snow) .* model.parameters.Δt
     T_newsnow = newsnow_temp.(p.drivers.T)
-    ρ_precip = newsnow_dens.(air_temp) #unitless
+    ρ_precip = newsnow_density.(air_temp) #unitless
     ρ_newsnow =
-        compat_density.(
+        compact_density.(
             snowfall,
             FT(0),
             ρ_precip,
@@ -456,16 +507,40 @@ function dzdt(density::Anderson1976, model::SnowModel{FT}, Y, p) where {FT}
             Ref(density),
         )
     Δz = snowfall ./ ρ_newsnow
+    if sum(isnan.(parent(Δz))) > 0
+        print("ΔZ NAN: ", snowfall, ρ_newsnow, "\n")
+        error()
+    end
 
     #Estimate resulting change from compaction effects of old snow (and the incoming snow on top):
-    W_ice = (FT(1) .- p.snow.q_l) .* Y.snow.S
+    W_ice = (1 .- p.snow.q_l) .* Y.snow.S
     ρ_ice = W_ice ./ Y.snow.Z #unitless
     sliq = p.snow.q_l .* Y.snow.S
     Tsnow = p.snow.T .- model.parameters.earth_param_set.T_freeze
     W_use = W_ice .+ snowfall
     parent(ρ_ice)[parent(W_ice) .<= eps(FT)] .= FT(0.1) #any nonzero value for no-snowpack to avoid NaN and return 0.0
-    ρ_est = compat_density.(W_use, sliq, ρ_ice, Δt_t, Tsnow, Ref(density))
+    ρ_est = compact_density.(W_use, sliq, ρ_ice, Δt_t, Tsnow, Ref(density))
     dz_compaction = (W_ice ./ ρ_est) .- Y.snow.Z
+    if sum(isnan.(parent(dz_compaction))) > 0
+        print(
+            "dz_compaction NAN: \n",
+            ρ_est,
+            "\n",
+            W_ice,
+            "\n",
+            W_use,
+            "\n",
+            sliq,
+            "\n",
+            ρ_ice,
+            "\n",
+            Y.snow.Z,
+            "\n",
+            Y.snow.S,
+            "\n***\n",
+        )
+        error()
+    end
 
     return (dz_compaction .+ Δz) ./ model.parameters.Δt
 end
@@ -476,7 +551,7 @@ A helper function which clips the tendency of Z such that
 its behavior is consistent with that of S.
 """
 function clip_dZdt(S::FT, Z::FT, dSdt::FT, dZdt::FT, Δt::FT)::FT where {FT}
-    if (S + dSdt * Δt) < 0
+    if (S + dSdt * Δt) <= eps(FT)
         return -Z / Δt
     elseif (Z + dZdt * Δt) < (S + dSdt * Δt)
         #do we need to do something about setting q_l = 1 here?
@@ -487,85 +562,22 @@ function clip_dZdt(S::FT, Z::FT, dSdt::FT, dZdt::FT, Δt::FT)::FT where {FT}
 end
 
 """
-    snow_density(density::Anderson1976, SWE::FT, z::FT, parameters::SnowParameters{FT}) where {FT}
-Returns the snow density given the current model state and the `Anderson1976`
-density paramterization.
+    update_density_prog!(density::Anderson1976, model::SnowModel, Y, p)
+Extends update_density_prog! for the Anderson1976 density paramteterization type.
 """
-function snow_density(
-    density::Anderson1976,
-    SWE::FT,
-    z::FT,
-    parameters::SnowParameters{FT},
-)::FT where {FT}
-    ρ_l = FT(LP.ρ_cloud_liq(parameters.earth_param_set))
-    if SWE <= eps(FT) #if there is no snowpack, aka avoid NaN
-        return FT(ρ_l)
-    end
-    ρ_new = SWE / z * ρ_l
-    return ρ_new
-end
-
-"""
-    update_density!(density::ConstantDensityModel{FT}, params::SnowParameters{FT}, Y, p) where {FT}
-Updates the snow density given the current model state and the `ConstantDensityModel`
-density paramterization.
-"""
-function update_density!(
-    density::ConstantDensityModel{FT},
-    params::SnowParameters{FT},
-    Y,
-    p,
-) where {FT}
-    p.snow.ρ_snow .= density.ρ_snow
-end
-
-"""
-    update_density!(density::Anderson1976{FT}, params::SnowParameters{FT}, Y, p) where {FT}
-Updates the snow density given the current model state and the `Anderson1976`
-density paramterization.
-"""
-function update_density!(
-    density::Anderson1976{FT},
-    params::SnowParameters{FT},
-    Y,
-    p,
-) where {FT}
-    p.snow.ρ_snow .= snow_density.(Ref(density), Y.snow.S, Y.snow.Z, parameters)
-end
-
-"""
-    update_density_prog!(density::ConstantDensityModel{FT}, model::SnowModel{FT}, Y, p) where {FT}
-Updates all prognostic variables associated with density/depth given the current model state and the `ConstantDensityModel`
-density paramterization.
-"""
-function update_density_prog!(
-    density::ConstantDensityModel{FT},
-    model::SnowModel{FT},
-    dY,
-    Y,
-    p,
-) where {FT}
-    return nothing
-end
-
-"""
-    update_density_prog!(density::Anderson1976{FT}, model::SnowModel{FT}, Y, p) where {FT}
-Updates all prognostic variables associated with density/depth given the current model state and the `Anderson1976`
-density paramterization.
-"""
-function update_density_prog!(
-    density::Anderson1976{FT},
-    model::SnowModel{FT},
-    dY,
-    Y,
-    p,
-) where {FT}
+function update_density_prog!(density::Anderson1976, model::SnowModel, dY, Y, p)
     dY.snow.Z .=
         clip_dZdt.(
             Y.snow.S,
             Y.snow.Z,
-            p.snow.applied_water_flux,
+            dY.snow.S, #this assumes dY.snow.S is updated (and clipped) before dY.snow.Z
             dzdt(density, model, Y, p),
             model.parameters.Δt,
         )
+    newz = parent(dY.snow.Z)[1] * model.parameters.Δt + parent(Y.snow.Z)[1]
+    newswe = parent(dY.snow.S)[1] * model.parameters.Δt + parent(Y.snow.S)[1]
+    #if newz < newswe
+    #    print("BAD Z < SWE\n", dY.snow.Z, "\n", dY.snow.S, "\n", Y.snow.Z, "\n", Y.snow.S, "\n", dzdt(density, model, Y, p), "\n", newz, " | ", newswe)
+    #    error()
+    #end
 end

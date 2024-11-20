@@ -46,7 +46,7 @@ using ClimaLand
 using DataFrames, CSV, HTTP, Dates, Flux, StatsBase, cuDNN, BSON
 
 # The code lives in an extenson that we have to manually load. The extension can
-# be loaded only if "CSV", "HTTP", "Flux", "StatsBase", "cuDNN", "BSON", and "ClimaLand"
+# be loaded only if "DataFrames", "CSV", "HTTP", "Flux", "StatsBase", "cuDNN", "BSON", and "ClimaLand"
 # are loaded.
 DataTools = Base.get_extension(ClimaLand, :NeuralSnowExt).DataTools
 ModelTools = Base.get_extension(ClimaLand, :NeuralSnowExt).ModelTools;

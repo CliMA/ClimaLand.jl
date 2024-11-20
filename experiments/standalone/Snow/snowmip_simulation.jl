@@ -50,14 +50,15 @@ ndays = (tf - t0) / 3600 / 24
 
 domain = ClimaLand.Domains.Point(; z_sfc = FT(0))
 
-#dens_neural = NeuralSnow.NeuralDepthModel(FT)
-dens_constant = Snow.ConstantDensityModel(ρ)
+#dens = NeuralSnow.NeuralDepthModel(FT)
+#dens = Snow.Anderson1976{FT}()
+dens = Snow.ConstantDensityModel(ρ)
 depths = z[snow_data_avail]
 
 parameters = SnowParameters{FT}(
     Δt;
     α_snow = α,
-    density = dens_constant,
+    density = dens,
     earth_param_set = param_set,
 )
 model = ClimaLand.Snow.SnowModel(
@@ -69,8 +70,7 @@ Y, p, coords = ClimaLand.initialize(model)
 
 # Set initial conditions
 Y.snow.S .= FT(SWE[1]) # first data point
-#Y.snow.Z .= FT(depths[1]) #uncomment if using dens_neural, not dens_constant
-p.snow.ρ_snow .= FT(SWE[1] / depths[1] * 1000.0)
+#Y.snow.Z .= FT(depths[1]) #uncomment if using NeuralDepthModel/Anderson1976 instead of ConstantDensityModel
 Y.snow.U .=
     ClimaLand.Snow.energy_from_q_l_and_swe(FT(SWE[1]), FT(0), parameters) # with q_l = 0
 
