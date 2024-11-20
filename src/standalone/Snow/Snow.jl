@@ -60,61 +60,29 @@ struct ConstantDensityModel{FT} <: AbstractDensityModel{FT}
 end
 
 """
-    ConstantDensityModel{FT}(ρ::FT)
-An outer constructor for the `ConstantDensityModel` density parameterization for usage in a snow model.
-"""
-function ConstantDensityModel{FT}(ρ::FT) where {FT}
-    return ConstantDensityModel{FT}(ρ)
-end
-
-"""
-    ConstantDensityModel{FT <: AbstractFloat} <: AbstractDensityModel{FT}
+    Anderson1976{FT <: AbstractFloat} <: AbstractDensityModel{FT}
 Establishes the density parameterization where snow density
 compacts according to the seminal works of Anderson in the 1970s (and specifically the
 numerical implementation documented in the Snow17 model).
-"""
-struct Anderson1976{FT} <: AbstractDensityModel{FT}
-    c1::FT
-    c2::FT
-    c3::FT
-    c4::FT
-    c5::FT
-    cx::FT
-    ρ_d::FT
-end
+This uses the default constants defined in the Snow17 documentation, but allows for redefinition of the model constants.
+These include:
+- c1: fractional rate of density increase from compaction at 0ᵒC (0.026 cm⁻¹ hr⁻¹; cm of water-equivalent load)
+- c2: compression constant estimated by Kojima in 1967 (21 cm³/g)
+- c3: fractional settling rate (destructive metamorphism) at 0ᵒC for densities less than the critical density ρ_d (0.005 hr⁻¹)
+- c4: constant for adjusting fractional settling due to temperature (0.1 ᵒC⁻¹)
+- c5: scaling of the settling rate when no water is present in the snowpack (sources vary on whether this factor should be 0 or 1, default is set to 0)
+- cx: destructive metamorphism decay factor for densities greater than the critical density ρ_d (default value is 23)
+- ρ_d: the critical density (unitless as a fraction of the density of liquid water, 0.15)
 
 """
-    Anderson1976(FT; c1, c2, c3, c4, c5, ρ_d, cx)
-An outer constructor for the `Anderson1976` density parameterization for usage in a snow model.
-Uses the default constants defined by Anderson but allows for redefinition of the model constants.
-These include:
-- c1: fractional increase in density (0.026 cm/hr)
-- c2: compression constant estimated by Kojima in 1967 (21 cm^3/g)
-- c3: fractional settling rate at 0 degrees C for densities less than the critical density ρ_d (0.005 1/hr)
-- c4: constant (0.1 1/degrees C)
-- c5: scaling of the settling rate when no water is present in the snowpack (0, it is 2 when water is present)
-- cx: destructive metamorphism decay factor for densities greater than the critical density ρ_d (23)
-- ρ_d: the critical density (unitless as a fraction of the density of liquid water, 0.15)
-"""
-function Anderson1976(
-    FT::DataType;
-    c1 = 0.026,
-    c2 = 21.0,
-    c3 = 0.005,
-    c4 = 0.10,
-    c5 = 0.0, #Snow17 code says 1.0, paper says 0.0?
-    ρ_d = 0.15,
-    cx = 23.0,
-)
-    return Anderson1976{FT}(
-        FT(c1),
-        FT(c2),
-        FT(c3),
-        FT(c4),
-        FT(c5),
-        FT(ρ_d),
-        FT(cx),
-    )
+Base.@kwdef struct Anderson1976{FT} <: AbstractDensityModel{FT}
+    c1::FT = FT(0.026)
+    c2::FT = FT(21.0)
+    c3::FT = FT(0.005)
+    c4::FT = FT(0.10)
+    c5::FT = FT(0)
+    cx::FT = FT(0.15)
+    ρ_d::FT = FT(23.0)
 end
 
 
@@ -247,8 +215,8 @@ as well as the snow depth Z [m] for some types of density models.
 """
 prognostic_vars(m::SnowModel) =
     (:S, :U, density_prog_vars(m.parameters.density)...)
-density_prog_vars(m::ConstantDensityModel) = ()
-density_prog_vars(m::Anderson1976) = (:Z)
+density_prog_vars(m::AbstractDensityModel) = ()
+density_prog_vars(m::Anderson1976) = (:Z,)
 
 """
     prognostic_types(::SnowModel{FT})
@@ -259,8 +227,8 @@ are scalars.
 """
 prognostic_types(m::SnowModel{FT}) where {FT} =
     (FT, FT, density_prog_types(m.parameters.density)...)
-density_prog_types(m::ConstantDensityModel{FT}) where {FT} = ()
-density_prog_types(m::Anderson1976{FT}) where {FT} = (FT)
+density_prog_types(m::AbstractDensityModel{FT}) where {FT} = ()
+density_prog_types(m::Anderson1976{FT}) where {FT} = (FT,)
 
 """
     prognostic_domain_names(::SnowModel)
@@ -272,8 +240,8 @@ of depth. Therefore their domain name is ":surface".
 """
 prognostic_domain_names(m::SnowModel) =
     (:surface, :surface, density_prog_names(m.parameters.density)...)
-density_prog_names(m::ConstantDensityModel) = ()
-density_prog_names(m::Anderson1976) = (:surface)
+density_prog_names(m::AbstractDensityModel) = ()
+density_prog_names(m::Anderson1976) = (:surface,)
 
 """
     auxiliary_vars(::SnowModel)
@@ -306,9 +274,7 @@ auxiliary_vars(m::SnowModel) = (
     :applied_energy_flux,
     :applied_water_flux,
     :snow_cover_fraction,
-    density_aux_vars(m.parameters.density)...,
 )
-density_aux_vars(m::Union{Anderson1976, ConstantDensityModel}) = () #do we want to include Z whenever it isn't a prognostic variable, if we already have SWE and ρ_snow?
 
 auxiliary_types(m::SnowModel{FT}) where {FT} = (
     FT,
@@ -325,11 +291,7 @@ auxiliary_types(m::SnowModel{FT}) where {FT} = (
     FT,
     FT,
     FT,
-    density_aux_types(m.parameters.density)...,
 )
-density_aux_types(
-    m::Union{ConstantDensityModel{FT}, Anderson1976{FT}},
-) where {FT} = ()
 
 auxiliary_domain_names(m::SnowModel) = (
     :surface,
@@ -346,9 +308,7 @@ auxiliary_domain_names(m::SnowModel) = (
     :surface,
     :surface,
     :surface,
-    density_aux_names(m.parameters.density)...,
 )
-density_aux_names(m::Union{ConstantDensityModel, Anderson1976}) = ()
 
 ClimaLand.name(::SnowModel) = :snow
 
@@ -368,13 +328,15 @@ function ClimaLand.make_update_aux(model::SnowModel{FT}) where {FT}
 
         @. p.snow.T_sfc = snow_surface_temperature(p.snow.T)
 
-        @. p.snow.water_runoff = compute_water_runoff(
-            Y.snow.S,
-            p.snow.q_l,
-            p.snow.T,
-            p.snow.ρ_snow,
-            parameters,
-        ) #do we want to dispatch this off the density model type so that it can take Y.snow.Z insetad of p.snow.ρ_snow when it exists to avoid a redundant computation?
+        p.snow.water_runoff .=
+            compute_water_runoff.(
+                Y.snow.S,
+                p.snow.q_l,
+                p.snow.T,
+                p.snow.ρ_snow,
+                snow_depth(model.parameters.density, Y, p, parameters),
+                parameters,
+            )
 
         @. p.snow.energy_runoff =
             p.snow.water_runoff * volumetric_internal_energy_liq(FT, parameters)
@@ -418,8 +380,12 @@ end
 A helper function which clips the total water flux so that
 snow water equivalent S will not become negative in a timestep Δt.
 """
-function clip_total_snow_water_flux(S, total_water_flux, Δt)
-    if S - total_water_flux * Δt < 0
+function clip_total_snow_water_flux(
+    S::FT,
+    total_water_flux::FT,
+    Δt::FT,
+) where {FT}
+    if S - total_water_flux * Δt < eps(FT)
         return S / Δt
     else
         return total_water_flux
@@ -441,7 +407,7 @@ function clip_total_snow_energy_flux(
     total_water_flux,
     Δt,
 )
-    if (U - total_energy_flux * Δt) > 0
+    if (U - total_energy_flux * Δt) > 0 #do we do something similar here with eps(FT) if we do for water?
         return U / Δt
     elseif S - total_water_flux * Δt < 0
         return U / Δt

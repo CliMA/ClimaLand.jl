@@ -7,9 +7,6 @@ import ClimaLand.Snow:
     density_prog_vars,
     density_prog_types,
     density_prog_names,
-    density_aux_vars,
-    density_aux_types,
-    density_aux_names,
     update_density!,
     update_density_prog!
 import ClimaLand.Parameters as LP
@@ -18,9 +15,8 @@ using Thermodynamics
 using DataFrames, Dates, CSV, HTTP, Flux, cuDNN, StatsBase, BSON
 ModelTools = Base.get_extension(ClimaLand, :NeuralSnowExt).ModelTools
 #^^is this correct format since this is within the extension itself, or do i just use include(./ModelTools); using ModelTools; here?
-#the only reason I am using this is for the make_model() (once) and settimescale!() (twice) functions.
 
-export NeuralDepthModel, update_density!, update_density_prog!
+export NeuralDepthModel, snow_depth, update_density_prog!
 
 """
     NeuralDepthModel{FT <: AbstractFloat} <: AbstractDensityModel{FT}
@@ -77,8 +73,10 @@ end
     NeuralDepthModel(FT::DataType; Δt::Union{Nothing, FT}=nothing; model::Flux.Chain, α::Union{FT, Nothing})
 An outer constructor for the `NeuralDepthModel` density parameterization for usage in a snow model.
 Can choose to use custom models via the `model` argument, or a custom exponential moving average weight for the network inputs.
-The Δt argument can be used to set the lower boundary value on the network (when not using a custom model) in accordance with the paper upon initialization,
-equivalent to ModelTools.settimescale!(model, Δt, dtype = FT).
+The optional Δt argument (model time step, in seconds) can be used to set the lower boundary scaling on the network (when not using a custom model)
+in accordance with the paper upon initialization, equivalent to ModelTools.settimescale!(model, Δt, dtype = FT).
+If a weight for the exponential moving average is not provided, the weight is determined as the minimum of 2Δt/86400 and 1,
+if Δt is also not provided, a default value of 1/10 is used.
 """
 function NeuralDepthModel(
     FT::DataType;
@@ -89,8 +87,7 @@ function NeuralDepthModel(
     usemodel = converted_model_type(model, FT)
     weight =
         !isnothing(α) ? FT(α) :
-        (isnothing(Δt) ? FT(1 / 12) : FT(maximum([2 * Δt / 86400, 1])))
-    # should we set the timescale of the model to Δt? getting rid of get_znetwork() and below line mitigates the need to import ModelTools entirely.
+        (isnothing(Δt) ? FT(1 / 10) : FT(min(2 * Δt / 86400, 1)))
     if !isnothing(Δt)
         ModelTools.settimescale!(usemodel, Δt, dtype = FT) #assumes Δt is provided in seconds
     end
@@ -98,7 +95,6 @@ function NeuralDepthModel(
 end
 
 #Define the additional prognostic variables needed for using this parameterization:
-#do I need to export these for them to be utilized in the simulation?
 ClimaLand.Snow.density_prog_vars(m::NeuralDepthModel) =
     (:Z, :P_avg, :T_avg, :R_avg, :Qrel_avg, :u_avg)
 ClimaLand.Snow.density_prog_types(m::NeuralDepthModel{FT}) where {FT} =
@@ -106,43 +102,18 @@ ClimaLand.Snow.density_prog_types(m::NeuralDepthModel{FT}) where {FT} =
 ClimaLand.Snow.density_prog_names(m::NeuralDepthModel) =
     (:surface, :surface, :surface, :surface, :surface, :surface)
 
-#so far, every type is just blank here - is it even worth providing this feature or just get rid of this feature in Snow.jl entirely?
-ClimaLand.Snow.density_aux_vars(m::NeuralDepthModel) = ()
-ClimaLand.Snow.density_aux_types(m::NeuralDepthModel{FT}) where {FT} = ()
-ClimaLand.Snow.density_aux_names(m::NeuralDepthModel) = ()
+#Extend/Define the appropriate functions needed for this parameterization:
 
 """
-    snow_density(density::NeuralDepthModel, SWE::FT, z::FT, parameters::SnowParameters{FT}) where {FT}
-Returns the snow density given the current model state and the `NeuralDepthModel`
-density paramterization.
-"""
-function snow_density(
-    density::NeuralDepthModel{FT},
-    SWE::FT,
-    z::FT,
-    parameters::SnowParameters{FT},
-)::FT where {FT}
-    ρ_l = FT(LP.ρ_cloud_liq(parameters.earth_param_set))
-    if SWE <= eps(FT) #if there is no snowpack, aka avoid NaN
-        return FT(ρ_l)
-    end
-    ρ_new = SWE / z * ρ_l
-    return ρ_new
-end
+    snow_depth(m::NeuralDepthModel, Y, p, params)
 
+An extension of the `snow_depth` function to the NeuralDepthModel density parameterization, which includes the prognostic 
+depth variable and thus does not need to derive snow depth from SWE and density.
+This is sufficient to enable dynamics of the auxillary variable `ρ_snow` without extension of update_density!, and avoids
+redundant computations in the computation of runoff.
 """
-    update_density!(density::NeuralDepthModel, params::SnowParameters, Y, p)
-Updates the snow density given the current model state and the `NeuralDepthModel`
-density paramterization.
-"""
-function update_density!(
-    density::NeuralDepthModel,
-    params::SnowParameters,
-    Y,
-    p,
-)
-    p.snow.ρ_snow .= snow_density.(Ref(density), Y.snow.S, Y.snow.Z, params)
-end
+ClimaLand.Snow.snow_depth(m::NeuralDepthModel, Y, p, params) = Y.snow.Z
+
 
 """
     eval_nn(vmodel, z::FT, swe::FT, P::FT, T::FT, R::FT, qrel::FT, u::FT)::FT where {FT}
@@ -159,8 +130,7 @@ function eval_nn(
     qrel::FT,
     u::FT,
 )::FT where {FT}
-    input = FT.([z, swe, qrel, R, u, T, P])
-    return model(input)[1]
+    return model([z, swe, qrel, R, u, T, P])[1]
 end
 
 """
@@ -191,7 +161,6 @@ function clip_dZdt(S::FT, Z::FT, dSdt::FT, dZdt::FT, Δt::FT)::FT where {FT}
     if (S + dSdt * Δt) <= eps(FT)
         return -Z / Δt
     elseif (Z + dZdt * Δt) < (S + dSdt * Δt)
-        #do we need to do something about setting q_l = 1 here?
         return (S - Z) / Δt + dSdt
     else
         return dZdt
@@ -210,31 +179,45 @@ function update_density_prog!(
     Y,
     p,
 )
-    #Get Inputs:
-    #is this too many allocations?
-    z = Y.snow.Z
-    swe = Y.snow.S
-    dswedt = p.snow.applied_water_flux #do i need to multiply by -1 here for directions?
-    dprecipdt_snow = abs.(p.drivers.P_snow) #need to change downward direction to scalar
-    air_temp = p.drivers.T .- model.parameters.earth_param_set.T_freeze
-    sol_rad = abs.(p.drivers.SW_d) #need to change downward direction to scalar
-    rel_hum =
-        Thermodynamics.relative_humidity.(
-            Ref(model.boundary_conditions.atmos.thermo_params),
-            p.drivers.thermal_state,
+
+    dY.snow.Z .=
+        clip_dZdt.(
+            Y.snow.S,
+            Y.snow.Z,
+            dY.snow.S, #assumes dY.snow.S is updated (and clipped) before dY.snow.Z
+            dzdt(density, Y),
+            model.parameters.Δt,
         )
-    wind_speed = p.drivers.u
-    dt = model.parameters.Δt
-    β = density.α
 
-    dY.snow.Z .= clip_dZdt.(swe, z, dswedt, dzdt(density, Y), dt)
-    dY.snow.P_avg = β .* (dprecipdt_snow .- Y.snow.P_avg)
-    dY.snow.T_avg = β .* (air_temp .- Y.snow.T_avg)
-    dY.snow.R_avg = β .* (sol_rad .- Y.snow.R_avg)
-    dY.snow.Qrel_avg = β .* (rel_hum .- Y.snow.Qrel_avg)
-    dY.snow.u_avg = β .* (wind_speed .- Y.snow.u_avg)
+    @. dY.snow.P_avg =
+        density.α / model.parameters.Δt * (abs(p.drivers.P_snow) - Y.snow.P_avg)
+    @. dY.snow.T_avg =
+        density.α / model.parameters.Δt *
+        (p.drivers.T - model.parameters.earth_param_set.T_freeze - Y.snow.T_avg)
+    @. dY.snow.R_avg =
+        density.α / model.parameters.Δt * (p.drivers.SW_d - Y.snow.R_avg)
+    dY.snow.Qrel_avg .=
+        density.α / model.parameters.Δt .* (
+            Thermodynamics.relative_humidity.(
+                model.boundary_conditions.atmos.thermo_params,
+                p.drivers.thermal_state,
+            ) .- Y.snow.Qrel_avg
+        )
+    @. dY.snow.u_avg =
+        density.α / model.parameters.Δt * (p.drivers.u - Y.snow.u_avg)
 end
 
 end
 
-#do tests need to be made for these functions? since it is an extension?
+#Todo: Write tests for these functions
+#Todo: address Anderson1976 sensitivity for small precision snowpacks (z = 0 when SWE > 0 or z > 0 when SWE = 0, but on the order of 1e-10 < eps(Float32), doesn't make NaN at present though)
+
+# The current setup requires the following flowchart, if one wants to add a new density parameterization:
+# If the paramterization does not require any additional prognostic variables, you only must redefine/extend update_density!() (this is regardless of requiring 0 or multiple new auxillary variables)
+# If the parameterization requires additional prognostic variables, you must redefine/extend update_density_prog!()
+#   If these prognostic variables do not include depth, you must extend update_density!() in addition to update_density_prog!()
+#   If these prognostic variables include depth and no new auxillary variables are needed, you can choose to only redefine snow_depth() (instead of update_density!()) in addition to update_density_prog!().
+#   If these prognostic variables include depth and new auxillary variables are needed, must extend update_density_prog!() and update_density!, and extending snow_depth() is recommended but not necessary.
+# All these assume someone would not make a parameterization that makes ρ_snow a prognostic variable (and thus have to remove it from the auxillary variables), aka only new diagnostic parameterizations for density are made.
+
+#Is there away to further simplify/collapse this structure so new density parameterizations only require extension of the same functions each time?
