@@ -179,9 +179,9 @@ function topmodel_data_path(; context = nothing)
 end
 
 """
-    lehmann_assouline_or2008_evaporation_data(; context=nothing)
+    lehmann2008_evaporation_data(; context=nothing)
 
-Local path to file containing measured evaporation rate as a function of time
+Returns the path to file containing measured evaporation rate as a function of time
 for bare soil.
 
 Data was originally collected by Lehmann, Peter, Shmuel Assouline,
@@ -191,18 +191,11 @@ in Figure 8 of that work.
 
 https://doi.org/10.1103/PhysRevE.77.056309
 """
-function lehmann_assouline_or2008_evaporation_data(; context = nothing)
-    dir = joinpath(@__DIR__, "../")
-    evap_dataset = ArtifactWrapper(
-        dir,
-        "lehmann2008_fig8_evaporation",
-        ArtifactFile[ArtifactFile(
-            url = "https://caltech.box.com/shared/static/cgppw3tx6zdz7h02yt28ri44g1j088ju.csv",
-            filename = "lehmann2008_fig8_evaporation.csv",
-        ),],
+function lehmann2008_evaporation_data(; context = nothing)
+    return joinpath(
+        @clima_artifact("lehmann2008_evaporation", context),
+        "lehmann2008_fig8_evaporation.csv",
     )
-    evap_datapath = get_data_folder(evap_dataset)
-    return joinpath(evap_datapath, "lehmann2008_fig8_evaporation.csv")
 end
 
 """
