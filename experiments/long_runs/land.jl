@@ -69,11 +69,11 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     surface_space = domain.space.surface
     subsurface_space = domain.space.subsurface
 
-    start_date = DateTime(2021)
+    start_date = DateTime(2008)
     # Forcing data
     era5_artifact_path =
-        ClimaLand.Artifacts.era5_land_forcing_data2021_folder_path(; context)
-    era5_ncdata_path = joinpath(era5_artifact_path, "era5_2021_0.9x1.25.nc")
+        ClimaLand.Artifacts.era5_land_forcing_data2008_folder_path(; context)
+    era5_ncdata_path = joinpath(era5_artifact_path, "era5_2008_1.0x1.0.nc")
     atmos, radiation = ClimaLand.prescribed_forcing_era5(
         era5_ncdata_path,
         surface_space,
@@ -231,9 +231,12 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     photosynthesis_args =
         (; parameters = Canopy.FarquharParameters(FT, is_c3; Vcmax25 = Vcmax25))
     # Set up plant hydraulics
-
+    era5_lai_artifact_path =
+        ClimaLand.Artifacts.era5_lai_forcing_data2008_folder_path(; context)
+    era5_lai_ncdata_path =
+        joinpath(era5_lai_artifact_path, "era5_2008_1.0x1.0_lai.nc")
     LAIfunction = ClimaLand.prescribed_lai_era5(
-        era5_ncdata_path,
+        era5_lai_ncdata_path,
         surface_space,
         start_date;
         time_interpolation_method = time_interpolation_method,
