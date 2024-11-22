@@ -370,9 +370,17 @@ function soil_boundary_fluxes!(
 ) where {FT}
     bc = soil.boundary_conditions.top
     p.soil.turbulent_fluxes .= turbulent_fluxes(bc.atmos, soil, Y, p, t)
-    Soil.Runoff.update_runoff!(p, bc.runoff, p.drivers.P_liq, Y, t, soil)
-    @. p.soil.top_bc.water =
-        p.soil.infiltration + p.soil.turbulent_fluxes.vapor_flux_liq
+    # influx = maximum possible rate of infiltration given precip, snowmelt, evaporation/condensation
+    # but if this exceeds infiltration capacity of the soil, runoff will
+    # be generated.
+    # Use top_bc.water as temporary storage to avoid allocation
+    influx = p.soil.top_bc.water
+    @. influx = p.drivers.P_liq + p.soil.turbulent_fluxes.vapor_flux_liq
+    # The update_runoff! function computes how much actually infiltrates
+    # given influx and our runoff model bc.runoff, and updates
+    # p.soil.infiltration in place
+    Soil.Runoff.update_runoff!(p, bc.runoff, influx, Y, t, soil)
+    @. p.soil.top_bc.water = p.soil.infiltration
     @. p.soil.top_bc.heat =
         -p.soil.R_n + p.soil.turbulent_fluxes.lhf + p.soil.turbulent_fluxes.shf
 end
