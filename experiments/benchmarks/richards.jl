@@ -96,6 +96,7 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
 
     # Below, the preprocess_func argument is used to
     # 1. Convert precipitation to be negative (as it is downwards)
+    # 2. Convert mass flux to equivalent liquid water flux
     # Precipitation:
     precip = TimeVaryingInput(
         joinpath(era5_artifact_path, "era5_2008_1.0x1.0.nc"),
@@ -103,7 +104,7 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
         surface_space;
         start_date,
         regridder_type,
-        file_reader_kwargs = (; preprocess_func = (data) -> -data),
+        file_reader_kwargs = (; preprocess_func = (data) -> -data / 1000),
     )
     atmos = ClimaLand.PrescribedPrecipitation{FT, typeof(precip)}(precip)
     bottom_bc = ClimaLand.Soil.WaterFluxBC((p, t) -> 0.0)

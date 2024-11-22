@@ -71,7 +71,7 @@ era5_artifact_path =
 
 # Below, the preprocess_func argument is used to
 # 1. Convert precipitation to be negative (as it is downwards)
-# 2. Convert accumulations over an hour to a rate per second
+# 2. Convert mass flux to equivalent liquid water flux
 start_date = DateTime(2008);
 # Precipitation:
 precip = TimeVaryingInput(
@@ -80,7 +80,7 @@ precip = TimeVaryingInput(
     surface_space;
     start_date,
     regridder_type,
-    file_reader_kwargs = (; preprocess_func = (data) -> -data,),
+    file_reader_kwargs = (; preprocess_func = (data) -> -data / 1000,),
 )
 atmos = ClimaLand.PrescribedPrecipitation{FT, typeof(precip)}(precip)
 bottom_bc = ClimaLand.Soil.WaterFluxBC((p, t) -> 0.0)

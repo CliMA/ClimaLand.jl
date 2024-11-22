@@ -1029,24 +1029,25 @@ function prescribed_forcing_era5(
     regridder_type = :InterpolationsRegridder,
 )
 
+    # Precip is provide as a mass flux; convert to volume flux of liquid water with ρ =1000 kg/m^3
     precip = TimeVaryingInput(
         era5_ncdata_path,
         ["mtpr", "msr"],
         surface_space;
         start_date,
         regridder_type,
-        file_reader_kwargs = (; preprocess_func = (data) -> -data,),
+        file_reader_kwargs = (; preprocess_func = (data) -> -data / 1000,),
         method = time_interpolation_method,
         compose_function = (mtpr, msr) -> mtpr - msr,
     )
-
+    # Precip is provide as a mass flux; convert to volume flux of liquid water with ρ =1000 kg/m^3
     snow_precip = TimeVaryingInput(
         era5_ncdata_path,
         "msr",
         surface_space;
         start_date,
         regridder_type,
-        file_reader_kwargs = (; preprocess_func = (data) -> -data,),
+        file_reader_kwargs = (; preprocess_func = (data) -> -data / 1000,),
         method = time_interpolation_method,
     )
 
