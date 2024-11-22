@@ -164,33 +164,18 @@ end
     topmodel_data_path(; context = nothing)
 
 Returns the path to the file which contains the necessary information for the TOPMODEL
-runoff parameterization at 2.5 degrees resolution.
+runoff parameterization at 1.0 degrees resolution.
 
-This file was created with
-https://github.com/CliMA/ClimaLand.jl/blob/main/src/standalone/Soil/Runoff/preprocess_topographic_index_simple.jl
-
-using the data provided by
+This file was created using the data provided by
 Marthews, T.R., Dadson, S.J., Lehner, B., Abele, S., Gedney, N. (2015). High-resolution global topographic index values. NERC Environmental Information Data Centre. (Dataset). https://doi.org/10.5285/6b0c4358-2bf3-4924-aa8f-793d468b92be
 
 This resource is available under the Open Government Licence (OGL), and contains data supplied by Natural Environment Research Council.
 
 This product, High-resolution global topographic index values, has been created with use of data from the HydroSHEDS database which is © World Wildlife Fund, Inc. (2006-2013) and has been used herein under license. The HydroSHEDS database and more information are available at http://www.hydrosheds.org.
-
-Eventually, the script processing this data, and this data, will be added to ClimaArtifacts.
 """
 function topmodel_data_path(; context = nothing)
-    dir = joinpath(@__DIR__, "../")
-    topmodel_dataset = ArtifactWrapper(
-        dir,
-        "processed_topographic_index 2.5 deg",
-        ArtifactFile[ArtifactFile(
-            url = "https://caltech.box.com/shared/static/dwa7g0uzhxd50a2z3thbx3a12n0r887s.nc",
-            filename = "means_2.5_new.nc",
-        ),],
-    )
-    path = joinpath(get_data_folder(topmodel_dataset), "means_2.5_new.nc")
-    return path
-
+    dir = @clima_artifact("topmodel", context)
+    return joinpath(dir, "topographic_index_statistics_1.0x1.0.nc")
 end
 
 """
