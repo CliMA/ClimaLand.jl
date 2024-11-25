@@ -32,6 +32,7 @@ import ClimaUtilities.ClimaArtifacts: @clima_artifact
 import ClimaParams as CP
 
 using ClimaLand
+using ClimaLand.Snow
 using ClimaLand.Soil
 using ClimaLand.Canopy
 import ClimaLand
@@ -50,7 +51,7 @@ time_interpolation_method = LinearInterpolation(PeriodicCalendar())
 context = ClimaComms.context()
 device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
-root_path = "california_longrun_$(device_suffix)"
+root_path = "/groups/esm/kdeck/snowy_region_longrun_$(device_suffix)"
 diagnostics_outdir = joinpath(root_path, "regional_diagnostics")
 outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
@@ -59,7 +60,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (10, 10, 15))
     earth_param_set = LP.LandParameters(FT)
     radius = FT(6378.1e3)
     depth = FT(50)
-    center_long, center_lat = FT(-117.59736), FT(34.23375)
+    center_long, center_lat = FT(-36), FT(69.5)
     delta_m = FT(200_000) # in meters, this is about a 2 degree simulation
     domain = ClimaLand.Domains.HybridBox(;
         xlim = (delta_m, delta_m),
@@ -284,15 +285,21 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (10, 10, 15))
         parameters = shared_params,
         domain = ClimaLand.obtain_surface_domain(domain),
     )
+    # Snow model
+    snow_parameters = SnowParameters{FT}(Δt; earth_param_set = earth_param_set)
+    snow_args = (;
+        parameters = snow_parameters,
+        domain = ClimaLand.obtain_surface_domain(domain),
+    )
+    snow_model_type = Snow.SnowModel
 
-    # Integrated plant hydraulics and soil model
     land_input = (
         atmos = atmos,
         radiation = radiation,
         runoff = runoff_model,
         soil_organic_carbon = Csom,
     )
-    land = SoilCanopyModel{FT}(;
+    land = LandModel{FT}(;
         soilco2_type = soilco2_type,
         soilco2_args = soilco2_args,
         land_args = land_input,
@@ -301,11 +308,17 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (10, 10, 15))
         canopy_component_types = canopy_component_types,
         canopy_component_args = canopy_component_args,
         canopy_model_args = canopy_model_args,
+        snow_args = snow_args,
+        snow_model_type = snow_model_type,
     )
 
     Y, p, cds = initialize(land)
 
     init_soil(ν, θ_r) = θ_r + (ν - θ_r) / 2
+
+    Y.snow.S .= 0.0
+    Y.snow.U .= 0.0
+
     Y.soil.ϑ_l .= init_soil.(ν, θ_r)
     Y.soil.θ_i .= FT(0.0)
     T = FT(276.85)
@@ -364,8 +377,8 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (10, 10, 15))
         land,
         start_date;
         output_writer = nc_writer,
-        output_vars = :short,
-        average_period = :monthly,
+        output_vars = :long,
+        average_period = :daily,
     )
 
     diagnostic_handler =
@@ -380,11 +393,11 @@ end
 function setup_and_solve_problem(; greet = false)
 
     t0 = 0.0
-    tf = 60 * 60.0 * 24 * 365
-    Δt = 900.0
+    tf = 60 * 60.0 * 24 * 365 * 4
+    Δt = 450.0
     nelements = (10, 10, 15)
     if greet
-        @info "Run: Regional Soil-Canopy Model"
+        @info "Run: Regional Soil-Canopy-Snow Model"
         @info "Resolution: $nelements"
         @info "Timestep: $Δt s"
         @info "Duration: $(tf - t0) s"
