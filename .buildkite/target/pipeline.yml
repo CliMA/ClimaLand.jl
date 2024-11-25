@@ -60,3 +60,13 @@ steps:
         agents:
           slurm_mem: 8GB
           slurm_gpus: 1
+
+      - label: ":snow_capped_mountain: Snowy Land"
+        command: "julia --color=yes --project=.buildkite experiments/benchmarks/snowy_land.jl"
+        artifact_paths:
+          - "snowy_land_benchmark_gpu/*html"
+        env:
+          CLIMACOMMS_DEVICE: CUDA
+        agents:
+          slurm_mem: 8GB
+          slurm_gpus: 1
