@@ -10,7 +10,7 @@
 # Soil depth: 50 m
 # Simulation duration: 365 d
 # Timestep: 900 s
-# Timestepper: ARS343
+# Timestepper: ARS111
 # Fixed number of iterations: 1
 # Jacobian update: every new timestep
 # Atmos forcing update: every 3 hours
