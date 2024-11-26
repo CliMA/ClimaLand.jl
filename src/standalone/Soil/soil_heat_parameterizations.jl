@@ -31,12 +31,11 @@ end
         τ::FT,
         ν::FT,
         θ_r::FT,
-        hydrology_cm::C,
-        earth_param_set::EP,
-    ) where {FT, EP, C}
+        hydrology_earth_params::HEP
+    ) where {FT, HEP}
 Returns the source term (1/s) used for converting liquid water
 and ice into each other during phase changes. Note that
-there are unitless prefactors multiplying this term in the 
+there are unitless prefactors multiplying this term in the
 equations.
 
 Note that these equations match what is in Dall'Amico (for θstar,
@@ -50,9 +49,12 @@ function phase_change_source(
     τ::FT,
     ν::FT,
     θ_r::FT,
-    hydrology_cm::C,
-    earth_param_set::EP,
-) where {FT, EP, C}
+    hydrology_earth_params::HEP,
+) where {FT, HEP}
+    # Extract parameter sets from their container
+    hydrology_cm = hydrology_earth_params.hydrology_cm
+    earth_param_set = hydrology_earth_params.earth_param_set
+
     _ρ_i = FT(LP.ρ_cloud_ice(earth_param_set))
     _ρ_l = FT(LP.ρ_cloud_liq(earth_param_set))
     _LH_f0 = FT(LP.LH_f0(earth_param_set))
@@ -71,6 +73,28 @@ function phase_change_source(
     return (θ_l - θstar) / τ
 end
 
+"""
+    struct HydrologyEarthParameters{
+        HCM <: AbstractSoilHydrologyClosure,
+        EP <: ClimaLand.Parameters.AbstractLandParameters,
+    }
+
+A wrapper type around the hydrology closure model and land parameter
+structs. This is needed because of a type inference failure coming from
+ClimaCore when multiple structs and fields are broadcasted over.
+This struct circumvents that issue by wrapping the structs in a single
+type, that can be unpacked within the broadcasted function.
+
+See github.com/CliMA/ClimaCore.jl/issues/2065 for more information
+"""
+struct HydrologyEarthParameters{
+    HCM <: AbstractSoilHydrologyClosure,
+    EP <: ClimaLand.Parameters.AbstractLandParameters,
+}
+    hydrology_cm::HCM
+    earth_param_set::EP
+end
+Base.broadcastable(x::HydrologyEarthParameters) = tuple(x)
 
 """
     volumetric_heat_capacity(
@@ -205,7 +229,7 @@ end
             ν::FT
     ) where {FT}
 
-Compute the expression for relative saturation. 
+Compute the expression for relative saturation.
 This is referred to as θ_sat in Balland and Arp's paper.
 """
 function relative_saturation(θ_l::FT, θ_i::FT, ν::FT) where {FT}

@@ -307,6 +307,10 @@ for FT in (Float32, Float64)
         vg_n = FT(1.4)
         hcm = vanGenuchten{FT}(; α = vg_α, n = vg_n)
 
+        # Wrap hydrology and earth parameters in one struct to avoid type inference failure
+        hydrology_earth_params =
+            ClimaLand.Soil.HydrologyEarthParameters(hcm, param_set)
+
         K_sat = FT(1e-5)
         ν_ss_om = FT(0.1)
         ν_ss_gravel = FT(0.1)
@@ -336,11 +340,26 @@ for FT in (Float32, Float64)
         ρc_s = volumetric_heat_capacity.(θ_l, θ_i, parameters.ρc_ds, param_set)
         τ = thermal_time.(ρc_s, Δz, parameters.κ_dry)
         @test (
-            phase_change_source.(θ_l, θ_i, T, τ, ν, θ_r, hcm, param_set) ≈
-            (θ_l .- θ_star) ./ τ
+            phase_change_source.(
+                θ_l,
+                θ_i,
+                T,
+                τ,
+                ν,
+                θ_r,
+                hydrology_earth_params,
+            ) ≈ (θ_l .- θ_star) ./ τ
         )
         @test sum(
-            phase_change_source.(θ_l, θ_i, T, τ, ν, θ_r, hcm, param_set) .> 0.0,
+            phase_change_source.(
+                θ_l,
+                θ_i,
+                T,
+                τ,
+                ν,
+                θ_r,
+                hydrology_earth_params,
+            ) .> 0.0,
         ) == 3
         # try θ_l = 0.1
 
@@ -354,8 +373,15 @@ for FT in (Float32, Float64)
         ρc_s = volumetric_heat_capacity.(θ_l, θ_i, parameters.ρc_ds, param_set)
         τ = thermal_time.(ρc_s, Δz, parameters.κ_dry)
         @test (
-            phase_change_source.(θ_l, θ_i, T, τ, ν, θ_r, hcm, param_set) ≈
-            zeros(FT, 3)
+            phase_change_source.(
+                θ_l,
+                θ_i,
+                T,
+                τ,
+                ν,
+                θ_r,
+                hydrology_earth_params,
+            ) ≈ zeros(FT, 3)
         )
         @test (θ_star ≈ θ_l)
 
@@ -370,11 +396,26 @@ for FT in (Float32, Float64)
         ρc_s = volumetric_heat_capacity.(θ_l, θ_i, parameters.ρc_ds, param_set)
         τ = thermal_time.(ρc_s, Δz, parameters.κ_dry)
         @test (
-            phase_change_source.(θ_l, θ_i, T, τ, ν, θ_r, hcm, param_set) ≈
-            (θ_l .- θ_star) ./ τ
+            phase_change_source.(
+                θ_l,
+                θ_i,
+                T,
+                τ,
+                ν,
+                θ_r,
+                hydrology_earth_params,
+            ) ≈ (θ_l .- θ_star) ./ τ
         )
         @test sum(
-            phase_change_source.(θ_l, θ_i, T, τ, ν, θ_r, hcm, param_set) .< 0.0,
+            phase_change_source.(
+                θ_l,
+                θ_i,
+                T,
+                τ,
+                ν,
+                θ_r,
+                hydrology_earth_params,
+            ) .< 0.0,
         ) == 2
 
 
@@ -388,11 +429,26 @@ for FT in (Float32, Float64)
         ρc_s = volumetric_heat_capacity.(θ_l, θ_i, parameters.ρc_ds, param_set)
         τ = thermal_time.(ρc_s, Δz, parameters.κ_dry)
         @test (
-            phase_change_source.(θ_l, θ_i, T, τ, ν, θ_r, hcm, param_set) ≈
-            (θ_l .- θ_star) ./ τ
+            phase_change_source.(
+                θ_l,
+                θ_i,
+                T,
+                τ,
+                ν,
+                θ_r,
+                hydrology_earth_params,
+            ) ≈ (θ_l .- θ_star) ./ τ
         )
         @test sum(
-            phase_change_source.(θ_l, θ_i, T, τ, ν, θ_r, hcm, param_set) .> 0.0,
+            phase_change_source.(
+                θ_l,
+                θ_i,
+                T,
+                τ,
+                ν,
+                θ_r,
+                hydrology_earth_params,
+            ) .> 0.0,
         ) == 2
     end
 end
