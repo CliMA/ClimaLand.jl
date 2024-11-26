@@ -17,7 +17,10 @@ tutorials = [
             "Boundary conditions" => "standalone/Soil/boundary_conditions.jl",
             "Richards Equation" => "standalone/Soil/richards_equation.jl",
             "Energy and Hydrology" => "standalone/Soil/soil_energy_hydrology.jl",
-            "Phase Changes" => "standalone/Soil/freezing_front.jl",
+            "Phase Changes" => [
+                "standalone/Soil/freezing_front.jl",
+                "standalone/Soil/phase_change_analytic.jl",
+            ],
             "Layered Soil" => "standalone/Soil/layered_soil.jl",
             "Coarse Sand Evaporation" => "standalone/Soil/evaporation.jl",
             "Gilat Loess Evaporation" => "standalone/Soil/evaporation_gilat_loess.jl",
