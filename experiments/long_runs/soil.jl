@@ -9,8 +9,8 @@
 # Number of spatial elements: 101 1in horizontal, 15 in vertical
 # Soil depth: 50 m
 # Simulation duration: 365 d
-# Timestep: 900 s
-# Timestepper: ARS343
+# Timestep: 450 s
+# Timestepper: ARS111
 # Fixed number of iterations: 1
 # Jacobian update: every new timestep
 # Atmos forcing update: every 3 hours
@@ -150,8 +150,11 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
 
 
     Y, p, cds = initialize(soil)
-    z = ClimaCore.Fields.coordinate_field(cds.subsurface).z
-    lat = ClimaCore.Fields.coordinate_field(cds.subsurface).lat
+    init_soil(ν, θ_r) = θ_r + (ν - θ_r) / 2
+    Y.soil.ϑ_l .= init_soil.(ν, θ_r)
+    Y.soil.θ_i .= FT(0.0)
+    #    z = ClimaCore.Fields.coordinate_field(cds.subsurface).z
+    #    lat = ClimaCore.Fields.coordinate_field(cds.subsurface).lat
     # This function approximates the hydrostatic equilibrium solution in
     # the vadose and unsaturated regimes by solving for ∂(ψ+z)/∂z = 0,
     # assuming the transition between the two is at a coordinate of z_∇.
@@ -160,33 +163,35 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     # and van Genuchtem parameters are spatially varying but treated constant
     # in solving for equilibrium. Finally, we make a plausible but total guess
     # for the water table depth using the TOPMODEL parameters.
-    function hydrostatic_profile(
-        lat::FT,
-        z::FT,
-        ν::FT,
-        θ_r::FT,
-        α::FT,
-        n::FT,
-        S_s::FT,
-        fmax,
-    ) where {FT}
-        m = 1 - 1 / n
-        zmin = FT(-50.0)
-        zmax = FT(0.0)
+    #=
+        function hydrostatic_profile(
+            lat::FT,
+            z::FT,
+            ν::FT,
+            θ_r::FT,
+            α::FT,
+            n::FT,
+            S_s::FT,
+            fmax,
+        ) where {FT}
+            m = 1 - 1 / n
+            zmin = FT(-50.0)
+            zmax = FT(0.0)
 
-        z_∇ = FT(zmin / 5.0 + (zmax - zmin) / 2.5 * (fmax - 0.35) / 0.7)
-        if z > z_∇
-            S = FT((FT(1) + (α * (z - z_∇))^n)^(-m))
-            ϑ_l = S * (ν - θ_r) + θ_r
-        else
-            ϑ_l = -S_s * (z - z_∇) + ν
+            z_∇ = FT(zmin / 5.0 + (zmax - zmin) / 2.5 * (fmax - 0.35) / 0.7)
+            if z > z_∇
+                S = FT((FT(1) + (α * (z - z_∇))^n)^(-m))
+                ϑ_l = S * (ν - θ_r) + θ_r
+            else
+                ϑ_l = -S_s * (z - z_∇) + ν
+            end
+            return FT(ϑ_l)
         end
-        return FT(ϑ_l)
-    end
-    vg_α = hydrology_cm.α
-    vg_n = hydrology_cm.n
-    Y.soil.ϑ_l .= hydrostatic_profile.(lat, z, ν, θ_r, vg_α, vg_n, S_s, f_max)
-    Y.soil.θ_i .= FT(0.0)
+        vg_α = hydrology_cm.α
+        vg_n = hydrology_cm.n
+        Y.soil.ϑ_l .= hydrostatic_profile.(lat, z, ν, θ_r, vg_α, vg_n, S_s, f_max)
+        Y.soil.θ_i .= FT(0.0)
+    =#
     T = FT(276.85)
     ρc_s =
         Soil.volumetric_heat_capacity.(
@@ -256,7 +261,7 @@ function setup_and_solve_problem(; greet = false)
 
     t0 = 0.0
     tf = 60 * 60.0 * 24 * 365
-    Δt = 900.0
+    Δt = 450.0
     nelements = (101, 15)
     if greet
         @info "Run: Global Soil Model"

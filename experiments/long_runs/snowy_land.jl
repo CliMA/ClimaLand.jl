@@ -46,6 +46,8 @@ import GeoMakie
 using Dates
 import NCDatasets
 
+using Poppler_jll: pdfunite
+
 const FT = Float64;
 time_interpolation_method = LinearInterpolation(PeriodicCalendar())
 context = ClimaComms.context()
@@ -387,7 +389,7 @@ end
 function setup_and_solve_problem(; greet = false)
 
     t0 = 0.0
-    tf = 60 * 60.0 * 24 * 365 * 4
+    tf = 60 * 60.0 * 24 * 365 * 1
     Δt = 450.0
     nelements = (101, 15)
     if greet
@@ -460,4 +462,37 @@ for (group_id, group) in
     group_name = group_names[group_id]
 
     CairoMakie.save(joinpath(root_path, "$(group_name).png"), fig)
+end
+
+short_names = ["gpp", "swc", "et", "ct", "swe", "si"]
+
+mktempdir(root_path) do tmpdir
+    for short_name in short_names
+        var = get(simdir; short_name)
+        times = [ClimaAnalysis.times(var)[end]]
+        for t in times
+            fig = CairoMakie.Figure(size = (600, 400))
+            kwargs = ClimaAnalysis.has_altitude(var) ? Dict(:z => 1) : Dict()
+            viz.heatmap2D_on_globe!(
+                fig,
+                ClimaAnalysis.slice(var, time = t; kwargs...),
+                mask = viz.oceanmask(),
+                more_kwargs = Dict(
+                    :mask => ClimaAnalysis.Utils.kwargs(color = :white),
+                    :plot => ClimaAnalysis.Utils.kwargs(rasterize = true),
+                ),
+            )
+            CairoMakie.save(joinpath(tmpdir, "$(short_name)_$t.pdf"), fig)
+        end
+    end
+    figures = readdir(tmpdir, join = true)
+    pdfunite() do unite
+        run(
+            Cmd([
+                unite,
+                figures...,
+                joinpath(root_path, "last_year_figures.pdf"),
+            ]),
+        )
+    end
 end
