@@ -131,7 +131,7 @@ A helper function which returns the surface height for the canopy
 model, which is stored in the parameter struct.
 """
 function ClimaLand.surface_height(model::CanopyModel, _...)
-    return model.hydraulics.compartment_surfaces[1]
+    return model.domain.fields.z_sfc
 end
 
 function make_update_boundary_fluxes(canopy::CanopyModel)
