@@ -51,7 +51,7 @@ time_interpolation_method = LinearInterpolation(PeriodicCalendar())
 context = ClimaComms.context()
 device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
-root_path = "/groups/esm/kdeck/snowy_region_longrun_$(device_suffix)"
+root_path = "california_longrun_$(device_suffix)"
 diagnostics_outdir = joinpath(root_path, "regional_diagnostics")
 outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
