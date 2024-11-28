@@ -1,6 +1,7 @@
-# # Global run of land model
+# # Regional run of full land model
 
-# The code sets up and runs the soil/canopy model for 6 hours on a small region of the globe in Southern California,
+# The code sets up and runs the soil/canopy/snow model for 6 hours on a small
+# region of the globe in Southern California,
 # using ERA5 data. In this simulation, we have
 # turned lateral flow off because horizontal boundary conditions and the
 # land/sea mask are not yet supported by ClimaCore.
@@ -8,10 +9,10 @@
 # Simulation Setup
 # Number of spatial elements: 10x10 in horizontal, 15 in vertical
 # Soil depth: 50 m
-# Simulation duration: 365 d
-# Timestep: 900 s
+# Simulation duration: 4 years
+# Timestep: 450 s
 # Timestepper: ARS111
-# Fixed number of iterations: 1
+# Fixed number of iterations: 3
 # Jacobian update: every new timestep
 # Atmos forcing update: every 3 hours
 import SciMLBase
