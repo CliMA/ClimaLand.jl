@@ -42,7 +42,7 @@ In order to compute surface fluxes, this cannot be large than the
 height of the atmosphere measurement location (z_atmos > z_land always). 
 """
 function ClimaLand.surface_height(model::SnowModel{FT}, Y, p) where {FT}
-    return model.domain.fields.z_sfc
+    return FT(0)# model.domain.fields.z_sfc FIX!
 end
 
 
