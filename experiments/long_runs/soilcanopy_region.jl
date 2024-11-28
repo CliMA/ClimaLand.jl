@@ -1,6 +1,6 @@
-# # Regional run of full land model
+# # Regional run of soil/canopy model
 
-# The code sets up and runs the soil/canopy/snow model for 6 hours on a small
+# The code sets up and runs the soil/canopy model for 6 hours on a small
 # region of the globe in Southern California,
 # using ERA5 data. In this simulation, we have
 # turned lateral flow off because horizontal boundary conditions and the
@@ -52,7 +52,8 @@ time_interpolation_method = LinearInterpolation(PeriodicCalendar())
 context = ClimaComms.context()
 device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
-root_path = "california_longrun_$(device_suffix)"
+# root_path = "/groups/esm/kdeck/soilcanopy_region_longrun_$(device_suffix)"
+root_path = "/home/jsloan/ClimaLand.jl/soilcanopy_region_$(device_suffix)_11-27"
 diagnostics_outdir = joinpath(root_path, "regional_diagnostics")
 outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
@@ -286,13 +287,6 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (10, 10, 15))
         parameters = shared_params,
         domain = ClimaLand.obtain_surface_domain(domain),
     )
-    # Snow model
-    snow_parameters = SnowParameters{FT}(Δt; earth_param_set = earth_param_set)
-    snow_args = (;
-        parameters = snow_parameters,
-        domain = ClimaLand.obtain_surface_domain(domain),
-    )
-    snow_model_type = Snow.SnowModel
 
     land_input = (
         atmos = atmos,
@@ -300,7 +294,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (10, 10, 15))
         runoff = runoff_model,
         soil_organic_carbon = Csom,
     )
-    land = LandModel{FT}(;
+    land = SoilCanopyModel{FT}(;
         soilco2_type = soilco2_type,
         soilco2_args = soilco2_args,
         land_args = land_input,
@@ -309,16 +303,11 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (10, 10, 15))
         canopy_component_types = canopy_component_types,
         canopy_component_args = canopy_component_args,
         canopy_model_args = canopy_model_args,
-        snow_args = snow_args,
-        snow_model_type = snow_model_type,
     )
 
     Y, p, cds = initialize(land)
 
     init_soil(ν, θ_r) = θ_r + (ν - θ_r) / 2
-
-    Y.snow.S .= 0.0
-    Y.snow.U .= 0.0
 
     Y.soil.ϑ_l .= init_soil.(ν, θ_r)
     Y.soil.θ_i .= FT(0.0)
@@ -378,8 +367,8 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (10, 10, 15))
         land,
         start_date;
         output_writer = nc_writer,
-        output_vars = :short,
-        average_period = :monthly,
+        output_vars = :long,
+        average_period = :daily,
     )
 
     diagnostic_handler =
@@ -394,7 +383,7 @@ end
 function setup_and_solve_problem(; greet = false)
 
     t0 = 0.0
-    tf = 60 * 60.0 * 24 * 365
+    tf = 60 * 60.0 * 24 * 365 * 4
     Δt = 450.0
     nelements = (10, 10, 15)
     if greet
@@ -432,6 +421,7 @@ mktempdir(root_path) do tmpdir
             fig = CairoMakie.Figure(size = (600, 400))
             kwargs = ClimaAnalysis.has_altitude(var) ? Dict(:z => 1) : Dict()
             tmp = ClimaAnalysis.slice(var, time = t; kwargs...)
+            @show all(isnan.(tmp.data))
             if !all(isnan.(tmp.data))
                 viz.heatmap2D!(
                     fig,

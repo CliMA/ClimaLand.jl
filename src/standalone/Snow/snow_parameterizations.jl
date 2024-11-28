@@ -30,12 +30,11 @@ end
         p,
     ) where {FT}
 
-Returns the surface height of the `Snow` model; this returns the depth
-of the snow and hence implicitly treats the surface (ground) elevation as
-at zero.
+Returns the surface height of the `Snow` model; surface (ground) elevation
+and ignores snow depth (CLM).
 
 Once topography or land ice is incorporated, this will need to change to
-z_sfc + land_ice_depth + snow_depth. Note that land ice can 
+z_sfc + land_ice_depth. Note that land ice can 
 be ~1-3 km thick on Greenland/
 
 In order to compute surface fluxes, this cannot be large than the 
