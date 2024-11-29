@@ -388,7 +388,8 @@ function update_density!(
     Y,
     p,
 )
-    p.snow.ρ_snow .= snow_bulk_density.(Y.snow.S, snow_depth(density, Y, p, params), params)
+    p.snow.ρ_snow .=
+        snow_bulk_density.(Y.snow.S, snow_depth(density, Y, p, params), params)
 end
 
 """
@@ -445,12 +446,7 @@ function compact_density(
     c5 = (sliq > 0) ? FT(2) : density.c5
     cx = (ρ > density.ρ_d) ? density.cx : FT(0)
 
-    B =
-        100 *
-        W_i *
-        density.c1 *
-        Δt_t *
-        exp(FT(0.08) * Tsnow - density.c2 * ρ)
+    B = 100 * W_i * density.c1 * Δt_t * exp(FT(0.08) * Tsnow - density.c2 * ρ)
     factor = (W_i > 0.001) ? (exp(B) - 1) / B : FT(1)
     A = exp(
         density.c3 *
@@ -545,13 +541,7 @@ end
     update_density_prog!(density::Anderson1976, model::SnowModel, Y, p)
 Extends update_density_prog! for the Anderson1976 density paramteterization type.
 """
-function update_density_prog!(
-    density::Anderson1976,
-    model::SnowModel,
-    dY,
-    Y,
-    p,
-)
+function update_density_prog!(density::Anderson1976, model::SnowModel, dY, Y, p)
     dY.snow.Z .=
         clip_dZdt.(
             Y.snow.S,
