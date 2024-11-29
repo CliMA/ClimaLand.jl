@@ -435,11 +435,7 @@ version = "0.2.10"
 deps = ["ArtifactWrappers", "ClimaComms", "ClimaCore", "ClimaDiagnostics", "ClimaUtilities", "Dates", "DocStringExtensions", "Insolation", "Interpolations", "LazyArtifacts", "LinearAlgebra", "NCDatasets", "SciMLBase", "StaticArrays", "SurfaceFluxes", "Thermodynamics"]
 path = ".."
 uuid = "08f4d4ce-cf43-44bb-ad95-9d2d5f413532"
-<<<<<<< HEAD
 version = "0.15.5"
-=======
-version = "0.15.4"
->>>>>>> a2dbe21ccd81dc9b4552fce539c0cb2c811eae41
 weakdeps = ["BSON", "CSV", "CUDA", "ClimaParams", "DataFrames", "Flux", "HTTP", "StatsBase", "cuDNN"]
 
     [deps.ClimaLand.extensions]
