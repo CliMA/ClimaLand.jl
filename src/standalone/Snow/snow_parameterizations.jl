@@ -388,8 +388,7 @@ function update_density!(
     Y,
     p,
 )
-    p.snow.ρ_snow .=
-        snow_bulk_density.(Y.snow.S, snow_depth(density, Y, p, params), params)
+    p.snow.ρ_snow .= snow_bulk_density.(Y.snow.S, snow_depth(density, Y, p, params), params)
 end
 
 """
@@ -446,7 +445,12 @@ function compact_density(
     c5 = (sliq > 0) ? FT(2) : density.c5
     cx = (ρ > density.ρ_d) ? density.cx : FT(0)
 
-    B = 100 * W_i * density.c1 * Δt_t * exp(FT(0.08) * Tsnow - density.c2 * ρ)
+    B =
+        100 *
+        W_i *
+        density.c1 *
+        Δt_t *
+        exp(FT(0.08) * Tsnow - density.c2 * ρ)
     factor = (W_i > 0.001) ? (exp(B) - 1) / B : FT(1)
     A = exp(
         density.c3 *
@@ -507,10 +511,6 @@ function dzdt(density::Anderson1976{FT}, model::SnowModel{FT}, Y, p) where {FT}
             Ref(density),
         )
     Δz = snowfall ./ ρ_newsnow
-    if sum(isnan.(parent(Δz))) > 0
-        print("ΔZ NAN: ", snowfall, ρ_newsnow, "\n")
-        error()
-    end
 
     #Estimate resulting change from compaction effects of old snow (and the incoming snow on top):
     W_ice = (1 .- p.snow.q_l) .* Y.snow.S
@@ -521,26 +521,6 @@ function dzdt(density::Anderson1976{FT}, model::SnowModel{FT}, Y, p) where {FT}
     parent(ρ_ice)[parent(W_ice) .<= eps(FT)] .= FT(0.1) #any nonzero value for no-snowpack to avoid NaN and return 0.0
     ρ_est = compact_density.(W_use, sliq, ρ_ice, Δt_t, Tsnow, Ref(density))
     dz_compaction = (W_ice ./ ρ_est) .- Y.snow.Z
-    if sum(isnan.(parent(dz_compaction))) > 0
-        print(
-            "dz_compaction NAN: \n",
-            ρ_est,
-            "\n",
-            W_ice,
-            "\n",
-            W_use,
-            "\n",
-            sliq,
-            "\n",
-            ρ_ice,
-            "\n",
-            Y.snow.Z,
-            "\n",
-            Y.snow.S,
-            "\n***\n",
-        )
-        error()
-    end
 
     return (dz_compaction .+ Δz) ./ model.parameters.Δt
 end
@@ -565,7 +545,13 @@ end
     update_density_prog!(density::Anderson1976, model::SnowModel, Y, p)
 Extends update_density_prog! for the Anderson1976 density paramteterization type.
 """
-function update_density_prog!(density::Anderson1976, model::SnowModel, dY, Y, p)
+function update_density_prog!(
+    density::Anderson1976,
+    model::SnowModel,
+    dY,
+    Y,
+    p,
+)
     dY.snow.Z .=
         clip_dZdt.(
             Y.snow.S,
@@ -574,10 +560,4 @@ function update_density_prog!(density::Anderson1976, model::SnowModel, dY, Y, p)
             dzdt(density, model, Y, p),
             model.parameters.Δt,
         )
-    newz = parent(dY.snow.Z)[1] * model.parameters.Δt + parent(Y.snow.Z)[1]
-    newswe = parent(dY.snow.S)[1] * model.parameters.Δt + parent(Y.snow.S)[1]
-    #if newz < newswe
-    #    print("BAD Z < SWE\n", dY.snow.Z, "\n", dY.snow.S, "\n", Y.snow.Z, "\n", Y.snow.S, "\n", dzdt(density, model, Y, p), "\n", newz, " | ", newswe)
-    #    error()
-    #end
 end
