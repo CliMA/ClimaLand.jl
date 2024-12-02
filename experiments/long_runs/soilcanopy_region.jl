@@ -1,18 +1,19 @@
-# # Global run of land model
+# # Regional run of soil/canopy model
 
-# The code sets up and runs the soil/canopy model for 6 hours on a spherical domain,
+# The code sets up and runs the soil/canopy model for 6 hours on a small
+# region of the globe in Southern California,
 # using ERA5 data. In this simulation, we have
 # turned lateral flow off because horizontal boundary conditions and the
 # land/sea mask are not yet supported by ClimaCore.
 
 # Simulation Setup
-# Number of spatial elements: 101 in horizontal, 15 in vertical
+# Number of spatial elements: 10x10 in horizontal, 15 in vertical
 # Soil depth: 50 m
-# Simulation duration: 365 d
+# Simulation duration: 4 years
 # Timestep: 450 s
 # Timestepper: ARS111
 # Fixed number of iterations: 3
-# Jacobian update: every new Newton iteration
+# Jacobian update: every new timestep
 # Atmos forcing update: every 3 hours
 import SciMLBase
 import ClimaComms
@@ -32,14 +33,15 @@ import ClimaUtilities.ClimaArtifacts: @clima_artifact
 import ClimaParams as CP
 
 using ClimaLand
+using ClimaLand.Snow
 using ClimaLand.Soil
 using ClimaLand.Canopy
 import ClimaLand
 import ClimaLand.Parameters as LP
 
 using Statistics
+using GeoMakie
 using CairoMakie
-import GeoMakie
 using Dates
 import NCDatasets
 
@@ -50,20 +52,25 @@ time_interpolation_method = LinearInterpolation(PeriodicCalendar())
 context = ClimaComms.context()
 device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
-root_path = "land_longrun_$(device_suffix)"
-diagnostics_outdir = joinpath(root_path, "global_diagnostics")
+# root_path = "/groups/esm/kdeck/soilcanopy_region_longrun_$(device_suffix)"
+root_path = "/home/jsloan/ClimaLand.jl/soilcanopy_region_$(device_suffix)_11-27"
+diagnostics_outdir = joinpath(root_path, "regional_diagnostics")
 outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
 
-function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
+function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (10, 10, 15))
     earth_param_set = LP.LandParameters(FT)
     radius = FT(6378.1e3)
     depth = FT(50)
-    domain = ClimaLand.Domains.SphericalShell(;
-        radius = radius,
-        depth = depth,
+    center_long, center_lat = FT(-36), FT(69.5)
+    delta_m = FT(200_000) # in meters, this is about a 2 degree simulation
+    domain = ClimaLand.Domains.HybridBox(;
+        xlim = (delta_m, delta_m),
+        ylim = (delta_m, delta_m),
+        zlim = (-depth, FT(0)),
         nelements = nelements,
         npolynomial = 1,
+        longlat = (center_long, center_lat),
         dz_tuple = FT.((10.0, 0.05)),
     )
     surface_space = domain.space.surface
@@ -81,7 +88,6 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         earth_param_set,
         FT,
     )
-
     spatially_varying_soil_params =
         ClimaLand.default_spatially_varying_soil_parameters(
             subsurface_space,
@@ -118,7 +124,6 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         PAR_albedo_wet = PAR_albedo_wet,
         NIR_albedo_wet = NIR_albedo_wet,
     )
-
     f_over = FT(3.28) # 1/m
     R_sb = FT(1.484e-4 / 1000) # m/s
     runoff_model = ClimaLand.Soil.Runoff.TOPMODELRunoff{FT}(;
@@ -141,7 +146,6 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         α_NIR_leaf,
         τ_NIR_leaf,
     ) = clm_parameters
-
     # Energy Balance model
     ac_canopy = FT(2.5e3)
     # Plant Hydraulics and general plant parameters
@@ -284,7 +288,6 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         domain = ClimaLand.obtain_surface_domain(domain),
     )
 
-    # Integrated plant hydraulics and soil model
     land_input = (
         atmos = atmos,
         radiation = radiation,
@@ -305,6 +308,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     Y, p, cds = initialize(land)
 
     init_soil(ν, θ_r) = θ_r + (ν - θ_r) / 2
+
     Y.soil.ϑ_l .= init_soil.(ν, θ_r)
     Y.soil.θ_i .= FT(0.0)
     T = FT(276.85)
@@ -363,8 +367,8 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         land,
         start_date;
         output_writer = nc_writer,
-        output_vars = :short,
-        average_period = :monthly,
+        output_vars = :long,
+        average_period = :daily,
     )
 
     diagnostic_handler =
@@ -379,11 +383,11 @@ end
 function setup_and_solve_problem(; greet = false)
 
     t0 = 0.0
-    tf = 60 * 60.0 * 24 * 365 * 1
+    tf = 60 * 60.0 * 24 * 365 * 4
     Δt = 450.0
-    nelements = (101, 15)
+    nelements = (10, 10, 15)
     if greet
-        @info "Run: Global Soil-Canopy Model"
+        @info "Run: Regional Soil-Canopy-Snow Model"
         @info "Resolution: $nelements"
         @info "Timestep: $Δt s"
         @info "Duration: $(tf - t0) s"
@@ -408,7 +412,7 @@ setup_and_solve_problem(; greet = true);
 # read in diagnostics and make some plots!
 #### ClimaAnalysis ####
 simdir = ClimaAnalysis.SimDir(outdir)
-short_names = ["gpp", "swc", "et", "ct"]
+short_names = ["gpp", "ct", "swc", "si"]
 mktempdir(root_path) do tmpdir
     for short_name in short_names
         var = get(simdir; short_name)
@@ -416,16 +420,18 @@ mktempdir(root_path) do tmpdir
         for t in times
             fig = CairoMakie.Figure(size = (600, 400))
             kwargs = ClimaAnalysis.has_altitude(var) ? Dict(:z => 1) : Dict()
-            viz.heatmap2D_on_globe!(
-                fig,
-                ClimaAnalysis.slice(var, time = t; kwargs...),
-                mask = viz.oceanmask(),
-                more_kwargs = Dict(
-                    :mask => ClimaAnalysis.Utils.kwargs(color = :white),
-                    :plot => ClimaAnalysis.Utils.kwargs(rasterize = true),
-                ),
-            )
-            CairoMakie.save(joinpath(tmpdir, "$(short_name)_$t.pdf"), fig)
+            tmp = ClimaAnalysis.slice(var, time = t; kwargs...)
+            @show all(isnan.(tmp.data))
+            if !all(isnan.(tmp.data))
+                viz.heatmap2D!(
+                    fig,
+                    tmp,
+                    more_kwargs = Dict(
+                        :plot => ClimaAnalysis.Utils.kwargs(rasterize = true),
+                    ),
+                )
+                CairoMakie.save(joinpath(tmpdir, "$(short_name)_$t.pdf"), fig)
+            end
         end
     end
     figures = readdir(tmpdir, join = true)
