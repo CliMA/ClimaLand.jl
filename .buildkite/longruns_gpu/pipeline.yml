@@ -65,7 +65,7 @@ steps:
         artifact_paths: "soil_longrun_gpu/*pdf"
         agents:
           slurm_gpus: 1
-          slurm_time: 01:30:00
+          slurm_time: 15:00:00
         env:
           CLIMACOMMS_DEVICE: "CUDA"
 
