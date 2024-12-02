@@ -1,7 +1,7 @@
 # # Global run of land model
 
 # The code sets up and runs ClimaLand v1, which
-# includes soil, canopy, and snow, for 365 days on a spherical domain,
+# includes soil, canopy, and snow, for 6 hours on a spherical domain,
 # using ERA5 data as forcing. In this simulation, we have
 # turned lateral flow off because horizontal boundary conditions and the
 # land/sea mask are not yet supported by ClimaCore.
@@ -9,7 +9,7 @@
 # Simulation Setup
 # Number of spatial elements: 101 in horizontal, 15 in vertical
 # Soil depth: 50 m
-# Simulation duration: 365 d
+# Simulation duration: 6 hours
 # Timestep: 450 s
 # Timestepper: ARS111
 # Fixed number of iterations: 3
@@ -21,11 +21,6 @@ ClimaComms.@import_required_backends
 import ClimaTimeSteppers as CTS
 using ClimaCore
 using ClimaUtilities.ClimaArtifacts
-
-import ClimaDiagnostics
-import ClimaAnalysis
-import ClimaAnalysis.Visualize as viz
-import ClimaUtilities
 
 import ClimaUtilities.TimeVaryingInputs:
     TimeVaryingInput, LinearInterpolation, PeriodicCalendar
@@ -43,17 +38,16 @@ using Statistics
 using CairoMakie
 import GeoMakie
 using Dates
-import NCDatasets
+import Profile, ProfileCanvas
+using Test
 
-const FT = Float64;
+const FT = Float64
 time_interpolation_method = LinearInterpolation(PeriodicCalendar())
 context = ClimaComms.context()
 device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
-root_path = "snowy_land_longrun_$(device_suffix)"
-diagnostics_outdir = joinpath(root_path, "global_diagnostics")
-outdir =
-    ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
+outdir = "snowy_land_benchmark_$(device_suffix)"
+!ispath(outdir) && mkpath(outdir)
 
 function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     earth_param_set = LP.LandParameters(FT)
@@ -170,7 +164,6 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
 
     z0_m = FT(0.13) * h_canopy
     z0_b = FT(0.1) * z0_m
-
 
     soilco2_ps = Soil.Biogeochemistry.SoilCO2ModelParameters(FT)
 
@@ -314,7 +307,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     Y, p, cds = initialize(land)
 
     @. Y.soil.ϑ_l = θ_r + (ν - θ_r) / 2
-    Y.soil.θ_i .= FT(0.0)
+    Y.soil.θ_i .= 0
     T = FT(276.85)
     ρc_s =
         Soil.volumetric_heat_capacity.(
@@ -334,8 +327,8 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     Y.canopy.hydraulics.ϑ_l.:1 .= plant_ν
     evaluate!(Y.canopy.energy.T, atmos.T, t0)
 
-    Y.snow.S .= 0.0
-    Y.snow.U .= 0.0
+    Y.snow.S .= 0
+    Y.snow.U .= 0
 
     set_initial_cache! = make_set_initial_cache(land)
     exp_tendency! = make_exp_tendency(land)
@@ -362,31 +355,13 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     drivers = ClimaLand.get_drivers(land)
     updatefunc = ClimaLand.make_update_drivers(drivers)
 
-    # ClimaDiagnostics
-
-    nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(subsurface_space, outdir)
-
-    diags = ClimaLand.default_diagnostics(
-        land,
-        start_date;
-        output_writer = nc_writer,
-        output_vars = :short,
-        average_period = :monthly,
-    )
-
-    diagnostic_handler =
-        ClimaDiagnostics.DiagnosticsHandler(diags, Y, p, t0; dt = Δt)
-
-    diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler)
-
-    driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
-    return prob, SciMLBase.CallbackSet(driver_cb, diag_cb)
+    cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
+    return prob, cb
 end
 
-function setup_and_solve_problem(; greet = false)
-
+function setup_simulation(; greet = false)
     t0 = 0.0
-    tf = 60 * 60.0 * 24 * 365
+    tf = 60 * 60.0 * 6
     Δt = 450.0
     nelements = (101, 15)
     if greet
@@ -407,56 +382,101 @@ function setup_and_solve_problem(; greet = false)
             update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
         ),
     )
-    SciMLBase.solve(prob, ode_algo; dt = Δt, callback = cb, adaptive = false)
-    return nothing
+    return prob, ode_algo, Δt, cb
 end
 
-setup_and_solve_problem(; greet = true);
-# read in diagnostics and make some plots!
-#### ClimaAnalysis ####
-simdir = ClimaAnalysis.SimDir(outdir)
-short_names_bio = ["gpp", "ct", "lai"]
-short_names_water = ["swc", "si", "sr", "swe"]
-short_names_other = ["swu", "lwu", "et"]
-group_names = ["bio", "water", "other"]
-months_id = [1, 4, 7, 10]
-for (group_id, group) in
-    enumerate([short_names_bio, short_names_water, short_names_other])
-    fig =
-        CairoMakie.Figure(size = (600 * length(months_id), 300 * length(group)))
-    for (var_id, short_name) in enumerate(group)
-        var = get(simdir; short_name)
-        times = ClimaAnalysis.times(var)
-        CairoMakie.Label(
-            fig[var_id, 0],
-            short_name,
-            tellheight = false,
-            tellwidth = false,
-            fontsize = 20,
-        )
-        for (t_id, t) in pairs(times[months_id])
-            layout = fig[var_id, t_id] = CairoMakie.GridLayout()
-            kwargs = ClimaAnalysis.has_altitude(var) ? Dict(:z => 1) : Dict()
-            ClimaAnalysis.Visualize.heatmap2D_on_globe!(
-                layout,
-                ClimaAnalysis.slice(var, time = t; kwargs...),
-                mask = ClimaAnalysis.Visualize.oceanmask(),
-                more_kwargs = Dict(
-                    :mask => ClimaAnalysis.Utils.kwargs(color = :white),
-                ),
-            )
-        end
-    end
-    months = Dates.monthname.(1:12) .|> x -> x[1:3]
-    for (idx, m_id) in enumerate(months_id)
-        CairoMakie.Label(
-            fig[0, idx],
-            months[m_id],
-            tellwidth = false,
-            fontsize = 20,
-        )
-    end
-    group_name = group_names[group_id]
+# Warm up and greet
+prob, ode_algo, Δt, cb = setup_simulation(; greet = true);
+SciMLBase.solve(prob, ode_algo; dt = Δt, callback = cb, adaptive = false)
 
-    CairoMakie.save(joinpath(root_path, "$(group_name).png"), fig)
+@info "Starting profiling"
+# Stop when we profile for MAX_PROFILING_TIME_SECONDS or MAX_PROFILING_SAMPLES
+MAX_PROFILING_TIME_SECONDS = 500
+MAX_PROFILING_SAMPLES = 100
+time_now = time()
+timings_s = Float64[]
+while (time() - time_now) < MAX_PROFILING_TIME_SECONDS &&
+    length(timings_s) < MAX_PROFILING_SAMPLES
+    lprob, lode_algo, lΔt, lcb = setup_simulation()
+    push!(
+        timings_s,
+        ClimaComms.@elapsed device SciMLBase.solve(
+            lprob,
+            lode_algo;
+            dt = lΔt,
+            callback = lcb,
+        )
+    )
+end
+num_samples = length(timings_s)
+average_timing_s = round(sum(timings_s) / num_samples, sigdigits = 3)
+max_timing_s = round(maximum(timings_s), sigdigits = 3)
+min_timing_s = round(minimum(timings_s), sigdigits = 3)
+std_timing_s = round(
+    sqrt(sum(((timings_s .- average_timing_s) .^ 2) / num_samples)),
+    sigdigits = 3,
+)
+@info "Num samples: $num_samples"
+@info "Average time: $(average_timing_s) s"
+@info "Max time: $(max_timing_s) s"
+@info "Min time: $(min_timing_s) s"
+@info "Standard deviation time: $(std_timing_s) s"
+@info "Done profiling"
+
+prob, ode_algo, Δt, cb = setup_simulation()
+Profile.@profile SciMLBase.solve(prob, ode_algo; dt = Δt, callback = cb)
+results = Profile.fetch()
+flame_file = joinpath(outdir, "flame_$device_suffix.html")
+ProfileCanvas.html_file(flame_file, results)
+@info "Saved compute flame to $flame_file"
+
+prob, ode_algo, Δt, cb = setup_simulation()
+Profile.Allocs.@profile sample_rate = 0.005 SciMLBase.solve(
+    prob,
+    ode_algo;
+    dt = Δt,
+    callback = cb,
+)
+results = Profile.Allocs.fetch()
+profile = ProfileCanvas.view_allocs(results)
+alloc_flame_file = joinpath(outdir, "alloc_flame_$device_suffix.html")
+ProfileCanvas.html_file(alloc_flame_file, profile)
+@info "Saved allocation flame to $alloc_flame_file"
+
+if ClimaComms.device() isa ClimaComms.CUDADevice
+    import CUDA
+    lprob, lode_algo, lΔt, lcb = setup_simulation()
+    p = CUDA.@profile SciMLBase.solve(
+        lprob,
+        lode_algo;
+        dt = lΔt,
+        callback = lcb,
+    )
+    # use "COLUMNS" to set how many horizontal characters to crop:
+    # See https://github.com/ronisbr/PrettyTables.jl/issues/11#issuecomment-2145550354
+    envs = ("COLUMNS" => 120,)
+    withenv(envs...) do
+        io = IOContext(
+            stdout,
+            :crop => :horizontal,
+            :limit => true,
+            :displaysize => displaysize(),
+        )
+        show(io, p)
+    end
+    println()
+end
+
+if get(ENV, "BUILDKITE_PIPELINE_SLUG", nothing) == "climaland-benchmark"
+    PREVIOUS_BEST_TIME = 6.1
+    if average_timing_s > PREVIOUS_BEST_TIME + std_timing_s
+        @info "Possible performance regression, previous average time was $(PREVIOUS_BEST_TIME)"
+    elseif average_timing_s < PREVIOUS_BEST_TIME - std_timing_s
+        @info "Possible significant performance improvement, please update PREVIOUS_BEST_TIME in $(@__DIR__)"
+    end
+    @testset "Performance" begin
+        @test PREVIOUS_BEST_TIME - 2std_timing_s <=
+              average_timing_s <=
+              PREVIOUS_BEST_TIME + 2std_timing_s
+    end
 end
