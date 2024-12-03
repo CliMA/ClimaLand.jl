@@ -1,3 +1,12 @@
+[soilgrids]
+git-tree-sha1 = "f919da748cc973519fb136f4225cf343f5c3e41f"
+[soilgrids_lowres]
+git-tree-sha1 = "6ce1717bb8b7aa767380f1053b9d8d3a4e4edaa6"
+
+    [[soilgrids_lowres.download]]
+    sha256 = "27d49fce7f4a5e2b81bbd29e8a7caf08f568a2df53e3af817126363decfd5a7c"
+    url = "https://caltech.box.com/shared/static/99aw2gce2k65bdu0h8jkfxq4vin08gi2.gz"
+
 [cesm2_albedo]
 git-tree-sha1 = "316096635acaa8102477820f480ca02fe66eb828"
 
