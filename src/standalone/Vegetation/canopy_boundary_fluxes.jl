@@ -31,7 +31,7 @@ to as ``boundary conditions", at the surface and
 bottom of the canopy, for water and energy.
 
 These fluxes include turbulent surface fluxes
-computed with Monin-Obukhov theory, radiative fluxes, 
+computed with Monin-Obukhov theory, radiative fluxes,
 and root extraction.
 $(DocStringExtensions.FIELDS)
 """
@@ -61,7 +61,7 @@ end
 
 An outer constructor for `AtmosDrivenCanopyBC` which is
 intended for use as a default when running standlone canopy
-models. 
+models.
 
 This is also checks the logic that:
 - If the `ground` field is Prescribed, :soil should not be a prognostic_land_component
@@ -129,9 +129,11 @@ end
 
 A helper function which returns the surface height for the canopy
 model, which is stored in the parameter struct.
+
+This assumes that the surface elevation is zero.
 """
-function ClimaLand.surface_height(model::CanopyModel, _...)
-    return model.hydraulics.compartment_surfaces[1]
+function ClimaLand.surface_height(model::CanopyModel{FT}, _...) where {FT}
+    return FT(0)
 end
 
 function make_update_boundary_fluxes(canopy::CanopyModel)
@@ -382,7 +384,7 @@ function canopy_turbulent_fluxes_at_a_point(
             states,
             scheme,
         ) * r_ae / (canopy_r_b + r_ae)
-    # The above follows from CLM 5, tech note Equation 5.88, setting H_v = SH and solving to remove T_s, ignoring difference between cp in atmos and above canopy. 
+    # The above follows from CLM 5, tech note Equation 5.88, setting H_v = SH and solving to remove T_s, ignoring difference between cp in atmos and above canopy.
     LH = _LH_v0 * E
 
     # Derivatives
