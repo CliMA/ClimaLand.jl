@@ -217,14 +217,32 @@ with respect to ϑ for the van Genuchten formulation.
 function dψdϑ(cm::vanGenuchten{FT}, ϑ, ν, θ_r, S_s) where {FT}
     S = effective_saturation(ν, ϑ, θ_r)
     (; α, m, n) = cm
-    if S < 1.0
-        return FT(
-            1.0 / (α * m * n) / (ν - θ_r) *
-            (S^(-1 / m) - 1)^(1 / n - 1) *
-            S^(-1 / m - 1),
-        )
+
+    # Define dψdϑ for unsaturated and saturated regimes
+    dψdϑ_unsat = FT(
+        1.0 / (α * m * n) / (ν - θ_r) *
+        (S^(-1 / m) - 1)^(1 / n - 1) *
+        S^(-1 / m - 1),
+    )
+    dψdϑ_sat = 1 / S_s
+
+    # Evaluate the unsaturated dψdϑ sufficiently far from saturation to avoid derivative divergence
+    d_smooth = 0
+    smoothing_factor = FT(1 / d_smooth) * (-S + 1)
+    dψdϑ_smoothing = FT(
+        1.0 / (α * m * n) / (ν - θ_r) *
+        ((1 - d_smooth)^(-1 / m) - 1)^(1 / n - 1) *
+        (1 - d_smooth)^(-1 / m - 1),
+    )
+
+    # When very close to saturation, introduce a smoothing factor for stability
+    if S < 1.0 - d_smooth
+        return dψdϑ_unsat
+    elseif S < 1.0
+        return smoothing_factor * dψdϑ_smoothing +
+               (1 - smoothing_factor) * dψdϑ_sat
     else
-        return 1 / S_s
+        return dψdϑ_sat
     end
 end
 
