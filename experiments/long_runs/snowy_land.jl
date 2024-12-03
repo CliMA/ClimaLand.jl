@@ -500,3 +500,8 @@ mktempdir(root_path) do tmpdir
         )
     end
 end
+
+include("leaderboard/leaderboard.jl")
+diagnostics_folder_path = outdir
+leaderboard_base_path = root_path
+compute_leaderboard(leaderboard_base_path, diagnostics_folder_path)
