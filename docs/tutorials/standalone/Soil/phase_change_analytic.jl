@@ -9,15 +9,17 @@
 # volumetric ice fraction `θ_i` for all time, everywhere in the domain.
 # In this example, we add in a source term to the right hand side for both `θ_i`
 # and `ϑ_l` which models freezing and thawing and conserves water mass during the process.
-# The equations are
+
+# To facilitate comparison to an analytically tractable problem (the Stefan problem), we set
+# K_sat of the soil to zero. Then the simplified equations we solve are
 
 
 # ``
-# \frac{∂ ρe_{int}}{∂ t} =  ∇ ⋅ κ(θ_l, θ_i; ν, ...) ∇T + ∇ ⋅ ρe_{int_{liq}} K (T,θ_l, θ_i; ν, ...) \nabla h( ϑ_l, z; ν, ...)
+# \frac{∂ ρe_{int}}{∂ t} =  ∇ ⋅ κ(θ_l, θ_i; ν, ...) ∇T
 # ``
 
 # ``
-# \frac{ ∂ ϑ_l}{∂ t} = ∇ ⋅ K (T,θ_l, θ_i; ν, ...) ∇h( ϑ_l, z; ν, ...) -\frac{F_T}{ρ_l}
+# \frac{ ∂ ϑ_l}{∂ t} =  -\frac{F_T}{ρ_l}
 # ``
 
 # ``
@@ -35,12 +37,6 @@
 # ``T`` is the temperature of the soil (K),
 
 # ``κ`` is the thermal conductivity (W/m/K),
-
-# ``ρe_{int_{liq}}`` is the volumetric internal energy of liquid water (J/m^3),
-
-# ``K`` is the hydraulic conductivity (m/s),
-
-# ``h`` is the hydraulic head (m),
 
 # ``ϑ_l`` is the augmented volumetric liquid water fraction,
 
@@ -113,10 +109,6 @@ boundary_fluxes = (;
     ),
 );
 
-# Create the source term instance. Our phase change model requires
-# knowledge of the vertical spacing, so we pass
-# that information in via an attribute of the
-# [`PhaseChange`](@ref ClimaLand.Soil.PhaseChange) structure.
 # Sources are added as elements of a list of sources. Here we just add freezing
 # and thawing.
 
@@ -141,7 +133,8 @@ soil = Soil.EnergyHydrology{FT}(;
 Y, p, coords = initialize(soil);
 
 # After which, we can specify the initial condition
-# function, and initialze the variables:
+# function, and initialze the variables. We chose these to match
+# the initial conditions of the Stefan problem:
 
 function init_soil!(Ysoil, z, params)
     ν = params.ν
@@ -207,7 +200,7 @@ sv = (;
     t = Array{Float64}(undef, length(saveat)),
     saveval = Array{NamedTuple}(undef, length(saveat)),
 )
-saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat)
+saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat);
 # Now we can solve the problem.
 sol = SciMLBase.solve(
     prob,
