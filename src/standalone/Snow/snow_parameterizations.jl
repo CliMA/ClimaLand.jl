@@ -30,19 +30,20 @@ end
         p,
     ) where {FT}
 
-Returns the surface height of the `Snow` model; this returns the depth
-of the snow and hence implicitly treats the surface (ground) elevation as
-at zero.
+Returns the surface height of the `Snow` model; surface (ground) elevation
+and ignores snow depth (CLM).
 
 Once topography or land ice is incorporated, this will need to change to
-z_sfc + land_ice_depth + snow_depth. Note that land ice can 
+z_sfc + land_ice_depth. Note that land ice can
 be ~1-3 km thick on Greenland/
 
-In order to compute surface fluxes, this cannot be large than the 
-height of the atmosphere measurement location (z_atmos > z_land always). 
+In order to compute surface fluxes, this cannot be large than the
+height of the atmosphere measurement location (z_atmos > z_land always).
+
+This assumes that the surface elevation is zero.
 """
 function ClimaLand.surface_height(model::SnowModel{FT}, Y, p) where {FT}
-    return p.snow.z
+    return FT(0)
 end
 
 
@@ -67,7 +68,7 @@ end
 """
     ClimaLand.surface_temperature(model::SnowModel, Y, p)
 
-a helper function which returns the surface temperature for the snow 
+a helper function which returns the surface temperature for the snow
 model, which is stored in the aux state.
 """
 function ClimaLand.surface_temperature(model::SnowModel, Y, p, t)
@@ -318,7 +319,7 @@ end
 """
     energy_from_q_l_and_swe(S::FT, q_l::FT, parameters) where {FT}
 
-A helper function for compute the snow energy per unit area, given snow 
+A helper function for compute the snow energy per unit area, given snow
 water equivalent S, liquid fraction q_l,  and snow model parameters.
 
 Note that liquid water can only exist at the freezing point in this model,
@@ -340,7 +341,7 @@ end
 """
     energy_from_T_and_swe(S::FT, T::FT, parameters) where {FT}
 
-A helper function for compute the snow energy per unit area, given snow 
+A helper function for compute the snow energy per unit area, given snow
 water equivalent S, bulk temperature T, and snow model parameters.
 
 If T = T_freeze, we return the energy as if q_l = 0.

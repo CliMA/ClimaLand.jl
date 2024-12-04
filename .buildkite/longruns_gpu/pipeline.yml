@@ -3,8 +3,6 @@ agents:
   slurm_mem: 8G
   modules: climacommon/2024_10_09
 
-timeout_in_minutes: 1440
-
 steps:
   - label: "init :GPU:"
     key: "init_gpu_env"
@@ -34,10 +32,12 @@ steps:
       - label: ":snow_capped_mountain: Snowy Land"
         command:
           - julia --color=yes --project=.buildkite experiments/long_runs/snowy_land.jl
-        artifact_paths: "snowy_land_longrun_gpu/*png"
+        artifact_paths:
+          - "snowy_land_longrun_gpu/*png"
+          - "snowy_land_longrun_gpu/*pdf"
         agents:
           slurm_gpus: 1
-          slurm_time: 03:30:00
+          slurm_time: 15:00:00
         env:
           CLIMACOMMS_DEVICE: "CUDA"
 
@@ -47,7 +47,7 @@ steps:
         artifact_paths: "land_longrun_gpu/*pdf"
         agents:
           slurm_gpus: 1
-          slurm_time: 03:00:00
+          slurm_time: 15:00:00
         env:
           CLIMACOMMS_DEVICE: "CUDA"
 
@@ -67,7 +67,7 @@ steps:
         artifact_paths: "soil_longrun_gpu/*pdf"
         agents:
           slurm_gpus: 1
-          slurm_time: 01:30:00
+          slurm_time: 15:00:00
         env:
           CLIMACOMMS_DEVICE: "CUDA"
 

@@ -2,7 +2,7 @@
 
 julia_version = "1.11.1"
 manifest_format = "2.0"
-project_hash = "a5dc443666e7b6f001f45671e08cb0a420c01a66"
+project_hash = "15fe7e962a3bea15852e19f92138be4db325cca0"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "30bb95a372787af850addf28ac937f1be7b79173"
@@ -25,16 +25,6 @@ version = "0.5.3"
 git-tree-sha1 = "574baf8110975760d391c710b6341da1afa48d8c"
 uuid = "a4c015fc-c6ff-483c-b24f-f7ea428134e9"
 version = "0.0.1"
-
-[[deps.About]]
-deps = ["InteractiveUtils", "JuliaSyntaxHighlighting", "PrecompileTools", "StyledStrings"]
-git-tree-sha1 = "efbf5b623b7ee2a41ce5aed6299aa62ab7f2d5b9"
-uuid = "69d22d85-9f48-4c46-bbbe-7ad8341ff72a"
-version = "1.0.1"
-weakdeps = ["Pkg"]
-
-    [deps.About.extensions]
-    PkgExt = "Pkg"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -1468,17 +1458,6 @@ deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "af433a10f3942e882d3c671aacb203e006a5808f"
 uuid = "9c1d0b0a-7046-5b2e-a33f-ea22f176ac7e"
 version = "0.2.1+0"
-
-[[deps.JuliaSyntax]]
-git-tree-sha1 = "937da4713526b96ac9a178e2035019d3b78ead4a"
-uuid = "70703baa-626e-46a2-a12c-08ffd08c73b4"
-version = "0.4.10"
-
-[[deps.JuliaSyntaxHighlighting]]
-deps = ["JuliaSyntax", "StyledStrings"]
-git-tree-sha1 = "19ecee1ea81c60156486a92b062e443b6bba60b7"
-uuid = "ac6e5ff7-fb65-4e79-a425-ec3bc9c03011"
-version = "0.1.0"
 
 [[deps.JuliaVariables]]
 deps = ["MLStyle", "NameResolution"]
