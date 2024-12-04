@@ -987,8 +987,6 @@ function soil_turbulent_fluxes_at_a_point(
         )
         x::FT = 4 * K_sfc * (1 + Ẽ0 / (4 * K_c))
         Ẽ *= x / (Ẽ0 + x)
-    else
-        Ẽ *= 0 # condensation, set to zero
     end
 
     # sensible heat flux
@@ -1011,8 +1009,6 @@ function soil_turbulent_fluxes_at_a_point(
     β_i::FT = FT(1)
     if q_air < q_sat_ice # sublimation, adjust β
         β_i *= (θ_i_sfc / ν_sfc)^4
-    else
-        β_i *= 0 # frost, set to zero
     end
 
     state_sfc = SurfaceFluxes.StateValues(

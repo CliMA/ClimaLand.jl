@@ -165,15 +165,23 @@ Computes the thermal conductivity, given the density
 of the snow, according to Equation
 5.33 from Bonan's textbook, which in turn is taken from
 Jordan (1991).
+
+We have adjusted the original equation to make the coefficients
+non-dimensional by multiplying by the first by x = ρ_ice/ρ_ice
+and the second by x², with ρ_ice in kg/m³.
+
+When ρ_snow = ρ_ice, we recover κ_snow = κ_ice.
 """
 function snow_thermal_conductivity(
     ρ_snow::FT,
     parameters::SnowParameters{FT},
 ) where {FT}
     _κ_air = FT(LP.K_therm(parameters.earth_param_set))
+    _ρ_ice = FT(LP.ρ_cloud_ice(parameters.earth_param_set))
     κ_ice = parameters.κ_ice
     return _κ_air +
-           (FT(7.75e-5) * ρ_snow + FT(1.105e-6) * ρ_snow^2) * (κ_ice - _κ_air)
+           (FT(0.07) * (ρ_snow / _ρ_ice) + FT(0.93) * (ρ_snow / _ρ_ice)^2) *
+           (κ_ice - _κ_air)
 end
 
 """
