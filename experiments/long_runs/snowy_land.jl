@@ -21,6 +21,7 @@ ClimaComms.@import_required_backends
 import ClimaTimeSteppers as CTS
 using ClimaCore
 using ClimaUtilities.ClimaArtifacts
+import ClimaUtilities.OnlineLogging: WallTimeInfo, report_walltime
 
 import ClimaDiagnostics
 import ClimaAnalysis
@@ -173,7 +174,6 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
 
     z0_m = FT(0.13) * h_canopy
     z0_b = FT(0.1) * z0_m
-
 
     soilco2_ps = Soil.Biogeochemistry.SoilCO2ModelParameters(FT)
 
@@ -383,7 +383,15 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler)
 
     driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
-    return prob, SciMLBase.CallbackSet(driver_cb, diag_cb)
+
+    walltime_info = WallTimeInfo()
+    every1000steps(u, t, integrator) = mod(integrator.step, 1000) == 0
+    report = let wt = walltime_info
+        (integrator) -> report_walltime(wt, integrator)
+    end
+    report_cb = SciMLBase.DiscreteCallback(every1000steps, report)
+
+    return prob, SciMLBase.CallbackSet(driver_cb, diag_cb, report_cb)
 end
 
 function setup_and_solve_problem(; greet = false)
