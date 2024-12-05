@@ -78,7 +78,7 @@ for FT in (Float32, Float64)
         @test specific_heat_capacity(FT(0.0), parameters) == _cp_i
         @test snow_thermal_conductivity(ρ_snow, parameters) ==
               κ_air +
-              (FT(7.75e-5) * ρ_snow + FT(1.105e-6) * ρ_snow^2) * (κ_ice - κ_air)
+              (FT(0.07) * ρ_snow + FT(0.93) * ρ_snow^2) * (κ_ice - κ_air)
         @test runoff_timescale.(z, Ksat, FT(Δt)) ≈ max.(Δt, z ./ Ksat)
 
 

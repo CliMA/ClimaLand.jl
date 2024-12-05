@@ -316,4 +316,7 @@ function bareground_albedo_dataset_path(; context = nothing)
     )
 end
 
+neural_snow_znetwork_link() =
+    "https://caltech.box.com/shared/static/ay7cv0rhuiytrqbongpeq2y7m3cimhm4.bson"
+
 end

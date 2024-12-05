@@ -8,15 +8,16 @@ import ClimaLand.Snow:
     density_prog_types,
     density_prog_names,
     update_density!,
-    update_density_prog!
+    update_density_prog!,
+    snow_depth
 import ClimaLand.Parameters as LP
 using Thermodynamics
 
-using DataFrames, Dates, CSV, HTTP, Flux, cuDNN, StatsBase, BSON
-ModelTools = Base.get_extension(ClimaLand, :NeuralSnowExt).ModelTools
-#^^is this correct format since this is within the extension itself, or do i just use include(./ModelTools); using ModelTools; here?
+using HTTP, Flux, BSON
+include("./ModelTools.jl")
+using .ModelTools
 
-export NeuralDepthModel, snow_depth, update_density_prog!
+export NeuralDepthModel
 
 """
     NeuralDepthModel{FT <: AbstractFloat} <: AbstractDensityModel{FT}
@@ -29,14 +30,11 @@ struct NeuralDepthModel{FT} <: AbstractDensityModel{FT}
 end
 
 """
-    get_znetwork(; download_link = "https://caltech.box.com/shared/static/ay7cv0rhuiytrqbongpeq2y7m3cimhm4.bson")
-A default function for returning the snow-depth neural network from the paper.
+    get_znetwork()
+Return the snow-depth neural network from the paper.
 """
-#This is the only place that creates the necessity of BSON for the neural extension and the make_model() from ModelTools. Keep or get rid of?
-#Can I change this to something CliMA already includes? is BSON vs JLD2 or anything else better? An artifact (can they store BSON/.jld2 files for direct usage without those packages?)?
-function get_znetwork(;
-    download_link = "https://caltech.box.com/shared/static/ay7cv0rhuiytrqbongpeq2y7m3cimhm4.bson",
-)
+function get_znetwork()
+    download_link = ClimaLand.Artifacts.neural_snow_znetwork_link()
     z_idx = 1
     p_idx = 7
     nfeatures = 7
@@ -45,10 +43,6 @@ function get_znetwork(;
     Flux.loadmodel!(zmodel, zmodel_state)
     ModelTools.settimescale!(zmodel, 86400.0)
     return zmodel
-
-    #should I write this function to give the ability to also load from local file too?
-    #BSON.@load "../SnowResearch/cleancode/testhrmodel.bson" zstate
-    #Flux.loadmodel!(zmodel, zstate)
 end
 
 """
@@ -130,6 +124,7 @@ function eval_nn(
     qrel::FT,
     u::FT,
 )::FT where {FT}
+    #model() of a Vector{FT} returns a 1-element Matrix, return the internal value: 
     return model([z, swe, qrel, R, u, T, P])[1]
 end
 
@@ -153,21 +148,6 @@ function dzdt(density::NeuralDepthModel, Y)
 end
 
 """
-    clip_dZdt(S::FT, Z::FT, dSdt::FT, dZdt::FT, Δt::FT)::FT
-A helper function which clips the tendency of Z such that
-its behavior is consistent with that of S.
-"""
-function clip_dZdt(S::FT, Z::FT, dSdt::FT, dZdt::FT, Δt::FT)::FT where {FT}
-    if (S + dSdt * Δt) <= eps(FT)
-        return -Z / Δt
-    elseif (Z + dZdt * Δt) < (S + dSdt * Δt)
-        return (S - Z) / Δt + dSdt
-    else
-        return dZdt
-    end
-end
-
-"""
     update_density_prog!(density::NeuralDepthModel, model::SnowModel, Y, p)
 Updates all prognostic variables associated with density/depth given the current model state and the `NeuralDepthModel`
 density paramterization.
@@ -181,7 +161,7 @@ function update_density_prog!(
 )
 
     dY.snow.Z .=
-        clip_dZdt.(
+        ClimaLand.Snow.clip_dZdt.(
             Y.snow.S,
             Y.snow.Z,
             dY.snow.S, #assumes dY.snow.S is updated (and clipped) before dY.snow.Z

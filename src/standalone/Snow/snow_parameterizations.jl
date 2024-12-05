@@ -31,7 +31,7 @@ This can be extended for additional types of parameterizations.
 """
 function snow_depth(density::AbstractDensityModel{FT}, Y, p, params) where {FT}
     ρ_l = FT(LP.ρ_cloud_liq(params.earth_param_set))
-    return ρ_l .* Y.snow.S ./ p.snow.ρ_snow
+    return @. ρ_l * Y.snow.S / p.snow.ρ_snow
 end
 
 
@@ -53,8 +53,8 @@ be ~1-3 km thick on Greenland/
 In order to compute surface fluxes, this cannot be large than the 
 height of the atmosphere measurement location (z_atmos > z_land always). 
 """
-function ClimaLand.surface_height(model::SnowModel, Y, p)
-    return snow_depth(model.parameters.density, Y, p, model.parameters)
+function ClimaLand.surface_height(model::SnowModel{FT}, Y, p) where {FT}
+    return FT(0)
 end
 
 
@@ -170,8 +170,7 @@ function snow_thermal_conductivity(
 ) where {FT}
     _κ_air = FT(LP.K_therm(parameters.earth_param_set))
     κ_ice = parameters.κ_ice
-    return _κ_air +
-           (FT(7.75e-5) * ρ_snow + FT(1.105e-6) * ρ_snow^2) * (κ_ice - _κ_air)
+    return _κ_air + (FT(0.07) * ρ_snow + FT(0.93) * ρ_snow^2) * (κ_ice - _κ_air)
 end
 
 """
@@ -231,7 +230,6 @@ function snow_liquid_mass_fraction(
     SWE::FT,
     parameters::SnowParameters{FT},
 ) where {FT}
-    #if SWE < eps(FT) return FT(1) end #do this to speed up computation or not, compared to the max() in the final line?
     _ρ_l = FT(LP.ρ_cloud_liq(parameters.earth_param_set))
     _T_ref = FT(LP.T_0(parameters.earth_param_set))
     _T_freeze = FT(LP.T_freeze(parameters.earth_param_set))
@@ -446,6 +444,7 @@ function compact_density(
     c5 = (sliq > 0) ? FT(2) : density.c5
     cx = (ρ > density.ρ_d) ? density.cx : FT(0)
 
+    #Snow17 includes 0.1 * W_i with W_i in millimeters, but we have 100 * W_i as we provide W_i in meters.
     B = 100 * W_i * density.c1 * Δt_t * exp(FT(0.08) * Tsnow - density.c2 * ρ)
     factor = (W_i > 0.001) ? (exp(B) - 1) / B : FT(1)
     A = exp(
@@ -463,7 +462,8 @@ end
 
 """
     newsnow_density(air_temp::FT)::FT where {FT}
-Estimates the density of newly fallen snow as a function of air temperature, according to the Snow17 model.
+Estimates the density of newly fallen snow as a function of air temperature (in celsius), in relative units (i.e. as a fraction of the density
+of water), according to the Snow17 model.
 Used in computing the time derivative of snow depth under the Anderson1976 density parameterization.
 """
 function newsnow_density(air_temp::FT)::FT where {FT}
@@ -524,13 +524,17 @@ end
 """
     clip_dZdt(S::FT, Z::FT, dSdt::FT, dZdt::FT, Δt::FT)::FT
 A helper function which clips the tendency of Z such that
-its behavior is consistent with that of S.
+its behavior is consistent with that of S: if all snow melts
+within a timestep, we clip the tendency of S so that it does
+not become negative, and here we also clip the tendency of Z
+so that depth does not become negative. Additionally, if the
+tendencies of Z and S are such that we would encounter Z < S
+(rho_snow > rho_liq), we also clip the tendency.
 """
 function clip_dZdt(S::FT, Z::FT, dSdt::FT, dZdt::FT, Δt::FT)::FT where {FT}
     if (S + dSdt * Δt) <= eps(FT)
         return -Z / Δt
     elseif (Z + dZdt * Δt) < (S + dSdt * Δt)
-        #do we need to do something about setting q_l = 1 here?
         return (S - Z) / Δt + dSdt
     else
         return dZdt

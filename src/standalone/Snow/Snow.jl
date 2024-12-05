@@ -53,7 +53,7 @@ abstract type AbstractDensityModel{FT <: AbstractFloat} end
 """
     ConstantDensityModel{FT <: AbstractFloat} <: AbstractDensityModel{FT}
 Establishes the density parameterization where snow density
-is always treated as a constant (type FT).
+is always treated as a constant (type FT), with the provided value in units of kg/m³.
 """
 struct ConstantDensityModel{FT} <: AbstractDensityModel{FT}
     ρ_snow::FT
@@ -65,14 +65,18 @@ Establishes the density parameterization where snow density
 compacts according to the seminal works of Anderson in the 1970s (and specifically the
 numerical implementation documented in the Snow17 model).
 This uses the default constants defined in the Snow17 documentation, but allows for redefinition of the model constants.
-These include:
-- c1: fractional rate of density increase from compaction at 0ᵒC (0.026 cm⁻¹ hr⁻¹; cm of water-equivalent load)
+For consistent translation from Snow17 runs and literature, constants are preserved in their original units (the associated `Anderson1976` functions
+handle the subsequent unit converstions). As Snow17 evolves unitless relative densities ρ = ρ_snow/ρ_water, some of these constants or rates
+are also unitless.
+The necessary constants include (preserving constants in their original units)
+- c1: rate of (unitless) density increases from overhead load at 0ᵒC (0.026 hr⁻¹ cm⁻¹; cm of water-equivalent load)
 - c2: compression constant estimated by Kojima in 1967 (21 cm³/g)
-- c3: fractional settling rate (destructive metamorphism) at 0ᵒC for densities less than the critical density ρ_d (0.005 hr⁻¹)
-- c4: constant for adjusting fractional settling due to temperature (0.1 ᵒC⁻¹)
-- c5: scaling of the settling rate when no water is present in the snowpack (sources vary on whether this factor should be 0 or 1, default is set to 0)
-- cx: destructive metamorphism decay factor for densities greater than the critical density ρ_d (default value is 23)
-- ρ_d: the critical density (unitless as a fraction of the density of liquid water, 0.15)
+- c3: the "fractional settling" rate (the change in unitless density, per hour, representing destructive metamorphism)
+      at 0ᵒC for densities less than the critical density `ρ_d` (default value is 0.005 hr⁻¹)
+- c4: the coefficient of temperature-dependent adjustments to the (unitless) fractional settling (0.1 ᵒC⁻¹)
+- c5: the multiplicative scaling of the settling rate when no water is present in the snowpack (sources vary on whether this factor should be 0 or 1, default is set to 0)
+- cx: the coefficient of unitless-density-dependent adjustments to the (unitless) fractional settling (default value is 23)
+- ρ_d: the critical (unitless) density `ρ_d` (default is 0.15)
 
 """
 Base.@kwdef struct Anderson1976{FT} <: AbstractDensityModel{FT}
@@ -215,8 +219,8 @@ as well as the snow depth Z [m] for some types of density models.
 """
 prognostic_vars(m::SnowModel) =
     (:S, :U, density_prog_vars(m.parameters.density)...)
-density_prog_vars(m::AbstractDensityModel) = ()
-density_prog_vars(m::Anderson1976) = (:Z,)
+density_prog_vars(::AbstractDensityModel) = ()
+density_prog_vars(::Anderson1976) = (:Z,)
 
 """
     prognostic_types(::SnowModel{FT})
@@ -227,8 +231,8 @@ are scalars.
 """
 prognostic_types(m::SnowModel{FT}) where {FT} =
     (FT, FT, density_prog_types(m.parameters.density)...)
-density_prog_types(m::AbstractDensityModel{FT}) where {FT} = ()
-density_prog_types(m::Anderson1976{FT}) where {FT} = (FT,)
+density_prog_types(::AbstractDensityModel{FT}) where {FT} = ()
+density_prog_types(::Anderson1976{FT}) where {FT} = (FT,)
 
 """
     prognostic_domain_names(::SnowModel)
@@ -240,8 +244,8 @@ of depth. Therefore their domain name is ":surface".
 """
 prognostic_domain_names(m::SnowModel) =
     (:surface, :surface, density_prog_names(m.parameters.density)...)
-density_prog_names(m::AbstractDensityModel) = ()
-density_prog_names(m::Anderson1976) = (:surface,)
+density_prog_names(::AbstractDensityModel) = ()
+density_prog_names(::Anderson1976) = (:surface,)
 
 """
     auxiliary_vars(::SnowModel)
@@ -259,7 +263,7 @@ such that SWE cannot become negative and U cannot become unphysical. The
 clipped values are what are actually applied as boundary fluxes, and are stored in
 `applied_` fluxes.
 """
-auxiliary_vars(m::SnowModel) = (
+auxiliary_vars(::SnowModel) = (
     :q_l,
     :κ,
     :T,
@@ -276,7 +280,7 @@ auxiliary_vars(m::SnowModel) = (
     :snow_cover_fraction,
 )
 
-auxiliary_types(m::SnowModel{FT}) where {FT} = (
+auxiliary_types(::SnowModel{FT}) where {FT} = (
     FT,
     FT,
     FT,
@@ -293,7 +297,7 @@ auxiliary_types(m::SnowModel{FT}) where {FT} = (
     FT,
 )
 
-auxiliary_domain_names(m::SnowModel) = (
+auxiliary_domain_names(::SnowModel) = (
     :surface,
     :surface,
     :surface,
