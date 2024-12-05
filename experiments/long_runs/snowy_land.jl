@@ -1,7 +1,7 @@
 # # Global run of land model
 
 # The code sets up and runs ClimaLand v1, which
-# includes soil, canopy, and snow, for 365 days on a spherical domain,
+# includes soil, canopy, and snow, for 730 days on a spherical domain,
 # using ERA5 data as forcing. In this simulation, we have
 # turned lateral flow off because horizontal boundary conditions and the
 # land/sea mask are not yet supported by ClimaCore.
@@ -9,7 +9,7 @@
 # Simulation Setup
 # Number of spatial elements: 101 in horizontal, 15 in vertical
 # Soil depth: 50 m
-# Simulation duration: 365 d
+# Simulation duration: 730 d
 # Timestep: 450 s
 # Timestepper: ARS111
 # Fixed number of iterations: 3
@@ -389,7 +389,7 @@ end
 function setup_and_solve_problem(; greet = false)
 
     t0 = 0.0
-    tf = 60 * 60.0 * 24 * 365 * 1
+    tf = 60 * 60.0 * 24 * 365 * 2
     Δt = 450.0
     nelements = (101, 15)
     if greet
