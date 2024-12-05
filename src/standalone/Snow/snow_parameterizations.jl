@@ -42,16 +42,17 @@ end
         p,
     ) where {FT}
 
-Returns the surface height of the `Snow` model; this returns the depth
-of the snow and hence implicitly treats the surface (ground) elevation as
-at zero.
+Returns the surface height of the `Snow` model; surface (ground) elevation
+and ignores snow depth (CLM).
 
 Once topography or land ice is incorporated, this will need to change to
-z_sfc + land_ice_depth + snow_depth. Note that land ice can 
+z_sfc + land_ice_depth. Note that land ice can 
 be ~1-3 km thick on Greenland/
 
-In order to compute surface fluxes, this cannot be large than the 
-height of the atmosphere measurement location (z_atmos > z_land always). 
+In order to compute surface fluxes, this cannot be larger than the
+height of the atmosphere measurement location (z_atmos > z_land always).
+
+This assumes that the surface elevation is zero. 
 """
 function ClimaLand.surface_height(model::SnowModel{FT}, Y, p) where {FT}
     return FT(0)
@@ -79,7 +80,7 @@ end
 """
     ClimaLand.surface_temperature(model::SnowModel, Y, p)
 
-a helper function which returns the surface temperature for the snow 
+a helper function which returns the surface temperature for the snow
 model, which is stored in the aux state.
 """
 function ClimaLand.surface_temperature(model::SnowModel, Y, p, t)
@@ -163,14 +164,23 @@ Computes the thermal conductivity, given the density
 of the snow, according to Equation
 5.33 from Bonan's textbook, which in turn is taken from
 Jordan (1991).
+
+We have adjusted the original equation to make the coefficients
+non-dimensional by multiplying by the first by x = ρ_ice/ρ_ice
+and the second by x², with ρ_ice in kg/m³.
+
+When ρ_snow = ρ_ice, we recover κ_snow = κ_ice.
 """
 function snow_thermal_conductivity(
     ρ_snow::FT,
     parameters::SnowParameters{FT},
 ) where {FT}
     _κ_air = FT(LP.K_therm(parameters.earth_param_set))
+    _ρ_ice = FT(LP.ρ_cloud_ice(parameters.earth_param_set))
     κ_ice = parameters.κ_ice
-    return _κ_air + (FT(0.07) * ρ_snow + FT(0.93) * ρ_snow^2) * (κ_ice - _κ_air)
+    return _κ_air +
+           (FT(0.07) * (ρ_snow / _ρ_ice) + FT(0.93) * (ρ_snow / _ρ_ice)^2) *
+           (κ_ice - _κ_air)
 end
 
 """
@@ -330,7 +340,7 @@ end
 """
     energy_from_q_l_and_swe(S::FT, q_l::FT, parameters) where {FT}
 
-A helper function for compute the snow energy per unit area, given snow 
+A helper function for compute the snow energy per unit area, given snow
 water equivalent S, liquid fraction q_l,  and snow model parameters.
 
 Note that liquid water can only exist at the freezing point in this model,
@@ -352,7 +362,7 @@ end
 """
     energy_from_T_and_swe(S::FT, T::FT, parameters) where {FT}
 
-A helper function for compute the snow energy per unit area, given snow 
+A helper function for compute the snow energy per unit area, given snow
 water equivalent S, bulk temperature T, and snow model parameters.
 
 If T = T_freeze, we return the energy as if q_l = 0.
