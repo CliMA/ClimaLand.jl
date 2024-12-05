@@ -216,7 +216,7 @@ jac_kwargs = (; jac_prototype = ImplicitEquationJacobian(Y), Wfact = jacobian!);
 
 dt = Float64(100)
 
-timestepper = CTS.ARS111();
+timestepper = CTS.ARS222();
 ode_algo = CTS.IMEXAlgorithm(
     timestepper,
     CTS.NewtonsMethod(

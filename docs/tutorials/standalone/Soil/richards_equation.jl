@@ -172,10 +172,10 @@ set_initial_cache!(p, Y, t0);
 dt = Float64(1e3);
 
 # Now, we choose the timestepping algorithm we want to use.
-# We'll use the ARS111 algorithm with 1 Newton iteration per timestep;
+# We'll use the ARS222 algorithm with 1 Newton iteration per timestep;
 # you can also specify a convergence criterion and a maximum number
 # of Newton iterations.
-stepper = CTS.ARS111();
+stepper = CTS.ARS222();
 ode_algo = CTS.IMEXAlgorithm(
     stepper,
     CTS.NewtonsMethod(

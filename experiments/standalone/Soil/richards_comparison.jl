@@ -78,7 +78,7 @@ outdir = generate_output_path(
         jacobian! = ClimaLand.make_jacobian(soil)
         set_initial_cache!(p, Y, t0)
 
-        stepper = CTS.ARS111()
+        stepper = CTS.ARS222()
         norm_condition = CTS.MaximumError(FT(1e-8))
         conv_checker = CTS.ConvergenceChecker(; norm_condition = norm_condition)
         ode_algo = CTS.IMEXAlgorithm(
@@ -174,7 +174,7 @@ end
         jacobian! = ClimaLand.make_jacobian(soil)
         set_initial_cache!(p, Y, t0)
 
-        stepper = CTS.ARS111()
+        stepper = CTS.ARS222()
         norm_condition = CTS.MaximumError(FT(1e-8))
         conv_checker = CTS.ConvergenceChecker(; norm_condition = norm_condition)
         ode_algo = CTS.IMEXAlgorithm(

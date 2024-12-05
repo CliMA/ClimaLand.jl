@@ -184,7 +184,7 @@ imp_tendency! = make_imp_tendency(soil);
 jacobian! = ClimaLand.make_jacobian(soil);
 jac_kwargs = (; jac_prototype = ImplicitEquationJacobian(Y), Wfact = jacobian!);
 
-timestepper = CTS.ARS111();
+timestepper = CTS.ARS222();
 ode_algo = CTS.IMEXAlgorithm(
     timestepper,
     CTS.NewtonsMethod(
