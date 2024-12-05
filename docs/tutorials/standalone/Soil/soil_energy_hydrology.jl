@@ -252,7 +252,7 @@ set_initial_cache!(p, Y, t0);
 
 # Choose a timestepper and set up the ODE problem:
 dt = Float64(1000.0);
-timestepper = CTS.ARS111();
+timestepper = CTS.ARS343();
 ode_algo = CTS.IMEXAlgorithm(
     timestepper,
     CTS.NewtonsMethod(

@@ -108,7 +108,7 @@ set_initial_cache! = make_set_initial_cache(soil)
 set_initial_cache!(p, Y, t0);
 
 # Timestepping:
-stepper = CTS.ARS111()
+stepper = CTS.ARS343()
 @assert FT in (Float32, Float64)
 err = (FT == Float64) ? 1e-8 : 1e-4
 convergence_cond = CTS.MaximumError(err)

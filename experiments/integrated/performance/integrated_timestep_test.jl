@@ -30,7 +30,7 @@
 # Soil depth: 5 m
 # Simulation duration: 12.5 hours
 # Timestep: variable, ranging from 0.6s to 3600s
-# Timestepper: ARS111
+# Timestepper: ARS343
 # Fixed number of iterations: 6
 # Jacobian update: Every Newton iteration
 # Atmospheric and radiation driver updates: Every 3 hours
@@ -372,7 +372,7 @@ N_hours = 8
 tf = Float64(t0 + N_hours * 3600.0)
 sim_time = round((tf - t0) / 3600, digits = 2) # simulation length in hours
 
-timestepper = CTS.ARS111()
+timestepper = CTS.ARS343()
 ode_algo = CTS.IMEXAlgorithm(
     timestepper,
     CTS.NewtonsMethod(
