@@ -4,7 +4,7 @@ export make_timestepper
     make_timestepper(site_setup_out;
         N_spinup_days = 30,
         N_days_sim = 30,
-        timestepper = CTS.ARS111(),
+        timestepper = CTS.ARS343(),
         ode_algo = CTS.IMEXAlgorithm(
             timestepper,
             CTS.NewtonsMethod(
@@ -15,15 +15,15 @@ export make_timestepper
     )
 
 Define the setup for the simulation timestepper.
-The default timestepper (ARS111) is an IMEX ARK algorithm with
-1 implicit stage, 1 explicit stages, and 1st order accuracy.
+The default timestepper (ARS343) is an IMEX ARK algorithm with
+3 implicit stages, 4 explicit stages, and 3rd order accuracy.
 Other IMEX timesteppers from ClimaTimeSteppers.jl can be used.
 """
 function make_timestepper(
     site_setup_out;
     N_spinup_days = 30,
     N_days_sim = 30,
-    timestepper = CTS.ARS111(),
+    timestepper = CTS.ARS343(),
     ode_algo = CTS.IMEXAlgorithm(
         timestepper,
         CTS.NewtonsMethod(

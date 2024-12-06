@@ -11,7 +11,7 @@
 # Soil depth: 50 m
 # Simulation duration: 6 hours
 # Timestep: 450 s
-# Timestepper: ARS111
+# Timestepper: ARS343
 # Fixed number of iterations: 3
 # Jacobian update: every Newton iteration
 # Atmos forcing update: every 3 hours
@@ -374,7 +374,7 @@ function setup_simulation(; greet = false)
     prob, cb = setup_prob(t0, tf, Δt; nelements)
 
     # Define timestepper and ODE algorithm
-    stepper = CTS.ARS111()
+    stepper = CTS.ARS343()
     ode_algo = CTS.IMEXAlgorithm(
         stepper,
         CTS.NewtonsMethod(

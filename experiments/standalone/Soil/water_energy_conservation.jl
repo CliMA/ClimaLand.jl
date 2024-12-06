@@ -103,7 +103,7 @@ function init_soil!(Y, z, Trange, params)
 end
 set_initial_cache! = make_set_initial_cache(soil);
 
-stepper = CTS.ARS111()
+stepper = CTS.ARS343()
 err = (FT == Float64) ? 1e-8 : 1e-4
 convergence_cond = CTS.MaximumError(err)
 conv_checker = CTS.ConvergenceChecker(norm_condition = convergence_cond)

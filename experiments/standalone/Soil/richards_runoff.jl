@@ -133,7 +133,7 @@ imp_tendency! = ClimaLand.make_imp_tendency(model);
 jacobian! = ClimaLand.make_jacobian(model);
 
 set_initial_cache!(p, Y, t0)
-stepper = CTS.ARS111()
+stepper = CTS.ARS343()
 ode_algo = CTS.IMEXAlgorithm(
     stepper,
     CTS.NewtonsMethod(

@@ -27,7 +27,7 @@ dt_min = Float64(10)
 t_end = Float64(1e6)
 
 for FT in (Float32, Float64)
-    stepper = CTS.ARS111()
+    stepper = CTS.ARS343()
     # Select conv. condition based on float type due to different precision
     err = (FT == Float64) ? 1e-8 : 1e-4
     convergence_cond = CTS.MaximumError(err)

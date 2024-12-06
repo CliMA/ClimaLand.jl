@@ -29,7 +29,7 @@
 # Space: single point
 # Simulation duration: 20 days + 80 seconds (= 480.02 hours)
 # Timestep: variable, ranging from 0.6s to 3600s
-# Timestepper: ARS111
+# Timestepper: ARS343
 # Fixed number of iterations: 6
 # Jacobian update: Every Newton iteration
 # Atmospheric and radiation driver updates: Every 3 hours
@@ -205,7 +205,7 @@ tf = t0 + N_days * seconds_per_day + 80
 sim_time = round((tf - t0) / 3600, digits = 2) # simulation length in hours
 set_initial_cache! = make_set_initial_cache(canopy)
 
-timestepper = CTS.ARS111();
+timestepper = CTS.ARS343();
 ode_algo = CTS.IMEXAlgorithm(
     timestepper,
     CTS.NewtonsMethod(

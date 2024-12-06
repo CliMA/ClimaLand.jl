@@ -63,8 +63,8 @@ Y.snow.U .=
 set_initial_cache! = ClimaLand.make_set_initial_cache(model)
 set_initial_cache!(p, Y, t0)
 exp_tendency! = ClimaLand.make_exp_tendency(model)
-# We use ARS111 (equivalent to explicit Euler) here for ease of assessing conservation
-timestepper = CTS.ARS111()
+# We use ARS343 (equivalent to explicit Euler) here for ease of assessing conservation
+timestepper = CTS.ARS343()
 ode_algo = CTS.IMEXAlgorithm(
     timestepper,
     CTS.NewtonsMethod(
