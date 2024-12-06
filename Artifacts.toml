@@ -77,3 +77,10 @@ git-tree-sha1 = "49386718eda19d2fa00ae6981d83948c6664057a"
     [[lehmann2008_evaporation.download]]
     sha256 = "e9603add174709a8eb7f70487bdc0f519843c03d83cb40cf07acd428f0d9d881"
     url = "https://caltech.box.com/shared/static/khhop0nvuumrtzdakemaab8hsq8emh8e.gz"
+
+[ilamb_data]
+git-tree-sha1 = "839224a62b59d73073bdb9a5c55d3dc75e30fe33"
+
+    [[ilamb_data.download]]
+    sha256 = "64a9a344ebfbb0113014178a1f93a655c401431565907c07fd33aff8860b62d6"
+    url = "https://caltech.box.com/shared/static/eii2bfwfp47axfeuysgxlgzbczz27u5g.gz"
