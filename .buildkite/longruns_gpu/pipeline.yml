@@ -37,7 +37,7 @@ steps:
           - "snowy_land_longrun_gpu/*pdf"
         agents:
           slurm_gpus: 1
-          slurm_time: 15:00:00
+          slurm_time: 20:00:00
         env:
           CLIMACOMMS_DEVICE: "CUDA"
 
@@ -47,7 +47,7 @@ steps:
         artifact_paths: "land_longrun_gpu/*pdf"
         agents:
           slurm_gpus: 1
-          slurm_time: 15:00:00
+          slurm_time: 18:00:00
         env:
           CLIMACOMMS_DEVICE: "CUDA"
 
@@ -57,7 +57,7 @@ steps:
         artifact_paths: "california_longrun_gpu/*pdf"
         agents:
           slurm_gpus: 1
-          slurm_time: 00:30:00
+          slurm_time: 01:00:00
         env:
           CLIMACOMMS_DEVICE: "CUDA"
 
@@ -77,6 +77,6 @@ steps:
         artifact_paths: "bucket_longrun_gpu/*pdf"
         agents:
           slurm_gpus: 1
-          slurm_time: 00:30:00
+          slurm_time: 01:00:00
         env:
           CLIMACOMMS_DEVICE: "CUDA"

@@ -227,7 +227,7 @@ exp_tendency! = make_exp_tendency(land);
 imp_tendency! = ClimaLand.make_imp_tendency(land);
 jacobian! = ClimaLand.make_jacobian(land);
 set_initial_cache!(p, Y, t0)
-stepper = CTS.ARS343()
+stepper = CTS.ARS222()
 ode_algo = CTS.IMEXAlgorithm(
     stepper,
     CTS.NewtonsMethod(

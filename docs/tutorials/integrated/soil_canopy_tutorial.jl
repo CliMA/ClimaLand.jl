@@ -365,7 +365,7 @@ dt = Float64(30)
 n = 120
 saveat = Array(t0:(n * dt):tf)
 
-timestepper = CTS.ARS343()
+timestepper = CTS.ARS222()
 ode_algo = CTS.IMEXAlgorithm(
     timestepper,
     CTS.NewtonsMethod(
