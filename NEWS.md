@@ -5,6 +5,9 @@ main
 --------
 
 
+v0.15.6
+-------
+
 v0.15.5
 -------
 - Integrated land model with snow, soil, canopy
