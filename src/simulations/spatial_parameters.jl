@@ -325,8 +325,11 @@ function default_spatially_varying_soil_parameters(
     )
     # we require that the sum of these be less than 1 and equal to or bigger than zero.
     # The input should satisfy this almost exactly, but the regridded values may not.
-    function texture_sum_norm(ν_ss_gravel, ν_ss_quartz, ν_ss_om)
-        FT = eltype(ν_ss_om)
+    function texture_sum_norm(
+        ν_ss_gravel::FT,
+        ν_ss_quartz::FT,
+        ν_ss_om::FT,
+    ) where {FT}
         texture_sum = ν_ss_gravel + ν_ss_quartz + ν_ss_om
         texture_norm = texture_sum <= 1 ? FT(1) : texture_sum
     end
