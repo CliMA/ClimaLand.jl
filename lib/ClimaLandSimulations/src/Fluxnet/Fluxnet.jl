@@ -24,7 +24,7 @@ using Unitful, UnitfulMoles
 using ArtifactWrappers
 using DelimitedFiles
 using Thermodynamics
-using Formatting
+using Format
 using DataFrames
 
 # Directory paths

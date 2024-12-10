@@ -1,7 +1,7 @@
 using DelimitedFiles
 using Thermodynamics
 using Dates
-using Formatting
+using Format
 using HTTP
 using JSON
 using Insolation
@@ -44,7 +44,7 @@ labels = (
     :CO2,
 )
 
-# For every data column to be collected, name of the column in the file, 
+# For every data column to be collected, name of the column in the file,
 # transformation function to desired unit, and string of final unit
 collect_args = [
     ("TA_F", (x) -> x .+ 273.15, "K")
@@ -65,8 +65,8 @@ collect_args = [
     ("CO2_F_MDS", (x) -> x .* 1e-6, "mol")
 ]
 
-# Named tuple mapping every label to a DataColumn with the correct transformed 
-# unit and data status. Automatically fills gaps in the data 
+# Named tuple mapping every label to a DataColumn with the correct transformed
+# unit and data status. Automatically fills gaps in the data
 drivers = (;
     zip(
         labels,
@@ -118,9 +118,9 @@ Estimate the fraction of precipitation that is in snow form,
 given the air temperature at the surface in K and the relative humidity
 (between 0 and 1).
 
-See Jennings, K.S., Winchell, T.S., Livneh, B. et al. 
-Spatial variation of the rain–snow temperature threshold across the 
-Northern Hemisphere. Nat Commun 9, 1148 (2018). 
+See Jennings, K.S., Winchell, T.S., Livneh, B. et al.
+Spatial variation of the rain–snow temperature threshold across the
+Northern Hemisphere. Nat Commun 9, 1148 (2018).
 https://doi.org/10.1038/s41467-018-03629-7
 """
 function snow_precip_fraction(air_temp, hum)
