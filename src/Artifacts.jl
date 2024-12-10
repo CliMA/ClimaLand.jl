@@ -336,4 +336,17 @@ function bareground_albedo_dataset_path(; context = nothing)
     )
 end
 
+"""
+    ilamb_dataset_path(; context = nothing)
+
+Triggers the download of the ILAMB dataset, if not already downloaded, using
+Julia Artifacts, and returns the path to this file.
+
+There are only three datasets available which are "rlus_CERESed4.2_rlus.nc",
+"gpp_FLUXCOM_gpp.nc", and "evspsbl_MODIS_et_0.5x0.5.nc".
+"""
+function ilamb_dataset_path(; context = nothing)
+    return joinpath(@clima_artifact("ilamb_data"), context)
+end
+
 end
