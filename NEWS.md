@@ -7,11 +7,34 @@ main
 
 v0.15.6
 -------
+- Add progress log for snow land longrun
+  PR[#943](https://github.com/CliMA/ClimaLand.jl/pull/943)
+- Add tutorial to check the analytic solution of phase change
+  in soil
+  PR[#940](https://github.com/CliMA/ClimaLand.jl/pull/940)
+- Update soil water bc and snow conductivity to match paper.
+  Infiltration/runoff are now calculated from precip, snow melt,
+  and evaporation, and infiltration is the boundary condition.
+  PR[#931](https://github.com/CliMA/ClimaLand.jl/pull/931)
+- Don't include snow depth in surface height. This fixes a bug
+  that was causing NaNs when snow depth was >10m.
+  PR[#935](https://github.com/CliMA/ClimaLand.jl/pull/935)
+- Add snowy land benchmark
+  PR[#932](https://github.com/CliMA/ClimaLand.jl/pull/932)
+- Use ClimaArtifacts Lehmann 2008 dataset for evaporation experiment
+  PR[#929](https://github.com/CliMA/ClimaLand.jl/pull/929)
+- Use 2008 ERA forcing instead of 2021 for longruns, benchmarks,
+  and other forced runs
+  PR[#920](https://github.com/CliMA/ClimaLand.jl/pull/920)
+- Update deprecated function calls to reduce test warnings
+  PR[#925](https://github.com/CliMA/ClimaLand.jl/pull/925)
+- Use the TOPMODEL artifact from ClimaArtifacts
+  PR[#928](https://github.com/CliMA/ClimaLand.jl/pull/928)
 
 v0.15.5
 -------
 - Integrated land model with snow, soil, canopy
-  PR[#863](https://github.com/CliMA/ClimaLand.jl/pull/834)
+  PR[#834](https://github.com/CliMA/ClimaLand.jl/pull/834)
 
 v0.15.4
 -------
