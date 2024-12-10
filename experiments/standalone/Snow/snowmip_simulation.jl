@@ -21,7 +21,6 @@ using Insolation
 using DelimitedFiles
 
 using CSV, HTTP, Flux, cuDNN, BSON, StatsBase
-ModelTools = Base.get_extension(ClimaLand, :NeuralSnowExt).ModelTools;
 NeuralSnow = Base.get_extension(ClimaLand, :NeuralSnowExt).NeuralSnow;
 
 # Site-specific quantities

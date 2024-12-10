@@ -48,13 +48,13 @@ Returns the surface height of the `Snow` model; surface (ground) elevation
 and ignores snow depth (CLM).
 
 Once topography or land ice is incorporated, this will need to change to
-z_sfc + land_ice_depth. Note that land ice can 
+z_sfc + land_ice_depth. Note that land ice can
 be ~1-3 km thick on Greenland/
 
 In order to compute surface fluxes, this cannot be larger than the
 height of the atmosphere measurement location (z_atmos > z_land always).
 
-This assumes that the surface elevation is zero. 
+This assumes that the surface elevation is zero.
 """
 function ClimaLand.surface_height(model::SnowModel{FT}, Y, p) where {FT}
     return FT(0)

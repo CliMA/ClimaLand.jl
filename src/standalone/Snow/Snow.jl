@@ -280,6 +280,7 @@ auxiliary_domain_names(::SnowModel) = (
     :surface,
 )
 
+
 ClimaLand.name(::SnowModel) = :snow
 
 function ClimaLand.make_update_aux(model::SnowModel{FT}) where {FT}

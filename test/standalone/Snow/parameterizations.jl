@@ -83,7 +83,7 @@ for FT in (Float32, Float64)
         ρ_calc = snow_bulk_density.(SWE, z, parameters)
         @test prod(ρ_calc[1:(end - 1)] .≈ ρ_snow)
         @test ρ_calc[end] == _ρ_l
-        @test snow_bulk_density(eps(FT(0)), 2 * eps(FT(0))) == _ρ_l
+        @test snow_bulk_density(eps(FT(0)), 2 * eps(FT(0)), parameters) == _ρ_l
 
 
         U = cat(FT.(Array(LinRange(-1e8, 1e7, 100))), FT(0), dims = 1)
