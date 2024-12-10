@@ -211,7 +211,8 @@ function default_spatially_varying_soil_parameters(
         regridder_kwargs = (; extrapolation_bc,),
         file_reader_kwargs = (; preprocess_func = (data) -> data > 0,),
     )
-    oceans_to_value(field, mask, value) =
+    # If the mask =  0, set to value
+    masked_to_value(field, mask, value) =
         mask == 1.0 ? field : eltype(field)(value)
 
     vg_α = SpaceVaryingInput(
@@ -236,11 +237,11 @@ function default_spatially_varying_soil_parameters(
     )
     x = parent(vg_α)
     μ = mean(log10.(x[x .> 0]))
-    vg_α .= oceans_to_value.(vg_α, soil_params_mask, 10.0^μ)
+    vg_α .= masked_to_value.(vg_α, soil_params_mask, 10.0^μ)
 
     x = parent(vg_n)
     μ = mean(x[x .> 0])
-    vg_n .= oceans_to_value.(vg_n, soil_params_mask, μ)
+    vg_n .= masked_to_value.(vg_n, soil_params_mask, μ)
 
     vg_fields_to_hcm_field(α::FT, n::FT) where {FT} =
         ClimaLand.Soil.vanGenuchten{FT}(; @NamedTuple{α::FT, n::FT}((α, n))...)
@@ -280,39 +281,55 @@ function default_spatially_varying_soil_parameters(
 
     x = parent(K_sat)
     μ = mean(log10.(x[x .> 0]))
-    K_sat .= oceans_to_value.(K_sat, soil_params_mask, 10.0^μ)
+    K_sat .= masked_to_value.(K_sat, soil_params_mask, 10.0^μ)
 
-    ν .= oceans_to_value.(ν, soil_params_mask, 1)
+    ν .= masked_to_value.(ν, soil_params_mask, 1)
 
-    θ_r .= oceans_to_value.(θ_r, soil_params_mask, 0)
+    θ_r .= masked_to_value.(θ_r, soil_params_mask, 0)
 
 
     S_s =
-        oceans_to_value.(
+        masked_to_value.(
             ClimaCore.Fields.zeros(subsurface_space) .+ FT(1e-3),
             soil_params_mask,
             1,
         )
-    ν_ss_om =
-        oceans_to_value.(
-            ClimaCore.Fields.zeros(subsurface_space) .+ FT(0.1),
-            soil_params_mask,
-            0,
+
+    soilgrids_artifact_path =
+        ClimaLand.Artifacts.soil_grids_params_artifact_path(;
+            lowres = true,
+            context,
         )
-    ν_ss_quartz =
-        oceans_to_value.(
-            ClimaCore.Fields.zeros(subsurface_space) .+ FT(0.1),
-            soil_params_mask,
-            0,
-        )
-    ν_ss_gravel =
-        oceans_to_value.(
-            ClimaCore.Fields.zeros(subsurface_space) .+ FT(0.1),
-            soil_params_mask,
-            0,
-        )
-    PAR_albedo = ClimaCore.Fields.zeros(surface_space) .+ FT(0.2)
-    NIR_albedo = ClimaCore.Fields.zeros(surface_space) .+ FT(0.2)
+    ν_ss_om = SpaceVaryingInput(
+        soilgrids_artifact_path,
+        "nu_ss_om",
+        subsurface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc,),
+    )
+
+    ν_ss_quartz = SpaceVaryingInput(
+        soilgrids_artifact_path,
+        "nu_ss_sand",
+        subsurface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc,),
+    )
+
+    ν_ss_gravel = SpaceVaryingInput(
+        soilgrids_artifact_path,
+        "nu_ss_cf",
+        subsurface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc,),
+    )
+    # we require that the sum of these be less than 1 and equal to or bigger than zero.
+    # The input should satisfy this almost exactly, but the regridded values may not.
+    texture_norm = @. min(ν_ss_gravel + ν_ss_quartz + ν_ss_om, 1)
+    @. ν_ss_gravel = ν_ss_gravel / max(texture_norm, eps(FT))
+    @. ν_ss_om = ν_ss_om / max(texture_norm, eps(FT))
+    @. ν_ss_quartz = ν_ss_quartz / max(texture_norm, eps(FT))
+
 
     soil_params_mask_sfc =
         ClimaLand.Domains.top_center_to_surface(soil_params_mask)
@@ -328,8 +345,8 @@ function default_spatially_varying_soil_parameters(
         regridder_type,
     )
     # Unsure how to handle two masks
-    f_max = oceans_to_value.(f_max, mask, FT(0.0))
-    f_max = oceans_to_value.(f_max, soil_params_mask_sfc, FT(0.0))
+    f_max = masked_to_value.(f_max, mask, FT(0.0))
+    f_max = masked_to_value.(f_max, soil_params_mask_sfc, FT(0.0))
     PAR_albedo_dry, NIR_albedo_dry, PAR_albedo_wet, NIR_albedo_wet = map(
         s -> SpaceVaryingInput(
             joinpath(

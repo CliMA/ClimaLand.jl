@@ -60,6 +60,26 @@ function soil_params_artifact_folder_path(; context = nothing)
 end
 
 """
+    soil_grids_params_artifact_path(; lowres = true, context)
+
+Return the path to the file that contains the soil texture parameters
+needed for the Balland and Arp (2005) thermal conductivity model.
+
+Returns a ~1 degree version by default (lowres = true).
+"""
+function soil_grids_params_artifact_path(; context = nothing, lowres = true)
+    if lowres
+        dir = @clima_artifact("soilgrids_lowres", context)
+        file = "soil_solid_vol_fractions_soilgrids_lowres.nc"
+        return joinpath(dir, file)
+    else
+        dir = @clima_artifact("soilgrids", context)
+        file = "soil_solid_vol_fractions_soilgrids.nc"
+        return joinpath(dir, file)
+    end
+end
+
+"""
     experiment_fluxnet_data_path(
         site_ID;
         context = nothing,
