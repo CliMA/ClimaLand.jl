@@ -1,6 +1,6 @@
 agents:
   queue: new-central
-  slurm_mem: 8G
+  slurm_mem: 12G
   modules: climacommon/2024_10_09
 
 env:
@@ -26,7 +26,7 @@ steps:
       - "julia --project=.buildkite -e 'using Pkg; Pkg.status()'"
 
       - echo "--- Instantiate test"
-      - "julia --project=test -e 'using Pkg; Pkg.develop(;path=\".\"); Pkg.instantiate(;verbose=true)'"
+      - "julia --project=test -e 'using Pkg; Pkg.develop(;path=\".\"); Pkg.add(\"MPI\"); Pkg.add(\"CUDA\"); Pkg.instantiate(;verbose=true)'"
       - "julia --project=test -e 'using Pkg; Pkg.status()'"
 
       - echo "--- Instantiate lib/ClimaLandSimulations"
@@ -68,15 +68,6 @@ steps:
       - label: "Richards comparison to Bonan"
         command: "julia --color=yes --project=.buildkite experiments/standalone/Soil/richards_comparison.jl"
         artifact_paths: "experiments/standalone/Soil/cpu/output_active/comparison*png"
-
-      - label: "Richards comparison to Bonan: GPU"
-        command: "julia --color=yes --project=.buildkite experiments/standalone/Soil/richards_comparison.jl"
-        artifact_paths: "experiments/standalone/Soil/gpu/output_active/comparison*png"
-        agents:
-          slurm_ntasks: 1
-          slurm_gpus: 1
-        env:
-          CLIMACOMMS_DEVICE: "CUDA"
 
       - label: "vaira_test"
         command: "julia --color=yes --project=.buildkite experiments/integrated/fluxnet/run_fluxnet.jl US-Var"
@@ -144,6 +135,15 @@ steps:
         env:
           CLIMACOMMS_DEVICE: "CUDA"
 
+      - label: "Richards comparison to Bonan: GPU"
+        command: "julia --color=yes --project=.buildkite experiments/standalone/Soil/richards_comparison.jl"
+        artifact_paths: "experiments/standalone/Soil/gpu/output_active/comparison*png"
+        agents:
+          slurm_ntasks: 1
+          slurm_gpus: 1
+        env:
+          CLIMACOMMS_DEVICE: "CUDA"
+
   - group: "ClimaLandSimulations"
     steps:
       - label: "Ozark figures Makie"
@@ -188,6 +188,8 @@ steps:
         agents:
           slurm_ntasks: 1
           slurm_gpus: 1
+        env:
+          CLIMACOMMS_DEVICE: "CUDA"
 
       - label: "Global Bucket on GPU (functional albedo)"
         key: "global_bucket_function_gpu"
