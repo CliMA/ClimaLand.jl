@@ -1,7 +1,7 @@
 import SciMLBase
 import ClimaTimeSteppers as CTS
 using ClimaCore
-using Plots
+using CairoMakie
 using Statistics
 using Dates
 
@@ -178,15 +178,16 @@ for float_type in (Float32, Float64)
         canopy_mass_change_actual = lhs_canopy
         canopy_mass_change_exp = cumsum(rhs_canopy) .* dt
 
-        plt2 = Plots.plot(
-            size = (1500, 400),
+        fig = Figure(size = (1500, 400))
+        ax = Axis(
+            fig[1, 1],
+            xlabel = "Days",
             ylabel = "Fractional Error",
-            yaxis = :log,
-            margin = 10Plots.mm,
-            xlabel = "Day",
+            yscale = log10,
         )
-        Plots.plot!(
-            plt2,
+
+        lines!(
+            ax,
             daily,
             eps(FT) .+
             abs.(
@@ -195,8 +196,8 @@ for float_type in (Float32, Float64)
             ),
             label = "Soil Water Balance",
         )
-        Plots.plot!(
-            plt2,
+        lines!(
+            ax,
             daily,
             eps(FT) .+
             abs.(
@@ -205,7 +206,8 @@ for float_type in (Float32, Float64)
             ),
             label = "Canopy Water Balance",
         )
-        Plots.savefig(joinpath(savedir, "water_conservation.png"))
+        axislegend(position = :lb)
+        CairoMakie.save(joinpath(savedir, "water_conservation.png"), fig)
 
 
 
@@ -247,15 +249,16 @@ for float_type in (Float32, Float64)
         soil_energy_change_actual = lhs_soil_energy
         soil_energy_change_exp = cumsum(rhs_soil_energy) .* dt
 
-        plt2 = Plots.plot(
-            size = (1500, 400),
+        fig = Figure(size = (1500, 400))
+        ax = Axis(
+            fig[1, 1],
+            xlabel = "Days",
             ylabel = "Fractional Error",
-            yaxis = :log,
-            margin = 10Plots.mm,
-            xlabel = "Day",
+            yscale = log10,
         )
-        Plots.plot!(
-            plt2,
+
+        lines!(
+            ax,
             daily,
             eps(FT) .+
             abs.(
@@ -265,6 +268,7 @@ for float_type in (Float32, Float64)
             label = "Soil Energy Balance",
         )
 
-        Plots.savefig(joinpath(savedir, "energy_conservation.png"))
+        axislegend(position = :lb)
+        CairoMakie.save(joinpath(savedir, "energy_conservation.png"), fig)
     end
 end

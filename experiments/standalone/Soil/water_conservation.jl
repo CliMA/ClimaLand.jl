@@ -3,7 +3,7 @@ import ClimaComms
 ClimaComms.@import_required_backends
 import SciMLBase
 import ClimaTimeSteppers as CTS
-using Plots
+using CairoMakie
 using Statistics
 using DelimitedFiles
 
@@ -140,37 +140,55 @@ for FT in (Float32, Float64)
         savedir = generate_output_path(
             "experiments/standalone/Soil/water_conservation",
         )
-        plt = Plots.plot(margin = 10Plots.mm)
-        plt_twin = twinx(plt)
-        Plots.plot!(
-            plt,
+        fig = CairoMakie.Figure(
+            title = "RMSE and Water Conservation with Flux BCs",
+        )
+        ax1 = Axis(
+            fig[1, 1],
+            xlabel = "Δt (s)",
+            ylabel = "RMSE ϑ",
+            xscale = log10,
+            yscale = log10,
+            xticks = dts,
+        )
+        ax2 = Axis(
+            fig[1, 1],
+            yaxisposition = :right,
+            ylabel = "|∑ϑ-∑ϑ(0)|/∫ΔFdt",
+            xscale = log10,
+            yscale = log10,
+            xticks = dts,
+        )
+        hidespines!(ax2)
+        hidexdecorations!(ax2)
+
+        l1 = lines!(
+            ax1,
             dts,
             rmses,
             label = "RMSE",
             color = "red",
             linewidth = 3,
-            xlabel = "Δt (s)",
-            ylabel = "RMSE ϑ",
-            legend = :bottomleft,
-            background_color_legend = nothing,
-            xaxis = :log10,
-            yaxis = :log10,
-            xticks = dts,
-            title = "RMSE and Water Conservation with Flux BCs",
         )
-        Plots.plot!(
-            plt_twin,
+
+        l2 = lines!(
+            ax2,
             dts,
             mass_errors,
             label = "Water mass error",
             color = "purple",
             linewidth = 3,
-            ylabel = "|∑ϑ-∑ϑ(0)|/∫ΔFdt",
-            xlabel = "",
-            legend = :bottomright,
-            background_color_legend = nothing,
         )
-        Plots.savefig(joinpath(savedir, "water_conservation_flux.png"))
+
+        axislegend(
+            ax1,
+            [l1, l2],
+            ["RMSE", "Water mass error"],
+            position = :rb,
+            orientation = :vertical,
+        )
+
+        CairoMakie.save(joinpath(savedir, "water_conservation_flux.png"), fig)
 
         # Uncomment to recreate reference solution artifact (using small dt)
         # soln_file = joinpath(savedir, "ref_soln_flux.csv")
@@ -261,38 +279,58 @@ for FT in (Float32, Float64)
 
     # Save Dirichlet BC mass conservation error and RMSE as artifact
     if FT == Float64
-        plt = Plots.plot(margin = 10Plots.mm)
-        plt_twin = twinx(plt)
-        Plots.plot!(
-            plt,
+        fig = CairoMakie.Figure(
+            title = "RMSE and Water Conservation with Dirichlet BCs",
+        )
+        ax1 = Axis(
+            fig[1, 1],
+            xlabel = "Δt (s)",
+            ylabel = "RMSE ϑ",
+            xscale = log10,
+            yscale = log10,
+            xticks = dts,
+        )
+        ax2 = Axis(
+            fig[1, 1],
+            yaxisposition = :right,
+            ylabel = "|∑ϑ-∑ϑ(0)|/∫ΔFdt",
+            xscale = log10,
+            yscale = log10,
+            xticks = dts,
+        )
+        hidespines!(ax2)
+        hidexdecorations!(ax2)
+
+        l1 = lines!(
+            ax1,
             dts,
             rmses_dirichlet,
             label = "RMSE",
             color = "red",
             linewidth = 3,
-            xlabel = "Δt (s)",
-            ylabel = "RMSE ϑ",
-            legend = :bottomleft,
-            background_color_legend = nothing,
-            xaxis = :log10,
-            yaxis = :log10,
-            xticks = dts,
-            title = "RMSE and Water Conservation with Dirichlet BCs",
         )
-        Plots.plot!(
-            plt_twin,
+
+        l2 = lines!(
+            ax2,
             dts,
             mass_errors_dirichlet,
             label = "Water mass error",
             color = "purple",
             linewidth = 3,
-            ylabel = "|∑ϑ-∑ϑ(0)|/∫ΔFdt",
-            xlabel = "",
-            legend = :bottomright,
-            background_color_legend = nothing,
         )
-        Plots.savefig(joinpath(savedir, "water_conservation_dirichlet.png"))
 
+        axislegend(
+            ax1,
+            [l1, l2],
+            ["RMSE", "Water mass error"],
+            position = :rb,
+            orientation = :vertical,
+        )
+
+        CairoMakie.save(
+            joinpath(savedir, "water_conservation_dirichlet.png"),
+            fig,
+        )
         # Uncomment to recreate Dirichlet BC reference solution artifact (using small dt)
         # soln_file_dirichlet = joinpath(savedir, "ref_soln_dirichlet.csv")
         # open((soln_file_dirichlet), "w") do io

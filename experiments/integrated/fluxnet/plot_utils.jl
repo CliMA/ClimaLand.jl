@@ -1,7 +1,7 @@
 """Plotting utilities for the integrated fluxnet site experiments"""
 
 using Interpolations
-using Plots
+using CairoMakie
 using StatsBase
 
 S_PER_DAY = 86400 # Number of seconds in a day
@@ -61,17 +61,16 @@ function plot_daily_avg(
         compute_diurnal_avg(data, [0:data_dt:(num_days * S_PER_DAY);], num_days)
 
     # Plot the data diurnal cycle
-    plt = Plots.plot(size = (800, 400))
-    Plots.plot!(
-        plt,
-        0.5:0.5:24,
-        data_hh_avg,
-        label = label,
+    fig = CairoMakie.Figure(size = (800, 400))
+    ax = CairoMakie.Axis(
+        fig[1, 1],
         xlabel = "Hour of day",
         ylabel = "$var_name $(unit)",
         title = "$var_name",
     )
-    Plots.savefig(joinpath(savedir, "$(var_name)_avg.png"))
+    CairoMakie.lines!(ax, Array(0.5:0.5:24), data_hh_avg[:], label = label)
+    axislegend(ax, position = :lt)
+    CairoMakie.save(joinpath(savedir, "$(var_name)_avg.png"), fig)
 end
 
 """This function will be used to plot the comparison of the diurnal average of a 
@@ -101,17 +100,17 @@ function plot_avg_comp(
     R² = StatsBase.cor(model_hh_avg, data_hh_avg)^2
 
     # Plot the model and data diurnal cycles
-    plt = Plots.plot(size = (800, 400))
-    Plots.plot!(
-        plt,
-        0.5:0.5:24,
-        model_hh_avg,
-        label = "Model",
+    fig = CairoMakie.Figure(size = (800, 400))
+    ax = CairoMakie.Axis(
+        fig[1, 1],
         xlabel = "Hour of day",
         ylabel = "$var_name $(units)",
         title = "$var_name: RMSD = $(round(RMSD, digits = 2)), R² = $(round(R²[1][1], digits = 2))",
-        legend = :topleft,
     )
-    Plots.plot!(plt, 0.5:0.5:24, data_hh_avg, label = "Data")
-    Plots.savefig(joinpath(savedir, "$(var_name)_avg.png"))
+    CairoMakie.lines!(ax, Array(0.5:0.5:24), model_hh_avg[:], label = "Model")
+
+    CairoMakie.lines!(ax, Array(0.5:0.5:24), data_hh_avg[:], label = "Data")
+    axislegend(ax, position = :lt)
+
+    CairoMakie.save(joinpath(savedir, "$(var_name)_avg.png"), fig)
 end
