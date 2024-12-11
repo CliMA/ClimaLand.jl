@@ -288,7 +288,7 @@ T_air = [extract2d(sv.saveval[k].drivers.T) for k in 1:id_last]
 days = sv.t[1:id_last] ./ 24 ./ 3600
 
 
-output_dir = joinpath(pwd(), "soil_region_savingcb_output_12-2")
+output_dir = joinpath(pwd(), "soil_region_savingcb_africa_output_12-11")
 !isdir(output_dir) && mkdir(output_dir)
 
 using DelimitedFiles
