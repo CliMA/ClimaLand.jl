@@ -275,13 +275,13 @@ function ClimaLand.make_compute_imp_tendency(
         # GradC2F returns a Covariant3Vector, so no need to convert.
         @. dY.soil.ρe_int =
             -divf2c_heat(
-                -interpc2f(p.soil.κ) * gradc2f(p.soil.T) -
-                interpc2f(
-                    volumetric_internal_energy_liq(
-                        p.soil.T,
-                        model.parameters.earth_param_set,
-                    ) * p.soil.K,
-                ) * gradc2f(p.soil.ψ + z),
+                -interpc2f(p.soil.κ) * gradc2f(p.soil.T),# -
+                # interpc2f(
+                #    volumetric_internal_energy_liq(
+                #       p.soil.T,
+                #      model.parameters.earth_param_set,
+                # ) * p.soil.K,
+                # ) * gradc2f(p.soil.ψ + z),
             )
 
         # Don't update the prognostic variables we're stepping explicitly
