@@ -78,11 +78,11 @@ time_interpolation_method = LinearInterpolation(PeriodicCalendar())
 regridder_type = :InterpolationsRegridder
 FT = Float64;
 context = ClimaComms.context()
+ClimaComms.init(context)
 earth_param_set = LP.LandParameters(FT);
 # Use separate output directory for CPU and GPU runs to avoid race condition
 device_suffix =
-    typeof(ClimaComms.context().device) <: ClimaComms.CPUSingleThreaded ?
-    "cpu" : "gpu"
+    typeof(context.device) <: ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
 outdir = "experiments/standalone/Bucket/artifacts_era5$(regional_str)_$(device_suffix)"
 output_dir = ClimaUtilities.OutputPathGenerator.generate_output_path(outdir)
 

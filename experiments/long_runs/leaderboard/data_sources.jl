@@ -92,8 +92,8 @@ function get_obs_var_dict()
     obs_var_dict["et"] =
         (start_date) -> begin
             obs_var = ClimaAnalysis.OutputVar(
-                ClimaLand.Artifacts.ilamb_dataset_path(;
-                    context = "evspsbl_MODIS_et_0.5x0.5.nc",
+                ClimaLand.Artifacts.ilamb_dataset_path(
+                    "evspsbl_MODIS_et_0.5x0.5.nc",
                 ),
                 "et",
                 new_start_date = start_date,
@@ -113,9 +113,7 @@ function get_obs_var_dict()
     obs_var_dict["gpp"] =
         (start_date) -> begin
             obs_var = ClimaAnalysis.OutputVar(
-                ClimaLand.Artifacts.ilamb_dataset_path(;
-                    context = "gpp_FLUXCOM_gpp.nc",
-                ),
+                ClimaLand.Artifacts.ilamb_dataset_path("gpp_FLUXCOM_gpp.nc"),
                 "gpp",
                 new_start_date = start_date,
                 shift_by = Dates.firstdayofmonth,
@@ -131,8 +129,8 @@ function get_obs_var_dict()
     obs_var_dict["lwu"] =
         (start_date) -> begin
             obs_var = ClimaAnalysis.OutputVar(
-                ClimaLand.Artifacts.ilamb_dataset_path(;
-                    context = "rlus_CERESed4.2_rlus.nc",
+                ClimaLand.Artifacts.ilamb_dataset_path(
+                    "rlus_CERESed4.2_rlus.nc",
                 ),
                 "rlus",
                 new_start_date = start_date,

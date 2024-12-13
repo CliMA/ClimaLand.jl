@@ -530,7 +530,7 @@ end
         nelements::Tuple{Int, Int},
         npolynomial::Int,
         dz_tuple::Union{Tuple{FT, FT}, Nothing} = nothing,
-        comms_ctx = ClimaComms.SingletonCommsContext(),
+        comms_ctx = ClimaComms.context(),
     ) where {FT}
 Outer constructor for the `SphericalShell` domain, using keyword arguments.
 

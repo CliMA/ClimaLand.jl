@@ -115,9 +115,9 @@ function set_initial_conditions(land, t0)
 end
 
 context = ClimaComms.context()
+ClimaComms.init(context)
 device_suffix =
-    typeof(ClimaComms.context().device) <: ClimaComms.CPUSingleThreaded ?
-    "cpu" : "gpu"
+    typeof(context.device) <: ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
 const FT = Float64
 earth_param_set = LP.LandParameters(FT)
 

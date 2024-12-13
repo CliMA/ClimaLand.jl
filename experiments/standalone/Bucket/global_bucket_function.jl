@@ -63,11 +63,11 @@ end
 anim_plots = false
 FT = Float64;
 context = ClimaComms.context()
+ClimaComms.init(context)
 earth_param_set = LP.LandParameters(FT);
 # Use separate output directory for CPU and GPU runs to avoid race condition
 device_suffix =
-    typeof(ClimaComms.context().device) <: ClimaComms.CPUSingleThreaded ?
-    "cpu" : "gpu"
+    typeof(context.device) <: ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
 outdir = "experiments/standalone/Bucket/artifacts_function_$(device_suffix)"
 
 # Construct simulation domain

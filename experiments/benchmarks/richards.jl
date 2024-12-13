@@ -51,6 +51,7 @@ const FT = Float64;
 
 regridder_type = :InterpolationsRegridder
 context = ClimaComms.context()
+ClimaComms.init(context)
 device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
 outdir = "richards_benchmark_$(device_suffix)"

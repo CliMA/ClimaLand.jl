@@ -28,11 +28,11 @@ import ClimaAnalysis.Visualize as viz
 import ClimaUtilities
 time_interpolation_method = LinearInterpolation(PeriodicCalendar())
 context = ClimaComms.context()
+ClimaComms.init(context)
 outdir = generate_output_path("experiments/integrated/global")
 
 device_suffix =
-    typeof(ClimaComms.context().device) <: ClimaComms.CPUSingleThreaded ?
-    "cpu" : "gpu"
+    typeof(context.device) <: ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
 
 FT = Float64
 earth_param_set = LP.LandParameters(FT)

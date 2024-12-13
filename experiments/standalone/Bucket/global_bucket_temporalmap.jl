@@ -71,11 +71,11 @@ end
 
 FT = Float64;
 context = ClimaComms.context()
+ClimaComms.init(context)
 earth_param_set = LP.LandParameters(FT);
 # Use separate output directory for CPU and GPU runs to avoid race condition
 device_suffix =
-    typeof(ClimaComms.context().device) <: ClimaComms.CPUSingleThreaded ?
-    "cpu" : "gpu"
+    typeof(context.device) <: ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
 outdir = "experiments/standalone/Bucket/artifacts_temporalmap_$(device_suffix)"
 t0 = 0.0;
 # run for 50 days to test monthly file update
