@@ -145,5 +145,27 @@ for FT in (Float32, Float64)
         # Check the main diagonal, entry corresponding to top of column
         @test Array(parent(jac_ρe.entries.:2))[end] .≈
               dtγ * (-κ_ic / dz^2 * dTdρ_ic) - I
+
+        # Off diagonal blocks, ∂T_ρe_int/∂ϑ_l
+        jac_ρeϑ = jacobian.matrix[
+            MatrixFields.@name(soil.ρe_int),
+            MatrixFields.@name(soil.ϑ_l)
+        ]
+
+        ρe_liq_ic = ClimaLand.Soil.volumetric_internal_energy_liq(
+            T,
+            params.earth_param_set,
+        )
+        # Check the main diagonal, entry corresponding to bottom of column
+        @test Array(parent(jac_ρeϑ.entries.:2))[1] .≈
+              dtγ * (-ρe_liq_ic * K_ic / dz^2 * dψdϑ_ic) - I
+        # Check the main diagonal, entries corresponding to interior of domain
+        @test all(
+            Array(parent(jac_ρeϑ.entries.:2))[2:(end - 1)] .≈
+            dtγ * (-2 * ρe_liq_ic * K_ic / dz^2 * dψdϑ_ic) - I,
+        )
+        # Check the main diagonal, entry corresponding to top of column
+        @test Array(parent(jac_ρeϑ.entries.:2))[end] .≈
+              dtγ * (-ρe_liq_ic * K_ic / dz^2 * dψdϑ_ic) - I
     end
 end
