@@ -21,9 +21,9 @@ clay_datapath = joinpath(bonan_data_folder, "bonan_data_clay.txt")
 sand_datapath = joinpath(bonan_data_folder, "bonan_data_sand.txt")
 
 context = ClimaComms.context()
+ClimaComms.init(context)
 device_suffix =
-    typeof(ClimaComms.context().device) <: ClimaComms.CPUSingleThreaded ?
-    "cpu" : "gpu"
+    typeof(context.device) <: ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
 outdir = generate_output_path(
     joinpath("experiments", "standalone", "Soil", device_suffix),
 )

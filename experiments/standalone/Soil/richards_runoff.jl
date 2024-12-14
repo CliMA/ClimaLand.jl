@@ -23,9 +23,9 @@ import ClimaLand.Parameters as LP
 
 regridder_type = :InterpolationsRegridder
 context = ClimaComms.context()
+ClimaComms.init(context)
 device_suffix =
-    typeof(ClimaComms.context().device) <: ClimaComms.CPUSingleThreaded ?
-    "cpu" : "gpu"
+    typeof(context.device) <: ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
 outdir = generate_output_path(
     joinpath("experiments", "standalone", "Soil", "artifacts", device_suffix),
 )

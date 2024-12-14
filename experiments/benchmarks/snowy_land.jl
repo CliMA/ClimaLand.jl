@@ -44,6 +44,7 @@ using Test
 const FT = Float64
 time_interpolation_method = LinearInterpolation(PeriodicCalendar())
 context = ClimaComms.context()
+ClimaComms.init(context)
 device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
 outdir = "snowy_land_benchmark_$(device_suffix)"

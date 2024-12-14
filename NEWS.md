@@ -6,6 +6,9 @@ main
 - Run unit tests on GPU, and update code for GPU compatibility
   (including workaround for ClimaCore type inference failure)
   PR[#739](https://github.com/CliMA/ClimaLand.jl/pull/739)
+- Initialize communications contexts, enabling experiments
+  to run with MPI.
+  PR[#954](https://github.com/CliMA/ClimaLand.jl/pull/954)
 
 v0.15.6
 -------

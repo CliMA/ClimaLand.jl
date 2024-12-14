@@ -33,6 +33,7 @@ climaland_dir = pkgdir(ClimaLand)
 FT = Float32
 param_set = LP.LandParameters(FT)
 context = ClimaComms.context()
+ClimaComms.init(context)
 
 # This reads in the data and sets up the drivers, as well as computes the IC from the data
 include(

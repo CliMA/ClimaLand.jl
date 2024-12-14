@@ -255,7 +255,6 @@ end
             set_initial_cache!(p, Y, FT(0.0))
 
             # Read in data manually
-            comms_ctx = ClimaComms.context(surface_space)
             α_bareground = SpaceVaryingInput(path, varname, surface_space)
             @test p.bucket.α_sfc == α_bareground
         else
