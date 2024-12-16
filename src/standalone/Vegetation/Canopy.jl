@@ -539,7 +539,7 @@ function ClimaLand.make_update_aux(
                         conductivity_model,
                         ψ.:($$ip1),
                     ),
-                ) * areaip1
+                ) * PlantHydraulics.harmonic_mean(areaip1, areai)
         end
         # We update the fa[n_stem+n_leaf] element once we have computed transpiration, below
         # update photosynthesis and conductance terms

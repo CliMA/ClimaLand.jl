@@ -224,7 +224,7 @@ function define_diagnostics!(land_model)
     ### Canopy - Hydraulics
     # Leaf water potential
 
-    #=
+
     add_diagnostic_variable!(
         short_name = "lwp",
         long_name = "Leaf Water Potential",
@@ -234,18 +234,18 @@ function define_diagnostics!(land_model)
         compute! = (out, Y, p, t) ->
             compute_leaf_water_potential!(out, Y, p, t, land_model),
     )
-
-    # Flux per ground area
-    add_diagnostic_variable!(
-        short_name = "fa",
-        long_name = "Flux Per Ground Area",
-        standard_name = "flux_per_ground_area",
-        units = "m s^-1",
-        comments = "Flux of water volume per m^2 of plant per second, multiplied by the area index (plant area/ground area).",
-        compute! = (out, Y, p, t) ->
-            compute_flux_per_ground_area!(out, Y, p, t, land_model),
-    )
-    =#
+    #=
+        # Flux per ground area
+        add_diagnostic_variable!(
+            short_name = "fa",
+            long_name = "Flux Per Ground Area",
+            standard_name = "flux_per_ground_area",
+            units = "m s^-1",
+            comments = "Flux of water volume per m^2 of plant per second, multiplied by the area index (plant area/ground area).",
+            compute! = (out, Y, p, t) ->
+                compute_flux_per_ground_area!(out, Y, p, t, land_model),
+        )
+        =#
 
     # Root flux per ground area
     add_diagnostic_variable!(
