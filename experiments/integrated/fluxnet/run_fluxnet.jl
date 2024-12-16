@@ -30,11 +30,11 @@ include(joinpath(climaland_dir, "experiments/integrated/fluxnet/data_tools.jl"))
 include(joinpath(climaland_dir, "experiments/integrated/fluxnet/plot_utils.jl"))
 
 # Read in the site to be run from the command line
-if length(ARGS) < 1
-    error("Must provide site ID on command line")
-end
+#if length(ARGS) < 1
+#    error("Must provide site ID on command line")
+#end
 
-site_ID = ARGS[1]
+site_ID = "US-MOz"#ARGS[1]
 
 # Read all site-specific domain parameters from the simulation file for the site
 include(

@@ -117,7 +117,7 @@ function default_diagnostics(
             "trans",
             "clhf",
             "cshf",
-            # "lwp", # last(p.canopy.hydraulics.ψ) errors
+            "lwp",
             # "fa", # return a Tuple
             "far",
             "lai",
@@ -264,7 +264,7 @@ function default_diagnostics(
             "trans",
             "clhf",
             "cshf",
-            # "lwp", # last(p.canopy.hydraulics.ψ) errors
+            "lwp",
             # "fa", # return a Tuple
             "far",
             "lai",

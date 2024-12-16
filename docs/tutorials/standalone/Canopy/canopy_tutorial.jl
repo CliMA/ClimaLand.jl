@@ -262,6 +262,10 @@ canopy = ClimaLand.Canopy.CanopyModel{FT}(;
 
 Y, p, coords = ClimaLand.initialize(canopy)
 exp_tendency! = make_exp_tendency(canopy);
+imp_tendency! = make_imp_tendency(canopy)
+jacobian! = make_jacobian(canopy);
+jac_kwargs =
+    (; jac_prototype = ClimaLand.ImplicitEquationJacobian(Y), Wfact = jacobian!);
 
 # Provide initial conditions for the canopy hydraulics model
 
@@ -317,12 +321,21 @@ cb = SciMLBase.CallbackSet(driver_cb, saving_cb);
 
 
 # Select a timestepping algorithm and setup the ODE problem.
-
-timestepper = CTS.RK4();
-ode_algo = CTS.ExplicitAlgorithm(timestepper)
+timestepper = CTS.ARS111();
+ode_algo = CTS.IMEXAlgorithm(
+    timestepper,
+    CTS.NewtonsMethod(
+        max_iters = 6,
+        update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
+    ),
+);
 
 prob = SciMLBase.ODEProblem(
-    CTS.ClimaODEFunction(T_exp! = exp_tendency!, dss! = ClimaLand.dss!),
+    CTS.ClimaODEFunction(
+        T_exp! = exp_tendency!,
+        T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
+        dss! = ClimaLand.dss!,
+    ),
     Y,
     (t0, tf),
     p,
