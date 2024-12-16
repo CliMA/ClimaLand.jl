@@ -96,6 +96,9 @@ steps:
       - label: "Soilbiogeochem"
         command: "julia --color=yes --project=.buildkite experiments/standalone/Biogeochemistry/experiment.jl"
 
+      - label: "Implicit stepper full soil; saturated soil"
+        command: "julia --color=yes --project=.buildkite experiments/standalone/Soil/energy_hydrology_saturated.jl"
+
       - label: "Water conservation"
         command: "julia --color=yes --project=.buildkite experiments/standalone/Soil/water_conservation.jl"
         artifact_paths: "experiments/standalone/Soil/water_conservation/output_active/water_conservation*png"

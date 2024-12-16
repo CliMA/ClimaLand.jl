@@ -482,7 +482,12 @@ short_names = ["gpp", "swc", "et", "ct", "swe", "si"]
 mktempdir(root_path) do tmpdir
     for short_name in short_names
         var = get(simdir; short_name)
-        times = [ClimaAnalysis.times(var)[end]]
+        N = length(ClimaAnalysis.times(var))
+        times = [
+            ClimaAnalysis.times(var)[1],
+            ClimaAnalysis.times(var)[div(N, 2, RoundNearest)],
+            ClimaAnalysis.times(var)[N],
+        ]
         for t in times
             fig = CairoMakie.Figure(size = (600, 400))
             kwargs = ClimaAnalysis.has_altitude(var) ? Dict(:z => 1) : Dict()
@@ -500,13 +505,7 @@ mktempdir(root_path) do tmpdir
     end
     figures = readdir(tmpdir, join = true)
     pdfunite() do unite
-        run(
-            Cmd([
-                unite,
-                figures...,
-                joinpath(root_path, "last_year_figures.pdf"),
-            ]),
-        )
+        run(Cmd([unite, figures..., joinpath(root_path, "figures.pdf")]))
     end
 end
 

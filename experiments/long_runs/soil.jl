@@ -221,7 +221,7 @@ end
 function setup_and_solve_problem(; greet = false)
 
     t0 = 0.0
-    tf = 60 * 60.0 * 24 * 365
+    tf = 60 * 60.0 * 24 * 365 * 2
     Δt = 450.0
     nelements = (101, 15)
     if greet
@@ -254,7 +254,12 @@ short_names = ["swc", "si", "sie"]
 mktempdir(root_path) do tmpdir
     for short_name in short_names
         var = get(simdir; short_name)
-        times = [ClimaAnalysis.times(var)[1], ClimaAnalysis.times(var)[end]]
+        N = length(ClimaAnalysis.times(var))
+        times = [
+            ClimaAnalysis.times(var)[1],
+            ClimaAnalysis.times(var)[div(N, 2, RoundNearest)],
+            ClimaAnalysis.times(var)[N],
+        ]
         for t in times
             var = get(simdir; short_name)
             fig = CairoMakie.Figure(size = (600, 400))
