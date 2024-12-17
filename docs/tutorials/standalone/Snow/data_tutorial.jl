@@ -5,16 +5,16 @@
 # in training artificial intelligence models for seasonal snow forecasting.
 # The code below contains a basic version of the code used to produce
 # `training_data.csv`, which is used in the [base tutorial](../base_tutorial/) for snow forecasting,
-# as well as the paper. However, exploration of the optional arguments
+# as well as the [paper](https://arxiv.org/abs/2412.06819). However, exploration of the optional arguments
 # or requesting of alternative [SNOTEL data codes](https://www.nrcs.usda.gov/wps/portal/wcc/home/dataAccessHelp/webService/webServiceReference#elementCodes) offers
 # additional utility in creating alternative data sets for further investigation.
 
 # We begin by importing all required packages:
 using ClimaLand
-using DataFrames, CSV, HTTP, Dates, Flux, StatsBase, cuDNN
+using DataFrames, CSV, HTTP, Dates, Flux, StatsBase, cuDNN, BSON
 
 # The code lives in an extenson that we have to manually load. The extension can
-# be loaded only if "CSV", "HTTP", "Flux", "StatsBase", "cuDNN" and "ClimaLand"
+# be loaded only if "DataFrames", "CSV", "HTTP", "Flux", "StatsBase", "cuDNN", "BSON", and "ClimaLand"
 # are loaded.
 DataTools = Base.get_extension(ClimaLand, :NeuralSnowExt).DataTools;
 
@@ -88,7 +88,7 @@ scales = Dict{Symbol, Real}(
 # to yield the full dataset (if special cases are handled) found in
 # `training_data.csv` used in the [base tutorial](../base_tutorial/). Stations were
 # selected based upon their availability of the features utilized in
-# creating the model used in the paper:
+# creating the model used in the [paper](https://arxiv.org/abs/2412.06819):
 
 # - `*` Indicates alternative handling of the `rectify_daily_hourly()` function.
 

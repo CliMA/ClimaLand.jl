@@ -88,7 +88,7 @@ soil_model_type = Soil.EnergyHydrology
 snow_parameters = SnowParameters{FT}(
     dt;
     α_snow = α,
-    ρ_snow = ρ,
+    density = Snow.ConstantDensityModel(ρ),
     earth_param_set = earth_param_set,
 );
 snow_args = (; parameters = snow_parameters);
