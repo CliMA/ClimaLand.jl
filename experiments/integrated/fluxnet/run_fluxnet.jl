@@ -4,7 +4,6 @@ import ClimaComms
 ClimaComms.@import_required_backends
 using ClimaCore
 import ClimaParams as CP
-using Plots
 using Statistics
 using Dates
 using Insolation
@@ -30,11 +29,11 @@ include(joinpath(climaland_dir, "experiments/integrated/fluxnet/data_tools.jl"))
 include(joinpath(climaland_dir, "experiments/integrated/fluxnet/plot_utils.jl"))
 
 # Read in the site to be run from the command line
-#if length(ARGS) < 1
-#    error("Must provide site ID on command line")
-#end
+if length(ARGS) < 1
+    error("Must provide site ID on command line")
+end
 
-site_ID = "US-MOz"#ARGS[1]
+site_ID = ARGS[1]
 
 # Read all site-specific domain parameters from the simulation file for the site
 include(
@@ -268,7 +267,7 @@ output_dir = ClimaUtilities.OutputPathGenerator.generate_output_path(outdir)
 
 d_writer = ClimaDiagnostics.Writers.DictWriter()
 
-ref_time = DateTime(2005) # random. not sure what it should be
+ref_time = DateTime(2010)
 
 diags = ClimaLand.default_diagnostics(
     land,
@@ -526,25 +525,18 @@ end
 # Water content in soil and snow
 # Soil water content
 # Current resolution has the first layer at 0.1 cm, the second at 5cm.
-plt1 = Plots.plot(size = (1500, 800))
-Plots.plot!(
-    plt1,
-    model_times ./ 3600 ./ 24,
-    swc,
-    label = "1.25cm",
-    xlim = [
-        minimum(model_times ./ 3600 ./ 24),
-        maximum(model_times ./ 3600 ./ 24),
-    ],
-    ylim = [0.05, 0.55],
-    xlabel = "Days",
-    ylabel = "SWC [m/m]",
-    color = "blue",
-    margin = 10Plots.mm,
+fig = Figure(size = (1500, 800), fontsize = 20)
+ax1 = Axis(fig[3, 1], xlabel = "Days", ylabel = "SWC [m/m]")
+limits!(
+    ax1,
+    minimum(model_times ./ 3600 ./ 24),
+    maximum(model_times ./ 3600 ./ 24),
+    0.05,
+    0.6,
 )
-
-plot!(
-    plt1,
+lines!(ax1, model_times ./ 3600 ./ 24, swc, label = "1.25cm", color = "blue")
+lines!(
+    ax1,
     model_times ./ 3600 ./ 24,
     si,
     color = "cyan",
@@ -552,74 +544,79 @@ plot!(
 )
 
 if drivers.SWC.status != absent
-    Plots.plot!(
-        plt1,
+    lines!(
+        ax1,
         data_times ./ 3600 ./ 24,
         drivers.SWC.values[data_id_post_spinup],
         label = "Data",
     )
 end
-plt2 = Plots.plot(size = (1500, 800))
-Plots.plot!(
-    plt2,
-    model_times ./ 3600 ./ 24,
-    SWE,
-    label = "Model",
-    xlim = [
-        minimum(model_times ./ 3600 ./ 24),
-        maximum(model_times ./ 3600 ./ 24),
-    ],
-    ylim = [0.0, 0.15],
-    xlabel = "Days",
-    ylabel = "SWE [m]",
-    color = "blue",
-    margin = 10Plots.mm,
+ax2 =
+    Axis(fig[2, 1], xlabel = "", ylabel = "SWE [m]", xticklabelsvisible = false)
+limits!(
+    ax2,
+    minimum(model_times ./ 3600 ./ 24),
+    maximum(model_times ./ 3600 ./ 24),
+    0.0,
+    maximum(SWE),
 )
-plt3 = Plots.plot(
+
+lines!(ax2, model_times ./ 3600 ./ 24, SWE, label = "Model", color = "blue")
+ax3 = Axis(
+    fig[1, 1],
+    xlabel = "",
+    ylabel = "Precipitation [mm/day]",
+    xticklabelsvisible = false,
+)
+limits!(
+    ax3,
+    minimum(model_times ./ 3600 ./ 24),
+    maximum(model_times ./ 3600 ./ 24),
+    -500,
+    0.0,
+)
+
+lines!(
+    ax3,
     data_times ./ 3600 ./ 24,
     (drivers.P.values .* (-1e3 * 24 * 3600) .* (1 .- snow_frac))[data_id_post_spinup],
     label = "Rain (data)",
-    ylabel = "Precipitation [mm/day]",
-    xlim = [
-        minimum(model_times ./ 3600 ./ 24),
-        maximum(model_times ./ 3600 ./ 24),
-    ],
-    margin = 10Plots.mm,
-    ylim = [-200, 0],
-    size = (1500, 400),
 )
-Plots.plot!(
-    plt3,
+lines!(
+    ax3,
     data_times ./ 3600 ./ 24,
     (drivers.P.values .* (-1e3 * 24 * 3600) .* snow_frac)[data_id_post_spinup],
     label = "Snow (data)",
-    ylabel = "Precipitation [mm/day]",
 )
-Plots.plot(plt3, plt2, plt1, layout = grid(3, 1, heights = [0.2, 0.4, 0.4]))
-Plots.savefig(joinpath(savedir, "ground_water_content.png"))
+CairoMakie.save(joinpath(savedir, "ground_water_content.png"), fig)
 
-plt1 = Plots.plot(size = (1500, 800))
-Plots.plot!(
-    plt1,
+
+
+fig2 = Figure(size = (1500, 800))
+ax12 = Axis(fig2[1, 1], xlabel = "Days", ylabel = "Temperature (K)")
+limits!(
+    ax12,
+    minimum(model_times ./ 3600 ./ 24),
+    maximum(model_times ./ 3600 ./ 24),
+    265,
+    315,
+)
+
+lines!(
+    ax12,
     model_times ./ 3600 ./ 24,
     soil_T,
     label = "1.25cm",
-    xlim = [
-        minimum(model_times ./ 3600 ./ 24),
-        maximum(model_times ./ 3600 ./ 24),
-    ],
-    xlabel = "Days",
-    ylabel = "Temperature (K)",
     color = "blue",
-    margin = 10Plots.mm,
 )
+
 if drivers.TS.status != absent
-    Plots.plot!(
-        plt1,
+    lines!(
+        ax12,
         data_times ./ 3600 ./ 24,
         drivers.TS.values[data_id_post_spinup],
         label = "Data",
     )
 end
 
-Plots.savefig(joinpath(savedir, "soil_temperature.png"))
+CairoMakie.save(joinpath(savedir, "soil_temperature.png"), fig2)

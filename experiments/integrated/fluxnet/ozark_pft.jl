@@ -9,7 +9,7 @@ import SciMLBase
 import ClimaTimeSteppers as CTS
 using ClimaCore
 import ClimaParams as CP
-using Plots
+using CairoMakie
 using Statistics
 using Dates
 using Insolation
@@ -299,7 +299,7 @@ output_dir = ClimaUtilities.OutputPathGenerator.generate_output_path(outdir)
 
 d_writer = ClimaDiagnostics.Writers.DictWriter()
 
-ref_time = DateTime(2005) # random. not sure what it should be
+ref_time = DateTime(2010)
 
 diags = ClimaLand.default_diagnostics(
     land,
@@ -353,7 +353,6 @@ short_names_1D = [
     "ghf", # G
     "rn", # Rn
 ]
-
 short_names_2D = [
     "swc", # swc_sfc or swc_5 or swc_10
     "tsoil", # soil_T_sfc or soil_T_5 or soil_T_10
@@ -557,25 +556,18 @@ end
 # Water content in soil and snow
 # Soil water content
 # Current resolution has the first layer at 0.1 cm, the second at 5cm.
-plt1 = Plots.plot(size = (1500, 800))
-Plots.plot!(
-    plt1,
-    model_times ./ 3600 ./ 24,
-    swc,
-    label = "1.25cm",
-    xlim = [
-        minimum(model_times ./ 3600 ./ 24),
-        maximum(model_times ./ 3600 ./ 24),
-    ],
-    ylim = [0.05, 0.55],
-    xlabel = "Days",
-    ylabel = "SWC [m/m]",
-    color = "blue",
-    margin = 10Plots.mm,
+fig = Figure(size = (1500, 800), fontsize = 20)
+ax1 = Axis(fig[2, 1], xlabel = "Days", ylabel = "SWC [m/m]")
+limits!(
+    ax1,
+    minimum(model_times ./ 3600 ./ 24),
+    maximum(model_times ./ 3600 ./ 24),
+    0.05,
+    0.6,
 )
-
-plot!(
-    plt1,
+lines!(ax1, model_times ./ 3600 ./ 24, swc, label = "1.25cm", color = "blue")
+lines!(
+    ax1,
     model_times ./ 3600 ./ 24,
     si,
     color = "cyan",
@@ -583,52 +575,69 @@ plot!(
 )
 
 if drivers.SWC.status != absent
-    Plots.plot!(
-        plt1,
+    lines!(
+        ax1,
         data_times ./ 3600 ./ 24,
         drivers.SWC.values[data_id_post_spinup],
         label = "Data",
     )
 end
-plt2 = Plots.plot(
-    data_times ./ 3600 ./ 24,
-    (drivers.P.values .* (-1e3 * 24 * 3600))[data_id_post_spinup],
-    label = "",
+
+ax2 = Axis(
+    fig[1, 1],
+    xlabel = "",
     ylabel = "Precipitation [mm/day]",
-    xlim = [
-        minimum(model_times ./ 3600 ./ 24),
-        maximum(model_times ./ 3600 ./ 24),
-    ],
-    margin = 10Plots.mm,
-    ylim = [-200, 0],
-    size = (1500, 400),
+    xticklabelsvisible = false,
+)
+limits!(
+    ax2,
+    minimum(model_times ./ 3600 ./ 24),
+    maximum(model_times ./ 3600 ./ 24),
+    -500,
+    0.0,
 )
 
-Plots.plot(plt2, plt1, layout = grid(2, 1, heights = [0.3, 0.7]))
-Plots.savefig(joinpath(savedir, "ground_water_content.png"))
+lines!(
+    ax2,
+    data_times ./ 3600 ./ 24,
+    (drivers.P.values .* (-1e3 * 24 * 3600) .* (1 .- snow_frac))[data_id_post_spinup],
+    label = "Rain (data)",
+)
+lines!(
+    ax2,
+    data_times ./ 3600 ./ 24,
+    (drivers.P.values .* (-1e3 * 24 * 3600) .* snow_frac)[data_id_post_spinup],
+    label = "Snow (data)",
+)
+CairoMakie.save(joinpath(savedir, "ground_water_content.png"), fig)
 
-plt1 = Plots.plot(size = (1500, 800))
-Plots.plot!(
-    plt1,
+
+
+fig2 = Figure(size = (1500, 800))
+ax12 = Axis(fig2[1, 1], xlabel = "Days", ylabel = "Temperature (K)")
+limits!(
+    ax12,
+    minimum(model_times ./ 3600 ./ 24),
+    maximum(model_times ./ 3600 ./ 24),
+    265,
+    315,
+)
+
+lines!(
+    ax12,
     model_times ./ 3600 ./ 24,
     soil_T,
     label = "1.25cm",
-    xlim = [
-        minimum(model_times ./ 3600 ./ 24),
-        maximum(model_times ./ 3600 ./ 24),
-    ],
-    xlabel = "Days",
-    ylabel = "Temperature (K)",
     color = "blue",
-    margin = 10Plots.mm,
 )
+
 if drivers.TS.status != absent
-    Plots.plot!(
-        plt1,
+    lines!(
+        ax12,
         data_times ./ 3600 ./ 24,
         drivers.TS.values[data_id_post_spinup],
         label = "Data",
     )
 end
 
-Plots.savefig(joinpath(savedir, "soil_temperature.png"))
+CairoMakie.save(joinpath(savedir, "soil_temperature.png"), fig2)

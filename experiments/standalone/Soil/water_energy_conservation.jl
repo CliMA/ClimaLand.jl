@@ -3,7 +3,7 @@ import ClimaComms
 ClimaComms.@import_required_backends
 import SciMLBase
 import ClimaTimeSteppers as CTS
-using Plots
+using CairoMakie
 using Statistics
 using DelimitedFiles
 import ClimaParams as CP
@@ -218,72 +218,110 @@ for experiment in [no_phase_change, phase_change]
     end
 
     # Save flux BC mass conservation error and RMSE as artifact
-    plt = Plots.plot(margin = 10Plots.mm)
-    plt_twin = twinx(plt)
-    Plots.plot!(
-        plt,
+    fig = CairoMakie.Figure(
+        title = "RMSE and Water Conservation with Zero Flux BC",
+    )
+    ax1 = Axis(
+        fig[1, 1],
+        xlabel = "Δt (s)",
+        ylabel = "RMSE(θ_l)/θ̄_l",
+        xscale = log10,
+        yscale = log10,
+        xticks = dts,
+    )
+    ax2 = Axis(
+        fig[1, 1],
+        yaxisposition = :right,
+        ylabel = "Error",
+        xscale = log10,
+        yscale = log10,
+        xticks = dts,
+    )
+    hidespines!(ax2)
+    hidexdecorations!(ax2)
+
+    l1 = lines!(
+        ax1,
         dts,
         rmses_water,
         label = "Fractional RMSE θ_l",
         color = "red",
         linewidth = 3,
-        xlabel = "Δt (s)",
-        ylabel = "RMSE(θ_l)/θ̄_l",
-        legend = :bottomleft,
-        background_color_legend = nothing,
-        xaxis = :log10,
-        yaxis = :log10,
-        xticks = dts,
-        title = "RMSE and Water Conservation with Zero Flux BC",
     )
-    Plots.plot!(
-        plt_twin,
+
+    l2 = lines!(
+        ax2,
         dts,
         mass_errors,
         label = "Water mass error",
         color = "purple",
         linewidth = 3,
-        ylabel = "Error",
-        xlabel = "",
-        legend = :bottomright,
-        background_color_legend = nothing,
-    )
-    Plots.savefig(
-        joinpath(savedir, "water_conservation_flux_full_soil_$(exp_name).png"),
     )
 
-    plt = Plots.plot(margin = 10Plots.mm)
-    plt_twin = twinx(plt)
-    Plots.plot!(
-        plt,
+    axislegend(
+        ax1,
+        [l1, l2],
+        ["Fractional RMSE θ_l", "Water mass error"],
+        position = :rb,
+        orientation = :vertical,
+    )
+
+    CairoMakie.save(
+        joinpath(savedir, "water_conservation_flux_full_soil_$(exp_name).png"),
+        fig,
+    )
+
+    fig = CairoMakie.Figure(
+        title = "RMSE and Energy Conservation with Zero Flux BC",
+    )
+    ax1 = Axis(
+        fig[1, 1],
+        xlabel = "Δt (s)",
+        ylabel = "RMSE(ρe_int)/ρ̄e_int",
+        xscale = log10,
+        yscale = log10,
+        xticks = dts,
+    )
+    ax2 = Axis(
+        fig[1, 1],
+        yaxisposition = :right,
+        ylabel = "Error",
+        xscale = log10,
+        yscale = log10,
+        xticks = dts,
+    )
+    hidespines!(ax2)
+    hidexdecorations!(ax2)
+
+    l1 = lines!(
+        ax1,
         dts,
         rmses_energy,
         label = "Fractional RMSE ρe_int",
         color = "red",
         linewidth = 3,
-        xlabel = "Δt (s)",
-        ylabel = "RMSE(ρe_int)/ρ̄e_int",
-        legend = :bottomleft,
-        background_color_legend = nothing,
-        xaxis = :log10,
-        yaxis = :log10,
-        xticks = dts,
-        title = "RMSE and Energy Conservation with Zero Flux BC",
     )
-    Plots.plot!(
-        plt_twin,
+
+    l2 = lines!(
+        ax2,
         dts,
         energy_errors,
         label = "Energy error",
         color = "purple",
         linewidth = 3,
-        ylabel = "Error",
-        xlabel = "",
-        legend = :bottomright,
-        background_color_legend = nothing,
     )
-    Plots.savefig(
+
+    axislegend(
+        ax1,
+        [l1, l2],
+        ["Fractional RMSE ρe_int", "Energy error"],
+        position = :rb,
+        orientation = :vertical,
+    )
+
+    CairoMakie.save(
         joinpath(savedir, "energy_conservation_flux_full_soil_$(exp_name).png"),
+        fig,
     )
 
 end

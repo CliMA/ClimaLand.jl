@@ -9,8 +9,8 @@ function update_root_extraction!(p, Y, t, land)
     z = land.soil.domain.fields.z
     (; conductivity_model) = land.canopy.hydraulics.parameters
     area_index = p.canopy.hydraulics.area_index
-    # allocates
-    above_ground_area_index =
+    above_ground_area_index = p.scratch1
+    above_ground_area_index .=
         PlantHydraulics.harmonic_mean.(
             getproperty(
                 area_index,

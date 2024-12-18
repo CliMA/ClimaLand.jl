@@ -109,9 +109,9 @@ function filter_column(driver_data::Matrix, column_name::String, units::String)
     # Check that the data exists and read it in if so
     col_dat, status = column_status(driver_data, column_name)
     # Set missing data threshold above which column is treated as absent
-    missing_threshold = 0.5
+    missing_threshold = 10.0
     # Set poor quality threshold above which the column undergoes no replacement using the quality flag
-    quality_threshold = 0.5
+    quality_threshold = 10.0
     # if it does not exist, exit
     if status == absent
         @info "Warning: Data for $column_name is absent"
