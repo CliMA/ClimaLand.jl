@@ -332,10 +332,13 @@ for FT in (Float32, Float64)
         @test τ == parameters.ρc_ds * Δz^2 / parameters.κ_dry
         θ_l = FT.([0.11, 0.15, ν])
         θ_i = FT(0.0)
-        T = FT(273)
+        T = FT(270)
         θtot = @.(_ρ_i / _ρ_l * θ_i + θ_l)
         ψ0 = @. matric_potential(hcm, Soil.effective_saturation(ν, θtot, θ_r))
-        ψT = @.(_LH_f0 / _T_freeze / _grav * (T - _T_freeze))
+        Tf_depressed = _T_freeze * exp.(_grav * ψ0 / _LH_f0)
+        ψT = @. _LH_f0 / _grav *
+           log(T / Tf_depressed) *
+           ClimaLand.heaviside(Tf_depressed - T)
         θ_star = @. inverse_matric_potential(hcm, ψ0 + ψT) * (ν - θ_r) + θ_r
         ρc_s = volumetric_heat_capacity.(θ_l, θ_i, parameters.ρc_ds, param_set)
         τ = thermal_time.(ρc_s, Δz, parameters.κ_dry)
@@ -361,14 +364,16 @@ for FT in (Float32, Float64)
                 hydrology_earth_params,
             ) .> 0.0,
         ) == 3
-        # try θ_l = 0.1
 
         θ_l = FT.([0.11, 0.15, ν])
         θ_i = FT(0.0)
         T = FT(274)
         θtot = @.(_ρ_i / _ρ_l * θ_i + θ_l)
         ψ0 = @. matric_potential(hcm, Soil.effective_saturation(ν, θtot, θ_r))
-        ψT = FT(0.0)
+        Tf_depressed = _T_freeze * exp.(_grav * ψ0 / _LH_f0)
+        ψT = @. _LH_f0 / _grav *
+           log(T / Tf_depressed) *
+           ClimaLand.heaviside(Tf_depressed - T)
         θ_star = @. inverse_matric_potential(hcm, ψ0 + ψT) * (ν - θ_r) + θ_r
         ρc_s = volumetric_heat_capacity.(θ_l, θ_i, parameters.ρc_ds, param_set)
         τ = thermal_time.(ρc_s, Δz, parameters.κ_dry)
@@ -386,12 +391,15 @@ for FT in (Float32, Float64)
         @test (θ_star ≈ θ_l)
 
 
-        θ_l = FT(0.01)
+        θ_l = FT(0.11)
         θ_i = FT.([0.05, 0.08])
         T = FT(274)
         θtot = @.(_ρ_i / _ρ_l * θ_i + θ_l)
         ψ0 = @. matric_potential(hcm, Soil.effective_saturation(ν, θtot, θ_r))
-        ψT = FT(0.0)
+        Tf_depressed = _T_freeze * exp.(_grav * ψ0 / _LH_f0)
+        ψT = @. _LH_f0 / _grav *
+           log(T / Tf_depressed) *
+           ClimaLand.heaviside(Tf_depressed - T)
         θ_star = @. inverse_matric_potential(hcm, ψ0 + ψT) * (ν - θ_r) + θ_r
         ρc_s = volumetric_heat_capacity.(θ_l, θ_i, parameters.ρc_ds, param_set)
         τ = thermal_time.(ρc_s, Δz, parameters.κ_dry)
@@ -424,7 +432,10 @@ for FT in (Float32, Float64)
         T = FT(260)
         θtot = @.(_ρ_i / _ρ_l * θ_i + θ_l)
         ψ0 = @. matric_potential(hcm, Soil.effective_saturation(ν, θtot, θ_r))
-        ψT = @.(_LH_f0 / _T_freeze / _grav * (T - _T_freeze))
+        Tf_depressed = _T_freeze * exp.(_grav * ψ0 / _LH_f0)
+        ψT = @. _LH_f0 / _grav *
+           log(T / Tf_depressed) *
+           ClimaLand.heaviside(Tf_depressed - T)
         θ_star = @. inverse_matric_potential(hcm, ψ0 + ψT) * (ν - θ_r) + θ_r
         ρc_s = volumetric_heat_capacity.(θ_l, θ_i, parameters.ρc_ds, param_set)
         τ = thermal_time.(ρc_s, Δz, parameters.κ_dry)
