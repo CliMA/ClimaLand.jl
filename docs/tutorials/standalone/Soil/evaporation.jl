@@ -62,7 +62,7 @@ e = rh * esat
 q = FT(0.622 * e / (101325 - 0.378 * e))
 precip = (t) -> 0.0
 T_atmos = (t) -> T_air
-u_atmos = (t) -> 1.0
+u_atmos = (t) -> 0.44
 q_atmos = (t) -> q
 h_atmos = FT(0.1)
 P_atmos = (t) -> 101325
@@ -92,11 +92,11 @@ boundary_fluxes = (;
 # Define the parameters
 # n and alpha estimated by matching vG curve.
 K_sat = FT(225.1 / 3600 / 24 / 1000)
-vg_n = FT(10.0)
-vg_α = FT(6.0)
+vg_n = FT(51.0)
+vg_α = FT(0.82)
 hcm = vanGenuchten{FT}(; α = vg_α, n = vg_n)
 ν = FT(0.43)
-θ_r = FT(0.045)
+θ_r = FT(0.043)
 S_s = FT(1e-3)
 ν_ss_om = FT(0.0)
 ν_ss_quartz = FT(1.0)
@@ -104,8 +104,8 @@ S_s = FT(1e-3)
 emissivity = FT(1.0)
 PAR_albedo = FT(0.2)
 NIR_albedo = FT(0.4)
-z_0m = FT(1e-3)
-z_0b = FT(1e-4)
+z_0m = FT(1e-2)
+z_0b = FT(1e-2)
 d_ds = FT(0.01)
 params = ClimaLand.Soil.EnergyHydrologyParameters(
     FT;
@@ -129,7 +129,7 @@ params = ClimaLand.Soil.EnergyHydrologyParameters(
 # Domain - single column
 zmax = FT(0)
 zmin = FT(-0.35)
-nelems = 5
+nelems = 7
 soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems)
 z = ClimaCore.Fields.coordinate_field(soil_domain.space.subsurface).z;
 
@@ -172,7 +172,7 @@ init_soil!(Y, z, soil.parameters);
 # Timestepping:
 t0 = Float64(0)
 tf = Float64(24 * 3600 * 13)
-dt = Float64(900.0)
+dt = Float64(450.0)
 
 # We also set the initial conditions of the cache here:
 set_initial_cache! = make_set_initial_cache(soil)
@@ -188,7 +188,7 @@ timestepper = CTS.ARS111();
 ode_algo = CTS.IMEXAlgorithm(
     timestepper,
     CTS.NewtonsMethod(
-        max_iters = 1,
+        max_iters = 6,
         update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
     ),
 );

@@ -826,7 +826,10 @@ function turbulent_fluxes(
     # Obtain surface quantities needed for computation; these should not allocate
     T_sfc = ClimaLand.surface_temperature(model, Y, p, t)
     h_sfc = ClimaLand.surface_height(model, Y, p)
+    ρ_sfc = ClimaLand.surface_air_density(atmos, model, Y, p, t, T_sfc)
+    q_sfc = ClimaLand.surface_specific_humidity(model,Y,p,T_sfc,ρ_sfc)
     d_sfc = ClimaLand.displacement_height(model, Y, p)
+    r_sfc = ClimaLand.surface_resistance(model, Y,p, t)
     u_air = p.drivers.u
     h_air = atmos.h
     (; K_sat, ν, θ_r, hydrology_cm, z_0m, z_0b, Ω, γ, γT_ref, earth_param_set) =
@@ -845,14 +848,12 @@ function turbulent_fluxes(
     )
     return soil_turbulent_fluxes_at_a_point.(
         T_sfc,
-        θ_l_sfc,
-        θ_i_sfc,
+        q_sfc,
+        ρ_sfc,
+        r_sfc,
         h_sfc,
         d_sfc,
-        hydrology_cm_sfc,
-        ν_sfc,
-        θ_r_sfc,
-        K_sat_sfc,
+        p.soil.ice_frac,
         p.drivers.thermal_state,
         u_air,
         h_air,
@@ -916,14 +917,12 @@ But once we correct E, we compute SH and LH the same as SurfaceFluxes.jl does.
 """
 function soil_turbulent_fluxes_at_a_point(
     T_sfc::FT,
-    θ_l_sfc::FT,
-    θ_i_sfc::FT,
+    q_sfc::FT,
+    ρ_sfc::FT,
+    r_sfc::FT,
     h_sfc::FT,
     d_sfc::FT,
-    hydrology_cm_sfc,
-    ν_sfc::FT,
-    θ_r_sfc::FT,
-    K_sat_sfc::FT,
+    ice_frac::FT,
     thermal_state_air::Thermodynamics.PhaseEquil{FT},
     u_air::FT,
     h_air::FT,
@@ -950,18 +949,8 @@ function soil_turbulent_fluxes_at_a_point(
     q_air::FT =
         Thermodynamics.total_specific_humidity(thermo_params, thermal_state_air)
 
-    # Estimate surface air density
-    ρ_sfc::FT = ClimaLand.compute_ρ_sfc(thermo_params, thermal_state_air, T_sfc)
-
-    # Now compute surface fluxes from liquid water component:
-    q_sat_liq::FT = Thermodynamics.q_vap_saturation_generic(
-        thermo_params,
-        T_sfc,
-        ρ_sfc,
-        Thermodynamics.Liquid(),
-    )
     thermal_state_sfc::Thermodynamics.PhaseEquil{FT} =
-        Thermodynamics.PhaseEquil_ρTq(thermo_params, ρ_sfc, T_sfc, q_sat_liq)# use to get potential evaporation E0, r_ae (weak dependence on q).
+        Thermodynamics.PhaseEquil_ρTq(thermo_params, ρ_sfc, T_sfc, q_sfc)# use to get potential evaporation E0, r_ae (weak dependence on q).
 
     # SurfaceFluxes.jl expects a relative difference between where u_air = 0
     # and the atmosphere height. Here, we assume h and h_sfc are measured
@@ -988,75 +977,15 @@ function soil_turbulent_fluxes_at_a_point(
     scheme = SurfaceFluxes.PointValueScheme()
     conditions =
         SurfaceFluxes.surface_conditions(surface_flux_params, states, scheme)
-    r_ae_liq::FT = 1 / (conditions.Ch * SurfaceFluxes.windspeed(states))
+    r_ae::FT = 1 / (conditions.Ch * SurfaceFluxes.windspeed(states))
 
-    E0::FT =
+    V0::FT =
         SurfaceFluxes.evaporation(surface_flux_params, states, conditions.Ch)# potential evaporation rate, mass flux
-    Ẽ0::FT = E0 / _ρ_liq
-    Ẽ::FT = Ẽ0
-    if q_air < q_sat_liq # adjust potential evaporation rate to account for soil resistance
-        K_sfc::FT =
-            impedance_factor(θ_i_sfc / (θ_l_sfc + θ_i_sfc - θ_r_sfc), Ω) *
-            viscosity_factor(T_sfc, γ, γT_ref) *
-            hydraulic_conductivity(
-                hydrology_cm_sfc,
-                K_sat_sfc,
-                effective_saturation(ν_sfc, θ_l_sfc, θ_r_sfc),
-            )
-        K_c::FT = hydraulic_conductivity(
-            hydrology_cm_sfc,
-            K_sat_sfc,
-            hydrology_cm_sfc.S_c,
-        )
-        x::FT = 4 * K_sfc * (1 + Ẽ0 / (4 * K_c))
-        Ẽ *= x / (Ẽ0 + x)
-    end
-
+    Ṽ::FT = V0 / _ρ_liq * r_ae/(r_ae+r_sfc)
+    Ẽ = Ṽ* (1- ice_frac)
+    S̃ = Ṽ*ice_frac
     # sensible heat flux
-    SH_liq = SurfaceFluxes.sensible_heat_flux(
-        surface_flux_params,
-        conditions.Ch,
-        states,
-        scheme,
-    )
-
-    # Repeat for ice component:
-    q_sat_ice::FT = Thermodynamics.q_vap_saturation_generic(
-        thermo_params,
-        T_sfc,
-        ρ_sfc,
-        Thermodynamics.Ice(),
-    )
-    thermal_state_sfc =
-        Thermodynamics.PhaseEquil_ρTq(thermo_params, ρ_sfc, T_sfc, q_sat_ice)
-    β_i::FT = FT(1)
-    if q_air < q_sat_ice # sublimation, adjust β
-        β_i *= (θ_i_sfc / ν_sfc)^4
-    end
-
-    state_sfc = SurfaceFluxes.StateValues(
-        FT(0),
-        SVector{2, FT}(0, 0),
-        thermal_state_sfc,
-    )
-
-    states = SurfaceFluxes.ValuesOnly(
-        state_air,
-        state_sfc,
-        z_0m,
-        z_0b,
-        beta = β_i,
-        gustiness = gustiness,
-    )
-    conditions =
-        SurfaceFluxes.surface_conditions(surface_flux_params, states, scheme)
-    S::FT =
-        SurfaceFluxes.evaporation(surface_flux_params, states, conditions.Ch)# sublimation rate, mass flux
-    S̃::FT = S / _ρ_liq
-
-    r_ae_ice::FT = 1 / (conditions.Ch * SurfaceFluxes.windspeed(states))
-    # sensible heat flux from ice
-    SH_ice = SurfaceFluxes.sensible_heat_flux(
+    SH = SurfaceFluxes.sensible_heat_flux(
         surface_flux_params,
         conditions.Ch,
         states,
@@ -1064,9 +993,7 @@ function soil_turbulent_fluxes_at_a_point(
     )
 
     # Heat fluxes for soil
-    LH::FT = _LH_v0 * (Ẽ + S̃) * _ρ_liq
-    SH::FT = (SH_ice + SH_liq) / 2
-    r_ae::FT = 2 * r_ae_liq * r_ae_ice / (r_ae_liq + r_ae_ice) # implied by definition of H
+    LH::FT = _LH_v0 * (Ṽ) * _ρ_liq
     return (
         lhf = LH,
         shf = SH,
@@ -1077,7 +1004,7 @@ function soil_turbulent_fluxes_at_a_point(
 end
 
 # For Swenson/Lawrence 2014 resistance parameterization
-#=
+
 """
     ClimaLand.surface_resistance(
         model::EnergyHydrology{FT},
@@ -1257,8 +1184,11 @@ function soil_resistance(
     _D_vapor = FT(LP.D_vapor(earth_param_set))
     S_w = effective_saturation(ν, θ_l + θ_i, θ_r)
     τ_a = soil_tortuosity(θ_l, θ_i, ν)
-    dsl::FT = dry_soil_layer_thickness(S_w, S_c, d_ds)
-    r_soil = dsl / (_D_vapor * τ_a) # [s\m]
+    dsl::FT = dry_soil_layer_thickness(S_w, S_c,  d_ds)
+    σ  = FT(7.2e-2)
+    r_pore::FT = 2*σ*hydrology_cm.α/1000/FT(9.8)
+    r_shell::FT = r_pore/_D_vapor/max(eps(FT), θ_l + θ_i)*(π - 2*(θ_i + θ_l)^(1/2)) 
+    r_soil =  dsl / (_D_vapor * τ_a)  + r_shell# [s\m]
     return r_soil
 end
 
@@ -1270,6 +1200,6 @@ this is used when computing the soil resistance to vapor flux according to
 Swenson et al (2012)/Sakaguchi and Zeng (2009).
 """
 function dry_soil_layer_thickness(S_w::FT, S_c::FT, d_ds::FT)::FT where {FT}
-    return S_w < S_c ? d_ds * (S_c - S_w) / S_c : FT(0)
+    return S_w < S_c ? d_ds * (S_c - S_w)/S_c : FT(0)
 end
-=#
+
