@@ -23,4 +23,4 @@ h_leaf = FT(9.5) # m
 t0 = Float64(0)
 
 # Time step size:
-dt = Float64(900)
+dt = Float64(1800)

@@ -387,9 +387,11 @@ function ClimaLand.set_dfluxBCdY!(
     S_sN = Domains.top_center_to_surface(S_s)
 
 
+
     # Get the local geometry of the face space, then extract the top level
     local_geometry_faceN =
         ClimaLand.get_local_geometry_faceN(model.domain.space.subsurface)
+
     # Update dfluxBCdY at the top boundary in place
     # Calculate the value and convert it to a Covariant3Vector
     @. p.soil.dfluxBCdY =
@@ -679,6 +681,8 @@ These variables are updated in place in `soil_boundary_fluxes!`.
 boundary_vars(bc::AtmosDrivenFluxBC, ::ClimaLand.TopBoundary) = (
     :turbulent_fluxes,
     :dfluxBCdY,
+    :q_sfc,
+    :ice_frac,
     :R_n,
     :top_bc,
     :top_bc_wvec,
@@ -699,6 +703,8 @@ specifies the part of the domain on which the additional variables should be
 defined.
 """
 boundary_var_domain_names(bc::AtmosDrivenFluxBC, ::ClimaLand.TopBoundary) = (
+    :surface,
+    :surface,
     :surface,
     :surface,
     :surface,
@@ -737,6 +743,8 @@ boundary_var_types(
             ClimaCore.Geometry.Covariant3Vector{FT},
         },
     },
+    FT,
+    FT,
     FT,
     NamedTuple{(:water, :heat), Tuple{FT, FT}},
     ClimaCore.Geometry.WVector{FT},
@@ -810,11 +818,11 @@ in standalone mode.
 function soil_boundary_fluxes!(
     bc::AtmosDrivenFluxBC{<:PrescribedAtmosphere, <:PrescribedRadiativeFluxes},
     prognostic_land_components::Val{(:soil,)},
-    model::EnergyHydrology,
+    model::EnergyHydrology{FT},
     Y,
     p,
     t,
-)
+) where {FT}
     turbulent_fluxes!(p.soil.turbulent_fluxes, bc.atmos, model, Y, p, t)
     net_radiation!(p.soil.R_n, bc.radiation, model, Y, p, t)
     # influx = maximum possible rate of infiltration given precip, snowmelt, evaporation/condensation
@@ -833,16 +841,40 @@ function soil_boundary_fluxes!(
         p.soil.R_n + p.soil.turbulent_fluxes.lhf + p.soil.turbulent_fluxes.shf
 
     # Compute terms needed for derivatives
+    _σ = LP.Stefan(model.parameters.earth_param_set)
+    T_sfc = ClimaLand.Domains.top_center_to_surface(p.soil.T)
     # ρc_sfc is stored in scratch! after we use it below, it may be overwritten
     ρc_sfc = get_ρc_sfc(Y, p, model.parameters)
     # Get the local geometry of the face space, then extract the top level
     local_geometry_faceN =
         ClimaLand.get_local_geometry_faceN(model.domain.space.subsurface)
     @. p.soil.dfluxBCdY.heat =
-        covariant3_unit_vector(local_geometry_faceN) * (0 / ρc_sfc) # replace 0 with ∂F∂T when ready
-    @. p.soil.dfluxBCdY.water = covariant3_unit_vector(local_geometry_faceN) * 0
+        covariant3_unit_vector(local_geometry_faceN) * (
+            4 * _σ * T_sfc^3 +
+            p.soil.turbulent_fluxes.dlhfdT +
+            p.soil.turbulent_fluxes.dshfdT
+        ) / ρc_sfc # ∂F∂T ∂T∂ρe
+    @. p.soil.dfluxBCdY.water =
+        covariant3_unit_vector(local_geometry_faceN) * 0
     return nothing
 end
+
+
+"""
+    get_ρc_sfc(Y, p, parameters)
+Helper function for computing the surface volumetric heat capacity. This function
+should not allocate, but note that if p.soil.sub_sfc_scratch may be overwritten
+at any time.
+"""
+function get_ρc_sfc(Y, p, parameters)
+    ρc = p.soil.sub_sfc_scratch
+    (; ρc_ds, earth_param_set) = parameters
+    @. ρc =
+        volumetric_heat_capacity(p.soil.θ_l, Y.soil.θ_i, ρc_ds, earth_param_set)
+    ρc_sfc = ClimaLand.Domains.top_center_to_surface(ρc)
+    return ρc_sfc
+end
+
 
 """
     get_ρc_sfc(Y, p, parameters)

@@ -109,6 +109,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         NIR_albedo_wet,
         f_max,
     ) = spatially_varying_soil_params
+    d_ds = FT(0.01)
     soil_params = Soil.EnergyHydrologyParameters(
         FT;
         ν,
@@ -119,6 +120,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         K_sat,
         S_s,
         θ_r,
+        d_ds = d_ds,
         PAR_albedo_dry = PAR_albedo_dry,
         NIR_albedo_dry = NIR_albedo_dry,
         PAR_albedo_wet = PAR_albedo_wet,
@@ -232,8 +234,17 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     conductance_args =
         (; parameters = Canopy.MedlynConductanceParameters(FT; g1))
     # Set up photosynthesis
-    photosynthesis_args =
-        (; parameters = Canopy.FarquharParameters(FT, is_c3; Vcmax25 = Vcmax25))
+    pc = FT(-2e6)
+    sc = FT(0)
+    photosynthesis_args = (;
+        parameters = Canopy.FarquharParameters(
+            FT,
+            is_c3;
+            Vcmax25 = Vcmax25,
+            sc = sc,
+            pc = pc,
+        )
+    )
     # Set up plant hydraulics
     modis_lai_artifact_path =
         ClimaLand.Artifacts.modis_lai_forcing_data2008_path(; context)
@@ -417,7 +428,7 @@ function setup_and_solve_problem(; greet = false)
     hours = 60minutes # hours in seconds
     days = 24hours # days in seconds
     years = 366days # years in seconds - 366 to make sure we capture at least full years
-    tf = 2years # 2 years in seconds
+    tf = 1years # 2 years in seconds
     Δt = 450.0
     nelements = (101, 15)
     if greet
@@ -446,53 +457,8 @@ setup_and_solve_problem(; greet = true);
 # read in diagnostics and make some plots!
 #### ClimaAnalysis ####
 simdir = ClimaAnalysis.SimDir(outdir)
-short_names_bio = ["gpp", "ct", "lai"]
-short_names_water = ["swc", "si", "sr", "swe"]
-short_names_other = ["swu", "lwu", "et"]
-group_names = ["bio", "water", "other"]
-months_id = [1, 4, 7, 10]
-for (group_id, group) in
-    enumerate([short_names_bio, short_names_water, short_names_other])
-    fig =
-        CairoMakie.Figure(size = (600 * length(months_id), 300 * length(group)))
-    for (var_id, short_name) in enumerate(group)
-        var = get(simdir; short_name)
-        times = ClimaAnalysis.times(var)
-        CairoMakie.Label(
-            fig[var_id, 0],
-            short_name,
-            tellheight = false,
-            tellwidth = false,
-            fontsize = 20,
-        )
-        for (t_id, t) in pairs(times[months_id])
-            layout = fig[var_id, t_id] = CairoMakie.GridLayout()
-            kwargs = ClimaAnalysis.has_altitude(var) ? Dict(:z => 1) : Dict()
-            ClimaAnalysis.Visualize.heatmap2D_on_globe!(
-                layout,
-                ClimaAnalysis.slice(var, time = t; kwargs...),
-                mask = ClimaAnalysis.Visualize.oceanmask(),
-                more_kwargs = Dict(
-                    :mask => ClimaAnalysis.Utils.kwargs(color = :white),
-                ),
-            )
-        end
-    end
-    months = Dates.monthname.(1:12) .|> x -> x[1:3]
-    for (idx, m_id) in enumerate(months_id)
-        CairoMakie.Label(
-            fig[0, idx],
-            months[m_id],
-            tellwidth = false,
-            fontsize = 20,
-        )
-    end
-    group_name = group_names[group_id]
 
-    CairoMakie.save(joinpath(root_path, "$(group_name).png"), fig)
-end
-
-short_names = ["gpp", "swc", "et", "ct", "swe", "si"]
+short_names = ["gpp", "swc", "et", "ct", "trans", "si", "tsoil", "msf"]
 
 include(
     joinpath(

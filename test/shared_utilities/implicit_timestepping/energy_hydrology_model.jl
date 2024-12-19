@@ -174,6 +174,7 @@ for FT in (Float32, Float64)
 
     @testset "Jacobian boundary terms, Atmos Driven, FT = $FT" begin
         earth_param_set = LP.LandParameters(FT)
+        σ = LP.Stefan(earth_param_set)
         zmax = FT(0)
         zmin = FT(-1.5)
         nelems = 150
@@ -198,7 +199,7 @@ for FT in (Float32, Float64)
         # Radiation
         start_date = DateTime(2005)
         SW_d = (t) -> 500
-        LW_d = (t) -> 5.67e-8 * 280.0^4.0
+        LW_d = (t) -> σ * 280.0^4.0
         radiation = PrescribedRadiativeFluxes(
             FT,
             TimeVaryingInput(SW_d),
@@ -350,7 +351,12 @@ for FT in (Float32, Float64)
             dtγ * (-2 * κ_ic / dz^2 * dTdρ_ic) - I,
         )
         # Check the main diagonal, entry corresponding to top of column
-        ∂F∂T = 0
+        ∂F∂T = Array(
+            parent(
+                4 * σ * T^3 .+ p.soil.turbulent_fluxes.dlhfdT .+
+                p.soil.turbulent_fluxes.dshfdT,
+            ),
+        )[1]
         dfluxBCdY_heat = ∂F∂T * dTdρ_ic
         @test Array(parent(jac_ρe.entries.:2))[end] .≈
               dtγ * (-κ_ic / dz^2 * dTdρ_ic - dfluxBCdY_heat / dz) - I
