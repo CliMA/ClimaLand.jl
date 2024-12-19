@@ -35,7 +35,7 @@ function ozark_default_args(;
     h_stem = FT(9),
     h_leaf = FT(9.5),
     t0 = Float64(120 * 3600 * 24),
-    dt = Float64(900),
+    dt = Float64(450),
     n = 15,
 )
     return (
