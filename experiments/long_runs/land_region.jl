@@ -396,7 +396,7 @@ function setup_and_solve_problem(; greet = false)
 
     t0 = 0.0
     tf = 60 * 60.0 * 24 * 365
-    Δt = 450.0
+    Δt = Float64(600)
     nelements = (10, 10, 15)
     if greet
         @info "Run: Regional Soil-Canopy-Snow Model"
