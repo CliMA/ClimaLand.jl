@@ -1,11 +1,49 @@
 using ClimaCore.MatrixFields
 import ClimaCore.MatrixFields: @name, ⋅
-using ClimaCore: Spaces
+using ClimaCore: Spaces, Geometry
 import LinearAlgebra
 import LinearAlgebra: I
 
 export make_jacobian,
-    make_compute_jacobian, set_dfluxBCdY!, FieldMatrixWithSolver
+    make_compute_jacobian,
+    set_dfluxBCdY!,
+    FieldMatrixWithSolver,
+    covariant3_unit_vector
+
+"""
+    covariant3_unit_vector(local_geometry)
+
+A function to compute the unit vector in the direction of the normal
+to the surface.
+
+Adapted from ClimaAtmos.jl's unit_basis_vector_data function.
+"""
+function covariant3_unit_vector(local_geometry)
+    FT = Geometry.undertype(typeof(local_geometry))
+    data =
+        FT(1) / Geometry._norm(Geometry.Covariant3Vector(FT(1)), local_geometry)
+    return Geometry.Covariant3Vector(data)
+end
+
+"""
+    get_local_geometry_faceN(center_space)
+
+Returns the local geometry for the top (surface) face space
+corresponding to the `center_space`.
+"""
+function get_local_geometry_faceN(center_space)
+    levels = ClimaCore.Spaces.nlevels(
+        ClimaLand.Domains.obtain_face_space(center_space),
+    )
+    local_geometry_faceN = ClimaCore.Fields.level(
+        ClimaCore.Fields.local_geometry_field(
+            ClimaLand.Domains.obtain_face_space(center_space),
+        ),
+        levels - ClimaCore.Utilities.half,
+    )
+    return local_geometry_faceN
+end
+
 
 """
    make_jacobian(model::AbstractModel)

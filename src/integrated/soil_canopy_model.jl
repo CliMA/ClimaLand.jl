@@ -363,11 +363,11 @@ the presence of the canopy modifies the soil BC.
 function soil_boundary_fluxes!(
     bc::AtmosDrivenFluxBC{<:PrescribedAtmosphere, <:PrescribedRadiativeFluxes},
     prognostic_land_components::Val{(:canopy, :soil, :soilco2)},
-    soil::EnergyHydrology{FT},
+    soil::EnergyHydrology,
     Y,
     p,
     t,
-) where {FT}
+)
     bc = soil.boundary_conditions.top
     turbulent_fluxes!(p.soil.turbulent_fluxes, bc.atmos, soil, Y, p, t)
     # influx = maximum possible rate of infiltration given precip, snowmelt, evaporation/condensation
@@ -383,6 +383,16 @@ function soil_boundary_fluxes!(
     @. p.soil.top_bc.water = p.soil.infiltration
     @. p.soil.top_bc.heat =
         -p.soil.R_n + p.soil.turbulent_fluxes.lhf + p.soil.turbulent_fluxes.shf
+
+    # Compute terms needed for derivatives
+    # ρc_sfc is stored in scratch! after we use it below, it may be overwritten
+    ρc_sfc = ClimaLand.Soil.get_ρc_sfc(Y, p, soil.parameters)
+    # Get the local geometry of the face space, then extract the top level
+    local_geometry_faceN =
+        ClimaLand.get_local_geometry_faceN(soil.domain.space.subsurface)
+    @. p.soil.dfluxBCdY.heat =
+        covariant3_unit_vector(local_geometry_faceN) * (0) / ρc_sfc # ∂F∂T ∂T∂ρe
+    @. p.soil.dfluxBCdY.water = covariant3_unit_vector(local_geometry_faceN) * 0
     return nothing
 end
 
