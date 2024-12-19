@@ -2,7 +2,11 @@ ClimaLand.jl Release Notes
 ========================
 
 main
---------
+-------
+
+
+v0.15.7
+-------
 - Run unit tests on GPU, and update code for GPU compatibility
   (including workaround for ClimaCore type inference failure)
   PR[#739](https://github.com/CliMA/ClimaLand.jl/pull/739)
