@@ -17,7 +17,7 @@ h_stem = FT(0) # m
 t0 = Float64(0)
 
 # Time step size:
-dt = Float64(900)
+dt = Float64(1800)
 # For soil column
 nelements = 14
 zmin = FT(-0.5) #m, Xu and Baldocchi, 2003

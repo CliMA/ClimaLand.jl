@@ -383,6 +383,23 @@ function soil_boundary_fluxes!(
     @. p.soil.top_bc.water = p.soil.infiltration
     @. p.soil.top_bc.heat =
         -p.soil.R_n + p.soil.turbulent_fluxes.lhf + p.soil.turbulent_fluxes.shf
+
+    # Compute terms needed for derivatives
+    _σ = LP.Stefan(soil.parameters.earth_param_set)
+    T_sfc = ClimaLand.Domains.top_center_to_surface(p.soil.T)
+    # ρc_sfc is stored in scratch! after we use it below, it may be overwritten
+    ρc_sfc = ClimaLand.Soil.get_ρc_sfc(Y, p, soil.parameters)
+    # Get the local geometry of the face space, then extract the top level
+    local_geometry_faceN =
+        ClimaLand.get_local_geometry_faceN(soil.domain.space.subsurface)
+    @. p.soil.dfluxBCdY.heat =
+        covariant3_unit_vector(local_geometry_faceN) * (
+            -4 * _σ * T_sfc^3 +
+            p.soil.turbulent_fluxes.dlhfdT +
+            p.soil.turbulent_fluxes.dshfdT
+        ) / ρc_sfc # ∂F∂T ∂T∂ρe
+    @. p.soil.dfluxBCdY.water =
+        covariant3_unit_vector(local_geometry_faceN) * FT(0)
     return nothing
 end
 

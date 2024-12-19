@@ -235,7 +235,7 @@ function setup_and_solve_problem(; greet = false)
     days = 24hours # days in seconds
     years = 366days # years in seconds - 366 to make sure we capture at least full years
     tf = 2years # 2 years in seconds
-    Δt = 450.0
+    Δt = 600.0
     nelements = (101, 15)
     if greet
         @info "Run: Global Soil Model"

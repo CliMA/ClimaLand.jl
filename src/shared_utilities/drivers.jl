@@ -1049,7 +1049,9 @@ function prescribed_forcing_era5(
         surface_space;
         start_date,
         regridder_type,
-        file_reader_kwargs = (; preprocess_func = (data) -> -data / 1000,),
+        file_reader_kwargs = (;
+            preprocess_func = (data) -> max(-data / 1000, 0),
+        ),
         method = time_interpolation_method,
         compose_function = (mtpr, msr) -> mtpr - msr,
     )

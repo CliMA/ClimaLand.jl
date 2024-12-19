@@ -23,4 +23,4 @@ h_stem = FT(14) # m
 t0 = Float64(0)
 
 # Time step size:
-dt = Float64(450)
+dt = Float64(900)
