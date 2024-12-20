@@ -26,6 +26,13 @@ import ClimaLand:
     AbstractSource,
     source!
 
+export DisorderedKineticsModelParameters,
+DisorderedKineticsModel,
+    AbstractSoilCarbonSource,
+    AbstractSoilDriver,
+    DisorderedKineticsDrivers
+
+
 """
 DisorderedKineticsModelParameters{FT <: AbstractFloat, PSE}
 
@@ -57,18 +64,18 @@ A model for simulating soil organic carbon dynamics using a disordered kinetics 
 
 $(DocStringExtensions.FIELDS)
 """
-struct DisorderedKineticsModel{FT, D, BC, S} <:
+struct DisorderedKineticsModel{FT, PS, N, D, S, DT} <:
     AbstractSoilCarbonModel{FT}
-"the parameter set"
-parameters::PS
-"the number of soil carbon pools for discretization"
-npools::Int64
-"the soil domain, using ClimaCore.Domains"
-domain::D
-"the boundary conditions, of type NamedTuple"
-boundary_conditions::BC
-"A tuple of sources, each of type AbstractSource"
-sources::S
+    "the parameter set"
+    parameters::PS
+    "the number of soil carbon pools for discretization"
+    npools::N
+    "the soil domain, using ClimaCore.Domains"
+    domain::D
+    "A tuple of sources, each of type AbstractSource"
+    sources::S
+    "Drivers"
+    drivers::DT
 end
 
 
@@ -77,8 +84,8 @@ DisorderedKineticsModel{FT}(;
         parameters::DisorderedKineticsModelParameters{FT},
         npools::Int64,
         domain::ClimaLand.AbstractDomain,
-        boundary_conditions::NamedTuple,
         sources::Tuple,
+        drivers::DT
     ) where {FT, BC}
 
 A constructor for `DisorderedKineticsModel`.
@@ -87,21 +94,23 @@ function DisorderedKineticsModel{FT}(;
     parameters::DisorderedKineticsModelParameters{FT},
     npools::Int64,
     domain::ClimaLand.AbstractDomain,
-    boundary_conditions::BC,
     sources::Tuple,
-) where {FT, BC}
-    args = (parameters, npools, domain, boundary_conditions, sources)
+    drivers::DT,
+) where {FT, DT}
+    args = (parameters, npools, domain, sources, drivers)
     DisorderedKineticsModel{FT, typeof.(args)...}(args...)
 end
 
 ClimaLand.name(model::DisorderedKineticsModel) = :soilC
 ClimaLand.prognostic_vars(::DisorderedKineticsModel) = (:C,)
-ClimaLand.prognostic_types(::DisorderedKineticsModel{FT}) where {FT} = (NTuple{model.npools, FT},)
-ClimaLand.prognostic_domain_names(::DisorderedKineticsModel) = (:surface,)
+ClimaLand.prognostic_types(model::DisorderedKineticsModel{FT}) where {FT} = (NTuple{model.npools, FT},)
+# we use a vertical column with one layer to in the future interface with other variables like temperature and moisture that are depth dependent
+ClimaLand.prognostic_domain_names(::DisorderedKineticsModel) = (:subsurface,)
 
-ClimaLand.auxiliary_vars(model::DisorderedKineticsModel) = (:ks,)
-ClimaLand.auxiliary_types(model::DisorderedKineticsModel{FT}) where {FT} = (NTuple{model.npools, FT},)
-ClimaLand.auxiliary_domain_names(model::DisorderedKineticsModel) = (:surface)
+ClimaLand.auxiliary_vars(model::DisorderedKineticsModel) = (:ks,:inputs)
+ClimaLand.auxiliary_types(model::DisorderedKineticsModel{FT}) where {FT} = (NTuple{model.npools, FT}, FT)
+# we use a vertical column with one layer to in the future interface with other variables like temperature and moisture that are depth dependent
+ClimaLand.auxiliary_domain_names(model::DisorderedKineticsModel) = (:subsurface, :subsurface)
 
 """
     make_compute_exp_tendency(model::DisorderedKineticsModel)
@@ -116,7 +125,7 @@ This has been written so as to work with Differential Equations.jl.
 function ClimaLand.make_compute_exp_tendency(model::DisorderedKineticsModel)
     function compute_exp_tendency!(dY, Y, p, t)
         
-        @. dY.soilC.C = -p.ks * Y.soilC.C
+        @. dY.soilC.C = - p.ks * Y.soilC.C
 
         # Source terms are added in here
         for src in model.sources
@@ -129,7 +138,7 @@ end
 """
     AbstractCarbonSource{FT} <: ClimaLand.AbstractSource{FT}
 
-An abstract type for soil CO2 sources. There are two sources:
+An abstract type for soil carbon sources. There are two sources:
 roots and microbes, in struct RootProduction and MicrobeProduction.
 """
 abstract type AbstractSoilCarbonSource{FT} <: ClimaLand.AbstractSource{FT} end
@@ -151,8 +160,29 @@ function ClimaLand.source!(
     p::NamedTuple,
     params,
 )
-    @. dY.soilco2.C += src * pdf(LogNormal(params.mu, params.sigma), p.ks)
+    @. dY.soilco2.C += p.inputs * pdf(LogNormal(params.mu, params.sigma), p.ks)
 end
+
+
+
+
+"""
+    SoilDrivers
+
+A container which passes in the soil drivers to the biogeochemistry
+model. These drivers are either of type Prescribed (for standalone mode)
+or Prognostic (for running with a prognostic model for soil temp and moisture).
+
+$(DocStringExtensions.FIELDS)
+"""
+struct DisorderedKineticsDrivers{
+    FT,
+    SOC_input <: PrescribedSOCInputs{FT},
+}
+    "Soil SOM driver - Prescribed only"
+    soc_inputs::SOC_input
+end
+
 
 
 """
@@ -166,7 +196,9 @@ This has been written so as to work with Differential Equations.jl.
 This function is empty because the auxiliary variable `ks` is not updated in time.
 """
 function ClimaLand.make_update_aux(model::DisorderedKineticsModel)
-    function update_aux!(p, Y, t) end
+    function update_aux!(p, Y, t)
+        p.inputs = model.drivers.soc.func(t)
+    end
     return update_aux!
 end
 
