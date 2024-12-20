@@ -334,13 +334,19 @@ function snow_boundary_fluxes!(
 ) where {FT}
     turbulent_fluxes!(p.snow.turbulent_fluxes, bc.atmos, model, Y, p, t)
     net_radiation!(p.snow.R_n, bc.radiation, model, Y, p, t)
-    # How does rain affect the below?
     P_snow = p.drivers.P_snow
+    P_liq = p.drivers.P_liq
 
     @. p.snow.total_water_flux =
         P_snow +
-        (p.snow.turbulent_fluxes.vapor_flux - p.snow.water_runoff) *
+        (P_liq + p.snow.turbulent_fluxes.vapor_flux - p.snow.water_runoff) *
         p.snow.snow_cover_fraction
+
+    @. p.snow.liquid_water_flux =
+        (
+            P_liq + p.snow.turbulent_fluxes.vapor_flux * p.snow.q_l -
+            p.snow.water_runoff
+        ) * p.snow.snow_cover_fraction
 
     # I think we want dU/dt to include energy of falling snow.
     # otherwise snow can fall but energy wont change
@@ -385,17 +391,16 @@ function soil_boundary_fluxes!(
     bc = soil.boundary_conditions.top
     turbulent_fluxes!(p.soil.turbulent_fluxes, bc.atmos, soil, Y, p, t)
     net_radiation!(p.soil.R_n, bc.radiation, soil, Y, p, t)
-    # influx = maximum possible rate of infiltration given precip, snowmelt, evaporation/condensation
+    # influx = maximum possible rate of infiltration given precip, phase_change_flux, evaporation/condensation
     # but if this exceeds infiltration capacity of the soil, runoff will
     # be generated.
     # Use top_bc.water as temporary storage to avoid allocation
     influx = p.soil.top_bc.water
     @. influx =
-        p.drivers.P_liq +
         p.snow.water_runoff * p.snow.snow_cover_fraction +
         p.excess_water_flux +
         (1 - p.snow.snow_cover_fraction) *
-        p.soil.turbulent_fluxes.vapor_flux_liq
+        (p.soil.turbulent_fluxes.vapor_flux_liq + p.drivers.P_liq)
     # The update_runoff! function computes how much actually infiltrates
     # given influx and our runoff model bc.runoff, and updates
     # p.soil.infiltration in place

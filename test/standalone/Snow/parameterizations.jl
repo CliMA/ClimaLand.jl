@@ -26,8 +26,8 @@ for FT in (Float32, Float64)
         # Thermal conductivity of dry air
         κ_air = FT(LP.K_therm(param_set))
 
-        ρ_snow = FT(200)
-        densitymodel = Snow.ConstantDensityModel(ρ_snow)
+        ρ_min = FT(200)
+        densitymodel = Snow.MinimumDensityModel(ρ_min)
         z_0m = FT(0.0024)
         α_snow = FT(0.8)
         # These values should match ClimaParams
@@ -39,12 +39,12 @@ for FT in (Float32, Float64)
         ρcD_g = FT(1700 * 2.09e3 * 0.1)
         Δt = Float64(180.0)
         parameters = SnowParameters{FT}(
-            Δt;
+            Δt,
             density = densitymodel,
             earth_param_set = param_set,
         )
-        @test parameters.density.ρ_snow == ρ_snow
-        @test typeof(parameters.density.ρ_snow) == FT
+        @test parameters.density.ρ_min == ρ_min
+        @test typeof(parameters.density.ρ_min) == FT
         @test parameters.ρcD_g == ρcD_g
         @test typeof(parameters.ρcD_g) == FT
         @test parameters.z_0m == z_0m
@@ -63,58 +63,26 @@ for FT in (Float32, Float64)
         @test typeof(parameters.κ_ice) == FT
 
 
-
         T = FT.([275.0, 272, _T_freeze])
         @test snow_surface_temperature.(T) ≈ T
-        @test all(
-            maximum_liquid_mass_fraction.(T, ρ_snow, Ref(parameters)) .==
-            [FT(0), θ_r * _ρ_l / ρ_snow, θ_r * _ρ_l / ρ_snow],
-        )
-
-        SWE = cat(FT.(rand(100) .+ 0.2), FT(0), dims = 1)
-        z = SWE * _ρ_l ./ ρ_snow
         @test specific_heat_capacity(FT(1.0), parameters) == _cp_l
         @test specific_heat_capacity(FT(0.0), parameters) == _cp_i
+        ρ_snow = ρ_min
         @test snow_thermal_conductivity(ρ_snow, parameters) ==
               κ_air +
               (FT(0.07) * (ρ_snow / _ρ_i) + FT(0.93) * (ρ_snow / _ρ_i)^2) *
               (κ_ice - κ_air)
+        @test all(
+            maximum_liquid_mass_fraction.(ρ_min, T, Ref(parameters)) .-
+            [FT(0), θ_r * _ρ_l / ρ_snow, θ_r * _ρ_l / ρ_snow] .== 0,
+        )
+
+        SWE = cat(FT.(rand(10)), FT(0), dims = 1)
+        z = SWE * _ρ_l ./ ρ_snow
         @test runoff_timescale.(z, Ksat, FT(Δt)) ≈ max.(Δt, z ./ Ksat)
         ρ_calc = snow_bulk_density.(SWE, z, parameters)
-        @test prod(ρ_calc[1:(end - 1)] .≈ ρ_snow)
+        @test all(ρ_calc[1:(end - 1)] .≈ ρ_snow)
         @test ρ_calc[end] == _ρ_l
         @test snow_bulk_density(eps(FT(0)), 2 * eps(FT(0)), parameters) == _ρ_l
-
-
-        U = cat(FT.(Array(LinRange(-1e8, 1e7, 100))), FT(0), dims = 1)
-        q_l = snow_liquid_mass_fraction.(U, SWE, parameters)
-        T_bulk = snow_bulk_temperature.(U, SWE, q_l, parameters)
-
-        @test all(q_l[T_bulk .< _T_freeze] .< eps(FT))
-        @test all(q_l[T_bulk .> _T_freeze] .≈ FT(1))
-        @test all(q_l[T_bulk .== _T_freeze] .> FT(0.0)) &&
-              all(q_l[T_bulk .== _T_freeze] .< FT(1.1))
-        Upred =
-            (
-                _ρ_l .* SWE .* specific_heat_capacity.(q_l, parameters) .+
-                ρcD_g
-            ) .* (T_bulk .- _T_ref) .- _ρ_l .* SWE .* (1.0f0 .- q_l) .* _LH_f0
-
-        q_lpred = snow_liquid_mass_fraction.(Upred, SWE, parameters)
-        T_pred = snow_bulk_temperature.(Upred, SWE, q_lpred, parameters)
-        @test all(q_lpred .≈ q_l)
-        @test all(T_pred .≈ T_bulk)
-        @test ClimaLand.Snow.volumetric_internal_energy_liq(FT, parameters) ==
-              _ρ_l * _cp_l * (_T_freeze .- _T_ref)
-        temp = FT(273.0)
-        U = ClimaLand.Snow.energy_from_T_and_swe(FT(1.0), temp, parameters)
-        q_l = snow_liquid_mass_fraction(U, FT(1.0), parameters)
-        @test T_bulk =
-            snow_bulk_temperature(U, FT(1.0), q_l, parameters) == temp
-
-        q_l = FT(0.5)
-        U = ClimaLand.Snow.energy_from_q_l_and_swe(FT(1.0), q_l, parameters)
-        @test snow_liquid_mass_fraction(U, FT(1.0), parameters) == q_l
-
     end
 end

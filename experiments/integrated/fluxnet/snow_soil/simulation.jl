@@ -88,7 +88,7 @@ soil_model_type = Soil.EnergyHydrology
 snow_parameters = SnowParameters{FT}(
     dt;
     α_snow = α,
-    density = Snow.ConstantDensityModel(ρ),
+    density = Snow.MinimumDensityModel(ρ),
     earth_param_set = earth_param_set,
 );
 snow_args = (; parameters = snow_parameters);
@@ -134,6 +134,7 @@ Y.soil.ρe_int =
     volumetric_internal_energy.(Y.soil.θ_i, ρc_s, T_0, earth_param_set)
 
 Y.snow.S .= 0.0
+Y.snow.S_l .= 0.0
 Y.snow.U .= 0.0
 set_initial_cache!(p, Y, t0)
 

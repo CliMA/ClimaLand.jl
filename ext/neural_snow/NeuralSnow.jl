@@ -7,9 +7,8 @@ import ClimaLand.Snow:
     density_prog_vars,
     density_prog_types,
     density_prog_names,
-    update_density!,
-    update_density_prog!,
-    snow_depth!
+    update_density_and_depth!,
+    update_density_prog!
 import ClimaLand.Parameters as LP
 using Thermodynamics
 
@@ -114,33 +113,21 @@ ClimaLand.Snow.density_prog_names(m::NeuralDepthModel) =
 #Extend/Define the appropriate functions needed for this parameterization:
 
 """
-    snow_depth!(z_snow, m::NeuralDepthModel{FT}, Y, p, params) where {FT}
+    update_density_and_depth!(ρ_snow, z_snow,density::NeuralDepthModel, Y, p, params::SnowParameters,)
 
-An extension of the `snow_depth!` function to the NeuralDepthModel density parameterization, which includes the prognostic 
-depth variable and thus does not need to derive snow depth from SWE and density.
-
-This function clips the snow depth to be between 0 and SWE.
-"""
-function snow_depth!(z_snow, m::NeuralDepthModel{FT}, Y, p, params) where {FT}
-    z_snow .= min(Y.snow.Z, Y.snow.S) # z cannot be larger than SWE
-    z_snow .= max(z_snow, eps(FT)) # z must be positive
-    return nothing
-end
-
-"""
-    update_density!(ρ_snow, density::NeuralDepthModel, Y, p, params::SnowParameters,)
-
-Updates the snow density in place given the current model state. Default for all model types,
+Updates the snow density and depth in place given the current model state. Default for all model types,
 can be extended for alternative density parameterizations.
 """
-function update_density!(
+function update_density_and_depth!(
     ρ_snow,
+    z_snow,
     density::NeuralDepthModel,
     Y,
     p,
     params::SnowParameters,
 )
-    @. ρ_snow = snow_bulk_density(Y.snow.S, p.snow.z_snow, params)
+    @. z_snow = Y.snow.Z
+    @. ρ_snow = snow_bulk_density(Y.snow.S, z_snow, params)
 end
 
 
