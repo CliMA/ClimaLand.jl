@@ -27,8 +27,8 @@ import ClimaLand:
     source!
 
 export DisorderedKineticsModelParameters,
-DisorderedKineticsModel,
-    AbstractSoilCarbonSource,
+    DisorderedKineticsModel,
+    LitterInput,
     AbstractSoilDriver,
     DisorderedKineticsDrivers
 
@@ -125,23 +125,25 @@ This has been written so as to work with Differential Equations.jl.
 function ClimaLand.make_compute_exp_tendency(model::DisorderedKineticsModel)
     function compute_exp_tendency!(dY, Y, p, t)
         
-        @. dY.soilC.C = - p.ks * Y.soilC.C
+        @. dY.soilC.C = - p.soilC.ks * Y.soilC.C
 
         # Source terms are added in here
         for src in model.sources
+            print(src)
             source!(dY, src, Y, p, model.parameters)
         end
     end
     return compute_exp_tendency!
 end
 
-"""
-    AbstractCarbonSource{FT} <: ClimaLand.AbstractSource{FT}
 
-An abstract type for soil carbon sources. There are two sources:
-roots and microbes, in struct RootProduction and MicrobeProduction.
 """
-abstract type AbstractSoilCarbonSource{FT} <: ClimaLand.AbstractSource{FT} end
+    LitterInput{FT} <: AbstractCarbonSource{FT}
+
+Struct for the litter input of C into the SOC pool, appearing as a source
+term in the differential equation.
+"""
+struct LitterInput{FT} <: ClimaLand.AbstractSource{FT} end
 
 """
     ClimaLand.source!(dY::ClimaCore.Fields.FieldVector,
@@ -151,17 +153,25 @@ abstract type AbstractSoilCarbonSource{FT} <: ClimaLand.AbstractSource{FT} end
                           params)
 
 A method which extends the ClimaLand source! function for the
-case of microbe production of CO2 in soil.
+case of the disordered kinetics model.
 """
 function ClimaLand.source!(
     dY::ClimaCore.Fields.FieldVector,
-    src::AbstractSoilCarbonSource,
+    src::LitterInput,
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
-    params,
+    params::DisorderedKineticsModelParameters,
 )
-    @. dY.soilco2.C += p.inputs * pdf(LogNormal(params.mu, params.sigma), p.ks)
+    @. dY.soilC.C += p.soilC.inputs * p_k(p.soilC.ks,params.mu,params.sigma);
 end
+
+"""
+    p_k(k::N)
+
+    a function to calculate the pdf of the lognormal distribution of each decay rate k
+"""
+function p_k(k,mu,sigma) @. (1/(k* sigma * sqrt(2*π))) * exp(-((log(k) - mu)^2)/(2*sigma^2)); end
+
 
 
 
@@ -197,7 +207,7 @@ This function is empty because the auxiliary variable `ks` is not updated in tim
 """
 function ClimaLand.make_update_aux(model::DisorderedKineticsModel)
     function update_aux!(p, Y, t)
-        p.inputs = model.drivers.soc.func(t)
+        p.soilC.inputs .= model.drivers.soc.func.(t)
     end
     return update_aux!
 end
