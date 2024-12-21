@@ -1,7 +1,11 @@
 agents:
   queue: clima
   slurm_mem: 8G
-  modules: climacommon/2024_10_09
+  modules: climacommon/2024_12_16
+
+env:
+  JULIA_CUDA_MEMORY_POOL: "cuda"
+
 
 steps:
   - label: "init :GPU:"

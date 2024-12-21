@@ -21,6 +21,7 @@
 # Fixed number of iterations: 2
 # Jacobian update: Every Newton iteration
 # Precipitation data update: every timestep
+delete!(ENV, "JULIA_CUDA_MEMORY_POOL")
 
 import SciMLBase
 using Dates

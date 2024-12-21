@@ -15,6 +15,8 @@
 # Fixed number of iterations: 3
 # Jacobian update: every Newton iteration
 # Atmos forcing update: every 3 hours
+delete!(ENV, "JULIA_CUDA_MEMORY_POOL")
+
 import SciMLBase
 import ClimaComms
 ClimaComms.@import_required_backends

@@ -1,12 +1,13 @@
 agents:
   queue: clima
-  modules: climacommon/2024_10_09
+  modules: climacommon/2024_12_16
 
 env:
   JULIA_DEPOT_PATH: "${BUILDKITE_BUILD_PATH}/${BUILDKITE_PIPELINE_SLUG}/depot/default"
   JULIA_NVTX_CALLBACKS: gc
   OPENBLAS_NUM_THREADS: 1
   SLURM_KILL_BAD_EXIT: 1
+  JULIA_CUDA_MEMORY_POOL: "cuda"
 
 steps:
   - label: "init environment :computer:"
