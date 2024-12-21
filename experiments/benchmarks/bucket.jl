@@ -9,6 +9,7 @@
 #
 # When run with buildkite on clima, this code also compares with the previous best time
 # saved at the bottom of this file
+delete!(ENV, "JULIA_CUDA_MEMORY_POOL")
 
 import SciMLBase
 using Dates
