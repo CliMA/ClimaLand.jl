@@ -195,7 +195,7 @@ function make_compute_jacobian(land::AbstractLandModel)
         map(x -> make_compute_jacobian(getproperty(land, x)), components)
     function compute_jacobian!(jacobian, Y, p, dtγ, t)
         for f! in compute_jacobian_function_list
-            f!(jacobian, Y, p, dtγ, t)
+            f!(jacobian, Y, p, float(dtγ), t)
         end
     end
     return compute_jacobian!

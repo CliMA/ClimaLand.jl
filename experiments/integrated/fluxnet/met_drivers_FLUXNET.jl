@@ -10,6 +10,8 @@ using ClimaLand
 
 import ClimaComms
 
+import ClimaUtilities.TimeManager: ITime, date
+
 context = ClimaComms.context()
 
 # Methods for reading in the LAI data from MODIS data
@@ -20,9 +22,9 @@ include(
 data_path = ClimaLand.Artifacts.experiment_fluxnet_data_path(site_ID)
 driver_data = readdlm(data_path, ',')
 
-LOCAL_DATETIME = DateTime.(format.(driver_data[2:end, 1]), "yyyymmddHHMM")
+LOCAL_DATETIME = DateTime.(Format.format.(driver_data[2:end, 1]), "yyyymmddHHMM")
 UTC_DATETIME = LOCAL_DATETIME .+ Dates.Hour(time_offset)
-DATA_DT = Second(LOCAL_DATETIME[2] - LOCAL_DATETIME[1]).value # seconds
+DATA_DT = ITime(Second(LOCAL_DATETIME[2] - LOCAL_DATETIME[1]).value) # seconds
 
 # Label of every data column to be collected from the driver data file
 labels = (
@@ -50,7 +52,7 @@ collect_args = [
     ("TA_F", (x) -> x .+ 273.15, "K")
     ("VPD_F", (x) -> x .* 100, "Pa")
     ("PA_F", (x) -> x .* 1000, "Pa")
-    ("P_F", (x) -> x ./ (1000 * DATA_DT), "m/s")
+    ("P_F", (x) -> x ./ (1000 * float(DATA_DT)), "m/s")
     ("WS_F", (x) -> x, "m/s")
     ("LW_IN_F", (x) -> x, "W/m^2")
     ("SW_IN_F", (x) -> x, "W/m^2")
@@ -134,7 +136,7 @@ end
 snow_frac = snow_precip_fraction.(drivers.TA.values[:], RH[:])
 # Create interpolators for each atmospheric driver needed for PrescribedAtmosphere and for
 # PrescribedRadiation
-seconds = FT.(0:DATA_DT:((length(UTC_DATETIME) - 1) * DATA_DT));
+seconds = promote([ITime(sec) for sec in 0:float(DATA_DT):((length(UTC_DATETIME) - 1) * float(DATA_DT))]...) |> collect
 
 P_liq = -FT.(drivers.P.values[:] .* (1 .- snow_frac))
 precip = TimeVaryingInput(seconds, P_liq; context) # m/s
@@ -171,7 +173,9 @@ function zenith_angle(
     insol_params::Insolation.Parameters.InsolationParameters{FT} = earth_param_set.insol_params,
 ) where {FT}
     # This should be time in UTC
-    current_datetime = start_date + Dates.Second(round(t))
+    # TODO: Maybe this can be improved: for example, don't need t and start_date and can just have one
+    # Maybe, change this so that helper_instantaneous_zenith_angle can just use a single ITime
+    current_datetime = date(ITime(0, epoch = start_date) + t)
 
     # Orbital Data uses Float64, so we need to convert to our sim FT
     d, δ, η_UTC =
@@ -219,9 +223,8 @@ MODIS_LAI = single_col_data_matrix(
         ),
     ),
 )
-
-LAI_dt = Second(MODIS_LAI[2, 1] - MODIS_LAI[1, 1]).value
-LAI_seconds = FT.(0:LAI_dt:((length(MODIS_LAI[:, 1]) - 1) * LAI_dt))
+LAI_dt = ITime(Second(MODIS_LAI[2, 1] - MODIS_LAI[1, 1]).value)
+LAI_seconds = [t for t in ITime(0):LAI_dt:((length(MODIS_LAI[:, 1]) - 1) * LAI_dt)]
 
 # LAI function for radiative transfer
 LAIfunction = TimeVaryingInput(LAI_seconds, FT.(MODIS_LAI[:, 2]); context)

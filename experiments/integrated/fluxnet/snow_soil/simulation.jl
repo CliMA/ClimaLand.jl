@@ -7,6 +7,7 @@ using CairoMakie
 using Statistics
 using Dates
 using NCDatasets
+import ClimaUtilities.TimeManager: ITime
 
 using ClimaLand
 using ClimaLand.Domains: Column
@@ -37,11 +38,11 @@ land_domain = Column(;
 )
 
 # TIME STEPS:
-t0 = FT(1800)
+t0 = ITime(1800)
 N_days_spinup = 0
 N_days = N_days_spinup + 360
-dt = FT(900)
-tf = t0 + FT(3600 * 24 * N_days)
+dt = ITime(900)
+tf = t0 + ITime(3600 * 24 * N_days)
 
 # Read in the parameters for the site
 include(
@@ -137,9 +138,9 @@ Y.snow.S .= 0.0
 Y.snow.U .= 0.0
 set_initial_cache!(p, Y, t0)
 
-saveat = Array(t0:dt:tf)
+saveat = [promote(t0:dt:tf...)...]
 sv = (;
-    t = Array{Float64}(undef, length(saveat)),
+    t = Array{eltype(saveat)}(undef, length(saveat)),
     saveval = Array{NamedTuple}(undef, length(saveat)),
 )
 saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat)
@@ -173,7 +174,7 @@ prob = SciMLBase.ODEProblem(
 sol = SciMLBase.solve(prob, ode_algo; callback = cb, dt = dt, saveat = t0:dt:tf);
 
 # Plotting
-daily = sol.t ./ 3600 ./ 24
+daily = float.(sol.t ./ 3600 ./ 24)
 savedir = joinpath(climaland_dir, "experiments/integrated/fluxnet/snow_soil")
 
 
@@ -199,7 +200,7 @@ lines!(
 
 lines!(
     ax1,
-    seconds ./ 3600 ./ 24,
+    float.(seconds ./ 3600 ./ 24),
     drivers.SWC.values[:],
     label = "Data, Unknown Depth",
 )
@@ -208,8 +209,8 @@ axislegend(ax1, position = :rt)
 ax2 = Axis(fig[1, 2], ylabel = "Precipitation (mm/day)")
 ylims!(ax2, [-1300, 0])
 hidexdecorations!(ax2, ticks = false)
-lines!(ax2, seconds ./ 3600 ./ 24, P_liq .* (1e3 * 24 * 3600), label = "Liquid")
-lines!(ax2, seconds ./ 3600 ./ 24, P_snow .* (1e3 * 24 * 3600), label = "Snow")
+lines!(ax2, float.(seconds ./ 3600 ./ 24), P_liq .* (1e3 * 24 * 3600), label = "Liquid")
+lines!(ax2, float.(seconds ./ 3600 ./ 24), P_snow .* (1e3 * 24 * 3600), label = "Snow")
 axislegend(ax2, position = :rb)
 ax3 = Axis(fig[2, 1], ylabel = "SWE (m)", xlabel = "Days")
 lines!(ax3, daily, [parent(sol.u[k].snow.S)[1] for k in 1:1:length(sol.t)])
@@ -217,23 +218,23 @@ lines!(ax3, daily, [parent(sol.u[k].snow.S)[1] for k in 1:1:length(sol.t)])
 # Temp
 ax4 = Axis(fig[1, 1], ylabel = "T (K)")
 hidexdecorations!(ax4, ticks = false)
-lines!(ax4, seconds ./ 3600 ./ 24, drivers.TA.values[:], label = "Data, Air")
+lines!(ax4, float.(seconds ./ 3600 ./ 24), drivers.TA.values[:], label = "Data, Air")
 lines!(
     ax4,
-    sv.t ./ 24 ./ 3600,
+    float.(sv.t ./ 24 ./ 3600),
     [parent(sv.saveval[k].soil.T)[end - 2] for k in 1:1:length(sv.t)],
     label = "Model 10 cm",
 )
 
 lines!(
     ax4,
-    sv.t ./ 24 ./ 3600,
+    float.(sv.t ./ 24 ./ 3600),
     [parent(sv.saveval[k].snow.T)[1] for k in 1:1:length(sv.t)],
     label = "Snow",
 )
 lines!(
     ax4,
-    seconds ./ 3600 ./ 24,
+    float.(seconds ./ 3600 ./ 24),
     drivers.TS.values[:],
     label = "Data, Unknown depth",
 )
@@ -253,7 +254,7 @@ ax1 = Axis(fig[2, 1], ylabel = "ΔEnergy (J/A)", xlabel = "Days")
                 sv.saveval[k].soil.bottom_bc.heat,
             )[end] for k in 1:1:(length(sv.t) - 1)
         ],
-    ) * (sv.t[2] - sv.t[1])
+    ) * float.(sv.t[2] - sv.t[1])
 E_measured = [
     sum(sol.u[k].soil.ρe_int) + parent(sol.u[k].snow.U)[end] for
     k in 1:1:length(sv.t)
@@ -266,7 +267,7 @@ E_measured = [
                 sv.saveval[k].soil.bottom_bc.water .+ sv.saveval[k].soil.R_s,
             )[end] for k in 1:1:(length(sv.t) - 1)
         ],
-    ) * (sv.t[2] - sv.t[1])
+    ) * float(sv.t[2] - sv.t[1])
 W_measured = [
     sum(sol.u[k].soil.ϑ_l) +
     sum(sol.u[k].soil.θ_i) * _ρ_i / _ρ_l +

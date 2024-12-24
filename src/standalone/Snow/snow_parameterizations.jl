@@ -331,7 +331,7 @@ function compute_water_runoff(
     z::FT,
     parameters,
 ) where {FT}
-    τ = runoff_timescale(z, parameters.Ksat, parameters.Δt)
+    τ = runoff_timescale(z, parameters.Ksat, float(parameters.Δt))
     q_l_max::FT = maximum_liquid_mass_fraction(T, ρ_snow, parameters)
     return -(q_l - q_l_max) * heaviside(q_l - q_l_max) / τ * S /
            max(1 - q_l, FT(0.01))
