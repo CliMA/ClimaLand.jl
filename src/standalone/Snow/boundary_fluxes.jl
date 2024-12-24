@@ -54,17 +54,18 @@ flux (W/m^2) terms for the snow model:
 - p.snow.total_water_flux
 - p.snow.total_energy_flux
 
-The two latter fluxes also include contributions from fluxes 
-due to melt and precipitation, but note that precipitation and melt flux are not computed or updated in `snow_boundary_fluxes` currently. Instead, they 
-are updated in `update_aux!`, which happens prior to the `snow_boundary_fluxes!` call, and used in the `snow_boundary_fluxes!` call.
+The two latter fluxes also include contributions from fluxes due to melt and
+precipitation, but note that precipitation and melt flux are not computed or
+updated in `snow_boundary_fluxes` currently. Instead, they are updated in
+`update_aux!`, which happens prior to the `snow_boundary_fluxes!` call, and used
+in the `snow_boundary_fluxes!` call.
 
 
-This function calls the `turbulent_fluxes` and `net_radiation`
-functions, which use the snow surface conditions as well as
-the atmos and radiation conditions in order to
-compute the surface fluxes using Monin Obukhov Surface Theory.
-It also accounts for the presence of other components, if run as
-part of an integrated land model, and their effect on boundary conditions.
+This function calls the `turbulent_fluxes!` and `net_radiation!` functions,
+which use the snow surface conditions as well as the atmos and radiation
+conditions in order to compute the surface fluxes using Monin Obukhov Surface
+Theory. It also accounts for the presence of other components, if run as part of
+an integrated land model, and their effect on boundary conditions.
 """
 function snow_boundary_fluxes!(bc::AtmosDrivenSnowBC, model::SnowModel, Y, p, t)
     snow_boundary_fluxes!(
@@ -75,6 +76,7 @@ function snow_boundary_fluxes!(bc::AtmosDrivenSnowBC, model::SnowModel, Y, p, t)
         p,
         t,
     )
+    return nothing
 end
 
 """
@@ -89,8 +91,8 @@ end
 
 Computes the boundary fluxes for the snow model in standalone mode.
 
-The ground heat flux is assumed to be zero, and the snow surface is 
-assumed to be bare (no vegetation).
+The ground heat flux is assumed to be zero, and the snow surface is assumed to
+be bare (no vegetation).
 """
 function snow_boundary_fluxes!(
     bc::AtmosDrivenSnowBC,
@@ -101,8 +103,10 @@ function snow_boundary_fluxes!(
     t,
 ) where {FT}
     bc = model.boundary_conditions
-    p.snow.turbulent_fluxes .= turbulent_fluxes(bc.atmos, model, Y, p, t)
-    p.snow.R_n .= net_radiation(bc.radiation, model, Y, p, t)
+
+    turbulent_fluxes!(p.snow.turbulent_fluxes, bc.atmos, model, Y, p, t)
+    net_radiation!(p.snow.R_n, bc.radiation, model, Y, p, t)
+
     # How does rain affect the below?
     P_snow = p.drivers.P_snow
 
@@ -112,7 +116,7 @@ function snow_boundary_fluxes!(
         p.snow.snow_cover_fraction
 
     # I think we want dU/dt to include energy of falling snow.
-    # otherwise snow can fall but energy wont change
+    # otherwise snow can fall but energy won't change
     # We are assuming that the sensible heat portion of snow is negligible.
     _LH_f0 = FT(LP.LH_f0(model.parameters.earth_param_set))
     _ρ_liq = FT(LP.ρ_cloud_liq(model.parameters.earth_param_set))
@@ -126,4 +130,5 @@ function snow_boundary_fluxes!(
             p.snow.turbulent_fluxes.shf +
             p.snow.R_n - p.snow.energy_runoff
         ) * p.snow.snow_cover_fraction
+    return nothing
 end

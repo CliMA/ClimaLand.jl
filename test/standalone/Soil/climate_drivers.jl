@@ -217,14 +217,16 @@ for FT in (Float32, Float64)
                 p,
                 t,
             )
-            R_n = ClimaLand.net_radiation(
+            R_n_copy = copy(p.soil.R_n)
+            ClimaLand.net_radiation!(
+                R_n_copy,
                 model.boundary_conditions.top.radiation,
                 model,
                 Y,
                 p,
                 t,
             )
-            @test R_n == p.soil.R_n
+            @test R_n_copy == p.soil.R_n
             @test conditions == p.soil.turbulent_fluxes
 
             ClimaLand.Soil.soil_boundary_fluxes!(

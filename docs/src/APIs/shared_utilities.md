@@ -75,7 +75,7 @@ ClimaLand.CoupledAtmosphere
 ClimaLand.CoupledRadiativeFluxes
 ClimaLand.AbstractAtmosphericDrivers
 ClimaLand.AbstractRadiativeDrivers
-ClimaLand.turbulent_fluxes
+ClimaLand.turbulent_fluxes!
 ClimaLand.turbulent_fluxes_at_a_point
 ClimaLand.set_atmos_ts!
 ClimaLand.surface_air_density

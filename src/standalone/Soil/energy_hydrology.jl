@@ -645,10 +645,6 @@ function ClimaLand.source!(
     _ρ_i = FT(LP.ρ_cloud_ice(earth_param_set))
     Δz = model.domain.fields.Δz # center face distance
 
-    # Wrap hydrology and earth parameters in one struct to avoid type inference failure
-    hydrology_earth_params =
-        ClimaLand.Soil.HydrologyEarthParameters.(hydrology_cm, earth_param_set)
-
     @. dY.soil.ϑ_l +=
         -phase_change_source(
             p.soil.θ_l,
@@ -666,7 +662,11 @@ function ClimaLand.source!(
             ),
             ν,
             θ_r,
-            hydrology_earth_params,
+            # Wrap hydrology and earth parameters in one struct to avoid type inference failure
+            ClimaLand.Soil.HydrologyEarthParameters.(
+                hydrology_cm,
+                earth_param_set,
+            ),
         )
     @. dY.soil.θ_i +=
         (_ρ_l / _ρ_i) * phase_change_source(
@@ -685,7 +685,11 @@ function ClimaLand.source!(
             ),
             ν,
             θ_r,
-            hydrology_earth_params,
+            # Wrap hydrology and earth parameters in one struct to avoid type inference failure
+            ClimaLand.Soil.HydrologyEarthParameters.(
+                hydrology_cm,
+                earth_param_set,
+            ),
         )
 end
 
@@ -816,7 +820,8 @@ end
 
 
 
-function turbulent_fluxes(
+function turbulent_fluxes!(
+    dest,
     atmos::PrescribedAtmosphere,
     model::EnergyHydrology{FT},
     Y::ClimaCore.Fields.FieldVector,
@@ -843,27 +848,29 @@ function turbulent_fluxes(
         model.domain.fields.z,
         model.domain.fields.Δz_top,
     )
-    return soil_turbulent_fluxes_at_a_point.(
-        T_sfc,
-        θ_l_sfc,
-        θ_i_sfc,
-        h_sfc,
-        d_sfc,
-        hydrology_cm_sfc,
-        ν_sfc,
-        θ_r_sfc,
-        K_sat_sfc,
-        p.drivers.thermal_state,
-        u_air,
-        h_air,
-        atmos.gustiness,
-        z_0m,
-        z_0b,
-        Ω,
-        γ,
-        γT_ref,
-        Ref(earth_param_set),
-    )
+    dest .=
+        soil_turbulent_fluxes_at_a_point.(
+            T_sfc,
+            θ_l_sfc,
+            θ_i_sfc,
+            h_sfc,
+            d_sfc,
+            hydrology_cm_sfc,
+            ν_sfc,
+            θ_r_sfc,
+            K_sat_sfc,
+            p.drivers.thermal_state,
+            u_air,
+            h_air,
+            atmos.gustiness,
+            z_0m,
+            z_0b,
+            Ω,
+            γ,
+            γT_ref,
+            Ref(earth_param_set),
+        )
+    return nothing
 end
 
 """

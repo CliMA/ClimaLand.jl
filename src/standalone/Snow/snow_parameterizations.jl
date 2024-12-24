@@ -96,6 +96,8 @@ end
 Computes and returns the specific humidity over snow as a weighted
 fraction of the saturated specific humidity over liquid and frozen
 water.
+
+This function allocates.
 """
 function ClimaLand.surface_specific_humidity(
     model::SnowModel,
@@ -123,8 +125,6 @@ function ClimaLand.surface_specific_humidity(
     q_l = p.snow.q_l
     return @. qsat_over_ice * (1 - q_l) + q_l * (qsat_over_liq)
 end
-
-
 
 """
     snow_surface_temperature(T::FT) where {FT}

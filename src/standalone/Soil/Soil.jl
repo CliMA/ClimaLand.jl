@@ -93,7 +93,7 @@ import ClimaLand:
     surface_emissivity,
     surface_height,
     surface_resistance,
-    turbulent_fluxes,
+    turbulent_fluxes!,
     get_drivers
 export RichardsModel,
     RichardsParameters,
