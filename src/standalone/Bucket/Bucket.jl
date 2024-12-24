@@ -22,8 +22,8 @@ import ClimaLand.Domains: coordinates, SphericalShell
 using ClimaLand:
     AbstractAtmosphericDrivers,
     AbstractRadiativeDrivers,
-    turbulent_fluxes,
-    net_radiation,
+    turbulent_fluxes!,
+    net_radiation!,
     compute_ρ_sfc,
     AbstractExpModel,
     heaviside,
@@ -417,11 +417,17 @@ function make_update_aux(model::BucketModel{FT}) where {FT}
                 ),
             )
         # Compute turbulent surface fluxes
-        p.bucket.turbulent_fluxes .=
-            turbulent_fluxes(model.atmos, model, Y, p, t)
+        turbulent_fluxes!(
+            p.bucket.turbulent_fluxes,
+            model.atmos,
+            model,
+            Y,
+            p,
+            t,
+        )
 
         # Radiative fluxes
-        p.bucket.R_n .= net_radiation(model.radiation, model, Y, p, t)
+        net_radiation!(p.bucket.R_n, model.radiation, model, Y, p, t)
 
         # Surface albedo
         next_albedo!(

@@ -295,7 +295,7 @@ if ClimaComms.device() isa ClimaComms.CUDADevice
 end
 
 if get(ENV, "BUILDKITE_PIPELINE_SLUG", nothing) == "climaland-benchmark"
-    PREVIOUS_BEST_TIME = 5.9
+    PREVIOUS_BEST_TIME = 5.8
     if average_timing_s > PREVIOUS_BEST_TIME + std_timing_s
         @info "Possible performance regression, previous average time was $(PREVIOUS_BEST_TIME)"
     elseif average_timing_s < PREVIOUS_BEST_TIME - std_timing_s

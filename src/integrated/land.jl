@@ -480,7 +480,7 @@ function soil_boundary_fluxes!(
     t,
 ) where {FT}
     bc = soil.boundary_conditions.top
-    p.soil.turbulent_fluxes .= turbulent_fluxes(bc.atmos, soil, Y, p, t)
+    turbulent_fluxes!(p.soil.turbulent_fluxes, bc.atmos, soil, Y, p, t)
     # influx = maximum possible rate of infiltration given precip, snowmelt, evaporation/condensation
     # but if this exceeds infiltration capacity of the soil, runoff will
     # be generated.
@@ -505,6 +505,7 @@ function soil_boundary_fluxes!(
         ) +
         p.excess_heat_flux +
         p.snow.snow_cover_fraction * p.ground_heat_flux
+    return nothing
 end
 
 function snow_boundary_fluxes!(
@@ -515,7 +516,7 @@ function snow_boundary_fluxes!(
     p,
     t,
 ) where {FT}
-    p.snow.turbulent_fluxes .= turbulent_fluxes(bc.atmos, model, Y, p, t)
+    turbulent_fluxes!(p.snow.turbulent_fluxes, bc.atmos, model, Y, p, t)
     # How does rain affect the below?
     P_snow = p.drivers.P_snow
 
@@ -539,6 +540,7 @@ function snow_boundary_fluxes!(
             p.snow.turbulent_fluxes.shf +
             p.snow.R_n - p.snow.energy_runoff - p.ground_heat_flux
         ) * p.snow.snow_cover_fraction
+    return nothing
 end
 
 

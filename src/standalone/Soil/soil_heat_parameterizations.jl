@@ -113,11 +113,11 @@ function volumetric_heat_capacity(
     ρc_ds::FT,
     earth_param_set::EP,
 ) where {FT, EP}
-    _ρ_i = FT(LP.ρ_cloud_ice(earth_param_set))
-    ρcp_i = FT(LP.cp_i(earth_param_set) * _ρ_i)
+    _ρ_i = LP.ρ_cloud_ice(earth_param_set)
+    ρcp_i = LP.cp_i(earth_param_set) * _ρ_i
 
-    _ρ_l = FT(LP.ρ_cloud_liq(earth_param_set))
-    ρcp_l = FT(LP.cp_l(earth_param_set) * _ρ_l)
+    _ρ_l = LP.ρ_cloud_liq(earth_param_set)
+    ρcp_l = LP.cp_l(earth_param_set) * _ρ_l
 
     ρc_s = ρc_ds + θ_l * ρcp_l + θ_i * ρcp_i
     return ρc_s
