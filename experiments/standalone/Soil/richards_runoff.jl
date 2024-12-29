@@ -121,9 +121,9 @@ function hydrostatic_profile(
     end
     return FT(ϑ_l)
 end
-t0 = 0.0
-tf = 3600.0 * 24 * 2
-dt = 1800.0
+t0 = ITime(0.0, epoch = start_date)
+tf = ITime(3600.0 * 24 * 2, epoch = start_date)
+dt = ITime(1800.0, epoch = start_date)
 vg_α = hydrology_cm.α
 vg_n = hydrology_cm.n
 Y.soil.ϑ_l .= hydrostatic_profile.(lat, z, ν, θ_r, vg_α, vg_n, S_s, f_max)
@@ -156,13 +156,13 @@ prob = SciMLBase.ODEProblem(
     p,
 )
 save_every = 100
-saveat = Array(t0:(save_every * dt):tf)
+saveat = [promote(t0:(save_every * dt):tf...)...]
 sv = (;
-    t = Array{Float64}(undef, length(saveat)),
+    t = Array{eltype(saveat)}(undef, length(saveat)),
     saveval = Array{NamedTuple}(undef, length(saveat)),
 )
 saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat)
-updateat = Array(t0:dt:tf)
+updateat = [promote(t0:dt:tf...)...]
 drivers = ClimaLand.get_drivers(model)
 updatefunc = ClimaLand.make_update_drivers(drivers)
 driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
