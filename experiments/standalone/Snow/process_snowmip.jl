@@ -1,3 +1,5 @@
+import ClimaUtilities.TimeManager: date
+
 # Fetch site data
 path = ClimaLand.Artifacts.esm_snowmip_data_path(; context = context)
 metadata_path = joinpath(path, "site_metadata.txt")
@@ -34,7 +36,8 @@ timestamp = met_data["time"][:]
 year = Dates.year.(timestamp)
 # convert from milliseconds to seconds
 mask = (year .== 2009) .| (year .== 2010) .| (year .== 2011)
-seconds = Dates.value.(timestamp[mask] .- timestamp[mask][1]) / 1000
+seconds_not_itime = Dates.value.(timestamp[mask] .- timestamp[mask][1]) / 1000
+seconds = [ITime(t, epoch = timestamp[mask][1]) for t in seconds_not_itime]
 
 LWdown = met_data["LWdown"][:][mask]
 SWdown = met_data["SWdown"][:][mask]
@@ -60,7 +63,7 @@ function zenith_angle(
     insol_params::Insolation.Parameters.InsolationParameters{FT} = param_set.insol_params,
 ) where {FT}
     # This should be time in UTC
-    current_datetime = start_date + Dates.Second(round(t))
+    current_datetime = date(t)
 
     # Orbital Data uses Float64, so we need to convert to our sim FT
     d, δ, η_UTC =

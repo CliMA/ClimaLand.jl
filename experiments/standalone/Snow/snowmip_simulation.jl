@@ -19,6 +19,7 @@ using Thermodynamics
 using Statistics
 using Insolation
 using DelimitedFiles
+import ClimaUtilities.TimeManager: ITime
 
 using CSV, HTTP, Flux, cuDNN, BSON, StatsBase
 NeuralSnow = Base.get_extension(ClimaLand, :NeuralSnowExt).NeuralSnow;
@@ -43,10 +44,10 @@ include(
     joinpath(climaland_dir, "experiments/standalone/Snow/process_snowmip.jl"),
 )
 savedir = generate_output_path("experiments/standalone/Snow/")
-t0 = FT(0.0)
-tf = FT(seconds[end])
-ndays = (tf - t0) / 3600 / 24
-Δt = FT(60 * 60)
+tf = seconds[end]
+t0 = ITime(0.0, epoch = tf.epoch)
+ndays = float((tf - t0) / 3600 / 24)
+Δt = ITime(60 * 60, epoch = tf.epoch)
 
 domain = ClimaLand.Domains.Point(; z_sfc = FT(0))
 
@@ -97,9 +98,9 @@ prob = SciMLBase.ODEProblem(
     (t0, tf),
     p,
 )
-saveat = FT.(collect(t0:Δt:tf))
+saveat = [promote(t0:Δt:tf...)...]
 sv = (;
-    t = Array{FT}(undef, length(saveat)),
+    t = Array{eltype(saveat)}(undef, length(saveat)),
     saveval = Array{NamedTuple}(undef, length(saveat)),
 );
 saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat);
@@ -138,7 +139,7 @@ U = [parent(sol.u[k].snow.U)[1] for k in 1:length(sol.t)];
 t = sol.t;
 
 start_day = 1
-days = start_day .+ floor.(t ./ 3600 ./ 24)
+days = start_day .+ floor.(float.(t) ./ 3600 ./ 24)
 doys = days .% 365 # doesn't account for leap year
 
 obs_swes = Vector{Union{Float64, Missing}}(missing, length(doys))
@@ -163,7 +164,7 @@ mean_obs_df = combine(
     [:model_swe, :obs_swe, :model_tsnow, :obs_tsnow] .=> missingmean,
     renamecols = false,
 )
-daily = t ./ 24 ./ 3600
+daily = float.(t) ./ 24 ./ 3600
 
 fig = CairoMakie.Figure(size = (1600, 1200), fontsize = 26)
 # set limits
@@ -174,7 +175,7 @@ CairoMakie.hidexdecorations!(ax1, ticks = false)
 CairoMakie.lines!(ax1, daily, S, label = "Model")
 CairoMakie.scatter!(
     ax1,
-    seconds[snow_data_avail] ./ 24 ./ 3600,
+    float.(seconds)[snow_data_avail] ./ 24 ./ 3600,
     SWE,
     label = "Data",
     color = :red,
@@ -215,14 +216,14 @@ CairoMakie.hidexdecorations!(ax1, ticks = false)
 CairoMakie.lines!(ax1, daily, T, label = "Model")
 CairoMakie.scatter!(
     ax1,
-    seconds[snow_data_avail] ./ 24 ./ 3600,
+    float.(seconds)[snow_data_avail] ./ 24 ./ 3600,
     T_snow .+ 273.15,
     label = "Snow T",
     color = :red,
 )
 CairoMakie.scatter!(
     ax1,
-    seconds[snow_data_avail] ./ 24 ./ 3600,
+    float.(seconds)[snow_data_avail] ./ 24 ./ 3600,
     Tair[snow_data_avail],
     label = "Atmosphere T",
     color = :orange,
@@ -266,25 +267,25 @@ ax1 = CairoMakie.Axis(
     xlabel = "Time(days)",
 )
 xlims!(ax1, 0, ndays)
-CairoMakie.lines!(ax1, daily, cumsum(snow) .* Δt, label = "Snow", color = :red)
+CairoMakie.lines!(ax1, daily, cumsum(snow) .* float(Δt), label = "Snow", color = :red)
 CairoMakie.lines!(
     ax1,
     daily,
-    cumsum(rain) .* Δt,
+    cumsum(rain) .* float(Δt),
     label = "Rain",
     color = :green,
 )
 CairoMakie.lines!(
     ax1,
     daily,
-    cumsum(evaporation .* scf) .* Δt,
+    cumsum(evaporation .* scf) .* float(Δt),
     label = "Evaporation",
     color = :purple,
 )
 CairoMakie.lines!(
     ax1,
     daily,
-    cumsum(water_runoff .* scf) .* Δt,
+    cumsum(water_runoff .* scf) .* float(Δt),
     label = "Runoff/Melt",
     color = :blue,
 )
@@ -301,7 +302,7 @@ ax1 = CairoMakie.Axis(fig[2, 1], ylabel = "ΔEnergy (J/A)", xlabel = "Days")
             parent(sv.saveval[k].snow.applied_energy_flux)[end] for
             k in 2:1:length(sv.t)
         ],
-    ) * (sv.t[2] - sv.t[1])
+    ) * float(sv.t[2] - sv.t[1])
 E_measured = [parent(sol.u[k].snow.U)[end] for k in 1:1:length(sv.t)]
 ΔW_expected =
     cumsum(
@@ -309,7 +310,7 @@ E_measured = [parent(sol.u[k].snow.U)[end] for k in 1:1:length(sv.t)]
             parent(sv.saveval[k].snow.applied_water_flux)[end] for
             k in 2:1:length(sv.t)
         ],
-    ) * (sv.t[2] - sv.t[1])
+    ) * float(sv.t[2] - sv.t[1])
 W_measured = [parent(sol.u[k].snow.S)[end] for k in 1:1:length(sv.t)]
 CairoMakie.lines!(
     ax1,

@@ -351,14 +351,14 @@ function ClimaLand.make_update_boundary_fluxes(model::SnowModel{FT}) where {FT}
         @. p.snow.applied_water_flux = clip_total_snow_water_flux(
             Y.snow.S,
             p.snow.total_water_flux,
-            float(model.parameters.Δt),
+            FT(float(model.parameters.Δt)),
         )
         @. p.snow.applied_energy_flux = clip_total_snow_energy_flux(
             Y.snow.U,
             Y.snow.S,
             p.snow.total_energy_flux,
             p.snow.total_water_flux,
-            float(model.parameters.Δt),
+            FT(float(model.parameters.Δt)),
         )
     end
 end
