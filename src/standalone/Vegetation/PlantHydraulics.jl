@@ -343,7 +343,8 @@ function ClimaLand.Canopy.set_canopy_prescribed_field!(
     t,
 ) where {FT}
     (; LAIfunction, SAI, RAI) = component.parameters.ai_parameterization
-    evaluate!(p.canopy.hydraulics.area_index.leaf, LAIfunction, floor(t))
+    # I am not sure why we floor t here
+    evaluate!(p.canopy.hydraulics.area_index.leaf, LAIfunction, t)
     p.canopy.hydraulics.area_index.leaf .=
         clip.(p.canopy.hydraulics.area_index.leaf, FT(0.05))
     @. p.canopy.hydraulics.area_index.stem = SAI

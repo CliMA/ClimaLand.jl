@@ -455,8 +455,10 @@ function ClimaLand.make_update_aux(
         compute_NIR!(nir_d, RT, bc.radiation, p, t)
         K = p.canopy.radiative_transfer.K
         @. K = extinction_coeff(p.canopy.radiative_transfer.G, θs)
+        # This can be improved by attaching an epoch to t and getting the date like that
+        # Also, not sure why we floor t here
         DOY =
-            Dates.dayofyear(bc.atmos.start_date + Dates.Second(floor(Int64, t)))
+            Dates.dayofyear(bc.atmos.start_date + Dates.Second(float(t)))
         @. frac_diff = diffuse_fraction(
             DOY,
             T_air,

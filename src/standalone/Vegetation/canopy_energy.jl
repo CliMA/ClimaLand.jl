@@ -194,7 +194,7 @@ function ClimaLand.make_compute_jacobian(
             Y.canopy.energy.T - _T_freeze,
         )# use atmos air pressure as approximation for surface air pressure
         @. ∂Tres∂T =
-            dtγ * MatrixFields.DiagonalMatrixRow(
+            float(dtγ) * MatrixFields.DiagonalMatrixRow(
                 (∂LW_n∂Tc - ∂SHF∂Tc - ∂LHF∂qc * ∂qc∂Tc) /
                 (ac_canopy * max(area_index.leaf + area_index.stem, eps(FT))),
             ) - (I,)
