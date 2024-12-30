@@ -12,6 +12,7 @@ using ClimaLand
 using ClimaLand.Soil
 using ClimaLand.Domains: Column
 import ClimaUtilities.OutputPathGenerator: generate_output_path
+import ClimaUtilities.TimeManager: ITime
 
 rmse(v1, v2) = sqrt(mean((v1 .- v2) .^ 2))
 FT = Float64
@@ -118,21 +119,24 @@ ode_algo = CTS.IMEXAlgorithm(
 
 
 no_phase_change = (;
-    t0 = Float64(0),
-    tf = Float64(60 * 60 * 24),
-    dt_ref = Float64(10),
+    t0 = ITime(0),
+    tf = ITime(60 * 60 * 24),
+    dt_ref = ITime(10),
     Trange = (FT(289.0), FT(288)),
-    dts = Float64.([100, 500, 1000]),
+    dts = ITime.(Float64.([100, 500, 1000])),
     exp_name = "no_pc",
 )
-phase_change = (;
-    t0 = Float64(0),
-    tf = Float64(60 * 60 * 24),
-    dt_ref = Float64(0.1),
+
+phase_change = let dt_ref = ITime(0.1)
+ (;
+    t0 = first(promote(ITime(0), dt_ref)),
+    tf = first(promote(ITime(60 * 60 * 24), dt_ref)),
+    dt_ref = dt_ref, # problem since this is 100 milliseconds and everything else need to be in milliseconds
     Trange = (FT(269.0), FT(270.0)),
-    dts = Float64.([1, 10, 100]),
+    dts = [first(promote(ITime(t), dt_ref)) for t in Float64.([1, 10, 100])],
     exp_name = "pc",
 )
+end
 
 savedir = generate_output_path(
     "experiments/standalone/Soil/water_energy_conservation",
@@ -227,7 +231,7 @@ for experiment in [no_phase_change, phase_change]
         ylabel = "RMSE(θ_l)/θ̄_l",
         xscale = log10,
         yscale = log10,
-        xticks = dts,
+        xticks = float.(dts),
     )
     ax2 = Axis(
         fig[1, 1],
@@ -235,14 +239,14 @@ for experiment in [no_phase_change, phase_change]
         ylabel = "Error",
         xscale = log10,
         yscale = log10,
-        xticks = dts,
+        xticks = float.(dts),
     )
     hidespines!(ax2)
     hidexdecorations!(ax2)
 
     l1 = lines!(
         ax1,
-        dts,
+        float.(dts),
         rmses_water,
         label = "Fractional RMSE θ_l",
         color = "red",
@@ -251,7 +255,7 @@ for experiment in [no_phase_change, phase_change]
 
     l2 = lines!(
         ax2,
-        dts,
+        float.(dts),
         mass_errors,
         label = "Water mass error",
         color = "purple",
@@ -280,7 +284,7 @@ for experiment in [no_phase_change, phase_change]
         ylabel = "RMSE(ρe_int)/ρ̄e_int",
         xscale = log10,
         yscale = log10,
-        xticks = dts,
+        xticks = float.(dts),
     )
     ax2 = Axis(
         fig[1, 1],
@@ -288,14 +292,14 @@ for experiment in [no_phase_change, phase_change]
         ylabel = "Error",
         xscale = log10,
         yscale = log10,
-        xticks = dts,
+        xticks = float.(dts),
     )
     hidespines!(ax2)
     hidexdecorations!(ax2)
 
     l1 = lines!(
         ax1,
-        dts,
+        float.(dts),
         rmses_energy,
         label = "Fractional RMSE ρe_int",
         color = "red",
@@ -304,7 +308,7 @@ for experiment in [no_phase_change, phase_change]
 
     l2 = lines!(
         ax2,
-        dts,
+        float.(dts),
         energy_errors,
         label = "Energy error",
         color = "purple",

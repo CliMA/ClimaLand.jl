@@ -360,7 +360,7 @@ function ClimaLand.make_compute_jacobian(model::EnergyHydrology{FT}) where {FT}
                 ) - (I,)
         else
             @. ∂ϑres∂ϑ =
-                -dtγ * (
+                -float(dtγ) * (
                     divf2c_matrix() ⋅
                     MatrixFields.DiagonalMatrixRow(interpc2f_op(-p.soil.K)) ⋅
                     gradc2f_matrix() ⋅ MatrixFields.DiagonalMatrixRow(
@@ -375,7 +375,7 @@ function ClimaLand.make_compute_jacobian(model::EnergyHydrology{FT}) where {FT}
                 ) - (I,)
         end
         @. ∂ρeres∂ϑ =
-            -dtγ * (
+            -float(dtγ) * (
                 divf2c_matrix() ⋅ MatrixFields.DiagonalMatrixRow(
                     -interpc2f_op(
                         volumetric_internal_energy_liq(
@@ -395,7 +395,7 @@ function ClimaLand.make_compute_jacobian(model::EnergyHydrology{FT}) where {FT}
             ) - (I,)
 
         @. ∂ρeres∂ρe =
-            -dtγ * (
+            -float(dtγ) * (
                 divf2c_matrix() ⋅
                 MatrixFields.DiagonalMatrixRow(interpc2f_op(-p.soil.κ)) ⋅
                 gradc2f_matrix() ⋅ MatrixFields.DiagonalMatrixRow(
