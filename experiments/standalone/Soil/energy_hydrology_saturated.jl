@@ -8,6 +8,7 @@ using ClimaLand.Domains: Column
 using ClimaLand.Soil
 import ClimaLand
 import ClimaLand.Parameters as LP
+import ClimaUtilities.TimeManager: ITime
 
 FT = Float32;
 earth_param_set = LP.LandParameters(FT)
@@ -94,8 +95,8 @@ function init_soil!(Y, z, params)
 end
 
 # Timestepping:
-t0 = Float64(0)
-tf = Float64(24 * 3600)
+t0 = ITime(Float64(0))
+tf = ITime(Float64(24 * 3600))
 timestepper = CTS.ARS111();
 ode_algo = CTS.IMEXAlgorithm(
     timestepper,
@@ -119,10 +120,10 @@ prob = SciMLBase.ODEProblem(
 # Solve at small dt
 init_soil!(Y, z, soil.parameters);
 set_initial_cache!(p, Y, t0);
-sol_dt_small = SciMLBase.solve(prob, ode_algo; dt = 100.0);
+sol_dt_small = SciMLBase.solve(prob, ode_algo; dt = ITime(100.0));
 init_soil!(Y, z, soil.parameters);
 set_initial_cache!(p, Y, t0);
-sol_dt_large = SciMLBase.solve(prob, ode_algo; dt = 900.0);
+sol_dt_large = SciMLBase.solve(prob, ode_algo; dt = ITime(900.0));
 @assert sum(isnan.(sol_dt_large.u[end])) == 0
 
 norm(x) = sqrt(mean(parent(x .^ 2)))
