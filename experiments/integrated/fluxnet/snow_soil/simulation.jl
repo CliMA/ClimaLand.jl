@@ -99,7 +99,7 @@ land_input = (
     domain = land_domain,
     runoff = ClimaLand.Soil.SurfaceRunoff(),
 )
-land = ClimaLand.LandHydrologyModel{FT}(;
+land = ClimaLand.SoilSnowModel{FT}(;
     land_args = land_input,
     soil_model_type = soil_model_type,
     soil_args = soil_args,
