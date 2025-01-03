@@ -108,8 +108,8 @@ Base.@kwdef struct SnowParameters{
     κ_ice::FT
     "Timestep of the model (s)"
     Δt::FT
-    "Areal specific heat of ground interacting with snow (J/m^2/K)"
-    ρcD_g::FT
+    "Parameter to prevent dividing by zero when computing snow temperature (m)"
+    ΔS::FT
     "Clima-wide parameters"
     earth_param_set::PSE
 end
@@ -124,7 +124,7 @@ end
                       θ_r = FT(0.08),
                       Ksat = FT(1e-3),
                       κ_ice = FT(2.21),
-                      ρcD_g = FT(3.553e5),
+                      ΔS = FT(0.1),
                       earth_param_set::PSE) where {FT, PSE}
 
 An outer constructor for `SnowParameters` which supplies defaults for
@@ -140,7 +140,7 @@ function SnowParameters{FT}(
     θ_r = FT(0.08),
     Ksat = FT(1e-3),
     κ_ice = FT(2.21),
-    ρcD_g = FT(3.553e5),
+    ΔS = FT(0.1),
     earth_param_set::PSE,
 ) where {FT <: AbstractFloat, DM <: AbstractDensityModel, PSE}
     return SnowParameters{FT, DM, PSE}(
@@ -153,7 +153,7 @@ function SnowParameters{FT}(
         Ksat,
         κ_ice,
         Δt,
-        ρcD_g,
+        ΔS,
         earth_param_set,
     )
 end
