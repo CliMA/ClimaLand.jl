@@ -1,9 +1,9 @@
-export LandHydrologyModel
+export SoilSnowModel
 using ClimaCore.Operators: column_integral_definite!
 
 
 """
-    struct LandHydrologyModel{
+    struct SoilSnowModel{
         FT,
         SnM <: Snow.SnowModel{FT},
         SoM <: Soil.EnergyHydrology{FT},
@@ -18,7 +18,7 @@ A concrete type of land model used for simulating systems with
 snow and soil (and eventually rivers).
 $(DocStringExtensions.FIELDS)
 """
-struct LandHydrologyModel{
+struct SoilSnowModel{
     FT,
     SnM <: Snow.SnowModel{FT},
     SoM <: Soil.EnergyHydrology{FT},
@@ -30,7 +30,7 @@ struct LandHydrologyModel{
 end
 
 """
-    LandHydrologyModel{FT}(;
+    SoilSnowModel{FT}(;
         land_args::NamedTuple = (;),
         snow_model_type::Type{SnM},
         snow_args::NamedTuple = (;),
@@ -44,13 +44,13 @@ end
 
 A constructor for the `LandHydrology`, which takes in the concrete model
 type and required arguments for each component, constructs those models,
-and constructs the `LandHydrologyModel` from them.
+and constructs the `SoilSnowModel` from them.
 
 Each component model is constructed with everything it needs to be stepped
 forward in time, including boundary conditions, source terms, and interaction
 terms.
 """
-function LandHydrologyModel{FT}(;
+function SoilSnowModel{FT}(;
     land_args::NamedTuple = (;),
     snow_model_type::Type{SnM},
     snow_args::NamedTuple = (;),
@@ -95,16 +95,16 @@ function LandHydrologyModel{FT}(;
         snow_args...,
     )
 
-    return LandHydrologyModel{FT, typeof(snow), typeof(soil)}(snow, soil)
+    return SoilSnowModel{FT, typeof(snow), typeof(soil)}(snow, soil)
 end
 
 """
-    lsm_aux_vars(m::LandHydrologyModel)
+    lsm_aux_vars(m::SoilSnowModel)
 
 The names of the additional auxiliary variables that are
 included in the integrated Soil-Snow model.
 """
-lsm_aux_vars(m::LandHydrologyModel) = (
+lsm_aux_vars(m::SoilSnowModel) = (
     :excess_water_flux,
     :excess_heat_flux,
     :atmos_energy_flux,
@@ -116,21 +116,21 @@ lsm_aux_vars(m::LandHydrologyModel) = (
     :effective_soil_sfc_depth,
 )
 """
-    lsm_aux_types(m::LandHydrologyModel)
+    lsm_aux_types(m::SoilSnowModel)
 
 The types of the additional auxiliary variables that are
 included in the integrated Soil-Snow model.
 """
-lsm_aux_types(m::LandHydrologyModel{FT}) where {FT} =
+lsm_aux_types(m::SoilSnowModel{FT}) where {FT} =
     (FT, FT, FT, FT, FT, FT, FT, FT, FT)
 
 """
-    lsm_aux_domain_names(m::LandHydrologyModel)
+    lsm_aux_domain_names(m::SoilSnowModel)
 
 The domain names of the additional auxiliary variables that are
 included in the integrated Soil-Snow model.
 """
-lsm_aux_domain_names(m::LandHydrologyModel) = (
+lsm_aux_domain_names(m::SoilSnowModel) = (
     :surface,
     :surface,
     :surface,
@@ -144,7 +144,7 @@ lsm_aux_domain_names(m::LandHydrologyModel) = (
 
 """
     make_update_boundary_fluxes(
-        land::LandHydrologyModel{FT, SnM, SoM},
+        land::SoilSnowModel{FT, SnM, SoM},
     ) where {
         FT,
         SnM <: Snow.SnowModel{FT},
@@ -154,7 +154,7 @@ lsm_aux_domain_names(m::LandHydrologyModel) = (
 A method which makes a function; the returned function
 updates the additional auxiliary variables for the integrated model,
 as well as updates the boundary auxiliary variables for all component
-models. 
+models.
 
 This function is called each ode function evaluation, prior to the tendency function
 evaluation.
@@ -167,7 +167,7 @@ completely melts in a step. In this case, that excess must go to the soil for co
 4. Compute the net flux for the atmosphere, which is useful for assessing conservation.
 """
 function make_update_boundary_fluxes(
-    land::LandHydrologyModel{FT, SnM, SoM},
+    land::SoilSnowModel{FT, SnM, SoM},
 ) where {FT, SnM <: Snow.SnowModel{FT}, SoM <: Soil.EnergyHydrology{FT}}
     update_soil_bf! = make_update_boundary_fluxes(land.soil)
     update_snow_bf! = make_update_boundary_fluxes(land.snow)
@@ -225,7 +225,7 @@ end
 """
     update_soil_snow_ground_heat_flux!(p, Y, soil_params, snow_params, soil_domain, FT)
 
-Computes and updates `p.ground_heat_flux` with the ground heat flux. We approximate this 
+Computes and updates `p.ground_heat_flux` with the ground heat flux. We approximate this
 as
     F_g =  - κ_eff (T_snow - T_soil)/Δz_eff,
 
@@ -233,7 +233,7 @@ where:
     κ_eff = κ_soil * κ_snow / (κ_snow * Δz_soil / 2 + κ_soil * Δz_snow / 2)* (Δz_soil + Δz_snow)/2
     Δz_eff =( Δz_soil + Δz_snow)/2
 
-This is what JULES does to compute the diffusive heat flux between snow and soil, for example, 
+This is what JULES does to compute the diffusive heat flux between snow and soil, for example,
 see equation 24 and 25, with k=N, of Best et al, Geosci. Model Dev., 4, 677–699, 2011
 
 However, this is for a multi-layer snow model, with
@@ -315,15 +315,15 @@ end
         t,
     ) where {FT}
 
-A method of `snow_boundary_fluxes!` which computes 
+A method of `snow_boundary_fluxes!` which computes
 the boundary fluxes for the snow model accounting
 for a heat flux between the soil and snow.
 
-The snow surface is 
+The snow surface is
 assumed to be bare (no vegetation).
 
 Currently this is almost identical to the method for snow alone,
-except for the inclusion of the ground heat flux (precomputed by 
+except for the inclusion of the ground heat flux (precomputed by
 the integrated land model). However, this will change more if e.g.
 we allow for transmission of radiation through the snowpack.
 """
@@ -456,7 +456,7 @@ function ClimaLand.source!(
         _ρ_l / _ρ_i * heaviside(z + 2 * Δz_top) # only apply to top layer, recall that z is negative
 end
 
-function ClimaLand.get_drivers(model::LandHydrologyModel)
+function ClimaLand.get_drivers(model::SoilSnowModel)
     return (
         model.snow.boundary_conditions.atmos,
         model.snow.boundary_conditions.radiation,

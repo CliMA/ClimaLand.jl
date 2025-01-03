@@ -82,7 +82,7 @@ snow_params =
     ClimaLand.Snow.SnowParameters{FT}(Δt; earth_param_set = earth_param_set)
 
 # Land model
-land_model = ClimaLand.LandHydrologyModel{FT}(;
+land_model = ClimaLand.SoilSnowModel{FT}(;
     land_args = (atmos = atmos, radiation = radiation, domain = domain),
     snow_model_type = ClimaLand.Snow.SnowModel,
     snow_args = (parameters = snow_params,),
