@@ -8,6 +8,7 @@ env:
   OPENBLAS_NUM_THREADS: 1
   SLURM_KILL_BAD_EXIT: 1
   JULIA_DEPOT_PATH: "${BUILDKITE_BUILD_PATH}/${BUILDKITE_PIPELINE_SLUG}/depot/default"
+  JULIA_CUDA_MEMORY_POOL: none
 
 steps:
   - label: "init environment :computer:"
