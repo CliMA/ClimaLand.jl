@@ -8,6 +8,7 @@ env:
   OPENBLAS_NUM_THREADS: 1
   SLURM_KILL_BAD_EXIT: 1
   JULIA_DEPOT_PATH: "${BUILDKITE_BUILD_PATH}/${BUILDKITE_PIPELINE_SLUG}/depot/default"
+  # In the future, if we add MPI jobs, add this to each GPU job that needs it
   JULIA_CUDA_MEMORY_POOL: none
 
 steps:
