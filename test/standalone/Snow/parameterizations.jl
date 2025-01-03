@@ -36,7 +36,7 @@ for FT in (Float32, Float64)
         θ_r = FT(0.08)
         Ksat = FT(1e-3)
         κ_ice = FT(2.21)
-        ρcD_g = FT(1700 * 2.09e3 * 0.1)
+        ΔS = FT(0.1)
         Δt = Float64(180.0)
         parameters = SnowParameters{FT}(
             Δt;
@@ -45,8 +45,8 @@ for FT in (Float32, Float64)
         )
         @test parameters.density.ρ_snow == ρ_snow
         @test typeof(parameters.density.ρ_snow) == FT
-        @test parameters.ρcD_g == ρcD_g
-        @test typeof(parameters.ρcD_g) == FT
+        @test parameters.ΔS == ΔS
+        @test typeof(parameters.ΔS) == FT
         @test parameters.z_0m == z_0m
         @test typeof(parameters.z_0m) == FT
         @test parameters.z_0b == z_0b
@@ -96,8 +96,7 @@ for FT in (Float32, Float64)
               all(q_l[T_bulk .== _T_freeze] .< FT(1.1))
         Upred =
             (
-                _ρ_l .* SWE .* specific_heat_capacity.(q_l, parameters) .+
-                ρcD_g
+                _ρ_l .* (SWE .+ parameters.ΔS) .* specific_heat_capacity.(q_l, parameters)
             ) .* (T_bulk .- _T_ref) .- _ρ_l .* SWE .* (1.0f0 .- q_l) .* _LH_f0
 
         q_lpred = snow_liquid_mass_fraction.(Upred, SWE, parameters)

@@ -208,10 +208,9 @@ function snow_bulk_temperature(
     _T_ref = FT(LP.T_0(parameters.earth_param_set))
     _LH_f0 = FT(LP.LH_f0(parameters.earth_param_set))
     cp_s = specific_heat_capacity(q_l, parameters)
-    _ρcD_g = parameters.ρcD_g
+    _ΔS = parameters.ΔS
     return _T_ref +
-           (U + (1 - q_l) * _LH_f0 * _ρ_l * SWE) / (_ρ_l * SWE * cp_s + _ρcD_g)
-
+           (U + (1 - q_l) * _LH_f0 * _ρ_l * SWE) / (_ρ_l * cp_s *(SWE + _ΔS))
 end
 
 """
@@ -247,12 +246,11 @@ function snow_liquid_mass_fraction(
     _LH_f0 = FT(LP.LH_f0(parameters.earth_param_set))
     _cp_i = FT(LP.cp_i(parameters.earth_param_set))
     _cp_l = FT(LP.cp_l(parameters.earth_param_set))
-
-    _ρcD_g = parameters.ρcD_g
+    _ΔS = parameters.ΔS
     Uminus =
-        (_ρ_l * SWE * _cp_i + _ρcD_g) * (_T_freeze - _T_ref) -
+        _ρ_l * _cp_i * (SWE + _ΔS) * (_T_freeze - _T_ref) -
         _ρ_l * SWE * _LH_f0
-    Uplus = (_ρ_l * SWE * _cp_l + _ρcD_g) * (_T_freeze - _T_ref)
+    Uplus = _ρ_l * _cp_l * (SWE + _ΔS) * (_T_freeze - _T_ref)
     if U < Uminus
         return FT(0)
     elseif U > Uplus
@@ -354,9 +352,7 @@ function energy_from_q_l_and_swe(S::FT, q_l::FT, parameters) where {FT}
     _LH_f0 = FT(LP.LH_f0(parameters.earth_param_set))
 
     c_snow = specific_heat_capacity(q_l, parameters)
-    _ρcD_g = parameters.ρcD_g
-    return _ρ_l * S * (c_snow * (_T_freeze - _T_ref) - (1 - q_l) * _LH_f0) +
-           _ρcD_g * (_T_freeze - _T_ref)
+    return _ρ_l * S * (c_snow * (_T_freeze - _T_ref) - (1 - q_l) * _LH_f0)
 end
 
 
@@ -376,12 +372,11 @@ function energy_from_T_and_swe(S::FT, T::FT, parameters) where {FT}
     _LH_f0 = FT(LP.LH_f0(parameters.earth_param_set))
     _cp_i = FT(LP.cp_i(parameters.earth_param_set))
     _cp_l = FT(LP.cp_l(parameters.earth_param_set))
-    _ρcD_g = parameters.ρcD_g
     if T <= _T_freeze
-        return (_ρ_l * S * _cp_i + _ρcD_g) * (T - _T_ref) - _ρ_l * S * _LH_f0
+        return _ρ_l * _cp_i * S * (T - _T_ref) - _ρ_l * S * _LH_f0
     else
         T > _T_freeze
-        return (_ρ_l * S * _cp_l + _ρcD_g) * (T - _T_ref)
+        return _ρ_l * S * _cp_l * (T - _T_ref)
     end
 
 end
