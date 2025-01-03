@@ -23,6 +23,7 @@ steps:
     env:
       JULIA_NUM_PRECOMPILE_TASKS: 8
       JULIA_MAX_NUM_PRECOMPILE_FILES: 50
+      JULIA_CUDA_MEMORY_POOL: none
 
   - wait
 
