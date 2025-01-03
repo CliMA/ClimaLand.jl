@@ -3,7 +3,7 @@ import SciMLBase
 import ClimaDiagnostics.Schedules: EveryCalendarDtSchedule
 import Dates
 
-export FTfromY
+export FTfromY, count_nans_state
 
 """
      heaviside(x::FT)::FT where {FT}
@@ -491,4 +491,35 @@ function isdivisible(
     # have a Day or an integer divisor of a day. (Note that 365 and 366 don't
     # have any common divisor)
     return isinteger(Dates.Day(1) / dt_small)
+end
+
+"""
+    count_nans_state(sol)
+
+Count the number of NaNs in the state variables. This function is useful for
+debugging simulations to determine quantitatively if a simulation is stable.
+
+If this function is called on a FieldVector, it will recursively call itself
+on each Field in the FieldVector. If it is called on a Field, it will count
+the number of NaNs in the Field and produce a warning if any are found.
+
+Input: `state` - e.g. the FieldVector given by `sol.u[end]` after calling `solve`
+"""
+function count_nans_state(state::ClimaCore.Fields.FieldVector)
+    for pn in propertynames(state)
+        state_new = getproperty(state, pn)
+        @info "Checking NaNs in $pn"
+        count_nans_state(state_new)
+    end
+    return nothing
+end
+
+function count_nans_state(state::ClimaCore.Fields.Field)
+    num_nans = count(isnan.(Array(parent(state))))
+    if num_nans > 0
+        @warn "$num_nans NaNs found"
+    else
+        @info "No NaNs found"
+    end
+    return nothing
 end

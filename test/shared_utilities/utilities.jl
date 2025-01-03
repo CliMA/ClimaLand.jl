@@ -256,3 +256,47 @@ end
         @test Y.subfields.subfield2 == Y_copy.subfields.subfield2
     end
 end
+
+@testset "count_nans_state, FT = $FT" begin
+    # Test on a 3D spherical domain
+    domain = ClimaLand.Domains.SphericalShell(;
+        radius = FT(2),
+        depth = FT(1.0),
+        nelements = (10, 5),
+        npolynomial = 3,
+    )
+
+    # Construct some fields
+    space = domain.space.subsurface
+    var1 = Fields.zeros(space)
+    var2 = Fields.zeros(space)
+    var3 = Fields.zeros(space)
+    fieldvec = Fields.FieldVector(var2 = var2, var3 = var3)
+
+    # Construct a FieldVector containing the fields and a nested FieldVector
+    Y = Fields.FieldVector(var1 = var1, fieldvec = fieldvec)
+
+    # Count and log the number of NaNs in the state
+    @test_logs (:info, "Checking NaNs in var1") (:info, "No NaNs found") (
+        :info,
+        "Checking NaNs in fieldvec",
+    ) (:info, "Checking NaNs in var2") (:info, "No NaNs found") (
+        :info,
+        "Checking NaNs in var3",
+    ) (:info, "No NaNs found") ClimaLand.count_nans_state(Y)
+
+    # Add some NaNs to the fields
+    parent(var1)[1] = NaN
+    parent(var2)[1] = NaN
+    parent(var2)[2] = NaN
+
+    # Count and log the number of NaNs in the state
+    @test_logs (:info, "Checking NaNs in var1") (:warn, "1 NaNs found") (
+        :info,
+        "Checking NaNs in fieldvec",
+    ) (:info, "Checking NaNs in var2") (:warn, "2 NaNs found") (
+        :info,
+        "Checking NaNs in var3",
+    ) (:info, "No NaNs found") ClimaLand.count_nans_state(Y)
+
+end
