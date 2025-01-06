@@ -7,12 +7,12 @@ git-tree-sha1 = "6ce1717bb8b7aa767380f1053b9d8d3a4e4edaa6"
     sha256 = "27d49fce7f4a5e2b81bbd29e8a7caf08f568a2df53e3af817126363decfd5a7c"
     url = "https://caltech.box.com/shared/static/99aw2gce2k65bdu0h8jkfxq4vin08gi2.gz"
 
-[cesm2_albedo]
-git-tree-sha1 = "316096635acaa8102477820f480ca02fe66eb828"
+[sw_albedo]
+git-tree-sha1 = "136f1db3ed969614fb589c5250545a3ed1e8aaab"
 
-    [[cesm2_albedo.download]]
-    sha256 = "5ac358d4485f6ba7bae129d4570cabc712b793d4a3e22caa8808de147b2c8f9b"
-    url = "https://caltech.box.com/shared/static/awz2lku3ngoto6t78muktzfk3kjloxsw.gz"
+    [[sw_albedo.download]]
+    sha256 = "777371543cc3285c0779e7ecd925fe782b5b45e0ed27f82260827ac8ebe6a700"
+    url = "https://caltech.box.com/shared/static/of1admpndmikoumtgk5j3yvt92v71awk.gz"
 
 [clm_data]
 git-tree-sha1 = "3f6873a3e67722bda1fd23f7d5a05f5e2df1fe8c"

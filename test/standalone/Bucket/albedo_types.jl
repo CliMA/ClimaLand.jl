@@ -59,6 +59,16 @@ end
 
 FT = Float32
 
+name_ds_var_list = [
+    ("CESM2", ClimaLand.Artifacts.cesm2_albedo_dataset_path(), "sw_alb"),
+    ("CERES", ClimaLand.Artifacts.ceres_albedo_dataset_path(), "sw_alb"),
+    (
+        "CERES CLR",
+        ClimaLand.Artifacts.ceres_albedo_dataset_path(),
+        "sw_alb_clr",
+    ),
+]
+
 @testset "Test next_albedo for PrescribedBaregroundAlbedo, from a function, FT = $FT" begin
     # set up each argument for function call
     α_bareground_func = (coord_point) -> sin(coord_point.lat + coord_point.long)
@@ -124,55 +134,60 @@ end
     @test p.bucket.α_sfc == next_alb_manual
 end
 
-@testset "Test next_albedo for PrescribedSurfaceAlbedo, FT = $FT" begin
-    # set up each argument for function call
-    domain = create_domain_2d(FT)
-    space = domain.space.surface
-    surface_coords = Fields.coordinate_field(space)
+for (name, infile_path, varname) in name_ds_var_list
+    @testset "Test next_albedo for PrescribedSurfaceAlbedo, FT = $FT" begin
+        # set up each argument for function call
+        domain = create_domain_2d(FT)
+        space = domain.space.surface
+        surface_coords = Fields.coordinate_field(space)
 
-    infile_path = ClimaLand.Artifacts.cesm2_albedo_dataset_path()
-    start_date_noleap = NCDataset(infile_path, "r") do ds
-        ds["time"][1]
-    end
-    # Converting from NoLeap
-    start_date = Dates.DateTime(
-        Dates.year(start_date_noleap),
-        Dates.month(start_date_noleap),
-        Dates.day(start_date_noleap),
-        Dates.hour(start_date_noleap),
-        Dates.minute(start_date_noleap),
-        Dates.second(start_date_noleap),
-        Dates.millisecond(start_date_noleap),
-    )
-    t_start = Float64(0)
+        start_date_noleap = NCDataset(infile_path, "r") do ds
+            ds["time"][1]
+        end
+        # Converting from NoLeap
+        start_date = Dates.DateTime(
+            Dates.year(start_date_noleap),
+            Dates.month(start_date_noleap),
+            Dates.day(start_date_noleap),
+            Dates.hour(start_date_noleap),
+            Dates.minute(start_date_noleap),
+            Dates.second(start_date_noleap),
+            Dates.millisecond(start_date_noleap),
+        )
+        t_start = Float64(0)
 
-    albedo = PrescribedSurfaceAlbedo{FT}(start_date, space)
-
-    Y = (; bucket = (; W = Fields.zeros(space)))
-    p = (; bucket = (; α_sfc = Fields.zeros(space)))
-
-    # set up for manual data reading
-    varname = "sw_alb"
-    file_dates = DataHandling.available_dates(albedo.albedo.data_handler)
-
-    new_date = start_date + Second(t_start)
-    t_curr = t_start
-    for i in 1:5
-        @assert new_date == file_dates[i]
-
-        # manually read in data at this date (not testing interpolation)
-        field = DataHandling.regridded_snapshot(
-            albedo.albedo.data_handler,
-            new_date,
+        albedo = PrescribedSurfaceAlbedo{FT}(
+            start_date,
+            space;
+            albedo_file_path = infile_path,
+            varname = varname,
         )
 
-        next_albedo!(p.bucket.α_sfc, albedo, (;), Y, p, t_curr)
-        @test p.bucket.α_sfc == field
+        Y = (; bucket = (; W = Fields.zeros(space)))
+        p = (; bucket = (; α_sfc = Fields.zeros(space)))
 
-        # Update manual date to match next date in file
-        dt = Second(file_dates[i + 1] - file_dates[i])
-        new_date += dt
-        t_curr += dt.value
+        # set up for manual data reading
+        file_dates = DataHandling.available_dates(albedo.albedo.data_handler)
+
+        new_date = start_date + Second(t_start)
+        t_curr = t_start
+        for i in 1:5
+            @assert new_date == file_dates[i]
+
+            # manually read in data at this date (not testing interpolation)
+            field = DataHandling.regridded_snapshot(
+                albedo.albedo.data_handler,
+                new_date,
+            )
+
+            next_albedo!(p.bucket.α_sfc, albedo, (;), Y, p, t_curr)
+            @test p.bucket.α_sfc == field
+
+            # Update manual date to match next date in file
+            dt = Second(file_dates[i + 1] - file_dates[i])
+            new_date += dt
+            t_curr += dt.value
+        end
     end
 end
 
@@ -269,130 +284,139 @@ end
     end
 end
 
-@testset "Test PrescribedSurfaceAlbedo - albedo from map over time, FT = $FT" begin
-    earth_param_set = LP.LandParameters(FT)
-    varname = "sw_alb"
-    infile_path = ClimaLand.Artifacts.cesm2_albedo_dataset_path()
+for (name, infile_path, varname) in name_ds_var_list
+    @testset "Test PrescribedSurfaceAlbedo - albedo from map over time, FT = $FT" begin
+        earth_param_set = LP.LandParameters(FT)
 
-    σS_c = FT(0.2)
-    W_f = FT(0.15)
-    z_0m = FT(1e-2)
-    z_0b = FT(1e-3)
-    κ_soil = FT(1.5)
-    ρc_soil = FT(2e6)
-    init_temp(z::FT, value::FT) where {FT} = FT(value)
+        σS_c = FT(0.2)
+        W_f = FT(0.15)
+        z_0m = FT(1e-2)
+        z_0b = FT(1e-3)
+        κ_soil = FT(1.5)
+        ρc_soil = FT(2e6)
+        init_temp(z::FT, value::FT) where {FT} = FT(value)
 
-    t_start = Float64(0)
-    file_dates_noleap = NCDataset(infile_path, "r") do ds
-        ds["time"][:]
-    end
-    to_datetime(date) = Dates.DateTime(
-        Dates.year(date),
-        Dates.month(date),
-        Dates.day(date),
-        Dates.hour(date),
-        Dates.minute(date),
-        Dates.second(date),
-        Dates.millisecond(date),
-    )
-    file_dates = to_datetime.(file_dates_noleap)
-    start_date_in_file = file_dates[1]
+        t_start = Float64(0)
+        file_dates_noleap = NCDataset(infile_path, "r") do ds
+            ds["time"][:]
+        end
+        to_datetime(date) = Dates.DateTime(
+            Dates.year(date),
+            Dates.month(date),
+            Dates.day(date),
+            Dates.hour(date),
+            Dates.minute(date),
+            Dates.second(date),
+            Dates.millisecond(date),
+        )
+        file_dates = to_datetime.(file_dates_noleap)
+        start_date_in_file = file_dates[1]
 
-    bucket_domains = [
-        Column(; zlim = FT.((-100.0, 0.0)), nelements = 10),
-        SphericalShell(;
-            radius = FT(100.0),
-            depth = FT(3.5),
-            nelements = (2, 10),
-            npolynomial = 2,
-        ),
-    ]
+        bucket_domains = [
+            Column(; zlim = FT.((-100.0, 0.0)), nelements = 10),
+            SphericalShell(;
+                radius = FT(100.0),
+                depth = FT(3.5),
+                nelements = (2, 10),
+                npolynomial = 2,
+            ),
+        ]
 
-    for bucket_domain in bucket_domains
-        space = bucket_domain.space.surface
-        if bucket_domain isa SphericalShell
-            albedo_model =
-                PrescribedSurfaceAlbedo{FT}(start_date_in_file, space)
-            # Radiation
-            start_date = DateTime(2005, 1, 15, 12)
-            SW_d = (t) -> 0
-            LW_d = (t) -> 5.67e-8 * 280.0^4.0
-            bucket_rad = PrescribedRadiativeFluxes(
-                FT,
-                TimeVaryingInput(SW_d),
-                TimeVaryingInput(LW_d),
-                start_date,
-            )
-            # Atmos
-            precip = (t) -> 0 # no precipitation
-            T_atmos = (t) -> 280.0
-            u_atmos = (t) -> 1.0
-            q_atmos = (t) -> 0.0 # no atmos water
-            h_atmos = FT(1e-8)
-            P_atmos = (t) -> 101325
-            start_date = DateTime(2005, 1, 15, 12)
-            bucket_atmos = PrescribedAtmosphere(
-                TimeVaryingInput(precip),
-                TimeVaryingInput(precip),
-                TimeVaryingInput(T_atmos),
-                TimeVaryingInput(u_atmos),
-                TimeVaryingInput(q_atmos),
-                TimeVaryingInput(P_atmos),
-                start_date,
-                h_atmos,
-                earth_param_set,
-            )
-            τc = FT(1.0)
-            bucket_parameters =
-                BucketModelParameters(FT; albedo = albedo_model, z_0m, z_0b, τc)
+        for bucket_domain in bucket_domains
+            space = bucket_domain.space.surface
+            if bucket_domain isa SphericalShell
+                albedo_model = PrescribedSurfaceAlbedo{FT}(
+                    start_date_in_file,
+                    space;
+                    albedo_file_path = infile_path,
+                    varname = varname,
+                )
+                # Radiation
+                start_date = DateTime(2005, 1, 15, 12)
+                SW_d = (t) -> 0
+                LW_d = (t) -> 5.67e-8 * 280.0^4.0
+                bucket_rad = PrescribedRadiativeFluxes(
+                    FT,
+                    TimeVaryingInput(SW_d),
+                    TimeVaryingInput(LW_d),
+                    start_date,
+                )
+                # Atmos
+                precip = (t) -> 0 # no precipitation
+                T_atmos = (t) -> 280.0
+                u_atmos = (t) -> 1.0
+                q_atmos = (t) -> 0.0 # no atmos water
+                h_atmos = FT(1e-8)
+                P_atmos = (t) -> 101325
+                start_date = DateTime(2005, 1, 15, 12)
+                bucket_atmos = PrescribedAtmosphere(
+                    TimeVaryingInput(precip),
+                    TimeVaryingInput(precip),
+                    TimeVaryingInput(T_atmos),
+                    TimeVaryingInput(u_atmos),
+                    TimeVaryingInput(q_atmos),
+                    TimeVaryingInput(P_atmos),
+                    start_date,
+                    h_atmos,
+                    earth_param_set,
+                )
+                τc = FT(1.0)
+                bucket_parameters = BucketModelParameters(
+                    FT;
+                    albedo = albedo_model,
+                    z_0m,
+                    z_0b,
+                    τc,
+                )
 
-            model = BucketModel(
-                parameters = bucket_parameters,
-                domain = bucket_domain,
-                atmosphere = bucket_atmos,
-                radiation = bucket_rad,
-            )
-            # Initial conditions with no moisture
-            Y, p, coords = initialize(model)
-            Y.bucket.T .= init_temp.(coords.subsurface.z, FT(280.0))
-            Y.bucket.W .= 0.0
-            Y.bucket.Ws .= 0.0
-            Y.bucket.σS .= 0.0
-            set_initial_cache! = make_set_initial_cache(model)
-            set_initial_cache!(p, Y, FT(0.0))
-            data_manual = DataHandling.regridded_snapshot(
-                albedo_model.albedo.data_handler,
-                start_date_in_file,
-            )
-
-            @test p.bucket.α_sfc == data_manual
-
-            update_aux! = make_update_aux(model)
-            new_date = start_date_in_file + Second(t_start)
-            t_curr = t_start
-            for i in 1:5
-                @assert new_date == file_dates[i]
-
-                update_aux!(p, Y, t_curr)
+                model = BucketModel(
+                    parameters = bucket_parameters,
+                    domain = bucket_domain,
+                    atmosphere = bucket_atmos,
+                    radiation = bucket_rad,
+                )
+                # Initial conditions with no moisture
+                Y, p, coords = initialize(model)
+                Y.bucket.T .= init_temp.(coords.subsurface.z, FT(280.0))
+                Y.bucket.W .= 0.0
+                Y.bucket.Ws .= 0.0
+                Y.bucket.σS .= 0.0
+                set_initial_cache! = make_set_initial_cache(model)
+                set_initial_cache!(p, Y, FT(0.0))
                 data_manual = DataHandling.regridded_snapshot(
                     albedo_model.albedo.data_handler,
-                    new_date,
+                    start_date_in_file,
                 )
 
                 @test p.bucket.α_sfc == data_manual
 
-                # Update manual date to match next date in file
-                dt = Second(file_dates[i + 1] - file_dates[i])
-                new_date += dt
-                t_curr += dt.value
+                update_aux! = make_update_aux(model)
+                new_date = start_date_in_file + Second(t_start)
+                t_curr = t_start
+                for i in 1:5
+                    @assert new_date == file_dates[i]
+
+                    update_aux!(p, Y, t_curr)
+                    data_manual = DataHandling.regridded_snapshot(
+                        albedo_model.albedo.data_handler,
+                        new_date,
+                    )
+
+                    @test p.bucket.α_sfc == data_manual
+
+                    # Update manual date to match next date in file
+                    dt = Second(file_dates[i + 1] - file_dates[i])
+                    new_date += dt
+                    t_curr += dt.value
+                end
+            else
+                @test_throws "Using an albedo map requires a global run." PrescribedSurfaceAlbedo{
+                    FT,
+                }(
+                    start_date_in_file,
+                    space,
+                )
             end
-        else
-            @test_throws "Using an albedo map requires a global run." PrescribedSurfaceAlbedo{
-                FT,
-            }(
-                start_date_in_file,
-                space,
-            )
         end
     end
 end

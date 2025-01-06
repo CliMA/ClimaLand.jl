@@ -290,21 +290,20 @@ function mizoguchi1990_soil_freezing_data(; context = nothing)
 end
 
 """
-    cesm2_albedo_dataset_folder()
+    sw_albedo_dataset_folder(; context = nothing)
 
-Triggers the download of the CESM2 albedo folder, if not
+Triggers the download of the sw_albedo folder, if not
 already downloaded, using Julia Artifacts, and returns the path to
 this file.
 
-This dataset contains monthly albedo data from 15/01/1850
-to 15/12/2014.
+This dataset contains surface shortwave albedo calculated from CESM2 and CERES data.
 """
-function cesm2_albedo_dataset_folder(; context = nothing)
-    return artifact_path = @clima_artifact("cesm2_albedo", context)
+function sw_albedo_dataset_folder(; context = nothing)
+    return artifact_path = @clima_artifact("sw_albedo", context)
 end
 
 """
-    cesm2_albedo_dataset_path()
+    cesm2_albedo_dataset_path(; context = nothing)
 
 Triggers the download of the CESM2 land albedo dataset, if not
 already downloaded, using Julia Artifacts, and returns the path to
@@ -315,13 +314,13 @@ to 15/12/2014.
 """
 function cesm2_albedo_dataset_path(; context = nothing)
     return joinpath(
-        cesm2_albedo_dataset_folder(; context),
+        sw_albedo_dataset_folder(; context),
         "sw_albedo_Amon_CESM2_historical_r1i1p1f1_gn_185001-201412_v2_no-nans.nc",
     )
 end
 
 """
-    bareground_albedo_dataset_path()
+    bareground_albedo_dataset_path(; context = nothing)
 
 Triggers the download of the average bareground land albedo dataset, if not
 already downloaded, using Julia Artifacts, and returns the path to
@@ -330,9 +329,24 @@ this file.
 This dataset does not contain a time component.
 """
 function bareground_albedo_dataset_path(; context = nothing)
+    return joinpath(sw_albedo_dataset_folder(; context), "bareground_albedo.nc")
+end
+
+"""
+    ceres_albedo_dataset_path(; context = nothing)
+
+Triggers the download of the CERES land albedo dataset, if not
+already downloaded, using Julia Artifacts, and returns the path to
+this file.
+
+This dataset contains the monthly average shortwave albedo in the
+`sw_alb` variable, and the monthly average clear-sky shortwave albedo in the
+`sw_alb_clr` variable. Both variables cover from 15/03/2000 to 15/10/2019.
+"""
+function ceres_albedo_dataset_path(; context = nothing)
     return joinpath(
-        cesm2_albedo_dataset_folder(; context),
-        "bareground_albedo.nc",
+        sw_albedo_dataset_folder(; context),
+        "sw_albedo_Amon_CERES_EBAF_Ed4.2_Subset_200003-201910.nc",
     )
 end
 
