@@ -180,7 +180,7 @@ ode_algo = CTS.IMEXAlgorithm(
     timestepper,
     CTS.NewtonsMethod(
         max_iters = 3,
-        update_j = CTS.UpdateEvery(CTS.NewTimeStep),
+        update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
     ),
 );
 
@@ -212,17 +212,12 @@ sol = SciMLBase.solve(
 sol_T = parent(sv.saveval[end].soil.T)[:]
 
 fig = Figure(size = (300, 300))
-ax1 = Axis(
-    fig[1, 1],
-    title = "Neumann Solution",
-    xlabel = L"T (K)",
-    ylabel = "Soil depth (m)",
-)
+ax1 = Axis(fig[1, 1], title = "", xlabel = L"T (K)", ylabel = "Soil depth (m)")
 limits!(ax1, 262, 276, -3, 0.0)
 
 z = parent(coords.subsurface.z)[:];
 
-lines!(ax1, sol_T, z, label = "Model", color = :green)
+lines!(ax1, sol_T, z, label = "Simulation", color = :green)
 
 # # Analytic Solution of Neumann
 # All details here are taken from [DallAmico2011](@cite) (see also [CarslawJaeger](@cite)), and the reader is referred to that
@@ -309,7 +304,7 @@ function implicit(ζ)
     return (term1 + term2 + term3)
 end
 ζ = find_zero(implicit, (0.25, 0.27), Bisection())
-depth = abs.(reverse(z))
+depth = Array(0:0.01:3)
 t = sol.t[end]
 zf = 2.0 * ζ * sqrt(d1 * t)
 analytic_unfrozen_profile(depth, zf) =
@@ -319,14 +314,14 @@ mask_unfrozen = depth .>= zf
 mask_frozen = depth .<= zf
 T_frozen = Ts .+ (0.0 - Ts) .* analytic_frozen_profile.(depth, zf) .+ 273.15
 T_unfrozen = Ti .- (Ti - 0.0) .* analytic_unfrozen_profile.(depth, zf) .+ 273.15
-scatter!(
+lines!(
     ax1,
     T_frozen[mask_frozen],
     -1 .* depth[mask_frozen],
-    label = "Analytic",
+    label = "Analytic Solution",
     color = "purple",
 )
-scatter!(
+lines!(
     ax1,
     T_unfrozen[mask_unfrozen],
     -1 .* depth[mask_unfrozen],
