@@ -246,7 +246,8 @@ density_prog_names(::AbstractDensityModel) = ()
     auxiliary_vars(::SnowModel)
 
 Returns the auxiliary variable names for the snow model. These
-include the mass fraction in liquid water (`q_l`, unitless),
+include the specific humidity at the surface of the snow `(`q_sfc`, unitless),
+the mass fraction in liquid water (`q_l`, unitless),
 the thermal conductivity (`κ`, W/m/K),
 the bulk temperature (`T`, K), the surface temperature (`T_sfc`, K), the bulk snow density (`ρ_snow`, kg/m^3)
 the SHF, LHF, and vapor flux (`turbulent_fluxes.shf`, etc),
@@ -259,6 +260,7 @@ clipped values are what are actually applied as boundary fluxes, and are stored 
 `applied_` fluxes.
 """
 auxiliary_vars(::SnowModel) = (
+    :q_sfc,
     :q_l,
     :κ,
     :T,
@@ -281,6 +283,7 @@ auxiliary_types(::SnowModel{FT}) where {FT} = (
     FT,
     FT,
     FT,
+    FT,
     NamedTuple{(:lhf, :shf, :vapor_flux, :r_ae), Tuple{FT, FT, FT, FT}},
     FT,
     FT,
@@ -293,6 +296,7 @@ auxiliary_types(::SnowModel{FT}) where {FT} = (
 )
 
 auxiliary_domain_names(::SnowModel) = (
+    :surface,
     :surface,
     :surface,
     :surface,
@@ -327,6 +331,13 @@ function ClimaLand.make_update_aux(model::SnowModel{FT}) where {FT}
             snow_bulk_temperature(Y.snow.U, Y.snow.S, p.snow.q_l, parameters)
 
         @. p.snow.T_sfc = snow_surface_temperature(p.snow.T)
+
+        @. p.snow.q_sfc = snow_surface_specific_humidity(
+            p.snow.T_sfc,
+            p.snow.q_l,
+            p.drivers.thermal_state,
+            parameters,
+        )
 
         p.snow.water_runoff .=
             compute_water_runoff.(
