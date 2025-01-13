@@ -9,7 +9,7 @@ import ClimaLand.Snow:
     density_prog_names,
     update_density!,
     update_density_prog!,
-    snow_depth
+    snow_depth!
 import ClimaLand.Parameters as LP
 using Thermodynamics
 
@@ -114,14 +114,34 @@ ClimaLand.Snow.density_prog_names(m::NeuralDepthModel) =
 #Extend/Define the appropriate functions needed for this parameterization:
 
 """
-    snow_depth(m::NeuralDepthModel, Y, p, params)
+    snow_depth!(z_snow, m::NeuralDepthModel{FT}, Y, p, params) where {FT}
 
-An extension of the `snow_depth` function to the NeuralDepthModel density parameterization, which includes the prognostic 
+An extension of the `snow_depth!` function to the NeuralDepthModel density parameterization, which includes the prognostic 
 depth variable and thus does not need to derive snow depth from SWE and density.
-This is sufficient to enable dynamics of the auxillary variable `ρ_snow` without extension of update_density!, and avoids
-redundant computations in the computation of runoff.
+
+This function clips the snow depth to be between 0 and SWE.
 """
-ClimaLand.Snow.snow_depth(m::NeuralDepthModel, Y, p, params) = Y.snow.Z
+function snow_depth!(z_snow, m::NeuralDepthModel{FT}, Y, p, params) where {FT}
+    z_snow .= min(Y.snow.Z, Y.snow.S) # z cannot be larger than SWE
+    z_snow .= max(z_snow, eps(FT)) # z must be positive
+    return nothing
+end
+
+"""
+    update_density!(ρ_snow, density::NeuralDepthModel, Y, p, params::SnowParameters,)
+
+Updates the snow density in place given the current model state. Default for all model types,
+can be extended for alternative density parameterizations.
+"""
+function update_density!(
+    ρ_snow,
+    density::NeuralDepthModel,
+    Y,
+    p,
+    params::SnowParameters,
+)
+    @. ρ_snow = snow_bulk_density(Y.snow.S, p.snow.z_snow, params)
+end
 
 
 """
@@ -144,13 +164,13 @@ function eval_nn(
 end
 
 """
-    dzdt(density::NeuralDepthModel, model::SnowModel{FT}, Y, p, t) where {FT}
-Returns the change in snow depth (rate) given the current model state and the `NeuralDepthModel`
-density paramterization, passing the approximate average of the forcings over the last 24 hours instead of
-the instantaneous value.
+    update_dzdt!(density::NeuralDepthModel, model::SnowModel, Y, p, t)
+
+Updates the dY.snow.Z field in places with the predicted change in snow depth (rate) given the model state `Y` and the `NeuralDepthModel`
+density paramterization.
 """
-function dzdt(density::NeuralDepthModel, Y)
-    return eval_nn.(
+function update_dzdt!(dzdt, density::NeuralDepthModel, Y)
+    dzdt .= eval_nn(
         Ref(density.z_model),
         Y.snow.Z,
         Y.snow.S, # When snow-cover-fraction variable is implemented, make sure this value changes to the right input
@@ -164,6 +184,7 @@ end
 
 """
     clip_dZdt(S::FT, Z::FT, dSdt::FT, dZdt::FT, Δt::FT)::FT
+
 A helper function which clips the tendency of Z such that
 its behavior is consistent with that of S: if all snow melts
 within a timestep, we clip the tendency of S so that it does
@@ -187,6 +208,7 @@ end
 
 """
     update_density_prog!(density::NeuralDepthModel, model::SnowModel, Y, p)
+
 Updates all prognostic variables associated with density/depth given the current model state and the `NeuralDepthModel`
 density paramterization.
 """
@@ -197,15 +219,16 @@ function update_density_prog!(
     Y,
     p,
 )
+    update_dzdt!(dY.snow.Z, density, Y)
 
-    dY.snow.Z .=
-        clip_dZdt.(
-            Y.snow.S,
-            Y.snow.Z,
-            dY.snow.S, #assumes dY.snow.S is updated (and clipped) before dY.snow.Z
-            dzdt(density, Y), # Note that the `dzdt` call below allocates a field. Return to this in the future.
-            model.parameters.Δt,
-        )
+    # Now we clip the tendency so that Z stays within approximately physical bounds.
+    @. dY.snow.Z = clip_dZdt(
+        Y.snow.S,
+        Y.snow.Z,
+        dY.snow.S, #assumes dY.snow.S is updated (and clipped) before dY.snow.Z
+        dY.snow.Z,
+        model.parameters.Δt,
+    )
 
     @. dY.snow.P_avg = density.α * (abs(p.drivers.P_snow) - Y.snow.P_avg)
     @. dY.snow.T_avg =

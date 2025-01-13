@@ -1,5 +1,5 @@
 export snow_surface_temperature,
-    snow_depth,
+    snow_depth!,
     specific_heat_capacity,
     snow_thermal_conductivity,
     snow_bulk_temperature,
@@ -23,19 +23,6 @@ In the future we can play around with other forms.
 function snow_cover_fraction(x::FT; α = FT(1e-3))::FT where {FT}
     return heaviside(x - α)
 end
-
-"""
-    snow_depth(model::AbstractDensityModel{FT}, Y, p, params) where {FT}
-
-Returns the snow depth given SWE, snow density ρ_snow, and
-the density of liquid water ρ_l.
-This can be extended for additional types of parameterizations.
-"""
-function snow_depth(density::AbstractDensityModel{FT}, Y, p, params) where {FT}
-    ρ_l = FT(LP.ρ_cloud_liq(params.earth_param_set))
-    return @. ρ_l * Y.snow.S / p.snow.ρ_snow
-end
-
 
 """
     ClimaLand.surface_height(
@@ -393,41 +380,43 @@ function energy_from_T_and_swe(S::FT, T::FT, parameters) where {FT}
 
 end
 
+
 """
-    update_density!(density::AbstractDensityModel, params::SnowParameters, Y, p)
-Updates the snow density given the current model state. Default for all model types,
-can be extended for alternative density paramterizations.
+    snow_depth!(model::ConstantDensityModel, Y, p, params)
+
+Returns the snow depth given SWE, snow density ρ_snow, and
+the density of liquid water ρ_l for a constant density model.
 """
-function update_density!(
-    density::AbstractDensityModel,
-    params::SnowParameters,
-    Y,
-    p,
-)
-    p.snow.ρ_snow .=
-        snow_bulk_density.(Y.snow.S, snow_depth(density, Y, p, params), params)
+function snow_depth!(z_snow, density::ConstantDensityModel, Y, p, params)
+    ρ_l = LP.ρ_cloud_liq(params.earth_param_set)
+    @. z_snow = ρ_l * Y.snow.S / density.ρ_snow
+    return nothing
 end
 
 """
-    update_density!(density::ConstantDensityModel, params::SnowParameters, Y, p)
-Extends the update_density! function for the ConstantDensityModel type.
+    update_density!(ρ_snow, density::ConstantDensityModel, Y, p, params::SnowParameters)
+
+Extends the update_density! function for the ConstantDensityModel type; updates the snow density in place.
 """
 function update_density!(
+    ρ_snow,
     density::ConstantDensityModel,
-    params::SnowParameters,
     Y,
     p,
+    params::SnowParameters,
 )
-    p.snow.ρ_snow .= density.ρ_snow
+    ρ_snow .= density.ρ_snow
 end
 
 """
     update_density_prog!(density::AbstractDensityModel{FT}, model::SnowModel{FT}, Y, p) where {FT}
+
 Updates all prognostic variables associated with density/depth given the current model state.
-This is the default method for all density model types, which can be extended for alternative paramterizations.
+This is the default method for the constant density model,
+ which has no prognostic variables.
 """
 function update_density_prog!(
-    density::AbstractDensityModel,
+    density::ConstantDensityModel,
     model::SnowModel,
     dY,
     Y,

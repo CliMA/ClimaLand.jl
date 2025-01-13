@@ -249,7 +249,8 @@ Returns the auxiliary variable names for the snow model. These
 include the specific humidity at the surface of the snow `(`q_sfc`, unitless),
 the mass fraction in liquid water (`q_l`, unitless),
 the thermal conductivity (`κ`, W/m/K),
-the bulk temperature (`T`, K), the surface temperature (`T_sfc`, K), the bulk snow density (`ρ_snow`, kg/m^3)
+the bulk temperature (`T`, K), the surface temperature (`T_sfc`, K), the snow depth (`z_snow`, m), 
+the bulk snow density (`ρ_snow`, kg/m^3)
 the SHF, LHF, and vapor flux (`turbulent_fluxes.shf`, etc),
 the net radiation (`R_n, J/m^2/s)`, the energy flux in liquid water runoff
 (`energy_runoff`, J/m^2/s), the water volume in runoff (`water_runoff`, m/s), and the total energy and water fluxes applied to the snowpack.
@@ -265,6 +266,7 @@ auxiliary_vars(::SnowModel) = (
     :κ,
     :T,
     :T_sfc,
+    :z_snow,
     :ρ_snow,
     :turbulent_fluxes,
     :R_n,
@@ -278,6 +280,7 @@ auxiliary_vars(::SnowModel) = (
 )
 
 auxiliary_types(::SnowModel{FT}) where {FT} = (
+    FT,
     FT,
     FT,
     FT,
@@ -311,6 +314,7 @@ auxiliary_domain_names(::SnowModel) = (
     :surface,
     :surface,
     :surface,
+    :surface,
 )
 
 
@@ -319,8 +323,8 @@ ClimaLand.name(::SnowModel) = :snow
 function ClimaLand.make_update_aux(model::SnowModel{FT}) where {FT}
     function update_aux!(p, Y, t)
         parameters = model.parameters
-
-        update_density!(parameters.density, parameters, Y, p)
+        snow_depth!(p.snow.z_snow, model.parameters.density, Y, p, parameters)
+        update_density!(p.snow.ρ_snow, parameters.density, Y, p, parameters)
 
         @. p.snow.κ = snow_thermal_conductivity(p.snow.ρ_snow, parameters)
 
@@ -338,16 +342,14 @@ function ClimaLand.make_update_aux(model::SnowModel{FT}) where {FT}
             p.drivers.thermal_state,
             parameters,
         )
-
-        p.snow.water_runoff .=
-            compute_water_runoff.(
-                Y.snow.S,
-                p.snow.q_l,
-                p.snow.T,
-                p.snow.ρ_snow,
-                snow_depth(model.parameters.density, Y, p, parameters), # Note that the `snow_depth` call below allocates a field. Return to this in the future.
-                parameters,
-            )
+        @. p.snow.water_runoff = compute_water_runoff(
+            Y.snow.S,
+            p.snow.q_l,
+            p.snow.T,
+            p.snow.ρ_snow,
+            p.snow.z_snow,
+            parameters,
+        )
 
         @. p.snow.energy_runoff =
             p.snow.water_runoff * volumetric_internal_energy_liq(FT, parameters)
