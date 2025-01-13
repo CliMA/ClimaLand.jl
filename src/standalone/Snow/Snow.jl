@@ -8,8 +8,8 @@ using ClimaLand
 using ClimaLand:
     AbstractAtmosphericDrivers,
     AbstractRadiativeDrivers,
-    turbulent_fluxes,
-    net_radiation,
+    turbulent_fluxes!,
+    net_radiation!,
     AbstractModel,
     heaviside
 
@@ -44,19 +44,21 @@ abstract type AbstractSnowModel{FT} <: ClimaLand.AbstractExpModel{FT} end
 
 """
     AbstractDensityModel{FT}
-Defines the model type for density and depth parameterizations
-for use within an `AbstractSnowModel` type. Current examples include the
-`ConstantDensityModel` models.
-Since depth and bulk density are related via SWE, and SWE is a prognostic variable
-of the snow model, only depth or bulk density can be independently modeled at one time. 
-This is why they are treated as a single "density model" even if the parameterization is actually
-a model for snow depth.
-The snow depth/density model can be diagnostic or introduce additional prognostic variables.
+
+Defines the model type for density and depth parameterizations for use within an
+`AbstractSnowModel` type. Current examples include the `ConstantDensityModel`
+models. Since depth and bulk density are related via SWE, and SWE is a
+prognostic variable of the snow model, only depth or bulk density can be
+independently modeled at one time. This is why they are treated as a single
+"density model" even if the parameterization is actually a model for snow depth.
+The snow depth/density model can be diagnostic or introduce additional
+prognostic variables.
 """
 abstract type AbstractDensityModel{FT <: AbstractFloat} end
 
 """
     ConstantDensityModel{FT <: AbstractFloat} <: AbstractDensityModel{FT}
+
 Establishes the density parameterization where snow density
 is always treated as a constant (type FT), with the provided value in units of kg/m³.
 """
@@ -70,12 +72,13 @@ end
 
 A struct for storing parameters of the `SnowModel`.
 
-Note that in our current implementation of runoff, a physical
-timescale is required and computed using Ksat and the depth
-of the snow. For shallow snowpacks, this will fall below the timestep
-of the model. For that reason, we pass the timestep of the model as 
-a parameter, and take the larger of the timestep and the physical timescale
-as the value used in the model. Future implementations will revisit this.
+Note that in our current implementation of runoff, a physical timescale is
+required and computed using Ksat and the depth of the snow. For shallow
+snowpacks, this will fall below the timestep of the model. For that reason, we
+pass the timestep of the model as a parameter, and take the larger of the
+timestep and the physical timescale as the value used in the model. Future
+implementations will revisit this.
+
 $(DocStringExtensions.FIELDS)
 """
 Base.@kwdef struct SnowParameters{

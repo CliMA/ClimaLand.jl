@@ -275,13 +275,21 @@ import ClimaParams
             # check that this is updated correctly:
             # @test p.canopy.autotrophic_respiration.Ra ==
             exp_tendency!(dY, Y, p, t0)
-            turb_fluxes = ClimaLand.turbulent_fluxes(atmos, canopy, Y, p, t0)
+            turb_fluxes_copy = copy(p.canopy.energy.turbulent_fluxes)
+            ClimaLand.turbulent_fluxes!(
+                turb_fluxes_copy,
+                atmos,
+                canopy,
+                Y,
+                p,
+                t0,
+            )
 
-            @test p.canopy.hydraulics.fa.:1 == turb_fluxes.transpiration
-            @test p.canopy.energy.turbulent_fluxes.shf == turb_fluxes.shf
-            @test p.canopy.energy.turbulent_fluxes.lhf == turb_fluxes.lhf
+            @test p.canopy.hydraulics.fa.:1 == turb_fluxes_copy.transpiration
+            @test p.canopy.energy.turbulent_fluxes.shf == turb_fluxes_copy.shf
+            @test p.canopy.energy.turbulent_fluxes.lhf == turb_fluxes_copy.lhf
             @test p.canopy.energy.turbulent_fluxes.transpiration ==
-                  turb_fluxes.transpiration
+                  turb_fluxes_copy.transpiration
             _σ = FT(LP.Stefan(earth_param_set))
             f_abs_par = p.canopy.radiative_transfer.par.abs
             f_abs_nir = p.canopy.radiative_transfer.nir.abs
@@ -337,8 +345,8 @@ import ClimaParams
 
             VPD = es .- ea
 
-            conditions = turbulent_fluxes(atmos, canopy, Y, p, t0) #Per unit m^2 of leaf
-            r_ae = Array(parent(conditions.r_ae))[1] # s/m
+            turbulent_fluxes!(turb_fluxes_copy, atmos, canopy, Y, p, t0) #Per unit m^2 of leaf
+            r_ae = Array(parent(turb_fluxes_copy.r_ae))[1] # s/m
             ga = 1 / r_ae
             γ = FT(66)
             R = FT(LP.gas_constant(earth_param_set))
@@ -369,8 +377,8 @@ import ClimaParams
             )
 
             @test abs(
-                (Array(parent(turb_fluxes.transpiration .- ET))[1]) /
-                Array(parent(turb_fluxes.transpiration))[1],
+                (Array(parent(turb_fluxes_copy.transpiration .- ET))[1]) /
+                Array(parent(turb_fluxes_copy.transpiration))[1],
             ) < 0.5
 
             @test ClimaLand.surface_evaporative_scaling(canopy, Y, p) == FT(1.0)
@@ -812,11 +820,19 @@ end
 
             dY = similar(Y)
             exp_tendency!(dY, Y, p, t0)
-            turb_fluxes = ClimaLand.turbulent_fluxes(atmos, canopy, Y, p, t0)
+            turb_fluxes_copy = copy(p.canopy.energy.turbulent_fluxes)
+            ClimaLand.turbulent_fluxes!(
+                turb_fluxes_copy,
+                atmos,
+                canopy,
+                Y,
+                p,
+                t0,
+            )
 
-            @test p.canopy.hydraulics.fa.:1 == turb_fluxes.transpiration
-            @test p.canopy.energy.turbulent_fluxes.lhf == turb_fluxes.lhf
-            @test p.canopy.energy.turbulent_fluxes.shf == turb_fluxes.shf
+            @test p.canopy.hydraulics.fa.:1 == turb_fluxes_copy.transpiration
+            @test p.canopy.energy.turbulent_fluxes.lhf == turb_fluxes_copy.lhf
+            @test p.canopy.energy.turbulent_fluxes.shf == turb_fluxes_copy.shf
             @test all(Array(parent(p.canopy.energy.fa_energy_roots)) .== FT(0))
 
             @test all(

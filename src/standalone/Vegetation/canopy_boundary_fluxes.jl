@@ -9,7 +9,7 @@ import ClimaLand:
     surface_height,
     surface_resistance,
     displacement_height,
-    turbulent_fluxes,
+    turbulent_fluxes!,
     AbstractBC
 
 """
@@ -194,7 +194,7 @@ function canopy_boundary_fluxes!(
     canopy_tf = p.canopy.energy.turbulent_fluxes
     i_end = canopy.hydraulics.n_stem + canopy.hydraulics.n_leaf
     # Compute transpiration, SHF, LHF
-    canopy_tf .= ClimaLand.turbulent_fluxes(atmos, canopy, Y, p, t)
+    ClimaLand.turbulent_fluxes!(canopy_tf, atmos, canopy, Y, p, t)
     # Transpiration is per unit ground area, not leaf area (mult by LAI)
     fa.:($i_end) .= PlantHydraulics.transpiration_per_ground_area(
         canopy.hydraulics.transpiration,
@@ -239,7 +239,8 @@ function canopy_boundary_fluxes!(
 end
 
 """
-    function ClimaLand.turbulent_fluxes(
+    function ClimaLand.turbulent_fluxes!(
+        dest,
         atmos::PrescribedAtmosphere,
         model::CanopyModel,
         Y::ClimaCore.Fields.FieldVector,
@@ -250,12 +251,13 @@ end
 A canopy specific function for compute turbulent fluxes with the atmosphere;
 returns the latent heat flux, sensible heat flux, vapor flux, and aerodynamic resistance.
 
- We cannot use the default version in src/shared_utilities/drivers.jl
+We cannot use the default version in src/shared_utilities/drivers.jl
 because the canopy requires a different resistance for vapor and sensible heat
 fluxes, and the resistances depend on ustar, which we must compute using
 SurfaceFluxes before adjusting to account for these resistances.
 """
-function ClimaLand.turbulent_fluxes(
+function ClimaLand.turbulent_fluxes!(
+    dest,
     atmos::PrescribedAtmosphere,
     model::CanopyModel,
     Y::ClimaCore.Fields.FieldVector,
@@ -268,21 +270,23 @@ function ClimaLand.turbulent_fluxes(
     d_sfc = ClimaLand.displacement_height(model, Y, p)
     u_air = p.drivers.u
     h_air = atmos.h
-    return canopy_turbulent_fluxes_at_a_point.(
-        T_sfc,
-        h_sfc,
-        r_stomata_canopy,
-        d_sfc,
-        p.drivers.thermal_state,
-        u_air,
-        h_air,
-        p.canopy.hydraulics.area_index.leaf,
-        p.canopy.hydraulics.area_index.stem,
-        atmos.gustiness,
-        model.parameters.z_0m,
-        model.parameters.z_0b,
-        Ref(model.parameters.earth_param_set),
-    )
+    dest .=
+        canopy_turbulent_fluxes_at_a_point.(
+            T_sfc,
+            h_sfc,
+            r_stomata_canopy,
+            d_sfc,
+            p.drivers.thermal_state,
+            u_air,
+            h_air,
+            p.canopy.hydraulics.area_index.leaf,
+            p.canopy.hydraulics.area_index.stem,
+            atmos.gustiness,
+            model.parameters.z_0m,
+            model.parameters.z_0b,
+            Ref(model.parameters.earth_param_set),
+        )
+    return nothing
 end
 
 """

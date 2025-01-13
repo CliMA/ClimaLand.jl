@@ -20,6 +20,8 @@
 # Fixed number of iterations: 3
 # Jacobian update: Every Newton iteration
 # Atmos forcing update: every 3 hours
+delete!(ENV, "JULIA_CUDA_MEMORY_POOL")
+
 import SciMLBase
 import ClimaComms
 ClimaComms.@import_required_backends
@@ -426,7 +428,7 @@ ProfileCanvas.html_file(flame_file, results)
 @info "Saved compute flame to $flame_file"
 
 prob, ode_algo, Δt, cb = setup_simulation()
-Profile.Allocs.@profile sample_rate = 0.005 SciMLBase.solve(
+Profile.Allocs.@profile sample_rate = 0.0025 SciMLBase.solve(
     prob,
     ode_algo;
     dt = Δt,
@@ -463,7 +465,7 @@ if ClimaComms.device() isa ClimaComms.CUDADevice
 end
 
 if get(ENV, "BUILDKITE_PIPELINE_SLUG", nothing) == "climaland-benchmark"
-    PREVIOUS_BEST_TIME = 4.9
+    PREVIOUS_BEST_TIME = 6.1
     if average_timing_s > PREVIOUS_BEST_TIME + std_timing_s
         @info "Possible performance regression, previous average time was $(PREVIOUS_BEST_TIME)"
     elseif average_timing_s < PREVIOUS_BEST_TIME - std_timing_s

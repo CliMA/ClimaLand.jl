@@ -85,13 +85,16 @@ import ClimaLand.Parameters as LP
     # Check if aux update occurred correctly
     @test p.snow.R_n ==
           @. (-(1 - α_snow) * 20.0f0 - ϵ_snow * (20.0f0 - _σ * p.snow.T_sfc^4))
-    @test p.snow.R_n == ClimaLand.net_radiation(
+    R_n_copy = copy(p.snow.R_n)
+    ClimaLand.net_radiation!(
+        R_n_copy,
         model.boundary_conditions.radiation,
         model,
         Y,
         p,
         t0,
     )
+    @test p.snow.R_n == R_n_copy
     @test p.snow.q_l ==
           snow_liquid_mass_fraction.(Y.snow.U, Y.snow.S, Ref(model.parameters))
     @test p.snow.T_sfc ==
@@ -121,16 +124,18 @@ import ClimaLand.Parameters as LP
             ρ_sfc,
             Ref(Thermodynamics.Ice()),
         )
-    turb_fluxes = ClimaLand.turbulent_fluxes(
+    turb_fluxes_copy = copy(p.snow.turbulent_fluxes)
+    ClimaLand.turbulent_fluxes!(
+        turb_fluxes_copy,
         model.boundary_conditions.atmos,
         model,
         Y,
         p,
         t0,
     )
-    @test turb_fluxes.shf == p.snow.turbulent_fluxes.shf
-    @test turb_fluxes.lhf == p.snow.turbulent_fluxes.lhf
-    @test turb_fluxes.vapor_flux == p.snow.turbulent_fluxes.vapor_flux
+    @test turb_fluxes_copy.shf == p.snow.turbulent_fluxes.shf
+    @test turb_fluxes_copy.lhf == p.snow.turbulent_fluxes.lhf
+    @test turb_fluxes_copy.vapor_flux == p.snow.turbulent_fluxes.vapor_flux
     old_ρ = deepcopy(p.snow.ρ_snow)
     Snow.update_density!(model.parameters.density, model.parameters, Y, p)
     @test p.snow.ρ_snow == old_ρ

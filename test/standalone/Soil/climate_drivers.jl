@@ -210,21 +210,25 @@ for FT in (Float32, Float64)
                   PAR_albedo ./ 2 .+ NIR_albedo ./ 2
             @test ClimaLand.surface_temperature(model, Y, p, t) == T_sfc
 
-            conditions = ClimaLand.turbulent_fluxes(
+            conditions = copy(p.soil.turbulent_fluxes)
+            ClimaLand.turbulent_fluxes!(
+                conditions,
                 model.boundary_conditions.top.atmos,
                 model,
                 Y,
                 p,
                 t,
             )
-            R_n = ClimaLand.net_radiation(
+            R_n_copy = copy(p.soil.R_n)
+            ClimaLand.net_radiation!(
+                R_n_copy,
                 model.boundary_conditions.top.radiation,
                 model,
                 Y,
                 p,
                 t,
             )
-            @test R_n == p.soil.R_n
+            @test R_n_copy == p.soil.R_n
             @test conditions == p.soil.turbulent_fluxes
 
             ClimaLand.Soil.soil_boundary_fluxes!(
@@ -241,7 +245,7 @@ for FT in (Float32, Float64)
 
             expected_water_flux = @. FT(precip(t)) .+ conditions.vapor_flux_liq
             @test computed_water_flux == expected_water_flux
-            expected_energy_flux = @. R_n + conditions.lhf + conditions.shf
+            expected_energy_flux = @. R_n_copy + conditions.lhf + conditions.shf
             @test computed_energy_flux == expected_energy_flux
 
             # Test soil resistances for liquid water

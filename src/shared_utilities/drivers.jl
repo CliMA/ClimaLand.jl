@@ -23,8 +23,8 @@ export AbstractAtmosphericDrivers,
     CoupledRadiativeFluxes,
     compute_ρ_sfc,
     set_atmos_ts!,
-    turbulent_fluxes,
-    net_radiation,
+    turbulent_fluxes!,
+    net_radiation!,
     turbulent_fluxes_at_a_point,
     vapor_pressure_deficit,
     displacement_height,
@@ -232,12 +232,13 @@ function set_atmos_ts!(ts_in, atmos::PrescribedAtmosphere{FT}, p) where {FT}
 end
 
 """
-    turbulent_fluxes(atmos::PrescribedAtmosphere,
-                   model::AbstractModel,
-                   Y::ClimaCore.Fields.FieldVector,
-                   p::NamedTuple,
-                   t
-                   )
+    turbulent_fluxes!(dest,
+                      atmos::PrescribedAtmosphere,
+                      model::AbstractModel,
+                      Y::ClimaCore.Fields.FieldVector,
+                      p::NamedTuple,
+                      t
+                      )
 
 Computes the turbulent surface flux terms at the ground for a standalone simulation,
 including turbulent energy fluxes as well as the water vapor flux
@@ -247,7 +248,8 @@ Positive fluxes indicate flow from the ground to the atmosphere.
 It solves for these given atmospheric conditions, stored in `atmos`,
 model parameters, and the surface conditions.
 """
-function turbulent_fluxes(
+function turbulent_fluxes!(
+    dest,
     atmos::PrescribedAtmosphere,
     model::AbstractModel,
     Y::ClimaCore.Fields.FieldVector,
@@ -264,23 +266,26 @@ function turbulent_fluxes(
     u_air = p.drivers.u
     h_air = atmos.h
 
-    return turbulent_fluxes_at_a_point.(
-        T_sfc,
-        q_sfc,
-        ρ_sfc,
-        β_sfc,
-        h_sfc,
-        r_sfc,
-        d_sfc,
-        p.drivers.thermal_state,
-        u_air,
-        h_air,
-        atmos.gustiness,
-        model.parameters.z_0m,
-        model.parameters.z_0b,
-        Ref(model.parameters.earth_param_set),
-    )
+    dest .=
+        turbulent_fluxes_at_a_point.(
+            T_sfc,
+            q_sfc,
+            ρ_sfc,
+            β_sfc,
+            h_sfc,
+            r_sfc,
+            d_sfc,
+            p.drivers.thermal_state,
+            u_air,
+            h_air,
+            atmos.gustiness,
+            model.parameters.z_0m,
+            model.parameters.z_0b,
+            model.parameters.earth_param_set,
+        )
+    return nothing
 end
+
 
 """
     turbulent_fluxes_at_a_point(T_sfc::FT,
@@ -398,7 +403,8 @@ function turbulent_fluxes_at_a_point(
 end
 
 """
-    turbulent_fluxes(atmos::CoupledAtmosphere,
+    turbulent_fluxes!(dest,
+                    atmos::CoupledAtmosphere,
                     model::AbstractModel,
                     Y,
                     p,
@@ -406,7 +412,8 @@ end
 
 Computes the turbulent surface fluxes terms at the ground for a coupled simulation.
 """
-function ClimaLand.turbulent_fluxes(
+function ClimaLand.turbulent_fluxes!(
+    dest,
     atmos::CoupledAtmosphere,
     model::AbstractModel,
     Y,
@@ -416,7 +423,8 @@ function ClimaLand.turbulent_fluxes(
     # coupler has done its thing behind the scenes already
     model_name = ClimaLand.name(model)
     model_cache = getproperty(p, model_name)
-    return model_cache.turbulent_fluxes
+    dest .= model_cache.turbulent_fluxes
+    return nothing
 end
 
 
@@ -448,19 +456,20 @@ struct PrescribedRadiativeFluxes{
 end
 
 """
-    net_radiation(radiation::PrescribedRadiativeFluxes{FT},
-                  model::AbstractModel{FT},
-                  Y::ClimaCore.Fields.FieldVector,
-                  p::NamedTuple,
-                  t,
-                  ) where {FT}
+    net_radiation!(dest::ClimaCore.Fields.Field,
+                   radiation::PrescribedRadiativeFluxes{FT},
+                   model::AbstractModel{FT},
+                   Y::ClimaCore.Fields.FieldVector,
+                   p::NamedTuple,
+                   t,
+                   ) where {FT}
 
-Computes net radiative fluxes for a prescribed incoming
-longwave and shortwave radiation.
 
-This returns an energy flux.
+Computes net radiative  fluxes for a prescribed incoming  longwave and shortwave
+radiation.
 """
-function net_radiation(
+function net_radiation!(
+    dest::ClimaCore.Fields.Field,
     radiation::PrescribedRadiativeFluxes,
     model::AbstractModel,
     Y::ClimaCore.Fields.FieldVector,
@@ -477,12 +486,14 @@ function net_radiation(
     # Recall that the user passed the LW and SW downwelling radiation,
     # where positive values indicate toward surface, so we need a negative sign out front
     # in order to inidicate positive R_n  = towards atmos.
-    R_n = @.(-(1 - α_sfc) * SW_d - ϵ_sfc * (LW_d - _σ * T_sfc^4))
-    return R_n
+    @. dest = -(1 - α_sfc) * SW_d - ϵ_sfc * (LW_d - _σ * T_sfc^4)
+    return nothing
 end
 
+
 """
-    net_radiation(radiation::CoupledRadiativeFluxes,
+    net_radiation!(dest,
+                  radiation::CoupledRadiativeFluxes,
                   model::AbstractModel,
                   Y,
                   p,
@@ -491,7 +502,8 @@ end
 Computes the net radiative flux at the ground for a coupled simulation.
 Your model cache must contain the field `R_n`.
 """
-function ClimaLand.net_radiation(
+function ClimaLand.net_radiation!(
+    dest,
     radiation::CoupledRadiativeFluxes,
     model::AbstractModel,
     Y::ClimaCore.Fields.FieldVector,
@@ -501,7 +513,8 @@ function ClimaLand.net_radiation(
     # coupler has done its thing behind the scenes already
     model_name = ClimaLand.name(model)
     model_cache = getproperty(p, model_name)
-    return model_cache.R_n
+    dest .= model_cache.R_n
+    return nothing
 end
 
 """

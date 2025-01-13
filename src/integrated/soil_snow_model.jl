@@ -151,10 +151,9 @@ lsm_aux_domain_names(m::SoilSnowModel) = (
         SoM <: Soil.EnergyHydrology{FT},
         }
 
-A method which makes a function; the returned function
-updates the additional auxiliary variables for the integrated model,
-as well as updates the boundary auxiliary variables for all component
-models.
+A method which makes a function; the returned function updates the additional
+auxiliary variables for the integrated model, as well as updates the boundary
+auxiliary variables for all component models.
 
 This function is called each ode function evaluation, prior to the tendency function
 evaluation.
@@ -217,7 +216,7 @@ function make_update_boundary_fluxes(
                 p.soil.turbulent_fluxes.vapor_flux_ice
             ) +
             p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.vapor_flux
-
+        return nothing
     end
     return update_boundary_fluxes!
 end
@@ -301,6 +300,7 @@ function update_soil_snow_ground_heat_flux!(
     @. p.ground_heat_flux =
         -κ_soil * κ_snow / (κ_snow * Δz_soil / 2 + κ_soil * Δz_snow / 2) *
         (T_snow - T_soil)
+    return nothing
 end
 
 
@@ -315,17 +315,15 @@ end
         t,
     ) where {FT}
 
-A method of `snow_boundary_fluxes!` which computes
-the boundary fluxes for the snow model accounting
-for a heat flux between the soil and snow.
+A method of `snow_boundary_fluxes!` which computes the boundary fluxes for the
+snow model accounting for a heat flux between the soil and snow.
 
-The snow surface is
-assumed to be bare (no vegetation).
+The snow surface is assumed to be bare (no vegetation).
 
-Currently this is almost identical to the method for snow alone,
-except for the inclusion of the ground heat flux (precomputed by
-the integrated land model). However, this will change more if e.g.
-we allow for transmission of radiation through the snowpack.
+Currently this is almost identical to the method for snow alone, except for the
+inclusion of the ground heat flux (precomputed by the integrated land model).
+However, this will change more if e.g. we allow for transmission of radiation
+through the snowpack.
 """
 function snow_boundary_fluxes!(
     bc::Snow.AtmosDrivenSnowBC,
@@ -335,8 +333,8 @@ function snow_boundary_fluxes!(
     p,
     t,
 ) where {FT}
-    p.snow.turbulent_fluxes .= turbulent_fluxes(bc.atmos, model, Y, p, t)
-    p.snow.R_n .= net_radiation(bc.radiation, model, Y, p, t)
+    turbulent_fluxes!(p.snow.turbulent_fluxes, bc.atmos, model, Y, p, t)
+    net_radiation!(p.snow.R_n, bc.radiation, model, Y, p, t)
     # How does rain affect the below?
     P_snow = p.drivers.P_snow
 
@@ -386,8 +384,8 @@ function soil_boundary_fluxes!(
     t,
 ) where {FT}
     bc = soil.boundary_conditions.top
-    p.soil.turbulent_fluxes .= turbulent_fluxes(bc.atmos, soil, Y, p, t)
-    p.soil.R_n .= net_radiation(bc.radiation, soil, Y, p, t)
+    turbulent_fluxes!(p.soil.turbulent_fluxes, bc.atmos, soil, Y, p, t)
+    net_radiation!(p.soil.R_n, bc.radiation, soil, Y, p, t)
     # influx = maximum possible rate of infiltration given precip, snowmelt, evaporation/condensation
     # but if this exceeds infiltration capacity of the soil, runoff will
     # be generated.
@@ -413,6 +411,7 @@ function soil_boundary_fluxes!(
         ) +
         p.excess_heat_flux +
         p.snow.snow_cover_fraction * p.ground_heat_flux
+    return nothing
 end
 
 function ClimaLand.Soil.sublimation_source(::Val{(:snow, :soil)}, FT)
@@ -435,9 +434,8 @@ struct SoilSublimationwithSnow{FT} <: ClimaLand.Soil.AbstractSoilSource{FT} end
              model
              )
 
-Updates dY.soil.θ_i in place with a term due to sublimation; this only affects
+Updates `dY.soil.θ_i` in place with a term due to sublimation; this only affects
 the surface layer of soil.
-
 """
 function ClimaLand.source!(
     dY::ClimaCore.Fields.FieldVector,
@@ -454,6 +452,7 @@ function ClimaLand.source!(
         -p.soil.turbulent_fluxes.vapor_flux_ice *
         (1 - p.snow.snow_cover_fraction) *
         _ρ_l / _ρ_i * heaviside(z + 2 * Δz_top) # only apply to top layer, recall that z is negative
+    return nothing
 end
 
 function ClimaLand.get_drivers(model::SoilSnowModel)
