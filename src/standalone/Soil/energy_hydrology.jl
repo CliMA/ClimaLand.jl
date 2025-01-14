@@ -640,14 +640,10 @@ function ClimaLand.source!(
     model,
 ) where {FT}
     params = model.parameters
-    (; ν, ρc_ds, θ_r, hydrology_cm, earth_param_set) = params
+    (; ν, ρc_ds, θ_r, earth_param_set) = params
     _ρ_l = FT(LP.ρ_cloud_liq(earth_param_set))
     _ρ_i = FT(LP.ρ_cloud_ice(earth_param_set))
     Δz = model.domain.fields.Δz # center face distance
-
-    # Wrap hydrology and earth parameters in one struct to avoid type inference failure. This is allocating! We should remove it.
-    hydrology_earth_params =
-        ClimaLand.Soil.HydrologyEarthParameters.(hydrology_cm, earth_param_set)
 
     @. dY.soil.ϑ_l +=
         -phase_change_source(
@@ -666,7 +662,7 @@ function ClimaLand.source!(
             ),
             ν,
             θ_r,
-            hydrology_earth_params,
+            params,
         )
     @. dY.soil.θ_i +=
         (_ρ_l / _ρ_i) * phase_change_source(
@@ -685,7 +681,7 @@ function ClimaLand.source!(
             ),
             ν,
             θ_r,
-            hydrology_earth_params,
+            params,
         )
 end
 
