@@ -91,39 +91,46 @@ end
 
 
 """
-    ClimaLand.surface_specific_humidity(model::SnowModel, Y, p)
+    ClimaLand.surface_specific_humidity(model::SnowModel, Y, p, _...)
 
-Computes and returns the specific humidity over snow as a weighted
+Returns the precomputed specific humidity over snow as a weighted
 fraction of the saturated specific humidity over liquid and frozen
 water.
 
-This function allocates.
 """
-function ClimaLand.surface_specific_humidity(
-    model::SnowModel,
-    Y,
-    p,
-    T_sfc,
-    ρ_sfc,
-)
-    thermo_params =
-        LP.thermodynamic_parameters(model.parameters.earth_param_set)
-    qsat_over_ice =
-        Thermodynamics.q_vap_saturation_generic.(
-            Ref(thermo_params),
-            T_sfc,
-            ρ_sfc,
-            Ref(Thermodynamics.Ice()),
-        )
-    qsat_over_liq =
-        Thermodynamics.q_vap_saturation_generic.(
-            Ref(thermo_params),
-            T_sfc,
-            ρ_sfc,
-            Ref(Thermodynamics.Liquid()),
-        )
-    q_l = p.snow.q_l
-    return @. qsat_over_ice * (1 - q_l) + q_l * (qsat_over_liq)
+function ClimaLand.surface_specific_humidity(model::SnowModel, Y, p, _...)
+    return p.snow.q_sfc
+end
+
+"""
+    snow_surface_specific_humidity(T_sfc::FT, q_l::FT, atmos_ts, parameters) where {FT}
+
+Computes the snow surface specific humidity at a point, assuming a weighted averaged (by mass fraction)
+of the saturated specific humidity over ice and over liquid, at temperature T_sfc.
+
+This approximates the surface air density using an adiabatic approximation and the current atmospheric state.
+"""
+function snow_surface_specific_humidity(
+    T_sfc::FT,
+    q_l::FT,
+    atmos_ts,
+    parameters,
+) where {FT}
+    thermo_params = LP.thermodynamic_parameters(parameters.earth_param_set)
+    ρ_sfc = compute_ρ_sfc(thermo_params, atmos_ts, T_sfc)
+    qsat_over_ice = Thermodynamics.q_vap_saturation_generic(
+        thermo_params,
+        T_sfc,
+        ρ_sfc,
+        Thermodynamics.Ice(),
+    )
+    qsat_over_liq = Thermodynamics.q_vap_saturation_generic(
+        thermo_params,
+        T_sfc,
+        ρ_sfc,
+        Thermodynamics.Liquid(),
+    )
+    return qsat_over_ice * (1 - q_l) + q_l * (qsat_over_liq)
 end
 
 """

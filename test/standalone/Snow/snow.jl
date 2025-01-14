@@ -53,6 +53,7 @@ import ClimaLand.Parameters as LP
     Y, p, coords = ClimaLand.initialize(model)
     @test (Y.snow |> propertynames) == (:S, :U)
     @test (p.snow |> propertynames) == (
+        :q_sfc,
         :q_l,
         :κ,
         :T,
@@ -124,6 +125,7 @@ import ClimaLand.Parameters as LP
             ρ_sfc,
             Ref(Thermodynamics.Ice()),
         )
+    @test p.snow.q_sfc ≈ q_sfc
     turb_fluxes_copy = copy(p.snow.turbulent_fluxes)
     ClimaLand.turbulent_fluxes!(
         turb_fluxes_copy,
