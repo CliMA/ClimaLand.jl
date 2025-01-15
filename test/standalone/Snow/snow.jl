@@ -58,6 +58,7 @@ import ClimaLand.Parameters as LP
         :κ,
         :T,
         :T_sfc,
+        :z_snow,
         :ρ_snow,
         :turbulent_fluxes,
         :R_n,
@@ -139,12 +140,17 @@ import ClimaLand.Parameters as LP
     @test turb_fluxes_copy.lhf == p.snow.turbulent_fluxes.lhf
     @test turb_fluxes_copy.vapor_flux == p.snow.turbulent_fluxes.vapor_flux
     old_ρ = deepcopy(p.snow.ρ_snow)
-    Snow.update_density!(model.parameters.density, model.parameters, Y, p)
+    Snow.update_density!(
+        p.snow.ρ_snow,
+        model.parameters.density,
+        Y,
+        p,
+        model.parameters,
+    )
     @test p.snow.ρ_snow == old_ρ
-    old_z = similar(Y.snow.S)
-    old_z .= FT(0.5)
-    z = snow_depth(model.parameters.density, Y, p, parameters)
-    @test z == old_z
+    old_z = deepcopy(p.snow.z_snow)
+    snow_depth!(p.snow.z_snow, model.parameters.density, Y, p, parameters)
+    @test p.snow.z_snow == old_z
 
     # Now compute tendencies and make sure they operate correctly.
     dY = similar(Y)
