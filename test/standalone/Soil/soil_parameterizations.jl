@@ -339,11 +339,12 @@ for FT in (Float32, Float64)
         ρc_s = volumetric_heat_capacity.(θ_l, θ_i, parameters.ρc_ds, param_set)
         τ = thermal_time.(ρc_s, Δz, parameters.κ_dry)
         @test (
-            phase_change_source.(θ_l, θ_i, T, τ, ν, θ_r, parameters) ≈
+            phase_change_source.(θ_l, θ_i, T, τ, ν, θ_r, hcm, parameters) ≈
             (θ_l .- θ_star) ./ τ
         )
         @test sum(
-            phase_change_source.(θ_l, θ_i, T, τ, ν, θ_r, parameters) .> 0.0,
+            phase_change_source.(θ_l, θ_i, T, τ, ν, θ_r, hcm, parameters) .>
+            0.0,
         ) == 3
 
         θ_l = FT.([0.11, 0.15, ν])
@@ -359,7 +360,7 @@ for FT in (Float32, Float64)
         ρc_s = volumetric_heat_capacity.(θ_l, θ_i, parameters.ρc_ds, param_set)
         τ = thermal_time.(ρc_s, Δz, parameters.κ_dry)
         @test (
-            phase_change_source.(θ_l, θ_i, T, τ, ν, θ_r, parameters) ≈
+            phase_change_source.(θ_l, θ_i, T, τ, ν, θ_r, hcm, parameters) ≈
             zeros(FT, 3)
         )
         @test (θ_star ≈ θ_l)
@@ -378,11 +379,12 @@ for FT in (Float32, Float64)
         ρc_s = volumetric_heat_capacity.(θ_l, θ_i, parameters.ρc_ds, param_set)
         τ = thermal_time.(ρc_s, Δz, parameters.κ_dry)
         @test (
-            phase_change_source.(θ_l, θ_i, T, τ, ν, θ_r, parameters) ≈
+            phase_change_source.(θ_l, θ_i, T, τ, ν, θ_r, hcm, parameters) ≈
             (θ_l .- θ_star) ./ τ
         )
         @test sum(
-            phase_change_source.(θ_l, θ_i, T, τ, ν, θ_r, parameters) .< 0.0,
+            phase_change_source.(θ_l, θ_i, T, τ, ν, θ_r, hcm, parameters) .<
+            0.0,
         ) == 2
 
 
@@ -399,11 +401,12 @@ for FT in (Float32, Float64)
         ρc_s = volumetric_heat_capacity.(θ_l, θ_i, parameters.ρc_ds, param_set)
         τ = thermal_time.(ρc_s, Δz, parameters.κ_dry)
         @test (
-            phase_change_source.(θ_l, θ_i, T, τ, ν, θ_r, parameters) ≈
+            phase_change_source.(θ_l, θ_i, T, τ, ν, θ_r, hcm, parameters) ≈
             (θ_l .- θ_star) ./ τ
         )
         @test sum(
-            phase_change_source.(θ_l, θ_i, T, τ, ν, θ_r, parameters) .> 0.0,
+            phase_change_source.(θ_l, θ_i, T, τ, ν, θ_r, hcm, parameters) .>
+            0.0,
         ) == 2
     end
 end

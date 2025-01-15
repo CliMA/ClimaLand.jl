@@ -31,8 +31,9 @@ end
         τ::FT,
         ν::FT,
         θ_r::FT,
+        hydrology_cm::HCM,
         params::P
-    ) where {FT, P}
+    ) where {FT, HCM, P}
 Returns the source term (1/s) used for converting liquid water
 and ice into each other during phase changes. Note that
 there are unitless prefactors multiplying this term in the
@@ -49,10 +50,10 @@ function phase_change_source(
     τ::FT,
     ν::FT,
     θ_r::FT,
+    hydrology_cm::HCM,
     params::P,
-) where {FT, P}
-    # Extract parameter sets from their container
-    (; hydrology_cm, earth_param_set) = params
+) where {FT, HCM, P}
+    (; earth_param_set) = params
 
     _ρ_i = FT(LP.ρ_cloud_ice(earth_param_set))
     _ρ_l = FT(LP.ρ_cloud_liq(earth_param_set))
