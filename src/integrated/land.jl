@@ -205,6 +205,7 @@ lsm_aux_vars(m::LandModel) = (
     :T_sfc,
     :ϵ_sfc,
     :α_sfc,
+    :α_ground,
 )
 
 """
@@ -213,8 +214,28 @@ lsm_aux_vars(m::LandModel) = (
 The types of the additional auxiliary variables that are
 included in the land model.
 """
-lsm_aux_types(m::LandModel{FT}) where {FT} =
-    (FT, FT, FT, FT, FT, FT, FT, FT, FT, FT, FT, FT, FT, FT, FT, FT, FT, FT, FT)
+lsm_aux_types(m::LandModel{FT}) where {FT} = (
+    FT,
+    FT,
+    FT,
+    FT,
+    FT,
+    FT,
+    FT,
+    FT,
+    FT,
+    FT,
+    FT,
+    FT,
+    FT,
+    FT,
+    FT,
+    FT,
+    FT,
+    FT,
+    FT,
+    NamedTuple{(:PAR, :NIR), Tuple{FT, FT}},
+)
 
 """
     lsm_aux_domain_names(m::LandModel)
@@ -238,6 +259,7 @@ lsm_aux_domain_names(m::LandModel) = (
     :surface,
     :surface,
     :subsurface,
+    :surface,
     :surface,
     :surface,
     :surface,
@@ -555,12 +577,11 @@ end
      PrognosticGroundConditions{FT <: AbstractFloat, F <: Union{FT, ClimaCore.Fields.Field}} <: Canopy.AbstractGroundConditions
 
 A type of Canopy.AbstractGroundConditions to use when the soil model is prognostic and
-of type `EnergyHydrology`. This is required because the canopy model needs albedo of the ground
-in order to compute its update_aux! function, and that function must only depend on the canopy model.
+of type `EnergyHydrology`, and the snow model is prognostic and included.
 
-In the future, we will allocate space for albedo in the cache. In that case, we would *not*
-store them here, twice. `PrognosticGroundConditions` would
-then just be a flag, essentially.
+The canopy model needs albedo of the ground
+in order to compute its update_aux! function, and that function must only depend on the canopy model.
+Because of this, α_snow must be stored in this struct until it is stored in the cache.
 
 Note that this struct is linked with the EnergyHydrology model. If we ever had a different
 soil model, we might need to construct a different `PrognosticGroundConditions` because
@@ -582,7 +603,8 @@ end
         t,
     )
 
-A method of Canopy.ground_albedo_PAR for a prognostic soil/snow.
+A method of Canopy.ground_albedo_PAR for a prognostic soil/snow. This function is called in
+the Canopy update_aux! function.
 """
 function Canopy.ground_albedo_PAR(
     prognostic_land_components::Val{(:canopy, :snow, :soil, :soilco2)},
@@ -591,8 +613,10 @@ function Canopy.ground_albedo_PAR(
     p,
     t,
 )
-    return @. (1 - p.snow.snow_cover_fraction) * p.soil.PAR_albedo +
-              p.snow.snow_cover_fraction * ground.α_snow
+    @. p.α_ground.PAR =
+        (1 - p.snow.snow_cover_fraction) * p.soil.PAR_albedo +
+        p.snow.snow_cover_fraction * ground.α_snow
+    return p.α_ground.PAR
 end
 
 """
@@ -604,7 +628,8 @@ end
         t,
     )
 
-A method of Canopy.ground_albedo_NIR for a prognostic soil/snow.
+A method of Canopy.ground_albedo_NIR for a prognostic soil/snow. This function is called in
+the Canopy update_aux! function.
 """
 function Canopy.ground_albedo_NIR(
     prognostic_land_components::Val{(:canopy, :snow, :soil, :soilco2)},
@@ -613,8 +638,10 @@ function Canopy.ground_albedo_NIR(
     p,
     t,
 )
-    return @. (1 - p.snow.snow_cover_fraction) * p.soil.NIR_albedo +
-              p.snow.snow_cover_fraction * ground.α_snow
+    @. p.α_ground.NIR =
+        (1 - p.snow.snow_cover_fraction) * p.soil.NIR_albedo +
+        p.snow.snow_cover_fraction * ground.α_snow
+    return p.α_ground.NIR
 end
 
 """
