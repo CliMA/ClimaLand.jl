@@ -94,8 +94,8 @@ end
 
 is the default for the BucketModel, it will return hourly averages for the variables listed in `bucket_diagnostics` (which are all variables in the BucketModel).
 
-For the SoilCanopyModel and the SoilModel, we added two keyword arguments: `output_vars` (can be :long or :short) and `average_period` (can be :hourly, :daily, or :monthly).
-If `output_vars = :long` (the default), then `soilcanopy_diagnostics` is an Array of all short\_name, if `output_vars = :short`, then `soilcanopy_diagnostics = ["gpp", "ct", "lai", "swc", "si"]`.
+For SoilCanopyModel, LandModel, and SoilModel, we added two keyword arguments: `output_vars` (can be :long or :short) and `average_period` (can be :hourly, :daily, or :monthly).
+If `output_vars = :long` (the default), then `soilcanopy_diagnostics` is an Array of all short\_name, if `output_vars = :short`, then we have a subset of all short\_name: `soilcanopy_diagnostics = ["gpp", "ct", "lai", "sco2", "swc", "si", "swa", "lwu", "et", "er", "sr", "sif"]`.
 If `average_period = :hourly`, `default_outputs` calls `hourly_averages`, et cetera.
 
 # Standard diagnostic frequencies
