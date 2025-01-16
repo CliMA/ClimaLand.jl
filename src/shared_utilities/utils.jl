@@ -3,7 +3,7 @@ import SciMLBase
 import ClimaDiagnostics.Schedules: EveryCalendarDtSchedule
 import Dates
 
-export FTfromY
+export FTfromY, count_nans_state
 
 """
      heaviside(x::FT)::FT where {FT}
@@ -320,7 +320,7 @@ function CheckpointCallback(
 
     if !isnothing(dt)
         dt_period = Dates.Millisecond(1000dt)
-        if !isdivisible(checkpoint_frequency_period / dt_period)
+        if !isdivisible(checkpoint_frequency_period, dt_period)
             @warn "Checkpoint frequency ($(checkpoint_frequency_period)) is not an integer multiple of dt $(dt_period)"
         end
     end
@@ -491,4 +491,111 @@ function isdivisible(
     # have a Day or an integer divisor of a day. (Note that 365 and 366 don't
     # have any common divisor)
     return isinteger(Dates.Day(1) / dt_small)
+end
+
+"""
+    count_nans_state(state, mask::ClimaCore.Fields.Field = nothing, verbose = false)
+
+Count the number of NaNs in the state, e.g. the FieldVector given by
+`sol.u[end]` after calling `solve`. This function is useful for
+debugging simulations to determine quantitatively if a simulation is stable.
+
+If this function is called on a FieldVector, it will recursively call itself
+on each Field in the FieldVector. If it is called on a Field, it will count
+the number of NaNs in the Field and produce a warning if any are found.
+
+If a ClimaCore Field is provided as `mask`, the function will only count NaNs
+in the state variables where the mask is 1. This is intended to be used with
+the land/sea mask, to avoid counting NaNs over the ocean. Note this assumes
+the mask is 1 over land and 0 over ocean.
+
+The `verbose` argument toggles whether the function produces output when no
+NaNs are found.
+"""
+function count_nans_state(
+    state::ClimaCore.Fields.FieldVector;
+    mask = nothing,
+    verbose = false,
+)
+    for pn in propertynames(state)
+        state_new = getproperty(state, pn)
+        @info "Checking NaNs in $pn"
+        count_nans_state(state_new; mask, verbose)
+    end
+    return nothing
+end
+
+function count_nans_state(
+    state::ClimaCore.Fields.Field;
+    mask = nothing,
+    verbose = false,
+)
+    # Note: this code uses `parent`; this pattern should not be replicated
+    num_nans =
+        isnothing(mask) ? round(sum(isnan, parent(state))) :
+        round(sum(isnan, parent(state)[Bool.(parent(mask))]; init = 0))
+    if isapprox(num_nans, 0)
+        verbose && @info "No NaNs found"
+    else
+        @warn "$num_nans NaNs found"
+    end
+    return nothing
+end
+
+"""
+    NaNCheckCallback(nancheck_frequency::Union{AbstractFloat, Dates.Period},
+                        start_date, t_start, dt)
+
+Constructs a DiscreteCallback which counts the number of NaNs in the state
+and produces a warning if any are found.
+
+# Arguments
+- `nancheck_frequency`: The frequency at which the state is checked for NaNs.
+  Can be specified as a float (in seconds) or a `Dates.Period`.
+- `start_date`: The start date of the simulation.
+- `t_start`: The starting time of the simulation (in seconds).
+- `dt`: The timestep of the model (optional), used to check for consistency.
+
+The callback uses `ClimaDiagnostics.EveryCalendarDtSchedule` to determine when
+to check for NaNs based on the `nancheck_frequency`. The schedule is
+initialized with the `start_date` and `t_start` to ensure that it is first
+called at the correct time.
+"""
+function NaNCheckCallback(
+    nancheck_frequency::Union{AbstractFloat, Dates.Period},
+    start_date,
+    t_start,
+    dt,
+)
+    # TODO: Move to a more general callback system. For the time being, we use
+    # the ClimaDiagnostics one because it is flexible and it supports calendar
+    # dates.
+
+    if nancheck_frequency isa AbstractFloat
+        # Assume it is in seconds, but go through Millisecond to support
+        # fractional seconds
+        nancheck_frequency_period = Dates.Millisecond(1000nancheck_frequency)
+    else
+        nancheck_frequency_period = nancheck_frequency
+    end
+
+    schedule = EveryCalendarDtSchedule(
+        nancheck_frequency_period;
+        start_date,
+        date_last = start_date + Dates.Millisecond(1000t_start),
+    )
+
+    if !isnothing(dt)
+        dt_period = Dates.Millisecond(1000dt)
+        if !isdivisible(nancheck_frequency_period, dt_period)
+            @warn "Callback frequency ($(nancheck_frequency_period)) is not an integer multiple of dt $(dt_period)"
+        end
+    end
+
+    cond = let schedule = schedule
+        (u, t, integrator) -> schedule(integrator)
+    end
+    affect! = (integrator) -> count_nans_state(integrator.u)
+
+    SciMLBase.DiscreteCallback(cond, affect!)
 end

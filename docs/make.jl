@@ -52,14 +52,15 @@ include("list_diagnostics.jl")
 pages = Any[
     "Home" => "index.md",
     "Getting Started" => "getting_started.md",
+    "Repository structure" => "folderstructure.md",
     "Tutorials" => tutorials,
     "Standalone models" => standalone_models,
     "Diagnostics" => diagnostics,
     "Leaderboard" => "leaderboard/leaderboard.md",
     "Restarts" => "restarts.md",
-    "Contribution guide" => "Contributing.md",
-    "Repository structure" => "folderstructure.md",
+    "Misc. utilities" => "shared_utilities.md",
     "APIs" => apis,
+    "Contribution guide" => "Contributing.md",
 ]
 
 mathengine = MathJax(

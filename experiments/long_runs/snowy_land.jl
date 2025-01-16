@@ -396,7 +396,11 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     end
     report_cb = SciMLBase.DiscreteCallback(every1000steps, report)
 
-    return prob, SciMLBase.CallbackSet(driver_cb, diag_cb, report_cb)
+    nancheck_freq = Dates.Month(1)
+    nancheck_cb = ClimaLand.NaNCheckCallback(nancheck_freq, start_date, t0, Δt)
+
+    return prob,
+    SciMLBase.CallbackSet(driver_cb, diag_cb, report_cb, nancheck_cb)
 end
 
 function setup_and_solve_problem(; greet = false)
