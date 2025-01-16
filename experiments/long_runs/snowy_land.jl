@@ -437,7 +437,7 @@ setup_and_solve_problem(; greet = true);
 simdir = ClimaAnalysis.SimDir(outdir)
 short_names_bio = ["gpp", "ct", "lai"]
 short_names_water = ["swc", "si", "sr", "swe"]
-short_names_other = ["swu", "lwu", "et"]
+short_names_other = ["swu", "lwu", "et", "sco2"]
 group_names = ["bio", "water", "other"]
 months_id = [1, 4, 7, 10]
 for (group_id, group) in
