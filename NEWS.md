@@ -4,6 +4,23 @@ ClimaLand.jl Release Notes
 main
 -------
 
+v0.15.8
+-------
+- Add `soilco2.C` to `:short` default diagnostics
+  PR[#984](https://github.com/CliMA/ClimaLand.jl/pull/984)
+- Add function to count NaNs in state variables
+  PR[#970](https://github.com/CliMA/ClimaLand.jl/pull/970)
+- Reduce allocations by updating functions to modify in-place
+  PR[#967](https://github.com/CliMA/ClimaLand.jl/pull/967)
+  PR[#978](https://github.com/CliMA/ClimaLand.jl/pull/978)
+  PR[#981](https://github.com/CliMA/ClimaLand.jl/pull/981)
+  PR[#980](https://github.com/CliMA/ClimaLand.jl/pull/980)
+- Include freezing point depression in `EnergyHydrology`,
+  and generate plots for paper.
+  PR[#963](https://github.com/CliMA/ClimaLand.jl/pull/963)
+- Rename `LandHydrologyModel` to `SoilSnowModel`
+  PR[#968](https://github.com/CliMA/ClimaLand.jl/pull/968)
+
 
 v0.15.7
 -------
