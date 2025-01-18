@@ -1,16 +1,16 @@
 export snow_surface_temperature,
-    snow_depth!,
     specific_heat_capacity,
     snow_thermal_conductivity,
     snow_bulk_temperature,
-    snow_liquid_mass_fraction,
+    liquid_mass_fraction,
     maximum_liquid_mass_fraction,
     runoff_timescale,
     compute_water_runoff,
     energy_from_q_l_and_swe,
     energy_from_T_and_swe,
     snow_cover_fraction,
-    snow_bulk_density
+    snow_bulk_density,
+    phase_change_flux
 
 """
     snow_cover_fraction(x::FT; α = FT(1e-3))::FT where {FT}
@@ -180,32 +180,47 @@ function snow_thermal_conductivity(
 end
 
 """
+    liquid_mass_fraction(S::FT, S_l::FT)::FT where {FT}
+
+Diagnoses the liquid mass fraction from the prognostic variables S_l and S,
+while preventing from division by zero and enforcing that q_l = S_l/S must
+lie between 0 and 1.
+"""
+function liquid_mass_fraction(S::FT, S_l::FT)::FT where {FT}
+    S_safe = max(S, eps(FT))
+    S_l_safe = min(max(S_l, FT(0)), S_safe)
+    return S_l_safe / S_safe
+end
+
+"""
     snow_bulk_temperature(U::FT,
-                          SWE::FT,
+                          S::FT,
                           q_l::FT,
                           parameters::SnowParameters{FT}) where {FT}
 
-Computes the bulk snow temperature from the snow water equivalent SWE,
-energy per unit area U, liquid water mass fraction q_l, and specific heat
+Computes the bulk snow temperature from the snow water equivalent S,
+energy per unit area U, liquid water fraction q_l, and specific heat
 capacity c_s, along with other needed parameters.
 
-If there is no snow (U = SWE = 0), the bulk temperature is the reference temperature,
+If there is no snow (U = S = q_l = 0), the bulk temperature is the reference temperature,
 which is 273.16K.
 """
 function snow_bulk_temperature(
     U::FT,
-    SWE::FT,
+    S::FT,
     q_l::FT,
     parameters::SnowParameters{FT},
 ) where {FT}
+    S_safe = max(S, FT(0))
     _ρ_l = FT(LP.ρ_cloud_liq(parameters.earth_param_set))
     _T_ref = FT(LP.T_0(parameters.earth_param_set))
     _LH_f0 = FT(LP.LH_f0(parameters.earth_param_set))
     cp_s = specific_heat_capacity(q_l, parameters)
     _ρcD_g = parameters.ρcD_g
+    _T_freeze = FT(LP.T_freeze(parameters.earth_param_set))
     return _T_ref +
-           (U + (1 - q_l) * _LH_f0 * _ρ_l * SWE) / (_ρ_l * SWE * cp_s + _ρcD_g)
-
+           (U + _LH_f0 * _ρ_l * S_safe * (1 - q_l)) /
+           (_ρ_l * S_safe * cp_s + _ρcD_g)
 end
 
 """
@@ -217,63 +232,31 @@ function snow_bulk_density(
     z::FT,
     parameters::SnowParameters{FT},
 )::FT where {FT}
-    ρ_l = FT(LP.ρ_cloud_liq(parameters.earth_param_set))
+    _ρ_l = LP.ρ_cloud_liq(parameters.earth_param_set)
     ε = eps(FT) #for preventing dividing by zero
     #return SWE/z * ρ_l but tend to ρ_l as SWE → 0
     #also handle instabilities when z, SWE both near machine precision
-    return max(SWE, ε) / max(z, SWE, ε) * ρ_l
-end
-
-"""
-    snow_liquid_mass_fraction(U::FT, SWE::FT, parameters::SnowParameters{FT}) where {FT}
-
-Computes the snow liquid water mass fraction, given the snow water equivalent SWE,
-snow energy per unit area U, and other needed parameters.
-"""
-function snow_liquid_mass_fraction(
-    U::FT,
-    SWE::FT,
-    parameters::SnowParameters{FT},
-) where {FT}
-    _ρ_l = FT(LP.ρ_cloud_liq(parameters.earth_param_set))
-    _T_ref = FT(LP.T_0(parameters.earth_param_set))
-    _T_freeze = FT(LP.T_freeze(parameters.earth_param_set))
-    _LH_f0 = FT(LP.LH_f0(parameters.earth_param_set))
-    _cp_i = FT(LP.cp_i(parameters.earth_param_set))
-    _cp_l = FT(LP.cp_l(parameters.earth_param_set))
-
-    _ρcD_g = parameters.ρcD_g
-    Uminus =
-        (_ρ_l * SWE * _cp_i + _ρcD_g) * (_T_freeze - _T_ref) -
-        _ρ_l * SWE * _LH_f0
-    Uplus = (_ρ_l * SWE * _cp_l + _ρcD_g) * (_T_freeze - _T_ref)
-    if U < Uminus
-        return FT(0)
-    elseif U > Uplus
-        return FT(1)
-    else
-        return (U - Uminus) / max((Uplus - Uminus), eps(FT))
-    end
+    return max(SWE, ε) / max(z, SWE, ε) * _ρ_l
 end
 
 
 """
-    maximum_liquid_mass_fraction(T::FT, ρ_snow::FT, parameters::SnowParameters{FT}) where {FT}
+    maximum_liquid_mass_fraction(ρ_snow::FT, T::FT, parameters::SnowParameters{FT}) where {FT}
 
-Computes the maximum liquid water mass fraction, given the bulk temperature of the snow T,
-the density of the snow ρ_snow, and parameters.
+Computes the maximum liquid water mass fraction, given
+the density of the snow ρ_snow and other parameters.
 """
 function maximum_liquid_mass_fraction(
-    T::FT,
     ρ_snow::FT,
+    T::FT,
     parameters::SnowParameters{FT},
 ) where {FT}
-    _ρ_l = FT(LP.ρ_cloud_liq(parameters.earth_param_set))
-    _T_freeze = FT(LP.T_freeze(parameters.earth_param_set))
+    _ρ_l = LP.ρ_cloud_liq(parameters.earth_param_set)
+    _T_freeze = LP.T_freeze(parameters.earth_param_set)
     if T > _T_freeze
         return FT(0)
     else
-        return parameters.θ_r * _ρ_l / ρ_snow
+        parameters.θ_r * _ρ_l / ρ_snow
     end
 end
 
@@ -290,27 +273,24 @@ function runoff_timescale(z::FT, Ksat::FT, Δt::FT) where {FT}
 end
 
 """
-    volumetric_internal_energy_liq(FT, parameters)
+    volumetric_internal_energy_liq(T, parameters)
 
 Computes the volumetric internal energy of the liquid water
-in the snowpack.
-
-Since liquid water can only exist in the snowpack at
-the freezing point, this is a constant.
+in the snowpack at a point at temperature T.
 """
-function volumetric_internal_energy_liq(FT, parameters)
-    _ρ_l = FT(LP.ρ_cloud_liq(parameters.earth_param_set))
-    _T_freeze = FT(LP.T_freeze(parameters.earth_param_set))
-    _cp_l = FT(LP.cp_l(parameters.earth_param_set))
-    _T_ref = FT(LP.T_0(parameters.earth_param_set))
+function volumetric_internal_energy_liq(T, parameters)
+    _ρ_l = LP.ρ_cloud_liq(parameters.earth_param_set)
+    _T_freeze = LP.T_freeze(parameters.earth_param_set)
+    _cp_l = LP.cp_l(parameters.earth_param_set)
+    _T_ref = LP.T_0(parameters.earth_param_set)
 
-    I_liq = _ρ_l * _cp_l * (_T_freeze .- _T_ref)
+    I_liq = _ρ_l * _cp_l * (T .- _T_ref)
     return I_liq
 end
 
 
 """
-    compute_energy_runoff(S::FT, q_l::FT, T::FT, parameters) where {FT}
+    compute_energy_runoff(S::FT, S_l::FT, T::FT, parameters) where {FT}
 
 Computes the rate of change in the snow water equivalent S due to loss of
 liquid water (runoff) from the snowpack.
@@ -319,27 +299,58 @@ Runoff occurs as the snow melts and exceeds the water holding capacity.
 """
 function compute_water_runoff(
     S::FT,
-    q_l::FT,
+    S_l::FT,
     T::FT,
     ρ_snow::FT,
     z::FT,
     parameters,
 ) where {FT}
     τ = runoff_timescale(z, parameters.Ksat, parameters.Δt)
-    q_l_max::FT = maximum_liquid_mass_fraction(T, ρ_snow, parameters)
-    return -(q_l - q_l_max) * heaviside(q_l - q_l_max) / τ * S /
-           max(1 - q_l, FT(0.01))
+    q_l_max::FT = maximum_liquid_mass_fraction(ρ_snow, T, parameters)
+    S_safe = max(S, FT(0))
+    return -(S_l - q_l_max * S_safe) / τ * heaviside(S_l - q_l_max * S_safe)
 end
 
+"""
+     phase_change_flux(U::FT, S::FT, q_l::FT, energy_flux::FT, parameters) where {FT}
+
+Computes the volume flux of liquid water undergoing phase change, given the 
+applied energy flux and current state of U,S,q_l. 
+"""
+function phase_change_flux(
+    U::FT,
+    S::FT,
+    q_l::FT,
+    energy_flux::FT,
+    parameters,
+) where {FT}
+    S_safe = max(S, FT(0))
+
+    energy_at_T_freeze = energy_from_q_l_and_swe(S_safe, q_l, parameters)
+    Upred = U - energy_flux * parameters.Δt
+    energy_excess = Upred - energy_at_T_freeze
+
+    _LH_f0 = LP.LH_f0(parameters.earth_param_set)
+    _ρ_liq = LP.ρ_cloud_liq(parameters.earth_param_set)
+    _cp_i = LP.cp_i(parameters.earth_param_set)
+    _cp_l = LP.cp_l(parameters.earth_param_set)
+    _T_ref = LP.T_0(parameters.earth_param_set)
+    _T_freeze = LP.T_freeze(parameters.earth_param_set)
+    if energy_excess > 0 || (energy_excess < 0 && q_l > 0)
+        return -energy_excess / parameters.Δt / _ρ_liq /
+               ((_cp_l - _cp_i) * (_T_freeze - _T_ref) + _LH_f0)
+    else
+        return FT(0)
+    end
+end
 
 """
     energy_from_q_l_and_swe(S::FT, q_l::FT, parameters) where {FT}
 
 A helper function for compute the snow energy per unit area, given snow
-water equivalent S, liquid fraction q_l,  and snow model parameters.
+water equivalent S, liquid fraction q_l, and snow model parameters.
 
-Note that liquid water can only exist at the freezing point in this model,
-so temperature is not required as an input.
+This assumes that the snow is at the freezing point.
 """
 function energy_from_q_l_and_swe(S::FT, q_l::FT, parameters) where {FT}
     _T_freeze = FT(LP.T_freeze(parameters.earth_param_set))
@@ -353,15 +364,13 @@ function energy_from_q_l_and_swe(S::FT, q_l::FT, parameters) where {FT}
            _ρcD_g * (_T_freeze - _T_ref)
 end
 
-
 """
     energy_from_T_and_swe(S::FT, T::FT, parameters) where {FT}
 
 A helper function for compute the snow energy per unit area, given snow
 water equivalent S, bulk temperature T, and snow model parameters.
 
-If T = T_freeze, we return the energy as if q_l = 0.
-
+The liquid mass fraction is assumed to be zero if T<=T_freeze, and 1 otherwise.
 """
 function energy_from_T_and_swe(S::FT, T::FT, parameters) where {FT}
     _ρ_l = FT(LP.ρ_cloud_liq(parameters.earth_param_set))
@@ -374,49 +383,40 @@ function energy_from_T_and_swe(S::FT, T::FT, parameters) where {FT}
     if T <= _T_freeze
         return (_ρ_l * S * _cp_i + _ρcD_g) * (T - _T_ref) - _ρ_l * S * _LH_f0
     else
-        T > _T_freeze
         return (_ρ_l * S * _cp_l + _ρcD_g) * (T - _T_ref)
     end
 
 end
 
-
 """
-    snow_depth!(model::ConstantDensityModel, Y, p, params)
+    update_density_and_depth!(ρ_snow, z_snow, density::MinimumDensityModel, Y, p, params::SnowParameters)
 
-Returns the snow depth given SWE, snow density ρ_snow, and
-the density of liquid water ρ_l for a constant density model.
+Extends the update_density_and_depth! function for the MinimumDensityModel type; updates the snow density and depth in place.
 """
-function snow_depth!(z_snow, density::ConstantDensityModel, Y, p, params)
-    ρ_l = LP.ρ_cloud_liq(params.earth_param_set)
-    @. z_snow = ρ_l * Y.snow.S / density.ρ_snow
-    return nothing
-end
-
-"""
-    update_density!(ρ_snow, density::ConstantDensityModel, Y, p, params::SnowParameters)
-
-Extends the update_density! function for the ConstantDensityModel type; updates the snow density in place.
-"""
-function update_density!(
+function update_density_and_depth!(
     ρ_snow,
-    density::ConstantDensityModel,
+    z_snow,
+    density::MinimumDensityModel{FT},
     Y,
     p,
-    params::SnowParameters,
-)
-    ρ_snow .= density.ρ_snow
+    params::SnowParameters{FT},
+) where {FT}
+    _ρ_l = LP.ρ_cloud_liq(params.earth_param_set)
+    @. ρ_snow = density.ρ_min * (1 - p.snow.q_l) + _ρ_l * p.snow.q_l
+    @. z_snow = _ρ_l * Y.snow.S / ρ_snow
+
+
 end
 
 """
-    update_density_prog!(density::AbstractDensityModel{FT}, model::SnowModel{FT}, Y, p) where {FT}
+    update_density_prog!(density::MinimumDensityModel, model::SnowModel, Y, p)
 
 Updates all prognostic variables associated with density/depth given the current model state.
-This is the default method for the constant density model,
+This is the default method for the constant minimum density model,
  which has no prognostic variables.
 """
 function update_density_prog!(
-    density::ConstantDensityModel,
+    density::MinimumDensityModel,
     model::SnowModel,
     dY,
     Y,

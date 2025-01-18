@@ -29,7 +29,7 @@ import ClimaLand.Parameters as LP
     precip = TimeVaryingInput((t) -> eltype(t)(0)) # no precipitation
     T_atmos = TimeVaryingInput((t) -> eltype(t)(290.0))
     u_atmos = TimeVaryingInput((t) -> eltype(t)(10.0))
-    q_atmos = TimeVaryingInput((t) -> eltype(t)(0.03))
+    q_atmos = TimeVaryingInput((t) -> eltype(t)(0.0003))
     h_atmos = FT(3)
     P_atmos = TimeVaryingInput((t) -> eltype(t)(101325))
     atmos = ClimaLand.PrescribedAtmosphere(
@@ -51,7 +51,7 @@ import ClimaLand.Parameters as LP
     drivers = ClimaLand.get_drivers(model)
     @test drivers == (atmos, rad)
     Y, p, coords = ClimaLand.initialize(model)
-    @test (Y.snow |> propertynames) == (:S, :U)
+    @test (Y.snow |> propertynames) == (:S, :S_l, :U)
     @test (p.snow |> propertynames) == (
         :q_sfc,
         :q_l,
@@ -62,8 +62,10 @@ import ClimaLand.Parameters as LP
         :ρ_snow,
         :turbulent_fluxes,
         :R_n,
+        :phase_change_flux,
         :energy_runoff,
         :water_runoff,
+        :liquid_water_flux,
         :total_energy_flux,
         :total_water_flux,
         :applied_energy_flux,
@@ -72,6 +74,7 @@ import ClimaLand.Parameters as LP
     )
 
     Y.snow.S .= FT(0.1)
+    Y.snow.S_l .= FT(0.0)
     Y.snow.U .=
         ClimaLand.Snow.energy_from_T_and_swe.(
             Y.snow.S,
@@ -83,7 +86,7 @@ import ClimaLand.Parameters as LP
     set_initial_cache!(p, Y, t0)
     (; α_snow, ϵ_snow) = model.parameters
     _σ = LP.Stefan(model.parameters.earth_param_set)
-
+    _ρ_l = FT(LP.ρ_cloud_liq(model.parameters.earth_param_set))
     # Check if aux update occurred correctly
     @test p.snow.R_n ==
           @. (-(1 - α_snow) * 20.0f0 - ϵ_snow * (20.0f0 - _σ * p.snow.T_sfc^4))
@@ -97,17 +100,15 @@ import ClimaLand.Parameters as LP
         t0,
     )
     @test p.snow.R_n == R_n_copy
-    @test p.snow.q_l ==
-          snow_liquid_mass_fraction.(Y.snow.U, Y.snow.S, Ref(model.parameters))
-    @test p.snow.T_sfc ==
-          snow_surface_temperature.(
-        snow_bulk_temperature.(
-            Y.snow.U,
-            Y.snow.S,
-            p.snow.q_l,
-            Ref(model.parameters),
-        )
+    @test p.snow.q_l == liquid_mass_fraction.(Y.snow.S, Y.snow.S_l)
+    @test p.snow.T ==
+          snow_bulk_temperature.(
+        Y.snow.U,
+        Y.snow.S,
+        p.snow.q_l,
+        model.parameters,
     )
+    @test p.snow.T_sfc == @. snow_surface_temperature(p.snow.T)
 
     ρ_sfc = ClimaLand.surface_air_density(
         model.boundary_conditions.atmos,
@@ -119,13 +120,18 @@ import ClimaLand.Parameters as LP
     )
     thermo_params =
         LP.thermodynamic_parameters(model.parameters.earth_param_set)
-    q_sfc =
-        Thermodynamics.q_vap_saturation_generic.(
-            Ref(thermo_params),
-            p.snow.T_sfc,
-            ρ_sfc,
-            Ref(Thermodynamics.Ice()),
-        )
+    q_sfc = @. (1 - p.snow.q_l) * Thermodynamics.q_vap_saturation_generic(
+        thermo_params,
+        p.snow.T_sfc,
+        ρ_sfc,
+        Thermodynamics.Ice(),
+    ) +
+       p.snow.q_l * Thermodynamics.q_vap_saturation_generic(
+        thermo_params,
+        p.snow.T_sfc,
+        ρ_sfc,
+        Thermodynamics.Liquid(),
+    )
     @test p.snow.q_sfc ≈ q_sfc
     turb_fluxes_copy = copy(p.snow.turbulent_fluxes)
     ClimaLand.turbulent_fluxes!(
@@ -136,21 +142,28 @@ import ClimaLand.Parameters as LP
         p,
         t0,
     )
+    @test (@. ClimaLand.Snow.phase_change_flux(
+        Y.snow.U,
+        Y.snow.S,
+        p.snow.q_l,
+        p.snow.applied_energy_flux,
+        model.parameters,
+    )) == p.snow.phase_change_flux
     @test turb_fluxes_copy.shf == p.snow.turbulent_fluxes.shf
     @test turb_fluxes_copy.lhf == p.snow.turbulent_fluxes.lhf
     @test turb_fluxes_copy.vapor_flux == p.snow.turbulent_fluxes.vapor_flux
     old_ρ = deepcopy(p.snow.ρ_snow)
-    Snow.update_density!(
+    old_z = deepcopy(p.snow.z_snow)
+    Snow.update_density_and_depth!(
         p.snow.ρ_snow,
+        p.snow.z_snow,
         model.parameters.density,
         Y,
         p,
         model.parameters,
     )
-    @test p.snow.ρ_snow == old_ρ
-    old_z = deepcopy(p.snow.z_snow)
-    snow_depth!(p.snow.z_snow, model.parameters.density, Y, p, parameters)
-    @test p.snow.z_snow == old_z
+    @test p.snow.ρ_snow ≈ old_ρ
+    @test p.snow.z_snow ≈ old_z
 
     # Now compute tendencies and make sure they operate correctly.
     dY = similar(Y)
@@ -162,6 +175,7 @@ import ClimaLand.Parameters as LP
         p.snow.water_runoff
     )
     @test dY.snow.S == net_water_fluxes
+    @test dY.snow.S_l == @. -Y.snow.S_l / model.parameters.Δt # refreezes
     @test dY.snow.U == @.(
         -p.snow.turbulent_fluxes.shf - p.snow.turbulent_fluxes.lhf -
         p.snow.R_n + p.snow.energy_runoff
@@ -170,16 +184,8 @@ import ClimaLand.Parameters as LP
         Snow.update_density_prog!(model.parameters.density, model, dY, Y, p),
     )
 
-
-    # Now try a step where the snow will melt
-    Y.snow.S .= FT(0.1)
-    Y.snow.U .= FT(-2e6)
-    set_initial_cache!(p, Y, t0)
-    dY = similar(Y)
-    exp_tendency!(dY, Y, p, t0)
-    @test dY.snow.S == @.(-Y.snow.S / Δt)
     @test all(
-        ClimaLand.Snow.clip_total_snow_water_flux.(
+        ClimaLand.Snow.clip_water_flux.(
             [0.1, 1.0, 2.0],
             [1.0, 1.0, 1.0],
             1.0,

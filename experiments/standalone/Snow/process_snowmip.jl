@@ -52,6 +52,7 @@ SW_d = TimeVaryingInput(seconds, SWdown; context)
 LW_d = TimeVaryingInput(seconds, LWdown; context)
 
 start_date = timestamp[mask][1]
+
 function zenith_angle(
     t,
     start_date;
@@ -120,11 +121,17 @@ albedo = snow_data["albs"][:][mask]
 z = snow_data["snd_man"][:][mask]
 mass = snow_data["snw_man"][:][mask]
 
-snow_data_avail = .!(typeof.(mass) .<: Missing)
-T_snow = snow_data["ts"][:][mask][snow_data_avail]
-ρ_snow = mass[snow_data_avail] ./ z[snow_data_avail]
-SWE = z[snow_data_avail] .* ρ_snow ./ 1000.0
+mass_data_avail = .!(typeof.(mass) .<: Missing)
+# Although snow mass data is present, other data may be missing
+# We replace Missing with NaN, here, so that we can plot the data
+# with gaps
+fill_missing(x, FT) = typeof(x) <: Missing ? FT(NaN) : x
+
+T_snow = fill_missing.(snow_data["ts"][:][mask][mass_data_avail], FT)
+ρ_snow = fill_missing.(mass[mass_data_avail] ./ z[mass_data_avail], FT)
+depths = fill_missing.(z[mass_data_avail], FT)
+SWE = depths .* ρ_snow ./ 1000.0
 α = median(
-    albedo[snow_data_avail][.!(typeof.(albedo[snow_data_avail]) .<: Missing)],
+    albedo[mass_data_avail][.!(typeof.(albedo[mass_data_avail]) .<: Missing)],
 )
 ρ = median(ρ_snow[.~isnan.(ρ_snow)])
