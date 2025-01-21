@@ -1,26 +1,44 @@
 # The script included below contains the following functions:
 # rand_locations - returns n random locations on land (lon, lat)
 # setup_prob - config for the bucket model
-# it also returns the target used for calibration, full_obs_era5, which is
-# latent and sensible heat at the rand_locations stacked as a vector
-include("bucket_target_script.jl")
-observations = full_obs_era5
+# target_and_locations - returns locations on land and ERA5 LHF SHF obs at those locations
+using ClimaLand
+dir = pkgdir(ClimaLand)
+# locations, observations = target_and_locations()
+# Should observations be a vector or EKP.Observation type?
 
 # Now, we need a forward_model for ClimaCalibrate.
 # forward_model runs the model and generates a ClimaDiagnostic output directory
 # that will be used to generate the observation_map.
 # note that forward_model needs the setup_prob function defined above.
-import ClimaCalibrate: forward_model, parameter_path
+# IMPORTANT: forward_model needs to be defined as CAL.forward_model, as it adds a method
+import ClimaCalibrate: forward_model, parameter_path, path_to_ensemble_member
 import ClimaCalibrate as CAL
-include("forward_model.jl")
+using Distributed
+ntasks = 4
+addprocs(CAL.SlurmManager(ntasks))
+
+@everywhere begin
+    import ClimaCalibrate: forward_model, parameter_path, path_to_ensemble_member
+    import ClimaCalibrate as CAL
+
+    using ClimaLand
+    caldir = "calibration_output"
+    dir = pkgdir(ClimaLand)
+
+    include(joinpath(dir,"experiments/calibration/global_bucket/climacalibrate_bucket/bucket_target_script.jl"))
+    include(joinpath(dir,"experiments/calibration/global_bucket/climacalibrate_bucket/forward_model.jl"))
+end
 
 # Now we include the script observation_map.jl, which contains two functions:
-# process_member_data - makes the loss function we want from the forward_model output
-# observation_map - makes our G_ensemble, the loss for all n_ensemble parameters
-include("observation_map.jl")
+# process_member_data - makes the parameter to data map we want from the forward_model output for one ensemble member
+# observation_map - makes our G_ensemble, the parameter to data map for all n_ensemble parameters
+# IMPORTANT: observation_map needs to be defined as CAL.observation_map, as it adds a method
+include(joinpath(dir,"experiments/calibration/global_bucket/climacalibrate_bucket/observation_map.jl"))
 
 # Now that our functions are defined, we still need some to specify some arguments they require.
 # Parameters prior
+# Note: this could be provided in a .toml file. Not sure if it has to.
 prior_κ_soil = EKP.constrained_gaussian("κ_soil", 2, 1, 0, Inf);
 prior_ρc_soil = EKP.constrained_gaussian("ρc_soil", 4e6, 2e6, 0, Inf);
 prior_f_bucket = EKP.constrained_gaussian("f_bucket", 0.5, 0.3, 0, 1);
@@ -38,12 +56,15 @@ prior = EKP.combine_distributions([
 
 ensemble_size = 10
 n_iterations = 5
-noise = EKP.I # not sure what to do here, I had noise embeded in my observation_map function
+noise = 1.0*EKP.I # Should work, but this should be covariance of each month from observation (ERA5)
 
-output_dir = "calibration_output" # Should I create this folder?
+# This folder will contains ClimaCalibrate outputs - parameters ensemble at each iterations, etc.
+caldir = "calibration_output"
 
+# Note: what is the best way to test this?
+# Should this script be run as a slurm job? (I expect it takes ~ 5 hours or so to complete)
 CAL.calibrate(
-              CAL.WorkerBackend, # not sure what to do here
+              CAL.WorkerBackend,
               ensemble_size,
               n_iterations,
               observations,
