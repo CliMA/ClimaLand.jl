@@ -15,8 +15,8 @@ import ClimaCalibrate as CAL
 include("forward_model.jl")
 
 # Now we include the script observation_map.jl, which contains two functions:
-# process_member_data - makes the loss function we want from the forward_model output
-# observation_map - makes our G_ensemble, the loss for all n_ensemble parameters
+# process_member_data - makes the parameter to data map we want from the forward_model output for one ensemble member
+# observation_map - makes our G_ensemble, the parameter to data map for all n_ensemble parameters
 include("observation_map.jl")
 
 # Now that our functions are defined, we still need some to specify some arguments they require.
@@ -38,9 +38,10 @@ prior = EKP.combine_distributions([
 
 ensemble_size = 10
 n_iterations = 5
-noise = EKP.I # not sure what to do here, I had noise embeded in my observation_map function
+noise = EKP.I # Should work, but this should be covariance of each month from observation (ERA5)
 
-output_dir = "calibration_output" # Should I create this folder?
+# This folder will contains ClimaCalibrate outputs - parameters ensemble at each iterations, etc.
+caldir = "calibration_output" # Should I create this folder?
 
 CAL.calibrate(
               CAL.WorkerBackend, # not sure what to do here

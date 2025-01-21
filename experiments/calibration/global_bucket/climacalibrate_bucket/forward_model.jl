@@ -1,5 +1,4 @@
 # Explain things here - tutorial style
-# (Nat: why is it CAL.forward_model, and not CAL.parameter_path?
 """
 
 """
