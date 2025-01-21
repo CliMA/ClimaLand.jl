@@ -2,7 +2,8 @@ module NeuralSnow
 
 using Flux
 using ClimaLand
-using ClimaLand.Snow: AbstractDensityModel, SnowModel, SnowParameters
+using ClimaLand.Snow:
+    AbstractDensityModel, SnowModel, SnowParameters, snow_bulk_density
 import ClimaLand.Snow:
     density_prog_vars,
     density_prog_types,
@@ -132,12 +133,12 @@ end
 
 
 """
-    eval_nn(vmodel, z::FT, swe::FT, P::FT, T::FT, R::FT, qrel::FT, u::FT)::FT where {FT}
+    eval_nn(density::NeuralDepthModel, z::FT, swe::FT, P::FT, T::FT, R::FT, qrel::FT, u::FT)::FT where {FT}
 Helper function for evaluating the neural network in a pointwise manner over a `ClimaCore.Field`
 and returning the output in a broadcastable way.
 """
 function eval_nn(
-    model,
+    density::NeuralDepthModel,
     z::FT,
     swe::FT,
     P::FT,
@@ -147,7 +148,7 @@ function eval_nn(
     u::FT,
 )::FT where {FT}
     #model() of a Vector{FT} returns a 1-element Matrix, return the internal value: 
-    return model([z, swe, qrel, R, u, T, P])[1]
+    return density.z_model([z, swe, qrel, R, u, T, P])[1]
 end
 
 """
@@ -157,16 +158,17 @@ Updates the dY.snow.Z field in places with the predicted change in snow depth (r
 density paramterization.
 """
 function update_dzdt!(dzdt, density::NeuralDepthModel, Y)
-    dzdt .= eval_nn(
-        Ref(density.z_model),
-        Y.snow.Z,
-        Y.snow.S, # When snow-cover-fraction variable is implemented, make sure this value changes to the right input
-        Y.snow.P_avg,
-        Y.snow.T_avg,
-        Y.snow.R_avg,
-        Y.snow.Qrel_avg,
-        Y.snow.u_avg,
-    )
+    dzdt .=
+        eval_nn.(
+            Ref(density),
+            Y.snow.Z,
+            Y.snow.S, # When snow-cover-fraction variable is implemented, make sure this value changes to the right input
+            Y.snow.P_avg,
+            Y.snow.T_avg,
+            Y.snow.R_avg,
+            Y.snow.Qrel_avg,
+            Y.snow.u_avg,
+        )
 end
 
 """
