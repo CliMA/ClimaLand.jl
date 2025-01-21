@@ -1,16 +1,16 @@
-# explain things here - tutorial style
-function process_member_data(root_path)
+using ClimaAnalysis
+import EnsembleKalmanProcesses as EKP
 
-    simdir = ClimaAnalysis.SimDir(
-        joinpath(root_path, "global_diagnostics", "output_active"),
-    )
+# explain things here - tutorial style
+function process_member_data(simdir)
+
     lhf = get(simdir; short_name = "lhf")
     shf = get(simdir; short_name = "shf")
 
     # Initialize an empty list to store observations
     obs_list = []
     # Loop over each location
-    for (lon, lat) in training_locations
+    for (lon, lat) in locations
         # Slice lhf and shf at the given longitude and latitude
         lhf_loc = ClimaAnalysis.slice(lhf, lon = lon, lat = lat)
         shf_loc = ClimaAnalysis.slice(shf, lon = lon, lat = lat)
@@ -42,12 +42,12 @@ function process_member_data(root_path)
     return obs
 end
 
-function observation_map(iteration)
-    single_member_dims = (1,)
+function CAL.observation_map(iteration)
+    single_member_dims = (600,) # 600 is the length of obs, which is returned by process_member_data()
     G_ensemble = Array{Float64}(undef, single_member_dims..., ensemble_size)
 
     for m in 1:ensemble_size
-        member_path = CAL.path_to_ensemble_member(caldir, iteration, m)
+        member_path = path_to_ensemble_member(caldir, iteration, m)
         simdir_path = joinpath(member_path, "global_diagnostics", "output_active")
         if isdir(simdir_path)
             simdir = SimDir(simdir_path)

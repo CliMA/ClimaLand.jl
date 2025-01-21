@@ -41,7 +41,7 @@ NOTE: We should be able to use @clima_artifact here, but the folders on central
 seem to be named differently than the artifact name
 """
 function era5_surface_data2008_path(; context = nothing)
-    return "/groups/esm/ClimaArtifacts/artifacts/era5_surface_fluxes_2008"
+    return @clima_artifact("era5_surface_fluxes", context)
 end
 
 """
