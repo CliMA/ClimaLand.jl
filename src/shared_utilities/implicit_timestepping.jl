@@ -120,7 +120,13 @@ function ImplicitEquationJacobian(Y::ClimaCore.Fields.FieldVector)
         @name(canopy.hydraulics.ϑ_l),
         @name(snow.S),
         @name(snow.S_l),
-        @name(snow.U)
+        @name(snow.U),
+        @name(snow.Z),
+        @name(snow.P_avg),
+        @name(snow.T_avg),
+        @name(snow.R_avg),
+        @name(snow.Qrel_avg),
+        @name(snow.u_avg),
     )
 
     # Filter out the variables that are not in this model's state, `Y`
