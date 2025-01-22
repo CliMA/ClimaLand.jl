@@ -20,6 +20,8 @@
 # Fixed number of iterations: 3
 # Jacobian update: Every Newton iteration
 # Atmos forcing update: every 3 hours
+delete!(ENV, "JULIA_CUDA_MEMORY_POOL")
+
 import SciMLBase
 import ClimaComms
 ClimaComms.@import_required_backends
@@ -47,6 +49,7 @@ import Profile, ProfileCanvas
 const FT = Float64;
 time_interpolation_method = LinearInterpolation(PeriodicCalendar())
 context = ClimaComms.context()
+ClimaComms.init(context)
 device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
 
@@ -67,12 +70,12 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
     surface_space = domain.space.surface
     subsurface_space = domain.space.subsurface
 
-    start_date = DateTime(2021)
+    start_date = DateTime(2008)
 
     # Forcing data
     era5_artifact_path =
-        ClimaLand.Artifacts.era5_land_forcing_data2021_folder_path(; context)
-    era5_ncdata_path = joinpath(era5_artifact_path, "era5_2021_0.9x1.25.nc")
+        ClimaLand.Artifacts.era5_land_forcing_data2008_folder_path(; context)
+    era5_ncdata_path = joinpath(era5_artifact_path, "era5_2008_1.0x1.0.nc")
     atmos, radiation = ClimaLand.prescribed_forcing_era5(
         era5_ncdata_path,
         surface_space,
@@ -230,8 +233,12 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
     photosynthesis_args =
         (; parameters = Canopy.FarquharParameters(FT, is_c3; Vcmax25 = Vcmax25))
     # Set up plant hydraulics
+    era5_lai_artifact_path =
+        ClimaLand.Artifacts.era5_lai_forcing_data2008_folder_path(; context)
+    era5_lai_ncdata_path =
+        joinpath(era5_lai_artifact_path, "era5_2008_1.0x1.0_lai.nc")
     LAIfunction = ClimaLand.prescribed_lai_era5(
-        era5_ncdata_path,
+        era5_lai_ncdata_path,
         surface_space,
         start_date;
         time_interpolation_method = time_interpolation_method,
@@ -421,7 +428,7 @@ ProfileCanvas.html_file(flame_file, results)
 @info "Saved compute flame to $flame_file"
 
 prob, ode_algo, Δt, cb = setup_simulation()
-Profile.Allocs.@profile sample_rate = 0.005 SciMLBase.solve(
+Profile.Allocs.@profile sample_rate = 0.0025 SciMLBase.solve(
     prob,
     ode_algo;
     dt = Δt,
@@ -458,7 +465,7 @@ if ClimaComms.device() isa ClimaComms.CUDADevice
 end
 
 if get(ENV, "BUILDKITE_PIPELINE_SLUG", nothing) == "climaland-benchmark"
-    PREVIOUS_BEST_TIME = 4.7
+    PREVIOUS_BEST_TIME = 6.1
     if average_timing_s > PREVIOUS_BEST_TIME + std_timing_s
         @info "Possible performance regression, previous average time was $(PREVIOUS_BEST_TIME)"
     elseif average_timing_s < PREVIOUS_BEST_TIME - std_timing_s

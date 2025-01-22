@@ -44,6 +44,7 @@ const FT = Float64;
 time_interpolation_method = LinearInterpolation(PeriodicCalendar())
 regridder_type = :InterpolationsRegridder
 context = ClimaComms.context()
+ClimaComms.init(context)
 device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
 root_path = "bucket_longrun_$(device_suffix)"
@@ -66,12 +67,13 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 7))
     surface_space = domain.space.surface
     subsurface_space = domain.space.subsurface
 
-    start_date = DateTime(2021)
+    start_date = DateTime(2008)
     # Forcing data
     era5_artifact_path =
-        ClimaLand.Artifacts.era5_land_forcing_data2021_folder_path(; context)
+        ClimaLand.Artifacts.era5_land_forcing_data2008_folder_path(; context)
+    era5_ncdata_path = joinpath(era5_artifact_path, "era5_2008_1.0x1.0.nc")
     atmos, radiation = ClimaLand.prescribed_forcing_era5(
-        joinpath(era5_artifact_path, "era5_2021_0.9x1.25.nc"),
+        era5_ncdata_path,
         surface_space,
         start_date,
         earth_param_set,

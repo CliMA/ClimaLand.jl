@@ -228,7 +228,7 @@ end
         periodic::Tuple{Bool,Bool},
         npolynomial::Int,
         longlat = nothing,
-        comms_ctx = ClimaComms.SingletonCommsContext(),
+        comms_ctx = ClimaComms.context(),
         radius_earth = FT(6.378e6)
         ) where {FT}
 
@@ -251,7 +251,7 @@ function Plane(;
     periodic::Tuple{Bool, Bool} = isnothing(longlat) ? (true, true) :
                                   (false, false),
     npolynomial::Int,
-    comms_ctx = ClimaComms.SingletonCommsContext(),
+    comms_ctx = ClimaComms.context(),
     radius_earth = 6.378e6,
 ) where {FT}
     if isnothing(longlat)
@@ -530,7 +530,7 @@ end
         nelements::Tuple{Int, Int},
         npolynomial::Int,
         dz_tuple::Union{Tuple{FT, FT}, Nothing} = nothing,
-        comms_ctx = ClimaComms.SingletonCommsContext(),
+        comms_ctx = ClimaComms.context(),
     ) where {FT}
 Outer constructor for the `SphericalShell` domain, using keyword arguments.
 
@@ -548,7 +548,7 @@ function SphericalShell(;
     nelements::Tuple{Int, Int},
     npolynomial::Int,
     dz_tuple::Union{Tuple{FT, FT}, Nothing} = nothing,
-    comms_ctx = ClimaComms.SingletonCommsContext(),
+    comms_ctx = ClimaComms.context(),
 ) where {FT}
     @assert 0 < radius
     @assert 0 < depth
@@ -635,7 +635,7 @@ end
         radius::FT,
         nelements::Int
         npolynomial::Int,
-        comms_ctx = ClimaComms.SingletonCommsContext(),
+        comms_ctx = ClimaComms.context(),
     ) where {FT}
 Outer constructor for the `SphericalSurface` domain, using keyword arguments.
 """
@@ -643,7 +643,7 @@ function SphericalSurface(;
     radius::FT,
     nelements::Int,
     npolynomial::Int,
-    comms_ctx = ClimaComms.SingletonCommsContext(),
+    comms_ctx = ClimaComms.context(),
 ) where {FT}
     @assert 0 < radius
     horzdomain = ClimaCore.Domains.SphereDomain(radius)

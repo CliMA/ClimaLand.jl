@@ -31,12 +31,11 @@ end
         τ::FT,
         ν::FT,
         θ_r::FT,
-        hydrology_cm::C,
-        earth_param_set::EP,
-    ) where {FT, EP, C}
+        hydrology_earth_params::HEP
+    ) where {FT, HEP}
 Returns the source term (1/s) used for converting liquid water
 and ice into each other during phase changes. Note that
-there are unitless prefactors multiplying this term in the 
+there are unitless prefactors multiplying this term in the
 equations.
 
 Note that these equations match what is in Dall'Amico (for θstar,
@@ -50,9 +49,12 @@ function phase_change_source(
     τ::FT,
     ν::FT,
     θ_r::FT,
-    hydrology_cm::C,
-    earth_param_set::EP,
-) where {FT, EP, C}
+    hydrology_earth_params::HEP,
+) where {FT, HEP}
+    # Extract parameter sets from their container
+    hydrology_cm = hydrology_earth_params.hydrology_cm
+    earth_param_set = hydrology_earth_params.earth_param_set
+
     _ρ_i = FT(LP.ρ_cloud_ice(earth_param_set))
     _ρ_l = FT(LP.ρ_cloud_liq(earth_param_set))
     _LH_f0 = FT(LP.LH_f0(earth_param_set))
@@ -63,14 +65,37 @@ function phase_change_source(
     θtot = min(_ρ_i / _ρ_l * θ_i + θ_l, ν)
     # This is consistent with Equation (22) of Dall'Amico
     ψw0 = matric_potential(hydrology_cm, effective_saturation(ν, θtot, θ_r))
+    Tf_depressed = _T_freeze * exp(_grav * ψw0 / _LH_f0)
 
-    ψT = _LH_f0 / _T_freeze / _grav * (T - _T_freeze) * heaviside(_T_freeze - T)
+    ψT = _LH_f0 / _grav * log(T / Tf_depressed) * heaviside(Tf_depressed - T)
     # Equation (23) of Dall'Amico
     θstar = inverse_matric_potential(hydrology_cm, ψw0 + ψT) * (ν - θ_r) + θ_r
 
     return (θ_l - θstar) / τ
 end
 
+"""
+    struct HydrologyEarthParameters{
+        HCM <: AbstractSoilHydrologyClosure,
+        EP <: ClimaLand.Parameters.AbstractLandParameters,
+    }
+
+A wrapper type around the hydrology closure model and land parameter
+structs. This is needed because of a type inference failure coming from
+ClimaCore when multiple structs and fields are broadcasted over.
+This struct circumvents that issue by wrapping the structs in a single
+type, that can be unpacked within the broadcasted function.
+
+See github.com/CliMA/ClimaCore.jl/issues/2065 for more information
+"""
+struct HydrologyEarthParameters{
+    HCM <: AbstractSoilHydrologyClosure,
+    EP <: ClimaLand.Parameters.AbstractLandParameters,
+}
+    hydrology_cm::HCM
+    earth_param_set::EP
+end
+Base.broadcastable(x::HydrologyEarthParameters) = tuple(x)
 
 """
     volumetric_heat_capacity(
@@ -88,11 +113,11 @@ function volumetric_heat_capacity(
     ρc_ds::FT,
     earth_param_set::EP,
 ) where {FT, EP}
-    _ρ_i = FT(LP.ρ_cloud_ice(earth_param_set))
-    ρcp_i = FT(LP.cp_i(earth_param_set) * _ρ_i)
+    _ρ_i = LP.ρ_cloud_ice(earth_param_set)
+    ρcp_i = LP.cp_i(earth_param_set) * _ρ_i
 
-    _ρ_l = FT(LP.ρ_cloud_liq(earth_param_set))
-    ρcp_l = FT(LP.cp_l(earth_param_set) * _ρ_l)
+    _ρ_l = LP.ρ_cloud_liq(earth_param_set)
+    ρcp_l = LP.cp_l(earth_param_set) * _ρ_l
 
     ρc_s = ρc_ds + θ_l * ρcp_l + θ_i * ρcp_i
     return ρc_s
@@ -205,7 +230,7 @@ end
             ν::FT
     ) where {FT}
 
-Compute the expression for relative saturation. 
+Compute the expression for relative saturation.
 This is referred to as θ_sat in Balland and Arp's paper.
 """
 function relative_saturation(θ_l::FT, θ_i::FT, ν::FT) where {FT}

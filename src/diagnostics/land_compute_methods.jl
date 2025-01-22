@@ -88,9 +88,24 @@ end
 } p.canopy.energy.turbulent_fluxes.shf
 
 # Canopy - Hydraulics
-#@diagnostic_compute "leaf_water_potential" Union{SoilCanopyModel, LandModel} last(
-#    p.canopy.hydraulics.ψ,
-#)
+function compute_leaf_water_potential!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::Union{SoilCanopyModel, LandModel},
+)
+    hydraulics = land_model.canopy.hydraulics
+    n_stem = hydraulics.n_stem
+    n_leaf = hydraulics.n_leaf
+    n = n_stem + n_leaf
+    if isnothing(out)
+        return p.canopy.hydraulics.ψ.:($n)
+    else
+        out .= p.canopy.hydraulics.ψ.:($n)
+    end
+end
+
 # @diagnostic_compute "flux_per_ground_area" Union{SoilCanopyModel, LandModel} p.canopy.hydraulics.fa # return a Tuple
 @diagnostic_compute "root_flux_per_ground_area" Union{
     SoilCanopyModel,

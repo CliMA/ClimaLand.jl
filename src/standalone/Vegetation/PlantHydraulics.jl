@@ -350,6 +350,15 @@ function ClimaLand.Canopy.set_canopy_prescribed_field!(
     @. p.canopy.hydraulics.area_index.root = RAI
 end
 
+"""
+    harmonic_mean(x::FT,y::FT) where {FT} 
+
+Computes the harmonic mean of x >=0 and y >=0; returns zero if both
+x and y are zero.
+    
+"""
+harmonic_mean(x::FT, y::FT) where {FT} = x * y / max(x + y, eps(FT))
+
 
 """
     water_flux(
@@ -378,7 +387,7 @@ F = -k_eff * (ψ1 +z1 - ψ2 - z2) (m/s).
 This currently assumes the path lengths are equal.
 """
 function water_flux(z1::FT, z2::FT, ψ1::FT, ψ2::FT, K1::FT, K2::FT) where {FT}
-    K_eff = K1 * K2 / max(K1 + K2, eps(FT))
+    K_eff = harmonic_mean(K1, K2)
     flux = -K_eff * ((ψ2 - ψ1) / (z2 - z1) + 1)
     return flux # (m/s)
 end
@@ -595,22 +604,15 @@ function make_compute_exp_tendency(
         @inbounds for i in 1:(n_stem + n_leaf)
             im1 = i - 1
             ip1 = i + 1
-            # To prevent dividing by zero, change AI/(AI x dz)" to
-            # "AI/max(AI x dz, eps(FT))"
-            AIdz =
-                max.(
-                    getproperty(area_index, model.compartment_labels[i]) .* (
-                        model.compartment_surfaces[ip1] -
-                        model.compartment_surfaces[i]
-                    ),
-                    eps(FT),
-                )
+            # To prevent dividing by zero, change AI/(AI x dz)" to AI/max(AI x dz, eps(FT))"
+            AI = getproperty(area_index, model.compartment_labels[i]) # this is a field; should not allocate here
+            dz = model.compartment_surfaces[ip1] - model.compartment_surfaces[i] # currently this is a scalar. in the future, this will be a field.
             if i == 1
                 @inbounds @. dY.canopy.hydraulics.ϑ_l.:($$i) =
-                    1 / AIdz * (fa_roots - fa.:($$i))
+                    1 / max(AI * dz, eps(FT)) * (fa_roots - fa.:($$i))
             else
                 @inbounds @. dY.canopy.hydraulics.ϑ_l.:($$i) =
-                    1 / AIdz * (fa.:($$im1) - fa.:($$i))
+                    1 / max(AI * dz, eps(FT)) * (fa.:($$im1) - fa.:($$i))
             end
         end
     end
@@ -662,7 +664,10 @@ function root_water_flux_per_ground_area!(
     fa .= FT(0.0)
     @inbounds for i in 1:n_root_layers
         above_ground_area_index =
-            getproperty(area_index, model.compartment_labels[1])
+            harmonic_mean.(
+                getproperty(area_index, model.compartment_labels[1]),
+                getproperty(area_index, :root),
+            )
 
         if i != n_root_layers
             @. fa +=

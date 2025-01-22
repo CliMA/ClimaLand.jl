@@ -22,8 +22,8 @@ import ClimaLand.Domains: coordinates, SphericalShell
 using ClimaLand:
     AbstractAtmosphericDrivers,
     AbstractRadiativeDrivers,
-    turbulent_fluxes,
-    net_radiation,
+    turbulent_fluxes!,
+    net_radiation!,
     compute_ρ_sfc,
     AbstractExpModel,
     heaviside,
@@ -155,15 +155,14 @@ end
     PrescribedSurfaceAlbedo{FT}(
         start_date::Union{DateTime, DateTimeNoLeap},
         Space::ClimaCore.Spaces.AbstractSpace;
-        get_infile = ClimaLand.Artifacts.cesm2_albedo_dataset_path,
-        varname = "sw_alb"
+        albedo_file_path = ClimaLand.Artifacts.cesm2_albedo_dataset_path(),
+        varname = "sw_alb",
+        regridder_type = :InterpolationsRegridder,
     ) where {FT}
 
 Constructor for the PrescribedSurfaceAlbedo struct.
 The `varname` must correspond to the name of the variable in the NetCDF
 file retrieved by the `get_infile` function.
-`get_infile` uses ArtifactWrappers.jl to return a path to the data file
-and download the data if it doesn't already exist on the machine.
 The input data file must have a time component.
 """
 function PrescribedSurfaceAlbedo{FT}(
@@ -418,11 +417,17 @@ function make_update_aux(model::BucketModel{FT}) where {FT}
                 ),
             )
         # Compute turbulent surface fluxes
-        p.bucket.turbulent_fluxes .=
-            turbulent_fluxes(model.atmos, model, Y, p, t)
+        turbulent_fluxes!(
+            p.bucket.turbulent_fluxes,
+            model.atmos,
+            model,
+            Y,
+            p,
+            t,
+        )
 
         # Radiative fluxes
-        p.bucket.R_n .= net_radiation(model.radiation, model, Y, p, t)
+        net_radiation!(p.bucket.R_n, model.radiation, model, Y, p, t)
 
         # Surface albedo
         next_albedo!(

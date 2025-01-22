@@ -1,13 +1,15 @@
 agents:
   queue: new-central
-  slurm_mem: 8G
-  modules: climacommon/2024_10_09
+  slurm_mem: 12G
+  modules: climacommon/2024_12_16
 
 env:
   JULIA_NVTX_CALLBACKS: gc
   OPENBLAS_NUM_THREADS: 1
   SLURM_KILL_BAD_EXIT: 1
   JULIA_DEPOT_PATH: "${BUILDKITE_BUILD_PATH}/${BUILDKITE_PIPELINE_SLUG}/depot/default"
+  JULIA_CUDA_MEMORY_POOL: "cuda"
+
 
 steps:
   - label: "init environment :computer:"
@@ -26,7 +28,7 @@ steps:
       - "julia --project=.buildkite -e 'using Pkg; Pkg.status()'"
 
       - echo "--- Instantiate test"
-      - "julia --project=test -e 'using Pkg; Pkg.develop(;path=\".\"); Pkg.instantiate(;verbose=true)'"
+      - "julia --project=test -e 'using Pkg; Pkg.develop(;path=\".\"); Pkg.add(\"MPI\"); Pkg.add(\"CUDA\"); Pkg.instantiate(;verbose=true)'"
       - "julia --project=test -e 'using Pkg; Pkg.status()'"
 
       - echo "--- Instantiate lib/ClimaLandSimulations"
@@ -69,15 +71,6 @@ steps:
         command: "julia --color=yes --project=.buildkite experiments/standalone/Soil/richards_comparison.jl"
         artifact_paths: "experiments/standalone/Soil/cpu/output_active/comparison*png"
 
-      - label: "Richards comparison to Bonan: GPU"
-        command: "julia --color=yes --project=.buildkite experiments/standalone/Soil/richards_comparison.jl"
-        artifact_paths: "experiments/standalone/Soil/gpu/output_active/comparison*png"
-        agents:
-          slurm_ntasks: 1
-          slurm_gpus: 1
-        env:
-          CLIMACOMMS_DEVICE: "CUDA"
-
       - label: "vaira_test"
         command: "julia --color=yes --project=.buildkite experiments/integrated/fluxnet/run_fluxnet.jl US-Var"
         artifact_paths: "experiments/integrated/fluxnet/US-Var/out/output_active/*png"
@@ -104,6 +97,9 @@ steps:
 
       - label: "Soilbiogeochem"
         command: "julia --color=yes --project=.buildkite experiments/standalone/Biogeochemistry/experiment.jl"
+
+      - label: "Implicit stepper full soil; saturated soil"
+        command: "julia --color=yes --project=.buildkite experiments/standalone/Soil/energy_hydrology_saturated.jl"
 
       - label: "Water conservation"
         command: "julia --color=yes --project=.buildkite experiments/standalone/Soil/water_conservation.jl"
@@ -138,6 +134,15 @@ steps:
       - label: "Richards Runoff GPU"
         command: "julia --color=yes --project=.buildkite experiments/standalone/Soil/richards_runoff.jl"
         artifact_paths: "experiments/standalone/Soil/artifacts/gpu/output_active/*png"
+        agents:
+          slurm_ntasks: 1
+          slurm_gpus: 1
+        env:
+          CLIMACOMMS_DEVICE: "CUDA"
+
+      - label: "Richards comparison to Bonan: GPU"
+        command: "julia --color=yes --project=.buildkite experiments/standalone/Soil/richards_comparison.jl"
+        artifact_paths: "experiments/standalone/Soil/gpu/output_active/comparison*png"
         agents:
           slurm_ntasks: 1
           slurm_gpus: 1
@@ -188,6 +193,8 @@ steps:
         agents:
           slurm_ntasks: 1
           slurm_gpus: 1
+        env:
+          CLIMACOMMS_DEVICE: "CUDA"
 
       - label: "Global Bucket on GPU (functional albedo)"
         key: "global_bucket_function_gpu"

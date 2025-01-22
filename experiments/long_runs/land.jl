@@ -48,6 +48,7 @@ using Poppler_jll: pdfunite
 const FT = Float64;
 time_interpolation_method = LinearInterpolation(PeriodicCalendar())
 context = ClimaComms.context()
+ClimaComms.init(context)
 device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
 root_path = "land_longrun_$(device_suffix)"
@@ -69,11 +70,11 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     surface_space = domain.space.surface
     subsurface_space = domain.space.subsurface
 
-    start_date = DateTime(2021)
+    start_date = DateTime(2008)
     # Forcing data
     era5_artifact_path =
-        ClimaLand.Artifacts.era5_land_forcing_data2021_folder_path(; context)
-    era5_ncdata_path = joinpath(era5_artifact_path, "era5_2021_0.9x1.25.nc")
+        ClimaLand.Artifacts.era5_land_forcing_data2008_folder_path(; context)
+    era5_ncdata_path = joinpath(era5_artifact_path, "era5_2008_1.0x1.0.nc")
     atmos, radiation = ClimaLand.prescribed_forcing_era5(
         era5_ncdata_path,
         surface_space,
@@ -231,9 +232,12 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     photosynthesis_args =
         (; parameters = Canopy.FarquharParameters(FT, is_c3; Vcmax25 = Vcmax25))
     # Set up plant hydraulics
-
+    era5_lai_artifact_path =
+        ClimaLand.Artifacts.era5_lai_forcing_data2008_folder_path(; context)
+    era5_lai_ncdata_path =
+        joinpath(era5_lai_artifact_path, "era5_2008_1.0x1.0_lai.nc")
     LAIfunction = ClimaLand.prescribed_lai_era5(
-        era5_ncdata_path,
+        era5_lai_ncdata_path,
         surface_space,
         start_date;
         time_interpolation_method = time_interpolation_method,
@@ -376,7 +380,7 @@ end
 function setup_and_solve_problem(; greet = false)
 
     t0 = 0.0
-    tf = 60 * 60.0 * 24 * 365
+    tf = 60 * 60.0 * 24 * 365 * 2
     Δt = 450.0
     nelements = (101, 15)
     if greet
@@ -409,7 +413,12 @@ short_names = ["gpp", "swc", "et", "ct"]
 mktempdir(root_path) do tmpdir
     for short_name in short_names
         var = get(simdir; short_name)
-        times = [ClimaAnalysis.times(var)[1], ClimaAnalysis.times(var)[end]]
+        N = length(ClimaAnalysis.times(var))
+        times = [
+            ClimaAnalysis.times(var)[1],
+            ClimaAnalysis.times(var)[div(N, 2, RoundNearest)],
+            ClimaAnalysis.times(var)[N],
+        ]
         for t in times
             fig = CairoMakie.Figure(size = (600, 400))
             kwargs = ClimaAnalysis.has_altitude(var) ? Dict(:z => 1) : Dict()

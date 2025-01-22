@@ -6,12 +6,30 @@ import LazyArtifacts
 
 using ArtifactWrappers
 """
-    era5_land_forcing_data2021_path(; context)
+    era5_land_forcing_data2008_path(; context, lowres=false)
 
-Return the path to the folder that contains the ERA5 data.
+Return the path to the directory that contains the ERA5 forcing data for 2008.
+
+Optionally, you can pass the lowres=true keyword to download a lower spatial resolution version of the data.
 """
-function era5_land_forcing_data2021_folder_path(; context = nothing)
-    return @clima_artifact("era5_land_forcing_data2021", context)
+function era5_land_forcing_data2008_folder_path(;
+    context = nothing,
+    lowres = false,
+)
+    if lowres
+        return @clima_artifact("era5_land_forcing_data2008_lowres", context)
+    else
+        return @clima_artifact("era5_land_forcing_data2008", context)
+    end
+end
+
+"""
+    era5_lai_forcing_data2008_path(; context)
+
+Return the path to the directory that contains the ERA5 LAI forcing data for 2008.
+"""
+function era5_lai_forcing_data2008_folder_path(; context = nothing)
+    return @clima_artifact("era5_land_forcing_data2008_lai", context)
 end
 
 """
@@ -39,6 +57,26 @@ Return the path to the folder that contains the soil parameters.
 """
 function soil_params_artifact_folder_path(; context = nothing)
     return @clima_artifact("soil_params_Gupta2020_2022", context)
+end
+
+"""
+    soil_grids_params_artifact_path(; lowres = true, context)
+
+Return the path to the file that contains the soil texture parameters
+needed for the Balland and Arp (2005) thermal conductivity model.
+
+Returns a ~1 degree version by default (lowres = true).
+"""
+function soil_grids_params_artifact_path(; context = nothing, lowres = true)
+    if lowres
+        dir = @clima_artifact("soilgrids_lowres", context)
+        file = "soil_solid_vol_fractions_soilgrids_lowres.nc"
+        return joinpath(dir, file)
+    else
+        dir = @clima_artifact("soilgrids", context)
+        file = "soil_solid_vol_fractions_soilgrids.nc"
+        return joinpath(dir, file)
+    end
 end
 
 """
@@ -164,39 +202,24 @@ end
     topmodel_data_path(; context = nothing)
 
 Returns the path to the file which contains the necessary information for the TOPMODEL
-runoff parameterization at 2.5 degrees resolution.
+runoff parameterization at 1.0 degrees resolution.
 
-This file was created with
-https://github.com/CliMA/ClimaLand.jl/blob/main/src/standalone/Soil/Runoff/preprocess_topographic_index_simple.jl
-
-using the data provided by
+This file was created using the data provided by
 Marthews, T.R., Dadson, S.J., Lehner, B., Abele, S., Gedney, N. (2015). High-resolution global topographic index values. NERC Environmental Information Data Centre. (Dataset). https://doi.org/10.5285/6b0c4358-2bf3-4924-aa8f-793d468b92be
 
 This resource is available under the Open Government Licence (OGL), and contains data supplied by Natural Environment Research Council.
 
 This product, High-resolution global topographic index values, has been created with use of data from the HydroSHEDS database which is © World Wildlife Fund, Inc. (2006-2013) and has been used herein under license. The HydroSHEDS database and more information are available at http://www.hydrosheds.org.
-
-Eventually, the script processing this data, and this data, will be added to ClimaArtifacts.
 """
 function topmodel_data_path(; context = nothing)
-    dir = joinpath(@__DIR__, "../")
-    topmodel_dataset = ArtifactWrapper(
-        dir,
-        "processed_topographic_index 2.5 deg",
-        ArtifactFile[ArtifactFile(
-            url = "https://caltech.box.com/shared/static/dwa7g0uzhxd50a2z3thbx3a12n0r887s.nc",
-            filename = "means_2.5_new.nc",
-        ),],
-    )
-    path = joinpath(get_data_folder(topmodel_dataset), "means_2.5_new.nc")
-    return path
-
+    dir = @clima_artifact("topmodel", context)
+    return joinpath(dir, "topographic_index_statistics_1.0x1.0.nc")
 end
 
 """
-    lehmann_assouline_or2008_evaporation_data(; context=nothing)
+    lehmann2008_evaporation_data(; context=nothing)
 
-Local path to file containing measured evaporation rate as a function of time
+Returns the path to file containing measured evaporation rate as a function of time
 for bare soil.
 
 Data was originally collected by Lehmann, Peter, Shmuel Assouline,
@@ -206,18 +229,11 @@ in Figure 8 of that work.
 
 https://doi.org/10.1103/PhysRevE.77.056309
 """
-function lehmann_assouline_or2008_evaporation_data(; context = nothing)
-    dir = joinpath(@__DIR__, "../")
-    evap_dataset = ArtifactWrapper(
-        dir,
-        "lehmann2008_fig8_evaporation",
-        ArtifactFile[ArtifactFile(
-            url = "https://caltech.box.com/shared/static/cgppw3tx6zdz7h02yt28ri44g1j088ju.csv",
-            filename = "lehmann2008_fig8_evaporation.csv",
-        ),],
+function lehmann2008_evaporation_data(; context = nothing)
+    return joinpath(
+        @clima_artifact("lehmann2008_evaporation", context),
+        "lehmann2008_fig8_evaporation.csv",
     )
-    evap_datapath = get_data_folder(evap_dataset)
-    return joinpath(evap_datapath, "lehmann2008_fig8_evaporation.csv")
 end
 
 """
@@ -274,21 +290,20 @@ function mizoguchi1990_soil_freezing_data(; context = nothing)
 end
 
 """
-    cesm2_albedo_dataset_folder()
+    sw_albedo_dataset_folder(; context = nothing)
 
-Triggers the download of the CESM2 albedo folder, if not
+Triggers the download of the sw_albedo folder, if not
 already downloaded, using Julia Artifacts, and returns the path to
 this file.
 
-This dataset contains monthly albedo data from 15/01/1850
-to 15/12/2014.
+This dataset contains surface shortwave albedo calculated from CESM2 and CERES data.
 """
-function cesm2_albedo_dataset_folder(; context = nothing)
-    return artifact_path = @clima_artifact("cesm2_albedo", context)
+function sw_albedo_dataset_folder(; context = nothing)
+    return artifact_path = @clima_artifact("sw_albedo", context)
 end
 
 """
-    cesm2_albedo_dataset_path()
+    cesm2_albedo_dataset_path(; context = nothing)
 
 Triggers the download of the CESM2 land albedo dataset, if not
 already downloaded, using Julia Artifacts, and returns the path to
@@ -299,13 +314,13 @@ to 15/12/2014.
 """
 function cesm2_albedo_dataset_path(; context = nothing)
     return joinpath(
-        cesm2_albedo_dataset_folder(; context),
+        sw_albedo_dataset_folder(; context),
         "sw_albedo_Amon_CESM2_historical_r1i1p1f1_gn_185001-201412_v2_no-nans.nc",
     )
 end
 
 """
-    bareground_albedo_dataset_path()
+    bareground_albedo_dataset_path(; context = nothing)
 
 Triggers the download of the average bareground land albedo dataset, if not
 already downloaded, using Julia Artifacts, and returns the path to
@@ -314,10 +329,41 @@ this file.
 This dataset does not contain a time component.
 """
 function bareground_albedo_dataset_path(; context = nothing)
+    return joinpath(sw_albedo_dataset_folder(; context), "bareground_albedo.nc")
+end
+
+"""
+    ceres_albedo_dataset_path(; context = nothing)
+
+Triggers the download of the CERES land albedo dataset, if not
+already downloaded, using Julia Artifacts, and returns the path to
+this file.
+
+This dataset contains the monthly average shortwave albedo in the
+`sw_alb` variable, and the monthly average clear-sky shortwave albedo in the
+`sw_alb_clr` variable. Both variables cover from 15/03/2000 to 15/10/2019.
+"""
+function ceres_albedo_dataset_path(; context = nothing)
     return joinpath(
-        cesm2_albedo_dataset_folder(; context),
-        "bareground_albedo.nc",
+        sw_albedo_dataset_folder(; context),
+        "sw_albedo_Amon_CERES_EBAF_Ed4.2_Subset_200003-201910.nc",
     )
+end
+
+neural_snow_znetwork_link() =
+    "https://caltech.box.com/shared/static/ay7cv0rhuiytrqbongpeq2y7m3cimhm4.bson"
+
+"""
+    ilamb_dataset_path(filename; context = nothing)
+
+Triggers the download of the ILAMB dataset, if not already downloaded, using
+Julia Artifacts, and returns the path to this file.
+
+There are only three datasets available which are "rlus_CERESed4.2_rlus.nc",
+"gpp_FLUXCOM_gpp.nc", and "evspsbl_MODIS_et_0.5x0.5.nc".
+"""
+function ilamb_dataset_path(filename; context = nothing)
+    return joinpath(@clima_artifact("ilamb_data", context), filename)
 end
 
 end

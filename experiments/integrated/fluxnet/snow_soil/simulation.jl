@@ -88,7 +88,7 @@ soil_model_type = Soil.EnergyHydrology
 snow_parameters = SnowParameters{FT}(
     dt;
     α_snow = α,
-    ρ_snow = ρ,
+    density = Snow.ConstantDensityModel(ρ),
     earth_param_set = earth_param_set,
 );
 snow_args = (; parameters = snow_parameters);
@@ -99,7 +99,7 @@ land_input = (
     domain = land_domain,
     runoff = ClimaLand.Soil.SurfaceRunoff(),
 )
-land = ClimaLand.LandHydrologyModel{FT}(;
+land = ClimaLand.SoilSnowModel{FT}(;
     land_args = land_input,
     soil_model_type = soil_model_type,
     soil_args = soil_args,

@@ -9,8 +9,8 @@
 # Number of spatial elements: 101 1in horizontal, 15 in vertical
 # Soil depth: 50 m
 # Simulation duration: 365 d
-# Timestep: 900 s
-# Timestepper: ARS343
+# Timestep: 450 s
+# Timestepper: ARS111
 # Fixed number of iterations: 1
 # Jacobian update: every new timestep
 # Atmos forcing update: every 3 hours
@@ -46,6 +46,7 @@ using Poppler_jll: pdfunite
 const FT = Float64;
 time_interpolation_method = LinearInterpolation(PeriodicCalendar())
 context = ClimaComms.context()
+ClimaComms.init(context)
 device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
 root_path = "soil_longrun_$(device_suffix)"
@@ -67,12 +68,13 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     surface_space = domain.space.surface
     subsurface_space = domain.space.subsurface
 
-    start_date = DateTime(2021)
+    start_date = DateTime(2008)
     # Forcing data
     era5_artifact_path =
-        ClimaLand.Artifacts.era5_land_forcing_data2021_folder_path(; context)
+        ClimaLand.Artifacts.era5_land_forcing_data2008_folder_path(; context)
+    era5_ncdata_path = joinpath(era5_artifact_path, "era5_2008_1.0x1.0.nc")
     atmos, radiation = ClimaLand.prescribed_forcing_era5(
-        joinpath(era5_artifact_path, "era5_2021_0.9x1.25.nc"),
+        era5_ncdata_path,
         surface_space,
         start_date,
         earth_param_set,
@@ -147,44 +149,9 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         soil_args...,
     )
 
-
     Y, p, cds = initialize(soil)
-    z = ClimaCore.Fields.coordinate_field(cds.subsurface).z
-    lat = ClimaCore.Fields.coordinate_field(cds.subsurface).lat
-    # This function approximates the hydrostatic equilibrium solution in
-    # the vadose and unsaturated regimes by solving for ∂(ψ+z)/∂z = 0,
-    # assuming the transition between the two is at a coordinate of z_∇.
-
-    # The approximation arises because the porosity, residual water fraction,
-    # and van Genuchtem parameters are spatially varying but treated constant
-    # in solving for equilibrium. Finally, we make a plausible but total guess
-    # for the water table depth using the TOPMODEL parameters.
-    function hydrostatic_profile(
-        lat::FT,
-        z::FT,
-        ν::FT,
-        θ_r::FT,
-        α::FT,
-        n::FT,
-        S_s::FT,
-        fmax,
-    ) where {FT}
-        m = 1 - 1 / n
-        zmin = FT(-50.0)
-        zmax = FT(0.0)
-
-        z_∇ = FT(zmin / 5.0 + (zmax - zmin) / 2.5 * (fmax - 0.35) / 0.7)
-        if z > z_∇
-            S = FT((FT(1) + (α * (z - z_∇))^n)^(-m))
-            ϑ_l = S * (ν - θ_r) + θ_r
-        else
-            ϑ_l = -S_s * (z - z_∇) + ν
-        end
-        return FT(ϑ_l)
-    end
-    vg_α = hydrology_cm.α
-    vg_n = hydrology_cm.n
-    Y.soil.ϑ_l .= hydrostatic_profile.(lat, z, ν, θ_r, vg_α, vg_n, S_s, f_max)
+    init_soil(ν, θ_r) = θ_r + (ν - θ_r) / 2
+    Y.soil.ϑ_l .= init_soil.(ν, θ_r)
     Y.soil.θ_i .= FT(0.0)
     T = FT(276.85)
     ρc_s =
@@ -254,8 +221,8 @@ end
 function setup_and_solve_problem(; greet = false)
 
     t0 = 0.0
-    tf = 60 * 60.0 * 24 * 365
-    Δt = 900.0
+    tf = 60 * 60.0 * 24 * 365 * 2
+    Δt = 450.0
     nelements = (101, 15)
     if greet
         @info "Run: Global Soil Model"
@@ -287,7 +254,12 @@ short_names = ["swc", "si", "sie"]
 mktempdir(root_path) do tmpdir
     for short_name in short_names
         var = get(simdir; short_name)
-        times = [ClimaAnalysis.times(var)[1], ClimaAnalysis.times(var)[end]]
+        N = length(ClimaAnalysis.times(var))
+        times = [
+            ClimaAnalysis.times(var)[1],
+            ClimaAnalysis.times(var)[div(N, 2, RoundNearest)],
+            ClimaAnalysis.times(var)[N],
+        ]
         for t in times
             var = get(simdir; short_name)
             fig = CairoMakie.Figure(size = (600, 400))

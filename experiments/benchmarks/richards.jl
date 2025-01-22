@@ -21,6 +21,7 @@
 # Fixed number of iterations: 2
 # Jacobian update: Every Newton iteration
 # Precipitation data update: every timestep
+delete!(ENV, "JULIA_CUDA_MEMORY_POOL")
 
 import SciMLBase
 using Dates
@@ -51,6 +52,7 @@ const FT = Float64;
 
 regridder_type = :InterpolationsRegridder
 context = ClimaComms.context()
+ClimaComms.init(context)
 device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
 outdir = "richards_benchmark_$(device_suffix)"
@@ -68,7 +70,7 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
     surface_space = domain.space.surface
     subsurface_space = domain.space.subsurface
 
-    start_date = DateTime(2021)
+    start_date = DateTime(2008)
     spatially_varying_soil_params =
         ClimaLand.default_spatially_varying_soil_parameters(
             subsurface_space,
@@ -92,20 +94,19 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
     )
 
     era5_artifact_path =
-        ClimaLand.Artifacts.era5_land_forcing_data2021_folder_path(; context)
+        ClimaLand.Artifacts.era5_land_forcing_data2008_folder_path(; context)
 
     # Below, the preprocess_func argument is used to
     # 1. Convert precipitation to be negative (as it is downwards)
-    # 2. Convert accumulations over an hour to a rate per second
-    start_date = DateTime(2021)
+    # 2. Convert mass flux to equivalent liquid water flux
     # Precipitation:
     precip = TimeVaryingInput(
-        joinpath(era5_artifact_path, "era5_2021_0.9x1.25.nc"),
-        "tp",
+        joinpath(era5_artifact_path, "era5_2008_1.0x1.0.nc"),
+        "mtpr",
         surface_space;
         start_date,
         regridder_type,
-        file_reader_kwargs = (; preprocess_func = (data) -> -data / 3600,),
+        file_reader_kwargs = (; preprocess_func = (data) -> -data / 1000),
     )
     atmos = ClimaLand.PrescribedPrecipitation{FT, typeof(precip)}(precip)
     bottom_bc = ClimaLand.Soil.WaterFluxBC((p, t) -> 0.0)
@@ -294,7 +295,7 @@ if ClimaComms.device() isa ClimaComms.CUDADevice
 end
 
 if get(ENV, "BUILDKITE_PIPELINE_SLUG", nothing) == "climaland-benchmark"
-    PREVIOUS_BEST_TIME = 5.1
+    PREVIOUS_BEST_TIME = 5.8
     if average_timing_s > PREVIOUS_BEST_TIME + std_timing_s
         @info "Possible performance regression, previous average time was $(PREVIOUS_BEST_TIME)"
     elseif average_timing_s < PREVIOUS_BEST_TIME - std_timing_s

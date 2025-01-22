@@ -78,11 +78,11 @@ time_interpolation_method = LinearInterpolation(PeriodicCalendar())
 regridder_type = :InterpolationsRegridder
 FT = Float64;
 context = ClimaComms.context()
+ClimaComms.init(context)
 earth_param_set = LP.LandParameters(FT);
 # Use separate output directory for CPU and GPU runs to avoid race condition
 device_suffix =
-    typeof(ClimaComms.context().device) <: ClimaComms.CPUSingleThreaded ?
-    "cpu" : "gpu"
+    typeof(context.device) <: ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
 outdir = "experiments/standalone/Bucket/artifacts_era5$(regional_str)_$(device_suffix)"
 output_dir = ClimaUtilities.OutputPathGenerator.generate_output_path(outdir)
 
@@ -110,7 +110,7 @@ else
         dz_tuple = FT.((1.0, 0.05)),
     )
 end
-start_date = DateTime(2021);
+start_date = DateTime(2008);
 
 # Set up parameters
 σS_c = FT(0.2);
@@ -134,8 +134,8 @@ bucket_parameters = BucketModelParameters(FT; albedo, z_0m, z_0b, τc);
 
 # Forcing data
 era5_artifact_path =
-    ClimaLand.Artifacts.era5_land_forcing_data2021_folder_path(; context)
-era5_ncdata_path = joinpath(era5_artifact_path, "era5_2021_0.9x1.25.nc")
+    ClimaLand.Artifacts.era5_land_forcing_data2008_folder_path(; context)
+era5_ncdata_path = joinpath(era5_artifact_path, "era5_2008_1.0x1.0.nc")
 bucket_atmos, bucket_rad = ClimaLand.prescribed_forcing_era5(
     era5_ncdata_path,
     surface_space,

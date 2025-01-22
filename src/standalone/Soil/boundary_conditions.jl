@@ -775,7 +775,7 @@ Returns the net volumetric water flux (m/s) and net energy
 flux (W/m^2) for the soil `EnergyHydrology` model at the top
 of the soil domain.
 
-This function calls the `turbulent_fluxes` and `net_radiation`
+This function calls the `turbulent_fluxes!` and `net_radiation!`
 functions, which use the soil surface conditions as well as
 the atmos and radiation conditions in order to
 compute the surface fluxes using Monin Obukhov Surface Theory.
@@ -792,6 +792,7 @@ function soil_boundary_fluxes!(
     t,
 ) where {FT}
     soil_boundary_fluxes!(bc, Val(bc.prognostic_land_components), soil, Y, p, t)
+    return nothing
 end
 
 
@@ -823,14 +824,23 @@ function soil_boundary_fluxes!(
     p,
     t,
 )
-    p.soil.turbulent_fluxes .= turbulent_fluxes(bc.atmos, model, Y, p, t)
-    p.soil.R_n .= net_radiation(bc.radiation, model, Y, p, t)
-    update_runoff!(p, bc.runoff, p.drivers.P_liq, Y, t, model)
+    turbulent_fluxes!(p.soil.turbulent_fluxes, bc.atmos, model, Y, p, t)
+    net_radiation!(p.soil.R_n, bc.radiation, model, Y, p, t)
+    # influx = maximum possible rate of infiltration given precip, snowmelt, evaporation/condensation
+    # but if this exceeds infiltration capacity of the soil, runoff will
+    # be generated.
+    # Use top_bc.water as temporary storage to avoid allocation
+    influx = p.soil.top_bc.water
+    @. influx = p.drivers.P_liq + p.soil.turbulent_fluxes.vapor_flux_liq
+    # The update_runoff! function computes how much actually infiltrates
+    # given influx and our runoff model bc.runoff, and updates
+    # p.soil.infiltration in place
+    update_runoff!(p, bc.runoff, influx, Y, t, model)
     # We do not model the energy flux from infiltration.
-    @. p.soil.top_bc.water =
-        p.soil.infiltration + p.soil.turbulent_fluxes.vapor_flux_liq
+    @. p.soil.top_bc.water = p.soil.infiltration
     @. p.soil.top_bc.heat =
         p.soil.R_n + p.soil.turbulent_fluxes.lhf + p.soil.turbulent_fluxes.shf
+    return nothing
 end
 
 """

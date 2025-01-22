@@ -20,6 +20,9 @@ using Statistics
 using Insolation
 using DelimitedFiles
 
+using CSV, HTTP, Flux, cuDNN, BSON, StatsBase
+NeuralSnow = Base.get_extension(ClimaLand, :NeuralSnowExt).NeuralSnow;
+
 # Site-specific quantities
 # Error if no site argument is provided
 if length(ARGS) < 1
@@ -33,6 +36,7 @@ climaland_dir = pkgdir(ClimaLand)
 FT = Float32
 param_set = LP.LandParameters(FT)
 context = ClimaComms.context()
+ClimaComms.init(context)
 
 # This reads in the data and sets up the drivers, as well as computes the IC from the data
 include(
@@ -46,8 +50,16 @@ ndays = (tf - t0) / 3600 / 24
 
 domain = ClimaLand.Domains.Point(; z_sfc = FT(0))
 
-parameters =
-    SnowParameters{FT}(Δt; α_snow = α, ρ_snow = ρ, earth_param_set = param_set)
+#density_model = NeuralSnow.NeuralDepthModel(FT)
+density_model = Snow.ConstantDensityModel(ρ)
+depths = z[snow_data_avail]
+
+parameters = SnowParameters{FT}(
+    Δt;
+    α_snow = α,
+    density = density_model,
+    earth_param_set = param_set,
+)
 model = ClimaLand.Snow.SnowModel(
     parameters = parameters,
     domain = domain,
@@ -57,6 +69,7 @@ Y, p, coords = ClimaLand.initialize(model)
 
 # Set initial conditions
 Y.snow.S .= FT(SWE[1]) # first data point
+#Y.snow.Z .= FT(depths[1]) #uncomment if using NeuralDepthModel instead of ConstantDensityModel
 Y.snow.U .=
     ClimaLand.Snow.energy_from_q_l_and_swe(FT(SWE[1]), FT(0), parameters) # with q_l = 0
 

@@ -53,11 +53,12 @@ import ClimaLand.Parameters as LP
     Y, p, coords = ClimaLand.initialize(model)
     @test (Y.snow |> propertynames) == (:S, :U)
     @test (p.snow |> propertynames) == (
+        :q_sfc,
         :q_l,
         :κ,
         :T,
         :T_sfc,
-        :z,
+        :ρ_snow,
         :turbulent_fluxes,
         :R_n,
         :energy_runoff,
@@ -85,13 +86,16 @@ import ClimaLand.Parameters as LP
     # Check if aux update occurred correctly
     @test p.snow.R_n ==
           @. (-(1 - α_snow) * 20.0f0 - ϵ_snow * (20.0f0 - _σ * p.snow.T_sfc^4))
-    @test p.snow.R_n == ClimaLand.net_radiation(
+    R_n_copy = copy(p.snow.R_n)
+    ClimaLand.net_radiation!(
+        R_n_copy,
         model.boundary_conditions.radiation,
         model,
         Y,
         p,
         t0,
     )
+    @test p.snow.R_n == R_n_copy
     @test p.snow.q_l ==
           snow_liquid_mass_fraction.(Y.snow.U, Y.snow.S, Ref(model.parameters))
     @test p.snow.T_sfc ==
@@ -121,16 +125,26 @@ import ClimaLand.Parameters as LP
             ρ_sfc,
             Ref(Thermodynamics.Ice()),
         )
-    turb_fluxes = ClimaLand.turbulent_fluxes(
+    @test p.snow.q_sfc ≈ q_sfc
+    turb_fluxes_copy = copy(p.snow.turbulent_fluxes)
+    ClimaLand.turbulent_fluxes!(
+        turb_fluxes_copy,
         model.boundary_conditions.atmos,
         model,
         Y,
         p,
         t0,
     )
-    @test turb_fluxes.shf == p.snow.turbulent_fluxes.shf
-    @test turb_fluxes.lhf == p.snow.turbulent_fluxes.lhf
-    @test turb_fluxes.vapor_flux == p.snow.turbulent_fluxes.vapor_flux
+    @test turb_fluxes_copy.shf == p.snow.turbulent_fluxes.shf
+    @test turb_fluxes_copy.lhf == p.snow.turbulent_fluxes.lhf
+    @test turb_fluxes_copy.vapor_flux == p.snow.turbulent_fluxes.vapor_flux
+    old_ρ = deepcopy(p.snow.ρ_snow)
+    Snow.update_density!(model.parameters.density, model.parameters, Y, p)
+    @test p.snow.ρ_snow == old_ρ
+    old_z = similar(Y.snow.S)
+    old_z .= FT(0.5)
+    z = snow_depth(model.parameters.density, Y, p, parameters)
+    @test z == old_z
 
     # Now compute tendencies and make sure they operate correctly.
     dY = similar(Y)
@@ -145,6 +159,9 @@ import ClimaLand.Parameters as LP
     @test dY.snow.U == @.(
         -p.snow.turbulent_fluxes.shf - p.snow.turbulent_fluxes.lhf -
         p.snow.R_n + p.snow.energy_runoff
+    )
+    @test isnothing(
+        Snow.update_density_prog!(model.parameters.density, model, dY, Y, p),
     )
 
 

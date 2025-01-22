@@ -18,6 +18,7 @@ regridder_type = :InterpolationsRegridder
 extrapolation_bc =
     (Interpolations.Periodic(), Interpolations.Flat(), Interpolations.Flat())
 context = ClimaComms.context()
+ClimaComms.init(context)
 
 earth_param_set = LP.LandParameters(FT)
 radius = FT(6378.1e3)

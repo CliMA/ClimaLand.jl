@@ -104,8 +104,8 @@ hydrology_cm = vanGenuchten{FT}(; α = vg_α, n = vg_n);
 #c = FT(0.43)
 #hcm = BrooksCorey(;ψb = ψb, c = c);
 θ_r = FT(0.05)
-ν_ss_om = FT(0.3)
-ν_ss_quartz = FT(0.7)
+ν_ss_om = FT(0.4)
+ν_ss_quartz = FT(0.6)
 ν_ss_gravel = FT(0.0)
 params = Soil.EnergyHydrologyParameters(
     FT;
@@ -221,7 +221,7 @@ ode_algo = CTS.IMEXAlgorithm(
     timestepper,
     CTS.NewtonsMethod(
         max_iters = 3,
-        update_j = CTS.UpdateEvery(CTS.NewTimeStep),
+        update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
     ),
 );
 

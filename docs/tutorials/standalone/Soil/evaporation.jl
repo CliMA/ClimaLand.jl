@@ -226,8 +226,7 @@ evap = [
     parent(sv.saveval[k].soil.turbulent_fluxes.vapor_flux_liq)[1] for
     k in 1:length(sol.t)
 ]
-evaporation_data =
-    ClimaLand.Artifacts.lehmann_assouline_or2008_evaporation_data();
+evaporation_data = ClimaLand.Artifacts.lehmann2008_evaporation_data();
 ref_soln_E = readdlm(evaporation_data, ',')
 ref_soln_E_350mm = ref_soln_E[2:end, 1:2]
 data_dates = ref_soln_E_350mm[:, 1]

@@ -1,7 +1,7 @@
 # # Global run of land model
 
 # The code sets up and runs ClimaLand v1, which
-# includes soil, canopy, and snow, for 365 days on a spherical domain,
+# includes soil, canopy, and snow, for 730 days on a spherical domain,
 # using ERA5 data as forcing. In this simulation, we have
 # turned lateral flow off because horizontal boundary conditions and the
 # land/sea mask are not yet supported by ClimaCore.
@@ -9,7 +9,7 @@
 # Simulation Setup
 # Number of spatial elements: 101 in horizontal, 15 in vertical
 # Soil depth: 50 m
-# Simulation duration: 365 d
+# Simulation duration: 730 d
 # Timestep: 450 s
 # Timestepper: ARS111
 # Fixed number of iterations: 3
@@ -21,6 +21,7 @@ ClimaComms.@import_required_backends
 import ClimaTimeSteppers as CTS
 using ClimaCore
 using ClimaUtilities.ClimaArtifacts
+import ClimaUtilities.OnlineLogging: WallTimeInfo, report_walltime
 
 import ClimaDiagnostics
 import ClimaAnalysis
@@ -46,9 +47,12 @@ import GeoMakie
 using Dates
 import NCDatasets
 
+using Poppler_jll: pdfunite
+
 const FT = Float64;
 time_interpolation_method = LinearInterpolation(PeriodicCalendar())
 context = ClimaComms.context()
+ClimaComms.init(context)
 device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
 root_path = "snowy_land_longrun_$(device_suffix)"
@@ -70,11 +74,11 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     surface_space = domain.space.surface
     subsurface_space = domain.space.subsurface
 
-    start_date = DateTime(2021)
+    start_date = DateTime(2008)
     # Forcing data
     era5_artifact_path =
-        ClimaLand.Artifacts.era5_land_forcing_data2021_folder_path(; context)
-    era5_ncdata_path = joinpath(era5_artifact_path, "era5_2021_0.9x1.25.nc")
+        ClimaLand.Artifacts.era5_land_forcing_data2008_folder_path(; context)
+    era5_ncdata_path = joinpath(era5_artifact_path, "era5_2008_1.0x1.0.nc")
     atmos, radiation = ClimaLand.prescribed_forcing_era5(
         era5_ncdata_path,
         surface_space,
@@ -172,7 +176,6 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     z0_m = FT(0.13) * h_canopy
     z0_b = FT(0.1) * z0_m
 
-
     soilco2_ps = Soil.Biogeochemistry.SoilCO2ModelParameters(FT)
 
     soil_args = (domain = domain, parameters = soil_params)
@@ -232,9 +235,12 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     photosynthesis_args =
         (; parameters = Canopy.FarquharParameters(FT, is_c3; Vcmax25 = Vcmax25))
     # Set up plant hydraulics
-
+    era5_lai_artifact_path =
+        ClimaLand.Artifacts.era5_lai_forcing_data2008_folder_path(; context)
+    era5_lai_ncdata_path =
+        joinpath(era5_lai_artifact_path, "era5_2008_1.0x1.0_lai.nc")
     LAIfunction = ClimaLand.prescribed_lai_era5(
-        era5_ncdata_path,
+        era5_lai_ncdata_path,
         surface_space,
         start_date;
         time_interpolation_method = time_interpolation_method,
@@ -362,7 +368,11 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
 
     # ClimaDiagnostics
 
-    nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(subsurface_space, outdir)
+    nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(
+        subsurface_space,
+        outdir;
+        start_date,
+    )
 
     diags = ClimaLand.default_diagnostics(
         land,
@@ -378,13 +388,21 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler)
 
     driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
-    return prob, SciMLBase.CallbackSet(driver_cb, diag_cb)
+
+    walltime_info = WallTimeInfo()
+    every1000steps(u, t, integrator) = mod(integrator.step, 1000) == 0
+    report = let wt = walltime_info
+        (integrator) -> report_walltime(wt, integrator)
+    end
+    report_cb = SciMLBase.DiscreteCallback(every1000steps, report)
+
+    return prob, SciMLBase.CallbackSet(driver_cb, diag_cb, report_cb)
 end
 
 function setup_and_solve_problem(; greet = false)
 
     t0 = 0.0
-    tf = 60 * 60.0 * 24 * 365
+    tf = 60 * 60.0 * 24 * 365 * 2
     Δt = 450.0
     nelements = (101, 15)
     if greet
@@ -458,3 +476,40 @@ for (group_id, group) in
 
     CairoMakie.save(joinpath(root_path, "$(group_name).png"), fig)
 end
+
+short_names = ["gpp", "swc", "et", "ct", "swe", "si"]
+
+mktempdir(root_path) do tmpdir
+    for short_name in short_names
+        var = get(simdir; short_name)
+        N = length(ClimaAnalysis.times(var))
+        times = [
+            ClimaAnalysis.times(var)[1],
+            ClimaAnalysis.times(var)[div(N, 2, RoundNearest)],
+            ClimaAnalysis.times(var)[N],
+        ]
+        for t in times
+            fig = CairoMakie.Figure(size = (600, 400))
+            kwargs = ClimaAnalysis.has_altitude(var) ? Dict(:z => 1) : Dict()
+            viz.heatmap2D_on_globe!(
+                fig,
+                ClimaAnalysis.slice(var, time = t; kwargs...),
+                mask = viz.oceanmask(),
+                more_kwargs = Dict(
+                    :mask => ClimaAnalysis.Utils.kwargs(color = :white),
+                    :plot => ClimaAnalysis.Utils.kwargs(rasterize = true),
+                ),
+            )
+            CairoMakie.save(joinpath(tmpdir, "$(short_name)_$t.pdf"), fig)
+        end
+    end
+    figures = readdir(tmpdir, join = true)
+    pdfunite() do unite
+        run(Cmd([unite, figures..., joinpath(root_path, "figures.pdf")]))
+    end
+end
+
+include("leaderboard/leaderboard.jl")
+diagnostics_folder_path = outdir
+leaderboard_base_path = root_path
+compute_leaderboard(leaderboard_base_path, diagnostics_folder_path)

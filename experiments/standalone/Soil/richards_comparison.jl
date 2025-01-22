@@ -1,7 +1,7 @@
 using Test
 import ClimaComms
 ClimaComms.@import_required_backends
-using Plots
+using CairoMakie
 using DelimitedFiles
 using Statistics
 import SciMLBase
@@ -21,9 +21,9 @@ clay_datapath = joinpath(bonan_data_folder, "bonan_data_clay.txt")
 sand_datapath = joinpath(bonan_data_folder, "bonan_data_sand.txt")
 
 context = ClimaComms.context()
+ClimaComms.init(context)
 device_suffix =
-    typeof(ClimaComms.context().device) <: ClimaComms.CPUSingleThreaded ?
-    "cpu" : "gpu"
+    typeof(context.device) <: ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
 outdir = generate_output_path(
     joinpath("experiments", "standalone", "Soil", device_suffix),
 )
@@ -117,10 +117,15 @@ outdir = generate_output_path(
             bonan_moisture = reverse(ds_bonan[:, 1])
             bonan_z = reverse(ds_bonan[:, 2]) ./ 100.0
             @test sqrt.(mean((bonan_moisture .- ϑ_l) .^ 2.0)) < FT(1e-3)
-
-            plot(ϑ_l, parent(z), label = "Clima")
-            plot!(bonan_moisture, bonan_z, label = "Bonan's Matlab code")
-            savefig(joinpath(outdir, "comparison_clay_bonan_matlab.png"))
+            fig = CairoMakie.Figure()
+            ax = CairoMakie.Axis(fig[1, 1])
+            lines!(ax, ϑ_l[:], parent(z)[:], label = "Clima")
+            lines!(ax, bonan_moisture, bonan_z, label = "Bonan's Matlab code")
+            axislegend()
+            CairoMakie.save(
+                joinpath(outdir, "comparison_clay_bonan_matlab.png"),
+                fig,
+            )
         end
     end
 end
@@ -212,10 +217,15 @@ end
             bonan_moisture = reverse(ds_bonan[:, 1])
             bonan_z = reverse(ds_bonan[:, 2]) ./ 100.0
             @test sqrt.(mean((bonan_moisture .- ϑ_l) .^ 2.0)) < FT(1e-3)
-
-            plot(ϑ_l, parent(z), label = "Clima")
-            plot!(bonan_moisture, bonan_z, label = "Bonan's Matlab code")
-            savefig(joinpath(outdir, "comparison_sand_bonan_matlab.png"))
+            fig = CairoMakie.Figure()
+            ax = CairoMakie.Axis(fig[1, 1])
+            lines!(ax, ϑ_l[:], parent(z)[:], label = "Clima")
+            lines!(ax, bonan_moisture, bonan_z, label = "Bonan's Matlab code")
+            axislegend()
+            CairoMakie.save(
+                joinpath(outdir, "comparison_sand_bonan_matlab.png"),
+                fig,
+            )
         end
     end
 end
