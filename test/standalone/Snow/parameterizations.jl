@@ -36,7 +36,7 @@ for FT in (Float32, Float64)
         θ_r = FT(0.08)
         Ksat = FT(1e-3)
         κ_ice = FT(2.21)
-        ρcD_g = FT(1700 * 2.09e3 * 0.1)
+        ΔS = FT(0.1)
         Δt = Float64(180.0)
         parameters = SnowParameters{FT}(
             Δt,
@@ -45,8 +45,8 @@ for FT in (Float32, Float64)
         )
         @test parameters.density.ρ_min == ρ_min
         @test typeof(parameters.density.ρ_min) == FT
-        @test parameters.ρcD_g == ρcD_g
-        @test typeof(parameters.ρcD_g) == FT
+        @test parameters.ΔS == ΔS
+        @test typeof(parameters.ΔS) == FT
         @test parameters.z_0m == z_0m
         @test typeof(parameters.z_0m) == FT
         @test parameters.z_0b == z_0b
@@ -84,5 +84,13 @@ for FT in (Float32, Float64)
         @test all(ρ_calc[1:(end - 1)] .≈ ρ_snow)
         @test ρ_calc[end] == _ρ_l
         @test snow_bulk_density(eps(FT(0)), 2 * eps(FT(0)), parameters) == _ρ_l
+
+        U = energy_from_q_l_and_swe(FT(1), FT(0.5), parameters)
+        T = snow_bulk_temperature(U, FT(1), FT(0.5), parameters)
+        @test T ≈ _T_freeze
+
+        U = energy_from_T_and_swe.(FT(1), FT.([272, 274]), parameters)
+        T = snow_bulk_temperature.(U, FT(1), FT.([0.0, 1.0]), parameters)
+        @test all(T .≈ FT.([272, 274]))
     end
 end

@@ -216,11 +216,11 @@ function snow_bulk_temperature(
     _T_ref = FT(LP.T_0(parameters.earth_param_set))
     _LH_f0 = FT(LP.LH_f0(parameters.earth_param_set))
     cp_s = specific_heat_capacity(q_l, parameters)
-    _ρcD_g = parameters.ρcD_g
+    _ΔS = parameters.ΔS
     _T_freeze = FT(LP.T_freeze(parameters.earth_param_set))
     return _T_ref +
-           (U + _LH_f0 * _ρ_l * S_safe * (1 - q_l)) /
-           (_ρ_l * S_safe * cp_s + _ρcD_g)
+           (U + _ρ_l * _LH_f0 * S_safe * (1 - q_l)) /
+           (_ρ_l * cp_s * (S_safe + _ΔS))
 end
 
 """
@@ -238,7 +238,6 @@ function snow_bulk_density(
     #also handle instabilities when z, SWE both near machine precision
     return max(SWE, ε) / max(z, SWE, ε) * _ρ_l
 end
-
 
 """
     maximum_liquid_mass_fraction(ρ_snow::FT, T::FT, parameters::SnowParameters{FT}) where {FT}
@@ -357,11 +356,11 @@ function energy_from_q_l_and_swe(S::FT, q_l::FT, parameters) where {FT}
     _ρ_l = FT(LP.ρ_cloud_liq(parameters.earth_param_set))
     _T_ref = FT(LP.T_0(parameters.earth_param_set))
     _LH_f0 = FT(LP.LH_f0(parameters.earth_param_set))
+    _ΔS = parameters.ΔS
 
     c_snow = specific_heat_capacity(q_l, parameters)
-    _ρcD_g = parameters.ρcD_g
-    return _ρ_l * S * (c_snow * (_T_freeze - _T_ref) - (1 - q_l) * _LH_f0) +
-           _ρcD_g * (_T_freeze - _T_ref)
+    return _ρ_l * (S + _ΔS) * c_snow * (_T_freeze - _T_ref) -
+           _ρ_l * S * (1 - q_l) * _LH_f0
 end
 
 """
@@ -379,11 +378,12 @@ function energy_from_T_and_swe(S::FT, T::FT, parameters) where {FT}
     _LH_f0 = FT(LP.LH_f0(parameters.earth_param_set))
     _cp_i = FT(LP.cp_i(parameters.earth_param_set))
     _cp_l = FT(LP.cp_l(parameters.earth_param_set))
-    _ρcD_g = parameters.ρcD_g
+    _ΔS = parameters.ΔS
+
     if T <= _T_freeze
-        return (_ρ_l * S * _cp_i + _ρcD_g) * (T - _T_ref) - _ρ_l * S * _LH_f0
+        return _ρ_l * _cp_i * (S + _ΔS) * (T - _T_ref) - _ρ_l * S * _LH_f0
     else
-        return (_ρ_l * S * _cp_l + _ρcD_g) * (T - _T_ref)
+        return _ρ_l * (S + _ΔS) * _cp_l * (T - _T_ref)
     end
 
 end
