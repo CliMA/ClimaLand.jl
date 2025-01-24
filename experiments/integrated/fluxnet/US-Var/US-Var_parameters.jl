@@ -28,7 +28,7 @@ soil_K_sat = FT(0.45 / 3600 / 100) # m/s,
 soil_S_s = FT(1e-3) # 1/m, guess
 soil_vg_n = FT(2.0) # unitless
 soil_vg_α = FT(2.0) # inverse meters
-θ_r = FT(0.067) # m3/m3, 
+θ_r = FT(0.05) # m3/m3, 
 
 # Soil heat transfer parameters; not needed for hydrology only test
 ν_ss_quartz = FT(0.38)
@@ -57,22 +57,24 @@ Drel = FT(1.6)
 g0 = FT(1e-4)
 
 #Photosynthesis model
-Vcmax25 = FT(4.225e-5) # CLM C3 grass, Slevin et al. 2015
+Vcmax25 = FT(2 * 4.225e-5) # 2x CLM C3 grass, Slevin et al. 2015
 
 # Energy Balance model
 ac_canopy = FT(745)
 
 # Plant Hydraulics and general plant parameters
+pc = FT(-3e5)
+sc = FT(1e-3)
 SAI = FT(0)
 f_root_to_shoot = FT(1.0)
-K_sat_plant = 5e-9 # m/s # seems much too small?
+K_sat_plant = 2e-8 # m/s
 ψ63 = FT(-2.7 / 0.0098) # / MPa to m, Holtzman's original parameter value is -4 MPa
 Weibull_param = FT(4) # unitless, Holtzman's original c param value
 a = FT(0.05 * 0.0098) # Holtzman's original parameter for the bulk modulus of elasticity
 conductivity_model =
     PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
 retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a)
-plant_ν = FT(8.93e-4)
+plant_ν = FT(8.93e-3)
 plant_S_s = FT(1e-2 * 0.0098) # m3/m3/MPa to m3/m3/m
 rooting_depth = FT(2.6) # from Bonan Table 2.3
 z0_m = FT(0.13) * h_canopy

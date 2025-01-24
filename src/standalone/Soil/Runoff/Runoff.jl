@@ -335,13 +335,15 @@ account the temperature dependence of the viscosity of water.
 function soil_infiltration_capacity(model::EnergyHydrology, Y, p)
     (; K_sat, θ_r, Ω, γ, γT_ref) = model.parameters
     surface_space = model.domain.space.surface
+    ψ_sfc = ClimaLand.Domains.top_center_to_surface(p.soil.ψ)
     @. p.soil.subsfc_scratch =
         -K_sat *
         ClimaLand.Soil.impedance_factor(
             Y.soil.θ_i / (p.soil.θ_l + Y.soil.θ_i - θ_r),
             Ω,
         ) *
-        ClimaLand.Soil.viscosity_factor(p.soil.T, γ, γT_ref)
+        ClimaLand.Soil.viscosity_factor(p.soil.T, γ, γT_ref) *
+        (1 - ψ_sfc / model.domain.fields.Δz_top)
     return ClimaLand.Domains.top_center_to_surface(p.soil.subsfc_scratch)
 end
 

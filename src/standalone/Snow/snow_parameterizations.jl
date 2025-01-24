@@ -15,13 +15,11 @@ export snow_surface_temperature,
 """
     snow_cover_fraction(x::FT; α = FT(1e-3))::FT where {FT}
 
-Returns the snow cover fraction, assuming it is a heaviside
-function at 1e-3 meters.
-
-In the future we can play around with other forms.
+Returns the snow cover fraction from X.
 """
 function snow_cover_fraction(x::FT; α = FT(1e-3))::FT where {FT}
-    return heaviside(x - α)
+    x̃ = (x / FT(0.1))^2
+    return min(2 * x̃ / (x̃ + 1), 1)
 end
 
 """
