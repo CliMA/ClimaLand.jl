@@ -346,7 +346,7 @@ swc, soil_T, si = [
     ClimaLand.Diagnostics.diagnostic_as_vectors(
         d_writer,
         diag_name;
-        layer = 20, #surface layer
+        layer = nelements, #surface layer
     )[2][(N_spinup_days * 24):end] for diag_name in hourly_diag_name_2D
 ]
 dt_save = 3600.0 # hourly diagnostics

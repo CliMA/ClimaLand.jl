@@ -866,4 +866,15 @@ function define_diagnostics!(land_model)
             compute_snow_water_equivalent!(out, Y, p, t, land_model),
     )
 
+    # Snow depth
+    add_diagnostic_variable!(
+        short_name = "snd",
+        long_name = "Snow depth",
+        standard_name = "snow_depth",
+        units = "m",
+        comments = "The snow depth",
+        compute! = (out, Y, p, t) ->
+            compute_snow_depth!(out, Y, p, t, land_model),
+    )
+
 end

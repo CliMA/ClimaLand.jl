@@ -109,7 +109,10 @@ import ClimaLand.Parameters as LP
         model.parameters,
     )
     @test p.snow.T_sfc == @. snow_surface_temperature(p.snow.T)
-
+    @test p.snow.snow_cover_fraction == @. min(
+        2 * p.snow.z_snow ./ FT(0.1) / (p.snow.z_snow ./ FT(0.1) + 1),
+        FT(1),
+    )
     ρ_sfc = ClimaLand.surface_air_density(
         model.boundary_conditions.atmos,
         model,

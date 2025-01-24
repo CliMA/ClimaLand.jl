@@ -68,7 +68,13 @@ function plot_daily_avg(
         ylabel = "$var_name $(unit)",
         title = "$var_name",
     )
-    CairoMakie.lines!(ax, Array(0.5:0.5:24), data_hh_avg[:], label = label)
+    CairoMakie.lines!(
+        ax,
+        Array(0.5:0.5:24),
+        data_hh_avg[:],
+        label = label,
+        color = "blue",
+    )
     axislegend(ax, position = :lt)
     CairoMakie.save(joinpath(savedir, "$(var_name)_avg.png"), fig)
 end
@@ -107,10 +113,106 @@ function plot_avg_comp(
         ylabel = "$var_name $(units)",
         title = "$var_name: RMSD = $(round(RMSD, digits = 2)), R² = $(round(R²[1][1], digits = 2))",
     )
-    CairoMakie.lines!(ax, Array(0.5:0.5:24), model_hh_avg[:], label = "Model")
+    CairoMakie.lines!(
+        ax,
+        Array(0.5:0.5:24),
+        model_hh_avg[:],
+        label = "Model",
+        color = "blue",
+    )
 
-    CairoMakie.lines!(ax, Array(0.5:0.5:24), data_hh_avg[:], label = "Data")
+    CairoMakie.lines!(
+        ax,
+        Array(0.5:0.5:24),
+        data_hh_avg[:],
+        label = "Data",
+        color = "yellow",
+    )
     axislegend(ax, position = :lt)
 
     CairoMakie.save(joinpath(savedir, "$(var_name)_avg.png"), fig)
+end
+
+"""
+This function will be used to plot the comparison of the monthly average of a 
+variable between the model and the data. Saves the plot to the directory
+specified by savedir.
+"""
+function plot_monthly_avg_comp(
+    var_name::String,
+    ref_time,
+    model::Vector,
+    model_times::Vector,
+    data::Vector,
+    data_times::Vector,
+    units::String,
+    savedir::String,
+)
+    model_avg = compute_monthly_avg(model, model_times)
+    data_avg = compute_monthly_avg(data, data_times)
+
+    # Plot the model and data monthly cycles
+    fig = CairoMakie.Figure(size = (800, 400))
+    ax = CairoMakie.Axis(
+        fig[1, 1],
+        xlabel = "Month of Year",
+        ylabel = "$var_name $(units)",
+        xticks = (
+            1:1:12,
+            [
+                "Jan",
+                "Feb",
+                "Mar",
+                "Apr",
+                "May",
+                "Jun",
+                "Jul",
+                "Aug",
+                "Sep",
+                "Oct",
+                "Nov",
+                "Dev",
+            ],
+        ),
+    )
+
+    CairoMakie.lines!(
+        ax,
+        Array(1:1:12),
+        model_avg[:],
+        label = "Model",
+        color = "blue",
+    )
+
+    CairoMakie.lines!(
+        ax,
+        Array(1:1:12),
+        data_avg[:],
+        label = "Data",
+        color = "yellow",
+    )
+    axislegend(ax, position = :lt)
+
+    CairoMakie.save(joinpath(savedir, "$(var_name)_monthly_avg.png"), fig)
+end
+
+"""
+    compute_monthly_avg(data::Vector, times::Vector, ref_date::Dates.DateTime)
+
+Computes the average per month of the `data` measured at `times`, where `times` is in units of seconds past the reference date `ref_date`.
+"""
+function compute_monthly_avg(
+    data::Vector,
+    times::Vector,
+    ref_date::Dates.DateTime,
+)
+    months = Dates.month.(ref_date .+ Dates.Second.(times))
+    # group by month
+    unique_months = unique(months)
+    output = zeros(length(unique_months))
+    for i in unique_months
+        mask = months .== i
+        output[i] = mean(data[mask])
+    end
+    return output, months
 end

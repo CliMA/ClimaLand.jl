@@ -14,7 +14,10 @@ h_leaf = FT(9.5) # m
 # TIME STEPPING:
 t0 = Float64(120 * 3600 * 24)# start mid year
 dt = Float64(150)
-
+dz_tuple = (dz_bottom, dz_top)
+nelements = 20
+zmin = FT(-10)
+zmax = FT(0)
 timestepper = CTS.ARS111()
 # Select conv. condition based on float type due to different precision
 err = (FT == Float64) ? 1e-8 : 1e-4

@@ -172,7 +172,9 @@ end
         model.domain.depth .- p.soil.h∇,
     )
     ic = ClimaLand.Soil.Runoff.soil_infiltration_capacity(model, Y, p)
-    @test ic == ClimaCore.Fields.zeros(surface_space) .- FT(1e-6) #Ksat
+    ψ_sfc = ClimaLand.Domains.top_center_to_surface(p.soil.ψ)
+    Δz_top = domain.fields.Δz_top
+    @test all(parent(ic) .≈ parent(@. -FT(1e-6) * (1 - ψ_sfc / Δz_top)))
     @test p.soil.infiltration ==
           @. ClimaLand.Soil.Runoff.topmodel_surface_infiltration(
         p.soil.h∇,
@@ -256,7 +258,9 @@ end
     set_initial_cache! = make_set_initial_cache(model)
     set_initial_cache!(p, Y, FT(0))
     ic = ClimaLand.Soil.Runoff.soil_infiltration_capacity(model, Y, p)
-    @test ic == ClimaCore.Fields.zeros(surface_space) .- FT(1e-6) #Ksat
+    ψ_sfc = ClimaLand.Domains.top_center_to_surface(p.soil.ψ)
+    Δz_top = domain.fields.Δz_top
+    @test all(parent(ic) .≈ parent(@. -FT(1e-6) * (1 - ψ_sfc / Δz_top)))
     @test p.soil.infiltration ==
           ClimaLand.Soil.Runoff.surface_infiltration.(
         ic,
