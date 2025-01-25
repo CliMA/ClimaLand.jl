@@ -383,7 +383,7 @@ end
 function setup_and_solve_problem(; greet = false)
 
     t0 = 0.0
-    tf = 60 * 60.0 * 24 * 365 * 2
+    tf = 60 * 60.0 * 24 * 31 # 31 days
     Δt = 450.0
     nelements = (101, 15)
     if greet
@@ -412,16 +412,20 @@ setup_and_solve_problem(; greet = true);
 # read in diagnostics and make some plots!
 #### ClimaAnalysis ####
 simdir = ClimaAnalysis.SimDir(outdir)
-short_names = ["gpp", "swc", "et", "ct"]
+short_names = ["gpp", "swc", "et", "ct", "sco2"]
 mktempdir(root_path) do tmpdir
     for short_name in short_names
         var = get(simdir; short_name)
         N = length(ClimaAnalysis.times(var))
-        times = [
-            ClimaAnalysis.times(var)[1],
-            ClimaAnalysis.times(var)[div(N, 2, RoundNearest)],
-            ClimaAnalysis.times(var)[N],
-        ]
+        if N > 1 # multiple times
+            times = [
+                ClimaAnalysis.times(var)[1],
+                ClimaAnalysis.times(var)[div(N, 2, RoundNearest)],
+                ClimaAnalysis.times(var)[N],
+            ]
+        else # only one time
+            times = ClimaAnalysis.times(var)[1]
+        end
         for t in times
             fig = CairoMakie.Figure(size = (600, 400))
             kwargs = ClimaAnalysis.has_altitude(var) ? Dict(:z => 1) : Dict()
