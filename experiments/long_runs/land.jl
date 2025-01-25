@@ -412,7 +412,7 @@ setup_and_solve_problem(; greet = true);
 # read in diagnostics and make some plots!
 #### ClimaAnalysis ####
 simdir = ClimaAnalysis.SimDir(outdir)
-short_names = ["gpp", "swc", "et", "ct"]
+short_names = ["gpp", "swc", "et", "ct", "sco2"]
 mktempdir(root_path) do tmpdir
     for short_name in short_names
         var = get(simdir; short_name)
