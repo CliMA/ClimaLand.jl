@@ -133,7 +133,11 @@ function plot_avg_comp(
     CairoMakie.save(joinpath(savedir, "$(var_name)_avg.png"), fig)
 end
 
-
+"""
+This function will be used to plot the comparison of the monthly average of a 
+variable between the model and the data. Saves the plot to the directory
+specified by savedir.
+"""
 function plot_monthly_avg_comp(
     var_name::String,
     ref_time,
@@ -174,9 +178,14 @@ function plot_monthly_avg_comp(
     CairoMakie.save(joinpath(savedir, "$(var_name)_monthly_avg.png"), fig)
 end
 
-function compute_monthly_avg(data, times, ref_time)
-    months = Dates.month.(ref_time .+ Dates.Second.(times))
-    # group by - not optimized
+"""
+    compute_monthly_avg(data::Vector, times::Vector, ref_date::Dates.Date)
+
+Computes the average per month of the `data` measured at `times`, where `times` is in units of seconds past the reference date `ref_date`.
+"""
+function compute_monthly_avg(data::Vector, times::Vector, ref_date::Dates.Date)
+    months = Dates.month.(ref_date .+ Dates.Second.(times))
+    # group by month
     unique_months = unique(months)
     output = zeros(length(unique_months))
     for i in unique_months
