@@ -27,7 +27,7 @@ soil_vg_α = FT(0.05) # inverse meters
 ν_ss_om = FT(0.1)
 ν_ss_gravel = FT(0.0);
 z_0m_soil = FT(0.01)
-z_0b_soil = FT(0.001)
+z_0b_soil = FT(0.01)
 soil_ϵ = FT(0.98)
 soil_α_PAR = FT(0.2)
 soil_α_NIR = FT(0.2)
@@ -52,14 +52,14 @@ Drel = FT(1.6)
 g0 = FT(1e-4)
 
 #Photosynthesis model
-Vcmax25 = FT(4.5e-5) # from Yujie's paper 4.5e-5
+Vcmax25 = FT(6e-5) # from Yujie's paper 4.5e-5
 
 # Plant Hydraulics and general plant parameters
-pc = FT(-2.5e6)
+pc = FT(-2.0e6)
 sc = FT(5e-6)
 SAI = FT(1.0) # m2/m2 or: estimated from Wang et al, FT(0.00242) ?
 f_root_to_shoot = FT(3.5)
-K_sat_plant = 3e-9 # m/s 
+K_sat_plant = 7e-8 # m/s 
 ψ63 = FT(-4 / 0.0098) # / MPa to m, Holtzman's original parameter value is -4 MPa
 Weibull_param = FT(4) # unitless, Holtzman's original c param value
 a = FT(0.1 * 0.0098) # Holtzman's original parameter for the bulk modulus of elasticity

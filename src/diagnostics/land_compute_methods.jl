@@ -432,6 +432,7 @@ end
 @diagnostic_compute "soil_internal_energy" Union{SoilCanopyModel, LandModel} Y.soil.ρe_int
 
 @diagnostic_compute "snow_water_equivalent" LandModel Y.snow.S
+@diagnostic_compute "snow_depth" LandModel p.snow.z_snow
 
 ### EnergyHydrology ###
 
