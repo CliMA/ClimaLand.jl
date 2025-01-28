@@ -179,11 +179,11 @@ function plot_monthly_avg_comp(
 end
 
 """
-    compute_monthly_avg(data::Vector, times::Vector, ref_date::Dates.Date)
+    compute_monthly_avg(data::Vector, times::Vector, ref_date::Dates.DateTime)
 
 Computes the average per month of the `data` measured at `times`, where `times` is in units of seconds past the reference date `ref_date`.
 """
-function compute_monthly_avg(data::Vector, times::Vector, ref_date::Dates.Date)
+function compute_monthly_avg(data::Vector, times::Vector, ref_date::Dates.DateTime)
     months = Dates.month.(ref_date .+ Dates.Second.(times))
     # group by month
     unique_months = unique(months)
