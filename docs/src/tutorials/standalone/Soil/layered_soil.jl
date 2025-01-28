@@ -7,9 +7,9 @@
 # Alberta, Canada. We thank Mingbin Huang and S. Lee Barbour for
 # correspondence and support, including sharing of data, with us.
 # Note that all data used in this tutorial is available in their
-# publication.
+# publication or included on this branch.
 
-using Plots
+using CairoMakie
 import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
 import SciMLBase
 import ClimaTimeSteppers as CTS
@@ -32,7 +32,7 @@ dt = Float64(30);
 # Define the domain
 zmax = FT(0)
 zmin = FT(-1.1)
-nelems = 75
+nelems = 50
 Δ = FT((zmax - zmin) / nelems / 2)
 soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems);
 
@@ -83,12 +83,9 @@ params = ClimaLand.Soil.RichardsParameters(;
 # From here on out, everything should look familiar if you've already gone
 # through the other soil tutorials.
 # Set Boundary conditions:
-# At the top, we use the observed value of Ksat at the top of the domain.
-# Setting the flux to be -Ksat is approximating the top as saturated.
-function top_flux_function(p, t)
-    return -0.0001033
-end
-top_bc = ClimaLand.Soil.WaterFluxBC(top_flux_function)
+# At the top, we set moisture to equivalent of 5cm hydraulic head
+# The bottom is free drainage
+top_bc = ClimaLand.Soil.MoistureStateBC((p, t) -> 0.46705)
 bottom_bc = ClimaLand.Soil.FreeDrainage()
 boundary_fluxes = (; top = top_bc, bottom = bottom_bc)
 soil = Soil.RichardsModel{FT}(;
@@ -98,15 +95,27 @@ soil = Soil.RichardsModel{FT}(;
     sources = (),
 );
 
-# create function to initialize the state vectors
-function set_ic!(Y, p, t0, model)
-    Y.soil.ϑ_l .= 0.0353 # read from Figure 4 of Huang et al.
+# Initial conditions read from data
+data = readdlm("./docs/src/tutorials/standalone/Soil/sv_62_measurements.csv", ',')
+data_z = Float64.(-1 .* data[2:end, 1]) ./ 100
+data_ic = Float64.(data[2:end, 2])
+data_8min = Float64.(data[2:end, 3])
+data_16min = Float64.(data[2:end, 4])
+data_24min = Float64.(data[2:end, 5])
+data_32min = Float64.(data[2:end, 6])
+data_40min = Float64.(data[2:end, 7])
+data_60min = Float64.(data[2:end, 8])
+function set_ic!(Y,p,t0,model; data_z, data_ic)
+    Y.soil.ϑ_l .= SpaceVaryingInput(
+        reverse(data_z),
+        reverse(data_ic),
+        axes(Y.soil.ϑ_l))
 end
+set_ic!(Y,p,t0,model) = set_ic!(Y,p,t0,model;data_z, data_ic)
 
 # Timestepping:
 stepper = CTS.ARS111()
-@assert FT in (Float32, Float64)
-err = (FT == Float64) ? 1e-8 : 1e-4
+err = 1e-8
 convergence_cond = CTS.MaximumError(err)
 conv_checker = CTS.ConvergenceChecker(norm_condition = convergence_cond)
 ode_algo = CTS.IMEXAlgorithm(
@@ -131,28 +140,112 @@ simulation = LandSimulation(
 );
 sol = solve!(simulation);
 
-z = parent(ClimaCore.Fields.coordinate_field(soil_domain.space.subsurface).z)
+z = parent(ClimaCore.Fields.coordinate_field(soil_domain.space.subsurface).z)[:]
 ϑ_l = [parent(sol.u[k].soil.ϑ_l) for k in 1:length(sol.t)]
-plot(ϑ_l[1], z, label = "initial", color = "grey", aspect_ratio = 0.8)
-plot!(ϑ_l[2], z, label = "8min", color = "orange")
-plot!(ϑ_l[3], z, label = "16min", color = "red")
-plot!(ϑ_l[4], z, label = "24min", color = "teal")
-plot!(ϑ_l[5], z, label = "32min", color = "blue")
-plot!(ϑ_l[6], z, label = "40min", color = "purple")
-plot!(ϑ_l[7], z, label = "60min", color = "green")
-scatter!(porosity, depth, label = "Porosity")
-plot!(legend = :bottomright)
 
-plot!(xlim = [0, 0.7])
+# Hydrus data
 
-plot!(
-    ylim = [-1.1, 0],
+hydrus = readdlm("./docs/src/tutorials/standalone/Soil/sv_62_hydrus.csv", ',')
+hydrus_z = Float64.(-1 .* hydrus[2:end, 1]) ./ 100
+hydrus_ic = Float64.(hydrus[2:end, 2])
+hydrus_8min = Float64.(hydrus[2:end, 3])
+hydrus_16min = Float64.(hydrus[2:end, 4])
+hydrus_24min = Float64.(hydrus[2:end, 5])
+hydrus_32min = Float64.(hydrus[2:end, 6])
+hydrus_40min = Float64.(hydrus[2:end, 7])
+hydrus_60min = Float64.(hydrus[2:end, 8])
+
+
+fig = CairoMakie.Figure(size = (600, 800), fontsize = 30)
+ax = CairoMakie.Axis(
+    fig[1, 1],
+    xlabel = "Volumetric Water Content",
+    ylabel = "Depth (m)",
+    xgridvisible = false,
+    ygridvisible = false,
     yticks = [-1.1, -1, -0.9, -0.8, -0.7, -0.6, -0.5, -0.4, -0.3, -0.2, -0.1],
 )
+lines!(ax, ϑ_l[1][:], z, label = "ClimaLand", color = "black", linewidth=3)
+lines!(ax, ϑ_l[2][:], z, color = "blue", linewidth=3)
+lines!(ax, ϑ_l[3][:], z, color = "green", linewidth=3)
+lines!(ax, ϑ_l[4][:], z, color = "orange", linewidth=3)
+lines!(ax, ϑ_l[5][:], z, color = "purple", linewidth=3)
+lines!(ax, ϑ_l[6][:], z, color = "cyan", linewidth=3)
+lines!(ax, ϑ_l[7][:], z, color = "brown", linewidth=3)
 
-plot!(ylabel = "Depth (m)")
+lines!(
+    ax,
+    hydrus_ic,
+    hydrus_z,
+    label = "Hydrus",
+    color = "black",
+    linestyle = :dash,
+)
+lines!(ax, hydrus_8min, hydrus_z, color = "blue", linestyle = :dash, linewidth=3)
+lines!(ax, hydrus_16min, hydrus_z, color = "green", linestyle = :dash, linewidth=3)
+lines!(ax, hydrus_24min, hydrus_z, color = "orange", linestyle = :dash, linewidth=3)
+lines!(ax, hydrus_32min, hydrus_z, color = "purple", linestyle = :dash, linewidth=3)
+lines!(ax, hydrus_40min, hydrus_z, color = "cyan", linestyle = :dash, linewidth=3)
+lines!(ax, hydrus_60min, hydrus_z, color = "brown", linestyle = :dash, linewidth=3)
 
-plot!(xlabel = "Volumeteric Water Content")
+scatter!(
+    ax,
+    data_ic,
+    data_z,
+    label = "0 min",
+    color = "black",
+    marker = :xcross,
+)
+scatter!(
+    ax,
+    data_8min,
+    data_z,
+    color = "blue",
+    label = "8 min",
+    marker = :xcross,
+)
+scatter!(
+    ax,
+    data_16min,
+    data_z,
+    color = "green",
+    label = "16 min",
+    marker = :xcross,
+)
+scatter!(
+    ax,
+    data_24min,
+    data_z,
+    color = "orange",
+    label = "24 min",
+    marker = :xcross,
+)
+scatter!(
+    ax,
+    data_32min,
+    data_z,
+    color = "purple",
+    label = "32 min",
+    marker = :xcross,
+)
+scatter!(
+    ax,
+    data_40min,
+    data_z,
+    color = "cyan",
+    label = "40 min",
+    marker = :xcross,
+)
+scatter!(
+    ax,
+    data_60min,
+    data_z,
+    color = "brown",
+    label = "60 min",
+    marker = :xcross,
+)
+axislegend(ax, position = :rb, framevisible=false)
+limits!(ax, 0, 0.7, -1.1, 0)
 
-savefig("./sv62_alpha_2_inf_updated_data_climaland.png")
-# ![](sv62_alpha_2_inf_updated_data_climaland.png)
+CairoMakie.save("./sv62_alpha_2_inf_updated_data_climaland_moisturebc.png", fig)
+# ![](sv62_alpha_2_inf_updated_data_climaland_moisturebc.png)
