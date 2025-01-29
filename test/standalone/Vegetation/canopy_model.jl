@@ -265,7 +265,7 @@ import ClimaParams
             jacobian! = ClimaLand.make_jacobian(canopy)
             # set up jacobian info
             jac_kwargs = (;
-                jac_prototype = ImplicitEquationJacobian(Y),
+                jac_prototype = ClimaLand.FieldMatrixWithSolver(Y),
                 Wfact = jacobian!,
             )
 
@@ -814,7 +814,7 @@ end
             jacobian! = ClimaLand.make_jacobian(canopy)
             # set up jacobian info
             jac_kwargs = (;
-                jac_prototype = ImplicitEquationJacobian(Y),
+                jac_prototype = ClimaLand.FieldMatrixWithSolver(Y),
                 Wfact = jacobian!,
             )
 
@@ -1073,7 +1073,7 @@ end
             )
         dY = similar(Y)
         imp_tendency!(dY, Y, p, t0)
-        jac = ImplicitEquationJacobian(Y)
+        jac = ClimaLand.FieldMatrixWithSolver(Y)
         jacobian!(jac, Y, p, FT(1), t0)
         jac_value = jac.matrix[@name(canopy.energy.T), @name(canopy.energy.T)]
         ΔT = FT(0.01)

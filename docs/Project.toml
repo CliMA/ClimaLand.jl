@@ -37,7 +37,7 @@ cuDNN = "02a925ec-e4fe-4b08-9a7e-0d78e3d38ccd"
 
 [compat]
 CSV = "0.10"
-ClimaTimeSteppers = "0.7"
+ClimaTimeSteppers = "0.7, 0.8"
 DataFrames = "1.6"
 Flux = "0.14"
 HTTP = "1.10"

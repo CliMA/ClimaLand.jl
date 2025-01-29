@@ -84,9 +84,3 @@ ClimaLand.Soil.soil_boundary_fluxes!
 ClimaLand.Soil.AbstractSoilSource
 ClimaLand.Soil.PhaseChange
 ```
-
-## Soil Jacobian Structures
-
-```@docs
-ClimaLand.Soil.ImplicitEquationJacobian
-```

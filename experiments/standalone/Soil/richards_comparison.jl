@@ -91,8 +91,10 @@ outdir = generate_output_path(
         )
 
         # set up jacobian info
-        jac_kwargs =
-            (; jac_prototype = ImplicitEquationJacobian(Y), Wfact = jacobian!)
+        jac_kwargs = (;
+            jac_prototype = ClimaLand.FieldMatrixWithSolver(Y),
+            Wfact = jacobian!,
+        )
 
         prob = SciMLBase.ODEProblem(
             CTS.ClimaODEFunction(
@@ -191,8 +193,10 @@ end
             ),
         )
         # set up jacobian info
-        jac_kwargs =
-            (; jac_prototype = ImplicitEquationJacobian(Y), Wfact = jacobian!)
+        jac_kwargs = (;
+            jac_prototype = ClimaLand.FieldMatrixWithSolver(Y),
+            Wfact = jacobian!,
+        )
 
         prob = SciMLBase.ODEProblem(
             CTS.ClimaODEFunction(

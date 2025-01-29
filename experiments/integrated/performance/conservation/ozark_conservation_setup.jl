@@ -187,7 +187,7 @@ jacobian! = make_jacobian(land);
 set_initial_cache! = make_set_initial_cache(land)
 Y, p, cds = initialize(land)
 jac_kwargs =
-    (; jac_prototype = ClimaLand.ImplicitEquationJacobian(Y), Wfact = jacobian!);
+    (; jac_prototype = ClimaLand.FieldMatrixWithSolver(Y), Wfact = jacobian!);
 
 #Initial conditions
 Y.soil.ϑ_l = drivers.SWC.values[1 + Int(round(t0 / 1800))] # Get soil water content at t0

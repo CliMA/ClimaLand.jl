@@ -163,7 +163,7 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
 
     # set up jacobian info
     jac_kwargs = (;
-        jac_prototype = ClimaLand.Soil.ImplicitEquationJacobian(Y),
+        jac_prototype = ClimaLand.FieldMatrixWithSolver(Y),
         Wfact = jacobian!,
     )
 

@@ -354,7 +354,13 @@ Using this Jacobian with a backwards Euler timestepper is equivalent
 to using the modified Picard scheme of Celia et al. (1990).
 """
 function ClimaLand.make_compute_jacobian(model::RichardsModel{FT}) where {FT}
-    function compute_jacobian!(jacobian::ImplicitEquationJacobian, Y, p, dtγ, t)
+    function compute_jacobian!(
+        jacobian::MatrixFields.FieldMatrixWithSolver,
+        Y,
+        p,
+        dtγ,
+        t,
+    )
         (; matrix) = jacobian
         (; ν, hydrology_cm, S_s, θ_r) = model.parameters
 

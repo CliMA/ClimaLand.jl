@@ -226,7 +226,7 @@ function run_fluxnet(
     imp_tendency! = make_imp_tendency(land)
     jacobian! = make_jacobian(land)
     jac_kwargs = (;
-        jac_prototype = ClimaLand.ImplicitEquationJacobian(Y),
+        jac_prototype = ClimaLand.FieldMatrixWithSolver(Y),
         Wfact = jacobian!,
     )
 

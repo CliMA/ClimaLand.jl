@@ -261,7 +261,8 @@ ode_algo = CTS.IMEXAlgorithm(
     ),
 );
 
-jac_kwargs = (; jac_prototype = ImplicitEquationJacobian(Y), Wfact = jacobian!);
+jac_kwargs =
+    (; jac_prototype = ClimaLand.FieldMatrixWithSolver(Y), Wfact = jacobian!);
 
 prob = SciMLBase.ODEProblem(
     CTS.ClimaODEFunction(

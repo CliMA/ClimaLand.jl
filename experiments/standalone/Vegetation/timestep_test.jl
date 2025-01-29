@@ -231,7 +231,7 @@ for dt in dts
     # Initialize model before each simulation
     Y, p, coords = ClimaLand.initialize(canopy)
     jac_kwargs = (;
-        jac_prototype = ClimaLand.ImplicitEquationJacobian(Y),
+        jac_prototype = ClimaLand.FieldMatrixWithSolver(Y),
         Wfact = jacobian!,
     )
 
