@@ -4,6 +4,19 @@ ClimaLand.jl Release Notes
 main
 -------
 
+
+v0.15.9
+-------
+- Remove `ImplicitEquationJacobian` and use
+  `ClimaCore.MatrixFields.FieldMatrixWithSolver` instead
+  PR[#996](https://github.com/CliMA/ClimaLand.jl/pull/996)
+- Add global seasonal plots for long runs
+  PR[#923](https://github.com/CliMA/ClimaLand.jl/pull/923)
+- Various snow model changes
+  PR[#965](https://github.com/CliMA/ClimaLand.jl/pull/965)
+  PR[#989](https://github.com/CliMA/ClimaLand.jl/pull/989)
+  PR[#988](https://github.com/CliMA/ClimaLand.jl/pull/988)
+
 v0.15.8
 -------
 - Add `soilco2.C` to `:short` default diagnostics
