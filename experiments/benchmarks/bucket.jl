@@ -197,6 +197,7 @@ std_timing_s = round(
 @info "Max time: $(max_timing_s) s"
 @info "Min time: $(min_timing_s) s"
 @info "Standard deviation time: $(std_timing_s) s"
+@info "Timings: $timings_s"
 @info "Done profiling"
 
 prob, ode_algo, Δt, cb = setup_simulation()
