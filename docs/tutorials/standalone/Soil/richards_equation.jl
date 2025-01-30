@@ -185,7 +185,8 @@ ode_algo = CTS.IMEXAlgorithm(
 );
 
 # Here we set up the information used for our Jacobian.
-jac_kwargs = (; jac_prototype = ImplicitEquationJacobian(Y), Wfact = jacobian!);
+jac_kwargs =
+    (; jac_prototype = ClimaLand.FieldMatrixWithSolver(Y), Wfact = jacobian!);
 
 # And then we can solve the system of equations, using
 # [SciMLBase.jl](https://github.com/SciML/SciMLBase.jl) and

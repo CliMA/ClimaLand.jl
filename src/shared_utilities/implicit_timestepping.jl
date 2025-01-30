@@ -5,8 +5,7 @@ import LinearAlgebra
 import LinearAlgebra: I
 
 export make_jacobian,
-    make_compute_jacobian, set_dfluxBCdY!, ImplicitEquationJacobian
-
+    make_compute_jacobian, set_dfluxBCdY!, FieldMatrixWithSolver
 
 """
    make_jacobian(model::AbstractModel)
@@ -71,30 +70,11 @@ function set_dfluxBCdY!(
 )::Union{ClimaCore.Fields.FieldVector, Nothing} end
 
 """
-    ImplicitEquationJacobian{M, S}
+    FieldMatrixWithSolver(Y::ClimaCore.Fields.FieldVector)
 
-A struct containing the necessary information for constructing a block
-Jacobian matrix used for implicit timestepping.
-
-`matrix` is a block matrix containing one block on the diagonal for each
-    variable in the model.
-`solver` is a diagonal solver because our matrix is block diagonal.
-
-Note that the diagonal, upper diagonal, and lower diagonal entry values
-are stored in this struct and updated in place.
-"""
-struct ImplicitEquationJacobian{M, S}
-    "Jacobian matrix stored as a MatrixFields.FieldMatrix"
-    matrix::M
-    "Solver to use for solving the matrix system"
-    solver::S
-end
-
-"""
-    ImplicitEquationJacobian(Y::ClimaCore.Fields.FieldVector)
-
-Outer constructor for the ImplicitEquationJacobian Jacobian
-matrix struct.
+Outer constructor for the FieldMatrixWithSolver Jacobian
+matrix struct. This extends the constructor from ClimaCore.FieldMatrix,
+filling the object with ClimaLand-specific values.
 
 For variables that will be stepped implicitly, the Jacobian matrix
 is a tridiagonal matrix. For variables that will be stepped explicitly,
@@ -106,7 +86,7 @@ All implicitly-stepped variables of the model should be added to the
 `implicit_names` tuple, and any explicitly-stepped variables should be added
 to the `explicit_names` tuple.
 """
-function ImplicitEquationJacobian(Y::ClimaCore.Fields.FieldVector)
+function FieldMatrixWithSolver(Y::ClimaCore.Fields.FieldVector)
     FT = eltype(Y)
     # Only add jacobian blocks for fields that are in Y for this model
     is_in_Y(var) = MatrixFields.has_field(Y, var)
@@ -195,15 +175,5 @@ function ImplicitEquationJacobian(Y::ClimaCore.Fields.FieldVector)
     end
     solver = MatrixFields.FieldMatrixSolver(alg, matrix, Y)
 
-    return ImplicitEquationJacobian(matrix, solver)
-end
-
-Base.similar(w::ImplicitEquationJacobian) = w
-
-function LinearAlgebra.ldiv!(
-    x::Fields.FieldVector,
-    A::ImplicitEquationJacobian,
-    b::Fields.FieldVector,
-)
-    MatrixFields.field_matrix_solve!(A.solver, x, A.matrix, b)
+    return MatrixFields.FieldMatrixWithSolver(matrix, solver)
 end

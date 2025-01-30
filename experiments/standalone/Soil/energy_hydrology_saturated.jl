@@ -67,7 +67,8 @@ set_initial_cache! = make_set_initial_cache(soil)
 exp_tendency! = make_exp_tendency(soil)
 imp_tendency! = make_imp_tendency(soil);
 jacobian! = ClimaLand.make_jacobian(soil);
-jac_kwargs = (; jac_prototype = ImplicitEquationJacobian(Y), Wfact = jacobian!);
+jac_kwargs =
+    (; jac_prototype = ClimaLand.FieldMatrixWithSolver(Y), Wfact = jacobian!);
 
 function hydrostatic_equilibrium(z, z_interface, params)
     (; ν, S_s, hydrology_cm) = params

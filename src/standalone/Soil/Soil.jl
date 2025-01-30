@@ -71,7 +71,6 @@ import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
 import ClimaLand.Domains: Column, HybridBox, SphericalShell
 import ClimaLand:
     AbstractImExModel,
-    ImplicitEquationJacobian,
     make_update_aux,
     make_compute_exp_tendency,
     make_compute_imp_tendency,

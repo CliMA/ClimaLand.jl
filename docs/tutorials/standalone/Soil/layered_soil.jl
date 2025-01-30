@@ -125,7 +125,8 @@ exp_tendency! = make_exp_tendency(soil)
 imp_tendency! = make_imp_tendency(soil)
 jacobian! = make_jacobian(soil)
 
-jac_kwargs = (; jac_prototype = ImplicitEquationJacobian(Y), Wfact = jacobian!)
+jac_kwargs =
+    (; jac_prototype = ClimaLand.FieldMatrixWithSolver(Y), Wfact = jacobian!)
 prob = SciMLBase.ODEProblem(
     CTS.ClimaODEFunction(
         T_exp! = exp_tendency!,

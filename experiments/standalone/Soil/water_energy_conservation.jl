@@ -143,8 +143,10 @@ for experiment in [no_phase_change, phase_change]
     Y, p, coords = initialize(soil)
     init_soil!(Y, coords.subsurface.z, Trange, soil.parameters)
     set_initial_cache!(p, Y, t0)
-    jac_kwargs =
-        (; jac_prototype = ImplicitEquationJacobian(Y), Wfact = jacobian!)
+    jac_kwargs = (;
+        jac_prototype = ClimaLand.FieldMatrixWithSolver(Y),
+        Wfact = jacobian!,
+    )
 
     prob = SciMLBase.ODEProblem(
         CTS.ClimaODEFunction(
@@ -169,8 +171,10 @@ for experiment in [no_phase_change, phase_change]
         Y, p, coords = initialize(soil)
         init_soil!(Y, coords.subsurface.z, Trange, soil.parameters)
         set_initial_cache!(p, Y, t0)
-        jac_kwargs =
-            (; jac_prototype = ImplicitEquationJacobian(Y), Wfact = jacobian!)
+        jac_kwargs = (;
+            jac_prototype = ClimaLand.FieldMatrixWithSolver(Y),
+            Wfact = jacobian!,
+        )
 
         prob = SciMLBase.ODEProblem(
             CTS.ClimaODEFunction(

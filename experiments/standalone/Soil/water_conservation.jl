@@ -96,8 +96,10 @@ for FT in (Float32, Float64)
         @. Y.soil.ϑ_l = FT(0.24)
         set_initial_cache!(p, Y, FT(0.0))
 
-        jac_kwargs =
-            (; jac_prototype = ImplicitEquationJacobian(Y), Wfact = jacobian!)
+        jac_kwargs = (;
+            jac_prototype = ClimaLand.FieldMatrixWithSolver(Y),
+            Wfact = jacobian!,
+        )
 
         prob = SciMLBase.ODEProblem(
             CTS.ClimaODEFunction(
@@ -226,8 +228,10 @@ for FT in (Float32, Float64)
         @. Y.soil.ϑ_l = FT(0.24)
         set_initial_cache!(p, Y, FT(0.0))
 
-        jac_kwargs =
-            (; jac_prototype = ImplicitEquationJacobian(Y), Wfact = jacobian!)
+        jac_kwargs = (;
+            jac_prototype = ClimaLand.FieldMatrixWithSolver(Y),
+            Wfact = jacobian!,
+        )
 
         prob = SciMLBase.ODEProblem(
             CTS.ClimaODEFunction(

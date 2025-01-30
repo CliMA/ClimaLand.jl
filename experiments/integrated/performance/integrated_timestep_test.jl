@@ -403,7 +403,7 @@ for dt in dts
     # Initialize model and set initial conditions before each simulation
     Y, p = set_initial_conditions(land, t0)
     jac_kwargs = (;
-        jac_prototype = ClimaLand.ImplicitEquationJacobian(Y),
+        jac_prototype = ClimaLand.FieldMatrixWithSolver(Y),
         Wfact = jacobian!,
     )
 

@@ -334,8 +334,10 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     set_initial_cache!(p, Y, t0)
 
     # set up jacobian info
-    jac_kwargs =
-        (; jac_prototype = ImplicitEquationJacobian(Y), Wfact = jacobian!)
+    jac_kwargs = (;
+        jac_prototype = ClimaLand.FieldMatrixWithSolver(Y),
+        Wfact = jacobian!,
+    )
 
     prob = SciMLBase.ODEProblem(
         CTS.ClimaODEFunction(

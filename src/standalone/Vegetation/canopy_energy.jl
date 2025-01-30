@@ -173,7 +173,13 @@ function ClimaLand.make_compute_jacobian(
     model::BigLeafEnergyModel{FT},
     canopy,
 ) where {FT}
-    function compute_jacobian!(jacobian::ImplicitEquationJacobian, Y, p, dtγ, t)
+    function compute_jacobian!(
+        jacobian::MatrixFields.FieldMatrixWithSolver,
+        Y,
+        p,
+        dtγ,
+        t,
+    )
         (; matrix) = jacobian
 
         # The derivative of the residual with respect to the prognostic variable

@@ -165,7 +165,7 @@ exp_tendency! = make_exp_tendency(canopy);
 imp_tendency! = make_imp_tendency(canopy)
 jacobian! = make_jacobian(canopy);
 jac_kwargs =
-    (; jac_prototype = ClimaLand.ImplicitEquationJacobian(Y), Wfact = jacobian!);
+    (; jac_prototype = ClimaLand.FieldMatrixWithSolver(Y), Wfact = jacobian!);
 
 ψ_leaf_0 = FT(-2e5 / 9800)
 
