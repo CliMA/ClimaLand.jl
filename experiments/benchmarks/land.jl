@@ -413,6 +413,7 @@ std_timing_s = round(
     sqrt(sum(((timings_s .- average_timing_s) .^ 2) / num_samples)),
     sigdigits = 3,
 )
+# Runs: 2
 @info "Num samples: $num_samples"
 @info "Average time: $(average_timing_s) s"
 @info "Max time: $(max_timing_s) s"
