@@ -124,11 +124,14 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 7))
     updatefunc = ClimaLand.make_update_drivers(drivers)
 
     # ClimaDiagnostics
-
+    # num_points is the resolution of the output diagnostics
+    # These are currently chosen to get a 1:1 ration with the number of
+    # simulation points, ~101x101x4x4
     nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(
         subsurface_space,
         outdir;
         start_date,
+        num_points = (570, 285, 50),
     )
 
     diags = ClimaLand.default_diagnostics(
