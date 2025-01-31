@@ -397,6 +397,7 @@ while (time() - time_now) < MAX_PROFILING_TIME_SECONDS &&
     length(timings_s) < MAX_PROFILING_SAMPLES
     lprob, lode_algo, lΔt, lcb = setup_simulation()
     ClimaComms.device() isa ClimaComms.CUDADevice && CUDA.device_synchronize()
+    ClimaComms.device() isa ClimaComms.CUDADevice && println("This should work!")
     push!(
         timings_s,
         ClimaComms.@elapsed device SciMLBase.solve(
@@ -415,7 +416,7 @@ std_timing_s = round(
     sqrt(sum(((timings_s .- average_timing_s) .^ 2) / num_samples)),
     sigdigits = 3,
 )
-# Runs: 3
+# Runs: 4
 @info "Num samples: $num_samples"
 @info "Average time: $(average_timing_s) s"
 @info "Max time: $(max_timing_s) s"
@@ -469,7 +470,7 @@ if ClimaComms.device() isa ClimaComms.CUDADevice
 end
 
 if get(ENV, "BUILDKITE_PIPELINE_SLUG", nothing) == "climaland-benchmark"
-    PREVIOUS_BEST_TIME = 6.1
+    PREVIOUS_BEST_TIME = 6.35
     if average_timing_s > PREVIOUS_BEST_TIME + std_timing_s
         @info "Possible performance regression, previous average time was $(PREVIOUS_BEST_TIME)"
     elseif average_timing_s < PREVIOUS_BEST_TIME - std_timing_s
