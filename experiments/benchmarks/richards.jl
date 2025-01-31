@@ -222,9 +222,11 @@ MAX_PROFILING_TIME_SECONDS = 500
 MAX_PROFILING_SAMPLES = 100
 time_now = time()
 timings_s = Float64[]
+ClimaComms.device() isa ClimaComms.CUDADevice && import CUDA
 while (time() - time_now) < MAX_PROFILING_TIME_SECONDS &&
     length(timings_s) < MAX_PROFILING_SAMPLES
     lprob, lode_algo, lΔt, lcb = setup_simulation()
+    ClimaComms.device() isa ClimaComms.CUDADevice && CUDA.device_synchronize()
     push!(
         timings_s,
         ClimaComms.@elapsed device SciMLBase.solve(
@@ -243,7 +245,7 @@ std_timing_s = round(
     sqrt(sum(((timings_s .- average_timing_s) .^ 2) / num_samples)),
     sigdigits = 3,
 )
-# Runs: 2
+# Runs: 3
 @info "Num samples: $num_samples"
 @info "Average time: $(average_timing_s) s"
 @info "Max time: $(max_timing_s) s"
