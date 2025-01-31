@@ -318,6 +318,7 @@ function default_diagnostics(
             "et",
             "sr",
             "swe",
+            "snd",
             "rn",
             "lhf",
             "shf",
@@ -338,6 +339,7 @@ function default_diagnostics(
             "er",
             "sr",
             "swe",
+            "snd",
         ]
     end
 

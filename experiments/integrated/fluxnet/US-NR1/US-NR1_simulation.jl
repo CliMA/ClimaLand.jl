@@ -7,7 +7,10 @@ variables for running the simulation."""
 # Column dimensions - separation of layers at the top and bottom of the column:
 dz_bottom = FT(1.25)
 dz_top = FT(0.05)
-
+dz_tuple = (dz_bottom, dz_top)
+nelements = 20
+zmin = FT(-10)
+zmax = FT(0)
 # Stem and leaf compartments and their heights:
 n_stem = Int64(1)
 n_leaf = Int64(1)
