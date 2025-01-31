@@ -15,8 +15,6 @@ dir = pkgdir(ClimaLand)
 import ClimaCalibrate: forward_model, parameter_path, path_to_ensemble_member
 import ClimaCalibrate as CAL
 using Distributed
-ntasks = 4
-addprocs(CAL.SlurmManager(ntasks))
 
 @everywhere begin
     import ClimaCalibrate: forward_model, parameter_path, path_to_ensemble_member
@@ -27,7 +25,8 @@ addprocs(CAL.SlurmManager(ntasks))
     dir = pkgdir(ClimaLand)
 
     include(joinpath(dir,"experiments/calibration/global_bucket/climacalibrate_bucket/bucket_target_script.jl"))
-    include(joinpath(dir,"experiments/calibration/global_bucket/climacalibrate_bucket/forward_model.jl"))
+    model_interface = joinpath(dir,"experiments/calibration/global_bucket/climacalibrate_bucket/forward_model.jl")
+    # include(model_interface)
 end
 
 # Now we include the script observation_map.jl, which contains two functions:
@@ -63,8 +62,9 @@ caldir = "calibration_output"
 
 # Note: what is the best way to test this?
 # Should this script be run as a slurm job? (I expect it takes ~ 5 hours or so to complete)
+hpc_kwargs = CAL.kwargs(time = 60, ntasks = 1, gpus_per_task = 1, cpus_per_task = 4)
 CAL.calibrate(
-              CAL.WorkerBackend,
+              CAL.ClimaGPUBackend, # or CAL.CaltechHPCBackend
               ensemble_size,
               n_iterations,
               observations,
