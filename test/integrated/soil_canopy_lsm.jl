@@ -11,9 +11,11 @@ using ClimaLand.Soil.Biogeochemistry
 using ClimaLand.Canopy.PlantHydraulics
 for FT in (Float32, Float64)
     @testset "PrognosticSoil, FT = $FT" begin
+        # Discretize radiation into 2 bands
+        λ_bounds = (100e-9, 700e-9, 3000e-9)
+        spectral_discretization = ClimaLand.SpectralDiscretization(λ_bounds)
         # Only care about PAR and NIR albedo values
-        NIR_albedo = FT(0.4)
-        PAR_albedo = FT(0.2)
+        ground_albedo = (0.2, 0.4)
         # setup SoilCanopyModel with dummy params
         earth_param_set = LP.LandParameters(FT)
         radius = FT(6378.1e3)
@@ -50,8 +52,7 @@ for FT in (Float32, Float64)
             K_sat = FT(0),
             S_s = FT(0),
             θ_r = FT(0),
-            NIR_albedo,
-            PAR_albedo,
+            ground_albedo,
             emissivity = FT(0),
             z_0m = FT(0),
             z_0b = FT(0),
@@ -83,10 +84,8 @@ for FT in (Float32, Float64)
             parameters = Canopy.TwoStreamParameters(
                 FT;
                 Ω = FT(0),
-                α_PAR_leaf = FT(0),
-                τ_PAR_leaf = FT(0),
-                α_NIR_leaf = FT(0),
-                τ_NIR_leaf = FT(0),
+                ρ_leaf = (FT(0), FT(0)),
+                τ_leaf = (FT(0), FT(0)),
             )
         )
         conductance_args =
@@ -170,8 +169,7 @@ for FT in (Float32, Float64)
         # initialize model
         Y, p, coords = initialize(model)
         # check that albedos have been added to cache
-        @test haskey(p.soil, :PAR_albedo)
-        @test haskey(p.soil, :NIR_albedo)
+        @test haskey(p.soil, :albedo)
         # initialize cache, then check that albedos are set to the correct values
         set_initial_cache! = make_set_initial_cache(model)
         set_initial_cache!(p, Y, 0.0)
@@ -179,7 +177,7 @@ for FT in (Float32, Float64)
         @test all(
             Array(
                 parent(
-                    Canopy.ground_albedo_PAR(
+                    Canopy.ground_albedo(
                         Val(canopy_bc.prognostic_land_components),
                         canopy_bc.ground,
                         Y,
@@ -187,20 +185,7 @@ for FT in (Float32, Float64)
                         0.0,
                     ),
                 ),
-            ) .== PAR_albedo,
-        )
-        @test all(
-            Array(
-                parent(
-                    Canopy.ground_albedo_NIR(
-                        Val(canopy_bc.prognostic_land_components),
-                        canopy_bc.ground,
-                        Y,
-                        p,
-                        0.0,
-                    ),
-                ),
-            ) .== NIR_albedo,
+            ) .== ground_albedo,
         )
     end
 end

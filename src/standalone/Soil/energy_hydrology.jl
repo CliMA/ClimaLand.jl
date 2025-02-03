@@ -25,6 +25,8 @@ Base.@kwdef struct EnergyHydrologyParameters{
     FT <: AbstractFloat,
     F <: Union{FT, ClimaCore.Fields.Field},
     SF <: Union{FT, ClimaCore.Fields.Field},
+    SD <: SpectralDiscretization,
+    TF <: Union{Tuple, ClimaCore.Fields.Field},
     C,
     PSE,
 }
@@ -62,14 +64,12 @@ Base.@kwdef struct EnergyHydrologyParameters{
     γ::FT
     "Reference temperature for the viscosity factor"
     γT_ref::FT
-    "Soil PAR Albedo dry"
-    PAR_albedo_dry::SF
-    "Soil NIR Albedo dry"
-    NIR_albedo_dry::SF
-    "Soil PAR Albedo wet"
-    PAR_albedo_wet::SF
-    "Soil NIR Albedo wet"
-    NIR_albedo_wet::SF
+    "The spectral discretization for the soil albedo"
+    spectral_discretization::SD
+    "Spectral dry albedo"
+    albedo_dry::TF
+    "Spectral wet albedo"
+    albedo_wet::TF
     "Thickness of top of soil used in albedo calculations (m)"
     albedo_calc_top_thickness::FT
     "Soil Emissivity"
@@ -587,10 +587,8 @@ function ClimaLand.make_update_aux(model::EnergyHydrology)
             κ_sat_unfrozen,
             ρc_ds,
             earth_param_set,
-            PAR_albedo_dry,
-            NIR_albedo_dry,
-            PAR_albedo_wet,
-            NIR_albedo_wet,
+            albedo_dry,
+            albedo_wet,
         ) = model.parameters
 
         @. p.soil.θ_l =

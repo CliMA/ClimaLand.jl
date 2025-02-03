@@ -1,6 +1,6 @@
 using StaticArrays
 export AbstractGroundConditions,
-    PrescribedGroundConditions, ground_albedo_NIR, ground_albedo_PAR
+    PrescribedGroundConditions, ground_albedo_NIR, ground_albedo
 
 """
 An abstract type of ground conditions for the canopy model;
@@ -20,6 +20,7 @@ struct PrescribedGroundConditions{
     FT,
     F1 <: Function,
     F2 <: Function,
+    SD <: SpectralDiscretization,
     VEC <: AbstractArray{FT},
 } <: AbstractGroundConditions
     "The depth of the root tips, in meters"
@@ -28,10 +29,10 @@ struct PrescribedGroundConditions{
     ψ::F1
     "Prescribed ground surface temperature (K) as a function of time"
     T::F2
-    "Ground albedo for PAR"
-    α_PAR::FT
-    "Ground albedo for NIR"
-    α_NIR::FT
+    "Spectral discretization"
+    spectral_discretization::SD
+    "Spectral ground albedo"
+    α_ground::NTuple{length(spectral_discretization.λ) - 1, FT}
     "Ground emissivity"
     ϵ::FT
 end
@@ -75,33 +76,18 @@ function PrescribedGroundConditions(
     )
 end
 
-
 """
-    ground_albedo_PAR(prognostic_land_components::Val{(:canopy,)}, ground::PrescribedGroundConditions, _...)
+    ground_albedo(prognostic_land_components::Val{(:canopy,)}, ground::PrescribedGroundConditions, λ::Float64, _...)
 
-Returns the ground albedo in the PAR for a PrescribedGroundConditions driver. In this case,
+Returns the ground albedo for a PrescribedGroundConditions driver. In this case,
 the prognostic_land_components only contain `:canopy`, because the canopy is being run in standalone
 mode.
 """
-function ground_albedo_PAR(
+function ground_albedo(
     prognostic_land_components::Val{(:canopy,)},
     ground::PrescribedGroundConditions,
+    λ::Float64,
     _...,
 )
-    return ground.α_PAR
-end
-
-"""
-    ground_albedo_NIR(prognostic_land_components::Val{(:canopy,)}, ground::PrescribedGroundConditions, _...)
-
-Returns the ground albedo in the NIR for a PrescribedGroundConditions driver. In this case,
-the prognostic_land_components only contain `:canopy`, because the canopy is being run in standalone
-mode.
-"""
-function ground_albedo_NIR(
-    prognostic_land_components::Val{(:canopy,)},
-    ground::PrescribedGroundConditions,
-    _...,
-)
-    return ground.α_NIR
+    return ground.α_ground
 end
