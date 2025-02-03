@@ -87,3 +87,32 @@ end
 
 @test :G_Function ∈ propertynames(clm_parameters)
 @test axes(getproperty(clm_parameters, :G_Function).χl) == surface_space
+# test `use_lowres_clm` on the sphere domain, and then again with a sphere domain with 2x
+# the horizontal resolution. Then repeat with plane domains.
+@test ClimaLand.use_lowres_clm(surface_space)
+domain = ClimaLand.Domains.SphericalShell(;
+    radius = radius,
+    depth = depth,
+    nelements = (202, 2),
+    npolynomial = 1,
+)
+surface_space = domain.space.surface
+@test !ClimaLand.use_lowres_clm(surface_space)
+domain = ClimaLand.Domains.Plane(;
+    longlat = (-117.0, 34.0),
+    xlim = (0.0, FT(2e6)),
+    ylim = (0.0, 2FT(2e6)),
+    nelements = (10, 10),
+    npolynomial = 1,
+)
+surface_space = domain.space.surface
+@test ClimaLand.use_lowres_clm(surface_space)
+domain = ClimaLand.Domains.Plane(;
+    longlat = (-117.0, 34.0),
+    xlim = (0.0, FT(2e5)),
+    ylim = (0.0, 2FT(2e5)),
+    nelements = (10, 10),
+    npolynomial = 1,
+)
+surface_space = domain.space.surface
+@test !ClimaLand.use_lowres_clm(surface_space)
