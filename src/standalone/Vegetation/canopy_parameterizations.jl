@@ -76,8 +76,7 @@ end
         RT::BeerLambertModel{FT},
         LAI,
         K,
-        α_soil_PAR,
-        α_soil_NIR,
+        α_soil,
         _,
         _,
     )
@@ -90,29 +89,28 @@ soil albedo in the PAR and NIR bands. Returns a
 NamedTuple of NamedTuple, of the form:
 (; par = (; refl = , trans = , abs = ),  nir = (; refl = , trans = , abs = ))
 """
-function compute_fractional_absorbances!(
+function compute_fractional_absorbances(
     p,
     RT::BeerLambertModel{FT},
-    LAI,
+    LAI
     K,
-    α_soil_PAR,
-    α_soil_NIR,
-    _...,
+    α_soil,
 ) where {FT}
     RTP = RT.parameters
-    @. p.canopy.radiative_transfer.par =
-        canopy_sw_rt_beer_lambert(RTP.Ω, RTP.α_PAR_leaf, LAI, K, α_soil_PAR)
-    @. p.canopy.radiative_transfer.nir =
-        canopy_sw_rt_beer_lambert(RTP.Ω, RTP.α_NIR_leaf, LAI, K, α_soil_NIR)
-end
+    @. p.canopy.radiative_transfer.rt = canopy_sw_rt_beer_lambert(
+        RTP.Ω,
+        RTP.ρ_leaf,
+        LAI,
+        K,
+        ρ_soil,
+    )
 
 """
     compute_fractional_absorbances!(p,
         RT::TwoStreamModel{FT},
         LAI,
         K,
-        α_soil_PAR,
-        α_soil_NIR,
+        α_soil,
         θs,
         frac_diff,
     )
@@ -133,34 +131,21 @@ function compute_fractional_absorbances!(
     RT::TwoStreamModel{FT},
     LAI,
     K,
-    α_soil_PAR,
-    α_soil_NIR,
+    α_soil,
     θs,
     frac_diff,
 ) where {FT}
     RTP = RT.parameters
-    @. p.canopy.radiative_transfer.par = canopy_sw_rt_two_stream(
+    @. p.canopy.radiative_transfer.rt = canopy_sw_rt_two_stream(
         p.canopy.radiative_transfer.G,
         RTP.Ω,
         RTP.n_layers,
-        RTP.α_PAR_leaf,
-        RTP.τ_PAR_leaf,
+        RTP.ρ_leaf,
+        RTP.τ_leaf,
         LAI,
         K,
         θs,
-        α_soil_PAR,
-        frac_diff,
-    )
-    @. p.canopy.radiative_transfer.nir = canopy_sw_rt_two_stream(
-        p.canopy.radiative_transfer.G,
-        RTP.Ω,
-        RTP.n_layers,
-        RTP.α_NIR_leaf,
-        RTP.τ_NIR_leaf,
-        LAI,
-        K,
-        θs,
-        α_soil_NIR,
+        ρ_soil,
         frac_diff,
     )
 end
@@ -169,10 +154,10 @@ end
     canopy_sw_rt_beer_lambert(
         Ω::FT,
         SW_d:FT,
-        α_leaf::FT,
+        ρ_leaf::FT,
         LAI::FT,
         K::FT,
-        α_soil::FT
+        ρ_soil::FT
     )
 
 Computes the absorbed, reflected, and transmitted flux fractions by radiation band.
@@ -185,14 +170,14 @@ Returns a tuple of reflected, absorbed, and transmitted radiation fractions.
 """
 function canopy_sw_rt_beer_lambert(
     Ω::FT,
-    α_leaf::FT,
+    ρ_leaf::FT,
     LAI::FT,
     K::FT,
-    α_soil::FT,
+    ρ_soil::FT,
 ) where {FT}
-    AR = (1 - α_leaf) * (1 - exp(-K * LAI * Ω)) * (1 - α_soil)
+    AR = (1 - ρ_leaf) * (1 - exp(-K * LAI * Ω)) * (1 - ρ_soil)
     TR = exp(-K * LAI * Ω)
-    RR = FT(1) - AR - TR * (1 - α_soil)
+    RR = FT(1) - AR - TR * (1 - ρ_soil)
     return (; abs = AR, refl = RR, trans = TR)
 end
 
@@ -202,12 +187,12 @@ end
         Ω::FT,
         n_layers::UInt64,
         SW_d::FT,
-        α_leaf::FT,
+        ρ_leaf::FT,
         τ_leaf::FT,
         LAI::FT,
         K::FT,
         θs::FT,
-        α_soil::FT,
+        ρ_soil::FT,
         frac_diff::FT,
     )
 
@@ -225,12 +210,12 @@ function canopy_sw_rt_two_stream(
     G::FT,
     Ω::FT,
     n_layers::UInt64,
-    α_leaf::FT,
+    ρ_leaf::FT,
     τ_leaf::FT,
     LAI::FT,
     K::FT,
     θs::FT,
-    α_soil::FT,
+    ρ_soil::FT,
     frac_diff::FT,
 ) where {FT}
 
@@ -238,7 +223,7 @@ function canopy_sw_rt_two_stream(
     μ̄ = 1 / (2G)
 
     # Clip this to eps(FT) to prevent dividing by zero
-    ω = max(α_leaf + τ_leaf, eps(FT))
+    ω = max(ρ_leaf + τ_leaf, eps(FT))
 
     # Compute aₛ, the single scattering albedo
     aₛ = 0.5 * ω * (1 - cos(θs) * log((abs(cos(θs)) + 1) / abs(cos(θs))))
@@ -260,9 +245,9 @@ function canopy_sw_rt_two_stream(
     h = √(b^2 - c^2) / μ̄
     σ = (μ̄ * K)^2 + c^2 - b^2
 
-    u₁ = b - c / α_soil
-    u₂ = b - c * α_soil
-    u₃ = f + c * α_soil
+    u₁ = b - c / ρ_soil
+    u₂ = b - c * ρ_soil
+    u₃ = f + c * ρ_soil
 
     s₁ = exp(-h * LAI * Ω)
     s₂ = exp(-K * LAI * Ω)
@@ -312,7 +297,7 @@ function canopy_sw_rt_two_stream(
     F_abs = 0
     i = 0
 
-    # Total light reflected form top of canopy
+    # Total light reflected frοm top of canopy
     F_refl = 0
 
     # Intialize vars to save computed fluxes from each layer for the next layer

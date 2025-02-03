@@ -32,30 +32,30 @@ import ClimaParams
             x -> x.coordinates.lat > 0 ? 0.0 : 1.0,
             mechanism_field,
         )
+        # Specify the spectral discretization of radiation
+        λ_bounds = FT.(100e-9, 700e-9, 3000e-9)
         # create one case where parameters are spatially varying and one where not
         g1_cases = (FT(790), fill(FT(790), domain.space.surface))
         Vcmax25_cases = (FT(9e-5), fill(FT(9e-5), domain.space.surface))
         mechanism_cases = (FT(1), mechanism_field)
         rooting_cases = (FT(0.5), fill(FT(0.5), domain.space.surface))
         # test default values as field
-        α_PAR_leaf_cases = (FT(0.1), fill(FT(0.1), domain.space.surface))
-        α_NIR_leaf_cases = (FT(0.4), fill(FT(0.4), domain.space.surface))
+        ρ_leaf_cases = (FT.(0.1, 0.4), fill(FT.(0.1, 0.4)), domain.space.surface)
         ld_cases = (FT(0.5), fill(FT(0.5), domain.space.surface))
         zipped_params = zip(
             g1_cases,
             Vcmax25_cases,
             mechanism_cases,
             rooting_cases,
-            α_PAR_leaf_cases,
-            α_NIR_leaf_cases,
+            ρ_leaf_cases,
             ld_cases,
         )
-        for (g1, Vcmax25, is_c3, rooting_depth, α_PAR_leaf, α_NIR_leaf, ld) in
+        for (g1, Vcmax25, is_c3, rooting_depth, ρ_leaf, ld) in
             zipped_params
             AR_params = AutotrophicRespirationParameters(FT)
             G_Function = ConstantGFunction(ld)
             RTparams =
-                BeerLambertParameters(FT; α_PAR_leaf, α_NIR_leaf, G_Function)
+                BeerLambertParameters(FT; SpectralDiscretization(λ_bounds), ρ_leaf, G_Function)
             photosynthesis_params = FarquharParameters(FT, is_c3; Vcmax25)
             stomatal_g_params = MedlynConductanceParameters(FT; g1)
             AR_model = AutotrophicRespirationModel{FT}(AR_params)
@@ -291,12 +291,13 @@ import ClimaParams
             @test p.canopy.energy.turbulent_fluxes.transpiration ==
                   turb_fluxes_copy.transpiration
             _σ = FT(LP.Stefan(earth_param_set))
-            f_abs_par = p.canopy.radiative_transfer.par.abs
-            f_abs_nir = p.canopy.radiative_transfer.nir.abs
-            nir_d = p.canopy.radiative_transfer.nir_d
-            par_d = p.canopy.radiative_transfer.par_d
+
+            nbands = length(λ_bounds) - 1
+            spectral_f_abs = ntuple((i) -> p.canopy.radiative_transfer.rt[i].abs, nbands)
+            SW_d = p.canopy.radiative_transfer.SW_d
+                        
             @test p.canopy.radiative_transfer.SW_n ==
-                  @. f_abs_par * par_d + f_abs_nir * nir_d
+                  @. sum(f_spectral_abs .* SW_d)
             ϵ_canopy = p.canopy.radiative_transfer.ϵ
             T_canopy = FT.(T_atmos(t0))
             T_soil = FT.(soil_driver.T(t0))
@@ -540,20 +541,13 @@ end
 @testset "PrescribedGroundConditions" begin
     for FT in (Float32, Float64)
         soil_driver = PrescribedGroundConditions(FT)
-        @test ground_albedo_PAR(
+        @test ground_albedo(
             Val((:canopy,)),
             soil_driver,
             nothing,
             nothing,
             nothing,
-        ) == FT(0.2)
-        @test ground_albedo_NIR(
-            Val((:canopy,)),
-            soil_driver,
-            nothing,
-            nothing,
-            nothing,
-        ) == FT(0.4)
+        ) == FT.(0.2, 0.4)
         @test soil_driver.root_depths ==
               SVector{10, FT}(-(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0)
         @test FT.(soil_driver.ψ(2.0)) == FT.(0.0)
@@ -580,23 +574,21 @@ end
         mechanism_cases = (FT(1), mechanism_field)
         rooting_cases = (FT(0.5), fill(FT(0.5), domain.space.surface))
         # test default values as field
-        α_PAR_leaf_cases = (FT(0.1), fill(FT(0.1), domain.space.surface))
-        α_NIR_leaf_cases = (FT(0.4), fill(FT(0.4), domain.space.surface))
+        ρ_leaf_cases = ((FT(0.1), FT(0.1)), fill((FT(0.1), FT(0.1)), domain.space.subsurface))
         ld_cases = (FT(0.5), fill(FT(0.5), domain.space.surface))
         zipped_params = zip(
             g1_cases,
             Vcmax25_cases,
             mechanism_cases,
             rooting_cases,
-            α_PAR_leaf_cases,
-            α_NIR_leaf_cases,
+            ρ_leaf_cases,
             ld_cases,
         )
-        for (g1, Vcmax25, is_c3, rooting_depth, α_PAR_leaf, α_NIR_leaf, ld) in
+        for (g1, Vcmax25, is_c3, rooting_depth, ρ_leaf, ld) in
             zipped_params
             G_Function = ConstantGFunction(ld)
             RTparams =
-                BeerLambertParameters(FT; α_PAR_leaf, α_NIR_leaf, G_Function)
+                BeerLambertParameters(FT; ρ_leaf, G_Function)
             photosynthesis_params = FarquharParameters(FT, is_c3; Vcmax25)
             stomatal_g_params = MedlynConductanceParameters(FT; g1)
 
@@ -740,12 +732,13 @@ end
 
             ψ_soil0 = FT(0.0)
             T_soil0 = FT(290)
+            λ_bounds = FT.(100e-9, 2550e-9, 3000e-9)
             soil_driver = PrescribedGroundConditions(
                 root_depths,
                 (t) -> ψ_soil0,
                 (t) -> T_soil0,
-                FT(0.2),
-                FT(0.4),
+                ClimaLand.SpectralDiscretization(λ_bounds),
+                FT.(0.2, 0.4),
                 FT(0.98),
             )
 
@@ -1007,12 +1000,13 @@ end
 
         ψ_soil0 = FT(0.0)
         T_soil0 = FT(290)
+        λ_bounds = FT.(100e-9, 2550e-9, 3000e-9)
         soil_driver = PrescribedGroundConditions(
             root_depths,
             (t) -> ψ_soil0,
             (t) -> T_soil0,
-            FT(0.2),
-            FT(0.4),
+            ClimaLand.SpectralDiscretization(λ_bounds),
+            FT.(0.2, 0.4),
             FT(0.98),
         )
 
@@ -1368,12 +1362,14 @@ end
 
             ψ_soil0 = FT(0.0)
             T_soil0 = FT(290)
+            λ_bounds = FT.(100e-9, 2550e-9, 3000e-9)
+            nbands = length(λ_bounds) - 1
             soil_driver = PrescribedGroundConditions(
                 root_depths,
                 (t) -> ψ_soil0,
                 (t) -> T_soil0,
-                FT(0.2),
-                FT(0.4),
+                ClimaLand.SpectralDiscretization(λ_bounds),
+                FT.(0.2, 0.4),
                 FT(0.98),
             )
 
@@ -1436,12 +1432,8 @@ end
                     Array(parent(p.canopy.radiative_transfer.SW_n)) .== FT(0),
                 )
                 @test all(
-                    Array(parent(p.canopy.radiative_transfer.par.abs)) .==
-                    FT(0),
-                )
-                @test all(
-                    Array(parent(p.canopy.radiative_transfer.nir.abs)) .==
-                    FT(0),
+                    Array(parent(ntuple((i) -> p.canopy.radiative_transfer.rt[i].abs), nbands)) .==
+                    ntuple((_) -> FT(0), nbands)
                 )
                 @test all(
                     Array(parent(p.canopy.autotrophic_respiration.Ra)) .==

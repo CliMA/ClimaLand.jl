@@ -55,12 +55,14 @@ shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
 );
 ψ_soil0 = FT(0.0)
 
+λ_bounds = FT.(100e-9, 700e-9, 3000e-9)
+
 soil_driver = PrescribedGroundConditions(
     FT;
     root_depths = SVector{10, FT}(-(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0),
     ψ = t -> ψ_soil0,
-    α_PAR = FT(0.2),
-    α_NIR = FT(0.4),
+    spectral_discretization = SpectralDiscretization(λ_bounds),
+    α_ground = FT.(0.2, 0.4),
     T = t -> 298.0,
     ϵ = FT(0.99),
 );

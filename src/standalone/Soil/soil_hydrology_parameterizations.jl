@@ -50,10 +50,8 @@ function update_albedo!(bc::AtmosDrivenFluxBC, p, soil_domain, model_parameters)
     (;
         ν,
         θ_r,
-        PAR_albedo_dry,
-        NIR_albedo_dry,
-        PAR_albedo_wet,
-        NIR_albedo_wet,
+        albedo_dry,
+        albedo_wet,
         albedo_calc_top_thickness,
     ) = model_parameters
     S_sfc = p.soil.sfc_S_e
@@ -90,10 +88,7 @@ function update_albedo!(bc::AtmosDrivenFluxBC, p, soil_domain, model_parameters)
             effective_saturation.(ν, p.soil.θ_l, θ_r),
         )
     end
-    @. p.soil.PAR_albedo =
-        albedo_from_moisture(S_sfc, PAR_albedo_dry, PAR_albedo_wet)
-    @. p.soil.NIR_albedo =
-        albedo_from_moisture(S_sfc, NIR_albedo_dry, NIR_albedo_wet)
+    @. p.soil.albedo = albedo_from_moisture(S_sfc, p.soil.albedo_dry, p.soil.albedo_wet)
 end
 
 """

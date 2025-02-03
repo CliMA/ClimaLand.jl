@@ -24,6 +24,10 @@ test_set = readdlm(data, ',')
 # Floating point precision to use
 for FT in (Float32, Float64)
     @testset "Two-Stream Model Correctness, FT = $FT" begin
+        # Use a single band for the test
+        λ_bounds = FT.(100e-9, 3000e-9)
+        spectral_discretization = SpectralDiscretization(λ_bounds)
+
         # Read the conditions for each setup parameter from the test file
         column_names = test_set[1, :]
         θs = acos.(FT.(test_set[2:end, column_names .== "mu"]))
@@ -68,6 +72,7 @@ for FT in (Float32, Float64)
                 # Set the parameters based on the setup read from the file
                 RT_params = TwoStreamParameters(
                     FT;
+                    spectral_discretization = spectral_discretization,
                     Ω = Ω,
                     G_Function = ConstantGFunction(FT.(lds[i])),
                     α_PAR_leaf = α_PAR_leaf[i],

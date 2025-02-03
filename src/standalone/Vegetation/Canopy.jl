@@ -412,8 +412,7 @@ function ClimaLand.make_update_aux(
         ψ = p.canopy.hydraulics.ψ
         ϑ_l = Y.canopy.hydraulics.ϑ_l
         fa = p.canopy.hydraulics.fa
-        par_d = p.canopy.radiative_transfer.par_d
-        nir_d = p.canopy.radiative_transfer.nir_d
+        SW_d = p.canopy.radiative_transfer.SW_d
         frac_diff = p.canopy.radiative_transfer.frac_diff
 
         bc = canopy.boundary_conditions
@@ -436,7 +435,8 @@ function ClimaLand.make_update_aux(
         R = FT(LP.gas_constant(earth_param_set))
         T_freeze = FT(LP.T_freeze(earth_param_set))
         thermo_params = earth_param_set.thermo_params
-        (; G_Function, Ω, λ_γ_PAR) = canopy.radiative_transfer.parameters
+        (; spectral_discretization, G_Function, Ω, λ_γ_PAR) = canopy.radiative_transfer.parameters
+        nbands = length(spectral_discretization.λ) - 1
         energy_per_mole_photon_par = planck_h * c / λ_γ_PAR * N_a
         (; g1, g0, Drel) = canopy.conductance.parameters
         area_index = p.canopy.hydraulics.area_index
@@ -472,14 +472,7 @@ function ClimaLand.make_update_aux(
             RT,
             LAI,
             K,
-            ground_albedo_PAR(
-                Val(bc.prognostic_land_components),
-                bc.ground,
-                Y,
-                p,
-                t,
-            ),
-            ground_albedo_NIR(
+            ground_albedo(
                 Val(bc.prognostic_land_components),
                 bc.ground,
                 Y,
@@ -489,6 +482,9 @@ function ClimaLand.make_update_aux(
             θs,
             frac_diff,
         )
+
+        # Extract PAR radiation from radiative transfer output
+        faPAR = sum(spectral_discretization.PAR_proportions .* ntuple((i) -> p.canopy.radiative_transfer.rt[i].abs, nbands))
 
         # update plant hydraulics aux
         hydraulics = canopy.hydraulics
@@ -561,7 +557,7 @@ function ClimaLand.make_update_aux(
             Vcmax25,
             canopy.photosynthesis,
             T_canopy,
-            p.canopy.radiative_transfer.par.abs,
+            faPAR,
             β,
             medlyn_factor,
             c_co2_air,
@@ -574,7 +570,7 @@ function ClimaLand.make_update_aux(
         update_SIF!(
             SIF,
             canopy.sif,
-            p.canopy.radiative_transfer.par.abs,
+            faPAR,
             T_canopy,
             Vcmax25,
             R,
