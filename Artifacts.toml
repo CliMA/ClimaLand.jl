@@ -14,13 +14,18 @@ git-tree-sha1 = "136f1db3ed969614fb589c5250545a3ed1e8aaab"
     sha256 = "777371543cc3285c0779e7ecd925fe782b5b45e0ed27f82260827ac8ebe6a700"
     url = "https://caltech.box.com/shared/static/of1admpndmikoumtgk5j3yvt92v71awk.gz"
 
-[clm_data]
-git-tree-sha1 = "3f6873a3e67722bda1fd23f7d5a05f5e2df1fe8c"
+["clm_data_0.9x1.25"]
+git-tree-sha1 = "283c62220fca8c4afe36a62348d3e9a159af2ee9"
 
-    [[clm_data.download]]
-    sha256 = "830136abec15551a343b7884d657fb6a79b16a37237681a2becf65bd845aa692"
-    url = "https://caltech.box.com/shared/static/6pu2f6c99g29qawvjjh3j56drkonpd3z.gz"
+    [["clm_data_0.9x1.25".download]]
+    sha256 = "88d5899a729de800017a74bd8a7278582c2c55c0d8730a529bae384425d70e4e"
+    url = "https://caltech.box.com/shared/static/mxs3l1c1dppjwy81assk8w8ofn9d70pu.gz"
+["clm_data_0.125x0.125"]
+git-tree-sha1 = "6284ddefbc7937d9c1fb68fa731ff3f00b68e917"
 
+    [["clm_data_0.125x0.125".download]]
+    sha256 = "8d2a61baad53346515f4a66c4342f8aafce37ca9520020c17f99cc4f4aa98b15"
+    url = "https://caltech.box.com/shared/static/uteaw1l6fg7wmwhb3ey1c0jq4r8vg0ts.gz"
 [era5_land_forcing_data2008]
 git-tree-sha1 = "93d2e93f491e77cb8fba2a1b8b3946f38bde469e"
 [era5_land_forcing_data2008_lowres]

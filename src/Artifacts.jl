@@ -43,12 +43,17 @@ function modis_lai_forcing_data2008_path(; context = nothing)
 end
 
 """
-    clm_data__folder_path(; context)
+    clm_data__folder_path(; context, lowres = false)
 
-Return the path to the folder that contains the clm data.
+Return the path to the folder that contains the clm data. If the lowres flag is set to true,
+the 0.9x1.25 version of the data is returned. Otherwise, the 0.125x0.125 version is returned.
 """
-function clm_data_folder_path(; context = nothing)
-    return @clima_artifact("clm_data", context)
+function clm_data_folder_path(; context = nothing, lowres = false)
+    if lowres
+        return @clima_artifact("clm_data_0.9x1.25", context)
+    else
+        return @clima_artifact("clm_data_0.125x0.125", context)
+    end
 end
 
 """

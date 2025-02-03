@@ -9,6 +9,38 @@ function mean(x::AbstractArray{T}) where {T}
 end
 
 """
+    use_lowres_clm(space)
+
+Returns true if the space is closer in resolution to 0.9x1.25 degree lat/long than 0.125x0.125 degree lat/long.
+This is used to determine which resolution of CLM data to use.
+"""
+function use_lowres_clm(
+    surface_space::ClimaCore.Spaces.AbstractSpectralElementSpace,
+)
+    node_scale = ClimaCore.Spaces.node_horizontal_length_scale(surface_space)
+    surface_mesh = ClimaCore.Spaces.topology(surface_space).mesh
+    if surface_mesh isa ClimaCore.Meshes.AbstractCubedSphere
+        # in this case, node_scale is in meters
+        sphere_radius = surface_mesh.domain.radius
+        horizontal_length_scale(lat_res, long_res) = sqrt(
+            4 * pi * sphere_radius^2 / ((360 / long_res) * (180 / lat_res)),
+        )
+        highres_scale = horizontal_length_scale(0.125, 0.125)
+        lowres_scale = horizontal_length_scale(0.9, 1.25)
+    elseif surface_mesh isa ClimaCore.Meshes.RectilinearMesh
+        # in this case, node_scale is in degrees
+        highres_scale = 0.125
+        lowres_scale = sqrt(1.25 * 0.9)
+    else
+        return false
+    end
+    return abs(lowres_scale - node_scale) < abs(highres_scale - node_scale)
+end
+
+# This method will likely never be called, but is included for completeness
+use_lowres_clm(surface_space::ClimaCore.Spaces.AbstractSpace) = false
+
+"""
     clm_canopy_parameters(
         surface_space;
         regridder_type = :InterpolationsRegridder,
@@ -17,6 +49,7 @@ end
             Interpolations.Flat(),
             Interpolations.Flat(),
         ),
+        lowres=use_lowres_clm(surface_space),
     )
 
 Reads spatially varying parameters for the canopy, from NetCDF files
@@ -38,7 +71,9 @@ The NetCDF files are stored in ClimaArtifacts and more detail on their origin
 is provided there. The keyword arguments `regridder_type` and `extrapolation_bc`
 affect the regridding by (1) changing how we interpolate to ClimaCore points which
 are not in the data, and (2) changing how extrapolate to points beyond the range of the
-data.
+data. The keyword argument lowres is a flag that determines if the 0.9x1.25 or 0.125x0.125
+resolution CLM data artifact is used. If the lowres flag is not provided, the clm artifact
+with the closest resolution to the surface_space is used.
 """
 function clm_canopy_parameters(
     surface_space;
@@ -48,9 +83,11 @@ function clm_canopy_parameters(
         Interpolations.Flat(),
         Interpolations.Flat(),
     ),
+    lowres = use_lowres_clm(surface_space),
 )
     context = ClimaComms.context(surface_space)
-    clm_artifact_path = ClimaLand.Artifacts.clm_data_folder_path(; context)
+    clm_artifact_path =
+        ClimaLand.Artifacts.clm_data_folder_path(; context, lowres)
     # Foliage clumping index data derived from MODIS
     modis_ci_artifact_path =
         ClimaLand.Artifacts.modis_ci_data_folder_path(; context)
@@ -161,6 +198,7 @@ end
             Interpolations.Flat(),
             Interpolations.Flat(),
         ),
+        lowres=use_lowres_clm(surface_space),
     )
 
 Reads spatially varying parameters for the soil model, from NetCDF files
@@ -184,7 +222,9 @@ The NetCDF files are stored in ClimaArtifacts and more detail on their origin
 is provided there. The keyword arguments `regridder_type` and `extrapolation_bc`
 affect the regridding by (1) changing how we interpolate to ClimaCore points which
 are not in the data, and (2) changing how extrapolate to points beyond the range of the
-data.
+data. The keyword argument lowres is a flag that determines if the 0.9x1.25 or 0.125x0.125
+resolution CLM data artifact is used. If the lowres flag is not provided, the clm artifact
+with the closest resolution to the surface_space is used.
 """
 function default_spatially_varying_soil_parameters(
     subsurface_space,
@@ -196,6 +236,7 @@ function default_spatially_varying_soil_parameters(
         Interpolations.Flat(),
         Interpolations.Flat(),
     ),
+    lowres = use_lowres_clm(surface_space),
 )
     context = ClimaComms.context(surface_space)
     soil_params_artifact_path =
@@ -350,7 +391,7 @@ function default_spatially_varying_soil_parameters(
     PAR_albedo_dry, NIR_albedo_dry, PAR_albedo_wet, NIR_albedo_wet = map(
         s -> SpaceVaryingInput(
             joinpath(
-                ClimaLand.Artifacts.clm_data_folder_path(),
+                ClimaLand.Artifacts.clm_data_folder_path(; context, lowres),
                 "soil_properties_map.nc",
             ),
             s,
