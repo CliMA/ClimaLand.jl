@@ -146,39 +146,6 @@ function esm_snowmip_data_path(; context = nothing)
 end
 
 """
-    water_conservation_test_data_path(; context = nothing)
-
-Returns the filepaths for data from two simulations of ClimaLand.Soil.RichardsModel;
-these were carried out with a very small timestep with an explicit timestepper
-and are used as ground truth for solutions using an implicit timestepper.
-
-Experiment details are in `experiments/standalone/Soil/water_conservation.jl`.
-"""
-function water_conservation_test_data_path(; context = nothing)
-    dir = joinpath(@__DIR__, "../")
-    flux_dataset = ArtifactWrapper(
-        dir,
-        "richards_flux_bc_ref_soln",
-        ArtifactFile[ArtifactFile(
-            url = "https://caltech.box.com/shared/static/bsfokpg0wvxoq04e8na0t3o0u6x5yw9n.csv",
-            filename = "ref_soln_flux.csv",
-        ),],
-    )
-    flux_datapath = get_data_folder(flux_dataset)
-
-    dirichlet_dataset = ArtifactWrapper(
-        dir,
-        "richards_dirichlet_bc_ref_soln",
-        ArtifactFile[ArtifactFile(
-            url = "https://caltech.box.com/shared/static/w6q30flbgj68lr0ncvoco10okrupmab1.csv",
-            filename = "ref_soln_dirichlet.csv",
-        ),],
-    )
-    dirichlet_datapath = get_data_folder(dirichlet_dataset)
-    return flux_datapath, dirichlet_datapath
-end
-
-"""
     richards_eqn_bonan_data_path(; context = nothing)
 
 Returns the file path for data created solving Richards equation

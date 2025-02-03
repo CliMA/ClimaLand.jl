@@ -14,12 +14,11 @@ import ClimaUtilities.OutputPathGenerator: generate_output_path
 
 rmse(v1, v2) = sqrt(mean((v1 .- v2) .^ 2))
 
-# Read in reference solutions from artifacts
-flux_datapath, dirichlet_datapath =
-    ClimaLand.Artifacts.water_conservation_test_data_path()
-ref_soln_flux = readdlm(joinpath(flux_datapath, "ref_soln_flux.csv"))
-ref_soln_dirichlet =
-    readdlm(joinpath(dirichlet_datapath, "ref_soln_dirichlet.csv"))
+# Read in reference solutions from test artifacts
+include("../../../test/Artifacts.jl")
+flux_datapath, dirichlet_datapath = water_conservation_test_data_path()
+ref_soln_flux = readdlm(flux_datapath)
+ref_soln_dirichlet = readdlm(dirichlet_datapath)
 
 # Define simulation times
 t_start = Float64(0)
@@ -126,13 +125,12 @@ for FT in (Float32, Float64)
             mass_change_exp = -(flux_in - flux_out) * t_sim
             mass_change_actual = mass_end - mass_start
             relerr = abs(mass_change_actual - mass_change_exp) / mass_change_exp
-            @show relerr
-            @assert relerr < FT(1e-9)
+            @assert relerr < 1e-13
             mass_errors[i] = relerr
 
-            # Compute RMSE vs reference solution (found using dt = 1s)
+            # Compute RMSE vs reference solution (found using dt = 0.01s)
             rmse_flux = rmse(ref_soln_flux, parent(sol.u[end].soil.ϑ_l))
-            @assert rmse_flux < FT(1e-2)
+            @assert rmse_flux < 1e-2
             rmses[i] = rmse_flux
         end
     end
@@ -272,7 +270,7 @@ for FT in (Float32, Float64)
         mass_change_exp = -(sum(flux_in_sim) * dt - flux_out * t_sim)
         mass_change_actual = mass_end - mass_start
         relerr = abs(mass_change_actual - mass_change_exp) / mass_change_exp
-        @assert relerr < 1e11 * eps(FT)
+        @assert relerr < 1e9 * eps(FT)
         mass_errors_dirichlet[i] = relerr
 
         # Compute RMSE vs reference solution (found using small dt = 1s)

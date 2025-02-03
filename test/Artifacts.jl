@@ -33,3 +33,19 @@ https://github.com/tquaife/pySellersTwoStream
 function twostr_test_data_path(; context = nothing)
     return @clima_artifact("twostr_test", context)
 end
+
+"""
+    water_conservation_test_data_path(; context = nothing)
+
+Returns the filepaths for data from two simulations of ClimaLand.Soil.RichardsModel;
+these were carried out with a very small timestep with an explicit timestepper
+and are used as ground truth for solutions using an implicit timestepper.
+
+Experiment details are in `experiments/standalone/Soil/water_conservation.jl`.
+"""
+function water_conservation_test_data_path(; context = nothing)
+    folder_path = @clima_artifact("water_conservation_test", context)
+    flux_datapath = joinpath(folder_path, "ref_soln_flux.csv")
+    dirichlet_datapath = joinpath(folder_path, "ref_soln_dirichlet.csv")
+    return flux_datapath, dirichlet_datapath
+end
