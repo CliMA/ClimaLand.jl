@@ -108,3 +108,5 @@ sol_restarted =
 for p in propertynames(Y.bucket)
     @test getproperty(Y.bucket, p) == getproperty(Y_restart.bucket, p)
 end
+
+rm(output_dir; recursive = true)
