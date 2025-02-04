@@ -33,5 +33,3 @@ function CAL.forward_model(iteration, member)
     SciMLBase.solve(prob, ode_algo; dt = Δt, callback = cb, adaptive = false)
     return nothing
 end
-
-CAL.forward_model(0, 1)

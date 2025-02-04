@@ -4,7 +4,7 @@
 #SBATCH --nodes=1                     # Number of nodes
 #SBATCH --ntasks=1                    # Number of tasks (processes)
 #SBATCH --time=10:00:00               # Time limit hrs:min:sec
-module load julia/1.11.0 cuda/julia-pref openmpi/4.1.5-mpitrampoline
+module load climacommon
 # Run your command
 export CLIMACOMMS_DEVICE="CUDA"
 export CLIMACOMMS_CONTEXT="SINGLETON"

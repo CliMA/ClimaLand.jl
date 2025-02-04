@@ -16,7 +16,7 @@ import ClimaCalibrate: forward_model, parameter_path, path_to_ensemble_member
 import ClimaCalibrate as CAL
 using Distributed
 
-@everywhere begin
+# @everywhere begin
     import ClimaCalibrate: forward_model, parameter_path, path_to_ensemble_member
     import ClimaCalibrate as CAL
 
@@ -26,8 +26,8 @@ using Distributed
 
     include(joinpath(dir,"experiments/calibration/global_bucket/climacalibrate_bucket/bucket_target_script.jl"))
     model_interface = joinpath(dir,"experiments/calibration/global_bucket/climacalibrate_bucket/forward_model.jl")
-    # include(model_interface)
-end
+    include(model_interface)
+# end
 
 # Now we include the script observation_map.jl, which contains two functions:
 # process_member_data - makes the parameter to data map we want from the forward_model output for one ensemble member
@@ -64,7 +64,7 @@ caldir = "calibration_output"
 # Should this script be run as a slurm job? (I expect it takes ~ 5 hours or so to complete)
 hpc_kwargs = CAL.kwargs(time = 60, ntasks = 1, gpus_per_task = 1, cpus_per_task = 4)
 CAL.calibrate(
-              CAL.ClimaGPUBackend, # or CAL.CaltechHPCBackend
+              CAL.DerechoBackend, # or CAL.CaltechHPCBackend
               ensemble_size,
               n_iterations,
               observations,
