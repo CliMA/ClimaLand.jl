@@ -8,5 +8,6 @@ module load julia/1.11.0 cuda/julia-pref openmpi/4.1.5-mpitrampoline
 # Run your command
 export CLIMACOMMS_DEVICE="CUDA"
 export CLIMACOMMS_CONTEXT="SINGLETON"
+julia --project=.buildkite -e 'using Pkg; Pkg.instantiate(;verbose=true)'
 
 julia --project=.buildkite/ experiments/calibration/global_bucket/climacalibrate_bucket/calibrate.jl

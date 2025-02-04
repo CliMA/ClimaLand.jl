@@ -71,4 +71,6 @@ CAL.calibrate(
               noise,
               prior,
               caldir # to do: copy a tree of that folder structure
+              ;hpc_kwargs,
+              model_interface
              )
