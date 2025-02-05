@@ -92,18 +92,14 @@ NamedTuple of NamedTuple, of the form:
 function compute_fractional_absorbances(
     p,
     RT::BeerLambertModel{FT},
-    LAI
+    LAI,
     K,
     α_soil,
 ) where {FT}
     RTP = RT.parameters
-    @. p.canopy.radiative_transfer.rt = canopy_sw_rt_beer_lambert(
-        RTP.Ω,
-        RTP.ρ_leaf,
-        LAI,
-        K,
-        ρ_soil,
-    )
+    @. p.canopy.radiative_transfer.rt =
+        canopy_sw_rt_beer_lambert(RTP.Ω, RTP.ρ_leaf, LAI, K, ρ_soil)
+end
 
 """
     compute_fractional_absorbances!(p,

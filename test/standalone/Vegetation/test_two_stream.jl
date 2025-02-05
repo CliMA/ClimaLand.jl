@@ -25,7 +25,7 @@ test_set = readdlm(data, ',')
 for FT in (Float32, Float64)
     @testset "Two-Stream Model Correctness, FT = $FT" begin
         # Use a single band for the test
-        λ_bounds = FT.(100e-9, 3000e-9)
+        λ_bounds = FT.(100e-9, 700e-9, 3000e-9)
         spectral_discretization = SpectralDiscretization(λ_bounds)
 
         # Read the conditions for each setup parameter from the test file
@@ -40,27 +40,27 @@ for FT in (Float32, Float64)
         domain = Point(; z_sfc = FT(0.0))
         lds = FT.(test_set[2:end, column_names .== "ld"])
         lds_field = map(x -> fill(x, domain.space.surface), lds)
-        α_PAR_leaf_scalars = FT.(test_set[2:end, column_names .== "rho"])
-        α_PAR_leaf_fields =
-            map(x -> fill(x, domain.space.surface), α_PAR_leaf_scalars)
+        ρ_PAR_leaf_scalars = FT.(test_set[2:end, column_names .== "rho"])
+        ρ_PAR_leaf_fields =
+            map(x -> fill(x, domain.space.surface), ρ_PAR_leaf_scalars)
         τ_scalars = FT.(test_set[2:end, column_names .== "tau"])
         τ_fields = map(x -> fill(x, domain.space.surface), τ_scalars)
         # loop through once with params as floats, then with params as fields
         Ω_cases = (FT(1), fill(FT(1), domain.space.surface))
-        α_PAR_leaf_cases = (α_PAR_leaf_scalars, α_PAR_leaf_fields)
+        ρ_PAR_leaf_cases = (ρ_PAR_leaf_scalars, ρ_PAR_leaf_fields)
         τ_PAR_leaf_cases = (τ_scalars, τ_fields)
-        α_NIR_leaf_cases = (FT(0.4), fill(FT(0.4), domain.space.surface))
+        ρ_NIR_leaf_cases = (FT(0.4), fill(FT(0.4), domain.space.surface))
         τ_NIR_leaf_cases = (FT(0.25), fill(FT(0.24), domain.space.surface))
         lds_cases = (lds, lds_field)
         zipped_params = zip(
             Ω_cases,
-            α_PAR_leaf_cases,
+            ρ_PAR_leaf_cases,
             τ_PAR_leaf_cases,
-            α_NIR_leaf_cases,
+            ρ_NIR_leaf_cases,
             τ_NIR_leaf_cases,
             lds_cases,
         )
-        for (Ω, α_PAR_leaf, τ_PAR_leaf, α_NIR_leaf, τ_NIR_leaf, lds) in
+        for (Ω, ρ_PAR_leaf, τ_PAR_leaf, ρ_NIR_leaf, τ_NIR_leaf, lds) in
             zipped_params
             # Read the result for each setup from the Python output
             py_FAPAR = FT.(test_set[2:end, column_names .== "FAPAR"])
@@ -75,10 +75,8 @@ for FT in (Float32, Float64)
                     spectral_discretization = spectral_discretization,
                     Ω = Ω,
                     G_Function = ConstantGFunction(FT.(lds[i])),
-                    α_PAR_leaf = α_PAR_leaf[i],
-                    τ_PAR_leaf = τ_PAR_leaf[i],
-                    α_NIR_leaf = α_NIR_leaf,
-                    τ_NIR_leaf = τ_NIR_leaf,
+                    ρ_leaf = (ρ_PAR_leaf[i], ρ_NIR_leaf[i]),
+                    τ_leaf = (τ_PAR_leaf[i], τ_NIR_leaf[i]),
                     n_layers = n_layers[i],
                 )
 
@@ -93,8 +91,8 @@ for FT in (Float32, Float64)
                         G,
                         RT_params.Ω,
                         RT_params.n_layers,
-                        RT_params.α_PAR_leaf,
-                        RT_params.τ_PAR_leaf,
+                        RT_params.ρ_leaf[1],
+                        RT_params.τ_leaf[1],
                         LAI[i],
                         K,
                         θs[i],

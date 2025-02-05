@@ -66,6 +66,9 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     surface_space = domain.space.surface
     subsurface_space = domain.space.subsurface
 
+    λ_bounds = FT.((100e-9, 700e-9, 3000e-9))
+    spectral_discretization = Canopy.SpectralDiscretization(λ_bounds)
+
     start_date = DateTime(2008)
     # Forcing data
     era5_artifact_path =
@@ -115,10 +118,9 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         K_sat,
         S_s,
         θ_r,
-        PAR_albedo_dry = PAR_albedo_dry,
-        NIR_albedo_dry = NIR_albedo_dry,
-        PAR_albedo_wet = PAR_albedo_wet,
-        NIR_albedo_wet = NIR_albedo_wet,
+        spectral_discretization,
+        (PAR_albedo_dry, NIR_albedo_dry),
+        (PAR_albedo_wet, NIR_albedo_wet),
     )
     f_over = FT(3.28) # 1/m
     R_sb = FT(1.484e-4 / 1000) # m/s
@@ -137,9 +139,9 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         Vcmax25,
         g1,
         G_Function,
-        α_PAR_leaf,
-        τ_PAR_leaf,
-        α_NIR_leaf,
+        ρ_PAR_leaf,
+        ρ_PAR_leaf,
+        ρ_NIR_leaf,
         τ_NIR_leaf,
     ) = clm_parameters
 
@@ -216,11 +218,10 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     radiative_transfer_args = (;
         parameters = Canopy.TwoStreamParameters(
             FT;
+            spectral_discretization,
             Ω,
-            α_PAR_leaf,
-            τ_PAR_leaf,
-            α_NIR_leaf,
-            τ_NIR_leaf,
+            (ρ_PAR_leaf, ρ_NIR_leaf),
+            (τ_PAR_leaf, τ_NIR_leaf),
             G_Function,
         )
     )

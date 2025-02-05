@@ -574,9 +574,9 @@ end
 """
     function TwoStreamParameters(FT::AbstractFloat;
         ld = (_) -> 0.5,
-        α_PAR_leaf = 0.3,
+        ρ_PAR_leaf = 0.3,
         τ_PAR_leaf = 0.2,
-        α_NIR_leaf = 0.4,
+        ρ_NIR_leaf = 0.4,
         τ_NIR_leaf = 0.25,
         Ω = 1,
         n_layers = UInt64(20),
@@ -584,9 +584,9 @@ end
     )
     function TwoStreamParameters(toml_dict;
         ld = (_) -> 0.5,
-        α_PAR_leaf = 0.3,
+        ρ_PAR_leaf = 0.3,
         τ_PAR_leaf = 0.2,
-        α_NIR_leaf = 0.4,
+        ρ_NIR_leaf = 0.4,
         τ_NIR_leaf = 0.25,
         Ω = 1,
         n_layers = UInt64(20),
@@ -602,10 +602,8 @@ TwoStreamParameters(::Type{FT}; kwargs...) where {FT <: AbstractFloat} =
 function TwoStreamParameters(
     toml_dict::CP.AbstractTOMLDict;
     G_Function = ConstantGFunction(CP.float_type(toml_dict)(0.5)),
-    α_PAR_leaf::F = 0.3,
-    τ_PAR_leaf::F = 0.2,
-    α_NIR_leaf::F = 0.4,
-    τ_NIR_leaf::F = 0.25,
+    ρ_leaf::F = (0.3, 0.4),
+    τ_leaf::F = (0.2, 0.25),
     Ω = 1,
     n_layers = UInt64(20),
     kwargs...,
@@ -619,16 +617,12 @@ function TwoStreamParameters(
     FT = CP.float_type(toml_dict)
     # default value for keyword args must be converted manually
     # automatic conversion not possible to Union types
-    α_PAR_leaf = FT.(α_PAR_leaf)
-    τ_PAR_leaf = FT.(τ_PAR_leaf)
-    α_NIR_leaf = FT.(α_NIR_leaf)
-    τ_NIR_leaf = FT.(τ_NIR_leaf)
-    return TwoStreamParameters{FT, typeof(G_Function), typeof(α_PAR_leaf)}(;
+    ρ_leaf = FT.(ρ_leaf)
+    τ_leaf = FT.(τ_leaf)
+    return TwoStreamParameters{FT, typeof(G_Function), typeof(ρ_PAR_leaf)}(;
         G_Function,
-        α_PAR_leaf,
-        τ_PAR_leaf,
-        α_NIR_leaf,
-        τ_NIR_leaf,
+        ρ_leaf,
+        τ_leaf,
         Ω,
         n_layers,
         parameters...,
@@ -639,15 +633,13 @@ end
 """
     function BeerLambertParameters(FT::AbstractFloat;
         ld = (_) -> 0.5,
-        α_PAR_leaf = 0.1,
-        α_NIR_leaf = 0.4,
+        ρ_leaf = (0.1, 0.4),
         Ω = 1,
         kwargs...
     )
     function BeerLambertParameters(toml_dict;
         ld = (_) -> 0.5,
-        α_PAR_leaf = 0.1,
-        α_NIR_leaf = 0.4,
+        ρ_leaf = (0.1, 0.4),
         Ω = 1,
         kwargs...
     )
@@ -661,9 +653,7 @@ BeerLambertParameters(::Type{FT}; kwargs...) where {FT <: AbstractFloat} =
 function BeerLambertParameters(
     toml_dict::CP.AbstractTOMLDict;
     G_Function = ConstantGFunction(CP.float_type(toml_dict)(0.5)),
-    α_PAR_leaf::F = 0.1,
-    α_NIR_leaf::F = 0.4,
-    Ω = 1,
+    ρ_leaf = (0.1, 0.4)Ω = 1,
     kwargs...,
 ) where {F}
     name_map = (;
@@ -675,12 +665,10 @@ function BeerLambertParameters(
     FT = CP.float_type(toml_dict)
     # default value for keyword args must be converted manually
     # automatic conversion not possible to Union types
-    α_PAR_leaf = FT.(α_PAR_leaf)
-    α_NIR_leaf = FT.(α_NIR_leaf)
-    return BeerLambertParameters{FT, typeof(G_Function), typeof(α_PAR_leaf)}(;
+    ρ_leaf = FT.(ρ_leaf)
+    return BeerLambertParameters{FT, typeof(G_Function), typeof(ρ_leaf)}(;
         G_Function,
-        α_PAR_leaf,
-        α_NIR_leaf,
+        ρ_leaf,
         Ω,
         parameters...,
         kwargs...,

@@ -158,11 +158,10 @@ soil_driver = PrescribedGroundConditions(
 
 rt_params = TwoStreamParameters(
     FT;
+    spectral_discretization = SpectralDiscretization(λ_bounds),
     G_Function = ConstantGFunction(FT(0.5)),
-    α_PAR_leaf = FT(0.1),
-    α_NIR_leaf = FT(0.45),
-    τ_PAR_leaf = FT(0.05),
-    τ_NIR_leaf = FT(0.25),
+    ρ_leaf = FT.((0.1, 0.45)),
+    τ_leaf = FT.((0.05, 0.25)),
     Ω = FT(0.69),
     λ_γ_PAR = FT(5e-7),
 )

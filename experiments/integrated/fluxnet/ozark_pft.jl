@@ -77,8 +77,8 @@ pft_pcts = [
 # Load the PFT parameters into the namespace
 (
     Ω,
-    α_PAR_leaf,
-    α_NIR_leaf,
+    ρ_PAR_leaf,
+    ρ_NIR_leaf,
     τ_PAR_leaf,
     τ_NIR_leaf,
     ϵ_canopy,
@@ -111,6 +111,11 @@ include(
         "experiments/integrated/fluxnet/met_drivers_FLUXNET.jl",
     ),
 )
+
+# Discretization of radiation
+λ_bounds = FT.((100e-9, 700e-9, 3000e-9))
+spectral_discretization = ClimaLand.SpectralDiscretization(λ_bounds)
+
 # Now we set up the model. For the soil model, we pick
 # a model type and model args:
 soil_domain = land_domain
@@ -128,6 +133,7 @@ soil_ps = Soil.EnergyHydrologyParameters(
     z_0m = z_0m_soil,
     z_0b = z_0b_soil,
     emissivity = soil_ϵ,
+    spectral_discretization = spectral_discretization,
     PAR_albedo = soil_α_PAR,
     NIR_albedo = soil_α_NIR,
 );
@@ -175,12 +181,11 @@ G_Function = CLMGFunction(χl)
 radiative_transfer_args = (;
     parameters = TwoStreamParameters(
         FT;
+        spectral_discretization,
         Ω,
         G_Function,
-        α_PAR_leaf,
-        τ_PAR_leaf,
-        α_NIR_leaf,
-        τ_NIR_leaf,
+        (ρ_PAR_leaf, ρ_NIR_leaf),
+        (τ_PAR_leaf, τ_NIR_leaf),
     )
 )
 # Set up conductance

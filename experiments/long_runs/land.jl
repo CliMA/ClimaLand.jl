@@ -83,6 +83,10 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         FT,
     )
 
+    # Discretization of radiation
+    λ_bounds = FT.((100e-9, 700e-9, 3000e-9))
+    spectral_discretization = ClimaLand.SpectralDiscretization(λ_bounds)
+
     spatially_varying_soil_params =
         ClimaLand.default_spatially_varying_soil_parameters(
             subsurface_space,
@@ -137,9 +141,9 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         Vcmax25,
         g1,
         G_Function,
-        α_PAR_leaf,
+        ρ_PAR_leaf,
         τ_PAR_leaf,
-        α_NIR_leaf,
+        ρ_NIR_leaf,
         τ_NIR_leaf,
     ) = clm_parameters
 
@@ -217,11 +221,10 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     radiative_transfer_args = (;
         parameters = Canopy.TwoStreamParameters(
             FT;
+            spectral_discretization,
             Ω,
-            α_PAR_leaf,
-            τ_PAR_leaf,
-            α_NIR_leaf,
-            τ_NIR_leaf,
+            (ρ_PAR_leaf, ρ_NIR_leaf),
+            (τ_PAR_leaf, τ_NIR_leaf),
             G_Function,
         )
     )
