@@ -1,6 +1,6 @@
 using StaticArrays
 export AbstractGroundConditions,
-    PrescribedGroundConditions, ground_albedo_NIR, ground_albedo
+    PrescribedGroundConditions, ground_albedo
 
 """
 An abstract type of ground conditions for the canopy model;
