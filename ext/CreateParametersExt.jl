@@ -653,7 +653,8 @@ BeerLambertParameters(::Type{FT}; kwargs...) where {FT <: AbstractFloat} =
 function BeerLambertParameters(
     toml_dict::CP.AbstractTOMLDict;
     G_Function = ConstantGFunction(CP.float_type(toml_dict)(0.5)),
-    ρ_leaf = (0.1, 0.4)Ω = 1,
+    ρ_leaf = (0.1, 0.4),
+    Ω = 1,
     kwargs...,
 ) where {F}
     name_map = (;
