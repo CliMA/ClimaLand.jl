@@ -404,30 +404,30 @@ of type `EnergyHydrology`. `PrognosticSoilConditions` functions as a flag and is
 """
 struct PrognosticSoilConditions <: Canopy.AbstractGroundConditions end
 
-"""
-    Canopy.ground_albedo(
-        prognostic_land_components::Val{(:canopy, :snow, :soil, :soilco2)},
-        ground::PrognosticGroundConditions,
-        Y,
-        p,
-        t,
-    )
+# """
+#     Canopy.ground_albedo(
+#         prognostic_land_components::Val{(:canopy, :snow, :soil, :soilco2)},
+#         ground::PrognosticGroundConditions,
+#         Y,
+#         p,
+#         t,
+#     )
 
-Computes ground albedo for the canopy model, given the ground snow conditions,
-the soil albedo, and the snow albedo.
-"""
-function Canopy.ground_albedo(
-    prognostice_land_components::Val{(:canopy, :snow, :soil, :soilco2)},
-    ground::PrognosticGroundConditions,
-    Y,
-    p,
-    t,
-)
-    @. p.α_ground =
-        (1 - p.snow.snow_cover_fraction) * p.soil.albedo +
-        p.snow.snow_cover_fraction * ground.α_snow
-    return p.α_ground
-end
+# Computes ground albedo for the canopy model, given the ground snow conditions,
+# the soil albedo, and the snow albedo.
+# """
+# function Canopy.ground_albedo(
+#     prognostice_land_components::Val{(:canopy, :snow, :soil, :soilco2)},
+#     ground::PrognosticGroundConditions,
+#     Y,
+#     p,
+#     t,
+# )
+#     @. p.α_ground =
+#         (1 - p.snow.snow_cover_fraction) * p.soil.albedo +
+#         p.snow.snow_cover_fraction * ground.α_snow
+#     return p.α_ground
+# end
 
 function ClimaLand.Soil.sublimation_source(
     prognostic_land_components::Val{(:canopy, :soil, :soilco2)},
