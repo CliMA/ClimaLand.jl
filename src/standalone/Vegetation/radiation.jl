@@ -1,5 +1,4 @@
-export SpectralDiscretization,
-    BeerLambertParameters,
+export BeerLambertParameters,
     BeerLambertModel,
     TwoStreamParameters,
     TwoStreamModel,
@@ -10,141 +9,6 @@ export SpectralDiscretization,
 abstract type AbstractRadiationModel{FT} <: AbstractCanopyComponent{FT} end
 
 abstract type AbstractGFunction{FT} end
-
-"""
-    SpectralDiscretization
-
-A type used to represent the spectral discretization of radiation models.
-Consists of the wavelength boundaries between each band in a discretization.
-"""
-struct SpectralDiscretization{FT <: AbstractFloat}
-    "Wavelength boundaries between each band in the discretization (m)"
-    λ::Tuple{Vararg{FT}}
-    "Banded irradiance curve for the solar radiation (W/m^2)"
-    I::Tuple{Vararg{FT}}
-    "Proportions of PAR radiation in each band"
-    PAR_proportions::Tuple{Vararg{FT}}
-    "Proportions of NIR radiation in each band"
-    NIR_proportions::Tuple{Vararg{FT}}
-end
-
-"""
-    SolarIrradianceCurve(λ::FT) where {FT}
-
-Function to approximate the solar irradiance curve at a given wavelength. The
-solar irradiance curve gices the intensity of solar radiation over the spectrum.
-"""
-function SolarIrradianceCurve(λ::FT) where {FT}
-    return (2 * 6.26e-34 * 3e8 / λ^5) * (1 / (exp(6.26e-34 * 3e8 / (λ * 1.381e-23 * 5778)) - 1))
-end
-
-"""
-    ComputeBandedIrradianceCurve(
-        λ::Tuple{Vararg{FT}},
-    ) where {FT}
-
-Assigns a proportion of total incoming solar radiation to each band in the
-spectral discretization to allow the computation of the input radiation for
-a discretization with an arbitrary number of bands.
-"""
-function ComputeBandedIrradianceCurve(λ::Tuple{Vararg{FT}}) where {FT}
-    # Find the values of the solar irradiance curve at band separating points
-    curve_points = solarIrradianceCurve.(λ)
-    # Use the trapezoid method to compute the area under the curve between each
-    trap_sums = MVector{length(λ) - 1, FT}(zeros(length(λ) - 1)...)
-    for i in 1:length(λ) - 1
-        trap_sums[i] = (curve_points[i] + curve_points[i + 1]) * (λ[i + 1] - λ[i]) / 2
-    end
-    # Now take each band's area as a proportion of the total area under the
-    # curve
-    return Tuple(trap_sums ./ sum(trap_sums))
-end
-
-"""
-    ComputeBandedProportions(
-        λ::Tuple{Vararg{FT}},
-    ) where {FT}
-
-Use the solar irradiance curve to compute the proportion of each band in a
-spectral discretization that is within a specific range, used for PAR and NIR
-radiation.
-"""
-function ComputeBandedProportions(λ::Tuple{Vararg{FT}}, bounds::Tuple{FT, FT}) where {FT}
-    # PAR proportions for each band
-    proportions = MVector{length(λ) - 1, FT}(zeros(length(λ) - 1)...)
-
-    # In each band, determine whether the band is entirely within the PAR range,
-    # partly in the PAR range, or entirely outside the PAR range
-    for i in 1:length(λ) - 1
-        # If the band is entirely within the PAR range, the proportion of PAR
-        # radiation in the band is 1
-        if λ[i] >= bounds[1] && λ[i + 1] <= bounds[2]
-            proportions[i] = 1
-        # If the band is entirely outside the PAR range, the proportion of PAR
-        # radiation in the band is 0
-        elseif λ[i] >= bounds[2] || λ[i + 1] <= bounds[1]
-            proportions[i] = 0
-        # If the band is partly in the PAR range, we need to know what part of 
-        # the band is in the PAR range
-        elseif λ[i] <= bounds[1]
-            # trapezoidal area of the band that is in the PAR range
-            bound_trap = (solarIrradianceCurve(λ[i]) + solarIrradianceCurve(bounds[2])) * (bounds[2] - λ[i]) / 2
-            # trapezoidal area of the band
-            trap = (solarIrradianceCurve(λ[i]) + solarIrradianceCurve(λ[i + 1])) * (λ[i + 1] - λ[i]) / 2
-            # proportion of PAR radiation in the band
-            proportions[i] = bound_trap / trap
-        else
-            # trapezoidal area of the band that is in the PAR range
-            bound_trap = (solarIrradianceCurve(λ[i]) + solarIrradianceCurve(bounds[2])) * (bounds[2] - λ[i]) / 2
-            # trapezoidal area of the band
-            trap = (solarIrradianceCurve(λ[i]) + solarIrradianceCurve(λ[i + 1])) * (λ[i + 1] - λ[i]) / 2
-            # proportion of PAR radiation in the band
-            PAR_proportions[i] = bound_trap / trap
-        end
-    end
-    return Tuple(proportions)
-end
-
-"""
-    ComputeBandedPAR(
-        λ::Tuple{Vararg{FT}},
-    ) where {FT}
-
-Use the solar irradiance curve to compute the proportion of each band in a
-spectral discretization that is within the PAR range.
-"""
-function ComputeBandedPAR(λ::Tuple{Vararg{FT}}) where {FT}
-    return ComputeBandedProportions(λ, (400e-9, 700e-9))
-end
-
-"""
-    ComputeBandedNIR(
-        λ::Tuple{Vararg{FT}},
-    ) where {FT}
-Use the solar irradiance curve to compute the proportion of each band in a
-spectral discretization that is within the NIR range.
-"""
-function ComputeBandedNIR(λ::Tuple{Vararg{FT}}) where {FT}
-    return ComputeBandedProportions(λ, (700e-9, 2500e-9))
-end
-
-"""
-    SpectralDiscretization(
-        λ::Tuple{Vararg{FT}},
-    ) where {FT}
-    
-Creates a spectral discretization with the given wavelength boundaries.
-"""
-function SpectralDiscretization(λ::Tuple{Vararg{FT}}) where {FT}
-    # Check that the given boundaries are in ascending order and cover the full
-    # SW range from 100 nm to 3000 nm
-    @assert λ[1] == 100e-9 && λ[end] == 3000e-9
-    @assert all(λ[i] < λ[i + 1] for i in 1:length(λ) - 1)
-    I = ComputeBandedIrradianceCurve(λ)
-    PAR_proportions = ComputeBandedPAR(λ)
-    NIR_proportions = ComputeBandedNIR(λ)
-    return SpectralDiscretization{FT}(λ, I, PAR_proportions, NIR_proportions)
-end
 
 """
     ConstantGFunction
@@ -187,7 +51,7 @@ Base.@kwdef struct BeerLambertParameters{
     FT <: AbstractFloat,
     SD <: SpectralDiscretization{FT},
     G <: AbstractGFunction,
-    F <: Union{FT, ClimaCore.Fields.Field},
+    F <: Union{Tuple, ClimaCore.Fields.Field},
 }
     "Discretization of shortwave spectrum"
     spectral_discretization::SD
@@ -226,7 +90,8 @@ Base.@kwdef struct TwoStreamParameters{
     FT <: AbstractFloat,
     SD <: SpectralDiscretization{FT},
     G <: AbstractGFunction,
-    F <: Union{FT, ClimaCore.Fields.TF <: Union{Tuple, ClimaCore.Fields.Field}},
+    F <: Union{FT, ClimaCore.Fields.Field},
+    TF <: Union{Tuple, ClimaCore.Fields.Field},
 }
     "Discretization of shortwave spectrum"
     spectral_discretization::SD
@@ -290,13 +155,16 @@ end
 Base.broadcastable(RT::AbstractRadiationModel) = tuple(RT)
 
 ClimaLand.name(model::AbstractRadiationModel) = :radiative_transfer
-ClimaLand.auxiliary_vars(model::Union{BeerLambertModel, TwoStreamModel}) = 
+ClimaLand.auxiliary_vars(model::Union{BeerLambertModel, TwoStreamModel}) =
     (:SW_d, :rt, :LW_n, :SW_n, :ϵ, :frac_diff, :G, :K)
 ClimaLand.auxiliary_types(
     model::Union{BeerLambertModel{FT}, TwoStreamModel{FT}},
 ) where {FT} = (
     FT,
-    NTuple{length(model.parameters.spectral_discretization.λ - 1), NamedTuple{(:abs, :refl, :trans), Tuple{FT, FT, FT}}},
+    NTuple{
+        length(model.parameters.spectral_discretization.λ - 1),
+        NamedTuple{(:abs, :refl, :trans), Tuple{FT, FT, FT}},
+    },
     FT,
     FT,
     FT,
@@ -344,7 +212,10 @@ function canopy_radiant_energy_fluxes!(
 ) where {PSE}
     FT = eltype(earth_param_set)
     SW_d = p.canopy.radiative_transfer.SW_d
-    SW_abs = ntuple(i->p.canopy.radiative_transfer.rt[i].abs, length(p.canopy.radiative_transfer.rt))
+    SW_abs = ntuple(
+        i -> p.canopy.radiative_transfer.rt[i].abs,
+        length(p.canopy.radiative_transfer.rt),
+    )
     @. p.canopy.radiative_transfer.SW_n = sum(SW_abs .* SW_d)
     ϵ_canopy = p.canopy.radiative_transfer.ϵ # this takes into account LAI/SAI
     # Long wave: use ground conditions from the ground driver

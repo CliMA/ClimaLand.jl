@@ -69,6 +69,7 @@ using StaticArrays
 import SurfaceFluxes.Parameters as SFP
 import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
 import ClimaLand.Domains: Column, HybridBox, SphericalShell
+import ClimaLand.Canopy: SpectralDiscretization
 import ClimaLand:
     AbstractImExModel,
     make_update_aux,

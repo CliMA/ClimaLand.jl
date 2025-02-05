@@ -115,7 +115,7 @@ for FT in (Float32, Float64)
         output =
             canopy_sw_rt_beer_lambert.(
                 RTparams.Ω,
-                RTparams.α_PAR_leaf,
+                RTparams.ρ_PAR_leaf,
                 LAI,
                 K_c,
                 α_soil_PAR,
@@ -128,7 +128,7 @@ for FT in (Float32, Float64)
 
         @test all(
             @. FAPAR ≈
-               (1 - RTparams.α_PAR_leaf) .* (1 - exp(-K_c * LAI * RTparams.Ω)) *
+               (1 - RTparams.ρ_PAR_leaf) .* (1 - exp(-K_c * LAI * RTparams.Ω)) *
                (1 - α_soil_PAR)
         )
         To = photosynthesisparams.To

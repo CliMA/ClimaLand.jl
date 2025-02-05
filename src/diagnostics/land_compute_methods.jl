@@ -141,26 +141,29 @@ end
 @diagnostic_compute "vcmax25" Union{SoilCanopyModel, LandModel} p.canopy.photosynthesis.Vcmax25
 
 # Canopy - Radiative Transfer
-sw_d = p.canopy.radiative_transfer.SW_d
-rt = p.canopy.radiative_transfer.rt
-for i in 1:length(rt)
-    @diagnostic_compute "radiation_down_band_$(i)" Union{
-        SoilCanopyModel,
-        LandModel,
-    } SW_d[i]
-    @diagnostic_compute "radiation_absorbed_band_$(i)" Union{
-        SoilCanopyModel,
-        LandModel,
-    } rt[i].abs
-    @diagnostic_compute "radiation_reflected_band_$(i)" Union{
-        SoilCanopyModel,
-        LandModel,
-    } rt[i].refl
-    @diagnostic_compute "radiation_transmitted_band_$(i)" Union{
-        SoilCanopyModel,
-        LandModel,
-    } rt[i].trans
-end
+@diagnostic_compute "spectral_radiation_down" Union{SoilCanopyModel, LandModel} p.canopy.radiative_transfer.SW_d
+@diagnostic_compute "spectral_radiation_absorbed" Union{
+    SoilCanopyModel,
+    LandModel,
+} ntuple(
+    (i) -> p.canopy.radiative_transfer.rt[i].abs,
+    length(p.canopy.radiative_transfer.rt),
+)
+@diagnostic_compute "spectral_radiation_reflected" Union{
+    SoilCanopyModel,
+    LandModel,
+} ntuple(
+    (i) -> p.canopy.radiative_transfer.rt[i].refl,
+    length(p.canopy.radiative_transfer.rt),
+)
+@diagnostic_compute "spectral_radiation_transmitted" Union{
+    SoilCanopyModel,
+    LandModel,
+} ntuple(
+    (i) -> p.canopy.radiative_transfer.rt[i].trans,
+    length(p.canopy.radiative_transfer.rt),
+)
+
 
 ## Drivers Module ##
 

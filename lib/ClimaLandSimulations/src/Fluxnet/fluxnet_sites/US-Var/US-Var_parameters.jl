@@ -82,6 +82,9 @@ function soil_vairaranch(;
     NIR_albedo = FT(0.2),
 )
     hydrology_cm = vanGenuchten{FT}(; α = vg_α, n = vg_n)
+    # Discretization of radiation
+    λ_bounds = FT.((100e-9, 700e-9, 3000e-9))
+    spectral_discretization = SpectralDiscretization(λ_bounds)
     return EnergyHydrologyParameters(
         FT;
         ν,
@@ -92,6 +95,7 @@ function soil_vairaranch(;
         K_sat,
         S_s,
         θ_r,
+        spectral_discretization,
         PAR_albedo,
         NIR_albedo,
         emissivity,
@@ -103,20 +107,22 @@ end
 function radiative_transfer_vairaranch(;
     Ω = FT(0.69),
     ld = ConstantGFunction(FT(0.5)),
-    α_PAR_leaf = FT(0.1),
+    ρ_PAR_leaf = FT(0.1),
     λ_γ_PAR = FT(5e-7),
     τ_PAR_leaf = FT(0.05),
-    α_NIR_leaf = FT(0.45),
+    ρ_NIR_leaf = FT(0.45),
     τ_NIR_leaf = FT(0.25),
     n_layers = UInt64(20),
     ϵ_canopy = FT(0.97),
 )
+    # Discretization of radiation
+    λ_bounds = FT.((100e-9, 700e-9, 3000e-9))
+    spectral_discretization = SpectralDiscretization(λ_bounds)
     return TwoStreamParameters(
+        spectral_discretization,
         G_Function = ld,
-        α_PAR_leaf = α_PAR_leaf,
-        τ_PAR_leaf = τ_PAR_leaf,
-        α_NIR_leaf = α_NIR_leaf,
-        τ_NIR_leaf = τ_NIR_leaf,
+        ρ_leaf = (ρ_PAR_leaf, ρ_NIR_leaf),
+        τ_leaf = (τ_PAR_leaf, τ_NIR_leaf),
         ϵ_canopy = ϵ_canopy,
         Ω = Ω,
         λ_γ_PAR = λ_γ_PAR,

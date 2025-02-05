@@ -741,7 +741,7 @@ boundary_var_types(
     ClimaCore.Geometry.WVector{FT},
     FT,
     FT,
-    NTuple{length(model.parameters.spectral_discretization.λ) - 1 , FT},
+    NTuple{length(model.parameters.spectral_discretization.λ) - 1, FT},
     FT,
     FT,
     Runoff.runoff_var_types(bc.runoff, FT)...,

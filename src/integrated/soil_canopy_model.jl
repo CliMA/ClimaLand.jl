@@ -309,12 +309,16 @@ function lsm_radiant_energy_fluxes!(
     R_net_soil = p.soil.R_n
     LW_u = p.LW_u
     SW_u = p.SW_u
-    spectral_discretization = canopy_radiation.parameters.spectral_discretization
+    spectral_discretization =
+        canopy_radiation.parameters.spectral_discretization
     SW_d = p.canopy.radiative_transfer.SW_d
     nbands = length(SW_d.λ) - 1
-    spectral_f_abs = ntuple((i) -> p.canopy.radiative_transfer.rt[i].abs, nbands)
-    spectral_f_refl = ntuple((i) -> p.canopy.radiative_transfer.rt[i].refl, nbands)
-    spectral_f_trans = ntuple((i) -> p.canopy.radiative_transfer.rt[i].trans, nbands)
+    spectral_f_abs =
+        ntuple((i) -> p.canopy.radiative_transfer.rt[i].abs, nbands)
+    spectral_f_refl =
+        ntuple((i) -> p.canopy.radiative_transfer.rt[i].refl, nbands)
+    spectral_f_trans =
+        ntuple((i) -> p.canopy.radiative_transfer.rt[i].trans, nbands)
 
     # in total: d - u = CANOPY_ABS + (1-α_soil)*CANOPY_TRANS
     # SW upwelling  =  sum of reflectance in each band

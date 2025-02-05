@@ -32,7 +32,7 @@ struct PrescribedGroundConditions{
     "Spectral discretization"
     spectral_discretization::SD
     "Spectral ground albedo"
-    α_ground::NTuple{length(spectral_discretization.λ) - 1, FT}
+    α_ground::Tuple{Vararg{FT}}
     "Ground emissivity"
     ϵ::FT
 end

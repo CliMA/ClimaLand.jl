@@ -47,13 +47,8 @@ CLM reference: Lawrence, P.J., and Chase, T.N. 2007. Representing a MODIS consis
 (CLM 3.0). J. Geophys. Res. 112:G01023. DOI:10.1029/2006JG000168.
 """
 function update_albedo!(bc::AtmosDrivenFluxBC, p, soil_domain, model_parameters)
-    (;
-        ν,
-        θ_r,
-        albedo_dry,
-        albedo_wet,
-        albedo_calc_top_thickness,
-    ) = model_parameters
+    (; ν, θ_r, albedo_dry, albedo_wet, albedo_calc_top_thickness) =
+        model_parameters
     S_sfc = p.soil.sfc_S_e
     FT = eltype(soil_domain.fields.Δz_top)
     # checks if there is at least 1 layer centered within the top soil depth
@@ -88,7 +83,8 @@ function update_albedo!(bc::AtmosDrivenFluxBC, p, soil_domain, model_parameters)
             effective_saturation.(ν, p.soil.θ_l, θ_r),
         )
     end
-    @. p.soil.albedo = albedo_from_moisture(S_sfc, p.soil.albedo_dry, p.soil.albedo_wet)
+    @. p.soil.albedo =
+        albedo_from_moisture(S_sfc, p.soil.albedo_dry, p.soil.albedo_wet)
 end
 
 """

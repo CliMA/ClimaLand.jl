@@ -27,8 +27,10 @@ import ClimaLand:
     get_drivers
 
 using ClimaLand.Domains: Point, Plane, SphericalSurface
-export SharedCanopyParameters, CanopyModel, set_canopy_prescribed_field!
+export SharedCanopyParameters,
+    CanopyModel, set_canopy_prescribed_field!, SpectralDiscretization
 include("./component_models.jl")
+include("./shared_structs.jl")
 include("./ground_drivers.jl")
 include("./PlantHydraulics.jl")
 using .PlantHydraulics
@@ -435,7 +437,8 @@ function ClimaLand.make_update_aux(
         R = FT(LP.gas_constant(earth_param_set))
         T_freeze = FT(LP.T_freeze(earth_param_set))
         thermo_params = earth_param_set.thermo_params
-        (; spectral_discretization, G_Function, Ω, λ_γ_PAR) = canopy.radiative_transfer.parameters
+        (; spectral_discretization, G_Function, Ω, λ_γ_PAR) =
+            canopy.radiative_transfer.parameters
         nbands = length(spectral_discretization.λ) - 1
         energy_per_mole_photon_par = planck_h * c / λ_γ_PAR * N_a
         (; g1, g0, Drel) = canopy.conductance.parameters
@@ -484,7 +487,10 @@ function ClimaLand.make_update_aux(
         )
 
         # Extract PAR radiation from radiative transfer output
-        faPAR = sum(spectral_discretization.PAR_proportions .* ntuple((i) -> p.canopy.radiative_transfer.rt[i].abs, nbands))
+        faPAR = sum(
+            spectral_discretization.PAR_proportions .*
+            ntuple((i) -> p.canopy.radiative_transfer.rt[i].abs, nbands),
+        )
 
         # update plant hydraulics aux
         hydraulics = canopy.hydraulics

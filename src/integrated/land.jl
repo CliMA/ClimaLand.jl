@@ -412,7 +412,12 @@ function lsm_radiant_energy_fluxes!(
     ϵ_soil = land.soil.parameters.emissivity
     T_soil = ClimaLand.Domains.top_center_to_surface(p.soil.T)
 
-    α_snow = ntuple(_ -> α_snow, length(land.canopy.radiative_transfer.parameters.spectral_discretization.λ) - 1)
+    α_snow = ntuple(
+        _ -> α_snow,
+        length(
+            land.canopy.radiative_transfer.parameters.spectral_discretization.λ,
+        ) - 1,
+    )
     ϵ_snow = land.snow.parameters.ϵ_snow
     T_snow = p.snow.T_sfc
 
@@ -430,15 +435,32 @@ function lsm_radiant_energy_fluxes!(
 
     # in total: d - u = CANOPY_ABS + (1-α_ground)*CANOPY_TRANS
     # SW_u = sum of reflectance in each band
-    @. SW_u = sum(SW_d .* ntuple((i) -> p.canopy.radiative_transfer.rt[i].refl, length(SW_d)))
+    @. SW_u = sum(
+        SW_d .*
+        ntuple((i) -> p.canopy.radiative_transfer.rt[i].refl, length(SW_d)),
+    )
 
     # net canopy
-    @. SW_net_canopy = SW_d .* ntuple((i) -> p.canopy.radiative_transfer.rt[i].abs, length(SW_d))
+    @. SW_net_canopy =
+        SW_d .*
+        ntuple((i) -> p.canopy.radiative_transfer.rt[i].abs, length(SW_d))
 
     # net radiative flux for soil = -((1-α)*trans for par and nir)
-    @. R_net_soil .= -1 * sum((1 .- α_soil) .* SW_d .* ntuple((i) -> p.canopy.radiative_transfer.rt[i].trans, length(SW_d)))
+    @. R_net_soil .=
+        -1 * sum(
+            (1 .- α_soil) .* SW_d .* ntuple(
+                (i) -> p.canopy.radiative_transfer.rt[i].trans,
+                length(SW_d),
+            ),
+        )
 
-    @. R_net_soil .= -1 * sum((1 .- α_snow) .* SW_d .* ntuple((i) -> p.canopy.radiative_transfer.rt[i].trans, length(SW_d)))
+    @. R_net_soil .=
+        -1 * sum(
+            (1 .- α_snow) .* SW_d .* ntuple(
+                (i) -> p.canopy.radiative_transfer.rt[i].trans,
+                length(SW_d),
+            ),
+        )
 
     ϵ_canopy = p.canopy.radiative_transfer.ϵ # this takes into account LAI/SAI
 

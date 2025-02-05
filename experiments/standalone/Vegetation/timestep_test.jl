@@ -94,13 +94,14 @@ shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
 );
 ψ_soil0 = FT(0.0)
 
-λ_bounds = FT.(100e-9, 700e-9, 3000e-9)
+λ_bounds = FT.((100e-9, 700e-9, 3000e-9))
+spectral_discretization = SpectralDiscretization(λ_bounds)
 
 soil_driver = PrescribedGroundConditions(
     FT;
     root_depths = SVector{10, FT}(-(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0),
     ψ = t -> ψ_soil0,
-    spectral_discretization = SpectralDiscretization(λ_bounds),
+    spectral_discretization = spectral_discretization,
     α_ground = FT.(0.2, 0.4),
     T = t -> 298.0,
     ϵ = FT(0.99),
@@ -108,11 +109,10 @@ soil_driver = PrescribedGroundConditions(
 
 rt_params = TwoStreamParameters(
     FT;
+    spectral_discretization = spectral_discretization,
     G_Function = ConstantGFunction(FT(0.5)),
-    α_PAR_leaf = FT(0.1),
-    α_NIR_leaf = FT(0.45),
-    τ_PAR_leaf = FT(0.05),
-    τ_NIR_leaf = FT(0.25),
+    ρ_leaf = FT.((0.1, 0.45)),
+    τ_leaf = FT.((0.05, 0.25)),
     Ω = FT(0.69),
     λ_γ_PAR = FT(5e-7),
 )

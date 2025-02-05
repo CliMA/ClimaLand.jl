@@ -83,6 +83,7 @@ for FT in (Float32, Float64)
         radiative_transfer_args = (;
             parameters = Canopy.TwoStreamParameters(
                 FT;
+                spectral_discretization = spectral_discretization,
                 Ω = FT(0),
                 ρ_leaf = (FT(0), FT(0)),
                 τ_leaf = (FT(0), FT(0)),

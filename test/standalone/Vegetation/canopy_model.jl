@@ -21,7 +21,7 @@ import ClimaParams
 
 @testset "Canopy software pipes" begin
     for FT in (Float32, Float64)
-        domain = ClimaLand.Domains.SphericalSurface(;
+        domain = SphericalSurface(;
             radius = FT(100.0),
             nelements = 10,
             npolynomial = 1,
@@ -33,14 +33,15 @@ import ClimaParams
             mechanism_field,
         )
         # Specify the spectral discretization of radiation
-        λ_bounds = FT.(100e-9, 700e-9, 3000e-9)
+        λ_bounds = FT.((100e-9, 700e-9, 3000e-9))
         # create one case where parameters are spatially varying and one where not
         g1_cases = (FT(790), fill(FT(790), domain.space.surface))
         Vcmax25_cases = (FT(9e-5), fill(FT(9e-5), domain.space.surface))
         mechanism_cases = (FT(1), mechanism_field)
         rooting_cases = (FT(0.5), fill(FT(0.5), domain.space.surface))
         # test default values as field
-        ρ_leaf_cases = (FT.(0.1, 0.4), fill(FT.(0.1, 0.4)), domain.space.surface)
+        ρ_leaf_cases =
+            (FT.((0.1, 0.4)), fill(FT.((0.1, 0.4))), domain.space.surface)
         ld_cases = (FT(0.5), fill(FT(0.5), domain.space.surface))
         zipped_params = zip(
             g1_cases,
@@ -50,12 +51,16 @@ import ClimaParams
             ρ_leaf_cases,
             ld_cases,
         )
-        for (g1, Vcmax25, is_c3, rooting_depth, ρ_leaf, ld) in
-            zipped_params
+        for (g1, Vcmax25, is_c3, rooting_depth, ρ_leaf, ld) in zipped_params
             AR_params = AutotrophicRespirationParameters(FT)
             G_Function = ConstantGFunction(ld)
-            RTparams =
-                BeerLambertParameters(FT; SpectralDiscretization(λ_bounds), ρ_leaf, G_Function)
+            spectral_discretization = SpectralDiscretization(λ_bounds)
+            RTparams = BeerLambertParameters(
+                FT;
+                spectral_discretization,
+                ρ_leaf,
+                G_Function,
+            )
             photosynthesis_params = FarquharParameters(FT, is_c3; Vcmax25)
             stomatal_g_params = MedlynConductanceParameters(FT; g1)
             AR_model = AutotrophicRespirationModel{FT}(AR_params)
@@ -293,9 +298,10 @@ import ClimaParams
             _σ = FT(LP.Stefan(earth_param_set))
 
             nbands = length(λ_bounds) - 1
-            spectral_f_abs = ntuple((i) -> p.canopy.radiative_transfer.rt[i].abs, nbands)
+            spectral_f_abs =
+                ntuple((i) -> p.canopy.radiative_transfer.rt[i].abs, nbands)
             SW_d = p.canopy.radiative_transfer.SW_d
-                        
+
             @test p.canopy.radiative_transfer.SW_n ==
                   @. sum(f_spectral_abs .* SW_d)
             ϵ_canopy = p.canopy.radiative_transfer.ϵ
@@ -574,7 +580,10 @@ end
         mechanism_cases = (FT(1), mechanism_field)
         rooting_cases = (FT(0.5), fill(FT(0.5), domain.space.surface))
         # test default values as field
-        ρ_leaf_cases = ((FT(0.1), FT(0.1)), fill((FT(0.1), FT(0.1)), domain.space.subsurface))
+        ρ_leaf_cases = (
+            (FT(0.1), FT(0.1)),
+            fill((FT(0.1), FT(0.1)), domain.space.subsurface),
+        )
         ld_cases = (FT(0.5), fill(FT(0.5), domain.space.surface))
         zipped_params = zip(
             g1_cases,
@@ -584,11 +593,9 @@ end
             ρ_leaf_cases,
             ld_cases,
         )
-        for (g1, Vcmax25, is_c3, rooting_depth, ρ_leaf, ld) in
-            zipped_params
+        for (g1, Vcmax25, is_c3, rooting_depth, ρ_leaf, ld) in zipped_params
             G_Function = ConstantGFunction(ld)
-            RTparams =
-                BeerLambertParameters(FT; ρ_leaf, G_Function)
+            RTparams = BeerLambertParameters(FT; ρ_leaf, G_Function)
             photosynthesis_params = FarquharParameters(FT, is_c3; Vcmax25)
             stomatal_g_params = MedlynConductanceParameters(FT; g1)
 
@@ -1166,16 +1173,20 @@ end
             x -> x.coordinates.lat > 0 ? 0.0 : 1.0,
             mechanism_field,
         )
+        λ_bounds = FT.(100e-9, 700e-9, 3000e-9)
+        spectral_discretization = ClimaLand.SpectralDiscretization(λ_bounds)
         # create one case where parameters are spatially varying and one where not
         Ω_cases = (FT(0.69), fill(FT(0.69), domain.space.surface))
         g1_cases = (FT(790), fill(FT(790), domain.space.surface))
         Vcmax25_cases = (FT(9e-5), fill(FT(9e-5), domain.space.surface))
         mechanism_cases = (FT(1), mechanism_field)
         rooting_cases = (FT(0.5), fill(FT(0.5), domain.space.surface))
-        α_PAR_leaf_cases = (FT(0.1), fill(FT(0.1), domain.space.surface))
-        τ_PAR_leaf_cases = (FT(0.05), fill(FT(0.05), domain.space.surface))
-        α_NIR_leaf_cases = (FT(0.45), fill(FT(0.45), domain.space.surface))
-        τ_NIR_leaf_cases = (FT(0.25), fill(FT(0.25), domain.space.surface))
+        ρ_leaf_cases =
+            (FT.((0.1, 0.45)), fill(FT.((0.1, 0.45)), domain.space.subsurface))
+        τ_leaf_cases = (
+            FT.((0.05, 0.25)),
+            fill(FT.((0.05, 0.25)), domain.space.subsurface),
+        )
         χl_cases = (FT(0.1), fill(FT(0.1), domain.space.surface))
         zipped_params = zip(
             Ω_cases,
@@ -1183,38 +1194,29 @@ end
             Vcmax25_cases,
             mechanism_cases,
             rooting_cases,
-            α_PAR_leaf_cases,
-            τ_PAR_leaf_cases,
-            α_NIR_leaf_cases,
-            τ_NIR_leaf_cases,
+            ρ_leaf_cases,
+            τ_leaf_cases,
             χl_cases,
         )
-        for (
-            Ω,
-            g1,
-            Vcmax25,
-            is_c3,
-            rooting_depth,
-            α_PAR_leaf,
-            τ_PAR_leaf,
-            α_NIR_leaf,
-            τ_NIR_leaf,
-            χl,
-        ) in zipped_params
+        for (Ω, g1, Vcmax25, is_c3, rooting_depth, ρ_leaf, τ_leaf, χl) in
+            zipped_params
             BeerLambertparams = BeerLambertParameters(FT)
             # TwoStreamModel parameters
             G_Function = CLMGFunction(χl)
             λ_γ_PAR = FT(5e-7)
             ϵ_canopy = FT(0.97)
-            BeerLambertparams =
-                BeerLambertParameters(FT; α_PAR_leaf, α_NIR_leaf, λ_γ_PAR)
+            BeerLambertparams = BeerLambertParameters(
+                FT;
+                spectral_discretization,
+                ρ_leaf,
+                λ_γ_PAR,
+            )
             TwoStreamparams = TwoStreamParameters(
                 FT;
+                spectral_discretization,
                 Ω,
-                α_PAR_leaf,
-                τ_PAR_leaf,
-                α_NIR_leaf,
-                τ_NIR_leaf,
+                ρ_leaf,
+                τ_leaf,
                 G_Function,
             )
             photosynthesis_params = FarquharParameters(FT, is_c3; Vcmax25)
@@ -1432,8 +1434,14 @@ end
                     Array(parent(p.canopy.radiative_transfer.SW_n)) .== FT(0),
                 )
                 @test all(
-                    Array(parent(ntuple((i) -> p.canopy.radiative_transfer.rt[i].abs), nbands)) .==
-                    ntuple((_) -> FT(0), nbands)
+                    Array(
+                        parent(
+                            ntuple(
+                                (i) -> p.canopy.radiative_transfer.rt[i].abs,
+                            ),
+                            nbands,
+                        ),
+                    ) .== ntuple((_) -> FT(0), nbands),
                 )
                 @test all(
                     Array(parent(p.canopy.autotrophic_respiration.Ra)) .==
