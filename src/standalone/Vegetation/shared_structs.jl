@@ -26,7 +26,8 @@ Function to approximate the solar irradiance curve at a given wavelength. The
 solar irradiance curve gives the intensity of solar radiation over the spectrum.
 """
 function SolarIrradianceCurve(λ::FT) where {FT}
-    return (2 * 6.26e-34 * 3e8 / λ^5) * (1 / (exp(6.26e-34 * 3e8 / (λ * 1.381e-23 * 5778)) - 1))
+    return (2 * 6.26e-34 * 3e8 / λ^5) *
+           (1 / (exp(6.26e-34 * 3e8 / (λ * 1.381e-23 * 5778)) - 1))
 end
 
 """
@@ -39,7 +40,9 @@ function SolarIrradianceArea(λ1::FT, λ2::FT) where {FT}
     # Create an mvector of the steps
     num_steps = Int(round((λ2 - λ1) * 1e9))
     # Compute the area via the trapezoid method
-    return sum(SolarIrradianceCurve.(range(λ1, stop=λ2, length=num_steps))) * (λ2 - λ1) / num_steps
+    return sum(
+        SolarIrradianceCurve.(range(λ1, stop = λ2, length = num_steps)),
+    ) * (λ2 - λ1) / num_steps
 end
 
 """
@@ -54,7 +57,7 @@ a discretization with an arbitrary number of bands.
 function ComputeBandedIrradianceCurve(λ::Tuple{Vararg{FT}}) where {FT}
     # Use the trapezoid method to compute the area under the curve between each
     trap_sums = MVector{length(λ) - 1, FT}(zeros(length(λ) - 1)...)
-    for i in 1:length(λ) - 1
+    for i in 1:(length(λ) - 1)
         trap_sums[i] = SolarIrradianceArea(λ[i], λ[i + 1])
     end
     # Now take each band's area as a proportion of the total area under the
@@ -71,23 +74,26 @@ Use the solar irradiance curve to compute the proportion of each band in a
 spectral discretization that is within a specific range, used for PAR and NIR
 radiation.
 """
-function ComputeBandedProportions(λ::Tuple{Vararg{FT}}, bounds::Tuple{FT, FT}) where {FT}
+function ComputeBandedProportions(
+    λ::Tuple{Vararg{FT}},
+    bounds::Tuple{FT, FT},
+) where {FT}
     # PAR proportions for each band
     proportions = MVector{length(λ) - 1, FT}(zeros(length(λ) - 1)...)
 
     # In each band, determine whether the band is entirely within the PAR range,
     # partly in the PAR range, or entirely outside the PAR range
-    for i in 1:length(λ) - 1
+    for i in 1:(length(λ) - 1)
         # If the band is entirely within the range, the proportion of radiation
         # in the range is 1
         if λ[i] >= bounds[1] && λ[i + 1] <= bounds[2]
             proportions[i] = 1
-        # If the band is entirely outside the range, the proportion of radiation
-        # in the range is 0
+            # If the band is entirely outside the range, the proportion of radiation
+            # in the range is 0
         elseif λ[i] >= bounds[2] || λ[i + 1] <= bounds[1]
             proportions[i] = 0
-        # If the band is partly in the range, we need to know what part of 
-        # the band is in the range
+            # If the band is partly in the range, we need to know what part of 
+            # the band is in the range
         elseif λ[i] <= bounds[1] && λ[i + 1] <= bounds[2]
             # trapezoidal area of the band that is in the PAR range
             bound_trap = SolarIrradianceArea(bounds[1], λ[i + 1])
@@ -142,7 +148,7 @@ function SpectralDiscretization(λ::Tuple{Vararg{FT}}) where {FT}
     # Check that the given boundaries are in ascending order and cover the full
     # SW range from 100 nm to 3000 nm
     @assert λ[1] == 100e-9 && λ[end] == 3000e-9
-    @assert all(λ[i] < λ[i + 1] for i in 1:length(λ) - 1)
+    @assert all(λ[i] < λ[i + 1] for i in 1:(length(λ) - 1))
     I = ComputeBandedIrradianceCurve(λ)
     PAR_proportions = ComputeBandedPAR(λ)
     NIR_proportions = ComputeBandedNIR(λ)

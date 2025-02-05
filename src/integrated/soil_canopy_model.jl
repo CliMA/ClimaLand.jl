@@ -404,6 +404,7 @@ of type `EnergyHydrology`. `PrognosticSoilConditions` functions as a flag and is
 """
 struct PrognosticSoilConditions <: Canopy.AbstractGroundConditions end
 
+# TODO:(ES / REMOVE)
 # """
 #     Canopy.ground_albedo(
 #         prognostic_land_components::Val{(:canopy, :snow, :soil, :soilco2)},
