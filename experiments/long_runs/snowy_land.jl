@@ -445,6 +445,10 @@ end
 setup_and_solve_problem(; greet = true);
 # read in diagnostics and make some plots!
 #### ClimaAnalysis ####
+# TODO remove hardcoding for manual iteration
+root_path = joinpath(pwd(), "snowy_land_longrun_gpu")
+!isdir(root_path) && mkdir(root_path)
+outdir = "/scratch/clima/slurm-buildkite/climaland-long-runs/3057/climaland-long-runs/snowy_land_longrun_gpu/global_diagnostics/output_active/"
 simdir = ClimaAnalysis.SimDir(outdir)
 short_names_bio = ["gpp", "ct", "lai"]
 short_names_water = ["swc", "si", "sr", "swe"]
