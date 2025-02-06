@@ -157,7 +157,7 @@ prob = SciMLBase.ODEProblem(
     p,
 )
 save_every = 100
-saveat = Array(t0:(save_every * dt):tf)
+saveat = [t0, tf]
 sv = (;
     t = Array{Float64}(undef, length(saveat)),
     saveval = Array{NamedTuple}(undef, length(saveat)),
@@ -168,7 +168,13 @@ drivers = ClimaLand.get_drivers(model)
 updatefunc = ClimaLand.make_update_drivers(drivers)
 driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
 cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
-sol = @time SciMLBase.solve(prob, ode_algo; dt = dt, saveat = dt, callback = cb)
+sol = @time SciMLBase.solve(
+    prob,
+    ode_algo;
+    dt = dt,
+    saveat = saveat,
+    callback = cb,
+)
 
 # Make plots on CPU
 oceans_to_zero(x, mask) = mask == 1 ? x : eltype(x)(0)

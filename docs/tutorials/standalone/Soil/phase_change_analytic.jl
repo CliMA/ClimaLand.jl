@@ -207,7 +207,7 @@ sol = SciMLBase.solve(
     prob,
     ode_algo;
     dt = dt,
-    saveat = 0:3600:tf,
+    saveat = collect(0:3600:tf),
     callback = saving_cb,
 );
 sol_T = parent(sv.saveval[end].soil.T)[:]

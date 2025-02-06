@@ -111,7 +111,12 @@ for FT in (Float32, Float64)
             p,
         )
 
-        sol = SciMLBase.solve(prob, ode_algo; dt = dt, saveat = dt)
+        sol = SciMLBase.solve(
+            prob,
+            ode_algo;
+            dt = dt,
+            saveat = collect(t_start:dt:t_end),
+        )
 
         # Check that simulation still has correct float type
         @assert eltype(sol.u[end].soil) == FT

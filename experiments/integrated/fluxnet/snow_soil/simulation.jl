@@ -172,7 +172,13 @@ prob = SciMLBase.ODEProblem(
     (t0, tf),
     p,
 );
-sol = SciMLBase.solve(prob, ode_algo; callback = cb, dt = dt, saveat = t0:dt:tf);
+sol = SciMLBase.solve(
+    prob,
+    ode_algo;
+    callback = cb,
+    dt = dt,
+    saveat = collect(t0:dt:tf),
+);
 
 # Plotting
 daily = sol.t ./ 3600 ./ 24
