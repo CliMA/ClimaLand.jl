@@ -113,10 +113,7 @@ function make_figures(
 
         ## GLOBAL HEATMAP
         for t in var_times
-            title = CairoMakie.rich(
-                title_stub * "$(Int(t/86400)) days",
-                fontsize = 18,
-            ) # title of the figure
+            title = CairoMakie.rich(title_stub, fontsize = 18) # title of the figure
             fig = CairoMakie.Figure(size = (600, 400))
             kwargs = ClimaAnalysis.has_altitude(var) ? Dict(:z => 1) : Dict()
             viz.heatmap2D_on_globe!(
