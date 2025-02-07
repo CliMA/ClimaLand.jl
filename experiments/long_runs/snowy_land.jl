@@ -497,10 +497,24 @@ months_id = [1, 4, 7, 10]
 
 #     CairoMakie.save(joinpath(root_path, "$(group_name).png"), fig)
 # end
-
+m²
 short_names = ["gpp", "swc", "et", "ct", "swe", "si"]
-colorbar_labels = Dict("gpp" => "GPP (mol CO₂⋅m²/s)")
-title_stubs = Dict("gpp" => "Gross Primary Productivity, 1 month average at time ")
+colorbar_labels = Dict(
+    "gpp" => "GPP (mol CO₂⋅m²/s)",
+    "swc" => "Soil Water Content (m³/m³)",
+    "et" => "Evapotranspiration (kg/m²s)",
+    "ct" => "Canopy Temperature (K)",
+    "swe" => "Snow Water Equivalent (m)",
+    "si" => "Soil Ice (m³/m³)",
+)
+title_stubs = Dict(
+    "gpp" => "Gross Primary Productivity, 1 month average at time ",
+    "swc" => "Soil Water Content, 1 month average at time ",
+    "et" => "Evapotranspiration, 1 month average at time ",
+    "ct" => "Canopy Temperature, 1 month average at time ",
+    "swe" => "Snow Water Equivalent, 1 month average at time ",
+    "si" => "Soil Ice, 1 month average at time ",
+)
 
 include(
     joinpath(
