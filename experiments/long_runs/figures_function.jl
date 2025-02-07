@@ -15,18 +15,20 @@ It also contains global seasonal cycle plots, as the monthly average of variable
 function make_figures(
     root_path,
     outdir,
-    short_names;
+    short_names,
+    colorbar_labels,
+    title_stubs;
     plot! = viz.heatmap2D_on_globe!,
 )
     simdir = ClimaAnalysis.SimDir(outdir)
     for short_name in [short_names[1]]
         var = get(simdir; short_name)
+        title_stub = title_stubs[short_name]
         N = length(ClimaAnalysis.times(var))
-        var_times = [
-            ClimaAnalysis.times(var)[1],
-            ClimaAnalysis.times(var)[div(N, 2, RoundNearest)],
-            ClimaAnalysis.times(var)[N],
-        ]
+        var_times = [ClimaAnalysis.times(var)[1]]#,
+        #     ClimaAnalysis.times(var)[div(N, 2, RoundNearest)],
+        #     ClimaAnalysis.times(var)[N],
+        # ]
 
         ## SEASONAL CYCLE
         # kwarg_z = ClimaAnalysis.has_altitude(var) ? Dict(:z => 1) : Dict() # if has altitude, take first layer
@@ -111,16 +113,19 @@ function make_figures(
 
         ## GLOBAL HEATMAP
         for t in var_times
+            title = CairoMakie.rich(title_stub * "$(Int(t/86400)) days", fontsize = 18) # title of the figure
             fig = CairoMakie.Figure(size = (600, 400))
             kwargs =
                 ClimaAnalysis.has_altitude(var) ? Dict(:z => 1) : Dict()
             viz.heatmap2D_on_globe!(
                 fig,
                 ClimaAnalysis.slice(var, time = t; kwargs...),
+                colorbar_label = colorbar_labels[short_name],
                 mask = viz.oceanmask(),
                 more_kwargs = Dict(
                     :mask => ClimaAnalysis.Utils.kwargs(color = :white),
                     :plot => ClimaAnalysis.Utils.kwargs(rasterize = true),
+                    :axis => ClimaAnalysis.Utils.kwargs(title = title)
                 ),
             )
             CairoMakie.save(joinpath(root_path, "$(short_name)_$t.pdf"), fig)
