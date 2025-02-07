@@ -293,7 +293,7 @@ end
     function canopy_turbulent_fluxes_at_a_point(
         T_sfc::FT,
         h_sfc::FT,
-        leaf_r_stomata::FT,
+        r_stomata_canopy::FT,
         d_sfc::FT,
         ts_in,
         u::FT,
@@ -316,7 +316,7 @@ of `SurfaceFluxes.surface_conditions`.
 function canopy_turbulent_fluxes_at_a_point(
     T_sfc::FT,
     h_sfc::FT,
-    leaf_r_stomata::FT,
+    r_stomata_canopy::FT,
     d_sfc::FT,
     ts_in,
     u::FT,
@@ -372,13 +372,13 @@ function canopy_turbulent_fluxes_at_a_point(
     Rm_int = Thermodynamics.gas_constant_air(thermo_params, ts_in)
     ρ_air = Thermodynamics.air_density(thermo_params, ts_in)
 
-    r_b::FT = FT(1 / 0.01 * (ustar / 0.04)^(-1 / 2)) # CLM 5, tech note Equation 5.122
-    leaf_r_b = r_b / LAI
-    canopy_r_b = r_b / (LAI + SAI)
+    r_b_leaf::FT = FT(1 / 0.01 * (ustar / 0.04)^(-1 / 2)) # CLM 5, tech note Equation 5.122
+    r_b_canopy_lai = r_b_leaf / LAI
+    r_b_canopy_total = r_b_leaf / (LAI + SAI)
 
     E0::FT =
         SurfaceFluxes.evaporation(surface_flux_params, states, conditions.Ch)
-    E = E0 * r_ae / (leaf_r_b + leaf_r_stomata + r_ae) # CLM 5, tech note Equation 5.101, and fig 5.2b, assuming all sunlit, f_wet = 0
+    E = E0 * r_ae / (r_b_canopy_lai + r_stomata_canopy + r_ae) # CLM 5, tech note Equation 5.101, and fig 5.2b, assuming all sunlit, f_wet = 0
     Ẽ = E / _ρ_liq
 
     SH =
@@ -387,7 +387,7 @@ function canopy_turbulent_fluxes_at_a_point(
             conditions.Ch,
             states,
             scheme,
-        ) * r_ae / (canopy_r_b + r_ae)
+        ) * r_ae / (r_b_canopy_total + r_ae)
     # The above follows from CLM 5, tech note Equation 5.88, setting H_v = SH and solving to remove T_s, ignoring difference between cp in atmos and above canopy.
     LH = _LH_v0 * E
 
@@ -401,11 +401,11 @@ function canopy_turbulent_fluxes_at_a_point(
     ∂cp_m_sfc∂Tc = 0 # Possibly can address at a later date
 
     ∂LHF∂qc =
-        ρ_sfc * _LH_v0 / (leaf_r_b + leaf_r_stomata + r_ae) +
+        ρ_sfc * _LH_v0 / (r_b_canopy_lai + r_stomata_canopy + r_ae) +
         LH / ρ_sfc * ∂ρsfc∂Tc
 
     ∂SHF∂Tc =
-        ρ_sfc * cp_m_sfc / (canopy_r_b + r_ae) +
+        ρ_sfc * cp_m_sfc / (r_b_canopy_total + r_ae) +
         SH / ρ_sfc * ∂ρsfc∂Tc +
         SH / cp_m_sfc * ∂cp_m_sfc∂Tc
     return (
