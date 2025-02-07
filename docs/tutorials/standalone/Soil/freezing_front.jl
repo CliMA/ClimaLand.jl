@@ -254,12 +254,15 @@ mask_12h = hours .== 12
 mask_24h = hours .== 24
 mask_50h = hours .== 50;
 
-fig = Figure(size = (900, 300))
+fig = Figure(size = (1500, 500), fontsize = 36)
 ax1 = Axis(
     fig[1, 1],
     title = "12 hours",
     xlabel = L"θ_l + θ_i",
-    ylabel = "Soil depth (m)",
+    ylabel = "Depth (m)",
+    xgridvisible = false,
+    ygridvisible = false,
+    xticks = (0.2:0.1:0.4, ["0.2", "0.3", "0.4"]),
 )
 limits!(ax1, 0.2, 0.5, -0.2, 0.0)
 ax2 = Axis(
@@ -268,6 +271,9 @@ ax2 = Axis(
     xlabel = L"θ_l + θ_i",
     yticksvisible = false,
     yticklabelsvisible = false,
+    xgridvisible = false,
+    ygridvisible = false,
+    xticks = (0.2:0.1:0.4, ["0.2", "0.3", "0.4"]),
 )
 limits!(ax2, 0.2, 0.5, -0.2, 0.0)
 ax3 = Axis(
@@ -276,40 +282,46 @@ ax3 = Axis(
     xlabel = L"θ_l + θ_i",
     yticksvisible = false,
     yticklabelsvisible = false,
+    xgridvisible = false,
+    ygridvisible = false,
+    xticks = (0.2:0.1:0.4, ["0.2", "0.3", "0.4"]),
 )
 limits!(ax3, 0.2, 0.5, -0.2, 0.0)
 
 
 z = parent(coords.subsurface.z)[:];
 
-scatter!(ax1, vwc[mask_12h], -depth[mask_12h], label = "", color = "purple")
+scatter!(ax1, vwc[mask_12h], -depth[mask_12h], label = "", color = "orange")
 lines!(
     ax1,
     parent(sol.u[13].soil.ϑ_l .+ sol.u[13].soil.θ_i)[:],
     z,
     label = "",
-    color = :green,
+    color = :blue,
+    linewidth = 3,
 )
 
 
-scatter!(ax2, vwc[mask_24h], -depth[mask_24h], label = "", color = "purple")
+scatter!(ax2, vwc[mask_24h], -depth[mask_24h], label = "", color = "orange")
 lines!(
     ax2,
     parent(sol.u[25].soil.ϑ_l .+ sol.u[25].soil.θ_i)[:],
     z,
     label = "",
-    color = :green,
+    color = :blue,
+    linewidth = 3,
 )
 
-scatter!(ax3, vwc[mask_50h], -depth[mask_50h], label = "Data", color = "purple")
+scatter!(ax3, vwc[mask_50h], -depth[mask_50h], label = "Data", color = "orange")
 lines!(
     ax3,
     parent(sol.u[51].soil.ϑ_l .+ sol.u[51].soil.θ_i)[:],
     z,
-    label = "Simulation",
-    color = :green,
+    label = "Model",
+    color = :blue,
+    linewidth = 3,
 )
-axislegend(ax3, position = :rb)
+axislegend(ax3, position = :rb, framevisible = false)
 
 save("mizoguchi_data_comparison.png", fig);
 # ![](mizoguchi_data_comparison.png)

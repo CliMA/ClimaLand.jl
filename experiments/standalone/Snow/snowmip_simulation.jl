@@ -182,7 +182,7 @@ CairoMakie.scatter!(
     seconds[mass_data_avail] ./ 24 ./ 3600,
     SWE,
     label = "Data",
-    color = :red,
+    color = :orange,
 )
 CairoMakie.axislegend(ax1, position = :rt)
 
@@ -204,7 +204,7 @@ CairoMakie.scatter!(
     mean_obs_df.doy,
     mean_obs_df.obs_swe,
     label = "Data",
-    color = :red,
+    color = :orange,
 )
 CairoMakie.save(joinpath(savedir, "snow_water_content_$(SITE_NAME).png"), fig)
 
@@ -223,7 +223,7 @@ CairoMakie.scatter!(
     seconds[mass_data_avail] ./ 24 ./ 3600,
     T_snow .+ 273.15,
     label = "Snow T",
-    color = :red,
+    color = :orange,
 )
 CairoMakie.scatter!(
     ax1,
@@ -257,7 +257,7 @@ CairoMakie.scatter!(
     mean_obs_df.doy,
     mean_obs_df.obs_tsnow,
     label = "Data",
-    color = :red,
+    color = :orange,
 )
 CairoMakie.save(joinpath(savedir, "snow_energy_content_$(SITE_NAME).png"), fig)
 
@@ -366,58 +366,58 @@ CairoMakie.save(joinpath(savedir, "conservation_$(SITE_NAME).png"), fig)
 
 # Paper plot
 
-fig = CairoMakie.Figure(size = (1100, 1400), fontsize = 26)
+fig = CairoMakie.Figure(size = (1100, 1400), fontsize = 36)
 # set limits
-ax1 = CairoMakie.Axis(fig[1, 1], ylabel = "SWE (m)")
+ax1 = CairoMakie.Axis(
+    fig[1, 1],
+    ylabel = "SWE (m)",
+    xgridvisible = false,
+    ygridvisible = false,
+)
 
 xlims!(ax1, 0, ndays)
 CairoMakie.hidexdecorations!(ax1, ticks = false)
-CairoMakie.lines!(ax1, daily, S, label = "Model S")
-CairoMakie.lines!(ax1, daily, S_l, label = "Model S_l")
+CairoMakie.lines!(ax1, daily, S, color = :blue, linewidth = 3, label = "Model")
+#CairoMakie.lines!(ax1, daily, S_l, label = "S_l", color=:blue,  linewidth=3)
 CairoMakie.scatter!(
     ax1,
     seconds[mass_data_avail] ./ 24 ./ 3600,
     SWE,
-    label = "Data S",
-    color = :red,
+    label = "Data",
+    color = :orange,
 )
-CairoMakie.axislegend(ax1, position = :rt)
-ax2 = CairoMakie.Axis(fig[2, 1], ylabel = "Depth (m)")
+ax2 = CairoMakie.Axis(
+    fig[2, 1],
+    ylabel = "Depth (m)",
+    xgridvisible = false,
+    ygridvisible = false,
+)
 
 xlims!(ax2, 0, ndays)
 CairoMakie.hidexdecorations!(ax2, ticks = false)
-CairoMakie.lines!(ax2, daily, z, label = "Model z")
+CairoMakie.lines!(ax2, daily, z, color = :blue, linewidth = 3)
 CairoMakie.scatter!(
     ax2,
     seconds[mass_data_avail] ./ 24 ./ 3600,
     FT.(depths),
-    label = "Data z",
-    color = :red,
+    color = :orange,
 )
-CairoMakie.axislegend(ax2, position = :rt)
 s = "$(start_date)"
 
 ax3 = CairoMakie.Axis(
     fig[3, 1],
     ylabel = "Temperature (K)",
     xlabel = "Days since $(s[1:10])",
+    xgridvisible = false,
+    ygridvisible = false,
 )
-CairoMakie.lines!(ax3, daily, T, label = "Model")
-CairoMakie.lines!(
-    ax3,
-    daily,
-    zeros(length(daily)) .+ 273.15,
-    label = "Freezing Temperature",
-    color = :purple,
-    linestyle = :dot,
-)
+CairoMakie.lines!(ax3, daily, T, color = :blue, linewidth = 3)
 CairoMakie.scatter!(
     ax3,
     seconds[mass_data_avail] ./ 24 ./ 3600,
     FT.(T_snow) .+ 273.15,
-    label = "Data",
-    color = :red,
+    color = :orange,
 )
 xlims!(ax3, 0, ndays)
-CairoMakie.axislegend(ax3, position = :rt)
+CairoMakie.axislegend(ax1, position = :rt, framevisible = false)
 CairoMakie.save(joinpath(savedir, "data_comparison_$(SITE_NAME).png"), fig)
