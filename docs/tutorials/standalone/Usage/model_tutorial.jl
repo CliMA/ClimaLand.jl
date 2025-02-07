@@ -370,7 +370,7 @@ prob = SciMLBase.ODEProblem(
 );
 
 # Solve command:
-sol = SciMLBase.solve(prob, ode_algo; dt = dt, saveat = dt);
+sol = SciMLBase.solve(prob, ode_algo; dt = dt, saveat = collect(t0:dt:tf));
 
 # The solution is stored in `sol.u[k].soil.θ`, where k ranges over the number
 # of timesteps.

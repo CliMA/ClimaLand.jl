@@ -239,7 +239,7 @@ prob = SciMLBase.ODEProblem(
 );
 
 # Now we can solve the problem.
-sol = SciMLBase.solve(prob, ode_algo; dt = dt, saveat = 0:3600:tf);
+sol = SciMLBase.solve(prob, ode_algo; dt = dt, saveat = collect(0:3600:tf));
 
 # # Comparison to data
 # This data was obtained by us from the figures of Hansson et al. (2004), but was originally obtained

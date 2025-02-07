@@ -106,7 +106,12 @@ outdir = generate_output_path(
             (t0, tf),
             p,
         )
-        sol = SciMLBase.solve(prob, ode_algo; dt = dt, saveat = 10000)
+        sol = SciMLBase.solve(
+            prob,
+            ode_algo;
+            dt = dt,
+            saveat = collect(t0:10000:tf),
+        )
 
         # Check that simulation still has correct float type
         @assert eltype(sol.u[end].soil) == FT
@@ -208,7 +213,12 @@ end
             (t0, tf),
             p,
         )
-        sol = SciMLBase.solve(prob, ode_algo; dt = dt, saveat = 60 * dt)
+        sol = SciMLBase.solve(
+            prob,
+            ode_algo;
+            dt = dt,
+            saveat = collect(t0:(60 * dt):tf),
+        )
 
         # Check that simulation still has correct float type
         @assert eltype(sol.u[end].soil) == FT
