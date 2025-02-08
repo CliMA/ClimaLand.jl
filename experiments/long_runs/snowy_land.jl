@@ -499,7 +499,7 @@ months_id = [1, 4, 7, 10]
 # end
 
 short_names = ["gpp", "swc", "et", "ct", "swe", "si"]
-colorbar_labels = Dict(
+units_labels = Dict(
     "gpp" => "(mol CO₂⋅m²/s)",
     "swc" => "(m³/m³)",
     "et" => "(kg/m²s)",
@@ -524,7 +524,7 @@ include(
         "figures_function.jl",
     ),
 )
-make_figures(root_path, outdir, short_names, colorbar_labels, title_stubs)
+make_figures(root_path, outdir, short_names, units_labels, title_stubs)
 
 include("leaderboard/leaderboard.jl")
 diagnostics_folder_path = outdir
