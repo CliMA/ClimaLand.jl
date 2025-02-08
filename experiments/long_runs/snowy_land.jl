@@ -507,6 +507,12 @@ units_labels = Dict(
     "swe" => "(m)",
     "si" => "(m³/m³)",
 )
+
+sim_var_units_labels = Dict(
+    "gpp" => "(g C/m²day)",
+    "lwu" => "", # TODO
+    "et" => "(mm/day)", # TODO check
+)
 title_stubs = Dict(
     "gpp" => "Gross Primary Productivity",
     "swc" => "Soil Water Content",
@@ -524,7 +530,14 @@ include(
         "figures_function.jl",
     ),
 )
-make_figures(root_path, outdir, short_names, units_labels, title_stubs)
+make_figures(
+    root_path,
+    outdir,
+    short_names,
+    units_labels,
+    sim_var_units_labels,
+    title_stubs,
+)
 
 include("leaderboard/leaderboard.jl")
 diagnostics_folder_path = outdir

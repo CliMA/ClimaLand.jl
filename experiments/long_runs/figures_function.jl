@@ -1,3 +1,4 @@
+include("leaderboard/leaderboard.jl")
 """
     make_figures(
         root_path,
@@ -17,14 +18,25 @@ function make_figures(
     outdir,
     short_names,
     units_labels,
+    sim_var_units_labels,
     title_stubs;
     plot! = viz.heatmap2D_on_globe!,
 )
     simdir = ClimaAnalysis.SimDir(outdir)
+
+    # Set up for comparison to data (copied from leaderboard.jl)
+    # use sim_var and obs_var together for the seasonal plot because they already have the same units :)
+    sim_var_dict = get_sim_var_dict(outdir)
+    obs_var_dict = get_obs_var_dict()
+    # Set up dict for storing simulation and observational data after processing
+    sim_obs_comparsion_dict = Dict()
+    mask_dict = get_mask_dict()
+
     for short_name in [short_names[1]]
         var = get(simdir; short_name)
         title_stub = title_stubs[short_name]
         units_label = units_labels[short_name]
+        sim_var_units_label = sim_var_units_labels[short_name]
         N = length(ClimaAnalysis.times(var))
         var_times = [ClimaAnalysis.times(var)[1]]#,
         #     ClimaAnalysis.times(var)[div(N, 2, RoundNearest)],
@@ -32,20 +44,29 @@ function make_figures(
         # ]
 
         ## SEASONAL CYCLE
-        kwarg_z = ClimaAnalysis.has_altitude(var) ? Dict(:z => 1) : Dict() # if has altitude, take first layer
-        var_sliced = ClimaAnalysis.slice(var; kwarg_z...)
+        # data_sources.jl has observational data for "gpp", "lwu", and "et" only - maybe separate short_names loop for this
+        # Simulation data
+        sim_var = sim_var_dict[short_name]()
+        kwarg_z = ClimaAnalysis.has_altitude(sim_var) ? Dict(:z => 1) : Dict() # if has altitude, take first layer
+        sim_var_sliced = ClimaAnalysis.slice(sim_var; kwarg_z...)
         # var_global_average below is a vector of vector, one for each year of simulation, containing monthly global average of var.
         # i represent a year, from 1 to last year
         # for more details on the ClimaAnalysis functions, see ClimaAnalysis docs.
 
-        # only compute seasonal cycle for last year so we skip spinup
-        i = Int(round(last(ClimaAnalysis.times(var_sliced) / (365 * 86400)))) # n years
-        var_global_average =
+        # ~only compute seasonal cycle for last year so we skip spinup~
+        # compute seasonal cycle for second to last year so we skip spinup AND have data for dec after off-by-one correction (shift_to_start_of_previous_month)
+        i =
+            Int(
+                round(
+                    last(ClimaAnalysis.times(sim_var_sliced) / (365 * 86400)),
+                ),
+            ) - 1# n years
+        sim_var_global_average =
             ClimaAnalysis.average_lon(
                 ClimaAnalysis.weighted_average_lat(
                     ClimaAnalysis.apply_oceanmask(
                         ClimaAnalysis.window(
-                            var_sliced,
+                            sim_var_sliced,
                             "time",
                             left = (i - 1) * 366 * 86400 + 30 * 86400, # 1 year left of year i, in seconds.
                             right = i * 366 * 86400, # 1 year right of year i, in seconds
@@ -62,9 +83,9 @@ function make_figures(
         fig_seasonal_cycle = CairoMakie.Figure(size = (600, 400))
         ax = Axis(
             fig_seasonal_cycle[1, 1],
-            xlabel = "Month of the year",
-            ylabel = "$units_label",
-            title = title_stub,
+            # xlabel = "Month of the year",
+            ylabel = "$sim_var_units_label",
+            title = CairoMakie.rich(title_stub, fontsize = 18),
             xticks = (
                 1:1:12,
                 [
@@ -85,12 +106,13 @@ function make_figures(
         )
         # [
         # plot model output
+        # TODO apply shift_to_start_of_previous_month
         CairoMakie.lines!(
             ax,
-            var_global_average,
+            sim_var_global_average,
             color = :blue,#RGBf(0.5, 0.5, 0.5),
             linewidth = 3,
-            linestyle = (i == 1 ? :dash : :solid), # dashed line for the 1st year
+            # linestyle = (i == 1 ? :dash : :solid), # dashed line for the 1st year
         ) #for i in 1:length(var_global_average)
         # ]
         # The three next lines here are computing the average for each month of var, January to December. It accounts for cases if the last simulated year is incomplete. In that case, the last vector of var_global_average would be shorter than 12, so in order to compute the average, it needs to be padded with NaNs until it reaches the length of 12.
@@ -111,6 +133,36 @@ function make_figures(
         #     linewidth = 3,
         # )
         # CairoMakie.xlims!(ax, 1, 12)
+
+
+
+        # Add comparison to observational data (copied from leaderboard.jl)
+
+
+        # Observational data
+        obs_var = obs_var_dict[short_name](sim_var.attributes["start_date"])
+
+        obs_var_sliced = ClimaAnalysis.slice(obs_var; kwarg_z...)
+        # var_global_average below is a vector of vector, one for each year of simulation, containing monthly global average of var.
+        # i represent a year, from 1 to last year
+        # for more details on the ClimaAnalysis functions, see ClimaAnalysis docs.
+
+        obs_var_global_average =
+            ClimaAnalysis.average_lon(
+                ClimaAnalysis.weighted_average_lat(
+                    ClimaAnalysis.apply_oceanmask(
+                        ClimaAnalysis.window(
+                            obs_var_sliced,
+                            "time",
+                            left = (i - 1) * 366 * 86400 + 30 * 86400, # 1 year left of year i, in seconds.
+                            right = i * 366 * 86400, # 1 year right of year i, in seconds
+                        ),
+                    ),
+                ),
+            ).data
+
+        CairoMakie.scatter!(ax, obs_var_global_average, color = :orange)
+
         CairoMakie.save(
             joinpath(root_path, "$(short_name)_global_monthly.pdf"),
             fig_seasonal_cycle,
