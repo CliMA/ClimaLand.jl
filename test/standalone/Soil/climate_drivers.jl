@@ -87,10 +87,8 @@ for FT in (Float32, Float64)
         )
 
         for domain in soil_domains
-            NIR_albedo_dry = fill(FT(0.4), domain.space.surface)
-            PAR_albedo_dry = fill(FT(0.2), domain.space.surface)
-            NIR_albedo_wet = fill(FT(0.3), domain.space.surface)
-            PAR_albedo_wet = fill(FT(0.1), domain.space.surface)
+            albedo_dry = fill(FT.((0.2, 0.4)), domain.space.surface)
+            albedo_wet = fill(FT.((0.1, 0.3)), domain.space.surface)
             params = ClimaLand.Soil.EnergyHydrologyParameters(
                 FT;
                 ν,
@@ -101,10 +99,8 @@ for FT in (Float32, Float64)
                 K_sat,
                 S_s,
                 θ_r,
-                NIR_albedo_dry,
-                PAR_albedo_dry,
-                NIR_albedo_wet,
-                PAR_albedo_wet,
+                albedo_dry,
+                albedo_wet,
                 emissivity,
                 z_0m,
                 z_0b,
@@ -211,10 +207,9 @@ for FT in (Float32, Float64)
             T_sfc = ClimaCore.Fields.zeros(surface_space) .+ FT(280.0)
             @test ClimaLand.surface_emissivity(model, Y, p) == emissivity
             @test ClimaLand.surface_height(model, Y, p) == z_sfc
-            PAR_albedo = p.soil.PAR_albedo
-            NIR_albedo = p.soil.NIR_albedo
+            soil_albedo = p.soil.albedo
             @test ClimaLand.surface_albedo(model, Y, p) ==
-                  PAR_albedo ./ 2 .+ NIR_albedo ./ 2
+                  soil_albedo[1] ./ 2 .+ soil_albedo[2] ./ 2
             @test ClimaLand.surface_temperature(model, Y, p, t) == T_sfc
 
             conditions = copy(p.soil.turbulent_fluxes)
