@@ -15,8 +15,7 @@ dir = pkgdir(ClimaLand)
 import ClimaCalibrate: forward_model, parameter_path, path_to_ensemble_member
 import ClimaCalibrate as CAL
 using Distributed
-ntasks = 4
-addprocs(CAL.SlurmManager(ntasks))
+addprocs(CAL.SlurmManager())
 
 @everywhere begin
     import ClimaCalibrate: forward_model, parameter_path, path_to_ensemble_member
