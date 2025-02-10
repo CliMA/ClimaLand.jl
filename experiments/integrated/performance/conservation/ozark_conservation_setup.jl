@@ -56,7 +56,7 @@ include(
 )
 
 # Discretization of radiation
-spectral_discretization = ClimaLand.TwoBandSpectralDiscretization()
+spectral_discretization = ClimaLand.TwoBandSpectralDiscretization{FT}()
 
 # Now we set up the model. For the soil model, we pick
 # a model type and model args:

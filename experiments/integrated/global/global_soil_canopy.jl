@@ -65,7 +65,7 @@ atmos, radiation = ClimaLand.prescribed_forcing_era5(
 )
 
 # Discretization of radiation
-spectral_discretization = ClimaLand.TwoBandSpectralDiscretization()
+spectral_discretization = ClimaLand.TwoBandSpectralDiscretization{FT}()
 
 include(
     joinpath(

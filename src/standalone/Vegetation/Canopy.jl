@@ -28,7 +28,9 @@ import ClimaLand:
 
 using ClimaLand.Domains: Point, Plane, SphericalSurface
 export SharedCanopyParameters,
-    CanopyModel, set_canopy_prescribed_field!, AbstractSpectralDiscretization,
+    CanopyModel,
+    set_canopy_prescribed_field!,
+    AbstractSpectralDiscretization,
     TwoBandSpectralDiscretization
 include("./component_models.jl")
 include("./shared_structs.jl")

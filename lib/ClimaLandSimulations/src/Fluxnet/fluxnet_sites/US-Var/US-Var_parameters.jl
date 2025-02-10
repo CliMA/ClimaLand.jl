@@ -83,7 +83,7 @@ function soil_vairaranch(;
 )
     hydrology_cm = vanGenuchten{FT}(; α = vg_α, n = vg_n)
     # Discretization of radiation
-    spectral_discretization = TwoBandSpectralDiscretization()
+    spectral_discretization = TwoBandSpectralDiscretization{FT}()
     return EnergyHydrologyParameters(
         FT;
         ν,
@@ -115,7 +115,7 @@ function radiative_transfer_vairaranch(;
     ϵ_canopy = FT(0.97),
 )
     # Discretization of radiation
-    spectral_discretization = TwoBandSpectralDiscretization()
+    spectral_discretization = TwoBandSpectralDiscretization{FT}()
     return TwoStreamParameters(
         spectral_discretization,
         G_Function = ld,

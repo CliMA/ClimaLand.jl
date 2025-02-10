@@ -17,10 +17,10 @@ the dry and wet albedo values for that band.
 """
 function albedo_from_moisture(
     surface_eff_sat::FT,
-    albedo_dry::FT,
-    albedo_wet::FT,
+    albedo_dry::Tuple,
+    albedo_wet::Tuple,
 ) where {FT}
-    return albedo_dry * (1 - surface_eff_sat) + albedo_wet * surface_eff_sat
+    return albedo_dry .* (1 - surface_eff_sat) .+ albedo_wet .* surface_eff_sat
 end
 
 
@@ -83,8 +83,7 @@ function update_albedo!(bc::AtmosDrivenFluxBC, p, soil_domain, model_parameters)
             effective_saturation.(ν, p.soil.θ_l, θ_r),
         )
     end
-    @. p.soil.albedo =
-        albedo_from_moisture(S_sfc, p.soil.albedo_dry, p.soil.albedo_wet)
+    @. p.soil.albedo = albedo_from_moisture(S_sfc, albedo_dry, albedo_wet)
 end
 
 """

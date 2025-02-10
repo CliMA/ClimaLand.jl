@@ -89,7 +89,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     )
 
     # Discretization of radiation
-    spectral_discretization = ClimaLand.TwoBandSpectralDiscretization()
+    spectral_discretization = ClimaLand.TwoBandSpectralDiscretization{FT}()
 
     spatially_varying_soil_params =
         ClimaLand.default_spatially_varying_soil_parameters(

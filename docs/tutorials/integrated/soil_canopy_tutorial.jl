@@ -126,7 +126,7 @@ include(
 # on the model for a more detailed explanation of the soil model.
 
 # Define the discretization of the radiation spectrum used in the model:
-spectral_discretization = TwoBandSpectralDiscretization()
+spectral_discretization = TwoBandSpectralDiscretization{FT}()
 
 # Define the parameters for the soil model and provide them to the model
 # parameters struct:
