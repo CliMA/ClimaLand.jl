@@ -696,6 +696,9 @@ These variables are updated in place in `soil_boundary_fluxes!`.
 """
 boundary_vars(bc::AtmosDrivenFluxBC, ::ClimaLand.TopBoundary) = (
     :turbulent_fluxes,
+    :q_sfc,
+    :r_sfc,
+    :ice_frac,
     :R_n,
     :top_bc,
     :top_bc_wvec,
@@ -716,6 +719,9 @@ specifies the part of the domain on which the additional variables should be
 defined.
 """
 boundary_var_domain_names(bc::AtmosDrivenFluxBC, ::ClimaLand.TopBoundary) = (
+    :surface,
+    :surface,
+    :surface,
     :surface,
     :surface,
     :surface,
@@ -746,6 +752,9 @@ boundary_var_types(
         (:lhf, :shf, :vapor_flux_liq, :r_ae, :vapor_flux_ice),
         Tuple{FT, FT, FT, FT, FT},
     },
+    FT,
+    FT,
+    FT,
     FT,
     NamedTuple{(:water, :heat), Tuple{FT, FT}},
     ClimaCore.Geometry.WVector{FT},
