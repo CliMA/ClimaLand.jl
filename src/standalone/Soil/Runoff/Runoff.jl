@@ -315,17 +315,10 @@ end
 Computes the soil infiltration capacity on the surface space
  for Richards model.
 
-Currently approximates i_c = -K_sat ∂h/∂z at the surface.
+Currently approximates i_c = -K_sat at the surface.
 """
 function soil_infiltration_capacity(model::RichardsModel, Y, p)
-    # This computes -K∂h/∂z ≈ -K (0+Δz - ψ)/Δz for the entire column,
-    # but uses Δz_top. In the end, we then just take the surface value,
-    # so this is OK.
-
-    @. p.soil.subsfc_scratch =
-        -1 *
-        model.parameters.K_sat *
-        (1 - p.soil.ψ / model.domain.fields.Δz_top)
+    @. p.soil.subsfc_scratch = -1 * model.parameters.K_sat
     return ClimaLand.Domains.top_center_to_surface(p.soil.subsfc_scratch)
 end
 
@@ -335,7 +328,7 @@ end
 Computes the soil infiltration capacity on the surface space
  for the full soil model.
 
-Currently approximates i_c = -K_sat*F(θ_i)*G(T)∂h/∂z at the surface, where F and G
+Currently approximates i_c = -K_sat*F(θ_i)*G(T) at the surface, where F and G
 are the functions which adjust the conductivity for the presence ice and taking into
 account the temperature dependence of the viscosity of water.
 """
@@ -343,17 +336,13 @@ function soil_infiltration_capacity(model::EnergyHydrology, Y, p)
     (; K_sat, θ_r, Ω, γ, γT_ref) = model.parameters
     surface_space = model.domain.space.surface
 
-    # This computes  -K∂h/∂z ≈ -K (0+Δz - ψ)/Δz for the entire column,
-    # but uses Δz_top. In the end, we then just take the surface value,
-    # so this is OK.
     @. p.soil.subsfc_scratch =
         -K_sat *
         ClimaLand.Soil.impedance_factor(
             Y.soil.θ_i / (p.soil.θ_l + Y.soil.θ_i - θ_r),
             Ω,
         ) *
-        ClimaLand.Soil.viscosity_factor(p.soil.T, γ, γT_ref) *
-        (1 - p.soil.ψ / model.domain.fields.Δz_top)
+        ClimaLand.Soil.viscosity_factor(p.soil.T, γ, γT_ref)
     return ClimaLand.Domains.top_center_to_surface(p.soil.subsfc_scratch)
 end
 
