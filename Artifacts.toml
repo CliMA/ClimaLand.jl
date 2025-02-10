@@ -36,6 +36,13 @@ git-tree-sha1 = "df5ec5af1ea0793c0e7d49e60db5a938098e174f"
     sha256 = "a83bf28a7a864db285e41289031a9761c2a426373a6efecd04b866a0b5374cef"
     url = "https://caltech.box.com/shared/static/m82r23e67x04a3hb6p79dfltlumvg9z0.gz"
 
+[era5_monthly_averages_2008]
+git-tree-sha1 = "b448a55e214a03b4e69bde4f54f3c01a02b74b69"
+
+    [[era5_monthly_averages_2008.download]]
+    sha256 = "c8292040efa26f7dbeaf59f7177d8bfadcead74adc10c4c96678104cbd57a09e"
+    url = "https://caltech.box.com/shared/static/lra5npgeygoi0xb376hi4blik44550u0.gz"
+
 [land_albedo]
 git-tree-sha1 = "3f07b70ab43a05123e93753a45e094dcf7a66b5b"
 
