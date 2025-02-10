@@ -112,6 +112,7 @@ function make_figures(
             sim_var_global_average,
             color = :blue,#RGBf(0.5, 0.5, 0.5),
             linewidth = 3,
+            label = "Model",
             # linestyle = (i == 1 ? :dash : :solid), # dashed line for the 1st year
         ) #for i in 1:length(var_global_average)
         # ]
@@ -161,7 +162,13 @@ function make_figures(
                 ),
             ).data
 
-        CairoMakie.scatter!(ax, obs_var_global_average, color = :orange)
+        CairoMakie.scatter!(
+            ax,
+            obs_var_global_average,
+            color = :orange,
+            label = "Observed",
+        )
+        CairoMakie.axislegend(ax, position = :rt)
 
         CairoMakie.save(
             joinpath(root_path, "$(short_name)_global_monthly.pdf"),
