@@ -49,7 +49,7 @@ $(DocStringExtensions.FIELDS)
 """
 Base.@kwdef struct BeerLambertParameters{
     FT <: AbstractFloat,
-    SD <: SpectralDiscretization{FT},
+    SD <: AbstractSpectralDiscretization{FT},
     G <: AbstractGFunction,
     F <: Union{Tuple, ClimaCore.Fields.Field},
 }
@@ -88,7 +88,7 @@ $(DocStringExtensions.FIELDS)
 """
 Base.@kwdef struct TwoStreamParameters{
     FT <: AbstractFloat,
-    SD <: SpectralDiscretization{FT},
+    SD <: AbstractSpectralDiscretization{FT},
     G <: AbstractGFunction,
     F <: Union{FT, ClimaCore.Fields.Field},
     TF <: Union{Tuple, ClimaCore.Fields.Field},

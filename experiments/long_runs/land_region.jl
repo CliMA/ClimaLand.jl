@@ -77,8 +77,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (10, 10, 15))
     subsurface_space = domain.space.subsurface
 
     # Discretization of radiation
-    λ_bounds = FT.((100e-9, 700e-9, 3000e-9))
-    spectral_discretization = ClimaLand.SpectralDiscretization(λ_bounds)``
+    spectral_discretization = ClimaLand.TwoBandSpectralDiscretization()
 
     start_date = DateTime(2008)
     # Forcing data

@@ -12,8 +12,7 @@ using ClimaLand.Canopy.PlantHydraulics
 for FT in (Float32, Float64)
     @testset "PrognosticSoil, FT = $FT" begin
         # Discretize radiation into 2 bands
-        λ_bounds = (100e-9, 700e-9, 3000e-9)
-        spectral_discretization = ClimaLand.SpectralDiscretization(λ_bounds)
+        spectral_discretization = ClimaLand.TwoBandSpectralDiscretization()
         # Only care about PAR and NIR albedo values
         ground_albedo = (0.2, 0.4)
         # setup SoilCanopyModel with dummy params

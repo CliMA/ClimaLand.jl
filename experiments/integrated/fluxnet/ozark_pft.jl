@@ -113,8 +113,7 @@ include(
 )
 
 # Discretization of radiation
-λ_bounds = FT.((100e-9, 700e-9, 3000e-9))
-spectral_discretization = ClimaLand.SpectralDiscretization(λ_bounds)
+spectral_discretization = ClimaLand.TwoBandSpectralDiscretization()
 
 # Now we set up the model. For the soil model, we pick
 # a model type and model args:

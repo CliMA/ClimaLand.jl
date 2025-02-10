@@ -25,7 +25,7 @@ Base.@kwdef struct EnergyHydrologyParameters{
     FT <: AbstractFloat,
     F <: Union{FT, ClimaCore.Fields.Field},
     SF <: Union{FT, ClimaCore.Fields.Field},
-    SD <: SpectralDiscretization,
+    SD <: AbstractSpectralDiscretization,
     TF <: Union{Tuple, ClimaCore.Fields.Field},
     C,
     PSE,
