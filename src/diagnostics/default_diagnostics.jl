@@ -335,11 +335,14 @@ function default_diagnostics(
             "swu",
             "swd",
             "lwu",
+            "lwd",
             "et",
             "er",
             "sr",
             "swe",
             "snd",
+            "shf",
+            "lhf",
         ]
     end
 
