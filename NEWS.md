@@ -3,10 +3,12 @@ ClimaLand.jl Release Notes
 
 main
 -------
-- Use MODIS LAI by default in experiments and longruns
-  PR[#973](https://github.com/CliMA/ClimaLand.jl/pull/973)
+- Evaporation scheme from Lehmann et al 2008/2018
+  PR[#1023](https://github.com/CliMA/ClimaLand.jl/pull/1023)
 - Revert PR993 changes to runoff
   PR[#1021](https://github.com/CliMA/ClimaLand.jl/pull/1021)
+- Use MODIS LAI by default in experiments and longruns
+  PR[#973](https://github.com/CliMA/ClimaLand.jl/pull/973)
 
 v0.15.9
 -------
