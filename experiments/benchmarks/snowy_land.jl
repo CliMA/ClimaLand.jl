@@ -66,7 +66,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     surface_space = domain.space.surface
     subsurface_space = domain.space.subsurface
 
-    spectral_discretization = Canopy.TwoBandSpectralDiscretization()
+    spectral_discretization = Canopy.TwoBandSpectralDiscretization{FT}()
 
     start_date = DateTime(2008)
     # Forcing data

@@ -322,7 +322,7 @@ function EnergyHydrologyParameters(
     K_sat::F,
     S_s::F,
     θ_r::F,
-    spectral_discretization::SD = TwoBandSpectralDiscretization(),
+    spectral_discretization::SD = nothing,
     albedo_dry::TF = nothing,
     albedo_wet::TF = nothing,
     albedo::SFD = (0.2, 0.4),
@@ -331,7 +331,7 @@ function EnergyHydrologyParameters(
 ) where {
     F <: Union{<:AbstractFloat, ClimaCore.Fields.Field},
     SFD <: Union{<:Tuple, ClimaCore.Fields.Field},
-    SD <: AbstractSpectralDiscretization,
+    SD <: Union{Nothing, AbstractSpectralDiscretization},
     TF <: Union{Nothing, Tuple, ClimaCore.Fields.Field},
     TD <: AbstractFloat,
     C,
@@ -395,12 +395,22 @@ function EnergyHydrologyParameters(
     parameters = CP.get_parameter_values(toml_dict, name_map, "Land")
     PSE = typeof(earth_param_set)
     FT = CP.float_type(toml_dict)
+    if isnothing(spectral_discretization)
+        spectral_discretization = TwoBandSpectralDiscretization{FT}()
+    end
     if isnothing(albedo_dry)
         albedo_dry = albedo
         albedo_wet = albedo
     end
     albedo_calc_top_thickness = FT(albedo_calc_top_thickness)
-    EnergyHydrologyParameters{FT, F, SD, typeof(albedo_dry), C, PSE}(;
+    EnergyHydrologyParameters{
+        FT,
+        F,
+        typeof(spectral_discretization),
+        typeof(albedo_dry),
+        C,
+        PSE,
+    }(;
         spectral_discretization,
         albedo_wet,
         albedo_dry,

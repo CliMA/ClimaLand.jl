@@ -812,7 +812,8 @@ Returns the surface albedo field of the
 `EnergyHydrology` soil model.
 """
 function ClimaLand.surface_albedo(model::EnergyHydrology{FT}, Y, p) where {FT}
-    return @. (p.soil.PAR_albedo + p.soil.NIR_albedo) / 2
+    sd = model.parameters.spectral_discretization
+    return sum.(p.soil.albedo .* Ref(sd.I))
 end
 
 """

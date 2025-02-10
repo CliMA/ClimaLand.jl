@@ -53,7 +53,7 @@ import ClimaParams
         for (g1, Vcmax25, is_c3, rooting_depth, ρ_leaf, ld) in zipped_params
             AR_params = AutotrophicRespirationParameters(FT)
             G_Function = ConstantGFunction(ld)
-            spectral_discretization = TwoBandSpectralDiscretization()
+            spectral_discretization = TwoBandSpectralDiscretization{FT}()
             RTparams = BeerLambertParameters(
                 FT;
                 spectral_discretization,
@@ -742,7 +742,7 @@ end
                 root_depths,
                 (t) -> ψ_soil0,
                 (t) -> T_soil0,
-                ClimaLand.TwoBandSpectralDiscretization(),
+                ClimaLand.TwoBandSpectralDiscretization{FT}(),
                 FT.(0.2, 0.4),
                 FT(0.98),
             )
@@ -1009,7 +1009,7 @@ end
             root_depths,
             (t) -> ψ_soil0,
             (t) -> T_soil0,
-            ClimaLand.TwoBandSpectralDiscretization(),
+            ClimaLand.TwoBandSpectralDiscretization{FT}(),
             FT.(0.2, 0.4),
             FT(0.98),
         )
@@ -1170,7 +1170,7 @@ end
             x -> x.coordinates.lat > 0 ? 0.0 : 1.0,
             mechanism_field,
         )
-        spectral_discretization = ClimaLand.TwoBandSpectralDiscretization()
+        spectral_discretization = ClimaLand.TwoBandSpectralDiscretization{FT}()
         # create one case where parameters are spatially varying and one where not
         Ω_cases = (FT(0.69), fill(FT(0.69), domain.space.surface))
         g1_cases = (FT(790), fill(FT(790), domain.space.surface))
@@ -1364,7 +1364,7 @@ end
                 root_depths,
                 (t) -> ψ_soil0,
                 (t) -> T_soil0,
-                ClimaLand.TwoBandSpectralDiscretization(),
+                ClimaLand.TwoBandSpectralDiscretization{FT}(),
                 FT.(0.2, 0.4),
                 FT(0.98),
             )

@@ -72,7 +72,7 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
 
     start_date = DateTime(2008)
 
-    spectral_discretization = Canopy.TwoBandSpectralDiscretization()
+    spectral_discretization = Canopy.TwoBandSpectralDiscretization{FT}()
 
     # Forcing data
     era5_artifact_path =

@@ -89,6 +89,8 @@ for FT in (Float32, Float64)
         for domain in soil_domains
             albedo_dry = fill(FT.((0.2, 0.4)), domain.space.surface)
             albedo_wet = fill(FT.((0.1, 0.3)), domain.space.surface)
+            spectral_discretization =
+                ClimaLand.TwoBandSpectralDiscretization{FT}()
             params = ClimaLand.Soil.EnergyHydrologyParameters(
                 FT;
                 ν,
@@ -99,6 +101,7 @@ for FT in (Float32, Float64)
                 K_sat,
                 S_s,
                 θ_r,
+                spectral_discretization,
                 albedo_dry,
                 albedo_wet,
                 emissivity,
@@ -209,7 +212,7 @@ for FT in (Float32, Float64)
             @test ClimaLand.surface_height(model, Y, p) == z_sfc
             soil_albedo = p.soil.albedo
             @test ClimaLand.surface_albedo(model, Y, p) ==
-                  soil_albedo[1] ./ 2 .+ soil_albedo[2] ./ 2
+                  sum.(p.soil.albedo .* Ref(spectral_discretization.I))
             @test ClimaLand.surface_temperature(model, Y, p, t) == T_sfc
 
             conditions = copy(p.soil.turbulent_fluxes)

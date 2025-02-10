@@ -56,12 +56,12 @@ end
 Creates a two-band spectral discretization with the given wavelength boundaries.
 Wavelength boundaries default to the PAR and NIR ranges.
 """
-function TwoBandSpectralDiscretization(
-    λ::NTuple{3, FT} = (400e-9, 700e-9, 2500e-9),
+function TwoBandSpectralDiscretization{FT}(
+    λ::NTuple{3, FT} = FT.((400e-9, 700e-9, 2500e-9)),
 ) where {FT <: AbstractFloat}
     irradiance_curve = MVector{3, FT}(undef)
     PAR_prop = MVector{3, FT}(undef)
-    PAR_bounds = (400e-9, 700e-9)
+    PAR_bounds = FT.((400e-9, 700e-9))
     sum = 0
     for i in 1:2
         # Portion of incident radiation divided into this band
@@ -81,7 +81,11 @@ function TwoBandSpectralDiscretization(
         end
     end
     irradiance_curve = FT.(irradiance_curve ./ sum)
-    return TwoBandSpectralDiscretization{FT}(λ, ntuple(i -> irradiance_curve[i], 2), ntuple(i -> PAR_prop[i], 2))
+    return TwoBandSpectralDiscretization{FT}(
+        λ,
+        ntuple(i -> FT(irradiance_curve[i]), 2),
+        ntuple(i -> FT(PAR_prop[i]), 2),
+    )
 end
 
 """
@@ -131,5 +135,9 @@ function HyperspectralDiscretization(
         end
     end
     irradiance_curve = FT.(irradiance_curve ./ sum)
-    return HyperspectralDiscretization{FT}(λ, ntuple(i -> irradiance_curve[i], 16), ntuple(i -> PAR_prop[i], 16))
+    return HyperspectralDiscretization{FT}(
+        λ,
+        ntuple(i -> irradiance_curve[i], 16),
+        ntuple(i -> PAR_prop[i], 16),
+    )
 end

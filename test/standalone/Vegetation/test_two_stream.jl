@@ -25,7 +25,7 @@ test_set = readdlm(data, ',')
 for FT in (Float32, Float64)
     @testset "Two-Stream Model Correctness, FT = $FT" begin
         # Use a single band for the test
-        spectral_discretization = TwoBandSpectralDiscretization()
+        spectral_discretization = TwoBandSpectralDiscretization{FT}()
 
         # Read the conditions for each setup parameter from the test file
         column_names = test_set[1, :]

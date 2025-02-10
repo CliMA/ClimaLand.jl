@@ -55,7 +55,7 @@ shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
 );
 ψ_soil0 = FT(0.0)
 
-spectral_discretization = TwoBandSpectralDiscretization()
+spectral_discretization = TwoBandSpectralDiscretization{FT}()
 
 soil_driver = PrescribedGroundConditions(
     FT;
