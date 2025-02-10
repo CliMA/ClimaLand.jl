@@ -33,7 +33,6 @@ import ClimaParams
             mechanism_field,
         )
         # Specify the spectral discretization of radiation
-        λ_bounds = FT.((100e-9, 700e-9, 3000e-9))
         # create one case where parameters are spatially varying and one where not
         g1_cases = (FT(790), fill(FT(790), domain.space.surface))
         Vcmax25_cases = (FT(9e-5), fill(FT(9e-5), domain.space.surface))
@@ -54,7 +53,7 @@ import ClimaParams
         for (g1, Vcmax25, is_c3, rooting_depth, ρ_leaf, ld) in zipped_params
             AR_params = AutotrophicRespirationParameters(FT)
             G_Function = ConstantGFunction(ld)
-            spectral_discretization = SpectralDiscretization(λ_bounds)
+            spectral_discretization = TwoBandSpectralDiscretization()
             RTparams = BeerLambertParameters(
                 FT;
                 spectral_discretization,
@@ -739,12 +738,11 @@ end
 
             ψ_soil0 = FT(0.0)
             T_soil0 = FT(290)
-            λ_bounds = FT.(100e-9, 2550e-9, 3000e-9)
             soil_driver = PrescribedGroundConditions(
                 root_depths,
                 (t) -> ψ_soil0,
                 (t) -> T_soil0,
-                ClimaLand.SpectralDiscretization(λ_bounds),
+                ClimaLand.TwoBandSpectralDiscretization(),
                 FT.(0.2, 0.4),
                 FT(0.98),
             )
@@ -1007,12 +1005,11 @@ end
 
         ψ_soil0 = FT(0.0)
         T_soil0 = FT(290)
-        λ_bounds = FT.(100e-9, 2550e-9, 3000e-9)
         soil_driver = PrescribedGroundConditions(
             root_depths,
             (t) -> ψ_soil0,
             (t) -> T_soil0,
-            ClimaLand.SpectralDiscretization(λ_bounds),
+            ClimaLand.TwoBandSpectralDiscretization(),
             FT.(0.2, 0.4),
             FT(0.98),
         )
@@ -1173,8 +1170,7 @@ end
             x -> x.coordinates.lat > 0 ? 0.0 : 1.0,
             mechanism_field,
         )
-        λ_bounds = FT.(100e-9, 700e-9, 3000e-9)
-        spectral_discretization = ClimaLand.SpectralDiscretization(λ_bounds)
+        spectral_discretization = ClimaLand.TwoBandSpectralDiscretization()
         # create one case where parameters are spatially varying and one where not
         Ω_cases = (FT(0.69), fill(FT(0.69), domain.space.surface))
         g1_cases = (FT(790), fill(FT(790), domain.space.surface))
@@ -1364,13 +1360,11 @@ end
 
             ψ_soil0 = FT(0.0)
             T_soil0 = FT(290)
-            λ_bounds = FT.(100e-9, 2550e-9, 3000e-9)
-            nbands = length(λ_bounds) - 1
             soil_driver = PrescribedGroundConditions(
                 root_depths,
                 (t) -> ψ_soil0,
                 (t) -> T_soil0,
-                ClimaLand.SpectralDiscretization(λ_bounds),
+                ClimaLand.TwoBandSpectralDiscretization(),
                 FT.(0.2, 0.4),
                 FT(0.98),
             )
@@ -1439,7 +1433,7 @@ end
                             ntuple(
                                 (i) -> p.canopy.radiative_transfer.rt[i].abs,
                             ),
-                            nbands,
+                            2,
                         ),
                     ) .== ntuple((_) -> FT(0), nbands),
                 )

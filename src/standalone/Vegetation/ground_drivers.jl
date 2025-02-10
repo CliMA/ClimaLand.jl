@@ -1,6 +1,5 @@
 using StaticArrays
-export AbstractGroundConditions,
-    PrescribedGroundConditions, ground_albedo
+export AbstractGroundConditions, PrescribedGroundConditions, ground_albedo
 
 """
 An abstract type of ground conditions for the canopy model;
@@ -20,8 +19,9 @@ struct PrescribedGroundConditions{
     FT,
     F1 <: Function,
     F2 <: Function,
-    SD <: SpectralDiscretization,
+    SD <: AbstractSpectralDiscretization,
     VEC <: AbstractArray{FT},
+    N <: Integer,
 } <: AbstractGroundConditions
     "The depth of the root tips, in meters"
     root_depths::VEC
@@ -32,7 +32,7 @@ struct PrescribedGroundConditions{
     "Spectral discretization"
     spectral_discretization::SD
     "Spectral ground albedo"
-    α_ground::Tuple{Vararg{FT}}
+    α_ground::NTuple{N, FT}
     "Ground emissivity"
     ϵ::FT
 end

@@ -83,8 +83,7 @@ function soil_harvard(;
 )
     hydrology_cm = vanGenuchten{FT}(; α = vg_α, n = vg_n)
     # Discretization of radiation
-    λ_bounds = FT.((100e-9, 700e-9, 3000e-9))
-    spectral_discretization = SpectralDiscretization(λ_bounds)
+    spectral_discretization = TwoBandSpectralDiscretization()
     return EnergyHydrologyParameters(
         FT;
         ν,
@@ -116,8 +115,7 @@ function radiative_transfer_harvard(;
     ϵ_canopy = FT(0.97),
 )
     # Discretization of radiation
-    λ_bounds = FT.((100e-9, 700e-9, 3000e-9))
-    spectral_discretization = SpectralDiscretization(λ_bounds)
+    spectral_discretization = TwoBandSpectralDiscretization()
 
     return TwoStreamParameters(
         spectral_discretization = spectral_discretization,
