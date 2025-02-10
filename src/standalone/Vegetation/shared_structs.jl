@@ -1,6 +1,8 @@
 export AbstractSpectralDiscretization,
     TwoBandSpectralDiscretization, HyperspectralDiscretization
 
+using StaticArrays
+
 abstract type AbstractSpectralDiscretization{FT} end
 
 """
@@ -43,9 +45,9 @@ struct TwoBandSpectralDiscretization{FT <: AbstractFloat} <:
     "Wavelength boundaries between each band in the discretization (m)"
     λ::NTuple{3, FT}
     "Banded irradiance curve for the solar radiation (W/m^2)"
-    I::NTuple{3, FT}
+    I::NTuple{2, FT}
     "Proportions of PAR radiation in each band"
-    PAR_proportions::NTuple{3, FT}
+    PAR_proportions::NTuple{2, FT}
 end
 
 """
@@ -57,11 +59,11 @@ Wavelength boundaries default to the PAR and NIR ranges.
 function TwoBandSpectralDiscretization(
     λ::NTuple{3, FT} = (400e-9, 700e-9, 2500e-9),
 ) where {FT <: AbstractFloat}
-    irradiance_curve = ntuple(_ -> zero(FT), 3)
-    PAR_prop = ntuple(_ -> zero(FT), 3)
+    irradiance_curve = MVector{3, FT}(undef)
+    PAR_prop = MVector{3, FT}(undef)
     PAR_bounds = (400e-9, 700e-9)
     sum = 0
-    for i in 1:3
+    for i in 1:2
         # Portion of incident radiation divided into this band
         irradiance_curve[i] = SolarIrradianceArea(λ[i], λ[i + 1])
         sum += irradiance_curve[i]
@@ -79,7 +81,7 @@ function TwoBandSpectralDiscretization(
         end
     end
     irradiance_curve = FT.(irradiance_curve ./ sum)
-    return TwoBandSpectralDiscretization{FT}(λ, irradiance_curve, PAR_prop)
+    return TwoBandSpectralDiscretization{FT}(λ, ntuple(i -> irradiance_curve[i], 2), ntuple(i -> PAR_prop[i], 2))
 end
 
 """
@@ -93,9 +95,9 @@ struct HyperspectralDiscretization{FT <: AbstractFloat} <:
     "Wavelength boundaries between each band in the discretization (m)"
     λ::NTuple{17, FT}
     "Banded irradiance curve for the solar radiation (W/m^2)"
-    I::NTuple{17, FT}
+    I::NTuple{16, FT}
     "Proportion of PAR in each band"
-    PAR_proportions::NTuple{17, FT}
+    PAR_proportions::NTuple{16, FT}
 end
 
 """
@@ -107,11 +109,11 @@ Wavelength boundaries default to even spacing over the full shortwave spectrum.
 function HyperspectralDiscretization(
     λ::NTuple{17, FT} = ntuple(i -> 100e-9 + (i - 1) * 150e-9, 17),
 ) where {FT}
-    irradiance_curve = ntuple(_ -> zero(FT), 17)
-    PAR_prop = ntuple(_ -> zero(FT), 17)
+    irradiance_curve = MVector{17, FT}(undef)
+    PAR_prop = MVector{17, FT}(undef)
     PAR_bounds = (400e-9, 700e-9)
     sum = 0
-    for i in 1:17
+    for i in 1:16
         # Portion of incident radiation divided into this band
         irradiance_curve[i] = SolarIrradianceArea(λ[i], λ[i + 1])
         sum += irradiance_curve[i]
@@ -129,5 +131,5 @@ function HyperspectralDiscretization(
         end
     end
     irradiance_curve = FT.(irradiance_curve ./ sum)
-    return HyperspectralDiscretization{FT}(λ, irradiance_curve, PAR_prop)
+    return HyperspectralDiscretization{FT}(λ, ntuple(i -> irradiance_curve[i], 16), ntuple(i -> PAR_prop[i], 16))
 end

@@ -302,10 +302,10 @@ include("standalone/Vegetation/Canopy.jl")
 using .Canopy
 using .Canopy.PlantHydraulics
 import .Canopy.PlantHydraulics: root_water_flux_per_ground_area!
-import .Canopy: AbstractSpectralDiscretization
 import .Canopy:
     ground_albedo,
     AbstractSpectralDiscretization,
+    TwoBandSpectralDiscretization,
     canopy_radiant_energy_fluxes!,
     root_energy_flux_per_ground_area!,
     AbstractGroundConditions
