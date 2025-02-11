@@ -229,7 +229,7 @@ function default_diagnostics(
 
     define_diagnostics!(land_model)
 
-    soil_diagnostics = ["swc", "si", "sie"]
+    soil_diagnostics = ["swc", "si", "et", "tsoil"]
 
     if average_period == :hourly
         default_outputs =
@@ -325,25 +325,8 @@ function default_diagnostics(
             "ghf",
         ]
     elseif output_vars == :short
-        snowyland_diagnostics = [
-            "gpp",
-            "ct",
-            "lai",
-            "sco2",
-            "swc",
-            "si",
-            "swu",
-            "swd",
-            "lwu",
-            "lwd",
-            "et",
-            "er",
-            "sr",
-            "swe",
-            "snd",
-            "shf",
-            "lhf",
-        ]
+        snowyland_diagnostics =
+            ["gpp", "ct", "swc", "si", "et", "trans", "tsoil"]
     end
 
     if average_period == :hourly
