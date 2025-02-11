@@ -453,4 +453,4 @@ end
 @diagnostic_compute "soil_ice_content" EnergyHydrology Y.soil.θ_i
 @diagnostic_compute "soil_internal_energy" EnergyHydrology Y.soil.ρe_int
 @diagnostic_compute "soil_temperature" EnergyHydrology p.soil.T
-@diagnostic_compute "et" EnergyHydrology p.soil.turbulent_fluxes.vapor_flux_liq
+@diagnostic_compute "evapotranspiration" EnergyHydrology p.soil.turbulent_fluxes.vapor_flux_liq

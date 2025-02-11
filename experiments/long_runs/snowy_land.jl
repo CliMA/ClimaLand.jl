@@ -109,6 +109,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         NIR_albedo_wet,
         f_max,
     ) = spatially_varying_soil_params
+    d_ds = FT(0.05)
     soil_params = Soil.EnergyHydrologyParameters(
         FT;
         ν,
@@ -119,6 +120,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         K_sat,
         S_s,
         θ_r,
+        d_ds = d_ds,
         PAR_albedo_dry = PAR_albedo_dry,
         NIR_albedo_dry = NIR_albedo_dry,
         PAR_albedo_wet = PAR_albedo_wet,
@@ -447,7 +449,7 @@ setup_and_solve_problem(; greet = true);
 #### ClimaAnalysis ####
 simdir = ClimaAnalysis.SimDir(outdir)
 
-short_names = ["gpp", "swc", "et", "ct", "trans", "si", "tsoil"]
+short_names = ["gpp", "swc", "et", "ct", "trans", "si", "tsoil", "msf"]
 
 include(
     joinpath(

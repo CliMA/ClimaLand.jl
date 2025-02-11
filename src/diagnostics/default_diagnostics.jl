@@ -326,7 +326,7 @@ function default_diagnostics(
         ]
     elseif output_vars == :short
         snowyland_diagnostics =
-            ["gpp", "ct", "swc", "si", "et", "trans", "tsoil"]
+            ["gpp", "ct", "swc", "si", "et", "trans", "tsoil", "msf"]
     end
 
     if average_period == :hourly
