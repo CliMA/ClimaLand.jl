@@ -23,16 +23,15 @@ root_path = joinpath(pwd(), "snowy_land_longrun_gpu")
 outdir = "snowy_land_longrun_gpu/output_active" # on local
 # simdir = ClimaAnalysis.SimDir(outdir)
 
-short_names = ["lhf"]
-units_labels = Dict("lhf" => "(J/m²s)")
-sim_var_units_labels = Dict("lhf" => "(J/m²s)")
-title_stubs = Dict("lhf" => "Latent heat flux")
+short_names = ["lhf", "shf"]
+units_labels = Dict("lhf" => "(J/m²s)", "shf" => "(W/m²)")
+title_stubs = Dict("lhf" => "Latent heat flux", "shf" => "Sensible heat flux")
 
 function get_sim_var_dict(simdir)
     # Dict for loading in simulation data
     sim_var_dict = Dict{String, Any}()
 
-    # convert ET to LHF
+    # Get LHF by converting from ET
     earth_param_set = LP.LandParameters(Float64)
     _LH_v0 = LP.LH_v0(earth_param_set) # J/kg
     sim_var_dict["lhf"] =
@@ -57,6 +56,13 @@ function get_sim_var_dict(simdir)
             return sim_var_lhf
         end
 
+    # Read in SHF
+    sim_var_dict["shf"] =
+        () -> begin
+            sim_var_shf = get(simdir, short_name = "shf") # units (W/m²)
+            return sim_var_shf
+        end
+
     return sim_var_dict
 end
 
@@ -71,7 +77,6 @@ function get_obs_var_dict()
     obs_var_dict = Dict{String, Any}()
     obs_var_dict["lhf"] =
         (start_date) -> begin
-
             obs_var = ClimaAnalysis.OutputVar(
                 era5_data_path,
                 "mslhf",
@@ -100,6 +105,35 @@ function get_obs_var_dict()
             # )
             return obs_var_pos
         end
+
+    # Read in SHF
+    obs_var_dict["shf"] =
+        (start_date) -> begin
+            obs_var = ClimaAnalysis.OutputVar(
+                era5_data_path,
+                "msshf",
+                new_start_date = start_date,
+                shift_by = Dates.firstdayofmonth,
+            ) # units (W/m² = J/m²s)
+            obs_var = ClimaAnalysis.replace(obs_var, missing => NaN)
+
+            # Add attributes and make values positive to account for convention difference
+            attribs = Dict(
+                "short_name" => "shf",
+                "long_name" => "Sensible heat flux",
+                "units" => "W/m²",
+                "start_date" => start_date,
+            )
+            obs_var_pos = ClimaAnalysis.OutputVar(
+                attribs,
+                obs_var.dims,
+                obs_var.dim_attributes,
+                -1 * obs_var.data,
+            )
+
+            return obs_var_pos
+        end
+
     return obs_var_dict
 end
 
@@ -127,7 +161,6 @@ function make_paper_figures(
     outdir,
     short_names,
     units_labels,
-    sim_var_units_labels,
     title_stubs,
 )
     # Set up for comparison to data (copied from leaderboard.jl)
@@ -138,10 +171,9 @@ function make_paper_figures(
     sim_obs_comparsion_dict = Dict()
     mask_dict = get_mask_dict()
 
-    for short_name in [short_names[1]]
+    for short_name in [short_names[2]]
         title_stub = title_stubs[short_name]
         units_label = units_labels[short_name]
-        sim_var_units_label = sim_var_units_labels[short_name]
 
         # Access simulation data in the time we want
         sim_var = sim_var_dict[short_name]()
@@ -182,18 +214,9 @@ function make_paper_figures(
         sim_var_no_nans = deepcopy(sim_var_annual_average.data)
         sim_var_no_nans[isnan.(sim_var_no_nans)] .= 0 # TODO this is a hacky way to remove NaNs in data
         sim_extrema = extrema(sim_var_no_nans)
-        @show sim_extrema
         obs_extrema = extrema(obs_var_annual_average.data)
-        @show obs_extrema
         clims = extrema(vcat(sim_extrema..., obs_extrema...))
-        # clims = (0, 250) # hardcode for now
         clims = (clims[1], floor(clims[2], digits = -1)) # round to nearest 10
-        # @show count(sim_var_annual_average.data .> 250)
-        # @show count(obs_var_annual_average.data .> 250)
-        # @show count(sim_var_annual_average.data .> 200)
-        # @show count(obs_var_annual_average.data .> 200)
-        @show clims
-        # @assert false
 
         # Plot simulation data heatmap
         sim_title =
@@ -306,10 +329,10 @@ function make_paper_figures(
                 "ClimaLand vs ERA5 seasonal cycle",
                 fontsize = 18,
             ), # title of the figure
-            # ylabel = "$sim_var_units_label",
-            ylabel = title_stub * " $sim_var_units_label",
+            # ylabel = "$units_label",
+            ylabel = title_stub * " $units_label",
             # CairoMakie.rich(
-            #     title_stub * " $sim_var_units_label",
+            #     title_stub * " $units_label",
             #     fontsize = 18,
             # ),
             # title = CairoMakie.rich(title_stub, fontsize = 18),
@@ -381,11 +404,4 @@ function make_paper_figures(
     return nothing
 end
 
-make_paper_figures(
-    root_path,
-    outdir,
-    short_names,
-    units_labels,
-    sim_var_units_labels,
-    title_stubs,
-)
+make_paper_figures(root_path, outdir, short_names, units_labels, title_stubs)
