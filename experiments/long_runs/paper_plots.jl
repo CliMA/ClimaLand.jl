@@ -17,8 +17,10 @@ using Dates
 
 root_path = joinpath(pwd(), "snowy_land_longrun_gpu")
 !isdir(root_path) && mkdir(root_path)
+# 3057 (prev) -> 3310 (newer)
 # outdir = "/scratch/clima/slurm-buildkite/climaland-long-runs/3057/climaland-long-runs/snowy_land_longrun_gpu/global_diagnostics/output_active/" # on clima
-outdir = "snowy_land_longrun_gpu/global_diagnostics/output_active" # on local
+# outdir = "/scratch/clima/slurm-buildkite/climaland-long-runs/3310/climaland-long-runs/snowy_land_longrun_gpu/global_diagnostics/output_active/" # on clima
+outdir = "snowy_land_longrun_gpu/output_active" # on local
 # simdir = ClimaAnalysis.SimDir(outdir)
 
 short_names = ["lhf"]
@@ -146,7 +148,7 @@ function make_paper_figures(
         sim_var_times = [ClimaAnalysis.times(sim_var)[1]]
         kwarg_z = ClimaAnalysis.has_altitude(sim_var) ? Dict(:z => 1) : Dict() # if has altitude, take first layer
         sim_var_sliced = ClimaAnalysis.slice(sim_var; kwarg_z...)
-        i = 1 # use first year of simulation
+        i = 2 # use second year of simulation
         sim_var_window = ClimaAnalysis.window(
             sim_var_sliced,
             "time",
@@ -177,8 +179,12 @@ function make_paper_figures(
         t = sim_var_times[1]
 
         # Get colorbar limits to share between heatmaps
-        sim_extrema = extrema(sim_var_annual_average.data)
+        sim_var_no_nans = deepcopy(sim_var_annual_average.data)
+        sim_var_no_nans[isnan.(sim_var_no_nans)] .= 0 # TODO this is a hacky way to remove NaNs in data
+        sim_extrema = extrema(sim_var_no_nans)
+        @show sim_extrema
         obs_extrema = extrema(obs_var_annual_average.data)
+        @show obs_extrema
         clims = extrema(vcat(sim_extrema..., obs_extrema...))
         # clims = (0, 250) # hardcode for now
         clims = (clims[1], floor(clims[2], digits = -1)) # round to nearest 10
@@ -193,7 +199,7 @@ function make_paper_figures(
         sim_title =
             CairoMakie.rich("ClimaLand, annually averaged", fontsize = 18) # title of the figure
         # fig_global_sim = CairoMakie.Figure(size = (600, 400))
-        round_step(x, step) = round(x / step) * step
+        # round_step(x, step) = round(x / step) * step
         viz.heatmap2D_on_globe!(
             fig,
             sim_var_annual_average,
