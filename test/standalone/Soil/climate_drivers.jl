@@ -132,8 +132,15 @@ for FT in (Float32, Float64)
                 :LW_d,
                 :θs,
             )
-            @test propertynames(p.soil.turbulent_fluxes) ==
-                  (:lhf, :shf, :vapor_flux_liq, :r_ae, :vapor_flux_ice)
+            @test propertynames(p.soil.turbulent_fluxes) == (
+                :lhf,
+                :shf,
+                :vapor_flux_liq,
+                :r_ae,
+                :vapor_flux_ice,
+                :dlhfdT,
+                :dshfdT,
+            )
             @test propertynames(p.soil) == (
                 :K,
                 :ψ,
@@ -141,6 +148,7 @@ for FT in (Float32, Float64)
                 :T,
                 :κ,
                 :turbulent_fluxes,
+                :dfluxBCdY,
                 :R_n,
                 :top_bc,
                 :top_bc_wvec,
@@ -231,22 +239,35 @@ for FT in (Float32, Float64)
             @test R_n_copy == p.soil.R_n
             @test conditions == p.soil.turbulent_fluxes
 
-            ClimaLand.Soil.soil_boundary_fluxes!(
-                top_bc,
-                ClimaLand.TopBoundary(),
-                model,
-                nothing,
-                Y,
-                p,
-                t,
-            )
             computed_water_flux = p.soil.top_bc.water
             computed_energy_flux = p.soil.top_bc.heat
+            computed_dflux_heat = p.soil.dfluxBCdY.heat
+            computed_dflux_water = p.soil.dfluxBCdY.water
 
             expected_water_flux = @. FT(precip(t)) .+ conditions.vapor_flux_liq
             @test computed_water_flux == expected_water_flux
             expected_energy_flux = @. R_n_copy + conditions.lhf + conditions.shf
             @test computed_energy_flux == expected_energy_flux
+
+            ρc_sfc = ClimaLand.Soil.get_ρc_sfc(Y, p, model.parameters)
+            # Get the local geometry of the face space, then extract the top level
+            local_geometry_faceN = ClimaLand.get_local_geometry_faceN(
+                model.domain.space.subsurface,
+            )
+
+            expected_dflux_heat =
+                @. ClimaLand.covariant3_unit_vector(local_geometry_faceN) *
+                   (0 / ρc_sfc)
+            expected_dflux_water =
+                @. ClimaLand.covariant3_unit_vector(local_geometry_faceN) * 0
+            @test all(
+                Array(parent((computed_dflux_heat .- expected_dflux_heat))) .≈
+                0,
+            )
+            @test all(
+                Array(parent((computed_dflux_water .- expected_dflux_water))) .≈
+                0,
+            )
 
             # Test soil resistances for liquid water
             #      ϑ_sfc = range(θ_r-eps(FT), ν, 5)
