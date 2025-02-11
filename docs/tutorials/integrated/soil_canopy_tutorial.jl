@@ -225,7 +225,7 @@ radiative_transfer_args = (;
         G_Function = ConstantGFunction(FT(0.5)),
         ρ_leaf = FT.((0.1, 0.45)),
         τ_leaf = FT.((0.05, 0.25)),
-        Ω = 0.69,
+        Ω = FT(0.69),
     )
 )
 
