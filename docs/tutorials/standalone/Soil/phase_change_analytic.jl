@@ -212,13 +212,21 @@ sol = SciMLBase.solve(
 );
 sol_T = parent(sv.saveval[end].soil.T)[:]
 
-fig = Figure(size = (300, 300))
-ax1 = Axis(fig[1, 1], title = "", xlabel = L"T (K)", ylabel = "Soil depth (m)")
+fig = Figure(size = (500, 500), fontsize = 24)
+ax1 = Axis(
+    fig[1, 1],
+    title = "",
+    xlabel = "T (K)",
+    ylabel = "Depth (m)",
+    xgridvisible = false,
+    ygridvisible = false,
+    xticks = 263:3:275,
+)
 limits!(ax1, 262, 276, -3, 0.0)
 
 z = parent(coords.subsurface.z)[:];
 
-lines!(ax1, sol_T, z, label = "Simulation", color = :green)
+lines!(ax1, sol_T, z, label = "Model", color = :blue, linewidth = 3)
 
 # # Analytic Solution of Neumann
 # All details here are taken from [DallAmico2011](@cite) (see also [CarslawJaeger](@cite)), and the reader is referred to that
@@ -320,15 +328,17 @@ lines!(
     T_frozen[mask_frozen],
     -1 .* depth[mask_frozen],
     label = "Analytic Solution",
-    color = "purple",
+    color = "orange",
+    linewidth = 3,
 )
 lines!(
     ax1,
     T_unfrozen[mask_unfrozen],
     -1 .* depth[mask_unfrozen],
-    color = "purple",
+    color = "orange",
+    linewidth = 3,
 )
-axislegend(ax1, position = :lb)
+axislegend(ax1, position = :lb, framevisible = false)
 
 save("phase_change_analytic.png", fig);
 # ![](phase_change_analytic.png)
