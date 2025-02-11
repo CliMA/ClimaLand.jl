@@ -773,6 +773,17 @@ function define_diagnostics!(land_model)
             compute_surface_runoff!(out, Y, p, t, land_model),
     )
 
+    # Subsurface runoff
+    add_diagnostic_variable!(
+        short_name = "ssr",
+        long_name = "Subsurface Runoff",
+        standard_name = "subsurface_runoff",
+        units = "m s^-1",
+        comments = "Water runoff from below the surface",
+        compute! = (out, Y, p, t) ->
+            compute_subsurface_runoff!(out, Y, p, t, land_model),
+    )
+
     # Ground heat flux
     add_diagnostic_variable!(
         short_name = "ghf",
