@@ -40,13 +40,18 @@ function get_sim_var_dict(diagnostics_folder_path)
                 short_name = "et",
             ) # units (kg/m²s)
 
-            attribs = Dict("short_name" => "lhf", "long_name" => "Latent heat flux", "units" => "J/m²s", "start_date" => sim_var_et.attributes["start_date"])
+            attribs = Dict(
+                "short_name" => "lhf",
+                "long_name" => "Latent heat flux",
+                "units" => "J/m²s",
+                "start_date" => sim_var_et.attributes["start_date"],
+            )
             sim_var_lhf = ClimaAnalysis.OutputVar(
-                    attribs,
-                    sim_var_et.dims,
-                    sim_var_et.dim_attributes,
-                    sim_var_et.data * _LH_v0, # J/m²s
-                )
+                attribs,
+                sim_var_et.dims,
+                sim_var_et.dim_attributes,
+                sim_var_et.data * _LH_v0, # J/m²s
+            )
             # Shift to the first day and subtract one month as preprocessing
             # sim_var_lhf =
             #     ClimaAnalysis.shift_to_start_of_previous_month(sim_var_lhf)
@@ -57,7 +62,10 @@ function get_sim_var_dict(diagnostics_folder_path)
 end
 
 function get_obs_var_dict()
-    era5_data_path = joinpath(ClimaLand.Artifacts.era5_monthly_averages_2008_folder_path(), "era5_monthly_surface_fluxes_200801-200812.nc")
+    era5_data_path = joinpath(
+        ClimaLand.Artifacts.era5_monthly_averages_2008_folder_path(),
+        "era5_monthly_surface_fluxes_200801-200812.nc",
+    )
     # era5_monthly_surface_fluxes_200801-200812.nc
     # era5_data_path = joinpath(ClimaLand.Artifacts.era5_monthly_averages_2008_folder_path(lowres = true), "era5_2008_1.0x1.0_lowres.nc")
     # Dict for loading in observational data
@@ -71,7 +79,11 @@ function get_obs_var_dict()
                 shift_by = Dates.firstdayofmonth,
             ) # units (W/m² = J/m²s)
             obs_var = ClimaAnalysis.replace(obs_var, missing => NaN)
-            obs_var_pos = ClimaAnalysis.convert_units(obs_var, "J/m²s", conversion_function = (x) -> -x)
+            obs_var_pos = ClimaAnalysis.convert_units(
+                obs_var,
+                "J/m²s",
+                conversion_function = (x) -> -x,
+            )
             return obs_var_pos
         end
     return obs_var_dict
@@ -147,24 +159,22 @@ function make_paper_figures(
                         ClimaAnalysis.window(
                             sim_var_sliced,
                             "time",
-                            left = (i - 1) * 366 * 86400, # 1 year left of year i, in seconds.
+                            left = (i - 1) * 366 * 86400 + 30 * 86400, # 1 year left of year i, in seconds.
                             right = i * 366 * 86400, # 1 year right of year i, in seconds
                         ),
                     ),
                 ),
-            ).data #for i in range(
-        #     1,
-        #     round(
-        #         last(ClimaAnalysis.times(var_sliced) / (365 * 86400)),
-        #     ), # n years
-        # )
+            ).data
 
         fig_seasonal_cycle = CairoMakie.Figure(size = (600, 400))
         ax = Axis(
             fig_seasonal_cycle[1, 1],
-            # xlabel = "Month of the year",
-            ylabel = "$sim_var_units_label",
-            title = CairoMakie.rich(title_stub, fontsize = 18),
+            # ylabel = "$sim_var_units_label",
+            ylabel = CairoMakie.rich(
+                title_stub * " $sim_var_units_label",
+                fontsize = 18,
+            ),
+            # title = CairoMakie.rich(title_stub, fontsize = 18),
             xgridvisible = false,
             ygridvisible = false,
             xticks = (
@@ -194,33 +204,9 @@ function make_paper_figures(
             color = :blue,#RGBf(0.5, 0.5, 0.5),
             linewidth = 3,
             label = "Model",
-            # linestyle = (i == 1 ? :dash : :solid), # dashed line for the 1st year
-        ) #for i in 1:length(var_global_average)
-        # ]
-        # The three next lines here are computing the average for each month of var, January to December. It accounts for cases if the last simulated year is incomplete. In that case, the last vector of var_global_average would be shorter than 12, so in order to compute the average, it needs to be padded with NaNs until it reaches the length of 12.
-        # We also want the average for each month to be computed even if there is NaNs in the last vector, for example January may have 3 data points, but December only two, but we still want the average of all months.
-        # max_len = maximum(length.(var_global_average)) # 12 months
-        # padded_var = [
-        #     vcat(v, fill(NaN, max_len - length(v))) for
-        #     v in var_global_average
-        # ] # fill with NaN up to 12, if a vector is shorter
-        # monthly_averages_var = [
-        #     mean(filter(!isnan, collect([v[i] for v in padded_var])))
-        #     for i in 1:max_len
-        # ] # compute average of each month, ignoring potential NaNs
-        # CairoMakie.lines!(
-        #     ax,
-        #     monthly_averages_var,
-        #     color = :black,
-        #     linewidth = 3,
-        # )
-        # CairoMakie.xlims!(ax, 1, 12)
-
-
+        )
 
         # Add comparison to observational data (copied from leaderboard.jl)
-
-
         # Observational data
         obs_var = obs_var_dict[short_name](sim_var.attributes["start_date"])
 
