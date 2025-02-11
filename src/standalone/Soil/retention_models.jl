@@ -39,7 +39,7 @@ struct vanGenuchten{FT} <: AbstractSoilHydrologyClosure{FT}
 end
 function vanGenuchten{FT}(; α::FT, n::FT) where {FT}
     m = 1 - 1 / n
-    S_c = min(FT(1.2)*(1 + ((n - 1) / n)^(1 - 2 * n))^(-m), FT(1))
+    S_c = min(FT(1.4)*(1 + ((n - 1) / n)^(1 - 2 * n))^(-m), FT(1))
     return vanGenuchten{FT}(α, n, m, S_c)
 end
 
