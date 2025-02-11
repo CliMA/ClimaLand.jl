@@ -146,7 +146,7 @@ soil_vg_α = FT(0.04) # inverse meters
 z_0m_soil = FT(0.1)
 z_0b_soil = FT(0.1)
 soil_ϵ = FT(0.98)
-soil_α = FT.(0.2, 0.4)
+soil_α = FT.((0.2, 0.4))
 
 soil_domain = land_domain
 soil_ps = Soil.EnergyHydrologyParameters(
