@@ -22,6 +22,11 @@ for FT in (Float32, Float64)
         _T_ref = FT(LP.T_0(param_set))
         # Latent heat of fusion at ``T_0`` (J/kg)
         _LH_f0 = FT(LP.LH_f0(param_set))
+        # vapor diffusion
+        _D_vapor = LP.D_vapor(param_set)
+        # Gravitational acceleration on earth
+        _grav = LP.grav(param_set)
+        _σ = FT(7.2e-2) # need to add to CP, surface tension of water N/m
 
         ν = FT(0.2)
         S_s = FT(1e-3)
@@ -183,6 +188,46 @@ for FT in (Float32, Float64)
         T = FT.([278.0, 288.0, 298.0])
         @test viscosity_factor.(T, parameters.γ, parameters.γT_ref) ≈
               exp.(parameters.γ .* (T .- parameters.γT_ref))
+
+        # Soil Resistance scheme
+        x = [0.0, 0.2, 0.4]
+        @test soil_tortuosity.(x, 0.0, 0.3) ≈
+              [0.3^1.5, 0.1^2.5 / 0.3, eps(FT)^2.5 / 0.3]
+        x = [0.35, 0.25, 0.0, 0.1]
+        y = [0.0, 0.0, 0.1, 0.1 * 0.15 / 0.25]
+        @test dry_soil_layer_thickness.(x, 0.25, 0.1) ≈ y
+
+        θ_l = [
+            θ_r + eps(FT),
+            (ν - θ_r) / 2 + θ_r,
+            θ_r + eps(FT),
+            ν,
+            θ_r + eps(FT),
+        ]
+        θ_i = [FT(0), FT(0), (ν - θ_r) / 2 + θ_r, FT(0), ν]
+        ice_frac = ice_fraction.(θ_l, θ_i, ν, θ_r, _ρ_l, _ρ_i)
+        r_pore = 2 * _σ * vg_α / _ρ_l / _grav
+        θ_safe = @. max(eps(FT), (θ_i + θ_l - θ_r))
+        r_shell =
+            @. r_pore / _D_vapor / (4 * θ_safe) * (π - 2 * (θ_safe)^(1 / 2))
+        x = @. θ_safe / FT(0.001)
+        factor = @. 1 / (1 - exp(-x))^2
+        r_soil =
+            soil_resistance.(
+                θ_l,
+                θ_i,
+                ice_frac,
+                parameters.hydrology_cm,
+                parameters.ν,
+                parameters.θ_r,
+                parameters.d_ds,
+                param_set,
+            )
+        @test r_soil ≈ @. dry_soil_layer_thickness(
+            Soil.effective_saturation(ν, θ_l + θ_i, θ_r),
+            hcm.S_c,
+            parameters.d_ds,
+        ) / _D_vapor / soil_tortuosity(θ_l, θ_i, ν) + r_shell * factor
 
     end
 

@@ -7,7 +7,11 @@ export volumetric_liquid_fraction,
     impedance_factor,
     viscosity_factor,
     dψdϑ,
-    update_albedo!
+    update_albedo!,
+    ice_fraction,
+    soil_tortuosity,
+    soil_resistance,
+    dry_soil_layer_thickness
 
 """
     albedo_from_moisture(surface_eff_sat::FT, albedo_dry::FT, albedo_wet::FT)
@@ -391,4 +395,102 @@ function viscosity_factor(T::FT, γ::FT, γT_ref::FT) where {FT}
     factor = FT(γ * (T - γT_ref))
     Theta = FT(exp(factor))
     return Theta
+end
+
+"""
+    ice_fraction(θ_l::FT, θ_i::FT, ν::FT, θ_r::FT, ρ_l::FT, ρ_i::FT)::FT 
+where {FT}
+
+Computes and returns the
+fraction of the humidity in the pore space 
+that is due to sublimation.
+
+f = θ_iρ_i/(θ_iρ_i+(θ_l-θ_r)ρ_l)
+"""
+function ice_fraction(
+    θ_l::FT,
+    θ_i::FT,
+    ν::FT,
+    θ_r::FT,
+    ρ_l::FT,
+    ρ_i::FT,
+)::FT where {FT}
+    m_l = (θ_l - θ_r) * ρ_l
+    m_i = θ_i * ρ_i
+    f = m_i / (m_i + m_l)
+    return f
+end
+
+"""
+    soil_tortuosity(θ_l::FT, θ_i::FT, ν::FT) where {FT}
+
+Computes the tortuosity of water vapor in a porous medium,
+as a function of porosity `ν` and the volumetric liquid water
+and ice contents, `θ_l` and `θ_i`.
+
+See Equation (1) of : Shokri, N., P. Lehmann, and
+D. Or (2008), Effects of hydrophobic layers on evaporation from
+porous media, Geophys. Res. Lett., 35, L19407, doi:10.1029/
+2008GL035230.
+"""
+function soil_tortuosity(θ_l::FT, θ_i::FT, ν::FT) where {FT}
+    safe_θ_a = max(ν - θ_l - θ_i, eps(FT))
+    return safe_θ_a^(FT(2.5)) / ν
+end
+
+"""
+    soil_resistance(θ_l::FT,
+                    θ_i::FT,
+                    ice_frac::FT,
+                    hydrology_cm::C,
+                    ν::FT,
+                    θ_r::FT,
+                    d_ds::FT,
+                    earth_param_set::EP,
+                   ) where {FT, EP, C}
+
+Computes the resistance of the top of the soil column to
+water vapor diffusion, as a function of the surface
+volumetric liquid water fraction `θ_l`, the augmented
+liquid water fraction `ϑ_l`,  the volumetric ice water
+fraction `θ_i`, and other soil parameters.
+"""
+function soil_resistance(
+    θ_l::FT,
+    θ_i::FT,
+    ice_frac::FT,
+    hydrology_cm::C,
+    ν::FT,
+    θ_r::FT,
+    d_ds::FT,
+    earth_param_set::EP,
+) where {FT, EP, C}
+    (; S_c, α) = hydrology_cm
+    _D_vapor = LP.D_vapor(earth_param_set)
+    _ρ_liq = LP.ρ_cloud_liq(earth_param_set)
+    _grav = LP.grav(earth_param_set)
+    _σ = FT(7.2e-2) # need to add to CP, surface tension of water N/m
+
+    S_w = effective_saturation(ν, θ_l + θ_i, θ_r)
+    τ_a = soil_tortuosity(θ_l, θ_i, ν)
+    dsl::FT = dry_soil_layer_thickness(S_w, S_c, d_ds)
+    r_pore::FT = 2 * _σ * α / _ρ_liq / _grav
+    θ_safe = max(eps(FT), (θ_i + θ_l - θ_r))
+    r_shell::FT = r_pore / _D_vapor / (4 * θ_safe) * (π - 2 * (θ_safe)^(1 / 2))
+    # This factor just damps r_shell to zero more quickly as x -> 0. numerical.
+    x = θ_safe / FT(0.001)
+    factor = 1 / (1 - exp(-x))^2
+    r_soil = dsl / (_D_vapor * τ_a) + factor * r_shell# [s\m]
+    return r_soil
+end
+
+"""
+    dry_soil_layer_thickness(S_w::FT, S_c::FT, d_ds::FT)::FT where {FT}
+
+Returns the maximum dry soil layer thickness that can develop under vapor flux;
+this is used when computing the soil resistance to vapor flux according to
+Swenson et al (2012)/Sakaguchi and Zeng (2009).
+"""
+function dry_soil_layer_thickness(S_w::FT, S_c::FT, d_ds::FT)::FT where {FT}
+    return S_w < S_c ? d_ds * (S_c - S_w) / S_c : FT(0)
 end
