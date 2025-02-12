@@ -23,9 +23,19 @@ root_path = joinpath(pwd(), "snowy_land_longrun_gpu")
 outdir = "snowy_land_longrun_gpu/output_active" # on local
 # simdir = ClimaAnalysis.SimDir(outdir)
 
-short_names = ["lhf", "shf"]
-units_labels = Dict("lhf" => "(J/m²s)", "shf" => "(W/m²)")
-title_stubs = Dict("lhf" => "Latent heat flux", "shf" => "Sensible heat flux")
+short_names = ["lhf", "shf", "lwu", "swu"]
+units_labels = Dict(
+    "lhf" => "(J/m²s)",
+    "shf" => "(W/m²)",
+    "lwu" => "(W/m²)",
+    "swu" => "(W/m²)",
+)
+title_stubs = Dict(
+    "lhf" => "Latent heat flux",
+    "shf" => "Sensible heat flux",
+    "lwu" => "Upward longwave radiation",
+    "swu" => "Upward shortwave radiation",
+)
 
 function get_sim_var_dict(simdir)
     # Dict for loading in simulation data
@@ -60,9 +70,25 @@ function get_sim_var_dict(simdir)
     sim_var_dict["shf"] =
         () -> begin
             sim_var_shf = get(simdir, short_name = "shf") # units (W/m²)
+            sim_var_shf.attributes["long_name"] = "Sensible heat flux"
             return sim_var_shf
         end
 
+    # Read in LWU
+    sim_var_dict["lwu"] =
+        () -> begin
+            sim_var_lwu = get(simdir, short_name = "lwu") # units (W/m²)
+            sim_var_lwu.attributes["long_name"] = "Upward longwave radiation"
+            return sim_var_lwu
+        end
+
+    # Read in SWU
+    sim_var_dict["swu"] =
+        () -> begin
+            sim_var_swu = get(simdir, short_name = "swu") # units (W/m²)
+            sim_var_swu.attributes["long_name"] = "Upward shortwave radiation"
+            return sim_var_swu
+        end
     return sim_var_dict
 end
 
@@ -98,11 +124,6 @@ function get_obs_var_dict()
                 obs_var.dim_attributes,
                 -1 * obs_var.data,
             )
-            # obs_var_pos = ClimaAnalysis.convert_units(
-            #     obs_var,
-            #     "J/m²s",
-            #     conversion_function = (x) -> -x,
-            # )
             return obs_var_pos
         end
 
@@ -132,6 +153,44 @@ function get_obs_var_dict()
             )
 
             return obs_var_pos
+        end
+
+    # Read in LWU
+    obs_var_dict["lwu"] =
+        (start_date) -> begin
+            obs_var = ClimaAnalysis.OutputVar(
+                era5_data_path,
+                "msuwlwrf",
+                new_start_date = start_date,
+                shift_by = Dates.firstdayofmonth,
+            ) # units (W/m²)
+            obs_var = ClimaAnalysis.replace(obs_var, missing => NaN)
+
+            # Manually set attributes
+            obs_var.attributes["short_name"] = "lwu"
+            obs_var.attributes["long_name"] = "Upward longwave radiation"
+            obs_var.attributes["units"] = "W/m²"
+            obs_var.attributes["start_date"] = start_date
+            return obs_var
+        end
+
+    # Read in SWU
+    obs_var_dict["swu"] =
+        (start_date) -> begin
+            obs_var = ClimaAnalysis.OutputVar(
+                era5_data_path,
+                "msuwswrf",
+                new_start_date = start_date,
+                shift_by = Dates.firstdayofmonth,
+            ) # units (W/m²)
+            obs_var = ClimaAnalysis.replace(obs_var, missing => NaN)
+
+            # Manually set attributes
+            obs_var.attributes["short_name"] = "swu"
+            obs_var.attributes["long_name"] = "Upward shortwave radiation"
+            obs_var.attributes["units"] = "W/m²"
+            obs_var.attributes["start_date"] = start_date
+            return obs_var
         end
 
     return obs_var_dict
@@ -171,7 +230,14 @@ function make_paper_figures(
     sim_obs_comparsion_dict = Dict()
     mask_dict = get_mask_dict()
 
-    for short_name in [short_names[2]]
+    # create figure for all plots
+    # fig = CairoMakie.Figure(size = (1800, 400)) # use for single row plotting
+    fig = CairoMakie.Figure(size = (1800, 400 * length(short_names)))
+
+    for (idx, short_name) in enumerate(short_names)
+        # Plot figures in odd rows, colorbars in even rows
+        fig_row = idx * 2 + 1
+
         title_stub = title_stubs[short_name]
         units_label = units_labels[short_name]
 
@@ -198,9 +264,6 @@ function make_paper_figures(
             right = 366 * 86400, # 1 year of observation data, in seconds
         )
 
-        # create figure for all 3 plots
-        fig = CairoMakie.Figure(size = (1800, 400))
-
         ## GLOBAL HEATMAP
         # sim_var_annual_average below contains annually-averaged data in the provided window
         sim_var_annual_average = ClimaAnalysis.average_time(sim_var_window)
@@ -215,6 +278,7 @@ function make_paper_figures(
         sim_var_no_nans[isnan.(sim_var_no_nans)] .= 0 # TODO this is a hacky way to remove NaNs in data
         sim_extrema = extrema(sim_var_no_nans)
         obs_extrema = extrema(obs_var_annual_average.data)
+        # we MUST pass the same clims to the sim plot, obs plot, AND colorbars
         clims = extrema(vcat(sim_extrema..., obs_extrema...))
         clims = (clims[1], floor(clims[2], digits = -1)) # round to nearest 10
 
@@ -226,9 +290,9 @@ function make_paper_figures(
         viz.heatmap2D_on_globe!(
             fig,
             sim_var_annual_average,
-            p_loc = (1, 1), # plot in the first column
-            plot_colorbar = true,
-            colorbar_label = "Latent heat flux $(units_labels[short_name])",
+            p_loc = (fig_row, 1), # plot in the first column
+            plot_colorbar = false,
+            colorbar_label = "$(sim_var.attributes["long_name"]) $(units_labels[short_name])",
             mask = viz.oceanmask(),
             more_kwargs = Dict(
                 :mask => ClimaAnalysis.Utils.kwargs(color = :white),
@@ -242,6 +306,7 @@ function make_paper_figures(
                     yticklabelsvisible = false, # don't show lon labels
                     xgridvisible = false, # don't show lat grid
                     ygridvisible = false, # don't show lon grid
+                    height = 235,
                 ),
                 # :cb => ClimaAnalysis.Utils.kwargs(
                 #     colorrange = clims,
@@ -250,14 +315,15 @@ function make_paper_figures(
             ),
         )
         Makie.Colorbar(
-            fig[2, 1],
+            fig[fig_row + 1, 1],
             # plot,
-            label = "Latent heat flux $(units_labels[short_name])",
+            label = "$(sim_var.attributes["long_name"]) $(units_labels[short_name])",
             vertical = false, # horizontal colorbar
             flipaxis = false, # label underneath colorbar
+            height = 15,
             width = 400, # a little smaller
             tellwidth = false, # make colorbar width indep of plot width
-            limits = clims, # use global min/max across sim and obs plots
+            colorrange = clims, # use global min/max across sim and obs plots
             # cb_kwargs...,
         )
         # CairoMakie.save(joinpath(root_path, "$(short_name)_$(t)-annual_avg.pdf"), fig_global_sim)
@@ -268,9 +334,9 @@ function make_paper_figures(
         viz.heatmap2D_on_globe!(
             fig,
             obs_var_annual_average,
-            p_loc = (1, 2), # plot in the second column
-            plot_colorbar = true,
-            colorbar_label = "Latent heat flux $(units_labels[short_name])",
+            p_loc = (fig_row, 2), # plot in the second column
+            plot_colorbar = false,
+            colorbar_label = "$(sim_var.attributes["long_name"]) $(units_labels[short_name])",
             mask = viz.oceanmask(),
             more_kwargs = Dict(
                 :mask => ClimaAnalysis.Utils.kwargs(color = :white),
@@ -284,6 +350,7 @@ function make_paper_figures(
                     yticklabelsvisible = false, # don't show lon labels
                     xgridvisible = false, # don't show lat grid
                     ygridvisible = false, # don't show lon grid
+                    height = 235,
                 ),
                 # :cb => ClimaAnalysis.Utils.kwargs(
                 #     colorrange = clims,
@@ -292,16 +359,18 @@ function make_paper_figures(
             ),
         )
         Makie.Colorbar(
-            fig[2, 2],
+            fig[fig_row + 1, 2],
             # plot,
-            label = "Latent heat flux $(units_labels[short_name])",
+            label = "$(sim_var.attributes["long_name"]) $(units_labels[short_name])",
             vertical = false, # horizontal colorbar
             flipaxis = false, # label underneath colorbar
+            height = 15,
             width = 400, # a little smaller
             tellwidth = false, # make colorbar width indep of plot width
-            limits = clims, # use global min/max across sim and obs plots
+            colorrange = clims, # use global min/max across sim and obs plots
             # cb_kwargs...,
         )
+        # Makie.colgap!(fig.layout, 0, fig_row) # reduce gap between plot/colorbar pairs
         # CairoMakie.save(joinpath(root_path, "$(short_name)_$(t)-annual_avg-obs.pdf"), fig_global_obs)
 
 
@@ -324,7 +393,7 @@ function make_paper_figures(
 
         # fig_seasonal_cycle = CairoMakie.Figure(size = (600, 400))
         ax = Axis(
-            fig[1, 3],
+            fig[fig_row, 3],
             title = CairoMakie.rich(
                 "ClimaLand vs ERA5 seasonal cycle",
                 fontsize = 18,
@@ -336,6 +405,7 @@ function make_paper_figures(
             #     fontsize = 18,
             # ),
             # title = CairoMakie.rich(title_stub, fontsize = 18),
+            height = 250,
             xgridvisible = false,
             ygridvisible = false,
             xticks = (
@@ -394,8 +464,8 @@ function make_paper_figures(
         # )
 
 
-        CairoMakie.save(joinpath(root_path, "$(short_name)_figures.pdf"), fig)
     end
+    CairoMakie.save(joinpath(root_path, "combined_figures.pdf"), fig)
 
     # figures = readdir(root_path, join = true)
     # pdfunite() do unite
