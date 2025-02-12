@@ -588,11 +588,8 @@ for FT in (Float32, Float64)
         @test all(
             parent(p.canopy.energy.turbulent_fluxes.transpiration) .≈ FT(0.0),
         )
-        @test all(
-            parent(ntuple((i) -> p.canopy.radiative_transfer.rt[i].abs, 2)) .≈
-            FT(0.0),
-        )
-        @test all(parent(p.canopy.radiative_transfer[]))
+        get_abs = (rt) -> map(x -> x.abs, rt)
+        @test all(parent(get_abs.(p.canopy.radiative_transfer.rt)) .≈ FT(0.0))
         exp_tend! = make_exp_tendency(model)
         exp_tend!(dY, Y, p, FT(0))
         @test all(parent(dY.canopy.hydraulics.ϑ_l.:1) .≈ FT(0.0))
