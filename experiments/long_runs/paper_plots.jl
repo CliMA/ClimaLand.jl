@@ -23,13 +23,13 @@ root_path = joinpath(pwd(), "snowy_land_longrun_gpu")
 outdir = "snowy_land_longrun_gpu/output_active" # on local
 # simdir = ClimaAnalysis.SimDir(outdir)
 
-short_names = ["lhf", "shf", "lwu", "swu"]
-units_labels = Dict(
-    "lhf" => "(J/m²s)",
-    "shf" => "(W/m²)",
-    "lwu" => "(W/m²)",
-    "swu" => "(W/m²)",
-)
+short_names = ["lhf"]#, "shf", "lwu", "swu"]
+# units_labels = Dict(
+#     "lhf" => "(W/m²)",
+#     "shf" => "(W/m²)",
+#     "lwu" => "(W/m²)",
+#     "swu" => "(W/m²)",
+# )
 title_stubs = Dict(
     "lhf" => "Latent heat flux",
     "shf" => "Sensible heat flux",
@@ -37,198 +37,20 @@ title_stubs = Dict(
     "swu" => "Upward shortwave radiation",
 )
 
-function get_sim_var_dict(simdir)
-    # Dict for loading in simulation data
-    sim_var_dict = Dict{String, Any}()
-
-    # Get LHF by converting from ET
-    earth_param_set = LP.LandParameters(Float64)
-    _LH_v0 = LP.LH_v0(earth_param_set) # J/kg
-    sim_var_dict["lhf"] =
-        () -> begin
-            sim_var_et = get(simdir, short_name = "et") # units (kg/m²s)
-
-            attribs = Dict(
-                "short_name" => "lhf",
-                "long_name" => "Latent heat flux",
-                "units" => "J/m²s",
-                "start_date" => sim_var_et.attributes["start_date"],
-            )
-            sim_var_lhf = ClimaAnalysis.OutputVar(
-                attribs,
-                sim_var_et.dims,
-                sim_var_et.dim_attributes,
-                sim_var_et.data * _LH_v0, # J/m²s
-            )
-            # Shift to the first day and subtract one month as preprocessing
-            # sim_var_lhf =
-            #     ClimaAnalysis.shift_to_start_of_previous_month(sim_var_lhf)
-            return sim_var_lhf
-        end
-
-    # Read in SHF
-    sim_var_dict["shf"] =
-        () -> begin
-            sim_var_shf = get(simdir, short_name = "shf") # units (W/m²)
-            sim_var_shf.attributes["long_name"] = "Sensible heat flux"
-            return sim_var_shf
-        end
-
-    # Read in LWU
-    sim_var_dict["lwu"] =
-        () -> begin
-            sim_var_lwu = get(simdir, short_name = "lwu") # units (W/m²)
-            sim_var_lwu.attributes["long_name"] = "Upward longwave radiation"
-            return sim_var_lwu
-        end
-
-    # Read in SWU
-    sim_var_dict["swu"] =
-        () -> begin
-            sim_var_swu = get(simdir, short_name = "swu") # units (W/m²)
-            sim_var_swu.attributes["long_name"] = "Upward shortwave radiation"
-            return sim_var_swu
-        end
-    return sim_var_dict
-end
-
-function get_obs_var_dict()
-    era5_data_path = joinpath(
-        ClimaLand.Artifacts.era5_monthly_averages_2008_folder_path(),
-        "era5_monthly_surface_fluxes_200801-200812.nc",
-    )
-    # era5_monthly_surface_fluxes_200801-200812.nc
-    # era5_data_path = joinpath(ClimaLand.Artifacts.era5_monthly_averages_2008_folder_path(lowres = true), "era5_2008_1.0x1.0_lowres.nc")
-    # Dict for loading in observational data
-    obs_var_dict = Dict{String, Any}()
-    obs_var_dict["lhf"] =
-        (start_date) -> begin
-            obs_var = ClimaAnalysis.OutputVar(
-                era5_data_path,
-                "mslhf",
-                new_start_date = start_date,
-                shift_by = Dates.firstdayofmonth,
-            ) # units (W/m² = J/m²s)
-            obs_var = ClimaAnalysis.replace(obs_var, missing => NaN)
-
-            # Add attributes and make values positive to account for convention difference
-            attribs = Dict(
-                "short_name" => "lhf",
-                "long_name" => "Latent heat flux",
-                "units" => "J/m²s",
-                "start_date" => start_date,
-            )
-            obs_var_pos = ClimaAnalysis.OutputVar(
-                attribs,
-                obs_var.dims,
-                obs_var.dim_attributes,
-                -1 * obs_var.data,
-            )
-            return obs_var_pos
-        end
-
-    # Read in SHF
-    obs_var_dict["shf"] =
-        (start_date) -> begin
-            obs_var = ClimaAnalysis.OutputVar(
-                era5_data_path,
-                "msshf",
-                new_start_date = start_date,
-                shift_by = Dates.firstdayofmonth,
-            ) # units (W/m² = J/m²s)
-            obs_var = ClimaAnalysis.replace(obs_var, missing => NaN)
-
-            # Add attributes and make values positive to account for convention difference
-            attribs = Dict(
-                "short_name" => "shf",
-                "long_name" => "Sensible heat flux",
-                "units" => "W/m²",
-                "start_date" => start_date,
-            )
-            obs_var_pos = ClimaAnalysis.OutputVar(
-                attribs,
-                obs_var.dims,
-                obs_var.dim_attributes,
-                -1 * obs_var.data,
-            )
-
-            return obs_var_pos
-        end
-
-    # Read in LWU
-    obs_var_dict["lwu"] =
-        (start_date) -> begin
-            obs_var = ClimaAnalysis.OutputVar(
-                era5_data_path,
-                "msuwlwrf",
-                new_start_date = start_date,
-                shift_by = Dates.firstdayofmonth,
-            ) # units (W/m²)
-            obs_var = ClimaAnalysis.replace(obs_var, missing => NaN)
-
-            # Manually set attributes
-            obs_var.attributes["short_name"] = "lwu"
-            obs_var.attributes["long_name"] = "Upward longwave radiation"
-            obs_var.attributes["units"] = "W/m²"
-            obs_var.attributes["start_date"] = start_date
-            return obs_var
-        end
-
-    # Read in SWU
-    obs_var_dict["swu"] =
-        (start_date) -> begin
-            obs_var = ClimaAnalysis.OutputVar(
-                era5_data_path,
-                "msuwswrf",
-                new_start_date = start_date,
-                shift_by = Dates.firstdayofmonth,
-            ) # units (W/m²)
-            obs_var = ClimaAnalysis.replace(obs_var, missing => NaN)
-
-            # Manually set attributes
-            obs_var.attributes["short_name"] = "swu"
-            obs_var.attributes["long_name"] = "Upward shortwave radiation"
-            obs_var.attributes["units"] = "W/m²"
-            obs_var.attributes["start_date"] = start_date
-            return obs_var
-        end
-
-    return obs_var_dict
-end
-
-function get_mask_dict()
-    # Dict for loading in masks
-    mask_dict = Dict{String, Any}()
-
-    mask_dict["lhf"] =
-        (sim_var, obs_var) -> begin
-            return ClimaAnalysis.make_lonlat_mask(
-                ClimaAnalysis.slice(
-                    obs_var,
-                    time = ClimaAnalysis.times(obs_var) |> first,
-                );
-                set_to_val = isnan,
-            )
-        end
-    return mask_dict
-end
-
-
+include("data_paper_plots.jl")
 
 function make_paper_figures(
     root_path,
     outdir,
     short_names,
-    units_labels,
     title_stubs,
+    plot_bias = false,
+    plot_seasonal = false,
 )
     # Set up for comparison to data (copied from leaderboard.jl)
     # use sim_var and obs_var together for the seasonal plot because they already have the same units :)
     sim_var_dict = get_sim_var_dict(ClimaAnalysis.SimDir(outdir))
     obs_var_dict = get_obs_var_dict()
-    # Set up dict for storing simulation and observational data after processing
-    sim_obs_comparsion_dict = Dict()
-    mask_dict = get_mask_dict()
 
     # create figure for all plots
     # fig = CairoMakie.Figure(size = (1800, 400)) # use for single row plotting
@@ -239,7 +61,6 @@ function make_paper_figures(
         fig_row = (idx - 1) * 2 + 1
 
         title_stub = title_stubs[short_name]
-        units_label = units_labels[short_name]
 
         # Access simulation data in the time we want
         sim_var = sim_var_dict[short_name]()
@@ -253,6 +74,7 @@ function make_paper_figures(
             left = (i - 1) * 366 * 86400 + 30 * 86400, # 1 year left of year i, in seconds.
             right = i * 366 * 86400, # 1 year right of year i, in seconds
         )
+        units_label = "(" * sim_var.attributes["units"] * ")"
 
         # Access observation data in the time we want
         obs_var = obs_var_dict[short_name](sim_var.attributes["start_date"])
@@ -294,7 +116,7 @@ function make_paper_figures(
             sim_var_annual_average,
             p_loc = (fig_row, 1), # plot in the first column
             plot_colorbar = false,
-            colorbar_label = "$(sim_var.attributes["long_name"]) $(units_labels[short_name])",
+            colorbar_label = "$(sim_var.attributes["long_name"]) $units_label",
             mask = viz.oceanmask(),
             more_kwargs = Dict(
                 :mask => ClimaAnalysis.Utils.kwargs(color = :white),
@@ -319,7 +141,7 @@ function make_paper_figures(
         Makie.Colorbar(
             fig[fig_row + 1, 1],
             # plot,
-            label = "$(sim_var.attributes["long_name"]) $(units_labels[short_name])",
+            label = "$(sim_var.attributes["long_name"]) $units_label",
             vertical = false, # horizontal colorbar
             flipaxis = false, # label underneath colorbar
             height = 15,
@@ -341,7 +163,7 @@ function make_paper_figures(
             obs_var_annual_average,
             p_loc = (fig_row, 2), # plot in the second column
             plot_colorbar = false,
-            colorbar_label = "$(sim_var.attributes["long_name"]) $(units_labels[short_name])",
+            colorbar_label = "$(sim_var.attributes["long_name"]) $units_label",
             mask = viz.oceanmask(),
             more_kwargs = Dict(
                 :mask => ClimaAnalysis.Utils.kwargs(color = :white),
@@ -366,7 +188,7 @@ function make_paper_figures(
         Makie.Colorbar(
             fig[fig_row + 1, 2],
             # plot,
-            label = "$(sim_var.attributes["long_name"]) $(units_labels[short_name])",
+            label = "$(sim_var.attributes["long_name"]) $units_label",
             vertical = false, # horizontal colorbar
             flipaxis = false, # label underneath colorbar
             height = 15,
@@ -378,107 +200,147 @@ function make_paper_figures(
         # Makie.colgap!(fig.layout, 0, fig_row) # reduce gap between plot/colorbar pairs
         # CairoMakie.save(joinpath(root_path, "$(short_name)_$(t)-annual_avg-obs.pdf"), fig_global_obs)
 
+        @assert !(plot_bias && plot_seasonal) # only one of these can be true
+        ## BIAS PLOT
+        if plot_bias
+            bias_title =
+                fig_row == 1 ?
+                CairoMakie.rich("ClimaLand vs ERA5 bias", fontsize = 18) : "" # title of the figure
+            bias_colorbar_label = "$(sim_var.attributes["long_name"]): ClimaLand - ERA5 bias $units_label"
+            viz.plot_bias_on_globe!(
+                fig,
+                sim_var_annual_average,
+                obs_var_annual_average,
+                p_loc = (fig_row, 3), # plot in the third column
+                cmap_extrema = (-50, 50),#compare_vars_biases_plot_extrema[short_name],
+                mask = viz.oceanmask(),
+                more_kwargs = Dict(
+                    :mask => ClimaAnalysis.Utils.kwargs(color = :white),
+                    :plot => ClimaAnalysis.Utils.kwargs(
+                        rasterize = true,
+                        # colorrange = clims,
+                    ),
+                    :axis => ClimaAnalysis.Utils.kwargs(
+                        title = bias_title,
+                        xticklabelsvisible = false, # don't show lat labels
+                        yticklabelsvisible = false, # don't show lon labels
+                        xgridvisible = false, # don't show lat grid
+                        ygridvisible = false, # don't show lon grid
+                        height = 235,
+                    ),
+                    :cb => ClimaAnalysis.Utils.kwargs(
+                        vertical = false, # horizontal colorbar
+                        label = bias_colorbar_label,
+                        flipaxis = false, # label underneath colorbar
+                        height = 15,
+                        width = 400, # a little smaller
+                        tellwidth = false, # make colorbar width indep of plot width
+                        # colorrange = clims,
+                        # ticks = 0:50:round_step(clims[2], 50),
+                    ),
+                ),
+            )
+        end
 
         ## SEASONAL CYCLE
-        # data_sources.jl has observational data for "gpp", "lwu", and "et" only - maybe separate short_names loop for this
-        # Simulation data
+        if plot_seasonal
+            # data_sources.jl has observational data for "gpp", "lwu", and "et" only - maybe separate short_names loop for this
+            # Simulation data
 
-        # var_global_average below is a vector of vector, one for each year of simulation, containing monthly global average of var.
-        # i represent a year, from 1 to last year
-        # for more details on the ClimaAnalysis functions, see ClimaAnalysis docs.
+            # var_global_average below is a vector of vector, one for each year of simulation, containing monthly global average of var.
+            # i represent a year, from 1 to last year
+            # for more details on the ClimaAnalysis functions, see ClimaAnalysis docs.
 
-        # ~only compute seasonal cycle for last year so we skip spinup~
-        # compute seasonal cycle for second to last year so we skip spinup AND have data for dec after off-by-one correction (shift_to_start_of_previous_month)
-        sim_var_global_average =
-            ClimaAnalysis.average_lon(
-                ClimaAnalysis.weighted_average_lat(
-                    ClimaAnalysis.apply_oceanmask(sim_var_window),
+            # ~only compute seasonal cycle for last year so we skip spinup~
+            # compute seasonal cycle for second to last year so we skip spinup AND have data for dec after off-by-one correction (shift_to_start_of_previous_month)
+            sim_var_global_average =
+                ClimaAnalysis.average_lon(
+                    ClimaAnalysis.weighted_average_lat(
+                        ClimaAnalysis.apply_oceanmask(sim_var_window),
+                    ),
+                ).data
+
+            # fig_seasonal_cycle = CairoMakie.Figure(size = (600, 400))
+            seasonal_title =
+                fig_row == 1 ?
+                CairoMakie.rich(
+                    "ClimaLand vs ERA5 seasonal cycle",
+                    fontsize = 18,
+                ) : "" # title of the figure
+
+            ax = Axis(
+                fig[fig_row, 3],
+                title = seasonal_title,
+                # ylabel = "$units_label",
+                ylabel = title_stub * " $units_label",
+                # CairoMakie.rich(
+                #     title_stub * " $units_label",
+                #     fontsize = 18,
+                # ),
+                # title = CairoMakie.rich(title_stub, fontsize = 18),
+                height = 250,
+                xgridvisible = false,
+                ygridvisible = false,
+                xticks = (
+                    1:1:12,
+                    [
+                        "Jan",
+                        "Feb",
+                        "Mar",
+                        "Apr",
+                        "May",
+                        "Jun",
+                        "Jul",
+                        "Aug",
+                        "Sep",
+                        "Oct",
+                        "Nov",
+                        "Dev",
+                    ],
                 ),
-            ).data
+            )
+            # [
+            # plot model output
+            # TODO apply shift_to_start_of_previous_month
+            CairoMakie.lines!(
+                ax,
+                sim_var_global_average,
+                color = :blue,#RGBf(0.5, 0.5, 0.5),
+                linewidth = 3,
+                label = "ClimaLand",
+            )
 
-        # fig_seasonal_cycle = CairoMakie.Figure(size = (600, 400))
-        seasonal_title =
-            fig_row == 1 ?
-            CairoMakie.rich("ClimaLand vs ERA5 seasonal cycle", fontsize = 18) :
-            "" # title of the figure
+            # Add comparison to observational data (copied from leaderboard.jl)
+            # Observational data
 
-        ax = Axis(
-            fig[fig_row, 3],
-            title = seasonal_title,
-            # ylabel = "$units_label",
-            ylabel = title_stub * " $units_label",
-            # CairoMakie.rich(
-            #     title_stub * " $units_label",
-            #     fontsize = 18,
-            # ),
-            # title = CairoMakie.rich(title_stub, fontsize = 18),
-            height = 250,
-            xgridvisible = false,
-            ygridvisible = false,
-            xticks = (
-                1:1:12,
-                [
-                    "Jan",
-                    "Feb",
-                    "Mar",
-                    "Apr",
-                    "May",
-                    "Jun",
-                    "Jul",
-                    "Aug",
-                    "Sep",
-                    "Oct",
-                    "Nov",
-                    "Dev",
-                ],
-            ),
-        )
-        # [
-        # plot model output
-        # TODO apply shift_to_start_of_previous_month
-        CairoMakie.lines!(
-            ax,
-            sim_var_global_average,
-            color = :blue,#RGBf(0.5, 0.5, 0.5),
-            linewidth = 3,
-            label = "ClimaLand",
-        )
+            # var_global_average below is a vector of vector, one for each year of simulation, containing monthly global average of var.
+            # i represent a year, from 1 to last year
+            # for more details on the ClimaAnalysis functions, see ClimaAnalysis docs.
+            obs_var_global_average =
+                ClimaAnalysis.average_lon(
+                    ClimaAnalysis.weighted_average_lat(
+                        ClimaAnalysis.apply_oceanmask(obs_var_window),
+                    ),
+                ).data
 
-        # Add comparison to observational data (copied from leaderboard.jl)
-        # Observational data
+            CairoMakie.scatter!(
+                ax,
+                obs_var_global_average,
+                color = :orange,
+                label = "ERA5",
+            )
+            CairoMakie.axislegend(ax, position = :rt)
 
-        # var_global_average below is a vector of vector, one for each year of simulation, containing monthly global average of var.
-        # i represent a year, from 1 to last year
-        # for more details on the ClimaAnalysis functions, see ClimaAnalysis docs.
-        obs_var_global_average =
-            ClimaAnalysis.average_lon(
-                ClimaAnalysis.weighted_average_lat(
-                    ClimaAnalysis.apply_oceanmask(obs_var_window),
-                ),
-            ).data
-
-        CairoMakie.scatter!(
-            ax,
-            obs_var_global_average,
-            color = :orange,
-            label = "ERA5",
-        )
-        CairoMakie.axislegend(ax, position = :rt)
-
-        # CairoMakie.save(
-        #     joinpath(root_path, "$(short_name)_global_monthly.pdf"),
-        #     fig_seasonal_cycle,
-        # )
+            # CairoMakie.save(
+            #     joinpath(root_path, "$(short_name)_global_monthly.pdf"),
+            #     fig_seasonal_cycle,
+            # )
+        end
 
 
     end
     CairoMakie.save(joinpath(root_path, "combined_figures.pdf"), fig)
-
-    # figures = readdir(root_path, join = true)
-    # pdfunite() do unite
-    #     run(Cmd([unite, figures..., joinpath(root_path, "figures.pdf")]))
-    # end
     return nothing
 end
 
-make_paper_figures(root_path, outdir, short_names, units_labels, title_stubs)
+make_paper_figures(root_path, outdir, short_names, title_stubs, true, false)
