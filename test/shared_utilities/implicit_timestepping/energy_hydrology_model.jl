@@ -234,10 +234,8 @@ for FT in (Float32, Float64)
                 heat = zero_heat_flux,
             ),
         )
-        NIR_albedo_dry = fill(FT(0.4), domain.space.surface)
-        PAR_albedo_dry = fill(FT(0.2), domain.space.surface)
-        NIR_albedo_wet = fill(FT(0.3), domain.space.surface)
-        PAR_albedo_wet = fill(FT(0.1), domain.space.surface)
+        albedo_dry = fill(FT.((0.2, 0.4)), domain.space.surface)
+        albedo_wet = fill(FT.((0.1, 0.3)), domain.space.surface)
         params = ClimaLand.Soil.EnergyHydrologyParameters(
             FT;
             ν,
@@ -248,10 +246,8 @@ for FT in (Float32, Float64)
             K_sat,
             S_s,
             θ_r,
-            NIR_albedo_dry,
-            PAR_albedo_dry,
-            NIR_albedo_wet,
-            PAR_albedo_wet,
+            albedo_dry,
+            albedo_wet,
             emissivity,
             z_0m,
             z_0b,
