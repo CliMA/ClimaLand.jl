@@ -624,12 +624,21 @@ function TwoStreamParameters(
     FT = CP.float_type(toml_dict)
     # default value for keyword args must be converted manually
     # automatic conversion not possible to Union types
-    ρ_leaf = FT.(ρ_leaf)
-    τ_leaf = FT.(τ_leaf)
+    if typeof(ρ_leaf) <: Tuple
+        ρ_leaf = FT.(ρ_leaf)
+        τ_leaf = FT.(τ_leaf)
+    end
+    
     if (isnothing(spectral_discretization))
         spectral_discretization = TwoBandSpectralDiscretization{FT}()
     end
-    return TwoStreamParameters{FT, typeof(spectral_discretization), typeof(G_Function), typeof(Ω), typeof(ρ_leaf)}(;
+    return TwoStreamParameters{
+        FT,
+        typeof(spectral_discretization),
+        typeof(G_Function),
+        typeof(Ω),
+        typeof(ρ_leaf),
+    }(;
         G_Function,
         spectral_discretization,
         ρ_leaf,
@@ -678,12 +687,20 @@ function BeerLambertParameters(
     FT = CP.float_type(toml_dict)
     # default value for keyword args must be converted manually
     # automatic conversion not possible to Union types
-    ρ_leaf = FT.(ρ_leaf)
+    if typeof(ρ_leaf) <: Tuple
+        ρ_leaf = FT.(ρ_leaf)
+    end
     if (isnothing(spectral_discretization))
         spectral_discretization = TwoBandSpectralDiscretization{FT}()
     end
-    return BeerLambertParameters{FT, typeof(spectral_discretization), typeof(G_Function), typeof(ρ_leaf)}(;
+    return BeerLambertParameters{
+        FT,
+        typeof(spectral_discretization),
+        typeof(G_Function),
+        typeof(ρ_leaf),
+    }(;
         G_Function,
+        spectral_discretization,
         ρ_leaf,
         Ω,
         parameters...,

@@ -11,7 +11,7 @@ using ClimaLand: PrescribedAtmosphere, PrescribedRadiativeFluxes
 using ClimaUtilities.TimeVaryingInputs: TimeVaryingInput, evaluate!
 using ClimaLand.Canopy
 using ClimaLand.Canopy.PlantHydraulics
-using ClimaLand.Domains: Point
+using ClimaLand.Domains: Point, SphericalSurface
 import Insolation
 using ClimaCore.MatrixFields: @name
 import ClimaLand
@@ -40,7 +40,7 @@ import ClimaParams
         rooting_cases = (FT(0.5), fill(FT(0.5), domain.space.surface))
         # test default values as field
         ρ_leaf_cases =
-            (FT.((0.1, 0.4)), fill(FT.((0.1, 0.4))), domain.space.surface)
+            (FT.((0.1, 0.4)), fill(FT.((0.1, 0.4)), domain.space.surface))
         ld_cases = (FT(0.5), fill(FT(0.5), domain.space.surface))
         zipped_params = zip(
             g1_cases,
@@ -296,9 +296,8 @@ import ClimaParams
                   turb_fluxes_copy.transpiration
             _σ = FT(LP.Stefan(earth_param_set))
 
-            nbands = length(λ_bounds) - 1
-            spectral_f_abs =
-                ntuple((i) -> p.canopy.radiative_transfer.rt[i].abs, nbands)
+            get_abs = (rt) -> map(x -> x.abs, rt)
+            f_spectral_abs = get_abs.(p.canopy.radiative_transfer.rt)
             SW_d = p.canopy.radiative_transfer.SW_d
 
             @test p.canopy.radiative_transfer.SW_n ==
@@ -552,7 +551,7 @@ end
             nothing,
             nothing,
             nothing,
-        ) == FT.(0.2, 0.4)
+        ) == FT.((0.2, 0.4))
         @test soil_driver.root_depths ==
               SVector{10, FT}(-(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0)
         @test FT.(soil_driver.ψ(2.0)) == FT.(0.0)
@@ -581,7 +580,7 @@ end
         # test default values as field
         ρ_leaf_cases = (
             (FT(0.1), FT(0.1)),
-            fill((FT(0.1), FT(0.1)), domain.space.subsurface),
+            fill((FT(0.1), FT(0.1)), domain.space.surface),
         )
         ld_cases = (FT(0.5), fill(FT(0.5), domain.space.surface))
         zipped_params = zip(
@@ -743,7 +742,7 @@ end
                 (t) -> ψ_soil0,
                 (t) -> T_soil0,
                 ClimaLand.TwoBandSpectralDiscretization{FT}(),
-                FT.(0.2, 0.4),
+                FT.((0.2, 0.4)),
                 FT(0.98),
             )
 
@@ -1010,7 +1009,7 @@ end
             (t) -> ψ_soil0,
             (t) -> T_soil0,
             ClimaLand.TwoBandSpectralDiscretization{FT}(),
-            FT.(0.2, 0.4),
+            FT.((0.2, 0.4)),
             FT(0.98),
         )
 
@@ -1178,10 +1177,10 @@ end
         mechanism_cases = (FT(1), mechanism_field)
         rooting_cases = (FT(0.5), fill(FT(0.5), domain.space.surface))
         ρ_leaf_cases =
-            (FT.((0.1, 0.45)), fill(FT.((0.1, 0.45)), domain.space.subsurface))
+            (FT.((0.1, 0.45)), fill(FT.((0.1, 0.45)), domain.space.surface))
         τ_leaf_cases = (
             FT.((0.05, 0.25)),
-            fill(FT.((0.05, 0.25)), domain.space.subsurface),
+            fill(FT.((0.05, 0.25)), domain.space.surface),
         )
         χl_cases = (FT(0.1), fill(FT(0.1), domain.space.surface))
         zipped_params = zip(
@@ -1365,7 +1364,7 @@ end
                 (t) -> ψ_soil0,
                 (t) -> T_soil0,
                 ClimaLand.TwoBandSpectralDiscretization{FT}(),
-                FT.(0.2, 0.4),
+                FT.((0.2, 0.4)),
                 FT(0.98),
             )
 
@@ -1427,15 +1426,9 @@ end
                 @test all(
                     Array(parent(p.canopy.radiative_transfer.SW_n)) .== FT(0),
                 )
+                get_abs = (rt) -> map(x -> x.abs, rt)
                 @test all(
-                    Array(
-                        parent(
-                            ntuple(
-                                (i) -> p.canopy.radiative_transfer.rt[i].abs,
-                            ),
-                            2,
-                        ),
-                    ) .== ntuple((_) -> FT(0), nbands),
+                    Array(parent(get_abs.(p.canopy.radiative_transfer.rt))) .== FT(0),
                 )
                 @test all(
                     Array(parent(p.canopy.autotrophic_respiration.Ra)) .==
