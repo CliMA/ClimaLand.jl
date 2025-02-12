@@ -76,8 +76,7 @@ soil_ps = Soil.EnergyHydrologyParameters(
     z_0m = z_0m_soil,
     z_0b = z_0b_soil,
     emissivity = soil_ϵ,
-    PAR_albedo = soil_α_PAR,
-    NIR_albedo = soil_α_NIR,
+    albedo = (soil_α_PAR, soil_α_NIR),
 )
 
 soil_args = (parameters = soil_ps,)

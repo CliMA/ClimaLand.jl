@@ -133,8 +133,7 @@ soil_ps = Soil.EnergyHydrologyParameters(
     z_0b = z_0b_soil,
     emissivity = soil_ϵ,
     spectral_discretization = spectral_discretization,
-    PAR_albedo = soil_α_PAR,
-    NIR_albedo = soil_α_NIR,
+    albedo = (soil_α_PAR, soil_α_NIR),
 );
 
 soil_args = (domain = soil_domain, parameters = soil_ps)
