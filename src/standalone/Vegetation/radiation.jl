@@ -160,10 +160,7 @@ ClimaLand.auxiliary_vars(model::Union{BeerLambertModel, TwoStreamModel}) =
 ClimaLand.auxiliary_types(
     model::Union{BeerLambertModel{FT}, TwoStreamModel{FT}},
 ) where {FT} = (
-    NTuple{
-        length(model.parameters.spectral_discretization.λ) - 1,
-        FT,
-    },
+    NTuple{length(model.parameters.spectral_discretization.λ) - 1, FT},
     NTuple{
         length(model.parameters.spectral_discretization.λ) - 1,
         NamedTuple{(:abs, :refl, :trans), Tuple{FT, FT, FT}},

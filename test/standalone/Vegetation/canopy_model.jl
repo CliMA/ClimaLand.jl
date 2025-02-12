@@ -578,10 +578,8 @@ end
         mechanism_cases = (FT(1), mechanism_field)
         rooting_cases = (FT(0.5), fill(FT(0.5), domain.space.surface))
         # test default values as field
-        ρ_leaf_cases = (
-            (FT(0.1), FT(0.1)),
-            fill((FT(0.1), FT(0.1)), domain.space.surface),
-        )
+        ρ_leaf_cases =
+            ((FT(0.1), FT(0.1)), fill((FT(0.1), FT(0.1)), domain.space.surface))
         ld_cases = (FT(0.5), fill(FT(0.5), domain.space.surface))
         zipped_params = zip(
             g1_cases,
@@ -1178,10 +1176,8 @@ end
         rooting_cases = (FT(0.5), fill(FT(0.5), domain.space.surface))
         ρ_leaf_cases =
             (FT.((0.1, 0.45)), fill(FT.((0.1, 0.45)), domain.space.surface))
-        τ_leaf_cases = (
-            FT.((0.05, 0.25)),
-            fill(FT.((0.05, 0.25)), domain.space.surface),
-        )
+        τ_leaf_cases =
+            (FT.((0.05, 0.25)), fill(FT.((0.05, 0.25)), domain.space.surface))
         χl_cases = (FT(0.1), fill(FT(0.1), domain.space.surface))
         zipped_params = zip(
             Ω_cases,
@@ -1428,7 +1424,8 @@ end
                 )
                 get_abs = (rt) -> map(x -> x.abs, rt)
                 @test all(
-                    Array(parent(get_abs.(p.canopy.radiative_transfer.rt))) .== FT(0),
+                    Array(parent(get_abs.(p.canopy.radiative_transfer.rt))) .==
+                    FT(0),
                 )
                 @test all(
                     Array(parent(p.canopy.autotrophic_respiration.Ra)) .==

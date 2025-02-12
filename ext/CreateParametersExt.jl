@@ -628,7 +628,7 @@ function TwoStreamParameters(
         ρ_leaf = FT.(ρ_leaf)
         τ_leaf = FT.(τ_leaf)
     end
-    
+
     if (isnothing(spectral_discretization))
         spectral_discretization = TwoBandSpectralDiscretization{FT}()
     end

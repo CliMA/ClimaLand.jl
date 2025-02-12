@@ -56,7 +56,9 @@ function PrescribedGroundConditions(
     )),
     ψ::Function = t -> 0.0,
     T::Function = t -> 298.0,
-    spectral_discretization::AbstractSpectralDiscretization = ClimaLand.TwoBandSpectralDiscretization{FT}(),
+    spectral_discretization::AbstractSpectralDiscretization = ClimaLand.TwoBandSpectralDiscretization{
+        FT,
+    }(),
     α_ground::Tuple = FT.((0.2, 0.4)),
     ϵ = FT(0.99),
 )
