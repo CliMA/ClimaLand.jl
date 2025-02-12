@@ -1253,7 +1253,7 @@ function soil_resistance(
     r_shell::FT = r_pore / _D_vapor / (4 * θ_safe) * (π - 2 * (θ_safe)^(1 / 2))
     x = θ_safe / FT(0.001)
     factor = 1 / (1 - exp(-x))^2
-    y = (S_w - S_c) / (S_c / 3)
+    y = (S_w - S_c) / (S_c / 5)
     dsl_over_tortuosity = d_ds * (1 - 1 / (1 + exp(-y)))
     r_soil = dsl_over_tortuosity / _D_vapor + factor * r_shell# [s\m]
     return r_soil
