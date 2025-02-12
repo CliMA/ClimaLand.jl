@@ -21,7 +21,6 @@ struct PrescribedGroundConditions{
     F2 <: Function,
     SD <: AbstractSpectralDiscretization,
     VEC <: AbstractArray{FT},
-    N <: Integer,
 } <: AbstractGroundConditions
     "The depth of the root tips, in meters"
     root_depths::VEC
@@ -32,7 +31,7 @@ struct PrescribedGroundConditions{
     "Spectral discretization"
     spectral_discretization::SD
     "Spectral ground albedo"
-    α_ground::NTuple{N, FT}
+    α_ground::Tuple
     "Ground emissivity"
     ϵ::FT
 end
@@ -57,21 +56,22 @@ function PrescribedGroundConditions(
     )),
     ψ::Function = t -> 0.0,
     T::Function = t -> 298.0,
-    α_PAR = FT(0.2),
-    α_NIR = FT(0.4),
+    spectral_discretization::AbstractSpectralDiscretization = ClimaLand.TwoBandSpectralDiscretization{FT}(),
+    α_ground::Tuple = FT.((0.2, 0.4)),
     ϵ = FT(0.99),
 )
     return PrescribedGroundConditions{
         FT,
         typeof(ψ),
         typeof(T),
+        typeof(spectral_discretization),
         typeof(root_depths),
     }(
         root_depths,
         ψ,
         T,
-        α_PAR,
-        α_NIR,
+        spectral_discretization,
+        α_ground,
         ϵ,
     )
 end
@@ -86,7 +86,6 @@ mode.
 function ground_albedo(
     prognostic_land_components::Val{(:canopy,)},
     ground::PrescribedGroundConditions,
-    λ::Float64,
     _...,
 )
     return ground.α_ground

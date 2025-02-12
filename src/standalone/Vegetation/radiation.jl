@@ -160,9 +160,12 @@ ClimaLand.auxiliary_vars(model::Union{BeerLambertModel, TwoStreamModel}) =
 ClimaLand.auxiliary_types(
     model::Union{BeerLambertModel{FT}, TwoStreamModel{FT}},
 ) where {FT} = (
-    FT,
     NTuple{
-        length(model.parameters.spectral_discretization.λ - 1),
+        length(model.parameters.spectral_discretization.λ) - 1,
+        FT,
+    },
+    NTuple{
+        length(model.parameters.spectral_discretization.λ) - 1,
         NamedTuple{(:abs, :refl, :trans), Tuple{FT, FT, FT}},
     },
     FT,
@@ -212,10 +215,8 @@ function canopy_radiant_energy_fluxes!(
 ) where {PSE}
     FT = eltype(earth_param_set)
     SW_d = p.canopy.radiative_transfer.SW_d
-    SW_abs = ntuple(
-        i -> p.canopy.radiative_transfer.rt[i].abs,
-        length(p.canopy.radiative_transfer.rt),
-    )
+    get_abs = (rt) -> map(x -> x.abs, rt)
+    SW_abs = get_abs.(p.canopy.radiative_transfer.rt)
     @. p.canopy.radiative_transfer.SW_n = sum(SW_abs .* SW_d)
     ϵ_canopy = p.canopy.radiative_transfer.ϵ # this takes into account LAI/SAI
     # Long wave: use ground conditions from the ground driver

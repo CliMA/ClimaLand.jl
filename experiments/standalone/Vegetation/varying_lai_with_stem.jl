@@ -62,7 +62,7 @@ soil_driver = PrescribedGroundConditions(
     root_depths = SVector{10, FT}(-(10:-1:1.0) ./ 10.0 * 2.0 .+ 0.2 / 2.0),
     ψ = t -> ψ_soil0,
     spectral_discretization = spectral_discretization,
-    α_ground = FT.(0.2, 0.4),
+    α_ground = FT.((0.2, 0.4)),
     T = t -> 298.0,
     ϵ = FT(0.99),
 );
