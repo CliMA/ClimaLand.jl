@@ -236,7 +236,7 @@ function make_paper_figures(
 
     for (idx, short_name) in enumerate(short_names)
         # Plot figures in odd rows, colorbars in even rows
-        fig_row = idx * 2 + 1
+        fig_row = (idx - 1) * 2 + 1
 
         title_stub = title_stubs[short_name]
         units_label = units_labels[short_name]
@@ -284,7 +284,9 @@ function make_paper_figures(
 
         # Plot simulation data heatmap
         sim_title =
-            CairoMakie.rich("ClimaLand, annually averaged", fontsize = 18) # title of the figure
+            fig_row == 1 ?
+            CairoMakie.rich("ClimaLand, annually averaged", fontsize = 18) : "" # title of the figure
+
         # fig_global_sim = CairoMakie.Figure(size = (600, 400))
         # round_step(x, step) = round(x / step) * step
         viz.heatmap2D_on_globe!(
@@ -329,7 +331,10 @@ function make_paper_figures(
         # CairoMakie.save(joinpath(root_path, "$(short_name)_$(t)-annual_avg.pdf"), fig_global_sim)
 
         # Plot observational data heatmap
-        obs_title = CairoMakie.rich("ERA5, annually averaged", fontsize = 18) # title of the figure
+        obs_title =
+            fig_row == 1 ?
+            CairoMakie.rich("ERA5, annually averaged", fontsize = 18) : "" # title of the figure
+
         # fig_global_obs = CairoMakie.Figure(size = (600, 400))
         viz.heatmap2D_on_globe!(
             fig,
@@ -392,12 +397,14 @@ function make_paper_figures(
             ).data
 
         # fig_seasonal_cycle = CairoMakie.Figure(size = (600, 400))
+        seasonal_title =
+            fig_row == 1 ?
+            CairoMakie.rich("ClimaLand vs ERA5 seasonal cycle", fontsize = 18) :
+            "" # title of the figure
+
         ax = Axis(
             fig[fig_row, 3],
-            title = CairoMakie.rich(
-                "ClimaLand vs ERA5 seasonal cycle",
-                fontsize = 18,
-            ), # title of the figure
+            title = seasonal_title,
             # ylabel = "$units_label",
             ylabel = title_stub * " $units_label",
             # CairoMakie.rich(
