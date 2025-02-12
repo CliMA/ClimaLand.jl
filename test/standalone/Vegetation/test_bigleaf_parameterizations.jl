@@ -111,25 +111,27 @@ for FT in (Float32, Float64)
         SW(θs) = cos.(θs) * FT.(500) # W/m^2
         G = compute_G(RTparams.G_Function, θs)
         K_c = extinction_coeff.(G, θs)
-        α_soil_PAR = FT(0.2)
+        α_soil = FT.((0.2, 0.2))
         output =
             canopy_sw_rt_beer_lambert.(
                 RTparams.Ω,
-                RTparams.ρ_PAR_leaf,
+                (RTparams.ρ_leaf,),
                 LAI,
                 K_c,
-                α_soil_PAR,
+                (α_soil,),
             )
-        FAPAR = getproperty.(output, :abs)
-        FTPAR = getproperty.(output, :trans)
-        FRPAR = getproperty.(output, :refl)
+        # PAR is at index 1 in the tuple
+        get_PAR_val = (rt, val) -> rt[1][val]
+        FAPAR = get_PAR_val.(output, :abs)
+        FTPAR = get_PAR_val.(output, :trans)
+        FRPAR = get_PAR_val.(output, :refl)
         @test all(@. FTPAR ≈ exp(-K_c * LAI * RTparams.Ω))
-        @test all(@. FRPAR ≈ FT(1) - FAPAR - FTPAR * (1 - α_soil_PAR))
+        @test all(@. FRPAR ≈ FT(1) - FAPAR - FTPAR * (1 - α_soil[1]))
 
         @test all(
             @. FAPAR ≈
-               (1 - RTparams.ρ_PAR_leaf) .* (1 - exp(-K_c * LAI * RTparams.Ω)) *
-               (1 - α_soil_PAR)
+               (1 - RTparams.ρ_leaf[1]) .* (1 - exp(-K_c * LAI * RTparams.Ω)) *
+               (1 - α_soil[1])
         )
         To = photosynthesisparams.To
         Vcmax =
