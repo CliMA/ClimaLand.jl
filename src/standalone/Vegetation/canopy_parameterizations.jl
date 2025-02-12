@@ -99,21 +99,11 @@ function compute_fractional_absorbances!(
 ) where {FT}
     RTP = RT.parameters
     if typeof(RTP.ρ_leaf) <: Tuple
-        @. p.canopy.radiative_transfer.rt = canopy_sw_rt_beer_lambert(
-            RTP.Ω,
-            (RTP.ρ_leaf,),
-            LAI,
-            K,
-            (α_soil,),
-        )
+        @. p.canopy.radiative_transfer.rt =
+            canopy_sw_rt_beer_lambert(RTP.Ω, (RTP.ρ_leaf,), LAI, K, (α_soil,))
     else
-        @. p.canopy.radiative_transfer.rt = canopy_sw_rt_beer_lambert(
-            RTP.Ω,
-            RTP.ρ_leaf,
-            LAI,
-            K,
-            (α_soil,),
-        )
+        @. p.canopy.radiative_transfer.rt =
+            canopy_sw_rt_beer_lambert(RTP.Ω, RTP.ρ_leaf, LAI, K, (α_soil,))
     end
 end
 
@@ -205,7 +195,10 @@ function canopy_sw_rt_beer_lambert(
     AR = (1 .- ρ_leaf) .* (1 - exp(-K * LAI * Ω)) .* (1 .- α_soil)
     TR = exp(-K * LAI * Ω)
     RR = FT(1) .- AR .- TR .* (1 .- α_soil)
-    return ntuple(i -> (; abs = AR[i], refl = RR[i], trans = TR), length(ρ_leaf))
+    return ntuple(
+        i -> (; abs = AR[i], refl = RR[i], trans = TR),
+        length(ρ_leaf),
+    )
 end
 
 """
@@ -269,8 +262,8 @@ function canopy_sw_rt_two_stream(
     c = ω .* β
     d = ω .* β₀ .* μ̄ .* K
     f = ω .* μ̄ .* K .* (1 .- β₀)
-    h = .√(b.^2 .- c.^2) ./ μ̄
-    σ = (μ̄ * K)^2 .+ c.^2 .- b.^2
+    h = .√(b .^ 2 .- c .^ 2) ./ μ̄
+    σ = (μ̄ * K)^2 .+ c .^ 2 .- b .^ 2
 
     u₁ = b .- c ./ α_soil
     u₂ = b .- c .* α_soil
@@ -303,11 +296,15 @@ function canopy_sw_rt_two_stream(
     # h coefficients for direct downward flux
     h₄ = .-f .* p₃ .- c .* d
     h₅ =
-        -1 ./ d₂ .*
-        (h₄ .* (u₂ .+ μ̄ .* h) ./ (σ .* s₁) .+ (u₃ .- h₄ ./ σ .* (u₂ .- μ̄ .* K)) .* s₂)
+        -1 ./ d₂ .* (
+            h₄ .* (u₂ .+ μ̄ .* h) ./ (σ .* s₁) .+
+            (u₃ .- h₄ ./ σ .* (u₂ .- μ̄ .* K)) .* s₂
+        )
     h₆ =
-        1 ./ d₂ .*
-        (h₄ ./ σ .* (u₂ .- μ̄ .* h) .* s₁ .+ (u₃ .- h₄ ./ σ .* (u₂ .- μ̄ .* K)) .* s₂)
+        1 ./ d₂ .* (
+            h₄ ./ σ .* (u₂ .- μ̄ .* h) .* s₁ .+
+            (u₃ .- h₄ ./ σ .* (u₂ .- μ̄ .* K)) .* s₂
+        )
 
     # h coefficients for diffuse upward flux
     h₇ = c .* (u₁ .- μ̄ .* h) ./ (d₁ .* s₁)
@@ -342,12 +339,10 @@ function canopy_sw_rt_two_stream(
 
         # Compute the direct fluxes into/out of the layer
         I_dir_up =
-            h₁ .* exp.(-K * L * Ω) ./ σ .+
-            h₂ .* exp.(.-h .* L .* Ω) .+
+            h₁ .* exp.(-K * L * Ω) ./ σ .+ h₂ .* exp.(.-h .* L .* Ω) .+
             h₃ .* exp.(h .* L .* Ω)
         I_dir_dn =
-            h₄ .* exp.(-K * L * Ω) ./ σ .+
-            h₅ .* exp.(.-h .* L .* Ω) .+
+            h₄ .* exp.(-K * L * Ω) ./ σ .+ h₅ .* exp.(.-h .* L .* Ω) .+
             h₆ .* exp.(h .* L .* Ω)
 
         # Add collimated radiation to downard flux
@@ -372,7 +367,8 @@ function canopy_sw_rt_two_stream(
 
 
         # Add radiation absorbed in the layer to total absorbed radiation
-        F_abs = F_abs .+ (1 - frac_diff) .* I_dir_abs .+ (frac_diff) .* I_dif_abs
+        F_abs =
+            F_abs .+ (1 - frac_diff) .* I_dir_abs .+ (frac_diff) .* I_dif_abs
 
         # Save input/output values to compute energy balance of next layer
         I_dir_up_prev = I_dir_up
@@ -387,7 +383,14 @@ function canopy_sw_rt_two_stream(
     # Convert fractional absorption into absorption and return
     # Ensure floating point precision is correct (it may be different for PAR)
     F_trans = (1 .- F_abs .- F_refl) ./ (1 .- α_soil)
-    return ntuple(i -> (; abs = FT(F_abs[i]), refl = FT(F_refl[i]), trans = FT(F_trans[i])), length(ρ_leaf))
+    return ntuple(
+        i -> (;
+            abs = FT(F_abs[i]),
+            refl = FT(F_refl[i]),
+            trans = FT(F_trans[i]),
+        ),
+        length(ρ_leaf),
+    )
 end
 
 """
