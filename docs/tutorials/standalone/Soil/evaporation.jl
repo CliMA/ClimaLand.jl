@@ -106,7 +106,7 @@ PAR_albedo = FT(0.2)
 NIR_albedo = FT(0.4)
 z_0m = FT(1e-2)
 z_0b = FT(1e-2)
-d_ds = FT(0.01)
+d_ds = FT(0.03)
 params = ClimaLand.Soil.EnergyHydrologyParameters(
     FT;
     ν,

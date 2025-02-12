@@ -1245,15 +1245,17 @@ function soil_resistance(
     (; S_c) = hydrology_cm
     _D_vapor = FT(LP.D_vapor(earth_param_set))
     S_w = effective_saturation(ν, θ_l + θ_i, θ_r)
-    τ_a = soil_tortuosity(θ_l, θ_i, ν)
-    dsl::FT = dry_soil_layer_thickness(S_w, S_c, d_ds)
+    #τ_a = soil_tortuosity(θ_l, θ_i, ν)
+    #dsl::FT = dry_soil_layer_thickness(S_w, S_c, d_ds)
     σ = FT(7.2e-2)
     r_pore::FT = 2 * σ * hydrology_cm.α / 1000 / FT(9.8)
     θ_safe = max(eps(FT), (θ_i + θ_l - θ_r))
     r_shell::FT = r_pore / _D_vapor / (4 * θ_safe) * (π - 2 * (θ_safe)^(1 / 2))
     x = θ_safe / FT(0.001)
     factor = 1 / (1 - exp(-x))^2
-    r_soil = dsl / (_D_vapor * τ_a) + factor * r_shell# [s\m]
+    y = (S_w - S_c) / (S_c / 3)
+    dsl_over_tortuosity = d_ds * (1 - 1 / (1 + exp(-y)))
+    r_soil = dsl_over_tortuosity / _D_vapor + factor * r_shell# [s\m]
     return r_soil
 end
 
