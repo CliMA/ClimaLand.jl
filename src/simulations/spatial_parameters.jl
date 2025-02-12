@@ -416,7 +416,7 @@ function default_spatially_varying_soil_parameters(
         K_sat = K_sat,
         S_s = S_s,
         θ_r = θ_r,
-        albedo_wet = (PAR_albedo_wet,NIR_albedo_wet),
+        albedo_wet = (PAR_albedo_wet, NIR_albedo_wet),
         albedo_dry = (PAR_albedo_dry, NIR_albedo_dry),
         f_max = f_max,
         mask = mask,

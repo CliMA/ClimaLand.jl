@@ -705,6 +705,7 @@ boundary_var_domain_names(bc::AtmosDrivenFluxBC, ::ClimaLand.TopBoundary) = (
     :surface,
     :surface,
     :surface,
+    :surface,
     :subsurface,
     Runoff.runoff_var_domain_names(bc.runoff)...,
 )
