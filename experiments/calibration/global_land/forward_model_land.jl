@@ -71,7 +71,7 @@ function setup_prob(t0, tf, Δt, params; outdir = outdir, nelements = (101, 15))
     p_values = [params[name]["value"] for name in p_names]
     params = (; zip(Symbol.(p_names), p_values)...)
 
-    (; K_sat_plant, pc, sc) = params
+    (; pc, sc) = params
     spatially_varying_soil_params =
         ClimaLand.default_spatially_varying_soil_parameters(
             subsurface_space,
@@ -137,7 +137,7 @@ function setup_prob(t0, tf, Δt, params; outdir = outdir, nelements = (101, 15))
     SAI = FT(0.0) # m2/m2
     f_root_to_shoot = FT(3.5)
     RAI = FT(1.0)
-    # K_sat_plant = FT(5e-9) # m/s # seems much too small?
+    K_sat_plant = FT(5e-9) # m/s # seems much too small?
     ψ63 = FT(-4 / 0.0098) # / MPa to m, Holtzman's original parameter value is -4 MPa
     Weibull_param = FT(4) # unitless, Holtzman's original c param value
     a = FT(0.05 * 0.0098) # Holtzman's original parameter for the bulk modulus of elasticity
@@ -216,8 +216,15 @@ function setup_prob(t0, tf, Δt, params; outdir = outdir, nelements = (101, 15))
     conductance_args =
         (; parameters = Canopy.MedlynConductanceParameters(FT; g1))
     # Set up photosynthesis
-    photosynthesis_args =
-        (; parameters = Canopy.FarquharParameters(FT, is_c3; Vcmax25 = Vcmax25, pc = pc, sc = sc))
+    photosynthesis_args = (;
+        parameters = Canopy.FarquharParameters(
+            FT,
+            is_c3;
+            Vcmax25 = Vcmax25,
+            pc = pc,
+            sc = sc,
+        )
+    )
     # Set up plant hydraulics
     era5_lai_artifact_path =
         ClimaLand.Artifacts.era5_lai_forcing_data2008_folder_path(; context)
@@ -405,7 +412,7 @@ function CAL.forward_model(iteration, member)
     hours = 60minutes # hours in seconds
     days = 24hours # days in seconds
     years = 366days # years in seconds - 366 to make sure we capture at least full years
-    tf = 2years # 2 years in seconds
+    tf = 1years # 2 years in seconds
     Δt = 450.0
     nelements = (101, 15)
 
@@ -424,4 +431,3 @@ function CAL.forward_model(iteration, member)
     close(nc_writer)
     return nothing
 end
-

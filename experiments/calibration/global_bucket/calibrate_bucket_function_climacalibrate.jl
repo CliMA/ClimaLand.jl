@@ -204,15 +204,15 @@ regridder_type = :InterpolationsRegridder
 radius = FT(6378.1e3)
 depth = FT(3.5)
 domain = ClimaLand.Domains.SphericalShell(;
-                                          radius = radius,
-                                          depth = depth,
-                                          nelements = nelements,
-                                          npolynomial = 1,
-                                          dz_tuple = FT.((1.0, 0.05)),
-                                         )
+    radius = radius,
+    depth = depth,
+    nelements = nelements,
+    npolynomial = 1,
+    dz_tuple = FT.((1.0, 0.05)),
+)
 surface_space = domain.space.surface
 training_locations, validation_locations =
-rand_locations(surface_space, regridder_type, 25)
+    rand_locations(surface_space, regridder_type, 25)
 
 #     (; κ_soil, ρc_soil, f_bucket, W_f, p, z_0m) = params
 # The truth params = (;κ_soil = FT(1.5), ρc_soil = FT(2e6), f_bucket = FT(0.75), W_f = FT(0.2), p = FT(1), z_0m = FT(1e-2))
@@ -221,9 +221,8 @@ function forward_model(iteration, member)
     params = toml.parsefile(ensemble_member_path) # should load a Dict, that needs to be converted to namedtuple
 
     diagnostics_dir = joinpath(ensemble_member_path, "global_diagnostics")
-    diagdir = ClimaUtilities.OutputPathGenerator.generate_output_path(
-        diagnostics_dir,
-    )
+    diagdir =
+        ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_dir)
 
     prob, cb = setup_prob(t0, tf, Δt, params, diagdir; nelements)
 
@@ -250,19 +249,19 @@ function process_member_data(root_path)
 
         # Create Observation objects for lhf and shf
         lhf_obs = EKP.Observation(
-                                  Dict(
-                                       "samples" => lhf_loc.data,
-                                       "covariances" => cov(lhf_loc.data) * EKP.I,
-                                       "names" => "lhf_$(lon)_$(lat)",
-                                      ),
-                                 )
+            Dict(
+                "samples" => lhf_loc.data,
+                "covariances" => cov(lhf_loc.data) * EKP.I,
+                "names" => "lhf_$(lon)_$(lat)",
+            ),
+        )
         shf_obs = EKP.Observation(
-                                  Dict(
-                                       "samples" => shf_loc.data,
-                                       "covariances" => cov(shf_loc.data) * EKP.I,
-                                       "names" => "shf_$(lon)_$(lat)",
-                                      ),
-                                 )
+            Dict(
+                "samples" => shf_loc.data,
+                "covariances" => cov(shf_loc.data) * EKP.I,
+                "names" => "shf_$(lon)_$(lat)",
+            ),
+        )
 
         # Add the observations to the list
         push!(obs_list, lhf_obs)
@@ -281,7 +280,8 @@ function observation_map(iteration)
 
     for m in 1:ensemble_size
         member_path = CAL.path_to_ensemble_member(caldir, iteration, m)
-        simdir_path = joinpath(member_path, "global_diagnostics", "output_active")
+        simdir_path =
+            joinpath(member_path, "global_diagnostics", "output_active")
         if isdir(simdir_path)
             simdir = SimDir(simdir_path)
             G_ensemble[:, m] .= process_member_data(simdir)
@@ -298,8 +298,12 @@ end
 
 
 # Read in the era5 datafile
-era5_ds = Dataset(joinpath(ClimaLand.Artifacts.era5_surface_data2008_path(),
-                           "era5_monthly_surface_fluxes_200801-200812.nc"))
+era5_ds = Dataset(
+    joinpath(
+        ClimaLand.Artifacts.era5_surface_data2008_path(),
+        "era5_monthly_surface_fluxes_200801-200812.nc",
+    ),
+)
 
 # Make the ERA5 target
 ERA5_target = []
@@ -313,20 +317,20 @@ for (lon, lat) in training_locations
 
     # Create Observation objects for lhf and shf
     lhf_ERA5 = EKP.Observation(
-                              Dict(
-                                   "samples" => lhf_loc,
-                                   "covariances" => cov(lhf_loc) * EKP.I,
-                                   "names" => "lhf_$(lon)_$(lat)",
-                                  ),
-                             )
+        Dict(
+            "samples" => lhf_loc,
+            "covariances" => cov(lhf_loc) * EKP.I,
+            "names" => "lhf_$(lon)_$(lat)",
+        ),
+    )
 
     shf_ERA5 = EKP.Observation(
-                              Dict(
-                                   "samples" => shf_loc,
-                                   "covariances" => cov(shf_loc) * EKP.I,
-                                   "names" => "shf_$(lon)_$(lat)",
-                                  ),
-                             )
+        Dict(
+            "samples" => shf_loc,
+            "covariances" => cov(shf_loc) * EKP.I,
+            "names" => "shf_$(lon)_$(lat)",
+        ),
+    )
 
     # Add the observations to the target
     push!(ERA5_target, lhf_ERA5)

@@ -199,67 +199,72 @@ function setup_prob(t0, tf, Δt, params, outdir; nelements = (101, 7))
 end
 
 # function target_and_locations()
-    # Define the locations longitudes and latitudes
-    # Needs to be defined once, both for g(θ) and ERA5 target
-    t0 = 0.0
-    tf = 60 * 60.0 * 24 * 366
-    Δt = 900.0
-    nelements = (101, 7)
-    regridder_type = :InterpolationsRegridder
-    radius = FT(6378.1e3)
-    depth = FT(3.5)
-    domain = ClimaLand.Domains.SphericalShell(;
-                                              radius = radius,
-                                              depth = depth,
-                                              nelements = nelements,
-                                              npolynomial = 1,
-                                              dz_tuple = FT.((1.0, 0.05)),
-                                             )
-    surface_space = domain.space.surface
-    locations, validation_locations =
+# Define the locations longitudes and latitudes
+# Needs to be defined once, both for g(θ) and ERA5 target
+t0 = 0.0
+tf = 60 * 60.0 * 24 * 366
+Δt = 900.0
+nelements = (101, 7)
+regridder_type = :InterpolationsRegridder
+radius = FT(6378.1e3)
+depth = FT(3.5)
+domain = ClimaLand.Domains.SphericalShell(;
+    radius = radius,
+    depth = depth,
+    nelements = nelements,
+    npolynomial = 1,
+    dz_tuple = FT.((1.0, 0.05)),
+)
+surface_space = domain.space.surface
+locations, validation_locations =
     rand_locations(surface_space, regridder_type, 25)
 
-    #     (; κ_soil, ρc_soil, f_bucket, W_f, p, z_0m) = params
-    # The truth params = (;κ_soil = FT(1.5), ρc_soil = FT(2e6), f_bucket = FT(0.75), W_f = FT(0.2), p = FT(1), z_0m = FT(1e-2))
-    # Read in the era5 datafile
-    era5_ds = Dataset(joinpath(ClimaLand.Artifacts.era5_surface_data2008_path(),
-                               "era5_monthly_surface_fluxes_200801-200812.nc"))
+#     (; κ_soil, ρc_soil, f_bucket, W_f, p, z_0m) = params
+# The truth params = (;κ_soil = FT(1.5), ρc_soil = FT(2e6), f_bucket = FT(0.75), W_f = FT(0.2), p = FT(1), z_0m = FT(1e-2))
+# Read in the era5 datafile
+era5_ds = Dataset(
+    joinpath(
+        ClimaLand.Artifacts.era5_surface_data2008_path(),
+        "era5_monthly_surface_fluxes_200801-200812.nc",
+    ),
+)
 
-    # Make the ERA5 target
-    ERA5_target = []
-    close_location = (x, y) -> abs(x - y) < 5e-1
-    for (lon, lat) in locations
-        # Fetch slices of lhf and shf era5 data from the era5 dataset
-        lat_ind, lon_ind = findall((x) -> close_location(x, lat), era5_ds["latitude"][:])[1],
+# Make the ERA5 target
+ERA5_target = []
+close_location = (x, y) -> abs(x - y) < 5e-1
+for (lon, lat) in locations
+    # Fetch slices of lhf and shf era5 data from the era5 dataset
+    lat_ind, lon_ind =
+        findall((x) -> close_location(x, lat), era5_ds["latitude"][:])[1],
         findall((x) -> close_location(x, lon + 180), era5_ds["longitude"][:])[1]
-        lhf_loc = vec(era5_ds["mslhf"][lon_ind, lat_ind, :][:, end, :])
-        shf_loc = vec(era5_ds["msshf"][lon_ind, lat_ind, :][:, end, :])
+    lhf_loc = vec(era5_ds["mslhf"][lon_ind, lat_ind, :][:, end, :])
+    shf_loc = vec(era5_ds["msshf"][lon_ind, lat_ind, :][:, end, :])
 
-        # Create Observation objects for lhf and shf
-        lhf_ERA5 = EKP.Observation(
-                                   Dict(
-                                        "samples" => lhf_loc,
-                                        "covariances" => cov(lhf_loc) * EKP.I,
-                                        "names" => "lhf_$(lon)_$(lat)",
-                                       ),
-                                  )
+    # Create Observation objects for lhf and shf
+    lhf_ERA5 = EKP.Observation(
+        Dict(
+            "samples" => lhf_loc,
+            "covariances" => cov(lhf_loc) * EKP.I,
+            "names" => "lhf_$(lon)_$(lat)",
+        ),
+    )
 
-        shf_ERA5 = EKP.Observation(
-                                   Dict(
-                                        "samples" => shf_loc,
-                                        "covariances" => cov(shf_loc) * EKP.I,
-                                        "names" => "shf_$(lon)_$(lat)",
-                                       ),
-                                  )
+    shf_ERA5 = EKP.Observation(
+        Dict(
+            "samples" => shf_loc,
+            "covariances" => cov(shf_loc) * EKP.I,
+            "names" => "shf_$(lon)_$(lat)",
+        ),
+    )
 
-        # Add the observations to the target
-        push!(ERA5_target, lhf_ERA5)
-        push!(ERA5_target, shf_ERA5)
+    # Add the observations to the target
+    push!(ERA5_target, lhf_ERA5)
+    push!(ERA5_target, shf_ERA5)
 
-    end
+end
 
-    full_obs_era5 = EKP.combine_observations(ERA5_target)
-    observations = EKP.get_obs(full_obs_era5)
+full_obs_era5 = EKP.combine_observations(ERA5_target)
+observations = EKP.get_obs(full_obs_era5)
 #    return training_locations, observations
 # end
 

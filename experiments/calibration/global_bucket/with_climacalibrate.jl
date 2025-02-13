@@ -34,12 +34,11 @@ noise = EKP.I # not sure what to do here, I had noise embeded in my observation_
 output_dir = "calibration_output" # Should I create this folder?
 
 CAL.calibrate(
-              CAL.WorkerBackend, # not sure what to do here
-              ensemble_size,
-              n_iterations,
-              observations,
-              noise,
-              prior,
-              caldir # to do: copy a tree of that folder structure
-             )
-
+    CAL.WorkerBackend, # not sure what to do here
+    ensemble_size,
+    n_iterations,
+    observations,
+    noise,
+    prior,
+    caldir, # to do: copy a tree of that folder structure
+)
