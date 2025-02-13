@@ -52,6 +52,23 @@ function get_sim_var_dict(simdir)
             return sim_var_swu
         end
 
+    # Read in LWD (not to plot, but for energy balance)
+    sim_var_dict["lwd"] =
+        () -> begin
+            sim_var_lwd = get(simdir, short_name = "lwd") # units (W/m²)
+            sim_var_lwd.attributes["long_name"] = "Downward longwave radiation"
+            sim_var_lwd.attributes["units"] = "W/m²"
+            return sim_var_lwd
+        end
+
+    # Read in SWD
+    sim_var_dict["swd"] =
+        () -> begin
+            sim_var_swd = get(simdir, short_name = "swd") # units (W/m²)
+            sim_var_swd.attributes["long_name"] = "Upward shortwave radiation"
+            sim_var_swd.attributes["units"] = "W/m²"
+            return sim_var_swd
+        end
 
     return sim_var_dict
 end
