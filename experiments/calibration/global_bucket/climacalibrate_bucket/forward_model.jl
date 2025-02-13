@@ -116,9 +116,8 @@ function CAL.forward_model(iteration, member)
 
     @info ensemble_member_path
     diagnostics_dir = joinpath(ensemble_member_path, "global_diagnostics")
-    diagdir = ClimaUtilities.OutputPathGenerator.generate_output_path(
-        diagnostics_dir,
-    )
+    diagdir =
+        ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_dir)
 
     prob, cb, nc_writer = setup_prob(t0, tf, Δt, params, diagdir; nelements)
 

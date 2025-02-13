@@ -6,18 +6,31 @@ using Distributed
 addprocs(CAL.SlurmManager())
 
 @everywhere begin
-    import ClimaCalibrate: forward_model, parameter_path, path_to_ensemble_member
+    import ClimaCalibrate:
+        forward_model, parameter_path, path_to_ensemble_member
     import ClimaCalibrate as CAL
 
     using ClimaLand
     caldir = "calibration_output"
     dir = pkgdir(ClimaLand)
 
-    include(joinpath(dir,"experiments/calibration/global_bucket/climacalibrate_bucket/bucket_target_script.jl"))
-    include(joinpath(dir,"experiments/calibration/global_bucket/climacalibrate_bucket/forward_model.jl"))
+    include(
+        joinpath(
+            dir,
+            "experiments/calibration/global_bucket/climacalibrate_bucket/bucket_target_script.jl",
+        ),
+    )
+    include(
+        joinpath(
+            dir,
+            "experiments/calibration/global_bucket/climacalibrate_bucket/forward_model.jl",
+        ),
+    )
 end
 
-include(joinpath(dir,"experiments/calibration/global_bucket/climacalibrate_bucket/observation_map.jl"))
+include(
+    joinpath(dir, "experiments/calibration/global_bucket/calibrate_bucket_function_climacalibrate.jl"),
+)
 
 prior_κ_soil = EKP.constrained_gaussian("κ_soil", 2, 1, 0, Inf);
 prior_ρc_soil = EKP.constrained_gaussian("ρc_soil", 4e6, 2e6, 0, Inf);
@@ -36,16 +49,16 @@ prior = EKP.combine_distributions([
 
 ensemble_size = 10
 n_iterations = 5
-noise = 1.0*EKP.I # Should work, but this should be covariance of each month from observation (ERA5)
+noise = 1.0 * EKP.I # Should work, but this should be covariance of each month from observation (ERA5)
 
 caldir = "calibration_output"
 
 CAL.calibrate(
-              CAL.WorkerBackend,
-              ensemble_size,
-              n_iterations,
-              observations,
-              noise,
-              prior,
-              caldir
-             )
+    CAL.WorkerBackend,
+    ensemble_size,
+    n_iterations,
+    observations,
+    noise,
+    prior,
+    caldir,
+)

@@ -15,4 +15,4 @@ export CLIMACOMMS_DEVICE="CUDA"
 export CLIMACOMMS_CONTEXT="SINGLETON"
 julia --project=.buildkite -e 'using Pkg; Pkg.instantiate(;verbose=true)'
 
-julia --project=.buildkite/ experiments/calibration/global_bucket/climacalibrate_bucket/calibrate_land.jl
+julia --project=.buildkite/ experiments/calibration/global_land/calibrate_land.jl

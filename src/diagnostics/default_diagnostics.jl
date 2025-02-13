@@ -340,6 +340,8 @@ function default_diagnostics(
             "sr",
             "swe",
             "snd",
+            "lhf",
+            "shf"
         ]
     end
 
