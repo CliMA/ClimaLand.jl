@@ -1,3 +1,5 @@
+import TOML as toml
+
 import SciMLBase
 import ClimaComms
 ClimaComms.@import_required_backends
@@ -33,12 +35,12 @@ context = ClimaComms.context()
 ClimaComms.init(context)
 device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
-root_path = "snowy_land_longrun"
-diagnostics_outdir = joinpath(root_path, "global_diagnostics")
-outdir =
-    ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
+#root_path = "snowy_land_longrun"
+#diagnostics_outdir = joinpath(root_path, "global_diagnostics")
+#outdir =
+#    ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
 
-function setup_prob(t0, tf, Δt, params; outdir = outdir, nelements = (101, 15))
+function setup_prob(t0, tf, Δt, params, outdir; nelements = (101, 15))
     earth_param_set = LP.LandParameters(FT)
     radius = FT(6378.1e3)
     depth = FT(50)
@@ -299,7 +301,7 @@ function setup_prob(t0, tf, Δt, params; outdir = outdir, nelements = (101, 15))
         snow_model_type = snow_model_type,
     )
 
-    Y, p, cds = initialize(land)
+    Y, p, cds = ClimaLand.initialize(land)
 
     @. Y.soil.ϑ_l = θ_r + (ν - θ_r) / 2
     Y.soil.θ_i .= FT(0.0)
@@ -409,7 +411,13 @@ function CAL.forward_model(iteration, member)
     Δt = 450.0
     nelements = (101, 15)
 
-    prob, cb, nc_writer = setup_prob(t0, tf, Δt, params; nelements)
+
+    diagnostics_dir = joinpath(ensemble_member_path, "global_diagnostics")
+    diagdir = ClimaUtilities.OutputPathGenerator.generate_output_path(
+        diagnostics_dir,
+    )
+
+    prob, cb, nc_writer = setup_prob(t0, tf, Δt, params, diagdir; nelements)
 
     # Define timestepper and ODE algorithm
     stepper = CTS.ARS111()

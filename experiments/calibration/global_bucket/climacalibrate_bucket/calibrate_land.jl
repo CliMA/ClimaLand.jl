@@ -3,9 +3,9 @@ dir = pkgdir(ClimaLand)
 import ClimaCalibrate: forward_model, parameter_path, path_to_ensemble_member
 import ClimaCalibrate as CAL
 using Distributed
-addprocs(CAL.SlurmManager())
+#addprocs(CAL.SlurmManager())
 
-@everywhere begin
+#@everywhere begin
     import ClimaCalibrate: forward_model, parameter_path, path_to_ensemble_member
     import ClimaCalibrate as CAL
 
@@ -14,8 +14,9 @@ addprocs(CAL.SlurmManager())
     dir = pkgdir(ClimaLand)
 
     include(joinpath(dir,"experiments/calibration/global_bucket/climacalibrate_bucket/bucket_target_script.jl"))
-    include(joinpath(dir,"experiments/calibration/global_bucket/climacalibrate_bucket/forward_model_land.jl"))
-end
+    model_interface = joinpath(dir,"experiments/calibration/global_bucket/climacalibrate_bucket/forward_model_land.jl")
+    include(model_interface)
+#end
 
 include(joinpath(dir,"experiments/calibration/global_bucket/climacalibrate_bucket/observation_map.jl"))
 
@@ -33,13 +34,15 @@ n_iterations = 5
 noise = 1.0*EKP.I # Should work, but this should be covariance of each month from observation (ERA5)
 
 caldir = "calibration_output"
-
+hpc_kwargs = CAL.kwargs(time = 60, ntasks = 1, gpus_per_task = 1, cpus_per_task = 4)
 CAL.calibrate(
-              CAL.WorkerBackend,
+              CAL.ClimaGPUBackend,
               ensemble_size,
               n_iterations,
               observations,
               noise,
               prior,
               caldir
+              ;hpc_kwargs,
+              model_interface
              )
