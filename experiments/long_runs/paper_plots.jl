@@ -17,13 +17,14 @@ using Dates
 
 root_path = joinpath(pwd(), "snowy_land_longrun_gpu")
 !isdir(root_path) && mkdir(root_path)
-# 3057 (prev) -> 3310 (newer)
+# 3057 (prev) -> 3310 (newer) -> 3363 (sc = 0)
 # outdir = "/scratch/clima/slurm-buildkite/climaland-long-runs/3057/climaland-long-runs/snowy_land_longrun_gpu/global_diagnostics/output_active/" # on clima
 # outdir = "/scratch/clima/slurm-buildkite/climaland-long-runs/3310/climaland-long-runs/snowy_land_longrun_gpu/global_diagnostics/output_active/" # on clima
+# outdir = "/scratch/clima/slurm-buildkite/climaland-long-runs/3363/climaland-long-runs/snowy_land_longrun_gpu/global_diagnostics/output_active/" # on clima
 outdir = "snowy_land_longrun_gpu/output_active" # on local
 # simdir = ClimaAnalysis.SimDir(outdir)
 
-short_names = ["lhf"]#, "shf", "lwu", "swu"]
+short_names = ["lhf", "shf", "lwu", "swu"]
 # units_labels = Dict(
 #     "lhf" => "(W/m²)",
 #     "shf" => "(W/m²)",
@@ -43,7 +44,7 @@ function make_paper_figures(
     root_path,
     outdir,
     short_names,
-    title_stubs,
+    title_stubs;
     plot_bias = false,
     plot_seasonal = false,
 )
@@ -78,6 +79,8 @@ function make_paper_figures(
 
         # Access observation data in the time we want
         obs_var = obs_var_dict[short_name](sim_var.attributes["start_date"])
+        # ClimaAnalysis.center_longitude!(obs_var, 0) # TODO center lon at 0 to prevent https://github.com/MakieOrg/GeoMakie.jl/issues/290
+
         obs_var_sliced = ClimaAnalysis.slice(obs_var; kwarg_z...)
         obs_var_window = ClimaAnalysis.window(
             obs_var_sliced,
@@ -116,7 +119,7 @@ function make_paper_figures(
             sim_var_annual_average,
             p_loc = (fig_row, 1), # plot in the first column
             plot_colorbar = false,
-            colorbar_label = "$(sim_var.attributes["long_name"]) $units_label",
+            # colorbar_label = "$(sim_var.attributes["long_name"]) $units_label",
             mask = viz.oceanmask(),
             more_kwargs = Dict(
                 :mask => ClimaAnalysis.Utils.kwargs(color = :white),
@@ -163,7 +166,7 @@ function make_paper_figures(
             obs_var_annual_average,
             p_loc = (fig_row, 2), # plot in the second column
             plot_colorbar = false,
-            colorbar_label = "$(sim_var.attributes["long_name"]) $units_label",
+            # colorbar_label = "$(sim_var.attributes["long_name"]) $units_label",
             mask = viz.oceanmask(),
             more_kwargs = Dict(
                 :mask => ClimaAnalysis.Utils.kwargs(color = :white),
@@ -212,7 +215,7 @@ function make_paper_figures(
                 sim_var_annual_average,
                 obs_var_annual_average,
                 p_loc = (fig_row, 3), # plot in the third column
-                cmap_extrema = (-50, 50),#compare_vars_biases_plot_extrema[short_name],
+                # cmap_extrema = (-50, 50),#compare_vars_biases_plot_extrema[short_name],
                 mask = viz.oceanmask(),
                 more_kwargs = Dict(
                     :mask => ClimaAnalysis.Utils.kwargs(color = :white),
@@ -339,8 +342,15 @@ function make_paper_figures(
 
 
     end
-    CairoMakie.save(joinpath(root_path, "combined_figures.pdf"), fig)
+    CairoMakie.save(joinpath(root_path, "combined_figures_bias.pdf"), fig)
     return nothing
 end
 
-make_paper_figures(root_path, outdir, short_names, title_stubs, true, false)
+make_paper_figures(
+    root_path,
+    outdir,
+    short_names,
+    title_stubs,
+    plot_bias = true,
+    plot_seasonal = false,
+)
