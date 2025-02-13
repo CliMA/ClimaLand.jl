@@ -4,6 +4,7 @@ import ClimaUtilities.TimeVaryingInputs:
     LinearInterpolation,
     PeriodicCalendar
 import ClimaUtilities.Regridders: InterpolationsRegridder
+import ClimaUtilities.FileReaders: NCFileReader, read
 using Thermodynamics
 using ClimaCore
 using Dates
@@ -1170,23 +1171,34 @@ end
 
 """
      prescribed_lai_era5(era5_lai_ncdata_path,
+                         era5_lai_cover_ncdata_path,
                          surface_space,
                          start_date,
                          earth_param_set;
                          time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
                          regridder_type = :InterpolationsRegridder)
 
-A helper function which constructs the TimeVaryingInput object for Leaf Area Index,
-from a file path pointing to the ERA5 LAI data in a netcdf file, the surface_space, the start date,
-and the earth_param_set.
+A helper function which constructs the TimeVaryingInput object for Leaf Area Index, from a
+file path pointing to the ERA5 LAI data in a netcdf file, a file path pointing to the ERA5
+LAI cover data in a netcdf file, the surface_space, the start date, and the earth_param_set.
 """
 function prescribed_lai_era5(
     era5_lai_ncdata_path,
+    era5_lai_cover_ncdata_path,
     surface_space,
     start_date;
     time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
     regridder_type = :InterpolationsRegridder,
 )
+    hvc_ds = NCFileReader(era5_lai_cover_ncdata_path, "cvh")
+    lvc_ds = NCFileReader(era5_lai_cover_ncdata_path, "cvl")
+    hv_cover = read(hvc_ds)
+    lv_cover = read(lvc_ds)
+    close(hvc_ds)
+    close(lvc_ds)
+    compose_function = let hv_cover = hv_cover, lv_cover = lv_cover
+        (lai_hv, lai_lv) -> lai_hv .* hv_cover .+ lai_lv .* lv_cover
+    end
     return TimeVaryingInput(
         era5_lai_ncdata_path,
         ["lai_hv", "lai_lv"],
@@ -1194,7 +1206,7 @@ function prescribed_lai_era5(
         start_date,
         regridder_type,
         method = time_interpolation_method,
-        compose_function = (hv, lv) -> hv + lv,
+        compose_function = compose_function,
     )
 end
 

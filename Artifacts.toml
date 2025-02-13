@@ -105,3 +105,10 @@ git-tree-sha1 = "839224a62b59d73073bdb9a5c55d3dc75e30fe33"
     [[ilamb_data.download]]
     sha256 = "64a9a344ebfbb0113014178a1f93a655c401431565907c07fd33aff8860b62d6"
     url = "https://caltech.box.com/shared/static/eii2bfwfp47axfeuysgxlgzbczz27u5g.gz"
+
+[era5_lai_covers]
+git-tree-sha1 = "dd651b30b448740bdfef8e9cb7835bcd55ddf72f"
+
+    [[era5_lai_covers.download]]
+    sha256 = "2c5bcbd0823e037c5fcd67444b2cbdd2f054906752af6e8574a2975ede7f8160"
+    url = "https://caltech.box.com/shared/static/vf5ts11u2o5yjb1jmr387audnephnftr.gz"
