@@ -5,6 +5,7 @@ import ClimaUtilities.TimeVaryingInputs:
     PeriodicCalendar
 import ClimaUtilities.Regridders: InterpolationsRegridder
 import ClimaUtilities.FileReaders: NCFileReader, read
+import ClimaUtilities.TimeManager: ITime, date
 using Thermodynamics
 using ClimaCore
 using Dates
@@ -1192,7 +1193,11 @@ function prescribed_forcing_era5(
         insol_params::Insolation.Parameters.InsolationParameters{FT} = earth_param_set.insol_params,
     ) where {FT}
         # This should be time in UTC
-        current_datetime = start_date + Dates.Second(round(t))
+        if t isa ITime
+            current_datetime = date(t)
+        else
+            current_datetime = start_date + Dates.Second(round(t))
+        end
 
         # Orbital Data uses Float64, so we need to convert to our sim FT
         d, δ, η_UTC =
