@@ -150,24 +150,10 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     )
 
     Y, p, cds = initialize(soil)
-    init_soil(ν, θ_r) = θ_r + (ν - θ_r) / 2
-    Y.soil.ϑ_l .= init_soil.(ν, θ_r)
-    Y.soil.θ_i .= FT(0.0)
-    T = FT(276.85)
-    ρc_s =
-        Soil.volumetric_heat_capacity.(
-            Y.soil.ϑ_l,
-            Y.soil.θ_i,
-            soil_params.ρc_ds,
-            soil_params.earth_param_set,
-        )
-    Y.soil.ρe_int .=
-        Soil.volumetric_internal_energy.(
-            Y.soil.θ_i,
-            ρc_s,
-            T,
-            soil_params.earth_param_set,
-        )
+
+    soil_ic_path =
+        ClimaLand.Artifacts.soil_ic_2008_50m_path(; context = context)
+    ClimaLand.set_soil_initial_conditions!(Y, subsurface_space, soil_ic_path)
 
     set_initial_cache! = make_set_initial_cache(soil)
     exp_tendency! = make_exp_tendency(soil)
@@ -234,7 +220,7 @@ function setup_and_solve_problem(; greet = false)
     hours = 60minutes # hours in seconds
     days = 24hours # days in seconds
     years = 366days # years in seconds - 366 to make sure we capture at least full years
-    tf = 2years # 2 years in seconds
+    tf = 1years # 1 years in seconds
     Δt = 450.0
     nelements = (101, 15)
     if greet
