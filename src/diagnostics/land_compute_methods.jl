@@ -78,7 +78,20 @@ end
 
 # Canopy - Conductance
 @diagnostic_compute "stomatal_conductance" Union{SoilCanopyModel, LandModel} p.canopy.conductance.gs
-@diagnostic_compute "canopy_transpiration" Union{SoilCanopyModel, LandModel} p.canopy.energy.turbulent_fluxes.transpiration
+
+function compute_canopy_transpiration!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::Union{SoilCanopyModel{FT}, LandModel{FT}},
+) where {FT}
+    if isnothing(out)
+        return p.canopy.energy.turbulent_fluxes.transpiration .* 1000
+    else
+        @. out = p.canopy.energy.turbulent_fluxes.transpiration * 1000
+    end
+end
 
 # Canopy - Energy
 @diagnostic_compute "canopy_latent_heat_flux" Union{SoilCanopyModel, LandModel} p.canopy.energy.turbulent_fluxes.lhf
@@ -440,3 +453,4 @@ end
 @diagnostic_compute "soil_ice_content" EnergyHydrology Y.soil.θ_i
 @diagnostic_compute "soil_internal_energy" EnergyHydrology Y.soil.ρe_int
 @diagnostic_compute "soil_temperature" EnergyHydrology p.soil.T
+@diagnostic_compute "evapotranspiration" EnergyHydrology p.soil.turbulent_fluxes.vapor_flux_liq

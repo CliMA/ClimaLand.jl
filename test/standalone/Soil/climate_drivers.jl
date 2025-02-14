@@ -14,7 +14,7 @@ using Dates
 for FT in (Float32, Float64)
     @testset "Surface fluxes and radiation for soil, FT = $FT" begin
         earth_param_set = LP.LandParameters(FT)
-
+        σ = LP.Stefan(earth_param_set)
         soil_domains = [
             ClimaLand.Domains.Column(;
                 zlim = FT.((-100.0, 0.0)),
@@ -48,7 +48,7 @@ for FT in (Float32, Float64)
         # Radiation
         start_date = DateTime(2005)
         SW_d = (t) -> 500
-        LW_d = (t) -> 5.67e-8 * 280.0^4.0
+        LW_d = (t) -> σ * 280.0^4.0
         radiation = PrescribedRadiativeFluxes(
             FT,
             TimeVaryingInput(SW_d),
@@ -149,6 +149,8 @@ for FT in (Float32, Float64)
                 :κ,
                 :turbulent_fluxes,
                 :dfluxBCdY,
+                :q_sfc,
+                :ice_frac,
                 :R_n,
                 :top_bc,
                 :top_bc_wvec,
@@ -193,7 +195,7 @@ for FT in (Float32, Float64)
             @test p.drivers.u == zeros(space) .+ FT(3)
             @test p.drivers.q == zeros(space) .+ FT(0.005)
             @test p.drivers.P == zeros(space) .+ FT(101325)
-            @test p.drivers.LW_d == zeros(space) .+ FT(5.67e-8 * 280.0^4.0)
+            @test p.drivers.LW_d == zeros(space) .+ FT(σ * 280.0^4.0)
             @test p.drivers.SW_d == zeros(space) .+ FT(500)
             face_space = ClimaLand.Domains.obtain_face_space(
                 model.domain.space.subsurface,
@@ -256,8 +258,11 @@ for FT in (Float32, Float64)
             )
 
             expected_dflux_heat =
-                @. ClimaLand.covariant3_unit_vector(local_geometry_faceN) *
-                   (0 / ρc_sfc)
+                @. ClimaLand.covariant3_unit_vector(local_geometry_faceN) * (
+                    4 * σ * T_sfc^3 +
+                    p.soil.turbulent_fluxes.dlhfdT +
+                    p.soil.turbulent_fluxes.dshfdT
+                ) / ρc_sfc
             expected_dflux_water =
                 @. ClimaLand.covariant3_unit_vector(local_geometry_faceN) * 0
             @test all(

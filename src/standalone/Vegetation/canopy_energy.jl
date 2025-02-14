@@ -207,34 +207,3 @@ function ClimaLand.make_compute_jacobian(
     end
     return compute_jacobian!
 end
-
-"""
-    partial_q_sat_partial_T_liq(P::FT, T::FT) where {FT}
-
-Computes the quantity ∂q_sat∂T at temperature T and pressure P,
-over liquid water. The temperature must be in Celsius.
-
-Uses the polynomial approximation from Flatau et al. (1992).
-"""
-function partial_q_sat_partial_T_liq(P::FT, T::FT) where {FT}
-    esat = FT(
-        6.11213476e2 +
-        4.44007856e1 * T +
-        1.43064234 * T^2 +
-        2.64461437e-2 * T^3 +
-        3.05903558e-4 * T^4 +
-        1.96237241e-6 * T^5 +
-        8.92344772e-9 * T^6 - 3.73208410e-11 * T^7 + 2.09339997e-14 * T^8,
-    )
-    desatdT = FT(
-        4.44017302e1 +
-        2.86064092 * T +
-        7.94683137e-2 * T^2 +
-        1.21211669e-3 * T^3 +
-        1.03354611e-5 * T^4 +
-        4.04125005e-8 * T^5 - 7.88037859e-11 * T^6 - 1.14596802e-12 * T^7 +
-        3.81294516e-15 * T^8,
-    )
-
-    return FT(0.622) * P / (P - FT(0.378) * esat)^2 * desatdT
-end

@@ -234,7 +234,7 @@ function setup_and_solve_problem(; greet = false)
     hours = 60minutes # hours in seconds
     days = 24hours # days in seconds
     years = 366days # years in seconds - 366 to make sure we capture at least full years
-    tf = 2years # 2 years in seconds
+    tf = 1years # 2 years in seconds
     Δt = 450.0
     nelements = (101, 15)
     if greet
@@ -262,7 +262,7 @@ end
 setup_and_solve_problem(; greet = true);
 # read in diagnostics and make some plots!
 #### ClimaAnalysis ####
-short_names = ["swc", "si", "sie"]
+short_names = ["swc", "si", "tsoil", "et"]
 include(
     joinpath(
         pkgdir(ClimaLand),

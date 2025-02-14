@@ -44,7 +44,6 @@ function get_local_geometry_faceN(center_space)
     return local_geometry_faceN
 end
 
-
 """
    make_jacobian(model::AbstractModel)
 
