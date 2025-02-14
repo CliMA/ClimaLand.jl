@@ -152,7 +152,7 @@ function SnowParameters{FT}(
         θ_r,
         Ksat,
         κ_ice,
-        Δt,
+        float(Δt),
         ΔS,
         earth_param_set,
     )
