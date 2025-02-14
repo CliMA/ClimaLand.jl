@@ -131,7 +131,7 @@ An outer constructor for `SnowParameters` which supplies defaults for
 all arguments but `earth_param_set`.
 """
 function SnowParameters{FT}(
-    Δt;
+    Δt; # Check if this is okay?
     density::DM = MinimumDensityModel(FT(200)),
     z_0m = FT(0.0024),
     z_0b = FT(0.00024),
@@ -152,7 +152,7 @@ function SnowParameters{FT}(
         θ_r,
         Ksat,
         κ_ice,
-        Δt,
+        float(Δt),
         ΔS,
         earth_param_set,
     )
