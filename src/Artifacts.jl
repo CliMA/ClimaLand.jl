@@ -33,6 +33,15 @@ function era5_lai_forcing_data2008_folder_path(; context = nothing)
 end
 
 """
+    era5_lai_forcing_data2008_folder_path(; context = nothing)
+
+Return the path to the directory that contains the ERA5 LAI covers.
+"""
+function era5_lai_covers_data_folder_path(; context = nothing)
+    return @clima_artifact("era5_lai_covers", context)
+end
+
+"""
     modis_lai_forcing_data2008_path(; context)
 
 Return the path to the directory that contains the MODIS LAI forcing data for
