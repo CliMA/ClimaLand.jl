@@ -5,6 +5,7 @@ using ClimaLand
 using ClimaCore
 using ClimaCore.MatrixFields
 import ClimaCore.MatrixFields: @name, ⋅
+import ClimaUtilities.TimeManager: ITime, date
 import LinearAlgebra: I
 using ClimaLand: AbstractRadiativeDrivers, AbstractAtmosphericDrivers
 import ..Parameters as LP
@@ -455,8 +456,12 @@ function ClimaLand.make_update_aux(
         compute_NIR!(nir_d, RT, bc.radiation, p, t)
         K = p.canopy.radiative_transfer.K
         @. K = extinction_coeff(p.canopy.radiative_transfer.G, θs)
-        DOY =
-            Dates.dayofyear(bc.atmos.start_date + Dates.Second(floor(Int64, t)))
+        date_to_evaluate = if t isa ITime
+            date(t)
+        else
+            bc.atmos.start_date + Dates.Second(floor(Int64, t))
+        end
+        DOY = Dates.dayofyear(date_to_evaluate)
         @. frac_diff = diffuse_fraction(
             DOY,
             T_air,
