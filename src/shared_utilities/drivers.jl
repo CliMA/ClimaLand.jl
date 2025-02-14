@@ -1401,7 +1401,11 @@ function diffuse_fraction(
     cosθs::FT,
     thermo_params,
 ) where {FT}
-    DOY = Dates.dayofyear(start_date + Dates.Second(floor(Int64, t)))
+    if t isa ITime
+        DOY = Dates.dayofyear(date(t))
+    else
+        DOY = Dates.dayofyear(start_date + Dates.Second(floor(Int64, t)))
+    end
     RH = ClimaLand.relative_humidity(T, P, q, thermo_params)
     k₀ = FT(1370 * (1 + 0.033 * cos(2π * DOY / 365))) * cosθs
     kₜ = SW_d / k₀
