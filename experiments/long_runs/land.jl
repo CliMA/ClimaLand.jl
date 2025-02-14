@@ -1,6 +1,6 @@
 # # Global run of land model
 
-# The code sets up and runs the soil/canopy model for 6 hours on a spherical domain,
+# The code sets up and runs the soil/canopy model on a spherical domain,
 # using ERA5 data. In this simulation, we have
 # turned lateral flow off because horizontal boundary conditions and the
 # land/sea mask are not yet supported by ClimaCore.
@@ -305,24 +305,16 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
 
     Y, p, cds = initialize(land)
 
-    init_soil(ν, θ_r) = θ_r + (ν - θ_r) / 2
-    Y.soil.ϑ_l .= init_soil.(ν, θ_r)
-    Y.soil.θ_i .= FT(0.0)
-    T = FT(276.85)
-    ρc_s =
-        Soil.volumetric_heat_capacity.(
-            Y.soil.ϑ_l,
-            Y.soil.θ_i,
-            soil_params.ρc_ds,
-            soil_params.earth_param_set,
-        )
-    Y.soil.ρe_int .=
-        Soil.volumetric_internal_energy.(
-            Y.soil.θ_i,
-            ρc_s,
-            T,
-            soil_params.earth_param_set,
-        )
+    soil_ic_path =
+        ClimaLand.Artifacts.soil_ic_2008_50m_path(; context = context)
+    ClimaLand.set_soil_initial_conditions!(
+        Y,
+        ν,
+        θ_r,
+        subsurface_space,
+        soil_ic_path,
+    )
+
     Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
     Y.canopy.hydraulics.ϑ_l.:1 .= plant_ν
     evaluate!(Y.canopy.energy.T, atmos.T, t0)
@@ -362,7 +354,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         subsurface_space,
         outdir;
         start_date,
-        num_points = (570, 285, 50), # use default in `z`.
+        num_points = (570, 285, 15),
     )
 
     diags = ClimaLand.default_diagnostics(

@@ -5,6 +5,22 @@ import ClimaUtilities.ClimaArtifacts: @clima_artifact
 import LazyArtifacts
 
 using ArtifactWrappers
+
+"""
+    soil_ic_2008_50m_path(; context)
+
+Return the path to the file that contains the spun-up soil and snow initial 
+conditions for Jan 1, 2008.
+
+The soil domain has a depth of 50m; we have ensured that surface properties
+and fluxes are spun-up, but the deep soil water may not be.
+"""
+function soil_ic_2008_50m_path(; context = nothing)
+    dir = @clima_artifact("soil_ic_2008_50m", context)
+    return joinpath(dir, "soil_ic_2008_50m.nc")
+end
+
+
 """
     era5_land_forcing_data2008_path(; context, lowres=false)
 

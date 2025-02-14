@@ -328,24 +328,21 @@ function default_diagnostics(
         snowyland_diagnostics = [
             "gpp",
             "ct",
-            "lai",
             "swc",
             "si",
             "sie",
             "swu",
-            "swd",
             "lwu",
-            "lwd",
             "et",
-            "er",
             "sr",
             "ssr",
             "swe",
-            "snd",
             "shf",
             "lhf",
             "trans",
             "msf",
+            "lwp",
+            "iwc_1m",
         ]
     end
 

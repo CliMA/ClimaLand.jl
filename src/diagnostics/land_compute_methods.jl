@@ -203,6 +203,25 @@ end
 @diagnostic_compute "soil_net_radiation" Union{SoilCanopyModel, LandModel} p.soil.R_n
 @diagnostic_compute "soil_temperature" Union{SoilCanopyModel, LandModel} p.soil.T
 
+function compute_1m_water_content!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::Union{SoilCanopyModel{FT}, LandModel{FT}},
+) where {FT}
+    ∫Hθdz = p.soil.sfc_scratch
+    Hθ = p.soil.sub_sfc_scratch
+    z = land_model.soil.domain.fields.z
+    depth = FT(-1)
+    @. Hθ = (Y.soil.ϑ_l + Y.soil.θ_i) * heaviside(z, depth)
+    column_integral_definite!(∫Hθdz, Hθ)
+    if isnothing(out)
+        return ∫Hθdz
+    else
+        out .= ∫Hθdz
+    end
+end
 function compute_soil_albedo!(
     out,
     Y,
@@ -431,8 +450,9 @@ function compute_canopy_temperature!(
     t,
     land_model::Union{SoilCanopyModel{FT}, LandModel{FT}},
 ) where {FT}
-    AI =
-        p.canopy.hydraulics.area_index.leaf .+
+    AI = p.scratch1
+    @. AI =
+        p.canopy.hydraulics.area_index.leaf +
         p.canopy.hydraulics.area_index.stem
     if isnothing(out)
         return nan_if_no_canopy.(Y.canopy.energy.T, AI)
