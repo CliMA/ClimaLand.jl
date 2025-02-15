@@ -491,14 +491,13 @@ conditions when a canopy and Soil CO2  model is also included, though only
 the presence of the canopy modifies the soil BC.
 """
 function soil_boundary_fluxes!(
-    bc::AtmosDrivenFluxBC{<:PrescribedAtmosphere, <:PrescribedRadiativeFluxes},
+    bc::AtmosDrivenFluxBC,
     prognostic_land_components::Val{(:canopy, :snow, :soil, :soilco2)},
     soil::EnergyHydrology{FT},
     Y,
     p,
     t,
 ) where {FT}
-    bc = soil.boundary_conditions.top
     turbulent_fluxes!(p.soil.turbulent_fluxes, bc.atmos, soil, Y, p, t)
     # influx = maximum possible rate of infiltration given precip, snowmelt, evaporation/condensation
     # but if this exceeds infiltration capacity of the soil, runoff will
@@ -671,3 +670,11 @@ function ClimaLand.get_drivers(model::LandModel)
         model.soilco2.drivers.soc,
     )
 end
+
+"""
+    ClimaLand.surface_albedo(::LandModel, Y, p)
+
+Returns the surface albedo for the land model, which is computed
+from the ratio of the upwelling and downwelling shortwave radiation.
+"""
+ClimaLand.surface_albedo(::LandModel, Y, p) = p.α_sfc
