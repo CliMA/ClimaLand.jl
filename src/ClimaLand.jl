@@ -82,11 +82,15 @@ function initialize_prognostic(
     coords::NamedTuple,
 ) where {FT}
     components = land_components(model)
+    conservation_components = (:energy, :water)
     Y_state_list = map(components) do (component)
         submodel = getproperty(model, component)
         getproperty(initialize_prognostic(submodel, coords), component)
     end
-    Y = ClimaCore.Fields.FieldVector(; NamedTuple{components}(Y_state_list)...)
+    Y_conservation = (initialize_vars((:exp,), (FT,), (:surface,), coords, :energy).energy,
+                      initialize_vars((:exp,), (FT,), (:surface,), coords, :water).water)
+
+    Y = ClimaCore.Fields.FieldVector(; NamedTuple{(components..., conservation_components...)}((Y_state_list..., Y_conservation...))...)
     return Y
 end
 
@@ -161,6 +165,9 @@ function make_exp_tendency(land::AbstractLandModel)
         for f! in compute_exp_tendency_list
             f!(dY, Y, p, t)
         end
+        
+        @. dY.water.exp = -(p.soil.top_bc.water - p.soil.bottom_bc.water) - p.soil.R_s
+        @. dY.energy.exp = -(p.soil.top_bc.heat - p.soil.bottom_bc.heat)
     end
     return exp_tendency!
 end
@@ -214,15 +221,19 @@ function prognostic_vars(land::AbstractLandModel)
     prognostic_list = map(components) do model
         prognostic_vars(getproperty(land, model))
     end
-    return NamedTuple{components}(prognostic_list)
+    conservation_components = (:energy, :water)
+    conservation_prog_list = ((:exp,), (:exp,))
+    return NamedTuple{(components...,conservation_components...)}((prognostic_list..., conservation_prog_list...))
 end
 
-function prognostic_types(land::AbstractLandModel)
+function prognostic_types(land::AbstractLandModel{FT}) where {FT}
     components = land_components(land)
     prognostic_list = map(components) do model
         prognostic_types(getproperty(land, model))
     end
-    return NamedTuple{components}(prognostic_list)
+    conservation_components = (:energy, :water)
+    conservation_prog_types = ((:FT,), (:FT,))
+    return NamedTuple{(components..., conservation_components...)}((prognostic_list..., conservation_prog_list...))
 end
 
 function prognostic_domain_names(land::AbstractLandModel)
@@ -230,7 +241,9 @@ function prognostic_domain_names(land::AbstractLandModel)
     prognostic_list = map(components) do model
         prognostic_domain_names(getproperty(land, model))
     end
-    return NamedTuple{components}(prognostic_list)
+    conservation_components = (:energy, :water)
+    conservation_prog_types = ((:surface, ), (:surface, ))
+    return NamedTuple{(components..., conservation_components...)}((prognostic_list..., conservation_prog_list...))
 end
 
 

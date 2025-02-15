@@ -145,6 +145,8 @@ function FieldMatrixWithSolver(Y::ClimaCore.Fields.FieldVector)
         @name(snow.R_avg),
         @name(snow.Qrel_avg),
         @name(snow.u_avg),
+        @name(energy.exp),
+        @name(water.exp),
     )
 
     # Filter out the variables that are not in this model's state, `Y`

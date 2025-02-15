@@ -57,7 +57,7 @@ Vcmax25 = FT(6e-5) # from Yujie's paper 4.5e-5
 # Plant Hydraulics and general plant parameters
 pc = FT(-2.0e6)
 sc = FT(5e-6)
-SAI = FT(1.0) # m2/m2 or: estimated from Wang et al, FT(0.00242) ?
+SAI = FT(1e-5) # m2/m2 or: estimated from Wang et al, FT(0.00242) ?
 f_root_to_shoot = FT(3.5)
 K_sat_plant = 7e-8 # m/s 
 ψ63 = FT(-4 / 0.0098) # / MPa to m, Holtzman's original parameter value is -4 MPa

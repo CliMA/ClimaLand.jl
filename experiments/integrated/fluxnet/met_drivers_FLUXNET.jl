@@ -129,7 +129,7 @@ function snow_precip_fraction(air_temp, hum)
     β = 1.41
     γ = 0.09
     snow_frac = (1.0 / (1.0 + exp(α + β * air_temp_C + γ * hum)))
-    return snow_frac
+    return 0.0#snow_frac
 end
 snow_frac = snow_precip_fraction.(drivers.TA.values[:], RH[:])
 # Create interpolators for each atmospheric driver needed for PrescribedAtmosphere and for
@@ -224,11 +224,11 @@ LAI_dt = Second(MODIS_LAI[2, 1] - MODIS_LAI[1, 1]).value
 LAI_seconds = FT.(0:LAI_dt:((length(MODIS_LAI[:, 1]) - 1) * LAI_dt))
 
 # LAI function for radiative transfer
-LAIfunction = TimeVaryingInput(LAI_seconds, FT.(MODIS_LAI[:, 2]); context)
+LAIfunction = TimeVaryingInput((t) -> 1e-5)#TimeVaryingInput(LAI_seconds, FT.(MODIS_LAI[:, 2]); context)
 
 # Necessary inputs from LAI Data
 # Note that f_root_to_shoot, capacity, and h_leaf are site-specific parameters
 # defined in the parameters file for each site
-maxLAI = FT(maximum(MODIS_LAI[:, 2]))
+maxLAI = FT(1e-5)
 RAI = maxLAI * f_root_to_shoot
 capacity = plant_ν * maxLAI * h_leaf * FT(1000)
