@@ -41,7 +41,8 @@ spatially_varying_soil_params =
         extrapolation_bc = extrapolation_bc,
     )
 param_names3d = (:ν, :ν_ss_om, :ν_ss_quartz, :ν_ss_gravel, :K_sat, :S_s, :θ_r)
-param_names2d = (:albedo_dry, :albedo_wet, :f_max, :mask)
+param_names2d = (:f_max, :mask)
+param_names_banded = (:albedo_dry, :albedo_wet)
 for p in param_names3d
     @test p ∈ propertynames(spatially_varying_soil_params)
     @test axes(getproperty(spatially_varying_soil_params, p)) ==
@@ -51,6 +52,16 @@ end
 for p in param_names2d
     @test p ∈ propertynames(spatially_varying_soil_params)
     @test axes(getproperty(spatially_varying_soil_params, p)) == surface_space
+end
+
+# Each band should have a 2D field
+for p in param_names_banded
+    @test p ∈ propertynames(spatially_varying_soil_params)
+    nbands = length(getproperty(spatially_varying_soil_params, p))
+    for i in 1:nbands
+        @test axes(getproperty(spatially_varying_soil_params, p)[i]) ==
+              surface_space
+    end
 end
 @test :hydrology_cm ∈ propertynames(spatially_varying_soil_params)
 hcm = spatially_varying_soil_params.hydrology_cm
