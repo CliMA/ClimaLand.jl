@@ -141,40 +141,29 @@ end
 @diagnostic_compute "vcmax25" Union{SoilCanopyModel, LandModel} p.canopy.photosynthesis.Vcmax25
 
 # Canopy - Radiative Transfer
-@diagnostic_compute "near_infrared_radiation_down" Union{
+@diagnostic_compute "spectral_radiation_down" Union{SoilCanopyModel, LandModel} p.canopy.radiative_transfer.SW_d
+@diagnostic_compute "spectral_radiation_absorbed" Union{
     SoilCanopyModel,
     LandModel,
-} p.canopy.radiative_transfer.nir_d
-@diagnostic_compute "near_infrared_radiation_absorbed" Union{
+} ntuple(
+    (i) -> p.canopy.radiative_transfer.rt[i].abs,
+    length(p.canopy.radiative_transfer.rt),
+)
+@diagnostic_compute "spectral_radiation_reflected" Union{
     SoilCanopyModel,
     LandModel,
-} p.canopy.radiative_transfer.nir.abs
-@diagnostic_compute "near_infrared_radiation_reflected" Union{
+} ntuple(
+    (i) -> p.canopy.radiative_transfer.rt[i].refl,
+    length(p.canopy.radiative_transfer.rt),
+)
+@diagnostic_compute "spectral_radiation_transmitted" Union{
     SoilCanopyModel,
     LandModel,
-} p.canopy.radiative_transfer.nir.refl
-@diagnostic_compute "near_infrared_radiation_transmitted" Union{
-    SoilCanopyModel,
-    LandModel,
-} p.canopy.radiative_transfer.nir.trans
-@diagnostic_compute "photosynthetically_active_radiation_down" Union{
-    SoilCanopyModel,
-    LandModel,
-} p.canopy.radiative_transfer.par_d
-@diagnostic_compute "photosynthetically_active_radiation_absorbed" Union{
-    SoilCanopyModel,
-    LandModel,
-} p.canopy.radiative_transfer.par.abs
-@diagnostic_compute "photosynthetically_active_radiation_reflected" Union{
-    SoilCanopyModel,
-    LandModel,
-} p.canopy.radiative_transfer.par.refl
-@diagnostic_compute "photosynthetically_active_radiation_transmitted" Union{
-    SoilCanopyModel,
-    LandModel,
-} p.canopy.radiative_transfer.par.trans
-@diagnostic_compute "radiation_longwave_net" Union{SoilCanopyModel, LandModel} p.canopy.radiative_transfer.LW_n
-@diagnostic_compute "radiation_shortwave_net" Union{SoilCanopyModel, LandModel} p.canopy.radiative_transfer.SW_n
+} ntuple(
+    (i) -> p.canopy.radiative_transfer.rt[i].trans,
+    length(p.canopy.radiative_transfer.rt),
+)
+
 
 ## Drivers Module ##
 
@@ -211,9 +200,9 @@ function compute_soil_albedo!(
     land_model::SoilCanopyModel{FT},
 ) where {FT}
     if isnothing(out)
-        return (p.soil.PAR_albedo .+ p.soil.NIR_albedo) ./ 2
+        return sum(p.soil.albedo) / length(p.soil.albedo)
     else
-        @. out = (p.soil.PAR_albedo + p.soil.NIR_albedo) / 2
+        @. out = sum(p.soil.albedo) / length(p.soil.albedo)
     end
 end
 

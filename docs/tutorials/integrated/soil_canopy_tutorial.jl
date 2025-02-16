@@ -125,6 +125,9 @@ include(
 # [tutorial](https://clima.github.io/ClimaLand.jl/dev/generated/Soil/soil_energy_hydrology/)
 # on the model for a more detailed explanation of the soil model.
 
+# Define the discretization of the radiation spectrum used in the model:
+spectral_discretization = TwoBandSpectralDiscretization{FT}()
+
 # Define the parameters for the soil model and provide them to the model
 # parameters struct:
 
@@ -143,8 +146,7 @@ soil_vg_α = FT(0.04) # inverse meters
 z_0m_soil = FT(0.1)
 z_0b_soil = FT(0.1)
 soil_ϵ = FT(0.98)
-soil_α_PAR = FT(0.2)
-soil_α_NIR = FT(0.4)
+soil_α = FT.((0.2, 0.4))
 
 soil_domain = land_domain
 soil_ps = Soil.EnergyHydrologyParameters(
@@ -161,8 +163,7 @@ soil_ps = Soil.EnergyHydrologyParameters(
     z_0m = z_0m_soil,
     z_0b = z_0b_soil,
     emissivity = soil_ϵ,
-    PAR_albedo = soil_α_PAR,
-    NIR_albedo = soil_α_NIR,
+    albedo = soil_α,
 );
 
 soil_args = (domain = soil_domain, parameters = soil_ps)
@@ -220,12 +221,11 @@ autotrophic_respiration_args =
 radiative_transfer_args = (;
     parameters = TwoStreamParameters(
         FT;
+        spectral_discretization = spectral_discretization,
         G_Function = ConstantGFunction(FT(0.5)),
-        α_PAR_leaf = 0.1,
-        α_NIR_leaf = 0.45,
-        τ_PAR_leaf = 0.05,
-        τ_NIR_leaf = 0.25,
-        Ω = 0.69,
+        ρ_leaf = FT.((0.1, 0.45)),
+        τ_leaf = FT.((0.05, 0.25)),
+        Ω = FT(0.69),
     )
 )
 

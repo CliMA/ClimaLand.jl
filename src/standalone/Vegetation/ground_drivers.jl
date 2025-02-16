@@ -1,6 +1,5 @@
 using StaticArrays
-export AbstractGroundConditions,
-    PrescribedGroundConditions, ground_albedo_NIR, ground_albedo_PAR
+export AbstractGroundConditions, PrescribedGroundConditions, ground_albedo
 
 """
 An abstract type of ground conditions for the canopy model;
@@ -20,6 +19,7 @@ struct PrescribedGroundConditions{
     FT,
     F1 <: Function,
     F2 <: Function,
+    SD <: AbstractSpectralDiscretization,
     VEC <: AbstractArray{FT},
 } <: AbstractGroundConditions
     "The depth of the root tips, in meters"
@@ -28,10 +28,10 @@ struct PrescribedGroundConditions{
     ψ::F1
     "Prescribed ground surface temperature (K) as a function of time"
     T::F2
-    "Ground albedo for PAR"
-    α_PAR::FT
-    "Ground albedo for NIR"
-    α_NIR::FT
+    "Spectral discretization"
+    spectral_discretization::SD
+    "Spectral ground albedo"
+    α_ground::Tuple
     "Ground emissivity"
     ϵ::FT
 end
@@ -56,52 +56,39 @@ function PrescribedGroundConditions(
     )),
     ψ::Function = t -> 0.0,
     T::Function = t -> 298.0,
-    α_PAR = FT(0.2),
-    α_NIR = FT(0.4),
+    spectral_discretization::AbstractSpectralDiscretization = ClimaLand.TwoBandSpectralDiscretization{
+        FT,
+    }(),
+    α_ground::Tuple = FT.((0.2, 0.4)),
     ϵ = FT(0.99),
 )
     return PrescribedGroundConditions{
         FT,
         typeof(ψ),
         typeof(T),
+        typeof(spectral_discretization),
         typeof(root_depths),
     }(
         root_depths,
         ψ,
         T,
-        α_PAR,
-        α_NIR,
+        spectral_discretization,
+        α_ground,
         ϵ,
     )
 end
 
-
 """
-    ground_albedo_PAR(prognostic_land_components::Val{(:canopy,)}, ground::PrescribedGroundConditions, _...)
+    ground_albedo(prognostic_land_components::Val{(:canopy,)}, ground::PrescribedGroundConditions, λ::Float64, _...)
 
-Returns the ground albedo in the PAR for a PrescribedGroundConditions driver. In this case,
+Returns the ground albedo for a PrescribedGroundConditions driver. In this case,
 the prognostic_land_components only contain `:canopy`, because the canopy is being run in standalone
 mode.
 """
-function ground_albedo_PAR(
+function ground_albedo(
     prognostic_land_components::Val{(:canopy,)},
     ground::PrescribedGroundConditions,
     _...,
 )
-    return ground.α_PAR
-end
-
-"""
-    ground_albedo_NIR(prognostic_land_components::Val{(:canopy,)}, ground::PrescribedGroundConditions, _...)
-
-Returns the ground albedo in the NIR for a PrescribedGroundConditions driver. In this case,
-the prognostic_land_components only contain `:canopy`, because the canopy is being run in standalone
-mode.
-"""
-function ground_albedo_NIR(
-    prognostic_land_components::Val{(:canopy,)},
-    ground::PrescribedGroundConditions,
-    _...,
-)
-    return ground.α_NIR
+    return ground.α_ground
 end
