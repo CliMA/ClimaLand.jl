@@ -9,7 +9,7 @@ using Dates
 import ClimaLand.Parameters as LP
 using ClimaLand.Soil.Biogeochemistry
 using ClimaLand.Canopy.PlantHydraulics
-include("../../ext/CreateParametersExt.jl")
+
 for FT in (Float32, Float64)
     @testset "PrognosticSoil, FT = $FT" begin
         # Discretize radiation into 2 bands
