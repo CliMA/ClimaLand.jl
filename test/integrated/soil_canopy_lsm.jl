@@ -174,6 +174,16 @@ for FT in (Float32, Float64)
         set_initial_cache! = make_set_initial_cache(model)
         set_initial_cache!(p, Y, 0.0)
         canopy_bc = model.canopy.boundary_conditions
+        println(parent(
+                    Canopy.ground_albedo(
+                        Val(canopy_bc.prognostic_land_components),
+                        canopy_bc.ground,
+                        Y,
+                        p,
+                        0.0,
+                    ),
+                ))
+        println(albedo)
         @test all(
             Array(
                 parent(
@@ -185,7 +195,7 @@ for FT in (Float32, Float64)
                         0.0,
                     ),
                 ),
-            ) .== ground_albedo,
+            ) .== albedo,
         )
     end
 end
