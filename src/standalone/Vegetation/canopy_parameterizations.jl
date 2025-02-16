@@ -139,32 +139,29 @@ function compute_fractional_absorbances!(
 ) where {FT}
     RTP = RT.parameters
     if typeof(RTP.ρ_leaf) <: Tuple
-        @. p.canopy.radiative_transfer.rt = canopy_sw_rt_two_stream(
-            p.canopy.radiative_transfer.G,
-            RTP.Ω,
-            RTP.n_layers,
-            (RTP.ρ_leaf,),
-            (RTP.τ_leaf,),
-            LAI,
-            K,
-            θs,
-            (α_soil,),
-            frac_diff,
-        )
+        ρ_leaf_arg = (RTP.ρ_leaf,)
+        τ_leaf_arg = (RTP.τ_leaf,)
     else
-        @. p.canopy.radiative_transfer.rt = canopy_sw_rt_two_stream(
-            p.canopy.radiative_transfer.G,
-            RTP.Ω,
-            RTP.n_layers,
-            RTP.ρ_leaf,
-            RTP.τ_leaf,
-            LAI,
-            K,
-            θs,
-            (α_soil,),
-            frac_diff,
-        )
+        ρ_leaf_arg = RTP.ρ_leaf
+        τ_leaf_arg = RTP.τ_leaf
     end
+    if typeof(α_soil) <: Tuple
+        α_soil_arg = (α_soil,)
+    else
+        α_soil_arg = α_soil
+    end
+    @. p.canopy.radiative_transfer.rt = canopy_sw_rt_two_stream(
+        p.canopy.radiative_transfer.G,
+        RTP.Ω,
+        RTP.n_layers,
+        ρ_leaf_arg,
+        τ_leaf_arg,
+        LAI,
+        K,
+        θs,
+        α_soil_arg,
+        frac_diff,
+    )
 end
 
 """
