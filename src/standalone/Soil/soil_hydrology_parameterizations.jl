@@ -10,7 +10,7 @@ export volumetric_liquid_fraction,
     update_albedo!
 
 """
-    albedo_from_moisture(surface_eff_sat::FT, albedo_dry::FT, albedo_wet::FT)
+    albedo_from_moisture(surface_eff_sat::FT, albedo_dry::Tuple, albedo_wet::Tuple)
 
 Calculates pointwise albedo for any band as a function of soil effective saturation given
 the dry and wet albedo values for that band.
@@ -83,7 +83,11 @@ function update_albedo!(bc::AtmosDrivenFluxBC, p, soil_domain, model_parameters)
             effective_saturation.(ν, p.soil.θ_l, θ_r),
         )
     end
-    @. p.soil.albedo = albedo_from_moisture(S_sfc, albedo_dry, albedo_wet)
+    println(p.soil.albedo)
+    println(albedo_dry)
+    println(albedo_wet)
+    println(S_sfc)
+    @. p.soil.albedo = albedo_from_moisture(S_sfc, (albedo_dry,), (albedo_wet,))
 end
 
 """
