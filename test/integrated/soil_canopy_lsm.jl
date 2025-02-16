@@ -9,6 +9,7 @@ using Dates
 import ClimaLand.Parameters as LP
 using ClimaLand.Soil.Biogeochemistry
 using ClimaLand.Canopy.PlantHydraulics
+include("../../ext/CreateParametersExt.jl")
 for FT in (Float32, Float64)
     @testset "PrognosticSoil, FT = $FT" begin
         # Discretize radiation into 2 bands
@@ -174,28 +175,47 @@ for FT in (Float32, Float64)
         set_initial_cache! = make_set_initial_cache(model)
         set_initial_cache!(p, Y, 0.0)
         canopy_bc = model.canopy.boundary_conditions
-        println(parent(
-                    Canopy.ground_albedo(
-                        Val(canopy_bc.prognostic_land_components),
-                        canopy_bc.ground,
-                        Y,
-                        p,
-                        0.0,
-                    ),
-                ))
-        println(albedo)
         @test all(
             Array(
-                parent(
-                    Canopy.ground_albedo(
-                        Val(canopy_bc.prognostic_land_components),
-                        canopy_bc.ground,
-                        Y,
-                        p,
-                        0.0,
-                    ),
+                vec(
+                    parent(
+                        Canopy.ground_albedo(
+                            Val(canopy_bc.prognostic_land_components),
+                            canopy_bc.ground,
+                            Y,
+                            p,
+                            0.0,
+                        ),
+                    )[
+                        :,
+                        :,
+                        1:2:end,
+                        :,
+                        :,
+                    ],
                 ),
-            ) .== albedo,
+            ) .== FT(albedo[1]),
+        )
+        @test all(
+            Array(
+                vec(
+                    parent(
+                        Canopy.ground_albedo(
+                            Val(canopy_bc.prognostic_land_components),
+                            canopy_bc.ground,
+                            Y,
+                            p,
+                            0.0,
+                        ),
+                    )[
+                        :,
+                        :,
+                        2:2:end,
+                        :,
+                        :,
+                    ],
+                ),
+            ) .== FT(albedo[2]),
         )
     end
 end
