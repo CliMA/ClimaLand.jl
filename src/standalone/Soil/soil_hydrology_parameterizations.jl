@@ -83,11 +83,12 @@ function update_albedo!(bc::AtmosDrivenFluxBC, p, soil_domain, model_parameters)
             effective_saturation.(ν, p.soil.θ_l, θ_r),
         )
     end
-    println(p.soil.albedo)
-    println(albedo_dry)
-    println(albedo_wet)
-    println(S_sfc)
-    @. p.soil.albedo = albedo_from_moisture(S_sfc, (albedo_dry,), (albedo_wet,))
+    if typeof(albedo_dry) <: Tuple
+        @. p.soil.albedo =
+            albedo_from_moisture(S_sfc, (albedo_dry,), (albedo_wet,))
+    else
+        @. p.soil.albedo = albedo_from_moisture(S_sfc, albedo_dry, albedo_wet)
+    end
 end
 
 """
