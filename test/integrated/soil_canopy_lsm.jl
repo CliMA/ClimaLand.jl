@@ -14,7 +14,7 @@ for FT in (Float32, Float64)
         # Discretize radiation into 2 bands
         spectral_discretization = ClimaLand.TwoBandSpectralDiscretization{FT}()
         # Only care about PAR and NIR albedo values
-        ground_albedo = (0.2, 0.4)
+        albedo = (0.2, 0.4)
         # setup SoilCanopyModel with dummy params
         earth_param_set = LP.LandParameters(FT)
         radius = FT(6378.1e3)
@@ -51,7 +51,7 @@ for FT in (Float32, Float64)
             K_sat = FT(0),
             S_s = FT(0),
             θ_r = FT(0),
-            ground_albedo,
+            albedo,
             emissivity = FT(0),
             z_0m = FT(0),
             z_0b = FT(0),
