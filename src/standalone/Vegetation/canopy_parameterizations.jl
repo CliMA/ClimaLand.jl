@@ -230,151 +230,172 @@ function canopy_sw_rt_two_stream(
     G::FT,
     Ω::FT,
     n_layers::UInt64,
-    ρ_leaf::Tuple,
-    τ_leaf::Tuple,
+    ρ_leaf::Tuple{Vararg{FT}},
+    τ_leaf::Tuple{Vararg{FT}},
     LAI::FT,
     K::FT,
     θs::FT,
-    α_soil::Tuple,
+    α_soil::Tuple{Vararg{FT}},
     frac_diff::FT,
 ) where {FT}
 
     # Compute μ̄, the average inverse diffuse optical length per LAI
-    μ̄ = 1 / (2G)
+    μ̄ = FT(1 / (2G))
 
     # Clip this to eps(FT) to prevent dividing by zero
-    ω = max.(ρ_leaf .+ τ_leaf, eps(FT))
+    ω = FT.(max.(ρ_leaf .+ τ_leaf, eps(FT)))
 
     # Compute aₛ, the single scattering albedo
-    aₛ = 0.5 .* ω .* (1 - cos(θs) * log((abs(cos(θs)) + 1) / abs(cos(θs))))
+    aₛ = FT.(0.5 .* ω .* (1 - cos(θs) * log((abs(cos(θs)) + 1) / abs(cos(θs)))))
 
     # Compute β₀, the direct upscattering parameter
-    β₀ = (1 ./ ω) .* aₛ .* (1 + μ̄ * K) ./ (μ̄ * K)
+    β₀ = FT.((1 ./ ω) .* aₛ .* (1 + μ̄ * K) ./ (μ̄ * K))
 
     # Compute β, the diffuse upscattering parameter
-    diff = ρ_leaf .- τ_leaf
+    diff = FT.(ρ_leaf .- τ_leaf)
     # With uniform distribution, Dickinson integral becomes following:
-    c²θ̄ = pi * G / 4
-    β = 0.5 .* (ω .+ diff .* c²θ̄) ./ ω
+    c²θ̄ = FT(pi * G / 4)
+    β = FT.(0.5 .* (ω .+ diff .* c²θ̄) ./ ω)
 
     # Compute coefficients for two-stream solution
-    b = 1 .- ω .+ ω .* β
-    c = ω .* β
-    d = ω .* β₀ .* μ̄ .* K
-    f = ω .* μ̄ .* K .* (1 .- β₀)
-    h = .√(b .^ 2 .- c .^ 2) ./ μ̄
-    σ = (μ̄ * K)^2 .+ c .^ 2 .- b .^ 2
+    b = FT.(1 .- ω .+ ω .* β)
+    c = FT.(ω .* β)
+    d = FT.(ω .* β₀ .* μ̄ .* K)
+    f = FT.(ω .* μ̄ .* K .* (1 .- β₀))
+    h = FT.(.√(b .^ 2 .- c .^ 2) ./ μ̄)
+    σ = FT.((μ̄ * K)^2 .+ c .^ 2 .- b .^ 2)
 
-    u₁ = b .- c ./ α_soil
-    u₂ = b .- c .* α_soil
-    u₃ = f .+ c .* α_soil
+    u₁ = FT.(b .- c ./ α_soil)
+    u₂ = FT.(b .- c .* α_soil)
+    u₃ = FT.(f .+ c .* α_soil)
 
-    s₁ = exp.(.-h .* LAI .* Ω)
-    s₂ = exp(-K * LAI * Ω)
+    s₁ = FT.(exp.(.-h .* LAI .* Ω))
+    s₂ = FT.(exp(-K * LAI * Ω))
 
-    p₁ = b .+ μ̄ .* h
-    p₂ = b .- μ̄ .* h
-    p₃ = b .+ μ̄ .* K
-    p₄ = b .- μ̄ .* K
+    p₁ = FT.(b .+ μ̄ .* h)
+    p₂ = FT.(b .- μ̄ .* h)
+    p₃ = FT.(b .+ μ̄ .* K)
+    p₄ = FT.(b .- μ̄ .* K)
 
-    d₁ = p₁ .* (u₁ .- μ̄ .* h) ./ s₁ .- p₂ .* (u₁ .+ μ̄ .* h) .* s₁
-    d₂ = (u₂ .+ μ̄ .* h) ./ s₁ .- (u₂ .- μ̄ .* h) .* s₁
+    d₁ = FT.(p₁ .* (u₁ .- μ̄ .* h) ./ s₁ .- p₂ .* (u₁ .+ μ̄ .* h) .* s₁)
+    d₂ = FT.((u₂ .+ μ̄ .* h) ./ s₁ .- (u₂ .- μ̄ .* h) .* s₁)
 
     # h coefficients for direct upward flux
-    h₁ = .-d .* p₄ .- c .* f
+    h₁ = FT.(.-d .* p₄ .- c .* f)
     h₂ =
-        1 ./ d₁ .* (
-            (d .- h₁ ./ σ .* p₃) .* (u₁ .- μ̄ .* h) ./ s₁ .-
-            p₂ .* s₂ .* (d .- c .- h₁ ./ σ .* (u₁ .+ μ̄ .* K))
+        FT.(
+            1 ./ d₁ .* (
+                (d .- h₁ ./ σ .* p₃) .* (u₁ .- μ̄ .* h) ./ s₁ .-
+                p₂ .* s₂ .* (d .- c .- h₁ ./ σ .* (u₁ .+ μ̄ .* K))
+            )
         )
     h₃ =
-        -1 ./ d₁ .* (
-            (d .- h₁ ./ σ .* p₃) .* (u₁ .+ μ̄ .* h) .* s₁ .-
-            p₁ .* s₂ .* (d .- c .- h₁ ./ σ .* (u₁ .+ μ̄ .* K))
+        FT.(
+            -1 ./ d₁ .* (
+                (d .- h₁ ./ σ .* p₃) .* (u₁ .+ μ̄ .* h) .* s₁ .-
+                p₁ .* s₂ .* (d .- c .- h₁ ./ σ .* (u₁ .+ μ̄ .* K))
+            )
         )
 
     # h coefficients for direct downward flux
-    h₄ = .-f .* p₃ .- c .* d
+    h₄ = FT.(.-f .* p₃ .- c .* d)
     h₅ =
-        -1 ./ d₂ .* (
-            h₄ .* (u₂ .+ μ̄ .* h) ./ (σ .* s₁) .+
-            (u₃ .- h₄ ./ σ .* (u₂ .- μ̄ .* K)) .* s₂
+        FT.(
+            -1 ./ d₂ .* (
+                h₄ .* (u₂ .+ μ̄ .* h) ./ (σ .* s₁) .+
+                (u₃ .- h₄ ./ σ .* (u₂ .- μ̄ .* K)) .* s₂
+            )
         )
     h₆ =
-        1 ./ d₂ .* (
-            h₄ ./ σ .* (u₂ .- μ̄ .* h) .* s₁ .+
-            (u₃ .- h₄ ./ σ .* (u₂ .- μ̄ .* K)) .* s₂
+        FT.(
+            1 ./ d₂ .* (
+                h₄ ./ σ .* (u₂ .- μ̄ .* h) .* s₁ .+
+                (u₃ .- h₄ ./ σ .* (u₂ .- μ̄ .* K)) .* s₂
+            )
         )
 
     # h coefficients for diffuse upward flux
-    h₇ = c .* (u₁ .- μ̄ .* h) ./ (d₁ .* s₁)
-    h₈ = .-c .* s₁ .* (u₁ .+ μ̄ .* h) ./ d₁
+    h₇ = FT.(c .* (u₁ .- μ̄ .* h) ./ (d₁ .* s₁))
+    h₈ = FT.(.-c .* s₁ .* (u₁ .+ μ̄ .* h) ./ d₁)
 
     # h coefficients for diffuse downward flux
-    h₉ = (u₂ .+ μ̄ .* h) ./ (d₂ .* s₁)
-    h₁₀ = .-s₁ .* (u₂ .- μ̄ .* h) ./ d₂
+    h₉ = FT.((u₂ .+ μ̄ .* h) ./ (d₂ .* s₁))
+    h₁₀ = FT.(.-s₁ .* (u₂ .- μ̄ .* h) ./ d₂)
 
     # Compute the LAI per layer for this canopy
-    Lₗ = LAI / n_layers
+    Lₗ = FT.(LAI / n_layers)
 
     # Initialize the fraction absorbed value and layer counter
-    F_abs = ntuple(_ -> 0, length(ρ_leaf))
+    F_abs = ntuple(_ -> FT(0.0), Val(length(ρ_leaf)))
     i = 0
 
     # Total light reflected frοm top of canopy
-    F_refl = ntuple(_ -> 0, length(ρ_leaf))
+    F_refl = ntuple(_ -> FT(0.0), Val(length(ρ_leaf)))
 
     # Intialize vars to save computed fluxes from each layer for the next layer
-    I_dir_up_prev = ntuple(_ -> 0, length(ρ_leaf))
-    I_dir_dn_prev = ntuple(_ -> 0, length(ρ_leaf))
-    I_dif_up_prev = ntuple(_ -> 0, length(ρ_leaf))
-    I_dif_dn_prev = ntuple(_ -> 0, length(ρ_leaf))
+    I_dir_up_prev = ntuple(_ -> FT(0.0), Val(length(ρ_leaf)))
+    I_dir_dn_prev = ntuple(_ -> FT(0.0), Val(length(ρ_leaf)))
+    I_dif_up_prev = ntuple(_ -> FT(0.0), Val(length(ρ_leaf)))
+    I_dif_dn_prev = ntuple(_ -> FT(0.0), Val(length(ρ_leaf)))
 
+    I_dir_abs = ntuple(_ -> FT(0.0), Val(length(ρ_leaf)))
+    I_dif_abs = ntuple(_ -> FT(0.0), Val(length(ρ_leaf)))
 
     # Compute F_abs in each canopy layer
     while i <= n_layers
 
         # Compute cumulative LAI at this layer
-        L = i * Lₗ
+        L = FT.(i * Lₗ)
 
         # Compute the direct fluxes into/out of the layer
         I_dir_up =
-            h₁ .* exp.(-K * L * Ω) ./ σ .+ h₂ .* exp.(.-h .* L .* Ω) .+
-            h₃ .* exp.(h .* L .* Ω)
+            FT.(
+                h₁ .* exp.(-K * L * Ω) ./ σ .+ h₂ .* exp.(.-h .* L .* Ω) .+
+                h₃ .* exp.(h .* L .* Ω)
+            )
         I_dir_dn =
-            h₄ .* exp.(-K * L * Ω) ./ σ .+ h₅ .* exp.(.-h .* L .* Ω) .+
-            h₆ .* exp.(h .* L .* Ω)
+            FT.(
+                h₄ .* exp.(-K * L * Ω) ./ σ .+ h₅ .* exp.(.-h .* L .* Ω) .+
+                h₆ .* exp.(h .* L .* Ω)
+            )
 
         # Add collimated radiation to downard flux
-        I_dir_dn = I_dir_dn .+ exp.(-K * L * Ω)
+        I_dir_dn = FT.(I_dir_dn .+ exp.(-K * L * Ω))
 
         # Compute the diffuse fluxes into/out of the layer
-        I_dif_up = h₇ .* exp.(.-h .* L .* Ω) .+ h₈ .* exp.(h .* L .* Ω)
-        I_dif_dn = h₉ .* exp.(.-h .* L .* Ω) .+ h₁₀ .* exp.(h .* L .* Ω)
+        I_dif_up = FT.(h₇ .* exp.(.-h .* L .* Ω) .+ h₈ .* exp.(h .* L .* Ω))
+        I_dif_dn = FT.(h₉ .* exp.(.-h .* L .* Ω) .+ h₁₀ .* exp.(h .* L .* Ω))
 
         # Energy balance giving radiation absorbed in the layer
         if i == 0
-            I_dir_abs = ntuple(_ -> 0, length(ρ_leaf))
-            I_dif_abs = ntuple(_ -> 0, length(ρ_leaf))
+            I_dir_abs = ntuple(_ -> FT(0.0), Val(length(ρ_leaf)))
+            I_dif_abs = ntuple(_ -> FT(0.0), Val(length(ρ_leaf)))
         else
-            I_dir_abs = I_dir_up .- I_dir_up_prev .- I_dir_dn .+ I_dir_dn_prev
-            I_dif_abs = I_dif_up .- I_dif_up_prev .- I_dif_dn .+ I_dif_dn_prev
+            I_dir_abs =
+                FT.(I_dir_up) .- FT.(I_dir_up_prev) .- FT.(I_dir_dn) .+
+                FT.(I_dir_dn_prev)
+            I_dif_abs =
+                FT.(I_dif_up) .- FT.(I_dif_up_prev) .- FT.(I_dif_dn) .+
+                FT.(I_dif_dn_prev)
         end
 
         if i == 1
-            F_refl = (1 - frac_diff) .* I_dir_up .+ (frac_diff) .* I_dif_up
+            F_refl = FT.((1 - frac_diff) .* I_dir_up .+ (frac_diff) .* I_dif_up)
         end
 
 
         # Add radiation absorbed in the layer to total absorbed radiation
         F_abs =
-            F_abs .+ (1 - frac_diff) .* I_dir_abs .+ (frac_diff) .* I_dif_abs
+            FT.(
+                F_abs .+ (1 - frac_diff) .* I_dir_abs .+
+                (frac_diff) .* I_dif_abs
+            )
 
         # Save input/output values to compute energy balance of next layer
-        I_dir_up_prev = I_dir_up
-        I_dir_dn_prev = I_dir_dn
-        I_dif_up_prev = I_dif_up
-        I_dif_dn_prev = I_dif_dn
+        I_dir_up_prev = FT.(I_dir_up)
+        I_dir_dn_prev = FT.(I_dir_dn)
+        I_dif_up_prev = FT.(I_dif_up)
+        I_dif_dn_prev = FT.(I_dif_dn)
 
         # Move on to the next layer
         i += 1
@@ -382,14 +403,14 @@ function canopy_sw_rt_two_stream(
 
     # Convert fractional absorption into absorption and return
     # Ensure floating point precision is correct (it may be different for PAR)
-    F_trans = (1 .- F_abs .- F_refl) ./ (1 .- α_soil)
+    F_trans = Tuple(FT.((1 .- F_abs .- F_refl) ./ (1 .- α_soil)))
     return ntuple(
         i -> (;
             abs = FT(F_abs[i]),
             refl = FT(F_refl[i]),
             trans = FT(F_trans[i]),
         ),
-        length(ρ_leaf),
+        Val(length(ρ_leaf)),
     )
 end
 
