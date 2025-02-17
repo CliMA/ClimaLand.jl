@@ -312,7 +312,6 @@ function lsm_radiant_energy_fluxes!(
     spectral_discretization =
         canopy_radiation.parameters.spectral_discretization
     SW_d = p.canopy.radiative_transfer.SW_d
-    nbands = length(spectral_discretization.λ) - 1
     get_rt = (rt, sym) -> map(x -> getproperty(x, sym), rt)
     spectral_f_abs = get_rt.(p.canopy.radiative_transfer.rt, :abs)
     spectral_f_refl = get_rt.(p.canopy.radiative_transfer.rt, :refl)
