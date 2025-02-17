@@ -45,6 +45,16 @@ function era5_surface_data2008_path(; context = nothing)
 end
 
 """
+    era5_surface_data_1979_2024_path(; context)
+
+Return the path to the folder that contains the ERA5 monthly surface data
+from 1979 to 2024.
+"""
+function era5_surface_data_1979_2024_path(; context = nothing)
+    return @clima_artifact("era5_monthly_averages_srface_single_level_1979_2024", context)
+end
+
+"""
     clm_data__folder_path(; context)
 
 Return the path to the folder that contains the clm data.

@@ -93,6 +93,29 @@ function rand_locations(surface_space, regridder_type, n = 100)
     )
 end
 
+"""
+    era5_monthly_stdevs(varname::String)
+
+Returns the year over year standard deviation of a given variable from ERA5.
+i.e, a 12 element vector of the standard deviation of the variable for each
+month taken across all data years. Assumes you're looking for lhf or shf data
+from the monthly surface fluxes dataset.
+"""
+function era5_monthly_stdevs(varname::String)
+    # Read the data for this variable from all data years
+    era5_ds = Dataset(
+        joinpath(
+            ClimaLand.Artifacts.era5_surface_data_1979_2024_path(),
+            "era5_monthly_averages_surface_single_level_197901-202410.nc",
+        ),
+    )
+    data = era5_ds[varname][:]
+
+    # Compute the standard deviation for each month
+    stdevs = [std(data[:, :, i]) for i in 1:12]
+    return stdevs
+end
+
 
 # function target_and_locations()
 # Define the locations longitudes and latitudes
