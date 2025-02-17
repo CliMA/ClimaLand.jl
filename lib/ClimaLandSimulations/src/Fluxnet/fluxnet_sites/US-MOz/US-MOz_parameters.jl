@@ -84,6 +84,7 @@ function soil_ozark(; # Function that returns the src function, but with ozark d
     hydrology_cm = vanGenuchten{FT}(; α = vg_α, n = vg_n)
     # Discretization of radiation
     spectral_discretization = TwoBandSpectralDiscretization{FT}()
+    albedo = (PAR_albedo, NIR_albedo)
     return EnergyHydrologyParameters(
         FT;
         ν,
@@ -95,8 +96,7 @@ function soil_ozark(; # Function that returns the src function, but with ozark d
         S_s,
         θ_r,
         spectral_discretization,
-        PAR_albedo,
-        NIR_albedo,
+        albedo,
         emissivity,
         z_0m,
         z_0b,

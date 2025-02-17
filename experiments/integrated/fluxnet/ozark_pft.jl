@@ -176,14 +176,16 @@ autotrophic_respiration_args =
     (; parameters = AutotrophicRespirationParameters(FT))
 # Set up radiative transfer
 G_Function = CLMGFunction(χl)
+ρ_leaf = (ρ_PAR_leaf, ρ_NIR_leaf)
+τ_leaf = (τ_PAR_leaf, τ_NIR_leaf)
 radiative_transfer_args = (;
     parameters = TwoStreamParameters(
         FT;
         spectral_discretization,
         Ω,
         G_Function,
-        (ρ_PAR_leaf, ρ_NIR_leaf),
-        (τ_PAR_leaf, τ_NIR_leaf),
+        ρ_leaf,
+        τ_leaf,
     )
 )
 # Set up conductance
