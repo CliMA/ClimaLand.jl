@@ -624,6 +624,7 @@ function TwoStreamParameters(
     FT = CP.float_type(toml_dict)
     # default value for keyword args must be converted manually
     # automatic conversion not possible to Union types
+    Ω = FT.(Ω)
     if typeof(ρ_leaf) <: Tuple
         ρ_leaf = FT.(ρ_leaf)
         τ_leaf = FT.(τ_leaf)
