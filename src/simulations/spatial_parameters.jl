@@ -117,16 +117,16 @@ function clm_canopy_parameters(
         regridder_type,
         regridder_kwargs = (; extrapolation_bc,),
     )
-    τ_PAR_leaf = SpaceVaryingInput(
+    ρ_NIR_leaf = SpaceVaryingInput(
         joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
-        "taulvis",
+        "rholnir",
         surface_space;
         regridder_type,
         regridder_kwargs = (; extrapolation_bc,),
     )
-    ρ_NIR_leaf = SpaceVaryingInput(
+    τ_PAR_leaf = SpaceVaryingInput(
         joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
-        "rholnir",
+        "taulvis",
         surface_space;
         regridder_type,
         regridder_kwargs = (; extrapolation_bc,),
@@ -183,7 +183,7 @@ function clm_canopy_parameters(
         G_Function = G_Function,
         ρ_PAR_leaf = ρ_PAR_leaf,
         τ_PAR_leaf = τ_PAR_leaf,
-        ρ_NIR_leaf = ρ_PAR_leaf,
+        ρ_NIR_leaf = ρ_NIR_leaf,
         τ_NIR_leaf = τ_NIR_leaf,
     )
 end

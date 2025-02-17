@@ -111,8 +111,8 @@ canopy_component_types = (;
 autotrophic_respiration_args =
     (; parameters = Canopy.AutotrophicRespirationParameters(FT))
 # Set up radiative transfer
-ρ_leaf = (ρ_PAR_leaf, ρ_NIR_leaf)
-τ_leaf = (τ_PAR_leaf, τ_NIR_leaf)
+ρ_leaf = @. (ρ_PAR_leaf, ρ_NIR_leaf)
+τ_leaf = @. (τ_PAR_leaf, τ_NIR_leaf)
 radiative_transfer_args = (;
     parameters = Canopy.TwoStreamParameters(
         FT;

@@ -136,7 +136,6 @@ function default_diagnostics(
             "apar",
             "rpar",
             "tpar",
-            "lwn",
             "swn",
             "soc",
             "airp",
