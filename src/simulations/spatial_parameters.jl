@@ -110,9 +110,16 @@ function clm_canopy_parameters(
         regridder_kwargs = (; extrapolation_bc,),
     )
     G_Function = CLMGFunction(χl)
-    α_PAR_leaf = SpaceVaryingInput(
+    ρ_PAR_leaf = SpaceVaryingInput(
         joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
         "rholvis",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc,),
+    )
+    ρ_NIR_leaf = SpaceVaryingInput(
+        joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
+        "rholnir",
         surface_space;
         regridder_type,
         regridder_kwargs = (; extrapolation_bc,),
@@ -120,13 +127,6 @@ function clm_canopy_parameters(
     τ_PAR_leaf = SpaceVaryingInput(
         joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
         "taulvis",
-        surface_space;
-        regridder_type,
-        regridder_kwargs = (; extrapolation_bc,),
-    )
-    α_NIR_leaf = SpaceVaryingInput(
-        joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
-        "rholnir",
         surface_space;
         regridder_type,
         regridder_kwargs = (; extrapolation_bc,),
@@ -181,9 +181,9 @@ function clm_canopy_parameters(
         Vcmax25 = Vcmax25,
         g1 = g1,
         G_Function = G_Function,
-        α_PAR_leaf = α_PAR_leaf,
+        ρ_PAR_leaf = ρ_PAR_leaf,
         τ_PAR_leaf = τ_PAR_leaf,
-        α_NIR_leaf = α_PAR_leaf,
+        ρ_NIR_leaf = ρ_NIR_leaf,
         τ_NIR_leaf = τ_NIR_leaf,
     )
 end
@@ -416,10 +416,8 @@ function default_spatially_varying_soil_parameters(
         K_sat = K_sat,
         S_s = S_s,
         θ_r = θ_r,
-        PAR_albedo_wet = PAR_albedo_wet,
-        NIR_albedo_wet = NIR_albedo_wet,
-        PAR_albedo_dry = PAR_albedo_dry,
-        NIR_albedo_dry = NIR_albedo_dry,
+        albedo_wet = (PAR_albedo_wet, NIR_albedo_wet),
+        albedo_dry = (PAR_albedo_dry, NIR_albedo_dry),
         f_max = f_max,
         mask = mask,
     )

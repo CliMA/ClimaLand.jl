@@ -88,8 +88,7 @@ S_s = FT(1e-3)
 ν_ss_quartz = FT(1.0)
 ν_ss_gravel = FT(0.0)
 emissivity = FT(1.0)
-PAR_albedo = FT(0.2)
-NIR_albedo = FT(0.4)
+albedo = FT.((0.2, 0.4))
 z_0m = FT(1e-3)
 z_0b = FT(1e-4)
 d_ds = FT(0.01)
@@ -103,8 +102,7 @@ params = ClimaLand.Soil.EnergyHydrologyParameters(
     K_sat,
     S_s,
     θ_r,
-    PAR_albedo,
-    NIR_albedo,
+    albedo,
     emissivity,
     z_0m,
     z_0b,

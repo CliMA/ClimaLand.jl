@@ -83,6 +83,9 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         FT,
     )
 
+    # Discretization of radiation
+    spectral_discretization = ClimaLand.TwoBandSpectralDiscretization{FT}()
+
     spatially_varying_soil_params =
         ClimaLand.default_spatially_varying_soil_parameters(
             subsurface_space,
@@ -98,10 +101,8 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         K_sat,
         S_s,
         θ_r,
-        PAR_albedo_dry,
-        NIR_albedo_dry,
-        PAR_albedo_wet,
-        NIR_albedo_wet,
+        albedo_dry,
+        albedo_wet,
         f_max,
     ) = spatially_varying_soil_params
     soil_params = Soil.EnergyHydrologyParameters(
@@ -114,10 +115,8 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         K_sat,
         S_s,
         θ_r,
-        PAR_albedo_dry = PAR_albedo_dry,
-        NIR_albedo_dry = NIR_albedo_dry,
-        PAR_albedo_wet = PAR_albedo_wet,
-        NIR_albedo_wet = NIR_albedo_wet,
+        albedo_dry,
+        albedo_wet,
     )
 
     f_over = FT(3.28) # 1/m
@@ -137,9 +136,9 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         Vcmax25,
         g1,
         G_Function,
-        α_PAR_leaf,
+        ρ_PAR_leaf,
         τ_PAR_leaf,
-        α_NIR_leaf,
+        ρ_NIR_leaf,
         τ_NIR_leaf,
     ) = clm_parameters
 
@@ -217,11 +216,10 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     radiative_transfer_args = (;
         parameters = Canopy.TwoStreamParameters(
             FT;
+            spectral_discretization,
             Ω,
-            α_PAR_leaf,
-            τ_PAR_leaf,
-            α_NIR_leaf,
-            τ_NIR_leaf,
+            (ρ_PAR_leaf, ρ_NIR_leaf),
+            (τ_PAR_leaf, τ_NIR_leaf),
             G_Function,
         )
     )
@@ -235,7 +233,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     modis_lai_artifact_path =
         ClimaLand.Artifacts.modis_lai_forcing_data2008_path(; context)
     modis_lai_ncdata_path =
-        joinpath(modis_lai_artifact_path, "Yuan_et_al_2011_1x1.nc")
+        joinpath(modis_lai_artifact_path, "Yuan_et_al_2008_1x1.nc")
     LAIfunction = ClimaLand.prescribed_lai_modis(
         modis_lai_ncdata_path,
         surface_space,

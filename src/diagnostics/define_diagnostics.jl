@@ -347,60 +347,48 @@ function define_diagnostics!(land_model)
     )
 
     ### Canopy - Radiative Transfer
-    # NIR - near infrared radiaton
+    # DSW - Net shortwave radiation down
     add_diagnostic_variable!(
-        short_name = "nir",
-        long_name = "Near Infrared Radiation",
-        standard_name = "near_infrared_radiation",
+        short_name = "dsw",
+        long_name = "Shortwave Radiation",
+        standard_name = "shortwave_radiation",
         units = "mol photons m^-2 s^-1",
-        comments = "The amount of near infrared radiation reaching the canopy.",
+        comments = "The amount of shortwave radiation reaching the canopy.",
         compute! = (out, Y, p, t) ->
-            compute_near_infrared_radiation_down!(out, Y, p, t, land_model),
+            compute_net_shortwave_down!(out, Y, p, t, land_model),
     )
 
-    # ANIR - absorbed near infrared radiation
+    # ASW - Net shortwave radiation absorbed
     add_diagnostic_variable!(
-        short_name = "anir",
-        long_name = "Absorbed Near Infrared Radiation",
-        standard_name = "absorbed_near_infrared_radiation",
+        short_name = "asw",
+        long_name = "Absorbed Shortwave Radiation",
+        standard_name = "absorbed_shortwave_radiation",
         units = "mol photons m^-2 s^-1",
-        comments = "The amount of near infrared radiation absorbed by the canopy.",
+        comments = "The amount of shortwave radiation absorbed by the canopy.",
         compute! = (out, Y, p, t) ->
-            compute_near_infrared_radiation_absorbed!(out, Y, p, t, land_model),
+            compute_net_shortwave_absorbed!(out, Y, p, t, land_model),
     )
 
-    # RNIR - reflected near infrared radiation
+    # RSW - net reflected shortwave radiation
     add_diagnostic_variable!(
-        short_name = "rnir",
-        long_name = "Reflected Near Infrared Radiation",
-        standard_name = "reflected_near_infrared_radiation",
+        short_name = "rsw",
+        long_name = "Reflected Shortwave Radiation",
+        standard_name = "reflected_shortwave_radiation",
         units = "mol photons m^-2 s^-1",
-        comments = "The amount of near infrared radiation reflected by the canopy.",
+        comments = "The amount of shortwave radiation reflected by the canopy.",
         compute! = (out, Y, p, t) ->
-            compute_near_infrared_radiation_reflected!(
-                out,
-                Y,
-                p,
-                t,
-                land_model,
-            ),
+            compute_net_shortwave_reflected!(out, Y, p, t, land_model),
     )
 
-    # TNIR - transmitted near infrared radiation
+    # TSW - transmitted shortwave radiation
     add_diagnostic_variable!(
-        short_name = "tnir",
-        long_name = "Transmitted Near Infrared Radiation",
-        standard_name = "transmitted_near_infrared_radiation",
+        short_name = "tsw",
+        long_name = "Transmitted Shortwave Radiation",
+        standard_name = "transmitted_shortwave_radiation",
         units = "mol photons m^-2 s^-1",
-        comments = "The amount of near infrared radiation transmitted by the canopy.",
+        comments = "The amount of shortwave radiation transmitted by the canopy.",
         compute! = (out, Y, p, t) ->
-            compute_near_infrared_radiation_transmitted!(
-                out,
-                Y,
-                p,
-                t,
-                land_model,
-            ),
+            compute_net_shortwave_transmitted!(out, Y, p, t, land_model),
     )
 
     # PAR - photosynthetically active radiation
@@ -469,28 +457,6 @@ function define_diagnostics!(land_model)
                 t,
                 land_model,
             ),
-    )
-
-    # Net longwave radiation
-    add_diagnostic_variable!(
-        short_name = "lwn",
-        long_name = "Net Longwave Radiation",
-        standard_name = "net_longwave_radiation",
-        units = "W m^-2",
-        comments = "The net (down minus up) longwave radiation at the surface.",
-        compute! = (out, Y, p, t) ->
-            compute_radiation_longwave_net!(out, Y, p, t, land_model),
-    )
-
-    # Net shortwave radiation
-    add_diagnostic_variable!(
-        short_name = "swn",
-        long_name = "Net Shortwave Radiation",
-        standard_name = "net_shortwave_radiation",
-        units = "W m^-2",
-        comments = "The net (down minus up) shortwave radiation at the surface.",
-        compute! = (out, Y, p, t) ->
-            compute_radiation_shortwave_net!(out, Y, p, t, land_model),
     )
 
     ## Drivers Module ##

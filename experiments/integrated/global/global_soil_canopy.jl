@@ -64,6 +64,9 @@ atmos, radiation = ClimaLand.prescribed_forcing_era5(
     time_interpolation_method = time_interpolation_method,
 )
 
+# Discretization of radiation
+spectral_discretization = ClimaLand.TwoBandSpectralDiscretization{FT}()
+
 include(
     joinpath(
         pkgdir(ClimaLand),
@@ -108,14 +111,15 @@ canopy_component_types = (;
 autotrophic_respiration_args =
     (; parameters = Canopy.AutotrophicRespirationParameters(FT))
 # Set up radiative transfer
+ρ_leaf = @. (ρ_PAR_leaf, ρ_NIR_leaf)
+τ_leaf = @. (τ_PAR_leaf, τ_NIR_leaf)
 radiative_transfer_args = (;
     parameters = Canopy.TwoStreamParameters(
         FT;
+        spectral_discretization,
         Ω,
-        α_PAR_leaf,
-        τ_PAR_leaf,
-        α_NIR_leaf,
-        τ_NIR_leaf,
+        ρ_leaf,
+        τ_leaf,
     )
 )
 # Set up conductance
@@ -127,7 +131,7 @@ photosynthesis_args =
 modis_lai_artifact_path =
     ClimaLand.Artifacts.modis_lai_forcing_data2008_path(; context)
 modis_lai_ncdata_path =
-    joinpath(modis_lai_artifact_path, "Yuan_et_al_2011_1x1.nc")
+    joinpath(modis_lai_artifact_path, "Yuan_et_al_2008_1x1.nc")
 LAIfunction = ClimaLand.prescribed_lai_modis(
     modis_lai_ncdata_path,
     surface_space,

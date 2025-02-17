@@ -40,8 +40,8 @@ export Pft, default_pfts, params_from_pfts, pft_param_list
 pft_param_list = [
     # TwoStreamModel parameters
     :Ω,          # Clumping Index
-    :α_PAR_leaf, # PAR Leaf Reflectance
-    :α_NIR_leaf, # Near-infrared Leaf Reflectance
+    :ρ_PAR_leaf, # PAR Leaf Reflectance
+    :ρ_NIR_leaf, # Near-infrared Leaf Reflectance
     :τ_PAR_leaf, # PAR Leaf Transmittance
     :τ_NIR_leaf, # Near-infrared Leaf Transmittance
     :ϵ_canopy,   # Canopy Emissivity
@@ -92,8 +92,8 @@ NET_Temp = Pft(
     (
         # Radiative Transfer Model
         Ω = 0.74,          # Unitless ⋅ Chen et al. 2012 Table 1
-        α_PAR_leaf = 0.07, # Unitless ⋅ CLM5.0 Table 2.3.1
-        α_NIR_leaf = 0.35, # Unitless ⋅ CLM5.0 Table 2.3.1
+        ρ_PAR_leaf = 0.07, # Unitless ⋅ CLM5.0 Table 2.3.1
+        ρ_NIR_leaf = 0.35, # Unitless ⋅ CLM5.0 Table 2.3.1
         τ_PAR_leaf = 0.05, # Unitless ⋅ CLM5.0 Table 2.3.1
         τ_NIR_leaf = 0.10, # Unitless ⋅ CLM5.0 Table 2.3.1
         ϵ_canopy = 0.982,  # Unitless ⋅ Ma et al. 2019
@@ -120,8 +120,8 @@ NET_Bor = Pft(
     (
         # Radiative Transfer Model
         Ω = 0.74,          # Unitless ⋅ Chen et al. 2012 Table 1
-        α_PAR_leaf = 0.07, # Unitless ⋅ CLM5.0 Table 2.3.1
-        α_NIR_leaf = 0.35, # Unitless ⋅ CLM5.0 Table 2.3.1
+        ρ_PAR_leaf = 0.07, # Unitless ⋅ CLM5.0 Table 2.3.1
+        ρ_NIR_leaf = 0.35, # Unitless ⋅ CLM5.0 Table 2.3.1
         τ_PAR_leaf = 0.05, # Unitless ⋅ CLM5.0 Table 2.3.1
         τ_NIR_leaf = 0.10, # Unitless ⋅ CLM5.0 Table 2.3.1
         ϵ_canopy = 0.982,  # Unitless ⋅ Ma et al. 2019
@@ -148,8 +148,8 @@ NDT_Bor = Pft(
     (
         # Radiative Transfer Model
         Ω = 0.78,          # Unitless ⋅ Chen et al. 2012 Table 1
-        α_PAR_leaf = 0.07, # Unitless ⋅ CLM5.0 Table 2.3.1
-        α_NIR_leaf = 0.35, # Unitless ⋅ CLM5.0 Table 2.3.1
+        ρ_PAR_leaf = 0.07, # Unitless ⋅ CLM5.0 Table 2.3.1
+        ρ_NIR_leaf = 0.35, # Unitless ⋅ CLM5.0 Table 2.3.1
         τ_PAR_leaf = 0.05, # Unitless ⋅ CLM5.0 Table 2.3.1
         τ_NIR_leaf = 0.10, # Unitless ⋅ CLM5.0 Table 2.3.1
         ϵ_canopy = 0.985,  # Unitless ⋅ Ma et al. 2019
@@ -176,8 +176,8 @@ BET_Trop = Pft(
     (
         # Radiative Transfer Model
         Ω = 0.66,          # Unitless ⋅ Chen et al. 2012 Table 1
-        α_PAR_leaf = 0.10, # Unitless ⋅ CLM5.0 Table 2.3.1
-        α_NIR_leaf = 0.45, # Unitless ⋅ CLM5.0 Table 2.3.1
+        ρ_PAR_leaf = 0.10, # Unitless ⋅ CLM5.0 Table 2.3.1
+        ρ_NIR_leaf = 0.45, # Unitless ⋅ CLM5.0 Table 2.3.1
         τ_PAR_leaf = 0.05, # Unitless ⋅ CLM5.0 Table 2.3.1
         τ_NIR_leaf = 0.25, # Unitless ⋅ CLM5.0 Table 2.3.1
         ϵ_canopy = 0.978,  # Unitless ⋅ Ma et al. 2019
@@ -204,8 +204,8 @@ BET_Temp = Pft(
     (
         # Radiative Transfer Model
         Ω = 0.66,          # Unitless ⋅ Chen et al. 2012 Table 1
-        α_PAR_leaf = 0.10, # Unitless ⋅ CLM5.0 Table 2.3.1
-        α_NIR_leaf = 0.45, # Unitless ⋅ CLM5.0 Table 2.3.1
+        ρ_PAR_leaf = 0.10, # Unitless ⋅ CLM5.0 Table 2.3.1
+        ρ_NIR_leaf = 0.45, # Unitless ⋅ CLM5.0 Table 2.3.1
         τ_PAR_leaf = 0.05, # Unitless ⋅ CLM5.0 Table 2.3.1
         τ_NIR_leaf = 0.25, # Unitless ⋅ CLM5.0 Table 2.3.1
         ϵ_canopy = 0.981,  # Unitless ⋅ Ma et al. 2019
@@ -232,8 +232,8 @@ BDT_Trop = Pft(
     (
         # Radiative Transfer Model
         Ω = 0.70,          # Unitless ⋅ Chen et al. 2012 Table 1
-        α_PAR_leaf = 0.10, # Unitless ⋅ CLM5.0 Table 2.3.1
-        α_NIR_leaf = 0.45, # Unitless ⋅ CLM5.0 Table 2.3.1
+        ρ_PAR_leaf = 0.10, # Unitless ⋅ CLM5.0 Table 2.3.1
+        ρ_NIR_leaf = 0.45, # Unitless ⋅ CLM5.0 Table 2.3.1
         τ_PAR_leaf = 0.05, # Unitless ⋅ CLM5.0 Table 2.3.1
         τ_NIR_leaf = 0.25, # Unitless ⋅ CLM5.0 Table 2.3.1
         ϵ_canopy = 0.982,  # Unitless ⋅ Ma et al. 2019
@@ -260,8 +260,8 @@ BDT_Temp = Pft(
     (
         # Radiative Transfer Model
         Ω = 0.70,          # Unitless ⋅ Chen et al. 2012 Table 1
-        α_PAR_leaf = 0.10, # Unitless ⋅ CLM5.0 Table 2.3.1
-        α_NIR_leaf = 0.45, # Unitless ⋅ CLM5.0 Table 2.3.1
+        ρ_PAR_leaf = 0.10, # Unitless ⋅ CLM5.0 Table 2.3.1
+        ρ_NIR_leaf = 0.45, # Unitless ⋅ CLM5.0 Table 2.3.1
         τ_PAR_leaf = 0.05, # Unitless ⋅ CLM5.0 Table 2.3.1
         τ_NIR_leaf = 0.25, # Unitless ⋅ CLM5.0 Table 2.3.1
         ϵ_canopy = 0.970,  # Unitless ⋅ Ma et al. 2019
@@ -288,8 +288,8 @@ BDT_Bor = Pft(
     (
         # Radiative Transfer Model
         Ω = 0.70,          # Unitless ⋅ Chen et al. 2012 Table 1
-        α_PAR_leaf = 0.10, # Unitless ⋅ CLM5.0 Table 2.3.1
-        α_NIR_leaf = 0.45, # Unitless ⋅ CLM5.0 Table 2.3.1
+        ρ_PAR_leaf = 0.10, # Unitless ⋅ CLM5.0 Table 2.3.1
+        ρ_NIR_leaf = 0.45, # Unitless ⋅ CLM5.0 Table 2.3.1
         τ_PAR_leaf = 0.05, # Unitless ⋅ CLM5.0 Table 2.3.1
         τ_NIR_leaf = 0.25, # Unitless ⋅ CLM5.0 Table 2.3.1
         ϵ_canopy = 0.968,  # Unitless ⋅ Ma et al. 2019
@@ -316,8 +316,8 @@ BES_Temp = Pft(
     (
         # Radiative Transfer Model
         Ω = 0.75,          # Unitless ⋅ Chen et al. 2012 Table 1
-        α_PAR_leaf = 0.07, # Unitless ⋅ CLM5.0 Table 2.3.1
-        α_NIR_leaf = 0.35, # Unitless ⋅ CLM5.0 Table 2.3.1
+        ρ_PAR_leaf = 0.07, # Unitless ⋅ CLM5.0 Table 2.3.1
+        ρ_NIR_leaf = 0.35, # Unitless ⋅ CLM5.0 Table 2.3.1
         τ_PAR_leaf = 0.05, # Unitless ⋅ CLM5.0 Table 2.3.1
         τ_NIR_leaf = 0.10, # Unitless ⋅ CLM5.0 Table 2.3.1
         ϵ_canopy = 0.987,  # Unitless ⋅ Ma et al. 2019
@@ -344,8 +344,8 @@ BDS_Temp = Pft(
     (
         # Radiative Transfer Model
         Ω = 0.75,          # Unitless ⋅ Chen et al. 2012 Table 1
-        α_PAR_leaf = 0.10, # Unitless ⋅ CLM5.0 Table 2.3.1
-        α_NIR_leaf = 0.45, # Unitless ⋅ CLM5.0 Table 2.3.1
+        ρ_PAR_leaf = 0.10, # Unitless ⋅ CLM5.0 Table 2.3.1
+        ρ_NIR_leaf = 0.45, # Unitless ⋅ CLM5.0 Table 2.3.1
         τ_PAR_leaf = 0.05, # Unitless ⋅ CLM5.0 Table 2.3.1
         τ_NIR_leaf = 0.25, # Unitless ⋅ CLM5.0 Table 2.3.1
         ϵ_canopy = 0.987,  # Unitless ⋅ Ma et al. 2019
@@ -372,8 +372,8 @@ BDS_Bor = Pft(
     (
         # Radiative Transfer Model
         Ω = 0.75,          # Unitless ⋅ Chen et al. 2012 Table 1
-        α_PAR_leaf = 0.10, # Unitless ⋅ CLM5.0 Table 2.3.1
-        α_NIR_leaf = 0.45, # Unitless ⋅ CLM5.0 Table 2.3.1
+        ρ_PAR_leaf = 0.10, # Unitless ⋅ CLM5.0 Table 2.3.1
+        ρ_NIR_leaf = 0.45, # Unitless ⋅ CLM5.0 Table 2.3.1
         τ_PAR_leaf = 0.05, # Unitless ⋅ CLM5.0 Table 2.3.1
         τ_NIR_leaf = 0.25, # Unitless ⋅ CLM5.0 Table 2.3.1
         ϵ_canopy = 0.987,  # Unitless ⋅ Ma et al. 2019
@@ -400,8 +400,8 @@ C3G_A = Pft(
     (
         # Radiative Transfer Model
         Ω = 0.76,          # Unitless ⋅ Chen et al. 2012 Table 1
-        α_PAR_leaf = 0.11, # Unitless ⋅ CLM5.0 Table 2.3.1
-        α_NIR_leaf = 0.35, # Unitless ⋅ CLM5.0 Table 2.3.1
+        ρ_PAR_leaf = 0.11, # Unitless ⋅ CLM5.0 Table 2.3.1
+        ρ_NIR_leaf = 0.35, # Unitless ⋅ CLM5.0 Table 2.3.1
         τ_PAR_leaf = 0.05, # Unitless ⋅ CLM5.0 Table 2.3.1
         τ_NIR_leaf = 0.34, # Unitless ⋅ CLM5.0 Table 2.3.1
         ϵ_canopy = 0.978,  # Unitless ⋅ Ma et al. 2019
@@ -428,8 +428,8 @@ C3G_NA = Pft(
     (
         # Radiative Transfer Model
         Ω = 0.76,          # Unitless ⋅ Chen et al. 2012 Table 1
-        α_PAR_leaf = 0.11, # Unitless ⋅ CLM5.0 Table 2.3.1
-        α_NIR_leaf = 0.35, # Unitless ⋅ CLM5.0 Table 2.3.1
+        ρ_PAR_leaf = 0.11, # Unitless ⋅ CLM5.0 Table 2.3.1
+        ρ_NIR_leaf = 0.35, # Unitless ⋅ CLM5.0 Table 2.3.1
         τ_PAR_leaf = 0.05, # Unitless ⋅ CLM5.0 Table 2.3.1
         τ_NIR_leaf = 0.34, # Unitless ⋅ CLM5.0 Table 2.3.1
         ϵ_canopy = 0.978,  # Unitless ⋅ Ma et al. 2019
@@ -456,8 +456,8 @@ C4G = Pft(
     (
         # Radiative Transfer Model
         Ω = 0.75,          # Unitless ⋅ Chen et al. 2012 Table 1
-        α_PAR_leaf = 0.11, # Unitless ⋅ CLM5.0 Table 2.3.1
-        α_NIR_leaf = 0.35, # Unitless ⋅ CLM5.0 Table 2.3.1
+        ρ_PAR_leaf = 0.11, # Unitless ⋅ CLM5.0 Table 2.3.1
+        ρ_NIR_leaf = 0.35, # Unitless ⋅ CLM5.0 Table 2.3.1
         τ_PAR_leaf = 0.05, # Unitless ⋅ CLM5.0 Table 2.3.1
         τ_NIR_leaf = 0.34, # Unitless ⋅ CLM5.0 Table 2.3.1
         ϵ_canopy = 0.978,  # Unitless ⋅ Ma et al. 2019

@@ -16,8 +16,8 @@ using ClimaLand.Canopy
 pft_params = (
     # Radiative Transfer Model
     Ω = 0.74,          # Unitless ⋅ Chen et al. 2012 Table 1
-    α_PAR_leaf = 0.07, # Unitless ⋅ CLM5.0 Table 2.3.1
-    α_NIR_leaf = 0.35, # Unitless ⋅ CLM5.0 Table 2.3.1
+    ρ_PAR_leaf = 0.07, # Unitless ⋅ CLM5.0 Table 2.3.1
+    ρ_NIR_leaf = 0.35, # Unitless ⋅ CLM5.0 Table 2.3.1
     τ_PAR_leaf = 0.05, # Unitless ⋅ CLM5.0 Table 2.3.1
     τ_NIR_leaf = 0.10, # Unitless ⋅ CLM5.0 Table 2.3.1
 
@@ -59,8 +59,8 @@ pft_1 = Pft("PFT1", pft_params)
 pft_param_2 = (
     # Radiative Transfer Model
     Ω = 0.75,          # Unitless ⋅ Chen et al. 2012 Table 1
-    α_PAR_leaf = 0.11, # Unitless ⋅ CLM5.0 Table 2.3.1
-    α_NIR_leaf = 0.35, # Unitless ⋅ CLM5.0 Table 2.3.1
+    ρ_PAR_leaf = 0.11, # Unitless ⋅ CLM5.0 Table 2.3.1
+    ρ_NIR_leaf = 0.35, # Unitless ⋅ CLM5.0 Table 2.3.1
     τ_PAR_leaf = 0.05, # Unitless ⋅ CLM5.0 Table 2.3.1
     τ_NIR_leaf = 0.34, # Unitless ⋅ CLM5.0 Table 2.3.1
 
@@ -84,8 +84,8 @@ pft_2 = Pft("PFT2", pft_param_2)
 pft_param_3 = (
     # Radiative Transfer Model
     Ω = 0.75,          # Unitless ⋅ Chen et al. 2012 Table 1
-    α_PAR_leaf = 0.10, # Unitless ⋅ CLM5.0 Table 2.3.1
-    α_NIR_leaf = 0.45, # Unitless ⋅ CLM5.0 Table 2.3.1
+    ρ_PAR_leaf = 0.10, # Unitless ⋅ CLM5.0 Table 2.3.1
+    ρ_NIR_leaf = 0.45, # Unitless ⋅ CLM5.0 Table 2.3.1
     τ_PAR_leaf = 0.05, # Unitless ⋅ CLM5.0 Table 2.3.1
     τ_NIR_leaf = 0.25, # Unitless ⋅ CLM5.0 Table 2.3.1
 
