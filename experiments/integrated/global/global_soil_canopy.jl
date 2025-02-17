@@ -127,7 +127,7 @@ photosynthesis_args =
 modis_lai_artifact_path =
     ClimaLand.Artifacts.modis_lai_forcing_data2008_path(; context)
 modis_lai_ncdata_path =
-    joinpath(modis_lai_artifact_path, "Yuan_et_al_2011_1x1.nc")
+    joinpath(modis_lai_artifact_path, "Yuan_et_al_2008_1x1.nc")
 LAIfunction = ClimaLand.prescribed_lai_modis(
     modis_lai_ncdata_path,
     surface_space,
