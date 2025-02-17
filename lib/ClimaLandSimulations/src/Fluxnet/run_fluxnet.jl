@@ -21,12 +21,6 @@ function run_fluxnet(
     # Now we set up the model. For the soil model, we pick
     # a model type and model args:
     soil_domain = domain.land_domain
-    PAR_albedo =
-        FT(0.5) * params.soil.PAR_albedo_wet +
-        FT(0.5) * params.soil.PAR_albedo_dry
-    NIR_albedo =
-        FT(0.5) * params.soil.NIR_albedo_wet +
-        FT(0.5) * params.soil.NIR_albedo_dry
     soil_ps = Soil.EnergyHydrologyParameters(
         FT;
         ν = params.soil.ν,
@@ -41,8 +35,8 @@ function run_fluxnet(
         z_0b = params.soil.z_0b,
         emissivity = params.soil.emissivity,
         spectral_discretization = params.soil.spectral_discretization,
-        albedo_wet = (params.soil.PAR_albedo_wet, params.soil.NIR_albedo_wet),
-        albedo_dry = (params.soil.PAR_albedo_dry, params.soil.NIR_albedo_dry),
+        albedo_wet = params.soil.albedo_wet,
+        albedo_dry = params.soil.albedo_dry,
     )
 
     soil_args = (domain = soil_domain, parameters = soil_ps)
