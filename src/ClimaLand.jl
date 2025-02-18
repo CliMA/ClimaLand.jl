@@ -166,7 +166,7 @@ function make_exp_tendency(land::AbstractLandModel)
             f!(dY, Y, p, t)
         end
         
-        @. dY.water.exp = -(p.soil.top_bc.water - p.soil.bottom_bc.water) - p.soil.R_s
+        @. dY.water.exp = -(p.soil.top_bc.water - p.soil.bottom_bc.water)
         @. dY.energy.exp = -(p.soil.top_bc.heat - p.soil.bottom_bc.heat)
     end
     return exp_tendency!

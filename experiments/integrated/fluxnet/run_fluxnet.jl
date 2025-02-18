@@ -192,7 +192,6 @@ land_input = (
     atmos = atmos,
     radiation = radiation,
     soil_organic_carbon = Csom,
-    runoff = ClimaLand.Soil.Runoff.SurfaceRunoff(),
 )
 land = LandModel{FT}(;
     soilco2_type = soilco2_type,
