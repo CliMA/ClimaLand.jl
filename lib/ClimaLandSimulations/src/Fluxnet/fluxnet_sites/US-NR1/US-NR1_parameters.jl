@@ -116,7 +116,7 @@ function radiative_transfer_niwotridge(;
 )
     # Discretization of radiation
     spectral_discretization = TwoBandSpectralDiscretization{FT}()
-    return TwoStreamParameters(
+    return TwoStreamParameters(;
         spectral_discretization = spectral_discretization,
         G_Function = ld,
         ρ_leaf = (ρ_PAR_leaf, ρ_NIR_leaf),
