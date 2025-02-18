@@ -457,7 +457,7 @@ function ClimaLand.make_update_aux(
         p.canopy.radiative_transfer.G .= compute_G(G_Function, θs)
         RT = canopy.radiative_transfer
         banded_sw_d = (sw_d) -> sw_d .* RT.parameters.spectral_discretization.I
-        @. SW_d .= banded_sw_d(p.drivers.SW_d)
+        @. SW_d = banded_sw_d(p.drivers.SW_d)
         K = p.canopy.radiative_transfer.K
         @. K = extinction_coeff(p.canopy.radiative_transfer.G, θs)
         DOY =
