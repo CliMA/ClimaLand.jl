@@ -41,16 +41,8 @@ runoff_model = ClimaLand.Soil.Runoff.TOPMODELRunoff{FT}(;
 
 # Spatially varying canopy parameters from CLM
 clm_parameters = ClimaLand.clm_canopy_parameters(surface_space)
-(;
-    Ω,
-    rooting_depth,
-    is_c3,
-    Vcmax25,
-    g1,
-    G_Function,
-    ρ_leaf,
-    τ_leaf,
-) = clm_parameters
+(; Ω, rooting_depth, is_c3, Vcmax25, g1, G_Function, ρ_leaf, τ_leaf) =
+    clm_parameters
 # Energy Balance model
 ac_canopy = FT(2.5e3)
 # Plant Hydraulics and general plant parameters

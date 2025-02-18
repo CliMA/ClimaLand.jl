@@ -110,23 +110,37 @@ function clm_canopy_parameters(
         regridder_kwargs = (; extrapolation_bc,),
     )
     G_Function = CLMGFunction(χl)
-    compose_function = (PAR, NIR) -> (PAR, NIR)
-    ρ_leaf = SpaceVaryingInput(
+    ρ_PAR_leaf = SpaceVaryingInput(
         joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
-        ["rholvis", "rholnir"],
+        "rholvis",
         surface_space;
         regridder_type,
         regridder_kwargs = (; extrapolation_bc,),
-        compose_function,
     )
-    τ_leaf = SpaceVaryingInput(
+    ρ_NIR_leaf = SpaceVaryingInput(
         joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
-        ["taulvis", "taulnir"],
+        "rholnir",
         surface_space;
         regridder_type,
         regridder_kwargs = (; extrapolation_bc,),
-        compose_function,
     )
+    τ_PAR_leaf = SpaceVaryingInput(
+        joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
+        "taulvis",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc,),
+    )
+    τ_NIR_leaf = SpaceVaryingInput(
+        joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
+        "taulnir",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc,),
+    )
+    to_tuple_valued_field = (PAR, NIR) -> (PAR, NIR)
+    ρ_leaf = to_tuple_valued_field.(ρ_PAR_leaf, ρ_NIR_leaf)
+    τ_leaf = to_tuple_valued_field.(τ_PAR_leaf, τ_NIR_leaf)
     # Conductance Model
     # g1 is read in units of sqrt(kPa) and then converted to sqrt(Pa)
     g1 = SpaceVaryingInput(
@@ -393,6 +407,9 @@ function default_spatially_varying_soil_parameters(
             "NIR_albedo_wet",
         ),
     )
+    to_tuple_valued_field = (PAR, NIR) -> (PAR, NIR)
+    albedo_dry = to_tuple_valued_field.(PAR_albedo_dry, NIR_albedo_dry)
+    albedo_wet = to_tuple_valued_field.(PAR_albedo_wet, NIR_albedo_wet)
 
     return (;
         ν = ν,
@@ -403,8 +420,8 @@ function default_spatially_varying_soil_parameters(
         K_sat = K_sat,
         S_s = S_s,
         θ_r = θ_r,
-        albedo_wet = (PAR_albedo_wet, NIR_albedo_wet),
-        albedo_dry = (PAR_albedo_dry, NIR_albedo_dry),
+        albedo_wet = albedo_wet,
+        albedo_dry = albedo_dry,
         f_max = f_max,
         mask = mask,
     )
