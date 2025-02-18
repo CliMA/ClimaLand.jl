@@ -12,7 +12,7 @@ function process_member_data(simdir)
     # Initialize an empty list to store observations
     obs_list = []
     # Loop over each location
-    for (lon, lat) in locations
+    for (lon, lat) in training_locations
         # Slice lhf and shf at the given longitude and latitude
         lhf_loc = ClimaAnalysis.slice(lhf, lon = lon, lat = lat)
         shf_loc = ClimaAnalysis.slice(shf, lon = lon, lat = lat)
@@ -64,7 +64,7 @@ function process_member_data(simdir)
 end
 
 function CAL.observation_map(iteration)
-    single_member_dims = (1200,) # 4 variables * 12 months * 25 locations
+    # single_member_dims = (1200,) # defined in calibrate_land.jl
     G_ensemble = Array{Float64}(undef, single_member_dims..., ensemble_size)
 
     for m in 1:ensemble_size
