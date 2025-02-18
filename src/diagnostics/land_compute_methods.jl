@@ -270,7 +270,7 @@ function compute_soil_albedo!(
     land_model::SoilCanopyModel{FT},
 ) where {FT}
     if isnothing(out)
-        return sum(p.soil.albedo) / length(p.soil.albedo)
+        return @. sum(p.soil.albedo) / length(p.soil.albedo)
     else
         @. out = sum(p.soil.albedo) / length(p.soil.albedo)
     end

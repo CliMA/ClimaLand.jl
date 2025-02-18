@@ -79,14 +79,23 @@ param_names = (
     :is_c3,
     :Vcmax25,
     :g1,
-    :ρ_PAR_leaf,
-    :τ_PAR_leaf,
-    :ρ_NIR_leaf,
-    :τ_NIR_leaf,
+    :ρ_leaf,
+    :τ_leaf,
+)
+param_names_banded = (
+    :ρ_leaf,
+    :τ_leaf,
 )
 for p in param_names
     @test p ∈ propertynames(clm_parameters)
     @test axes(getproperty(clm_parameters, p)) == surface_space
+end
+for p in param_nams_banded
+    @test p ∈ propertynames(clm_parameters)
+    nbands = length(getproperty(clm_parameters, p))
+    for i in 1:nbands
+        @test axes(getproperty(clm_parameters, p)[i]) == surface_space
+    end
 end
 
 @test :G_Function ∈ propertynames(clm_parameters)

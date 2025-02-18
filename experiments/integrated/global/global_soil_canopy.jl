@@ -64,7 +64,7 @@ atmos, radiation = ClimaLand.prescribed_forcing_era5(
     time_interpolation_method = time_interpolation_method,
 )
 
-# Discretization of radiation
+# Discretization of radiationi
 spectral_discretization = ClimaLand.TwoBandSpectralDiscretization{FT}()
 
 include(

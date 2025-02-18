@@ -136,10 +136,8 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         Vcmax25,
         g1,
         G_Function,
-        ρ_PAR_leaf,
-        τ_PAR_leaf,
-        ρ_NIR_leaf,
-        τ_NIR_leaf,
+        ρ_leaf,
+        τ_leaf,
     ) = clm_parameters
 
     # Energy Balance model
@@ -218,8 +216,8 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
             FT;
             spectral_discretization,
             Ω,
-            (ρ_PAR_leaf, ρ_NIR_leaf),
-            (τ_PAR_leaf, τ_NIR_leaf),
+            ρ_leaf,
+            τ_PAR_leaf,
             G_Function,
         )
     )

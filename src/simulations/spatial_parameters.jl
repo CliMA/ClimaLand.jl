@@ -110,33 +110,22 @@ function clm_canopy_parameters(
         regridder_kwargs = (; extrapolation_bc,),
     )
     G_Function = CLMGFunction(χl)
-    ρ_PAR_leaf = SpaceVaryingInput(
+    compose_function = (PAR, NIR) -> (PAR, NIR)
+    ρ_leaf = SpaceVaryingInput(
         joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
-        "rholvis",
+        ["rholvis", "rholnir"],
         surface_space;
         regridder_type,
         regridder_kwargs = (; extrapolation_bc,),
+        compose_function,
     )
-    ρ_NIR_leaf = SpaceVaryingInput(
+    τ_leaf = SpaceVaryingInput(
         joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
-        "rholnir",
+        ["taulvis", "taulnir"],
         surface_space;
         regridder_type,
         regridder_kwargs = (; extrapolation_bc,),
-    )
-    τ_PAR_leaf = SpaceVaryingInput(
-        joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
-        "taulvis",
-        surface_space;
-        regridder_type,
-        regridder_kwargs = (; extrapolation_bc,),
-    )
-    τ_NIR_leaf = SpaceVaryingInput(
-        joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
-        "taulnir",
-        surface_space;
-        regridder_type,
-        regridder_kwargs = (; extrapolation_bc,),
+        compose_function,
     )
     # Conductance Model
     # g1 is read in units of sqrt(kPa) and then converted to sqrt(Pa)
@@ -181,10 +170,8 @@ function clm_canopy_parameters(
         Vcmax25 = Vcmax25,
         g1 = g1,
         G_Function = G_Function,
-        ρ_PAR_leaf = ρ_PAR_leaf,
-        τ_PAR_leaf = τ_PAR_leaf,
-        ρ_NIR_leaf = ρ_NIR_leaf,
-        τ_NIR_leaf = τ_NIR_leaf,
+        ρ_leaf = ρ_leaf,
+        τ_leaf = τ_leaf,
     )
 end
 
