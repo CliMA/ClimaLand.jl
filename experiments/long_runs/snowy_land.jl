@@ -109,7 +109,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         NIR_albedo_wet,
         f_max,
     ) = spatially_varying_soil_params
-    d_ds = FT(0.5)
+    d_ds = FT(0.03)
     soil_params = Soil.EnergyHydrologyParameters(
         FT;
         ν,
@@ -234,8 +234,15 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     conductance_args =
         (; parameters = Canopy.MedlynConductanceParameters(FT; g1))
     # Set up photosynthesis
-    photosynthesis_args =
-        (; parameters = Canopy.FarquharParameters(FT, is_c3; Vcmax25 = Vcmax25))
+    sc = FT(0)
+    photosynthesis_args = (;
+        parameters = Canopy.FarquharParameters(
+            FT,
+            is_c3;
+            Vcmax25 = Vcmax25,
+            sc = sc,
+        )
+    )
     # Set up plant hydraulics
     modis_lai_artifact_path =
         ClimaLand.Artifacts.modis_lai_forcing_data2008_path(; context)
@@ -449,7 +456,7 @@ setup_and_solve_problem(; greet = true);
 #### ClimaAnalysis ####
 simdir = ClimaAnalysis.SimDir(outdir)
 
-short_names = ["gpp", "swc", "et", "ct", "trans", "si", "tsoil", "msf", "lwu"]
+short_names = ["gpp", "swc", "et", "ct", "trans", "si", "tsoil", "msf"]
 
 include(
     joinpath(
