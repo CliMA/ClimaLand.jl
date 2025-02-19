@@ -227,12 +227,12 @@ function canopy_sw_rt_two_stream(
     G::FT,
     Ω::FT,
     n_layers::UInt64,
-    ρ_leaf::Tuple{Vararg{FT}},
-    τ_leaf::Tuple{Vararg{FT}},
+    ρ_leaf::Tuple,
+    τ_leaf::Tuple,
     LAI::FT,
     K::FT,
     θs::FT,
-    α_soil::Tuple{Vararg{FT}},
+    α_soil::Tuple,
     frac_diff::FT,
 ) where {FT}
 
@@ -323,20 +323,20 @@ function canopy_sw_rt_two_stream(
     Lₗ = FT.(LAI / n_layers)
 
     # Initialize the fraction absorbed value and layer counter
-    F_abs = ntuple(_ -> FT(0.0), Val(length(ρ_leaf)))
+    F_abs = ntuple(_ -> FT(0.0), length(ρ_leaf))
     i = 0
 
     # Total light reflected frοm top of canopy
-    F_refl = ntuple(_ -> FT(0.0), Val(length(ρ_leaf)))
+    F_refl = ntuple(_ -> FT(0.0), length(ρ_leaf))
 
     # Intialize vars to save computed fluxes from each layer for the next layer
-    I_dir_up_prev = ntuple(_ -> FT(0.0), Val(length(ρ_leaf)))
-    I_dir_dn_prev = ntuple(_ -> FT(0.0), Val(length(ρ_leaf)))
-    I_dif_up_prev = ntuple(_ -> FT(0.0), Val(length(ρ_leaf)))
-    I_dif_dn_prev = ntuple(_ -> FT(0.0), Val(length(ρ_leaf)))
+    I_dir_up_prev = ntuple(_ -> FT(0.0), length(ρ_leaf))
+    I_dir_dn_prev = ntuple(_ -> FT(0.0), length(ρ_leaf))
+    I_dif_up_prev = ntuple(_ -> FT(0.0), length(ρ_leaf))
+    I_dif_dn_prev = ntuple(_ -> FT(0.0), length(ρ_leaf))
 
-    I_dir_abs = ntuple(_ -> FT(0.0), Val(length(ρ_leaf)))
-    I_dif_abs = ntuple(_ -> FT(0.0), Val(length(ρ_leaf)))
+    I_dir_abs = ntuple(_ -> FT(0.0), length(ρ_leaf))
+    I_dif_abs = ntuple(_ -> FT(0.0), length(ρ_leaf))
 
     # Compute F_abs in each canopy layer
     while i <= n_layers
@@ -365,8 +365,8 @@ function canopy_sw_rt_two_stream(
 
         # Energy balance giving radiation absorbed in the layer
         if i == 0
-            I_dir_abs = ntuple(_ -> FT(0.0), Val(length(ρ_leaf)))
-            I_dif_abs = ntuple(_ -> FT(0.0), Val(length(ρ_leaf)))
+            I_dir_abs = ntuple(_ -> FT(0.0), length(ρ_leaf))
+            I_dif_abs = ntuple(_ -> FT(0.0), length(ρ_leaf))
         else
             I_dir_abs =
                 FT.(I_dir_up) .- FT.(I_dir_up_prev) .- FT.(I_dir_dn) .+
@@ -407,7 +407,7 @@ function canopy_sw_rt_two_stream(
             refl = FT(F_refl[i]),
             trans = FT(F_trans[i]),
         ),
-        Val(length(ρ_leaf)),
+        length(ρ_leaf),
     )
 end
 
