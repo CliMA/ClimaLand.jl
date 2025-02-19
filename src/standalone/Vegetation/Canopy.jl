@@ -422,8 +422,13 @@ function ClimaLand.make_update_aux(
         c_co2_air = p.drivers.c_co2
         P_air = p.drivers.P
         T_air = p.drivers.T
-        q_air = p.drivers.q
-        h::FT = bc.atmos.h
+        if typeof(bc.atmos) <: PrescribedAtmosphere
+            q_air = p.drivers.q
+        elseif typeof(bc.atmos) <: CoupledAtmosphere
+            q_air = p.drivers.q.q_canopy
+        else
+            error("Unsupported atmospheric boundary condition type")
+        end
 
 
         # unpack parameters

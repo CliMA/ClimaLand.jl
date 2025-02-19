@@ -141,7 +141,7 @@ The estimated PAR is half of the incident shortwave radiation.
 function compute_PAR!(
     par,
     model::AbstractRadiationModel,
-    solar_radiation::ClimaLand.PrescribedRadiativeFluxes,
+    solar_radiation::ClimaLand.AbstractRadiativeDrivers,
     p,
     t,
 )
@@ -164,7 +164,7 @@ The estimated PNIR is half of the incident shortwave radiation.
 function compute_NIR!(
     nir,
     model::AbstractRadiationModel,
-    solar_radiation::ClimaLand.PrescribedRadiativeFluxes,
+    solar_radiation::ClimaLand.AbstractRadiativeDrivers,
     p,
     t,
 )
