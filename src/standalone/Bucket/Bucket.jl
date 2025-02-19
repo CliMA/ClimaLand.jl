@@ -7,7 +7,10 @@ import ClimaUtilities.TimeVaryingInputs
 import ClimaUtilities.DataHandling
 import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
 import ClimaUtilities.TimeVaryingInputs:
-    TimeVaryingInput, AbstractTimeVaryingInput
+    TimeVaryingInput,
+    AbstractTimeVaryingInput,
+    PeriodicCalendar,
+    LinearInterpolation
 import Interpolations
 using ClimaCore
 using ClimaCore.Fields: coordinate_field, level, FieldVector
@@ -186,7 +189,10 @@ function PrescribedSurfaceAlbedo{FT}(
     )
 
     # Construct object containing info to read in surface albedo over time
-    albedo = TimeVaryingInput(data_handler)
+    albedo = TimeVaryingInput(
+        data_handler,
+        method = LinearInterpolation(PeriodicCalendar(Year(1), Date(2010))),
+    )
     return PrescribedSurfaceAlbedo{FT, typeof(albedo)}(albedo)
 end
 

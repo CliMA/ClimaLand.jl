@@ -141,20 +141,14 @@ for (name, infile_path, varname) in name_ds_var_list
         space = domain.space.surface
         surface_coords = Fields.coordinate_field(space)
 
-        start_date_noleap = NCDataset(infile_path, "r") do ds
-            ds["time"][1]
-        end
-        # Converting from NoLeap
-        start_date = Dates.DateTime(
-            Dates.year(start_date_noleap),
-            Dates.month(start_date_noleap),
-            Dates.day(start_date_noleap),
-            Dates.hour(start_date_noleap),
-            Dates.minute(start_date_noleap),
-            Dates.second(start_date_noleap),
-            Dates.millisecond(start_date_noleap),
-        )
         t_start = Float64(0)
+
+        data_handler = DataHandling.DataHandler(infile_path, varname, space)
+
+        file_dates = DataHandling.available_dates(data_handler)
+        # We repeat the year 2010
+        filter!(d -> d >= Dates.DateTime(2010), file_dates)
+        start_date = first(file_dates)
 
         albedo = PrescribedSurfaceAlbedo{FT}(
             start_date,
@@ -165,9 +159,6 @@ for (name, infile_path, varname) in name_ds_var_list
 
         Y = (; bucket = (; W = Fields.zeros(space)))
         p = (; bucket = (; α_sfc = Fields.zeros(space)))
-
-        # set up for manual data reading
-        file_dates = DataHandling.available_dates(albedo.albedo.data_handler)
 
         new_date = start_date + Second(t_start)
         t_curr = t_start
@@ -296,22 +287,6 @@ for (name, infile_path, varname) in name_ds_var_list
         ρc_soil = FT(2e6)
         init_temp(z::FT, value::FT) where {FT} = FT(value)
 
-        t_start = Float64(0)
-        file_dates_noleap = NCDataset(infile_path, "r") do ds
-            ds["time"][:]
-        end
-        to_datetime(date) = Dates.DateTime(
-            Dates.year(date),
-            Dates.month(date),
-            Dates.day(date),
-            Dates.hour(date),
-            Dates.minute(date),
-            Dates.second(date),
-            Dates.millisecond(date),
-        )
-        file_dates = to_datetime.(file_dates_noleap)
-        start_date_in_file = file_dates[1]
-
         bucket_domains = [
             Column(; zlim = FT.((-100.0, 0.0)), nelements = 10),
             SphericalShell(;
@@ -325,14 +300,21 @@ for (name, infile_path, varname) in name_ds_var_list
         for bucket_domain in bucket_domains
             space = bucket_domain.space.surface
             if bucket_domain isa SphericalShell
+                t_start = Float64(0)
+                data_handler =
+                    DataHandling.DataHandler(infile_path, varname, space)
+
+                file_dates = DataHandling.available_dates(data_handler)
+                # We repeat the year 2010
+                filter!(d -> d >= Dates.DateTime(2010), file_dates)
+                start_date = first(file_dates)
                 albedo_model = PrescribedSurfaceAlbedo{FT}(
-                    start_date_in_file,
+                    start_date,
                     space;
                     albedo_file_path = infile_path,
                     varname = varname,
                 )
                 # Radiation
-                start_date = DateTime(2005, 1, 15, 12)
                 SW_d = (t) -> 0
                 LW_d = (t) -> 5.67e-8 * 280.0^4.0
                 bucket_rad = PrescribedRadiativeFluxes(
@@ -348,7 +330,6 @@ for (name, infile_path, varname) in name_ds_var_list
                 q_atmos = (t) -> 0.0 # no atmos water
                 h_atmos = FT(1e-8)
                 P_atmos = (t) -> 101325
-                start_date = DateTime(2005, 1, 15, 12)
                 bucket_atmos = PrescribedAtmosphere(
                     TimeVaryingInput(precip),
                     TimeVaryingInput(precip),
@@ -385,13 +366,13 @@ for (name, infile_path, varname) in name_ds_var_list
                 set_initial_cache!(p, Y, FT(0.0))
                 data_manual = DataHandling.regridded_snapshot(
                     albedo_model.albedo.data_handler,
-                    start_date_in_file,
+                    start_date,
                 )
 
                 @test p.bucket.α_sfc == data_manual
 
                 update_aux! = make_update_aux(model)
-                new_date = start_date_in_file + Second(t_start)
+                new_date = start_date + Second(t_start)
                 t_curr = t_start
                 for i in 1:5
                     @assert new_date == file_dates[i]
@@ -410,10 +391,11 @@ for (name, infile_path, varname) in name_ds_var_list
                     t_curr += dt.value
                 end
             else
+                start_date = DateTime(2010)
                 @test_throws "Using an albedo map requires a global run." PrescribedSurfaceAlbedo{
                     FT,
                 }(
-                    start_date_in_file,
+                    start_date,
                     space,
                 )
             end
