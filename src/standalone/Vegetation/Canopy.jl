@@ -456,8 +456,11 @@ function ClimaLand.make_update_aux(
             (1 - exp(-(LAI + SAI))) #from CLM 5.0, Tech note 4.20
         p.canopy.radiative_transfer.G .= compute_G(G_Function, θs)
         RT = canopy.radiative_transfer
-        banded_sw_d = (sw_d) -> sw_d .* RT.parameters.spectral_discretization.I
-        @. SW_d = banded_sw_d(p.drivers.SW_d)
+        banded_sw_d = (sw_d, intensities) -> sw_d .* intensities
+        @. SW_d = banded_sw_d(
+            p.drivers.SW_d,
+            (RT.parameters.spectral_discretization.I,),
+        )
         K = p.canopy.radiative_transfer.K
         @. K = extinction_coeff(p.canopy.radiative_transfer.G, θs)
         DOY =
