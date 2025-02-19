@@ -12,6 +12,7 @@ import Interpolations
 import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
 import ClimaUtilities.Regridders: InterpolationsRegridder
 import ClimaUtilities.OutputPathGenerator: generate_output_path
+import ClimaUtilities.TimeManager: ITime
 import NCDatasets
 import ClimaParams as CP
 using ClimaComms
@@ -118,6 +119,11 @@ end
 t0 = 0.0
 tf = 3600.0 * 24 * 2
 dt = 1800.0
+t0 = ITime(t0, epoch = start_date)
+tf = ITime(tf, epoch = start_date)
+dt = ITime(dt, epoch = start_date)
+t0, tf, dt = promote(t0, tf, dt)
+
 vg_α = hydrology_cm.α
 vg_n = hydrology_cm.n
 Y.soil.ϑ_l .= hydrostatic_profile.(lat, z, ν, θ_r, vg_α, vg_n, S_s, f_max)
@@ -153,11 +159,12 @@ prob = SciMLBase.ODEProblem(
 save_every = 100
 saveat = [t0, tf]
 sv = (;
-    t = Array{Float64}(undef, length(saveat)),
+    t = Array{typeof(t0)}(undef, length(saveat)),
     saveval = Array{NamedTuple}(undef, length(saveat)),
 )
 saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat)
-updateat = Array(t0:dt:tf)
+updateat = [promote(t0:dt:tf...)...]
+
 drivers = ClimaLand.get_drivers(model)
 updatefunc = ClimaLand.make_update_drivers(drivers)
 driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
