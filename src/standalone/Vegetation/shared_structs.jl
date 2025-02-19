@@ -110,12 +110,12 @@ end
 Creates a hyperspectral discretization with the given wavelength boundaries.
 Wavelength boundaries default to even spacing over the full shortwave spectrum.
 """
-function HyperspectralDiscretization(
-    λ::NTuple{17, FT} = ntuple(i -> 100e-9 + (i - 1) * 150e-9, 17),
-) where {FT}
+function HyperspectralDiscretization{FT}(
+    λ::NTuple{17, FT} = ntuple(i -> FT(100e-9 + (i - 1) * 150e-9), 17),
+) where {FT <: AbstractFloat}
     irradiance_curve = MVector{17, FT}(undef)
     PAR_prop = MVector{17, FT}(undef)
-    PAR_bounds = (400e-9, 700e-9)
+    PAR_bounds = FT.((400e-9, 700e-9))
     sum = 0
     for i in 1:16
         # Portion of incident radiation divided into this band

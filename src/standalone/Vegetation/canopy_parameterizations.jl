@@ -400,7 +400,8 @@ function canopy_sw_rt_two_stream(
 
     # Convert fractional absorption into absorption and return
     # Ensure floating point precision is correct (it may be different for PAR)
-    F_trans = Tuple(FT.((1 .- F_abs .- F_refl) ./ (1 .- α_soil)))
+    F_trans = similar(F_abs)
+    @. F_trans = FT((1 - F_abs - F_refl) / (1 - α_soil))
     return ntuple(
         i -> (;
             abs = FT(F_abs[i]),
