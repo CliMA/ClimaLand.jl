@@ -109,7 +109,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         NIR_albedo_wet,
         f_max,
     ) = spatially_varying_soil_params
-    d_ds = FT(0.005)
+    d_ds = FT(0.5)
     soil_params = Soil.EnergyHydrologyParameters(
         FT;
         ν,

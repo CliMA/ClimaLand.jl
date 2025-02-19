@@ -540,8 +540,7 @@ function soil_boundary_fluxes!(
                 p.soil.turbulent_fluxes.dshfdT
             ) + p.snow.snow_cover_fraction * p.dghfdT_soil
         ) / ρc_sfc # ∂F∂T ∂T∂ρe
-    @. p.soil.dfluxBCdY.water =
-        covariant3_unit_vector(local_geometry_faceN) * 0
+    @. p.soil.dfluxBCdY.water = covariant3_unit_vector(local_geometry_faceN) * 0
     return nothing
 end
 
