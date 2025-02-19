@@ -64,6 +64,9 @@ atmos, radiation = ClimaLand.prescribed_forcing_era5(
     time_interpolation_method = time_interpolation_method,
 )
 
+# Discretization of radiation
+spectral_discretization = ClimaLand.TwoBandSpectralDiscretization{FT}()
+
 include(
     joinpath(
         pkgdir(ClimaLand),
@@ -111,11 +114,10 @@ autotrophic_respiration_args =
 radiative_transfer_args = (;
     parameters = Canopy.TwoStreamParameters(
         FT;
+        spectral_discretization,
         Ω,
-        α_PAR_leaf,
-        τ_PAR_leaf,
-        α_NIR_leaf,
-        τ_NIR_leaf,
+        ρ_leaf,
+        τ_leaf,
     )
 )
 # Set up conductance

@@ -55,6 +55,8 @@ include(
     ),
 )
 
+# Discretization of radiation
+spectral_discretization = ClimaLand.TwoBandSpectralDiscretization{FT}()
 
 # Now we set up the model. For the soil model, we pick
 # a model type and model args:
@@ -72,8 +74,8 @@ soil_ps = Soil.EnergyHydrologyParameters(
     z_0m = z_0m_soil,
     z_0b = z_0b_soil,
     emissivity = soil_ϵ,
-    PAR_albedo = soil_α_PAR,
-    NIR_albedo = soil_α_NIR,
+    spectral_discretization = spectral_discretization,
+    albedo = (soil_α_PAR, soil_α_NIR),
 )
 
 soil_args = (domain = soil_domain, parameters = soil_ps)
@@ -118,15 +120,16 @@ energy_args = (parameters = Canopy.BigLeafEnergyParameters{FT}(ac_canopy),)
 autotrophic_respiration_args =
     (; parameters = AutotrophicRespirationParameters(FT))
 # Set up radiative transfer
+ρ_leaf = (ρ_PAR_leaf, ρ_NIR_leaf)
+τ_leaf = (τ_PAR_leaf, τ_NIR_leaf)
 radiative_transfer_args = (;
     parameters = TwoStreamParameters(
         FT;
+        spectral_discretization,
         Ω,
         G_Function,
-        α_PAR_leaf,
-        τ_PAR_leaf,
-        α_NIR_leaf,
-        τ_NIR_leaf,
+        ρ_leaf,
+        τ_leaf,
     )
 )
 # Set up conductance

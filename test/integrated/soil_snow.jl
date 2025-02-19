@@ -52,10 +52,8 @@ hcm = ClimaLand.Soil.vanGenuchten{FT}(; α = vg_α, n = vg_n)
 ν_ss_quartz = FT(1.0)
 ν_ss_gravel = FT(0.0)
 emissivity = FT(0.99)
-PAR_albedo_dry = FT(0.2)
-NIR_albedo_dry = FT(0.4)
-PAR_albedo_wet = FT(0.1)
-NIR_albedo_wet = FT(0.2)
+albedo_dry = FT.((0.2, 0.4))
+albedo_wet = FT.((0.1, 0.2))
 z_0m = FT(0.001)
 z_0b = z_0m
 soil_params = ClimaLand.Soil.EnergyHydrologyParameters(
@@ -68,10 +66,8 @@ soil_params = ClimaLand.Soil.EnergyHydrologyParameters(
     K_sat,
     S_s,
     θ_r,
-    PAR_albedo_dry,
-    NIR_albedo_dry,
-    PAR_albedo_wet,
-    NIR_albedo_wet,
+    albedo_dry,
+    albedo_wet,
     emissivity,
     z_0m,
     z_0b,

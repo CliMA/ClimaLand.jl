@@ -10,17 +10,17 @@ export volumetric_liquid_fraction,
     update_albedo!
 
 """
-    albedo_from_moisture(surface_eff_sat::FT, albedo_dry::FT, albedo_wet::FT)
+    albedo_from_moisture(surface_eff_sat::FT, albedo_dry::Tuple, albedo_wet::Tuple)
 
 Calculates pointwise albedo for any band as a function of soil effective saturation given
 the dry and wet albedo values for that band.
 """
 function albedo_from_moisture(
     surface_eff_sat::FT,
-    albedo_dry::FT,
-    albedo_wet::FT,
+    albedo_dry::Tuple,
+    albedo_wet::Tuple,
 ) where {FT}
-    return albedo_dry * (1 - surface_eff_sat) + albedo_wet * surface_eff_sat
+    return albedo_dry .* (1 - surface_eff_sat) .+ albedo_wet .* surface_eff_sat
 end
 
 
@@ -47,15 +47,8 @@ CLM reference: Lawrence, P.J., and Chase, T.N. 2007. Representing a MODIS consis
 (CLM 3.0). J. Geophys. Res. 112:G01023. DOI:10.1029/2006JG000168.
 """
 function update_albedo!(bc::AtmosDrivenFluxBC, p, soil_domain, model_parameters)
-    (;
-        ν,
-        θ_r,
-        PAR_albedo_dry,
-        NIR_albedo_dry,
-        PAR_albedo_wet,
-        NIR_albedo_wet,
-        albedo_calc_top_thickness,
-    ) = model_parameters
+    (; ν, θ_r, albedo_dry, albedo_wet, albedo_calc_top_thickness) =
+        model_parameters
     S_sfc = p.soil.sfc_S_e
     FT = eltype(soil_domain.fields.Δz_top)
     # checks if there is at least 1 layer centered within the top soil depth
@@ -90,10 +83,12 @@ function update_albedo!(bc::AtmosDrivenFluxBC, p, soil_domain, model_parameters)
             effective_saturation.(ν, p.soil.θ_l, θ_r),
         )
     end
-    @. p.soil.PAR_albedo =
-        albedo_from_moisture(S_sfc, PAR_albedo_dry, PAR_albedo_wet)
-    @. p.soil.NIR_albedo =
-        albedo_from_moisture(S_sfc, NIR_albedo_dry, NIR_albedo_wet)
+    if typeof(albedo_dry) <: Tuple
+        @. p.soil.albedo =
+            albedo_from_moisture(S_sfc, (albedo_dry,), (albedo_wet,))
+    else
+        @. p.soil.albedo = albedo_from_moisture(S_sfc, albedo_dry, albedo_wet)
+    end
 end
 
 """

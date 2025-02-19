@@ -232,7 +232,12 @@ lsm_aux_types(m::LandModel{FT}) where {FT} = (
     FT,
     FT,
     FT,
-    NamedTuple{(:PAR, :NIR), Tuple{FT, FT}},
+    NTuple{
+        length(
+            m.canopy.radiative_transfer.parameters.spectral_discretization.λ,
+        ) - 1,
+        FT,
+    },
 )
 
 """
@@ -408,13 +413,11 @@ function lsm_radiant_energy_fluxes!(
     T_canopy =
         ClimaLand.Canopy.canopy_temperature(canopy.energy, canopy, Y, p, t)
 
-    α_soil_PAR = p.soil.PAR_albedo
-    α_soil_NIR = p.soil.NIR_albedo
+    α_soil = p.soil.albedo
     ϵ_soil = land.soil.parameters.emissivity
     T_soil = ClimaLand.Domains.top_center_to_surface(p.soil.T)
 
-    α_snow_NIR = land.snow.parameters.α_snow
-    α_snow_PAR = land.snow.parameters.α_snow
+    α_snow = land.snow.parameters.α_snow
     ϵ_snow = land.snow.parameters.ϵ_snow
     T_snow = p.snow.T_sfc
 
@@ -428,31 +431,24 @@ function lsm_radiant_energy_fluxes!(
     R_net_snow = p.snow.R_n
     LW_u = p.LW_u
     SW_u = p.SW_u
-    par_d = p.canopy.radiative_transfer.par_d
-    nir_d = p.canopy.radiative_transfer.nir_d
-    f_abs_par = p.canopy.radiative_transfer.par.abs
-    f_abs_nir = p.canopy.radiative_transfer.nir.abs
-    f_refl_par = p.canopy.radiative_transfer.par.refl
-    f_refl_nir = p.canopy.radiative_transfer.nir.refl
-    f_trans_par = p.canopy.radiative_transfer.par.trans
-    f_trans_nir = p.canopy.radiative_transfer.nir.trans
+    SW_d = p.canopy.radiative_transfer.SW_d
+
+    get_rt = (rt, sym) -> map(x -> getproperty(x, sym), rt)
+    spectral_f_abs = get_rt.(p.canopy.radiative_transfer.rt, :abs)
+    spectral_f_refl = get_rt.(p.canopy.radiative_transfer.rt, :refl)
+    spectral_f_trans = get_rt.(p.canopy.radiative_transfer.rt, :trans)
+
     # in total: d - u = CANOPY_ABS + (1-α_ground)*CANOPY_TRANS
-    # SW_u  = reflected par + reflected nir
-    @. SW_u = par_d * f_refl_par + f_refl_nir * nir_d
+    # SW_u = sum of reflectance in each band
+    @. SW_u = sum(SW_d .* spectral_f_refl)
 
     # net canopy
-    @. SW_net_canopy = f_abs_par * par_d + f_abs_nir * nir_d
+    @. SW_net_canopy = sum(SW_d .* spectral_f_abs)
 
     # net radiative flux for soil = -((1-α)*trans for par and nir)
-    @. R_net_soil .= -(
-        f_trans_nir * nir_d * (1 - α_soil_NIR) +
-        f_trans_par * par_d * (1 - α_soil_PAR)
-    )
+    @. R_net_soil .= -1 * sum((1 .- α_soil) .* SW_d .* spectral_f_trans)
 
-    @. R_net_snow .= -(
-        f_trans_nir * nir_d * (1 - α_snow_NIR) +
-        f_trans_par * par_d * (1 - α_snow_PAR)
-    )
+    @. R_net_snow .= -1 * sum((1 - α_snow) .* SW_d .* spectral_f_trans)
 
     ϵ_canopy = p.canopy.radiative_transfer.ϵ # this takes into account LAI/SAI
 
@@ -607,7 +603,7 @@ struct PrognosticGroundConditions{
 end
 
 """
-    Canopy.ground_albedo_PAR(
+    Canopy.ground_albedo(
         prognostic_land_components::Val{(:canopy, :snow, :soil, :soilco2)},
         ground::PrognosticGroundConditions,
         Y,
@@ -615,45 +611,20 @@ end
         t,
     )
 
-A method of Canopy.ground_albedo_PAR for a prognostic soil/snow. This function is called in
-the Canopy update_aux! function.
+Computes ground albedo for the canopy model, given the ground snow conditions,
+the soil albedo, and the snow albedo.
 """
-function Canopy.ground_albedo_PAR(
-    prognostic_land_components::Val{(:canopy, :snow, :soil, :soilco2)},
+function Canopy.ground_albedo(
+    prognostice_land_components::Val{(:canopy, :snow, :soil, :soilco2)},
     ground::PrognosticGroundConditions,
     Y,
     p,
     t,
 )
-    @. p.α_ground.PAR =
-        (1 - p.snow.snow_cover_fraction) * p.soil.PAR_albedo +
+    @. p.α_ground =
+        (1 - p.snow.snow_cover_fraction) * p.soil.albedo +
         p.snow.snow_cover_fraction * ground.α_snow
-    return p.α_ground.PAR
-end
-
-"""
-    Canopy.ground_albedo_NIR(
-        prognostic_land_components::Val{(:canopy, :snow, :soil, :soilco2)},
-        ground::PrognosticGroundConditions,
-        Y,
-        p,
-        t,
-    )
-
-A method of Canopy.ground_albedo_NIR for a prognostic soil/snow. This function is called in
-the Canopy update_aux! function.
-"""
-function Canopy.ground_albedo_NIR(
-    prognostic_land_components::Val{(:canopy, :snow, :soil, :soilco2)},
-    ground::PrognosticGroundConditions,
-    Y,
-    p,
-    t,
-)
-    @. p.α_ground.NIR =
-        (1 - p.snow.snow_cover_fraction) * p.soil.NIR_albedo +
-        p.snow.snow_cover_fraction * ground.α_snow
-    return p.α_ground.NIR
+    return p.α_ground
 end
 
 """

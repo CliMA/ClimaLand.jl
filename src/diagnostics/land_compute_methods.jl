@@ -141,40 +141,99 @@ end
 @diagnostic_compute "vcmax25" Union{SoilCanopyModel, LandModel} p.canopy.photosynthesis.Vcmax25
 
 # Canopy - Radiative Transfer
-@diagnostic_compute "near_infrared_radiation_down" Union{
+@diagnostic_compute "net_shortwave_down" Union{SoilCanopyModel, LandModel} sum.(
+    p.canopy.radiative_transfer.SW_d
+)
+get_net_radiation_type = (rt, sym) -> sum(map(x -> getproperty(x, sym), rt))
+@diagnostic_compute "net_shortwave_absorbed" Union{SoilCanopyModel, LandModel} get_net_radiation_type.(
+    p.canopy.radiative_transfer.rt,
+    :abs,
+)
+@diagnostic_compute "net_shortwave_reflected" Union{SoilCanopyModel, LandModel} get_net_radiation_type.(
+    p.canopy.radiative_transfer.rt,
+    :refl,
+)
+@diagnostic_compute "net_shortwave_transmitted" Union{
     SoilCanopyModel,
     LandModel,
-} p.canopy.radiative_transfer.nir_d
-@diagnostic_compute "near_infrared_radiation_absorbed" Union{
-    SoilCanopyModel,
-    LandModel,
-} p.canopy.radiative_transfer.nir.abs
-@diagnostic_compute "near_infrared_radiation_reflected" Union{
-    SoilCanopyModel,
-    LandModel,
-} p.canopy.radiative_transfer.nir.refl
-@diagnostic_compute "near_infrared_radiation_transmitted" Union{
-    SoilCanopyModel,
-    LandModel,
-} p.canopy.radiative_transfer.nir.trans
-@diagnostic_compute "photosynthetically_active_radiation_down" Union{
-    SoilCanopyModel,
-    LandModel,
-} p.canopy.radiative_transfer.par_d
-@diagnostic_compute "photosynthetically_active_radiation_absorbed" Union{
-    SoilCanopyModel,
-    LandModel,
-} p.canopy.radiative_transfer.par.abs
-@diagnostic_compute "photosynthetically_active_radiation_reflected" Union{
-    SoilCanopyModel,
-    LandModel,
-} p.canopy.radiative_transfer.par.refl
-@diagnostic_compute "photosynthetically_active_radiation_transmitted" Union{
-    SoilCanopyModel,
-    LandModel,
-} p.canopy.radiative_transfer.par.trans
-@diagnostic_compute "radiation_longwave_net" Union{SoilCanopyModel, LandModel} p.canopy.radiative_transfer.LW_n
-@diagnostic_compute "radiation_shortwave_net" Union{SoilCanopyModel, LandModel} p.canopy.radiative_transfer.SW_n
+} get_net_radiation_type.(p.canopy.radiative_transfer.rt, :trans)
+
+function compute_photosynthetically_active_radiation_down!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::Union{SoilCanopyModel, LandModel},
+)
+    spectral_discretization =
+        land_model.canopy.radiative_transfer.parameters.spectral_discretization
+    PAR_coeff = spectral_discretization.PAR_proportions
+    get_PAR = (sw) -> sum(sw .* PAR_coeff)
+    if isnothing(out)
+        return get_PAR.(p.canopy.radiative_transfer.SW_d)
+    else
+        out .= get_PAR.(p.canopy.radiative_transfer.SW_d)
+    end
+end
+
+get_PAR_sum =
+    (rt, sym, PAR_coeff) -> sum(map(x -> getproperty(x, sym), rt) .* PAR_coeff)
+
+function compute_photosynthetically_active_radiation_absorbed!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::Union{SoilCanopyModel, LandModel},
+)
+    spectral_discretization =
+        land_model.canopy.radiative_transfer.parameters.spectral_discretization
+    PAR_coeff = spectral_discretization.PAR_proportions
+    if isnothing(out)
+        return get_PAR_sum.(p.canopy.radiative_transfer.rt, :abs, (PAR_coeff,))
+    else
+        out .= get_PAR_sum.(p.canopy.radiative_transfer.rt, :abs, (PAR_coeff,))
+    end
+end
+
+function compute_photosynthetically_active_radiation_reflected!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::Union{SoilCanopyModel, LandModel},
+)
+    spectral_discretization =
+        land_model.canopy.radiative_transfer.parameters.spectral_discretization
+    PAR_coeff = spectral_discretization.PAR_proportions
+    if isnothing(out)
+        return get_PAR_sum.(p.canopy.radiative_transfer.rt, :refl, (PAR_coeff,))
+    else
+        out .= get_PAR_sum.(p.canopy.radiative_transfer.rt, :refl, (PAR_coeff,))
+    end
+end
+
+function compute_photosynthetically_active_radiation_transmitted!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::Union{SoilCanopyModel, LandModel},
+)
+    spectral_discretization =
+        land_model.canopy.radiative_transfer.parameters.spectral_discretization
+    PAR_coeff = spectral_discretization.PAR_proportions
+    if isnothing(out)
+        return get_PAR_sum.(
+            p.canopy.radiative_transfer.rt,
+            :trans,
+            (PAR_coeff,),
+        )
+    else
+        out .=
+            get_PAR_sum.(p.canopy.radiative_transfer.rt, :trans, (PAR_coeff,))
+    end
+end
 
 ## Drivers Module ##
 
@@ -211,9 +270,9 @@ function compute_soil_albedo!(
     land_model::SoilCanopyModel{FT},
 ) where {FT}
     if isnothing(out)
-        return (p.soil.PAR_albedo .+ p.soil.NIR_albedo) ./ 2
+        return @. sum(p.soil.albedo) / length(p.soil.albedo)
     else
-        @. out = (p.soil.PAR_albedo + p.soil.NIR_albedo) / 2
+        @. out = sum(p.soil.albedo) / length(p.soil.albedo)
     end
 end
 

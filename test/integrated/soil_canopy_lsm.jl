@@ -9,11 +9,13 @@ using Dates
 import ClimaLand.Parameters as LP
 using ClimaLand.Soil.Biogeochemistry
 using ClimaLand.Canopy.PlantHydraulics
+
 for FT in (Float32, Float64)
     @testset "PrognosticSoil, FT = $FT" begin
+        # Discretize radiation into 2 bands
+        spectral_discretization = ClimaLand.TwoBandSpectralDiscretization{FT}()
         # Only care about PAR and NIR albedo values
-        NIR_albedo = FT(0.4)
-        PAR_albedo = FT(0.2)
+        albedo = (0.2, 0.4)
         # setup SoilCanopyModel with dummy params
         earth_param_set = LP.LandParameters(FT)
         radius = FT(6378.1e3)
@@ -50,8 +52,7 @@ for FT in (Float32, Float64)
             K_sat = FT(0),
             S_s = FT(0),
             θ_r = FT(0),
-            NIR_albedo,
-            PAR_albedo,
+            albedo,
             emissivity = FT(0),
             z_0m = FT(0),
             z_0b = FT(0),
@@ -82,11 +83,10 @@ for FT in (Float32, Float64)
         radiative_transfer_args = (;
             parameters = Canopy.TwoStreamParameters(
                 FT;
+                spectral_discretization = spectral_discretization,
                 Ω = FT(0),
-                α_PAR_leaf = FT(0),
-                τ_PAR_leaf = FT(0),
-                α_NIR_leaf = FT(0),
-                τ_NIR_leaf = FT(0),
+                ρ_leaf = (FT(0), FT(0)),
+                τ_leaf = (FT(0), FT(0)),
             )
         )
         conductance_args =
@@ -170,37 +170,52 @@ for FT in (Float32, Float64)
         # initialize model
         Y, p, coords = initialize(model)
         # check that albedos have been added to cache
-        @test haskey(p.soil, :PAR_albedo)
-        @test haskey(p.soil, :NIR_albedo)
+        @test haskey(p.soil, :albedo)
         # initialize cache, then check that albedos are set to the correct values
         set_initial_cache! = make_set_initial_cache(model)
         set_initial_cache!(p, Y, 0.0)
         canopy_bc = model.canopy.boundary_conditions
         @test all(
             Array(
-                parent(
-                    Canopy.ground_albedo_PAR(
-                        Val(canopy_bc.prognostic_land_components),
-                        canopy_bc.ground,
-                        Y,
-                        p,
-                        0.0,
-                    ),
+                vec(
+                    parent(
+                        Canopy.ground_albedo(
+                            Val(canopy_bc.prognostic_land_components),
+                            canopy_bc.ground,
+                            Y,
+                            p,
+                            0.0,
+                        ),
+                    )[
+                        :,
+                        :,
+                        1:2:end,
+                        :,
+                        :,
+                    ],
                 ),
-            ) .== PAR_albedo,
+            ) .== FT(albedo[1]),
         )
         @test all(
             Array(
-                parent(
-                    Canopy.ground_albedo_NIR(
-                        Val(canopy_bc.prognostic_land_components),
-                        canopy_bc.ground,
-                        Y,
-                        p,
-                        0.0,
-                    ),
+                vec(
+                    parent(
+                        Canopy.ground_albedo(
+                            Val(canopy_bc.prognostic_land_components),
+                            canopy_bc.ground,
+                            Y,
+                            p,
+                            0.0,
+                        ),
+                    )[
+                        :,
+                        :,
+                        2:2:end,
+                        :,
+                        :,
+                    ],
                 ),
-            ) .== NIR_albedo,
+            ) .== FT(albedo[2]),
         )
     end
 end

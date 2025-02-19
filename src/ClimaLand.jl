@@ -298,6 +298,17 @@ lsm_aux_domain_names(m::AbstractLandModel) = ()
 include("standalone/SurfaceWater/Pond.jl")
 using .Pond
 import .Pond: surface_runoff
+include("standalone/Vegetation/Canopy.jl")
+using .Canopy
+using .Canopy.PlantHydraulics
+import .Canopy.PlantHydraulics: root_water_flux_per_ground_area!
+import .Canopy:
+    ground_albedo,
+    AbstractSpectralDiscretization,
+    TwoBandSpectralDiscretization,
+    canopy_radiant_energy_fluxes!,
+    root_energy_flux_per_ground_area!,
+    AbstractGroundConditions
 include("standalone/Soil/Soil.jl")
 using .Soil
 import .Soil: soil_boundary_fluxes!, sublimation_source
@@ -305,23 +316,13 @@ import .Soil.Biogeochemistry: soil_temperature, soil_moisture
 include("standalone/Snow/Snow.jl")
 using .Snow
 import .Snow: snow_boundary_fluxes!
-include("standalone/Vegetation/Canopy.jl")
-using .Canopy
-using .Canopy.PlantHydraulics
-import .Canopy.PlantHydraulics: root_water_flux_per_ground_area!
-import .Canopy:
-    ground_albedo_PAR,
-    ground_albedo_NIR,
-    canopy_radiant_energy_fluxes!,
-    root_energy_flux_per_ground_area!,
-    AbstractGroundConditions
 ### Concrete types of AbstractLandModels
 ### and associated methods
 include("integrated/soil_energy_hydrology_biogeochemistry.jl")
 include("integrated/pond_soil_model.jl")
+include("integrated/land.jl")
 include("integrated/soil_canopy_model.jl")
 include("integrated/soil_snow_model.jl")
-include("integrated/land.jl")
 include("integrated/soil_canopy_root_interactions.jl")
 include("integrated/land_radiation.jl")
 

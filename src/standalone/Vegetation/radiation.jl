@@ -29,7 +29,8 @@ Base.broadcastable(G::ConstantGFunction) = tuple(G)
     CLMGFunction
 
 A type for a G function that is parameterized by the solar zenith angle,
-following the CLM approach to parameterizing the leaf angle distribution function.
+following the CLM approach to parameterizing the leaf angle distribution
+function.
 """
 struct CLMGFunction{F <: Union{AbstractFloat, ClimaCore.Fields.Field}} <:
        AbstractGFunction{F}
@@ -48,13 +49,14 @@ $(DocStringExtensions.FIELDS)
 """
 Base.@kwdef struct BeerLambertParameters{
     FT <: AbstractFloat,
+    SD <: AbstractSpectralDiscretization{FT},
     G <: AbstractGFunction,
-    F <: Union{FT, ClimaCore.Fields.Field},
+    F <: Union{Tuple, ClimaCore.Fields.Field},
 }
-    "PAR leaf reflectance (unitless)"
-    α_PAR_leaf::F
-    "NIR leaf reflectance"
-    α_NIR_leaf::F
+    "Discretization of shortwave spectrum"
+    spectral_discretization::SD
+    "Spectral leaf element reflectances"
+    ρ_leaf::F
     "Emissivity of the canopy"
     ϵ_canopy::FT
     "Clumping index following Braghiere (2021) (unitless)"
@@ -86,17 +88,17 @@ $(DocStringExtensions.FIELDS)
 """
 Base.@kwdef struct TwoStreamParameters{
     FT <: AbstractFloat,
+    SD <: AbstractSpectralDiscretization{FT},
     G <: AbstractGFunction,
     F <: Union{FT, ClimaCore.Fields.Field},
+    TF <: Union{Tuple, ClimaCore.Fields.Field},
 }
-    "PAR leaf reflectance (unitless)"
-    α_PAR_leaf::F
-    "PAR leaf element transmittance"
-    τ_PAR_leaf::F
-    "NIR leaf reflectance"
-    α_NIR_leaf::F
-    "NIR leaf element transmittance"
-    τ_NIR_leaf::F
+    "Discretization of shortwave spectrum"
+    spectral_discretization::SD
+    "Spectral leaf element reflectances"
+    ρ_leaf::TF
+    "Spectral leaf element transmittances"
+    τ_leaf::TF
     "Emissivity of the canopy"
     ϵ_canopy::FT
     "Clumping index following Braghiere 2021 (unitless)"
@@ -126,49 +128,27 @@ function TwoStreamModel{FT}(
 end
 
 """
-    compute_PAR!(par,
+    compute_spectral_sw!(sw_in,
         model::AbstractRadiationModel,
         solar_radiation::ClimaLand.PrescribedRadiativeFluxes,
         p,
         t,
     )
 
-Updates `par` with the estimated PAR (W/,m^2) given the input solar radiation
-for a radiative transfer model.
+Update `sw_in` with the spectral shortwave radiation (W/m^2) given the input
+solar radiation for a radiative transfer model.
 
-The estimated PAR is half of the incident shortwave radiation.
+The spectral shortwave radiation per each band is computed based on the relative
+proportion of the total shortwave radiation from the solar irradiance curve.
 """
-function compute_PAR!(
-    par,
+function compute_spectral_sw!(
+    sw_in,
     model::AbstractRadiationModel,
     solar_radiation::ClimaLand.PrescribedRadiativeFluxes,
     p,
     t,
 )
-    @. par = p.drivers.SW_d / 2
-end
-
-"""
-    compute_NIR!(nir,
-        model::AbstractRadiationModel,
-        solar_radiation::ClimaLand.PrescribedRadiativeFluxes,
-        p,
-        t,
-    )
-
-Update `nir` with the estimated NIR (W/m^2) given the input solar radiation
-for a radiative transfer model.
-
-The estimated PNIR is half of the incident shortwave radiation.
-"""
-function compute_NIR!(
-    nir,
-    model::AbstractRadiationModel,
-    solar_radiation::ClimaLand.PrescribedRadiativeFluxes,
-    p,
-    t,
-)
-    @. nir = p.drivers.SW_d / 2
+    @. sw_in = p.drivers.SW_d .* model.parameters.spectral_discretization.I
 end
 
 # Make radiation models broadcastable
@@ -176,14 +156,15 @@ Base.broadcastable(RT::AbstractRadiationModel) = tuple(RT)
 
 ClimaLand.name(model::AbstractRadiationModel) = :radiative_transfer
 ClimaLand.auxiliary_vars(model::Union{BeerLambertModel, TwoStreamModel}) =
-    (:nir_d, :par_d, :nir, :par, :LW_n, :SW_n, :ϵ, :frac_diff, :G, :K)
+    (:SW_d, :rt, :LW_n, :SW_n, :ϵ, :frac_diff, :G, :K)
 ClimaLand.auxiliary_types(
     model::Union{BeerLambertModel{FT}, TwoStreamModel{FT}},
 ) where {FT} = (
-    FT,
-    FT,
-    NamedTuple{(:abs, :refl, :trans), Tuple{FT, FT, FT}},
-    NamedTuple{(:abs, :refl, :trans), Tuple{FT, FT, FT}},
+    NTuple{length(model.parameters.spectral_discretization.λ) - 1, FT},
+    NTuple{
+        length(model.parameters.spectral_discretization.λ) - 1,
+        NamedTuple{(:abs, :refl, :trans), Tuple{FT, FT, FT}},
+    },
     FT,
     FT,
     FT,
@@ -192,8 +173,6 @@ ClimaLand.auxiliary_types(
     FT,
 )
 ClimaLand.auxiliary_domain_names(::Union{BeerLambertModel, TwoStreamModel}) = (
-    :surface,
-    :surface,
     :surface,
     :surface,
     :surface,
@@ -215,10 +194,9 @@ ClimaLand.auxiliary_domain_names(::Union{BeerLambertModel, TwoStreamModel}) = (
                                  ) where {PSE}
 
 
-Computes and stores the net long and short wave radiation, in W/m^2, over all bands,
-absorbed by the canopy when the canopy is run in standalone mode, with only
-a :canopy model as a prognostic component,
-with PrescribedGroundConditions.
+Computes and stores the net long and short wave radiation, in W/m^2, over all
+bands, absorbed by the canopy when the canopy is run in standalone mode, with
+only a :canopy model as a prognostic component, with PrescribedGroundConditions.
 
 LW and SW net radiation are stored in `p.canopy.radiative_transfer.LW_n`
 and `p.canopy.radiative_transfer.SW_n`.
@@ -233,11 +211,10 @@ function canopy_radiant_energy_fluxes!(
     t,
 ) where {PSE}
     FT = eltype(earth_param_set)
-    par_d = p.canopy.radiative_transfer.par_d
-    nir_d = p.canopy.radiative_transfer.nir_d
-    f_abs_par = p.canopy.radiative_transfer.par.abs
-    f_abs_nir = p.canopy.radiative_transfer.nir.abs
-    @. p.canopy.radiative_transfer.SW_n = f_abs_par * par_d + f_abs_nir * nir_d
+    SW_d = p.canopy.radiative_transfer.SW_d
+    get_abs = (rt) -> map(x -> x.abs, rt)
+    SW_abs = get_abs.(p.canopy.radiative_transfer.rt)
+    @. p.canopy.radiative_transfer.SW_n = sum(SW_abs .* SW_d)
     ϵ_canopy = p.canopy.radiative_transfer.ϵ # this takes into account LAI/SAI
     # Long wave: use ground conditions from the ground driver
     T_ground::FT = ground.T(t)

@@ -72,6 +72,8 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
 
     start_date = DateTime(2008)
 
+    spectral_discretization = Canopy.TwoBandSpectralDiscretization{FT}()
+
     # Forcing data
     era5_artifact_path =
         ClimaLand.Artifacts.era5_land_forcing_data2008_folder_path(; context)
@@ -99,10 +101,8 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
         K_sat,
         S_s,
         θ_r,
-        PAR_albedo_dry,
-        NIR_albedo_dry,
-        PAR_albedo_wet,
-        NIR_albedo_wet,
+        albedo_dry,
+        albedo_wet,
         f_max,
     ) = spatially_varying_soil_params
     soil_params = Soil.EnergyHydrologyParameters(
@@ -115,10 +115,9 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
         K_sat,
         S_s,
         θ_r,
-        PAR_albedo_dry = PAR_albedo_dry,
-        NIR_albedo_dry = NIR_albedo_dry,
-        PAR_albedo_wet = PAR_albedo_wet,
-        NIR_albedo_wet = NIR_albedo_wet,
+        spectral_discretization,
+        albedo_dry,
+        albedo_wet,
     )
 
     f_over = FT(3.28) # 1/m
@@ -130,18 +129,8 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
     )
     # Spatially varying canopy parameters from CLM
     clm_parameters = ClimaLand.clm_canopy_parameters(surface_space)
-    (;
-        Ω,
-        rooting_depth,
-        is_c3,
-        Vcmax25,
-        g1,
-        G_Function,
-        α_PAR_leaf,
-        τ_PAR_leaf,
-        α_NIR_leaf,
-        τ_NIR_leaf,
-    ) = clm_parameters
+    (; Ω, rooting_depth, is_c3, Vcmax25, g1, G_Function, ρ_leaf, τ_leaf) =
+        clm_parameters
 
     # Energy Balance model
     ac_canopy = FT(2.5e3)
@@ -218,11 +207,10 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
     radiative_transfer_args = (;
         parameters = Canopy.TwoStreamParameters(
             FT;
+            spectral_discretization,
             Ω,
-            α_PAR_leaf,
-            τ_PAR_leaf,
-            α_NIR_leaf,
-            τ_NIR_leaf,
+            ρ_leaf,
+            τ_leaf,
             G_Function,
         )
     )

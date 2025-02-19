@@ -16,6 +16,8 @@ import ClimaLand.Canopy.AutotrophicRespirationParameters
 import ClimaLand.Canopy.FarquharParameters
 import ClimaLand.Canopy.OptimalityFarquharParameters
 import ClimaLand.Canopy.MedlynConductanceParameters
+import ClimaLand.Canopy.AbstractSpectralDiscretization
+import ClimaLand.Canopy.TwoBandSpectralDiscretization
 import ClimaLand.Canopy.BeerLambertParameters
 import ClimaLand.Canopy.TwoStreamParameters
 import ClimaLand.Canopy.ConstantGFunction
@@ -320,18 +322,17 @@ function EnergyHydrologyParameters(
     K_sat::F,
     S_s::F,
     θ_r::F,
-    PAR_albedo_dry::SF = nothing,
-    NIR_albedo_dry::SF = nothing,
-    PAR_albedo_wet::SF = nothing,
-    NIR_albedo_wet::SF = nothing,
-    PAR_albedo::SFD = 0.2,
-    NIR_albedo::SFD = 0.4,
+    spectral_discretization::SD = nothing,
+    albedo_dry::TF = nothing,
+    albedo_wet::TF = nothing,
+    albedo::SFD = (0.2, 0.4),
     albedo_calc_top_thickness::TD = 0.07,
     kwargs...,
 ) where {
     F <: Union{<:AbstractFloat, ClimaCore.Fields.Field},
-    SF <: Union{<:AbstractFloat, ClimaCore.Fields.Field, Nothing},
-    SFD <: Union{<:AbstractFloat, ClimaCore.Fields.Field},
+    SFD <: Union{<:Tuple, ClimaCore.Fields.Field},
+    SD <: Union{Nothing, AbstractSpectralDiscretization},
+    TF <: Union{Nothing, Tuple, ClimaCore.Fields.Field},
     TD <: AbstractFloat,
     C,
 }
@@ -394,18 +395,25 @@ function EnergyHydrologyParameters(
     parameters = CP.get_parameter_values(toml_dict, name_map, "Land")
     PSE = typeof(earth_param_set)
     FT = CP.float_type(toml_dict)
-    if isnothing(PAR_albedo_dry)
-        PAR_albedo_dry = FT.(PAR_albedo)
-        NIR_albedo_dry = FT.(NIR_albedo)
-        PAR_albedo_wet = FT.(PAR_albedo)
-        NIR_albedo_wet = FT.(NIR_albedo)
+    if isnothing(spectral_discretization)
+        spectral_discretization = TwoBandSpectralDiscretization{FT}()
+    end
+    if isnothing(albedo_dry)
+        albedo_dry = albedo
+        albedo_wet = albedo
     end
     albedo_calc_top_thickness = FT(albedo_calc_top_thickness)
-    EnergyHydrologyParameters{FT, F, typeof(PAR_albedo_dry), C, PSE}(;
-        PAR_albedo_wet,
-        NIR_albedo_wet,
-        PAR_albedo_dry,
-        NIR_albedo_dry,
+    EnergyHydrologyParameters{
+        FT,
+        F,
+        typeof(spectral_discretization),
+        typeof(albedo_dry),
+        C,
+        PSE,
+    }(;
+        spectral_discretization,
+        albedo_wet,
+        albedo_dry,
         albedo_calc_top_thickness,
         ν,
         ν_ss_om,
@@ -574,20 +582,18 @@ end
 """
     function TwoStreamParameters(FT::AbstractFloat;
         ld = (_) -> 0.5,
-        α_PAR_leaf = 0.3,
-        τ_PAR_leaf = 0.2,
-        α_NIR_leaf = 0.4,
-        τ_NIR_leaf = 0.25,
+        spectral_discretization = TwoBandSpectralDiscretization{FT}(),
+        ρ_leaf = (0.3, 0.4),
+        τ_leaf = (0.2, 0.25),
         Ω = 1,
         n_layers = UInt64(20),
         kwargs...
     )
     function TwoStreamParameters(toml_dict;
         ld = (_) -> 0.5,
-        α_PAR_leaf = 0.3,
-        τ_PAR_leaf = 0.2,
-        α_NIR_leaf = 0.4,
-        τ_NIR_leaf = 0.25,
+        spectral_discretization = TwoBandSpectralDiscretization{FT}(),
+        ρ_leaf = (0.3, 0.4),
+        τ_leaf = (0.2, 0.25),
         Ω = 1,
         n_layers = UInt64(20),
         kwargs...
@@ -602,10 +608,9 @@ TwoStreamParameters(::Type{FT}; kwargs...) where {FT <: AbstractFloat} =
 function TwoStreamParameters(
     toml_dict::CP.AbstractTOMLDict;
     G_Function = ConstantGFunction(CP.float_type(toml_dict)(0.5)),
-    α_PAR_leaf::F = 0.3,
-    τ_PAR_leaf::F = 0.2,
-    α_NIR_leaf::F = 0.4,
-    τ_NIR_leaf::F = 0.25,
+    spectral_discretization = nothing,
+    ρ_leaf::F = (0.3, 0.4),
+    τ_leaf::F = (0.2, 0.25),
     Ω = 1,
     n_layers = UInt64(20),
     kwargs...,
@@ -619,16 +624,26 @@ function TwoStreamParameters(
     FT = CP.float_type(toml_dict)
     # default value for keyword args must be converted manually
     # automatic conversion not possible to Union types
-    α_PAR_leaf = FT.(α_PAR_leaf)
-    τ_PAR_leaf = FT.(τ_PAR_leaf)
-    α_NIR_leaf = FT.(α_NIR_leaf)
-    τ_NIR_leaf = FT.(τ_NIR_leaf)
-    return TwoStreamParameters{FT, typeof(G_Function), typeof(α_PAR_leaf)}(;
+    Ω = FT.(Ω)
+    if typeof(ρ_leaf) <: Tuple
+        ρ_leaf = FT.(ρ_leaf)
+        τ_leaf = FT.(τ_leaf)
+    end
+
+    if (isnothing(spectral_discretization))
+        spectral_discretization = TwoBandSpectralDiscretization{FT}()
+    end
+    return TwoStreamParameters{
+        FT,
+        typeof(spectral_discretization),
+        typeof(G_Function),
+        typeof(Ω),
+        typeof(ρ_leaf),
+    }(;
         G_Function,
-        α_PAR_leaf,
-        τ_PAR_leaf,
-        α_NIR_leaf,
-        τ_NIR_leaf,
+        spectral_discretization,
+        ρ_leaf,
+        τ_leaf,
         Ω,
         n_layers,
         parameters...,
@@ -639,15 +654,13 @@ end
 """
     function BeerLambertParameters(FT::AbstractFloat;
         ld = (_) -> 0.5,
-        α_PAR_leaf = 0.1,
-        α_NIR_leaf = 0.4,
+        ρ_leaf = (0.1, 0.4),
         Ω = 1,
         kwargs...
     )
     function BeerLambertParameters(toml_dict;
         ld = (_) -> 0.5,
-        α_PAR_leaf = 0.1,
-        α_NIR_leaf = 0.4,
+        ρ_leaf = (0.1, 0.4),
         Ω = 1,
         kwargs...
     )
@@ -661,8 +674,8 @@ BeerLambertParameters(::Type{FT}; kwargs...) where {FT <: AbstractFloat} =
 function BeerLambertParameters(
     toml_dict::CP.AbstractTOMLDict;
     G_Function = ConstantGFunction(CP.float_type(toml_dict)(0.5)),
-    α_PAR_leaf::F = 0.1,
-    α_NIR_leaf::F = 0.4,
+    spectral_discretization = nothing,
+    ρ_leaf::F = (0.1, 0.4),
     Ω = 1,
     kwargs...,
 ) where {F}
@@ -675,12 +688,21 @@ function BeerLambertParameters(
     FT = CP.float_type(toml_dict)
     # default value for keyword args must be converted manually
     # automatic conversion not possible to Union types
-    α_PAR_leaf = FT.(α_PAR_leaf)
-    α_NIR_leaf = FT.(α_NIR_leaf)
-    return BeerLambertParameters{FT, typeof(G_Function), typeof(α_PAR_leaf)}(;
+    if typeof(ρ_leaf) <: Tuple
+        ρ_leaf = FT.(ρ_leaf)
+    end
+    if (isnothing(spectral_discretization))
+        spectral_discretization = TwoBandSpectralDiscretization{FT}()
+    end
+    return BeerLambertParameters{
+        FT,
+        typeof(spectral_discretization),
+        typeof(G_Function),
+        typeof(ρ_leaf),
+    }(;
         G_Function,
-        α_PAR_leaf,
-        α_NIR_leaf,
+        spectral_discretization,
+        ρ_leaf,
         Ω,
         parameters...,
         kwargs...,

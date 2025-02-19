@@ -683,8 +683,7 @@ boundary_vars(bc::AtmosDrivenFluxBC, ::ClimaLand.TopBoundary) = (
     :top_bc,
     :top_bc_wvec,
     :sfc_scratch,
-    :PAR_albedo,
-    :NIR_albedo,
+    :albedo,
     :sfc_S_e,
     :sub_sfc_scratch,
     Runoff.runoff_vars(bc.runoff)...,
@@ -699,7 +698,6 @@ specifies the part of the domain on which the additional variables should be
 defined.
 """
 boundary_var_domain_names(bc::AtmosDrivenFluxBC, ::ClimaLand.TopBoundary) = (
-    :surface,
     :surface,
     :surface,
     :surface,
@@ -741,8 +739,7 @@ boundary_var_types(
     NamedTuple{(:water, :heat), Tuple{FT, FT}},
     ClimaCore.Geometry.WVector{FT},
     FT,
-    FT,
-    FT,
+    NTuple{length(model.parameters.spectral_discretization.λ) - 1, FT},
     FT,
     FT,
     Runoff.runoff_var_types(bc.runoff, FT)...,

@@ -41,14 +41,7 @@ spatially_varying_soil_params =
         extrapolation_bc = extrapolation_bc,
     )
 param_names3d = (:ν, :ν_ss_om, :ν_ss_quartz, :ν_ss_gravel, :K_sat, :S_s, :θ_r)
-param_names2d = (
-    :PAR_albedo_dry,
-    :NIR_albedo_dry,
-    :PAR_albedo_wet,
-    :NIR_albedo_wet,
-    :f_max,
-    :mask,
-)
+param_names2d = (:f_max, :mask, :albedo_dry, :albedo_wet)
 for p in param_names3d
     @test p ∈ propertynames(spatially_varying_soil_params)
     @test axes(getproperty(spatially_varying_soil_params, p)) ==
@@ -59,6 +52,7 @@ for p in param_names2d
     @test p ∈ propertynames(spatially_varying_soil_params)
     @test axes(getproperty(spatially_varying_soil_params, p)) == surface_space
 end
+
 @test :hydrology_cm ∈ propertynames(spatially_varying_soil_params)
 hcm = spatially_varying_soil_params.hydrology_cm
 @test axes(hcm) == subsurface_space
@@ -69,17 +63,7 @@ clm_parameters = ClimaLand.clm_canopy_parameters(
     regridder_type = regridder_type,
     extrapolation_bc = extrapolation_bc,
 )
-param_names = (
-    :Ω,
-    :rooting_depth,
-    :is_c3,
-    :Vcmax25,
-    :g1,
-    :α_PAR_leaf,
-    :τ_PAR_leaf,
-    :α_NIR_leaf,
-    :τ_NIR_leaf,
-)
+param_names = (:Ω, :rooting_depth, :is_c3, :Vcmax25, :g1, :ρ_leaf, :τ_leaf)
 for p in param_names
     @test p ∈ propertynames(clm_parameters)
     @test axes(getproperty(clm_parameters, p)) == surface_space

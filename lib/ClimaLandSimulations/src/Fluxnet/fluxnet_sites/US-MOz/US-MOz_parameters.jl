@@ -82,6 +82,9 @@ function soil_ozark(; # Function that returns the src function, but with ozark d
     NIR_albedo = FT(0.2),
 )
     hydrology_cm = vanGenuchten{FT}(; α = vg_α, n = vg_n)
+    # Discretization of radiation
+    spectral_discretization = TwoBandSpectralDiscretization{FT}()
+    albedo = (PAR_albedo, NIR_albedo)
     return EnergyHydrologyParameters(
         FT;
         ν,
@@ -92,8 +95,8 @@ function soil_ozark(; # Function that returns the src function, but with ozark d
         K_sat,
         S_s,
         θ_r,
-        PAR_albedo,
-        NIR_albedo,
+        spectral_discretization,
+        albedo,
         emissivity,
         z_0m,
         z_0b,
@@ -103,20 +106,21 @@ end
 function radiative_transfer_ozark(;
     Ω = FT(0.69),
     ld = ConstantGFunction(FT(0.5)),
-    α_PAR_leaf = FT(0.1),
+    ρ_PAR_leaf = FT(0.1),
     λ_γ_PAR = FT(5e-7),
     τ_PAR_leaf = FT(0.05),
-    α_NIR_leaf = FT(0.45),
+    ρ_NIR_leaf = FT(0.45),
     τ_NIR_leaf = FT(0.25),
     n_layers = UInt64(20),
     ϵ_canopy = FT(0.97),
 )
-    return TwoStreamParameters(
+    # Discretization of radiation
+    spectral_discretization = TwoBandSpectralDiscretization{FT}()
+    return TwoStreamParameters(;
+        spectral_discretization = spectral_discretization,
         G_Function = ld,
-        α_PAR_leaf = α_PAR_leaf,
-        τ_PAR_leaf = τ_PAR_leaf,
-        α_NIR_leaf = α_NIR_leaf,
-        τ_NIR_leaf = τ_NIR_leaf,
+        ρ_leaf = (ρ_PAR_leaf, ρ_NIR_leaf),
+        τ_leaf = (τ_PAR_leaf, τ_NIR_leaf),
         ϵ_canopy = ϵ_canopy,
         Ω = Ω,
         λ_γ_PAR = λ_γ_PAR,

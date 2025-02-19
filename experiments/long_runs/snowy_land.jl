@@ -88,6 +88,9 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         time_interpolation_method = time_interpolation_method,
     )
 
+    # Discretization of radiation
+    spectral_discretization = ClimaLand.TwoBandSpectralDiscretization{FT}()
+
     spatially_varying_soil_params =
         ClimaLand.default_spatially_varying_soil_parameters(
             subsurface_space,
@@ -103,10 +106,8 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         K_sat,
         S_s,
         θ_r,
-        PAR_albedo_dry,
-        NIR_albedo_dry,
-        PAR_albedo_wet,
-        NIR_albedo_wet,
+        albedo_dry,
+        albedo_wet,
         f_max,
     ) = spatially_varying_soil_params
     soil_params = Soil.EnergyHydrologyParameters(
@@ -119,10 +120,9 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         K_sat,
         S_s,
         θ_r,
-        PAR_albedo_dry = PAR_albedo_dry,
-        NIR_albedo_dry = NIR_albedo_dry,
-        PAR_albedo_wet = PAR_albedo_wet,
-        NIR_albedo_wet = NIR_albedo_wet,
+        spectral_discretization = spectral_discretization,
+        albedo_dry = albedo_dry,
+        albedo_wet = albedo_wet,
     )
     f_over = FT(3.28) # 1/m
     R_sb = FT(1.484e-4 / 1000) # m/s
@@ -134,18 +134,8 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
 
     # Spatially varying canopy parameters from CLM
     clm_parameters = ClimaLand.clm_canopy_parameters(surface_space)
-    (;
-        Ω,
-        rooting_depth,
-        is_c3,
-        Vcmax25,
-        g1,
-        G_Function,
-        α_PAR_leaf,
-        τ_PAR_leaf,
-        α_NIR_leaf,
-        τ_NIR_leaf,
-    ) = clm_parameters
+    (; Ω, rooting_depth, is_c3, Vcmax25, g1, G_Function, ρ_leaf, τ_leaf) =
+        clm_parameters
 
     # Energy Balance model
     ac_canopy = FT(2.5e3)
@@ -220,11 +210,10 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     radiative_transfer_args = (;
         parameters = Canopy.TwoStreamParameters(
             FT;
+            spectral_discretization,
             Ω,
-            α_PAR_leaf,
-            τ_PAR_leaf,
-            α_NIR_leaf,
-            τ_NIR_leaf,
+            ρ_leaf,
+            τ_leaf,
             G_Function,
         )
     )
