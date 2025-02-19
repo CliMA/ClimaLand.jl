@@ -107,8 +107,8 @@ git-tree-sha1 = "839224a62b59d73073bdb9a5c55d3dc75e30fe33"
     url = "https://caltech.box.com/shared/static/eii2bfwfp47axfeuysgxlgzbczz27u5g.gz"
 
 [era5_lai_covers]
-git-tree-sha1 = "dd651b30b448740bdfef8e9cb7835bcd55ddf72f"
+git-tree-sha1 = "1e77fc84a027da43f1bf6ebe0a53849595a2be22"
 
     [[era5_lai_covers.download]]
-    sha256 = "2c5bcbd0823e037c5fcd67444b2cbdd2f054906752af6e8574a2975ede7f8160"
-    url = "https://caltech.box.com/shared/static/vf5ts11u2o5yjb1jmr387audnephnftr.gz"
+    sha256 = "0331e3a2fc2cb53b0f1d9c5a84f49989da0b506258edc229da161e9ca4a61457"
+    url = "https://caltech.box.com/shared/static/uzuzk5wh8r9q477jbrusfg1sr0ytzem9.gz"
