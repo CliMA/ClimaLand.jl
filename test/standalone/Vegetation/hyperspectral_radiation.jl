@@ -17,10 +17,7 @@ for FT in (Float32, Float64)
         # Set up radiative transfer using 16 band discretization
         spectral_discretization = HyperspectralDiscretization{FT}()
         ρ_leaf = FT.(ntuple(_ -> 0.0, 16))
-        RTparams = BeerLambertParameters(FT;
-            spectral_discretization,
-            ρ_leaf,
-        )
+        RTparams = BeerLambertParameters(FT; spectral_discretization, ρ_leaf)
 
         # Drivers
         θs = FT.(Array(0:0.1:(π / 2)))
@@ -29,19 +26,27 @@ for FT in (Float32, Float64)
         α_soil = FT.(ntuple(_ -> 0.0, 16))
 
         # Test that radiative transfer works
-        output = canopy_sw_rt_beer_lambert.(
-            RTparams.Ω,
-            (RTparams.ρ_leaf,),
-            LAI,
-            K_c,
-            (α_soil,),
-        )
+        output =
+            canopy_sw_rt_beer_lambert.(
+                RTparams.Ω,
+                (RTparams.ρ_leaf,),
+                LAI,
+                K_c,
+                (α_soil,),
+            )
 
         @test length(output) == length(θs)
         @test length(output[1]) == 16
         get_PAR_sum =
-            (rt, sym, PAR_coeff) -> sum(map(x -> getproperty(x, sym), rt) .* PAR_coeff)
-        @test all(get_PAR_sum.(output, :refl, RTparams.spectral_discretization.PAR_proportions) .< 1e-6)
+            (rt, sym, PAR_coeff) ->
+                sum(map(x -> getproperty(x, sym), rt) .* PAR_coeff)
+        @test all(
+            get_PAR_sum.(
+                output,
+                :refl,
+                RTparams.spectral_discretization.PAR_proportions,
+            ) .< 1e-6,
+        )
 
     end
 end
