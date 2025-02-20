@@ -3,7 +3,13 @@ import SciMLBase
 import ClimaDiagnostics.Schedules: EveryCalendarDtSchedule
 import Dates
 
-export FTfromY, count_nans_state
+using ClimaComms
+using ClimaUtilities.ClimaArtifacts
+import Interpolations
+import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
+import ClimaUtilities.Regridders: InterpolationsRegridder
+
+export FTfromY, call_count_nans_state
 
 """
      heaviside(x::FT)::FT where {FT}
@@ -494,25 +500,27 @@ function isdivisible(
 end
 
 """
-    count_nans_state(state, mask::ClimaCore.Fields.Field = nothing, verbose = false)
+    call_count_nans_state(state, mask::ClimaCore.Fields.Field = nothing, verbose = false)
 
-Count the number of NaNs in the state, e.g. the FieldVector given by
+This calls the function which counts the number of NaNs in the state, e.g. the FieldVector given by
 `sol.u[end]` after calling `solve`. This function is useful for
-debugging simulations to determine quantitatively if a simulation is stable.
+debugging simulations to determine quantitatively if a simulation is stable; this is only
+for use in non-column simulations.
 
 If this function is called on a FieldVector, it will recursively call itself
 on each Field in the FieldVector. If it is called on a Field, it will count
-the number of NaNs in the Field and produce a warning if any are found.
+the number of NaNs in the Field and produce a warning if any are found; this behavior
+is different for 2d and 3d fields, which is why we dispatch on the `space`.
 
 If a ClimaCore Field is provided as `mask`, the function will only count NaNs
 in the state variables where the mask is 1. This is intended to be used with
 the land/sea mask, to avoid counting NaNs over the ocean. Note this assumes
-the mask is 1 over land and 0 over ocean.
+the mask is 1 over land and 0 over ocean, and that the mask is a 2D field.
 
 The `verbose` argument toggles whether the function produces output when no
 NaNs are found.
 """
-function count_nans_state(
+function call_count_nans_state(
     state::ClimaCore.Fields.FieldVector;
     mask = nothing,
     verbose = false,
@@ -520,20 +528,62 @@ function count_nans_state(
     for pn in propertynames(state)
         state_new = getproperty(state, pn)
         @info "Checking NaNs in $pn"
-        count_nans_state(state_new; mask, verbose)
+        call_count_nans_state(state_new; mask, verbose)
     end
     return nothing
 end
 
+function call_count_nans_state(
+    state::ClimaCore.Fields.Field;
+    mask = nothing,
+    verbose = false,
+)
+    call_count_nans_state(state, axes(state); mask, verbose)
+end
+
+function call_count_nans_state(
+    state::ClimaCore.Fields.Field,
+    space::ClimaCore.Spaces.AbstractSpectralElementSpace;
+    mask = nothing,
+    verbose = false,
+)
+    return count_nans_state(state; mask = mask, verbose = verbose)
+end
+
+function call_count_nans_state(
+    state::ClimaCore.Fields.Field,
+    space::ClimaCore.Spaces.ExtrudedFiniteDifferenceSpace;
+    mask = nothing,
+    verbose = false,
+)
+    return count_nans_state(
+        ClimaLand.top_center_to_surface(state);
+        mask = mask,
+        verbose = verbose,
+    )
+end
+
+"""
+    count_nans_state(
+        state::ClimaCore.Fields.Field,
+        mask = nothing,
+        verbose = false,
+    )
+
+Counts the NaNs in the field `state`.
+"""
 function count_nans_state(
     state::ClimaCore.Fields.Field;
     mask = nothing,
     verbose = false,
 )
     # Note: this code uses `parent`; this pattern should not be replicated
-    num_nans =
-        isnothing(mask) ? round(sum(isnan, parent(state))) :
-        round(sum(isnan, parent(state)[Bool.(parent(mask))]; init = 0))
+    num_nans = 0
+    ClimaComms.allowscalar(ClimaComms.device()) do
+        num_nans =
+            isnothing(mask) ? Int(sum(isnan.(parent(state)))) :
+            Int(sum(isnan.(parent(state)) .* parent(mask)))
+    end
     if isapprox(num_nans, 0)
         verbose && @info "No NaNs found"
     else
@@ -541,6 +591,7 @@ function count_nans_state(
     end
     return nothing
 end
+
 
 """
     NaNCheckCallback(nancheck_frequency::Union{AbstractFloat, Dates.Period},
@@ -565,7 +616,8 @@ function NaNCheckCallback(
     nancheck_frequency::Union{AbstractFloat, Dates.Period},
     start_date,
     t_start,
-    dt,
+    dt;
+    mask = nothing,
 )
     # TODO: Move to a more general callback system. For the time being, we use
     # the ClimaDiagnostics one because it is flexible and it supports calendar
@@ -595,7 +647,57 @@ function NaNCheckCallback(
     cond = let schedule = schedule
         (u, t, integrator) -> schedule(integrator)
     end
-    affect! = (integrator) -> count_nans_state(integrator.u)
+    affect! = (integrator) -> call_count_nans_state(integrator.u; mask)
 
     SciMLBase.DiscreteCallback(cond, affect!)
+end
+
+apply_threshold(field, value) =
+    field > value ? eltype(field)(1) : eltype(field)(0)
+
+"""
+    landsea_mask(
+        surface_space;
+        resolution = "60arcs",
+        threshold = 0.5,
+        regridder_type = :InterpolationsRegridder,
+        extrapolation_bc = (
+            Interpolations.Periodic(),
+            Interpolations.Flat(),
+            Interpolations.Flat(),
+        ),
+    )
+
+Reads in the default Clima 60arcsecond land/sea mask, regrids to the
+`surface_space`, and treats any point with a land fraction < threshold
+as ocean.
+
+A 1degree (resolution = "1deg") and 30arcsecond (resolution = "30arcs") mask
+are also available.
+"""
+function landsea_mask(
+    surface_space;
+    resolution = "60arcs",
+    threshold = 0.5,
+    regridder_type = :InterpolationsRegridder,
+    extrapolation_bc = (
+        Interpolations.Periodic(),
+        Interpolations.Flat(),
+        Interpolations.Flat(),
+    ),
+)
+    context = ClimaComms.context(surface_space)
+    filepath = ClimaLand.Artifacts.landseamask_file_path(;
+        resolution = resolution,
+        context = context,
+    )
+    mask = SpaceVaryingInput(
+        filepath,
+        "landsea",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc,),
+    )
+    binary_mask = apply_threshold.(mask, threshold)
+    return binary_mask
 end
