@@ -1,3 +1,11 @@
+[soil_ic_2008_50m]
+git-tree-sha1 = "ffa52ae695b5962fde4bab21187cc015b8f34f65"
+
+    [[soil_ic_2008_50m.download]]
+    sha256 = "9546a70e1ac7c8dab0ddce232b64ef2716cc5b71065d8b6be400a5c0a90d42cc"
+    url = "https://caltech.box.com/shared/static/atiztw8uu2i78g2vd02n8onb68cer9tn.gz"
+
+
 [soilgrids]
 git-tree-sha1 = "f919da748cc973519fb136f4225cf343f5c3e41f"
 [soilgrids_lowres]
