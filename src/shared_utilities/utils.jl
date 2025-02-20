@@ -565,7 +565,8 @@ function NaNCheckCallback(
     nancheck_frequency::Union{AbstractFloat, Dates.Period},
     start_date,
     t_start,
-    dt,
+    dt;
+    mask = nothing,
 )
     # TODO: Move to a more general callback system. For the time being, we use
     # the ClimaDiagnostics one because it is flexible and it supports calendar
@@ -595,7 +596,7 @@ function NaNCheckCallback(
     cond = let schedule = schedule
         (u, t, integrator) -> schedule(integrator)
     end
-    affect! = (integrator) -> count_nans_state(integrator.u)
+    affect! = (integrator) -> count_nans_state(integrator.u; mask)
 
     SciMLBase.DiscreteCallback(cond, affect!)
 end
