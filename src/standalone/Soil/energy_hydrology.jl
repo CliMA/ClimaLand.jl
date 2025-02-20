@@ -934,7 +934,9 @@ Computes turbulent surface fluxes for soil at a point on a surface given
     `earth_param_set`
 
 This returns an energy flux and a  water volume flux, stored in
-a tuple with self explanatory keys.
+a tuple with self explanatory keys. If the temperature is above the freezing point,
+the vapor flux comes from liquid water; if the temperature is below the freezing
+point, it comes from the soil ice.
 """
 function soil_turbulent_fluxes_at_a_point(
     T_sfc::FT,
@@ -990,12 +992,11 @@ function soil_turbulent_fluxes_at_a_point(
 
     # The following will be reset below
     β::FT = 0
-    Ẽ_i::FT = 0
-    Ẽ_l::FT = 0
-    ∂E_i∂q::FT = 0
-    ∂E_l∂q::FT = 0
+    Ẽ_i::FT = 0 # vapor flux of liquid water, in units of volume flux of liquid water
+    Ẽ_l::FT = 0 # vapor flux of frozen water, in units of volume flux of liquid water
 
-    # Get the surface thermal state and beta factors
+    # Compute q_soil using ice or liquid as appropriate, and create the thermaal state of the soil
+    # For liquid water evap, β = 1, and for ice, β is a numerical factor which damps sublimation to zero as ice goes to zero,
     if T_sfc > Tf_depressed # liquid water evaporation
         liquid_evaporation = true
         q_sat_liq::FT = Thermodynamics.q_vap_saturation_generic(
@@ -1031,7 +1032,8 @@ function soil_turbulent_fluxes_at_a_point(
         end
     end
 
-    # Compute fluxes
+    # Now we compute the fluxes (E, LH, SH)
+    # Thermal state and β encode ice vs liquid water vapor flux differences
 
     # SurfaceFluxes.jl expects a relative difference between where u_air = 0
     # and the atmosphere height. Here, we assume h and h_sfc are measured
@@ -1070,14 +1072,11 @@ function soil_turbulent_fluxes_at_a_point(
     E_pot::FT =
         SurfaceFluxes.evaporation(surface_flux_params, states, conditions.Ch)# potential evaporation rate, mass flux
     Ẽ_pot::FT = E_pot / _ρ_liq # volume flux of liquid water
-    ∂E_pot∂q::FT = ρ_sfc / r_ae
 
     # Adjust fluxes as needed for soil resistance; split between ice and liquid water loss
     if liquid_evaporation     # adjust the vapor loss to account for soil resistance, set sublimation to zero
         Ẽ_i = 0
-        ∂E_i∂q = 0
         Ẽ_l = Ẽ_pot
-        ∂E_l∂q = ∂E_pot∂q
         if q_air < q_sat_liq # adjust potential evaporation rate to account for soil resistance
             K_sfc::FT =
                 impedance_factor(θ_i_sfc / (θ_l_sfc + θ_i_sfc - θ_r_sfc), Ω) *
@@ -1094,28 +1093,17 @@ function soil_turbulent_fluxes_at_a_point(
             )
             x::FT = 4 * K_sfc * (1 + Ẽ_pot / (4 * K_c))
             Ẽ_l *= x / (Ẽ_pot + x)
-            ∂E_l∂q *= (Ẽ_pot^2 * K_sfc / K_c + x^2) / (x + Ẽ_pot)^2
         end
     else # sublimation, set evaporation to zero
         Ẽ_i = Ẽ_pot
-        ∂E_i∂q = ∂E_pot∂q
         Ẽ_l = 0
-        ∂E_l∂q = 0
     end
 
     # Heat fluxes for soil
     LH::FT = _LH_v0 * (Ẽ_l + Ẽ_i) * _ρ_liq
     # Derivatives
-    cp_m_sfc::FT = Thermodynamics.cp_m(thermo_params, thermal_state_sfc)
-#    P_sfc::FT = Thermodynamics.air_pressure(thermo_params, thermal_state_sfc)
-    dshfdT::FT = 0#ρ_sfc * cp_m_sfc / r_ae
+    dshfdT::FT = 0
     dlhfdT::FT = 0
-#        _LH_v0 * (
-#            ∂E_l∂q *
-#            ClimaLand.partial_q_sat_partial_T_liq(P_sfc, T_sfc - _T_freeze) +
-#            ∂E_i∂q *
-#            ClimaLand.partial_q_sat_partial_T_ice(P_sfc, T_sfc - _T_freeze)
-#        )
     return (
         lhf = LH,
         shf = SH,
