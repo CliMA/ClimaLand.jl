@@ -991,11 +991,11 @@ function soil_turbulent_fluxes_at_a_point(
     Tf_depressed = _T_freeze * exp(_grav * ψw0_sfc / _LH_f0)
 
     # The following will be reset below
-    β::FT = 0
+    β::FT = 1
     Ẽ_i::FT = 0 # vapor flux of liquid water, in units of volume flux of liquid water
     Ẽ_l::FT = 0 # vapor flux of frozen water, in units of volume flux of liquid water
 
-    # Compute q_soil using ice or liquid as appropriate, and create the thermaal state of the soil
+    # Compute q_soil using ice or liquid as appropriate, and create the thermal state of the soil
     # For liquid water evap, β = 1, and for ice, β is a numerical factor which damps sublimation to zero as ice goes to zero,
     if T_sfc > Tf_depressed # liquid water evaporation
         liquid_evaporation = true
@@ -1012,7 +1012,6 @@ function soil_turbulent_fluxes_at_a_point(
                 T_sfc,
                 q_sat_liq,
             )
-        β = FT(1)
     else
         liquid_evaporation = false
         q_sat_ice::FT = Thermodynamics.q_vap_saturation_generic(
@@ -1028,7 +1027,7 @@ function soil_turbulent_fluxes_at_a_point(
             q_sat_ice,
         )
         if q_air < q_sat_ice
-            β = (θ_i_sfc / ν_sfc)^4
+            β *= (θ_i_sfc / ν_sfc)^4
         end
     end
 
