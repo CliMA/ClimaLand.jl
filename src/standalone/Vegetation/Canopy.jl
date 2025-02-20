@@ -462,6 +462,7 @@ function ClimaLand.make_update_aux(
         @. K = extinction_coeff(p.canopy.radiative_transfer.G, θs)
         DOY =
             Dates.dayofyear(bc.atmos.start_date + Dates.Second(floor(Int64, t)))
+        # TODO: move out of update_aux! and dispatch when coupled
         @. frac_diff = diffuse_fraction(
             DOY,
             T_air,
