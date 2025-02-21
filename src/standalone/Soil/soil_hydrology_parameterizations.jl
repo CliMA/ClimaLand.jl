@@ -59,6 +59,7 @@ function update_albedo!(bc::AtmosDrivenFluxBC, p, soil_domain, model_parameters)
     S_sfc = p.soil.sfc_S_e
     FT = eltype(soil_domain.fields.Δz_top)
     # checks if there is at least 1 layer centered within the top soil depth
+    # we shouldnt compute this each step
    # if minimum(soil_domain.fields.Δz_top) < albedo_calc_top_thickness
         # ∫H_S_e_dz is the integral of effective saturation from (surface-albedo_calc_top_thickness) to surface
         ∫H_S_e_dz = p.soil.sfc_S_e
