@@ -530,10 +530,39 @@ function count_nans_state(
     mask = nothing,
     verbose = false,
 )
+    return count_nans_state(state, axes(state); mask = mask, verbose = verbose)
+end
+
+function count_nans_state(
+    state::ClimaCore.Fields.Field,
+    space::ClimaCore.Spaces.AbstractSpectralElementSpace;
+    mask = nothing,
+    verbose = false,
+)
     # Note: this code uses `parent`; this pattern should not be replicated
     num_nans =
         isnothing(mask) ? round(sum(isnan, parent(state))) :
         round(sum(isnan, parent(state)[Bool.(parent(mask))]; init = 0))
+    if isapprox(num_nans, 0)
+        verbose && @info "No NaNs found"
+    else
+        @warn "$num_nans NaNs found"
+    end
+    return nothing
+end
+
+
+function count_nans_state(
+    state::ClimaCore.Fields.Field,
+    space::ClimaCore.Spaces.ExtrudedFiniteDifferenceSpace;
+    mask = nothing,
+    verbose = false,
+)
+    # Note: this code uses `parent`; this pattern should not be replicated
+    surface_state = ClimaLand.Domains.top_center_to_surface(state)
+    num_nans =
+        isnothing(mask) ? round(sum(isnan, parent(surface_state))) :
+        round(sum(isnan, parent(surface_state)[Bool.(parent(mask))]; init = 0))
     if isapprox(num_nans, 0)
         verbose && @info "No NaNs found"
     else

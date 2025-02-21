@@ -374,16 +374,15 @@ function ilamb_dataset_path(filename; context = nothing)
 end
 
 """
-    landseamask_file_path(; resolution = 60, context=nothing)
+    landseamask_file_path(; resolution = 30, context=nothing)
 
-Construct the file path for the 60arcsecond landsea mask data NetCDF file.
+Construct the file path for the 30arcsecond landsea mask data NetCDF file.
 
-Downloads the 60arc-second dataset by default. 
 """
 function landseamask_file_path(; context = nothing)
     filename = "landsea_mask.nc"
     return joinpath(
-        @clima_artifact("landsea_mask_60arcseconds", context),
+        @clima_artifact("landsea_mask_30arcseconds", context),
         filename,
     )
 end
