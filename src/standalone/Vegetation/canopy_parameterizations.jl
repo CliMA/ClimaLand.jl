@@ -507,29 +507,34 @@ end
     c3_light_assimilation(
                        J::FT,
                        ci::FT,
-                       Γstar::FT) where {FT}
+                       Γstar::FT,
+                       ::FT,
+                       ::FT) where {FT}
 
 Computes the electron transport limiting rate (`Aj`),
-in units of moles CO2/m^2/s, for C3 plants as a function of
+in units of moles CO2/m^2/s.
+
+For C3 plants, this is a function of
 the rate of electron transport (`J`), the leaf internal carbon dioxide partial pressure (`ci`),
 and the CO2 compensation point (`Γstar`).
-
 See Table 11.5 of G. Bonan's textbook, Climate Change and Terrestrial Ecosystem Modeling (2019).
 """
-function c3_light_assimilation(J::FT, ci::FT, Γstar::FT) where {FT}
+function c3_light_assimilation(J::FT, ci::FT, Γstar::FT, _...) where {FT}
     Aj = J * (ci - Γstar) / (4 * (ci + 2 * Γstar))
     return Aj
 end
 
 """
-    light_assimilation(J::FT, _...) where {FT}
+    light_assimilation(::FT, ::FT, ::FT, APAR::FT, E::FT) where {FT}
 
 Computes the electron transport limiting rate (`Aj`),
-in units of moles CO2/m^2/s, for C4 plants, as equal to
-the rate of electron transport (`J`).
+in units of moles CO2/m^2/s.
+
+For C4 plants, this is a function of APAR and a efficiency parameter E, see Equation 11.70 of
+ G. Bonan's textbook, Climate Change and Terrestrial Ecosystem Modeling (2019).
 """
-function c4_light_assimilation(J::FT, _...) where {FT}
-    Aj = J
+function c4_light_assimilation(::FT, ::FT, ::FT, APAR::FT, E::FT) where {FT}
+    Aj = APAR * E
     return Aj
 end
 
@@ -675,33 +680,86 @@ function moisture_stress(pl::FT, sc::FT, pc::FT) where {FT}
 end
 
 """
-    dark_respiration(Vcmax25::FT,
-                     β::FT,
-                     f::FT,
-                     ΔHkc::FT,
-                     T::FT,
-                     To::FT,
-                     R::FT) where {FT}
+    dark_respiration(is_c3::AbstractFloat, args...)
+
+Calls the correct dark respiration function based on `is_c3`.
+
+A `is_c3` value of 1.0 corresponds to C3 photosynthesis and calls
+`c3_dark_respiration`, while 0.0 corresponds to C4 photsynthesis and calls
+`c4_dark_respiration`.
+"""
+function dark_respiration(is_c3::AbstractFloat, args...)
+    is_c3 > 0.5 ? c3_dark_respiration(args...) : c4_dark_respiration(args...)
+end
+"""
+    c4_dark_respiration(VCmax25::FT,
+                        β::FT,
+                        T::FT,
+                        R::FT
+                        To::FT,
+                        ::FT,
+                        ::FT,
+                        Q10::FT,
+                        s5::FT,
+                        s6::FT,
+                        fC4::FT) where {FT}
 
 Computes dark respiration (`Rd`),
-in units of mol CO2/m^2/s, as a function of the maximum rate of carboxylation of Rubisco (`Vcmax25`),
-and the moisture stress factor (`β`), an empirical factor `f` is equal to 0.015,
-a constant (`ΔHRd`), a standard temperature (`To`),
-the unversal gas constant (`R`), and the temperature (`T`).
+in units of mol CO2/m^2/s, as a function of
+ the moisture stress factor (`β`), 
+the unversal gas constant (`R`), the temperature (`T`), 
+Vcmax25, and
+other parameters.
+
+See Equation 11.73 of G. Bonan's textbook,
+Climate Change and Terrestrial Ecosystem Modeling (2019).
+"""
+function c4_dark_respiration(
+    Vcmax25::FT,
+    β::FT,
+    T::FT,
+    R::FT,
+    To::FT,
+    ::FT,
+    ::FT,
+    Q10::FT,
+    s5::FT,
+    s6::FT,
+    fC4::FT,
+) where {FT}
+    Rd = fC4 * Vcmax25 * β * Q10^((T - To) / 10) / (1 + exp(s5 * (T - s6)))
+    return Rd
+end
+
+"""
+    c3_dark_respiration(Vcmax25::FT, β::FT,
+                        T::FT,
+                        R::FT,
+                        To::FT,
+                        fC3::FT,
+                        ΔHRd::FT,) where {FT}
+
+Computes dark respiration (`Rd`),
+in units of mol CO2/m^2/s, as a function of
+ the moisture stress factor (`β`), 
+the unversal gas constant (`R`), and the temperature (`T`),
+Vcmax25,  and
+other parameters.
 
 See Table 11.5 of G. Bonan's textbook,
 Climate Change and Terrestrial Ecosystem Modeling (2019).
 """
-function dark_respiration(
+function c3_dark_respiration(
     Vcmax25::FT,
     β::FT,
-    f::FT,
-    ΔHRd::FT,
     T::FT,
-    To::FT,
     R::FT,
+    To::FT,
+    fC3::FT,
+    ΔHRd::FT,
+    _...,
 ) where {FT}
-    Rd = f * Vcmax25 * β * arrhenius_function(T, To, R, ΔHRd)
+    Rd = fC3 * Vcmax25 * β * arrhenius_function(T, To, R, ΔHRd)
     return Rd
 end
 
@@ -800,26 +858,66 @@ function MM_Ko(Ko25::FT, ΔHko::FT, T::FT, To::FT, R::FT) where {FT}
 end
 
 """
-    compute_Vcmax(Vcmax25::FT,
-           T::FT,
-           To::FT,
-           R::FT,
-           ep5::FT) where {FT}
+    compute_Vcmax(is_c3::AbstractFloat, args...)
+
+Calls the correct Vcmax function based on `is_c3`.
+
+A `is_c3` value of 1.0 corresponds to C3 photosynthesis and calls
+`c3_compute_Vcmax`, while 0.0 corresponds to C4 photsynthesis and calls
+`c4_compute_Vcmax`.
+"""
+function compute_Vcmax(is_c3::AbstractFloat, args...)
+    is_c3 > 0.5 ? c3_compute_Vcmax(args...) : c4_compute_Vcmax(args...)
+end
+
+"""
+    c4_compute_Vcmax(Vcmax25::FT, T::FT, R::FT, To::FT, ::FT, Q10::FT, s1::FT, s2::FT,
+                     s3::FT, s4::FT) where {FT}
 
 Computes the maximum rate of carboxylation of Rubisco (`Vcmax`),
 in units of mol/m^2/s,
-as a function of temperature (`T`), Vcmax at the reference temperature 25 °C (`Vcmax25`),
-the universal gas constant (`R`), and the reference temperature (`To`).
+as a function of temperature (`T`), the universal
+gas constant `R`, Vcmax25,  and other parameters.
 
-See Table 11.5 of G. Bonan's textbook,
+For C4 photosynthesis, this uses Equation 11.73 from G. Bonan
 Climate Change and Terrestrial Ecosystem Modeling (2019).
 """
-function compute_Vcmax(
+function c4_compute_Vcmax(
     Vcmax25::FT,
     T::FT,
-    To::FT,
     R::FT,
+    To::FT,
+    ::FT,
+    Q10::FT,
+    s1::FT,
+    s2::FT,
+    s3::FT,
+    s4::FT,
+) where {FT}
+    Vcmax =
+        Vcmax25 * Q10^((T - To) / 10) / (1 + exp(s1 * (T - s2))) /
+        (1 + exp(s3 * (s4 - T)))
+    return Vcmax
+end
+
+"""
+    c3_compute_Vcmax(Vcmax25::FT, T::FT, R::FT, To::FT, ΔHVcmax::FT) where {FT}
+
+Computes the maximum rate of carboxylation of Rubisco (`Vcmax`),
+in units of mol/m^2/s,
+as a function of temperature (`T`), the universal
+gas constant `R`, Vcmax25, and other parameters.
+
+For C3 photosynthesis, this uses Table 11.5 from G. Bonan:
+Climate Change and Terrestrial Ecosystem Modeling (2019).
+"""
+function c3_compute_Vcmax(
+    Vcmax25::FT,
+    T::FT,
+    R::FT,
+    To::FT,
     ΔHVcmax::FT,
+    args...,
 ) where {FT}
     Vcmax = Vcmax25 * arrhenius_function(T, To, R, ΔHVcmax)
     return Vcmax

@@ -45,12 +45,30 @@ Base.@kwdef struct FarquharParameters{
     ϕ::FT
     "Curvature parameter, a fitting constant to compute J, unitless"
     θj::FT
-    "Constant factor appearing the dark respiration term, equal to 0.015."
-    f::FT
+    "Constant factor appearing the dark respiration term for C3, equal to 0.015."
+    fC3::FT
+    "Constant factor appearing the dark respiration term for C4, equal to 0.025."
+    fC4::FT
     "Sensitivity to low water pressure, in the moisture stress factor, (Pa^{-1}) [Tuzet et al. (2003)]"
     sc::FT
     "Reference water pressure for the moisture stress factor (Pa) [Tuzet et al. (2003)]"
     pc::FT
+    "Q10 temperature parameter for Vcmax and Rd for C4 photosynthesis; unitless"
+    Q10::FT
+    "Parameter appearing in temperature dependence of C4 Vcmax; K^{-1}"
+    s1::FT
+    "Parameter appearing in temperature dependence of C4 Vcmax; K"
+    s2::FT
+    "Parameter appearing in temperature dependence of C4 Vcmax; K^{-1}"
+    s3::FT
+    "Parameter appearing in temperature dependence of C4 Vcmax; K"
+    s4::FT
+    "Parameter appearing in temperature dependence of C4 Rd; K^{-1}"
+    s5::FT
+    "Parameter appearing in temperature dependence of C4 Rd; K"
+    s6::FT
+    "Quantum yield for C4 photosynthesis; mol/mol"
+    E::FT
     "Photosynthesis mechanism: 1.0 indicates C3, 0.0 indicates C4"
     is_c3::MECH
 end
@@ -85,28 +103,38 @@ function photosynthesis_at_a_point_Farquhar(
     medlyn_factor,
     R,
     Vcmax25,
+    is_c3,
     Γstar25,
     ΔHJmax,
     ΔHVcmax,
     ΔHΓstar,
-    f,
+    fC3,
+    fC4,
     ΔHRd,
     To,
     θj,
     ϕ,
-    is_c3,
     oi,
     Kc25,
     Ko25,
     ΔHkc,
     ΔHko,
+    Q10,
+    s1,
+    s2,
+    s3,
+    s4,
+    s5,
+    s6,
+    E,
 )
     Jmax = max_electron_transport(Vcmax25, ΔHJmax, T, To, R)
     J = electron_transport(APAR, Jmax, θj, ϕ)
-    Vcmax = compute_Vcmax(Vcmax25, T, To, R, ΔHVcmax)
+    Vcmax =
+        compute_Vcmax(is_c3, Vcmax25, T, R, To, ΔHVcmax, Q10, s1, s2, s3, s4)
     Γstar = co2_compensation(Γstar25, ΔHΓstar, T, To, R)
     ci = intercellular_co2(c_co2, Γstar, medlyn_factor)
-    Aj = light_assimilation(is_c3, J, ci, Γstar)
+    Aj = light_assimilation(is_c3, J, ci, Γstar, APAR, E)
     Kc = MM_Kc(Kc25, ΔHkc, T, To, R)
     Ko = MM_Ko(Ko25, ΔHko, T, To, R)
     Ac = rubisco_assimilation(is_c3, Vcmax, ci, Γstar, Kc, Ko, oi)
@@ -156,26 +184,46 @@ function update_photosynthesis!(
 )
     (;
         Vcmax25,
-        f,
-        ΔHRd,
-        To,
+        is_c3,
         Γstar25,
         ΔHJmax,
         ΔHVcmax,
         ΔHΓstar,
-        f,
+        fC3,
+        fC4,
         ΔHRd,
         To,
         θj,
         ϕ,
-        is_c3,
         oi,
         Kc25,
         Ko25,
         ΔHkc,
         ΔHko,
+        Q10,
+        s1,
+        s2,
+        s3,
+        s4,
+        s5,
+        s6,
+        E,
     ) = model.parameters
-    @. Rd = dark_respiration(Vcmax25, β, f, ΔHRd, T, To, R)
+    Vcmax25field .= Vcmax25
+    @. Rd = dark_respiration(
+        is_c3,
+        Vcmax25,
+        β,
+        T,
+        R,
+        To,
+        fC3,
+        ΔHRd,
+        Q10,
+        s5,
+        s6,
+        fC4,
+    )
     @. An = photosynthesis_at_a_point_Farquhar(
         T,
         β,
@@ -185,23 +233,32 @@ function update_photosynthesis!(
         medlyn_factor,
         R,
         Vcmax25,
+        is_c3,
         Γstar25,
         ΔHJmax,
         ΔHVcmax,
         ΔHΓstar,
-        f,
+        fC3,
+        fC4,
         ΔHRd,
         To,
         θj,
         ϕ,
-        is_c3,
         oi,
         Kc25,
         Ko25,
         ΔHkc,
         ΔHko,
+        Q10,
+        s1,
+        s2,
+        s3,
+        s4,
+        s5,
+        s6,
+        E,
     )
-    Vcmax25field .= Vcmax25
+
 end
 Base.broadcastable(m::FarquharParameters) = tuple(m)
 

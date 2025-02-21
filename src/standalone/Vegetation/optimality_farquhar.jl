@@ -40,8 +40,8 @@ Base.@kwdef struct OptimalityFarquharParameters{
     ϕ::FT
     "Curvature parameter, a fitting constant to compute J, unitless"
     θj::FT
-    "Constant factor appearing the dark respiration term, equal to 0.015."
-    f::FT
+    "Constant factor appearing the dark respiration term for C3 plants, equal to 0.015."
+    fC3::FT
     "Fitting constant to compute the moisture stress factor (Pa^{-1})"
     sc::FT
     "Fitting constant to compute the moisture stress factor (Pa)"
@@ -126,8 +126,8 @@ function update_photosynthesis!(
         Γstar25,
         ΔHVcmax,
         ΔHΓstar,
-        f,
         ΔHRd,
+        fC3,
         To,
         θj,
         ϕ,
@@ -169,7 +169,7 @@ function update_photosynthesis!(
     Ac = rubisco_assimilation.(is_c3, Vcmax, ci, Γstar, Kc, Ko, oi)
 
     @. Vcmax25 = Vcmax / arrhenius_function(T, To, R, ΔHVcmax)
-    @. Rd = dark_respiration(Vcmax25, β, f, ΔHRd, T, To, R)
+    @. Rd = dark_respiration(is_c3, Vcmax25, β, T, R, To, fC3, ΔHRd)
     @. An = net_photosynthesis(Ac, Aj, Rd, β)
 end
 Base.broadcastable(m::OptimalityFarquharParameters) = tuple(m)
