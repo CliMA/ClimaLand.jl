@@ -306,11 +306,6 @@ for FT in (Float32, Float64)
         vg_α = FT(2.0)
         vg_n = FT(1.4)
         hcm = vanGenuchten{FT}(; α = vg_α, n = vg_n)
-
-        # Wrap hydrology and earth parameters in one struct to avoid type inference failure
-        hydrology_earth_params =
-            ClimaLand.Soil.HydrologyEarthParameters(hcm, param_set)
-
         K_sat = FT(1e-5)
         ν_ss_om = FT(0.1)
         ν_ss_gravel = FT(0.1)
@@ -350,7 +345,12 @@ for FT in (Float32, Float64)
                 τ,
                 ν,
                 θ_r,
-                hydrology_earth_params,
+                hcm,
+                _ρ_i,
+                _ρ_l,
+                _LH_f0,
+                _T_freeze,
+                _grav,
             ) ≈ (θ_l .- θ_star) ./ τ
         )
         @test sum(
@@ -361,7 +361,12 @@ for FT in (Float32, Float64)
                 τ,
                 ν,
                 θ_r,
-                hydrology_earth_params,
+                hcm,
+                _ρ_i,
+                _ρ_l,
+                _LH_f0,
+                _T_freeze,
+                _grav,
             ) .> 0.0,
         ) == 3
 
@@ -385,7 +390,12 @@ for FT in (Float32, Float64)
                 τ,
                 ν,
                 θ_r,
-                hydrology_earth_params,
+                hcm,
+                _ρ_i,
+                _ρ_l,
+                _LH_f0,
+                _T_freeze,
+                _grav,
             ) ≈ zeros(FT, 3)
         )
         @test (θ_star ≈ θ_l)
@@ -411,7 +421,12 @@ for FT in (Float32, Float64)
                 τ,
                 ν,
                 θ_r,
-                hydrology_earth_params,
+                hcm,
+                _ρ_i,
+                _ρ_l,
+                _LH_f0,
+                _T_freeze,
+                _grav,
             ) ≈ (θ_l .- θ_star) ./ τ
         )
         @test sum(
@@ -422,7 +437,12 @@ for FT in (Float32, Float64)
                 τ,
                 ν,
                 θ_r,
-                hydrology_earth_params,
+                hcm,
+                _ρ_i,
+                _ρ_l,
+                _LH_f0,
+                _T_freeze,
+                _grav,
             ) .< 0.0,
         ) == 2
 
@@ -447,7 +467,12 @@ for FT in (Float32, Float64)
                 τ,
                 ν,
                 θ_r,
-                hydrology_earth_params,
+                hcm,
+                _ρ_i,
+                _ρ_l,
+                _LH_f0,
+                _T_freeze,
+                _grav,
             ) ≈ (θ_l .- θ_star) ./ τ
         )
         @test sum(
@@ -458,7 +483,12 @@ for FT in (Float32, Float64)
                 τ,
                 ν,
                 θ_r,
-                hydrology_earth_params,
+                hcm,
+                _ρ_i,
+                _ρ_l,
+                _LH_f0,
+                _T_freeze,
+                _grav,
             ) .> 0.0,
         ) == 2
     end
