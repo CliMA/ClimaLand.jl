@@ -374,17 +374,33 @@ function ilamb_dataset_path(filename; context = nothing)
 end
 
 """
-    landseamask_file_path(; resolution = 30, context=nothing)
+    landseamask_file_path(; resolution = "60arcs", context=nothing)
 
-Construct the file path for the 30arcsecond landsea mask data NetCDF file.
+Construct the file path for the landsea mask data NetCDF file,
+using 60arcseconds by default.
 
+The other options available include "30arcs" (30arcseconds) or "1deg" (1degree).
 """
-function landseamask_file_path(; context = nothing)
+function landseamask_file_path(; resolution = "60arcs", context = nothing)
+    @assert (resolution == "60arcs") || (resolution == "30arcs") || (resolution == "1deg")
     filename = "landsea_mask.nc"
-    return joinpath(
-        @clima_artifact("landsea_mask_30arcseconds", context),
-        filename,
-    )
+    if resolution == "60arcs"
+        return joinpath(
+            @clima_artifact("landsea_mask_60arcseconds", context),
+            filename,
+        )
+    elseif resolution == "30arcs"
+        return joinpath(
+            @clima_artifact("landsea_mask_30arcseconds", context),
+            filename,
+        )
+    else
+        return joinpath(
+            @clima_artifact("landsea_mask_1degree", context),
+            filename,
+        )
+    end
+    
 end
 
 """
