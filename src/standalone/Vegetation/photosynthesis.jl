@@ -51,6 +51,20 @@ Base.@kwdef struct FarquharParameters{
     sc::FT
     "Reference water pressure for the moisture stress factor (Pa) [Tuzet et al. (2003)]"
     pc::FT
+    ""
+    Q10::FT
+    ""
+    s1::FT
+    ""
+    s2::FT
+    ""
+    s3::FT
+    ""
+    s4::FT
+    ""
+    s5::FT
+    ""
+    s6::FT
     "Photosynthesis mechanism: 1.0 indicates C3, 0.0 indicates C4"
     is_c3::MECH
 end
@@ -100,10 +114,16 @@ function photosynthesis_at_a_point_Farquhar(
     Ko25,
     ΔHkc,
     ΔHko,
+    Q10,
+    s1,
+    s2,
+    s3,
+    s4,
 )
     Jmax = max_electron_transport(Vcmax25, ΔHJmax, T, To, R)
     J = electron_transport(APAR, Jmax, θj, ϕ)
-    Vcmax = compute_Vcmax(Vcmax25, T, To, R, ΔHVcmax)
+    Vcmax =
+        compute_Vcmax(is_c3, Vcmax25, T, To, R, ΔHVcmax, Q10, s1, s2, s3, s4)
     Γstar = co2_compensation(Γstar25, ΔHΓstar, T, To, R)
     ci = intercellular_co2(c_co2, Γstar, medlyn_factor)
     Aj = light_assimilation(is_c3, J, ci, Γstar)
@@ -174,8 +194,15 @@ function update_photosynthesis!(
         Ko25,
         ΔHkc,
         ΔHko,
+        Q10,
+        s1,
+        s2,
+        s3,
+        s4,
+        s5,
+        s6,
     ) = model.parameters
-    @. Rd = dark_respiration(Vcmax25, β, f, ΔHRd, T, To, R)
+    @. Rd = dark_respiration(is_c3, Vcmax25, β, f, ΔHRd, T, To, R, Q10, s5, s6)
     @. An = photosynthesis_at_a_point_Farquhar(
         T,
         β,
@@ -200,6 +227,11 @@ function update_photosynthesis!(
         Ko25,
         ΔHkc,
         ΔHko,
+        Q10,
+        s1,
+        s2,
+        s3,
+        s4,
     )
     Vcmax25field .= Vcmax25
 end

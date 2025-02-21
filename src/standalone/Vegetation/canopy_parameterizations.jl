@@ -723,9 +723,38 @@ function moisture_stress(pl::FT, sc::FT, pc::FT) where {FT}
     β = min(FT(1), (1 + exp(sc * pc)) / (1 + exp(sc * (pc - pl))))
     return β
 end
+function dark_respiration(is_c3::AbstractFloat, args...)
+    is_c3 > 0.5 ? c3_dark_respiration(args...) : c4_dark_respiration(args...)
+end
+"""
+    c4_dark_respiration(Vcmax25::FT,
+                     β::FT,
+                     f::FT,
+                     ΔHkc::FT,
+                     T::FT,
+                     To::FT,
+                     R::FT) where {FT}
+
 
 """
-    dark_respiration(Vcmax25::FT,
+function c4_dark_respiration(
+    Vcmax25::FT,
+    β::FT,
+    f::FT,
+    ΔHRd::FT,
+    T::FT,
+    To::FT,
+    R::FT,
+    Q10::FT,
+    s5::FT,
+    s6::FT,
+) where {FT}
+    Rd = f * Vcmax25 * β * Q10^((T - To) / 10) / (1 + exp(s5 * (T - s6)))
+    return Rd
+end
+
+"""
+    c3_dark_respiration(Vcmax25::FT,
                      β::FT,
                      f::FT,
                      ΔHkc::FT,
@@ -742,7 +771,7 @@ the unversal gas constant (`R`), and the temperature (`T`).
 See Table 11.5 of G. Bonan's textbook,
 Climate Change and Terrestrial Ecosystem Modeling (2019).
 """
-function dark_respiration(
+function c3_dark_respiration(
     Vcmax25::FT,
     β::FT,
     f::FT,
@@ -750,6 +779,7 @@ function dark_respiration(
     T::FT,
     To::FT,
     R::FT,
+    args...,
 ) where {FT}
     Rd = f * Vcmax25 * β * arrhenius_function(T, To, R, ΔHRd)
     return Rd
@@ -848,9 +878,42 @@ function MM_Ko(Ko25::FT, ΔHko::FT, T::FT, To::FT, R::FT) where {FT}
     Ko = Ko25 * arrhenius_function(T, To, R, ΔHko)
     return Ko
 end
+function compute_Vcmax(is_c3::AbstractFloat, args...)
+    is_c3 > 0.5 ? c3_compute_Vcmax(args...) : c4_compute_Vcmax(args...)
+end
 
 """
-    compute_Vcmax(Vcmax25::FT,
+    c4_compute_Vcmax(Vcmax25::FT,
+           T::FT,
+           To::FT,
+           R::FT,
+           ep5::FT) where {FT}
+
+Computes the maximum rate of carboxylation of Rubisco (`Vcmax`),
+in units of mol/m^2/s,
+as a function of temperature (`T`), Vcmax at the reference temperature 25 °C (`Vcmax25`),
+for C4 photosynthesis.
+"""
+function c4_compute_Vcmax(
+    Vcmax25::FT,
+    T::FT,
+    To::FT,
+    R::FT,
+    ΔHVcmax::FT,
+    Q10::FT,
+    s1::FT,
+    s2::FT,
+    s3::FT,
+    s4::FT,
+) where {FT}
+    Vcmax =
+        Vcmax25 * Q10^((T - To) / 10) / (1 + exp(s1 * (T - s2))) /
+        (1 + exp(s3 * (s4 - T)))
+    return Vcmax
+end
+
+"""
+    c3_compute_Vcmax(Vcmax25::FT,
            T::FT,
            To::FT,
            R::FT,
@@ -864,12 +927,13 @@ the universal gas constant (`R`), and the reference temperature (`To`).
 See Table 11.5 of G. Bonan's textbook,
 Climate Change and Terrestrial Ecosystem Modeling (2019).
 """
-function compute_Vcmax(
+function c3_compute_Vcmax(
     Vcmax25::FT,
     T::FT,
     To::FT,
     R::FT,
     ΔHVcmax::FT,
+    args...,
 ) where {FT}
     Vcmax = Vcmax25 * arrhenius_function(T, To, R, ΔHVcmax)
     return Vcmax

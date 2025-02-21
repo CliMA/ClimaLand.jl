@@ -225,6 +225,23 @@ for FT in (Float32, Float64)
         )
         #    C4 tests
         is_c3 = 0.0
+        (; Q10, s1, s2, s3, s4, s5, s6, Vcmax25, ΔHVcmax) = photosynthesisparams
+        VCmax =
+            Vcmax25 * Q10^((T - To) / 10) / (1 + exp(s1 * (T - s2))) /
+            (1 + exp(s3 * (s4 - T)))
+        @test compute_Vcmax(
+            is_c3,
+            Vcmax25,
+            T,
+            To,
+            R,
+            ΔHVcmax,
+            Q10,
+            s1,
+            s2,
+            s3,
+            s4,
+        ) == Vcmax
         @test rubisco_assimilation(
             is_c3,
             Vcmax,
@@ -237,6 +254,7 @@ for FT in (Float32, Float64)
         @test light_assimilation(is_c3, J, ci, Γstar) == J
 
         Rd = dark_respiration(
+            is_c3,
             photosynthesisparams.Vcmax25,
             β,
             photosynthesisparams.f,
@@ -244,12 +262,15 @@ for FT in (Float32, Float64)
             T,
             To,
             R,
+            Q10,
+            s5,
+            s6,
         )
         @test Rd ≈
               photosynthesisparams.Vcmax25 *
               β *
               photosynthesisparams.f *
-              arrhenius_function(T, To, R, photosynthesisparams.ΔHRd)
+              Q10^((T - To) / 10) / (1 + exp(s5 * (T - s6)))
         An = net_photosynthesis.(Ac, Aj, Rd, β)
         stomatal_conductance =
             medlyn_conductance.(
