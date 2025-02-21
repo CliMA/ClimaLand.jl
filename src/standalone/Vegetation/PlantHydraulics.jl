@@ -602,19 +602,19 @@ function make_compute_exp_tendency(
         # for broadcasted expressions using the macro @.
         # field.:($index) .= value # works
         # @ field.:($$index) = value # works
-        @inbounds for i in 1:(n_stem + n_leaf)
+        i = 1
+        ip1= 2
+        AI = getproperty(area_index, model.compartment_labels[i]) # this is a field; should not allocate here
+        dz = model.compartment_surfaces[ip1] - model.compartment_surfaces[i] # currently this is a scalar. in the future, this will be a field.
+        @inbounds @. dY.canopy.hydraulics.ϑ_l.:($$i) = 1 / max(AI * dz, eps(FT)) * (fa_roots - fa.:($$i))
+        @inbounds for i in 2:(n_stem + n_leaf)
             im1 = i - 1
             ip1 = i + 1
             # To prevent dividing by zero, change AI/(AI x dz)" to AI/max(AI x dz, eps(FT))"
             AI = getproperty(area_index, model.compartment_labels[i]) # this is a field; should not allocate here
             dz = model.compartment_surfaces[ip1] - model.compartment_surfaces[i] # currently this is a scalar. in the future, this will be a field.
-            if i == 1
-                @inbounds @. dY.canopy.hydraulics.ϑ_l.:($$i) =
-                    1 / max(AI * dz, eps(FT)) * (fa_roots - fa.:($$i))
-            else
-                @inbounds @. dY.canopy.hydraulics.ϑ_l.:($$i) =
-                    1 / max(AI * dz, eps(FT)) * (fa.:($$im1) - fa.:($$i))
-            end
+            @inbounds @. dY.canopy.hydraulics.ϑ_l.:($$i) =
+                1 / max(AI * dz, eps(FT)) * (fa.:($$im1) - fa.:($$i))
         end
     end
     return compute_exp_tendency!
