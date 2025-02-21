@@ -164,7 +164,15 @@ function FarquharParameters(
     )
     parameters = CP.get_parameter_values(toml_dict, name_map, "Land")
     FT = CP.float_type(toml_dict)
-    C4_parameters = (:Q10 => FT(2), :s1 => FT(0.3), :s2 => FT(313.15), :s3 => FT(0.2), :s4 => FT(288.15), :s5 => FT(1.3), :s6 => FT(328.15))
+    C4_parameters = (
+        :Q10 => FT(2),
+        :s1 => FT(0.3),
+        :s2 => FT(313.15),
+        :s3 => FT(0.2),
+        :s4 => FT(288.15),
+        :s5 => FT(1.3),
+        :s6 => FT(328.15),
+    )
 
     if maximum(is_c3) > 1
         error(

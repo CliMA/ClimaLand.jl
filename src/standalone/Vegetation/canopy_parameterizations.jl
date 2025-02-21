@@ -724,8 +724,7 @@ function moisture_stress(pl::FT, sc::FT, pc::FT) where {FT}
     return β
 end
 function dark_respiration(is_c3::AbstractFloat, args...)
-    is_c3 > 0.5 ? c3_dark_respiration(args...) :
-    c4_dark_respiration(args...)
+    is_c3 > 0.5 ? c3_dark_respiration(args...) : c4_dark_respiration(args...)
 end
 """
     c4_dark_respiration(Vcmax25::FT,
@@ -748,9 +747,9 @@ function c4_dark_respiration(
     R::FT,
     Q10::FT,
     s5::FT,
-    s6::FT
+    s6::FT,
 ) where {FT}
-    Rd = f * Vcmax25 * β * Q10^((T-To)/10) / (1+exp(s5*(T-s6)))
+    Rd = f * Vcmax25 * β * Q10^((T - To) / 10) / (1 + exp(s5 * (T - s6)))
     return Rd
 end
 
@@ -780,7 +779,7 @@ function c3_dark_respiration(
     T::FT,
     To::FT,
     R::FT,
-    args...
+    args...,
 ) where {FT}
     Rd = f * Vcmax25 * β * arrhenius_function(T, To, R, ΔHRd)
     return Rd
@@ -880,8 +879,7 @@ function MM_Ko(Ko25::FT, ΔHko::FT, T::FT, To::FT, R::FT) where {FT}
     return Ko
 end
 function compute_Vcmax(is_c3::AbstractFloat, args...)
-    is_c3 > 0.5 ? c3_compute_Vcmax(args...) :
-    c4_compute_Vcmax(args...)
+    is_c3 > 0.5 ? c3_compute_Vcmax(args...) : c4_compute_Vcmax(args...)
 end
 
 """
@@ -906,9 +904,11 @@ function c4_compute_Vcmax(
     s1::FT,
     s2::FT,
     s3::FT,
-    s4::FT
+    s4::FT,
 ) where {FT}
-    Vcmax = Vcmax25 * Q10^((T - To)/10) / (1 + exp(s1*(T-s2))) / (1+ exp(s3*(s4-T)))
+    Vcmax =
+        Vcmax25 * Q10^((T - To) / 10) / (1 + exp(s1 * (T - s2))) /
+        (1 + exp(s3 * (s4 - T)))
     return Vcmax
 end
 
@@ -933,7 +933,7 @@ function c3_compute_Vcmax(
     To::FT,
     R::FT,
     ΔHVcmax::FT,
-    args...
+    args...,
 ) where {FT}
     Vcmax = Vcmax25 * arrhenius_function(T, To, R, ΔHVcmax)
     return Vcmax
