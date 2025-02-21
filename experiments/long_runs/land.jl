@@ -28,6 +28,7 @@ import ClimaUtilities
 
 import ClimaUtilities.TimeVaryingInputs:
     TimeVaryingInput, LinearInterpolation, PeriodicCalendar
+import ClimaUtilities.TimeManager: ITime
 import ClimaUtilities.ClimaArtifacts: @clima_artifact
 import ClimaParams as CP
 
@@ -56,7 +57,14 @@ diagnostics_outdir = joinpath(root_path, "global_diagnostics")
 outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
 
-function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
+function setup_prob(
+    t0,
+    tf,
+    Δt,
+    start_date;
+    outdir = outdir,
+    nelements = (101, 15),
+)
     earth_param_set = LP.LandParameters(FT)
     radius = FT(6378.1e3)
     depth = FT(50)
@@ -70,7 +78,6 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     surface_space = domain.space.surface
     subsurface_space = domain.space.subsurface
 
-    start_date = DateTime(2008)
     # Forcing data
     era5_artifact_path =
         ClimaLand.Artifacts.era5_land_forcing_data2008_folder_path(; context)
@@ -342,7 +349,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         p,
     )
 
-    updateat = Array(t0:(3600 * 3):tf)
+    updateat = [promote(t0:(ITime(3600 * 3)):tf...)...]
     drivers = ClimaLand.get_drivers(land)
     updatefunc = ClimaLand.make_update_drivers(drivers)
 
@@ -387,6 +394,7 @@ function setup_and_solve_problem(; greet = false)
     years = 366days # years in seconds - 366 to make sure we capture at least full years
     tf = 2years # 2 years in seconds
     Δt = 450.0
+    start_date = DateTime(2008)
     nelements = (101, 15)
     if greet
         @info "Run: Global Soil-Canopy Model"
@@ -395,7 +403,11 @@ function setup_and_solve_problem(; greet = false)
         @info "Duration: $(tf - t0) s"
     end
 
-    prob, cb = setup_prob(t0, tf, Δt; nelements)
+    t0 = ITime(t0, epoch = start_date)
+    tf = ITime(tf, epoch = start_date)
+    Δt = ITime(Δt, epoch = start_date)
+    t0, tf, Δt = promote(t0, tf, Δt)
+    prob, cb = setup_prob(t0, tf, Δt, start_date; nelements)
 
     # Define timestepper and ODE algorithm
     stepper = CTS.ARS111()
