@@ -830,7 +830,7 @@ function define_diagnostics!(land_model)
     )
 
     add_diagnostic_variable!(
-        short_name = "iwc_1m",
+        short_name = "iwc",
         long_name = "Integrated Soil Water Content in first 1m",
         standard_name = "soil_1m_water_content",
         units = "m",
