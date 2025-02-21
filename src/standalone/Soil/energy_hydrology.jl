@@ -663,21 +663,21 @@ Computes the source terms for phase change.
 """
 function ClimaLand.source!(
     dY::ClimaCore.Fields.FieldVector,
-    src::PhaseChange{FT},
+    src::PhaseChange,
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
     model,
-) where {FT}
+)
     params = model.parameters
     (; ν, ρc_ds, θ_r, hydrology_cm, earth_param_set) = params
-    _ρ_l = FT(LP.ρ_cloud_liq(earth_param_set))
-    _ρ_i = FT(LP.ρ_cloud_ice(earth_param_set))
+    _ρ_l = LP.ρ_cloud_liq(earth_param_set)
+    _ρ_i = LP.ρ_cloud_ice(earth_param_set)
     Δz = model.domain.fields.Δz # center face distance
+    _LH_f0 = LP.LH_f0(earth_param_set)
+    _T_freeze = LP.T_freeze(earth_param_set)
+    _grav = LP.grav(earth_param_set)
 
-    # Wrap hydrology and earth parameters in one struct to avoid type inference failure. This is allocating! We should remove it.
-    hydrology_earth_params =
-        ClimaLand.Soil.HydrologyEarthParameters.(hydrology_cm, earth_param_set)
-
+    # Pass in physical constants as floats, to avoid issue broadcasting over fields and structs
     @. dY.soil.ϑ_l +=
         -phase_change_source(
             p.soil.θ_l,
@@ -695,7 +695,12 @@ function ClimaLand.source!(
             ),
             ν,
             θ_r,
-            hydrology_earth_params,
+            hydrology_cm,
+            _ρ_i,
+            _ρ_l,
+            _LH_f0,
+            _T_freeze,
+            _grav,
         )
     @. dY.soil.θ_i +=
         (_ρ_l / _ρ_i) * phase_change_source(
@@ -714,7 +719,12 @@ function ClimaLand.source!(
             ),
             ν,
             θ_r,
-            hydrology_earth_params,
+            hydrology_cm,
+            _ρ_i,
+            _ρ_l,
+            _LH_f0,
+            _T_freeze,
+            _grav,
         )
 end
 
