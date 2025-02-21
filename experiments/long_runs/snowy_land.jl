@@ -482,7 +482,7 @@ for (group_id, group) in
 end
 
 short_names =
-    ["gpp", "swc", "et", "ct", "swe", "si", "lwp", "iwc_1m", "trans", "msf"]
+    ["gpp", "swc", "et", "ct", "swe", "si", "lwp", "iwc", "trans", "msf"]
 
 include(
     joinpath(
