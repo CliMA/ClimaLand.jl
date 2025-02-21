@@ -677,7 +677,7 @@ function ClimaLand.source!(
     _T_freeze = LP.T_freeze(earth_param_set)
     _grav = LP.grav(earth_param_set)
     τ = p.soil.sub_sfc_scratch
-    @. τ =  thermal_time(
+    @. τ = thermal_time(
         volumetric_heat_capacity(
             p.soil.θ_l,
             Y.soil.θ_i,
@@ -687,6 +687,7 @@ function ClimaLand.source!(
         Δz,
         p.soil.κ,
     )
+    # Pass in physical constants as floats, to avoid issue broadcasting over fields and structs
     @. dY.soil.ϑ_l +=
         -phase_change_source(
             p.soil.θ_l,
@@ -700,7 +701,7 @@ function ClimaLand.source!(
             _ρ_l,
             _LH_f0,
             _T_freeze,
-            _grav
+            _grav,
         )
     @. dY.soil.θ_i +=
         (_ρ_l / _ρ_i) * phase_change_source(
@@ -715,7 +716,7 @@ function ClimaLand.source!(
             _ρ_l,
             _LH_f0,
             _T_freeze,
-            _grav
+            _grav,
         )
 end
 

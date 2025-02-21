@@ -31,8 +31,14 @@ end
         τ::FT,
         ν::FT,
         θ_r::FT,
-        hydrology_earth_params::HEP
-    ) where {FT, HEP}
+        hydrology_cm::CM,
+        _ρ_i::FT,
+        _ρ_l::FT,
+        _LH_f0::FT,
+        _T_freeze::FT,
+        _grav::FT
+        ) where {FT, CM}
+
 Returns the source term (1/s) used for converting liquid water
 and ice into each other during phase changes. Note that
 there are unitless prefactors multiplying this term in the
@@ -49,12 +55,12 @@ function phase_change_source(
     τ::FT,
     ν::FT,
     θ_r::FT,
-    hydrology_cm::CM
+    hydrology_cm::CM,
     _ρ_i::FT,
     _ρ_l::FT,
     _LH_f0::FT,
     _T_freeze::FT,
-    _grav::FT
+    _grav::FT,
 ) where {FT, CM}
     # According to Dall'Amico (text above equation 1), ψw0 corresponds
     # to the matric potential corresponding to the total water content (liquid and ice).
