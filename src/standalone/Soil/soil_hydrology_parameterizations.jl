@@ -59,7 +59,7 @@ function update_albedo!(bc::AtmosDrivenFluxBC, p, soil_domain, model_parameters)
     S_sfc = p.soil.sfc_S_e
     FT = eltype(soil_domain.fields.Δz_top)
     # checks if there is at least 1 layer centered within the top soil depth
-    if minimum(soil_domain.fields.Δz_top) < albedo_calc_top_thickness
+    if soil_domain.fields.Δz_min < albedo_calc_top_thickness
         # ∫H_S_e_dz is the integral of effective saturation from (surface-albedo_calc_top_thickness) to surface
         ∫H_S_e_dz = p.soil.sfc_S_e
         # ∫H_dz is integral of 1 from (surface-albedo_calc_top_thickness) to surface
@@ -85,10 +85,9 @@ function update_albedo!(bc::AtmosDrivenFluxBC, p, soil_domain, model_parameters)
         )
         @. S_sfc = ∫H_S_e_dz / ∫H_dz
     else
+        @. p.soil.sub_sfc_scratch = effective_saturation(ν, p.soil.θ_l, θ_r)
         # in the case where no layer is centered above boundary, use the values of the top layer
-        S_sfc .= ClimaLand.Domains.top_center_to_surface(
-            effective_saturation.(ν, p.soil.θ_l, θ_r),
-        )
+        S_sfc .= ClimaLand.Domains.top_center_to_surface(p.soil.sub_sfc_scratch)
     end
     @. p.soil.PAR_albedo =
         albedo_from_moisture(S_sfc, PAR_albedo_dry, PAR_albedo_wet)
