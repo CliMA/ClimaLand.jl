@@ -169,7 +169,7 @@ function update_photosynthesis!(
     Ac = rubisco_assimilation.(is_c3, Vcmax, ci, Γstar, Kc, Ko, oi)
 
     @. Vcmax25 = Vcmax / arrhenius_function(T, To, R, ΔHVcmax)
-    @. Rd = dark_respiration(Vcmax25, β, f, ΔHRd, T, To, R)
+    @. Rd = dark_respiration(is_c3, Vcmax25, β, f, ΔHRd, T, To, R)
     @. An = net_photosynthesis(Ac, Aj, Rd, β)
 end
 Base.broadcastable(m::OptimalityFarquharParameters) = tuple(m)
