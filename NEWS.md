@@ -37,6 +37,9 @@ v0.15.8
 - Rename `LandHydrologyModel` to `SoilSnowModel`
   PR[#968](https://github.com/CliMA/ClimaLand.jl/pull/968)
 
+- Change `Soil.phase_change_source` interface to take model parameters
+  as the final argument; remove `HydrologyEarthParameters` struct.
+  PR[#982](https://github.com/CliMA/ClimaLand.jl/pull/982)
 
 v0.15.7
 -------
