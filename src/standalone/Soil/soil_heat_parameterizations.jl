@@ -31,8 +31,14 @@ end
         τ::FT,
         ν::FT,
         θ_r::FT,
-        hydrology_earth_params::HEP
-    ) where {FT, HEP}
+        hydrology_cm::CM,
+        _ρ_i::FT,
+        _ρ_l::FT,
+        _LH_f0::FT,
+        _T_freeze::FT,
+        _grav::FT
+        ) where {FT, CM}
+
 Returns the source term (1/s) used for converting liquid water
 and ice into each other during phase changes. Note that
 there are unitless prefactors multiplying this term in the
@@ -49,17 +55,13 @@ function phase_change_source(
     τ::FT,
     ν::FT,
     θ_r::FT,
-    hydrology_earth_params::HEP,
-) where {FT, HEP}
-    # Extract parameter sets from their container
-    hydrology_cm = hydrology_earth_params.hydrology_cm
-    earth_param_set = hydrology_earth_params.earth_param_set
-
-    _ρ_i = FT(LP.ρ_cloud_ice(earth_param_set))
-    _ρ_l = FT(LP.ρ_cloud_liq(earth_param_set))
-    _LH_f0 = FT(LP.LH_f0(earth_param_set))
-    _T_freeze = FT(LP.T_freeze(earth_param_set))
-    _grav = FT(LP.grav(earth_param_set))
+    hydrology_cm::CM,
+    _ρ_i::FT,
+    _ρ_l::FT,
+    _LH_f0::FT,
+    _T_freeze::FT,
+    _grav::FT,
+) where {FT, CM}
     # According to Dall'Amico (text above equation 1), ψw0 corresponds
     # to the matric potential corresponding to the total water content (liquid and ice).
     θtot = min(_ρ_i / _ρ_l * θ_i + θ_l, ν)
@@ -70,7 +72,6 @@ function phase_change_source(
     ψT = _LH_f0 / _grav * log(T / Tf_depressed) * heaviside(Tf_depressed - T)
     # Equation (23) of Dall'Amico
     θstar = inverse_matric_potential(hydrology_cm, ψw0 + ψT) * (ν - θ_r) + θ_r
-
     return (θ_l - θstar) / τ
 end
 

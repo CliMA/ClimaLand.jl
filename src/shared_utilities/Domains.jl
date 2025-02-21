@@ -926,6 +926,7 @@ function get_additional_domain_fields(subsurface_space)
     z_face = ClimaCore.Fields.coordinate_field(face_space).z
     z_sfc = top_face_to_surface(z_face, surface_space)
     d = depth(subsurface_space)
+    Δz_min = minimum(Δz_top)
     fields = (;
         z = z,
         Δz_top = Δz_top,
@@ -933,6 +934,7 @@ function get_additional_domain_fields(subsurface_space)
         z_sfc = z_sfc,
         depth = d,
         Δz = Δz,
+        Δz_min = Δz_min,
     )
     return fields
 end
