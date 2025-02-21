@@ -9,7 +9,7 @@ addprocs(
          CAL.PBSManager(2),
          q = "main", # not prio
          A = "UCIT0011",
-         l_select = "ngpus=1",
+         l_select = "ngpus=4",
          l_walltime = "10:00:00",
         )
 
@@ -39,11 +39,11 @@ include(
 )
 
 ## Priors
-prior_pc = EKP.constrained_gaussian("pc", -2.5e6, 1e6, -Inf, 0);
-prior_sc = EKP.constrained_gaussian("sc", -2e-6, 1e-6, -Inf, 0);
+prior_pc = EKP.constrained_gaussian("pc", -2e6, 1e6, -Inf, Inf);
+prior_sc = EKP.constrained_gaussian("sc", 5e-6, 5e-4, 0, Inf);
 prior = EKP.combine_distributions([prior_pc, prior_sc]);
 
-ensemble_size = 10
+ensemble_size = 4
 n_iterations = 2
 noise = 1.0 * EKP.I # Should work, but this should be covariance of each month from observation (ERA5)
 

@@ -43,7 +43,7 @@ end
 t0 = 0.0
 tf = 60 * 60.0 * 24 * 366
 Δt = 900.0
-nelements = (101, 7)
+nelements = (50, 10)
 regridder_type = :InterpolationsRegridder
 radius = FT(6378.1e3)
 depth = FT(3.5)
