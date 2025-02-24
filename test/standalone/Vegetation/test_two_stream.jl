@@ -26,7 +26,7 @@ for FT in (Float32, Float64)
     @testset "Two-Stream Model Correctness, FT = $FT" begin
         # Read the conditions for each setup parameter from the test file
         column_names = test_set[1, :]
-        θs = acos.(FT.(test_set[2:end, column_names .== "mu"]))
+        cosθs = FT.(test_set[2:end, column_names .== "mu"])
         LAI = FT.(test_set[2:end, column_names .== "LAI"])
         a_soil = FT.(test_set[2:end, column_names .== "a_soil"])
         n_layers = UInt64.(test_set[2:end, column_names .== "n_layers"])
@@ -81,8 +81,8 @@ for FT in (Float32, Float64)
                 RT = TwoStreamModel(RT_params)
 
                 # Compute the predicted FAPAR using the ClimaLand TwoStream implementation
-                G = compute_G(RT_params.G_Function, θs)
-                K = extinction_coeff.(G, θs[i])
+                G = compute_G(RT_params.G_Function, cosθs)
+                K = extinction_coeff.(G, cosθs[i])
                 output =
                     canopy_sw_rt_two_stream.(
                         G,
@@ -92,7 +92,7 @@ for FT in (Float32, Float64)
                         RT_params.τ_PAR_leaf,
                         LAI[i],
                         K,
-                        θs[i],
+                        cosθs[i],
                         a_soil[i],
                         PropDif[i],
                     )

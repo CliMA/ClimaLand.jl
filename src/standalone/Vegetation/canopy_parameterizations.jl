@@ -35,7 +35,7 @@ export canopy_sw_rt_beer_lambert,
     )
 
 Returns the constant leaf angle distribution value for the given G function.
-Takes in an arbitrary value for the solar zenith angle, which is not used.
+Takes in an arbitrary value for the cosine of the solar zenith angle, which is not used.
 """
 function compute_G(G::ConstantGFunction, _)
     return G.ld
@@ -44,31 +44,32 @@ end
 """
     compute_G(
         G::CLMGFunction,
-        θs,
+        cosθs,
     )
 
-Returns the leaf angle distribution value for CLM G function as a function of the
-solar zenith angle and the leaf orientation index. See section 3.1 of
-https://www2.cesm.ucar.edu/models/cesm2/land/CLM50_Tech_Note.pdf
+Returns the leaf angle distribution value for CLM G function as a function of the 
+cosine of the solar zenith angle and the leaf orientation index. 
+See section 3.1 of https://www2.cesm.ucar.edu/models/cesm2/land/CLM50_Tech_Note.pdf
 """
-function compute_G(G::CLMGFunction, θs)
-    return compute_G_CLMG.(G.χl, θs)
+function compute_G(G::CLMGFunction, cosθs)
+    return compute_G_CLMG.(G.χl, cosθs)
 end
 
 """
     compute_G_CLMG(
         χl::FT,
-        θs::FT,
+        cosθs::FT,
     )
 
 Returns the leaf angle distribution value for CLM G function at a point as a function of the
-solar zenith angle at the point and the leaf orientation index at the point. See section 3.1 of
+cosine of the solar zenith angle at the point and the 
+leaf orientation index at the point. See section 3.1 of 
 https://www2.cesm.ucar.edu/models/cesm2/land/CLM50_Tech_Note.pdf
 """
-function compute_G_CLMG(χl::FT, θs::FT) where {FT}
+function compute_G_CLMG(χl::FT, cosθs::FT) where {FT}
     ϕ1 = 0.5 - 0.633 * χl - 0.33 * χl^2
     ϕ2 = 0.877 * (1 - 2 * ϕ1)
-    return FT(ϕ1 + ϕ2 * cos(θs))
+    return FT(ϕ1 + ϕ2 * cosθs)
 end
 
 """
@@ -113,7 +114,7 @@ end
         K,
         α_soil_PAR,
         α_soil_NIR,
-        θs,
+        cosθs,
         frac_diff,
     )
 
@@ -123,7 +124,8 @@ Two-stream model. The absorbances are a function of the radiative transfer
 model, as well as the leaf area index, the extinction coefficient, and the
 soil albedo in the PAR and NIR bands.
 
-This model also depends on the diffuse fraction and the zenith angle.
+This model also depends on the diffuse fraction and the cosine of the
+zenith angle.
 Returns a
 NamedTuple of NamedTuple, of the form:
 (; par = (; refl = , trans = , abs = ),  nir = (; refl = , trans = , abs = ))
@@ -135,7 +137,7 @@ function compute_fractional_absorbances!(
     K,
     α_soil_PAR,
     α_soil_NIR,
-    θs,
+    cosθs,
     frac_diff,
 ) where {FT}
     RTP = RT.parameters
@@ -147,7 +149,7 @@ function compute_fractional_absorbances!(
         RTP.τ_PAR_leaf,
         LAI,
         K,
-        θs,
+        cosθs,
         α_soil_PAR,
         frac_diff,
     )
@@ -159,7 +161,7 @@ function compute_fractional_absorbances!(
         RTP.τ_NIR_leaf,
         LAI,
         K,
-        θs,
+        cosθs,
         α_soil_NIR,
         frac_diff,
     )
@@ -206,7 +208,7 @@ end
         τ_leaf::FT,
         LAI::FT,
         K::FT,
-        θs::FT,
+        cosθs::FT,
         α_soil::FT,
         frac_diff::FT,
     )
@@ -217,7 +219,7 @@ This applies the two-stream radiative transfer solution which takes into account
 the impacts of scattering within the canopy. The function takes in all
 parameters from the parameter struct of a TwoStreamModel, along with the
 incident radiation, LAI, extinction coefficient K, soil albedo from the
-canopy soil_driver, solar zenith angle, and τ.
+canopy soil_driver, the cosine of the solar zenith angle, and τ.
 
 Returns a tuple of reflected, absorbed, and transmitted radiation fractions.
 """
@@ -229,7 +231,7 @@ function canopy_sw_rt_two_stream(
     τ_leaf::FT,
     LAI::FT,
     K::FT,
-    θs::FT,
+    cosθs::FT,
     α_soil::FT,
     frac_diff::FT,
 ) where {FT}
@@ -241,7 +243,7 @@ function canopy_sw_rt_two_stream(
     ω = max(α_leaf + τ_leaf, eps(FT))
 
     # Compute aₛ, the single scattering albedo
-    aₛ = 0.5 * ω * (1 - cos(θs) * log((abs(cos(θs)) + 1) / abs(cos(θs))))
+    aₛ = 0.5 * ω * (1 - cosθs * log((abs(cosθs) + 1) / abs(cosθs)))
 
     # Compute β₀, the direct upscattering parameter
     β₀ = (1 / ω) * aₛ * (1 + μ̄ * K) / (μ̄ * K)
@@ -379,67 +381,15 @@ function canopy_sw_rt_two_stream(
 end
 
 """
-    diffuse_fraction(td::FT, T::FT, P, q, SW_d::FT, θs::FT, thermo_params) where {FT}
-
-Computes the fraction of diffuse radiation (`diff_frac`) as a function
-of the solar zenith angle (`θs`), the total surface downwelling shortwave radiation (`SW_d`),
-the air temperature (`T`), air pressure (`P`), specific humidity (`q`), and the day of the year
-(`td`).
-
-See Appendix A of Braghiere, "Evaluation of turbulent fluxes of CO2, sensible heat,
-and latent heat as a function of aerosol optical depth over the course of deforestation
-in the Brazilian Amazon" 2013.
-
-Note that cos(θs) is equal to zero when θs = π/2, and this is a coefficient
-of k₀, which we divide by in this expression. This can amplify small errors
-when θs is near π/2.
-
-This formula is empirical and can yied negative numbers depending on the
-input, which, when dividing by something very near zero,
-can become large negative numbers.
-
-Because of that, we cap the returned value to lie within [0,1].
-"""
-function diffuse_fraction(
-    td,
-    T::FT,
-    P::FT,
-    q::FT,
-    SW_d::FT,
-    θs::FT,
-    thermo_params,
-) where {FT}
-    RH = ClimaLand.relative_humidity(T, P, q, thermo_params)
-    k₀ = FT(1370 * (1 + 0.033 * cos(2π * td / 365))) * cos(θs)
-    kₜ = SW_d / k₀
-    if kₜ ≤ 0.3
-        diff_frac = FT(
-            kₜ *
-            (1 - 0.232 * kₜ + 0.0239 * cos(θs) - 6.82e-4 * T + 0.0195 * RH),
-        )
-    elseif kₜ ≤ 0.78
-        diff_frac = FT(
-            kₜ * (
-                1.329 - 1.716 * kₜ + 0.267 * cos(θs) - 3.57e-3 * T + 0.106 * RH
-            ),
-        )
-    else
-        diff_frac =
-            FT(kₜ * (0.426 * kₜ + 0.256 * cos(θs) - 3.49e-3 * T + 0.0734 * RH))
-    end
-    return max(min(diff_frac, FT(1)), FT(0))
-end
-
-
-"""
     extinction_coeff(ld::FT,
-                     θs::FT) where {FT}
+                     cosθs::FT) where {FT}
 
 Computes the vegetation extinction coefficient (`K`), as a function
-of the sun zenith angle (`θs`), and the leaf angle distribution (`G`).
+of the cosine of the sun zenith angle (`cosθs`), 
+and the leaf angle distribution (`G`).
 """
-function extinction_coeff(G::FT, θs::FT) where {FT}
-    K = G / max(cos(θs), eps(FT))
+function extinction_coeff(G::FT, cosθs::FT) where {FT}
+    K = G / max(cosθs, eps(FT))
     return K
 end
 

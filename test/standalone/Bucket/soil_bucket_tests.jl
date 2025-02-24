@@ -86,7 +86,8 @@ for FT in (Float32, Float64)
                 :thermal_state,
                 :SW_d,
                 :LW_d,
-                :θs,
+                :cosθs,
+                :frac_diff,
             )
             # test if the correct dss buffers were added to aux.
             # We only need to add a dss buffer when there is a horizontal

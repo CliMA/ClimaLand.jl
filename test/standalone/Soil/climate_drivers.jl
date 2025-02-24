@@ -130,7 +130,8 @@ for FT in (Float32, Float64)
                 :thermal_state,
                 :SW_d,
                 :LW_d,
-                :θs,
+                :cosθs,
+                :frac_diff,
             )
             @test propertynames(p.soil.turbulent_fluxes) == (
                 :lhf,

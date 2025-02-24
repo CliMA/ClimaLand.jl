@@ -125,6 +125,7 @@ for FT in (Float32, Float64)
         rt_model = BeerLambertModel{FT}(RTparams)
 
         earth_param_set = LP.LandParameters(FT)
+        thermo_params = LP.thermodynamic_parameters(earth_param_set)
         LAI = (t) -> 1.0 # m2 [leaf] m-2 [ground]
         z_0m = FT(2.0) # m, Roughness length for momentum
         z_0b = FT(0.1) # m, Roughness length for scalars
@@ -205,6 +206,7 @@ for FT in (Float32, Float64)
             TimeVaryingInput(longwave_radiation),
             start_date;
             θs = zenith_angle,
+            earth_param_set = earth_param_set,
         )
         Δz = FT(1.0) # height of compartments
         n_stem = Int64(5) # number of stem elements
@@ -429,6 +431,7 @@ for FT in (Float32, Float64)
         rt_model = BeerLambertModel{FT}(RTparams)
 
         earth_param_set = LP.LandParameters(FT)
+        thermo_params = LP.thermodynamic_parameters(earth_param_set)
         LAI = FT(0.0) # m2 [leaf] m-2 [ground]
         z_0m = FT(2.0) # m, Roughness length for momentum
         z_0b = FT(0.1) # m, Roughness length for scalars
@@ -509,6 +512,7 @@ for FT in (Float32, Float64)
             TimeVaryingInput(longwave_radiation),
             start_date;
             θs = zenith_angle,
+            earth_param_set = earth_param_set,
         )
 
         n_stem = Int64(0) # number of stem elements
