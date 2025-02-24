@@ -60,19 +60,21 @@ start_date = local_datetime[1] + Dates.Hour(time_offset);
 data_dt = 3600.0;
 seconds = 0:data_dt:((length(local_datetime) - 1) * data_dt);
 
-# Assume the downwelling long and shortwave radiation are read in from the file
+# Assume the downwelling long and shortwave radiation, as well as the diffuse fraction
+# are read in from the file
 # and are measured at the times in local_datetime. Here, we'll just make them up
 # periodic on daily timescales:
 T = @. 298.15 + 5.0 * sin(2π * (seconds - 3600 * 6) / (3600 * 24));
 LW_d = 5.67 * 10^(-8) .* T .^ 4;
 SW_d = @. max(1400 * sin(2π * (seconds - 3600 * 6) / (3600 * 24)), 0.0);
-
+diffuse_fraction = 0.5 .+ zeros(length(seconds))
 # Next, fit interpolators to the data. These interpolators are what are stored in
 # the driver function. Then we can evaluate the radiative forcing
 # at any simulation time (and not just at times coinciding with measurements).
 # By default, linear interpolation is used.
 LW_d = TimeVaryingInput(seconds, LW_d)
 SW_d = TimeVaryingInput(seconds, SW_d);
+diffuse_fraction = TimeVaryingInput(seconds, diffuse_fraction);
 
 # Finally, for many models we also need to specify the function
 # for computing the zenith angle as a function of simulation time.
@@ -112,15 +114,22 @@ radiation = ClimaLand.PrescribedRadiativeFluxes(
     LW_d,
     start_date;
     θs = zenith_angle,
+    frac_diff = diffuse_fraction,
 );
 
 # # Updating the driver variables during the simulation
-# The values for LW_d, SW_d, and zenith angle θ_s are stored
+# The values for LW_d, SW_d, the diffuse fraction,
+# and the cosine of the zenith angle θ_s are stored
 # in the simulation/model cache `p` under the name `drivers`.
+# Since we did not pass the diffuse fraction directly,
+# it will be computed using an empirical function
+# of the atmospheric state, the zenith angle, and the earth
+# parameter set.
+
 # When you `initialize` the variables and cache of a model,
 # the cache `p` will be returned with memory allocated but all
 # values set to zero:
-p = (; drivers = (LW_d = [0.0], SW_d = [0.0], θs = [0.0]));
+p = (; drivers = (LW_d = [0.0], SW_d = [0.0], cosθs = [0.0], frac_diff = [0.0]));
 
 # In order to update them, we can make use of default update functions:
 update_radiation! = ClimaLand.make_update_drivers(radiation)
