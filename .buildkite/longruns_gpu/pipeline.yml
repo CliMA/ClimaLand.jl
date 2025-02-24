@@ -35,52 +35,36 @@ steps:
 
       - label: ":snow_capped_mountain: Snowy Land"
         command:
-          - julia --color=yes --project=.buildkite experiments/long_runs/snowy_land.jl
+          - julia --color=yes --project=.buildkite experiments/long_runs/snowy_land.jl -4e6 5e-6 1e-8 0.75 pc_ksat
         artifact_paths:
-          - "snowy_land_longrun_gpu/*png"
-          - "snowy_land_longrun_gpu/*pdf"
+          - "snowy_land_longrun_gpu_pc_ksat/*png"
+          - "snowy_land_longrun_gpu_pc_ksat/*pdf"
         agents:
           slurm_gpus: 1
           slurm_time: 15:00:00
         env:
           CLIMACOMMS_DEVICE: "CUDA"
 
-      - label: ":seedling: Soil-Canopy"
+      - label: ":snow_capped_mountain: Snowy Land"
         command:
-          - julia --color=yes --project=.buildkite experiments/long_runs/land.jl
-        artifact_paths: "land_longrun_gpu/*pdf"
+          - julia --color=yes --project=.buildkite experiments/long_runs/snowy_land.jl -4e6 1e-6 1e-8 0.75 pc_sc_ksat
+        artifact_paths:
+          - "snowy_land_longrun_gpu_pc_sc_ksat/*png"
+          - "snowy_land_longrun_gpu_pc_sc_ksat/*pdf"
         agents:
           slurm_gpus: 1
           slurm_time: 15:00:00
         env:
           CLIMACOMMS_DEVICE: "CUDA"
 
-      - label: ":sunglasses: California regional simulation"
+      - label: ":snow_capped_mountain: Snowy Land"
         command:
-          - julia --color=yes --project=.buildkite experiments/long_runs/land_region.jl
-        artifact_paths: "california_longrun_gpu/*pdf"
-        agents:
-          slurm_gpus: 1
-          slurm_time: 00:30:00
-        env:
-          CLIMACOMMS_DEVICE: "CUDA"
-
-      - label: "Soil"
-        command:
-          - julia --color=yes --project=.buildkite experiments/long_runs/soil.jl
-        artifact_paths: "soil_longrun_gpu/*pdf"
+          - julia --color=yes --project=.buildkite experiments/long_runs/snowy_land.jl -2e6 5e-6 5e-8 0.75 ksat
+        artifact_paths:
+          - "snowy_land_longrun_gpu_ksat/*png"
+          - "snowy_land_longrun_gpu_ksat/*pdf"
         agents:
           slurm_gpus: 1
           slurm_time: 15:00:00
-        env:
-          CLIMACOMMS_DEVICE: "CUDA"
-
-      - label: "Global bucket simulation"
-        command:
-          - julia --color=yes --project=.buildkite experiments/long_runs/bucket.jl
-        artifact_paths: "bucket_longrun_gpu/*pdf"
-        agents:
-          slurm_gpus: 1
-          slurm_time: 00:30:00
         env:
           CLIMACOMMS_DEVICE: "CUDA"
