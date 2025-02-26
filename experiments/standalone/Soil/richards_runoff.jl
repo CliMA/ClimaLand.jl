@@ -43,8 +43,7 @@ spatially_varying_soil_params =
         surface_space,
         FT,
     )
-(; ν, hydrology_cm, K_sat, S_s, θ_r, f_max, mask) =
-    spatially_varying_soil_params
+(; ν, hydrology_cm, K_sat, S_s, θ_r, f_max) = spatially_varying_soil_params
 
 f_over = FT(3.28) # 1/m
 R_sb = FT(1.484e-4 / 1000) # m/s
@@ -178,7 +177,6 @@ sol = @time SciMLBase.solve(
 )
 
 # Make plots on CPU
-oceans_to_zero(x, mask) = mask == 1 ? x : eltype(x)(0)
 if context.device isa ClimaComms.CPUSingleThreaded
     longpts = range(-180.0, 180.0, 101)
     latpts = range(-90.0, 90.0, 101)
@@ -188,10 +186,7 @@ if context.device isa ClimaComms.CPUSingleThreaded
     ]
     remapper = ClimaCore.Remapping.Remapper(surface_space, hcoords)
 
-    h∇_end = ClimaCore.Remapping.interpolate(
-        remapper,
-        oceans_to_zero.(sv.saveval[end].soil.h∇, mask),
-    )
+    h∇_end = ClimaCore.Remapping.interpolate(remapper, sv.saveval[end].soil.h∇)
     fig = Figure(size = (600, 400))
     ax = Axis(
         fig[1, 1],
@@ -205,10 +200,8 @@ if context.device isa ClimaComms.CPUSingleThreaded
     outfile = joinpath(outdir, string("heatmap_h∇.png"))
     CairoMakie.save(outfile, fig)
 
-    R_s_end = ClimaCore.Remapping.interpolate(
-        remapper,
-        oceans_to_zero.(sv.saveval[end].soil.R_s, mask),
-    )
+    R_s_end =
+        ClimaCore.Remapping.interpolate(remapper, sv.saveval[end].soil.R_s)
     fig = Figure(size = (600, 400))
     ax = Axis(
         fig[1, 1],
@@ -222,10 +215,8 @@ if context.device isa ClimaComms.CPUSingleThreaded
     outfile = joinpath(outdir, string("heatmap_R_s.png"))
     CairoMakie.save(outfile, fig)
 
-    R_ss_end = ClimaCore.Remapping.interpolate(
-        remapper,
-        oceans_to_zero.(sv.saveval[end].soil.R_ss, mask),
-    )
+    R_ss_end =
+        ClimaCore.Remapping.interpolate(remapper, sv.saveval[end].soil.R_ss)
 
     fig = Figure(size = (600, 400))
     ax = Axis(
@@ -245,7 +236,7 @@ if context.device isa ClimaComms.CPUSingleThreaded
     θ_sfc_end = ClimaCore.Remapping.interpolate(
         remapper,
         ClimaLand.Domains.top_center_to_surface(
-            oceans_to_zero.(field_to_error.(sol.u[end].soil.ϑ_l), mask),
+            field_to_error.(sol.u[end].soil.ϑ_l),
         ),
     )
 
@@ -263,10 +254,7 @@ if context.device isa ClimaComms.CPUSingleThreaded
     Δθ_sfc = ClimaCore.Remapping.interpolate(
         remapper,
         ClimaLand.Domains.top_center_to_surface(
-            oceans_to_zero.(
-                field_to_error.(sol.u[end].soil.ϑ_l .- sol.u[1].soil.ϑ_l),
-                mask,
-            ),
+            field_to_error.(sol.u[end].soil.ϑ_l .- sol.u[1].soil.ϑ_l),
         ),
     )
     ax2 = Axis(fig[1, 3], xlabel = "Longitude", title = "θ_sfc Δ")
@@ -280,7 +268,7 @@ if context.device isa ClimaComms.CPUSingleThreaded
     int_ϑ_end = similar(sv.saveval[1].soil.h∇)
     ClimaCore.Operators.column_integral_definite!(
         int_ϑ_end,
-        oceans_to_zero.(field_to_error.(sol.u[end].soil.ϑ_l), mask),
+        field_to_error.(sol.u[end].soil.ϑ_l),
     )
     normalized_int_ϑ_end =
         ClimaCore.Remapping.interpolate(remapper, int_ϑ_end ./ 50.0)
@@ -304,7 +292,7 @@ if context.device isa ClimaComms.CPUSingleThreaded
     int_ϑ_1 = similar(sv.saveval[1].soil.h∇)
     ClimaCore.Operators.column_integral_definite!(
         int_ϑ_1,
-        oceans_to_zero.(field_to_error.(sol.u[1].soil.ϑ_l), mask),
+        field_to_error.(sol.u[1].soil.ϑ_l),
     )
     Δ_normalized_int_ϑ = ClimaCore.Remapping.interpolate(
         remapper,
