@@ -387,7 +387,9 @@ function initialize_boundary_vars(model::CanopyModel{FT}, coords) where {FT}
     )
     additional_aux = map(zip(types, domains)) do (T, domain)
         zero_instance = ClimaCore.RecursiveApply.rzero(T)
-        map(_ -> zero_instance, getproperty(coords, domain))
+        f = map(_ -> zero_instance, getproperty(coords, domain))
+        fill!(ClimaCore.Fields.field_values(f), zero_instance)
+        f
     end
     return NamedTuple{vars}(additional_aux)
 end

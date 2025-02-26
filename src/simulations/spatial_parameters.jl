@@ -225,6 +225,15 @@ are not in the data, and (2) changing how extrapolate to points beyond the range
 data. The keyword argument lowres is a flag that determines if the 0.9x1.25 or 0.125x0.125
 resolution CLM data artifact is used. If the lowres flag is not provided, the clm artifact
 with the closest resolution to the surface_space is used.
+
+
+Since these parameters are read from discretized data sets, 
+they carry an inherent land/sea mask. This land/sea mask may not match the
+underlying land sea mask of the simulation. While values over the ocean do
+not matter, we need to ensure that values in the simulation are set to
+something physical, even if they are not set in the data.
+In the future, this should be handled by ClimaUtilities via extrpolation.
+Here we set them manually.
 """
 function default_spatially_varying_soil_parameters(
     subsurface_space,
@@ -241,21 +250,6 @@ function default_spatially_varying_soil_parameters(
     context = ClimaComms.context(surface_space)
     soil_params_artifact_path =
         ClimaLand.Artifacts.soil_params_artifact_folder_path(; context)
-    soil_params_mask = SpaceVaryingInput(
-        joinpath(
-            soil_params_artifact_path,
-            "vGalpha_map_gupta_etal2020_1.0x1.0x4.nc",
-        ),
-        "α",
-        subsurface_space;
-        regridder_type,
-        regridder_kwargs = (; extrapolation_bc,),
-        file_reader_kwargs = (; preprocess_func = (data) -> data > 0,),
-    )
-    # If the mask =  0, set to value
-    masked_to_value(field, mask, value) =
-        mask == 1.0 ? field : eltype(field)(value)
-
     vg_α = SpaceVaryingInput(
         joinpath(
             soil_params_artifact_path,
@@ -276,12 +270,29 @@ function default_spatially_varying_soil_parameters(
         regridder_type,
         regridder_kwargs = (; extrapolation_bc,),
     )
-    x = parent(vg_α)
-    μ = mean(log10.(x[x .> 0]))
-    vg_α .= masked_to_value.(vg_α, soil_params_mask, 10.0^μ)
+    # The soil parameters may not have been defined on the same land
+    # sea mask. Here we make sure that soil parameters over land,
+    # but not set in the soil data, are set to something reasonable
+    soil_params_mask = SpaceVaryingInput(
+        joinpath(
+            soil_params_artifact_path,
+            "vGalpha_map_gupta_etal2020_1.0x1.0x4.nc",
+        ),
+        "α",
+        subsurface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc,),
+        file_reader_kwargs = (; preprocess_func = (data) -> data > 0,),
+    )
+    # If the parameter mask =  0, set to physical value
+    # This function in applied in **simulation mask** aware
+    # manner.
+    masked_to_value(field, mask, value) =
+        mask == 1.0 ? field : eltype(field)(value)
 
-    x = parent(vg_n)
-    μ = mean(x[x .> 0])
+    μ = FT(0.27)
+    vg_α .= masked_to_value.(vg_α, soil_params_mask, 10.0^μ)
+    μ = FT(1.65)
     vg_n .= masked_to_value.(vg_n, soil_params_mask, μ)
 
     vg_fields_to_hcm_field(α::FT, n::FT) where {FT} =
@@ -320,8 +331,7 @@ function default_spatially_varying_soil_parameters(
         regridder_kwargs = (; extrapolation_bc,),
     )
 
-    x = parent(K_sat)
-    μ = mean(log10.(x[x .> 0]))
+    μ = FT(-6)
     K_sat .= masked_to_value.(K_sat, soil_params_mask, 10.0^μ)
 
     ν .= masked_to_value.(ν, soil_params_mask, 1)
@@ -366,28 +376,26 @@ function default_spatially_varying_soil_parameters(
     )
     # we require that the sum of these be less than 1 and equal to or bigger than zero.
     # The input should satisfy this almost exactly, but the regridded values may not.
+    # Values of zero are OK here, so we dont need to apply any masking
     texture_norm = @. min(ν_ss_gravel + ν_ss_quartz + ν_ss_om, 1)
     @. ν_ss_gravel = ν_ss_gravel / max(texture_norm, eps(FT))
     @. ν_ss_om = ν_ss_om / max(texture_norm, eps(FT))
     @. ν_ss_quartz = ν_ss_quartz / max(texture_norm, eps(FT))
 
-
-    soil_params_mask_sfc =
-        ClimaLand.Domains.top_center_to_surface(soil_params_mask)
-
-    # Read in f_max data and land sea mask
+    # Read in f_max data and topmodel params land sea mask
     infile_path = ClimaLand.Artifacts.topmodel_data_path()
     f_max =
         SpaceVaryingInput(infile_path, "fmax", surface_space; regridder_type)
-    mask = SpaceVaryingInput(
+    topmodel_params_mask = SpaceVaryingInput(
         infile_path,
         "landsea_mask",
         surface_space;
         regridder_type,
     )
-    # Unsure how to handle two masks
-    f_max = masked_to_value.(f_max, mask, FT(0.0))
-    f_max = masked_to_value.(f_max, soil_params_mask_sfc, FT(0.0))
+    soil_params_mask_sfc =
+        ClimaLand.Domains.top_center_to_surface(soil_params_mask)
+    f_max = masked_to_value.(f_max, topmodel_params_mask, FT(0))
+    f_max = masked_to_value.(f_max, soil_params_mask_sfc, FT(0))
     PAR_albedo_dry, NIR_albedo_dry, PAR_albedo_wet, NIR_albedo_wet = map(
         s -> SpaceVaryingInput(
             joinpath(
@@ -421,6 +429,5 @@ function default_spatially_varying_soil_parameters(
         PAR_albedo_dry = PAR_albedo_dry,
         NIR_albedo_dry = NIR_albedo_dry,
         f_max = f_max,
-        mask = mask,
     )
 end
