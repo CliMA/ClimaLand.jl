@@ -111,7 +111,7 @@ struct Column{FT} <: AbstractDomain{FT}
     boundary_names::Tuple{Symbol, Symbol}
     "A NamedTuple of associated ClimaCore spaces: in this case, the surface space and subsurface center space"
     space::NamedTuple
-    "Fields associated with the coordinates of the domain that are useful to store"
+    "Fields and field data associated with the coordinates of the domain that are useful to store"
     fields::NamedTuple
 end
 
@@ -171,7 +171,7 @@ function Column(;
     end
     surface_space = obtain_surface_space(subsurface_space)
     space = (; surface = surface_space, subsurface = subsurface_space)
-    fields = get_additional_domain_fields(subsurface_space)
+    fields = get_additional_coordinate_field_data(subsurface_space)
     return Column{FT}(
         zlim,
         (nelements,),
@@ -366,7 +366,7 @@ struct HybridBox{FT} <: AbstractDomain{FT}
     periodic::Tuple{Bool, Bool}
     "A NamedTuple of associated ClimaCore spaces: in this case, the surface space and subsurface center space"
     space::NamedTuple
-    "Fields associated with the coordinates of the domain that are useful to store"
+    "Fields and field data associated with the coordinates of the domain that are useful to store"
     fields::NamedTuple
 end
 
@@ -472,7 +472,7 @@ function HybridBox(;
 
     surface_space = obtain_surface_space(subsurface_space)
     space = (; surface = surface_space, subsurface = subsurface_space)
-    fields = get_additional_domain_fields(subsurface_space)
+    fields = get_additional_coordinate_field_data(subsurface_space)
     return HybridBox{FT}(
         horzdomain.xlim,
         horzdomain.ylim,
@@ -519,7 +519,7 @@ struct SphericalShell{FT} <: AbstractDomain{FT}
     npolynomial::Int
     "A NamedTuple of associated ClimaCore spaces: in this case, the surface space and subsurface center space"
     space::NamedTuple
-    "Fields associated with the coordinates of the domain that are useful to store"
+    "Fields and field data associated with the coordinates of the domain that are useful to store"
     fields::NamedTuple
 end
 
@@ -592,7 +592,7 @@ function SphericalShell(;
     )
     surface_space = obtain_surface_space(subsurface_space)
     space = (; surface = surface_space, subsurface = subsurface_space)
-    fields = get_additional_domain_fields(subsurface_space)
+    fields = get_additional_coordinate_field_data(subsurface_space)
     return SphericalShell{FT}(
         radius,
         depth,
@@ -907,18 +907,19 @@ function top_face_to_surface(face_field::ClimaCore.Fields.Field, surface_space)
 end
 
 """
-    get_additional_domain_fields(subsurface_space)
+    get_additional_coordinate_field_data(subsurface_space)
 
-A helper function which returns additional fields corresponding to ClimaLand
-domains which have a subsurface_space (Column, HybridBox, SphericalShell);
-these fields are the center coordinates of the subsurface space, the spacing between
+A helper function which returns additional fields and field data corresponding to ClimaLand
+domains which have a subsurface_space (Column, HybridBox, SphericalShell).
+The fields are the center coordinates of the subsurface space, the spacing between
 the top center and top surface and bottom center and bottom surface, as well as the
-field corresponding to the surface height z.
+field corresponding to the surface height z and layer widths. The field data are the 
+depth of the domain and the minimum top layer thickness over the entire domain.
 
 We allocate these once, upon domain construction, so that they are accessible
 during the simulation.
 """
-function get_additional_domain_fields(subsurface_space)
+function get_additional_coordinate_field_data(subsurface_space)
     surface_space = obtain_surface_space(subsurface_space)
     z = ClimaCore.Fields.coordinate_field(subsurface_space).z
     Δz_top, Δz_bottom, Δz = get_Δz(z)
@@ -926,6 +927,7 @@ function get_additional_domain_fields(subsurface_space)
     z_face = ClimaCore.Fields.coordinate_field(face_space).z
     z_sfc = top_face_to_surface(z_face, surface_space)
     d = depth(subsurface_space)
+    Δz_min = minimum(Δz_top)
     fields = (;
         z = z,
         Δz_top = Δz_top,
@@ -933,6 +935,7 @@ function get_additional_domain_fields(subsurface_space)
         z_sfc = z_sfc,
         depth = d,
         Δz = Δz,
+        Δz_min = Δz_min,
     )
     return fields
 end
