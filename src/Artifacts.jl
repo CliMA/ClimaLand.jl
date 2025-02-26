@@ -67,9 +67,15 @@ function era5_land_forcing_data2008_folder_path(;
     lowres = false,
 )
     if lowres
-        return @clima_artifact("era5_land_forcing_data2008_lowres", context)
+        return joinpath(
+            @clima_artifact("era5_land_forcing_data2008_lowres", context),
+            "era5_2008_1.0x1.0_lowres.nc",
+        )
     else
-        return @clima_artifact("era5_land_forcing_data2008", context)
+        return joinpath(
+            @clima_artifact("era5_land_forcing_data2008", context),
+            "era5_2008_1.0x1.0.nc",
+        )
     end
 end
 
@@ -485,4 +491,32 @@ function bedrock_depth_file_path(; context = nothing)
         filename,
     )
 end
+
+"""
+    landseamask_file_path(; resolution = "60arcs", context=nothing)
+Construct the file path for the landsea mask data NetCDF file,
+using 60arcseconds by default.
+The other options available include "30arcs" (30arcseconds) or "1deg" (1degree).
+"""
+function landseamask_file_path(; resolution = "60arcs", context = nothing)
+    @assert (resolution == "60arcs") ||
+            (resolution == "30arcs") ||
+            (resolution == "1deg")
+    filename = "landsea_mask.nc"
+    if resolution == "60arcs"
+        return joinpath(
+            @clima_artifact("landsea_mask_60arcseconds", context),
+            filename,
+        )
+    elseif resolution == "30arcs"
+        return joinpath(
+            @clima_artifact("landsea_mask_30arcseconds", context),
+            filename,
+        )
+    else
+        return joinpath(@clima_artifact("landsea_mask_1deg", context), filename)
+    end
+
+end
+
 end
