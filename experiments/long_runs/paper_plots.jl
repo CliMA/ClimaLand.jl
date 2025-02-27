@@ -21,7 +21,9 @@ root_path = joinpath(pwd(), "snowy_land_longrun_gpu")
 # outdir = "/scratch/clima/slurm-buildkite/climaland-long-runs/3057/climaland-long-runs/snowy_land_longrun_gpu/global_diagnostics/output_active/" # on clima
 # outdir = "/scratch/clima/slurm-buildkite/climaland-long-runs/3310/climaland-long-runs/snowy_land_longrun_gpu/global_diagnostics/output_active/" # on clima
 # outdir = "/scratch/clima/slurm-buildkite/climaland-long-runs/3363/climaland-long-runs/snowy_land_longrun_gpu/global_diagnostics/output_active/" # on clima
-outdir = "snowy_land_longrun_gpu/output_active" # on local
+# outdir = "snowy_land_longrun_gpu/output_active" # on local
+outdir = "snowy_land_longrun_gpu_sc0"
+root_path = outdir
 # simdir = ClimaAnalysis.SimDir(outdir)
 
 short_names = ["lhf", "shf", "lwu", "swu"]
@@ -342,7 +344,7 @@ function make_paper_figures(
 
 
     end
-    CairoMakie.save(joinpath(root_path, "combined_figures_bias.pdf"), fig)
+    CairoMakie.save(joinpath(root_path, "combined_figures_bias_sc0.pdf"), fig)
     return nothing
 end
 
@@ -351,6 +353,6 @@ make_paper_figures(
     outdir,
     short_names,
     title_stubs,
-    plot_bias = true,
-    plot_seasonal = false,
+    plot_bias = false,
+    plot_seasonal = true,
 )
