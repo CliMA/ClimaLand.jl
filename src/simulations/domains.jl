@@ -2,9 +2,9 @@ using ClimaLand
 
 function global_domain(
     FT;
-    nelements = (101, 10),
-    dz_tuple = (2.0, 0.05),
-    depth = 10.0,
+    nelements = (101, 15),
+    dz_tuple = (10.0, 0.05),
+    depth = 50.0,
     npolynomial = 0,
 )
     radius = FT(6378.1e3)
