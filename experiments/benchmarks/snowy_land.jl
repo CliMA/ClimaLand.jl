@@ -373,7 +373,7 @@ function setup_simulation(; greet = false)
     t0 = 0.0
     tf = 60 * 60.0 * 6
     Δt = 450.0
-    nelements = (11, 15)
+    nelements = (101, 15)
     if greet
         @info "Run: Global Soil-Canopy-Snow Model"
         @info "Resolution: $nelements"
