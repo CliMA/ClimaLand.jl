@@ -200,13 +200,13 @@ function zenith_angle(
         sfc_cds.lat,
     ).:1
 end
-
 radiation = ClimaLand.PrescribedRadiativeFluxes(
     FT,
     SW_IN,
     LW_IN,
     start_date,
     θs = zenith_angle,
+    earth_param_set = earth_param_set,
 )
 
 # Model parameters

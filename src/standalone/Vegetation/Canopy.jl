@@ -414,17 +414,15 @@ function ClimaLand.make_update_aux(
         fa = p.canopy.hydraulics.fa
         par_d = p.canopy.radiative_transfer.par_d
         nir_d = p.canopy.radiative_transfer.nir_d
-        frac_diff = p.canopy.radiative_transfer.frac_diff
+        frac_diff = p.drivers.frac_diff
 
         bc = canopy.boundary_conditions
         # Current atmospheric conditions
-        θs = p.drivers.θs
+        cosθs = p.drivers.cosθs
         c_co2_air = p.drivers.c_co2
         P_air = p.drivers.P
         T_air = p.drivers.T
         q_air = p.drivers.q
-        h::FT = bc.atmos.h
-
 
         # unpack parameters
         earth_param_set = canopy.parameters.earth_param_set
@@ -449,23 +447,14 @@ function ClimaLand.make_update_aux(
         @. p.canopy.radiative_transfer.ϵ =
             canopy.radiative_transfer.parameters.ϵ_canopy *
             (1 - exp(-(LAI + SAI))) #from CLM 5.0, Tech note 4.20
-        p.canopy.radiative_transfer.G .= compute_G(G_Function, θs)
+        p.canopy.radiative_transfer.G .= compute_G(G_Function, cosθs)
         RT = canopy.radiative_transfer
         compute_PAR!(par_d, RT, bc.radiation, p, t)
         compute_NIR!(nir_d, RT, bc.radiation, p, t)
         K = p.canopy.radiative_transfer.K
-        @. K = extinction_coeff(p.canopy.radiative_transfer.G, θs)
-        DOY =
-            Dates.dayofyear(bc.atmos.start_date + Dates.Second(floor(Int64, t)))
-        @. frac_diff = diffuse_fraction(
-            DOY,
-            T_air,
-            P_air,
-            q_air,
-            p.drivers.SW_d,
-            θs,
-            thermo_params,
-        )
+        @. K = extinction_coeff(p.canopy.radiative_transfer.G, cosθs)
+
+
 
         compute_fractional_absorbances!(
             p,
@@ -486,7 +475,7 @@ function ClimaLand.make_update_aux(
                 p,
                 t,
             ),
-            θs,
+            cosθs,
             frac_diff,
         )
 

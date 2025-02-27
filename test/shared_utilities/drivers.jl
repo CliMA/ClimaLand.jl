@@ -40,7 +40,7 @@ FT = Float32
     all_pa_vals = (pa_vals..., zero_thermal_state)
     @test ClimaLand.initialize_drivers((pa,), coords) ==
           NamedTuple{all_pa_keys}(all_pa_vals)
-    pr_keys = (:SW_d, :LW_d, :θs)
+    pr_keys = (:SW_d, :LW_d, :cosθs, :frac_diff)
     pr_vals = ([zeros(FT, 3) for k in pr_keys]...,)
     all_papr_keys = (pa_keys..., :thermal_state, pr_keys...)
     all_papr_vals = (pa_vals..., zero_thermal_state, pr_vals...)
@@ -139,14 +139,16 @@ end
     @test p.drivers.c_co2 == [FT(4.2e-4)]
     @test p.drivers.SW_d == [FT(10)]
     @test p.drivers.LW_d == [FT(10)]
-    @test p.drivers.θs == [FT(0)]
+    @test all(isnan.(p.drivers.cosθs))
+    @test all(isnan.(p.drivers.frac_diff))
 
     p = (; drivers = ClimaLand.initialize_drivers((pr,), coords))
     rad_only_update! = ClimaLand.make_update_drivers((pr,))
     rad_only_update!(p, 0.0)
     @test p.drivers.SW_d == [FT(10)]
     @test p.drivers.LW_d == [FT(10)]
-    @test p.drivers.θs == [FT(0)]
+    @test all(isnan.(p.drivers.cosθs))
+    @test all(isnan.(p.drivers.frac_diff))
 
     liquid_precip = TimeVaryingInput((t) -> -1.0)
     pp = ClimaLand.PrescribedPrecipitation{FT}(liquid_precip)

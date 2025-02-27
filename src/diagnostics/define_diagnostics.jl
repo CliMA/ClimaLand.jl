@@ -560,17 +560,6 @@ function define_diagnostics!(land_model)
             compute_snowfall!(out, Y, p, t, land_model),
     )
 
-    # Solar zenith angle
-    add_diagnostic_variable!(
-        short_name = "sza",
-        long_name = "Solar Zenith Angle",
-        standard_name = "solar_zenith_angle",
-        units = "",
-        comments = "Solar zenith angle.",
-        compute! = (out, Y, p, t) ->
-            compute_solar_zenith_angle!(out, Y, p, t, land_model),
-    )
-
     # Specific humidity
     add_diagnostic_variable!(
         short_name = "qsfc",

@@ -193,13 +193,13 @@ function zenith_angle(
         )[1],
     )
 end
-
 radiation = ClimaLand.PrescribedRadiativeFluxes(
     FT,
     SW_IN,
     LW_IN,
     UTC_DATETIME[1];
     θs = zenith_angle,
+    earth_param_set = earth_param_set,
 )
 
 # Start and end dates of data in MODIS format

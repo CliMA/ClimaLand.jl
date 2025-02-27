@@ -28,7 +28,8 @@ Base.broadcastable(G::ConstantGFunction) = tuple(G)
 """
     CLMGFunction
 
-A type for a G function that is parameterized by the solar zenith angle,
+A type for a G function that is parameterized by the cosine of the
+solar zenith angle,
 following the CLM approach to parameterizing the leaf angle distribution function.
 """
 struct CLMGFunction{F <: Union{AbstractFloat, ClimaCore.Fields.Field}} <:
@@ -176,7 +177,7 @@ Base.broadcastable(RT::AbstractRadiationModel) = tuple(RT)
 
 ClimaLand.name(model::AbstractRadiationModel) = :radiative_transfer
 ClimaLand.auxiliary_vars(model::Union{BeerLambertModel, TwoStreamModel}) =
-    (:nir_d, :par_d, :nir, :par, :LW_n, :SW_n, :ϵ, :frac_diff, :G, :K)
+    (:nir_d, :par_d, :nir, :par, :LW_n, :SW_n, :ϵ, :G, :K)
 ClimaLand.auxiliary_types(
     model::Union{BeerLambertModel{FT}, TwoStreamModel{FT}},
 ) where {FT} = (
@@ -189,10 +190,8 @@ ClimaLand.auxiliary_types(
     FT,
     FT,
     FT,
-    FT,
 )
 ClimaLand.auxiliary_domain_names(::Union{BeerLambertModel, TwoStreamModel}) = (
-    :surface,
     :surface,
     :surface,
     :surface,

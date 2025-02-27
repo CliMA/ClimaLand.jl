@@ -64,6 +64,7 @@ import ClimaParams
             rt_model = BeerLambertModel{FT}(RTparams)
 
             earth_param_set = LP.LandParameters(FT)
+            thermo_params = LP.thermodynamic_parameters(earth_param_set)
             LAI = FT(8.0) # m2 [leaf] m-2 [ground]
             z_0m = FT(2.0) # m, Roughness length for momentum - value from tall forest ChatGPT
             z_0b = FT(0.1) # m, Roughness length for scalars - value from tall forest ChatGPT
@@ -142,6 +143,7 @@ import ClimaParams
                 TimeVaryingInput(longwave_radiation),
                 start_date;
                 θs = zenith_angle,
+                earth_param_set = earth_param_set,
             )
 
             # Plant Hydraulics
@@ -233,7 +235,8 @@ import ClimaParams
                 :thermal_state,
                 :SW_d,
                 :LW_d,
-                :θs,
+                :cosθs,
+                :frac_diff,
             )
             # Check that structure of Y is value (will error if not)
             @test !isnothing(zero(Y))
@@ -314,7 +317,7 @@ import ClimaParams
             Δ = FT(100 * (0.444017302 + (290 - 273.15) * 0.0286064092))
             Rn = FT(shortwave_radiation(t0))
             G = FT(0.0)
-            thermo_params = canopy.parameters.earth_param_set.thermo_params
+
             ts_in =
                 Thermodynamics.PhaseEquil_pTq.(
                     thermo_params,
@@ -605,6 +608,7 @@ end
             rt_model = BeerLambertModel{FT}(RTparams)
             energy_model = BigLeafEnergyModel{FT}(BigLeafEnergyParameters{FT}())
             earth_param_set = LP.LandParameters(FT)
+            thermo_params = LP.thermodynamic_parameters(earth_param_set)
             LAI = FT(8.0) # m2 [leaf] m-2 [ground]
             z_0m = FT(2.0) # m, Roughness length for momentum - value from tall forest ChatGPT
             z_0b = FT(0.1) # m, Roughness length for scalars - value from tall forest ChatGPT
@@ -683,6 +687,7 @@ end
                 TimeVaryingInput(longwave_radiation),
                 start_date;
                 θs = zenith_angle,
+                earth_param_set = earth_param_set,
             )
 
 
@@ -873,6 +878,7 @@ end
         rt_model = BeerLambertModel{FT}(RTparams)
         energy_model = BigLeafEnergyModel{FT}(BigLeafEnergyParameters{FT}())
         earth_param_set = LP.LandParameters(FT)
+        thermo_params = LP.thermodynamic_parameters(earth_param_set)
         LAI = FT(8.0) # m2 [leaf] m-2 [ground]
         z_0m = FT(2.0) # m, Roughness length for momentum - value from tall forest ChatGPT
         z_0b = FT(0.1) # m, Roughness length for scalars - value from tall forest ChatGPT
@@ -951,6 +957,7 @@ end
             TimeVaryingInput(longwave_radiation),
             start_date;
             θs = zenith_angle,
+            earth_param_set = earth_param_set,
         )
 
         # Plant Hydraulics
@@ -1063,7 +1070,6 @@ end
             t0,
             T_sfc,
         )
-        thermo_params = canopy.parameters.earth_param_set.thermo_params
         q_sfc =
             Thermodynamics.q_vap_saturation_generic.(
                 thermo_params,
@@ -1234,6 +1240,7 @@ end
             )
             energy_model = BigLeafEnergyModel{FT}(BigLeafEnergyParameters{FT}())
             earth_param_set = LP.LandParameters(FT)
+            thermo_params = LP.thermodynamic_parameters(earth_param_set)
             LAI = FT(0.0) # m2 [leaf] m-2 [ground]
             z_0m = FT(2.0) # m, Roughness length for momentum - value from tall forest ChatGPT
             z_0b = FT(0.1) # m, Roughness length for scalars - value from tall forest ChatGPT
@@ -1312,6 +1319,7 @@ end
                 TimeVaryingInput(longwave_radiation),
                 start_date;
                 θs = zenith_angle,
+                earth_param_set = earth_param_set,
             )
 
             # Plant Hydraulics

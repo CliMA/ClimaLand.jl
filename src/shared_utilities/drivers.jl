@@ -430,9 +430,14 @@ end
 
 
 """
-    PrescribedRadiativeFluxes{FT, SW, LW, DT, T} <: AbstractRadiativeDrivers{FT}
+    PrescribedRadiativeFluxes{FT, SW, LW, DT, T, TP} <: AbstractRadiativeDrivers{FT}
 
 Container for the prescribed radiation functions needed to drive land models in standalone mode.
+
+Note that some models require the zenith angle AND diffuse fraction. This
+requires the thermodynamic parameters as well to compute. Therefore,
+you must either pass the optional zenith angle function argument and 
+thermodynamic parameters, or pass neither.
 $(DocStringExtensions.FIELDS)
 """
 struct PrescribedRadiativeFluxes{
@@ -441,6 +446,7 @@ struct PrescribedRadiativeFluxes{
     LW <: Union{Nothing, AbstractTimeVaryingInput},
     DT,
     T,
+    TP,
 } <: AbstractRadiativeDrivers{FT}
     "Downward shortwave radiation function of time (W/m^2): positive indicates towards surface"
     SW_d::SW
@@ -450,8 +456,23 @@ struct PrescribedRadiativeFluxes{
     start_date::DT
     "Sun zenith angle, in radians"
     θs::T
-    function PrescribedRadiativeFluxes(FT, SW_d, LW_d, start_date; θs = nothing)
-        args = (SW_d, LW_d, start_date, θs)
+    "Thermodynamic parameters"
+    thermo_params::TP
+    function PrescribedRadiativeFluxes(
+        FT,
+        SW_d,
+        LW_d,
+        start_date;
+        θs = nothing,
+        earth_param_set = nothing,
+    )
+        if isnothing(earth_param_set)
+            thermo_params = nothing
+        else
+            thermo_params = LP.thermodynamic_parameters(earth_param_set)
+        end
+
+        args = (SW_d, LW_d, start_date, θs, thermo_params)
         return new{FT, typeof.(args)...}(args...)
     end
 end
@@ -871,10 +892,11 @@ end
     initialize_drivers(r::PrescribedRadiativeFluxes{FT}, coords) where {FT}
 
 Creates and returns a NamedTuple for the `PrescribedRadiativeFluxes` driver,
- with variables `SW_d`, `LW_d`, and zenith angle `θ_s`.
+ with variables `SW_d`, `LW_d`, cosine of the zenith angle `θ_s`, and the diffuse fraction
+of shortwave radiation `frac_diff`.
 """
 function initialize_drivers(r::PrescribedRadiativeFluxes{FT}, coords) where {FT}
-    keys = (:SW_d, :LW_d, :θs)
+    keys = (:SW_d, :LW_d, :cosθs, :frac_diff)
     types = ([FT for k in keys]...,)
     domain_names = ([:surface for k in keys]...,)
     model_name = :drivers
@@ -995,12 +1017,39 @@ function make_update_drivers(r::PrescribedRadiativeFluxes{FT}) where {FT}
     function update_drivers!(p, t)
         evaluate!(p.drivers.SW_d, r.SW_d, t)
         evaluate!(p.drivers.LW_d, r.LW_d, t)
-        if !isnothing(r.θs)
-            p.drivers.θs .= FT.(r.θs(t, r.start_date))
+        # This assumes that temperature, pressure, and specific humidity have already updated
+        # and that PrescribedRadiation is only used with PrescribedAtmos.
+        # If this is not the case, this function would use the vaues of T, P, q
+        # from the previous step.
+        # Since this function is empirical and our steps are O(10 minutes), this is
+        # not a big issue.
+        # In practice, the diffuse fraction should be supplied by the Radiative
+        # Transfer module of the atmosphere, or obtained from ERA5,
+        # and not be computed empirically
+        # If we obtain this factor from ERA5 in the future, we should remove thermo_params from the struct.
+        if !isnothing(r.θs) & !isnothing(r.thermo_params)
+            p.drivers.cosθs .= FT.(cos.(r.θs(t, r.start_date)))
+            @. p.drivers.frac_diff = diffuse_fraction(
+                t,
+                r.start_date,
+                p.drivers.T,
+                p.drivers.P,
+                p.drivers.q,
+                p.drivers.SW_d,
+                p.drivers.cosθs,
+                r.thermo_params,
+            )
+        elseif isnothing(r.θs) & isnothing(r.thermo_params)
+            # These should not be accessed or used. Set to NaN.
+            p.drivers.cosθs .= FT(NaN)
+            p.drivers.frac_diff .= FT(NaN)
         else
-            p.drivers.θs .= FT(0)
+            @error(
+                "Zenith angle and thermodynamic params must either both be supplied or both not supplied. See doc string for PrescribedRadiativeFluxes"
+            )
         end
     end
+
     return update_drivers!
 end
 
@@ -1163,8 +1212,15 @@ function prescribed_forcing_era5(
             latitude,
         ).:1
     end
-    radiation =
-        PrescribedRadiativeFluxes(FT, SW_d, LW_d, start_date; θs = zenith_angle)
+
+    radiation = PrescribedRadiativeFluxes(
+        FT,
+        SW_d,
+        LW_d,
+        start_date;
+        θs = zenith_angle,
+        earth_param_set = earth_param_set,
+    )
     return atmos, radiation
 end
 
@@ -1305,4 +1361,57 @@ function prescribed_analytic_forcing(
     ),
 )
     return atmos, radiation
+end
+
+
+"""
+    diffuse_fraction(td::FT, T::FT, P, q, SW_d::FT, cosθs::FT, thermo_params) where {FT}
+
+Computes the fraction of diffuse radiation (`diff_frac`) as a function
+of the solar zenith angle (`θs`), the total surface downwelling shortwave radiation (`SW_d`),
+the air temperature (`T`), air pressure (`P`), specific humidity (`q`), and the day of the year
+(`td`).
+
+See Appendix A of Braghiere, "Evaluation of turbulent fluxes of CO2, sensible heat,
+and latent heat as a function of aerosol optical depth over the course of deforestation
+in the Brazilian Amazon" 2013.
+
+Note that cos(θs) is equal to zero when θs = π/2, and this is a coefficient
+of k₀, which we divide by in this expression. This can amplify small errors
+when θs is near π/2.
+
+This formula is empirical and can yied negative numbers depending on the
+input, which, when dividing by something very near zero,
+can become large negative numbers.
+
+Because of that, we cap the returned value to lie within [0,1].
+"""
+function diffuse_fraction(
+    t,
+    start_date,
+    T::FT,
+    P::FT,
+    q::FT,
+    SW_d::FT,
+    cosθs::FT,
+    thermo_params,
+) where {FT}
+    DOY = Dates.dayofyear(start_date + Dates.Second(floor(Int64, t)))
+    RH = ClimaLand.relative_humidity(T, P, q, thermo_params)
+    k₀ = FT(1370 * (1 + 0.033 * cos(2π * DOY / 365))) * cosθs
+    kₜ = SW_d / k₀
+    if kₜ ≤ 0.3
+        diff_frac = FT(
+            kₜ * (1 - 0.232 * kₜ + 0.0239 * cosθs - 6.82e-4 * T + 0.0195 * RH),
+        )
+    elseif kₜ ≤ 0.78
+        diff_frac = FT(
+            kₜ *
+            (1.329 - 1.716 * kₜ + 0.267 * cosθs - 3.57e-3 * T + 0.106 * RH),
+        )
+    else
+        diff_frac =
+            FT(kₜ * (0.426 * kₜ + 0.256 * cosθs - 3.49e-3 * T + 0.0734 * RH))
+    end
+    return max(min(diff_frac, FT(1)), FT(0))
 end

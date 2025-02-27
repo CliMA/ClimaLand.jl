@@ -75,11 +75,14 @@ for float_type in (Float32, Float64)
         # Check that the driver variables stored in `p` are
         # updated correctly - just check one from radiation,
         # and one from atmos.
-        cache_θs = [parent(sv.saveval[k].drivers.θs)[1] for k in 1:length(sv.t)]
+        cache_cosθs =
+            [parent(sv.saveval[k].drivers.cosθs)[1] for k in 1:length(sv.t)]
         cache_Tair =
             [parent(sv.saveval[k].drivers.T)[1] for k in 1:length(sv.t)]
         @assert mean(
-            abs.(radiation.θs.(sv.t, radiation.start_date) .- cache_θs),
+            abs.(
+                cos.(radiation.θs.(sv.t, radiation.start_date)) .- cache_cosθs
+            ),
         ) < eps(FT)
         T_mutable = Vector{FT}(undef, 1)
         atmos_T = map(sv.t) do time

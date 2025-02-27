@@ -47,6 +47,9 @@ u = met_data["Wind"][:][mask]
 rainf = -met_data["Rainf"][:][mask] ./ 1000.0 # convert to dS/dt
 snowf = -met_data["Snowf"][:][mask] ./ 1000.0 # convert to dS/dt
 
+# Required parameters for forcing
+earth_param_set = LP.LandParameters(FT)
+thermo_params = LP.thermodynamic_parameters(earth_param_set)
 # "Radiation"
 SW_d = TimeVaryingInput(seconds, SWdown; context)
 LW_d = TimeVaryingInput(seconds, LWdown; context)
@@ -90,11 +93,11 @@ radiation = ClimaLand.PrescribedRadiativeFluxes(
     LW_d,
     start_date;
     θs = zenith_angle,
+    earth_param_set = earth_param_set,
 )
 
 
 "Atmos"
-earth_param_set = LP.LandParameters(FT)
 liquid_precip = TimeVaryingInput(seconds, rainf; context)
 snow_precip = TimeVaryingInput(seconds, snowf; context)
 T_atmos = TimeVaryingInput(seconds, Tair; context)
