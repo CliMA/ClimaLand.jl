@@ -69,7 +69,7 @@ diagnostics_outdir = joinpath(root_path, "global_diagnostics")
 outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
 
-function setup_prob(t0, tf, Δt, pc, sc; outdir = outdir, nelements = (101, 15))
+function setup_prob(t0, tf, Δt, pc, sc, Ksat_canopy, α; outdir = outdir, nelements = (101, 15))
     earth_param_set = LP.LandParameters(FT)
     domain = ClimaLand.global_domain(FT; nelements = nelements)
     surface_space = domain.space.surface
