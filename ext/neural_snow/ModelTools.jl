@@ -13,6 +13,24 @@ export make_model,
     paired_timeseries
 
 """
+Allows loading in models created with Flux v0.14 and before. Note this method only overloads the loading
+of the `get_boundaries` layer of the model when no parameters are found for it in the source model.
+See https://github.com/FluxML/Flux.jl/issues/2584 for more information.
+"""
+function Flux.loadmodel!(
+    dst::NamedTuple{(:up_bound, :low_bound, :output_pos)},
+    src::@NamedTuple{
+        up_bound::Tuple{},
+        low_bound::Tuple{},
+        output_pos::Tuple{},
+    };
+    filter = _ -> true,
+    cache = Base.IdSet(),
+)
+    return dst
+end
+
+"""
     make_model(nfeatures, n, z_idx, p_idx; in_scale, dtype)
 
 Create the neural network to be trained, with initial scaling weights.
@@ -77,7 +95,7 @@ Return the trainable weights for the developed neural model.
 - `model::Chain`: the neural model to be used.
 """
 function get_model_ps(model::Chain)
-    return Flux.params(Flux.params(model[:pred])[2:7])
+    return Flux.trainables(model[:pred])[2:7]
 end
 
 """
@@ -353,13 +371,12 @@ function custom_loss(x, y, model, n1, n2)
 end
 
 """
-    trainmodel!(model, ps, x_train, y_train, n1, n2; nepochs, opt, verbose, cb)
+    trainmodel!(model, x_train, y_train, n1, n2; nepochs, opt, verbose, cb)
 
 A training function for a neural model, permitting usage of a callback function.
 
 # Arguments
 - `model`: the model used for training.
-- `ps`: the model parameters that will be trained.
 - `x_train`: the input training data to be used in training.
 - `y_train`: the target data to be used in training.
 - `n1`: the scaling hypermarameter used to generate custom loss functions.
@@ -373,14 +390,13 @@ input arguments, but default optional args are permitted). Default is Nothing.
 """
 function trainmodel!(
     model,
-    ps,
     x_train,
     y_train,
     n1,
     n2;
     nepochs::Int = 100,
     nbatch = 64,
-    opt = Flux.Optimise.RMSProp(),
+    opt = Flux.Optimisers.RMSProp(),
     verbose = false,
     cb = Nothing,
 )
@@ -390,17 +406,22 @@ function trainmodel!(
         partial = false,
         shuffle = true,
     )
-    loss(x, y) = custom_loss(x, y, model, n1, n2)
+    loss(_model, x, y) = custom_loss(x, y, _model, n1, n2)
+    # freeze all layers except l1, l2, and l3 in pred
+    opt_state = Flux.setup(opt, model)
+    Flux.Optimisers.freeze!(opt_state.layers)
+    Flux.Optimisers.thaw!(opt_state.layers.pred.layers.layers)
+    Flux.Optimisers.freeze!(opt_state.layers.pred.layers.layers.scale)
     for epoch in 1:nepochs
         for (x, y) in train_loader
-            Flux.train!(loss, ps, [(x, y)], opt)
+            Flux.train!(loss, model, [(x, y)], opt_state)
         end
         if verbose & (epoch % 10 == 0)
             print(
                 "Epoch: ",
                 epoch,
                 " | training loss: ",
-                loss(x_train, y_train),
+                loss(model, x_train, y_train),
                 "\n",
             )
         end
