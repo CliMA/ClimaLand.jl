@@ -17,7 +17,7 @@ using HTTP, Flux, BSON
 include("./ModelTools.jl")
 using .ModelTools
 
-export NeuralDepthModel
+export NeuralDepthModel, ModelTools
 
 """
     NeuralDepthModel{FT <: AbstractFloat} <: AbstractDensityModel{FT}

@@ -122,10 +122,8 @@ x_train, y_train = DataTools.make_data(usedata, pred_vars, target, out_scale);
 
 # We then create the model itself given the hyperparameters specified
 # above, and indicate which features are to be used to determine the
-# boundary constraints on the network, and return the trainable weights
-# for the overall model.
+# boundary constraints on the network.
 model = ModelTools.make_model(nfeatures, n, z_idx, p_idx, in_scale = in_scales)
-ps = ModelTools.get_model_ps(model);
 
 # As training updates are better with the scaled data, we have to modify
 # the timescale and output scaling of the model structure prior to training.
@@ -135,7 +133,7 @@ ModelTools.setoutscale!(model, 1.0);
 
 # With that, training is as simple as calling the `trainmodel!` function:
 print("\nTraining model!\n")
-ModelTools.trainmodel!(model, ps, x_train, y_train, n1, n2, verbose = true);
+ModelTools.trainmodel!(model, x_train, y_train, n1, n2, verbose = true);
 
 # To show the model's output on some of our training data in physically meaningful
 # units, we first reset the timesacle and output scaling constants. From there,
