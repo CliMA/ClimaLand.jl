@@ -21,8 +21,7 @@ root_path = joinpath(pwd(), "snowy_land_longrun_gpu")
 # outdir = "/scratch/clima/slurm-buildkite/climaland-long-runs/3057/climaland-long-runs/snowy_land_longrun_gpu/global_diagnostics/output_active/" # on clima
 # outdir = "/scratch/clima/slurm-buildkite/climaland-long-runs/3310/climaland-long-runs/snowy_land_longrun_gpu/global_diagnostics/output_active/" # on clima
 # outdir = "/scratch/clima/slurm-buildkite/climaland-long-runs/3363/climaland-long-runs/snowy_land_longrun_gpu/global_diagnostics/output_active/" # on clima
-# outdir = "snowy_land_longrun_gpu/output_active" # on local
-outdir = "snowy_land_longrun_gpu_sc0"
+outdir = "snowy_land_longrun_gpu/output_active" # on local
 root_path = outdir
 # simdir = ClimaAnalysis.SimDir(outdir)
 
@@ -112,7 +111,7 @@ function make_paper_figures(
         # Plot simulation data heatmap
         sim_title =
             fig_row == 1 ?
-            CairoMakie.rich("ClimaLand, annually averaged", fontsize = 18) : "" # title of the figure
+            CairoMakie.rich("ClimaLand, annually averaged", fontsize = 24) : "" # title of the figure
 
         # fig_global_sim = CairoMakie.Figure(size = (600, 400))
         # round_step(x, step) = round(x / step) * step
@@ -147,6 +146,7 @@ function make_paper_figures(
             fig[fig_row + 1, 1],
             # plot,
             label = "$(sim_var.attributes["long_name"]) $units_label",
+            labelsize = 20,
             vertical = false, # horizontal colorbar
             flipaxis = false, # label underneath colorbar
             height = 15,
@@ -160,7 +160,7 @@ function make_paper_figures(
         # Plot observational data heatmap
         obs_title =
             fig_row == 1 ?
-            CairoMakie.rich("ERA5, annually averaged", fontsize = 18) : "" # title of the figure
+            CairoMakie.rich("ERA5, annually averaged", fontsize = 24) : "" # title of the figure
 
         # fig_global_obs = CairoMakie.Figure(size = (600, 400))
         viz.heatmap2D_on_globe!(
@@ -194,6 +194,7 @@ function make_paper_figures(
             fig[fig_row + 1, 2],
             # plot,
             label = "$(sim_var.attributes["long_name"]) $units_label",
+            labelsize = 20,
             vertical = false, # horizontal colorbar
             flipaxis = false, # label underneath colorbar
             height = 15,
@@ -210,7 +211,7 @@ function make_paper_figures(
         if plot_bias
             bias_title =
                 fig_row == 1 ?
-                CairoMakie.rich("ClimaLand vs ERA5 bias", fontsize = 18) : "" # title of the figure
+                CairoMakie.rich("ClimaLand vs ERA5 bias", fontsize = 24) : "" # title of the figure
             bias_colorbar_label = "$(sim_var.attributes["long_name"]): ClimaLand - ERA5 bias $units_label"
             viz.plot_bias_on_globe!(
                 fig,
@@ -270,7 +271,7 @@ function make_paper_figures(
                 fig_row == 1 ?
                 CairoMakie.rich(
                     "ClimaLand vs ERA5 seasonal cycle",
-                    fontsize = 18,
+                    fontsize = 24,
                 ) : "" # title of the figure
 
             ax = Axis(
@@ -280,9 +281,9 @@ function make_paper_figures(
                 ylabel = title_stub * " $units_label",
                 # CairoMakie.rich(
                 #     title_stub * " $units_label",
-                #     fontsize = 18,
+                #     fontsize = 24,
                 # ),
-                # title = CairoMakie.rich(title_stub, fontsize = 18),
+                # title = CairoMakie.rich(title_stub, fontsize = 24),
                 height = 250,
                 xgridvisible = false,
                 ygridvisible = false,
@@ -344,7 +345,8 @@ function make_paper_figures(
 
 
     end
-    CairoMakie.save(joinpath(root_path, "combined_figures_bias_sc0.pdf"), fig)
+    CairoMakie.save(joinpath(root_path, "combined_figures_seasonal_cycle.pdf"), fig)
+    @show joinpath(root_path, "combined_figures_seasonal_cycle.pdf")
     return nothing
 end
 
