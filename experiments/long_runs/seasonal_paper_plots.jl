@@ -28,8 +28,8 @@ short_names = ["lhf", "shf", "lwu", "swu"]
 title_stubs = Dict(
     "lhf" => "LE",#"Latent heat flux",
     "shf" => "H",#"Sensible heat flux",
-    "lwu" => "LW_u",#"Upward longwave radiation",
-    "swu" => "SW_u",#"Upward shortwave radiation",
+    "lwu" => "LWᵤ",#"Upward longwave radiation",
+    "swu" => "SWᵤ",#"Upward shortwave radiation",
 )
 
 include("data_paper_plots.jl")
