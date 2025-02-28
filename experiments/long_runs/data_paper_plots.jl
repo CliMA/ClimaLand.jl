@@ -13,7 +13,7 @@ function get_sim_var_dict(simdir)
             attribs = Dict(
                 "short_name" => "lhf",
                 "long_name" => "Latent heat flux",
-                "units" => "W/m²",
+                "units" => "W m⁻²",
                 "start_date" => sim_var_et.attributes["start_date"],
             )
             sim_var_lhf = ClimaAnalysis.OutputVar(
@@ -30,7 +30,7 @@ function get_sim_var_dict(simdir)
         () -> begin
             sim_var_shf = get(simdir, short_name = "shf") # units (W/m²)
             sim_var_shf.attributes["long_name"] = "Sensible heat flux"
-            sim_var_shf.attributes["units"] = "W/m²"
+            sim_var_shf.attributes["units"] = "W m⁻²"
             return sim_var_shf
         end
 
@@ -39,7 +39,7 @@ function get_sim_var_dict(simdir)
         () -> begin
             sim_var_lwu = get(simdir, short_name = "lwu") # units (W/m²)
             sim_var_lwu.attributes["long_name"] = "Upward longwave radiation"
-            sim_var_lwu.attributes["units"] = "W/m²"
+            sim_var_lwu.attributes["units"] = "W m⁻²"
             return sim_var_lwu
         end
 
@@ -48,7 +48,7 @@ function get_sim_var_dict(simdir)
         () -> begin
             sim_var_swu = get(simdir, short_name = "swu") # units (W/m²)
             sim_var_swu.attributes["long_name"] = "Upward shortwave radiation"
-            sim_var_swu.attributes["units"] = "W/m²"
+            sim_var_swu.attributes["units"] = "W m⁻²"
             return sim_var_swu
         end
 
@@ -57,7 +57,7 @@ function get_sim_var_dict(simdir)
         () -> begin
             sim_var_lwd = get(simdir, short_name = "lwd") # units (W/m²)
             sim_var_lwd.attributes["long_name"] = "Downward longwave radiation"
-            sim_var_lwd.attributes["units"] = "W/m²"
+            sim_var_lwd.attributes["units"] = "W m⁻²"
             return sim_var_lwd
         end
 
@@ -66,7 +66,7 @@ function get_sim_var_dict(simdir)
         () -> begin
             sim_var_swd = get(simdir, short_name = "swd") # units (W/m²)
             sim_var_swd.attributes["long_name"] = "Upward shortwave radiation"
-            sim_var_swd.attributes["units"] = "W/m²"
+            sim_var_swd.attributes["units"] = "W m⁻²"
             return sim_var_swd
         end
 
@@ -96,7 +96,7 @@ function get_obs_var_dict()
             attribs = Dict(
                 "short_name" => "lhf",
                 "long_name" => "Latent heat flux",
-                "units" => "W/m²",
+                "units" => "W m⁻²",
                 "start_date" => start_date,
             )
             obs_var_pos = ClimaAnalysis.OutputVar(
@@ -123,7 +123,7 @@ function get_obs_var_dict()
             attribs = Dict(
                 "short_name" => "shf",
                 "long_name" => "Sensible heat flux",
-                "units" => "W/m²",
+                "units" => "W m⁻²",
                 "start_date" => start_date,
             )
             obs_var_pos = ClimaAnalysis.OutputVar(
@@ -150,7 +150,7 @@ function get_obs_var_dict()
             # Manually set attributes
             obs_var.attributes["short_name"] = "lwu"
             obs_var.attributes["long_name"] = "Upward longwave radiation"
-            obs_var.attributes["units"] = "W/m²"
+            obs_var.attributes["units"] = "W m⁻²"
             obs_var.attributes["start_date"] = start_date
             return obs_var
         end
@@ -169,7 +169,7 @@ function get_obs_var_dict()
             # Manually set attributes
             obs_var.attributes["short_name"] = "swu"
             obs_var.attributes["long_name"] = "Upward shortwave radiation"
-            obs_var.attributes["units"] = "W/m²"
+            obs_var.attributes["units"] = "W m⁻²"
             obs_var.attributes["start_date"] = start_date
             return obs_var
         end
