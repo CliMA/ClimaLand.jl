@@ -9,7 +9,7 @@
 # Simulation Setup
 # Number of spatial elements: 10x10 in horizontal, 15 in vertical
 # Soil depth: 50 m
-# Simulation duration: 4 years
+# Simulation duration: 2 years
 # Timestep: 450 s
 # Timestepper: ARS111
 # Fixed number of iterations: 3
@@ -69,7 +69,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (10, 10, 15))
         ylim = (delta_m, delta_m),
         zlim = (-depth, FT(0)),
         nelements = nelements,
-        npolynomial = 1,
+        npolynomial = 0,
         longlat = (center_long, center_lat),
         dz_tuple = FT.((10.0, 0.05)),
     )

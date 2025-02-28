@@ -3,6 +3,8 @@ ClimaLand.jl Release Notes
 
 main
 -------
+- use GL vs GLL quadrature; speeds up simulation 2x globally
+  PR[#1051](https://github.com/CliMA/ClimaLand.jl/pull/1051)
 - Use MODIS LAI by default in experiments and longruns
   PR[#973](https://github.com/CliMA/ClimaLand.jl/pull/973)
 - Revert PR993 changes to runoff

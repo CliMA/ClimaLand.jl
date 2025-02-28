@@ -58,15 +58,7 @@ outdir = "land_benchmark_$(device_suffix)"
 
 function setup_prob(t0, tf, Δt; nelements = (101, 15))
     earth_param_set = LP.LandParameters(FT)
-    radius = FT(6378.1e3)
-    depth = FT(50)
-    domain = ClimaLand.Domains.SphericalShell(;
-        radius = radius,
-        depth = depth,
-        nelements = nelements,
-        npolynomial = 1,
-        dz_tuple = FT.((10.0, 0.05)),
-    )
+    domain = ClimaLand.global_domain(FT; nelements)
     surface_space = domain.space.surface
     subsurface_space = domain.space.subsurface
 
@@ -467,7 +459,7 @@ if ClimaComms.device() isa ClimaComms.CUDADevice
 end
 
 if get(ENV, "BUILDKITE_PIPELINE_SLUG", nothing) == "climaland-benchmark"
-    PREVIOUS_BEST_TIME = 6.1
+    PREVIOUS_BEST_TIME = 3.93
     if average_timing_s > PREVIOUS_BEST_TIME + std_timing_s
         @info "Possible performance regression, previous average time was $(PREVIOUS_BEST_TIME)"
     elseif average_timing_s < PREVIOUS_BEST_TIME - std_timing_s
