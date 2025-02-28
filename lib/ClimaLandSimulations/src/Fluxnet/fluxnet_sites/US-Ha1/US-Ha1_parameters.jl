@@ -141,7 +141,7 @@ function photosynthesis_harvard(;
     oi = FT(0.209),
     ϕ = FT(0.6),
     θj = FT(0.9),
-    f = FT(0.015),
+    fC3 = FT(0.015),
     sc = FT(2e-6), # Bonan's book: range of 2-5e-6
     pc = FT(-2e6), # Bonan's book: -2e6
     Vcmax25 = FT(9e-5), # from Yujie's paper 4.5e-5 , Natan used 9e-5
@@ -155,6 +155,15 @@ function photosynthesis_harvard(;
     ΔHΓstar = FT(37830),
     ΔHJmax = FT(43540),
     ΔHRd = FT(46390),
+    fC4 = FT(0.025),
+    Q10 = FT(2),
+    s1 = FT(0.3),
+    s2 = FT(313.15),
+    s3 = FT(0.2),
+    s4 = FT(288.15),
+    s5 = FT(1.3),
+    s6 = FT(328.15),
+    E = FT(0.05),
 )
     return FarquharParameters(
         Vcmax25,
@@ -171,9 +180,18 @@ function photosynthesis_harvard(;
         oi,
         ϕ,
         θj,
-        f,
+        fC3,
+        fC4,
         sc,
         pc,
+        Q10,
+        s1,
+        s2,
+        s3,
+        s4,
+        s5,
+        s6,
+        E,
         is_c3,
     )
 end

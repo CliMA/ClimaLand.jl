@@ -136,7 +136,7 @@ function run_fluxnet(
             oi = params.photosynthesis.oi,
             ϕ = params.photosynthesis.ϕ,
             θj = params.photosynthesis.θj,
-            f = params.photosynthesis.f,
+            fC3 = params.photosynthesis.fC3,
             sc = params.photosynthesis.sc,
             pc = params.photosynthesis.pc,
             Vcmax25 = params.photosynthesis.Vcmax25,
@@ -150,6 +150,15 @@ function run_fluxnet(
             ΔHΓstar = params.photosynthesis.ΔHΓstar,
             ΔHJmax = params.photosynthesis.ΔHJmax,
             ΔHRd = params.photosynthesis.ΔHRd,
+            fC4 = params.photosynthesis.fC4,
+            Q10 = params.photosynthesis.Q10,
+            E = params.photosynthesis.E,
+            s1 = params.photosynthesis.s1,
+            s2 = params.photosynthesis.s2,
+            s3 = params.photosynthesis.s3,
+            s4 = params.photosynthesis.s4,
+            s5 = params.photosynthesis.s5,
+            s6 = params.photosynthesis.s6,
         )
     )
     # Set up plant hydraulics
