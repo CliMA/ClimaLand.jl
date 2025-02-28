@@ -7,6 +7,7 @@ using CairoMakie
 import SciMLBase
 import ClimaTimeSteppers as CTS
 using Thermodynamics
+using Statistics
 
 using ClimaCore
 import ClimaParams as CP
@@ -62,7 +63,7 @@ e = rh * esat
 q = FT(0.622 * e / (101325 - 0.378 * e))
 precip = (t) -> 0.0
 T_atmos = (t) -> T_air
-u_atmos = (t) -> 0.44
+u_atmos = (t) -> 0.47
 q_atmos = (t) -> q
 h_atmos = FT(0.1)
 P_atmos = (t) -> 101325
@@ -172,7 +173,7 @@ init_soil!(Y, z, soil.parameters);
 
 # Timestepping:
 t0 = Float64(0)
-tf = Float64(24 * 3600 * 13)
+tf = Float64(24 * 3600 * 13-3600)
 dt = Float64(900.0)
 
 # We also set the initial conditions of the cache here:
@@ -243,7 +244,7 @@ init_soil!(Y, z, soil.parameters);
 
 # Timestepping:
 t0 = Float64(0)
-tf = Float64(24 * 3600 * 13)
+tf = Float64(24 * 3600 * 13-3600)
 dt = Float64(3600.0)
 
 # We also set the initial conditions of the cache here:
@@ -310,6 +311,10 @@ ref_soln_E_350mm = ref_soln_E[2:end, 1:2]
 data_dates = ref_soln_E_350mm[:, 1]
 data_e = ref_soln_E_350mm[:, 2];
 
+# The data and simulations dont exactly align, so this
+# is approximate. 
+mae_lr = mean(abs.(data_e .-  evap_lr[2:end] .* (1000 * 3600 * 24)))
+mae_hr = mean(abs.(data_e .-  evap_hr[2:end] .* (1000 * 3600 * 24)))
 fig = Figure(size = (800, 400), fontsize = 22)
 ax = Axis(
     fig[1, 1],
@@ -391,3 +396,4 @@ CairoMakie.lines!(
 
 save("evaporation_lehmann2008_fig8b.png", fig);
 # ![](evaporation_lehmann2008_fig8b.png)
+@show bias_lr, bias_hr

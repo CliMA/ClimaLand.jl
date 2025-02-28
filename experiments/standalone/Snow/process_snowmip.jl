@@ -33,7 +33,7 @@ met_data = NCDataset(joinpath(path, met_filename))
 timestamp = met_data["time"][:]
 year = Dates.year.(timestamp)
 # convert from milliseconds to seconds
-mask = (year .== 2009) .| (year .== 2010) .| (year .== 2011)
+mask = (year .== 2010) .| (year .== 2011) .| (year .== 2012)
 seconds = Dates.value.(timestamp[mask] .- timestamp[mask][1]) / 1000
 
 LWdown = met_data["LWdown"][:][mask]

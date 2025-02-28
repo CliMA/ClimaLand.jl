@@ -26,7 +26,7 @@ NeuralSnow = Base.get_extension(ClimaLand, :NeuralSnowExt).NeuralSnow;
 # Site-specific quantities
 # Error if no site argument is provided
 if length(ARGS) < 1
-    @error("Please provide a site name as command line argument")
+    #@error("Please provide a site name as command line argument")
 else
     SITE_NAME = ARGS[1]
 end
@@ -149,6 +149,8 @@ obs_swes[mass_data_avail] .= mass[mass_data_avail] ./ 1000
 
 obs_tsnows = Vector{Union{Float64, Missing}}(missing, length(doys))
 obs_tsnows[mass_data_avail] = T_snow .+ 273.15
+obs_zsnows = Vector{Union{Float64, Missing}}(missing, length(doys))
+obs_zsnows[mass_data_avail] = depths
 
 obs_df = DataFrame(
     doy = doys,
@@ -156,6 +158,8 @@ obs_df = DataFrame(
     obs_swe = obs_swes,
     model_tsnow = T,
     obs_tsnow = obs_tsnows,
+    model_zsnow = z,
+    obs_zsnow = obs_zsnows
 )
 function missingmean(x)
     return mean(skipmissing(x))
@@ -421,3 +425,10 @@ CairoMakie.scatter!(
 xlims!(ax3, 0, ndays)
 CairoMakie.axislegend(ax1, position = :rt, framevisible = false)
 CairoMakie.save(joinpath(savedir, "data_comparison_$(SITE_NAME).png"), fig)
+
+# Mean absolute error
+@show mean(abs.(obs_df.obs_swe[.~ ismissing.(obs_df.obs_swe)] .- obs_df.model_swe[.~ ismissing.(obs_df.obs_swe)]))
+
+@show mean(abs.(obs_df.obs_zsnow[.~ ismissing.(obs_df.obs_zsnow)] .- obs_df.model_zsnow[.~ ismissing.(obs_df.obs_zsnow)]))
+ids = .~ ismissing.(obs_df.obs_tsnow) .&& .~ isnan.(obs_df.obs_tsnow)
+@show mean(abs.(obs_df.obs_tsnow[ids] .- obs_df.model_tsnow[ids]))
