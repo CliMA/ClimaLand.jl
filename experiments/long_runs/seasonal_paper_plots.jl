@@ -23,20 +23,13 @@ root_path = joinpath(pwd(), "snowy_land_longrun_gpu")
 # outdir = "/scratch/clima/slurm-buildkite/climaland-long-runs/3363/climaland-long-runs/snowy_land_longrun_gpu/global_diagnostics/output_active/" # on clima
 outdir = "snowy_land_longrun_gpu/output_active" # on local
 root_path = outdir
-# simdir = ClimaAnalysis.SimDir(outdir)
 
 short_names = ["lhf", "shf", "lwu", "swu"]
-# units_labels = Dict(
-#     "lhf" => "(W/m²)",
-#     "shf" => "(W/m²)",
-#     "lwu" => "(W/m²)",
-#     "swu" => "(W/m²)",
-# )
 title_stubs = Dict(
-    "lhf" => "Latent heat flux",
-    "shf" => "Sensible heat flux",
-    "lwu" => "Upward longwave radiation",
-    "swu" => "Upward shortwave radiation",
+    "lhf" => "LE",#"Latent heat flux",
+    "shf" => "H",#"Sensible heat flux",
+    "lwu" => "LW_u",#"Upward longwave radiation",
+    "swu" => "SW_u",#"Upward shortwave radiation",
 )
 
 include("data_paper_plots.jl")
@@ -49,19 +42,24 @@ function make_seasonal_cycle_figure(root_path, outdir, short_names, title_stubs)
     obs_var_dict = get_obs_var_dict()
 
     # create figure for all plots
-    # fig = CairoMakie.Figure(size = (1800, 400)) # use for single row plotting
-    num_cols = 1
-    fig = CairoMakie.Figure(size = (550num_cols, 350 * length(short_names)))
+    # fig = CairoMakie.Figure(size = (1800, 400)) # use for single column plotting
+    num_cols = 2
+    num_rows = 2
+    fig = CairoMakie.Figure(size = (550num_cols, 350num_rows))
 
+    n_vars = length(short_names)
     for (idx, short_name) in enumerate(short_names)
-        # Plot figures in odd rows, colorbars in even rows
-        fig_row = (idx - 1) * 2 + 1
+        # Plot figures in odd rows, colorbars in even rows for 1x4 grid plotting
+        # fig_row = (idx - 1) * 2 + 1
+
+        # Determine row and column index for 2x2 grid plotting
+        row_idx = mod(idx, 2) + 1 # odd var idx in even rows, offset by 1 for title
+        col_idx = idx <= fld(n_vars, 2) ? 1 : 2 # first half of vars in first column (floor division)
 
         title_stub = title_stubs[short_name]
 
         # Access simulation data in the time we want
         sim_var = sim_var_dict[short_name]()
-        sim_var_times = [ClimaAnalysis.times(sim_var)[1]]
         kwarg_z = ClimaAnalysis.has_altitude(sim_var) ? Dict(:z => 1) : Dict() # if has altitude, take first layer
         sim_var_sliced = ClimaAnalysis.slice(sim_var; kwarg_z...)
         i = 2 # use second year of simulation
@@ -75,7 +73,6 @@ function make_seasonal_cycle_figure(root_path, outdir, short_names, title_stubs)
 
         # Access observation data in the time we want
         obs_var = obs_var_dict[short_name](sim_var.attributes["start_date"])
-        # ClimaAnalysis.center_longitude!(obs_var, 0) # TODO center lon at 0 to prevent https://github.com/MakieOrg/GeoMakie.jl/issues/290
 
         obs_var_sliced = ClimaAnalysis.slice(obs_var; kwarg_z...)
         obs_var_window = ClimaAnalysis.window(
@@ -102,23 +99,10 @@ function make_seasonal_cycle_figure(root_path, outdir, short_names, title_stubs)
                 ),
             ).data
 
-        # fig_seasonal_cycle = CairoMakie.Figure(size = (600, 400))
-        seasonal_title =
-            fig_row == 1 ?
-            CairoMakie.rich("ClimaLand vs ERA5 seasonal cycle", fontsize = 24) :
-            "" # title of the figure
-
         ax = Axis(
-            fig[fig_row, 1],
-            title = seasonal_title,
-            # ylabel = "$units_label",
+            fig[row_idx, col_idx],
             ylabel = title_stub * " $units_label",
             ylabelsize = 17,
-            # CairoMakie.rich(
-            #     title_stub * " $units_label",
-            #     fontsize = 28,
-            # ),
-            # title = CairoMakie.rich(title_stub, fontsize = 28),
             height = 250,
             xgridvisible = false,
             ygridvisible = false,
@@ -140,20 +124,17 @@ function make_seasonal_cycle_figure(root_path, outdir, short_names, title_stubs)
                 ],
             ),
         )
-        # [
+
         # plot model output
-        # TODO apply shift_to_start_of_previous_month
         CairoMakie.lines!(
             ax,
             sim_var_global_average,
-            color = :blue,#RGBf(0.5, 0.5, 0.5),
+            color = :blue,
             linewidth = 3,
             label = "ClimaLand",
         )
 
         # Add comparison to observational data (copied from leaderboard.jl)
-        # Observational data
-
         # var_global_average below is a vector of vector, one for each year of simulation, containing monthly global average of var.
         # i represent a year, from 1 to last year
         # for more details on the ClimaAnalysis functions, see ClimaAnalysis docs.
@@ -170,15 +151,18 @@ function make_seasonal_cycle_figure(root_path, outdir, short_names, title_stubs)
             color = :orange,
             label = "ERA5",
         )
-        CairoMakie.axislegend(ax, position = :rt, labelsize = 18)
-
-        # CairoMakie.save(
-        #     joinpath(root_path, "$(short_name)_global_monthly.pdf"),
-        #     fig_seasonal_cycle,
-        # )
-
-
+        row_idx == col_idx == 1 &&
+            CairoMakie.axislegend(ax, position = :rt, labelsize = 18)
     end
+
+    # Add title at the end so it spans all columns
+    Label(
+        fig[0, :],
+        "ClimaLand vs ERA5 seasonal cycle",
+        fontsize = 24,
+        font = "TeX Gyre Heros Bold Makie",
+    )
+
     save_name = joinpath(root_path, "seasonal_cycle.pdf")
     CairoMakie.save(save_name, fig)
     @show save_name
