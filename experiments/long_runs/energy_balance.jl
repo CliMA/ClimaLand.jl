@@ -47,15 +47,14 @@ sim_var_window = ClimaAnalysis.window(
 )
 
 # Plot the energy balance
-fig = CairoMakie.Figure(size = (800, 400 ))
+fig = CairoMakie.Figure(size = (800, 400))
 fig_row = 1
 
-sim_var_global_average =
-    ClimaAnalysis.average_lon(
-        ClimaAnalysis.weighted_average_lat(
-            ClimaAnalysis.apply_oceanmask(sim_var_window),
-        ),
-    )
+sim_var_global_average = ClimaAnalysis.average_lon(
+    ClimaAnalysis.weighted_average_lat(
+        ClimaAnalysis.apply_oceanmask(sim_var_window),
+    ),
+)
 
 sim_var_time = ClimaAnalysis.average_time(sim_var_global_average)
 @show sim_var_time.data

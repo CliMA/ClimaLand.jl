@@ -56,7 +56,8 @@ function make_paper_figures(
 
     # create figure for all plots
     # fig = CairoMakie.Figure(size = (1800, 400)) # use for single row plotting
-    fig = CairoMakie.Figure(size = (1800, 400 * length(short_names)))
+    num_cols = plot_bias || plot_seasonal ? 3 : 2
+    fig = CairoMakie.Figure(size = (500num_cols, 400 * length(short_names)))
 
     for (idx, short_name) in enumerate(short_names)
         # Plot figures in odd rows, colorbars in even rows
@@ -111,7 +112,7 @@ function make_paper_figures(
         # Plot simulation data heatmap
         sim_title =
             fig_row == 1 ?
-            CairoMakie.rich("ClimaLand, annually averaged", fontsize = 24) : "" # title of the figure
+            CairoMakie.rich("ClimaLand, annually averaged", fontsize = 28) : "" # title of the figure
 
         # fig_global_sim = CairoMakie.Figure(size = (600, 400))
         # round_step(x, step) = round(x / step) * step
@@ -160,7 +161,7 @@ function make_paper_figures(
         # Plot observational data heatmap
         obs_title =
             fig_row == 1 ?
-            CairoMakie.rich("ERA5, annually averaged", fontsize = 24) : "" # title of the figure
+            CairoMakie.rich("ERA5, annually averaged", fontsize = 28) : "" # title of the figure
 
         # fig_global_obs = CairoMakie.Figure(size = (600, 400))
         viz.heatmap2D_on_globe!(
@@ -211,7 +212,7 @@ function make_paper_figures(
         if plot_bias
             bias_title =
                 fig_row == 1 ?
-                CairoMakie.rich("ClimaLand vs ERA5 bias", fontsize = 24) : "" # title of the figure
+                CairoMakie.rich("ClimaLand vs ERA5 bias", fontsize = 28) : "" # title of the figure
             bias_colorbar_label = "$(sim_var.attributes["long_name"]): ClimaLand - ERA5 bias $units_label"
             viz.plot_bias_on_globe!(
                 fig,
@@ -271,7 +272,7 @@ function make_paper_figures(
                 fig_row == 1 ?
                 CairoMakie.rich(
                     "ClimaLand vs ERA5 seasonal cycle",
-                    fontsize = 24,
+                    fontsize = 28,
                 ) : "" # title of the figure
 
             ax = Axis(
@@ -281,9 +282,9 @@ function make_paper_figures(
                 ylabel = title_stub * " $units_label",
                 # CairoMakie.rich(
                 #     title_stub * " $units_label",
-                #     fontsize = 24,
+                #     fontsize = 28,
                 # ),
-                # title = CairoMakie.rich(title_stub, fontsize = 24),
+                # title = CairoMakie.rich(title_stub, fontsize = 28),
                 height = 250,
                 xgridvisible = false,
                 ygridvisible = false,
@@ -345,8 +346,9 @@ function make_paper_figures(
 
 
     end
-    CairoMakie.save(joinpath(root_path, "combined_figures_seasonal_cycle.pdf"), fig)
-    @show joinpath(root_path, "combined_figures_seasonal_cycle.pdf")
+    save_name = joinpath(root_path, "combined_figures.pdf")
+    CairoMakie.save(save_name, fig)
+    @show save_name
     return nothing
 end
 
@@ -356,5 +358,5 @@ make_paper_figures(
     short_names,
     title_stubs,
     plot_bias = false,
-    plot_seasonal = true,
+    plot_seasonal = false,
 )
