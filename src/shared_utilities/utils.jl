@@ -582,11 +582,11 @@ function NaNCheckCallback(
     schedule = EveryCalendarDtSchedule(
         nancheck_frequency_period;
         start_date,
-        date_last = start_date + Dates.Millisecond(1000t_start),
+        date_last = start_date + Dates.Millisecond(1000 * float(t_start)),
     )
 
     if !isnothing(dt)
-        dt_period = Dates.Millisecond(1000dt)
+        dt_period = Dates.Millisecond(1000float(dt))
         if !isdivisible(nancheck_frequency_period, dt_period)
             @warn "Callback frequency ($(nancheck_frequency_period)) is not an integer multiple of dt $(dt_period)"
         end

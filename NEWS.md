@@ -9,6 +9,8 @@ main
   PR[#973](https://github.com/CliMA/ClimaLand.jl/pull/973)
 - Revert PR993 changes to runoff
   PR[#1021](https://github.com/CliMA/ClimaLand.jl/pull/1021)
+- Add ITime (see [ClimaUtilities documentation](https://clima.github.io/ClimaUtilities.jl/dev/timemanager/) for more information)
+  PR[#1030](https://github.com/CliMA/ClimaLand.jl/pull/1030)
 
 v0.15.9
 -------

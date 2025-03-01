@@ -3,6 +3,7 @@ using ClimaLand
 using ClimaUtilities.TimeVaryingInputs
 import ClimaUtilities.TimeVaryingInputs:
     TimeVaryingInput, AbstractTimeVaryingInput
+import ClimaUtilities.TimeManager: ITime
 import NCDatasets, ClimaCore, Interpolations # Needed to load TimeVaryingInputs
 using ..ClimaLand.Canopy:
     AbstractCanopyComponent,
@@ -343,7 +344,7 @@ function ClimaLand.Canopy.set_canopy_prescribed_field!(
     t,
 ) where {FT}
     (; LAIfunction, SAI, RAI) = component.parameters.ai_parameterization
-    evaluate!(p.canopy.hydraulics.area_index.leaf, LAIfunction, floor(t))
+    evaluate!(p.canopy.hydraulics.area_index.leaf, LAIfunction, t)
     p.canopy.hydraulics.area_index.leaf .=
         clip.(p.canopy.hydraulics.area_index.leaf, FT(0.05))
     @. p.canopy.hydraulics.area_index.stem = SAI

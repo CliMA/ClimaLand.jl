@@ -5,6 +5,7 @@ using ClimaLand
 using ClimaCore
 using ClimaCore.MatrixFields
 import ClimaCore.MatrixFields: @name, ⋅
+import ClimaUtilities.TimeManager: ITime, date
 import LinearAlgebra: I
 using ClimaLand: AbstractRadiativeDrivers, AbstractAtmosphericDrivers
 import ..Parameters as LP
