@@ -35,10 +35,10 @@ steps:
 
       - label: ":snow_capped_mountain: Snowy Land"
         command:
-          - julia --color=yes --project=.buildkite experiments/long_runs/snowy_land.jl -4e6 5e-6 8e-8 0.75 pc_ksat_alpha
+          - julia --color=yes --project=.buildkite experiments/long_runs/snowy_land.jl -2e6 2e-3 8e-8 0.75 a_larger_ksat_alpha
         artifact_paths:
-          - "snowy_land_longrun_gpu_pc_ksat_alpha/*png"
-          - "snowy_land_longrun_gpu_pc_ksat_alpha/*pdf"
+          - "snowy_land_longrun_gpu_a_larger_ksat_alpha/*png"
+          - "snowy_land_longrun_gpu_a_larger_ksat_alpha/*pdf"
         agents:
           slurm_gpus: 1
           slurm_time: 15:00:00
@@ -47,24 +47,13 @@ steps:
 
       - label: ":snow_capped_mountain: Snowy Land"
         command:
-          - julia --color=yes --project=.buildkite experiments/long_runs/snowy_land.jl -2e6 1e-6 8e-8 0.75 sc_ksat_alpha
+          - julia --color=yes --project=.buildkite experiments/long_runs/snowy_land.jl -2e6 1e-4 8e-8 0.75 a_smaller_ksat_alpha
         artifact_paths:
-          - "snowy_land_longrun_gpu_sc_ksat_alpha/*png"
-          - "snowy_land_longrun_gpu_sc_ksat_alpha/*pdf"
+          - "snowy_land_longrun_gpu_a_smaller_ksat_alpha/*png"
+          - "snowy_land_longrun_gpu_a_smaller_ksat_alpha/*pdf"
         agents:
           slurm_gpus: 1
           slurm_time: 15:00:00
         env:
           CLIMACOMMS_DEVICE: "CUDA"
 
-      - label: ":snow_capped_mountain: Snowy Land"
-        command:
-          - julia --color=yes --project=.buildkite experiments/long_runs/snowy_land.jl -2e6 5e-6 8e-8 0.75 ksat_alpha
-        artifact_paths:
-          - "snowy_land_longrun_gpu_ksat_alpha/*png"
-          - "snowy_land_longrun_gpu_ksat_alpha/*pdf"
-        agents:
-          slurm_gpus: 1
-          slurm_time: 15:00:00
-        env:
-          CLIMACOMMS_DEVICE: "CUDA"

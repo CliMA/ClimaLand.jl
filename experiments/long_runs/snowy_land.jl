@@ -56,10 +56,12 @@ device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
 
 if length(ARGS) < 5
-    @error("Please provide pc, sc, Ksat_canopy, αsnow, name")
+    @error("Please provide pc, a, Ksat_canopy, αsnow, name")
 end
 pc = parse(FT, ARGS[1])
-sc = parse(FT, ARGS[2])
+a = parse(FT, ARGS[2])#    a = FT(0.05 * 0.0098) # Holtzman's original parameter for the bulk modulus of elasticity
+# ψ = (S_l - 1)/a, ψ in m -> a has units of inverse meters
+# ψρg = (S_l-1)/a' where a'/ρg = a; a' = ρg a = 0.05 Mpa
 Ksat_canopy = parse(FT, ARGS[3])
 α = parse(FT, ARGS[4])
 name = ARGS[5]
@@ -69,7 +71,7 @@ diagnostics_outdir = joinpath(root_path, "global_diagnostics")
 outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
 
-function setup_prob(t0, tf, Δt, pc, sc, Ksat_canopy, α; outdir = outdir, nelements = (101, 15))
+function setup_prob(t0, tf, Δt, pc, a, Ksat_canopy, α; outdir = outdir, nelements = (101, 15))
     earth_param_set = LP.LandParameters(FT)
     domain = ClimaLand.global_domain(FT; nelements = nelements)
     surface_space = domain.space.surface
@@ -156,7 +158,6 @@ function setup_prob(t0, tf, Δt, pc, sc, Ksat_canopy, α; outdir = outdir, nelem
     RAI = FT(1.0)
     ψ63 = FT(-4 / 0.0098) # / MPa to m, Holtzman's original parameter value is -4 MPa
     Weibull_param = FT(4) # unitless, Holtzman's original c param value
-    a = FT(0.05 * 0.0098) # Holtzman's original parameter for the bulk modulus of elasticity
     conductivity_model =
         Canopy.PlantHydraulics.Weibull{FT}(Ksat_canopy, ψ63, Weibull_param)
     retention_model = Canopy.PlantHydraulics.LinearRetentionCurve{FT}(a)
@@ -238,7 +239,6 @@ function setup_prob(t0, tf, Δt, pc, sc, Ksat_canopy, α; outdir = outdir, nelem
             is_c3;
             Vcmax25 = Vcmax25,
             pc = pc,
-            sc = sc,
         )
     )
     # Set up plant hydraulics
@@ -407,7 +407,7 @@ function setup_prob(t0, tf, Δt, pc, sc, Ksat_canopy, α; outdir = outdir, nelem
     SciMLBase.CallbackSet(driver_cb, diag_cb, report_cb, nancheck_cb)
 end
 
-function setup_and_solve_problem(pc, sc, Ksat_canopy, α; greet = false)
+function setup_and_solve_problem(pc, a, Ksat_canopy, α; greet = false)
 
     t0 = 0.0
     seconds = 1.0
@@ -425,7 +425,7 @@ function setup_and_solve_problem(pc, sc, Ksat_canopy, α; greet = false)
         @info "Duration: $(tf - t0) s"
     end
 
-    prob, cb = setup_prob(t0, tf, Δt, pc, sc, Ksat_canopy, α; nelements)
+    prob, cb = setup_prob(t0, tf, Δt, pc, a, Ksat_canopy, α; nelements)
 
     # Define timestepper and ODE algorithm
     stepper = CTS.ARS111()
@@ -440,7 +440,7 @@ function setup_and_solve_problem(pc, sc, Ksat_canopy, α; greet = false)
     return nothing
 end
 
-setup_and_solve_problem(pc, sc, Ksat_canopy, α; greet = true);
+setup_and_solve_problem(pc, a, Ksat_canopy, α; greet = true);
 # read in diagnostics and make some plots!
 #### ClimaAnalysis ####
 simdir = ClimaAnalysis.SimDir(outdir)
