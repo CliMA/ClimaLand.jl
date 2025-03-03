@@ -148,6 +148,7 @@ function make_paper_figures(
                 sim_var_annual_average, # obs_var_annual_average,
                 false, # plot_bias
                 levels,
+                # ylabel = ylabel = "$(sim_var.attributes["long_name"]) $units_label", # plot variable label on y-axis for leftmost column (sim)
                 p_loc = (fig_row, 1), # plot in the first column
                 plot_colorbar = true,
                 # colorbar_label = "$(sim_var.attributes["long_name"]) $units_label",
@@ -166,10 +167,13 @@ function make_paper_figures(
                         xgridvisible = false, # don't show lat grid
                         ygridvisible = false, # don't show lon grid
                         height = 235,
+                        ylabel = "$(sim_var.attributes["long_name"]) $units_label", # plot variable label on y-axis for leftmost column (sim)
+                        ylabelvisible = true,
+                        ylabelpadding = 0,
                     ),
                     :cb => ClimaAnalysis.Utils.kwargs(
                         vertical = false, # horizontal colorbar
-                        label = "$(sim_var.attributes["long_name"]) $units_label",
+                        # label = "$(sim_var.attributes["long_name"]) $units_label",
                         labelsize = 20,
                         flipaxis = false, # label underneath colorbar
                         height = 15,
@@ -192,6 +196,7 @@ function make_paper_figures(
             viz.contour2D_on_globe!(
                 fig,
                 sim_var_annual_average,
+                # ylabel = "$(sim_var.attributes["long_name"]) $units_label", # plot variable label on y-axis for leftmost column (sim)
                 p_loc = (fig_row, 1), # plot in the first column
                 plot_colorbar = false,
                 # colorbar_label = "$(sim_var.attributes["long_name"]) $units_label",
@@ -211,6 +216,9 @@ function make_paper_figures(
                         xgridvisible = false, # don't show lat grid
                         ygridvisible = false, # don't show lon grid
                         height = 235,
+                        ylabel = "$(sim_var.attributes["long_name"]) $units_label", # plot variable label on y-axis for leftmost column (sim)
+                        ylabelpadding = -5,
+                        ylabelvisible = true,
                     ),
                     # :cb => ClimaAnalysis.Utils.kwargs(
                     #     colorrange = clims,
@@ -221,7 +229,7 @@ function make_paper_figures(
             Makie.Colorbar(
                 fig[fig_row + 1, 1],
                 # plot,
-                label = "$(sim_var.attributes["long_name"]) $units_label",
+                # label = "$(sim_var.attributes["long_name"]) $units_label",
                 labelsize = 20,
                 vertical = false, # horizontal colorbar
                 flipaxis = false, # label underneath colorbar
@@ -266,10 +274,11 @@ function make_paper_figures(
                         xgridvisible = false, # don't show lat grid
                         ygridvisible = false, # don't show lon grid
                         height = 235,
+                        ylabelvisible = false,
                     ),
                     :cb => ClimaAnalysis.Utils.kwargs(
                         vertical = false, # horizontal colorbar
-                        label = "$(sim_var.attributes["long_name"]) $units_label",
+                        # label = "$(sim_var.attributes["long_name"]) $units_label",
                         labelsize = 20,
                         flipaxis = false, # label underneath colorbar
                         height = 15,
@@ -312,6 +321,7 @@ function make_paper_figures(
                         xgridvisible = false, # don't show lat grid
                         ygridvisible = false, # don't show lon grid
                         height = 235,
+                        ylabelvisible = false,
                     ),
                     # :cb => ClimaAnalysis.Utils.kwargs(
                     #     colorrange = clims,
@@ -322,7 +332,7 @@ function make_paper_figures(
             Makie.Colorbar(
                 fig[fig_row + 1, 2],
                 # plot,
-                label = "$(sim_var.attributes["long_name"]) $units_label",
+                # label = "$(sim_var.attributes["long_name"]) $units_label",
                 labelsize = 20,
                 vertical = false, # horizontal colorbar
                 flipaxis = false, # label underneath colorbar
@@ -372,10 +382,11 @@ function make_paper_figures(
                         xgridvisible = false, # don't show lat grid
                         ygridvisible = false, # don't show lon grid
                         height = 235,
+                        ylabelvisible = false,
                     ),
                     :cb => ClimaAnalysis.Utils.kwargs(
                         vertical = false, # horizontal colorbar
-                        label = bias_colorbar_label,
+                        # label = bias_colorbar_label,
                         labelsize = 20,
                         flipaxis = false, # label underneath colorbar
                         height = 15,
