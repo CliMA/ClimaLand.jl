@@ -32,6 +32,7 @@ import ClimaUtilities
 import ClimaUtilities.TimeVaryingInputs:
     TimeVaryingInput, LinearInterpolation, PeriodicCalendar
 import ClimaUtilities.OutputPathGenerator: generate_output_path
+import ClimaUtilities.TimeManager: ITime
 import ClimaTimeSteppers as CTS
 import NCDatasets
 using ClimaCore
@@ -124,6 +125,11 @@ t0 = 0.0;
 tf = 14 * 86400;
 Δt = 3600.0 / 3;
 
+t0 = ITime(t0, epoch = start_date)
+tf = ITime(tf, epoch = start_date)
+Δt = ITime(Δt, epoch = start_date)
+t0, tf, Δt = promote(t0, tf, Δt)
+
 # Construct albedo parameter object using static map
 surface_space = bucket_domain.space.surface
 subsurface_space = bucket_domain.space.subsurface
@@ -172,9 +178,9 @@ prob = SciMLBase.ODEProblem(
     p,
 );
 
-saveat = collect(t0:(Δt * 3):tf);
+saveat = [promote(t0:(3 * Δt):tf...)...];
 saved_values = (;
-    t = Array{Float64}(undef, length(saveat)),
+    t = Array{typeof(t0)}(undef, length(saveat)),
     saveval = Array{NamedTuple}(undef, length(saveat)),
 );
 saving_cb = ClimaLand.NonInterpSavingCallback(saved_values, saveat);

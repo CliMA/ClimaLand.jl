@@ -58,6 +58,7 @@ pages = Any[
     "Diagnostics" => diagnostics,
     "Leaderboard" => "leaderboard/leaderboard.md",
     "Restarts" => "restarts.md",
+    "Time type" => "timemanager.md",
     "Misc. utilities" => "shared_utilities.md",
     "APIs" => apis,
     "Contribution guide" => "Contributing.md",
