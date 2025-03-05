@@ -1115,7 +1115,7 @@ function prescribed_forcing_era5(
         regridder_type,
         file_reader_kwargs = (; preprocess_func = (data) -> -data / 1000,),
         method = time_interpolation_method,
-        compose_function = (mtpr, msr) -> max.(mtpr .- msr, Float32(0))
+        compose_function = (mtpr, msr) -> min.(mtpr .- msr, Float32(0))
     )
     # Precip is provide as a mass flux; convert to volume flux of liquid water with ρ =1000 kg/m^3
     snow_precip = TimeVaryingInput(
