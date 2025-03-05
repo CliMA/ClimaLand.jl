@@ -72,7 +72,18 @@ diagnostics_outdir = joinpath(root_path, "global_diagnostics")
 outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
 
-function setup_prob(t0, tf, Δt, start_date, pc, a, Ksat_canopy, α; outdir = outdir, nelements = (101, 15))
+function setup_prob(
+    t0,
+    tf,
+    Δt,
+    start_date,
+    pc,
+    a,
+    Ksat_canopy,
+    α;
+    outdir = outdir,
+    nelements = (101, 15),
+)
     earth_param_set = LP.LandParameters(FT)
     domain = ClimaLand.global_domain(FT; nelements = nelements)
     surface_space = domain.space.surface
@@ -415,7 +426,7 @@ function setup_and_solve_problem(pc, a, Ksat_canopy, α; greet = false)
     hours = 60minutes # hours in seconds
     days = 24hours # days in seconds
     years = 366days # years in seconds - 366 to make sure we capture at least full years
-    tf = 2years # 2 years in seconds
+    tf = 1years # 2 years in seconds
     Δt = 450.0
     start_date = DateTime(2008)
     nelements = (101, 15)
@@ -430,7 +441,8 @@ function setup_and_solve_problem(pc, a, Ksat_canopy, α; greet = false)
     tf = ITime(tf, epoch = start_date)
     Δt = ITime(Δt, epoch = start_date)
     t0, tf, Δt = promote(t0, tf, Δt)
-    prob, cb = setup_prob(t0, tf, Δt, start_date, pc, a, Ksat_canopy, α; nelements)
+    prob, cb =
+        setup_prob(t0, tf, Δt, start_date, pc, a, Ksat_canopy, α; nelements)
 
     # Define timestepper and ODE algorithm
     stepper = CTS.ARS111()

@@ -1034,7 +1034,7 @@ function make_update_drivers(r::PrescribedRadiativeFluxes{FT}) where {FT}
         # If we obtain this factor from ERA5 in the future, we should remove thermo_params from the struct.
         if !isnothing(r.θs) & !isnothing(r.thermo_params)
             p.drivers.cosθs .= FT.(cos.(r.θs(t, r.start_date)))
-            update_frac_diff!(p,r,t)
+            update_frac_diff!(p, r, t)
         elseif isnothing(r.θs) & isnothing(r.thermo_params)
             # These should not be accessed or used. Set to NaN.
             p.drivers.cosθs .= FT(NaN)
@@ -1049,21 +1049,20 @@ function make_update_drivers(r::PrescribedRadiativeFluxes{FT}) where {FT}
     return update_drivers!
 end
 
-function update_frac_diff!(p,r,t)
+function update_frac_diff!(p, r, t)
     if typeof(r.frac_diff) <: AbstractTimeVaryingInput
         evaluate!(p.drivers.frac_diff, r.frac_diff, t)
     else
-        @. p.drivers.frac_diff = 
-            empirical_diffuse_fraction(
-                t,
-                r.start_date,
-                p.drivers.T,
-                p.drivers.P,
-                p.drivers.q,
-                p.drivers.SW_d,
-                p.drivers.cosθs,
-                r.thermo_params,
-            )
+        @. p.drivers.frac_diff = empirical_diffuse_fraction(
+            t,
+            r.start_date,
+            p.drivers.T,
+            p.drivers.P,
+            p.drivers.q,
+            p.drivers.SW_d,
+            p.drivers.cosθs,
+            r.thermo_params,
+        )
     end
 end
 
@@ -1115,7 +1114,7 @@ function prescribed_forcing_era5(
         regridder_type,
         file_reader_kwargs = (; preprocess_func = (data) -> -data / 1000,),
         method = time_interpolation_method,
-        compose_function = (mtpr, msr) -> min.(mtpr .- msr, Float32(0))
+        compose_function = (mtpr, msr) -> min.(mtpr .- msr, Float32(0)),
     )
     # Precip is provide as a mass flux; convert to volume flux of liquid water with ρ =1000 kg/m^3
     snow_precip = TimeVaryingInput(
@@ -1191,13 +1190,13 @@ function prescribed_forcing_era5(
     )
     function compute_diffuse_fraction(total, direct)
         diff = max(total - direct, Float32(0))
-        return min(diff /(total + eps(Float32)), Float32(1))
+        return min(diff / (total + eps(Float32)), Float32(1))
     end
     function compute_diffuse_fraction_broadcasted(total, direct)
         return @. compute_diffuse_fraction(total, direct)
     end
-        
-    frac_diff =   TimeVaryingInput(
+
+    frac_diff = TimeVaryingInput(
         era5_ncdata_path,
         ["msdwswrf", "msdrswrf"],
         surface_space;
@@ -1255,7 +1254,7 @@ function prescribed_forcing_era5(
         start_date;
         θs = zenith_angle,
         earth_param_set = earth_param_set,
-        frac_diff = frac_diff
+        frac_diff = frac_diff,
     )
     return atmos, radiation
 end
