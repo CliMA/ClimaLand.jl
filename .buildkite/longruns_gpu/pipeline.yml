@@ -47,10 +47,10 @@ steps:
 
       - label: ":snow_capped_mountain: Snowy Land"
         command:
-          - julia --color=yes --project=.buildkite experiments/long_runs/snowy_land.jl -2e6 3e-3 8e-8 0.8 new_default
+          - julia --color=yes --project=.buildkite experiments/long_runs/snowy_land.jl -2e6 3e-3 8e-8 0.7 alpha2
         artifact_paths:
-          - "snowy_land_longrun_gpu_new_default/*png"
-          - "snowy_land_longrun_gpu_new_default/*pdf"
+          - "snowy_land_longrun_gpu_alpha2/*png"
+          - "snowy_land_longrun_gpu_alpha2/*pdf"
         agents:
           slurm_gpus: 1
           slurm_time: 15:00:00

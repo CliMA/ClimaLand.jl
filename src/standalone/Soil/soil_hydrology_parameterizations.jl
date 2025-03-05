@@ -16,12 +16,11 @@ Calculates pointwise albedo for any band as a function of soil effective saturat
 the dry and wet albedo values for that band.
 """
 function albedo_from_moisture(
-    θ_sfc::FT,
+    surface_eff_sat::FT,
     albedo_dry::FT,
     albedo_wet::FT,
 ) where {FT}
-    Δ = FT(max(0.11 - 0.4 * θ_sfc, 0.0))
-    return albedo_wet + Δ
+    return albedo_dry * (1 - surface_eff_sat) + albedo_wet * surface_eff_sat
 end
 
 
@@ -59,9 +58,7 @@ function update_albedo!(bc::AtmosDrivenFluxBC, p, soil_domain, model_parameters)
     ) = model_parameters
     S_sfc = p.soil.sfc_S_e
     FT = eltype(soil_domain.fields.Δz_top)
-
     # checks if there is at least 1 layer centered within the top soil depth
-    #=
     if soil_domain.fields.Δz_min < albedo_calc_top_thickness
         # ∫H_S_e_dz is the integral of effective saturation from (surface-albedo_calc_top_thickness) to surface
         ∫H_S_e_dz = p.soil.sfc_S_e
@@ -92,12 +89,10 @@ function update_albedo!(bc::AtmosDrivenFluxBC, p, soil_domain, model_parameters)
         # in the case where no layer is centered above boundary, use the values of the top layer
         S_sfc .= ClimaLand.Domains.top_center_to_surface(p.soil.sub_sfc_scratch)
     end
-    =#
-    θ_sfc = ClimaLand.Domains.top_center_to_surface(p.soil.θ_l)
     @. p.soil.PAR_albedo =
-        albedo_from_moisture(θ_sfc, PAR_albedo_dry, PAR_albedo_wet)
+        albedo_from_moisture(S_sfc, PAR_albedo_dry, PAR_albedo_wet)
     @. p.soil.NIR_albedo =
-        albedo_from_moisture(θ_sfc, NIR_albedo_dry, NIR_albedo_wet)
+        albedo_from_moisture(S_sfc, NIR_albedo_dry, NIR_albedo_wet)
 end
 
 """
