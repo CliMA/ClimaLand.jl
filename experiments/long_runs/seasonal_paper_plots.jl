@@ -17,11 +17,8 @@ using Dates
 
 root_path = joinpath(pwd(), "snowy_land_longrun_gpu")
 !isdir(root_path) && mkdir(root_path)
-# 3057 (prev) -> 3310 (newer) -> 3363 (sc = 0)
-# outdir = "/scratch/clima/slurm-buildkite/climaland-long-runs/3057/climaland-long-runs/snowy_land_longrun_gpu/global_diagnostics/output_active/" # on clima
-# outdir = "/scratch/clima/slurm-buildkite/climaland-long-runs/3310/climaland-long-runs/snowy_land_longrun_gpu/global_diagnostics/output_active/" # on clima
-# outdir = "/scratch/clima/slurm-buildkite/climaland-long-runs/3363/climaland-long-runs/snowy_land_longrun_gpu/global_diagnostics/output_active/" # on clima
-outdir = "snowy_land_longrun_gpu/output_active" # on local
+# Set outdir to wherever diagnostics are saved
+outdir = "snowy_land_longrun_gpu-3720-a_larger2_ksat_alpha/output_active" # on local
 root_path = outdir
 
 short_names = ["lhf", "shf", "lwu", "swu"]
@@ -42,7 +39,6 @@ function make_seasonal_cycle_figure(root_path, outdir, short_names, title_stubs)
     obs_var_dict = get_obs_var_dict()
 
     # create figure for all plots
-    # fig = CairoMakie.Figure(size = (1800, 400)) # use for single column plotting
     num_cols = 2
     num_rows = 2
     fig = CairoMakie.Figure(size = (550num_cols, 350num_rows))
@@ -50,7 +46,6 @@ function make_seasonal_cycle_figure(root_path, outdir, short_names, title_stubs)
     n_vars = length(short_names)
     for (idx, short_name) in enumerate(short_names)
         # Plot figures in odd rows, colorbars in even rows for 1x4 grid plotting
-        # fig_row = (idx - 1) * 2 + 1
 
         # Determine row and column index for 2x2 grid plotting
         row_idx = mod(idx, 2) + 1 # odd var idx in even rows, offset by 1 for title
@@ -59,31 +54,39 @@ function make_seasonal_cycle_figure(root_path, outdir, short_names, title_stubs)
         title_stub = title_stubs[short_name]
 
         # Access simulation data in the time we want
-        sim_var = sim_var_dict[short_name]()
-        kwarg_z = ClimaAnalysis.has_altitude(sim_var) ? Dict(:z => 1) : Dict() # if has altitude, take first layer
-        sim_var_sliced = ClimaAnalysis.slice(sim_var; kwarg_z...)
-        i = 2 # use second year of simulation
-        sim_var_window = ClimaAnalysis.window(
-            sim_var_sliced,
-            "time",
-            left = (i - 1) * 366 * 86400 + 30 * 86400, # 1 year left of year i, in seconds.
-            right = i * 366 * 86400, # 1 year right of year i, in seconds
+        sim_var = ClimaAnalysis.shift_to_start_of_previous_month(
+            sim_var_dict[short_name](),
         )
+        sim_var_times = ClimaAnalysis.times(sim_var)
+
+        # kwarg_z = ClimaAnalysis.has_altitude(sim_var) ? Dict(:z => 1) : Dict() # if has altitude, take first layer
+        # sim_var_sliced = ClimaAnalysis.slice(sim_var; kwarg_z...)
+        # i = 2 # use second year of simulation
+        # sim_var_window = ClimaAnalysis.window(
+        #     sim_var_sliced,
+        #     "time",
+        #     left = (i - 1) * 366 * 86400 + 30 * 86400, # 1 year left of year i, in seconds.
+        #     right = i * 366 * 86400, # 1 year right of year i, in seconds
+        # )
         units_label = "(" * sim_var.attributes["units"] * ")"
 
         # Access observation data in the time we want
         obs_var = obs_var_dict[short_name](sim_var.attributes["start_date"])
+        obs_var_times = ClimaAnalysis.times(obs_var)
 
-        obs_var_sliced = ClimaAnalysis.slice(obs_var; kwarg_z...)
-        obs_var_window = ClimaAnalysis.window(
-            obs_var_sliced,
-            "time",
-            left = 0, # observation data starts at 2008
-            right = 366 * 86400, # 1 year of observation data, in seconds
+        @assert all(
+            sim_var.dims["time"][1:12] - obs_var.dims["time"][1:12] .== 0,
         )
 
+        # obs_var_sliced = ClimaAnalysis.slice(obs_var; kwarg_z...)
+        # obs_var_window = ClimaAnalysis.window(
+        #     obs_var_sliced,
+        #     "time",
+        #     left = 0, # observation data starts at 2008
+        #     right = 366 * 86400, # 1 year of observation data, in seconds
+        # )
+
         ## SEASONAL CYCLE
-        # data_sources.jl has observational data for "gpp", "lwu", and "et" only - maybe separate short_names loop for this
         # Simulation data
 
         # var_global_average below is a vector of vector, one for each year of simulation, containing monthly global average of var.
@@ -92,12 +95,34 @@ function make_seasonal_cycle_figure(root_path, outdir, short_names, title_stubs)
 
         # ~only compute seasonal cycle for last year so we skip spinup~
         # compute seasonal cycle for second to last year so we skip spinup AND have data for dec after off-by-one correction (shift_to_start_of_previous_month)
-        sim_var_global_average =
-            ClimaAnalysis.average_lon(
-                ClimaAnalysis.weighted_average_lat(
-                    ClimaAnalysis.apply_oceanmask(sim_var_window),
-                ),
-            ).data
+        # sim_var_global_average =
+        #     ClimaAnalysis.average_lon(
+        #         ClimaAnalysis.weighted_average_lat(
+        #             ClimaAnalysis.apply_oceanmask(sim_var_window),
+        #         ),
+        #     ).data
+
+        sim_var_global_average = zeros(12)
+        obs_var_global_average = zeros(12)
+        for i in 1:12
+            sim_slice_args =
+                ClimaAnalysis.has_altitude(sim_var) ?
+                Dict(:z => 1, :time => sim_var_times[i + 12]) :
+                Dict(:time => sim_var_times[i + 12]) # if has altitude, take first layer
+            obs_slice_args =
+                ClimaAnalysis.has_altitude(sim_var) ?
+                Dict(:z => 1, :time => obs_var_times[i]) :
+                Dict(:time => obs_var_times[i]) # if has altitude, take first layer
+
+            sim_var_sliced = ClimaAnalysis.slice(sim_var; sim_slice_args...)
+            sim_var_masked = ClimaAnalysis.apply_oceanmask(sim_var_sliced)
+            sim_var_global_average[i] = compute_global_average(sim_var_masked)
+
+            obs_var_sliced = ClimaAnalysis.slice(obs_var; obs_slice_args...)
+            obs_var_masked = ClimaAnalysis.apply_oceanmask(obs_var_sliced)
+            obs_var_global_average[i] = compute_global_average(obs_var_masked)
+        end
+
 
         ax = Axis(
             fig[row_idx, col_idx],
@@ -138,12 +163,12 @@ function make_seasonal_cycle_figure(root_path, outdir, short_names, title_stubs)
         # var_global_average below is a vector of vector, one for each year of simulation, containing monthly global average of var.
         # i represent a year, from 1 to last year
         # for more details on the ClimaAnalysis functions, see ClimaAnalysis docs.
-        obs_var_global_average =
-            ClimaAnalysis.average_lon(
-                ClimaAnalysis.weighted_average_lat(
-                    ClimaAnalysis.apply_oceanmask(obs_var_window),
-                ),
-            ).data
+        # obs_var_global_average =
+        #     ClimaAnalysis.average_lon(
+        #         ClimaAnalysis.weighted_average_lat(
+        #             ClimaAnalysis.apply_oceanmask(obs_var_window),
+        #         ),
+        #     ).data
 
         CairoMakie.scatter!(
             ax,

@@ -5,23 +5,27 @@ function get_sim_var_dict(simdir)
 
     # Get LHF by converting from ET
     earth_param_set = LP.LandParameters(Float64)
-    _LH_v0 = LP.LH_v0(earth_param_set) # J/kg
+    # _LH_v0 = LP.LH_v0(earth_param_set) # J/kg
     sim_var_dict["lhf"] =
         () -> begin
-            sim_var_et = get(simdir, short_name = "et") # units (kg/m²s)
+            sim_var_lhf = get(simdir, short_name = "lhf") # units (W/m²)
+            sim_var_lhf.attributes["long_name"] = "Latent heat flux"
+            sim_var_lhf.attributes["units"] = "W m⁻²"
 
-            attribs = Dict(
-                "short_name" => "lhf",
-                "long_name" => "Latent heat flux",
-                "units" => "W m⁻²",
-                "start_date" => sim_var_et.attributes["start_date"],
-            )
-            sim_var_lhf = ClimaAnalysis.OutputVar(
-                attribs,
-                sim_var_et.dims,
-                sim_var_et.dim_attributes,
-                sim_var_et.data * _LH_v0, # W/m²
-            )
+            # sim_var_et = get(simdir, short_name = "et") # units (kg/m²s)
+
+            # attribs = Dict(
+            #     "short_name" => "lhf",
+            #     "long_name" => "Latent heat flux",
+            #     "units" => "W m⁻²",
+            #     "start_date" => sim_var_et.attributes["start_date"],
+            # )
+            # sim_var_lhf = ClimaAnalysis.OutputVar(
+            #     attribs,
+            #     sim_var_et.dims,
+            #     sim_var_et.dim_attributes,
+            #     sim_var_et.data * _LH_v0, # W/m²
+            # )
             return sim_var_lhf
         end
 
@@ -99,11 +103,18 @@ function get_obs_var_dict()
                 "units" => "W m⁻²",
                 "start_date" => start_date,
             )
+
+            # Copy data at lon = 0 to lon = 360 to avoid white lines
+            push!(obs_var.dims["longitude"], 360)
+            new_data =
+                -1 * cat(obs_var.data, obs_var.data[[1], :, :], dims = 1)
+            # # relabel longitude values from [0, 359] to [-180, 179]
+            # obs_var.dims["longitude"] = obs_var.dims["longitude"] .- 180
             obs_var_pos = ClimaAnalysis.OutputVar(
                 attribs,
                 obs_var.dims,
                 obs_var.dim_attributes,
-                -1 * obs_var.data,
+                new_data,
             )
             return obs_var_pos
         end
@@ -126,11 +137,15 @@ function get_obs_var_dict()
                 "units" => "W m⁻²",
                 "start_date" => start_date,
             )
+            # Copy data at lon = 0 to lon = 360 to avoid white lines
+            push!(obs_var.dims["longitude"], 360)
+            new_data =
+                -1 * cat(obs_var.data, obs_var.data[[1], :, :], dims = 1)
             obs_var_pos = ClimaAnalysis.OutputVar(
                 attribs,
                 obs_var.dims,
                 obs_var.dim_attributes,
-                -1 * obs_var.data,
+                new_data,
             )
 
             return obs_var_pos
@@ -147,12 +162,25 @@ function get_obs_var_dict()
             ) # units (W/m²)
             obs_var = ClimaAnalysis.replace(obs_var, missing => NaN)
 
+            # Copy data at lon = 0 to lon = 360 to avoid white lines
+            push!(obs_var.dims["longitude"], 360)
+            new_data = cat(obs_var.data, obs_var.data[[1], :, :], dims = 1)
+
             # Manually set attributes
-            obs_var.attributes["short_name"] = "lwu"
-            obs_var.attributes["long_name"] = "Upward longwave radiation"
-            obs_var.attributes["units"] = "W m⁻²"
-            obs_var.attributes["start_date"] = start_date
-            return obs_var
+            attribs = Dict(
+                "short_name" => "lwu",
+                "long_name" => "Upward longwave radiation",
+                "units" => "W m⁻²",
+                "start_date" => start_date,
+            )
+
+            obs_var_shifted = ClimaAnalysis.OutputVar(
+                attribs,
+                obs_var.dims,
+                obs_var.dim_attributes,
+                new_data,
+            )
+            return obs_var_shifted
         end
 
     # Read in SWU
@@ -166,12 +194,24 @@ function get_obs_var_dict()
             ) # units (W/m²)
             obs_var = ClimaAnalysis.replace(obs_var, missing => NaN)
 
+            # Copy data at lon = 0 to lon = 360 to avoid white lines
+            push!(obs_var.dims["longitude"], 360)
+            new_data = cat(obs_var.data, obs_var.data[[1], :, :], dims = 1)
             # Manually set attributes
-            obs_var.attributes["short_name"] = "swu"
-            obs_var.attributes["long_name"] = "Upward shortwave radiation"
-            obs_var.attributes["units"] = "W m⁻²"
-            obs_var.attributes["start_date"] = start_date
-            return obs_var
+            attribs = Dict(
+                "short_name" => "swu",
+                "long_name" => "Upward shortwave radiation",
+                "units" => "W m⁻²",
+                "start_date" => start_date,
+            )
+
+            obs_var_shifted = ClimaAnalysis.OutputVar(
+                attribs,
+                obs_var.dims,
+                obs_var.dim_attributes,
+                new_data,
+            )
+            return obs_var_shifted
         end
 
     return obs_var_dict
