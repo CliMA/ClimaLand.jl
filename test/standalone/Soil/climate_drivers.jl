@@ -249,15 +249,15 @@ for FT in (Float32, Float64)
             expected_energy_flux = @. R_n_copy + conditions.lhf + conditions.shf
             @test computed_energy_flux == expected_energy_flux
 
-            ρc_sfc = ClimaLand.Soil.get_ρc_sfc(Y, p, model.parameters)
+            # ρc_sfc = ClimaLand.Soil.get_ρc_sfc(Y, p, model.parameters)
             # Get the local geometry of the face space, then extract the top level
             local_geometry_faceN = ClimaLand.get_local_geometry_faceN(
                 model.domain.space.subsurface,
             )
 
             expected_dflux_heat =
-                @. ClimaLand.covariant3_unit_vector(local_geometry_faceN) *
-                   (0 / ρc_sfc)
+                 ClimaLand.covariant3_unit_vector.(local_geometry_faceN) .*
+                   (0 ./ ClimaLand.Soil.get_ρc_sfc(Y, p, model.parameters))
             expected_dflux_water =
                 @. ClimaLand.covariant3_unit_vector(local_geometry_faceN) * 0
             @test all(
