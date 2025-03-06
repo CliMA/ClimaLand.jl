@@ -1,4 +1,4 @@
-using ClimaComms
+1using ClimaComms
 using ClimaUtilities.ClimaArtifacts
 import Interpolations
 import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
@@ -116,7 +116,7 @@ function clm_canopy_parameters(
         surface_space;
         regridder_type,
         regridder_kwargs = (; extrapolation_bc,),
-        file_reader_kwargs = (; preprocess_func = (data) -> data * 1.1,),
+        file_reader_kwargs = (; preprocess_func = (data) -> data * 1.05,),
     )
     τ_PAR_leaf = SpaceVaryingInput(
         joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
@@ -131,7 +131,7 @@ function clm_canopy_parameters(
         surface_space;
         regridder_type,
         regridder_kwargs = (; extrapolation_bc,),
-        file_reader_kwargs = (; preprocess_func = (data) -> data * 1.1,),
+        file_reader_kwargs = (; preprocess_func = (data) -> data * 1.05,),
     )
     τ_NIR_leaf = SpaceVaryingInput(
         joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
