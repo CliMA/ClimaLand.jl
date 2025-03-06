@@ -1123,3 +1123,61 @@ function soil_turbulent_fluxes_at_a_point(
         dshfdT = dshfdT,
     )
 end
+
+
+
+
+
+
+
+function coupler_compute_turbulent_fluxes!(
+    dest,
+    model::EnergyHydrology{FT},
+    atmos::NamedTuple,
+    Y::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
+    t,
+) where {FT}
+    
+    # Obtain surface quantities needed for computation; these should not allocate
+    T_sfc = ClimaLand.surface_temperature(model, Y, p, t)
+    h_sfc = ClimaLand.surface_height(model, Y, p)
+    d_sfc = ClimaLand.displacement_height(model, Y, p)
+    (; K_sat, ν, θ_r, hydrology_cm, z_0m, z_0b, Ω, γ, γT_ref, earth_param_set) =
+        model.parameters
+    hydrology_cm_sfc = ClimaLand.Domains.top_center_to_surface(hydrology_cm)
+    K_sat_sfc = ClimaLand.Domains.top_center_to_surface(K_sat)
+    θ_i_sfc = ClimaLand.Domains.top_center_to_surface(Y.soil.θ_i)
+    ν_sfc = ClimaLand.Domains.top_center_to_surface(ν)
+    θ_r_sfc = ClimaLand.Domains.top_center_to_surface(θ_r)
+    θ_l_sfc = p.soil.sfc_scratch
+    ClimaLand.Domains.linear_interpolation_to_surface!(
+        θ_l_sfc,
+        p.soil.θ_l,
+        model.domain.fields.z,
+        model.domain.fields.Δz_top,
+    )
+    dest .=
+        soil_turbulent_fluxes_at_a_point.(
+            T_sfc,
+            θ_l_sfc,
+            θ_i_sfc,
+            h_sfc,
+            d_sfc,
+            hydrology_cm_sfc,
+            ν_sfc,
+            θ_r_sfc,
+            K_sat_sfc,
+            atmos.thermal_state
+            atmos.u,
+            atmos.h,
+            atmos.gustiness,
+            z_0m,
+            z_0b,
+            Ω,
+            γ,
+            γT_ref,
+            Ref(earth_param_set),
+        )
+    return nothing
+end

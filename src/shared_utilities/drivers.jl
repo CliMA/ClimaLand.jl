@@ -289,6 +289,43 @@ function turbulent_fluxes!(
 end
 
 
+function coupler_compute_turbulent_fluxes!(
+    dest,
+    atmos::NamedTuple,
+    model::AbstractModel,
+    Y::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
+    t,
+)
+    T_sfc = surface_temperature(model, Y, p, t)
+    ρ_sfc = surface_air_density(atmos, model, Y, p, t, T_sfc)
+    q_sfc = surface_specific_humidity(model, Y, p, T_sfc, ρ_sfc)
+    β_sfc = surface_evaporative_scaling(model, Y, p)
+    h_sfc = surface_height(model, Y, p)
+    r_sfc = surface_resistance(model, Y, p, t)
+    d_sfc = displacement_height(model, Y, p)
+
+    dest .=
+        turbulent_fluxes_at_a_point.(
+            T_sfc,
+            q_sfc,
+            ρ_sfc,
+            β_sfc,
+            h_sfc,
+            r_sfc,
+            d_sfc,
+            atmos.thermal_state,
+            atmos.u,
+            atmos.h,
+            atmos.gustiness,
+            model.parameters.z_0m,
+            model.parameters.z_0b,
+            model.parameters.earth_param_set,
+        )
+    return nothing
+end
+
+
 """
     turbulent_fluxes_at_a_point(T_sfc::FT,
                                 q_sfc::FT,
@@ -423,9 +460,6 @@ function ClimaLand.turbulent_fluxes!(
     t,
 )
     # coupler has done its thing behind the scenes already
-    model_name = ClimaLand.name(model)
-    model_cache = getproperty(p, model_name)
-    dest .= model_cache.turbulent_fluxes
     return nothing
 end
 
