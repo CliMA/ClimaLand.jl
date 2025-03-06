@@ -35,7 +35,7 @@ steps:
 
       - label: ":snow_capped_mountain: Snowy Land"
         command:
-          - julia --color=yes --project=.buildkite experiments/long_runs/snowy_land.jl -2e6 3e-3 8e-8 0.6 alpha1
+          - julia --color=yes --project=.buildkite experiments/long_runs/snowy_land.jl -2e6 3e-3 8e-8 0.67 alpha1
         artifact_paths:
           - "snowy_land_longrun_gpu_alpha1/*png"
           - "snowy_land_longrun_gpu_alpha1/*pdf"
@@ -45,14 +45,14 @@ steps:
         env:
           CLIMACOMMS_DEVICE: "CUDA"
 
-      - label: ":snow_capped_mountain: Snowy Land"
-        command:
-          - julia --color=yes --project=.buildkite experiments/long_runs/snowy_land.jl -2e6 3e-3 8e-8 0.7 alpha2
-        artifact_paths:
-          - "snowy_land_longrun_gpu_alpha2/*png"
-          - "snowy_land_longrun_gpu_alpha2/*pdf"
-        agents:
-          slurm_gpus: 1
-          slurm_time: 24:00:00
-        env:
-          CLIMACOMMS_DEVICE: "CUDA"
+      # - label: ":snow_capped_mountain: Snowy Land"
+      #   command:
+      #     - julia --color=yes --project=.buildkite experiments/long_runs/snowy_land.jl -2e6 3e-3 8e-8 0.7 alpha2
+      #   artifact_paths:
+      #     - "snowy_land_longrun_gpu_alpha2/*png"
+      #     - "snowy_land_longrun_gpu_alpha2/*pdf"
+      #   agents:
+      #     slurm_gpus: 1
+      #     slurm_time: 24:00:00
+      #   env:
+      #     CLIMACOMMS_DEVICE: "CUDA"
