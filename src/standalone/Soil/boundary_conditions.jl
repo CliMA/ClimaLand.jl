@@ -683,10 +683,7 @@ function soil_boundary_fluxes!(
 end
 
 """
-    boundary_vars(::AtmosDrivenFluxBC{<:AbstractAtmosphericDrivers,
-                                    <:AbstractRadiativeDrivers,
-                                    <:AbstractRunoffModel,
-                                    }, ::ClimaLand.TopBoundary)
+    boundary_vars(::AtmosDrivenFluxBC, ::ClimaLand.TopBoundary)
 
 An extension of the `boundary_vars` method for AtmosDrivenFluxBC. This
 adds the surface conditions (SHF, LHF, evaporation, and resistance) and the
@@ -758,11 +755,55 @@ boundary_var_types(
 )
 
 """
-    soil_boundary_fluxes!(
-        bc::AtmosDrivenFluxBC{
-            <:PrescribedAtmosphere,
-            <:PrescribedRadiativeFluxes,
+    boundary_var_types(
+        ::EnergyHydrology{FT},
+        ::AtmosDrivenFluxBC{<:CoupledAtmosphere, <:CoupledRadiativeFluxes},
+        ::ClimaLand.TopBoundary,
+    ) where {FT}
+
+An extension of the `boundary_var_types` method for AtmosDrivenFluxBC
+with coupled atmosphere and radiative fluxes. This specifies the type
+of the additional variables.
+
+This method includes the additional momentum fluxes needed by the atmosphere.
+These are updated in place when the coupler computes turbulent fluxes,
+rather than in `soil_boundary_fluxes!`.
+
+Note that we currently store these in the land model because the coupler
+computes turbulent land/atmosphere fluxes using ClimaLand functions, and
+the land model needs to be able to store the fluxes as an intermediary.
+Once we compute fluxes entirely within the coupler, we can remove this.
+"""
+boundary_var_types(
+    model::EnergyHydrology{FT},
+    bc::AtmosDrivenFluxBC{<:CoupledAtmosphere, <:CoupledRadiativeFluxes},
+    ::ClimaLand.TopBoundary,
+) where {FT} = (
+    NamedTuple{
+        (:lhf, :shf, :vapor_flux_liq, :r_ae, :vapor_flux_ice, :ρτxz, :ρτyz),
+        Tuple{FT, FT, FT, FT, FT, FT, FT, FT, FT},
+    },
+    NamedTuple{
+        (:water, :heat),
+        Tuple{
+            ClimaCore.Geometry.Covariant3Vector{FT},
+            ClimaCore.Geometry.Covariant3Vector{FT},
         },
+    },
+    FT,
+    NamedTuple{(:water, :heat), Tuple{FT, FT}},
+    ClimaCore.Geometry.WVector{FT},
+    FT,
+    FT,
+    FT,
+    FT,
+    FT,
+    Runoff.runoff_var_types(bc.runoff, FT)...,
+)
+
+"""
+    soil_boundary_fluxes!(
+        bc::AtmosDrivenFluxBC,
         boundary::ClimaLand.TopBoundary,
         model::EnergyHydrology,
         Δz,
@@ -798,10 +839,7 @@ end
 
 """
     soil_boundary_fluxes!(
-        bc::AtmosDrivenFluxBC{
-            <:PrescribedAtmosphere,
-            <:PrescribedRadiativeFluxes,
-        },
+        bc::AtmosDrivenFluxBC,
         prognostic_land_components::Val{(:soil,)},
         model::EnergyHydrology,
         Y,

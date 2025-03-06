@@ -242,6 +242,16 @@ import ClimaParams
             @test !isnothing(zero(Y))
             @test typeof(canopy.energy) == PrescribedCanopyTempModel{FT}
             @test propertynames(p) == (:canopy, :dss_buffer_2d, :drivers)
+            @test propertynames(p.canopy) == (
+                :hydraulics,
+                :conductance,
+                :photosynthesis,
+                :radiative_transfer,
+                :autotrophic_respiration,
+                :energy,
+                :sif,
+                :turbulent_fluxes,
+            )
             for component in ClimaLand.Canopy.canopy_components(canopy)
                 # Only hydraulics has a prognostic variable
                 if component == :hydraulics
@@ -278,7 +288,7 @@ import ClimaParams
             # check that this is updated correctly:
             # @test p.canopy.autotrophic_respiration.Ra ==
             exp_tendency!(dY, Y, p, t0)
-            turb_fluxes_copy = copy(p.canopy.energy.turbulent_fluxes)
+            turb_fluxes_copy = copy(p.canopy.turbulent_fluxes)
             ClimaLand.turbulent_fluxes!(
                 turb_fluxes_copy,
                 atmos,
@@ -289,9 +299,9 @@ import ClimaParams
             )
 
             @test p.canopy.hydraulics.fa.:1 == turb_fluxes_copy.transpiration
-            @test p.canopy.energy.turbulent_fluxes.shf == turb_fluxes_copy.shf
-            @test p.canopy.energy.turbulent_fluxes.lhf == turb_fluxes_copy.lhf
-            @test p.canopy.energy.turbulent_fluxes.transpiration ==
+            @test p.canopy.turbulent_fluxes.shf == turb_fluxes_copy.shf
+            @test p.canopy.turbulent_fluxes.lhf == turb_fluxes_copy.lhf
+            @test p.canopy.turbulent_fluxes.transpiration ==
                   turb_fluxes_copy.transpiration
             _σ = FT(LP.Stefan(earth_param_set))
             f_abs_par = p.canopy.radiative_transfer.par.abs
@@ -825,7 +835,7 @@ end
 
             dY = similar(Y)
             exp_tendency!(dY, Y, p, t0)
-            turb_fluxes_copy = copy(p.canopy.energy.turbulent_fluxes)
+            turb_fluxes_copy = copy(p.canopy.turbulent_fluxes)
             ClimaLand.turbulent_fluxes!(
                 turb_fluxes_copy,
                 atmos,
@@ -836,8 +846,8 @@ end
             )
 
             @test p.canopy.hydraulics.fa.:1 == turb_fluxes_copy.transpiration
-            @test p.canopy.energy.turbulent_fluxes.lhf == turb_fluxes_copy.lhf
-            @test p.canopy.energy.turbulent_fluxes.shf == turb_fluxes_copy.shf
+            @test p.canopy.turbulent_fluxes.lhf == turb_fluxes_copy.lhf
+            @test p.canopy.turbulent_fluxes.shf == turb_fluxes_copy.shf
             @test all(Array(parent(p.canopy.energy.fa_energy_roots)) .== FT(0))
 
             @test all(
@@ -1119,21 +1129,21 @@ end
 
         finitediff_SHF =
             (
-                p_2.canopy.energy.turbulent_fluxes.shf .-
-                p.canopy.energy.turbulent_fluxes.shf
+                p_2.canopy.turbulent_fluxes.shf .-
+                p.canopy.turbulent_fluxes.shf
             ) ./ ΔT
-        estimated_SHF = p.canopy.energy.turbulent_fluxes.∂SHF∂Tc
+        estimated_SHF = p.canopy.turbulent_fluxes.∂SHF∂Tc
         @test Array(
             parent(abs.(finitediff_SHF .- estimated_SHF) ./ finitediff_SHF),
         )[1] < 0.15
 
         finitediff_LHF =
             (
-                p_2.canopy.energy.turbulent_fluxes.lhf .-
-                p.canopy.energy.turbulent_fluxes.lhf
+                p_2.canopy.turbulent_fluxes.lhf .-
+                p.canopy.turbulent_fluxes.lhf
             ) ./ ΔT
         estimated_LHF =
-            p.canopy.energy.turbulent_fluxes.∂LHF∂qc .* p.canopy.energy.∂qc∂Tc
+            p.canopy.turbulent_fluxes.∂LHF∂qc .* p.canopy.energy.∂qc∂Tc
         @test Array(
             parent(abs.(finitediff_LHF .- estimated_LHF) ./ finitediff_LHF),
         )[1] < 0.3
@@ -1147,7 +1157,7 @@ end
 
         # Im not sure why this is not smaller! There must be an error in ∂LHF∂qc also.
         estimated_LHF_with_correct_q =
-            p.canopy.energy.turbulent_fluxes.∂LHF∂qc .* finitediff_q
+            p.canopy.turbulent_fluxes.∂LHF∂qc .* finitediff_q
         @test Array(
             parent(
                 abs.(finitediff_LHF .- estimated_LHF_with_correct_q) ./
@@ -1421,21 +1431,18 @@ end
 
                 @test all(Array(parent(p.canopy.hydraulics.fa.:1)) .== FT(0))
                 @test all(
-                    Array(parent(p.canopy.energy.turbulent_fluxes.lhf)) .==
-                    FT(0),
+                    Array(parent(p.canopy.turbulent_fluxes.lhf)) .== FT(0),
                 )
                 @test all(
-                    Array(parent(p.canopy.energy.turbulent_fluxes.shf)) .==
-                    FT(0),
+                    Array(parent(p.canopy.turbulent_fluxes.shf)) .== FT(0),
                 )
                 @test all(
                     Array(parent(p.canopy.energy.fa_energy_roots)) .== FT(0),
                 )
                 @test all(Array(parent(p.canopy.hydraulics.fa_roots)) .== FT(0))
                 @test all(
-                    Array(
-                        parent(p.canopy.energy.turbulent_fluxes.transpiration),
-                    ) .== FT(0),
+                    Array(parent(p.canopy.turbulent_fluxes.transpiration)) .==
+                    FT(0),
                 )
                 @test all(
                     Array(parent(p.canopy.radiative_transfer.LW_n)) .== FT(0),

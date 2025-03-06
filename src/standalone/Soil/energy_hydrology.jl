@@ -906,7 +906,8 @@ end
                                 Ω::FT,
                                 γ::FT,
                                 γT_ref,::FT
-                                earth_param_set::EP
+                                earth_param_set::EP;
+                                return_momentum_fluxes = false,
                                ) where {FT <: AbstractFloat, C, EP}
 
 Computes turbulent surface fluxes for soil at a point on a surface given
@@ -936,7 +937,7 @@ function soil_turbulent_fluxes_at_a_point(
     θ_r_sfc::FT,
     K_sat_sfc::FT,
     thermal_state_air::Thermodynamics.PhaseEquil{FT},
-    u_air::FT,
+    u_air::Union{FT, SVector{2, FT}},
     h_air::FT,
     gustiness::FT,
     z_0m::FT,
@@ -944,7 +945,8 @@ function soil_turbulent_fluxes_at_a_point(
     Ω::FT,
     γ::FT,
     γT_ref::FT,
-    earth_param_set::P,
+    earth_param_set::P;
+    return_momentum_fluxes = false,
 ) where {FT <: AbstractFloat, P}
     # Parameters
     surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
@@ -957,9 +959,13 @@ function soil_turbulent_fluxes_at_a_point(
     _grav::FT = LP.grav(earth_param_set)
 
     # Atmos air state
+    # u is already a vector when we get it from a coupled atmosphere, otherwise we need to make it one
+    if u_air isa FT
+        u_air = SVector{2, FT}(u_air, 0)
+    end
     state_air = SurfaceFluxes.StateValues(
         h_air - d_sfc - h_sfc,
-        SVector{2, FT}(u_air, 0),
+        u_air,
         thermal_state_air,
     )
     q_air::FT =
@@ -1087,16 +1093,27 @@ function soil_turbulent_fluxes_at_a_point(
 
     # Heat fluxes for soil
     LH::FT = _LH_v0 * (Ẽ_l + Ẽ_i) * _ρ_liq
-    # Derivatives
-    dshfdT::FT = 0
-    dlhfdT::FT = 0
-    return (
-        lhf = LH,
-        shf = SH,
-        vapor_flux_liq = Ẽ_l,
-        r_ae = r_ae,
-        vapor_flux_ice = Ẽ_i,
-    )
+
+    # Return the (unaltered) momentum fluxes if they are requested
+    if !return_momentum_fluxes
+        return (
+            lhf = LH,
+            shf = SH,
+            vapor_flux_liq = Ẽ_l,
+            r_ae = r_ae,
+            vapor_flux_ice = Ẽ_i,
+        )
+    else
+        return (
+            lhf = LH,
+            shf = SH,
+            vapor_flux_liq = Ẽ_l,
+            r_ae = r_ae,
+            vapor_flux_ice = Ẽ_i,
+            ρτxz = conditions.ρτxz,
+            ρτyz = conditions.ρτyz,
+        )
+    end
 end
 
 """
@@ -1151,5 +1168,68 @@ function ClimaLand.total_energy_per_area!(
     t,
 )
     ClimaCore.Operators.column_integral_definite!(surface_field, Y.soil.ρe_int)
+    return nothing
+end
+
+"""
+    coupler_compute_turbulent_fluxes!(dest, atmos::CoupledAtmosphere, model::EnergyHydrology, Y::ClimaCore.Fields.FieldVector, p::NamedTuple, t)
+
+This function computes the turbulent surface fluxes for a coupled simulation.
+This function is very similar to the `EnergyHydrology` method of `turbulent_fluxes!`,
+but it is used with a `CoupledAtmosphere` which contains all the necessary
+atmosphere fields to compute the surface fluxes, rather than some being stored in `p`.
+
+This function is intended to be called by ClimaCoupler.jl when computing
+fluxes for a coupled simulation with the integrated land model.
+"""
+function ClimaLand.coupler_compute_turbulent_fluxes!(
+    dest,
+    atmos::CoupledAtmosphere,
+    model::EnergyHydrology,
+    Y::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
+    t,
+)
+    # Obtain surface quantities needed for computation; these should not allocate
+    T_sfc = ClimaLand.surface_temperature(model, Y, p, t)
+    h_sfc = ClimaLand.surface_height(model, Y, p)
+    d_sfc = ClimaLand.displacement_height(model, Y, p)
+    (; K_sat, ν, θ_r, hydrology_cm, z_0m, z_0b, Ω, γ, γT_ref, earth_param_set) =
+        model.parameters
+    hydrology_cm_sfc = ClimaLand.Domains.top_center_to_surface(hydrology_cm)
+    K_sat_sfc = ClimaLand.Domains.top_center_to_surface(K_sat)
+    θ_i_sfc = ClimaLand.Domains.top_center_to_surface(Y.soil.θ_i)
+    ν_sfc = ClimaLand.Domains.top_center_to_surface(ν)
+    θ_r_sfc = ClimaLand.Domains.top_center_to_surface(θ_r)
+    θ_l_sfc = p.soil.sfc_scratch
+    ClimaLand.Domains.linear_interpolation_to_surface!(
+        θ_l_sfc,
+        p.soil.θ_l,
+        model.domain.fields.z,
+        model.domain.fields.Δz_top,
+    )
+    dest .=
+        soil_turbulent_fluxes_at_a_point.(
+            T_sfc,
+            θ_l_sfc,
+            θ_i_sfc,
+            h_sfc,
+            d_sfc,
+            hydrology_cm_sfc,
+            ν_sfc,
+            θ_r_sfc,
+            K_sat_sfc,
+            atmos.thermal_state,
+            atmos.u,
+            atmos.h,
+            atmos.gustiness,
+            z_0m,
+            z_0b,
+            Ω,
+            γ,
+            γT_ref,
+            Ref(earth_param_set),
+            return_momentum_fluxes = true,
+        )
     return nothing
 end

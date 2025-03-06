@@ -356,9 +356,40 @@ function initialize_auxiliary(model::CanopyModel{FT}, coords) where {FT}
     end
     # `p_state_list` contains `nothing` for components with no auxiliary
     #  variables, which we need to filter out before constructing `p`
-    p = (; name(model) => filter_nt(NamedTuple{components}(p_state_list)))
+    # We also add in boundary variables here.
+    p = (;
+        name(model) => (;
+            filter_nt(NamedTuple{components}(p_state_list))...,
+            initialize_boundary_vars(model, coords)...,
+        )
+    )
     p = ClimaLand.add_dss_buffer_to_aux(p, model.domain)
     return p
+end
+
+"""
+    initialize_boundary_vars(model::CanopyModel{FT}, coords)
+
+Add boundary condition-related variables to the cache.
+This calls functions defined in canopy_boundary_fluxes.jl
+which dispatch on the boundary condition type to add the correct variables.
+"""
+function initialize_boundary_vars(model::CanopyModel{FT}, coords) where {FT}
+    vars = boundary_vars(model.boundary_conditions, ClimaLand.TopBoundary())
+    types = boundary_var_types(
+        model,
+        model.boundary_conditions,
+        ClimaLand.TopBoundary(),
+    )
+    domains = boundary_var_domain_names(
+        model.boundary_conditions,
+        ClimaLand.TopBoundary(),
+    )
+    additional_aux = map(zip(types, domains)) do (T, domain)
+        zero_instance = ClimaCore.RecursiveApply.rzero(T)
+        map(_ -> zero_instance, getproperty(coords, domain))
+    end
+    return NamedTuple{vars}(additional_aux)
 end
 
 """

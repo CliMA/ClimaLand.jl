@@ -266,7 +266,7 @@ such that SWE cannot become negative and U cannot become unphysical. The
 clipped values are what are actually applied as boundary fluxes, and are stored in
 `applied_` fluxes.
 """
-auxiliary_vars(::SnowModel) = (
+auxiliary_vars(snow::SnowModel) = (
     :q_sfc,
     :q_l,
     :κ,
@@ -274,7 +274,6 @@ auxiliary_vars(::SnowModel) = (
     :T_sfc,
     :z_snow,
     :ρ_snow,
-    :turbulent_fluxes,
     :R_n,
     :phase_change_flux,
     :energy_runoff,
@@ -285,17 +284,10 @@ auxiliary_vars(::SnowModel) = (
     :applied_energy_flux,
     :applied_water_flux,
     :snow_cover_fraction,
+    boundary_vars(snow.boundary_conditions, ClimaLand.TopBoundary())...,
 )
 
-auxiliary_types(::SnowModel{FT}) where {FT} = (
-    FT,
-    FT,
-    FT,
-    FT,
-    FT,
-    FT,
-    FT,
-    NamedTuple{(:lhf, :shf, :vapor_flux, :r_ae), Tuple{FT, FT, FT, FT}},
+auxiliary_types(snow::SnowModel{FT}) where {FT} = (
     FT,
     FT,
     FT,
@@ -306,9 +298,21 @@ auxiliary_types(::SnowModel{FT}) where {FT} = (
     FT,
     FT,
     FT,
+    FT,
+    FT,
+    FT,
+    FT,
+    FT,
+    FT,
+    FT,
+    boundary_var_types(
+        snow,
+        snow.boundary_conditions,
+        ClimaLand.TopBoundary(),
+    )...,
 )
 
-auxiliary_domain_names(::SnowModel) = (
+auxiliary_domain_names(snow::SnowModel) = (
     :surface,
     :surface,
     :surface,
@@ -326,7 +330,10 @@ auxiliary_domain_names(::SnowModel) = (
     :surface,
     :surface,
     :surface,
-    :surface,
+    boundary_var_domain_names(
+        snow.boundary_conditions,
+        ClimaLand.TopBoundary(),
+    )...,
 )
 
 

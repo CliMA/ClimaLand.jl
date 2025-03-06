@@ -252,11 +252,11 @@ LW_n = [
     k in 1:length(sol.t)
 ]
 SHF = [
-    parent(sv.saveval[k].canopy.energy.turbulent_fluxes.shf)[1] for
+    parent(sv.saveval[k].canopy.turbulent_fluxes.shf)[1] for
     k in 1:length(sol.t)
 ]
 LHF = [
-    parent(sv.saveval[k].canopy.energy.turbulent_fluxes.lhf)[1] for
+    parent(sv.saveval[k].canopy.turbulent_fluxes.lhf)[1] for
     k in 1:length(sol.t)
 ]
 RE = [
@@ -269,8 +269,8 @@ R = [
 R_stem_leaf =
     [parent(sv.saveval[k].canopy.hydraulics.fa.:1)[1] for k in 1:length(sol.t)]
 Tr = [
-    parent(sv.saveval[k].canopy.energy.turbulent_fluxes.transpiration)[1]
-    for k in 1:length(sol.t)
+    parent(sv.saveval[k].canopy.turbulent_fluxes.transpiration)[1] for
+    k in 1:length(sol.t)
 ]
 fig = Figure()
 ax = Axis(fig[1, 1], xlabel = "Time (days)", ylabel = "Temperature (K)")
