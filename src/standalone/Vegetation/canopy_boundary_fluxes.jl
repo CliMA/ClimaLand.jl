@@ -289,6 +289,40 @@ function ClimaLand.turbulent_fluxes!(
     return nothing
 end
 
+
+function ClimaLand.coupler_compute_turbulent_fluxes!(
+    dest,
+    atmos::NamedTuple,
+    model::CanopyModel,
+    Y::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
+    t,
+)
+    T_sfc = ClimaLand.surface_temperature(model, Y, p, t)
+    h_sfc = ClimaLand.surface_height(model, Y, p)
+    r_stomata_canopy = ClimaLand.surface_resistance(model, Y, p, t)
+    d_sfc = ClimaLand.displacement_height(model, Y, p)
+    u_air = p.drivers.u
+    h_air = atmos.h
+    dest .=
+        canopy_turbulent_fluxes_at_a_point.(
+            T_sfc,
+            h_sfc,
+            r_stomata_canopy,
+            d_sfc,
+            atmos.thermal_state,
+            atmos.u,
+            atmos.h,
+            p.canopy.hydraulics.area_index.leaf,
+            p.canopy.hydraulics.area_index.stem,
+            atmos.gustiness,
+            model.parameters.z_0m,
+            model.parameters.z_0b,
+            Ref(model.parameters.earth_param_set),
+        )
+    return nothing
+end
+
 """
     function canopy_turbulent_fluxes_at_a_point(
         T_sfc::FT,
