@@ -678,3 +678,21 @@ Returns the surface albedo for the land model, which is computed
 from the ratio of the upwelling and downwelling shortwave radiation.
 """
 ClimaLand.surface_albedo(::LandModel, Y, p) = p.α_sfc
+
+
+# Coupler specific functions
+function coupler_land_turbulent_fluxes!(p, atmos_fluxes, model::LandModel, atmos_state, Y, t)
+    soil_dest = p.soil.turbulent_fluxes;
+    ClimaLand.coupler_compute_turbulent_fluxes!(soil_dest, model.soil, atmos_state,Y, p, t)
+
+    snow_dest = p.snow.turbulent_fluxes;
+    ClimaLand.coupler_compute_turbulent_fluxes!(snow_dest, model.snow, atmos_state, Y, p, t)
+
+    canopy_dest = p.canopy.energy.turbulent_fluxes;
+    ClimaLand.coupler_compute_turbulent_fluxes!(canopy_dest, model.canopy, atmos_state, Y, p, t)
+    @. atmos.lhf = canopy_dest.lhf + soil_dest.lhf*(1-p.snow.snow_cover_fraction) + p.snow.snow_cover_fraction*snow_dest.lhf
+
+    @. atmos.shf = canopy_dest.shf + soil_dest.shf*(1-p.snow.snow_cover_fraction) + p.snow.snow_cover_fraction*snow_dest.shf
+
+    @. atmos.vapor_flux = canopy_dest.transpiration + (soil_dest.vapor_flux_liq + soil_dest.vapor_flux_ice)*(1-p.snow.snow_cover_fraction) + p.snow.snow_cover_fraction*snow_dest.vapor_flux
+end
