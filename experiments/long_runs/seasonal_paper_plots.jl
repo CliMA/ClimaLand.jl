@@ -18,7 +18,11 @@ using Dates
 root_path = joinpath(pwd(), "snowy_land_longrun_gpu")
 !isdir(root_path) && mkdir(root_path)
 # Set outdir to wherever diagnostics are saved
-outdir = "snowy_land_longrun_gpu-3720-a_larger2_ksat_alpha/output_active" # on local
+# outdir = "snowy_land_longrun_gpu-3720-a_larger2_ksat_alpha/output_active" # on local
+# outdir = "snowy_land_longrun_gpu-3771-new_default/output_active"
+# outdir = "snowy_land_longrun_gpu-3761-new_default/output_active" # on local
+# outdir = "snowy_land_longrun_gpu-3761-alpha1/output_active" # on local
+outdir = "snowy_land_longrun_gpu-3777-alpha2/output_active" # on local
 root_path = outdir
 
 short_names = ["lhf", "shf", "lwu", "swu"]
@@ -107,8 +111,8 @@ function make_seasonal_cycle_figure(root_path, outdir, short_names, title_stubs)
         for i in 1:12
             sim_slice_args =
                 ClimaAnalysis.has_altitude(sim_var) ?
-                Dict(:z => 1, :time => sim_var_times[i + 12]) :
-                Dict(:time => sim_var_times[i + 12]) # if has altitude, take first layer
+                Dict(:z => 1, :time => sim_var_times[i]) :
+                Dict(:time => sim_var_times[i]) # if has altitude, take first layer
             obs_slice_args =
                 ClimaAnalysis.has_altitude(sim_var) ?
                 Dict(:z => 1, :time => obs_var_times[i]) :

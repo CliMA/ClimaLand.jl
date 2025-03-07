@@ -56,7 +56,7 @@ function get_sim_var_dict(simdir)
             return sim_var_swu
         end
 
-    # Read in LWD (not to plot, but for energy balance)
+    # Read in LWD
     sim_var_dict["lwd"] =
         () -> begin
             sim_var_lwd = get(simdir, short_name = "lwd") # units (W/m²)
@@ -74,6 +74,28 @@ function get_sim_var_dict(simdir)
             return sim_var_swd
         end
 
+    # Compute LWN = LWD - LWU
+    sim_var_dict["lwn"] =
+        () -> begin
+            lwd = sim_var_dict["lwd"]()
+            lwu = sim_var_dict["lwu"]()
+            lwn = lwd - lwu
+            lwn.attributes["long_name"] = "Net longwave radiation"
+            lwn.attributes["units"] = "W m⁻²"
+            return lwn
+        end
+
+    # Compute SWN = SWD - SWU
+    sim_var_dict["swn"] =
+        () -> begin
+            swd = sim_var_dict["swd"]()
+            swu = sim_var_dict["swu"]()
+            swn = swd - swu
+            swn.attributes["long_name"] = "Net shortwave radiation"
+            swn.attributes["units"] = "W m⁻²"
+            return swn
+        end
+
     return sim_var_dict
 end
 
@@ -82,8 +104,13 @@ function get_obs_var_dict()
         ClimaLand.Artifacts.era5_monthly_averages_2008_folder_path(),
         "era5_monthly_surface_fluxes_200801-200812.nc",
     )
-    # era5_monthly_surface_fluxes_200801-200812.nc
-    # era5_data_path = joinpath(ClimaLand.Artifacts.era5_monthly_averages_2008_folder_path(lowres = true), "era5_2008_1.0x1.0_lowres.nc")
+    era5_land_forcing_data_path = joinpath(
+        ClimaLand.Artifacts.era5_land_forcing_data2008_folder_path(
+            lowres = false,
+        ),
+        "era5_2008_0.9x1.25.nc",
+    )
+
     # Dict for loading in observational data
     obs_var_dict = Dict{String, Any}()
     obs_var_dict["lhf"] =
@@ -212,6 +239,91 @@ function get_obs_var_dict()
                 new_data,
             )
             return obs_var_shifted
+        end
+
+    # Read in LWD
+    obs_var_dict["lwd"] =
+        (start_date) -> begin
+            obs_var = ClimaAnalysis.OutputVar(
+                era5_data_path,
+                "msdwlwrf",
+                new_start_date = start_date,
+                shift_by = Dates.firstdayofmonth,
+            ) # units (W/m²)
+            obs_var = ClimaAnalysis.replace(obs_var, missing => NaN)
+
+            # Copy data at lon = 0 to lon = 360 to avoid white lines
+            push!(obs_var.dims["longitude"], 360)
+            new_data = cat(obs_var.data, obs_var.data[[1], :, :], dims = 1)
+            # Manually set attributes
+            attribs = Dict(
+                "short_name" => "lwd",
+                "long_name" => "Downward longwave radiation",
+                "units" => "W m⁻²",
+                "start_date" => start_date,
+            )
+
+            obs_var_shifted = ClimaAnalysis.OutputVar(
+                attribs,
+                obs_var.dims,
+                obs_var.dim_attributes,
+                new_data,
+            )
+            return obs_var_shifted
+        end
+
+    # Read in SWD
+    obs_var_dict["swd"] =
+        (start_date) -> begin
+            obs_var = ClimaAnalysis.OutputVar(
+                era5_data_path,
+                "msdwswrf",
+                new_start_date = start_date,
+                shift_by = Dates.firstdayofmonth,
+            ) # units (W/m²)
+            obs_var = ClimaAnalysis.replace(obs_var, missing => NaN)
+
+            # Copy data at lon = 0 to lon = 360 to avoid white lines
+            push!(obs_var.dims["longitude"], 360)
+            new_data = cat(obs_var.data, obs_var.data[[1], :, :], dims = 1)
+            # Manually set attributes
+            attribs = Dict(
+                "short_name" => "swd",
+                "long_name" => "Downward shortwave radiation",
+                "units" => "W m⁻²",
+                "start_date" => start_date,
+            )
+
+            obs_var_shifted = ClimaAnalysis.OutputVar(
+                attribs,
+                obs_var.dims,
+                obs_var.dim_attributes,
+                new_data,
+            )
+            return obs_var_shifted
+        end
+
+
+    # Compute LWN = LWD - LWU
+    obs_var_dict["lwn"] =
+        (start_date) -> begin
+            lwd = obs_var_dict["lwd"](start_date)
+            lwu = obs_var_dict["lwu"](start_date)
+            lwn = lwd - lwu
+            lwn.attributes["long_name"] = "Net longwave radiation"
+            lwn.attributes["units"] = "W m⁻²"
+            return lwu
+        end
+
+    # Compute SWN = SWD - SWU
+    obs_var_dict["swn"] =
+        (start_date) -> begin
+            swd = obs_var_dict["swd"](start_date)
+            swu = obs_var_dict["swu"](start_date)
+            swn = swd - swu
+            swn.attributes["long_name"] = "Net shortwave radiation"
+            swn.attributes["units"] = "W m⁻²"
+            return swn
         end
 
     return obs_var_dict

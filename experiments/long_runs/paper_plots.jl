@@ -14,31 +14,36 @@ import ClimaLand.Parameters as LP
 using CairoMakie
 import GeoMakie
 using Dates
+using Statistics
 
 root_path = joinpath(pwd(), "snowy_land_longrun_gpu")
 !isdir(root_path) && mkdir(root_path)
 # outdir = "snowy_land_longrun_gpu/output_active" # on local
 # Set outdir to wherever diagnostics are saved
-outdir = "snowy_land_longrun_gpu-3720-a_larger2_ksat_alpha/output_active" # on local
+# outdir = "snowy_land_longrun_gpu-3720-a_larger2_ksat_alpha/output_active" # on local
+# outdir = "snowy_land_longrun_gpu-3761-alpha1/output_active" # on local
+# outdir = "snowy_land_longrun_gpu-3771-new_default/output_active"
+# outdir = "snowy_land_longrun_gpu-3761-new_default/output_active" # on local
+outdir = "snowy_land_longrun_gpu-3777-alpha2/output_active" # on local
 root_path = outdir
 
-short_names = ["lhf", "shf", "lwu", "swu"]
+short_names = ["lhf", "shf", "lwu", "swu", "lwn", "swn"]
 title_stubs = Dict(
     "lhf" => "Latent heat flux",
     "shf" => "Sensible heat flux",
     "lwu" => "Upward longwave radiation",
     "swu" => "Upward shortwave radiation",
+    "lwn" => "Net longwave radiation",
+    "swn" => "Net shortwave radiation",
 )
 # Define levels for contour colorbars
 levels_dict = Dict(
-    "lhf" => collect(0:5:40),
     "lhf_bias" => collect(-50:10:30),
-    "shf" => collect(-50:10:100),
     "shf_bias" => collect(-30:10:50),
-    "lwu" => collect(500:10:600),
-    "lwu_bias" => collect(-40:5:5),
-    "swu" => collect(0:2:15),
-    "swu_bias" => collect(-5:5:40),
+    "lwu_bias" => collect(-40:5:20),
+    "swu_bias" => collect(-20:5:40),
+    "lwn_bias" => collect(-40:5:40),
+    "swn_bias" => collect(-40:5:40),
 )
 
 include("data_paper_plots.jl")
@@ -50,7 +55,7 @@ function compute_global_average(masked_var)
     land_data = ClimaAnalysis.apply_oceanmask(masked_var).data
     lat_data = masked_var.dims[latitude_name]
     mask = .~isnan.(land_data)
-    nlon = length(masked_var.dims[lon_name])
+    nlon = length(masked_var.dims[lon_name])µ
     resized_lat_data = transpose(repeat(lat_data, 1, nlon))
 
     return sum(land_data[mask] .* cosd.(resized_lat_data[mask])) /
@@ -96,12 +101,12 @@ function make_paper_figures(
         for i in 1:12
             sim_slice_args =
                 ClimaAnalysis.has_altitude(sim_var) ?
-                Dict(:z => 1, :time => sim_var_times[i + 12]) :
-                Dict(:time => sim_var_times[i + 12]) # if has altitude, take first layer
+                Dict(:z => 1, :time => sim_var_times[i]) :
+                Dict(:time => sim_var_times[i]) # if has altitude, take first layer
             obs_slice_args =
                 ClimaAnalysis.has_altitude(sim_var) ?
                 Dict(:z => 1, :time => sim_var_times[i]) :
-                Dict(:time => sim_var_times[i + 12]) # if has altitude, take first layer
+                Dict(:time => sim_var_times[i]) # if has altitude, take first layer
 
             sim_var_sliced = ClimaAnalysis.slice(sim_var; sim_slice_args...)
             sim_var_masked = ClimaAnalysis.apply_oceanmask(sim_var_sliced)
@@ -112,7 +117,7 @@ function make_paper_figures(
             obs_var_global_average[i] = compute_global_average(obs_var_masked)
         end
 
-        i = 2 # use second year of simulation
+        i = 1 # use first year of simulation
         kwarg_z = ClimaAnalysis.has_altitude(sim_var) ? Dict(:z => 1) : Dict() # if has altitude, take first layer
         sim_var_sliced = ClimaAnalysis.slice(sim_var; kwarg_z...)
         sim_var_window = ClimaAnalysis.window(
@@ -144,14 +149,30 @@ function make_paper_figures(
         t = sim_var_times[1]
 
         # Get colorbar limits to share between heatmaps
-        # sim_var_no_nans = deepcopy(sim_var_annual_average.data)
-        # sim_var_no_nans[isnan.(sim_var_no_nans)] .= 0 # TODO this is a hacky way to remove NaNs in data
+        sim_var_no_nans = deepcopy(sim_var_annual_average.data)
+        sim_var_no_nans[isnan.(sim_var_no_nans)] .= 0 # TODO this is a hacky way to remove NaNs in data
         # sim_extrema = extrema(sim_var_no_nans)
         # obs_extrema = extrema(obs_var_annual_average.data)
-        # we MUST pass the same clims to the sim plot, obs plot, AND colorbars
-        levels = levels_dict[short_name]
+
+        combined_data =
+            vcat(vec(sim_var_no_nans), vec(obs_var_annual_average.data))
+        min = Int(round(quantile(combined_data, 0.05); digits = -1))
+        max = Int(round(quantile(combined_data, 0.95); digits = -1))
+        diff = max - min
+        step_size = diff < 150 ? 10 : 40
+
+        # Increase max to be a multiple of step_size
+        max =
+            (diff % step_size != 0) ? max + step_size - (diff % step_size) : max
+        clims = (min, max)
+        levels = collect(min:step_size:max)
         nlevels = length(levels)
-        clims = (levels[1], levels[end])
+
+        # extrema = (min(sim_extrema[1], obs_extrema[1]), max(sim_extrema[2], obs_extrema[2]))
+        # we MUST pass the same clims to the sim plot, obs plot, AND colorbars
+        # levels = levels_dict[short_name]
+        # nlevels = length(levels)
+        # clims = (levels[1], levels[end])
 
         # make colorbar tick labels
         ticklabels = map(x -> string(x), levels)#; digits = digits_to_round)), levels)
@@ -210,7 +231,7 @@ function make_paper_figures(
                 rev = false,
             )
             colors = colormap.colors.colors
-            viz.contour2D_on_globe!(
+            contour = viz.contour2D_on_globe!(
                 fig,
                 sim_var_annual_average,
                 # ylabel = "$(sim_var.attributes["long_name"]) $units_label", # plot variable label on y-axis for leftmost column (sim)
@@ -223,7 +244,9 @@ function make_paper_figures(
                         rasterize = true,
                         # colorrange = clims,
                         colormap = colormap,
-                        # levels = levels,
+                        levels = levels,
+                        extendhigh = :auto,
+                        extendlow = :auto,
                     ),
                     :axis => ClimaAnalysis.Utils.kwargs(
                         title = sim_title,
@@ -235,6 +258,7 @@ function make_paper_figures(
                         ylabel = "$(sim_var.attributes["long_name"]) $units_label", # plot variable label on y-axis for leftmost column (sim)
                         ylabelpadding = -5,
                         ylabelvisible = true,
+                        # limits = clims,
                     ),
                 ),
             )
@@ -318,7 +342,9 @@ function make_paper_figures(
                         rasterize = true,
                         # colorrange = clims,
                         colormap = colormap,
-                        # levels = levels,
+                        levels = levels,
+                        extendhigh = :auto,
+                        extendlow = :auto,
                     ),
                     :axis => ClimaAnalysis.Utils.kwargs(
                         title = obs_title,
@@ -486,7 +512,7 @@ function make_paper_figures(
     end
     save_name = joinpath(root_path, "combined_figures.pdf")
     save_name =
-        plot_bias ? joinpath(root_path, "combined_figures_bias_contour-clims.pdf") : save_name
+        plot_bias ? joinpath(root_path, "combined_figures_bias.pdf") : save_name
     save_name =
         plot_seasonal ? joinpath(root_path, "combined_figures_seasonal.pdf") :
         save_name
