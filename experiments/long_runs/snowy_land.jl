@@ -258,7 +258,7 @@ function setup_prob(
         )
     else
         modis_lai_artifact_path =
-            ClimaLand.Artifacts.modis_lai_forcing_data2008_path(; context)
+            ClimaLand.Artifacts.modis_lai_forcing_data_path(; context)
         modis_lai_ncdata_path =
             joinpath(modis_lai_artifact_path, "Yuan_et_al_2008_1x1.nc")
     end
