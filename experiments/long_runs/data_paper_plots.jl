@@ -82,6 +82,7 @@ function get_sim_var_dict(simdir)
             lwn = lwd - lwu
             lwn.attributes["long_name"] = "Net longwave radiation"
             lwn.attributes["units"] = "W m⁻²"
+            lwn.attributes["start_date"] = lwd.attributes["start_date"]
             return lwn
         end
 
@@ -93,6 +94,7 @@ function get_sim_var_dict(simdir)
             swn = swd - swu
             swn.attributes["long_name"] = "Net shortwave radiation"
             swn.attributes["units"] = "W m⁻²"
+            swn.attributes["start_date"] = swd.attributes["start_date"]
             return swn
         end
 
@@ -100,15 +102,19 @@ function get_sim_var_dict(simdir)
 end
 
 function get_obs_var_dict()
+    # era5_data_path = joinpath(
+    #     ClimaLand.Artifacts.era5_monthly_averages_2008_folder_path(),
+    #     "era5_monthly_surface_fluxes_200801-200812.nc",
+    # )
     era5_data_path = joinpath(
-        ClimaLand.Artifacts.era5_monthly_averages_2008_folder_path(),
+        ClimaLand.Artifacts.era5_surface_data2008_path(),
         "era5_monthly_surface_fluxes_200801-200812.nc",
     )
     era5_land_forcing_data_path = joinpath(
         ClimaLand.Artifacts.era5_land_forcing_data2008_folder_path(
             lowres = false,
         ),
-        "era5_2008_0.9x1.25.nc",
+        "era5_2008_1.0x1.0.nc",
     )
 
     # Dict for loading in observational data
@@ -245,7 +251,7 @@ function get_obs_var_dict()
     obs_var_dict["lwd"] =
         (start_date) -> begin
             obs_var = ClimaAnalysis.OutputVar(
-                era5_data_path,
+                era5_land_forcing_data_path,
                 "msdwlwrf",
                 new_start_date = start_date,
                 shift_by = Dates.firstdayofmonth,
@@ -253,7 +259,9 @@ function get_obs_var_dict()
             obs_var = ClimaAnalysis.replace(obs_var, missing => NaN)
 
             # Copy data at lon = 0 to lon = 360 to avoid white lines
-            push!(obs_var.dims["longitude"], 360)
+            @show ClimaAnalysis.longitude_name(obs_var)
+            push!(obs_var.dims[ClimaAnalysis.longitude_name(obs_var)], 360)
+            # push!(obs_var.dims["longitude"], 360)
             new_data = cat(obs_var.data, obs_var.data[[1], :, :], dims = 1)
             # Manually set attributes
             attribs = Dict(
@@ -276,7 +284,7 @@ function get_obs_var_dict()
     obs_var_dict["swd"] =
         (start_date) -> begin
             obs_var = ClimaAnalysis.OutputVar(
-                era5_data_path,
+                era5_land_forcing_data_path,
                 "msdwswrf",
                 new_start_date = start_date,
                 shift_by = Dates.firstdayofmonth,
@@ -305,14 +313,29 @@ function get_obs_var_dict()
 
 
     # Compute LWN = LWD - LWU
+    #TODO era5_land_forcing (for lwd) has hourly data, need to resample to monthly
     obs_var_dict["lwn"] =
         (start_date) -> begin
             lwd = obs_var_dict["lwd"](start_date)
             lwu = obs_var_dict["lwu"](start_date)
-            lwn = lwd - lwu
-            lwn.attributes["long_name"] = "Net longwave radiation"
-            lwn.attributes["units"] = "W m⁻²"
-            return lwu
+
+            lwn_data = lwd.data .- lwu.data
+
+            attribs = Dict(
+                "short_name" => "lwn",
+                "long_name" => "Net longwave radiation",
+                "units" => "W m⁻²",
+                "start_date" => start_date,
+            )
+
+            lwn = ClimaAnalysis.OutputVar(
+                attribs,
+                lwd.dims,
+                lwd.dim_attributes,
+                lwn_data, # W/m²
+            )
+
+            return lwn
         end
 
     # Compute SWN = SWD - SWU
@@ -320,9 +343,21 @@ function get_obs_var_dict()
         (start_date) -> begin
             swd = obs_var_dict["swd"](start_date)
             swu = obs_var_dict["swu"](start_date)
-            swn = swd - swu
-            swn.attributes["long_name"] = "Net shortwave radiation"
-            swn.attributes["units"] = "W m⁻²"
+            swn_data = swd.data - swu.data
+
+            attribs = Dict(
+                "short_name" => "lwn",
+                "long_name" => "Net shortwave radiation",
+                "units" => "W m⁻²",
+                "start_date" => start_date,
+            )
+
+            swn = ClimaAnalysis.OutputVar(
+                attribs,
+                swd.dims,
+                swd.dim_attributes,
+                swn_data, # W/m²
+            )
             return swn
         end
 

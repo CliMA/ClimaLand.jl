@@ -28,7 +28,7 @@ root_path = joinpath(pwd(), "snowy_land_longrun_gpu")
 outdir = "/scratch/clima/slurm-buildkite/climaland-long-runs/3785/climaland-long-runs/snowy_land_longrun_gpu_alpha1/global_diagnostics/output_active/" # on clima
 root_path = outdir
 
-short_names = ["lhf", "shf", "lwu", "swu", "lwn", "swn"]
+short_names = ["lwn", "swn"]#["lhf", "shf", "lwu", "swu", "lwn", "swn"]
 title_stubs = Dict(
     "lhf" => "Latent heat flux",
     "shf" => "Sensible heat flux",
@@ -93,6 +93,7 @@ function make_paper_figures(
         sim_var = sim_var_dict[short_name]()
         sim_var_times = ClimaAnalysis.times(sim_var)
 
+        @show short_name
         obs_var = obs_var_dict[short_name](sim_var.attributes["start_date"])
 
 

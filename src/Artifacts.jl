@@ -34,6 +34,15 @@ function era5_monthly_averages_2008_folder_path(; context = nothing)
     return @clima_artifact("era5_monthly_averages_2008", context)
 end
 
+
+"""
+    era5_surface_data2008_path(; context)
+Return the path to the folder that contains the ERA5 monthly surface data
+"""
+function era5_surface_data2008_path(; context = nothing)
+    return @clima_artifact("era5_surface_fluxes", context)
+end
+
 """
     era5_lai_forcing_data2008_path(; context)
 
