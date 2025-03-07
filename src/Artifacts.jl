@@ -92,12 +92,12 @@ function era5_lai_covers_data_folder_path(; context = nothing)
 end
 
 """
-    modis_lai_forcing_data2008_path(; context)
+    modis_lai_forcing_data_path(; context)
 
 Return the path to the directory that contains the MODIS LAI forcing data for
-the year 2008.
+the years 2000 to 2020.
 """
-function modis_lai_forcing_data2008_path(; context = nothing)
+function modis_lai_forcing_data_path(; context = nothing)
     return @clima_artifact("modis_lai", context)
 end
 
@@ -111,11 +111,10 @@ function find_modis_year_paths(start_date, final_date; context = nothing)
     # Get the year of the start and final dates
     year0 = Dates.year(start_date)
     yearf = Dates.year(final_date)
-    modis_lai_forcing_data_path =
-        modis_lai_forcing_data2008_path(context = context)
+    modis_lai_data_path = modis_lai_forcing_data_path(context = context)
     years = collect(
-        joinpath(modis_lai_forcing_data_path, "Yuan_et_al_$(year)_1x1.nc")
-        for year in year0:yearf
+        joinpath(modis_lai_data_path, "Yuan_et_al_$(year)_1x1.nc") for
+        year in year0:yearf
     )
     for year in years
         isfile(year) ||
