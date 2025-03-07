@@ -55,19 +55,7 @@ context = ClimaComms.context()
 ClimaComms.init(context)
 device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
-
-if length(ARGS) < 5
-    @error("Please provide pc, a, Ksat_canopy, αsnow, name")
-end
-pc = parse(FT, ARGS[1])
-a = parse(FT, ARGS[2])#    a = FT(0.05 * 0.0098) # Holtzman's original parameter for the bulk modulus of elasticity
-# ψ = (S_l - 1)/a, ψ in m -> a has units of inverse meters
-# ψρg = (S_l-1)/a' where a'/ρg = a; a' = ρg a = 0.05 Mpa
-Ksat_canopy = parse(FT, ARGS[3])
-α = parse(FT, ARGS[4])
-name = ARGS[5]
-
-root_path = "snowy_land_longrun_$(device_suffix)_$(name)"
+root_path = "snowy_land_longrun_$(device_suffix)"
 diagnostics_outdir = joinpath(root_path, "global_diagnostics")
 outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
@@ -76,15 +64,38 @@ function setup_prob(
     t0,
     tf,
     Δt,
-    start_date,
-    pc,
-    a,
-    Ksat_canopy,
-    α;
+    start_date;
     outdir = outdir,
     nelements = (101, 15),
 )
+    # Scalar parameters
     earth_param_set = LP.LandParameters(FT)
+
+    # Soil: TOPMODEL
+    f_over = FT(3.28) # 1/m
+    R_sb = FT(1.484e-4 / 1000) # m/s
+
+    # Canopy
+    ac_canopy = FT(2.5e3)
+    f_root_to_shoot = FT(3.5)
+    RAI = FT(1.0)
+    K_sat_plant = FT(8e-8) # m/s 
+    ψ63 = FT(-4 / 0.0098) # / MPa to m
+    Weibull_param = FT(4) # unitless
+    a = FT(0.2 * 0.0098) # bulk modulus of elasticity, 1/m
+    plant_ν = FT(1.44e-4)
+    plant_S_s = FT(1e-2 * 0.0098) # m3/m3/MPa to m3/m3/m
+
+    n_stem = 0
+    SAI = FT(0)
+    h_stem = FT(0.0)
+
+    n_leaf = 1
+    h_leaf = FT(1.0)
+
+    # Snow
+    α_snow = FT(0.67)
+
     domain = ClimaLand.global_domain(FT; nelements = nelements)
     surface_space = domain.space.surface
     subsurface_space = domain.space.subsurface
@@ -138,8 +149,7 @@ function setup_prob(
         PAR_albedo_wet = PAR_albedo_wet,
         NIR_albedo_wet = NIR_albedo_wet,
     )
-    f_over = FT(3.28) # 1/m
-    R_sb = FT(1.484e-4 / 1000) # m/s
+
     runoff_model = ClimaLand.Soil.Runoff.TOPMODELRunoff{FT}(;
         f_over = f_over,
         f_max = f_max,
@@ -161,27 +171,11 @@ function setup_prob(
         τ_NIR_leaf,
     ) = clm_parameters
 
-    # Energy Balance model
-    ac_canopy = FT(2.5e3)
-    # Plant Hydraulics and general plant parameters
-    SAI = FT(0.0) # m2/m2
-    f_root_to_shoot = FT(3.5)
-    RAI = FT(1.0)
-    ψ63 = FT(-4 / 0.0098) # / MPa to m, Holtzman's original parameter value is -4 MPa
-    Weibull_param = FT(4) # unitless, Holtzman's original c param value
-    conductivity_model =
-        Canopy.PlantHydraulics.Weibull{FT}(Ksat_canopy, ψ63, Weibull_param)
-    retention_model = Canopy.PlantHydraulics.LinearRetentionCurve{FT}(a)
-    plant_ν = FT(1.44e-4)
-    plant_S_s = FT(1e-2 * 0.0098) # m3/m3/MPa to m3/m3/m
-    n_stem = 0
-    n_leaf = 1
-    h_stem = FT(0.0)
-    h_leaf = FT(1.0)
-    zmax = FT(0.0)
+
     h_canopy = h_stem + h_leaf
     compartment_midpoints =
         n_stem > 0 ? [h_stem / 2, h_stem + h_leaf / 2] : [h_leaf / 2]
+    zmax = FT(0.0)
     compartment_surfaces =
         n_stem > 0 ? [zmax, h_stem, h_canopy] : [zmax, h_leaf]
 
@@ -244,14 +238,8 @@ function setup_prob(
     conductance_args =
         (; parameters = Canopy.MedlynConductanceParameters(FT; g1))
     # Set up photosynthesis
-    photosynthesis_args = (;
-        parameters = Canopy.FarquharParameters(
-            FT,
-            is_c3;
-            Vcmax25 = Vcmax25,
-            pc = pc,
-        )
-    )
+    photosynthesis_args =
+        (; parameters = Canopy.FarquharParameters(FT, is_c3; Vcmax25 = Vcmax25))
     # Set up plant hydraulics
     modis_lai_artifact_path =
         ClimaLand.Artifacts.modis_lai_forcing_data2008_path(; context)
@@ -265,6 +253,10 @@ function setup_prob(
     )
     ai_parameterization =
         Canopy.PrescribedSiteAreaIndex{FT}(LAIfunction, SAI, RAI)
+
+    conductivity_model =
+        Canopy.PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
+    retention_model = Canopy.PlantHydraulics.LinearRetentionCurve{FT}(a)
 
     plant_hydraulics_ps = Canopy.PlantHydraulics.PlantHydraulicsParameters(;
         ai_parameterization = ai_parameterization,
@@ -307,8 +299,11 @@ function setup_prob(
     )
 
     # Snow model
-    snow_parameters =
-        SnowParameters{FT}(Δt; earth_param_set = earth_param_set, α_snow = α)
+    snow_parameters = SnowParameters{FT}(
+        Δt;
+        earth_param_set = earth_param_set,
+        α_snow = α_snow,
+    )
     snow_args = (;
         parameters = snow_parameters,
         domain = ClimaLand.obtain_surface_domain(domain),
@@ -418,7 +413,7 @@ function setup_prob(
     SciMLBase.CallbackSet(driver_cb, diag_cb, report_cb, nancheck_cb)
 end
 
-function setup_and_solve_problem(pc, a, Ksat_canopy, α; greet = false)
+function setup_and_solve_problem(; greet = false)
 
     t0 = 0.0
     seconds = 1.0
@@ -426,7 +421,7 @@ function setup_and_solve_problem(pc, a, Ksat_canopy, α; greet = false)
     hours = 60minutes # hours in seconds
     days = 24hours # days in seconds
     years = 366days # years in seconds - 366 to make sure we capture at least full years
-    tf = 1years # 2 years in seconds
+    tf = 2years # 2 years in seconds
     Δt = 450.0
     start_date = DateTime(2008)
     nelements = (101, 15)
@@ -441,8 +436,7 @@ function setup_and_solve_problem(pc, a, Ksat_canopy, α; greet = false)
     tf = ITime(tf, epoch = start_date)
     Δt = ITime(Δt, epoch = start_date)
     t0, tf, Δt = promote(t0, tf, Δt)
-    prob, cb =
-        setup_prob(t0, tf, Δt, start_date, pc, a, Ksat_canopy, α; nelements)
+    prob, cb = setup_prob(t0, tf, Δt, start_date; nelements)
 
     # Define timestepper and ODE algorithm
     stepper = CTS.ARS111()
@@ -457,7 +451,7 @@ function setup_and_solve_problem(pc, a, Ksat_canopy, α; greet = false)
     return nothing
 end
 
-setup_and_solve_problem(pc, a, Ksat_canopy, α; greet = true);
+setup_and_solve_problem(; greet = true);
 # read in diagnostics and make some plots!
 #### ClimaAnalysis ####
 simdir = ClimaAnalysis.SimDir(outdir)
