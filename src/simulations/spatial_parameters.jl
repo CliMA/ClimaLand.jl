@@ -77,6 +77,8 @@ with the closest resolution to the surface_space is used.
 """
 function clm_canopy_parameters(
     surface_space;
+    α_leaf_scaler = 1.0,
+    τ_leaf_scaler = 1.0,
     regridder_type = :InterpolationsRegridder,
     extrapolation_bc = (
         Interpolations.Periodic(),
@@ -110,13 +112,16 @@ function clm_canopy_parameters(
         regridder_kwargs = (; extrapolation_bc,),
     )
     G_Function = CLMGFunction(χl)
+
+    α_preprocess_function(α; α_leaf_scaler = α_leaf_scaler) = α * α_leaf_scaler
+    τ_preprocess_function(τ; τ_leaf_scaler = τ_leaf_scaler) = τ * τ_leaf_scaler
     α_PAR_leaf = SpaceVaryingInput(
         joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
         "rholvis",
         surface_space;
         regridder_type,
         regridder_kwargs = (; extrapolation_bc,),
-        file_reader_kwargs = (; preprocess_func = (data) -> data * 1.2,),
+        file_reader_kwargs = (; preprocess_func = α_preprocess_function),
     )
     τ_PAR_leaf = SpaceVaryingInput(
         joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
@@ -124,7 +129,7 @@ function clm_canopy_parameters(
         surface_space;
         regridder_type,
         regridder_kwargs = (; extrapolation_bc,),
-        file_reader_kwargs = (; preprocess_func = (data) -> data * 1.1,),
+        file_reader_kwargs = (; preprocess_func = τ_preprocess_function),
     )
     α_NIR_leaf = SpaceVaryingInput(
         joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
@@ -132,7 +137,7 @@ function clm_canopy_parameters(
         surface_space;
         regridder_type,
         regridder_kwargs = (; extrapolation_bc,),
-        file_reader_kwargs = (; preprocess_func = (data) -> data * 1.2,),
+        file_reader_kwargs = (; preprocess_func = α_preprocess_function),
     )
     τ_NIR_leaf = SpaceVaryingInput(
         joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
@@ -140,7 +145,7 @@ function clm_canopy_parameters(
         surface_space;
         regridder_type,
         regridder_kwargs = (; extrapolation_bc,),
-        file_reader_kwargs = (; preprocess_func = (data) -> data * 1.1,),
+        file_reader_kwargs = (; preprocess_func = α_preprocess_function),
     )
     # Conductance Model
     # g1 is read in units of sqrt(kPa) and then converted to sqrt(Pa)

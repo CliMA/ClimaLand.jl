@@ -86,6 +86,10 @@ function setup_prob(
     plant_ν = FT(1.44e-4)
     plant_S_s = FT(1e-2 * 0.0098) # m3/m3/MPa to m3/m3/m
 
+    α_leaf_scaler = FT(1.2)
+    τ_leaf_scaler = FT(1.1)
+
+
     n_stem = 0
     SAI = FT(0)
     h_stem = FT(0.0)
@@ -157,7 +161,11 @@ function setup_prob(
     )
 
     # Spatially varying canopy parameters from CLM
-    clm_parameters = ClimaLand.clm_canopy_parameters(surface_space)
+    clm_parameters = ClimaLand.clm_canopy_parameters(
+        surface_space;
+        α_leaf_scaler = α_leaf_scaler,
+        τ_leaf_scaler = τ_leaf_scaler,
+    )
     (;
         Ω,
         rooting_depth,
