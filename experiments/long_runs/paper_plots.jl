@@ -24,7 +24,8 @@ root_path = joinpath(pwd(), "snowy_land_longrun_gpu")
 # outdir = "snowy_land_longrun_gpu-3761-alpha1/output_active" # on local
 # outdir = "snowy_land_longrun_gpu-3771-new_default/output_active"
 # outdir = "snowy_land_longrun_gpu-3761-new_default/output_active" # on local
-outdir = "snowy_land_longrun_gpu-3777-alpha2/output_active" # on local
+# outdir = "snowy_land_longrun_gpu-3777-alpha2/output_active" # on local
+outdir = "/scratch/clima/slurm-buildkite/climaland-long-runs/3785/climaland-long-runs/snowy_land_longrun_gpu_alpha1/global_diagnostics/output_active/" # on clima
 root_path = outdir
 
 short_names = ["lhf", "shf", "lwu", "swu", "lwn", "swn"]
@@ -55,7 +56,7 @@ function compute_global_average(masked_var)
     land_data = ClimaAnalysis.apply_oceanmask(masked_var).data
     lat_data = masked_var.dims[latitude_name]
     mask = .~isnan.(land_data)
-    nlon = length(masked_var.dims[lon_name])µ
+    nlon = length(masked_var.dims[lon_name])
     resized_lat_data = transpose(repeat(lat_data, 1, nlon))
 
     return sum(land_data[mask] .* cosd.(resized_lat_data[mask])) /
