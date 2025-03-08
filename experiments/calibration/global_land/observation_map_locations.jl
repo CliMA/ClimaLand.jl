@@ -75,12 +75,23 @@ function process_member_data(simdir)
     # Combine all observations into a single observation
     full_obs = EKP.combine_observations(obs_list)
     obs = EKP.get_obs(full_obs)
-    return obs
+    # Proportion of NaN
+    nan_p = round(count(isnan, obs) / length(obs) * 100)
+    println("iteration ", iteration, ", member ", m, ", has ", nan_p, "% NaN elements.")
+    println("replacing NaNs with average of that month (from the n_locations)")
+    # Compute the average
+    using Statistics
+    averages = zeros(40)
+    [averages[i] = mean(filter(!isnan, obs[i:40:end])) for i = 1:40]
+    # Replace NaNs with corresponding averages
+    obs_filled = copy(obs)  # Create a copy to modify
+    [obs_filled[i:40:end] .= ifelse.(isnan.(obs[i:40:end]), averages[i], obs[i:40:end]) for i = 1:40]
+
+    return obs_filled
 end
 
 function CAL.observation_map(iteration)
-    single_member_dims = 4*10*83
-    #single_member_dims = (912,) # defined in calibrate_land.jl
+    single_member_dims = (l_obs,)
     G_ensemble = Array{Float64}(undef, single_member_dims..., ensemble_size)
 
 #    rows_to_remove = []

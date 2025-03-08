@@ -44,8 +44,8 @@ function era5_monthly_stdevs(varname::String, lat, lon)
 end
 
 # Make the ERA5 target
-ERA5_target = zeros(FT, 3984)
-ERA5_std = zeros(FT, 3984)
+ERA5_target = zeros(FT, l_obs)
+ERA5_std = zeros(FT, l_obs)
 close_location = (x, y) -> abs(x - y) < 7e-1
 for i in 1:length(training_locations)
     current_loc = training_locations[i]
@@ -66,20 +66,21 @@ for i in 1:length(training_locations)
     swu_ERA5_std = era5_monthly_stdevs("msuwswrf", lat, lon)
 
     # Add the observations to the target
-    loc_id = (i-1) * 12 * 4
-    ERA5_target[loc_id+1:loc_id+12] .= lhf_loc
-    ERA5_target[loc_id+12+1:loc_id+24] .= shf_loc
-    ERA5_target[loc_id+24+1:loc_id+36] .= lwu_loc
-    ERA5_target[loc_id+36+1:loc_id+48] .= swu_loc
+    loc_id = (i-1) * 10 * 4
+    ERA5_target[loc_id+1:loc_id+10] .= lhf_loc[3:12]
+    ERA5_target[loc_id+10+1:loc_id+20] .= shf_loc[3:12]
+    ERA5_target[loc_id+20+1:loc_id+30] .= lwu_loc[3:12]
+    ERA5_target[loc_id+30+1:loc_id+40] .= swu_loc[3:12]
 
-    ERA5_std[loc_id+1:loc_id+12] .= lhf_ERA5_std
-    ERA5_std[loc_id+12+1:loc_id+24] .= shf_ERA5_std
-    ERA5_std[loc_id+24+1:loc_id+36] .= lwu_ERA5_std
-    ERA5_std[loc_id+36+1:loc_id+48] .= swu_ERA5_std
+    ERA5_std[loc_id+1:loc_id+10] .= lhf_ERA5_std[3:12]
+    ERA5_std[loc_id+10+1:loc_id+20] .= shf_ERA5_std[3:12]
+    ERA5_std[loc_id+20+1:loc_id+30] .= lwu_ERA5_std[3:12]
+    ERA5_std[loc_id+30+1:loc_id+40] .= swu_ERA5_std[3:12]
 end
 
 #full_obs_era5 = EKP.combine_observations(ERA5_target)
 #observations = EKP.get_obs(full_obs_era5)
+observations = ERA5_target
 noise_era5 = ERA5_std
 #noise_era5 = Vector(reduce(vcat, noise_era5)) # not sure why MVector
 

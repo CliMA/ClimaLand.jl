@@ -418,8 +418,6 @@ function CAL.forward_model(iteration, member)
     years = 366days # years in seconds - 366 to make sure we capture at least full years
     tf = 1years # 2 years in seconds
     Δt = 450.0
-    nelements = (50, 10)
-
 
     diagnostics_dir = joinpath(ensemble_member_path, "global_diagnostics")
     diagdir =

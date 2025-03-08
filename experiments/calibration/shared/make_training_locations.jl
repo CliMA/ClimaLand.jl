@@ -3,7 +3,6 @@
 t0 = 0.0
 tf = 60 * 60.0 * 24 * 366
 Δt = 900.0
-nelements = (50, 5)
 regridder_type = :InterpolationsRegridder
 radius = FT(6378.1e3)
 depth = FT(3.5)
@@ -16,4 +15,4 @@ domain = ClimaLand.Domains.SphericalShell(;
 )
 surface_space = domain.space.surface
 training_locations, validation_locations =
-    rand_locations(surface_space, regridder_type, 100)
+    rand_locations(surface_space, regridder_type, n_locations)
