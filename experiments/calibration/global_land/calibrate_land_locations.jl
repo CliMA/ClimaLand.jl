@@ -51,8 +51,8 @@ include(
 )
 
 include(joinpath(dir, "experiments/calibration/shared/observation_data_locations.jl"))
-
-noise = noise_era5 # has to be a Matrix. Could also have covariances between variables.
+using LinearAlgebra
+noise = Diagonal(noise_era5) # has to be a Matrix. Could also have covariances between variables.
 
 CAL.calibrate(
     CAL.WorkerBackend,
