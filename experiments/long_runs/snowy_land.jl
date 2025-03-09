@@ -71,6 +71,27 @@ function setup_prob(
     # Scalar parameters
     earth_param_set = LP.LandParameters(FT)
 
+
+    # Calibrated parameters
+
+    # Affects turbulent surface fluxes for the canopy:
+    h_leaf = FT(1.0) # cannot be larger than 10m.
+    lbl_uscale = FT(0.04 / 0.01^2) # CLM default. must be positive
+
+    # Primarily affecting ET
+    K_sat_plant = FT(8e-8) # m/s 
+    a = FT(0.2 * 0.0098) # bulk modulus of elasticity, 1/m
+    pc = FT(-2e6)
+    sc = FT(5e-6)
+
+    # Directly affect SW_u
+    α_leaf_scaler = FT(1.2) # below or above 1 OK
+    τ_leaf_scaler = FT(1.1) # below or above 1 OK
+    α_soil_dry_scaler = FT(1.0) # must be greater than or equal to 1 as implemented
+    α_snow = FT(0.67)
+
+    # Not currently calibrated parameters
+
     # Soil: TOPMODEL
     f_over = FT(3.28) # 1/m
     R_sb = FT(1.484e-4 / 1000) # m/s
@@ -79,26 +100,14 @@ function setup_prob(
     ac_canopy = FT(2.5e3)
     f_root_to_shoot = FT(3.5)
     RAI = FT(1.0)
-    K_sat_plant = FT(8e-8) # m/s 
     ψ63 = FT(-4 / 0.0098) # / MPa to m
     Weibull_param = FT(4) # unitless
-    a = FT(0.2 * 0.0098) # bulk modulus of elasticity, 1/m
     plant_ν = FT(1.44e-4)
     plant_S_s = FT(1e-2 * 0.0098) # m3/m3/MPa to m3/m3/m
-
-    α_leaf_scaler = FT(1.2)
-    τ_leaf_scaler = FT(1.1)
-
-
     n_stem = 0
     SAI = FT(0)
     h_stem = FT(0.0)
-
     n_leaf = 1
-    h_leaf = FT(1.0)
-
-    # Snow
-    α_snow = FT(0.67)
 
     domain = ClimaLand.global_domain(FT; nelements = nelements)
     surface_space = domain.space.surface
@@ -138,6 +147,11 @@ function setup_prob(
         NIR_albedo_wet,
         f_max,
     ) = spatially_varying_soil_params
+
+    # We need to ensure that the α < 1
+    PAR_albedo_dry .= min.(PAR_albedo_dry .* α_soil_dry_scaler, FT(1))
+    NIR_albedo_dry .= min.(NIR_albedo_dry .* α_soil_dry_scaler, FT(1))
+
     soil_params = Soil.EnergyHydrologyParameters(
         FT;
         ν,
@@ -161,11 +175,7 @@ function setup_prob(
     )
 
     # Spatially varying canopy parameters from CLM
-    clm_parameters = ClimaLand.clm_canopy_parameters(
-        surface_space;
-        α_leaf_scaler = α_leaf_scaler,
-        τ_leaf_scaler = τ_leaf_scaler,
-    )
+    clm_parameters = ClimaLand.clm_canopy_parameters(surface_space)
     (;
         Ω,
         rooting_depth,
@@ -179,6 +189,18 @@ function setup_prob(
         τ_NIR_leaf,
     ) = clm_parameters
 
+    α_PAR_leaf .*= α_leaf_scaler
+    α_NIR_leaf .*= α_leaf_scaler
+
+    # τ <= 1
+    τ_PAR_leaf .= min.(τ_leaf_scaler .* τ_PAR_leaf, FT(1))
+    τ_NIR_leaf .= min.(τ_leaf_scaler .* τ_NIR_leaf, FT(1))
+
+    # We need to ensure that the scaling here does not violate α+τ < 1
+    α_PAR_leaf .=
+        ClimaLand.Canopy.enforce_albedo_constraint.(α_PAR_leaf, τ_PAR_leaf)
+    α_NIR_leaf .=
+        ClimaLand.Canopy.enforce_albedo_constraint.(α_NIR_leaf, τ_NIR_leaf)
 
     h_canopy = h_stem + h_leaf
     compartment_midpoints =
@@ -246,8 +268,15 @@ function setup_prob(
     conductance_args =
         (; parameters = Canopy.MedlynConductanceParameters(FT; g1))
     # Set up photosynthesis
-    photosynthesis_args =
-        (; parameters = Canopy.FarquharParameters(FT, is_c3; Vcmax25 = Vcmax25))
+    photosynthesis_args = (;
+        parameters = Canopy.FarquharParameters(
+            FT,
+            is_c3;
+            Vcmax25 = Vcmax25,
+            pc = pc,
+            sc = sc,
+        )
+    )
     # Set up plant hydraulics
     modis_lai_artifact_path =
         ClimaLand.Artifacts.modis_lai_forcing_data2008_path(; context)
@@ -298,6 +327,7 @@ function setup_prob(
     shared_params = Canopy.SharedCanopyParameters{FT, typeof(earth_param_set)}(
         z0_m,
         z0_b,
+        lbl_uscale,
         earth_param_set,
     )
 

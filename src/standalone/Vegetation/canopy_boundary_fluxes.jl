@@ -284,6 +284,7 @@ function ClimaLand.turbulent_fluxes!(
             atmos.gustiness,
             model.parameters.z_0m,
             model.parameters.z_0b,
+            model.parameters.lbl_uscale,
             Ref(model.parameters.earth_param_set),
         )
     return nothing
@@ -303,13 +304,14 @@ end
         gustiness::FT,
         z_0m::FT,
         z_0b::FT,
+        lbl_uscale::FT,
         earth_param_set::EP,
     ) where {FT <: AbstractFloat, EP}
 
 Computes the turbulent surface fluxes for the canopy at a point
 and returns the fluxes in a named tuple.
 
-Note that an additiontal resistance is used in computing both
+Note that an additional resistance is used in computing both
 evaporation and sensible heat flux, and this modifies the output
 of `SurfaceFluxes.surface_conditions`.
 """
@@ -326,6 +328,7 @@ function canopy_turbulent_fluxes_at_a_point(
     gustiness::FT,
     z_0m::FT,
     z_0b::FT,
+    lbl_uscale::FT,
     earth_param_set::EP,
 ) where {FT <: AbstractFloat, EP}
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
@@ -372,7 +375,10 @@ function canopy_turbulent_fluxes_at_a_point(
     Rm_int = Thermodynamics.gas_constant_air(thermo_params, ts_in)
     ρ_air = Thermodynamics.air_density(thermo_params, ts_in)
 
-    r_b_leaf::FT = FT(1 / 0.01 * (ustar / 0.04)^(-1 / 2)) # CLM 5, tech note Equation 5.122
+    r_b_leaf::FT = (lbl_uscale / ustar)^(1 / 2)
+    # using uscale = FT(0.04/0.01^2)
+    # Equivalent to:
+    # r_b_leaf::FT = FT(1 / 0.01 * (ustar / 0.04)^(-1 / 2)) # CLM 5, tech note Equation 5.122
     r_b_canopy_lai = r_b_leaf / LAI
     r_b_canopy_total = r_b_leaf / (LAI + SAI)
 
