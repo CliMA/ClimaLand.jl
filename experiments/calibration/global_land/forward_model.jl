@@ -416,7 +416,7 @@ function CAL.forward_model(iteration, member)
     hours = 60minutes # hours in seconds
     days = 24hours # days in seconds
     years = 366days # years in seconds - 366 to make sure we capture at least full years
-    tf = 1years # 2 years in seconds
+    tf = 2years # 2 years in seconds
     Δt = 450.0
 
     diagnostics_dir = joinpath(ensemble_member_path, "global_diagnostics")

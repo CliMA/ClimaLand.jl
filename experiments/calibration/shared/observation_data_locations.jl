@@ -66,16 +66,16 @@ for i in 1:length(training_locations)
     swu_ERA5_std = era5_monthly_stdevs("msuwswrf", lat, lon)
 
     # Add the observations to the target
-    loc_id = (i-1) * 10 * 4
-    ERA5_target[loc_id+1:loc_id+10] .= lhf_loc[3:12]
-    ERA5_target[loc_id+10+1:loc_id+20] .= shf_loc[3:12]
-    ERA5_target[loc_id+20+1:loc_id+30] .= lwu_loc[3:12]
-    ERA5_target[loc_id+30+1:loc_id+40] .= swu_loc[3:12]
+    loc_id = (i-1) * 12 * 4
+    ERA5_target[loc_id+1:loc_id+12] .= lhf_loc[1:12]
+    ERA5_target[loc_id+12+1:loc_id+24] .= shf_loc[1:12]
+    ERA5_target[loc_id+24+1:loc_id+36] .= lwu_loc[1:12]
+    ERA5_target[loc_id+36+1:loc_id+48] .= swu_loc[1:12]
 
-    ERA5_std[loc_id+1:loc_id+10] .= lhf_ERA5_std[3:12]
-    ERA5_std[loc_id+10+1:loc_id+20] .= shf_ERA5_std[3:12]
-    ERA5_std[loc_id+20+1:loc_id+30] .= lwu_ERA5_std[3:12]
-    ERA5_std[loc_id+30+1:loc_id+40] .= swu_ERA5_std[3:12]
+    ERA5_std[loc_id+1:loc_id+12] .= lhf_ERA5_std[1:12]
+    ERA5_std[loc_id+12+1:loc_id+24] .= shf_ERA5_std[1:12]
+    ERA5_std[loc_id+24+1:loc_id+36] .= lwu_ERA5_std[1:12]
+    ERA5_std[loc_id+36+1:loc_id+48] .= swu_ERA5_std[1:12]
 end
 
 #full_obs_era5 = EKP.combine_observations(ERA5_target)

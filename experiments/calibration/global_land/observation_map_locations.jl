@@ -1,4 +1,5 @@
 using ClimaAnalysis
+using Statistics
 import EnsembleKalmanProcesses as EKP
 #nonan_training_locations = SVector(deleteat!(collect(training_locations), rows_to_remove)...)
 #rows_to_remove = [41, 59, 70] # iteration 0, most in member 5. member 1 has no nan.
@@ -27,31 +28,31 @@ function process_member_data(simdir)
         # Create Observation objects for lhf and shf
         lhf_obs = EKP.Observation(
             Dict(
-                 "samples" => lhf_loc.data[3:12],
-                "covariances" => cov(lhf_loc.data[3:12]) * EKP.I,
+                 "samples" => lhf_loc.data[13:24],
+                "covariances" => cov(lhf_loc.data[13:24]) * EKP.I,
                 "names" => "lhf_$(lon)_$(lat)",
             ),
         )
         shf_obs = EKP.Observation(
             Dict(
-                "samples" => shf_loc.data[3:12],
-                "covariances" => cov(shf_loc.data[3:12]) * EKP.I,
+                "samples" => shf_loc.data[13:24],
+                "covariances" => cov(shf_loc.data[13:24]) * EKP.I,
                 "names" => "shf_$(lon)_$(lat)",
             ),
         )
 
         lwu_obs = EKP.Observation(
             Dict(
-                "samples" => lwu_loc.data[3:12],
-                "covariances" => cov(lwu_loc.data[3:12]) * EKP.I,
+                "samples" => lwu_loc.data[13:24],
+                "covariances" => cov(lwu_loc.data[13:24]) * EKP.I,
                 "names" => "lwu_$(lon)_$(lat)",
             ),
         )
 
         swu_obs = EKP.Observation(
             Dict(
-                "samples" => swu_loc.data[3:12],
-                "covariances" => cov(swu_loc.data[3:12]) * EKP.I,
+                "samples" => swu_loc.data[13:24],
+                "covariances" => cov(swu_loc.data[13:24]) * EKP.I,
                 "names" => "swu_$(lon)_$(lat)",
             ),
         )
@@ -80,12 +81,11 @@ function process_member_data(simdir)
     println("iteration ", iteration, ", member ", m, ", has ", nan_p, "% NaN elements.")
     println("replacing NaNs with average of that month (from the n_locations)")
     # Compute the average
-    using Statistics
-    averages = zeros(40)
-    [averages[i] = mean(filter(!isnan, obs[i:40:end])) for i = 1:40]
+    averages = zeros(48)
+    [averages[i] = mean(filter(!isnan, obs[i:48:end])) for i = 1:48]
     # Replace NaNs with corresponding averages
     obs_filled = copy(obs)  # Create a copy to modify
-    [obs_filled[i:40:end] .= ifelse.(isnan.(obs[i:40:end]), averages[i], obs[i:40:end]) for i = 1:40]
+    [obs_filled[i:48:end] .= ifelse.(isnan.(obs[i:48:end]), averages[i], obs[i:48:end]) for i = 1:48]
 
     return obs_filled
 end
