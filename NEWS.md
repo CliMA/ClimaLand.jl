@@ -3,6 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 -------
+- add mask
 
 
 v0.15.10
