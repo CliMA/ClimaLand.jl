@@ -1,8 +1,8 @@
 [soil_ic_2008_50m]
-git-tree-sha1 = "ffa52ae695b5962fde4bab21187cc015b8f34f65"
+git-tree-sha1 = "fd9cda235e203b4235136b6dcdcd07af788c00f6"
 
     [[soil_ic_2008_50m.download]]
-    sha256 = "9546a70e1ac7c8dab0ddce232b64ef2716cc5b71065d8b6be400a5c0a90d42cc"
+    sha256 = "22e3cee446ee3b34edd6956b305bace5f04d12b8c1f124c1891a93048bc91b34"
     url = "https://caltech.box.com/shared/static/atiztw8uu2i78g2vd02n8onb68cer9tn.gz"
 
 
@@ -141,3 +141,9 @@ git-tree-sha1 = "4cc329093b0dbc3443db36e7c01133267ac94d37"
     [[bedrock_depth_60arcseconds.download]]
     sha256 = "6eb359e900141de837c41c0082257f7cf082e06e1371d45b07b1078f07e96c53"
     url = "https://caltech.box.com/shared/static/k1zq0w1psqu8dk0s9jotrfuu6hm8kxfp.gz"
+
+[era5_surface_fluxes]
+git-tree-sha1 = "f2cb69e41cba84991054162e794292f98bf0ae34"
+
+[era5_monthly_averages_surface_single_level_1979_2024]
+git-tree-sha1 = "6cddb07eeee2dd46dc5a19e9b2f706302ddba2c9"
