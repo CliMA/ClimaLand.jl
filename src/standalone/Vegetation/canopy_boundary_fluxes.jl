@@ -375,8 +375,8 @@ function canopy_turbulent_fluxes_at_a_point(
     Rm_int = Thermodynamics.gas_constant_air(thermo_params, ts_in)
     ρ_air = Thermodynamics.air_density(thermo_params, ts_in)
 
-    r_b_leaf::FT = 1/lbl_uscale * (lbl_uscale / ustar)^(1 / 2)
-    # using uscale = FT(0.04/0.01^2)
+    r_b_leaf::FT = 1 / lbl_uscale * (lbl_uscale / ustar)^(1 / 2)
+    # using uscale = FT(0.01^2/0.04)
     # Equivalent to:
     # r_b_leaf::FT = FT(1 / 0.01 * (ustar / 0.04)^(-1 / 2)) # CLM 5, tech note Equation 5.122
     r_b_canopy_lai = r_b_leaf / LAI

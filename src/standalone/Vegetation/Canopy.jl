@@ -61,7 +61,7 @@ struct SharedCanopyParameters{FT <: AbstractFloat, PSE}
 end
 
 """
-    SharedCanopyParameters{FT, PSE}(z_0m::FT, z_0b::FT, earth_param_set::PSE; lbl_uscale = 400.0) where {FT, PSE}
+    SharedCanopyParameters{FT, PSE}(z_0m::FT, z_0b::FT, earth_param_set::PSE; lbl_uscale = 0.0025) where {FT, PSE}
 
 Outer constructor which preserves default behavior.
 """
@@ -69,7 +69,7 @@ function SharedCanopyParameters{FT, PSE}(
     z_0m::FT,
     z_0b::FT,
     earth_param_set::PSE;
-    lbl_uscale = 400.0,
+    lbl_uscale = 0.0025,
 ) where {FT, PSE}
     return SharedCanopyParameters{FT, PSE}(
         z_0m,
