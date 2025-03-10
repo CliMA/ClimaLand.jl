@@ -1,5 +1,10 @@
 using ClimaLand
-
+using ClimaUtilities.ClimaArtifacts
+using ClimaComms
+import Interpolations
+import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
+import ClimaUtilities.Regridders: InterpolationsRegridder
+using ClimaCore: Spaces
 """
     global_domain(
     FT;
@@ -34,6 +39,9 @@ rather than increasing the polynomial order.
 """
 function global_domain(
     FT;
+    apply_mask = true,
+    mask_resolution = "60arcs",
+    mask_threshold = 0.5,
     nelements = (101, 15),
     dz_tuple = (10.0, 0.05),
     depth = 50.0,
@@ -49,5 +57,31 @@ function global_domain(
         npolynomial,
         dz_tuple,
     )
+    if apply_mask
+        surface_space = domain.space.surface # 2d space
+        mask_path = ClimaLand.Artifacts.landseamask_file_path(;
+            resolution = mask_resolution,
+        )
+        regridder_type = :InterpolationsRegridder
+        extrapolation_bc = (
+            Interpolations.Periodic(),
+            Interpolations.Flat(),
+            Interpolations.Flat(),
+        )
+        context = ClimaComms.context(surface_space)
+        mask = SpaceVaryingInput(
+            mask_path,
+            "landsea",
+            surface_space;
+            regridder_type,
+            regridder_kwargs = (; extrapolation_bc,),
+        )
+        binary_mask = apply_threshold.(mask, mask_threshold)
+        Spaces.set_mask!(surface_space, binary_mask)
+    end
+
     return domain
 end
+
+apply_threshold(field, value) =
+    field > value ? eltype(field)(1) : eltype(field)(0)

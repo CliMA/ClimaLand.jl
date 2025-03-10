@@ -71,6 +71,7 @@ end
 end
 @safetestset "Soil 3D domain tests" begin
     include("standalone/Soil/soil_test_3d.jl")
+    include("standalone/Soil/mask_test.jl")
 end
 @safetestset "Soil integration tests" begin
     include("standalone/Soil/soiltest.jl")
@@ -110,6 +111,9 @@ end
 end
 @safetestset "Integrated soil and snow" begin
     include("integrated/soil_snow.jl")
+end
+@safetestset "Full land" begin
+    include("integrated/full_land.jl")
 end
 
 # Simulations

@@ -592,7 +592,11 @@ function SphericalShell(;
     else
         quad = ClimaCore.Spaces.Quadratures.GLL{npolynomial + 1}()
     end
-    horzspace = ClimaCore.Spaces.SpectralElementSpace2D(horztopology, quad; enable_mask = true)
+    horzspace = ClimaCore.Spaces.SpectralElementSpace2D(
+        horztopology,
+        quad;
+        enable_mask = true,
+    )
 
     subsurface_space = ClimaCore.Spaces.ExtrudedFiniteDifferenceSpace(
         horzspace,
