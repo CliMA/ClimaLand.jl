@@ -22,7 +22,8 @@ root_path = joinpath(pwd(), "snowy_land_longrun_gpu")
 # outdir = "snowy_land_longrun_gpu-3771-new_default/output_active"
 # outdir = "snowy_land_longrun_gpu-3761-new_default/output_active" # on local
 # outdir = "snowy_land_longrun_gpu-3761-alpha1/output_active" # on local
-outdir = "snowy_land_longrun_gpu-3777-alpha2/output_active" # on local
+# outdir = "snowy_land_longrun_gpu-3777-alpha2/output_active" # on local
+outdir = "snowy_land_longrun_gpu-3785"
 root_path = outdir
 
 short_names = ["lhf", "shf", "lwu", "swu"]
@@ -192,7 +193,7 @@ function make_seasonal_cycle_figure(root_path, outdir, short_names, title_stubs)
         font = "TeX Gyre Heros Bold Makie",
     )
 
-    save_name = joinpath(root_path, "seasonal_cycle.pdf")
+    save_name = joinpath(root_path, "seasonal_cycle.png")
     CairoMakie.save(save_name, fig)
     @show save_name
     return nothing

@@ -24,17 +24,15 @@ root_path = joinpath(pwd(), "snowy_land_longrun_gpu")
 # outdir = "snowy_land_longrun_gpu-3761-alpha1/output_active" # on local
 # outdir = "snowy_land_longrun_gpu-3771-new_default/output_active"
 # outdir = "snowy_land_longrun_gpu-3761-new_default/output_active" # on local
-outdir = "snowy_land_longrun_gpu-3777-alpha2/output_active" # on local
+outdir = "snowy_land_longrun_gpu-3785"
 root_path = outdir
 
-short_names = ["lhf", "shf", "lwu", "swu", "lwn", "swn"]
+short_names = ["lhf", "shf", "lwu", "swu"]#, "lwn", "swn"]
 title_stubs = Dict(
-    "lhf" => "Latent heat flux",
-    "shf" => "Sensible heat flux",
-    "lwu" => "Upward longwave radiation",
-    "swu" => "Upward shortwave radiation",
-    "lwn" => "Net longwave radiation",
-    "swn" => "Net shortwave radiation",
+    "lhf" => "LE",#"Latent heat flux",
+    "shf" => "H",#"Sensible heat flux",
+    "lwu" => "LWᵤ",#"Upward longwave radiation",
+    "swu" => "SWᵤ",#"Upward shortwave radiation",
 )
 # Define levels for contour colorbars
 levels_dict = Dict(
@@ -55,7 +53,7 @@ function compute_global_average(masked_var)
     land_data = ClimaAnalysis.apply_oceanmask(masked_var).data
     lat_data = masked_var.dims[latitude_name]
     mask = .~isnan.(land_data)
-    nlon = length(masked_var.dims[lon_name])µ
+    nlon = length(masked_var.dims[lon_name])
     resized_lat_data = transpose(repeat(lat_data, 1, nlon))
 
     return sum(land_data[mask] .* cosd.(resized_lat_data[mask])) /
@@ -206,13 +204,13 @@ function make_paper_figures(
                         xgridvisible = false, # don't show lat grid
                         ygridvisible = false, # don't show lon grid
                         height = 235,
-                        ylabel = "$(sim_var.attributes["long_name"]) $units_label", # plot variable label on y-axis for leftmost column (sim)
+                        ylabel = "$title_stub $units_label", # plot variable label on y-axis for leftmost column (sim)
                         ylabelvisible = true,
                         ylabelpadding = 0,
                     ),
                     :cb => ClimaAnalysis.Utils.kwargs(
                         vertical = false, # horizontal colorbar
-                        label = "$(sim_var.attributes["long_name"]) $units_label",
+                        label = "$title_stub $units_label",
                         labelsize = 20,
                         flipaxis = false, # label underneath colorbar
                         height = 15,
@@ -234,7 +232,7 @@ function make_paper_figures(
             contour = viz.contour2D_on_globe!(
                 fig,
                 sim_var_annual_average,
-                # ylabel = "$(sim_var.attributes["long_name"]) $units_label", # plot variable label on y-axis for leftmost column (sim)
+                # ylabel = "$title_stub $units_label", # plot variable label on y-axis for leftmost column (sim)
                 p_loc = (fig_row, 1), # plot in the first column
                 plot_colorbar = false,
                 mask = viz.oceanmask(),
@@ -255,7 +253,7 @@ function make_paper_figures(
                         xgridvisible = false, # don't show lat grid
                         ygridvisible = false, # don't show lon grid
                         height = 235,
-                        ylabel = "$(sim_var.attributes["long_name"]) $units_label", # plot variable label on y-axis for leftmost column (sim)
+                        ylabel = "$title_stub $units_label", # plot variable label on y-axis for leftmost column (sim)
                         ylabelpadding = -5,
                         ylabelvisible = true,
                         # limits = clims,
@@ -264,7 +262,7 @@ function make_paper_figures(
             )
             Makie.Colorbar(
                 fig[fig_row + 1, 1],
-                label = "$(sim_var.attributes["long_name"]) $units_label",
+                label = "$title_stub $units_label",
                 labelsize = 20,
                 vertical = false, # horizontal colorbar
                 flipaxis = false, # label underneath colorbar
@@ -293,7 +291,7 @@ function make_paper_figures(
                 levels,
                 p_loc = (fig_row, 2), # plot in the first column
                 plot_colorbar = true,
-                # colorbar_label = "$(sim_var.attributes["long_name"]) $units_label",
+                # colorbar_label = "$title_stub $units_label",
                 mask = viz.oceanmask(),
                 cmap_extrema = clims,
                 more_kwargs = Dict(
@@ -310,7 +308,7 @@ function make_paper_figures(
                     ),
                     :cb => ClimaAnalysis.Utils.kwargs(
                         vertical = false, # horizontal colorbar
-                        label = "$(sim_var.attributes["long_name"]) $units_label",
+                        label = "$title_stub $units_label",
                         labelsize = 20,
                         flipaxis = false, # label underneath colorbar
                         height = 15,
@@ -359,7 +357,7 @@ function make_paper_figures(
             )
             Makie.Colorbar(
                 fig[fig_row + 1, 2],
-                label = "$(sim_var.attributes["long_name"]) $units_label",
+                label = "$title_stub $units_label",
                 labelsize = 20,
                 vertical = false, # horizontal colorbar
                 flipaxis = false, # label underneath colorbar
@@ -386,7 +384,7 @@ function make_paper_figures(
             bias_title =
                 fig_row == 1 ?
                 CairoMakie.rich("ClimaLand vs ERA5 bias", fontsize = 28) : "" # title of the figure
-            bias_colorbar_label = "$(sim_var.attributes["long_name"]) $units_label"
+            bias_colorbar_label = "$title_stub $units_label"
             viz.plot_bias_on_globe!(
                 fig,
                 sim_var_annual_average,
@@ -510,11 +508,11 @@ function make_paper_figures(
 
 
     end
-    save_name = joinpath(root_path, "combined_figures.pdf")
+    save_name = joinpath(root_path, "combined_figures.png")
     save_name =
-        plot_bias ? joinpath(root_path, "combined_figures_bias.pdf") : save_name
+        plot_bias ? joinpath(root_path, "combined_figures_bias.png") : save_name
     save_name =
-        plot_seasonal ? joinpath(root_path, "combined_figures_seasonal.pdf") :
+        plot_seasonal ? joinpath(root_path, "combined_figures_seasonal.png") :
         save_name
     CairoMakie.save(save_name, fig)
     @show save_name
