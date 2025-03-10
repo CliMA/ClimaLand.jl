@@ -68,7 +68,47 @@ function setup_prob(
     outdir = outdir,
     nelements = (101, 15),
 )
+    # Scalar parameters
     earth_param_set = LP.LandParameters(FT)
+
+
+    # Calibrated parameters
+
+    # Affects turbulent surface fluxes for the canopy:
+    h_leaf = FT(1.0) # cannot be larger than 10m.
+    lbl_uscale = FT(0.04 / 0.01^2) # CLM default. must be positive
+
+    # Primarily affecting ET
+    K_sat_plant = FT(8e-8) # m/s 
+    a = FT(0.2 * 0.0098) # bulk modulus of elasticity, 1/m
+    pc = FT(-2e6)
+    sc = FT(5e-6)
+
+    # Directly affect SW_u
+    α_leaf_scaler = FT(1.2) # below or above 1 OK
+    τ_leaf_scaler = FT(1.1) # below or above 1 OK
+    α_soil_dry_scaler = FT(1.0) # must be greater than or equal to 1 as implemented
+    α_snow = FT(0.67)
+
+    # Not currently calibrated parameters
+
+    # Soil: TOPMODEL
+    f_over = FT(3.28) # 1/m
+    R_sb = FT(1.484e-4 / 1000) # m/s
+
+    # Canopy
+    ac_canopy = FT(2.5e3)
+    f_root_to_shoot = FT(3.5)
+    RAI = FT(1.0)
+    ψ63 = FT(-4 / 0.0098) # / MPa to m
+    Weibull_param = FT(4) # unitless
+    plant_ν = FT(1.44e-4)
+    plant_S_s = FT(1e-2 * 0.0098) # m3/m3/MPa to m3/m3/m
+    n_stem = 0
+    SAI = FT(0)
+    h_stem = FT(0.0)
+    n_leaf = 1
+
     domain = ClimaLand.global_domain(FT; nelements = nelements)
     surface_space = domain.space.surface
     subsurface_space = domain.space.subsurface
@@ -107,6 +147,11 @@ function setup_prob(
         NIR_albedo_wet,
         f_max,
     ) = spatially_varying_soil_params
+
+    # We need to ensure that the α < 1
+    PAR_albedo_dry .= min.(PAR_albedo_dry .* α_soil_dry_scaler, FT(1))
+    NIR_albedo_dry .= min.(NIR_albedo_dry .* α_soil_dry_scaler, FT(1))
+
     soil_params = Soil.EnergyHydrologyParameters(
         FT;
         ν,
@@ -122,8 +167,7 @@ function setup_prob(
         PAR_albedo_wet = PAR_albedo_wet,
         NIR_albedo_wet = NIR_albedo_wet,
     )
-    f_over = FT(3.28) # 1/m
-    R_sb = FT(1.484e-4 / 1000) # m/s
+
     runoff_model = ClimaLand.Soil.Runoff.TOPMODELRunoff{FT}(;
         f_over = f_over,
         f_max = f_max,
@@ -145,29 +189,23 @@ function setup_prob(
         τ_NIR_leaf,
     ) = clm_parameters
 
-    # Energy Balance model
-    ac_canopy = FT(2.5e3)
-    # Plant Hydraulics and general plant parameters
-    SAI = FT(0.0) # m2/m2
-    f_root_to_shoot = FT(3.5)
-    RAI = FT(1.0)
-    K_sat_plant = FT(5e-9) # m/s # seems much too small?
-    ψ63 = FT(-4 / 0.0098) # / MPa to m, Holtzman's original parameter value is -4 MPa
-    Weibull_param = FT(4) # unitless, Holtzman's original c param value
-    a = FT(0.05 * 0.0098) # Holtzman's original parameter for the bulk modulus of elasticity
-    conductivity_model =
-        Canopy.PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
-    retention_model = Canopy.PlantHydraulics.LinearRetentionCurve{FT}(a)
-    plant_ν = FT(1.44e-4)
-    plant_S_s = FT(1e-2 * 0.0098) # m3/m3/MPa to m3/m3/m
-    n_stem = 0
-    n_leaf = 1
-    h_stem = FT(0.0)
-    h_leaf = FT(1.0)
-    zmax = FT(0.0)
+    α_PAR_leaf .*= α_leaf_scaler
+    α_NIR_leaf .*= α_leaf_scaler
+
+    # τ <= 1
+    τ_PAR_leaf .= min.(τ_leaf_scaler .* τ_PAR_leaf, FT(1))
+    τ_NIR_leaf .= min.(τ_leaf_scaler .* τ_NIR_leaf, FT(1))
+
+    # We need to ensure that the scaling here does not violate α+τ < 1
+    α_PAR_leaf .=
+        ClimaLand.Canopy.enforce_albedo_constraint.(α_PAR_leaf, τ_PAR_leaf)
+    α_NIR_leaf .=
+        ClimaLand.Canopy.enforce_albedo_constraint.(α_NIR_leaf, τ_NIR_leaf)
+
     h_canopy = h_stem + h_leaf
     compartment_midpoints =
         n_stem > 0 ? [h_stem / 2, h_stem + h_leaf / 2] : [h_leaf / 2]
+    zmax = FT(0.0)
     compartment_surfaces =
         n_stem > 0 ? [zmax, h_stem, h_canopy] : [zmax, h_leaf]
 
@@ -230,8 +268,15 @@ function setup_prob(
     conductance_args =
         (; parameters = Canopy.MedlynConductanceParameters(FT; g1))
     # Set up photosynthesis
-    photosynthesis_args =
-        (; parameters = Canopy.FarquharParameters(FT, is_c3; Vcmax25 = Vcmax25))
+    photosynthesis_args = (;
+        parameters = Canopy.FarquharParameters(
+            FT,
+            is_c3;
+            Vcmax25 = Vcmax25,
+            pc = pc,
+            sc = sc,
+        )
+    )
     # Set up plant hydraulics
     modis_lai_artifact_path =
         ClimaLand.Artifacts.modis_lai_forcing_data2008_path(; context)
@@ -245,6 +290,10 @@ function setup_prob(
     )
     ai_parameterization =
         Canopy.PrescribedSiteAreaIndex{FT}(LAIfunction, SAI, RAI)
+
+    conductivity_model =
+        Canopy.PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
+    retention_model = Canopy.PlantHydraulics.LinearRetentionCurve{FT}(a)
 
     plant_hydraulics_ps = Canopy.PlantHydraulics.PlantHydraulicsParameters(;
         ai_parameterization = ai_parameterization,
@@ -278,6 +327,7 @@ function setup_prob(
     shared_params = Canopy.SharedCanopyParameters{FT, typeof(earth_param_set)}(
         z0_m,
         z0_b,
+        lbl_uscale,
         earth_param_set,
     )
 
@@ -287,7 +337,11 @@ function setup_prob(
     )
 
     # Snow model
-    snow_parameters = SnowParameters{FT}(Δt; earth_param_set = earth_param_set)
+    snow_parameters = SnowParameters{FT}(
+        Δt;
+        earth_param_set = earth_param_set,
+        α_snow = α_snow,
+    )
     snow_args = (;
         parameters = snow_parameters,
         domain = ClimaLand.obtain_surface_domain(domain),
@@ -439,54 +493,20 @@ setup_and_solve_problem(; greet = true);
 # read in diagnostics and make some plots!
 #### ClimaAnalysis ####
 simdir = ClimaAnalysis.SimDir(outdir)
-short_names_bio = ["gpp", "ct", "lwp"]
-short_names_water = ["swc", "si", "sr", "swe"]
-short_names_other = ["swu", "lwu", "et"]
-group_names = ["bio", "water", "other"]
-months_id = [1, 4, 7, 10]
-for (group_id, group) in
-    enumerate([short_names_bio, short_names_water, short_names_other])
-    fig =
-        CairoMakie.Figure(size = (600 * length(months_id), 300 * length(group)))
-    for (var_id, short_name) in enumerate(group)
-        var = get(simdir; short_name)
-        times = ClimaAnalysis.times(var)
-        CairoMakie.Label(
-            fig[var_id, 0],
-            short_name,
-            tellheight = false,
-            tellwidth = false,
-            fontsize = 20,
-        )
-        for (t_id, t) in pairs(times[months_id])
-            layout = fig[var_id, t_id] = CairoMakie.GridLayout()
-            kwargs = ClimaAnalysis.has_altitude(var) ? Dict(:z => 1) : Dict()
-            ClimaAnalysis.Visualize.heatmap2D_on_globe!(
-                layout,
-                ClimaAnalysis.slice(var, time = t; kwargs...),
-                mask = ClimaAnalysis.Visualize.oceanmask(),
-                more_kwargs = Dict(
-                    :mask => ClimaAnalysis.Utils.kwargs(color = :white),
-                ),
-            )
-        end
-    end
-    months = Dates.monthname.(1:12) .|> x -> x[1:3]
-    for (idx, m_id) in enumerate(months_id)
-        CairoMakie.Label(
-            fig[0, idx],
-            months[m_id],
-            tellwidth = false,
-            fontsize = 20,
-        )
-    end
-    group_name = group_names[group_id]
-
-    CairoMakie.save(joinpath(root_path, "$(group_name).png"), fig)
-end
-
-short_names =
-    ["gpp", "swc", "et", "ct", "swe", "si", "lwp", "iwc", "trans", "msf"]
+short_names = [
+    "gpp",
+    "swc",
+    "et",
+    "shf",
+    "swu",
+    "lwu",
+    "swe",
+    "si",
+    "lwp",
+    "iwc",
+    "trans",
+    "msf",
+]
 
 include(
     joinpath(
