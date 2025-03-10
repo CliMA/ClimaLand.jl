@@ -183,4 +183,6 @@ include("./boundary_conditions.jl")
 include("./soil_hydrology_parameterizations.jl")
 include("Biogeochemistry/Biogeochemistry.jl")
 using .Biogeochemistry
+include("Biogeochemistry/DisorderedKinetics.jl")
+using .DisorderedKinetics
 end
