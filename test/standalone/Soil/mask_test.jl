@@ -1,8 +1,6 @@
-ENV["CLIMACOMMS_DEVICE"] = "CUDA" # explicit cuda request
-# ENV["CLIMACOMMS_DEVICE"] = "CPU" # explicit cpu request
 using ClimaComms
 apply_mask = true
-ClimaComms.@import_required_backends # does using cuda
+ClimaComms.@import_required_backends
 using ClimaLand
 using ClimaLand.Soil
 using ClimaLand.Domains
@@ -26,31 +24,25 @@ domain = ClimaLand.Domains.SphericalShell(;
 
 # Get the mask and interpolate to our surface space
 surface_space = domain.space.surface # 2d space
-#mask_path = #ClimaLand.Artifact.landseamask_file_path(; resolution = "1deg")
-#mask_path = "~/.julia/artifacts/10ed7ec61def091c44545825cfb4d9599216c3c8/landsea_mask.nc"
-mask_path = "/home/charliek/.julia/artifacts/10ed7ec61def091c44545825cfb4d9599216c3c8/"
-mask_file = joinpath(mask_path, "landsea_mask.nc")
+mask_path = ClimaLand.Artifacts.landseamask_file_path(; resolution = "60arcs")
+
 threshold = 0.5
 regridder_type = :InterpolationsRegridder
-extrapolation_bc = (
-    Interpolations.Periodic(),
-    Interpolations.Flat(),
-    Interpolations.Flat(),
-)
+extrapolation_bc =
+    (Interpolations.Periodic(), Interpolations.Flat(), Interpolations.Flat())
 context = ClimaComms.context(surface_space)
 mask = SpaceVaryingInput(
-        mask_file,
-        "landsea",
-        surface_space;
-        regridder_type,
-        regridder_kwargs = (; extrapolation_bc,),
-    )
-apply_threshold(field, value) = field > value ? eltype(field)(1) : eltype(field)(0)
+    mask_path,
+    "landsea",
+    surface_space;
+    regridder_type,
+    regridder_kwargs = (; extrapolation_bc,),
+)
+apply_threshold(field, value) =
+    field > value ? eltype(field)(1) : eltype(field)(0)
 binary_mask = apply_threshold.(mask, threshold)
 if apply_mask
-    if surface_space isa Spaces.SpectralElementSpace2D && !(surface_space.grid.mask isa DataLayouts.NoMask)
-        surface_space.grid.mask .= Fields.field_values(binary_mask)
-    end
+    Spaces.set_mask!(surface_space, binary_mask)
 end
 
 # Soil model setup
@@ -78,17 +70,17 @@ soil = Soil.RichardsModel{FT}(;
     domain = domain,
     boundary_conditions = boundary_fluxes,
     sources = sources,
-) 
+)
 
-Y, p, coords = initialize(soil); # Y is the state vector, without set initial conditions
+Y, p, coords = initialize(soil); # Y is the state vector, initially all zero
 # test 2d
 sfc_field = ClimaLand.top_center_to_surface(Y.soil.ϑ_l);
-sfc_field .= ν/2;
-extrema(sfc_field)
+sfc_field .= 1.0;
+@test extrema(sfc_field) == (0.0, 1.0)
 
 # test 3d
-Y.soil.ϑ_l .= ν/2
-extrema(Y.soil.ϑ_l)
+Y.soil.ϑ_l .= 1.0
+@test extrema(Y.soil.ϑ_l) == (0.0, 1.0)
 
 
 # More complex function
@@ -103,10 +95,4 @@ imp_tendency!(dY, Y, p, t0)
 
 # Test that the masked parts of dY did not update and are still zero
 mask_indices = parent(binary_mask) .< eps(FT)
-@show extrema(parent(dY.soil.ϑ_l)[:, mask_indices])
-@time imp_tendency!(dY, Y, p, t0)
-# CPU
-#  0.120693 seconds (24 allocations: 2.016 KiB) # with mask
-#  0.392619 seconds (24 allocations: 2.016 KiB) #without mask
-# GPU
-#  0.000195 seconds (308 allocations: 6.906 KiB) # with mask
+@test extrema(parent(dY.soil.ϑ_l)[:, mask_indices]) == (0.0, 0.0)
