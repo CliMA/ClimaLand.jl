@@ -151,6 +151,7 @@ function setup_prob(
     # num_points is the resolution of the output diagnostics
     # These are currently chosen to get a 1:1 ratio with the number of
     # simulation points, ~101x101x6
+    subsurface_space = land.soil.domain.space.subsurface
     nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(
         subsurface_space,
         outdir;
