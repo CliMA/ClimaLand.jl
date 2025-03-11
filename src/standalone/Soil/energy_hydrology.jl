@@ -1138,7 +1138,7 @@ function coupler_compute_turbulent_fluxes!(
     p::NamedTuple,
     t,
 ) where {FT}
-    
+
     # Obtain surface quantities needed for computation; these should not allocate
     T_sfc = ClimaLand.surface_temperature(model, Y, p, t)
     h_sfc = ClimaLand.surface_height(model, Y, p)
@@ -1168,7 +1168,7 @@ function coupler_compute_turbulent_fluxes!(
             ν_sfc,
             θ_r_sfc,
             K_sat_sfc,
-            atmos.thermal_state
+            atmos.thermal_state,
             atmos.u,
             atmos.h,
             atmos.gustiness,
