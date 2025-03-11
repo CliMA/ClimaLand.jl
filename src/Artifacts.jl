@@ -7,6 +7,34 @@ import LazyArtifacts
 using ArtifactWrappers
 
 """
+    landseamask_file_path(; resolution = "60arcs", context=nothing)
+Construct the file path for the landsea mask data NetCDF file,
+using 60arcseconds by default.
+The other options available include "30arcs" (30arcseconds) or "1deg" (1degree).
+"""
+function landseamask_file_path(; resolution = "60arcs", context = nothing)
+    @assert (resolution == "60arcs") ||
+            (resolution == "30arcs") ||
+            (resolution == "1deg")
+    filename = "landsea_mask.nc"
+    if resolution == "60arcs"
+        return joinpath(
+            @clima_artifact("landsea_mask_60arcseconds", context),
+            filename,
+        )
+    elseif resolution == "30arcs"
+        return joinpath(
+            @clima_artifact("landsea_mask_30arcseconds", context),
+            filename,
+        )
+    else
+        return joinpath(@clima_artifact("landsea_mask_1deg", context), filename)
+    end
+
+end
+
+
+"""
     soil_ic_2008_50m_path(; context)
 
 Return the path to the file that contains the spun-up soil and snow initial 
@@ -372,6 +400,7 @@ There are only three datasets available which are "rlus_CERESed4.2_rlus.nc",
 function ilamb_dataset_path(filename; context = nothing)
     return joinpath(@clima_artifact("ilamb_data", context), filename)
 end
+
 
 """
     earth_orography_file_path(; context=nothing)

@@ -284,9 +284,13 @@ function default_spatially_varying_soil_parameters(
     μ = mean(x[x .> 0])
     vg_n .= masked_to_value.(vg_n, soil_params_mask, μ)
 
+    hydrology_cm = ClimaCore.Fields.zeros(
+        ClimaLand.Soil.vanGenuchten{FT},
+        subsurface_space,
+    )
     vg_fields_to_hcm_field(α::FT, n::FT) where {FT} =
         ClimaLand.Soil.vanGenuchten{FT}(; @NamedTuple{α::FT, n::FT}((α, n))...)
-    hydrology_cm = vg_fields_to_hcm_field.(vg_α, vg_n)
+    hydrology_cm .= vg_fields_to_hcm_field.(vg_α, vg_n)
 
     θ_r = SpaceVaryingInput(
         joinpath(
@@ -366,7 +370,8 @@ function default_spatially_varying_soil_parameters(
     )
     # we require that the sum of these be less than 1 and equal to or bigger than zero.
     # The input should satisfy this almost exactly, but the regridded values may not.
-    texture_norm = @. min(ν_ss_gravel + ν_ss_quartz + ν_ss_om, 1)
+    texture_norm = ClimaCore.Fields.zeros(subsurface_space)
+    @. texture_norm = min(ν_ss_gravel + ν_ss_quartz + ν_ss_om, 1)
     @. ν_ss_gravel = ν_ss_gravel / max(texture_norm, eps(FT))
     @. ν_ss_om = ν_ss_om / max(texture_norm, eps(FT))
     @. ν_ss_quartz = ν_ss_quartz / max(texture_norm, eps(FT))
