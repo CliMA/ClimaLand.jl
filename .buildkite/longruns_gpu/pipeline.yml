@@ -6,6 +6,13 @@ agents:
 env:
   JULIA_CUDA_MEMORY_POOL: "cuda"
 
+# We check for the existence of `LONGER_RUN` to determine whether a `LONGER_RUN`
+# of `snowy_land.jl`. If you want to do a very long run on Buildkite manually,
+# then make a new build and pass `LONGER_RUN=""` as an environment variable. If
+# you want to do a very long run locally, you can enter `export LONGER_RUN=""`
+# in the terminal and run
+# `julia --color=yes --project=.buildkite experiments/long_runs/snowy_land.jl`.
+# In both cases, the value of `LONGER_RUN` does not matter.
 
 steps:
   - label: "init :GPU:"
@@ -31,6 +38,7 @@ steps:
   - wait
 
   - group: "Global Land Models"
+    if: build.env("LONGER_RUN") == null
     steps:
 
       - label: ":snow_capped_mountain: Snowy Land"
@@ -84,3 +92,19 @@ steps:
           slurm_time: 00:30:00
         env:
           CLIMACOMMS_DEVICE: "CUDA"
+
+  - group: "Very long run of snowy land"
+    if: build.env("LONGER_RUN") != null
+    steps:
+      - label: ":snow_capped_mountain: Snowy Land"
+        command:
+          - julia --color=yes --project=.buildkite experiments/long_runs/snowy_land.jl
+        artifact_paths:
+          - "snowy_land_longrun_gpu/*png"
+          - "snowy_land_longrun_gpu/*pdf"
+        agents:
+          slurm_gpus: 1
+          slurm_time: 24:00:00
+        env:
+          CLIMACOMMS_DEVICE: "CUDA"
+          LONGER_RUN: ""

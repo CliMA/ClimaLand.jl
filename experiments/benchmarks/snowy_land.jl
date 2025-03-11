@@ -224,7 +224,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         (; parameters = Canopy.FarquharParameters(FT, is_c3; Vcmax25 = Vcmax25))
     # Set up plant hydraulics
     modis_lai_artifact_path =
-        ClimaLand.Artifacts.modis_lai_forcing_data2008_path(; context)
+        ClimaLand.Artifacts.modis_lai_forcing_data_path(; context)
     modis_lai_ncdata_path =
         joinpath(modis_lai_artifact_path, "Yuan_et_al_2008_1x1.nc")
     LAIfunction = ClimaLand.prescribed_lai_modis(
