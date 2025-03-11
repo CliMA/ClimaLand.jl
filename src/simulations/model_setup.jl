@@ -51,7 +51,7 @@ function land_model_setup(
 
     # Forcing data
     if era5_lowres
-        suffix = "lowres"
+        suffix = "_lowres"
     else
         suffix = ""
     end
@@ -62,7 +62,7 @@ function land_model_setup(
             lowres = era5_lowres,
         )
     era5_ncdata_path =
-        joinpath(era5_artifact_path, "era5_2008_1.0x1.0_$suffix.nc")
+        joinpath(era5_artifact_path, "era5_2008_1.0x1.0$suffix.nc")
     atmos, radiation = ClimaLand.prescribed_forcing_era5(
         era5_ncdata_path,
         surface_space,
