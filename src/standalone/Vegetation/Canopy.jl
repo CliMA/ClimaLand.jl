@@ -54,31 +54,9 @@ struct SharedCanopyParameters{FT <: AbstractFloat, PSE}
     z_0m::FT
     "Roughness length for scalars (m)"
     z_0b::FT
-    "Characteristic velocity scale used in computing leaf boundary layer resistance (m/s)"
-    lbl_uscale::FT
     "Earth param set"
     earth_param_set::PSE
 end
-
-"""
-    SharedCanopyParameters{FT, PSE}(z_0m::FT, z_0b::FT, earth_param_set::PSE; lbl_uscale = 0.0025) where {FT, PSE}
-
-Outer constructor which preserves default behavior.
-"""
-function SharedCanopyParameters{FT, PSE}(
-    z_0m::FT,
-    z_0b::FT,
-    earth_param_set::PSE;
-    lbl_uscale = 0.0025,
-) where {FT, PSE}
-    return SharedCanopyParameters{FT, PSE}(
-        z_0m,
-        z_0b,
-        FT(lbl_uscale),
-        earth_param_set,
-    )
-end
-
 
 """
      CanopyModel{FT, AR, RM, PM, SM, PHM, EM, SM, A, R, S, PS, D} <: ClimaLand.AbstractImExModel{FT}

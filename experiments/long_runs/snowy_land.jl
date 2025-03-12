@@ -76,7 +76,6 @@ function setup_prob(
 
     # Affects turbulent surface fluxes for the canopy:
     h_leaf = FT(1.0) # cannot be larger than 10m.
-    lbl_uscale = FT(0.04 / 0.01^2) # CLM default. must be positive
 
     # Primarily affecting ET
     K_sat_plant = FT(8e-8) # m/s 
@@ -327,7 +326,6 @@ function setup_prob(
     shared_params = Canopy.SharedCanopyParameters{FT, typeof(earth_param_set)}(
         z0_m,
         z0_b,
-        lbl_uscale,
         earth_param_set,
     )
 
