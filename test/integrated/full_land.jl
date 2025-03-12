@@ -1,3 +1,7 @@
+import SciMLBase
+import ClimaTimeSteppers as CTS
+using ClimaCore.MatrixFields
+import ClimaCore.MatrixFields: @name
 using ClimaComms
 using Dates
 using Test
@@ -10,6 +14,7 @@ nelements = (101, 15)
 start_date = DateTime(2008)
 Δt = 450.0
 t0 = 0.0
+tf = t0 + Δt
 
 FT = Float64
 earth_param_set = LP.LandParameters(FT)
@@ -70,17 +75,75 @@ land, Y, p, cds = ClimaLand.land_model_setup(
     era5_lowres = true,
 )
 
+surface_space = axes(Y.snow.U)
+binary_mask = .~parent(surface_space.grid.mask.is_active)[:]
 
-# More complex function
+
+# First, set the cache and make sure there are no NaNs, or values set over the ocean
 set_initial_cache! = make_set_initial_cache(land)
 set_initial_cache!(p, Y, t0)
+
+for var in propertynames(p.soil)
+    field_values = parent(getproperty(p.soil, var))
+    @test sum(isnan, field_values) == 0
+    if length(size(field_values)) == 5 # 3d var
+        @test extrema(field_values[:, 1, 1, :, binary_mask]) == (0.0, 0.0)
+    else
+        @test extrema(field_values[1, 1, :, binary_mask]) == (0.0, 0.0)
+    end
+end
+for var in propertynames(p.soilco2)
+    field_values = parent(getproperty(p.soilco2, var))
+    @test sum(isnan, field_values) == 0
+    if length(size(field_values)) == 5 # 3d var
+        @test extrema(field_values[:, 1, 1, :, binary_mask]) == (0.0, 0.0)
+    else
+        @test extrema(field_values[1, 1, :, binary_mask]) == (0.0, 0.0)
+    end
+end
+for var in propertynames(p.snow)
+    field_values = parent(getproperty(p.snow, var))
+    @test sum(isnan, field_values) == 0
+    @test extrema(field_values[1, 1, 1, binary_mask]) == (0.0, 0.0)
+end
+for var in propertynames(p.drivers)
+    field_values = parent(getproperty(p.drivers, var))
+    #@test extrema(field_values[1,1,1,binary_mask]) == (0.0,0.0) The forcing is not masked
+    @test sum(isnan, field_values) == 0
+end
+field_pn_p = [
+    pn for pn in propertynames(p) if pn != :soil &&
+    pn != :canopy &&
+    pn != :snow &&
+    pn != :soilco2 &&
+    pn != :drivers &&
+    ~occursin("dss", String(pn))
+]
+for var in field_pn_p
+    field_values = parent(getproperty(p, var))
+    @test sum(isnan, field_values) == 0
+    if length(size(field_values)) == 5 # 3d var
+        @test extrema(field_values[:, 1, 1, :, binary_mask]) == (0.0, 0.0)
+    else
+        @test extrema(field_values[1, 1, :, binary_mask]) == (0.0, 0.0)
+    end
+end
+for key in keys(p.canopy)
+    x = getproperty(p.canopy, key)
+    for var in propertynames(x)
+        field_values = parent(getproperty(x, var))
+        @test extrema(field_values[1, 1, :, binary_mask]) == (0.0, 0.0)
+        @test sum(isnan, field_values) == 0
+    end
+end
+
+
+# now check what tendency updates do:
 dY = similar(Y)
 @. dY = 0
 
 imp_tendency! = make_imp_tendency(land)
 imp_tendency!(dY, Y, p, t0)
-surface_space = axes(Y.snow.U)
-binary_mask = .~parent(surface_space.grid.mask.is_active)[:]
 # Test that the masked parts of dY did not update and are still zero
 @test extrema(parent(dY.soil.ϑ_l)[:, 1, 1, 1, binary_mask]) == (0.0, 0.0)
 @test extrema(parent(dY.soil.θ_i)[:, 1, 1, 1, binary_mask]) == (0.0, 0.0)
@@ -91,3 +154,69 @@ binary_mask = .~parent(surface_space.grid.mask.is_active)[:]
 @test extrema(parent(dY.canopy.energy.T)[1, 1, 1, binary_mask]) == (0.0, 0.0)
 @test extrema(parent(dY.canopy.hydraulics.ϑ_l.:1)[1, 1, 1, binary_mask]) ==
       (0.0, 0.0)
+
+@. dY = 0
+exp_tendency! = make_exp_tendency(land)
+exp_tendency!(dY, Y, p, t0)
+# Test that the masked parts of dY did not update and are still zero
+@test extrema(parent(dY.soil.ϑ_l)[:, 1, 1, 1, binary_mask]) == (0.0, 0.0)
+@test extrema(parent(dY.soil.θ_i)[:, 1, 1, 1, binary_mask]) == (0.0, 0.0)
+@test extrema(parent(dY.soil.ρe_int)[:, 1, 1, 1, binary_mask]) == (0.0, 0.0)
+@test extrema(parent(dY.snow.U)[1, 1, 1, binary_mask]) == (0.0, 0.0)
+@test extrema(parent(dY.snow.S)[1, 1, 1, binary_mask]) == (0.0, 0.0)
+@test extrema(parent(dY.snow.S_l)[1, 1, 1, binary_mask]) == (0.0, 0.0)
+@test extrema(parent(dY.canopy.energy.T)[1, 1, 1, binary_mask]) == (0.0, 0.0)
+@test extrema(parent(dY.canopy.hydraulics.ϑ_l.:1)[1, 1, 1, binary_mask]) ==
+      (0.0, 0.0)
+
+# Check jacobian
+
+jacobian! = ClimaLand.make_jacobian(land);
+jac_prototype = ClimaLand.FieldMatrixWithSolver(Y);
+jacobian!(jac_prototype, Y, p, Δt, t0);
+(; matrix) = jac_prototype;
+∂ϑres∂ϑ = matrix[@name(soil.ϑ_l), @name(soil.ϑ_l)];
+@test extrema(parent(∂ϑres∂ϑ.entries.:1)[:, 1, 1, 1, binary_mask]) == (0.0, 0.0)
+@test extrema(parent(∂ϑres∂ϑ.entries.:2)[:, 1, 1, 1, binary_mask]) == (0.0, 0.0)
+@test extrema(parent(∂ϑres∂ϑ.entries.:3)[:, 1, 1, 1, binary_mask]) == (0.0, 0.0)
+
+∂ρeres∂ρe = matrix[@name(soil.ρe_int), @name(soil.ρe_int)];
+@test extrema(parent(∂ρeres∂ρe.entries.:1)[:, 1, 1, 1, binary_mask]) ==
+      (0.0, 0.0)
+@test extrema(parent(∂ρeres∂ρe.entries.:2)[:, 1, 1, 1, binary_mask]) ==
+      (0.0, 0.0)
+@test extrema(parent(∂ρeres∂ρe.entries.:3)[:, 1, 1, 1, binary_mask]) ==
+      (0.0, 0.0)
+∂ρeres∂ϑ = matrix[@name(soil.ρe_int), @name(soil.ϑ_l)];
+@test extrema(parent(∂ρeres∂ϑ.entries.:1)[:, 1, 1, 1, binary_mask]) ==
+      (0.0, 0.0)
+@test extrema(parent(∂ρeres∂ϑ.entries.:2)[:, 1, 1, 1, binary_mask]) ==
+      (0.0, 0.0)
+@test extrema(parent(∂ρeres∂ϑ.entries.:3)[:, 1, 1, 1, binary_mask]) ==
+      (0.0, 0.0)
+
+∂Tres∂T = matrix[@name(canopy.energy.T), @name(canopy.energy.T)];
+@test extrema(parent(∂Tres∂T.entries.:1)[1, 1, 1, binary_mask]) == (0.0, 0.0)
+
+# Take a step
+jac_kwargs = (; jac_prototype = jac_prototype, Wfact = jacobian!)
+prob = SciMLBase.ODEProblem(
+    CTS.ClimaODEFunction(
+        T_exp! = exp_tendency!,
+        T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
+        dss! = ClimaLand.dss!,
+    ),
+    Y,
+    (t0, tf),
+    p,
+)
+# Define timestepper and ODE algorithm
+stepper = CTS.ARS111()
+ode_algo = CTS.IMEXAlgorithm(
+    stepper,
+    CTS.NewtonsMethod(
+        max_iters = 3,
+        update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
+    ),
+)
+#sol = SciMLBase.solve(prob, ode_algo; dt = Δt, adaptive = false, saveat = [t0,tf]);

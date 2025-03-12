@@ -196,7 +196,7 @@ function setup_and_solve_problem(; greet = false)
     hours = 60minutes # hours in seconds
     days = 24hours # days in seconds
     years = 366days # years in seconds - 366 to make sure we capture at least full years
-    tf = 2years # 2 years in seconds
+    tf = 33 * days # 2 years in seconds
     Δt = 450.0
     start_date = DateTime(2008)
     nelements = (101, 15)
@@ -275,7 +275,7 @@ for (group_id, group) in
 
     CairoMakie.save(joinpath(root_path, "$(group_name).png"), fig)
 end
-
+#=
 short_names =
     ["gpp", "swc", "et", "ct", "swe", "si", "lwp", "iwc", "trans", "msf"]
 
@@ -293,3 +293,4 @@ include("leaderboard/leaderboard.jl")
 diagnostics_folder_path = outdir
 leaderboard_base_path = root_path
 compute_leaderboard(leaderboard_base_path, diagnostics_folder_path)
+=#
