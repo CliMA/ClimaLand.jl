@@ -435,15 +435,20 @@ end
 
 Container for the prescribed radiation functions needed to drive land models in standalone mode.
 
-Note that some models require the zenith angle AND diffuse fraction. This
-requires the thermodynamic parameters as well to compute. Therefore,
-you must either pass the optional zenith angle function argument and 
-thermodynamic parameters, or pass neither.
+Note that some models require the zenith angle AND diffuse fraction. The diffuse fraction
+may be provided directly (of type TimeVaryingInput), or it may be computed empirically.
+In the latter case, it requires the thermodynamic parameters as well to compute. 
+
+Therefore, the allowed combinations are:
+1. Zenith angle and diffuse fraction not needed: zenith angle=nothing, thermo_params=nothing, diffuse fraction=nothing
+2. Zenith angle provided and diffuse fraction computed empirically:  thermo params used, diffuse fraction=nothing
+3. Zenith angle provided and diffuse fraction provided: thermo_params not used, diffuse fraction TimeVaryingInput
 $(DocStringExtensions.FIELDS)
 """
 struct PrescribedRadiativeFluxes{
     FT,
     SW <: Union{Nothing, AbstractTimeVaryingInput},
+    FD <: Union{Nothing, AbstractTimeVaryingInput},
     LW <: Union{Nothing, AbstractTimeVaryingInput},
     DT,
     T,
@@ -451,6 +456,8 @@ struct PrescribedRadiativeFluxes{
 } <: AbstractRadiativeDrivers{FT}
     "Downward shortwave radiation function of time (W/m^2): positive indicates towards surface"
     SW_d::SW
+    "Diffuse Fraction of shortwave radiation (unitless, [0,1])"
+    frac_diff::FD
     "Downward longwave radiation function of time (W/m^2): positive indicates towards surface"
     LW_d::LW
     "Start date - the datetime corresponding to t=0 for the simulation"
@@ -466,14 +473,14 @@ struct PrescribedRadiativeFluxes{
         start_date;
         θs = nothing,
         earth_param_set = nothing,
+        frac_diff = nothing,
     )
         if isnothing(earth_param_set)
             thermo_params = nothing
         else
             thermo_params = LP.thermodynamic_parameters(earth_param_set)
         end
-
-        args = (SW_d, LW_d, start_date, θs, thermo_params)
+        args = (SW_d, frac_diff, LW_d, start_date, θs, thermo_params)
         return new{FT, typeof.(args)...}(args...)
     end
 end
@@ -1018,35 +1025,41 @@ function make_update_drivers(r::PrescribedRadiativeFluxes{FT}) where {FT}
     function update_drivers!(p, t)
         evaluate!(p.drivers.SW_d, r.SW_d, t)
         evaluate!(p.drivers.LW_d, r.LW_d, t)
-        # This assumes that temperature, pressure, and specific humidity have already updated
-        # and that PrescribedRadiation is only used with PrescribedAtmos.
-        # If this is not the case, this function would use the vaues of T, P, q
-        # from the previous step.
-        # Since this function is empirical and our steps are O(10 minutes), this is
-        # not a big issue.
-        # In practice, the diffuse fraction should be supplied by the Radiative
-        # Transfer module of the atmosphere, or obtained from ERA5,
-        # and not be computed empirically
-        # If we obtain this factor from ERA5 in the future, we should remove thermo_params from the struct.
-        if !isnothing(r.θs) & !isnothing(r.thermo_params)
+        # Next we update the zenith angle and diffuse fraction of light. These are either
+        # both required, or neither required.
+        if !isnothing(r.θs)
             p.drivers.cosθs .= FT.(cos.(r.θs(t, r.start_date)))
-            @. p.drivers.frac_diff = diffuse_fraction(
-                t,
-                r.start_date,
-                p.drivers.T,
-                p.drivers.P,
-                p.drivers.q,
-                p.drivers.SW_d,
-                p.drivers.cosθs,
-                r.thermo_params,
-            )
-        elseif isnothing(r.θs) & isnothing(r.thermo_params)
+            if !isnothing(r.frac_diff)
+                # If the diffuse fraction is a TimeVaryingInput, we use that directly.
+                evaluate!(p.drivers.frac_diff, r.frac_diff, t)
+            else
+                # Otherwise, we use an empirical function that requires atmospheric
+                # quantities, thermo params, and zenith angle as input.
+                @assert !isnothing(r.thermo_params)
+                # We assume that temperature, pressure, and specific humidity have already updated
+                # and that PrescribedRadiation is only used with PrescribedAtmos.
+                # If this is not the case, this function would use the vaues of T, P, q
+                # from the previous step.
+                # Since this function is empirical and our steps are O(10 minutes), this is
+                # not a big issue.
+                @. p.drivers.frac_diff = empirical_diffuse_fraction(
+                    t,
+                    r.start_date,
+                    p.drivers.T,
+                    p.drivers.P,
+                    p.drivers.q,
+                    p.drivers.SW_d,
+                    p.drivers.cosθs,
+                    r.thermo_params,
+                )
+            end
+        elseif isnothing(r.thermo_params) & isnothing(r.frac_diff)
             # These should not be accessed or used. Set to NaN.
             p.drivers.cosθs .= FT(NaN)
             p.drivers.frac_diff .= FT(NaN)
         else
             @error(
-                "Zenith angle and thermodynamic params must either both be supplied or both not supplied. See doc string for PrescribedRadiativeFluxes"
+                "Zenith angle is not provided, but either diffuse fraction or thermo params are. If zenith angle is nothing, both of these must be nothing. See doc string for PrescribedRadiativeFluxes"
             )
         end
     end
@@ -1102,7 +1115,7 @@ function prescribed_forcing_era5(
         regridder_type,
         file_reader_kwargs = (; preprocess_func = (data) -> -data / 1000,),
         method = time_interpolation_method,
-        compose_function = (mtpr, msr) -> mtpr - msr,
+        compose_function = (mtpr, msr) -> min.(mtpr .- msr, Float32(0)),
     )
     # Precip is provide as a mass flux; convert to volume flux of liquid water with ρ =1000 kg/m^3
     snow_precip = TimeVaryingInput(
@@ -1176,6 +1189,23 @@ function prescribed_forcing_era5(
         regridder_type,
         method = time_interpolation_method,
     )
+    function compute_diffuse_fraction(total, direct)
+        diff = max(total - direct, Float32(0))
+        return min(diff / (total + eps(Float32)), Float32(1))
+    end
+    function compute_diffuse_fraction_broadcasted(total, direct)
+        return @. compute_diffuse_fraction(total, direct)
+    end
+
+    frac_diff = TimeVaryingInput(
+        era5_ncdata_path,
+        ["msdwswrf", "msdrswrf"],
+        surface_space;
+        start_date,
+        regridder_type,
+        method = time_interpolation_method,
+        compose_function = compute_diffuse_fraction_broadcasted,
+    )
     LW_d = TimeVaryingInput(
         era5_ncdata_path,
         "msdwlwrf",
@@ -1225,6 +1255,7 @@ function prescribed_forcing_era5(
         start_date;
         θs = zenith_angle,
         earth_param_set = earth_param_set,
+        frac_diff = frac_diff,
     )
     return atmos, radiation
 end
@@ -1370,7 +1401,7 @@ end
 
 
 """
-    diffuse_fraction(td::FT, T::FT, P, q, SW_d::FT, cosθs::FT, thermo_params) where {FT}
+    empirical_diffuse_fraction(td::FT, T::FT, P, q, SW_d::FT, cosθs::FT, thermo_params) where {FT}
 
 Computes the fraction of diffuse radiation (`diff_frac`) as a function
 of the solar zenith angle (`θs`), the total surface downwelling shortwave radiation (`SW_d`),
@@ -1391,7 +1422,7 @@ can become large negative numbers.
 
 Because of that, we cap the returned value to lie within [0,1].
 """
-function diffuse_fraction(
+function empirical_diffuse_fraction(
     t,
     start_date,
     T::FT,
