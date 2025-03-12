@@ -4,6 +4,8 @@ ClimaLand.jl Release Notes
 main
 -------
 
+- update drivers to support running `LandModel` in coupled mode
+  PR[#1035](https://github.com/CliMA/ClimaLand.jl/pull/1035)
 
 v0.15.10
 --------
