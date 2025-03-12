@@ -313,6 +313,7 @@ function Plane(;
         quad;
         enable_mask = true,
     )
+    ClimaCore.Spaces.set_mask!(space, ClimaCore.Fields.ones(space))
     space = (; surface = space)
     return Plane{FT}(
         xlim,
@@ -597,7 +598,7 @@ function SphericalShell(;
         quad;
         enable_mask = true,
     )
-
+    ClimaCore.Spaces.set_mask!(horzspace, ClimaCore.Fields.ones(horzspace))
     subsurface_space = ClimaCore.Spaces.ExtrudedFiniteDifferenceSpace(
         horzspace,
         vert_center_space,
@@ -668,6 +669,7 @@ function SphericalSurface(;
     end
     horzspace =
         Spaces.SpectralElementSpace2D(horztopology, quad; enable_mask = true)
+    ClimaCore.Spaces.set_mask!(horzspace, ClimaCore.Fields.ones(horzspace))
     space = (; surface = horzspace)
     return SphericalSurface{FT}(radius, nelements, npolynomial, space)
 end
