@@ -1,8 +1,9 @@
+using ClimaComms
+ClimaComms.@import_required_backends
 import SciMLBase
 import ClimaTimeSteppers as CTS
 using ClimaCore.MatrixFields
 import ClimaCore.MatrixFields: @name
-using ClimaComms
 using Dates
 using Test
 import ClimaParams as CP
@@ -108,7 +109,7 @@ for var in propertynames(p.snow)
 end
 for var in propertynames(p.drivers)
     field_values = parent(getproperty(p.drivers, var))
-    #@test extrema(field_values[1,1,1,binary_mask]) == (0.0,0.0) The forcing is not masked
+    #@test extrema(field_values[1,1,1,binary_mask]) == (0.0,0.0) # FAILS
     @test sum(isnan, field_values) == 0
 end
 field_pn_p = [
@@ -152,8 +153,9 @@ imp_tendency!(dY, Y, p, t0)
 @test extrema(parent(dY.snow.S)[1, 1, 1, binary_mask]) == (0.0, 0.0)
 @test extrema(parent(dY.snow.S_l)[1, 1, 1, binary_mask]) == (0.0, 0.0)
 @test extrema(parent(dY.canopy.energy.T)[1, 1, 1, binary_mask]) == (0.0, 0.0)
-@test extrema(parent(dY.canopy.hydraulics.ϑ_l.:1)[1, 1, 1, binary_mask]) ==
-      (0.0, 0.0)
+@test extrema(
+    Array(parent(dY.canopy.hydraulics.ϑ_l.:1))[1, 1, 1, Array(binary_mask)],
+) == (0.0, 0.0)
 
 @. dY = 0
 exp_tendency! = make_exp_tendency(land)
@@ -166,37 +168,96 @@ exp_tendency!(dY, Y, p, t0)
 @test extrema(parent(dY.snow.S)[1, 1, 1, binary_mask]) == (0.0, 0.0)
 @test extrema(parent(dY.snow.S_l)[1, 1, 1, binary_mask]) == (0.0, 0.0)
 @test extrema(parent(dY.canopy.energy.T)[1, 1, 1, binary_mask]) == (0.0, 0.0)
-@test extrema(parent(dY.canopy.hydraulics.ϑ_l.:1)[1, 1, 1, binary_mask]) ==
-      (0.0, 0.0)
+@test extrema(
+    Array(parent(dY.canopy.hydraulics.ϑ_l.:1))[1, 1, 1, Array(binary_mask)],
+) == (0.0, 0.0)
 
 # Check jacobian
 
 jacobian! = ClimaLand.make_jacobian(land);
 jac_prototype = ClimaLand.FieldMatrixWithSolver(Y);
+# Check the cache fields
+@test axes(
+    jac_prototype.solver.cache.cache₁.entries[1],
+).grid.horizontal_grid.mask == surface_space.grid.mask
+for i in 1:3
+    @test axes(
+        jac_prototype.solver.cache.b₂′.entries[i],
+    ).grid.horizontal_grid.mask == surface_space.grid.mask
+    @test axes(
+        jac_prototype.solver.cache.cache₂.entries[i],
+    ).grid.horizontal_grid.mask == surface_space.grid.mask
+end
+for i in 4:8
+    @test axes(jac_prototype.solver.cache.b₂′.entries[i]).grid.mask ==
+          surface_space.grid.mask
+    @test axes(jac_prototype.solver.cache.cache₂.entries[i]).grid.mask ==
+          surface_space.grid.mask
+
+end
+
 jacobian!(jac_prototype, Y, p, Δt, t0);
 (; matrix) = jac_prototype;
 ∂ϑres∂ϑ = matrix[@name(soil.ϑ_l), @name(soil.ϑ_l)];
-@test extrema(parent(∂ϑres∂ϑ.entries.:1)[:, 1, 1, 1, binary_mask]) == (0.0, 0.0)
-@test extrema(parent(∂ϑres∂ϑ.entries.:2)[:, 1, 1, 1, binary_mask]) == (0.0, 0.0)
-@test extrema(parent(∂ϑres∂ϑ.entries.:3)[:, 1, 1, 1, binary_mask]) == (0.0, 0.0)
+@test extrema(
+    Array(parent(∂ϑres∂ϑ.entries.:1))[:, 1, 1, 1, Array(binary_mask)],
+) == (0.0, 0.0)
+@test extrema(
+    Array(parent(∂ϑres∂ϑ.entries.:2))[:, 1, 1, 1, Array(binary_mask)],
+) == (0.0, 0.0)
+@test extrema(
+    Array(parent(∂ϑres∂ϑ.entries.:3))[:, 1, 1, 1, Array(binary_mask)],
+) == (0.0, 0.0)
 
 ∂ρeres∂ρe = matrix[@name(soil.ρe_int), @name(soil.ρe_int)];
-@test extrema(parent(∂ρeres∂ρe.entries.:1)[:, 1, 1, 1, binary_mask]) ==
-      (0.0, 0.0)
-@test extrema(parent(∂ρeres∂ρe.entries.:2)[:, 1, 1, 1, binary_mask]) ==
-      (0.0, 0.0)
-@test extrema(parent(∂ρeres∂ρe.entries.:3)[:, 1, 1, 1, binary_mask]) ==
-      (0.0, 0.0)
+@test extrema(
+    Array(parent(∂ρeres∂ρe.entries.:1))[:, 1, 1, 1, Array(binary_mask)],
+) == (0.0, 0.0)
+@test extrema(
+    Array(parent(∂ρeres∂ρe.entries.:2))[:, 1, 1, 1, Array(binary_mask)],
+) == (0.0, 0.0)
+@test extrema(
+    Array(parent(∂ρeres∂ρe.entries.:3))[:, 1, 1, 1, Array(binary_mask)],
+) == (0.0, 0.0)
 ∂ρeres∂ϑ = matrix[@name(soil.ρe_int), @name(soil.ϑ_l)];
-@test extrema(parent(∂ρeres∂ϑ.entries.:1)[:, 1, 1, 1, binary_mask]) ==
-      (0.0, 0.0)
-@test extrema(parent(∂ρeres∂ϑ.entries.:2)[:, 1, 1, 1, binary_mask]) ==
-      (0.0, 0.0)
-@test extrema(parent(∂ρeres∂ϑ.entries.:3)[:, 1, 1, 1, binary_mask]) ==
-      (0.0, 0.0)
+@test extrema(
+    Array(parent(∂ρeres∂ϑ.entries.:1))[:, 1, 1, 1, Array(binary_mask)],
+) == (0.0, 0.0)
+@test extrema(
+    Array(parent(∂ρeres∂ϑ.entries.:2))[:, 1, 1, 1, Array(binary_mask)],
+) == (0.0, 0.0)
+@test extrema(
+    Array(parent(∂ρeres∂ϑ.entries.:3))[:, 1, 1, 1, Array(binary_mask)],
+) == (0.0, 0.0)
 
 ∂Tres∂T = matrix[@name(canopy.energy.T), @name(canopy.energy.T)];
-@test extrema(parent(∂Tres∂T.entries.:1)[1, 1, 1, binary_mask]) == (0.0, 0.0)
+@test extrema(Array(parent(∂Tres∂T.entries.:1))[1, 1, 1, Array(binary_mask)]) ==
+      (0.0, 0.0)
+
+
+
+b = similar(Y) .* 1;
+x = deepcopy(Y);
+@test axes(x.soil.ϑ_l).grid.horizontal_grid.mask == surface_space.grid.mask;
+
+
+MatrixFields.field_matrix_solve!(
+    jac_prototype.solver,
+    x,
+    jac_prototype.matrix,
+    b,
+);
+
+@test extrema(parent(x.soil.ϑ_l)[:, 1, 1, 1, binary_mask]) == (0.0, 0.0) # FAILS
+@test extrema(parent(x.soil.θ_i)[:, 1, 1, 1, binary_mask]) == (0.0, 0.0)
+@test extrema(parent(x.soil.ρe_int)[:, 1, 1, 1, binary_mask]) == (0.0, 0.0) # FAILS
+@test extrema(parent(x.snow.U)[1, 1, 1, binary_mask]) == (0.0, 0.0)
+@test extrema(parent(x.snow.S)[1, 1, 1, binary_mask]) == (0.0, 0.0)
+@test extrema(parent(x.snow.S_l)[1, 1, 1, binary_mask]) == (0.0, 0.0)
+@test extrema(parent(x.canopy.energy.T)[1, 1, 1, binary_mask]) == (0.0, 0.0) #FAILS
+@test extrema(
+    Array(parent(x.canopy.hydraulics.ϑ_l.:1))[1, 1, 1, Array(binary_mask)],
+) == (0.0, 0.0)
 
 # Take a step
 jac_kwargs = (; jac_prototype = jac_prototype, Wfact = jacobian!)
@@ -219,4 +280,22 @@ ode_algo = CTS.IMEXAlgorithm(
         update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
     ),
 )
-#sol = SciMLBase.solve(prob, ode_algo; dt = Δt, adaptive = false, saveat = [t0,tf]);
+
+sol = SciMLBase.solve(
+    prob,
+    ode_algo;
+    dt = Δt,
+    adaptive = false,
+    saveat = [t0, tf],
+);
+u = sol.u[end];
+@test extrema(parent(u.soil.ϑ_l)[:, 1, 1, 1, binary_mask]) == (0.0, 0.0) # FAILS
+@test extrema(parent(u.soil.θ_i)[:, 1, 1, 1, binary_mask]) == (0.0, 0.0)
+@test extrema(parent(u.soil.ρe_int)[:, 1, 1, 1, binary_mask]) == (0.0, 0.0) # FAILS
+@test extrema(parent(u.snow.U)[1, 1, 1, binary_mask]) == (0.0, 0.0)
+@test extrema(parent(u.snow.S)[1, 1, 1, binary_mask]) == (0.0, 0.0)
+@test extrema(parent(u.snow.S_l)[1, 1, 1, binary_mask]) == (0.0, 0.0)
+@test extrema(parent(u.canopy.energy.T)[1, 1, 1, binary_mask]) == (0.0, 0.0) # FAILS
+@test extrema(
+    Array(parent(u.canopy.hydraulics.ϑ_l.:1))[1, 1, 1, Array(binary_mask)],
+) == (0.0, 0.0)
