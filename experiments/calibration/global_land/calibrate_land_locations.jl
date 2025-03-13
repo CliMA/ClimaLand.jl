@@ -74,8 +74,18 @@ include(joinpath(dir, "experiments/calibration/shared/observation_data_locations
 using LinearAlgebra
 noise = Diagonal(noise_era5) # has to be a Matrix. Could also have covariances between variables.
 
+eki = EKP.EnsembleKalmanProcess(
+    EKP.construct_initial_ensemble(prior, ensemble_size),
+    observations,
+    noise,
+    EKP.Inversion();
+    verbose=true,
+    localization_method=EKP.Localizers.NoLocalization(),
+)
+
 CAL.calibrate(
     CAL.WorkerBackend,
+    eki,
     ensemble_size,
     n_iterations,
     observations,
