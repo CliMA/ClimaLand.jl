@@ -9,6 +9,84 @@ using Test
 import ClimaParams as CP
 using ClimaLand
 import ClimaLand.Parameters as LP
+using ClimaUtilities.ClimaArtifacts
+
+import Interpolations
+import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
+import ClimaUtilities.Regridders: InterpolationsRegridder
+using ClimaCore: Spaces
+
+
+
+function test_p(p, binary_mask)
+    for var in propertynames(p.drivers)
+        @show var
+        field_values = parent(getproperty(p.drivers, var))
+        if var != :soc
+            @test extrema(field_values[1,1,1,binary_mask]) == (0.0,0.0)
+        else
+            @test extrema(field_values[:,1,1,1,binary_mask]) == (0.0,0.0)
+        end
+        @test sum(isnan, field_values) == 0
+    end
+
+    for var in propertynames(p.soil)
+        @show var
+        field_values = parent(getproperty(p.soil, var))
+        @test sum(isnan, field_values) == 0
+        if length(size(field_values)) == 5 # 3d var
+            @test extrema(field_values[:, 1, 1, :, binary_mask]) == (0.0, 0.0)
+        else
+            @test extrema(field_values[1, 1, :, binary_mask]) == (0.0, 0.0)
+        end
+    end
+    for var in propertynames(p.soilco2)
+        @show var
+        field_values = parent(getproperty(p.soilco2, var))
+        @test sum(isnan, field_values) == 0
+        if length(size(field_values)) == 5 # 3d var
+            @test extrema(field_values[:, 1, 1, :, binary_mask]) == (0.0, 0.0)
+        else
+            @test extrema(field_values[1, 1, :, binary_mask]) == (0.0, 0.0)
+        end
+    end
+    for var in propertynames(p.snow)
+        @show var
+        field_values = parent(getproperty(p.snow, var))
+        @test sum(isnan, field_values) == 0
+        @test extrema(field_values[1, 1, 1, binary_mask]) == (0.0, 0.0)
+    end
+
+    field_pn_p = [
+        pn for pn in propertynames(p) if pn != :soil &&
+        pn != :canopy &&
+        pn != :snow &&
+        pn != :soilco2 &&
+        pn != :drivers &&
+        ~occursin("dss", String(pn))
+    ]
+    for key in keys(p.canopy)
+        @show key
+        x = getproperty(p.canopy, key)
+        for var in propertynames(x)
+            field_values = parent(getproperty(x, var))
+            @test extrema(field_values[1, 1, :, binary_mask]) == (0.0, 0.0)
+            @test sum(isnan, field_values) == 0
+        end
+    end
+    for var in field_pn_p
+        @show var
+        field_values = parent(getproperty(p, var))
+        @test sum(isnan, field_values) == 0
+        if length(size(field_values)) == 5 # 3d var
+            @test extrema(field_values[:, 1, 1, :, binary_mask]) == (0.0, 0.0)
+        else
+            @test extrema(field_values[1, 1, :, binary_mask]) == (0.0, 0.0)
+        end
+    end
+    
+    end
+
 
 context = ClimaComms.context()
 nelements = (101, 15)
@@ -62,7 +140,7 @@ other_canopy_params = (;
     zmax,
 )
 
-land, Y, p, cds = ClimaLand.land_model_setup(
+land= ClimaLand.land_model_setup(
     FT;
     earth_param_set,
     context,
@@ -74,69 +152,36 @@ land, Y, p, cds = ClimaLand.land_model_setup(
     other_canopy_params,
     other_snow_params,
     era5_lowres = true,
+    apply_mask = true
+)
+Y, p, cds = initialize(land)
+# Y Here we change them to be -1 for tracking errors below
+Y .= 0
+surface_space = axes(Y.snow.U)
+subsurface_space = axes(Y.soil.ϑ_l)
+binary_mask = .~parent(surface_space.grid.mask.is_active)[:]
+test_p(p,binary_mask)
+#=
+ic_path = ClimaLand.Artifacts.soil_ic_2008_50m_path(; context = context)
+ClimaLand.set_soil_initial_conditions!(Y, land.soil.parameters.ν, land.soil.parameters.θ_r, subsurface_space, ic_path)
+evaluate!(p.snow.T, land.snow.boundary_conditions.atmos.T, t0)
+ClimaLand.set_snow_initial_conditions!(
+        Y,
+        p,
+        surface_space,
+        ic_path,
+        land.snow.parameters,
 )
 
-surface_space = axes(Y.snow.U)
-binary_mask = .~parent(surface_space.grid.mask.is_active)[:]
+Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
+Y.canopy.hydraulics.ϑ_l.:1 .= plant_ν
+evaluate!(Y.canopy.energy.T, land.snow.boundary_conditions.atmos.T, t0)
 
 
 # First, set the cache and make sure there are no NaNs, or values set over the ocean
 set_initial_cache! = make_set_initial_cache(land)
 set_initial_cache!(p, Y, t0)
-
-for var in propertynames(p.soil)
-    field_values = parent(getproperty(p.soil, var))
-    @test sum(isnan, field_values) == 0
-    if length(size(field_values)) == 5 # 3d var
-        @test extrema(field_values[:, 1, 1, :, binary_mask]) == (0.0, 0.0)
-    else
-        @test extrema(field_values[1, 1, :, binary_mask]) == (0.0, 0.0)
-    end
-end
-for var in propertynames(p.soilco2)
-    field_values = parent(getproperty(p.soilco2, var))
-    @test sum(isnan, field_values) == 0
-    if length(size(field_values)) == 5 # 3d var
-        @test extrema(field_values[:, 1, 1, :, binary_mask]) == (0.0, 0.0)
-    else
-        @test extrema(field_values[1, 1, :, binary_mask]) == (0.0, 0.0)
-    end
-end
-for var in propertynames(p.snow)
-    field_values = parent(getproperty(p.snow, var))
-    @test sum(isnan, field_values) == 0
-    @test extrema(field_values[1, 1, 1, binary_mask]) == (0.0, 0.0)
-end
-for var in propertynames(p.drivers)
-    field_values = parent(getproperty(p.drivers, var))
-    #@test extrema(field_values[1,1,1,binary_mask]) == (0.0,0.0) # FAILS
-    @test sum(isnan, field_values) == 0
-end
-field_pn_p = [
-    pn for pn in propertynames(p) if pn != :soil &&
-    pn != :canopy &&
-    pn != :snow &&
-    pn != :soilco2 &&
-    pn != :drivers &&
-    ~occursin("dss", String(pn))
-]
-for var in field_pn_p
-    field_values = parent(getproperty(p, var))
-    @test sum(isnan, field_values) == 0
-    if length(size(field_values)) == 5 # 3d var
-        @test extrema(field_values[:, 1, 1, :, binary_mask]) == (0.0, 0.0)
-    else
-        @test extrema(field_values[1, 1, :, binary_mask]) == (0.0, 0.0)
-    end
-end
-for key in keys(p.canopy)
-    x = getproperty(p.canopy, key)
-    for var in propertynames(x)
-        field_values = parent(getproperty(x, var))
-        @test extrema(field_values[1, 1, :, binary_mask]) == (0.0, 0.0)
-        @test sum(isnan, field_values) == 0
-    end
-end
+test_p(p, binary_mask)
 
 
 # now check what tendency updates do:

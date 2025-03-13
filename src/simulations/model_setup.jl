@@ -23,6 +23,7 @@ function land_model_setup(
     other_snow_params,
     time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
     era5_lowres = false,
+    apply_mask = true,
 )
     # Unpack scalar parameters
     α_snow = other_snow_params.α_snow
@@ -45,7 +46,7 @@ function land_model_setup(
         zmax,
     ) = other_canopy_params
 
-    domain = ClimaLand.global_domain(FT; nelements = nelements)# pass context?
+    domain = ClimaLand.global_domain(FT; nelements = nelements, apply_mask = apply_mask)# pass context?
     surface_space = domain.space.surface
     subsurface_space = domain.space.subsurface
 
@@ -284,22 +285,5 @@ function land_model_setup(
         snow_model_type = snow_model_type,
     )
 
-    Y, p, cds = initialize(land)
-
-    ic_path = ClimaLand.Artifacts.soil_ic_2008_50m_path(; context = context)
-    ClimaLand.set_soil_initial_conditions!(Y, ν, θ_r, subsurface_space, ic_path)
-    evaluate!(p.snow.T, atmos.T, t0)
-    ClimaLand.set_snow_initial_conditions!(
-        Y,
-        p,
-        surface_space,
-        ic_path,
-        land.snow.parameters,
-    )
-
-    Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
-    Y.canopy.hydraulics.ϑ_l.:1 .= plant_ν
-    evaluate!(Y.canopy.energy.T, atmos.T, t0)
-
-    return land, Y, p, cds
+    return land
 end
