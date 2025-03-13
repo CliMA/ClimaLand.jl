@@ -452,3 +452,50 @@ function canopy_turbulent_fluxes_at_a_point(
     )
 
 end
+
+"""
+    boundary_vars(bc, ::ClimaLand.TopBoundary)
+    boundary_var_domain_names(bc, ::ClimaLand.TopBoundary)
+    boundary_var_types(::AbstractCanopyEnergyModel, bc, ::ClimaLand.TopBoundary)
+
+Fallbacks for the boundary conditions methods which add the turbulent
+fluxes to the auxiliary variables.
+"""
+boundary_vars(bc, ::ClimaLand.TopBoundary) = (:turbulent_fluxes,)
+boundary_var_domain_names(bc, ::ClimaLand.TopBoundary) = (:surface,)
+boundary_var_types(::AbstractCanopyEnergyModel, bc, ::ClimaLand.TopBoundary) = (
+    NamedTuple{
+        (:lhf, :shf, :transpiration, :r_ae, :∂LHF∂qc, :∂SHF∂Tc),
+        Tuple{FT, FT, FT, FT, FT, FT},
+    },
+)
+
+"""
+    boundary_var_types(
+        ::AbstractCanopyEnergyModel{FT},
+        ::AtmosDrivenCanopyBC{<:CoupledAtmosphere, <:CoupledRadiativeFluxes},
+        ::ClimaLand.TopBoundary,
+    ) where {FT}
+
+An extension of the `boundary_var_types` method for AtmosDrivenCanopyBC. This
+specifies the type of the additional variables.
+
+This method includes the additional momentum fluxes needed by the atmosphere.
+These are updated in place when the coupler computes turbulent fluxes,
+rather than in `soil_boundary_fluxes!`.
+
+Note that we currently store these in the land model because the coupler
+computes turbulent land/atmosphere fluxes using ClimaLand functions, and
+the land model needs to be able to store the fluxes as an intermediary.
+Once we compute fluxes entirely within the coupler, we can remove this.
+"""
+boundary_var_types(
+    ::AbstractCanopyEnergyModel{FT},
+    ::AtmosDrivenCanopyBC{<:CoupledAtmosphere, <:CoupledRadiativeFluxes},
+    ::ClimaLand.TopBoundary,
+) where {FT} = (
+    NamedTuple{
+        (:lhf, :shf, :transpiration, :r_ae, :∂LHF∂qc, :∂SHF∂Tc, :ρτxz, :ρτyz),
+        Tuple{FT, FT, FT, FT, FT, FT, FT, FT},
+    },
+)
