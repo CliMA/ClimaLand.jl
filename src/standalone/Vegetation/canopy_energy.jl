@@ -16,19 +16,28 @@ abstract type AbstractCanopyEnergyModel{FT} <: AbstractCanopyComponent{FT} end
 ClimaLand.name(model::AbstractCanopyEnergyModel) = :energy
 
 
-ClimaLand.auxiliary_vars(model::AbstractCanopyEnergyModel) =
-    (:turbulent_fluxes, :fa_energy_roots, :∂LW_n∂Tc, :∂qc∂Tc)
-ClimaLand.auxiliary_types(model::AbstractCanopyEnergyModel{FT}) where {FT} = (
-    NamedTuple{
-        (:lhf, :shf, :transpiration, :r_ae, :∂LHF∂qc, :∂SHF∂Tc),
-        Tuple{FT, FT, FT, FT, FT, FT},
-    },
-    FT,
-    FT,
-    FT,
+ClimaLand.auxiliary_vars(model::AbstractCanopyEnergyModel) = (
+    :fa_energy_roots,
+    :∂LW_n∂Tc,
+    :∂qc∂Tc,
+    boundary_vars(model, ClimaLand.TopBoundary())...,
 )
-ClimaLand.auxiliary_domain_names(model::AbstractCanopyEnergyModel) =
-    (:surface, :surface, :surface, :surface)
+ClimaLand.auxiliary_types(model::AbstractCanopyEnergyModel{FT}) where {FT} = (
+    FT,
+    FT,
+    FT,
+    boundary_var_types(
+        model,
+        model.boundary_conditions.top,
+        ClimaLand.TopBoundary(),
+    )...,
+)
+ClimaLand.auxiliary_domain_names(model::AbstractCanopyEnergyModel) = (
+    :surface,
+    :surface,
+    :surface,
+    boundary_var_domain_names(model, ClimaLand.TopBoundary())...,
+)
 
 """
     PrescribedCanopyTempModel{FT} <: AbstractCanopyEnergyModel{FT}

@@ -1124,12 +1124,6 @@ function soil_turbulent_fluxes_at_a_point(
     )
 end
 
-
-
-
-
-
-
 function coupler_compute_turbulent_fluxes!(
     dest,
     model::EnergyHydrology{FT},
