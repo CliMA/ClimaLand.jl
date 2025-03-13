@@ -282,22 +282,27 @@ end
     ) (:info, "Checking NaNs in var2") (:info, "No NaNs found") (
         :info,
         "Checking NaNs in var3",
-    ) (:info, "No NaNs found") ClimaLand.count_nans_state(Y, verbose = true)
+    ) (:info, "No NaNs found") ClimaLand.call_count_nans_state(
+        Y,
+        verbose = true,
+    )
 
     @test_logs (:info, "Checking NaNs in var1") (
         :info,
         "Checking NaNs in fieldvec",
-    ) (:info, "Checking NaNs in var2") (:info, "Checking NaNs in var3") ClimaLand.count_nans_state(
+    ) (:info, "Checking NaNs in var2") (:info, "Checking NaNs in var3") ClimaLand.call_count_nans_state(
         Y,
     )
 
-    # Add some NaNs to the fields
+    # Add some NaNs to the fields.
+    # Note that we only check if NaNs are present in the surface field, since
+    # any NaN in the column will propagate to the surface within several timesteps.
     # Note: this code uses `parent` and scalar indexing,
     # which shouldn't be replicated outside of tests
     ClimaComms.allowscalar(ClimaComms.device()) do
-        parent(var1)[1] = NaN
-        parent(var2)[1] = NaN
-        parent(var2)[2] = NaN
+        parent(var1)[:, 1, 1, 1, 1] .= NaN
+        parent(var2)[:, 1, 1, 1, 1] .= NaN
+        parent(var2)[:, 2, 1, 1, 1] .= NaN
     end
 
     # Count and log the number of NaNs in the state (test verbose and non-verbose cases)
@@ -307,7 +312,10 @@ end
     ) (:info, "Checking NaNs in var2") (:warn, "2 NaNs found") (
         :info,
         "Checking NaNs in var3",
-    ) (:info, "No NaNs found") ClimaLand.count_nans_state(Y, verbose = true)
+    ) (:info, "No NaNs found") ClimaLand.call_count_nans_state(
+        Y,
+        verbose = true,
+    )
 
     @test_logs (:info, "Checking NaNs in var1") (:warn, "1 NaNs found") (
         :info,
@@ -315,17 +323,19 @@ end
     ) (:info, "Checking NaNs in var2") (:warn, "2 NaNs found") (
         :info,
         "Checking NaNs in var3",
-    ) ClimaLand.count_nans_state(Y)
+    ) ClimaLand.call_count_nans_state(Y)
 
     # Test with a mask
-    mask_zeros = Fields.zeros(space)
+    sfc_space = domain.space.surface
+
+    mask_zeros = Fields.zeros(sfc_space)
     @test_logs (:info, "Checking NaNs in var1") (:info, "No NaNs found") (
         :info,
         "Checking NaNs in fieldvec",
     ) (:info, "Checking NaNs in var2") (:info, "No NaNs found") (
         :info,
         "Checking NaNs in var3",
-    ) (:info, "No NaNs found") ClimaLand.count_nans_state(
+    ) (:info, "No NaNs found") ClimaLand.call_count_nans_state(
         Y,
         mask = mask_zeros,
         verbose = true,
@@ -333,19 +343,19 @@ end
     @test_logs (:info, "Checking NaNs in var1") (
         :info,
         "Checking NaNs in fieldvec",
-    ) (:info, "Checking NaNs in var2") (:info, "Checking NaNs in var3") ClimaLand.count_nans_state(
+    ) (:info, "Checking NaNs in var2") (:info, "Checking NaNs in var3") ClimaLand.call_count_nans_state(
         Y,
         mask = mask_zeros,
     )
 
-    mask_ones = Fields.ones(space)
+    mask_ones = Fields.ones(sfc_space)
     @test_logs (:info, "Checking NaNs in var1") (:warn, "1 NaNs found") (
         :info,
         "Checking NaNs in fieldvec",
     ) (:info, "Checking NaNs in var2") (:warn, "2 NaNs found") (
         :info,
         "Checking NaNs in var3",
-    ) (:info, "No NaNs found") ClimaLand.count_nans_state(
+    ) (:info, "No NaNs found") ClimaLand.call_count_nans_state(
         Y,
         mask = mask_ones,
         verbose = true,
@@ -357,5 +367,5 @@ end
     ) (:info, "Checking NaNs in var2") (:warn, "2 NaNs found") (
         :info,
         "Checking NaNs in var3",
-    ) ClimaLand.count_nans_state(Y, mask = mask_ones)
+    ) ClimaLand.call_count_nans_state(Y, mask = mask_ones)
 end
