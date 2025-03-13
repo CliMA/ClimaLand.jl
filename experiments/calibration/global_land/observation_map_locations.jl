@@ -6,7 +6,7 @@ import EnsembleKalmanProcesses as EKP
 #rows_to_remove = [66] # iteration 1, member 5
 
 # explain things here - tutorial style
-function process_member_data(simdir)
+function process_member_data(simdir, iteration, m)
 
     lhf = get(simdir; short_name = "lhf")
     shf = get(simdir; short_name = "shf")
@@ -103,7 +103,7 @@ function CAL.observation_map(iteration)
             joinpath(member_path, "global_diagnostics", "output_active")
         if isdir(simdir_path)
             simdir = SimDir(simdir_path)
-            G_ensemble[:, m] .= process_member_data(simdir)
+            G_ensemble[:, m] .= process_member_data(simdir, iteration, m)
         else
             G_ensemble[:, m] .= NaN
         end

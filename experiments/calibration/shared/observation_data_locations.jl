@@ -67,8 +67,8 @@ for i in 1:length(training_locations)
 
     # Add the observations to the target
     loc_id = (i-1) * 12 * 4
-    ERA5_target[loc_id+1:loc_id+12] .= lhf_loc[1:12]
-    ERA5_target[loc_id+12+1:loc_id+24] .= shf_loc[1:12]
+    ERA5_target[loc_id+1:loc_id+12] .= .-lhf_loc[1:12]
+    ERA5_target[loc_id+12+1:loc_id+24] .= .-shf_loc[1:12]
     ERA5_target[loc_id+24+1:loc_id+36] .= lwu_loc[1:12]
     ERA5_target[loc_id+36+1:loc_id+48] .= swu_loc[1:12]
 
