@@ -60,7 +60,6 @@ import ClimaLand.Parameters as LP
         :T_sfc,
         :z_snow,
         :ρ_snow,
-        :turbulent_fluxes,
         :R_n,
         :phase_change_flux,
         :energy_runoff,
@@ -71,6 +70,7 @@ import ClimaLand.Parameters as LP
         :applied_energy_flux,
         :applied_water_flux,
         :snow_cover_fraction,
+        :turbulent_fluxes,
     )
 
     Y.snow.S .= FT(0.1)
