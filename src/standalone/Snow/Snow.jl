@@ -32,7 +32,7 @@ import ClimaLand:
     surface_emissivity,
     get_drivers,
     total_energy_per_area!,
-    total_water_mass_per_area!
+    total_liq_water_vol_per_area!
 export SnowParameters, SnowModel, AtmosDrivenSnowBC, snow_boundary_fluxes!
 
 """
@@ -502,7 +502,7 @@ include("./boundary_fluxes.jl")
 """
 
 """
-function ClimaLand.total_water_mass_per_area!(
+function ClimaLand.total_liq_water_vol_per_area!(
     surface_field,
     model::SnowModel,
     Y,
@@ -510,8 +510,7 @@ function ClimaLand.total_water_mass_per_area!(
     t,
 )
     earth_param_set = model.parameters.earth_param_set
-    _ρ_liq = LP.ρ_cloud_liq(earth_param_set)
-    surface_field .= Y.snow.S .* _ρ_liq
+    surface_field .= Y.snow.S
     return nothing
 end
 

@@ -210,6 +210,41 @@ Returns the component names of the `land` model, by calling
 """
 land_components(land::AbstractLandModel) = propertynames(land)
 
+function total_energy_per_area!(
+    surface_field,
+    land::AbstractLandModel,
+    Y,
+    p,
+    t,
+    sfc_cache,
+)
+    components = land_components(land)
+    sfc_cache *= 0
+    surface_field *= 0
+    for component in components
+        total_energy_per_area!(sfc_cache, getproperty(land), Y, p, t)
+        surface_field += sfc_cache
+    end
+end
+
+function total_liq_water_vol_per_area!(
+    surface_field,
+    land::AbstractLandModel,
+    Y,
+    p,
+    t,
+    sfc_cache,
+)
+    components = land_components(land)
+    sfc_cache *= 0
+    surface_field *= 0
+    for component in components
+        total_liq_water_vol_per_area!(sfc_cache, getproperty(land), Y, p, t)
+        surface_field += sfc_cache
+    end
+end
+
+
 function prognostic_vars(land::AbstractLandModel)
     components = land_components(land)
     prognostic_list = map(components) do model

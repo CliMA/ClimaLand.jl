@@ -26,7 +26,7 @@ import ClimaLand:
     make_compute_imp_tendency,
     make_compute_jacobian,
     get_drivers,
-    total_water_mass_per_area!,
+    total_liq_water_vol_per_area!,
     total_energy_per_area!
 
 using ClimaLand.Domains: Point, Plane, SphericalSurface
@@ -706,14 +706,14 @@ function ClimaLand.total_energy_per_area!(
     ClimaLand.total_energy_per_area!(surface_field, model.energy, Y, p, t)
 end
 
-function ClimaLand.total_water_mass_per_area!(
+function ClimaLand.total_liq_water_vol_per_area!(
     surface_field,
     model::CanopyModel,
     Y,
     p,
     t,
 )
-    ClimaLand.total_water_mass_per_area!(
+    ClimaLand.total_liq_water_vol_per_area!(
         surface_field,
         model.hydraulics,
         Y,

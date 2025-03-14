@@ -94,7 +94,7 @@ import ClimaLand:
     surface_resistance,
     turbulent_fluxes!,
     get_drivers,
-    total_water_mass_per_area!,
+    total_liq_water_vol_per_area!,
     total_energy_per_area!
 export RichardsModel,
     RichardsParameters,

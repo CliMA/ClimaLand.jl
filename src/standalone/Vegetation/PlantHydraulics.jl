@@ -22,7 +22,7 @@ import ClimaLand:
     auxiliary_domain_names,
     prognostic_domain_names,
     name,
-    total_water_mass_per_area!
+    total_liq_water_vol_per_area!
 export PlantHydraulicsModel,
     AbstractPlantHydraulicsModel,
     water_flux,
@@ -769,15 +769,13 @@ end
 """
 
 """
-function ClimaLand.total_water_mass_per_area!(
+function ClimaLand.total_liq_water_vol_per_area!(
     surface_field,
     model::PlantHydraulicsModel,
     Y,
     p,
     t,
-    earth_param_set,
 )
-    _ρ_liq = LP.ρ_cloud_liq(earth_param_set)
     compartment_dz =
         model.compartment_surfaces[2:end] .-
         model.compartment_surfaces[1:(end - 1)] #not a field

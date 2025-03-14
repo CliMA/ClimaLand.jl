@@ -251,7 +251,7 @@ function ClimaLand.total_energy_per_area!(
     t,
 )
     area_index = p.canopy.hydraulics.area_index
-    @. surface_field =
+    @. surface_field .=
         model.parameters.ac_canopy *
         (area_index.stem + area_index.leaf) *
         Y.canopy.energy.T

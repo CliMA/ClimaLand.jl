@@ -460,14 +460,13 @@ end
 """
 
 """
-function ClimaLand.total_water_mass_per_area!(
+function ClimaLand.total_liq_water_vol_per_area!(
     surface_field,
     model::RichardsModel,
     Y,
     p,
     t,
 )
-    _ρ_liq = 1000 # this isnt stored for Richards...
     ClimaCore.Operators.column_integral_definite!(Y.soil.ϑ_l, surface_field)
     return nothing
 end

@@ -1127,7 +1127,7 @@ end
 """
 
 """
-function ClimaLand.total_water_mass_per_area!(
+function ClimaLand.total_liq_water_vol_per_area!(
     surface_field,
     model::EnergyHydrology,
     Y,
@@ -1138,7 +1138,7 @@ function ClimaLand.total_water_mass_per_area!(
     _ρ_liq = LP.ρ_cloud_liq(earth_param_set)
     _ρ_ice = LP.ρ_cloud_ice(earth_param_set)
     ClimaCore.Operators.column_integral_definite!(
-        Y.soil.ϑ_l .* _ρ_liq .+ Y.soil.θ_i, # this line allocates
+        Y.soil.ϑ_l .+ Y.soil.θ_i .* _ρ_ice ./ _ρ_liq, # this line allocates
         surface_field,
     )
     return nothing
