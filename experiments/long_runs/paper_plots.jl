@@ -27,12 +27,14 @@ root_path = joinpath(pwd(), "snowy_land_longrun_gpu")
 outdir = "snowy_land_longrun_gpu-3785"
 root_path = outdir
 
-short_names = ["lhf", "shf", "lwu", "swu"]#, "lwn", "swn"]
+short_names = ["lhf", "shf", "lwn", "swn"]#, "lwu", "swu"]
 title_stubs = Dict(
     "lhf" => "LE",#"Latent heat flux",
     "shf" => "H",#"Sensible heat flux",
     "lwu" => "LWᵤ",#"Upward longwave radiation",
     "swu" => "SWᵤ",#"Upward shortwave radiation",
+    "lwn" => "LWₙ",#"Net longwave radiation",
+    "swn" => "SWₙ",#"Net shortwave radiation",
 )
 # Define levels for contour colorbars
 levels_dict = Dict(
@@ -91,8 +93,6 @@ function make_paper_figures(
         sim_var_times = ClimaAnalysis.times(sim_var)
 
         obs_var = obs_var_dict[short_name](sim_var.attributes["start_date"])
-
-
 
         sim_var_global_average = zeros(12)
         obs_var_global_average = zeros(12)
@@ -510,7 +510,8 @@ function make_paper_figures(
     end
     save_name = joinpath(root_path, "combined_figures.png")
     save_name =
-        plot_bias ? joinpath(root_path, "combined_figures_bias.png") : save_name
+        plot_bias ? joinpath(root_path, "combined_figures_net-rad_bias.png") :
+        save_name
     save_name =
         plot_seasonal ? joinpath(root_path, "combined_figures_seasonal.png") :
         save_name
