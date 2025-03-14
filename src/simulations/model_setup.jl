@@ -34,29 +34,43 @@ wish by using the default (inner) constructor method for `LandModel`, or using t
 
 Over time, all scalar parameters will be moved to ClimaParameters, so that only a single parameter set `earth_param_set` is passed.
 """
-function global_land_model(FT,
-                           scalar_soil_params,
-                           scalar_canopy_params,
-                           scalar_snow_params;
-                           earth_param_set = LP.LandParameters(FT),
-                           context = nothing,
-                           domain = ClimaLand.global_domain(FT; context = context),
-                           forcing = ClimaLand.prescribed_forcing_era5(ClimaLand.Artifacts.era5_land_forcing_data2008_folder_path(; context),
-                                                                       domain.space.surface,
-                                                                       DateTime(2008),
-                                                                       earth_param_set,
-                                                                       FT),
-                           LAI = ClimaLand.prescribed_lai_modis(ClimaLand.Artifacts.modis_lai_forcing_data2008_path(; context),
-                                                                domain.space.surface,
-                                                                DateTime(2008))
-                           )
+function global_land_model(
+    FT,
+    scalar_soil_params,
+    scalar_canopy_params,
+    scalar_snow_params;
+    earth_param_set = LP.LandParameters(FT),
+    context = nothing,
+    domain = ClimaLand.global_domain(FT; context = context),
+    forcing = ClimaLand.prescribed_forcing_era5(
+        ClimaLand.Artifacts.era5_land_forcing_data2008_folder_path(; context),
+        domain.space.surface,
+        DateTime(2008),
+        earth_param_set,
+        FT,
+    ),
+    LAI = ClimaLand.prescribed_lai_modis(
+        ClimaLand.Artifacts.modis_lai_forcing_data2008_path(; context),
+        domain.space.surface,
+        DateTime(2008),
+    ),
+)
     # Unpack forcing
     (atmos, radiation) = forcing
-    
+
     # Unpack scalar parameters
     (; α_snow, Δt) = scalar_snow_params
     (; f_over, R_sb) = scalar_soil_params
-    (; ac_canopy,  K_sat_plant, a, ψ63, Weibull_param, plant_ν, plant_S_s, h_leaf) = scalar_canopy_params
+    (;
+        ac_canopy,
+        K_sat_plant,
+        a,
+        ψ63,
+        Weibull_param,
+        plant_ν,
+        plant_S_s,
+        h_leaf,
+    ) = scalar_canopy_params
 
     # Construct spatially varying parameters.
     surface_space = domain.space.surface
@@ -197,8 +211,7 @@ function global_land_model(FT,
     photosynthesis_args =
         (; parameters = Canopy.FarquharParameters(FT, is_c3; Vcmax25 = Vcmax25))
     # Set up plant hydraulics
-    ai_parameterization =
-        Canopy.PrescribedSiteAreaIndex{FT}(LAI, SAI, RAI)
+    ai_parameterization = Canopy.PrescribedSiteAreaIndex{FT}(LAI, SAI, RAI)
 
     plant_hydraulics_ps = Canopy.PlantHydraulics.PlantHydraulicsParameters(;
         ai_parameterization = ai_parameterization,

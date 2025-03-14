@@ -93,13 +93,17 @@ function setup_prob(
         FT;
         time_interpolation_method = time_interpolation_method,
     )
-
+    LAI = ClimaLand.prescribed_lai_modis(
+        ClimaLand.Artifacts.modis_lai_forcing_data2008_path(; context),
+        surface_space,
+        start_date,
+    )
     f_over = FT(3.28) # 1/m
     R_sb = FT(1.484e-4 / 1000) # m/s
     scalar_soil_params = (; f_over, R_sb)
 
     α_snow = FT(0.67)
-    scalar_snow_params = (; α_snow,Δt)
+    scalar_snow_params = (; α_snow, FT(Δt))
 
     # Energy Balance model
     ac_canopy = FT(2.5e3)
@@ -121,19 +125,22 @@ function setup_prob(
         plant_S_s,
         h_leaf,
     )
-    
-    domain = ClimaLand.global_domain(FT; nelements = nelements, context = context)
+
+    domain =
+        ClimaLand.global_domain(FT; nelements = nelements, context = context)
     earth_param_set = LP.LandParameters(FT)
-    land = global_land_model(FT,
-                             scalar_soil_params,
-                             scalar_canopy_params,
-                             scalar_snow_params,
-                             earth_param_set;
-                             context = context,
-                             domain = domain,
-                             forcing = forcin
-                             )
-    
+    land = global_land_model(
+        FT,
+        scalar_soil_params,
+        scalar_canopy_params,
+        scalar_snow_params,
+        earth_param_set;
+        context = context,
+        domain = domain,
+        forcing = forcing,
+        LAI = LAI,
+    )
+
     Y, p, cds = initialize(land)
 
     ic_path = ClimaLand.Artifacts.soil_ic_2008_50m_path(; context = context)
@@ -150,7 +157,7 @@ function setup_prob(
     Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
     Y.canopy.hydraulics.ϑ_l.:1 .= plant_ν
     evaluate!(Y.canopy.energy.T, atmos.T, t0)
-    
+
     set_initial_cache! = make_set_initial_cache(land)
     exp_tendency! = make_exp_tendency(land)
     imp_tendency! = ClimaLand.make_imp_tendency(land)

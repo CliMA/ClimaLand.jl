@@ -56,10 +56,10 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     f_over = FT(3.28) # 1/m
     R_sb = FT(1.484e-4 / 1000) # m/s
     other_soil_params = (; f_over, R_sb)
-    
+
     α_snow = FT(0.67)
-    scalar_snow_params = (; α_snow,Δt)
-    
+    scalar_snow_params = (; α_snow, Δt)
+
     # Energy Balance model
     ac_canopy = FT(2.5e3)
     # Plant Hydraulics and general plant parameters
@@ -70,11 +70,24 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     plant_ν = FT(1.44e-4)
     plant_S_s = FT(1e-2 * 0.0098) # m3/m3/MPa to m3/m3/m
     h_leaf = FT(1.0)
-    scalar_canopy_params = (; ac_canopy,K_sat_plant, a, ψ63, Weibull_param, plant_ν, plant_S_s, h_leaf)
+    scalar_canopy_params = (;
+        ac_canopy,
+        K_sat_plant,
+        a,
+        ψ63,
+        Weibull_param,
+        plant_ν,
+        plant_S_s,
+        h_leaf,
+    )
 
-    earth_param_set = LP.LandParameters(FT),
-    
-    domain = ClimaLand.global_domain(FT; nelements = nelements, context = context)
+    earth_param_set =
+        LP.LandParameters(FT),
+        domain = ClimaLand.global_domain(
+            FT;
+            nelements = nelements,
+            context = context,
+        )
     surface_space = domain.space.surface
     start_date = DateTime(2008)
     # Forcing data
@@ -91,20 +104,23 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         FT;
         time_interpolation_method = time_interpolation_method,
     )
-    LAI = ClimaLand.prescribed_lai_modis(ClimaLand.Artifacts.modis_lai_forcing_data2008_path(; context),
-                                         domain.space.surface,
-                                         start_date)
-    land = global_land_model(FT,
-                             scalar_soil_params,
-                             scalar_canopy_params,
-                             scalar_snow_params,
-                             earth_param_set;
-                             context = context,
-                             domain = domain,
-                             forcing = forcing,
-                             LAI = LAI
-                             )
-    
+    LAI = ClimaLand.prescribed_lai_modis(
+        ClimaLand.Artifacts.modis_lai_forcing_data2008_path(; context),
+        domain.space.surface,
+        start_date,
+    )
+    land = global_land_model(
+        FT,
+        scalar_soil_params,
+        scalar_canopy_params,
+        scalar_snow_params,
+        earth_param_set;
+        context = context,
+        domain = domain,
+        forcing = forcing,
+        LAI = LAI,
+    )
+
     Y, p, cds = initialize(land)
 
     @. Y.soil.ϑ_l = θ_r + (ν - θ_r) / 2
