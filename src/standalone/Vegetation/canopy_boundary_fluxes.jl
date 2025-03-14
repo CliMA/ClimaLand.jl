@@ -319,6 +319,7 @@ function ClimaLand.coupler_compute_turbulent_fluxes!(
             model.parameters.z_0m,
             model.parameters.z_0b,
             Ref(model.parameters.earth_param_set),
+            compute_momentum_fluxes = true,
         )
     return nothing
 end
@@ -337,7 +338,8 @@ end
         gustiness::FT,
         z_0m::FT,
         z_0b::FT,
-        earth_param_set::EP,
+        earth_param_set::EP;
+        compute_momentum_fluxes = false,
     ) where {FT <: AbstractFloat, EP}
 
 Computes the turbulent surface fluxes for the canopy at a point
@@ -360,7 +362,8 @@ function canopy_turbulent_fluxes_at_a_point(
     gustiness::FT,
     z_0m::FT,
     z_0b::FT,
-    earth_param_set::EP,
+    earth_param_set::EP;
+    compute_momentum_fluxes = false,
 ) where {FT <: AbstractFloat, EP}
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
     # The following will not run on GPU
@@ -442,15 +445,29 @@ function canopy_turbulent_fluxes_at_a_point(
         ρ_sfc * cp_m_sfc / (r_b_canopy_total + r_ae) +
         SH / ρ_sfc * ∂ρsfc∂Tc +
         SH / cp_m_sfc * ∂cp_m_sfc∂Tc
-    return (
-        lhf = LH,
-        shf = SH,
-        transpiration = Ẽ,
-        r_ae = r_ae,
-        ∂LHF∂qc = ∂LHF∂qc,
-        ∂SHF∂Tc = ∂SHF∂Tc,
-    )
 
+    # Return the unaltered momentum fluxes if they are requested
+    if !compute_momentum_fluxes
+        return (
+            lhf = LH,
+            shf = SH,
+            transpiration = Ẽ,
+            r_ae = r_ae,
+            ∂LHF∂qc = ∂LHF∂qc,
+            ∂SHF∂Tc = ∂SHF∂Tc,
+        )
+    else
+        return (
+            lhf = LH,
+            shf = SH,
+            transpiration = Ẽ,
+            r_ae = r_ae,
+            ∂LHF∂qc = ∂LHF∂qc,
+            ∂SHF∂Tc = ∂SHF∂Tc,
+            ρτxz = conditions.ρτxz,
+            ρτyz = conditions.ρτyz,
+        )
+    end
 end
 
 """
