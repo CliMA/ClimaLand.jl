@@ -553,6 +553,29 @@ function ClimaLand.get_drivers(model::BucketModel)
     return (model.atmos, model.radiation)
 end
 
+"""
+    ClimaLand.surface_air_density(
+                    atmos::CoupledAtmosphere,
+                    model::BucketModel,
+                    Y,
+                    p,
+                    _...,
+                )
+Returns the air density at the surface in the case of a coupled simulation.
+
+This requires the field `ρ_sfc` to be present in the cache `p` under the name
+of the model.
+"""
+function surface_air_density(
+    atmos::CoupledAtmosphere,
+    model::BucketModel,
+    Y,
+    p,
+    _...,
+)
+    return p.bucket.ρ_sfc
+end
+
 include("./bucket_parameterizations.jl")
 
 end

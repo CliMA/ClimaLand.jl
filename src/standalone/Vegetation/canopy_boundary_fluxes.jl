@@ -292,7 +292,7 @@ end
 
 function ClimaLand.coupler_compute_turbulent_fluxes!(
     dest,
-    atmos::NamedTuple,
+    atmos::CoupledAtmosphere,
     model::CanopyModel,
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
@@ -302,8 +302,6 @@ function ClimaLand.coupler_compute_turbulent_fluxes!(
     h_sfc = ClimaLand.surface_height(model, Y, p)
     r_stomata_canopy = ClimaLand.surface_resistance(model, Y, p, t)
     d_sfc = ClimaLand.displacement_height(model, Y, p)
-    u_air = p.drivers.u
-    h_air = atmos.h
     dest .=
         canopy_turbulent_fluxes_at_a_point.(
             T_sfc,
@@ -319,7 +317,7 @@ function ClimaLand.coupler_compute_turbulent_fluxes!(
             model.parameters.z_0m,
             model.parameters.z_0b,
             Ref(model.parameters.earth_param_set),
-            compute_momentum_fluxes = true,
+            return_momentum_fluxes = true,
         )
     return nothing
 end
@@ -339,7 +337,7 @@ end
         z_0m::FT,
         z_0b::FT,
         earth_param_set::EP;
-        compute_momentum_fluxes = false,
+        return_momentum_fluxes = false,
     ) where {FT <: AbstractFloat, EP}
 
 Computes the turbulent surface fluxes for the canopy at a point
@@ -355,7 +353,7 @@ function canopy_turbulent_fluxes_at_a_point(
     r_stomata_canopy::FT,
     d_sfc::FT,
     ts_in,
-    u::FT,
+    u::Union{FT, SVector{2, FT}},
     h::FT,
     LAI::FT,
     SAI::FT,
@@ -363,17 +361,17 @@ function canopy_turbulent_fluxes_at_a_point(
     z_0m::FT,
     z_0b::FT,
     earth_param_set::EP;
-    compute_momentum_fluxes = false,
+    return_momentum_fluxes = false,
 ) where {FT <: AbstractFloat, EP}
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
     # The following will not run on GPU
     #    h - d_sfc - h_sfc < 0 &&
     #        @error("Surface height is larger than atmos height in surface fluxes")
-    state_in = SurfaceFluxes.StateValues(
-        h - d_sfc - h_sfc,
-        SVector{2, FT}(u, 0),
-        ts_in,
-    )
+    # u is already a vector when we get it from a coupled atmosphere, otherwise we need to make it one
+    if u isa FT
+        u = SVector{2, FT}(u, 0)
+    end
+    state_in = SurfaceFluxes.StateValues(h - d_sfc - h_sfc, u, ts_in)
 
     ρ_sfc = compute_ρ_sfc(thermo_params, ts_in, T_sfc)
     q_sfc = Thermodynamics.q_vap_saturation_generic(
@@ -446,8 +444,8 @@ function canopy_turbulent_fluxes_at_a_point(
         SH / ρ_sfc * ∂ρsfc∂Tc +
         SH / cp_m_sfc * ∂cp_m_sfc∂Tc
 
-    # Return the unaltered momentum fluxes if they are requested
-    if !compute_momentum_fluxes
+    # Return the (unaltered) momentum fluxes if they are requested
+    if !return_momentum_fluxes
         return (
             lhf = LH,
             shf = SH,
@@ -500,7 +498,7 @@ specifies the type of the additional variables.
 
 This method includes the additional momentum fluxes needed by the atmosphere.
 These are updated in place when the coupler computes turbulent fluxes,
-rather than in `soil_boundary_fluxes!`.
+rather than in `canopy_boundary_fluxes!`.
 
 Note that we currently store these in the land model because the coupler
 computes turbulent land/atmosphere fluxes using ClimaLand functions, and

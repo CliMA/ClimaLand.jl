@@ -166,7 +166,7 @@ specifies the type of the additional variables.
 
 This method includes the additional momentum fluxes needed by the atmosphere.
 These are updated in place when the coupler computes turbulent fluxes,
-rather than in `soil_boundary_fluxes!`.
+rather than in `snow_boundary_fluxes!`.
 
 Note that we currently store these in the land model because the coupler
 computes turbulent land/atmosphere fluxes using ClimaLand functions, and

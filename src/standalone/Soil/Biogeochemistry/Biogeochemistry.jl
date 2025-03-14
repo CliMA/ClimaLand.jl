@@ -285,7 +285,7 @@ struct SoilDrivers{
     FT,
     MET <: AbstractSoilDriver,
     SOC <: PrescribedSoilOrganicCarbon{FT},
-    ATM <: Union{PrescribedAtmosphere{FT}, CoupledAtmosphere{FT}},
+    ATM <: AbstractAtmosphericDrivers{FT},
 }
     "Soil temperature and moisture drivers - Prescribed or Prognostic"
     met::MET

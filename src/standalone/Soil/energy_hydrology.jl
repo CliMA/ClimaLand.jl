@@ -930,7 +930,7 @@ end
                                 γ::FT,
                                 γT_ref,::FT
                                 earth_param_set::EP;
-                                compute_momentum_fluxes = false,
+                                return_momentum_fluxes = false,
                                ) where {FT <: AbstractFloat, C, EP}
 
 Computes turbulent surface fluxes for soil at a point on a surface given
@@ -960,7 +960,7 @@ function soil_turbulent_fluxes_at_a_point(
     θ_r_sfc::FT,
     K_sat_sfc::FT,
     thermal_state_air::Thermodynamics.PhaseEquil{FT},
-    u_air::FT,
+    u_air::Union{FT, SVector{2, FT}},
     h_air::FT,
     gustiness::FT,
     z_0m::FT,
@@ -969,7 +969,7 @@ function soil_turbulent_fluxes_at_a_point(
     γ::FT,
     γT_ref::FT,
     earth_param_set::P;
-    compute_momentum_fluxes = false,
+    return_momentum_fluxes = false,
 ) where {FT <: AbstractFloat, P}
     # Parameters
     surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
@@ -982,9 +982,13 @@ function soil_turbulent_fluxes_at_a_point(
     _grav::FT = LP.grav(earth_param_set)
 
     # Atmos air state
+    # u is already a vector when we get it from a coupled atmosphere, otherwise we need to make it one
+    if u_air isa FT
+        u_air = SVector{2, FT}(u_air, 0)
+    end
     state_air = SurfaceFluxes.StateValues(
         h_air - d_sfc - h_sfc,
-        SVector{2, FT}(u_air, 0),
+        u_air,
         thermal_state_air,
     )
     q_air::FT =
@@ -1116,8 +1120,8 @@ function soil_turbulent_fluxes_at_a_point(
     dshfdT::FT = 0
     dlhfdT::FT = 0
 
-    # Return the unaltered momentum fluxes if they are requested
-    if !compute_momentum_fluxes
+    # Return the (unaltered) momentum fluxes if they are requested
+    if !return_momentum_fluxes
         return (
             lhf = LH,
             shf = SH,
@@ -1142,15 +1146,14 @@ function soil_turbulent_fluxes_at_a_point(
     end
 end
 
-function coupler_compute_turbulent_fluxes!(
+function ClimaLand.coupler_compute_turbulent_fluxes!(
     dest,
-    model::EnergyHydrology{FT},
-    atmos::NamedTuple,
+    atmos::CoupledAtmosphere,
+    model::EnergyHydrology,
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
     t,
-) where {FT}
-
+)
     # Obtain surface quantities needed for computation; these should not allocate
     T_sfc = ClimaLand.surface_temperature(model, Y, p, t)
     h_sfc = ClimaLand.surface_height(model, Y, p)
@@ -1190,7 +1193,7 @@ function coupler_compute_turbulent_fluxes!(
             γ,
             γT_ref,
             Ref(earth_param_set),
-            compute_momentum_fluxes = true,
+            return_momentum_fluxes = true,
         )
     return nothing
 end
