@@ -321,6 +321,7 @@ function coupler_compute_turbulent_fluxes!(
             model.parameters.z_0m,
             model.parameters.z_0b,
             model.parameters.earth_param_set,
+            compute_momentum_fluxes = true,
         )
     return nothing
 end
@@ -340,7 +341,8 @@ end
                                 gustiness::FT,
                                 z_0m::FT,
                                 z_0b::FT,
-                                earth_param_set::EP,
+                                earth_param_set::EP;
+                                compute_momentum_fluxes = false,
                                ) where {FT <: AbstractFloat, P}
 
 Computes turbulent surface fluxes at a point on a surface given
@@ -379,7 +381,8 @@ function turbulent_fluxes_at_a_point(
     gustiness::FT,
     z_0m::FT,
     z_0b::FT,
-    earth_param_set::EP,
+    earth_param_set::EP;
+    compute_momentum_fluxes = false,
 ) where {FT <: AbstractFloat, EP}
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
     ts_sfc = Thermodynamics.PhaseEquil_ρTq(thermo_params, ρ_sfc, T_sfc, q_sfc)
@@ -438,7 +441,19 @@ function turbulent_fluxes_at_a_point(
     # vapor flux in volume of liquid water with density 1000kg/m^3
     Ẽ = E / _ρ_liq
 
-    return (lhf = LH, shf = SH, vapor_flux = Ẽ, r_ae = r_ae)
+    # Return the unaltered momentum fluxes if they are requested
+    if !compute_momentum_fluxes
+        return (lhf = LH, shf = SH, vapor_flux = Ẽ, r_ae = r_ae)
+    else
+        return (
+            lhf = LH,
+            shf = SH,
+            vapor_flux = Ẽ,
+            r_ae = r_ae,
+            ρτxz = conditions.ρτxz,
+            ρτyz = conditions.ρτyz,
+        )
+    end
 end
 
 """
