@@ -304,19 +304,22 @@ function setup_prob(
 
     Y, p, cds = initialize(land)
 
-    soil_ic_path =
-        ClimaLand.Artifacts.soil_ic_2008_50m_path(; context = context)
+    ic_path = ClimaLand.Artifacts.soil_ic_2008_50m_path(; context = context)
+
+    Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
+    Y.canopy.hydraulics.ϑ_l.:1 .= plant_ν
+    evaluate!(Y.canopy.energy.T, atmos.T, t0)
+    T_bounds = extrema(Y.canopy.energy.T)
+
     ClimaLand.set_soil_initial_conditions!(
         Y,
         ν,
         θ_r,
         subsurface_space,
-        soil_ic_path,
+        ic_path,
+        land.soil,
+        T_bounds,
     )
-
-    Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
-    Y.canopy.hydraulics.ϑ_l.:1 .= plant_ν
-    evaluate!(Y.canopy.energy.T, atmos.T, t0)
 
     set_initial_cache! = make_set_initial_cache(land)
     exp_tendency! = make_exp_tendency(land)
