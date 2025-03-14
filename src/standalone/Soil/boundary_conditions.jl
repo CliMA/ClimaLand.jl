@@ -782,7 +782,7 @@ boundary_var_types(
             :ρτxz,
             :ρτyz,
         ),
-        Tuple{FT, FT, FT, FT, FT, FT, FT, FT},
+        Tuple{FT, FT, FT, FT, FT, FT, FT, FT, FT},
     },
     NamedTuple{
         (:water, :heat),
