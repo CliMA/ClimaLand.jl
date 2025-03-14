@@ -339,7 +339,7 @@ function setup_prob(
     )
 
     Y, p, cds = initialize(land)
-    
+
     evaluate!(p.snow.T, atmos.T, t0)
     ClimaLand.set_snow_initial_conditions!(
         Y,
@@ -355,7 +355,15 @@ function setup_prob(
     T_bounds = extrema(Y.canopy.energy.T)
 
     ic_path = ClimaLand.Artifacts.soil_ic_2008_50m_path(; context = context)
-    ClimaLand.set_soil_initial_conditions!(Y, ν, θ_r, subsurface_space, ic_path, soil, T_bounds)
+    ClimaLand.set_soil_initial_conditions!(
+        Y,
+        ν,
+        θ_r,
+        subsurface_space,
+        ic_path,
+        soil,
+        T_bounds,
+    )
     set_initial_cache! = make_set_initial_cache(land)
     exp_tendency! = make_exp_tendency(land)
     imp_tendency! = ClimaLand.make_imp_tendency(land)
