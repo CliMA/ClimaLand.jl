@@ -70,7 +70,7 @@ function set_soil_initial_conditions!(
             soil.parameters.earth_param_set,
         )
     T .= clip_to_atmos_extrema.(T, T_bounds[1], T_bounds[2])
-    Y.soil.ρe_int .= ClimaLand.Soil.volumetric_internal_energy(
+    Y.soil.ρe_int .= ClimaLand.Soil.volumetric_internal_energy.(
         Y.soil.θ_i,
         ρc_s,
         T,
