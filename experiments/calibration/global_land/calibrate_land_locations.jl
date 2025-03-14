@@ -4,16 +4,35 @@ using ClimaLand
 dir = pkgdir(ClimaLand)
 import ClimaCalibrate: forward_model, parameter_path, path_to_ensemble_member
 import ClimaCalibrate as CAL
+FT = Float64
 using Distributed
-addprocs(
-    CAL.PBSManager(20), # n simulations in parallel
-    q = "main", # not prio
-    A = "UCIT0011",
-    l_select = "1:ngpus=1:ncpus=4",
-    l_walltime = "09:30:00",
-)
+#addprocs(
+#    CAL.PBSManager(4), # n simulations in parallel
+#    q = "main", # not prio
+#    A = "UCIT0011",
+#    l_select = "1:ngpus=1:ncpus=4",
+#    l_walltime = "09:30:00",
+#)
 
-@everywhere begin
+#@everywhere begin
+#    import ClimaCalibrate:
+#        forward_model, parameter_path, path_to_ensemble_member
+#    import ClimaCalibrate as CAL
+#
+#    using ClimaLand
+#    caldir = "calibration_output_new"
+#    dir = pkgdir(ClimaLand)
+#    nelements = (50, 10) # resolution for model and era5
+#
+#    include(
+#        joinpath(
+#            dir,
+#            "experiments/calibration/global_land/forward_model.jl",
+#        ),
+#    )
+#end
+
+expr = quote
     import ClimaCalibrate:
         forward_model, parameter_path, path_to_ensemble_member
     import ClimaCalibrate as CAL
@@ -28,8 +47,16 @@ addprocs(
             dir,
             "experiments/calibration/global_land/forward_model.jl",
         ),
-    )
+       )
 end
+
+@async addprocs(
+    CAL.PBSManager(20; expr), # n simulations in parallel
+    q = "main", # not prio
+    A = "UCIT0011",
+    l_select = "1:ngpus=1:ncpus=4",
+    l_walltime = "09:30:00",
+)
 
 include(joinpath(dir, "experiments/calibration/shared/stable_training_locations.jl"))
 
@@ -88,8 +115,6 @@ CAL.calibrate(
     eki,
     ensemble_size,
     n_iterations,
-    observations,
-    noise,
     prior,
     caldir,
 )

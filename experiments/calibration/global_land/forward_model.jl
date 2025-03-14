@@ -34,7 +34,7 @@ using Statistics
 using Dates
 import NCDatasets
 
-const FT = Float64;
+FT = Float64;
 time_interpolation_method = LinearInterpolation(PeriodicCalendar())
 context = ClimaComms.context()
 ClimaComms.init(context)
