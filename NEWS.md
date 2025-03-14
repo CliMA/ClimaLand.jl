@@ -3,7 +3,8 @@ ClimaLand.jl Release Notes
 
 main
 -------
-
+- adds functions which compute total energy and water content per
+  unit ground area PR[#1071](https://github.com/CliMA/ClimaLand.jl/pull/1071)
 
 v0.15.11
 --------

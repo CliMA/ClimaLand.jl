@@ -21,7 +21,8 @@ import ClimaLand:
     auxiliary_vars,
     auxiliary_domain_names,
     prognostic_domain_names,
-    name
+    name,
+    total_liq_water_vol_per_area!
 export PlantHydraulicsModel,
     AbstractPlantHydraulicsModel,
     water_flux,
@@ -763,6 +764,44 @@ function transpiration_per_ground_area(
     t,
 )
     return p.canopy.energy.turbulent_fluxes.transpiration
+end
+
+"""
+    ClimaLand.total_liq_water_vol_per_area!(
+        surface_field,
+        model::PlantHydraulicsModel,
+        Y,
+        p,
+        t,
+)
+
+A function which updates `surface_field` in place with the value of
+the plant hydraulic models total water volume.
+
+Note that this is general for any number of canopy layers, but it assumes
+that the LAI and SAI given are per layer. This is distinct from the BigLeaf
+approach, in which the LAI and SAI refer to the integrated area index with heigh.
+"""
+function ClimaLand.total_liq_water_vol_per_area!(
+    surface_field,
+    model::PlantHydraulicsModel,
+    Y,
+    p,
+    t,
+)
+    area_index = p.canopy.hydraulics.area_index
+    dz =
+        model.compartment_surfaces[2:end] .-
+        model.compartment_surfaces[1:(end - 1)]
+    labels = model.compartment_labels
+    surface_field .= 0
+    n = length(labels)
+    for i in 1:n
+        surface_field .+=
+            dz[i] .* getproperty(area_index, labels[i]) .*
+            Y.canopy.hydraulics.ϑ_l.:($i)
+    end
+    return nothing
 end
 
 end
