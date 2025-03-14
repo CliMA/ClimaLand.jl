@@ -74,7 +74,7 @@ function set_soil_initial_conditions!(
         Y.soil.θ_i,
         ρc_s,
         T,
-        land.soil.earth_param_set,
+        soil.earth_param_set,
     )
     return nothing
 end
