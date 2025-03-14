@@ -678,7 +678,7 @@ This requires the field `ρ_sfc` to be present in the cache `p` under the name
 of the model.
 """
 function surface_air_density(
-    atmos::CoupledAtmosphere,
+    atmos::Union{CoupledAtmosphere, NamedTuple},
     model::AbstractModel,
     Y,
     p,
