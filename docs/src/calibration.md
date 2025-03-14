@@ -2,23 +2,27 @@
 
 ## Introduction
 
-CliMA uses their own calibration pipeline for all their models ([ClimaLand](https://github.com/CliMA/ClimaLand.jl), [ClimaAtmos](https://github.com/CliMA/ClimaAtmos.jl), [ClimaOcean](https://github.com/CliMA/ClimaOcean.jl), [ClimaCoupler](https://github.com/CliMA/ClimaCoupler.jl)).
-The core package of CliMA calibration is [EnsembleKalmanProcesses](https://github.com/CliMA/EnsembleKalmanProcesses.jl) (EKP),
-which in a nutshell EnsembleKalmanProcesses (EKP) enables users to find an (locally-) optimal parameter set `u` for a computer code `G`
-to fit some (noisy) observational data `y`.
-It uses a suite of methods from the Ensemble Kalman filtering literature that have a long history of success in the weather forecasting community.
-For more information, read [EKP documentation](https://clima.github.io/EnsembleKalmanProcesses.jl/dev/).
+In general, models attempt to reproduce real world observations.
+Calibration is the process of finding the parameter set that will best reproduce real worl observation.
 
-While it is possible to directly use EKP to calibrate our models, in practice we use [ClimaCalibrate](https://github.com/CliMA/ClimaCalibrate.jl),
-which depends on EKP.jl, but further offer optimization for various HPC framework (e.g., central, clima, derecho), and an intuitive library and
-output folder organization. For further information, read [ClimaCalibrate documentation](https://clima.github.io/ClimaCalibrate.jl/dev/).
+To put it simply, a calibration framework needs observation data (for example, monthly latent heat flux from ERA5, for n locations, and m years) that it will attempt to reproduce via the model with the best parameters. In our framework, we need to define:
+- a `forward_model` that runs the model for a given parameter set,
+- an `observation` vector that contains the data or statistics of data we want the model to reproduce,
+- an `observation_map` which maps the equivalent of the observation vector, but from the model output,
+- `priors` which contains the parameters we want to calibrate (find the value that makes the model match the observation best), priors gives which parameters, but also their distribution.
+
+[EnsembleKalmanProcesses.jl](https://github.com/CliMA/EnsembleKalmanProcesses.jl) (EKP) is at the center of CliMA's calibration efforts. EKP implements a suite of Ensemble Kalman methods to find a (locally) optimal parameter set `u` for a model `G` to fit noisy observational data `y`. These methods are optimized for problems where the model `G` is computationally expensive and no analtyic derivatives are available, as in the case of weather forcasting, where Ensemble Kalman techniques have a long history of success.
+
+Large calibration campaigns often require supercomputers and while direct use of EKP.jl is possible, CliMA's preferred approach is using [ClimaCalibrate.jl](https://github.com/CliMA/ClimaCalibrate.jl), a package optimized for running on compute clusters. `ClimaCalibrate` handles efficient job orchestration and abstracts the details of the underlying system, providing a simpler user experience. Consult the [ClimaCalibrate documentation](https://clima.github.io/ClimaCalibrate.jl/dev/) for further information.
 
 ## Calibrate a land model
 
-The easiest, good first example to calibrate a land model with just EKP can be found in the
-[tutorial to calibrate a single site latent heat flux](https://clima.github.io/ClimaLand.jl/stable/generated/calibration/minimal_working_example_obs/).
+In this tutorial, we will perform a calibration using `ClimaCalibrate`. `ClimaCalibrate` provides an interface to `EnsembleKalmanProcesses.jl` that is more optimized for use on supercomputers. The
+[tutorial to calibrate a single site latent heat flux](https://clima.github.io/ClimaLand.jl/stable/generated/calibration/minimal_working_example_obs/) shows how to
+perform a calibration using `EKP` directly.
 
-To calibrate a full land model globally with ClimaCalibrate, we will call a function that will look like this:
+The `calibrate` function is at the heart of performing a calibration with `ClimaCalibrate`:
+
 ```julia
 import ClimaCalibrate as CAL
 
@@ -32,11 +36,11 @@ CAL.calibrate(
     caldir,
 )
 ```
-where `CAL.WorkerBackend`, is one of the possible backend (others being, for example, `JuliaBackend`, `ClimaGPUBackend, or `DerechoBackend`),
+where `CAL.WorkerBackend` defines how to interact with the underlying compute system. For other possible backends (for example, `JuliaBackend`, `ClimaGPUBackend, or `DerechoBackend`),
 see [this doc page](https://clima.github.io/ClimaCalibrate.jl/dev/backends/).
-As explained, ClimaCalibrate can scale calibrations on different distributed computing environments, referred to as backends.
+
 Each backend is optimized for specific use cases and computing resources. The backend system is implemented through Julia's multiple dispatch,
-allowing seamless switching between different computing environments.
+so that code written for one computer can seamlessly be ported to a new/different environments.
 
 `prior` is the distribution of the parameters you want to calibrate. For example, if you want to calibrate two parameters called sc and pc,
 you would define your priors like this, for example:
@@ -111,8 +115,7 @@ like this:
 │   │   │   └── output_active -> output_0000
 │   │   └── parameters.toml
 ```
-each iteration contains folders for each member, inside which you can find the parameters value inside parameters.toml,
-and model outputs inside global_diagnostics.
+each iteration contains folders for each member, inside which you can find the parameters value inside `parameters.toml`, and model outputs inside `global_diagnostics`.
 
 Two additional functions need to be defined in order to run `CAL.calibrate`. `CAL.forward_model(iteration, member)` and `observation_map(iteration)`.
 The `CAL.forward_model(iteration, member)` needs to generate your model output for a specific iteration and member. The `observation_map(iteration)`
@@ -125,7 +128,7 @@ call `CAL.calibrate`!
 
 ## job script
 
-A calibration job will likely take hours to complete. You will probably have to submit a job from a HPC.
+A calibration job will likely take hours to complete, so you will probably have to submit a job with a job scheduler.
 Below is an example job .pbs script, slurm would be slightly different.
 
 ```
@@ -151,4 +154,3 @@ julia --project=.buildkite/ experiments/calibration/global_land/calibrate_land.j
 
 where `calibrate_land.jl` is a script that generates all the arguments needed and eventually calls `CAL.calibrate`.
 You would start the job with a command such as `qsub name_of_job_script`, and a few hours later, you would get a calibrated parameter set.
-
