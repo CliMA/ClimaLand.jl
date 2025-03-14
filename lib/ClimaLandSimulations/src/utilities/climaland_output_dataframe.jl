@@ -7,13 +7,13 @@ Return a vector of FT corresponding to the variable of interest at all times.
 By default, get output from sv.saveval, but user can specify e.g., result = sol.u
 By default, get surface value, but user can specify depth for e.g., soil temperature
 
-example 1: 
+example 1:
 julia> getoutput(sv, 1, :SW_u)
 
-example 2: 
+example 2:
 julia> getoutput(sv, 1, :canopy, :conductance, :gs)
 
-example 3: 
+example 3:
 julia> getoutput(sol, 1, :soil, :ϑ_l; result = sol.u)
 """
 function getoutput(
@@ -46,12 +46,12 @@ function make_output_df(
         (1, :SW_u),
         (1, :LW_u),
         (1, :canopy, :conductance, :gs),
-        (1, :canopy, :energy, :turbulent_fluxes, :transpiration),
         (1, :canopy, :autotrophic_respiration, :Ra),
         (1, :canopy, :photosynthesis, :GPP),
         (1, :canopy, :hydraulics, :β),
         (1, :canopy, :hydraulics, :area_index, :leaf),
-        (1, :canopy, :energy, :turbulent_fluxes, :lhf),
+        (1, :canopy, :turbulent_fluxes, :transpiration),
+        (1, :canopy, :turbulent_fluxes, :lhf),
         (1, :soil, :turbulent_fluxes, :shf),
         (1, :soil, :turbulent_fluxes, :lhf),
         collect(map(i -> (i, :soil, :T), 1:20)), # 20 shouldn't be hard-coded, but an arg, equal to n layers

@@ -163,7 +163,7 @@ equations; updates the specific fields in the auxiliary
 state `p` which hold these variables. This function is called
 within the explicit tendency of the canopy model.
 
-- `p.canopy.energy.turbulent_fluxes`: Canopy SHF, LHF, transpiration, derivatives of these with respect to T,q
+- `p.canopy.turbulent_fluxes`: Canopy SHF, LHF, transpiration, derivatives of these with respect to T,q
 - `p.canopy.hydraulics.fa[end]`: Transpiration
 - `p.canopy.hydraulics.fa_roots`: Root water flux
 - `p.canopy.radiative_transfer.LW_n`: net long wave radiation
@@ -191,7 +191,7 @@ function canopy_boundary_fluxes!(
     fa = p.canopy.hydraulics.fa
     LAI = p.canopy.hydraulics.area_index.leaf
     SAI = p.canopy.hydraulics.area_index.stem
-    canopy_tf = p.canopy.energy.turbulent_fluxes
+    canopy_tf = p.canopy.turbulent_fluxes
     i_end = canopy.hydraulics.n_stem + canopy.hydraulics.n_leaf
     # Compute transpiration, SHF, LHF
     ClimaLand.turbulent_fluxes!(canopy_tf, atmos, canopy, Y, p, t)
@@ -463,16 +463,17 @@ fluxes to the auxiliary variables.
 """
 boundary_vars(bc, ::ClimaLand.TopBoundary) = (:turbulent_fluxes,)
 boundary_var_domain_names(bc, ::ClimaLand.TopBoundary) = (:surface,)
-boundary_var_types(::AbstractCanopyEnergyModel, bc, ::ClimaLand.TopBoundary) = (
-    NamedTuple{
-        (:lhf, :shf, :transpiration, :r_ae, :∂LHF∂qc, :∂SHF∂Tc),
-        Tuple{FT, FT, FT, FT, FT, FT},
-    },
-)
+boundary_var_types(::CanopyModel{FT}, bc, ::ClimaLand.TopBoundary) where {FT} =
+    (
+        NamedTuple{
+            (:lhf, :shf, :transpiration, :r_ae, :∂LHF∂qc, :∂SHF∂Tc),
+            Tuple{FT, FT, FT, FT, FT, FT},
+        },
+    )
 
 """
     boundary_var_types(
-        ::AbstractCanopyEnergyModel{FT},
+        ::CanopyModel{FT},
         ::AtmosDrivenCanopyBC{<:CoupledAtmosphere, <:CoupledRadiativeFluxes},
         ::ClimaLand.TopBoundary,
     ) where {FT}
@@ -490,7 +491,7 @@ the land model needs to be able to store the fluxes as an intermediary.
 Once we compute fluxes entirely within the coupler, we can remove this.
 """
 boundary_var_types(
-    ::AbstractCanopyEnergyModel{FT},
+    ::CanopyModel{FT},
     ::AtmosDrivenCanopyBC{<:CoupledAtmosphere, <:CoupledRadiativeFluxes},
     ::ClimaLand.TopBoundary,
 ) where {FT} = (
