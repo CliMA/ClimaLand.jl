@@ -1123,3 +1123,37 @@ function soil_turbulent_fluxes_at_a_point(
         dshfdT = dshfdT,
     )
 end
+
+"""
+
+"""
+function ClimaLand.total_liq_water_vol_per_area!(
+    surface_field,
+    model::EnergyHydrology,
+    Y,
+    p,
+    t,
+)
+    earth_param_set = model.parameters.earth_param_set
+    _ρ_liq = LP.ρ_cloud_liq(earth_param_set)
+    _ρ_ice = LP.ρ_cloud_ice(earth_param_set)
+    ClimaCore.Operators.column_integral_definite!(
+        Y.soil.ϑ_l .+ Y.soil.θ_i .* _ρ_ice ./ _ρ_liq, # this line allocates
+        surface_field,
+    )
+    return nothing
+end
+
+"""
+
+"""
+function ClimaLand.total_energy_per_area!(
+    surface_field,
+    model::EnergyHydrology,
+    Y,
+    p,
+    t,
+)
+    ClimaCore.Operators.column_integral_definite!(Y.soil.ρe_int, surface_field)
+    return nothing
+end

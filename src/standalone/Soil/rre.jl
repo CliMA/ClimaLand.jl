@@ -456,3 +456,17 @@ function ClimaLand.get_drivers(model::RichardsModel)
         return ()
     end
 end
+
+"""
+
+"""
+function ClimaLand.total_liq_water_vol_per_area!(
+    surface_field,
+    model::RichardsModel,
+    Y,
+    p,
+    t,
+)
+    ClimaCore.Operators.column_integral_definite!(Y.soil.ϑ_l, surface_field)
+    return nothing
+end

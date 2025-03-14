@@ -21,7 +21,8 @@ import ClimaLand:
     auxiliary_vars,
     auxiliary_domain_names,
     prognostic_domain_names,
-    name
+    name,
+    total_liq_water_vol_per_area!
 export PlantHydraulicsModel,
     AbstractPlantHydraulicsModel,
     water_flux,
@@ -763,6 +764,23 @@ function transpiration_per_ground_area(
     t,
 )
     return p.canopy.energy.turbulent_fluxes.transpiration
+end
+
+"""
+
+"""
+function ClimaLand.total_liq_water_vol_per_area!(
+    surface_field,
+    model::PlantHydraulicsModel,
+    Y,
+    p,
+    t,
+)
+    compartment_dz =
+        model.compartment_surfaces[2:end] .-
+        model.compartment_surfaces[1:(end - 1)] #not a field
+    surface_field .= compartment_dz .* parent(Y.canopy.hydraulics.ϑ_l) # WIP this should be then summed over the array and we also need the area index
+    return nothing
 end
 
 end
