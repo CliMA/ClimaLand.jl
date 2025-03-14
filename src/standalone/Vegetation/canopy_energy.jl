@@ -116,12 +116,10 @@ function make_compute_imp_tendency(
         # area index on the LHF, as ac_canopy [J/m^2/K]
         # is per unit area plant.
 
+        # d(energy.T) = - net_energy_flux / specific_heat_capacity
+        # Dividing by c_per_ground_area
         # To prevent dividing by zero, change AI" to
         # "max(AI, eps(FT))"
-        c_per_ground_area =
-            @. ac_canopy * max(area_index.leaf + area_index.stem, eps(FT))
-
-        # d(energy.T) = - net_energy_flux / specific_heat_capacity
         @. dY.canopy.energy.T =
             -(
                 -p.canopy.radiative_transfer.LW_n -
@@ -129,7 +127,7 @@ function make_compute_imp_tendency(
                 p.canopy.energy.turbulent_fluxes.shf +
                 p.canopy.energy.turbulent_fluxes.lhf -
                 p.canopy.energy.fa_energy_roots
-            ) / c_per_ground_area
+            ) / (ac_canopy * max(area_index.leaf + area_index.stem, eps(FT)))
     end
     return compute_imp_tendency!
 end
