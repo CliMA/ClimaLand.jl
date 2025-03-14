@@ -929,7 +929,8 @@ end
                                 Ω::FT,
                                 γ::FT,
                                 γT_ref,::FT
-                                earth_param_set::EP
+                                earth_param_set::EP;
+                                compute_momentum_fluxes = false,
                                ) where {FT <: AbstractFloat, C, EP}
 
 Computes turbulent surface fluxes for soil at a point on a surface given
@@ -967,7 +968,8 @@ function soil_turbulent_fluxes_at_a_point(
     Ω::FT,
     γ::FT,
     γT_ref::FT,
-    earth_param_set::P,
+    earth_param_set::P;
+    compute_momentum_fluxes = false,
 ) where {FT <: AbstractFloat, P}
     # Parameters
     surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
@@ -1113,15 +1115,31 @@ function soil_turbulent_fluxes_at_a_point(
     # Derivatives
     dshfdT::FT = 0
     dlhfdT::FT = 0
-    return (
-        lhf = LH,
-        shf = SH,
-        vapor_flux_liq = Ẽ_l,
-        r_ae = r_ae,
-        vapor_flux_ice = Ẽ_i,
-        dlhfdT = dlhfdT,
-        dshfdT = dshfdT,
-    )
+
+    # Return the unaltered momentum fluxes if they are requested
+    if !compute_momentum_fluxes
+        return (
+            lhf = LH,
+            shf = SH,
+            vapor_flux_liq = Ẽ_l,
+            r_ae = r_ae,
+            vapor_flux_ice = Ẽ_i,
+            dlhfdT = dlhfdT,
+            dshfdT = dshfdT,
+        )
+    else
+        return (
+            lhf = LH,
+            shf = SH,
+            vapor_flux_liq = Ẽ_l,
+            r_ae = r_ae,
+            vapor_flux_ice = Ẽ_i,
+            dlhfdT = dlhfdT,
+            dshfdT = dshfdT,
+            ρτxz = conditions.ρτxz,
+            ρτyz = conditions.ρτyz,
+        )
+    end
 end
 
 function coupler_compute_turbulent_fluxes!(
@@ -1172,6 +1190,7 @@ function coupler_compute_turbulent_fluxes!(
             γ,
             γT_ref,
             Ref(earth_param_set),
+            compute_momentum_fluxes = true,
         )
     return nothing
 end
