@@ -21,7 +21,7 @@ import ClimaLand
                                                                    DateTime(2008),
                                                                    earth_param_set,
                                                                    FT),
-                       LAI = ClimaLand.prescribed_lai_modis(ClimaLand.Artifacts.modis_lai_forcing_data2008_path(; context),
+                       LAI = ClimaLand.prescribed_lai_modis(ClimaLand.Artifacts.modis_lai_forcing_data_path(DateTime(2008); context),
                                                             domain.space.surface,
                                                             DateTime(2008))
                            )
@@ -38,8 +38,8 @@ function global_land_model(
     FT,
     scalar_soil_params,
     scalar_canopy_params,
-    scalar_snow_params;
-    earth_param_set = LP.LandParameters(FT),
+    scalar_snow_params,
+    earth_param_set;
     context = nothing,
     domain = ClimaLand.global_domain(FT; context = context),
     forcing = ClimaLand.prescribed_forcing_era5(
@@ -50,7 +50,7 @@ function global_land_model(
         FT,
     ),
     LAI = ClimaLand.prescribed_lai_modis(
-        ClimaLand.Artifacts.modis_lai_forcing_data2008_path(; context),
+        joinpath(ClimaLand.Artifacts.modis_lai_forcing_data_path(; context), ",
         domain.space.surface,
         DateTime(2008),
     ),

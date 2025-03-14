@@ -78,12 +78,21 @@ function setup_prob(
             date(tf);
             context,
         )
+        modis_lai_ncdata_path = ClimaLand.Artifacts.find_modis_year_paths(
+            date(t0),
+            date(tf);
+            context,
+        )
     else
-        era5_artifact_path =
+        era5_ncdata_path =
             ClimaLand.Artifacts.era5_land_forcing_data2008_folder_path(;
                 context,
             )
-        era5_ncdata_path = joinpath(era5_artifact_path, "era5_2008_1.0x1.0.nc")
+        modis_lai_data_path =
+            ClimaLand.Artifacts.modis_lai_forcing_data_path(; context)
+        year = Dates.year(start_date)
+        modis_lai_ncdata_path =
+            joinpath(modis_lai_data_path, "Yuan_et_al_$(year)_1x1.nc")
     end
     forcing = ClimaLand.prescribed_forcing_era5(
         era5_ncdata_path,
@@ -94,7 +103,7 @@ function setup_prob(
         time_interpolation_method = time_interpolation_method,
     )
     LAI = ClimaLand.prescribed_lai_modis(
-        ClimaLand.Artifacts.modis_lai_forcing_data2008_path(; context),
+        modis_lai_ncdata_path,
         surface_space,
         start_date,
     )

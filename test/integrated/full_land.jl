@@ -55,16 +55,15 @@ forcing = ClimaLand.prescribed_forcing_era5(
     surface_space,
     start_date,
     earth_param_set,
-    FT;
-    time_interpolation_method = time_interpolation_method,
+    FT
 )
 LAI = ClimaLand.prescribed_lai_modis(
-    ClimaLand.Artifacts.modis_lai_forcing_data2008_path(; context),
+    ClimaLand.Artifacts.modis_lai_forcing_data_path(; context),
     domain.space.surface,
     start_date,
 )
 
-land = global_land_model(
+land = ClimaLand.global_land_model(
     FT,
     scalar_soil_params,
     scalar_canopy_params,
@@ -75,32 +74,5 @@ land = global_land_model(
     forcing = forcing,
     LAI = LAI,
 )
-
-Y, p, cds = initialize(land)
-
-@. Y.soil.ϑ_l = θ_r + (ν - θ_r) / 2
-Y.soil.θ_i .= 0
-T = FT(276.85)
-ρc_s =
-    Soil.volumetric_heat_capacity.(
-        Y.soil.ϑ_l,
-        Y.soil.θ_i,
-        soil_params.ρc_ds,
-        soil_params.earth_param_set,
-    )
-Y.soil.ρe_int .=
-    Soil.volumetric_internal_energy.(
-        Y.soil.θ_i,
-        ρc_s,
-        T,
-        soil_params.earth_param_set,
-    )
-Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
-Y.canopy.hydraulics.ϑ_l.:1 .= plant_ν
-evaluate!(Y.canopy.energy.T, atmos.T, t0)
-
-Y.snow.S .= 0
-Y.snow.S_l .= 0
-Y.snow.U .= 0
 
 @test typeof(land) <: ClimaLand.LandModel

@@ -82,8 +82,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     )
 
     earth_param_set =
-        LP.LandParameters(FT),
-        domain = ClimaLand.global_domain(
+        LP.LandParameters(FT), domain = ClimaLand.global_domain(
             FT;
             nelements = nelements,
             context = context,
@@ -104,8 +103,13 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
         FT;
         time_interpolation_method = time_interpolation_method,
     )
+    modis_lai_data_path =
+        ClimaLand.Artifacts.modis_lai_forcing_data_path(; context)
+    year = Dates.year(start_date)
+    modis_lai_ncdata_path =
+        joinpath(modis_lai_data_path, "Yuan_et_al_$(year)_1x1.nc")
     LAI = ClimaLand.prescribed_lai_modis(
-        ClimaLand.Artifacts.modis_lai_forcing_data2008_path(; context),
+        modis_lai_ncdata_path,
         domain.space.surface,
         start_date,
     )

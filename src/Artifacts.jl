@@ -104,7 +104,8 @@ Return the path to the directory that contains the MODIS LAI forcing data for
 the years 2000 to 2020.
 """
 function modis_lai_forcing_data_path(; context = nothing)
-    return @clima_artifact("modis_lai", context)
+    modis_lai_data_path = @clima_artifact("modis_lai", context)
+    return modis_lai_data_path
 end
 
 """
