@@ -361,7 +361,7 @@ function setup_prob(
         θ_r,
         subsurface_space,
         ic_path,
-        soil,
+        land.soil,
         T_bounds,
     )
     set_initial_cache! = make_set_initial_cache(land)
