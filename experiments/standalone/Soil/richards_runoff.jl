@@ -61,7 +61,7 @@ soil_params = ClimaLand.Soil.RichardsParameters(;
     θ_r = θ_r,
 )
 
-era5_artifact_path =
+era5_ncdata_path =
     ClimaLand.Artifacts.era5_land_forcing_data2008_folder_path(; context)
 
 # Below, the preprocess_func argument is used to
@@ -70,7 +70,7 @@ era5_artifact_path =
 start_date = DateTime(2008);
 # Precipitation:
 precip = TimeVaryingInput(
-    joinpath(era5_artifact_path, "era5_2008_1.0x1.0.nc"),
+    era5_ncdata_path,
     "mtpr",
     surface_space;
     start_date,

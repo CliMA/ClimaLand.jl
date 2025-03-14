@@ -69,9 +69,8 @@ function setup_prob(
     subsurface_space = domain.space.subsurface
 
     # Forcing data
-    era5_artifact_path =
+    era5_ncdata_path =
         ClimaLand.Artifacts.era5_land_forcing_data2008_folder_path(; context)
-    era5_ncdata_path = joinpath(era5_artifact_path, "era5_2008_1.0x1.0.nc")
     atmos, radiation = ClimaLand.prescribed_forcing_era5(
         era5_ncdata_path,
         surface_space,

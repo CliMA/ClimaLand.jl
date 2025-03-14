@@ -38,6 +38,7 @@ function global_domain(
     dz_tuple = (10.0, 0.05),
     depth = 50.0,
     npolynomial = 0,
+    context = nothing,
 )
     radius = FT(6378.1e3)
     dz_tuple = FT.(dz_tuple)
