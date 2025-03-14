@@ -448,7 +448,7 @@ function ClimaLand.make_update_aux(
         @. p.canopy.radiative_transfer.ϵ =
             canopy.radiative_transfer.parameters.ϵ_canopy *
             (1 - exp(-(LAI + SAI))) #from CLM 5.0, Tech note 4.20
-        p.canopy.radiative_transfer.G .= compute_G(G_Function, cosθs)
+        compute_G!(p.canopy.radiative_transfer.G, G_Function, cosθs)
         RT = canopy.radiative_transfer
         compute_PAR!(par_d, RT, bc.radiation, p, t)
         compute_NIR!(nir_d, RT, bc.radiation, p, t)
@@ -539,10 +539,12 @@ function ClimaLand.make_update_aux(
 
         # update moisture stress
         i_end = n_stem + n_leaf
-        @. β = moisture_stress(ψ.:($$i_end) * ρ_l * grav, sc, pc)
+        @. β = moisture_stress(ψ.:($$i_end) * ρ_l * grav, sc, pc) # allocates b/c of the .: probably
 
         # Update Rd, An, Vcmax25 (if applicable to model) in place
         Vcmax25 = p.canopy.photosynthesis.Vcmax25
+        # Main.@infiltrate
+        # Need to change this function with btime
         update_photosynthesis!(
             Rd,
             An,

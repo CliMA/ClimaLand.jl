@@ -51,8 +51,9 @@ Returns the leaf angle distribution value for CLM G function as a function of th
 cosine of the solar zenith angle and the leaf orientation index. 
 See section 3.1 of https://www2.cesm.ucar.edu/models/cesm2/land/CLM50_Tech_Note.pdf
 """
-function compute_G(G::CLMGFunction, cosθs)
-    return compute_G_CLMG.(G.χl, cosθs)
+function compute_G!(p_canopy_radiative_transfer_G, G::CLMGFunction, cosθs)
+    @. p_canopy_radiative_transfer_G = compute_G_CLMG(G.χl, cosθs)
+    return nothing
 end
 
 """
