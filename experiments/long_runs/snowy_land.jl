@@ -339,9 +339,7 @@ function setup_prob(
     )
 
     Y, p, cds = initialize(land)
-
-    ic_path = ClimaLand.Artifacts.soil_ic_2008_50m_path(; context = context)
-    ClimaLand.set_soil_initial_conditions!(Y, ν, θ_r, subsurface_space, ic_path)
+    
     evaluate!(p.snow.T, atmos.T, t0)
     ClimaLand.set_snow_initial_conditions!(
         Y,
@@ -354,7 +352,10 @@ function setup_prob(
     Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
     Y.canopy.hydraulics.ϑ_l.:1 .= plant_ν
     evaluate!(Y.canopy.energy.T, atmos.T, t0)
+    T_bounds = extrema(Y.canopy.energy.T)
 
+    ic_path = ClimaLand.Artifacts.soil_ic_2008_50m_path(; context = context)
+    ClimaLand.set_soil_initial_conditions!(Y, ν, θ_r, subsurface_space, ic_path, soil, T_bounds)
     set_initial_cache! = make_set_initial_cache(land)
     exp_tendency! = make_exp_tendency(land)
     imp_tendency! = ClimaLand.make_imp_tendency(land)
@@ -438,7 +439,7 @@ function setup_and_solve_problem(; greet = false)
     days = 24hours # days in seconds
     years = 366days # years in seconds - 366 to make sure we capture at least full years
     # 10 years in seconds for very long run and 2 years in seconds otherwise
-    tf = LONGER_RUN ? 10years : 2years
+    tf = LONGER_RUN ? 10years : 1years
     Δt = 450.0
     start_date = DateTime(2008)
     nelements = (101, 15)
