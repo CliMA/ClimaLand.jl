@@ -686,6 +686,8 @@ function surface_air_density(
 )
     model_name = ClimaLand.name(model)
     model_cache = getproperty(p, model_name)
+    @show model_name
+    @show propertynames(model_cache)
     return model_cache.ρ_sfc
 end
 
