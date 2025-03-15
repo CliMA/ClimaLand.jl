@@ -17,18 +17,11 @@ ClimaLand.name(model::AbstractCanopyEnergyModel) = :energy
 
 
 ClimaLand.auxiliary_vars(model::AbstractCanopyEnergyModel) =
-    (:turbulent_fluxes, :fa_energy_roots, :∂LW_n∂Tc, :∂qc∂Tc)
-ClimaLand.auxiliary_types(model::AbstractCanopyEnergyModel{FT}) where {FT} = (
-    NamedTuple{
-        (:lhf, :shf, :transpiration, :r_ae, :∂LHF∂qc, :∂SHF∂Tc),
-        Tuple{FT, FT, FT, FT, FT, FT},
-    },
-    FT,
-    FT,
-    FT,
-)
+    (:fa_energy_roots, :∂LW_n∂Tc, :∂qc∂Tc)
+ClimaLand.auxiliary_types(model::AbstractCanopyEnergyModel{FT}) where {FT} =
+    (FT, FT, FT)
 ClimaLand.auxiliary_domain_names(model::AbstractCanopyEnergyModel) =
-    (:surface, :surface, :surface, :surface)
+    (:surface, :surface, :surface)
 
 """
     PrescribedCanopyTempModel{FT} <: AbstractCanopyEnergyModel{FT}
@@ -126,9 +119,8 @@ function make_compute_imp_tendency(
             -(
                 -p.canopy.radiative_transfer.LW_n -
                 p.canopy.radiative_transfer.SW_n +
-                p.canopy.energy.turbulent_fluxes.shf +
-                p.canopy.energy.turbulent_fluxes.lhf -
-                p.canopy.energy.fa_energy_roots
+                p.canopy.turbulent_fluxes.shf +
+                p.canopy.turbulent_fluxes.lhf - p.canopy.energy.fa_energy_roots
             ) / c_per_ground_area
     end
     return compute_imp_tendency!
@@ -184,8 +176,8 @@ function ClimaLand.make_compute_jacobian(
 
         # The derivative of the residual with respect to the prognostic variable
         ∂Tres∂T = matrix[@name(canopy.energy.T), @name(canopy.energy.T)]
-        ∂LHF∂qc = p.canopy.energy.turbulent_fluxes.∂LHF∂qc
-        ∂SHF∂Tc = p.canopy.energy.turbulent_fluxes.∂SHF∂Tc
+        ∂LHF∂qc = p.canopy.turbulent_fluxes.∂LHF∂qc
+        ∂SHF∂Tc = p.canopy.turbulent_fluxes.∂SHF∂Tc
         ∂LW_n∂Tc = p.canopy.energy.∂LW_n∂Tc
         ∂qc∂Tc = p.canopy.energy.∂qc∂Tc
         ϵ_c = p.canopy.radiative_transfer.ϵ

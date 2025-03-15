@@ -289,6 +289,44 @@ function turbulent_fluxes!(
 end
 
 
+function coupler_compute_turbulent_fluxes!(
+    dest,
+    atmos::NamedTuple,
+    model::AbstractModel,
+    Y::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
+    t,
+)
+    T_sfc = surface_temperature(model, Y, p, t)
+    ρ_sfc = surface_air_density(atmos, model, Y, p, t, T_sfc)
+    q_sfc = surface_specific_humidity(model, Y, p, T_sfc, ρ_sfc)
+    β_sfc = surface_evaporative_scaling(model, Y, p)
+    h_sfc = surface_height(model, Y, p)
+    r_sfc = surface_resistance(model, Y, p, t)
+    d_sfc = displacement_height(model, Y, p)
+
+    dest .=
+        turbulent_fluxes_at_a_point.(
+            T_sfc,
+            q_sfc,
+            ρ_sfc,
+            β_sfc,
+            h_sfc,
+            r_sfc,
+            d_sfc,
+            atmos.thermal_state,
+            atmos.u,
+            atmos.h,
+            atmos.gustiness,
+            model.parameters.z_0m,
+            model.parameters.z_0b,
+            model.parameters.earth_param_set,
+            compute_momentum_fluxes = true,
+        )
+    return nothing
+end
+
+
 """
     turbulent_fluxes_at_a_point(T_sfc::FT,
                                 q_sfc::FT,
@@ -303,7 +341,8 @@ end
                                 gustiness::FT,
                                 z_0m::FT,
                                 z_0b::FT,
-                                earth_param_set::EP,
+                                earth_param_set::EP;
+                                compute_momentum_fluxes = false,
                                ) where {FT <: AbstractFloat, P}
 
 Computes turbulent surface fluxes at a point on a surface given
@@ -342,7 +381,8 @@ function turbulent_fluxes_at_a_point(
     gustiness::FT,
     z_0m::FT,
     z_0b::FT,
-    earth_param_set::EP,
+    earth_param_set::EP;
+    compute_momentum_fluxes = false,
 ) where {FT <: AbstractFloat, EP}
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
     ts_sfc = Thermodynamics.PhaseEquil_ρTq(thermo_params, ρ_sfc, T_sfc, q_sfc)
@@ -401,7 +441,19 @@ function turbulent_fluxes_at_a_point(
     # vapor flux in volume of liquid water with density 1000kg/m^3
     Ẽ = E / _ρ_liq
 
-    return (lhf = LH, shf = SH, vapor_flux = Ẽ, r_ae = r_ae)
+    # Return the unaltered momentum fluxes if they are requested
+    if !compute_momentum_fluxes
+        return (lhf = LH, shf = SH, vapor_flux = Ẽ, r_ae = r_ae)
+    else
+        return (
+            lhf = LH,
+            shf = SH,
+            vapor_flux = Ẽ,
+            r_ae = r_ae,
+            ρτxz = conditions.ρτxz,
+            ρτyz = conditions.ρτyz,
+        )
+    end
 end
 
 """
@@ -424,6 +476,7 @@ function ClimaLand.turbulent_fluxes!(
     p,
     t,
 )
+    # coupler has done its thing behind the scenes already
     return nothing
 end
 
@@ -592,13 +645,15 @@ the `model` has a property called `parameters` containing `earth_param_set`.
 
 We additionally include the `atmos` type as an argument because
 the surface air density computation will change between a coupled simulation
-and a prescibed atmos simulation.
+and a prescibed atmos simulation. For now, turbulent fluxes are computed
+within land even for coupled simulations, so we get air density the same way
+in both cases.
 
 Extending this function for your model is only necessary if you need to
 compute the air density in a different way.
 """
 function surface_air_density(
-    atmos::PrescribedAtmosphere,
+    atmos::Union{AbstractAtmosphericDrivers, NamedTuple},
     model::AbstractModel,
     Y,
     p,
@@ -626,7 +681,7 @@ of the model.
 """
 function surface_air_density(
     atmos::CoupledAtmosphere,
-    model::AbstractModel,
+    model::BucketModel,
     Y,
     p,
     _...,
