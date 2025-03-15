@@ -645,13 +645,15 @@ the `model` has a property called `parameters` containing `earth_param_set`.
 
 We additionally include the `atmos` type as an argument because
 the surface air density computation will change between a coupled simulation
-and a prescibed atmos simulation.
+and a prescibed atmos simulation. For now, turbulent fluxes are computed
+within land even for coupled simulations, so we get air density the same way
+in both cases.
 
 Extending this function for your model is only necessary if you need to
 compute the air density in a different way.
 """
 function surface_air_density(
-    atmos::PrescribedAtmosphere,
+    atmos::Union{AbstractAtmosphericDrivers, NamedTuple},
     model::AbstractModel,
     Y,
     p,
@@ -678,16 +680,14 @@ This requires the field `ρ_sfc` to be present in the cache `p` under the name
 of the model.
 """
 function surface_air_density(
-    atmos::Union{CoupledAtmosphere, NamedTuple},
-    model::AbstractModel,
+    atmos::CoupledAtmosphere,
+    model::BucketModel,
     Y,
     p,
     _...,
 )
     model_name = ClimaLand.name(model)
     model_cache = getproperty(p, model_name)
-    @show model_name
-    @show propertynames(model_cache)
     return model_cache.ρ_sfc
 end
 
