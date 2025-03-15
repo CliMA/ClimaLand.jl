@@ -6,6 +6,9 @@ import ClimaCalibrate: forward_model, parameter_path, path_to_ensemble_member
 import ClimaCalibrate as CAL
 FT = Float64
 using Distributed
+using Random
+rng_seed = 2
+rng = Random.MersenneTwister(rng_seed)
 #addprocs(
 #    CAL.PBSManager(4), # n simulations in parallel
 #    q = "main", # not prio
@@ -102,12 +105,13 @@ using LinearAlgebra
 noise = Diagonal(noise_era5) # has to be a Matrix. Could also have covariances between variables.
 
 eki = EKP.EnsembleKalmanProcess(
-    EKP.construct_initial_ensemble(prior, ensemble_size),
+    EKP.construct_initial_ensemble(rng, prior, ensemble_size),
     observations,
     noise,
     EKP.Inversion();
     verbose=true,
     localization_method=EKP.Localizers.NoLocalization(),
+    rng = rng,
 )
 
 CAL.calibrate(
