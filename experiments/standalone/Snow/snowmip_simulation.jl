@@ -20,7 +20,7 @@ using Statistics
 using Insolation
 using DelimitedFiles
 
-using CSV, HTTP, Flux, cuDNN, BSON, StatsBase
+using CSV, HTTP, Flux, BSON, StatsBase
 NeuralSnow = Base.get_extension(ClimaLand, :NeuralSnowExt).NeuralSnow;
 
 # Site-specific quantities
