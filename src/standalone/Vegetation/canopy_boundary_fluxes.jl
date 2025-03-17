@@ -302,8 +302,6 @@ function ClimaLand.coupler_compute_turbulent_fluxes!(
     h_sfc = ClimaLand.surface_height(model, Y, p)
     r_stomata_canopy = ClimaLand.surface_resistance(model, Y, p, t)
     d_sfc = ClimaLand.displacement_height(model, Y, p)
-    u_air = p.drivers.u
-    h_air = atmos.h
     dest .=
         canopy_turbulent_fluxes_at_a_point.(
             T_sfc,
