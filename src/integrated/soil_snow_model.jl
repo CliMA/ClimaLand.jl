@@ -383,10 +383,12 @@ function soil_boundary_fluxes!(
     # Compute terms needed for derivatives
     # ρc_sfc is stored in scratch! after we use it below, it may be overwritten
     ρc_sfc = ClimaLand.Soil.get_ρc_sfc(Y, p, soil.parameters)
-    FT1 = eltype(eltype(p.soil.dfluxBCdY.heat))
-    FT2 = eltype(eltype(p.soil.dfluxBCdY.water))
-    parent(p.soil.dfluxBCdY.heat) .= zero(FT1) # ∂F∂T ∂T∂ρe
-    parent(p.soil.dfluxBCdY.water) .= zero(FT2)
+    # Get the local geometry of the face space, then extract the top level
+    local_geometry_faceN =
+        ClimaLand.get_local_geometry_faceN(soil.domain.space.subsurface)
+    @. p.soil.dfluxBCdY.heat =
+        covariant3_unit_vector(local_geometry_faceN) * 0 / ρc_sfc # ∂F∂T ∂T∂ρe
+    @. p.soil.dfluxBCdY.water = covariant3_unit_vector(local_geometry_faceN) * 0
     return nothing
 end
 

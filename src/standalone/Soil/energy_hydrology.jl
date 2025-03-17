@@ -398,21 +398,42 @@ function ClimaLand.make_compute_jacobian(model::EnergyHydrology{FT}) where {FT}
                             θ_r,
                             S_s,
                         ),
+                    ) +
+                    MatrixFields.DiagonalMatrixRow(
+                        interpc2f_op(
+                            volumetric_internal_energy_liq(
+                                p.soil.T,
+                                model.parameters.earth_param_set,
+                            ),
+                        ),
+                    ) ⋅ MatrixFields.LowerDiagonalMatrixRow(
+                        topBC_op_water(
+                            Geometry.Covariant3Vector(
+                                zero(interpc2f_op(p.soil.K)),
+                            ),
+                        ),
                     )
                 )
             ) - (I,)
 
         @. ∂ρeres∂ρe =
-        -dtγ * (
-            divf2c_matrix() ⋅
-            MatrixFields.DiagonalMatrixRow(interpc2f_op(-p.soil.κ)) ⋅
-            gradc2f_matrix() ⋅ MatrixFields.DiagonalMatrixRow(
-                1 / ClimaLand.Soil.volumetric_heat_capacity(
-                    p.soil.θ_l,
-                    Y.soil.θ_i,
-                    ρc_ds,
-                    earth_param_set,
-                ),
+            -dtγ * (
+                divf2c_matrix() ⋅ (
+                    MatrixFields.DiagonalMatrixRow(interpc2f_op(-p.soil.κ)) ⋅
+                    gradc2f_matrix() ⋅ MatrixFields.DiagonalMatrixRow(
+                        1 / ClimaLand.Soil.volumetric_heat_capacity(
+                            p.soil.θ_l,
+                            Y.soil.θ_i,
+                            ρc_ds,
+                            earth_param_set,
+                        ),
+                    ) + MatrixFields.LowerDiagonalMatrixRow(
+                        topBC_op_heat(
+                            Geometry.Covariant3Vector(
+                                zero(interpc2f_op(p.soil.T)),
+                            ),
+                        ),
+                    )
                 )
             ) - (I,)
     end
