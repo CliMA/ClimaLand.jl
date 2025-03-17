@@ -960,7 +960,7 @@ function soil_turbulent_fluxes_at_a_point(
     θ_r_sfc::FT,
     K_sat_sfc::FT,
     thermal_state_air::Thermodynamics.PhaseEquil{FT},
-    u_air::FT,
+    u_air::Union{FT, SVector{2, FT}},
     h_air::FT,
     gustiness::FT,
     z_0m::FT,
@@ -982,9 +982,12 @@ function soil_turbulent_fluxes_at_a_point(
     _grav::FT = LP.grav(earth_param_set)
 
     # Atmos air state
+    if u_air isa FT
+        u_air = SVector{2, FT}(u_air, 0)
+    end
     state_air = SurfaceFluxes.StateValues(
         h_air - d_sfc - h_sfc,
-        SVector{2, FT}(u_air, 0),
+        u_air,
         thermal_state_air,
     )
     q_air::FT =
@@ -1142,15 +1145,14 @@ function soil_turbulent_fluxes_at_a_point(
     end
 end
 
-function coupler_compute_turbulent_fluxes!(
+function ClimaLand.coupler_compute_turbulent_fluxes!(
     dest,
-    model::EnergyHydrology{FT},
     atmos::NamedTuple,
+    model::EnergyHydrology,
     Y::ClimaCore.Fields.FieldVector,
     p::NamedTuple,
     t,
-) where {FT}
-
+)
     # Obtain surface quantities needed for computation; these should not allocate
     T_sfc = ClimaLand.surface_temperature(model, Y, p, t)
     h_sfc = ClimaLand.surface_height(model, Y, p)

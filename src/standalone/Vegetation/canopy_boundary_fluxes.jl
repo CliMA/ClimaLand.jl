@@ -355,7 +355,7 @@ function canopy_turbulent_fluxes_at_a_point(
     r_stomata_canopy::FT,
     d_sfc::FT,
     ts_in,
-    u::FT,
+    u::Union{FT, SVector{2, FT}},
     h::FT,
     LAI::FT,
     SAI::FT,
@@ -369,11 +369,10 @@ function canopy_turbulent_fluxes_at_a_point(
     # The following will not run on GPU
     #    h - d_sfc - h_sfc < 0 &&
     #        @error("Surface height is larger than atmos height in surface fluxes")
-    state_in = SurfaceFluxes.StateValues(
-        h - d_sfc - h_sfc,
-        SVector{2, FT}(u, 0),
-        ts_in,
-    )
+    if u isa FT
+        u = SVector{2, FT}(u, 0)
+    end
+    state_in = SurfaceFluxes.StateValues(h - d_sfc - h_sfc, u, ts_in)
 
     ρ_sfc = compute_ρ_sfc(thermo_params, ts_in, T_sfc)
     q_sfc = Thermodynamics.q_vap_saturation_generic(

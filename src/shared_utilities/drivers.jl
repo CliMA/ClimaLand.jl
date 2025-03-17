@@ -376,7 +376,7 @@ function turbulent_fluxes_at_a_point(
     r_sfc::FT,
     d_sfc::FT,
     ts_in,
-    u::FT,
+    u::Union{FT, SVector{2, FT}},
     h::FT,
     gustiness::FT,
     z_0m::FT,
@@ -397,11 +397,10 @@ function turbulent_fluxes_at_a_point(
     # In this we have neglected z_0m and z_0b (i.e. assumed they are small
     # compared to Δh).
     state_sfc = SurfaceFluxes.StateValues(FT(0), SVector{2, FT}(0, 0), ts_sfc)
-    state_in = SurfaceFluxes.StateValues(
-        h - d_sfc - h_sfc,
-        SVector{2, FT}(u, 0),
-        ts_in,
-    )
+    if u isa FT
+        u = SVector{2, FT}(u, 0)
+    end
+    state_in = SurfaceFluxes.StateValues(h - d_sfc - h_sfc, u, ts_in)
     # The following line wont work on GPU
     #    h - d_sfc - h_sfc < 0 &&
     #        @error("Surface height is larger than atmos height in surface fluxes")
@@ -645,15 +644,13 @@ the `model` has a property called `parameters` containing `earth_param_set`.
 
 We additionally include the `atmos` type as an argument because
 the surface air density computation will change between a coupled simulation
-and a prescibed atmos simulation. For now, turbulent fluxes are computed
-within land even for coupled simulations, so we get air density the same way
-in both cases.
+and a prescibed atmos simulation.
 
 Extending this function for your model is only necessary if you need to
 compute the air density in a different way.
 """
 function surface_air_density(
-    atmos::Union{AbstractAtmosphericDrivers, NamedTuple},
+    atmos::PrescribedAtmosphere,
     model::AbstractModel,
     Y,
     p,
@@ -663,6 +660,36 @@ function surface_air_density(
     thermo_params =
         LP.thermodynamic_parameters(model.parameters.earth_param_set)
     return compute_ρ_sfc.(thermo_params, p.drivers.thermal_state, T_sfc)
+end
+
+"""
+    surface_air_density(
+                        atmos::PrescribedAtmosphere,
+                        model::AbstractModel,
+                        Y,
+                        p,
+                        t,
+                        T_sfc,
+                        )
+
+A helper function which returns the surface air density; this assumes that
+the `model` has a property called `parameters` containing `earth_param_set`.
+
+This method is similar to the general method above, except in this case
+we get the thermodynamic parameters from the `atmos` object. This is used
+when running with a coupled atmosphere.
+"""
+function surface_air_density(
+    atmos::NamedTuple,
+    model::AbstractModel,
+    Y,
+    p,
+    t,
+    T_sfc,
+)
+    thermo_params =
+        LP.thermodynamic_parameters(model.parameters.earth_param_set)
+    return compute_ρ_sfc.(thermo_params, atmos.thermal_state, T_sfc)
 end
 
 """
