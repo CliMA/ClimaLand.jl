@@ -385,8 +385,8 @@ function soil_boundary_fluxes!(
     ρc_sfc = ClimaLand.Soil.get_ρc_sfc(Y, p, soil.parameters)
     FT1 = eltype(eltype(p.soil.dfluxBCdY.heat))
     FT2 = eltype(eltype(p.soil.dfluxBCdY.water))
-    @. p.soil.dfluxBCdY.heat = Geometry.Covariant3Vector(zero(FT1)) # ∂F∂T ∂T∂ρe
-    @. p.soil.dfluxBCdY.water = Geometry.Covariant3Vector(zero(FT2))
+    parent(p.soil.dfluxBCdY.heat) .= zero(FT1) # ∂F∂T ∂T∂ρe
+    parent(p.soil.dfluxBCdY.water) .= zero(FT2)
     return nothing
 end
 

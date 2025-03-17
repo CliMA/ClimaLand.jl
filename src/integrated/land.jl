@@ -526,9 +526,9 @@ function soil_boundary_fluxes!(
 
     # ρc_sfc is stored in scratch! after we use it below, it may be overwritten
     ρc_sfc = ClimaLand.Soil.get_ρc_sfc(Y, p, soil.parameters)
-    # TODO: Check this computation
-    @. p.soil.dfluxBCdY.heat = Geometry.Covariant3Vector(zero(FT)) # ∂F∂T ∂T∂ρe
-    @. p.soil.dfluxBCdY.water = Geometry.Covariant3Vector(zero(FT))
+
+    parent(p.soil.dfluxBCdY.heat) .= zero(FT) # ∂F∂T ∂T∂ρe
+    parent(p.soil.dfluxBCdY.water) .= zero(FT)
     return nothing
 end
 

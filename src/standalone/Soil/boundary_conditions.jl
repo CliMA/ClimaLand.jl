@@ -837,8 +837,8 @@ function soil_boundary_fluxes!(
     ρc_sfc = get_ρc_sfc(Y, p, model.parameters)
     FT1 = eltype(eltype(p.soil.dfluxBCdY.heat))
     FT2 = eltype(eltype(p.soil.dfluxBCdY.water))
-    @. p.soil.dfluxBCdY.heat = Geometry.Covariant3Vector(zero(FT1))  # replace 0 with ∂F∂T when ready
-    @. p.soil.dfluxBCdY.water = Geometry.Covariant3Vector(zero(FT2))
+    parent(p.soil.dfluxBCdY.heat) .= zero(FT1) # replace 0 with ∂F∂T when ready
+    parent(p.soil.dfluxBCdY.water) .= zero(FT2)
     return nothing
 end
 
