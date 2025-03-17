@@ -260,7 +260,7 @@ function turbulent_fluxes!(
 )
     T_sfc = surface_temperature(model, Y, p, t)
     ρ_sfc = surface_air_density(atmos, model, Y, p, t, T_sfc)
-    q_sfc = surface_specific_humidity(model, Y, p, T_sfc, ρ_sfc)
+    q_sfc = surface_specific_humidity(atmos, model, Y, p, T_sfc, ρ_sfc)
     β_sfc = surface_evaporative_scaling(model, Y, p)
     h_sfc = surface_height(model, Y, p)
     r_sfc = surface_resistance(model, Y, p, t)
@@ -299,7 +299,7 @@ function coupler_compute_turbulent_fluxes!(
 )
     T_sfc = surface_temperature(model, Y, p, t)
     ρ_sfc = surface_air_density(atmos, model, Y, p, t, T_sfc)
-    q_sfc = surface_specific_humidity(model, Y, p, T_sfc, ρ_sfc)
+    q_sfc = surface_specific_humidity(atmos, model, Y, p, T_sfc, ρ_sfc)
     β_sfc = surface_evaporative_scaling(model, Y, p)
     h_sfc = surface_height(model, Y, p)
     r_sfc = surface_resistance(model, Y, p, t)
@@ -693,7 +693,7 @@ function surface_air_density(
 end
 
 """
-    surface_specific_humidity(model::AbstractModel, Y, p, T_sfc, ρ_sfc)
+    surface_specific_humidity(atmos, model::AbstractModel, Y, p, T_sfc, ρ_sfc)
 
 A helper function which returns the surface specific humidity for a given
 model, needed because different models compute and store q_sfc in
@@ -703,7 +703,14 @@ Extending this function for your model is only necessary if you need to
 compute surface fluxes and radiative fluxes at the surface using
 the functions in this file.
 """
-function surface_specific_humidity(model::AbstractModel, Y, p, T_sfc, ρ_sfc) end
+function surface_specific_humidity(
+    atmos,
+    model::AbstractModel,
+    Y,
+    p,
+    T_sfc,
+    ρ_sfc,
+) end
 
 """
     surface_evaporative_scaling(model::AbstractModel{FT}, Y, p) where {FT}
