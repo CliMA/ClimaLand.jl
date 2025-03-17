@@ -1,8 +1,8 @@
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.10.8"
+julia_version = "1.10.9"
 manifest_format = "2.0"
-project_hash = "2f5be5fbfb233230df2a5975d4ee1dbd47c0737f"
+project_hash = "0e6bbd7380919c2fc7b48b598345b4bf4c2024de"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "e2478490447631aedba0823d4d7a80b2cc8cdb32"
@@ -202,12 +202,6 @@ git-tree-sha1 = "16351be62963a67ac4083f748fdb3cca58bfd52f"
 uuid = "39de3d68-74b9-583c-8d2d-e117c070f3a9"
 version = "0.4.7"
 
-[[deps.BFloat16s]]
-deps = ["LinearAlgebra", "Printf", "Random", "Test"]
-git-tree-sha1 = "2c7cc21e8678eff479978a0a2ef5ce2f51b63dff"
-uuid = "ab4f0b2a-ad5b-11e8-123f-65d77653426b"
-version = "0.5.0"
-
 [[deps.BSON]]
 git-tree-sha1 = "4c3e506685c527ac6a54ccc0c8c76fd6f91b42fb"
 uuid = "fbb218c0-5317-5bc6-957e-2ee96dd4b1f0"
@@ -330,42 +324,6 @@ git-tree-sha1 = "deddd8725e5e1cc49ee205a1964256043720a6c3"
 uuid = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 version = "0.10.15"
 
-[[deps.CUDA]]
-deps = ["AbstractFFTs", "Adapt", "BFloat16s", "CEnum", "CUDA_Driver_jll", "CUDA_Runtime_Discovery", "CUDA_Runtime_jll", "Crayons", "DataFrames", "ExprTools", "GPUArrays", "GPUCompiler", "KernelAbstractions", "LLVM", "LLVMLoopInfo", "LazyArtifacts", "Libdl", "LinearAlgebra", "Logging", "NVTX", "Preferences", "PrettyTables", "Printf", "Random", "Random123", "RandomNumbers", "Reexport", "Requires", "SparseArrays", "StaticArrays", "Statistics", "demumble_jll"]
-git-tree-sha1 = "7be665c420b5d16059b1ba00b1dbb4e85012fa65"
-uuid = "052768ef-5323-5732-b1bb-66c8b64840ba"
-version = "5.6.1"
-weakdeps = ["ChainRulesCore", "EnzymeCore", "SpecialFunctions"]
-
-    [deps.CUDA.extensions]
-    ChainRulesCoreExt = "ChainRulesCore"
-    EnzymeCoreExt = "EnzymeCore"
-    SpecialFunctionsExt = "SpecialFunctions"
-
-[[deps.CUDA_Driver_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "14996d716a2eaaeccfc8d7bc854dd87fde720ac1"
-uuid = "4ee394cb-3365-5eb0-8335-949819d2adfc"
-version = "0.10.4+0"
-
-[[deps.CUDA_Runtime_Discovery]]
-deps = ["Libdl"]
-git-tree-sha1 = "33576c7c1b2500f8e7e6baa082e04563203b3a45"
-uuid = "1af6417a-86b4-443c-805f-a4643ffb695f"
-version = "0.3.5"
-
-[[deps.CUDA_Runtime_jll]]
-deps = ["Artifacts", "CUDA_Driver_jll", "JLLWrappers", "LazyArtifacts", "Libdl", "TOML"]
-git-tree-sha1 = "17f1536c600133f7c4113bae0a2d98dbf27c7ebc"
-uuid = "76a88914-d11a-5bdc-97e0-2f5a05c973a2"
-version = "0.15.5+0"
-
-[[deps.CUDNN_jll]]
-deps = ["Artifacts", "CUDA_Runtime_jll", "JLLWrappers", "LazyArtifacts", "Libdl", "TOML"]
-git-tree-sha1 = "9851af16a2f357a793daa0f13634c82bc7e40419"
-uuid = "62b44479-cb7b-5706-934f-f13b2eb2e645"
-version = "9.4.0+0"
-
 [[deps.Cairo]]
 deps = ["Cairo_jll", "Colors", "Glib_jll", "Graphics", "Libdl", "Pango_jll"]
 git-tree-sha1 = "71aa551c5c33f1a4415867fe06b7844faadb0ae9"
@@ -419,11 +377,14 @@ deps = ["Adapt", "BandedMatrices", "BlockArrays", "ClimaComms", "CubedSphere", "
 git-tree-sha1 = "5ab63b77f54c2a2f79cb43a1fd37e086427a8cf1"
 uuid = "d414da3d-4745-48bb-8d80-42e94e092884"
 version = "0.14.26"
-weakdeps = ["CUDA", "Krylov"]
 
     [deps.ClimaCore.extensions]
     ClimaCoreCUDAExt = "CUDA"
     KrylovExt = "Krylov"
+
+    [deps.ClimaCore.weakdeps]
+    CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+    Krylov = "ba0b0d4f-ebba-5204-a429-3ac8c609bfb7"
 
 [[deps.ClimaDiagnostics]]
 deps = ["Accessors", "ClimaComms", "ClimaCore", "ClimaUtilities", "Dates", "NCDatasets", "OrderedCollections", "SciMLBase"]
@@ -436,14 +397,14 @@ deps = ["ArtifactWrappers", "ClimaComms", "ClimaCore", "ClimaDiagnostics", "Clim
 path = ".."
 uuid = "08f4d4ce-cf43-44bb-ad95-9d2d5f413532"
 version = "0.15.11"
-weakdeps = ["BSON", "CSV", "CUDA", "ClimaParams", "DataFrames", "Flux", "HTTP", "StatsBase", "cuDNN"]
+weakdeps = ["BSON", "CSV", "ClimaParams", "DataFrames", "Flux", "HTTP", "StatsBase"]
 
     [deps.ClimaLand.extensions]
     CreateParametersExt = "ClimaParams"
-    NeuralSnowExt = ["CSV", "DataFrames", "HTTP", "Flux", "StatsBase", "cuDNN", "BSON"]
+    NeuralSnowExt = ["CSV", "DataFrames", "HTTP", "Flux", "StatsBase", "BSON"]
 
 [[deps.ClimaLandSimulations]]
-deps = ["ArtifactWrappers", "Bonito", "CairoMakie", "ClimaComms", "ClimaCore", "ClimaDiagnostics", "ClimaLand", "ClimaParams", "ClimaTimeSteppers", "ClimaUtilities", "DataFrames", "Dates", "DelimitedFiles", "Format", "HTTP", "Insolation", "Interpolations", "InverseFunctions", "JSON", "LaTeXStrings", "MutableArithmetics", "NLsolve", "PlotUtils", "RootSolvers", "SciMLBase", "StaticArrays", "Statistics", "StatsBase", "SurfaceFluxes", "Thermodynamics", "Unitful", "UnitfulMoles", "WGLMakie", "cuDNN"]
+deps = ["ArtifactWrappers", "Bonito", "CairoMakie", "ClimaComms", "ClimaCore", "ClimaDiagnostics", "ClimaLand", "ClimaParams", "ClimaTimeSteppers", "ClimaUtilities", "DataFrames", "Dates", "DelimitedFiles", "Format", "HTTP", "Insolation", "Interpolations", "InverseFunctions", "JSON", "LaTeXStrings", "MutableArithmetics", "NLsolve", "PlotUtils", "RootSolvers", "SciMLBase", "StaticArrays", "Statistics", "StatsBase", "SurfaceFluxes", "Thermodynamics", "Unitful", "UnitfulMoles", "WGLMakie"]
 path = "../lib/ClimaLandSimulations"
 uuid = "348a0bd3-1299-4261-8002-d2cd97df6055"
 version = "0.1.0"
@@ -459,10 +420,16 @@ deps = ["ClimaComms", "Colors", "DataStructures", "DiffEqBase", "KernelAbstracti
 git-tree-sha1 = "b452132022416ad3511143230f51660a62d583b2"
 uuid = "595c0a79-7f3d-439a-bc5a-b232dc3bde79"
 version = "0.8.2"
-weakdeps = ["BenchmarkTools", "CUDA", "OrderedCollections", "PrettyTables", "StatsBase"]
 
     [deps.ClimaTimeSteppers.extensions]
     ClimaTimeSteppersBenchmarkToolsExt = ["CUDA", "BenchmarkTools", "OrderedCollections", "StatsBase", "PrettyTables"]
+
+    [deps.ClimaTimeSteppers.weakdeps]
+    BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+    CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+    OrderedCollections = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
+    PrettyTables = "08abe8d2-0d0c-5749-adfa-8a2ac140af0d"
+    StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 
 [[deps.ClimaUtilities]]
 deps = ["Artifacts", "ClimaComms", "Dates"]
@@ -1120,12 +1087,6 @@ git-tree-sha1 = "83cf05ab16a73219e5f6bd1bdfa9848fa24ac627"
 uuid = "46192b85-c4d5-4398-a991-12ede77f4527"
 version = "0.2.0"
 
-[[deps.GPUCompiler]]
-deps = ["ExprTools", "InteractiveUtils", "LLVM", "Libdl", "Logging", "PrecompileTools", "Preferences", "Scratch", "Serialization", "TOML", "TimerOutputs", "UUIDs"]
-git-tree-sha1 = "199f213e40a7982e9138bc9edc3299419d510390"
-uuid = "61eb1bfa-7361-4325-ad38-22787b887f55"
-version = "1.2.0"
-
 [[deps.GR]]
 deps = ["Artifacts", "Base64", "DelimitedFiles", "Downloads", "GR_jll", "HTTP", "JSON", "Libdl", "LinearAlgebra", "Preferences", "Printf", "Random", "Serialization", "Sockets", "TOML", "Tar", "Test", "p7zip_jll"]
 git-tree-sha1 = "ddda044ca260ee324c5fc07edb6d7cf3f0b9c350"
@@ -1553,21 +1514,18 @@ deps = ["CEnum", "LLVMExtra_jll", "Libdl", "Preferences", "Printf", "Unicode"]
 git-tree-sha1 = "5fcfea6df2ff3e4da708a40c969c3812162346df"
 uuid = "929cbde3-209d-540e-8aea-75f648917ca0"
 version = "9.2.0"
-weakdeps = ["BFloat16s"]
 
     [deps.LLVM.extensions]
     BFloat16sExt = "BFloat16s"
+
+    [deps.LLVM.weakdeps]
+    BFloat16s = "ab4f0b2a-ad5b-11e8-123f-65d77653426b"
 
 [[deps.LLVMExtra_jll]]
 deps = ["Artifacts", "JLLWrappers", "LazyArtifacts", "Libdl", "TOML"]
 git-tree-sha1 = "4b5ad6a4ffa91a00050a964492bc4f86bb48cea0"
 uuid = "dad2f222-ce93-54a1-a47d-0025e8a3acab"
 version = "0.0.35+0"
-
-[[deps.LLVMLoopInfo]]
-git-tree-sha1 = "2e5c102cfc41f48ae4740c7eca7743cc7e7b75ea"
-uuid = "8b046642-f1f6-4319-8d3c-209ddc03c586"
-version = "1.0.0"
 
 [[deps.LLVMOpenMP_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
@@ -1721,12 +1679,16 @@ deps = ["FastClosures", "LinearAlgebra", "Printf", "Requires", "SparseArrays", "
 git-tree-sha1 = "f55281226cdae8edea2c850fda88d8f5a03485b6"
 uuid = "5c8ed15e-5a4c-59e4-a42b-c7e8811fb125"
 version = "2.9.0"
-weakdeps = ["CUDA", "ChainRulesCore", "LDLFactorizations"]
 
     [deps.LinearOperators.extensions]
     LinearOperatorsCUDAExt = "CUDA"
     LinearOperatorsChainRulesCoreExt = "ChainRulesCore"
     LinearOperatorsLDLFactorizationsExt = "LDLFactorizations"
+
+    [deps.LinearOperators.weakdeps]
+    CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+    ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
+    LDLFactorizations = "40e66cde-538c-5869-a4ad-c39174c6795b"
 
 [[deps.Literate]]
 deps = ["Base64", "IOCapture", "JSON", "REPL"]
@@ -1949,10 +1911,13 @@ version = "0.2.4"
 git-tree-sha1 = "4157ffb36526a275f644a3fbe378850e5eb1b470"
 uuid = "c3c07f87-98de-43f2-a76f-835b330b2cbb"
 version = "0.3.3"
-weakdeps = ["Adapt", "CUDA"]
 
     [deps.MultiBroadcastFusion.extensions]
     MultiBroadcastFusionCUDAExt = ["CUDA", "Adapt"]
+
+    [deps.MultiBroadcastFusion.weakdeps]
+    Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
+    CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 
 [[deps.MutableArithmetics]]
 deps = ["LinearAlgebra", "SparseArrays", "Test"]
@@ -2094,7 +2059,7 @@ version = "3.2.4+0"
 [[deps.OpenLibm_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "05823500-19ac-5b8b-9628-191a04bc5112"
-version = "0.8.1+2"
+version = "0.8.1+4"
 
 [[deps.OpenSSL]]
 deps = ["BitFlags", "Dates", "MozillaCACerts_jll", "OpenSSL_jll", "Sockets"]
@@ -2356,18 +2321,6 @@ uuid = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
 [[deps.Random]]
 deps = ["SHA"]
 uuid = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
-
-[[deps.Random123]]
-deps = ["Random", "RandomNumbers"]
-git-tree-sha1 = "4743b43e5a9c4a2ede372de7061eed81795b12e7"
-uuid = "74087812-796a-5b5d-8853-05524746bad3"
-version = "1.7.0"
-
-[[deps.RandomNumbers]]
-deps = ["Random"]
-git-tree-sha1 = "c6ec94d2aaba1ab2ff983052cf6a606ca5985902"
-uuid = "e6cf234a-135c-5ec9-84dd-332b85af5143"
-version = "1.6.0"
 
 [[deps.RangeArrays]]
 git-tree-sha1 = "b9039e93773ddcfc828f12aadf7115b4b4d225f5"
@@ -3270,18 +3223,6 @@ deps = ["ChainRulesCore", "MacroTools"]
 git-tree-sha1 = "434b3de333c75fc446aa0d19fc394edafd07ab08"
 uuid = "700de1a5-db45-46bc-99cf-38207098b444"
 version = "0.2.7"
-
-[[deps.cuDNN]]
-deps = ["CEnum", "CUDA", "CUDA_Runtime_Discovery", "CUDNN_jll"]
-git-tree-sha1 = "efb5a4aa0aea8151a4eb21700e8b2c9990c45b0f"
-uuid = "02a925ec-e4fe-4b08-9a7e-0d78e3d38ccd"
-version = "1.4.1"
-
-[[deps.demumble_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "6498e3581023f8e530f34760d18f75a69e3a4ea8"
-uuid = "1e29f10c-031c-5a83-9565-69cddfc27673"
-version = "1.3.0+0"
 
 [[deps.eudev_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "gperf_jll"]

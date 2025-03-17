@@ -1,8 +1,8 @@
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.10.8"
+julia_version = "1.10.9"
 manifest_format = "2.0"
-project_hash = "404dad335da65f39c10339b0364e8bfb81472ec4"
+project_hash = "a7a585ddd36c0f26c1c13eadf1e32192d4584cf7"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "e2478490447631aedba0823d4d7a80b2cc8cdb32"
@@ -331,12 +331,6 @@ git-tree-sha1 = "17f1536c600133f7c4113bae0a2d98dbf27c7ebc"
 uuid = "76a88914-d11a-5bdc-97e0-2f5a05c973a2"
 version = "0.15.5+0"
 
-[[deps.CUDNN_jll]]
-deps = ["Artifacts", "CUDA_Runtime_jll", "JLLWrappers", "LazyArtifacts", "Libdl", "TOML"]
-git-tree-sha1 = "9851af16a2f357a793daa0f13634c82bc7e40419"
-uuid = "62b44479-cb7b-5706-934f-f13b2eb2e645"
-version = "9.4.0+0"
-
 [[deps.Cairo]]
 deps = ["Cairo_jll", "Colors", "Glib_jll", "Graphics", "Libdl", "Pango_jll"]
 git-tree-sha1 = "71aa551c5c33f1a4415867fe06b7844faadb0ae9"
@@ -421,11 +415,11 @@ deps = ["ArtifactWrappers", "ClimaComms", "ClimaCore", "ClimaDiagnostics", "Clim
 path = ".."
 uuid = "08f4d4ce-cf43-44bb-ad95-9d2d5f413532"
 version = "0.15.11"
-weakdeps = ["BSON", "CSV", "CUDA", "ClimaParams", "DataFrames", "Flux", "HTTP", "StatsBase", "cuDNN"]
+weakdeps = ["BSON", "CSV", "ClimaParams", "DataFrames", "Flux", "HTTP", "StatsBase"]
 
     [deps.ClimaLand.extensions]
     CreateParametersExt = "ClimaParams"
-    NeuralSnowExt = ["CSV", "DataFrames", "HTTP", "Flux", "StatsBase", "cuDNN", "BSON"]
+    NeuralSnowExt = ["CSV", "DataFrames", "HTTP", "Flux", "StatsBase", "BSON"]
 
 [[deps.ClimaParams]]
 deps = ["TOML"]
@@ -2031,7 +2025,7 @@ version = "2.5.4+0"
 [[deps.OpenLibm_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "05823500-19ac-5b8b-9628-191a04bc5112"
-version = "0.8.1+2"
+version = "0.8.1+4"
 
 [[deps.OpenMPI_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "Hwloc_jll", "JLLWrappers", "LazyArtifacts", "Libdl", "MPIPreferences", "TOML", "Zlib_jll"]
@@ -2983,12 +2977,6 @@ deps = ["ChainRulesCore", "MacroTools"]
 git-tree-sha1 = "434b3de333c75fc446aa0d19fc394edafd07ab08"
 uuid = "700de1a5-db45-46bc-99cf-38207098b444"
 version = "0.2.7"
-
-[[deps.cuDNN]]
-deps = ["CEnum", "CUDA", "CUDA_Runtime_Discovery", "CUDNN_jll"]
-git-tree-sha1 = "efb5a4aa0aea8151a4eb21700e8b2c9990c45b0f"
-uuid = "02a925ec-e4fe-4b08-9a7e-0d78e3d38ccd"
-version = "1.4.1"
 
 [[deps.demumble_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
