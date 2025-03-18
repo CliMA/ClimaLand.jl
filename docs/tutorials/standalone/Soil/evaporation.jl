@@ -331,7 +331,7 @@ CairoMakie.lines!(
     ax,
     sol_lr.t ./ 3600 ./ 24,
     evap_lr .* (1000 * 3600 * 24),
-    label = "Model, 7 elements",
+    label = "Model, 7 layers",
     color = :blue,
     linewidth = 3,
 )
@@ -339,7 +339,7 @@ CairoMakie.lines!(
     ax,
     sol_hr.t ./ 3600 ./ 24,
     evap_hr .* (1000 * 3600 * 24),
-    label = "Model, 28 elements",
+    label = "Model, 28 layers",
     color = :blue,
     linestyle = :dash,
     linewidth = 3,
