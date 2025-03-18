@@ -198,9 +198,10 @@ lsm_aux_vars(m::LandModel) = (
     :atmos_energy_flux,
     :atmos_water_flux,
     :ground_heat_flux,
-    :dghfdT_soil,
+    :effective_soil_sfc_T,
     :sfc_scratch,
     :subsfc_scratch,
+    :effective_soil_sfc_depth,
     :T_sfc,
     :ϵ_sfc,
     :α_sfc,
@@ -214,6 +215,7 @@ The types of the additional auxiliary variables that are
 included in the land model.
 """
 lsm_aux_types(m::LandModel{FT}) where {FT} = (
+    FT,
     FT,
     FT,
     FT,
@@ -257,6 +259,7 @@ lsm_aux_domain_names(m::LandModel) = (
     :surface,
     :surface,
     :subsurface,
+    :surface,
     :surface,
     :surface,
     :surface,
@@ -522,15 +525,6 @@ function soil_boundary_fluxes!(
         ) +
         p.excess_heat_flux +
         p.snow.snow_cover_fraction * p.ground_heat_flux
-
-    # ρc_sfc is stored in scratch! after we use it below, it may be overwritten
-    ρc_sfc = ClimaLand.Soil.get_ρc_sfc(Y, p, soil.parameters)
-    # Get the local geometry of the face space, then extract the top level
-    local_geometry_faceN =
-        ClimaLand.get_local_geometry_faceN(soil.domain.space.subsurface)
-    @. p.soil.dfluxBCdY.heat =
-        covariant3_unit_vector(local_geometry_faceN) * 0 / ρc_sfc # ∂F∂T ∂T∂ρe
-    @. p.soil.dfluxBCdY.water = covariant3_unit_vector(local_geometry_faceN) * 0
     return nothing
 end
 
