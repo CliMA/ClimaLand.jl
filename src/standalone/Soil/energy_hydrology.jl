@@ -982,6 +982,7 @@ function soil_turbulent_fluxes_at_a_point(
     _grav::FT = LP.grav(earth_param_set)
 
     # Atmos air state
+    # u is already a vector when we get it from a coupled atmosphere, otherwise we need to make it one
     if u_air isa FT
         u_air = SVector{2, FT}(u_air, 0)
     end
@@ -1119,7 +1120,7 @@ function soil_turbulent_fluxes_at_a_point(
     dshfdT::FT = 0
     dlhfdT::FT = 0
 
-    # Return the unaltered momentum fluxes if they are requested
+    # Return the (unaltered) momentum fluxes if they are requested
     if !compute_momentum_fluxes
         return (
             lhf = LH,

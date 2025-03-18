@@ -397,6 +397,7 @@ function turbulent_fluxes_at_a_point(
     # In this we have neglected z_0m and z_0b (i.e. assumed they are small
     # compared to Δh).
     state_sfc = SurfaceFluxes.StateValues(FT(0), SVector{2, FT}(0, 0), ts_sfc)
+    # u is already a vector when we get it from a coupled atmosphere, otherwise we need to make it one
     if u isa FT
         u = SVector{2, FT}(u, 0)
     end
@@ -440,7 +441,7 @@ function turbulent_fluxes_at_a_point(
     # vapor flux in volume of liquid water with density 1000kg/m^3
     Ẽ = E / _ρ_liq
 
-    # Return the unaltered momentum fluxes if they are requested
+    # Return the (unaltered) momentum fluxes if they are requested
     if !compute_momentum_fluxes
         return (lhf = LH, shf = SH, vapor_flux = Ẽ, r_ae = r_ae)
     else

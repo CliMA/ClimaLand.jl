@@ -367,6 +367,7 @@ function canopy_turbulent_fluxes_at_a_point(
     # The following will not run on GPU
     #    h - d_sfc - h_sfc < 0 &&
     #        @error("Surface height is larger than atmos height in surface fluxes")
+    # u is already a vector when we get it from a coupled atmosphere, otherwise we need to make it one
     if u isa FT
         u = SVector{2, FT}(u, 0)
     end
@@ -443,7 +444,7 @@ function canopy_turbulent_fluxes_at_a_point(
         SH / ρ_sfc * ∂ρsfc∂Tc +
         SH / cp_m_sfc * ∂cp_m_sfc∂Tc
 
-    # Return the unaltered momentum fluxes if they are requested
+    # Return the (unaltered) momentum fluxes if they are requested
     if !compute_momentum_fluxes
         return (
             lhf = LH,
