@@ -1096,7 +1096,5 @@ function soil_turbulent_fluxes_at_a_point(
         vapor_flux_liq = Ẽ_l,
         r_ae = r_ae,
         vapor_flux_ice = Ẽ_i,
-        dlhfdT = dlhfdT,
-        dshfdT = dshfdT,
     )
 end
