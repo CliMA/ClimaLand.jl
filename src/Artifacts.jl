@@ -11,7 +11,7 @@ using ArtifactWrappers
 """
     soil_ic_2008_50m_path(; context)
 
-Return the path to the file that contains the spun-up soil and snow initial 
+Return the path to the file that contains the spun-up soil and snow initial
 conditions for Jan 1, 2008.
 
 The soil domain has a depth of 50m; we have ensured that surface properties
@@ -71,6 +71,15 @@ function era5_land_forcing_data2008_folder_path(;
     else
         return @clima_artifact("era5_land_forcing_data2008", context)
     end
+end
+
+"""
+    era5_monthly_averages_2008_path(; context, lowres=false)
+Return the path to the directory that contains the ERA5 forcing data for 2008.
+Optionally, you can pass the lowres=true keyword to download a lower spatial resolution version of the data.
+"""
+function era5_monthly_averages_2008_folder_path(; context = nothing)
+    return @clima_artifact("era5_monthly_averages_2008", context)
 end
 
 """
@@ -461,7 +470,7 @@ end
 
 Construct the file path for the 60arcsecond orography data NetCDF file.
 
-Downloads the 60arc-second dataset by default. 
+Downloads the 60arc-second dataset by default.
 """
 function earth_orography_file_path(; context = nothing)
     filename = "ETOPO_2022_v1_60s_N90W180_surface.nc"
@@ -476,7 +485,7 @@ end
 
 Construct the file path for the 60arcsecond bedrock depth data NetCDF file.
 
-Downloads the 60arc-second dataset by default. 
+Downloads the 60arc-second dataset by default.
 """
 function bedrock_depth_file_path(; context = nothing)
     filename = "ETOPO_2022_v1_60s_N90W180_bed.nc"
