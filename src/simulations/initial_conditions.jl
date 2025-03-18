@@ -22,7 +22,9 @@ function set_soil_initial_conditions!(
     ν,
     θ_r,
     subsurface_space,
-    soil_ic_path;
+    soil_ic_path,
+    soil,
+    T_bounds;
     regridder_type = regridder_type,
     extrapolation_bc = extrapolation_bc,
 )
@@ -42,7 +44,17 @@ function set_soil_initial_conditions!(
     )
 
     Y.soil.ϑ_l .= enforce_residual_constraint.(Y.soil.ϑ_l, θ_r)
-    Y.soil.θ_i .= enforce_porosity_constraint.(Y.soil.ϑ_l, Y.soil.θ_i, ν, θ_r)
+    Y.soil.ϑ_l .= enforce_porosity_constraint.(Y.soil.ϑ_l, ν)
+    Y.soil.θ_i .=
+        enforce_residual_constraint.(Y.soil.θ_i, eltype(Y.soil.θ_i)(0))
+    Y.soil.θ_i .= enforce_porosity_constraint.(Y.soil.ϑ_l, Y.soil.θ_i, ν)
+    ρc_s =
+        ClimaLand.Soil.volumetric_heat_capacity.(
+            Y.soil.ϑ_l,
+            Y.soil.θ_i,
+            soil.parameters.ρc_ds,
+            soil.parameters.earth_param_set,
+        )
     Y.soil.ρe_int .= SpaceVaryingInput(
         soil_ic_path,
         "sie",
@@ -50,37 +62,82 @@ function set_soil_initial_conditions!(
         regridder_type,
         regridder_kwargs = (; extrapolation_bc,),
     )
+    T =
+        ClimaLand.Soil.temperature_from_ρe_int.(
+            Y.soil.ρe_int,
+            Y.soil.θ_i,
+            ρc_s,
+            soil.parameters.earth_param_set,
+        )
+    T .= clip_to_bounds.(T, T_bounds[1], T_bounds[2])
+    Y.soil.ρe_int .=
+        ClimaLand.Soil.volumetric_internal_energy.(
+            Y.soil.θ_i,
+            ρc_s,
+            T,
+            soil.parameters.earth_param_set,
+        )
     return nothing
+end
+
+"""
+    clip_to_bounds(
+    T::FT,
+    lb::FT,
+    ub::FT,
+) where {FT <: AbstractFloat}
+
+Clips `T` to be in the bounds [lb, ub].
+
+In our initial condition function, this is used to ensure that the temperature of the soil
+is within a physical range.
+"""
+function clip_to_bounds(T::FT, lb::FT, ub::FT) where {FT <: AbstractFloat}
+    if T > ub
+        return ub
+    elseif T < lb
+        return lb
+    else
+        return T
+    end
 end
 
 """
      enforce_residual_constraint(ϑ_l::FT ,θ_r::FT)
 
-Enforces the constraint that ϑ_l > θ_r by returning 1.01 θ_r
+Enforces the constraint that ϑ_l > θ_r by returning 1.05 θ_r
 if ϑ_l < θ_r, and ϑ_l otherwise.
 """
 function enforce_residual_constraint(ϑ_l::FT, θ_r::FT) where {FT}
     if ϑ_l < θ_r
-        return θ_r * FT(1.01)
+        return θ_r * FT(1.05)
     else
         return ϑ_l
     end
 end
 
-"""
-    enforce_porosity_constraint(ϑ_l::FT, θ_i::FT, ν::FT, θ_r::FT)
 
+"""
+    enforce_porosity_constraint(ϑ_l::FT, ν::FT)
+
+Enforces the constraint that ϑ_l <= ν.
+"""
+function enforce_porosity_constraint(ϑ_l::FT, ν::FT) where {FT}
+    if ϑ_l > ν # if we exceed porosity
+        return FT(0.95) * ν # clip water content to 95% of available pore space
+    else
+        return ϑ_l
+    end
+end
+"""
+        enforce_porosity_constraint(ϑ_l::FT, θ_i::FT, ν::FT, θ_r::FT)
+    
 Enforces the constraint that ϑ_l + θ_i <= ν, by clipping the ice content to be
 99% (ν-ϑ_l), or leaving it unchanged if the constraint is already satisfied.
 """
-function enforce_porosity_constraint(
-    ϑ_l::FT,
-    θ_i::FT,
-    ν::FT,
-    θ_r::FT,
-) where {FT}
+function enforce_porosity_constraint(ϑ_l::FT, θ_i::FT, ν::FT) where {FT}
     if ϑ_l + θ_i > ν # if we exceed porosity
-        return FT(0.99) * (ν - ϑ_l) # clip ice content to 99% of available pore space
+        return FT(0.95) * (ν - ϑ_l) # clip ice content to 95% of available pore space
     else
         return θ_i
     end
