@@ -339,28 +339,35 @@ function ClimaLand.make_compute_jacobian(model::EnergyHydrology{FT}) where {FT}
                     Geometry.Covariant3Vector(zero(FT)),
                 ),
             )
-            dfluxBCdY_water = p.soil.dfluxBCdY.water
-            topBC_op_water = Operators.SetBoundaryOperator(
-                top = Operators.SetValue(dfluxBCdY_water),
-                bottom = Operators.SetValue(
-                    Geometry.Covariant3Vector(zero(FT)),
-                ),
-            )
+            # Add term from top boundary condition before applying divergence
+            # Note: need to pass 3D field on faces to `topBC_op`. Interpolating `K` to faces
+            #  for this is inefficient - we should find a better solution.
+            @. ∂ϑres∂ϑ =
+                -dtγ * (
+                    divf2c_matrix() ⋅ (
+                        MatrixFields.DiagonalMatrixRow(
+                            interpc2f_op(-p.soil.K),
+                        ) ⋅ gradc2f_matrix() ⋅ MatrixFields.DiagonalMatrixRow(
+                            ClimaLand.Soil.dψdϑ(
+                                hydrology_cm,
+                                Y.soil.ϑ_l,
+                                ν - Y.soil.θ_i, #ν_eff
+                                θ_r,
+                                S_s,
+                            ),
+                        ) + MatrixFields.LowerDiagonalMatrixRow(
+                            topBC_op_heat(
+                                Geometry.Covariant3Vector(
+                                    zero(interpc2f_op(p.soil.K)),
+                                ),
+                            ),
+                        )
+                    )
+                ) - (I,)
         else
-            topBC_op_heat = Operators.SetBoundaryOperator(
-                top = Operators.SetValue(Geometry.Covariant3Vector(zero(FT))),
-                bottom = Operators.SetValue(
-                    Geometry.Covariant3Vector(zero(FT)),
-                ),
-            )
-            topBC_op_water = topBC_op_heat
-        end
-        # Add term from top boundary condition before applying divergence
-        # Note: need to pass 3D field on faces to `topBC_op`. Interpolating `K` to faces
-        #  for this is inefficient - we should find a better solution.
-        @. ∂ϑres∂ϑ =
-            -dtγ * (
-                divf2c_matrix() ⋅ (
+            @. ∂ϑres∂ϑ =
+                -dtγ * (
+                    divf2c_matrix() ⋅
                     MatrixFields.DiagonalMatrixRow(interpc2f_op(-p.soil.K)) ⋅
                     gradc2f_matrix() ⋅ MatrixFields.DiagonalMatrixRow(
                         ClimaLand.Soil.dψdϑ(
@@ -370,70 +377,40 @@ function ClimaLand.make_compute_jacobian(model::EnergyHydrology{FT}) where {FT}
                             θ_r,
                             S_s,
                         ),
-                    ) + MatrixFields.LowerDiagonalMatrixRow(
-                        topBC_op_water(
-                            Geometry.Covariant3Vector(
-                                zero(interpc2f_op(p.soil.K)),
-                            ),
-                        ),
                     )
-                )
-            ) - (I,)
-
+                ) - (I,)
+        end
         @. ∂ρeres∂ϑ =
             -dtγ * (
-                divf2c_matrix() ⋅ (
-                    MatrixFields.DiagonalMatrixRow(
-                        -interpc2f_op(
-                            volumetric_internal_energy_liq(
-                                p.soil.T,
-                                model.parameters.earth_param_set,
-                            ) * p.soil.K,
-                        ),
-                    ) ⋅ gradc2f_matrix() ⋅ MatrixFields.DiagonalMatrixRow(
-                        ClimaLand.Soil.dψdϑ(
-                            hydrology_cm,
-                            Y.soil.ϑ_l,
-                            ν - Y.soil.θ_i, #ν_eff
-                            θ_r,
-                            S_s,
-                        ),
-                    ) +
-                    MatrixFields.DiagonalMatrixRow(
-                        interpc2f_op(
-                            volumetric_internal_energy_liq(
-                                p.soil.T,
-                                model.parameters.earth_param_set,
-                            ),
-                        ),
-                    ) ⋅ MatrixFields.LowerDiagonalMatrixRow(
-                        topBC_op_water(
-                            Geometry.Covariant3Vector(
-                                zero(interpc2f_op(p.soil.K)),
-                            ),
-                        ),
-                    )
+                divf2c_matrix() ⋅ MatrixFields.DiagonalMatrixRow(
+                    -interpc2f_op(
+                        volumetric_internal_energy_liq(
+                            p.soil.T,
+                            model.parameters.earth_param_set,
+                        ) * p.soil.K,
+                    ),
+                ) ⋅ gradc2f_matrix() ⋅ MatrixFields.DiagonalMatrixRow(
+                    ClimaLand.Soil.dψdϑ(
+                        hydrology_cm,
+                        Y.soil.ϑ_l,
+                        ν - Y.soil.θ_i, #ν_eff
+                        θ_r,
+                        S_s,
+                    ),
                 )
             ) - (I,)
 
         @. ∂ρeres∂ρe =
             -dtγ * (
-                divf2c_matrix() ⋅ (
-                    MatrixFields.DiagonalMatrixRow(interpc2f_op(-p.soil.κ)) ⋅
-                    gradc2f_matrix() ⋅ MatrixFields.DiagonalMatrixRow(
-                        1 / ClimaLand.Soil.volumetric_heat_capacity(
-                            p.soil.θ_l,
-                            Y.soil.θ_i,
-                            ρc_ds,
-                            earth_param_set,
-                        ),
-                    ) + MatrixFields.LowerDiagonalMatrixRow(
-                        topBC_op_heat(
-                            Geometry.Covariant3Vector(
-                                zero(interpc2f_op(p.soil.T)),
-                            ),
-                        ),
-                    )
+                divf2c_matrix() ⋅
+                MatrixFields.DiagonalMatrixRow(interpc2f_op(-p.soil.κ)) ⋅
+                gradc2f_matrix() ⋅ MatrixFields.DiagonalMatrixRow(
+                    1 / ClimaLand.Soil.volumetric_heat_capacity(
+                        p.soil.θ_l,
+                        Y.soil.θ_i,
+                        ρc_ds,
+                        earth_param_set,
+                    ),
                 )
             ) - (I,)
     end
