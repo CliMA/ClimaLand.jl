@@ -427,12 +427,9 @@ setup_and_solve_problem(; greet = true);
 # read in diagnostics and make some plots!
 #### ClimaAnalysis ####
 short_names = ["gpp", "swc", "et", "ct"]
-include(
-    joinpath(
-        pkgdir(ClimaLand),
-        "experiments",
-        "long_runs",
-        "figures_function.jl",
-    ),
-)
+include(joinpath(@__DIR__, "figures_function.jl"))
 make_figures(root_path, outdir, short_names)
+
+include(joinpath(@__DIR__, "global_plots"))
+make_global_plots(outdir, root_path, plot_net_radiation = true)
+make_seasonal_plots(outdir, root_path, plot_net_radiation = true)

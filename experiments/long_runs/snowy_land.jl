@@ -496,17 +496,14 @@ short_names = [
     "msf",
 ]
 
-include(
-    joinpath(
-        pkgdir(ClimaLand),
-        "experiments",
-        "long_runs",
-        "figures_function.jl",
-    ),
-)
+include(joinpath(@__DIR__, "figures_function.jl"))
 make_figures(root_path, outdir, short_names)
 
-include("leaderboard/leaderboard.jl")
+include(joinpath(@__DIR__, "leaderboard", "leaderboard.jl"))
 diagnostics_folder_path = outdir
 leaderboard_base_path = root_path
 compute_leaderboard(leaderboard_base_path, diagnostics_folder_path)
+
+include(joinpath(@__DIR__, "global_plots.jl"))
+make_global_plots(outdir, root_path, plot_net_radiation = true)
+make_seasonal_plots(outdir, root_path, plot_net_radiation = true)
