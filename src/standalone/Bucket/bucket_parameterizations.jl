@@ -29,12 +29,18 @@ function ClimaLand.surface_temperature(model::BucketModel, Y, p, t)
 end
 
 """
-    ClimaLand.surface_specific_humidity(model::BucketModel, Y, p)
+    ClimaLand.surface_specific_humidity(atmos, model::BucketModel, Y, p)
 
 a helper function which returns the surface specific humidity for the bucket
 model, which is stored in the aux state.
 """
-function ClimaLand.surface_specific_humidity(model::BucketModel, Y, p, _...)
+function ClimaLand.surface_specific_humidity(
+    atmos,
+    model::BucketModel,
+    Y,
+    p,
+    _...,
+)
     return p.bucket.q_sfc
 end
 

@@ -163,7 +163,7 @@ equations; updates the specific fields in the auxiliary
 state `p` which hold these variables. This function is called
 within the explicit tendency of the canopy model.
 
-- `p.canopy.energy.turbulent_fluxes`: Canopy SHF, LHF, transpiration, derivatives of these with respect to T,q
+- `p.canopy.turbulent_fluxes`: Canopy SHF, LHF, transpiration, derivatives of these with respect to T,q
 - `p.canopy.hydraulics.fa[end]`: Transpiration
 - `p.canopy.hydraulics.fa_roots`: Root water flux
 - `p.canopy.radiative_transfer.LW_n`: net long wave radiation
@@ -191,7 +191,7 @@ function canopy_boundary_fluxes!(
     fa = p.canopy.hydraulics.fa
     LAI = p.canopy.hydraulics.area_index.leaf
     SAI = p.canopy.hydraulics.area_index.stem
-    canopy_tf = p.canopy.energy.turbulent_fluxes
+    canopy_tf = p.canopy.turbulent_fluxes
     i_end = canopy.hydraulics.n_stem + canopy.hydraulics.n_leaf
     # Compute transpiration, SHF, LHF
     ClimaLand.turbulent_fluxes!(canopy_tf, atmos, canopy, Y, p, t)
@@ -289,6 +289,39 @@ function ClimaLand.turbulent_fluxes!(
     return nothing
 end
 
+
+function ClimaLand.coupler_compute_turbulent_fluxes!(
+    dest,
+    atmos::NamedTuple,
+    model::CanopyModel,
+    Y::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
+    t,
+)
+    T_sfc = ClimaLand.surface_temperature(model, Y, p, t)
+    h_sfc = ClimaLand.surface_height(model, Y, p)
+    r_stomata_canopy = ClimaLand.surface_resistance(model, Y, p, t)
+    d_sfc = ClimaLand.displacement_height(model, Y, p)
+    dest .=
+        canopy_turbulent_fluxes_at_a_point.(
+            T_sfc,
+            h_sfc,
+            r_stomata_canopy,
+            d_sfc,
+            atmos.thermal_state,
+            atmos.u,
+            atmos.h,
+            p.canopy.hydraulics.area_index.leaf,
+            p.canopy.hydraulics.area_index.stem,
+            atmos.gustiness,
+            model.parameters.z_0m,
+            model.parameters.z_0b,
+            Ref(model.parameters.earth_param_set),
+            compute_momentum_fluxes = true,
+        )
+    return nothing
+end
+
 """
     function canopy_turbulent_fluxes_at_a_point(
         T_sfc::FT,
@@ -303,7 +336,8 @@ end
         gustiness::FT,
         z_0m::FT,
         z_0b::FT,
-        earth_param_set::EP,
+        earth_param_set::EP;
+        compute_momentum_fluxes = false,
     ) where {FT <: AbstractFloat, EP}
 
 Computes the turbulent surface fluxes for the canopy at a point
@@ -319,24 +353,25 @@ function canopy_turbulent_fluxes_at_a_point(
     r_stomata_canopy::FT,
     d_sfc::FT,
     ts_in,
-    u::FT,
+    u::Union{FT, SVector{2, FT}},
     h::FT,
     LAI::FT,
     SAI::FT,
     gustiness::FT,
     z_0m::FT,
     z_0b::FT,
-    earth_param_set::EP,
+    earth_param_set::EP;
+    compute_momentum_fluxes = false,
 ) where {FT <: AbstractFloat, EP}
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
     # The following will not run on GPU
     #    h - d_sfc - h_sfc < 0 &&
     #        @error("Surface height is larger than atmos height in surface fluxes")
-    state_in = SurfaceFluxes.StateValues(
-        h - d_sfc - h_sfc,
-        SVector{2, FT}(u, 0),
-        ts_in,
-    )
+    # u is already a vector when we get it from a coupled atmosphere, otherwise we need to make it one
+    if u isa FT
+        u = SVector{2, FT}(u, 0)
+    end
+    state_in = SurfaceFluxes.StateValues(h - d_sfc - h_sfc, u, ts_in)
 
     ρ_sfc = compute_ρ_sfc(thermo_params, ts_in, T_sfc)
     q_sfc = Thermodynamics.q_vap_saturation_generic(
@@ -408,13 +443,75 @@ function canopy_turbulent_fluxes_at_a_point(
         ρ_sfc * cp_m_sfc / (r_b_canopy_total + r_ae) +
         SH / ρ_sfc * ∂ρsfc∂Tc +
         SH / cp_m_sfc * ∂cp_m_sfc∂Tc
-    return (
-        lhf = LH,
-        shf = SH,
-        transpiration = Ẽ,
-        r_ae = r_ae,
-        ∂LHF∂qc = ∂LHF∂qc,
-        ∂SHF∂Tc = ∂SHF∂Tc,
+
+    # Return the (unaltered) momentum fluxes if they are requested
+    if !compute_momentum_fluxes
+        return (
+            lhf = LH,
+            shf = SH,
+            transpiration = Ẽ,
+            r_ae = r_ae,
+            ∂LHF∂qc = ∂LHF∂qc,
+            ∂SHF∂Tc = ∂SHF∂Tc,
+        )
+    else
+        return (
+            lhf = LH,
+            shf = SH,
+            transpiration = Ẽ,
+            r_ae = r_ae,
+            ∂LHF∂qc = ∂LHF∂qc,
+            ∂SHF∂Tc = ∂SHF∂Tc,
+            ρτxz = conditions.ρτxz,
+            ρτyz = conditions.ρτyz,
+        )
+    end
+end
+
+"""
+    boundary_vars(bc, ::ClimaLand.TopBoundary)
+    boundary_var_domain_names(bc, ::ClimaLand.TopBoundary)
+    boundary_var_types(::AbstractCanopyEnergyModel, bc, ::ClimaLand.TopBoundary)
+
+Fallbacks for the boundary conditions methods which add the turbulent
+fluxes to the auxiliary variables.
+"""
+boundary_vars(bc, ::ClimaLand.TopBoundary) = (:turbulent_fluxes,)
+boundary_var_domain_names(bc, ::ClimaLand.TopBoundary) = (:surface,)
+boundary_var_types(::CanopyModel{FT}, bc, ::ClimaLand.TopBoundary) where {FT} =
+    (
+        NamedTuple{
+            (:lhf, :shf, :transpiration, :r_ae, :∂LHF∂qc, :∂SHF∂Tc),
+            Tuple{FT, FT, FT, FT, FT, FT},
+        },
     )
 
-end
+"""
+    boundary_var_types(
+        ::CanopyModel{FT},
+        ::AtmosDrivenCanopyBC{<:CoupledAtmosphere, <:CoupledRadiativeFluxes},
+        ::ClimaLand.TopBoundary,
+    ) where {FT}
+
+An extension of the `boundary_var_types` method for AtmosDrivenCanopyBC. This
+specifies the type of the additional variables.
+
+This method includes the additional momentum fluxes needed by the atmosphere.
+These are updated in place when the coupler computes turbulent fluxes,
+rather than in `soil_boundary_fluxes!`.
+
+Note that we currently store these in the land model because the coupler
+computes turbulent land/atmosphere fluxes using ClimaLand functions, and
+the land model needs to be able to store the fluxes as an intermediary.
+Once we compute fluxes entirely within the coupler, we can remove this.
+"""
+boundary_var_types(
+    ::CanopyModel{FT},
+    ::AtmosDrivenCanopyBC{<:CoupledAtmosphere, <:CoupledRadiativeFluxes},
+    ::ClimaLand.TopBoundary,
+) where {FT} = (
+    NamedTuple{
+        (:lhf, :shf, :transpiration, :r_ae, :∂LHF∂qc, :∂SHF∂Tc, :ρτxz, :ρτyz),
+        Tuple{FT, FT, FT, FT, FT, FT, FT, FT},
+    },
+)
