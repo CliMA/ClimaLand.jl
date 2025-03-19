@@ -2,8 +2,8 @@
 fluxtower sites. These work in tandem with the site-specific timing parameters
 found in the {site-ID}_simulation.jl files in each site directory."""
 
-N_spinup_days = 15
-N_days = N_spinup_days + 340
+N_spinup_days = 0
+N_days = N_spinup_days + 364
 
 tf = Float64(t0 + 3600 * 24 * N_days)
 t_spinup = Float64(t0 + N_spinup_days * 3600 * 24)

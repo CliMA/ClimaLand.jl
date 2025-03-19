@@ -221,15 +221,12 @@ Y, p, cds = initialize(land)
 
 #Initial conditions
 
-Y.soil.ϑ_l = FT(0.3)
+parent(Y.soil.ϑ_l) .= [0.315454, 0.317892, 0.322279, 0.327988, 0.334245, 0.340268, 0.345425, 0.349299, 0.35166, 0.352402, 0.351488, 0.348901, 0.344613, 0.338555]
 
 # Both data and simulation are reference to 2005-01-01-00 (LOCAL)
 # or 2005-01-01-06 (UTC)
 Y.soil.θ_i = FT(0.0)
-T_0 =
-    drivers.TS5.status != absent ?
-    drivers.TS5.values[1 + Int(round(t0 / DATA_DT))] :
-    drivers.TA.values[1 + Int(round(t0 / DATA_DT))] + 40# Get soil temperature at t0
+T_0 = [278.726, 278.748, 278.808, 278.906, 279.041, 279.209, 279.404, 279.617, 279.834, 280.04, 280.216, 280.344, 280.411, 280.41]
 ρc_s =
     volumetric_heat_capacity.(
         Y.soil.ϑ_l,

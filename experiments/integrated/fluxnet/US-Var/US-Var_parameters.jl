@@ -23,14 +23,14 @@ lat = FT(38.4133) # degree
 long = FT(-120.9508) # degree
 
 # Soil parameters
-soil_ν = FT(0.45) # m3/m3, Bonan Table 8.3
-soil_K_sat = FT(0.45 / 3600 / 100) # m/s, Bonan Table 8.3
+soil_ν = FT(0.5) # m3/m3
+soil_K_sat = FT(0.45 / 3600 / 100) # m/s
 soil_S_s = FT(1e-3) # 1/m, guess
-soil_vg_n = FT(2.0) # unitless, near Bonan Table 8.3
-soil_vg_α = FT(2.0) # inverse meters, Bonan Table 8.3
-θ_r = FT(0.067) # m3/m3, near Bonan Table 8.3
+soil_vg_n = FT(1.6) # unitless
+soil_vg_α = FT(2.0) # inverse meters
+θ_r = FT(0.0) # m3/m3
 
-# Soil heat transfer parameters; not needed for hydrology only test
+# Soil heat transfer parameters
 ν_ss_quartz = FT(0.3) # Xu and Baldocchi (2003)
 ν_ss_om = FT(0.02) # Xu and Baldocchi (2003)
 ν_ss_gravel = FT(0.0);
@@ -47,7 +47,7 @@ G_Function = CLMGFunction(χ)
 α_PAR_leaf = FT(0.11)
 λ_γ_PAR = FT(5e-7)
 τ_PAR_leaf = FT(0.05)
-α_NIR_leaf = FT(0.35)
+α_NIR_leaf = FT(0.45)
 τ_NIR_leaf = FT(0.34)
 ϵ_canopy = FT(0.97)
 
@@ -64,9 +64,9 @@ ac_canopy = FT(745)
 
 # Plant Hydraulics and general plant parameters
 pc = FT(-3e5)
-sc = FT(1e-3)
+sc = FT(4e-6)
 SAI = FT(0)
-f_root_to_shoot = FT(1.0)
+f_root_to_shoot = FT(3.5)
 K_sat_plant = 2e-8 # m/s
 ψ63 = FT(-2.7 / 0.0098) # / MPa to m, Holtzman's original parameter value is -4 MPa
 Weibull_param = FT(4) # unitless, Holtzman's original c param value
