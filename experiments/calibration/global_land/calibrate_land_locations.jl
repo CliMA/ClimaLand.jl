@@ -130,7 +130,6 @@ utki = EKP.EnsembleKalmanProcess(
 CAL.calibrate(
     CAL.WorkerBackend,
     utki,
-    ensemble_size,
     n_iterations,
     prior,
     caldir,

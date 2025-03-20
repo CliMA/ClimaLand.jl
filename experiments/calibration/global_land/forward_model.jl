@@ -61,15 +61,33 @@ function setup_prob(t0, tf, Δt, params, start_date, outdir; nelements = (101, 1
     surface_space = domain.space.surface
     subsurface_space = domain.space.subsurface
 
+# TEMP
+
+seconds = 1.0
+minutes = 60seconds
+hours = 60minutes # hours in seconds
+days = 24hours # days in seconds
+years = 366days # years in seconds - 366 to make sure we capture at least full years
+tf_hack = tf.counter + 1years
+t0 = t0.counter
+Δt = Δt.counter
+t0 = ITime(t0, epoch = start_date)
+tf_hack = ITime(tf_hack, epoch = start_date)
+Δt = ITime(Δt, epoch = start_date)
+t0, tf_hack, Δt = promote(t0, tf_hack, Δt)
+
+# TEMP
+
     # Forcing data
 #    era5_artifact_path =
 #        ClimaLand.Artifacts.era5_land_forcing_data2008_folder_path(; context)
 #    era5_ncdata_path = joinpath(era5_artifact_path, "era5_2008_1.0x1.0.nc")
         era5_ncdata_path = ClimaLand.Artifacts.find_era5_year_paths(
             date(t0),
-            date(tf);
+            date(tf_hack);
             context,
         )
+
     atmos, radiation = ClimaLand.prescribed_forcing_era5(
         era5_ncdata_path,
         surface_space,
