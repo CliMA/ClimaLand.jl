@@ -51,9 +51,9 @@ end
 end
 
 # # Standalone Soil model tests
-# @safetestset "Soil Biogeochemistry module tests" begin
-#     include("standalone/Soil/Biogeochemistry/biogeochemistry_module.jl")
-# end
+@safetestset "Soil Biogeochemistry module tests" begin
+    include("standalone/Soil/Biogeochemistry/biogeochemistry_module.jl")
+end
 # @safetestset "Soil CO2 parameterization tests" begin
 #     include("standalone/Soil/Biogeochemistry/co2_parameterizations.jl")
 # end
