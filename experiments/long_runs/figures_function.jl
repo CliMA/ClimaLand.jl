@@ -34,15 +34,13 @@ function make_figures(
             # i represent a year, from 1 to last year
             # for more details on the ClimaAnalysis functions, see ClimaAnalysis docs.
             var_global_average = [
-                ClimaAnalysis.average_lon(
-                    ClimaAnalysis.weighted_average_lat(
-                        ClimaAnalysis.apply_oceanmask(
-                            ClimaAnalysis.window(
-                                var_sliced,
-                                "time",
-                                left = (i - 1) * 366 * 86400 + 30 * 86400, # 1 year left of year i, in seconds.
-                                right = i * 366 * 86400, # 1 year right of year i, in seconds
-                            ),
+                ClimaAnalysis.weighted_average_lonlat(
+                    ClimaAnalysis.apply_oceanmask(
+                        ClimaAnalysis.window(
+                            var_sliced,
+                            "time",
+                            left = (i - 1) * 366 * 86400 + 30 * 86400, # 1 year left of year i, in seconds.
+                            right = i * 366 * 86400, # 1 year right of year i, in seconds
                         ),
                     ),
                 ).data for i in range(
