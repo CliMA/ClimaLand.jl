@@ -395,30 +395,30 @@ function setup_prob(
     # num_points is the resolution of the output diagnostics
     # These are currently chosen to get a 1:1 ration with the number of
     # simulation points, ~101x101x4x4
-    nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(
-        subsurface_space,
-        outdir;
-        start_date,
-        num_points = (570, 285, 15),
-    )
+    # nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(
+    #     subsurface_space,
+    #     outdir;
+    #     start_date,
+    #     num_points = (570, 285, 15),
+    # )
 
-    diags = ClimaLand.default_diagnostics(
-        land,
-        start_date;
-        output_writer = nc_writer,
-        output_vars = :short,
-        average_period = :monthly,
-    )
+    # diags = ClimaLand.default_diagnostics(
+    #     land,
+    #     start_date;
+    #     output_writer = nc_writer,
+    #     output_vars = :short,
+    #     average_period = :monthly,
+    # )
 
-    diagnostic_handler =
-        ClimaDiagnostics.DiagnosticsHandler(diags, Y, p, t0; dt = Δt)
+    # diagnostic_handler =
+    #     ClimaDiagnostics.DiagnosticsHandler(diags, Y, p, t0; dt = Δt)
 
-    diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler)
+    # diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler)
 
     driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
 
     walltime_info = WallTimeInfo()
-    every1000steps(u, t, integrator) = mod(integrator.step, 1000) == 0
+    every1000steps(u, t, integrator) = mod(integrator.step, 10) == 0
     report = let wt = walltime_info
         (integrator) -> report_walltime(wt, integrator)
     end
@@ -435,7 +435,7 @@ function setup_prob(
     )
 
     return prob,
-    SciMLBase.CallbackSet(driver_cb, diag_cb, report_cb, nancheck_cb)
+    SciMLBase.CallbackSet(driver_cb, report_cb, nancheck_cb)
 end
 
 function setup_and_solve_problem(; greet = false)
