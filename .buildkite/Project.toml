@@ -43,7 +43,7 @@ Thermodynamics = "b60c26fb-14c3-4610-9d3e-2d17fe7ff00c"
 cuDNN = "02a925ec-e4fe-4b08-9a7e-0d78e3d38ccd"
 
 [compat]
-ClimaAnalysis = "0.5.12"
+ClimaAnalysis = "0.5.15"
 ClimaTimeSteppers = "0.7, 0.8"
 Statistics = "1"
 Flux = "~0.14"
