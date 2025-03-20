@@ -1095,6 +1095,8 @@ end
 A helper function which constructs the `PrescribedAtmosphere` and `PrescribedRadiativeFluxes`
 from a file path pointing to the ERA5 data in a netcdf file, the surface_space, the start date,
 and the earth_param_set.
+
+The argument `era5_ncdata_path` is either a list of nc files, each with all of the variables required, but with different time intervals in the different files, or else it is a single file with all the variables.
 """
 function prescribed_forcing_era5(
     era5_ncdata_path,
@@ -1107,10 +1109,12 @@ function prescribed_forcing_era5(
     time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
     regridder_type = :InterpolationsRegridder,
 )
+    # Pass a list of files in all cases
+    era5_ncdata_path isa String && (era5_ncdata_path = [era5_ncdata_path])
 
     # Precip is provide as a mass flux; convert to volume flux of liquid water with ρ =1000 kg/m^3
     precip = TimeVaryingInput(
-        era5_ncdata_path,
+        [era5_ncdata_path, era5_ncdata_path],
         ["mtpr", "msr"],
         surface_space;
         start_date,
@@ -1131,7 +1135,7 @@ function prescribed_forcing_era5(
     )
 
     u_atmos = TimeVaryingInput(
-        era5_ncdata_path,
+        [era5_ncdata_path, era5_ncdata_path],
         ["u10", "v10"],
         surface_space;
         start_date,
@@ -1142,7 +1146,7 @@ function prescribed_forcing_era5(
     specific_humidity(Td, T, P; params = earth_param_set) =
         ClimaLand.specific_humidity_from_dewpoint.(Td, T, P, params)
     q_atmos = TimeVaryingInput(
-        era5_ncdata_path,
+        [era5_ncdata_path, era5_ncdata_path, era5_ncdata_path],
         ["d2m", "t2m", "sp"],
         surface_space;
         start_date,
@@ -1200,7 +1204,7 @@ function prescribed_forcing_era5(
     end
 
     frac_diff = TimeVaryingInput(
-        era5_ncdata_path,
+        [era5_ncdata_path, era5_ncdata_path],
         ["msdwswrf", "msdrswrf"],
         surface_space;
         start_date,
@@ -1275,6 +1279,8 @@ end
 A helper function which constructs the TimeVaryingInput object for Leaf Area Index, from a
 file path pointing to the ERA5 LAI data in a netcdf file, a file path pointing to the ERA5
 LAI cover data in a netcdf file, the surface_space, the start date, and the earth_param_set.
+
+This currently one works when a single file is passed for both the era5 lai and era5 lai cover data.
 """
 function prescribed_lai_era5(
     era5_lai_ncdata_path,
