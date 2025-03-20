@@ -1,6 +1,6 @@
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.11.3"
+julia_version = "1.11.4"
 manifest_format = "2.0"
 project_hash = "3f4ceb30ba99ebd32a38b3cd7ce9703605f14393"
 
@@ -415,7 +415,9 @@ version = "0.4.6"
 
 [[deps.ClimaDiagnostics]]
 deps = ["Accessors", "ClimaComms", "ClimaCore", "ClimaUtilities", "Dates", "NCDatasets", "OrderedCollections", "SciMLBase"]
-git-tree-sha1 = "a67549b46bd3629a1af5739f161bc953914f9c5e"
+git-tree-sha1 = "dc83ad1923666ccfd450709c24d4c9b27f8bae9f"
+repo-rev = "kp/bounds"
+repo-url = "https://github.com/CliMA/ClimaDiagnostics.jl.git"
 uuid = "1ecacbb8-0713-4841-9a07-eb5aa8a2d53f"
 version = "0.2.12"
 
@@ -2046,7 +2048,7 @@ version = "2.5.4+0"
 [[deps.OpenLibm_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "05823500-19ac-5b8b-9628-191a04bc5112"
-version = "0.8.1+2"
+version = "0.8.1+4"
 
 [[deps.OpenMPI_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "Hwloc_jll", "JLLWrappers", "LazyArtifacts", "Libdl", "MPIPreferences", "TOML", "Zlib_jll"]
