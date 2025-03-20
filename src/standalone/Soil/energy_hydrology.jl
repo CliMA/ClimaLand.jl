@@ -1098,3 +1098,58 @@ function soil_turbulent_fluxes_at_a_point(
         vapor_flux_ice = Ẽ_i,
     )
 end
+
+"""
+    ClimaLand.total_liq_water_vol_per_area!(
+        surface_field,
+        model::EnergyHydrology,
+        Y,
+        p,
+        t,
+)
+
+A function which updates `surface_field` in place with the value for
+the total liquid water volume per unit ground area for the `EnergyHydrology`.
+
+The water in all phases is accounted for by converting ice volume to liquid water
+volume using the ratio of the density of ice to the density of water.
+"""
+function ClimaLand.total_liq_water_vol_per_area!(
+    surface_field,
+    model::EnergyHydrology,
+    Y,
+    p,
+    t,
+)
+    earth_param_set = model.parameters.earth_param_set
+    _ρ_liq = LP.ρ_cloud_liq(earth_param_set)
+    _ρ_ice = LP.ρ_cloud_ice(earth_param_set)
+    ClimaCore.Operators.column_integral_definite!(
+        surface_field,
+        Y.soil.ϑ_l .+ Y.soil.θ_i .* _ρ_ice ./ _ρ_liq, # this line allocates
+    )
+    return nothing
+end
+
+"""
+    ClimaLand.total_energy_per_area!(
+        surface_field,
+        model::EnergyHydrology,
+        Y,
+        p,
+        t,
+)
+
+A function which updates `surface_field` in place with the value for
+the total energy per unit ground area for the `EnergyHydrology`.
+"""
+function ClimaLand.total_energy_per_area!(
+    surface_field,
+    model::EnergyHydrology,
+    Y,
+    p,
+    t,
+)
+    ClimaCore.Operators.column_integral_definite!(surface_field, Y.soil.ρe_int)
+    return nothing
+end

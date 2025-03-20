@@ -209,6 +209,80 @@ Returns the component names of the `land` model, by calling
 """
 land_components(land::AbstractLandModel) = propertynames(land)
 
+"""
+    total_energy_per_area!(
+        surface_field,
+        land::AbstractLandModel,
+        Y,
+        p,
+        t,
+        sfc_cache,
+)
+
+A function which computes the total energy per unit area and updates
+`surface_field` in place, for the land model `land`, by calling
+the same function for the component models.
+
+The `sfc_cache` field is available as scratch space.
+"""
+function total_energy_per_area!(
+    surface_field,
+    land::AbstractLandModel,
+    Y,
+    p,
+    t,
+    sfc_cache,
+)
+    components = land_components(land)
+    sfc_cache .*= 0
+    surface_field .*= 0
+    for component in components
+        total_energy_per_area!(sfc_cache, getproperty(land, component), Y, p, t)
+        surface_field .+= sfc_cache
+    end
+end
+
+"""
+    total_liq_water_vol_per_area!(
+        surface_field,
+        land::AbstractLandModel,
+        Y,
+        p,
+        t,
+        sfc_cache,
+)
+
+A function which computes the total liquid water volume 
+per unit area and updates
+`surface_field` in place, for the land model `land`, by calling
+the same function for the component models.
+
+The `sfc_cache` field is available as scratch space.
+"""
+function total_liq_water_vol_per_area!(
+    surface_field,
+    land::AbstractLandModel,
+    Y,
+    p,
+    t,
+    sfc_cache,
+)
+    components = land_components(land)
+    sfc_cache .*= 0
+    surface_field .*= 0
+    for component in components
+        total_liq_water_vol_per_area!(
+            sfc_cache,
+            getproperty(land, component),
+            Y,
+            p,
+            t,
+        )
+        surface_field .+= sfc_cache
+    end
+end
+
+
 function prognostic_vars(land::AbstractLandModel)
     components = land_components(land)
     prognostic_list = map(components) do model

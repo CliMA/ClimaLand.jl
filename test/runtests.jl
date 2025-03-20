@@ -49,6 +49,9 @@ end
 @safetestset "Neural Snow model tools tests" begin
     include("standalone/Snow/tool_tests.jl")
 end
+@safetestset "Snow integrated water and energy content" begin
+    include("standalone/Snow/conservation.jl")
+end
 
 # Standalone Soil model tests
 @safetestset "Soil Biogeochemistry module tests" begin
@@ -75,6 +78,9 @@ end
 @safetestset "Soil integration tests" begin
     include("standalone/Soil/soiltest.jl")
 end
+@safetestset "Soil integrated water and energy content" begin
+    include("standalone/Soil/conservation.jl")
+end
 
 # Standalone Surface Water model tests
 @safetestset "Pond module tests" begin
@@ -94,6 +100,9 @@ end
 @safetestset "Two Stream model tests" begin
     include("standalone/Vegetation/test_two_stream.jl")
 end
+@safetestset "Canopy integrated water and energy content" begin
+    include("standalone/Vegetation/conservation.jl")
+end
 
 # Integrated LSM tests
 @safetestset "Integrated LSM unit tests" begin
@@ -110,6 +119,10 @@ end
 end
 @safetestset "Integrated soil and snow" begin
     include("integrated/soil_snow.jl")
+end
+
+@safetestset "Full Land Model" begin
+    include("integrated/full_land.jl")
 end
 
 # Simulations

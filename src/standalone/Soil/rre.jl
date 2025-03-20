@@ -456,3 +456,26 @@ function ClimaLand.get_drivers(model::RichardsModel)
         return ()
     end
 end
+
+"""
+    ClimaLand.total_liq_water_vol_per_area!(
+        surface_field,
+        model::RichardsModel,
+        Y,
+        p,
+        t,
+)
+
+A function which updates `surface_field` in place with the value for
+the total liquid water volume per unit ground area for the `RichardsModel`.
+"""
+function ClimaLand.total_liq_water_vol_per_area!(
+    surface_field,
+    model::RichardsModel,
+    Y,
+    p,
+    t,
+)
+    ClimaCore.Operators.column_integral_definite!(surface_field, Y.soil.ϑ_l)
+    return nothing
+end

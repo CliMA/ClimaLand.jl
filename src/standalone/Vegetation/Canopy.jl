@@ -25,7 +25,9 @@ import ClimaLand:
     make_compute_exp_tendency,
     make_compute_imp_tendency,
     make_compute_jacobian,
-    get_drivers
+    get_drivers,
+    total_liq_water_vol_per_area!,
+    total_energy_per_area!
 
 using ClimaLand.Domains: Point, Plane, SphericalSurface
 export SharedCanopyParameters, CanopyModel, set_canopy_prescribed_field!
@@ -693,4 +695,61 @@ end
 include("./canopy_boundary_fluxes.jl")
 #Make the canopy model broadcastable
 Base.broadcastable(C::CanopyModel) = tuple(C)
+
+"""
+    ClimaLand.total_energy_per_area!(
+        surface_field,
+        model::CanopyModel,
+        Y,
+        p,
+        t,
+)
+
+A function which updates `surface_field` in place with the value for
+the total energy per unit ground area for the `CanopyModel`.
+
+This acts by calling the method for the energy component of
+the canopy model.
+"""
+function ClimaLand.total_energy_per_area!(
+    surface_field,
+    model::CanopyModel,
+    Y,
+    p,
+    t,
+)
+    ClimaLand.total_energy_per_area!(surface_field, model.energy, Y, p, t)
+end
+
+"""
+    ClimaLand.total_liq_water_vol_per_area!(
+        surface_field,
+        model::CanopyModel,
+        Y,
+        p,
+        t,
+)
+
+A function which updates `surface_field` in place with the value for
+the total liquid water volume per unit ground area for the `CanopyModel`.
+
+This acts by calling the method for the PlantHydraulics component of
+the canopy model.
+"""
+function ClimaLand.total_liq_water_vol_per_area!(
+    surface_field,
+    model::CanopyModel,
+    Y,
+    p,
+    t,
+)
+    ClimaLand.total_liq_water_vol_per_area!(
+        surface_field,
+        model.hydraulics,
+        Y,
+        p,
+        t,
+    )
+end
+
 end

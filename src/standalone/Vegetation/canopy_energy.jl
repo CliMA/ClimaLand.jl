@@ -3,7 +3,8 @@ export PrescribedCanopyTempModel,
     AbstractCanopyEnergyModel,
     canopy_temperature,
     root_energy_flux_per_ground_area!,
-    BigLeafEnergyParameters
+    BigLeafEnergyParameters,
+    total_energy_per_area!
 
 """
     AbstractCanopyEnergyModel{FT}
@@ -237,4 +238,60 @@ function partial_q_sat_partial_T_liq(P::FT, T::FT) where {FT}
     )
 
     return FT(0.622) * P / (P - FT(0.378) * esat)^2 * desatdT
+end
+
+"""
+    ClimaLand.total_energy_per_area!(
+        surface_field,
+        model::BigLeafEnergyModel,
+        Y,
+        p,
+        t,
+)
+
+A function which updates `surface_field` in place with the value of
+the big leaf model's energy.
+
+Note that this assumes that there is at most a single canopy and stem 
+component, and that the area index for them refers to the integrated
+area index (in height) - not the value per layer.
+"""
+function ClimaLand.total_energy_per_area!(
+    surface_field,
+    model::BigLeafEnergyModel,
+    Y,
+    p,
+    t,
+)
+    area_index = p.canopy.hydraulics.area_index
+    @. surface_field .=
+        model.parameters.ac_canopy *
+        (area_index.stem + area_index.leaf) *
+        Y.canopy.energy.T
+    return nothing
+end
+
+"""
+    ClimaLand.total_energy_per_area!(
+        surface_field,
+        model::AbstractCanopyEnergyModel,
+        Y,
+        p,
+        t,
+)
+
+A default function which errors for generic energy models for the
+canopy.
+
+Note that we only support two models for canopy energy. The `BigLeafEnergyModel` has a special method for this, and the other has the temperature
+prescribed and does not conserve energy.
+"""
+function ClimaLand.total_energy_per_area!(
+    surface_field,
+    model::AbstractCanopyEnergyModel,
+    Y,
+    p,
+    t,
+)
+    @error("This method has not been implemented.")
 end
