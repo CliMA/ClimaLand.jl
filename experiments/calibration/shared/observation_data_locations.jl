@@ -86,15 +86,29 @@ for (lon, lat) in training_locations
     lhf_slice = slice(lhf, longitude = lon, latitude = lat) # 1 slice has 550 data (~ 45years*12months)
     shf_slice = slice(shf, longitude = lon, latitude = lat)
     swu_slice = slice(swu, longitude = lon, latitude = lat)
-    lhf_var = [FT(var(lhf_slice.data[i:12:end])) ./ cosd(lat) for i in 1:12]
-    shf_var = [FT(var(shf_slice.data[i:12:end])) ./ cosd(lat) for i in 1:12]
-    swu_var = [FT(var(swu_slice.data[i:12:end])) ./ cosd(lat) for i in 1:12]
+    lhf_var = [FT(var(lhf_slice.data[i:12:end])) ./ max(cosd(lat), 0.02) for i in 1:12]
+    shf_var = [FT(var(shf_slice.data[i:12:end])) ./ max(cosd(lat), 0.02) for i in 1:12]
+    swu_var = [FT(var(swu_slice.data[i:12:end])) ./ max(cosd(lat), 0.02) for i in 1:12]
     push!(lhf_slices, FT.(.-lhf_slice.data))
     push!(shf_slices, FT.(.-shf_slice.data))
     push!(swu_slices, FT.(swu_slice.data))
-    push!(lhf_vars, Diagonal(lhf_var))
-    push!(shf_vars, Diagonal(shf_var))
-    push!(swu_vars, Diagonal(swu_var))
+    push!(lhf_vars, lhf_var)
+    push!(shf_vars, shf_var)
+    push!(swu_vars, swu_var)
+end
+
+lhf_q = quantile(vcat(lhf_vars...), [0.05, 0.99])
+shf_q = quantile(vcat(shf_vars...), [0.05, 0.99])
+swu_q = quantile(vcat(swu_vars...), [0.2, 0.99])
+
+if any([lhf_q[2]/lhf_q[1] > 1e8,shf_q[2]/shf_q[1] > 1e8,swu_q[2]/swu_q[1] > 1e8])
+    throw(ArgumentError("quantiles of noise variance exceed 1e8, may cause unstable update \n investigate and adjust quantiles."))
+end
+
+for i = 1:length(lhf_vars)
+    lhf_vars[i] = min.(max.(lhf_vars[i], lhf_q[1]), lhf_q[2])
+    shf_vars[i] = min.(max.(shf_vars[i], shf_q[1]), shf_q[2])
+    swu_vars[i] = min.(max.(swu_vars[i], swu_q[1]), swu_q[2])
 end
 
 obs_y = []
@@ -105,21 +119,21 @@ for y in 31:31+n_samples # 31 to start in 2009, see below
         lhf_obs = EKP.Observation(
                                   Dict(
                                        "samples" => lhf_slices[i][1+(12*(y-1)):12+(12*(y-1))],
-                                       "covariances" => lhf_vars[i],
+                                       "covariances" => Diagonal(lhf_vars[i]),
                                        "names" => "lhf_$(lon)_$(lat)_$(y)",
                                       ),
                                  )
         shf_obs = EKP.Observation(
                                   Dict(
                                        "samples" => shf_slices[i][1+(12*(y-1)):12+(12*(y-1))],
-                                       "covariances" => shf_vars[i],
+                                       "covariances" => Diagonal(shf_vars[i]),
                                        "names" => "shf_$(lon)_$(lat)_$(y)",
                                       ),
                                  )
         swu_obs = EKP.Observation(
                                   Dict(
                                        "samples" => swu_slices[i][1+(12*(y-1)):12+(12*(y-1))],
-                                       "covariances" => swu_vars[i],
+                                       "covariances" => Diagonal(swu_vars[i]),
                                        "names" => "swu_$(lon)_$(lat)_$(y)",
                                       ),
                                  )
