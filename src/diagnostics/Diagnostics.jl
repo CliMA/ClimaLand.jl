@@ -14,7 +14,8 @@ import ..LandModel
 
 import ..Soil: EnergyHydrology
 
-import ..Domains: top_center_to_surface
+import ..Domains:
+    top_center_to_surface, AbstractDomain, SphericalShell, HybridBox
 
 import ..heaviside
 
@@ -24,6 +25,7 @@ import ClimaDiagnostics:
 import ClimaDiagnostics.Schedules:
     EveryStepSchedule, EveryDtSchedule, EveryCalendarDtSchedule
 
+import ClimaDiagnostics
 import ClimaDiagnostics.Writers: HDF5Writer, NetCDFWriter, DictWriter
 
 import ClimaCore.Operators: column_integral_definite!
