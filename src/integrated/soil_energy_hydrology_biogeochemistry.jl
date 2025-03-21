@@ -88,9 +88,11 @@ struct PrognosticMet{FT, F <: Union{AbstractFloat, ClimaCore.Fields.Field}} <:
                 Soil.inverse_matric_potential(hcm, -FT(1)) * (ν - θ_r) + θ_r
             b = Soil.approximate_ψ_S_slope(hcm)
         else
-            θ_a100 =
-                @. Soil.inverse_matric_potential(hcm, -FT(1)) * (ν - θ_r) + θ_r
-            b = @. Soil.approximate_ψ_S_slope(hcm)
+            θ_a100 = ClimaCore.Fields.zeros(axes(ν))
+            b = ClimaCore.Fields.zeros(axes(ν))
+            @. θ_a100 =
+                Soil.inverse_matric_potential(hcm, -FT(1)) * (ν - θ_r) + θ_r
+            @. b = Soil.approximate_ψ_S_slope(hcm)
         end
         return new{FT, F}(ν, θ_a100, b)
     end
