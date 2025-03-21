@@ -1,0 +1,113 @@
+using ClimaAnalysis
+using ClimaLand
+using ClimaLand.Artifacts
+using ClimaCore
+using Statistics
+import EnsembleKalmanProcesses as EKP
+using LinearAlgebra
+
+era5_path = joinpath(
+                     ClimaLand.Artifacts.era5_surface_data_1979_2024_path(),
+                     "era5_monthly_averages_surface_single_level_197901-202410.nc",
+                    )
+
+# Load data
+lhf = OutputVar(era5_path, "mslhf")
+shf = OutputVar(era5_path, "msshf")
+swu = OutputVar(era5_path, "msuwswrf")
+
+land_mask_var = ClimaAnalysis.apply_landmask(lhf)
+lhf.data[isnan.(land_mask_var.data)]
+
+simdir = SimDir("calibration_output_utki_sample/iteration_000/member_001/global_diagnostics/output_active/")
+lhf_out = get(simdir, "lhf")
+
+lhf_on_diagnostic_grid = ClimaAnalysis.resampled_as(lhf, lhf_out)
+land_mask_var = slice(ClimaAnalysis.apply_landmask(lhf_on_diagnostic_grid), time = 0)
+
+training_locations = []
+for (i, lon) in enumerate(ClimaAnalysis.longitudes(land_mask_var))
+    for (j, lat) in enumerate(ClimaAnalysis.latitudes(land_mask_var))
+        if isnan(land_mask_var.data[i,j])
+            push!(training_locations, (lon, lat))
+        end
+    end
+end
+
+# Get slices (time series for each location) and variance
+lhf_slices = []
+shf_slices = []
+swu_slices = []
+lhf_vars = []
+shf_vars = []
+swu_vars = []
+for (lon, lat) in training_locations
+        # Initialize temporary storage for each location
+    lhf_var = Vector{Vector{FT}}(undef, 12)
+    shf_var = Vector{Vector{FT}}(undef, 12)
+    swu_var = Vector{Vector{FT}}(undef, 12)
+    lhf_slice = slice(lhf, longitude = lon, latitude = lat) # 1 slice has 550 data (~ 45years*12months)
+    shf_slice = slice(shf, longitude = lon, latitude = lat)
+    swu_slice = slice(swu, longitude = lon, latitude = lat)
+    lhf_var = [FT(var(lhf_slice.data[i:12:end])) ./ max(cosd(lat), 0.02) for i in 1:12]
+    shf_var = [FT(var(shf_slice.data[i:12:end])) ./ max(cosd(lat), 0.02) for i in 1:12]
+    swu_var = [FT(var(swu_slice.data[i:12:end])) ./ max(cosd(lat), 0.02) for i in 1:12]
+    push!(lhf_slices, FT.(.-lhf_slice.data))
+    push!(shf_slices, FT.(.-shf_slice.data))
+    push!(swu_slices, FT.(swu_slice.data))
+    push!(lhf_vars, lhf_var)
+    push!(shf_vars, shf_var)
+    push!(swu_vars, swu_var)
+end
+
+lhf_q = quantile(vcat(lhf_vars...), [0.05, 0.99])
+shf_q = quantile(vcat(shf_vars...), [0.05, 0.99])
+swu_q = quantile(vcat(swu_vars...), [0.2, 0.99])
+
+if any([lhf_q[2]/lhf_q[1] > 1e8,shf_q[2]/shf_q[1] > 1e8,swu_q[2]/swu_q[1] > 1e8])
+    throw(ArgumentError("quantiles of noise variance exceed 1e8, may cause unstable update \n investigate and adjust quantiles."))
+end
+
+for i = 1:length(lhf_vars)
+    lhf_vars[i] = min.(max.(lhf_vars[i], lhf_q[1]), lhf_q[2])
+    shf_vars[i] = min.(max.(shf_vars[i], shf_q[1]), shf_q[2])
+    swu_vars[i] = min.(max.(swu_vars[i], swu_q[1]), swu_q[2])
+end
+
+obs_y = []
+n_samples = 10
+for y in 31:31+n_samples # 31 to start in 2009, see below
+    obs_y_temp = []
+    for (i, (lon, lat)) in enumerate(training_locations)
+        lhf_obs = EKP.Observation(
+                                  Dict(
+                                       "samples" => lhf_slices[i][1+(12*(y-1)):12+(12*(y-1))],
+                                       "covariances" => Diagonal(lhf_vars[i]),
+                                       "names" => "lhf_$(lon)_$(lat)_$(y)",
+                                      ),
+                                 )
+        shf_obs = EKP.Observation(
+                                  Dict(
+                                       "samples" => shf_slices[i][1+(12*(y-1)):12+(12*(y-1))],
+                                       "covariances" => Diagonal(shf_vars[i]),
+                                       "names" => "shf_$(lon)_$(lat)_$(y)",
+                                      ),
+                                 )
+        swu_obs = EKP.Observation(
+                                  Dict(
+                                       "samples" => swu_slices[i][1+(12*(y-1)):12+(12*(y-1))],
+                                       "covariances" => Diagonal(swu_vars[i]),
+                                       "names" => "swu_$(lon)_$(lat)_$(y)",
+                                      ),
+                                 )
+        push!(obs_y_temp, EKP.combine_observations([lhf_obs, shf_obs, swu_obs]))
+    end
+    push!(obs_y, EKP.combine_observations(obs_y_temp))
+end
+
+m_size = 1 # 1 year
+given_batches = [collect(((i - 1) * m_size + 1):(i * m_size)) for i in 1:n_samples]
+minibatcher = EKP.FixedMinibatcher(given_batches)
+o_names = ["$i" for i in 2009:2009+n_samples-1]
+
+observationseries =  EKP.ObservationSeries(obs_y, minibatcher, o_names)
