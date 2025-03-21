@@ -24,7 +24,8 @@ export canopy_sw_rt_beer_lambert,
     penman_monteith,
     nitrogen_content,
     plant_respiration_maintenance,
-    plant_respiration_growth
+    plant_respiration_growth,
+    enforce_albedo_constraint
 
 # 1. Radiative transfer
 
@@ -47,8 +48,8 @@ end
         cosθs,
     )
 
-Returns the leaf angle distribution value for CLM G function as a function of the 
-cosine of the solar zenith angle and the leaf orientation index. 
+Returns the leaf angle distribution value for CLM G function as a function of the
+cosine of the solar zenith angle and the leaf orientation index.
 See section 3.1 of https://www2.cesm.ucar.edu/models/cesm2/land/CLM50_Tech_Note.pdf
 """
 function compute_G(G::CLMGFunction, cosθs)
@@ -62,8 +63,8 @@ end
     )
 
 Returns the leaf angle distribution value for CLM G function at a point as a function of the
-cosine of the solar zenith angle at the point and the 
-leaf orientation index at the point. See section 3.1 of 
+cosine of the solar zenith angle at the point and the
+leaf orientation index at the point. See section 3.1 of
 https://www2.cesm.ucar.edu/models/cesm2/land/CLM50_Tech_Note.pdf
 """
 function compute_G_CLMG(χl::FT, cosθs::FT) where {FT}
@@ -385,7 +386,7 @@ end
                      cosθs::FT) where {FT}
 
 Computes the vegetation extinction coefficient (`K`), as a function
-of the cosine of the sun zenith angle (`cosθs`), 
+of the cosine of the sun zenith angle (`cosθs`),
 and the leaf angle distribution (`G`).
 """
 function extinction_coeff(G::FT, cosθs::FT) where {FT}
@@ -706,8 +707,8 @@ end
 
 Computes dark respiration (`Rd`),
 in units of mol CO2/m^2/s, as a function of
- the moisture stress factor (`β`), 
-the unversal gas constant (`R`), the temperature (`T`), 
+ the moisture stress factor (`β`),
+the unversal gas constant (`R`), the temperature (`T`),
 Vcmax25, and
 other parameters.
 
@@ -741,7 +742,7 @@ end
 
 Computes dark respiration (`Rd`),
 in units of mol CO2/m^2/s, as a function of
- the moisture stress factor (`β`), 
+ the moisture stress factor (`β`),
 the unversal gas constant (`R`), and the temperature (`T`),
 Vcmax25,  and
 other parameters.
@@ -1081,3 +1082,9 @@ function plant_respiration_growth(Rel::FT, An::FT, Rpm::FT) where {FT}
     Rg = Rel * (An - Rpm)
     return Rg
 end
+
+"""
+    enforce_albedo_constraint(α, τ)
+A function which enforces α+τ <= 1.
+"""
+enforce_albedo_constraint(α, τ) = 1 - α - τ > 0 ? α : 1 - τ
