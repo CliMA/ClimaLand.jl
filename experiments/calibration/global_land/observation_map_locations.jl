@@ -23,34 +23,16 @@ function process_member_data(simdir, iteration, m)
         shf_loc = ClimaAnalysis.slice(shf, lon = lon, lat = lat)
         swu_loc = ClimaAnalysis.slice(swu, lon = lon, lat = lat)
 
-        # Create Observation objects for lhf and shf
-        lhf_obs = EKP.Observation(
-            Dict(
-                 "samples" => lhf_loc.data[13:24],
-                "covariances" => cov(lhf_loc.data[13:24]) * EKP.I,
-                "names" => "lhf_$(lon)_$(lat)",
-            ),
-        )
-        shf_obs = EKP.Observation(
-            Dict(
-                "samples" => shf_loc.data[13:24],
-                "covariances" => cov(shf_loc.data[13:24]) * EKP.I,
-                "names" => "shf_$(lon)_$(lat)",
-            ),
-        )
 
-        swu_obs = EKP.Observation(
-            Dict(
-                "samples" => swu_loc.data[13:24],
-                "covariances" => cov(swu_loc.data[13:24]) * EKP.I,
-                "names" => "swu_$(lon)_$(lat)",
-            ),
-        )
+        lhf_seasonal = [mean(lhf_loc.data[i:i+2]) for i in 1:3:(length(lhf_loc.data)-2)][5:8] # 5:8 for seasons of 2nd year
+        shf_seasonal = [mean(shf_loc.data[i:i+2]) for i in 1:3:(length(shf_loc.data)-2)][5:8]
+        swu_seasonal = [mean(swu_loc.data[i:i+2]) for i in 1:3:(length(swu_loc.data)-2)][5:8]
+
         # Add the observations to the list
         #if all(x -> all(!isnan, x), [lhf_loc.data, shf_loc.data, lwu_loc.data, swu_loc.data])
-            push!(obs_list, lhf_obs)
-            push!(obs_list, shf_obs)
-            push!(obs_list, swu_obs)
+            push!(obs_list, lhf_seasonal)
+            push!(obs_list, shf_seasonal)
+            push!(obs_list, swu_seasonal)
         #end
 
 #        if all(x -> all(!isnan, x), [lhf_loc.data, shf_loc.data, lwu_loc.data, swu_loc.data])
@@ -63,8 +45,6 @@ function process_member_data(simdir, iteration, m)
     end
 
     # Combine all observations into a single observation
-    full_obs = EKP.combine_observations(obs_list)
-    obs = EKP.get_obs(full_obs)
 #    # Proportion of NaN
 #    nan_p = round(count(isnan, obs) / length(obs) * 100)
 #    println("iteration ", iteration, ", member ", m, ", has ", nan_p, "% NaN elements.")
@@ -78,7 +58,7 @@ function process_member_data(simdir, iteration, m)
 #
 #    obs_season = mean(reshape(obs_filled, 3, :), dims=1)[:]
 
-    return obs
+    return obs_list
 end
 
 function CAL.observation_map(iteration)

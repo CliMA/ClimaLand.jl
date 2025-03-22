@@ -25,7 +25,7 @@ addprocs(
     import ClimaCalibrate as CAL
 
     using ClimaLand
-    caldir = "calibration_output_utki"
+    caldir = "calibration_output_utki_imposeprior_cos"
     dir = pkgdir(ClimaLand)
     nelements = (50, 10) # resolution for model and era5
 
@@ -99,11 +99,11 @@ nelements = (50, 10) # resolution for model and era5
 include(joinpath(dir, "experiments/calibration/shared/observation_data_locations.jl"))
 
 n_locations = length(training_locations)
-l_obs = 12*3*n_locations # 12 months * 3 variables * n_locations
+l_obs = 4*3*n_locations # 12 months * 3 variables * n_locations
 ekp_process = EKP.Unscented(prior)
 ensemble_size = ekp_process.N_ens
 
-caldir = "calibration_output_utki"
+caldir = "calibration_output_utki_imposeprior_cos"
 
 include(
     joinpath(
@@ -120,7 +120,7 @@ utki = EKP.EnsembleKalmanProcess(
     # EKP.construct_initial_ensemble(rng, prior, ensemble_size),
     observationseries,
     # EKP.Inversion();
-    EKP.TransformUnscented(prior);
+    EKP.TransformUnscented(prior, impose_prior=true);
     verbose=true,
     # localization_method=EKP.Localizers.NoLocalization(),
     rng = rng,

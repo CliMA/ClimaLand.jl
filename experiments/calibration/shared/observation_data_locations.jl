@@ -37,7 +37,7 @@ land_mask_var = slice(ClimaAnalysis.apply_landmask(lhf_on_diagnostic_grid), time
 training_locations = []
 for (i, lon) in enumerate(ClimaAnalysis.longitudes(land_mask_var))
     for (j, lat) in enumerate(ClimaAnalysis.latitudes(land_mask_var))
-        if isnan(land_mask_var.data[i,j])
+        if isnan(land_mask_var.data[i,j]) && -60 <= lat <= 60
             push!(training_locations, (lon, lat))
         end
     end
@@ -86,12 +86,15 @@ for (lon, lat) in training_locations
     lhf_slice = slice(lhf, longitude = lon, latitude = lat) # 1 slice has 550 data (~ 45years*12months)
     shf_slice = slice(shf, longitude = lon, latitude = lat)
     swu_slice = slice(swu, longitude = lon, latitude = lat)
-    lhf_var = [FT(var(lhf_slice.data[i:12:end])) ./ max(cosd(lat), 0.02) for i in 1:12]
-    shf_var = [FT(var(shf_slice.data[i:12:end])) ./ max(cosd(lat), 0.02) for i in 1:12]
-    swu_var = [FT(var(swu_slice.data[i:12:end])) ./ max(cosd(lat), 0.02) for i in 1:12]
-    push!(lhf_slices, FT.(.-lhf_slice.data))
-    push!(shf_slices, FT.(.-shf_slice.data))
-    push!(swu_slices, FT.(swu_slice.data))
+    lhf_seasonal = [mean(lhf_slice.data[i:i+2]) for i in 1:3:(length(lhf_slice.data)-2)]
+    shf_seasonal = [mean(shf_slice.data[i:i+2]) for i in 1:3:(length(shf_slice.data)-2)]
+    swu_seasonal = [mean(swu_slice.data[i:i+2]) for i in 1:3:(length(swu_slice.data)-2)]
+    lhf_var = [FT(var(lhf_slice.data[i:4:end])) for i in 1:4]
+    shf_var = [FT(var(shf_slice.data[i:4:end])) for i in 1:4]
+    swu_var = [FT(var(swu_slice.data[i:4:end])) for i in 1:4]
+    push!(lhf_slices, FT.(.-lhf_seasonal))
+    push!(shf_slices, FT.(.-shf_seasonal))
+    push!(swu_slices, FT.(swu_seasonal))
     push!(lhf_vars, lhf_var)
     push!(shf_vars, shf_var)
     push!(swu_vars, swu_var)
@@ -118,21 +121,21 @@ for y in 31:31+n_samples # 31 to start in 2009, see below
     for (i, (lon, lat)) in enumerate(training_locations)
         lhf_obs = EKP.Observation(
                                   Dict(
-                                       "samples" => lhf_slices[i][1+(12*(y-1)):12+(12*(y-1))],
+                                       "samples" => lhf_slices[i][1+(4*(y-1)):4+(4*(y-1))],
                                        "covariances" => Diagonal(lhf_vars[i]),
                                        "names" => "lhf_$(lon)_$(lat)_$(y)",
                                       ),
                                  )
         shf_obs = EKP.Observation(
                                   Dict(
-                                       "samples" => shf_slices[i][1+(12*(y-1)):12+(12*(y-1))],
+                                       "samples" => shf_slices[i][1+(4*(y-1)):4+(4*(y-1))],
                                        "covariances" => Diagonal(shf_vars[i]),
                                        "names" => "shf_$(lon)_$(lat)_$(y)",
                                       ),
                                  )
         swu_obs = EKP.Observation(
                                   Dict(
-                                       "samples" => swu_slices[i][1+(12*(y-1)):12+(12*(y-1))],
+                                       "samples" => swu_slices[i][1+(4*(y-1)):4+(4*(y-1))],
                                        "covariances" => Diagonal(swu_vars[i]),
                                        "names" => "swu_$(lon)_$(lat)_$(y)",
                                       ),
