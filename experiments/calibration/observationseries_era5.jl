@@ -75,7 +75,6 @@ for (lon, lat) in training_locations
     push!(swu_vars, swu_var)
 end
 
-
 lhf_q = quantile(vcat(lhf_vars...), [0.05, 0.99])
 shf_q = quantile(vcat(shf_vars...), [0.05, 0.99])
 swu_q = quantile(vcat(swu_vars...), [0.2, 0.99])
@@ -92,10 +91,16 @@ if any([
     )
 end
 
+# observation_map for iteration 0, member 1
+gens_0_1 = readlines("experiments/calibration/gens_0_1.jl") .|> x -> parse(Float64, x)
+
 for i in 1:length(lhf_vars)
     lhf_vars[i] = min.(max.(lhf_vars[i], lhf_q[1]), lhf_q[2])
     shf_vars[i] = min.(max.(shf_vars[i], shf_q[1]), shf_q[2])
     swu_vars[i] = min.(max.(swu_vars[i], swu_q[1]), swu_q[2])
+    lhf_vars[i] = lhf_vars[i] .+ abs.(gens_0_1[1+(12*(i-1)):4+(12*(i-1))]).*0.1
+    shf_vars[i] = shf_vars[i] .+ abs.(gens_0_1[5+(12*(i-1)):8+(12*(i-1))]).*0.1
+    swu_vars[i] = swu_vars[i] .+ abs.(gens_0_1[9+(12*(i-1)):12+(12*(i-1))]).*0.1
 end
 
 obs_y = []

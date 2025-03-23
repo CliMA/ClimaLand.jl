@@ -72,6 +72,8 @@ include(joinpath(dir, "experiments/calibration/observationseries_era5.jl"))
 
 n_locations = length(training_locations)
 l_obs = 4 * 3 * n_locations # 4 seasons * 3 variables * n_locations
+ekp_process = EKP.Unscented(prior)
+ensemble_size = ekp_process.N_ens
 
 caldir = "calibration_output_utki"
 
