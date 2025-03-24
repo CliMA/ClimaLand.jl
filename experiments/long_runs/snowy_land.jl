@@ -62,10 +62,6 @@ context = ClimaComms.context()
 ClimaComms.init(context)
 device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
-diagnostics_outdir = joinpath(root_path, "global_diagnostics")
-outdir =
-    ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
-
 function setup_prob(
     t0,
     tf,
@@ -519,6 +515,9 @@ end
 name = ARGS[5]
 root_path = "snowy_land_longrun_$(device_suffix)_$(name)"
 sw_params = (; α_soil_dry_scaler, τ_leaf_scaler, α_leaf_scaler, α_soil_scaler)
+diagnostics_outdir = joinpath(root_path, "global_diagnostics")
+outdir =
+    ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
 setup_and_solve_problem(sw_params; greet = true);
 # read in diagnostics and make some plots!
 #### ClimaAnalysis ####
