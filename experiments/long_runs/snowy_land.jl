@@ -62,7 +62,6 @@ context = ClimaComms.context()
 ClimaComms.init(context)
 device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
-root_path = "snowy_land_longrun_$(device_suffix)"
 diagnostics_outdir = joinpath(root_path, "global_diagnostics")
 outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
@@ -71,10 +70,18 @@ function setup_prob(
     t0,
     tf,
     Δt,
-    start_date;
+    start_date,
+    sw_params;
     outdir = outdir,
     nelements = (101, 15),
 )
+
+    (; α_soil_dry_scaler, τ_leaf_scaler, α_leaf_scaler, α_soil_scaler) =
+        sw_params
+    K_sat_plant = FT(8e-8) # m/s
+    a = FT(0.2 * 0.0098) # 1/m
+    α_snow = FT(0.65)
+
     earth_param_set = LP.LandParameters(FT)
     domain = ClimaLand.global_domain(FT; nelements = nelements)
     surface_space = domain.space.surface
@@ -124,6 +131,15 @@ function setup_prob(
         NIR_albedo_wet,
         f_max,
     ) = spatially_varying_soil_params
+
+    # We need to ensure that the α < 1
+    PAR_albedo_dry .=
+        min.(PAR_albedo_dry .* α_soil_dry_scaler .* α_soil_scaler, FT(1))
+    NIR_albedo_dry .=
+        min.(NIR_albedo_dry .* α_soil_dry_scaler .* α_soil_scaler, FT(1))
+    PAR_albedo_wet .= min.(PAR_albedo_wet .* α_soil_scaler, FT(1))
+    NIR_albedo_wet .= min.(NIR_albedo_wet .* α_soil_scaler, FT(1))
+
     soil_params = Soil.EnergyHydrologyParameters(
         FT;
         ν,
@@ -161,6 +177,20 @@ function setup_prob(
         α_NIR_leaf,
         τ_NIR_leaf,
     ) = clm_parameters
+    #α <= 1
+    α_PAR_leaf .= min.(α_leaf_scaler .* α_PAR_leaf, FT(1))
+    α_NIR_leaf .= min.(α_leaf_scaler .* α_NIR_leaf, FT(1))
+
+    # τ <= 1
+    τ_PAR_leaf .= min.(τ_leaf_scaler .* τ_PAR_leaf, FT(1))
+    τ_NIR_leaf .= min.(τ_leaf_scaler .* τ_NIR_leaf, FT(1))
+
+    # We need to ensure that the scaling here does not violate α+τ < 1
+    α_PAR_leaf .=
+        ClimaLand.Canopy.enforce_albedo_constraint.(α_PAR_leaf, τ_PAR_leaf)
+    α_NIR_leaf .=
+        ClimaLand.Canopy.enforce_albedo_constraint.(α_NIR_leaf, τ_NIR_leaf)
+
 
     # Energy Balance model
     ac_canopy = FT(2.5e3)
@@ -168,10 +198,8 @@ function setup_prob(
     SAI = FT(0.0) # m2/m2
     f_root_to_shoot = FT(3.5)
     RAI = FT(1.0)
-    K_sat_plant = FT(5e-9) # m/s # seems much too small?
     ψ63 = FT(-4 / 0.0098) # / MPa to m, Holtzman's original parameter value is -4 MPa
     Weibull_param = FT(4) # unitless, Holtzman's original c param value
-    a = FT(0.05 * 0.0098) # Holtzman's original parameter for the bulk modulus of elasticity
     conductivity_model =
         Canopy.PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
     retention_model = Canopy.PlantHydraulics.LinearRetentionCurve{FT}(a)
@@ -312,7 +340,11 @@ function setup_prob(
     )
 
     # Snow model
-    snow_parameters = SnowParameters{FT}(Δt; earth_param_set = earth_param_set)
+    snow_parameters = SnowParameters{FT}(
+        Δt;
+        earth_param_set = earth_param_set,
+        α_snow = α_snow,
+    )
     snow_args = (;
         parameters = snow_parameters,
         domain = ClimaLand.obtain_surface_domain(domain),
@@ -438,7 +470,7 @@ function setup_prob(
     SciMLBase.CallbackSet(driver_cb, diag_cb, report_cb, nancheck_cb)
 end
 
-function setup_and_solve_problem(; greet = false)
+function setup_and_solve_problem(sw_params; greet = false)
 
     t0 = 0.0
     seconds = 1.0
@@ -447,7 +479,7 @@ function setup_and_solve_problem(; greet = false)
     days = 24hours # days in seconds
     years = 366days # years in seconds - 366 to make sure we capture at least full years
     # 10 years in seconds for very long run and 2 years in seconds otherwise
-    tf = LONGER_RUN ? 10years : 2years
+    tf = LONGER_RUN ? 10years : 1years
     Δt = 450.0
     start_date = DateTime(2008)
     nelements = (101, 15)
@@ -462,7 +494,7 @@ function setup_and_solve_problem(; greet = false)
     tf = ITime(tf, epoch = start_date)
     Δt = ITime(Δt, epoch = start_date)
     t0, tf, Δt = promote(t0, tf, Δt)
-    prob, cb = setup_prob(t0, tf, Δt, start_date; nelements)
+    prob, cb = setup_prob(t0, tf, Δt, start_date, sw_params; nelements)
 
     # Define timestepper and ODE algorithm
     stepper = CTS.ARS111()
@@ -477,7 +509,17 @@ function setup_and_solve_problem(; greet = false)
     return nothing
 end
 
-setup_and_solve_problem(; greet = true);
+if length(ARGS) < 5
+    @error("Incorrect number of args")
+end
+α_soil_dry_scaler = parse(FT, ARGS[1])
+τ_leaf_scaler = parse(FT, ARGS[2])
+α_leaf_scaler = parse(FT, ARGS[3])
+α_soil_scaler = parse(FT, ARGS[4])
+name = ARGS[5]
+root_path = "snowy_land_longrun_$(device_suffix)_$(name)"
+sw_params = (; α_soil_dry_scaler, τ_leaf_scaler, α_leaf_scaler, α_soil_scaler)
+setup_and_solve_problem(sw_params; greet = true);
 # read in diagnostics and make some plots!
 #### ClimaAnalysis ####
 simdir = ClimaAnalysis.SimDir(outdir)

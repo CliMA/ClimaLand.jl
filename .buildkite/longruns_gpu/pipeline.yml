@@ -43,58 +43,36 @@ steps:
 
       - label: ":snow_capped_mountain: Snowy Land"
         command:
-          - julia --color=yes --project=.buildkite experiments/long_runs/snowy_land.jl
+          - julia --color=yes --project=.buildkite experiments/long_runs/snowy_land.jl 1.0 1.0 1.15 1.15 all_albedos_bigger
         artifact_paths:
-          - "snowy_land_longrun_gpu/*png"
-          - "snowy_land_longrun_gpu/*pdf"
+          - "snowy_land_longrun_gpu/all_albedos_bigger/*png"
+          - "snowy_land_longrun_gpu/all_albedos_bigger/*pdf"
         agents:
           slurm_gpus: 1
           slurm_time: 15:00:00
         env:
           CLIMACOMMS_DEVICE: "CUDA"
 
-      - label: ":sunglasses: California regional simulation"
-        command:
-          - julia --color=yes --project=.buildkite experiments/long_runs/land_region.jl
-        artifact_paths: "california_longrun_gpu/*pdf"
-        agents:
-          slurm_gpus: 1
-          slurm_time: 00:30:00
-        env:
-          CLIMACOMMS_DEVICE: "CUDA"
-
-      - label: "Soil"
-        command:
-          - julia --color=yes --project=.buildkite experiments/long_runs/soil.jl
-        artifact_paths: "soil_longrun_gpu/*pdf"
-        agents:
-          slurm_gpus: 1
-          slurm_time: 15:00:00
-        env:
-          CLIMACOMMS_DEVICE: "CUDA"
-
-      - label: "Global bucket simulation"
-        command:
-          - julia --color=yes --project=.buildkite experiments/long_runs/bucket.jl
-        artifact_paths: "bucket_longrun_gpu/*pdf"
-        agents:
-          slurm_gpus: 1
-          slurm_time: 00:30:00
-        env:
-          CLIMACOMMS_DEVICE: "CUDA"
-
-  - group: "Very long run of snowy land"
-    if: build.env("LONGER_RUN") != null
-    steps:
       - label: ":snow_capped_mountain: Snowy Land"
         command:
-          - julia --color=yes --project=.buildkite experiments/long_runs/snowy_land.jl
+          - julia --color=yes --project=.buildkite experiments/long_runs/snowy_land.jl 1.25 1.0 1.0 0.8 soil_albedo_spread
         artifact_paths:
-          - "snowy_land_longrun_gpu/*png"
-          - "snowy_land_longrun_gpu/*pdf"
+          - "snowy_land_longrun_gpu/soil_albedo_spread/*png"
+          - "snowy_land_longrun_gpu/soil_albedo_spread/*pdf"
         agents:
           slurm_gpus: 1
-          slurm_time: 24:00:00
+          slurm_time: 15:00:00
         env:
           CLIMACOMMS_DEVICE: "CUDA"
-          LONGER_RUN: ""
+
+      - label: ":snow_capped_mountain: Snowy Land"
+        command:
+          - julia --color=yes --project=.buildkite experiments/long_runs/snowy_land.jl 1.0 1.3 1.0 1.0 tau_leaf
+        artifact_paths:
+          - "snowy_land_longrun_gpu/tau_leaf/*png"
+          - "snowy_land_longrun_gpu/tau_leaf/*pdf"
+        agents:
+          slurm_gpus: 1
+          slurm_time: 15:00:00
+        env:
+          CLIMACOMMS_DEVICE: "CUDA"
