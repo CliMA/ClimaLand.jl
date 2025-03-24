@@ -168,10 +168,10 @@ function setup_prob(
     SAI = FT(0.0) # m2/m2
     f_root_to_shoot = FT(3.5)
     RAI = FT(1.0)
-    K_sat_plant = FT(5e-9) # m/s # seems much too small?
-    ψ63 = FT(-4 / 0.0098) # / MPa to m, Holtzman's original parameter value is -4 MPa
-    Weibull_param = FT(4) # unitless, Holtzman's original c param value
-    a = FT(0.05 * 0.0098) # Holtzman's original parameter for the bulk modulus of elasticity
+    K_sat_plant = FT(7e-8) # m/s 
+    ψ63 = FT(-4 / 0.0098) # / MPa to m
+    Weibull_param = FT(4) # unitless
+    a = FT(0.2 * 0.0098) # 1/m
     conductivity_model =
         Canopy.PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
     retention_model = Canopy.PlantHydraulics.LinearRetentionCurve{FT}(a)
@@ -494,6 +494,7 @@ short_names = [
     "iwc",
     "trans",
     "msf",
+    "snowc",
 ]
 
 include(
