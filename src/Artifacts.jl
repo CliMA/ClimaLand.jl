@@ -508,4 +508,8 @@ function era5_surface_data_1979_2024_path(; context = nothing)
 end
 
 
+function era5_monthly_averages_2008_folder_path(; context = nothing)
+    return @clima_artifact("era5_monthly_averages_2008", context)
+end
+
 end

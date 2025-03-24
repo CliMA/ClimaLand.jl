@@ -57,16 +57,16 @@ function setup_prob(
     params = (; zip(Symbol.(p_names), p_values)...)
 
     (;
-        pc,
-        sc,
-        K_sat_plant,
-        a,
-        h_leaf,
+#        pc,
+#        sc,
+#        K_sat_plant,
+#        a,
+#        h_leaf,
         α_snow,
-        α_soil_dry_scaler,
-        τ_leaf_scaler,
-        α_leaf_scaler,
-        α_soil_scaler,
+#        α_soil_dry_scaler,
+#        τ_leaf_scaler,
+#        α_leaf_scaler,
+#        α_soil_scaler,
     ) = params
 
     domain = ClimaLand.global_domain(FT; nelements = nelements)
@@ -109,12 +109,12 @@ function setup_prob(
     ) = spatially_varying_soil_params
 
     # We need to ensure that the α < 1
-    PAR_albedo_dry .=
-        min.(PAR_albedo_dry .* α_soil_dry_scaler .* α_soil_scaler, FT(1))
-    NIR_albedo_dry .=
-        min.(NIR_albedo_dry .* α_soil_dry_scaler .* α_soil_scaler, FT(1))
-    PAR_albedo_wet .= min.(PAR_albedo_wet .* α_soil_scaler, FT(1))
-    NIR_albedo_wet .= min.(NIR_albedo_wet .* α_soil_scaler, FT(1))
+#    PAR_albedo_dry .=
+#        min.(PAR_albedo_dry .* α_soil_dry_scaler .* α_soil_scaler, FT(1))
+#    NIR_albedo_dry .=
+#        min.(NIR_albedo_dry .* α_soil_dry_scaler .* α_soil_scaler, FT(1))
+#    PAR_albedo_wet .= min.(PAR_albedo_wet .* α_soil_scaler, FT(1))
+#    NIR_albedo_wet .= min.(NIR_albedo_wet .* α_soil_scaler, FT(1))
 
     soil_params = Soil.EnergyHydrologyParameters(
         FT;
@@ -155,18 +155,18 @@ function setup_prob(
     ) = clm_parameters
 
     #α <= 1
-    α_PAR_leaf .= min.(α_leaf_scaler .* α_PAR_leaf, FT(1))
-    α_NIR_leaf .= min.(α_leaf_scaler .* α_NIR_leaf, FT(1))
+#    α_PAR_leaf .= min.(α_leaf_scaler .* α_PAR_leaf, FT(1))
+#    α_NIR_leaf .= min.(α_leaf_scaler .* α_NIR_leaf, FT(1))
 
     # τ <= 1
-    τ_PAR_leaf .= min.(τ_leaf_scaler .* τ_PAR_leaf, FT(1))
-    τ_NIR_leaf .= min.(τ_leaf_scaler .* τ_NIR_leaf, FT(1))
+#    τ_PAR_leaf .= min.(τ_leaf_scaler .* τ_PAR_leaf, FT(1))
+#    τ_NIR_leaf .= min.(τ_leaf_scaler .* τ_NIR_leaf, FT(1))
 
     # We need to ensure that the scaling here does not violate α+τ < 1
-    α_PAR_leaf .=
-        ClimaLand.Canopy.enforce_albedo_constraint.(α_PAR_leaf, τ_PAR_leaf)
-    α_NIR_leaf .=
-        ClimaLand.Canopy.enforce_albedo_constraint.(α_NIR_leaf, τ_NIR_leaf)
+#    α_PAR_leaf .=
+#        ClimaLand.Canopy.enforce_albedo_constraint.(α_PAR_leaf, τ_PAR_leaf)
+#    α_NIR_leaf .=
+#        ClimaLand.Canopy.enforce_albedo_constraint.(α_NIR_leaf, τ_NIR_leaf)
 
     # Energy Balance model
     ac_canopy = FT(2.5e3)
@@ -174,8 +174,10 @@ function setup_prob(
     SAI = FT(0.0) # m2/m2
     f_root_to_shoot = FT(3.5)
     RAI = FT(1.0)
+    K_sat_plant = FT(5e-9) # m/s # seems much too small?
     ψ63 = FT(-4 / 0.0098) # / MPa to m, Holtzman's original parameter value is -4 MPa
     Weibull_param = FT(4) # unitless, Holtzman's original c param value
+    a = FT(0.05 * 0.0098) # Holtzman's original parameter for the bulk modulus of elasticity
     conductivity_model =
         Canopy.PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
     retention_model = Canopy.PlantHydraulics.LinearRetentionCurve{FT}(a)
@@ -184,6 +186,7 @@ function setup_prob(
     n_stem = 0
     n_leaf = 1
     h_stem = FT(0.0)
+    h_leaf = FT(1.0)
     zmax = FT(0.0)
     h_canopy = h_stem + h_leaf
     compartment_midpoints =
@@ -255,8 +258,8 @@ function setup_prob(
             FT,
             is_c3;
             Vcmax25 = Vcmax25,
-            pc = pc,
-            sc = sc,
+#            pc = pc,
+#            sc = sc,
         )
     )
     # Set up plant hydraulics

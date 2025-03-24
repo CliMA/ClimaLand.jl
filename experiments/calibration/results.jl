@@ -5,6 +5,9 @@ using Plots
 using DelimitedFiles
 using LinearAlgebra, Statistics, Random
 
+path_to_results = "calibration_output_utki_1/iteration_005/eki_file.jld2"
+uki = JLD2.load_object(path_to_results)
+
 ## Priors
 prior_pc = EKP.constrained_gaussian("pc", -2e6, 1e6, -Inf, 0);
 prior_sc = EKP.constrained_gaussian("sc", 5e-6, 2e-6, 0, Inf);
@@ -34,9 +37,6 @@ prior = EKP.combine_distributions([
     prior_α_soil_scale,
 ]);
 
-path_to_results = "calibration_output_utki/iteration_005/eki_file.jld2"
-
-uki = JLD2.load_object(path_to_results)
 
 errors = uki.error
 normalized_errors = errors ./ errors[1] .* 100
@@ -54,10 +54,14 @@ names = [
     "α_soil_scale",
 ]
 
-params = EKP.get_ϕ_mean.(Ref(prior), Ref(uki), collect(1:2))
+params = EKP.get_ϕ_mean.(Ref(prior), Ref(uki), collect(1:5))
 initial_params = params[1]
-calibrated_params = params[end]
+calibrated_params = params[3]
 relative_change = calibrated_params ./ initial_params .* 100
+Dict(zip(names, initial_params))
+Dict(zip(names, calibrated_params))
+Dict(zip(names, relative_change))
+
 
 EKP.get_ϕ(prior, uki, 1)
 EKP.get_ϕ(prior, uki, 2)
@@ -69,12 +73,9 @@ EKP.get_ϕ(prior, uki, 2)
 # Global plots: data vs model, actual values, anomalies, RMSE, seasonality
 # (use CI leaderboard figures, and ClimaLand leaderboard)
 
-
-
-
-p = plot(prior, xtickfontsize=8, dpi=300)
+p = Plots.plot(prior, xtickfontsize=9, dpi=300)
 init = EKP.get_ϕ(prior, uki, 1)
-final = EKP.get_ϕ(prior, uki, 5)
+final = EKP.get_ϕ(prior, uki, 3)
 # square updates blue, regular magenta
 # uki updates solid, utki dashed
 for (i,sp) in enumerate(p.subplots)
@@ -88,4 +89,16 @@ end
 
 savefig(p, "NEWPLOT.png")
 display(p)
+
+include("experiments/calibration/global_plots.jl")
+outdir = "calibration_output_utki_1/iteration_003/member_001/global_diagnostics/output_active/"
+# Line below crashes Julia on Derecho
+make_global_plots(outdir; root_save_path = pwd(), plot_net_radiation = false)
+start_date = Date(2010)
+make_seasonal_plots(outdir; root_save_path = pwd(), plot_net_radiation = false)
+
+# Leaderboard
+include(joinpath(pkgdir(ClimaLand), "experiments", "long_runs", "leaderboard", "leaderboard.jl"))
+compute_leaderboard(pwd(), outdir)
+
 
