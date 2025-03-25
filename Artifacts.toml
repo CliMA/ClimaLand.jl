@@ -18,7 +18,7 @@ git-tree-sha1 = "cbbc6b3752d9cb9b667ec33cfbeb46819f8db418"
     [[landsea_mask_1deg.download]]
     sha256 = "3722b553c2fdf28a6574aea2e0b167d16ab050f34e5969ada45625b3a3ecb6da"
     url = "https://caltech.box.com/shared/static/b3u4dv0dsoswvqgp8y63bzj7awbhwztd.gz"
-    
+
 [soil_ic_2008_50m]
 git-tree-sha1 = "fd9cda235e203b4235136b6dcdcd07af788c00f6"
 
@@ -164,3 +164,17 @@ git-tree-sha1 = "4cc329093b0dbc3443db36e7c01133267ac94d37"
 
 [forty_yrs_era5_land_forcing_data]
 git-tree-sha1 = "f269a0b057b9f438b4caafdef17da73746310787"
+
+[era5_surface_fluxes]
+git-tree-sha1 = "f2cb69e41cba84991054162e794292f98bf0ae34"
+
+[era5_monthly_averages_surface_single_level_1979_2024]
+git-tree-sha1 = "6cddb07eeee2dd46dc5a19e9b2f706302ddba2c9"
+
+[era5_monthly_averages_2008]
+git-tree-sha1 = "b448a55e214a03b4e69bde4f54f3c01a02b74b69"
+
+    [[era5_monthly_averages_2008.download]]
+    sha256 = "c8292040efa26f7dbeaf59f7177d8bfadcead74adc10c4c96678104cbd57a09e"
+    url = "https://caltech.box.com/shared/static/lra5npgeygoi0xb376hi4blik44550u0.gz"
+
