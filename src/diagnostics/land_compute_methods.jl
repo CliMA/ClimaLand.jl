@@ -468,6 +468,7 @@ end
 
 @diagnostic_compute "snow_water_equivalent" LandModel Y.snow.S
 @diagnostic_compute "snow_depth" LandModel p.snow.z_snow
+@diagnostic_compute "snow_cover_fraction" LandModel p.snow.snow_cover_fraction
 
 ### EnergyHydrology ###
 

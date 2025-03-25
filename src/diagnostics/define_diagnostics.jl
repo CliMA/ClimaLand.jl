@@ -887,4 +887,14 @@ function define_diagnostics!(land_model)
             compute_snow_depth!(out, Y, p, t, land_model),
     )
 
+# Snow cover fraction
+    add_diagnostic_variable!(
+        short_name = "scf",
+        long_name = "Snow cover fraction",
+        standard_name = "snow_cover_fraction",
+        units = "",
+        comments = "The snow cover fraction",
+        compute! = (out, Y, p, t) ->
+            compute_snow_cover_fraction!(out, Y, p, t, land_model),
+    )
 end
