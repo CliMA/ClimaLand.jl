@@ -74,7 +74,7 @@ function setup_prob(
 
     (; α_soil_dry_scaler, τ_leaf_scaler, α_leaf_scaler, α_soil_scaler) =
         sw_params
-    K_sat_plant = FT(4e-8) # m/s
+    K_sat_plant = FT(2e-8) # m/s
     a = FT(0.2 * 0.0098) # 1/m
     α_snow = FT(0.65)
 
