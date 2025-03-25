@@ -15,7 +15,7 @@ era5_path = joinpath(
 # Load data
 lhf = OutputVar(era5_path, "mslhf")
 #shf = OutputVar(era5_path, "msshf")
-swu = OutputVar(era5_path, "msuwswrf")
+swu_temp = OutputVar(era5_path, "msuwswrf")
 
 land_mask_var = ClimaAnalysis.apply_landmask(lhf)
 lhf.data[isnan.(land_mask_var.data)]
@@ -24,6 +24,7 @@ simdir = SimDir(
     "calibration_output_utki_sample/iteration_000/member_001/global_diagnostics/output_active/",
 )
 lhf_out = get(simdir, "lhf")
+swu_out = get(simdir, "swu")
 
 lhf_on_diagnostic_grid = ClimaAnalysis.resampled_as(lhf, lhf_out)
 land_mask_var =
@@ -37,6 +38,8 @@ for (i, lon) in enumerate(ClimaAnalysis.longitudes(land_mask_var))
         end
     end
 end
+
+swu = ClimaAnalysis.resampled_as(swu_temp, swu_out, dim_names = "longitude")
 
 # Get slices (time series for each location) and variance
 #lhf_all_seasons = []
