@@ -20,9 +20,16 @@ the global RMSE and bias are determined by `get_mask_dict`. The ranges of the bi
 determined by `get_compare_vars_biases_plot_extrema`. See the functions defined in
 data_sources.jl.
 """
-function compute_leaderboard(leaderboard_base_path, diagnostics_folder_path)
+function compute_leaderboard(
+    leaderboard_base_path,
+    diagnostics_folder_path,
+    data_source,
+)
     sim_var_dict = get_sim_var_dict(diagnostics_folder_path)
-    obs_var_dict = get_obs_var_dict()
+    obs_var_dict = get_obs_var_dict(; data_source = data_source)
+
+    # Variables may not be defined everywhere
+    short_names = intersect(keys(sim_var_dict), keys(obs_var_dict))
     mask_dict = get_mask_dict()
     compare_vars_biases_plot_extrema = get_compare_vars_biases_plot_extrema()
 
@@ -40,7 +47,6 @@ function compute_leaderboard(leaderboard_base_path, diagnostics_folder_path)
     @info "Working with dates:"
     @info output_dates
 
-    short_names = keys(sim_var_dict)
     for short_name in short_names
         @info short_name
         # Simulation data
@@ -67,6 +73,7 @@ function compute_leaderboard(leaderboard_base_path, diagnostics_folder_path)
             )
         )
 
+        obs_var = ClimaAnalysis.Var.shift_longitude(obs_var, -180.0, 180.0)
         obs_var = ClimaAnalysis.resampled_as(obs_var, sim_var)
 
         sim_obs_comparsion_dict[short_name] = (sim_var, obs_var)
@@ -111,8 +118,8 @@ function compute_leaderboard(leaderboard_base_path, diagnostics_folder_path)
     end
 
     # Plot month (x-axis) and global bias and global RMSE (y-axis)
-    fig = CairoMakie.Figure(size = (450 * length(keys(sim_var_dict)), 600))
-    for (col, short_name) in enumerate(keys(sim_var_dict))
+    fig = CairoMakie.Figure(size = (450 * length(short_names), 600))
+    for (col, short_name) in enumerate(short_names)
         sim_var, obs_var = sim_obs_comparsion_dict[short_name]
         mask = mask_dict[short_name](sim_var, obs_var)
         # Compute globas bias and global rmse
@@ -168,10 +175,18 @@ end
 if abspath(PROGRAM_FILE) == @__FILE__
     if length(ARGS) < 2
         error(
-            "Usage: julia leaderboard.jl <Filepath to save leaderboard and bias plots> <Filepath to simulation data>",
+            "Usage: julia leaderboard.jl <Filepath to save leaderboard and bias plots> <Filepath to simulation data> <\"ERA5\" or \"ILAMB\">",
         )
     end
     leaderboard_base_path = ARGS[begin]
     diagnostics_folder_path = ARGS[begin + 1]
-    compute_leaderboard(leaderboard_base_path, diagnostics_folder_path)
+    data_source =
+        (data_source == "ILAMB") || (data_source == "ERA5") ? data_source :
+        error("Expected \"ILAMB\" or \"ERA5\" for the third argument")
+    data_source = Symbol(data_source)
+    compute_leaderboard(
+        leaderboard_base_path,
+        diagnostics_folder_path,
+        data_source,
+    )
 end

@@ -66,6 +66,39 @@ function get_sim_var_dict(diagnostics_folder_path)
             )
             return sim_var
         end
+
+    sim_var_dict["lhf"] =
+        () -> begin
+            sim_var = get(
+                ClimaAnalysis.SimDir(diagnostics_folder_path),
+                short_name = "lhf",
+            )
+            sim_var =
+                ClimaAnalysis.shift_to_start_of_previous_month(sim_var)
+            return sim_var
+        end
+
+    sim_var_dict["shf"] =
+        () -> begin
+            sim_var = get(
+                ClimaAnalysis.SimDir(diagnostics_folder_path),
+                short_name = "shf",
+            )
+            sim_var =
+                ClimaAnalysis.shift_to_start_of_previous_month(sim_var)
+            return sim_var
+        end
+
+    sim_var_dict["swu"] =
+        () -> begin
+            sim_var = get(
+                ClimaAnalysis.SimDir(diagnostics_folder_path),
+                short_name = "swu",
+            )
+            sim_var =
+                ClimaAnalysis.shift_to_start_of_previous_month(sim_var)
+            return sim_var
+        end
     return sim_var_dict
 end
 
@@ -86,7 +119,91 @@ dates.
 
 The variable should have only three dimensions: latitude, longitude, and time.
 """
-function get_obs_var_dict()
+function get_obs_var_dict(; data_source)
+    if data_source == :ILAMB
+        return get_ilamb_obs_var_dict()
+    elseif data_source == :ERA5
+        return get_era5_obs_var_dict()
+    else
+        error("Did not expect $data_source for the data source")
+    end
+end
+
+function get_era5_obs_var_dict()
+    obs_var_dict = Dict{String, Any}()
+    era5_data_path = joinpath(
+        ClimaLand.Artifacts.era5_monthly_averages_single_level_path(),
+        "era5_monthly_averages_surface_single_level_197901-202410.nc",
+    )
+
+    obs_var_dict["lhf"] =
+        (start_date) -> begin
+            obs_var = ClimaAnalysis.OutputVar(
+                era5_data_path,
+                "mslhf",
+                new_start_date = start_date,
+                shift_by = Dates.firstdayofmonth,
+            )
+            (ClimaAnalysis.units(obs_var) == "W m**-2") && (
+                obs_var = ClimaAnalysis.convert_units(
+                    obs_var,
+                    "W m^-2",
+                    conversion_function = units -> units * -1.0,
+                )
+            )
+            return obs_var
+        end
+
+    obs_var_dict["shf"] =
+        (start_date) -> begin
+            obs_var = ClimaAnalysis.OutputVar(
+                era5_data_path,
+                "msshf",
+                new_start_date = start_date,
+                shift_by = Dates.firstdayofmonth,
+            )
+
+            (ClimaAnalysis.units(obs_var) == "W m**-2") && (
+                obs_var = ClimaAnalysis.convert_units(
+                    obs_var,
+                    "W m^-2",
+                    conversion_function = units -> units * -1.0,
+                )
+            )
+
+            return obs_var
+        end
+
+    obs_var_dict["lwu"] =
+        (start_date) -> begin
+            obs_var = ClimaAnalysis.OutputVar(
+                era5_data_path,
+                "msuwlwrf",
+                new_start_date = start_date,
+                shift_by = Dates.firstdayofmonth,
+            )
+            (ClimaAnalysis.units(obs_var) == "W m**-2") &&
+                (obs_var = ClimaAnalysis.set_units(obs_var, "W m^-2"))
+            return obs_var
+        end
+
+    obs_var_dict["swu"] =
+        (start_date) -> begin
+            obs_var = ClimaAnalysis.OutputVar(
+                era5_data_path,
+                "msuwswrf",
+                new_start_date = start_date,
+                shift_by = Dates.firstdayofmonth,
+            )
+
+            (ClimaAnalysis.units(obs_var) == "W m**-2") &&
+                (obs_var = ClimaAnalysis.set_units(obs_var, "W m^-2"))
+            return obs_var
+        end
+    return obs_var_dict
+end
+
+function get_ilamb_obs_var_dict()
     # Dict for loading in observational data
     obs_var_dict = Dict{String, Any}()
     obs_var_dict["et"] =
@@ -142,7 +259,6 @@ function get_obs_var_dict()
         end
     return obs_var_dict
 end
-
 """
     get_mask_dict()
 
@@ -183,9 +299,25 @@ function get_mask_dict()
             )
         end
 
-    mask_dict["lwu"] = (sim_var, obs_var) -> begin
-        return nothing
-    end
+    mask_dict["shf"] =
+        (sim_var, obs_var) -> begin
+            return ClimaAnalysis.apply_oceanmask
+        end
+
+    mask_dict["lhf"] =
+        (sim_var, obs_var) -> begin
+            return ClimaAnalysis.apply_oceanmask
+        end
+
+    mask_dict["swu"] =
+        (sim_var, obs_var) -> begin
+            return ClimaAnalysis.apply_oceanmask
+        end
+
+    mask_dict["lwu"] =
+        (sim_var, obs_var) -> begin
+            return ClimaAnalysis.apply_oceanmask
+        end
     return mask_dict
 end
 
@@ -201,7 +333,14 @@ the value is a tuple, where the first element is the lower bound and the last
 element is the upper bound for the bias plots.
 """
 function get_compare_vars_biases_plot_extrema()
-    compare_vars_biases_plot_extrema =
-        Dict("et" => (-2.0, 2.0), "gpp" => (-6.0, 6.0), "lwu" => (-40.0, 40.0))
+    compare_vars_biases_plot_extrema = Dict(
+        "et" => (-2.0, 2.0),
+        "gpp" => (-6.0, 6.0),
+        "lwu" => (-40.0, 40.0),
+        "shf" => (-50.0, 50.0),
+        "lhf" => (-40.0, 40.0),
+        "swu" => (-50.0, 50.0),
+        "lwu" => (-30.0, 30.0),
+    )
     return compare_vars_biases_plot_extrema
 end
