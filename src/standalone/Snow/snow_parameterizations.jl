@@ -20,7 +20,7 @@ Wu, Tongwen, and Guoxiong Wu. "An empirical formula to compute
 snow cover fraction in GCMs." Advances in Atmospheric Sciences
 21 (2004): 529-535.
 """
-function snow_cover_fraction(z::FT; z0 = FT(1e-2), α = FT(1.75))::FT where {FT}
+function snow_cover_fraction(z::FT; z0 = FT(2e-2), α = FT(1.5))::FT where {FT}
     z̃ = z / z0
     return min(α * z̃ / (z̃ + 1), 1)
 end
