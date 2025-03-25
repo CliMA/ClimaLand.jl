@@ -398,7 +398,16 @@ if !isnothing(DataToolsExt)
               (:S, :S_l, :U, :Z, :P_avg, :T_avg, :R_avg, :Qrel_avg, :u_avg)
 
         Y.snow.S .= FT(0.1)
-        function broken_on_gpu_update()
+        # The snow module is broken when using CUDA because the density model is stored in
+        # the snow parameters, but the network is not copied to the GPU.
+        if ClimaComms.device() isa ClimaComms.CUDADevice
+            @test_broken Y.snow.U .=
+                ClimaLand.Snow.energy_from_T_and_swe.(
+                    Y.snow.S,
+                    FT(273.0),
+                    Ref(model.parameters),
+                )
+        else
             Y.snow.U .=
                 ClimaLand.Snow.energy_from_T_and_swe.(
                     Y.snow.S,
@@ -446,13 +455,12 @@ if !isnothing(DataToolsExt)
 
             dswe_by_precip = 0.1
             Y.snow.P_avg .= FT(dswe_by_precip / Δt)
-            NeuralSnow.update_density_prog!(dens_model2, model, dY, Y, p)
+            exp_tendency! = ClimaLand.make_compute_exp_tendency(model)
+            exp_tendency!(dY, Y, p, FT(0.0))
             @test parent(dY.snow.Z)[1] * Δt > dswe_by_precip
             new_dYP = FT(test_alph) .* (p.drivers.P_snow .- Y.snow.P_avg)
             @test dY.snow.P_avg == new_dYP
-            return true
         end
-        @test broken_on_gpu_update() broken =
-            ClimaComms.device() isa ClimaComms.CUDADevice
+
     end
 end
