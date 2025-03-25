@@ -322,11 +322,11 @@ function default_diagnostics(
             "shf",
             "ghf",
             "iwc",
+            "snowc",
         ]
     elseif output_vars == :short
         snowyland_diagnostics = [
             "gpp",
-            "ct",
             "swc",
             "si",
             "sie",
@@ -344,6 +344,7 @@ function default_diagnostics(
             "iwc",
             "swd",
             "lwd",
+            "snowc",
         ]
     end
 
