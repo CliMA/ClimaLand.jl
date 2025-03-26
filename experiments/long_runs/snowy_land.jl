@@ -449,7 +449,7 @@ function setup_and_solve_problem(; greet = false)
     # 10 years in seconds for very long run and 2 years in seconds otherwise
     tf = LONGER_RUN ? 10years : 2years
     Δt = 450.0
-    start_date = DateTime(2008)
+    start_date = LONGER_RUN ? DateTime(2004) : DateTime(2008)
     nelements = (101, 15)
     if greet
         @info "Run: Global Soil-Canopy-Snow Model"
