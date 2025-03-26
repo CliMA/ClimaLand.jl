@@ -781,14 +781,7 @@ boundary_var_types(
 ) where {FT} = (
     NamedTuple{
         (:lhf, :shf, :vapor_flux_liq, :r_ae, :vapor_flux_ice, :ρτxz, :ρτyz),
-        Tuple{FT, FT, FT, FT, FT, FT, FT, FT, FT},
-    },
-    NamedTuple{
-        (:water, :heat),
-        Tuple{
-            ClimaCore.Geometry.Covariant3Vector{FT},
-            ClimaCore.Geometry.Covariant3Vector{FT},
-        },
+        Tuple{FT, FT, FT, FT, FT, FT, FT},
     },
     FT,
     NamedTuple{(:water, :heat), Tuple{FT, FT}},
