@@ -72,6 +72,19 @@ function era5_land_forcing_data2008_folder_path(;
 end
 
 """
+    era5_monthly_averages_single_level_path(; context)
+
+Return the path to the directory that contains ERA5 monthly averages single
+level for 1979 to 2024.
+"""
+function era5_monthly_averages_single_level_path(; context = nothing)
+    return @clima_artifact(
+        "era5_monthly_averages_surface_single_level_1979_2024",
+        context
+    )
+end
+
+"""
     era5_lai_forcing_data2008_path(; context)
 
 Return the path to the directory that contains the ERA5 LAI forcing data for 2008.
