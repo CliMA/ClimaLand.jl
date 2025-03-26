@@ -12,15 +12,105 @@ import ClimaComms
 
 context = ClimaComms.context()
 
+import SciMLBase
+import ClimaTimeSteppers as CTS
+import ClimaComms
+ClimaComms.@import_required_backends
+using ClimaCore
+import ClimaParams as CP
+using Statistics
+using Dates
+using Insolation
+using StatsBase
+
+using ClimaLand
+using ClimaLand.Domains: Column
+using ClimaLand.Snow
+using ClimaLand.Soil
+using ClimaLand.Soil.Biogeochemistry
+using ClimaLand.Canopy
+using ClimaLand.Canopy.PlantHydraulics
+import ClimaLand
+import ClimaLand.Parameters as LP
+import ClimaUtilities.OutputPathGenerator: generate_output_path
+using ClimaDiagnostics
+using ClimaUtilities
+const FT = Float64
+earth_param_set = LP.LandParameters(FT)
+climaland_dir = pkgdir(ClimaLand)
+
+include(joinpath(climaland_dir, "experiments/integrated/fluxnet/data_tools.jl"))
+include(joinpath(climaland_dir, "experiments/integrated/fluxnet/plot_utils.jl"))
+
+# Read in the site to be run from the command line
+#if length(ARGS) < 1
+#    error("Must provide site ID on command line")
+#end
+#
+site_ID = "US-MOz"
+params = Dict("g1" => 1.0, "Vcmax25" => 1.0)
+
+
+# function zenith_angle(
+#         t,
+#         start_date;
+#         latitude = lat,
+#         longitude = long,
+#         insol_params::Insolation.Parameters.InsolationParameters{FT} = earth_param_set.insol_params,
+#     ) where {FT}
+#     # This should be time in UTC
+#     current_datetime = start_date + Dates.Second(round(t))
+
+#     # Orbital Data uses Float64, so we need to convert to our sim FT
+#     d, δ, η_UTC =
+#     FT.(
+#         Insolation.helper_instantaneous_zenith_angle(
+#                                                      current_datetime,
+#                                                      start_date,
+#                                                      insol_params,
+#                                                     )
+#        )
+
+#     FT(
+#        Insolation.instantaneous_zenith_angle(
+#                                              d,
+#                                              δ,
+#                                              η_UTC,
+#                                              longitude,
+#                                              latitude,
+#                                             )[1],
+#       )
+# end
+
+# include(
+#     joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/any_site/any_simulation.jl"),
+# )
+
+# include(
+#     joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/fluxnet_domain.jl"),
+# )
+
+# include(
+#     joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/any_site/any_parameters.jl"),
+# )
+
+# include(
+#     joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/fluxnet_simulation.jl"),
+# )
+
 # Methods for reading in the LAI data from MODIS data
 include(
     joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/pull_MODIS.jl"),
 )
 
-data_path = ClimaLand.Artifacts.experiment_fluxnet_data_path(site_ID)
+include(joinpath(pkgdir(ClimaLand),"experiments/integrated/fluxnet/path_to_data_file.jl"))
+site_ID = "US-Ha1"
+data_path = get_path(site_ID)
+#data_path = ClimaLand.Artifacts.experiment_fluxnet_data_path(site_ID)
 driver_data = readdlm(data_path, ',')
 
 LOCAL_DATETIME = DateTime.(format.(driver_data[2:end, 1]), "yyyymmddHHMM")
+time_offset = 5 # temporary testing
 UTC_DATETIME = LOCAL_DATETIME .+ Dates.Hour(time_offset)
 DATA_DT = Second(LOCAL_DATETIME[2] - LOCAL_DATETIME[1]).value # seconds
 
@@ -163,36 +253,6 @@ atmos = ClimaLand.PrescribedAtmosphere(
     c_co2 = atmos_co2,
 )
 
-function zenith_angle(
-    t,
-    start_date;
-    latitude = lat,
-    longitude = long,
-    insol_params::Insolation.Parameters.InsolationParameters{FT} = earth_param_set.insol_params,
-) where {FT}
-    # This should be time in UTC
-    current_datetime = start_date + Dates.Second(round(t))
-
-    # Orbital Data uses Float64, so we need to convert to our sim FT
-    d, δ, η_UTC =
-        FT.(
-            Insolation.helper_instantaneous_zenith_angle(
-                current_datetime,
-                start_date,
-                insol_params,
-            )
-        )
-
-    FT(
-        Insolation.instantaneous_zenith_angle(
-            d,
-            δ,
-            η_UTC,
-            longitude,
-            latitude,
-        )[1],
-    )
-end
 radiation = ClimaLand.PrescribedRadiativeFluxes(
     FT,
     SW_IN,

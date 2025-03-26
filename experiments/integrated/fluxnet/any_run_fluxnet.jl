@@ -9,6 +9,7 @@ using Dates
 using Insolation
 using StatsBase
 
+using DelimitedFiles
 using ClimaLand
 using ClimaLand.Domains: Column
 using ClimaLand.Snow
@@ -28,14 +29,12 @@ climaland_dir = pkgdir(ClimaLand)
 include(joinpath(climaland_dir, "experiments/integrated/fluxnet/data_tools.jl"))
 include(joinpath(climaland_dir, "experiments/integrated/fluxnet/plot_utils.jl"))
 
-# Read in the site to be run from the command line
-#if length(ARGS) < 1
-#    error("Must provide site ID on command line")
-#end
-#
-site_ID = "US-MOz"
+include(joinpath(pkgdir(ClimaLand),"experiments/integrated/fluxnet/path_to_data_file.jl"))
+site_ID = "US-Ha1"
+data_path = get_path(site_ID)
 params = Dict("g1" => 1.0, "Vcmax25" => 1.0)
 
+driver_data = readdlm(data_path, ',')
 
 function zenith_angle(
         t,
@@ -68,19 +67,13 @@ function zenith_angle(
       )
 end
 
-# Currently, site_ID can only be "US-MOz", "US-Var", "US-Ha1", "US-NR1"
-# But we want ALL fluxnet sites
-# to do: change the included files to read meta data, all same config otherwise
-# (same parameters, same domains, same resolution, etc.)
-# data files will be read directly from caltech hpc filepath
-
 function run_single_site(params, site_ID) # e.g., run_single_site(params, "US-MOz")
 
     # Read all site-specific domain parameters from the simulation file for the site
     include(
             joinpath(
                      climaland_dir,
-                     "experiments/integrated/fluxnet/$site_ID/$(site_ID)_simulation.jl",
+                     "experiments/integrated/fluxnet/any_site/any_simulation.jl",
                     ),
            )
 
@@ -92,7 +85,7 @@ function run_single_site(params, site_ID) # e.g., run_single_site(params, "US-MO
     include(
             joinpath(
                      climaland_dir,
-                     "experiments/integrated/fluxnet/$site_ID/$(site_ID)_parameters.jl",
+                     "experiments/integrated/fluxnet/any_site/any_parameters.jl",
                     ),
            )
 
