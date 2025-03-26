@@ -1,48 +1,20 @@
-import SciMLBase
-import ClimaTimeSteppers as CTS
-import ClimaComms
-ClimaComms.@import_required_backends
-using ClimaCore
-import ClimaParams as CP
-using Statistics
-using Dates
-using Insolation
-using StatsBase
-
 using ClimaLand
-using ClimaLand.Domains: Column
-using ClimaLand.Snow
-using ClimaLand.Soil
-using ClimaLand.Soil.Biogeochemistry
-using ClimaLand.Canopy
-using ClimaLand.Canopy.PlantHydraulics
-import ClimaLand
-import ClimaLand.Parameters as LP
-import ClimaUtilities.OutputPathGenerator: generate_output_path
-using ClimaDiagnostics
-using ClimaUtilities
-const FT = Float64
-earth_param_set = LP.LandParameters(FT)
+
 climaland_dir = pkgdir(ClimaLand)
 
-include(joinpath(climaland_dir, "experiments/integrated/fluxnet/data_tools.jl"))
-include(joinpath(climaland_dir, "experiments/integrated/fluxnet/plot_utils.jl"))
 
-# Read in the site to be run from the command line
 if length(ARGS) < 1
     error("Must provide site ID on command line")
 end
 
-site_ID = ARGS[1]
-
-# Read all site-specific domain parameters from the simulation file for the site
 include(
     joinpath(
         climaland_dir,
-        "experiments/integrated/fluxnet/$site_ID/$(site_ID)_simulation.jl",
+        "experiments/integrated/fluxnet/any_run_fluxnet.jl",
     ),
 )
 
+<<<<<<< HEAD
 include(
     joinpath(climaland_dir, "experiments/integrated/fluxnet/fluxnet_domain.jl"),
 )
@@ -609,3 +581,7 @@ if drivers.TS.status != absent
 end
 
 CairoMakie.save(joinpath(savedir, "soil_temperature.png"), fig2)
+=======
+# simulated output
+run_single_site(ARGS[1], nothing, true)
+>>>>>>> 1cb47601b (deprecated run_fluxnet.jl to become a pure simulation file calling functions from any_run_fluxnet)
