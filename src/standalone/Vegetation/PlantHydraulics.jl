@@ -353,11 +353,11 @@ function ClimaLand.Canopy.set_canopy_prescribed_field!(
 end
 
 """
-    harmonic_mean(x::FT,y::FT) where {FT} 
+    harmonic_mean(x::FT,y::FT) where {FT}
 
 Computes the harmonic mean of x >=0 and y >=0; returns zero if both
 x and y are zero.
-    
+
 """
 harmonic_mean(x::FT, y::FT) where {FT} = x * y / max(x + y, eps(FT))
 
@@ -763,7 +763,7 @@ function transpiration_per_ground_area(
     p,
     t,
 )
-    return p.canopy.energy.turbulent_fluxes.transpiration
+    return p.canopy.turbulent_fluxes.transpiration
 end
 
 """

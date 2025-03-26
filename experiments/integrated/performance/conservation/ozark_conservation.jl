@@ -162,7 +162,8 @@ for float_type in (Float32, Float64)
         ]
         # Top boundary flux (transpiration)
         T = [
-            parent(sv.saveval[k].canopy.energy.turbulent_fluxes.transpiration)[1] for k in 2:length(sol.t)
+            parent(sv.saveval[k].canopy.turbulent_fluxes.transpiration)[1]
+            for k in 2:length(sol.t)
         ]
 
         # Water balance equation
