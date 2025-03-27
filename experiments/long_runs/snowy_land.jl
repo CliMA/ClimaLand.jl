@@ -494,6 +494,7 @@ short_names = [
     "iwc",
     "trans",
     "msf",
+    "snowc"
 ]
 
 include(
