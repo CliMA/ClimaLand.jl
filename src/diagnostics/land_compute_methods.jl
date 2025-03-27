@@ -202,7 +202,7 @@ end
 @diagnostic_compute "soil_net_radiation" Union{SoilCanopyModel, LandModel} p.soil.R_n
 @diagnostic_compute "soil_temperature" Union{SoilCanopyModel, LandModel} p.soil.T
 
-function compute_1m_water_content!(
+function compute_10cm_water_mass!(
     out,
     Y,
     p,
@@ -212,11 +212,14 @@ function compute_1m_water_content!(
     ∫Hθdz = p.soil.sfc_scratch
     Hθ = p.soil.sub_sfc_scratch
     z = land_model.soil.domain.fields.z
-    depth = FT(-1)
-    @. Hθ = (Y.soil.ϑ_l + Y.soil.θ_i) * heaviside(z, depth)
+    depth = FT(-0.1)
+#    earth_param_set = land_model.soil.parameters.earth_param_set
+    _ρ_liq = FT(1000)#LP.ρ_cloud_liq(earth_param_set)
+    _ρ_ice = FT(917)#LP.ρ_cloud_ice(earth_param_set)
+    @. Hθ = (Y.soil.ϑ_l * _ρ_liq + Y.soil.θ_i * _ρ_ice) * heaviside(z, depth)
     column_integral_definite!(∫Hθdz, Hθ)
     if isnothing(out)
-        return ∫Hθdz
+        return ∫Hθdz 
     else
         out .= ∫Hθdz
     end
@@ -464,6 +467,7 @@ end
 
 @diagnostic_compute "snow_water_equivalent" LandModel Y.snow.S
 @diagnostic_compute "snow_depth" LandModel p.snow.z_snow
+@diagnostic_compute "snow_cover_fraction" LandModel p.snow.snow_cover_fraction
 
 ### EnergyHydrology ###
 

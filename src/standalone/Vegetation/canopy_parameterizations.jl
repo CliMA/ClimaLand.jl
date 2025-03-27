@@ -24,7 +24,8 @@ export canopy_sw_rt_beer_lambert,
     penman_monteith,
     nitrogen_content,
     plant_respiration_maintenance,
-    plant_respiration_growth
+    plant_respiration_growth,
+    enforce_albedo_constraint
 
 # 1. Radiative transfer
 
@@ -1081,3 +1082,9 @@ function plant_respiration_growth(Rel::FT, An::FT, Rpm::FT) where {FT}
     Rg = Rel * (An - Rpm)
     return Rg
 end
+
+"""
+    enforce_albedo_constraint(α, τ)
+A function which enforces α+τ <= 1.
+"""
+enforce_albedo_constraint(α, τ) = 1 - α - τ > 0 ? α : 1 - τ
