@@ -112,6 +112,10 @@ Base.@kwdef struct SnowParameters{
     Δt::FT
     "Parameter to prevent dividing by zero when computing snow temperature (m)"
     ΔS::FT
+    "Rate at which snow cover fraction becomes 1"
+    β::FT
+    "Depth over which snow cover fraction becomes 1"
+    z0::FT
     "Clima-wide parameters"
     earth_param_set::PSE
 end
@@ -127,6 +131,8 @@ end
                       Ksat = FT(1e-3),
                       κ_ice = FT(2.21),
                       ΔS = FT(0.1),
+                      β = FT(2),
+                      z0 = FT(0.1)
                       earth_param_set::PSE) where {FT, PSE}
 
 An outer constructor for `SnowParameters` which supplies defaults for
@@ -143,6 +149,8 @@ function SnowParameters{FT}(
     Ksat = FT(1e-3),
     κ_ice = FT(2.21),
     ΔS = FT(0.1),
+    β = FT(2),
+    z0 = FT(0.1),
     earth_param_set::PSE,
 ) where {FT <: AbstractFloat, DM <: AbstractDensityModel, PSE}
     return SnowParameters{FT, DM, PSE}(
@@ -156,6 +164,8 @@ function SnowParameters{FT}(
         κ_ice,
         float(Δt),
         ΔS,
+        β,
+        z0,
         earth_param_set,
     )
 end
@@ -375,7 +385,7 @@ function ClimaLand.make_update_aux(model::SnowModel{FT}) where {FT}
         @. p.snow.energy_runoff =
             p.snow.water_runoff *
             volumetric_internal_energy_liq(p.snow.T, parameters)
-        @. p.snow.snow_cover_fraction = snow_cover_fraction(p.snow.z_snow)
+        @. p.snow.snow_cover_fraction = snow_cover_fraction(p.snow.z_snow; z0 = parameters.z0, β = parameters.β)
     end
 end
 
