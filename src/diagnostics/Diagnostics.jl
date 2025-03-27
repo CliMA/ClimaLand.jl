@@ -25,7 +25,8 @@ import ClimaDiagnostics.Schedules:
 import ClimaDiagnostics.Writers: HDF5Writer, NetCDFWriter, DictWriter
 
 import ClimaCore.Operators: column_integral_definite!
-
+include("../shared_utilities/Parameters.jl")
+import .Parameters as LP
 include("diagnostic.jl")
 
 end

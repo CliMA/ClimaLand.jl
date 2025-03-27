@@ -344,6 +344,7 @@ function default_diagnostics(
             "iwc",
             "swd",
             "lwd",
+            "scf"
         ]
     end
 
