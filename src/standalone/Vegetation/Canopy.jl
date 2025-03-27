@@ -447,7 +447,7 @@ function ClimaLand.make_update_aux(
         (; sc, pc) = canopy.photosynthesis.parameters
 
         # update radiative transfer
-        @. p.canopy.radiative_transfer.ϵ = (1 - exp(-(LAI + SAI))) #from CLM 5.0, Tech note 4.20
+        @. p.canopy.radiative_transfer.ϵ = (1 - exp(-(LAI + SAI))) #from CLM 5.0, Tech note 4.20 without factor in front
         p.canopy.radiative_transfer.G .= compute_G(G_Function, cosθs)
         RT = canopy.radiative_transfer
         compute_PAR!(par_d, RT, bc.radiation, p, t)
