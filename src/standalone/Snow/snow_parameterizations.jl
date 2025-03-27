@@ -20,7 +20,7 @@ Wu, Tongwen, and Guoxiong Wu. "An empirical formula to compute
 snow cover fraction in GCMs." Advances in Atmospheric Sciences
 21 (2004): 529-535.
 """
-function snow_cover_fraction(z::FT; z0 = FT(0.05), α = FT(2.0))::FT where {FT}
+function snow_cover_fraction(z::FT; z0 = FT(1e-1), α = FT(2))::FT where {FT}
     z̃ = z / z0
     return min(α * z̃ / (z̃ + 1), 1)
 end
@@ -79,18 +79,53 @@ end
 
 
 """
-    ClimaLand.surface_specific_humidity(model::SnowModel, Y, p, _...)
+    ClimaLand.surface_specific_humidity(atmos::PrescribedAtmosphere, model::SnowModel, Y, p, _...)
 
 Returns the precomputed specific humidity over snow as a weighted
 fraction of the saturated specific humidity over liquid and frozen
 water.
 
+In the case of a PrescibedAtmoshere, the atmosphere thermal state is accessed
+from the drivers in the cache.
 """
-function ClimaLand.surface_specific_humidity(model::SnowModel, Y, p, _...)
+function ClimaLand.surface_specific_humidity(
+    atmos::PrescribedAtmosphere,
+    model::SnowModel,
+    Y,
+    p,
+    _...,
+)
     @. p.snow.q_sfc = snow_surface_specific_humidity(
         p.snow.T_sfc,
         p.snow.q_l,
         p.drivers.thermal_state,
+        model.parameters,
+    )
+
+    return p.snow.q_sfc
+end
+
+"""
+    ClimaLand.surface_specific_humidity(atmos::CoupledAtmosphere, model::SnowModel, Y, p, _...)
+
+Returns the precomputed specific humidity over snow as a weighted
+fraction of the saturated specific humidity over liquid and frozen
+water.
+
+In the case of a CoupledAtmoshere, the atmosphere thermal state is accessed
+from the atmosphere object.
+"""
+function ClimaLand.surface_specific_humidity(
+    atmos::CoupledAtmosphere,
+    model::SnowModel,
+    Y,
+    p,
+    _...,
+)
+    @. p.snow.q_sfc = snow_surface_specific_humidity(
+        p.snow.T_sfc,
+        p.snow.q_l,
+        atmos.thermal_state,
         model.parameters,
     )
 
