@@ -14,8 +14,10 @@ era5_path = joinpath(
 
 # Load data
 lhf = OutputVar(era5_path, "mslhf")
-#shf = OutputVar(era5_path, "msshf")
+shf_temp = OutputVar(era5_path, "msshf")
 swu_temp = OutputVar(era5_path, "msuwswrf")
+lwu_temp = OutputVar(era5_path, "msuwlwrf")
+lhf_temp = lhf
 
 land_mask_var = ClimaAnalysis.apply_landmask(lhf)
 lhf.data[isnan.(land_mask_var.data)]
@@ -25,6 +27,8 @@ simdir = SimDir(
 )
 lhf_out = get(simdir, "lhf")
 swu_out = get(simdir, "swu")
+lwu_out = get(simdir, "lwu")
+shf_out = get(simdir, "shf")
 
 lhf_on_diagnostic_grid = ClimaAnalysis.resampled_as(lhf, lhf_out)
 land_mask_var =
@@ -33,84 +37,98 @@ land_mask_var =
 training_locations = []
 for (i, lon) in enumerate(ClimaAnalysis.longitudes(land_mask_var))
     for (j, lat) in enumerate(ClimaAnalysis.latitudes(land_mask_var))
-        if isnan(land_mask_var.data[i, j]) && -60 <= lat <= 60
+        if isnan(land_mask_var.data[i, j]) # && -60 <= lat <= 60
             push!(training_locations, (lon, lat))
         end
     end
 end
 
 swu = ClimaAnalysis.resampled_as(swu_temp, swu_out, dim_names = "longitude")
+lhf = ClimaAnalysis.resampled_as(lhf_temp, lhf_out, dim_names = "longitude")
+shf = ClimaAnalysis.resampled_as(shf_temp, shf_out, dim_names = "longitude")
+lwu = ClimaAnalysis.resampled_as(lwu_temp, lwu_out, dim_names = "longitude")
 
 # Get slices (time series for each location) and variance
-#lhf_all_seasons = []
-#shf_all_seasons = []
+lhf_all_seasons = []
+shf_all_seasons = []
 swu_all_seasons = []
-#lhf_seasonal_vars = []
-#shf_seasonal_vars = []
+lwu_all_seasons = []
+lhf_seasonal_vars = []
+shf_seasonal_vars = []
 swu_seasonal_vars = []
-#lhf_seasonal_means = []
-#shf_seasonal_means = []
+lwu_seasonal_vars = []
+lhf_seasonal_means = []
+shf_seasonal_means = []
 swu_seasonal_means = []
+lwu_seasonal_means = []
 for (lon, lat) in training_locations
-    # Initialize temporary storage for each location
-#    lhf_var = Vector{Vector{FT}}(undef, 12)
-#    shf_var = Vector{Vector{FT}}(undef, 12)
-    swu_var = Vector{Vector{FT}}(undef, 12)
-#    lhf_slice = slice(lhf, longitude = lon, latitude = lat) # 1 slice has 550 data (~ 45years*12months)
-#    shf_slice = slice(shf, longitude = lon, latitude = lat)
+    lhf_slice = slice(lhf, longitude = lon, latitude = lat) # 1 slice has 550 data (~ 45years*12months)
+    shf_slice = slice(shf, longitude = lon, latitude = lat)
     swu_slice = slice(swu, longitude = lon, latitude = lat)
-#    lhf_seasonal = [
-#        mean(lhf_slice.data[i:(i + 2)]) for
-#        i in 1:3:(length(lhf_slice.data) - 2)
-#    ]
-#    shf_seasonal = [
-#        mean(shf_slice.data[i:(i + 2)]) for
-#        i in 1:3:(length(shf_slice.data) - 2)
-#    ]
+    lwu_slice = slice(lwu, longitude = lon, latitude = lat)
+    lhf_seasonal = [
+        mean(lhf_slice.data[i:(i + 2)]) for
+        i in 1:3:(length(lhf_slice.data) - 2)
+    ]
+    shf_seasonal = [
+        mean(shf_slice.data[i:(i + 2)]) for
+        i in 1:3:(length(shf_slice.data) - 2)
+    ]
     swu_seasonal = [
         mean(swu_slice.data[i:(i + 2)]) for
         i in 1:3:(length(swu_slice.data) - 2)
     ]
-#    lhf_var = [FT(var(lhf_seasonal[i:4:end])) for i in 1:4]
-#    shf_var = [FT(var(shf_seasonal[i:4:end])) for i in 1:4]
+    lwu_seasonal = [
+        mean(lwu_slice.data[i:(i + 2)]) for
+        i in 1:3:(length(lwu_slice.data) - 2)
+    ]
+    lhf_var = [FT(var(lhf_seasonal[i:4:end])) for i in 1:4]
+    shf_var = [FT(var(shf_seasonal[i:4:end])) for i in 1:4]
     swu_var = [FT(var(swu_seasonal[i:4:end])) for i in 1:4]
-#    lhf_seasonal_mean = [FT(mean(.-lhf_seasonal[i:4:end])) for i in 1:4]
-#    shf_seasonal_mean = [FT(mean(.-shf_seasonal[i:4:end])) for i in 1:4]
+    lwu_var = [FT(var(lwu_seasonal[i:4:end])) for i in 1:4]
+    lhf_seasonal_mean = [FT(mean(.-lhf_seasonal[i:4:end])) for i in 1:4]
+    shf_seasonal_mean = [FT(mean(.-shf_seasonal[i:4:end])) for i in 1:4]
     swu_seasonal_mean = [FT(mean(swu_seasonal[i:4:end])) for i in 1:4]
-#    push!(lhf_all_seasons, FT.(.-lhf_seasonal))
-#    push!(shf_all_seasons, FT.(.-shf_seasonal))
+    lwu_seasonal_mean = [FT(mean(lwu_seasonal[i:4:end])) for i in 1:4]
+    push!(lhf_all_seasons, FT.(.-lhf_seasonal))
+    push!(shf_all_seasons, FT.(.-shf_seasonal))
     push!(swu_all_seasons, FT.(swu_seasonal))
-#    push!(lhf_seasonal_vars, lhf_var)
-#    push!(shf_seasonal_vars, shf_var)
+    push!(lwu_all_seasons, FT.(lwu_seasonal))
+    push!(lhf_seasonal_vars, lhf_var)
+    push!(shf_seasonal_vars, shf_var)
     push!(swu_seasonal_vars, swu_var)
-#    push!(lhf_seasonal_means, lhf_seasonal_mean)
-#    push!(shf_seasonal_means, shf_seasonal_mean)
+    push!(lwu_seasonal_vars, lwu_var)
+    push!(lhf_seasonal_means, lhf_seasonal_mean)
+    push!(shf_seasonal_means, shf_seasonal_mean)
     push!(swu_seasonal_means, swu_seasonal_mean)
+    push!(lwu_seasonal_means, lwu_seasonal_mean)
 end
 
 #lhf_q = quantile(vcat(lhf_seasonal_vars...), [0.05, 0.99])
 #shf_q = quantile(vcat(shf_seasonal_vars...), [0.05, 0.99])
-swu_q = quantile(vcat(swu_seasonal_vars...), [0.2, 0.99])
+#swu_q = quantile(vcat(swu_seasonal_vars...), [0.25, 0.75])
 
-if any([
-#    lhf_q[2] / lhf_q[1] > 1e8,
-#    shf_q[2] / shf_q[1] > 1e8,
-    swu_q[2] / swu_q[1] > 1e8,
-])
-    throw(
-        ArgumentError(
-            "quantiles of noise variance exceed 1e8, may cause unstable update \n investigate and adjust quantiles.",
-        ),
-    )
-end
+#if any([
+##    lhf_q[2] / lhf_q[1] > 1e8,
+##    shf_q[2] / shf_q[1] > 1e8,
+#    swu_q[2] / swu_q[1] > 1e8,
+#])
+#    throw(
+#        ArgumentError(
+#            "quantiles of noise variance exceed 1e8, may cause unstable update \n investigate and adjust quantiles.",
+#        ),
+#    )
+#end
 
+lat = map(x -> x[2], training_locations)
 for i in 1:length(swu_seasonal_vars)
 #    lhf_seasonal_vars[i] = min.(max.(lhf_seasonal_vars[i], lhf_q[1]), lhf_q[2])
 #    shf_seasonal_vars[i] = min.(max.(shf_seasonal_vars[i], shf_q[1]), shf_q[2])
-    swu_seasonal_vars[i] = min.(max.(swu_seasonal_vars[i], swu_q[1]), swu_q[2])
-#    lhf_seasonal_vars[i] = lhf_seasonal_vars[i] .+ lhf_seasonal_means[i].^2 .* 0.01
-#    shf_seasonal_vars[i] = shf_seasonal_vars[i] .+ shf_seasonal_means[i].^2 .* 0.01
-    swu_seasonal_vars[i] = swu_seasonal_vars[i] .+ swu_seasonal_means[i].^2 .* 0.01
+#    swu_seasonal_vars[i] = min.(max.(swu_seasonal_vars[i], swu_q[1]), swu_q[2])
+lhf_seasonal_vars[i] .= 5^2 ./ max(cosd(lat[i]), 0.1)
+shf_seasonal_vars[i] .= 5^2 ./ max(cosd(lat[i]), 0.1)
+swu_seasonal_vars[i] .= 5^2 ./ max(cosd(lat[i]), 0.1)
+lwu_seasonal_vars[i] .= 5^2 ./ max(cosd(lat[i]), 0.1)
 end
 
 obs_y = []
@@ -118,22 +136,22 @@ n_samples = 10
 for y in 31:(31 + n_samples) # 31 to start in 2009, see below
     obs_y_temp = []
     for (i, (lon, lat)) in enumerate(training_locations)
-#        lhf_obs = EKP.Observation(
-#            Dict(
-#                "samples" =>
-#                    lhf_all_seasons[i][(1 + (4 * (y - 1))):(4 + (4 * (y - 1)))],
-#                "covariances" => Diagonal(lhf_seasonal_vars[i]),
-#                "names" => "lhf_$(lon)_$(lat)_$(y)",
-#            ),
-#        )
-#        shf_obs = EKP.Observation(
-#            Dict(
-#                "samples" =>
-#                    shf_all_seasons[i][(1 + (4 * (y - 1))):(4 + (4 * (y - 1)))],
-#                "covariances" => Diagonal(shf_seasonal_vars[i]),
-#                "names" => "shf_$(lon)_$(lat)_$(y)",
-#            ),
-#        )
+        lhf_obs = EKP.Observation(
+            Dict(
+                "samples" =>
+                    lhf_all_seasons[i][(1 + (4 * (y - 1))):(4 + (4 * (y - 1)))],
+                "covariances" => Diagonal(lhf_seasonal_vars[i]),
+                "names" => "lhf_$(lon)_$(lat)_$(y)",
+            ),
+        )
+        shf_obs = EKP.Observation(
+            Dict(
+                "samples" =>
+                    shf_all_seasons[i][(1 + (4 * (y - 1))):(4 + (4 * (y - 1)))],
+                "covariances" => Diagonal(shf_seasonal_vars[i]),
+                "names" => "shf_$(lon)_$(lat)_$(y)",
+            ),
+        )
         swu_obs = EKP.Observation(
             Dict(
                 "samples" =>
@@ -142,7 +160,15 @@ for y in 31:(31 + n_samples) # 31 to start in 2009, see below
                 "names" => "swu_$(lon)_$(lat)_$(y)",
             ),
         )
-        push!(obs_y_temp, EKP.combine_observations([swu_obs])) # ([lhf_obs, shf_obs, swu_obs]))
+        lwu_obs = EKP.Observation(
+            Dict(
+                "samples" =>
+                    lwu_all_seasons[i][(1 + (4 * (y - 1))):(4 + (4 * (y - 1)))],
+                "covariances" => Diagonal(lwu_seasonal_vars[i]),
+                "names" => "lwu_$(lon)_$(lat)_$(y)",
+            ),
+        )
+        push!(obs_y_temp, EKP.combine_observations([lhf_obs, shf_obs, swu_obs, lwu_obs]))
     end
     push!(obs_y, EKP.combine_observations(obs_y_temp))
 end
