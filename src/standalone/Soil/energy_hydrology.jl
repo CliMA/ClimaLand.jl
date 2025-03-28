@@ -831,8 +831,6 @@ function ClimaLand.get_drivers(model::EnergyHydrology)
     end
 end
 
-
-
 function turbulent_fluxes!(
     dest,
     atmos::PrescribedAtmosphere,
@@ -863,6 +861,7 @@ function turbulent_fluxes!(
     )
     dest .=
         soil_turbulent_fluxes_at_a_point.(
+            Val(false), # return_momentum_fluxes
             T_sfc,
             θ_l_sfc,
             θ_i_sfc,
@@ -887,7 +886,46 @@ function turbulent_fluxes!(
 end
 
 """
-    soil_turbulent_fluxes_at_a_point(
+    soil_turbulent_fluxes_at_a_point(return_momentum_fluxes, args...;)
+
+This is a wrapper function that allows us to dispatch on the type of `return_momentum_fluxes`
+as we compute the soil turbulent fluxes pointwise. This is needed because space for the
+momentum fluxes is only allocated in the cache when running with a `CoupledAtmosphere`.
+The function `soil_compute_turbulent_fluxes_at_a_point` does the actual flux computation.
+"""
+function soil_turbulent_fluxes_at_a_point(
+    return_momentum_fluxes::Val{false},
+    args...,
+)
+    (LH, SH, Ẽ_l, r_ae, Ẽ_i, _, _) =
+        soil_compute_turbulent_fluxes_at_a_point(args...)
+    return (
+        lhf = LH,
+        shf = SH,
+        vapor_flux_liq = Ẽ_l,
+        r_ae = r_ae,
+        vapor_flux_ice = Ẽ_i,
+    )
+end
+function soil_turbulent_fluxes_at_a_point(
+    return_momentum_fluxes::Val{true},
+    args...,
+)
+    (LH, SH, Ẽ_l, r_ae, Ẽ_i, ρτxz, ρτyz) =
+        soil_compute_turbulent_fluxes_at_a_point(args...)
+    return (
+        lhf = LH,
+        shf = SH,
+        vapor_flux_liq = Ẽ_l,
+        r_ae = r_ae,
+        vapor_flux_ice = Ẽ_i,
+        ρτxz = ρτxz,
+        ρτyz = ρτyz,
+    )
+end
+
+"""
+    soil_compute_turbulent_fluxes_at_a_point(
                                 T_sfc::FT,
                                 θ_l_sfc::FT,
                                 θ_i_sfc::FT,
@@ -907,7 +945,6 @@ end
                                 γ::FT,
                                 γT_ref,::FT
                                 earth_param_set::EP;
-                                return_momentum_fluxes = false,
                                ) where {FT <: AbstractFloat, C, EP}
 
 Computes turbulent surface fluxes for soil at a point on a surface given
@@ -926,7 +963,7 @@ a tuple with self explanatory keys. If the temperature is above the freezing poi
 the vapor flux comes from liquid water; if the temperature is below the freezing
 point, it comes from the soil ice.
 """
-function soil_turbulent_fluxes_at_a_point(
+function soil_compute_turbulent_fluxes_at_a_point(
     T_sfc::FT,
     θ_l_sfc::FT,
     θ_i_sfc::FT,
@@ -945,8 +982,7 @@ function soil_turbulent_fluxes_at_a_point(
     Ω::FT,
     γ::FT,
     γT_ref::FT,
-    earth_param_set::P;
-    return_momentum_fluxes = false,
+    earth_param_set::P,
 ) where {FT <: AbstractFloat, P}
     # Parameters
     surface_flux_params = LP.surface_fluxes_parameters(earth_param_set)
@@ -1094,26 +1130,7 @@ function soil_turbulent_fluxes_at_a_point(
     # Heat fluxes for soil
     LH::FT = _LH_v0 * (Ẽ_l + Ẽ_i) * _ρ_liq
 
-    # Return the (unaltered) momentum fluxes if they are requested
-    if !return_momentum_fluxes
-        return (
-            lhf = LH,
-            shf = SH,
-            vapor_flux_liq = Ẽ_l,
-            r_ae = r_ae,
-            vapor_flux_ice = Ẽ_i,
-        )
-    else
-        return (
-            lhf = LH,
-            shf = SH,
-            vapor_flux_liq = Ẽ_l,
-            r_ae = r_ae,
-            vapor_flux_ice = Ẽ_i,
-            ρτxz = conditions.ρτxz,
-            ρτyz = conditions.ρτyz,
-        )
-    end
+    return (LH, SH, Ẽ_l, r_ae, Ẽ_i, conditions.ρτxz, conditions.ρτyz)
 end
 
 """
@@ -1210,6 +1227,7 @@ function ClimaLand.coupler_compute_turbulent_fluxes!(
     )
     dest .=
         soil_turbulent_fluxes_at_a_point.(
+            Val(true), # return_momentum_fluxes
             T_sfc,
             θ_l_sfc,
             θ_i_sfc,
@@ -1229,7 +1247,6 @@ function ClimaLand.coupler_compute_turbulent_fluxes!(
             γ,
             γT_ref,
             Ref(earth_param_set),
-            return_momentum_fluxes = true,
         )
     return nothing
 end
