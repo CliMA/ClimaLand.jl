@@ -6,8 +6,6 @@ import ClimaUtilities.ClimaArtifacts: @clima_artifact
 
 import LazyArtifacts
 
-using ArtifactWrappers
-
 """
     soil_ic_2008_50m_path(; context)
 
@@ -314,14 +312,10 @@ and presented in Table 1b of that work.
 https://doi.org/10.4141/cjss09118
 """
 function huang_et_al2011_soil_van_genuchten_data(; context = nothing)
-    dir = joinpath(@__DIR__, "../")
-    af = ArtifactFile(
-        url = "https://caltech.box.com/shared/static/kbgxc8r2j6uzboxgg9h2ydi5145wdpxh.csv",
-        filename = "sv_62.csv",
+    return joinpath(
+        @clima_artifact("huang_van_genuchten_data", context),
+        "sv_62.csv",
     )
-    dataset = ArtifactWrapper(dir, "sv62", ArtifactFile[af])
-    dataset_path = get_data_folder(dataset)
-    return joinpath(dataset_path, af.filename)
 end
 
 """
@@ -342,14 +336,10 @@ using a plot digitizer; we did not quantify uncertainties introduced
 in this process.
 """
 function mizoguchi1990_soil_freezing_data(; context = nothing)
-    dir = joinpath(@__DIR__, "../")
-    af = ArtifactFile(
-        url = "https://caltech.box.com/shared/static/3xbo4rlam8u390vmucc498cao6wmqlnd.csv",
-        filename = "mizoguchi_all_data.csv",
+    return joinpath(
+        @clima_artifact("mizoguchi_soil_freezing_data", context),
+        "mizoguchi_all_data.csv",
     )
-    dataset = ArtifactWrapper(dir, "mizoguchi", ArtifactFile[af])
-    dataset_path = joinpath(get_data_folder(dataset), "mizoguchi_all_data.csv")
-    return dataset_path
 end
 
 """
