@@ -21,7 +21,6 @@ import ClimaComms
 using Unitful: R, L, mol, K, kJ, °C, m, g, cm, hr, mg, s, μmol, Pa, W, mm, kPa
 using UnitfulMoles: molC
 using Unitful, UnitfulMoles
-using ArtifactWrappers
 using DelimitedFiles
 using Thermodynamics
 using Format
