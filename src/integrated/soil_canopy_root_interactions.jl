@@ -42,6 +42,7 @@ function update_root_extraction!(p, Y, t, land)
             z,
             land.canopy.hydraulics.parameters.rooting_depth,
         )
+
     @. p.root_energy_extraction =
         p.root_extraction * ClimaLand.Soil.volumetric_internal_energy_liq(
             p.soil.T,
@@ -163,4 +164,5 @@ function ClimaLand.source!(
 
     ClimaCore.Operators.column_integral_definite!(p.scratch1, p.root_extraction)
     @. dY.soil.∫F_vol_liq_water_dt += p.scratch1
+    # We don't update ∫Sdz here because it cancels out by design with the bottom flux into the canopy (within the land model)
 end

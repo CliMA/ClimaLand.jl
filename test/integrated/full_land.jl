@@ -175,6 +175,195 @@ land = global_land_model(
         )
     end
 end
+#=
+@testset "Conservation" begin
+    # Soil IC
+ϑ_l0 = land.soil.parameters.ν ./ 2
+θ_i0 = land.soil.parameters.ν ./ 2
+T = FT(275.0)
+ρc_s = @. Soil.volumetric_heat_capacity(
+    ϑ_l0,
+    θ_i0,
+    land.soil.parameters.ρc_ds,
+    earth_param_set,
+)
+ρe_int0 = @. Soil.volumetric_internal_energy(θ_i0, ρc_s, T, earth_param_set)
+Y.soil.ϑ_l .= ϑ_l0
+Y.soil.θ_i .= θ_i0
+
+Y.soil.ρe_int = ρe_int0
+
+# Canopy IC
+ϑ0 = land.canopy.hydraulics.parameters.ν / 2
+CTemp0 = FT(290.5)
+
+Y.canopy.hydraulics.ϑ_l.:1 .= ϑ0
+
+Y.canopy.energy.T .= CTemp0
+
+# Snow IC
+S0 = FT(0.0)
+S_l0 = FT(0.0)
+STemp0 = FT(270)
+U0 = FT(0)#Snow.energy_from_T_and_swe(S0, STemp0, land.snow.parameters)
+
+Y.snow.S .= S0
+Y.snow.S_l .= S_l0
+Y.snow.U .= U0
+
+t0 = 0.0
+set_initial_cache! = make_set_initial_cache(land)
+set_initial_cache!(p, Y, t0)
+
+# Check total
+area_index = p.canopy.hydraulics.area_index.leaf
+h_canopy = land.canopy.hydraulics.compartment_surfaces[end]
+ρ_ice = LP.ρ_cloud_ice(earth_param_set)
+ρ_liq = LP.ρ_cloud_liq(earth_param_set)
+int_cache = ClimaCore.Fields.zeros(domain.space.surface)
+ClimaCore.Operators.column_integral_definite!(
+    int_cache,
+    @. (ϑ_l0 + θ_i0 * ρ_ice / ρ_liq)
+)
+soil_exp = int_cache
+canopy_exp = @. area_index * h_canopy .* ϑ0
+snow_exp = S0
+@test all(parent(p.total_water) .≈ parent(snow_exp .+ canopy_exp .+ soil_exp))
+
+int_cache .*= 0
+ClimaCore.Operators.column_integral_definite!(int_cache, ρe_int0)
+soil_exp = int_cache
+canopy_exp = @. area_index * land.canopy.energy.parameters.ac_canopy * CTemp0
+snow_exp = U0
+@test all(parent(p.total_energy) .≈ parent(snow_exp .+ canopy_exp .+ soil_exp))
+p_init = deepcopy(p)
+imp_tendency! = ClimaLand.make_imp_tendency(land);
+exp_tendency! = ClimaLand.make_exp_tendency(land);
+
+# Check that tendencies conserve
+cache = ClimaCore.Fields.zeros(domain.space.surface)
+dY_exp = deepcopy(Y) .* 0;
+dY_imp = deepcopy(Y) .* 0;
+exp_tendency!(dY_exp, Y, p, t0);
+p_exp = deepcopy(p)
+imp_tendency!(dY_imp, Y, p, t0);
+
+# Canopy
+dY_canopy_energy_exp =
+    land.canopy.energy.parameters.ac_canopy .*
+    p_exp.canopy.hydraulics.area_index.leaf .* dY_exp.canopy.energy.T;
+dY_canopy_energy_imp =
+    land.canopy.energy.parameters.ac_canopy .*
+    p.canopy.hydraulics.area_index.leaf .* dY_imp.canopy.energy.T;
+dY_canopy_water_exp =
+    p_exp.canopy.hydraulics.area_index.leaf .* h_canopy .*
+    dY_exp.canopy.hydraulics.ϑ_l.:1;
+dY_canopy_water_imp =
+    p.canopy.hydraulics.area_index.leaf .* h_canopy .*
+    dY_imp.canopy.hydraulics.ϑ_l.:1;
+
+# Soil
+energy_cache_imp = deepcopy(cache)
+energy_cache_imp .*= -0
+ClimaCore.Operators.column_integral_definite!(
+    energy_cache_imp,
+    dY_imp.soil.ρe_int,
+)
+energy_cache_exp = deepcopy(cache)
+energy_cache_exp .*= 0
+ClimaCore.Operators.column_integral_definite!(
+    energy_cache_exp,
+    dY_exp.soil.ρe_int,
+)
+
+water_cache_imp = deepcopy(cache)
+water_cache_imp .*= -0
+ClimaCore.Operators.column_integral_definite!(
+    water_cache_imp,
+    dY_imp.soil.ϑ_l .+ dY_imp.soil.θ_i .* ρ_ice ./ ρ_liq,
+)
+water_cache_exp = deepcopy(cache)
+water_cache_exp .*= 0
+ClimaCore.Operators.column_integral_definite!(
+    water_cache_exp,
+    dY_exp.soil.ϑ_l .+ dY_exp.soil.θ_i .* ρ_ice ./ ρ_liq,
+)
+
+# Sum including snow
+dY_energy =
+    dY_canopy_energy_imp .+ energy_cache_imp .+ dY_imp.snow.U .+
+    dY_canopy_energy_exp .+ energy_cache_exp .+ dY_exp.snow.U;
+# Expected change based on fluxes at boundaries and sources/sinks in soil column
+energy_expected = dY_imp.∫Fedt .+ dY_exp.∫Fedt
+@test maximum(abs.(extrema((energy_expected .- dY_energy)))) < sqrt(eps(FT))
+
+
+dY_water =
+    dY_canopy_water_imp .+ dY_canopy_water_exp .+ water_cache_imp .+
+    water_cache_exp .+ dY_imp.snow.S .+ dY_exp.snow.S;
+# Expected change based on fluxes at boundaries and sources/sinks in soil column
+water_expected = dY_exp.∫Fwdt .+ dY_imp.∫Fwdt
+@test maximum(abs.(extrema(water_expected .- dY_water))) < sqrt(eps(FT))
+
+jacobian! = ClimaLand.make_jacobian(land)
+
+# set up jacobian info
+jac_kwargs =
+    (; jac_prototype = ClimaLand.FieldMatrixWithSolver(Y), Wfact = jacobian!);
+Δt = 200.0
+stepper = ClimaTimeSteppers.ARS111();
+ode_algo = ClimaTimeSteppers.IMEXAlgorithm(
+    stepper,
+    ClimaTimeSteppers.NewtonsMethod(
+        max_iters = 1,
+        update_j = ClimaTimeSteppers.UpdateEvery(
+            ClimaTimeSteppers.NewNewtonIteration,
+        ),
+    ),
+);
+prob = SciMLBase.ODEProblem(
+    ClimaTimeSteppers.ClimaODEFunction(
+        T_exp! = exp_tendency!,
+        T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
+        dss! = ClimaLand.dss!,
+    ),
+    Y,
+    (t0, t0 + 40 * Δt),
+    p,
+);
+integrator = SciMLBase.init(
+    prob,
+    ode_algo;
+    dt = Δt,
+    saveat = collect(t0:Δt:(t0 + 40 * Δt)),
+);
+
+SciMLBase.step!(integrator)
+integrator.u.∫Fedt
+energy_final = deepcopy(cache) .* 0
+cache .*=0
+ClimaLand.total_energy_per_area!(
+            energy_final,
+            land,
+            integrator.u,
+            p,
+            t,
+            cache,
+        )
+extrema((energy_final .- p_init.total_energy .- integrator.u.∫Fedt))
+water_final = deepcopy(cache) .* 0
+cache .*=0
+ClimaLand.total_liq_water_vol_per_area!(
+            water_final,
+            land,
+            integrator.u,
+            p,
+            t,
+            cache,
+        )
+extrema((water_final .- p_init.total_water .- integrator.u.∫Fwdt))
+end
+=#
 
 if pkgversion(ClimaCore) >= v"0.14.30"
     @testset "Column integral mask awareness" begin

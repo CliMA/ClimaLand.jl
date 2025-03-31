@@ -166,13 +166,14 @@ function set_snow_initial_conditions!(
     regridder_type = regridder_type,
     extrapolation_bc = extrapolation_bc,
 )
-    Y.snow.S .= SpaceVaryingInput(
-        snow_ic_path,
-        "swe",
-        surface_space;
-        regridder_type,
-        regridder_kwargs = (; extrapolation_bc,),
-    )
+    Y.snow.S .=
+        SpaceVaryingInput(
+            snow_ic_path,
+            "swe",
+            surface_space;
+            regridder_type,
+            regridder_kwargs = (; extrapolation_bc,),
+        ) .* 0
     Y.snow.S_l .= 0
     p.snow.T .= enforce_snow_temperature_constraint.(Y.snow.S, p.snow.T)
     Y.snow.U .=
