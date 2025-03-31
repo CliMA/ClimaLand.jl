@@ -4,10 +4,13 @@ ClimaLand.jl Release Notes
 main
 -------
 
-v0.5.12
+v0.5.13
 -------
 - fix for GPU compatibility of integrated land model coupled
   flux calculations PR[#1093](https://github.com/CliMA/ClimaLand.jl/pull/1093)
+
+v0.5.12
+-------
 - adds functions to compute turbulent fluxes for integrated land
   model in coupled simulations PR[#1062](https://github.com/CliMA/ClimaLand.jl/pull/1062), [PR#1089](https://github.com/CliMA/ClimaLand.jl/pull/1089)
 - adds functions which compute total energy and water content per
