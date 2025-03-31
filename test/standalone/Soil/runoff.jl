@@ -97,12 +97,26 @@ end
         f_max = f_max,
         R_sb = R_sb,
     )
-    @test ClimaLand.Soil.Runoff.runoff_vars(runoff_model) ==
-          (:infiltration, :is_saturated, :R_s, :R_ss, :h∇, :subsfc_scratch)
-    @test ClimaLand.Soil.Runoff.runoff_var_domain_names(runoff_model) ==
-          (:surface, :subsurface, :surface, :surface, :surface, :subsurface)
+    @test ClimaLand.Soil.Runoff.runoff_vars(runoff_model) == (
+        :infiltration,
+        :is_saturated,
+        :R_s,
+        :R_ss,
+        :h∇,
+        :subsfc_scratch,
+        :∫R_ss,
+    )
+    @test ClimaLand.Soil.Runoff.runoff_var_domain_names(runoff_model) == (
+        :surface,
+        :subsurface,
+        :surface,
+        :surface,
+        :surface,
+        :subsurface,
+        :surface,
+    )
     @test ClimaLand.Soil.Runoff.runoff_var_types(runoff_model, FT) ==
-          (FT, FT, FT, FT, FT, FT)
+          (FT, FT, FT, FT, FT, FT, FT)
 
     @test runoff_model.f_over == f_over
     @test runoff_model.f_max == f_max

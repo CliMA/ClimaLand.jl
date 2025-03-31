@@ -110,11 +110,17 @@ for FT in (Float32, Float64)
             (t_start, t_end),
             p,
         )
-
+        saveat = Array(t_start:dt:t_end)
+        sv = (;
+            t = Array{Int64}(undef, length(saveat)),
+            saveval = Array{NamedTuple}(undef, length(saveat)),
+        )
+        cb = ClimaLand.NonInterpSavingCallback(sv, saveat)
         sol = SciMLBase.solve(
             prob,
             ode_algo;
             dt = dt,
+            callback = cb,
             saveat = collect(t_start:dt:t_end),
         )
 
@@ -123,14 +129,14 @@ for FT in (Float32, Float64)
 
         if FT == Float64
             # Calculate water mass balance over entire simulation
-            mass_end = sum(sol.u[end].soil.ϑ_l)
-            mass_start = sum(sol.u[1].soil.ϑ_l)
-            t_sim = sol.t[end] - sol.t[1]
-            # Flux changes water content every timestep (assumes constant flux_in, flux_out)
-            mass_change_exp = -(flux_in - flux_out) * t_sim
-            mass_change_actual = mass_end - mass_start
+            mass_end = sv.saveval[end].soil.total_water
+            mass_start = sv.saveval[1].soil.total_water
+            ∫Fdt_end = sol.u[end].soil.∫Fwdt
+            ∫Fdt_start = sol.u[1].soil.∫Fwdt
+            mass_change_exp = parent(∫Fdt_end .- ∫Fdt_start)[1]
+            mass_change_actual = parent(mass_end .- mass_start)[1]
             relerr = abs(mass_change_actual - mass_change_exp) / mass_change_exp
-            @assert relerr < 1e-13
+            @assert relerr < sqrt(eps(FT))
             mass_errors[i] = relerr
 
             # Compute RMSE vs reference solution (found using dt = 0.01s)
@@ -263,17 +269,12 @@ for FT in (Float32, Float64)
         # Check that simulation still has correct float type
         @assert eltype(sol.u[end].soil) == FT
 
-        # Calculate water mass balance over entire simulation
-        # Because we use Backward Euler, compute fluxes at times[2:end]
-        flux_in_sim =
-            [parent(sv.saveval[k].soil.top_bc)[1] for k in 2:length(sv.saveval)]
-
-
-        mass_end = sum(sol.u[end].soil.ϑ_l)
-        mass_start = sum(sol.u[1].soil.ϑ_l)
-        t_sim = sol.t[end] - sol.t[1]
-        mass_change_exp = -(sum(flux_in_sim) * dt - flux_out * t_sim)
-        mass_change_actual = mass_end - mass_start
+        mass_end = sv.saveval[end].soil.total_water
+        mass_start = sv.saveval[1].soil.total_water
+        ∫Fdt_end = sol.u[end].soil.∫Fwdt
+        ∫Fdt_start = sol.u[1].soil.∫Fwdt
+        mass_change_exp = parent(∫Fdt_end .- ∫Fdt_start)[1]
+        mass_change_actual = parent(mass_end .- mass_start)[1]
         relerr = abs(mass_change_actual - mass_change_exp) / mass_change_exp
         @assert relerr < 1e9 * eps(FT)
         mass_errors_dirichlet[i] = relerr

@@ -186,11 +186,22 @@ for experiment in [no_phase_change, phase_change]
             (t0, tf),
             p,
         )
-
-        sol = SciMLBase.solve(prob, ode_algo; dt = dt, saveat = [t0, tf])
+        saveat = [t0, tf]
+        sv = (;
+            t = Array{Int64}(undef, length(saveat)),
+            saveval = Array{NamedTuple}(undef, length(saveat)),
+        )
+        cb = ClimaLand.NonInterpSavingCallback(sv, saveat)
+        sol = SciMLBase.solve(
+            prob,
+            ode_algo;
+            dt = dt,
+            callback = cb,
+            saveat = [t0, tf],
+        )
         # Calculate water mass balance over entire simulation
-        mass_end = sum(sol.u[end].soil.ϑ_l .+ sol.u[end].soil.θ_i)
-        mass_start = sum(sol.u[1].soil.ϑ_l .+ sol.u[1].soil.θ_i)
+        mass_end = parent(sv.saveval[end].soil.total_water)[1]
+        mass_start = parent(sv.saveval[1].soil.total_water)[1]
         t_sim = sol.t[end] - sol.t[1]
         # We used zero flux BC, so we expect no mass change.
         mass_change_exp = FT(0)
@@ -199,8 +210,8 @@ for experiment in [no_phase_change, phase_change]
         mass_errors[i] = relerr
 
         # Calculate energy balance over entire simulation
-        energy_end = sum(sol.u[end].soil.ρe_int)
-        energy_start = sum(sol.u[1].soil.ρe_int)
+        energy_end = parent(sv.saveval[end].soil.total_energy)[1]
+        energy_start = parent(sv.saveval[1].soil.total_energy)[1]
         # We used zero flux BC, so we expect no energy change.
         energy_change_exp = FT(0)
         energy_change_actual = abs(energy_end - energy_start) + eps(FT)

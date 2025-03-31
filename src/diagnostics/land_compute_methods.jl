@@ -40,6 +40,11 @@ macro diagnostic_compute(name, model, compute)
     )
 end
 
+### Conservation ##
+@diagnostic_compute "water_volume_per_area" EnergyHydrology p.soil.total_water
+@diagnostic_compute "energy_per_area" EnergyHydrology p.soil.total_energy
+@diagnostic_compute "water_volume_per_area_change" EnergyHydrology Y.soil.∫Fwdt
+@diagnostic_compute "energy_per_area_change" EnergyHydrology Y.soil.∫Fedt
 
 
 ### BucketModel ###

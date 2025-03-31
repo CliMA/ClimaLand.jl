@@ -198,6 +198,9 @@ function ClimaLand.make_compute_exp_tendency(
     function compute_exp_tendency!(dY, Y, p, t)
         z = model.domain.fields.z
 
+        p.soil.∫Swdz .= 0
+        p.soil.∫Sedz .= 0
+
         # Don't update the prognostic variables we're stepping implicitly
         dY.soil.ϑ_l .= 0
         dY.soil.ρe_int .= 0
@@ -215,10 +218,13 @@ function ClimaLand.make_compute_exp_tendency(
             p,
             z,
         )
-        # Source terms
+        # Source terms, also update the vertical integral of the source: p.soil.∫Swdz, p.soil.∫Sedz
+        # These change ∫S and dY by += and so that is why we have zeroed them out above also.
         for src in model.sources
             ClimaLand.source!(dY, src, Y, p, model)
         end
+        dY.soil.∫Fwdt .= p.soil.∫Swdz # source terms are stepped explictly
+        dY.soil.∫Fedt .= p.soil.∫Sedz # source terms are stepped explicitly
     end
     return compute_exp_tendency!
 end
@@ -241,9 +247,10 @@ function ClimaLand.make_compute_imp_tendency(
         z = model.domain.fields.z
         rre_top_flux_bc = p.soil.top_bc.water
         rre_bottom_flux_bc = p.soil.bottom_bc.water
+        @. dY.soil.∫Fwdt = -(rre_top_flux_bc - rre_bottom_flux_bc) # These fluxes appear in implicit terms, we step them implicitly
         heat_top_flux_bc = p.soil.top_bc.heat
         heat_bottom_flux_bc = p.soil.bottom_bc.heat
-
+        @. dY.soil.∫Fedt = -(heat_top_flux_bc - heat_bottom_flux_bc) # These fluxes appear in implicit terms, we step them implicitly
         interpc2f = Operators.InterpolateC2F()
         gradc2f = Operators.GradientC2F()
 
@@ -463,7 +470,8 @@ end
 A function which returns the names of the prognostic variables
 of `EnergyHydrology`.
 """
-ClimaLand.prognostic_vars(soil::EnergyHydrology) = (:ϑ_l, :θ_i, :ρe_int)
+ClimaLand.prognostic_vars(soil::EnergyHydrology) =
+    (:ϑ_l, :θ_i, :ρe_int, :∫Fwdt, :∫Fedt)
 
 """
     prognostic_types(soil::EnergyHydrology{FT}) where {FT}
@@ -471,10 +479,11 @@ ClimaLand.prognostic_vars(soil::EnergyHydrology) = (:ϑ_l, :θ_i, :ρe_int)
 A function which returns the types of the prognostic variables
 of `EnergyHydrology`.
 """
-ClimaLand.prognostic_types(soil::EnergyHydrology{FT}) where {FT} = (FT, FT, FT)
+ClimaLand.prognostic_types(soil::EnergyHydrology{FT}) where {FT} =
+    (FT, FT, FT, FT, FT)
 
 ClimaLand.prognostic_domain_names(soil::EnergyHydrology) =
-    (:subsurface, :subsurface, :subsurface)
+    (:subsurface, :subsurface, :subsurface, :surface, :surface)
 """
     auxiliary_vars(soil::EnergyHydrology)
 
@@ -482,6 +491,10 @@ A function which returns the names of the auxiliary variables
 of `EnergyHydrology`.
 """
 ClimaLand.auxiliary_vars(soil::EnergyHydrology) = (
+    :total_water,
+    :total_energy,
+    :∫Swdz,
+    :∫Sedz,
     :K,
     :ψ,
     :θ_l,
@@ -506,6 +519,10 @@ ClimaLand.auxiliary_types(soil::EnergyHydrology{FT}) where {FT} = (
     FT,
     FT,
     FT,
+    FT,
+    FT,
+    FT,
+    FT,
     boundary_var_types(
         soil,
         soil.boundary_conditions.top,
@@ -519,6 +536,10 @@ ClimaLand.auxiliary_types(soil::EnergyHydrology{FT}) where {FT} = (
 )
 
 ClimaLand.auxiliary_domain_names(soil::EnergyHydrology) = (
+    :surface,
+    :surface,
+    :surface,
+    :surface,
     :subsurface,
     :subsurface,
     :subsurface,
@@ -616,6 +637,9 @@ function ClimaLand.make_update_aux(model::EnergyHydrology)
             )
         @. p.soil.ψ =
             pressure_head(hydrology_cm, θ_r, Y.soil.ϑ_l, ν - Y.soil.θ_i, S_s)
+
+        total_liq_water_vol_per_area!(p.soil.total_water, model, Y, p, t)
+        total_energy_per_area!(p.soil.total_energy, model, Y, p, t)
     end
     return update_aux!
 end
@@ -703,6 +727,9 @@ function ClimaLand.source!(
             _T_freeze,
             _grav,
         )
+
+    # These source/sink terms conserve total water, so we do not include them in ∫Swdz because their
+    # contribution is zero by design.
 end
 
 
@@ -739,7 +766,8 @@ function ClimaLand.source!(
     Δz_top = model.domain.fields.Δz_top # this returns the center-face distance, not layer thickness
     @. dY.soil.θ_i +=
         -p.soil.turbulent_fluxes.vapor_flux_ice * _ρ_l / _ρ_i *
-        heaviside(z + 2 * Δz_top) # only apply to top layer, recall that z is negative
+        heaviside(z + 2 * Δz_top) / (2 * Δz_top) # only apply to top layer, recall that z is negative
+    @. p.soil.∫Swdz += -p.soil.turbulent_fluxes.vapor_flux_ice # The integral of the source is designed to be this
 end
 
 ## The functions below are required to be defined

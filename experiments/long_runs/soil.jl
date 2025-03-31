@@ -207,6 +207,8 @@ function setup_prob(
         start_date;
         output_writer = nc_writer,
         average_period = :monthly,
+        conservation = true,
+        conservation_period = 10 * Day(1),
     )
 
     diagnostic_handler =
@@ -278,3 +280,6 @@ include(
     ),
 )
 make_figures(root_path, outdir, short_names)
+
+## Conservation
+check_conservation(root_path, outdir)

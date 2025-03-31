@@ -68,8 +68,13 @@ for FT in (Float32, Float64)
 
             @test jacobian.solver isa MatrixFields.FieldMatrixSolver
             @test jacobian.solver.alg isa MatrixFields.BlockDiagonalSolve
-            @test jacobian.matrix.keys.values ==
-                  ((MatrixFields.@name(soil.ϑ_l), MatrixFields.@name(soil.ϑ_l)),)
+            @test jacobian.matrix.keys.values == (
+                (MatrixFields.@name(soil.ϑ_l), MatrixFields.@name(soil.ϑ_l)),
+                (
+                    MatrixFields.@name(soil.∫Fwdt),
+                    MatrixFields.@name(soil.∫Fwdt)
+                ),
+            )
 
             jac_ϑ_l = jacobian.matrix[
                 MatrixFields.@name(soil.ϑ_l),

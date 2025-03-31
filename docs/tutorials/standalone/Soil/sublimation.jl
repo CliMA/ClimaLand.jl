@@ -175,7 +175,7 @@ timestepper = CTS.ARS111()
 ode_algo = CTS.IMEXAlgorithm(
     timestepper,
     CTS.NewtonsMethod(
-        max_iters = 1,
+        max_iters = 3,
         update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
     ),
 )
@@ -293,3 +293,23 @@ CairoMakie.axislegend(ax2, position = :lt)
 CairoMakie.axislegend(ax1, position = :lt)
 save("profiles.png", fig2);
 # ![](profiles.png)
+
+# Assess conservation as a check
+mass_end = sv.saveval[end].soil.total_water
+mass_start = sv.saveval[1].soil.total_water
+∫Fdt_end = sol.u[end].soil.∫Fwdt
+∫Fdt_start = sol.u[1].soil.∫Fwdt
+mass_change_exp = parent(∫Fdt_end .- ∫Fdt_start)[1]
+mass_change_actual = parent(mass_end .- mass_start)[1]
+relerr = abs(mass_change_actual - mass_change_exp) / mass_change_exp
+@info "Water volume error in m"
+@show relerr
+energy_end = sv.saveval[end].soil.total_energy
+energy_start = sv.saveval[1].soil.total_energy
+∫Fdt_end = sol.u[end].soil.∫Fedt
+∫Fdt_start = sol.u[1].soil.∫Fedt
+energy_change_exp = parent(∫Fdt_end .- ∫Fdt_start)[1]
+energy_change_actual = parent(energy_end .- energy_start)[1]
+relerr = abs(energy_change_actual - energy_change_exp) / energy_change_exp
+@info "Energy error in J/m^2"
+@show relerr

@@ -10,6 +10,43 @@ using ClimaLand.Domains: Column, HybridBox
 
 import ClimaLand
 import ClimaLand.Parameters as LP
+struct FakeSource{FT} <: AbstractSoilSource{FT} end
+
+import ClimaLand.source!
+# These allocate, but we dont mind here.
+function ClimaLand.source!(
+    dY::ClimaCore.Fields.FieldVector,
+    src::FakeSource{FT},
+    Y::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
+    model::RichardsModel{FT},
+) where {FT}
+    source = ClimaLand.Fields.zeros(model.domain.space.subsurface) .- FT(1e-5)
+    @. dY.soil.ϑ_l += source
+    tmp = ClimaCore.Fields.zeros(model.domain.space.surface)
+    ClimaCore.Operators.column_integral_definite!(tmp, source)
+    @. p.soil.∫Swdz += tmp
+end
+
+function ClimaLand.source!(
+    dY::ClimaCore.Fields.FieldVector,
+    src::FakeSource{FT},
+    Y::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
+    model::EnergyHydrology{FT},
+) where {FT}
+    earth_param_set = model.parameters.earth_param_set
+    _ρ_l = LP.ρ_cloud_liq(earth_param_set)
+    _ρ_i = LP.ρ_cloud_ice(earth_param_set)
+    source = ClimaLand.Fields.zeros(model.domain.space.subsurface) .- FT(1e-5)
+    @. dY.soil.ϑ_l += source
+    @. dY.soil.θ_i += source * (_ρ_l / _ρ_i)
+    tmp = ClimaCore.Fields.zeros(model.domain.space.surface)
+    ClimaCore.Operators.column_integral_definite!(tmp, source)
+    @. p.soil.∫Swdz += tmp
+    @. p.soil.∫Sedz = 0
+end
+
 
 for FT in (Float32, Float64)
     cmax = FT(0)
@@ -35,11 +72,13 @@ for FT in (Float32, Float64)
     ν_ss_om = FT(0.0)
     ν_ss_quartz = FT(1.0)
     ν_ss_gravel = FT(0.0)
-    water_flux_bc = WaterFluxBC((p, t) -> 0.0)
-    heat_flux_bc = HeatFluxBC((p, t) -> 0.0)
+    top_water_flux_bc = WaterFluxBC((p, t) -> 1.0)
+    top_heat_flux_bc = HeatFluxBC((p, t) -> 1.0)
+    bot_water_flux_bc = WaterFluxBC((p, t) -> -1.0)
+    bot_heat_flux_bc = HeatFluxBC((p, t) -> -1.0)
     t0 = 0.0
     @testset "Richards total water, FT = $FT" begin
-        sources = ()
+        sources = (FakeSource{FT}(),)
         params = Soil.RichardsParameters(;
             ν = ν,
             hydrology_cm = hcm,
@@ -47,7 +86,8 @@ for FT in (Float32, Float64)
             S_s = S_s,
             θ_r = θ_r,
         )
-        boundary_fluxes = (; top = water_flux_bc, bottom = water_flux_bc)
+        boundary_fluxes =
+            (; top = top_water_flux_bc, bottom = bot_water_flux_bc)
         for domain in domains
             soil = Soil.RichardsModel{FT}(;
                 parameters = params,
@@ -64,10 +104,25 @@ for FT in (Float32, Float64)
             ClimaLand.total_liq_water_vol_per_area!(total_water, soil, Y, p, t0)
             expected = ν / 2 * (cmax - cmin)
             @test all(parent(total_water) .≈ expected)
+
+            dY = similar(Y)
+            exp_tendency! = make_exp_tendency(soil)
+            exp_tendency!(dY, Y, p, t0)
+            @test dY.soil.∫Fwdt == p.soil.∫Swdz
+            @test all(
+                parent(p.soil.∫Swdz) .≈ parent(
+                    ClimaCore.Fields.zeros(domain.space.surface) .+
+                    FT(((cmax - cmin) * -1e-5)),
+                ),
+            )
+            imp_tendency! = make_imp_tendency(soil)
+            imp_tendency!(dY, Y, p, t0)
+            @test dY.soil.∫Fwdt ==
+                  ClimaCore.Fields.zeros(domain.space.surface) .- FT(2.0)
         end
     end
     @testset "Energy Hydrology total energy and water, FT = $FT" begin
-        sources = (Soil.PhaseChange{FT}(),)
+        sources = (Soil.PhaseChange{FT}(), FakeSource{FT}())
         params = Soil.EnergyHydrologyParameters(
             FT;
             ν,
@@ -80,8 +135,14 @@ for FT in (Float32, Float64)
             θ_r,
         )
         boundary_fluxes = (;
-            top = WaterHeatBC(; water = water_flux_bc, heat = heat_flux_bc),
-            bottom = WaterHeatBC(; water = water_flux_bc, heat = heat_flux_bc),
+            top = WaterHeatBC(;
+                water = top_water_flux_bc,
+                heat = top_heat_flux_bc,
+            ),
+            bottom = WaterHeatBC(;
+                water = bot_water_flux_bc,
+                heat = bot_heat_flux_bc,
+            ),
         )
         for domain in domains
             soil = Soil.EnergyHydrology{FT}(;
@@ -123,6 +184,24 @@ for FT in (Float32, Float64)
             @test all(parent(total_water) .≈ expected)
             ClimaLand.total_energy_per_area!(total_energy, soil, Y, p, t0)
             @test all(parent(total_energy) .≈ ρe_int0 .* (cmax - cmin))
+
+            dY = similar(Y)
+            exp_tendency! = make_exp_tendency(soil)
+            exp_tendency!(dY, Y, p, t0)
+            @test dY.soil.∫Fwdt == p.soil.∫Swdz
+            @test dY.soil.∫Fedt == p.soil.∫Sedz
+            @test all(
+                parent(p.soil.∫Swdz) .≈ parent(
+                    ClimaCore.Fields.zeros(domain.space.surface) .+
+                    FT(((cmax - cmin) * -1e-5)),
+                ),
+            )
+            imp_tendency! = make_imp_tendency(soil)
+            imp_tendency!(dY, Y, p, t0)
+            @test dY.soil.∫Fwdt ==
+                  ClimaCore.Fields.zeros(domain.space.surface) .- FT(2.0)
+            @test dY.soil.∫Fedt ==
+                  ClimaCore.Fields.zeros(domain.space.surface) .- FT(2.0)
         end
     end
 end
