@@ -510,4 +510,15 @@ make_figures(root_path, outdir, short_names)
 include("leaderboard/leaderboard.jl")
 diagnostics_folder_path = outdir
 leaderboard_base_path = root_path
-compute_leaderboard(leaderboard_base_path, diagnostics_folder_path)
+for data_source in ("ERA5", "ILAMB")
+    compute_monthly_leaderboard(
+        leaderboard_base_path,
+        diagnostics_folder_path,
+        data_source,
+    )
+    compute_seasonal_leaderboard(
+        leaderboard_base_path,
+        diagnostics_folder_path,
+        data_source,
+    )
+end
