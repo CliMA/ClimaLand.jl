@@ -1,3 +1,4 @@
+using Printf
 """
     make_figures(
         root_path,
@@ -123,6 +124,100 @@ function make_figures(
         figures = readdir(tmpdir, join = true)
         pdfunite() do unite
             run(Cmd([unite, figures..., joinpath(root_path, "figures.pdf")]))
+        end
+    end
+    return nothing
+end
+
+"""
+    check_conservation(root_path, outdir)
+
+Generates one .pdf file called "conservation_figures.pdf" in the provided 
+root_path.
+
+The resulting .pdf contains a time series of the global mean 
+(area-weighted) energy and water volume error, in units of 
+`J/m^2` and `m`. Only continents are included in the global average. 
+"""
+function check_conservation(root_path, outdir)
+    simdir = ClimaAnalysis.SimDir(outdir)
+    ## Energy
+    energy_per_area = get(simdir; short_name = "epa")
+    energy_per_area_change = get(simdir; short_name = "epac")
+    N = length(ClimaAnalysis.times(energy_per_area))
+    times = ClimaAnalysis.times(energy_per_area)
+    energy_0 = ClimaAnalysis.apply_oceanmask(
+        ClimaAnalysis.slice(energy_per_area; time = times[1]),
+    )
+    energy_end = ClimaAnalysis.apply_oceanmask(
+        ClimaAnalysis.slice(energy_per_area; time = times[end]),
+    )
+    mean_energy =
+        (
+            ClimaAnalysis.weighted_average_lonlat(energy_0).data[1] +
+            ClimaAnalysis.weighted_average_lonlat(energy_end).data[1]
+        ) / 2
+
+    water_volume_per_area = get(simdir; short_name = "wvpa")
+    water_volume_per_area_change = get(simdir; short_name = "wvpac")
+    water_volume_0 = ClimaAnalysis.apply_oceanmask(
+        ClimaAnalysis.slice(water_volume_per_area; time = times[1]),
+    )
+    water_volume_end = ClimaAnalysis.apply_oceanmask(
+        ClimaAnalysis.slice(water_volume_per_area; time = times[end]),
+    )
+    mean_water_volume =
+        (
+            ClimaAnalysis.weighted_average_lonlat(water_volume_0).data[1] +
+            ClimaAnalysis.weighted_average_lonlat(water_volume_end).data[1]
+        ) / 2
+    energy_error = zeros(N)
+    water_volume_error = zeros(N)
+    for (i, t) in enumerate(times)
+        # error = nanmean[(X(t) - X(0) - Expected Change in X)]
+        energy_error[i] = ClimaAnalysis.weighted_average_lonlat(
+            ClimaAnalysis.apply_oceanmask(
+                ClimaAnalysis.slice(energy_per_area, time = t),
+            ) - energy_0 - ClimaAnalysis.apply_oceanmask(
+                ClimaAnalysis.slice(energy_per_area_change, time = t),
+            ),
+        ).data[1]
+
+        water_volume_error[i] = ClimaAnalysis.weighted_average_lonlat(
+            ClimaAnalysis.apply_oceanmask(
+                ClimaAnalysis.slice(water_volume_per_area, time = t),
+            ) - water_volume_0 - ClimaAnalysis.apply_oceanmask(
+                ClimaAnalysis.slice(water_volume_per_area_change, time = t),
+            ),
+        ).data[1]
+
+    end
+    names = ["Global mean energy per area", "Global mean water volume per area"]
+    errors = [energy_error, water_volume_error]
+    typical_value =
+        [@sprintf("%1.2le", mean_energy), @sprintf("%1.2le", mean_water_volume)]
+    units = ["J/m²", "m³/m²"]
+    mktempdir(root_path) do tmpdir
+        for i in 1:2
+            fig_cycle = CairoMakie.Figure(size = (600, 400))
+            ax = Axis(
+                fig_cycle[1, 1],
+                xlabel = "Years",
+                ylabel = "Global Mean Conservation Error $(units[i])",
+                title = "$(names[i]), typical value = $(typical_value[i]) $(units[i])",
+            )
+            CairoMakie.lines!(ax, times ./ 24 ./ 3600 ./ 365, errors[i])
+            CairoMakie.save(joinpath(tmpdir, "$(names[i]).pdf"), fig_cycle)
+        end
+        figures = readdir(tmpdir, join = true)
+        pdfunite() do unite
+            run(
+                Cmd([
+                    unite,
+                    figures...,
+                    joinpath(root_path, "conservation_figures.pdf"),
+                ]),
+            )
         end
     end
     return nothing

@@ -152,6 +152,8 @@ function ClimaLand.make_compute_imp_tendency(model::RichardsModel)
         z = model.domain.fields.z
         top_flux_bc = p.soil.top_bc
         bottom_flux_bc = p.soil.bottom_bc
+        @. dY.soil.∫F_vol_liq_water_dt = -(p.soil.top_bc - p.soil.bottom_bc)
+
         @. p.soil.top_bc_wvec = Geometry.WVector(top_flux_bc)
         @. p.soil.bottom_bc_wvec = Geometry.WVector(bottom_flux_bc)
         interpc2f = Operators.InterpolateC2F()
@@ -197,7 +199,9 @@ function ClimaLand.make_compute_exp_tendency(model::Soil.RichardsModel)
     # the boundary_var variables prior to evaluation.
     function compute_exp_tendency!(dY, Y, p, t)
         # set dY before updating it
-        dY.soil.ϑ_l .= eltype(dY.soil.ϑ_l)(0)
+        dY.soil.ϑ_l .= 0
+        dY.soil.∫F_vol_liq_water_dt .= 0
+        p.soil.∫S_θ_liq_dz .= 0
         z = model.domain.fields.z
 
         horizontal_components!(
@@ -209,10 +213,11 @@ function ClimaLand.make_compute_exp_tendency(model::Soil.RichardsModel)
             z,
         )
 
-        # Source terms
+        # Source terms, also update the with expected integral of the source: p.soil.∫S_θ_liq_dz
         for src in model.sources
             ClimaLand.source!(dY, src, Y, p, model)
         end
+        dY.soil.∫F_vol_liq_water_dt .= p.soil.∫S_θ_liq_dz # source terms are stepped explictly
     end
     return compute_exp_tendency!
 end
@@ -254,9 +259,9 @@ end
 A function which returns the names of the prognostic variables
 of `RichardsModel`.
 """
-ClimaLand.prognostic_vars(soil::RichardsModel) = (:ϑ_l,)
-ClimaLand.prognostic_types(soil::RichardsModel{FT}) where {FT} = (FT,)
-ClimaLand.prognostic_domain_names(soil::RichardsModel) = (:subsurface,)
+ClimaLand.prognostic_vars(soil::RichardsModel) = (:ϑ_l, :∫F_vol_liq_water_dt)
+ClimaLand.prognostic_types(soil::RichardsModel{FT}) where {FT} = (FT, FT)
+ClimaLand.prognostic_domain_names(soil::RichardsModel) = (:subsurface, :surface)
 
 """
     auxiliary_vars(soil::RichardsModel)
@@ -266,6 +271,8 @@ of `RichardsModel`.
 """
 function ClimaLand.auxiliary_vars(soil::RichardsModel)
     return (
+        :total_water,
+        :∫S_θ_liq_dz,
         :K,
         :ψ,
         boundary_vars(soil.boundary_conditions.top, ClimaLand.TopBoundary())...,
@@ -284,6 +291,8 @@ of `RichardsModel`.
 """
 function ClimaLand.auxiliary_domain_names(soil::RichardsModel)
     return (
+        :surface,
+        :surface,
         :subsurface,
         :subsurface,
         boundary_var_domain_names(
@@ -305,6 +314,8 @@ of `RichardsModel`.
 """
 function ClimaLand.auxiliary_types(soil::RichardsModel{FT}) where {FT}
     return (
+        FT,
+        FT,
         FT,
         FT,
         boundary_var_types(
@@ -340,6 +351,7 @@ function ClimaLand.make_update_aux(model::RichardsModel)
             effective_saturation(ν, Y.soil.ϑ_l, θ_r),
         )
         @. p.soil.ψ = pressure_head(hydrology_cm, θ_r, Y.soil.ϑ_l, ν, S_s)
+        total_liq_water_vol_per_area!(p.soil.total_water, model, Y, p, t)
     end
     return update_aux!
 end
