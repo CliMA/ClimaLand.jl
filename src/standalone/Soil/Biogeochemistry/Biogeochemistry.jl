@@ -334,6 +334,7 @@ function PrescribedMet{FT}(
     if F <: AbstractFloat
         ClimaLand.Soil.inverse_matric_potential(hcm, -FT(1)) * (ν - θ_r) + θ_r
         b = ClimaLand.Soil.approximate_ψ_S_slope(hcm)
+        θ_a100 = ClimaLand.Soil.inverse_matric_potential(hcm, -FT(1)) * (ν - θ_r) + θ_r
     else
         θ_a100 = ClimaCore.Fields.zeros(axes(ν))
         b = ClimaCore.Fields.zeros(axes(ν))
