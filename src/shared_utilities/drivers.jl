@@ -298,6 +298,7 @@ function turbulent_fluxes!(
 
     dest .=
         turbulent_fluxes_at_a_point.(
+            Val(false), # return_momentum_fluxes
             T_sfc,
             q_sfc,
             ρ_sfc,
@@ -345,6 +346,7 @@ function coupler_compute_turbulent_fluxes!(
 
     dest .=
         turbulent_fluxes_at_a_point.(
+            Val(true), # return_momentum_fluxes
             T_sfc,
             q_sfc,
             ρ_sfc,
@@ -359,14 +361,40 @@ function coupler_compute_turbulent_fluxes!(
             model.parameters.z_0m,
             model.parameters.z_0b,
             model.parameters.earth_param_set,
-            return_momentum_fluxes = true,
         )
     return nothing
 end
 
+"""
+    turbulent_fluxes_at_a_point(return_momentum_fluxes, args...)
+
+This is a wrapper function that allows us to dispatch on the type of `return_momentum_fluxes`
+as we compute the turbulent fluxes pointwise. This is needed because space for the
+momentum fluxes is only allocated in the cache when running with a `CoupledAtmosphere`.
+The function `compute_turbulent_fluxes_at_a_point` does the actual flux computation.
+"""
+function turbulent_fluxes_at_a_point(
+    return_momentum_fluxes::Val{false},
+    args...,
+)
+    (LH, SH, Ẽ, r_ae, _, _) = compute_turbulent_fluxes_at_a_point(args...)
+    return (lhf = LH, shf = SH, vapor_flux = Ẽ, r_ae = r_ae)
+end
+function turbulent_fluxes_at_a_point(return_momentum_fluxes::Val{true}, args...)
+    (LH, SH, Ẽ, r_ae, ρτxz, ρτyz) =
+        compute_turbulent_fluxes_at_a_point(args...)
+    return (
+        lhf = LH,
+        shf = SH,
+        vapor_flux = Ẽ,
+        r_ae = r_ae,
+        ρτxz = ρτxz,
+        ρτyz = ρτyz,
+    )
+end
 
 """
-    turbulent_fluxes_at_a_point(T_sfc::FT,
+    compute_turbulent_fluxes_at_a_point(T_sfc::FT,
                                 q_sfc::FT,
                                 ρ_sfc::FT,
                                 β_sfc::FT,
@@ -380,7 +408,6 @@ end
                                 z_0m::FT,
                                 z_0b::FT,
                                 earth_param_set::EP;
-                                return_momentum_fluxes = false,
                                ) where {FT <: AbstractFloat, P}
 
 Computes turbulent surface fluxes at a point on a surface given
@@ -405,7 +432,7 @@ from unit conversion of evaporation from a mass to a liquid water volume
 flux. When r_sfc is nonzero, an additional resistance is applied in series
 to the vapor flux (and hence also the latent heat flux).
 """
-function turbulent_fluxes_at_a_point(
+function compute_turbulent_fluxes_at_a_point(
     T_sfc::FT,
     q_sfc::FT,
     ρ_sfc::FT,
@@ -419,8 +446,7 @@ function turbulent_fluxes_at_a_point(
     gustiness::FT,
     z_0m::FT,
     z_0b::FT,
-    earth_param_set::EP;
-    return_momentum_fluxes = false,
+    earth_param_set::EP,
 ) where {FT <: AbstractFloat, EP}
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
     ts_sfc = Thermodynamics.PhaseEquil_ρTq(thermo_params, ρ_sfc, T_sfc, q_sfc)
@@ -479,19 +505,7 @@ function turbulent_fluxes_at_a_point(
     # vapor flux in volume of liquid water with density 1000kg/m^3
     Ẽ = E / _ρ_liq
 
-    # Return the (unaltered) momentum fluxes if they are requested
-    if !return_momentum_fluxes
-        return (lhf = LH, shf = SH, vapor_flux = Ẽ, r_ae = r_ae)
-    else
-        return (
-            lhf = LH,
-            shf = SH,
-            vapor_flux = Ẽ,
-            r_ae = r_ae,
-            ρτxz = conditions.ρτxz,
-            ρτyz = conditions.ρτyz,
-        )
-    end
+    return (LH, SH, Ẽ, r_ae, conditions.ρτxz, conditions.ρτyz)
 end
 
 """

@@ -272,6 +272,7 @@ function ClimaLand.turbulent_fluxes!(
     h_air = atmos.h
     dest .=
         canopy_turbulent_fluxes_at_a_point.(
+            Val(false), # return_momentum_fluxes
             T_sfc,
             h_sfc,
             r_stomata_canopy,
@@ -314,6 +315,7 @@ function ClimaLand.coupler_compute_turbulent_fluxes!(
     d_sfc = ClimaLand.displacement_height(model, Y, p)
     dest .=
         canopy_turbulent_fluxes_at_a_point.(
+            Val(true), # return_momentum_fluxes
             T_sfc,
             h_sfc,
             r_stomata_canopy,
@@ -327,13 +329,54 @@ function ClimaLand.coupler_compute_turbulent_fluxes!(
             model.parameters.z_0m,
             model.parameters.z_0b,
             Ref(model.parameters.earth_param_set),
-            return_momentum_fluxes = true,
         )
     return nothing
 end
 
 """
-    function canopy_turbulent_fluxes_at_a_point(
+    canopy_turbulent_fluxes_at_a_point(return_momentum_fluxes, args...)
+
+This is a wrapper function that allows us to dispatch on the type of `return_momentum_fluxes`
+as we compute the canopy turbulent fluxes pointwise. This is needed because space for the
+momentum fluxes is only allocated in the cache when running with a `CoupledAtmosphere`.
+The function `canopy_compute_turbulent_fluxes_at_a_point` does the actual flux computation.
+"""
+function canopy_turbulent_fluxes_at_a_point(
+    return_momentum_fluxes::Val{false},
+    args...,
+)
+    (LH, SH, Ẽ, r_ae, ∂LHF∂qc, ∂SHF∂Tc, _, _) =
+        canopy_compute_turbulent_fluxes_at_a_point(args...)
+    return (
+        lhf = LH,
+        shf = SH,
+        transpiration = Ẽ,
+        r_ae = r_ae,
+        ∂LHF∂qc = ∂LHF∂qc,
+        ∂SHF∂Tc = ∂SHF∂Tc,
+    )
+end
+function canopy_turbulent_fluxes_at_a_point(
+    return_momentum_fluxes::Val{true},
+    args...,
+)
+    (LH, SH, Ẽ, r_ae, ∂LHF∂qc, ∂SHF∂Tc, ρτxz, ρτyz) =
+        canopy_compute_turbulent_fluxes_at_a_point(args...)
+    return (
+        lhf = LH,
+        shf = SH,
+        transpiration = Ẽ,
+        r_ae = r_ae,
+        ∂LHF∂qc = ∂LHF∂qc,
+        ∂SHF∂Tc = ∂SHF∂Tc,
+        ρτxz = ρτxz,
+        ρτyz = ρτyz,
+    )
+end
+
+
+"""
+    function canopy_compute_turbulent_fluxes_at_a_point(
         T_sfc::FT,
         h_sfc::FT,
         r_stomata_canopy::FT,
@@ -347,7 +390,6 @@ end
         z_0m::FT,
         z_0b::FT,
         earth_param_set::EP;
-        return_momentum_fluxes = false,
     ) where {FT <: AbstractFloat, EP}
 
 Computes the turbulent surface fluxes for the canopy at a point
@@ -357,7 +399,7 @@ Note that an additiontal resistance is used in computing both
 evaporation and sensible heat flux, and this modifies the output
 of `SurfaceFluxes.surface_conditions`.
 """
-function canopy_turbulent_fluxes_at_a_point(
+function canopy_compute_turbulent_fluxes_at_a_point(
     T_sfc::FT,
     h_sfc::FT,
     r_stomata_canopy::FT,
@@ -371,7 +413,6 @@ function canopy_turbulent_fluxes_at_a_point(
     z_0m::FT,
     z_0b::FT,
     earth_param_set::EP;
-    return_momentum_fluxes = false,
 ) where {FT <: AbstractFloat, EP}
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
     # The following will not run on GPU
@@ -452,28 +493,16 @@ function canopy_turbulent_fluxes_at_a_point(
         SH / ρ_sfc * ∂ρsfc∂Tc +
         SH / cp_m_sfc * ∂cp_m_sfc∂Tc
 
-    # Return the (unaltered) momentum fluxes if they are requested
-    if !return_momentum_fluxes
-        return (
-            lhf = LH,
-            shf = SH,
-            transpiration = Ẽ,
-            r_ae = r_ae,
-            ∂LHF∂qc = ∂LHF∂qc,
-            ∂SHF∂Tc = ∂SHF∂Tc,
-        )
-    else
-        return (
-            lhf = LH,
-            shf = SH,
-            transpiration = Ẽ,
-            r_ae = r_ae,
-            ∂LHF∂qc = ∂LHF∂qc,
-            ∂SHF∂Tc = ∂SHF∂Tc,
-            ρτxz = conditions.ρτxz,
-            ρτyz = conditions.ρτyz,
-        )
-    end
+    return (
+        lhf = LH,
+        shf = SH,
+        transpiration = Ẽ,
+        r_ae = r_ae,
+        ∂LHF∂qc = ∂LHF∂qc,
+        ∂SHF∂Tc = ∂SHF∂Tc,
+        ρτxz = conditions.ρτxz,
+        ρτyz = conditions.ρτyz,
+    )
 end
 
 """
