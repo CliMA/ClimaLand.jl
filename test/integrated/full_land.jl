@@ -13,31 +13,6 @@ import ClimaLand.Parameters as LP
 using ClimaCore
 include("full_land_setup.jl");
 
-#=
-import ClimaCore: Spaces, Fields
-import ClimaCore.DataLayouts: VIJFH, AbstractData
-Base.map(fn, data::VIJFH...) =
-	Base.map!(fn, similar(first(data)), data...)
-function Base.map!(fn, dest::VIJFH, data::VIJFH...)
-    (_, _, _, _, Nh) = size(first(data))
-    @inbounds for h in 1:Nh, j in 1:Nij, i in 1:Nij, v in 1:Nv
-        idx = CartesianIndex(i, j, 1, v, h)
-        dest[idx] = fn(idx)
-    end
-    return dest
-end
-check_ocean(space::Spaces.AbstractSpace, field::Fields.Field) =
-	check_ocean(space, Fields.field_values(field))
-function check_ocean(space::Spaces.AbstractSpace, data::AbstractData)
-	(; is_active) = Spaces.get_mask(space)
-	map(is_active, data) do idx
-		if !is_active[idx]
-			@assert data[idx] == 0
-		end
-		data[idx] # need to return similar element
-	end
-end
-=#
 function test_p(p, binary_mask; val = 0.0)
     properties = [
         p.drivers,
@@ -239,7 +214,8 @@ land = global_land_model(
         @. (ϑ_l0 + θ_i0 * ρ_ice / ρ_liq)
     )
     soil_exp = int_cache
-    canopy_exp = @. area_index * h_canopy .* ϑ0
+    canopy_exp = ClimaCore.Fields.zeros(domain.space.surface)
+    @. canopy_exp = area_index * h_canopy .* ϑ0
     snow_exp = S0
     total_water = ClimaCore.Fields.zeros(domain.space.surface)
     cache = ClimaCore.Fields.zeros(domain.space.surface)
@@ -247,7 +223,8 @@ land = global_land_model(
 
     oceans = .~parent(domain.space.surface.grid.mask.is_active)[:]
     continents = parent(domain.space.surface.grid.mask.is_active)[:]
-    expected = snow_exp .+ canopy_exp .+ soil_exp # if we take parent first, this fails?
+    expected = ClimaCore.Fields.zeros(domain.space.surface)
+    @. expected = snow_exp + canopy_exp + soil_exp # if we take parent first, this fails?
     @test all(
         parent(total_water)[1, 1, 1, continents] .≈
         parent(expected)[1, 1, 1, continents],
@@ -260,12 +237,12 @@ land = global_land_model(
     int_cache .*= 0
     ClimaCore.Operators.column_integral_definite!(int_cache, ρe_int0)
     soil_exp = int_cache
-    canopy_exp =
-        @. area_index * land.canopy.energy.parameters.ac_canopy * CTemp0
+    @. canopy_exp =
+        area_index * land.canopy.energy.parameters.ac_canopy * CTemp0
     snow_exp = U0
     total_energy = ClimaCore.Fields.zeros(domain.space.surface)
     ClimaLand.total_energy_per_area!(total_energy, land, Y, p, t0, cache)
-    expected = snow_exp .+ canopy_exp .+ soil_exp
+    @. expected = snow_exp + canopy_exp + soil_exp
     @test all(
         parent(total_energy)[1, 1, 1, continents] .≈
         parent(expected)[1, 1, 1, continents],
