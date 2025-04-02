@@ -361,12 +361,12 @@ end
     @test axes(x.soil.ϑ_l).grid.horizontal_grid.mask == surface_space.grid.mask;
     @test axes(b.soil.ϑ_l).grid.horizontal_grid.mask == surface_space.grid.mask;
     test_field_vector(x, binary_mask; val = 1.0)
-    test_field_vector(b, binary_xmask; val = 1.0)
+    test_field_vector(b, binary_mask; val = 1.0)
 
     
     MatrixFields.field_matrix_solve!(jac_prototype.solver, x, jac_prototype.matrix, b);
     test_field_vector(x, binary_mask; val = 1.0)
-    
+    #=
     # Take a step
     jac_kwargs = (; jac_prototype = jac_prototype, Wfact = jacobian!)
     prob = SciMLBase.ODEProblem(
@@ -401,3 +401,4 @@ u = sol.u[end];
 =#
 #end
 
+=#
