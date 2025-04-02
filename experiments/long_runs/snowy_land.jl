@@ -449,7 +449,7 @@ function setup_and_solve_problem(; greet = false)
     # 10 years in seconds for very long run and 2 years in seconds otherwise
     tf = LONGER_RUN ? 10years : 2years
     Δt = 450.0
-    start_date = DateTime(2008)
+    start_date = LONGER_RUN ? DateTime(2004) : DateTime(2008)
     nelements = (101, 15)
     if greet
         @info "Run: Global Soil-Canopy-Snow Model"
@@ -510,4 +510,15 @@ make_figures(root_path, outdir, short_names)
 include("leaderboard/leaderboard.jl")
 diagnostics_folder_path = outdir
 leaderboard_base_path = root_path
-compute_leaderboard(leaderboard_base_path, diagnostics_folder_path)
+for data_source in ("ERA5", "ILAMB")
+    compute_monthly_leaderboard(
+        leaderboard_base_path,
+        diagnostics_folder_path,
+        data_source,
+    )
+    compute_seasonal_leaderboard(
+        leaderboard_base_path,
+        diagnostics_folder_path,
+        data_source,
+    )
+end

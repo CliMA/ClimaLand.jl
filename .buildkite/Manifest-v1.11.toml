@@ -2,7 +2,7 @@
 
 julia_version = "1.11.4"
 manifest_format = "2.0"
-project_hash = "4fe4935d5d45f04880ac419a664997320feb94e4"
+project_hash = "556cc366c0974a7c1af7cf9d7cb51d21d3254f47"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "e2478490447631aedba0823d4d7a80b2cc8cdb32"
@@ -365,9 +365,9 @@ weakdeps = ["SparseArrays"]
 
 [[deps.ClimaAnalysis]]
 deps = ["Artifacts", "Dates", "Interpolations", "NCDatasets", "NaNStatistics", "OrderedCollections", "Reexport", "Statistics", "Unitful"]
-git-tree-sha1 = "1cae1cd626bd636bba0e1a4a681e0296372848bc"
+git-tree-sha1 = "0a9f4a6de147d0a9dc09f2e8f702f76dd6777e07"
 uuid = "29b5916a-a76c-4e73-9657-3c8fd22e65e6"
-version = "0.5.15"
+version = "0.5.16"
 weakdeps = ["GeoMakie", "Makie"]
 
     [deps.ClimaAnalysis.extensions]
