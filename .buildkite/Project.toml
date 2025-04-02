@@ -41,7 +41,7 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 Thermodynamics = "b60c26fb-14c3-4610-9d3e-2d17fe7ff00c"
 
 [compat]
-ClimaAnalysis = "0.5.15"
+ClimaAnalysis = "0.5.16"
 ClimaTimeSteppers = "0.7, 0.8"
 Statistics = "1"
 Flux = "0.15"
