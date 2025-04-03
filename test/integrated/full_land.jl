@@ -142,8 +142,7 @@ land = global_land_model(
         @. (ϑ_l0 + θ_i0 * ρ_ice / ρ_liq)
     )
     soil_exp = int_cache
-    canopy_exp = ClimaCore.Fields.zeros(domain.space.surface)
-    @. canopy_exp = area_index * h_canopy .* ϑ0
+    canopy_exp = area_index .* h_canopy .* ϑ0
     snow_exp = S0
     total_water = ClimaCore.Fields.zeros(domain.space.surface)
     cache = ClimaCore.Fields.zeros(domain.space.surface)
@@ -151,8 +150,7 @@ land = global_land_model(
 
     oceans = .~parent(domain.space.surface.grid.mask.is_active)[:]
     continents = parent(domain.space.surface.grid.mask.is_active)[:]
-    expected = ClimaCore.Fields.zeros(domain.space.surface)
-    @. expected = snow_exp + canopy_exp + soil_exp # if we take parent first, this fails?
+    expected = snow_exp + canopy_exp + soil_exp
     @test all(
         parent(total_water)[1, 1, 1, continents] .≈
         parent(expected)[1, 1, 1, continents],
@@ -165,12 +163,12 @@ land = global_land_model(
     int_cache .*= 0
     ClimaCore.Operators.column_integral_definite!(int_cache, ρe_int0)
     soil_exp = int_cache
-    @. canopy_exp =
-        area_index * land.canopy.energy.parameters.ac_canopy * CTemp0
+    canopy_exp =
+        @. area_index * land.canopy.energy.parameters.ac_canopy * CTemp0
     snow_exp = U0
     total_energy = ClimaCore.Fields.zeros(domain.space.surface)
     ClimaLand.total_energy_per_area!(total_energy, land, Y, p, t0, cache)
-    @. expected = snow_exp + canopy_exp + soil_exp
+    expected = @. snow_exp + canopy_exp + soil_exp
     @test all(
         parent(total_energy)[1, 1, 1, continents] .≈
         parent(expected)[1, 1, 1, continents],
