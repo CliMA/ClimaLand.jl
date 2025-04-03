@@ -11,79 +11,7 @@ import ClimaParams as CP
 using ClimaLand
 import ClimaLand.Parameters as LP
 using ClimaCore
-include("full_land_setup.jl");
-
-function test_p(p, binary_mask; val = 0.0)
-    properties = [
-        p.drivers,
-        p.soil,
-        p.soilco2,
-        p.snow,
-        p.canopy.energy,
-        p.canopy.hydraulics,
-        p.canopy.radiative_transfer,
-        p.canopy.photosynthesis,
-        p.canopy.sif,
-        p.canopy.turbulent_fluxes,
-        p.canopy.autotrophic_respiration,
-        p.canopy.conductance,
-    ]
-    for property in properties
-        for var in propertynames(property)
-            field_values = parent(getproperty(property, var))
-            if length(size(field_values)) == 5 # 3d var
-                extrema(field_values[:, 1, 1, :, binary_mask]) == (val, val) ?
-                nothing : @warn "$var not zero"
-            else
-                extrema(field_values[1, 1, :, binary_mask]) == (val, val) ?
-                nothing : @warn "$var not zero"
-            end
-            @test sum(isnan, field_values) == 0
-        end
-    end
-
-    field_pn_p = [
-        pn for pn in propertynames(p) if pn != :soil &&
-        pn != :canopy &&
-        pn != :snow &&
-        pn != :soilco2 &&
-        pn != :drivers &&
-        ~occursin("dss", String(pn))
-    ]
-
-    for var in field_pn_p
-        field_values = parent(getproperty(p, var))
-        if length(size(field_values)) == 5 # 3d var
-            extrema(field_values[:, 1, 1, :, binary_mask]) == (val, val) ?
-            nothing : @warn "$var not zero"
-        else
-            extrema(field_values[1, 1, :, binary_mask]) == (val, val) ?
-            nothing : @warn "$var not zero"
-        end
-        @test sum(isnan, field_values) == 0
-    end
-end
-
-function test_field_vector(dY, binary_mask; val = 0.0)
-    extrema(parent(dY.soil.ϑ_l)[:, 1, 1, 1, binary_mask]) == (val, val) ?
-    nothing : @warn "ϑ_l not zero"
-    extrema(parent(dY.soil.θ_i)[:, 1, 1, 1, binary_mask]) == (val, val) ?
-    nothing : @warn "θ_i not zero"
-    extrema(parent(dY.soil.ρe_int)[:, 1, 1, 1, binary_mask]) == (val, val) ?
-    nothing : @warn "ρe_int not zero"
-    extrema(parent(dY.snow.U)[1, 1, 1, binary_mask]) == (val, val) ? nothing :
-    @warn "U not zero"
-    extrema(parent(dY.snow.S)[1, 1, 1, binary_mask]) == (val, val) ? nothing :
-    @warn "S not zero"
-    extrema(parent(dY.snow.S_l)[1, 1, 1, binary_mask]) == (val, val) ? nothing :
-    @warn "S_l not zero"
-    extrema(parent(dY.canopy.energy.T)[1, 1, 1, binary_mask]) == (val, val) ?
-    nothing : @warn "Canopy T not zero"
-    extrema(
-        Array(parent(dY.canopy.hydraulics.ϑ_l.:1))[1, 1, 1, Array(binary_mask)],
-    ) == (val, val) ? nothing : @warn "Canopy ϑ_l not zero"
-end
-
+include("full_land_utils.jl");
 
 context = ClimaComms.context()
 nelements = (101, 15)
@@ -279,7 +207,7 @@ end
     binary_mask = .~parent(surface_space.grid.mask.is_active)[:]
     # Test that the cache is zero over the ocean
     @info("testing initial cache")
-    test_p(p, binary_mask)
+    check_ocean_values_p(p, binary_mask)
 
     # Set initial conditions
     ic_path = ClimaLand.Artifacts.soil_ic_2008_50m_path(; context = context)
@@ -311,7 +239,7 @@ end
     set_initial_cache! = make_set_initial_cache(land)
     set_initial_cache!(p, Y, t0)
     @info("testing set cache")
-    test_p(p, binary_mask)
+    check_ocean_values_p(p, binary_mask)
 
     # Check tendency functions do not update the state over the ocean
     dY = similar(Y)
@@ -320,14 +248,14 @@ end
     imp_tendency! = make_imp_tendency(land)
     imp_tendency!(dY, Y, p, t0)
     @info("testing implicit tendency")
-    test_field_vector(dY, binary_mask)
+    check_ocean_values_Y(dY, binary_mask)
 
     # Explicit tendency
     @. dY = 0
     exp_tendency! = make_exp_tendency(land)
     exp_tendency!(dY, Y, p, t0)
     @info("testing explicit tendency")
-    test_field_vector(dY, binary_mask)
+    check_ocean_values_Y(dY, binary_mask)
 
 
     # Jacobian checks
@@ -400,8 +328,8 @@ end
     fill!(parent(x), 1)
     @test axes(x.soil.ϑ_l).grid.horizontal_grid.mask == surface_space.grid.mask
     @test axes(b.soil.ϑ_l).grid.horizontal_grid.mask == surface_space.grid.mask
-    test_field_vector(x, binary_mask; val = 1.0)
-    test_field_vector(b, binary_mask; val = 1.0)
+    check_ocean_values_Y(x, binary_mask; val = 1.0)
+    check_ocean_values_Y(b, binary_mask; val = 1.0)
 
 
     MatrixFields.field_matrix_solve!(
@@ -410,7 +338,7 @@ end
         jac_prototype.matrix,
         b,
     )
-    test_field_vector(x, binary_mask; val = 1.0)
+    check_ocean_values_Y(x, binary_mask; val = 1.0)
 
     # Take a step
     jac_kwargs = (; jac_prototype = jac_prototype, Wfact = jacobian!)
@@ -442,6 +370,5 @@ end
         saveat = [t0, tf],
     )
     u = sol.u[end]
-    test_field_vector(u, binary_mask)
-
+    check_ocean_values_Y(u, binary_mask)
 end
