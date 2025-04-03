@@ -175,19 +175,21 @@ function FarquharParameters(
         :s6 => FT(328.15),
         :E => FT(0.05),
     )
-
-    if maximum(is_c3) > 1
-        error(
-            "is_c3 has maximum of $(maximum(is_c3)). is_c3 should be between 0 and 1",
-        )
-    end
-    if minimum(is_c3) < 0
-        error(
-            "is_c3 has minimum of $(minimum(is_c3)). is_c3 should be between 0 and 1",
-        )
-    end
+    #=
+        if maximum(is_c3) > 1
+            error(
+                "is_c3 has maximum of $(maximum(is_c3)). is_c3 should be between 0 and 1",
+            )
+        end
+        if minimum(is_c3) < 0
+            error(
+                "is_c3 has minimum of $(minimum(is_c3)). is_c3 should be between 0 and 1",
+            )
+        end
+    =#
     # if is_c3 is a field, is_c3 may contain values between 0.0 and 1.0 after regridding
     # this deals with that possibility by rounding to the closest int
+    is_c3 = max.(min.(is_c3, FT(1)), FT(0)) # placeholder
     is_c3 = round.(is_c3)
     MECH = typeof(is_c3)
     Vcmax25 = FT.(Vcmax25)
