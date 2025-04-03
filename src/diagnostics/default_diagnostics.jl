@@ -225,7 +225,7 @@ function default_diagnostics(
     output_writer,
     average_period = :daily,
     conservation = false,
-    conservation_period = 10 * Day(1),
+    conservation_period = Day(10),
 ) where {FT}
 
     define_diagnostics!(land_model)

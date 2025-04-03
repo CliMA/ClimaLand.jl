@@ -208,7 +208,7 @@ function setup_prob(
         output_writer = nc_writer,
         average_period = :monthly,
         conservation = true,
-        conservation_period = 10 * Day(1),
+        conservation_period = Day(10),
     )
 
     diagnostic_handler =

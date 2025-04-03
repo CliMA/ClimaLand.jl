@@ -94,7 +94,7 @@ for FT in (Float32, Float64)
         Y, p, coords = initialize(soil)
         @. Y.soil.ϑ_l = FT(0.24)
         set_initial_cache!(p, Y, FT(0.0))
-
+        p_init = deepcopy(p)
         jac_kwargs = (;
             jac_prototype = ClimaLand.FieldMatrixWithSolver(Y),
             Wfact = jacobian!,
@@ -110,27 +110,21 @@ for FT in (Float32, Float64)
             (t_start, t_end),
             p,
         )
-        saveat = Array(t_start:dt:t_end)
-        sv = (;
-            t = Array{Int64}(undef, length(saveat)),
-            saveval = Array{NamedTuple}(undef, length(saveat)),
-        )
-        cb = ClimaLand.NonInterpSavingCallback(sv, saveat)
+
         sol = SciMLBase.solve(
             prob,
             ode_algo;
             dt = dt,
-            callback = cb,
             saveat = collect(t_start:dt:t_end),
         )
-
+        p_final = deepcopy(p) # p updates in place
         # Check that simulation still has correct float type
         @assert eltype(sol.u[end].soil) == FT
 
         if FT == Float64
             # Calculate water mass balance over entire simulation
-            mass_end = sv.saveval[end].soil.total_water
-            mass_start = sv.saveval[1].soil.total_water
+            mass_end = p_final.soil.total_water
+            mass_start = p_init.soil.total_water
             ∫Fdt_end = sol.u[end].soil.∫Fwdt
             ∫Fdt_start = sol.u[1].soil.∫Fwdt
             mass_change_exp = parent(∫Fdt_end .- ∫Fdt_start)[1]
@@ -236,7 +230,7 @@ for FT in (Float32, Float64)
         Y, p, coords = initialize(soil_dirichlet)
         @. Y.soil.ϑ_l = FT(0.24)
         set_initial_cache!(p, Y, FT(0.0))
-
+        p_init = deepcopy(p)
         jac_kwargs = (;
             jac_prototype = ClimaLand.FieldMatrixWithSolver(Y),
             Wfact = jacobian!,
@@ -252,25 +246,19 @@ for FT in (Float32, Float64)
             (t_start, t_end),
             p,
         )
-        saveat = Array(t_start:dt:t_end)
-        sv = (;
-            t = Array{Int64}(undef, length(saveat)),
-            saveval = Array{NamedTuple}(undef, length(saveat)),
-        )
-        cb = ClimaLand.NonInterpSavingCallback(sv, saveat)
         sol = SciMLBase.solve(
             prob,
             ode_algo;
             dt = dt,
-            callback = cb,
             adaptive = false,
-            saveat = saveat,
+            saveat = Array(t_start:dt:t_end),
         )
+        p_final = deepcopy(p) # p updates in place
         # Check that simulation still has correct float type
         @assert eltype(sol.u[end].soil) == FT
 
-        mass_end = sv.saveval[end].soil.total_water
-        mass_start = sv.saveval[1].soil.total_water
+        mass_end = p_final.soil.total_water
+        mass_start = p_init.soil.total_water
         ∫Fdt_end = sol.u[end].soil.∫Fwdt
         ∫Fdt_start = sol.u[1].soil.∫Fwdt
         mass_change_exp = parent(∫Fdt_end .- ∫Fdt_start)[1]

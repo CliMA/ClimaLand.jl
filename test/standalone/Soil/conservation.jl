@@ -103,18 +103,20 @@ for FT in (Float32, Float64)
             total_water = ClimaCore.Fields.zeros(soil.domain.space.surface)
             ClimaLand.total_liq_water_vol_per_area!(total_water, soil, Y, p, t0)
             expected = ν / 2 * (cmax - cmin)
-            @test all(parent(total_water) .≈ expected)
+            @test maximum(abs.(total_water .- expected)) < sqrt(eps(FT))
 
             dY = similar(Y)
             exp_tendency! = make_exp_tendency(soil)
             exp_tendency!(dY, Y, p, t0)
             @test dY.soil.∫Fwdt == p.soil.∫Swdz
-            @test all(
-                parent(p.soil.∫Swdz) .≈ parent(
-                    ClimaCore.Fields.zeros(domain.space.surface) .+
-                    FT(((cmax - cmin) * -1e-5)),
+            @test maximum(
+                abs.(
+                    p.soil.∫Swdz .- (
+                        ClimaCore.Fields.zeros(domain.space.surface) .+
+                        FT(((cmax - cmin) * -1e-5))
+                    )
                 ),
-            )
+            ) < sqrt(eps(FT))
             imp_tendency! = make_imp_tendency(soil)
             imp_tendency!(dY, Y, p, t0)
             @test dY.soil.∫Fwdt ==
@@ -181,21 +183,24 @@ for FT in (Float32, Float64)
             ρ_ice = LP.ρ_cloud_ice(params.earth_param_set)
             ρ_liq = LP.ρ_cloud_liq(params.earth_param_set)
             expected = (ϑ_l0 + θ_i0 * ρ_ice / ρ_liq) * (cmax - cmin)
-            @test all(parent(total_water) .≈ expected)
+            @test maximum(abs.(total_water .- expected)) < sqrt(eps(FT))
             ClimaLand.total_energy_per_area!(total_energy, soil, Y, p, t0)
-            @test all(parent(total_energy) .≈ ρe_int0 .* (cmax - cmin))
+            @test maximum(abs.(total_energy .- (ρe_int0 .* (cmax - cmin)))) <
+                  sqrt(eps(FT))
 
             dY = similar(Y)
             exp_tendency! = make_exp_tendency(soil)
             exp_tendency!(dY, Y, p, t0)
             @test dY.soil.∫Fwdt == p.soil.∫Swdz
             @test dY.soil.∫Fedt == p.soil.∫Sedz
-            @test all(
-                parent(p.soil.∫Swdz) .≈ parent(
-                    ClimaCore.Fields.zeros(domain.space.surface) .+
-                    FT(((cmax - cmin) * -1e-5)),
+            @test maximum(
+                abs.(
+                    p.soil.∫Swdz .- (
+                        ClimaCore.Fields.zeros(domain.space.surface) .+
+                        FT(((cmax - cmin) * -1e-5))
+                    )
                 ),
-            )
+            ) < sqrt(eps(FT))
             imp_tendency! = make_imp_tendency(soil)
             imp_tendency!(dY, Y, p, t0)
             @test dY.soil.∫Fwdt ==

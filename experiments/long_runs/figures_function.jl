@@ -129,14 +129,14 @@ function make_figures(
 end
 
 """
-    check_conservation(
-        root_path,
-        outdir)
+    check_conservation(root_path, outdir)
 
-Generates one .pdf file called "conservation_figures.pdf" in the provided root_path.
-This .pdf contains a time series of the global mean (area-weighted) energy
-and water volume error, in units of `J/m^2` and `m`. Only continents
-are included in the global average. 
+Generates one .pdf file called "conservation_figures.pdf" in the provided 
+root_path.
+
+The resulting .pdf contains a time series of the global mean 
+(area-weighted) energy and water volume error, in units of 
+`J/m^2` and `m`. Only continents are included in the global average. 
 """
 function check_conservation(root_path, outdir)
     simdir = ClimaAnalysis.SimDir(outdir)
@@ -165,7 +165,6 @@ function check_conservation(root_path, outdir)
                 ClimaAnalysis.slice(energy_per_area_change, time = t),
             ),
         ).data[1]
-
 
         water_volume_error[i] = ClimaAnalysis.weighted_average_lonlat(
             ClimaAnalysis.apply_oceanmask(
