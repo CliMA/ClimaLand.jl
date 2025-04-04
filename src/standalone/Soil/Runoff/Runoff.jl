@@ -245,10 +245,10 @@ function update_runoff!(
 end
 
 runoff_vars(::TOPMODELRunoff) =
-    (:infiltration, :is_saturated, :R_s, :R_ss, :h∇, :subsfc_scratch, :∫R_ss)
+    (:infiltration, :is_saturated, :R_s, :R_ss, :h∇, :subsfc_scratch)
 runoff_var_domain_names(::TOPMODELRunoff) =
-    (:surface, :subsurface, :surface, :surface, :surface, :subsurface, :surface)
-runoff_var_types(::TOPMODELRunoff, FT) = (FT, FT, FT, FT, FT, FT, FT)
+    (:surface, :subsurface, :surface, :surface, :surface, :subsurface)
+runoff_var_types(::TOPMODELRunoff, FT) = (FT, FT, FT, FT, FT, FT)
 
 """
     model_agnostic_volumetric_ice_content(Y, FT)
@@ -289,16 +289,8 @@ function ClimaLand.source!(
     ϑ_l = Y.soil.ϑ_l
     h∇ = p.soil.h∇
     ϵ = eps(FT)
-    subsurface_runoff_source = p.soil.subsfc_scratch
-    @. subsurface_runoff_source =
-        -(p.soil.R_ss / max(h∇, ϵ)) * p.soil.is_saturated  # apply only to saturated layeres
-    @. dY.soil.ϑ_l += subsurface_runoff_source
-    p.soil.∫R_ss .= 0
-    ClimaCore.Operators.column_integral_definite!(
-        p.soil.∫R_ss,
-        subsurface_runoff_source,
-    )
-    @. p.soil.∫Swdz += p.soil.∫R_ss
+    @. dY.soil.ϑ_l = -(p.soil.R_ss / max(h∇, ϵ)) * p.soil.is_saturated # apply only to saturated layers
+    @. p.soil.∫Swdz -= p.soil.R_ss # the integral is designed to be this flux
 end
 
 """

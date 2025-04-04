@@ -213,7 +213,7 @@ function ClimaLand.make_compute_exp_tendency(model::Soil.RichardsModel)
             z,
         )
 
-        # Source terms, also update the vertical integral of the source: p.soil.∫Swdz
+        # Source terms, also update the with expected integral of the source: p.soil.∫Swdz
         for src in model.sources
             ClimaLand.source!(dY, src, Y, p, model)
         end
