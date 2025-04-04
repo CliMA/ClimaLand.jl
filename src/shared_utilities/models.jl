@@ -387,7 +387,9 @@ function initialize_vars(keys, types, domain_names, state, model_name)
     else
         zero_states = map(zip(types, domain_names)) do (T, D)
             zero_instance = ClimaCore.RecursiveApply.rzero(T)
-            map(_ -> zero_instance, getproperty(state, D))
+            f = map(_ -> zero_instance, getproperty(state, D))
+            fill!(parent(f), 0)
+            f
         end
         return (; model_name => (; zip(keys, zero_states)...))
     end
