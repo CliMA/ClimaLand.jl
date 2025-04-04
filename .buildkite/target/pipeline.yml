@@ -43,7 +43,7 @@ steps:
         env:
           CLIMACOMMS_DEVICE: CUDA
         agents:
-          slurm_mem: 8GB
+          slurm_mem: 32G
           slurm_gpus: 1
 
       - label: ":droplet: RichardsModel"
