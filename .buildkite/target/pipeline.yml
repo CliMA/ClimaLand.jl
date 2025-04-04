@@ -1,6 +1,6 @@
 agents:
   queue: clima
-  modules: climacommon/2025_03_18
+  modules: climacommon/2025_03_18 nsight-systems/2024.6.1
 
 env:
   JULIA_DEPOT_PATH: "${BUILDKITE_BUILD_PATH}/${BUILDKITE_PIPELINE_SLUG}/depot/default"
@@ -33,7 +33,11 @@ steps:
   - group: "Target Benchmark"
     steps:
       - label: ":bucket: Bucket"
-        command: "julia --color=yes --project=.buildkite experiments/benchmarks/bucket.jl"
+        command:
+          - mkdir -p bucket_benchmark_gpu
+          - >
+            nsys profile --delay 100 --trace=nvtx,mpi,cuda,osrt --output=bucket_benchmark_gpu/report
+            julia --color=yes --project=.buildkite experiments/benchmarks/bucket.jl
         artifact_paths:
           - "bucket_benchmark_gpu/*html"
         env:
@@ -43,7 +47,11 @@ steps:
           slurm_gpus: 1
 
       - label: ":droplet: RichardsModel"
-        command: "julia --color=yes --project=.buildkite experiments/benchmarks/richards.jl"
+        command:
+          - mkdir -p richards_benchmark_gpu
+          - >
+            nsys profile --delay 100 --trace=nvtx,mpi,cuda,osrt --output=richards_benchmark_gpu/report
+            julia --color=yes --project=.buildkite experiments/benchmarks/richards.jl
         artifact_paths:
           - "richards_benchmark_gpu/*html"
         env:
@@ -53,7 +61,11 @@ steps:
           slurm_gpus: 1
 
       - label: ":seedling: Soil/Canopy"
-        command: "julia --color=yes --project=.buildkite experiments/benchmarks/land.jl"
+        command:
+          - mkdir -p land_benchmark_gpu
+          - >
+            nsys profile --delay 100 --trace=nvtx,mpi,cuda,osrt --output=land_benchmark_gpu/report
+            julia --color=yes --project=.buildkite experiments/benchmarks/land.jl
         artifact_paths:
           - "land_benchmark_gpu/*html"
         env:
@@ -63,7 +75,11 @@ steps:
           slurm_gpus: 1
 
       - label: ":snow_capped_mountain: Snowy Land"
-        command: "julia --color=yes --project=.buildkite experiments/benchmarks/snowy_land.jl"
+        command:
+          - mkdir -p snowy_land_benchmark_gpu
+          - >
+            nsys profile --delay 100 --trace=nvtx,mpi,cuda,osrt --output=snowy_land_benchmark_gpu/report
+            julia --color=yes --project=.buildkite experiments/benchmarks/snowy_land.jl
         artifact_paths:
           - "snowy_land_benchmark_gpu/*html"
         env:
