@@ -219,11 +219,11 @@ function ClimaLand.make_compute_exp_tendency(
             z,
         )
         # Source terms, also update the vertical integral of the source: p.soil.∫Swdz, p.soil.∫Sedz
-        # These change ∫S and dY by += and so that is why we have zeroed them out above also.
+        # These change ∫S and dY by +=, which is why we zero them out above.
         for src in model.sources
             ClimaLand.source!(dY, src, Y, p, model)
         end
-        dY.soil.∫Fwdt .= p.soil.∫Swdz # source terms are stepped explictly
+        dY.soil.∫Fwdt .= p.soil.∫Swdz # source terms are stepped explicitly
         dY.soil.∫Fedt .= p.soil.∫Sedz # source terms are stepped explicitly
     end
     return compute_exp_tendency!

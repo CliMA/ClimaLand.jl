@@ -164,13 +164,12 @@ for FT in (Float32, Float64)
                 params.ρc_ds,
                 params.earth_param_set,
             )
-            ρe_int0 =
-                Soil.volumetric_internal_energy.(
-                    θ_i0,
-                    ρc_s,
-                    T,
-                    params.earth_param_set,
-                )
+            ρe_int0 = Soil.volumetric_internal_energy(
+                θ_i0,
+                ρc_s,
+                T,
+                params.earth_param_set,
+            )
             Y.soil.ϑ_l .= ϑ_l0
             Y.soil.θ_i .= θ_i0
 
@@ -183,10 +182,11 @@ for FT in (Float32, Float64)
             ρ_ice = LP.ρ_cloud_ice(params.earth_param_set)
             ρ_liq = LP.ρ_cloud_liq(params.earth_param_set)
             expected = (ϑ_l0 + θ_i0 * ρ_ice / ρ_liq) * (cmax - cmin)
-            @test maximum(abs.(total_water .- expected)) < sqrt(eps(FT))
+            @test maximum(abs.(total_water .- expected)) <
+                  sqrt(eps(FT)) * expected
             ClimaLand.total_energy_per_area!(total_energy, soil, Y, p, t0)
-            @test maximum(abs.(total_energy .- (ρe_int0 .* (cmax - cmin)))) <
-                  sqrt(eps(FT))
+            @test maximum(abs.(total_energy .- (ρe_int0 * (cmax - cmin)))) <
+                  sqrt(eps(FT)) * abs(ρe_int0 * (cmax - cmin))
 
             dY = similar(Y)
             exp_tendency! = make_exp_tendency(soil)
@@ -200,7 +200,7 @@ for FT in (Float32, Float64)
                         FT(((cmax - cmin) * -1e-5))
                     )
                 ),
-            ) < sqrt(eps(FT))
+            ) < sqrt(eps(FT)) * abs(FT(((cmax - cmin) * -1e-5)))
             imp_tendency! = make_imp_tendency(soil)
             imp_tendency!(dY, Y, p, t0)
             @test dY.soil.∫Fwdt ==

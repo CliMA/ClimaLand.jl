@@ -39,7 +39,7 @@ function define_diagnostics!(land_model)
     add_diagnostic_variable!(
         short_name = "wvpac",
         long_name = "Water volume per unit ground area change",
-        standard_name = "water_volume_per_area_chnage",
+        standard_name = "water_volume_per_area_change",
         units = "m^3/m^2",
         comments = "Expected change in vertically integrated volumetric water per area",
         compute! = (out, Y, p, t) ->
