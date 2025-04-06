@@ -164,5 +164,9 @@ end
 
 # Warm up and greet
 prob, ode_algo, Δt, cb = setup_simulation(; greet = true)
-SciMLBase.solve(prob, ode_algo; dt = Δt, callback = cb)
+integrator = SciMLBase.init(prob, ode_algo; dt = Δt, callback = cb)
+SciMLBase.step!(integrator)
+SciMLBase.step!(integrator)
+SciMLBase.step!(integrator)
+SciMLBase.step!(integrator)
 

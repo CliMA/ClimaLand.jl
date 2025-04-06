@@ -50,14 +50,14 @@ steps:
         command:
           - mkdir -p richards_benchmark_gpu
           - >
-            nsys profile --delay 100 --trace=nvtx,mpi,cuda,osrt --output=richards_benchmark_gpu/report
+            nsys profile --trace=nvtx,mpi,cuda,osrt --output=richards_benchmark_gpu/report
             julia --color=yes --project=.buildkite experiments/benchmarks/richards.jl
         artifact_paths:
           - "richards_benchmark_gpu/*"
         env:
           CLIMACOMMS_DEVICE: CUDA
         agents:
-          slurm_mem: 32G
+          slurm_mem: 64G
           slurm_gpus: 1
 
       - label: ":seedling: Soil/Canopy"
