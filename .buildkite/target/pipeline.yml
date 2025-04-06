@@ -36,7 +36,7 @@ steps:
         command:
           - mkdir -p bucket_benchmark_gpu
           - >
-            nsys profile --delay 100 --trace=nvtx,mpi,cuda,osrt --output=bucket_benchmark_gpu/report
+            nsys profile --trace=nvtx,mpi,cuda,osrt --output=bucket_benchmark_gpu/report
             julia --color=yes --project=.buildkite experiments/benchmarks/bucket.jl
         artifact_paths:
           - "bucket_benchmark_gpu/*"

@@ -44,6 +44,7 @@ device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
 
 earth_param_set = ClimaLand.Parameters.LandParameters(FT);
 outdir = "bucket_benchmark_$(device_suffix)"
+@info "device: $device"
 !ispath(outdir) && mkpath(outdir)
 
 function setup_prob(t0, tf, Δt; nelements = (200, 7))
