@@ -39,7 +39,7 @@ steps:
             nsys profile --delay 100 --trace=nvtx,mpi,cuda,osrt --output=bucket_benchmark_gpu/report
             julia --color=yes --project=.buildkite experiments/benchmarks/bucket.jl
         artifact_paths:
-          - "bucket_benchmark_gpu/*html"
+          - "bucket_benchmark_gpu/*"
         env:
           CLIMACOMMS_DEVICE: CUDA
         agents:
@@ -53,11 +53,11 @@ steps:
             nsys profile --delay 100 --trace=nvtx,mpi,cuda,osrt --output=richards_benchmark_gpu/report
             julia --color=yes --project=.buildkite experiments/benchmarks/richards.jl
         artifact_paths:
-          - "richards_benchmark_gpu/*html"
+          - "richards_benchmark_gpu/*"
         env:
           CLIMACOMMS_DEVICE: CUDA
         agents:
-          slurm_mem: 8GB
+          slurm_mem: 32G
           slurm_gpus: 1
 
       - label: ":seedling: Soil/Canopy"
@@ -67,11 +67,11 @@ steps:
             nsys profile --delay 100 --trace=nvtx,mpi,cuda,osrt --output=land_benchmark_gpu/report
             julia --color=yes --project=.buildkite experiments/benchmarks/land.jl
         artifact_paths:
-          - "land_benchmark_gpu/*html"
+          - "land_benchmark_gpu/*"
         env:
           CLIMACOMMS_DEVICE: CUDA
         agents:
-          slurm_mem: 8GB
+          slurm_mem: 32G
           slurm_gpus: 1
 
       - label: ":snow_capped_mountain: Snowy Land"
@@ -81,9 +81,9 @@ steps:
             nsys profile --delay 100 --trace=nvtx,mpi,cuda,osrt --output=snowy_land_benchmark_gpu/report
             julia --color=yes --project=.buildkite experiments/benchmarks/snowy_land.jl
         artifact_paths:
-          - "snowy_land_benchmark_gpu/*html"
+          - "snowy_land_benchmark_gpu/*"
         env:
           CLIMACOMMS_DEVICE: CUDA
         agents:
-          slurm_mem: 8GB
+          slurm_mem: 32G
           slurm_gpus: 1
