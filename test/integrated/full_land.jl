@@ -5,6 +5,8 @@ import ClimaParams as CP
 using ClimaLand
 import ClimaLand.Parameters as LP
 using ClimaCore
+using SciMLBase
+using ClimaTimeSteppers
 include("full_land_setup.jl")
 context = ClimaComms.context()
 nelements = (101, 15)
@@ -148,3 +150,69 @@ snow_exp = U0
 total_energy = ClimaCore.Fields.zeros(domain.space.surface)
 ClimaLand.total_energy_per_area!(total_energy, land, Y, p, t0, cache)
 @test all(parent(total_energy) .≈ parent(snow_exp .+ canopy_exp .+ soil_exp))
+
+
+
+imp_tendency! = ClimaLand.make_imp_tendency(land);
+exp_tendency! = ClimaLand.make_exp_tendency(land);
+jacobian! = ClimaLand.make_jacobian(land)
+
+# set up jacobian info
+jac_kwargs =
+    (; jac_prototype = ClimaLand.FieldMatrixWithSolver(Y), Wfact = jacobian!);
+Δt = 200.0
+stepper = ClimaTimeSteppers.ARS111();
+ode_algo = ClimaTimeSteppers.IMEXAlgorithm(
+    stepper,
+    ClimaTimeSteppers.NewtonsMethod(
+        max_iters = 3,
+        update_j = ClimaTimeSteppers.UpdateEvery(
+            ClimaTimeSteppers.NewNewtonIteration,
+        ),
+    ),
+);
+prob = SciMLBase.ODEProblem(
+    ClimaTimeSteppers.ClimaODEFunction(
+        T_exp! = exp_tendency!,
+        T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
+        dss! = ClimaLand.dss!,
+    ),
+    Y,
+    (t0, t0 + 40 * Δt),
+    p,
+);
+ΔE = []
+ΔW = []
+total_energy_final = ClimaCore.Fields.zeros(domain.space.surface)
+total_water_final = ClimaCore.Fields.zeros(domain.space.surface)
+integrator = SciMLBase.init(
+    prob,
+    ode_algo;
+    dt = Δt,
+    saveat = collect(t0:(2 * Δt):(t0 + 40 * Δt)),
+);
+
+for i in 1:10
+    @show i
+    SciMLBase.step!(integrator)
+    cache .*= 0
+    ClimaLand.total_energy_per_area!(
+        total_energy_final,
+        land,
+        integrator.u,
+        integrator.p,
+        t0 + Δt,
+        cache,
+    )
+    push!(ΔE, mean(total_energy_final .- total_energy .- integrator.u.∫Fedt))
+    cache .*= 0
+    ClimaLand.total_liq_water_vol_per_area!(
+        total_water_final,
+        land,
+        integrator.u,
+        integrator.p,
+        t0 + Δt,
+        cache,
+    )
+    push!(ΔW, mean(total_water_final .- total_water .- integrator.u.∫Fwdt))
+end

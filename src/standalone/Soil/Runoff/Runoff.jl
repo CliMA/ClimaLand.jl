@@ -240,7 +240,7 @@ function update_runoff!(
         ic,
         input,
     )
-    @. p.soil.R_s = abs(input - p.soil.infiltration)
+    @. p.soil.R_s = p.soil.infiltration - input
 
 end
 
