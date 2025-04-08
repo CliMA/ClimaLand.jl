@@ -152,7 +152,7 @@ function ClimaLand.make_compute_imp_tendency(model::RichardsModel)
         z = model.domain.fields.z
         top_flux_bc = p.soil.top_bc
         bottom_flux_bc = p.soil.bottom_bc
-        @. dY.soil.∫Fwdt = -(p.soil.top_bc - p.soil.bottom_bc)
+        @. dY.soil.∫F_vol_liq_water_dt = -(p.soil.top_bc - p.soil.bottom_bc)
 
         @. p.soil.top_bc_wvec = Geometry.WVector(top_flux_bc)
         @. p.soil.bottom_bc_wvec = Geometry.WVector(bottom_flux_bc)
@@ -200,8 +200,8 @@ function ClimaLand.make_compute_exp_tendency(model::Soil.RichardsModel)
     function compute_exp_tendency!(dY, Y, p, t)
         # set dY before updating it
         dY.soil.ϑ_l .= 0
-        dY.soil.∫Fwdt .= 0
-        p.soil.∫Swdz .= 0
+        dY.soil.∫F_vol_liq_water_dt .= 0
+        p.soil.∫S_θ_liq_dz .= 0
         z = model.domain.fields.z
 
         horizontal_components!(
@@ -213,11 +213,11 @@ function ClimaLand.make_compute_exp_tendency(model::Soil.RichardsModel)
             z,
         )
 
-        # Source terms, also update the with expected integral of the source: p.soil.∫Swdz
+        # Source terms, also update the with expected integral of the source: p.soil.∫S_θ_liq_dz
         for src in model.sources
             ClimaLand.source!(dY, src, Y, p, model)
         end
-        dY.soil.∫Fwdt .= p.soil.∫Swdz # source terms are stepped explictly
+        dY.soil.∫F_vol_liq_water_dt .= p.soil.∫S_θ_liq_dz # source terms are stepped explictly
     end
     return compute_exp_tendency!
 end
@@ -259,7 +259,7 @@ end
 A function which returns the names of the prognostic variables
 of `RichardsModel`.
 """
-ClimaLand.prognostic_vars(soil::RichardsModel) = (:ϑ_l, :∫Fwdt)
+ClimaLand.prognostic_vars(soil::RichardsModel) = (:ϑ_l, :∫F_vol_liq_water_dt)
 ClimaLand.prognostic_types(soil::RichardsModel{FT}) where {FT} = (FT, FT)
 ClimaLand.prognostic_domain_names(soil::RichardsModel) = (:subsurface, :surface)
 
@@ -272,7 +272,7 @@ of `RichardsModel`.
 function ClimaLand.auxiliary_vars(soil::RichardsModel)
     return (
         :total_water,
-        :∫Swdz,
+        :∫S_θ_liq_dz,
         :K,
         :ψ,
         boundary_vars(soil.boundary_conditions.top, ClimaLand.TopBoundary())...,

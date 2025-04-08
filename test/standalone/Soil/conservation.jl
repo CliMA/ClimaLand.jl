@@ -14,6 +14,18 @@ struct FakeSource{FT} <: AbstractSoilSource{FT} end
 
 import ClimaLand.source!
 # These allocate, but we dont mind here.
+"""
+ClimaLand.source!(
+    dY::ClimaCore.Fields.FieldVector,
+    src::FakeSource{FT},
+    Y::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
+    model::RichardsModel{FT},
+) where {FT}
+
+Updates dY.soil.ϑ_l in place at every level with the source for volumetric liquid water
+ (S_ϑ_l(z)), and  updates p.soil.∫S_ϑ_l_dz in place with the column integral of S_ϑ_l.
+"""
 function ClimaLand.source!(
     dY::ClimaCore.Fields.FieldVector,
     src::FakeSource{FT},
@@ -25,9 +37,22 @@ function ClimaLand.source!(
     @. dY.soil.ϑ_l += source
     tmp = ClimaCore.Fields.zeros(model.domain.space.surface)
     ClimaCore.Operators.column_integral_definite!(tmp, source)
-    @. p.soil.∫Swdz += tmp
+    @. p.soil.∫S_θ_liq_dz += tmp
 end
 
+"""
+ClimaLand.source!(
+    dY::ClimaCore.Fields.FieldVector,
+    src::FakeSource{FT},
+    Y::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
+    model::EnergyHydrology{FT},
+) where {FT}
+
+Updates dY.soil.X in place at every level with the source for X (S_X), and 
+updates p.soil.∫S_X_dz in place with the column integral of the source
+for X, where X refers to ϑ_l, θ_i, or ρe_int.
+"""
 function ClimaLand.source!(
     dY::ClimaCore.Fields.FieldVector,
     src::FakeSource{FT},
@@ -43,8 +68,8 @@ function ClimaLand.source!(
     @. dY.soil.θ_i += source * (_ρ_l / _ρ_i)
     tmp = ClimaCore.Fields.zeros(model.domain.space.surface)
     ClimaCore.Operators.column_integral_definite!(tmp, source)
-    @. p.soil.∫Swdz += tmp
-    @. p.soil.∫Sedz = 0
+    @. p.soil.∫S_θ_liq_dz += tmp
+    @. p.soil.∫S_ρe_int_dz = 0
 end
 
 
@@ -108,10 +133,10 @@ for FT in (Float32, Float64)
             dY = similar(Y)
             exp_tendency! = make_exp_tendency(soil)
             exp_tendency!(dY, Y, p, t0)
-            @test dY.soil.∫Fwdt == p.soil.∫Swdz
+            @test dY.soil.∫F_vol_liq_water_dt == p.soil.∫S_θ_liq_dz
             @test maximum(
                 abs.(
-                    p.soil.∫Swdz .- (
+                    p.soil.∫S_θ_liq_dz .- (
                         ClimaCore.Fields.zeros(domain.space.surface) .+
                         FT(((cmax - cmin) * -1e-5))
                     )
@@ -119,7 +144,7 @@ for FT in (Float32, Float64)
             ) < sqrt(eps(FT))
             imp_tendency! = make_imp_tendency(soil)
             imp_tendency!(dY, Y, p, t0)
-            @test dY.soil.∫Fwdt ==
+            @test dY.soil.∫F_vol_liq_water_dt ==
                   ClimaCore.Fields.zeros(domain.space.surface) .- FT(2.0)
         end
     end
@@ -191,11 +216,23 @@ for FT in (Float32, Float64)
             dY = similar(Y)
             exp_tendency! = make_exp_tendency(soil)
             exp_tendency!(dY, Y, p, t0)
-            @test dY.soil.∫Fwdt == p.soil.∫Swdz
-            @test dY.soil.∫Fedt == p.soil.∫Sedz
+            # test that ∫ dY = -[F_sfc - F_bot] + ∫Sdz
+            cache = ClimaCore.Fields.zeros(soil.domain.space.surface)
+            ClimaCore.Operators.column_integral_definite!(
+                cache,
+                dY.soil.ϑ_l .+ ρ_ice / ρ_liq .* dY.soil.θ_i,
+            )
+            @test maximum(cache .- FT(((cmax - cmin) * -1e-5)) .* 2) <
+                  10 * eps(FT) # This should hold to near floating point precision
+            cache .*= 0
+            ClimaCore.Operators.column_integral_definite!(cache, dY.soil.ρe_int)
+            @test maximum(cache) < 10 * eps(FT) # This should hold to near floating point precision
+            # Test that tendencies for total change in energy and mass  were set properly
+            @test dY.soil.∫F_vol_liq_water_dt == p.soil.∫S_θ_liq_dz
+            @test dY.soil.∫F_e_dt == p.soil.∫S_ρe_int_dz
             @test maximum(
                 abs.(
-                    p.soil.∫Swdz .- (
+                    p.soil.∫S_θ_liq_dz .- (
                         ClimaCore.Fields.zeros(domain.space.surface) .+
                         FT(((cmax - cmin) * -1e-5))
                     )
@@ -203,9 +240,20 @@ for FT in (Float32, Float64)
             ) < sqrt(eps(FT)) * abs(FT(((cmax - cmin) * -1e-5)))
             imp_tendency! = make_imp_tendency(soil)
             imp_tendency!(dY, Y, p, t0)
-            @test dY.soil.∫Fwdt ==
+            # test that ∫ dY = -[F_sfc - F_bot] + ∫Sdz
+            cache .*= 0
+            ClimaCore.Operators.column_integral_definite!(
+                cache,
+                dY.soil.ϑ_l .+ ρ_ice / ρ_liq .* dY.soil.θ_i,
+            )
+            @test maximum(cache .- (-FT(2))) < 10 * eps(FT) # This should hold to near floating point precision
+            cache .*= 0
+            ClimaCore.Operators.column_integral_definite!(cache, dY.soil.ρe_int)
+            @test maximum(cache .- (-FT(2))) < 10 * eps(FT) # This should hold to near floating point precision
+            # Test that tendencies for total change in energy and mass  were set properly
+            @test dY.soil.∫F_vol_liq_water_dt ==
                   ClimaCore.Fields.zeros(domain.space.surface) .- FT(2.0)
-            @test dY.soil.∫Fedt ==
+            @test dY.soil.∫F_e_dt ==
                   ClimaCore.Fields.zeros(domain.space.surface) .- FT(2.0)
         end
     end

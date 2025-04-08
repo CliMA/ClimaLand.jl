@@ -171,7 +171,9 @@ for experiment in [no_phase_change, phase_change]
         Y, p, coords = initialize(soil)
         init_soil!(Y, coords.subsurface.z, Trange, soil.parameters)
         set_initial_cache!(p, Y, t0)
-        p_init = deepcopy(p)
+        energy_start = Array(parent(p.soil.total_energy))[1]
+        mass_start = Array(parent(p.soil.total_water))[1]
+
         jac_kwargs = (;
             jac_prototype = ClimaLand.FieldMatrixWithSolver(Y),
             Wfact = jacobian!,
@@ -188,10 +190,8 @@ for experiment in [no_phase_change, phase_change]
             p,
         )
         sol = SciMLBase.solve(prob, ode_algo; dt = dt, saveat = [t0, tf])
-        p_final = deepcopy(p) # p updates in place
         # Calculate water mass balance over entire simulation
-        mass_end = parent(p_final.soil.total_water)[1]
-        mass_start = parent(p_init.soil.total_water)[1]
+        mass_end = Array(parent(p.soil.total_water))[1]
         t_sim = sol.t[end] - sol.t[1]
         # We used zero flux BC, so we expect no mass change.
         mass_change_exp = FT(0)
@@ -200,8 +200,7 @@ for experiment in [no_phase_change, phase_change]
         mass_errors[i] = relerr
 
         # Calculate energy balance over entire simulation
-        energy_end = parent(p_final.soil.total_energy)[1]
-        energy_start = parent(p_init.soil.total_energy)[1]
+        energy_end = Array(parent(p.soil.total_energy))[1]
         # We used zero flux BC, so we expect no energy change.
         energy_change_exp = FT(0)
         energy_change_actual = abs(energy_end - energy_start) + eps(FT)

@@ -94,7 +94,7 @@ for FT in (Float32, Float64)
         Y, p, coords = initialize(soil)
         @. Y.soil.ϑ_l = FT(0.24)
         set_initial_cache!(p, Y, FT(0.0))
-        p_init = deepcopy(p)
+        mass_start = p.soil.total_water
         jac_kwargs = (;
             jac_prototype = ClimaLand.FieldMatrixWithSolver(Y),
             Wfact = jacobian!,
@@ -117,18 +117,16 @@ for FT in (Float32, Float64)
             dt = dt,
             saveat = collect(t_start:dt:t_end),
         )
-        p_final = deepcopy(p) # p updates in place
         # Check that simulation still has correct float type
         @assert eltype(sol.u[end].soil) == FT
 
         if FT == Float64
             # Calculate water mass balance over entire simulation
-            mass_end = p_final.soil.total_water
-            mass_start = p_init.soil.total_water
-            ∫Fdt_end = sol.u[end].soil.∫Fwdt
-            ∫Fdt_start = sol.u[1].soil.∫Fwdt
-            mass_change_exp = parent(∫Fdt_end .- ∫Fdt_start)[1]
-            mass_change_actual = parent(mass_end .- mass_start)[1]
+            mass_end = p.soil.total_water
+            ∫Fdt_end = sol.u[end].soil.∫F_vol_liq_water_dt
+            ∫Fdt_start = sol.u[1].soil.∫F_vol_liq_water_dt
+            mass_change_exp = Array(parent(∫Fdt_end .- ∫Fdt_start))[1]
+            mass_change_actual = Array(parent(mass_end .- mass_start))[1]
             relerr = abs(mass_change_actual - mass_change_exp) / mass_change_exp
             @assert relerr < sqrt(eps(FT))
             mass_errors[i] = relerr
@@ -230,7 +228,7 @@ for FT in (Float32, Float64)
         Y, p, coords = initialize(soil_dirichlet)
         @. Y.soil.ϑ_l = FT(0.24)
         set_initial_cache!(p, Y, FT(0.0))
-        p_init = deepcopy(p)
+        mass_start = p_init.soil.total_water
         jac_kwargs = (;
             jac_prototype = ClimaLand.FieldMatrixWithSolver(Y),
             Wfact = jacobian!,
@@ -253,16 +251,14 @@ for FT in (Float32, Float64)
             adaptive = false,
             saveat = Array(t_start:dt:t_end),
         )
-        p_final = deepcopy(p) # p updates in place
         # Check that simulation still has correct float type
         @assert eltype(sol.u[end].soil) == FT
 
-        mass_end = p_final.soil.total_water
-        mass_start = p_init.soil.total_water
-        ∫Fdt_end = sol.u[end].soil.∫Fwdt
-        ∫Fdt_start = sol.u[1].soil.∫Fwdt
-        mass_change_exp = parent(∫Fdt_end .- ∫Fdt_start)[1]
-        mass_change_actual = parent(mass_end .- mass_start)[1]
+        mass_end = p.soil.total_water
+        ∫Fdt_end = sol.u[end].soil.∫F_vol_liq_water_dt
+        ∫Fdt_start = sol.u[1].soil.∫F_vol_liq_water_dt
+        mass_change_exp = Array(parent(∫Fdt_end .- ∫Fdt_start))[1]
+        mass_change_actual = Array(parent(mass_end .- mass_start))[1]
         relerr = abs(mass_change_actual - mass_change_exp) / mass_change_exp
         @assert relerr < 1e9 * eps(FT)
         mass_errors_dirichlet[i] = relerr

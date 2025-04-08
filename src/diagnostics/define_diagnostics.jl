@@ -10,7 +10,7 @@ function define_diagnostics!(land_model)
         short_name = "epa",
         long_name = "Energy per unit ground area",
         standard_name = "energy_per_area",
-        units = "J/m^2",
+        units = "J m^-2",
         comments = "Vertically integrated volumetric energy per area",
         compute! = (out, Y, p, t) ->
             compute_energy_per_area!(out, Y, p, t, land_model),
@@ -20,7 +20,7 @@ function define_diagnostics!(land_model)
         short_name = "wvpa",
         long_name = "Water volume per unit ground area",
         standard_name = "water_volume_per_area",
-        units = "m^3/m^2",
+        units = "m^3 m^-2",
         comments = "Vertically integrated volumetric water per area",
         compute! = (out, Y, p, t) ->
             compute_water_volume_per_area!(out, Y, p, t, land_model),
@@ -30,7 +30,7 @@ function define_diagnostics!(land_model)
         short_name = "epac",
         long_name = "Energy per unit ground area change",
         standard_name = "energy_per_area_change",
-        units = "J/m^2",
+        units = "J m^-2",
         comments = "Expected change in vertically integrated volumetric energy per area",
         compute! = (out, Y, p, t) ->
             compute_energy_per_area_change!(out, Y, p, t, land_model),
@@ -40,7 +40,7 @@ function define_diagnostics!(land_model)
         short_name = "wvpac",
         long_name = "Water volume per unit ground area change",
         standard_name = "water_volume_per_area_change",
-        units = "m^3/m^2",
+        units = "m^3 m^-2",
         comments = "Expected change in vertically integrated volumetric water per area",
         compute! = (out, Y, p, t) ->
             compute_water_volume_per_area_change!(out, Y, p, t, land_model),

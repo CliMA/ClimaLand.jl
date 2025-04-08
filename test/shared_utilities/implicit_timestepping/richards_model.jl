@@ -71,11 +71,14 @@ for FT in (Float32, Float64)
             @test jacobian.matrix.keys.values == (
                 (MatrixFields.@name(soil.ϑ_l), MatrixFields.@name(soil.ϑ_l)),
                 (
-                    MatrixFields.@name(soil.∫Fwdt),
-                    MatrixFields.@name(soil.∫Fwdt)
+                    MatrixFields.@name(soil.∫F_vol_liq_water_dt),
+                    MatrixFields.@name(soil.∫F_vol_liq_water_dt)
                 ),
             )
-
+            @test jacobian.matrix[
+                MatrixFields.@name(soil.∫F_vol_liq_water_dt),
+                MatrixFields.@name(soil.∫F_vol_liq_water_dt)
+            ] == -I
             jac_ϑ_l = jacobian.matrix[
                 MatrixFields.@name(soil.ϑ_l),
                 MatrixFields.@name(soil.ϑ_l)
