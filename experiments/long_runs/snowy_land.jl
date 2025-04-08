@@ -522,3 +522,6 @@ for data_source in ("ERA5", "ILAMB")
         data_source,
     )
 end
+
+## Conservation
+check_conservation(root_path, outdir)

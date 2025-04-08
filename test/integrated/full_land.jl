@@ -27,7 +27,7 @@ scalar_snow_params = (; α_snow, Δt)
 # Energy Balance model
 ac_canopy = FT(2.5e3)
 # Plant Hydraulics and general plant parameters
-K_sat_plant = FT(5e-9) # m/s # seems much too small?
+K_sat_plant = FT(1e-7) # m/s 
 ψ63 = FT(-4 / 0.0098) # / MPa to m, Holtzman's original parameter value is -4 MPa
 Weibull_param = FT(4) # unitless, Holtzman's original c param value
 a = FT(0.05 * 0.0098) # Holtzman's original parameter for the bulk modulus of elasticity
@@ -137,82 +137,83 @@ ClimaCore.Operators.column_integral_definite!(
 soil_exp = int_cache
 canopy_exp = @. area_index * h_canopy .* ϑ0
 snow_exp = S0
-total_water = ClimaCore.Fields.zeros(domain.space.surface)
-cache = ClimaCore.Fields.zeros(domain.space.surface)
-ClimaLand.total_liq_water_vol_per_area!(total_water, land, Y, p, t0, cache)
-@test all(parent(total_water) .≈ parent(snow_exp .+ canopy_exp .+ soil_exp))
+@test all(parent(p.total_water) .≈ parent(snow_exp .+ canopy_exp .+ soil_exp))
 
 int_cache .*= 0
 ClimaCore.Operators.column_integral_definite!(int_cache, ρe_int0)
 soil_exp = int_cache
 canopy_exp = @. area_index * land.canopy.energy.parameters.ac_canopy * CTemp0
 snow_exp = U0
-total_energy = ClimaCore.Fields.zeros(domain.space.surface)
-ClimaLand.total_energy_per_area!(total_energy, land, Y, p, t0, cache)
-@test all(parent(total_energy) .≈ parent(snow_exp .+ canopy_exp .+ soil_exp))
+@test all(parent(p.total_energy) .≈ parent(snow_exp .+ canopy_exp .+ soil_exp))
 
 
-
+# Check that tendencies conserve
+cache = ClimaCore.Fields.zeros(domain.space.surface)
 imp_tendency! = ClimaLand.make_imp_tendency(land);
 exp_tendency! = ClimaLand.make_exp_tendency(land);
-jacobian! = ClimaLand.make_jacobian(land)
+dY_exp = deepcopy(Y) .* 0;
+dY_imp = deepcopy(Y) .* 0;
+exp_tendency!(dY_exp, Y, p, t0);
+p_exp = deepcopy(p)
+imp_tendency!(dY_imp, Y, p, t0);
 
-# set up jacobian info
-jac_kwargs =
-    (; jac_prototype = ClimaLand.FieldMatrixWithSolver(Y), Wfact = jacobian!);
-Δt = 200.0
-stepper = ClimaTimeSteppers.ARS111();
-ode_algo = ClimaTimeSteppers.IMEXAlgorithm(
-    stepper,
-    ClimaTimeSteppers.NewtonsMethod(
-        max_iters = 3,
-        update_j = ClimaTimeSteppers.UpdateEvery(
-            ClimaTimeSteppers.NewNewtonIteration,
-        ),
-    ),
-);
-prob = SciMLBase.ODEProblem(
-    ClimaTimeSteppers.ClimaODEFunction(
-        T_exp! = exp_tendency!,
-        T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
-        dss! = ClimaLand.dss!,
-    ),
-    Y,
-    (t0, t0 + 40 * Δt),
-    p,
-);
-ΔE = []
-ΔW = []
-total_energy_final = ClimaCore.Fields.zeros(domain.space.surface)
-total_water_final = ClimaCore.Fields.zeros(domain.space.surface)
-integrator = SciMLBase.init(
-    prob,
-    ode_algo;
-    dt = Δt,
-    saveat = collect(t0:(2 * Δt):(t0 + 40 * Δt)),
-);
+# Canopy
+dY_canopy_energy_exp =
+    land.canopy.energy.parameters.ac_canopy .*
+    p_exp.canopy.hydraulics.area_index.leaf .* dY_exp.canopy.energy.T;
+dY_canopy_energy_imp =
+    land.canopy.energy.parameters.ac_canopy .*
+    p.canopy.hydraulics.area_index.leaf .* dY_imp.canopy.energy.T;
+dY_canopy_water_exp =
+    p_exp.canopy.hydraulics.area_index.leaf .* dY_exp.canopy.hydraulics.ϑ_l.:1;
+dY_canopy_water_imp =
+    p.canopy.hydraulics.area_index.leaf .* dY_imp.canopy.hydraulics.ϑ_l.:1;
 
-for i in 1:10
-    @show i
-    SciMLBase.step!(integrator)
-    cache .*= 0
-    ClimaLand.total_energy_per_area!(
-        total_energy_final,
-        land,
-        integrator.u,
-        integrator.p,
-        t0 + Δt,
-        cache,
-    )
-    push!(ΔE, mean(total_energy_final .- total_energy .- integrator.u.∫Fedt))
-    cache .*= 0
-    ClimaLand.total_liq_water_vol_per_area!(
-        total_water_final,
-        land,
-        integrator.u,
-        integrator.p,
-        t0 + Δt,
-        cache,
-    )
-    push!(ΔW, mean(total_water_final .- total_water .- integrator.u.∫Fwdt))
-end
+# Soil
+energy_cache_imp = deepcopy(cache)
+energy_cache_imp .*= -0
+ClimaCore.Operators.column_integral_definite!(
+    energy_cache_imp,
+    dY_imp.soil.ρe_int,
+)
+energy_cache_exp = deepcopy(cache)
+energy_cache_exp .*= 0
+ClimaCore.Operators.column_integral_definite!(
+    energy_cache_exp,
+    dY_exp.soil.ρe_int,
+)
+
+water_cache_imp = deepcopy(cache)
+water_cache_imp .*= -0
+ClimaCore.Operators.column_integral_definite!(
+    water_cache_imp,
+    dY_imp.soil.ϑ_l .+ dY_imp.soil.θ_i .* ρ_ice ./ ρ_liq,
+)
+water_cache_exp = deepcopy(cache)
+water_cache_exp .*= 0
+ClimaCore.Operators.column_integral_definite!(
+    water_cache_exp,
+    dY_exp.soil.ϑ_l .+ dY_exp.soil.θ_i .* ρ_ice ./ ρ_liq,
+)
+
+# Sum including snow
+dY_energy =
+    dY_canopy_energy_imp .+ dY_canopy_energy_exp .+ energy_cache_imp .+
+    energy_cache_exp .+ dY_imp.snow.U .+ dY_exp.snow.U;
+# Expected change based on fluxes at boundaries and sources/sinks in soil column
+energy_expected = dY_exp.∫Fedt .+ dY_imp.∫Fedt
+@test maximum(
+    abs.(
+        extrema((energy_expected .- dY_energy) ./ (energy_expected .+ eps(FT)))
+    ),
+) < sqrt(eps(FT))
+
+
+dY_water =
+    dY_canopy_water_imp .+ dY_canopy_water_exp .+ water_cache_imp .+
+    water_cache_exp .+ dY_imp.snow.S .+ dY_exp.snow.S;
+# Expected change based on fluxes at boundaries and sources/sinks in soil column
+water_expected = dY_exp.∫Fwdt .+ dY_imp.∫Fwdt
+@test maximum(
+    abs.(extrema((water_expected .- dY_water) ./ (water_expected .+ eps(FT)))),
+) < sqrt(eps(FT))

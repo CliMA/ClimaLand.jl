@@ -46,6 +46,11 @@ end
 @diagnostic_compute "water_volume_per_area_change" EnergyHydrology Y.soil.∫Fwdt
 @diagnostic_compute "energy_per_area_change" EnergyHydrology Y.soil.∫Fedt
 
+@diagnostic_compute "water_volume_per_area" LandModel p.total_water
+@diagnostic_compute "energy_per_area" LandModel p.total_energy
+@diagnostic_compute "water_volume_per_area_change" LandModel Y.∫Fwdt
+@diagnostic_compute "energy_per_area_change" LandModel Y.∫Fedt
+
 
 ### BucketModel ###
 
