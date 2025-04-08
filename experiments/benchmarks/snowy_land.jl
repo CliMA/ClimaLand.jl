@@ -506,7 +506,7 @@ if profiler == "flamegraph"
     end
 elseif profiler == "nsight"
     prob, ode_algo, Δt, cb =
-        setup_simulation(; greet = true, nelements = (50, 15))
+        setup_simulation(; greet = true, nelements = (101, 15))
     integrator = SciMLBase.init(prob, ode_algo; dt = Δt, callback = cb)
     SciMLBase.step!(integrator)
     SciMLBase.step!(integrator)
