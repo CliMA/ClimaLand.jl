@@ -70,7 +70,7 @@ steps:
           - mkdir -p bucket_benchmark_gpu
           - >
             nsys profile --trace=nvtx,mpi,cuda,osrt --output=bucket_benchmark_gpu/report
-            julia --color=yes --project=.buildkite experiments/benchmarks/bucket.jl --profile nsight
+            julia --color=yes --project=.buildkite experiments/benchmarks/bucket.jl --profiler nsight
         artifact_paths:
           - "bucket_benchmark_gpu/report*"
         env:

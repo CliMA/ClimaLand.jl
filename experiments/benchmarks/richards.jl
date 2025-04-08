@@ -223,7 +223,7 @@ end
 parsed_args = parse_commandline()
 profiler = parsed_args["profiler"]
 prob, ode_algo, Δt, cb = setup_simulation(; greet = true)
-@info "Starting profiling with $profile"
+@info "Starting profiling with $profiler"
 if profiler == "flamegraph"
     SciMLBase.solve(prob, ode_algo; dt = Δt, callback = cb)
 
