@@ -95,6 +95,10 @@ function FieldMatrixWithSolver(Y::ClimaCore.Fields.FieldVector)
     implicit_vars =
         (@name(soil.ϑ_l), @name(soil.ρe_int), @name(canopy.energy.T))
     explicit_vars = (
+        @name(soil.∫Fwdt),
+        @name(soil.∫Fedt),
+        @name(∫Fwdt),
+        @name(∫Fedt),
         @name(soilco2.C),
         @name(soil.θ_i),
         @name(canopy.hydraulics.ϑ_l),

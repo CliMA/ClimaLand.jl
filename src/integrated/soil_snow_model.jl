@@ -378,7 +378,7 @@ function soil_boundary_fluxes!(
             p.soil.turbulent_fluxes.shf
         ) +
         p.excess_heat_flux +
-        p.snow.snow_cover_fraction * p.ground_heat_flux
+        p.snow.snow_cover_fraction * (p.ground_heat_flux + p.snow.energy_runoff)
     return nothing
 end
 
@@ -419,7 +419,10 @@ function ClimaLand.source!(
     @. dY.soil.θ_i +=
         -p.soil.turbulent_fluxes.vapor_flux_ice *
         (1 - p.snow.snow_cover_fraction) *
-        _ρ_l / _ρ_i * heaviside(z + 2 * Δz_top) # only apply to top layer, recall that z is negative
+        _ρ_l / _ρ_i * heaviside(z + 2 * Δz_top) / (2 * Δz_top) # only apply to top layer, recall that z is negative
+    @. p.soil.∫Swdz +=
+        -p.soil.turbulent_fluxes.vapor_flux_ice *
+        (1 - p.snow.snow_cover_fraction)# The integral of the source is designed to be this
     return nothing
 end
 

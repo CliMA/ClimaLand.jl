@@ -42,6 +42,7 @@ function update_root_extraction!(p, Y, t, land)
             z,
             land.canopy.hydraulics.parameters.rooting_depth,
         )
+
     @. p.root_energy_extraction =
         p.root_extraction * ClimaLand.Soil.volumetric_internal_energy_liq(
             p.soil.T,
@@ -151,4 +152,5 @@ function ClimaLand.source!(
     @. dY.soil.ϑ_l += -1 * p.root_extraction
     @. dY.soil.ρe_int += -1 * p.root_energy_extraction
     # if flow is negative, towards soil -> soil water increases, add in sign here.
+    # We don't update ∫Sdz here because it cancels out by design with the bottom flux into the canopy (within the land model)
 end

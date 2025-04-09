@@ -6,6 +6,7 @@ main
 
 v0.5.13
 -------
+- check conservation in the full land model PR[#1098](https://github.com/CliMA/ClimaLand.jl/pull/1098)
 - fix for GPU compatibility of integrated land model coupled
   flux calculations PR[#1093](https://github.com/CliMA/ClimaLand.jl/pull/1093)
 
