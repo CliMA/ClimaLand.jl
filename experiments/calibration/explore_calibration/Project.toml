@@ -1,0 +1,5 @@
+[deps]
+Bonito = "824d6782-a2ef-11e9-3a09-e5662e0c26f8"
+EnsembleKalmanProcesses = "aa8a2aa5-91d8-4396-bcef-d4f2ec43552d"
+JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
+WGLMakie = "276b4fcb-3e11-5398-bf8b-a0c2d153d008"
