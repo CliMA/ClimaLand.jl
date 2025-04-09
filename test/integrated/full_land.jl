@@ -19,7 +19,7 @@ f_over = FT(3.28) # 1/m
 R_sb = FT(1.484e-4 / 1000) # m/s
 scalar_soil_params = (; f_over, R_sb)
 
-α_snow = FT(0.67)
+α_snow = Snow.ConstantAlbedoModel(FT(0.67))
 scalar_snow_params = (; α_snow, Δt)
 
 # Energy Balance model

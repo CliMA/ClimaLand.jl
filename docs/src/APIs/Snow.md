@@ -32,3 +32,10 @@ ClimaLand.Snow.snow_boundary_fluxes!
 ClimaLand.Snow.phase_change_flux
 ClimaLand.Snow.AtmosDrivenSnowBC
 ```
+
+## Snow parameterizations
+
+```@docs
+ClimaLand.Snow.ZenithAngleAlbedoModel
+ClimaLand.Snow.ConstantAlbedoModel
+```

@@ -87,7 +87,7 @@ soil_model_type = Soil.EnergyHydrology
 α = 0.8
 snow_parameters = SnowParameters{FT}(
     dt;
-    α_snow = α,
+    α_snow = Snow.ConstantAlbedoModel(α),
     density = Snow.MinimumDensityModel(ρ),
     earth_param_set = earth_param_set,
 );

@@ -59,6 +59,7 @@ import ClimaLand.Parameters as LP
         :T,
         :T_sfc,
         :z_snow,
+        :α_snow,
         :ρ_snow,
         :R_n,
         :phase_change_flux,
@@ -88,8 +89,9 @@ import ClimaLand.Parameters as LP
     _σ = LP.Stefan(model.parameters.earth_param_set)
     _ρ_l = FT(LP.ρ_cloud_liq(model.parameters.earth_param_set))
     # Check if aux update occurred correctly
-    @test p.snow.R_n ==
-          @. (-(1 - α_snow) * 20.0f0 - ϵ_snow * (20.0f0 - _σ * p.snow.T_sfc^4))
+    @test p.snow.R_n == @. (
+        -(1 - α_snow.α) * 20.0f0 - ϵ_snow * (20.0f0 - _σ * p.snow.T_sfc^4)
+    )
     R_n_copy = copy(p.snow.R_n)
     ClimaLand.net_radiation!(
         R_n_copy,

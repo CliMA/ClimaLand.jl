@@ -55,7 +55,7 @@ density_model = NeuralSnow.NeuralDepthModel(FT)
 
 parameters = SnowParameters{FT}(
     Δt;
-    α_snow = α,
+    α_snow = Snow.ConstantAlbedoModel(α),
     density = density_model,
     earth_param_set = param_set,
 )

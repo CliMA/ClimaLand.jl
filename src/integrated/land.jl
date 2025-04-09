@@ -128,10 +128,7 @@ function LandModel{FT}(;
     )
 
     transpiration = Canopy.PlantHydraulics.DiagnosticTranspiration{FT}()
-    ground_conditions =
-        PrognosticGroundConditions{FT, typeof(snow.parameters.α_snow)}(
-            snow.parameters.α_snow,
-        )
+    ground_conditions = PrognosticGroundConditions()
     if :energy in propertynames(canopy_component_args)
         energy_model = canopy_component_types.energy(
             canopy_component_args.energy.parameters,
@@ -416,8 +413,8 @@ function lsm_radiant_energy_fluxes!(
     ϵ_soil = land.soil.parameters.emissivity
     T_soil = ClimaLand.Domains.top_center_to_surface(p.soil.T)
 
-    α_snow_NIR = land.snow.parameters.α_snow
-    α_snow_PAR = land.snow.parameters.α_snow
+    α_snow_NIR = p.snow.α_snow
+    α_snow_PAR = p.snow.α_snow
     ϵ_snow = land.snow.parameters.ϵ_snow
     T_snow = p.snow.T_sfc
 
@@ -579,25 +576,16 @@ function ClimaLand.Soil.sublimation_source(
 end
 
 """
-     PrognosticGroundConditions{FT <: AbstractFloat, F <: Union{FT, ClimaCore.Fields.Field}} <: Canopy.AbstractGroundConditions
+     PrognosticGroundConditions <: Canopy.AbstractGroundConditions
 
 A type of Canopy.AbstractGroundConditions to use when the soil model is prognostic and
 of type `EnergyHydrology`, and the snow model is prognostic and included.
 
-The canopy model needs albedo of the ground
-in order to compute its update_aux! function, and that function must only depend on the canopy model.
-Because of this, α_snow must be stored in this struct until it is stored in the cache.
-
-Note that this struct is linked with the EnergyHydrology model. If we ever had a different
+Note that this struct is linked with the EnergyHydrology/SnowModel model. If we ever had a different
 soil model, we might need to construct a different `PrognosticGroundConditions` because
 the fields may be stored in different places.
 """
-struct PrognosticGroundConditions{
-    FT <: AbstractFloat,
-    F <: Union{FT, ClimaCore.Fields.Field},
-} <: Canopy.AbstractGroundConditions
-    α_snow::FT
-end
+struct PrognosticGroundConditions <: Canopy.AbstractGroundConditions end
 
 """
     Canopy.ground_albedo_PAR(
@@ -620,7 +608,7 @@ function Canopy.ground_albedo_PAR(
 )
     @. p.α_ground.PAR =
         (1 - p.snow.snow_cover_fraction) * p.soil.PAR_albedo +
-        p.snow.snow_cover_fraction * ground.α_snow
+        p.snow.snow_cover_fraction * p.snow.α_snow
     return p.α_ground.PAR
 end
 
@@ -645,7 +633,7 @@ function Canopy.ground_albedo_NIR(
 )
     @. p.α_ground.NIR =
         (1 - p.snow.snow_cover_fraction) * p.soil.NIR_albedo +
-        p.snow.snow_cover_fraction * ground.α_snow
+        p.snow.snow_cover_fraction * p.snow.α_snow
     return p.α_ground.NIR
 end
 

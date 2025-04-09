@@ -29,7 +29,7 @@ for FT in (Float32, Float64)
         ρ_min = FT(200)
         densitymodel = Snow.MinimumDensityModel(ρ_min)
         z_0m = FT(0.0024)
-        α_snow = FT(0.8)
+        α_snow = Snow.ConstantAlbedoModel(FT(0.8))
         # These values should match ClimaParams
         ϵ_snow = FT(0.99)
         z_0b = FT(0.00024)
@@ -41,6 +41,7 @@ for FT in (Float32, Float64)
         parameters = SnowParameters{FT}(
             Δt,
             density = densitymodel,
+            α_snow = α_snow,
             earth_param_set = param_set,
         )
         @test parameters.density.ρ_min == ρ_min
@@ -52,7 +53,7 @@ for FT in (Float32, Float64)
         @test parameters.z_0b == z_0b
         @test typeof(parameters.z_0b) == FT
         @test parameters.α_snow == α_snow
-        @test typeof(parameters.α_snow) == FT
+        @test typeof(parameters.α_snow) == Snow.ConstantAlbedoModel{FT}
         @test parameters.ϵ_snow == ϵ_snow
         @test typeof(parameters.ϵ_snow) == FT
         @test parameters.Ksat == Ksat
