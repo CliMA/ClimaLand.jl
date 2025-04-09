@@ -302,7 +302,7 @@ function make_update_aux(land::LandModel)
         for f! in update_aux_function_list
             f!(p, Y, t)
         end
-        sfc_cache = p.scratch1
+        sfc_cache = p.scratch1 .* 0
         ClimaLand.total_liq_water_vol_per_area!(
             p.total_water,
             land,
@@ -380,6 +380,7 @@ function make_exp_tendency(land::LandModel{FT}) where {FT}
             land.soil.domain,
             FT,
         )
+        # Treat the following terms explicitly!
         update_boundary_fluxes!(p, Y, t)
         for f! in compute_exp_tendency_list
             f!(dY, Y, p, t)
@@ -394,7 +395,7 @@ function make_exp_tendency(land::LandModel{FT}) where {FT}
             (
                 p.snow.turbulent_fluxes.lhf +
                 p.snow.turbulent_fluxes.shf +
-                p.snow.R_n
+                p.snow.R_n - p.snow.energy_runoff
             ) * p.snow.snow_cover_fraction
         )
         # Explicit snow, canopy, source terms for soil (including sublimation, subsurface runoff)
@@ -447,7 +448,6 @@ function make_update_boundary_fluxes(
 
     function update_boundary_fluxes!(p, Y, t)
         earth_param_set = land.soil.parameters.earth_param_set
-
         # Radiation - updates Rn for soil and snow also
         lsm_radiant_energy_fluxes!(
             p,
@@ -631,7 +631,7 @@ function soil_boundary_fluxes!(
             p.soil.turbulent_fluxes.shf
         ) +
         p.excess_heat_flux +
-        p.snow.snow_cover_fraction * (p.ground_heat_flux + p.snow.energy_runoff)
+        p.snow.snow_cover_fraction * p.ground_heat_flux # energy of runoff not accounted for
     return nothing
 end
 

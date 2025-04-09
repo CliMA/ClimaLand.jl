@@ -409,7 +409,7 @@ function setup_prob(
         output_vars = :short,
         average_period = :monthly,
         conservation = true,
-        conservation_period = Day(10),
+        conservation_period = Day(1),
     )
 
     diagnostic_handler =
@@ -449,7 +449,7 @@ function setup_and_solve_problem(; greet = false)
     days = 24hours # days in seconds
     years = 366days # years in seconds - 366 to make sure we capture at least full years
     # 10 years in seconds for very long run and 2 years in seconds otherwise
-    tf = LONGER_RUN ? 10years : 0.5years
+    tf = LONGER_RUN ? 10years : 0.1years
     Δt = 450.0
     start_date = LONGER_RUN ? DateTime(2004) : DateTime(2008)
     nelements = (101, 15)
