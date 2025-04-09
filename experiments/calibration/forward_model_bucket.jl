@@ -54,7 +54,7 @@ function setup_probsetup_prob(
     outdir = outdir,
     nelements = (101, 7),
 )
-    time_interpolation_method = LinearInterpolation(PeriodicCalendar())
+    time_interpolation_method = LinearInterpolation()
     regridder_type = :InterpolationsRegridder
     earth_param_set = LP.LandParameters(FT)
     radius = FT(6378.1e3)
@@ -69,12 +69,10 @@ function setup_probsetup_prob(
     surface_space = domain.space.surface
     subsurface_space = domain.space.subsurface
 
-    start_date = DateTime(2008)
     # Forcing data
-    # Forcing data
-    era5_artifact_path =
-        ClimaLand.Artifacts.era5_land_forcing_data2008_folder_path(; context)
-    era5_ncdata_path = joinpath(era5_artifact_path, "era5_2008_1.0x1.0.nc")
+    era5_ncdata_path =
+        ClimaLand.Artifacts.find_era5_year_paths(date(t0), date(tf); context)
+
     atmos, radiation = ClimaLand.prescribed_forcing_era5(
         era5_ncdata_path,
         surface_space,
@@ -82,7 +80,6 @@ function setup_probsetup_prob(
         earth_param_set,
         FT;
         time_interpolation_method = time_interpolation_method,
-        regridder_type = regridder_type,
     )
 
     # Set up parameters

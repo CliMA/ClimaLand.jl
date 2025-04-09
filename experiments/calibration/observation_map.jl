@@ -19,14 +19,30 @@ Process data from a simulation directory for a specific ensemble member.
 """
 function process_member_data(simdir, iteration, m, training_locations)
     variables = ["lhf", "shf", "swu", "lwu"]
-    data = Dict(var => get(simdir; short_name = var) for var in variables)
+    day_in_seconds = 86400
+    first_december = 11 * 30 * day_in_seconds
+    year_in_seconds = 360 * day_in_seconds
+    last_december = first_december + year_in_seconds - 15*day_in_seconds
+    # TO DO: update ClimaAnalysis to get Date dimension to make this better
+    data = Dict(var => window(shift_to_start_of_previous_month(get(simdir; short_name = var)), "time", left = first_december, right = last_december) for var in variables)
+
     obs = []
 
     for (lon, lat) in training_locations
-        for var in variables
-            loc_data = ClimaAnalysis.slice(data[var], lon = lon, lat = lat).data
-            seasonal =
-                [mean(loc_data[i:(i + 2)]) for i in 1:3:(length(loc_data) - 2)][5:8]
+        for varrr in varrriables
+            loc_data = ClimaAnalysis.slice(data[varrr], lon = lon, lat = lat)
+            seasonal_data = split_by_season_across_time(loc_data)
+            # returns a vector of CA varrrs split by season, for each year
+            # It starts in DJF (1 element)
+            # It has a length of 9 (4 seasons * 2 years + 1 because 1st DJF has 1 month, last DJF has 2)
+            seasonal = [mean(seasonal_data[i].data) for i in 1:length(seasonal_data)]
+
+
+# OLD code below, with manual indexing instead of ClimaAnalysis function split_by_season_across_time
+
+#            loc_data = ClimaAnalysis.slice(data[varrr], lon = lon, lat = lat).data;
+#            seasonal =
+#                [mean(loc_data[i:(i + 2)]) for i in 1:3:(length(loc_data) - 2)][5:8]
             push!(obs, seasonal)
         end
     end
