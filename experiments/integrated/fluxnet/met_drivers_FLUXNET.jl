@@ -12,6 +12,22 @@ import ClimaComms
 
 context = ClimaComms.context()
 
+include(
+    joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/any_site/any_simulation.jl"),
+)
+
+include(
+    joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/fluxnet_domain.jl"),
+)
+
+include(
+    joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/any_site/any_parameters.jl"),
+)
+
+include(
+    joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/fluxnet_simulation.jl"),
+)
+
 # Methods for reading in the LAI data from MODIS data
 include(
     joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/pull_MODIS.jl"),
@@ -24,6 +40,7 @@ data_path = get_path(site_ID)
 driver_data = readdlm(data_path, ',')
 
 LOCAL_DATETIME = DateTime.(format.(driver_data[2:end, 1]), "yyyymmddHHMM")
+time_offset = 5 # temporary testing
 UTC_DATETIME = LOCAL_DATETIME .+ Dates.Hour(time_offset)
 DATA_DT = Second(LOCAL_DATETIME[2] - LOCAL_DATETIME[1]).value # seconds
 

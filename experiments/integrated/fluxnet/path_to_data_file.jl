@@ -9,7 +9,6 @@ function get_path(site_ID)
             ret_str = "/groups/esm/ClimaArtifacts/artifacts/fluxnet2015/" * directory * "/" * parts[1] * "_MM_" * parts[2] * ".csv"
             println(ret_str)
             return ret_str
-            break
         end
     end
 
