@@ -82,6 +82,7 @@ land = global_land_model(
     LAI = LAI,
 )
 
+@test ClimaLand.land_components(land) == (:soil, :snow, :soilco2, :canopy)
 Y, p, cds = initialize(land)
 
 # Soil IC

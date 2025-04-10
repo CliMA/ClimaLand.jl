@@ -484,7 +484,9 @@ This can be converted to a mass using the density of liquid water.
 This includes the water in multiple phases. For example, if ice is present, the water
 volume is computed using ratio of the density of ice to the density of liquid water.
 """
-function total_liq_water_vol_per_area!(cache, model::AbstractModel, Y, p, t) end
+function total_liq_water_vol_per_area!(cache, model::AbstractModel, Y, p, t)
+    cache .= 0
+end
 
 """
     total_energy_per_area!(cache, model::AbstractModel, Y, p, t)
@@ -492,4 +494,6 @@ function total_liq_water_vol_per_area!(cache, model::AbstractModel, Y, p, t) end
 A function which updates `cache` in place with the total energy
 per unit ground area for the `model`, computed from `Y`, `p`, and `t`.
 """
-function total_energy_per_area!(cache, model::AbstractModel, Y, p, t) end
+function total_energy_per_area!(cache, model::AbstractModel, Y, p, t)
+    cache .= 0
+end

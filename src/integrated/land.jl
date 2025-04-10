@@ -177,6 +177,20 @@ function LandModel{FT}(;
 end
 
 """
+   ClimaLand.land_components(land::LandModel)
+
+Returns the components of the `LandModel`. 
+
+Currently, this method is required in order to preserve an ordering in how
+we update the component models' auxiliary states. The canopy update_aux! step
+depends on snow and soil albedo, but those are only updated in the snow and soil
+update_aux! steps. So those must occur first (as controlled by the order of the components
+returned by `land_components!`.
+
+This needs to be fixed.
+"""
+ClimaLand.land_components(land::LandModel) = (:soil, :snow, :soilco2, :canopy)
+"""
     lsm_aux_vars(m::LandModel)
 
 The names of the additional auxiliary variables that are
