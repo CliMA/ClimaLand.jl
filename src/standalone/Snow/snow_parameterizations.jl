@@ -10,8 +10,31 @@ export snow_surface_temperature,
     energy_from_T_and_swe,
     snow_cover_fraction,
     snow_bulk_density,
-    phase_change_flux
+    phase_change_flux,
+    update_snow_albedo!
 
+"""
+    update_snow_albedo!(α, m::ConstantAlbedoModel, Y, p, t)
+
+Updates the snow albedo `α` in place with the current albedo,
+according to the ConstantAlbedoModel. 
+"""
+function update_snow_albedo!(α, m::ConstantAlbedoModel, Y, p, t)
+    @. α = m.α
+end
+
+"""
+    update_snow_albedo!(α, m::ZenithAngleAlbedoModel, Y, p, t)
+
+Updates the snow albedo `α` in place with the current albedo,
+according to the ZenithAngleAlbedoModel.
+"""
+function update_snow_albedo!(α, m::ZenithAngleAlbedoModel, Y, p, t)
+    FT = FTfromY(Y)
+    @. α =
+        m.α_0 +
+        (m.α_horizon - m.α_0) * exp(-m.k * max(p.drivers.cosθs, eps(FT)))
+end
 """
     snow_cover_fraction(x::FT; z0 = FT(1e-1), α = FT(2))::FT where {FT}
 
@@ -54,8 +77,8 @@ end
 
 A helper function which computes and returns the snow albedo.
 """
-function ClimaLand.surface_albedo(model::SnowModel, _...)
-    return model.parameters.α_snow
+function ClimaLand.surface_albedo(model::SnowModel, Y, p)
+    return p.snow.α_snow
 end
 
 """

@@ -312,7 +312,13 @@ function setup_prob(
     )
 
     # Snow model
-    snow_parameters = SnowParameters{FT}(Δt; earth_param_set = earth_param_set)
+    #    α_snow = Snow.ConstantAlbedoModel(FT(0.7))
+    α_snow = Snow.ZenithAngleAlbedoModel(FT(0.5), FT(0.9), FT(1))
+    snow_parameters = SnowParameters{FT}(
+        Δt;
+        earth_param_set = earth_param_set,
+        α_snow = α_snow,
+    )
     snow_args = (;
         parameters = snow_parameters,
         domain = ClimaLand.obtain_surface_domain(domain),

@@ -33,7 +33,12 @@ import ClimaLand:
     get_drivers,
     total_energy_per_area!,
     total_liq_water_vol_per_area!
-export SnowParameters, SnowModel, AtmosDrivenSnowBC, snow_boundary_fluxes!
+export SnowParameters,
+    SnowModel,
+    AtmosDrivenSnowBC,
+    snow_boundary_fluxes!,
+    ConstantAlbedoModel,
+    ZenithAngleAlbedoModel
 
 """
     AbstractSnowModel{FT} <: ClimaLand.AbstractExpModel{FT}
@@ -74,6 +79,50 @@ end
 
 
 """
+    AbstractAlbedoModel{FT}
+
+Defines the model type for albedo parameterization
+for use within an `AbstractSnowModel` type. 
+
+These parameterizations are stored in parameters.α_snow, and 
+are used to update the value of p.snow.α_snow (the broadband
+albedo of the snow at a point).
+stored 
+"""
+abstract type AbstractAlbedoModel{FT <: AbstractFloat} end
+
+"""
+    ConstantAlbedoModel{FT <: AbstractFloat} <: AbstractAlbedoModel{FT}
+
+Establishes the albedo parameterization where albedo is treated as a
+constant spatially and temporally.
+"""
+struct ConstantAlbedoModel{FT} <: AbstractAlbedoModel{FT}
+    "Albedo of snow (unitless)"
+    α::FT
+end
+
+"""
+    ZenithAngleAlbedoModel{FT <: AbstractFloat} <: AbstractAlbedoModel{FT}
+
+Establishes the albedo parameterization where albedo only
+depends on the cosine of the zenith angle of the sun, as
+    α = α_0 + (α_horizon - α_0)*exp(-k*cos(θs))
+
+Note: If this choice is used, the field cosθs must appear in the cache
+p.drivers. This is available through the PrescribedRadiativeFluxes object.
+"""
+struct ZenithAngleAlbedoModel{FT} <: AbstractAlbedoModel{FT}
+    "Free parameter controlling the minimum snow albedo"
+    α_0::FT
+    "The albedo of snow when the sun is at the horizon"
+    α_horizon::FT
+    "Rate at which albedo drops from α_horizon to its minimum value"
+    k::FT
+end
+
+
+"""
     SnowParameters{FT <: AbstractFloat, PSE}
 
 A struct for storing parameters of the `SnowModel`.
@@ -90,6 +139,7 @@ $(DocStringExtensions.FIELDS)
 Base.@kwdef struct SnowParameters{
     FT <: AbstractFloat,
     DM <: AbstractDensityModel,
+    AM <: AbstractAlbedoModel,
     PSE,
 }
     "Choice of parameterization for snow density"
@@ -98,8 +148,8 @@ Base.@kwdef struct SnowParameters{
     z_0m::FT
     "Roughness length over snow for scalars (m)"
     z_0b::FT
-    "Albedo of snow (unitless)"
-    α_snow::FT
+    "Albedo parameterization for snow"
+    α_snow::AM
     "Emissivity of snow (unitless)"
     ϵ_snow::FT
     "Volumetric holding capacity of water in snow (unitless)"
@@ -121,7 +171,7 @@ end
                       density = MinimumDensityModel(200),
                       z_0m = FT(0.0024),
                       z_0b = FT(0.00024),
-                      α_snow = FT(0.8),
+                      α_snow = ConstantAlbedoModel(FT(0.8)),
                       ϵ_snow = FT(0.99),
                       θ_r = FT(0.08),
                       Ksat = FT(1e-3),
@@ -137,15 +187,20 @@ function SnowParameters{FT}(
     density::DM = MinimumDensityModel(FT(200)),
     z_0m = FT(0.0024),
     z_0b = FT(0.00024),
-    α_snow = FT(0.8),
+    α_snow::AM = ConstantAlbedoModel(FT(0.8)),
     ϵ_snow = FT(0.99),
     θ_r = FT(0.08),
     Ksat = FT(1e-3),
     κ_ice = FT(2.21),
     ΔS = FT(0.1),
     earth_param_set::PSE,
-) where {FT <: AbstractFloat, DM <: AbstractDensityModel, PSE}
-    return SnowParameters{FT, DM, PSE}(
+) where {
+    FT <: AbstractFloat,
+    DM <: AbstractDensityModel,
+    AM <: AbstractAlbedoModel,
+    PSE,
+}
+    return SnowParameters{FT, DM, AM, PSE}(
         density,
         z_0m,
         z_0b,
@@ -273,6 +328,7 @@ auxiliary_vars(snow::SnowModel) = (
     :T,
     :T_sfc,
     :z_snow,
+    :α_snow,
     :ρ_snow,
     :R_n,
     :phase_change_flux,
@@ -288,6 +344,7 @@ auxiliary_vars(snow::SnowModel) = (
 )
 
 auxiliary_types(snow::SnowModel{FT}) where {FT} = (
+    FT,
     FT,
     FT,
     FT,
@@ -330,6 +387,7 @@ auxiliary_domain_names(snow::SnowModel) = (
     :surface,
     :surface,
     :surface,
+    :surface,
     boundary_var_domain_names(
         snow.boundary_conditions,
         ClimaLand.TopBoundary(),
@@ -342,6 +400,7 @@ ClimaLand.name(::SnowModel) = :snow
 function ClimaLand.make_update_aux(model::SnowModel{FT}) where {FT}
     function update_aux!(p, Y, t)
         parameters = model.parameters
+        update_snow_albedo!(p.snow.α_snow, parameters.α_snow, Y, p, t)
 
         # This has to happen first, since other quantities below depend
         # on it.
