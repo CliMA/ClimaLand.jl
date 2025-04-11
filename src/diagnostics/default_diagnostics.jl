@@ -224,6 +224,8 @@ function default_diagnostics(
     start_date;
     output_writer,
     average_period = :daily,
+    conservation = false,
+    conservation_period = Day(10),
 ) where {FT}
 
     define_diagnostics!(land_model)
@@ -241,7 +243,26 @@ function default_diagnostics(
             monthly_averages(FT, soil_diagnostics...; output_writer, start_date)
     end
 
-    return [default_outputs...]
+    if conservation
+        additional_diags = ["epa", "epac", "wvpa", "wvpac"]
+        additional_outputs = vcat(
+            map(additional_diags) do short_name
+                output_schedule_func =
+                    conservation_period isa Period ?
+                    EveryCalendarDtSchedule(conservation_period; start_date) : EveryDtSchedule(conservation_period)
+                return ScheduledDiagnostic(
+                    variable = get_diagnostic_variable(short_name),
+                    compute_schedule_func = EveryStepSchedule(),
+                    output_schedule_func = output_schedule_func,
+                    output_writer = output_writer,
+                )
+            end...,
+        )
+    else
+        additional_outputs = []
+    end
+
+    return [default_outputs..., additional_outputs...]
 end
 
 # Land Model

@@ -92,9 +92,16 @@ function FieldMatrixWithSolver(Y::ClimaCore.Fields.FieldVector)
     is_in_Y(var) = MatrixFields.has_field(Y, var)
 
     # Define the implicit and explicit variables of any model we use
+    # By implicit vars, we mean variables that contribute nonzero elements to *tendency
+    # jacobian* ∂X_t_i/∂X_j,
+    # and by explicit we mean the corresponding *tendency jacobian* entries would be zero.
+    # The full jacobian used by the model is Δt ∂X_t_i/∂X_j - δ_{i,j}, so
+    # explicit variables have a full jacobian equal to minus the identity matrix.
     implicit_vars =
         (@name(soil.ϑ_l), @name(soil.ρe_int), @name(canopy.energy.T))
     explicit_vars = (
+        @name(soil.∫F_vol_liq_water_dt),
+        @name(soil.∫F_e_dt),
         @name(soilco2.C),
         @name(soil.θ_i),
         @name(canopy.hydraulics.ϑ_l),
