@@ -4,10 +4,13 @@
 # containing temporally-varying data over the globe, and analytic atmospheric and radiative
 # forcings.
 
-# This code runs the bucket multiple times and collects statistics for execution time and
-# allocations
-#
-# When run with buildkite on clima, this code also compares with the previous best time
+# This code also assesses performance, either via Nsight or by running the
+# model multiple times and collecting statistics for execution time and allocations
+# to make flame graphs. You can choose between the two
+# by requestion --profiler nsight or --profiler flamegraph. If not provided,
+# flamegraphs are created.
+
+# When run with buildkite on clima, without Nisght, this code also compares with the previous best time
 # saved at the bottom of this file
 delete!(ENV, "JULIA_CUDA_MEMORY_POOL")
 
@@ -34,6 +37,18 @@ using ClimaLand:
     PrescribedRadiativeFluxes
 
 import Profile, ProfileCanvas
+using ArgParse
+
+function parse_commandline()
+    s = ArgParseSettings()
+    @add_arg_table s begin
+        "--profiler"
+        help = "Profiler option: nsight or flamegraph"
+        arg_type = String
+        default = "flamegraph"
+    end
+    return parse_args(s)
+end
 
 const FT = Float64;
 
@@ -44,6 +59,7 @@ device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
 
 earth_param_set = ClimaLand.Parameters.LandParameters(FT);
 outdir = "bucket_benchmark_$(device_suffix)"
+@info "device: $device"
 !ispath(outdir) && mkpath(outdir)
 
 function setup_prob(t0, tf, Δt; nelements = (200, 7))
@@ -160,99 +176,108 @@ function setup_simulation(; greet = false)
     ode_algo = CTS.ExplicitAlgorithm(timestepper)
     return prob, ode_algo, Δt, cb
 end
-
-# Warm up and greet
+parsed_args = parse_commandline()
+profiler = parsed_args["profiler"]
 prob, ode_algo, Δt, cb = setup_simulation(; greet = true)
-SciMLBase.solve(prob, ode_algo; dt = Δt, callback = cb)
+@info "Starting profiling with $profiler"
+if profiler == "flamegraph"
+    SciMLBase.solve(prob, ode_algo; dt = Δt, callback = cb)
+    # Stop when we profile for MAX_PROFILING_TIME_SECONDS or MAX_PROFILING_SAMPLES
+    MAX_PROFILING_TIME_SECONDS = 500
+    MAX_PROFILING_SAMPLES = 100
+    time_now = time()
+    timings_s = Float64[]
+    while (time() - time_now) < MAX_PROFILING_TIME_SECONDS &&
+        length(timings_s) < MAX_PROFILING_SAMPLES
+        lprob, lode_algo, lΔt, lcb = setup_simulation()
+        push!(
+            timings_s,
+            ClimaComms.@elapsed device SciMLBase.solve(
+                lprob,
+                lode_algo;
+                dt = lΔt,
+                callback = lcb,
+            )
+        )
+    end
+    num_samples = length(timings_s)
+    average_timing_s = round(sum(timings_s) / num_samples, sigdigits = 3)
+    max_timing_s = round(maximum(timings_s), sigdigits = 3)
+    min_timing_s = round(minimum(timings_s), sigdigits = 3)
+    std_timing_s = round(
+        sqrt(sum(((timings_s .- average_timing_s) .^ 2) / num_samples)),
+        sigdigits = 3,
+    )
+    @info "Num samples: $num_samples"
+    @info "Average time: $(average_timing_s) s"
+    @info "Max time: $(max_timing_s) s"
+    @info "Min time: $(min_timing_s) s"
+    @info "Standard deviation time: $(std_timing_s) s"
+    @info "Done profiling"
 
-@info "Starting profiling"
-# Stop when we profile for MAX_PROFILING_TIME_SECONDS or MAX_PROFILING_SAMPLES
-MAX_PROFILING_TIME_SECONDS = 500
-MAX_PROFILING_SAMPLES = 100
-time_now = time()
-timings_s = Float64[]
-while (time() - time_now) < MAX_PROFILING_TIME_SECONDS &&
-    length(timings_s) < MAX_PROFILING_SAMPLES
-    lprob, lode_algo, lΔt, lcb = setup_simulation()
-    push!(
-        timings_s,
-        ClimaComms.@elapsed device SciMLBase.solve(
+    if ClimaComms.device() isa ClimaComms.CUDADevice
+        import CUDA
+        lprob, lode_algo, lΔt, lcb = setup_simulation()
+        p = CUDA.@profile SciMLBase.solve(
             lprob,
             lode_algo;
             dt = lΔt,
             callback = lcb,
         )
-    )
-end
-num_samples = length(timings_s)
-average_timing_s = round(sum(timings_s) / num_samples, sigdigits = 3)
-max_timing_s = round(maximum(timings_s), sigdigits = 3)
-min_timing_s = round(minimum(timings_s), sigdigits = 3)
-std_timing_s = round(
-    sqrt(sum(((timings_s .- average_timing_s) .^ 2) / num_samples)),
-    sigdigits = 3,
-)
-@info "Num samples: $num_samples"
-@info "Average time: $(average_timing_s) s"
-@info "Max time: $(max_timing_s) s"
-@info "Min time: $(min_timing_s) s"
-@info "Standard deviation time: $(std_timing_s) s"
-@info "Done profiling"
+        # use "COLUMNS" to set how many horizontal characters to crop:
+        # See https://github.com/ronisbr/PrettyTables.jl/issues/11#issuecomment-2145550354
+        envs = ("COLUMNS" => 120,)
+        withenv(envs...) do
+            io = IOContext(
+                stdout,
+                :crop => :horizontal,
+                :limit => true,
+                :displaysize => displaysize(),
+            )
+            show(io, p)
+        end
+        println()
+    else # Flame graphs can be misleading on gpus, so we only save this for cpu
+        prob, ode_algo, Δt, cb = setup_simulation()
+        Profile.@profile SciMLBase.solve(prob, ode_algo; dt = Δt, callback = cb)
+        results = Profile.fetch()
+        flame_file = joinpath(outdir, "flame_$device_suffix.html")
+        ProfileCanvas.html_file(flame_file, results)
+        @info "Saved compute flame to $flame_file"
 
-prob, ode_algo, Δt, cb = setup_simulation()
-Profile.@profile SciMLBase.solve(prob, ode_algo; dt = Δt, callback = cb)
-results = Profile.fetch()
-flame_file = joinpath(outdir, "flame_$device_suffix.html")
-ProfileCanvas.html_file(flame_file, results)
-@info "Saved compute flame to $flame_file"
-
-prob, ode_algo, Δt, cb = setup_simulation()
-Profile.Allocs.@profile sample_rate = 0.1 SciMLBase.solve(
-    prob,
-    ode_algo;
-    dt = Δt,
-    callback = cb,
-)
-results = Profile.Allocs.fetch()
-profile = ProfileCanvas.view_allocs(results)
-alloc_flame_file = joinpath(outdir, "alloc_flame_$device_suffix.html")
-ProfileCanvas.html_file(alloc_flame_file, profile)
-@info "Saved allocation flame to $alloc_flame_file"
-
-if ClimaComms.device() isa ClimaComms.CUDADevice
-    import CUDA
-    lprob, lode_algo, lΔt, lcb = setup_simulation()
-    p = CUDA.@profile SciMLBase.solve(
-        lprob,
-        lode_algo;
-        dt = lΔt,
-        callback = lcb,
-    )
-    # use "COLUMNS" to set how many horizontal characters to crop:
-    # See https://github.com/ronisbr/PrettyTables.jl/issues/11#issuecomment-2145550354
-    envs = ("COLUMNS" => 120,)
-    withenv(envs...) do
-        io = IOContext(
-            stdout,
-            :crop => :horizontal,
-            :limit => true,
-            :displaysize => displaysize(),
+        prob, ode_algo, Δt, cb = setup_simulation()
+        Profile.Allocs.@profile sample_rate = 0.1 SciMLBase.solve(
+            prob,
+            ode_algo;
+            dt = Δt,
+            callback = cb,
         )
-        show(io, p)
+        results = Profile.Allocs.fetch()
+        profile = ProfileCanvas.view_allocs(results)
+        alloc_flame_file = joinpath(outdir, "alloc_flame_$device_suffix.html")
+        ProfileCanvas.html_file(alloc_flame_file, profile)
+        @info "Saved allocation flame to $alloc_flame_file"
     end
-    println()
-end
 
-if get(ENV, "BUILDKITE_PIPELINE_SLUG", nothing) == "climaland-benchmark"
-    PREVIOUS_BEST_TIME = 1.69
-    if average_timing_s > PREVIOUS_BEST_TIME + std_timing_s
-        @info "Possible performance regression, previous average time was $(PREVIOUS_BEST_TIME)"
-    elseif average_timing_s < PREVIOUS_BEST_TIME - std_timing_s
-        @info "Possible significant performance improvement, please update PREVIOUS_BEST_TIME in $(@__DIR__)"
+    if get(ENV, "BUILDKITE_PIPELINE_SLUG", nothing) == "climaland-benchmark"
+        PREVIOUS_BEST_TIME = 1.69
+        if average_timing_s > PREVIOUS_BEST_TIME + std_timing_s
+            @info "Possible performance regression, previous average time was $(PREVIOUS_BEST_TIME)"
+        elseif average_timing_s < PREVIOUS_BEST_TIME - std_timing_s
+            @info "Possible significant performance improvement, please update PREVIOUS_BEST_TIME in $(@__DIR__)"
+        end
+        @testset "Performance" begin
+            @test PREVIOUS_BEST_TIME - 2std_timing_s <=
+                  average_timing_s <=
+                  PREVIOUS_BEST_TIME + 2std_timing_s
+        end
     end
-    @testset "Performance" begin
-        @test PREVIOUS_BEST_TIME - 2std_timing_s <=
-              average_timing_s <=
-              PREVIOUS_BEST_TIME + 2std_timing_s
-    end
+elseif profiler == "nsight"
+    integrator = SciMLBase.init(prob, ode_algo; dt = Δt, callback = cb)
+    SciMLBase.step!(integrator)
+    SciMLBase.step!(integrator)
+    SciMLBase.step!(integrator)
+    SciMLBase.step!(integrator)
+else
+    @error("Profiler choice not supported.")
 end
