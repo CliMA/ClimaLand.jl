@@ -121,3 +121,40 @@ rn = get(simdir; short_name = "rn")
 @test readdir(tmpdir) == ["lhf_1h_average.nc", "rn_1h_average.nc"]
 @test length(rn.dims) == 3
 @test mean(rn.data) != 0.0
+# test that re defining default diagnostics with themselves does not issue warnings
+@test_nowarn ClimaLand.Diagnostics.define_diagnostics!(model)
+# test overwritting a non-default diagnsotic issues a warning
+@test_logs (
+    :warn,
+    "overwriting diagnostic `alpha` entry containing fields\n(\"alpha\", \"Albedo\", \"albedo\", \"\", \"\")",
+) ClimaLand.Diagnostics.add_diagnostic_variable!(
+    short_name = "alpha",
+    long_name = "Albedo",
+    standard_name = "albedo",
+    units = "",
+    compute! = (out, Y, p, t) -> compute_sw_albedo!(out, Y, p, t, land_model),
+)
+# test that overwritting a non default diagnsotic with a default issues warnings
+@test_logs (
+    :warn,
+    "overwriting diagnostic `alpha` entry containing fields\n(\"alpha\", \"Albedo\", \"albedo\", \"\", \"\")",
+) ClimaLand.Diagnostics.add_diagnostic_variable!(
+    short_name = "alpha",
+    long_name = "Albedo",
+    standard_name = "albedo",
+    units = "",
+    compute! = (out, Y, p, t) -> compute_sw_albedo!(out, Y, p, t, land_model),
+    default_diagnostic = true,
+)
+
+# test that overwritting a default diagnsotic with a non default does not issue warnings
+@test_logs (
+    :warn,
+    "overwriting diagnostic `alpha` entry containing fields\n(\"alpha\", \"Albedo\", \"albedo\", \"\", \"\")",
+) ClimaLand.Diagnostics.add_diagnostic_variable!(
+    short_name = "alpha",
+    long_name = "Albedo",
+    standard_name = "albedo",
+    units = "",
+    compute! = (out, Y, p, t) -> compute_sw_albedo!(out, Y, p, t, land_model),
+)
