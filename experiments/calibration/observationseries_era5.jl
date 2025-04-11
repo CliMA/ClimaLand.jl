@@ -10,6 +10,8 @@ FT = Float64
 
 var_list = [:lhf, :shf, :swu, :lwu]
 
+# Some variables different conventions/units between ERA5 and CliMA. These
+# preprocessing_function trasform everything into the CliMA conventions.
 preprocessing_function = Dict(:shf => (-), :lhf => (-))
 
 # Move this function to ClimaAnalysis
@@ -30,7 +32,8 @@ era5_path = joinpath(
                      "era5_monthly_averages_surface_single_level_197901-202410.nc",
                     )
 
-# Get era5 data
+# Get era5 data. We shift everything to be defined at the beginning of the month
+# so that we can more easily ensure consistency with respect to CliMA data.
 vars_temp = Dict(
     var => OutputVar(era5_path, varname, shift_by = Dates.firstdayofmonth) for (var, varname) in zip(
         var_list,
