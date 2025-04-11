@@ -321,6 +321,8 @@ auxiliary_types(::BucketModel{FT}) where {FT} = (
     FT,
     FT,
     ClimaCore.Geometry.WVector{FT},
+    FT,
+    FT,
 )
 auxiliary_vars(::BucketModel) = (
     :q_sfc,
@@ -336,8 +338,12 @@ auxiliary_vars(::BucketModel) = (
     :snow_melt,
     :infiltration,
     :top_bc_wvec,
+    :total_energy,
+    :total_water,
 )
 auxiliary_domain_names(::BucketModel) = (
+    :surface,
+    :surface,
     :surface,
     :surface,
     :surface,
@@ -497,6 +503,15 @@ function make_update_aux(model::BucketModel{FT}) where {FT}
             model.parameters.W_f,
         ) # Equation (2) of the text.
 
+        # Compute the integrated energy and water per area
+        ClimaLand.total_energy_per_area!(p.bucket.total_energy, model, Y, p, t)
+        ClimaLand.total_liq_water_vol_per_area!(
+            p.bucket.total_water,
+            model,
+            Y,
+            p,
+            t,
+        )
     end
     return update_aux!
 end
@@ -574,6 +589,75 @@ function surface_air_density(
     _...,
 )
     return p.bucket.ρ_sfc
+end
+
+"""
+
+    ClimaLand.total_energy_per_area!(
+        surface_field,
+        model::BucketModel,
+        Y,
+        p,
+        t,
+    )
+
+A function which updates `surface_field` in place with the value for
+the total energy per unit ground area for the `BucketModel`.
+
+The ground of the bucket model has temperature `Y.bucket.T`, with
+volumetric specific heat approximated with the parameter `ρc_soil`.
+Additional energy is present due to the latent heat of fusion of
+frozen water, in the form of snow. We also add in this energy (below).
+We do not model or account for the sensible energy of snow (`ρ_snow T_snow`),
+as this is much smaller.
+"""
+function ClimaLand.total_energy_per_area!(
+    surface_field,
+    model::BucketModel,
+    Y,
+    p,
+    t,
+)
+    surface_field .= 0
+    # Sensible energy of the soil
+    ClimaCore.Operators.column_integral_definite!(
+        surface_field,
+        model.parameters.ρc_soil .* Y.bucket.T,
+    )
+
+    # Latent heat of fusion of frozen water in the snow
+    surface_field .+=
+        -LP.LH_f0(model.parameters.earth_param_set) .*
+        LP.ρ_cloud_liq(model.parameters.earth_param_set) .* Y.bucket.σS
+    return nothing
+end
+
+"""
+
+    ClimaLand.total_liq_water_vol_per_area!(
+        surface_field,
+        model::BucketModel,
+        Y,
+        p,
+        t,
+    )
+
+A function which updates `surface_field` in place with the value for the
+total liquid water volume per unit ground area for the `BucketModel`, in [m³ m⁻²].
+
+The total water contained in the bucket is the sum of the
+subsurface water storage `W`, the snow water equivalent `σS` and
+surface water content `Ws`.
+"""
+function ClimaLand.total_liq_water_vol_per_area!(
+    surface_field,
+    model::BucketModel,
+    Y,
+    p,
+    t,
+)
+    @. surface_field = Y.bucket.σS + Y.bucket.W + Y.bucket.Ws
+    return nothing
 end
 
 include("./bucket_parameterizations.jl")
