@@ -6,6 +6,7 @@ main
 
 v0.5.13
 -------
+- add masking of ocean PR[#1050](https://github.com/CliMA/ClimaLand.jl/pull/1050)
 - fix for GPU compatibility of integrated land model coupled
   flux calculations PR[#1093](https://github.com/CliMA/ClimaLand.jl/pull/1093)
 

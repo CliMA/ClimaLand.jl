@@ -109,12 +109,6 @@ steps:
         command: "julia --color=yes --project=.buildkite experiments/standalone/Soil/water_energy_conservation.jl"
         artifact_paths: "experiments/standalone/Soil/water_energy_conservation/output_active/*full_soil_*png"
 
-      - label: "Richards Runoff CPU"
-        command: "julia --color=yes --project=.buildkite experiments/standalone/Soil/richards_runoff.jl"
-        artifact_paths: "experiments/standalone/Soil/artifacts/cpu/output_active/*png"
-        agents:
-          slurm_mem: 16G
-
       - label: "Global Run CPU"
         command: "julia --color=yes --project=.buildkite experiments/integrated/global/global_soil_canopy.jl"
         artifact_paths: "experiments/integrated/global/output_active/*png"
@@ -131,14 +125,6 @@ steps:
 
   - group: "Experiments on GPU"
     steps:
-      - label: "Richards Runoff GPU"
-        command: "julia --color=yes --project=.buildkite experiments/standalone/Soil/richards_runoff.jl"
-        artifact_paths: "experiments/standalone/Soil/artifacts/gpu/output_active/*png"
-        agents:
-          slurm_ntasks: 1
-          slurm_gpus: 1
-        env:
-          CLIMACOMMS_DEVICE: "CUDA"
 
       - label: "Richards comparison to Bonan: GPU"
         command: "julia --color=yes --project=.buildkite experiments/standalone/Soil/richards_comparison.jl"

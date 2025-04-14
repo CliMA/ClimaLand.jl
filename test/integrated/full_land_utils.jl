@@ -292,3 +292,97 @@ function global_land_model(
         snow_model_type = snow_model_type,
     )
 end
+
+"""
+    check_ocean_values_p(p, binary_mask; val = 0.0)
+
+This function tests that every field stored in `p` has all of
+its values (where binary_mask == 1) equal to  `val`. Note that
+this is meant to be used with the full land model (canopy,
+snow, soil, soilco2).
+
+Useful for checking if land model functions are updating the 
+values over the ocean.
+"""
+function check_ocean_values_p(p, binary_mask; val = 0.0)
+    properties = [
+        p.drivers,
+        p.soil,
+        p.soilco2,
+        p.snow,
+        p.canopy.energy,
+        p.canopy.hydraulics,
+        p.canopy.radiative_transfer,
+        p.canopy.photosynthesis,
+        p.canopy.sif,
+        p.canopy.turbulent_fluxes,
+        p.canopy.autotrophic_respiration,
+        p.canopy.conductance,
+    ]
+    for property in properties
+        for var in propertynames(property)
+            field_values = Array(parent(getproperty(property, var)))
+            if length(size(field_values)) == 5 # 3d var
+                @test extrema(field_values[:, 1, 1, :, Array(binary_mask)]) ==
+                      (val, val)
+            else
+                @test extrema(field_values[1, 1, :, Array(binary_mask)]) ==
+                      (val, val)
+            end
+        end
+    end
+
+    field_pn_p = [
+        pn for pn in propertynames(p) if pn != :soil &&
+        pn != :canopy &&
+        pn != :snow &&
+        pn != :soilco2 &&
+        pn != :drivers &&
+        ~occursin("dss", String(pn))
+    ]
+
+    for var in field_pn_p
+        field_values = Array(parent(getproperty(p, var)))
+        if length(size(field_values)) == 5 # 3d var
+            @test extrema(field_values[:, 1, 1, :, Array(binary_mask)]) ==
+                  (val, val)
+        else
+            @test extrema(field_values[1, 1, :, Array(binary_mask)]) ==
+                  (val, val)
+
+        end
+    end
+end
+
+"""
+    check_ocean_values_Y(Y, binary_mask; val = 0.0)
+
+This function tests that every field stored in `Y` has all of
+its values (where binary_mask == 1) equal to  `val`. Note that
+this is meant to be used with the full land model (canopy,
+snow, soil, soilco2).
+
+Useful for checking if land model functions are updating the 
+values over the ocean.
+"""
+function check_ocean_values_Y(Y, binary_mask; val = 0.0)
+    @test extrema(Array(parent(Y.soil.ϑ_l))[:, 1, 1, 1, Array(binary_mask)]) ==
+          (val, val)
+    @test extrema(Array(parent(Y.soil.θ_i))[:, 1, 1, 1, Array(binary_mask)]) ==
+          (val, val)
+    @test extrema(
+        Array(parent(Y.soil.ρe_int))[:, 1, 1, 1, Array(binary_mask)],
+    ) == (val, val)
+    @test extrema(Array(parent(Y.snow.U))[1, 1, 1, Array(binary_mask)]) ==
+          (val, val)
+    @test extrema(Array(parent(Y.snow.S))[1, 1, 1, Array(binary_mask)]) ==
+          (val, val)
+    @test extrema(Array(parent(Y.snow.S_l))[1, 1, 1, Array(binary_mask)]) ==
+          (val, val)
+    @test extrema(
+        Array(parent(Y.canopy.energy.T))[1, 1, 1, Array(binary_mask)],
+    ) == (val, val)
+    @test extrema(
+        Array(parent(Y.canopy.hydraulics.ϑ_l.:1))[1, 1, 1, Array(binary_mask)],
+    ) == (val, val)
+end

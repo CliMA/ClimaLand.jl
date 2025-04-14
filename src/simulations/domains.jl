@@ -1,5 +1,10 @@
 using ClimaLand
-
+using ClimaUtilities.ClimaArtifacts
+using ClimaComms
+import Interpolations
+import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
+import ClimaUtilities.Regridders: InterpolationsRegridder
+using ClimaCore: Spaces
 """
     global_domain(
     FT;
@@ -34,6 +39,9 @@ rather than increasing the polynomial order.
 """
 function global_domain(
     FT;
+    apply_mask = true,
+    mask_resolution = "60arcs",
+    mask_threshold = 0.5,
     nelements = (101, 15),
     dz_tuple = (10.0, 0.05),
     depth = 50.0,
@@ -49,5 +57,15 @@ function global_domain(
         npolynomial,
         dz_tuple,
     )
+    if apply_mask
+        surface_space = domain.space.surface # 2d space
+        binary_mask = landsea_mask(
+            surface_space;
+            resolution = mask_resolution,
+            threshold = mask_threshold,
+        )
+        Spaces.set_mask!(surface_space, binary_mask)
+    end
+
     return domain
 end
