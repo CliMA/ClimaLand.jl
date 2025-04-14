@@ -313,7 +313,22 @@ function setup_prob(
 
     # Snow model
     #    α_snow = Snow.ConstantAlbedoModel(FT(0.7))
-    α_snow = Snow.ZenithAngleAlbedoModel(FT(0.5), FT(0.9), FT(1))
+    # Set β = 0 in order to regain model without density dependence
+    α_snow = Snow.ZenithAngleAlbedoModel(
+        FT(0.64),
+        FT(0.7),
+        FT(2);
+        β = FT(0.4),
+        x0 = FT(0.2),
+    )
+    horz_degree_res =
+        sum(ClimaLand.Domains.average_horizontal_resolution_degrees(domain)) / 2 # mean of resolution in latitude and longitude, in degrees
+    scf = Snow.WuWuSnowCoverFractionModel(
+        FT(0.08),
+        FT(1.77),
+        FT(1.0),
+        horz_degree_res,
+    )
     snow_parameters = SnowParameters{FT}(
         Δt;
         earth_param_set = earth_param_set,
