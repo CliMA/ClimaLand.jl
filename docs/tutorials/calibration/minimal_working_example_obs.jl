@@ -12,11 +12,12 @@
 # 3. The prior distribution of these parameters.
 
 # ## Load packages
-import ClimaLandSimulations.Fluxnet as CLS # to run the model
 import EnsembleKalmanProcesses as EKP # to perform the calibration
 import Random # to use the same seed each run in the tutorial, optional
 import Logging
 Logging.disable_logging(Logging.Warn); # hide julia warnings
+
+include("run_fluxnet.jl")
 
 # ## Write a function returning our model LHF output given the parameters to calibrate
 function Ozark_LHF(params) # params is a 2 element Array
