@@ -658,7 +658,9 @@ apply_threshold(field, value) =
 """
     landsea_mask(
         surface_space;
-        resolution = "60arcs",
+        filepath = ClimaLand.Artifacts.landseamask_file_path(;
+                 context = ClimaComms.context(surface_space),
+                 ),
         threshold = 0.5,
         regridder_type = :InterpolationsRegridder,
         extrapolation_bc = (
@@ -668,16 +670,14 @@ apply_threshold(field, value) =
         ),
     )
 
-Reads in the default Clima 60arcsecond land/sea mask, regrids to the
-`surface_space`, and treats any point with a land fraction < threshold
-as ocean.
-
-A 1degree (resolution = "1deg") and 30arcsecond (resolution = "30arcs") mask
-are also available.
+Reads in the default Clima land/sea mask, regrids to the `surface_space`, and
+treats any point with a land fraction < threshold as ocean.
 """
 function landsea_mask(
     surface_space;
-    resolution = "60arcs",
+    filepath = ClimaLand.Artifacts.landseamask_file_path(;
+        context = ClimaComms.context(surface_space),
+    ),
     threshold = 0.5,
     regridder_type = :InterpolationsRegridder,
     extrapolation_bc = (
@@ -686,11 +686,6 @@ function landsea_mask(
         Interpolations.Flat(),
     ),
 )
-    context = ClimaComms.context(surface_space)
-    filepath = ClimaLand.Artifacts.landseamask_file_path(;
-        resolution = resolution,
-        context = context,
-    )
     mask = SpaceVaryingInput(
         filepath,
         "landsea",
@@ -700,4 +695,24 @@ function landsea_mask(
     )
     binary_mask = apply_threshold.(mask, threshold)
     return binary_mask
+end
+
+function landsea_mask(domain::Domains.AbstractDomain; kwargs...)
+    # average_horizontal_resolution_degrees returns a tuple with the resolution
+    # along the two directions, so we take the minimum
+    resolution_degrees = minimum(average_horizontal_resolution_degrees(domain))
+    if resolution_degrees > 1
+        resolution = "1deg"
+    else
+        resolution_arcsec = 3600resolution_degrees
+        # Pick the landsea mask at 60 arcseconds if the nodal distance is more than
+        # 120", otherwise pick the higher resolution
+        resolution = resolution_arcsec > 120 ? "60arcs" : "30arcs"
+    end
+
+    filepath = ClimaLand.Artifacts.landseamask_file_path(;
+        resolution,
+        context = ClimaComms.context(domain.space.surface),
+    )
+    return landsea_mask(domain.space.surface; filepath, kwargs...)
 end

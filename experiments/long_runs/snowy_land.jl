@@ -430,7 +430,7 @@ function setup_prob(
     end
     report_cb = SciMLBase.DiscreteCallback(every1000steps, report)
 
-    mask = ClimaLand.landsea_mask(surface_space)
+    mask = ClimaLand.landsea_mask(domain)
     nancheck_freq = Dates.Month(1)
     nancheck_cb = ClimaLand.NaNCheckCallback(
         nancheck_freq,

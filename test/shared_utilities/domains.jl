@@ -16,7 +16,8 @@ using ClimaLand.Domains:
     obtain_face_space,
     obtain_surface_domain,
     get_Δz,
-    top_face_to_surface
+    top_face_to_surface,
+    average_horizontal_resolution_degrees
 
 FT = Float32
 @testset "Clima Core Domains, FT = $FT" begin
@@ -98,6 +99,9 @@ FT = Float32
     @test ClimaComms.context(shell_surface) == ClimaComms.context()
     @test ClimaComms.device(shell_surface) == ClimaComms.device()
 
+    @test average_horizontal_resolution_degrees(shell_surface) ==
+          (180 / (2 * n_elements_sphere[1]), 180 / (2n_elements_sphere[1]))
+
     # HybridBox
     box = HybridBox(;
         xlim = xlim,
@@ -171,6 +175,8 @@ FT = Float32
     @test typeof(xy_plane.space.surface) <:
           ClimaCore.Spaces.SpectralElementSpace2D
 
+    @test_throws ErrorException average_horizontal_resolution_degrees(xy_plane)
+
     # Plane latlong
     dxlim = (FT(50_000), FT(80_000))
     dylim = (FT(30_000), FT(40_000))
@@ -197,6 +203,12 @@ FT = Float32
     @test longlat_plane.periodic == (false, false)
     @test typeof(longlat_plane.space.surface) <:
           ClimaCore.Spaces.SpectralElementSpace2D
+
+    expected_resolution_x = (xlim_longlat[2] - xlim_longlat[1]) / nelements[1]
+    expected_resolution_y = (ylim_longlat[2] - ylim_longlat[1]) / nelements[2]
+
+    @test average_horizontal_resolution_degrees(longlat_plane) ==
+          (expected_resolution_x, expected_resolution_y)
 
     # Box latlong
     longlat_box = HybridBox(;
@@ -243,6 +255,9 @@ FT = Float32
         0,
         (; surface = longlat_box.space.surface),
     )
+
+    @test average_horizontal_resolution_degrees(longlat_box) ==
+          (expected_resolution_x, expected_resolution_y)
 
     # Column
 
