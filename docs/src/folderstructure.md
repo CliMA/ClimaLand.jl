@@ -6,7 +6,6 @@
 - experiments: contains simple runs of `ClimaLand` models. Most of these experiments is run as part of our CI.
 - src: contains the code of `ClimaLand` models.
 - ext: contains a package extension for Neural Snow and an extension with constructors for model parameters
-- lib: contains two packages that extend ClimaLand functionality: ClimaLandSimulations and ClimaLandDashboards
 - test: contains [unit tests](https://en.wikipedia.org/wiki/Unit_testing), which are meant to ensure small pieces of ClimaLand source code work as intended before merging pull requests.
 
 and 3 GitHub actions folders. GitHub actions are `.yml` files that define workflows that are run at each pull request.
@@ -83,20 +82,6 @@ As well as two files:
 
 - ClimaLand.jl: This file is the main Julia module of `ClimaLand.jl` repository. It contains all functions defined in `/src` in a nested way, for example `ClimaLand.X`, `ClimaLand.Soil.X`, `ClimaLand.Canopy.X`, etc. When a Julia user install and uses ClimaLand via `]add ClimaLand, using ClimaLand`, they are loading those functions, and are ready to use ClimaLand codebase.
 - Artifacts.jl: Contains functions that return the path of the given artifact name in the current context
-
-## /lib folder
-
-This folder contains a subfolder, `/ClimaLandSimulations`, which contains a library of methods
-to easily and conveniently run ClimaLand at a variety of sites and globally. There are 3 subfolders:
-
-- experiments: This folder contains scripts to run ClimaLand at a fluxnet site using ClimaLandSimulations
-- src: Contains source code for the ClimaLandSimulations package. There are 3 subfolders and
-1 file.
-  - Dashboards: Contains scripts to create dashboards for running simulations at fluxnet sites
-  - Fluxnet: Contains scripts to setup a ClimaLand simulation at a fluxnet site
-  - utilities: Contains utilities used in setup of ClimaLand simulation at a fluxnet sites
-
-- test: Contains tests for the ClimaLandSimulations package
 
 ## /ext folder
 This folder has one subfolder, `/neural_snow`, which contains tools to create the neural network
