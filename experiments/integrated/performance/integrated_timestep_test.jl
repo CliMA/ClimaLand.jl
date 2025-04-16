@@ -44,7 +44,7 @@ using Statistics
 import StatsBase: percentile
 using CairoMakie
 import ClimaComms
-@static pkgversion(ClimaComms) >= v"0.6" && ClimaComms.@import_required_backends
+ClimaComms.@import_required_backends
 import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
 import ClimaUtilities.OutputPathGenerator: generate_output_path
 

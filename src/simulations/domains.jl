@@ -46,6 +46,11 @@ function global_domain(
     depth = 50.0,
     npolynomial = 0,
 )
+    if pkgversion(ClimaCore) < v"0.14.30" && apply_mask
+        @warn "The land mask cannot be applied with ClimaCore < v0.14.30. Update ClimaCore for significant performance gains."
+        apply_mask = false
+    end
+
     radius = FT(6378.1e3)
     dz_tuple = FT.(dz_tuple)
     depth = FT(depth)

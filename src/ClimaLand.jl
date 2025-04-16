@@ -7,6 +7,8 @@ import ClimaCore: Fields, Spaces
 include("shared_utilities/Parameters.jl")
 import .Parameters as LP
 
+include("shared_utilities/compat.jl")
+
 include("shared_utilities/Domains.jl")
 import ClimaUtilities.TimeVaryingInputs
 import ClimaUtilities.TimeVaryingInputs:
