@@ -179,6 +179,16 @@ function ClimaLand.make_compute_imp_tendency(model::RichardsModel)
         # GradC2F returns a Covariant3Vector, so no need to convert.
         @. dY.soil.ϑ_l =
             -(divf2c_water(-interpc2f(p.soil.K) * gradc2f_water(p.soil.ψ + z)))
+
+        # Source terms, also update the vertical integral of the source: p.soil.∫S_θ_liq_dz
+        p.soil.∫S_θ_liq_dz .= 0
+        # These change ∫S and dY by +=, which is why we zero them out above.
+        for src in model.sources
+            if !src.explicit
+                ClimaLand.source!(dY, src, Y, p, model)
+            end
+        end
+        @. dY.soil.∫F_vol_liq_water_dt += p.soil.∫S_θ_liq_dz # these source terms are stepped implicitly
     end
     return compute_imp_tendency!
 end
@@ -213,9 +223,12 @@ function ClimaLand.make_compute_exp_tendency(model::Soil.RichardsModel)
             z,
         )
 
-        # Source terms, also update the with expected integral of the source: p.soil.∫S_θ_liq_dz
+        # Explicitly treated source terms, also update the vertical integral of the source: p.soil.∫S_θ_liq_dz
+        # These change ∫S and dY by +=, which is why we zero them out above.
         for src in model.sources
-            ClimaLand.source!(dY, src, Y, p, model)
+            if src.explicit
+                ClimaLand.source!(dY, src, Y, p, model)
+            end
         end
         dY.soil.∫F_vol_liq_water_dt .= p.soil.∫S_θ_liq_dz # source terms are stepped explictly
     end

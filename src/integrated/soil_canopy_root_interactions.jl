@@ -125,10 +125,11 @@ in an LSM with both soil and plant hydraulic components.
 This is paired with the source term `Canopy.PrognosticSoil`:both
 are used at the same time,
 ensuring that the water flux into the roots is extracted correctly
-from the soil.
+from the soil; treated explicitly.
 """
-struct RootExtraction{FT} <: Soil.AbstractSoilSource{FT} end
-
+@kwdef struct RootExtraction{FT} <: ClimaLand.Soil.AbstractSoilSource{FT}
+    explicit::Bool = true
+end
 """
     ClimaLand.source!(dY::ClimaCore.Fields.FieldVector,
                      src::RootExtraction,

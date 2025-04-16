@@ -218,10 +218,12 @@ function ClimaLand.make_compute_exp_tendency(
             p,
             z,
         )
-        # Source terms, also update the vertical integral of the source: p.soil.∫S_θ_liq_dz, p.soil.∫S_ρe_int_dz
+        # Explicitly treated source terms, also update the vertical integral of the source: p.soil.∫S_θ_liq_dz, p.soil.∫S_ρe_int_dz
         # These change ∫S and dY by +=, which is why we zero them out above.
         for src in model.sources
-            ClimaLand.source!(dY, src, Y, p, model)
+            if src.explicit
+                ClimaLand.source!(dY, src, Y, p, model)
+            end
         end
         dY.soil.∫F_vol_liq_water_dt .= p.soil.∫S_θ_liq_dz # source terms are stepped explicitly
         dY.soil.∫F_e_dt .= p.soil.∫S_ρe_int_dz # source terms are stepped explicitly
@@ -291,8 +293,19 @@ function ClimaLand.make_compute_imp_tendency(
                 ) * gradc2f(p.soil.ψ + z),
             )
 
-        # Don't update the prognostic variables we're stepping explicitly
         @. dY.soil.θ_i = 0
+
+        # Source terms, also update the vertical integral of the source: p.soil.∫S_θ_liq_dz, p.soil.∫S_ρe_int_dz
+        p.soil.∫S_θ_liq_dz .= 0
+        p.soil.∫S_ρe_int_dz .= 0
+        # These change ∫S and dY by +=, which is why we zero them out above.
+        for src in model.sources
+            if !src.explicit
+                ClimaLand.source!(dY, src, Y, p, model)
+            end
+        end
+        @. dY.soil.∫F_vol_liq_water_dt += p.soil.∫S_θ_liq_dz # these source terms are stepped implicitly
+        @. dY.soil.∫F_e_dt += p.soil.∫S_ρe_int_dz # these source terms are stepped implicitly
     end
     return compute_imp_tendency!
 end
@@ -647,9 +660,11 @@ end
 """
     PhaseChange{FT} <: AbstractSoilSource{FT}
 
-PhaseChange source type.
+PhaseChange source type; treated explicitly.
 """
-struct PhaseChange{FT} <: AbstractSoilSource{FT} end
+@kwdef struct PhaseChange{FT} <: AbstractSoilSource{FT}
+    explicit::Bool = true
+end
 
 """
      source!(dY::ClimaCore.Fields.FieldVector,
@@ -737,10 +752,14 @@ end
     SoilSublimation{FT} <: AbstractSoilSource{FT}
 
 Soil Sublimation source type. Used to defined a method
-of `ClimaLand.source!` for soil sublimation.
+of `ClimaLand.source!` for soil sublimation; treated implicitly
+in ϑ_l but explicitly in θ_i. This is because we compute
+sublimation and evaporation as part of the boundary flux
+computation for ϑ_l, which occurs in the implicit tendency.
 """
-struct SoilSublimation{FT} <: AbstractSoilSource{FT} end
-
+@kwdef struct SoilSublimation{FT} <: AbstractSoilSource{FT}
+    explicit::Bool = false
+end
 """
      source!(dY::ClimaCore.Fields.FieldVector,
              src::SoilSublimation{FT},
@@ -1084,7 +1103,7 @@ function soil_compute_turbulent_fluxes_at_a_point(
             q_sat_ice,
         )
         if q_air < q_sat_ice
-            β *= (θ_i_sfc / ν_sfc)^4
+            β *= (θ_i_sfc / ν_sfc)^2
         end
     end
 

@@ -10,7 +10,9 @@ using ClimaLand.Domains: Column, HybridBox
 
 import ClimaLand
 import ClimaLand.Parameters as LP
-struct FakeSource{FT} <: AbstractSoilSource{FT} end
+@kwdef struct FakeSource{FT} <: AbstractSoilSource{FT}
+    explicit::Bool = true
+end
 
 import ClimaLand.source!
 # These allocate, but we dont mind here.

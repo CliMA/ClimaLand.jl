@@ -20,7 +20,7 @@ Returns the thermal timescale for temperature differences across
 a typical thickness Δz to equilibrate.
 """
 function thermal_time(ρc::FT, Δz::FT, κ::FT) where {FT}
-    return ρc * Δz^2 / κ
+    return 3 * ρc * Δz^2 / κ
 end
 
 """

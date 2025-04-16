@@ -390,9 +390,17 @@ end
     SoilSublimationwithSnow{FT} <: AbstractSoilSource{FT}
 
 Soil Sublimation source type. Used to defined a method
-of `ClimaLand.source!` for soil sublimation with snow present.
+of `ClimaLand.source!` for soil sublimation with snow present;
+treated implicitly
+in ϑ_l but explicitly in θ_i. This is because we compute
+sublimation and evaporation as part of the boundary flux
+computation for ϑ_l, which occurs in the implicit tendency.
+
 """
-struct SoilSublimationwithSnow{FT} <: ClimaLand.Soil.AbstractSoilSource{FT} end
+@kwdef struct SoilSublimationwithSnow{FT} <:
+              ClimaLand.Soil.AbstractSoilSource{FT}
+    explicit::Bool = false
+end
 
 """
      source!(dY::ClimaCore.Fields.FieldVector,
