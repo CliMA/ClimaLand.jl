@@ -77,7 +77,6 @@ function setup_prob(
         ylim = (delta_m, delta_m),
         zlim = (-depth, FT(0)),
         nelements = nelements,
-        npolynomial = 0,
         longlat = (center_long, center_lat),
         dz_tuple = FT.((10.0, 0.05)),
     )

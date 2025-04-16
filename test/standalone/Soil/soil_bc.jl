@@ -25,7 +25,6 @@ for FT in (Float32, Float64)
             radius = FT(1.0),
             depth = FT(1.0),
             nelements = (1, 2),
-            npolynomial = 3,
         )
 
         coords = ClimaLand.Domains.coordinates(domain) # center coordinates

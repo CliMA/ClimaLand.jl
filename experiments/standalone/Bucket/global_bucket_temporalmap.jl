@@ -94,7 +94,6 @@ function setup_prob(t0, tf, Δt, outdir)
         radius = FT(6.3781e6),
         depth = soil_depth,
         nelements = (10, 10), # this failed with (50,10)
-        npolynomial = 1,
         dz_tuple = FT.((1.0, 0.05)),
     )
     start_date = DateTime(2005)

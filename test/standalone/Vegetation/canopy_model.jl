@@ -24,7 +24,6 @@ import ClimaParams
         domain = ClimaLand.Domains.SphericalSurface(;
             radius = FT(100.0),
             nelements = 10,
-            npolynomial = 1,
         )
         # create a field with both 1.0s and 0.0s
         mechanism_field = ClimaCore.Fields.Field(FT, domain.space.surface)
@@ -579,7 +578,6 @@ end
         domain = ClimaLand.Domains.SphericalSurface(;
             radius = FT(100.0),
             nelements = 10,
-            npolynomial = 1,
         )
         # create a field with both 1.0s and 0.0s
         mechanism_field = ClimaCore.Fields.Field(FT, domain.space.surface)
@@ -1180,7 +1178,6 @@ end
         domain = ClimaLand.Domains.SphericalSurface(;
             radius = FT(100.0),
             nelements = 10,
-            npolynomial = 1,
         )
         # create a field with both 1.0s and 0.0s
         mechanism_field = ClimaCore.Fields.Field(FT, domain.space.surface)

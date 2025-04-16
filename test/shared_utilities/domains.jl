@@ -29,6 +29,9 @@ FT = Float32
     radius = FT(100)
     depth = FT(30)
     n_elements_sphere = (6, 20)
+
+    # NOTE: Here we set npoly_sphere to 3, instead of 0 to test that npoly != 0
+    # works as expected
     npoly_sphere = 3
     # Spherical Shell
     shell = SphericalShell(;
@@ -71,26 +74,21 @@ FT = Float32
         depth = FT(1.0),
         dz_tuple = FT.((0.3, 0.03)),
         nelements = (6, 10),
-        npolynomial = 3,
     )
     shell_coords_stretch = coordinates(shell_stretch).subsurface
     dz =
-        Array(parent(shell_coords_stretch.z))[:, 1, 4, 1, 216][2:end] .-
-        Array(parent(shell_coords_stretch.z))[:, 1, 4, 1, 216][1:(end - 1)]
+        Array(parent(shell_coords_stretch.z))[:, end, end, end, end][2:end] .-
+        Array(parent(shell_coords_stretch.z))[:, end, end, end, end][1:(end - 1)]
     @test abs(dz[1] - 0.3) < 1e-1
     @test abs(dz[end] - 0.03) < 1e-2
     @test shell.fields.Δz_min == minimum(shell.fields.Δz_top)
 
 
     # Spherical Surface
-    shell_surface = SphericalSurface(;
-        radius = radius,
-        nelements = n_elements_sphere[1],
-        npolynomial = npoly_sphere,
-    )
+    shell_surface =
+        SphericalSurface(; radius = radius, nelements = n_elements_sphere[1])
     @test shell_surface.radius == radius
     @test shell_surface.nelements == n_elements_sphere[1]
-    @test shell_surface.npolynomial == npoly_sphere
     shell_surface_coords = coordinates(shell_surface).surface
     @test eltype(shell_surface_coords) == ClimaCore.Geometry.LatLongPoint{FT}
     @test typeof(shell_surface_coords) <: ClimaCore.Fields.Field
@@ -106,7 +104,6 @@ FT = Float32
         ylim = ylim,
         zlim = zlim,
         nelements = nelements,
-        npolynomial = 0,
     )
     @test box.fields.depth == zlim[2] - zlim[1]
     @test box.fields.z ==
@@ -148,7 +145,6 @@ FT = Float32
         zlim = zlim,
         dz_tuple = FT.((0.3, 0.03)),
         nelements = nelements,
-        npolynomial = 0,
     )
     box_coords_stretch = coordinates(stretch_box).subsurface
     dz =
@@ -163,7 +159,6 @@ FT = Float32
         ylim = ylim,
         nelements = nelements[1:2],
         periodic = (true, true),
-        npolynomial = 0,
     )
     plane_coords = coordinates(xy_plane).surface
     @test eltype(plane_coords) == ClimaCore.Geometry.XYPoint{FT}
@@ -190,13 +185,8 @@ FT = Float32
         longlat[1] + dxlim[2] / FT(2π * radius_earth) * 360,
     )
 
-    longlat_plane = Plane(;
-        xlim = dxlim,
-        ylim = dylim,
-        longlat,
-        nelements = nelements[1:2],
-        npolynomial = 0,
-    )
+    longlat_plane =
+        Plane(; xlim = dxlim, ylim = dylim, longlat, nelements = nelements[1:2])
     plane_coords = coordinates(longlat_plane).surface
     @test eltype(plane_coords) == ClimaCore.Geometry.LatLongPoint{FT}
     @test typeof(plane_coords) <: ClimaCore.Fields.Field
@@ -215,7 +205,6 @@ FT = Float32
         zlim = zlim,
         longlat,
         nelements = nelements,
-        npolynomial = 0,
     )
     @test longlat_box.fields.depth == zlim[2] - zlim[1]
     @test longlat_box.fields.z ==

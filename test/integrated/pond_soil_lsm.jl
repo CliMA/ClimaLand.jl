@@ -33,7 +33,6 @@ for FT in (Float32, Float64)
                 ylim = (FT(0), FT(1)),
                 zlim = (zmin, zmax),
                 nelements = (1, 1, nelems),
-                npolynomial = 1,
                 periodic = (true, true),
             ),
             Column(; zlim = (zmin, zmax), nelements = nelems),

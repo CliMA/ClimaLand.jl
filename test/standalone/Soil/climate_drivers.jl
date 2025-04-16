@@ -25,7 +25,6 @@ for FT in (Float32, Float64)
                 ylim = FT.((-1.0, 0.0)),
                 zlim = FT.((-100.0, 0.0)),
                 nelements = (2, 2, 10),
-                npolynomial = 1,
                 periodic = (true, true),
             ),
         ]

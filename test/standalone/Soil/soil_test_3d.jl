@@ -29,7 +29,6 @@ for FT in (Float32, Float64)
             ylim = FT.((0, 1)),
             zlim = (zmin, zmax),
             nelements = (100, 2, 100),
-            npolynomial = 3,
         )
         top_flux_bc = WaterFluxBC((p, t) -> 0.0)
         bot_flux_bc = WaterFluxBC((p, t) -> 0.0)
@@ -266,7 +265,6 @@ for FT in (Float32, Float64)
             ylim = FT.((0, 1)),
             zlim = (zmin, zmax),
             nelements = (100, 2, 100),
-            npolynomial = 3,
         )
 
         zero_water_flux_bc = WaterFluxBC((p, t) -> 0.0)
@@ -371,7 +369,6 @@ for FT in (Float32, Float64)
             radius = FT(100.0),
             depth = FT(1.0),
             nelements = (1, 30),
-            npolynomial = 3,
         )
         top_flux_bc = WaterFluxBC((p, t) -> K_sat)
         bot_flux_bc = WaterFluxBC((p, t) -> K_sat)
@@ -451,13 +448,11 @@ end
         ylim = (zmin, zmax),
         zlim = (zmin, zmax),
         nelements = (100, 2, 100),
-        npolynomial = 3,
     )
     shell = ClimaLand.Domains.SphericalShell(;
         radius = FT(1),
         depth = FT(1),
         nelements = (2, 3),
-        npolynomial = 1,
     )
     column = ClimaLand.Domains.Column(; zlim = (zmin, zmax), nelements = 10)
     for d in [boxdomain, shell]

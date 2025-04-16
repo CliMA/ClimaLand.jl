@@ -139,7 +139,6 @@ land_domain = ClimaLand.Domains.SphericalShell(;
     radius = FT(6.3781e6),
     depth = soil_depth,
     nelements = (10, 5),
-    npolynomial = 1,
     dz_tuple = FT.((dz_bottom, dz_top)),
 );
 canopy_domain = ClimaLand.Domains.obtain_surface_domain(land_domain)
