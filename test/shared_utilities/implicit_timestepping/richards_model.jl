@@ -31,7 +31,6 @@ for FT in (Float32, Float64)
                 ylim = FT.((0, 1)),
                 zlim = (zmin, zmax),
                 nelements = (1, 1, nelems),
-                npolynomial = 3,
             ),
         ]
         top_state_bc = MoistureStateBC((p, t) -> ν - 1e-3)
@@ -166,7 +165,6 @@ for FT in (Float32, Float64)
                 ylim = FT.((0, 1)),
                 zlim = (zmin, zmax),
                 nelements = (1, 1, nelems),
-                npolynomial = 3,
             ),
         ]
         top_flux_bc = WaterFluxBC((p, t) -> -K_sat)

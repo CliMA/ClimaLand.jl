@@ -41,14 +41,12 @@ for FT in (Float32, Float64)
             ylim = (FT(-1), FT(0)),
             zlim = (FT(-100), FT(0)),
             nelements = (2, 2, 10),
-            npolynomial = 1,
             periodic = (true, true),
         ),
         SphericalShell(;
             radius = FT(100),
             depth = FT(3.5),
             nelements = (1, 10),
-            npolynomial = 1,
         ),
     ]
     init_temp(z::FT, value::FT) where {FT} = FT(value)

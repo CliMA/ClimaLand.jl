@@ -38,12 +38,7 @@ function create_domain_2d(FT)
     h = FT(3.5)
     ne = (2, 10)
     np = 2
-    return SphericalShell(;
-        radius = rad,
-        depth = h,
-        nelements = ne,
-        npolynomial = np,
-    )
+    return SphericalShell(; radius = rad, depth = h, nelements = ne)
 end
 
 """
@@ -201,7 +196,6 @@ end
             radius = FT(100.0),
             depth = FT(3.5),
             nelements = (2, 10),
-            npolynomial = 2,
         ),
     ]
 
@@ -293,7 +287,6 @@ for (name, infile_path, varname) in name_ds_var_list
                 radius = FT(100.0),
                 depth = FT(3.5),
                 nelements = (2, 10),
-                npolynomial = 2,
             ),
         ]
 

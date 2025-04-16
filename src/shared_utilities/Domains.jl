@@ -250,7 +250,7 @@ function Plane(;
     longlat = nothing,
     periodic::Tuple{Bool, Bool} = isnothing(longlat) ? (true, true) :
                                   (false, false),
-    npolynomial::Int,
+    npolynomial::Int = 0,
     comms_ctx = ClimaComms.context(),
     radius_earth = 6.378e6,
 ) where {FT}
@@ -419,7 +419,7 @@ function HybridBox(;
     ylim::Tuple{FT, FT},
     zlim::Tuple{FT, FT},
     nelements::Tuple{Int, Int, Int},
-    npolynomial::Int,
+    npolynomial::Int = 0,
     dz_tuple::Union{Tuple{FT, FT}, Nothing} = nothing,
     longlat = nothing,
     periodic::Tuple{Bool, Bool} = isnothing(longlat) ? (true, true) :
@@ -551,7 +551,7 @@ function SphericalShell(;
     radius::FT,
     depth::FT,
     nelements::Tuple{Int, Int},
-    npolynomial::Int,
+    npolynomial::Int = 0,
     dz_tuple::Union{Tuple{FT, FT}, Nothing} = nothing,
     comms_ctx = ClimaComms.context(),
 ) where {FT}
@@ -655,7 +655,7 @@ Outer constructor for the `SphericalSurface` domain, using keyword arguments.
 function SphericalSurface(;
     radius::FT,
     nelements::Int,
-    npolynomial::Int,
+    npolynomial::Int = 0,
     comms_ctx = ClimaComms.context(),
 ) where {FT}
     @assert 0 < radius

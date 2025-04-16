@@ -109,7 +109,6 @@ for FT in (Float32, Float64)
                 ylim = FT.((0, 1)),
                 nelements = (2, 2),
                 periodic = (true, true),
-                npolynomial = 1,
             ),
         ]
 

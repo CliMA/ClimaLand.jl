@@ -83,7 +83,6 @@ for FT in (Float32, Float64)
         ylim = (cmin, cmax),
         zlim = (cmin, cmax),
         nelements = (nelems, nelems, nelems),
-        npolynomial = 0,
     )
 
     domains = [col, box]

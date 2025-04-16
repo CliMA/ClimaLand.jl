@@ -26,7 +26,6 @@ end
         radius = FT(6300e3),
         depth = FT(50.0),
         nelements = (101, 15),
-        npolynomial = 1,
         dz_tuple = FT.((5.0, 0.05)),
     )
     surface_space = domain.space.surface
@@ -84,7 +83,6 @@ end
         radius = FT(6300e3),
         depth = FT(50.0),
         nelements = (101, 15),
-        npolynomial = 1,
         dz_tuple = FT.((5.0, 0.05)),
     )
     surface_space = domain.space.surface
@@ -192,7 +190,6 @@ end
         radius = FT(6300e3),
         depth = FT(50.0),
         nelements = (101, 15),
-        npolynomial = 1,
         dz_tuple = FT.((5.0, 0.05)),
     )
     surface_space = domain.space.surface

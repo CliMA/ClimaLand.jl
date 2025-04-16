@@ -68,7 +68,6 @@ function setup_prob(
         radius = radius,
         depth = depth,
         nelements = nelements,
-        npolynomial = 1,
         dz_tuple = FT.((1.0, 0.05)),
     )
     surface_space = domain.space.surface
