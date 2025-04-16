@@ -1,4 +1,7 @@
 module Domains
+
+import ..compat_add_mask, ..compat_set_mask!
+
 using ClimaCore
 using ClimaComms
 using DocStringExtensions
@@ -311,9 +314,9 @@ function Plane(;
     space = ClimaCore.Spaces.SpectralElementSpace2D(
         grid_topology,
         quad;
-        enable_mask = true,
+        compat_add_mask()...,
     )
-    ClimaCore.Spaces.set_mask!(space, ClimaCore.Fields.ones(space))
+    compat_set_mask!(space)
     space = (; surface = space)
     return Plane{FT}(
         xlim,
@@ -596,9 +599,9 @@ function SphericalShell(;
     horzspace = ClimaCore.Spaces.SpectralElementSpace2D(
         horztopology,
         quad;
-        enable_mask = true,
+        compat_add_mask()...,
     )
-    ClimaCore.Spaces.set_mask!(horzspace, ClimaCore.Fields.ones(horzspace))
+    compat_set_mask!(horzspace)
     subsurface_space = ClimaCore.Spaces.ExtrudedFiniteDifferenceSpace(
         horzspace,
         vert_center_space,
@@ -668,8 +671,8 @@ function SphericalSurface(;
         quad = ClimaCore.Spaces.Quadratures.GLL{npolynomial + 1}()
     end
     horzspace =
-        Spaces.SpectralElementSpace2D(horztopology, quad; enable_mask = true)
-    ClimaCore.Spaces.set_mask!(horzspace, ClimaCore.Fields.ones(horzspace))
+        Spaces.SpectralElementSpace2D(horztopology, quad; compat_add_mask()...)
+    compat_set_mask!(horzspace)
     space = (; surface = horzspace)
     return SphericalSurface{FT}(radius, nelements, npolynomial, space)
 end
