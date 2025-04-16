@@ -971,6 +971,77 @@ depth(space::ClimaCore.Spaces.CenterFiniteDifferenceSpace) =
         space.grid.topology.mesh.domain.coord_min
     ).z
 
+"""
+    horizontal_resolution_degrees(domain::AbstractDomain)
+
+Return a tuple with the approximate resolution on the domain in degrees along
+the two directions.
+
+For boxes and planes, the order is `(latitude, longitude)`.
+
+Examples
+=======
+
+```jldoctest
+julia> using ClimaLand
+
+julia> domain = ClimaLand.Domains.SphericalShell(;
+        radius = 6300e3,
+        depth = 15.,
+        nelements = (10, 3),
+        dz_tuple = ((1.0, 0.05)),
+    );
+
+julia> ClimaLand.Domains.average_horizontal_resolution_degrees(domain)
+(9.0, 9.0)
+
+julia> domain = ClimaLand.Domains.Plane(;
+        xlim = (50000.0, 80000.),
+        ylim = (30000.0, 40000.),
+        longlat = (-118.14452, 34.14778),
+        nelements = (20, 3),
+    );
+
+julia> ClimaLand.Domains.average_horizontal_resolution_degrees(domain)
+(0.05839157, 0.20961125)
+```
+"""
+function average_horizontal_resolution_degrees(
+    domain::Union{SphericalShell, SphericalSurface},
+)
+    num_elements_lat = num_elements_lon = first(domain.nelements)
+    quad = ClimaCore.Spaces.quadrature_style(domain.space.surface)
+    num_points_per_element =
+        ClimaCore.Quadratures.unique_degrees_of_freedom(quad)
+
+    # There are 2 full cubed-sphere panels along latitudes, and 4 along
+    # longitudes
+    return (
+        180 / (2 * num_points_per_element * num_elements_lat),
+        360 / (4 * num_points_per_element * num_elements_lon),
+    )
+end
+
+function average_horizontal_resolution_degrees(domain::Union{Plane, HybridBox})
+    isnothing(domain.longlat) &&
+        error("Can only compute resolution with domains in latlong")
+
+    # x is Lat, y is Lon because ClimaCore defines LatLongPoints
+    num_elements_lat, num_elements_lon = domain.nelements[1:2]
+    delta_lat = domain.xlim[2] - domain.xlim[1]
+    delta_lon = domain.ylim[2] - domain.ylim[1]
+
+    quad = ClimaCore.Spaces.quadrature_style(domain.space.surface)
+    num_points_per_element =
+        ClimaCore.Quadratures.unique_degrees_of_freedom(quad)
+
+    return (
+        delta_lat / (num_points_per_element * num_elements_lat),
+        delta_lon / (num_points_per_element * num_elements_lon),
+    )
+end
+
+
 export AbstractDomain
 export Column, Plane, HybridBox, Point, SphericalShell, SphericalSurface
 export coordinates,
@@ -981,5 +1052,6 @@ export coordinates,
     top_face_to_surface,
     obtain_surface_domain,
     linear_interpolation_to_surface!,
-    get_Δz
+    get_Δz,
+    average_horizontal_resolution_degrees
 end
