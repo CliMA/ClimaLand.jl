@@ -101,8 +101,7 @@ function ClimaLand.get_drivers(bc::AtmosDrivenCanopyBC)
     end
 end
 
-
-function make_update_boundary_fluxes(canopy::CanopyModel)
+function make_update_implicit_boundary_fluxes(canopy::CanopyModel)
     function update_boundary_fluxes!(p, Y, t)
         canopy_boundary_fluxes!(p, canopy, Y, t)
     end

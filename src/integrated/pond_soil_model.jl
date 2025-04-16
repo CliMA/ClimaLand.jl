@@ -156,7 +156,7 @@ function infiltration_capacity(Y::ClimaCore.Fields.FieldVector, p::NamedTuple)
 end
 
 """
-    make_update_boundary_fluxes(
+    make_update_explicit_boundary_fluxes(
         land::LandHydrology{FT, SM, SW},
     ) where {FT, SM <: Soil.RichardsModel{FT}, SW <: Pond.PondModel{FT}}
 
@@ -167,11 +167,36 @@ term (runoff) for the surface water model.
 
 This function is called each ode function evaluation.
 """
-function make_update_boundary_fluxes(
+function make_update_explicit_boundary_fluxes(
     land::LandHydrology{FT, SM, SW},
 ) where {FT, SM <: Soil.RichardsModel{FT}, SW <: Pond.PondModel{FT}}
-    update_soil_bf! = make_update_boundary_fluxes(land.soil)
-    update_pond_bf! = make_update_boundary_fluxes(land.surface_water)
+    update_soil_bf! = make_update_explicit_boundary_fluxes(land.soil)
+    update_pond_bf! = make_update_explicit_boundary_fluxes(land.surface_water)
+    function update_boundary_fluxes!(p, Y, t)
+        update_soil_bf!(p, Y, t)
+        update_pond_bf!(p, Y, t)
+    end
+    return update_boundary_fluxes!
+end
+
+
+"""
+    make_update_implicit_boundary_fluxes(
+        land::LandHydrology{FT, SM, SW},
+    ) where {FT, SM <: Soil.RichardsModel{FT}, SW <: Pond.PondModel{FT}}
+
+A method which makes a function; the returned function
+updates the auxiliary variable `p.soil_infiltration`, which
+is needed for both the boundary condition for the soil model and the source
+term (runoff) for the surface water model.
+
+This function is called each ode function evaluation.
+"""
+function make_update_implicit_boundary_fluxes(
+    land::LandHydrology{FT, SM, SW},
+) where {FT, SM <: Soil.RichardsModel{FT}, SW <: Pond.PondModel{FT}}
+    update_soil_bf! = make_update_implicit_boundary_fluxes(land.soil)
+    update_pond_bf! = make_update_implicit_boundary_fluxes(land.surface_water)
     function update_boundary_fluxes!(p, Y, t)
         i_c = infiltration_capacity(Y, p)
         @. p.soil_infiltration =

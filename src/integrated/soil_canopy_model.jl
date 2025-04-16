@@ -232,7 +232,7 @@ lsm_aux_domain_names(m::SoilCanopyModel) = (
 )
 
 """
-    make_update_boundary_fluxes(
+    make_update_explicit_boundary_fluxes(
         land::SoilCanopyModel{FT, MM, SM, RM},
     ) where {
         FT,
@@ -249,7 +249,7 @@ models.
 This function is called each ode function evaluation, prior to the tendency function
 evaluation.
 """
-function make_update_boundary_fluxes(
+function make_update_explicit_boundary_fluxes(
     land::SoilCanopyModel{FT, MM, SM, RM},
 ) where {
     FT,
@@ -257,12 +257,13 @@ function make_update_boundary_fluxes(
     SM <: Soil.EnergyHydrology{FT},
     RM <: Canopy.CanopyModel{FT},
 }
-    update_soil_bf! = make_update_boundary_fluxes(land.soil)
-    update_soilco2_bf! = make_update_boundary_fluxes(land.soilco2)
-    update_canopy_bf! = make_update_boundary_fluxes(land.canopy)
+    update_soil_bf! = make_update_explicit_boundary_fluxes(land.soil)
+    update_soilco2_bf! = make_update_explicit_boundary_fluxes(land.soilco2)
+    update_canopy_bf! = make_update_explicit_boundary_fluxes(land.canopy)
     function update_boundary_fluxes!(p, Y, t)
         # update root extraction
         update_root_extraction!(p, Y, t, land)
+
         # Radiation
         lsm_radiant_energy_fluxes!(
             p,
@@ -277,6 +278,45 @@ function make_update_boundary_fluxes(
             land.soil.parameters.earth_param_set,
         )
 
+        update_soil_bf!(p, Y, t)
+        update_canopy_bf!(p, Y, t)
+        update_soilco2_bf!(p, Y, t)
+    end
+    return update_boundary_fluxes!
+end
+
+
+
+"""
+    make_update_implicit_boundary_fluxes(
+        land::SoilCanopyModel{FT, MM, SM, RM},
+    ) where {
+        FT,
+        MM <: Soil.Biogeochemistry.SoilCO2Model{FT},
+        SM <: Soil.RichardsModel{FT},
+        RM <: Canopy.CanopyModel{FT}
+        }
+
+A method which makes a function; the returned function
+updates the additional auxiliary variables for the integrated model,
+as well as updates the implicit_boundary auxiliary variables for all component
+models.
+
+This function is called each ode function evaluation, prior to the tendency function
+evaluation.
+"""
+function make_update_implicit_boundary_fluxes(
+    land::SoilCanopyModel{FT, MM, SM, RM},
+) where {
+    FT,
+    MM <: Soil.Biogeochemistry.SoilCO2Model{FT},
+    SM <: Soil.EnergyHydrology{FT},
+    RM <: Canopy.CanopyModel{FT},
+}
+    update_soil_bf! = make_update_implicit_boundary_fluxes(land.soil)
+    update_soilco2_bf! = make_update_implicit_boundary_fluxes(land.soilco2)
+    update_canopy_bf! = make_update_implicit_boundary_fluxes(land.canopy)
+    function update_boundary_fluxes!(p, Y, t)
         update_soil_bf!(p, Y, t)
         update_canopy_bf!(p, Y, t)
         update_soilco2_bf!(p, Y, t)

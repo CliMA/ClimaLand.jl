@@ -108,7 +108,7 @@ function RichardsModel{FT}(;
     RichardsModel{FT, typeof.(args)...}(args..., lateral_flow)
 end
 
-function make_update_boundary_fluxes(model::RichardsModel)
+function make_update_implicit_boundary_fluxes(model::RichardsModel)
     function update_boundary_fluxes!(p, Y, t)
         z = model.domain.fields.z
         Δz_top = model.domain.fields.Δz_top

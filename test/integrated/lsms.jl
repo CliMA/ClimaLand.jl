@@ -14,7 +14,7 @@ import ClimaLand:
     lsm_aux_types,
     lsm_aux_domain_names,
     make_compute_exp_tendency,
-    make_update_boundary_fluxes,
+    make_update_explicit_boundary_fluxes,
     make_update_aux,
     make_set_initial_cache,
     land_components,
@@ -61,11 +61,13 @@ using ClimaLand
             return update_aux!
         end
 
-        function ClimaLand.make_update_boundary_fluxes(::DummyModel{FT})
-            function update_aux!(p, Y, t)
+        function ClimaLand.make_update_explicit_boundary_fluxes(
+            ::DummyModel{FT},
+        )
+            function update_bf!(p, Y, t)
                 p.i1 .= FT(5.0)
             end
-            return update_aux!
+            return update_bf!
         end
 
         function ClimaLand.make_compute_exp_tendency(::DummyModel1{FT})

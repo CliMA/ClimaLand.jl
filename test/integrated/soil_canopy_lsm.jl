@@ -2,6 +2,7 @@ using Test
 import ClimaComms
 ClimaComms.@import_required_backends
 using ClimaCore
+import ClimaParams as CP
 using ClimaLand
 using ClimaLand.Soil
 using ClimaLand.Canopy

@@ -113,6 +113,35 @@ where the canopy temperature is modeled prognostically.
 """
 canopy_temperature(model::BigLeafEnergyModel, canopy, Y, p) = Y.canopy.energy.T
 
+function make_compute_exp_tendency(
+    model::BigLeafEnergyModel{FT},
+    canopy,
+) where {FT}
+    function compute_exp_tendency!(dY, Y, p, t)
+        area_index = p.canopy.biomass.area_index
+        ac_canopy = model.parameters.ac_canopy
+        # Energy Equation:
+        # (ρc_canopy h_canopy AI) ∂T∂t = -∑F
+        # or( ac_canopy AI)∂T∂t = -∑F
+        # where ∑F = F_sfc - F_bot, and both F_sfc and F_bot are per
+        # unit area ground [W/m^2].
+        # Because they are per unit area ground, we need the factor of
+        # area index on the LHF, as ac_canopy [J/m^2/K]
+        # is per unit area plant.
+
+        # d(energy.T) = - net_energy_flux / specific_heat_capacity
+        # To prevent dividing by zero, change AI" to
+        # "max(AI, eps(FT))"
+
+        @. dY.canopy.energy.T =
+            -(
+                -p.canopy.radiative_transfer.LW_n -
+                p.canopy.radiative_transfer.SW_n - p.canopy.energy.fa_energy_roots
+            ) / (ac_canopy * max(area_index.leaf + area_index.stem, eps(FT)))
+    end
+    return compute_exp_tendency!
+end
+
 function make_compute_imp_tendency(
     model::BigLeafEnergyModel{FT},
     canopy,
@@ -134,12 +163,8 @@ function make_compute_imp_tendency(
         # "max(AI, eps(FT))"
 
         @. dY.canopy.energy.T =
-            -(
-                -p.canopy.radiative_transfer.LW_n -
-                p.canopy.radiative_transfer.SW_n +
-                p.canopy.turbulent_fluxes.shf +
-                p.canopy.turbulent_fluxes.lhf - p.canopy.energy.fa_energy_roots
-            ) / (ac_canopy * max(area_index.leaf + area_index.stem, eps(FT)))
+            -(p.canopy.turbulent_fluxes.shf +
+              p.canopy.turbulent_fluxes.lhf) / (ac_canopy * max(area_index.leaf + area_index.stem, eps(FT)))
     end
     return compute_imp_tendency!
 end
@@ -206,7 +231,7 @@ function ClimaLand.make_compute_jacobian(
         earth_param_set = canopy.earth_param_set
         _T_freeze = LP.T_freeze(earth_param_set)
         _σ = LP.Stefan(earth_param_set)
-        @. ∂LW_n∂Tc = -2 * 4 * _σ * ϵ_c * Y.canopy.energy.T^3 # ≈ ϵ_ground = 1
+        @. ∂LW_n∂Tc = 0#-2 * 4 * _σ * ϵ_c * Y.canopy.energy.T^3 # ≈ ϵ_ground = 1
         @. ∂qc∂Tc = partial_q_sat_partial_T_liq(
             p.drivers.P,
             Y.canopy.energy.T - _T_freeze,

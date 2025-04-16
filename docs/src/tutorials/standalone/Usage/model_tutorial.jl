@@ -134,7 +134,7 @@ import ClimaLand:
     make_exp_tendency,
     make_compute_exp_tendency,
     make_update_aux,
-    make_update_boundary_fluxes,
+    make_update_explicit_boundary_fluxes,
     prognostic_vars,
     prognostic_types,
     prognostic_domain_names,
@@ -260,7 +260,9 @@ function ClimaLand.make_update_aux(model::RichardsTutorialModel)
     return update_aux!
 end;
 
-function ClimaLand.make_update_boundary_fluxes(model::RichardsTutorialModel)
+function ClimaLand.make_update_explicit_boundary_fluxes(
+    model::RichardsTutorialModel,
+)
     function update_boundary_fluxes!(p, Y, t)
         FT = ClimaLand.FTfromY(Y)
         p.soil.top_flux .= model.F_sfc
@@ -274,7 +276,7 @@ end;
 # ```julia
 # function make_exp_tendency(model::AbstractModel)
 #     update_aux! = make_update_aux(model)
-#     update_boundary_fluxes! = make_update_boundary_fluxes(model)
+#     update_boundary_fluxes! = make_update_explicit_boundary_fluxes(model)
 #     compute_exp_tendency! = make_compute_exp_tendency(model)
 #     function exp_tendency!(dY,Y,p,t)
 #         update_aux!(p,Y,t)

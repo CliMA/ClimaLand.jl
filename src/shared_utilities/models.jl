@@ -8,7 +8,8 @@ export AbstractModel,
     make_update_aux,
     initialize_prognostic,
     initialize_auxiliary,
-    make_update_boundary_fluxes,
+    make_update_explicit_boundary_fluxes,
+    make_update_implicit_boundary_fluxes,
     initialize_vars,
     initialize,
     prognostic_vars,
@@ -159,23 +160,47 @@ function make_update_aux(model::AbstractModel)
 end
 
 """
-    make_update_boundary_fluxes(model::AbstractModel)
+    make_update_explicit_boundary_fluxes(model::AbstractModel)
 
-Return an `update_boundary_fluxes!` function that updates the auxiliary parameters in `p`
-corresponding to boundary fluxes or interactions between componets..
+Return an `update_explicit_boundary_fluxes!` function that updates the variables in `p`
+corresponding to boundary fluxes or interactions between components.
+
+These will be evaluated at the current time step for all prognostic variables.
 """
-function make_update_boundary_fluxes(model::AbstractModel)
-    function update_boundary_fluxes!(p, Y, t) end
-    return update_boundary_fluxes!
+function make_update_explicit_boundary_fluxes(model::AbstractModel)
+    function update_explicit_boundary_fluxes!(p, Y, t) end
+    return update_explicit_boundary_fluxes!
+end
+
+"""
+    make_update_implicit_boundary_fluxes(model::AbstractModel)
+
+Return an `update_implicit_boundary_fluxes!` function that updates the variables in `p`
+corresponding to boundary fluxes or interactions between components.
+
+These will be evaluated at the next time step for prognostic variables 
+with nonzero entries in the Jacobian, but at the current timestep for 
+prognostic variables without contributes to the Jacobian. 
+"""
+function make_update_implicit_boundary_fluxes(model::AbstractModel)
+    function update_implicit_boundary_fluxes!(p, Y, t) end
+    return update_implicit_boundary_fluxes!
 end
 
 
 """
      make_update_cache(model::AbstractModel)
 
-A helper function which updates all cache variables of a model;
-currently only used in `set_initial_cache` since not all
-cache variables are updated at the same time.
+A helper function which updates all cache variables of a model
+required for a tendency evaluation, so that values are known
+prior to any simulation step!.
+
+
+Note that the initialized values are slightly inconsistent, because
+the implicitly treated terms are also evaluated using the initial
+value of Y(t). However, this is currently only used in 
+`set_initial_cache`. When tendencies are actually computed, the correct
+treatment of implicit vs explicit variabels is handled.
 """
 function make_update_cache(model::AbstractModel)
     # if not forced using atmospheric/radiatiave drivers
@@ -183,11 +208,15 @@ function make_update_cache(model::AbstractModel)
     drivers = get_drivers(model)
     update_drivers! = make_update_drivers(drivers)
     update_aux! = make_update_aux(model)
-    update_boundary_fluxes! = make_update_boundary_fluxes(model)
+    update_explicit_boundary_fluxes! =
+        make_update_explicit_boundary_fluxes(model)
+    update_implicit_boundary_fluxes! =
+        make_update_implicit_boundary_fluxes(model)
     function update_cache!(p, Y, t)
         update_drivers!(p, t)
         update_aux!(p, Y, t)
-        update_boundary_fluxes!(p, Y, t)
+        update_explicit_boundary_fluxes!(p, Y, t)
+        update_implicit_boundary_fluxes!(p, Y, t)
     end
     return update_cache!
 end
@@ -212,10 +241,11 @@ updates the prognostic state of variables that are stepped implicitly.
 function make_imp_tendency(model::AbstractImExModel)
     compute_imp_tendency! = make_compute_imp_tendency(model)
     update_aux! = make_update_aux(model)
-    update_boundary_fluxes! = make_update_boundary_fluxes(model)
+    update_implicit_boundary_fluxes! =
+        make_update_implicit_boundary_fluxes(model)
     function imp_tendency!(dY, Y, p, t)
         update_aux!(p, Y, t)
-        update_boundary_fluxes!(p, Y, t)
+        update_implicit_boundary_fluxes!(p, Y, t)
         compute_imp_tendency!(dY, Y, p, t)
     end
     return imp_tendency!
@@ -245,10 +275,11 @@ updates the prognostic state of variables that are stepped explicitly.
 function make_exp_tendency(model::AbstractModel)
     compute_exp_tendency! = make_compute_exp_tendency(model)
     update_aux! = make_update_aux(model)
-    update_boundary_fluxes! = make_update_boundary_fluxes(model)
+    update_explicit_boundary_fluxes! =
+        make_update_explicit_boundary_fluxes(model)
     function exp_tendency!(dY, Y, p, t)
         update_aux!(p, Y, t)
-        update_boundary_fluxes!(p, Y, t)
+        update_explicit_boundary_fluxes!(p, Y, t)
         compute_exp_tendency!(dY, Y, p, t)
     end
     return exp_tendency!
