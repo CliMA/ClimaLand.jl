@@ -179,7 +179,7 @@ steps:
         agents:
           slurm_ntasks: 1
           slurm_gpus: 1
-          slurm_mem: 16G
+          slurm_mem: 32G
         env:
           CLIMACOMMS_DEVICE: "CUDA"
 
