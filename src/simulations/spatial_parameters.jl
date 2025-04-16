@@ -352,6 +352,16 @@ function default_spatially_varying_soil_parameters(
         regridder_kwargs = (; extrapolation_bc,),
     )
 
+    soilgrid_mask = SpaceVaryingInput(
+        soilgrids_artifact_path,
+        "nu_ss_om",
+        subsurface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc,),
+        file_reader_kwargs = (; preprocess_func = (data) -> data > 0,),
+    )
+    ν_ss_om .= masked_to_value.(ν_ss_om, soil_params_mask, 0.02)
+
     ν_ss_quartz = SpaceVaryingInput(
         soilgrids_artifact_path,
         "nu_ss_sand",
@@ -359,6 +369,7 @@ function default_spatially_varying_soil_parameters(
         regridder_type,
         regridder_kwargs = (; extrapolation_bc,),
     )
+    ν_ss_quartz .= masked_to_value.(ν_ss_quartz, soil_params_mask, 0.5)
 
     ν_ss_gravel = SpaceVaryingInput(
         soilgrids_artifact_path,
@@ -367,6 +378,7 @@ function default_spatially_varying_soil_parameters(
         regridder_type,
         regridder_kwargs = (; extrapolation_bc,),
     )
+    ν_ss_gravel .= masked_to_value.(ν_ss_gravel, soil_params_mask, 0.5)
     # we require that the sum of these be less than 1 and equal to or bigger than zero.
     # The input should satisfy this almost exactly, but the regridded values may not.
     # Values of zero are OK here, so we dont need to apply any masking
