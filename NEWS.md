@@ -3,10 +3,11 @@ ClimaLand.jl Release Notes
 
 main
 -------
+- Add capability to step some sources implicitly PR[#1113](https://github.com/CliMA/ClimaLand.jl/pull/1113)
+- add masking of ocean PR[#1050](https://github.com/CliMA/ClimaLand.jl/pull/1050)
 
 v0.5.13
 -------
-- add masking of ocean PR[#1050](https://github.com/CliMA/ClimaLand.jl/pull/1050)
 - fix for GPU compatibility of integrated land model coupled
   flux calculations PR[#1093](https://github.com/CliMA/ClimaLand.jl/pull/1093)
 

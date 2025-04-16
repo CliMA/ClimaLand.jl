@@ -142,6 +142,7 @@ lsm_aux_domain_names(m::SoilSnowModel) = (
     :surface,
 )
 
+
 """
     make_update_boundary_fluxes(
         land::SoilSnowModel{FT, SnM, SoM},
@@ -165,11 +166,11 @@ completely melts in a step. In this case, that excess must go to the soil for co
 3. Update the soil boundary fluxes use precomputed ground heat flux and excess fluxes from snow.
 4. Compute the net flux for the atmosphere, which is useful for assessing conservation.
 """
-function make_update_boundary_fluxes(
+function make_update_explicit_boundary_fluxes(
     land::SoilSnowModel{FT, SnM, SoM},
 ) where {FT, SnM <: Snow.SnowModel{FT}, SoM <: Soil.EnergyHydrology{FT}}
-    update_soil_bf! = make_update_boundary_fluxes(land.soil)
-    update_snow_bf! = make_update_boundary_fluxes(land.snow)
+    update_soil_bf! = make_update_explicit_boundary_fluxes(land.soil)
+    update_snow_bf! = make_update_explicit_boundary_fluxes(land.snow)
     function update_boundary_fluxes!(p, Y, t)
         earth_param_set = land.soil.parameters.earth_param_set
         # First compute the ground heat flux in place:
@@ -216,6 +217,43 @@ function make_update_boundary_fluxes(
                 p.soil.turbulent_fluxes.vapor_flux_ice
             ) +
             p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.vapor_flux
+        return nothing
+    end
+    return update_boundary_fluxes!
+end
+
+
+"""
+    make_update_implicit_boundary_fluxes(
+        land::SoilSnowModel{FT, SnM, SoM},
+    ) where {
+        FT,
+        SnM <: Snow.SnowModel{FT},
+        SoM <: Soil.EnergyHydrology{FT},
+        }
+
+A method which makes a function; the returned function updates the additional
+auxiliary variables for the integrated model, as well as updates the boundary
+auxiliary variables for all component models.
+
+This function is called each ode function evaluation, prior to the tendency function
+evaluation.
+
+In this method, we
+1. Compute the ground heat flux between soil and snow. This is required to update the snow and soil boundary fluxes
+2. Update the snow boundary fluxes, which also computes any excess flux of energy or water which occurs when the snow
+completely melts in a step. In this case, that excess must go to the soil for conservation
+3. Update the soil boundary fluxes use precomputed ground heat flux and excess fluxes from snow.
+4. Compute the net flux for the atmosphere, which is useful for assessing conservation.
+"""
+function make_update_implicit_boundary_fluxes(
+    land::SoilSnowModel{FT, SnM, SoM},
+) where {FT, SnM <: Snow.SnowModel{FT}, SoM <: Soil.EnergyHydrology{FT}}
+    update_soil_bf! = make_update_implicit_boundary_fluxes(land.soil)
+    update_snow_bf! = make_update_implicit_boundary_fluxes(land.snow)
+    function update_boundary_fluxes!(p, Y, t)
+        update_snow_bf!(p, Y, t)
+        update_soil_bf!(p, Y, t)
         return nothing
     end
     return update_boundary_fluxes!
@@ -390,9 +428,15 @@ end
     SoilSublimationwithSnow{FT} <: AbstractSoilSource{FT}
 
 Soil Sublimation source type. Used to defined a method
-of `ClimaLand.source!` for soil sublimation with snow present.
+of `ClimaLand.source!` for soil sublimation with snow present;
+treated implicitly
+in ϑ_l, ρe_int but explicitly in θ_i.
+
 """
-struct SoilSublimationwithSnow{FT} <: ClimaLand.Soil.AbstractSoilSource{FT} end
+@kwdef struct SoilSublimationwithSnow{FT} <:
+              ClimaLand.Soil.AbstractSoilSource{FT}
+    explicit::Bool = false
+end
 
 """
      source!(dY::ClimaCore.Fields.FieldVector,
@@ -419,7 +463,10 @@ function ClimaLand.source!(
     @. dY.soil.θ_i +=
         -p.soil.turbulent_fluxes.vapor_flux_ice *
         (1 - p.snow.snow_cover_fraction) *
-        _ρ_l / _ρ_i * heaviside(z + 2 * Δz_top) # only apply to top layer, recall that z is negative
+        _ρ_l / _ρ_i * heaviside(z + 2 * Δz_top) / (2 * Δz_top) # only apply to top layer, recall that z is negative
+    @. dY.soil.∫F_vol_liq_water_dt +=
+        -p.soil.turbulent_fluxes.vapor_flux_ice *
+        (1 - p.snow.snow_cover_fraction) # The integral of the source is designed to be this
     return nothing
 end
 

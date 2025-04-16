@@ -163,6 +163,10 @@ The runoff flux is given by Equation 12 of Niu et al. (2005),
 "A simple TOPMODEL-based runoff parameterization (SIMTOP) for
 use in global climate models".
 
+This is currently treated implicitly (evaluated at the next value of
+ϑ_l) but not included in the Jacobian approximation. This is because
+`update_runoff` is called as part of the implicit tendency.
+
 $(DocStringExtensions.FIELDS)
 """
 struct TOPMODELSubsurfaceRunoff{FT} <: AbstractSoilSource{FT}
@@ -170,6 +174,10 @@ struct TOPMODELSubsurfaceRunoff{FT} <: AbstractSoilSource{FT}
     R_sb::FT
     "A calibrated parameter defining how subsurface runoff decays with depth to water table (1/m ; calibrated)"
     f_over::FT
+    "Explicit vs implicit stepping"
+    explicit::Bool
+    TOPMODELSubsurfaceRunoff{FT}(R_sb, f_over) where {FT} =
+        new{FT}(R_sb, f_over, false)
 end
 
 """
@@ -290,7 +298,7 @@ function ClimaLand.source!(
     h∇ = p.soil.h∇
     ϵ = eps(FT)
     @. dY.soil.ϑ_l -= (p.soil.R_ss / max(h∇, ϵ)) * p.soil.is_saturated # apply only to saturated layers
-    @. p.soil.∫S_θ_liq_dz -= p.soil.R_ss # the integral is designed to be this flux
+    @. dY.soil.∫F_vol_liq_water_dt -= p.soil.R_ss # the integral is designed to be this flux
 end
 
 """
