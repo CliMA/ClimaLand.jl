@@ -23,6 +23,8 @@ import Random # to use the same seed each run in the tutorial, optional
 import Logging
 Logging.disable_logging(Logging.Warn); # hide julia warnings
 
+include("run_fluxnet.jl")
+
 # ## Write a function returning our model LHF output given the parameters to calibrate
 function Ozark_LatentHeatFlux(params) # params is a 2 element Array
     g1, g0 = params
