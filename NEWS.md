@@ -3,6 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 -------
+- Add capability to step some sources implicitly PR[#1113](https://github.com/CliMA/ClimaLand.jl/pull/1113)
 
 v0.15.14
 -------
