@@ -324,7 +324,7 @@ for FT in (Float32, Float64)
 
         Δz = FT(1.0)
         τ = thermal_time(parameters.ρc_ds, Δz, parameters.κ_dry)
-        @test τ == parameters.ρc_ds * Δz^2 / parameters.κ_dry
+        @test τ == 3 * parameters.ρc_ds * Δz^2 / parameters.κ_dry
         θ_l = FT.([0.11, 0.15, ν])
         θ_i = FT(0.0)
         T = FT(270)

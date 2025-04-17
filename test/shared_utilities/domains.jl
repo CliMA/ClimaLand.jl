@@ -41,7 +41,7 @@ FT = Float32
         nelements = n_elements_sphere,
         npolynomial = npoly_sphere,
     )
-    @test shell.fields.Δz_min == depth / 20 / 2
+    @test shell.fields.Δz_min == depth / 20
     @test shell.fields.depth == depth
     @test shell.fields.z ==
           ClimaCore.Fields.coordinate_field(shell.space.subsurface).z
@@ -82,7 +82,7 @@ FT = Float32
         Array(parent(shell_coords_stretch.z))[:, end, end, end, end][1:(end - 1)]
     @test abs(dz[1] - 0.3) < 1e-1
     @test abs(dz[end] - 0.03) < 1e-2
-    @test shell.fields.Δz_min == minimum(shell.fields.Δz_top)
+    @test shell.fields.Δz_min == minimum(shell.fields.Δz)
 
 
     # Spherical Surface

@@ -158,7 +158,7 @@ init_soil!(Y, z, soil.parameters);
 # Timestepping:
 t0 = Float64(0)
 tf = Float64(24 * 3600 * 4)
-dt = Float64(5)
+dt = Float64(10)
 
 # We also set the initial conditions of the cache here:
 set_initial_cache! = make_set_initial_cache(soil)
@@ -175,7 +175,7 @@ timestepper = CTS.ARS111()
 ode_algo = CTS.IMEXAlgorithm(
     timestepper,
     CTS.NewtonsMethod(
-        max_iters = 1,
+        max_iters = 3,
         update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
     ),
 )
