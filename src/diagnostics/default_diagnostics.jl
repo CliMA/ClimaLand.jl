@@ -313,7 +313,6 @@ function default_diagnostics(
             "swd",
             "snow",
             "qsfc",
-            "ws",
             "infil",
             "shc",
             "stc",
