@@ -298,7 +298,7 @@ function ClimaLand.source!(
     h∇ = p.soil.h∇
     ϵ = eps(FT)
     @. dY.soil.ϑ_l -= (p.soil.R_ss / max(h∇, ϵ)) * p.soil.is_saturated # apply only to saturated layers
-    @. p.soil.∫S_θ_liq_dz -= p.soil.R_ss # the integral is designed to be this flux
+    @. dY.soil.∫F_vol_liq_water_dt -= p.soil.R_ss # the integral is designed to be this flux
 end
 
 """

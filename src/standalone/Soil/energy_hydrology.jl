@@ -198,8 +198,8 @@ function ClimaLand.make_compute_exp_tendency(
     function compute_exp_tendency!(dY, Y, p, t)
         z = model.domain.fields.z
 
-        p.soil.∫S_θ_liq_dz .= 0
-        p.soil.∫S_ρe_int_dz .= 0
+        dY.soil.∫F_vol_liq_water_dt .= 0
+        dY.soil.∫F_e_dt .= 0
 
         # Don't update the prognostic variables we're stepping implicitly
         dY.soil.ϑ_l .= 0
@@ -218,15 +218,13 @@ function ClimaLand.make_compute_exp_tendency(
             p,
             z,
         )
-        # Explicitly treated source terms, also update the vertical integral of the source: p.soil.∫S_θ_liq_dz, p.soil.∫S_ρe_int_dz
-        # These change ∫S and dY by +=, which is why we zero them out above.
+        # Explicitly treated source terms
+        # These change dY by +=, which is why we ".=" them above
         for src in model.sources
             if src.explicit
                 ClimaLand.source!(dY, src, Y, p, model)
             end
         end
-        dY.soil.∫F_vol_liq_water_dt .= p.soil.∫S_θ_liq_dz # source terms are stepped explicitly
-        dY.soil.∫F_e_dt .= p.soil.∫S_ρe_int_dz # source terms are stepped explicitly
     end
     return compute_exp_tendency!
 end
@@ -295,17 +293,13 @@ function ClimaLand.make_compute_imp_tendency(
 
         @. dY.soil.θ_i = 0
 
-        # Source terms, also update the vertical integral of the source: p.soil.∫S_θ_liq_dz, p.soil.∫S_ρe_int_dz
-        p.soil.∫S_θ_liq_dz .= 0
-        p.soil.∫S_ρe_int_dz .= 0
-        # These change ∫S and dY by +=, which is why we zero them out above.
+        # Source terms
+        # These change dY by +=, which is why we ".=" above
         for src in model.sources
             if !src.explicit
                 ClimaLand.source!(dY, src, Y, p, model)
             end
         end
-        @. dY.soil.∫F_vol_liq_water_dt += p.soil.∫S_θ_liq_dz # these source terms are stepped implicitly
-        @. dY.soil.∫F_e_dt += p.soil.∫S_ρe_int_dz # these source terms are stepped implicitly
     end
     return compute_imp_tendency!
 end
@@ -506,8 +500,6 @@ of `EnergyHydrology`.
 ClimaLand.auxiliary_vars(soil::EnergyHydrology) = (
     :total_water,
     :total_energy,
-    :∫S_θ_liq_dz,
-    :∫S_ρe_int_dz,
     :K,
     :ψ,
     :θ_l,
@@ -534,8 +526,6 @@ ClimaLand.auxiliary_types(soil::EnergyHydrology{FT}) where {FT} = (
     FT,
     FT,
     FT,
-    FT,
-    FT,
     boundary_var_types(
         soil,
         soil.boundary_conditions.top,
@@ -549,8 +539,6 @@ ClimaLand.auxiliary_types(soil::EnergyHydrology{FT}) where {FT} = (
 )
 
 ClimaLand.auxiliary_domain_names(soil::EnergyHydrology) = (
-    :surface,
-    :surface,
     :surface,
     :surface,
     :subsurface,
@@ -660,7 +648,8 @@ end
 """
     PhaseChange{FT} <: AbstractSoilSource{FT}
 
-PhaseChange source type; treated explicitly.
+PhaseChange source type; treated explicitly in all
+prognostic variables.
 """
 @kwdef struct PhaseChange{FT} <: AbstractSoilSource{FT}
     explicit::Bool = true
@@ -675,6 +664,7 @@ end
              )
 
 Computes the source terms for phase change.
+explicilty
 
 """
 function ClimaLand.source!(
@@ -743,7 +733,7 @@ function ClimaLand.source!(
             _grav,
         )
 
-    # These source/sink terms conserve total water, so we do not include them in ∫S_θ_liq_dz because their
+    # These source/sink terms conserve total water, so we do not include them when checking conservation because their
     # contribution is zero by design.
 end
 
@@ -753,9 +743,7 @@ end
 
 Soil Sublimation source type. Used to defined a method
 of `ClimaLand.source!` for soil sublimation; treated implicitly
-in ϑ_l but explicitly in θ_i. This is because we compute
-sublimation and evaporation as part of the boundary flux
-computation for ϑ_l, which occurs in the implicit tendency.
+in ϑ_l, ρe_int but explicitly in θ_i.
 """
 @kwdef struct SoilSublimation{FT} <: AbstractSoilSource{FT}
     explicit::Bool = false
@@ -786,7 +774,7 @@ function ClimaLand.source!(
     @. dY.soil.θ_i +=
         -p.soil.turbulent_fluxes.vapor_flux_ice * _ρ_l / _ρ_i *
         heaviside(z + 2 * Δz_top) / (2 * Δz_top) # only apply to top layer, recall that z is negative
-    @. p.soil.∫S_θ_liq_dz += -p.soil.turbulent_fluxes.vapor_flux_ice # The integral of the source is designed to be this
+    @. dY.soil.∫F_vol_liq_water_dt += -p.soil.turbulent_fluxes.vapor_flux_ice # The integral of the source is designed to be this
 end
 
 ## The functions below are required to be defined

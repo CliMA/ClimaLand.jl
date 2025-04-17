@@ -180,15 +180,13 @@ function ClimaLand.make_compute_imp_tendency(model::RichardsModel)
         @. dY.soil.ϑ_l =
             -(divf2c_water(-interpc2f(p.soil.K) * gradc2f_water(p.soil.ψ + z)))
 
-        # Source terms, also update the vertical integral of the source: p.soil.∫S_θ_liq_dz
-        p.soil.∫S_θ_liq_dz .= 0
-        # These change ∫S and dY by +=, which is why we zero them out above.
+        # Source terms
+        # These change dY by +=, which is why we ".=" above
         for src in model.sources
             if !src.explicit
                 ClimaLand.source!(dY, src, Y, p, model)
             end
         end
-        @. dY.soil.∫F_vol_liq_water_dt += p.soil.∫S_θ_liq_dz # these source terms are stepped implicitly
     end
     return compute_imp_tendency!
 end
@@ -211,7 +209,6 @@ function ClimaLand.make_compute_exp_tendency(model::Soil.RichardsModel)
         # set dY before updating it
         dY.soil.ϑ_l .= 0
         dY.soil.∫F_vol_liq_water_dt .= 0
-        p.soil.∫S_θ_liq_dz .= 0
         z = model.domain.fields.z
 
         horizontal_components!(
@@ -223,14 +220,13 @@ function ClimaLand.make_compute_exp_tendency(model::Soil.RichardsModel)
             z,
         )
 
-        # Explicitly treated source terms, also update the vertical integral of the source: p.soil.∫S_θ_liq_dz
-        # These change ∫S and dY by +=, which is why we zero them out above.
+        # Explicitly treated source terms
+        # These change dY by +=, which is why we ".=" above
         for src in model.sources
             if src.explicit
                 ClimaLand.source!(dY, src, Y, p, model)
             end
         end
-        dY.soil.∫F_vol_liq_water_dt .= p.soil.∫S_θ_liq_dz # source terms are stepped explictly
     end
     return compute_exp_tendency!
 end
@@ -285,7 +281,6 @@ of `RichardsModel`.
 function ClimaLand.auxiliary_vars(soil::RichardsModel)
     return (
         :total_water,
-        :∫S_θ_liq_dz,
         :K,
         :ψ,
         boundary_vars(soil.boundary_conditions.top, ClimaLand.TopBoundary())...,
@@ -304,7 +299,6 @@ of `RichardsModel`.
 """
 function ClimaLand.auxiliary_domain_names(soil::RichardsModel)
     return (
-        :surface,
         :surface,
         :subsurface,
         :subsurface,
@@ -327,7 +321,6 @@ of `RichardsModel`.
 """
 function ClimaLand.auxiliary_types(soil::RichardsModel{FT}) where {FT}
     return (
-        FT,
         FT,
         FT,
         FT,
