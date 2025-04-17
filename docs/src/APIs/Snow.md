@@ -36,6 +36,7 @@ ClimaLand.Snow.AtmosDrivenSnowBC
 ## Snow parameterizations
 
 ```@docs
+ClimaLand.Snow.WuWuSnowCoverFractionModel
 ClimaLand.Snow.ZenithAngleAlbedoModel
 ClimaLand.Snow.ConstantAlbedoModel
 ```
