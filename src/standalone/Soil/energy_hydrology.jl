@@ -1091,7 +1091,7 @@ function soil_compute_turbulent_fluxes_at_a_point(
             q_sat_ice,
         )
         if q_air < q_sat_ice
-            β *= (θ_i_sfc / ν_sfc)^2
+            β *= (θ_i_sfc / ν_sfc)^4
         end
     end
 
