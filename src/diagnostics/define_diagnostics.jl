@@ -59,6 +59,7 @@ function define_diagnostics!(land_model)
         comments = "The fraction of downwelling shortwave radiation reflected by the land surface.",
         compute! = (out, Y, p, t) ->
             compute_sw_albedo!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     # Net radiation
@@ -70,6 +71,7 @@ function define_diagnostics!(land_model)
         comments = "Difference between downwelling and upwelling shortwave and longwave radiation at the land surface.",
         compute! = (out, Y, p, t) ->
             compute_net_radiation!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     # Bucket Surface temperature
@@ -81,6 +83,7 @@ function define_diagnostics!(land_model)
         comments = "Temperature of the bucket-land surface.",
         compute! = (out, Y, p, t) ->
             compute_surface_temperature!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     # Latent heat flux
@@ -92,6 +95,7 @@ function define_diagnostics!(land_model)
         comments = "Exchange of energy at the land-atmosphere interface due to water evaporation or sublimation.",
         compute! = (out, Y, p, t) ->
             compute_latent_heat_flux!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     # Aerodynamic resistance
@@ -103,6 +107,7 @@ function define_diagnostics!(land_model)
         comments = "Effiency of turbulent transport controlling the land-atmosphere exchange of sensible and latent heat.",
         compute! = (out, Y, p, t) ->
             compute_aerodynamic_resistance!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     # Sensible heat flux
@@ -114,6 +119,7 @@ function define_diagnostics!(land_model)
         comments = "Exchange of energy at the land-atmosphere interface due to temperature difference.",
         compute! = (out, Y, p, t) ->
             compute_sensible_heat_flux!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     # Vapor flux
@@ -125,6 +131,7 @@ function define_diagnostics!(land_model)
         comments = "Flux of water from the land surface to the atmosphere. E.g., evaporation or sublimation.",
         compute! = (out, Y, p, t) ->
             compute_vapor_flux!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     # Surface air density
@@ -136,6 +143,7 @@ function define_diagnostics!(land_model)
         comments = "Density of air at the land-atmosphere interface.",
         compute! = (out, Y, p, t) ->
             compute_surface_air_density!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     ## Stored in Y (prognostic or state variables) ##
@@ -149,6 +157,7 @@ function define_diagnostics!(land_model)
         comments = "Soil temperature at multiple soil depth. (depth resolved)",
         compute! = (out, Y, p, t) ->
             compute_soil_temperature!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     # Surbsurface water storage
@@ -160,6 +169,7 @@ function define_diagnostics!(land_model)
         comments = "Soil water content.",
         compute! = (out, Y, p, t) ->
             compute_subsurface_water_storage!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     # Surface water content
@@ -171,6 +181,7 @@ function define_diagnostics!(land_model)
         comments = "Water at the soil surface.",
         compute! = (out, Y, p, t) ->
             compute_surface_water_content!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     # Surface snow water content
@@ -182,6 +193,7 @@ function define_diagnostics!(land_model)
         comments = "Snow at the soil surface, expressed in water equivalent.",
         compute! = (out, Y, p, t) ->
             compute_snow_water_equivalent!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     ###### SoilCanopyModel ######
@@ -200,6 +212,7 @@ function define_diagnostics!(land_model)
         comments = "The fluorescence of leaves induced by solar radiation at 755nm. This quantity is correlated with photosynthesis activity.",
         compute! = (out, Y, p, t) ->
             compute_solar_induced_fluorescence!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     ### Canopy - Autotrophic respiration
@@ -212,6 +225,7 @@ function define_diagnostics!(land_model)
         comments = "The canopy autotrophic respiration, the sum of leaves, stems and roots respiration.",
         compute! = (out, Y, p, t) ->
             compute_autotrophic_respiration!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     ### Canopy - Conductance
@@ -224,6 +238,7 @@ function define_diagnostics!(land_model)
         comments = "The conductance of leaves. This depends on stomatal opening. It varies with factors such as soil moisture or atmospheric water demand.",
         compute! = (out, Y, p, t) ->
             compute_stomatal_conductance!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     # Canopy transpiration
@@ -235,6 +250,7 @@ function define_diagnostics!(land_model)
         comments = "The water evaporated from the canopy due to leaf transpiration (flux of water volume, m^3 of water per m^2 of ground).",
         compute! = (out, Y, p, t) ->
             compute_canopy_transpiration!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     ### Canopy - Energy
@@ -248,6 +264,7 @@ function define_diagnostics!(land_model)
         comments = "The energy used for canopy transpiration.",
         compute! = (out, Y, p, t) ->
             compute_canopy_latent_heat_flux!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     # Canopy sensible heat flux
@@ -259,6 +276,7 @@ function define_diagnostics!(land_model)
         comments = "The energy used for canopy temperature change.",
         compute! = (out, Y, p, t) ->
             compute_canopy_sensible_heat_flux!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     ### Canopy - Hydraulics
@@ -273,6 +291,7 @@ function define_diagnostics!(land_model)
         comments = "The water potential of a leaf.",
         compute! = (out, Y, p, t) ->
             compute_leaf_water_potential!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
     #=
         # Flux per ground area
@@ -296,6 +315,7 @@ function define_diagnostics!(land_model)
         comments = "Flux of water volume per m^2 of root per second, multiplied by the area index (root area/ground area).",
         compute! = (out, Y, p, t) ->
             compute_root_flux_per_ground_area!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     # Leaf area index
@@ -307,6 +327,7 @@ function define_diagnostics!(land_model)
         comments = "The area index of leaves, expressed in surface area of leaves per surface area of ground.",
         compute! = (out, Y, p, t) ->
             compute_leaf_area_index!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     # Moisture stress factor
@@ -318,6 +339,7 @@ function define_diagnostics!(land_model)
         comments = "Sensitivity of plants conductance to soil water content. Unitless",
         compute! = (out, Y, p, t) ->
             compute_moisture_stress_factor!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     # Root area index
@@ -329,6 +351,7 @@ function define_diagnostics!(land_model)
         comments = "The area index of roots, expressed in surface area of roots per surface area of ground.",
         compute! = (out, Y, p, t) ->
             compute_root_area_index!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     # Stem area index
@@ -340,6 +363,7 @@ function define_diagnostics!(land_model)
         comments = "The area index of stems, expressed in surface area of stems per surface area of ground.",
         compute! = (out, Y, p, t) ->
             compute_stem_area_index!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     ### Canopy - Photosynthesis
@@ -352,6 +376,7 @@ function define_diagnostics!(land_model)
         comments = "Net photosynthesis (carbon assimilation) of the canopy. This is equivalent to leaf net assimilation scaled to the canopy level.",
         compute! = (out, Y, p, t) ->
             compute_photosynthesis_net_canopy!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     # Leaf net photosynthesis
@@ -363,6 +388,7 @@ function define_diagnostics!(land_model)
         comments = "Net photosynthesis (carbon assimilation) of a leaf, computed for example by the Farquhar model.",
         compute! = (out, Y, p, t) ->
             compute_photosynthesis_net_leaf!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     # Leaf respiration
@@ -374,6 +400,7 @@ function define_diagnostics!(land_model)
         comments = "Leaf respiration, called dark respiration because usually measured in the abscence of radiation.",
         compute! = (out, Y, p, t) ->
             compute_respiration_leaf!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     # Vcmax25
@@ -384,6 +411,7 @@ function define_diagnostics!(land_model)
         units = "mol CO2 m^-2 s^-1",
         comments = "The parameter vcmax at 25 degree celsius. Important for the Farquhar model of leaf photosynthesis.",
         compute! = (out, Y, p, t) -> compute_vcmax25!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     ### Canopy - Radiative Transfer
@@ -396,6 +424,7 @@ function define_diagnostics!(land_model)
         comments = "The amount of near infrared radiation reaching the canopy.",
         compute! = (out, Y, p, t) ->
             compute_near_infrared_radiation_down!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     # ANIR - absorbed near infrared radiation
@@ -407,6 +436,7 @@ function define_diagnostics!(land_model)
         comments = "The amount of near infrared radiation absorbed by the canopy.",
         compute! = (out, Y, p, t) ->
             compute_near_infrared_radiation_absorbed!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     # RNIR - reflected near infrared radiation
@@ -424,6 +454,7 @@ function define_diagnostics!(land_model)
                 t,
                 land_model,
             ),
+        default_diagnostic = true,
     )
 
     # TNIR - transmitted near infrared radiation
@@ -441,6 +472,7 @@ function define_diagnostics!(land_model)
                 t,
                 land_model,
             ),
+        default_diagnostic = true,
     )
 
     # PAR - photosynthetically active radiation
@@ -458,6 +490,7 @@ function define_diagnostics!(land_model)
                 t,
                 land_model,
             ),
+        default_diagnostic = true,
     )
 
     # APAR - absorbed photosynthetically active radiation
@@ -475,6 +508,7 @@ function define_diagnostics!(land_model)
                 t,
                 land_model,
             ),
+        default_diagnostic = true,
     )
 
     # RPAR - reflected photosynthetically active radiation
@@ -492,6 +526,7 @@ function define_diagnostics!(land_model)
                 t,
                 land_model,
             ),
+        default_diagnostic = true,
     )
 
     # TPAR - transmitted photosynthetically active radiation
@@ -509,6 +544,7 @@ function define_diagnostics!(land_model)
                 t,
                 land_model,
             ),
+        default_diagnostic = true,
     )
 
     # Net longwave radiation
@@ -520,6 +556,7 @@ function define_diagnostics!(land_model)
         comments = "The net (down minus up) longwave radiation at the surface.",
         compute! = (out, Y, p, t) ->
             compute_radiation_longwave_net!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     # Net shortwave radiation
@@ -531,6 +568,7 @@ function define_diagnostics!(land_model)
         comments = "The net (down minus up) shortwave radiation at the surface.",
         compute! = (out, Y, p, t) ->
             compute_radiation_shortwave_net!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     ## Drivers Module ##
@@ -543,6 +581,7 @@ function define_diagnostics!(land_model)
         comments = "Mass of organic carbon per volume of soil. (depth resolved)",
         compute! = (out, Y, p, t) ->
             compute_soil_organic_carbon!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     # Air pressure
@@ -554,6 +593,7 @@ function define_diagnostics!(land_model)
         comments = "The air pressure.",
         compute! = (out, Y, p, t) ->
             compute_pressure!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     # Rainfall
@@ -565,6 +605,7 @@ function define_diagnostics!(land_model)
         comments = "Precipitation of liquid water volume (m^3 of water per m^2 of ground per second).",
         compute! = (out, Y, p, t) ->
             compute_rainfall!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     # Net longwave radiation
@@ -576,6 +617,7 @@ function define_diagnostics!(land_model)
         comments = "The downwelling longwave radiation at the surface.",
         compute! = (out, Y, p, t) ->
             compute_radiation_longwave_down!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     # Net shortwave radiation
@@ -587,6 +629,7 @@ function define_diagnostics!(land_model)
         comments = "The downwelling shortwave radiation at the surface.",
         compute! = (out, Y, p, t) ->
             compute_radiation_shortwave_down!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     # Snowfall
@@ -598,6 +641,7 @@ function define_diagnostics!(land_model)
         comments = "The precipitation of snow in liquid water volume (m^3 of water per m^2 of ground per second).",
         compute! = (out, Y, p, t) ->
             compute_snowfall!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     # Specific humidity
@@ -609,6 +653,7 @@ function define_diagnostics!(land_model)
         comments = "Ratio of water vapor mass to total moist air parcel mass.",
         compute! = (out, Y, p, t) ->
             compute_specific_humidity!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     # Wind speed
@@ -620,6 +665,7 @@ function define_diagnostics!(land_model)
         comments = "The average wind speed.",
         compute! = (out, Y, p, t) ->
             compute_wind_speed!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     ## Soil Module ##
@@ -632,6 +678,7 @@ function define_diagnostics!(land_model)
         comments = "The flux of liquid water volume into the soil (m^3 of water per m^2 of ground per second).",
         compute! = (out, Y, p, t) ->
             compute_infiltration!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     # Soil albedo
@@ -643,6 +690,7 @@ function define_diagnostics!(land_model)
         comments = "The mean of PAR and NIR albedo, which are calculated as α_soil_band = α_band_dry * (1 - S_e) + α_band_wet * S_e.",
         compute! = (out, Y, p, t) ->
             compute_soil_albedo!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
 
@@ -655,6 +703,7 @@ function define_diagnostics!(land_model)
         comments = "Soil hydraulic conductivity. (depth resolved)",
         compute! = (out, Y, p, t) ->
             compute_soil_hydraulic_conductivity!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     # Soil thermal conductivity
@@ -666,6 +715,7 @@ function define_diagnostics!(land_model)
         comments = "Soil thermal conductivity. (depth resolved)",
         compute! = (out, Y, p, t) ->
             compute_soil_thermal_conductivity!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     # Soil Water Potential
@@ -677,6 +727,7 @@ function define_diagnostics!(land_model)
         comments = "Soil water potential. (depth resolved)",
         compute! = (out, Y, p, t) ->
             compute_soil_water_potential!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     # Soil net radiation
@@ -688,6 +739,7 @@ function define_diagnostics!(land_model)
         comments = "Net radiation at the soil surface.",
         compute! = (out, Y, p, t) ->
             compute_soil_net_radiation!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     ### Soil - Turbulent Fluxes
@@ -701,6 +753,7 @@ function define_diagnostics!(land_model)
         comments = "Soil latent heat flux, the amount of liquid water evaporated by the soil, expressed in energy units (W m^-2).",
         compute! = (out, Y, p, t) ->
             compute_soil_latent_heat_flux!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     # Soil sensible heat flux
@@ -712,6 +765,7 @@ function define_diagnostics!(land_model)
         comments = "Soil sensible heat flux, the amount of energy exchanged between the soil and atmosphere to change the temperature of the soil.",
         compute! = (out, Y, p, t) ->
             compute_soil_sensible_heat_flux!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     ### Soil - SoilCO2
@@ -724,6 +778,7 @@ function define_diagnostics!(land_model)
         comments = "The CO2 efflux at the soil surface due to microbial decomposition of soil organic matter. This is not necessarily equal to CO2 production by microbes, as co2 diffusion through the soil pores takes time.",
         compute! = (out, Y, p, t) ->
             compute_heterotrophic_respiration!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     # Soil CO2 diffusivity
@@ -735,6 +790,7 @@ function define_diagnostics!(land_model)
         comments = "The diffusivity of CO2 in the porous phase of the soil. Depends on soil texture, moisture, and temperature. (depth resolved)",
         compute! = (out, Y, p, t) ->
             compute_soilco2_diffusivity!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     # Soil CO2 microbial source
@@ -746,6 +802,7 @@ function define_diagnostics!(land_model)
         comments = "The production of CO2 by microbes in the soil. Vary by layers of soil depth. (depth resolved)",
         compute! = (out, Y, p, t) ->
             compute_soilco2_source_microbe!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     ## Other ##
@@ -757,6 +814,7 @@ function define_diagnostics!(land_model)
         units = "W m^-2",
         comments = "Upwelling longwave radiation.",
         compute! = (out, Y, p, t) -> compute_lw_up!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     # Shortwave out
@@ -767,6 +825,7 @@ function define_diagnostics!(land_model)
         units = "W m^-2",
         comments = "Upwelling shortwave radiation",
         compute! = (out, Y, p, t) -> compute_sw_up!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     # Evapotranspiration
@@ -778,6 +837,7 @@ function define_diagnostics!(land_model)
         comments = "Total flux of water mass out of the surface.",
         compute! = (out, Y, p, t) ->
             compute_evapotranspiration!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     # Ecosystem respiration
@@ -789,6 +849,7 @@ function define_diagnostics!(land_model)
         comments = "Total respiration flux out of the surface.",
         compute! = (out, Y, p, t) ->
             compute_total_respiration!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     # Surface runoff
@@ -800,6 +861,7 @@ function define_diagnostics!(land_model)
         comments = "Water runoff at the surface, this is the water flowing horizontally above the ground.",
         compute! = (out, Y, p, t) ->
             compute_surface_runoff!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     # Subsurface runoff
@@ -811,6 +873,7 @@ function define_diagnostics!(land_model)
         comments = "Water runoff from below the surface",
         compute! = (out, Y, p, t) ->
             compute_subsurface_runoff!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     # Ground heat flux
@@ -822,6 +885,7 @@ function define_diagnostics!(land_model)
         comments = "Transfer of heat between the surface and deeper soil layers.",
         compute! = (out, Y, p, t) ->
             compute_ground_heat_flux!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     ## Stored in Y (prognostic or state variables) ##
@@ -835,6 +899,7 @@ function define_diagnostics!(land_model)
         comments = "Canopy temperature.",
         compute! = (out, Y, p, t) ->
             compute_canopy_temperature!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     # Soil CO2
@@ -845,6 +910,7 @@ function define_diagnostics!(land_model)
         units = "kg C m^3",
         comments = "Concentration of CO2 in the porous air space of the soil. (depth resolved)",
         compute! = (out, Y, p, t) -> compute_soilco2!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     # Soil water content
@@ -856,6 +922,7 @@ function define_diagnostics!(land_model)
         comments = "The volume of soil water per volume of soil. (depth resolved)",
         compute! = (out, Y, p, t) ->
             compute_soil_water_content!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     add_diagnostic_variable!(
@@ -866,6 +933,7 @@ function define_diagnostics!(land_model)
         comments = "The integrated water mass to a depth of 10cm",
         compute! = (out, Y, p, t) ->
             compute_10cm_water_mass!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     # Plant water content
@@ -892,6 +960,7 @@ function define_diagnostics!(land_model)
         comments = "The volume of soil ice per volume of soil. (depth resolved)",
         compute! = (out, Y, p, t) ->
             compute_soil_ice_content!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     # Soil internal energy
@@ -903,6 +972,7 @@ function define_diagnostics!(land_model)
         comments = "The energy per volume of soil. (depth resolved)",
         compute! = (out, Y, p, t) ->
             compute_soil_internal_energy!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     # SWE
@@ -914,6 +984,7 @@ function define_diagnostics!(land_model)
         comments = "The height of liquid water if all snow melted",
         compute! = (out, Y, p, t) ->
             compute_snow_water_equivalent!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     # Snow depth
@@ -925,6 +996,7 @@ function define_diagnostics!(land_model)
         comments = "The snow depth",
         compute! = (out, Y, p, t) ->
             compute_snow_depth!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 
     # Snow cover fraction
@@ -936,5 +1008,6 @@ function define_diagnostics!(land_model)
         comments = "The snow cover fraction",
         compute! = (out, Y, p, t) ->
             compute_snow_cover_fraction!(out, Y, p, t, land_model),
+        default_diagnostic = true,
     )
 end

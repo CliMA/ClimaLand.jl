@@ -1,11 +1,13 @@
 # ClimaLand diagnostics contains # a dictionary `ALL_DIAGNOSTICS` with all the
-# diagnostics we know how to compute, keyed over their short name. If you want
+# diagnostics we know how to compute and a boolean for each, keyed over their short name. If you want
 # to add more diagnostics, look at the included files. You can add your own file
 # if you want to define several new diagnostics that are conceptually related.
 # The dictionary `ALL_DIAGNOSTICS` should be considered an implementation
-# detail, use the getters/setters.
+# detail, use the getters/setters. Each value of `ALL_DIAGNOSTICS` is a tuple
+# containing a `DiagnosticVariable` and a boolean. The boolean indicates if the
+# diagnostic is a default diagnostic or not.
 
-const ALL_DIAGNOSTICS = Dict{String, DiagnosticVariable}()
+const ALL_DIAGNOSTICS = Dict{String, Tuple{DiagnosticVariable, Bool}}()
 
 """
 
@@ -47,6 +49,10 @@ Keyword arguments
                              one will be allocated. To avoid extra allocations, this
                              function should perform the calculation in-place (i.e., using
                              `.=`).
+- `default_diagnostic`: Boolean indicating if the diagnostic is a default diagnostic or not.
+                        Default is `false`. If `true`, and the diagnostic already exists in
+                        `ALL_DIAGNOSTICS` and is also a default diagnostic, no overwrite
+                        warning is issued.
 
 """
 function add_diagnostic_variable!(;
@@ -56,22 +62,31 @@ function add_diagnostic_variable!(;
     units,
     comments = "",
     compute!,
+    default_diagnostic = false,
 )
-    haskey(ALL_DIAGNOSTICS, short_name) && @warn(
-        "overwriting diagnostic `$short_name` entry containing fields\n" *
-        "$(map(
-            field -> "$(getfield(ALL_DIAGNOSTICS[short_name], field))",
-            filter(field -> field != :compute!, fieldnames(DiagnosticVariable)),
-        ))"
-    )
+    if haskey(ALL_DIAGNOSTICS, short_name)
+        overwritten_var_is_default = ALL_DIAGNOSTICS[short_name][2]
+        overwritten_var = ALL_DIAGNOSTICS[short_name][1]
+        # suppress warning if overwriting a default diagnostic with the same default diagnostic
+        overwritten_var_is_default && default_diagnostic || @warn(
+            "overwriting diagnostic `$short_name` entry containing fields\n" *
+            "$(map(
+                field -> "$(getfield(overwritten_var, field))",
+                filter(field -> field != :compute!, fieldnames(DiagnosticVariable)),
+            ))"
+        )
+    end
 
-    ALL_DIAGNOSTICS[short_name] = DiagnosticVariable(;
-        short_name,
-        long_name,
-        standard_name,
-        units,
-        comments,
-        compute!,
+    ALL_DIAGNOSTICS[short_name] = (
+        DiagnosticVariable(;
+            short_name,
+            long_name,
+            standard_name,
+            units,
+            comments,
+            compute!,
+        ),
+        default_diagnostic,
     )
 end
 
@@ -85,7 +100,7 @@ function get_diagnostic_variable(short_name)
     haskey(ALL_DIAGNOSTICS, short_name) ||
         error("diagnostic $short_name does not exist")
 
-    return ALL_DIAGNOSTICS[short_name]
+    return ALL_DIAGNOSTICS[short_name][1]
 end
 
 # General helper functions for undefined diagnostics for a particular model

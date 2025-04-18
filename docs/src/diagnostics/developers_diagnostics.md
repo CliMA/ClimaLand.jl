@@ -10,7 +10,8 @@ We want to provide users with default options, but also the possibility to defin
 Internally, this is done by using the [`ClimaDiagnostics.jl`](https://github.com/CliMA/ClimaDiagnostics.jl) package, that provides the functionality to produce a
 [`ClimaLand.Diagnostics`](https://github.com/CliMA/ClimaLand.jl/tree/main/src/Diagnostics/Diagnostics.jl) module in the src/Diagnostics.jl folder. In this folder,
  - `Diagnostics.jl` defines the module,
- - `diagnostic.jl` defines `ALL_DIAGNOSTICS`, a Dict containing all diagnostics variables defined in `define_diagnostics.jl`, it also defines the function
+ - `diagnostic.jl` defines `ALL_DIAGNOSTICS`, a Dict containing all diagnostics variables defined in `define_diagnostics.jl`,
+along with a boolean indicating if each diagnostic variable is a default. It also defines the function
  `add_diagnostic_variable!` which defines a method to add diagnostic variables to ALL\_DIAGNOSTICS, finally it contains a function `get_diagnostic_variable` which returns a
  `DiagnosticVariable` from its `short_name`, if it exists.
  - `define_diagnostics.jl`, mentioned above, contains a function `define_diagnostics!(land_model)` which contains all default diagnostic variables by calling.

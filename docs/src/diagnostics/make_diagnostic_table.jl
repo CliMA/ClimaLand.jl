@@ -9,7 +9,8 @@ long_names = []
 units = []
 comments = []
 standard_names = []
-for d in values(CL.Diagnostics.ALL_DIAGNOSTICS)
+# ALL_DIAGNOSTICS has values of tuple (DiagnosticVariable, is_default_diagnostic)
+for (d, _) in values(CL.Diagnostics.ALL_DIAGNOSTICS)
     push!(short_names, d.short_name)
     push!(long_names, d.long_name)
     push!(units, d.units)
