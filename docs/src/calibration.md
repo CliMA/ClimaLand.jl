@@ -11,15 +11,13 @@ To put it simply, a calibration framework needs observation data (for example, m
 - an `observation_map` which maps the equivalent of the observation vector, but from the model output,
 - `priors` which contains the parameters we want to calibrate (find the value that makes the model match the observation best), priors gives which parameters, but also their distribution.
 
-[EnsembleKalmanProcesses.jl](https://github.com/CliMA/EnsembleKalmanProcesses.jl) (EKP) is at the center of CliMA's calibration efforts. EKP implements a suite of Ensemble Kalman methods to find a (locally) optimal parameter set `u` for a model `G` to fit noisy observational data `y`. These methods are optimized for problems where the model `G` is computationally expensive and no analtyic derivatives are available, as in the case of weather forcasting, where Ensemble Kalman techniques have a long history of success.
+[EnsembleKalmanProcesses.jl](https://github.com/CliMA/EnsembleKalmanProcesses.jl) (EKP) is at the center of CliMA's calibration efforts. EKP implements a suite of Ensemble Kalman methods to find a (locally) optimal parameter set `U` for a model `G` to fit noisy `Γ` observational data `Y`. These methods are optimized for problems where the model `G` is computationally expensive and no analtyic derivatives are available, as in the case of weather forcasting, where Ensemble Kalman techniques have a long history of success.
 
 Large calibration campaigns often require supercomputers and while direct use of EKP.jl is possible, CliMA's preferred approach is using [ClimaCalibrate.jl](https://github.com/CliMA/ClimaCalibrate.jl), a package optimized for running on compute clusters. `ClimaCalibrate` handles efficient job orchestration and abstracts the details of the underlying system, providing a simpler user experience. Consult the [ClimaCalibrate documentation](https://clima.github.io/ClimaCalibrate.jl/dev/) for further information.
 
 ## Calibrate a land model
 
-In this tutorial, we will perform a calibration using `ClimaCalibrate`. `ClimaCalibrate` provides an interface to `EnsembleKalmanProcesses.jl` that is more optimized for use on supercomputers. The
-[tutorial to calibrate a single site latent heat flux](https://clima.github.io/ClimaLand.jl/stable/generated/calibration/minimal_working_example_obs/) shows how to
-perform a calibration using `EKP` directly.
+In this tutorial, we will perform a calibration using `ClimaCalibrate`. `ClimaCalibrate` provides an interface to `EnsembleKalmanProcesses.jl` that is more optimized for use on supercomputers. The [tutorial to calibrate a single site latent heat flux](https://clima.github.io/ClimaLand.jl/stable/generated/calibration/minimal_working_example_obs/) shows how to perform a calibration using `EKP` directly.
 
 The `calibrate` function is at the heart of performing a calibration with `ClimaCalibrate`:
 
@@ -154,3 +152,30 @@ julia --project=.buildkite/ experiments/calibration/global_land/calibrate_land.j
 
 where `calibrate_land.jl` is a script that generates all the arguments needed and eventually calls `CAL.calibrate`.
 You would start the job with a command such as `qsub name_of_job_script`, and a few hours later, you would get a calibrated parameter set.
+
+## Results exploration
+
+After running a calibration, you can explore the results via CliCal dashboard, which allows users to navigate between:
+- calibration runs,
+- variables,
+- iterations,
+- ensemble member,
+- and seasons.
+
+For each combination of these options, the dashboard will provide:
+- a table of the parameter values and how they changed relative to initial values,
+- EKP error for each iterations and how this error changed relative to initial error,
+- RMSE overall (all variables) and RMSE for the selection (variable, ensemble), for each iteration.
+- A figure (global map) or Y (e.g., era5 data) and G (ClimaLand output),
+- A figure of the seasonal average of Y and G,
+- A figure of anomalies G - Y.
+
+To generate such dashboard, the user can run the script `make_dashboard.jl` directly from the HPC where the calibrations ran, if they connected via port forwarding, e.g., ssh -L 8888:localhost:8888 your_user@hpc-address, then the user can open the following URL on their local computer: http://localhost:8888/browser-display
+
+Such dashboard can also be served on the internet, to be accessed anywhere anytime via a URL, for example [clickme](https://clima.westus3.cloudapp.azure.com/jsserve/calibration_dash):
+
+```@raw html
+<iframe src="https://clima.westus3.cloudapp.azure.com/jsserve/calibration_dash"
+   style="height:1200px;width:90%;">
+</iframe>
+```
