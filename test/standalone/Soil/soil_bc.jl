@@ -25,7 +25,6 @@ for FT in (Float32, Float64)
             radius = FT(1.0),
             depth = FT(1.0),
             nelements = (1, 2),
-            npolynomial = 3,
         )
 
         coords = ClimaLand.Domains.coordinates(domain) # center coordinates
@@ -297,7 +296,8 @@ end
     Y.soil.ϑ_l .= ν
     Y.soil.θ_i .= 0
     Y.soil.ρe_int .= 3e7
-    update_boundary_vars! = make_update_boundary_fluxes(energy_hydrology)
+    update_boundary_vars! =
+        make_update_implicit_boundary_fluxes(energy_hydrology)
     update_boundary_vars!(p, Y, FT(0))
     f = similar(p.soil.top_bc.water)
     fill!(ClimaCore.Fields.field_values(f), FT(top_heat_flux_bc.bc(p, FT(0))))
@@ -352,7 +352,7 @@ end
 
     Y, p, cds = initialize(rre)
     Y.soil.ϑ_l .= ν
-    update_boundary_vars! = make_update_boundary_fluxes(rre)
+    update_boundary_vars! = make_update_implicit_boundary_fluxes(rre)
     update_boundary_vars!(p, Y, FT(0))
     f = similar(p.soil.top_bc)
     fill!(

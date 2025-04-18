@@ -8,44 +8,68 @@ export snow_surface_temperature,
     compute_water_runoff,
     energy_from_q_l_and_swe,
     energy_from_T_and_swe,
-    snow_cover_fraction,
+    update_snow_cover_fraction!,
     snow_bulk_density,
     phase_change_flux,
     update_snow_albedo!
 
 """
-    update_snow_albedo!(α, m::ConstantAlbedoModel, Y, p, t)
+    update_snow_albedo!(α, m::ConstantAlbedoModel, Y, p, t, earth_param_set)
 
 Updates the snow albedo `α` in place with the current albedo,
 according to the ConstantAlbedoModel. 
 """
-function update_snow_albedo!(α, m::ConstantAlbedoModel, Y, p, t)
+function update_snow_albedo!(
+    α,
+    m::ConstantAlbedoModel,
+    Y,
+    p,
+    t,
+    earth_param_set,
+)
     @. α = m.α
 end
 
 """
-    update_snow_albedo!(α, m::ZenithAngleAlbedoModel, Y, p, t)
+    update_snow_albedo!(α, m::ZenithAngleAlbedoModel, Y, p, t, earth_param_set)
 
 Updates the snow albedo `α` in place with the current albedo,
 according to the ZenithAngleAlbedoModel.
 """
-function update_snow_albedo!(α, m::ZenithAngleAlbedoModel, Y, p, t)
-    FT = FTfromY(Y)
+function update_snow_albedo!(
+    α,
+    m::ZenithAngleAlbedoModel,
+    Y,
+    p,
+    t,
+    earth_param_set,
+)
+    FT = eltype(earth_param_set)
+    _ρ_liq = LP.ρ_cloud_liq(earth_param_set)
     @. α =
-        m.α_0 +
-        (m.α_horizon - m.α_0) * exp(-m.k * max(p.drivers.cosθs, eps(FT)))
+        min(1 - m.β * (p.snow.ρ_snow / _ρ_liq - m.x0), 1) * (
+            m.α_0 +
+            (m.α_horizon - m.α_0) * exp(-m.k * max(p.drivers.cosθs, eps(FT)))
+        )
 end
 """
-    snow_cover_fraction(x::FT; z0 = FT(1e-1), α = FT(2))::FT where {FT}
+    update_snow_cover_fraction!(x::FT; z0 = FT(1e-1), β_scf = FT(2))::FT where {FT}
 
 Returns the snow cover fraction from snow depth `z`, from
 Wu, Tongwen, and Guoxiong Wu. "An empirical formula to compute
 snow cover fraction in GCMs." Advances in Atmospheric Sciences
 21 (2004): 529-535.
 """
-function snow_cover_fraction(z::FT; z0 = FT(1e-1), α = FT(2))::FT where {FT}
-    z̃ = z / z0
-    return min(α * z̃ / (z̃ + 1), 1)
+function update_snow_cover_fraction!(
+    scf,
+    m::WuWuSnowCoverFractionModel,
+    Y,
+    p,
+    t,
+    earth_param_set,
+)
+    z = p.snow.z_snow
+    @. scf = min(m.β_scf * (z / m.z0) / (z / m.z0 + 1), 1)
 end
 
 """

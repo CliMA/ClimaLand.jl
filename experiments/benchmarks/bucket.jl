@@ -71,7 +71,6 @@ function setup_prob(t0, tf, Δt; nelements = (200, 7))
         radius = FT(6.3781e6),
         depth = soil_depth,
         nelements = nelements,
-        npolynomial = 1,
         dz_tuple = FT.((1.0, 0.05)),
     )
     start_date = DateTime(2005)

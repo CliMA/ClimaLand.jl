@@ -31,7 +31,6 @@ FT = Float32
         ylim = FT.((1.0, 2.0)),
         nelements = (1, 1),
         periodic = (true, true),
-        npolynomial = 0,
     )
     coords = ClimaLand.Domains.coordinates(domain)
     zero_instance = ClimaCore.Fields.zeros(axes(coords.surface))
@@ -124,7 +123,6 @@ end
         ylim = FT.((1.0, 2.0)),
         zlim = FT.((1.0, 2.0)),
         nelements = (1, 1, 1),
-        npolynomial = 0,
     )
     coords = ClimaLand.Domains.coordinates(domain)
     sfc_instance = ClimaCore.Fields.zeros(axes(coords.surface)) .+ 10

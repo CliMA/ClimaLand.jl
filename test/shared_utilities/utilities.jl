@@ -141,13 +141,9 @@ end
         ylim = FT.((0.0, 1.0)),
         nelements = (2, 2),
         periodic = (true, true),
-        npolynomial = 1,
     )
-    domain2 = ClimaLand.Domains.SphericalSurface(;
-        radius = FT(2),
-        nelements = 10,
-        npolynomial = 3,
-    )
+    domain2 =
+        ClimaLand.Domains.SphericalSurface(; radius = FT(2), nelements = 10)
 
     domains = (domain1, domain2)
     for domain in domains
@@ -201,13 +197,11 @@ end
         zlim = FT.((0.0, 1.0)),
         nelements = (2, 2, 2),
         periodic = (true, true),
-        npolynomial = 1,
     )
     domain2 = ClimaLand.Domains.SphericalShell(;
         radius = FT(2),
         depth = FT(1.0),
         nelements = (10, 5),
-        npolynomial = 3,
     )
 
     domains = (domain1, domain2)
@@ -262,7 +256,6 @@ end
         radius = FT(2),
         depth = FT(1.0),
         nelements = (10, 5),
-        npolynomial = 3,
     )
 
     # Construct some fields
@@ -302,7 +295,7 @@ end
     ClimaComms.allowscalar(ClimaComms.device()) do
         parent(var1)[:, 1, 1, 1, 1] .= NaN
         parent(var2)[:, 1, 1, 1, 1] .= NaN
-        parent(var2)[:, 2, 1, 1, 1] .= NaN
+        parent(var2)[:, 1, 1, 1, 2] .= NaN
     end
 
     # Count and log the number of NaNs in the state (test verbose and non-verbose cases)

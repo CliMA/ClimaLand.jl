@@ -100,14 +100,12 @@ if regional_simulation
         zlim = (-soil_depth, FT(0.0)),
         longlat = (center_long, center_lat),
         nelements = (30, 30, 10),
-        npolynomial = 1,
     )
 else
     bucket_domain = ClimaLand.Domains.SphericalShell(;
         radius = FT(6.3781e6),
         depth = soil_depth,
         nelements = (30, 10),
-        npolynomial = 1,
         dz_tuple = FT.((1.0, 0.05)),
     )
 end

@@ -44,7 +44,7 @@ using Statistics
 import StatsBase: percentile
 using CairoMakie
 import ClimaComms
-@static pkgversion(ClimaComms) >= v"0.6" && ClimaComms.@import_required_backends
+ClimaComms.@import_required_backends
 import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
 import ClimaUtilities.OutputPathGenerator: generate_output_path
 
@@ -139,7 +139,6 @@ land_domain = ClimaLand.Domains.SphericalShell(;
     radius = FT(6.3781e6),
     depth = soil_depth,
     nelements = (10, 5),
-    npolynomial = 1,
     dz_tuple = FT.((dz_bottom, dz_top)),
 );
 canopy_domain = ClimaLand.Domains.obtain_surface_domain(land_domain)

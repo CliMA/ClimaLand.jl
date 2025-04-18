@@ -2,6 +2,7 @@ using Test
 import ClimaComms
 ClimaComms.@import_required_backends
 using ClimaCore
+import ClimaParams as CP
 using ClimaLand
 using ClimaLand.Soil
 using ClimaLand.Canopy
@@ -23,7 +24,6 @@ for FT in (Float32, Float64)
             radius = radius,
             depth = depth,
             nelements = nelements,
-            npolynomial = 1,
             dz_tuple = FT.((10.0, 0.1)),
         )
         hcm = vanGenuchten{FT}(; α = FT(0), n = FT(0))

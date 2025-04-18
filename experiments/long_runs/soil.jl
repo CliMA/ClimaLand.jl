@@ -217,7 +217,7 @@ function setup_prob(
     diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler)
 
     driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
-    mask = ClimaLand.landsea_mask(surface_space)
+    mask = ClimaLand.landsea_mask(domain)
     nancheck_freq = Dates.Month(1)
     nancheck_cb = ClimaLand.NaNCheckCallback(
         nancheck_freq,

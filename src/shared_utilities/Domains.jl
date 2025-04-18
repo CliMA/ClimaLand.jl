@@ -1,4 +1,7 @@
 module Domains
+
+import ..compat_add_mask, ..compat_set_mask!
+
 using ClimaCore
 using ClimaComms
 using DocStringExtensions
@@ -163,12 +166,8 @@ function Column(;
     end
 
     device = ClimaComms.device()
-    if pkgversion(ClimaCore) >= v"0.14.10"
-        subsurface_space =
-            ClimaCore.Spaces.CenterFiniteDifferenceSpace(device, mesh)
-    else
-        subsurface_space = ClimaCore.Spaces.CenterFiniteDifferenceSpace(mesh)
-    end
+    subsurface_space =
+        ClimaCore.Spaces.CenterFiniteDifferenceSpace(device, mesh)
     surface_space = obtain_surface_space(subsurface_space)
     space = (; surface = surface_space, subsurface = subsurface_space)
     fields = get_additional_coordinate_field_data(subsurface_space)
@@ -250,7 +249,7 @@ function Plane(;
     longlat = nothing,
     periodic::Tuple{Bool, Bool} = isnothing(longlat) ? (true, true) :
                                   (false, false),
-    npolynomial::Int,
+    npolynomial::Int = 0,
     comms_ctx = ClimaComms.context(),
     radius_earth = 6.378e6,
 ) where {FT}
@@ -311,9 +310,9 @@ function Plane(;
     space = ClimaCore.Spaces.SpectralElementSpace2D(
         grid_topology,
         quad;
-        enable_mask = true,
+        compat_add_mask()...,
     )
-    ClimaCore.Spaces.set_mask!(space, ClimaCore.Fields.ones(space))
+    compat_set_mask!(space)
     space = (; surface = space)
     return Plane{FT}(
         xlim,
@@ -419,7 +418,7 @@ function HybridBox(;
     ylim::Tuple{FT, FT},
     zlim::Tuple{FT, FT},
     nelements::Tuple{Int, Int, Int},
-    npolynomial::Int,
+    npolynomial::Int = 0,
     dz_tuple::Union{Tuple{FT, FT}, Nothing} = nothing,
     longlat = nothing,
     periodic::Tuple{Bool, Bool} = isnothing(longlat) ? (true, true) :
@@ -451,14 +450,9 @@ function HybridBox(;
             reverse_mode = true,
         )
     end
-    if pkgversion(ClimaCore) >= v"0.14.10"
-        device = ClimaComms.device()
-        vert_center_space =
-            ClimaCore.Spaces.CenterFiniteDifferenceSpace(device, vertmesh)
-    else
-        vert_center_space =
-            ClimaCore.Spaces.CenterFiniteDifferenceSpace(vertmesh)
-    end
+    device = ClimaComms.device()
+    vert_center_space =
+        ClimaCore.Spaces.CenterFiniteDifferenceSpace(device, vertmesh)
 
     horzdomain = Plane(;
         xlim = xlim,
@@ -551,7 +545,7 @@ function SphericalShell(;
     radius::FT,
     depth::FT,
     nelements::Tuple{Int, Int},
-    npolynomial::Int,
+    npolynomial::Int = 0,
     dz_tuple::Union{Tuple{FT, FT}, Nothing} = nothing,
     comms_ctx = ClimaComms.context(),
 ) where {FT}
@@ -577,13 +571,8 @@ function SphericalShell(;
         )
     end
     device = ClimaComms.device()
-    if pkgversion(ClimaCore) >= v"0.14.10"
-        vert_center_space =
-            ClimaCore.Spaces.CenterFiniteDifferenceSpace(device, vertmesh)
-    else
-        vert_center_space =
-            ClimaCore.Spaces.CenterFiniteDifferenceSpace(vertmesh)
-    end
+    vert_center_space =
+        ClimaCore.Spaces.CenterFiniteDifferenceSpace(device, vertmesh)
 
     horzdomain = ClimaCore.Domains.SphereDomain(radius)
     horzmesh = ClimaCore.Meshes.EquiangularCubedSphere(horzdomain, nelements[1])
@@ -596,9 +585,9 @@ function SphericalShell(;
     horzspace = ClimaCore.Spaces.SpectralElementSpace2D(
         horztopology,
         quad;
-        enable_mask = true,
+        compat_add_mask()...,
     )
-    ClimaCore.Spaces.set_mask!(horzspace, ClimaCore.Fields.ones(horzspace))
+    compat_set_mask!(horzspace)
     subsurface_space = ClimaCore.Spaces.ExtrudedFiniteDifferenceSpace(
         horzspace,
         vert_center_space,
@@ -655,7 +644,7 @@ Outer constructor for the `SphericalSurface` domain, using keyword arguments.
 function SphericalSurface(;
     radius::FT,
     nelements::Int,
-    npolynomial::Int,
+    npolynomial::Int = 0,
     comms_ctx = ClimaComms.context(),
 ) where {FT}
     @assert 0 < radius
@@ -668,8 +657,8 @@ function SphericalSurface(;
         quad = ClimaCore.Spaces.Quadratures.GLL{npolynomial + 1}()
     end
     horzspace =
-        Spaces.SpectralElementSpace2D(horztopology, quad; enable_mask = true)
-    ClimaCore.Spaces.set_mask!(horzspace, ClimaCore.Fields.ones(horzspace))
+        Spaces.SpectralElementSpace2D(horztopology, quad; compat_add_mask()...)
+    compat_set_mask!(horzspace)
     space = (; surface = horzspace)
     return SphericalSurface{FT}(radius, nelements, npolynomial, space)
 end
@@ -982,6 +971,77 @@ depth(space::ClimaCore.Spaces.CenterFiniteDifferenceSpace) =
         space.grid.topology.mesh.domain.coord_min
     ).z
 
+"""
+    horizontal_resolution_degrees(domain::AbstractDomain)
+
+Return a tuple with the approximate resolution on the domain in degrees along
+the two directions.
+
+For boxes and planes, the order is `(latitude, longitude)`.
+
+Examples
+=======
+
+```jldoctest
+julia> using ClimaLand
+
+julia> domain = ClimaLand.Domains.SphericalShell(;
+        radius = 6300e3,
+        depth = 15.,
+        nelements = (10, 3),
+        dz_tuple = ((1.0, 0.05)),
+    );
+
+julia> ClimaLand.Domains.average_horizontal_resolution_degrees(domain)
+(9.0, 9.0)
+
+julia> domain = ClimaLand.Domains.Plane(;
+        xlim = (50000.0, 80000.),
+        ylim = (30000.0, 40000.),
+        longlat = (-118.14452, 34.14778),
+        nelements = (20, 3),
+    );
+
+julia> ClimaLand.Domains.average_horizontal_resolution_degrees(domain)
+(0.05839157, 0.20961125)
+```
+"""
+function average_horizontal_resolution_degrees(
+    domain::Union{SphericalShell, SphericalSurface},
+)
+    num_elements_lat = num_elements_lon = first(domain.nelements)
+    quad = ClimaCore.Spaces.quadrature_style(domain.space.surface)
+    num_points_per_element =
+        ClimaCore.Quadratures.unique_degrees_of_freedom(quad)
+
+    # There are 2 full cubed-sphere panels along latitudes, and 4 along
+    # longitudes
+    return (
+        180 / (2 * num_points_per_element * num_elements_lat),
+        360 / (4 * num_points_per_element * num_elements_lon),
+    )
+end
+
+function average_horizontal_resolution_degrees(domain::Union{Plane, HybridBox})
+    isnothing(domain.longlat) &&
+        error("Can only compute resolution with domains in latlong")
+
+    # x is Lat, y is Lon because ClimaCore defines LatLongPoints
+    num_elements_lat, num_elements_lon = domain.nelements[1:2]
+    delta_lat = domain.xlim[2] - domain.xlim[1]
+    delta_lon = domain.ylim[2] - domain.ylim[1]
+
+    quad = ClimaCore.Spaces.quadrature_style(domain.space.surface)
+    num_points_per_element =
+        ClimaCore.Quadratures.unique_degrees_of_freedom(quad)
+
+    return (
+        delta_lat / (num_points_per_element * num_elements_lat),
+        delta_lon / (num_points_per_element * num_elements_lon),
+    )
+end
+
+
 export AbstractDomain
 export Column, Plane, HybridBox, Point, SphericalShell, SphericalSurface
 export coordinates,
@@ -992,5 +1052,6 @@ export coordinates,
     top_face_to_surface,
     obtain_surface_domain,
     linear_interpolation_to_surface!,
-    get_Δz
+    get_Δz,
+    average_horizontal_resolution_degrees
 end

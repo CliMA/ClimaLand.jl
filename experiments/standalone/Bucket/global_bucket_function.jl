@@ -76,7 +76,6 @@ bucket_domain = ClimaLand.Domains.SphericalShell(;
     radius = FT(6.3781e6),
     depth = soil_depth,
     nelements = (50, 10),
-    npolynomial = 1,
     dz_tuple = FT.((1.0, 0.05)),
 );
 surface_space = bucket_domain.space.surface

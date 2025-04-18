@@ -185,7 +185,6 @@ for FT in (Float32, Float64)
             ylim = (ymin, ymax),
             zlim = (zmin, zmax),
             nelements = (nelems, nelems, nelems),
-            npolynomial = 2,
         )
 
         ν = FT(0.556)
