@@ -52,11 +52,11 @@ simdir = SimDir(
 
 out_vars = Dict(var_name => get(simdir, var_name) for var_name in variable_list)
 
-#= For developping
-vars_temp = Dict(
-var_name => window(var, "time", left=DateTime(2008), right=DateTime(2012)) for (var_name, var) in vars_temp
-)
-=#
+# For developping
+#vars_temp = Dict(
+#var_name => window(var, "time", left=DateTime(2008), right=DateTime(2010)) for (var_name, var) in vars_temp
+#)
+#
 
 # Resample variables to diagnostic grid
 # note: this is very slow with 45 years of data (era5).
@@ -105,11 +105,6 @@ for (lon, lat) in training_locations
     variances = Dict(
                  var_name => fun_across_season(var_name, Statistics.var, lon, lat) for
         var_name in variable_list)
-
-    variances = Dict(
-                 var_name => fun_across_season(var_name, Statistics.var, lon, lat) for
-        var_name in variable_list
-    )
 
     means = Dict(
                  var_name => fun_across_season(var_name, mean, lon, lat) for

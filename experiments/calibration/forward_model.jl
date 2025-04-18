@@ -46,7 +46,7 @@ function setup_prob(
     tf,
     Δt,
     params,
-    start_date,
+    model_start,
     outdir;
     nelements = (101, 15),
 )
@@ -55,7 +55,6 @@ function setup_prob(
     p_names = collect(keys(params))
     p_values = [params[name]["value"] for name in p_names]
     params = (; zip(Symbol.(p_names), p_values)...)
-
     (;
 #        pc,
 #        sc,
@@ -88,7 +87,7 @@ function setup_prob(
     atmos, radiation = ClimaLand.prescribed_forcing_era5(
         era5_ncdata_path,
         surface_space,
-        start_date,
+        model_start,
         earth_param_set,
         FT;
         time_interpolation_method = time_interpolation_method,
@@ -281,7 +280,7 @@ function setup_prob(
     LAIfunction = ClimaLand.prescribed_lai_modis(
         modis_lai_ncdata_path,
         surface_space,
-        start_date;
+        model_start;
         time_interpolation_method = time_interpolation_method,
     )
     ai_parameterization =
@@ -435,13 +434,13 @@ function setup_prob(
     nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(
         subsurface_space,
         outdir;
-        start_date,
+        start_date = model_start,
         num_points = (4 * nelements[1], 2 * nelements[1], nelements[2]), # use default in `z`.
     )
 
     diags = ClimaLand.default_diagnostics(
         land,
-        start_date;
+        model_start;
         output_writer = nc_writer,
         output_vars = :short,
         average_period = :monthly,
@@ -462,7 +461,7 @@ function setup_prob(
     report_cb = SciMLBase.DiscreteCallback(every1000steps, report)
 
     nancheck_freq = Dates.Month(1)
-    nancheck_cb = ClimaLand.NaNCheckCallback(nancheck_freq, start_date, t0, Δt)
+    nancheck_cb = ClimaLand.NaNCheckCallback(nancheck_freq, model_start, t0, Δt)
 
     return prob,
     SciMLBase.CallbackSet(driver_cb, diag_cb, report_cb, nancheck_cb),
@@ -474,25 +473,26 @@ function CAL.forward_model(iteration, member)
     params_path = parameter_path(caldir, iteration, member)
     params = TOML.parsefile(params_path)
 
+    model_start = start_date + Year(iteration)
     seconds = 1.0
     minutes = 60seconds
     hours = 60minutes # hours in seconds
     days = 24hours # days in seconds
-    years = 367days # years in seconds - 366 to make sure we capture at least full years
-    t0 = 0.0 + iteration * 1years
-    tf = t0 + 2years + 30days # to ensure LAI of next year is grabbed, and thus last month can interpolate
+    years = 367days # years in seconds - 367 to make sure we capture at least full years
+    t0 = 0.0
+    tf = t0 + 2years
     Δt = 450.0
 
     diagnostics_dir = joinpath(ensemble_member_path, "global_diagnostics")
     diagdir =
         ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_dir)
 
-    t0 = ITime(t0, epoch = start_date)
-    tf = ITime(tf, epoch = start_date)
-    Δt = ITime(Δt, epoch = start_date)
+    t0 = ITime(t0, epoch = model_start)
+    tf = ITime(tf, epoch = model_start)
+    Δt = ITime(Δt, epoch = model_start)
     t0, tf, Δt = promote(t0, tf, Δt)
     prob, cb, nc_writer =
-        setup_prob(t0, tf, Δt, params, start_date, diagdir; nelements)
+        setup_prob(t0, tf, Δt, params, model_start, diagdir; nelements)
 
     # Define timestepper and ODE algorithm
     stepper = CTS.ARS111()

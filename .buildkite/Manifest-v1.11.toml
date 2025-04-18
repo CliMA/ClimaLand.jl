@@ -866,11 +866,9 @@ version = "2.2.4+0"
 
 [[deps.EnsembleKalmanProcesses]]
 deps = ["Convex", "Distributions", "DocStringExtensions", "FFMPEG", "GaussianRandomFields", "Interpolations", "LinearAlgebra", "MathOptInterface", "Optim", "QuadGK", "Random", "RecipesBase", "SCS", "SparseArrays", "Statistics", "StatsBase", "TOML", "TSVD"]
-git-tree-sha1 = "6fd1037563108ff780885f77ee318b9839f3e444"
-repo-rev = "orad/vector-of-covs"
-repo-url = "https://github.com/CliMA/EnsembleKalmanProcesses.jl.git"
+git-tree-sha1 = "dd6b4b258beeef8db8024e14fea95d34305e5bb0"
 uuid = "aa8a2aa5-91d8-4396-bcef-d4f2ec43552d"
-version = "2.3.1"
+version = "2.4.0"
 
 [[deps.EnumX]]
 git-tree-sha1 = "bddad79635af6aec424f53ed8aad5d7555dc6f00"
