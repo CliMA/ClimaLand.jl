@@ -35,10 +35,14 @@ end
 
 Find the appropriate files of ERA5 forcing data to run a simuation starting on
 `start_date` and ending on `final_date`.
+
+We add 1 year to the final date to ensure that everything between
+start_date and final_date is covered. (This is needed, e.g., if the last file
+is up to Dec 15th but we want to simulate past that date.)
 """
 function find_era5_year_paths(start_date, final_date; context = nothing)
     year0 = Dates.year(start_date)
-    yearf = Dates.year(final_date)
+    yearf = Dates.year(final_date) + 1
     era5_forty_yrs_path =
         era5_land_forcing_data_forty_years_folder_path(context = context)
     years = collect(
@@ -117,11 +121,15 @@ end
 
 Find the appropriate files of MODIS LAI data to run a simuation starting on
 `start_date` and ending on `final_date`.
+
+We add 1 year to the final date to ensure that everything between
+start_date and final_date is covered. (This is needed, e.g., if the last file
+is up to Dec 15th but we want to simulate past that date.)
 """
 function find_modis_year_paths(start_date, final_date; context = nothing)
     # Get the year of the start and final dates
     year0 = Dates.year(start_date)
-    yearf = Dates.year(final_date)
+    yearf = Dates.year(final_date) + 1
     modis_lai_data_path = modis_lai_forcing_data_path(context = context)
     years = collect(
         joinpath(modis_lai_data_path, "Yuan_et_al_$(year)_1x1.nc") for
