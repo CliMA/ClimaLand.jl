@@ -321,6 +321,7 @@ auxiliary_types(::BucketModel{FT}) where {FT} = (
     FT,
     FT,
     ClimaCore.Geometry.WVector{FT},
+    FT,
 )
 auxiliary_vars(::BucketModel) = (
     :q_sfc,
@@ -336,8 +337,10 @@ auxiliary_vars(::BucketModel) = (
     :snow_melt,
     :infiltration,
     :top_bc_wvec,
+    :e_per_area,
 )
 auxiliary_domain_names(::BucketModel) = (
+    :surface,
     :surface,
     :surface,
     :surface,
