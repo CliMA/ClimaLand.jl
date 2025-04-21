@@ -29,7 +29,8 @@ The following functions are used for data preprocessing for a model:
     - `make_data`
 =#
 module DataTools
-using DataFrames, CSV, HTTP, Dates, StatsBase
+using DataFrames
+using Dates, Statistics
 export sitedata_daily,
     sitedata_hourly,
     apply_bounds,
@@ -51,6 +52,8 @@ export sitedata_daily,
     d_impute,
     qc_filter,
     scrape_site_paper
+
+include("./WebTools.jl")
 
 """
     missingfirst(input)
@@ -150,7 +153,8 @@ function get_data(
         start_date = start,
         end_date = finish,
     )
-    data = CSV.read(HTTP.get(url).body, DataFrame, comment = "#", delim = ",")
+    #data = CSV.read(HTTP.get(url).body, DataFrame, comment = "#", delim = ",")
+    data = df_from_url(url)
     return data
 end
 
@@ -662,7 +666,8 @@ function snotel_metadata(;
     for field in fields
         link = link * field * ","
     end
-    data = CSV.read(HTTP.get(link).body, DataFrame, comment = "#", delim = ",")
+    #data = CSV.read(HTTP.get(link).body, DataFrame, comment = "#", delim = ",")
+    data = df_from_url(link)
     data[!, :Elevation] .= data[!, :Elevation] * 12 * 2.54 / 100
     return data
 end
@@ -1604,7 +1609,9 @@ function qc_filter(
     mmaxes =
         combine(groupby(gdata, :tchunk), var => missingmax, renamecols = false)
     mu = median(skipmissing(mmaxes[!, 2]))
-    sp = iqr(skipmissing(mmaxes[!, 2]))
+    sp =
+        quantile(skipmissing(mmaxes[!, 2]), 0.75) -
+        quantile(skipmissing(mmaxes[!, 2]), 0.25) #iqr(skipmissing(mmaxes[!, 2]))
     scores = ((gdata[!, 2] .- mu)) ./ sp .> t1
     if verbose
         print(
@@ -1842,5 +1849,29 @@ function scrape_site_paper(id::Int, state::AbstractString)
     return daily_clean
 end
 
+
+"""
+    save_df(df, filepath; delim)
+
+Utility function to save DataFrames to files. Custom delimiters can be used with the "delimiter" argument.
+
+# Arguments
+- `df::DataFrame`: the DataFrame to save.
+- `filepath::AbstractString`: the desired place to save the DataFrame as a delimited file.
+- `delim`: the character with which to separate values. Default is ",".
+"""
+function save_df(
+    df::DataFrame,
+    filepath::AbstractString;
+    delim::AbstractString = ",",
+)
+    open(filepath, "w") do io
+        println(io, join(names(df), delim))
+        for row in eachrow(df)
+            values = [ismissing(val) ? "" : string(val) for val in row]
+            println(io, join(values, delim))
+        end
+    end
+end
 
 end

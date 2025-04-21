@@ -10,12 +10,11 @@
 # additional utility in creating alternative data sets for further investigation.
 
 # We begin by importing all required packages:
-using ClimaLand
-using DataFrames, CSV, HTTP, Dates, Flux, StatsBase, BSON
+using ClimaLand, Dates
 
 # The code lives in an extenson that we have to manually load. The extension can
-# be loaded only if "DataFrames", "CSV", "HTTP", "Flux", "StatsBase", "BSON", and "ClimaLand"
-# are loaded.
+# be loaded from `ClimaLand` only if `DataFrames` is also loaded:
+using DataFrames
 DataTools = Base.get_extension(ClimaLand, :NeuralSnowExt).DataTools;
 
 # We first extract a `DataFrame` matching station ID to various station metadata,
@@ -231,8 +230,8 @@ good_stations = Dict{Int, Tuple{String, String}}(
 # end
 # ```
 
-# and a final `CSV.write("data.csv", totaldata)` call will
-# save the file.
+# and a final `DataTools.save_df(totaldata, "./data.csv")` call will
+# save the file to the specified location.
 
 # Many of the functions above contain default or optional arguments which can
 # be explored to obtain a richer set of functionality, or implement some of

@@ -185,3 +185,10 @@ git-tree-sha1 = "c35ba0e899040cb8153226ab751f69100f475d39"
     [[mizoguchi_soil_freezing_data.download]]
     sha256 = "0027cc080ba45ba33dc790b176ec2854353ce7dce4eae4bef72963b0dd944e0b"
     url = "https://caltech.box.com/shared/static/tn1bnqjmegyetw5kzd2ixq5pbnb05s3u.gz"
+
+[snow_depth_model_weights]
+git-tree-sha1 = "2ff7c38faa5cefa82ed1298249445c10c33a7249"
+
+    [[snow_depth_model_weights.download]]
+    sha256 = "8d3b59da970ef7bf1fb92d325947f632bb6f98ed0d79387adb20fbc9d8810bd9"
+    url = "https://caltech.box.com/shared/static/miza4cec2b91qgn9kacqoiuqhd3obehd.gz"

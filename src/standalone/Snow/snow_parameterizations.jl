@@ -357,7 +357,7 @@ Computes the timescale for liquid water to percolate and leave the snowpack,
 given the depth of the snowpack z and the hydraulic conductivity Ksat.
 """
 function runoff_timescale(z::FT, Ksat::FT, Δt::FT) where {FT}
-    τ = max(Δt, z / Ksat)
+    τ = max(Δt, z / Ksat) #This format needs to change z to (z / snow-cover-fraction) for all model types EXCEPT the neural snow model? Do we have a better way to go about this?
     return τ
 end
 

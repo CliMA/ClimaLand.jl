@@ -13,7 +13,6 @@ using CairoMakie
 using Statistics
 using Dates
 using Insolation
-using StatsBase
 
 using ClimaLand
 using ClimaLand.Domains: Column

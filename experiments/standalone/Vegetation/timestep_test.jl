@@ -39,7 +39,6 @@ import ClimaComms
 ClimaComms.@import_required_backends
 using CairoMakie
 using Statistics
-import StatsBase: percentile
 using Dates
 using Insolation
 using StaticArrays

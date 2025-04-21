@@ -20,9 +20,6 @@ using Statistics
 using Insolation
 using DelimitedFiles
 
-using CSV, HTTP, Flux, BSON, StatsBase
-NeuralSnow = Base.get_extension(ClimaLand, :NeuralSnowExt).NeuralSnow;
-
 # Site-specific quantities
 # Error if no site argument is provided
 if length(ARGS) < 1
@@ -50,7 +47,8 @@ ndays = (tf - t0) / 3600 / 24
 
 domain = ClimaLand.Domains.Point(; z_sfc = FT(0))
 
-density_model = NeuralSnow.NeuralDepthModel(FT)
+density_model = Snow.NeuralDepthModel(FT)
+#density_model = Snow.Anderson1976{FT}()
 #density_model = Snow.MinimumDensityModel(ρ)
 
 parameters = SnowParameters{FT}(

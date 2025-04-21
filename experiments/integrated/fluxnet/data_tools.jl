@@ -6,10 +6,21 @@ read in based on the quality control flags provided in the FLUXNET data or
 by simply filling with the mean value in the column."""
 
 using Interpolations
-using StatsBase
+using Statistics
 
 # Define the valid data statuses
 @enum DataStatus complete = 1 absent = 2 incomplete = 3
+
+"""
+    percentile(x, p)
+
+Utility function to implement percentile representation with the base Statistics Package,
+to avoid additional dependency on StatsBase.
+"""
+function percentile(x, p)
+    @assert 0 <= p <= 100 "You must enter a percentile between 0 and 100."
+    return quantile(x, p / 100)
+end
 
 """
     replace_poor_quality_with_mean!(field, flag)

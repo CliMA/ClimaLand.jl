@@ -693,6 +693,8 @@ end
 
 include("./snow_parameterizations.jl")
 include("./boundary_fluxes.jl")
+include("./NeuralDepthModel.jl")
+include("./AndersonModel.jl")
 
 """
     ClimaLand.total_liq_water_vol_per_area!(
