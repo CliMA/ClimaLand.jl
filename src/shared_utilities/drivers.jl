@@ -298,7 +298,7 @@ function turbulent_fluxes!(
 
     dest .=
         turbulent_fluxes_at_a_point.(
-            Val(false), # return_momentum_fluxes
+            Val(false), # return_extra_fluxes
             T_sfc,
             q_sfc,
             ρ_sfc,
@@ -346,7 +346,7 @@ function coupler_compute_turbulent_fluxes!(
 
     dest .=
         turbulent_fluxes_at_a_point.(
-            Val(true), # return_momentum_fluxes
+            Val(true), # return_extra_fluxes
             T_sfc,
             q_sfc,
             ρ_sfc,
@@ -366,22 +366,23 @@ function coupler_compute_turbulent_fluxes!(
 end
 
 """
-    turbulent_fluxes_at_a_point(return_momentum_fluxes, args...)
+    turbulent_fluxes_at_a_point(return_extra_fluxes, args...)
 
-This is a wrapper function that allows us to dispatch on the type of `return_momentum_fluxes`
+This is a wrapper function that allows us to dispatch on the type of `return_extra_fluxes`
 as we compute the turbulent fluxes pointwise. This is needed because space for the
-momentum fluxes is only allocated in the cache when running with a `CoupledAtmosphere`.
+extra fluxes is only allocated in the cache when running with a `CoupledAtmosphere`.
 The function `compute_turbulent_fluxes_at_a_point` does the actual flux computation.
+
+The `return_extra_fluxes` argument indicates whether to return the following:
+- momentum fluxes (`ρτxz`, `ρτyz`)
+- buoyancy flux (`buoy_flux`)
 """
-function turbulent_fluxes_at_a_point(
-    return_momentum_fluxes::Val{false},
-    args...,
-)
-    (LH, SH, Ẽ, r_ae, _, _) = compute_turbulent_fluxes_at_a_point(args...)
+function turbulent_fluxes_at_a_point(return_extra_fluxes::Val{false}, args...)
+    (LH, SH, Ẽ, r_ae, _, _, _) = compute_turbulent_fluxes_at_a_point(args...)
     return (lhf = LH, shf = SH, vapor_flux = Ẽ, r_ae = r_ae)
 end
-function turbulent_fluxes_at_a_point(return_momentum_fluxes::Val{true}, args...)
-    (LH, SH, Ẽ, r_ae, ρτxz, ρτyz) =
+function turbulent_fluxes_at_a_point(return_extra_fluxes::Val{true}, args...)
+    (LH, SH, Ẽ, r_ae, ρτxz, ρτyz, buoy_flux) =
         compute_turbulent_fluxes_at_a_point(args...)
     return (
         lhf = LH,
@@ -390,6 +391,7 @@ function turbulent_fluxes_at_a_point(return_momentum_fluxes::Val{true}, args...)
         r_ae = r_ae,
         ρτxz = ρτxz,
         ρτyz = ρτyz,
+        buoy_flux = buoy_flux,
     )
 end
 
@@ -505,7 +507,15 @@ function compute_turbulent_fluxes_at_a_point(
     # vapor flux in volume of liquid water with density 1000kg/m^3
     Ẽ = E / _ρ_liq
 
-    return (LH, SH, Ẽ, r_ae, conditions.ρτxz, conditions.ρτyz)
+    return (
+        LH,
+        SH,
+        Ẽ,
+        r_ae,
+        conditions.ρτxz,
+        conditions.ρτyz,
+        conditions.buoy_flux,
+    )
 end
 
 """

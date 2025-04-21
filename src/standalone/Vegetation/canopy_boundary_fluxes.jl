@@ -272,7 +272,7 @@ function ClimaLand.turbulent_fluxes!(
     h_air = atmos.h
     dest .=
         canopy_turbulent_fluxes_at_a_point.(
-            Val(false), # return_momentum_fluxes
+            Val(false), # return_extra_fluxes
             T_sfc,
             h_sfc,
             r_stomata_canopy,
@@ -315,7 +315,7 @@ function ClimaLand.coupler_compute_turbulent_fluxes!(
     d_sfc = ClimaLand.displacement_height(model, Y, p)
     dest .=
         canopy_turbulent_fluxes_at_a_point.(
-            Val(true), # return_momentum_fluxes
+            Val(true), # return_extra_fluxes
             T_sfc,
             h_sfc,
             r_stomata_canopy,
@@ -334,18 +334,22 @@ function ClimaLand.coupler_compute_turbulent_fluxes!(
 end
 
 """
-    canopy_turbulent_fluxes_at_a_point(return_momentum_fluxes, args...)
+    canopy_turbulent_fluxes_at_a_point(return_extra_fluxes, args...)
 
-This is a wrapper function that allows us to dispatch on the type of `return_momentum_fluxes`
+This is a wrapper function that allows us to dispatch on the type of `return_extra_fluxes`
 as we compute the canopy turbulent fluxes pointwise. This is needed because space for the
-momentum fluxes is only allocated in the cache when running with a `CoupledAtmosphere`.
+extra fluxes is only allocated in the cache when running with a `CoupledAtmosphere`.
 The function `canopy_compute_turbulent_fluxes_at_a_point` does the actual flux computation.
+
+The `return_extra_fluxes` argument indicates whether to return the following:
+- momentum fluxes (`ρτxz`, `ρτyz`)
+- buoyancy flux (`buoy_flux`)
 """
 function canopy_turbulent_fluxes_at_a_point(
-    return_momentum_fluxes::Val{false},
+    return_extra_fluxes::Val{false},
     args...,
 )
-    (LH, SH, Ẽ, r_ae, ∂LHF∂qc, ∂SHF∂Tc, _, _) =
+    (LH, SH, Ẽ, r_ae, ∂LHF∂qc, ∂SHF∂Tc, _, _, _) =
         canopy_compute_turbulent_fluxes_at_a_point(args...)
     return (
         lhf = LH,
@@ -357,10 +361,10 @@ function canopy_turbulent_fluxes_at_a_point(
     )
 end
 function canopy_turbulent_fluxes_at_a_point(
-    return_momentum_fluxes::Val{true},
+    return_extra_fluxes::Val{true},
     args...,
 )
-    (LH, SH, Ẽ, r_ae, ∂LHF∂qc, ∂SHF∂Tc, ρτxz, ρτyz) =
+    (LH, SH, Ẽ, r_ae, ∂LHF∂qc, ∂SHF∂Tc, ρτxz, ρτyz, buoy_flux) =
         canopy_compute_turbulent_fluxes_at_a_point(args...)
     return (
         lhf = LH,
@@ -371,6 +375,7 @@ function canopy_turbulent_fluxes_at_a_point(
         ∂SHF∂Tc = ∂SHF∂Tc,
         ρτxz = ρτxz,
         ρτyz = ρτyz,
+        buoy_flux = buoy_flux,
     )
 end
 
@@ -502,6 +507,7 @@ function canopy_compute_turbulent_fluxes_at_a_point(
         ∂SHF∂Tc = ∂SHF∂Tc,
         ρτxz = conditions.ρτxz,
         ρτyz = conditions.ρτyz,
+        conditions.buoy_flux,
     )
 end
 
@@ -533,7 +539,8 @@ boundary_var_types(::CanopyModel{FT}, bc, ::ClimaLand.TopBoundary) where {FT} =
 An extension of the `boundary_var_types` method for AtmosDrivenCanopyBC. This
 specifies the type of the additional variables.
 
-This method includes the additional momentum fluxes needed by the atmosphere.
+This method includes additional flux-related properties needed by the atmosphere:
+momentum fluxes (`ρτxz`, `ρτyz`) and the buoyancy flux (`buoy_flux`).
 These are updated in place when the coupler computes turbulent fluxes,
 rather than in `canopy_boundary_fluxes!`.
 
@@ -548,7 +555,17 @@ boundary_var_types(
     ::ClimaLand.TopBoundary,
 ) where {FT} = (
     NamedTuple{
-        (:lhf, :shf, :transpiration, :r_ae, :∂LHF∂qc, :∂SHF∂Tc, :ρτxz, :ρτyz),
-        Tuple{FT, FT, FT, FT, FT, FT, FT, FT},
+        (
+            :lhf,
+            :shf,
+            :transpiration,
+            :r_ae,
+            :∂LHF∂qc,
+            :∂SHF∂Tc,
+            :ρτxz,
+            :ρτyz,
+            :buoy_flux,
+        ),
+        Tuple{FT, FT, FT, FT, FT, FT, FT, FT, FT},
     },
 )

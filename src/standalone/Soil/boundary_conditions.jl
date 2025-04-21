@@ -768,7 +768,8 @@ An extension of the `boundary_var_types` method for AtmosDrivenFluxBC
 with coupled atmosphere and radiative fluxes. This specifies the type
 of the additional variables.
 
-This method includes the additional momentum fluxes needed by the atmosphere.
+This method includes additional fluxes needed by the atmosphere:
+momentum fluxes (`ρτxz`, `ρτyz`) and the buoyancy flux (`buoy_flux`).
 These are updated in place when the coupler computes turbulent fluxes,
 rather than in `soil_boundary_fluxes!`.
 
@@ -783,8 +784,17 @@ boundary_var_types(
     ::ClimaLand.TopBoundary,
 ) where {FT} = (
     NamedTuple{
-        (:lhf, :shf, :vapor_flux_liq, :r_ae, :vapor_flux_ice, :ρτxz, :ρτyz),
-        Tuple{FT, FT, FT, FT, FT, FT, FT},
+        (
+            :lhf,
+            :shf,
+            :vapor_flux_liq,
+            :r_ae,
+            :vapor_flux_ice,
+            :ρτxz,
+            :ρτyz,
+            :buoy_flux,
+        ),
+        Tuple{FT, FT, FT, FT, FT, FT, FT, FT},
     },
     FT,
     NamedTuple{(:water, :heat), Tuple{FT, FT}},
