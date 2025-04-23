@@ -43,5 +43,6 @@ tutorials = [
         "Intro to multi-component models" => "standalone/Usage/LSM_single_column_tutorial.jl",
         "Intro to ClimaLand Domains" => "standalone/Usage/domain_tutorial.jl",
         "Intro to forced site-level runs" => "shared_utilities/driver_tutorial.jl",
+        "Intro to implicit/explicit timestepping" => "shared_utilities/timestepping.jl",
     ],
 ]
