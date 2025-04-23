@@ -883,7 +883,7 @@ top boundary.
 These variables are updated in place in `boundary_flux!`.
 """
 boundary_vars(bc::MoistureStateBC, ::ClimaLand.TopBoundary) =
-    (:top_bc, :top_bc_wvec, :dfluxBCdY)
+    (:top_bc, :top_bc_wvec, :dfluxBCdY, :topBC_scratch)
 
 """
     boundary_var_domain_names(::MoistureStateBC, ::ClimaLand.TopBoundary)
@@ -892,7 +892,7 @@ An extension of the `boundary_var_domain_names` method for MoistureStateBC at th
 top boundary.
 """
 boundary_var_domain_names(bc::MoistureStateBC, ::ClimaLand.TopBoundary) =
-    (:surface, :surface, :surface)
+    (:surface, :surface, :surface, :subsurface_face)
 """
     boundary_var_types(::RichardsModel{FT},
                         ::MoistureStateBC,
@@ -909,6 +909,7 @@ boundary_var_types(
 ) where {FT} = (
     FT,
     ClimaCore.Geometry.WVector{FT},
+    ClimaCore.Geometry.Covariant3Vector{FT},
     ClimaCore.Geometry.Covariant3Vector{FT},
 )
 

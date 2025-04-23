@@ -36,7 +36,8 @@ ClimaComms.@import_required_backends
 import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
 import ClimaUtilities.Regridders: InterpolationsRegridder
 import ClimaTimeSteppers as CTS
-using ClimaCore
+import ClimaCore
+@show pkgversion(ClimaCore)
 using ClimaParams
 
 import ClimaLand
@@ -305,7 +306,7 @@ if profiler == "flamegraph"
     end
 
     if get(ENV, "BUILDKITE_PIPELINE_SLUG", nothing) == "climaland-benchmark"
-        PREVIOUS_BEST_TIME = 1.49
+        PREVIOUS_BEST_TIME = 0.6
         if average_timing_s > PREVIOUS_BEST_TIME + std_timing_s
             @info "Possible performance regression, previous average time was $(PREVIOUS_BEST_TIME)"
         elseif average_timing_s < PREVIOUS_BEST_TIME - std_timing_s

@@ -169,7 +169,12 @@ function Column(;
     subsurface_space =
         ClimaCore.Spaces.CenterFiniteDifferenceSpace(device, mesh)
     surface_space = obtain_surface_space(subsurface_space)
-    space = (; surface = surface_space, subsurface = subsurface_space)
+    subsurface_face_space = obtain_face_space(subsurface_space)
+    space = (;
+        surface = surface_space,
+        subsurface = subsurface_space,
+        subsurface_face = subsurface_face_space,
+    )
     fields = get_additional_coordinate_field_data(subsurface_space)
     return Column{FT}(
         zlim,
@@ -470,7 +475,12 @@ function HybridBox(;
     )
 
     surface_space = obtain_surface_space(subsurface_space)
-    space = (; surface = surface_space, subsurface = subsurface_space)
+    subsurface_face_space = obtain_face_space(subsurface_space)
+    space = (;
+        surface = surface_space,
+        subsurface = subsurface_space,
+        subsurface_face = subsurface_face_space,
+    )
     fields = get_additional_coordinate_field_data(subsurface_space)
     return HybridBox{FT}(
         horzdomain.xlim,
@@ -593,7 +603,12 @@ function SphericalShell(;
         vert_center_space,
     )
     surface_space = obtain_surface_space(subsurface_space)
-    space = (; surface = surface_space, subsurface = subsurface_space)
+    subsurface_face_space = obtain_face_space(subsurface_space)
+    space = (;
+        surface = surface_space,
+        subsurface = subsurface_space,
+        subsurface_face = subsurface_face_space,
+    )
     fields = get_additional_coordinate_field_data(subsurface_space)
     return SphericalShell{FT}(
         radius,

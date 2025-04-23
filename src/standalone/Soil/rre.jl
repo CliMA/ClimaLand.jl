@@ -283,6 +283,8 @@ function ClimaLand.auxiliary_vars(soil::RichardsModel)
         :total_water,
         :K,
         :ψ,
+        :bidiag_matrix_scratch,
+        :full_bidiag_matrix_scratch,
         boundary_vars(soil.boundary_conditions.top, ClimaLand.TopBoundary())...,
         boundary_vars(
             soil.boundary_conditions.bottom,
@@ -302,6 +304,8 @@ function ClimaLand.auxiliary_domain_names(soil::RichardsModel)
         :surface,
         :subsurface,
         :subsurface,
+        :subsurface_face,
+        :subsurface_face,
         boundary_var_domain_names(
             soil.boundary_conditions.top,
             ClimaLand.TopBoundary(),
@@ -324,6 +328,8 @@ function ClimaLand.auxiliary_types(soil::RichardsModel{FT}) where {FT}
         FT,
         FT,
         FT,
+        MatrixFields.BidiagonalMatrixRow{Geometry.Covariant3Vector{FT}},
+        MatrixFields.BidiagonalMatrixRow{Geometry.Covariant3Vector{FT}},
         boundary_var_types(
             soil,
             soil.boundary_conditions.top,
@@ -400,8 +406,20 @@ function ClimaLand.make_compute_jacobian(model::RichardsModel{FT}) where {FT}
         # The derivative of the residual with respect to the prognostic variable
         ∂ϑres∂ϑ = matrix[@name(soil.ϑ_l), @name(soil.ϑ_l)]
 
+        # Precompute intermediate quantities to improve performance
+        # due to fusing of broadcasted expressions involving matrices
+        # First, the gradient of ∂ψ∂ϑ
+        @. p.soil.bidiag_matrix_scratch =
+            gradc2f_matrix() ⋅ MatrixFields.DiagonalMatrixRow(
+                ClimaLand.Soil.dψdϑ(hydrology_cm, Y.soil.ϑ_l, ν, θ_r, S_s),
+            )
+        # Then the full flux term
+        @. p.soil.full_bidiag_matrix_scratch =
+            MatrixFields.DiagonalMatrixRow(interpc2f_op(-p.soil.K)) ⋅
+            p.soil.bidiag_matrix_scratch
+
         # If the top BC is a `MoistureStateBC`, add the term from the top BC
-        #  flux before applying divergence
+        #  flux term before applying divergence
         if haskey(p.soil, :dfluxBCdY)
             dfluxBCdY = p.soil.dfluxBCdY
             topBC_op = Operators.SetBoundaryOperator(
@@ -410,47 +428,19 @@ function ClimaLand.make_compute_jacobian(model::RichardsModel{FT}) where {FT}
                     Geometry.Covariant3Vector(zero(FT)),
                 ),
             )
-            # Add term from top boundary condition before applying divergence
             # Note: need to pass 3D field on faces to `topBC_op`. Interpolating `K` to faces
             #  for this is inefficient - we should find a better solution.
-            @. ∂ϑres∂ϑ =
-                -dtγ * (
-                    divf2c_matrix() ⋅ (
-                        MatrixFields.DiagonalMatrixRow(
-                            interpc2f_op(-p.soil.K),
-                        ) ⋅ gradc2f_matrix() ⋅ MatrixFields.DiagonalMatrixRow(
-                            ClimaLand.Soil.dψdϑ(
-                                hydrology_cm,
-                                Y.soil.ϑ_l,
-                                ν,
-                                θ_r,
-                                S_s,
-                            ),
-                        ) + MatrixFields.LowerDiagonalMatrixRow(
-                            topBC_op(
-                                Geometry.Covariant3Vector(
-                                    zero(interpc2f_op(p.soil.K)),
-                                ),
-                            ),
-                        )
-                    )
-                ) - (I,)
-        else
-            @. ∂ϑres∂ϑ =
-                -dtγ * (
-                    divf2c_matrix() ⋅
-                    MatrixFields.DiagonalMatrixRow(interpc2f_op(-p.soil.K)) ⋅
-                    gradc2f_matrix() ⋅ MatrixFields.DiagonalMatrixRow(
-                        ClimaLand.Soil.dψdϑ(
-                            hydrology_cm,
-                            Y.soil.ϑ_l,
-                            ν,
-                            θ_r,
-                            S_s,
-                        ),
-                    )
-                ) - (I,)
+            @. p.soil.topBC_scratch = topBC_op(
+                Geometry.Covariant3Vector(zero(interpc2f_op(p.soil.K))),
+            )
+            @. p.soil.full_bidiag_matrix_scratch +=
+                MatrixFields.LowerDiagonalMatrixRow(p.soil.topBC_scratch)
         end
+        # Compute divergence matrix
+        @. ∂ϑres∂ϑ =
+            -dtγ * (divf2c_matrix() ⋅ p.soil.full_bidiag_matrix_scratch) - (I,)
+
+
     end
     return compute_jacobian!
 end
