@@ -18,7 +18,7 @@ git-tree-sha1 = "cbbc6b3752d9cb9b667ec33cfbeb46819f8db418"
     [[landsea_mask_1deg.download]]
     sha256 = "3722b553c2fdf28a6574aea2e0b167d16ab050f34e5969ada45625b3a3ecb6da"
     url = "https://caltech.box.com/shared/static/b3u4dv0dsoswvqgp8y63bzj7awbhwztd.gz"
-    
+
 [soil_ic_2008_50m]
 git-tree-sha1 = "fd9cda235e203b4235136b6dcdcd07af788c00f6"
 
