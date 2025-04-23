@@ -336,6 +336,18 @@ function ClimaLand.make_compute_jacobian(model::EnergyHydrology{FT}) where {FT}
         ∂ϑres∂ϑ = matrix[@name(soil.ϑ_l), @name(soil.ϑ_l)]
         ∂ρeres∂ρe = matrix[@name(soil.ρe_int), @name(soil.ρe_int)]
         ∂ρeres∂ϑ = matrix[@name(soil.ρe_int), @name(soil.ϑ_l)]
+
+        # Precompute a few things
+        @. p.soil.bidiag_matrix =
+            gradc2f_matrix() ⋅ MatrixFields.DiagonalMatrixRow(
+                ClimaLand.Soil.dψdϑ(
+                    hydrology_cm,
+                    Y.soil.ϑ_l,
+                    ν - Y.soil.θ_i, #ν_eff
+                    θ_r,
+                    S_s,
+                ),
+            )
         # If the top BC is a `MoistureStateBC`, add the term from the top BC
         #  flux before applying divergence
         if haskey(p.soil, :dfluxBCdY)
@@ -354,15 +366,8 @@ function ClimaLand.make_compute_jacobian(model::EnergyHydrology{FT}) where {FT}
                     divf2c_matrix() ⋅ (
                         MatrixFields.DiagonalMatrixRow(
                             interpc2f_op(-p.soil.K),
-                        ) ⋅ gradc2f_matrix() ⋅ MatrixFields.DiagonalMatrixRow(
-                            ClimaLand.Soil.dψdϑ(
-                                hydrology_cm,
-                                Y.soil.ϑ_l,
-                                ν - Y.soil.θ_i, #ν_eff
-                                θ_r,
-                                S_s,
-                            ),
-                        ) + MatrixFields.LowerDiagonalMatrixRow(
+                        ) ⋅ p.soil.bidiag_matrix +
+                        MatrixFields.LowerDiagonalMatrixRow(
                             topBC_op(
                                 Geometry.Covariant3Vector(
                                     zero(interpc2f_op(p.soil.K)),
@@ -376,17 +381,10 @@ function ClimaLand.make_compute_jacobian(model::EnergyHydrology{FT}) where {FT}
                 -dtγ * (
                     divf2c_matrix() ⋅
                     MatrixFields.DiagonalMatrixRow(interpc2f_op(-p.soil.K)) ⋅
-                    gradc2f_matrix() ⋅ MatrixFields.DiagonalMatrixRow(
-                        ClimaLand.Soil.dψdϑ(
-                            hydrology_cm,
-                            Y.soil.ϑ_l,
-                            ν - Y.soil.θ_i, #ν_eff
-                            θ_r,
-                            S_s,
-                        ),
-                    )
+                    p.soil.bidiag_matrix
                 ) - (I,)
         end
+
         @. ∂ρeres∂ϑ =
             -dtγ * (
                 divf2c_matrix() ⋅ MatrixFields.DiagonalMatrixRow(
@@ -396,29 +394,25 @@ function ClimaLand.make_compute_jacobian(model::EnergyHydrology{FT}) where {FT}
                             model.parameters.earth_param_set,
                         ) * p.soil.K,
                     ),
-                ) ⋅ gradc2f_matrix() ⋅ MatrixFields.DiagonalMatrixRow(
-                    ClimaLand.Soil.dψdϑ(
-                        hydrology_cm,
-                        Y.soil.ϑ_l,
-                        ν - Y.soil.θ_i, #ν_eff
-                        θ_r,
-                        S_s,
-                    ),
-                )
+                ) ⋅ p.soil.bidiag_matrix
             ) - (I,)
+
+        # Now precompute the ρe ρe bidiagonal
+        @. p.soil.bidiag_matrix =
+            gradc2f_matrix() ⋅ MatrixFields.DiagonalMatrixRow(
+                1 / ClimaLand.Soil.volumetric_heat_capacity(
+                    p.soil.θ_l,
+                    Y.soil.θ_i,
+                    ρc_ds,
+                    earth_param_set,
+                ),
+            )
 
         @. ∂ρeres∂ρe =
             -dtγ * (
                 divf2c_matrix() ⋅
                 MatrixFields.DiagonalMatrixRow(interpc2f_op(-p.soil.κ)) ⋅
-                gradc2f_matrix() ⋅ MatrixFields.DiagonalMatrixRow(
-                    1 / ClimaLand.Soil.volumetric_heat_capacity(
-                        p.soil.θ_l,
-                        Y.soil.θ_i,
-                        ρc_ds,
-                        earth_param_set,
-                    ),
-                )
+                p.soil.bidiag_matrix
             ) - (I,)
     end
     return compute_jacobian!
@@ -500,6 +494,7 @@ ClimaLand.auxiliary_vars(soil::EnergyHydrology) = (
     :θ_l,
     :T,
     :κ,
+    :bidiag_matrix,
     boundary_vars(soil.boundary_conditions.top, ClimaLand.TopBoundary())...,
     boundary_vars(
         soil.boundary_conditions.bottom,
@@ -523,6 +518,7 @@ ClimaLand.auxiliary_types(soil::EnergyHydrology{FT}) where {FT} = (
     FT,
     FT,
     FT,
+    MatrixFields.BidiagonalMatrixRow{Geometry.Covariant3Vector{FT}},
     boundary_var_types(
         soil,
         soil.boundary_conditions.top,
@@ -545,6 +541,7 @@ ClimaLand.auxiliary_domain_names(soil::EnergyHydrology) = (
     :subsurface,
     :subsurface,
     :subsurface,
+    :subsurface_face,
     boundary_var_domain_names(
         soil.boundary_conditions.top,
         ClimaLand.TopBoundary(),

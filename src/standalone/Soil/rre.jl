@@ -275,6 +275,7 @@ function ClimaLand.auxiliary_vars(soil::RichardsModel)
         :∫S_θ_liq_dz,
         :K,
         :ψ,
+        :bidiag_matrix,
         boundary_vars(soil.boundary_conditions.top, ClimaLand.TopBoundary())...,
         boundary_vars(
             soil.boundary_conditions.bottom,
@@ -295,6 +296,7 @@ function ClimaLand.auxiliary_domain_names(soil::RichardsModel)
         :surface,
         :subsurface,
         :subsurface,
+        :subsurface_face,
         boundary_var_domain_names(
             soil.boundary_conditions.top,
             ClimaLand.TopBoundary(),
@@ -318,6 +320,7 @@ function ClimaLand.auxiliary_types(soil::RichardsModel{FT}) where {FT}
         FT,
         FT,
         FT,
+        MatrixFields.BidiagonalMatrixRow{Geometry.Covariant3Vector{FT}},
         boundary_var_types(
             soil,
             soil.boundary_conditions.top,
@@ -396,6 +399,10 @@ function ClimaLand.make_compute_jacobian(model::RichardsModel{FT}) where {FT}
 
         # If the top BC is a `MoistureStateBC`, add the term from the top BC
         #  flux before applying divergence
+        @. p.soil.bidiag_matrix =
+            gradc2f_matrix() ⋅ MatrixFields.DiagonalMatrixRow(
+                ClimaLand.Soil.dψdϑ(hydrology_cm, Y.soil.ϑ_l, ν, θ_r, S_s),
+            )
         if haskey(p.soil, :dfluxBCdY)
             dfluxBCdY = p.soil.dfluxBCdY
             topBC_op = Operators.SetBoundaryOperator(
@@ -412,15 +419,8 @@ function ClimaLand.make_compute_jacobian(model::RichardsModel{FT}) where {FT}
                     divf2c_matrix() ⋅ (
                         MatrixFields.DiagonalMatrixRow(
                             interpc2f_op(-p.soil.K),
-                        ) ⋅ gradc2f_matrix() ⋅ MatrixFields.DiagonalMatrixRow(
-                            ClimaLand.Soil.dψdϑ(
-                                hydrology_cm,
-                                Y.soil.ϑ_l,
-                                ν,
-                                θ_r,
-                                S_s,
-                            ),
-                        ) + MatrixFields.LowerDiagonalMatrixRow(
+                        ) ⋅ p.soil.bidiag_matrix +
+                        MatrixFields.LowerDiagonalMatrixRow(
                             topBC_op(
                                 Geometry.Covariant3Vector(
                                     zero(interpc2f_op(p.soil.K)),
@@ -434,15 +434,7 @@ function ClimaLand.make_compute_jacobian(model::RichardsModel{FT}) where {FT}
                 -dtγ * (
                     divf2c_matrix() ⋅
                     MatrixFields.DiagonalMatrixRow(interpc2f_op(-p.soil.K)) ⋅
-                    gradc2f_matrix() ⋅ MatrixFields.DiagonalMatrixRow(
-                        ClimaLand.Soil.dψdϑ(
-                            hydrology_cm,
-                            Y.soil.ϑ_l,
-                            ν,
-                            θ_r,
-                            S_s,
-                        ),
-                    )
+                    p.soil.bidiag_matrix
                 ) - (I,)
         end
     end
