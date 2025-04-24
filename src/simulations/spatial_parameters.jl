@@ -1,4 +1,5 @@
 using ClimaComms
+using Statistics
 using ClimaUtilities.ClimaArtifacts
 import Interpolations
 import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
@@ -331,7 +332,7 @@ function default_spatially_varying_soil_parameters(
         regridder_kwargs = (; extrapolation_bc,),
     )
 
-    μ = FT(-6)
+    μ = FT(-5.11)
     K_sat .= masked_to_value.(K_sat, soil_params_mask, 10.0^μ)
 
     ν .= masked_to_value.(ν, soil_params_mask, 1)
