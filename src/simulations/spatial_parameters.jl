@@ -1,5 +1,4 @@
 using ClimaComms
-using Statistics
 using ClimaUtilities.ClimaArtifacts
 import Interpolations
 import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
