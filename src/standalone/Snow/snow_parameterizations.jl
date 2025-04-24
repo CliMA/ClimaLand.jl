@@ -47,10 +47,9 @@ function update_snow_albedo!(
     FT = eltype(earth_param_set)
     _ρ_liq = LP.ρ_cloud_liq(earth_param_set)
     @. α =
-        min(1 - m.β * (p.snow.ρ_snow / _ρ_liq - m.x0), 1) * (
-            m.α_0 +
-            (m.α_horizon - m.α_0) * exp(-m.k * max(p.drivers.cosθs, eps(FT)))
-        )
+        min(1 - m.β * (p.snow.ρ_snow / _ρ_liq - m.x0), 1) *
+        (m.α_0 + m.Δα * exp(-m.k * max(p.drivers.cosθs, eps(FT))))
+    @. α = max(min(α, 1), 0)
 end
 """
     update_snow_cover_fraction!(x::FT; z0 = FT(1e-1), β_scf = FT(2))::FT where {FT}

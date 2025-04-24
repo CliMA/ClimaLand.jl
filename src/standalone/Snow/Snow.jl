@@ -108,9 +108,9 @@ end
 
 Establishes the albedo parameterization where albedo
 depends on the cosine of the zenith angle of the sun, as
-    α = f(x) * [α_0 + (α_horizon - α_0)*exp(-k*cos(θs))],
+    α = f(x) * [α_0 + Δα*exp(-k*cos(θs))],
 
-where cos θs is the cosine of the zenith angle, α_0, α_1, and k 
+where cos θs is the cosine of the zenith angle, α_0, Δα, and k 
 are free parameters. The factor out front is a function of 
 x = ρ_snow/ρ_liq, of the form f(x) = min(1 - β(x-x0), 1). The parameters
 x0 ∈ [0,1] and β ∈ [0,1] are free. Choose β = 0 to remove this dependence on snow density.
@@ -122,9 +122,9 @@ p.drivers. This is available through the PrescribedRadiativeFluxes object.
 struct ZenithAngleAlbedoModel{FT} <: AbstractAlbedoModel{FT}
     "Free parameter controlling the minimum snow albedo"
     α_0::FT
-    "The albedo of snow when the sun is at the horizon"
-    α_horizon::FT
-    "Rate at which albedo drops from α_horizon to its minimum value"
+    "Free parameter controlling the snow albedo when θs = 90∘"
+    Δα::FT
+    "Rate at which albedo drops to its minimum value with zenith angle"
     k::FT
     "Rate governing how snow albedo changes with snow density, a proxy for grain size and liquid water content, ∈ [0,1]"
     β::FT
@@ -134,14 +134,14 @@ end
 
 function ZenithAngleAlbedoModel(
     α_0::FT,
-    α_horizon::FT,
+    Δα::FT,
     k::FT;
     β = FT(0),
     x0 = FT(0.2),
 ) where {FT}
     @assert 0 ≤ x0 ≤ 1
     @assert 0 ≤ β ≤ 1
-    ZenithAngleAlbedoModel(α_0, α_horizon, k, β, x0)
+    ZenithAngleAlbedoModel(α_0, Δα, k, β, x0)
 end
 
 """
