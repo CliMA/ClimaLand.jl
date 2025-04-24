@@ -14,7 +14,7 @@
 #    EKP.constrained_gaussian("α_leaf_scaler", 1, 0.15, 0.5, 1.5);
 
 prior_α_0 = EKP.constrained_gaussian("α_0", 0.5, 0.2, 0.2, 0.8);
-prior_α_horizon = EKP.constrained_gaussian("α_horizon", 0.85, 0.1, 0.7, 1);
+prior_Δα = EKP.constrained_gaussian("Δα", 0.2, 0.1, 0.0, 1.0);
 prior_k = EKP.constrained_gaussian("k", 10, 5, 2, 25);
 
 prior_beta_snow = EKP.constrained_gaussian("beta_snow", 0.4, 0.2, 0.1, 0.8);
@@ -35,7 +35,7 @@ prior = EKP.combine_distributions([
     #    # prior_α_snow,
     #    prior_α_soil_scale,
     prior_α_0,
-    prior_α_horizon,
+    prior_Δα,
     prior_k,
     prior_beta_snow,
     prior_x0_snow,

@@ -64,7 +64,7 @@ function setup_prob(
         #        α_leaf_scaler,
         #        α_soil_scaler,
         α_0,
-        α_horizon,
+        Δα,
         k,
         beta_snow,
         x0_snow,
@@ -318,10 +318,10 @@ function setup_prob(
     )
 
     # Snow model
-    # α_snow = Snow.ZenithAngleAlbedoModel(α_0, α_horizon, k)
+    # α_snow = Snow.ZenithAngleAlbedoModel(α_0, Δα, k)
     α_snow = Snow.ZenithAngleAlbedoModel(
         FT(α_0),
-        FT(α_horizon),
+        FT(Δα),
         FT(k);
         β = FT(beta_snow),
         x0 = FT(x0_snow),

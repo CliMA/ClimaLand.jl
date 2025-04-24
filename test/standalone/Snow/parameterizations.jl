@@ -129,7 +129,7 @@ for FT in (Float32, Float64)
                min(m.β_scf * depth / FT(0.05) / (depth / FT(0.05) + 1), 1)
         )
 
-        m = Snow.ZenithAngleAlbedoModel(FT(0.6), FT(0.7), FT(2); β = FT(0.7))
+        m = Snow.ZenithAngleAlbedoModel(FT(0.6), FT(0.1), FT(2); β = FT(0.7))
         update_snow_albedo!(α_snow, m, nothing, p, 0.0, param_set)
         @test all(
             @. α_snow ≈
@@ -144,7 +144,7 @@ for FT in (Float32, Float64)
             for b in β
                 m = Snow.ZenithAngleAlbedoModel(
                     FT(0.6),
-                    FT(0.6),
+                    FT(0.0),
                     FT(0);
                     β = b,
                     x0 = x,
