@@ -23,7 +23,8 @@ import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
 
 import ClimaTimeSteppers as CTS
 import NCDatasets
-using ClimaCore
+import ClimaCore
+@show pkgversion(ClimaCore)
 import ClimaLand
 using ClimaParams
 using ClimaLand.Bucket:
@@ -66,13 +67,10 @@ function setup_prob(t0, tf, Δt; nelements = (200, 7))
     # We set up the problem in a function so that we can make multiple copies (for profiling)
 
     # Set up simulation domain
-    soil_depth = FT(3.5)
-    bucket_domain = ClimaLand.Domains.SphericalShell(;
-        radius = FT(6.3781e6),
-        depth = soil_depth,
-        nelements = nelements,
-        dz_tuple = FT.((1.0, 0.05)),
-    )
+    dz_tuple = FT.((1.0, 0.05))
+    depth = FT(3.5)
+    bucket_domain =
+        ClimaLand.global_domain(FT; nelements, dz_tuple, depth = depth)
     start_date = DateTime(2005)
 
     # Initialize parameters
@@ -259,7 +257,7 @@ if profiler == "flamegraph"
     end
 
     if get(ENV, "BUILDKITE_PIPELINE_SLUG", nothing) == "climaland-benchmark"
-        PREVIOUS_BEST_TIME = 1.69
+        PREVIOUS_BEST_TIME = 0.533
         if average_timing_s > PREVIOUS_BEST_TIME + std_timing_s
             @info "Possible performance regression, previous average time was $(PREVIOUS_BEST_TIME)"
         elseif average_timing_s < PREVIOUS_BEST_TIME - std_timing_s

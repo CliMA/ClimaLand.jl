@@ -18,7 +18,8 @@ import SciMLBase
 import ClimaComms
 ClimaComms.@import_required_backends
 import ClimaTimeSteppers as CTS
-using ClimaCore
+import ClimaCore
+@show pkgversion(ClimaCore)
 using ClimaUtilities.ClimaArtifacts
 
 using ClimaDiagnostics
