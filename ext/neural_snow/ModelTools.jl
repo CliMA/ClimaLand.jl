@@ -1,6 +1,7 @@
 module ModelTools
 using Flux, LinearAlgebra
 using DataFrames, Dates
+using StaticArrays
 export make_model,
     get_model_ps,
     settimescale!,
@@ -30,6 +31,13 @@ function Flux.loadmodel!(
     return dst
 end
 
+function make_static_network(flux_object::T) where {T}
+    map(p -> p <: AbstractArray ? p : p, T.parameters)
+    for (fieldname, fieldtype) in zip(fieldnames(T), fieldtypes(T))
+        # create new type different fieldtypes and fields
+        # new_field_types =
+    end
+end
 """
     make_model(nfeatures, n, z_idx, p_idx; in_scale, dtype)
 
@@ -44,19 +52,19 @@ Create the neural network to be trained, with initial scaling weights.
 - `dtype::Type`: Sets type of output model. Default is `Float32`.
 """
 function make_model(
+    ::Type{FT},
     nfeatures::Int,
     n::Int,
-    z_idx::Int,
-    p_idx::Int;
+    ::Val{z_idx},
+    ::Val{p_idx};
     in_scale::Union{Vector{<:Real}, Nothing} = nothing,
-    dtype::Type = Float32,
-)
+) where {FT, p_idx, z_idx}
     in_scales =
-        (isnothing(in_scale)) ? Matrix{dtype}(diagm(ones(nfeatures))) :
-        Matrix{dtype}(diagm((1.0 ./ in_scale)))
-    get_relus = Matrix{dtype}([1 0 0; 0 1 0; 1 0 -1])
-    get_min = Matrix{dtype}([1 1 -1; 0 1 0])
-    get_max = Matrix{dtype}([1 -1])
+        (isnothing(in_scale)) ? Matrix{FT}(diagm(ones(nfeatures))) :
+        Matrix{FT}(diagm((1.0 ./ in_scale)))
+    get_relus = Matrix{FT}([1 0 0; 0 1 0; 1 0 -1])
+    get_min = Matrix{FT}([1 1 -1; 0 1 0])
+    get_max = Matrix{FT}([1 -1])
     model = Chain(
         pred = SkipConnection(
             Chain(
@@ -69,12 +77,18 @@ function make_model(
         ),
         get_boundaries = Parallel(
             vcat,
-            up_bound = x -> relu.(x[1, :])' .* (x[p_idx + 1, :] .> 0)', # = upper = relu(upper)
-            low_bound = x -> x[z_idx + 1, :]', # = z = relu(z)
-            output_pos = x -> x[1, :]',
+            # up_bound = x -> relu.(x[1, :])' .* (x[p_idx + 1, :] .> 0)', # = upper = relu(upper)
+            # low_bound = x -> x[z_idx + 1, :]', # = z = relu(z)
+            # output_pos = x -> x[1, :]',
+            up_bounds = x -> my_up_bound(x),
+            low_bound = x -> my_up_bound(x),
+            output_pos = x -> my_up_bound(x),
+            # up_bound = x -> SVector(relu(x[1]) * (x[p_idx + 1] > 0)), # = upper = relu(upper)
+            # low_bound = x -> SVector(x[z_idx + 1]), # = z = relu(z)
+            # output_pos = x -> SVector(x[1]),
         ),
         final_scale = Dense(
-            Matrix{dtype}(diagm([1.0, 1.0, 1.0])),
+            Matrix{FT}(diagm([1.0, 1.0, 1.0])),
             false,
             identity,
         ),
@@ -84,6 +98,14 @@ function make_model(
         apply_lower = Dense(get_max, false, identity), #returns relu(min(pred_z, upper)+z) - relu(z) = max(min(pred_Z, upper), lower)
     )
     return model
+end
+
+function my_up_bound(x::SVector{8, FT}) where {FT}
+    return SVector(relu(x[1]) * (x[5] > 0))
+end
+
+function my_up_bound(x)
+    return relu.(x[1, :])' .* (x[p_idx + 1, :] .> 0)'
 end
 
 """
