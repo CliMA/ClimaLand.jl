@@ -317,7 +317,7 @@ function setup_prob(
     # Set β = 0 in order to regain model without density dependence
     α_snow = Snow.ZenithAngleAlbedoModel(
         FT(0.64),
-        FT(0.7),
+        FT(0.06),
         FT(2);
         β = FT(0.4),
         x0 = FT(0.2),
@@ -334,6 +334,7 @@ function setup_prob(
         Δt;
         earth_param_set = earth_param_set,
         α_snow = α_snow,
+        scf = scf,
     )
     snow_args = (;
         parameters = snow_parameters,
