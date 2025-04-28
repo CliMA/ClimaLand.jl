@@ -51,7 +51,7 @@ scalar_canopy_params = (;
     h_leaf,
 );
 
-domain = ClimaLand.global_domain(FT; nelements = nelements);
+domain = ClimaLand.global_domain(FT; nelements = nelements, apply_mask = true);
 surface_space = domain.space.surface;
 start_date = DateTime(2008);
 # Forcing data
@@ -377,5 +377,6 @@ if pkgversion(ClimaCore) >= v"0.14.30"
         )
         u = sol.u[end]
         check_ocean_values_Y(u, binary_mask)
+        check_ocean_values_p(p, binary_mask)
     end
 end
