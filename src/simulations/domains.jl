@@ -38,7 +38,7 @@ rather than increasing the polynomial order.
 """
 function global_domain(
     FT;
-    apply_mask = false,
+    apply_mask = false, # test only
     mask_threshold = 0.5,
     nelements = (101, 15),
     dz_tuple = (10.0, 0.05),
