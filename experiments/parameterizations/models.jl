@@ -1,9 +1,9 @@
-struct Albedo{A <: Chain, B <: Chain}
+struct SoilAlbedo{A <: Chain, B <: Chain}
     wet::A
     dry::B
 end
 
-function Albedo(nfeatures)
+function SoilAlbedo(nfeatures)
     dry = Chain(
         Dense(nfeatures => nfeatures, elu),      # activation function inside layer
         Dense(nfeatures => 1, sigmoid),
@@ -12,25 +12,56 @@ function Albedo(nfeatures)
         Dense(nfeatures => nfeatures, elu),      # activation function inside layer
         Dense(nfeatures => 1, sigmoid),
     )
-    return Albedo{typeof(wet), typeof(dry)}(wet, dry)
+    return SoilAlbedo{typeof(wet), typeof(dry)}(wet, dry)
 end
-Flux.@layer Albedo
-function (model::Albedo)(x, moisture)
+Flux.@layer SoilAlbedo
+function (model::SoilAlbedo)(x, moisture)
     dry_albedo = model.dry(x)
     wet_albedo = model.wet(x)
     return dry_albedo .* (1 .- moisture) .+ wet_albedo .* moisture
 end
 
 
-function forward_model(θ, x_soil, LAI, x_canopy; μ_id = , frac_diff_id = ;)
-    α_soil = soil_albedo(θ, x_soil) # linear
-    α_leaf = canopy_albedo(x_canopy)# linear
-    μ = x_canopy[:, μ_id]
-    frac_diff = x_canopy[:, frac_diff_id]
-    τ_leaf = canopy_transmittance(x_canopy) # linear, could take α_leaf?
+struct TotalAlbedo{A <: Chain, B <: Chain, C <: Chain, D <: Chain}
+    wet::A
+    dry::B
+    α_leaf::C
+    sum_α_τ_leaf::D
+end
+
+function TotalAlbedo(nfeatures_soil, nfeatures_canopy)
+    dry = Chain(
+        Dense(nfeatures_soil => 1, sigmoid),
+    )
+    wet = Chain(
+        Dense(nfeatures_soil => 1, sigmoid),
+    )
+    α_leaf = Chain(
+        Dense(nfeatures_canopy => 1, sigmoid),
+    )
+    sum_α_τ_leaf = Chain(
+        Dense(nfeatures_canopy => 1, sigmoid),
+    )
+    args = (wet, dry, α_leaf, sum_α_τ_leaf)
+    return TotalAlbedo{typeof.(args)...}(args...)
+end
+Flux.@layer TotalAlbedo
+
+function (model::TotalAlbedo)(x; soil_ids, canopy_ids, μ_id, θ_id, frac_diff_id, LAI_id)
+    μ = x[μ_id,:]
+    frac_diff = x[frac_diff_id, :]
+    LAI = x[LAI_id, :]
+    θ = x[θ_id, :]
+    dry_albedo = model.dry(x[soil_ids,:])
+    wet_albedo = model.wet(x[soil_ids, :])
+    α_soil = dry_albedo .* (1 .- θ) .+ wet_albedo .* θ
+    α_leaf = model.α_leaf(x[canopy_ids, :]) 
+    sum_α_τ_leaf = model.sum_α_τ_leaf(x[canopy_ids, :])
+    τ_leaf  = sum_α_τ_leaf .- α_leaf
     yhat = simpler_canopy_sw_rt_two_stream.(α_leaf, τ_leaf, LAI, μ, α_soil, frac_diff) # reflected fraction, i.e. albedo
     return yhat
 end
+
 
 function simpler_canopy_sw_rt_two_stream(
     α_leaf::FT,
@@ -39,8 +70,8 @@ function simpler_canopy_sw_rt_two_stream(
     cosθs::FT,
     α_soil::FT,
     frac_diff::FT;
-    G = FT(0.5)
-    Ω = FT(1)
+    G = FT(0.5),
+    Ω = FT(1),
     n_layers = UInt64(20)
 ) where {FT}
     K = G/max(cosθs, eps(FT))
