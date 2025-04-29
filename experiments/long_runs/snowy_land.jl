@@ -472,7 +472,7 @@ function setup_and_solve_problem(; greet = false)
     tf = LONGER_RUN ? 10years : 2years
     Δt = 450.0
     start_date = LONGER_RUN ? DateTime(2004) : DateTime(2008)
-    nelements = (101, 15)
+    nelements = (50, 10)
     if greet
         @info "Run: Global Soil-Canopy-Snow Model"
         @info "Resolution: $nelements"
