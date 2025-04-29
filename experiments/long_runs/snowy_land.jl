@@ -422,7 +422,6 @@ function setup_prob(
         subsurface_space,
         outdir;
         start_date,
-        num_points = (570, 285, 15),
     )
 
     diags = ClimaLand.default_diagnostics(
