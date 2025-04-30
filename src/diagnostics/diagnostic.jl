@@ -62,7 +62,9 @@ function add_diagnostic_variable!(;
         "$(map(
             field -> "$(getfield(ALL_DIAGNOSTICS[short_name], field))",
             filter(field -> field != :compute!, fieldnames(DiagnosticVariable)),
-        ))"
+        ))",
+        maxlog = 1,
+        _id = Symbol(short_name)
     )
 
     ALL_DIAGNOSTICS[short_name] = DiagnosticVariable(;
