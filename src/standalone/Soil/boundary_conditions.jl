@@ -388,9 +388,12 @@ function ClimaLand.set_dfluxBCdY!(
 
 
     # Get the local geometry of the face space, then extract the top level
-    levels = ClimaCore.Spaces.nlevels(Domains.obtain_face_space(axes(p.soil.K)))
+    levels =
+        ClimaCore.Spaces.nlevels(ClimaCore.Spaces.face_space(axes(p.soil.K)))
     local_geometry_faceN = ClimaCore.Fields.level(
-        Fields.local_geometry_field(Domains.obtain_face_space(axes(p.soil.K))),
+        Fields.local_geometry_field(
+            ClimaCore.Spaces.face_space(axes(p.soil.K)),
+        ),
         levels - ClimaCore.Utilities.half,
     )
 

@@ -191,9 +191,8 @@ for FT in (Float32, Float64)
             @test p.drivers.P == zeros(space) .+ FT(101325)
             @test p.drivers.LW_d == zeros(space) .+ FT(5.67e-8 * 280.0^4.0)
             @test p.drivers.SW_d == zeros(space) .+ FT(500)
-            face_space = ClimaLand.Domains.obtain_face_space(
-                model.domain.space.subsurface,
-            )
+            face_space =
+                ClimaCore.Spaces.face_space(model.domain.space.subsurface)
             N = ClimaCore.Spaces.nlevels(face_space)
             surface_space = model.domain.space.surface
             z_sfc = ClimaCore.Fields.Field(

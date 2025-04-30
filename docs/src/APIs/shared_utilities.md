@@ -14,7 +14,6 @@ ClimaLand.Domains.Column
 ClimaLand.Domains.Plane
 ClimaLand.Domains.Point
 ClimaLand.Domains.coordinates
-ClimaLand.Domains.obtain_face_space
 ClimaLand.Domains.obtain_surface_space
 ClimaLand.Domains.obtain_surface_domain
 ClimaLand.Domains.top_center_to_surface
