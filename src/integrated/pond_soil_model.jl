@@ -122,7 +122,7 @@ Defined such that positive means into soil.
 """
 function infiltration_capacity(Y::ClimaCore.Fields.FieldVector, p::NamedTuple)
     FT = eltype(Y.soil.ϑ_l)
-    face_space = ClimaLand.Domains.obtain_face_space(axes(Y.soil.ϑ_l))
+    face_space = ClimaCore.Spaces.face_space(axes(Y.soil.ϑ_l))
     N = ClimaCore.Spaces.nlevels(face_space)
     space = axes(Y.surface_water.η)
     z = ClimaCore.Fields.coordinate_field(axes(Y.soil.ϑ_l)).z

@@ -169,7 +169,7 @@ function Column(;
     subsurface_space =
         ClimaCore.Spaces.CenterFiniteDifferenceSpace(device, mesh)
     surface_space = obtain_surface_space(subsurface_space)
-    subsurface_face_space = obtain_face_space(subsurface_space)
+    subsurface_face_space = ClimaCore.Spaces.face_space(subsurface_space)
     space = (;
         surface = surface_space,
         subsurface = subsurface_space,
@@ -475,7 +475,7 @@ function HybridBox(;
     )
 
     surface_space = obtain_surface_space(subsurface_space)
-    subsurface_face_space = obtain_face_space(subsurface_space)
+    subsurface_face_space = ClimaCore.Spaces.face_space(subsurface_space)
     space = (;
         surface = surface_space,
         subsurface = subsurface_space,
@@ -603,7 +603,7 @@ function SphericalShell(;
         vert_center_space,
     )
     surface_space = obtain_surface_space(subsurface_space)
-    subsurface_face_space = obtain_face_space(subsurface_space)
+    subsurface_face_space = ClimaCore.Spaces.face_space(subsurface_space)
     space = (;
         surface = surface_space,
         subsurface = subsurface_space,
@@ -736,14 +736,6 @@ function obtain_surface_domain(s::SphericalShell{FT}) where {FT}
 end
 
 """
-    obtain_face_space(cs::ClimaCore.Spaces.AbstractSpace)
-
-Returns the face space, if applicable, for the center space `cs`.
-"""
-obtain_face_space(cs::ClimaCore.Spaces.AbstractSpace) =
-    @error("No face space is defined for this space.")
-
-"""
     obtain_surface_space(cs::ClimaCore.Spaces.AbstractSpace)
 
 Returns the surface space, if applicable, for the center space `cs`.
@@ -751,25 +743,6 @@ Returns the surface space, if applicable, for the center space `cs`.
 obtain_surface_space(cs::ClimaCore.Spaces.AbstractSpace) =
     @error("No surface space is defined for this space.")
 
-"""
-    obtain_face_space(cs::ClimaCore.Spaces.CenterExtrudedFiniteDifferenceSpace)
-
-Returns the face space for the CenterExtrudedFiniteDifferenceSpace `cs`.
-"""
-function obtain_face_space(
-    cs::ClimaCore.Spaces.CenterExtrudedFiniteDifferenceSpace,
-)
-    return ClimaCore.Spaces.FaceExtrudedFiniteDifferenceSpace(cs)
-end
-
-"""
-    obtain_face_space(cs::ClimaCore.Spaces.CenterFiniteDifferenceSpace)
-
-Returns the face space corresponding to the CenterFiniteDifferenceSpace `cs`.
-"""
-function obtain_face_space(cs::ClimaCore.Spaces.CenterFiniteDifferenceSpace)
-    return ClimaCore.Spaces.FaceFiniteDifferenceSpace(cs)
-end
 
 """
     obtain_surface_space(cs::ClimaCore.Spaces.CenterExtrudedFiniteDifferenceSpace)
@@ -788,7 +761,7 @@ end
 Returns the top level of the face space corresponding to the CenterFiniteDifferenceSpace `cs`.
 """
 function obtain_surface_space(cs::ClimaCore.Spaces.CenterFiniteDifferenceSpace)
-    fs = obtain_face_space(cs)
+    fs = ClimaCore.Spaces.face_space(cs)
     return ClimaCore.Spaces.level(
         fs,
         ClimaCore.Utilities.PlusHalf(ClimaCore.Spaces.nlevels(fs) - 1),
@@ -891,7 +864,7 @@ both as Fields. It also returns the widths of each layer as a field.
 """
 function get_Δz(z::ClimaCore.Fields.Field)
     # Extract the differences between levels of the face space
-    fs = obtain_face_space(axes(z))
+    fs = ClimaCore.Spaces.face_space(axes(z))
     z_face = ClimaCore.Fields.coordinate_field(fs).z
     Δz_face = ClimaCore.Fields.Δz_field(z_face)
     Δz_top = ClimaCore.Fields.level(
@@ -936,7 +909,7 @@ A helper function which returns additional fields and field data corresponding t
 domains which have a subsurface_space (Column, HybridBox, SphericalShell).
 The fields are the center coordinates of the subsurface space, the spacing between
 the top center and top surface and bottom center and bottom surface, as well as the
-field corresponding to the surface height z and layer widths. The field data are the 
+field corresponding to the surface height z and layer widths. The field data are the
 depth of the domain and the minimum top layer thickness over the entire domain.
 
 We allocate these once, upon domain construction, so that they are accessible
@@ -946,7 +919,7 @@ function get_additional_coordinate_field_data(subsurface_space)
     surface_space = obtain_surface_space(subsurface_space)
     z = ClimaCore.Fields.coordinate_field(subsurface_space).z
     Δz_top, Δz_bottom, Δz = get_Δz(z)
-    face_space = obtain_face_space(subsurface_space)
+    face_space = ClimaCore.Spaces.face_space(subsurface_space)
     z_face = ClimaCore.Fields.coordinate_field(face_space).z
     z_sfc = top_face_to_surface(z_face, surface_space)
     d = depth(subsurface_space)
@@ -1060,7 +1033,6 @@ end
 export AbstractDomain
 export Column, Plane, HybridBox, Point, SphericalShell, SphericalSurface
 export coordinates,
-    obtain_face_space,
     obtain_surface_space,
     top_center_to_surface,
     bottom_center_to_surface,

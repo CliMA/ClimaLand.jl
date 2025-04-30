@@ -13,7 +13,6 @@ using ClimaLand.Domains:
     SphericalSurface,
     coordinates,
     obtain_surface_space,
-    obtain_face_space,
     obtain_surface_domain,
     get_Δz,
     top_face_to_surface,
@@ -45,7 +44,7 @@ FT = Float32
     @test shell.fields.depth == depth
     @test shell.fields.z ==
           ClimaCore.Fields.coordinate_field(shell.space.subsurface).z
-    face_space = obtain_face_space(shell.space.subsurface)
+    face_space = ClimaCore.Spaces.face_space(shell.space.subsurface)
     z_face = ClimaCore.Fields.coordinate_field(face_space).z
     @test shell.fields.z_sfc == top_face_to_surface(z_face, shell.space.surface)
     Δz_top, Δz_bottom, Δz = get_Δz(shell.fields.z)
@@ -112,7 +111,7 @@ FT = Float32
     @test box.fields.depth == zlim[2] - zlim[1]
     @test box.fields.z ==
           ClimaCore.Fields.coordinate_field(box.space.subsurface).z
-    face_space = obtain_face_space(box.space.subsurface)
+    face_space = ClimaCore.Spaces.face_space(box.space.subsurface)
     z_face = ClimaCore.Fields.coordinate_field(face_space).z
     @test box.fields.z_sfc == top_face_to_surface(z_face, box.space.surface)
     Δz_top, Δz_bottom, Δz = get_Δz(box.fields.z)
@@ -221,7 +220,7 @@ FT = Float32
     @test longlat_box.fields.depth == zlim[2] - zlim[1]
     @test longlat_box.fields.z ==
           ClimaCore.Fields.coordinate_field(longlat_box.space.subsurface).z
-    face_space = obtain_face_space(longlat_box.space.subsurface)
+    face_space = ClimaCore.Spaces.face_space(longlat_box.space.subsurface)
     z_face = ClimaCore.Fields.coordinate_field(face_space).z
     @test longlat_box.fields.z_sfc ==
           top_face_to_surface(z_face, longlat_box.space.surface)
@@ -265,7 +264,7 @@ FT = Float32
     @test z_column.fields.z ==
           ClimaCore.Fields.coordinate_field(z_column.space.subsurface).z
     @test z_column.fields.depth == zlim[2] - zlim[1]
-    face_space = obtain_face_space(z_column.space.subsurface)
+    face_space = ClimaCore.Spaces.face_space(z_column.space.subsurface)
     z_face = ClimaCore.Fields.coordinate_field(face_space).z
     @test z_column.fields.z_sfc ==
           top_face_to_surface(z_face, z_column.space.surface)
