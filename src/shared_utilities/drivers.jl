@@ -185,11 +185,74 @@ PrescribedPrecipitation{FT}(liquid_precip) where {FT} =
     PrescribedPrecipitation{FT, typeof(liquid_precip)}(liquid_precip)
 
 """
-    CoupledRadiativeFluxes{FT} <: AbstractRadiativeDrivers{FT}
+    CoupledRadiativeFluxes{FT, F <: Function} <: AbstractRadiativeDrivers{FT}
 
 To be used when coupling to an atmosphere model.
 """
-struct CoupledRadiativeFluxes{FT} <: AbstractRadiativeDrivers{FT} end
+struct CoupledRadiativeFluxes{FT, F <: Function} <: AbstractRadiativeDrivers{FT}
+    """Function that returns sun zenith angle in radians given the arguments:
+    (time from simulation start date in seconds, longitude::FT, latitude::FT)"""
+    θs::F
+end
+
+CoupledRadiativeFluxes(::Type{FT}, args...) where {FT} =
+    CoupledRadiativeFluxes{FT}(args...)
+
+"""
+    CoupledRadiativeFluxes{FT}(
+        start_date::Dates.DateTime,
+        insol_params::Insolation.Parameters.InsolationParameters{FT} = LP.LandParameters(FT,
+        ).insol_params,
+    )
+Creates a `CoupledRadiativeFluxes` object with a default zenith angle function that uses Insolation.jl
+to compute the zenith angle at a given time and location.
+"""
+function CoupledRadiativeFluxes{FT}(
+    start_date::Dates.DateTime,
+    insol_params::Insolation.Parameters.InsolationParameters{FT} = LP.LandParameters(
+        FT,
+    ).insol_params,
+) where {FT}
+    zenith_func = make_zenith_angle(FT, start_date, insol_params)
+    return CoupledRadiativeFluxes{FT, typeof(zenith_func)}(zenith_func)
+end
+
+"""
+    make_zenith_angle(
+        ::Type{FT},
+        start_date::Dates.DateTime,
+        insol_params::Insolation.Parameters.InsolationParameters{FT},
+    )
+
+Returns a zenith angle function for the given start date and insolation parameters.
+The function takes a time in seconds, and latitude and longitude in `FT`,
+and returns the zenith angle at that time and location.
+"""
+function make_zenith_angle(
+    ::Type{FT},
+    start_date::Dates.DateTime,
+    insol_params::Insolation.Parameters.InsolationParameters{FT},
+) where {FT}
+    return function zenith_angle(t::T, longitude::FT, latitude::FT) where {T}
+        if T <: ITime
+            current_datetime = date(t)
+        else
+            current_datetime = start_date + Dates.Second(round(t))
+        end
+        d, δ, η_UTC = Insolation.helper_instantaneous_zenith_angle(
+            current_datetime,
+            start_date,
+            insol_params,
+        )
+        return Insolation.instantaneous_zenith_angle(
+            d,
+            δ,
+            η_UTC,
+            longitude,
+            latitude,
+        )[1]
+    end
+end
 
 """
     CoupledAtmosphere{FT} <: AbstractAtmosphericDrivers{FT}
@@ -1139,6 +1202,15 @@ in the case of a PrescribedPrecipitation.
 function make_update_drivers(a::PrescribedPrecipitation{FT}) where {FT}
     function update_drivers!(p, t)
         evaluate!(p.drivers.P_liq, a.liquid_precip, t)
+    end
+    return update_drivers!
+end
+
+function make_update_drivers(r::CoupledRadiativeFluxes{FT}) where {FT}
+    function update_drivers!(p, t)
+        # this assumes that the space has lat/lon coordinates
+        coords = Fields.coordinate_field(p.drivers.cosθs)
+        @. p.drivers.cosθs = cos(r.θs(t, coords.long, coords.lat))
     end
     return update_drivers!
 end
