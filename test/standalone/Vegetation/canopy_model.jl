@@ -75,31 +75,17 @@ import ClimaParams
             )
             lat = FT(0.0) # degree
             long = FT(-180) # degree
+            start_date = DateTime(2005)
 
-            function zenith_angle(
-                t,
-                start_date;
-                latitude = lat,
-                longitude = long,
-                insol_params = earth_param_set.insol_params,
-            )
-                current_datetime = start_date + Dates.Second(round(t))
-                d, δ, η_UTC =
-                    FT.(
-                        Insolation.helper_instantaneous_zenith_angle(
-                            current_datetime,
-                            start_date,
-                            insol_params,
-                        )
-                    )
-                return Insolation.instantaneous_zenith_angle(
-                    d,
-                    δ,
-                    η_UTC,
-                    longitude,
-                    latitude,
-                )[1]
-            end
+            zenith_angle =
+                (t, s) -> default_zenith_angle(
+                    t,
+                    s;
+                    insol_params = earth_param_set.insol_params,
+                    latitude = lat,
+                    longitude = long,
+                )
+
 
             function shortwave_radiation(
                 t;
@@ -123,7 +109,6 @@ import ClimaParams
             P_atmos = t -> 1e5 # Pa
             h_atmos = h_int # m
             c_atmos = (t) -> 4.11e-4 # mol/mol
-            start_date = DateTime(2005)
             atmos = PrescribedAtmosphere(
                 TimeVaryingInput(liquid_precip),
                 TimeVaryingInput(snow_precip),
@@ -630,31 +615,16 @@ end
             )
             lat = FT(0.0) # degree
             long = FT(-180) # degree
+            start_date = DateTime(2005)
 
-            function zenith_angle(
-                t,
-                start_date;
-                latitude = lat,
-                longitude = long,
-                insol_params = earth_param_set.insol_params,
-            )
-                current_datetime = start_date + Dates.Second(round(t))
-                d, δ, η_UTC =
-                    FT.(
-                        Insolation.helper_instantaneous_zenith_angle(
-                            current_datetime,
-                            start_date,
-                            insol_params,
-                        )
-                    )
-                return Insolation.instantaneous_zenith_angle(
-                    d,
-                    δ,
-                    η_UTC,
-                    longitude,
-                    latitude,
-                )[1]
-            end
+            zenith_angle =
+                (t, s) -> default_zenith_angle(
+                    t,
+                    s;
+                    insol_params = earth_param_set.insol_params,
+                    latitude = lat,
+                    longitude = long,
+                )
 
             function shortwave_radiation(
                 t;
@@ -678,7 +648,6 @@ end
             P_atmos = t -> 1e5 # Pa
             h_atmos = h_int # m
             c_atmos = (t) -> 4.11e-4 # mol/mol
-            start_date = DateTime(2005)
             atmos = PrescribedAtmosphere(
                 TimeVaryingInput(liquid_precip),
                 TimeVaryingInput(snow_precip),
@@ -900,31 +869,17 @@ end
         )
         lat = FT(0.0) # degree
         long = FT(-180) # degree
+        start_date = DateTime(2005)
 
-        function zenith_angle(
-            t,
-            start_date;
-            latitude = lat,
-            longitude = long,
-            insol_params = earth_param_set.insol_params,
-        )
-            current_datetime = start_date + Dates.Second(round(t))
-            d, δ, η_UTC =
-                FT.(
-                    Insolation.helper_instantaneous_zenith_angle(
-                        current_datetime,
-                        start_date,
-                        insol_params,
-                    )
-                )
-            return Insolation.instantaneous_zenith_angle(
-                d,
-                δ,
-                η_UTC,
-                longitude,
-                latitude,
-            )[1]
-        end
+        zenith_angle =
+            (t, s) -> default_zenith_angle(
+                t,
+                s;
+                insol_params = earth_param_set.insol_params,
+                latitude = lat,
+                longitude = long,
+            )
+
 
         function shortwave_radiation(
             t;
@@ -948,7 +903,6 @@ end
         P_atmos = t -> 1e5 # Pa
         h_atmos = h_int # m
         c_atmos = (t) -> 4.11e-4 # mol/mol
-        start_date = DateTime(2005)
         atmos = PrescribedAtmosphere(
             TimeVaryingInput(liquid_precip),
             TimeVaryingInput(snow_precip),
@@ -1261,31 +1215,16 @@ end
             )
             lat = FT(0.0) # degree
             long = FT(-180) # degree
+            start_date = DateTime(2005)
 
-            function zenith_angle(
-                t,
-                start_date;
-                latitude = lat,
-                longitude = long,
-                insol_params = earth_param_set.insol_params,
-            )
-                current_datetime = start_date + Dates.Second(round(t))
-                d, δ, η_UTC =
-                    FT.(
-                        Insolation.helper_instantaneous_zenith_angle(
-                            current_datetime,
-                            start_date,
-                            insol_params,
-                        )
-                    )
-                return Insolation.instantaneous_zenith_angle(
-                    d,
-                    δ,
-                    η_UTC,
-                    longitude,
-                    latitude,
-                )[1]
-            end
+            zenith_angle =
+                (t, s) -> default_zenith_angle(
+                    t,
+                    s;
+                    insol_params = earth_param_set.insol_params,
+                    latitude = lat,
+                    longitude = long,
+                )
 
             function shortwave_radiation(
                 t;
@@ -1309,7 +1248,6 @@ end
             P_atmos = t -> 1e5 # Pa
             h_atmos = h_int # m
             c_atmos = (t) -> 4.11e-4 # mol/mol
-            start_date = DateTime(2005)
             atmos = PrescribedAtmosphere(
                 TimeVaryingInput(liquid_precip),
                 TimeVaryingInput(snow_precip),

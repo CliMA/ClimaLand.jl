@@ -8,6 +8,7 @@ using ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
 using ClimaLand
 import Thermodynamics
 import ClimaParams as CP
+using Dates
 
 FT = Float32
 @testset "Default model, FT = $FT" begin
@@ -199,4 +200,38 @@ end
         0.9021186977633818,
     ]
     @test all(rh .- soln .≈ 0)
+end
+
+@testset "CoupledRadiativeFluxes" begin
+    start_date = DateTime(Date(2020, 6, 15), Time(12, 0, 0))
+    domain = ClimaLand.Domains.HybridBox(;
+        xlim = FT.((0, 9)),
+        ylim = FT.((0, 9)),
+        zlim = FT.((1, 2)),
+        nelements = (10, 10, 1),
+        longlat = FT.((0, 0)),
+    )
+    coords = ClimaLand.Domains.coordinates(domain)
+
+    # test CoupledRadiativeFluxes with no start_date provided (will not update cosθs)
+    crf_no_zenith = ClimaLand.CoupledRadiativeFluxes{FT}()
+    p = (; drivers = ClimaLand.initialize_drivers((crf_no_zenith,), coords))
+    p.drivers.cosθs .= FT(0)
+    no_update = ClimaLand.make_update_drivers((crf_no_zenith,))
+    no_update(p, 0)
+    @test all(isequal(FT(0)), ClimaCore.Fields.field2array(p.drivers.cosθs))
+    crf = ClimaLand.CoupledRadiativeFluxes{FT}(
+        start_date;
+        latitude = coords.surface.lat,
+        longitude = coords.surface.long,
+    )
+    p = (; drivers = ClimaLand.initialize_drivers((crf,), coords))
+    update_cosθs_only = ClimaLand.make_update_drivers((crf,))
+    update_cosθs_only(p, 0) # populate cosθs with cos(zenith) at noon mid-summer at equator
+    @test all(
+        x -> isapprox(x, 0.95; atol = 0.05),
+        ClimaCore.Fields.field2array(p.drivers.cosθs),
+    )
+    update_cosθs_only(p, 60 * 60 * 12) # populate with cos(zenith) at night
+    @test all((<)(0), ClimaCore.Fields.field2array(p.drivers.cosθs)) # zenith angle at nighttime should be > 90 degrees
 end
