@@ -150,6 +150,7 @@ function get_data(
         start_date = start,
         end_date = finish,
     )
+    @show url
     data = CSV.read(HTTP.get(url).body, DataFrame, comment = "#", delim = ",")
     return data
 end
@@ -424,7 +425,7 @@ end
     makediffs(data, Δt; diffvars)
 
 Turn accumulated data fields into differential data fields.
-Turns data fields which represent accumulated values of variables into a rate of change of that variable, 
+Turns data fields which represent accumulated values of variables into a rate of change of that variable,
 `(data[i+1]-data[i])/(time[i+1]-time[i])`, but only in the case where `time[i+1]-time[i] = Δt`.
 
 **Note: apply after scaling and getting rid of missing values. Assumes time column has name "date" and has `Date`/`DateTime` units, in sequential order.
@@ -1221,7 +1222,7 @@ The list of manually determined suspect data periods in the raw SNOTEL data, by 
 "`s`" demarcation within the code refers to solar data, "`h`" for relative humidity data, "`w`" for wind data.
 "`f`" demarcation of a period refers to periods that are suspect in multiple data streams.
 
-**Note: requires column names of at least "date". 
+**Note: requires column names of at least "date".
 
 # Arguments
 - `data::DataFrame`: the site data over which to apply the filter.

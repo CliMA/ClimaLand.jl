@@ -2,7 +2,7 @@
 
 julia_version = "1.11.4"
 manifest_format = "2.0"
-project_hash = "4f6c1aaa046613900efbe93159d884101726d81f"
+project_hash = "56cf17bbab76806512cea541a5c977d3d80551b9"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "e2478490447631aedba0823d4d7a80b2cc8cdb32"
@@ -335,6 +335,12 @@ git-tree-sha1 = "99f1c6b659c14bbb3492246791bb4928a40ceb84"
 uuid = "76a88914-d11a-5bdc-97e0-2f5a05c973a2"
 version = "0.16.1+0"
 
+[[deps.CUDNN_jll]]
+deps = ["Artifacts", "CUDA_Runtime_jll", "JLLWrappers", "LazyArtifacts", "Libdl", "TOML"]
+git-tree-sha1 = "9851af16a2f357a793daa0f13634c82bc7e40419"
+uuid = "62b44479-cb7b-5706-934f-f13b2eb2e645"
+version = "9.4.0+0"
+
 [[deps.Cairo]]
 deps = ["Cairo_jll", "Colors", "Glib_jll", "Graphics", "Libdl", "Pango_jll"]
 git-tree-sha1 = "71aa551c5c33f1a4415867fe06b7844faadb0ae9"
@@ -415,7 +421,7 @@ uuid = "1ecacbb8-0713-4841-9a07-eb5aa8a2d53f"
 version = "0.2.13"
 
 [[deps.ClimaLand]]
-deps = ["ClimaComms", "ClimaCore", "ClimaDiagnostics", "ClimaUtilities", "Dates", "DocStringExtensions", "Insolation", "Interpolations", "LazyArtifacts", "LinearAlgebra", "NCDatasets", "SciMLBase", "StaticArrays", "SurfaceFluxes", "Thermodynamics"]
+deps = ["Adapt", "ClimaComms", "ClimaCore", "ClimaDiagnostics", "ClimaUtilities", "Dates", "DocStringExtensions", "Insolation", "Interpolations", "LazyArtifacts", "LinearAlgebra", "NCDatasets", "SciMLBase", "StaticArrays", "SurfaceFluxes", "Thermodynamics"]
 path = ".."
 uuid = "08f4d4ce-cf43-44bb-ad95-9d2d5f413532"
 version = "0.15.13"
@@ -3093,6 +3099,12 @@ deps = ["ChainRulesCore", "MacroTools"]
 git-tree-sha1 = "434b3de333c75fc446aa0d19fc394edafd07ab08"
 uuid = "700de1a5-db45-46bc-99cf-38207098b444"
 version = "0.2.7"
+
+[[deps.cuDNN]]
+deps = ["CEnum", "CUDA", "CUDA_Runtime_Discovery", "CUDNN_jll"]
+git-tree-sha1 = "1faded2a0800a6c2c329d77bf75d91685e212222"
+uuid = "02a925ec-e4fe-4b08-9a7e-0d78e3d38ccd"
+version = "1.4.2"
 
 [[deps.demumble_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]

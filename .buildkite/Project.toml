@@ -1,4 +1,5 @@
 [deps]
+Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 ArgParse = "c7e460c6-2fb9-53a9-8c5b-16f535851c63"
 BSON = "fbb218c0-5317-5bc6-957e-2ee96dd4b1f0"
@@ -40,6 +41,7 @@ StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 SurfaceFluxes = "49b00bb7-8bd4-4f2b-b78c-51cd0450215f"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 Thermodynamics = "b60c26fb-14c3-4610-9d3e-2d17fe7ff00c"
+cuDNN = "02a925ec-e4fe-4b08-9a7e-0d78e3d38ccd"
 
 [compat]
 ClimaAnalysis = "0.5.16"

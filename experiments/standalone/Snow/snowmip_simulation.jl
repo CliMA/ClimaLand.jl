@@ -56,7 +56,7 @@ domain = ClimaLand.Domains.Point(; z_sfc = FT(0))
 # domain = ClimaLand.Domains.Plane(;xlim=(0.0f0, 1.0f0), ylim=(0.0f0, 1.0f0), nelements = (2, 2))
 
 density_model = NeuralSnow.NeuralDepthModel(FT)
-#density_model = Snow.MinimumDensityModel(ρ)
+# density_model = Snow.MinimumDensityModel(ρ)
 
 parameters = SnowParameters{FT}(
     Δt;

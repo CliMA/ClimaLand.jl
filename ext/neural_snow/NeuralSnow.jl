@@ -63,8 +63,7 @@ function get_znetwork()
     z_idx = 1
     p_idx = 7
     nfeatures = 7
-    zmodel =
-        ModelTools.make_model(Float32, nfeatures, 4, Val(z_idx), Val(p_idx))
+    zmodel = ModelTools.make_model(Float32, nfeatures, 4, z_idx, p_idx)
     zmodel_state = BSON.load(IOBuffer(HTTP.get(download_link).body))[:zstate]
     # Flux.loadmodel!(zmodel, zmodel_state) #Return to this to deterine how to load model for Flux v0.15 and above
     # ModelTools.settimescale!(zmodel, 86400.0)
@@ -155,7 +154,7 @@ function update_density_and_depth!(
     @. ρ_snow = snow_bulk_density(Y.snow.S, z_snow, params)
 end
 
-
+# TODO: Make this into two flux layers?
 """
     eval_nn(density::NeuralDepthModel, z::FT, swe::FT, P::FT, T::FT, R::FT, qrel::FT, u::FT)::FT where {FT}
 Helper function for evaluating the neural network in a pointwise manner over a `ClimaCore.Field`

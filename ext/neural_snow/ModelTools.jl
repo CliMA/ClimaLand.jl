@@ -55,10 +55,10 @@ function make_model(
     ::Type{FT},
     nfeatures::Int,
     n::Int,
-    ::Val{z_idx},
-    ::Val{p_idx};
+    z_idx::Int,
+    p_idx::Int;
     in_scale::Union{Vector{<:Real}, Nothing} = nothing,
-) where {FT, p_idx, z_idx}
+) where {FT}
     in_scales =
         (isnothing(in_scale)) ? Matrix{FT}(diagm(ones(nfeatures))) :
         Matrix{FT}(diagm((1.0 ./ in_scale)))
@@ -80,12 +80,28 @@ function make_model(
             # up_bound = x -> relu.(x[1, :])' .* (x[p_idx + 1, :] .> 0)', # = upper = relu(upper)
             # low_bound = x -> x[z_idx + 1, :]', # = z = relu(z)
             # output_pos = x -> x[1, :]',
-            up_bounds = x -> my_up_bound(x),
-            low_bound = x -> my_up_bound(x),
-            output_pos = x -> my_up_bound(x),
-            # up_bound = x -> SVector(relu(x[1]) * (x[p_idx + 1] > 0)), # = upper = relu(upper)
-            # low_bound = x -> SVector(x[z_idx + 1]), # = z = relu(z)
-            # output_pos = x -> SVector(x[1]),
+            # up_bounds = x -> my_up_bound(x),
+            # low_bound = x -> my_up_bound(x),
+            # output_pos = x -> my_up_bound(x),
+            # up_bound = Dense(Matrix{1, 8}(FT[0,0,0,0,0,0,0, 1;]...), false),
+            # low_bound = Dense(Matrix{1,8}(FT[0,1,0,0,0,0,0,0;]...), false, relu),
+            up_bound = Dense(
+                Matrix{FT}(FT[1 0 0 0 0 0 0 0]),
+                false,
+                (FT ∘ (>)(FT(1))),
+            ),
+            low_bound = Dense(Matrix{FT}(FT[0 1 0 0 0 0 0 0]), false, relu),
+            output_pos = Dense(Matrix{FT}(FT[1 0 0 0 0 0 0 0])),
+
+            # up_bound = let p_idx = p_idx
+            #     x -> SVector(relu(x[1]) * (x[p_idx + 1] > 0))
+            # end, # = upper = relu(upper)
+            # low_bound = let z_idx = z_idx
+            #     x -> SVector(x[z_idx + 1])
+            # end, # = z = relu(z)
+            # output_pos = let z_idx = z_idx
+            #     x -> SVector(x[1])
+            # end,
         ),
         final_scale = Dense(
             Matrix{FT}(diagm([1.0, 1.0, 1.0])),
