@@ -1,6 +1,3 @@
-# Try making heatmaps of variables - are they reasonable? do they correlate with soil type?
-# Look at CLM prediction - is moisture variable really wrong?
-
 import ClimaUtilities.ClimaArtifacts: @clima_artifact
 import ClimaUtilities
 import ClimaUtilities.Regridders: InterpolationsRegridder, regrid
@@ -176,7 +173,7 @@ P_atmos = TimeVaryingInput(
         regridder_type,
         method = time_interpolation_method,
 )
-land_mask(lsm, cl) = cl == 0 && lsm == 1 # 1 if land
+land_mask(lsm, cl) = cl < 0.1 && lsm >= 0.5 # 1 if land
 era5_mask_tvi = TimeVaryingInput(
     [era5_path, era5_path],
     ["lsm", "cl"],
@@ -263,11 +260,10 @@ for (i, t) in enumerate(θ.data_handler.available_dates)
     μ = max.(cos.(zenith_angle.(t, lat, lon, start_date, Ref(earth_param_set.insol_params))), 0)
     @. mask = !(
         (snow_field ≈ 1.0) ||
-        (θ_field < 0.01) ||
         (albedo_field < 0.05) ||
         (albedo_field > 0.95) ||
         (μ < 0.09) ||
-        (era5_mask == 0)
+        (era5_mask <0.99)
     )
     array_mask = parent(mask)[:] .≈ 1
     N_i = sum(array_mask)
@@ -291,11 +287,10 @@ for (i, t) in enumerate(θ.data_handler.available_dates)
     μ = max.(cos.(zenith_angle.(t, lat, lon, start_date, Ref(earth_param_set.insol_params))), 0)
     @. mask = !(
         (snow_field ≈ 1.0) ||
-        (θ_field < 0.01) ||
         (albedo_field < 0.05) ||
         (albedo_field > 0.95) ||
         (μ < 0.09) ||
-        (era5_mask == 0)
+        (era5_mask <0.99)
     )
     array_mask = parent(mask)[:] .≈ 1
     N_i = sum(array_mask)

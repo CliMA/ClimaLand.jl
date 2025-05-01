@@ -22,45 +22,90 @@ function (model::SoilAlbedo)(x, moisture)
 end
 
 
-struct TotalAlbedo{A <: Chain, B <: Chain, C <: Chain, D <: Chain}
-    wet::A
-    dry::B
-    α_leaf::C
-    sum_α_τ_leaf::D
+struct TotalAlbedo{A <: Chain, B <: Chain, C <: Chain, D <: Chain,  E <: Chain}
+    wet_0::A
+    dry_0::B
+    logΔα::C
+    α_leaf::D
+    sum_α_τ_leaf::E
 end
 
 function TotalAlbedo(nfeatures_soil, nfeatures_canopy)
-    dry = Chain(
+    dry_0 = Chain(
         Dense(nfeatures_soil => 1, sigmoid),
     )
-    wet = Chain(
+    wet_0 = Chain(
         Dense(nfeatures_soil => 1, sigmoid),
     )
+    logΔα = Chain(Dense(1 => 1),)
     α_leaf = Chain(
         Dense(nfeatures_canopy => 1, sigmoid),
     )
     sum_α_τ_leaf = Chain(
         Dense(nfeatures_canopy => 1, sigmoid),
     )
-    args = (wet, dry, α_leaf, sum_α_τ_leaf)
+    args = (wet_0, dry_0, logΔα, α_leaf, sum_α_τ_leaf)
     return TotalAlbedo{typeof.(args)...}(args...)
 end
 Flux.@layer TotalAlbedo
-
+Flux.trainable(model::TotalAlbedo) = (; model.dry_0, model.wet_0, model.logΔα,model.α_leaf, model.sum_α_τ_leaf)
 function (model::TotalAlbedo)(x; soil_ids, canopy_ids, μ_id, θ_id, frac_diff_id, LAI_id)
     μ = x[μ_id,:]
     frac_diff = x[frac_diff_id, :]
     LAI = x[LAI_id, :]
     θ = x[θ_id, :]
-    dry_albedo = model.dry(x[soil_ids,:])
-    wet_albedo = model.wet(x[soil_ids, :])
-    α_soil = dry_albedo .* (1 .- θ) .+ wet_albedo .* θ
+    dry_albedo = model.dry_0(x[soil_ids,:])
+    wet_albedo = model.wet_0(x[soil_ids, :])
+    α_soil = @. dry_albedo * (1 - θ) + wet_albedo * θ
+    α_soil_zenith_corrected = min.(max.(α_soil .+ exp.(model.logΔα(μ)), Float32(0)), Float32(1))# α = α_0 + Δαe^(kμ)
     α_leaf = model.α_leaf(x[canopy_ids, :]) 
     sum_α_τ_leaf = model.sum_α_τ_leaf(x[canopy_ids, :])
-    τ_leaf  = sum_α_τ_leaf .- α_leaf
-    yhat = simpler_canopy_sw_rt_two_stream.(α_leaf, τ_leaf, LAI, μ, α_soil, frac_diff) # reflected fraction, i.e. albedo
+    τ_leaf  = max.(sum_α_τ_leaf .- α_leaf,0.0f0)
+    yhat = simpler_canopy_sw_rt_two_stream.(α_leaf, τ_leaf, LAI, μ, α_soil_zenith_corrected, frac_diff) # reflected fraction, i.e. albedo
     return yhat
 end
+
+
+
+
+struct TotalAlbedoSingleSoil{A <: Chain, C <: Chain, D <: Chain,  E <: Chain}
+    α_soil::A
+    logΔα::C
+    α_leaf::D
+    sum_α_τ_leaf::E
+end
+
+function TotalAlbedoSingleSoil(nfeatures_soil, nfeatures_canopy)
+    α_soil = Chain(
+        #Dense(nfeatures_soil => nfeatures_soil, elu),
+        Dense(nfeatures_soil => 1, sigmoid),
+    )
+    logΔα = Chain(Dense(1 => 1),)
+    α_leaf = Chain(
+        Dense(nfeatures_canopy => 1, sigmoid),
+    )
+    sum_α_τ_leaf = Chain(
+        Dense(nfeatures_canopy => 1, sigmoid),
+    )
+    args = (α_soil, logΔα, α_leaf, sum_α_τ_leaf)
+    return TotalAlbedoSingleSoil{typeof.(args)...}(args...)
+end
+Flux.@layer TotalAlbedoSingleSoil
+Flux.trainable(model::TotalAlbedoSingleSoil) = (; model.α_soil, model.logΔα,model.α_leaf, model.sum_α_τ_leaf)
+function (model::TotalAlbedoSingleSoil)(x; soil_ids, canopy_ids, μ_id, frac_diff_id, LAI_id)
+    μ = x[μ_id,:]
+    frac_diff = x[frac_diff_id, :]
+    LAI = x[LAI_id, :]
+    α_soil = model.α_soil(x[soil_ids,:])
+    α_soil_zenith_corrected = min.(max.(α_soil .+ exp.(model.logΔα(μ)), Float32(0)), Float32(1))# α = α_0 + Δαe^(kμ)
+    α_leaf = model.α_leaf(x[canopy_ids, :]) 
+    sum_α_τ_leaf = model.sum_α_τ_leaf(x[canopy_ids, :])
+    τ_leaf  = max.(sum_α_τ_leaf .- α_leaf,0.0f0)
+    yhat = simpler_canopy_sw_rt_two_stream.(α_leaf, τ_leaf, LAI, μ, α_soil_zenith_corrected, frac_diff) # reflected fraction, i.e. albedo
+    return yhat
+end
+
+
 
 
 function simpler_canopy_sw_rt_two_stream(
@@ -215,4 +260,20 @@ function simpler_canopy_sw_rt_two_stream(
         i += 1
     end
     return FT(F_refl)
+end
+
+
+function put_on_grid(lat, lon, x)
+    lat_bins = 180
+    lon_bins = 360
+    x_grid = zeros(lon_bins, lat_bins) .+ NaN
+    for i in 1:lat_bins
+        for j in 1:lon_bins
+            mask = (lat .> -90 +(i-1)) .&& (lat .< -90 + i) .&& (lon .> -180 +(j-1)) .&& (lon .< -180 + j)
+            if sum(mask) > 0
+                x_grid[j,i] = mean(x[mask])
+            end
+        end
+    end
+    return Array(-89.5:1:89.5), Array(-179.5:1:179.5), x_grid
 end
