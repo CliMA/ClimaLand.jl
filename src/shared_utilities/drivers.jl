@@ -35,7 +35,8 @@ export AbstractAtmosphericDrivers,
     make_update_drivers,
     prescribed_lai_era5,
     prescribed_forcing_era5,
-    prescribed_analytic_forcing
+    prescribed_analytic_forcing,
+    default_zenith_angle
 
 """
      AbstractClimaLandDrivers{FT <: AbstractFloat}
@@ -185,11 +186,116 @@ PrescribedPrecipitation{FT}(liquid_precip) where {FT} =
     PrescribedPrecipitation{FT, typeof(liquid_precip)}(liquid_precip)
 
 """
-    CoupledRadiativeFluxes{FT} <: AbstractRadiativeDrivers{FT}
+    CoupledRadiativeFluxes{
+        FT,
+        F <: Union{Function, Nothing},
+        T,
+    } <: AbstractRadiativeDrivers{FT}
 
-To be used when coupling to an atmosphere model.
+To be used when coupling to an atmosphere model. Either both `θs` and `start_date`
+must be `nothing`, or both must not be `nothing``.
+
+During the driver update, cosθs is unchanged if `θs` is `nothing`. This behavior differs from
+the `PrescribedRadiativeFluxes` where `cosθs` set to `NaN` if `θs` is `nothing`.
+Otherwise, `θs` recieves the following arguments:
+(time_from_start, `start_date`), and is expected to return zenith angle at the given time.
+$(DocStringExtensions.FIELDS)
 """
-struct CoupledRadiativeFluxes{FT} <: AbstractRadiativeDrivers{FT} end
+struct CoupledRadiativeFluxes{FT, F <: Union{Function, Nothing}, T} <:
+       AbstractRadiativeDrivers{FT}
+    """Function that fills a climacore field with the zenith angle given the following arguments:
+    (time_from_start, `start_date`)"""
+    θs::F
+    "Start date - the datetime corresponding to t=0 for the simulation"
+    start_date::T
+    function CoupledRadiativeFluxes{FT, F, T}(
+        θs::F,
+        start_date::T,
+    ) where {FT, F, T}
+        (
+            (isnothing(θs) && isnothing(start_date)) ||
+            ((!isnothing(θs) && !isnothing(start_date)))
+        ) || error(
+            "CoupledRadiativeFluxes: `θs` and start_date` must both be `nothing` or both not `nothing`.",
+        )
+        new{FT, F, T}(θs, start_date)
+    end
+end
+
+# This constructor is here to maintain backwards compatability with ClimaCoupler
+# If this constructor is used, the coupler should calulate and update the zenith angle
+CoupledRadiativeFluxes{FT}() where {FT} =
+    CoupledRadiativeFluxes{FT, Nothing, Nothing}(nothing, nothing)
+
+CoupledRadiativeFluxes(::Type{FT}, args...) where {FT} =
+    CoupledRadiativeFluxes{FT}(args...)
+
+"""
+    CoupledRadiativeFluxes{FT}(
+        start_date::Dates.DateTime;
+        latitude,
+        longitude,
+        insol_params=LP.LandParameters(FT).insol_params,
+    )
+Creates a `CoupledRadiativeFluxes` object with a default zenith angle function that uses Insolation.jl
+to compute the zenith angle at a given time and location.
+"""
+function CoupledRadiativeFluxes{FT}(
+    start_date::DT;
+    latitude::LT,
+    longitude::LT,
+    insol_params::IP = LP.LandParameters(FT).insol_params,
+) where {FT, DT, LT, IP}
+    zenith_angle =
+        (t, s) -> default_zenith_angle(
+            t,
+            s;
+            latitude = latitude,
+            longitude = longitude,
+            insol_params = insol_params,
+        )
+    return CoupledRadiativeFluxes{FT, typeof(zenith_angle), DT}(
+        zenith_angle,
+        start_date,
+    )
+end
+
+"""
+    default_zenith_angle(
+        t::T,
+        start_date::Dates.DateTime;
+        latitude::LT,
+        longitude::LT,
+        insol_params::Insolation.Parameters.InsolationParameters{FT},
+    )
+
+Calculate zenith angle with Insolation for the given start date, insolation parameters, latitude,
+and longitude.
+
+`latitude` and `longitude` can be a collections or a Number.
+"""
+function default_zenith_angle(
+    t::T,
+    start_date::Dates.DateTime;
+    latitude::LT,
+    longitude::LT,
+    insol_params,
+) where {T, LT}
+    FT = eltype(latitude)
+    current_datetime =
+        T <: ITime ? date(t) : start_date + Dates.Second(round(t))
+    d, δ, η_UTC =
+        FT.(
+            Insolation.helper_instantaneous_zenith_angle(
+                current_datetime,
+                start_date,
+                insol_params,
+            )
+        )
+    # Reduces allocations by throwing away unwanted values
+    zenith_only = (args...) -> Insolation.instantaneous_zenith_angle(args...)[1]
+    return zenith_only.(d, δ, η_UTC, longitude, latitude)
+end
 
 """
     CoupledAtmosphere{FT} <: AbstractAtmosphericDrivers{FT}
@@ -1144,6 +1250,27 @@ function make_update_drivers(a::PrescribedPrecipitation{FT}) where {FT}
 end
 
 """
+    make_update_drivers(r::CoupledRadiativeFluxes{FT}) where {FT}
+
+Creates and returns a function which updates the driver variables
+in the case of a CoupledRadiativeFluxes.
+
+When `r.θs` is `nothing`, the cosine zenith angle
+not changed, and should be updated by the coupler. This differs from the behavior of
+`PrescribedRadiativeFluxes`, where the cosine zenith angle is set to `NaN` if `θs` is `nothing`.
+
+Otherwise, the cosine zenith angle is computed using `cos.(r.θs(t, r.start_date))`.
+"""
+make_update_drivers(r::CoupledRadiativeFluxes{FT, Nothing}) where {FT} =
+    (p, t) -> nothing
+function make_update_drivers(r::CoupledRadiativeFluxes{FT}) where {FT}
+    function update_drivers!(p, t)
+        p.drivers.cosθs .= cos.(r.θs(t, r.start_date))
+    end
+    return update_drivers!
+end
+
+"""
     make_update_drivers(r::PrescribedRadiativeFluxes{FT}) where {FT}
 
 Creates and returns a function which updates the driver variables
@@ -1346,39 +1473,14 @@ function prescribed_forcing_era5(
         regridder_type,
         method = time_interpolation_method,
     )
-
-    function zenith_angle(
-        t,
-        start_date;
-        latitude = ClimaCore.Fields.coordinate_field(surface_space).lat,
-        longitude = ClimaCore.Fields.coordinate_field(surface_space).long,
-        insol_params::Insolation.Parameters.InsolationParameters{FT} = earth_param_set.insol_params,
-    ) where {FT}
-        # This should be time in UTC
-        if t isa ITime
-            current_datetime = date(t)
-        else
-            current_datetime = start_date + Dates.Second(round(t))
-        end
-
-        # Orbital Data uses Float64, so we need to convert to our sim FT
-        d, δ, η_UTC =
-            FT.(
-                Insolation.helper_instantaneous_zenith_angle(
-                    current_datetime,
-                    start_date,
-                    insol_params,
-                )
-            )
-
-        Insolation.instantaneous_zenith_angle.(
-            d,
-            δ,
-            η_UTC,
-            longitude,
-            latitude,
-        ).:1
-    end
+    zenith_angle =
+        (t, s) -> default_zenith_angle(
+            t,
+            s;
+            latitude = ClimaCore.Fields.coordinate_field(surface_space).lat,
+            longitude = ClimaCore.Fields.coordinate_field(surface_space).long,
+            insol_params = earth_param_set.insol_params,
+        )
 
     radiation = PrescribedRadiativeFluxes(
         FT,

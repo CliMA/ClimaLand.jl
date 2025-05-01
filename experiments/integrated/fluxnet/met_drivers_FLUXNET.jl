@@ -163,36 +163,14 @@ atmos = ClimaLand.PrescribedAtmosphere(
     c_co2 = atmos_co2,
 )
 
-function zenith_angle(
-    t,
-    start_date;
-    latitude = lat,
-    longitude = long,
-    insol_params::Insolation.Parameters.InsolationParameters{FT} = earth_param_set.insol_params,
-) where {FT}
-    # This should be time in UTC
-    current_datetime = start_date + Dates.Second(round(t))
-
-    # Orbital Data uses Float64, so we need to convert to our sim FT
-    d, δ, η_UTC =
-        FT.(
-            Insolation.helper_instantaneous_zenith_angle(
-                current_datetime,
-                start_date,
-                insol_params,
-            )
-        )
-
-    FT(
-        Insolation.instantaneous_zenith_angle(
-            d,
-            δ,
-            η_UTC,
-            longitude,
-            latitude,
-        )[1],
+zenith_angle =
+    (t, s) -> default_zenith_angle(
+        t,
+        s;
+        insol_params = earth_param_set.insol_params,
+        longitude = long,
+        latitude = lat,
     )
-end
 radiation = ClimaLand.PrescribedRadiativeFluxes(
     FT,
     SW_IN,

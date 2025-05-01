@@ -56,36 +56,14 @@ LW_d = TimeVaryingInput(seconds, LWdown; context)
 
 start_date = timestamp[mask][1]
 
-function zenith_angle(
-    t,
-    start_date;
-    latitude = FT(lat),
-    longitude = FT(long),
-    insol_params::Insolation.Parameters.InsolationParameters{FT} = param_set.insol_params,
-) where {FT}
-    # This should be time in UTC
-    current_datetime = start_date + Dates.Second(round(t))
-
-    # Orbital Data uses Float64, so we need to convert to our sim FT
-    d, δ, η_UTC =
-        FT.(
-            Insolation.helper_instantaneous_zenith_angle(
-                current_datetime,
-                start_date,
-                insol_params,
-            )
-        )
-
-    FT(
-        Insolation.instantaneous_zenith_angle(
-            d,
-            δ,
-            η_UTC,
-            longitude,
-            latitude,
-        )[1],
+zenith_angle =
+    (t, s) -> ClimaLand.default_zenith_angle(
+        t,
+        s;
+        insol_params = earth_param_set.insol_params,
+        latitude = FT(lat),
+        longitude = FT(long),
     )
-end
 
 radiation = ClimaLand.PrescribedRadiativeFluxes(
     FT,

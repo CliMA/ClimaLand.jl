@@ -34,7 +34,7 @@ function make_drivers(site_ID, setup, config, params, context)
         :RECO,
     )
 
-    # For every data column to be collected, name of the column in the file, 
+    # For every data column to be collected, name of the column in the file,
     # transformation function to desired unit, and string of final unit
     collect_args = [
         ("TA_F", (x) -> x .+ 273.15, "K")
@@ -56,8 +56,8 @@ function make_drivers(site_ID, setup, config, params, context)
         ("RECO_DT_VUT_REF", (x) -> x .* 1e-6, "mol/m^-2/s")
     ]
 
-    # Named tuple mapping every label to a DataColumn with the correct transformed 
-    # unit and data status. Automatically fills gaps in the data 
+    # Named tuple mapping every label to a DataColumn with the correct transformed
+    # unit and data status. Automatically fills gaps in the data
     drivers = (;
         zip(
             labels,
@@ -87,10 +87,8 @@ function make_drivers(site_ID, setup, config, params, context)
         end
     end
     if length(missing_drivers) != 0
-        error(
-            "Driver data missing for columns: $([missing_drivers[i] * " " for 
-          i in 1:length(missing_drivers)]...)",
-        )
+        error("Driver data missing for columns: $([missing_drivers[i] * " " for
+            i in 1:length(missing_drivers)]...)")
     end
 
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
@@ -131,36 +129,14 @@ function make_drivers(site_ID, setup, config, params, context)
         c_co2 = atmos_co2,
     )
 
-    function zenith_angle(
-        t,
-        start_date;
-        latitude = config.lat,
-        longitude = config.long,
-        insol_params::Insolation.Parameters.InsolationParameters{FT} = earth_param_set.insol_params,
-    ) where {FT}
-        # This should be time in UTC
-        current_datetime = start_date + Dates.Second(round(t))
-
-        # Orbital Data uses Float64, so we need to convert to our sim FT
-        d, δ, η_UTC =
-            FT.(
-                Insolation.helper_instantaneous_zenith_angle(
-                    current_datetime,
-                    start_date,
-                    insol_params,
-                )
-            )
-
-        FT(
-            Insolation.instantaneous_zenith_angle(
-                d,
-                δ,
-                η_UTC,
-                longitude,
-                latitude,
-            )[1],
+    zenith_angle =
+        (t, s) -> default_zenith_angle(
+            t,
+            s;
+            insol_params = earth_param_set.insol_params,
+            latitude = config.lat,
+            longitude = config.long,
         )
-    end
 
     radiation = ClimaLand.PrescribedRadiativeFluxes(
         FT,
