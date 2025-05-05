@@ -183,6 +183,11 @@ function clm_canopy_parameters(
     )
 end
 
+masked_to_value(field, mask, value) =
+    mask == 1.0 ? field : eltype(field)(value)
+
+
+
 """
     default_spatially_varying_soil_parameters(
         surface_space,
@@ -282,9 +287,6 @@ function default_spatially_varying_soil_parameters(
     # If the parameter mask =  0, set to physical value
     # This function in applied in **simulation mask** aware
     # manner.
-    masked_to_value(field, mask, value) =
-        mask == 1.0 ? field : eltype(field)(value)
-
     μ = FT(0.27)
     vg_α .= masked_to_value.(vg_α, soil_params_mask, 10.0^μ)
     μ = FT(1.65)
@@ -377,20 +379,6 @@ function default_spatially_varying_soil_parameters(
     @. ν_ss_om = ν_ss_om / max(texture_norm, eps(FT))
     @. ν_ss_quartz = ν_ss_quartz / max(texture_norm, eps(FT))
 
-    # Read in f_max data and topmodel params land sea mask
-    infile_path = ClimaLand.Artifacts.topmodel_data_path()
-    f_max =
-        SpaceVaryingInput(infile_path, "fmax", surface_space; regridder_type)
-    topmodel_params_mask = SpaceVaryingInput(
-        infile_path,
-        "landsea_mask",
-        surface_space;
-        regridder_type,
-    )
-    soil_params_mask_sfc =
-        ClimaLand.Domains.top_center_to_surface(soil_params_mask)
-    f_max = masked_to_value.(f_max, topmodel_params_mask, FT(0))
-    f_max = masked_to_value.(f_max, soil_params_mask_sfc, FT(0))
     PAR_albedo_dry, NIR_albedo_dry, PAR_albedo_wet, NIR_albedo_wet = map(
         s -> SpaceVaryingInput(
             joinpath(
@@ -423,6 +411,30 @@ function default_spatially_varying_soil_parameters(
         NIR_albedo_wet = NIR_albedo_wet,
         PAR_albedo_dry = PAR_albedo_dry,
         NIR_albedo_dry = NIR_albedo_dry,
-        f_max = f_max,
     )
+end
+
+function default_spatially_varying_topmodel_fmax(
+    surface_space,
+    FT;
+    regridder_type = :InterpolationsRegridder,
+    extrapolation_bc = (
+        Interpolations.Periodic(),
+        Interpolations.Flat(),
+        Interpolations.Flat(),
+    ),
+    lowres = use_lowres_clm(surface_space),
+)
+    # Read in f_max data and topmodel params land sea mask
+    infile_path = ClimaLand.Artifacts.topmodel_data_path()
+    f_max =
+        SpaceVaryingInput(infile_path, "fmax", surface_space; regridder_type)
+    topmodel_params_mask = SpaceVaryingInput(
+        infile_path,
+        "landsea_mask",
+        surface_space;
+        regridder_type,
+    )
+    f_max = masked_to_value.(f_max, topmodel_params_mask, FT(0))
+    return f_max
 end
