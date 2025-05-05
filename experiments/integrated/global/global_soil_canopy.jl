@@ -68,23 +68,9 @@ soil_model_type = Soil.EnergyHydrology{FT}
 
 # Soil microbes model
 soilco2_type = Soil.Biogeochemistry.SoilCO2Model{FT}
-
-# soil microbes args
+soilco2_ps = Soil.Biogeochemistry.SoilCO2ModelParameters(FT)
 Csom = ClimaLand.PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5))
-
-# Set the soil CO2 BC to being atmospheric CO2
-soilco2_top_bc = Soil.Biogeochemistry.AtmosCO2StateBC()
-soilco2_bot_bc = Soil.Biogeochemistry.SoilCO2FluxBC((p, t) -> 0.0) # no flux
-soilco2_sources = (Soil.Biogeochemistry.MicrobeProduction{FT}(),)
-
-soilco2_boundary_conditions = (; top = soilco2_top_bc, bottom = soilco2_bot_bc)
-
-soilco2_args = (;
-    boundary_conditions = soilco2_boundary_conditions,
-    sources = soilco2_sources,
-    domain = domain,
-    parameters = soilco2_ps,
-)
+soilco2_args = (; domain = domain, parameters = soilco2_ps)
 
 # Now we set up the canopy model, which we set up by component:
 # Component Types
