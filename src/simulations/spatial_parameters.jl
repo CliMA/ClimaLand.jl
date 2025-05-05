@@ -1,8 +1,3 @@
-using ClimaComms
-using ClimaUtilities.ClimaArtifacts
-import Interpolations
-import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
-import ClimaUtilities.Regridders: InterpolationsRegridder
 export clm_canopy_parameters
 function mean(x::AbstractArray{T}) where {T}
     sum(x) / length(x)
@@ -109,7 +104,7 @@ function clm_canopy_parameters(
         regridder_type,
         regridder_kwargs = (; extrapolation_bc,),
     )
-    G_Function = CLMGFunction(χl)
+    G_Function = ClimaLand.Canopy.CLMGFunction(χl)
     α_PAR_leaf = SpaceVaryingInput(
         joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
         "rholvis",

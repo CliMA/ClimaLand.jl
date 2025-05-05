@@ -51,7 +51,7 @@ scalar_canopy_params = (;
     h_leaf,
 );
 
-domain = ClimaLand.global_domain(FT; nelements = nelements);
+domain = ClimaLand.ModelSetup.global_domain(FT; nelements = nelements);
 surface_space = domain.space.surface;
 start_date = DateTime(2008);
 land = global_land_model(
@@ -205,7 +205,11 @@ if pkgversion(ClimaCore) >= v"0.14.30"
 
         # Set initial conditions
         ic_path = ClimaLand.Artifacts.soil_ic_2008_50m_path(; context = context)
-        set_initial_state! = make_set_initial_state_from_file(ic_path, land)
+        set_initial_state! =
+            ClimaLand.Simulations.make_set_initial_state_from_file(
+                ic_path,
+                land,
+            )
         set_initial_state!(Y, p, t0, land)
         # Now, set the cache with physical values and make sure there are no NaNs, or values set over the ocean
         set_initial_cache! = make_set_initial_cache(land)

@@ -32,7 +32,7 @@ domain = ClimaLand.Domains.SphericalShell(;
 surface_space = domain.space.surface
 subsurface_space = domain.space.subsurface
 spatially_varying_soil_params =
-    ClimaLand.default_spatially_varying_soil_parameters(
+    ClimaLand.ModelSetup.default_spatially_varying_soil_parameters(
         subsurface_space,
         surface_space,
         FT;
@@ -57,7 +57,7 @@ hcm = spatially_varying_soil_params.hydrology_cm
 @test axes(hcm) == subsurface_space
 @test eltype(hcm) == ClimaLand.Soil.vanGenuchten{FT}
 
-clm_parameters = ClimaLand.clm_canopy_parameters(
+clm_parameters = ClimaLand.ModelSetup.clm_canopy_parameters(
     surface_space;
     regridder_type = regridder_type,
     extrapolation_bc = extrapolation_bc,
@@ -82,14 +82,14 @@ end
 @test axes(getproperty(clm_parameters, :G_Function).χl) == surface_space
 # test `use_lowres_clm` on the sphere domain, and then again with a sphere domain with 2x
 # the horizontal resolution. Then repeat with plane domains.
-@test ClimaLand.use_lowres_clm(surface_space)
+@test ClimaLand.ModelSetup.use_lowres_clm(surface_space)
 domain = ClimaLand.Domains.SphericalShell(;
     radius = radius,
     depth = depth,
     nelements = (202, 2),
 )
 surface_space = domain.space.surface
-@test !ClimaLand.use_lowres_clm(surface_space)
+@test !ClimaLand.ModelSetup.use_lowres_clm(surface_space)
 domain = ClimaLand.Domains.Plane(;
     longlat = (-117.0, 34.0),
     xlim = (0.0, FT(2e6)),
@@ -97,7 +97,7 @@ domain = ClimaLand.Domains.Plane(;
     nelements = (10, 10),
 )
 surface_space = domain.space.surface
-@test ClimaLand.use_lowres_clm(surface_space)
+@test ClimaLand.ModelSetup.use_lowres_clm(surface_space)
 domain = ClimaLand.Domains.Plane(;
     longlat = (-117.0, 34.0),
     xlim = (0.0, FT(2e5)),
@@ -105,4 +105,4 @@ domain = ClimaLand.Domains.Plane(;
     nelements = (10, 10),
 )
 surface_space = domain.space.surface
-@test !ClimaLand.use_lowres_clm(surface_space)
+@test !ClimaLand.ModelSetup.use_lowres_clm(surface_space)

@@ -408,8 +408,43 @@ include(joinpath("diagnostics", "Diagnostics.jl"))
 import .Diagnostics: default_diagnostics
 
 # Simulations
-include(joinpath("simulations", "spatial_parameters.jl"))
-include(joinpath("simulations", "initial_conditions.jl"))
-include(joinpath("simulations", "domains.jl"))
+include(joinpath("simulations", "ModelSetup.jl"))
+include(joinpath("simulations", "Simulations.jl"))
 
+"""
+    ClimaLand.global_domain
+
+a helper function which calls ModelSetup.global_domain from ClimaLand;
+implemented to prevent breaking changes in ClimaCoupler, but this can be removed
+at a later date.
+"""
+global_domain(args) = ModelSetup.global_domain(args...)
+
+"""
+    ClimaLand.default_spatially_varying_soil_parameters
+
+a helper function which calls ModelSetup.default_spatially_varying_soil_parameters from ClimaLand;
+implemented to prevent breaking changes in ClimaCoupler, but this can be removed
+at a later date.
+"""
+default_spatially_varying_soil_parameters(args...) =
+    ModelSetup.default_spatially_varying_soil_parameters(args...)
+
+"""
+    ClimaLand.clm_canopy_parameters
+
+a helper function which calls ModelSetup.clm_canopy_parameters from ClimaLand;
+implemented to prevent breaking changes in ClimaCoupler, but this can be removed
+at a later date.
+"""
+clm_canopy_parameters(args...) = ModelSetup.clm_canopy_parameters(args...)
+
+"""
+    ClimaLand.use_lowres_clm
+
+a helper function which calls ModelSetup.use_lowres_clm from ClimaLand;
+implemented to prevent breaking changes in ClimaCoupler, but this can be removed
+at a later date.
+"""
+use_lowres_clm(args...) = ModelSetup.use_lowres_clm(args...)
 end

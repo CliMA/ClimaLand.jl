@@ -76,7 +76,7 @@ outdir = "snowy_land_benchmark_$(device_suffix)"
 
 function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     earth_param_set = LP.LandParameters(FT)
-    domain = ClimaLand.global_domain(FT; nelements = nelements)
+    domain = ClimaLand.Model.Setup.global_domain(FT; nelements = nelements)
     surface_space = domain.space.surface
     subsurface_space = domain.space.subsurface
 
@@ -96,7 +96,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     )
 
     spatially_varying_soil_params =
-        ClimaLand.default_spatially_varying_soil_parameters(
+        ClimaLand.ModelSetup.default_spatially_varying_soil_parameters(
             subsurface_space,
             surface_space,
             FT,
@@ -140,7 +140,7 @@ function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     )
 
     # Spatially varying canopy parameters from CLM
-    clm_parameters = ClimaLand.clm_canopy_parameters(surface_space)
+    clm_parameters = ClimaLand.ModelSetup.clm_canopy_parameters(surface_space)
     (;
         Ω,
         rooting_depth,

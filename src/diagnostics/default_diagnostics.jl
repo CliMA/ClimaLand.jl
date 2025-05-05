@@ -54,7 +54,7 @@ function default_diagnostics(
     land_model::BucketModel{FT},
     start_date;
     output_writer,
-    average_period = :daily,
+    average_period = :monthly,
 ) where {FT}
 
     define_diagnostics!(land_model)
@@ -223,7 +223,7 @@ function default_diagnostics(
     land_model::EnergyHydrology{FT},
     start_date;
     output_writer,
-    average_period = :daily,
+    average_period = :monthly,
     conservation = false,
     conservation_period = Day(10),
 ) where {FT}
@@ -270,8 +270,8 @@ function default_diagnostics(
     land_model::LandModel{FT},
     start_date;
     output_writer,
-    output_vars = :long,
-    average_period = :daily,
+    output_vars = :short,
+    average_period = :monthly,
 ) where {FT}
 
     define_diagnostics!(land_model)

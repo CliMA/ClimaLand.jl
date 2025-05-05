@@ -8,6 +8,7 @@ using ClimaUtilities.ClimaArtifacts
 import Interpolations
 import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
 import ClimaUtilities.Regridders: InterpolationsRegridder
+import ClimaUtilities.OnlineLogging: WallTimeInfo, report_walltime
 
 export FTfromY, call_count_nans_state
 
@@ -288,7 +289,7 @@ end
 
 """
     CheckpointCallback(checkpoint_frequency::Union{AbstractFloat, Dates.Period},
-                        output_dir, start_date, t_start; model, dt)
+                        output_dir, start_date; t_start, model, dt)
 
 Constructs a DiscreteCallback which saves the state to disk with the
 `save_checkpoint` function.
@@ -608,7 +609,7 @@ end
 
 """
     NaNCheckCallback(nancheck_frequency::Union{AbstractFloat, Dates.Period},
-                        start_date, t_start, dt)
+                        start_date, dt)
 
 Constructs a DiscreteCallback which counts the number of NaNs in the state
 and produces a warning if any are found.
@@ -617,18 +618,16 @@ and produces a warning if any are found.
 - `nancheck_frequency`: The frequency at which the state is checked for NaNs.
   Can be specified as a float (in seconds) or a `Dates.Period`.
 - `start_date`: The start date of the simulation.
-- `t_start`: The starting time of the simulation (in seconds).
 - `dt`: The timestep of the model (optional), used to check for consistency.
 
 The callback uses `ClimaDiagnostics.EveryCalendarDtSchedule` to determine when
 to check for NaNs based on the `nancheck_frequency`. The schedule is
-initialized with the `start_date` and `t_start` to ensure that it is first
+initialized with the `start_date` to ensure that it is first
 called at the correct time.
 """
 function NaNCheckCallback(
     nancheck_frequency::Union{AbstractFloat, Dates.Period},
     start_date,
-    t_start,
     dt;
     mask = nothing,
 )
@@ -647,7 +646,7 @@ function NaNCheckCallback(
     schedule = EveryCalendarDtSchedule(
         nancheck_frequency_period;
         start_date,
-        date_last = start_date + Dates.Millisecond(1000 * float(t_start)),
+        date_last = start_date,
     )
 
     if !isnothing(dt)
@@ -728,4 +727,20 @@ function landsea_mask(domain::Domains.AbstractDomain; kwargs...)
         context = ClimaComms.context(domain.space.surface),
     )
     return landsea_mask(domain.space.surface; filepath, kwargs...)
+end
+
+"""
+    ReportCallback(every_n_steps)
+
+Return a callback that prints performance and progress summaries `every_n_steps`,
+where `every_n_steps` is an integer.
+"""
+function ReportCallback(Nsteps)
+    walltime_info = WallTimeInfo()
+    everyNsteps(u, t, integrator) = mod(integrator.step, Nsteps) == 0
+    report = let wt = walltime_info
+        (integrator) -> report_walltime(wt, integrator)
+    end
+    report_cb = SciMLBase.DiscreteCallback(everyNsteps, report)
+    return report_cb
 end
