@@ -169,7 +169,7 @@ function setup_prob(
     SAI = FT(0.0) # m2/m2
     f_root_to_shoot = FT(3.5)
     RAI = FT(1.0)
-    K_sat_plant = FT(7e-8) # m/s 
+    K_sat_plant = FT(7e-8) # m/s
     ψ63 = FT(-4 / 0.0098) # / MPa to m
     Weibull_param = FT(4) # unitless
     a = FT(0.2 * 0.0098) # 1/m
@@ -316,11 +316,11 @@ function setup_prob(
     #    α_snow = Snow.ConstantAlbedoModel(FT(0.7))
     # Set β = 0 in order to regain model without density dependence
     α_snow = Snow.ZenithAngleAlbedoModel(
-        FT(0.64),
-        FT(0.06),
-        FT(2);
-        β = FT(0.4),
-        x0 = FT(0.2),
+        FT(0.7899), # Calibrated
+        FT(0.06575), # Calibrated
+        FT(17.92); # Calibrated
+        β = FT(0.7875), # Calibrated
+        x0 = FT(0.1046), # Calibrated
     )
     horz_degree_res =
         sum(ClimaLand.Domains.average_horizontal_resolution_degrees(domain)) / 2 # mean of resolution in latitude and longitude, in degrees
