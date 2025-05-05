@@ -11,6 +11,8 @@ import ClimaParams as CP
 using Dates
 using Statistics
 using NCDatasets
+using DelimitedFiles
+
 
 using ClimaLand
 import ClimaLand.Parameters as LP
@@ -24,13 +26,12 @@ thermo_params = LP.thermodynamic_parameters(earth_param_set);
 domain = ClimaLand.global_domain(FT; nelements, mask_threshold = 0.99)
 surface_space = domain.space.surface
 subsurface_space = domain.space.subsurface
-
+outpath = "experiments/parameterizations"
 
 # Spatially varying canopy parameters from CLM
 clm_parameters = ClimaLand.clm_canopy_parameters(surface_space)
     (;
      is_c3,
-     Vcmax25,
      α_PAR_leaf,
      τ_PAR_leaf,
      α_NIR_leaf,
@@ -52,7 +53,10 @@ spatially_varying_soil_params =
  NIR_albedo_dry) = 
      spatially_varying_soil_params
 
-fillmissing(x) = x isa Missing ? -1.0 : x
+function fillmissing(x)
+    tmp = x isa Missing ? 0.0 : x
+end
+
 soc = SpaceVaryingInput(
     "../ClimaArtifacts/soilgrids/soilgrids_nc/soilgrids_nc/soc_0-5cm_mean_5000.nc",
     "Band1",
@@ -97,7 +101,7 @@ cfvo = SpaceVaryingInput(
 )
 
 function replace_missing_with_mean(x)
-    absent = (parent(x) .≈ -1.0) .|| (parent(x) .≈ 0.0)
+    absent = parent(x) .≈ 0.0
     parent(x)[absent] .= mean(parent(x)[.!absent])
 end
 replace_missing_with_mean(soc)
@@ -273,7 +277,7 @@ for (i, t) in enumerate(θ.data_handler.available_dates)
 end
 
 
-net_features = zeros(N, 21)
+net_features = zeros(N, 23)
 nonnormed_input = zeros(N, 4)
 clm_albedos = zeros(N, 8)
 metadata = zeros(N, 2)
@@ -315,24 +319,27 @@ for (i, t) in enumerate(θ.data_handler.available_dates)
     net_features[id:(id + N_i - 1), 8] .= parent(sand)[:][array_mask]
     net_features[id:(id + N_i - 1), 9] .= parent(silt)[:][array_mask]
     net_features[id:(id + N_i - 1), 10] .= parent(bdod)[:][array_mask]
-    net_features[id:(id + N_i - 1), 11] .= parent(soc)[:][array_mask]
+    net_features[id:(id + N_i - 1), 11] .= log10.(parent(soc)[:][array_mask])
     net_features[id:(id + N_i - 1), 12] .= parent(maxLAI_field)[:][array_mask]
+    net_features[id:(id + N_i - 1), 13] .= ν_ss_om_i
+    net_features[id:(id + N_i - 1), 14] .= ν_ss_gravel_i
+    net_features[id:(id + N_i - 1), 15] .= ν_ss_quartz_i
+    
+    
     evaluate!(field, LAIfunction, t)
-    net_features[id:(id + N_i - 1), 13] .= parent(field)[:][array_mask]
-    evaluate!(field, P_atmos, t)
-    net_features[id:(id + N_i - 1), 14] .= parent(field)[:][array_mask]
-    evaluate!(field, T_atmos, t)
-    net_features[id:(id + N_i - 1), 15] .= parent(field)[:][array_mask]
-    evaluate!(field, vpd_atmos, t)
     net_features[id:(id + N_i - 1), 16] .= parent(field)[:][array_mask]
-    evaluate!(field, diffuse_fraction, t)
+    evaluate!(field, P_atmos, t)
     net_features[id:(id + N_i - 1), 17] .= parent(field)[:][array_mask]
-    field = is_c3;
+    evaluate!(field, T_atmos, t)
     net_features[id:(id + N_i - 1), 18] .= parent(field)[:][array_mask]
-    field = Vcmax25;
+    evaluate!(field, vpd_atmos, t)
     net_features[id:(id + N_i - 1), 19] .= parent(field)[:][array_mask]
-    net_features[id:(id + N_i - 1), 20] .= parent(μ)[:][array_mask]
-    net_features[id:(id + N_i - 1), 21] .= albedo_i
+    evaluate!(field, diffuse_fraction, t)
+    net_features[id:(id + N_i - 1), 20] .= parent(field)[:][array_mask]
+    field = is_c3;
+    net_features[id:(id + N_i - 1), 21] .= parent(field)[:][array_mask]
+    net_features[id:(id + N_i - 1), 22] .= parent(μ)[:][array_mask]
+    net_features[id:(id + N_i - 1), 23] .= albedo_i
     # non-normed input
     nonnormed_input[id:(id + N_i - 1), 1] .= θ_i
     
@@ -368,25 +375,23 @@ for (i, t) in enumerate(θ.data_handler.available_dates)
     id = id + N_i
 end
 
-
 # normalize the appropriate fields
 net_features[:,1:end-1] .= (net_features[:,1:end-1] .- mean(net_features[:,1:end-1], dims = 1)) ./ std(net_features[:,1:end-1], dims = 1);
 
-using DelimitedFiles
-open("net_features.csv"; write=true) do f
-    write(f, "θ, 1/α, n-1, log10(K_sat), ν, cfvo, clay, sand, silt, bdod, soc, maxLAI, LAI, P, T, vpd, diffuse_frac, c3, vcmax25,μ, albedo\n")
+open(joinpath(outpath,"net_features.csv"); write=true) do f
+    write(f, "θ, 1/α, n-1, log10(K_sat), ν, cfvo, clay, sand, silt, bdod, soc, maxLAI, ν_ss_om, ν_ss_gravel, ν_ss_quartz, LAI, P, T, vpd, diffuse_frac, c3,μ, albedo\n")
          writedlm(f, net_features,',')
-       end
-open("nonnormed_input.csv"; write=true) do f
+end
+open(joinpath(outpath, "nonnormed_input.csv"); write=true) do f
     write(f, "θ,  LAI,diffuse_frac,μ\n")
          writedlm(f, nonnormed_input,',')
 end
 
-open("clm_albedos.csv"; write=true) do f
+open(joinpath(outpath, "clm_albedos.csv"); write=true) do f
     write(f, "α_PAR_leaf, α_NIR_leaf, τ_PAR_leaf, τ_NIR_leaf,PAR_α_wet, PAR_α_dry, NIR_α_wet, NIR_α_dry \n")
     writedlm(f, clm_albedos, ',')
 end
-open("metadata.csv"; write=true) do f
+open(joinpath(outpath, "metadata.csv"); write=true) do f
     write(f, "lat, lon \n")
     writedlm(f, metadata, ',')
 end

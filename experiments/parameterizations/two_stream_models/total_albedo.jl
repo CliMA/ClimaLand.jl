@@ -4,18 +4,18 @@ using MLUtils
 using ProgressMeter
 using Statistics
 using Plots
-include("./experiments/parameterizations/models.jl")
+include("experiments/parameterizations/models.jl")
 FT = Float32
 (net_features, feature_header) = readdlm("net_features.csv", ',', header=true);
 (nonnormed_input, input_header) = readdlm("nonnormed_input.csv", ',', header=true);
 data = hcat(nonnormed_input, net_features);
-# train test split]
+
 target_id = [21+4]
 LAI_id = [2]
 θ_id = [1]
 frac_diff_id = [3]
 μ_id = [4]
-soil_ids = [Array((4+2):(4+12))...,4+1]
+soil_ids = [Array((4+2):(4+12))...]
 canopy_ids = [Array((4+13):(4+18))..., 4+1]
 
 (train, test) = splitobs(transpose(data), at=0.7, shuffle= true);
@@ -28,7 +28,7 @@ loader = Flux.DataLoader((input, truth), batchsize=256, shuffle=true);
 
 nfeatures_soil = length(soil_ids)
 nfeatures_canopy = length(canopy_ids)
-model = TotalAlbedoSingleSoil(nfeatures_soil, nfeatures_canopy)
+model = TotalAlbedo(nfeatures_soil, nfeatures_canopy)
 model.logΔα.layers[1].weight[1] = FT(-2)
 model.logΔα.layers[1].bias[1] = FT(-1.22)
 Flux.trainable(model)
@@ -42,14 +42,14 @@ losses_test = []
         x, y = xy_cpu
         loss, grads = Flux.withgradient(model) do m
             # Evaluate model and loss inside gradient context:
-            y_hat = m(x; soil_ids = soil_ids, canopy_ids=canopy_ids, μ_id=μ_id, frac_diff_id=frac_diff_id, LAI_id= LAI_id)
+            y_hat = m(x; soil_ids = soil_ids, canopy_ids=canopy_ids, μ_id=μ_id, frac_diff_id=frac_diff_id, LAI_id= LAI_id, θ_id = θ_id)
 
             Flux.mae(y_hat, y)
         end
         Flux.update!(opt_state, model, grads[1])
         push!(losses_train, loss)  # logging, outside gradient context
     end
-    y_hat_test = model(test_input; soil_ids = soil_ids, canopy_ids=canopy_ids, μ_id=μ_id, frac_diff_id=frac_diff_id, LAI_id= LAI_id)
+    y_hat_test = model(test_input; soil_ids = soil_ids, canopy_ids=canopy_ids, μ_id=μ_id, frac_diff_id=frac_diff_id, LAI_id= LAI_id, θ_id = θ_id)
 
     loss_test = Flux.mae(y_hat_test, test_truth)
     push!(losses_test, loss_test)  # logging, outside gradient context
@@ -60,7 +60,7 @@ Plots.plot!((1:1:length(losses_test)) ./ length(losses_test),  losses_test)
 
 
 random_indices = Int.(round.(rand(10000).* size(data)[1]))
-pred = model(transpose(Float32.(data[random_indices,:])); soil_ids = soil_ids, canopy_ids=canopy_ids, μ_id=μ_id, frac_diff_id=frac_diff_id, LAI_id= LAI_id)
+pred = model(transpose(Float32.(data[random_indices,:])); soil_ids = soil_ids, canopy_ids=canopy_ids, μ_id=μ_id, frac_diff_id=frac_diff_id, LAI_id= LAI_id, θ_id = θ_id)
 truth = transpose(data[random_indices,target_id])
 poor = abs.(pred .- truth) .>0.1;
 poor_count = mean(poor)
@@ -70,17 +70,9 @@ metadata = transpose(metadata[random_indices,:])
 lat = metadata[1, :]
 lon = metadata[2,:]
 
-soil_albedo = model.α_soil(transpose(Float32.(data[random_indices,:]))[soil_ids, :])
-latg, long, xgrid = put_on_grid(lat, lon, soil_albedo[:])
-Plots.heatmap(long, latg, transpose(xgrid))
-
-leaf_albedo = model.α_leaf(transpose(Float32.(data[random_indices,:]))[canopy_ids, :])
-latg, long, xgrid = put_on_grid(lat, lon, leaf_albedo[:])
-Plots.heatmap(long, latg, transpose(xgrid))
-
-leaf_tau = max.(model.sum_α_τ_leaf(transpose(Float32.(data[random_indices,:]))[canopy_ids, :]) .- leaf_albedo, 0.0)
-latg, long, xgrid = put_on_grid(lat, lon, leaf_tau[:])
-Plots.heatmap(long, latg, transpose(xgrid))
+dry_albedo = model.dry_0(transpose(Float32.(data[random_indices,:]))[soil_ids, :])
+wet_albedo = model.wet_0(transpose(Float32.(data[random_indices,:]))[soil_ids, :])
+latg, long, xgrid = put_on_grid(lat, lon, wet_albedo[:] .- dry_albedo[:])
 
 
 
