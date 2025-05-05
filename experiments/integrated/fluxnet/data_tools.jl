@@ -16,6 +16,8 @@ using Statistics
 
 Utility function to implement percentile representation with the base Statistics Package,
 to avoid additional dependency on StatsBase.
+
+In this function, `x` is a numerical Vector and `p` refers to a percentile, not a probability (0-100, not 0-1).
 """
 function percentile(x, p)
     @assert 0 <= p <= 100 "You must enter a percentile between 0 and 100."

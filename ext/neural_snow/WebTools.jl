@@ -1,34 +1,31 @@
 using Downloads, DataFrames, Dates
 export read_webpage_body, df_from_url
 
-const extension_dir_path = @__DIR__()
-
 """
     read_webpage_body(url)
 
 Utility function to grab the content of webpages and return in-memory as a String.
 This function exists to circumnavigate weak dependencies on the HTTP package, though
 this function subsequently has a more rigid scope of applicability. This returns a similar
-ouput to `HTTP.get(url).body` as a String instead of including HTTP Response metadata or the
+ouput to `HTTP.get(url).body` as a `String`, instead of including HTTP's `Response` metadata or the
 raw page content.
 
 # Arguments
 - `url::AbstractString`: the url for which to grab the page content.
 """
 function read_webpage_body(url::AbstractString)
-    @assert any(startswith.([url], ["http://", "https://"])) "Please provide a valid HTTP url.\n" #is there a better way to check the validity of the url without importing any more packages?
-    #use the system temporary directory or write the temp file to here? aka, mktemp() or mktemp(extension_dir_path)?
-    mktemp(extension_dir_path) do path, _
-        try
-            Downloads.request(url, output = path)
-            if filesize(path) == 0
-                error("Downloaded page at $(url) is empty or non-existent.")
-            end
-            body = String(read(path))  #like calling .body on a HTTP response
-            return body
-        catch e
-            error("Download failed to fetch $(url)\n$(String(e))\n")
+    @assert any(startswith.([url], ["http://", "https://"])) "Please provide a valid HTTP url.\n"
+    try
+        buf = IOBuffer()
+        resp = Downloads.request(url, output = buf)
+        if position(buf) == 0
+            error("Downloaded page at $(url) is empty or non-existent.")
         end
+        seekstart(buf)
+        body = String(take!(buf))  #like calling .body on a HTTP response
+        return body
+    catch e
+        error("Download failed to fetch $(url)\n$(e)\n")
     end
 end
 

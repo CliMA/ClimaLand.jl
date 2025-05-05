@@ -45,8 +45,8 @@
 using ClimaLand, Statistics, Flux, Dates
 
 # The code lives in an extenson that we have to manually load. The extension can
-# be loaded from `ClimaLand` only if `DataFrames` is also loaded.
-using DataFrames
+# be loaded from `ClimaLand` only if `DataFrames` and `Downloads` (from base julia) are also loaded.
+using DataFrames, Downloads
 DataTools = Base.get_extension(ClimaLand, :NeuralSnowExt).DataTools
 ModelTools = Base.get_extension(ClimaLand, :NeuralSnowExt).ModelTools;
 

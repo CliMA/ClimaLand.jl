@@ -200,6 +200,11 @@ If the boundary functions have additional properties like always being nonpositi
 nonnegative, the fixed weight layer can be reduced to further speed up computation - for
 discussion on this see the paper, and for an exmample see the `NeuralDepthModel<:AbstractDensityModel` type in ClimaLand.Snow.
 
+The user should specify either the number of features (`nfeatures`), or the scaling weights of each feature (`in_scale`) as an
+argument for the model. If no scaling weights are specified, all model inputs will be scaled by a factor of 1. If both are provided,
+the `in_scale` argument will take precedence (this argument allows for the fixing of input scalings so training and testing data can be input
+in their original forms, and reduce the amount of preprocessing during model usage).
+
 If building custom types with reduced fixed-weight layers or altnernative structures, the implementations of
 functions like `setboundscale!()`, `setoutscale!()`, `freeze_fixed_layers!()`, or saving/loading utilities will likely require custom extension.
 
@@ -217,12 +222,15 @@ function make_model(
     pred_model::Chain,
     upperb::Function,
     lowerb::Function;
-    ftype::Type{<:AbstractFloat} = Float32,
+    ftype::Type{FT} = Float32,
     in_scale::Union{Vector{<:Real}, Nothing} = nothing,
     nfeatures::Int = 0,
-)::Chain
+)::Chain where {FT <: AbstractFloat}
     if (nfeatures == 0) & isnothing(in_scale)
         error("Must specify either of `in_scale` or `nfeatures`\n")
+    elseif (nfeatures != 0) & !isnothing(in_scale)
+        @warn("Both `nfeatures` and `in_scale` are provided arguments to `make_model()`, defaulting to the provided value of `in_scale`\n")
+        use_scales = Vector{ftype}(1 ./ in_scale)
     elseif !isnothing(in_scale)
         use_scales = Vector{ftype}(1 ./ in_scale)
     else
@@ -290,8 +298,8 @@ function make_model_paper(;
     n::Int = 4,
     depth_index::Int = 1,
     precipitation_index::Int = 7,
-    ftype::Type{<:AbstractFloat} = Float32,
-    in_scale::Union{Vector{<:Real}, Nothing} = Float32.(
+    ftype::Type{FT} = Float32,
+    in_scale::Union{AbstractVector{FT}, Nothing} = FT.(
         [
             0.68659294 # z (m)
             0.25578135 # SWE (m)
@@ -302,7 +310,7 @@ function make_model_paper(;
             6.9992964f-8 # water-equiv rate of snowfall (m/s)
         ]
     ),
-)::Chain
+)::Chain where {FT <: AbstractFloat}
     if (precipitation_index > nfeatures) | (depth_index > nfeatures)
         error("The provided `nfeatures` is less than a 
         provided feature index, this will create out-of-bounds 

@@ -10,7 +10,6 @@ ClimaDiagnostics = "1ecacbb8-0713-4841-9a07-eb5aa8a2d53f"
 ClimaUtilities = "b3f4f4ca-9299-4f7f-bd9b-81e1242a7513"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 DocStringExtensions = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
-Downloads = "f43a241f-c20a-4ad4-852c-f6b1247861c6"
 Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
 Insolation = "e98cc03f-d57e-4e3c-b70c-8d51efe9e0d8"
 Interpolations = "a98d9a8b-a2ab-59e6-89dd-64a1c18fca59"
@@ -26,10 +25,11 @@ Thermodynamics = "b60c26fb-14c3-4610-9d3e-2d17fe7ff00c"
 [weakdeps]
 ClimaParams = "5c42b081-d73a-476f-9059-fd94b934656c"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+Downloads = "f43a241f-c20a-4ad4-852c-f6b1247861c6"
 
 [extensions]
 CreateParametersExt = "ClimaParams"
-NeuralSnowExt = ["DataFrames", "Statistics", "Downloads"]
+NeuralSnowExt = ["DataFrames", "Downloads"]
 
 [compat]
 ClimaComms = "0.6.2"
