@@ -125,7 +125,7 @@ from the paper when given which index of the input features pertains to the
 depth (z) value. This also serves as an example of one way to write a
 boundary function for the network type introduced in the paper.
 The lower-bound function is generated with a call
-`lowerb(pred, input) = paper_upper_bound(precip_idx, pred, input)`
+`lowerb(pred, input) = paper_lower_bound(precip_idx, pred, input)`
 within `make_model_paper()` given the index "z_idx" (in the case of the paper
 and our code defaults, this will be equal to 1).
 The returned boundary value is just the value of z, though the true lower bound
@@ -229,7 +229,9 @@ function make_model(
     if (nfeatures == 0) & isnothing(in_scale)
         error("Must specify either of `in_scale` or `nfeatures`\n")
     elseif (nfeatures != 0) & !isnothing(in_scale)
-        @warn("Both `nfeatures` and `in_scale` are provided arguments to `make_model()`, defaulting to the provided value of `in_scale`\n")
+        @warn(
+            "Both `nfeatures` and `in_scale` are provided arguments to `make_model()`, defaulting to the provided value of `in_scale`\n"
+        )
         use_scales = Vector{ftype}(1 ./ in_scale)
     elseif !isnothing(in_scale)
         use_scales = Vector{ftype}(1 ./ in_scale)
@@ -299,7 +301,7 @@ function make_model_paper(;
     depth_index::Int = 1,
     precipitation_index::Int = 7,
     ftype::Type{FT} = Float32,
-    in_scale::Union{AbstractVector{FT}, Nothing} = FT.(
+    in_scale::Union{AbstractVector{FT}, Nothing} = Float32.(
         [
             0.68659294 # z (m)
             0.25578135 # SWE (m)
