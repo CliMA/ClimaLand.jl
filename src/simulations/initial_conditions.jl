@@ -188,3 +188,33 @@ function enforce_snow_temperature_constraint(S::FT, T::FT) where {FT}
         return T
     end
 end
+
+function set_ic_from_file(ic_path)
+    function set_spunup_ic!(Y, p, land, t0)
+        drivers = get_drivers(land)
+        atmos = drivers.atmos
+        evaluate!(p.snow.T, atmos.T, t0)
+        ClimaLand.set_snow_initial_conditions!(
+            Y,
+            p,
+            land.snow.domain.space.surface,
+            ic_path,
+            land.snow.parameters,
+        )
+        Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
+        Y.canopy.hydraulics.ϑ_l.:1 .= land.canopy.hydraulics.parameters.plant_ν
+        evaluate!(Y.canopy.energy.T, atmos.T, t0)
+        T_bounds = extrema(Y.canopy.energy.T)
+        
+        ClimaLand.set_soil_initial_conditions!(
+            Y,
+            land.soil.parameters.ν,
+            land.soil.parameters.θ_r,
+            land.soil.domain.space.subsurface,
+            ic_path,
+            land.soil,
+            T_bounds,
+        )
+    end
+    return set_spunup_ic!
+end

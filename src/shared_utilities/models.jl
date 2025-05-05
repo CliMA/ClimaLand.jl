@@ -23,7 +23,8 @@ export AbstractModel,
     get_drivers,
     name,
     total_liq_water_vol_per_area!,
-    total_energy_per_area!
+    total_energy_per_area!,
+    get_domain
 
 import ClimaComms
 import .Domains: coordinates
@@ -396,6 +397,8 @@ function initialize_vars(keys, types, domain_names, state, model_name)
 end
 
 Domains.coordinates(model::AbstractModel) = Domains.coordinates(model.domain)
+
+get_domain(model::AbstractModel) = model.domain
 
 """
     add_drivers_to_cache(p::NamedTuple, model::AbstractModel, coords)
