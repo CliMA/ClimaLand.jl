@@ -44,7 +44,7 @@ function global_domain(
     dz_tuple = (10.0, 0.05),
     depth = 50.0,
     npolynomial = 0,
-    comms_ctx = ClimaComms.context()
+    comms_ctx = ClimaComms.context(),
 )
     if pkgversion(ClimaCore) < v"0.14.30" && apply_mask
         @warn "The land mask cannot be applied with ClimaCore < v0.14.30. Update ClimaCore for significant performance gains."
@@ -59,8 +59,8 @@ function global_domain(
         depth,
         nelements,
         npolynomial,
-                                              dz_tuple,
-                                              comms_ctx
+        dz_tuple,
+        comms_ctx,
     )
     if apply_mask
         surface_space = domain.space.surface # 2d space

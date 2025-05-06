@@ -205,7 +205,7 @@ function set_ic_from_file(ic_path)
         Y.canopy.hydraulics.ϑ_l.:1 .= land.canopy.hydraulics.parameters.plant_ν
         evaluate!(Y.canopy.energy.T, atmos.T, t0)
         T_bounds = extrema(Y.canopy.energy.T)
-        
+
         ClimaLand.set_soil_initial_conditions!(
             Y,
             land.soil.parameters.ν,
