@@ -212,6 +212,15 @@ end
         longlat = FT.((0, 0)),
     )
     coords = ClimaLand.Domains.coordinates(domain)
+
+    # test CoupledRadiativeFluxes with no start_date provided (will not update cosθs)
+    crf_no_zenith = ClimaLand.CoupledRadiativeFluxes{FT}()
+    p = (; drivers = ClimaLand.initialize_drivers((crf_no_zenith,), coords))
+    p.drivers.cosθs .= FT(0)
+    no_update = ClimaLand.make_update_drivers((crf_no_zenith,))
+    no_update(p, 0)
+    @test all(isequal(FT(0)), ClimaCore.Fields.field2array(p.drivers.cosθs))
+
     crf = ClimaLand.CoupledRadiativeFluxes{FT}(start_date)
     @test crf == ClimaLand.CoupledRadiativeFluxes(FT, start_date) # test both constructors
     p = (; drivers = ClimaLand.initialize_drivers((crf,), coords))

@@ -185,15 +185,20 @@ PrescribedPrecipitation{FT}(liquid_precip) where {FT} =
     PrescribedPrecipitation{FT, typeof(liquid_precip)}(liquid_precip)
 
 """
-    CoupledRadiativeFluxes{FT, F <: Function} <: AbstractRadiativeDrivers{FT}
+    CoupledRadiativeFluxes{FT, F <: Union{Function, Nothing}} <: AbstractRadiativeDrivers{FT}
 
-To be used when coupling to an atmosphere model.
+To be used when coupling to an atmosphere model. If F is a function, cosθs is updated in
+the driver update.
 """
-struct CoupledRadiativeFluxes{FT, F <: Function} <: AbstractRadiativeDrivers{FT}
+struct CoupledRadiativeFluxes{FT, F <: Union{Function, Nothing}} <:
+       AbstractRadiativeDrivers{FT}
     """Function that returns sun zenith angle in radians given the arguments:
     (time from simulation start date in seconds, longitude::FT, latitude::FT)"""
     θs::F
 end
+
+CoupledRadiativeFluxes{FT}() where {FT} =
+    CoupledRadiativeFluxes{FT, Nothing}(nothing)
 
 CoupledRadiativeFluxes(::Type{FT}, args...) where {FT} =
     CoupledRadiativeFluxes{FT}(args...)
@@ -1197,6 +1202,8 @@ function make_update_drivers(a::PrescribedPrecipitation{FT}) where {FT}
 end
 
 function make_update_drivers(r::CoupledRadiativeFluxes{FT}) where {FT}
+    # nothing to update if no zenith angle function is provided
+    isnothing(r.θs) && return (p, t) -> nothing
     function update_drivers!(p, t)
         # this assumes that the space has lat/lon coordinates
         coords = Fields.coordinate_field(p.drivers.cosθs)
