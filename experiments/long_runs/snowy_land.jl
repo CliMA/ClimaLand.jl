@@ -88,12 +88,14 @@ function setup_prob(
             date(tf);
             context,
         )
+        @show era5_ncdata_path
     else
         era5_artifact_path =
             ClimaLand.Artifacts.era5_land_forcing_data2008_folder_path(;
                 context,
             )
         era5_ncdata_path = joinpath(era5_artifact_path, "era5_2008_1.0x1.0.nc")
+        @show era5_ncdata_path
     end
     atmos, radiation = ClimaLand.prescribed_forcing_era5(
         era5_ncdata_path,
@@ -470,7 +472,7 @@ function setup_and_solve_problem(; greet = false)
     days = 24hours # days in seconds
     years = 366days # years in seconds - 366 to make sure we capture at least full years
     # 10 years in seconds for very long run and 2 years in seconds otherwise
-    tf = LONGER_RUN ? 1years : 1years
+    tf = LONGER_RUN ? 2years : 2years
     Δt = 450.0
     start_date = LONGER_RUN ? DateTime(2004) : DateTime(2008)
     nelements = (101, 15)
