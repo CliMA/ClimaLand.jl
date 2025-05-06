@@ -54,27 +54,6 @@ abstract type AbstractLandModel{FT} <: AbstractModel{FT} end
 
 ClimaLand.name(::AbstractLandModel) = :land
 
-
-"""
-    get_domain(model::AbstractLandModel)
-
-Returns the domain of the model.
-
-Uses the logic that if a subsurface domain is present, that is the domain,
-while if not, the unique_domain_list must have at most one element.
-
-"""
-function get_domain(model::AbstractLandModel)
-    components = land_components(model)
-    domain_list = map(components) do (component)
-        get_domain(getproperty(model, component))
-    end
-    unique_domain_list = merge(domain_list...)
-    any(subsurface_domain_present.(unique_domain_list)) ? return findfirst(subsurface_domain_present, unique_domain_list) : return unique_domain_list[1]
-end
-
-subsurface_domain_present(d) = typeof(d) <: Union{HybridBox, Column, SphericalShell}
-
 """
     Domains.coordinates(model::AbstractLandModel)
 

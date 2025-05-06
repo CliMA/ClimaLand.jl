@@ -1,7 +1,14 @@
 module Simulations
 using ClimaTimesteppers
 using Dates
+import ClimaUtilities.TimeVaryingInputs:
+    TimeVaryingInput, LinearInterpolation, PeriodicCalendar
+import ClimaUtilities.ClimaArtifacts: @clima_artifact
+import ClimaUtilities.TimeManager: ITime, date
+import ClimaDiagnostics
+import ClimaParams as CP
 using ClimaLand
+import ClimaLand.Parameters as LP
 
 struct LandSimulation
     context
@@ -11,20 +18,24 @@ struct LandSimulation
     timestepper
     user_callbacks
     diagnostics
-    outdir
-    _required_callbacks
+    required_callbacks
+    callbacks
+    problem
 end
 
 function GlobalLandSimulation(FT, context, start_date, t0, Δt;
                               params = LP.earth_param_set(FT),
                               domain = global_domain(FT; comms_ctx = context),
-                              forcing = ClimaLand.prescribed_forcing_era5(joinpath(ClimaLand.Artifacts.era5_land_forcing_data2008_folder_path(;context,),
-                                                                                    "era5_2008_1.0x1.0.nc"),
-                                                                           domain.space.surface_space,
-                                                                           start_date,
-                                                                           params,
-                                                                           FT;
-                                                                           ),# update this to download lowres if highres is not available
+                              forcing = ClimaLand.prescribed_forcing_era5(ClimaLand.Artifacts.era5_land_forcing_data2008_folder_path(;context,),
+                                                                          domain.space.surface,
+                                                                          start_date,
+                                                                          params,
+                                                                          FT;
+                                                                          time_interpolation_method = LinearInterpolation(PeriodicCalendar())),
+                              LAI = ClimaLand.prescribed_lai_modis(joinpath(ClimaLand.Artifacts.modis_lai_forcing_data_path(; context), "Yuan_et_al_2008_1x1.nc"),
+                                                                   domain.space.surface,
+                                                                   start_date;
+                                                                   time_interpolation_method = LinearInterpolation(PeriodicCalendar())),
                               ic_file = ClimaLand.Artifacts.soil_ic_2008_50m_path(; context = context),
                               timestepper = ClimaTimesteppers.IMEXAlgorithm(
                                   ClimaTimesteppers.ARS111(),
@@ -40,11 +51,10 @@ function GlobalLandSimulation(FT, context, start_date, t0, Δt;
                                       t0,
                                       Δt;
                                       mask = ClimaLand.landsea_mask(domain),
-                                  )
+                                  ),
                                   ClimaLand.ReportCallback(1000)
                               ),
-                              diagnostics = (;output_vars = :short, average_period = :monthly, outdir = "") # need to generalize
-                              outdir = "",
+                              diagnostics = (;output_vars = :short, average_period = :monthly, outdir = ""), # need to generalize
                               soil_model = (type = Soil.EnergyHydrology{FT},
                                             parameters = ClimaLand.default_spatially_varying_soil_parameters(
                                                 domain.space.subsurface,
@@ -60,21 +70,24 @@ function GlobalLandSimulation(FT, context, start_date, t0, Δt;
                                                                    conductance = Canopy.MedlynConductanceModel{FT},
                                                                    hydraulics = Canopy.PlantHydraulicsModel{FT},
                                                                    energy = Canopy.BigLeafEnergyModel{FT},
-                                                                   phenology = ,# pass in LAI here??
                                                                    ),
-                                              parameters = ClimaLand.clm_canopy_parameters(domain.space.surface)),
-                              soilco2_model = (; type = Soil.Biogeochemistry.SoilCO2Model{FT}, Csom = ClimaLand.PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5)), parameters = Soil.Biogeochemistry.SoilCO2ModelParameters(FT)), )
+                                              parameters = ClimaLand.clm_canopy_parameters(domain.space.surface),
+                                              LAI = ),
+                              soilco2_model = (; type = Soil.Biogeochemistry.SoilCO2Model{FT},
+                                               Csom = ClimaLand.PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5)),
+                                               parameters = Soil.Biogeochemistry.SoilCO2ModelParameters(FT))
+                              )
     
     # convert times to Itime
     t0 = ITime(t0, epoch = start_date)
     tf = ITime(tf, epoch = start_date)
     Δt = ITime(Δt, epoch = start_date)
     t0, tf, Δt = promote(t0, tf, Δt)
-
+    
     # Create land model - this is a sketch and can be improved separately
     soil_args = construct_soil_args(soil_model.type, soil_model.spatially_varying_parameters, param_set, domain, forcing)
     runoff_model = construct_soil_runoff_model(soil_model.runoff_type, soil_model.spatially_varying_parameters, param_set, domain)
-    canopy_component_args = construct_canopy_component_args(canopy_model.component_types, canopy_model.spatially_varying_parameters, param_set, domain, forcing)
+    canopy_component_args = construct_canopy_component_args(canopy_model.component_types, canopy_model.spatially_varying_parameters, param_set, domain, forcing, LAI)
     canopy_model_args = construct_canopy_model_args(canopy_model.component_types, canopy_model.spatially_varying_parameters, param_set, domain)
     snow_args = construct_snow_args(snow_model.type, snow_model.parameters, param_set, domain, forcing)
     soilco2_args = construct_soilco2_args(soilco2_model.type, soilco2_model.parameters, param_set, domain, forcing)
@@ -115,7 +128,7 @@ function GlobalLandSimulation(FT, context, start_date, t0, Δt;
     
     # Create SciML ODE Problem
     problem = SciMLBase.ODEProblem(
-        CTS.ClimaODEFunction(
+        ClimaTimesteppers.ClimaODEFunction(
             T_exp! = exp_tendency!,
             T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
             dss! = ClimaLand.dss!,
@@ -130,14 +143,12 @@ function GlobalLandSimulation(FT, context, start_date, t0, Δt;
     drivers = ClimaLand.get_drivers(land)
     updatefunc = ClimaLand.make_update_drivers(drivers)
     driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
-    _required_callbacks = (driver_cb,)
+    required_callbacks = (driver_cb,)
     
     # Diagnostics callbacks - can be generalized in the future
     if !(diagnostics isa Nothing)
-        domain = ClimaLand.get_domain(land)
-        subsurface_space = domain.space.subsurface
         nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(
-            subsurface_space,
+            domain.space.subsurface,
             diagnostics.outdir;
             start_date,
         )
@@ -159,7 +170,9 @@ function GlobalLandSimulation(FT, context, start_date, t0, Δt;
     
     
     # Collect all callbacks
-    callbacks = SciMLBase.CallbackSet(user_callbacks..., diag_cb..., _required_cb...)
+    callbacks = SciMLBase.CallbackSet(user_callbacks..., diag_cb..., required_cb...)
+    
+    return LandSimulation(context,params, land, domain, timestepper, user_callbacks, diagnostics, required_callbacks, callbacks, problem)
+end                 
 
-    return LandSimulation(context,params, land, domain, timestepper, user_callbacks, diagnostics, outdir, _required_callbacks, problem)
-end                       
+end

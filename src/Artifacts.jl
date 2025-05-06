@@ -60,18 +60,35 @@ end
 """
     era5_land_forcing_data2008_path(; context, lowres=false)
 
-Return the path to the directory that contains the ERA5 forcing data for 2008.
+Return the path to the file that contains the ERA5 forcing data for 2008.
 
-Optionally, you can pass the lowres=true keyword to download a lower spatial resolution version of the data.
+Optionally, you can pass the lowres=true keyword to download a lower spatial resolution version of the data and return the path to that file.
+ If the high resolution data is not 
+available locally, we also return the path to the low res data.
 """
 function era5_land_forcing_data2008_folder_path(;
     context = nothing,
     lowres = false,
 )
-    if lowres
-        return @clima_artifact("era5_land_forcing_data2008_lowres", context)
+    lowres_path = joinpath(
+        @clima_artifact("era5_land_forcing_data2008_lowres", context),
+        "era5_2008_1.0x1.0_lowres.nc",
+    )
+    if !lowres
+        hires_path = joinpath(
+            @clima_artifact("era5_land_forcing_data2008", context),
+            "era5_2008_1.0x1.0.nc",
+        )
+        if isfile(hires_path)
+            return hires_path
+        else
+            @warn(
+                "High resolution ERA5 forcing not available locally; downloading and using low resolution data instead."
+            )
+            return lowres_path
+        end
     else
-        return @clima_artifact("era5_land_forcing_data2008", context)
+        return lowres_path
     end
 end
 
