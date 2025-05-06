@@ -22,12 +22,29 @@ function LandModel(
     ),
     soil_model = (
         type = Soil.EnergyHydrology{FT},
-        parameters = ClimaLand.default_spatially_varying_soil_parameters(
+        spatially_varying_parameters = ClimaLand.default_spatially_varying_soil_parameters(
             domain.space.subsurface,
             domain.space.surface,
             FT,
         ),
-        runoff_type = ClimaLand.Soil.Runoff.TOPMODELRunoff{FT},
+        runoff_scheme = (
+            type = ClimaLand.Soil.Runoff.TOPMODELRunoff{FT},
+            parameters = (;
+                f_over = FT(3.28),
+                R_sb = FT(1.484e-4 / 1000),
+                f_max = ClimaLand.default_spatially_varying_topmodel_fmax(
+                    surface_space,
+                    FT,
+                ),
+            ),
+        ),
+    ),
+    soilco2_model = (
+        type = Soil.Biogeochemistry.SoilCO2Model{FT},
+        parameters = Soil.Biogeochemistry.SoilCO2ModelParameters(FT),
+        Csom = ClimaLand.PrescribedSoilOrganicCarbon{FT}(
+            TimeVaryingInput((t) -> 5),
+        ),
     ),
     snow_model = (
         type = Snow.SnowModel,
@@ -42,57 +59,51 @@ function LandModel(
             hydraulics = Canopy.PlantHydraulicsModel{FT},
             energy = Canopy.BigLeafEnergyModel{FT},
         ),
-        parameters = ClimaLand.clm_canopy_parameters(domain.space.surface),
-    ),
-    soilco2_model = (;
-        type = Soil.Biogeochemistry.SoilCO2Model{FT},
-        Csom = ClimaLand.PrescribedSoilOrganicCarbon{FT}(
-            TimeVaryingInput((t) -> 5),
+        component_args = (; # needs lots of work
+            autotrophic_respiration = Canopy.AutotrophicRespirationParameters(
+                FT,
+            ),
+            radiative_transfer = Canopy.TwoStreamParameters(FT;),
+            photosynthesis = Canopy.FarquharParameters(
+                FT,
+                is_c3;
+                Vcmax25 = Vcmax25,
+            ),
+            conductance = Canopy.MedlynConductanceParameters(FT; g1),
+            hydraulics = Canopy.PlantHydraulics.PlantHydraulicsParameters(;),
+            energy = Canopy.BigLeafEnergyParameters{FT}(ac_canopy),
         ),
-        parameters = Soil.Biogeochemistry.SoilCO2ModelParameters(FT),
+        parameters = Canopy.SharedCanopyParameters{FT, typeof(params)}(
+            z0_m,
+            z0_b,
+            params,
+        ),
     ),
 )
-    # Create land model - this is a sketch
-    soil_args = construct_soil_args(
-        soil_model.type,
-        soil_model.spatially_varying_parameters,
-        params,
-        domain,
-        forcing,
+    # Create land model - Sketch
+
+    # Soil Model
+    runoff_model =
+        soil_model.runoff_scheme.type(; soil_model.runoff_scheme.parameters...)
+    soil_params = Soil.EnergyHydrologyParameters(
+        FT;
+        soil_model.spatially_varying_parameters...,
     )
-    runoff_model = construct_soil_runoff_model(
-        soil_model.runoff_type,
-        soil_model.spatially_varying_parameters,
-        params,
-        domain,
+    soil_args = (parameters = soil_params, domain = domain)
+
+    # Soil CO2  - easy
+    soilco2_args = (parameters = soilco2_model.parameters, domain = domain)
+
+    # Snow - also easy given defaults
+    snow_args = (
+        parameters = snow_model.parameters,
+        domain = ClimaLand.obtain_surface_domain(domain),
     )
-    canopy_component_args = construct_canopy_component_args(
-        canopy_model.component_types,
-        canopy_model.spatially_varying_parameters,
-        params,
-        domain,
-        forcing,
-        LAI,
-    )
-    canopy_model_args = construct_canopy_model_args(
-        canopy_model.component_types,
-        canopy_model.spatially_varying_parameters,
-        params,
-        domain,
-    )
-    snow_args = construct_snow_args(
-        snow_model.type,
-        snow_model.parameters,
-        params,
-        domain,
-        forcing,
-    )
-    soilco2_args = construct_soilco2_args(
-        soilco2_model.type,
-        soilco2_model.parameters,
-        params,
-        domain,
-        forcing,
+
+    # Canopy
+    canopy_model_args = (;
+        parameters = canopy_model.parameters,
+        domain = ClimaLand.obtain_surface_domain(domain),
     )
     land_input = (
         atmos = forcing[1],
@@ -100,13 +111,13 @@ function LandModel(
         runoff = runoff_model,
         soil_organic_carbon = soilco2_model.Csom,
     )
-    land = LandModel{FT}(; # should this not be hardcoded?
+    land = LandModel{FT}(;
         soilco2_type = soilco2_model.type,
         soilco2_args = soilco2_args,
         soil_model_type = soil_model.type,
         soil_args = soil_args,
         canopy_component_types = canopy_model.component_types,
-        canopy_component_args = canopy_component_args,
+        canopy_component_args = canopy_model.component_args,
         canopy_model_args = canopy_model_args,
         snow_args = snow_args,
         snow_model_type = snow_model.type,
