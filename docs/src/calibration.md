@@ -148,9 +148,9 @@ call `CAL.calibrate`!
 ## job script
 
 A calibration job will likely take hours to complete, so you will probably have to submit a job with a job scheduler.
-Below is an example job .pbs script, slurm would be slightly different.
+Below is an example job .pbs script (for PBS, e.g., Derecho):
 
-```
+```bash
 #!/bin/bash
 #PBS -N derecho_calibration
 #PBS -o output.txt
@@ -171,8 +171,31 @@ julia --project=.buildkite -e 'using Pkg; Pkg.instantiate(;verbose=true)'
 julia --project=.buildkite/ experiments/calibration/global_land/calibrate_land.jl
 ```
 
-where `calibrate_land.jl` is a script that generates all the arguments needed and eventually calls `CAL.calibrate`.
-You would start the job with a command such as `qsub name_of_job_script`, and a few hours later, you would get a calibrated parameter set.
+and below is a example job .sh script (for Slurm, e.g., central or clima):
+
+```bash
+#!/bin/bash
+#SBATCH --job-name=slurm_calibration
+#SBATCH --output=output.txt
+#SBATCH --error=error.txt
+#SBATCH --time=12:00:00
+#SBATCH --ntasks=5
+#SBATCH --cpus-per-task=4
+#SBATCH --gpus-per-task=1
+
+# Set environment variables for CliMA
+export CLIMACOMMS_DEVICE="CUDA"
+export CLIMACOMMS_CONTEXT="SINGLETON"
+
+# Build and run the Julia code
+module load climacommon
+julia --project=.buildkite -e 'using Pkg; Pkg.instantiate(;verbose=true)'
+julia --project=.buildkite/ experiments/calibration/calibrate_land.jl
+```
+
+where `calibrate_land.jl` is a script that generates all the arguments needed and eventually calls `CAL.calibrate`. 
+On a Slurm cluster, comment out `add_workers` in `calibrate_land.jl`, as worker processes will inherit the allocated resources automatically.
+You would start the job with a command such as `qsub name_of_job_script` for PBS or `sbatch name_of_job_script` for Slurm, and a few hours later, you would get a calibrated parameter set. You can check the status of your job with `qstat -u username` of PBS or `squeue -u username` on Slurm.
 
 Note that with the default EKP configuration, UTKI, the number of ensemble is set by the number of parameters, as explained in the documentation above. The number of workers (if you use the worker backend) is automatically set to that numbers, so that all members are run in parallel for each iteration.
 
