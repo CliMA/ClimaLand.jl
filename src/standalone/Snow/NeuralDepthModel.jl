@@ -9,27 +9,36 @@ import ClimaLand.Snow:
     update_density_and_depth!,
     update_density_prog!
 using Thermodynamics
+using StaticArrays
+import Adapt
 
 export NeuralDepthModel
 
 """
     NeuralDepthModel{FT <: AbstractFloat} <: AbstractDensityModel{FT}
-Establishes the density parameterization where snow density is calculated from a prognostic snow depth variable, 
+Establishes the density parameterization where snow density is calculated from a prognostic snow depth variable,
 along with the prognostic SWE variable, using a neural network for the rate of change of snow depth, `dz/dt`.
 The input to the network are temporally averaged, which we achieve using an exponentially moving average,
 with a rate of `\alpha`.
+
+During construction, all Arrays in `z_model` are converted to StaticArrays (this is done
+for gpu compatibilty). For gpu compatibilty, `z_model` must not allocate or take the adjoint
+of a [1xN] array, where N is the number of batched input vectors.
 """
-struct NeuralDepthModel{FT} <: AbstractDensityModel{FT}
+struct NeuralDepthModel{FT, MD <: Flux.Chain} <: AbstractDensityModel{FT}
     "The Flux neural network for compute dz/dt"
-    z_model::Flux.Chain
+    z_model::MD
     "The inverse of the averaging window time (1/s)"
     α::FT
+    function NeuralDepthModel(z_model::MD, α::FT) where {FT, MD}
+        static_z_model = Adapt.adapt(SArray, z_model)
+        new{FT, typeof(static_z_model)}(static_z_model, α)
+    end
 end
-
 
 """
     get_network_weights(FT::DataType)
-Retrieves the network weights for the snow depth model formulated in Charbonneau et. al., 2025, 
+Retrieves the network weights for the snow depth model formulated in Charbonneau et. al., 2025,
 and stores/returns them within a dictionary to enable easy loading of the weights into the generated
 neural model.
 Note that because we are loading from an unchanging document of pre-trained weights,
@@ -79,6 +88,14 @@ function connectfunc(
         input[1, :]'
         pred
     ]
+end
+
+# second method to deal with adjoint of zero dimensional SArray
+function connectfunc(
+    pred::SVector{1, FT},
+    input::SVector{7, FT},
+)::AbstractArray{FT} where {FT <: AbstractFloat}
+    return SVector((input[7] > 0) * relu(pred[1]), input[1], pred[1])
 end
 
 
@@ -133,7 +150,7 @@ Set the physical scaling parameter for model usage (i.e. rectifying scaling done
 This scaling constant is combined with a -1 factor that enforces the boundary for speed and memory purposes -
 for this reason, we do not recommend first `extracting`/storing the weight this function refers to,
 and then using that value with this function to `reset` the weight the intial/stored value, as this will have unintended
-conseequnces without accounting for the extra factor. Only use this function to scale the output 
+consequnces without accounting for the extra factor. Only use this function to scale the output
 of the predictive component by the constant `scale`.
 
 # Arguments
@@ -161,7 +178,7 @@ end
 
 """
     get_znetwork()
-Return the snow-depth neural network from Charbonneau et al (2025; https://arxiv.org/abs/2412.06819), 
+Return the snow-depth neural network from Charbonneau et al (2025; https://arxiv.org/abs/2412.06819),
 and set the network's scaling such that snowpack depth remains nonnegative for a default timestep of 86400 seconds (1 day).
 Note that because we are loading a pre-trained model, the number of features input, the size of the output, etc, are hard coded in the function below.
 
@@ -210,7 +227,7 @@ function NeuralDepthModel(
                    default value is unstable in this case.")
         end
     end
-    return NeuralDepthModel{FT}(usemodel, weight)
+    return NeuralDepthModel(usemodel, weight)
 end
 
 #Define the additional prognostic variables needed for using this parameterization:
@@ -270,8 +287,9 @@ function eval_nn(
     u::FT,
     scf::FT,
 )::FT where {FT}
-    #model() of a Vector{FT} returns a 1-element Matrix, return the internal value: 
-    return density.z_model([z, swe_snow_area(swe, scf, z), qrel, R, u, T, P])[1]
+    return density.z_model(
+        SVector(z, swe_snow_area(swe, scf, z), qrel, R, u, T, P),
+    )[1]
 end
 
 """

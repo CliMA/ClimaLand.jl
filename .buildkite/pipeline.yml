@@ -135,6 +135,15 @@ steps:
         env:
           CLIMACOMMS_DEVICE: "CUDA"
 
+      - label: "Snow Col de Porte: GPU"
+        command: "julia --color=yes --project=.buildkite experiments/standalone/Snow/snowmip_simulation.jl cdp"
+        artifact_paths: "experiments/standalone/Snow/cdp/output_active/*png"
+        agents:
+          slurm_ntasks: 1
+          slurm_gpus: 1
+        env:
+          CLIMACOMMS_DEVICE: "CUDA"
+
   - group: "ClimaLandSimulations"
     steps:
       - label: "Ozark figures Makie"

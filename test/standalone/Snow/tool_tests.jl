@@ -13,6 +13,7 @@ using ClimaLand.Snow
 using ClimaLand.Domains
 import ClimaLand.Parameters as LP
 using ClimaComms
+ClimaComms.@import_required_backends
 
 DataToolsExt = Base.get_extension(ClimaLand, :NeuralSnowExt)
 ModelToolsExt = Base.get_extension(ClimaLand, :NeuralSnowExt)
@@ -483,105 +484,91 @@ if !isnothing(DataToolsExt)
         Y2, p2, coords2 = ClimaLand.initialize(model2)
         @test (Y2.snow |> propertynames) == (:S, :S_l, :U, :Z)
 
-        # The snow module is broken when using CUDA because the density model is stored in
-        # the snow parameters, but the network is not copied to the GPU.
-        if ClimaComms.device() isa ClimaComms.CUDADevice
-            @test_broken Y.snow.U .=
-                ClimaLand.Snow.energy_from_T_and_swe.(
-                    Y.snow.S,
-                    FT(273.0),
-                    Ref(model.parameters),
-                )
-        else
-            Y.snow.U .=
-                ClimaLand.Snow.energy_from_T_and_swe.(
-                    Y.snow.S,
-                    FT(273.0),
-                    Ref(model.parameters),
-                )
-            Y.snow.Z .= FT(0.2)
-            set_initial_cache! = ClimaLand.make_set_initial_cache(model)
-            t0 = FT(0.0)
-            set_initial_cache!(p, Y, t0)
-            oldρ = p.snow.ρ_snow
-            Snow.update_density_and_depth!(
-                p.snow.ρ_snow,
-                p.snow.z_snow,
-                model.parameters.density,
-                Y,
-                p,
-                model.parameters,
+        Y.snow.U .=
+            ClimaLand.Snow.energy_from_T_and_swe.(
+                Y.snow.S,
+                FT(273.0),
+                Ref(model.parameters),
             )
-            @test p.snow.z_snow == Y.snow.Z
-            @test p.snow.ρ_snow == oldρ
-            output1 =
-                Snow.eval_nn(dens_model2, FT.([0, 0, 0, 0, 0, 0, 0, 0])...)
+        Y.snow.Z .= FT(0.2)
+        set_initial_cache! = ClimaLand.make_set_initial_cache(model)
+        t0 = FT(0.0)
+        set_initial_cache!(p, Y, t0)
+        oldρ = p.snow.ρ_snow
+        Snow.update_density_and_depth!(
+            p.snow.ρ_snow,
+            p.snow.z_snow,
+            model.parameters.density,
+            Y,
+            p,
+            model.parameters,
+        )
+        @test p.snow.z_snow == Y.snow.Z
+        @test p.snow.ρ_snow == oldρ
+        output1 = Snow.eval_nn(dens_model2, FT.([0, 0, 0, 0, 0, 0, 0, 0])...)
 
-            @test eltype(output1) == FT
-            @test output1 == 0.0f0
+        @test eltype(output1) == FT
+        @test output1 == 0.0f0
 
-            zerofield = similar(Y.snow.Z)
-            Y.snow.P_avg .= FT(0)
-            zerofield .= FT(0)
-            dY = similar(Y)
-            Snow.update_dzdt!(dY.snow.Z, dens_model2, Y, p)
-            @test dY.snow.Z == zerofield
+        zerofield = similar(Y.snow.Z)
+        Y.snow.P_avg .= FT(0)
+        zerofield .= FT(0)
+        dY = similar(Y)
+        Snow.update_dzdt!(dY.snow.Z, dens_model2, Y, p)
+        @test dY.snow.Z == zerofield
 
-            Z = FT(0.5)
-            S = FT(0.1)
-            dzdt = FT(1 / Δt)
-            dsdt = FT(1 / Δt)
-            scf = FT(1)
-            @test Snow.clip_dZdt(S, Z, dsdt, dzdt, scf, Δt) == dzdt
+        Z = FT(0.5)
+        S = FT(0.1)
+        dzdt = FT(1 / Δt)
+        dsdt = FT(1 / Δt)
+        scf = FT(1)
+        @test Snow.clip_dZdt(S, Z, dsdt, dzdt, scf, Δt) == dzdt
 
-            @test Snow.clip_dZdt(Z, S, dsdt, dzdt, scf, Δt) ≈ FT(1.4 / Δt)
+        @test Snow.clip_dZdt(Z, S, dsdt, dzdt, scf, Δt) ≈ FT(1.4 / Δt)
 
-            @test Snow.clip_dZdt(S, Z, FT(-S / Δt), dzdt, scf, Δt) ≈ FT(-Z / Δt)
+        @test Snow.clip_dZdt(S, Z, FT(-S / Δt), dzdt, scf, Δt) ≈ FT(-Z / Δt)
 
 
-            dswe_by_precip = 0.1
-            Y.snow.P_avg .= FT(dswe_by_precip / Δt)
-            exp_tendency! = ClimaLand.make_compute_exp_tendency(model)
-            exp_tendency!(dY, Y, p, FT(0.0))
-            @test parent(dY.snow.Z)[1] * Δt > dswe_by_precip
-            new_dYP = FT(test_alph) .* (p.drivers.P_snow .- Y.snow.P_avg)
-            @test dY.snow.P_avg == new_dYP
+        dswe_by_precip = 0.1
+        Y.snow.P_avg .= FT(dswe_by_precip / Δt)
+        exp_tendency! = ClimaLand.make_compute_exp_tendency(model)
+        exp_tendency!(dY, Y, p, FT(0.0))
+        @test parent(dY.snow.Z)[1] * Δt > dswe_by_precip
+        new_dYP = FT(test_alph) .* (p.drivers.P_snow .- Y.snow.P_avg)
+        @test dY.snow.P_avg == new_dYP
 
-            @test Snow.get_dzdt(model2.parameters.density, model2, Y2, p2) ==
-                  zerofield
-            Y2.snow.Z .= FT(0.4)
-            Y2.snow.S .= FT(0.1)
-            p2.snow.T .= FT(280)
-            p2.snow.q_l .= FT(0.2)
-            p2.snow.snow_cover_fraction .= FT(0.9)
-            compare_field =
-                Snow.get_dzdt(model2.parameters.density, model2, Y2, p2)
-            @test parent(compare_field)[1] ≈ -7.51f-7 atol = 1e-9
-            dY2 = similar(Y2)
-            dY2.snow.S .= 0.0f0
-            Snow.update_density_prog!(
-                model2.parameters.density,
-                model2,
-                dY2,
-                Y2,
-                p2,
-            )
-            @test dY2.snow.Z == compare_field
+        @test Snow.get_dzdt(model2.parameters.density, model2, Y2, p2) ==
+              zerofield
+        Y2.snow.Z .= FT(0.4)
+        Y2.snow.S .= FT(0.1)
+        p2.snow.T .= FT(280)
+        p2.snow.q_l .= FT(0.2)
+        p2.snow.snow_cover_fraction .= FT(0.9)
+        compare_field = Snow.get_dzdt(model2.parameters.density, model2, Y2, p2)
+        @test parent(compare_field)[1] ≈ -7.51f-7 atol = 1e-9
+        dY2 = similar(Y2)
+        dY2.snow.S .= 0.0f0
+        Snow.update_density_prog!(
+            model2.parameters.density,
+            model2,
+            dY2,
+            Y2,
+            p2,
+        )
+        @test dY2.snow.Z == compare_field
 
-            Y2.snow.Z .= 4.0f0
-            Y2.snow.S .= 2.0f0
-            Snow.update_density_and_depth!(
-                p2.snow.ρ_snow,
-                p2.snow.z_snow,
-                model2.parameters.density,
-                Y2,
-                p2,
-                model2.parameters,
-            )
-            @test parent(p2.snow.z_snow)[1] == 4.0f0
-            @test parent(p2.snow.ρ_snow)[1] == 500.0f0
-
-        end
+        Y2.snow.Z .= 4.0f0
+        Y2.snow.S .= 2.0f0
+        Snow.update_density_and_depth!(
+            p2.snow.ρ_snow,
+            p2.snow.z_snow,
+            model2.parameters.density,
+            Y2,
+            p2,
+            model2.parameters,
+        )
+        @test parent(p2.snow.z_snow)[1] == 4.0f0
+        @test parent(p2.snow.ρ_snow)[1] == 500.0f0
 
     end
 end

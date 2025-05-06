@@ -19,7 +19,7 @@ using Thermodynamics
 using Statistics
 using Insolation
 using DelimitedFiles
-
+ClimaComms.@import_required_backends
 # Site-specific quantities
 # Error if no site argument is provided
 if length(ARGS) < 1
@@ -67,7 +67,7 @@ Y, p, coords = ClimaLand.initialize(model)
 # Set initial conditions
 Y.snow.S .= FT(SWE[1]) # first data point
 Y.snow.S_l .= 0 # this is a guess
-Y.snow.Z .= FT(depths[1]) #first depth value - comment out if using MinimumDensityModel instead of NeuralDepthModel 
+Y.snow.Z .= FT(depths[1]) #first depth value - comment out if using MinimumDensityModel instead of NeuralDepthModel
 Y.snow.U .=
     ClimaLand.Snow.energy_from_q_l_and_swe(FT(SWE[1]), FT(0), parameters) # with q_l = 0
 
@@ -116,26 +116,30 @@ sol = SciMLBase.solve(
 );
 
 # Plotting
-q_l = [parent(sv.saveval[k].snow.q_l)[1] for k in 1:length(sol.t)];
-T = [parent(sv.saveval[k].snow.T)[1] for k in 1:length(sol.t)];
+q_l = [Array(parent(sv.saveval[k].snow.q_l))[1] for k in 1:length(sol.t)];
+T = [Array(parent(sv.saveval[k].snow.T))[1] for k in 1:length(sol.t)];
 evaporation = [
-    parent(sv.saveval[k].snow.turbulent_fluxes.vapor_flux)[1] for
+    Array(parent(sv.saveval[k].snow.turbulent_fluxes.vapor_flux))[1] for
     k in 1:length(sol.t)
 ];
-R_n = [parent(sv.saveval[k].snow.R_n)[1] for k in 1:length(sol.t)];
+R_n = [Array(parent(sv.saveval[k].snow.R_n))[1] for k in 1:length(sol.t)];
 water_runoff =
-    [parent(sv.saveval[k].snow.water_runoff)[1] for k in 1:length(sol.t)];
-phase_change_flux =
-    [parent(sv.saveval[k].snow.phase_change_flux)[1] for k in 1:length(sol.t)];
-rain = [parent(sv.saveval[k].drivers.P_liq)[1] for k in 1:length(sv.t)];
-snow = [parent(sv.saveval[k].drivers.P_snow)[1] for k in 1:length(sv.t)];
-scf =
-    [parent(sv.saveval[k].snow.snow_cover_fraction)[1] for k in 1:length(sol.t)];
-ρ = [parent(sv.saveval[k].snow.ρ_snow)[1] for k in 1:length(sol.t)];
-z = [parent(sv.saveval[k].snow.z_snow)[1] for k in 1:length(sol.t)];
-S = [parent(sol.u[k].snow.S)[1] for k in 1:length(sol.t)];
-S_l = [parent(sol.u[k].snow.S_l)[1] for k in 1:length(sol.t)];
-U = [parent(sol.u[k].snow.U)[1] for k in 1:length(sol.t)];
+    [Array(parent(sv.saveval[k].snow.water_runoff))[1] for k in 1:length(sol.t)];
+phase_change_flux = [
+    Array(parent(sv.saveval[k].snow.phase_change_flux))[1] for
+    k in 1:length(sol.t)
+];
+rain = [Array(parent(sv.saveval[k].drivers.P_liq))[1] for k in 1:length(sv.t)];
+snow = [Array(parent(sv.saveval[k].drivers.P_snow))[1] for k in 1:length(sv.t)];
+scf = [
+    Array(parent(sv.saveval[k].snow.snow_cover_fraction))[1] for
+    k in 1:length(sol.t)
+];
+ρ = [Array(parent(sv.saveval[k].snow.ρ_snow))[1] for k in 1:length(sol.t)];
+z = [Array(parent(sv.saveval[k].snow.z_snow))[1] for k in 1:length(sol.t)];
+S = [Array(parent(sol.u[k].snow.S))[1] for k in 1:length(sol.t)];
+S_l = [Array(parent(sol.u[k].snow.S_l))[1] for k in 1:length(sol.t)];
+U = [Array(parent(sol.u[k].snow.U))[1] for k in 1:length(sol.t)];
 t = sol.t;
 
 start_day = 1
@@ -308,19 +312,19 @@ ax1 = CairoMakie.Axis(fig[2, 1], ylabel = "ΔEnergy (J/A)", xlabel = "Days")
 ΔE_expected =
     cumsum(
         -1 .* [
-            parent(sv.saveval[k].snow.applied_energy_flux)[end] for
+            Array(parent(sv.saveval[k].snow.applied_energy_flux))[end] for
             k in 2:1:length(sv.t)
         ],
     ) * (sv.t[2] - sv.t[1])
-E_measured = [parent(sol.u[k].snow.U)[end] for k in 1:1:length(sv.t)]
+E_measured = [Array(parent(sol.u[k].snow.U))[end] for k in 1:1:length(sv.t)]
 ΔW_expected =
     cumsum(
         -1 .* [
-            parent(sv.saveval[k].snow.applied_water_flux)[end] for
+            Array(parent(sv.saveval[k].snow.applied_water_flux))[end] for
             k in 2:1:length(sv.t)
         ],
     ) * (sv.t[2] - sv.t[1])
-W_measured = [parent(sol.u[k].snow.S)[end] for k in 1:1:length(sv.t)]
+W_measured = [Array(parent(sol.u[k].snow.S))[end] for k in 1:1:length(sv.t)]
 CairoMakie.lines!(
     ax1,
     daily[2:end],
