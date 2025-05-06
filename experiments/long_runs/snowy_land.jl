@@ -415,14 +415,10 @@ function setup_prob(
     updatefunc = ClimaLand.make_update_drivers(drivers)
 
     # ClimaDiagnostics
-    # num_points is the resolution of the output diagnostics
-    # These are currently chosen to get a 1:1 ration with the number of
-    # simulation points, ~101x101x4x4
     nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(
         subsurface_space,
         outdir;
         start_date,
-        num_points = (570, 285, 15),
     )
 
     diags = ClimaLand.default_diagnostics(
@@ -470,9 +466,9 @@ function setup_and_solve_problem(; greet = false)
     days = 24hours # days in seconds
     years = 366days # years in seconds - 366 to make sure we capture at least full years
     # 10 years in seconds for very long run and 2 years in seconds otherwise
-    tf = LONGER_RUN ? 10years : 2years
-    Δt = 450.0
-    start_date = LONGER_RUN ? DateTime(2004) : DateTime(2008)
+    tf = LONGER_RUN ? 10years : 1years
+    Δt = 900.0
+    start_date = LONGER_RUN ? DateTime(2004) : DateTime(2004)
     nelements = (101, 15)
     if greet
         @info "Run: Global Soil-Canopy-Snow Model"
@@ -530,18 +526,3 @@ include(
 )
 make_figures(root_path, outdir, short_names)
 
-include("leaderboard/leaderboard.jl")
-diagnostics_folder_path = outdir
-leaderboard_base_path = root_path
-for data_source in ("ERA5", "ILAMB")
-    compute_monthly_leaderboard(
-        leaderboard_base_path,
-        diagnostics_folder_path,
-        data_source,
-    )
-    compute_seasonal_leaderboard(
-        leaderboard_base_path,
-        diagnostics_folder_path,
-        data_source,
-    )
-end
