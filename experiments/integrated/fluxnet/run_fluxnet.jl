@@ -7,7 +7,7 @@ import ClimaParams as CP
 using Statistics
 using Dates
 using Insolation
-using StatsBase
+using Statistics
 
 using ClimaLand
 using ClimaLand.Domains: Column

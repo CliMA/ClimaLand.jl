@@ -424,8 +424,33 @@ function ceres_albedo_dataset_path(; context = nothing)
     )
 end
 
-neural_snow_znetwork_link() =
-    "https://caltech.box.com/shared/static/ay7cv0rhuiytrqbongpeq2y7m3cimhm4.bson"
+"""
+    neural_depth_model_weights_path(; context = nothing)
+
+Triggers the download of the text file containing the trained weights
+for the neural network for predicting snow depth as described in Charbonneau et. al., 2025,
+if not already downloaded, using Julia Artifacts, and returns the path to
+this file.
+
+The weights file contains parameters for a Flux neural network with the architecture
+specified in NeuralDepthModel.jl.
+
+"""
+function neural_depth_model_weights_path(; context = nothing)
+    return joinpath(
+        @clima_artifact("snow_depth_model_weights", context),
+        "paper_model_z.txt",
+    )
+end
+
+neural_snow_swenetwork_link() =
+    "https://caltech.box.com/shared/static/nb2y4puindm5ncr7eldqk6l1q49lzi12.txt"
+
+neural_snow_training_data_link() =
+    "https://caltech.box.com/shared/static/1gfyh71c44ljzb9xbnza3lbzj6p9723x.csv"
+
+neural_snow_testing_data_link() =
+    "https://caltech.box.com/shared/static/qb2ze1wcc1a37fgt5k9wsj27gpoh39ax.csv"
 
 """
     ilamb_dataset_path(filename; context = nothing)

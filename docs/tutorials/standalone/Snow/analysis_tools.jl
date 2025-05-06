@@ -1,5 +1,5 @@
 using Flux
-using DataFrames, Dates, StatsBase
+using DataFrames, Dates, Statistics
 using Flux.Data: DataLoader
 using Flux: loadparams!
 
@@ -27,6 +27,7 @@ function show_mem_usage(ret::Bool = false)
     return ret_string
 end
 
+
 """
     nash_sutcliffe(pred, truth)
 
@@ -39,6 +40,7 @@ Calculate the Nash-Sutcliffe efficiency (NSE) between a predicted and true times
 function nashsutcliffe(pred::Vector{<:Real}, truth::Vector{<:Real})
     return 1.0 - (sum((truth .- pred) .^ 2) / sum((truth .- mean(truth)) .^ 2))
 end
+
 
 """
     rmse(pred, truth)
@@ -53,6 +55,7 @@ function rmse(pred::Vector{<:Real}, truth::Vector{<:Real})
     return sqrt(Flux.Losses.mse(pred, truth))
 end
 
+
 """
     bias(pred, truth)
 
@@ -65,6 +68,7 @@ Calculate the bias between a predicted and true output.
 function bias(pred::Vector{<:Real}, truth::Vector{<:Real})
     return mean(pred .- truth)
 end
+
 
 """
     std_resid(pred, truth)
@@ -79,6 +83,7 @@ function std_resid(pred::Vector{<:Real}, truth::Vector{<:Real})
     return std(pred .- truth)
 end
 
+
 """
     l1(pred, truth)
 
@@ -91,6 +96,7 @@ Calculate the Mean Absolute Error (L1 Norm) between a predicted and true output.
 function l1(pred::Vector{<:Real}, truth::Vector{<:Real})
     return Flux.Losses.mae(pred, truth)
 end
+
 
 """
     trendslope(pred, truth)
@@ -113,6 +119,7 @@ function trendslope(
     return [truth zeros(length(truth))] \ pred
 end
 
+
 """
     med_percent_err(pred, truth)
 
@@ -128,6 +135,7 @@ function med_percent_err(pred::Vector{<:Real}, truth::Vector{<:Real})
     return median(filter(!isnan, temp))
 end
 
+
 """
     pack_percent_err(pred, truth)
 
@@ -141,6 +149,7 @@ function pack_percent_err(pred::Vector{<:Real}, truth::Vector{<:Real})
     return l1(pred, truth) ./ mean(truth[truth .> 0.0])
 end
 
+
 """
     pearson_cor(pred, truth)
 
@@ -153,6 +162,7 @@ Calculate the correlation coefficient between a true and predicted output.
 function pearson_cor(pred::Vector{<:Real}, truth::Vector{<:Real})
     return cor(pred, truth)
 end
+
 
 """
     get_scores(pred, truth; timeseries)

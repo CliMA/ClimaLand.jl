@@ -41,7 +41,6 @@ using ClimaCore
 using Dates
 using Insolation
 using Statistics
-import StatsBase: percentile
 using CairoMakie
 import ClimaComms
 ClimaComms.@import_required_backends
@@ -65,6 +64,10 @@ try
     global PROFILING = true
     @info "ProfileCanvas found, running with profiler"
 catch
+end
+
+function percentile(x, p)
+    return quantile(x, p / 100)
 end
 
 function set_initial_conditions(land, t0)

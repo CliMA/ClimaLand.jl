@@ -2,7 +2,6 @@
 
 using Interpolations
 using CairoMakie
-using StatsBase
 
 S_PER_DAY = 86400 # Number of seconds in a day
 
@@ -102,8 +101,8 @@ function plot_avg_comp(
         compute_diurnal_avg(data, [0:data_dt:(num_days * S_PER_DAY);], num_days)
 
     # Compute the GOF stats
-    RMSD = StatsBase.rmsd(model_hh_avg, data_hh_avg)
-    R² = StatsBase.cor(model_hh_avg, data_hh_avg)^2
+    RMSD = sqrt(mean(abs2, model_hh_avg .- data_hh_avg))
+    R² = cor(model_hh_avg, data_hh_avg)^2
 
     # Plot the model and data diurnal cycles
     fig = CairoMakie.Figure(size = (800, 400))
