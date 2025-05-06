@@ -1,4 +1,3 @@
-import SciMLBase
 using CairoMakie
 using Statistics
 using Dates
@@ -208,86 +207,91 @@ ode_algo = CTS.IMEXAlgorithm(
         update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
     ),
 );
-
-prob = SciMLBase.ODEProblem(
-    CTS.ClimaODEFunction(
+func = CTS.ClimaODEFunction(
         T_exp! = exp_tendency!,
-        T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
+        T_imp! = (; f = imp_tendency!, jac_kwargs...),
         dss! = ClimaLand.dss!,
-    ),
-    Y,
-    (t0, tf),
-    p,
-);
+    )
 
-sol = SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb, saveat = saveat);
+stepper = ClimaLand.TimeStepper(Y, t0, ode_algo, func)
 
-savedir = generate_output_path("experiments/standalone/Vegetation/varying_lai");
-T = [parent(sol.u[k].canopy.energy.T)[1] for k in 1:length(sol.t)]
-T_atmos = [parent(sv.saveval[k].drivers.T)[1] for k in 1:length(sol.t)]
-ϑ = [parent(sol.u[k].canopy.hydraulics.ϑ_l.:1)[1] for k in 1:length(sol.t)]
-GPP = [
-    parent(sv.saveval[k].canopy.photosynthesis.GPP)[1] * 1e6 for
-    k in 1:length(sol.t)
-]
-resp = [
-    parent(sv.saveval[k].canopy.autotrophic_respiration.Ra)[1] * 1e6 for
-    k in 1:length(sol.t)
-]
-SW_n = [
-    parent(sv.saveval[k].canopy.radiative_transfer.SW_n)[1] for
-    k in 1:length(sol.t)
-]
-LW_n = [
-    parent(sv.saveval[k].canopy.radiative_transfer.LW_n)[1] for
-    k in 1:length(sol.t)
-]
-SHF = [
-    parent(sv.saveval[k].canopy.turbulent_fluxes.shf)[1] for
-    k in 1:length(sol.t)
-]
-LHF = [
-    parent(sv.saveval[k].canopy.turbulent_fluxes.lhf)[1] for
-    k in 1:length(sol.t)
-]
-RE = [
-    parent(sv.saveval[k].canopy.energy.fa_energy_roots)[1] for
-    k in 1:length(sol.t)
-]
-R = [
-    parent(sv.saveval[k].canopy.hydraulics.fa_roots)[1] for k in 1:length(sol.t)
-]
-Tr = [
-    parent(sv.saveval[k].canopy.turbulent_fluxes.transpiration)[1] for
-    k in 1:length(sol.t)
-]
-fig = Figure()
-ax = Axis(fig[1, 1], xlabel = "Time (days)", ylabel = "Temperature (K)")
-lines!(ax, sol.t ./ 24 ./ 3600, T, label = "Canopy")
-lines!(ax, sol.t ./ 24 ./ 3600, T_atmos, label = "Atmos")
-axislegend(ax)
-ax = Axis(fig[2, 1], xlabel = "Time (days)", ylabel = "Volumetric Water")
-lines!(ax, sol.t ./ 24 ./ 3600, ϑ, label = "Canopy")
-axislegend(ax)
-ax = Axis(fig[3, 1], xlabel = "Time (days)", ylabel = "LAI")
-lines!(ax, sol.t ./ 24 ./ 3600, fakeLAIfunction.(sol.t), label = "Canopy")
-axislegend(ax)
-save(joinpath(savedir, "varying_lai_state.png"), fig)
-fig2 = Figure()
-ax = Axis(fig2[1, 1], xlabel = "Time (days)", ylabel = "Energy Fluxes")
-lines!(ax, sol.t ./ 24 ./ 3600, SW_n, label = "SW_n")
-lines!(ax, sol.t ./ 24 ./ 3600, LW_n, label = "LW_n")
-lines!(ax, sol.t ./ 24 ./ 3600, SHF, label = "SHF")
-lines!(ax, sol.t ./ 24 ./ 3600, LHF, label = "LHF")
-lines!(ax, sol.t ./ 24 ./ 3600, RE, label = "RE")
-axislegend(ax)
-ax = Axis(fig2[2, 1], xlabel = "Time (days)", ylabel = "Water Fluxes")
-lines!(ax, sol.t ./ 24 ./ 3600, Tr, label = "Transpiration")
-lines!(ax, sol.t ./ 24 ./ 3600, R, label = "R")
+callbacks = (driver_cb, saving_cb)
+simulation = ClimaLand.ClimaLandSimulation(stepper,
+                                           Y,
+                                           p,
+                                           t0,
+                                           Δt,
+                                           tf,
+                                           callbacks)
 
-axislegend(ax)
-ax = Axis(fig2[3, 1], xlabel = "Time (days)", ylabel = "Carbon Fluxes")
-lines!(ax, sol.t ./ 24 ./ 3600, GPP, label = "GPP")
-lines!(ax, sol.t ./ 24 ./ 3600, resp, label = "Respiration")
-axislegend(ax)
-save(joinpath(savedir, "varying_lai_fluxes.png"), fig2)
+ClimaLand.solve!(simulation)
+
+# savedir = generate_output_path("experiments/standalone/Vegetation/varying_lai");
+# T = [parent(sol.u[k].canopy.energy.T)[1] for k in 1:length(sol.t)]
+# T_atmos = [parent(sv.saveval[k].drivers.T)[1] for k in 1:length(sol.t)]
+# ϑ = [parent(sol.u[k].canopy.hydraulics.ϑ_l.:1)[1] for k in 1:length(sol.t)]
+# GPP = [
+#     parent(sv.saveval[k].canopy.photosynthesis.GPP)[1] * 1e6 for
+#     k in 1:length(sol.t)
+# ]
+# resp = [
+#     parent(sv.saveval[k].canopy.autotrophic_respiration.Ra)[1] * 1e6 for
+#     k in 1:length(sol.t)
+# ]
+# SW_n = [
+#     parent(sv.saveval[k].canopy.radiative_transfer.SW_n)[1] for
+#     k in 1:length(sol.t)
+# ]
+# LW_n = [
+#     parent(sv.saveval[k].canopy.radiative_transfer.LW_n)[1] for
+#     k in 1:length(sol.t)
+# ]
+# SHF = [
+#     parent(sv.saveval[k].canopy.turbulent_fluxes.shf)[1] for
+#     k in 1:length(sol.t)
+# ]
+# LHF = [
+#     parent(sv.saveval[k].canopy.turbulent_fluxes.lhf)[1] for
+#     k in 1:length(sol.t)
+# ]
+# RE = [
+#     parent(sv.saveval[k].canopy.energy.fa_energy_roots)[1] for
+#     k in 1:length(sol.t)
+# ]
+# R = [
+#     parent(sv.saveval[k].canopy.hydraulics.fa_roots)[1] for k in 1:length(sol.t)
+# ]
+# Tr = [
+#     parent(sv.saveval[k].canopy.turbulent_fluxes.transpiration)[1] for
+#     k in 1:length(sol.t)
+# ]
+# fig = Figure()
+# ax = Axis(fig[1, 1], xlabel = "Time (days)", ylabel = "Temperature (K)")
+# lines!(ax, sol.t ./ 24 ./ 3600, T, label = "Canopy")
+# lines!(ax, sol.t ./ 24 ./ 3600, T_atmos, label = "Atmos")
+# axislegend(ax)
+# ax = Axis(fig[2, 1], xlabel = "Time (days)", ylabel = "Volumetric Water")
+# lines!(ax, sol.t ./ 24 ./ 3600, ϑ, label = "Canopy")
+# axislegend(ax)
+# ax = Axis(fig[3, 1], xlabel = "Time (days)", ylabel = "LAI")
+# lines!(ax, sol.t ./ 24 ./ 3600, fakeLAIfunction.(sol.t), label = "Canopy")
+# axislegend(ax)
+# save(joinpath(savedir, "varying_lai_state.png"), fig)
+# fig2 = Figure()
+# ax = Axis(fig2[1, 1], xlabel = "Time (days)", ylabel = "Energy Fluxes")
+# lines!(ax, sol.t ./ 24 ./ 3600, SW_n, label = "SW_n")
+# lines!(ax, sol.t ./ 24 ./ 3600, LW_n, label = "LW_n")
+# lines!(ax, sol.t ./ 24 ./ 3600, SHF, label = "SHF")
+# lines!(ax, sol.t ./ 24 ./ 3600, LHF, label = "LHF")
+# lines!(ax, sol.t ./ 24 ./ 3600, RE, label = "RE")
+# axislegend(ax)
+# ax = Axis(fig2[2, 1], xlabel = "Time (days)", ylabel = "Water Fluxes")
+# lines!(ax, sol.t ./ 24 ./ 3600, Tr, label = "Transpiration")
+# lines!(ax, sol.t ./ 24 ./ 3600, R, label = "R")
+
+# axislegend(ax)
+# ax = Axis(fig2[3, 1], xlabel = "Time (days)", ylabel = "Carbon Fluxes")
+# lines!(ax, sol.t ./ 24 ./ 3600, GPP, label = "GPP")
+# lines!(ax, sol.t ./ 24 ./ 3600, resp, label = "Respiration")
+# axislegend(ax)
+# save(joinpath(savedir, "varying_lai_fluxes.png"), fig2)

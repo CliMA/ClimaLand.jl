@@ -12,10 +12,9 @@
 # Plots of the temporal evolution of water content, snow cover fraction,
 # surface temperature, evaporation, and surface energy flux.
 
-import SciMLBase
 import ClimaComms
 ClimaComms.@import_required_backends
-using CairoMakie
+# using CairoMakie
 using Dates
 using DelimitedFiles
 using Statistics
@@ -93,7 +92,7 @@ z_0b = FT(1e-3);
 ρc_soil = FT(2e6);
 τc = FT(3600);
 t0 = 0.0;
-tf = 7 * 86400;
+tf = 7 * 86400.0;
 Δt = 3600.0;
 
 bucket_parameters = BucketModelParameters(FT; albedo, z_0m, z_0b, τc);
@@ -154,12 +153,8 @@ set_initial_cache!(p, Y, t0);
 exp_tendency! = make_exp_tendency(model);
 timestepper = CTS.RK4()
 ode_algo = CTS.ExplicitAlgorithm(timestepper)
-prob = SciMLBase.ODEProblem(
-    CTS.ClimaODEFunction(T_exp! = exp_tendency!, dss! = ClimaLand.dss!),
-    Y,
-    (t0, tf),
-    p,
-);
+func = CTS.ClimaODEFunction(T_exp! = exp_tendency!, dss! = ClimaLand.dss!)
+stepper = ClimaLand.TimeStepper(Y, t0, ode_algo, func)
 
 # ClimaDiagnostics
 output_dir = ClimaUtilities.OutputPathGenerator.generate_output_path(outdir)
@@ -180,56 +175,59 @@ updateat = collect(t0:(Δt * 3):tf);
 drivers = ClimaLand.get_drivers(model)
 updatefunc = ClimaLand.make_update_drivers(drivers)
 driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
+callbacks = (driver_cb, diag_cb)
+simulation = ClimaLand.ClimaLandSimulation(stepper,
+                                           Y,
+                                           p,
+                                           t0,
+                                           Δt,
+                                           tf,
+                                           callbacks)
 
-sol = ClimaComms.@time ClimaComms.device() SciMLBase.solve(
-    prob,
-    ode_algo;
-    dt = Δt,
-    callback = SciMLBase.CallbackSet(driver_cb, diag_cb),
-)
+ClimaLand.solve!(simulation)
 
-#### ClimaAnalysis ####
+# #### ClimaAnalysis ####
 
-# all
-simdir = ClimaAnalysis.SimDir(output_dir)
-short_names_2D = [
-    "swa",
-    "rn",
-    "tsfc",
-    "qsfc",
-    "lhf",
-    "rae",
-    "shf",
-    "vflux",
-    "rhosfc",
-    "wsoil",
-    "wsfc",
-    "ssfc",
-]
-short_names_3D = ["tsoil"]
-for short_name in vcat(short_names_2D..., short_names_3D...)
-    var = get(simdir; short_name)
-    fig = CairoMakie.Figure(size = (800, 600))
-    kwargs = short_name in short_names_2D ? Dict() : Dict(:z => 1)
-    viz.plot!(fig, var, lon = 0, lat = 0; kwargs...)
-    CairoMakie.save(joinpath(output_dir, "$short_name.png"), fig)
-end
+# # all
+# simdir = ClimaAnalysis.SimDir(output_dir)
+# short_names_2D = [
+#     "swa",
+#     "rn",
+#     "tsfc",
+#     "qsfc",
+#     "lhf",
+#     "rae",
+#     "shf",
+#     "vflux",
+#     "rhosfc",
+#     "wsoil",
+#     "wsfc",
+#     "ssfc",
+# ]
+# short_names_3D = ["tsoil"]
+# for short_name in vcat(short_names_2D..., short_names_3D...)
+#     var = get(simdir; short_name)
+#     fig = CairoMakie.Figure(size = (800, 600))
+#     kwargs = short_name in short_names_2D ? Dict() : Dict(:z => 1)
+#     viz.plot!(fig, var, lon = 0, lat = 0; kwargs...)
+#     CairoMakie.save(joinpath(output_dir, "$short_name.png"), fig)
+# end
 
-# Interpolate to grid
-space = axes(coords.surface)
-longpts = range(-180.0, 180.0, 21)
-latpts = range(-90.0, 90.0, 21)
-hcoords = [Geometry.LatLongPoint(lat, long) for long in longpts, lat in latpts]
-remapper = Remapping.Remapper(space, hcoords)
+# # Interpolate to grid
+# space = axes(coords.surface)
+# longpts = range(-180.0, 180.0, 21)
+# latpts = range(-90.0, 90.0, 21)
+# hcoords = [Geometry.LatLongPoint(lat, long) for long in longpts, lat in latpts]
+# remapper = Remapping.Remapper(space, hcoords)
 
-W = Array(Remapping.interpolate(remapper, sol.u[end].bucket.W))
-Ws = Array(Remapping.interpolate(remapper, sol.u[end].bucket.Ws))
-σS = Array(Remapping.interpolate(remapper, sol.u[end].bucket.σS))
-T_sfc = Array(Remapping.interpolate(remapper, prob.p.bucket.T_sfc))
+# W = Array(Remapping.interpolate(remapper, sol.u[end].bucket.W))
+# Ws = Array(Remapping.interpolate(remapper, sol.u[end].bucket.Ws))
+# σS = Array(Remapping.interpolate(remapper, sol.u[end].bucket.σS))
+# T_sfc = Array(Remapping.interpolate(remapper, prob.p.bucket.T_sfc))
 
 
-# save prognostic state to CSV - for comparison between
-# GPU and CPU output
-open(joinpath(output_dir, "tf_state_$(device_suffix)_function.txt"), "w") do io
-    writedlm(io, hcat(T_sfc[:], W[:], Ws[:], σS[:]), ',')
-end;
+# # save prognostic state to CSV - for comparison between
+# # GPU and CPU output
+# open(joinpath(output_dir, "tf_state_$(device_suffix)_function.txt"), "w") do io
+#     writedlm(io, hcat(T_sfc[:], W[:], Ws[:], σS[:]), ',')
+# end;
