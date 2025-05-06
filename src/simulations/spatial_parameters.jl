@@ -188,6 +188,11 @@ function clm_canopy_parameters(
     )
 end
 
+masked_to_value(field, mask, value) =
+    mask == 1.0 ? field : eltype(field)(value)
+
+
+
 """
     default_spatially_varying_soil_parameters(
         surface_space,
@@ -287,9 +292,6 @@ function default_spatially_varying_soil_parameters(
     # If the parameter mask =  0, set to physical value
     # This function in applied in **simulation mask** aware
     # manner.
-    masked_to_value(field, mask, value) =
-        mask == 1.0 ? field : eltype(field)(value)
-
     μ = FT(0.27)
     vg_α .= masked_to_value.(vg_α, soil_params_mask, 10.0^μ)
     μ = FT(1.65)

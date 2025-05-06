@@ -49,7 +49,7 @@ function GlobalLandSimulation(
     Δt;
     params = LP.LandParameters(FT),
     domain = ClimaLand.global_domain(FT; comms_ctx = context),
-    model = LandModel(domain, start_date, params, FT),
+    model = LandModel(domain, start_date, params, FT), # add assert
     set_ic! = ClimaLand.set_ic_from_file(
         ClimaLand.Artifacts.soil_ic_2008_50m_path(; context = context),
     ), # could also support functions
@@ -116,7 +116,7 @@ function GlobalLandSimulation(
     drivers = ClimaLand.get_drivers(model)
     updatefunc = ClimaLand.make_update_drivers(drivers)
     driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
-    required_callbacks = (driver_cb,)
+    required_callbacks = (driver_cb,) # can we update each step?
 
     # Diagnostics callbacks - can be generalized in the future
     if !(diagnostics isa Nothing)
@@ -149,6 +149,8 @@ function GlobalLandSimulation(
         required_callbacks...,
     )
 
+    #_integrator = SciMLBase.init(problem, callbacks)
+    
     return LandSimulation(
         context,
         params,
@@ -157,10 +159,28 @@ function GlobalLandSimulation(
         timestepper,
         user_callbacks,
         diagnostics,
-        required_callbacks,
+        _required_callbacks,
         callbacks,
         problem,
+        t
+        Y,
+        __p
+        #_integrator
     )
 end
 
+function step!(landsimulation)
+    integrator = SciMLBase.integrator(Y, p, t, callbacks)
+    SciMLBase.step!(integrator)
+    simulation.t[] = integrator.t
+end
+
+function solve!(simulation)
+    SciMLBase.solve!(problem, ode_algo, callbacks)
+end
+
+    function plot(landsimulation)
+
+        end
+    
 end#module
