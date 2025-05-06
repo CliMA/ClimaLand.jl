@@ -1,5 +1,6 @@
 module Simulations
-using ClimaTimesteppers
+using ClimaTimeSteppers
+using SciMLBase
 using Dates
 import ClimaUtilities.TimeVaryingInputs:
     TimeVaryingInput, LinearInterpolation, PeriodicCalendar
@@ -10,57 +11,60 @@ import ClimaParams as CP
 using ClimaLand
 import ClimaLand.Parameters as LP
 
-struct LandSimulation
-    context
-    params
-    model
-    domain
-    timestepper
-    user_callbacks
-    diagnostics
-    required_callbacks
-    callbacks
-    problem
+include("domains.jl")
+include("initial_conditions.jl")
+include("spatial_parameters.jl")
+include("model_setup.jl")
+
+struct LandSimulation{C, P, M <: ClimaLand.AbstractLandModel, D <: ClimaLand.Domains.AbstractDomain, T <: ClimaTimeSteppers.IMEXAlgorithm, UC, DI, RC, CA <: SciMLBase.CallbackSet, P<:SciMLBase.ODEProblem}
+    context::C
+    params::P
+    model::M
+    domain::D
+    timestepper::T
+    user_callbacks::UC
+    diagnostics::DI
+    required_callbacks::RC
+    callbacks::CA
+    problem::P
 end
 
-function GlobalLandSimulation(FT, context, start_date, t0, Δt;
-                              params = LP.earth_param_set(FT),
-                              domain = global_domain(FT; comms_ctx = context),
+function GlobalLandSimulation(FT, context, start_date, t0, tf, Δt;
+                              params = LP.LandParameters(FT),
+                              domain = ClimaLand.global_domain(FT; comms_ctx = context),
                               forcing = ClimaLand.prescribed_forcing_era5(ClimaLand.Artifacts.era5_land_forcing_data2008_folder_path(;context,),
                                                                           domain.space.surface,
                                                                           start_date,
                                                                           params,
                                                                           FT;
                                                                           time_interpolation_method = LinearInterpolation(PeriodicCalendar())),
-                              LAI = ClimaLand.prescribed_lai_modis(joinpath(ClimaLand.Artifacts.modis_lai_forcing_data_path(; context), "Yuan_et_al_2008_1x1.nc"),
+                              LAI = ClimaLand.prescribed_lai_modis(joinpath(ClimaLand.Artifacts.modis_lai_forcing_data_path(; context),
+                                                                            "Yuan_et_al_2008_1x1.nc"),
                                                                    domain.space.surface,
                                                                    start_date;
                                                                    time_interpolation_method = LinearInterpolation(PeriodicCalendar())),
                               ic_file = ClimaLand.Artifacts.soil_ic_2008_50m_path(; context = context),
-                              timestepper = ClimaTimesteppers.IMEXAlgorithm(
-                                  ClimaTimesteppers.ARS111(),
-                                  ClimaTimesteppers.NewtonsMethod(
-                                      max_iters = 3,
-                                      update_j = ClimaTimesteppers.UpdateEvery(ClimaTimesteppers.NewNewtonIteration),
-                                  ),
-                              ),
+                              timestepper = ClimaTimeSteppers.IMEXAlgorithm(ClimaTimeSteppers.ARS111(),
+                                                                            ClimaTimeSteppers.NewtonsMethod(
+                                                                                max_iters = 3,
+                                                                                update_j = ClimaTimeSteppers.UpdateEvery(ClimaTimeSteppers.NewNewtonIteration),
+                                                                            ),
+                                                                            ),
                               user_callbacks = (
-                                  ClimaLand.NaNCheckCallback(
-                                      Dates.Month(1),
-                                      start_date,
-                                      t0,
-                                      Δt;
-                                      mask = ClimaLand.landsea_mask(domain),
-                                  ),
+                                  ClimaLand.NaNCheckCallback(                                      Dates.Month(1),
+                                                                                                   start_date,
+                                                                                                   t0,# needs tobe ITime? promote
+                                                                                                   Δt; # needs to be ITime? promote
+                                                                                                   mask = ClimaLand.landsea_mask(domain),
+                                                                                                   ),
                                   ClimaLand.ReportCallback(1000)
                               ),
                               diagnostics = (;output_vars = :short, average_period = :monthly, outdir = ""), # need to generalize
                               soil_model = (type = Soil.EnergyHydrology{FT},
-                                            parameters = ClimaLand.default_spatially_varying_soil_parameters(
-                                                domain.space.subsurface,
-                                                domain.space.surface,
-                                                FT,
-                                            ),
+                                            parameters = ClimaLand.default_spatially_varying_soil_parameters(domain.space.subsurface,
+                                                                                                             domain.space.surface,
+                                                                                                             FT,
+                                                                                                             ),
                                             runoff_type = ClimaLand.Soil.Runoff.TOPMODELRunoff{FT}),
                               snow_model = (type = Snow.SnowModel, parameters = SnowParameters{FT}(Δt;earth_param_set = params)),
                               canopy_model = (; component_types = (;
@@ -72,10 +76,11 @@ function GlobalLandSimulation(FT, context, start_date, t0, Δt;
                                                                    energy = Canopy.BigLeafEnergyModel{FT},
                                                                    ),
                                               parameters = ClimaLand.clm_canopy_parameters(domain.space.surface),
-                                              LAI = ),
+                                              ),
                               soilco2_model = (; type = Soil.Biogeochemistry.SoilCO2Model{FT},
                                                Csom = ClimaLand.PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5)),
-                                               parameters = Soil.Biogeochemistry.SoilCO2ModelParameters(FT))
+                                               parameters = Soil.Biogeochemistry.SoilCO2ModelParameters(FT)
+                                               ),
                               )
     
     # convert times to Itime
@@ -109,7 +114,7 @@ function GlobalLandSimulation(FT, context, start_date, t0, Δt;
                          snow_model_type = snow_model.type,
                          land_args = land_input,
                          )
-
+    
     # set initial conditions
     Y, p, cds = initialize(land)
     set_ic! = ClimaLand.set_ic_from_file(ic_file)
@@ -122,13 +127,13 @@ function GlobalLandSimulation(FT, context, start_date, t0, Δt;
     imp_tendency! = ClimaLand.make_imp_tendency(land)
     jacobian! = ClimaLand.make_jacobian(land)
     jac_kwargs = (;
-        jac_prototype = ClimaLand.FieldMatrixWithSolver(Y),
+                  jac_prototype = ClimaLand.FieldMatrixWithSolver(Y),
                   Wfact = jacobian!,
                   )
     
     # Create SciML ODE Problem
     problem = SciMLBase.ODEProblem(
-        ClimaTimesteppers.ClimaODEFunction(
+        ClimaTimeSteppers.ClimaODEFunction(
             T_exp! = exp_tendency!,
             T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
             dss! = ClimaLand.dss!,
@@ -175,4 +180,4 @@ function GlobalLandSimulation(FT, context, start_date, t0, Δt;
     return LandSimulation(context,params, land, domain, timestepper, user_callbacks, diagnostics, required_callbacks, callbacks, problem)
 end                 
 
-end
+end#module

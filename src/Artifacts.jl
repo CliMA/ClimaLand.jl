@@ -74,21 +74,22 @@ function era5_land_forcing_data2008_folder_path(;
         @clima_artifact("era5_land_forcing_data2008_lowres", context),
         "era5_2008_1.0x1.0_lowres.nc",
     )
-    if !lowres
-        hires_path = joinpath(
-            @clima_artifact("era5_land_forcing_data2008", context),
-            "era5_2008_1.0x1.0.nc",
-        )
-        if isfile(hires_path)
+    if lowres
+        return lowres_path
+    else
+        try
+            hires_path = joinpath(
+                @clima_artifact("era5_land_forcing_data2008", context),
+                "era5_2008_1.0x1.0.nc",
+            )
+
             return hires_path
-        else
+        catch
             @warn(
                 "High resolution ERA5 forcing not available locally; downloading and using low resolution data instead."
             )
             return lowres_path
         end
-    else
-        return lowres_path
     end
 end
 
