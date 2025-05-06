@@ -334,18 +334,12 @@ function default_spatially_varying_soil_parameters(
     μ = FT(-5.11)
     K_sat .= masked_to_value.(K_sat, soil_params_mask, 10.0^μ)
 
-    ν .= masked_to_value.(ν, soil_params_mask, 1)
+    ν .= masked_to_value.(ν, soil_params_mask, 0.48)
 
     θ_r .= masked_to_value.(θ_r, soil_params_mask, 0)
 
 
-    S_s =
-        masked_to_value.(
-            ClimaCore.Fields.zeros(subsurface_space) .+ FT(1e-3),
-            soil_params_mask,
-            1,
-        )
-
+    S_s = ClimaCore.Fields.zeros(subsurface_space) .+ FT(1e-3)
     soilgrids_artifact_path =
         ClimaLand.Artifacts.soil_grids_params_artifact_path(;
             lowres = true,
