@@ -30,7 +30,7 @@ include(joinpath(climaland_dir, "experiments/integrated/fluxnet/plot_utils.jl"))
 
 site_ID = "US-MOz"
 
-params = (g1 = FT(100), Vcmax25 = FT(2e-4))
+params = (g1 = FT(100), Vcmax25 = FT(2e-4)) # params fed into function
 function run_fluxnet(params)
     # Read all site-specific domain parameters from the simulation file for the site
     include(
