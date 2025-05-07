@@ -3,6 +3,10 @@ ClimaLand.jl Release Notes
 
 main
 -------
+
+
+v0.16.0
+-------
 - Enforce physically in albedo model for snow PR[#1124](https://github.com/CliMA/ClimaLand.jl/pull/1124) and PR[#1131](https://github.com/CliMA/ClimaLand.jl/pull/1131)
 - Add capability to step some sources implicitly PR[#1113](https://github.com/CliMA/ClimaLand.jl/pull/1113)
 
