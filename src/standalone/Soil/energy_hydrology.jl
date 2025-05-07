@@ -892,7 +892,7 @@ function turbulent_fluxes!(
     )
     dest .=
         soil_turbulent_fluxes_at_a_point.(
-            Val(false), # return_momentum_fluxes
+            Val(false), # return_extra_fluxes
             T_sfc,
             θ_l_sfc,
             θ_i_sfc,
@@ -917,18 +917,22 @@ function turbulent_fluxes!(
 end
 
 """
-    soil_turbulent_fluxes_at_a_point(return_momentum_fluxes, args...;)
+    soil_turbulent_fluxes_at_a_point(return_extra_fluxes, args...;)
 
-This is a wrapper function that allows us to dispatch on the type of `return_momentum_fluxes`
+This is a wrapper function that allows us to dispatch on the type of `return_extra_fluxes`
 as we compute the soil turbulent fluxes pointwise. This is needed because space for the
-momentum fluxes is only allocated in the cache when running with a `CoupledAtmosphere`.
+extra fluxes is only allocated in the cache when running with a `CoupledAtmosphere`.
 The function `soil_compute_turbulent_fluxes_at_a_point` does the actual flux computation.
+
+The `return_extra_fluxes` argument indicates whether to return the following:
+- momentum fluxes (`ρτxz`, `ρτyz`)
+- buoyancy flux (`buoy_flux`)
 """
 function soil_turbulent_fluxes_at_a_point(
-    return_momentum_fluxes::Val{false},
+    return_extra_fluxes::Val{false},
     args...,
 )
-    (LH, SH, Ẽ_l, r_ae, Ẽ_i, _, _) =
+    (LH, SH, Ẽ_l, r_ae, Ẽ_i, _, _, _) =
         soil_compute_turbulent_fluxes_at_a_point(args...)
     return (
         lhf = LH,
@@ -939,10 +943,10 @@ function soil_turbulent_fluxes_at_a_point(
     )
 end
 function soil_turbulent_fluxes_at_a_point(
-    return_momentum_fluxes::Val{true},
+    return_extra_fluxes::Val{true},
     args...,
 )
-    (LH, SH, Ẽ_l, r_ae, Ẽ_i, ρτxz, ρτyz) =
+    (LH, SH, Ẽ_l, r_ae, Ẽ_i, ρτxz, ρτyz, buoy_flux) =
         soil_compute_turbulent_fluxes_at_a_point(args...)
     return (
         lhf = LH,
@@ -952,6 +956,7 @@ function soil_turbulent_fluxes_at_a_point(
         vapor_flux_ice = Ẽ_i,
         ρτxz = ρτxz,
         ρτyz = ρτyz,
+        buoy_flux = buoy_flux,
     )
 end
 
@@ -1161,7 +1166,16 @@ function soil_compute_turbulent_fluxes_at_a_point(
     # Heat fluxes for soil
     LH::FT = _LH_v0 * (Ẽ_l + Ẽ_i) * _ρ_liq
 
-    return (LH, SH, Ẽ_l, r_ae, Ẽ_i, conditions.ρτxz, conditions.ρτyz)
+    return (
+        LH,
+        SH,
+        Ẽ_l,
+        r_ae,
+        Ẽ_i,
+        conditions.ρτxz,
+        conditions.ρτyz,
+        conditions.buoy_flux,
+    )
 end
 
 """
@@ -1258,7 +1272,7 @@ function ClimaLand.coupler_compute_turbulent_fluxes!(
     )
     dest .=
         soil_turbulent_fluxes_at_a_point.(
-            Val(true), # return_momentum_fluxes
+            Val(true), # return_extra_fluxes
             T_sfc,
             θ_l_sfc,
             θ_i_sfc,
