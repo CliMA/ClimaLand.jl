@@ -466,7 +466,7 @@ function setup_and_solve_problem(; greet = false)
     days = 24hours # days in seconds
     years = 366days # years in seconds - 366 to make sure we capture at least full years
     # 10 years in seconds for very long run and 2 years in seconds otherwise
-    tf = LONGER_RUN ? 10years : 1years
+    tf = LONGER_RUN ? 5years : 1years
     Δt = 225.0
     start_date = LONGER_RUN ? DateTime(2004) : DateTime(2004)
     nelements = (101, 15)
