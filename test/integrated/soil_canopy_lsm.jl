@@ -56,18 +56,13 @@ for FT in (Float32, Float64)
             z_0b = FT(0),
         )
         soil_args = (domain = domain, parameters = soil_params)
-        soilco2_top_bc = Soil.Biogeochemistry.AtmosCO2StateBC()
-        soilco2_bot_bc = Soil.Biogeochemistry.SoilCO2FluxBC((p, t) -> 0.0) # no flux
-        soilco2_sources = ()
-        soilco2_boundary_conditions =
-            (; top = soilco2_top_bc, bottom = soilco2_bot_bc)
-        soilco2_ps = SoilCO2ModelParameters(FT; D_ref = FT(0.0))
-        soilco2_args = (;
-            boundary_conditions = soilco2_boundary_conditions,
-            sources = soilco2_sources,
-            domain = domain,
-            parameters = soilco2_ps,
+
+        soilco2_ps = Soil.Biogeochemistry.SoilCO2ModelParameters(FT)
+        Csom = ClimaLand.PrescribedSoilOrganicCarbon{FT}(
+            TimeVaryingInput((t) -> 5),
         )
+        soilco2_args = (; domain = domain, parameters = soilco2_ps)
+
         canopy_component_types = (;
             autotrophic_respiration = Canopy.AutotrophicRespirationModel{FT},
             radiative_transfer = Canopy.TwoStreamModel{FT},
