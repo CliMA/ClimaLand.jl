@@ -323,32 +323,30 @@ function setup_prob(
 
     Y, p, cds = initialize(land)
 
-    init_soil(ν, θ_r) = θ_r + (ν - θ_r) / 2
+    ic_path = ClimaLand.Artifacts.soil_ic_2008_50m_path(; context = context)
+    evaluate!(p.snow.T, atmos.T, t0)
+    ClimaLand.set_snow_initial_conditions!(
+        Y,
+        p,
+        surface_space,
+        ic_path,
+        land.snow.parameters,
+    )
 
-    Y.snow.S .= 0.0
-    Y.snow.S_l .= 0.0
-    Y.snow.U .= 0.0
-
-    Y.soil.ϑ_l .= init_soil.(ν, θ_r)
-    Y.soil.θ_i .= FT(0.0)
-    T = FT(276.85)
-    ρc_s =
-        Soil.volumetric_heat_capacity.(
-            Y.soil.ϑ_l,
-            Y.soil.θ_i,
-            soil_params.ρc_ds,
-            soil_params.earth_param_set,
-        )
-    Y.soil.ρe_int .=
-        Soil.volumetric_internal_energy.(
-            Y.soil.θ_i,
-            ρc_s,
-            T,
-            soil_params.earth_param_set,
-        )
     Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
     Y.canopy.hydraulics.ϑ_l.:1 .= plant_ν
     evaluate!(Y.canopy.energy.T, atmos.T, t0)
+    T_bounds = extrema(Y.canopy.energy.T)
+
+    ClimaLand.set_soil_initial_conditions!(
+        Y,
+        ν,
+        θ_r,
+        subsurface_space,
+        ic_path,
+        land.soil,
+        T_bounds,
+    )
 
     set_initial_cache! = make_set_initial_cache(land)
     exp_tendency! = make_exp_tendency(land)
@@ -373,7 +371,7 @@ function setup_prob(
         p,
     )
 
-    updateat = [promote(t0:(ITime(3600 * 3)):tf...)...]
+    updateat = collect(t0:Δt:tf)
     drivers = ClimaLand.get_drivers(land)
     updatefunc = ClimaLand.make_update_drivers(drivers)
 
@@ -383,7 +381,6 @@ function setup_prob(
         subsurface_space,
         outdir;
         start_date,
-        num_points = nelements,
     )
 
     diags = ClimaLand.default_diagnostics(

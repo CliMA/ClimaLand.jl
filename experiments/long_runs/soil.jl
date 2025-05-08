@@ -25,8 +25,9 @@ using ClimaUtilities.ClimaArtifacts
 using ClimaDiagnostics
 using ClimaAnalysis
 import ClimaAnalysis.Visualize as viz
-using ClimaUtilities
 
+using ClimaUtilities
+import ClimaUtilities.OnlineLogging: WallTimeInfo, report_walltime
 import ClimaUtilities.TimeVaryingInputs: LinearInterpolation, PeriodicCalendar
 import ClimaUtilities.ClimaArtifacts: @clima_artifact
 import ClimaUtilities.TimeManager: ITime
@@ -188,9 +189,16 @@ function setup_prob(
         p,
     )
 
-    updateat = [promote(t0:(ITime(3600 * 3)):tf...)...]
+    updateat = collect(t0:Δt:tf)
     drivers = ClimaLand.get_drivers(soil)
     updatefunc = ClimaLand.make_update_drivers(drivers)
+
+    walltime_info = WallTimeInfo()
+    every1000steps(u, t, integrator) = mod(integrator.step, 1000) == 0
+    report = let wt = walltime_info
+        (integrator) -> report_walltime(wt, integrator)
+    end
+    report_cb = SciMLBase.DiscreteCallback(every1000steps, report)
 
     # ClimaDiagnostics
     # num_points is the resolution of the output diagnostics
@@ -200,7 +208,6 @@ function setup_prob(
         subsurface_space,
         outdir;
         start_date,
-        num_points = (570, 285, 15),
     )
 
     diags = ClimaLand.default_diagnostics(
@@ -227,7 +234,8 @@ function setup_prob(
         Δt;
         mask = mask,
     )
-    return prob, SciMLBase.CallbackSet(driver_cb, diag_cb, nancheck_cb)
+    return prob,
+    SciMLBase.CallbackSet(driver_cb, diag_cb, nancheck_cb, report_cb)
 end
 
 function setup_and_solve_problem(; greet = false)
