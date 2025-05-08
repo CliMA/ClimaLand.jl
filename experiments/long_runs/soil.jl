@@ -193,6 +193,7 @@ function setup_prob(
     drivers = ClimaLand.get_drivers(soil)
     updatefunc = ClimaLand.make_update_drivers(drivers)
 
+    # This prints the estimated SYPD, time remaining, of the simulation
     walltime_info = WallTimeInfo()
     every1000steps(u, t, integrator) = mod(integrator.step, 1000) == 0
     report = let wt = walltime_info
