@@ -57,8 +57,10 @@ const FT = Float64;
 # as an environment variable. In both cases, the value of `LONGER_RUN` does not
 # matter.
 const LONGER_RUN = haskey(ENV, "LONGER_RUN") ? true : false
+# time_interpolation_method =
+#     LONGER_RUN ? LinearInterpolation() : LinearInterpolation(PeriodicCalendar())
 time_interpolation_method =
-    LONGER_RUN ? LinearInterpolation() : LinearInterpolation(PeriodicCalendar())
+    LONGER_RUN ? LinearInterpolation(PeriodicCalendar()) : LinearInterpolation(PeriodicCalendar())
 context = ClimaComms.context()
 ClimaComms.init(context)
 device = ClimaComms.device()
@@ -251,7 +253,7 @@ function setup_prob(
         modis_lai_ncdata_path,
         surface_space,
         start_date;
-        time_interpolation_method = time_interpolation_method,
+        time_interpolation_method = LinearInterpolation(),
     )
     ai_parameterization =
         Canopy.PrescribedSiteAreaIndex{FT}(LAIfunction, SAI, RAI)
