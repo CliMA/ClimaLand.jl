@@ -137,9 +137,8 @@ albedo = PrescribedBaregroundAlbedo{FT}(α_snow, surface_space);
 bucket_parameters = BucketModelParameters(FT; albedo, z_0m, z_0b, τc);
 
 # Forcing data
-era5_artifact_path =
-    ClimaLand.Artifacts.era5_land_forcing_data2008_folder_path(; context)
-era5_ncdata_path = joinpath(era5_artifact_path, "era5_2008_1.0x1.0.nc")
+era5_ncdata_path =
+    ClimaLand.Artifacts.era5_land_forcing_data2008_path(; context)
 bucket_atmos, bucket_rad = ClimaLand.prescribed_forcing_era5(
     era5_ncdata_path,
     surface_space,

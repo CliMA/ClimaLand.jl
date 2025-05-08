@@ -60,18 +60,33 @@ end
 """
     era5_land_forcing_data2008_path(; context, lowres=false)
 
-Return the path to the directory that contains the ERA5 forcing data for 2008.
+Return the path to the file that contains the ERA5 forcing data for 2008.
 
-Optionally, you can pass the lowres=true keyword to download a lower spatial resolution version of the data.
+Optionally, you can pass the lowres=true keyword to download a lower spatial resolution version of the data and return the path to that file.
+ If the high resolution data is not 
+available locally, we also return the path to the low res data.
 """
-function era5_land_forcing_data2008_folder_path(;
-    context = nothing,
-    lowres = false,
-)
+function era5_land_forcing_data2008_path(; context = nothing, lowres = false)
+    lowres_path = joinpath(
+        @clima_artifact("era5_land_forcing_data2008_lowres", context),
+        "era5_2008_1.0x1.0_lowres.nc",
+    )
     if lowres
-        return @clima_artifact("era5_land_forcing_data2008_lowres", context)
+        return lowres_path
     else
-        return @clima_artifact("era5_land_forcing_data2008", context)
+        try
+            hires_path = joinpath(
+                @clima_artifact("era5_land_forcing_data2008", context),
+                "era5_2008_1.0x1.0.nc",
+            )
+
+            return hires_path
+        catch
+            @warn(
+                "High resolution ERA5 forcing not available locally; downloading and using low resolution data instead."
+            )
+            return lowres_path
+        end
     end
 end
 
@@ -114,6 +129,14 @@ the years 2000 to 2020.
 """
 function modis_lai_forcing_data_path(; context = nothing)
     return @clima_artifact("modis_lai", context)
+end
+
+function modis_lai_single_year_path(;
+    context = nothing,
+    year = Dates.year(DateTime(2008)),
+)
+    modis_lai_data_path = modis_lai_forcing_data_path(context = context)
+    return joinpath(modis_lai_data_path, "Yuan_et_al_$(year)_1x1.nc")
 end
 
 """
