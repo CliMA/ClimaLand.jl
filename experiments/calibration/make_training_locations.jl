@@ -5,14 +5,33 @@ using ClimaComms
 using ClimaCore
 ClimaComms.@import_required_backends
 
-"""
-    make_training_locations(nelements)
 
-Create a list of geographic training locations (longitude, latitude) for model calibration.
+"""
+    diagnostics_lat_lon(nelements)
+
+Return latitudes and longitude for the diagnostics of the land
+model run at a given resolution (`nelements`).
 
 It assumes that the output is on the default grid, as determined by
 `ClimaLand.default_num_points`. It also assumes that the domain is the full
 globe.
+"""
+function diagnostics_lat_lon(nelements)
+    domain =
+        ClimaLand.Domains.SphericalShell(; radius = 0.1, depth = 0.1, nelements) # values of radius and depth (set to 0.1) do not matter; we just need information from the domain in the latitude/longitude directions.
+    # If the default number of diagnostic latitude and longitude points is not used when running the simulations, this will need to be changed.
+    num_long, num_lat, _ =
+        ClimaLand.Diagnostics.default_diagnostic_num_points(domain)
+    longs = collect(range(-180.0, 180.0, length = num_long))
+    lats = collect(range(-90.0, 90.0, length = num_lat))
+    return lats, longs
+end
+
+
+"""
+    make_training_locations(nelements)
+
+Create a list of geographic training locations (longitude, latitude) for model calibration.
 
 # Notes
 - ClimaLand simulates only locations where its mask == 1 (based on a threshold set in the simulations). Since parameters are not defined over the ocean, this can lead to unphysical parameter combinations right at the coastline.
@@ -20,15 +39,12 @@ globe.
 - Consequently, here we define the mask used to select calibration points using a more stringent criterion (essentially, that the grid point in the simulation is only comprised of land, and the point in the diagnostic is only comprised of land)
 """
 function make_training_locations(nelements)
+    lats, longs = diagnostics_lat_lon(nelements)
 
-    domain = ClimaLand.Domains.SphericalShell(; 0.1, 0.1, nelements) # values of radius and depth (set to 0.1) do not matter; we just need information from the domain in the latitude/longitude directions.
-    # If the default number of diagnostic latitude and longitude points is not used when running the simulations, this will need to be changed.
-    num_long, num_lat, _ =
-        ClimaLand.Diagnostics.default_diagnostic_num_points(domain)
-    longs = collect(range(-180.0, 180.0, length = num_long))
-    lats = collect(range(-90.0, 90.0, length = num_lat))
+    domain =
+        ClimaLand.Domains.SphericalShell(; radius = 0.1, depth = 0.1, nelements)
 
-    # We also need the mask in order to determine which points were treated as land by the simulation.
+    # We need the mask in order to determine which points were treated as land by the simulation.
     # We set the threshold of fractional area of land to be 0.99 here - cells with > 1% ocean are ignored in calibration.
     mask = ClimaLand.landsea_mask(domain; threshold = 0.99)
 
