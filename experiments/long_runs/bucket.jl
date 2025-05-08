@@ -125,7 +125,7 @@ function setup_prob(
         p,
     )
 
-    updateat = [promote(t0:(ITime(3600 * 3)):tf...)...]
+    updateat = collect(t0:Δt:tf)
     drivers = ClimaLand.get_drivers(bucket)
     updatefunc = ClimaLand.make_update_drivers(drivers)
 
@@ -137,7 +137,6 @@ function setup_prob(
         subsurface_space,
         outdir;
         start_date,
-        num_points = (570, 285, 50),
     )
 
     diags = ClimaLand.default_diagnostics(
