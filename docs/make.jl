@@ -52,17 +52,20 @@ include("list_diagnostics.jl")
 pages = Any[
     "Home" => "index.md",
     "Getting Started" => "getting_started.md",
-    "Repository structure" => "folderstructure.md",
-    "Tutorials" => tutorials,
-    "Standalone models" => standalone_models,
-    "Diagnostics" => diagnostics,
+    "Running a simulation" => "running_simulation.md", # does not exist yet. Should be high level API.
+    "Inputs & outputs" => diagnostics,
+    "Model structure" => standalone_models, # should have a landing page
+    "Benchmarking" => "leaderboard/leaderboard.md", # This page should have figures
     "Calibration" => "calibration.md",
-    "Leaderboard" => "leaderboard/leaderboard.md",
-    "Restarts" => "restarts.md",
-    "Time type" => "timemanager.md",
-    "Misc. utilities" => "shared_utilities.md",
+    "Tutorials" => tutorials,
     "APIs" => apis,
     "Contribution guide" => "Contributing.md",
+    "For developers" => for_developers, # does not exist. contains pages below.
+#    "Modularity" => "modularity.md", # does not exist yet
+#    "Repository structure" => "folderstructure.md",
+#    "Misc. utilities" => "shared_utilities.md",
+#    "Restarts" => "restarts.md",
+#    "Time type" => "timemanager.md",
 ]
 
 mathengine = MathJax(
