@@ -54,30 +54,6 @@ scalar_canopy_params = (;
 domain = ClimaLand.global_domain(FT; nelements = nelements);
 surface_space = domain.space.surface;
 start_date = DateTime(2008);
-# Forcing data
-era5_ncdata_path = joinpath(
-    ClimaLand.Artifacts.era5_land_forcing_data2008_folder_path(;
-        context,
-        lowres = true,
-    ),
-    "era5_2008_1.0x1.0_lowres.nc",
-);
-forcing = ClimaLand.prescribed_forcing_era5(
-    joinpath(era5_ncdata_path),
-    surface_space,
-    start_date,
-    earth_param_set,
-    FT,
-);
-LAI = ClimaLand.prescribed_lai_modis(
-    joinpath(
-        ClimaLand.Artifacts.modis_lai_forcing_data_path(; context),
-        "Yuan_et_al_2008_1x1.nc",
-    ),
-    domain.space.surface,
-    start_date,
-);
-
 land = global_land_model(
     FT,
     scalar_soil_params,
@@ -86,8 +62,6 @@ land = global_land_model(
     earth_param_set;
     context = context,
     domain = domain,
-    forcing = forcing,
-    LAI = LAI,
 );
 
 @test ClimaLand.land_components(land) == (:soil, :snow, :soilco2, :canopy)
