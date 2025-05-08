@@ -47,7 +47,7 @@ function find_era5_year_paths(start_date, final_date; context = nothing)
         era5_land_forcing_data_forty_years_folder_path(context = context)
     years = collect(
         joinpath(era5_forty_yrs_path, "era5_$(year)_1.0x1.0.nc") for
-        year in year0:yearf
+        year in 1979:2024
     )
     for year in years
         isfile(year) || error(
