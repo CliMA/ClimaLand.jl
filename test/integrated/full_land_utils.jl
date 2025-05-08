@@ -16,7 +16,7 @@ import ClimaLand
                        earth_param_set;
                        context = nothing,
                        domain = ClimaLand.global_domain(FT; context = context),
-                       forcing = ClimaLand.prescribed_forcing_era5(ClimaLand.Artifacts.era5_land_forcing_data2008_folder_path(; context),
+                       forcing = ClimaLand.prescribed_forcing_era5(ClimaLand.Artifacts.era5_land_forcing_data2008_path(; context),
                                                                    domain.space.surface,
                                                                    DateTime(2008),
                                                                    earth_param_set,
@@ -43,21 +43,16 @@ function global_land_model(
     context = nothing,
     domain = ClimaLand.global_domain(FT; context = context),
     forcing = ClimaLand.prescribed_forcing_era5(
-        joinpath(
-            ClimaLand.Artifacts.era5_land_forcing_data2008_folder_path(;
-                context,
-            ),
-            "era5_2008_1.0x1.0.nc",
-        ),
+        ClimaLand.Artifacts.era5_land_forcing_data2008_path(; context),
         domain.space.surface,
         DateTime(2008),
         earth_param_set,
         FT,
     ),
     LAI = ClimaLand.prescribed_lai_modis(
-        joinpath(
-            ClimaLand.Artifacts.modis_lai_forcing_data_path(; context),
-            "Yuan_et_al_2008_1x1.nc",
+        ClimaLand.Artifacts.modis_lai_single_year_path(;
+            context = nothing,
+            year = 2008,
         ),
         domain.space.surface,
         DateTime(2008),
