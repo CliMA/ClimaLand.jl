@@ -161,7 +161,7 @@ obs_y = [
                     "covariances" => LinearAlgebra.Diagonal(
                         results[:seasonal_vars][var_name][i],
                     ),
-                    "names" => "$(var)_$(lon)_$(lat)_$(y)",
+                    "names" => "$(var_name)_$(lon)_$(lat)_$(y)",
                 ),
             ) for var_name in variable_list
         ]) for (i, (lon, lat)) in enumerate(training_locations)
@@ -182,7 +182,14 @@ function create_minibatches(obs_y, valid_years; m_size = 1)
         [collect(((i - 1) * m_size + 1):(i * m_size)) for i in 1:n_samples]
     minibatcher = EKP.FixedMinibatcher(given_batches)
     o_names = [string(y) for y in valid_years]
-    observationseries = EKP.ObservationSeries(obs_y, minibatcher, o_names)
+    observationseries = EKP.ObservationSeries(
+        Dict(
+            "observations" => obs_y,
+            "minibatcher" => minibatcher,
+            "names" => o_names,
+            "metadata" => [prior, variable_list, training_locations],
+        ),
+    )
     return observationseries
 end
 
