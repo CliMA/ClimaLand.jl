@@ -273,6 +273,38 @@ function DriverUpdateCallback(updateat::Vector{FT}, updatefunc) where {FT}
     )
 end
 
+function GenericScheduledCallback(
+    cb_frequency::Dates.Period,
+    affect!,
+    start_date,
+    t_start,
+    dt = nothing,
+)
+    schedule = EveryCalendarDtSchedule(
+        cb_frequency;
+        start_date,
+        date_last = start_date + Dates.Millisecond(1000t_start),
+    )
+    if !isnothing(dt)
+        dt_period = Dates.Millisecond(1000dt)
+        if !isdivisible(cb_frequency, dt_period)
+            @warn "Callback frequency ($(cb_frequency)) is not an integer multiple of dt $(dt_period)"
+        end
+    end
+
+    cond = let schedule = schedule
+        (u, t, integrator) -> schedule(integrator)
+    end
+
+    return SciMLBase.DiscreteCallback(cond, affect!)
+end
+
+GenericScheduledCallback(cb_frequency::AbstractFloat, args...) =
+    GenericScheduledCallback(Dates.Millisecond(1000cb_frequency), args...)
+
+
+DriverUpdateCallback(agrs...) = GenericScheduledCallback(args...)
+
 """
     CheckpointCallback(checkpoint_frequency::Union{AbstractFloat, Dates.Period},
                         output_dir, start_date, t_start; model, dt)
@@ -616,7 +648,7 @@ function NaNCheckCallback(
     nancheck_frequency::Union{AbstractFloat, Dates.Period},
     start_date,
     t_start,
-    dt;
+    dt = nothing;
     mask = nothing,
 )
     # TODO: Move to a more general callback system. For the time being, we use
