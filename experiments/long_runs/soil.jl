@@ -152,18 +152,8 @@ function setup_prob(
     Y, p, cds = initialize(soil)
 
     ic_path = ClimaLand.Artifacts.soil_ic_2008_50m_path(; context = context)
-    evaluate!(p.drivers.T, atmos.T, t0)
-    T_bounds = extrema(p.drivers.T)
-
-    ClimaLand.set_soil_initial_conditions!(
-        Y,
-        ν,
-        θ_r,
-        subsurface_space,
-        ic_path,
-        soil,
-        T_bounds,
-    )
+    set_initial_state! = make_set_initial_state_from_file(ic_path, soil)
+    set_initial_state!(Y, p, t0, soil)
 
     set_initial_cache! = make_set_initial_cache(soil)
     exp_tendency! = make_exp_tendency(soil)
