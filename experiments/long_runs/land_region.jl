@@ -306,38 +306,16 @@ function setup_prob(
 
     Y, p, cds = initialize(land)
 
-    init_soil(ν, θ_r) = θ_r + (ν - θ_r) / 2
-
-    Y.snow.S .= 0.0
-    Y.snow.S_l .= 0.0
-    Y.snow.U .= 0.0
-
-    Y.soil.ϑ_l .= init_soil.(ν, θ_r)
-    Y.soil.θ_i .= FT(0.0)
-    T = FT(276.85)
-    ρc_s =
-        Soil.volumetric_heat_capacity.(
-            Y.soil.ϑ_l,
-            Y.soil.θ_i,
-            soil_params.ρc_ds,
-            soil_params.earth_param_set,
-        )
-    Y.soil.ρe_int .=
-        Soil.volumetric_internal_energy.(
-            Y.soil.θ_i,
-            ρc_s,
-            T,
-            soil_params.earth_param_set,
-        )
-    Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
-    Y.canopy.hydraulics.ϑ_l.:1 .= plant_ν
-    evaluate!(Y.canopy.energy.T, atmos.T, t0)
-
+    ic_path = ClimaLand.Artifacts.soil_ic_2008_50m_path(; context = context)
+    set_initial_state! = make_set_initial_state_from_file(ic_path, land)
     set_initial_cache! = make_set_initial_cache(land)
     exp_tendency! = make_exp_tendency(land)
     imp_tendency! = ClimaLand.make_imp_tendency(land)
     jacobian! = ClimaLand.make_jacobian(land)
+
+    set_initial_state!(Y, p, t0, land)
     set_initial_cache!(p, Y, t0)
+
 
     # set up jacobian info
     jac_kwargs = (;

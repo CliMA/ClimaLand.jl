@@ -231,30 +231,8 @@ if pkgversion(ClimaCore) >= v"0.14.30"
 
         # Set initial conditions
         ic_path = ClimaLand.Artifacts.soil_ic_2008_50m_path(; context = context)
-        T_bounds = (273.0, 290.0)
-        ClimaLand.set_soil_initial_conditions!(
-            Y,
-            land.soil.parameters.ν,
-            land.soil.parameters.θ_r,
-            subsurface_space,
-            ic_path,
-            land.soil,
-            T_bounds,
-        )
-        evaluate!(p.snow.T, land.snow.boundary_conditions.atmos.T, t0)
-        ClimaLand.set_snow_initial_conditions!(
-            Y,
-            p,
-            surface_space,
-            ic_path,
-            land.snow.parameters,
-        )
-
-        Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
-        Y.canopy.hydraulics.ϑ_l.:1 .= plant_ν
-        evaluate!(Y.canopy.energy.T, land.snow.boundary_conditions.atmos.T, t0)
-
-
+        set_initial_state! = make_set_initial_state_from_file(ic_path, land)
+        set_initial_state!(Y, p, t0, land)
         # Now, set the cache with physical values and make sure there are no NaNs, or values set over the ocean
         set_initial_cache! = make_set_initial_cache(land)
         set_initial_cache!(p, Y, t0)

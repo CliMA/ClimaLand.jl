@@ -1,6 +1,9 @@
 import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
 import ClimaUtilities.Regridders: InterpolationsRegridder
 import Interpolations
+
+export make_set_initial_state_from_file
+
 regridder_type = :InterpolationsRegridder
 extrapolation_bc =
     (Interpolations.Periodic(), Interpolations.Flat(), Interpolations.Flat())
@@ -187,4 +190,132 @@ function enforce_snow_temperature_constraint(S::FT, T::FT) where {FT}
     else
         return T
     end
+end
+
+"""
+    make_set_initial_state_from_file(ic_path, land::LandModel{FT}) where {FT}
+
+Returns a function which takes (Y,p,t0,land) as arguments, and updates
+the state Y in place with initial conditions from `ic_path`, a netCDF file.
+Fields in the cache `p` are used as pre-allocated memory and are updated as
+well, but this does not mean that the cache state is consitent with Y and t entirely.
+
+Currently only tested and used for global simulations, but the same returned
+function should work for column simulations.
+
+The returned function is a closure for `ic_path`. It could also be for `land`, as
+many other ClimaLand functions are, but we wish to preserve the argument `land`
+in `set_ic!` for users who wish to define their own initial condition function,
+which may require parameters, etc, stored in `land`.
+"""
+function make_set_initial_state_from_file(
+    ic_path,
+    land::LandModel{FT},
+) where {FT}
+    function set_ic!(Y, p, t0, land)
+        atmos = land.soil.boundary_conditions.top.atmos
+        evaluate!(p.snow.T, atmos.T, t0)
+        set_snow_initial_conditions!(
+            Y,
+            p,
+            land.snow.domain.space.surface,
+            ic_path,
+            land.snow.parameters,
+        )
+        Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
+        Y.canopy.hydraulics.ϑ_l.:1 .= land.canopy.hydraulics.parameters.ν
+        evaluate!(Y.canopy.energy.T, atmos.T, t0)
+        T_bounds = extrema(Y.canopy.energy.T)
+
+        set_soil_initial_conditions!(
+            Y,
+            land.soil.parameters.ν,
+            land.soil.parameters.θ_r,
+            land.soil.domain.space.subsurface,
+            ic_path,
+            land.soil,
+            T_bounds,
+        )
+    end
+    return set_ic!
+end
+
+"""
+    make_set_initial_state_from_file(ic_path, land::SoilCanopyModel{FT}) where {FT}
+
+Returns a function which takes (Y,p,t0,land) as arguments, and updates
+the state Y in place with initial conditions from `ic_path`, a netCDF file.
+Fields in the cache `p` are used as pre-allocated memory and are updated as
+well, but this does not mean that the cache state is consitent with Y and t entirely.
+
+Currently only tested and used for global simulations, but the same returned
+function should work for column simulations.
+
+The returned function is a closure for `ic_path`. It could also be for `land`, as
+many other ClimaLand functions are, but we wish to preserve the argument `land`
+in `set_ic!` for users who wish to define their own initial condition function,
+which may require parameters, etc, stored in `land`.
+"""
+function make_set_initial_state_from_file(
+    ic_path,
+    land::SoilCanopyModel{FT},
+) where {FT}
+    function set_ic!(Y, p, t0, land)
+        atmos = land.soil.boundary_conditions.top.atmos
+        evaluate!(p.drivers.T, atmos.T, t0)
+
+        Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
+        Y.canopy.hydraulics.ϑ_l.:1 .= land.canopy.hydraulics.parameters.ν
+        evaluate!(Y.canopy.energy.T, atmos.T, t0)
+        T_bounds = extrema(Y.canopy.energy.T)
+
+        set_soil_initial_conditions!(
+            Y,
+            land.soil.parameters.ν,
+            land.soil.parameters.θ_r,
+            land.soil.domain.space.subsurface,
+            ic_path,
+            land.soil,
+            T_bounds,
+        )
+    end
+    return set_ic!
+end
+
+"""
+    make_set_initial_state_from_file(ic_path, model::EnergyHydrology{FT}) where {FT}
+
+Returns a function which takes (Y,p,t0,model) as arguments, and updates
+the state Y in place with initial conditions from `ic_path`, a netCDF file.
+Fields in the cache `p` are used as pre-allocated memory and are updated as
+well, but this does not mean that the cache state is consitent with Y and t entirely.
+
+Currently only tested and used for global simulations, but the same returned
+function should work for column simulations.
+
+The returned function is a closure for `ic_path`. It could also be for `model`, as
+many other ClimaLand functions are, but we wish to preserve the argument `model`
+in `set_ic!` for users who wish to define their own initial condition function,
+which may require parameters, etc, stored in `model`.
+"""
+function make_set_initial_state_from_file(
+    ic_path,
+    model::EnergyHydrology{FT},
+) where {FT}
+    function set_ic!(Y, p, t0, model)
+        atmos = model.boundary_conditions.top.atmos
+        evaluate!(p.drivers.T, atmos.T, t0)
+        T_bounds = extrema(p.drivers.T)
+
+        set_soil_initial_conditions!(
+            Y,
+            model.parameters.ν,
+            model.parameters.θ_r,
+            model.domain.space.subsurface,
+            ic_path,
+            model,
+            T_bounds,
+        )
+    end
+    return set_ic!
 end
