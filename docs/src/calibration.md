@@ -206,3 +206,57 @@ Also, note that currently:
 These could also be changed in the code, but would currently requires significant changes.
 
 Finally, note that the HPC job script and command will slightly differ between slurm (for example central or clima) and pbs (for example derecho).
+
+## Results exploration
+
+After running a calibration, you can explore the results via CliCal dashboard, which allows users to navigate between:
+- calibration runs,
+- variables,
+- iterations,
+- ensemble member,
+- and seasons.
+
+For each combination of these options, the dashboard will provide:
+- a table of the parameter values and how they changed relative to initial values,
+- EKP error for each iterations and how this error changed relative to initial error,
+- RMSE overall (all variables) and RMSE for the selection (variable, ensemble), for each iteration.
+- A figure (global map) or Y (e.g., era5 data) and G (ClimaLand output),
+- A figure of the seasonal average of Y and G,
+- A figure of anomalies G - Y.
+
+To generate such dashboard, the user can run the script `make_dashboard.jl` directly from the HPC where the calibrations ran, if they connected via port forwarding, e.g., `ssh -L 8888:localhost:8888 your_user@hpc-address`, then the user can open the following URL on their local computer: `http://localhost:8888/browser-display`
+
+Such dashboard can also be served on the internet, to be accessed anywhere anytime via a URL, for example [clickme](https://clima.westus3.cloudapp.azure.com/jsserve/calibration_dash):
+
+```@raw html
+<style>
+/* Expand content area without hiding sidebar */
+.docs-main {
+  max-width: 100% !important;
+}
+
+article.content {
+  max-width: 100% !important;
+}
+
+.content-wrapper {
+  max-width: 100% !important;
+  padding: 0 !important;
+}
+
+/* Make the iframe take full width */
+iframe {
+  width: 100%;
+  min-width: 100%;
+  border: none;
+}
+
+/* Optional: Add some space between the sidebar and iframe */
+.docs-sidebar + div {
+  margin-left: 10px;
+}
+</style>
+<iframe src="https://clima.westus3.cloudapp.azure.com/jsserve/calibration_dash"
+   style="width:100%; height:1200px; border: none;">
+</iframe>
+```
