@@ -45,11 +45,11 @@ function find_era5_year_paths(start_date, final_date; context = nothing)
     yearf = Dates.year(final_date) + 1
     era5_forty_yrs_path =
         era5_land_forcing_data_forty_years_folder_path(context = context)
-    # years = collect(
-    #     joinpath(era5_forty_yrs_path, "era5_$(year)_1.0x1.0.nc") for
-    #     year in 1979:2024
-    # )
-    years = [joinpath(era5_forty_yrs_path, "era5_2004_1.0x1.0.nc")]
+    years = collect(
+        joinpath(era5_forty_yrs_path, "era5_$(year)_1.0x1.0.nc") for
+        year in 1979:2024
+    )
+    # years = [joinpath(era5_forty_yrs_path, "era5_2004_1.0x1.0.nc")]
     @info years
     for year in years
         isfile(year) || error(
