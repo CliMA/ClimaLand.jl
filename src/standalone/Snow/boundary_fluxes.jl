@@ -164,7 +164,8 @@ boundary_var_types(::SnowModel{FT}, bc, ::ClimaLand.TopBoundary) where {FT} =
 An extension of the `boundary_var_types` method for AtmosDrivenSnowBC. This
 specifies the type of the additional variables.
 
-This method includes the additional momentum fluxes needed by the atmosphere.
+This method includes additional fluxes needed by the atmosphere:
+momentum fluxes (`ρτxz`, `ρτyz`) and the buoyancy flux (`buoy_flux`).
 These are updated in place when the coupler computes turbulent fluxes,
 rather than in `snow_boundary_fluxes!`.
 
@@ -179,7 +180,7 @@ boundary_var_types(
     ::ClimaLand.TopBoundary,
 ) where {FT} = (
     NamedTuple{
-        (:lhf, :shf, :vapor_flux, :r_ae, :ρτxz, :ρτyz),
-        Tuple{FT, FT, FT, FT, FT, FT},
+        (:lhf, :shf, :vapor_flux, :r_ae, :ρτxz, :ρτyz, :buoy_flux),
+        Tuple{FT, FT, FT, FT, FT, FT, FT},
     },
 )

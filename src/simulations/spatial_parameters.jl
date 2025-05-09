@@ -183,7 +183,7 @@ function clm_canopy_parameters(
         G_Function = G_Function,
         α_PAR_leaf = α_PAR_leaf,
         τ_PAR_leaf = τ_PAR_leaf,
-        α_NIR_leaf = α_PAR_leaf,
+        α_NIR_leaf = α_NIR_leaf,
         τ_NIR_leaf = τ_NIR_leaf,
     )
 end

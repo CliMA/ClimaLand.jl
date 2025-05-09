@@ -146,7 +146,19 @@ function SoilCanopyModel{FT}(;
         soil_organic_carbon,
         atmos,
     )
-    soilco2 = soilco2_type(; soilco2_args..., drivers = soilco2_drivers)
+    # Set the soil CO2 BC to being atmospheric CO2
+    soilco2_top_bc = Soil.Biogeochemistry.AtmosCO2StateBC()
+    soilco2_bot_bc = Soil.Biogeochemistry.SoilCO2FluxBC((p, t) -> 0.0) # no flux
+    soilco2_sources = (Soil.Biogeochemistry.MicrobeProduction{FT}(),)
+
+    soilco2_boundary_conditions =
+        (; top = soilco2_top_bc, bottom = soilco2_bot_bc)
+    soilco2 = soilco2_type(;
+        boundary_conditions = soilco2_boundary_conditions,
+        sources = soilco2_sources,
+        soilco2_args...,
+        drivers = soilco2_drivers,
+    )
 
     return SoilCanopyModel{FT, typeof(soilco2), typeof(soil), typeof(canopy)}(
         soilco2,

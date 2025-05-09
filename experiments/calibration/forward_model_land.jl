@@ -202,31 +202,14 @@ function setup_prob(
     z0_m = FT(0.13) * h_canopy
     z0_b = FT(0.1) * z0_m
 
-    soilco2_ps = Soil.Biogeochemistry.SoilCO2ModelParameters(FT)
-
     soil_args = (domain = domain, parameters = soil_params)
     soil_model_type = Soil.EnergyHydrology{FT}
 
     # Soil microbes model
     soilco2_type = Soil.Biogeochemistry.SoilCO2Model{FT}
-
-    # soil microbes args
+    soilco2_ps = Soil.Biogeochemistry.SoilCO2ModelParameters(FT)
     Csom = ClimaLand.PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5))
-
-    # Set the soil CO2 BC to being atmospheric CO2
-    soilco2_top_bc = Soil.Biogeochemistry.AtmosCO2StateBC()
-    soilco2_bot_bc = Soil.Biogeochemistry.SoilCO2FluxBC((p, t) -> 0.0) # no flux
-    soilco2_sources = (Soil.Biogeochemistry.MicrobeProduction{FT}(),)
-
-    soilco2_boundary_conditions =
-        (; top = soilco2_top_bc, bottom = soilco2_bot_bc)
-
-    soilco2_args = (;
-        boundary_conditions = soilco2_boundary_conditions,
-        sources = soilco2_sources,
-        domain = domain,
-        parameters = soilco2_ps,
-    )
+    soilco2_args = (; domain = domain, parameters = soilco2_ps)
 
     # Now we set up the canopy model, which we set up by component:
     # Component Types
@@ -368,33 +351,13 @@ function setup_prob(
     Y, p, cds = ClimaLand.initialize(land)
 
     ic_path = ClimaLand.Artifacts.soil_ic_2008_50m_path(; context = context)
-    evaluate!(p.snow.T, atmos.T, t0)
-    ClimaLand.set_snow_initial_conditions!(
-        Y,
-        p,
-        surface_space,
-        ic_path,
-        land.snow.parameters,
-    )
-
-    Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
-    Y.canopy.hydraulics.ϑ_l.:1 .= plant_ν
-    evaluate!(Y.canopy.energy.T, atmos.T, t0)
-    T_bounds = extrema(Y.canopy.energy.T)
-
-    ClimaLand.set_soil_initial_conditions!(
-        Y,
-        ν,
-        θ_r,
-        subsurface_space,
-        ic_path,
-        land.soil,
-        T_bounds,
-    )
+    set_initial_state! = make_set_initial_state_from_file(ic_path, land)
     set_initial_cache! = make_set_initial_cache(land)
     exp_tendency! = make_exp_tendency(land)
     imp_tendency! = ClimaLand.make_imp_tendency(land)
     jacobian! = ClimaLand.make_jacobian(land)
+
+    set_initial_state!(Y, p, t0, land)
     set_initial_cache!(p, Y, t0)
 
     # set up jacobian info

@@ -60,11 +60,11 @@ the Point space).
 # Fields
 $(DocStringExtensions.FIELDS)
 """
-struct Point{FT} <: AbstractDomain{FT}
+struct Point{FT, NT <: NamedTuple} <: AbstractDomain{FT}
     "Surface elevation relative to a reference (m)"
     z_sfc::FT
     "A NamedTuple of associated ClimaCore spaces: in this case, the Point (surface) space"
-    space::NamedTuple
+    space::NT
 end
 
 """
@@ -87,7 +87,7 @@ function Point(;
 ) where {FT}
     coord = ClimaCore.Geometry.ZPoint(z_sfc)
     space = (; surface = ClimaCore.Spaces.PointSpace(comms, coord))
-    return Point{FT}(z_sfc, space)
+    return Point{FT, typeof(space)}(z_sfc, space)
 end
 
 """
@@ -103,7 +103,7 @@ These are stored using the keys :surface and :subsurface.
 # Fields
 $(DocStringExtensions.FIELDS)
 """
-struct Column{FT} <: AbstractDomain{FT}
+struct Column{FT, NT1 <: NamedTuple, NT2 <: NamedTuple} <: AbstractDomain{FT}
     "Domain interval limits, (zmin, zmax), in meters"
     zlim::Tuple{FT, FT}
     "Number of elements used to discretize the interval"
@@ -113,9 +113,9 @@ struct Column{FT} <: AbstractDomain{FT}
     "Boundary face identifiers"
     boundary_names::Tuple{Symbol, Symbol}
     "A NamedTuple of associated ClimaCore spaces: in this case, the surface space and subsurface center space"
-    space::NamedTuple
+    space::NT1
     "Fields and field data associated with the coordinates of the domain that are useful to store"
-    fields::NamedTuple
+    fields::NT2
 end
 
 """
@@ -176,7 +176,7 @@ function Column(;
         subsurface_face = subsurface_face_space,
     )
     fields = get_additional_coordinate_field_data(subsurface_space)
-    return Column{FT}(
+    return Column{FT, typeof(space), typeof(fields)}(
         zlim,
         (nelements,),
         dz_tuple,
@@ -206,7 +206,7 @@ the entire Plane space).
 # Fields
 $(DocStringExtensions.FIELDS)
 """
-struct Plane{FT} <: AbstractDomain{FT}
+struct Plane{FT, NT <: NamedTuple} <: AbstractDomain{FT}
     "Domain interval limits along x axis, in meters or degrees (if `latlong != nothing`)"
     xlim::Tuple{FT, FT}
     "Domain interval limits along y axis, in meters or degrees (if `latlong != nothing`)"
@@ -221,7 +221,7 @@ struct Plane{FT} <: AbstractDomain{FT}
     "Polynomial order for both x and y"
     npolynomial::Int
     "A NamedTuple of associated ClimaCore spaces: in this case, the surface(Plane) space"
-    space::NamedTuple
+    space::NT
 end
 
 """
@@ -319,7 +319,7 @@ function Plane(;
     )
     compat_set_mask!(space)
     space = (; surface = space)
-    return Plane{FT}(
+    return Plane{FT, typeof(space)}(
         xlim,
         ylim,
         longlat,
@@ -356,7 +356,7 @@ These are stored using the keys :surface and :subsurface.
 # Fields
 $(DocStringExtensions.FIELDS)
 """
-struct HybridBox{FT} <: AbstractDomain{FT}
+struct HybridBox{FT, NT1 <: NamedTuple, NT2 <: NamedTuple} <: AbstractDomain{FT}
     "Domain interval limits along x axis, in meters or degrees (if `latlong != nothing`)"
     xlim::Tuple{FT, FT}
     "Domain interval limits along y axis, in meters or degrees (if `latlong != nothing`)"
@@ -374,9 +374,9 @@ struct HybridBox{FT} <: AbstractDomain{FT}
     "Flag indicating periodic boundaries in horizontal"
     periodic::Tuple{Bool, Bool}
     "A NamedTuple of associated ClimaCore spaces: in this case, the surface space and subsurface center space"
-    space::NamedTuple
+    space::NT1
     "Fields and field data associated with the coordinates of the domain that are useful to store"
-    fields::NamedTuple
+    fields::NT2
 end
 
 """
@@ -482,7 +482,7 @@ function HybridBox(;
         subsurface_face = subsurface_face_space,
     )
     fields = get_additional_coordinate_field_data(subsurface_space)
-    return HybridBox{FT}(
+    return HybridBox{FT, typeof(space), typeof(fields)}(
         horzdomain.xlim,
         horzdomain.ylim,
         zlim,
@@ -515,7 +515,8 @@ These are stored using the keys :surface and :subsurface.
 # Fields
 $(DocStringExtensions.FIELDS)
 """
-struct SphericalShell{FT} <: AbstractDomain{FT}
+struct SphericalShell{FT, NT1 <: NamedTuple, NT2 <: NamedTuple} <:
+       AbstractDomain{FT}
     "The radius of the shell"
     radius::FT
     "The radial extent of the shell"
@@ -527,9 +528,9 @@ struct SphericalShell{FT} <: AbstractDomain{FT}
     "The polynomial order to be used in the non-radial directions"
     npolynomial::Int
     "A NamedTuple of associated ClimaCore spaces: in this case, the surface space and subsurface center space"
-    space::NamedTuple
+    space::NT1
     "Fields and field data associated with the coordinates of the domain that are useful to store"
-    fields::NamedTuple
+    fields::NT2
 end
 
 """
@@ -610,7 +611,7 @@ function SphericalShell(;
         subsurface_face = subsurface_face_space,
     )
     fields = get_additional_coordinate_field_data(subsurface_space)
-    return SphericalShell{FT}(
+    return SphericalShell{FT, typeof(space), typeof(fields)}(
         radius,
         depth,
         dz_tuple,
@@ -636,7 +637,7 @@ the entire SphericalSurface space).
 # Fields
 $(DocStringExtensions.FIELDS)
 """
-struct SphericalSurface{FT} <: AbstractDomain{FT}
+struct SphericalSurface{FT, NT <: NamedTuple} <: AbstractDomain{FT}
     "The radius of the surface"
     radius::FT
     "The number of elements to be used in the non-radial directions"
@@ -644,7 +645,7 @@ struct SphericalSurface{FT} <: AbstractDomain{FT}
     "The polynomial order to be used in the non-radial directions"
     npolynomial::Int
     "A NamedTuple of associated ClimaCore spaces: in this case, the surface (SphericalSurface) space"
-    space::NamedTuple
+    space::NT
 end
 
 """
@@ -675,7 +676,12 @@ function SphericalSurface(;
         Spaces.SpectralElementSpace2D(horztopology, quad; compat_add_mask()...)
     compat_set_mask!(horzspace)
     space = (; surface = horzspace)
-    return SphericalSurface{FT}(radius, nelements, npolynomial, space)
+    return SphericalSurface{FT, typeof(space)}(
+        radius,
+        nelements,
+        npolynomial,
+        space,
+    )
 end
 
 
@@ -695,7 +701,10 @@ Returns the Point domain corresponding to the top face (surface) of the
 Column domain `c`.
 """
 function obtain_surface_domain(c::Column{FT}) where {FT}
-    surface_domain = Point{FT}(c.zlim[2], (; surface = c.space.surface))
+    surface_domain = Point{FT, typeof((; surface = c.space.surface))}(
+        c.zlim[2],
+        (; surface = c.space.surface),
+    )
     return surface_domain
 end
 
@@ -706,7 +715,7 @@ Returns the Plane domain corresponding to the top face (surface) of the
 HybridBox domain `b`.
 """
 function obtain_surface_domain(b::HybridBox{FT}) where {FT}
-    surface_domain = Plane{FT}(
+    surface_domain = Plane{FT, typeof((; surface = b.space.surface))}(
         b.xlim,
         b.ylim,
         b.longlat,
@@ -726,12 +735,13 @@ Returns the SphericalSurface domain corresponding to the top face
 (surface) of the SphericalShell domain `s`.
 """
 function obtain_surface_domain(s::SphericalShell{FT}) where {FT}
-    surface_domain = SphericalSurface{FT}(
-        s.radius,
-        s.nelements[1],
-        s.npolynomial,
-        (; surface = s.space.surface),
-    )
+    surface_domain =
+        SphericalSurface{FT, typeof((; surface = s.space.surface))}(
+            s.radius,
+            s.nelements[1],
+            s.npolynomial,
+            (; surface = s.space.surface),
+        )
     return surface_domain
 end
 
