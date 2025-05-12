@@ -8,6 +8,7 @@ using ClimaUtilities.ClimaArtifacts
 import Interpolations
 import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
 import ClimaUtilities.Regridders: InterpolationsRegridder
+import ClimaUtilities.OnlineLogging: WallTimeInfo, report_walltime
 
 export FTfromY, call_count_nans_state
 
@@ -715,4 +716,15 @@ function landsea_mask(domain::Domains.AbstractDomain; kwargs...)
         context = ClimaComms.context(domain.space.surface),
     )
     return landsea_mask(domain.space.surface; filepath, kwargs...)
+end
+
+
+function ReportCallback(Nsteps::Int)
+    walltime_info = WallTimeInfo()
+    everyNsteps(u, t, integrator) = mod(integrator.step, Nsteps) == 0
+    report = let wt = walltime_info
+        (integrator) -> report_walltime(wt, integrator)
+    end
+    report_cb = SciMLBase.DiscreteCallback(everyNsteps, report)
+    return report_cb
 end
