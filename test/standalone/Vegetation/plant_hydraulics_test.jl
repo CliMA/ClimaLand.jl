@@ -363,17 +363,6 @@ for FT in (Float32, Float64)
                 ϑ_l_0 = augmented_liquid_fraction.(plant_ν, S_l)
 
                 Y, p, coords = initialize(model)
-                if typeof(domain) <: ClimaLand.Domains.Point
-                    @test propertynames(p) == (:canopy, :drivers)
-                elseif typeof(domain) <: ClimaLand.Domains.Plane
-                    @test propertynames(p) ==
-                          (:canopy, :dss_buffer_2d, :drivers)
-                    @test typeof(p.dss_buffer_2d) == typeof(
-                        ClimaCore.Spaces.create_dss_buffer(
-                            ClimaCore.Fields.zeros(domain.space.surface),
-                        ),
-                    )
-                end
 
                 dY = similar(Y)
                 for i in 1:(n_stem + n_leaf)

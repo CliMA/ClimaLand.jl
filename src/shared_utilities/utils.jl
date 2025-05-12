@@ -61,10 +61,15 @@ function add_dss_buffer_to_aux(
     p::NamedTuple,
     domain::Union{Domains.Plane, Domains.SphericalSurface},
 )
-    buffer = ClimaCore.Spaces.create_dss_buffer(
-        ClimaCore.Fields.zeros(domain.space.surface),
-    )
-    return merge(p, (; dss_buffer_2d = buffer))
+    # With npolynomial = 0, we don't need DSS (and DSS will fail with MPI)
+    if domain.npolynomial == 0
+        return p
+    else
+        buffer = ClimaCore.Spaces.create_dss_buffer(
+            ClimaCore.Fields.zeros(domain.space.surface),
+        )
+        return merge(p, (; dss_buffer_2d = buffer))
+    end
 end
 
 """
@@ -87,13 +92,21 @@ function add_dss_buffer_to_aux(
     p::NamedTuple,
     domain::Union{Domains.HybridBox, Domains.SphericalShell},
 )
-    buffer_2d = ClimaCore.Spaces.create_dss_buffer(
-        ClimaCore.Fields.zeros(domain.space.surface),
-    )
-    buffer_3d = ClimaCore.Spaces.create_dss_buffer(
-        ClimaCore.Fields.zeros(domain.space.subsurface),
-    )
-    return merge(p, (; dss_buffer_3d = buffer_3d, dss_buffer_2d = buffer_2d))
+    # With npolynomial = 0, we don't need DSS (and DSS will fail with MPI)
+    if domain.npolynomial == 0
+        return p
+    else
+        buffer_2d = ClimaCore.Spaces.create_dss_buffer(
+            ClimaCore.Fields.zeros(domain.space.surface),
+        )
+        buffer_3d = ClimaCore.Spaces.create_dss_buffer(
+            ClimaCore.Fields.zeros(domain.space.subsurface),
+        )
+        return merge(
+            p,
+            (; dss_buffer_3d = buffer_3d, dss_buffer_2d = buffer_2d),
+        )
+    end
 end
 
 

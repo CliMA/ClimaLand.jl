@@ -141,9 +141,13 @@ end
         ylim = FT.((0.0, 1.0)),
         nelements = (2, 2),
         periodic = (true, true),
+        npolynomial = 1,
     )
-    domain2 =
-        ClimaLand.Domains.SphericalSurface(; radius = FT(2), nelements = 10)
+    domain2 = ClimaLand.Domains.SphericalSurface(;
+        radius = FT(2),
+        nelements = 10,
+        npolynomial = 1,
+    )
 
     domains = (domain1, domain2)
     for domain in domains
@@ -197,11 +201,13 @@ end
         zlim = FT.((0.0, 1.0)),
         nelements = (2, 2, 2),
         periodic = (true, true),
+        npolynomial = 1,
     )
     domain2 = ClimaLand.Domains.SphericalShell(;
         radius = FT(2),
         depth = FT(1.0),
         nelements = (10, 5),
+        npolynomial = 1,
     )
 
     domains = (domain1, domain2)
@@ -247,6 +253,38 @@ end
         @test Y.field == Y_copy.field
         @test Y.subfields.subfield1 == Y_copy.subfields.subfield1
         @test Y.subfields.subfield2 == Y_copy.subfields.subfield2
+    end
+end
+
+@testset "dss! - npolynomial = 0, FT = $FT" begin
+    # Test for Spaces.SpectralElementSpace2D
+    domain1 = ClimaLand.Domains.Plane(;
+        xlim = FT.((0.0, 1.0)),
+        ylim = FT.((0.0, 1.0)),
+        nelements = (2, 2),
+        periodic = (true, true),
+    )
+    domain2 =
+        ClimaLand.Domains.SphericalSurface(; radius = FT(2), nelements = 10)
+    domain3 = ClimaLand.Domains.HybridBox(;
+        xlim = FT.((0.0, 1.0)),
+        ylim = FT.((0.0, 1.0)),
+        zlim = FT.((0.0, 1.0)),
+        nelements = (2, 2, 2),
+        periodic = (true, true),
+    )
+    domain4 = ClimaLand.Domains.SphericalShell(;
+        radius = FT(2),
+        depth = FT(1.0),
+        nelements = (10, 5),
+    )
+
+    domains = (domain1, domain2, domain3, domain4)
+    for domain in domains
+        p = (;)
+        p = ClimaLand.add_dss_buffer_to_aux(p, domain)
+        @test !haskey(p, :dss_buffer_2d)
+        @test !haskey(p, :dss_buffer_3d)
     end
 end
 
