@@ -109,10 +109,14 @@ steps:
         command: "julia --color=yes --project=.buildkite experiments/standalone/Soil/water_energy_conservation.jl"
         artifact_paths: "experiments/standalone/Soil/water_energy_conservation/output_active/*full_soil_*png"
 
-      - label: "Global Run CPU"
-        command: "julia --color=yes --project=.buildkite experiments/integrated/global/global_soil_canopy.jl"
+      - label: "Global Run CPU MPI"
+        command: "srun julia --color=yes --project=.buildkite experiments/integrated/global/global_soil_canopy.jl"
         artifact_paths: "experiments/integrated/global/output_active/*png"
+        env:
+          CLIMACOMMS_CONTEXT: "MPI"
         agents:
+          slurm_ntasks_per_node: 4
+          slurm_nodes: 1
           slurm_mem: 16G
 
       - label: "Canopy Implicit Stepping CPU"
