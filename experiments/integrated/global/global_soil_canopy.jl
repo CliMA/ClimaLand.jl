@@ -43,11 +43,13 @@ surface_space = domain.space.surface
 subsurface_space = domain.space.subsurface
 
 start_date = DateTime(2008);
+t0 = 0.0
+dt = 450.0
+tf = 3600
 
 # Forcing data
-era5_artifact_path =
-    ClimaLand.Artifacts.era5_land_forcing_data2008_folder_path(; context)
-era5_ncdata_path = joinpath(era5_artifact_path, "era5_2008_1.0x1.0.nc")
+era5_ncdata_path =
+    ClimaLand.Artifacts.era5_land_forcing_data2008_path(; context)
 atmos, radiation = ClimaLand.prescribed_forcing_era5(
     era5_ncdata_path,
     surface_space,
@@ -103,10 +105,10 @@ conductance_args = (; parameters = Canopy.MedlynConductanceParameters(FT; g1))
 photosynthesis_args =
     (; parameters = Canopy.FarquharParameters(FT, is_c3; Vcmax25 = Vcmax25))
 # Set up plant hydraulics
-modis_lai_artifact_path =
-    ClimaLand.Artifacts.modis_lai_forcing_data_path(; context)
-modis_lai_ncdata_path =
-    joinpath(modis_lai_artifact_path, "Yuan_et_al_2008_1x1.nc")
+modis_lai_ncdata_path = ClimaLand.Artifacts.modis_lai_single_year_path(;
+    context = nothing,
+    year = Dates.year(Second(t0) + start_date),
+)
 LAIfunction = ClimaLand.prescribed_lai_modis(
     modis_lai_ncdata_path,
     surface_space,
@@ -178,7 +180,6 @@ Y, p, cds = initialize(land)
 t0 = 0.0
 dt = 450.0
 tf = 3600
-
 
 ic_path = ClimaLand.Artifacts.soil_ic_2008_50m_path(; context = context)
 set_initial_state! = make_set_initial_state_from_file(ic_path, land)
