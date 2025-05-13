@@ -6,9 +6,10 @@ const n_iterations = 10 # 1 iterations takes ~ 1.5 hour with current settings ((
 const spinup_period = Year(1)
 const start_date = DateTime(2008, 12, 01) # this is the start of the forward model spinup
 @assert month(start_date + spinup_period) == 12 "The start of your calibration period should be December."
-const nelements = (50, 15) # resolution - (horizontal elements (lon, lat), vertical elements (soil discretization))
-const dirname = "land_swu_zenith_only" # ideally, describe your calibration in a few words
+const nelements = (75, 15) # resolution - (horizontal elements (lon, lat), vertical elements (soil discretization))
+const dirname = "land_swu_zenith_only_antarctica" # ideally, describe your calibration in a few words
 const caldir = joinpath("/glade/campaign/univ/ucit0011/alexis/", dirname) # you might want to save somewhere else than login
+const flat_noise = 5 # in unit of your variable_list. TODO: make this a vector, same dim as variable_list
 # Don't forget to adjust your priors and forward_model files.
 
 
@@ -73,6 +74,8 @@ end
 # Locations used for calibration (currently all coordinates on land):
 include(joinpath(@__DIR__, "make_training_locations.jl"))
 training_locations = make_training_locations(nelements)
+training_locations = filter(loc -> loc[2] <= -60.0, training_locations) # Antartica only
+
 # potentially we can add regional runs or specific lon lat bands or filter (e.g., regions with snow)
 
 # NOTE: The noise is set in observationseries_era5.jl - adjust if needed.
