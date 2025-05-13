@@ -240,7 +240,7 @@ import ClimaParams
             # Check that structure of Y is value (will error if not)
             @test !isnothing(zero(Y))
             @test typeof(canopy.energy) == PrescribedCanopyTempModel{FT}
-            @test propertynames(p) == (:canopy, :dss_buffer_2d, :drivers)
+            @test propertynames(p) == (:canopy, :drivers)
             @test propertynames(p.canopy) == (
                 :hydraulics,
                 :conductance,
@@ -795,7 +795,7 @@ end
 
             # Check that structure of Y is value (will error if not)
             @test !isnothing(zero(Y))
-            @test propertynames(p) == (:canopy, :dss_buffer_2d, :drivers)
+            @test propertynames(p) == (:canopy, :drivers)
             for component in ClimaLand.Canopy.canopy_components(canopy)
                 # Only hydraulics has a prognostic variable
                 if component == :hydraulics

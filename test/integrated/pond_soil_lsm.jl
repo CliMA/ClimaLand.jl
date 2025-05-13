@@ -81,27 +81,8 @@ for FT in (Float32, Float64)
 
             if typeof(lsm_domain) <: ClimaLand.HybridBox
                 # test that the dss buffers are correctly added
-                @test propertynames(p) == (
-                    :soil_infiltration,
-                    :soil,
-                    :surface_water,
-                    :dss_buffer_3d,
-                    :dss_buffer_2d,
-                )
-                @test typeof(p.dss_buffer_3d) == typeof(
-                    ClimaCore.Spaces.create_dss_buffer(
-                        ClimaCore.Fields.zeros(
-                            land.soil.domain.space.subsurface,
-                        ),
-                    ),
-                )
-                @test typeof(p.dss_buffer_2d) == typeof(
-                    ClimaCore.Spaces.create_dss_buffer(
-                        ClimaCore.Fields.zeros(
-                            land.surface_water.domain.space.surface,
-                        ),
-                    ),
-                )
+                @test propertynames(p) ==
+                      (:soil_infiltration, :soil, :surface_water)
 
                 land_prognostic_vars = prognostic_vars(land)
                 land_prognostic_types = prognostic_types(land)

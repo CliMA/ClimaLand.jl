@@ -244,18 +244,20 @@ sol = ClimaComms.@time ClimaComms.device() SciMLBase.solve(
 )
 
 # ClimaAnalysis
-simdir = ClimaAnalysis.SimDir(outdir)
+if ClimaComms.iamroot(context)
+    simdir = ClimaAnalysis.SimDir(outdir)
 
-for short_name in ClimaAnalysis.available_vars(simdir)
-    var = get(simdir; short_name)
-    times = var.dims["time"]
-    for t in times
-        fig = CairoMakie.Figure(size = (800, 600))
-        kwargs = ClimaAnalysis.has_altitude(var) ? Dict(:z => 1) : Dict()
-        viz.heatmap2D_on_globe!(
-            fig,
-            ClimaAnalysis.slice(var, time = t; kwargs...),
-        )
-        CairoMakie.save(joinpath(outdir, "$short_name.png"), fig)
+    for short_name in ClimaAnalysis.available_vars(simdir)
+        var = get(simdir; short_name)
+        times = var.dims["time"]
+        for t in times
+            fig = CairoMakie.Figure(size = (800, 600))
+            kwargs = ClimaAnalysis.has_altitude(var) ? Dict(:z => 1) : Dict()
+            viz.heatmap2D_on_globe!(
+                fig,
+                ClimaAnalysis.slice(var, time = t; kwargs...),
+            )
+            CairoMakie.save(joinpath(outdir, "$short_name.png"), fig)
+        end
     end
 end

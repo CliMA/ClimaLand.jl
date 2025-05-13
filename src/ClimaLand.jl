@@ -256,7 +256,7 @@ end
         sfc_cache,
 )
 
-A function which computes the total liquid water volume 
+A function which computes the total liquid water volume
 per unit area and updates
 `surface_field` in place, for the land model `land`, by calling
 the same function for the component models.
