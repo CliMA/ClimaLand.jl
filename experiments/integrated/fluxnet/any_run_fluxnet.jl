@@ -9,6 +9,7 @@ using Dates
 using Insolation
 using StatsBase
 
+using DelimitedFiles
 using ClimaLand
 using ClimaLand.Domains: Column
 using ClimaLand.Snow
@@ -72,7 +73,7 @@ function run_single_site(params, site_ID) # e.g., run_single_site(params, "US-MO
     include(
             joinpath(
                      climaland_dir,
-                     "experiments/integrated/fluxnet/$site_ID/$(site_ID)_simulation.jl",
+                     "experiments/integrated/fluxnet/any_site/any_simulation.jl",
                     ),
            )
 
@@ -84,7 +85,7 @@ function run_single_site(params, site_ID) # e.g., run_single_site(params, "US-MO
     include(
             joinpath(
                      climaland_dir,
-                     "experiments/integrated/fluxnet/$site_ID/$(site_ID)_parameters.jl",
+                     "experiments/integrated/fluxnet/any_site/any_parameters.jl",
                     ),
            )
 
