@@ -6,6 +6,7 @@ using ClimaLand
 using ClimaLand.Soil
 using ClimaLand.Canopy
 using Dates
+using ClimaParams
 import ClimaLand.Parameters as LP
 using ClimaLand.Soil.Biogeochemistry
 using ClimaLand.Canopy.PlantHydraulics

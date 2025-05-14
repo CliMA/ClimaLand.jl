@@ -236,15 +236,17 @@ function canopy_sw_rt_two_stream(
     α_soil::FT,
     frac_diff::FT,
 ) where {FT}
-
+    α_soil = max(eps(FT), α_soil) # this prevents division by zero, below.
+    cosθs = max(eps(FT), cosθs) # The insolations package returns θs > π/2 (nighttime), but this assumes cosθs >0
     # Compute μ̄, the average inverse diffuse optical length per LAI
-    μ̄ = 1 / (2G)
+    μ̄ = 1 / max(2G, eps(FT))
 
-    # Clip this to eps(FT) to prevent dividing by zero
-    ω = max(α_leaf + τ_leaf, eps(FT))
+    # Clip this to eps(FT) to prevent dividing by zero; the sum must also be < 1
+    ω = min(max(α_leaf + τ_leaf, eps(FT)), 1 - eps(FT))
 
     # Compute aₛ, the single scattering albedo
-    aₛ = 0.5 * ω * (1 - cosθs * log((abs(cosθs) + 1) / abs(cosθs)))
+    aₛ =
+        0.5 * ω * (1 - cosθs * log((abs(cosθs) + 1) / max(abs(cosθs), eps(FT))))
 
     # Compute β₀, the direct upscattering parameter
     β₀ = (1 / ω) * aₛ * (1 + μ̄ * K) / (μ̄ * K)
@@ -315,8 +317,11 @@ function canopy_sw_rt_two_stream(
     F_abs = 0
     i = 0
 
-    # Total light reflected form top of canopy
+    # Total light reflected from top of canopy
     F_refl = 0
+
+    # Total light transmitted through the canopy on the downward pass
+    F_trans = 0
 
     # Intialize vars to save computed fluxes from each layer for the next layer
     I_dir_up_prev = 0
@@ -341,7 +346,7 @@ function canopy_sw_rt_two_stream(
             h₅ * exp(-h * L * Ω) +
             h₆ * exp(h * L * Ω)
 
-        # Add collimated radiation to downard flux
+        # Add collimated radiation to downward flux
         I_dir_dn += exp(-K * L * Ω)
 
         # Compute the diffuse fluxes into/out of the layer
@@ -357,8 +362,12 @@ function canopy_sw_rt_two_stream(
             I_dif_abs = I_dif_up - I_dif_up_prev - I_dif_dn + I_dif_dn_prev
         end
 
-        if i == 1
-            F_refl = (1 - frac_diff) * I_dir_up + (frac_diff) * I_dif_up
+        if i == 1 # prev = top of layer
+            F_refl =
+                (1 - frac_diff) * I_dir_up_prev + (frac_diff) * I_dif_up_prev
+        end
+        if i == n_layers # not prev = bottom of layer
+            F_trans = (1 - frac_diff) * I_dir_dn + (frac_diff) * I_dif_dn
         end
 
 
@@ -375,9 +384,13 @@ function canopy_sw_rt_two_stream(
         i += 1
     end
 
-    # Convert fractional absorption into absorption and return
-    # Ensure floating point precision is correct (it may be different for PAR)
-    F_trans = (1 - F_abs - F_refl) / (1 - α_soil)
+    # Reflected is reflected from the land surface. F_abs
+    # refers to radiation absorbed by the canopy on either pass.
+    # F_trans refers to the downward pass only. Note that
+    # (1-α_soil)*F_trans + F_abs = total absorbed fraction by land, so the following
+    # must hold
+    # @assert (1 - α_soil) * FT(F_trans) + FT(F_abs) + FT(F_refl) ≈ 1
+    # This is tested in test/standalone/Vegetation/test_two_stream.jl
     return (; abs = FT(F_abs), refl = FT(F_refl), trans = FT(F_trans))
 end
 
@@ -388,9 +401,12 @@ end
 Computes the vegetation extinction coefficient (`K`), as a function
 of the cosine of the sun zenith angle (`cosθs`),
 and the leaf angle distribution (`G`).
+
+In the two-stream scheme, values of K ~ 1/epsilon can lead to numerical issues.
+Here we clip it to 1e6.
 """
 function extinction_coeff(G::FT, cosθs::FT) where {FT}
-    K = G / max(cosθs, eps(FT))
+    K = min(G / max(cosθs, eps(FT)), FT(1e6))
     return K
 end
 
