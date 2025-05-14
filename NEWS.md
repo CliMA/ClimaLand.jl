@@ -4,6 +4,12 @@ ClimaLand.jl Release Notes
 main
 -------
 
+v0.16.1
+-------
+- Don't add DSS buffer when npolynomial is 0 PR[#1153](https://github.com/CliMA/ClimaLand.jl/pull/1153)
+- Simplify artifact paths PR[#1150](https://github.com/CliMA/ClimaLand.jl/pull/1150)
+- Clean up IC setting PR[#1151](https://github.com/CliMA/ClimaLand.jl/pull/1151)
+- Add default BCs and sources for soilCO2 PR[#1141](https://github.com/CliMA/ClimaLand.jl/pull/1141)
 
 v0.16.0
 -------
