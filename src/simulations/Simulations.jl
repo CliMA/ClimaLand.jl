@@ -2,7 +2,6 @@ module Simulations
 using ClimaTimeSteppers
 using ClimaComms
 import ClimaComms: context, device
-using SciMLBase
 using Dates
 import ClimaUtilities.TimeManager: ITime, date
 import ClimaDiagnostics
@@ -40,22 +39,26 @@ Finally, the private field _required_callbacks consists of callbacks that are re
 simulation to run correctly. Currently, this includes the callbacks which update the atmospheric
 forcing and update the LAI using prescribed data. 
 """
-struct LandSimulation{
+mutable struct LandSimulation{
+    STATE,
+    CACHE,
+    TIME,
     M <: ClimaLand.AbstractModel,
-    T <: ClimaTimeSteppers.DistributedODEAlgorithm,
-    UC,
+    T,
     DI,
     RC,
-    CA <: SciMLBase.CallbackSet,
-    I <: SciMLBase.DEIntegrator,
+    UC,
 }
+    state::STATE
+    cache::CACHE
+    t::TIME
+    dt::TIME
+    tf::TIME
     model::M
     timestepper::T
-    user_callbacks::UC
-    diagnostics::DI
+    diagnostic_handler::DI
     required_callbacks::RC
-    callbacks::CA
-    _integrator::I
+    user_callbacks::UC
 end
 
 function LandSimulation(
@@ -128,20 +131,15 @@ function LandSimulation(
             jac_prototype = ClimaLand.FieldMatrixWithSolver(Y),
             Wfact = jacobian!,
         )
-        T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...)
+        T_imp! = (; f = imp_tendency!, jac_kwargs...)
     end
 
     # Create SciML ODE Problem
-    problem = SciMLBase.ODEProblem(
-        ClimaTimeSteppers.ClimaODEFunction(
+    func = ClimaTimeSteppers.ClimaODEFunction(
             T_exp! = exp_tendency!,
             T_imp! = T_imp!,
             dss! = ClimaLand.dss!,
-        ),
-        Y,
-        (t0, tf),
-        p,
-    )
+        )
 
     # Required callbacks
     updateat = [promote(t0:(ITime(3600 * 3)):tf...)...]
@@ -153,28 +151,22 @@ function LandSimulation(
     diagnostics = isnothing(diagnostics) ? () : diagnostics
     diagnostic_handler =
         ClimaDiagnostics.DiagnosticsHandler(diagnostics, Y, p, t0; dt = Δt)
-    diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler)
 
-
-    # Collect all callbacks
-    callbacks =
-        SciMLBase.CallbackSet(user_callbacks..., required_callbacks..., diag_cb)
-
-    _integrator = SciMLBase.init(
-        problem,
-        timestepper;
-        dt = Δt,
-        callback = callbacks,
-        adaptive = false,
-    )
+    algo = timestepper
+    # u0 is used as prototype
+    prob = (; u0 = Y, f = func)
+    timestepper_cache = ClimaTimeSteppers.init_cache(prob, algo)
+    isnothing(func.cache!) || func.cache!(Y, cache, t0)
     return LandSimulation(
+        Y,
+        p,
+        t0,
         model,
-        timestepper,
+        (; algo, func, cache = timestepper_cache),
         user_callbacks,
-        diagnostics,
+        diagnostic_handler,
         required_callbacks,
-        callbacks,
-        _integrator,
+        user_callbacks,
     )
 end
 
@@ -185,7 +177,17 @@ Advances the land simulation `landsim` forward in time by one step,
 updating `landsim` in place.
 """
 function step!(landsim::LandSimulation)
-    SciMLBase.step!(landsim._integrator)
+    landsim.t[] += landsim.dt
+    integrator = (; landsim.state, landsim.cache, t = landsim.t[], landsim.dt, alg = landsim.timestepper.algo,
+                  sol = (; prob = (; f = landsim.timestepper.func)))
+    ClimaTimeSteppers.step_u!(integrator, landsim.timestepper.cache)
+    for callback in landsim.required_callbacks
+        callback.condition(landsim.u, landsim.t, integrator) && callback.affect!(integrator)
+    end
+    for callback in landsim.user_callbacks
+        callback.condition(landsim.u, landsim.t, integrator) && callback.affect!(integrator)
+    end
+    ClimaDiagnostics.orchestrate_diagnostics(integrator, landsim.diagnostics_handler)
 end
 
 """
@@ -195,7 +197,9 @@ Advances the land simulation `landsim` forward from the initial to final time,
 updating `landsim` in place.
 """
 function solve!(landsim::LandSimulation)
-    SciMLBase.solve!(landsim._integrator)
+    while landsim.t[] < landsim.tf
+        step!(landsim)
+    end
 end
 
 
