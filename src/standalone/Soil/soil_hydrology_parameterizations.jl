@@ -113,7 +113,8 @@ A pointwise function returning the volumetric liquid fraction
 given the augmented liquid fraction and the effective porosity.
 """
 function volumetric_liquid_fraction(ϑ_l::FT, ν_eff::FT, θ_r::FT) where {FT}
-    ϑ_l_safe = max(ϑ_l, θ_r + eps(FT))
+    ϑ_l_safe = max(ϑ_l, θ_r + sqrt(eps(FT)))
+    ν_eff = max(ν_eff, θ_r + sqrt(eps(FT)))
     if ϑ_l_safe < ν_eff
         θ_l = ϑ_l_safe
     else
@@ -123,13 +124,14 @@ function volumetric_liquid_fraction(ϑ_l::FT, ν_eff::FT, θ_r::FT) where {FT}
 end
 
 """
-    effective_saturation(porosity::FT, ϑ_l::FT, θr::FT) where {FT}
+    effective_saturation(ν::FT, ϑ_l::FT, θr::FT) where {FT}
 
 A point-wise function computing the effective saturation.
 """
-function effective_saturation(porosity::FT, ϑ_l::FT, θr::FT) where {FT}
-    ϑ_l_safe = max(ϑ_l, θr + eps(FT))
-    S_l = (ϑ_l_safe - θr) / (porosity - θr)
+function effective_saturation(ν::FT, ϑ_l::FT, θr::FT) where {FT}
+    ϑ_l_safe = max(ϑ_l, θr + sqrt(eps(FT)))
+    ν = max(ν, θr + sqrt(eps(FT)))
+    S_l = (ϑ_l_safe - θr) / (ν - θr)
     return S_l
 end
 
@@ -197,7 +199,8 @@ function pressure_head(
     ν_eff::FT,
     S_s::FT,
 ) where {FT}
-    ϑ_l_safe = max(ϑ_l, θ_r + eps(FT))
+    ϑ_l_safe = max(ϑ_l, θ_r + sqrt(eps(FT)))
+    ν_eff = max(ν_eff, θ_r + sqrt(eps(FT)))
     S_l_eff = effective_saturation(ν_eff, ϑ_l_safe, θ_r)
     if S_l_eff <= FT(1.0)
         ψ = matric_potential(cm, S_l_eff)
@@ -214,6 +217,9 @@ Computes and returns the derivative of the pressure head
 with respect to ϑ for the van Genuchten formulation.
 """
 function dψdϑ(cm::vanGenuchten{FT}, ϑ, ν, θ_r, S_s) where {FT}
+    ϑ = max(ϑ, θ_r + sqrt(eps(FT)))
+    ν = max(ν, θ_r + sqrt(eps(FT)))
+
     S = effective_saturation(ν, ϑ, θ_r)
     (; α, m, n) = cm
     if S < 1.0
@@ -294,6 +300,8 @@ Computes and returns the derivative of the pressure head
 with respect to ϑ for the Brooks and Corey formulation.
 """
 function dψdϑ(cm::BrooksCorey{FT}, ϑ, ν, θ_r, S_s) where {FT}
+    ϑ = max(ϑ, θ_r + sqrt(eps(FT)))
+    ν = max(ν, θ_r + sqrt(eps(FT)))
     S = effective_saturation(ν, ϑ, θ_r)
     (; ψb, c) = cm
     if S < 1.0
@@ -347,6 +355,8 @@ function pressure_head(
     ν_eff::FT,
     S_s::FT,
 ) where {FT}
+    ϑ_l = max(ϑ_l, θ_r + sqrt(eps(FT)))
+    ν_eff = max(ν_eff, θ_r + sqrt(eps(FT)))
     S_l_eff = effective_saturation(ν_eff, ϑ_l, θ_r)
     if S_l_eff <= FT(1.0)
         ψ = matric_potential(cm, S_l_eff)
