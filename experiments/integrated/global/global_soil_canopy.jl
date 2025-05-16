@@ -38,7 +38,7 @@ FT = Float64
 earth_param_set = LP.LandParameters(FT)
 nelements = (50, 10)
 dz_tuple = (10.0, 0.1)
-domain = ClimaLand.global_domain(FT; nelements, dz_tuple)
+domain = ClimaLand.ModelSetup.global_domain(FT; nelements, dz_tuple)
 surface_space = domain.space.surface
 subsurface_space = domain.space.subsurface
 
@@ -182,7 +182,8 @@ dt = 450.0
 tf = 3600
 
 ic_path = ClimaLand.Artifacts.soil_ic_2008_50m_path(; context = context)
-set_initial_state! = make_set_initial_state_from_file(ic_path, land)
+set_initial_state! =
+    ClimaLand.Simulations.make_set_initial_state_from_file(ic_path, land)
 set_initial_cache! = make_set_initial_cache(land)
 exp_tendency! = make_exp_tendency(land)
 imp_tendency! = ClimaLand.make_imp_tendency(land)

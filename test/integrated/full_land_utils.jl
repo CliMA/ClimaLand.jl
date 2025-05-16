@@ -15,7 +15,7 @@ import ClimaLand
                        scalar_snow_params,
                        earth_param_set;
                        context = nothing,
-                       domain = ClimaLand.global_domain(FT; context = context),
+                       domain = ClimaLand.ModelSetup.global_domain(FT; context = context),
                        forcing = ClimaLand.prescribed_forcing_era5(ClimaLand.Artifacts.era5_land_forcing_data2008_path(; context),
                                                                    domain.space.surface,
                                                                    DateTime(2008),
@@ -41,7 +41,7 @@ function global_land_model(
     scalar_snow_params,
     earth_param_set;
     context = nothing,
-    domain = ClimaLand.global_domain(FT; context = context),
+    domain = ClimaLand.ModelSetup.global_domain(FT; context = context),
     forcing = ClimaLand.prescribed_forcing_era5(
         ClimaLand.Artifacts.era5_land_forcing_data2008_path(; context),
         domain.space.surface,
@@ -80,7 +80,7 @@ function global_land_model(
     subsurface_space = domain.space.subsurface
 
     spatially_varying_soil_params =
-        ClimaLand.default_spatially_varying_soil_parameters(
+        ClimaLand.ModelSetup.default_spatially_varying_soil_parameters(
             subsurface_space,
             surface_space,
             FT,
@@ -122,7 +122,7 @@ function global_land_model(
     )
 
     # Spatially varying canopy parameters from CLM
-    clm_parameters = ClimaLand.clm_canopy_parameters(surface_space)
+    clm_parameters = ClimaLand.ModelSetup.clm_canopy_parameters(surface_space)
     (;
         Ω,
         rooting_depth,

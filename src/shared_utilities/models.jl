@@ -443,7 +443,7 @@ values; constructs and returns the coordinates for the `model` domain.
 We may need to consider this default more as we add diverse components and
 `Simulations`.
 """
-function initialize(model::AbstractModel{FT}) where {FT}
+function initialize(model::AbstractModel)
     coords = Domains.coordinates(model)
     Y = initialize_prognostic(model, coords)
     p = initialize_auxiliary(model, coords)
@@ -451,9 +451,17 @@ function initialize(model::AbstractModel{FT}) where {FT}
     return Y, p, coords
 end
 
+"""
+    get_domain(model::AbstractModel)
+
+Return the ClimaLand domain of the model - for integrated models,
+this is the soil domain (e.g., Column, SphericalShell).
+"""
+get_domain(model::ClimaLand.AbstractModel) = model.domain
+
 function ClimaComms.context(model::AbstractModel)
     if :domain ∈ propertynames(model)
-        return ClimaComms.context(model.domain)
+        return ClimaComms.context(get_domain(model))
     else
         error(
             "Your model does not contain a domain. If this is intended, you will need a new method of ClimaComms.context.",
@@ -463,7 +471,7 @@ end
 
 function ClimaComms.device(model::AbstractModel)
     if :domain ∈ propertynames(model)
-        return ClimaComms.device(model.domain)
+        return ClimaComms.device(get_domain(model))
     else
         error(
             "Your model does not contain a domain. If this is intended, you will need a new method of ClimaComms.device.",

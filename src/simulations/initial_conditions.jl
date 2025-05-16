@@ -283,7 +283,7 @@ function make_set_initial_state_from_file(
 end
 
 """
-    make_set_initial_state_from_file(ic_path, model::EnergyHydrology{FT}) where {FT}
+    make_set_initial_state_from_file(ic_path, model::ClimaLand.Soil.EnergyHydrology{FT}) where {FT}
 
 Returns a function which takes (Y,p,t0,model) as arguments, and updates
 the state Y in place with initial conditions from `ic_path`, a netCDF file.
@@ -300,7 +300,7 @@ which may require parameters, etc, stored in `model`.
 """
 function make_set_initial_state_from_file(
     ic_path,
-    model::EnergyHydrology{FT},
+    model::ClimaLand.Soil.EnergyHydrology{FT},
 ) where {FT}
     function set_ic!(Y, p, t0, model)
         atmos = model.boundary_conditions.top.atmos

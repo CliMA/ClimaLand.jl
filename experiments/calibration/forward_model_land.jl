@@ -74,7 +74,7 @@ function setup_prob(
         z0_snow,
     ) = params
 
-    domain = ClimaLand.global_domain(FT; nelements = nelements)
+    domain = ClimaLand.ModelSetup.global_domain(FT; nelements = nelements)
     surface_space = domain.space.surface
     subsurface_space = domain.space.subsurface
 
@@ -92,7 +92,7 @@ function setup_prob(
 
 
     spatially_varying_soil_params =
-        ClimaLand.default_spatially_varying_soil_parameters(
+        ClimaLand.ModelSetup.default_spatially_varying_soil_parameters(
             subsurface_space,
             surface_space,
             FT,
@@ -145,7 +145,7 @@ function setup_prob(
     )
 
     # Spatially varying canopy parameters from CLM
-    clm_parameters = ClimaLand.clm_canopy_parameters(surface_space)
+    clm_parameters = ClimaLand.ModelSetup.clm_canopy_parameters(surface_space)
     (;
         Ω,
         rooting_depth,

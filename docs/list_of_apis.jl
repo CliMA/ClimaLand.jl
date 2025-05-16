@@ -5,7 +5,8 @@
 apis = [
     "ClimaLand" => [
         "ClimaLand" => "APIs/ClimaLand.md",
-        "Shared Utilities" => "APIs/shared_utilities.md",
+        "Shared Utilities" =>
+            ["APIs/Simulations.md", "APIs/shared_utilities.md"],
         "Soil" => [
             "Soil Energy and Hydrology" => "APIs/Soil.md",
             "Soil Biogeochemistry" => "APIs/SoilBiogeochemistry.md",

@@ -75,13 +75,13 @@ outdir = "richards_benchmark_$(device_suffix)"
 
 function setup_prob(t0, tf, Δt; nelements = (101, 15))
     dz_tuple = (10.0, 0.1)
-    domain = ClimaLand.global_domain(FT; nelements, dz_tuple)
+    domain = ClimaLand.ModelSetup.global_domain(FT; nelements, dz_tuple)
     surface_space = domain.space.surface
     subsurface_space = domain.space.subsurface
 
     start_date = DateTime(2008)
     spatially_varying_soil_params =
-        ClimaLand.default_spatially_varying_soil_parameters(
+        ClimaLand.ModelSetup.default_spatially_varying_soil_parameters(
             subsurface_space,
             surface_space,
             FT,
