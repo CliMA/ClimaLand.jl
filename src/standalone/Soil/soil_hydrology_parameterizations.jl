@@ -111,7 +111,11 @@ function update_albedo!(
 
 A pointwise function returning the volumetric liquid fraction
 given the augmented liquid fraction and the effective porosity.
-The output is guaranteed to be in (θ_r, ν].
+The output is guaranteed to be in (θ_r, ν_eff].
+
+For Richards model, ν_eff = ν; and the clipping below is not required,
+(and will do nothing; ν_eff_safe = ν_eff), but we leave it in for a 
+simpler interface.
 """
 function volumetric_liquid_fraction(ϑ_l::FT, ν_eff::FT, θ_r::FT) where {FT}
     ϑ_l_safe = max(ϑ_l, θ_r + sqrt(eps(FT)))
@@ -125,16 +129,23 @@ function volumetric_liquid_fraction(ϑ_l::FT, ν_eff::FT, θ_r::FT) where {FT}
 end
 
 """
-    effective_saturation(ν::FT, ϑ_l::FT, θr::FT) where {FT}
+    effective_saturation(ν_eff::FT, ϑ_l::FT, θr::FT) where {FT}
 
-A point-wise function computing the effective saturation.
+A point-wise function computing the effective saturation given the
+effective porosity, augmented liquid fraction, and residual water
+fraction as input.
 
 The output is guaranteed to lie in (0, 1].
+
+For Richards model, or any other parameterization where ice is not
+relevant, ν_eff = ν; and the clipping below is not required,
+(and will do nothing; ν_eff_safe = ν_eff), but we leave it in for a 
+simpler interface.
 """
-function effective_saturation(ν::FT, ϑ_l::FT, θr::FT) where {FT}
+function effective_saturation(ν_eff::FT, ϑ_l::FT, θr::FT) where {FT}
     ϑ_l_safe = max(ϑ_l, θr + sqrt(eps(FT)))
-    ν_safe = max(ν, θr + sqrt(eps(FT)))
-    S_l = (ϑ_l_safe - θr) / (ν_safe - θr)
+    ν_eff_safe = max(ν_eff, θr + sqrt(eps(FT)))
+    S_l = (ϑ_l_safe - θr) / (ν_eff_safe - θr)
     return S_l
 end
 
@@ -214,21 +225,23 @@ function pressure_head(
 end
 
 """
-   dψdϑ(cm::vanGenuchten{FT}, ϑ, ν, θ_r, S_s)
+   dψdϑ(cm::vanGenuchten{FT}, ϑ, ν_eff, θ_r, S_s)
 
 Computes and returns the derivative of the pressure head
 with respect to ϑ for the van Genuchten formulation.
 """
-function dψdϑ(cm::vanGenuchten{FT}, ϑ, ν, θ_r, S_s) where {FT}
-    # effective saturation clips ν and ϑ
+function dψdϑ(cm::vanGenuchten{FT}, ϑ, ν_eff, θ_r, S_s) where {FT}
+    # effective saturation clips ν_eff and ϑ
     # as needed so that S_l ∈ (0,1],
-    # but we use ν alone, so we clip that also.
-    ν = max(ν, θ_r + sqrt(eps(FT)))
-    S = effective_saturation(ν, ϑ, θ_r)
+    # but we use ν_eff alone, so we clip that here.
+    # The second clipping in effective saturation
+    # will not change it further.
+    ν_eff_safe = max(ν_eff, θ_r + sqrt(eps(FT)))
+    S = effective_saturation(ν_eff_safe, ϑ, θ_r)
     (; α, m, n) = cm
     if S < 1.0
         return FT(
-            1.0 / (α * m * n) / (ν - θ_r) *
+            1.0 / (α * m * n) / (ν_eff_safe - θ_r) *
             (S^(-1 / m) - 1)^(1 / n - 1) *
             S^(-1 / m - 1),
         )
@@ -298,20 +311,22 @@ end
 
 
 """
-   dψdϑ(cm::BrooksCorey{FT}, ϑ, ν, θ_r, S_s)
+   dψdϑ(cm::BrooksCorey{FT}, ϑ, ν_eff, θ_r, S_s)
 
 Computes and returns the derivative of the pressure head
 with respect to ϑ for the Brooks and Corey formulation.
 """
-function dψdϑ(cm::BrooksCorey{FT}, ϑ, ν, θ_r, S_s) where {FT}
-    # effective saturation clips ν and ϑ
+function dψdϑ(cm::BrooksCorey{FT}, ϑ, ν_eff, θ_r, S_s) where {FT}
+    # effective saturation clips ν_eff and ϑ
     # as needed so that S_l ∈ (0,1],
-    # but we use ν alone, so we clip that also.
-    ν = max(ν, θ_r + sqrt(eps(FT)))
-    S = effective_saturation(ν, ϑ, θ_r)
+    # but we use ν_eff alone, so we clip that here.
+    # The second clipping in effective saturation
+    # will not change it further.
+    ν_eff_safe = max(ν_eff, θ_r + sqrt(eps(FT)))
+    S = effective_saturation(ν_eff_safe, ϑ, θ_r)
     (; ψb, c) = cm
     if S < 1.0
-        return -ψb / (c * (ν - θ_r)) * S^(-(1 + 1 / c))
+        return -ψb / (c * (ν_eff_safe - θ_r)) * S^(-(1 + 1 / c))
     else
         return 1 / S_s
     end
