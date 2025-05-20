@@ -55,6 +55,18 @@ abstract type AbstractLandModel{FT} <: AbstractModel{FT} end
 ClimaLand.name(::AbstractLandModel) = :land
 
 """
+    get_domain(model::AbstractLandModel)
+
+Return the ClimaLand domain of the model - for integrated models,
+this is the soil domain (e.g., Column, SphericalShell) since this
+includes both the surface and subsurface.
+
+If your model does not have a soil component, you will need to define
+a more specific method.
+"""
+get_domain(model::ClimaLand.AbstractLandModel) = model.soil.domain
+
+"""
     Domains.coordinates(model::AbstractLandModel)
 
 Returns a NamedTuple of the unique set of coordinates for the LSM

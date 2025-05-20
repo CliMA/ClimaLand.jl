@@ -25,7 +25,7 @@ export AbstractModel,
     total_liq_water_vol_per_area!,
     total_energy_per_area!
 
-import ClimaComms
+import ClimaComms: context, device
 import .Domains: coordinates
 ## Default methods for all models - to be in a seperate module at some point.
 """
@@ -460,21 +460,23 @@ this is the soil domain (e.g., Column, SphericalShell).
 get_domain(model::ClimaLand.AbstractModel) = model.domain
 
 function ClimaComms.context(model::AbstractModel)
-    if :domain ∈ propertynames(model)
-        return ClimaComms.context(get_domain(model))
-    else
+    try
+        domain = get_domain(model)
+        return ClimaComms.context(domain)
+    catch
         error(
-            "Your model does not contain a domain. If this is intended, you will need a new method of ClimaComms.context.",
+            "Your model does not have a get_domain() method. If this is intended, you will need a new method of ClimaComms.context.",
         )
     end
 end
 
 function ClimaComms.device(model::AbstractModel)
-    if :domain ∈ propertynames(model)
-        return ClimaComms.device(get_domain(model))
-    else
+    try
+        domain = get_domain(model)
+        return ClimaComms.device(domain)
+    catch
         error(
-            "Your model does not contain a domain. If this is intended, you will need a new method of ClimaComms.device.",
+            "Your model does not have a get_domain() method. If this is intended, you will need a new method of ClimaComms.device.",
         )
     end
 end

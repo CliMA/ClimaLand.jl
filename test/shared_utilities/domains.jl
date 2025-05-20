@@ -70,6 +70,8 @@ FT = Float32
         npoly_sphere,
         (; surface = shell.space.surface),
     )
+    @test ClimaComms.context(shell) == ClimaComms.context()
+    @test ClimaComms.device(shell) == ClimaComms.device()
     shell_stretch = SphericalShell(;
         radius = radius,
         depth = FT(1.0),
@@ -109,6 +111,8 @@ FT = Float32
         zlim = zlim,
         nelements = nelements,
     )
+    @test ClimaComms.context(box) == ClimaComms.context()
+    @test ClimaComms.device(box) == ClimaComms.device()
     @test box.fields.depth == zlim[2] - zlim[1]
     @test box.fields.z ==
           ClimaCore.Fields.coordinate_field(box.space.subsurface).z
@@ -165,6 +169,8 @@ FT = Float32
         nelements = nelements[1:2],
         periodic = (true, true),
     )
+    @test ClimaComms.context(xy_plane) == ClimaComms.context()
+    @test ClimaComms.device(xy_plane) == ClimaComms.device()
     plane_coords = coordinates(xy_plane).surface
     @test eltype(plane_coords) == ClimaCore.Geometry.XYPoint{FT}
     @test typeof(plane_coords) <: ClimaCore.Fields.Field
@@ -264,6 +270,8 @@ FT = Float32
     # Column
 
     z_column = Column(; zlim = zlim, nelements = nelements[3])
+    @test ClimaComms.context(z_column) == ClimaComms.context()
+    @test ClimaComms.device(z_column) == ClimaComms.device()
     @test z_column.fields.z ==
           ClimaCore.Fields.coordinate_field(z_column.space.subsurface).z
     @test z_column.fields.depth == zlim[2] - zlim[1]
@@ -310,6 +318,8 @@ end
 @testset "Point Domain, FT = $FT" begin
     zmin = FT(1.0)
     point = Point(; z_sfc = zmin)
+    @test ClimaComms.context(point) == ClimaComms.context()
+    @test ClimaComms.device(point) == ClimaComms.device()
     @test point.z_sfc == zmin
     point_space = point.space.surface
     @test point_space isa ClimaCore.Spaces.PointSpace

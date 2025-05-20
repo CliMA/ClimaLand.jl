@@ -114,6 +114,8 @@ for FT in (Float32, Float64)
                 boundary_conditions = boundary_fluxes,
                 sources = (),
             )
+            @test ClimaComms.context(model) == ClimaComms.context()
+            @test ClimaComms.device(model) == ClimaComms.device()
             drivers = ClimaLand.get_drivers(model)
             @test drivers == (atmos, radiation)
             Y, p, coords = initialize(model)
