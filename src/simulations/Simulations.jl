@@ -2,7 +2,6 @@ module Simulations
 using ClimaTimeSteppers
 using ClimaComms
 import ClimaComms: context, device
-using SciMLBase
 using Dates
 import ClimaUtilities.TimeManager: ITime, date
 import ClimaDiagnostics
@@ -12,19 +11,11 @@ using ClimaLand.ModelSetup
 include("initial_conditions.jl")
 
 """
-    LandSimulation{
-        M <: ClimaLand.AbstractModel,
-        T <: ClimaTimeSteppers.DistributedODEAlgorithm,
-        UC,
-        DI,
-        RC,
-        CA <: SciMLBase.CallbackSet,
-        I <: SciMLBase.DEIntegrator,
-    }
+    LandSimulation
 
-the ClimaLand LandSimulation struct, which specifies 
+The ClimaLand LandSimulation struct, which specifies
 - the discrete set of equations to solve (defined by the `model`);
-- the timestepping algorithm;
+- the timestepping algorithm (in `timestepper.algo`);
 - user callbacks (passed as a tuple) to be executed at specific times in the simulations;
 - the diagnostics to output (optional).
 
@@ -32,30 +23,55 @@ User callbacks are optional: examples currently include callbacks that estimate 
 to solution and SYPD of the simulation as it runs, checkpoint the state, or check the solution
 for NaNs. Others can be added here.
 
-Diagnostics are implemented as callbacks, and are also optional. 
-However, a default is provided. `diagnostics` is expected to be a 
-list of `ClimaDiagnostics.ScheduledDiagnostics`.
+`diagnostics` are provided as a list of `ClimaDiagnostics.ScheduledDiagnostics`,
+with default specified by `default_diagnostics`.
 
-Finally, the private field _required_callbacks consists of callbacks that are required for the
-simulation to run correctly. Currently, this includes the callbacks which update the atmospheric
-forcing and update the LAI using prescribed data. 
+The private field `_required_callbacks` consists of callbacks that are required
+for the simulation to run correctly. Currently, this includes the callbacks
+which update the atmospheric forcing and update the LAI using prescribed data.
+
+Quick tips
+==========
+
+1. Accessing the state
+```julia
+sim.u
+```
+2. Accessing the current time
+```julia
+sim.t
+```
+3. Accessing the current date
+```julia
+import ClimaUtilities.TimeManager: date
+date(sim.t)
+```
+4. Providing a specific new monthly diagnostics
+```julia
+diagnostic = ClimaLand.Diagnostics.monthly_average.(["lhf", "shf"])
+```
 """
-struct LandSimulation{
+mutable struct LandSimulation{
+    STATE,
+    CACHE,
+    TIME,
+    TUP_TIME,
     M <: ClimaLand.AbstractModel,
-    T <: ClimaTimeSteppers.DistributedODEAlgorithm,
-    UC,
+    T,
     DI,
     RC,
-    CA <: SciMLBase.CallbackSet,
-    I <: SciMLBase.DEIntegrator,
+    UC,
 }
+    u::STATE
+    p::CACHE
+    t::TIME
+    dt::TIME
+    tspan::TUP_TIME
     model::M
     timestepper::T
-    user_callbacks::UC
-    diagnostics::DI
+    diagnostic_handler::DI
     required_callbacks::RC
-    callbacks::CA
-    _integrator::I
+    user_callbacks::UC
 end
 
 function LandSimulation(
@@ -128,19 +144,14 @@ function LandSimulation(
             jac_prototype = ClimaLand.FieldMatrixWithSolver(Y),
             Wfact = jacobian!,
         )
-        T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...)
+        T_imp! = (; f = imp_tendency!, jac_kwargs...)
     end
 
     # Create SciML ODE Problem
-    problem = SciMLBase.ODEProblem(
-        ClimaTimeSteppers.ClimaODEFunction(
-            T_exp! = exp_tendency!,
-            T_imp! = T_imp!,
-            dss! = ClimaLand.dss!,
-        ),
-        Y,
-        (t0, tf),
-        p,
+    func = ClimaTimeSteppers.ClimaODEFunction(
+        T_exp! = exp_tendency!,
+        T_imp! = T_imp!,
+        dss! = ClimaLand.dss!,
     )
 
     # Required callbacks
@@ -148,33 +159,28 @@ function LandSimulation(
     drivers = ClimaLand.get_drivers(model)
     updatefunc = ClimaLand.make_update_drivers(drivers)
     driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
-    required_callbacks = (driver_cb,) # TBD: can we update each step?
+    _required_callbacks = (driver_cb,) # TBD: can we update each step?
 
     diagnostics = isnothing(diagnostics) ? () : diagnostics
     diagnostic_handler =
         ClimaDiagnostics.DiagnosticsHandler(diagnostics, Y, p, t0; dt = Δt)
-    diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler)
 
-
-    # Collect all callbacks
-    callbacks =
-        SciMLBase.CallbackSet(user_callbacks..., required_callbacks..., diag_cb)
-
-    _integrator = SciMLBase.init(
-        problem,
-        timestepper;
-        dt = Δt,
-        callback = callbacks,
-        adaptive = false,
-    )
+    algo = timestepper
+    # u0 is used as prototype
+    prob = (; u0 = Y, f = func)
+    timestepper_cache = ClimaTimeSteppers.init_cache(prob, algo)
+    isnothing(func.cache!) || func.cache!(Y, p, t0)
     return LandSimulation(
+        Y,
+        p,
+        t0,
+        Δt,
+        (t0, tf),
         model,
-        timestepper,
+        (; algo, func, cache = timestepper_cache),
+        diagnostic_handler,
+        _required_callbacks,
         user_callbacks,
-        diagnostics,
-        required_callbacks,
-        callbacks,
-        _integrator,
     )
 end
 
@@ -185,7 +191,36 @@ Advances the land simulation `landsim` forward in time by one step,
 updating `landsim` in place.
 """
 function step!(landsim::LandSimulation)
-    SciMLBase.step!(landsim._integrator)
+    landsim.t += landsim.dt
+
+    ClimaTimeSteppers.step_u!(landsim, landsim.timestepper.cache)
+    for callback in landsim._required_callbacks
+        callback.condition(landsim.u, landsim.t, landsim) &&
+            callback.affect!(landsim)
+    end
+    for callback in landsim.user_callbacks
+        callback.condition(landsim.u, landsim.t, landsim) &&
+            callback.affect!(landsim)
+    end
+    ClimaDiagnostics.orchestrate_diagnostics(
+        landsim,
+        landsim.diagnostic_handler,
+    )
+end
+
+# Compatibility with SciML
+function Base.getproperty(landsim::LandSimulation, symbol::Symbol)
+    if symbol === :alg
+        return landsim.timestepper.algo
+    elseif symbol === :step
+        return landsim.t / landsim.dt
+    elseif symbol === :sol
+        return (;
+            prob = (; f = landsim.timestepper.func, tspan = landsim.tspan)
+        )
+    else
+        return Base.getfield(landsim, symbol)
+    end
 end
 
 """
@@ -195,7 +230,9 @@ Advances the land simulation `landsim` forward from the initial to final time,
 updating `landsim` in place.
 """
 function solve!(landsim::LandSimulation)
-    SciMLBase.solve!(landsim._integrator)
+    while landsim.t < last(landsim.tspan)
+        step!(landsim)
+    end
 end
 
 
@@ -232,7 +269,7 @@ function Base.show(io::IO, landsim::LandSimulation)
         io,
         "$(model_type) Simulation\n",
         "├── Running on: $(device_type)\n",
-        "└── Current date: $(date(landsim._integrator.t))\n",
+        "└── Current date: $(date(landsim.t))\n",
     )
 end
 end#module
