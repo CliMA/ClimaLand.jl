@@ -48,6 +48,8 @@ import ClimaLand.Parameters as LP
         domain = domain,
         boundary_conditions = ClimaLand.Snow.AtmosDrivenSnowBC(atmos, rad),
     )
+    @test ClimaComms.context(model) == ClimaComms.context()
+    @test ClimaComms.device(model) == ClimaComms.device()
     drivers = ClimaLand.get_drivers(model)
     @test drivers == (atmos, rad)
     Y, p, coords = ClimaLand.initialize(model)

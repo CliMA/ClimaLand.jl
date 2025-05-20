@@ -220,6 +220,8 @@ import ClimaParams
                     soil_driver,
                 ),
             )
+            @test ClimaComms.context(canopy) == ClimaComms.context()
+            @test ClimaComms.device(canopy) == ClimaComms.device()
             drivers = ClimaLand.get_drivers(canopy)
             @test drivers == (atmos, radiation)
             Y, p, coords = ClimaLand.initialize(canopy)

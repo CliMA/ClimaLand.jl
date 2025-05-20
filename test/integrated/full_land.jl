@@ -63,7 +63,9 @@ land = global_land_model(
     context = context,
     domain = domain,
 );
-
+@test domain == ClimaLand.get_domain(land)
+@test ClimaComms.context(land) == ClimaComms.context()
+@test ClimaComms.device(land) == ClimaComms.device()
 @test ClimaLand.land_components(land) == (:soil, :snow, :soilco2, :canopy)
 
 @testset "Total energy and water" begin
