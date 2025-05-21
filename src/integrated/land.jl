@@ -114,13 +114,8 @@ function LandModel{FT}(;
     )
 
     zero_flux = Soil.HeatFluxBC((p, t) -> 0.0)
-    boundary_conditions = (;
-        top = top_bc,
-        bottom = Soil.WaterHeatBC(;
-            water = Soil.FreeDrainage(),
-            heat = zero_flux,
-        ),
-    )
+    boundary_conditions =
+        (; top = top_bc, bottom = Soil.EnergyWaterFreeDrainage())
     soil = soil_model_type(;
         boundary_conditions = boundary_conditions,
         sources = sources,
