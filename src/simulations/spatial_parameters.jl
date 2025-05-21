@@ -35,8 +35,9 @@ end
 # This method will likely never be called, but is included for completeness
 use_lowres_clm(surface_space::ClimaCore.Spaces.AbstractSpace) = false
 
+
 """
-    clm_canopy_parameters(
+    clm_canopy_radiation_parameters(
         surface_space;
         regridder_type = :InterpolationsRegridder,
         extrapolation_bc = (
@@ -47,8 +48,8 @@ use_lowres_clm(surface_space::ClimaCore.Spaces.AbstractSpace) = false
         lowres=use_lowres_clm(surface_space),
     )
 
-Reads spatially varying parameters for the canopy, from NetCDF files
-based on CLM and MODIS data, and regrids them to the grid defined by the
+Reads spatially varying parameters for the canopy radiative transfer schemes,
+ from NetCDF files based on CLM and MODIS data, and regrids them to the grid defined by the
 `surface_space` of the Clima simulation. Returns a NamedTuple of ClimaCore
 Fields.
 
@@ -56,9 +57,6 @@ In particular, this file returns a field for
 - clumping index Ω
 - albedo and transmissitivy in PAR and NIR bands
 - leaf angle distribution G function parameter χl
-- Medlyn g1
-- C3 flag
-- VCmax25
 
 The values correspond to the value of the dominant PFT at each point.
 
@@ -70,7 +68,7 @@ data. The keyword argument lowres is a flag that determines if the 0.9x1.25 or 0
 resolution CLM data artifact is used. If the lowres flag is not provided, the clm artifact
 with the closest resolution to the surface_space is used.
 """
-function clm_canopy_parameters(
+function clm_canopy_radiation_parameters(
     surface_space;
     regridder_type = :InterpolationsRegridder,
     extrapolation_bc = (
@@ -133,18 +131,60 @@ function clm_canopy_parameters(
         regridder_type,
         regridder_kwargs = (; extrapolation_bc,),
     )
-    # Conductance Model
-    # g1 is read in units of sqrt(kPa) and then converted to sqrt(Pa)
-    g1 = SpaceVaryingInput(
-        joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
-        "medlynslope",
+    return (;
+        Ω = Ω,
+        G_Function = G_Function,
+        α_PAR_leaf = α_PAR_leaf,
+        τ_PAR_leaf = τ_PAR_leaf,
+        α_NIR_leaf = α_NIR_leaf,
+        τ_NIR_leaf = τ_NIR_leaf,
+    )
+end
+
+"""
+    clm_photosynthesis_parameters(
         surface_space;
-        regridder_type,
-        regridder_kwargs = (; extrapolation_bc,),
-        file_reader_kwargs = (; preprocess_func = (data) -> data * 10^(3 / 2),),
+        regridder_type = :InterpolationsRegridder,
+        extrapolation_bc = (
+            Interpolations.Periodic(),
+            Interpolations.Flat(),
+            Interpolations.Flat(),
+        ),
+        lowres=use_lowres_clm(surface_space),
     )
 
-    #Photosynthesis model
+Reads spatially varying parameters for the canopy, from NetCDF files
+based on CLM data, and regrids them to the grid defined by the
+`surface_space` of the Clima simulation. Returns a NamedTuple of ClimaCore
+Fields.
+
+In particular, this file returns a field for
+- C3 flag
+- VCmax25
+
+The values correspond to the value of the dominant PFT at each point.
+
+The NetCDF files are stored in ClimaArtifacts and more detail on their origin
+is provided there. The keyword arguments `regridder_type` and `extrapolation_bc`
+affect the regridding by (1) changing how we interpolate to ClimaCore points which
+are not in the data, and (2) changing how extrapolate to points beyond the range of the
+data. The keyword argument lowres is a flag that determines if the 0.9x1.25 or 0.125x0.125
+resolution CLM data artifact is used. If the lowres flag is not provided, the clm artifact
+with the closest resolution to the surface_space is used.
+"""
+function clm_photosynthesis_parameters(
+    surface_space;
+    regridder_type = :InterpolationsRegridder,
+    extrapolation_bc = (
+        Interpolations.Periodic(),
+        Interpolations.Flat(),
+        Interpolations.Flat(),
+    ),
+    lowres = use_lowres_clm(surface_space),
+)
+    context = ClimaComms.context(surface_space)
+    clm_artifact_path =
+        ClimaLand.Artifacts.clm_data_folder_path(; context, lowres)
     # vcmax is read in units of umol CO2/m^2/s and then converted to mol CO2/m^2/s
     Vcmax25 = SpaceVaryingInput(
         joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
@@ -162,36 +202,16 @@ function clm_canopy_parameters(
         regridder_type,
         regridder_kwargs = (; extrapolation_bc,),
     )
-    rooting_depth = SpaceVaryingInput(
-        joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
-        "rooting_depth",
-        surface_space;
-        regridder_type,
-        regridder_kwargs = (; extrapolation_bc,),
-    )
     return (;
-        Ω = Ω,
-        rooting_depth = rooting_depth,
         is_c3 = is_c3,
         Vcmax25 = Vcmax25,
-        g1 = g1,
-        G_Function = G_Function,
-        α_PAR_leaf = α_PAR_leaf,
-        τ_PAR_leaf = τ_PAR_leaf,
-        α_NIR_leaf = α_NIR_leaf,
-        τ_NIR_leaf = τ_NIR_leaf,
     )
 end
 
-masked_to_value(field, mask, value) =
-    mask == 1.0 ? field : eltype(field)(value)
-
-
 
 """
-    default_spatially_varying_soil_parameters(
-        surface_space,
-        subsurface_space,
+    clm_rooting_depth(
+        surface_space;
         regridder_type = :InterpolationsRegridder,
         extrapolation_bc = (
             Interpolations.Periodic(),
@@ -201,22 +221,116 @@ masked_to_value(field, mask, value) =
         lowres=use_lowres_clm(surface_space),
     )
 
-Reads spatially varying parameters for the soil model, from NetCDF files
-based on SoilGrids and the van Genuchten data product from Gupta et al 2020,
- and regrids them to the grid defined by the
-`subsurface_space` and `surface_space` of the Clima simulation, as appropriate.
-Returns a NamedTuple of ClimaCore Fields. The albedo parameters are read from
-CLM data.
+Reads spatially varying rooting depth for the canopy, from a NetCDF file
+based on CLM data, and regrids it to the grid defined by the
+`surface_space` of the Clima simulation. Returns a NamedTuple of ClimaCore
+Fields.
 
-In particular, this file returns a field for
-- (α, n, m) (van Genuchten parameters)
-- Ksat
-- porosity
-- residual water content
-- various texture variables: volumetric fractions of organic matter, coarse fragments, and quartz.
-- TOPMODEL parameters
-- soil albedo parameters
-- specific storativity.
+The values correspond to the value of the dominant PFT at each point.
+
+The NetCDF files are stored in ClimaArtifacts and more detail on their origin
+is provided there. The keyword arguments `regridder_type` and `extrapolation_bc`
+affect the regridding by (1) changing how we interpolate to ClimaCore points which
+are not in the data, and (2) changing how extrapolate to points beyond the range of the
+data. The keyword argument lowres is a flag that determines if the 0.9x1.25 or 0.125x0.125
+resolution CLM data artifact is used. If the lowres flag is not provided, the clm artifact
+with the closest resolution to the surface_space is used.
+"""
+function clm_rooting_depth(
+    surface_space;
+    regridder_type = :InterpolationsRegridder,
+    extrapolation_bc = (
+        Interpolations.Periodic(),
+        Interpolations.Flat(),
+        Interpolations.Flat(),
+    ),
+    lowres = use_lowres_clm(surface_space),
+)
+    context = ClimaComms.context(surface_space)
+    clm_artifact_path =
+        ClimaLand.Artifacts.clm_data_folder_path(; context, lowres)
+    rooting_depth = SpaceVaryingInput(
+        joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
+        "rooting_depth",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc,),
+    )
+    return rooting_depth
+end
+
+
+"""
+    clm_medlyn_g1(
+        surface_space;
+        regridder_type = :InterpolationsRegridder,
+        extrapolation_bc = (
+            Interpolations.Periodic(),
+            Interpolations.Flat(),
+            Interpolations.Flat(),
+        ),
+        lowres=use_lowres_clm(surface_space),
+    )
+
+Reads spatially varying g1 for the canopy, from a NetCDF file
+based on CLM data, and regrids it to the grid defined by the
+`surface_space` of the Clima simulation. Returns a NamedTuple of ClimaCore
+Fields.
+
+The values correspond to the value of the dominant PFT at each point.
+
+The NetCDF files are stored in ClimaArtifacts and more detail on their origin
+is provided there. The keyword arguments `regridder_type` and `extrapolation_bc`
+affect the regridding by (1) changing how we interpolate to ClimaCore points which
+are not in the data, and (2) changing how extrapolate to points beyond the range of the
+data. The keyword argument lowres is a flag that determines if the 0.9x1.25 or 0.125x0.125
+resolution CLM data artifact is used. If the lowres flag is not provided, the clm artifact
+with the closest resolution to the surface_space is used.
+"""
+function clm_medlyn_g1(
+    surface_space;
+    regridder_type = :InterpolationsRegridder,
+    extrapolation_bc = (
+        Interpolations.Periodic(),
+        Interpolations.Flat(),
+        Interpolations.Flat(),
+    ),
+    lowres = use_lowres_clm(surface_space),
+)
+    context = ClimaComms.context(surface_space)
+    clm_artifact_path =
+        ClimaLand.Artifacts.clm_data_folder_path(; context, lowres)
+
+    # g1 is read in units of sqrt(kPa) and then converted to sqrt(Pa)
+    g1 = SpaceVaryingInput(
+        joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
+        "medlynslope",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc,),
+        file_reader_kwargs = (; preprocess_func = (data) -> data * 10^(3 / 2),),
+    )
+    return g1
+end
+
+masked_to_value(field, mask, value) =
+    mask == 1.0 ? field : eltype(field)(value)
+
+"""
+    clm_soil_albedo_parameters(
+        surface_space,
+        regridder_type = :InterpolationsRegridder,
+        extrapolation_bc = (
+            Interpolations.Periodic(),
+            Interpolations.Flat(),
+            Interpolations.Flat(),
+        ),
+        lowres=use_lowres_clm(surface_space),
+    )
+
+Reads spatially varying albedo parameters for the soil model, from NetCDF files
+of CLM data for the PAR and NIR albedo of wet and dry soil.
+
 
 The NetCDF files are stored in ClimaArtifacts and more detail on their origin
 is provided there. The keyword arguments `regridder_type` and `extrapolation_bc`
@@ -226,17 +340,11 @@ data. The keyword argument lowres is a flag that determines if the 0.9x1.25 or 0
 resolution CLM data artifact is used. If the lowres flag is not provided, the clm artifact
 with the closest resolution to the surface_space is used.
 
-
 Since these parameters are read from discretized data sets, 
 they carry an inherent land/sea mask. This land/sea mask may not match the
-underlying land sea mask of the simulation. While values over the ocean do
-not matter, we need to ensure that values in the simulation are set to
-something physical, even if they are not set in the data.
-In the future, this should be handled by ClimaUtilities via extrpolation.
-Here we set them manually.
+underlying land sea mask of the simulation. 
 """
-function default_spatially_varying_soil_parameters(
-    subsurface_space,
+function clm_soil_albedo_parameters(
     surface_space,
     FT;
     regridder_type = :InterpolationsRegridder,
@@ -248,6 +356,81 @@ function default_spatially_varying_soil_parameters(
     lowres = use_lowres_clm(surface_space),
 )
     context = ClimaComms.context(surface_space)
+    PAR_albedo_dry, NIR_albedo_dry, PAR_albedo_wet, NIR_albedo_wet = map(
+        s -> SpaceVaryingInput(
+            joinpath(
+                ClimaLand.Artifacts.clm_data_folder_path(; context, lowres),
+                "soil_properties_map.nc",
+            ),
+            s,
+            surface_space;
+            regridder_type,
+            regridder_kwargs = (; extrapolation_bc,),
+        ),
+        (
+            "PAR_albedo_dry",
+            "NIR_albedo_dry",
+            "PAR_albedo_wet",
+            "NIR_albedo_wet",
+        ),
+    )
+    return (;
+        PAR_albedo_wet = PAR_albedo_wet,
+        NIR_albedo_wet = NIR_albedo_wet,
+        PAR_albedo_dry = PAR_albedo_dry,
+        NIR_albedo_dry = NIR_albedo_dry,
+    )
+end
+
+"""
+    soil_vangenuchten_parameters(
+        surface_space,
+        subsurface_space,
+        regridder_type = :InterpolationsRegridder,
+        extrapolation_bc = (
+            Interpolations.Periodic(),
+            Interpolations.Flat(),
+            Interpolations.Flat(),
+        ),
+    )
+
+Reads spatially varying van Genuchten parameters for the soil model, from NetCDF files
+based the van Genuchten data product from Gupta et al 2020,
+ and regrids them to the grid defined by the
+`subsurface_space` and `surface_space` of the Clima simulation, as appropriate.
+Returns a NamedTuple of ClimaCore Fields. 
+
+In particular, this file returns a field for
+- (α, n, m) (van Genuchten parameters)
+- Ksat
+- porosity
+- residual water content
+
+The NetCDF files are stored in ClimaArtifacts and more detail on their origin
+is provided there. The keyword arguments `regridder_type` and `extrapolation_bc`
+affect the regridding by (1) changing how we interpolate to ClimaCore points which
+are not in the data, and (2) changing how extrapolate to points beyond the range of the
+data. 
+
+Since these parameters are read from discretized data sets, 
+they carry an inherent land/sea mask. This land/sea mask may not match the
+underlying land sea mask of the simulation. While values over the ocean do
+not matter, we need to ensure that values in the simulation are set to
+something physical, even if they are not set in the data.
+In the future, this should be handled by ClimaUtilities via extrpolation.
+Here we set them manually.
+"""
+function soil_vangenuchten_parameters(
+    subsurface_space,
+    FT;
+    regridder_type = :InterpolationsRegridder,
+    extrapolation_bc = (
+        Interpolations.Periodic(),
+        Interpolations.Flat(),
+        Interpolations.Flat(),
+    ),
+)
+    context = ClimaComms.context(subsurface_space)
     soil_params_artifact_path =
         ClimaLand.Artifacts.soil_params_artifact_folder_path(; context)
     vg_α = SpaceVaryingInput(
@@ -331,25 +514,69 @@ function default_spatially_varying_soil_parameters(
     μ = FT(-6)
     K_sat .= masked_to_value.(K_sat, soil_params_mask, 10.0^μ)
 
-    ν .= masked_to_value.(ν, soil_params_mask, 1)
+    μ = FT(0.5)
+    ν .= masked_to_value.(ν, soil_params_mask, μ)
 
     θ_r .= masked_to_value.(θ_r, soil_params_mask, 0)
+    
+    return (;
+        ν = ν,
+        hydrology_cm = hydrology_cm,
+        K_sat = K_sat,
+        θ_r = θ_r,
+    )
+end
 
+"""
+    soil_composition_parameters(
+        surface_space,
+        subsurface_space,
+        regridder_type = :InterpolationsRegridder,
+        extrapolation_bc = (
+            Interpolations.Periodic(),
+            Interpolations.Flat(),
+            Interpolations.Flat(),
+        ),
+        path = ClimaLand.Artifacts.soil_grids_params_artifact_path(;
+                                                                   lowres = true,
+                                                                   ClimaComms.context(subsurface_space),
+                                                                   )
+    )
 
-    S_s =
-        masked_to_value.(
-            ClimaCore.Fields.zeros(subsurface_space) .+ FT(1e-3),
-            soil_params_mask,
-            1,
-        )
+Reads spatially varying parameters for the soil model, from NetCDF files
+based on SoilGrids,
+ and regrids them to the grid defined by the
+`subsurface_space` and `surface_space` of the Clima simulation, as appropriate.
+Returns a NamedTuple of ClimaCore Fields. 
 
-    soilgrids_artifact_path =
-        ClimaLand.Artifacts.soil_grids_params_artifact_path(;
-            lowres = true,
-            context,
-        )
+In particular, this file returns a field for
+- various texture variables: volumetric fractions of organic matter, coarse fragments, and quartz.
+
+The NetCDF files are stored in ClimaArtifacts and more detail on their origin
+is provided there. The keyword arguments `regridder_type` and `extrapolation_bc`
+affect the regridding by (1) changing how we interpolate to ClimaCore points which
+are not in the data, and (2) changing how extrapolate to points beyond the range of the
+data. 
+
+Any `path` can be provided, but this assumes that the parameters are stored under the names
+`nu_ss_om`, `nu_ss_sand`, and `nu_ss_cf`.
+"""
+function soil_composition_parameters(
+    subsurface_space,
+    FT;
+    regridder_type = :InterpolationsRegridder,
+    extrapolation_bc = (
+        Interpolations.Periodic(),
+        Interpolations.Flat(),
+        Interpolations.Flat(),
+    ),
+    path = ClimaLand.Artifacts.soil_grids_params_artifact_path(;
+                                                               lowres = true,
+                                                                ClimaComms.context(subsurface_space),
+                                                               )
+)
     ν_ss_om = SpaceVaryingInput(
-        soilgrids_artifact_path,
+        path,
         "nu_ss_om",
         subsurface_space;
         regridder_type,
@@ -357,7 +584,7 @@ function default_spatially_varying_soil_parameters(
     )
 
     ν_ss_quartz = SpaceVaryingInput(
-        soilgrids_artifact_path,
+        path,
         "nu_ss_sand",
         subsurface_space;
         regridder_type,
@@ -365,7 +592,7 @@ function default_spatially_varying_soil_parameters(
     )
 
     ν_ss_gravel = SpaceVaryingInput(
-        soilgrids_artifact_path,
+        path,
         "nu_ss_cf",
         subsurface_space;
         regridder_type,
@@ -379,42 +606,14 @@ function default_spatially_varying_soil_parameters(
     @. ν_ss_om = ν_ss_om / max(texture_norm, eps(FT))
     @. ν_ss_quartz = ν_ss_quartz / max(texture_norm, eps(FT))
 
-    PAR_albedo_dry, NIR_albedo_dry, PAR_albedo_wet, NIR_albedo_wet = map(
-        s -> SpaceVaryingInput(
-            joinpath(
-                ClimaLand.Artifacts.clm_data_folder_path(; context, lowres),
-                "soil_properties_map.nc",
-            ),
-            s,
-            surface_space;
-            regridder_type,
-            regridder_kwargs = (; extrapolation_bc,),
-        ),
-        (
-            "PAR_albedo_dry",
-            "NIR_albedo_dry",
-            "PAR_albedo_wet",
-            "NIR_albedo_wet",
-        ),
-    )
-
     return (;
-        ν = ν,
         ν_ss_om = ν_ss_om,
         ν_ss_quartz = ν_ss_quartz,
         ν_ss_gravel = ν_ss_gravel,
-        hydrology_cm = hydrology_cm,
-        K_sat = K_sat,
-        S_s = S_s,
-        θ_r = θ_r,
-        PAR_albedo_wet = PAR_albedo_wet,
-        NIR_albedo_wet = NIR_albedo_wet,
-        PAR_albedo_dry = PAR_albedo_dry,
-        NIR_albedo_dry = NIR_albedo_dry,
     )
 end
 
-function default_spatially_varying_topmodel_fmax(
+function topmodel_fmax(
     surface_space,
     FT;
     regridder_type = :InterpolationsRegridder,
@@ -422,10 +621,8 @@ function default_spatially_varying_topmodel_fmax(
         Interpolations.Periodic(),
         Interpolations.Flat(),
         Interpolations.Flat(),
-    ),
-    lowres = use_lowres_clm(surface_space),
-)
-    # Read in f_max data and topmodel params land sea mask
+    ))
+    # Read in f_max data and topmodel data land sea mask
     infile_path = ClimaLand.Artifacts.topmodel_data_path()
     f_max =
         SpaceVaryingInput(infile_path, "fmax", surface_space; regridder_type)

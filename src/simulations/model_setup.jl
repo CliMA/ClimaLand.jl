@@ -1,127 +1,141 @@
-function LandModel(
-    domain,
-    start_date,
-    params,
-    FT;
-    forcing = ClimaLand.prescribed_forcing_era5(
-        ClimaLand.Artifacts.era5_land_forcing_data2008_folder_path(; context),# get context from domain
-        domain.space.surface,
-        start_date,
-        params,
-        FT;
-        time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
-    ),
-    LAI = ClimaLand.prescribed_lai_modis(
-        joinpath(
-            ClimaLand.Artifacts.modis_lai_forcing_data_path(; context),
-            "Yuan_et_al_2008_1x1.nc",
-        ),
-        domain.space.surface,
-        start_date;
-        time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
-    ),
-    soil_model = (
-        type = Soil.EnergyHydrology{FT},
-        spatially_varying_parameters = ClimaLand.default_spatially_varying_soil_parameters(
-            domain.space.subsurface,
-            domain.space.surface,
-            FT,
-        ),
-        runoff_scheme = (
-            type = ClimaLand.Soil.Runoff.TOPMODELRunoff{FT},
-            parameters = (;
-                f_over = FT(3.28),
-                R_sb = FT(1.484e-4 / 1000),
-                f_max = ClimaLand.default_spatially_varying_topmodel_fmax(
-                    surface_space,
-                    FT,
-                ),
-            ),
-        ),
-    ),
-    soilco2_model = (
-        type = Soil.Biogeochemistry.SoilCO2Model{FT},
-        parameters = Soil.Biogeochemistry.SoilCO2ModelParameters(FT),
-        Csom = ClimaLand.PrescribedSoilOrganicCarbon{FT}(
-            TimeVaryingInput((t) -> 5),
-        ),
-    ),
-    snow_model = (
-        type = Snow.SnowModel,
-        parameters = SnowParameters{FT}(Δt; earth_param_set = params),
-    ),
-    canopy_model = (;
-        component_types = (;
-            autotrophic_respiration = Canopy.AutotrophicRespirationModel{FT},
-            radiative_transfer = Canopy.TwoStreamModel{FT},
-            photosynthesis = Canopy.FarquharModel{FT},
-            conductance = Canopy.MedlynConductanceModel{FT},
-            hydraulics = Canopy.PlantHydraulicsModel{FT},
-            energy = Canopy.BigLeafEnergyModel{FT},
-        ),
-        component_args = (; # needs lots of work
-            autotrophic_respiration = Canopy.AutotrophicRespirationParameters(
-                FT,
-            ),
-            radiative_transfer = Canopy.TwoStreamParameters(FT;),
-            photosynthesis = Canopy.FarquharParameters(
-                FT,
-                is_c3;
-                Vcmax25 = Vcmax25,
-            ),
-            conductance = Canopy.MedlynConductanceParameters(FT; g1),
-            hydraulics = Canopy.PlantHydraulics.PlantHydraulicsParameters(;),
-            energy = Canopy.BigLeafEnergyParameters{FT}(ac_canopy),
-        ),
-        parameters = Canopy.SharedCanopyParameters{FT, typeof(params)}(
-            z0_m,
-            z0_b,
-            params,
-        ),
-    ),
-)
-    # Create land model - Sketch
+function EnergyHydrology(FT, domain, earth_param_set, forcing, prognostic_land_components;
+                         runoff_model =  ClimaLand.Soil.Runoff.TOPMODELRunoff{FT}(f_over = FT(3.28), # extract from EPS
+                                                                                  R_sb = FT(1.484e-4 / 1000),# extract from EPS
+                                                                                  f_max = ClimaLand.topmodel_fmax(domain.space.surface,FT),
+                                                                                  ),
+                         retention_parameters = (; type = Soil.vanGenuchten{FT},
+                                                 parameters = soil_vangenuchten_parameters(domain.space.subsurface, FT,),
+                                                 ),
+                         composition_parameters = soil_composition_parameters(domain.space.subsurface, FT,),
+                         albedo = (; parameters = clm_soil_albedo_parameters(domain.space.surface, FT),
+                                   ),
+                         S_s = ClimaCore.Fields.zeros(domain.space.subsurface) .+ 1e-3,# extract from EPS or get from file
+                         _top_bc = ClimaLand.AtmosDrivenFluxBC(forcing[1],
+                                                              forcing[2],
+                                                              runoff_model,
+                                                              prognostic_land_components),
+                         _bottom_bc = Soil.WaterHeatBC(; water = Soil.FreeDrainage(),
+                                                       heat = Soil.HeatFluxBC((p, t) -> 0.0))
+                         )
+    if :canopy ∈ prognostic_land_components
+        _sources = (RootExtraction{FT}(), Soil.PhaseChange{FT}())
+    else
+        _sources = (Soil.PhaseChange{FT}(),)
+    end
+    return EnergyHydrology()
+end
 
-    # Soil Model
-    runoff_model =
-        soil_model.runoff_scheme.type(; soil_model.runoff_scheme.parameters...)
-    soil_params = Soil.EnergyHydrologyParameters(
-        FT;
-        soil_model.spatially_varying_parameters...,
-    )
-    soil_args = (parameters = soil_params, domain = domain)
+function SnowModel(FT, domain, earth_param_set, forcing, prognostic_land_components, Δt;
+                   boundary_conditions = Snow.AtmosDrivenSnowBC(forcing[1],
+                                                                forcing[2],
+                                                                prognostic_land_components,
+                                                                ),
+                   parameters = SnowParameters{FT}(Δt; earth_param_set = earth_param_set)
+                   )
+    return SnowModel{FT}()
+end
 
-    # Soil CO2  - easy
-    soilco2_args = (parameters = soilco2_model.parameters, domain = domain)
+function SoilCO2Model(FT, domain, earth_param_set, forcing, prognostic_land_components, soil_organic_carbon, soil_params;
+                      top_bc = Soil.Biogeochemistry.AtmosCO2StateBC(),
+                      bottom_bc = Soil.Biogeochemistry.SoilCO2FluxBC((p, t) -> 0.0),
+                      parameters = Soil.Biogeochemistry.SoilCO2ModelParameters(FT),
+                      sources = (Soil.Biogeochemistry.MicrobeProduction{FT}(),),
+                      soilco2_drivers = Soil.Biogeochemistry.SoilDrivers(Soil.Biogeochemistry.PrognosticMet(soil_params),
+                                                                         soil_organic_carbon,
+                                                                         forcing[1],
+                                                                         ),
+                      )
+    return SoilCO2Model{FT}()
+end
+function CanopyModel(FT, domain, earth_param_set, scalar_params, forcing, prognostic_land_components;
+                     autotrophic_respiration = Canopy.AutotrophicRespirationModel{FT}(Canopy.AutotrophicRespirationParameters(FT)),
+                     radiative_transfer = Canopy.TwoStreamModel{FT}(Canopy.TwoStreamParameters(FT, domain, scalar_params)),
+                     photosynthesis = Canopy.FarquharModel{FT}(Canopy.FarquharParameters(FT, domain, scalar_params)),
+                     conductance = Canopy.MedlynConductanceModel{FT}(Canopy.MedlynConductanceParameters(FT, domain, scalar_params)),
+                     hydraulics = Canopy.PlantHydraulicsModel{FT}(Canopy.PlantHydraulicsParameters(scalar_params)),
+                     energy = Canopy.BigLeafEnergyModel{FT}(Canopy.BigLeafEnergyParameters{FT}(scalar_params)),
+                     parameters = Canopy.SharedCanopyParameters{FT, typeof(earth_param_set)}(scalar_params
+                                                                                             earth_param_set,
+                                                                                             )
+                     )
+    return CanopyModel()
+end
+# I need canopy component constructors that take in EPS and CLM path to spatially varying parameters, plus additional scalar params
 
-    # Snow - also easy given defaults
-    snow_args = (
-        parameters = snow_model.parameters,
-        domain = ClimaLand.obtain_surface_domain(domain),
-    )
 
-    # Canopy
-    canopy_model_args = (;
-        parameters = canopy_model.parameters,
-        domain = ClimaLand.obtain_surface_domain(domain),
-    )
-    land_input = (
-        atmos = forcing[1],
-        radiation = forcing[2],
-        runoff = runoff_model,
-        soil_organic_carbon = soilco2_model.Csom,
-    )
-    land = LandModel{FT}(;
-        soilco2_type = soilco2_model.type,
-        soilco2_args = soilco2_args,
-        soil_model_type = soil_model.type,
-        soil_args = soil_args,
-        canopy_component_types = canopy_model.component_types,
-        canopy_component_args = canopy_model.component_args,
-        canopy_model_args = canopy_model_args,
-        snow_args = snow_args,
-        snow_model_type = snow_model.type,
-        land_args = land_input,
-    )
+function LandModel(FT, start_date, Δt, domain, earth_param_set;
+                   prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
+                   forcing = ClimaLand.prescribed_forcing_era5(
+                       ClimaLand.Artifacts.era5_land_forcing_data2008_path(; ClimaComms.context(domain)),
+                       domain.space.surface,
+                       start_date,
+                       earth_param_set,
+                       FT;
+                       time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
+                   ),
+                   LAI = ClimaLand.prescribed_lai_modis(
+                       ClimaLand.Artifacts.modis_lai_single_year_path(;
+                                                                      context = ClimaComms.context(domain),
+                                                                      year = Dates.year(start_date),
+                                                                      ),
+                       domain.space.surface,
+                       start_date;
+                       time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
+                   ),
+                   soil = EnergyHydrology(FT, domain, earth_param_set, forcing, prognostic_land_components),
+                   canopy = CanopyModel(FT, domain, earth_param_set, forcing, prognostic_land_components)
+                   snow = SnowModel(FT, domain, earth_param_set, forcing, prognostic_land_components, Δt),
+                   soilco2 = SoilCO2Model(FT, domain, earth_param_set, forcing, prognostic_land_components, soil_organic_carbon, soil_params),
+                   )
+    # Check that prognostic land components are the same for all components
+    @assert snow.boundary_conditions.prognostic_land_components == prognostic_land_components
+    @assert soil.boundary_conditions.top.prognostic_land_components == prognostic_land_components
+    @assert canopy.boundary_conditions.prognostic_land_components == prognostic_land_components
+    @assert progonostic_land_components == (:canopy, :snow, :soil, :soilco2)
+
+    # Check that we are applying the correct boundary condition type, and that the forcings are the same
+    @assert snow.boundary_conditions isa Snow.AtmosDrivenSnowBC
+    @assert soil.boundary_conditions.top isa Soil.AtmosDrivenFluxBC
+    @assert canopy.boundary_conditions isa Canopy.AtmosDrivenCanopyBC
+    @assert soilco2.boundary_conditions.top isa AtmosCO2StateBC()
+
+    @assert soil.boundary_conditions.top.atmos == forcing[1]
+    @assert soil.boundary_conditions.top.radiation == forcing[2]
+    @assert snow.boundary_conditions.atmos == forcing[1]
+    @assert snow.boundary_conditions.radiation == forcing[2]
+    @assert canopy.boundary_conditions.atmos == forcing[1]
+    @assert canopy.boundary_conditions.radiation == forcing[2]
+    @assert soilco2.soilco2_drivers.atmos == forcing[1]
+
+    # Make sure the soilco2 model knows that the soil is prognostic
+    @assert soilco2.soilco2_drivers.soil == Soil.Biogeochemistry.PrognosticMet(soil.parameters)
+
+    # Make sure the canopy knows that the ground is prognostic
+    @assert  canopy.boundary_conditions.ground == PrognosticGroundConditions()
+
+    # Make sure that the soil knows that the canopy is present 
+    @assert RootExtraction{FT}() ∈ soil.sources
+
+    # Make sure all have the same earth_param_set
+    @assert soil.parameters.earth_param_set == earth_param_set
+    @assert snow.parameters.earth_param_set == earth_param_set
+    @assert canopy.parameters.earth_param_set == earth_param_set
+    @assert soilco2.parameters.earth_param_set == earth_param_set
+
+    # Check for dt consistency:
+    @assert FT(float(Δt)) == snow.parameters.Δt
+
+    # Make sure that the LAI and other forcings have the same start date
+    @assert forcing[1].start_date == start_date
+    @assert forcing[2].start_date == start_date
+#    @assert LAI.start_date == start_date
+    
+    # Make sure that the domains are consistent
+    @assert soil.domain == domain
+    @assert soilco2.domain == domain
+    @assert snow.domain == ClimaLand.Domains.obtain_surface_domain(domain)
+    @assert canopy.domain == ClimaLand.Domains.obtain_surface_domain(domain)
+
+    land = LandModel{FT}(soilco2, soil, canopy, snow)
     return land
 end
