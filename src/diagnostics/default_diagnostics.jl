@@ -230,7 +230,7 @@ function default_diagnostics(
 
     define_diagnostics!(land_model)
 
-    soil_diagnostics = ["swc", "si", "sie", "et"]
+    soil_diagnostics = ["swc", "si", "sie", "tsoil", "et"]
 
     if average_period == :hourly
         default_outputs =

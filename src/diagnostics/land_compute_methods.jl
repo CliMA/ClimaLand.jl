@@ -486,7 +486,15 @@ end
 
 ### EnergyHydrology ###
 
-@diagnostic_compute "soil_water_content" EnergyHydrology Y.soil.ϑ_l
+function compute_soil_water_content!(
+out, Y, p, t, land_model::EnergyHydrology)
+if isnothing(out)
+return Y.soil.ϑ_l .- land_model.parameters.ν
+else
+out .= Y.soil.ϑ_l .- land_model.parameters.ν
+end
+end
+
 @diagnostic_compute "soil_ice_content" EnergyHydrology Y.soil.θ_i
 @diagnostic_compute "soil_internal_energy" EnergyHydrology Y.soil.ρe_int
 @diagnostic_compute "soil_temperature" EnergyHydrology p.soil.T

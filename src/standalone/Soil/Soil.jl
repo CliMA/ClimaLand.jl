@@ -54,7 +54,7 @@ That package will use the methods of this function for advancing
 the system forward in time, extending methods as needed to account
 for interactions between components.
 =#
-
+import CUDA: @cuassert, @cushow
 using ClimaLand
 using DocStringExtensions
 using LinearAlgebra
