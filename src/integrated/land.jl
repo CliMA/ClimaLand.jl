@@ -514,27 +514,42 @@ the presence of the canopy modifies the soil BC.
 function soil_boundary_fluxes!(
     bc::AtmosDrivenFluxBC,
     prognostic_land_components::Val{(:canopy, :snow, :soil, :soilco2)},
-    soil::EnergyHydrology{FT},
+    soil::EnergyHydrology,
     Y,
     p,
     t,
-) where {FT}
+)
     turbulent_fluxes!(p.soil.turbulent_fluxes, bc.atmos, soil, Y, p, t)
-    # influx = maximum possible rate of infiltration given precip, snowmelt, evaporation/condensation
-    # but if this exceeds infiltration capacity of the soil, runoff will
-    # be generated.
-    # Use top_bc.water as temporary storage to avoid allocation
-    influx = p.soil.top_bc.water
-    @. influx =
-        p.snow.water_runoff * p.snow.snow_cover_fraction +
+    liquid_influx = p.soil.sfc_scratch
+    Soil.compute_liquid_influx!(
+        liquid_influx,
+        p,
+        soil,
+        prognostic_land_components,
+    )
+    Soil.update_infiltration_water_flux!(
+        p,
+        bc.runoff,
+        liquid_influx,
+        Y,
+        t,
+        soil,
+    )
+    Soil.update_infiltration_energy_flux!(
+        p,
+        bc.runoff,
+        bc.atmos,
+        prognostic_land_components,
+        liquid_influx,
+        soil,
+        Y,
+        t,
+    )
+    @. p.soil.top_bc.water =
+        p.soil.infiltration +
         p.excess_water_flux +
         (1 - p.snow.snow_cover_fraction) *
-        (p.drivers.P_liq + p.soil.turbulent_fluxes.vapor_flux_liq)
-    # The update_runoff! function computes how much actually infiltrates
-    # given influx and our runoff model bc.runoff, and updates
-    # p.soil.infiltration in place
-    Soil.Runoff.update_runoff!(p, bc.runoff, influx, Y, t, soil)
-    @. p.soil.top_bc.water = p.soil.infiltration
+        p.soil.turbulent_fluxes.vapor_flux_liq
     @. p.soil.top_bc.heat =
         (1 - p.snow.snow_cover_fraction) * (
             p.soil.R_n +
@@ -542,8 +557,41 @@ function soil_boundary_fluxes!(
             p.soil.turbulent_fluxes.shf
         ) +
         p.excess_heat_flux +
-        p.snow.snow_cover_fraction * p.ground_heat_flux
+        p.snow.snow_cover_fraction * p.ground_heat_flux +
+        p.soil.energy_infiltration
+
     return nothing
+end
+
+function Soil.compute_liquid_influx!(
+    field,
+    p,
+    model,
+    prognostic_land_components::Val{(:canopy, :snow, :soil, :soilco2)},
+)
+    Soil.compute_liquid_influx!(field, p, model, Val((:snow, :soil)))
+end
+
+function update_infiltration_energy_flux!(
+    p,
+    runoff,
+    atmos::PrescribedAtmosphere,
+    prognostic_land_components::Val{(:canopy, :snow, :soil, :soilco2)},
+    liquid_influx,
+    model::EnergyHydrology,
+    Y,
+    t,
+)
+    Soil.update_infiltration_energy_flux!(
+        p,
+        runoff,
+        atmos,
+        Val((:snow, :soil)),
+        liquid_influx,
+        model,
+        Y,
+        t,
+    )
 end
 
 function snow_boundary_fluxes!(

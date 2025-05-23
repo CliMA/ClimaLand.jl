@@ -390,7 +390,11 @@ using .Pond
 import .Pond: surface_runoff
 include("standalone/Soil/Soil.jl")
 using .Soil
-import .Soil: soil_boundary_fluxes!, sublimation_source
+import .Soil:
+    soil_boundary_fluxes!,
+    sublimation_source,
+    compute_liquid_influx!,
+    update_infiltration_energy_flux!
 import .Soil.Biogeochemistry: soil_temperature, soil_moisture
 include("standalone/Snow/Snow.jl")
 using .Snow

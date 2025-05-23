@@ -16,7 +16,9 @@ export TemperatureStateBC,
     AtmosDrivenFluxBC,
     RichardsAtmosDrivenFluxBC,
     WaterHeatBC,
-    sublimation_source
+    sublimation_source,
+    compute_liquid_influx!,
+    update_infiltration_energy_flux!
 
 
 # New BC type for Richards Equation (AbstractWaterBC)
@@ -208,7 +210,7 @@ function boundary_flux!(
     p::NamedTuple,
     t,
 )
-    update_runoff!(p, bc.runoff, p.drivers.P_liq, Y, t, model)
+    update_infiltration_water_flux!(p, bc.runoff, p.drivers.P_liq, Y, t, model)
     bc_field .= p.soil.infiltration
 end
 
@@ -743,6 +745,7 @@ boundary_vars(bc::AtmosDrivenFluxBC, ::ClimaLand.TopBoundary) = (
     :NIR_albedo,
     :sfc_S_e,
     :sub_sfc_scratch,
+    :energy_infiltration,
     Runoff.runoff_vars(bc.runoff)...,
 )
 
@@ -764,6 +767,7 @@ boundary_var_domain_names(bc::AtmosDrivenFluxBC, ::ClimaLand.TopBoundary) = (
     :surface,
     :surface,
     :subsurface,
+    :surface,
     Runoff.runoff_var_domain_names(bc.runoff)...,
 )
 """
@@ -788,6 +792,7 @@ boundary_var_types(
     FT,
     NamedTuple{(:water, :heat), Tuple{FT, FT}},
     ClimaCore.Geometry.WVector{FT},
+    FT,
     FT,
     FT,
     FT,
@@ -909,23 +914,53 @@ function soil_boundary_fluxes!(
 )
     turbulent_fluxes!(p.soil.turbulent_fluxes, bc.atmos, model, Y, p, t)
     net_radiation!(p.soil.R_n, bc.radiation, model, Y, p, t)
-    # influx = maximum possible rate of infiltration given precip, snowmelt, evaporation/condensation
-    # but if this exceeds infiltration capacity of the soil, runoff will
-    # be generated.
-    # Use top_bc.water as temporary storage to avoid allocation
-    influx = p.soil.top_bc.water
-    @. influx = p.drivers.P_liq + p.soil.turbulent_fluxes.vapor_flux_liq
-    # The update_runoff! function computes how much actually infiltrates
-    # given influx and our runoff model bc.runoff, and updates
-    # p.soil.infiltration in place
-    update_runoff!(p, bc.runoff, influx, Y, t, model)
-    # We do not model the energy flux from infiltration.
-    @. p.soil.top_bc.water = p.soil.infiltration
+    liquid_influx = p.soil.sfc_scratch
+    compute_liquid_influx!(liquid_influx, p, model, prognostic_land_components)
+    update_infiltration_water_flux!(p, bc.runoff, liquid_influx, Y, t, model)
+    update_infiltration_energy_flux!(
+        p,
+        bc.runoff,
+        bc.atmos,
+        prognostic_land_components,
+        liquid_influx,
+        model,
+        Y,
+        t,
+    )
+    @. p.soil.top_bc.water =
+        p.soil.infiltration + p.soil.turbulent_fluxes.vapor_flux_liq
     @. p.soil.top_bc.heat =
-        p.soil.R_n + p.soil.turbulent_fluxes.lhf + p.soil.turbulent_fluxes.shf
+        p.soil.R_n +
+        p.soil.turbulent_fluxes.lhf +
+        p.soil.turbulent_fluxes.shf +
+        p.soil.energy_infiltration
     return nothing
 end
 
+function compute_liquid_influx!(
+    field,
+    p,
+    model,
+    prognostic_land_components::Val{(:soil,)},
+)
+    field .= p.drivers.P_liq
+end
+
+function update_infiltration_energy_flux!(
+    p,
+    runoff,
+    atmos::PrescribedAtmosphere,
+    prognostic_land_components::Val{(:soil,)},
+    liquid_influx,
+    model::EnergyHydrology,
+    Y,
+    t,
+)
+    earth_param_set = model.parameters.earth_param_set
+    @. p.soil.energy_infiltration =
+        p.soil.infiltration *
+        Soil.volumetric_internal_energy_liq(p.drivers.T, earth_param_set)
+end
 """
     boundary_vars(::MoistureStateBC, ::ClimaLand.TopBoundary)
 

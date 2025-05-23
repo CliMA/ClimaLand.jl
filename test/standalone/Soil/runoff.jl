@@ -254,11 +254,11 @@ end
     set_initial_cache!(p, Y, FT(0))
     ic = ClimaLand.Soil.Runoff.soil_infiltration_capacity(model, Y, p)
     @test ic == ClimaCore.Fields.zeros(surface_space) .- FT(1e-6) #Ksat
-    @test p.soil.infiltration ==
-          ClimaLand.Soil.Runoff.surface_infiltration.(
-        ic,
+    is_saturated_surface =
+        ClimaLand.Domains.top_center_to_surface(p.soil.is_saturated)
+    @test p.soil.infiltration == @. ClimaLand.Soil.Runoff.surface_infiltration(
+        ic * (1 - is_saturated_surface),
         precip_field,
-        ClimaLand.Domains.top_center_to_surface(p.soil.is_saturated),
     )
     @test p.soil.R_s == abs.(precip_field .- p.soil.infiltration)
 

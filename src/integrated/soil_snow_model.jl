@@ -333,11 +333,11 @@ end
     soil_boundary_fluxes!(
         bc::AtmosDrivenFluxBC{<:PrescribedAtmosphere, <:PrescribedRadiativeFluxes},
          prognostic_land_components::Val{(:snow, :soil)},
-        soil::EnergyHydrology{FT},
+        soil::EnergyHydrology,
         Y,
         p,
         t,
-    ) where {FT}
+    )
 
 A method of `ClimaLand.Soil.soil_boundary_fluxes!` which is used for
 integrated land surface models; this computes and returns the net
@@ -347,30 +347,43 @@ conditions, taking into account the presence of snow on the surface.
 function soil_boundary_fluxes!(
     bc::AtmosDrivenFluxBC,
     prognostic_land_components::Val{(:snow, :soil)},
-    soil::EnergyHydrology{FT},
+    soil::EnergyHydrology,
     Y,
     p,
     t,
-) where {FT}
-    bc = soil.boundary_conditions.top
+)
     turbulent_fluxes!(p.soil.turbulent_fluxes, bc.atmos, soil, Y, p, t)
     net_radiation!(p.soil.R_n, bc.radiation, soil, Y, p, t)
-    # influx = maximum possible rate of infiltration given precip, phase_change_flux, evaporation/condensation
-    # but if this exceeds infiltration capacity of the soil, runoff will
-    # be generated.
-    # Use top_bc.water as temporary storage to avoid allocation
-    influx = p.soil.top_bc.water
-    @. influx =
-        p.snow.water_runoff * p.snow.snow_cover_fraction +
+    liquid_influx = p.soil.sfc_scratch
+    Soil.compute_liquid_influx!(
+        liquid_influx,
+        p,
+        soil,
+        prognostic_land_components,
+    )
+    Soil.update_infiltration_water_flux!(
+        p,
+        bc.runoff,
+        liquid_influx,
+        Y,
+        t,
+        soil,
+    )
+    Soil.update_infiltration_energy_flux!(
+        p,
+        bc.runoff,
+        bc.atmos,
+        prognostic_land_components,
+        liquid_influx,
+        soil,
+        Y,
+        t,
+    )
+    @. p.soil.top_bc.water =
+        p.soil.infiltration +
         p.excess_water_flux +
         (1 - p.snow.snow_cover_fraction) *
-        (p.soil.turbulent_fluxes.vapor_flux_liq + p.drivers.P_liq)
-    # The update_runoff! function computes how much actually infiltrates
-    # given influx and our runoff model bc.runoff, and updates
-    # p.soil.infiltration in place
-    Soil.Runoff.update_runoff!(p, bc.runoff, influx, Y, t, soil)
-    @. p.soil.top_bc.water = p.soil.infiltration
-
+        p.soil.turbulent_fluxes.vapor_flux_liq
     @. p.soil.top_bc.heat =
         (1 - p.snow.snow_cover_fraction) * (
             p.soil.R_n +
@@ -378,8 +391,41 @@ function soil_boundary_fluxes!(
             p.soil.turbulent_fluxes.shf
         ) +
         p.excess_heat_flux +
-        p.snow.snow_cover_fraction * p.ground_heat_flux
+        p.snow.snow_cover_fraction * p.ground_heat_flux +
+        p.soil.energy_infiltration
+
     return nothing
+end
+
+function Soil.compute_liquid_influx!(
+    field,
+    p,
+    model,
+    prognostic_land_components::Val{(:snow, :soil)},
+)
+    @. field =
+        p.snow.water_runoff * p.snow.snow_cover_fraction +
+        (1 - p.snow.snow_cover_fraction) * p.drivers.P_liq
+end
+function Soil.update_infiltration_energy_flux!(
+    p,
+    runoff,
+    atmos::PrescribedAtmosphere,
+    prognostic_land_components::Val{(:snow, :soil)},
+    liquid_influx,
+    model::EnergyHydrology,
+    Y,
+    t,
+)
+    earth_param_set = model.parameters.earth_param_set
+    @. p.soil.energy_infiltration =
+        abs(p.soil.infiltration) /
+        max(abs(liquid_influx), eps(abs(liquid_influx))) * (
+            p.drivers.P_liq *
+            (1 - p.snow.snow_cover_fraction) *
+            Soil.volumetric_internal_energy_liq(p.drivers.T, earth_param_set) +
+            p.snow.energy_runoff * p.snow.snow_cover_fraction
+        )
 end
 
 function ClimaLand.Soil.sublimation_source(::Val{(:snow, :soil)}, FT)
