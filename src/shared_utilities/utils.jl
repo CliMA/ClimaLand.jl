@@ -276,6 +276,7 @@ Constructs a DiscreteCallback which updates the cache `p.drivers` at each time
 specified by `updateat`, using the function `updatefunc` which takes as arguments (p,t).
 """
 function DriverUpdateCallback(updateat::Vector{FT}, updatefunc) where {FT}
+    issorted(updateat) || error("updateat must be sorted in ascending order")
     cond = update_condition(updateat)
     affect! = DriverAffect(updateat, updatefunc)
 
@@ -374,7 +375,8 @@ the callback. This implementation simply checks if the current time of the
 simulation is within the (inclusive) bounds of `updateat`.
 """
 update_condition(updateat) =
-    (_, t, _) -> t >= minimum(updateat) && t <= maximum(updateat)
+    (_, t, _) ->
+        !isempty(updateat) && t >= minimum(updateat) && t <= maximum(updateat)
 """
     SavingAffect{saveatType}
 
