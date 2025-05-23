@@ -353,11 +353,11 @@ end
     soil_boundary_fluxes!(
         bc::AtmosDrivenFluxBC{<:PrescribedAtmosphere, <:PrescribedRadiativeFluxes},
         prognostic_land_components::Val{(:canopy, :soil,:soilco2,)},
-        soil::EnergyHydrology{FT},
+        soil::EnergyHydrology,
         Y,
         p,
         t,
-    ) where {FT}
+    )
 
 A method of `ClimaLand.Soil.soil_boundary_fluxes!` which is used for
 integrated land surface models; this computes and returns the net
@@ -368,27 +368,101 @@ the presence of the canopy modifies the soil BC.
 function soil_boundary_fluxes!(
     bc::AtmosDrivenFluxBC,
     prognostic_land_components::Val{(:canopy, :soil, :soilco2)},
-    soil::EnergyHydrology{FT},
+    model::EnergyHydrology,
     Y,
     p,
     t,
-) where {FT}
-    bc = soil.boundary_conditions.top
-    turbulent_fluxes!(p.soil.turbulent_fluxes, bc.atmos, soil, Y, p, t)
-    # influx = maximum possible rate of infiltration given precip, snowmelt, evaporation/condensation
-    # but if this exceeds infiltration capacity of the soil, runoff will
-    # be generated.
-    # Use top_bc.water as temporary storage to avoid allocation
-    influx = p.soil.top_bc.water
-    @. influx = p.drivers.P_liq + p.soil.turbulent_fluxes.vapor_flux_liq
-    # The update_runoff! function computes how much actually infiltrates
-    # given influx and our runoff model bc.runoff, and updates
-    # p.soil.infiltration in place
-    Soil.Runoff.update_runoff!(p, bc.runoff, influx, Y, t, soil)
-    @. p.soil.top_bc.water = p.soil.infiltration
+)
+    turbulent_fluxes!(p.soil.turbulent_fluxes, bc.atmos, model, Y, p, t)
+    # Liquid influx is a combination of precipitation and snowmelt in general
+    liquid_influx =
+        Soil.compute_liquid_influx(p, model, prognostic_land_components)
+    # This partitions the influx into runoff and infiltration
+    Soil.update_infiltration_water_flux!(
+        p,
+        bc.runoff,
+        liquid_influx,
+        Y,
+        t,
+        model,
+    )
+    # This computes the energy of the infiltrating water
+    infiltration_energy_flux = Soil.compute_infiltration_energy_flux(
+        p,
+        bc.runoff,
+        bc.atmos,
+        prognostic_land_components,
+        liquid_influx,
+        model,
+        Y,
+        t,
+    )
+    # The actual boundary condition is a mix of liquid water infiltration and
+    # evaporation.
+    @. p.soil.top_bc.water =
+        p.soil.infiltration + p.soil.turbulent_fluxes.vapor_flux_liq
     @. p.soil.top_bc.heat =
-        -p.soil.R_n + p.soil.turbulent_fluxes.lhf + p.soil.turbulent_fluxes.shf
+        -p.soil.R_n +
+        p.soil.turbulent_fluxes.lhf +
+        p.soil.turbulent_fluxes.shf +
+        infiltration_energy_flux
     return nothing
+end
+
+"""
+    compute_infiltration_energy_flux(
+        p,
+        runoff,
+        atmos,
+        prognostic_land_components::Val{(:canopy, :soil, :soilco2)},
+        liquid_influx,
+        model::EnergyHydrology,
+        Y,
+        t,
+    )
+
+Computes the energy associated with infiltration of
+liquid water into the soil; uses the same method
+as the standalone soil model.
+"""
+function Soil.compute_infiltration_energy_flux(
+    p,
+    runoff,
+    atmos,
+    prognostic_land_components::Val{(:canopy, :soil, :soilco2)},
+    liquid_influx,
+    model::EnergyHydrology,
+    Y,
+    t,
+)
+    return Soil.compute_infiltration_energy_flux(
+        p,
+        runoff,
+        atmos,
+        Val((:soil,)),
+        liquid_influx,
+        model,
+        Y,
+        t,
+    )
+end
+
+"""
+   compute_liquid_influx(p,
+                         model,
+                         prognostic_land_components::Val{(:canopy, :soil, :soilco2)},
+    ) 
+
+Returns the liquid water volume flux at the surface of the soil; in
+ a model without snow as a prognostic variable, the influx is
+the liquid precipitation as a volume flux.
+"""
+function Soil.compute_liquid_influx(
+    p,
+    model,
+    prognostic_land_components::Val{(:canopy, :soil, :soilco2)},
+)
+    return p.drivers.P_liq
 end
 
 """

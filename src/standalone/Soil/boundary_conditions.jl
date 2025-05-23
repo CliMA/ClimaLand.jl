@@ -16,7 +16,9 @@ export TemperatureStateBC,
     AtmosDrivenFluxBC,
     RichardsAtmosDrivenFluxBC,
     WaterHeatBC,
-    sublimation_source
+    sublimation_source,
+    compute_liquid_influx,
+    compute_infiltration_energy_flux
 
 
 # New BC type for Richards Equation (AbstractWaterBC)
@@ -208,7 +210,7 @@ function boundary_flux!(
     p::NamedTuple,
     t,
 )
-    update_runoff!(p, bc.runoff, p.drivers.P_liq, Y, t, model)
+    update_infiltration_water_flux!(p, bc.runoff, p.drivers.P_liq, Y, t, model)
     bc_field .= p.soil.infiltration
 end
 
@@ -897,7 +899,8 @@ flux (W/m^2) for the soil `EnergyHydrology` model at the top
 of the soil domain.
 
 Here, the soil boundary fluxes are computed as if the soil is run
-in standalone mode.
+in standalone mode, indicated by the value of 
+`prognostic_land_components`.
 """
 function soil_boundary_fluxes!(
     bc::AtmosDrivenFluxBC,
@@ -909,21 +912,111 @@ function soil_boundary_fluxes!(
 )
     turbulent_fluxes!(p.soil.turbulent_fluxes, bc.atmos, model, Y, p, t)
     net_radiation!(p.soil.R_n, bc.radiation, model, Y, p, t)
-    # influx = maximum possible rate of infiltration given precip, snowmelt, evaporation/condensation
-    # but if this exceeds infiltration capacity of the soil, runoff will
-    # be generated.
-    # Use top_bc.water as temporary storage to avoid allocation
-    influx = p.soil.top_bc.water
-    @. influx = p.drivers.P_liq + p.soil.turbulent_fluxes.vapor_flux_liq
-    # The update_runoff! function computes how much actually infiltrates
-    # given influx and our runoff model bc.runoff, and updates
-    # p.soil.infiltration in place
-    update_runoff!(p, bc.runoff, influx, Y, t, model)
-    # We do not model the energy flux from infiltration.
-    @. p.soil.top_bc.water = p.soil.infiltration
+    # Liquid influx is a combination of precipitation and snowmelt in general
+    liquid_influx = compute_liquid_influx(p, model, prognostic_land_components)
+    # This partitions the influx into runoff and infiltration
+    update_infiltration_water_flux!(p, bc.runoff, liquid_influx, Y, t, model)
+    # This computes the energy of the infiltrating water
+    infiltration_energy_flux = compute_infiltration_energy_flux(
+        p,
+        bc.runoff,
+        bc.atmos,
+        prognostic_land_components,
+        liquid_influx,
+        model,
+        Y,
+        t,
+    )
+    # The actual boundary condition is a mix of liquid water infiltration and
+    # evaporation.
+    @. p.soil.top_bc.water =
+        p.soil.infiltration + p.soil.turbulent_fluxes.vapor_flux_liq
     @. p.soil.top_bc.heat =
-        p.soil.R_n + p.soil.turbulent_fluxes.lhf + p.soil.turbulent_fluxes.shf
+        p.soil.R_n +
+        p.soil.turbulent_fluxes.lhf +
+        p.soil.turbulent_fluxes.shf +
+        infiltration_energy_flux
     return nothing
+end
+
+"""
+   compute_liquid_influx(p,
+                         model,
+                         prognostic_land_components::Val{(:soil,)},
+    ) 
+
+Returns the liquid water volume flux at the surface of the soil; this
+will then be partitioned into surface runoff and infiltration:
+influx = infiltration - runoff (runoff > 0; infiltration and influx < 0,
+and abs(infiltration) <= abs(influx)).
+
+In a model without snow as a prognostic variable, the influx is simply
+the liquid precipitation as a volume flux.
+"""
+function compute_liquid_influx(
+    p,
+    model,
+    prognostic_land_components::Val{(:soil,)},
+)
+    return p.drivers.P_liq
+end
+
+"""
+    compute_infiltration_energy_flux(
+        p,
+        runoff,
+        atmos,
+        prognostic_land_components::Val{(:soil,)},
+        liquid_influx,
+        model::EnergyHydrology,
+        Y,
+        t,
+    )
+
+Computes the energy associated with infiltration of
+liquid water into the soil.
+
+If the source of the infiltration is purely liquid precipitation,
+we approximate the volumetric internal energy with the volumetric
+internal energy of liquid water at the air temperature at the surface.
+
+Future runoff parameterizations may require allowing for exfiltration of 
+liquid water from the soil, which would have a different energy. To accomodate
+this, the runoff is passed as an argument and this can be used for dispatch in the 
+future.
+
+Furthermore, in coupled simulations, the energy flux may be provided directly,
+rather than having the land model compute it. To accomodate this, a new method
+can be defined which dispatches off of the `atmos` type.
+"""
+function compute_infiltration_energy_flux(
+    p,
+    runoff,
+    atmos,
+    prognostic_land_components::Val{(:soil,)},
+    liquid_influx,
+    model::EnergyHydrology,
+    Y,
+    t,
+)
+    earth_param_set = model.parameters.earth_param_set
+    return @. lazy(
+        p.soil.infiltration *
+        Soil.volumetric_internal_energy_liq(p.drivers.T, earth_param_set),
+    )
+end
+
+"""
+    compute_infiltration_fraction(infiltration::FT, influx::FT) where {FT}
+
+Computes the fraction of the liquid influx which infiltrates the soil.
+"""
+function compute_infiltration_fraction(infiltration::FT, influx::FT) where {FT}
+    if influx < 0
+        return abs(infiltration) / abs(influx)
+    else
+        return FT(0)
+    end
 end
 
 """
