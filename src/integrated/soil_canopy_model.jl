@@ -392,7 +392,13 @@ function soil_boundary_fluxes!(
     Soil.Runoff.update_runoff!(p, bc.runoff, influx, Y, t, soil)
     @. p.soil.top_bc.water = p.soil.infiltration
     @. p.soil.top_bc.heat =
-        -p.soil.R_n + p.soil.turbulent_fluxes.lhf + p.soil.turbulent_fluxes.shf
+        -p.soil.R_n +
+        p.soil.turbulent_fluxes.lhf +
+        p.soil.turbulent_fluxes.shf +
+        p.soil.infiltration * volumetric_internal_energy_liq(
+            p.drivers.T,
+            model.parameters.earth_param_set,
+        )
     return nothing
 end
 

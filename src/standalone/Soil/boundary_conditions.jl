@@ -880,11 +880,31 @@ function soil_boundary_fluxes!(
     # given influx and our runoff model bc.runoff, and updates
     # p.soil.infiltration in place
     update_runoff!(p, bc.runoff, influx, Y, t, model)
-    # We do not model the energy flux from infiltration.
+
     @. p.soil.top_bc.water = p.soil.infiltration
+    # The last term is the energy flux of infiltration: I * ρe_int_liq(T_atmos)
     @. p.soil.top_bc.heat =
-        p.soil.R_n + p.soil.turbulent_fluxes.lhf + p.soil.turbulent_fluxes.shf
+        p.soil.R_n +
+        p.soil.turbulent_fluxes.lhf +
+        p.soil.turbulent_fluxes.shf +
+        p.soil.infiltration * volumetric_internal_energy_liq(
+            p.drivers.T,
+            model.parameters.earth_param_set,
+        )
     return nothing
+end
+
+"""
+"""
+function compute_energy_of_infiltration(
+    infiltration::FT,
+    flux::FT,
+    temp::FT,
+    earth_param_set,
+) where {FT}
+    return abs(flux) / max(abs(infiltration), eps(FT)) *
+           infiltration *
+           volumetric_internal_energy_liq(temp, earth_param_set)
 end
 
 """

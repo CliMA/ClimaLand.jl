@@ -371,6 +371,9 @@ function soil_boundary_fluxes!(
     Soil.Runoff.update_runoff!(p, bc.runoff, influx, Y, t, soil)
     @. p.soil.top_bc.water = p.soil.infiltration
 
+    earth_param_set = soil.parameters.earth_param_set
+    _T_freeze = LP.T_freeze(earth_param_set)
+
     @. p.soil.top_bc.heat =
         (1 - p.snow.snow_cover_fraction) * (
             p.soil.R_n +
@@ -378,7 +381,19 @@ function soil_boundary_fluxes!(
             p.soil.turbulent_fluxes.shf
         ) +
         p.excess_heat_flux +
-        p.snow.snow_cover_fraction * p.ground_heat_flux
+        p.snow.snow_cover_fraction * p.ground_heat_flux +
+        Soil.compute_energy_of_infiltration(
+            p.soil.infiltration,
+            p.drivers.P_liq * (1 - p.snow.snow_cover_fraction),
+            p.drivers.T,
+            earth_param_set,
+        ) +
+        Soil.compute_energy_of_infiltration(
+            p.soil.infiltration,
+            p.snow.water_runoff * p.snow.snow_cover_fraction,
+            _T_freeze,
+            earth_param_set,
+        )
     return nothing
 end
 
