@@ -1,88 +1,7 @@
-# # Coupled heat and water equations tending towards equilibrium
-
-# The [Richards equation tutorial](@ref Soil/richards_equation.md)
-# demonstrates how to solve for water flow in soil, without considering
-# heat transfer, phase changes, or the effect of temperature and the effect of
-# ice on the hydraulic properties of the soil.
-
-# Here we show how to solve the interacting heat and water equations,
-# in sand, but without phase changes. This allows us to capture
-# behavior that is not present in Richards equation alone.
-
-# The equations
-# are:
-
-# ``
-# \frac{∂ ρe_{int}}{∂ t} =  ∇ ⋅ κ(θ_l, θ_i; ν, ...) ∇T + ∇ ⋅ ρe_{int_{liq}} K (T,θ_l, θ_i; ν, ...) \nabla h( ϑ_l, z; ν, ...)
-# ``
-
-# ``
-# \frac{ ∂ ϑ_l}{∂ t} = ∇ ⋅ K (T,θ_l, θ_i; ν, ...) ∇h( ϑ_l, z; ν, ...).
-# ``
-
-# Here
-
-# ``t`` is the time (s),
-
-# ``z`` is the location in the vertical (m),
-
-# ``ρe_{int}`` is the volumetric internal energy of the soil (J/m^3),
-
-# ``T`` is the temperature of the soil (K),
-
-# ``κ`` is the thermal conductivity (W/m/K),
-
-# ``ρe_{int_{liq}}`` is the volumetric internal energy of liquid water (J/m^3),
-
-# ``K`` is the hydraulic conductivity (m/s),
-
-# ``h`` is the hydraulic head (m),
-
-# ``ϑ_l`` is the augmented volumetric liquid water fraction,
-
-# ``θ_i`` is the volumetric ice fraction, and
-
-# ``ν, ...`` denotes parameters relating to soil type, such as porosity.
-
-
-# We will solve this equation in an effectively 1-d domain with ``z ∈ [-1,0]``,
-# and with the following boundary and initial conditions:
-
-# ``- κ ∇T(t, z = 0) = 0 ẑ``
-
-# `` -κ ∇T(t, z = -1) = 0 ẑ ``
-
-# `` T(t = 0, z) = T_{min} + (T_{max}-T_{min}) e^{Cz}``
-
-# ``- K ∇h(t, z = 0) = 0 ẑ ``
-
-# `` -K ∇h(t, z = -1) = 0 ẑ``
-
-# `` ϑ(t = 0, z) = ϑ_{min} + (ϑ_{max}-ϑ_{min}) e^{Cz}, ``
-
-# where ``C, T_{min}, T_{max}, ϑ_{min},`` and ``ϑ_{max}`` are
-# constants.
-
-
-# If we evolve this system for times long compared to the dynamical timescales
-# of the system, we expect it to reach an equilibrium where
-# the LHS of these equations tends to zero.
-# Assuming zero fluxes at the boundaries, the resulting equilibrium state
-# should satisfy ``∂h/∂z = 0`` and ``∂T/∂z = 0``. Physically, this means that
-# the water settles into a vertical profile in which
-# the resulting pressure balances gravity and that the temperature
-# is constant across the domain.
-
-#  We verify that the system is approaching this equilibrium, and we also sketch out
-# an analytic calculation for the final temperature in equilibrium.
-
-# # Import necessary modules
-# External (non - CliMA) modules
 import SciMLBase
 using Statistics
 using Plots
 
-# CliMA packages and ClimaLand modules
 using ClimaCore
 import ClimaParams as CP
 import ClimaTimeSteppers as CTS
@@ -93,26 +12,14 @@ using ClimaLand.Soil
 import ClimaLand
 import ClimaLand.Parameters as LP
 
-# Choose a floating point precision, and get the parameter set, which holds constants used across CliMA models:
 FT = Float32
 earth_param_set = LP.LandParameters(FT);
 
-
-# # Create the model
-# Set the values of other parameters required by the model:
 ν = FT(0.53)
-# Soil solids
-# are the components of soil besides water, ice, gases, and air.
-# We specify the soil component fractions, relative to all soil solids.
-# These do not sum to unity; the remainder is ν_ss_minerals (=0.08, in this case).
 ν_ss_quartz = FT(0.36)
 ν_ss_om = FT(0.05)
 ν_ss_gravel = FT(0.58)
-# Other parameters include the hydraulic conductivity at saturation, the specific
-# storage, and the van Genuchten parameters for sand.
-# We recommend Chapter 8 of Bonan (2019) for finding parameters
-# for other soil types.
-Ksat = FT(4.4e-7) # m/s
+Ksat = FT(4.4e-5) # m/s
 S_s = FT(1e-3) #inverse meters
 vg_n = FT(1.44)
 vg_α = FT(3.12) # inverse meters
@@ -130,111 +37,58 @@ params = Soil.EnergyHydrologyParameters(
     θ_r,
 );
 
-# We also need to pick a domain on which to solve the equations:
 zmax = FT(0)
 zmin = FT(-10.0)
 nelems = 15
-soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems, )#dz_tuple = FT.((2.0, 0.05)));
+soil_domain = Column(; zlim = (zmin, zmax), nelements = nelems, dz_tuple = FT.((2.0, 0.05)));
 
-
-# The boundary value problem in this case
-# requires a boundary condition at the top and the bottom of the domain
-# for each equation being solved. We support conditions on the state (`ϑ_l`
-# or `T`), or on the fluxes (`-K∇h` or `-κ∇T`). In the case of fluxes,
-# we return the magnitude of the flux, assumed to point along `ẑ`. And, in each case,
-# the boundary conditions are supplied in the form of a function of auxiliary variables
-# `p` and time `t`.
-#  Here we choose flux boundary conditions. The flux boundary condition
-# requires a function of the cache and simulation time which returns
-# the boundary flux.
-
-# Water boundary conditions:
 surface_water_flux = WaterFluxBC((p, t) -> -2e-7)
 bottom_water_flux = FreeDrainage();
-# The boundary conditions for the heat equation:
 surface_heat_flux = HeatFluxBC((p, t) -> -24.0)
 bottom_heat_flux = HeatFluxBC((p, t) -> 0.0);
-
-# We wrap up all of those in a WaterHeatBC struct:
 boundary_fluxes = (;
     top = WaterHeatBC(; water = surface_water_flux, heat = surface_heat_flux),
-    bottom = WaterHeatBC(; water = bottom_water_flux, heat = bottom_heat_flux),
+    bottom = EnergyFreeDrainage()
 );
 
-
-# We aren't using any sources or sinks in the equations here, but this is where
-# freeze/thaw terms, runoff, root extraction, etc. would go.
 sources = ()#(PhaseChange{FT}(),);
 
-# Lastly, we can create the [`EnergyHydrology`](@ref
-# ClimaLand.Soil.EnergyHydrology) model.
-# As always, the
-# model encodes and stores all of the information (parameters, continous equations,
-# prognostic variables, etc) which are needed to turn the PDE system into a set of ODEs,
-# properly spatially discretized for the domain of interest.
 soil = Soil.EnergyHydrology{FT}(;
     parameters = params,
     domain = soil_domain,
     boundary_conditions = boundary_fluxes,
     sources = sources,
 );
-
-# Here we create the explicit and implicit tendencies, which update prognostic
-# variable components that are stepped explicitly and implicitly, respectively.
-# We also create the function which is used to update our Jacobian.
 exp_tendency! = make_exp_tendency(soil);
 imp_tendency! = make_imp_tendency(soil);
 jacobian! = ClimaLand.make_jacobian(soil);
 
-# # Set up the simulation
-# We can now initialize the prognostic and auxiliary variable vectors, and take
-# a peek at what those variables are:
 Y, p, coords = initialize(soil);
-Y.soil |> propertynames
-
-p.soil |> propertynames
-
-coords |> propertynames
-
-# Note that the variables are nested into `Y` and `p` in a hierarchical way.
-# Since we have the vectors handy, we can now set them to the desired initial
-# conditions.
-function init_soil!(Y, z, params)
-    T = FT(288.0)
-    @. Y.soil.ϑ_l = 0.35
-    Y.soil.θ_i .= 0.0# 0.07
-
-    θ_l = Soil.volumetric_liquid_fraction.(Y.soil.ϑ_l, ν, θ_r)
-    ρc_s =
-        Soil.volumetric_heat_capacity.(
-            θ_l,
-            Y.soil.θ_i,
-            params.ρc_ds,
-            params.earth_param_set,
+Y.soil.ϑ_l .= 0.35
+Y.soil.θ_i .= 0.0# 0.07
+θ_l = Soil.volumetric_liquid_fraction.(Y.soil.ϑ_l, ν, θ_r)
+ρc_s =
+    Soil.volumetric_heat_capacity.(
+        θ_l,
+        Y.soil.θ_i,
+        params.ρc_ds,
+        params.earth_param_set,
+    )
+T = FT(288)
+Y.soil.ρe_int .=
+    Soil.volumetric_internal_energy.(
+        Y.soil.θ_i,
+        ρc_s,
+        T,
+        params.earth_param_set,
         )
-    Y.soil.ρe_int .=
-        Soil.volumetric_internal_energy.(
-            Y.soil.θ_i,
-            ρc_s,
-            T,
-            params.earth_param_set,
-        )
-end
 
-init_soil!(Y, coords.subsurface.z, soil.parameters);
-
-# We choose the initial and final simulation times:
 t0 = Float64(0)
 tf = Float64(60 * 60 * 24*500);
 
-# We set the cache values corresponding to the initial conditions
-# of the state Y:
 set_initial_cache! = make_set_initial_cache(soil);
 set_initial_cache!(p, Y, t0);
 
-# We use [ClimaTimesteppers.jl](https://github.com/CliMA/ClimaTimesteppers.jl) for carrying out the time integration.
-
-# Choose a timestepper and set up the ODE problem:
 dt = Float64(1000.0);
 timestepper = CTS.ARS111();
 ode_algo = CTS.IMEXAlgorithm(
@@ -258,89 +112,111 @@ prob = SciMLBase.ODEProblem(
     (t0, tf),
     p,
 );
-
-
-# By default, it
-# only returns Y and t at each time we request output (`saveat`, below). We use
-# a callback in order to also get the auxiliary vector `p` back:
 saveat = collect(t0:FT(30000):tf)
 saved_values = (;
     t = Array{Float64}(undef, length(saveat)),
     saveval = Array{NamedTuple}(undef, length(saveat)),
 );
 cb = ClimaLand.NonInterpSavingCallback(saved_values, saveat);
-
-
-# Now we can solve the problem.
 sol = SciMLBase.solve(prob, ode_algo; dt = dt, saveat = saveat, callback = cb);
-
-# Extract output
-z = parent(coords.subsurface.z)
-t = parent(sol.t)
-ϑ = [parent(sol.u[k].soil.ϑ_l)[1] for k in 1:length(t)]
-θ_i = [parent(sol.u[k].soil.θ_i)[1] for k in 1:length(t)]
-T = [parent(saved_values.saveval[k].soil.T)[1] for k in 1:length(t)];
-
-# Let's look at the initial and final times:
-plot(ϑ, xlabel = "ϑ1")
-for i in 2:15
+t = sol.t;
+Np = 6
+plot([parent(sol.u[k].soil.ϑ_l)[1] for k in 1:length(t)], xlabel = "ϑ", label= "1")
+for i in 2:Np
     plot!([parent(sol.u[k].soil.ϑ_l)[i] for k in 1:length(t)], label = "$i")
 end
-savefig("eq_moisture_plot.png");
+savefig("eq_moisture_plot_bc_bot.png");
 
 
-plot(θ_i, xlabel = "θ_i1")
-for i in 2:15
-    plot!([parent(sol.u[k].soil.θ_i)[i] for k in 1:length(t)], label = "$i")
-end
+#plot([parent(sol.u[k].soil.θ_i)[1] for k in 1:length(t)], xlabel = "θ_i", label= "1")
+#for i in 2:15
+#    plot!([parent(sol.u[k].soil.θ_i)[i] for k in 1:length(t)], label = "$i")
+#end
 
-savefig("eq_ic_plot.png");
+#savefig("eq_ic_plot.png");
 # ![](eq_moisture_plot.png)
 
-plot(T, xlabel = "T1")
-for i in 2:15
+plot([parent(saved_values.saveval[k].soil.T)[1] for k in 1:length(t)], xlabel = "T", label = "1")
+for i in 2:Np
     plot!([parent(saved_values.saveval[k].soil.T)[i] for k in 1:length(t)], label = "$i")
 end
-savefig("eq_temperature_plot.png");
+savefig("eq_temperature_plot_bc_bot.png");
 
 plot([parent(saved_values.saveval[k].soil.K)[1] for k in 1:length(t)], xlabel = "K")
-for i in 2:15
+for i in 2:Np
     plot!([parent(saved_values.saveval[k].soil.K)[i] for k in 1:length(t)], label = "$i")
 end
-savefig("eq_K_plot.png");
+savefig("eq_K_plot_bc_bot.png");
+
 plot([parent(sol.u[k].soil.ρe_int)[1] for k in 1:length(t)], xlabel = "ρe")
-for i in 2:15
+for i in 2:Np
     plot!([parent(sol.u[k].soil.ρe_int)[i] for k in 1:length(t)], label = "$i")
 end
-savefig("eq_energy_plot.png");
+savefig("eq_energy_plot_bc_bot.png");
 # ![](eq_temperature_plot.png)
+#=
+# Compute fluxes:
+z = parent(soil.domain.fields.z)[:];
+function compute_water_flux(Y, p, z)
+    top_bc = FT(-2e-7)
+    h = parent(p.soil.ψ)[:] .+ z
+    ∂h∂z = (h[2:end] .- h[1:end-1]) ./ (z[2:end] .- z[1:end-1])
+    K = parent(p.soil.K)[:]
+    K_face = (K[2:end].+ K[1:end-1])./2
+    F = @. -K_face *  ∂h∂z
+    bottom_bc = -K[1]
+    F_complete = [bottom_bc, F..., top_bc]
+    return F_complete
+end
 
-# # Analytic Expectations
+function compute_water_energy_flux(Y, p, z)
+    h = parent(p.soil.ψ)[:] .+ z
+    ∂h∂z = (h[2:end] .- h[1:end-1]) ./ (z[2:end] .- z[1:end-1])
+    K = parent(p.soil.K)[:]
+    K_face = (K[2:end].+ K[1:end-1])./2
+    T = parent(p.soil.T)[:]
+    ρe_int_liq = ClimaLand.Soil.volumetric_internal_energy_liq.(
+        T,
+        soil.parameters.earth_param_set,
+    )
+    ρe_int_liq_face = (ρe_int_liq[2:end].+ ρe_int_liq[1:end-1])./2
+    F = @. -K_face *  ρe_int_liq_face * ∂h∂z
+    bottom_bc = 0
+    F_complete = [bottom_bc, F..., top_bc]
+    return F_complete
+end
 
-# We can determine a priori what we expect the final temperature to be in
-# equilibrium.
+function compute_gradT_energy_flux(Y, p, z)
+    top_bc = FT(-24)
+    T = parent(p.soil.T)[:]
+    ∂T∂z = (T[2:end] .- T[1:end-1]) ./ (z[2:end] .- z[1:end-1])
+    κ = parent(p.soil.κ)[:]
+    κ_face = (κ[2:end].+ κ[1:end-1])./2
+    F = @. -κ_face * ∂T∂z
+    bottom_bc = 0
+    F_complete = [bottom_bc, F..., top_bc]
+    return F_complete
+end
 
-# Regardless of the final water profile in equilibrium, we know that
-# the final temperature `T_f` will be a constant across the domain. All
-# water that began with a temperature above this point will cool to `T_f`,
-# and water that began with a temperature below this point will warm to
-# `T_f`. The initial function `T(z)` is equal to `T_f` at a value of
-# `z = z̃`. This is the location in space which divides these two groups
-# (water that warms over time and water that cools over time) spatially.
-# We can solve for `z̃(T_f)` using `T_f = T(z̃)`.
+F_liq = [compute_water_flux(sol.u[k], saved_values.saveval[k],z) for k in 1:length(sol.t)]
+F_liq_energy = [compute_water_energy_flux(sol.u[k], saved_values.saveval[k],z) for k in 1:length(sol.t)]
+F_gradT = [compute_gradT_energy_flux(sol.u[k], saved_values.saveval[k],z) for k in 1:length(sol.t)]
 
-# Next, we can determine the change in energy required to cool
-# the water above `z̃` to `T_f`: it is the integral from `z̃` to the surface
-# at `z = 0` of ` c θ(z) T(z) `, where `c` is the volumetric heat capacity -
-# a constant here - and `θ(z)` is the initial water profile. Compute the energy
-# required to warm the water below `z̃` to `T_f` in a similar way, set equal, and solve
-# for `T_f`. This results in `T_f = 288.056`, which is very close to the mean `T` we observe
-# after 3 days, of `288.054`.
+plot([F_gradT[k][1] for k in 1:length(t)], xlabel = "-κ∂T∂z", label = "1-1/2")
+for i in 2:(Np+1)
+    plot!([F_gradT[k][i] for k in 1:length(t)], label = "$i-1/2")
+end
+savefig("eq_gradT_plot_bc_bot.png");
 
-# One could also solve the equation for `ϑ_l` specified by
-# ``∂ h/∂ z = 0`` to determine the functional form of the
-# equilibrium profile of the liquid water.
+plot([F_liq_energy[k][1] for k in 1:length(t)], xlabel = "-Kρe_int_liq ∂h∂z", label = "1-1/2")
+for i in 2:(Np+1)
+    plot!([F_liq_energy[k][i] for k in 1:length(t)], label = "$i-1/2")
+end
+savefig("eq_liq_energy_plot_bc_bot.png");
 
-# # References
-# - Bonan, G.  Climate change and terrestrial ecosystem modeling. Cambridge University Press, 2019.
-# - Balland and Arp, J. Environ. Eng. Sci. 4: 549–558 (2005)
+plot([F_liq[k][1] for k in 1:length(t)], xlabel = "-K∂h∂z", label = "1-1/2")
+for i in 2:(Np+1)
+    plot!([F_liq[k][i] for k in 1:length(t)], label = "$i-1/2")
+end
+savefig("eq_liq_flux_plot_bc_bot.png");
+=#
