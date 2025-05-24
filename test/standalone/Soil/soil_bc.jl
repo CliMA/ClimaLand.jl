@@ -192,6 +192,83 @@ for FT in (Float32, Float64)
 
         @test abs(flux_expected - flux_int) < eps(FT)
     end
+
+    @testset "Test water+energy free drainage BC, FT = $FT" begin
+        earth_param_set = LP.LandParameters(FT)
+        ν = FT(0.495)
+        K_sat = FT(0.0443 / 3600 / 100) # m/s
+        S_s = FT(1e-3) #inverse meters
+        vg_n = FT(2.0)
+        vg_α = FT(2.6) # inverse meters
+        hydrology_cm = vanGenuchten{FT}(; α = vg_α, n = vg_n)
+        θ_r = FT(0.1)
+        ν_ss_om = FT(0.0)
+        ν_ss_quartz = FT(1.0)
+        ν_ss_gravel = FT(0.0)
+
+        parameters = Soil.EnergyHydrologyParameters(
+            FT;
+            ν,
+            ν_ss_om,
+            ν_ss_quartz,
+            ν_ss_gravel,
+            hydrology_cm,
+            K_sat,
+            S_s,
+            θ_r,
+        )
+
+        zmax = FT(0)
+        zmin = FT(-1)
+        nelems = 20
+        domain = Column(; zlim = (zmin, zmax), nelements = nelems)
+
+        zero_water_flux_bc = WaterFluxBC((p, t) -> 0.0)
+        zero_heat_flux_bc = HeatFluxBC((p, t) -> 0.0)
+        boundary_conditions = (;
+            top = WaterHeatBC(;
+                water = zero_water_flux_bc,
+                heat = zero_heat_flux_bc,
+            ),
+            bottom = EnergyWaterFreeDrainage(),
+        )
+        sources = ()
+        soil = Soil.EnergyHydrology{FT}(;
+            parameters,
+            domain,
+            boundary_conditions,
+            sources,
+        )
+
+        Y, p, coords = initialize(soil)
+        Y.soil.ϑ_l .= ν / 2
+        Y.soil.θ_i .= 0
+        T = coords.subsurface.z .* 10 .+ FT(290.0)
+        ρc_s =
+            Soil.volumetric_heat_capacity.(
+                Y.soil.ϑ_l,
+                Y.soil.θ_i,
+                parameters.ρc_ds,
+                parameters.earth_param_set,
+            )
+        Y.soil.ρe_int .=
+            Soil.volumetric_internal_energy.(
+                Y.soil.θ_i,
+                ρc_s,
+                T,
+                parameters.earth_param_set,
+            )
+        set_initial_cache! = ClimaLand.make_set_initial_cache(soil)
+        set_initial_cache!(p, Y, 0.0)
+        flux_expected_water = -1 .* ClimaCore.Fields.level(p.soil.K, 1)
+        T1 = ClimaCore.Fields.level(p.soil.T, 1)
+        flux_expected_energy =
+            flux_expected_water .*
+            Soil.volumetric_internal_energy_liq.(T1, parameters.earth_param_set)
+        @test all(parent(p.soil.bottom_bc.heat) .≈ parent(flux_expected_energy))
+        @test all(parent(p.soil.bottom_bc.water) .≈ parent(flux_expected_water))
+
+    end
 end
 
 

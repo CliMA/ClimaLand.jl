@@ -10,6 +10,7 @@ using ClimaCore: Geometry
 export TemperatureStateBC,
     MoistureStateBC,
     FreeDrainage,
+    EnergyWaterFreeDrainage,
     HeatFluxBC,
     WaterFluxBC,
     AtmosDrivenFluxBC,
@@ -48,9 +49,14 @@ end
 
 """
     FreeDrainage <: AbstractWaterBC
+
 A concrete type of soil boundary condition, for use at
 the BottomBoundary only, where the flux is set to be
-`F = -K∇h = -K`.
+`F = -K∇h = -K`. 
+
+This is not tied to any boundary condition for the heat equation. 
+To account for the energy flux resulting from free drainage of liquid
+water, please see `EnergyWaterFreeDrainage`.
 """
 struct FreeDrainage <: AbstractWaterBC end
 
@@ -567,6 +573,39 @@ struct WaterHeatBC{W <: AbstractWaterBC, H <: AbstractHeatBC} <:
 end
 function WaterHeatBC(; water, heat)
     return WaterHeatBC{typeof(water), typeof(heat)}(water, heat)
+end
+
+"""
+    EnergyWaterFreeDrainage <: AbstractEnergyHydrologyBC
+
+A concrete type of soil boundary condition, for use at
+the BottomBoundary only, where the fluxes are set to be
+`F_liq = -K∇h = -K`, `F_energy = -K ρe_liq`.
+
+That is, this enforces that the free drainage boundary condition
+for liquid water is paired the the corresponding loss of energy
+that that entails.
+"""
+struct EnergyWaterFreeDrainage <: AbstractEnergyHydrologyBC end
+
+function soil_boundary_fluxes!(
+    bc::EnergyWaterFreeDrainage,
+    boundary::ClimaLand.BottomBoundary,
+    soil::EnergyHydrology,
+    Δz,
+    Y,
+    p,
+    t,
+)
+    FT = eltype(Δz)
+    K_c = Fields.level(p.soil.K, 1)
+    T_c = Fields.level(p.soil.T, 1)
+    @. p.soil.bottom_bc.water = -1 * K_c
+    @. p.soil.bottom_bc.heat =
+        -1 *
+        K_c *
+        volumetric_internal_energy_liq(T_c, soil.parameters.earth_param_set)
+    return nothing
 end
 
 """
