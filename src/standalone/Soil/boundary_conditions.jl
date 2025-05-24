@@ -897,14 +897,14 @@ end
 """
 """
 function compute_energy_of_infiltration(
+    influx::FT,
     infiltration::FT,
     flux::FT,
-    temp::FT,
+    energy::FT,
     earth_param_set,
 ) where {FT}
-    return abs(flux) / max(abs(infiltration), eps(FT)) *
-           infiltration *
-           volumetric_internal_energy_liq(temp, earth_param_set)
+    return abs(flux) / max(abs(influx), eps(FT)) *
+           infiltration * energy
 end
 
 """
