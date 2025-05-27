@@ -49,7 +49,7 @@ steps:
           - "snowy_land_longrun_gpu/*pdf"
         agents:
           slurm_gpus: 1
-          slurm_time: 15:00:00
+          slurm_time: 3:00:00
         env:
           CLIMACOMMS_DEVICE: "CUDA"
 
@@ -69,7 +69,7 @@ steps:
         artifact_paths: "soil_longrun_gpu/*pdf"
         agents:
           slurm_gpus: 1
-          slurm_time: 15:00:00
+          slurm_time: 3:00:00
         env:
           CLIMACOMMS_DEVICE: "CUDA"
 
@@ -83,10 +83,10 @@ steps:
         env:
           CLIMACOMMS_DEVICE: "CUDA"
 
-  - group: "Very long run of snowy land"
+  - group: "Longer runs of Global Land Models"
     if: build.env("LONGER_RUN") != null
     steps:
-      - label: ":snow_capped_mountain: Snowy Land"
+      - label: "Snowy Land, 10 years"
         command:
           - julia --color=yes --project=.buildkite experiments/long_runs/snowy_land.jl
         artifact_paths:
@@ -94,7 +94,18 @@ steps:
           - "snowy_land_longrun_gpu/*pdf"
         agents:
           slurm_gpus: 1
-          slurm_time: 24:00:00
+          slurm_time: 15:00:00
+        env:
+          CLIMACOMMS_DEVICE: "CUDA"
+          LONGER_RUN: ""
+
+      - label: "Soil, 10 years"
+        command:
+          - julia --color=yes --project=.buildkite experiments/long_runs/soil.jl
+        artifact_paths: "soil_longrun_gpu/*pdf"
+        agents:
+          slurm_gpus: 1
+          slurm_time: 15:00:00
         env:
           CLIMACOMMS_DEVICE: "CUDA"
           LONGER_RUN: ""

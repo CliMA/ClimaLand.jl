@@ -280,14 +280,17 @@ function default_spatially_varying_soil_parameters(
         file_reader_kwargs = (; preprocess_func = (data) -> data > 0,),
     )
     # If the parameter mask =  0, set to physical value
+    # (equal to the mean where we have data; the mean of α is in log space)
     # This function in applied in **simulation mask** aware
     # manner.
+    # That is, we replace values in the simulation, but without data, with the mean
+    # over the data.
     masked_to_value(field, mask, value) =
         mask == 1.0 ? field : eltype(field)(value)
 
-    μ = FT(0.27)
+    μ = FT(0.33)
     vg_α .= masked_to_value.(vg_α, soil_params_mask, 10.0^μ)
-    μ = FT(1.65)
+    μ = FT(1.74)
     vg_n .= masked_to_value.(vg_n, soil_params_mask, μ)
 
     vg_fields_to_hcm_field(α::FT, n::FT) where {FT} =
@@ -326,20 +329,15 @@ function default_spatially_varying_soil_parameters(
         regridder_kwargs = (; extrapolation_bc,),
     )
 
-    μ = FT(-6)
+    # Set missing values to the mean. For Ksat, we use the mean in log space.
+    μ = FT(-5.08)
     K_sat .= masked_to_value.(K_sat, soil_params_mask, 10.0^μ)
 
-    ν .= masked_to_value.(ν, soil_params_mask, 1)
+    ν .= masked_to_value.(ν, soil_params_mask, 0.47)
 
-    θ_r .= masked_to_value.(θ_r, soil_params_mask, 0)
+    θ_r .= masked_to_value.(θ_r, soil_params_mask, 0.09)
 
-
-    S_s =
-        masked_to_value.(
-            ClimaCore.Fields.zeros(subsurface_space) .+ FT(1e-3),
-            soil_params_mask,
-            1,
-        )
+    S_s = ClimaCore.Fields.zeros(subsurface_space) .+ FT(1e-3)
 
     soilgrids_artifact_path =
         ClimaLand.Artifacts.soil_grids_params_artifact_path(;
@@ -372,10 +370,11 @@ function default_spatially_varying_soil_parameters(
     # we require that the sum of these be less than 1 and equal to or bigger than zero.
     # The input should satisfy this almost exactly, but the regridded values may not.
     # Values of zero are OK here, so we dont need to apply any masking
-    texture_norm = @. min(ν_ss_gravel + ν_ss_quartz + ν_ss_om, 1)
-    @. ν_ss_gravel = ν_ss_gravel / max(texture_norm, eps(FT))
-    @. ν_ss_om = ν_ss_om / max(texture_norm, eps(FT))
-    @. ν_ss_quartz = ν_ss_quartz / max(texture_norm, eps(FT))
+    # if sum > 1, normalize by sum, else "normalize" by 1 (i.e., do not normalize)
+    texture_norm = @. max(ν_ss_gravel + ν_ss_quartz + ν_ss_om, 1)
+    @. ν_ss_gravel = ν_ss_gravel / texture_norm
+    @. ν_ss_om = ν_ss_om / texture_norm
+    @. ν_ss_quartz = ν_ss_quartz / texture_norm
 
     # Read in f_max data and topmodel params land sea mask
     infile_path = ClimaLand.Artifacts.topmodel_data_path()
