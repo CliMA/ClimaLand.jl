@@ -926,24 +926,12 @@ function soil_boundary_fluxes!(
         p.soil.R_n +
         p.soil.turbulent_fluxes.lhf +
         p.soil.turbulent_fluxes.shf +
-        (p.soil.infiltration - p.soil.turbulent_fluxes.vapor_flux_liq) *
+        (p.soil.infiltration - p.soil.turbulent_fluxes.vapor_flux_liq) * # Infiltration - E = P less runoff - this is the liquid water infiltrating soil, assume it has T = T_atmos
         volumetric_internal_energy_liq(
             p.drivers.T,
             model.parameters.earth_param_set,
         )
     return nothing
-end
-
-"""
-"""
-function compute_energy_of_infiltration(
-    influx::FT,
-    infiltration::FT,
-    flux::FT,
-    energy::FT,
-    earth_param_set,
-) where {FT}
-    return abs(flux) / max(abs(influx), eps(FT)) * infiltration * energy
 end
 
 """
