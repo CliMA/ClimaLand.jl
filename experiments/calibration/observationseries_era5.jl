@@ -70,7 +70,7 @@ end
 
 results = Dict(
     k => Dict(v => [] for v in variable_list) for
-    k in (:all_seasons, :seasonal_vars, :seasonal_means)
+    k in (:all_seasons, :seasonal_vars, :seasonal_means, :flat_weigh)
 )
 
 """
@@ -91,6 +91,11 @@ years =
 years_to_delete =
     [y for y in unique(years) if y < year(start_date + spinup_period)]
 valid_years = [y for y in unique(years) if !(y in years_to_delete)]
+
+function flat_weigh_season(flat_noise, lat)
+    val = flat_noise^2 ./ max(cosd(lat), 0.1)
+    return fill(val, 4)
+end
 
 for (lon, lat) in training_locations
     seasonal = Dict(
@@ -123,12 +128,22 @@ for (lon, lat) in training_locations
         var_name in variable_list
     )
 
+    flat_weigh_dict = Dict(
+        var_name => flat_weigh_season(flat_noise, lat) for
+        var_name in variable_list
+    )
+
     for var in variable_list
         push!(results[:all_seasons][var], seasonal[var])
         push!(results[:seasonal_vars][var], variances[var])
         push!(results[:seasonal_means][var], means[var])
+        push!(results[:flat_weigh][var], flat_weigh_dict[var])
     end
 end
+
+# results[:flat_weigh] contains a flat noise weighted by lats.
+# for example, with flat = 5 W m^-2, variance from 250 (15.8 W m-2 at poles)
+# to 25 (5 W m-2 at equator)
 
 # Build noise
 # Currently, replaces values in results[:seasonal_vars] with 25.
@@ -143,13 +158,13 @@ end
 #end
 
 # latitudes = map(x -> x[2], training_locations)
-for var in values(results[:seasonal_vars])
-    for i in 1:length(var)
-        var[i] .= 5^2 # flat noise
-        # IF scale by lat, # var[i] .= var[i] ./ max(cosd(lat), 0.1) # need to get lat
-        # IF add model error, add results[:seasonal_means][var] .* 0.05 # or some factor
-    end
-end
+#for var in values(results[:seasonal_vars])
+#    for i in 1:length(var)
+#        var[i] .= 5^2 ./ max(cosd(lat), 0.1)
+#        # IF scale by lat, # var[i] .= var[i] ./ max(cosd(lat), 0.1) # need to get lat
+#        # IF add model error, add results[:seasonal_means][var] .* 0.05 # or some factor
+#    end
+#end
 
 # Generate observation series
 obs_y = [
@@ -159,7 +174,7 @@ obs_y = [
                 Dict(
                     "samples" => results[:all_seasons][var_name][i][y],
                     "covariances" => LinearAlgebra.Diagonal(
-                        results[:seasonal_vars][var_name][i],
+                        results[:flat_weigh][var_name][i],
                     ),
                     "names" => "$(var_name)_$(lon)_$(lat)_$(y)",
                 ),
