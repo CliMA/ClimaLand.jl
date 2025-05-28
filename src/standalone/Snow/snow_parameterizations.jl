@@ -366,13 +366,12 @@ end
 Computes the volumetric internal energy of the liquid water
 in the snowpack at a point at temperature T.
 """
-function volumetric_internal_energy_liq(T, parameters)
-    _ρ_l = LP.ρ_cloud_liq(parameters.earth_param_set)
-    _T_freeze = LP.T_freeze(parameters.earth_param_set)
-    _cp_l = LP.cp_l(parameters.earth_param_set)
-    _T_ref = LP.T_0(parameters.earth_param_set)
+function volumetric_internal_energy_liq(T, earth_param_set)
+    _ρ_l = LP.ρ_cloud_liq(earth_param_set)
+    _cp_l = LP.cp_l(earth_param_set)
+    _T_ref = LP.T_0(earth_param_set)
 
-    I_liq = _ρ_l * _cp_l * (T .- _T_ref)
+    I_liq = _ρ_l * _cp_l * (T - _T_ref)
     return I_liq
 end
 

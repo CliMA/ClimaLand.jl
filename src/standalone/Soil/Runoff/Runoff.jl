@@ -90,19 +90,13 @@ end
     surface_infiltration(
         f_ic::FT,
         input::FT,
-        is_saturated::FT,
     ) where {FT}
 
 Computes the surface infiltration for the simple surface
-runoff model. If the soil is saturated at the surface,
-all input is converted to runoff (infiltration is zero).
-
-If the soil is not saturated, the maximum of the infiltration
-capacity or the input is used as infiltration. Recall that
-both are negative (towards the soil).
+runoff model.
 """
-function surface_infiltration(f_ic::FT, input::FT, is_saturated::FT) where {FT}
-    return (1 - is_saturated) * max(f_ic, input)
+function surface_infiltration(f_ic::FT, input::FT) where {FT}
+    return max(f_ic, input)
 end
 
 """
@@ -137,11 +131,11 @@ function update_runoff!(
     FT = eltype(ϑ_l)
     θ_i = model_agnostic_volumetric_ice_content(Y, FT)
     @. p.soil.is_saturated = is_saturated(ϑ_l + θ_i, model.parameters.ν)
-    surface_space = model.domain.space.surface
     is_saturated_sfc =
         ClimaLand.Domains.top_center_to_surface(p.soil.is_saturated) # a view
 
-    @. p.soil.infiltration = surface_infiltration(ic, input, is_saturated_sfc)
+    @. p.soil.infiltration =
+        surface_infiltration(ic * (1 - is_saturated_sfc), input) # if the surface is saturated ic -> 0 
     @. p.soil.R_s = abs(input .- p.soil.infiltration)
 end
 

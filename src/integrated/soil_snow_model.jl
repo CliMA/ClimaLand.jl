@@ -371,6 +371,7 @@ function soil_boundary_fluxes!(
     Soil.Runoff.update_runoff!(p, bc.runoff, influx, Y, t, soil)
     @. p.soil.top_bc.water = p.soil.infiltration
 
+    earth_param_set = soil.parameters.earth_param_set
     @. p.soil.top_bc.heat =
         (1 - p.snow.snow_cover_fraction) * (
             p.soil.R_n +
@@ -379,6 +380,31 @@ function soil_boundary_fluxes!(
         ) +
         p.excess_heat_flux +
         p.snow.snow_cover_fraction * p.ground_heat_flux
+
+    # Now add in energy flux carried by liquid water entering domain
+    # determine contribution from rain vs snowmelt
+    # This does not capture exfiltration of soil water, which would have the energy of the soil in the top layer.
+    rain_fraction = p.sfc_scratch
+    @. rain_fraction =
+        abs(p.drivers.P_liq * (1 - p.snow.snow_cover_fraction)) / max(
+            abs(
+                p.drivers.P_liq * (1 - p.snow.snow_cover_fraction) +
+                p.snow.water_runoff * p.snow.snow_cover_fraction,
+            ),
+            eps(FT),
+        )
+    @. p.soil.top_bc.heat +=
+        (
+            p.soil.infiltration -
+            (1 - p.snow.snow_cover_fraction) *
+            p.soil.turbulent_fluxes.vapor_flux_liq
+        ) * (
+            rain_fraction *
+            Soil.volumetric_internal_energy_liq(p.drivers.T, earth_param_set) +
+            (1 - rain_fraction) *
+            Soil.volumetric_internal_energy_liq(p.snow.T, earth_param_set)
+        ) # (Inf - E) = liquid water entering domain - this then just proportions it out between rain and snow and assigns the energy of rain and snow to those contributions.
+
     return nothing
 end
 

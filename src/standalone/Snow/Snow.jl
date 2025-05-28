@@ -555,7 +555,7 @@ function ClimaLand.make_update_aux(model::SnowModel{FT}) where {FT}
 
         @. p.snow.energy_runoff =
             p.snow.water_runoff *
-            volumetric_internal_energy_liq(p.snow.T, parameters)
+            volumetric_internal_energy_liq(p.snow.T, parameters.earth_param_set)
         update_snow_cover_fraction!(
             p.snow.snow_cover_fraction,
             parameters.scf,
