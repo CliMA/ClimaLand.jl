@@ -921,7 +921,7 @@ function soil_boundary_fluxes!(
     update_runoff!(p, bc.runoff, influx, Y, t, model)
 
     @. p.soil.top_bc.water = p.soil.infiltration
-    # The last term is the energy flux of infiltration: I * ρe_int_liq(T_atmos)
+    # The last term is the energy flux of infiltration: I_l * ρe_int_liq(T_atmos)
     @. p.soil.top_bc.heat =
         p.soil.R_n +
         p.soil.turbulent_fluxes.lhf +
