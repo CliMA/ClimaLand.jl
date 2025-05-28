@@ -9,7 +9,7 @@
 # Number of spatial elements: 101 1in horizontal, 15 in vertical
 # Soil depth: 50 m
 # Simulation duration: 365 d
-# Timestep: 450 s
+# Timestep: 900 s
 # Timestepper: ARS111
 # Fixed number of iterations: 1
 # Jacobian update: every new timestep
@@ -153,7 +153,7 @@ function setup_simulation(; greet = false)
     # If LONGER run, run for 10 years, with the correct forcing each year.
     start_date = LONGER_RUN ? DateTime(2004) : DateTime(2008)
     stop_date = LONGER_RUN ? DateTime(2014) : DateTime(2010)
-    Δt = 450.0
+    Δt = 900.0
     nelements = (101, 15)
     if greet
         @info "Run: Global Soil Model"
