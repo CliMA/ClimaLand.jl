@@ -43,7 +43,12 @@ import NCDatasets
 using Poppler_jll: pdfunite
 
 const FT = Float64;
-time_interpolation_method = LinearInterpolation(PeriodicCalendar())
+# If you want to do a very long run locally, you can enter `export
+# LONGER_RUN=""` in the terminal and run this script. If you want to do a very
+# long run on Buildkite manually, then make a new build and pass `LONGER_RUN=""`
+# as an environment variable. In both cases, the value of `LONGER_RUN` does not
+# matter.
+const LONGER_RUN = haskey(ENV, "LONGER_RUN") ? true : false
 context = ClimaComms.context()
 ClimaComms.init(context)
 device = ClimaComms.device()
@@ -53,12 +58,23 @@ diagnostics_outdir = joinpath(root_path, "global_diagnostics")
 outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
 
-function setup_model(FT, start_date, domain, earth_param_set)
+function setup_model(FT, start_date, stop_date, domain, earth_param_set)
+    time_interpolation_method =
+        LONGER_RUN ? LinearInterpolation() :
+        LinearInterpolation(PeriodicCalendar())
     surface_space = domain.space.surface
     subsurface_space = domain.space.subsurface
     # Forcing data
-    era5_ncdata_path =
-        ClimaLand.Artifacts.era5_land_forcing_data2008_path(; context)
+    if LONGER_RUN
+        era5_ncdata_path = ClimaLand.Artifacts.find_era5_year_paths(
+            start_date,
+            stop_date;
+            context,
+        )
+    else
+        era5_ncdata_path =
+            ClimaLand.Artifacts.era5_land_forcing_data2008_path(; context)
+    end
     atmos, radiation = ClimaLand.prescribed_forcing_era5(
         era5_ncdata_path,
         surface_space,
@@ -133,8 +149,10 @@ function setup_model(FT, start_date, domain, earth_param_set)
 end
 
 function setup_simulation(; greet = false)
-    start_date = DateTime(2008)
-    stop_date = DateTime(2010)
+    # If not LONGER_RUN, run for 2 years; note that the forcing from 2008 is repeated.
+    # If LONGER run, run for 10 years, with the correct forcing each year.
+    start_date = LONGER_RUN ? DateTime(2004) : DateTime(2008)
+    stop_date = LONGER_RUN ? DateTime(2014) : DateTime(2010)
     Δt = 450.0
     nelements = (101, 15)
     if greet
@@ -147,7 +165,7 @@ function setup_simulation(; greet = false)
     domain =
         ClimaLand.ModelSetup.global_domain(FT; comms_ctx = context, nelements)
     params = LP.LandParameters(FT)
-    model = setup_model(FT, start_date, domain, params)
+    model = setup_model(FT, start_date, stop_date, domain, params)
     diagnostics = ClimaLand.default_diagnostics(
         model,
         start_date;
