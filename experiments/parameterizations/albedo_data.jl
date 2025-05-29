@@ -23,7 +23,7 @@ nelements = (101, 15)
 FT = Float32
 earth_param_set = LP.LandParameters(FT)
 thermo_params = LP.thermodynamic_parameters(earth_param_set);
-domain = ClimaLand.global_domain(FT; nelements, mask_threshold = 0.99)
+domain = ClimaLand.ModelSetup.global_domain(FT; nelements, mask_threshold = 0.99)
 surface_space = domain.space.surface
 subsurface_space = domain.space.subsurface
 outpath = "experiments/parameterizations"
