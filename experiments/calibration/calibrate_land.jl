@@ -1,17 +1,17 @@
 using Dates
 
-model_type = "land" # "land" or "bucket"
-const variable_list = ["swu"] # variable(s) you want to capture by adjusting your priors
+model_type = "bucket" # "land" or "bucket"
+const variable_list = ["shf", "lhf"] # variable(s) you want to capture by adjusting your priors
 const n_iterations = 10 # 1 iterations takes ~ 1.5 hour with current settings ((50, 15) resolution, 2 year simulation)
 const spinup_period = Year(1)
 const start_date = DateTime(2008, 12, 01) # this is the start of the forward model spinup
 @assert month(start_date + spinup_period) == 12 "The start of your calibration period should be December."
 const nelements = (50, 15) # resolution - (horizontal elements (lon, lat), vertical elements (soil discretization))
-const dirname = "land_swu_zenith_only" # ideally, describe your calibration in a few words
-const caldir = joinpath("/glade/campaign/univ/ucit0011/alexis/", dirname) # you might want to save somewhere else than login
+const dirname = "bucket_lhf_shf" # ideally, describe your calibration in a few words
+const caldir = joinpath("output", dirname) # you might want to save somewhere else than login
+model_dir = joinpath(pkgdir(ClimaLand), "experiments", "calibration")
+
 # Don't forget to adjust your priors and forward_model files.
-
-
 
 # Most of the time users will just need to modify the settings above
 # In future commits, more flexibility should be passed as argument above,
@@ -30,20 +30,27 @@ rng_seed = 2
 rng = Random.MersenneTwister(rng_seed)
 FT = Float64
 
-include(joinpath(@__DIR__, string("priors_", model_type, ".jl")))
+include(
+    joinpath(
+        pkgdir(ClimaLand),
+        "experiments",
+        "calibration",
+        string("priors_", model_type, ".jl"),
+    ),
+)
 # potentially we could add loss-parameters pairing https://clima.github.io/EnsembleKalmanProcesses.jl/dev/update_groups/
 
 ekp_process = EKP.Unscented(prior)
 ensemble_size = ekp_process.N_ens
 
 # Config for workers
-CAL.add_workers(
-    ensemble_size;
-    cluster = :auto,
-    device = :gpu,
-    l_walltime = "11:30:00", # this only works for PBS. ClimaCalibrate will soon have a new more generalizable keyword for it to work on Slurm and PBS.
-    l_job_priority = "premium", # this only works on PBS
-)
+addprocs(CAL.SlurmManager())
+# CAL.add_workers(
+#     4;
+#     cluster = :auto,
+#     device = :gpu,
+#     time = 700,
+# )
 
 @everywhere using Dates
 @everywhere using ClimaLand
@@ -60,18 +67,13 @@ for pid in workers()
         global start_date = Main.start_date
     end
 end
+
 @everywhere begin
-    dir = pkgdir(ClimaLand)
-    include(
-        joinpath(
-            dir,
-            string("experiments/calibration/forward_model_", model_type, ".jl"),
-        ),
-    )
+    include(joinpath(model_dir, string("forward_model_", model_type, ".jl")))
 end
 
 # Locations used for calibration (currently all coordinates on land):
-include(joinpath(@__DIR__, "make_training_locations.jl"))
+include(joinpath(model_dir, "make_training_locations.jl"))
 training_locations = make_training_locations(nelements)
 # potentially we can add regional runs or specific lon lat bands or filter (e.g., regions with snow)
 
@@ -82,7 +84,7 @@ training_locations = make_training_locations(nelements)
 # ^ maybe Julia and Thanhthanh SURF?
 
 # observationseries - era5 data and noise object to compare to model output in EKP (to minimize the loss)
-include(joinpath(@__DIR__, "observationseries_era5.jl"))
+include(joinpath(model_dir, "observationseries_era5.jl"))
 
 # l_obs is the length of Observation objects (observationseries for era5, observationmap for ClimaLand)
 n_locations = length(training_locations)
@@ -91,7 +93,7 @@ n_time_points = 4 # 4 seasons (and not, for example, 12 months)
 l_obs = n_time_points * n_variables * n_locations
 
 # build observation from ClimaLand outputs - for one member
-include(joinpath(@__DIR__, "observation_map.jl"))
+include(joinpath(model_dir, "observation_map.jl"))
 
 # build observation from ClimaLand outputs - for all members
 function CAL.observation_map(iteration)

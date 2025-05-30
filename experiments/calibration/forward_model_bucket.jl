@@ -1,5 +1,6 @@
 import SciMLBase
 import ClimaComms
+ENV["CLIMACOMMS_CONTEXT"] = "SINGLETON"
 ClimaComms.@import_required_backends
 import ClimaTimeSteppers as CTS
 using ClimaCore
