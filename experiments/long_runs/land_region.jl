@@ -71,6 +71,7 @@ function setup_model(FT, context, start_date, Δt, domain, earth_param_set)
         start_date,
         earth_param_set,
         FT;
+        max_wind_speed = 25.0,
         time_interpolation_method,
     )
 
