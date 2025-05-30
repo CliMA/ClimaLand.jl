@@ -1269,7 +1269,7 @@ function prescribed_forcing_era5(
     if max_wind_speed isa Nothing
         wind_function = (u, v) -> sqrt.(u .^ 2 .+ v .^ 2)
     else
-        wind_function = min.(sqrt.(u .^ 2 .+ v .^ 2), max_wind_speed)
+        wind_function = (u,v) -> min.(sqrt.(u .^ 2 .+ v .^ 2), max_wind_speed)
     end
 
     u_atmos = TimeVaryingInput(
