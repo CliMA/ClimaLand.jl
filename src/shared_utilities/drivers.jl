@@ -1214,6 +1214,7 @@ end
                              earth_param_set,
                              FT;
                              gustiness=1,
+                             max_wind_speed = nothing,
                              c_co2 = TimeVaryingInput((t) -> 4.2e-4),
                              time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
                              regridder_type = :InterpolationsRegridder)
@@ -1223,6 +1224,11 @@ from a file path pointing to the ERA5 data in a netcdf file, the surface_space, 
 and the earth_param_set.
 
 The argument `era5_ncdata_path` is either a list of nc files, each with all of the variables required, but with different time intervals in the different files, or else it is a single file with all the variables.
+
+High wind speed anomalies (10-100x increase and decrease over a period of a several hours) appear in the ERA5 
+reanalysis data. These generate very large surface fluxes (due to wind speeds up to 300 m/s), which lead to instability. This kwarg max_wind_speed
+is used to clip these if it is not `nothing`.
+See: https://confluence.ecmwf.int/display/CKB/ERA5%3A+large+10m+winds
 """
 function prescribed_forcing_era5(
     era5_ncdata_path,
@@ -1231,6 +1237,7 @@ function prescribed_forcing_era5(
     earth_param_set,
     FT;
     gustiness = 1,
+    max_wind_speed = nothing,
     c_co2 = TimeVaryingInput((t) -> 4.2e-4),
     time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
     regridder_type = :InterpolationsRegridder,
@@ -1259,6 +1266,11 @@ function prescribed_forcing_era5(
         file_reader_kwargs = (; preprocess_func = (data) -> -data / 1000,),
         method = time_interpolation_method,
     )
+    if max_wind_speed isa Nothing
+        wind_function = (u, v) -> sqrt.(u .^ 2 .+ v .^ 2)
+    else
+        wind_function = (u,v) -> min.(sqrt.(u .^ 2 .+ v .^ 2), max_wind_speed)
+    end
 
     u_atmos = TimeVaryingInput(
         [era5_ncdata_path, era5_ncdata_path],
@@ -1266,7 +1278,7 @@ function prescribed_forcing_era5(
         surface_space;
         start_date,
         regridder_type,
-        compose_function = (u, v) -> sqrt.(u .^ 2 .+ v .^ 2),
+        compose_function = wind_function,
         method = time_interpolation_method,
     )
     specific_humidity(Td, T, P; params = earth_param_set) =
