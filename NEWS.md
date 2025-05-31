@@ -4,6 +4,17 @@ ClimaLand.jl Release Notes
 main
 -------
 
+v0.16.2
+-------
+- Fix bug in reflected radiation PR[#1156](https://github.com/CliMA/ClimaLand.jl/pull/1156)
+- Add `Simulations` module for global runs PR[#1152](https://github.com/CliMA/ClimaLand.jl/pull/1152)
+- Improve stability of soil model when soil is frozen PR[#1158](https://github.com/CliMA/ClimaLand.jl/pull/1158)
+- Fix bugs in ClimaComms method calls PR[#1160](https://github.com/CliMA/ClimaLand.jl/pull/1160)
+- Add energy free drainage bottom BC for soil PR[#1161](https://github.com/CliMA/ClimaLand.jl/pull/1161)
+- Add total energy and water to bucket cache PR[#1104](https://github.com/CliMA/ClimaLand.jl/pull/1104)
+- Add calibration job script example to slurm [#1142](https://github.com/CliMA/ClimaLand.jl/pull/1142)
+- Compute zenith angle when using `CoupledRadiativeFluxes` [#1135](https://github.com/CliMA/ClimaLand.jl/pull/1135)
+
 v0.16.1
 -------
 - Don't add DSS buffer when npolynomial is 0 PR[#1153](https://github.com/CliMA/ClimaLand.jl/pull/1153)
