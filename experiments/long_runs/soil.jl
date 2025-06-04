@@ -58,7 +58,7 @@ diagnostics_outdir = joinpath(root_path, "global_diagnostics")
 outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
 
-function setup_model(FT, start_date, stop_date, domain, earth_param_set)
+function setup_forcing(FT, start_date, stop_date, domain, earth_param_set)
     time_interpolation_method =
         LONGER_RUN ? LinearInterpolation() :
         LinearInterpolation(PeriodicCalendar())
@@ -75,7 +75,7 @@ function setup_model(FT, start_date, stop_date, domain, earth_param_set)
         era5_ncdata_path =
             ClimaLand.Artifacts.era5_land_forcing_data2008_path(; context)
     end
-    atmos, radiation = ClimaLand.prescribed_forcing_era5(
+    forcing = ClimaLand.prescribed_forcing_era5(
         era5_ncdata_path,
         surface_space,
         start_date,
@@ -84,69 +84,7 @@ function setup_model(FT, start_date, stop_date, domain, earth_param_set)
         max_wind_speed = 25.0,
         time_interpolation_method,
     )
-    spatially_varying_soil_params =
-        ClimaLand.ModelSetup.default_spatially_varying_soil_parameters(
-            subsurface_space,
-            surface_space,
-            FT,
-        )
-    (;
-        ν,
-        ν_ss_om,
-        ν_ss_quartz,
-        ν_ss_gravel,
-        hydrology_cm,
-        K_sat,
-        S_s,
-        θ_r,
-        PAR_albedo_dry,
-        NIR_albedo_dry,
-        PAR_albedo_wet,
-        NIR_albedo_wet,
-        f_max,
-    ) = spatially_varying_soil_params
-    soil_params = Soil.EnergyHydrologyParameters(
-        FT;
-        ν,
-        ν_ss_om,
-        ν_ss_quartz,
-        ν_ss_gravel,
-        hydrology_cm,
-        K_sat,
-        S_s,
-        θ_r,
-        PAR_albedo_dry,
-        NIR_albedo_dry,
-        PAR_albedo_wet,
-        NIR_albedo_wet,
-    )
-
-    f_over = FT(3.28) # 1/m
-    R_sb = FT(1.484e-4 / 1000) # m/s
-    runoff_model = ClimaLand.Soil.Runoff.TOPMODELRunoff{FT}(;
-        f_over = f_over,
-        f_max = f_max,
-        R_sb = R_sb,
-    )
-
-    soil_args = (domain = domain, parameters = soil_params)
-    soil_model_type = Soil.EnergyHydrology{FT}
-    sources = (Soil.PhaseChange{FT}(),)# sublimation and subsurface runoff are added automatically
-    top_bc = ClimaLand.Soil.AtmosDrivenFluxBC(
-        atmos,
-        radiation,
-        runoff_model,
-        (:soil,),
-    )
-    zero_flux = Soil.HeatFluxBC((p, t) -> 0.0)
-    boundary_conditions =
-        (; top = top_bc, bottom = Soil.EnergyWaterFreeDrainage())
-    soil = soil_model_type(;
-        boundary_conditions = boundary_conditions,
-        sources = sources,
-        soil_args...,
-    )
-    return soil
+    return forcing
 end
 
 function setup_simulation(; greet = false)
@@ -166,7 +104,14 @@ function setup_simulation(; greet = false)
     domain =
         ClimaLand.ModelSetup.global_domain(FT; comms_ctx = context, nelements)
     params = LP.LandParameters(FT)
-    model = setup_model(FT, start_date, stop_date, domain, params)
+    forcing = setup_forcing(FT, start_date, stop_date, domain, params)
+    model = ClimaLand.Soil.EnergyHydrology(
+        FT,
+        domain,
+        earth_param_set,
+        forcing,
+        (:soil,),
+    )
     diagnostics = ClimaLand.default_diagnostics(
         model,
         start_date;
