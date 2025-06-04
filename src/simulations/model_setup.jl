@@ -47,15 +47,16 @@ function EnergyHydrology(
         runoff_model,
         prognostic_land_components,
     )
-    bottom_bc = Soil.EnergyWaterFreeDrainage()
+    bottom_bc = ClimaLand.Soil.EnergyWaterFreeDrainage()
     boundary_conditions = (; top = top_bc, bottom = bottom_bc)
     # sublimation and subsurface runoff are added automatically
     if :canopy ∈ prognostic_land_components
-        sources = (RootExtraction{FT}(), Soil.PhaseChange{FT}())
+        sources =
+            (ClimaLand.RootExtraction{FT}(), ClimaLand.Soil.PhaseChange{FT}())
     else
-        sources = (Soil.PhaseChange{FT}(),)
+        sources = (ClimaLand.Soil.PhaseChange{FT}(),)
     end
-    parameters = Soil.EnergyHydrologyParameters(
+    parameters = ClimaLand.Soil.EnergyHydrologyParameters(
         FT;
         retention_parameters...,
         composition_parameters...,

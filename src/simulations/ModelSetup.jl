@@ -14,6 +14,6 @@ extrapolation_bc =
 
 include("domains.jl")
 include("spatial_parameters.jl")
-#include("model_setup.jl")
+include("model_setup.jl")
 
 end # module
