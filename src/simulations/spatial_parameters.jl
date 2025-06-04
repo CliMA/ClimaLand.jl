@@ -270,7 +270,7 @@ function default_spatially_varying_soil_parameters(
         extrapolation_bc = extrapolation_bc,
     )
 
-    S_s = ClimaCore.Fields.zeros(subsurface_space) .+ 1e-3
+    S_s = ClimaCore.Fields.zeros(subsurface_space) .+ FT(1e-3)
 
     return merge(
         α_params,
