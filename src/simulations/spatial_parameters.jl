@@ -263,21 +263,21 @@ function default_spatially_varying_soil_parameters(
         extrapolation_bc = extrapolation_bc,
     )
 
-    topmodel_params = topmodel_fmax(
+    f_max = topmodel_fmax(
         surface_space,
         FT;
         regridder_type = regridder_type,
         extrapolation_bc = extrapolation_bc,
     )
 
-    S_s = ClimaCore.Fields.zeros(domain.space.subsurface) .+ 1e-3
+    S_s = ClimaCore.Fields.zeros(subsurface_space) .+ 1e-3
 
     return merge(
         α_params,
         retention_params,
         composition_params,
-        topmodel_params,
-        (; S_s,),
+        (; f_max),
+        (; S_s),
     )
 end
 
