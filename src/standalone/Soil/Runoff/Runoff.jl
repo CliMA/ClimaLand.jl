@@ -13,9 +13,8 @@ export TOPMODELRunoff,
     TOPMODELSubsurfaceRunoff,
     subsurface_runoff_source,
     topmodel_ss_flux,
-    update_runoff!,
+    update_infiltration_water_flux!,
     is_saturated
-
 
 """
     AbstractRunoffModel
@@ -26,7 +25,7 @@ the following boundary condition types:
 - `ClimaLand.Soil.RichardsAtmosDrivenFluxBC`.
 It must have methods for
 - `subsurface_runoff_source` (defined in this module)
-- `update_runoff!` (defined in this module)
+- `update_infiltration_water_flux!` (defined in this module)
 - `ClimaLand.source!`.
 Please see the documentation for these for more details.
 
@@ -43,7 +42,6 @@ model `runoff`.
 """
 subsurface_runoff_source(runoff::AbstractRunoffModel) = runoff.subsurface_source
 
-
 """
     NoRunoff <: AbstractRunoffModel
 A concrete type of soil runoff model; the 
@@ -58,12 +56,12 @@ struct NoRunoff <: AbstractRunoffModel
 end
 
 """
-    update_runoff!(p, runoff::NoRunoff, input, _...)
+    update_infiltration_water_flux!(p, runoff::NoRunoff, input, _...)
 
 Updates the runoff variables in the cache `p.soil` in place
 in the case of NoRunoff: sets infiltration = precipitation.
 """
-function update_runoff!(p, runoff::NoRunoff, input, _...)
+function update_infiltration_water_flux!(p, runoff::NoRunoff, input, _...)
     p.soil.infiltration .= input
 end
 
@@ -90,23 +88,17 @@ end
     surface_infiltration(
         f_ic::FT,
         input::FT,
-        is_saturated::FT,
     ) where {FT}
 
 Computes the surface infiltration for the simple surface
-runoff model. If the soil is saturated at the surface,
-all input is converted to runoff (infiltration is zero).
-
-If the soil is not saturated, the maximum of the infiltration
-capacity or the input is used as infiltration. Recall that
-both are negative (towards the soil).
+runoff model.
 """
-function surface_infiltration(f_ic::FT, input::FT, is_saturated::FT) where {FT}
-    return (1 - is_saturated) * max(f_ic, input)
+function surface_infiltration(f_ic::FT, input::FT) where {FT}
+    return max(f_ic, input)
 end
 
 """
-    update_runoff!(
+    update_infiltration_water_flux!(
         p,
         runoff::SurfaceRunoff,
         input,
@@ -115,7 +107,7 @@ end
         model::AbstractSoilModel,
 )
 
-The update_runoff! function for the SurfaceRunoff model.
+The update_infiltration_water_flux! function for the SurfaceRunoff model.
 
 Updates the runoff model variables in place in `p.soil` for the SurfaceRunoff 
 parameterization:
@@ -123,7 +115,7 @@ p.soil.R_s
 p.soil.is_saturated
 p.soil.infiltration
 """
-function update_runoff!(
+function update_infiltration_water_flux!(
     p,
     runoff::SurfaceRunoff,
     input,
@@ -137,11 +129,11 @@ function update_runoff!(
     FT = eltype(ϑ_l)
     θ_i = model_agnostic_volumetric_ice_content(Y, FT)
     @. p.soil.is_saturated = is_saturated(ϑ_l + θ_i, model.parameters.ν)
-    surface_space = model.domain.space.surface
     is_saturated_sfc =
         ClimaLand.Domains.top_center_to_surface(p.soil.is_saturated) # a view
 
-    @. p.soil.infiltration = surface_infiltration(ic, input, is_saturated_sfc)
+    @. p.soil.infiltration =
+        surface_infiltration(ic * (1 - is_saturated_sfc), input) # if the surface is saturated ic -> 0 
     @. p.soil.R_s = abs(input .- p.soil.infiltration)
 end
 
@@ -165,7 +157,7 @@ use in global climate models".
 
 This is currently treated implicitly (evaluated at the next value of
 ϑ_l) but not included in the Jacobian approximation. This is because
-`update_runoff` is called as part of the implicit tendency.
+`update_infiltration_water_flux` is called as part of the implicit tendency.
 
 $(DocStringExtensions.FIELDS)
 """
@@ -210,7 +202,7 @@ end
 
 
 """
-    update_runoff!(p, runoff::TOPMODELRunoff, input, Y,t, model::AbstractSoilModel)
+    update_infiltration_water_flux!(p, runoff::TOPMODELRunoff, input, Y,t, model::AbstractSoilModel)
 
 Updates the runoff model variables in place in `p.soil` for the TOPMODELRunoff
 parameterization:
@@ -219,7 +211,7 @@ p.soil.R_ss
 p.soil.h∇
 p.soil.infiltration
 """
-function update_runoff!(
+function update_infiltration_water_flux!(
     p,
     runoff::TOPMODELRunoff,
     input,
