@@ -52,7 +52,7 @@ import ClimaParams
         for (g1, Vcmax25, is_c3, rooting_depth, α_PAR_leaf, α_NIR_leaf, ld) in
             zipped_params
             AR_params = AutotrophicRespirationParameters(FT)
-            G_Function = ConstantGFunction(ld)
+            G_Function = ConstantGFunction.(ld)
             RTparams =
                 BeerLambertParameters(FT; α_PAR_leaf, α_NIR_leaf, G_Function)
             photosynthesis_params = FarquharParameters(FT, is_c3; Vcmax25)
@@ -592,7 +592,7 @@ end
         )
         for (g1, Vcmax25, is_c3, rooting_depth, α_PAR_leaf, α_NIR_leaf, ld) in
             zipped_params
-            G_Function = ConstantGFunction(ld)
+            G_Function = ConstantGFunction.(ld)
             RTparams =
                 BeerLambertParameters(FT; α_PAR_leaf, α_NIR_leaf, G_Function)
             photosynthesis_params = FarquharParameters(FT, is_c3; Vcmax25)
@@ -1178,7 +1178,7 @@ end
         ) in zipped_params
             BeerLambertparams = BeerLambertParameters(FT)
             # TwoStreamModel parameters
-            G_Function = CLMGFunction(χl)
+            G_Function = CLMGFunction.(χl)
             λ_γ_PAR = FT(5e-7)
             ϵ_canopy = FT(0.97)
             BeerLambertparams =

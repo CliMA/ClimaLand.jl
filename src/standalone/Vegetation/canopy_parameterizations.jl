@@ -52,42 +52,28 @@ Returns the leaf angle distribution value for CLM G function as a function of th
 cosine of the solar zenith angle and the leaf orientation index.
 See section 3.1 of https://www2.cesm.ucar.edu/models/cesm2/land/CLM50_Tech_Note.pdf
 """
-function compute_G(G::CLMGFunction, cosθs)
-    return compute_G_CLMG.(G.χl, cosθs)
-end
-
-"""
-    compute_G_CLMG(
-        χl::FT,
-        cosθs::FT,
-    )
-
-Returns the leaf angle distribution value for CLM G function at a point as a function of the
-cosine of the solar zenith angle at the point and the
-leaf orientation index at the point. See section 3.1 of
-https://www2.cesm.ucar.edu/models/cesm2/land/CLM50_Tech_Note.pdf
-"""
-function compute_G_CLMG(χl::FT, cosθs::FT) where {FT}
+function compute_G(G::CLMGFunction, cosθs::FT) where {FT}
+    χl = G.χl
     ϕ1 = 0.5 - 0.633 * χl - 0.33 * χl^2
     ϕ2 = 0.877 * (1 - 2 * ϕ1)
     return FT(ϕ1 + ϕ2 * cosθs)
 end
 
 """
-    compute_fractional_absorbances(
+    compute_fractional_absorbances!(
+        p,
         RT::BeerLambertModel{FT},
         LAI,
-        K,
         α_soil_PAR,
         α_soil_NIR,
-        _,
-        _,
     )
 
 Computes the PAR and NIR fractional absorbances, reflectances, and tranmittances
 for a canopy in the case of the
 Beer-Lambert model. The absorbances are a function of the radiative transfer
-model, as well as the leaf area index, the extinction coefficient, and the
+model, as well as the leaf area index, the clumping index, 
+the cosine of the zenith angle, the leaf angle distribution,
+the extinction coefficient, and the
 soil albedo in the PAR and NIR bands. Returns a
 NamedTuple of NamedTuple, of the form:
 (; par = (; refl = , trans = , abs = ),  nir = (; refl = , trans = , abs = ))
@@ -96,37 +82,46 @@ function compute_fractional_absorbances!(
     p,
     RT::BeerLambertModel{FT},
     LAI,
-    K,
     α_soil_PAR,
     α_soil_NIR,
-    _...,
 ) where {FT}
     RTP = RT.parameters
-    @. p.canopy.radiative_transfer.par =
-        canopy_sw_rt_beer_lambert(RTP.Ω, RTP.α_PAR_leaf, LAI, K, α_soil_PAR)
-    @. p.canopy.radiative_transfer.nir =
-        canopy_sw_rt_beer_lambert(RTP.Ω, RTP.α_NIR_leaf, LAI, K, α_soil_NIR)
+    cosθs = p.drivers.cosθs
+    @. p.canopy.radiative_transfer.par = canopy_sw_rt_beer_lambert(
+        RTP.G_Function,
+        cosθs,
+        RTP.Ω,
+        RTP.α_PAR_leaf,
+        LAI,
+        α_soil_PAR,
+    )
+    @. p.canopy.radiative_transfer.nir = canopy_sw_rt_beer_lambert(
+        RTP.G_Function,
+        cosθs,
+        RTP.Ω,
+        RTP.α_NIR_leaf,
+        LAI,
+        α_soil_NIR,
+    )
 end
 
 """
     compute_fractional_absorbances!(p,
         RT::TwoStreamModel{FT},
         LAI,
-        K,
         α_soil_PAR,
         α_soil_NIR,
-        cosθs,
-        frac_diff,
     )
 
 Computes the PAR and NIR fractional absorbances, reflectances, and tranmittances
 for a canopy in the case of the
 Two-stream model. The absorbances are a function of the radiative transfer
-model, as well as the leaf area index, the extinction coefficient, and the
+model, as well as the leaf area index, the clumping index, 
+the cosine of the zenith angle, the leaf angle distribution,
+the extinction coefficient, and the
 soil albedo in the PAR and NIR bands.
 
-This model also depends on the diffuse fraction and the cosine of the
-zenith angle.
+This model also depends on the diffuse fraction.
 Returns a
 NamedTuple of NamedTuple, of the form:
 (; par = (; refl = , trans = , abs = ),  nir = (; refl = , trans = , abs = ))
@@ -135,33 +130,30 @@ function compute_fractional_absorbances!(
     p,
     RT::TwoStreamModel{FT},
     LAI,
-    K,
     α_soil_PAR,
     α_soil_NIR,
-    cosθs,
-    frac_diff,
 ) where {FT}
     RTP = RT.parameters
+    cosθs = p.drivers.cosθs
+    frac_diff = p.drivers.frac_diff
     @. p.canopy.radiative_transfer.par = canopy_sw_rt_two_stream(
-        p.canopy.radiative_transfer.G,
+        RTP.G_Function,
         RTP.Ω,
         RTP.n_layers,
         RTP.α_PAR_leaf,
         RTP.τ_PAR_leaf,
         LAI,
-        K,
         cosθs,
         α_soil_PAR,
         frac_diff,
     )
     @. p.canopy.radiative_transfer.nir = canopy_sw_rt_two_stream(
-        p.canopy.radiative_transfer.G,
+        RTP.G_Function,
         RTP.Ω,
         RTP.n_layers,
         RTP.α_NIR_leaf,
         RTP.τ_NIR_leaf,
         LAI,
-        K,
         cosθs,
         α_soil_NIR,
         frac_diff,
@@ -170,29 +162,31 @@ end
 
 """
     canopy_sw_rt_beer_lambert(
+        G_Function,
+        cosθs::FT,
         Ω::FT,
-        SW_d:FT,
         α_leaf::FT,
         LAI::FT,
-        K::FT,
-        α_soil::FT
+        α_soil::FT,
     )
 
 Computes the absorbed, reflected, and transmitted flux fractions by radiation band.
 
 This applies the Beer-Lambert law, which is a function of leaf reflectance
-(`α_leaf`), the extinction coefficient (`K`), leaf area index (`LAI`),
+(`α_leaf`), the leaf angle distribution and zenith angle (defined via `G_Function`, and `cosθs`), leaf area index (`LAI`),
 and the albedo of the soil (`α_soil`).
 
 Returns a tuple of reflected, absorbed, and transmitted radiation fractions.
 """
 function canopy_sw_rt_beer_lambert(
+    G_Function,
+    cosθs::FT,
     Ω::FT,
     α_leaf::FT,
     LAI::FT,
-    K::FT,
     α_soil::FT,
 ) where {FT}
+    K = extinction_coeff(G_Function, cosθs)
     AR = (1 - α_leaf) * (1 - exp(-K * LAI * Ω)) * (1 - α_soil)
     TR = exp(-K * LAI * Ω)
     RR = FT(1) - AR - TR * (1 - α_soil)
@@ -201,14 +195,13 @@ end
 
 """
     canopy_sw_rt_two_stream(
-        G::FT,
+        G_Function,
         Ω::FT,
         n_layers::UInt64,
         SW_d::FT,
         α_leaf::FT,
         τ_leaf::FT,
         LAI::FT,
-        K::FT,
         cosθs::FT,
         α_soil::FT,
         frac_diff::FT,
@@ -225,19 +218,20 @@ canopy soil_driver, the cosine of the solar zenith angle, and τ.
 Returns a tuple of reflected, absorbed, and transmitted radiation fractions.
 """
 function canopy_sw_rt_two_stream(
-    G::FT,
+    G_Function,
     Ω::FT,
     n_layers::UInt64,
     α_leaf::FT,
     τ_leaf::FT,
     LAI::FT,
-    K::FT,
     cosθs::FT,
     α_soil::FT,
     frac_diff::FT,
 ) where {FT}
     α_soil = max(eps(FT), α_soil) # this prevents division by zero, below.
     cosθs = max(eps(FT), cosθs) # The insolations package returns θs > π/2 (nighttime), but this assumes cosθs >0
+    G = compute_G(G_Function, cosθs)
+    K = extinction_coeff(G_Function, cosθs)
     # Compute μ̄, the average inverse diffuse optical length per LAI
     μ̄ = 1 / max(2G, eps(FT))
 
@@ -395,17 +389,18 @@ function canopy_sw_rt_two_stream(
 end
 
 """
-    extinction_coeff(ld::FT,
+    extinction_coeff(G_Function,
                      cosθs::FT) where {FT}
 
 Computes the vegetation extinction coefficient (`K`), as a function
 of the cosine of the sun zenith angle (`cosθs`),
-and the leaf angle distribution (`G`).
+and the leaf angle distribution function(`G_Function`).
 
 In the two-stream scheme, values of K ~ 1/epsilon can lead to numerical issues.
 Here we clip it to 1e6.
 """
-function extinction_coeff(G::FT, cosθs::FT) where {FT}
+function extinction_coeff(G_Function, cosθs::FT) where {FT}
+    G = compute_G(G_Function, cosθs)
     K = min(G / max(cosθs, eps(FT)), FT(1e6))
     return K
 end

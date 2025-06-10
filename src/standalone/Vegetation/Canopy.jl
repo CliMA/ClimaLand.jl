@@ -450,7 +450,6 @@ function ClimaLand.make_update_aux(
         fa = p.canopy.hydraulics.fa
         par_d = p.canopy.radiative_transfer.par_d
         nir_d = p.canopy.radiative_transfer.nir_d
-        frac_diff = p.drivers.frac_diff
 
         bc = canopy.boundary_conditions
         # Current atmospheric conditions
@@ -483,18 +482,14 @@ function ClimaLand.make_update_aux(
         @. p.canopy.radiative_transfer.ϵ =
             canopy.radiative_transfer.parameters.ϵ_canopy *
             (1 - exp(-(LAI + SAI))) #from CLM 5.0, Tech note 4.20
-        p.canopy.radiative_transfer.G .= compute_G(G_Function, cosθs)
         RT = canopy.radiative_transfer
         compute_PAR!(par_d, RT, bc.radiation, p, t)
         compute_NIR!(nir_d, RT, bc.radiation, p, t)
-        K = p.canopy.radiative_transfer.K
-        @. K = extinction_coeff(p.canopy.radiative_transfer.G, cosθs)
 
         compute_fractional_absorbances!(
             p,
             RT,
             LAI,
-            K,
             ground_albedo_PAR(
                 Val(bc.prognostic_land_components),
                 bc.ground,
@@ -509,8 +504,6 @@ function ClimaLand.make_update_aux(
                 p,
                 t,
             ),
-            cosθs,
-            frac_diff,
         )
 
         # update plant hydraulics aux
@@ -606,7 +599,7 @@ function ClimaLand.make_update_aux(
             energy_per_mole_photon_par,
             par_d,
         )
-        @. GPP = compute_GPP(An, K, LAI, Ω)
+        @. GPP = compute_GPP(An, extinction_coeff(G_Function, cosθs), LAI, Ω)
         @. gs = medlyn_conductance(g0, Drel, medlyn_factor, An, c_co2_air)
         @. rs_canopy = 1 / upscale_leaf_conductance(gs, LAI, T_air, R, P_air)
         # update autotrophic respiration
@@ -617,7 +610,7 @@ function ClimaLand.make_update_aux(
             LAI,
             SAI,
             RAI,
-            K,
+            extinction_coeff(G_Function, cosθs),
             Ω,
             An,
             Rd,
