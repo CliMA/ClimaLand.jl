@@ -581,8 +581,8 @@ function define_diagnostics!(land_model)
     # Net shortwave radiation
     add_diagnostic_variable!(
         short_name = "swd",
-        long_name = "Short Longwave Radiation",
-        standard_name = "short_longwave_radiation",
+        long_name = "Shortwave Radiation Downwards",
+        standard_name = "down_shortwave_radiation",
         units = "W m^-2",
         comments = "The downwelling shortwave radiation at the surface.",
         compute! = (out, Y, p, t) ->
