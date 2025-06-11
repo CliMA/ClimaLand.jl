@@ -208,15 +208,9 @@ lsm_aux_vars(m::LandModel) = (
     :root_energy_extraction,
     :LW_u,
     :SW_u,
-    :scratch1,
-    :scratch2,
-    :scratch3,
-    :excess_water_flux,
-    :excess_heat_flux,
     :ground_heat_flux,
     :effective_soil_sfc_T,
     :sfc_scratch,
-    :subsfc_scratch,
     :effective_soil_sfc_depth,
     :T_sfc,
     :ϵ_sfc,
@@ -231,10 +225,6 @@ The types of the additional auxiliary variables that are
 included in the land model.
 """
 lsm_aux_types(m::LandModel{FT}) where {FT} = (
-    FT,
-    FT,
-    FT,
-    FT,
     FT,
     FT,
     FT,
@@ -267,10 +257,6 @@ lsm_aux_domain_names(m::LandModel) = (
     :surface,
     :surface,
     :surface,
-    :surface,
-    :surface,
-    :surface,
-    :subsurface,
     :surface,
     :surface,
     :surface,
@@ -406,9 +392,6 @@ function lsm_radiant_energy_fluxes!(
     T_snow = p.snow.T_sfc
 
     # in W/m^2
-    LW_d_canopy = p.scratch1
-    LW_u_soil = p.scratch2
-    LW_u_snow = p.scratch3
     LW_net_canopy = p.canopy.radiative_transfer.LW_n
     SW_net_canopy = p.canopy.radiative_transfer.SW_n
     R_net_soil = p.soil.R_n
@@ -444,9 +427,9 @@ function lsm_radiant_energy_fluxes!(
     ϵ_canopy = p.canopy.radiative_transfer.ϵ # this takes into account LAI/SAI
 
     # Working through the math, this satisfies: LW_d - LW_u = LW_c + LW_soil + LW_snow
-    @. LW_d_canopy = ((1 - ϵ_canopy) * LW_d + ϵ_canopy * _σ * T_canopy^4) # double checked
-    @. LW_u_soil = ϵ_soil * _σ * T_soil^4 + (1 - ϵ_soil) * LW_d_canopy # double checked
-    @. LW_u_snow = ϵ_snow * _σ * T_snow^4 + (1 - ϵ_snow) * LW_d_canopy # identical to soil, checked
+    LW_d_canopy = @lazy @. ((1 - ϵ_canopy) * LW_d + ϵ_canopy * _σ * T_canopy^4) # double checked
+    LW_u_soil = @lazy @. ϵ_soil * _σ * T_soil^4 + (1 - ϵ_soil) * LW_d_canopy # double checked
+    LW_u_snow = @lazy @. ϵ_snow * _σ * T_snow^4 + (1 - ϵ_snow) * LW_d_canopy # identical to soil, checked
     @. R_net_soil -= ϵ_soil * LW_d_canopy - ϵ_soil * _σ * T_soil^4 # double checked
     @. R_net_snow -= ϵ_snow * LW_d_canopy - ϵ_snow * _σ * T_snow^4 # identical to soil, checked
     @. LW_net_canopy =

@@ -109,8 +109,6 @@ lsm_aux_vars(m::SoilSnowModel) = (
     :excess_heat_flux,
     :ground_heat_flux,
     :effective_soil_sfc_T,
-    :sfc_scratch,
-    :subsfc_scratch,
     :effective_soil_sfc_depth,
 )
 """

@@ -1,6 +1,7 @@
 module Runoff
 using DocStringExtensions
 using ClimaCore
+using LazyBroadcast: @lazy
 using ClimaCore.Operators: column_integral_definite!
 using ClimaLand
 import ClimaLand: source!
@@ -145,11 +146,9 @@ function update_runoff!(
     @. p.soil.R_s = abs(input .- p.soil.infiltration)
 end
 
-runoff_vars(::SurfaceRunoff) =
-    (:is_saturated, :R_s, :infiltration, :subsfc_scratch)
-runoff_var_domain_names(::SurfaceRunoff) =
-    (:subsurface, :surface, :surface, :subsurface)
-runoff_var_types(::SurfaceRunoff, FT) = (FT, FT, FT, FT)
+runoff_vars(::SurfaceRunoff) = (:is_saturated, :R_s, :infiltration)
+runoff_var_domain_names(::SurfaceRunoff) = (:subsurface, :surface, :surface)
+runoff_var_types(::SurfaceRunoff, FT) = (FT, FT, FT)
 
 # TOPMODEL
 
@@ -252,11 +251,10 @@ function update_runoff!(
 
 end
 
-runoff_vars(::TOPMODELRunoff) =
-    (:infiltration, :is_saturated, :R_s, :R_ss, :h∇, :subsfc_scratch)
+runoff_vars(::TOPMODELRunoff) = (:infiltration, :is_saturated, :R_s, :R_ss, :h∇)
 runoff_var_domain_names(::TOPMODELRunoff) =
-    (:surface, :subsurface, :surface, :surface, :surface, :subsurface)
-runoff_var_types(::TOPMODELRunoff, FT) = (FT, FT, FT, FT, FT, FT)
+    (:surface, :subsurface, :surface, :surface, :surface)
+runoff_var_types(::TOPMODELRunoff, FT) = (FT, FT, FT, FT, FT)
 
 """
     model_agnostic_volumetric_ice_content(Y, FT)
@@ -327,8 +325,8 @@ Computes the soil infiltration capacity on the surface space
 Currently approximates i_c = -K_sat at the surface.
 """
 function soil_infiltration_capacity(model::RichardsModel, Y, p)
-    @. p.soil.subsfc_scratch = -1 * model.parameters.K_sat
-    return ClimaLand.Domains.top_center_to_surface(p.soil.subsfc_scratch)
+    K_sat_sfc = ClimaLand.Domains.top_center_to_surface(model.parameters.K_sat)
+    return @lazy @. -1 * K_sat_sfc
 end
 
 """
@@ -343,16 +341,17 @@ account the temperature dependence of the viscosity of water.
 """
 function soil_infiltration_capacity(model::EnergyHydrology, Y, p)
     (; K_sat, θ_r, Ω, γ, γT_ref) = model.parameters
-    surface_space = model.domain.space.surface
-
-    @. p.soil.subsfc_scratch =
-        -K_sat *
-        ClimaLand.Soil.impedance_factor(
-            Y.soil.θ_i / (p.soil.θ_l + Y.soil.θ_i - θ_r),
-            Ω,
-        ) *
-        ClimaLand.Soil.viscosity_factor(p.soil.T, γ, γT_ref)
-    return ClimaLand.Domains.top_center_to_surface(p.soil.subsfc_scratch)
+    K_sat_sfc = ClimaLand.Domains.top_center_to_surface(model.parameters.K_sat)
+    θ_i_sfc = ClimaLand.Domains.top_center_to_surface(Y.soil.θ_i)
+    θ_l_sfc = ClimaLand.Domains.top_center_to_surface(p.soil.θ_l)
+    θ_r_sfc = ClimaLand.Domains.top_center_to_surface(model.parameters.θ_r)
+    T_sfc = ClimaLand.Domains.top_center_to_surface(p.soil.T)
+    return @lazy @. -K_sat_sfc *
+                    ClimaLand.Soil.impedance_factor(
+                        θ_i_sfc / (θ_l_sfc + θ_i_sfc - θ_r_sfc),
+                        Ω,
+                    ) *
+                    ClimaLand.Soil.viscosity_factor(T_sfc, γ, γT_ref)
 end
 
 

@@ -59,6 +59,7 @@ using ClimaLand
 using DocStringExtensions
 using LinearAlgebra
 using ClimaCore
+using LazyBroadcast: @lazy
 using ClimaCore.MatrixFields
 import ClimaCore.MatrixFields: @name, ⋅
 import ..Parameters as LP

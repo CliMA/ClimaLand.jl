@@ -30,6 +30,7 @@ import ClimaDiagnostics.Writers: HDF5Writer, NetCDFWriter, DictWriter
 
 import ClimaCore.Operators: column_integral_definite!
 
+using LazyBroadcast: @lazy
 include("diagnostic.jl")
 
 end

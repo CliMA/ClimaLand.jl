@@ -97,8 +97,6 @@ for lsm_aux_var in (
     :excess_heat_flux,
     :ground_heat_flux,
     :effective_soil_sfc_T,
-    :sfc_scratch,
-    :subsfc_scratch,
     :effective_soil_sfc_depth,
 )
     @test lsm_aux_var ∈ propertynames(p)
