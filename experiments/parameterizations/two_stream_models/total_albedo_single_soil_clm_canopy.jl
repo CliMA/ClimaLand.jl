@@ -5,38 +5,40 @@ using ProgressMeter
 using Statistics
 using CairoMakie
 using CurveFit
-modis = "modis"
-outpath = "experiments/parameterizations/two_stream/single_soil"
+modis = ""
+outpath = "experiments/parameterizations/two_stream_models/single_soil_clm"
 include("experiments/parameterizations/models.jl")
 FT = Float32
-(net_features, feature_header) = readdlm("experiments/parameterizations/net_features_$modis.csv", ',', header=true);
-(nonnormed_input, input_header) = readdlm("experiments/parameterizations/nonnormed_input_$modis.csv", ',', header=true);
-(metadata, meta_header) = readdlm("experiments/parameterizations/metadata_$modis.csv", ',', header=true);
-(clm_features, clm_header) = readdlm("experiments/parameterizations/clm_albedo_$modis.csv", ',', header=true);
+(net_features, feature_header) = readdlm("experiments/parameterizations/net_features$modis.csv", ',', header=true);
+(nonnormed_input, input_header) = readdlm("experiments/parameterizations/nonnormed_input$modis.csv", ',', header=true);
+(metadata, meta_header) = readdlm("experiments/parameterizations/metadata$modis.csv", ',', header=true);
+(clm_features, clm_header) = readdlm("experiments/parameterizations/clm_albedos$modis.csv", ',', header=true);
 
 
 
-data = hcat(nonnormed_input, net_features);
+data = hcat(clm_features[:,1:4], nonnormed_input, net_features);
 # train test split]
-target_id = [23+4]
-LAI_id = [2]
-θ_id = [1]
-frac_diff_id = [3]
-μ_id = [4]
-soil_ids = [4+2,4+3, 4+4, 4+5, Array((4+6):(4+12))...,4+1]
-canopy_ids = [Array((4+17):(4+21))..., 4+1]
-feature_ids = [soil_ids..., canopy_ids...]
+target_id = [23+4+4]
+LAI_id = [2+4]
+θ_id = [1+4]
+frac_diff_id = [3+4]
+μ_id = [4+4]
+α_PAR_id = [1]
+α_NIR_id = [2]
+τ_PAR_id = [3]
+τ_NIR_id = [4]
+soil_ids = [Array((4+4+1):(4+4+12))...,]
+feature_ids = soil_ids
 (train, test) = splitobs(transpose(data), at=0.7, shuffle= true);
-input = Float32.(train[1:26,:]);
-truth = Float32.(train[target_id,:]);
+input = FT.(train[1:30,:]);
+truth = FT.(train[target_id,:]);
 test_truth = FT.(test[target_id,:]);
-test_input = FT.(test[1:26,:]);
+test_input = FT.(test[1:30,:]);
 
 loader = Flux.DataLoader((input, truth), batchsize=256, shuffle=true);
 
-nfeatures_soil = length(soil_ids)
-nfeatures_canopy = length(canopy_ids)
-model = TotalAlbedoSingleSoil(nfeatures_soil, nfeatures_canopy)
+nfeatures= length(feature_ids)
+model = TotalAlbedoSingleSoilCLMCanopy(nfeatures)
 model.logΔα.layers[1].weight[1] = FT(-2)
 model.logΔα.layers[1].bias[1] = FT(-1.22)
 Flux.trainable(model)
@@ -50,20 +52,19 @@ losses_test = []
         x, y = xy_cpu
         loss, grads = Flux.withgradient(model) do m
             # Evaluate model and loss inside gradient context:
-            y_hat = m(x; soil_ids = soil_ids, canopy_ids=canopy_ids, μ_id=μ_id, frac_diff_id=frac_diff_id, LAI_id= LAI_id)
+            y_hat = m(x; soil_ids = soil_ids, μ_id=μ_id, frac_diff_id=frac_diff_id, LAI_id= LAI_id, α_PAR_id, α_NIR_id, τ_PAR_id, τ_NIR_id)
 
             Flux.mae(y_hat, y)
         end
         Flux.update!(opt_state, model, grads[1])
         push!(losses_train, loss)  # logging, outside gradient context
     end
-    y_hat_test = model(test_input; soil_ids = soil_ids, canopy_ids=canopy_ids, μ_id=μ_id, frac_diff_id=frac_diff_id, LAI_id= LAI_id)
+    y_hat_test = model(test_input; soil_ids = soil_ids, μ_id=μ_id, frac_diff_id=frac_diff_id, LAI_id= LAI_id, α_PAR_id, α_NIR_id, τ_PAR_id, τ_NIR_id)
 
     loss_test = Flux.mae(y_hat_test, test_truth)
     push!(losses_test, loss_test)  # logging, outside gradient context
 end
 # check overfitting
-outpath = "experiments/parameterizations/two_stream_models/single_soil"
 fig = CairoMakie.Figure()
 ax = CairoMakie.Axis(fig[1,1], title = "Learning Curves", yscale = log10)
 lines!(ax,(1:1:length(losses_train)) ./ length(losses_train),  losses_train, label = "Train")

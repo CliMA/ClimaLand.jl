@@ -27,6 +27,46 @@ function (model::SoilOnlyAlbedo)(x; soil_ids, μ_id, θ_id)
 end
 
 
+struct TotalAlbedoSingleSoilCLMCanopy{A <: Chain, B <: Chain, C <: Chain}
+    α_soil_PAR::A
+    α_soil_NIR::B
+    logΔα::C
+end
+
+function TotalAlbedoSingleSoilCLMCanopy(nfeatures)
+    α_soil_PAR = Chain(
+        Dense(nfeatures => 1, sigmoid),
+    )
+    α_soil_NIR = Chain(
+        Dense(nfeatures => 1, sigmoid),
+    )
+    logΔα = Chain(Dense(1 => 1),)
+    args = (α_soil_PAR, α_soil_NIR, logΔα)
+    return TotalAlbedoSingleSoilCLMCanopy{typeof.(args)...}(args...)
+end
+Flux.@layer TotalAlbedoSingleSoilCLMCanopy
+Flux.trainable(model::TotalAlbedoSingleSoilCLMCanopy) = (; model.α_soil_PAR, model.α_soil_NIR, model.logΔα,)
+function (model::TotalAlbedoSingleSoilCLMCanopy)(x; soil_ids, μ_id, frac_diff_id, LAI_id, α_PAR_id, α_NIR_id, τ_PAR_id, τ_NIR_id)
+    μ = x[μ_id,:]
+    frac_diff = x[frac_diff_id, :]
+    LAI = x[LAI_id, :]
+    α_soil = model.α_soil_PAR(x[soil_ids,:])
+    α_soil_zenith_corrected = min.(max.(α_soil .+ exp.(model.logΔα(μ)), Float32(0)), Float32(1))# α = α_0 + Δαe^(kμ)
+    τ_leaf = x[τ_PAR_id,:]
+    α_leaf = x[α_PAR_id,:]
+    yhat_PAR = simpler_canopy_sw_rt_two_stream.(α_leaf, τ_leaf, LAI, μ, α_soil_zenith_corrected, frac_diff) # reflected fraction, i.e. albedo
+
+    α_soil = model.α_soil_NIR(x[soil_ids,:])
+    α_soil_zenith_corrected = min.(max.(α_soil .+ exp.(model.logΔα(μ)), Float32(0)), Float32(1))# α = α_0 + Δαe^(kμ)
+    τ_leaf = x[τ_NIR_id,:]
+    α_leaf = x[α_NIR_id,:]
+    yhat_NIR = simpler_canopy_sw_rt_two_stream.(α_leaf, τ_leaf, LAI, μ, α_soil_zenith_corrected, frac_diff) # reflected fraction, i.e. albedo
+    return (yhat_PAR .+ yhat_NIR) ./ 2
+end
+
+
+
+
 
 struct TotalAlbedo{A <: Chain, B <: Chain, C <: Chain, D <: Chain,  E <: Chain}
     wet_0::A
