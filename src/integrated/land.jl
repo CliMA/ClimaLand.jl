@@ -240,8 +240,7 @@ end
         forcing,
         LAI,
         toml_dict::CP.ParamDict,
-        domain::Union{ClimaLand.Domains.Column, ClimaLand.Domains.SphericalShell},
-        Δt;
+        domain::Union{ClimaLand.Domains.Column, ClimaLand.Domains.SphericalShell};
         soil = Soil.EnergyHydrology{FT}(
             domain,
             forcing,
@@ -272,8 +271,7 @@ end
             FT,
             ClimaLand.Domains.obtain_surface_domain(domain),
             forcing,
-            toml_dict,
-            Δt;
+            toml_dict;
             prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
         ),
     ) where {FT}
@@ -295,8 +293,7 @@ function LandModel{FT}(
         ClimaLand.Domains.Column,
         ClimaLand.Domains.SphericalShell,
         ClimaLand.Domains.HybridBox,
-    },
-    Δt;
+    };
     soil = Soil.EnergyHydrology{FT}(
         domain,
         forcing,
@@ -327,8 +324,7 @@ function LandModel{FT}(
         FT,
         ClimaLand.Domains.obtain_surface_domain(domain),
         forcing,
-        toml_dict,
-        Δt;
+        toml_dict;
         prognostic_land_components = (:canopy, :snow, :soil, :soilco2),
     ),
 ) where {FT}
@@ -363,8 +359,6 @@ lsm_aux_vars(m::LandModel) = (
     :scratch1,
     :scratch2,
     :scratch3,
-    :excess_water_flux,
-    :excess_heat_flux,
     :ground_heat_flux,
     :effective_soil_sfc_T,
     :sfc_scratch,
@@ -398,8 +392,6 @@ lsm_aux_types(m::LandModel{FT}) where {FT} = (
     FT,
     FT,
     FT,
-    FT,
-    FT,
     NamedTuple{(:PAR, :NIR), Tuple{FT, FT}},
 )
 
@@ -412,8 +404,6 @@ included in the land model.
 lsm_aux_domain_names(m::LandModel) = (
     :subsurface,
     :subsurface,
-    :surface,
-    :surface,
     :surface,
     :surface,
     :surface,
@@ -494,12 +484,6 @@ function make_update_boundary_fluxes(
         )
         #Now update snow boundary conditions, which rely on the ground heat flux
         update_snow_bf!(p, Y, t)
-
-        # Now we have access to the actual applied and initially computed fluxes for snow
-        @. p.excess_water_flux =
-            (p.snow.total_water_flux - p.snow.applied_water_flux)
-        @. p.excess_heat_flux =
-            (p.snow.total_energy_flux - p.snow.applied_energy_flux)
 
         # Now we can update the soil BC, and use the precomputed excess
         # fluxes from snow in that function in order to ensure conservation
@@ -662,7 +646,6 @@ function soil_boundary_fluxes!(
     )
     @. p.soil.top_bc.water =
         p.soil.infiltration +
-        p.excess_water_flux +
         (1 - p.snow.snow_cover_fraction) *
         p.soil.turbulent_fluxes.vapor_flux_liq
     # The actual boundary condition is a mix of liquid water infiltration and
@@ -676,10 +659,8 @@ function soil_boundary_fluxes!(
             p.soil.turbulent_fluxes.lhf +
             p.soil.turbulent_fluxes.shf
         ) +
-        p.excess_heat_flux +
         p.snow.snow_cover_fraction * p.ground_heat_flux +
         infiltration_energy_flux
-
     return nothing
 end
 

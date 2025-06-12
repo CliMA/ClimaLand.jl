@@ -30,8 +30,7 @@ for FT in (Float32, Float64)
     earth_param_set = LP.LandParameters(FT)
 
     start_date = DateTime(2005)
-    Δt = FT(180.0)
-    parameters = SnowParameters{FT}(Δt; earth_param_set = earth_param_set)
+    parameters = SnowParameters{FT}(; earth_param_set = earth_param_set)
     "Radiation"
     SW_d = TimeVaryingInput((t) -> eltype(t)(20.0))
     LW_d = TimeVaryingInput((t) -> eltype(t)(20.0))

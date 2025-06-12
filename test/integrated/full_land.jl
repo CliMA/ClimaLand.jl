@@ -62,13 +62,11 @@ for FT in (Float32, Float64)
         )
 
         # Snow model
-        dt = FT(180)
         snow = SnowModel(
             FT,
             surface_domain,
             forcing,
-            toml_dict,
-            dt;
+            toml_dict;
             prognostic_land_components,
         )
 
@@ -212,7 +210,7 @@ LAI = ClimaLand.Canopy.prescribed_lai_modis(
     stop_date,
 );
 
-land = LandModel{FT}(forcing, LAI, toml_dict, domain, Δt);
+land = LandModel{FT}(forcing, LAI, toml_dict, domain);
 
 @test domain == ClimaLand.get_domain(land)
 @test ClimaComms.context(land) == ClimaComms.context()

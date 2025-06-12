@@ -19,7 +19,7 @@ import ClimaLand.Parameters as LP
     start_date = DateTime(2005)
     param_set = LP.LandParameters(FT)
     Δt = FT(180.0)
-    parameters = SnowParameters{FT}(Δt; earth_param_set = param_set)
+    parameters = SnowParameters{FT}(; earth_param_set = param_set)
     domain = Point(; z_sfc = FT(0))
     "Radiation"
     SW_d = TimeVaryingInput((t) -> eltype(t)(20.0))
@@ -70,8 +70,6 @@ import ClimaLand.Parameters as LP
         :liquid_water_flux,
         :total_energy_flux,
         :total_water_flux,
-        :applied_energy_flux,
-        :applied_water_flux,
         :snow_cover_fraction,
         :turbulent_fluxes,
     )
@@ -160,7 +158,7 @@ import ClimaLand.Parameters as LP
         Y.snow.U,
         Y.snow.S,
         p.snow.q_l,
-        p.snow.applied_energy_flux,
+        p.snow.total_energy_flux,
         model.parameters,
     )) == p.snow.phase_change_flux
     @test turb_fluxes_copy.shf == p.snow.turbulent_fluxes.shf
@@ -189,20 +187,12 @@ import ClimaLand.Parameters as LP
         p.snow.water_runoff
     )
     @test dY.snow.S == net_water_fluxes
-    @test dY.snow.S_l == @. -Y.snow.S_l / model.parameters.Δt # refreezes
+    @test dY.snow.S_l == @. -p.snow.liquid_water_flux
     @test dY.snow.U == @.(
         -p.snow.turbulent_fluxes.shf - p.snow.turbulent_fluxes.lhf -
         p.snow.R_n + p.snow.energy_runoff
     )
     @test isnothing(
         Snow.update_density_prog!(model.parameters.density, model, dY, Y, p),
-    )
-
-    @test all(
-        ClimaLand.Snow.clip_water_flux.(
-            [0.1, 1.0, 2.0],
-            [1.0, 1.0, 1.0],
-            1.0,
-        ) .== [0.1, 1.0, 1.0],
     )
 end
