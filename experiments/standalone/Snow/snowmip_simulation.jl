@@ -25,11 +25,9 @@ NeuralSnow = Base.get_extension(ClimaLand, :NeuralSnowExt).NeuralSnow;
 
 # Site-specific quantities
 # Error if no site argument is provided
-if length(ARGS) < 1
-    @error("Please provide a site name as command line argument")
-else
-    SITE_NAME = ARGS[1]
-end
+
+SITE_NAME = "cdp"
+
 
 climaland_dir = pkgdir(ClimaLand)
 
@@ -58,6 +56,7 @@ parameters = SnowParameters{FT}(
     α_snow = Snow.ConstantAlbedoModel(α),
     density = density_model,
     earth_param_set = param_set,
+    scf = SiteLevelSnowCoverFractionModel{FT}(),
 )
 model = ClimaLand.Snow.SnowModel(
     parameters = parameters,
@@ -310,7 +309,7 @@ ax1 = CairoMakie.Axis(fig[2, 1], ylabel = "ΔEnergy (J/A)", xlabel = "Days")
 ΔE_expected =
     cumsum(
         -1 .* [
-            parent(sv.saveval[k].snow.applied_energy_flux)[end] for
+            parent(sv.saveval[k].snow.total_energy_flux)[end] for
             k in 2:1:length(sv.t)
         ],
     ) * (sv.t[2] - sv.t[1])
@@ -318,7 +317,7 @@ E_measured = [parent(sol.u[k].snow.U)[end] for k in 1:1:length(sv.t)]
 ΔW_expected =
     cumsum(
         -1 .* [
-            parent(sv.saveval[k].snow.applied_water_flux)[end] for
+            parent(sv.saveval[k].snow.total_water_flux)[end] for
             k in 2:1:length(sv.t)
         ],
     ) * (sv.t[2] - sv.t[1])

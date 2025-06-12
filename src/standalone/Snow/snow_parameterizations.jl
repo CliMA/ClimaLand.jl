@@ -72,6 +72,22 @@ function update_snow_cover_fraction!(
 end
 
 """
+    update_snow_cover_fraction!(x::FT; z0 = FT(1e-1), β_scf = FT(2))::FT where {FT}
+
+"""
+function update_snow_cover_fraction!(
+    scf,
+    m::SiteLevelSnowCoverFractionModel,
+    Y,
+    p,
+    t,
+    earth_param_set,
+)
+    FT = eltype(Y.snow.S)
+    @. scf = min((max(Y.snow.S, FT(0)) / FT(0.01))^2, FT(1))
+end
+
+"""
     ClimaLand.surface_height(
         model::SnowModel{FT},
         Y,
@@ -307,8 +323,9 @@ function snow_bulk_temperature(
     cp_s = specific_heat_capacity(q_l, parameters)
     _ΔS = parameters.ΔS
     _T_freeze = FT(LP.T_freeze(parameters.earth_param_set))
+    U_safe = min(-_ρ_l * S_safe * (1 - q_l) * _LH_f0, U)
     return _T_ref +
-           (U + _ρ_l * _LH_f0 * S_safe * (1 - q_l)) /
+           (U_safe + _ρ_l * _LH_f0 * S_safe * (1 - q_l)) /
            (_ρ_l * cp_s * (S_safe + _ΔS))
 end
 
@@ -372,7 +389,7 @@ function volumetric_internal_energy_liq(T, parameters)
     _cp_l = LP.cp_l(parameters.earth_param_set)
     _T_ref = LP.T_0(parameters.earth_param_set)
 
-    I_liq = _ρ_l * _cp_l * (T .- _T_ref)
+    I_liq = _ρ_l * _cp_l * (T - _T_ref)
     return I_liq
 end
 
@@ -415,18 +432,20 @@ function phase_change_flux(
     S_safe = max(S, FT(0))
 
     energy_at_T_freeze = energy_from_q_l_and_swe(S_safe, q_l, parameters)
-    Upred = U - energy_flux * parameters.Δt
-    energy_excess = Upred - energy_at_T_freeze
-
+    energy_excess = U - energy_at_T_freeze
+    Δt = abs(energy_excess) / max(abs(energy_flux), eps(FT))
     _LH_f0 = LP.LH_f0(parameters.earth_param_set)
     _ρ_liq = LP.ρ_cloud_liq(parameters.earth_param_set)
     _cp_i = LP.cp_i(parameters.earth_param_set)
     _cp_l = LP.cp_l(parameters.earth_param_set)
     _T_ref = LP.T_0(parameters.earth_param_set)
     _T_freeze = LP.T_freeze(parameters.earth_param_set)
-    if energy_excess > 0 || (energy_excess < 0 && q_l > 0)
-        return -energy_excess / parameters.Δt / _ρ_liq /
-               ((_cp_l - _cp_i) * (_T_freeze - _T_ref) + _LH_f0)
+    if energy_excess > 0 || (energy_excess < 0 && q_l > 0) # Melting or Refreezing
+        ΔS_l =
+            -energy_excess / _ρ_liq /
+            ((_cp_l - _cp_i) * (_T_freeze - _T_ref) + _LH_f0)
+        @show Δt
+        return ΔS_l / Δt
     else
         return FT(0)
     end
@@ -492,7 +511,7 @@ function update_density_and_depth!(
 ) where {FT}
     _ρ_l = LP.ρ_cloud_liq(params.earth_param_set)
     @. ρ_snow = density.ρ_min * (1 - p.snow.q_l) + _ρ_l * p.snow.q_l
-    @. z_snow = _ρ_l * Y.snow.S / ρ_snow
+    @. z_snow = _ρ_l * max(Y.snow.S, FT(0)) / ρ_snow
 
 
 end

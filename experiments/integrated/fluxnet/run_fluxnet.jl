@@ -173,7 +173,11 @@ shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
 canopy_model_args = (; parameters = shared_params, domain = canopy_domain)
 
 # Snow model
-snow_parameters = SnowParameters{FT}(dt; earth_param_set = earth_param_set);
+snow_parameters = SnowParameters{FT}(
+    dt;
+    earth_param_set,
+    scf = SiteLevelSnowCoverFractionModel{FT}(),
+);
 snow_args = (; parameters = snow_parameters, domain = canopy_domain);
 snow_model_type = Snow.SnowModel
 # Integrated plant hydraulics and soil model
