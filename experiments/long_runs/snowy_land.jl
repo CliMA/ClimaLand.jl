@@ -339,7 +339,7 @@ function setup_simulation(; greet = false)
     # Note that since the Northern hemisphere's winter season is defined as DJF,
     # we simulate from and until the beginning of
     # March so that a full season is included in seasonal metrics.
-    start_date = LONGER_RUN ? DateTime("2014-03-01") : DateTime("2008-03-01")
+    start_date = LONGER_RUN ? DateTime("2004-03-01") : DateTime("2008-03-01")
     stop_date = LONGER_RUN ? DateTime("2014-03-01") : DateTime("2010-03-01")
     Δt = 450.0
     nelements = (101, 15)
