@@ -76,7 +76,7 @@ outdir = "snowy_land_benchmark_$(device_suffix)"
 
 function setup_prob(t0, tf, Δt; outdir = outdir, nelements = (101, 15))
     earth_param_set = LP.LandParameters(FT)
-    domain = ClimaLand.Model.Setup.global_domain(FT; nelements = nelements)
+    domain = ClimaLand.ModelSetup.global_domain(FT; nelements = nelements)
     surface_space = domain.space.surface
     subsurface_space = domain.space.subsurface
 

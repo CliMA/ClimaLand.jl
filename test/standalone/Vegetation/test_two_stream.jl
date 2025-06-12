@@ -16,6 +16,7 @@ using DelimitedFiles
 using ClimaLand.Domains: Point
 import ClimaLand.Parameters as LP
 import ClimaParams
+using ClimaCore
 
 @testset "Comparison to pySellersTwoStream" begin
     include("../../Artifacts.jl")
@@ -61,6 +62,10 @@ import ClimaParams
                 τ_NIR_leaf_cases,
                 lds_cases,
             )
+            output = ClimaCore.Fields.zeros(
+                @NamedTuple{abs::FT, refl::FT, trans::FT},
+                domain.space.surface,
+            )
             for (Ω, α_PAR_leaf, τ_PAR_leaf, α_NIR_leaf, τ_NIR_leaf, lds) in
                 zipped_params
                 # Read the result for each setup from the Python output
@@ -74,7 +79,7 @@ import ClimaParams
                     RT_params = TwoStreamParameters(
                         FT;
                         Ω = Ω,
-                        G_Function = ConstantGFunction(FT.(lds[i])),
+                        G_Function = ConstantGFunction.(FT.(lds[i])),
                         α_PAR_leaf = α_PAR_leaf[i],
                         τ_PAR_leaf = τ_PAR_leaf[i],
                         α_NIR_leaf = α_NIR_leaf,
@@ -86,21 +91,17 @@ import ClimaParams
                     RT = TwoStreamModel(RT_params)
 
                     # Compute the predicted FAPAR using the ClimaLand TwoStream implementation
-                    G = compute_G(RT_params.G_Function, cosθs)
-                    K = extinction_coeff.(G, cosθs[i])
-                    output =
-                        canopy_sw_rt_two_stream.(
-                            G,
-                            RT_params.Ω,
-                            RT_params.n_layers,
-                            RT_params.α_PAR_leaf,
-                            RT_params.τ_PAR_leaf,
-                            LAI[i],
-                            K,
-                            cosθs[i],
-                            a_soil[i],
-                            PropDif[i],
-                        )
+                    @. output = canopy_sw_rt_two_stream(
+                        RT_params.G_Function,
+                        RT_params.Ω,
+                        RT_params.n_layers,
+                        RT_params.α_PAR_leaf,
+                        RT_params.τ_PAR_leaf,
+                        LAI[i],
+                        cosθs[i],
+                        a_soil[i],
+                        PropDif[i],
+                    )
                     FAPAR = output.abs
                     # Check that the predictions are app. equivalent to the Python model
                     # Create a field of the expect value because isapprox cannot be broadcast
@@ -125,21 +126,20 @@ end
     α_leaf = [rand(N - 4)..., 0.0, 0.0, 1.0, 1.0]
     τ_leaf = (1.0 .- α_leaf) .* rand(N)
     α_soil = [rand(N - 6)..., 0.0, 1.0, 0.2, 0.2, 0.2, 0.2]
-    G = 0.5
-    K = ClimaLand.Canopy.extinction_coeff.(G, cosθs)
+    G_Function = ConstantGFunction(0.5)
+    K = ClimaLand.Canopy.extinction_coeff.(G_Function, cosθs)
     frac_diff = rand(N)
     n_layers = UInt64(20)
     Ω = rand(N)
     LAI = round.(rand(N))
     output =
         ClimaLand.Canopy.canopy_sw_rt_two_stream.(
-            G,
+            G_Function,
             Ω,
             n_layers,
             α_leaf,
             τ_leaf,
             LAI,
-            K,
             cosθs,
             α_soil,
             frac_diff,

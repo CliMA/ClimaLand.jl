@@ -104,7 +104,7 @@ function clm_canopy_parameters(
         regridder_type,
         regridder_kwargs = (; extrapolation_bc,),
     )
-    G_Function = ClimaLand.Canopy.CLMGFunction(χl)
+    G_Function = ClimaLand.Canopy.CLMGFunction.(χl)
     α_PAR_leaf = SpaceVaryingInput(
         joinpath(clm_artifact_path, "vegetation_properties_map.nc"),
         "rholvis",

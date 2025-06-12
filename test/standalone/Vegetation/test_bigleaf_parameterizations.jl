@@ -109,26 +109,26 @@ for FT in (Float32, Float64)
         R = FT(LP.gas_constant(earth_param_set))
         θs = FT.(Array(0:0.1:(π / 2)))
         SW(θs) = cos.(θs) * FT.(500) # W/m^2
-        G = compute_G(RTparams.G_Function, θs)
-        K_c = extinction_coeff.(G, θs)
+        K = extinction_coeff.(RTparams.G_Function, cos.(θs))
         α_soil_PAR = FT(0.2)
         output =
             canopy_sw_rt_beer_lambert.(
+                RTparams.G_Function,
+                cos.(θs),
                 RTparams.Ω,
                 RTparams.α_PAR_leaf,
                 LAI,
-                K_c,
                 α_soil_PAR,
             )
         FAPAR = getproperty.(output, :abs)
         FTPAR = getproperty.(output, :trans)
         FRPAR = getproperty.(output, :refl)
-        @test all(@. FTPAR ≈ exp(-K_c * LAI * RTparams.Ω))
+        @test all(@. FTPAR ≈ exp(-K * LAI * RTparams.Ω))
         @test all(@. FRPAR ≈ FT(1) - FAPAR - FTPAR * (1 - α_soil_PAR))
 
         @test all(
             @. FAPAR ≈
-               (1 - RTparams.α_PAR_leaf) .* (1 - exp(-K_c * LAI * RTparams.Ω)) *
+               (1 - RTparams.α_PAR_leaf) .* (1 - exp(-K * LAI * RTparams.Ω)) *
                (1 - α_soil_PAR)
         )
         To = photosynthesisparams.To
@@ -302,12 +302,9 @@ for FT in (Float32, Float64)
                 )
             )
         )
-        GPP = compute_GPP.(An, K_c, LAI, RTparams.Ω) # mol m-2 s-1
+        GPP = compute_GPP.(An, K, LAI, RTparams.Ω) # mol m-2 s-1
         @test all(
-            @.(
-                GPP ≈
-                An * (1 - exp(-K_c * LAI * RTparams.Ω)) / (K_c * RTparams.Ω)
-            )
+            @.(GPP ≈ An * (1 - exp(-K * LAI * RTparams.Ω)) / (K * RTparams.Ω))
         )
 
         @test all(
