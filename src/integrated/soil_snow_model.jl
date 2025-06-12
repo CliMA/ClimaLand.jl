@@ -58,8 +58,6 @@ The names of the additional auxiliary variables that are
 included in the integrated Soil-Snow model.
 """
 lsm_aux_vars(m::SoilSnowModel) = (
-    :excess_water_flux,
-    :excess_heat_flux,
     :ground_heat_flux,
     :effective_soil_sfc_T,
     :sfc_scratch,
@@ -72,7 +70,7 @@ lsm_aux_vars(m::SoilSnowModel) = (
 The types of the additional auxiliary variables that are
 included in the integrated Soil-Snow model.
 """
-lsm_aux_types(m::SoilSnowModel{FT}) where {FT} = (FT, FT, FT, FT, FT, FT, FT)
+lsm_aux_types(m::SoilSnowModel{FT}) where {FT} = (FT, FT, FT, FT, FT)
 
 """
     lsm_aux_domain_names(m::SoilSnowModel)
@@ -81,7 +79,7 @@ The domain names of the additional auxiliary variables that are
 included in the integrated Soil-Snow model.
 """
 lsm_aux_domain_names(m::SoilSnowModel) =
-    (:surface, :surface, :surface, :surface, :surface, :subsurface, :surface)
+    (:surface, :surface, :surface, :subsurface, :surface)
 
 """
     make_update_boundary_fluxes(
@@ -124,11 +122,6 @@ function make_update_boundary_fluxes(
         )
         #Now update snow boundary conditions, which rely on the ground heat flux
         update_snow_bf!(p, Y, t)
-        # Now we have access to the actual applied and initially computed fluxes for snow
-        @. p.excess_water_flux =
-            (p.snow.total_water_flux - p.snow.applied_water_flux)
-        @. p.excess_heat_flux =
-            (p.snow.total_energy_flux - p.snow.applied_energy_flux)
         # Now we can update the soil BC, and use the excess fluxes there in order
         # to conserve energy and water
         update_soil_bf!(p, Y, t)
@@ -300,7 +293,6 @@ function soil_boundary_fluxes!(
     # has a nonzero sublimation which was applied for the entire step.
     @. p.soil.top_bc.water =
         p.soil.infiltration +
-        p.excess_water_flux +
         (1 - p.snow.snow_cover_fraction) *
         p.soil.turbulent_fluxes.vapor_flux_liq
     @. p.soil.top_bc.heat =
@@ -309,7 +301,6 @@ function soil_boundary_fluxes!(
             p.soil.turbulent_fluxes.lhf +
             p.soil.turbulent_fluxes.shf
         ) +
-        p.excess_heat_flux +
         p.snow.snow_cover_fraction * p.ground_heat_flux +
         infiltration_energy_flux
 
