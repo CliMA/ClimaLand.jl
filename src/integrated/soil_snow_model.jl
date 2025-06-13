@@ -312,20 +312,19 @@ function snow_boundary_fluxes!(
             p.snow.water_runoff
         ) * p.snow.snow_cover_fraction
 
-    # I think we want dU/dt to include energy of falling snow.
-    # otherwise snow can fall but energy wont change
-    # We are assuming that the sensible heat portion of snow is negligible.
-    _LH_f0 = FT(LP.LH_f0(model.parameters.earth_param_set))
-    _ρ_liq = FT(LP.ρ_cloud_liq(model.parameters.earth_param_set))
-    ρe_falling_snow = -_LH_f0 * _ρ_liq # per unit vol of liquid water
+    ρe_flux_falling_snow =
+        Snow.volumetric_energy_flux_falling_snow(bc.atmos, p, model.parameters)
+    ρe_flux_falling_rain =
+        Snow.volumetric_energy_flux_falling_rain(bc.atmos, p, model.parameters)
 
     # positive fluxes are TOWARDS atmos
     @. p.snow.total_energy_flux =
-        P_snow * ρe_falling_snow +
+        ρe_flux_falling_snow +
         (
             p.snow.turbulent_fluxes.lhf +
             p.snow.turbulent_fluxes.shf +
-            p.snow.R_n - p.snow.energy_runoff - p.ground_heat_flux
+            p.snow.R_n - p.snow.energy_runoff - p.ground_heat_flux +
+            ρe_flux_falling_rain
         ) * p.snow.snow_cover_fraction
 end
 

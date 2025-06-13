@@ -2,6 +2,7 @@ module ClimaLand
 using DocStringExtensions
 
 using ClimaCore
+using LazyBroadcast: @lazy
 import ClimaCore: Fields, Spaces
 
 include("shared_utilities/Parameters.jl")
