@@ -213,8 +213,6 @@ lsm_aux_vars(m::LandModel) = (
     :scratch3,
     :excess_water_flux,
     :excess_heat_flux,
-    :atmos_energy_flux,
-    :atmos_water_flux,
     :ground_heat_flux,
     :effective_soil_sfc_T,
     :sfc_scratch,
@@ -250,8 +248,6 @@ lsm_aux_types(m::LandModel{FT}) where {FT} = (
     FT,
     FT,
     FT,
-    FT,
-    FT,
     NamedTuple{(:PAR, :NIR), Tuple{FT, FT}},
 )
 
@@ -264,8 +260,6 @@ included in the land model.
 lsm_aux_domain_names(m::LandModel) = (
     :subsurface,
     :subsurface,
-    :surface,
-    :surface,
     :surface,
     :surface,
     :surface,
@@ -362,34 +356,6 @@ function make_update_boundary_fluxes(
         update_canopy_bf!(p, Y, t)
         # Update soil CO2
         update_soilco2_bf!(p, Y, t)
-
-        # compute net flux with atmosphere, this is useful for monitoring conservation
-        _LH_f0 = FT(LP.LH_f0(earth_param_set))
-        _ρ_liq = FT(LP.ρ_cloud_liq(earth_param_set))
-        ρe_falling_snow = -_LH_f0 * _ρ_liq # per unit vol of liquid water
-        @. p.atmos_energy_flux =
-            (1 - p.snow.snow_cover_fraction) * (
-                p.soil.turbulent_fluxes.lhf + p.soil.turbulent_fluxes.shf -
-                p.soil.R_n
-            ) +
-            p.snow.snow_cover_fraction * (
-                p.snow.turbulent_fluxes.lhf + p.snow.turbulent_fluxes.shf -
-                p.snow.R_n
-            ) +
-            p.drivers.P_snow * ρe_falling_snow +
-            p.canopy.turbulent_fluxes.shf +
-            p.canopy.turbulent_fluxes.lhf - p.canopy.radiative_transfer.SW_n -
-            p.canopy.radiative_transfer.LW_n
-        @. p.atmos_water_flux =
-            p.drivers.P_snow +
-            p.drivers.P_liq +
-            (1 - p.snow.snow_cover_fraction) * (
-                p.soil.turbulent_fluxes.vapor_flux_liq +
-                p.soil.turbulent_fluxes.vapor_flux_ice
-            ) +
-            p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.vapor_flux +
-            p.canopy.turbulent_fluxes.transpiration
-
     end
     return update_boundary_fluxes!
 end
