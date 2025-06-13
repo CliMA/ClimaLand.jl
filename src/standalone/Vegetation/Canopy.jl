@@ -2,6 +2,7 @@ module Canopy
 using DocStringExtensions
 using Thermodynamics
 using ClimaLand
+using LazyBroadcast: lazy
 using ClimaCore
 using ClimaCore.MatrixFields
 import ClimaCore.MatrixFields: @name, ⋅
@@ -438,10 +439,6 @@ function ClimaLand.make_update_aux(
 
         # Other auxiliary variables being updated:
         Ra = p.canopy.autotrophic_respiration.Ra
-        β = p.canopy.hydraulics.β
-        medlyn_factor = p.canopy.conductance.medlyn_term
-        gs = p.canopy.conductance.gs # leaf level
-        rs_canopy = p.canopy.conductance.r_stomata_canopy
         An = p.canopy.photosynthesis.An
         GPP = p.canopy.photosynthesis.GPP
         Rd = p.canopy.photosynthesis.Rd
@@ -461,13 +458,13 @@ function ClimaLand.make_update_aux(
 
         # unpack parameters
         earth_param_set = canopy.parameters.earth_param_set
-        c = FT(LP.light_speed(earth_param_set))
-        planck_h = FT(LP.planck_constant(earth_param_set))
-        N_a = FT(LP.avogadro_constant(earth_param_set))
-        grav = FT(LP.grav(earth_param_set))
-        ρ_l = FT(LP.ρ_cloud_liq(earth_param_set))
-        R = FT(LP.gas_constant(earth_param_set))
-        T_freeze = FT(LP.T_freeze(earth_param_set))
+        c = LP.light_speed(earth_param_set)
+        planck_h = LP.planck_constant(earth_param_set)
+        N_a = LP.avogadro_constant(earth_param_set)
+        grav = LP.grav(earth_param_set)
+        ρ_l = LP.ρ_cloud_liq(earth_param_set)
+        R = LP.gas_constant(earth_param_set)
+        T_freeze = LP.T_freeze(earth_param_set)
         thermo_params = earth_param_set.thermo_params
         (; G_Function, Ω, λ_γ_PAR) = canopy.radiative_transfer.parameters
         energy_per_mole_photon_par = planck_h * c / λ_γ_PAR * N_a
@@ -560,14 +557,14 @@ function ClimaLand.make_update_aux(
         # We update the fa[n_stem+n_leaf] element once we have computed transpiration, below
         # update photosynthesis and conductance terms
         # This should still use T_air, P_air, q_air
-        medlyn_factor .=
-            medlyn_term.(g1, T_air, P_air, q_air, Ref(thermo_params))
+        medlyn_factor =
+            @. lazy(medlyn_term(g1, T_air, P_air, q_air, thermo_params))
         # Anywhere we use an Arrhenius factor, use T_canopy instead T_air
         T_canopy = canopy_temperature(canopy.energy, canopy, Y, p, t)
 
         # update moisture stress
         i_end = n_stem + n_leaf
-        @. β = moisture_stress(ψ.:($$i_end) * ρ_l * grav, sc, pc)
+        β = @. lazy(moisture_stress(ψ.:($$i_end) * ρ_l * grav, sc, pc))
 
         # Update Rd, An, Vcmax25 (if applicable to model) in place
         Vcmax25 = p.canopy.photosynthesis.Vcmax25
@@ -600,8 +597,14 @@ function ClimaLand.make_update_aux(
             par_d,
         )
         @. GPP = compute_GPP(An, extinction_coeff(G_Function, cosθs), LAI, Ω)
-        @. gs = medlyn_conductance(g0, Drel, medlyn_factor, An, c_co2_air)
-        @. rs_canopy = 1 / upscale_leaf_conductance(gs, LAI, T_air, R, P_air)
+        @. p.canopy.conductance.r_stomata_canopy =
+            1 / upscale_leaf_conductance(
+                medlyn_conductance(g0, Drel, medlyn_factor, An, c_co2_air), #conductance, leaf level
+                LAI,
+                T_air,
+                R,
+                P_air,
+            )
         # update autotrophic respiration
         h_canopy = hydraulics.compartment_surfaces[end]
         @. Ra = compute_autrophic_respiration(
