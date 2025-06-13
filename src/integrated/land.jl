@@ -208,6 +208,8 @@ lsm_aux_vars(m::LandModel) = (
     :root_energy_extraction,
     :LW_u,
     :SW_u,
+    :excess_water_flux,
+    :excess_heat_flux,
     :ground_heat_flux,
     :effective_soil_sfc_T,
     :sfc_scratch,
