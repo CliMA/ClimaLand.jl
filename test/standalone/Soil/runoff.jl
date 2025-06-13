@@ -96,11 +96,11 @@ end
         R_sb = R_sb,
     )
     @test ClimaLand.Soil.Runoff.runoff_vars(runoff_model) ==
-          (:infiltration, :is_saturated, :R_s, :R_ss, :h∇, :subsfc_scratch)
+          (:infiltration, :is_saturated, :R_s, :R_ss, :h∇)
     @test ClimaLand.Soil.Runoff.runoff_var_domain_names(runoff_model) ==
-          (:surface, :subsurface, :surface, :surface, :surface, :subsurface)
+          (:surface, :subsurface, :surface, :surface, :surface)
     @test ClimaLand.Soil.Runoff.runoff_var_types(runoff_model, FT) ==
-          (FT, FT, FT, FT, FT, FT)
+          (FT, FT, FT, FT, FT)
 
     @test runoff_model.f_over == f_over
     @test runoff_model.f_max == f_max
@@ -149,7 +149,6 @@ end
     @test :h∇ ∈ propertynames(p.soil)
     @test :infiltration ∈ propertynames(p.soil)
     @test :is_saturated ∈ propertynames(p.soil)
-    @test :subsfc_scratch ∈ propertynames(p.soil)
 
     # set initial conditions
     z = ClimaCore.Fields.coordinate_field(domain.space.subsurface).z
@@ -169,7 +168,9 @@ end
         runoff_model.f_over,
         model.domain.depth .- p.soil.h∇,
     )
-    ic = ClimaLand.Soil.Runoff.soil_infiltration_capacity(model, Y, p)
+    ic = Base.Broadcast.materialize(
+        ClimaLand.Soil.Runoff.soil_infiltration_capacity(model, Y, p),
+    )
     @test ic == ClimaCore.Fields.zeros(surface_space) .- FT(1e-6) #Ksat
     @test p.soil.infiltration ==
           @. ClimaLand.Soil.Runoff.topmodel_surface_infiltration(
@@ -196,11 +197,11 @@ end
     subsurface_space = domain.space.subsurface
     runoff_model = ClimaLand.Soil.Runoff.SurfaceRunoff()
     @test ClimaLand.Soil.Runoff.runoff_vars(runoff_model) ==
-          (:is_saturated, :R_s, :infiltration, :subsfc_scratch)
+          (:is_saturated, :R_s, :infiltration)
     @test ClimaLand.Soil.Runoff.runoff_var_domain_names(runoff_model) ==
-          (:subsurface, :surface, :surface, :subsurface)
+          (:subsurface, :surface, :surface)
     @test ClimaLand.Soil.Runoff.runoff_var_types(runoff_model, FT) ==
-          (FT, FT, FT, FT)
+          (FT, FT, FT)
 
 
     @test runoff_model.subsurface_source == nothing
@@ -252,7 +253,9 @@ end
     evaluate!(p.drivers.P_liq, atmos.liquid_precip, FT(0))
     set_initial_cache! = make_set_initial_cache(model)
     set_initial_cache!(p, Y, FT(0))
-    ic = ClimaLand.Soil.Runoff.soil_infiltration_capacity(model, Y, p)
+    ic = Base.Broadcast.materialize(
+        ClimaLand.Soil.Runoff.soil_infiltration_capacity(model, Y, p),
+    )
     @test ic == ClimaCore.Fields.zeros(surface_space) .- FT(1e-6) #Ksat
     @test p.soil.infiltration ==
           ClimaLand.Soil.Runoff.surface_infiltration.(

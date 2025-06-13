@@ -9,15 +9,10 @@ function update_root_extraction!(p, Y, t, land)
     z = land.soil.domain.fields.z
     (; conductivity_model) = land.canopy.hydraulics.parameters
     area_index = p.canopy.hydraulics.area_index
-    above_ground_area_index = p.scratch1
-    above_ground_area_index .=
-        PlantHydraulics.harmonic_mean.(
-            getproperty(
-                area_index,
-                land.canopy.hydraulics.compartment_labels[1],
-            ),
-            getproperty(area_index, :root),
-        )
+    RAI = getproperty(area_index, :root)
+    AI_1 = getproperty(area_index, land.canopy.hydraulics.compartment_labels[1]) # could be leaf or stem
+
+    above_ground_area_index = @lazy @. PlantHydraulics.harmonic_mean(RAI, AI_1)
     # Note that we model the flux between each soil layer and the canopy as:
     # Flux = -K_eff x [(ψ_canopy - ψ_soil)/(z_canopy - z_soil) + 1], where
     # K_eff = K_soil K_canopy /(K_canopy + K_soil)
@@ -156,11 +151,14 @@ function ClimaLand.source!(
     # Currently, these column integrals are done twice rather than add space to the cache.
     # We can revisit this as needed.
     ClimaCore.Operators.column_integral_definite!(
-        p.scratch1,
+        p.sfc_scratch,
         p.root_energy_extraction,
     )
-    @. dY.soil.∫F_e_dt += p.scratch1
+    @. dY.soil.∫F_e_dt += p.sfc_scratch
 
-    ClimaCore.Operators.column_integral_definite!(p.scratch1, p.root_extraction)
-    @. dY.soil.∫F_vol_liq_water_dt += p.scratch1
+    ClimaCore.Operators.column_integral_definite!(
+        p.sfc_scratch,
+        p.root_extraction,
+    )
+    @. dY.soil.∫F_vol_liq_water_dt += p.sfc_scratch
 end
