@@ -1,13 +1,13 @@
 using Dates
 
-model_type = "bucket" # "land" or "bucket"
-const variable_list = ["shf", "lhf"] # variable(s) you want to capture by adjusting your priors
+model_type = "land" # "land" or "bucket"
+const variable_list = ["swu"] # variable(s) you want to capture by adjusting your priors
 const n_iterations = 10 # 1 iterations takes ~ 1.5 hour with current settings ((50, 15) resolution, 2 year simulation)
 const spinup_period = Year(1)
 const start_date = DateTime(2008, 12, 01) # this is the start of the forward model spinup
 @assert month(start_date + spinup_period) == 12 "The start of your calibration period should be December."
 const nelements = (50, 15) # resolution - (horizontal elements (lon, lat), vertical elements (soil discretization))
-const dirname = "bucket_lhf_shf" # ideally, describe your calibration in a few words
+const dirname = "land_snow_zenith_angle_params_swu" # ideally, describe your calibration in a few words
 const caldir = joinpath("output", dirname) # you might want to save somewhere else than login
 model_dir = joinpath(pkgdir(ClimaLand), "experiments", "calibration")
 
