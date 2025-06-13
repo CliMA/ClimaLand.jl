@@ -117,7 +117,7 @@ lsm_aux_vars(m::SoilSnowModel) = (
 The types of the additional auxiliary variables that are
 included in the integrated Soil-Snow model.
 """
-lsm_aux_types(m::SoilSnowModel{FT}) where {FT} = (FT, FT, FT, FT, FT, FT, FT)
+lsm_aux_types(m::SoilSnowModel{FT}) where {FT} = (FT, FT, FT, FT, FT)
 
 """
     lsm_aux_domain_names(m::SoilSnowModel)
@@ -126,7 +126,7 @@ The domain names of the additional auxiliary variables that are
 included in the integrated Soil-Snow model.
 """
 lsm_aux_domain_names(m::SoilSnowModel) =
-    (:surface, :surface, :surface, :surface, :surface, :subsurface, :surface)
+    (:surface, :surface, :surface, :surface, :surface)
 
 """
     make_update_boundary_fluxes(

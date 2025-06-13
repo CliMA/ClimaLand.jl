@@ -179,6 +179,7 @@ and is not the same as the skin temperature (defined e.g. Equation 7.13 of  Bona
 lsm_aux_vars(m::SoilCanopyModel) = (
     :root_extraction,
     :root_energy_extraction,
+    :sfc_scratch,
     :LW_u,
     :SW_u,
     :T_sfc,
@@ -192,7 +193,8 @@ lsm_aux_vars(m::SoilCanopyModel) = (
 The types of the additional auxiliary variables that are
 included in the integrated Soil-Canopy model.
 """
-lsm_aux_types(m::SoilCanopyModel{FT}) where {FT} = (FT, FT, FT, FT, FT, FT, FT)
+lsm_aux_types(m::SoilCanopyModel{FT}) where {FT} =
+    (FT, FT, FT, FT, FT, FT, FT, FT)
 
 """
     lsm_aux_domain_names(m::SoilCanopyModel)
@@ -200,8 +202,16 @@ lsm_aux_types(m::SoilCanopyModel{FT}) where {FT} = (FT, FT, FT, FT, FT, FT, FT)
 The domain names of the additional auxiliary variables that are
 included in the integrated Soil-Canopy model.
 """
-lsm_aux_domain_names(m::SoilCanopyModel) =
-    (:subsurface, :subsurface, :surface, :surface, :surface, :surface, :surface)
+lsm_aux_domain_names(m::SoilCanopyModel) = (
+    :subsurface,
+    :subsurface,
+    :surface,
+    :surface,
+    :surface,
+    :surface,
+    :surface,
+    :surface,
+)
 
 """
     make_update_boundary_fluxes(
