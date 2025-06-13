@@ -1,14 +1,15 @@
 using Dates
 
-model_type = "bucket" # "land" or "bucket"
-const variable_list = ["shf", "lhf"] # variable(s) you want to capture by adjusting your priors
+model_type = "land" # "land" or "bucket"
+const variable_list = ["swu"] # variable(s) you want to capture by adjusting your priors
 const n_iterations = 10 # 1 iterations takes ~ 1.5 hour with current settings ((50, 15) resolution, 2 year simulation)
 const spinup_period = Year(1)
-const start_date = DateTime(2008, 12, 01) # this is the start of the forward model spinup
+const start_date = DateTime(2000, 12, 01) # this is the start of the forward model spinup
 @assert month(start_date + spinup_period) == 12 "The start of your calibration period should be December."
-const nelements = (50, 15) # resolution - (horizontal elements (lon, lat), vertical elements (soil discretization))
-const dirname = "bucket_lhf_shf" # ideally, describe your calibration in a few words
+const nelements = (101, 15) # resolution - (horizontal elements (lon, lat), vertical elements (soil discretization))
+const dirname = "land_snow_zenith_hires" # ideally, describe your calibration in a few words
 const caldir = joinpath("output", dirname) # you might want to save somewhere else than login
+import ClimaLand
 model_dir = joinpath(pkgdir(ClimaLand), "experiments", "calibration")
 
 # Don't forget to adjust your priors and forward_model files.
@@ -23,7 +24,6 @@ using Dates
 using Distributed
 import EnsembleKalmanProcesses as EKP
 import Random
-using ClimaLand
 import ClimaCalibrate: forward_model, parameter_path, path_to_ensemble_member
 import ClimaCalibrate as CAL
 rng_seed = 2
@@ -44,13 +44,8 @@ ekp_process = EKP.Unscented(prior)
 ensemble_size = ekp_process.N_ens
 
 # Config for workers
-addprocs(CAL.SlurmManager())
-# CAL.add_workers(
-#     4;
-#     cluster = :auto,
-#     device = :gpu,
-#     time = 700,
-# )
+#addprocs(CAL.SlurmManager())
+CAL.add_workers(ensemble_size; cluster = :auto, device = :gpu, time = 700)
 
 @everywhere using Dates
 @everywhere using ClimaLand
@@ -59,12 +54,14 @@ addprocs(CAL.SlurmManager())
 @everywhere global nelements
 @everywhere global caldir
 @everywhere global start_date
+@everywhere global model_dir
 for pid in workers()
     @spawnat pid begin
         global model_type = Main.model_type
         global nelements = Main.nelements
         global caldir = Main.caldir
         global start_date = Main.start_date
+        global model_dir = Main.model_dir
     end
 end
 
@@ -75,24 +72,13 @@ end
 # Locations used for calibration (currently all coordinates on land):
 include(joinpath(model_dir, "make_training_locations.jl"))
 training_locations = make_training_locations(nelements)
-# potentially we can add regional runs or specific lon lat bands or filter (e.g., regions with snow)
-
-# NOTE: The noise is set in observationseries_era5.jl - adjust if needed.
-# ^ current noise options: era5 inter-annual variance, era5 seasonal mean * factor, flat noise, weigh by lats.
-# NOTE: Currently everything is set to use seasonal averages. We could add option to use e.g., monthly or other.
-# NOTE: We could add option to calibrate single sites (change forward model, observationseries, observation_map).
-# ^ maybe Julia and Thanhthanh SURF?
-
-# observationseries - era5 data and noise object to compare to model output in EKP (to minimize the loss)
 include(joinpath(model_dir, "observationseries_era5.jl"))
 
-# l_obs is the length of Observation objects (observationseries for era5, observationmap for ClimaLand)
 n_locations = length(training_locations)
 n_variables = length(variable_list)
 n_time_points = 4 # 4 seasons (and not, for example, 12 months)
 l_obs = n_time_points * n_variables * n_locations
 
-# build observation from ClimaLand outputs - for one member
 include(joinpath(model_dir, "observation_map.jl"))
 
 # build observation from ClimaLand outputs - for all members
@@ -112,6 +98,43 @@ function CAL.observation_map(iteration)
     return G_ensemble
 end
 
+include(
+    joinpath(
+        pkgdir(ClimaLand),
+        "experiments",
+        "long_runs",
+	"leaderboard",
+	"leaderboard.jl"),
+)
+function CAL.analyze_iteration(ekp, g_ensemble, prior, output_dir, iteration)
+    plot_output_path = CAL.path_to_iteration(output_dir, iteration)
+
+    member1_path = CAL.path_to_ensemble_member(output_dir, iteration, 1)
+    diagnostics_folder_path =
+        joinpath(member1_path, "global_diagnostics/output_0000")
+
+    compute_monthly_leaderboard(
+        plot_output_path,
+        diagnostics_folder_path,
+        "ERA5",
+    )
+    plot_constrained_params_and_errors(plot_output_path, ekp, prior)
+end
+
+function plot_constrained_params_and_errors(output_dir, ekp, prior)
+    dim_size = sum(length.(EKP.batch(prior)))
+    fig = CairoMakie.Figure(size = ((dim_size + 1) * 500, 500))
+    for i in 1:dim_size
+        EKP.Visualize.plot_ϕ_over_iters(fig[1, i], ekp, prior, i)
+    end
+    EKP.Visualize.plot_error_over_iters(fig[1, dim_size + 1], ekp)
+    EKP.Visualize.plot_error_over_time(fig[1, dim_size + 2], ekp)
+    CairoMakie.save(
+        joinpath(output_dir, "constrained_params_and_error.png"),
+        fig,
+    )
+    return nothing
+end
 # Build the UTKI object - this is where you set EKP configurations
 utki = EKP.EnsembleKalmanProcess(
     observationseries,

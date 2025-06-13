@@ -642,7 +642,7 @@ function SphericalShell(;
             reverse_mode = true,
         )
     end
-    device = ClimaComms.device()
+    device = ClimaComms.device(comms_ctx)
     vert_center_space =
         ClimaCore.Spaces.CenterFiniteDifferenceSpace(device, vertmesh)
 

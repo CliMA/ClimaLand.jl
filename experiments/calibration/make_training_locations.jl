@@ -17,8 +17,13 @@ It assumes that the output is on the default grid, as determined by
 globe.
 """
 function diagnostics_lat_lon(nelements)
-    domain =
-        ClimaLand.Domains.SphericalShell(; radius = 0.1, depth = 0.1, nelements) # values of radius and depth (set to 0.1) do not matter; we just need information from the domain in the latitude/longitude directions.
+    cpu_comms_ctx = ClimaComms.context(ClimaComms.CPUSingleThreaded())
+    domain = ClimaLand.Domains.SphericalShell(;
+        radius = 0.1,
+        depth = 0.1,
+        nelements,
+        comms_ctx = cpu_comms_ctx,
+    ) # values of radius and depth (set to 0.1) do not matter; we just need information from the domain in the latitude/longitude directions.
     # If the default number of diagnostic latitude and longitude points is not used when running the simulations, this will need to be changed.
     num_long, num_lat, _ =
         ClimaLand.Diagnostics.default_diagnostic_num_points(domain)
@@ -40,9 +45,13 @@ Create a list of geographic training locations (longitude, latitude) for model c
 """
 function make_training_locations(nelements)
     lats, longs = diagnostics_lat_lon(nelements)
-
-    domain =
-        ClimaLand.Domains.SphericalShell(; radius = 0.1, depth = 0.1, nelements)
+    cpu_comms_ctx = ClimaComms.context(ClimaComms.CPUSingleThreaded())
+    domain = ClimaLand.Domains.SphericalShell(;
+        radius = 0.1,
+        depth = 0.1,
+        nelements,
+        comms_ctx = cpu_comms_ctx,
+    )
 
     # We need the mask in order to determine which points were treated as land by the simulation.
     # We set the threshold of fractional area of land to be 0.99 here - cells with > 1% ocean are ignored in calibration.
@@ -55,11 +64,12 @@ function make_training_locations(nelements)
     # Select only locations where the interpolated mask is equal to 1
     interpolated_mask =
         Array(ClimaCore.Remapping.interpolate(mask; target_hcoords))
-
+	# skip the exact pole at -90, 90 in latitude.
     training_locations = [
         (lon, lat) for (j, lon) in enumerate(longs) for
-        (i, lat) in enumerate(lats) if !iszero(interpolated_mask[i, j])
+        (i, lat) in enumerate(lats[2:end-1]) if !iszero(interpolated_mask[i+1, j])
     ]
+    @show training_locations
 
     return training_locations
 end
