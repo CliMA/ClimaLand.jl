@@ -287,13 +287,11 @@ prognostic_vars(model::PlantHydraulicsModel) = (:ϑ_l,)
 
 A function which returns the names of the auxiliary
 variables of the `PlantHydraulicsModel`,
-the transpiration stress factor `β` (unitless),
 the water potential `ψ` (m), the volume flux*cross section `fa` (1/s),
 and the volume flux*root cross section in the roots `fa_roots` (1/s),
 where the cross section can be represented by an area index.
 """
-auxiliary_vars(model::PlantHydraulicsModel) =
-    (:β, :ψ, :fa, :fa_roots, :area_index)
+auxiliary_vars(model::PlantHydraulicsModel) = (:ψ, :fa, :fa_roots, :area_index)
 
 """
     ClimaLand.prognostic_types(model::PlantHydraulicsModel{FT}) where {FT}
@@ -310,14 +308,13 @@ ClimaLand.prognostic_domain_names(::PlantHydraulicsModel) = (:surface,)
 Defines the auxiliary types for the PlantHydraulicsModel.
 """
 ClimaLand.auxiliary_types(model::PlantHydraulicsModel{FT}) where {FT} = (
-    FT,
     NTuple{model.n_stem + model.n_leaf, FT},
     NTuple{model.n_stem + model.n_leaf, FT},
     FT,
     NamedTuple{(:root, :stem, :leaf), Tuple{FT, FT, FT}},
 )
 ClimaLand.auxiliary_domain_names(::PlantHydraulicsModel) =
-    (:surface, :surface, :surface, :surface, :surface)
+    (:surface, :surface, :surface, :surface)
 
 function clip(x::FT, threshold::FT) where {FT}
     x > threshold ? x : FT(0)
