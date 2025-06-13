@@ -70,7 +70,7 @@ end
 
 results = Dict(
     k => Dict(v => [] for v in variable_list) for
-    k in (:all_seasons, :seasonal_vars, :seasonal_means)
+    k in (:all_seasons, :diagonal_vars, :seasonal_means)
 )
 
 """
@@ -92,6 +92,10 @@ years_to_delete =
     [y for y in unique(years) if y < year(start_date + spinup_period)]
 valid_years = [y for y in unique(years) if !(y in years_to_delete)]
 
+
+diag_var_fun(variable; lat) = 10^2 ./ max(cosd(lat), 0.1)
+# For clipped seasonal covariances, use:
+# diag_var_fun(variable; lat) = min(Statistics.var(variable), 100) ./ max(cosd(lat), 0.1)
 for (lon, lat) in training_locations
     seasonal = Dict(
         var_name => group_by_years(
@@ -113,9 +117,9 @@ for (lon, lat) in training_locations
         variable_list,
     )
 
-    variances = Dict(
-        var_name => fun_across_season(var_name, Statistics.var, lon, lat)
-        for var_name in variable_list
+    diag_variances = Dict(
+        var_name => fun_across_season(var_name, diag_var_fun, lon, lat) for
+        var_name in variable_list
     )
 
     means = Dict(
@@ -125,7 +129,7 @@ for (lon, lat) in training_locations
 
     for var in variable_list
         push!(results[:all_seasons][var], seasonal[var])
-        push!(results[:seasonal_vars][var], variances[var])
+        push!(results[:diagonal_vars][var], diag_variances[var])
         push!(results[:seasonal_means][var], means[var])
     end
 end
@@ -142,14 +146,6 @@ end
 #    noise[var_name[i]] = Dict()
 #end
 
-# latitudes = map(x -> x[2], training_locations)
-for var in values(results[:seasonal_vars])
-    for i in 1:length(var)
-        var[i] .= 5^2 # flat noise
-        # IF scale by lat, # var[i] .= var[i] ./ max(cosd(lat), 0.1) # need to get lat
-        # IF add model error, add results[:seasonal_means][var] .* 0.05 # or some factor
-    end
-end
 
 # Generate observation series
 obs_y = [
@@ -159,7 +155,7 @@ obs_y = [
                 Dict(
                     "samples" => results[:all_seasons][var_name][i][y],
                     "covariances" => LinearAlgebra.Diagonal(
-                        results[:seasonal_vars][var_name][i],
+                        results[:diagonal_vars][var_name][i],
                     ),
                     "names" => "$(var_name)_$(lon)_$(lat)_$(y)",
                 ),
