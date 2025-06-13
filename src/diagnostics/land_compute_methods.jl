@@ -82,7 +82,50 @@ end
 @diagnostic_compute "autotrophic_respiration" Union{SoilCanopyModel, LandModel} p.canopy.autotrophic_respiration.Ra
 
 # Canopy - Conductance
-@diagnostic_compute "stomatal_conductance" Union{SoilCanopyModel, LandModel} p.canopy.conductance.gs
+function compute_stomatal_conductance!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::Union{SoilCanopyModel, LandModel},
+)
+    canopy = land_model.canopy
+    (; g1, g0, Drel) = canopy.conductance.parameters
+    earth_param_set = canopy.parameters.earth_param_set
+    thermo_params = LP.thermodynamic_parameters(earth_param_set)
+
+    if isnothing(out)
+        return medlyn_conductance.(
+            g0,
+            Drel,
+            medlyn_term.(
+                g1,
+                p.drivers.T,
+                p.drivers.P,
+                p.drivers.q,
+                thermo_params,
+            ),
+            p.canopy.photosynthesis.An,
+            p.drivers.c_co2,
+        )
+
+
+    else
+        @. out = medlyn_conductance(
+            g0,
+            Drel,
+            medlyn_term(
+                g1,
+                p.drivers.T,
+                p.drivers.P,
+                p.drivers.q,
+                thermo_params,
+            ),
+            p.canopy.photosynthesis.An,
+            p.drivers.c_co2,
+        )
+    end
+end
 
 function compute_canopy_transpiration!(
     out,
@@ -132,7 +175,32 @@ end
     LandModel,
 } p.canopy.hydraulics.fa_roots
 @diagnostic_compute "leaf_area_index" Union{SoilCanopyModel, LandModel} p.canopy.hydraulics.area_index.leaf
-@diagnostic_compute "moisture_stress_factor" Union{SoilCanopyModel, LandModel} p.canopy.hydraulics.β
+# Canopy - Hydraulics
+function compute_moisture_stress_factor!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::Union{SoilCanopyModel, LandModel},
+)
+    canopy = land_model.canopy
+
+    hydraulics = canopy.hydraulics
+    n_stem = hydraulics.n_stem
+    n_leaf = hydraulics.n_leaf
+    n = n_stem + n_leaf
+
+    earth_param_set = canopy.parameters.earth_param_set
+    grav = LP.grav(earth_param_set)
+    ρ_l = LP.ρ_cloud_liq(earth_param_set)
+    (; sc, pc) = canopy.photosynthesis.parameters
+    ψ = p.canopy.hydraulics.ψ
+    if isnothing(out)
+        return @. moisture_stress(ψ.:($$n) * ρ_l * grav, sc, pc)
+    else
+        @. out = moisture_stress(ψ.:($$n) * ρ_l * grav, sc, pc)
+    end
+end
 @diagnostic_compute "root_area_index" Union{SoilCanopyModel, LandModel} p.canopy.hydraulics.area_index.root
 @diagnostic_compute "stem_area_index" Union{SoilCanopyModel, LandModel} p.canopy.hydraulics.area_index.stem
 
