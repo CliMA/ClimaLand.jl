@@ -498,7 +498,7 @@ function volumetric_energy_flux_falling_snow(atmos, p, parameters)
     _LH_f0 = LP.LH_f0(parameters.earth_param_set)
     _ρ_liq = LP.ρ_cloud_liq(parameters.earth_param_set)
     ρe_snow = -_LH_f0 * _ρ_liq
-    return @lazy @. ρe_snow * p.drivers.P_snow # per unit vol of liquid water
+    return @. lazy(ρe_snow * p.drivers.P_snow) # per unit vol of liquid water
 end
 
 """
@@ -513,8 +513,10 @@ CoupledAtmosphere, and the energy flux of the falling rain is passed in the
 cache `p`.  In that case, this should specify `atmos::PrescribedAtmosphere`.
 """
 function volumetric_energy_flux_falling_rain(atmos, p, parameters)
-    return @lazy @. volumetric_internal_energy_liq(p.drivers.T, parameters) *
-                    p.drivers.P_liq
+    return @. lazy(
+        volumetric_internal_energy_liq(p.drivers.T, parameters) *
+        p.drivers.P_liq,
+    )
 end
 
 

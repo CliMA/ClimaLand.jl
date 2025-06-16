@@ -3,7 +3,7 @@ module Snow
 using DocStringExtensions
 import ...Parameters as LP
 using ClimaCore
-using LazyBroadcast: @lazy
+using LazyBroadcast: lazy
 using Thermodynamics
 using ClimaLand
 using ClimaLand:
