@@ -1,7 +1,7 @@
 import SciMLBase
 import ClimaTimeSteppers as CTS
 import ClimaComms
-@static pkgversion(ClimaComms) >= v"0.6" && ClimaComms.@import_required_backends
+ClimaComms.@import_required_backends
 using ClimaCore
 using CairoMakie
 using Statistics
@@ -87,7 +87,7 @@ soil_model_type = Soil.EnergyHydrology
 α = 0.8
 snow_parameters = SnowParameters{FT}(
     dt;
-    α_snow = α,
+    α_snow = Snow.ConstantAlbedoModel(α),
     density = Snow.MinimumDensityModel(ρ),
     earth_param_set = earth_param_set,
 );
@@ -253,11 +253,41 @@ _ρ_i = FT(LP.ρ_cloud_ice(earth_param_set))
 _ρ_l = FT(LP.ρ_cloud_liq(earth_param_set))
 fig = Figure(size = (1600, 1200), fontsize = 26)
 ax1 = Axis(fig[2, 1], ylabel = "ΔEnergy (J/A)", xlabel = "Days")
+function compute_surface_energy_fluxes(p)
+    ρe_flux_falling_snow =
+        Snow.volumetric_energy_flux_falling_snow(atmos, p, land.snow.parameters)
+    ρe_flux_falling_rain =
+        Snow.volumetric_energy_flux_falling_rain(atmos, p, land.snow.parameters)
+
+    return @. (1 - p.snow.snow_cover_fraction) * (
+                  p.soil.turbulent_fluxes.lhf +
+                  p.soil.turbulent_fluxes.shf +
+                  p.soil.R_n
+              ) +
+              p.snow.snow_cover_fraction * (
+                  p.snow.turbulent_fluxes.lhf +
+                  p.snow.turbulent_fluxes.shf +
+                  p.snow.R_n +
+                  ρe_flux_falling_rain
+              ) +
+              ρe_flux_falling_snow
+end
+
+function compute_surface_water_vol_fluxes(p)
+    return @. p.drivers.P_snow +
+              p.drivers.P_liq +
+              (1 - p.snow.snow_cover_fraction) * (
+                  p.soil.turbulent_fluxes.vapor_flux_liq +
+                  p.soil.turbulent_fluxes.vapor_flux_ice
+              ) +
+              p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.vapor_flux
+end
+
 ΔE_expected =
     cumsum(
         -1 .* [
             parent(
-                sv.saveval[k].atmos_energy_flux .-
+                compute_surface_energy_fluxes(sv.saveval[k]) .-
                 sv.saveval[k].soil.bottom_bc.heat,
             )[end] for k in 1:1:(length(sv.t) - 1)
         ],
@@ -270,7 +300,7 @@ E_measured = [
     cumsum(
         -1 .* [
             parent(
-                sv.saveval[k].atmos_water_flux .-
+                compute_surface_water_vol_fluxes(sv.saveval[k]) .-
                 sv.saveval[k].soil.bottom_bc.water .+ sv.saveval[k].soil.R_s,
             )[end] for k in 1:1:(length(sv.t) - 1)
         ],

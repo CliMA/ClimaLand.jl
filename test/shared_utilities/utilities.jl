@@ -146,7 +146,7 @@ end
     domain2 = ClimaLand.Domains.SphericalSurface(;
         radius = FT(2),
         nelements = 10,
-        npolynomial = 3,
+        npolynomial = 1,
     )
 
     domains = (domain1, domain2)
@@ -207,7 +207,7 @@ end
         radius = FT(2),
         depth = FT(1.0),
         nelements = (10, 5),
-        npolynomial = 3,
+        npolynomial = 1,
     )
 
     domains = (domain1, domain2)
@@ -256,13 +256,44 @@ end
     end
 end
 
+@testset "dss! - npolynomial = 0, FT = $FT" begin
+    # Test for Spaces.SpectralElementSpace2D
+    domain1 = ClimaLand.Domains.Plane(;
+        xlim = FT.((0.0, 1.0)),
+        ylim = FT.((0.0, 1.0)),
+        nelements = (2, 2),
+        periodic = (true, true),
+    )
+    domain2 =
+        ClimaLand.Domains.SphericalSurface(; radius = FT(2), nelements = 10)
+    domain3 = ClimaLand.Domains.HybridBox(;
+        xlim = FT.((0.0, 1.0)),
+        ylim = FT.((0.0, 1.0)),
+        zlim = FT.((0.0, 1.0)),
+        nelements = (2, 2, 2),
+        periodic = (true, true),
+    )
+    domain4 = ClimaLand.Domains.SphericalShell(;
+        radius = FT(2),
+        depth = FT(1.0),
+        nelements = (10, 5),
+    )
+
+    domains = (domain1, domain2, domain3, domain4)
+    for domain in domains
+        p = (;)
+        p = ClimaLand.add_dss_buffer_to_aux(p, domain)
+        @test !haskey(p, :dss_buffer_2d)
+        @test !haskey(p, :dss_buffer_3d)
+    end
+end
+
 @testset "count_nans_state, FT = $FT" begin
     # Test on a 3D spherical domain
     domain = ClimaLand.Domains.SphericalShell(;
         radius = FT(2),
         depth = FT(1.0),
         nelements = (10, 5),
-        npolynomial = 3,
     )
 
     # Construct some fields
@@ -302,7 +333,7 @@ end
     ClimaComms.allowscalar(ClimaComms.device()) do
         parent(var1)[:, 1, 1, 1, 1] .= NaN
         parent(var2)[:, 1, 1, 1, 1] .= NaN
-        parent(var2)[:, 2, 1, 1, 1] .= NaN
+        parent(var2)[:, 1, 1, 1, 2] .= NaN
     end
 
     # Count and log the number of NaNs in the state (test verbose and non-verbose cases)

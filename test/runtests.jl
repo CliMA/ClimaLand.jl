@@ -60,6 +60,7 @@ end
 @safetestset "Soil CO2 parameterization tests" begin
     include("standalone/Soil/Biogeochemistry/co2_parameterizations.jl")
 end
+
 @safetestset "Soil climate drivers tests" begin
     include("standalone/Soil/climate_drivers.jl")
 end
@@ -74,6 +75,7 @@ end
 end
 @safetestset "Soil 3D domain tests" begin
     include("standalone/Soil/soil_test_3d.jl")
+    include("standalone/Soil/mask_test.jl")
 end
 @safetestset "Soil integration tests" begin
     include("standalone/Soil/soiltest.jl")
@@ -108,7 +110,7 @@ end
 @safetestset "Integrated LSM unit tests" begin
     include("integrated/lsms.jl")
 end
-@safetestset "Integrated LSM unit tests" begin
+@safetestset "Integrated soil/canopy unit tests" begin
     include("integrated/soil_canopy_lsm.jl")
 end
 @safetestset "Integrated pond/soil LSM tests" begin
@@ -120,8 +122,7 @@ end
 @safetestset "Integrated soil and snow" begin
     include("integrated/soil_snow.jl")
 end
-
-@safetestset "Full Land Model" begin
+@safetestset "Full land" begin
     include("integrated/full_land.jl")
 end
 

@@ -13,10 +13,10 @@ using ClimaLand.Domains:
     SphericalSurface,
     coordinates,
     obtain_surface_space,
-    obtain_face_space,
     obtain_surface_domain,
     get_Δz,
-    top_face_to_surface
+    top_face_to_surface,
+    average_horizontal_resolution_degrees
 
 FT = Float32
 @testset "Clima Core Domains, FT = $FT" begin
@@ -29,6 +29,9 @@ FT = Float32
     radius = FT(100)
     depth = FT(30)
     n_elements_sphere = (6, 20)
+
+    # NOTE: Here we set npoly_sphere to 3, instead of 0 to test that npoly != 0
+    # works as expected
     npoly_sphere = 3
     # Spherical Shell
     shell = SphericalShell(;
@@ -37,11 +40,11 @@ FT = Float32
         nelements = n_elements_sphere,
         npolynomial = npoly_sphere,
     )
-    @test shell.fields.Δz_min == depth / 20 / 2
+    @test shell.fields.Δz_min == depth / 20
     @test shell.fields.depth == depth
     @test shell.fields.z ==
           ClimaCore.Fields.coordinate_field(shell.space.subsurface).z
-    face_space = obtain_face_space(shell.space.subsurface)
+    face_space = ClimaCore.Spaces.face_space(shell.space.subsurface)
     z_face = ClimaCore.Fields.coordinate_field(face_space).z
     @test shell.fields.z_sfc == top_face_to_surface(z_face, shell.space.surface)
     Δz_top, Δz_bottom, Δz = get_Δz(shell.fields.z)
@@ -60,37 +63,35 @@ FT = Float32
           ClimaCore.Spaces.CenterExtrudedFiniteDifferenceSpace
     @test typeof(shell.space.surface) <: ClimaCore.Spaces.SpectralElementSpace2D
     @test obtain_surface_space(shell.space.subsurface) == shell.space.surface
-    @test obtain_surface_domain(shell) == SphericalSurface{FT}(
+    @test obtain_surface_domain(shell) ==
+          SphericalSurface{FT, typeof((; surface = shell.space.surface))}(
         radius,
         n_elements_sphere[1],
         npoly_sphere,
         (; surface = shell.space.surface),
     )
+    @test ClimaComms.context(shell) == ClimaComms.context()
+    @test ClimaComms.device(shell) == ClimaComms.device()
     shell_stretch = SphericalShell(;
         radius = radius,
         depth = FT(1.0),
         dz_tuple = FT.((0.3, 0.03)),
         nelements = (6, 10),
-        npolynomial = 3,
     )
     shell_coords_stretch = coordinates(shell_stretch).subsurface
     dz =
-        Array(parent(shell_coords_stretch.z))[:, 1, 4, 1, 216][2:end] .-
-        Array(parent(shell_coords_stretch.z))[:, 1, 4, 1, 216][1:(end - 1)]
+        Array(parent(shell_coords_stretch.z))[:, end, end, end, end][2:end] .-
+        Array(parent(shell_coords_stretch.z))[:, end, end, end, end][1:(end - 1)]
     @test abs(dz[1] - 0.3) < 1e-1
     @test abs(dz[end] - 0.03) < 1e-2
-    @test shell.fields.Δz_min == minimum(shell.fields.Δz_top)
+    @test shell.fields.Δz_min == minimum(shell.fields.Δz)
 
 
     # Spherical Surface
-    shell_surface = SphericalSurface(;
-        radius = radius,
-        nelements = n_elements_sphere[1],
-        npolynomial = npoly_sphere,
-    )
+    shell_surface =
+        SphericalSurface(; radius = radius, nelements = n_elements_sphere[1])
     @test shell_surface.radius == radius
     @test shell_surface.nelements == n_elements_sphere[1]
-    @test shell_surface.npolynomial == npoly_sphere
     shell_surface_coords = coordinates(shell_surface).surface
     @test eltype(shell_surface_coords) == ClimaCore.Geometry.LatLongPoint{FT}
     @test typeof(shell_surface_coords) <: ClimaCore.Fields.Field
@@ -100,18 +101,22 @@ FT = Float32
     @test ClimaComms.context(shell_surface) == ClimaComms.context()
     @test ClimaComms.device(shell_surface) == ClimaComms.device()
 
+    @test average_horizontal_resolution_degrees(shell_surface) ==
+          (180 / (2 * n_elements_sphere[1]), 180 / (2n_elements_sphere[1]))
+
     # HybridBox
     box = HybridBox(;
         xlim = xlim,
         ylim = ylim,
         zlim = zlim,
         nelements = nelements,
-        npolynomial = 0,
     )
+    @test ClimaComms.context(box) == ClimaComms.context()
+    @test ClimaComms.device(box) == ClimaComms.device()
     @test box.fields.depth == zlim[2] - zlim[1]
     @test box.fields.z ==
           ClimaCore.Fields.coordinate_field(box.space.subsurface).z
-    face_space = obtain_face_space(box.space.subsurface)
+    face_space = ClimaCore.Spaces.face_space(box.space.subsurface)
     z_face = ClimaCore.Fields.coordinate_field(face_space).z
     @test box.fields.z_sfc == top_face_to_surface(z_face, box.space.surface)
     Δz_top, Δz_bottom, Δz = get_Δz(box.fields.z)
@@ -132,7 +137,8 @@ FT = Float32
           ClimaCore.Spaces.CenterExtrudedFiniteDifferenceSpace
     @test typeof(box.space.surface) <: ClimaCore.Spaces.SpectralElementSpace2D
     @test obtain_surface_space(box.space.subsurface) == box.space.surface
-    @test obtain_surface_domain(box) == Plane{FT}(
+    @test obtain_surface_domain(box) ==
+          Plane{FT, typeof((; surface = box.space.surface))}(
         xlim,
         ylim,
         nothing,
@@ -148,7 +154,6 @@ FT = Float32
         zlim = zlim,
         dz_tuple = FT.((0.3, 0.03)),
         nelements = nelements,
-        npolynomial = 0,
     )
     box_coords_stretch = coordinates(stretch_box).subsurface
     dz =
@@ -163,8 +168,9 @@ FT = Float32
         ylim = ylim,
         nelements = nelements[1:2],
         periodic = (true, true),
-        npolynomial = 0,
     )
+    @test ClimaComms.context(xy_plane) == ClimaComms.context()
+    @test ClimaComms.device(xy_plane) == ClimaComms.device()
     plane_coords = coordinates(xy_plane).surface
     @test eltype(plane_coords) == ClimaCore.Geometry.XYPoint{FT}
     @test typeof(plane_coords) <: ClimaCore.Fields.Field
@@ -175,6 +181,8 @@ FT = Float32
     @test xy_plane.periodic == (true, true)
     @test typeof(xy_plane.space.surface) <:
           ClimaCore.Spaces.SpectralElementSpace2D
+
+    @test_throws ErrorException average_horizontal_resolution_degrees(xy_plane)
 
     # Plane latlong
     dxlim = (FT(50_000), FT(80_000))
@@ -190,13 +198,8 @@ FT = Float32
         longlat[1] + dxlim[2] / FT(2π * radius_earth) * 360,
     )
 
-    longlat_plane = Plane(;
-        xlim = dxlim,
-        ylim = dylim,
-        longlat,
-        nelements = nelements[1:2],
-        npolynomial = 0,
-    )
+    longlat_plane =
+        Plane(; xlim = dxlim, ylim = dylim, longlat, nelements = nelements[1:2])
     plane_coords = coordinates(longlat_plane).surface
     @test eltype(plane_coords) == ClimaCore.Geometry.LatLongPoint{FT}
     @test typeof(plane_coords) <: ClimaCore.Fields.Field
@@ -208,6 +211,12 @@ FT = Float32
     @test typeof(longlat_plane.space.surface) <:
           ClimaCore.Spaces.SpectralElementSpace2D
 
+    expected_resolution_x = (xlim_longlat[2] - xlim_longlat[1]) / nelements[1]
+    expected_resolution_y = (ylim_longlat[2] - ylim_longlat[1]) / nelements[2]
+
+    @test average_horizontal_resolution_degrees(longlat_plane) ==
+          (expected_resolution_x, expected_resolution_y)
+
     # Box latlong
     longlat_box = HybridBox(;
         xlim = dxlim,
@@ -215,12 +224,11 @@ FT = Float32
         zlim = zlim,
         longlat,
         nelements = nelements,
-        npolynomial = 0,
     )
     @test longlat_box.fields.depth == zlim[2] - zlim[1]
     @test longlat_box.fields.z ==
           ClimaCore.Fields.coordinate_field(longlat_box.space.subsurface).z
-    face_space = obtain_face_space(longlat_box.space.subsurface)
+    face_space = ClimaCore.Spaces.face_space(longlat_box.space.subsurface)
     z_face = ClimaCore.Fields.coordinate_field(face_space).z
     @test longlat_box.fields.z_sfc ==
           top_face_to_surface(z_face, longlat_box.space.surface)
@@ -245,7 +253,8 @@ FT = Float32
           ClimaCore.Spaces.SpectralElementSpace2D
     @test obtain_surface_space(longlat_box.space.subsurface) ==
           longlat_box.space.surface
-    @test obtain_surface_domain(longlat_box) == Plane{FT}(
+    @test obtain_surface_domain(longlat_box) ==
+          Plane{FT, typeof((; surface = longlat_box.space.surface))}(
         xlim_longlat,
         ylim_longlat,
         longlat,
@@ -255,13 +264,18 @@ FT = Float32
         (; surface = longlat_box.space.surface),
     )
 
+    @test average_horizontal_resolution_degrees(longlat_box) ==
+          (expected_resolution_x, expected_resolution_y)
+
     # Column
 
     z_column = Column(; zlim = zlim, nelements = nelements[3])
+    @test ClimaComms.context(z_column) == ClimaComms.context()
+    @test ClimaComms.device(z_column) == ClimaComms.device()
     @test z_column.fields.z ==
           ClimaCore.Fields.coordinate_field(z_column.space.subsurface).z
     @test z_column.fields.depth == zlim[2] - zlim[1]
-    face_space = obtain_face_space(z_column.space.subsurface)
+    face_space = ClimaCore.Spaces.face_space(z_column.space.subsurface)
     z_face = ClimaCore.Fields.coordinate_field(face_space).z
     @test z_column.fields.z_sfc ==
           top_face_to_surface(z_face, z_column.space.surface)
@@ -286,7 +300,10 @@ FT = Float32
     @test obtain_surface_space(z_column.space.subsurface) ==
           z_column.space.surface
     @test obtain_surface_domain(z_column) ==
-          Point{FT}(zlim[2], (; surface = z_column.space.surface))
+          Point{FT, typeof((; surface = z_column.space.surface))}(
+        zlim[2],
+        (; surface = z_column.space.surface),
+    )
     z_column_stretch =
         Column(; zlim = zlim, nelements = 10, dz_tuple = FT.((0.3, 0.03)))
     column_coords = coordinates(z_column_stretch).subsurface
@@ -301,6 +318,8 @@ end
 @testset "Point Domain, FT = $FT" begin
     zmin = FT(1.0)
     point = Point(; z_sfc = zmin)
+    @test ClimaComms.context(point) == ClimaComms.context()
+    @test ClimaComms.device(point) == ClimaComms.device()
     @test point.z_sfc == zmin
     point_space = point.space.surface
     @test point_space isa ClimaCore.Spaces.PointSpace

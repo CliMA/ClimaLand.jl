@@ -1,83 +1,98 @@
-# # Global run of land model
-
-# The code sets up and runs the soil/canopy model for 6 hours on a spherical domain,
-# using ERA5 data. In this simulation, we have
-# turned lateral flow off because horizontal boundary conditions and the
-# land/sea mask are not yet supported by ClimaCore.
-
-# This code runs the model multiple times and collects statistics for execution time and
-# allocations
-#
-# When run with buildkite on clima, this code also compares with the previous best time
-# saved at the bottom of this file
-
-# Simulation Setup
-# Number of spatial elements: 101 in horizontal, 15 in vertical
-# Soil depth: 50 m
-# Simulation duration: 6 hours
-# Timestep: 450 s
-# Timestepper: ARS111
-# Fixed number of iterations: 3
-# Jacobian update: Every Newton iteration
-# Atmos forcing update: every 3 hours
-delete!(ENV, "JULIA_CUDA_MEMORY_POOL")
+ENV["CLIMACOMMS_CONTEXT"] = "SINGLETON" # force climacomms to use singleton context and not MPI
 
 import SciMLBase
+import TOML
 import ClimaComms
 ClimaComms.@import_required_backends
 import ClimaTimeSteppers as CTS
-using Test
 using ClimaCore
-using ClimaUtilities.ClimaArtifacts
+import ClimaUtilities.OnlineLogging: WallTimeInfo, report_walltime
+import ClimaUtilities.TimeManager: ITime, date
+
+import ClimaDiagnostics
+import ClimaUtilities
 
 import ClimaUtilities.TimeVaryingInputs:
     TimeVaryingInput, LinearInterpolation, PeriodicCalendar
+import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
 import ClimaUtilities.ClimaArtifacts: @clima_artifact
 import ClimaParams as CP
 
 using ClimaLand
+using ClimaLand.Snow
 using ClimaLand.Soil
 using ClimaLand.Canopy
-import ClimaLand
 import ClimaLand.Parameters as LP
+
+import ClimaCalibrate: forward_model, parameter_path, path_to_ensemble_member
+import ClimaCalibrate as CAL
 
 using Statistics
 using Dates
 import NCDatasets
-import Profile, ProfileCanvas
 
-const FT = Float64;
-time_interpolation_method = LinearInterpolation(PeriodicCalendar())
+FT = Float64
+const time_interpolation_method = LinearInterpolation()
 context = ClimaComms.context()
 ClimaComms.init(context)
 device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
 
-outdir = "land_benchmark_$(device_suffix)"
-!ispath(outdir) && mkpath(outdir)
-
-function setup_prob(t0, tf, Δt; nelements = (101, 15))
+function setup_prob(
+    t0,
+    tf,
+    Δt,
+    params,
+    model_start,
+    outdir;
+    nelements = (101, 15),
+)
     earth_param_set = LP.LandParameters(FT)
-    domain = ClimaLand.global_domain(FT; nelements)
+    # Set up parameters
+    p_names = collect(keys(params))
+    p_values = [params[name]["value"] for name in p_names]
+    params = (; zip(Symbol.(p_names), p_values)...)
+    (;
+        #        pc,
+        #        sc,
+        #        K_sat_plant,
+        #        a,
+        #        h_leaf,
+        #        α_snow,
+        #        α_soil_dry_scaler,
+        #        τ_leaf_scaler,
+        #        α_leaf_scaler,
+        #        α_soil_scaler,
+        α_0,
+        Δα,
+        k,
+        beta_snow,
+        x0_snow,
+        gamma_snow,
+        beta_0,
+        #        beta_min,
+        z0_snow,
+    ) = params
+
+    domain = ClimaLand.ModelSetup.global_domain(FT; nelements = nelements)
     surface_space = domain.space.surface
     subsurface_space = domain.space.subsurface
 
-    start_date = DateTime(2008)
+    era5_ncdata_path =
+        ClimaLand.Artifacts.find_era5_year_paths(date(t0), date(tf); context)
 
-    # Forcing data
-    era5_artifact_path =
-        ClimaLand.Artifacts.era5_land_forcing_data2008_folder_path(; context)
-    era5_ncdata_path = joinpath(era5_artifact_path, "era5_2008_1.0x1.0.nc")
     atmos, radiation = ClimaLand.prescribed_forcing_era5(
         era5_ncdata_path,
         surface_space,
-        start_date,
+        model_start,
         earth_param_set,
         FT;
         time_interpolation_method = time_interpolation_method,
     )
+
+
     spatially_varying_soil_params =
-        ClimaLand.default_spatially_varying_soil_parameters(
+        ClimaLand.ModelSetup.default_spatially_varying_soil_parameters(
             subsurface_space,
             surface_space,
             FT,
@@ -97,6 +112,15 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
         NIR_albedo_wet,
         f_max,
     ) = spatially_varying_soil_params
+
+    # We need to ensure that the α < 1
+    #    PAR_albedo_dry .=
+    #        min.(PAR_albedo_dry .* α_soil_dry_scaler .* α_soil_scaler, FT(1))
+    #    NIR_albedo_dry .=
+    #        min.(NIR_albedo_dry .* α_soil_dry_scaler .* α_soil_scaler, FT(1))
+    #    PAR_albedo_wet .= min.(PAR_albedo_wet .* α_soil_scaler, FT(1))
+    #    NIR_albedo_wet .= min.(NIR_albedo_wet .* α_soil_scaler, FT(1))
+
     soil_params = Soil.EnergyHydrologyParameters(
         FT;
         ν,
@@ -112,7 +136,6 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
         PAR_albedo_wet = PAR_albedo_wet,
         NIR_albedo_wet = NIR_albedo_wet,
     )
-
     f_over = FT(3.28) # 1/m
     R_sb = FT(1.484e-4 / 1000) # m/s
     runoff_model = ClimaLand.Soil.Runoff.TOPMODELRunoff{FT}(;
@@ -120,8 +143,9 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
         f_max = f_max,
         R_sb = R_sb,
     )
+
     # Spatially varying canopy parameters from CLM
-    clm_parameters = ClimaLand.clm_canopy_parameters(surface_space)
+    clm_parameters = ClimaLand.ModelSetup.clm_canopy_parameters(surface_space)
     (;
         Ω,
         rooting_depth,
@@ -135,17 +159,30 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
         τ_NIR_leaf,
     ) = clm_parameters
 
+    #α <= 1
+    #    α_PAR_leaf .= min.(α_leaf_scaler .* α_PAR_leaf, FT(1))
+    #    α_NIR_leaf .= min.(α_leaf_scaler .* α_NIR_leaf, FT(1))
+
+    # τ <= 1
+    #    τ_PAR_leaf .= min.(τ_leaf_scaler .* τ_PAR_leaf, FT(1))
+    #    τ_NIR_leaf .= min.(τ_leaf_scaler .* τ_NIR_leaf, FT(1))
+
+    # We need to ensure that the scaling here does not violate α+τ < 1
+    #    α_PAR_leaf .=
+    #        ClimaLand.Canopy.enforce_albedo_constraint.(α_PAR_leaf, τ_PAR_leaf)
+    #    α_NIR_leaf .=
+    #        ClimaLand.Canopy.enforce_albedo_constraint.(α_NIR_leaf, τ_NIR_leaf)
+
     # Energy Balance model
     ac_canopy = FT(2.5e3)
-
     # Plant Hydraulics and general plant parameters
     SAI = FT(0.0) # m2/m2
     f_root_to_shoot = FT(3.5)
     RAI = FT(1.0)
-    K_sat_plant = FT(5e-9) # m/s # seems much too small?
+    K_sat_plant = FT(7e-8)
     ψ63 = FT(-4 / 0.0098) # / MPa to m, Holtzman's original parameter value is -4 MPa
     Weibull_param = FT(4) # unitless, Holtzman's original c param value
-    a = FT(0.05 * 0.0098) # Holtzman's original parameter for the bulk modulus of elasticity
+    a = FT(0.2 * 0.0098) # Holtzman's original parameter for the bulk modulus of elasticity
     conductivity_model =
         Canopy.PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
     retention_model = Canopy.PlantHydraulics.LinearRetentionCurve{FT}(a)
@@ -165,32 +202,14 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
     z0_m = FT(0.13) * h_canopy
     z0_b = FT(0.1) * z0_m
 
-
-    soilco2_ps = Soil.Biogeochemistry.SoilCO2ModelParameters(FT)
-
     soil_args = (domain = domain, parameters = soil_params)
     soil_model_type = Soil.EnergyHydrology{FT}
 
     # Soil microbes model
     soilco2_type = Soil.Biogeochemistry.SoilCO2Model{FT}
-
-    # soil microbes args
+    soilco2_ps = Soil.Biogeochemistry.SoilCO2ModelParameters(FT)
     Csom = ClimaLand.PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5))
-
-    # Set the soil CO2 BC to being atmospheric CO2
-    soilco2_top_bc = Soil.Biogeochemistry.AtmosCO2StateBC()
-    soilco2_bot_bc = Soil.Biogeochemistry.SoilCO2FluxBC((p, t) -> 0.0) # no flux
-    soilco2_sources = (Soil.Biogeochemistry.MicrobeProduction{FT}(),)
-
-    soilco2_boundary_conditions =
-        (; top = soilco2_top_bc, bottom = soilco2_bot_bc)
-
-    soilco2_args = (;
-        boundary_conditions = soilco2_boundary_conditions,
-        sources = soilco2_sources,
-        domain = domain,
-        parameters = soilco2_ps,
-    )
+    soilco2_args = (; domain = domain, parameters = soilco2_ps)
 
     # Now we set up the canopy model, which we set up by component:
     # Component Types
@@ -222,17 +241,20 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
     conductance_args =
         (; parameters = Canopy.MedlynConductanceParameters(FT; g1))
     # Set up photosynthesis
-    photosynthesis_args =
-        (; parameters = Canopy.FarquharParameters(FT, is_c3; Vcmax25 = Vcmax25))
+    photosynthesis_args = (; parameters = Canopy.FarquharParameters(
+        FT,
+        is_c3;
+        Vcmax25 = Vcmax25,
+        #pc = pc,
+        #sc = sc,
+    ))
     # Set up plant hydraulics
-    modis_lai_artifact_path =
-        ClimaLand.Artifacts.modis_lai_forcing_data_path(; context)
     modis_lai_ncdata_path =
-        joinpath(modis_lai_artifact_path, "Yuan_et_al_2008_1x1.nc")
+        ClimaLand.Artifacts.find_modis_year_paths(date(t0), date(tf); context)
     LAIfunction = ClimaLand.prescribed_lai_modis(
         modis_lai_ncdata_path,
         surface_space,
-        start_date;
+        model_start;
         time_interpolation_method = time_interpolation_method,
     )
     ai_parameterization =
@@ -278,14 +300,42 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
         domain = ClimaLand.obtain_surface_domain(domain),
     )
 
-    # Integrated plant hydraulics and soil model
+    # Snow model
+    # α_snow = Snow.ZenithAngleAlbedoModel(α_0, Δα, k)
+    α_snow = Snow.ZenithAngleAlbedoModel(
+        FT(α_0),
+        FT(Δα),
+        FT(k);
+        β = FT(beta_snow),
+        x0 = FT(x0_snow),
+    )
+    horz_degree_res =
+        sum(ClimaLand.Domains.average_horizontal_resolution_degrees(domain)) / 2 # mean of resolution in latitude and longitude, in degrees
+    scf = Snow.WuWuSnowCoverFractionModel(
+        FT(gamma_snow),
+        FT(beta_0),
+        FT(1.0),
+        horz_degree_res;
+        z0 = FT(z0_snow),
+    )
+    snow_parameters = SnowParameters{FT}(
+        Δt;
+        earth_param_set = earth_param_set,
+        α_snow = α_snow,
+    )
+    snow_args = (;
+        parameters = snow_parameters,
+        domain = ClimaLand.obtain_surface_domain(domain),
+    )
+    snow_model_type = Snow.SnowModel
+
     land_input = (
         atmos = atmos,
         radiation = radiation,
         runoff = runoff_model,
         soil_organic_carbon = Csom,
     )
-    land = SoilCanopyModel{FT}(;
+    land = LandModel{FT}(;
         soilco2_type = soilco2_type,
         soilco2_args = soilco2_args,
         land_args = land_input,
@@ -294,36 +344,20 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
         canopy_component_types = canopy_component_types,
         canopy_component_args = canopy_component_args,
         canopy_model_args = canopy_model_args,
+        snow_args = snow_args,
+        snow_model_type = snow_model_type,
     )
 
-    Y, p, cds = initialize(land)
+    Y, p, cds = ClimaLand.initialize(land)
 
-    init_soil(ν, θ_r) = θ_r + (ν - θ_r) / 2
-    Y.soil.ϑ_l .= init_soil.(ν, θ_r)
-    Y.soil.θ_i .= FT(0.0)
-    T = FT(276.85)
-    ρc_s =
-        Soil.volumetric_heat_capacity.(
-            Y.soil.ϑ_l,
-            Y.soil.θ_i,
-            soil_params.ρc_ds,
-            soil_params.earth_param_set,
-        )
-    Y.soil.ρe_int .=
-        Soil.volumetric_internal_energy.(
-            Y.soil.θ_i,
-            ρc_s,
-            T,
-            soil_params.earth_param_set,
-        )
-    Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
-    Y.canopy.hydraulics.ϑ_l.:1 .= plant_ν
-    evaluate!(Y.canopy.energy.T, atmos.T, t0)
-
+    ic_path = ClimaLand.Artifacts.soil_ic_2008_50m_path(; context = context)
+    set_initial_state! = make_set_initial_state_from_file(ic_path, land)
     set_initial_cache! = make_set_initial_cache(land)
     exp_tendency! = make_exp_tendency(land)
     imp_tendency! = ClimaLand.make_imp_tendency(land)
     jacobian! = ClimaLand.make_jacobian(land)
+
+    set_initial_state!(Y, p, t0, land)
     set_initial_cache!(p, Y, t0)
 
     # set up jacobian info
@@ -343,26 +377,75 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
         p,
     )
 
-    updateat = Array(t0:(3600 * 3):tf)
+    updateat = [promote(t0:(ITime(3600 * 3)):tf...)...]
     drivers = ClimaLand.get_drivers(land)
     updatefunc = ClimaLand.make_update_drivers(drivers)
-    cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
-    return prob, cb
+
+    # ClimaDiagnostics
+    # num_points is the resolution of the output diagnostics
+    # These are currently chosen to get a 1:1 ration with the number of
+    # simulation points, ~101x101x4x4
+    nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(
+        subsurface_space,
+        outdir;
+        start_date = model_start,
+    )
+
+    diags = ClimaLand.default_diagnostics(
+        land,
+        model_start;
+        output_writer = nc_writer,
+        output_vars = :short,
+        average_period = :monthly,
+    )
+
+    diagnostic_handler =
+        ClimaDiagnostics.DiagnosticsHandler(diags, Y, p, t0; dt = Δt)
+
+    diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler)
+
+    driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
+
+    walltime_info = WallTimeInfo()
+    every1000steps(u, t, integrator) = mod(integrator.step, 1000) == 0
+    report = let wt = walltime_info
+        (integrator) -> report_walltime(wt, integrator)
+    end
+    report_cb = SciMLBase.DiscreteCallback(every1000steps, report)
+
+    nancheck_freq = Dates.Month(1)
+    nancheck_cb = ClimaLand.NaNCheckCallback(nancheck_freq, model_start, t0, Δt)
+
+    return prob,
+    SciMLBase.CallbackSet(driver_cb, diag_cb, report_cb, nancheck_cb),
+    nc_writer
 end
 
-function setup_simulation(; greet = false)
-    t0 = 0.0
-    tf = 60 * 60.0 * 6
-    Δt = 450.0
-    nelements = (101, 15)
-    if greet
-        @info "Run: Global Land Model"
-        @info "Resolution: $nelements"
-        @info "Timestep: $Δt s"
-        @info "Duration: $(tf - t0) s"
-    end
+function CAL.forward_model(iteration, member)
+    ensemble_member_path = path_to_ensemble_member(caldir, iteration, member)
+    params_path = parameter_path(caldir, iteration, member)
+    params = TOML.parsefile(params_path)
 
-    prob, cb = setup_prob(t0, tf, Δt; nelements)
+    model_start = start_date + Year(iteration)
+    seconds = 1.0
+    minutes = 60seconds
+    hours = 60minutes # hours in seconds
+    days = 24hours # days in seconds
+    years = 367days # years in seconds - 367 to make sure we capture at least full years
+    t0 = 0.0
+    tf = t0 + 2years
+    Δt = 450.0
+
+    diagnostics_dir = joinpath(ensemble_member_path, "global_diagnostics")
+    diagdir =
+        ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_dir)
+
+    t0 = ITime(t0, epoch = model_start)
+    tf = ITime(tf, epoch = model_start)
+    Δt = ITime(Δt, epoch = model_start)
+    t0, tf, Δt = promote(t0, tf, Δt)
+    prob, cb, nc_writer =
+        setup_prob(t0, tf, Δt, params, model_start, diagdir; nelements)
 
     # Define timestepper and ODE algorithm
     stepper = CTS.ARS111()
@@ -373,101 +456,7 @@ function setup_simulation(; greet = false)
             update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
         ),
     )
-    return prob, ode_algo, Δt, cb
-end
-
-# Warm up and greet
-prob, ode_algo, Δt, cb = setup_simulation(; greet = true)
-SciMLBase.solve(prob, ode_algo; dt = Δt, callback = cb)
-
-@info "Starting profiling"
-# Stop when we profile for MAX_PROFILING_TIME_SECONDS or MAX_PROFILING_SAMPLES
-MAX_PROFILING_TIME_SECONDS = 500
-MAX_PROFILING_SAMPLES = 100
-time_now = time()
-timings_s = Float64[]
-while (time() - time_now) < MAX_PROFILING_TIME_SECONDS &&
-    length(timings_s) < MAX_PROFILING_SAMPLES
-    lprob, lode_algo, lΔt, lcb = setup_simulation()
-    push!(
-        timings_s,
-        ClimaComms.@elapsed device SciMLBase.solve(
-            lprob,
-            lode_algo;
-            dt = lΔt,
-            callback = lcb,
-        )
-    )
-end
-num_samples = length(timings_s)
-average_timing_s = round(sum(timings_s) / num_samples, sigdigits = 3)
-max_timing_s = round(maximum(timings_s), sigdigits = 3)
-min_timing_s = round(minimum(timings_s), sigdigits = 3)
-std_timing_s = round(
-    sqrt(sum(((timings_s .- average_timing_s) .^ 2) / num_samples)),
-    sigdigits = 3,
-)
-@info "Num samples: $num_samples"
-@info "Average time: $(average_timing_s) s"
-@info "Max time: $(max_timing_s) s"
-@info "Min time: $(min_timing_s) s"
-@info "Standard deviation time: $(std_timing_s) s"
-@info "Done profiling"
-
-prob, ode_algo, Δt, cb = setup_simulation()
-Profile.@profile SciMLBase.solve(prob, ode_algo; dt = Δt, callback = cb)
-results = Profile.fetch()
-flame_file = joinpath(outdir, "flame_$device_suffix.html")
-ProfileCanvas.html_file(flame_file, results)
-@info "Saved compute flame to $flame_file"
-
-prob, ode_algo, Δt, cb = setup_simulation()
-Profile.Allocs.@profile sample_rate = 0.0025 SciMLBase.solve(
-    prob,
-    ode_algo;
-    dt = Δt,
-    callback = cb,
-)
-results = Profile.Allocs.fetch()
-profile = ProfileCanvas.view_allocs(results)
-alloc_flame_file = joinpath(outdir, "alloc_flame_$device_suffix.html")
-ProfileCanvas.html_file(alloc_flame_file, profile)
-@info "Saved allocation flame to $alloc_flame_file"
-
-if ClimaComms.device() isa ClimaComms.CUDADevice
-    import CUDA
-    lprob, lode_algo, lΔt, lcb = setup_simulation()
-    p = CUDA.@profile SciMLBase.solve(
-        lprob,
-        lode_algo;
-        dt = lΔt,
-        callback = lcb,
-    )
-    # use "COLUMNS" to set how many horizontal characters to crop:
-    # See https://github.com/ronisbr/PrettyTables.jl/issues/11#issuecomment-2145550354
-    envs = ("COLUMNS" => 120,)
-    withenv(envs...) do
-        io = IOContext(
-            stdout,
-            :crop => :horizontal,
-            :limit => true,
-            :displaysize => displaysize(),
-        )
-        show(io, p)
-    end
-    println()
-end
-
-if get(ENV, "BUILDKITE_PIPELINE_SLUG", nothing) == "climaland-benchmark"
-    PREVIOUS_BEST_TIME = 3.93
-    if average_timing_s > PREVIOUS_BEST_TIME + std_timing_s
-        @info "Possible performance regression, previous average time was $(PREVIOUS_BEST_TIME)"
-    elseif average_timing_s < PREVIOUS_BEST_TIME - std_timing_s
-        @info "Possible significant performance improvement, please update PREVIOUS_BEST_TIME in $(@__DIR__)"
-    end
-    @testset "Performance" begin
-        @test PREVIOUS_BEST_TIME - 2std_timing_s <=
-              average_timing_s <=
-              PREVIOUS_BEST_TIME + 2std_timing_s
-    end
+    SciMLBase.solve(prob, ode_algo; dt = Δt, callback = cb, adaptive = false)
+    close(nc_writer)
+    return nothing
 end

@@ -15,8 +15,8 @@ import ClimaLand
                        scalar_snow_params,
                        earth_param_set;
                        context = nothing,
-                       domain = ClimaLand.global_domain(FT; context = context),
-                       forcing = ClimaLand.prescribed_forcing_era5(ClimaLand.Artifacts.era5_land_forcing_data2008_folder_path(; context),
+                       domain = ClimaLand.ModelSetup.global_domain(FT; context = context),
+                       forcing = ClimaLand.prescribed_forcing_era5(ClimaLand.Artifacts.era5_land_forcing_data2008_path(; context),
                                                                    domain.space.surface,
                                                                    DateTime(2008),
                                                                    earth_param_set,
@@ -41,23 +41,18 @@ function global_land_model(
     scalar_snow_params,
     earth_param_set;
     context = nothing,
-    domain = ClimaLand.global_domain(FT; context = context),
+    domain = ClimaLand.ModelSetup.global_domain(FT; context = context),
     forcing = ClimaLand.prescribed_forcing_era5(
-        joinpath(
-            ClimaLand.Artifacts.era5_land_forcing_data2008_folder_path(;
-                context,
-            ),
-            "era5_2008_1.0x1.0.nc",
-        ),
+        ClimaLand.Artifacts.era5_land_forcing_data2008_path(; context),
         domain.space.surface,
         DateTime(2008),
         earth_param_set,
         FT,
     ),
     LAI = ClimaLand.prescribed_lai_modis(
-        joinpath(
-            ClimaLand.Artifacts.modis_lai_forcing_data_path(; context),
-            "Yuan_et_al_2008_1x1.nc",
+        ClimaLand.Artifacts.modis_lai_single_year_path(;
+            context = nothing,
+            year = 2008,
         ),
         domain.space.surface,
         DateTime(2008),
@@ -85,7 +80,7 @@ function global_land_model(
     subsurface_space = domain.space.subsurface
 
     spatially_varying_soil_params =
-        ClimaLand.default_spatially_varying_soil_parameters(
+        ClimaLand.ModelSetup.default_spatially_varying_soil_parameters(
             subsurface_space,
             surface_space,
             FT,
@@ -127,7 +122,7 @@ function global_land_model(
     )
 
     # Spatially varying canopy parameters from CLM
-    clm_parameters = ClimaLand.clm_canopy_parameters(surface_space)
+    clm_parameters = ClimaLand.ModelSetup.clm_canopy_parameters(surface_space)
     (;
         Ω,
         rooting_depth,
@@ -160,31 +155,14 @@ function global_land_model(
     z0_m = FT(0.13) * h_canopy
     z0_b = FT(0.1) * z0_m
 
-    soilco2_ps = Soil.Biogeochemistry.SoilCO2ModelParameters(FT)
-
     soil_args = (domain = domain, parameters = soil_params)
     soil_model_type = Soil.EnergyHydrology{FT}
 
     # Soil microbes model
     soilco2_type = Soil.Biogeochemistry.SoilCO2Model{FT}
-
-    # soil microbes args
+    soilco2_ps = Soil.Biogeochemistry.SoilCO2ModelParameters(FT)
     Csom = ClimaLand.PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5))
-
-    # Set the soil CO2 BC to being atmospheric CO2
-    soilco2_top_bc = Soil.Biogeochemistry.AtmosCO2StateBC()
-    soilco2_bot_bc = Soil.Biogeochemistry.SoilCO2FluxBC((p, t) -> 0.0) # no flux
-    soilco2_sources = (Soil.Biogeochemistry.MicrobeProduction{FT}(),)
-
-    soilco2_boundary_conditions =
-        (; top = soilco2_top_bc, bottom = soilco2_bot_bc)
-
-    soilco2_args = (;
-        boundary_conditions = soilco2_boundary_conditions,
-        sources = soilco2_sources,
-        domain = domain,
-        parameters = soilco2_ps,
-    )
+    soilco2_args = (; domain = domain, parameters = soilco2_ps)
 
     # Now we set up the canopy model, which we set up by component:
     # Component Types
@@ -291,4 +269,98 @@ function global_land_model(
         snow_args = snow_args,
         snow_model_type = snow_model_type,
     )
+end
+
+"""
+    check_ocean_values_p(p, binary_mask; val = 0.0)
+
+This function tests that every field stored in `p` has all of
+its values (where binary_mask == 1) equal to  `val`. Note that
+this is meant to be used with the full land model (canopy,
+snow, soil, soilco2).
+
+Useful for checking if land model functions are updating the 
+values over the ocean.
+"""
+function check_ocean_values_p(p, binary_mask; val = 0.0)
+    properties = [
+        p.drivers,
+        p.soil,
+        p.soilco2,
+        p.snow,
+        p.canopy.energy,
+        p.canopy.hydraulics,
+        p.canopy.radiative_transfer,
+        p.canopy.photosynthesis,
+        p.canopy.sif,
+        p.canopy.turbulent_fluxes,
+        p.canopy.autotrophic_respiration,
+        p.canopy.conductance,
+    ]
+    for property in properties
+        for var in propertynames(property)
+            field_values = Array(parent(getproperty(property, var)))
+            if length(size(field_values)) == 5 # 3d var
+                @test extrema(field_values[:, 1, 1, :, Array(binary_mask)]) ==
+                      (val, val)
+            else
+                @test extrema(field_values[1, 1, :, Array(binary_mask)]) ==
+                      (val, val)
+            end
+        end
+    end
+
+    field_pn_p = [
+        pn for pn in propertynames(p) if pn != :soil &&
+        pn != :canopy &&
+        pn != :snow &&
+        pn != :soilco2 &&
+        pn != :drivers &&
+        ~occursin("dss", String(pn))
+    ]
+
+    for var in field_pn_p
+        field_values = Array(parent(getproperty(p, var)))
+        if length(size(field_values)) == 5 # 3d var
+            @test extrema(field_values[:, 1, 1, :, Array(binary_mask)]) ==
+                  (val, val)
+        else
+            @test extrema(field_values[1, 1, :, Array(binary_mask)]) ==
+                  (val, val)
+
+        end
+    end
+end
+
+"""
+    check_ocean_values_Y(Y, binary_mask; val = 0.0)
+
+This function tests that every field stored in `Y` has all of
+its values (where binary_mask == 1) equal to  `val`. Note that
+this is meant to be used with the full land model (canopy,
+snow, soil, soilco2).
+
+Useful for checking if land model functions are updating the 
+values over the ocean.
+"""
+function check_ocean_values_Y(Y, binary_mask; val = 0.0)
+    @test extrema(Array(parent(Y.soil.ϑ_l))[:, 1, 1, 1, Array(binary_mask)]) ==
+          (val, val)
+    @test extrema(Array(parent(Y.soil.θ_i))[:, 1, 1, 1, Array(binary_mask)]) ==
+          (val, val)
+    @test extrema(
+        Array(parent(Y.soil.ρe_int))[:, 1, 1, 1, Array(binary_mask)],
+    ) == (val, val)
+    @test extrema(Array(parent(Y.snow.U))[1, 1, 1, Array(binary_mask)]) ==
+          (val, val)
+    @test extrema(Array(parent(Y.snow.S))[1, 1, 1, Array(binary_mask)]) ==
+          (val, val)
+    @test extrema(Array(parent(Y.snow.S_l))[1, 1, 1, Array(binary_mask)]) ==
+          (val, val)
+    @test extrema(
+        Array(parent(Y.canopy.energy.T))[1, 1, 1, Array(binary_mask)],
+    ) == (val, val)
+    @test extrema(
+        Array(parent(Y.canopy.hydraulics.ϑ_l.:1))[1, 1, 1, Array(binary_mask)],
+    ) == (val, val)
 end

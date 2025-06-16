@@ -24,7 +24,6 @@ for FT in (Float32, Float64)
         ylim = (cmin, cmax),
         zlim = (cmin, cmax),
         nelements = (nelems, nelems, nelems),
-        npolynomial = 0,
     )
 
     domains = [col, box]
@@ -35,30 +34,15 @@ for FT in (Float32, Float64)
     "Radiation"
     SW_d = TimeVaryingInput((t) -> eltype(t)(20.0))
     LW_d = TimeVaryingInput((t) -> eltype(t)(20.0))
-    function zenith_angle(
-        t,
-        start_date;
-        latitude = FT(40.0),
-        longitude = FT(-120.0),
-        insol_params = earth_param_set.insol_params,
-    )
-        current_datetime = start_date + Dates.Second(round(t))
-        d, δ, η_UTC =
-            FT.(
-                Insolation.helper_instantaneous_zenith_angle(
-                    current_datetime,
-                    start_date,
-                    insol_params,
-                )
-            )
-        return Insolation.instantaneous_zenith_angle(
-            d,
-            δ,
-            η_UTC,
-            longitude,
-            latitude,
-        )[1]
-    end
+    zenith_angle =
+        (t, s) -> default_zenith_angle(
+            t,
+            s;
+            insol_params = earth_param_set.insol_params,
+            latitude = FT(40.0),
+            longitude = FT(-120.0),
+        )
+
     rad = PrescribedRadiativeFluxes(
         FT,
         SW_d,

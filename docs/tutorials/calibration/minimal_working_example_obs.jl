@@ -35,10 +35,8 @@ function Ozark_LHF(params) # params is a 2 element Array
 
     LHF_soil =
         [parent(sv.saveval[k].soil.turbulent_fluxes.lhf)[1] for k in 1:1441]
-    LHF_canopy = [
-        parent(sv.saveval[k].canopy.energy.turbulent_fluxes.lhf)[1] for
-        k in 1:1441
-    ]
+    LHF_canopy =
+        [parent(sv.saveval[k].canopy.turbulent_fluxes.lhf)[1] for k in 1:1441]
     LHF = LHF_soil + LHF_canopy
 
     return LHF

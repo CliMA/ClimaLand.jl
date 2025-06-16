@@ -20,7 +20,7 @@ using Statistics
 using Insolation
 using DelimitedFiles
 
-using CSV, HTTP, Flux, cuDNN, BSON, StatsBase
+using CSV, HTTP, Flux, BSON, StatsBase
 NeuralSnow = Base.get_extension(ClimaLand, :NeuralSnowExt).NeuralSnow;
 
 # Site-specific quantities
@@ -55,7 +55,7 @@ density_model = NeuralSnow.NeuralDepthModel(FT)
 
 parameters = SnowParameters{FT}(
     Δt;
-    α_snow = α,
+    α_snow = Snow.ConstantAlbedoModel(α),
     density = density_model,
     earth_param_set = param_set,
 )

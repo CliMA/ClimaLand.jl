@@ -8,6 +8,7 @@ using ClimaUtilities.ClimaArtifacts
 import Interpolations
 import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
 import ClimaUtilities.Regridders: InterpolationsRegridder
+import ClimaUtilities.OnlineLogging: WallTimeInfo, report_walltime
 
 export FTfromY, call_count_nans_state
 
@@ -61,10 +62,15 @@ function add_dss_buffer_to_aux(
     p::NamedTuple,
     domain::Union{Domains.Plane, Domains.SphericalSurface},
 )
-    buffer = ClimaCore.Spaces.create_dss_buffer(
-        ClimaCore.Fields.zeros(domain.space.surface),
-    )
-    return merge(p, (; dss_buffer_2d = buffer))
+    # With npolynomial = 0, we don't need DSS (and DSS will fail with MPI)
+    if domain.npolynomial == 0
+        return p
+    else
+        buffer = ClimaCore.Spaces.create_dss_buffer(
+            ClimaCore.Fields.zeros(domain.space.surface),
+        )
+        return merge(p, (; dss_buffer_2d = buffer))
+    end
 end
 
 """
@@ -87,13 +93,21 @@ function add_dss_buffer_to_aux(
     p::NamedTuple,
     domain::Union{Domains.HybridBox, Domains.SphericalShell},
 )
-    buffer_2d = ClimaCore.Spaces.create_dss_buffer(
-        ClimaCore.Fields.zeros(domain.space.surface),
-    )
-    buffer_3d = ClimaCore.Spaces.create_dss_buffer(
-        ClimaCore.Fields.zeros(domain.space.subsurface),
-    )
-    return merge(p, (; dss_buffer_3d = buffer_3d, dss_buffer_2d = buffer_2d))
+    # With npolynomial = 0, we don't need DSS (and DSS will fail with MPI)
+    if domain.npolynomial == 0
+        return p
+    else
+        buffer_2d = ClimaCore.Spaces.create_dss_buffer(
+            ClimaCore.Fields.zeros(domain.space.surface),
+        )
+        buffer_3d = ClimaCore.Spaces.create_dss_buffer(
+            ClimaCore.Fields.zeros(domain.space.subsurface),
+        )
+        return merge(
+            p,
+            (; dss_buffer_3d = buffer_3d, dss_buffer_2d = buffer_2d),
+        )
+    end
 end
 
 
@@ -262,6 +276,7 @@ Constructs a DiscreteCallback which updates the cache `p.drivers` at each time
 specified by `updateat`, using the function `updatefunc` which takes as arguments (p,t).
 """
 function DriverUpdateCallback(updateat::Vector{FT}, updatefunc) where {FT}
+    issorted(updateat) || error("updateat must be sorted in ascending order")
     cond = update_condition(updateat)
     affect! = DriverAffect(updateat, updatefunc)
 
@@ -275,7 +290,7 @@ end
 
 """
     CheckpointCallback(checkpoint_frequency::Union{AbstractFloat, Dates.Period},
-                        output_dir, start_date, t_start; model, dt)
+                        output_dir, start_date; t_start, model, dt)
 
 Constructs a DiscreteCallback which saves the state to disk with the
 `save_checkpoint` function.
@@ -360,7 +375,8 @@ the callback. This implementation simply checks if the current time of the
 simulation is within the (inclusive) bounds of `updateat`.
 """
 update_condition(updateat) =
-    (_, t, _) -> t >= minimum(updateat) && t <= maximum(updateat)
+    (_, t, _) ->
+        !isempty(updateat) && t >= minimum(updateat) && t <= maximum(updateat)
 """
     SavingAffect{saveatType}
 
@@ -369,8 +385,8 @@ values of `p` at various timesteps. The `saveiter` field allows us to
 allocate `saved_values` before the simulation and fill it during the run,
 rather than pushing to an initially empty structure.
 """
-mutable struct SavingAffect{saveatType}
-    saved_values::NamedTuple
+mutable struct SavingAffect{NT <: NamedTuple, saveatType}
+    saved_values::NT
     saveat::saveatType
     saveiter::Int
 end
@@ -595,7 +611,7 @@ end
 
 """
     NaNCheckCallback(nancheck_frequency::Union{AbstractFloat, Dates.Period},
-                        start_date, t_start, dt)
+                        start_date, dt)
 
 Constructs a DiscreteCallback which counts the number of NaNs in the state
 and produces a warning if any are found.
@@ -604,18 +620,16 @@ and produces a warning if any are found.
 - `nancheck_frequency`: The frequency at which the state is checked for NaNs.
   Can be specified as a float (in seconds) or a `Dates.Period`.
 - `start_date`: The start date of the simulation.
-- `t_start`: The starting time of the simulation (in seconds).
 - `dt`: The timestep of the model (optional), used to check for consistency.
 
 The callback uses `ClimaDiagnostics.EveryCalendarDtSchedule` to determine when
 to check for NaNs based on the `nancheck_frequency`. The schedule is
-initialized with the `start_date` and `t_start` to ensure that it is first
+initialized with the `start_date` to ensure that it is first
 called at the correct time.
 """
 function NaNCheckCallback(
     nancheck_frequency::Union{AbstractFloat, Dates.Period},
     start_date,
-    t_start,
     dt;
     mask = nothing,
 )
@@ -634,7 +648,7 @@ function NaNCheckCallback(
     schedule = EveryCalendarDtSchedule(
         nancheck_frequency_period;
         start_date,
-        date_last = start_date + Dates.Millisecond(1000 * float(t_start)),
+        date_last = start_date,
     )
 
     if !isnothing(dt)
@@ -658,7 +672,9 @@ apply_threshold(field, value) =
 """
     landsea_mask(
         surface_space;
-        resolution = "60arcs",
+        filepath = ClimaLand.Artifacts.landseamask_file_path(;
+                 context = ClimaComms.context(surface_space),
+                 ),
         threshold = 0.5,
         regridder_type = :InterpolationsRegridder,
         extrapolation_bc = (
@@ -668,16 +684,14 @@ apply_threshold(field, value) =
         ),
     )
 
-Reads in the default Clima 60arcsecond land/sea mask, regrids to the
-`surface_space`, and treats any point with a land fraction < threshold
-as ocean.
-
-A 1degree (resolution = "1deg") and 30arcsecond (resolution = "30arcs") mask
-are also available.
+Reads in the default Clima land/sea mask, regrids to the `surface_space`, and
+treats any point with a land fraction < threshold as ocean.
 """
 function landsea_mask(
     surface_space;
-    resolution = "60arcs",
+    filepath = ClimaLand.Artifacts.landseamask_file_path(;
+        context = ClimaComms.context(surface_space),
+    ),
     threshold = 0.5,
     regridder_type = :InterpolationsRegridder,
     extrapolation_bc = (
@@ -686,11 +700,6 @@ function landsea_mask(
         Interpolations.Flat(),
     ),
 )
-    context = ClimaComms.context(surface_space)
-    filepath = ClimaLand.Artifacts.landseamask_file_path(;
-        resolution = resolution,
-        context = context,
-    )
     mask = SpaceVaryingInput(
         filepath,
         "landsea",
@@ -700,4 +709,40 @@ function landsea_mask(
     )
     binary_mask = apply_threshold.(mask, threshold)
     return binary_mask
+end
+
+function landsea_mask(domain::Domains.AbstractDomain; kwargs...)
+    # average_horizontal_resolution_degrees returns a tuple with the resolution
+    # along the two directions, so we take the minimum
+    resolution_degrees = minimum(average_horizontal_resolution_degrees(domain))
+    if resolution_degrees > 1
+        resolution = "1deg"
+    else
+        resolution_arcsec = 3600resolution_degrees
+        # Pick the landsea mask at 60 arcseconds if the nodal distance is more than
+        # 120", otherwise pick the higher resolution
+        resolution = resolution_arcsec > 120 ? "60arcs" : "30arcs"
+    end
+
+    filepath = ClimaLand.Artifacts.landseamask_file_path(;
+        resolution,
+        context = ClimaComms.context(domain.space.surface),
+    )
+    return landsea_mask(domain.space.surface; filepath, kwargs...)
+end
+
+"""
+    ReportCallback(every_n_steps)
+
+Return a callback that prints performance and progress summaries `every_n_steps`,
+where `every_n_steps` is an integer.
+"""
+function ReportCallback(Nsteps)
+    walltime_info = WallTimeInfo()
+    everyNsteps(u, t, integrator) = mod(integrator.step, Nsteps) == 0
+    report = let wt = walltime_info
+        (integrator) -> report_walltime(wt, integrator)
+    end
+    report_cb = SciMLBase.DiscreteCallback(everyNsteps, report)
+    return report_cb
 end

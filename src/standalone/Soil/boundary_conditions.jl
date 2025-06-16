@@ -10,6 +10,7 @@ using ClimaCore: Geometry
 export TemperatureStateBC,
     MoistureStateBC,
     FreeDrainage,
+    EnergyWaterFreeDrainage,
     HeatFluxBC,
     WaterFluxBC,
     AtmosDrivenFluxBC,
@@ -48,9 +49,14 @@ end
 
 """
     FreeDrainage <: AbstractWaterBC
+
 A concrete type of soil boundary condition, for use at
 the BottomBoundary only, where the flux is set to be
-`F = -K∇h = -K`.
+`F = -K∇h = -K`. 
+
+This is not tied to any boundary condition for the heat equation. 
+To account for the energy flux resulting from free drainage of liquid
+water, please see `EnergyWaterFreeDrainage`.
 """
 struct FreeDrainage <: AbstractWaterBC end
 
@@ -388,9 +394,12 @@ function ClimaLand.set_dfluxBCdY!(
 
 
     # Get the local geometry of the face space, then extract the top level
-    levels = ClimaCore.Spaces.nlevels(Domains.obtain_face_space(axes(p.soil.K)))
+    levels =
+        ClimaCore.Spaces.nlevels(ClimaCore.Spaces.face_space(axes(p.soil.K)))
     local_geometry_faceN = ClimaCore.Fields.level(
-        Fields.local_geometry_field(Domains.obtain_face_space(axes(p.soil.K))),
+        Fields.local_geometry_field(
+            ClimaCore.Spaces.face_space(axes(p.soil.K)),
+        ),
         levels - ClimaCore.Utilities.half,
     )
 
@@ -567,6 +576,39 @@ function WaterHeatBC(; water, heat)
 end
 
 """
+    EnergyWaterFreeDrainage <: AbstractEnergyHydrologyBC
+
+A concrete type of soil boundary condition, for use at
+the BottomBoundary only, where the fluxes are set to be
+`F_liq = -K∇h = -K`, `F_energy = -K ρe_liq`.
+
+That is, this enforces that the free drainage boundary condition
+for liquid water is paired the the corresponding loss of energy
+that that entails.
+"""
+struct EnergyWaterFreeDrainage <: AbstractEnergyHydrologyBC end
+
+function soil_boundary_fluxes!(
+    bc::EnergyWaterFreeDrainage,
+    boundary::ClimaLand.BottomBoundary,
+    soil::EnergyHydrology,
+    Δz,
+    Y,
+    p,
+    t,
+)
+    FT = eltype(Δz)
+    K_c = Fields.level(p.soil.K, 1)
+    T_c = Fields.level(p.soil.T, 1)
+    @. p.soil.bottom_bc.water = -1 * K_c
+    @. p.soil.bottom_bc.heat =
+        -1 *
+        K_c *
+        volumetric_internal_energy_liq(T_c, soil.parameters.earth_param_set)
+    return nothing
+end
+
+"""
     AtmosDrivenFluxBC{
         A <: AbstractAtmosphericDrivers,
         B <: AbstractRadiativeDrivers,
@@ -683,10 +725,7 @@ function soil_boundary_fluxes!(
 end
 
 """
-    boundary_vars(::AtmosDrivenFluxBC{<:AbstractAtmosphericDrivers,
-                                    <:AbstractRadiativeDrivers,
-                                    <:AbstractRunoffModel,
-                                    }, ::ClimaLand.TopBoundary)
+    boundary_vars(::AtmosDrivenFluxBC, ::ClimaLand.TopBoundary)
 
 An extension of the `boundary_vars` method for AtmosDrivenFluxBC. This
 adds the surface conditions (SHF, LHF, evaporation, and resistance) and the
@@ -758,11 +797,58 @@ boundary_var_types(
 )
 
 """
+    boundary_var_types(
+        ::EnergyHydrology{FT},
+        ::AtmosDrivenFluxBC{<:CoupledAtmosphere, <:CoupledRadiativeFluxes},
+        ::ClimaLand.TopBoundary,
+    ) where {FT}
+
+An extension of the `boundary_var_types` method for AtmosDrivenFluxBC
+with coupled atmosphere and radiative fluxes. This specifies the type
+of the additional variables.
+
+This method includes additional fluxes needed by the atmosphere:
+momentum fluxes (`ρτxz`, `ρτyz`) and the buoyancy flux (`buoy_flux`).
+These are updated in place when the coupler computes turbulent fluxes,
+rather than in `soil_boundary_fluxes!`.
+
+Note that we currently store these in the land model because the coupler
+computes turbulent land/atmosphere fluxes using ClimaLand functions, and
+the land model needs to be able to store the fluxes as an intermediary.
+Once we compute fluxes entirely within the coupler, we can remove this.
+"""
+boundary_var_types(
+    model::EnergyHydrology{FT},
+    bc::AtmosDrivenFluxBC{<:CoupledAtmosphere, <:CoupledRadiativeFluxes},
+    ::ClimaLand.TopBoundary,
+) where {FT} = (
+    NamedTuple{
+        (
+            :lhf,
+            :shf,
+            :vapor_flux_liq,
+            :r_ae,
+            :vapor_flux_ice,
+            :ρτxz,
+            :ρτyz,
+            :buoy_flux,
+        ),
+        Tuple{FT, FT, FT, FT, FT, FT, FT, FT},
+    },
+    FT,
+    NamedTuple{(:water, :heat), Tuple{FT, FT}},
+    ClimaCore.Geometry.WVector{FT},
+    FT,
+    FT,
+    FT,
+    FT,
+    FT,
+    Runoff.runoff_var_types(bc.runoff, FT)...,
+)
+
+"""
     soil_boundary_fluxes!(
-        bc::AtmosDrivenFluxBC{
-            <:PrescribedAtmosphere,
-            <:PrescribedRadiativeFluxes,
-        },
+        bc::AtmosDrivenFluxBC,
         boundary::ClimaLand.TopBoundary,
         model::EnergyHydrology,
         Δz,
@@ -798,10 +884,7 @@ end
 
 """
     soil_boundary_fluxes!(
-        bc::AtmosDrivenFluxBC{
-            <:PrescribedAtmosphere,
-            <:PrescribedRadiativeFluxes,
-        },
+        bc::AtmosDrivenFluxBC,
         prognostic_land_components::Val{(:soil,)},
         model::EnergyHydrology,
         Y,
@@ -852,7 +935,7 @@ top boundary.
 These variables are updated in place in `boundary_flux!`.
 """
 boundary_vars(bc::MoistureStateBC, ::ClimaLand.TopBoundary) =
-    (:top_bc, :top_bc_wvec, :dfluxBCdY)
+    (:top_bc, :top_bc_wvec, :dfluxBCdY, :topBC_scratch)
 
 """
     boundary_var_domain_names(::MoistureStateBC, ::ClimaLand.TopBoundary)
@@ -861,7 +944,7 @@ An extension of the `boundary_var_domain_names` method for MoistureStateBC at th
 top boundary.
 """
 boundary_var_domain_names(bc::MoistureStateBC, ::ClimaLand.TopBoundary) =
-    (:surface, :surface, :surface)
+    (:surface, :surface, :surface, :subsurface_face)
 """
     boundary_var_types(::RichardsModel{FT},
                         ::MoistureStateBC,
@@ -878,6 +961,7 @@ boundary_var_types(
 ) where {FT} = (
     FT,
     ClimaCore.Geometry.WVector{FT},
+    ClimaCore.Geometry.Covariant3Vector{FT},
     ClimaCore.Geometry.Covariant3Vector{FT},
 )
 

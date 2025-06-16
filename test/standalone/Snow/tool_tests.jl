@@ -12,14 +12,7 @@ using Dates
 using ClimaLand.Snow
 using ClimaLand.Domains
 import ClimaLand.Parameters as LP
-
-
-try
-    import CUDA
-    import cuDNN
-catch
-    nothing
-end
+using ClimaComms
 
 DataToolsExt = Base.get_extension(ClimaLand, :NeuralSnowExt)
 ModelToolsExt = Base.get_extension(ClimaLand, :NeuralSnowExt)
@@ -319,7 +312,6 @@ if !isnothing(DataToolsExt)
         nepochs = 10
         ModelTools.trainmodel!(
             zmodel,
-            ps,
             x_train,
             y_train,
             2,
@@ -375,10 +367,17 @@ if !isnothing(DataToolsExt)
         z64 = NeuralSnow.converted_model_type(z_model, Float64)
         @test eltype(z64[1].layers[1].weight) == Float64
         dens_model1 = NeuralSnow.NeuralDepthModel(FT)
-        @test prod(Flux.params(dens_model1.z_model) .== Flux.params(z32))
+        @test prod(
+            Flux.trainables(dens_model1.z_model) .== Flux.trainables(z32),
+        )
         @test eltype(dens_model1.α) == FT
         test_alph = 3 / 86400
-        dens_model2 = NeuralSnow.NeuralDepthModel(FT, α = test_alph, Δt = Δt)
+        dens_model2 = NeuralSnow.NeuralDepthModel(
+            FT,
+            α = test_alph,
+            Δt = Δt;
+            model = NeuralSnow.get_znetwork(),
+        )
         @test dens_model2.α == FT(test_alph)
         @test dens_model2.z_model[:final_scale].weight[2, 2] == FT(1 / Δt)
 
@@ -396,53 +395,72 @@ if !isnothing(DataToolsExt)
         drivers = ClimaLand.get_drivers(model)
         Y, p, coords = ClimaLand.initialize(model)
         @test (Y.snow |> propertynames) ==
-              (:S, :U, :Z, :P_avg, :T_avg, :R_avg, :Qrel_avg, :u_avg)
+              (:S, :S_l, :U, :Z, :P_avg, :T_avg, :R_avg, :Qrel_avg, :u_avg)
 
         Y.snow.S .= FT(0.1)
-        Y.snow.U .=
-            ClimaLand.Snow.energy_from_T_and_swe.(
-                Y.snow.S,
-                FT(273.0),
-                Ref(model.parameters),
+        # The snow module is broken when using CUDA because the density model is stored in
+        # the snow parameters, but the network is not copied to the GPU.
+        if ClimaComms.device() isa ClimaComms.CUDADevice
+            @test_broken Y.snow.U .=
+                ClimaLand.Snow.energy_from_T_and_swe.(
+                    Y.snow.S,
+                    FT(273.0),
+                    Ref(model.parameters),
+                )
+        else
+            Y.snow.U .=
+                ClimaLand.Snow.energy_from_T_and_swe.(
+                    Y.snow.S,
+                    FT(273.0),
+                    Ref(model.parameters),
+                )
+            Y.snow.Z .= FT(0.2)
+            set_initial_cache! = ClimaLand.make_set_initial_cache(model)
+            t0 = FT(0.0)
+            set_initial_cache!(p, Y, t0)
+            oldρ = p.snow.ρ_snow
+            NeuralSnow.update_density_and_depth!(
+                p.snow.ρ_snow,
+                p.snow.z_snow,
+                model.parameters.density,
+                Y,
+                p,
+                model.parameters,
             )
-        Y.snow.Z .= FT(0.2)
-        set_initial_cache! = ClimaLand.make_set_initial_cache(model)
-        t0 = FT(0.0)
-        set_initial_cache!(p, Y, t0)
-        @test snow_depth(model.parameters.density, Y, p, parameters) == Y.snow.Z
+            @test p.snow.z_snow == Y.snow.Z
+            @test p.snow.ρ_snow == oldρ
+            output1 =
+                NeuralSnow.eval_nn(dens_model2, FT.([0, 0, 0, 0, 0, 0, 0])...)
 
-        output1 = NeuralSnow.eval_nn(
-            dens_model2.z_model,
-            FT.([0, 0, 0, 0, 0, 0, 0])...,
-        )
+            @test eltype(output1) == FT
+            @test output1 == 0.0f0
 
-        @test eltype(output1) == FT
-        @test output1 == 0.0f0
+            zerofield = similar(Y.snow.Z)
+            zerofield .= FT(0)
+            dY = similar(Y)
+            NeuralSnow.update_dzdt!(dY.snow.Z, dens_model2, Y)
+            @test dY.snow.Z == zerofield
 
-        zerofield = similar(Y.snow.Z)
-        zerofield .= FT(0)
-        @test NeuralSnow.dzdt(dens_model2, Y) == zerofield
+            Z = FT(0.5)
+            S = FT(0.1)
+            dzdt = FT(1 / Δt)
+            dsdt = FT(1 / Δt)
+            @test NeuralSnow.clip_dZdt(S, Z, dsdt, dzdt, Δt) == dzdt
 
-        Z = FT(0.5)
-        S = FT(0.1)
-        dzdt = FT(1 / Δt)
-        dsdt = FT(1 / Δt)
-        @test NeuralSnow.clip_dZdt(S, Z, dsdt, dzdt, Δt) == dzdt
+            @test NeuralSnow.clip_dZdt(Z, S, dsdt, dzdt, Δt) ≈ FT(1.4 / Δt)
 
-        @test NeuralSnow.clip_dZdt(Z, S, dsdt, dzdt, Δt) ≈ FT(1.4 / Δt)
+            @test NeuralSnow.clip_dZdt(S, Z, FT(-S / Δt), dzdt, Δt) ≈
+                  FT(-Z / Δt)
 
-        @test NeuralSnow.clip_dZdt(S, Z, FT(-S / Δt), dzdt, Δt) ≈ FT(-Z / Δt)
 
-        oldρ = p.snow.ρ_snow
-        Snow.update_density!(dens_model2, model.parameters, Y, p)
-        @test p.snow.ρ_snow == oldρ
+            dswe_by_precip = 0.1
+            Y.snow.P_avg .= FT(dswe_by_precip / Δt)
+            exp_tendency! = ClimaLand.make_compute_exp_tendency(model)
+            exp_tendency!(dY, Y, p, FT(0.0))
+            @test parent(dY.snow.Z)[1] * Δt > dswe_by_precip
+            new_dYP = FT(test_alph) .* (p.drivers.P_snow .- Y.snow.P_avg)
+            @test dY.snow.P_avg == new_dYP
+        end
 
-        dY = similar(Y)
-        dswe_by_precip = 0.1
-        Y.snow.P_avg .= FT(dswe_by_precip / Δt)
-        NeuralSnow.update_density_prog!(dens_model2, model, dY, Y, p)
-        @test parent(dY.snow.Z)[1] * Δt > dswe_by_precip
-        new_dYP = FT(test_alph) .* (p.drivers.P_snow .- Y.snow.P_avg)
-        @test dY.snow.P_avg == new_dYP
     end
 end

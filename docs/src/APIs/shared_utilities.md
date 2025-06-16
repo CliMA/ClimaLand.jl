@@ -1,8 +1,9 @@
-<!-- # Shared Utilities
+# Shared Utilities
 
 ```@meta
 CurrentModule = ClimaLand
 ```
+
 ## Domains
 
 ```@docs
@@ -14,7 +15,6 @@ ClimaLand.Domains.Column
 ClimaLand.Domains.Plane
 ClimaLand.Domains.Point
 ClimaLand.Domains.coordinates
-ClimaLand.Domains.obtain_face_space
 ClimaLand.Domains.obtain_surface_space
 ClimaLand.Domains.obtain_surface_domain
 ClimaLand.Domains.top_center_to_surface
@@ -68,6 +68,7 @@ ClimaLand.total_liq_water_vol_per_area!
 ```
 
 ## Drivers
+
 ```@docs
 ClimaLand.PrescribedAtmosphere
 ClimaLand.PrescribedPrecipitation
@@ -84,4 +85,6 @@ ClimaLand.surface_air_density
 ClimaLand.surface_temperature
 ClimaLand.surface_resistance
 ClimaLand.surface_specific_humidity
-``` -->
+ClimaLand.default_zenith_angle
+ClimaLand.prescribed_forcing_era5
+```

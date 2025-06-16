@@ -24,7 +24,6 @@ import ClimaParams
         domain = ClimaLand.Domains.SphericalSurface(;
             radius = FT(100.0),
             nelements = 10,
-            npolynomial = 1,
         )
         # create a field with both 1.0s and 0.0s
         mechanism_field = ClimaCore.Fields.Field(FT, domain.space.surface)
@@ -53,7 +52,7 @@ import ClimaParams
         for (g1, Vcmax25, is_c3, rooting_depth, α_PAR_leaf, α_NIR_leaf, ld) in
             zipped_params
             AR_params = AutotrophicRespirationParameters(FT)
-            G_Function = ConstantGFunction(ld)
+            G_Function = ConstantGFunction.(ld)
             RTparams =
                 BeerLambertParameters(FT; α_PAR_leaf, α_NIR_leaf, G_Function)
             photosynthesis_params = FarquharParameters(FT, is_c3; Vcmax25)
@@ -76,31 +75,17 @@ import ClimaParams
             )
             lat = FT(0.0) # degree
             long = FT(-180) # degree
+            start_date = DateTime(2005)
 
-            function zenith_angle(
-                t,
-                start_date;
-                latitude = lat,
-                longitude = long,
-                insol_params = earth_param_set.insol_params,
-            )
-                current_datetime = start_date + Dates.Second(round(t))
-                d, δ, η_UTC =
-                    FT.(
-                        Insolation.helper_instantaneous_zenith_angle(
-                            current_datetime,
-                            start_date,
-                            insol_params,
-                        )
-                    )
-                return Insolation.instantaneous_zenith_angle(
-                    d,
-                    δ,
-                    η_UTC,
-                    longitude,
-                    latitude,
-                )[1]
-            end
+            zenith_angle =
+                (t, s) -> default_zenith_angle(
+                    t,
+                    s;
+                    insol_params = earth_param_set.insol_params,
+                    latitude = lat,
+                    longitude = long,
+                )
+
 
             function shortwave_radiation(
                 t;
@@ -124,7 +109,6 @@ import ClimaParams
             P_atmos = t -> 1e5 # Pa
             h_atmos = h_int # m
             c_atmos = (t) -> 4.11e-4 # mol/mol
-            start_date = DateTime(2005)
             atmos = PrescribedAtmosphere(
                 TimeVaryingInput(liquid_precip),
                 TimeVaryingInput(snow_precip),
@@ -221,6 +205,8 @@ import ClimaParams
                     soil_driver,
                 ),
             )
+            @test ClimaComms.context(canopy) == ClimaComms.context()
+            @test ClimaComms.device(canopy) == ClimaComms.device()
             drivers = ClimaLand.get_drivers(canopy)
             @test drivers == (atmos, radiation)
             Y, p, coords = ClimaLand.initialize(canopy)
@@ -241,7 +227,17 @@ import ClimaParams
             # Check that structure of Y is value (will error if not)
             @test !isnothing(zero(Y))
             @test typeof(canopy.energy) == PrescribedCanopyTempModel{FT}
-            @test propertynames(p) == (:canopy, :dss_buffer_2d, :drivers)
+            @test propertynames(p) == (:canopy, :drivers)
+            @test propertynames(p.canopy) == (
+                :hydraulics,
+                :conductance,
+                :photosynthesis,
+                :radiative_transfer,
+                :autotrophic_respiration,
+                :energy,
+                :sif,
+                :turbulent_fluxes,
+            )
             for component in ClimaLand.Canopy.canopy_components(canopy)
                 # Only hydraulics has a prognostic variable
                 if component == :hydraulics
@@ -278,7 +274,7 @@ import ClimaParams
             # check that this is updated correctly:
             # @test p.canopy.autotrophic_respiration.Ra ==
             exp_tendency!(dY, Y, p, t0)
-            turb_fluxes_copy = copy(p.canopy.energy.turbulent_fluxes)
+            turb_fluxes_copy = copy(p.canopy.turbulent_fluxes)
             ClimaLand.turbulent_fluxes!(
                 turb_fluxes_copy,
                 atmos,
@@ -289,9 +285,9 @@ import ClimaParams
             )
 
             @test p.canopy.hydraulics.fa.:1 == turb_fluxes_copy.transpiration
-            @test p.canopy.energy.turbulent_fluxes.shf == turb_fluxes_copy.shf
-            @test p.canopy.energy.turbulent_fluxes.lhf == turb_fluxes_copy.lhf
-            @test p.canopy.energy.turbulent_fluxes.transpiration ==
+            @test p.canopy.turbulent_fluxes.shf == turb_fluxes_copy.shf
+            @test p.canopy.turbulent_fluxes.lhf == turb_fluxes_copy.lhf
+            @test p.canopy.turbulent_fluxes.transpiration ==
                   turb_fluxes_copy.transpiration
             _σ = FT(LP.Stefan(earth_param_set))
             f_abs_par = p.canopy.radiative_transfer.par.abs
@@ -569,7 +565,6 @@ end
         domain = ClimaLand.Domains.SphericalSurface(;
             radius = FT(100.0),
             nelements = 10,
-            npolynomial = 1,
         )
         # create a field with both 1.0s and 0.0s
         mechanism_field = ClimaCore.Fields.Field(FT, domain.space.surface)
@@ -597,7 +592,7 @@ end
         )
         for (g1, Vcmax25, is_c3, rooting_depth, α_PAR_leaf, α_NIR_leaf, ld) in
             zipped_params
-            G_Function = ConstantGFunction(ld)
+            G_Function = ConstantGFunction.(ld)
             RTparams =
                 BeerLambertParameters(FT; α_PAR_leaf, α_NIR_leaf, G_Function)
             photosynthesis_params = FarquharParameters(FT, is_c3; Vcmax25)
@@ -620,31 +615,16 @@ end
             )
             lat = FT(0.0) # degree
             long = FT(-180) # degree
+            start_date = DateTime(2005)
 
-            function zenith_angle(
-                t,
-                start_date;
-                latitude = lat,
-                longitude = long,
-                insol_params = earth_param_set.insol_params,
-            )
-                current_datetime = start_date + Dates.Second(round(t))
-                d, δ, η_UTC =
-                    FT.(
-                        Insolation.helper_instantaneous_zenith_angle(
-                            current_datetime,
-                            start_date,
-                            insol_params,
-                        )
-                    )
-                return Insolation.instantaneous_zenith_angle(
-                    d,
-                    δ,
-                    η_UTC,
-                    longitude,
-                    latitude,
-                )[1]
-            end
+            zenith_angle =
+                (t, s) -> default_zenith_angle(
+                    t,
+                    s;
+                    insol_params = earth_param_set.insol_params,
+                    latitude = lat,
+                    longitude = long,
+                )
 
             function shortwave_radiation(
                 t;
@@ -668,7 +648,6 @@ end
             P_atmos = t -> 1e5 # Pa
             h_atmos = h_int # m
             c_atmos = (t) -> 4.11e-4 # mol/mol
-            start_date = DateTime(2005)
             atmos = PrescribedAtmosphere(
                 TimeVaryingInput(liquid_precip),
                 TimeVaryingInput(snow_precip),
@@ -787,7 +766,7 @@ end
 
             # Check that structure of Y is value (will error if not)
             @test !isnothing(zero(Y))
-            @test propertynames(p) == (:canopy, :dss_buffer_2d, :drivers)
+            @test propertynames(p) == (:canopy, :drivers)
             for component in ClimaLand.Canopy.canopy_components(canopy)
                 # Only hydraulics has a prognostic variable
                 if component == :hydraulics
@@ -825,7 +804,7 @@ end
 
             dY = similar(Y)
             exp_tendency!(dY, Y, p, t0)
-            turb_fluxes_copy = copy(p.canopy.energy.turbulent_fluxes)
+            turb_fluxes_copy = copy(p.canopy.turbulent_fluxes)
             ClimaLand.turbulent_fluxes!(
                 turb_fluxes_copy,
                 atmos,
@@ -836,8 +815,8 @@ end
             )
 
             @test p.canopy.hydraulics.fa.:1 == turb_fluxes_copy.transpiration
-            @test p.canopy.energy.turbulent_fluxes.lhf == turb_fluxes_copy.lhf
-            @test p.canopy.energy.turbulent_fluxes.shf == turb_fluxes_copy.shf
+            @test p.canopy.turbulent_fluxes.lhf == turb_fluxes_copy.lhf
+            @test p.canopy.turbulent_fluxes.shf == turb_fluxes_copy.shf
             @test all(Array(parent(p.canopy.energy.fa_energy_roots)) .== FT(0))
 
             @test all(
@@ -890,31 +869,17 @@ end
         )
         lat = FT(0.0) # degree
         long = FT(-180) # degree
+        start_date = DateTime(2005)
 
-        function zenith_angle(
-            t,
-            start_date;
-            latitude = lat,
-            longitude = long,
-            insol_params = earth_param_set.insol_params,
-        )
-            current_datetime = start_date + Dates.Second(round(t))
-            d, δ, η_UTC =
-                FT.(
-                    Insolation.helper_instantaneous_zenith_angle(
-                        current_datetime,
-                        start_date,
-                        insol_params,
-                    )
-                )
-            return Insolation.instantaneous_zenith_angle(
-                d,
-                δ,
-                η_UTC,
-                longitude,
-                latitude,
-            )[1]
-        end
+        zenith_angle =
+            (t, s) -> default_zenith_angle(
+                t,
+                s;
+                insol_params = earth_param_set.insol_params,
+                latitude = lat,
+                longitude = long,
+            )
+
 
         function shortwave_radiation(
             t;
@@ -938,7 +903,6 @@ end
         P_atmos = t -> 1e5 # Pa
         h_atmos = h_int # m
         c_atmos = (t) -> 4.11e-4 # mol/mol
-        start_date = DateTime(2005)
         atmos = PrescribedAtmosphere(
             TimeVaryingInput(liquid_precip),
             TimeVaryingInput(snow_precip),
@@ -1119,21 +1083,21 @@ end
 
         finitediff_SHF =
             (
-                p_2.canopy.energy.turbulent_fluxes.shf .-
-                p.canopy.energy.turbulent_fluxes.shf
+                p_2.canopy.turbulent_fluxes.shf .-
+                p.canopy.turbulent_fluxes.shf
             ) ./ ΔT
-        estimated_SHF = p.canopy.energy.turbulent_fluxes.∂SHF∂Tc
+        estimated_SHF = p.canopy.turbulent_fluxes.∂SHF∂Tc
         @test Array(
             parent(abs.(finitediff_SHF .- estimated_SHF) ./ finitediff_SHF),
         )[1] < 0.15
 
         finitediff_LHF =
             (
-                p_2.canopy.energy.turbulent_fluxes.lhf .-
-                p.canopy.energy.turbulent_fluxes.lhf
+                p_2.canopy.turbulent_fluxes.lhf .-
+                p.canopy.turbulent_fluxes.lhf
             ) ./ ΔT
         estimated_LHF =
-            p.canopy.energy.turbulent_fluxes.∂LHF∂qc .* p.canopy.energy.∂qc∂Tc
+            p.canopy.turbulent_fluxes.∂LHF∂qc .* p.canopy.energy.∂qc∂Tc
         @test Array(
             parent(abs.(finitediff_LHF .- estimated_LHF) ./ finitediff_LHF),
         )[1] < 0.3
@@ -1147,7 +1111,7 @@ end
 
         # Im not sure why this is not smaller! There must be an error in ∂LHF∂qc also.
         estimated_LHF_with_correct_q =
-            p.canopy.energy.turbulent_fluxes.∂LHF∂qc .* finitediff_q
+            p.canopy.turbulent_fluxes.∂LHF∂qc .* finitediff_q
         @test Array(
             parent(
                 abs.(finitediff_LHF .- estimated_LHF_with_correct_q) ./
@@ -1170,7 +1134,6 @@ end
         domain = ClimaLand.Domains.SphericalSurface(;
             radius = FT(100.0),
             nelements = 10,
-            npolynomial = 1,
         )
         # create a field with both 1.0s and 0.0s
         mechanism_field = ClimaCore.Fields.Field(FT, domain.space.surface)
@@ -1215,7 +1178,7 @@ end
         ) in zipped_params
             BeerLambertparams = BeerLambertParameters(FT)
             # TwoStreamModel parameters
-            G_Function = CLMGFunction(χl)
+            G_Function = CLMGFunction.(χl)
             λ_γ_PAR = FT(5e-7)
             ϵ_canopy = FT(0.97)
             BeerLambertparams =
@@ -1252,31 +1215,16 @@ end
             )
             lat = FT(0.0) # degree
             long = FT(-180) # degree
+            start_date = DateTime(2005)
 
-            function zenith_angle(
-                t,
-                start_date;
-                latitude = lat,
-                longitude = long,
-                insol_params = earth_param_set.insol_params,
-            )
-                current_datetime = start_date + Dates.Second(round(t))
-                d, δ, η_UTC =
-                    FT.(
-                        Insolation.helper_instantaneous_zenith_angle(
-                            current_datetime,
-                            start_date,
-                            insol_params,
-                        )
-                    )
-                return Insolation.instantaneous_zenith_angle(
-                    d,
-                    δ,
-                    η_UTC,
-                    longitude,
-                    latitude,
-                )[1]
-            end
+            zenith_angle =
+                (t, s) -> default_zenith_angle(
+                    t,
+                    s;
+                    insol_params = earth_param_set.insol_params,
+                    latitude = lat,
+                    longitude = long,
+                )
 
             function shortwave_radiation(
                 t;
@@ -1300,7 +1248,6 @@ end
             P_atmos = t -> 1e5 # Pa
             h_atmos = h_int # m
             c_atmos = (t) -> 4.11e-4 # mol/mol
-            start_date = DateTime(2005)
             atmos = PrescribedAtmosphere(
                 TimeVaryingInput(liquid_precip),
                 TimeVaryingInput(snow_precip),
@@ -1421,21 +1368,18 @@ end
 
                 @test all(Array(parent(p.canopy.hydraulics.fa.:1)) .== FT(0))
                 @test all(
-                    Array(parent(p.canopy.energy.turbulent_fluxes.lhf)) .==
-                    FT(0),
+                    Array(parent(p.canopy.turbulent_fluxes.lhf)) .== FT(0),
                 )
                 @test all(
-                    Array(parent(p.canopy.energy.turbulent_fluxes.shf)) .==
-                    FT(0),
+                    Array(parent(p.canopy.turbulent_fluxes.shf)) .== FT(0),
                 )
                 @test all(
                     Array(parent(p.canopy.energy.fa_energy_roots)) .== FT(0),
                 )
                 @test all(Array(parent(p.canopy.hydraulics.fa_roots)) .== FT(0))
                 @test all(
-                    Array(
-                        parent(p.canopy.energy.turbulent_fluxes.transpiration),
-                    ) .== FT(0),
+                    Array(parent(p.canopy.turbulent_fluxes.transpiration)) .==
+                    FT(0),
                 )
                 @test all(
                     Array(parent(p.canopy.radiative_transfer.LW_n)) .== FT(0),

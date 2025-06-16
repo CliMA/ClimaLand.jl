@@ -1,4 +1,7 @@
 module Domains
+
+import ..compat_add_mask, ..compat_set_mask!
+
 using ClimaCore
 using ClimaComms
 using DocStringExtensions
@@ -57,11 +60,11 @@ the Point space).
 # Fields
 $(DocStringExtensions.FIELDS)
 """
-struct Point{FT} <: AbstractDomain{FT}
+struct Point{FT, NT <: NamedTuple} <: AbstractDomain{FT}
     "Surface elevation relative to a reference (m)"
     z_sfc::FT
     "A NamedTuple of associated ClimaCore spaces: in this case, the Point (surface) space"
-    space::NamedTuple
+    space::NT
 end
 
 """
@@ -84,7 +87,7 @@ function Point(;
 ) where {FT}
     coord = ClimaCore.Geometry.ZPoint(z_sfc)
     space = (; surface = ClimaCore.Spaces.PointSpace(comms, coord))
-    return Point{FT}(z_sfc, space)
+    return Point{FT, typeof(space)}(z_sfc, space)
 end
 
 """
@@ -100,7 +103,7 @@ These are stored using the keys :surface and :subsurface.
 # Fields
 $(DocStringExtensions.FIELDS)
 """
-struct Column{FT} <: AbstractDomain{FT}
+struct Column{FT, NT1 <: NamedTuple, NT2 <: NamedTuple} <: AbstractDomain{FT}
     "Domain interval limits, (zmin, zmax), in meters"
     zlim::Tuple{FT, FT}
     "Number of elements used to discretize the interval"
@@ -110,9 +113,9 @@ struct Column{FT} <: AbstractDomain{FT}
     "Boundary face identifiers"
     boundary_names::Tuple{Symbol, Symbol}
     "A NamedTuple of associated ClimaCore spaces: in this case, the surface space and subsurface center space"
-    space::NamedTuple
+    space::NT1
     "Fields and field data associated with the coordinates of the domain that are useful to store"
-    fields::NamedTuple
+    fields::NT2
 end
 
 """
@@ -163,16 +166,17 @@ function Column(;
     end
 
     device = ClimaComms.device()
-    if pkgversion(ClimaCore) >= v"0.14.10"
-        subsurface_space =
-            ClimaCore.Spaces.CenterFiniteDifferenceSpace(device, mesh)
-    else
-        subsurface_space = ClimaCore.Spaces.CenterFiniteDifferenceSpace(mesh)
-    end
+    subsurface_space =
+        ClimaCore.Spaces.CenterFiniteDifferenceSpace(device, mesh)
     surface_space = obtain_surface_space(subsurface_space)
-    space = (; surface = surface_space, subsurface = subsurface_space)
+    subsurface_face_space = ClimaCore.Spaces.face_space(subsurface_space)
+    space = (;
+        surface = surface_space,
+        subsurface = subsurface_space,
+        subsurface_face = subsurface_face_space,
+    )
     fields = get_additional_coordinate_field_data(subsurface_space)
-    return Column{FT}(
+    return Column{FT, typeof(space), typeof(fields)}(
         zlim,
         (nelements,),
         dz_tuple,
@@ -202,7 +206,7 @@ the entire Plane space).
 # Fields
 $(DocStringExtensions.FIELDS)
 """
-struct Plane{FT} <: AbstractDomain{FT}
+struct Plane{FT, NT <: NamedTuple} <: AbstractDomain{FT}
     "Domain interval limits along x axis, in meters or degrees (if `latlong != nothing`)"
     xlim::Tuple{FT, FT}
     "Domain interval limits along y axis, in meters or degrees (if `latlong != nothing`)"
@@ -217,7 +221,7 @@ struct Plane{FT} <: AbstractDomain{FT}
     "Polynomial order for both x and y"
     npolynomial::Int
     "A NamedTuple of associated ClimaCore spaces: in this case, the surface(Plane) space"
-    space::NamedTuple
+    space::NT
 end
 
 """
@@ -250,7 +254,7 @@ function Plane(;
     longlat = nothing,
     periodic::Tuple{Bool, Bool} = isnothing(longlat) ? (true, true) :
                                   (false, false),
-    npolynomial::Int,
+    npolynomial::Int = 0,
     comms_ctx = ClimaComms.context(),
     radius_earth = 6.378e6,
 ) where {FT}
@@ -308,9 +312,14 @@ function Plane(;
     else
         quad = ClimaCore.Spaces.Quadratures.GLL{npolynomial + 1}()
     end
-    space = ClimaCore.Spaces.SpectralElementSpace2D(grid_topology, quad)
+    space = ClimaCore.Spaces.SpectralElementSpace2D(
+        grid_topology,
+        quad;
+        compat_add_mask()...,
+    )
+    compat_set_mask!(space)
     space = (; surface = space)
-    return Plane{FT}(
+    return Plane{FT, typeof(space)}(
         xlim,
         ylim,
         longlat,
@@ -347,7 +356,7 @@ These are stored using the keys :surface and :subsurface.
 # Fields
 $(DocStringExtensions.FIELDS)
 """
-struct HybridBox{FT} <: AbstractDomain{FT}
+struct HybridBox{FT, NT1 <: NamedTuple, NT2 <: NamedTuple} <: AbstractDomain{FT}
     "Domain interval limits along x axis, in meters or degrees (if `latlong != nothing`)"
     xlim::Tuple{FT, FT}
     "Domain interval limits along y axis, in meters or degrees (if `latlong != nothing`)"
@@ -365,9 +374,9 @@ struct HybridBox{FT} <: AbstractDomain{FT}
     "Flag indicating periodic boundaries in horizontal"
     periodic::Tuple{Bool, Bool}
     "A NamedTuple of associated ClimaCore spaces: in this case, the surface space and subsurface center space"
-    space::NamedTuple
+    space::NT1
     "Fields and field data associated with the coordinates of the domain that are useful to store"
-    fields::NamedTuple
+    fields::NT2
 end
 
 """
@@ -414,7 +423,7 @@ function HybridBox(;
     ylim::Tuple{FT, FT},
     zlim::Tuple{FT, FT},
     nelements::Tuple{Int, Int, Int},
-    npolynomial::Int,
+    npolynomial::Int = 0,
     dz_tuple::Union{Tuple{FT, FT}, Nothing} = nothing,
     longlat = nothing,
     periodic::Tuple{Bool, Bool} = isnothing(longlat) ? (true, true) :
@@ -446,14 +455,9 @@ function HybridBox(;
             reverse_mode = true,
         )
     end
-    if pkgversion(ClimaCore) >= v"0.14.10"
-        device = ClimaComms.device()
-        vert_center_space =
-            ClimaCore.Spaces.CenterFiniteDifferenceSpace(device, vertmesh)
-    else
-        vert_center_space =
-            ClimaCore.Spaces.CenterFiniteDifferenceSpace(vertmesh)
-    end
+    device = ClimaComms.device()
+    vert_center_space =
+        ClimaCore.Spaces.CenterFiniteDifferenceSpace(device, vertmesh)
 
     horzdomain = Plane(;
         xlim = xlim,
@@ -471,9 +475,14 @@ function HybridBox(;
     )
 
     surface_space = obtain_surface_space(subsurface_space)
-    space = (; surface = surface_space, subsurface = subsurface_space)
+    subsurface_face_space = ClimaCore.Spaces.face_space(subsurface_space)
+    space = (;
+        surface = surface_space,
+        subsurface = subsurface_space,
+        subsurface_face = subsurface_face_space,
+    )
     fields = get_additional_coordinate_field_data(subsurface_space)
-    return HybridBox{FT}(
+    return HybridBox{FT, typeof(space), typeof(fields)}(
         horzdomain.xlim,
         horzdomain.ylim,
         zlim,
@@ -506,7 +515,8 @@ These are stored using the keys :surface and :subsurface.
 # Fields
 $(DocStringExtensions.FIELDS)
 """
-struct SphericalShell{FT} <: AbstractDomain{FT}
+struct SphericalShell{FT, NT1 <: NamedTuple, NT2 <: NamedTuple} <:
+       AbstractDomain{FT}
     "The radius of the shell"
     radius::FT
     "The radial extent of the shell"
@@ -518,9 +528,9 @@ struct SphericalShell{FT} <: AbstractDomain{FT}
     "The polynomial order to be used in the non-radial directions"
     npolynomial::Int
     "A NamedTuple of associated ClimaCore spaces: in this case, the surface space and subsurface center space"
-    space::NamedTuple
+    space::NT1
     "Fields and field data associated with the coordinates of the domain that are useful to store"
-    fields::NamedTuple
+    fields::NT2
 end
 
 """
@@ -546,7 +556,7 @@ function SphericalShell(;
     radius::FT,
     depth::FT,
     nelements::Tuple{Int, Int},
-    npolynomial::Int,
+    npolynomial::Int = 0,
     dz_tuple::Union{Tuple{FT, FT}, Nothing} = nothing,
     comms_ctx = ClimaComms.context(),
 ) where {FT}
@@ -572,13 +582,8 @@ function SphericalShell(;
         )
     end
     device = ClimaComms.device()
-    if pkgversion(ClimaCore) >= v"0.14.10"
-        vert_center_space =
-            ClimaCore.Spaces.CenterFiniteDifferenceSpace(device, vertmesh)
-    else
-        vert_center_space =
-            ClimaCore.Spaces.CenterFiniteDifferenceSpace(vertmesh)
-    end
+    vert_center_space =
+        ClimaCore.Spaces.CenterFiniteDifferenceSpace(device, vertmesh)
 
     horzdomain = ClimaCore.Domains.SphereDomain(radius)
     horzmesh = ClimaCore.Meshes.EquiangularCubedSphere(horzdomain, nelements[1])
@@ -588,16 +593,25 @@ function SphericalShell(;
     else
         quad = ClimaCore.Spaces.Quadratures.GLL{npolynomial + 1}()
     end
-    horzspace = ClimaCore.Spaces.SpectralElementSpace2D(horztopology, quad)
-
+    horzspace = ClimaCore.Spaces.SpectralElementSpace2D(
+        horztopology,
+        quad;
+        compat_add_mask()...,
+    )
+    compat_set_mask!(horzspace)
     subsurface_space = ClimaCore.Spaces.ExtrudedFiniteDifferenceSpace(
         horzspace,
         vert_center_space,
     )
     surface_space = obtain_surface_space(subsurface_space)
-    space = (; surface = surface_space, subsurface = subsurface_space)
+    subsurface_face_space = ClimaCore.Spaces.face_space(subsurface_space)
+    space = (;
+        surface = surface_space,
+        subsurface = subsurface_space,
+        subsurface_face = subsurface_face_space,
+    )
     fields = get_additional_coordinate_field_data(subsurface_space)
-    return SphericalShell{FT}(
+    return SphericalShell{FT, typeof(space), typeof(fields)}(
         radius,
         depth,
         dz_tuple,
@@ -623,7 +637,7 @@ the entire SphericalSurface space).
 # Fields
 $(DocStringExtensions.FIELDS)
 """
-struct SphericalSurface{FT} <: AbstractDomain{FT}
+struct SphericalSurface{FT, NT <: NamedTuple} <: AbstractDomain{FT}
     "The radius of the surface"
     radius::FT
     "The number of elements to be used in the non-radial directions"
@@ -631,7 +645,7 @@ struct SphericalSurface{FT} <: AbstractDomain{FT}
     "The polynomial order to be used in the non-radial directions"
     npolynomial::Int
     "A NamedTuple of associated ClimaCore spaces: in this case, the surface (SphericalSurface) space"
-    space::NamedTuple
+    space::NT
 end
 
 """
@@ -646,7 +660,7 @@ Outer constructor for the `SphericalSurface` domain, using keyword arguments.
 function SphericalSurface(;
     radius::FT,
     nelements::Int,
-    npolynomial::Int,
+    npolynomial::Int = 0,
     comms_ctx = ClimaComms.context(),
 ) where {FT}
     @assert 0 < radius
@@ -658,9 +672,16 @@ function SphericalSurface(;
     else
         quad = ClimaCore.Spaces.Quadratures.GLL{npolynomial + 1}()
     end
-    horzspace = Spaces.SpectralElementSpace2D(horztopology, quad)
+    horzspace =
+        Spaces.SpectralElementSpace2D(horztopology, quad; compat_add_mask()...)
+    compat_set_mask!(horzspace)
     space = (; surface = horzspace)
-    return SphericalSurface{FT}(radius, nelements, npolynomial, space)
+    return SphericalSurface{FT, typeof(space)}(
+        radius,
+        nelements,
+        npolynomial,
+        space,
+    )
 end
 
 
@@ -680,7 +701,10 @@ Returns the Point domain corresponding to the top face (surface) of the
 Column domain `c`.
 """
 function obtain_surface_domain(c::Column{FT}) where {FT}
-    surface_domain = Point{FT}(c.zlim[2], (; surface = c.space.surface))
+    surface_domain = Point{FT, typeof((; surface = c.space.surface))}(
+        c.zlim[2],
+        (; surface = c.space.surface),
+    )
     return surface_domain
 end
 
@@ -691,7 +715,7 @@ Returns the Plane domain corresponding to the top face (surface) of the
 HybridBox domain `b`.
 """
 function obtain_surface_domain(b::HybridBox{FT}) where {FT}
-    surface_domain = Plane{FT}(
+    surface_domain = Plane{FT, typeof((; surface = b.space.surface))}(
         b.xlim,
         b.ylim,
         b.longlat,
@@ -711,22 +735,15 @@ Returns the SphericalSurface domain corresponding to the top face
 (surface) of the SphericalShell domain `s`.
 """
 function obtain_surface_domain(s::SphericalShell{FT}) where {FT}
-    surface_domain = SphericalSurface{FT}(
-        s.radius,
-        s.nelements[1],
-        s.npolynomial,
-        (; surface = s.space.surface),
-    )
+    surface_domain =
+        SphericalSurface{FT, typeof((; surface = s.space.surface))}(
+            s.radius,
+            s.nelements[1],
+            s.npolynomial,
+            (; surface = s.space.surface),
+        )
     return surface_domain
 end
-
-"""
-    obtain_face_space(cs::ClimaCore.Spaces.AbstractSpace)
-
-Returns the face space, if applicable, for the center space `cs`.
-"""
-obtain_face_space(cs::ClimaCore.Spaces.AbstractSpace) =
-    @error("No face space is defined for this space.")
 
 """
     obtain_surface_space(cs::ClimaCore.Spaces.AbstractSpace)
@@ -736,25 +753,6 @@ Returns the surface space, if applicable, for the center space `cs`.
 obtain_surface_space(cs::ClimaCore.Spaces.AbstractSpace) =
     @error("No surface space is defined for this space.")
 
-"""
-    obtain_face_space(cs::ClimaCore.Spaces.CenterExtrudedFiniteDifferenceSpace)
-
-Returns the face space for the CenterExtrudedFiniteDifferenceSpace `cs`.
-"""
-function obtain_face_space(
-    cs::ClimaCore.Spaces.CenterExtrudedFiniteDifferenceSpace,
-)
-    return ClimaCore.Spaces.FaceExtrudedFiniteDifferenceSpace(cs)
-end
-
-"""
-    obtain_face_space(cs::ClimaCore.Spaces.CenterFiniteDifferenceSpace)
-
-Returns the face space corresponding to the CenterFiniteDifferenceSpace `cs`.
-"""
-function obtain_face_space(cs::ClimaCore.Spaces.CenterFiniteDifferenceSpace)
-    return ClimaCore.Spaces.FaceFiniteDifferenceSpace(cs)
-end
 
 """
     obtain_surface_space(cs::ClimaCore.Spaces.CenterExtrudedFiniteDifferenceSpace)
@@ -773,7 +771,7 @@ end
 Returns the top level of the face space corresponding to the CenterFiniteDifferenceSpace `cs`.
 """
 function obtain_surface_space(cs::ClimaCore.Spaces.CenterFiniteDifferenceSpace)
-    fs = obtain_face_space(cs)
+    fs = ClimaCore.Spaces.face_space(cs)
     return ClimaCore.Spaces.level(
         fs,
         ClimaCore.Utilities.PlusHalf(ClimaCore.Spaces.nlevels(fs) - 1),
@@ -876,7 +874,7 @@ both as Fields. It also returns the widths of each layer as a field.
 """
 function get_Δz(z::ClimaCore.Fields.Field)
     # Extract the differences between levels of the face space
-    fs = obtain_face_space(axes(z))
+    fs = ClimaCore.Spaces.face_space(axes(z))
     z_face = ClimaCore.Fields.coordinate_field(fs).z
     Δz_face = ClimaCore.Fields.Δz_field(z_face)
     Δz_top = ClimaCore.Fields.level(
@@ -921,7 +919,7 @@ A helper function which returns additional fields and field data corresponding t
 domains which have a subsurface_space (Column, HybridBox, SphericalShell).
 The fields are the center coordinates of the subsurface space, the spacing between
 the top center and top surface and bottom center and bottom surface, as well as the
-field corresponding to the surface height z and layer widths. The field data are the 
+field corresponding to the surface height z and layer widths. The field data are the
 depth of the domain and the minimum top layer thickness over the entire domain.
 
 We allocate these once, upon domain construction, so that they are accessible
@@ -931,11 +929,11 @@ function get_additional_coordinate_field_data(subsurface_space)
     surface_space = obtain_surface_space(subsurface_space)
     z = ClimaCore.Fields.coordinate_field(subsurface_space).z
     Δz_top, Δz_bottom, Δz = get_Δz(z)
-    face_space = obtain_face_space(subsurface_space)
+    face_space = ClimaCore.Spaces.face_space(subsurface_space)
     z_face = ClimaCore.Fields.coordinate_field(face_space).z
     z_sfc = top_face_to_surface(z_face, surface_space)
     d = depth(subsurface_space)
-    Δz_min = minimum(Δz_top)
+    Δz_min = minimum(Δz)
     fields = (;
         z = z,
         Δz_top = Δz_top,
@@ -971,15 +969,86 @@ depth(space::ClimaCore.Spaces.CenterFiniteDifferenceSpace) =
         space.grid.topology.mesh.domain.coord_min
     ).z
 
+"""
+    horizontal_resolution_degrees(domain::AbstractDomain)
+
+Return a tuple with the approximate resolution on the domain in degrees along
+the two directions.
+
+For boxes and planes, the order is `(latitude, longitude)`.
+
+Examples
+=======
+
+```jldoctest
+julia> using ClimaLand
+
+julia> domain = ClimaLand.Domains.SphericalShell(;
+        radius = 6300e3,
+        depth = 15.,
+        nelements = (10, 3),
+        dz_tuple = ((1.0, 0.05)),
+    );
+
+julia> ClimaLand.Domains.average_horizontal_resolution_degrees(domain)
+(9.0, 9.0)
+
+julia> domain = ClimaLand.Domains.Plane(;
+        xlim = (50000.0, 80000.),
+        ylim = (30000.0, 40000.),
+        longlat = (-118.14452, 34.14778),
+        nelements = (20, 3),
+    );
+
+julia> ClimaLand.Domains.average_horizontal_resolution_degrees(domain)
+(0.05839157, 0.20961125)
+```
+"""
+function average_horizontal_resolution_degrees(
+    domain::Union{SphericalShell, SphericalSurface},
+)
+    num_elements_lat = num_elements_lon = first(domain.nelements)
+    quad = ClimaCore.Spaces.quadrature_style(domain.space.surface)
+    num_points_per_element =
+        ClimaCore.Quadratures.unique_degrees_of_freedom(quad)
+
+    # There are 2 full cubed-sphere panels along latitudes, and 4 along
+    # longitudes
+    return (
+        180 / (2 * num_points_per_element * num_elements_lat),
+        360 / (4 * num_points_per_element * num_elements_lon),
+    )
+end
+
+function average_horizontal_resolution_degrees(domain::Union{Plane, HybridBox})
+    isnothing(domain.longlat) &&
+        error("Can only compute resolution with domains in latlong")
+
+    # x is Lat, y is Lon because ClimaCore defines LatLongPoints
+    num_elements_lat, num_elements_lon = domain.nelements[1:2]
+    delta_lat = domain.xlim[2] - domain.xlim[1]
+    delta_lon = domain.ylim[2] - domain.ylim[1]
+
+    quad = ClimaCore.Spaces.quadrature_style(domain.space.surface)
+    num_points_per_element =
+        ClimaCore.Quadratures.unique_degrees_of_freedom(quad)
+
+    return (
+        delta_lat / (num_points_per_element * num_elements_lat),
+        delta_lon / (num_points_per_element * num_elements_lon),
+    )
+end
+
+
 export AbstractDomain
 export Column, Plane, HybridBox, Point, SphericalShell, SphericalSurface
 export coordinates,
-    obtain_face_space,
     obtain_surface_space,
     top_center_to_surface,
     bottom_center_to_surface,
     top_face_to_surface,
     obtain_surface_domain,
     linear_interpolation_to_surface!,
-    get_Δz
+    get_Δz,
+    average_horizontal_resolution_degrees
 end

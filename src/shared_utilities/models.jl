@@ -25,7 +25,7 @@ export AbstractModel,
     total_liq_water_vol_per_area!,
     total_energy_per_area!
 
-import ClimaComms
+import ClimaComms: context, device
 import .Domains: coordinates
 ## Default methods for all models - to be in a seperate module at some point.
 """
@@ -387,7 +387,9 @@ function initialize_vars(keys, types, domain_names, state, model_name)
     else
         zero_states = map(zip(types, domain_names)) do (T, D)
             zero_instance = ClimaCore.RecursiveApply.rzero(T)
-            map(_ -> zero_instance, getproperty(state, D))
+            f = map(_ -> zero_instance, getproperty(state, D))
+            fill!(ClimaCore.Fields.field_values(f), zero_instance)
+            f
         end
         return (; model_name => (; zip(keys, zero_states)...))
     end
@@ -441,7 +443,7 @@ values; constructs and returns the coordinates for the `model` domain.
 We may need to consider this default more as we add diverse components and
 `Simulations`.
 """
-function initialize(model::AbstractModel{FT}) where {FT}
+function initialize(model::AbstractModel)
     coords = Domains.coordinates(model)
     Y = initialize_prognostic(model, coords)
     p = initialize_auxiliary(model, coords)
@@ -449,22 +451,32 @@ function initialize(model::AbstractModel{FT}) where {FT}
     return Y, p, coords
 end
 
+"""
+    get_domain(model::AbstractModel)
+
+Return the ClimaLand domain of the model - for integrated models,
+this is the soil domain (e.g., Column, SphericalShell).
+"""
+get_domain(model::ClimaLand.AbstractModel) = model.domain
+
 function ClimaComms.context(model::AbstractModel)
-    if :domain ∈ propertynames(model)
-        return ClimaComms.context(model.domain)
-    else
+    try
+        domain = get_domain(model)
+        return ClimaComms.context(domain)
+    catch
         error(
-            "Your model does not contain a domain. If this is intended, you will need a new method of ClimaComms.context.",
+            "Your model does not have a get_domain() method. If this is intended, you will need a new method of ClimaComms.context.",
         )
     end
 end
 
 function ClimaComms.device(model::AbstractModel)
-    if :domain ∈ propertynames(model)
-        return ClimaComms.device(model.domain)
-    else
+    try
+        domain = get_domain(model)
+        return ClimaComms.device(domain)
+    catch
         error(
-            "Your model does not contain a domain. If this is intended, you will need a new method of ClimaComms.device.",
+            "Your model does not have a get_domain() method. If this is intended, you will need a new method of ClimaComms.device.",
         )
     end
 end
@@ -484,7 +496,9 @@ This can be converted to a mass using the density of liquid water.
 This includes the water in multiple phases. For example, if ice is present, the water
 volume is computed using ratio of the density of ice to the density of liquid water.
 """
-function total_liq_water_vol_per_area!(cache, model::AbstractModel, Y, p, t) end
+function total_liq_water_vol_per_area!(cache, model::AbstractModel, Y, p, t)
+    cache .= 0
+end
 
 """
     total_energy_per_area!(cache, model::AbstractModel, Y, p, t)
@@ -492,4 +506,6 @@ function total_liq_water_vol_per_area!(cache, model::AbstractModel, Y, p, t) end
 A function which updates `cache` in place with the total energy
 per unit ground area for the `model`, computed from `Y`, `p`, and `t`.
 """
-function total_energy_per_area!(cache, model::AbstractModel, Y, p, t) end
+function total_energy_per_area!(cache, model::AbstractModel, Y, p, t)
+    cache .= 0
+end

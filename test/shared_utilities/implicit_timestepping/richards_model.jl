@@ -31,7 +31,6 @@ for FT in (Float32, Float64)
                 ylim = FT.((0, 1)),
                 zlim = (zmin, zmax),
                 nelements = (1, 1, nelems),
-                npolynomial = 3,
             ),
         ]
         top_state_bc = MoistureStateBC((p, t) -> ν - 1e-3)
@@ -68,9 +67,17 @@ for FT in (Float32, Float64)
 
             @test jacobian.solver isa MatrixFields.FieldMatrixSolver
             @test jacobian.solver.alg isa MatrixFields.BlockDiagonalSolve
-            @test jacobian.matrix.keys.values ==
-                  ((MatrixFields.@name(soil.ϑ_l), MatrixFields.@name(soil.ϑ_l)),)
-
+            @test jacobian.matrix.keys.values == (
+                (MatrixFields.@name(soil.ϑ_l), MatrixFields.@name(soil.ϑ_l)),
+                (
+                    MatrixFields.@name(soil.∫F_vol_liq_water_dt),
+                    MatrixFields.@name(soil.∫F_vol_liq_water_dt)
+                ),
+            )
+            @test jacobian.matrix[
+                MatrixFields.@name(soil.∫F_vol_liq_water_dt),
+                MatrixFields.@name(soil.∫F_vol_liq_water_dt)
+            ] == -I
             jac_ϑ_l = jacobian.matrix[
                 MatrixFields.@name(soil.ϑ_l),
                 MatrixFields.@name(soil.ϑ_l)
@@ -158,7 +165,6 @@ for FT in (Float32, Float64)
                 ylim = FT.((0, 1)),
                 zlim = (zmin, zmax),
                 nelements = (1, 1, nelems),
-                npolynomial = 3,
             ),
         ]
         top_flux_bc = WaterFluxBC((p, t) -> -K_sat)

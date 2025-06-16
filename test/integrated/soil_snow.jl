@@ -95,8 +95,6 @@ p_soil_alone = deepcopy(p)
 for lsm_aux_var in (
     :excess_water_flux,
     :excess_heat_flux,
-    :atmos_energy_flux,
-    :atmos_water_flux,
     :ground_heat_flux,
     :effective_soil_sfc_T,
     :sfc_scratch,
@@ -184,29 +182,6 @@ dY_soil_snow = deepcopy(Y) .* 0
 ClimaLand.source!(dY_soil_snow, src, Y, p, land_model.soil)
 @test all(parent(dY_soil_snow.soil.θ_i) .≈ 0)
 
-# Check conservation
-@test p.atmos_water_flux == @. p.drivers.P_snow +
-         p.drivers.P_liq +
-         (1 - p.snow.snow_cover_fraction) * (
-             p.soil.turbulent_fluxes.vapor_flux_liq +
-             p.soil.turbulent_fluxes.vapor_flux_ice
-         ) +
-         p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.vapor_flux
-
-_LH_f0 = FT(LP.LH_f0(earth_param_set))
-_ρ_liq = FT(LP.ρ_cloud_liq(earth_param_set))
-ρe_falling_snow = -_LH_f0 * _ρ_liq # per unit vol of liquid water
-@test p.atmos_energy_flux == @. (1 - p.snow.snow_cover_fraction) * (
-             p.soil.turbulent_fluxes.lhf +
-             p.soil.turbulent_fluxes.shf +
-             p.soil.R_n
-         ) +
-         p.snow.snow_cover_fraction * (
-             p.snow.turbulent_fluxes.lhf +
-             p.snow.turbulent_fluxes.shf +
-             p.snow.R_n
-         ) +
-         p.drivers.P_snow * ρe_falling_snow
 # Make sure soil boundary flux method also worked
 G = deepcopy(p.ground_heat_flux)
 p_snow_alone = deepcopy(p)

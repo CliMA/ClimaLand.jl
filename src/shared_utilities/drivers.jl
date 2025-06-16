@@ -35,7 +35,8 @@ export AbstractAtmosphericDrivers,
     make_update_drivers,
     prescribed_lai_era5,
     prescribed_forcing_era5,
-    prescribed_analytic_forcing
+    prescribed_analytic_forcing,
+    default_zenith_angle
 
 """
      AbstractClimaLandDrivers{FT <: AbstractFloat}
@@ -185,18 +186,151 @@ PrescribedPrecipitation{FT}(liquid_precip) where {FT} =
     PrescribedPrecipitation{FT, typeof(liquid_precip)}(liquid_precip)
 
 """
-    CoupledRadiativeFluxes{FT} <: AbstractRadiativeDrivers{FT}
+    CoupledRadiativeFluxes{
+        FT,
+        F <: Union{Function, Nothing},
+        T,
+    } <: AbstractRadiativeDrivers{FT}
 
-To be used when coupling to an atmosphere model.
+To be used when coupling to an atmosphere model. Either both `θs` and `start_date`
+must be `nothing`, or both must not be `nothing``.
+
+During the driver update, cosθs is unchanged if `θs` is `nothing`. This behavior differs from
+the `PrescribedRadiativeFluxes` where `cosθs` set to `NaN` if `θs` is `nothing`.
+Otherwise, `θs` recieves the following arguments:
+(time_from_start, `start_date`), and is expected to return zenith angle at the given time.
+$(DocStringExtensions.FIELDS)
 """
-struct CoupledRadiativeFluxes{FT} <: AbstractRadiativeDrivers{FT} end
+struct CoupledRadiativeFluxes{FT, F <: Union{Function, Nothing}, T} <:
+       AbstractRadiativeDrivers{FT}
+    """Function that fills a climacore field with the zenith angle given the following arguments:
+    (time_from_start, `start_date`)"""
+    θs::F
+    "Start date - the datetime corresponding to t=0 for the simulation"
+    start_date::T
+    function CoupledRadiativeFluxes{FT, F, T}(
+        θs::F,
+        start_date::T,
+    ) where {FT, F, T}
+        (
+            (isnothing(θs) && isnothing(start_date)) ||
+            ((!isnothing(θs) && !isnothing(start_date)))
+        ) || error(
+            "CoupledRadiativeFluxes: `θs` and start_date` must both be `nothing` or both not `nothing`.",
+        )
+        new{FT, F, T}(θs, start_date)
+    end
+end
+
+# This constructor is here to maintain backwards compatability with ClimaCoupler
+# If this constructor is used, the coupler should calulate and update the zenith angle
+CoupledRadiativeFluxes{FT}() where {FT} =
+    CoupledRadiativeFluxes{FT, Nothing, Nothing}(nothing, nothing)
+
+CoupledRadiativeFluxes(::Type{FT}, args...) where {FT} =
+    CoupledRadiativeFluxes{FT}(args...)
+
+"""
+    CoupledRadiativeFluxes{FT}(
+        start_date::Dates.DateTime;
+        latitude,
+        longitude,
+        insol_params=LP.LandParameters(FT).insol_params,
+    )
+Creates a `CoupledRadiativeFluxes` object with a default zenith angle function that uses Insolation.jl
+to compute the zenith angle at a given time and location.
+"""
+function CoupledRadiativeFluxes{FT}(
+    start_date::DT;
+    latitude::LT,
+    longitude::LT,
+    insol_params::IP = LP.LandParameters(FT).insol_params,
+) where {FT, DT, LT, IP}
+    zenith_angle =
+        (t, s) -> default_zenith_angle(
+            t,
+            s;
+            latitude = latitude,
+            longitude = longitude,
+            insol_params = insol_params,
+        )
+    return CoupledRadiativeFluxes{FT, typeof(zenith_angle), DT}(
+        zenith_angle,
+        start_date,
+    )
+end
+
+"""
+    default_zenith_angle(
+        t::T,
+        start_date::Dates.DateTime;
+        latitude::LT,
+        longitude::LT,
+        insol_params::Insolation.Parameters.InsolationParameters{FT},
+    )
+
+Calculate zenith angle with Insolation for the given start date, insolation parameters, latitude,
+and longitude.
+
+`latitude` and `longitude` can be a collections or a Number.
+"""
+function default_zenith_angle(
+    t::T,
+    start_date::Dates.DateTime;
+    latitude::LT,
+    longitude::LT,
+    insol_params,
+) where {T, LT}
+    FT = eltype(latitude)
+    current_datetime =
+        T <: ITime ? date(t) : start_date + Dates.Second(round(t))
+    d, δ, η_UTC =
+        FT.(
+            Insolation.helper_instantaneous_zenith_angle(
+                current_datetime,
+                start_date,
+                insol_params,
+            )
+        )
+    # Reduces allocations by throwing away unwanted values
+    zenith_only = (args...) -> Insolation.instantaneous_zenith_angle(args...)[1]
+    return zenith_only.(d, δ, η_UTC, longitude, latitude)
+end
 
 """
     CoupledAtmosphere{FT} <: AbstractAtmosphericDrivers{FT}
 
-To be used when coupling to an atmosphere model.
+To be used when coupling to an atmosphere model. Contains fields that
+are used to compute surface fluxes in the coupled setup.
+
+When constructed without a space, the struct doesn't contain anything,
+but it still acts as a flag that fluxes have been updated by the coupler
+and don't need to be recomputed.
+When constructed with a space, the struct contains the fields needed to compute
+surface fluxes in the coupled setup, which are accessed by ClimaCoupler.
 """
-struct CoupledAtmosphere{FT} <: AbstractAtmosphericDrivers{FT} end
+struct CoupledAtmosphere{FT} <: AbstractAtmosphericDrivers{FT}
+    "Atmospheric horizontal wind velocity vector at the reference height (m/s)"
+    u::Union{Nothing, Fields.Field}
+    "Atmospheric reference height (m), relative to surface elevation"
+    h::Union{Nothing, Fields.Field}
+    "Minimum wind speed (gustiness; m/s), which is always a spatial constant"
+    gustiness::Union{Nothing, FT}
+    "Atmospheric thermodynamic state at the reference height"
+    thermal_state::Union{Nothing, Fields.Field}
+    "Create a `CoupledAtmosphere` with default values"
+    function CoupledAtmosphere{FT}() where {FT}
+        return new{FT}(nothing, nothing, nothing, nothing)
+    end
+    function CoupledAtmosphere{FT}(space) where {FT}
+        return new{FT}(
+            Fields.zeros(SVector{2, FT}, space),
+            Fields.zeros(space),
+            FT(1), # gustiness is always a spatial constant, for now
+            Fields.zeros(Thermodynamics.PhaseEquil{FT}, space),
+        )
+    end
+end
 
 """
     compute_ρ_sfc(thermo_params, ts_in, T_sfc)
@@ -260,7 +394,7 @@ function turbulent_fluxes!(
 )
     T_sfc = surface_temperature(model, Y, p, t)
     ρ_sfc = surface_air_density(atmos, model, Y, p, t, T_sfc)
-    q_sfc = surface_specific_humidity(model, Y, p, T_sfc, ρ_sfc)
+    q_sfc = surface_specific_humidity(atmos, model, Y, p, T_sfc, ρ_sfc)
     β_sfc = surface_evaporative_scaling(model, Y, p)
     h_sfc = surface_height(model, Y, p)
     r_sfc = surface_resistance(model, Y, p, t)
@@ -270,6 +404,7 @@ function turbulent_fluxes!(
 
     dest .=
         turbulent_fluxes_at_a_point.(
+            Val(false), # return_extra_fluxes
             T_sfc,
             q_sfc,
             ρ_sfc,
@@ -288,9 +423,86 @@ function turbulent_fluxes!(
     return nothing
 end
 
+"""
+    coupler_compute_turbulent_fluxes!(dest, atmos::CoupledAtmosphere, model::AbstractModel, Y::ClimaCore.Fields.FieldVector, p::NamedTuple, t)
+
+This function computes the turbulent surface fluxes for a coupled simulation.
+This function is very similar to the default method of `turbulent_fluxes!`,
+but it is used with a `CoupledAtmosphere` which contains all the necessary
+atmosphere fields to compute the surface fluxes, rather than some being stored in `p`.
+
+This function is intended to be called by ClimaCoupler.jl when computing
+fluxes for a coupled simulation with the integrated land model.
+"""
+function coupler_compute_turbulent_fluxes!(
+    dest,
+    atmos::CoupledAtmosphere,
+    model::AbstractModel,
+    Y::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
+    t,
+)
+    T_sfc = surface_temperature(model, Y, p, t)
+    ρ_sfc = surface_air_density(atmos, model, Y, p, t, T_sfc)
+    q_sfc = surface_specific_humidity(atmos, model, Y, p, T_sfc, ρ_sfc)
+    β_sfc = surface_evaporative_scaling(model, Y, p)
+    h_sfc = surface_height(model, Y, p)
+    r_sfc = surface_resistance(model, Y, p, t)
+    d_sfc = displacement_height(model, Y, p)
+
+    dest .=
+        turbulent_fluxes_at_a_point.(
+            Val(true), # return_extra_fluxes
+            T_sfc,
+            q_sfc,
+            ρ_sfc,
+            β_sfc,
+            h_sfc,
+            r_sfc,
+            d_sfc,
+            atmos.thermal_state,
+            atmos.u,
+            atmos.h,
+            atmos.gustiness,
+            model.parameters.z_0m,
+            model.parameters.z_0b,
+            model.parameters.earth_param_set,
+        )
+    return nothing
+end
 
 """
-    turbulent_fluxes_at_a_point(T_sfc::FT,
+    turbulent_fluxes_at_a_point(return_extra_fluxes, args...)
+
+This is a wrapper function that allows us to dispatch on the type of `return_extra_fluxes`
+as we compute the turbulent fluxes pointwise. This is needed because space for the
+extra fluxes is only allocated in the cache when running with a `CoupledAtmosphere`.
+The function `compute_turbulent_fluxes_at_a_point` does the actual flux computation.
+
+The `return_extra_fluxes` argument indicates whether to return the following:
+- momentum fluxes (`ρτxz`, `ρτyz`)
+- buoyancy flux (`buoy_flux`)
+"""
+function turbulent_fluxes_at_a_point(return_extra_fluxes::Val{false}, args...)
+    (LH, SH, Ẽ, r_ae, _, _, _) = compute_turbulent_fluxes_at_a_point(args...)
+    return (lhf = LH, shf = SH, vapor_flux = Ẽ, r_ae = r_ae)
+end
+function turbulent_fluxes_at_a_point(return_extra_fluxes::Val{true}, args...)
+    (LH, SH, Ẽ, r_ae, ρτxz, ρτyz, buoy_flux) =
+        compute_turbulent_fluxes_at_a_point(args...)
+    return (
+        lhf = LH,
+        shf = SH,
+        vapor_flux = Ẽ,
+        r_ae = r_ae,
+        ρτxz = ρτxz,
+        ρτyz = ρτyz,
+        buoy_flux = buoy_flux,
+    )
+end
+
+"""
+    compute_turbulent_fluxes_at_a_point(T_sfc::FT,
                                 q_sfc::FT,
                                 ρ_sfc::FT,
                                 β_sfc::FT,
@@ -303,7 +515,7 @@ end
                                 gustiness::FT,
                                 z_0m::FT,
                                 z_0b::FT,
-                                earth_param_set::EP,
+                                earth_param_set::EP;
                                ) where {FT <: AbstractFloat, P}
 
 Computes turbulent surface fluxes at a point on a surface given
@@ -328,7 +540,7 @@ from unit conversion of evaporation from a mass to a liquid water volume
 flux. When r_sfc is nonzero, an additional resistance is applied in series
 to the vapor flux (and hence also the latent heat flux).
 """
-function turbulent_fluxes_at_a_point(
+function compute_turbulent_fluxes_at_a_point(
     T_sfc::FT,
     q_sfc::FT,
     ρ_sfc::FT,
@@ -337,7 +549,7 @@ function turbulent_fluxes_at_a_point(
     r_sfc::FT,
     d_sfc::FT,
     ts_in,
-    u::FT,
+    u::Union{FT, SVector{2, FT}},
     h::FT,
     gustiness::FT,
     z_0m::FT,
@@ -357,11 +569,11 @@ function turbulent_fluxes_at_a_point(
     # In this we have neglected z_0m and z_0b (i.e. assumed they are small
     # compared to Δh).
     state_sfc = SurfaceFluxes.StateValues(FT(0), SVector{2, FT}(0, 0), ts_sfc)
-    state_in = SurfaceFluxes.StateValues(
-        h - d_sfc - h_sfc,
-        SVector{2, FT}(u, 0),
-        ts_in,
-    )
+    # u is already a vector when we get it from a coupled atmosphere, otherwise we need to make it one
+    if u isa FT
+        u = SVector{2, FT}(u, 0)
+    end
+    state_in = SurfaceFluxes.StateValues(h - d_sfc - h_sfc, u, ts_in)
     # The following line wont work on GPU
     #    h - d_sfc - h_sfc < 0 &&
     #        @error("Surface height is larger than atmos height in surface fluxes")
@@ -401,7 +613,15 @@ function turbulent_fluxes_at_a_point(
     # vapor flux in volume of liquid water with density 1000kg/m^3
     Ẽ = E / _ρ_liq
 
-    return (lhf = LH, shf = SH, vapor_flux = Ẽ, r_ae = r_ae)
+    return (
+        LH,
+        SH,
+        Ẽ,
+        r_ae,
+        conditions.ρτxz,
+        conditions.ρτyz,
+        conditions.buoy_flux,
+    )
 end
 
 """
@@ -424,6 +644,7 @@ function ClimaLand.turbulent_fluxes!(
     p,
     t,
 )
+    # coupler has done its thing behind the scenes already
     return nothing
 end
 
@@ -610,34 +831,38 @@ function surface_air_density(
     return compute_ρ_sfc.(thermo_params, p.drivers.thermal_state, T_sfc)
 end
 
-
 """
-    ClimaLand.surface_air_density(
-                    atmos::CoupledAtmosphere,
-                    model::AbstractModel,
-                    Y,
-                    p,
-                    _...,
-                )
-Returns the air density at the surface in the case of a coupled simulation.
+    surface_air_density(
+                        atmos::CoupledAtmosphere,
+                        model::AbstractModel,
+                        Y,
+                        p,
+                        t,
+                        T_sfc,
+                        )
 
-This requires the field `ρ_sfc` to be present in the cache `p` under the name
-of the model.
+A helper function which returns the surface air density; this assumes that
+the `model` has a property called `parameters` containing `earth_param_set`.
+
+This method is similar to the general method above, except in this case
+we get the thermodynamic parameters from the `atmos` object. This is used
+when running with a coupled atmosphere.
 """
 function surface_air_density(
     atmos::CoupledAtmosphere,
     model::AbstractModel,
     Y,
     p,
-    _...,
+    t,
+    T_sfc,
 )
-    model_name = ClimaLand.name(model)
-    model_cache = getproperty(p, model_name)
-    return model_cache.ρ_sfc
+    thermo_params =
+        LP.thermodynamic_parameters(model.parameters.earth_param_set)
+    return compute_ρ_sfc.(thermo_params, atmos.thermal_state, T_sfc)
 end
 
 """
-    surface_specific_humidity(model::AbstractModel, Y, p, T_sfc, ρ_sfc)
+    surface_specific_humidity(atmos, model::AbstractModel, Y, p, T_sfc, ρ_sfc)
 
 A helper function which returns the surface specific humidity for a given
 model, needed because different models compute and store q_sfc in
@@ -647,7 +872,14 @@ Extending this function for your model is only necessary if you need to
 compute surface fluxes and radiative fluxes at the surface using
 the functions in this file.
 """
-function surface_specific_humidity(model::AbstractModel, Y, p, T_sfc, ρ_sfc) end
+function surface_specific_humidity(
+    atmos,
+    model::AbstractModel,
+    Y,
+    p,
+    T_sfc,
+    ρ_sfc,
+) end
 
 """
     surface_evaporative_scaling(model::AbstractModel{FT}, Y, p) where {FT}
@@ -1018,6 +1250,27 @@ function make_update_drivers(a::PrescribedPrecipitation{FT}) where {FT}
 end
 
 """
+    make_update_drivers(r::CoupledRadiativeFluxes{FT}) where {FT}
+
+Creates and returns a function which updates the driver variables
+in the case of a CoupledRadiativeFluxes.
+
+When `r.θs` is `nothing`, the cosine zenith angle
+not changed, and should be updated by the coupler. This differs from the behavior of
+`PrescribedRadiativeFluxes`, where the cosine zenith angle is set to `NaN` if `θs` is `nothing`.
+
+Otherwise, the cosine zenith angle is computed using `cos.(r.θs(t, r.start_date))`.
+"""
+make_update_drivers(r::CoupledRadiativeFluxes{FT, Nothing}) where {FT} =
+    (p, t) -> nothing
+function make_update_drivers(r::CoupledRadiativeFluxes{FT}) where {FT}
+    function update_drivers!(p, t)
+        p.drivers.cosθs .= cos.(r.θs(t, r.start_date))
+    end
+    return update_drivers!
+end
+
+"""
     make_update_drivers(r::PrescribedRadiativeFluxes{FT}) where {FT}
 
 Creates and returns a function which updates the driver variables
@@ -1088,6 +1341,7 @@ end
                              earth_param_set,
                              FT;
                              gustiness=1,
+                             max_wind_speed = nothing,
                              c_co2 = TimeVaryingInput((t) -> 4.2e-4),
                              time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
                              regridder_type = :InterpolationsRegridder)
@@ -1097,6 +1351,14 @@ from a file path pointing to the ERA5 data in a netcdf file, the surface_space, 
 and the earth_param_set.
 
 The argument `era5_ncdata_path` is either a list of nc files, each with all of the variables required, but with different time intervals in the different files, or else it is a single file with all the variables.
+
+########## WARNING ##########
+
+High wind speed anomalies (10-100x increase and decrease over a period of a several hours) appear in the ERA5 
+reanalysis data. These generate very large surface fluxes (due to wind speeds up to 300 m/s), which lead to instability. The kwarg max_wind_speed, 
+with a value give in m/s,
+is used to clip these if it is not `nothing`.
+See: https://confluence.ecmwf.int/display/CKB/ERA5%3A+large+10m+winds
 """
 function prescribed_forcing_era5(
     era5_ncdata_path,
@@ -1105,6 +1367,7 @@ function prescribed_forcing_era5(
     earth_param_set,
     FT;
     gustiness = 1,
+    max_wind_speed = nothing,
     c_co2 = TimeVaryingInput((t) -> 4.2e-4),
     time_interpolation_method = LinearInterpolation(PeriodicCalendar()),
     regridder_type = :InterpolationsRegridder,
@@ -1133,6 +1396,11 @@ function prescribed_forcing_era5(
         file_reader_kwargs = (; preprocess_func = (data) -> -data / 1000,),
         method = time_interpolation_method,
     )
+    if max_wind_speed isa Nothing
+        wind_function = (u, v) -> sqrt.(u .^ 2 .+ v .^ 2)
+    else
+        wind_function = (u, v) -> min.(sqrt.(u .^ 2 .+ v .^ 2), max_wind_speed)
+    end
 
     u_atmos = TimeVaryingInput(
         [era5_ncdata_path, era5_ncdata_path],
@@ -1140,7 +1408,7 @@ function prescribed_forcing_era5(
         surface_space;
         start_date,
         regridder_type,
-        compose_function = (u, v) -> sqrt.(u .^ 2 .+ v .^ 2),
+        compose_function = wind_function,
         method = time_interpolation_method,
     )
     specific_humidity(Td, T, P; params = earth_param_set) =
@@ -1220,39 +1488,14 @@ function prescribed_forcing_era5(
         regridder_type,
         method = time_interpolation_method,
     )
-
-    function zenith_angle(
-        t,
-        start_date;
-        latitude = ClimaCore.Fields.coordinate_field(surface_space).lat,
-        longitude = ClimaCore.Fields.coordinate_field(surface_space).long,
-        insol_params::Insolation.Parameters.InsolationParameters{FT} = earth_param_set.insol_params,
-    ) where {FT}
-        # This should be time in UTC
-        if t isa ITime
-            current_datetime = date(t)
-        else
-            current_datetime = start_date + Dates.Second(round(t))
-        end
-
-        # Orbital Data uses Float64, so we need to convert to our sim FT
-        d, δ, η_UTC =
-            FT.(
-                Insolation.helper_instantaneous_zenith_angle(
-                    current_datetime,
-                    start_date,
-                    insol_params,
-                )
-            )
-
-        Insolation.instantaneous_zenith_angle.(
-            d,
-            δ,
-            η_UTC,
-            longitude,
-            latitude,
-        ).:1
-    end
+    zenith_angle =
+        (t, s) -> default_zenith_angle(
+            t,
+            s;
+            latitude = ClimaCore.Fields.coordinate_field(surface_space).lat,
+            longitude = ClimaCore.Fields.coordinate_field(surface_space).long,
+            insol_params = earth_param_set.insol_params,
+        )
 
     radiation = PrescribedRadiativeFluxes(
         FT,

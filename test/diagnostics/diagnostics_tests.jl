@@ -45,7 +45,6 @@ bucket_domain = ClimaLand.SphericalShell(;
     radius = FT(100),
     depth = FT(3.5),
     nelements = (1, 10),
-    npolynomial = 1,
 )
 
 bucket_atmos, bucket_rad = ClimaLand.prescribed_analytic_forcing(FT)

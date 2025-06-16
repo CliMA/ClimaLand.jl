@@ -6,12 +6,10 @@ import ClimaUtilities.ClimaArtifacts: @clima_artifact
 
 import LazyArtifacts
 
-using ArtifactWrappers
-
 """
     soil_ic_2008_50m_path(; context)
 
-Return the path to the file that contains the spun-up soil and snow initial 
+Return the path to the file that contains the spun-up soil and snow initial
 conditions for Jan 1, 2008.
 
 The soil domain has a depth of 50m; we have ensured that surface properties
@@ -37,10 +35,14 @@ end
 
 Find the appropriate files of ERA5 forcing data to run a simuation starting on
 `start_date` and ending on `final_date`.
+
+We add 1 year to the final date to ensure that everything between
+start_date and final_date is covered. (This is needed, e.g., if the last file
+is up to Dec 15th but we want to simulate past that date.)
 """
 function find_era5_year_paths(start_date, final_date; context = nothing)
     year0 = Dates.year(start_date)
-    yearf = Dates.year(final_date)
+    yearf = Dates.year(final_date) + 1
     era5_forty_yrs_path =
         era5_land_forcing_data_forty_years_folder_path(context = context)
     years = collect(
@@ -58,19 +60,47 @@ end
 """
     era5_land_forcing_data2008_path(; context, lowres=false)
 
-Return the path to the directory that contains the ERA5 forcing data for 2008.
+Return the path to the file that contains the ERA5 forcing data for 2008.
 
-Optionally, you can pass the lowres=true keyword to download a lower spatial resolution version of the data.
+Optionally, you can pass the lowres=true keyword to download a lower spatial resolution version of the data and return the path to that file.
+ If the high resolution data is not 
+available locally, we also return the path to the low res data.
 """
-function era5_land_forcing_data2008_folder_path(;
-    context = nothing,
-    lowres = false,
-)
+function era5_land_forcing_data2008_path(; context = nothing, lowres = false)
+    lowres_path = joinpath(
+        @clima_artifact("era5_land_forcing_data2008_lowres", context),
+        "era5_2008_1.0x1.0_lowres.nc",
+    )
     if lowres
-        return @clima_artifact("era5_land_forcing_data2008_lowres", context)
+        return lowres_path
     else
-        return @clima_artifact("era5_land_forcing_data2008", context)
+        try
+            hires_path = joinpath(
+                @clima_artifact("era5_land_forcing_data2008", context),
+                "era5_2008_1.0x1.0.nc",
+            )
+
+            return hires_path
+        catch
+            @warn(
+                "High resolution ERA5 forcing not available locally; downloading and using low resolution data instead."
+            )
+            return lowres_path
+        end
     end
+end
+
+"""
+    era5_monthly_averages_single_level_path(; context)
+
+Return the path to the directory that contains ERA5 monthly averages single
+level for 1979 to 2024.
+"""
+function era5_monthly_averages_single_level_path(; context = nothing)
+    return @clima_artifact(
+        "era5_monthly_averages_surface_single_level_1979_2024",
+        context
+    )
 end
 
 """
@@ -101,16 +131,28 @@ function modis_lai_forcing_data_path(; context = nothing)
     return @clima_artifact("modis_lai", context)
 end
 
+function modis_lai_single_year_path(;
+    context = nothing,
+    year = Dates.year(DateTime(2008)),
+)
+    modis_lai_data_path = modis_lai_forcing_data_path(context = context)
+    return joinpath(modis_lai_data_path, "Yuan_et_al_$(year)_1x1.nc")
+end
+
 """
     find_modis_year_paths(start_date, final_date; context = nothing)
 
 Find the appropriate files of MODIS LAI data to run a simuation starting on
 `start_date` and ending on `final_date`.
+
+We add 1 year to the final date to ensure that everything between
+start_date and final_date is covered. (This is needed, e.g., if the last file
+is up to Dec 15th but we want to simulate past that date.)
 """
 function find_modis_year_paths(start_date, final_date; context = nothing)
     # Get the year of the start and final dates
     year0 = Dates.year(start_date)
-    yearf = Dates.year(final_date)
+    yearf = Dates.year(final_date) + 1
     modis_lai_data_path = modis_lai_forcing_data_path(context = context)
     years = collect(
         joinpath(modis_lai_data_path, "Yuan_et_al_$(year)_1x1.nc") for
@@ -314,14 +356,10 @@ and presented in Table 1b of that work.
 https://doi.org/10.4141/cjss09118
 """
 function huang_et_al2011_soil_van_genuchten_data(; context = nothing)
-    dir = joinpath(@__DIR__, "../")
-    af = ArtifactFile(
-        url = "https://caltech.box.com/shared/static/kbgxc8r2j6uzboxgg9h2ydi5145wdpxh.csv",
-        filename = "sv_62.csv",
+    return joinpath(
+        @clima_artifact("huang_van_genuchten_data", context),
+        "sv_62.csv",
     )
-    dataset = ArtifactWrapper(dir, "sv62", ArtifactFile[af])
-    dataset_path = get_data_folder(dataset)
-    return joinpath(dataset_path, af.filename)
 end
 
 """
@@ -342,14 +380,10 @@ using a plot digitizer; we did not quantify uncertainties introduced
 in this process.
 """
 function mizoguchi1990_soil_freezing_data(; context = nothing)
-    dir = joinpath(@__DIR__, "../")
-    af = ArtifactFile(
-        url = "https://caltech.box.com/shared/static/3xbo4rlam8u390vmucc498cao6wmqlnd.csv",
-        filename = "mizoguchi_all_data.csv",
+    return joinpath(
+        @clima_artifact("mizoguchi_soil_freezing_data", context),
+        "mizoguchi_all_data.csv",
     )
-    dataset = ArtifactWrapper(dir, "mizoguchi", ArtifactFile[af])
-    dataset_path = joinpath(get_data_folder(dataset), "mizoguchi_all_data.csv")
-    return dataset_path
 end
 
 """
@@ -461,7 +495,7 @@ end
 
 Construct the file path for the 60arcsecond orography data NetCDF file.
 
-Downloads the 60arc-second dataset by default. 
+Downloads the 60arc-second dataset by default.
 """
 function earth_orography_file_path(; context = nothing)
     filename = "ETOPO_2022_v1_60s_N90W180_surface.nc"
@@ -476,7 +510,7 @@ end
 
 Construct the file path for the 60arcsecond bedrock depth data NetCDF file.
 
-Downloads the 60arc-second dataset by default. 
+Downloads the 60arc-second dataset by default.
 """
 function bedrock_depth_file_path(; context = nothing)
     filename = "ETOPO_2022_v1_60s_N90W180_bed.nc"
@@ -485,4 +519,17 @@ function bedrock_depth_file_path(; context = nothing)
         filename,
     )
 end
+
+"""
+    era5_surface_data_1979_2024_path(; context)
+Return the path to the folder that contains the ERA5 monthly surface data
+from 1979 to 2024.
+"""
+function era5_surface_data_1979_2024_path(; context = nothing)
+    return @clima_artifact(
+        "era5_monthly_averages_surface_single_level_1979_2024",
+        context
+    )
+end
+
 end

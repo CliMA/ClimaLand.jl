@@ -41,14 +41,12 @@ for FT in (Float32, Float64)
             ylim = (FT(-1), FT(0)),
             zlim = (FT(-100), FT(0)),
             nelements = (2, 2, 10),
-            npolynomial = 1,
             periodic = (true, true),
         ),
         SphericalShell(;
             radius = FT(100),
             depth = FT(3.5),
             nelements = (1, 10),
-            npolynomial = 1,
         ),
     ]
     init_temp(z::FT, value::FT) where {FT} = FT(value)
@@ -89,29 +87,6 @@ for FT in (Float32, Float64)
                 :cosθs,
                 :frac_diff,
             )
-            # test if the correct dss buffers were added to aux.
-            # We only need to add a dss buffer when there is a horizontal
-            # space (spectral element space). So, we check that it is added
-            # in the case of the HybridBox and SphericalShell domains,
-            # and check that it is not added in the single column case.
-            if typeof(model.domain) <: Union{
-                ClimaLand.Domains.HybridBox,
-                ClimaLand.Domains.SphericalShell,
-            }
-                @test typeof(p.dss_buffer_3d) == typeof(
-                    ClimaCore.Spaces.create_dss_buffer(
-                        ClimaCore.Fields.zeros(bucket_domain.space.subsurface),
-                    ),
-                )
-                @test typeof(p.dss_buffer_2d) == typeof(
-                    ClimaCore.Spaces.create_dss_buffer(
-                        ClimaCore.Fields.zeros(bucket_domain.space.surface),
-                    ),
-                )
-            else
-                @test propertynames(p) == (:bucket, :drivers)
-            end
-
 
             Y.bucket.T .= init_temp.(coords.subsurface.z, FT(280))
             Y.bucket.W .= 0.0 # no moisture

@@ -198,6 +198,9 @@ function ClimaLand.make_compute_exp_tendency(
     function compute_exp_tendency!(dY, Y, p, t)
         z = model.domain.fields.z
 
+        dY.soil.∫F_vol_liq_water_dt .= 0
+        dY.soil.∫F_e_dt .= 0
+
         # Don't update the prognostic variables we're stepping implicitly
         dY.soil.ϑ_l .= 0
         dY.soil.ρe_int .= 0
@@ -215,9 +218,12 @@ function ClimaLand.make_compute_exp_tendency(
             p,
             z,
         )
-        # Source terms
+        # Explicitly treated source terms
+        # These change dY by +=, which is why we ".=" them above
         for src in model.sources
-            ClimaLand.source!(dY, src, Y, p, model)
+            if src.explicit
+                ClimaLand.source!(dY, src, Y, p, model)
+            end
         end
     end
     return compute_exp_tendency!
@@ -241,9 +247,10 @@ function ClimaLand.make_compute_imp_tendency(
         z = model.domain.fields.z
         rre_top_flux_bc = p.soil.top_bc.water
         rre_bottom_flux_bc = p.soil.bottom_bc.water
+        @. dY.soil.∫F_vol_liq_water_dt = -(rre_top_flux_bc - rre_bottom_flux_bc) # These fluxes appear in implicit terms, we step them implicitly
         heat_top_flux_bc = p.soil.top_bc.heat
         heat_bottom_flux_bc = p.soil.bottom_bc.heat
-
+        @. dY.soil.∫F_e_dt = -(heat_top_flux_bc - heat_bottom_flux_bc) # These fluxes appear in implicit terms, we step them implicitly
         interpc2f = Operators.InterpolateC2F()
         gradc2f = Operators.GradientC2F()
 
@@ -284,8 +291,15 @@ function ClimaLand.make_compute_imp_tendency(
                 ) * gradc2f(p.soil.ψ + z),
             )
 
-        # Don't update the prognostic variables we're stepping explicitly
         @. dY.soil.θ_i = 0
+
+        # Source terms
+        # These change dY by +=, which is why we ".=" above
+        for src in model.sources
+            if !src.explicit
+                ClimaLand.source!(dY, src, Y, p, model)
+            end
+        end
     end
     return compute_imp_tendency!
 end
@@ -329,6 +343,29 @@ function ClimaLand.make_compute_jacobian(model::EnergyHydrology{FT}) where {FT}
         ∂ϑres∂ϑ = matrix[@name(soil.ϑ_l), @name(soil.ϑ_l)]
         ∂ρeres∂ρe = matrix[@name(soil.ρe_int), @name(soil.ρe_int)]
         ∂ρeres∂ϑ = matrix[@name(soil.ρe_int), @name(soil.ϑ_l)]
+
+        # Derivatives with respect to ϑ:
+
+        # Precompute intermediate quantities to improve performance
+        # due to fusing of broadcasted expressions involving matrices
+        # First, the gradient of ∂ψ∂ϑ
+        # This term is used again below, so we do not alter it once we have made it
+        @. p.soil.bidiag_matrix_scratch =
+            gradc2f_matrix() ⋅ MatrixFields.DiagonalMatrixRow(
+                ClimaLand.Soil.dψdϑ(
+                    hydrology_cm,
+                    Y.soil.ϑ_l,
+                    ν - Y.soil.θ_i, #ν_eff
+                    θ_r,
+                    S_s,
+                ),
+            )
+        # Now the full Darcy flux term. This term is the one that gets altered with the BC
+        # contribution in place, below
+        @. p.soil.full_bidiag_matrix_scratch =
+            MatrixFields.DiagonalMatrixRow(interpc2f_op(-p.soil.K)) ⋅
+            p.soil.bidiag_matrix_scratch
+
         # If the top BC is a `MoistureStateBC`, add the term from the top BC
         #  flux before applying divergence
         if haskey(p.soil, :dfluxBCdY)
@@ -339,80 +376,47 @@ function ClimaLand.make_compute_jacobian(model::EnergyHydrology{FT}) where {FT}
                     Geometry.Covariant3Vector(zero(FT)),
                 ),
             )
-            # Add term from top boundary condition before applying divergence
             # Note: need to pass 3D field on faces to `topBC_op`. Interpolating `K` to faces
             #  for this is inefficient - we should find a better solution.
-            @. ∂ϑres∂ϑ =
-                -dtγ * (
-                    divf2c_matrix() ⋅ (
-                        MatrixFields.DiagonalMatrixRow(
-                            interpc2f_op(-p.soil.K),
-                        ) ⋅ gradc2f_matrix() ⋅ MatrixFields.DiagonalMatrixRow(
-                            ClimaLand.Soil.dψdϑ(
-                                hydrology_cm,
-                                Y.soil.ϑ_l,
-                                ν - Y.soil.θ_i, #ν_eff
-                                θ_r,
-                                S_s,
-                            ),
-                        ) + MatrixFields.LowerDiagonalMatrixRow(
-                            topBC_op(
-                                Geometry.Covariant3Vector(
-                                    zero(interpc2f_op(p.soil.K)),
-                                ),
-                            ),
-                        )
-                    )
-                ) - (I,)
-        else
-            @. ∂ϑres∂ϑ =
-                -dtγ * (
-                    divf2c_matrix() ⋅
-                    MatrixFields.DiagonalMatrixRow(interpc2f_op(-p.soil.K)) ⋅
-                    gradc2f_matrix() ⋅ MatrixFields.DiagonalMatrixRow(
-                        ClimaLand.Soil.dψdϑ(
-                            hydrology_cm,
-                            Y.soil.ϑ_l,
-                            ν - Y.soil.θ_i, #ν_eff
-                            θ_r,
-                            S_s,
-                        ),
-                    )
-                ) - (I,)
+            @. p.soil.topBC_scratch = topBC_op(
+                Geometry.Covariant3Vector(zero(interpc2f_op(p.soil.K))),
+            )
+            @. p.soil.full_bidiag_matrix_scratch +=
+                MatrixFields.LowerDiagonalMatrixRow(p.soil.topBC_scratch)
         end
-        @. ∂ρeres∂ϑ =
-            -dtγ * (
-                divf2c_matrix() ⋅ MatrixFields.DiagonalMatrixRow(
-                    -interpc2f_op(
-                        volumetric_internal_energy_liq(
-                            p.soil.T,
-                            model.parameters.earth_param_set,
-                        ) * p.soil.K,
-                    ),
-                ) ⋅ gradc2f_matrix() ⋅ MatrixFields.DiagonalMatrixRow(
-                    ClimaLand.Soil.dψdϑ(
-                        hydrology_cm,
-                        Y.soil.ϑ_l,
-                        ν - Y.soil.θ_i, #ν_eff
-                        θ_r,
-                        S_s,
-                    ),
-                )
-            ) - (I,)
 
+        @. ∂ϑres∂ϑ =
+            -dtγ * (divf2c_matrix() ⋅ p.soil.full_bidiag_matrix_scratch) - (I,)
+
+        # Now create the flux term for ∂ρe∂ϑ using bidiag_matrix_scratch
+        # This overwrites full_bidiag_matrix_scratch
+        @. p.soil.full_bidiag_matrix_scratch =
+            MatrixFields.DiagonalMatrixRow(
+                -interpc2f_op(
+                    volumetric_internal_energy_liq(
+                        p.soil.T,
+                        model.parameters.earth_param_set,
+                    ) * p.soil.K,
+                ),
+            ) ⋅ p.soil.bidiag_matrix_scratch
+        @. ∂ρeres∂ϑ =
+            -dtγ * (divf2c_matrix() ⋅ p.soil.full_bidiag_matrix_scratch) - (I,)
+
+        # Now overwrite bidiag_matrix_scratch and full_bidiag scratch for the ρe ρe bidiagonal
+        @. p.soil.bidiag_matrix_scratch =
+            gradc2f_matrix() ⋅ MatrixFields.DiagonalMatrixRow(
+                1 / ClimaLand.Soil.volumetric_heat_capacity(
+                    p.soil.θ_l,
+                    Y.soil.θ_i,
+                    ρc_ds,
+                    earth_param_set,
+                ),
+            )
+        @. p.soil.full_bidiag_matrix_scratch =
+            MatrixFields.DiagonalMatrixRow(interpc2f_op(-p.soil.κ)) ⋅
+            p.soil.bidiag_matrix_scratch
         @. ∂ρeres∂ρe =
-            -dtγ * (
-                divf2c_matrix() ⋅
-                MatrixFields.DiagonalMatrixRow(interpc2f_op(-p.soil.κ)) ⋅
-                gradc2f_matrix() ⋅ MatrixFields.DiagonalMatrixRow(
-                    1 / ClimaLand.Soil.volumetric_heat_capacity(
-                        p.soil.θ_l,
-                        Y.soil.θ_i,
-                        ρc_ds,
-                        earth_param_set,
-                    ),
-                )
-            ) - (I,)
+            -dtγ * (divf2c_matrix() ⋅ p.soil.full_bidiag_matrix_scratch) - (I,)
     end
     return compute_jacobian!
 end
@@ -463,7 +467,8 @@ end
 A function which returns the names of the prognostic variables
 of `EnergyHydrology`.
 """
-ClimaLand.prognostic_vars(soil::EnergyHydrology) = (:ϑ_l, :θ_i, :ρe_int)
+ClimaLand.prognostic_vars(soil::EnergyHydrology) =
+    (:ϑ_l, :θ_i, :ρe_int, :∫F_vol_liq_water_dt, :∫F_e_dt)
 
 """
     prognostic_types(soil::EnergyHydrology{FT}) where {FT}
@@ -471,10 +476,11 @@ ClimaLand.prognostic_vars(soil::EnergyHydrology) = (:ϑ_l, :θ_i, :ρe_int)
 A function which returns the types of the prognostic variables
 of `EnergyHydrology`.
 """
-ClimaLand.prognostic_types(soil::EnergyHydrology{FT}) where {FT} = (FT, FT, FT)
+ClimaLand.prognostic_types(soil::EnergyHydrology{FT}) where {FT} =
+    (FT, FT, FT, FT, FT)
 
 ClimaLand.prognostic_domain_names(soil::EnergyHydrology) =
-    (:subsurface, :subsurface, :subsurface)
+    (:subsurface, :subsurface, :subsurface, :surface, :surface)
 """
     auxiliary_vars(soil::EnergyHydrology)
 
@@ -482,11 +488,15 @@ A function which returns the names of the auxiliary variables
 of `EnergyHydrology`.
 """
 ClimaLand.auxiliary_vars(soil::EnergyHydrology) = (
+    :total_water,
+    :total_energy,
     :K,
     :ψ,
     :θ_l,
     :T,
     :κ,
+    :bidiag_matrix_scratch,
+    :full_bidiag_matrix_scratch,
     boundary_vars(soil.boundary_conditions.top, ClimaLand.TopBoundary())...,
     boundary_vars(
         soil.boundary_conditions.bottom,
@@ -506,6 +516,10 @@ ClimaLand.auxiliary_types(soil::EnergyHydrology{FT}) where {FT} = (
     FT,
     FT,
     FT,
+    FT,
+    FT,
+    MatrixFields.BidiagonalMatrixRow{Geometry.Covariant3Vector{FT}},
+    MatrixFields.BidiagonalMatrixRow{Geometry.Covariant3Vector{FT}},
     boundary_var_types(
         soil,
         soil.boundary_conditions.top,
@@ -519,11 +533,15 @@ ClimaLand.auxiliary_types(soil::EnergyHydrology{FT}) where {FT} = (
 )
 
 ClimaLand.auxiliary_domain_names(soil::EnergyHydrology) = (
+    :surface,
+    :surface,
     :subsurface,
     :subsurface,
     :subsurface,
     :subsurface,
     :subsurface,
+    :subsurface_face,
+    :subsurface_face,
     boundary_var_domain_names(
         soil.boundary_conditions.top,
         ClimaLand.TopBoundary(),
@@ -616,6 +634,9 @@ function ClimaLand.make_update_aux(model::EnergyHydrology)
             )
         @. p.soil.ψ =
             pressure_head(hydrology_cm, θ_r, Y.soil.ϑ_l, ν - Y.soil.θ_i, S_s)
+
+        total_liq_water_vol_per_area!(p.soil.total_water, model, Y, p, t)
+        total_energy_per_area!(p.soil.total_energy, model, Y, p, t)
     end
     return update_aux!
 end
@@ -623,9 +644,12 @@ end
 """
     PhaseChange{FT} <: AbstractSoilSource{FT}
 
-PhaseChange source type.
+PhaseChange source type; treated explicitly in all
+prognostic variables.
 """
-struct PhaseChange{FT} <: AbstractSoilSource{FT} end
+@kwdef struct PhaseChange{FT} <: AbstractSoilSource{FT}
+    explicit::Bool = true
+end
 
 """
      source!(dY::ClimaCore.Fields.FieldVector,
@@ -635,7 +659,8 @@ struct PhaseChange{FT} <: AbstractSoilSource{FT} end
              model
              )
 
-Computes the source terms for phase change.
+Computes the source terms for phase change
+explicitly in time.
 
 """
 function ClimaLand.source!(
@@ -703,6 +728,9 @@ function ClimaLand.source!(
             _T_freeze,
             _grav,
         )
+
+    # These source/sink terms conserve total water, so we do not include them when checking conservation because their
+    # contribution is zero by design.
 end
 
 
@@ -710,10 +738,12 @@ end
     SoilSublimation{FT} <: AbstractSoilSource{FT}
 
 Soil Sublimation source type. Used to defined a method
-of `ClimaLand.source!` for soil sublimation.
+of `ClimaLand.source!` for soil sublimation; treated implicitly
+in ϑ_l, ρe_int but explicitly in θ_i.
 """
-struct SoilSublimation{FT} <: AbstractSoilSource{FT} end
-
+@kwdef struct SoilSublimation{FT} <: AbstractSoilSource{FT}
+    explicit::Bool = false
+end
 """
      source!(dY::ClimaCore.Fields.FieldVector,
              src::SoilSublimation{FT},
@@ -739,7 +769,8 @@ function ClimaLand.source!(
     Δz_top = model.domain.fields.Δz_top # this returns the center-face distance, not layer thickness
     @. dY.soil.θ_i +=
         -p.soil.turbulent_fluxes.vapor_flux_ice * _ρ_l / _ρ_i *
-        heaviside(z + 2 * Δz_top) # only apply to top layer, recall that z is negative
+        heaviside(z + 2 * Δz_top) / (2 * Δz_top) # only apply to top layer, recall that z is negative
+    @. dY.soil.∫F_vol_liq_water_dt += -p.soil.turbulent_fluxes.vapor_flux_ice # The integral of the source is designed to be this
 end
 
 ## The functions below are required to be defined
@@ -831,8 +862,6 @@ function ClimaLand.get_drivers(model::EnergyHydrology)
     end
 end
 
-
-
 function turbulent_fluxes!(
     dest,
     atmos::PrescribedAtmosphere,
@@ -863,6 +892,7 @@ function turbulent_fluxes!(
     )
     dest .=
         soil_turbulent_fluxes_at_a_point.(
+            Val(false), # return_extra_fluxes
             T_sfc,
             θ_l_sfc,
             θ_i_sfc,
@@ -887,7 +917,51 @@ function turbulent_fluxes!(
 end
 
 """
-    soil_turbulent_fluxes_at_a_point(
+    soil_turbulent_fluxes_at_a_point(return_extra_fluxes, args...;)
+
+This is a wrapper function that allows us to dispatch on the type of `return_extra_fluxes`
+as we compute the soil turbulent fluxes pointwise. This is needed because space for the
+extra fluxes is only allocated in the cache when running with a `CoupledAtmosphere`.
+The function `soil_compute_turbulent_fluxes_at_a_point` does the actual flux computation.
+
+The `return_extra_fluxes` argument indicates whether to return the following:
+- momentum fluxes (`ρτxz`, `ρτyz`)
+- buoyancy flux (`buoy_flux`)
+"""
+function soil_turbulent_fluxes_at_a_point(
+    return_extra_fluxes::Val{false},
+    args...,
+)
+    (LH, SH, Ẽ_l, r_ae, Ẽ_i, _, _, _) =
+        soil_compute_turbulent_fluxes_at_a_point(args...)
+    return (
+        lhf = LH,
+        shf = SH,
+        vapor_flux_liq = Ẽ_l,
+        r_ae = r_ae,
+        vapor_flux_ice = Ẽ_i,
+    )
+end
+function soil_turbulent_fluxes_at_a_point(
+    return_extra_fluxes::Val{true},
+    args...,
+)
+    (LH, SH, Ẽ_l, r_ae, Ẽ_i, ρτxz, ρτyz, buoy_flux) =
+        soil_compute_turbulent_fluxes_at_a_point(args...)
+    return (
+        lhf = LH,
+        shf = SH,
+        vapor_flux_liq = Ẽ_l,
+        r_ae = r_ae,
+        vapor_flux_ice = Ẽ_i,
+        ρτxz = ρτxz,
+        ρτyz = ρτyz,
+        buoy_flux = buoy_flux,
+    )
+end
+
+"""
+    soil_compute_turbulent_fluxes_at_a_point(
                                 T_sfc::FT,
                                 θ_l_sfc::FT,
                                 θ_i_sfc::FT,
@@ -906,7 +980,7 @@ end
                                 Ω::FT,
                                 γ::FT,
                                 γT_ref,::FT
-                                earth_param_set::EP
+                                earth_param_set::EP;
                                ) where {FT <: AbstractFloat, C, EP}
 
 Computes turbulent surface fluxes for soil at a point on a surface given
@@ -925,7 +999,7 @@ a tuple with self explanatory keys. If the temperature is above the freezing poi
 the vapor flux comes from liquid water; if the temperature is below the freezing
 point, it comes from the soil ice.
 """
-function soil_turbulent_fluxes_at_a_point(
+function soil_compute_turbulent_fluxes_at_a_point(
     T_sfc::FT,
     θ_l_sfc::FT,
     θ_i_sfc::FT,
@@ -936,7 +1010,7 @@ function soil_turbulent_fluxes_at_a_point(
     θ_r_sfc::FT,
     K_sat_sfc::FT,
     thermal_state_air::Thermodynamics.PhaseEquil{FT},
-    u_air::FT,
+    u_air::Union{FT, SVector{2, FT}},
     h_air::FT,
     gustiness::FT,
     z_0m::FT,
@@ -957,9 +1031,13 @@ function soil_turbulent_fluxes_at_a_point(
     _grav::FT = LP.grav(earth_param_set)
 
     # Atmos air state
+    # u is already a vector when we get it from a coupled atmosphere, otherwise we need to make it one
+    if u_air isa FT
+        u_air = SVector{2, FT}(u_air, 0)
+    end
     state_air = SurfaceFluxes.StateValues(
         h_air - d_sfc - h_sfc,
-        SVector{2, FT}(u_air, 0),
+        u_air,
         thermal_state_air,
     )
     q_air::FT =
@@ -1087,15 +1165,16 @@ function soil_turbulent_fluxes_at_a_point(
 
     # Heat fluxes for soil
     LH::FT = _LH_v0 * (Ẽ_l + Ẽ_i) * _ρ_liq
-    # Derivatives
-    dshfdT::FT = 0
-    dlhfdT::FT = 0
+
     return (
-        lhf = LH,
-        shf = SH,
-        vapor_flux_liq = Ẽ_l,
-        r_ae = r_ae,
-        vapor_flux_ice = Ẽ_i,
+        LH,
+        SH,
+        Ẽ_l,
+        r_ae,
+        Ẽ_i,
+        conditions.ρτxz,
+        conditions.ρτyz,
+        conditions.buoy_flux,
     )
 end
 
@@ -1151,5 +1230,68 @@ function ClimaLand.total_energy_per_area!(
     t,
 )
     ClimaCore.Operators.column_integral_definite!(surface_field, Y.soil.ρe_int)
+    return nothing
+end
+
+"""
+    coupler_compute_turbulent_fluxes!(dest, atmos::CoupledAtmosphere, model::EnergyHydrology, Y::ClimaCore.Fields.FieldVector, p::NamedTuple, t)
+
+This function computes the turbulent surface fluxes for a coupled simulation.
+This function is very similar to the `EnergyHydrology` method of `turbulent_fluxes!`,
+but it is used with a `CoupledAtmosphere` which contains all the necessary
+atmosphere fields to compute the surface fluxes, rather than some being stored in `p`.
+
+This function is intended to be called by ClimaCoupler.jl when computing
+fluxes for a coupled simulation with the integrated land model.
+"""
+function ClimaLand.coupler_compute_turbulent_fluxes!(
+    dest,
+    atmos::CoupledAtmosphere,
+    model::EnergyHydrology,
+    Y::ClimaCore.Fields.FieldVector,
+    p::NamedTuple,
+    t,
+)
+    # Obtain surface quantities needed for computation; these should not allocate
+    T_sfc = ClimaLand.surface_temperature(model, Y, p, t)
+    h_sfc = ClimaLand.surface_height(model, Y, p)
+    d_sfc = ClimaLand.displacement_height(model, Y, p)
+    (; K_sat, ν, θ_r, hydrology_cm, z_0m, z_0b, Ω, γ, γT_ref, earth_param_set) =
+        model.parameters
+    hydrology_cm_sfc = ClimaLand.Domains.top_center_to_surface(hydrology_cm)
+    K_sat_sfc = ClimaLand.Domains.top_center_to_surface(K_sat)
+    θ_i_sfc = ClimaLand.Domains.top_center_to_surface(Y.soil.θ_i)
+    ν_sfc = ClimaLand.Domains.top_center_to_surface(ν)
+    θ_r_sfc = ClimaLand.Domains.top_center_to_surface(θ_r)
+    θ_l_sfc = p.soil.sfc_scratch
+    ClimaLand.Domains.linear_interpolation_to_surface!(
+        θ_l_sfc,
+        p.soil.θ_l,
+        model.domain.fields.z,
+        model.domain.fields.Δz_top,
+    )
+    dest .=
+        soil_turbulent_fluxes_at_a_point.(
+            Val(true), # return_extra_fluxes
+            T_sfc,
+            θ_l_sfc,
+            θ_i_sfc,
+            h_sfc,
+            d_sfc,
+            hydrology_cm_sfc,
+            ν_sfc,
+            θ_r_sfc,
+            K_sat_sfc,
+            atmos.thermal_state,
+            atmos.u,
+            atmos.h,
+            atmos.gustiness,
+            z_0m,
+            z_0b,
+            Ω,
+            γ,
+            γT_ref,
+            Ref(earth_param_set),
+        )
     return nothing
 end

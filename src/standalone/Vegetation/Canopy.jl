@@ -356,9 +356,42 @@ function initialize_auxiliary(model::CanopyModel{FT}, coords) where {FT}
     end
     # `p_state_list` contains `nothing` for components with no auxiliary
     #  variables, which we need to filter out before constructing `p`
-    p = (; name(model) => filter_nt(NamedTuple{components}(p_state_list)))
+    # We also add in boundary variables here.
+    p = (;
+        name(model) => (;
+            filter_nt(NamedTuple{components}(p_state_list))...,
+            initialize_boundary_vars(model, coords)...,
+        )
+    )
     p = ClimaLand.add_dss_buffer_to_aux(p, model.domain)
     return p
+end
+
+"""
+    initialize_boundary_vars(model::CanopyModel{FT}, coords)
+
+Add boundary condition-related variables to the cache.
+This calls functions defined in canopy_boundary_fluxes.jl
+which dispatch on the boundary condition type to add the correct variables.
+"""
+function initialize_boundary_vars(model::CanopyModel{FT}, coords) where {FT}
+    vars = boundary_vars(model.boundary_conditions, ClimaLand.TopBoundary())
+    types = boundary_var_types(
+        model,
+        model.boundary_conditions,
+        ClimaLand.TopBoundary(),
+    )
+    domains = boundary_var_domain_names(
+        model.boundary_conditions,
+        ClimaLand.TopBoundary(),
+    )
+    additional_aux = map(zip(types, domains)) do (T, domain)
+        zero_instance = ClimaCore.RecursiveApply.rzero(T)
+        f = map(_ -> zero_instance, getproperty(coords, domain))
+        fill!(ClimaCore.Fields.field_values(f), zero_instance)
+        f
+    end
+    return NamedTuple{vars}(additional_aux)
 end
 
 """
@@ -417,7 +450,6 @@ function ClimaLand.make_update_aux(
         fa = p.canopy.hydraulics.fa
         par_d = p.canopy.radiative_transfer.par_d
         nir_d = p.canopy.radiative_transfer.nir_d
-        frac_diff = p.drivers.frac_diff
 
         bc = canopy.boundary_conditions
         # Current atmospheric conditions
@@ -450,18 +482,14 @@ function ClimaLand.make_update_aux(
         @. p.canopy.radiative_transfer.ϵ =
             canopy.radiative_transfer.parameters.ϵ_canopy *
             (1 - exp(-(LAI + SAI))) #from CLM 5.0, Tech note 4.20
-        p.canopy.radiative_transfer.G .= compute_G(G_Function, cosθs)
         RT = canopy.radiative_transfer
         compute_PAR!(par_d, RT, bc.radiation, p, t)
         compute_NIR!(nir_d, RT, bc.radiation, p, t)
-        K = p.canopy.radiative_transfer.K
-        @. K = extinction_coeff(p.canopy.radiative_transfer.G, cosθs)
 
         compute_fractional_absorbances!(
             p,
             RT,
             LAI,
-            K,
             ground_albedo_PAR(
                 Val(bc.prognostic_land_components),
                 bc.ground,
@@ -476,8 +504,6 @@ function ClimaLand.make_update_aux(
                 p,
                 t,
             ),
-            cosθs,
-            frac_diff,
         )
 
         # update plant hydraulics aux
@@ -573,7 +599,7 @@ function ClimaLand.make_update_aux(
             energy_per_mole_photon_par,
             par_d,
         )
-        @. GPP = compute_GPP(An, K, LAI, Ω)
+        @. GPP = compute_GPP(An, extinction_coeff(G_Function, cosθs), LAI, Ω)
         @. gs = medlyn_conductance(g0, Drel, medlyn_factor, An, c_co2_air)
         @. rs_canopy = 1 / upscale_leaf_conductance(gs, LAI, T_air, R, P_air)
         # update autotrophic respiration
@@ -584,7 +610,7 @@ function ClimaLand.make_update_aux(
             LAI,
             SAI,
             RAI,
-            K,
+            extinction_coeff(G_Function, cosθs),
             Ω,
             An,
             Rd,

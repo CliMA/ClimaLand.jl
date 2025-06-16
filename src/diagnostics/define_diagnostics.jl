@@ -5,6 +5,46 @@ Calls `add_diagnostic_variable!` for all available variables specializing the
 compute function for `land_model`.
 """
 function define_diagnostics!(land_model)
+    ### Conservation ###
+    add_diagnostic_variable!(
+        short_name = "epa",
+        long_name = "Energy per unit ground area",
+        standard_name = "energy_per_area",
+        units = "J m^-2",
+        comments = "Vertically integrated volumetric energy per area",
+        compute! = (out, Y, p, t) ->
+            compute_energy_per_area!(out, Y, p, t, land_model),
+    )
+
+    add_diagnostic_variable!(
+        short_name = "wvpa",
+        long_name = "Water volume per unit ground area",
+        standard_name = "water_volume_per_area",
+        units = "m^3 m^-2",
+        comments = "Vertically integrated volumetric water per area",
+        compute! = (out, Y, p, t) ->
+            compute_water_volume_per_area!(out, Y, p, t, land_model),
+    )
+
+    add_diagnostic_variable!(
+        short_name = "epac",
+        long_name = "Energy per unit ground area change",
+        standard_name = "energy_per_area_change",
+        units = "J m^-2",
+        comments = "Expected change in vertically integrated volumetric energy per area",
+        compute! = (out, Y, p, t) ->
+            compute_energy_per_area_change!(out, Y, p, t, land_model),
+    )
+
+    add_diagnostic_variable!(
+        short_name = "wvpac",
+        long_name = "Water volume per unit ground area change",
+        standard_name = "water_volume_per_area_change",
+        units = "m^3 m^-2",
+        comments = "Expected change in vertically integrated volumetric water per area",
+        compute! = (out, Y, p, t) ->
+            compute_water_volume_per_area_change!(out, Y, p, t, land_model),
+    )
 
     ### BucketModel ###
 
@@ -541,8 +581,8 @@ function define_diagnostics!(land_model)
     # Net shortwave radiation
     add_diagnostic_variable!(
         short_name = "swd",
-        long_name = "Short Longwave Radiation",
-        standard_name = "short_longwave_radiation",
+        long_name = "Shortwave Radiation Downwards",
+        standard_name = "down_shortwave_radiation",
         units = "W m^-2",
         comments = "The downwelling shortwave radiation at the surface.",
         compute! = (out, Y, p, t) ->
@@ -820,12 +860,12 @@ function define_diagnostics!(land_model)
 
     add_diagnostic_variable!(
         short_name = "iwc",
-        long_name = "Integrated Soil Water Content in first 1m",
-        standard_name = "soil_1m_water_content",
-        units = "m",
-        comments = "The integrated water content to a depth of 1m",
+        long_name = "Integrated Soil Water Mass in first 10cm",
+        standard_name = "soil_10cm_water_mass",
+        units = "kg/m^2",
+        comments = "The integrated water mass to a depth of 10cm",
         compute! = (out, Y, p, t) ->
-            compute_1m_water_content!(out, Y, p, t, land_model),
+            compute_10cm_water_mass!(out, Y, p, t, land_model),
     )
 
     # Plant water content
@@ -887,4 +927,14 @@ function define_diagnostics!(land_model)
             compute_snow_depth!(out, Y, p, t, land_model),
     )
 
+    # Snow cover fraction
+    add_diagnostic_variable!(
+        short_name = "snowc",
+        long_name = "Snow cover fraction",
+        standard_name = "snow_cover_fraction",
+        units = "",
+        comments = "The snow cover fraction",
+        compute! = (out, Y, p, t) ->
+            compute_snow_cover_fraction!(out, Y, p, t, land_model),
+    )
 end

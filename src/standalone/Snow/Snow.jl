@@ -3,6 +3,7 @@ module Snow
 using DocStringExtensions
 import ...Parameters as LP
 using ClimaCore
+using LazyBroadcast: @lazy
 using Thermodynamics
 using ClimaLand
 using ClimaLand:
@@ -33,7 +34,13 @@ import ClimaLand:
     get_drivers,
     total_energy_per_area!,
     total_liq_water_vol_per_area!
-export SnowParameters, SnowModel, AtmosDrivenSnowBC, snow_boundary_fluxes!
+export SnowParameters,
+    SnowModel,
+    AtmosDrivenSnowBC,
+    snow_boundary_fluxes!,
+    ConstantAlbedoModel,
+    ZenithAngleAlbedoModel,
+    WuWuSnowCoverFractionModel
 
 """
     AbstractSnowModel{FT} <: ClimaLand.AbstractExpModel{FT}
@@ -74,6 +81,151 @@ end
 
 
 """
+    AbstractAlbedoModel{FT}
+
+Defines the model type for albedo parameterization
+for use within an `AbstractSnowModel` type. 
+
+These parameterizations are stored in parameters.α_snow, and 
+are used to update the value of p.snow.α_snow (the broadband
+albedo of the snow at a point).
+stored 
+"""
+abstract type AbstractAlbedoModel{FT <: AbstractFloat} end
+
+"""
+    ConstantAlbedoModel{FT <: AbstractFloat} <: AbstractAlbedoModel{FT}
+
+Establishes the albedo parameterization where albedo is treated as a
+constant spatially and temporally.
+"""
+struct ConstantAlbedoModel{FT} <: AbstractAlbedoModel{FT}
+    "Albedo of snow (unitless)"
+    α::FT
+end
+
+"""
+    ZenithAngleAlbedoModel{FT <: AbstractFloat} <: AbstractAlbedoModel{FT}
+
+Establishes the albedo parameterization where albedo
+depends on the cosine of the zenith angle of the sun, as
+    α = f(x) * [α_0 + Δα*exp(-k*cos(θs))],
+
+where cos θs is the cosine of the zenith angle, α_0, Δα, and k 
+are free parameters. The factor out front is a function of 
+x = ρ_snow/ρ_liq, of the form f(x) = min(1 - β(x-x0), 1). The parameters
+x0 ∈ [0,1] and β ∈ [0,1] are free. Choose β = 0 to remove this dependence on snow density.
+
+
+Note: If this choice is used, the field cosθs must appear in the cache
+p.drivers. This is available through the PrescribedRadiativeFluxes object.
+"""
+struct ZenithAngleAlbedoModel{FT} <: AbstractAlbedoModel{FT}
+    "Free parameter controlling the minimum snow albedo"
+    α_0::FT
+    "Free parameter controlling the snow albedo when θs = 90∘"
+    Δα::FT
+    "Rate at which albedo drops to its minimum value with zenith angle"
+    k::FT
+    "Rate governing how snow albedo changes with snow density, a proxy for grain size and liquid water content, ∈ [0,1]"
+    β::FT
+    "Value of relative snow density ρ_snow/ρ_liq at which snow density begins to decrease albedo, ∈ [0,1]"
+    x0::FT
+end
+
+function ZenithAngleAlbedoModel(
+    α_0::FT,
+    Δα::FT,
+    k::FT;
+    β = FT(0),
+    x0 = FT(0.2),
+) where {FT}
+    @assert 0 ≤ x0 ≤ 1
+    @assert 0 ≤ β ≤ 1
+    ZenithAngleAlbedoModel(α_0, Δα, k, β, x0)
+end
+
+"""
+    AbstractSnowCoverFractionModel{FT}
+
+Defines the model type for snow cover parameterization
+for use within an `AbstractSnowModel` type. 
+
+These parameterizations are stored in parameters.scf, and 
+are used to update the value of p.snow.snow_cover_fraction.
+"""
+abstract type AbstractSnowCoverFractionModel{FT <: AbstractFloat} end
+
+"""
+    WuWuSnowCoverFractionModel{FT <: AbstractFloat} <: AbstractSnowCoverFractionModel{FT}
+
+Establishes the snow cover parameterization of Wu, Tongwen, and 
+Guoxiong Wu. "An empirical formula to compute
+snow cover fraction in GCMs." Advances in Atmospheric Sciences
+21 (2004): 529-535,
+    scf = min(β_scf * z̃ / (z̃ + 1), 1),
+
+where z̃ = snow depth per ground area / 0.106 m, and β_scf
+is computed using a resolution dependent formula:
+β_scf = max(β0 - γ(horz_degree_res - 1.5), β_min), where horz_degree_res is the
+horizontal resolution of the simulation, in degrees, and β0, β_min and γ
+are unitless. It is correct to think of β0, β_min, γ, and z0 as the free
+parameters, while horz_degree_res is provided and β_scf is determined.
+
+β0, β_min, γ, and β_scf must be > 0. 
+
+From Wu and Wu et al, β0 ∼ 1.77 and γ ∼ 0.08, over a range of 1.5-4.5∘
+"""
+struct WuWuSnowCoverFractionModel{FT} <: AbstractSnowCoverFractionModel{FT}
+    "The value used to normalize snow depth when computing snow cover fraction (m)"
+    z0::FT
+    "The value of β_scf (unitless; computed from other parameters)"
+    β_scf::FT
+    "Free parameter controlling the snow cover scaling change with resolution (1/degrees)"
+    γ::FT
+    "The value of β_scf at 1.5∘ horizontal resolution (unitless)"
+    β0::FT
+    "The minimum of β_scf as horizontal resolution gets coarser (unitless)"
+    β_min::FT
+    "The horizontal resolution of the model, in degrees"
+    horz_degree_res::FT
+    function WuWuSnowCoverFractionModel(
+        z0::FT,
+        β_scf::FT,
+        γ::FT,
+        β0::FT,
+        β_min::FT,
+        horz_degree_res::FT,
+    ) where {FT}
+        expected_β_scf = max(β0 - γ * (horz_degree_res - FT(1.5)), β_min)
+        @assert z0 > eps(FT)
+        @assert expected_β_scf ≈ β_scf
+        @assert β0 > eps(FT)
+        @assert β_min > eps(FT)
+        @assert γ > eps(FT)
+        @assert horz_degree_res > eps(FT)
+        new{FT}(z0, β_scf, γ, β0, β_min, horz_degree_res)
+    end
+end
+
+function WuWuSnowCoverFractionModel(
+    γ::FT,
+    β0::FT,
+    β_min::FT,
+    horz_degree_res::FT;
+    z0 = FT(0.106),
+) where {FT}
+    @assert β_min > eps(FT)
+    @assert β0 > eps(FT)
+    @assert γ > eps(FT)
+    @assert z0 > eps(FT)
+    @assert horz_degree_res > eps(FT)
+    β_scf = max(β0 - γ * (horz_degree_res - FT(1.5)), β_min)
+    return WuWuSnowCoverFractionModel(z0, β_scf, γ, β0, β_min, horz_degree_res)
+end
+
+
+"""
     SnowParameters{FT <: AbstractFloat, PSE}
 
 A struct for storing parameters of the `SnowModel`.
@@ -90,6 +242,8 @@ $(DocStringExtensions.FIELDS)
 Base.@kwdef struct SnowParameters{
     FT <: AbstractFloat,
     DM <: AbstractDensityModel,
+    AM <: AbstractAlbedoModel,
+    SCFM <: AbstractSnowCoverFractionModel,
     PSE,
 }
     "Choice of parameterization for snow density"
@@ -98,8 +252,8 @@ Base.@kwdef struct SnowParameters{
     z_0m::FT
     "Roughness length over snow for scalars (m)"
     z_0b::FT
-    "Albedo of snow (unitless)"
-    α_snow::FT
+    "Albedo parameterization for snow"
+    α_snow::AM
     "Emissivity of snow (unitless)"
     ϵ_snow::FT
     "Volumetric holding capacity of water in snow (unitless)"
@@ -112,6 +266,8 @@ Base.@kwdef struct SnowParameters{
     Δt::FT
     "Parameter to prevent dividing by zero when computing snow temperature (m)"
     ΔS::FT
+    "Snow cover fraction parameterization"
+    scf::SCFM
     "Clima-wide parameters"
     earth_param_set::PSE
 end
@@ -121,12 +277,13 @@ end
                       density = MinimumDensityModel(200),
                       z_0m = FT(0.0024),
                       z_0b = FT(0.00024),
-                      α_snow = FT(0.8),
+                      α_snow = ConstantAlbedoModel(FT(0.8)),
                       ϵ_snow = FT(0.99),
                       θ_r = FT(0.08),
                       Ksat = FT(1e-3),
                       κ_ice = FT(2.21),
                       ΔS = FT(0.1),
+                      scf = WuWuSnowCoverFractionModel(FT(0.106),FT(1.81), FT(0.08), FT(1.77), FT(1.0), FT(1),),
                       earth_param_set::PSE) where {FT, PSE}
 
 An outer constructor for `SnowParameters` which supplies defaults for
@@ -137,15 +294,29 @@ function SnowParameters{FT}(
     density::DM = MinimumDensityModel(FT(200)),
     z_0m = FT(0.0024),
     z_0b = FT(0.00024),
-    α_snow = FT(0.8),
+    α_snow::AM = ConstantAlbedoModel(FT(0.8)),
     ϵ_snow = FT(0.99),
     θ_r = FT(0.08),
     Ksat = FT(1e-3),
     κ_ice = FT(2.21),
     ΔS = FT(0.1),
+    scf::SCFM = WuWuSnowCoverFractionModel(
+        FT(0.106),
+        FT(1.81),
+        FT(0.08),
+        FT(1.77),
+        FT(1),
+        FT(1),
+    ),
     earth_param_set::PSE,
-) where {FT <: AbstractFloat, DM <: AbstractDensityModel, PSE}
-    return SnowParameters{FT, DM, PSE}(
+) where {
+    FT <: AbstractFloat,
+    DM <: AbstractDensityModel,
+    AM <: AbstractAlbedoModel,
+    SCFM <: AbstractSnowCoverFractionModel,
+    PSE,
+}
+    return SnowParameters{FT, DM, AM, SCFM, PSE}(
         density,
         z_0m,
         z_0b,
@@ -156,6 +327,7 @@ function SnowParameters{FT}(
         κ_ice,
         float(Δt),
         ΔS,
+        scf,
         earth_param_set,
     )
 end
@@ -266,15 +438,15 @@ such that SWE cannot become negative and U cannot become unphysical. The
 clipped values are what are actually applied as boundary fluxes, and are stored in
 `applied_` fluxes.
 """
-auxiliary_vars(::SnowModel) = (
+auxiliary_vars(snow::SnowModel) = (
     :q_sfc,
     :q_l,
     :κ,
     :T,
     :T_sfc,
     :z_snow,
+    :α_snow,
     :ρ_snow,
-    :turbulent_fluxes,
     :R_n,
     :phase_change_flux,
     :energy_runoff,
@@ -285,17 +457,10 @@ auxiliary_vars(::SnowModel) = (
     :applied_energy_flux,
     :applied_water_flux,
     :snow_cover_fraction,
+    boundary_vars(snow.boundary_conditions, ClimaLand.TopBoundary())...,
 )
 
-auxiliary_types(::SnowModel{FT}) where {FT} = (
-    FT,
-    FT,
-    FT,
-    FT,
-    FT,
-    FT,
-    FT,
-    NamedTuple{(:lhf, :shf, :vapor_flux, :r_ae), Tuple{FT, FT, FT, FT}},
+auxiliary_types(snow::SnowModel{FT}) where {FT} = (
     FT,
     FT,
     FT,
@@ -306,9 +471,22 @@ auxiliary_types(::SnowModel{FT}) where {FT} = (
     FT,
     FT,
     FT,
+    FT,
+    FT,
+    FT,
+    FT,
+    FT,
+    FT,
+    FT,
+    FT,
+    boundary_var_types(
+        snow,
+        snow.boundary_conditions,
+        ClimaLand.TopBoundary(),
+    )...,
 )
 
-auxiliary_domain_names(::SnowModel) = (
+auxiliary_domain_names(snow::SnowModel) = (
     :surface,
     :surface,
     :surface,
@@ -327,6 +505,10 @@ auxiliary_domain_names(::SnowModel) = (
     :surface,
     :surface,
     :surface,
+    boundary_var_domain_names(
+        snow.boundary_conditions,
+        ClimaLand.TopBoundary(),
+    )...,
 )
 
 
@@ -335,9 +517,7 @@ ClimaLand.name(::SnowModel) = :snow
 function ClimaLand.make_update_aux(model::SnowModel{FT}) where {FT}
     function update_aux!(p, Y, t)
         parameters = model.parameters
-
-        # This has to happen first, since other quantities below depend
-        # on it.
+        # The ordering is important here
         @. p.snow.q_l = liquid_mass_fraction(Y.snow.S, Y.snow.S_l)
 
         update_density_and_depth!(
@@ -348,6 +528,15 @@ function ClimaLand.make_update_aux(model::SnowModel{FT}) where {FT}
             p,
             parameters,
         )
+
+        update_snow_albedo!(
+            p.snow.α_snow,
+            parameters.α_snow,
+            Y,
+            p,
+            t,
+            parameters.earth_param_set,
+        ) # This could depend on ρ_snow
 
         @. p.snow.κ = snow_thermal_conductivity(p.snow.ρ_snow, parameters)
 
@@ -368,7 +557,14 @@ function ClimaLand.make_update_aux(model::SnowModel{FT}) where {FT}
         @. p.snow.energy_runoff =
             p.snow.water_runoff *
             volumetric_internal_energy_liq(p.snow.T, parameters)
-        @. p.snow.snow_cover_fraction = snow_cover_fraction(p.snow.z_snow)
+        update_snow_cover_fraction!(
+            p.snow.snow_cover_fraction,
+            parameters.scf,
+            Y,
+            p,
+            t,
+            parameters.earth_param_set,
+        ) # This depends on z_snow
     end
 end
 

@@ -109,7 +109,6 @@ for FT in (Float32, Float64)
                 ylim = FT.((0, 1)),
                 nelements = (2, 2),
                 periodic = (true, true),
-                npolynomial = 1,
             ),
         ]
 
@@ -139,31 +138,17 @@ for FT in (Float32, Float64)
         )
         lat = FT(0.0) # degree
         long = FT(-180) # degree
+        start_date = DateTime(2005)
 
-        function zenith_angle(
-            t,
-            start_date;
-            latitude = lat,
-            longitude = long,
-            insol_params = earth_param_set.insol_params,
-        )
-            current_datetime = start_date + Dates.Second(round(t))
-            d, δ, η_UTC =
-                FT.(
-                    Insolation.helper_instantaneous_zenith_angle(
-                        current_datetime,
-                        start_date,
-                        insol_params,
-                    )
-                )
-            return Insolation.instantaneous_zenith_angle(
-                d,
-                δ,
-                η_UTC,
-                longitude,
-                latitude,
-            )[1]
-        end
+        zenith_angle =
+            (t, s) -> default_zenith_angle(
+                t,
+                s;
+                insol_params = earth_param_set.insol_params,
+                latitude = lat,
+                longitude = long,
+            )
+
 
         function shortwave_radiation(
             t;
@@ -187,7 +172,6 @@ for FT in (Float32, Float64)
         P_atmos = t -> 1e5 # Pa
         h_atmos = h_int # m
         c_atmos = (t) -> 4.11e-4 # mol/mol
-        start_date = DateTime(2005)
         atmos = PrescribedAtmosphere(
             TimeVaryingInput(liquid_precip),
             TimeVaryingInput(snow_precip),
@@ -364,17 +348,6 @@ for FT in (Float32, Float64)
                 ϑ_l_0 = augmented_liquid_fraction.(plant_ν, S_l)
 
                 Y, p, coords = initialize(model)
-                if typeof(domain) <: ClimaLand.Domains.Point
-                    @test propertynames(p) == (:canopy, :drivers)
-                elseif typeof(domain) <: ClimaLand.Domains.Plane
-                    @test propertynames(p) ==
-                          (:canopy, :dss_buffer_2d, :drivers)
-                    @test typeof(p.dss_buffer_2d) == typeof(
-                        ClimaCore.Spaces.create_dss_buffer(
-                            ClimaCore.Fields.zeros(domain.space.surface),
-                        ),
-                    )
-                end
 
                 dY = similar(Y)
                 for i in 1:(n_stem + n_leaf)
@@ -445,31 +418,16 @@ for FT in (Float32, Float64)
         )
         lat = FT(0.0) # degree
         long = FT(-180) # degree
+        start_date = DateTime(2005)
 
-        function zenith_angle(
-            t,
-            start_date;
-            latitude = lat,
-            longitude = long,
-            insol_params = earth_param_set.insol_params,
-        )
-            current_datetime = start_date + Dates.Second(round(t))
-            d, δ, η_UTC =
-                FT.(
-                    Insolation.helper_instantaneous_zenith_angle(
-                        current_datetime,
-                        start_date,
-                        insol_params,
-                    )
-                )
-            return Insolation.instantaneous_zenith_angle(
-                d,
-                δ,
-                η_UTC,
-                longitude,
-                latitude,
-            )[1]
-        end
+        zenith_angle =
+            (t, s) -> default_zenith_angle(
+                t,
+                s;
+                insol_params = earth_param_set.insol_params,
+                latitude = lat,
+                longitude = long,
+            )
 
         function shortwave_radiation(
             t;
@@ -493,7 +451,6 @@ for FT in (Float32, Float64)
         P_atmos = t -> 1e5 # Pa
         h_atmos = h_int # m
         c_atmos = (t) -> 4.11e-4 # mol/mol
-        start_date = DateTime(2005)
         atmos = PrescribedAtmosphere(
             TimeVaryingInput(liquid_precip),
             TimeVaryingInput(snow_precip),
@@ -589,9 +546,7 @@ for FT in (Float32, Float64)
         set_initial_cache!(p, Y, FT(0.0))
         @test all(parent(p.canopy.hydraulics.fa) .≈ FT(0.0))
         @test all(parent(p.canopy.hydraulics.fa_roots) .≈ FT(0.0))
-        @test all(
-            parent(p.canopy.energy.turbulent_fluxes.transpiration) .≈ FT(0.0),
-        )
+        @test all(parent(p.canopy.turbulent_fluxes.transpiration) .≈ FT(0.0))
         @test all(parent(p.canopy.radiative_transfer.par.abs) .≈ FT(0.0))
         exp_tend! = make_exp_tendency(model)
         exp_tend!(dY, Y, p, FT(0))

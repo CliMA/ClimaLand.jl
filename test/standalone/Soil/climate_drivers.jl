@@ -25,7 +25,6 @@ for FT in (Float32, Float64)
                 ylim = FT.((-1.0, 0.0)),
                 zlim = FT.((-100.0, 0.0)),
                 nelements = (2, 2, 10),
-                npolynomial = 1,
                 periodic = (true, true),
             ),
         ]
@@ -115,6 +114,8 @@ for FT in (Float32, Float64)
                 boundary_conditions = boundary_fluxes,
                 sources = (),
             )
+            @test ClimaComms.context(model) == ClimaComms.context()
+            @test ClimaComms.device(model) == ClimaComms.device()
             drivers = ClimaLand.get_drivers(model)
             @test drivers == (atmos, radiation)
             Y, p, coords = initialize(model)
@@ -136,11 +137,15 @@ for FT in (Float32, Float64)
             @test propertynames(p.soil.turbulent_fluxes) ==
                   (:lhf, :shf, :vapor_flux_liq, :r_ae, :vapor_flux_ice)
             @test propertynames(p.soil) == (
+                :total_water,
+                :total_energy,
                 :K,
                 :ψ,
                 :θ_l,
                 :T,
                 :κ,
+                :bidiag_matrix_scratch,
+                :full_bidiag_matrix_scratch,
                 :turbulent_fluxes,
                 :R_n,
                 :top_bc,
@@ -188,9 +193,8 @@ for FT in (Float32, Float64)
             @test p.drivers.P == zeros(space) .+ FT(101325)
             @test p.drivers.LW_d == zeros(space) .+ FT(5.67e-8 * 280.0^4.0)
             @test p.drivers.SW_d == zeros(space) .+ FT(500)
-            face_space = ClimaLand.Domains.obtain_face_space(
-                model.domain.space.subsurface,
-            )
+            face_space =
+                ClimaCore.Spaces.face_space(model.domain.space.subsurface)
             N = ClimaCore.Spaces.nlevels(face_space)
             surface_space = model.domain.space.surface
             z_sfc = ClimaCore.Fields.Field(

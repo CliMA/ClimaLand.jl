@@ -44,7 +44,7 @@ using Statistics
 import StatsBase: percentile
 using CairoMakie
 import ClimaComms
-@static pkgversion(ClimaComms) >= v"0.6" && ClimaComms.@import_required_backends
+ClimaComms.@import_required_backends
 import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
 import ClimaUtilities.OutputPathGenerator: generate_output_path
 
@@ -139,7 +139,6 @@ land_domain = ClimaLand.Domains.SphericalShell(;
     radius = FT(6.3781e6),
     depth = soil_depth,
     nelements = (10, 5),
-    npolynomial = 1,
     dz_tuple = FT.((dz_bottom, dz_top)),
 );
 canopy_domain = ClimaLand.Domains.obtain_surface_domain(land_domain)
@@ -265,25 +264,9 @@ soil_model_type = Soil.EnergyHydrology{FT}
 
 # Soil microbes model
 soilco2_type = Soil.Biogeochemistry.SoilCO2Model{FT}
-
-soilco2_ps = SoilCO2ModelParameters(FT)
-
-# soil microbes args
+soilco2_ps = Soil.Biogeochemistry.SoilCO2ModelParameters(FT)
 Csom = ClimaLand.PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5))
-
-# Set the soil CO2 BC to being atmospheric CO2
-soilco2_top_bc = Soil.Biogeochemistry.AtmosCO2StateBC()
-soilco2_bot_bc = Soil.Biogeochemistry.SoilCO2StateBC((p, t) -> 0.0)
-soilco2_sources = (MicrobeProduction{FT}(),)
-
-soilco2_boundary_conditions = (; top = soilco2_top_bc, bottom = soilco2_bot_bc)
-
-soilco2_args = (;
-    boundary_conditions = soilco2_boundary_conditions,
-    sources = soilco2_sources,
-    domain = soil_domain,
-    parameters = soilco2_ps,
-)
+soilco2_args = (; domain = soil_domain, parameters = soilco2_ps)
 
 # Now we set up the canopy model, which we set up by component:
 # Component Types

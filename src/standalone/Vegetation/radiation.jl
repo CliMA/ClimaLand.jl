@@ -8,7 +8,7 @@ export BeerLambertParameters,
 
 abstract type AbstractRadiationModel{FT} <: AbstractCanopyComponent{FT} end
 
-abstract type AbstractGFunction{FT} end
+abstract type AbstractGFunction{FT <: AbstractFloat} end
 
 """
     ConstantGFunction
@@ -16,10 +16,9 @@ abstract type AbstractGFunction{FT} end
 A type for a constant G function, which is used to represent the leaf angle
 distribution function in the radiative transfer models.
 """
-struct ConstantGFunction{F <: Union{AbstractFloat, ClimaCore.Fields.Field}} <:
-       AbstractGFunction{F}
+struct ConstantGFunction{FT} <: AbstractGFunction{FT}
     "Leaf angle distribution value (unitless)"
-    ld::F
+    ld::FT
 end
 
 # Make the ConstantGFunction broadcastable
@@ -32,10 +31,9 @@ A type for a G function that is parameterized by the cosine of the
 solar zenith angle,
 following the CLM approach to parameterizing the leaf angle distribution function.
 """
-struct CLMGFunction{F <: Union{AbstractFloat, ClimaCore.Fields.Field}} <:
-       AbstractGFunction{F}
+struct CLMGFunction{FT} <: AbstractGFunction{FT}
     "Leaf orientation index (unitless)"
-    χl::F
+    χl::FT
 end
 
 # Make the CLMGFunction broadcastable
@@ -49,7 +47,7 @@ $(DocStringExtensions.FIELDS)
 """
 Base.@kwdef struct BeerLambertParameters{
     FT <: AbstractFloat,
-    G <: AbstractGFunction,
+    G <: Union{AbstractGFunction, ClimaCore.Fields.Field},
     F <: Union{FT, ClimaCore.Fields.Field},
 }
     "PAR leaf reflectance (unitless)"
@@ -87,7 +85,7 @@ $(DocStringExtensions.FIELDS)
 """
 Base.@kwdef struct TwoStreamParameters{
     FT <: AbstractFloat,
-    G <: AbstractGFunction,
+    G <: Union{AbstractGFunction, ClimaCore.Fields.Field},
     F <: Union{FT, ClimaCore.Fields.Field},
 }
     "PAR leaf reflectance (unitless)"
@@ -177,7 +175,7 @@ Base.broadcastable(RT::AbstractRadiationModel) = tuple(RT)
 
 ClimaLand.name(model::AbstractRadiationModel) = :radiative_transfer
 ClimaLand.auxiliary_vars(model::Union{BeerLambertModel, TwoStreamModel}) =
-    (:nir_d, :par_d, :nir, :par, :LW_n, :SW_n, :ϵ, :G, :K)
+    (:nir_d, :par_d, :nir, :par, :LW_n, :SW_n, :ϵ)
 ClimaLand.auxiliary_types(
     model::Union{BeerLambertModel{FT}, TwoStreamModel{FT}},
 ) where {FT} = (
@@ -188,20 +186,9 @@ ClimaLand.auxiliary_types(
     FT,
     FT,
     FT,
-    FT,
-    FT,
 )
-ClimaLand.auxiliary_domain_names(::Union{BeerLambertModel, TwoStreamModel}) = (
-    :surface,
-    :surface,
-    :surface,
-    :surface,
-    :surface,
-    :surface,
-    :surface,
-    :surface,
-    :surface,
-)
+ClimaLand.auxiliary_domain_names(::Union{BeerLambertModel, TwoStreamModel}) =
+    (:surface, :surface, :surface, :surface, :surface, :surface, :surface)
 
 """
     canopy_radiant_energy_fluxes!(p::NamedTuple,

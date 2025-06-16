@@ -72,6 +72,7 @@ ClimaLand.Soil.HeatFluxBC
 ClimaLand.Soil.WaterFluxBC
 ClimaLand.Soil.TemperatureStateBC
 ClimaLand.Soil.FreeDrainage
+ClimaLand.Soil.EnergyWaterFreeDrainage
 ClimaLand.Soil.RichardsAtmosDrivenFluxBC
 ClimaLand.Soil.AtmosDrivenFluxBC
 ClimaLand.Soil.WaterHeatBC

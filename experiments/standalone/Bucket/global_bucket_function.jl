@@ -76,7 +76,6 @@ bucket_domain = ClimaLand.Domains.SphericalShell(;
     radius = FT(6.3781e6),
     depth = soil_depth,
     nelements = (50, 10),
-    npolynomial = 1,
     dz_tuple = FT.((1.0, 0.05)),
 );
 surface_space = bucket_domain.space.surface
@@ -169,8 +168,13 @@ space = bucket_domain.space.subsurface
 
 nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(space, output_dir; start_date)
 
-diags =
-    ClimaLand.default_diagnostics(model, start_date; output_writer = nc_writer)
+diags = ClimaLand.default_diagnostics(
+    model,
+    start_date;
+    output_writer = nc_writer,
+    average_period = :daily,
+)
+
 
 diagnostic_handler =
     ClimaDiagnostics.DiagnosticsHandler(diags, Y, p, t0; dt = Δt)

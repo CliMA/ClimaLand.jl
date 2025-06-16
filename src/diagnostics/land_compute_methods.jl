@@ -40,6 +40,11 @@ macro diagnostic_compute(name, model, compute)
     )
 end
 
+### Conservation ##
+@diagnostic_compute "water_volume_per_area" EnergyHydrology p.soil.total_water
+@diagnostic_compute "energy_per_area" EnergyHydrology p.soil.total_energy
+@diagnostic_compute "water_volume_per_area_change" EnergyHydrology Y.soil.∫F_vol_liq_water_dt
+@diagnostic_compute "energy_per_area_change" EnergyHydrology Y.soil.∫F_e_dt
 
 
 ### BucketModel ###
@@ -89,18 +94,18 @@ function compute_canopy_transpiration!(
     # Convert to a mass flux by multiplying by the density of liquid
     # water
     if isnothing(out)
-        return p.canopy.energy.turbulent_fluxes.transpiration .* 1000
+        return p.canopy.turbulent_fluxes.transpiration .* 1000
     else
-        @. out = p.canopy.energy.turbulent_fluxes.transpiration * 1000
+        @. out = p.canopy.turbulent_fluxes.transpiration * 1000
     end
 end
 
 # Canopy - Energy
-@diagnostic_compute "canopy_latent_heat_flux" Union{SoilCanopyModel, LandModel} p.canopy.energy.turbulent_fluxes.lhf
+@diagnostic_compute "canopy_latent_heat_flux" Union{SoilCanopyModel, LandModel} p.canopy.turbulent_fluxes.lhf
 @diagnostic_compute "canopy_sensible_heat_flux" Union{
     SoilCanopyModel,
     LandModel,
-} p.canopy.energy.turbulent_fluxes.shf
+} p.canopy.turbulent_fluxes.shf
 
 # Canopy - Hydraulics
 function compute_leaf_water_potential!(
@@ -202,7 +207,7 @@ end
 @diagnostic_compute "soil_net_radiation" Union{SoilCanopyModel, LandModel} p.soil.R_n
 @diagnostic_compute "soil_temperature" Union{SoilCanopyModel, LandModel} p.soil.T
 
-function compute_1m_water_content!(
+function compute_10cm_water_mass!(
     out,
     Y,
     p,
@@ -212,13 +217,26 @@ function compute_1m_water_content!(
     ∫Hθdz = p.soil.sfc_scratch
     Hθ = p.soil.sub_sfc_scratch
     z = land_model.soil.domain.fields.z
-    depth = FT(-1)
-    @. Hθ = (Y.soil.ϑ_l + Y.soil.θ_i) * heaviside(z, depth)
+    depth = FT(-0.1)
+    earth_param_set = land_model.soil.parameters.earth_param_set
+    _ρ_liq = LP.ρ_cloud_liq(earth_param_set)
+    _ρ_ice = LP.ρ_cloud_ice(earth_param_set)
+    # Convert from volumetric water content to water mass per unit volume using density
+    @. Hθ = (Y.soil.ϑ_l * _ρ_liq + Y.soil.θ_i * _ρ_ice) * heaviside(z, depth)
     column_integral_definite!(∫Hθdz, Hθ)
+
+    # The layering of the soil model may not coincide with 10 cm exactly, and this could lead
+    # to the integral above not exactly representing 10cm.
+    # To adjust, divide by the ∫heaviside(z, depth) dz, and then multiply by 10cm
+    H = p.subsfc_scratch
+    @. H = heaviside(z, depth)
+    ∫Hdz = p.sfc_scratch
+    column_integral_definite!(∫Hdz, H)
+
     if isnothing(out)
-        return ∫Hθdz
+        return ∫Hθdz ./ ∫Hdz .* FT(0.1)
     else
-        out .= ∫Hθdz
+        @. out = ∫Hθdz / ∫Hdz * FT(0.1)
     end
 end
 function compute_soil_albedo!(
@@ -278,14 +296,14 @@ function compute_evapotranspiration!(
         return (
             p.soil.turbulent_fluxes.vapor_flux_liq .+
             p.soil.turbulent_fluxes.vapor_flux_ice .+
-            p.canopy.energy.turbulent_fluxes.transpiration
+            p.canopy.turbulent_fluxes.transpiration
         ) .* 1000 # density of liquid water (1000kg/m^3)
     else
         out .=
             (
                 p.soil.turbulent_fluxes.vapor_flux_liq .+
                 p.soil.turbulent_fluxes.vapor_flux_ice .+
-                p.canopy.energy.turbulent_fluxes.transpiration
+                p.canopy.turbulent_fluxes.transpiration
             ) .* 1000 # density of liquid water (1000kg/m^3)
     end
 end
@@ -303,7 +321,7 @@ function compute_evapotranspiration!(
             p.soil.turbulent_fluxes.vapor_flux_liq +
             (1 - p.snow.snow_cover_fraction) *
             p.soil.turbulent_fluxes.vapor_flux_ice +
-            p.canopy.energy.turbulent_fluxes.transpiration +
+            p.canopy.turbulent_fluxes.transpiration +
             p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.vapor_flux
         ) * 1000 # density of liquid water (1000kg/m^3)
     else
@@ -313,7 +331,7 @@ function compute_evapotranspiration!(
                 p.soil.turbulent_fluxes.vapor_flux_liq +
                 (1 - p.snow.snow_cover_fraction) *
                 p.soil.turbulent_fluxes.vapor_flux_ice +
-                p.canopy.energy.turbulent_fluxes.transpiration +
+                p.canopy.turbulent_fluxes.transpiration +
                 p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.vapor_flux
             ) * 1000 # density of liquid water (1000kg/m^3)
     end
@@ -343,11 +361,9 @@ function compute_latent_heat_flux!(
     land_model::SoilCanopyModel{FT},
 ) where {FT}
     if isnothing(out)
-        return p.soil.turbulent_fluxes.lhf .+
-               p.canopy.energy.turbulent_fluxes.lhf
+        return p.soil.turbulent_fluxes.lhf .+ p.canopy.turbulent_fluxes.lhf
     else
-        out .=
-            p.soil.turbulent_fluxes.lhf .+ p.canopy.energy.turbulent_fluxes.lhf
+        out .= p.soil.turbulent_fluxes.lhf .+ p.canopy.turbulent_fluxes.lhf
     end
 end
 
@@ -359,11 +375,9 @@ function compute_sensible_heat_flux!(
     land_model::SoilCanopyModel{FT},
 ) where {FT}
     if isnothing(out)
-        return p.soil.turbulent_fluxes.shf .+
-               p.canopy.energy.turbulent_fluxes.shf
+        return p.soil.turbulent_fluxes.shf .+ p.canopy.turbulent_fluxes.shf
     else
-        out .=
-            p.soil.turbulent_fluxes.shf .+ p.canopy.energy.turbulent_fluxes.shf
+        out .= p.soil.turbulent_fluxes.shf .+ p.canopy.turbulent_fluxes.shf
     end
 end
 
@@ -377,12 +391,12 @@ function compute_latent_heat_flux!(
     if isnothing(out)
         return @. p.soil.turbulent_fluxes.lhf *
                   (1 - p.snow.snow_cover_fraction) +
-                  p.canopy.energy.turbulent_fluxes.lhf +
+                  p.canopy.turbulent_fluxes.lhf +
                   p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.lhf
     else
         @. out =
             p.soil.turbulent_fluxes.lhf * (1 - p.snow.snow_cover_fraction) +
-            p.canopy.energy.turbulent_fluxes.lhf +
+            p.canopy.turbulent_fluxes.lhf +
             p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.lhf
     end
 end
@@ -397,12 +411,12 @@ function compute_sensible_heat_flux!(
     if isnothing(out)
         return @. p.soil.turbulent_fluxes.shf *
                   (1 - p.snow.snow_cover_fraction) +
-                  p.canopy.energy.turbulent_fluxes.shf +
+                  p.canopy.turbulent_fluxes.shf +
                   p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.shf
     else
         @. out =
             p.soil.turbulent_fluxes.shf * (1 - p.snow.snow_cover_fraction) +
-            p.canopy.energy.turbulent_fluxes.shf +
+            p.canopy.turbulent_fluxes.shf +
             p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.shf
     end
 end
@@ -431,12 +445,12 @@ function compute_ground_heat_flux!(
     land_model::Union{SoilCanopyModel{FT}, LandModel{FT}},
 ) where {FT}
     if isnothing(out)
-        return p.soil.turbulent_fluxes.shf .+
-               p.canopy.energy.turbulent_fluxes.shf .- p.soil.R_n
+        return p.soil.turbulent_fluxes.shf .+ p.canopy.turbulent_fluxes.shf .-
+               p.soil.R_n
     else
         out .=
-            p.soil.turbulent_fluxes.shf .+
-            p.canopy.energy.turbulent_fluxes.shf .- p.soil.R_n
+            p.soil.turbulent_fluxes.shf .+ p.canopy.turbulent_fluxes.shf .-
+            p.soil.R_n
     end
 end
 
@@ -468,6 +482,7 @@ end
 
 @diagnostic_compute "snow_water_equivalent" LandModel Y.snow.S
 @diagnostic_compute "snow_depth" LandModel p.snow.z_snow
+@diagnostic_compute "snow_cover_fraction" LandModel p.snow.snow_cover_fraction
 
 ### EnergyHydrology ###
 

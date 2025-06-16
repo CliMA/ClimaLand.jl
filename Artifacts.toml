@@ -18,7 +18,7 @@ git-tree-sha1 = "cbbc6b3752d9cb9b667ec33cfbeb46819f8db418"
     [[landsea_mask_1deg.download]]
     sha256 = "3722b553c2fdf28a6574aea2e0b167d16ab050f34e5969ada45625b3a3ecb6da"
     url = "https://caltech.box.com/shared/static/b3u4dv0dsoswvqgp8y63bzj7awbhwztd.gz"
-    
+
 [soil_ic_2008_50m]
 git-tree-sha1 = "fd9cda235e203b4235136b6dcdcd07af788c00f6"
 
@@ -164,3 +164,24 @@ git-tree-sha1 = "4cc329093b0dbc3443db36e7c01133267ac94d37"
 
 [forty_yrs_era5_land_forcing_data]
 git-tree-sha1 = "f269a0b057b9f438b4caafdef17da73746310787"
+
+[era5_monthly_averages_surface_single_level_1979_2024]
+git-tree-sha1 = "6cddb07eeee2dd46dc5a19e9b2f706302ddba2c9"
+
+    [[era5_monthly_averages_surface_single_level_1979_2024.download]]
+    sha256 = "46b422722d98c89c6bc0b8641bff259db1caee253f45389ddf9eb9c2d31ed605"
+    url = "https://caltech.box.com/shared/static/jbgtyt6oq9lxvk8il5zzck6k581q7f3k.gz"
+
+[huang_van_genuchten_data]
+git-tree-sha1 = "39a344685d74346f89c4858c183565554494fc01"
+
+    [[huang_van_genuchten_data.download]]
+    sha256 = "1a31d971065bec12df089d95a6f385b44bf12fd136428fa7cb1456da87bd4fef"
+    url = "https://caltech.box.com/shared/static/fjq0f57qurctx9w5fc6vj8ml66wi8r73.gz"
+
+[mizoguchi_soil_freezing_data]
+git-tree-sha1 = "c35ba0e899040cb8153226ab751f69100f475d39"
+
+    [[mizoguchi_soil_freezing_data.download]]
+    sha256 = "0027cc080ba45ba33dc790b176ec2854353ce7dce4eae4bef72963b0dd944e0b"
+    url = "https://caltech.box.com/shared/static/tn1bnqjmegyetw5kzd2ixq5pbnb05s3u.gz"

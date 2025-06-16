@@ -14,11 +14,9 @@
 # Fixed number of iterations: 1
 # Jacobian update: every new timestep
 # Atmos forcing update: every 3 hours
-import SciMLBase
 import ClimaComms
 ClimaComms.@import_required_backends
 import ClimaTimeSteppers as CTS
-using ClimaCore
 using ClimaUtilities.ClimaArtifacts
 
 using ClimaDiagnostics
@@ -35,7 +33,7 @@ using ClimaLand
 using ClimaLand.Soil
 import ClimaLand
 import ClimaLand.Parameters as LP
-
+import ClimaLand.Simulations: LandSimulation, solve!
 using Statistics
 import GeoMakie
 using CairoMakie
@@ -45,7 +43,12 @@ import NCDatasets
 using Poppler_jll: pdfunite
 
 const FT = Float64;
-time_interpolation_method = LinearInterpolation(PeriodicCalendar())
+# If you want to do a very long run locally, you can enter `export
+# LONGER_RUN=""` in the terminal and run this script. If you want to do a very
+# long run on Buildkite manually, then make a new build and pass `LONGER_RUN=""`
+# as an environment variable. In both cases, the value of `LONGER_RUN` does not
+# matter.
+const LONGER_RUN = haskey(ENV, "LONGER_RUN") ? true : false
 context = ClimaComms.context()
 ClimaComms.init(context)
 device = ClimaComms.device()
@@ -55,33 +58,34 @@ diagnostics_outdir = joinpath(root_path, "global_diagnostics")
 outdir =
     ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
 
-function setup_prob(
-    t0,
-    tf,
-    Δt,
-    start_date;
-    outdir = outdir,
-    nelements = (101, 15),
-)
-    earth_param_set = LP.LandParameters(FT)
-    domain = ClimaLand.global_domain(FT; nelements)
+function setup_model(FT, start_date, stop_date, domain, earth_param_set)
+    time_interpolation_method =
+        LONGER_RUN ? LinearInterpolation() :
+        LinearInterpolation(PeriodicCalendar())
     surface_space = domain.space.surface
     subsurface_space = domain.space.subsurface
-
     # Forcing data
-    era5_artifact_path =
-        ClimaLand.Artifacts.era5_land_forcing_data2008_folder_path(; context)
-    era5_ncdata_path = joinpath(era5_artifact_path, "era5_2008_1.0x1.0.nc")
+    if LONGER_RUN
+        era5_ncdata_path = ClimaLand.Artifacts.find_era5_year_paths(
+            start_date,
+            stop_date;
+            context,
+        )
+    else
+        era5_ncdata_path =
+            ClimaLand.Artifacts.era5_land_forcing_data2008_path(; context)
+    end
     atmos, radiation = ClimaLand.prescribed_forcing_era5(
         era5_ncdata_path,
         surface_space,
         start_date,
         earth_param_set,
         FT;
-        time_interpolation_method = time_interpolation_method,
+        max_wind_speed = 25.0,
+        time_interpolation_method,
     )
     spatially_varying_soil_params =
-        ClimaLand.default_spatially_varying_soil_parameters(
+        ClimaLand.ModelSetup.default_spatially_varying_soil_parameters(
             subsurface_space,
             surface_space,
             FT,
@@ -111,10 +115,10 @@ function setup_prob(
         K_sat,
         S_s,
         θ_r,
-        PAR_albedo_dry = PAR_albedo_dry,
-        NIR_albedo_dry = NIR_albedo_dry,
-        PAR_albedo_wet = PAR_albedo_wet,
-        NIR_albedo_wet = NIR_albedo_wet,
+        PAR_albedo_dry,
+        NIR_albedo_dry,
+        PAR_albedo_wet,
+        NIR_albedo_wet,
     )
 
     f_over = FT(3.28) # 1/m
@@ -135,137 +139,60 @@ function setup_prob(
         (:soil,),
     )
     zero_flux = Soil.HeatFluxBC((p, t) -> 0.0)
-    boundary_conditions = (;
-        top = top_bc,
-        bottom = Soil.WaterHeatBC(;
-            water = Soil.FreeDrainage(),
-            heat = zero_flux,
-        ),
-    )
+    boundary_conditions =
+        (; top = top_bc, bottom = Soil.EnergyWaterFreeDrainage())
     soil = soil_model_type(;
         boundary_conditions = boundary_conditions,
         sources = sources,
         soil_args...,
     )
-
-    Y, p, cds = initialize(soil)
-
-    ic_path = ClimaLand.Artifacts.soil_ic_2008_50m_path(; context = context)
-    evaluate!(p.drivers.T, atmos.T, t0)
-    T_bounds = extrema(p.drivers.T)
-
-    ClimaLand.set_soil_initial_conditions!(
-        Y,
-        ν,
-        θ_r,
-        subsurface_space,
-        ic_path,
-        soil,
-        T_bounds,
-    )
-
-    set_initial_cache! = make_set_initial_cache(soil)
-    exp_tendency! = make_exp_tendency(soil)
-    imp_tendency! = ClimaLand.make_imp_tendency(soil)
-    jacobian! = ClimaLand.make_jacobian(soil)
-    set_initial_cache!(p, Y, t0)
-
-    # set up jacobian info
-    jac_kwargs = (;
-        jac_prototype = ClimaLand.FieldMatrixWithSolver(Y),
-        Wfact = jacobian!,
-    )
-
-    prob = SciMLBase.ODEProblem(
-        CTS.ClimaODEFunction(
-            T_exp! = exp_tendency!,
-            T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
-            dss! = ClimaLand.dss!,
-        ),
-        Y,
-        (t0, tf),
-        p,
-    )
-
-    updateat = [promote(t0:(ITime(3600 * 3)):tf...)...]
-    drivers = ClimaLand.get_drivers(soil)
-    updatefunc = ClimaLand.make_update_drivers(drivers)
-
-    # ClimaDiagnostics
-    # num_points is the resolution of the output diagnostics
-    # These are currently chosen to get a 1:1 ration with the number of
-    # simulation points, ~101x101x4x4
-    nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(
-        subsurface_space,
-        outdir;
-        start_date,
-        num_points = (570, 285, 15),
-    )
-
-    diags = ClimaLand.default_diagnostics(
-        soil,
-        start_date;
-        output_writer = nc_writer,
-        average_period = :monthly,
-    )
-
-    diagnostic_handler =
-        ClimaDiagnostics.DiagnosticsHandler(diags, Y, p, t0; dt = Δt)
-
-    diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler)
-
-    driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
-    mask = ClimaLand.landsea_mask(surface_space)
-    nancheck_freq = Dates.Month(1)
-    nancheck_cb = ClimaLand.NaNCheckCallback(
-        nancheck_freq,
-        start_date,
-        t0,
-        Δt;
-        mask = mask,
-    )
-    return prob, SciMLBase.CallbackSet(driver_cb, diag_cb, nancheck_cb)
+    return soil
 end
 
-function setup_and_solve_problem(; greet = false)
-
-    t0 = 0.0
-    seconds = 1.0
-    minutes = 60seconds
-    hours = 60minutes # hours in seconds
-    days = 24hours # days in seconds
-    years = 366days # years in seconds - 366 to make sure we capture at least full years
-    tf = 2years # 2 years in seconds
+function setup_simulation(; greet = false)
+    # If not LONGER_RUN, run for 2 years; note that the forcing from 2008 is repeated.
+    # If LONGER run, run for 10 years, with the correct forcing each year.
+    start_date = LONGER_RUN ? DateTime(2004) : DateTime(2008)
+    stop_date = LONGER_RUN ? DateTime(2014) : DateTime(2010)
     Δt = 450.0
-    start_date = DateTime(2008)
     nelements = (101, 15)
     if greet
         @info "Run: Global Soil Model"
         @info "Resolution: $nelements"
         @info "Timestep: $Δt s"
-        @info "Duration: $(tf - t0) s"
+        @info "Start Date: $start_date"
+        @info "Stop Date: $stop_date"
     end
-
-    t0 = ITime(t0, epoch = start_date)
-    tf = ITime(tf, epoch = start_date)
-    Δt = ITime(Δt, epoch = start_date)
-    t0, tf, Δt = promote(t0, tf, Δt)
-    prob, cb = setup_prob(t0, tf, Δt, start_date; nelements)
-
-    # Define timestepper and ODE algorithm
-    stepper = CTS.ARS111()
-    ode_algo = CTS.IMEXAlgorithm(
-        stepper,
-        CTS.NewtonsMethod(
-            max_iters = 3,
-            update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
+    domain =
+        ClimaLand.ModelSetup.global_domain(FT; comms_ctx = context, nelements)
+    params = LP.LandParameters(FT)
+    model = setup_model(FT, start_date, stop_date, domain, params)
+    diagnostics = ClimaLand.default_diagnostics(
+        model,
+        start_date;
+        output_writer = ClimaDiagnostics.Writers.NetCDFWriter(
+            domain.space.subsurface,
+            outdir;
+            start_date,
         ),
+        conservation = true,
+        conservation_period = Day(10),
     )
-    SciMLBase.solve(prob, ode_algo; dt = Δt, callback = cb, adaptive = false)
-    return nothing
+    simulation = LandSimulation(
+        FT,
+        start_date,
+        stop_date,
+        Δt,
+        model;
+        outdir,
+        diagnostics,
+    )
+    return simulation
 end
 
-setup_and_solve_problem(; greet = true);
+simulation = setup_simulation(; greet = true);
+ClimaLand.Simulations.solve!(simulation)
+
 # read in diagnostics and make some plots!
 #### ClimaAnalysis ####
 short_names = ["swc", "si", "sie"]
@@ -278,3 +205,6 @@ include(
     ),
 )
 make_figures(root_path, outdir, short_names)
+
+## Conservation
+check_conservation(root_path, outdir)

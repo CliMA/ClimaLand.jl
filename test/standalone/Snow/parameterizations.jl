@@ -29,7 +29,15 @@ for FT in (Float32, Float64)
         ρ_min = FT(200)
         densitymodel = Snow.MinimumDensityModel(ρ_min)
         z_0m = FT(0.0024)
-        α_snow = FT(0.8)
+        α_snow = Snow.ConstantAlbedoModel(FT(0.8))
+        scf = Snow.WuWuSnowCoverFractionModel(
+            FT(0.106),
+            FT(1.81),
+            FT(0.08),
+            FT(1.77),
+            FT(1),
+            FT(1),
+        )
         # These values should match ClimaParams
         ϵ_snow = FT(0.99)
         z_0b = FT(0.00024)
@@ -41,6 +49,7 @@ for FT in (Float32, Float64)
         parameters = SnowParameters{FT}(
             Δt,
             density = densitymodel,
+            α_snow = α_snow,
             earth_param_set = param_set,
         )
         @test parameters.density.ρ_min == ρ_min
@@ -52,7 +61,9 @@ for FT in (Float32, Float64)
         @test parameters.z_0b == z_0b
         @test typeof(parameters.z_0b) == FT
         @test parameters.α_snow == α_snow
-        @test typeof(parameters.α_snow) == FT
+        @test typeof(parameters.α_snow) == Snow.ConstantAlbedoModel{FT}
+        @test parameters.scf == scf
+        @test typeof(parameters.scf) == Snow.WuWuSnowCoverFractionModel{FT}
         @test parameters.ϵ_snow == ϵ_snow
         @test typeof(parameters.ϵ_snow) == FT
         @test parameters.Ksat == Ksat
@@ -92,5 +103,56 @@ for FT in (Float32, Float64)
         U = energy_from_T_and_swe.(FT(1), FT.([272, 274]), parameters)
         T = snow_bulk_temperature.(U, FT(1), FT.([0.0, 1.0]), parameters)
         @test all(T .≈ FT.([272, 274]))
+    end
+    @testset "Alternative parameterizations, FT = $FT" begin
+        param_set = LP.LandParameters(FT)
+        m = Snow.WuWuSnowCoverFractionModel(
+            FT(0.08),
+            FT(1.77),
+            FT(1),
+            FT(2);
+            z0 = FT(0.05),
+        )
+        depth = Array(FT(0):FT(0.01):FT(0.2))
+        ρ_snow = FT.(range(0.0, 1000.0, 21))
+        scf = zeros(FT, length(depth))
+        α_snow = zeros(FT, length(depth))
+        p = (;
+            snow = (; z_snow = depth, ρ_snow = ρ_snow),
+            drivers = (; cosθs = FT(0.5)),
+        )
+
+        update_snow_cover_fraction!(scf, m, nothing, p, 0.0, param_set)
+        @test m.β_scf == max(FT(1.77 - 0.08 * (2 - 1.5)), FT(1.0))
+        @test all(
+            @. scf ≈
+               min(m.β_scf * depth / FT(0.05) / (depth / FT(0.05) + 1), 1)
+        )
+
+        m = Snow.ZenithAngleAlbedoModel(FT(0.6), FT(0.1), FT(2); β = FT(0.7))
+        update_snow_albedo!(α_snow, m, nothing, p, 0.0, param_set)
+        @test all(
+            @. α_snow ≈
+               min(1 - FT(0.7) * (ρ_snow / FT(1000) - FT(0.2)), 1) *
+               (FT(0.6) + (FT(0.1) * exp(-FT(2) * FT(0.5))))
+        )
+
+        # test physical limits
+        x0 = FT.([0, 1])
+        β = FT.([0, 1])
+        for x in x0
+            for b in β
+                m = Snow.ZenithAngleAlbedoModel(
+                    FT(0.6),
+                    FT(0.0),
+                    FT(0);
+                    β = b,
+                    x0 = x,
+                )
+                update_snow_albedo!(α_snow, m, nothing, p, 0.0, param_set)
+                @test minimum(α_snow) >= FT(0)
+                @test maximum(α_snow) <= FT(1)
+            end
+        end
     end
 end

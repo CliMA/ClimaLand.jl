@@ -3,6 +3,43 @@ ClimaLand.jl Release Notes
 
 main
 -------
+
+v0.16.2
+-------
+- Fix bug in reflected radiation PR[#1156](https://github.com/CliMA/ClimaLand.jl/pull/1156)
+- Add `Simulations` module for global runs PR[#1152](https://github.com/CliMA/ClimaLand.jl/pull/1152)
+- Improve stability of soil model when soil is frozen PR[#1158](https://github.com/CliMA/ClimaLand.jl/pull/1158)
+- Fix bugs in ClimaComms method calls PR[#1160](https://github.com/CliMA/ClimaLand.jl/pull/1160)
+- Add energy free drainage bottom BC for soil PR[#1161](https://github.com/CliMA/ClimaLand.jl/pull/1161)
+- Add total energy and water to bucket cache PR[#1104](https://github.com/CliMA/ClimaLand.jl/pull/1104)
+- Add calibration job script example to slurm [#1142](https://github.com/CliMA/ClimaLand.jl/pull/1142)
+- Compute zenith angle when using `CoupledRadiativeFluxes` [#1135](https://github.com/CliMA/ClimaLand.jl/pull/1135)
+
+v0.16.1
+-------
+- Don't add DSS buffer when npolynomial is 0 PR[#1153](https://github.com/CliMA/ClimaLand.jl/pull/1153)
+- Simplify artifact paths PR[#1150](https://github.com/CliMA/ClimaLand.jl/pull/1150)
+- Clean up IC setting PR[#1151](https://github.com/CliMA/ClimaLand.jl/pull/1151)
+- Add default BCs and sources for soilCO2 PR[#1141](https://github.com/CliMA/ClimaLand.jl/pull/1141)
+
+v0.16.0
+-------
+- Enforce physically in albedo model for snow PR[#1124](https://github.com/CliMA/ClimaLand.jl/pull/1124) and PR[#1131](https://github.com/CliMA/ClimaLand.jl/pull/1131)
+- Add capability to step some sources implicitly PR[#1113](https://github.com/CliMA/ClimaLand.jl/pull/1113)
+
+v0.15.14
+-------
+- add masking of ocean PR[#1050](https://github.com/CliMA/ClimaLand.jl/pull/1050)
+
+v0.15.13
+-------
+- fix for GPU compatibility of integrated land model coupled
+  flux calculations PR[#1093](https://github.com/CliMA/ClimaLand.jl/pull/1093)
+
+v0.15.12
+-------
+- adds functions to compute turbulent fluxes for integrated land
+  model in coupled simulations PR[#1062](https://github.com/CliMA/ClimaLand.jl/pull/1062), [PR#1089](https://github.com/CliMA/ClimaLand.jl/pull/1089)
 - adds functions which compute total energy and water content per
   unit ground area PR[#1071](https://github.com/CliMA/ClimaLand.jl/pull/1071)
 

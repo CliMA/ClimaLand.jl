@@ -100,14 +100,12 @@ if regional_simulation
         zlim = (-soil_depth, FT(0.0)),
         longlat = (center_long, center_lat),
         nelements = (30, 30, 10),
-        npolynomial = 1,
     )
 else
     bucket_domain = ClimaLand.Domains.SphericalShell(;
         radius = FT(6.3781e6),
         depth = soil_depth,
         nelements = (30, 10),
-        npolynomial = 1,
         dz_tuple = FT.((1.0, 0.05)),
     )
 end
@@ -139,9 +137,8 @@ albedo = PrescribedBaregroundAlbedo{FT}(α_snow, surface_space);
 bucket_parameters = BucketModelParameters(FT; albedo, z_0m, z_0b, τc);
 
 # Forcing data
-era5_artifact_path =
-    ClimaLand.Artifacts.era5_land_forcing_data2008_folder_path(; context)
-era5_ncdata_path = joinpath(era5_artifact_path, "era5_2008_1.0x1.0.nc")
+era5_ncdata_path =
+    ClimaLand.Artifacts.era5_land_forcing_data2008_path(; context)
 bucket_atmos, bucket_rad = ClimaLand.prescribed_forcing_era5(
     era5_ncdata_path,
     surface_space,

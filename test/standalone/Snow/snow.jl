@@ -48,6 +48,8 @@ import ClimaLand.Parameters as LP
         domain = domain,
         boundary_conditions = ClimaLand.Snow.AtmosDrivenSnowBC(atmos, rad),
     )
+    @test ClimaComms.context(model) == ClimaComms.context()
+    @test ClimaComms.device(model) == ClimaComms.device()
     drivers = ClimaLand.get_drivers(model)
     @test drivers == (atmos, rad)
     Y, p, coords = ClimaLand.initialize(model)
@@ -59,8 +61,8 @@ import ClimaLand.Parameters as LP
         :T,
         :T_sfc,
         :z_snow,
+        :α_snow,
         :ρ_snow,
-        :turbulent_fluxes,
         :R_n,
         :phase_change_flux,
         :energy_runoff,
@@ -71,6 +73,7 @@ import ClimaLand.Parameters as LP
         :applied_energy_flux,
         :applied_water_flux,
         :snow_cover_fraction,
+        :turbulent_fluxes,
     )
 
     Y.snow.S .= FT(0.1)
@@ -88,8 +91,16 @@ import ClimaLand.Parameters as LP
     _σ = LP.Stefan(model.parameters.earth_param_set)
     _ρ_l = FT(LP.ρ_cloud_liq(model.parameters.earth_param_set))
     # Check if aux update occurred correctly
-    @test p.snow.R_n ==
-          @. (-(1 - α_snow) * 20.0f0 - ϵ_snow * (20.0f0 - _σ * p.snow.T_sfc^4))
+    z = p.snow.z_snow
+    @test p.snow.snow_cover_fraction == @. min(
+        model.parameters.scf.β_scf * z / model.parameters.scf.z0 /
+        (z / model.parameters.scf.z0 + 1),
+        1,
+    )
+    @test all(parent(p.snow.α_snow) .== α_snow.α)
+    @test p.snow.R_n == @. (
+        -(1 - α_snow.α) * 20.0f0 - ϵ_snow * (20.0f0 - _σ * p.snow.T_sfc^4)
+    )
     R_n_copy = copy(p.snow.R_n)
     ClimaLand.net_radiation!(
         R_n_copy,

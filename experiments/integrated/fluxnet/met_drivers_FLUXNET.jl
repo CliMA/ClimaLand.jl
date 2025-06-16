@@ -253,6 +253,17 @@ atmos = ClimaLand.PrescribedAtmosphere(
     c_co2 = atmos_co2,
 )
 
+<<<<<<< HEAD
+=======
+zenith_angle =
+    (t, s) -> default_zenith_angle(
+        t,
+        s;
+        insol_params = earth_param_set.insol_params,
+        longitude = long,
+        latitude = lat,
+    )
+>>>>>>> origin
 radiation = ClimaLand.PrescribedRadiativeFluxes(
     FT,
     SW_IN,

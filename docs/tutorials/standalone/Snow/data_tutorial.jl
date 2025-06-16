@@ -11,10 +11,10 @@
 
 # We begin by importing all required packages:
 using ClimaLand
-using DataFrames, CSV, HTTP, Dates, Flux, StatsBase, cuDNN, BSON
+using DataFrames, CSV, HTTP, Dates, Flux, StatsBase, BSON
 
 # The code lives in an extenson that we have to manually load. The extension can
-# be loaded only if "DataFrames", "CSV", "HTTP", "Flux", "StatsBase", "cuDNN", "BSON", and "ClimaLand"
+# be loaded only if "DataFrames", "CSV", "HTTP", "Flux", "StatsBase", "BSON", and "ClimaLand"
 # are loaded.
 DataTools = Base.get_extension(ClimaLand, :NeuralSnowExt).DataTools;
 
@@ -166,7 +166,7 @@ good_stations = Dict{Int, Tuple{String, String}}(
 # - Resetting negative precipitation cases (i.e. where the water year resets), and using daily precipitation rates `dprecipdt` instead of accumulated precipitation `precip`
 # - Attaching appropriate metadata
 
-# A few steps are commented out, which indicate steps implemented in `scrape_site_paper()` 
+# A few steps are commented out, which indicate steps implemented in `scrape_site_paper()`
 # like quality-control measures, which could be substituted with other user-defined steps.
 
 # ```julia
@@ -175,7 +175,7 @@ good_stations = Dict{Int, Tuple{String, String}}(
 #     state = metadata[metadata[!, :id] .== site, :state][1]
 #     start_date = good_stations[site][1]
 #     end_date = good_stations[site][2]
-# 
+#
 #     hourly = DataTools.apply_bounds(
 #         DataTools.sitedata_hourly(
 #              site,
@@ -188,10 +188,10 @@ good_stations = Dict{Int, Tuple{String, String}}(
 #     hourly[!, :id] .= site
 #     #hourly = DataTools.bcqc_hourly(hourly)
 #     hourly_d = DataTools.hourly2daily(hourly)
-#     #DataFrames.allowmissing!(hourly_d) 
+#     #DataFrames.allowmissing!(hourly_d)
 #     #sflags = DataTools.qc_filter(hourly_d, :sol_rad_avg, t1 = 2)
 #    #hourly_d[sflags, :sol_rad_avg] .= missing
-# 
+#
 #     daily = DataTools.apply_bounds(
 #         DataTools.sitedata_daily(
 #             site,
@@ -213,12 +213,12 @@ good_stations = Dict{Int, Tuple{String, String}}(
 #     daily_clean = daily_clean[!, Not(:precip)]
 #     #show(describe(daily_clean), allrows = true, allcols = true)
 #     #print("\nSIZE: ", nrow(daily_clean), "\n")
-# 
+#
 #     daily_clean[!, :id] .= site
 #     daily_clean[!, :elev] .= metadata[metadata[!, :id] .== site, :elev][1]
 #     daily_clean[!, :lat] .= metadata[metadata[!, :id] .== site, :lat][1]
 #     daily_clean[!, :lon] .= metadata[metadata[!, :id] .== site, :lon][1]
-# 
+#
 #     push!(allsites, daily_clean)
 # end;
 # ```

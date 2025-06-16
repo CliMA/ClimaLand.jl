@@ -132,6 +132,7 @@ function run_single_site(params, site_ID) # e.g., run_single_site(params, "US-MO
                                              NIR_albedo = soil_α_NIR,
                                             );
 
+<<<<<<< HEAD
     soil_args = (domain = soil_domain, parameters = soil_ps)
     soil_model_type = Soil.EnergyHydrology{FT}
 
@@ -148,6 +149,13 @@ function run_single_site(params, site_ID) # e.g., run_single_site(params, "US-MO
     soilco2_sources = (MicrobeProduction{FT}(),)
 
     soilco2_boundary_conditions = (; top = soilco2_top_bc, bottom = soilco2_bot_bc)
+=======
+# Soil microbes model
+soilco2_type = Soil.Biogeochemistry.SoilCO2Model{FT}
+soilco2_ps = Soil.Biogeochemistry.SoilCO2ModelParameters(FT)
+Csom = ClimaLand.PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5))
+soilco2_args = (; domain = soil_domain, parameters = soilco2_ps)
+>>>>>>> origin
 
     soilco2_args = (;
                     boundary_conditions = soilco2_boundary_conditions,

@@ -111,8 +111,8 @@ for FT in (Float32, Float64)
             soil_args = soil_args,
             soilco2_args = soilco2_args,
         )
-        @test_throws ErrorException ClimaComms.context(model)
-        @test_throws ErrorException ClimaComms.device(model)
+        @test ClimaComms.context(model) == ClimaComms.context()
+        @test ClimaComms.device(model) == ClimaComms.device()
 
         @test model.soilco2.drivers.met.ν == model.soil.parameters.ν
         @test model.soilco2.drivers.met isa ClimaLand.PrognosticMet
@@ -185,7 +185,6 @@ for FT in (Float32, Float64)
             ylim = (ymin, ymax),
             zlim = (zmin, zmax),
             nelements = (nelems, nelems, nelems),
-            npolynomial = 2,
         )
 
         ν = FT(0.556)

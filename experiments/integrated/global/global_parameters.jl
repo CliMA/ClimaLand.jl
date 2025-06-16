@@ -1,5 +1,5 @@
 spatially_varying_soil_params =
-    ClimaLand.default_spatially_varying_soil_parameters(
+    ClimaLand.ModelSetup.default_spatially_varying_soil_parameters(
         subsurface_space,
         surface_space,
         FT,
@@ -44,7 +44,7 @@ runoff_model = ClimaLand.Soil.Runoff.TOPMODELRunoff{FT}(;
 
 
 # Spatially varying canopy parameters from CLM
-clm_parameters = ClimaLand.clm_canopy_parameters(surface_space)
+clm_parameters = ClimaLand.ModelSetup.clm_canopy_parameters(surface_space)
 (;
     Ω,
     rooting_depth,

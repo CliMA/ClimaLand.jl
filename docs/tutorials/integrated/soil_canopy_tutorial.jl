@@ -173,24 +173,9 @@ soil_model_type = Soil.EnergyHydrology{FT}
 # to understand the parameterisation.
 # The domain is defined similarly to the soil domain described above.
 soilco2_type = Soil.Biogeochemistry.SoilCO2Model{FT}
-
 soilco2_ps = SoilCO2ModelParameters(FT);
-
-# soil microbes args
 Csom = ClimaLand.PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5))
-
-soilco2_top_bc = Soil.Biogeochemistry.AtmosCO2StateBC()
-soilco2_bot_bc = Soil.Biogeochemistry.SoilCO2StateBC((p, t) -> 0.0);
-soilco2_sources = (MicrobeProduction{FT}(),);
-
-soilco2_boundary_conditions = (; top = soilco2_top_bc, bottom = soilco2_bot_bc);
-
-soilco2_args = (;
-    boundary_conditions = soilco2_boundary_conditions,
-    sources = soilco2_sources,
-    domain = soil_domain,
-    parameters = soilco2_ps,
-);
+soilco2_args = (; domain = soil_domain, parameters = soilco2_ps)
 
 # Next we need to set up the [`CanopyModel`](https://clima.github.io/ClimaLand.jl/dev/APIs/canopy/Canopy/#Canopy-Model-Structs).
 # For more details on the specifics of this model see the previous tutorial.
@@ -441,8 +426,8 @@ Plots.plot!(
 # Transpiration plot:
 
 T = [
-    parent(sv.saveval[k].canopy.energy.turbulent_fluxes.transpiration)[1]
-    for k in 1:length(sv.saveval)
+    parent(sv.saveval[k].canopy.turbulent_fluxes.transpiration)[1] for
+    k in 1:length(sv.saveval)
 ]
 T = T .* (1e3 * 24 * 3600)
 

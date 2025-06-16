@@ -81,30 +81,14 @@ diffuse_fraction = TimeVaryingInput(seconds, diffuse_fraction);
 # To do so, we use the `Insolation` package as follows:
 earth_param_set = LP.LandParameters(Float64);
 insol_params = earth_param_set.insol_params # parameters of Earth's orbit required to compute the insolation
-function zenith_angle(
-    t,
-    start_date;
-    latitude = lat,
-    longitude = long,
-    insol_params = insol_params,
-)
-    current_datetime = start_date + Dates.Second(round(t)) # Time in UTC
-
-    d, δ, η_UTC = (Insolation.helper_instantaneous_zenith_angle(
-        current_datetime,
-        start_date,
+zenith_angle =
+    (t, s) -> default_zenith_angle(
+        t,
+        s;
         insol_params,
-    ))
-
-
-    return Insolation.instantaneous_zenith_angle(
-        d,
-        δ,
-        η_UTC,
-        longitude,
-        latitude,
-    )[1]
-end;
+        longitude = long,
+        latitude = lat,
+    );
 
 # Lastly, we store the interpolators for downwelling fluxes and the zenith angle function
 # in the `PrescribedRadiativeFluxes` struct.

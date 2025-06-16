@@ -8,21 +8,69 @@ export snow_surface_temperature,
     compute_water_runoff,
     energy_from_q_l_and_swe,
     energy_from_T_and_swe,
-    snow_cover_fraction,
+    update_snow_cover_fraction!,
     snow_bulk_density,
-    phase_change_flux
+    phase_change_flux,
+    update_snow_albedo!,
+    volumetric_energy_flux_falling_snow,
+    volumetric_energy_flux_falling_rain
 
 """
-    snow_cover_fraction(x::FT; z0 = FT(1e-1), α = FT(2))::FT where {FT}
+    update_snow_albedo!(α, m::ConstantAlbedoModel, Y, p, t, earth_param_set)
+
+Updates the snow albedo `α` in place with the current albedo,
+according to the ConstantAlbedoModel. 
+"""
+function update_snow_albedo!(
+    α,
+    m::ConstantAlbedoModel,
+    Y,
+    p,
+    t,
+    earth_param_set,
+)
+    @. α = m.α
+end
+
+"""
+    update_snow_albedo!(α, m::ZenithAngleAlbedoModel, Y, p, t, earth_param_set)
+
+Updates the snow albedo `α` in place with the current albedo,
+according to the ZenithAngleAlbedoModel.
+"""
+function update_snow_albedo!(
+    α,
+    m::ZenithAngleAlbedoModel,
+    Y,
+    p,
+    t,
+    earth_param_set,
+)
+    FT = eltype(earth_param_set)
+    _ρ_liq = LP.ρ_cloud_liq(earth_param_set)
+    @. α =
+        min(1 - m.β * (p.snow.ρ_snow / _ρ_liq - m.x0), 1) *
+        (m.α_0 + m.Δα * exp(-m.k * max(p.drivers.cosθs, eps(FT))))
+    @. α = max(min(α, 1), 0)
+end
+"""
+    update_snow_cover_fraction!(x::FT; z0 = FT(1e-1), β_scf = FT(2))::FT where {FT}
 
 Returns the snow cover fraction from snow depth `z`, from
 Wu, Tongwen, and Guoxiong Wu. "An empirical formula to compute
 snow cover fraction in GCMs." Advances in Atmospheric Sciences
 21 (2004): 529-535.
 """
-function snow_cover_fraction(z::FT; z0 = FT(1e-1), α = FT(2))::FT where {FT}
-    z̃ = z / z0
-    return min(α * z̃ / (z̃ + 1), 1)
+function update_snow_cover_fraction!(
+    scf,
+    m::WuWuSnowCoverFractionModel,
+    Y,
+    p,
+    t,
+    earth_param_set,
+)
+    z = p.snow.z_snow
+    @. scf = min(m.β_scf * (z / m.z0) / (z / m.z0 + 1), 1)
 end
 
 """
@@ -54,8 +102,8 @@ end
 
 A helper function which computes and returns the snow albedo.
 """
-function ClimaLand.surface_albedo(model::SnowModel, _...)
-    return model.parameters.α_snow
+function ClimaLand.surface_albedo(model::SnowModel, Y, p)
+    return p.snow.α_snow
 end
 
 """
@@ -79,18 +127,53 @@ end
 
 
 """
-    ClimaLand.surface_specific_humidity(model::SnowModel, Y, p, _...)
+    ClimaLand.surface_specific_humidity(atmos::PrescribedAtmosphere, model::SnowModel, Y, p, _...)
 
 Returns the precomputed specific humidity over snow as a weighted
 fraction of the saturated specific humidity over liquid and frozen
 water.
 
+In the case of a PrescibedAtmoshere, the atmosphere thermal state is accessed
+from the drivers in the cache.
 """
-function ClimaLand.surface_specific_humidity(model::SnowModel, Y, p, _...)
+function ClimaLand.surface_specific_humidity(
+    atmos::PrescribedAtmosphere,
+    model::SnowModel,
+    Y,
+    p,
+    _...,
+)
     @. p.snow.q_sfc = snow_surface_specific_humidity(
         p.snow.T_sfc,
         p.snow.q_l,
         p.drivers.thermal_state,
+        model.parameters,
+    )
+
+    return p.snow.q_sfc
+end
+
+"""
+    ClimaLand.surface_specific_humidity(atmos::CoupledAtmosphere, model::SnowModel, Y, p, _...)
+
+Returns the precomputed specific humidity over snow as a weighted
+fraction of the saturated specific humidity over liquid and frozen
+water.
+
+In the case of a CoupledAtmoshere, the atmosphere thermal state is accessed
+from the atmosphere object.
+"""
+function ClimaLand.surface_specific_humidity(
+    atmos::CoupledAtmosphere,
+    model::SnowModel,
+    Y,
+    p,
+    _...,
+)
+    @. p.snow.q_sfc = snow_surface_specific_humidity(
+        p.snow.T_sfc,
+        p.snow.q_l,
+        atmos.thermal_state,
         model.parameters,
     )
 
@@ -395,6 +478,45 @@ function energy_from_T_and_swe(S::FT, T::FT, parameters) where {FT}
     end
 
 end
+
+"""
+    volumetric_energy_flux_falling_snow(atmos, p, parameters)
+
+Returns the volumetric energy flux of falling snow for a PrescribedAtmosphere,
+approximated as ρe_snow * P_snow, where ρe_snow = -LH_f0 * _ρ_liq. 
+This is a negative internal energy, due the to negative contribution of
+the latent heat of melting to the energy of the snow,
+ and it neglects the sensible heat portion of the snow. The overall flux
+ is per unit volume of liquid water, and P_snow is expressed as 
+the volume flux of liquid water resulting from the snow.
+
+This method can be extended to coupled simulations, where atmos is of type
+CoupledAtmosphere, and the energy flux of the falling snow is passed in the
+cache `p`. In that case, this should specify `atmos::PrescribedAtmosphere`.
+"""
+function volumetric_energy_flux_falling_snow(atmos, p, parameters)
+    _LH_f0 = LP.LH_f0(parameters.earth_param_set)
+    _ρ_liq = LP.ρ_cloud_liq(parameters.earth_param_set)
+    ρe_snow = -_LH_f0 * _ρ_liq
+    return @lazy @. ρe_snow * p.drivers.P_snow # per unit vol of liquid water
+end
+
+"""
+    volumetric_energy_flux_falling_rain(atmos, p, parameters)
+
+Returns the volumetric energy flux of falling rain for a PrescribedAtmosphere,
+approximated as ρ_l e_l(T_atmos) * P_liq. This is per unit volume of liquid water, 
+and P_liq is expressed as the volume flux of liquid water resulting from the rain.
+
+This method can be extended to coupled simulations, where atmos is of type
+CoupledAtmosphere, and the energy flux of the falling rain is passed in the
+cache `p`.  In that case, this should specify `atmos::PrescribedAtmosphere`.
+"""
+function volumetric_energy_flux_falling_rain(atmos, p, parameters)
+    return @lazy @. volumetric_internal_energy_liq(p.drivers.T, parameters) *
+                    p.drivers.P_liq
+end
+
 
 """
     update_density_and_depth!(ρ_snow, z_snow, density::MinimumDensityModel, Y, p, params::SnowParameters)

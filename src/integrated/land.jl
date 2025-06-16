@@ -114,13 +114,8 @@ function LandModel{FT}(;
     )
 
     zero_flux = Soil.HeatFluxBC((p, t) -> 0.0)
-    boundary_conditions = (;
-        top = top_bc,
-        bottom = Soil.WaterHeatBC(;
-            water = Soil.FreeDrainage(),
-            heat = zero_flux,
-        ),
-    )
+    boundary_conditions =
+        (; top = top_bc, bottom = Soil.EnergyWaterFreeDrainage())
     soil = soil_model_type(;
         boundary_conditions = boundary_conditions,
         sources = sources,
@@ -128,10 +123,7 @@ function LandModel{FT}(;
     )
 
     transpiration = Canopy.PlantHydraulics.DiagnosticTranspiration{FT}()
-    ground_conditions =
-        PrognosticGroundConditions{FT, typeof(snow.parameters.α_snow)}(
-            snow.parameters.α_snow,
-        )
+    ground_conditions = PrognosticGroundConditions()
     if :energy in propertynames(canopy_component_args)
         energy_model = canopy_component_types.energy(
             canopy_component_args.energy.parameters,
@@ -173,12 +165,38 @@ function LandModel{FT}(;
         soil_organic_carbon,
         atmos,
     )
-    soilco2 = soilco2_type(; soilco2_args..., drivers = soilco2_drivers)
+    # Set the soil CO2 BC to being atmospheric CO2
+    soilco2_top_bc = Soil.Biogeochemistry.AtmosCO2StateBC()
+    soilco2_bot_bc = Soil.Biogeochemistry.SoilCO2FluxBC((p, t) -> 0.0) # no flux
+    soilco2_sources = (Soil.Biogeochemistry.MicrobeProduction{FT}(),)
+
+    soilco2_boundary_conditions =
+        (; top = soilco2_top_bc, bottom = soilco2_bot_bc)
+    soilco2 = soilco2_type(;
+        boundary_conditions = soilco2_boundary_conditions,
+        sources = soilco2_sources,
+        soilco2_args..., # adds domain, params
+        drivers = soilco2_drivers,
+    )
 
     args = (soilco2, soil, canopy, snow)
     return LandModel{FT, typeof.(args)...}(args...)
 end
 
+"""
+   ClimaLand.land_components(land::LandModel)
+
+Returns the components of the `LandModel`. 
+
+Currently, this method is required in order to preserve an ordering in how
+we update the component models' auxiliary states. The canopy update_aux! step
+depends on snow and soil albedo, but those are only updated in the snow and soil
+update_aux! steps. So those must occur first (as controlled by the order of the components
+returned by `land_components!`.
+
+This needs to be fixed.
+"""
+ClimaLand.land_components(land::LandModel) = (:soil, :snow, :soilco2, :canopy)
 """
     lsm_aux_vars(m::LandModel)
 
@@ -195,8 +213,6 @@ lsm_aux_vars(m::LandModel) = (
     :scratch3,
     :excess_water_flux,
     :excess_heat_flux,
-    :atmos_energy_flux,
-    :atmos_water_flux,
     :ground_heat_flux,
     :effective_soil_sfc_T,
     :sfc_scratch,
@@ -232,8 +248,6 @@ lsm_aux_types(m::LandModel{FT}) where {FT} = (
     FT,
     FT,
     FT,
-    FT,
-    FT,
     NamedTuple{(:PAR, :NIR), Tuple{FT, FT}},
 )
 
@@ -246,8 +260,6 @@ included in the land model.
 lsm_aux_domain_names(m::LandModel) = (
     :subsurface,
     :subsurface,
-    :surface,
-    :surface,
     :surface,
     :surface,
     :surface,
@@ -344,34 +356,6 @@ function make_update_boundary_fluxes(
         update_canopy_bf!(p, Y, t)
         # Update soil CO2
         update_soilco2_bf!(p, Y, t)
-
-        # compute net flux with atmosphere, this is useful for monitoring conservation
-        _LH_f0 = FT(LP.LH_f0(earth_param_set))
-        _ρ_liq = FT(LP.ρ_cloud_liq(earth_param_set))
-        ρe_falling_snow = -_LH_f0 * _ρ_liq # per unit vol of liquid water
-        @. p.atmos_energy_flux =
-            (1 - p.snow.snow_cover_fraction) * (
-                p.soil.turbulent_fluxes.lhf + p.soil.turbulent_fluxes.shf -
-                p.soil.R_n
-            ) +
-            p.snow.snow_cover_fraction * (
-                p.snow.turbulent_fluxes.lhf + p.snow.turbulent_fluxes.shf -
-                p.snow.R_n
-            ) +
-            p.drivers.P_snow * ρe_falling_snow +
-            p.canopy.energy.turbulent_fluxes.shf +
-            p.canopy.energy.turbulent_fluxes.lhf -
-            p.canopy.radiative_transfer.SW_n - p.canopy.radiative_transfer.LW_n
-        @. p.atmos_water_flux =
-            p.drivers.P_snow +
-            p.drivers.P_liq +
-            (1 - p.snow.snow_cover_fraction) * (
-                p.soil.turbulent_fluxes.vapor_flux_liq +
-                p.soil.turbulent_fluxes.vapor_flux_ice
-            ) +
-            p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.vapor_flux +
-            p.canopy.energy.turbulent_fluxes.transpiration
-
     end
     return update_boundary_fluxes!
 end
@@ -416,8 +400,8 @@ function lsm_radiant_energy_fluxes!(
     ϵ_soil = land.soil.parameters.emissivity
     T_soil = ClimaLand.Domains.top_center_to_surface(p.soil.T)
 
-    α_snow_NIR = land.snow.parameters.α_snow
-    α_snow_PAR = land.snow.parameters.α_snow
+    α_snow_NIR = p.snow.α_snow
+    α_snow_PAR = p.snow.α_snow
     ϵ_snow = land.snow.parameters.ϵ_snow
     T_snow = p.snow.T_sfc
 
@@ -552,20 +536,19 @@ function snow_boundary_fluxes!(
             p.snow.water_runoff
         ) * p.snow.snow_cover_fraction
 
-    # I think we want dU/dt to include energy of falling snow.
-    # otherwise snow can fall but energy wont change
-    # We are assuming that the sensible heat portion of snow is negligible.
-    _LH_f0 = FT(LP.LH_f0(model.parameters.earth_param_set))
-    _ρ_liq = FT(LP.ρ_cloud_liq(model.parameters.earth_param_set))
-    ρe_falling_snow = -_LH_f0 * _ρ_liq # per unit vol of liquid water
+    ρe_flux_falling_snow =
+        Snow.volumetric_energy_flux_falling_snow(bc.atmos, p, model.parameters)
+    ρe_flux_falling_rain =
+        Snow.volumetric_energy_flux_falling_rain(bc.atmos, p, model.parameters)
 
     # positive fluxes are TOWARDS atmos, but R_n positive if snow absorbs energy
     @. p.snow.total_energy_flux =
-        P_snow * ρe_falling_snow +
+        ρe_flux_falling_snow +
         (
             p.snow.turbulent_fluxes.lhf +
             p.snow.turbulent_fluxes.shf +
-            p.snow.R_n - p.snow.energy_runoff - p.ground_heat_flux
+            p.snow.R_n - p.snow.energy_runoff - p.ground_heat_flux +
+            ρe_flux_falling_rain
         ) * p.snow.snow_cover_fraction
     return nothing
 end
@@ -579,25 +562,16 @@ function ClimaLand.Soil.sublimation_source(
 end
 
 """
-     PrognosticGroundConditions{FT <: AbstractFloat, F <: Union{FT, ClimaCore.Fields.Field}} <: Canopy.AbstractGroundConditions
+     PrognosticGroundConditions <: Canopy.AbstractGroundConditions
 
 A type of Canopy.AbstractGroundConditions to use when the soil model is prognostic and
 of type `EnergyHydrology`, and the snow model is prognostic and included.
 
-The canopy model needs albedo of the ground
-in order to compute its update_aux! function, and that function must only depend on the canopy model.
-Because of this, α_snow must be stored in this struct until it is stored in the cache.
-
-Note that this struct is linked with the EnergyHydrology model. If we ever had a different
+Note that this struct is linked with the EnergyHydrology/SnowModel model. If we ever had a different
 soil model, we might need to construct a different `PrognosticGroundConditions` because
 the fields may be stored in different places.
 """
-struct PrognosticGroundConditions{
-    FT <: AbstractFloat,
-    F <: Union{FT, ClimaCore.Fields.Field},
-} <: Canopy.AbstractGroundConditions
-    α_snow::FT
-end
+struct PrognosticGroundConditions <: Canopy.AbstractGroundConditions end
 
 """
     Canopy.ground_albedo_PAR(
@@ -620,7 +594,7 @@ function Canopy.ground_albedo_PAR(
 )
     @. p.α_ground.PAR =
         (1 - p.snow.snow_cover_fraction) * p.soil.PAR_albedo +
-        p.snow.snow_cover_fraction * ground.α_snow
+        p.snow.snow_cover_fraction * p.snow.α_snow
     return p.α_ground.PAR
 end
 
@@ -645,7 +619,7 @@ function Canopy.ground_albedo_NIR(
 )
     @. p.α_ground.NIR =
         (1 - p.snow.snow_cover_fraction) * p.soil.NIR_albedo +
-        p.snow.snow_cover_fraction * ground.α_snow
+        p.snow.snow_cover_fraction * p.snow.α_snow
     return p.α_ground.NIR
 end
 
