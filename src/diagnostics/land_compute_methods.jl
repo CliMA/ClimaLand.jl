@@ -221,14 +221,15 @@ function compute_10cm_water_mass!(
     _ρ_liq = LP.ρ_cloud_liq(earth_param_set)
     _ρ_ice = LP.ρ_cloud_ice(earth_param_set)
     # Convert from volumetric water content to water mass per unit volume using density
-    Hθ = @lazy @. (Y.soil.ϑ_l * _ρ_liq + Y.soil.θ_i * _ρ_ice) *
-             heaviside(z, depth)
+    Hθ = @. lazy(
+        (Y.soil.ϑ_l * _ρ_liq + Y.soil.θ_i * _ρ_ice) * heaviside(z, depth),
+    )
     column_integral_definite!(∫Hθdz, Hθ)
 
     # The layering of the soil model may not coincide with 10 cm exactly, and this could lead
     # to the integral above not exactly representing 10cm.
     # To adjust, divide by the ∫heaviside(z, depth) dz, and then multiply by 10cm
-    H = @lazy @. heaviside(z, depth)
+    H = @. lazy(heaviside(z, depth))
     ∫Hdz = p.sfc_scratch
     column_integral_definite!(∫Hdz, H)
 
@@ -462,8 +463,10 @@ function compute_canopy_temperature!(
     t,
     land_model::Union{SoilCanopyModel{FT}, LandModel{FT}},
 ) where {FT}
-    AI = @lazy @. p.canopy.hydraulics.area_index.leaf +
-             p.canopy.hydraulics.area_index.stem
+    AI = @. lazy(
+        p.canopy.hydraulics.area_index.leaf +
+        p.canopy.hydraulics.area_index.stem,
+    )
     if isnothing(out)
         return nan_if_no_canopy.(Y.canopy.energy.T, AI)
     else

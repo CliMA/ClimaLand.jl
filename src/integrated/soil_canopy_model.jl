@@ -333,8 +333,8 @@ function lsm_radiant_energy_fluxes!(
 
     # Working through the math, this satisfies: LW_d - LW_u = LW_c + LW_soil
     ϵ_canopy = p.canopy.radiative_transfer.ϵ # this takes into account LAI/SAI
-    LW_d_canopy = @lazy @. ((1 - ϵ_canopy) * LW_d + ϵ_canopy * _σ * T_canopy^4) # double checked
-    LW_u_soil = @lazy @. ϵ_soil * _σ * T_soil^4 + (1 - ϵ_soil) * LW_d_canopy # double checked
+    LW_d_canopy = @. lazy((1 - ϵ_canopy) * LW_d + ϵ_canopy * _σ * T_canopy^4) # double checked
+    LW_u_soil = @.lazy(ϵ_soil * _σ * T_soil^4 + (1 - ϵ_soil) * LW_d_canopy) # double checked
     # This is a sign inconsistency. Here Rn is positive if towards soil. X_X
     @. R_net_soil += ϵ_soil * LW_d_canopy - ϵ_soil * _σ * T_soil^4 # double checked
     @. LW_net_canopy =

@@ -1,7 +1,7 @@
 module Runoff
 using DocStringExtensions
 using ClimaCore
-using LazyBroadcast: @lazy
+using LazyBroadcast: lazy
 using ClimaCore.Operators: column_integral_definite!
 using ClimaLand
 import ClimaLand: source!
@@ -326,7 +326,7 @@ Currently approximates i_c = -K_sat at the surface.
 """
 function soil_infiltration_capacity(model::RichardsModel, Y, p)
     K_sat_sfc = ClimaLand.Domains.top_center_to_surface(model.parameters.K_sat)
-    return @lazy @. -1 * K_sat_sfc
+    return @. lazy(-1 * K_sat_sfc)
 end
 
 """
@@ -346,12 +346,14 @@ function soil_infiltration_capacity(model::EnergyHydrology, Y, p)
     θ_l_sfc = ClimaLand.Domains.top_center_to_surface(p.soil.θ_l)
     θ_r_sfc = ClimaLand.Domains.top_center_to_surface(model.parameters.θ_r)
     T_sfc = ClimaLand.Domains.top_center_to_surface(p.soil.T)
-    return @lazy @. -K_sat_sfc *
-                    ClimaLand.Soil.impedance_factor(
-                        θ_i_sfc / (θ_l_sfc + θ_i_sfc - θ_r_sfc),
-                        Ω,
-                    ) *
-                    ClimaLand.Soil.viscosity_factor(T_sfc, γ, γT_ref)
+    return @. lazy(
+        -K_sat_sfc *
+        ClimaLand.Soil.impedance_factor(
+            θ_i_sfc / (θ_l_sfc + θ_i_sfc - θ_r_sfc),
+            Ω,
+        ) *
+        ClimaLand.Soil.viscosity_factor(T_sfc, γ, γT_ref),
+    )
 end
 
 

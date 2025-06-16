@@ -12,7 +12,7 @@ function update_root_extraction!(p, Y, t, land)
     RAI = getproperty(area_index, :root)
     AI_1 = getproperty(area_index, land.canopy.hydraulics.compartment_labels[1]) # could be leaf or stem
 
-    above_ground_area_index = @lazy @. PlantHydraulics.harmonic_mean(RAI, AI_1)
+    above_ground_area_index = @. lazy(PlantHydraulics.harmonic_mean(RAI, AI_1))
     # Note that we model the flux between each soil layer and the canopy as:
     # Flux = -K_eff x [(ψ_canopy - ψ_soil)/(z_canopy - z_soil) + 1], where
     # K_eff = K_soil K_canopy /(K_canopy + K_soil)

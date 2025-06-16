@@ -429,9 +429,9 @@ function lsm_radiant_energy_fluxes!(
     ϵ_canopy = p.canopy.radiative_transfer.ϵ # this takes into account LAI/SAI
 
     # Working through the math, this satisfies: LW_d - LW_u = LW_c + LW_soil + LW_snow
-    LW_d_canopy = @lazy @. ((1 - ϵ_canopy) * LW_d + ϵ_canopy * _σ * T_canopy^4) # double checked
-    LW_u_soil = @lazy @. ϵ_soil * _σ * T_soil^4 + (1 - ϵ_soil) * LW_d_canopy # double checked
-    LW_u_snow = @lazy @. ϵ_snow * _σ * T_snow^4 + (1 - ϵ_snow) * LW_d_canopy # identical to soil, checked
+    LW_d_canopy = @. lazy((1 - ϵ_canopy) * LW_d + ϵ_canopy * _σ * T_canopy^4) # double checked
+    LW_u_soil = @. lazy(ϵ_soil * _σ * T_soil^4 + (1 - ϵ_soil) * LW_d_canopy) # double checked
+    LW_u_snow = @. lazy(ϵ_snow * _σ * T_snow^4 + (1 - ϵ_snow) * LW_d_canopy) # identical to soil, checked
     @. R_net_soil -= ϵ_soil * LW_d_canopy - ϵ_soil * _σ * T_soil^4 # double checked
     @. R_net_snow -= ϵ_snow * LW_d_canopy - ϵ_snow * _σ * T_snow^4 # identical to soil, checked
     @. LW_net_canopy =

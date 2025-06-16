@@ -64,16 +64,20 @@ function update_albedo!(bc::AtmosDrivenFluxBC, p, soil_domain, model_parameters)
         # ∫H_dz is integral of 1 from (surface-albedo_calc_top_thickness) to surface
         ∫H_dz = p.soil.sfc_scratch
         # zero all centers lower than boundary, set everything above to one
-        H = @lazy @. ClimaLand.heaviside(
-            albedo_calc_top_thickness + sqrt(eps(FT)),
-            soil_domain.fields.z_sfc - soil_domain.fields.z,
+        H = @. lazy(
+            ClimaLand.heaviside(
+                albedo_calc_top_thickness + sqrt(eps(FT)),
+                soil_domain.fields.z_sfc - soil_domain.fields.z,
+            ),
         )
         ClimaCore.Operators.column_integral_definite!(∫H_dz, H)
         # zeros all effective saturation at levels centered lower than boundary
-        H_S_e = @lazy @. ClimaLand.heaviside(
-            albedo_calc_top_thickness + sqrt(eps(FT)),
-            soil_domain.fields.z_sfc - soil_domain.fields.z,
-        ) * effective_saturation(ν, p.soil.θ_l, θ_r)
+        H_S_e = @. lazy(
+            ClimaLand.heaviside(
+                albedo_calc_top_thickness + sqrt(eps(FT)),
+                soil_domain.fields.z_sfc - soil_domain.fields.z,
+            ) * effective_saturation(ν, p.soil.θ_l, θ_r),
+        )
         ClimaCore.Operators.column_integral_definite!(∫H_S_e_dz, H_S_e)
 
         @. p.soil.PAR_albedo = albedo_from_moisture(
