@@ -322,17 +322,16 @@ function CAL.forward_model(iteration, member)
     diagnostics_dir = joinpath(ensemble_member_path, "global_diagnostics")
     diagdir =
         ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_dir)
-    nc_writer =
-        ClimaDiagnostics.Writers.NetCDFWriter(
-            domain.space.subsurface,
-            diagdir;
-            sim_start,
-        ),
-        diagnostics = ClimaLand.default_diagnostics(
-            model,
-            sim_start;
-            output_writer = nc_writer,
-        )
+    nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(
+        domain.space.subsurface,
+        diagdir;
+        sim_start,
+    )
+    diagnostics = ClimaLand.default_diagnostics(
+        model,
+        sim_start;
+        output_writer = nc_writer,
+    )
 
     simulation =
         LandSimulation(FT, sim_start, sim_end, Δt, model; outdir, diagnostics)

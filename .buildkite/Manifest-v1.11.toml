@@ -1,6 +1,6 @@
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.11.4"
+julia_version = "1.11.3"
 manifest_format = "2.0"
 project_hash = "c057205b5dfa45d173ab89f45dff9c1d2ab4a915"
 
@@ -427,9 +427,9 @@ weakdeps = ["GeoMakie", "Makie"]
 
 [[deps.ClimaCalibrate]]
 deps = ["Dates", "Distributed", "Distributions", "EnsembleKalmanProcesses", "JLD2", "Logging", "Random", "TOML", "YAML"]
-git-tree-sha1 = "572016a5f80ff774d188039512fb1121b3c469be"
+git-tree-sha1 = "27da2910bd6e770eb8a4fed7f3cf926bf6fcb142"
 uuid = "4347a170-ebd6-470c-89d3-5c705c0cacc2"
-version = "0.1.0"
+version = "0.1.1"
 
     [deps.ClimaCalibrate.extensions]
     CESExt = "CalibrateEmulateSample"
@@ -2245,7 +2245,7 @@ version = "2.5.4+0"
 [[deps.OpenLibm_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "05823500-19ac-5b8b-9628-191a04bc5112"
-version = "0.8.1+4"
+version = "0.8.1+2"
 
 [[deps.OpenMPI_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "Hwloc_jll", "JLLWrappers", "LazyArtifacts", "Libdl", "MPIPreferences", "TOML", "Zlib_jll"]
