@@ -335,12 +335,12 @@ end
 
 function setup_simulation(; greet = false)
     # If not LONGER_RUN, run for 2 years; note that the forcing from 2008 is repeated.
-    # If LONGER run, run for 10 years, with the correct forcing each year.
+    # If LONGER run, run for 19 years, with the correct forcing each year.
     # Note that since the Northern hemisphere's winter season is defined as DJF,
     # we simulate from and until the beginning of
     # March so that a full season is included in seasonal metrics.
     start_date = LONGER_RUN ? DateTime("2000-03-01") : DateTime("2008-03-01")
-    stop_date = LONGER_RUN ? DateTime("2020-03-01") : DateTime("2010-03-01")
+    stop_date = LONGER_RUN ? DateTime("2019-03-01") : DateTime("2010-03-01")
     Δt = 450.0
     nelements = (101, 15)
     if greet
