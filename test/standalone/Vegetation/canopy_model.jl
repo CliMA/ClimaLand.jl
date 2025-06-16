@@ -331,7 +331,7 @@ import ClimaParams
 
             es =
                 Thermodynamics.saturation_vapor_pressure.(
-                    Ref(thermo_params),
+                    thermo_params,
                     FT.(T_atmos(t0)),
                     Ref(Thermodynamics.Liquid()),
                 )
@@ -349,10 +349,26 @@ import ClimaParams
             ga = 1 / r_ae
             γ = FT(66)
             R = FT(LP.gas_constant(earth_param_set))
-            gs = Array(
+            (; g1, g0, Drel) = canopy.conductance.parameters
+            medlyn_factor =
+                medlyn_term.(
+                    g1,
+                    FT.(T_atmos(t0)),
+                    FT.(P_atmos(t0)),
+                    FT.(q_atmos(t0)),
+                    thermo_params,
+                )
+            An = p.canopy.photosynthesis.An
+            gcanopy = Array(
                 parent(
                     ClimaLand.Canopy.upscale_leaf_conductance.(
-                        p.canopy.conductance.gs,
+                        medlyn_conductance.(
+                            g0,
+                            Drel,
+                            medlyn_factor,
+                            An,
+                            FT.(c_atmos(t0)),
+                        ),
                         LAI,
                         FT.(T_atmos(t0)),
                         R,
@@ -371,7 +387,7 @@ import ClimaParams
                 VPD, # vapor pressure deficit (Pa)
                 ga, # Conductivity of air, atmospheric conductance (m s−1)
                 γ, # Psychrometric constant (γ ≈ 66 Pa K−1)
-                gs, # Conductivity of stoma, surface or stomatal conductance (m s−1)
+                gcanopy, # Conductivity of stoma, surface or stomatal conductance (m s−1)
                 Lv, # Volumetric latent heat of vaporization. Energy required per water volume vaporized. (Lv = 2453 MJ m−3)
             )
 

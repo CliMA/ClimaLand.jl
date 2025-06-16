@@ -45,10 +45,9 @@ function make_output_df(
     output_list = vcat(
         (1, :SW_u),
         (1, :LW_u),
-        (1, :canopy, :conductance, :gs),
+        (1, :canopy, :conductance, :r_stomata_canopy),
         (1, :canopy, :autotrophic_respiration, :Ra),
         (1, :canopy, :photosynthesis, :GPP),
-        (1, :canopy, :hydraulics, :β),
         (1, :canopy, :hydraulics, :area_index, :leaf),
         (1, :canopy, :turbulent_fluxes, :transpiration),
         (1, :canopy, :turbulent_fluxes, :lhf),

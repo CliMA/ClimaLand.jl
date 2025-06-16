@@ -197,19 +197,11 @@ function timeseries_H2O_fig(
         color = :blue,
     )
 
-    # Moisture stress
-    p_MS = lines!(
-        ax_MS,
-        datetime2unix.(climaland.DateTime),
-        climaland.β,
-        color = :green,
-    ) # not sure about units
-
     # Stomatal conductance
     p_SC = lines!(
         ax_SC,
         datetime2unix.(climaland.DateTime),
-        climaland.gs,
+        climaland.r_stomata_canopy,
         color = :green,
     )
 
@@ -244,7 +236,7 @@ function timeseries_H2O_fig(
                 datetime2unix(climaland.DateTime[1]),
                 datetime2unix(climaland.DateTime[end]),
             ),
-        ) for axes in [ax_H2O, ax_H2O_rain, ax_MS, ax_SC]
+        ) for axes in [ax_H2O, ax_H2O_rain, ax_SC]
     ]
 
     fig

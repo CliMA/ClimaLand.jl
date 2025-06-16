@@ -14,6 +14,7 @@ import ..LandModel
 
 import ..Soil: EnergyHydrology
 
+import ..Canopy: medlyn_conductance, medlyn_term, moisture_stress
 import ..Domains:
     top_center_to_surface, AbstractDomain, SphericalShell, HybridBox
 
