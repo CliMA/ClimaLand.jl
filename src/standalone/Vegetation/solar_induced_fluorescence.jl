@@ -51,39 +51,32 @@ ClimaLand.auxiliary_domain_names(::Lee2015SIFModel) = (:surface,)
 # call function below inside photosynthesis.jl p
 
 """
-    update_SIF!(
-        SIF::FT,
-        sif_model::Lee2015SIFModel,
-        APAR::FT,
-        Tc::FT,
-        Vcmax25::FT,
-        R::FT,
-        T_freeze::FT,
-        photosynthesis_parameters,
-        energy_per_mole_photon_PAR,
-    ) where {FT}
+    update_SIF!(p, Y, sif_model::Lee2015SIFModel, canopy)
 
 Updates observed SIF at 755 nm in W/m^2. Note that Tc is in Kelvin, and photo
 synthetic rates are in mol/m^2/s, and APAR is in PPFD.
 Lee et al, 2015. Global Change Biology 21, 3469-3477, doi:10.1111/gcb.12948
 """
-function update_SIF!(
-    SIF,
-    sif_model::Lee2015SIFModel,
-    f_abs_par,
-    Tc,
-    Vcmax25,
-    R,
-    T_freeze,
-    photosynthesis_parameters,
-    energy_per_mole_photon_par,
-    par_d,
-)
-    (; ΔHJmax, To, θj, ϕ) = photosynthesis_parameters
+function update_SIF!(p, Y, sif_model::Lee2015SIFModel, canopy)
+    SIF = p.canopy.sif.SIF
+    f_abs_par = p.canopy.radiative_transfer.par.abs
+    Vcmax25 = get_Vcmax25(p, canopy.photosynthesis)
+    T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
+    par_d = p.canopy.radiative_transfer.par_d
+    earth_param_set = canopy.parameters.earth_param_set
+    c = LP.light_speed(earth_param_set)
+    planck_h = LP.planck_constant(earth_param_set)
+    N_a = LP.avogadro_constant(earth_param_set)
+    (; λ_γ_PAR,) = canopy.radiative_transfer.parameters
+    energy_per_mole_photon_par = planck_h * c / λ_γ_PAR * N_a
+    T_freeze = LP.T_freeze(earth_param_set)
+    R = LP.gas_constant(earth_param_set)
+
+    (; ΔHJmax, To, θj, ϕ) = canopy.photosynthesis.parameters
     sif_parameters = sif_model.parameters
     @. SIF = compute_SIF_at_a_point(
         par_d * f_abs_par / energy_per_mole_photon_par,
-        Tc,
+        T_canopy,
         Vcmax25,
         R,
         T_freeze,

@@ -211,7 +211,6 @@ end
 } p.canopy.photosynthesis.GPP
 @diagnostic_compute "photosynthesis_net_leaf" Union{SoilCanopyModel, LandModel} p.canopy.photosynthesis.An
 @diagnostic_compute "respiration_leaf" Union{SoilCanopyModel, LandModel} p.canopy.photosynthesis.Rd
-@diagnostic_compute "vcmax25" Union{SoilCanopyModel, LandModel} p.canopy.photosynthesis.Vcmax25
 
 # Canopy - Radiative Transfer
 @diagnostic_compute "near_infrared_radiation_down" Union{

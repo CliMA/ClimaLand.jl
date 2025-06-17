@@ -299,8 +299,7 @@ function lsm_radiant_energy_fluxes!(
     LW_d = p.drivers.LW_d
     SW_d = p.drivers.SW_d
 
-    T_canopy =
-        ClimaLand.Canopy.canopy_temperature(canopy.energy, canopy, Y, p, t)
+    T_canopy = ClimaLand.Canopy.canopy_temperature(canopy.energy, canopy, Y, p)
 
     α_soil_PAR = p.soil.PAR_albedo
     α_soil_NIR = p.soil.NIR_albedo

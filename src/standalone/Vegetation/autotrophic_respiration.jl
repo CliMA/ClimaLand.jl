@@ -57,6 +57,59 @@ ClimaLand.auxiliary_types(model::AutotrophicRespirationModel{FT}) where {FT} =
     (FT,)
 ClimaLand.auxiliary_domain_names(::AutotrophicRespirationModel) = (:surface,)
 
+
+
+"""
+    update_autotrophic_respiration!(p, Y, autotrophic_respiration::AutotrophicRespirationModel, canopy)
+
+Computes the autotrophic respiration rate  (mol co2 m^-2 s^-1) as the sum of the plant maintenance
+and growth respirations, according to the JULES model.
+
+Clark, D. B., et al. "The Joint UK Land Environment Simulator (JULES), model 
+description–Part 2: carbon fluxes and vegetation dynamics." Geoscientific Model Development 4.3 (2011): 701-722.
+"""
+function update_autotrophic_respiration!(
+    p,
+    Y,
+    autotrophic_respiration::AutotrophicRespirationModel,
+    canopy,
+)
+    hydraulics = canopy.hydraulics
+    n_stem = hydraulics.n_stem
+    n_leaf = hydraulics.n_leaf
+    h_canopy = hydraulics.compartment_surfaces[end]
+    i_end = n_stem + n_leaf
+    ψ = p.canopy.hydraulics.ψ
+    area_index = p.canopy.hydraulics.area_index
+    LAI = area_index.leaf
+    SAI = area_index.stem
+    RAI = area_index.root
+    earth_param_set = canopy.parameters.earth_param_set
+    grav = LP.grav(earth_param_set)
+    ρ_l = LP.ρ_cloud_liq(earth_param_set)
+    (; sc, pc) = canopy.photosynthesis.parameters
+    (; G_Function, Ω) = canopy.radiative_transfer.parameters
+    cosθs = p.drivers.cosθs
+    An = p.canopy.photosynthesis.An
+    Rd = p.canopy.photosynthesis.Rd
+
+    β = @. lazy(moisture_stress(ψ.:($$i_end) * ρ_l * grav, sc, pc))
+    Vcmax25 = get_Vcmax25(p, canopy.photosynthesis)
+    @. p.canopy.autotrophic_respiration.Ra = compute_autrophic_respiration(
+        autotrophic_respiration,
+        Vcmax25,
+        LAI,
+        SAI,
+        RAI,
+        extinction_coeff(G_Function, cosθs),
+        Ω,
+        An,
+        Rd,
+        β,
+        h_canopy,
+    )
+end
+
 """
     compute_autrophic_respiration(model::AutotrophicRespirationModel,
                                   Vcmax25,
