@@ -45,9 +45,13 @@ Create a list of geographic training locations (longitude, latitude) for model c
 """
 function make_training_locations(nelements)
     lats, longs = diagnostics_lat_lon(nelements)
-
-    domain =
-        ClimaLand.Domains.SphericalShell(; radius = 0.1, depth = 0.1, nelements)
+    cpu_comms_ctx = ClimaComms.context(ClimaComms.CPUSingleThreaded())
+    domain = ClimaLand.Domains.SphericalShell(;
+        radius = 0.1,
+        depth = 0.1,
+        nelements,
+        comms_ctx = cpu_comms_ctx,
+    )
 
     # We need the mask in order to determine which points were treated as land by the simulation.
     # We set the threshold of fractional area of land to be 0.99 here - cells with > 1% ocean are ignored in calibration.

@@ -80,6 +80,9 @@ results = Dict(
 Slice `var_name` across `lon` and `lat`, apply `split_fun`, extract the data as
 `array`s, and apply `fun` over the resulting arrays.
 """
+fun_across_season_lat(var_name, fun, lon, lat; split_fun = split_by_season) =
+    fun.(getproperty.(split_fun(slice(vars[var_name]; lon, lat)), :data); lat)
+
 fun_across_season(var_name, fun, lon, lat; split_fun = split_by_season) =
     fun.(getproperty.(split_fun(slice(vars[var_name]; lon, lat)), :data))
 
@@ -118,8 +121,8 @@ for (lon, lat) in training_locations
     )
 
     diag_variances = Dict(
-        var_name => fun_across_season(var_name, diag_var_fun, lon, lat) for
-        var_name in variable_list
+        var_name => fun_across_season_lat(var_name, diag_var_fun, lon, lat)
+        for var_name in variable_list
     )
 
     means = Dict(

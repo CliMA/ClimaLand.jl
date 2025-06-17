@@ -111,17 +111,10 @@ end
 
 # Plotting helper functions
 include("experiments/long_runs/leaderboard/leaderboard.jl")
-function ClimaCalibrate.analyze_iteration(
-    ekp,
-    g_ensemble,
-    prior,
-    output_dir,
-    iteration,
-)
-    plot_output_path = ClimaCalibrate.path_to_iteration(output_dir, iteration)
+function CAL.analyze_iteration(ekp, g_ensemble, prior, output_dir, iteration)
+    plot_output_path = CAL.path_to_iteration(output_dir, iteration)
 
-    output_path =
-        ClimaCalibrate.path_to_ensemble_member(output_dir, iteration, 1)
+    output_path = CAL.path_to_ensemble_member(output_dir, iteration, 1)
     diagnostics_folder_path =
         joinpath(output_path, "global_diagnostics/output_active")
 

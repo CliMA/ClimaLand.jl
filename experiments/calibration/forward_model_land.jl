@@ -306,13 +306,13 @@ function CAL.forward_model(iteration, member)
     domain =
         ClimaLand.ModelSetup.global_domain(FT; comms_ctx = context, nelements)
     earth_param_set = LP.LandParameters(FT)
-    p_names = collect(keys(calibration_params))
-    p_values = [calibration_params[name]["value"] for name in p_names]
+    p_names = collect(keys(params))
+    p_values = [params[name]["value"] for name in p_names]
     calibration_params = (; zip(Symbol.(p_names), p_values)...)
     model = setup_model(
         FT,
-        start_date,
-        stop_date,
+        sim_start,
+        sim_end,
         Δt,
         domain,
         earth_param_set,
@@ -325,7 +325,7 @@ function CAL.forward_model(iteration, member)
     nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(
         domain.space.subsurface,
         diagdir;
-        sim_start,
+        start_date = sim_start,
     )
     diagnostics = ClimaLand.default_diagnostics(
         model,
@@ -333,8 +333,15 @@ function CAL.forward_model(iteration, member)
         output_writer = nc_writer,
     )
 
-    simulation =
-        LandSimulation(FT, sim_start, sim_end, Δt, model; outdir, diagnostics)
+    simulation = ClimaLand.Simulations.LandSimulation(
+        FT,
+        sim_start,
+        sim_end,
+        Δt,
+        model;
+        outdir = diagdir,
+        diagnostics,
+    )
     ClimaLand.Simulations.solve!(simulation)
     close(nc_writer)
     return nothing
