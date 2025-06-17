@@ -132,56 +132,12 @@ function run_single_site(params, site_ID) # e.g., run_single_site(params, "US-MO
                                              NIR_albedo = soil_α_NIR,
                                             );
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-    soil_args = (domain = soil_domain, parameters = soil_ps)
-    soil_model_type = Soil.EnergyHydrology{FT}
-
-    # Soil microbes model
-    soilco2_type = Soil.Biogeochemistry.SoilCO2Model{FT}
-
-    soilco2_ps = SoilCO2ModelParameters(FT)
-
-    Csom = ClimaLand.PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5))
-
-    # Set the soil CO2 BC to being atmospheric CO2
-    soilco2_top_bc = Soil.Biogeochemistry.AtmosCO2StateBC()
-    soilco2_bot_bc = Soil.Biogeochemistry.SoilCO2FluxBC((p, t) -> 0.0) # no flux
-    soilco2_sources = (MicrobeProduction{FT}(),)
-
-    soilco2_boundary_conditions = (; top = soilco2_top_bc, bottom = soilco2_bot_bc)
-=======
-=======
->>>>>>> 1333c48a9 (rebased from origin (for real this time?))
 # Soil microbes model
 soilco2_type = Soil.Biogeochemistry.SoilCO2Model{FT}
 soilco2_ps = Soil.Biogeochemistry.SoilCO2ModelParameters(FT)
 Csom = ClimaLand.PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5))
 soilco2_args = (; domain = soil_domain, parameters = soilco2_ps)
-<<<<<<< HEAD
->>>>>>> origin
 
-=======
-=======
-    soil_args = (domain = soil_domain, parameters = soil_ps)
-    soil_model_type = Soil.EnergyHydrology{FT}
-
-    # Soil microbes model
-    soilco2_type = Soil.Biogeochemistry.SoilCO2Model{FT}
-
-    soilco2_ps = SoilCO2ModelParameters(FT)
-
-    Csom = ClimaLand.PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5))
-
-    # Set the soil CO2 BC to being atmospheric CO2
-    soilco2_top_bc = Soil.Biogeochemistry.AtmosCO2StateBC()
-    soilco2_bot_bc = Soil.Biogeochemistry.SoilCO2FluxBC((p, t) -> 0.0) # no flux
-    soilco2_sources = (MicrobeProduction{FT}(),)
-
-    soilco2_boundary_conditions = (; top = soilco2_top_bc, bottom = soilco2_bot_bc)
->>>>>>> ec7314fbe (fluxnet function)
-
->>>>>>> 1333c48a9 (rebased from origin (for real this time?))
     soilco2_args = (;
                     boundary_conditions = soilco2_boundary_conditions,
                     sources = soilco2_sources,
