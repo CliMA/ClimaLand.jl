@@ -121,7 +121,7 @@ A helper function which returns the temperature for the canopy
 model.
 """
 function ClimaLand.surface_temperature(model::CanopyModel, Y, p, t)
-    return canopy_temperature(model.energy, model, Y, p, t)
+    return canopy_temperature(model.energy, model, Y, p)
 end
 
 """

@@ -414,7 +414,6 @@ import ClimaParams
                             canopy,
                             Y,
                             p,
-                            t0,
                         ),
                     ),
                 ) .== [T_sfc],
@@ -424,7 +423,6 @@ import ClimaParams
                 canopy,
                 Y,
                 p,
-                t0,
             ) isa ClimaCore.Fields.Field
         end
     end
@@ -848,7 +846,6 @@ end
                             canopy,
                             Y,
                             p,
-                            t0,
                         ),
                     ),
                 ) .== FT(289),

@@ -36,13 +36,13 @@ No equation for the energy of the canopy is solved.
 struct PrescribedCanopyTempModel{FT} <: AbstractCanopyEnergyModel{FT} end
 
 """
-    canopy_temperature(model::PrescribedCanopyTempModel, canopy, Y, p, t)
+    canopy_temperature(model::PrescribedCanopyTempModel, canopy, Y, p)
 
 Returns the canopy temperature under the `PrescribedCanopyTemp` model,
 where the canopy temperature is assumed to be the same as the atmosphere
 temperature.
 """
-function canopy_temperature(model::PrescribedCanopyTempModel, canopy, Y, p, t)
+function canopy_temperature(model::PrescribedCanopyTempModel, canopy, Y, p)
     p.drivers.T
 end
 
@@ -86,13 +86,12 @@ ClimaLand.prognostic_types(model::BigLeafEnergyModel{FT}) where {FT} = (FT,)
 ClimaLand.prognostic_domain_names(model::BigLeafEnergyModel) = (:surface,)
 
 """
-    canopy_temperature(model::BigLeafEnergyModel, canopy, Y, p, t)
+    canopy_temperature(model::BigLeafEnergyModel, canopy, Y, p)
 
 Returns the canopy temperature under the `BigLeafEnergyModel` model,
 where the canopy temperature is modeled prognostically.
 """
-canopy_temperature(model::BigLeafEnergyModel, canopy, Y, p, t) =
-    Y.canopy.energy.T
+canopy_temperature(model::BigLeafEnergyModel, canopy, Y, p) = Y.canopy.energy.T
 
 function make_compute_imp_tendency(
     model::BigLeafEnergyModel{FT},
@@ -110,19 +109,17 @@ function make_compute_imp_tendency(
         # area index on the LHF, as ac_canopy [J/m^2/K]
         # is per unit area plant.
 
+        # d(energy.T) = - net_energy_flux / specific_heat_capacity
         # To prevent dividing by zero, change AI" to
         # "max(AI, eps(FT))"
-        c_per_ground_area =
-            @. ac_canopy * max(area_index.leaf + area_index.stem, eps(FT))
 
-        # d(energy.T) = - net_energy_flux / specific_heat_capacity
         @. dY.canopy.energy.T =
             -(
                 -p.canopy.radiative_transfer.LW_n -
                 p.canopy.radiative_transfer.SW_n +
                 p.canopy.turbulent_fluxes.shf +
                 p.canopy.turbulent_fluxes.lhf - p.canopy.energy.fa_energy_roots
-            ) / c_per_ground_area
+            ) / (ac_canopy * max(area_index.leaf + area_index.stem, eps(FT)))
     end
     return compute_imp_tendency!
 end

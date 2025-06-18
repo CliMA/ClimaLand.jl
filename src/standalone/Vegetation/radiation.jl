@@ -230,7 +230,7 @@ function canopy_radiant_energy_fluxes!(
     ϵ_ground = ground.ϵ
     _σ = FT(LP.Stefan(earth_param_set))
     LW_d = p.drivers.LW_d
-    T_canopy = canopy_temperature(canopy.energy, canopy, Y, p, t)
+    T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
     LW_d_canopy = @. (1 - ϵ_canopy) * LW_d + ϵ_canopy * _σ * T_canopy^4
     LW_u_ground = @. ϵ_ground * _σ * T_ground^4 + (1 - ϵ_ground) * LW_d_canopy
     @. p.canopy.radiative_transfer.LW_n =

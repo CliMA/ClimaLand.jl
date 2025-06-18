@@ -437,45 +437,22 @@ function ClimaLand.make_update_aux(
         # the current time, as they depend on prescribed fields.
         set_canopy_prescribed_field!(canopy.hydraulics, p, t)
 
-        # Other auxiliary variables being updated:
-        Ra = p.canopy.autotrophic_respiration.Ra
+        # Shortcut names
         An = p.canopy.photosynthesis.An
-        GPP = p.canopy.photosynthesis.GPP
-        Rd = p.canopy.photosynthesis.Rd
         ψ = p.canopy.hydraulics.ψ
         ϑ_l = Y.canopy.hydraulics.ϑ_l
         fa = p.canopy.hydraulics.fa
         par_d = p.canopy.radiative_transfer.par_d
         nir_d = p.canopy.radiative_transfer.nir_d
-
-        bc = canopy.boundary_conditions
-        # Current atmospheric conditions
         cosθs = p.drivers.cosθs
-        c_co2_air = p.drivers.c_co2
-        P_air = p.drivers.P
-        T_air = p.drivers.T
-        q_air = p.drivers.q
-
-        # unpack parameters
-        earth_param_set = canopy.parameters.earth_param_set
-        c = LP.light_speed(earth_param_set)
-        planck_h = LP.planck_constant(earth_param_set)
-        N_a = LP.avogadro_constant(earth_param_set)
-        grav = LP.grav(earth_param_set)
-        ρ_l = LP.ρ_cloud_liq(earth_param_set)
-        R = LP.gas_constant(earth_param_set)
-        T_freeze = LP.T_freeze(earth_param_set)
-        thermo_params = earth_param_set.thermo_params
-        (; G_Function, Ω, λ_γ_PAR) = canopy.radiative_transfer.parameters
-        energy_per_mole_photon_par = planck_h * c / λ_γ_PAR * N_a
-        (; g1, g0, Drel) = canopy.conductance.parameters
         area_index = p.canopy.hydraulics.area_index
         LAI = area_index.leaf
         SAI = area_index.stem
-        RAI = area_index.root
-        (; sc, pc) = canopy.photosynthesis.parameters
+
+        bc = canopy.boundary_conditions
 
         # update radiative transfer
+        (; G_Function, Ω, λ_γ_PAR) = canopy.radiative_transfer.parameters
         @. p.canopy.radiative_transfer.ϵ =
             canopy.radiative_transfer.parameters.ϵ_canopy *
             (1 - exp(-(LAI + SAI))) #from CLM 5.0, Tech note 4.20
@@ -554,71 +531,23 @@ function ClimaLand.make_update_aux(
                     ),
                 ) * PlantHydraulics.harmonic_mean(areaip1, areai)
         end
-        # We update the fa[n_stem+n_leaf] element once we have computed transpiration, below
-        # update photosynthesis and conductance terms
-        # This should still use T_air, P_air, q_air
-        medlyn_factor =
-            @. lazy(medlyn_term(g1, T_air, P_air, q_air, thermo_params))
-        # Anywhere we use an Arrhenius factor, use T_canopy instead T_air
-        T_canopy = canopy_temperature(canopy.energy, canopy, Y, p, t)
+        # We update the fa[n_stem+n_leaf] element once we have computed transpiration
 
-        # update moisture stress
-        i_end = n_stem + n_leaf
-        β = @. lazy(moisture_stress(ψ.:($$i_end) * ρ_l * grav, sc, pc))
+        # Update Rd, An, Vcmax25 (if applicable to model) in place, GPP
+        update_photosynthesis!(p, Y, canopy.photosynthesis, canopy)
 
-        # Update Rd, An, Vcmax25 (if applicable to model) in place
-        Vcmax25 = p.canopy.photosynthesis.Vcmax25
-        update_photosynthesis!(
-            Rd,
-            An,
-            Vcmax25,
-            canopy.photosynthesis,
-            T_canopy,
-            p.canopy.radiative_transfer.par.abs,
-            β,
-            medlyn_factor,
-            c_co2_air,
-            R,
-            energy_per_mole_photon_par,
-            par_d,
-        )
         # update SIF
-        SIF = p.canopy.sif.SIF
-        update_SIF!(
-            SIF,
-            canopy.sif,
-            p.canopy.radiative_transfer.par.abs,
-            T_canopy,
-            Vcmax25,
-            R,
-            T_freeze,
-            canopy.photosynthesis.parameters,
-            energy_per_mole_photon_par,
-            par_d,
-        )
-        @. GPP = compute_GPP(An, extinction_coeff(G_Function, cosθs), LAI, Ω)
-        @. p.canopy.conductance.r_stomata_canopy =
-            1 / upscale_leaf_conductance(
-                medlyn_conductance(g0, Drel, medlyn_factor, An, c_co2_air), #conductance, leaf level
-                LAI,
-                T_air,
-                R,
-                P_air,
-            )
+        update_SIF!(p, Y, canopy.sif, canopy)
+
+        # update stomatal conductance
+        update_canopy_conductance!(p, Y, canopy.conductance, canopy)
+
         # update autotrophic respiration
-        h_canopy = hydraulics.compartment_surfaces[end]
-        @. Ra = compute_autrophic_respiration(
+        update_autotrophic_respiration!(
+            p,
+            Y,
             canopy.autotrophic_respiration,
-            Vcmax25,
-            LAI,
-            SAI,
-            RAI,
-            extinction_coeff(G_Function, cosθs),
-            Ω,
-            An,
-            Rd,
-            β,
-            h_canopy,
+            canopy,
         )
     end
     return update_aux!

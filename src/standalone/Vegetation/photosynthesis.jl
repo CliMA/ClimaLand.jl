@@ -87,11 +87,10 @@ function FarquharModel{FT}(
 end
 
 ClimaLand.name(model::AbstractPhotosynthesisModel) = :photosynthesis
-ClimaLand.auxiliary_vars(model::FarquharModel) = (:An, :GPP, :Rd, :Vcmax25)
-ClimaLand.auxiliary_types(model::FarquharModel{FT}) where {FT} =
-    (FT, FT, FT, FT)
+ClimaLand.auxiliary_vars(model::FarquharModel) = (:An, :GPP, :Rd)
+ClimaLand.auxiliary_types(model::FarquharModel{FT}) where {FT} = (FT, FT, FT)
 ClimaLand.auxiliary_domain_names(::FarquharModel) =
-    (:surface, :surface, :surface, :surface)
+    (:surface, :surface, :surface)
 
 
 function photosynthesis_at_a_point_Farquhar(
@@ -143,45 +142,16 @@ end
 
 """
     update_photosynthesis!(
-        Rd,
-        An,
-        Vcmax25field,
+        p,
+        Y,
         model::FarquharModel,
-        T,
-        f_abs,
-        β,
-        medlyn_factor,
-        c_co2,
-        R,
-        energy_per_mole_photon_par,
-        par_d,
+        canopy
 )
 
-Computes the net photosynthesis rate `An` for the Farquhar model, along with the
-dark respiration `Rd`, and updates them in place.
-
-To do so, we require the canopy leaf temperature `T`, Medlyn factor, fraction
-of `par_d` aborbed `f_abs`, CO2 concentration in the atmosphere,
-moisture stress factor `β` (unitless), and the universal gas constant
-`R`.
-
-The typical `energy_per_mole_photon_par` is used to convert from an absorbed energy
-flux to a flux of moles of photons, as needed by photosynthetic rate computations.
+Computes the net photosynthesis rate `An` (mol CO2/m^2/s) for the Farquhar model, along with the
+dark respiration `Rd` (mol CO2/m^2/s) and gross primary productivity `GPP` (mol CO2/m^2/s), and updates them in place.
 """
-function update_photosynthesis!(
-    Rd,
-    An,
-    Vcmax25field,
-    model::FarquharModel,
-    T,
-    f_abs,
-    β,
-    medlyn_factor,
-    c_co2,
-    R,
-    energy_per_mole_photon_par,
-    par_d,
-)
+function update_photosynthesis!(p, Y, model::FarquharModel, canopy)
     (;
         Vcmax25,
         is_c3,
@@ -209,12 +179,46 @@ function update_photosynthesis!(
         s6,
         E,
     ) = model.parameters
-    Vcmax25field .= Vcmax25
+
+    # unpack a bunch of stuff from p and params
+    Rd = p.canopy.photosynthesis.Rd
+    An = p.canopy.photosynthesis.An
+    GPP = p.canopy.photosynthesis.GPP
+    T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
+    f_abs = p.canopy.radiative_transfer.par.abs
+    ψ = p.canopy.hydraulics.ψ
+    c_co2_air = p.drivers.c_co2
+    cosθs = p.drivers.cosθs
+    P_air = p.drivers.P
+    T_air = p.drivers.T
+    q_air = p.drivers.q
+    earth_param_set = canopy.parameters.earth_param_set
+    c = LP.light_speed(earth_param_set)
+    planck_h = LP.planck_constant(earth_param_set)
+    N_a = LP.avogadro_constant(earth_param_set)
+    grav = LP.grav(earth_param_set)
+    ρ_l = LP.ρ_cloud_liq(earth_param_set)
+    R = LP.gas_constant(earth_param_set)
+    thermo_params = earth_param_set.thermo_params
+    (; G_Function, λ_γ_PAR, Ω) = canopy.radiative_transfer.parameters
+    energy_per_mole_photon_par = planck_h * c / λ_γ_PAR * N_a
+    (; sc, pc) = canopy.photosynthesis.parameters
+    (; g1,) = canopy.conductance.parameters
+    n_stem = canopy.hydraulics.n_stem
+    n_leaf = canopy.hydraulics.n_leaf
+    i_end = n_stem + n_leaf
+    par_d = p.canopy.radiative_transfer.par_d
+    area_index = p.canopy.hydraulics.area_index
+    LAI = area_index.leaf
+
+    β = @. lazy(moisture_stress(ψ.:($$i_end) * ρ_l * grav, sc, pc))
+    medlyn_factor = @. lazy(medlyn_term(g1, T_air, P_air, q_air, thermo_params))
+
     @. Rd = dark_respiration(
         is_c3,
         Vcmax25,
         β,
-        T,
+        T_canopy,
         R,
         To,
         fC3,
@@ -224,12 +228,13 @@ function update_photosynthesis!(
         s6,
         fC4,
     )
+    # TO DO: refactor to pass parameter struct, not the parameters individually
     @. An = photosynthesis_at_a_point_Farquhar(
-        T,
+        T_canopy,
         β,
         Rd,
         f_abs * par_d / energy_per_mole_photon_par, # This function requires flux in moles of photons, not J
-        c_co2,
+        c_co2_air,
         medlyn_factor,
         R,
         Vcmax25,
@@ -258,8 +263,11 @@ function update_photosynthesis!(
         s6,
         E,
     )
+    # Compute GPP: TODO - move to diagnostics only
+    @. GPP = compute_GPP(An, extinction_coeff(G_Function, cosθs), LAI, Ω)
 
 end
 Base.broadcastable(m::FarquharParameters) = tuple(m)
 
+get_Vcmax25(p, m::FarquharModel) = m.parameters.Vcmax25
 include("./optimality_farquhar.jl")

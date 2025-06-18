@@ -82,46 +82,45 @@ ClimaLand.auxiliary_domain_names(::OptimalityFarquharModel) =
     (:surface, :surface, :surface, :surface)
 
 """
-    update_photosynthesis!(
-        Rd,
-        An,
-        Vcmax25,
-        model::OptimalityFarquharModel,
-        T,
-        f_abs,
-        β,
-        medlyn_factor,
-        c_co2,
-        R,
-        energy_per_mole_photon_par,
-        par_d,
-    )
-Computes the net photosynthesis rate `An` for the Optimality Farquhar model, along with the
-dark respiration `Rd`, and the value of `Vcmax25`, and updates them in place.
+    update_photosynthesis!(p, Y, model::OptimalityFarquharModel,canopy)
 
- To do so, we require the canopy leaf temperature `T`, Medlyn factor, fraction of
-PAR radiation absorbed `f_abs`, incoming PAR radiation `par_d` in W/m^2,
- CO2 concentration in the atmosphere,
-moisture stress factor `β` (unitless), and the universal gas constant
-`R`.
-
-The typical `energy_per_mole_photon_par` is used to convert from an absorbed energy
-flux to a flux of moles of photons, as needed by photosynthetic rate computations.
+Computes the net photosynthesis rate `An` (mol CO2/m^2/s)for the Optimality Farquhar model, along with the
+dark respiration `Rd` (mol CO2/m^2/s), the value of `Vcmax25`(mol CO2/m^2/s) , and the gross primary 
+productivity `GPP` (mol CO2/m^2/s), and updates them in place.
 """
-function update_photosynthesis!(
-    Rd,
-    An,
-    Vcmax25,
-    model::OptimalityFarquharModel,
-    T,
-    f_abs,
-    β,
-    medlyn_factor,
-    c_co2,
-    R,
-    energy_per_mole_photon_par,
-    par_d,
-)
+function update_photosynthesis!(p, Y, model::OptimalityFarquharModel, canopy)
+    # unpack a bunch of stuff from p and params
+    Rd = p.canopy.photosynthesis.Rd
+    An = p.canopy.photosynthesis.An
+    GPP = p.canopy.photosynthesis.GPP
+    Vcmax25 = p.canopy.photosynthesis.Vcmax25
+    T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
+    f_abs = p.canopy.radiative_transfer.par.abs
+    ψ = p.canopy.hydraulics.ψ
+    c_co2_air = p.drivers.c_co2
+    cosθs = p.drivers.cosθs
+    P_air = p.drivers.P
+    T_air = p.drivers.T
+    q_air = p.drivers.q
+    earth_param_set = canopy.parameters.earth_param_set
+    lightspeed = LP.light_speed(earth_param_set)
+    planck_h = LP.planck_constant(earth_param_set)
+    N_a = LP.avogadro_constant(earth_param_set)
+    grav = LP.grav(earth_param_set)
+    ρ_l = LP.ρ_cloud_liq(earth_param_set)
+    R = LP.gas_constant(earth_param_set)
+    thermo_params = earth_param_set.thermo_params
+    (; G_Function, λ_γ_PAR, Ω) = canopy.radiative_transfer.parameters
+    energy_per_mole_photon_par = planck_h * lightspeed / λ_γ_PAR * N_a
+    (; sc, pc) = canopy.photosynthesis.parameters
+    (; g1,) = canopy.conductance.parameters
+    n_stem = canopy.hydraulics.n_stem
+    n_leaf = canopy.hydraulics.n_leaf
+    i_end = n_stem + n_leaf
+    par_d = p.canopy.radiative_transfer.par_d
+    area_index = p.canopy.hydraulics.area_index
+    LAI = area_index.leaf
+
     (;
         Γstar25,
         ΔHVcmax,
@@ -140,36 +139,53 @@ function update_photosynthesis!(
         c,
     ) = model.parameters
 
-    Γstar = co2_compensation.(Γstar25, ΔHΓstar, T, To, R)
-    ci = intercellular_co2.(c_co2, Γstar, medlyn_factor)# may change?
-    Kc = MM_Kc.(Kc25, ΔHkc, T, To, R)
-    Ko = MM_Ko.(Ko25, ΔHko, T, To, R)
-    rates =
-        optimality_max_photosynthetic_rates.(
+    β = @. lazy(moisture_stress(ψ.:($$i_end) * ρ_l * grav, sc, pc))
+    medlyn_factor = @. lazy(medlyn_term(g1, T_air, P_air, q_air, thermo_params))
+    Γstar = @. lazy(co2_compensation(Γstar25, ΔHΓstar, T, To, R))
+    ci = @. lazy(intercellular_co2(c_co2, Γstar, medlyn_factor))# may change?
+    rates = @. lazy(
+        optimality_max_photosynthetic_rates(
             f_abs * par_d / energy_per_mole_photon_par,
             θj,
             ϕ,
             oi,
             ci,
             Γstar,
-            Kc,
-            Ko,
+            MM_Kc(Kc25, ΔHkc, T, To, R),
+            MM_Ko(Ko25, ΔHko, T, To, R),
             c,
-        )
+        ),
+    )
     Jmax = rates.:1
     Vcmax = rates.:2
-    J =
-        electron_transport.(
+    J = @. lazy(
+        electron_transport(
             f_abs * par_d / energy_per_mole_photon_par,
             Jmax,
             θj,
             ϕ,
-        )
-    Aj = light_assimilation.(is_c3, J, ci, Γstar)
-    Ac = rubisco_assimilation.(is_c3, Vcmax, ci, Γstar, Kc, Ko, oi)
+        ),
+    )
+    Aj = @. lazy(light_assimilation(is_c3, J, ci, Γstar))
+    Ac = @. lazy(
+        rubisco_assimilation(
+            is_c3,
+            Vcmax,
+            ci,
+            Γstar,
+            MM_Kc(Kc25, ΔHkc, T, To, R),
+            MM_Ko(Ko25, ΔHko, T, To, R),
+            oi,
+        ),
+    )
 
     @. Vcmax25 = Vcmax / arrhenius_function(T, To, R, ΔHVcmax)
     @. Rd = dark_respiration(is_c3, Vcmax25, β, T, R, To, fC3, ΔHRd)
     @. An = net_photosynthesis(Ac, Aj, Rd, β)
+    # Compute GPP: TODO - move to diagnostics only
+    @. GPP = compute_GPP(An, extinction_coeff(G_Function, cosθs), LAI, Ω)
 end
+
+get_Vcmax25(p, m::OptimalityFarquharParameters) =
+    p.canopy.photosynthesis.Vcmax25
 Base.broadcastable(m::OptimalityFarquharParameters) = tuple(m)
