@@ -208,7 +208,7 @@ for FT in (Float32, Float64)
         ### Here we bypass the outer constructor to use the default. this makes it possible to set
         ### the thermal conductivities to zero, but at the expense of being unreadable.
         ### Because this is only for a test, we tolerate it :)
-        albedo = ClimaLand.Soil.TwoBandConstantAlbedo(FT(0.2), FT(0.4))
+        albedo = ClimaLand.Soil.ConstantTwoBandSoilAlbedo(FT(0.2), FT(0.4))
         hyd_on_en_off = Soil.EnergyHydrologyParameters{
             FT,
             FT,
@@ -405,7 +405,7 @@ for FT in (Float32, Float64)
         ### Here we bypass the outer constructor to use the default. this makes it possible to set
         ### the thermal conductivities to zero, but at the expense of being unreadable.
         ### Because this is only for a test, we tolerate it :)
-        albedo = ClimaLand.Soil.TwoBandConstantAlbedo(FT(0.2), FT(0.4))
+        albedo = ClimaLand.Soil.ConstantTwoBandSoilAlbedo(FT(0.2), FT(0.4))
         hyd_off_en_off = Soil.EnergyHydrologyParameters{
             FT,
             FT,

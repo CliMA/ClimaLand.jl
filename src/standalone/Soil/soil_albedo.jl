@@ -1,8 +1,18 @@
-export update_albedo!, CLMTwoBandSoilAlbedo, TwoBandConstantAlbedo
+export update_albedo!, CLMTwoBandSoilAlbedo, ConstantTwoBandSoilAlbedo
 
 abstract type AbstractSoilAlbedoParameterization end
 
-struct TwoBandConstantAlbedo{
+"""
+    ConstantTwoBandSoilAlbedo{
+        SF <: Union{AbstractFloat, ClimaCore.Fields.Field},
+    } <: AbstractSoilAlbedoParameterization
+
+A parameterization for soil albedo: the soil albedo is 
+defined in two bands (PAR and NIR), can spatially vary or
+be set to scalar, but is assumed not to vary in time (or
+with water content).
+"""
+struct ConstantTwoBandSoilAlbedo{
     SF <: Union{AbstractFloat, ClimaCore.Fields.Field},
 } <: AbstractSoilAlbedoParameterization
     "Soil PAR Albedo"
@@ -12,13 +22,13 @@ struct TwoBandConstantAlbedo{
 end
 
 """
-    update_albedo!(bc::AtmosDrivenFluxBC, albedo::TwoBandConstantAlbedo, p, soil_domain, model_parameters)
+    update_albedo!(bc::AtmosDrivenFluxBC, albedo::ConstantTwoBandSoilAlbedo, p, soil_domain, model_parameters)
 
-UCalculates and updates PAR and NIR albedo using the constant parameters provided in `albedo`.
+Updates PAR and NIR albedo using the constant parameters provided in `albedo`.
 """
 function update_albedo!(
     bc::AtmosDrivenFluxBC,
-    albedo::TwoBandConstantAlbedo,
+    albedo::ConstantTwoBandSoilAlbedo,
     p,
     soil_domain,
     model_parameters,
@@ -27,6 +37,27 @@ function update_albedo!(
     @. p.soil.NIR_albedo = albedo.NIR_albedo
 end
 
+"""
+     CLMTwoBandSoilAlbedo{
+        FT <: AbstractFloat,
+        SF <: Union{FT, ClimaCore.Fields.Field},
+    } <: AbstractSoilAlbedoParameterization
+
+A parameterization for soil albedo: the soil albedo is 
+defined in two bands (PAR and NIR), can spatially vary or
+be set to scalar, and varies with water content at the surface
+θ_sfc, according to CLM:
+
+α = min(α_wet + Δ(θ_sfc), α_dry), where
+Δ(θ_sfc) = max(0.11 - 0.40*θ_sfc,0).
+
+We use a value for θ_sfc averaged over the depth `albedo_calc_top_thickness`.
+If the model resolution is such that the first layer is thicker than this depth,
+the value from the first layer is used.
+
+CLM reference: Lawrence, P.J., and Chase, T.N. 2007. Representing a MODIS consistent land surface in the Community Land Model
+(CLM 3.0). J. Geophys. Res. 112:G01023. DOI:10.1029/2006JG000168.
+"""
 struct CLMTwoBandSoilAlbedo{
     FT <: AbstractFloat,
     SF <: Union{FT, ClimaCore.Fields.Field},

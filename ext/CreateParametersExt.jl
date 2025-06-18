@@ -272,7 +272,7 @@ end
         K_sat,
         S_s,
         θ_r,
-        albedo = Soil.TwoBandConstantAlbedo(CP.float_type(toml_dict)(0.2), CP.float_type(toml_dict)(0.4)),
+        albedo = Soil.ConstantTwoBandSoilAlbedo(CP.float_type(toml_dict)(0.2), CP.float_type(toml_dict)(0.4)),
         kwargs...,)
 
     EnergyHydrologyParameters(
@@ -285,7 +285,7 @@ end
         K_sat,
         S_s,
         θ_r,
-        albedo = Soil.TwoBandConstantAlbedo(CP.float_type(toml_dict)(0.2), CP.float_type(toml_dict)(0.4)),
+        albedo = Soil.ConstantTwoBandSoilAlbedo(CP.float_type(toml_dict)(0.2), CP.float_type(toml_dict)(0.4)),
         kwargs...,)
 
 EnergyHydrologyParameters has two constructors: float-type and toml dict based.
@@ -311,7 +311,7 @@ function EnergyHydrologyParameters(
     K_sat,
     S_s,
     θ_r,
-    albedo = Soil.TwoBandConstantAlbedo(FT(0.2), FT(0.4)),
+    albedo = Soil.ConstantTwoBandSoilAlbedo(FT(0.2), FT(0.4)),
     kwargs...,
 ) where {FT <: AbstractFloat}
     return EnergyHydrologyParameters(
@@ -339,7 +339,7 @@ function EnergyHydrologyParameters(
     K_sat::F,
     S_s::F,
     θ_r::F,
-    albedo = Soil.TwoBandConstantAlbedo(
+    albedo = Soil.ConstantTwoBandSoilAlbedo(
         CP.float_type(toml_dict)(0.2),
         CP.float_type(toml_dict)(0.4),
     ),
