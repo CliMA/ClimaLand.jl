@@ -96,6 +96,12 @@ function setup_model(FT, context, start_date, Δt, domain, earth_param_set)
         NIR_albedo_wet,
         f_max,
     ) = spatially_varying_soil_params
+    soil_albedo = Soil.CLMTwoBandSoilAlbedo{FT}(;
+        PAR_albedo_dry,
+        NIR_albedo_dry,
+        PAR_albedo_wet,
+        NIR_albedo_wet,
+    )
     soil_params = Soil.EnergyHydrologyParameters(
         FT;
         ν,
@@ -106,10 +112,7 @@ function setup_model(FT, context, start_date, Δt, domain, earth_param_set)
         K_sat,
         S_s,
         θ_r,
-        PAR_albedo_dry,
-        NIR_albedo_dry,
-        PAR_albedo_wet,
-        NIR_albedo_wet,
+        albedo = soil_albedo,
     )
     f_over = FT(3.28) # 1/m
     R_sb = FT(1.484e-4 / 1000) # m/s

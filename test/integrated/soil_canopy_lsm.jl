@@ -15,6 +15,7 @@ for FT in (Float32, Float64)
         # Only care about PAR and NIR albedo values
         NIR_albedo = FT(0.4)
         PAR_albedo = FT(0.2)
+        albedo = Soil.ConstantTwoBandSoilAlbedo{FT}(; PAR_albedo, NIR_albedo)
         # setup SoilCanopyModel with dummy params
         earth_param_set = LP.LandParameters(FT)
         radius = FT(6378.1e3)
@@ -50,9 +51,8 @@ for FT in (Float32, Float64)
             K_sat = FT(0),
             S_s = FT(0),
             θ_r = FT(0),
-            NIR_albedo,
-            PAR_albedo,
             emissivity = FT(0),
+            albedo = albedo,
             z_0m = FT(0),
             z_0b = FT(0),
         )

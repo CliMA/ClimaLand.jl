@@ -2,7 +2,7 @@
     EnergyHydrologyParameters{
             FT <: AbstractFloat,
             F <: Union{<:AbstractFloat, ClimaCore.Fields.Field},
-            SF <: Union{<:AbstractFloat, ClimaCore.Fields.Field},
+            AP,
             C,
             PSE,
         }
@@ -10,21 +10,18 @@
 A parameter structure for the integrated soil water and energy
  equation system.
 
-Note that we require two different parameter types F and SF; these
-are for parameters that are defined on the surface only
-and those defined in the interior of the soil domain:
-
-- Surface parameters: albedo in each wavelength band (SF)
+- soil composition and retention model parameters defined
+  in the interior
+- an albedo parameterization
 - Scalar parameters: emissivity, α, β, γ, γT_ref, Ω,
  roughness lengths z_0, d_ds ) (FT)
-- Parameters defined in the interior: all else (F)
 
 $(DocStringExtensions.FIELDS)
 """
 Base.@kwdef struct EnergyHydrologyParameters{
     FT <: AbstractFloat,
     F <: Union{FT, ClimaCore.Fields.Field},
-    SF <: Union{FT, ClimaCore.Fields.Field},
+    AP,
     C,
     PSE,
 }
@@ -62,16 +59,8 @@ Base.@kwdef struct EnergyHydrologyParameters{
     γ::FT
     "Reference temperature for the viscosity factor"
     γT_ref::FT
-    "Soil PAR Albedo dry"
-    PAR_albedo_dry::SF
-    "Soil NIR Albedo dry"
-    NIR_albedo_dry::SF
-    "Soil PAR Albedo wet"
-    PAR_albedo_wet::SF
-    "Soil NIR Albedo wet"
-    NIR_albedo_wet::SF
-    "Thickness of top of soil used in albedo calculations (m)"
-    albedo_calc_top_thickness::FT
+    "Soil Albedo Parameterization"
+    albedo::AP
     "Soil Emissivity"
     emissivity::FT
     "Roughness length for momentum"
@@ -582,10 +571,7 @@ function ClimaLand.make_update_aux(model::EnergyHydrology)
             κ_sat_unfrozen,
             ρc_ds,
             earth_param_set,
-            PAR_albedo_dry,
-            NIR_albedo_dry,
-            PAR_albedo_wet,
-            NIR_albedo_wet,
+            albedo,
         ) = model.parameters
 
         @. p.soil.θ_l =
@@ -593,6 +579,7 @@ function ClimaLand.make_update_aux(model::EnergyHydrology)
 
         update_albedo!(
             model.boundary_conditions.top,
+            albedo,
             p,
             model.domain,
             model.parameters,
@@ -822,19 +809,6 @@ function ClimaLand.surface_emissivity(
     return model.parameters.emissivity
 end
 
-"""
-    ClimaLand.surface_albedo(
-        model::EnergyHydrology{FT},
-        Y,
-        p,
-    ) where {FT}
-
-Returns the surface albedo field of the
-`EnergyHydrology` soil model.
-"""
-function ClimaLand.surface_albedo(model::EnergyHydrology{FT}, Y, p) where {FT}
-    return @. (p.soil.PAR_albedo + p.soil.NIR_albedo) / 2
-end
 
 """
     ClimaLand.surface_height(

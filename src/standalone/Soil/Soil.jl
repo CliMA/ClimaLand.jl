@@ -183,6 +183,7 @@ include("./soil_heat_parameterizations.jl")
 include("Runoff/Runoff.jl")
 using .Runoff
 include("./boundary_conditions.jl")
+include("./soil_albedo.jl")
 include("./soil_hydrology_parameterizations.jl")
 include("Biogeochemistry/Biogeochemistry.jl")
 using .Biogeochemistry

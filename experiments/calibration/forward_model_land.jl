@@ -120,7 +120,12 @@ function setup_prob(
     #        min.(NIR_albedo_dry .* α_soil_dry_scaler .* α_soil_scaler, FT(1))
     #    PAR_albedo_wet .= min.(PAR_albedo_wet .* α_soil_scaler, FT(1))
     #    NIR_albedo_wet .= min.(NIR_albedo_wet .* α_soil_scaler, FT(1))
-
+    albedo = Soil.CLMTwoBandSoilAlbedo{FT}(;
+        PAR_albedo_dry,
+        NIR_albedo_dry,
+        PAR_albedo_wet,
+        NIR_albedo_wet,
+    )
     soil_params = Soil.EnergyHydrologyParameters(
         FT;
         ν,
@@ -131,10 +136,7 @@ function setup_prob(
         K_sat,
         S_s,
         θ_r,
-        PAR_albedo_dry = PAR_albedo_dry,
-        NIR_albedo_dry = NIR_albedo_dry,
-        PAR_albedo_wet = PAR_albedo_wet,
-        NIR_albedo_wet = NIR_albedo_wet,
+        albedo,
     )
     f_over = FT(3.28) # 1/m
     R_sb = FT(1.484e-4 / 1000) # m/s

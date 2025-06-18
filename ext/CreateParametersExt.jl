@@ -272,6 +272,7 @@ end
         K_sat,
         S_s,
         θ_r,
+        albedo = Soil.ConstantTwoBandSoilAlbedo{FT}(),
         kwargs...,)
 
     EnergyHydrologyParameters(
@@ -284,6 +285,7 @@ end
         K_sat,
         S_s,
         θ_r,
+        albedo = Soil.ConstantTwoBandSoilAlbedo{FT}(),
         kwargs...,)
 
 EnergyHydrologyParameters has two constructors: float-type and toml dict based.
@@ -309,6 +311,7 @@ function EnergyHydrologyParameters(
     K_sat,
     S_s,
     θ_r,
+    albedo = Soil.ConstantTwoBandSoilAlbedo{FT}(),
     kwargs...,
 ) where {FT <: AbstractFloat}
     return EnergyHydrologyParameters(
@@ -321,6 +324,7 @@ function EnergyHydrologyParameters(
         K_sat,
         S_s,
         θ_r,
+        albedo,
         kwargs...,
     )
 end
@@ -335,21 +339,9 @@ function EnergyHydrologyParameters(
     K_sat::F,
     S_s::F,
     θ_r::F,
-    PAR_albedo_dry::SF = nothing,
-    NIR_albedo_dry::SF = nothing,
-    PAR_albedo_wet::SF = nothing,
-    NIR_albedo_wet::SF = nothing,
-    PAR_albedo::SFD = 0.2,
-    NIR_albedo::SFD = 0.4,
-    albedo_calc_top_thickness::TD = 0.07,
+    albedo = Soil.ConstantTwoBandSoilAlbedo{FT}(),
     kwargs...,
-) where {
-    F <: Union{<:AbstractFloat, ClimaCore.Fields.Field},
-    SF <: Union{<:AbstractFloat, ClimaCore.Fields.Field, Nothing},
-    SFD <: Union{<:AbstractFloat, ClimaCore.Fields.Field},
-    TD <: AbstractFloat,
-    C,
-}
+) where {F <: Union{<:AbstractFloat, ClimaCore.Fields.Field}, C}
     earth_param_set = LP.LandParameters(toml_dict)
 
     # Obtain parameters needed to calculate the derived parameters
@@ -409,19 +401,8 @@ function EnergyHydrologyParameters(
     parameters = CP.get_parameter_values(toml_dict, name_map, "Land")
     PSE = typeof(earth_param_set)
     FT = CP.float_type(toml_dict)
-    if isnothing(PAR_albedo_dry)
-        PAR_albedo_dry = FT.(PAR_albedo)
-        NIR_albedo_dry = FT.(NIR_albedo)
-        PAR_albedo_wet = FT.(PAR_albedo)
-        NIR_albedo_wet = FT.(NIR_albedo)
-    end
-    albedo_calc_top_thickness = FT(albedo_calc_top_thickness)
-    EnergyHydrologyParameters{FT, F, typeof(PAR_albedo_dry), C, PSE}(;
-        PAR_albedo_wet,
-        NIR_albedo_wet,
-        PAR_albedo_dry,
-        NIR_albedo_dry,
-        albedo_calc_top_thickness,
+    EnergyHydrologyParameters{FT, F, typeof(albedo), C, PSE}(;
+        albedo,
         ν,
         ν_ss_om,
         ν_ss_quartz,
