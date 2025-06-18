@@ -253,27 +253,28 @@ _ρ_i = FT(LP.ρ_cloud_ice(earth_param_set))
 _ρ_l = FT(LP.ρ_cloud_liq(earth_param_set))
 fig = Figure(size = (1600, 1200), fontsize = 26)
 ax1 = Axis(fig[2, 1], ylabel = "ΔEnergy (J/A)", xlabel = "Days")
-function compute_surface_energy_fluxes(p)
-    ρe_flux_falling_snow =
-        Snow.volumetric_energy_flux_falling_snow(atmos, p, land.snow.parameters)
-    ρe_flux_falling_rain =
-        Snow.volumetric_energy_flux_falling_rain(atmos, p, land.snow.parameters)
+function compute_atmos_energy_fluxes(p)
+    e_flux_falling_snow =
+        Snow.energy_flux_falling_snow(atmos, p, land.snow.parameters)
+    e_flux_falling_rain =
+        Snow.energy_flux_falling_rain(atmos, p, land.snow.parameters)
 
     return @. (1 - p.snow.snow_cover_fraction) * (
                   p.soil.turbulent_fluxes.lhf +
                   p.soil.turbulent_fluxes.shf +
-                  p.soil.R_n
+                  p.soil.R_n +
+                  e_flux_falling_rain
               ) +
               p.snow.snow_cover_fraction * (
                   p.snow.turbulent_fluxes.lhf +
                   p.snow.turbulent_fluxes.shf +
                   p.snow.R_n +
-                  ρe_flux_falling_rain
+                  e_flux_falling_rain
               ) +
-              ρe_flux_falling_snow
+              e_flux_falling_snow
 end
 
-function compute_surface_water_vol_fluxes(p)
+function compute_atmos_water_vol_fluxes(p)
     return @. p.drivers.P_snow +
               p.drivers.P_liq +
               (1 - p.snow.snow_cover_fraction) * (
@@ -283,11 +284,37 @@ function compute_surface_water_vol_fluxes(p)
               p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.vapor_flux
 end
 
+function compute_energy_of_runoff(p)
+    liquid_influx = @. p.snow.water_runoff * p.snow.snow_cover_fraction +
+       (1 - p.snow.snow_cover_fraction) * p.drivers.P_liq
+    e_flux_falling_rain =
+        Soil.volumetric_internal_energy_liq.(p.drivers.T, earth_param_set) .*
+        p.drivers.P_liq
+    influx_energy = @. p.snow.energy_runoff * p.snow.snow_cover_fraction +
+       (1 - p.snow.snow_cover_fraction) * e_flux_falling_rain
+    runoff_fraction = @. 1 - ClimaLand.Soil.compute_infiltration_fraction(
+        p.soil.infiltration,
+        liquid_influx,
+    )
+    return runoff_fraction .* influx_energy
+end
+
+function compute_runoff(p)
+    liquid_influx = @. p.snow.water_runoff * p.snow.snow_cover_fraction +
+       (1 - p.snow.snow_cover_fraction) * p.drivers.P_liq
+    runoff_fraction = @. 1 - ClimaLand.Soil.compute_infiltration_fraction(
+        p.soil.infiltration,
+        liquid_influx,
+    )
+    return runoff_fraction .* liquid_influx
+end
+
 ΔE_expected =
     cumsum(
         -1 .* [
             parent(
-                compute_surface_energy_fluxes(sv.saveval[k]) .-
+                compute_atmos_energy_fluxes(sv.saveval[k]) #.- compute_energy_of_runoff(sv.saveval[k])
+                .-
                 sv.saveval[k].soil.bottom_bc.heat,
             )[end] for k in 1:1:(length(sv.t) - 1)
         ],
@@ -300,8 +327,9 @@ E_measured = [
     cumsum(
         -1 .* [
             parent(
-                compute_surface_water_vol_fluxes(sv.saveval[k]) .-
-                sv.saveval[k].soil.bottom_bc.water .+ sv.saveval[k].soil.R_s,
+                compute_atmos_water_vol_fluxes(sv.saveval[k]) .-
+                compute_runoff(sv.saveval[k]) .-
+                sv.saveval[k].soil.bottom_bc.water,
             )[end] for k in 1:1:(length(sv.t) - 1)
         ],
     ) * (sv.t[2] - sv.t[1])
@@ -331,7 +359,6 @@ lines!(
 
 lines!(ax4, daily[2:end], ΔW_expected, label = "Expected")
 axislegend(ax4, position = :rt)
-
 
 ax3 = Axis(fig[2, 2], ylabel = "ΔE/E", xlabel = "Days", yscale = log10)
 lines!(

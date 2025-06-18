@@ -12,8 +12,8 @@ export snow_surface_temperature,
     snow_bulk_density,
     phase_change_flux,
     update_snow_albedo!,
-    volumetric_energy_flux_falling_snow,
-    volumetric_energy_flux_falling_rain
+    energy_flux_falling_snow,
+    energy_flux_falling_rain
 
 """
     update_snow_albedo!(α, m::ConstantAlbedoModel, Y, p, t, earth_param_set)
@@ -480,13 +480,13 @@ function energy_from_T_and_swe(S::FT, T::FT, parameters) where {FT}
 end
 
 """
-    volumetric_energy_flux_falling_snow(atmos, p, parameters)
+    energy_flux_falling_snow(atmos, p, parameters)
 
-Returns the volumetric energy flux of falling snow for a PrescribedAtmosphere,
+Returns the energy flux of falling snow for a PrescribedAtmosphere,
 approximated as ρe_snow * P_snow, where ρe_snow = -LH_f0 * _ρ_liq. 
 This is a negative internal energy, due the to negative contribution of
 the latent heat of melting to the energy of the snow,
- and it neglects the sensible heat portion of the snow. The overall flux
+ and it neglects the sensible heat portion of the snow. The energy
  is per unit volume of liquid water, and P_snow is expressed as 
 the volume flux of liquid water resulting from the snow.
 
@@ -494,25 +494,25 @@ This method can be extended to coupled simulations, where atmos is of type
 CoupledAtmosphere, and the energy flux of the falling snow is passed in the
 cache `p`. In that case, this should specify `atmos::PrescribedAtmosphere`.
 """
-function volumetric_energy_flux_falling_snow(atmos, p, parameters)
+function energy_flux_falling_snow(atmos, p, parameters)
     _LH_f0 = LP.LH_f0(parameters.earth_param_set)
     _ρ_liq = LP.ρ_cloud_liq(parameters.earth_param_set)
     ρe_snow = -_LH_f0 * _ρ_liq
-    return @. lazy(ρe_snow * p.drivers.P_snow) # per unit vol of liquid water
+    return @. lazy(ρe_snow * p.drivers.P_snow)
 end
 
 """
-    volumetric_energy_flux_falling_rain(atmos, p, parameters)
+    energy_flux_falling_rain(atmos, p, parameters)
 
-Returns the volumetric energy flux of falling rain for a PrescribedAtmosphere,
-approximated as ρ_l e_l(T_atmos) * P_liq. This is per unit volume of liquid water, 
+Returns the energy flux of falling rain for a PrescribedAtmosphere,
+approximated as ρ_l e_l(T_atmos) * P_liq. The energy is per unit volume of liquid water, 
 and P_liq is expressed as the volume flux of liquid water resulting from the rain.
 
 This method can be extended to coupled simulations, where atmos is of type
 CoupledAtmosphere, and the energy flux of the falling rain is passed in the
 cache `p`.  In that case, this should specify `atmos::PrescribedAtmosphere`.
 """
-function volumetric_energy_flux_falling_rain(atmos, p, parameters)
+function energy_flux_falling_rain(atmos, p, parameters)
     return @. lazy(
         volumetric_internal_energy_liq(p.drivers.T, parameters) *
         p.drivers.P_liq,

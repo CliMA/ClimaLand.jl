@@ -56,6 +56,7 @@ for interactions between components.
 =#
 
 using ClimaLand
+using LazyBroadcast: lazy
 using DocStringExtensions
 using LinearAlgebra
 using ClimaCore

@@ -121,18 +121,18 @@ function snow_boundary_fluxes!(
             p.snow.water_runoff
         ) * p.snow.snow_cover_fraction
 
-    ρe_flux_falling_snow =
-        volumetric_energy_flux_falling_snow(bc.atmos, p, model.parameters)
-    ρe_flux_falling_rain =
-        volumetric_energy_flux_falling_rain(bc.atmos, p, model.parameters)
+    e_flux_falling_snow =
+        energy_flux_falling_snow(bc.atmos, p, model.parameters)
+    e_flux_falling_rain =
+        energy_flux_falling_rain(bc.atmos, p, model.parameters)
 
     # positive fluxes are TOWARDS atmos
     @. p.snow.total_energy_flux =
-        ρe_flux_falling_snow +
+        e_flux_falling_snow +
         (
             p.snow.turbulent_fluxes.lhf +
             p.snow.turbulent_fluxes.shf +
-            p.snow.R_n - p.snow.energy_runoff + ρe_flux_falling_rain
+            p.snow.R_n - p.snow.energy_runoff + e_flux_falling_rain
         ) * p.snow.snow_cover_fraction
     return nothing
 
