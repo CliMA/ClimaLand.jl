@@ -100,6 +100,12 @@ function global_land_model(
         NIR_albedo_wet,
         f_max,
     ) = spatially_varying_soil_params
+    albedo = Soil.CLMTwoBandSoilAlbedo{FT}(;
+        PAR_albedo_dry,
+        NIR_albedo_dry,
+        PAR_albedo_wet,
+        NIR_albedo_wet,
+    )
     soil_params = Soil.EnergyHydrologyParameters(
         FT;
         ν,
@@ -110,10 +116,7 @@ function global_land_model(
         K_sat,
         S_s,
         θ_r,
-        PAR_albedo_dry = PAR_albedo_dry,
-        NIR_albedo_dry = NIR_albedo_dry,
-        PAR_albedo_wet = PAR_albedo_wet,
-        NIR_albedo_wet = NIR_albedo_wet,
+        albedo,
     )
     runoff_model = ClimaLand.Soil.Runoff.TOPMODELRunoff{FT}(;
         f_over = f_over,

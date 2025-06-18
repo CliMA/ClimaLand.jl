@@ -40,8 +40,10 @@ function run_fluxnet(
         z_0m = params.soil.z_0m,
         z_0b = params.soil.z_0b,
         emissivity = params.soil.emissivity,
-        PAR_albedo = PAR_albedo,
-        NIR_albedo = NIR_albedo,
+        albedo = ClimaLand.Soil.ConstantTwoBandSoilAlbedo(
+            PAR_albedo,
+            NIR_albedo,
+        ),
     )
 
     soil_args = (domain = soil_domain, parameters = soil_ps)
