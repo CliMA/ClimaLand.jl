@@ -56,7 +56,7 @@ PAR_albedo_dry = FT(0.2)
 NIR_albedo_dry = FT(0.4)
 PAR_albedo_wet = FT(0.1)
 NIR_albedo_wet = FT(0.2)
-albedo = Soil.CLMTwoBandSoilAlbedo{FT}(;
+albedo = ClimaLand.Soil.CLMTwoBandSoilAlbedo{FT}(;
     PAR_albedo_dry,
     PAR_albedo_wet,
     NIR_albedo_dry,
