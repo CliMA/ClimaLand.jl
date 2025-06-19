@@ -151,7 +151,7 @@ end
 
 function setup_simulation(; greet = false)
     # If not LONGER_RUN, run for 2 years; note that the forcing from 2008 is repeated.
-    # If LONGER run, run for 10 years, with the correct forcing each year.
+    # If LONGER run, run for 20 years, with the correct forcing each year.
     start_date = LONGER_RUN ? DateTime(2000) : DateTime(2008)
     stop_date = LONGER_RUN ? DateTime(2020) : DateTime(2010)
     Δt = 450.0
