@@ -1,3 +1,12 @@
+[compat]
+ClimaAnalysis = "0.5.17"
+ClimaCalibrate = "0.1"
+ClimaDiagnostics = "0.2.13"
+ClimaTimeSteppers = "0.7, 0.8"
+EnsembleKalmanProcesses = "2.4.1"
+Flux = "0.15"
+Statistics = "1"
+
 [deps]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 ArgParse = "c7e460c6-2fb9-53a9-8c5b-16f535851c63"
@@ -44,11 +53,5 @@ TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 Thermodynamics = "b60c26fb-14c3-4610-9d3e-2d17fe7ff00c"
 
-[compat]
-ClimaAnalysis = "0.5.17"
-ClimaCalibrate = "0.1"
-ClimaDiagnostics = "0.2.13"
-ClimaTimeSteppers = "0.7, 0.8"
-EnsembleKalmanProcesses = "2.4.1"
-Flux = "0.15"
-Statistics = "1"
+[extras]
+CUDA_Runtime_jll = "76a88914-d11a-5bdc-97e0-2f5a05c973a2"
