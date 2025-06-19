@@ -1,5 +1,3 @@
-prior_α_0 = EKP.constrained_gaussian("α_0", 0.5, 0.2, 0.2, 0.8);
-prior_Δα = EKP.constrained_gaussian("Δα", 0.2, 0.1, 0.0, 0.8);
-prior_k = EKP.constrained_gaussian("k", 10, 5, 0, 25);
-
-prior = EKP.combine_distributions([prior_α_0, prior_Δα, prior_k]);
+prior_α_0 = EKP.constrained_gaussian("α_0", 0.8, 0.1, 0.5, 0.95);
+prior_beta_snow = EKP.constrained_gaussian("beta_snow", 0.4, 0.2, 0.1, 1.0);
+prior = EKP.combine_distributions([prior_α_0, prior_beta_snow]);

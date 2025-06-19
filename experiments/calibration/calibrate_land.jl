@@ -7,7 +7,7 @@ const spinup_period = Year(1)
 const start_date = DateTime(2008, 12, 01) # this is the start of the forward model spinup
 @assert month(start_date + spinup_period) == 12 "The start of your calibration period should be December."
 const nelements = (50, 15) # resolution - (horizontal elements (lon, lat), vertical elements (soil discretization))
-const dirname = "land_snow_zenith_angle_params_swu_try2" # ideally, describe your calibration in a few words
+const dirname = "land_snow_constant_beta_swu" # ideally, describe your calibration in a few words
 const caldir = joinpath("output", dirname) # you might want to save somewhere else than login
 import ClimaLand
 model_dir = joinpath(pkgdir(ClimaLand), "experiments", "calibration")
@@ -103,9 +103,8 @@ include(
         pkgdir(ClimaLand),
         "experiments",
         "long_runs",
-	"leaderboard"
-	"leaderboard.jl"
-    ),
+	"leaderboard",
+	"leaderboard.jl"),
 )
 function CAL.analyze_iteration(ekp, g_ensemble, prior, output_dir, iteration)
     plot_output_path = CAL.path_to_iteration(output_dir, iteration)
@@ -117,7 +116,7 @@ function CAL.analyze_iteration(ekp, g_ensemble, prior, output_dir, iteration)
     compute_monthly_leaderboard(
         plot_output_path,
         diagnostics_folder_path,
-        data_source,
+        "ERA5",
     )
     plot_constrained_params_and_errors(plot_output_path, ekp, prior)
 end
