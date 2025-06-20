@@ -26,84 +26,78 @@ const FT = Float64
 earth_param_set = LP.LandParameters(FT)
 climaland_dir = pkgdir(ClimaLand)
 
-include(joinpath(climaland_dir, "experiments/integrated/fluxnet/data_tools.jl"))
-include(joinpath(climaland_dir, "experiments/integrated/fluxnet/plot_utils.jl"))
 
 include(joinpath(pkgdir(ClimaLand),"experiments/integrated/fluxnet/path_to_data_file.jl"))
 site_ID = "US-Ha1"
 data_path = get_path(site_ID)
-params = Dict("g1" => 1.0, "Vcmax25" => 1.0)
 
 driver_data = readdlm(data_path, ',')
 
-function zenith_angle(
-        t,
-        start_date;
-        latitude = lat,
-        longitude = long,
-        insol_params::Insolation.Parameters.InsolationParameters{FT} = earth_param_set.insol_params,
-    ) where {FT}
-    # This should be time in UTC
-    current_datetime = start_date + Dates.Second(round(t))
-
-    # Orbital Data uses Float64, so we need to convert to our sim FT
-    d, δ, η_UTC =
-    FT.(
-        Insolation.helper_instantaneous_zenith_angle(
-                                                     current_datetime,
-                                                     start_date,
-                                                     insol_params,
-                                                    )
+# Read all site-specific domain parameters from the simulation file for the site
+include(
+        joinpath(
+                 climaland_dir,
+                 "experiments/integrated/fluxnet/any_site/any_simulation.jl",
+                ),
+       )
+include(
+        joinpath(climaland_dir, "experiments/integrated/fluxnet/fluxnet_domain.jl"),
+       )
+# Read all site-specific parameters from the parameter file for the site
+include(
+        joinpath(
+                 climaland_dir,
+                 "experiments/integrated/fluxnet/any_site/any_parameters.jl",
+                ),
+       )
+# This reads in the data from the flux tower site and creates
+# the atmospheric and radiative driver structs for the model
+include(
+        joinpath(
+                 climaland_dir,
+                 "experiments/integrated/fluxnet/fluxnet_simulation.jl",
+                ),
+       )
+include(
+        joinpath(
+                 climaland_dir,
+                 "experiments/integrated/fluxnet/met_drivers_FLUXNET.jl",
+                ),
        )
 
-    FT(
-       Insolation.instantaneous_zenith_angle(
-                                             d,
-                                             δ,
-                                             η_UTC,
-                                             longitude,
-                                             latitude,
-                                            )[1],
-      )
-end
+# function zenith_angle(
+#         t,
+#         start_date;
+#         latitude = lat,
+#         longitude = long,
+#         insol_params::Insolation.Parameters.InsolationParameters{FT} = earth_param_set.insol_params,
+#     ) where {FT}
+#     # This should be time in UTC
+#     current_datetime = start_date + Dates.Second(round(t))
 
-function run_single_site(params, site_ID) # e.g., run_single_site(params, "US-MOz")
+#     # Orbital Data uses Float64, so we need to convert to our sim FT
+#     d, δ, η_UTC =
+#     FT.(
+#         Insolation.helper_instantaneous_zenith_angle(
+#                                                      current_datetime,
+#                                                      start_date,
+#                                                      insol_params,
+#                                                     )
+#        )
 
-    # Read all site-specific domain parameters from the simulation file for the site
-    include(
-            joinpath(
-                     climaland_dir,
-                     "experiments/integrated/fluxnet/any_site/any_simulation.jl",
-                    ),
-           )
+#     FT(
+#        Insolation.instantaneous_zenith_angle(
+#                                              d,
+#                                              δ,
+#                                              η_UTC,
+#                                              longitude,
+#                                              latitude,
+#                                             )[1],
+#       )
+# end
 
-    include(
-            joinpath(climaland_dir, "experiments/integrated/fluxnet/fluxnet_domain.jl"),
-           )
-
-    # Read all site-specific parameters from the parameter file for the site
-    include(
-            joinpath(
-                     climaland_dir,
-                     "experiments/integrated/fluxnet/any_site/any_parameters.jl",
-                    ),
-           )
-
-    # This reads in the data from the flux tower site and creates
-    # the atmospheric and radiative driver structs for the model
-    include(
-            joinpath(
-                     climaland_dir,
-                     "experiments/integrated/fluxnet/fluxnet_simulation.jl",
-                    ),
-           )
-
-    include(
-            joinpath(
-                     climaland_dir,
-                     "experiments/integrated/fluxnet/met_drivers_FLUXNET.jl",
-                    ),
-           )
+function run_single_site(site_ID) # e.g., run_single_site("US-MOz")
+    params = Dict("g1" => 1.0, "Vcmax25" => 1.0)
 
     # Now we set up the model. For the soil model, we pick
     # a model type and model args:
@@ -336,7 +330,7 @@ function run_single_site(params, site_ID) # e.g., run_single_site(params, "US-MO
                                 (t0, tf),
                                 p,
                                );
-
+    println("beginning solve")
     sol = SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb);
     return sol
 end
