@@ -9,6 +9,7 @@ using Dates
 using Insolation
 using StatsBase
 
+using DelimitedFiles
 using ClimaLand
 using ClimaLand.Domains: Column
 using ClimaLand.Snow
@@ -25,95 +26,52 @@ const FT = Float64
 earth_param_set = LP.LandParameters(FT)
 climaland_dir = pkgdir(ClimaLand)
 
-include(joinpath(climaland_dir, "experiments/integrated/fluxnet/data_tools.jl"))
-include(joinpath(climaland_dir, "experiments/integrated/fluxnet/plot_utils.jl"))
 
-# Read in the site to be run from the command line
-#if length(ARGS) < 1
-#    error("Must provide site ID on command line")
-#end
-#
-site_ID = "US-MOz"
-params = Dict("g1" => 1.0, "Vcmax25" => 1.0)
+include(
+    joinpath(
+        pkgdir(ClimaLand),
+        "experiments/integrated/fluxnet/path_to_data_file.jl",
+    ),
+)
+site_ID = "US-Ha1"
+data_path = get_path(site_ID)
 
+driver_data = readdlm(data_path, ',')
 
-function zenith_angle(
-    t,
-    start_date;
-    latitude = lat,
-    longitude = long,
-    insol_params::Insolation.Parameters.InsolationParameters{FT} = earth_param_set.insol_params,
-) where {FT}
-    # This should be time in UTC
-    current_datetime = start_date + Dates.Second(round(t))
+# Read all site-specific domain parameters from the simulation file for the site
+include(
+    joinpath(
+        climaland_dir,
+        "experiments/integrated/fluxnet/any_site/any_simulation.jl",
+    ),
+)
+include(
+    joinpath(climaland_dir, "experiments/integrated/fluxnet/fluxnet_domain.jl"),
+)
+# Read all site-specific parameters from the parameter file for the site
+include(
+    joinpath(
+        climaland_dir,
+        "experiments/integrated/fluxnet/any_site/any_parameters.jl",
+    ),
+)
+# This reads in the data from the flux tower site and creates
+# the atmospheric and radiative driver structs for the model
+include(
+    joinpath(
+        climaland_dir,
+        "experiments/integrated/fluxnet/fluxnet_simulation.jl",
+    ),
+)
+include(
+    joinpath(
+        climaland_dir,
+        "experiments/integrated/fluxnet/met_drivers_FLUXNET.jl",
+    ),
+)
 
-    # Orbital Data uses Float64, so we need to convert to our sim FT
-    d, δ, η_UTC =
-        FT.(
-            Insolation.helper_instantaneous_zenith_angle(
-                current_datetime,
-                start_date,
-                insol_params,
-            )
-        )
-
-    FT(
-        Insolation.instantaneous_zenith_angle(
-            d,
-            δ,
-            η_UTC,
-            longitude,
-            latitude,
-        )[1],
-    )
-end
-
-# Currently, site_ID can only be "US-MOz", "US-Var", "US-Ha1", "US-NR1"
-# But we want ALL fluxnet sites
-# to do: change the included files to read meta data, all same config otherwise
-# (same parameters, same domains, same resolution, etc.)
-# data files will be read directly from caltech hpc filepath
-
-function run_single_site(params, site_ID) # e.g., run_single_site(params, "US-MOz")
-
-    # Read all site-specific domain parameters from the simulation file for the site
-    include(
-        joinpath(
-            climaland_dir,
-            "experiments/integrated/fluxnet/$site_ID/$(site_ID)_simulation.jl",
-        ),
-    )
-
-    include(
-        joinpath(
-            climaland_dir,
-            "experiments/integrated/fluxnet/fluxnet_domain.jl",
-        ),
-    )
-
-    # Read all site-specific parameters from the parameter file for the site
-    include(
-        joinpath(
-            climaland_dir,
-            "experiments/integrated/fluxnet/$site_ID/$(site_ID)_parameters.jl",
-        ),
-    )
-
-    # This reads in the data from the flux tower site and creates
-    # the atmospheric and radiative driver structs for the model
-    include(
-        joinpath(
-            climaland_dir,
-            "experiments/integrated/fluxnet/fluxnet_simulation.jl",
-        ),
-    )
-
-    include(
-        joinpath(
-            climaland_dir,
-            "experiments/integrated/fluxnet/met_drivers_FLUXNET.jl",
-        ),
-    )
+function run_single_site(site_ID) # e.g., run_single_site("US-MOz")
+    params = Dict("g1" => 1.0, "Vcmax25" => 1.0)
 
     # Now we set up the model. For the soil model, we pick
     # a model type and model args:
@@ -135,11 +93,23 @@ function run_single_site(params, site_ID) # e.g., run_single_site(params, "US-MO
         NIR_albedo = soil_α_NIR,
     )
 
+    soil_args = (domain = soil_domain, parameters = soil_ps)
+    soil_model_type = Soil.EnergyHydrology{FT}
+
     # Soil microbes model
     soilco2_type = Soil.Biogeochemistry.SoilCO2Model{FT}
-    soilco2_ps = Soil.Biogeochemistry.SoilCO2ModelParameters(FT)
+
+    soilco2_ps = SoilCO2ModelParameters(FT)
+
     Csom = ClimaLand.PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5))
-    soilco2_args = (; domain = soil_domain, parameters = soilco2_ps)
+
+    # Set the soil CO2 BC to being atmospheric CO2
+    soilco2_top_bc = Soil.Biogeochemistry.AtmosCO2StateBC()
+    soilco2_bot_bc = Soil.Biogeochemistry.SoilCO2FluxBC((p, t) -> 0.0) # no flux
+    soilco2_sources = (MicrobeProduction{FT}(),)
+
+    soilco2_boundary_conditions =
+        (; top = soilco2_top_bc, bottom = soilco2_bot_bc)
 
     soilco2_args = (;
         boundary_conditions = soilco2_boundary_conditions,
