@@ -92,7 +92,7 @@ function soil_ozark(; # Function that returns the src function, but with ozark d
         K_sat,
         S_s,
         θ_r,
-        albedo = Soil.ConstantTwoBandSoilAlbedo(PAR_albedo, NIR_albedo),
+        albedo = Soil.ConstantTwoBandSoilAlbedo{FT}(; PAR_albedo, NIR_albedo),
         emissivity,
         z_0m,
         z_0b,

@@ -147,7 +147,10 @@ soil_α_PAR = FT(0.2)
 soil_α_NIR = FT(0.4)
 
 soil_domain = land_domain
-soil_albedo = ClimaLand.Soil.ConstantTwoBandSoilAlbedo(soil_α_PAR, soil_α_NIR)
+soil_albedo = ClimaLand.Soil.ConstantTwoBandSoilAlbedo{FT}(;
+    PAR_albedo = soil_α_PAR,
+    NIR_albedo = soil_α_NIR,
+)
 soil_ps = Soil.EnergyHydrologyParameters(
     FT;
     ν = soil_ν,

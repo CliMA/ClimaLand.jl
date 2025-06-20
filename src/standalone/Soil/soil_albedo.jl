@@ -21,10 +21,23 @@ struct ConstantTwoBandSoilAlbedo{
     NIR_albedo::SF
 end
 
+function ConstantTwoBandSoilAlbedo{FT}(;
+    PAR_albedo::FT = FT(0.2),
+    NIR_albedo::FT = FT(0.4),
+) where {FT}
+    ConstantTwoBandSoilAlbedo{FT}(PAR_albedo, NIR_albedo)
+end
+
+
 """
     update_albedo!(bc::AtmosDrivenFluxBC, albedo::ConstantTwoBandSoilAlbedo, p, soil_domain, model_parameters)
 
-Updates PAR and NIR albedo using the constant parameters provided in `albedo`.
+Updates PAR and NIR albedo using the temporally-constant parameters 
+provided in `albedo`; these values may be spatially varying.
+
+For the temporally-constant albedo model, there is no need to update 
+the values each step, or have an allocated spot in the cache for them. This
+can be optimized in the future.
 """
 function update_albedo!(
     bc::AtmosDrivenFluxBC,
@@ -44,12 +57,14 @@ end
     } <: AbstractSoilAlbedoParameterization
 
 A parameterization for soil albedo: the soil albedo is 
-defined in two bands (PAR and NIR), can spatially vary or
-be set to scalar, and varies with water content at the surface
+defined in two bands (PAR and NIR), and can spatially vary or
+be set to scalar. However, it varies temporally due to a
+dependence on soil water content,
 θ_sfc, according to CLM:
 
 α = min(α_wet + Δ(θ_sfc), α_dry), where
-Δ(θ_sfc) = max(0.11 - 0.40*θ_sfc,0).
+Δ(θ_sfc) = max(θ_int - dαdθ*θ_sfc,0),
+where θ_int = 0.11 and dαdθ = 0.4.
 
 We use a value for θ_sfc averaged over the depth `albedo_calc_top_thickness`.
 If the model resolution is such that the first layer is thicker than this depth,
@@ -70,6 +85,10 @@ struct CLMTwoBandSoilAlbedo{
     PAR_albedo_wet::SF
     "Soil NIR Albedo wet"
     NIR_albedo_wet::SF
+    "Slope of albedo vs moisture curve, dαdθ (unitless)"
+    dαdθ::FT
+    "Intercept parameter of slope of albedo vs moisture curve, θ_int (unitless)"
+    θ_int::FT
     "Thickness of top of soil used in albedo calculations (m)"
     albedo_calc_top_thickness::FT
 end
@@ -79,6 +98,8 @@ function CLMTwoBandSoilAlbedo{FT}(;
     NIR_albedo_dry,
     PAR_albedo_wet,
     NIR_albedo_wet,
+    dαdθ = FT(0.4),
+    θ_int = FT(0.11),
     albedo_calc_top_thickness = FT(0.02),
 ) where {FT}
     return CLMTwoBandSoilAlbedo{FT, typeof(PAR_albedo_dry)}(
@@ -86,26 +107,30 @@ function CLMTwoBandSoilAlbedo{FT}(;
         NIR_albedo_dry,
         PAR_albedo_wet,
         NIR_albedo_wet,
+        dαdθ,
+        θ_int,
         albedo_calc_top_thickness,
     )
 end
 
 
 """
-    albedo_from_moisture(θ_sfc::FT, albedo_dry::FT, albedo_wet::FT)
+    albedo_from_moisture(θ_sfc::FT, θ_int::FT,dαdθ::FT,  albedo_dry::FT, albedo_wet::FT)
 
 Calculates pointwise albedo for any band as a function of soil surface moisture given
-the dry and wet albedo values for that band.
+the dry and wet albedo values for that band using the CLM parameterization.
 
 CLM reference: Lawrence, P.J., and Chase, T.N. 2007. Representing a MODIS consistent land surface in the Community Land Model
 (CLM 3.0). J. Geophys. Res. 112:G01023. DOI:10.1029/2006JG000168.
 """
 function albedo_from_moisture(
     θ_sfc::FT,
+    θ_int::FT,
+    dαdθ::FT,
     albedo_dry::FT,
     albedo_wet::FT,
 ) where {FT}
-    Δ = max(FT(0.11) - FT(0.4) * θ_sfc, FT(0))
+    Δ = max(θ_int - dαdθ * θ_sfc, FT(0))
     return min(albedo_wet + Δ, albedo_dry)
 end
 
@@ -133,6 +158,8 @@ function update_albedo!(
         NIR_albedo_dry,
         PAR_albedo_wet,
         NIR_albedo_wet,
+        dαdθ,
+        θ_int,
         albedo_calc_top_thickness,
     ) = albedo
     FT = eltype(soil_domain.fields.Δz_top)
@@ -140,7 +167,7 @@ function update_albedo!(
     if soil_domain.fields.Δz_min < albedo_calc_top_thickness
         # We compute ∫H_θ_dz / N, where N =∫H_dz
         # is a normalization,
-        # and then computing ∫[(H θ)/N]dz.
+        # and then compute θ_sfc = ∫[(H θ)/N]dz.
         # N is integral of 1 from (surface-albedo_calc_top_thickness) to surface
         N = p.soil.sfc_scratch
         # zero all centers lower than boundary, set everything above to one
@@ -156,34 +183,28 @@ function update_albedo!(
                 soil_domain.fields.z_sfc - soil_domain.fields.z,
             ) * p.soil.θ_l / N
         # Now use scratch space to compute normed integral
-        normed_∫H_θ_dz = p.soil.sfc_scratch
+        θ_sfc = p.soil.sfc_scratch
         ClimaCore.Operators.column_integral_definite!(
-            normed_∫H_θ_dz,
+            θ_sfc,
             p.soil.sub_sfc_scratch,
         )
-        θ_sfc = normed_∫H_θ_dz
     else
         # in the case where no layer is centered above boundary, use the values of the top layer
         θ_sfc = ClimaLand.Domains.top_center_to_surface(p.soil.θ_l)
     end
     @. p.soil.PAR_albedo =
-        albedo_from_moisture(θ_sfc, PAR_albedo_dry, PAR_albedo_wet)
+        albedo_from_moisture(θ_sfc, θ_int, dαdθ, PAR_albedo_dry, PAR_albedo_wet)
     @. p.soil.NIR_albedo =
-        albedo_from_moisture(θ_sfc, NIR_albedo_dry, NIR_albedo_wet)
+        albedo_from_moisture(θ_sfc, θ_int, dαdθ, NIR_albedo_dry, NIR_albedo_wet)
 end
 
 """
-update_albedo!(bc::AbstractWaterBC, _, p, soil_domain, model_parameters)
+update_albedo!(bc::AbstractEnergyHydrologyBC, _...)
 
     Does nothing for boundary conditions where albedo is not used.
 """
-function update_albedo!(
-    bc::BC,
-    _,
-    p,
-    soil_domain,
-    model_parameters,
-) where {BC <: AbstractEnergyHydrologyBC} end
+function update_albedo!(bc::AbstractEnergyHydrologyBC, _...) end
+
 
 """
     ClimaLand.surface_albedo(

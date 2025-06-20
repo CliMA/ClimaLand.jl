@@ -59,7 +59,10 @@ include(
 # Now we set up the model. For the soil model, we pick
 # a model type and model args:
 soil_domain = land_domain
-albedo = Soil.ConstantTwoBandSoilAlbedo(soil_α_PAR, soil_α_NIR)
+albedo = Soil.ConstantTwoBandSoilAlbedo{FT}(;
+    PAR_albedo = soil_α_PAR,
+    BIR_albedo = soil_α_NIR,
+)
 
 soil_ps = Soil.EnergyHydrologyParameters(
     FT;
