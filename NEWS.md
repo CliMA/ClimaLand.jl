@@ -3,6 +3,8 @@ ClimaLand.jl Release Notes
 
 main
 -------
+- ![breaking change][badge-💥breaking] Make soil albedo parameterization modular
+PR[#1184](https://github.com/CliMA/ClimaLand.jl/pull/1184)
 
 v0.16.2
 -------
