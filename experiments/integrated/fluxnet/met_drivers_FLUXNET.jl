@@ -103,7 +103,12 @@ include(
     joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/pull_MODIS.jl"),
 )
 
-include(joinpath(pkgdir(ClimaLand),"experiments/integrated/fluxnet/path_to_data_file.jl"))
+include(
+    joinpath(
+        pkgdir(ClimaLand),
+        "experiments/integrated/fluxnet/path_to_data_file.jl",
+    ),
+)
 site_ID = "US-Ha1"
 data_path = get_path(site_ID)
 #data_path = ClimaLand.Artifacts.experiment_fluxnet_data_path(site_ID)
