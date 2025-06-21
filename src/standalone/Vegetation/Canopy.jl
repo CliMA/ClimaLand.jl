@@ -12,6 +12,7 @@ import ClimaUtilities.TimeManager: ITime, date
 import LinearAlgebra: I, dot
 using ClimaLand: AbstractRadiativeDrivers, AbstractAtmosphericDrivers
 import ..Parameters as LP
+import Insolation.Parameters as IP
 
 import ClimaLand:
     name,
@@ -30,9 +31,10 @@ import ClimaLand:
     make_compute_jacobian,
     get_drivers,
     total_liq_water_vol_per_area!,
-    total_energy_per_area!
+    total_energy_per_area!,
+    FrequencyBasedCallback
 using ClimaLand: PrescribedGroundConditions, AbstractGroundConditions
-using ClimaLand.Domains: Point, Plane, SphericalSurface
+using ClimaLand.Domains: Point, Plane, SphericalSurface, get_long
 export SharedCanopyParameters, CanopyModel, set_canopy_prescribed_field!
 include("./component_models.jl")
 include("./PlantHydraulics.jl")
@@ -121,6 +123,24 @@ function FarquharModel{FT}(
     parameters = FarquharParameters(FT, is_c3; Vcmax25, sc, pc)
     return FarquharModel{FT, typeof(parameters)}(parameters)
 end
+
+function PModel{FT}() where {FT <: AbstractFloat}
+    parameters = ClimaLand.Canopy.PModelParameters(
+        cstar = FT(0.41),
+        β = FT(146),
+        ϕc = FT(0.087),
+        ϕ0 = FT(NaN),
+        ϕa0 = FT(0.352),
+        ϕa1 = FT(0.022),
+        ϕa2 = FT(-0.00034),
+        α = FT(0),
+        sc = LP.get_default_parameter(FT, :low_water_pressure_sensitivity),
+        pc = LP.get_default_parameter(FT, :moisture_stress_ref_water_pressure),
+    )
+
+    return PModel{FT}(parameters)
+end
+
 
 ## Plant hydraulics models
 """
@@ -329,6 +349,12 @@ function MedlynConductanceModel{FT}(
 end
 
 
+function PModelConductance{FT}() where {FT <: AbstractFloat} 
+    cond_params = PModelConductanceParameters(Drel = FT(1.6))
+    return PModelConductance{FT}(cond_params)
+end
+
+
 ########################################################
 # End component model convenience constructors
 ########################################################
@@ -459,6 +485,10 @@ function CanopyModel{FT}(;
     if typeof(energy) <: PrescribedCanopyTempModel{FT}
         @info "Using the PrescribedAtmosphere air temperature as the canopy temperature"
         @assert typeof(boundary_conditions.atmos) <: PrescribedAtmosphere{FT}
+    end
+
+    if typeof(photosynthesis) <: PModel{FT}
+        @assert typeof(conductance) <: PModelConductance{FT} "When using PModel for photosynthesis, you must also use PModelConductance for stomatal conductance"
     end
 
     args = (
@@ -822,8 +852,8 @@ function ClimaLand.make_update_aux(
         FT,
         <:AutotrophicRespirationModel,
         <:Union{BeerLambertModel, TwoStreamModel},
-        <:Union{FarquharModel, OptimalityFarquharModel},
-        <:MedlynConductanceModel,
+        <:Union{FarquharModel, OptimalityFarquharModel, PModel},
+        <:Union{MedlynConductanceModel, PModelConductance},
         <:PlantHydraulicsModel,
         <:AbstractCanopyEnergyModel,
     },
@@ -962,8 +992,8 @@ function make_compute_exp_tendency(
         FT,
         <:AutotrophicRespirationModel,
         <:Union{BeerLambertModel, TwoStreamModel},
-        <:Union{FarquharModel, OptimalityFarquharModel},
-        <:MedlynConductanceModel,
+        <:Union{FarquharModel, OptimalityFarquharModel, PModel},
+        <:Union{MedlynConductanceModel, PModelConductance},
         <:PlantHydraulicsModel,
         <:Union{PrescribedCanopyTempModel, BigLeafEnergyModel},
     },
@@ -992,8 +1022,8 @@ function make_compute_imp_tendency(
         FT,
         <:AutotrophicRespirationModel,
         <:Union{BeerLambertModel, TwoStreamModel},
-        <:Union{FarquharModel, OptimalityFarquharModel},
-        <:MedlynConductanceModel,
+        <:Union{FarquharModel, OptimalityFarquharModel, PModel},
+        <:Union{MedlynConductanceModel, PModelConductance},
         <:PlantHydraulicsModel,
         <:Union{PrescribedCanopyTempModel, BigLeafEnergyModel},
     },
@@ -1022,8 +1052,8 @@ function ClimaLand.make_compute_jacobian(
         FT,
         <:AutotrophicRespirationModel,
         <:Union{BeerLambertModel, TwoStreamModel},
-        <:Union{FarquharModel, OptimalityFarquharModel},
-        <:MedlynConductanceModel,
+        <:Union{FarquharModel, OptimalityFarquharModel, PModel},
+        <:Union{MedlynConductanceModel, PModelConductance},
         <:PlantHydraulicsModel,
         <:Union{PrescribedCanopyTempModel, BigLeafEnergyModel},
     },
@@ -1104,6 +1134,26 @@ function ClimaLand.total_liq_water_vol_per_area!(
         p,
         t,
     )
+end
+
+"""
+    ClimaLand.make_set_initial_cache(model::CanopyModel)
+
+Set the initial cache `p` for the canopy model. Note that if the photosynthesis model
+is the P-model, then `set_initial_cache!` will also run `set_historical_cache!` which 
+sets the (t-1) values for Vcmax25_opt, Jmax25_opt, and ξ_opt. 
+"""
+function ClimaLand.make_set_initial_cache(model::CanopyModel)
+    update_cache! = make_update_cache(model)
+    function set_initial_cache!(p, Y0, t0)
+        update_cache!(p, Y0, t0)
+        set_historical_cache!(p, Y0, model.photosynthesis, model)
+    end
+    return set_initial_cache!
+end
+
+function set_historical_cache!(p, Y0, m::AbstractPhotosynthesisModel, canopy)
+    return
 end
 
 end

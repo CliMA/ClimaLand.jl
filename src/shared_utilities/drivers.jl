@@ -971,7 +971,7 @@ function vapor_pressure_deficit(T_air, P_air, q_air, thermo_params)
         P_air,
         Thermodynamics.PhasePartition(q_air),
     )
-    return es - ea
+    return max(es - ea, 0)
 end
 
 """
