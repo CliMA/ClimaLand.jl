@@ -86,8 +86,6 @@ function PModelParameters(inputs::Dict{String, Any}, FT)
         ϕa1 = ϕa1,
         ϕa2 = ϕa2,
         α = FT(0),
-        sc = FT(0),
-        pc = FT(0),
     )
 end
 

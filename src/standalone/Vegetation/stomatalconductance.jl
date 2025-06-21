@@ -110,7 +110,6 @@ function MedlynConductanceParameters(
     return MedlynConductanceParameters{FT, G1}(; g1, parameters..., kwargs...)
 end
 
-
 #################### P model conductance ####################
 """
     PModelConductanceParameters{FT <: AbstractFloat}

@@ -35,11 +35,8 @@ Base.@kwdef struct PModelParameters{FT <: AbstractFloat}
     """Timescale parameter used in EMA for acclimation of optimal photosynthetic capacities (unitless).
         Setting this to 0 represents no incorporation of past values"""
     α::FT
-    "Sensitivity to low water pressure, in the moisture stress factor, (Pa^{-1}) [Tuzet et al. (2003)]"
-    sc::FT
-    "Reference water pressure for the moisture stress factor (Pa) [Tuzet et al. (2003)]"
-    pc::FT
 end
+
 
 """
     PModelConstants{FT<:AbstractFloat}
@@ -169,12 +166,12 @@ end
                 OPCT <: PModelConstants{FT}
                 } <: AbstractPhotosynthesisModel{FT}
 
-    An implementation of the optimality photosynthesis model "P-model v1.0" of Stocker et al. (2020). 
+An implementation of the optimality photosynthesis model "P-model v1.0" of Stocker et al. (2020). 
 
-    Stocker, B. D., Wang, H., Smith, N. G., Harrison, S. P., Keenan, T. F., Sandoval, D., Davis, T., 
-        and Prentice, I. C.: P-model v1.0: an optimality-based light use efficiency model for simulating 
-        ecosystem gross primary production, Geosci. Model Dev., 13, 1545–1581, 
-        https://doi.org/10.5194/gmd-13-1545-2020, 2020.
+Stocker, B. D., Wang, H., Smith, N. G., Harrison, S. P., Keenan, T. F., Sandoval, D., Davis, T., 
+    and Prentice, I. C.: P-model v1.0: an optimality-based light use efficiency model for simulating 
+    ecosystem gross primary production, Geosci. Model Dev., 13, 1545–1581, 
+    https://doi.org/10.5194/gmd-13-1545-2020, 2020.
 """
 struct PModel{FT, OPFT <: PModelParameters{FT}, OPCT <: PModelConstants{FT}} <:
        AbstractPhotosynthesisModel{FT}
@@ -678,19 +675,7 @@ function set_historical_cache!(p, Y0, model::PModel, canopy)
 
     # drivers 
     FT = eltype(parameters)
-    earth_param_set = canopy.parameters.earth_param_set
-
-    ψ = p.canopy.hydraulics.ψ
-    n = canopy.hydraulics.n_leaf + canopy.hydraulics.n_stem
-    grav = LP.grav(earth_param_set)
-    ρ_water = LP.ρ_cloud_liq(earth_param_set)
-    βm = @. lazy(
-        moisture_stress(
-            ψ.:($$n) * ρ_water * grav,
-            parameters.sc,
-            parameters.pc,
-        ),
-    )
+    βm = p.canopy.soil_moisture_stress.βm
     T_canopy = canopy_temperature(canopy.energy, canopy, Y0, p)
     VPD = @. lazy(
         ClimaLand.vapor_pressure_deficit(
@@ -764,18 +749,7 @@ function call_update_optimal_EMA(
 
     # drivers 
     FT = eltype(parameters)
-    # TODO: replace this with modular soil moisture stress parameterization
-    ψ = p.canopy.hydraulics.ψ
-    n = canopy.hydraulics.n_leaf + canopy.hydraulics.n_stem
-    grav = LP.grav(earth_param_set)
-    ρ_water = LP.ρ_cloud_liq(earth_param_set)
-    βm = @. lazy(
-        moisture_stress(
-            ψ.:($$n) * ρ_water * grav,
-            parameters.sc,
-            parameters.pc,
-        ),
-    )
+    βm = p.canopy.soil_moisture_stress.βm
     T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
     VPD = @. lazy(
         ClimaLand.vapor_pressure_deficit(
