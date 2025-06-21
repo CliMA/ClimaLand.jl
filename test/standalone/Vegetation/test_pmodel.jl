@@ -216,3 +216,109 @@ end
         end
     end
 end
+
+
+@testset "Test helper functions update_optimal_EMA and update_intermediate_vars" begin
+    rtol = 1e-5
+    atol = 1e-6
+
+    for FT in (Float32, Float64)
+        parameters = ClimaLand.Canopy.PModelParameters(
+            cstar = FT(0.41),
+            β = FT(146),
+            ϕc = FT(0.087),
+            ϕ0 = FT(NaN),
+            ϕa0 = FT(0.352),
+            ϕa1 = FT(0.022),
+            ϕa2 = FT(-0.00034),
+            α = FT(0),
+            sc = FT(2e-6),
+            pc = FT(-2e6),
+        )
+
+        constants = PModelConstants(FT)
+
+        T_canopy = FT(281.25)
+        I_abs = FT(0.0013948839623481035)
+        ca = FT(0.00039482)
+        P_air = FT(99230.0)
+        VPD = FT(756.2)
+        βm = FT(1.0)
+
+        outputs_full = compute_full_pmodel_outputs(
+            parameters,
+            constants,
+            T_canopy,
+            P_air,
+            VPD,
+            ca,
+            βm,
+            I_abs,
+        )
+
+        @testset "Test update_optimal_EMA optimality computation for $FT" begin
+            dummy_OptVars =
+                (; ξ_opt = FT(0), Vcmax25_opt = FT(0), Jmax25_opt = FT(0))
+            outputs_from_EMA = update_optimal_EMA(
+                parameters,
+                constants,
+                dummy_OptVars,
+                T_canopy,
+                P_air,
+                VPD,
+                ca,
+                βm,
+                I_abs,
+                FT(1.0), # force update 
+            )
+            @test isapprox(
+                outputs_from_EMA.ξ_opt,
+                outputs_full.xi,
+                rtol = rtol,
+                atol = atol,
+            )
+            @test isapprox(
+                outputs_from_EMA.Vcmax25_opt,
+                outputs_full.vcmax25,
+                rtol = rtol,
+                atol = atol,
+            )
+            @test isapprox(
+                outputs_from_EMA.Jmax25_opt,
+                outputs_full.jmax25,
+                rtol = rtol,
+                atol = atol,
+            )
+        end
+        @testset "Test compute_intermediate_pmodel_vars for $FT" begin
+            outputs_from_intermediate_vars =
+                ClimaLand.Canopy.compute_intermediate_pmodel_vars(
+                    constants,
+                    outputs_full.xi,
+                    T_canopy,
+                    P_air,
+                    VPD,
+                    ca,
+                )
+
+            @test isapprox(
+                outputs_from_intermediate_vars.Γstar,
+                outputs_full.gammastar,
+                rtol = rtol,
+                atol = atol,
+            )
+            @test isapprox(
+                outputs_from_intermediate_vars.Kmm,
+                outputs_full.kmm,
+                rtol = rtol,
+                atol = atol,
+            )
+            @test isapprox(
+                outputs_from_intermediate_vars.ci,
+                outputs_full.ci,
+                rtol = rtol,
+                atol = atol,
+            )
+        end
+    end
+end
