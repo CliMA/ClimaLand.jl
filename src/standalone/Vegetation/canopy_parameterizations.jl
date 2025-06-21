@@ -30,11 +30,14 @@ export canopy_sw_rt_beer_lambert,
     compute_viscosity_ratio,
     compute_Kmm,
     optimal_co2_ratio_c3,
+    pmodel_gs_co2,
+    pmodel_gs_h2o,
     pmodel_vcmax,
     compute_LUE,
     compute_mj_with_jmax_limitation,
     co2_compensation_p,
-    quadratic_soil_moisture_stress
+    quadratic_soil_moisture_stress,
+    compute_I_abs
 
 # 1. Radiative transfer
 
@@ -497,6 +500,17 @@ function c3_rubisco_assimilation(
     oi::FT,
 ) where {FT}
     Ac = Vcmax * (ci - Γstar) / (ci + Kc * (1 + oi / Ko))
+    return Ac
+end
+
+
+function c3_rubisco_assimilation(
+    Vcmax::FT,
+    ci::FT,
+    Γstar::FT,
+    Kmm::FT,
+) where {FT}
+    Ac = Vcmax * (ci - Γstar) / (ci + Kmm)
     return Ac
 end
 
@@ -1146,7 +1160,7 @@ function intrinsic_quantum_yield(
     # convert to C
     T = T - FT(273.15)
     ϕ = c * (ϕa0 + ϕa1 * T + ϕa2 * T^2)
-    return FT(ϕ)
+    return max(ϕ, FT(0)) # Ensure non-negative quantum yield
 end
 
 
@@ -1357,22 +1371,59 @@ function optimal_co2_ratio_c3(
     return χ, ξ, mj, mc
 end
 
+function optimal_ξ_c3(Kmm::FT, Γstar::FT, ηstar::FT, β::FT, Drel::FT) where {FT}
+    return sqrt(β * (Kmm + Γstar) / (Drel * ηstar))
+end
+
+function compute_mj(ξ::FT, Γstar::FT, ca::FT, VPD::FT) where {FT}
+    γ = Γstar / ca
+    χ = Γstar / ca + (1 - Γstar / ca) * ξ / (ξ + sqrt(VPD))
+    return (χ - γ) / (χ + 2 * γ)
+end
+
+function compute_mc(ξ::FT, Kmm::FT, Γstar::FT, ca::FT) where {FT}
+    γ = Γstar / ca
+    κ = Kmm / ca
+    χ = Γstar / ca + (1 - Γstar / ca) * ξ / (ξ + sqrt(VPD))
+    return (χ - γ) / (χ + κ)
+end
+
+function compute_ci(ξ::FT, ca::FT, Γstar::FT, VPD::FT) where {FT}
+    return (ca * ξ + Γstar * sqrt(VPD)) / (ξ + sqrt(VPD))
+end
 
 """
-    pmodel_gs(
+    pmodel_gs_co2(
         χ::FT, 
         ca::FT,
         A::FT
     ) where {FT}
 
-    Computes the stomatal conductance of CO2 (`gs`), in units of mol CO2/m^2/s
+    Computes the stomatal conductance of CO2 (`gs_co2`), in units of mol CO2/m^2/s
     via Fick's law. Parameters are the ratio of intercellular to ambient CO2 
-    concentration (`χ`), the ambient CO2 concentration (`ca`), and the 
-    assimilation rate (`A`). This is related to the conductance of H2O by a 
+    concentration (`χ`), the ambient CO2 concentration (`ca`, in mol/mol), and the 
+    assimilation rate (`A`, mol m^-2 s^-1). This is related to the conductance of water by a 
     factor Drel = 1.6. 
 """
-function pmodel_gs(χ::FT, ca::FT, A::FT) where {FT}
-    return A / (ca * (1 - χ))
+function pmodel_gs_co2(χ::FT, ca::FT, A::FT) where {FT}
+    return A / (ca * (1 - χ) + eps(FT))
+end
+
+"""
+    pmodel_gs_h2o(
+        χ::FT, 
+        ca::FT,
+        A::FT,
+        Drel::FT
+    ) where {FT}
+
+    Computes the stomatal conductance of H2O (`gs_h2o`), in units of mol H2O/m^2/s
+    via Fick's law. Parameters are the ratio of intercellular to ambient CO2 
+    concentration (`χ`), the ambient CO2 concentration (`ca`, in mol/mol), the 
+    assimilation rate (`A`, mol m^-2 s^-1), and the relative conductivity ratio `Drel` (unitless).
+"""
+function pmodel_gs_h2o(χ::FT, ca::FT, A::FT, Drel::FT) where {FT}
+    return Drel * pmodel_gs_co2(χ, ca, A)
 end
 
 """
@@ -1386,7 +1437,11 @@ end
     at STP and using Vcmax/Jmax = 1.88. 
 """
 function compute_mj_with_jmax_limitation(mj::FT, cstar::FT) where {FT}
-    return FT(mj * sqrt(1 - (cstar / mj)^(FT(2 / 3))))
+    arg = cstar / mj
+    arg = arg < 0 ? FT(0) : arg
+    arg = 1 - arg^(FT(2/3))
+    sqrt_arg = arg < 0 ? FT(0) : sqrt(arg) # avoid complex numbers
+    return FT(mj * sqrt_arg)
 end
 
 
@@ -1548,4 +1603,32 @@ function inst_temp_scaling_rd(T_canopy::FT, To::FT, aRd::FT, bRd::FT) where {FT}
         aRd * (T_canopy - To) +
         bRd * ((T_canopy - FT(273.15))^2 - (To - FT(273.15))^2),
     )
+end
+
+
+"""
+compute_I_abs(
+    f_abs::FT, 
+    par_d::FT,
+    λ_γ_PAR::FT,
+    lightspeed::FT,
+    planck_h::FT,
+    N_a::FT
+) where {FT} 
+
+Computes the absorbed photosynthetically active radiation over leaf area (mol photons m^-2 s^-1)
+given the fraction of absorbed PAR (`f_abs`), the PAR downwelling flux (`par_d`, in W m^-2), 
+and the wavelength of PAR (`λ_γ_PAR`, in m), and the physical constants necessary to compute 
+the energy per mol PAR photons. 
+"""
+function compute_I_abs(
+    f_abs::FT,
+    par_d::FT,
+    λ_γ_PAR::FT,
+    lightspeed::FT,
+    planck_h::FT,
+    N_a::FT,
+) where {FT}
+    energy_per_mole_photon_par = planck_h * lightspeed * N_a / λ_γ_PAR
+    return f_abs * par_d / energy_per_mole_photon_par
 end

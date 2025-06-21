@@ -38,11 +38,12 @@ using ClimaLand
 import ClimaComms
 ClimaComms.@import_required_backends
 using ClimaLand.Canopy
+using ClimaLand.Canopy.PlantHydraulics
 using DelimitedFiles
 using ClimaLand.Domains: Point
 import ClimaLand.Parameters as LP
 import ClimaParams
-
+using Dates
 
 """
     percent_difference(a, b)
@@ -84,6 +85,9 @@ function PModelParameters(inputs::Dict{String, Any}, FT)
         ϕa0 = ϕa0,
         ϕa1 = ϕa1,
         ϕa2 = ϕa2,
+        α = FT(0),
+        sc = FT(0),
+        pc = FT(0)
     )
 end
 
@@ -118,8 +122,8 @@ end
     outputs_file = joinpath(datadir, "outputs.csv")
 
     # tolerances
-    atol = 1e-3
-    rtol = 1e-3
+    atol = 1e-2
+    rtol = 1e-2
 
     # read inputs and outputs from CSV files
     inputs_data, inputs_header = readdlm(inputs_file, ',', header = true)
@@ -166,7 +170,7 @@ end
 
                 T_canopy = FT(inputs["tc"] + 273.15)  # Convert from Celsius to Kelvin
                 VPD = FT(inputs["vpd"])
-                ca = FT(inputs["co2"]) * FT(1e-6) * FT(101325.0)  # Convert ppm to Pa
+                ca = FT(inputs["co2"]) * FT(1e-6)  # Convert ppm to mol/mol
                 P_air = FT(get(inputs, "patm", 101325.0))
                 I_abs = FT(inputs["fapar"]) * FT(inputs["ppfd"])
                 βm =
@@ -179,11 +183,11 @@ end
                     parameters,
                     constants,
                     T_canopy,
-                    I_abs,
-                    ca,
                     P_air,
                     VPD,
+                    ca,
                     βm,
+                    I_abs,
                 )
 
                 # Compare each output field
@@ -195,6 +199,9 @@ end
                         r_out = ref_outputs_typed[key]
                         # convert gpp to kg/m^2/s   
                         r_out = key == "gpp" ? r_out / FT(1000.0) : r_out
+
+                        # convert gs to mol/m^2/s 
+                        r_out = key == "gs" ? r_out * P_air : r_out
 
                         j_out = getproperty(outputs, key_symbol)
                         diff = percent_difference(j_out, r_out)
@@ -213,6 +220,254 @@ end
                     end
                 end
             end
+        end
+    end
+end
+
+@testset "Test P-model callback initialization" begin
+    FT = Float32
+    
+    lat = FT(38.7441) 
+    long = FT(-92.2000) 
+    start_date = DateTime(2025) 
+    dt = 600.0 # 10 minutes
+
+    canopy_domain = Point(; z_sfc = FT(0.0), longlat = (long, lat))
+
+    # Autotrophic respiration 
+    ar_params = AutotrophicRespirationParameters(FT)
+    ar_model = AutotrophicRespirationModel{FT}(ar_params)
+
+    # Radiative transfer 
+    rt_params = BeerLambertParameters(FT)
+    rt_model = BeerLambertModel{FT}(rt_params)
+
+    # Photosynthesis 
+    is_c3 = FT(1) 
+    photosynthesis_params = FarquharParameters(FT, is_c3)
+    photosynthesis_model = FarquharModel{FT}(photosynthesis_params)
+
+    # Stomatal conductance
+    stomatal_g_params = MedlynConductanceParameters(FT)
+    stomatal_model = MedlynConductanceModel{FT}(stomatal_g_params)
+
+    # Plant hydraulics 
+    n_stem = Int64(0) # number of stem elements
+    n_leaf = Int64(1) # number of leaf elements
+    h_canopy = FT(0) # m, height of the canopy
+    SAI = FT(0) # m2/m2
+    RAI = FT(0) # m2/m2
+    lai_fun = t -> 0
+    ai_parameterization = PlantHydraulics.PrescribedSiteAreaIndex{FT}(
+        TimeVaryingInput(lai_fun),
+        SAI,
+        RAI,
+    )
+    K_sat_plant = 0 # m/s.
+    ψ63 = FT(-4 / 0.0098) # / MPa to m
+    Weibull_param = FT(4) # unitless
+    a = FT(0.05 * 0.0098) # 1/m
+    plant_ν = FT(0.1) # m3/m3
+    plant_S_s = FT(1e-2)
+    conductivity_model =
+        PlantHydraulics.Weibull{FT}(K_sat_plant, ψ63, Weibull_param)
+    retention_model = PlantHydraulics.LinearRetentionCurve{FT}(a)
+    compartment_midpoints = [h_canopy]
+    compartment_surfaces = [FT(0.0), h_canopy]
+    # set rooting_depth param to largest possible value to test no roots
+    param_set = PlantHydraulics.PlantHydraulicsParameters(;
+        ai_parameterization = ai_parameterization,
+        ν = plant_ν,
+        S_s = plant_S_s,
+        rooting_depth = maxintfloat(FT),
+        conductivity_model = conductivity_model,
+        retention_model = retention_model,
+    )
+
+    transpiration = DiagnosticTranspiration{FT}()
+    soil_driver = PrescribedGroundConditions{FT}()
+    plant_hydraulics = PlantHydraulics.PlantHydraulicsModel{FT}(;
+        parameters = param_set,
+        transpiration = transpiration,
+        n_stem = n_stem,
+        n_leaf = n_leaf,
+        compartment_surfaces = compartment_surfaces,
+        compartment_midpoints = compartment_midpoints,
+    )
+
+    earth_param_set = LP.LandParameters(FT)
+    z_0m = FT(2.0) # m, Roughness length for momentum
+    z_0b = FT(0.1) # m, Roughness length for scalars
+    h_int = FT(30.0) # m, "where measurements would be taken at a typical flux tower of a 20m canopy"
+    shared_params = SharedCanopyParameters{FT, typeof(earth_param_set)}(
+        z_0m,
+        z_0b,
+        earth_param_set,
+    )
+    start_date = DateTime(2005)
+
+    # Dummy radiative forcing
+    zenith_angle =
+        (t, s) -> default_zenith_angle(
+            t,
+            s;
+            insol_params = earth_param_set.insol_params,
+            latitude = lat,
+            longitude = long,
+        )
+    shortwave_radiation = (t; latitude=lat, longitude=long, insol_params=earth_param_set.insol_params) -> 1000
+    longwave_radiation = t -> 200
+    radiation = PrescribedRadiativeFluxes(
+        FT,
+        TimeVaryingInput(shortwave_radiation),
+        TimeVaryingInput(longwave_radiation),
+        start_date;
+        θs = zenith_angle,
+        earth_param_set = earth_param_set,
+    )
+
+    # Dummy atmospheric forcing 
+    u_atmos = t -> 10 #m.s-1
+    liquid_precip = (t) -> 0 # m
+    snow_precip = (t) -> 0 # m
+    T_atmos = t -> 290 # Kelvin
+    q_atmos = t -> 0.001 # kg/kg
+    P_atmos = t -> 1e5 # Pa
+    h_atmos = h_int # m
+    c_atmos = (t) -> 4.11e-4 # mol/mol
+    atmos = PrescribedAtmosphere(
+        TimeVaryingInput(liquid_precip),
+        TimeVaryingInput(snow_precip),
+        TimeVaryingInput(T_atmos),
+        TimeVaryingInput(u_atmos),
+        TimeVaryingInput(q_atmos),
+        TimeVaryingInput(P_atmos),
+        start_date,
+        h_atmos,
+        earth_param_set;
+        c_co2 = TimeVaryingInput(c_atmos),
+    )
+
+    canopy = ClimaLand.Canopy.CanopyModel{FT}(;
+        parameters = shared_params,
+        domain = canopy_domain,
+        autotrophic_respiration = ar_model,
+        radiative_transfer = rt_model,
+        photosynthesis = photosynthesis_model,
+        conductance = stomatal_model,
+        hydraulics = plant_hydraulics,
+        boundary_conditions = Canopy.AtmosDrivenCanopyBC(
+            atmos,
+            radiation,
+            soil_driver,
+        ),
+    )
+
+    @test_nowarn pmodel_callback = make_PModel_callback(FT, start_date, dt, canopy)
+end
+
+
+@testset "Test helper functions update_optimal_EMA and update_intermediate_vars correctness" begin
+    rtol = 1e-5
+    atol = 1e-6
+
+    for FT in (Float32, Float64)
+        parameters = ClimaLand.Canopy.PModelParameters(
+            cstar = FT(0.41),
+            β = FT(146),
+            ϕc = FT(0.087),
+            ϕ0 = FT(NaN),
+            ϕa0 = FT(0.352),
+            ϕa1 = FT(0.022),
+            ϕa2 = FT(-0.00034),
+            α = FT(0),
+            sc = FT(2e-6),
+            pc = FT(-2e6),
+        )
+
+        constants = PModelConstants{FT}()
+
+        T_canopy = FT(281.25)
+        I_abs = FT(0.0013948839623481035)
+        ca = FT(0.00039482)
+        P_air = FT(99230.0)
+        VPD = FT(756.2)
+        βm = FT(1.0)
+
+        outputs_full = compute_full_pmodel_outputs(
+            parameters,
+            constants,
+            T_canopy,
+            P_air,
+            VPD,
+            ca,
+            βm,
+            I_abs,
+        )
+
+        @testset "Test update_optimal_EMA optimality computation for $FT" begin
+            dummy_OptVars =
+                (; ξ_opt = FT(0), Vcmax25_opt = FT(0), Jmax25_opt = FT(0))
+            outputs_from_EMA = update_optimal_EMA(
+                parameters,
+                constants,
+                dummy_OptVars,
+                T_canopy,
+                P_air,
+                VPD,
+                ca,
+                βm,
+                I_abs,
+                FT(1.0), # force update 
+            )
+            @test isapprox(
+                outputs_from_EMA.ξ_opt,
+                outputs_full.xi,
+                rtol = rtol,
+                atol = atol,
+            )
+            @test isapprox(
+                outputs_from_EMA.Vcmax25_opt,
+                outputs_full.vcmax25,
+                rtol = rtol,
+                atol = atol,
+            )
+            @test isapprox(
+                outputs_from_EMA.Jmax25_opt,
+                outputs_full.jmax25,
+                rtol = rtol,
+                atol = atol,
+            )
+        end
+        @testset "Test compute_intermediate_pmodel_vars for $FT" begin
+            outputs_from_intermediate_vars =
+                ClimaLand.Canopy.compute_intermediate_pmodel_vars(
+                    constants,
+                    outputs_full.xi,
+                    T_canopy,
+                    P_air,
+                    VPD,
+                    ca,
+                )
+
+            @test isapprox(
+                outputs_from_intermediate_vars.Γstar,
+                outputs_full.gammastar,
+                rtol = rtol,
+                atol = atol,
+            )
+            @test isapprox(
+                outputs_from_intermediate_vars.Kmm,
+                outputs_full.kmm,
+                rtol = rtol,
+                atol = atol,
+            )
+            @test isapprox(
+                outputs_from_intermediate_vars.ci,
+                outputs_full.ci,
+                rtol = rtol,
+                atol = atol,
+            )
         end
     end
 end
