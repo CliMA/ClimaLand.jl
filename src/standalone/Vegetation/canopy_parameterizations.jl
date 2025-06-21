@@ -1099,3 +1099,23 @@ end
 A function which enforces α+τ <= 1.
 """
 enforce_albedo_constraint(α, τ) = 1 - α - τ > 0 ? α : 1 - τ
+
+
+# P-model 
+"""
+    intrinsic_quantum_yield(
+        T::FT, 
+        c::FT
+    ) where {FT}
+
+    Computes the intrinsic quantum yield of photosynthesis ϕ (mol/mol) 
+    as a function of temperature T (K) and a calibratable parameter c (unitless). 
+    The functional form is given in Bernacchi et al (2003) and is used in Stocker 
+    et al. (2020) 
+"""
+function intrinsic_quantum_yield(T::FT, c::FT) where {FT}
+    ϕ = c * (0.352 + 0.022 * T - 0.00034 * T^2)
+    return ϕ
+end
+
+
