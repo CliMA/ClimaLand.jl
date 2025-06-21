@@ -19,11 +19,13 @@ export AbstractModel,
     auxiliary_domain_names,
     make_set_initial_cache,
     make_update_cache,
+    set_historical_cache!,
     add_drivers_to_cache,
     get_drivers,
     name,
     total_liq_water_vol_per_area!,
-    total_energy_per_area!
+    total_energy_per_area!,
+    required_model_callbacks
 
 import ClimaComms: context, device
 import .Domains: coordinates
@@ -508,4 +510,12 @@ per unit ground area for the `model`, computed from `Y`, `p`, and `t`.
 """
 function total_energy_per_area!(cache, model::AbstractModel, Y, p, t)
     cache .= 0
+end
+
+"""
+    required_model_callbacks(start_date, t0, dt, model::AbstractModel)
+
+"""
+function required_model_callbacks(start_date, t0, dt, model::AbstractModel)
+    return ()
 end

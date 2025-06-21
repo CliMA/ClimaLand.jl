@@ -6,6 +6,10 @@ function prescribed_LAI_fluxnet end
 
 function make_set_fluxnet_initial_conditions end
 
+function make_set_fluxnet_initial_conditions end
+
+function make_set_fluxnet_initial_conditions_standalone_canopy end
+
 function get_data_dt end
 
 function get_comparison_data end

@@ -977,7 +977,7 @@ function vapor_pressure_deficit(T_air, P_air, q_air, thermo_params)
         P_air,
         Thermodynamics.PhasePartition(q_air),
     )
-    return es - ea
+    return max(es - ea, 0)
 end
 
 """
@@ -1128,8 +1128,8 @@ struct PrescribedGroundConditions{
     F1 <: AbstractTimeVaryingInput,
     F2 <: AbstractTimeVaryingInput,
 } <: AbstractGroundConditions{FT}
-    "Prescribed soil potential (m) in the root zone as a function of time"
-    ψ::F1
+    "Prescribed soil water content (m³/m³) in the root zone as a function of time"
+    θ::F1
     "Prescribed ground surface temperature (K) as a function of time"
     T::F2
     "Ground albedo for PAR"
@@ -1142,7 +1142,7 @@ end
 
 """
      function PrescribedGroundConditions{FT}(;
-         ψ::TimeVaryingInput,
+         θ::TimeVaryingInput,
          T::TimeVaryingInput,
          α_PAR::FT,
          α_NIR::FT,
@@ -1153,14 +1153,14 @@ An outer constructor for the PrescribedGroundConditions allowing the user to
 specify the ground parameters by keyword arguments.
 """
 function PrescribedGroundConditions{FT}(;
-    ψ = TimeVaryingInput((t) -> 0.0),
+    θ = TimeVaryingInput((t) -> 0.0),
     T = TimeVaryingInput((t) -> 298.0),
     α_PAR = FT(0.2),
     α_NIR = FT(0.4),
     ϵ = FT(0.99),
 ) where {FT <: AbstractFloat}
-    return PrescribedGroundConditions{FT, typeof(ψ), typeof(T)}(
-        ψ,
+    return PrescribedGroundConditions{FT, typeof(θ), typeof(T)}(
+        θ,
         T,
         α_PAR,
         α_NIR,
@@ -1193,14 +1193,14 @@ struct PrognosticGroundConditions{FT} <: AbstractGroundConditions{FT} end
     initialize_drivers(a::PrescribedGroundConditions{FT}, coords) where {FT}
 
 Creates and returns a NamedTuple for the `PrescribedGroundConditions` driver,
-with variables `ψ` (matric potential in the soil in the root zone), `T` (temperature
+with variables `θ` (water content of soil in the root zone), `T` (temperature
 of the surface of the ground).
 """
 function initialize_drivers(
     a::PrescribedGroundConditions{FT},
     coords,
 ) where {FT}
-    keys = (:ψ, :T_ground)
+    keys = (:θ, :T_ground)
     types = (FT, FT)
     domain_names = (:surface, :surface)
     model_name = :drivers
@@ -1373,7 +1373,7 @@ in the case of a PrescribedGroundConditions.
 """
 function make_update_drivers(a::PrescribedGroundConditions{FT}) where {FT}
     function update_drivers!(p, t)
-        evaluate!(p.drivers.ψ, a.ψ, t)
+        evaluate!(p.drivers.θ, a.θ, t)
         evaluate!(p.drivers.T_ground, a.T, t)
     end
     return update_drivers!

@@ -357,6 +357,14 @@ function auxiliary_domain_names(land::AbstractLandModel)
     ))
 end
 
+function required_model_callbacks(start_date, t0, dt, land::AbstractLandModel) 
+    components = land_components(land)
+    required_callbacks_tuple = map(
+        c -> required_model_callbacks(start_date, t0, dt, getproperty(land, c)),
+        components
+    ) |> Tuple
+    return required_callbacks_tuple
+end
 
 """
    lsm_aux_vars(m::AbstractLandModel)

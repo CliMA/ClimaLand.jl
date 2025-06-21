@@ -123,13 +123,14 @@ domain = Point(; z_sfc = FT(0.0), longlat = (long, lat));
 
 # For this canopy, we are running in standalone mode, which means we need to
 # use a prescribed soil driver, defined as follows:
-ψ_soil = FT(0.0)
+
+θ_soil = FT(0.0)
 T_soil = FT(298.0)
 ground = PrescribedGroundConditions{FT}(;
     α_PAR = FT(0.2),
     α_NIR = FT(0.4),
     T = TimeVaryingInput(t -> T_soil),
-    ψ = TimeVaryingInput(t -> ψ_soil),
+    θ = TimeVaryingInput(t -> θ_soil),
     ϵ = FT(0.99),
 );
 forcing = (; atmos, radiation, ground);

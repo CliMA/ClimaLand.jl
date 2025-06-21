@@ -386,6 +386,38 @@ function define_diagnostics!(land_model)
         compute! = (out, Y, p, t) -> compute_vcmax25!(out, Y, p, t, land_model),
     )
 
+    # Vcmax
+    add_diagnostic_variable!(
+        short_name = "vcmax", 
+        long_name = "Vcmax",
+        standard_name = "vcmax", 
+        units = "mol CO2 m^-2 s^-1",
+        comments = "The parameter vcmax adjusted for temperature using a modified Arrhenius function.",
+        compute! = (out, Y, p, t) -> compute_vcmax!(out, Y, p, t, land_model),
+    )
+
+    # Carboxylation-limited assimilation rate
+    add_diagnostic_variable!(
+        short_name = "ac",
+        long_name = "Carboxylation-limited assimilation rate",
+        standard_name = "leaf_carboxylation_limited_photosynthesis",
+        units = "mol CO2 m^-2 s^-1",
+        comments = "The carboxylation-limited assimilation rate of a leaf.",
+        compute! = (out, Y, p, t) ->
+            compute_photosynthesis_carboxylation_limited!(out, Y, p, t, land_model),
+    )
+
+    # Light-limited assimilation rate
+    add_diagnostic_variable!(
+        short_name = "aj",
+        long_name = "Light-limited assimilation rate",
+        standard_name = "leaf_light_limited_photosynthesis",
+        units = "mol CO2 m^-2 s^-1",
+        comments = "The light-limited assimilation rate of a leaf.",
+        compute! = (out, Y, p, t) ->
+            compute_photosynthesis_light_limited!(out, Y, p, t, land_model),
+    )
+
     ### Canopy - Radiative Transfer
     # NIR - near infrared radiaton
     add_diagnostic_variable!(
