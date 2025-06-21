@@ -1,4 +1,5 @@
-export MedlynConductanceParameters, MedlynConductanceModel
+export MedlynConductanceParameters,
+    MedlynConductanceModel, PModelConductanceParameters, PModelConductance
 
 abstract type AbstractStomatalConductanceModel{FT} <:
               AbstractCanopyComponent{FT} end
@@ -107,4 +108,69 @@ function MedlynConductanceParameters(
     g1 = FT.(g1)
     G1 = typeof(g1)
     return MedlynConductanceParameters{FT, G1}(; g1, parameters..., kwargs...)
+end
+
+
+#################### P model conductance ####################
+"""
+    PModelConductanceParameters{FT <: AbstractFloat}
+
+The required parameters for the P-Model stomatal conductance model.
+$(DocStringExtensions.FIELDS)
+"""
+Base.@kwdef struct PModelConductanceParameters{FT <: AbstractFloat}
+    "Relative diffusivity of water vapor (unitless)"
+    Drel::FT
+end
+
+Base.eltype(::PModelConductanceParameters{FT}) where {FT} = FT
+
+struct PModelConductance{FT, PMCP <: PModelConductanceParameters{FT}} <:
+       AbstractStomatalConductanceModel{FT}
+    parameters::PMCP
+end
+
+function PModelConductance{FT}(
+    parameters::PModelConductanceParameters{FT},
+) where {FT <: AbstractFloat}
+    return PModelConductance{eltype(parameters), typeof(parameters)}(parameters)
+end
+
+ClimaLand.auxiliary_vars(model::PModelConductance) = (:r_stomata_canopy,)
+ClimaLand.auxiliary_types(model::PModelConductance{FT}) where {FT} = (FT,)
+ClimaLand.auxiliary_domain_names(::PModelConductance) = (:surface,)
+
+"""
+    update_canopy_conductance!(p, Y, model::PModelConductance, canopy)
+
+Computes and updates the canopy-level conductance (units of m/s) according to the P model. 
+The P-model predicts the ratio of plant internal to external CO2 concentration χ, and therefore
+the stomatal conductance can be inferred from their difference and the net assimilation rate `An`. 
+
+Note that the moisture stress factor `βm` is applied to `An` already, so it is not applied again here. 
+"""
+function update_canopy_conductance!(p, Y, model::PModelConductance, canopy)
+    c_co2_air = p.drivers.c_co2
+    P_air = p.drivers.P
+    T_air = p.drivers.T
+    earth_param_set = canopy.parameters.earth_param_set
+    (; Drel) = canopy.conductance.parameters
+    area_index = p.canopy.hydraulics.area_index
+    LAI = area_index.leaf
+    ci = p.canopy.photosynthesis.ci             # internal CO2 partial pressure, Pa 
+    An = p.canopy.photosynthesis.An             # net assimilation rate, mol m^-2 s^-1
+    R = LP.gas_constant(earth_param_set)
+    FT = eltype(model.parameters)
+
+    χ = @. lazy(ci / (c_co2_air * P_air))       # ratio of intercellular to ambient CO2 concentration, unitless
+    @. p.canopy.conductance.r_stomata_canopy =
+        1 / (
+            upscale_leaf_conductance(
+                gs_h2o_pmodel(χ, c_co2_air, An, Drel), # leaf level conductance in mol H2O Pa^-1
+                LAI,
+                T_air,
+                R,
+                P_air,
+            ) + eps(FT)
+        ) # avoids division by zero, since conductance is zero when An is zero 
 end

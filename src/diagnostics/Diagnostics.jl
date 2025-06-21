@@ -15,7 +15,17 @@ import ..LandModel
 
 import ..Soil: EnergyHydrology
 
-import ..Canopy: medlyn_conductance, medlyn_term, moisture_stress
+import ..AbstractModel
+
+import ..Canopy:
+    CanopyModel,
+    medlyn_conductance,
+    medlyn_term,
+    gs_h2o_pmodel,
+    get_Vcmax25,
+    MedlynConductanceModel,
+    PModelConductance,
+    moisture_stress
 import ..Domains:
     top_center_to_surface, AbstractDomain, SphericalShell, HybridBox
 import ClimaLand

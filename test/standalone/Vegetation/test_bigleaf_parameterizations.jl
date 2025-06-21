@@ -44,10 +44,11 @@ for FT in (Float32, Float64)
         params = OptimalityFarquharParameters(FT)
         @test params.is_c3 ≈ 1.0
         model = OptimalityFarquharModel(params)
-        @test ClimaLand.auxiliary_vars(model) == (:An, :GPP, :Rd, :Vcmax25)
-        @test ClimaLand.auxiliary_types(model) == (FT, FT, FT, FT)
+        @test ClimaLand.auxiliary_vars(model) ==
+              (:An, :GPP, :Rd, :Vcmax25, :Jmax25)
+        @test ClimaLand.auxiliary_types(model) == (FT, FT, FT, FT, FT)
         @test ClimaLand.auxiliary_domain_names(model) ==
-              (:surface, :surface, :surface, :surface)
+              (:surface, :surface, :surface, :surface, :surface)
 
     end
 

@@ -92,7 +92,14 @@ function default_diagnostics(
         "ssfc",
     ]
 
-    if average_period == :hourly
+    if average_period == :halfhourly
+        default_outputs = halfhourly_averages(
+            FT,
+            bucket_diagnostics...;
+            output_writer,
+            start_date,
+        )
+    elseif average_period == :hourly
         default_outputs = hourly_averages(
             FT,
             bucket_diagnostics...;
@@ -210,7 +217,14 @@ function default_diagnostics(
         soilcanopy_diagnostics = output_vars
     end
 
-    if average_period == :hourly
+    if average_period == :halfhourly
+        default_outputs = halfhourly_averages(
+            FT,
+            soilcanopy_diagnostics...;
+            output_writer,
+            start_date,
+        )
+    elseif average_period == :hourly
         default_outputs = hourly_averages(
             FT,
             soilcanopy_diagnostics...;
@@ -250,8 +264,14 @@ function default_diagnostics(
     define_diagnostics!(land_model)
 
     soil_diagnostics = ["swc", "si", "sie", "et"]
-
-    if average_period == :hourly
+    if average_period == :halfhourly
+        default_outputs = halfhourly_averages(
+            FT,
+            soil_diagnostics...;
+            output_writer,
+            start_date,
+        )
+    elseif average_period == :hourly
         default_outputs =
             hourly_averages(FT, soil_diagnostics...; output_writer, start_date)
     elseif average_period == :daily
@@ -312,6 +332,10 @@ function default_diagnostics(
         "gpp",
         "an",
         "rd",
+        "vcmax25",
+        "vcmax",
+        "ac",
+        "aj",
         "nir",
         "anir",
         "rnir",
@@ -395,7 +419,14 @@ function default_diagnostics(
         snowyland_diagnostics = output_vars
     end
 
-    if average_period == :hourly
+    if average_period == :halfhourly
+        default_outputs = halfhourly_averages(
+            FT,
+            snowyland_diagnostics...;
+            output_writer,
+            start_date,
+        )
+    elseif average_period == :hourly
         default_outputs = hourly_averages(
             FT,
             snowyland_diagnostics...;
