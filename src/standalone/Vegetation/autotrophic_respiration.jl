@@ -87,13 +87,12 @@ function update_autotrophic_respiration!(
     earth_param_set = canopy.parameters.earth_param_set
     grav = LP.grav(earth_param_set)
     ρ_l = LP.ρ_cloud_liq(earth_param_set)
-    (; sc, pc) = canopy.photosynthesis.parameters
     (; G_Function, Ω) = canopy.radiative_transfer.parameters
     cosθs = p.drivers.cosθs
     An = p.canopy.photosynthesis.An
     Rd = p.canopy.photosynthesis.Rd
 
-    β = @. lazy(moisture_stress(ψ.:($$i_end) * ρ_l * grav, sc, pc))
+    β = p.canopy.soil_moisture_stress.βm
     Vcmax25 = get_Vcmax25(p, canopy.photosynthesis)
     @. p.canopy.autotrophic_respiration.Ra = compute_autrophic_respiration(
         autotrophic_respiration,

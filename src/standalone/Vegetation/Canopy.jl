@@ -33,13 +33,15 @@ import ClimaLand:
     get_drivers,
     total_liq_water_vol_per_area!,
     total_energy_per_area!,
-    FrequencyBasedCallback
+    PeriodicCallback,
+    required_model_callbacks
 using ClimaLand: PrescribedGroundConditions, AbstractGroundConditions
 using ClimaLand.Domains: Point, Plane, SphericalSurface, get_long
 export SharedCanopyParameters, CanopyModel, set_canopy_prescribed_field!
 include("./component_models.jl")
 include("./PlantHydraulics.jl")
 using .PlantHydraulics
+include("./soil_moisture_stress.jl")
 include("./stomatalconductance.jl")
 include("./photosynthesis.jl")
 include("./pmodel.jl")
@@ -136,8 +138,6 @@ end
         ϕa1 = FT(0.022),
         ϕa2 = FT(-0.00034),
         α = FT(0.933),
-        sc = LP.get_default_parameter(FT, :low_water_pressure_sensitivity),
-        pc = LP.get_default_parameter(FT, :moisture_stress_ref_water_pressure),
     ) where {FT <: AbstractFloat}
 
 Constructs a P-model (an optimality model for photosynthesis) using default parameters.
@@ -165,8 +165,6 @@ function PModel{FT}(;
     ϕa1 = FT(0.022),
     ϕa2 = FT(-0.00034),
     α = FT(0.933),
-    sc = LP.get_default_parameter(FT, :low_water_pressure_sensitivity),
-    pc = LP.get_default_parameter(FT, :moisture_stress_ref_water_pressure),
 ) where {FT <: AbstractFloat}
     parameters = ClimaLand.Canopy.PModelParameters(
         cstar = cstar,
@@ -177,8 +175,6 @@ function PModel{FT}(;
         ϕa1 = ϕa1,
         ϕa2 = ϕa2,
         α = α,
-        sc = sc,
-        pc = pc,
     )
 
     return PModel{FT}(parameters)
@@ -406,6 +402,26 @@ function PModelConductance{FT}(; Drel = FT(1.6)) where {FT <: AbstractFloat}
 end
 
 
+"""
+    TuzetMoistureStressModel{FT}() where {FT <: AbstractFloat}
+
+Creates a TuzetMoistureStressModel using default parameters of type FT.
+
+The parameters are set to:
+- sc = 5e-6 (Pa^{-1}) - sensitivity to low water pressure
+- pc = -2e6 (Pa) - reference water pressure for the moisture stress factor
+"""
+function TuzetMoistureStressModel{FT}(;
+    sc = LP.get_default_parameter(FT, :low_water_pressure_sensitivity),
+    pc = LP.get_default_parameter(FT, :moisture_stress_ref_water_pressure),
+) where {FT <: AbstractFloat}
+    parameters = TuzetMoistureStressParameters{FT}(sc, pc)
+    return TuzetMoistureStressModel{eltype(parameters), typeof(parameters)}(
+        parameters,
+    )
+end
+
+
 ########################################################
 # End component model convenience constructors
 ########################################################
@@ -426,7 +442,7 @@ struct SharedCanopyParameters{FT <: AbstractFloat, PSE}
 end
 
 """
-     CanopyModel{FT, AR, RM, PM, SM, PHM, EM, SM, A, R, S, PS, D} <: ClimaLand.AbstractImExModel{FT}
+     CanopyModel{FT, AR, RM, PM, SM, PHM, EM, SM, SMSM, A, R, S, PS, D} <: ClimaLand.AbstractImExModel{FT}
 
 The model struct for the canopy, which contains
 - the canopy model domain (a point for site-level simulations, or
@@ -434,11 +450,16 @@ an extended surface (plane/spherical surface) for regional or global simulations
 - subcomponent model type for radiative transfer. This is of type
 `AbstractRadiationModel`.
 - subcomponent model type for photosynthesis. This is of type
-`AbstractPhotosynthesisModel`, and currently only the `FarquharModel`
-is supported.
+`AbstractPhotosynthesisModel` and supports `FarquharModel`, `OptimalityFarquharModel`,
+and `PModel`. 
 - subcomponent model type for stomatal conductance. This is of type
- `AbstractStomatalConductanceModel` and currently only the `MedlynModel`
-is supported
+ `AbstractStomatalConductanceModel` and supports `MedlynConductanceModel` and 
+ `PModelConductance`. Note if `PModel` is used for photosynthesis, then you 
+ must also use `PModelConductance` for stomatal conductance, since these two models
+ are derived from the same set of conditions. 
+- subcomponent model type for soil moisture stress. This is of type
+ `AbstractSoilMoistureStressModel`. Currently we support `TuzetMoistureStressModel` (default) 
+ `PiecewiseMoistureStressModel`, and `NoMoistureStressModel` (stress factor = 1).
 - subcomponent model type for plant hydraulics. This is of type
  `AbstractPlantHydraulicsModel` and currently only a version which
 prognostically solves Richards equation in the plant is available.
@@ -468,7 +489,7 @@ treated differently.
 
 $(DocStringExtensions.FIELDS)
 """
-struct CanopyModel{FT, AR, RM, PM, SM, PHM, EM, SIFM, B, PS, D} <:
+struct CanopyModel{FT, AR, RM, PM, SM, SMSM, PHM, EM, SIFM, B, PS, D} <:
        ClimaLand.AbstractImExModel{FT}
     "Autotrophic respiration model, a canopy component model"
     autotrophic_respiration::AR
@@ -478,6 +499,8 @@ struct CanopyModel{FT, AR, RM, PM, SM, PHM, EM, SIFM, B, PS, D} <:
     photosynthesis::PM
     "Stomatal conductance model, a canopy component model"
     conductance::SM
+    "Soil moisture stress parameterization, a canopy component model"
+    soil_moisture_stress::SMSM
     "Plant hydraulics model, a canopy component model"
     hydraulics::PHM
     "Energy balance model, a canopy component model"
@@ -498,6 +521,7 @@ end
         radiative_transfer::AbstractRadiationModel{FT},
         photosynthesis::AbstractPhotosynthesisModel{FT},
         conductance::AbstractStomatalConductanceModel{FT},
+        soil_moisture_stress::AbstractSoilMoistureStressModel{FT} = TuzetMoistureStressModel{FT}(),
         hydraulics::AbstractPlantHydraulicsModel{FT},
         energy::AbstractCanopyEnergyModel{FT},
         sif::AbstractSIFModel{FT},
@@ -522,6 +546,9 @@ function CanopyModel{FT}(;
     radiative_transfer::AbstractRadiationModel{FT},
     photosynthesis::AbstractPhotosynthesisModel{FT},
     conductance::AbstractStomatalConductanceModel{FT},
+    soil_moisture_stress::AbstractSoilMoistureStressModel{FT} = TuzetMoistureStressModel{
+        FT,
+    }(),
     hydraulics::AbstractPlantHydraulicsModel{FT},
     energy = PrescribedCanopyTempModel{FT}(),
     sif = Lee2015SIFModel{FT}(),
@@ -551,6 +578,7 @@ function CanopyModel{FT}(;
         radiative_transfer,
         photosynthesis,
         conductance,
+        soil_moisture_stress,
         hydraulics,
         energy,
         sif,
@@ -578,6 +606,7 @@ end
         radiative_transfer = TwoStreamModel{FT}(domain),
         photosynthesis = FarquharModel{FT}(domain),
         conductance = MedlynConductanceModel{FT}(domain),
+        soil_moisture_stress = TuzetMoistureStressModel{FT}(),
         hydraulics = PlantHydraulicsModel{FT}(domain, forcing),
         energy = BigLeafEnergyModel{FT}(),
         sif = Lee2015SIFModel{FT}(),
@@ -617,6 +646,7 @@ function CanopyModel{FT}(
     radiative_transfer = TwoStreamModel{FT}(domain),
     photosynthesis = FarquharModel{FT}(domain),
     conductance = MedlynConductanceModel{FT}(domain),
+    soil_moisture_stress = TuzetMoistureStressModel{FT}(),
     hydraulics = PlantHydraulicsModel{FT}(domain, LAI),
     energy = BigLeafEnergyModel{FT}(),
     sif = Lee2015SIFModel{FT}(),
@@ -663,6 +693,7 @@ function CanopyModel{FT}(
         radiative_transfer,
         photosynthesis,
         conductance,
+        soil_moisture_stress,
         hydraulics,
         energy,
         sif,
@@ -693,6 +724,7 @@ canopy_components(::CanopyModel) = (
     :autotrophic_respiration,
     :energy,
     :sif,
+    :soil_moisture_stress,
 )
 
 """
@@ -880,13 +912,18 @@ function initialize_boundary_vars(model::CanopyModel{FT}, coords) where {FT}
 end
 
 """
-     ClimaLand.make_update_aux(canopy::CanopyModel{FT,
-                                                  <:AutotrophicRespirationModel,
-                                                  <:Union{BeerLambertModel, TwoStreamModel},
-                                                  <:FarquharModel,
-                                                  <:MedlynConductanceModel,
-                                                  <:PlantHydraulicsModel,},
-                              ) where {FT}
+     ClimaLand.make_update_aux(
+        canopy::CanopyModel{
+            FT,
+            <:AutotrophicRespirationModel,
+            <:Union{BeerLambertModel, TwoStreamModel},
+            <:Union{FarquharModel, OptimalityFarquharModel, PModel},
+            <:Union{MedlynConductanceModel, PModelConductance},
+            <:Union{NoMoistureStressModel, TuzetMoistureStressModel, PiecewiseMoistureStressModel},
+            <:PlantHydraulicsModel,
+            <:AbstractCanopyEnergyModel,
+        },
+    ) where {FT}
 
 Creates the `update_aux!` function for the `CanopyModel`; a specific
 method for `update_aux!` for the case where the canopy model components
@@ -909,6 +946,11 @@ function ClimaLand.make_update_aux(
         <:Union{BeerLambertModel, TwoStreamModel},
         <:Union{FarquharModel, OptimalityFarquharModel, PModel},
         <:Union{MedlynConductanceModel, PModelConductance},
+        <:Union{
+            NoMoistureStressModel,
+            TuzetMoistureStressModel,
+            PiecewiseMoistureStressModel,
+        },
         <:PlantHydraulicsModel,
         <:AbstractCanopyEnergyModel,
     },
@@ -1017,6 +1059,9 @@ function ClimaLand.make_update_aux(
         end
         # We update the fa[n_stem+n_leaf] element once we have computed transpiration
 
+        # Update soil moisture stress, used in photosynthesis and conductance 
+        update_soil_moisture_stress!(p, Y, canopy.soil_moisture_stress, canopy)
+
         # Update Rd, An, Vcmax25 (if applicable to model) in place, GPP
         update_photosynthesis!(p, Y, canopy.photosynthesis, canopy)
 
@@ -1049,6 +1094,11 @@ function make_compute_exp_tendency(
         <:Union{BeerLambertModel, TwoStreamModel},
         <:Union{FarquharModel, OptimalityFarquharModel, PModel},
         <:Union{MedlynConductanceModel, PModelConductance},
+        <:Union{
+            NoMoistureStressModel,
+            TuzetMoistureStressModel,
+            PiecewiseMoistureStressModel,
+        },
         <:PlantHydraulicsModel,
         <:Union{PrescribedCanopyTempModel, BigLeafEnergyModel},
     },
@@ -1079,6 +1129,11 @@ function make_compute_imp_tendency(
         <:Union{BeerLambertModel, TwoStreamModel},
         <:Union{FarquharModel, OptimalityFarquharModel, PModel},
         <:Union{MedlynConductanceModel, PModelConductance},
+        <:Union{
+            NoMoistureStressModel,
+            TuzetMoistureStressModel,
+            PiecewiseMoistureStressModel,
+        },
         <:PlantHydraulicsModel,
         <:Union{PrescribedCanopyTempModel, BigLeafEnergyModel},
     },
@@ -1109,6 +1164,11 @@ function ClimaLand.make_compute_jacobian(
         <:Union{BeerLambertModel, TwoStreamModel},
         <:Union{FarquharModel, OptimalityFarquharModel, PModel},
         <:Union{MedlynConductanceModel, PModelConductance},
+        <:Union{
+            NoMoistureStressModel,
+            TuzetMoistureStressModel,
+            PiecewiseMoistureStressModel,
+        },
         <:PlantHydraulicsModel,
         <:Union{PrescribedCanopyTempModel, BigLeafEnergyModel},
     },
@@ -1217,5 +1277,45 @@ However, for other photosynthesis models this is not needed, so do nothing by de
 function set_historical_cache!(p, Y0, m::AbstractPhotosynthesisModel, canopy)
     return nothing
 end
+
+"""
+    required_model_callbacks(start_date, t0, dt, model::CanopyModel)
+
+For some canopy components (namely the P-model), we need a callback to ensure regular
+updates at a preset frequency. This method dispatches off of the type of the photosynthesis
+model.  
+"""
+function required_model_callbacks(start_date, t0, dt, model::CanopyModel)
+    return required_photosynthesis_model_callbacks(
+        start_date,
+        t0,
+        dt,
+        model,
+        model.photosynthesis,
+    )
+end
+
+
+"""
+    required_photosynthesis_model_callbacks(
+        start_date,
+        t0,
+        dt,
+        canopy,
+        photo_model::AbstractPhotosynthesisModel,
+    )
+
+For an AbstractPhotosynthesisModel in general, add no additional model callbacks.
+"""
+function required_photosynthesis_model_callbacks(
+    start_date,
+    t0,
+    dt,
+    canopy,
+    photo_model::AbstractPhotosynthesisModel,
+)
+    return ()
+end
+
 
 end

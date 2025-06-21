@@ -1,21 +1,24 @@
 using NCDatasets
 
 """
-     prescribed_forcing_fluxnet(site_ID,
-                                lat,
-                                long,
-                                hour_offset_from_UTC,
-                                start_date,
-                                earth_param_set,
-                                FT;
-                                gustiness=1,
-                                split_precip= true,
-                                c_co2 = TimeVaryingInput((t) -> 4.2e-4),
+prescribed_forcing_fluxnet(site_ID,
+                        lat,
+                        long,
+                        hour_offset_from_UTC,
+                        atmos_h,
+                        start_date, # in UTC
+                        earth_param_set,
+                        FT;
+                        split_precip = true,
+                        gustiness = 1,
+                        construct_prescribed_soil = false,
+                        soil_driver_args = nothing, 
 )
 A helper function which constructs the `PrescribedAtmosphere` and `PrescribedRadiativeFluxes`
 from a file path pointing to the Fluxnet data in a csv file, the start date, latitude, longitude,
 the hour offset of the site from UTC (local_time + offset = time in UTC),
-and the earth_param_set.
+and the earth_param_set. If you are running a standalone canopy simulation, this also requires
+construction of PrescribedGroundConditions, which is done if `construct_prescribed_soil` is true.
 
 This requires (1) reading in the data, (2) removing missing values,
  (3) converting units, (4) computing the specific humidity and percent of
@@ -34,6 +37,17 @@ and that these names are:
 "WS_F" (wind speed in m/s)
 "LW_IN_F" (downwelling LW radiation in W/m^2)
 "SW_IN_F" (downwelling SW radiation in W/m^2)
+"CO2_F_MDS" (CO2 concentration in μmol/mol)
+
+If construct_prescribed_soil is true, then it also requires:
+"SWC_F_MDS_1" (soil water content in percent)
+"TS_F_MDS_1" (soil temperature in C)
+
+`soil_driver_args` should be a NamedTuple with the following keys:
+- `α_PAR`, `α_NIR`, and `ϵ`, which are the albedo parameters for the soil surface. 
+- `hydrology_cm`, a hydrology closure model for the soil (e.g. van Genuchten) 
+- `ν`, soil porosity
+- `θ_r`, residual water content of soil
 """
 function FluxnetSimulations.prescribed_forcing_fluxnet(
     site_ID,
@@ -46,30 +60,27 @@ function FluxnetSimulations.prescribed_forcing_fluxnet(
     FT;
     split_precip = true,
     gustiness = 1,
-    c_co2 = TimeVaryingInput((t) -> 4.2e-4),
+    construct_prescribed_soil = false,
+    soil_driver_args = nothing,
 )
-    thermo_params = LP.thermodynamic_parameters(earth_param_set)
-
-    fluxnet_csv_path = ClimaLand.Artifacts.experiment_fluxnet_data_path(site_ID)
-    (data, columns) = readdlm(fluxnet_csv_path, ','; header = true)
-
-    # Determine which column index corresponds to which varname
-    varnames = ("TA_F", "VPD_F", "PA_F", "P_F", "WS_F", "LW_IN_F", "SW_IN_F")
-    column_name_map = Dict(
-        varname => findfirst(columns[:] .== varname) for varname in varnames
-    )
-    # If any of these are missing, error, because we need all of them
-    # to run a simulation
-    nothing_id = findall(collect(values(column_name_map)) .== nothing)
-    if !isempty(nothing_id)
-        @error("$(labels[nothing_id]) is missing in the data, but required.")
+    if construct_prescribed_soil && isnothing(soil_driver_args)
+        error(
+            "If construct_prescribed_soil is true, then soil_driver_args must be provided.
+            This should be a NamedTuple with keys `α_PAR`, `α_NIR`, `ϵ`, `ν`, `θ_r`, and `hydrology_cm`.",
+        )
     end
 
-    # Convert the local timestamp to UTC
-    # Since it was read in as Float64 type, convert to a string before
-    # converting to a DateTime
-    local_datetime = DateTime.(string.(Int.(data[:, 1])), "yyyymmddHHMM")
-    UTC_datetime = local_datetime .+ Dates.Hour(hour_offset_from_UTC)
+    thermo_params = LP.thermodynamic_parameters(earth_param_set)
+
+    # Get required variable names
+    varnames = get_required_varnames(construct_prescribed_soil)
+
+    # Read data and process timestamps  
+    (data, columns, local_datetime, UTC_datetime) =
+        read_fluxnet_data(site_ID, hour_offset_from_UTC)
+
+    # Create column mapping and validate
+    column_name_map = create_column_name_map(columns, varnames)
 
     # The TimeVaryingInput interface for columns expects the time in seconds
     # from the start date of the simulation
@@ -95,19 +106,26 @@ function FluxnetSimulations.prescribed_forcing_fluxnet(
         data,
         "WS_F",
         column_name_map,
-        seconds_since_start_date,
+        seconds_since_start_date;
     )
     LW_d = time_varying_input_from_data(
         data,
         "LW_IN_F",
         column_name_map,
-        seconds_since_start_date,
+        seconds_since_start_date;
     )
     SW_d = time_varying_input_from_data(
         data,
         "SW_IN_F",
         column_name_map,
-        seconds_since_start_date,
+        seconds_since_start_date;
+    )
+    c_co2 = time_varying_input_from_data(
+        data,
+        "CO2_F_MDS",
+        column_name_map,
+        seconds_since_start_date;
+        preprocess_func = (x) -> x * 1e-6, # convert from μmol/mol to mol/mol
     )
 
     # Specific humidity is computed from P, VPD, and T using `compute_q`
@@ -165,6 +183,31 @@ function FluxnetSimulations.prescribed_forcing_fluxnet(
         ) # no snow
     end
 
+    # If we are constructing the soil driver, then we should read in swc (soil water content) and 
+    # soil temperature (ts) at the surface depth (1). TODO: consider reading in deeper depths, if 
+    # it is available
+    if construct_prescribed_soil
+        soil_θ = time_varying_input_from_data(
+            data,
+            "SWC_F_MDS_1",
+            column_name_map,
+            seconds_since_start_date;
+            preprocess_func = (x) -> x / 100, # convert from percent to fraction
+        )
+        soil_T = time_varying_input_from_data(
+            data,
+            "TS_F_MDS_1",
+            column_name_map,
+            seconds_since_start_date;
+            preprocess_func = (x) -> x + 273.15, # convert from Celsius to Kelvin
+        )
+        soil = PrescribedGroundConditions{FT}(;
+            θ = soil_θ,
+            T = soil_T,
+            soil_driver_args...,
+        )
+    end
+
     # Construct the drivers. For the start date we use the UTC time at the
     # start of the simulation
     atmos = ClimaLand.PrescribedAtmosphere(
@@ -196,7 +239,9 @@ function FluxnetSimulations.prescribed_forcing_fluxnet(
         θs = zenith_angle,
         earth_param_set = earth_param_set,
     )
-    return (; atmos, radiation)
+
+    return construct_prescribed_soil ? (; atmos, radiation, soil) :
+           (; atmos, radiation)
 end
 
 """
@@ -242,9 +287,7 @@ A helper function to get the difference in time between observations;
 this is used in making some plots.
 """
 function FluxnetSimulations.get_data_dt(site_ID)
-    fluxnet_csv_path = ClimaLand.Artifacts.experiment_fluxnet_data_path(site_ID)
-    (data, columns) = readdlm(fluxnet_csv_path, ','; header = true)
-    local_datetime = DateTime.(string.(Int.(data[:, 1])), "yyyymmddHHMM")
+    (data, columns, local_datetime) = read_fluxnet_data(site_ID)
     # Convert to seconds
     Δts = [
         Second(Δdate).value for
@@ -259,25 +302,41 @@ end
     get_data_dates(
         site_ID,
         hour_offset_from_UTC;
+        construct_prescribed_soil::Bool = false,
         duration::Union{Nothing, Period} = nothing,
         start_offset::Period = Second(0),
     )
 
 A helper function to get the first and last dates, in UTC, for which we have
 Fluxnet data at `site_ID`, given the offset in hours of local time
-from UTC. If `duration` is provided, it is used to determine the end date,
+from UTC. Note that this will read the entire file to look for the start and 
+end dates for which we have full data required to construct the drivers.
+
+If `duration` is provided, it is used to determine the end date,
 otherwise the end date is the last date in the data. The `start_offset` is
 added to the start date, and must be non-negative.
 """
 function FluxnetSimulations.get_data_dates(
     site_ID,
     hour_offset_from_UTC;
+    construct_prescribed_soil::Bool = false,
     duration::Union{Nothing, Period} = nothing,
     start_offset::Period = Second(0),
 )
     fluxnet_csv_path = ClimaLand.Artifacts.experiment_fluxnet_data_path(site_ID)
     (data, columns) = readdlm(fluxnet_csv_path, ','; header = true)
-    local_datetime = DateTime.(string.(Int.(data[:, 1])), "yyyymmddHHMM")
+
+    # get the columns where
+    required_varnames = get_required_varnames(construct_prescribed_soil)
+    column_name_map = create_column_name_map(columns, required_varnames)
+    valid_rows = find_rows_with_all_variables_available(
+        data,
+        column_name_map,
+        required_varnames,
+    )
+
+    local_datetime =
+        DateTime.(string.(Int.(data[valid_rows, 1])), "yyyymmddHHMM")
     UTC_datetime = local_datetime .+ Dates.Hour(hour_offset_from_UTC)
     earliest_date, latest_date = extrema(UTC_datetime)
     Dates.value(start_offset) < 0 && error("start_offset must be non-negative")
@@ -366,8 +425,9 @@ function FluxnetSimulations.get_comparison_data(
     hour_offset_from_UTC::Int;
     val = -9999,
 )
-    fluxnet_csv_path = ClimaLand.Artifacts.experiment_fluxnet_data_path(site_ID)
-    (data, columns) = readdlm(fluxnet_csv_path, ','; header = true)
+    # Read data and process timestamps
+    (data, columns, local_datetime, UTC_datetime) =
+        read_fluxnet_data(site_ID, hour_offset_from_UTC)
 
     # Determine which column index corresponds to which varname
     varnames = (
@@ -380,6 +440,8 @@ function FluxnetSimulations.get_comparison_data(
         "TS_F_MDS_1",
         "P_F",
     )
+    # Note: We don't validate missing columns here since these are comparison variables
+    # that might not be present in all datasets
     column_name_map = Dict(
         varname => findfirst(columns[:] .== varname) for varname in varnames
     )

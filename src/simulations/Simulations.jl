@@ -210,11 +210,18 @@ function LandSimulation(
         ClimaDiagnostics.DiagnosticsHandler(diagnostics, Y, p, t0; dt = Δt)
     diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler)
 
+    model_callbacks =
+        ClimaLand.required_model_callbacks(start_date, t0, Δt, model)
 
     # Collect all callbacks #TODO: ordering can be confusing as the state can be saved
     # in both user_cbs and diag_cbs, and the driver update happens between them
-    callbacks =
-        SciMLBase.CallbackSet(user_callbacks..., required_callbacks..., diag_cb)
+    callbacks = SciMLBase.CallbackSet(
+        user_callbacks...,
+        required_callbacks...,
+        model_callbacks...,
+        diag_cb,
+    )
+
     _integrator = SciMLBase.init(
         problem,
         timestepper;

@@ -115,7 +115,14 @@ function compute_stomatal_conductance!(
 end
 
 function compute_stomatal_conductance!(out, Y, p, t, land_model::CanopyModel)
-    compute_stomatal_conductance!(out, Y, p, t, land_model, canopy.conductance)
+    compute_stomatal_conductance!(
+        out,
+        Y,
+        p,
+        t,
+        land_model,
+        land_model.conductance,
+    )
 end
 
 function compute_stomatal_conductance!(
@@ -272,60 +279,6 @@ function compute_leaf_water_potential!(out, Y, p, t, land_model::CanopyModel)
     end
 end
 
-function compute_moisture_stress_factor!(
-    out,
-    Y,
-    p,
-    t,
-    land_model::Union{SoilCanopyModel, LandModel},
-)
-    canopy = land_model.canopy
-    hydraulics = canopy.hydraulics
-    n_stem = hydraulics.n_stem
-    n_leaf = hydraulics.n_leaf
-    n = n_stem + n_leaf
-
-    earth_param_set = canopy.parameters.earth_param_set
-    grav = LP.grav(earth_param_set)
-    ρ_l = LP.ρ_cloud_liq(earth_param_set)
-    (; sc, pc) = canopy.photosynthesis.parameters
-    ψ = p.canopy.hydraulics.ψ
-    if isnothing(out)
-        out = zeros(land_model.canopy.domain.space.surface) # Allocates
-        fill!(field_values(out), NaN)
-        @. out = moisture_stress(ψ.:($$n) * ρ_l * grav, sc, pc)
-        return out
-    else
-        @. out = moisture_stress(ψ.:($$n) * ρ_l * grav, sc, pc)
-    end
-end
-function compute_moisture_stress_factor!(
-    out,
-    Y,
-    p,
-    t,
-    land_model::Union{CanopyModel},
-)
-    canopy = land_model
-    hydraulics = canopy.hydraulics
-    n_stem = hydraulics.n_stem
-    n_leaf = hydraulics.n_leaf
-    n = n_stem + n_leaf
-
-    earth_param_set = canopy.parameters.earth_param_set
-    grav = LP.grav(earth_param_set)
-    ρ_l = LP.ρ_cloud_liq(earth_param_set)
-    (; sc, pc) = canopy.photosynthesis.parameters
-    ψ = p.canopy.hydraulics.ψ
-    if isnothing(out)
-        out = zeros(land_model.canopy.domain.space.surface) # Allocates
-        fill!(field_values(out), NaN)
-        @. out = moisture_stress(ψ.:($$n) * ρ_l * grav, sc, pc)
-        return out
-    else
-        @. out = moisture_stress(ψ.:($$n) * ρ_l * grav, sc, pc)
-    end
-end
 
 # @diagnostic_compute "flux_per_ground_area" Union{SoilCanopyModel, LandModel} p.canopy.hydraulics.fa # return a Tuple
 @diagnostic_compute "root_flux_per_ground_area" Union{
@@ -338,6 +291,13 @@ end
     LandModel,
     CanopyModel,
 } p.canopy.hydraulics.area_index.leaf
+
+# Canopy - Soil moisture stress
+@diagnostic_compute "moisture_stress_factor" Union{
+    SoilCanopyModel,
+    LandModel,
+    CanopyModel,
+} p.canopy.soil_moisture_stress.βm
 
 # Canopy - Hydraulics
 @diagnostic_compute "root_area_index" Union{
@@ -566,8 +526,8 @@ end # Convert from kg C to mol CO2.
 
 ## Other ##
 @diagnostic_compute "sw_albedo" Union{SoilCanopyModel, LandModel} p.α_sfc
-@diagnostic_compute "lw_up" Union{SoilCanopyModel, LandModel} p.LW_u
-@diagnostic_compute "sw_up" Union{SoilCanopyModel, LandModel} p.SW_u
+@diagnostic_compute "lw_up" Union{SoilCanopyModel, LandModel, CanopyModel} p.LW_u
+@diagnostic_compute "sw_up" Union{SoilCanopyModel, LandModel, CanopyModel} p.SW_u
 @diagnostic_compute "surface_runoff" Union{SoilCanopyModel, LandModel} p.soil.R_s
 @diagnostic_compute "subsurface_runoff" Union{SoilCanopyModel, LandModel} p.soil.R_ss
 

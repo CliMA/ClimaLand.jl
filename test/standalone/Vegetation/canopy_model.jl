@@ -220,7 +220,7 @@ import ClimaParams
                 :LW_d,
                 :cosθs,
                 :frac_diff,
-                :ψ,
+                :θ,
                 :T_ground,
             )
             # Check that structure of Y is valid (will error if not)
@@ -235,6 +235,7 @@ import ClimaParams
                 :autotrophic_respiration,
                 :energy,
                 :sif,
+                :soil_moisture_stress,
                 :turbulent_fluxes,
             )
             for component in ClimaLand.Canopy.canopy_components(canopy)
@@ -1376,6 +1377,7 @@ end
         )
         photosynthesis = Canopy.FarquharModel{FT}(domain)
         conductance = Canopy.MedlynConductanceModel{FT}(domain)
+        soil_moisture_stress = Canopy.TuzetMoistureStressModel{FT}()
         hydraulics = Canopy.PlantHydraulicsModel{FT}(domain, LAI)
         energy = Canopy.BigLeafEnergyModel{FT}()
         sif = Canopy.Lee2015SIFModel{FT}()
@@ -1399,6 +1401,7 @@ end
                 radiative_transfer,
                 photosynthesis,
                 conductance,
+                soil_moisture_stress,
                 hydraulics,
                 energy,
                 sif,
@@ -1440,7 +1443,7 @@ end
                 :LW_d,
                 :cosθs,
                 :frac_diff,
-                :ψ,
+                :θ,
                 :T_ground,
             )
             # Check that structure of Y is valid (will error if not)
@@ -1455,6 +1458,7 @@ end
                 :autotrophic_respiration,
                 :energy,
                 :sif,
+                :soil_moisture_stress,
                 :turbulent_fluxes,
             )
             for component in ClimaLand.Canopy.canopy_components(canopy)
@@ -1514,7 +1518,7 @@ end
             :LW_d,
             :cosθs,
             :frac_diff,
-            :ψ,
+            :θ,
             :T_ground,
         )
         # Check that structure of Y is valid (will error if not)
@@ -1528,6 +1532,7 @@ end
             :autotrophic_respiration,
             :energy,
             :sif,
+            :soil_moisture_stress,
             :turbulent_fluxes,
         )
         for component in ClimaLand.Canopy.canopy_components(canopy)

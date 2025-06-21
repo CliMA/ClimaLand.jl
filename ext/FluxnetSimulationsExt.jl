@@ -11,6 +11,7 @@ using Insolation
 import ClimaLand.Parameters as LP
 using ClimaLand
 using ClimaLand.Canopy
+using ClimaLand.Soil
 using ClimaLand.PlantHydraulics
 export prescribed_forcing_fluxnet,
     make_set_fluxnet_initial_conditions,
@@ -19,7 +20,9 @@ export prescribed_forcing_fluxnet,
     get_data_dt,
     replace_hyphen,
     get_parameters,
-    get_domain_info
+    get_domain_info,
+    make_set_fluxnet_initial_conditions,
+    hour_offset_to_period
 
 # Include site-specific configurations, as well as the default generic site.
 include("fluxnet_simulations/generic_site.jl")
