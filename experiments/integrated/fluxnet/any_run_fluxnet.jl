@@ -9,7 +9,6 @@ using Dates
 using Insolation
 using StatsBase
 
-using DelimitedFiles
 using ClimaLand
 using ClimaLand.Domains: Column
 using ClimaLand.Snow
@@ -26,6 +25,8 @@ const FT = Float64
 earth_param_set = LP.LandParameters(FT)
 climaland_dir = pkgdir(ClimaLand)
 
+include(joinpath(climaland_dir, "experiments/integrated/fluxnet/data_tools.jl"))
+include(joinpath(climaland_dir, "experiments/integrated/fluxnet/plot_utils.jl"))
 
 include(
     joinpath(
@@ -33,10 +34,13 @@ include(
         "experiments/integrated/fluxnet/path_to_data_file.jl",
     ),
 )
-site_ID = "US-Ha1"
-data_path = get_path(site_ID)
 
-driver_data = readdlm(data_path, ',')
+# # Read in the site to be run from the command line
+if length(ARGS) < 1
+    error("Must provide site ID on command line")
+end
+
+site_ID = ARGS[1]
 
 # Read all site-specific domain parameters from the simulation file for the site
 include(
