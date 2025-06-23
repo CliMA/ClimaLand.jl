@@ -1119,3 +1119,250 @@ function intrinsic_quantum_yield(T::FT, c::FT) where {FT}
 end
 
 
+"""
+    density_h20(
+        T::FT, 
+        p::FT
+    ) where {FT}
+
+    Computes the density of water in kg/m^3 given temperature T (K) and pressure p (Pa)
+    according to F.H. Fisher and O.E Dial, Jr. (1975) Equation of state of pure water and 
+    sea water, Tech. Rept., Marine Physical Laboratory, San Diego, CA.
+
+    (can consider removing the higher order terms?) 
+"""
+function density_h2o(T::FT, p::FT) where {FT}
+    # Convert temperature to Celsius
+    T = T - 273.15 
+    # Convert pressure to bar (1 bar = 1e5 Pa)
+    pbar = 1e-5 * p
+
+    # λ(T): bar cm3/g
+    λ = 1788.316 +
+        21.55053 * T -
+        0.4695911 * T^2 +
+        3.096363e-3 * T^3 -
+        7.341182e-6 * T^4
+
+    # p0(T): bar
+    p0 = 5918.499 +
+         58.05267 * T -
+         1.1253317 * T^2 +
+         6.6123869e-3 * T^3 -
+         1.4661625e-5 * T^4
+
+    # v_inf(T): cm3/g
+    T_powers = (T .^ (0:9))  # T^0 to T^9
+    coeffs_vinf = [
+        0.6980547,
+       -7.435626e-4,
+        3.704258e-5,
+       -6.315724e-7,
+        9.829576e-9,
+       -1.197269e-10,
+        1.005461e-12,
+       -5.437898e-15,
+        1.69946e-17,
+       -2.295063e-20
+    ]
+    v_inf = dot(coeffs_vinf, T_powers)
+
+    # Specific volume [cm3/g]
+    v = v_inf + λ / (p0 + pbar)
+
+    # Convert to density [kg/m3]
+    return 1e3 / v
+end
+
+
+"""
+    viscosity_h20(
+        T::FT, 
+        p::FT
+    ) where {FT}
+
+    Computes the viscosity of water in Pa s given temperature T (K) and pressure p (Pa)
+    according to Huber et al. (2009) [https://doi.org/10.1063/1.3088050]. 
+
+    Can consider simplifying if this level of precision is not needed
+"""
+function viscosity_h2o(T::FT, p::FT) where {FT}
+    # Reference constants
+    tk_ast  = 647.096    # K
+    rho_ast = 322.0      # kg/m^3
+    mu_ast  = 1e-6       # Pa s
+
+    # Get density of water [kg/m^3]
+    rho = density_h2o(T, p)
+
+    # Dimensionless variables
+    tbar  = T / tk_ast
+    tbarx = sqrt(tbar)
+    tbar2 = tbar^2
+    tbar3 = tbar^3
+    rbar  = rho / rho_ast
+
+    # Calculate μ0 (Eq. 11 & Table 2)
+    μ0 = 1.67752 + 2.20462 / tbar + 0.6366564 / tbar2 - 0.241605 / tbar3
+    μ0 = 1e2 * tbarx / μ0
+
+    # Coefficients h_array from Table 3
+    h_array = [
+        0.520094    0.0850895   -1.08374   -0.289555   0.0         0.0;
+        0.222531    0.999115     1.88797    1.26613    0.0         0.120573;
+       -0.281378   -0.906851    -0.772479  -0.489837  -0.257040    0.0;
+        0.161913    0.257399     0.0        0.0        0.0         0.0;
+       -0.0325372   0.0          0.0        0.0698452  0.0         0.0;
+        0.0         0.0          0.0        0.0        0.00872102  0.0;
+        0.0         0.0          0.0       -0.00435673 0.0        -0.000593264
+    ]
+
+    # Compute μ1 (Eq. 12 & Table 3)
+    μ1 = 0.0
+    ctbar = (1.0 / tbar) - 1.0
+    for i in 1:6
+        coef1 = ctbar^(i - 1)
+        coef2 = 0.0
+        for j in 1:7
+            coef2 += h_array[j, i] * (rbar - 1.0)^(j - 1)
+        end
+        μ1 += coef1 * coef2
+    end
+    μ1 = exp(rbar * μ1)
+
+    μ_bar = μ0 * μ1       # Eq. 2
+    μ = μ_bar * μ_ast     # Eq. 1
+    return μ              # Pa s
+end
+
+
+"""
+    compute_ηstar(
+        T::FT, 
+        p::FT
+    ) where {FT}
+
+    Computes η*, the ratio of the viscosity of water at temperature T and pressure p
+    to the viscosity of water at STP. 
+"""
+function compute_ηstar(T::FT, p::FT) where {FT} 
+    η25 = viscosity_h20(298.15, 101325)
+    ηstar = viscosity_h2o(T, p) / η25
+    return ηstar
+end
+
+
+"""
+    po2(P_air::FT) 
+
+    Computes the partial pressure of O2 in the air (Pa) given atmospheric pressure. Assumes a 
+    constant mixing ratio of 21000 / 101325. 
+"""
+function po2(P_air::FT) 
+    return 0.2095 * P_air 
+end
+
+"""
+    co2_compensation_p(
+        T::FT,
+        R::FT,
+        p::FT
+    )
+
+    Computes the CO2 compensation point (`Γstar`), in units Pa, as a function of temperature T (K)
+    and pressure p (Pa). See Equation B5 of Stocker et al. (2020). 
+"""
+function co2_compensation_p(
+    T::FT,
+    p::FT,
+    R::FT
+) where {FT}
+    Γstar = po2(p) * exp(6.779 - 37.83/(T * R)) 
+    return Γstar
+end
+
+"""
+    compute_Kmm(
+        T::FT, 
+        p::FT, 
+        Kc25::FT, 
+        Ko25::FT, 
+        ΔHkc::FT, 
+        ΔHko::FT, 
+        To::FT, 
+        R::FT
+    ) where {FT}
+
+    Computes the effective Michaelis-Menten coefficient for Rubisco-limited photosynthesis (`Kmm`),
+    in units Pa, as a function of temperature T (K), atmospheric pressure p (Pa), and constants:
+    Kc25 (Michaelis-Menten coefficient for CO2 at 25 °C), Ko25 (Michaelis-Menten coefficient for O2 at 25 °C),
+    ΔHkc (effective enthalpy of activation for Kc), ΔHko (effective enthalpy of activation for Ko),
+    To (reference temperature, typically 298.15 K), and R (universal gas constant).
+"""
+function compute_Kmm(
+    T::FT, 
+    p::FT, 
+    Kc25::FT, 
+    Ko25::FT, 
+    ΔHkc::FT, 
+    ΔHko::FT, 
+    To::FT, 
+    R::FT
+) where {FT}
+    Kc = MM_Kc(Kc25, ΔHkc, T, To, R)
+    Ko = MM_Ko(Ko25, ΔHko, T, To, R)
+
+    return Kc * (1.0 + po2(p) / Ko) 
+end
+
+
+function optimal_χ_c3(
+    Kmm::FT,
+    Γstar::FT, 
+    ηstar::FT, 
+    ca::FT, 
+    VPD::FT, 
+    β::FT,
+    Drel::FT 
+) where {FT}
+    ξ = sqrt(β * (Kmm + Γstar) / (Drel * ηstar))
+    χ = Γstar / ca + (1.0 - Γstar / ca) * ξ / (ξ + sqrt(VPD)) 
+
+    # define some auxiliary variables 
+    γ = Γstar / ca 
+    κ = Kmm / ca 
+
+    mj = (χ - γ) / (χ + 2.0 * γ) # eqn 11 in Stocker et al. (2020)
+    mc = (χ - γ) / (χ + κ) # eqn 7 in Stocker et al. (2020)
+
+    return χ, ξ, mj, mc
+end 
+
+
+function pmodel_vcmax(
+    ϕ0::FT, 
+    I_abs::FT,
+    mj::FT,
+    mc::FT   
+) where {FT}
+    Vcmax = ϕ0 * I_abs * mj / mc 
+    return Vcmax
+end
+
+
+"""
+    compute_gs(
+        χ::FT, 
+        ca::FT,
+        A::FT
+    ) where {FT}
+
+    Computes the stomatal conductance (`gs`), in units of mol/m^2/s via Fick's law. 
+"""
+function compute_gs(
+    χ::FT, 
+    ca::FT,
+    A::FT
+) where {FT}
+    return A / (ca * (1 - χ)) 
+end
