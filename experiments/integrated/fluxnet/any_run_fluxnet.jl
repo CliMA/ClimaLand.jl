@@ -28,13 +28,6 @@ climaland_dir = pkgdir(ClimaLand)
 include(joinpath(climaland_dir, "experiments/integrated/fluxnet/data_tools.jl"))
 include(joinpath(climaland_dir, "experiments/integrated/fluxnet/plot_utils.jl"))
 
-include(
-    joinpath(
-        pkgdir(ClimaLand),
-        "experiments/integrated/fluxnet/path_to_data_file.jl",
-    ),
-)
-
 # # Read in the site to be run from the command line
 if length(ARGS) < 1
     error("Must provide site ID on command line")
