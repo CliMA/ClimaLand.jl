@@ -26,10 +26,6 @@ include(
     ),
 )
 
-if isdefined(Main, :site_ID) == false
-    site_ID = "US-Ha1"
-end
-
 data_path = get_path(site_ID)
 driver_data = readdlm(data_path, ',')
 
