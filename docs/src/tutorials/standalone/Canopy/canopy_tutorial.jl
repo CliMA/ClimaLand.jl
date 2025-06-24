@@ -50,6 +50,7 @@ using ClimaLand
 using ClimaLand.Domains: Point
 using ClimaLand.Canopy
 using ClimaLand.Canopy.PlantHydraulics
+import ClimaLand.Simulations: LandSimulation, solve!
 import ClimaLand
 import ClimaLand.Parameters as LP
 using DelimitedFiles
@@ -65,6 +66,13 @@ earth_param_set = LP.LandParameters(FT);
 # Timezone (offset from UTC in hrs)
 time_offset = 7
 start_date = DateTime(2010) + Hour(time_offset)
+
+# Select a time range to perform time stepping over, and a dt. As usual,
+# the timestep depends on the problem you are solving, the accuracy of the
+# solution required, and the timestepping algorithm you are using.
+N_days = 364
+end_date = start_date + Day(N_days)
+dt = 225.0
 
 # Site latitude and longitude
 lat = FT(38.7441) # degree
@@ -92,13 +100,7 @@ site_ID = "US-MOz";
 # would change.
 domain = Point(; z_sfc = FT(0.0), longlat = (long, lat));
 
-# Select a time range to perform time stepping over, and a dt. As usual,
-# the timestep depends on the problem you are solving, the accuracy of the
-# solution required, and the timestepping algorithm you are using.
-t0 = 0.0
-N_days = 364
-tf = t0 + 3600 * 24 * N_days
-dt = 225.0;
+
 
 # We will be using prescribed atmospheric and radiative drivers from the
 # US-MOz tower, which we read in here. We are using prescribed
@@ -131,10 +133,8 @@ forcing = (; atmos, radiation, ground);
 
 # Now we read in time-varying LAI from a global MODIS dataset.
 surface_space = domain.space.surface;
-modis_lai_ncdata_path = ClimaLand.Artifacts.modis_lai_multiyear_paths(
-    start_date = start_date + Second(t0),
-    end_date = start_date + Second(t0) + Second(tf),
-)
+modis_lai_ncdata_path =
+    ClimaLand.Artifacts.modis_lai_multiyear_paths(; start_date, end_date)
 LAI = ClimaLand.prescribed_lai_modis(
     modis_lai_ncdata_path,
     surface_space,
@@ -208,17 +208,6 @@ canopy = ClimaLand.Canopy.CanopyModel{FT}(
     photosynthesis,
 );
 
-# Initialize the state vectors and obtain the model coordinates, then get the
-# explicit time stepping tendency that updates auxiliary and prognostic
-# variables that are stepped explicitly.
-
-Y, p, coords = ClimaLand.initialize(canopy);
-exp_tendency! = make_exp_tendency(canopy);
-imp_tendency! = make_imp_tendency(canopy);
-jacobian! = make_jacobian(canopy);
-jac_kwargs =
-    (; jac_prototype = ClimaLand.FieldMatrixWithSolver(Y), Wfact = jacobian!);
-
 # Provide initial conditions for the canopy hydraulics model
 (; retention_model, ν, S_s) = canopy.hydraulics.parameters
 ψ_stem_0 = FT(-1e5 / 9800)
@@ -231,35 +220,28 @@ S_l_ini =
         ν,
         S_s,
     )
-for i in 1:2
-    Y.canopy.hydraulics.ϑ_l.:($i) .= augmented_liquid_fraction.(ν, S_l_ini[i])
+function set_ic!(Y, p, t0, model)
+    for i in 1:2
+        Y.canopy.hydraulics.ϑ_l.:($i) .=
+            augmented_liquid_fraction.(ν, S_l_ini[i])
+    end
+    evaluate!(Y.canopy.energy.T, atmos.T, t0)
 end
-evaluate!(Y.canopy.energy.T, atmos.T, t0)
-
-# Initialize the cache variables for the canopy using the initial
-# conditions and initial time.
-
-set_initial_cache! = make_set_initial_cache(canopy)
-set_initial_cache!(p, Y, t0);
 
 # Allocate the struct which stores the saved auxiliary state
 # and create the callback which saves it at each element in saveat.
 
 n = 16
-saveat = Array(t0:(n * dt):tf)
+saveat = Array(start_date:Second(n * dt):end_date);
 sv = (;
-    t = Array{Float64}(undef, length(saveat)),
+    t = Array{DateTime}(undef, length(saveat)),
     saveval = Array{NamedTuple}(undef, length(saveat)),
 )
 saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat);
 
 # Create the callback function which updates the forcing variables,
 # or drivers.
-updateat = Array(t0:1800:tf)
-model_drivers = ClimaLand.get_drivers(canopy)
-updatefunc = ClimaLand.make_update_drivers(model_drivers)
-driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
-cb = SciMLBase.CallbackSet(driver_cb, saving_cb);
+updateat = Array(start_date:Second(1800):end_date);
 
 
 # Select a timestepping algorithm and setup the ODE problem.
@@ -272,28 +254,27 @@ ode_algo = CTS.IMEXAlgorithm(
     ),
 );
 
-prob = SciMLBase.ODEProblem(
-    CTS.ClimaODEFunction(
-        T_exp! = exp_tendency!,
-        T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
-        dss! = ClimaLand.dss!,
-    ),
-    Y,
-    (t0, tf),
-    p,
+# Create the LandSimulation object, which will also create and initialize the state vectors,
+# the cache, the driver callbacks, and set the initial conditions.
+simulation = LandSimulation(
+    start_date,
+    end_date,
+    dt,
+    canopy;
+    set_ic! = set_ic!,
+    updateat = updateat,
+    solver_kwargs = (; saveat = deepcopy(saveat)),
+    timestepper = ode_algo,
+    user_callbacks = (saving_cb,),
 );
 
-# Now, we can solve the problem and store the model data in the saveat array,
-# using [`SciMLBase.jl`](https://github.com/SciML/SciMLBase.jl) and
-# [`ClimaTimeSteppers.jl`](https://github.com/CliMA/ClimaTimeSteppers.jl).
-
-sol = SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb, saveat = saveat);
+sol = solve!(simulation);
 
 # # Create some plots
 
 # We can now plot the data produced in the simulation. For example, GPP:
 
-daily = sol.t ./ 3600 ./ 24
+daily = FT.(sol.t) ./ 3600 ./ 24
 model_GPP = [
     parent(sv.saveval[k].canopy.photosynthesis.GPP)[1] for
     k in 1:length(sv.saveval)

@@ -15,6 +15,7 @@ using ClimaLand.Soil
 using ClimaLand.Canopy
 import ClimaLand
 import ClimaLand.Parameters as LP
+import ClimaLand.Simulations: LandSimulation, solve!
 
 import CairoMakie
 import GeoMakie
@@ -47,9 +48,8 @@ subsurface_space = domain.space.subsurface
 
 # Set up dates and times for the simulation
 start_date = DateTime(2008);
-t0 = 0.0
 dt = 450.0
-tf = 3600
+end_date = start_date + Dates.Second(3600)
 
 # Forcing data
 era5_ncdata_path =
@@ -91,8 +91,8 @@ canopy_forcing = (; atmos, radiation, ground)
 # Set up plant hydraulics
 modis_lai_ncdata_path = ClimaLand.Artifacts.modis_lai_multiyear_paths(;
     context = nothing,
-    start_date = start_date + Second(t0),
-    end_date = start_date + Second(t0) + Second(tf),
+    start_date = start_date,
+    end_date = end_date,
 )
 LAI = ClimaLand.prescribed_lai_modis(
     modis_lai_ncdata_path,
@@ -111,19 +111,10 @@ canopy = Canopy.CanopyModel{FT}(
 # Combine the soil and canopy models into a single prognostic land model
 land = SoilCanopyModel{FT}(soilco2, soil, canopy)
 
-Y, p, cds = initialize(land)
-
 ic_path = ClimaLand.Artifacts.soil_ic_2008_50m_path(; context = context)
-set_initial_state! =
-    ClimaLand.Simulations.make_set_initial_state_from_file(ic_path, land)
-set_initial_cache! = make_set_initial_cache(land)
-exp_tendency! = make_exp_tendency(land)
-imp_tendency! = ClimaLand.make_imp_tendency(land)
-jacobian! = ClimaLand.make_jacobian(land)
-
-set_initial_state!(Y, p, t0, land)
-set_initial_cache!(p, Y, t0)
-
+set_ic! =
+    (Y, p, t0, model) ->
+        ClimaLand.Simulations.make_set_initial_state_from_file(ic_path, model)
 stepper = CTS.ARS343()
 ode_algo = CTS.IMEXAlgorithm(
     stepper,
@@ -131,21 +122,6 @@ ode_algo = CTS.IMEXAlgorithm(
         max_iters = 1,
         update_j = CTS.UpdateEvery(CTS.NewTimeStep),
     ),
-)
-
-# set up jacobian info
-jac_kwargs =
-    (; jac_prototype = ClimaLand.FieldMatrixWithSolver(Y), Wfact = jacobian!)
-
-prob = SciMLBase.ODEProblem(
-    CTS.ClimaODEFunction(
-        T_exp! = exp_tendency!,
-        T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
-        dss! = ClimaLand.dss!,
-    ),
-    Y,
-    (t0, tf),
-    p,
 )
 
 # ClimaDiagnostics
@@ -159,23 +135,17 @@ diags = ClimaLand.default_diagnostics(
     average_period = :hourly,
 )
 
-diagnostic_handler =
-    ClimaDiagnostics.DiagnosticsHandler(diags, Y, p, t0; dt = dt)
-
-diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler)
-
-updateat = Array(t0:(3600 * 3):tf)
-drivers = ClimaLand.get_drivers(land)
-updatefunc = ClimaLand.make_update_drivers(drivers)
-driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
-
-sol = ClimaComms.@time ClimaComms.device() SciMLBase.solve(
-    prob,
-    ode_algo;
-    dt = dt,
-    callback = SciMLBase.CallbackSet(driver_cb, diag_cb),
+simulation = LandSimulation(
+    start_date,
+    end_date,
+    dt,
+    land;
+    outdir,
+    diagnostics = diags,
+    timestepper = ode_algo,
+    user_callbacks = (),
 )
-
+ClimaLand.Simulations.solve!(simulation)
 ClimaLand.Diagnostics.close_output_writers(diags)
 
 # ClimaAnalysis

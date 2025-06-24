@@ -63,6 +63,7 @@ import ClimaTimeSteppers as CTS
 
 using ClimaLand
 using ClimaLand.Domains: Column
+import ClimaLand.Simulations: LandSimulation, solve!
 using ClimaLand.Soil
 
 import ClimaLand
@@ -135,36 +136,14 @@ soil = Soil.RichardsModel{FT}(;
     sources = sources,
 );
 
-# Here we create the explicit and implicit tendencies, which update prognostic
-# variable components that are stepped explicitly and implicitly, respectively.
-# We also create the function which is used to update our Jacobian.
-exp_tendency! = make_exp_tendency(soil);
-imp_tendency! = ClimaLand.make_imp_tendency(soil);
-jacobian! = ClimaLand.make_jacobian(soil);
 
-# # Set up the simulation
-# We can now initialize the prognostic and auxiliary variable vectors, and take
-# a peek at what those variables are:
-Y, p, coords = initialize(soil);
-Y.soil |> propertynames
-
-p.soil |> propertynames
-
-coords |> propertynames
-
-# Note that the variables are nested into `Y` and `p` in a hierarchical way.
-# Since we have the vectors (composed of [ClimaCore Fields](https://clima.github.io/ClimaCore.jl/dev/api/#ClimaCore.Fields.Field) handy, we can now set them to the desired initial
-# conditions.
-Y.soil.ϑ_l .= FT(0.494);
+function set_ic!(Y, p, t0, model)
+    Y.soil.ϑ_l .= FT(0.494)
+end
 
 # We choose the initial and final simulation times:
 t0 = Float64(0)
 tf = Float64(60 * 60 * 24 * 36);
-
-# We set the cache values corresponding to the initial conditions
-# of the state Y:
-set_initial_cache! = make_set_initial_cache(soil);
-set_initial_cache!(p, Y, t0);
 
 # Next, we turn to timestepping.
 # As usual, your timestep depends on the problem you are solving, the accuracy
@@ -184,24 +163,31 @@ ode_algo = CTS.IMEXAlgorithm(
     ),
 );
 
-# Here we set up the information used for our Jacobian.
-jac_kwargs =
-    (; jac_prototype = ClimaLand.FieldMatrixWithSolver(Y), Wfact = jacobian!);
-
-# And then we can solve the system of equations, using
-# [SciMLBase.jl](https://github.com/SciML/SciMLBase.jl) and
-# [ClimaTimeSteppers.jl](https://github.com/CliMA/ClimaTimeSteppers.jl).
-prob = SciMLBase.ODEProblem(
-    CTS.ClimaODEFunction(
-        T_exp! = exp_tendency!,
-        T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
-        dss! = ClimaLand.dss!,
-    ),
-    Y,
-    (t0, tf),
-    p,
+simulation = LandSimulation(
+    t0,
+    tf,
+    dt,
+    soil;
+    set_ic! = set_ic!,
+    solver_kwargs = (; save_everystep = true),
+    timestepper = ode_algo,
+    user_callbacks = (),
+    diagnostics = (),
 );
-sol = SciMLBase.solve(prob, ode_algo; dt = dt, adaptive = false);
+
+# We can now take
+# a peek at what the initialized variables are:
+Y = simulation._integrator.u
+p = simulation._integrator.p
+Y.soil |> propertynames
+
+p.soil |> propertynames
+
+
+# Note that the variables are nested into `Y` and `p` in a hierarchical way.
+# Since we have the vectors (composed of [ClimaCore Fields](https://clima.github.io/ClimaCore.jl/dev/api/#ClimaCore.Fields.Field) handy, we can now set them to the desired initial
+# conditions.
+sol = solve!(simulation);
 
 
 # # Create some plots
@@ -219,9 +205,9 @@ sol = SciMLBase.solve(prob, ode_algo; dt = dt, adaptive = false);
 # requiring that the integrated water content at the end matches that
 # at the beginning (yielding an interface location of `z≈-0.56m`).
 
-t = sol.t ./ (60 * 60 * 24);
+t = FT.(sol.t) ./ (60 * 60 * 24);
 ϑ_l = [parent(sol.u[k].soil.ϑ_l) for k in 1:length(t)]
-z = parent(coords.subsurface.z)
+z = parent(soil.domain.fields.z)
 plot(
     ϑ_l[1],
     z,

@@ -57,6 +57,7 @@ import ClimaParams as CP
 
 using ClimaLand
 using ClimaLand.Domains: Column
+import ClimaLand.Simulations: LandSimulation, solve!
 using ClimaLand.Soil
 
 import ClimaLand
@@ -127,16 +128,13 @@ soil = Soil.EnergyHydrology{FT}(;
 
 # # Running a simulation
 
-# Once we have the model, we can
-# [`initialize`](@ref ClimaLand.initialize)
-# the state vectors and obtain the coordinates
-Y, p, coords = initialize(soil);
 
-# After which, we can specify the initial condition
-# function, and initialze the variables. We chose these to match
+# Specify the initial condition
+# function We chose these to match
 # the initial conditions of the Stefan problem:
 
-function init_soil!(Ysoil, z, params)
+function set_ic!(Ysoil, p, t0, model)
+    params = model.parameters
     ν = params.ν
     FT = eltype(Ysoil.soil.ϑ_l)
     Ysoil.soil.ϑ_l .= FT(0.33)
@@ -157,22 +155,9 @@ function init_soil!(Ysoil, z, params)
         )
 end
 
-init_soil!(Y, coords.subsurface.z, soil.parameters);
-
 # We choose the initial and final simulation times:
 t0 = Float64(0)
 tf = Float64(60 * 60 * 24 * 20);
-
-# We set the cache values corresponding to the initial conditions
-# of the state Y:
-set_initial_cache! = make_set_initial_cache(soil);
-set_initial_cache!(p, Y, t0);
-# Create the tendency function, and choose a timestep, and timestepper:
-exp_tendency! = make_exp_tendency(soil)
-imp_tendency! = make_imp_tendency(soil);
-jacobian! = ClimaLand.make_jacobian(soil);
-jac_kwargs =
-    (; jac_prototype = ClimaLand.FieldMatrixWithSolver(Y), Wfact = jacobian!);
 
 dt = Float64(100)
 
@@ -185,31 +170,28 @@ ode_algo = CTS.IMEXAlgorithm(
     ),
 );
 
-# Problem definition and callbacks
-prob = SciMLBase.ODEProblem(
-    CTS.ClimaODEFunction(
-        T_exp! = exp_tendency!,
-        T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
-        dss! = ClimaLand.dss!,
-    ),
-    Y,
-    (t0, tf),
-    p,
-);
-saveat = Array(t0:3600.0:tf)
+# Callbacks
+saveat = Array(t0:3600.0:tf);
 sv = (;
     t = Array{Float64}(undef, length(saveat)),
     saveval = Array{NamedTuple}(undef, length(saveat)),
 )
 saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat);
-# Now we can solve the problem.
-sol = SciMLBase.solve(
-    prob,
-    ode_algo;
-    dt = dt,
-    saveat = collect(0:3600:tf),
-    callback = saving_cb,
+# Now we can create and solve the simulation
+simulation = LandSimulation(
+    t0,
+    tf,
+    dt,
+    soil;
+    set_ic! = set_ic!,
+    solver_kwargs = (; saveat = deepcopy(saveat)),
+    timestepper = ode_algo,
+    user_callbacks = (saving_cb,),
+    diagnostics = (),
 );
+
+# Solve
+sol = solve!(simulation);
 sol_T = parent(sv.saveval[end].soil.T)[:]
 
 fig = Figure(size = (500, 500), fontsize = 24)
@@ -224,7 +206,7 @@ ax1 = Axis(
 )
 limits!(ax1, 262, 276, -3, 0.0)
 
-z = parent(coords.subsurface.z)[:];
+z = parent(soil.domain.fields.z)[:];
 
 lines!(ax1, sol_T, z, label = "Model", color = :blue, linewidth = 3)
 
@@ -314,7 +296,7 @@ function implicit(ζ)
 end
 ζ = find_zero(implicit, (0.25, 0.27), Bisection())
 depth = Array(0:0.01:3)
-t = sol.t[end]
+t = FT(sol.t[end])
 zf = 2.0 * ζ * sqrt(d1 * t)
 analytic_unfrozen_profile(depth, zf) =
     erfc(depth / (zf / ζ / (d1 / d2)^0.5)) / erfc(ζ * (d1 / d2)^0.5)

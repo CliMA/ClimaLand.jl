@@ -93,7 +93,7 @@ diagnostics = ClimaLand.default_diagnostics(
     conservation_period = Day(10),
 )
 simulation =
-    LandSimulation(FT, start_date, stop_date, Δt, model; outdir, diagnostics)
+    LandSimulation(start_date, stop_date, Δt, model; outdir, diagnostics)
 
 @info "Run: Global Soil Model"
 @info "Resolution: $nelements"

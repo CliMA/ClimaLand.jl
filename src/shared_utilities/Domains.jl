@@ -1213,7 +1213,16 @@ function landsea_mask(
     return binary_mask
 end
 
-function landsea_mask(domain::Domains.AbstractDomain; kwargs...)
+# Points and Columns do not have a horizontal dim, so a horizontal mask cannot be applied
+landsea_mask(domain::Union{Point, Column}; kwargs...) = nothing
+
+function landsea_mask(
+    domain::Union{SphericalShell, SphericalSurface, HybridBox, Plane};
+    kwargs...,
+)
+    # HybridBox and Plane domains might not have longlat, which is needed for the mask
+    (hasproperty(domain, :longlat) && isnothing(domain.longlat)) &&
+        return nothing
     # average_horizontal_resolution_degrees returns a tuple with the resolution
     # along the two directions, so we take the minimum
     resolution_degrees = minimum(average_horizontal_resolution_degrees(domain))

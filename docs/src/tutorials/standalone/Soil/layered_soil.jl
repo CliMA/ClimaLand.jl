@@ -17,6 +17,7 @@ import ClimaParams as CP
 using DelimitedFiles: readdlm
 
 using ClimaLand
+import ClimaLand.Simulations: LandSimulation, solve!
 using ClimaLand.Domains: Column
 using ClimaLand.Soil
 import ClimaLand
@@ -97,15 +98,10 @@ soil = Soil.RichardsModel{FT}(;
     sources = (),
 );
 
-# Initial the state vectors, and set initial conditions
-Y, p, cds = initialize(soil);
-
-# Initial conditions
-Y.soil.ϑ_l .= 0.0353; # read from Figure 4 of Huang et al.
-
-# We also set the initial conditions of the auxiliary state here:
-set_initial_cache! = make_set_initial_cache(soil)
-set_initial_cache!(p, Y, t0);
+# create function to initialize the state vectors
+function set_ic!(Y, p, t0, model)
+    Y.soil.ϑ_l .= 0.0353 # read from Figure 4 of Huang et al.
+end
 
 # Timestepping:
 stepper = CTS.ARS111()
@@ -121,24 +117,19 @@ ode_algo = CTS.IMEXAlgorithm(
         convergence_checker = conv_checker,
     ),
 )
-exp_tendency! = make_exp_tendency(soil)
-imp_tendency! = make_imp_tendency(soil)
-jacobian! = make_jacobian(soil)
-
-jac_kwargs =
-    (; jac_prototype = ClimaLand.FieldMatrixWithSolver(Y), Wfact = jacobian!)
-prob = SciMLBase.ODEProblem(
-    CTS.ClimaODEFunction(
-        T_exp! = exp_tendency!,
-        T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
-        dss! = ClimaLand.dss!,
-    ),
-    Y,
-    (t0, tf),
-    p,
-)
 saveat = [0.0, 8.0, 16.0, 24.0, 32.0, 40.0, 60.0] .* 60 # chosen to compare with data in plots in paper
-sol = SciMLBase.solve(prob, ode_algo; dt = dt, saveat = saveat);
+simulation = LandSimulation(
+    t0,
+    tf,
+    dt,
+    soil;
+    set_ic! = set_ic!,
+    solver_kwargs = (; saveat = saveat),
+    timestepper = ode_algo,
+    user_callbacks = (),
+    diagnostics = (),
+);
+sol = solve!(simulation);
 
 z = parent(ClimaCore.Fields.coordinate_field(soil_domain.space.subsurface).z)
 ϑ_l = [parent(sol.u[k].soil.ϑ_l) for k in 1:length(sol.t)]

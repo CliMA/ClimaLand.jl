@@ -83,7 +83,7 @@ function era5_land_forcing_data2008_path(; context = nothing, lowres = false)
             return hires_path
         catch
             @warn(
-                "High resolution ERA5 forcing not available locally; downloading and using low resolution data instead."
+                "High resolution ERA5 forcing not available locally; using low resolution data instead."
             )
             return lowres_path
         end

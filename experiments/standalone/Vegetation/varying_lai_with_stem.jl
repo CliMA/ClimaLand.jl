@@ -16,6 +16,7 @@ using ClimaLand.Canopy
 using ClimaLand.Canopy.PlantHydraulics
 import ClimaLand
 import ClimaLand.Parameters as LP
+import ClimaLand.Simulations: LandSimulation, solve!
 import ClimaUtilities.OutputPathGenerator: generate_output_path
 using DelimitedFiles
 import ClimaLand.FluxnetSimulations as FluxnetSimulations
@@ -29,6 +30,9 @@ land_domain = Point(; z_sfc = FT(0.0), longlat = (long, lat))
 atmos_h = FT(32)
 site_ID = "US-MOz"
 start_date = DateTime(2010) + Hour(time_offset)
+N_days = 60
+end_date = start_date + Day(N_days)
+dt = FT(225);
 (; atmos, radiation) = FluxnetSimulations.prescribed_forcing_fluxnet(
     site_ID,
     lat,
@@ -39,6 +43,7 @@ start_date = DateTime(2010) + Hour(time_offset)
     earth_param_set,
     FT,
 )
+
 ground = PrescribedGroundConditions{FT}(;
     α_PAR = FT(0.2),
     α_NIR = FT(0.4),
@@ -47,10 +52,10 @@ ground = PrescribedGroundConditions{FT}(;
 forcing = (; atmos, radiation, ground);
 
 function fakeLAIfunction2(t)
-    if t < 10 * 24 * 3600
+    if FT(t) < 10 * 24 * 3600
         0.0
-    elseif t < (60 - 10) * 24 * 3600.0
-        max(2.0 * sin(2 * π / (730 * 24 * 3600) * (t - 10 * 24 * 3600)), 0)
+    elseif FT(t) < (60 - 10) * 24 * 3600.0
+        max(2.0 * sin(2 * π / (730 * 24 * 3600) * (FT(t) - 10 * 24 * 3600)), 0)
     else
         0.0
     end
@@ -105,13 +110,6 @@ canopy = ClimaLand.Canopy.CanopyModel{FT}(
 );
 
 
-Y, p, coords = ClimaLand.initialize(canopy)
-exp_tendency! = make_exp_tendency(canopy);
-imp_tendency! = make_imp_tendency(canopy)
-jacobian! = make_jacobian(canopy);
-jac_kwargs =
-    (; jac_prototype = ClimaLand.FieldMatrixWithSolver(Y), Wfact = jacobian!);
-
 ψ_leaf_0 = FT(-2e5 / 9800)
 ψ_stem_0 = FT(-1e5 / 9800)
 
@@ -123,31 +121,22 @@ S_l_ini =
         S_s,
     )
 
-Y.canopy.hydraulics.ϑ_l.:1 .= augmented_liquid_fraction.(ν, S_l_ini[1])
-Y.canopy.hydraulics.ϑ_l.:2 .= augmented_liquid_fraction.(ν, S_l_ini[2])
 
-t0 = 0.0
-N_days = 60
-tf = t0 + 3600 * 24 * N_days
-dt = 225.0;
-evaluate!(Y.canopy.energy.T, atmos.T, t0)
-set_initial_cache! = make_set_initial_cache(canopy)
-set_initial_cache!(p, Y, t0);
-
+function set_ic!(Y, p, t0, model)
+    Y.canopy.hydraulics.ϑ_l.:1 .= augmented_liquid_fraction.(ν, S_l_ini[1])
+    Y.canopy.hydraulics.ϑ_l.:2 .= augmented_liquid_fraction.(ν, S_l_ini[2])
+    evaluate!(Y.canopy.energy.T, atmos.T, t0)
+end
 
 n = 16
-saveat = Array(t0:(n * dt):tf)
+saveat = Array(start_date:Second(n * dt):end_date)
 sv = (;
-    t = Array{Float64}(undef, length(saveat)),
+    t = Array{DateTime}(undef, length(saveat)),
     saveval = Array{NamedTuple}(undef, length(saveat)),
 )
 saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat);
 
-updateat = Array(t0:1800:tf)
-drivers = ClimaLand.get_drivers(canopy)
-updatefunc = ClimaLand.make_update_drivers(drivers)
-driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
-cb = SciMLBase.CallbackSet(driver_cb, saving_cb);
+updateat = Array(start_date:Second(1800):end_date)
 
 # Set up timestepper
 timestepper = CTS.ARS111();
@@ -159,19 +148,18 @@ ode_algo = CTS.IMEXAlgorithm(
     ),
 );
 
-prob = SciMLBase.ODEProblem(
-    CTS.ClimaODEFunction(
-        T_exp! = exp_tendency!,
-        T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
-        dss! = ClimaLand.dss!,
-    ),
-    Y,
-    (t0, tf),
-    p,
-);
-
-sol = SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb, saveat = saveat);
-
+simulation = LandSimulation(
+    start_date,
+    end_date,
+    dt,
+    canopy;
+    set_ic! = set_ic!,
+    user_callbacks = (saving_cb,),
+    updateat = updateat,
+    solver_kwargs = (; saveat = deepcopy(saveat)),
+    timestepper = ode_algo,
+)
+sol = solve!(simulation)
 savedir = generate_output_path(
     "experiments/standalone/Vegetation/varying_lai_with_stem",
 );
@@ -216,36 +204,37 @@ Tr = [
     parent(sv.saveval[k].canopy.turbulent_fluxes.transpiration)[1] for
     k in 1:length(sol.t)
 ]
+times = float.(sol.t) ./ 24 ./ 3600
 fig = Figure()
 ax = Axis(fig[1, 1], xlabel = "Time (days)", ylabel = "Temperature (K)")
-lines!(ax, sol.t ./ 24 ./ 3600, T, label = "Canopy")
-lines!(ax, sol.t ./ 24 ./ 3600, T_atmos, label = "Atmos")
+lines!(ax, times, T, label = "Canopy")
+lines!(ax, times, T_atmos, label = "Atmos")
 axislegend(ax)
 ax = Axis(fig[2, 1], xlabel = "Time (days)", ylabel = "Volumetric Water")
-lines!(ax, sol.t ./ 24 ./ 3600, ϑ_l, label = "Leaf")
-lines!(ax, sol.t ./ 24 ./ 3600, ϑ_s, label = "Stem")
+lines!(ax, times, ϑ_l, label = "Leaf")
+lines!(ax, times, ϑ_s, label = "Stem")
 axislegend(ax)
 ax = Axis(fig[3, 1], xlabel = "Time (days)", ylabel = "LAI")
-lines!(ax, sol.t ./ 24 ./ 3600, fakeLAIfunction2.(sol.t), label = "Canopy")
+lines!(ax, times, fakeLAIfunction2.(sol.t), label = "Canopy")
 axislegend(ax)
 save(joinpath(savedir, "varying_lai_with_stem_state.png"), fig)
 fig2 = Figure()
 ax = Axis(fig2[1, 1], xlabel = "Time (days)", ylabel = "Energy Fluxes")
-lines!(ax, sol.t ./ 24 ./ 3600, SW_n, label = "SW_n")
-lines!(ax, sol.t ./ 24 ./ 3600, LW_n, label = "LW_n")
-lines!(ax, sol.t ./ 24 ./ 3600, SHF, label = "SHF")
-lines!(ax, sol.t ./ 24 ./ 3600, LHF, label = "LHF")
-lines!(ax, sol.t ./ 24 ./ 3600, RE, label = "RE")
+lines!(ax, times, SW_n, label = "SW_n")
+lines!(ax, times, LW_n, label = "LW_n")
+lines!(ax, times, SHF, label = "SHF")
+lines!(ax, times, LHF, label = "LHF")
+lines!(ax, times, RE, label = "RE")
 axislegend(ax)
 ax = Axis(fig2[2, 1], xlabel = "Time (days)", ylabel = "Water Fluxes")
 ylims!(ax, (0, 1e-7))
-lines!(ax, sol.t ./ 24 ./ 3600, Tr, label = "Transpiration")
-lines!(ax, sol.t ./ 24 ./ 3600, R, label = "R")
-lines!(ax, sol.t ./ 24 ./ 3600, R_stem_leaf, label = "R_stem_leaf")
+lines!(ax, times, Tr, label = "Transpiration")
+lines!(ax, times, R, label = "R")
+lines!(ax, times, R_stem_leaf, label = "R_stem_leaf")
 
 axislegend(ax)
 ax = Axis(fig2[3, 1], xlabel = "Time (days)", ylabel = "Carbon Fluxes")
-lines!(ax, sol.t ./ 24 ./ 3600, GPP, label = "GPP")
-lines!(ax, sol.t ./ 24 ./ 3600, resp, label = "Respiration")
+lines!(ax, times, GPP, label = "GPP")
+lines!(ax, times, resp, label = "Respiration")
 axislegend(ax)
 save(joinpath(savedir, "varying_lai_with_stem_fluxes.png"), fig2)

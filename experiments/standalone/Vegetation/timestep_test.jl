@@ -55,6 +55,7 @@ using ClimaLand.Domains: Point
 using ClimaLand.Canopy
 using ClimaLand.Canopy.PlantHydraulics
 import ClimaLand
+import ClimaLand.Simulations: LandSimulation, solve!
 import ClimaLand.Parameters as LP
 using DelimitedFiles
 import ClimaLand.FluxnetSimulations as FluxnetSimulations
@@ -69,11 +70,9 @@ long = FT(-92.2000) # degree
 land_domain = Point(; z_sfc = FT(0.0), longlat = (long, lat))
 atmos_h = FT(32)
 site_ID = "US-MOz"
-start_date = DateTime(2010) + Hour(time_offset) # UTC
-seconds_per_day = 3600 * 24.0
-t0 = 150seconds_per_day
+start_date = DateTime(2010) + Hour(time_offset) + Day(150)
 N_days = 20.0
-tf = t0 + N_days * seconds_per_day + 80
+end_date = start_date + Day(N_days) + Second(80)
 
 # Get prescribed atmospheric and radiation forcing
 (; atmos, radiation) = FluxnetSimulations.prescribed_forcing_fluxnet(
@@ -97,8 +96,8 @@ forcing = (; atmos, radiation, ground);
 surface_space = land_domain.space.surface
 modis_lai_ncdata_path = ClimaLand.Artifacts.modis_lai_multiyear_paths(;
     context = ClimaComms.context(surface_space),
-    start_date = start_date + Second(t0),
-    end_date = start_date + Second(t0) + Second(tf),
+    start_date = start_date,
+    end_date = end_date,
 )
 LAI = ClimaLand.prescribed_lai_modis(
     modis_lai_ncdata_path,
@@ -118,12 +117,6 @@ canopy = ClimaLand.Canopy.CanopyModel{FT}(
     energy,
 );
 
-exp_tendency! = make_exp_tendency(canopy)
-imp_tendency! = make_imp_tendency(canopy)
-jacobian! = make_jacobian(canopy)
-drivers = ClimaLand.get_drivers(canopy)
-updatefunc = ClimaLand.make_update_drivers(drivers)
-
 (; retention_model, ν, S_s) = canopy.hydraulics.parameters;
 ψ_leaf_0 = FT(-2e5 / 9800)
 ψ_stem_0 = FT(-1e5 / 9800)
@@ -135,8 +128,6 @@ S_l_ini =
         S_s,
     )
 
-set_initial_cache! = make_set_initial_cache(canopy)
-
 timestepper = CTS.ARS111();
 ode_algo = CTS.IMEXAlgorithm(
     timestepper,
@@ -145,7 +136,10 @@ ode_algo = CTS.IMEXAlgorithm(
         update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
     ),
 );
-
+function set_ic!(Y, p, t0, model)
+    Y.canopy.hydraulics.ϑ_l.:1 .= augmented_liquid_fraction.(ν, S_l_ini[1])
+    evaluate!(Y.canopy.energy.T, atmos.T, t0)
+end
 ref_dt = 6.0
 dts = [ref_dt, 12.0, 48.0, 225.0, 450.0, 900.0, 1800.0, 3600.0]
 
@@ -160,37 +154,21 @@ times = []
 for dt in dts
     @info dt
 
-    # Initialize model before each simulation
-    Y, p, coords = ClimaLand.initialize(canopy)
-    jac_kwargs = (;
-        jac_prototype = ClimaLand.FieldMatrixWithSolver(Y),
-        Wfact = jacobian!,
+    # Create update times for driver and saving callback
+    saveat = vcat(Array(start_date:Second(3 * 3600):end_date), end_date)
+    updateat = vcat(Array(start_date:Second(3 * 3600):end_date), end_date)
+    simulation = LandSimulation(
+        start_date,
+        end_date,
+        dt,
+        canopy;
+        set_ic! = set_ic!,
+        updateat = updateat,
+        solver_kwargs = (; saveat = deepcopy(saveat)),
+        timestepper = ode_algo,
+        user_callbacks = (),
     )
-
-    # Set initial conditions
-    Y.canopy.hydraulics.ϑ_l.:1 .= augmented_liquid_fraction.(ν, S_l_ini[1])
-    evaluate!(Y.canopy.energy.T, atmos.T, t0)
-    set_initial_cache!(p, Y, t0)
-
-    # Create callback for driver updates
-    saveat = vcat(Array(t0:(3 * 3600):tf), tf)
-    updateat = vcat(Array(t0:(3 * 3600):tf), tf)
-    cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
-
-    # Solve simulation
-    prob = SciMLBase.ODEProblem(
-        CTS.ClimaODEFunction(
-            T_exp! = exp_tendency!,
-            T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
-            dss! = ClimaLand.dss!,
-        ),
-        Y,
-        (t0, tf),
-        p,
-    )
-    @time sol =
-        SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb, saveat = saveat)
-
+    @time sol = solve!(simulation)
     # Save results for comparison
     if dt == ref_dt
         global ref_T =
@@ -204,7 +182,7 @@ for dt in dts
         push!(p99_err, FT(percentile(ΔT, 99)))
         push!(sol_err, ΔT[end])
         push!(T_states, T)
-        push!(times, sol.t)
+        push!(times, float.(sol.t))
     end
 end
 savedir = generate_output_path(
@@ -212,7 +190,7 @@ savedir = generate_output_path(
 );
 
 # Create plot with statistics
-sim_time = round((tf - t0) / 3600, digits = 2) # simulation length in hours
+sim_time = round(Dates.value(Second(end_date - start_date)) / 3600, digits = 2) # simulation length in hours
 
 # Compare T state computed with small vs large dt
 fig = Figure()

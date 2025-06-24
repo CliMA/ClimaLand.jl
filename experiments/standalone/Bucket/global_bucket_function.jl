@@ -34,6 +34,7 @@ import ClimaParams
 using ClimaLand.Bucket:
     BucketModel, BucketModelParameters, PrescribedBaregroundAlbedo
 using ClimaLand.Domains: coordinates, Column
+import ClimaLand.Simulations: LandSimulation, solve!
 using ClimaLand:
     initialize,
     make_update_aux,
@@ -92,18 +93,17 @@ z_0b = FT(1e-3);
 κ_soil = FT(0.7);
 ρc_soil = FT(2e6);
 τc = FT(3600);
-t0 = 0.0;
-tf = 7 * 86400;
 Δt = 3600.0;
 
 bucket_parameters = BucketModelParameters(FT; albedo, z_0m, z_0b, τc);
 start_date = DateTime(2005);
+end_date = start_date + Second(7 * 86400);
 
 # Precipitation:
 precip = (t) -> 0;
-snow_precip = (t) -> -5e-7 * (t < 1 * 86400);
+snow_precip = (t) -> -5e-7 * (FT(t) < 1 * 86400);
 # Diurnal temperature variations:
-T_atmos = (t) -> 275.0 + 5.0 * sin(2.0 * π * t / 86400 - π / 2);
+T_atmos = (t) -> 275.0 + 5.0 * sin(2.0 * π * FT(t) / 86400 - π / 2);
 # Constant otherwise:
 u_atmos = (t) -> 3.0;
 q_atmos = (t) -> 0.001;
@@ -126,8 +126,8 @@ bucket_atmos = PrescribedAtmosphere(
 # peak at local noon, and a prescribed downwelling LW radiative
 # flux, assuming the air temperature is on average 275 degrees
 # K with a diurnal amplitude of 5 degrees K:
-SW_d = (t) -> max(1361 * sin(2π * t / 86400 - π / 2), 0.0);
-LW_d = (t) -> 5.67e-8 * (275.0 + 5.0 * sin(2.0 * π * t / 86400 - π / 2))^4;
+SW_d = (t) -> max(1361 * sin(2π * FT(t) / 86400 - π / 2), 0.0);
+LW_d = (t) -> 5.67e-8 * (275.0 + 5.0 * sin(2.0 * π * FT(t) / 86400 - π / 2))^4;
 bucket_rad = PrescribedRadiativeFluxes(
     FT,
     TimeVaryingInput(SW_d),
@@ -142,26 +142,6 @@ model = BucketModel(
     radiation = bucket_rad,
 );
 
-Y, p, coords = initialize(model);
-
-Y.bucket.T .= FT(270);
-Y.bucket.W .= FT(0.05);
-Y.bucket.Ws .= FT(0.0);
-Y.bucket.σS .= FT(0.08);
-
-set_initial_cache! = make_set_initial_cache(model);
-set_initial_cache!(p, Y, t0);
-exp_tendency! = make_exp_tendency(model);
-timestepper = CTS.RK4()
-ode_algo = CTS.ExplicitAlgorithm(timestepper)
-prob = SciMLBase.ODEProblem(
-    CTS.ClimaODEFunction(T_exp! = exp_tendency!, dss! = ClimaLand.dss!),
-    Y,
-    (t0, tf),
-    p,
-);
-
-# ClimaDiagnostics
 output_dir = ClimaUtilities.OutputPathGenerator.generate_output_path(outdir)
 
 space = bucket_domain.space.subsurface
@@ -175,23 +155,35 @@ diags = ClimaLand.default_diagnostics(
     average_period = :daily,
 )
 
+timestepper = CTS.RK4()
+ode_algo = CTS.ExplicitAlgorithm(timestepper)
 
-diagnostic_handler =
-    ClimaDiagnostics.DiagnosticsHandler(diags, Y, p, t0; dt = Δt)
+function set_ic!(Y, p, t0, model)
+    Y.bucket.T .= FT(270)
+    Y.bucket.W .= FT(0.05)
+    Y.bucket.Ws .= FT(0.0)
+    Y.bucket.σS .= FT(0.08)
+end
 
-diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler)
-
-updateat = collect(t0:(Δt * 3):tf);
-drivers = ClimaLand.get_drivers(model)
-updatefunc = ClimaLand.make_update_drivers(drivers)
-driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
-
-sol = ClimaComms.@time ClimaComms.device() SciMLBase.solve(
-    prob,
-    ode_algo;
-    dt = Δt,
-    callback = SciMLBase.CallbackSet(driver_cb, diag_cb),
+simulation = LandSimulation(
+    start_date,
+    end_date,
+    Δt,
+    model;
+    outdir = output_dir,
+    updateat = collect(start_date:Second(Δt * 3):end_date),
+    set_ic!,
+    timestepper = ode_algo,
+    diagnostics = diags,
 )
+
+
+
+
+
+sol = ClimaComms.@time ClimaComms.device() ClimaLand.Simulations.solve!(
+    simulation,
+);
 
 ClimaLand.Diagnostics.close_output_writers(diags)
 
@@ -223,7 +215,7 @@ for short_name in vcat(short_names_2D..., short_names_3D...)
 end
 
 # Interpolate to grid
-space = axes(coords.surface)
+space = axes(sol.prob.p.drivers.T)
 longpts = range(-180.0, 180.0, 21)
 latpts = range(-90.0, 90.0, 21)
 hcoords = [Geometry.LatLongPoint(lat, long) for long in longpts, lat in latpts]
@@ -232,7 +224,7 @@ remapper = Remapping.Remapper(space, hcoords)
 W = Array(Remapping.interpolate(remapper, sol.u[end].bucket.W))
 Ws = Array(Remapping.interpolate(remapper, sol.u[end].bucket.Ws))
 σS = Array(Remapping.interpolate(remapper, sol.u[end].bucket.σS))
-T_sfc = Array(Remapping.interpolate(remapper, prob.p.bucket.T_sfc))
+T_sfc = Array(Remapping.interpolate(remapper, sol.prob.p.bucket.T_sfc))
 
 
 # save prognostic state to CSV - for comparison between

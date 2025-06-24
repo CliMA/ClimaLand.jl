@@ -40,6 +40,7 @@ import ClimaLand.Parameters as LP
 using ClimaLand.Bucket:
     BucketModel, BucketModelParameters, PrescribedSurfaceAlbedo
 using ClimaLand.Domains: coordinates, Column
+import ClimaLand.Simulations: LandSimulation, solve!
 using ClimaLand:
     initialize,
     make_update_aux,
@@ -78,12 +79,13 @@ device_suffix =
     typeof(context.device) <: ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
 outdir = "experiments/standalone/Bucket/artifacts_temporalmap_$(device_suffix)"
 t0 = 0.0;
+start_date = DateTime(2005)
+end_date = start_date + Second(50 * 86400)
 # run for 50 days to test monthly file update
-tf = 50 * 86400;
 Δt = 3600.0;
 
 
-function setup_prob(t0, tf, Δt, outdir)
+function setup_prob(start_date, end_date, Δt, outdir)
     # We set up the problem in a function so that we can make multiple copies (for profiling)
 
     output_dir = ClimaUtilities.OutputPathGenerator.generate_output_path(outdir)
@@ -96,7 +98,6 @@ function setup_prob(t0, tf, Δt, outdir)
         nelements = (10, 10), # this failed with (50,10)
         dz_tuple = FT.((1.0, 0.05)),
     )
-    start_date = DateTime(2005)
 
     # Initialize parameters
     σS_c = FT(0.2)
@@ -116,9 +117,9 @@ function setup_prob(t0, tf, Δt, outdir)
 
     # Precipitation:
     precip = (t) -> 0
-    snow_precip = (t) -> -5e-7 * (t < 1 * 86400)
+    snow_precip = (t) -> -5e-7 * (FT(t) < 1 * 86400)
     # Diurnal temperature variations:
-    T_atmos = (t) -> 275.0 + 5.0 * sin(2.0 * π * t / 86400 - π / 2)
+    T_atmos = (t) -> 275.0 + 5.0 * sin(2.0 * π * FT(t) / 86400 - π / 2)
     # Constant otherwise:
     u_atmos = (t) -> 3.0
     q_atmos = (t) -> 0.001
@@ -141,8 +142,9 @@ function setup_prob(t0, tf, Δt, outdir)
     # peak at local noon, and a prescribed downwelling LW radiative
     # flux, assuming the air temperature is on average 275 degrees
     # K with a diurnal amplitude of 5 degrees K:
-    SW_d = (t) -> max(1361 * sin(2π * t / 86400 - π / 2), 0.0)
-    LW_d = (t) -> 5.67e-8 * (275.0 + 5.0 * sin(2.0 * π * t / 86400 - π / 2))^4
+    SW_d = (t) -> max(1361 * sin(2π * FT(t) / 86400 - π / 2), 0.0)
+    LW_d =
+        (t) -> 5.67e-8 * (275.0 + 5.0 * sin(2.0 * π * FT(t) / 86400 - π / 2))^4
     bucket_rad = PrescribedRadiativeFluxes(
         FT,
         TimeVaryingInput(SW_d),
@@ -158,31 +160,23 @@ function setup_prob(t0, tf, Δt, outdir)
         radiation = bucket_rad,
     )
 
-    Y, p, _coords = initialize(model)
 
-    Y.bucket.T .= FT(270)
-    Y.bucket.W .= FT(0.05)
-    Y.bucket.Ws .= FT(0.0)
-    Y.bucket.σS .= FT(0.08)
+    function set_ic!(Y, p, t0, model)
+        Y.bucket.T .= FT(270)
+        Y.bucket.W .= FT(0.05)
+        Y.bucket.Ws .= FT(0.0)
+        Y.bucket.σS .= FT(0.08)
+    end
+    timestepper = CTS.RK4()
+    ode_algo = CTS.ExplicitAlgorithm(timestepper)
 
-    set_initial_cache! = make_set_initial_cache(model)
-    set_initial_cache!(p, Y, t0)
-    exp_tendency! = make_exp_tendency(model)
-    prob = SciMLBase.ODEProblem(
-        CTS.ClimaODEFunction((T_exp!) = exp_tendency!, (dss!) = ClimaLand.dss!),
-        Y,
-        (t0, tf),
-        p,
-    )
-    saveat = collect(t0:(Δt * 3):tf)
+
+    saveat = collect(start_date:Second(Δt * 3):end_date)
     saved_values = (;
-        t = Array{Float64}(undef, length(saveat)),
+        t = Array{DateTime}(undef, length(saveat)),
         saveval = Array{NamedTuple}(undef, length(saveat)),
     )
     saving_cb = ClimaLand.NonInterpSavingCallback(saved_values, saveat)
-    updateat = copy(saveat)
-    drivers = ClimaLand.get_drivers(model)
-    updatefunc = ClimaLand.make_update_drivers(drivers)
     nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(
         subsurface_space,
         output_dir;
@@ -195,27 +189,30 @@ function setup_prob(t0, tf, Δt, outdir)
         average_period = :daily,
     )
 
-    diagnostic_handler =
-        ClimaDiagnostics.DiagnosticsHandler(diags, Y, p, t0; dt = Δt)
+    simulation = LandSimulation(
+        start_date,
+        end_date,
+        Δt,
+        model;
+        outdir = output_dir,
+        updateat = copy(saveat),
+        solver_kwargs = (; saveat = deepcopy(saveat)),
+        user_callbacks = (saving_cb,),
+        set_ic!,
+        timestepper = ode_algo,
+        diagnostics = diags,
+    )
 
-    diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler)
-    driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
-    cb = SciMLBase.CallbackSet(driver_cb, saving_cb, diag_cb)
-
-    return prob, cb, saveat, saved_values, nc_writer
+    return simulation, saved_values, nc_writer
 end
 
-prob, cb, saveat, saved_values, nc_writer = setup_prob(t0, tf, Δt, outdir);
-timestepper = CTS.RK4()
-ode_algo = CTS.ExplicitAlgorithm(timestepper)
+simulation, saved_values, nc_writer =
+    setup_prob(start_date, end_date, Δt, outdir);
 
-sol = ClimaComms.@time ClimaComms.device() SciMLBase.solve(
-    prob,
-    ode_algo;
-    dt = Δt,
-    saveat = saveat,
-    callback = cb,
-)
+
+sol = ClimaComms.@time ClimaComms.device() ClimaLand.Simulations.solve!(
+    simulation,
+);
 close(nc_writer)
 output_dir = nc_writer.output_dir
 
@@ -241,28 +238,20 @@ if PROFILING
 
     # We run only for one day for profiling
     tf = 86400.0
-    prob, cb, saveat, _, nc_writer = setup_prob(t0, tf, Δt, outdir)
+    simulation, saved_values, nc_writer =
+        setup_prob(start_date, start_date + Second(tf), Δt, outdir)
 
-    Profile.@profile SciMLBase.solve(
-        prob,
-        ode_algo;
-        dt = Δt,
-        saveat = saveat,
-        callback = cb,
-    )
+    Profile.@profile ClimaLand.Simulations.solve!(simulation)
     results = Profile.fetch()
     flame_file = joinpath(outdir, "flame_$device_suffix.html")
     ProfileCanvas.html_file(flame_file, results)
     @info "Save compute flame to $flame_file"
     close(nc_writer)
 
-    prob, cb, saveat, _, nc_writer = setup_prob(t0, tf, Δt, outdir)
-    Profile.Allocs.@profile sample_rate = 0.1 SciMLBase.solve(
-        prob,
-        ode_algo;
-        dt = Δt,
-        saveat = saveat,
-        callback = cb,
+    simulation, saved_values, nc_writer =
+        setup_prob(start_date, start_date + Second(tf), Δt, outdir)
+    Profile.Allocs.@profile sample_rate = 0.1 ClimaLand.Simulations.solve!(
+        simulation,
     )
     results = Profile.Allocs.fetch()
     profile = ProfileCanvas.view_allocs(results)
@@ -282,7 +271,7 @@ remapper = Remapping.Remapper(space, hcoords)
 W = Array(Remapping.interpolate(remapper, sol.u[end].bucket.W))
 Ws = Array(Remapping.interpolate(remapper, sol.u[end].bucket.Ws))
 σS = Array(Remapping.interpolate(remapper, sol.u[end].bucket.σS))
-T_sfc = Array(Remapping.interpolate(remapper, prob.p.bucket.T_sfc))
+T_sfc = Array(Remapping.interpolate(remapper, sol.prob.p.bucket.T_sfc))
 
 # save prognostic state to CSV - for comparison between GPU and CPU output
 open(

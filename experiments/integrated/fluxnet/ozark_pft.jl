@@ -19,6 +19,7 @@ using ClimaLand.Soil
 using ClimaLand.Soil.Biogeochemistry
 using ClimaLand.Canopy
 using ClimaLand.Canopy.PlantHydraulics
+import ClimaLand.Simulations: LandSimulation, solve!
 import ClimaLand
 import ClimaLand.Parameters as LP
 using ClimaDiagnostics
@@ -104,12 +105,13 @@ canopy_domain = ClimaLand.Domains.obtain_surface_domain(land_domain)
 prognostic_land_components = (:canopy, :soil, :soilco2)
 
 # Set up the timestepping information for the simulation
-t0 = Float64(0)
 dt = Float64(450) # 7.5 minutes
 N_spinup_days = 15
 N_days = N_spinup_days + 340
-tf = Float64(t0 + N_days * 3600 * 24)
-t_spinup = Float64(t0 + N_spinup_days * 3600 * 24)
+N_seconds = Float64(N_days * 3600 * 24)
+start_date = DateTime(2010) + Hour(time_offset)
+end_date = start_date + Day(N_days)
+
 
 timestepper = CTS.ARS111();
 ode_algo = CTS.IMEXAlgorithm(
@@ -163,7 +165,7 @@ pft_pcts = [
 ac_canopy = ac_canopy * 3
 # This reads in the data from the flux tower site and creates
 # the atmospheric and radiative driver structs for the model
-start_date = DateTime(2010) + Hour(time_offset)
+
 (; atmos, radiation) = FluxnetSimulations.prescribed_forcing_fluxnet(
     site_ID,
     lat,
@@ -243,8 +245,8 @@ photosynthesis = FarquharModel{FT}(canopy_domain; photosynthesis_parameters)
 # Read in LAI from MODIS data
 surface_space = land_domain.space.surface;
 modis_lai_ncdata_path = ClimaLand.Artifacts.modis_lai_multiyear_paths(
-    start_date = start_date + Second(t0),
-    end_date = start_date + Second(t0) + Second(tf);
+    start_date = start_date,
+    end_date = end_date;
     context = ClimaComms.context(surface_space),
 );
 LAI = ClimaLand.prescribed_lai_modis(
@@ -296,16 +298,17 @@ canopy = Canopy.CanopyModel{FT}(
 # Integrated plant hydraulics and soil model
 land = SoilCanopyModel{FT}(soilco2, soil, canopy)
 
-Y, p, cds = initialize(land)
-exp_tendency! = make_exp_tendency(land)
-imp_tendency! = make_imp_tendency(land);
-jacobian! = make_jacobian(land);
-jac_kwargs =
-    (; jac_prototype = ClimaLand.FieldMatrixWithSolver(Y), Wfact = jacobian!);
 
-FluxnetSimulations.set_fluxnet_ic!(Y, site_ID, start_date, time_offset, land)
-set_initial_cache! = make_set_initial_cache(land)
-set_initial_cache!(p, Y, t0);
+
+
+
+set_ic!(Y, _, _, model) = FluxnetSimulations.set_fluxnet_ic!(
+    Y,
+    site_ID,
+    start_date,
+    time_offset,
+    model,
+)
 
 # Callbacks
 output_writer = ClimaDiagnostics.Writers.DictWriter()
@@ -336,33 +339,20 @@ diags = ClimaLand.default_diagnostics(
     average_period = :hourly,
 )
 
-diagnostic_handler =
-    ClimaDiagnostics.DiagnosticsHandler(diags, Y, p, t0, dt = dt);
-
-diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler);
-
-## How often we want to update the drivers. Note that this uses the defined `t0` and `tf`
+## How often we want to update the drivers
 ## defined in the simulatons file
 data_dt = Float64(FluxnetSimulations.get_data_dt(site_ID))
-updateat = Array(t0:data_dt:tf)
-model_drivers = ClimaLand.get_drivers(land)
-updatefunc = ClimaLand.make_update_drivers(model_drivers)
-driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
-cb = SciMLBase.CallbackSet(driver_cb, diag_cb)
-
-
-prob = SciMLBase.ODEProblem(
-    CTS.ClimaODEFunction(
-        T_exp! = exp_tendency!,
-        T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
-        dss! = ClimaLand.dss!,
-    ),
-    Y,
-    (t0, tf),
-    p,
-);
-
-sol = SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb);
+updateat = Array(start_date:Second(data_dt):end_date)
+simulation = LandSimulation(
+    start_date,
+    end_date,
+    dt,
+    land;
+    set_ic! = set_ic!,
+    updateat,
+    diagnostics = diags,
+)
+sol = solve!(simulation)
 
 ClimaLand.Diagnostics.close_output_writers(diags)
 comparison_data = FluxnetSimulations.get_comparison_data(site_ID, time_offset)

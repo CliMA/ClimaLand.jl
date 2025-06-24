@@ -50,6 +50,7 @@ using ClimaLand.Soil
 using ClimaLand.Soil.Biogeochemistry
 using ClimaLand.Canopy
 using ClimaLand.Canopy.PlantHydraulics
+import ClimaLand.Simulations: LandSimulation, solve!
 import ClimaLand
 import ClimaLand.Parameters as LP
 using DelimitedFiles
@@ -65,7 +66,11 @@ earth_param_set = LP.LandParameters(FT);
 site_ID = "US-MOz"
 # Timezone (offset from UTC in hrs)
 time_offset = 7
-start_date = DateTime(2010) + Hour(time_offset)
+start_date = DateTime(2010) + Hour(time_offset) + Day(150) # start mid year
+# Specify the time range and dt value over which to perform the simulation.
+N_days = 100
+end_date = start_date + Day(N_days)
+dt = Float64(30)
 
 # Site latitude and longitude
 lat = FT(38.7441) # degree
@@ -74,11 +79,6 @@ long = FT(-92.2000) # degree
 # Height of the sensor at the site
 atmos_h = FT(32) # m
 
-# Specify the time range and dt value over which to perform the simulation.
-t0 = Float64(150 * 3600 * 24)# start mid year
-N_days = 100
-tf = t0 + Float64(3600 * 24 * N_days)
-dt = Float64(30)
 
 # - We will be using prescribed atmospheric and radiative drivers from the
 #   US-MOz tower, which we read in here. We are using prescribed
@@ -186,8 +186,8 @@ soilco2 = Soil.Biogeochemistry.SoilCO2Model{FT}(domain, drivers);
 # Read in prescribed LAI at the site from global MODIS data
 surface_space = domain.space.surface;
 modis_lai_ncdata_path = ClimaLand.Artifacts.modis_lai_multiyear_paths(;
-    start_date = start_date + Second(t0),
-    end_date = start_date + Second(t0) + Second(tf),
+    start_date = start_date,
+    end_date = end_date,
 );
 LAI = ClimaLand.prescribed_lai_modis(
     modis_lai_ncdata_path,
@@ -273,50 +273,40 @@ canopy = ClimaLand.Canopy.CanopyModel{FT}(
 # Now we can combine the soil and canopy models into a single combined model.
 land = SoilCanopyModel{FT}(soilco2, soil, canopy);
 
-# Now we can initialize the state vectors and model coordinates, and initialize
-# the explicit/implicit tendencies as usual. The Richard's equation time
-# stepping is done implicitly, while the canopy model may be explicitly stepped,
-# so we use an IMEX (implicit-explicit) scheme for the combined model.
-
-Y, p, coords = initialize(land);
-exp_tendency! = make_exp_tendency(land);
-imp_tendency! = make_imp_tendency(land);
-jacobian! = make_jacobian(land);
-jac_kwargs =
-    (; jac_prototype = ClimaLand.FieldMatrixWithSolver(Y), Wfact = jacobian!);
-
 # We need to provide initial conditions for the model:
-Y.soil.ϑ_l = FT(0.4)
-Y.soil.θ_i = FT(0.0)
-T_0 = FT(288.7)
-ρc_s =
-    volumetric_heat_capacity.(
-        Y.soil.ϑ_l,
-        Y.soil.θ_i,
-        land.soil.parameters.ρc_ds,
-        earth_param_set,
-    )
-Y.soil.ρe_int =
-    volumetric_internal_energy.(Y.soil.θ_i, ρc_s, T_0, earth_param_set)
+function set_ic!(Y, p, t0, model)
+    Y.soil.ϑ_l = FT(0.4)
+    Y.soil.θ_i = FT(0.0)
+    T_0 = FT(288.7)
+    ρc_s =
+        volumetric_heat_capacity.(
+            Y.soil.ϑ_l,
+            Y.soil.θ_i,
+            land.soil.parameters.ρc_ds,
+            earth_param_set,
+        )
+    Y.soil.ρe_int =
+        volumetric_internal_energy.(Y.soil.θ_i, ρc_s, T_0, earth_param_set)
 
-Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
+    Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
 
-canopy_retention_model = canopy.hydraulics.parameters.retention_model
-ψ_stem_0 = FT(-1e5 / 9800)
-ψ_leaf_0 = FT(-2e5 / 9800)
+    canopy_retention_model = canopy.hydraulics.parameters.retention_model
+    ψ_stem_0 = FT(-1e5 / 9800)
+    ψ_leaf_0 = FT(-2e5 / 9800)
 
-S_l_ini =
-    inverse_water_retention_curve.(
-        canopy_retention_model,
-        [ψ_stem_0, ψ_leaf_0],
-        plant_ν,
-        plant_S_s,
-    )
-for i in 1:2
-    Y.canopy.hydraulics.ϑ_l.:($i) .=
-        augmented_liquid_fraction.(plant_ν, S_l_ini[i])
+    S_l_ini =
+        inverse_water_retention_curve.(
+            canopy_retention_model,
+            [ψ_stem_0, ψ_leaf_0],
+            plant_ν,
+            plant_S_s,
+        )
+    for i in 1:2
+        Y.canopy.hydraulics.ϑ_l.:($i) .=
+            augmented_liquid_fraction.(plant_ν, S_l_ini[i])
+    end
+    evaluate!(Y.canopy.energy.T, atmos.T, t0)
 end
-evaluate!(Y.canopy.energy.T, atmos.T, t0)
 
 # Choose the timestepper and solver needed for the problem.
 timestepper = CTS.ARS343()
@@ -328,46 +318,36 @@ ode_algo = CTS.IMEXAlgorithm(
     ),
 );
 
-# Now set the initial values for the cache variables for the combined soil and plant model.
-set_initial_cache! = make_set_initial_cache(land)
-set_initial_cache!(p, Y, t0);
 
-# Set the callbacks, which govern
+# Set the callbacks update times, which govern
 # how often we save output, and how often we update
 # the forcing data ("drivers")
 
 n = 120
-saveat = Array(t0:(n * dt):tf)
+saveat = Array(start_date:Second(n * dt):end_date);
 sv = (;
-    t = Array{Float64}(undef, length(saveat)),
+    t = Array{DateTime}(undef, length(saveat)),
     saveval = Array{NamedTuple}(undef, length(saveat)),
 )
 saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat)
-model_drivers = ClimaLand.get_drivers(land)
-updatefunc = ClimaLand.make_update_drivers(model_drivers)
-updateat = Array(t0:1800:tf)
-driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
-cb = SciMLBase.CallbackSet(driver_cb, saving_cb);
+updateat = Array(start_date:Second(1800):end_date);
 
-# Carry out the simulation
-prob = SciMLBase.ODEProblem(
-    CTS.ClimaODEFunction(
-        T_exp! = exp_tendency!,
-        T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
-        dss! = ClimaLand.dss!,
-    ),
-    Y,
-    (t0, tf),
-    p,
+# Create the LandSimulation object, which will also create and initialize the state vectors,
+# the cache, the driver callbacks, and set the initial conditions.
+simulation = LandSimulation(
+    start_date,
+    end_date,
+    dt,
+    land;
+    set_ic! = set_ic!,
+    updateat = updateat,
+    solver_kwargs = (; saveat = deepcopy(saveat)),
+    timestepper = ode_algo,
+    user_callbacks = (saving_cb,),
+    diagnostics = (),
 );
-sol = SciMLBase.solve(
-    prob,
-    ode_algo;
-    dt = dt,
-    callback = cb,
-    adaptive = false,
-    saveat = saveat,
-);
+
+sol = solve!(simulation);
 
 # # Plotting
 
@@ -376,7 +356,7 @@ sol = SciMLBase.solve(
 # each of these models. As before, we may plot the GPP of the system as well
 # as transpiration showing fluxes in the canopy.
 
-daily = sol.t ./ 3600 ./ 24
+daily = FT.(sol.t) ./ 3600 ./ 24
 model_GPP = [
     parent(sv.saveval[k].canopy.photosynthesis.GPP)[1] for
     k in 1:length(sv.saveval)

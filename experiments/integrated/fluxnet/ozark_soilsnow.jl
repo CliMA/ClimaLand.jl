@@ -18,6 +18,7 @@ using ClimaLand.Domains: Column
 using ClimaLand.Soil
 using ClimaLand.Snow
 import ClimaLand
+import ClimaLand.Simulations: LandSimulation, solve!
 import ClimaLand.Parameters as LP
 import ClimaParams
 
@@ -94,14 +95,13 @@ compartment_surfaces = n_stem > 0 ? [zmax, h_stem, h_canopy] : [zmax, h_leaf]
 domain = Column(; zlim = (zmin, zmax), nelements = nelements, dz_tuple)
 
 # Set up the timestepping information for the simulation
-t0 = FT(1800)
-N_days = 360
-dt = FT(900)
-tf = t0 + FT(3600 * 24 * N_days)
-
-# This reads in the data from the flux tower site and creates
-# the atmospheric and radiative driver structs for the model
 start_date = DateTime(2010) + Hour(time_offset)
+N_days = 360
+end_date = start_date + Day(N_days)
+dt = FT(900)
+
+# Height of sensor on flux tower
+atmos_h = FT(32)
 forcing = FluxnetSimulations.prescribed_forcing_fluxnet(
     site_ID,
     lat,
@@ -158,61 +158,39 @@ snow_model = Snow.SnowModel(
 
 # Construct the land model
 land = ClimaLand.SoilSnowModel{FT}(; snow = snow_model, soil = soil_model)
-Y, p, cds = initialize(land)
-exp_tendency! = make_exp_tendency(land)
-imp_tendency! = make_imp_tendency(land)
-jacobian! = ClimaLand.make_jacobian(land);
-jac_kwargs =
-    (; jac_prototype = ClimaLand.FieldMatrixWithSolver(Y), Wfact = jacobian!);
-set_initial_cache! = make_set_initial_cache(land)
 
 # Initial conditions
-FluxnetSimulations.set_fluxnet_ic!(Y, site_ID, start_date, time_offset, land)
-set_initial_cache!(p, Y, t0)
+set_ic!(Y, p, _, model) = FluxnetSimulations.set_fluxnet_ic!(
+    Y,
+    site_ID,
+    start_date,
+    time_offset,
+    model,
+)
 
-saveat = Array(t0:dt:tf)
+saveat = Array(start_date:Second(dt):end_date)
 sv = (;
-    t = Array{Float64}(undef, length(saveat)),
+    t = Array{DateTime}(undef, length(saveat)),
     saveval = Array{NamedTuple}(undef, length(saveat)),
 )
 saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat)
 
 updateat = deepcopy(saveat)
-model_drivers = ClimaLand.get_drivers(land)
-updatefunc = ClimaLand.make_update_drivers(model_drivers)
-driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
-cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
-# TIME STEPPING
-timestepper = CTS.ARS111();
-ode_algo = CTS.IMEXAlgorithm(
-    timestepper,
-    CTS.NewtonsMethod(
-        max_iters = 3,
-        update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
-    ),
-);
 
-# Problem definition and callbacks
-prob = SciMLBase.ODEProblem(
-    CTS.ClimaODEFunction(
-        T_exp! = exp_tendency!,
-        T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
-        dss! = ClimaLand.dss!,
-    ),
-    Y,
-    (t0, tf),
-    p,
-);
-sol = SciMLBase.solve(
-    prob,
-    ode_algo;
-    callback = cb,
-    dt = dt,
-    saveat = collect(t0:dt:tf),
-);
+simulation = LandSimulation(
+    start_date,
+    end_date,
+    dt,
+    land;
+    user_callbacks = (saving_cb,),
+    set_ic! = set_ic!,
+    updateat,
+    solver_kwargs = (; saveat = saveat),
+)
+sol = solve!(simulation)
 
 # Plotting
-daily = sol.t ./ 3600 ./ 24
+daily = FT.(sol.t) ./ 3600 ./ 24
 savedir =
     joinpath(climaland_dir, "experiments/integrated/fluxnet/ozark_soilsnow")
 mkpath(savedir)
@@ -226,7 +204,7 @@ ax1 = Axis(fig[2, 2], ylabel = "SWC", xlabel = "Days")
 lines!(
     ax1,
     daily,
-    [parent(sol.u[k].soil.ϑ_l)[end - 2] for k in 1:1:length(sol.t)],
+    [parent(sol.u[k].soil.ϑ_l)[end - 2] for k in 1:1:length(FT.(sol.t))],
     label = "10cm",
 )
 lines!(
@@ -234,7 +212,7 @@ lines!(
     daily,
     [
         parent(sol.u[k].soil.θ_i .+ sol.u[k].soil.ϑ_l)[end - 2] for
-        k in 1:1:length(sol.t)
+        k in 1:1:length(FT.(sol.t))
     ],
     label = "10cm, liq+ice",
 )
@@ -258,22 +236,23 @@ lines!(
 )
 axislegend(ax2, position = :rb)
 ax3 = Axis(fig[2, 1], ylabel = "SWE (m)", xlabel = "Days")
-lines!(ax3, daily, [parent(sol.u[k].snow.S)[1] for k in 1:1:length(sol.t)])
+lines!(ax3, daily, [parent(sol.u[k].snow.S)[1] for k in 1:1:length(FT.(sol.t))])
 
 # Temp
+sv_times = Dates.value.(Second.(sv.t .- sv.t[1]))
 ax4 = Axis(fig[1, 1], ylabel = "T (K)")
 hidexdecorations!(ax4, ticks = false)
 lines!(
     ax4,
-    sv.t ./ 24 ./ 3600,
-    [parent(sv.saveval[k].soil.T)[end - 2] for k in 1:1:length(sv.t)],
+    sv_times ./ 24 ./ 3600,
+    [parent(sv.saveval[k].soil.T)[end - 2] for k in 1:1:length(sv_times)],
     label = "Model 10 cm",
 )
 
 lines!(
     ax4,
-    sv.t ./ 24 ./ 3600,
-    [parent(sv.saveval[k].snow.T)[1] for k in 1:1:length(sv.t)],
+    sv_times ./ 24 ./ 3600,
+    [parent(sv.saveval[k].snow.T)[1] for k in 1:1:length(sv_times)],
     label = "Snow",
 )
 lines!(
@@ -354,9 +333,9 @@ end
                 compute_atmos_energy_fluxes(sv.saveval[k]) .-
                 compute_energy_of_runoff(sv.saveval[k]) .-
                 sv.saveval[k].soil.bottom_bc.heat,
-            )[end] for k in 1:1:(length(sv.t) - 1)
+            )[end] for k in 1:1:(length(sv_times) - 1)
         ],
-    ) * (sv.t[2] - sv.t[1])
+    ) * (sv_times[2] - sv_times[1])
 E_measured = [
     sum(sol.u[k].soil.ρe_int) + parent(sol.u[k].snow.U)[end] for
     k in 1:1:length(sv.t)
@@ -368,13 +347,13 @@ E_measured = [
                 compute_atmos_water_vol_fluxes(sv.saveval[k]) .-
                 compute_runoff(sv.saveval[k]) .-
                 sv.saveval[k].soil.bottom_bc.water,
-            )[end] for k in 1:1:(length(sv.t) - 1)
+            )[end] for k in 1:1:(length(sv_times) - 1)
         ],
-    ) * (sv.t[2] - sv.t[1])
+    ) * (sv_times[2] - sv_times[1])
 W_measured = [
     sum(sol.u[k].soil.ϑ_l) +
     sum(sol.u[k].soil.θ_i) * _ρ_i / _ρ_l +
-    parent(sol.u[k].snow.S)[end] for k in 1:1:length(sv.t)
+    parent(sol.u[k].snow.S)[end] for k in 1:1:length(sv_times)
 ]
 lines!(
     ax1,

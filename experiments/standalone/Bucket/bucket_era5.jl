@@ -44,6 +44,7 @@ import ClimaLand.Parameters as LP
 using ClimaLand.Bucket:
     BucketModel, BucketModelParameters, PrescribedBaregroundAlbedo
 using ClimaLand.Domains: coordinates, Column
+import ClimaLand.Simulations: LandSimulation, solve!
 using ClimaLand:
     initialize,
     make_update_aux,
@@ -156,37 +157,22 @@ model = BucketModel(
     radiation = bucket_rad,
 );
 
-Y, p, coords = initialize(model);
-
-Y.bucket.T .= FT(270);
-Y.bucket.W .= FT(0.05);
-Y.bucket.Ws .= FT(0.0);
-Y.bucket.σS .= FT(0.08);
-
-set_initial_cache! = make_set_initial_cache(model);
-set_initial_cache!(p, Y, t0);
-exp_tendency! = make_exp_tendency(model);
-timestepper = CTS.RK4()
-ode_algo = CTS.ExplicitAlgorithm(timestepper)
-prob = SciMLBase.ODEProblem(
-    CTS.ClimaODEFunction(T_exp! = exp_tendency!, dss! = ClimaLand.dss!),
-    Y,
-    (t0, tf),
-    p,
-);
-
-saveat = [promote(t0:(3 * Δt):tf...)...];
+saveat = [promote(t0:(3 * Δt):tf...)...]
 saved_values = (;
     t = Array{typeof(t0)}(undef, length(saveat)),
     saveval = Array{NamedTuple}(undef, length(saveat)),
 );
 saving_cb = ClimaLand.NonInterpSavingCallback(saved_values, saveat);
-updateat = copy(saveat)
-drivers = ClimaLand.get_drivers(model)
-updatefunc = ClimaLand.make_update_drivers(drivers)
-driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
 
-# Diagnostics
+function set_ic!(Y, p, t0, model)
+    Y.bucket.T .= FT(270)
+    Y.bucket.W .= FT(0.05)
+    Y.bucket.Ws .= FT(0.0)
+    Y.bucket.σS .= FT(0.08)
+end
+
+timestepper = CTS.RK4()
+ode_algo = CTS.ExplicitAlgorithm(timestepper)
 nc_writer = ClimaDiagnostics.Writers.NetCDFWriter(
     subsurface_space,
     output_dir;
@@ -197,20 +183,25 @@ diags = ClimaLand.default_diagnostics(
     start_date;
     output_writer = nc_writer,
     average_period = :daily,
+);
+
+simulation = LandSimulation(
+    t0,
+    tf,
+    Δt,
+    model;
+    outdir = output_dir,
+    solver_kwargs = (; saveat = copy(saveat)),
+    updateat = copy(saveat),
+    user_callbacks = (saving_cb,),
+    set_ic!,
+    timestepper = ode_algo,
+    diagnostics = diags,
 )
 
-diagnostic_handler =
-    ClimaDiagnostics.DiagnosticsHandler(diags, Y, p, t0; dt = Δt)
 
-diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler)
-cb = SciMLBase.CallbackSet(driver_cb, saving_cb, diag_cb)
-
-sol = ClimaComms.@time ClimaComms.device() SciMLBase.solve(
-    prob,
-    ode_algo;
-    dt = Δt,
-    saveat = saveat,
-    callback = cb,
+sol = ClimaComms.@time ClimaComms.device() ClimaLand.Simulations.solve!(
+    simulation,
 );
 
 ClimaLand.Diagnostics.close_output_writers(diags)
@@ -233,7 +224,7 @@ for short_name in short_names
 end
 
 # Interpolate to grid
-space = axes(coords.surface)
+space = simulation.model.domain.space.surface
 num_pts = 21
 if regional_simulation
     radius_earth = FT(6.378e6)
@@ -272,7 +263,9 @@ remapper = Remapping.Remapper(space, hcoords)
 W = Array(Remapping.interpolate(remapper, sol.u[end].bucket.W))
 Ws = Array(Remapping.interpolate(remapper, sol.u[end].bucket.Ws))
 σS = Array(Remapping.interpolate(remapper, sol.u[end].bucket.σS))
-T_sfc = Array(Remapping.interpolate(remapper, prob.p.bucket.T_sfc))
+T_sfc = Array(
+    Remapping.interpolate(remapper, simulation._integrator.p.bucket.T_sfc),
+)
 
 # save prognostic state to CSV - for comparison between GPU and CPU output
 open(joinpath(output_dir, "tf_state_$(device_suffix)_era5.txt"), "w") do io

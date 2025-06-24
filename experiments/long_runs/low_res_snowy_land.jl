@@ -172,7 +172,7 @@ user_callbacks = (
     ClimaLand.ReportCallback(10000),
 )
 simulation =
-    LandSimulation(FT, start_date, stop_date, Δt, model; user_callbacks, outdir)
+    LandSimulation(start_date, stop_date, Δt, model; user_callbacks, outdir)
 @info "Run: Global Soil-Canopy-Snow Model"
 @info "Resolution: $nelements"
 @info "Timestep: $Δt s"

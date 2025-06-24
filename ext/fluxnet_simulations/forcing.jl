@@ -247,20 +247,45 @@ function FluxnetSimulations.get_data_dt(site_ID)
 end
 
 """
-    get_data_dates(site_ID, hour_offset_from_UTC)
+    get_data_dates(
+        site_ID,
+        hour_offset_from_UTC;
+        duration::Union{Nothing, Period} = nothing,
+        start_offset::Period = Second(0),
+    )
 
 A helper function to get the first and last dates, in UTC, for which we have
 Fluxnet data at `site_ID`, given the offset in hours of local time
-from UTC.
+from UTC. If `duration` is provided, it is used to determine the end date,
+otherwise the end date is the last date in the data. The `start_offset` is
+added to the start date, and must be non-negative.
 """
-function FluxnetSimulations.get_data_dates(site_ID, hour_offset_from_UTC)
+function FluxnetSimulations.get_data_dates(
+    site_ID,
+    hour_offset_from_UTC;
+    duration::Union{Nothing, Period} = nothing,
+    start_offset::Period = Second(0),
+)
     fluxnet_csv_path = ClimaLand.Artifacts.experiment_fluxnet_data_path(site_ID)
     (data, columns) = readdlm(fluxnet_csv_path, ','; header = true)
     local_datetime = DateTime.(string.(Int.(data[:, 1])), "yyyymmddHHMM")
     UTC_datetime = local_datetime .+ Dates.Hour(hour_offset_from_UTC)
-    return extrema(UTC_datetime)
+    earliest_date, latest_date = extrema(UTC_datetime)
+    Dates.value(start_offset) < 0 && error("start_offset must be non-negative")
+    if !isnothing(duration) && Dates.value(duration) < 0
+        error("If duration is not provided, it must be non-negative.")
+    end
+    duration_available_ms = latest_date - earliest_date
+    start_date = earliest_date + start_offset
+    end_date = isnothing(duration) ? latest_date : start_date + duration
+    if !isnothing(duration) && (end_date > latest_date)
+        error(
+            "The sum of the requested duration of $duration and start_offset of $start_offset \
+            is greater than the available $duration_available_ms of data.",
+        )
+    end
+    return (start_date, end_date)
 end
-
 
 """
     snow_precip_fraction(T_in_C, VPD_in_hPa; thermo_params)

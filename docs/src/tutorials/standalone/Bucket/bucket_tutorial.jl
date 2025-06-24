@@ -144,6 +144,7 @@ import ClimaParams as CP
 using ClimaLand.Bucket:
     BucketModel, BucketModelParameters, PrescribedBaregroundAlbedo
 using ClimaLand.Domains: coordinates, Column
+import ClimaLand.Simulations: LandSimulation, solve!
 using ClimaLand:
     initialize,
     make_update_aux,
@@ -203,10 +204,6 @@ z_0b = FT(1e-3);
 ρc_soil = FT(2e6);
 # Snow melt timescale
 τc = FT(3600);
-# Simulation start date, end time, and timestep
-t0 = 0.0;
-tf = 7 * 86400;
-Δt = 3600.0;
 
 bucket_parameters = BucketModelParameters(FT; albedo, z_0m, z_0b, τc);
 
@@ -215,6 +212,10 @@ bucket_parameters = BucketModelParameters(FT; albedo, z_0m, z_0b, τc);
 # time, the date of the start of the simulation. In this tutorial we will
 # consider this January 1, 2005.
 start_date = DateTime(2005);
+# Simulation start date, end time, and timestep
+
+end_date = start_date + Second(7 * 86400);
+Δt = 3600.0;
 
 # To drive the system in standalone mode,
 # the user must provide
@@ -230,9 +231,9 @@ start_date = DateTime(2005);
 
 # Precipitation:
 precip = (t) -> 0;
-snow_precip = (t) -> -5e-7 * (t > 3 * 86400) * (t < 4 * 86400);
+snow_precip = (t) -> -5e-7 * (FT(t) > 3 * 86400) * (FT(t) < 4 * 86400);
 # Diurnal temperature variations:
-T_atmos = (t) -> 275.0 + 5.0 * sin(2.0 * π * t / 86400 - π / 2);
+T_atmos = (t) -> 275.0 + 5.0 * sin(2.0 * π * FT(t) / 86400 - π / 2);
 # Constant otherwise:
 u_atmos = (t) -> 3.0;
 q_atmos = (t) -> 0.005;
@@ -256,8 +257,8 @@ bucket_atmos = PrescribedAtmosphere(
 # peak at local noon, and a prescribed downwelling LW radiative
 # flux, assuming the air temperature is on average 275 degrees
 # K with a diurnal amplitude of 5 degrees K:
-SW_d = (t) -> @. max(1361 * sin(2π * t / 86400 - π / 2));
-LW_d = (t) -> 5.67e-8 * (275.0 + 5.0 * sin(2.0 * π * t / 86400 - π / 2))^4;
+SW_d = (t) -> @. max(1361 * sin(2π * FT(t) / 86400 - π / 2));
+LW_d = (t) -> 5.67e-8 * (275.0 + 5.0 * sin(2.0 * π * FT(t) / 86400 - π / 2))^4;
 bucket_rad = PrescribedRadiativeFluxes(
     FT,
     TimeVaryingInput(SW_d),
@@ -281,9 +282,50 @@ model = BucketModel(
 # type and rely on multiple dispatch to obtain the atmospheric and radiative
 # quantitites from the coupler.
 
-# Like all ClimaLand models, we set up the state vector using `initialize`:
-Y, p, coords = initialize(model);
 
+
+
+# Next is to create a function to set initial conditions.
+function set_ic!(Y, p, t0, model)
+    Y.bucket.T .= FT(270)
+    Y.bucket.W .= FT(0.05)
+    Y.bucket.Ws .= FT(0.0)
+    Y.bucket.σS .= FT(0.08)
+end
+
+# Now we choose our timestepping algorithm.
+timestepper = CTS.RK4()
+ode_algo = CTS.ExplicitAlgorithm(timestepper)
+
+
+
+# We need a callback to get and store the auxiliary fields, as they
+# are not stored by default. We also need a callback to update the
+# drivers (atmos and radiation)
+saveat = collect(start_date:Second(Δt):end_date);
+saved_values = (;
+    t = Array{DateTime}(undef, length(saveat)),
+    saveval = Array{NamedTuple}(undef, length(saveat)),
+);
+saving_cb = ClimaLand.NonInterpSavingCallback(saved_values, saveat);
+updateat = deepcopy(saveat);
+
+# Create the LandSimulation object, which will also create and initialize the state vectors,
+# the cache, the driver callbacks, and set the initial conditions.
+simulation = LandSimulation(
+    start_date,
+    end_date,
+    Δt,
+    model;
+    set_ic! = set_ic!,
+    updateat = updateat,
+    solver_kwargs = (; saveat = deepcopy(saveat)),
+    timestepper = ode_algo,
+    user_callbacks = (saving_cb,),
+    diagnostics = (),
+);
+Y = simulation._integrator.u;
+p = simulation._integrator.p;
 # We can inspect the prognostic and auxiliary variables of the model:
 ClimaLand.prognostic_vars(model)
 Y.bucket |> propertynames
@@ -291,79 +333,37 @@ Y.bucket |> propertynames
 # net radiation, and the surface specific humidity.
 ClimaLand.auxiliary_vars(model)
 p.bucket |> propertynames
-
-
-# Next is to set initial conditions.
-Y.bucket.T .= FT(270);
-Y.bucket.W .= FT(0.05);
-Y.bucket.Ws .= FT(0.0);
-Y.bucket.σS .= FT(0.08);
-
-# We also set the initial values of the cache here:
-set_initial_cache! = make_set_initial_cache(model);
-set_initial_cache!(p, Y, t0);
-
-# Then to create the entire right hand side (tendency) function for the system
-# of ordinary differential equations:
-exp_tendency! = make_exp_tendency(model);
-
-# Now we choose our timestepping algorithm.
-timestepper = CTS.RK4()
-ode_algo = CTS.ExplicitAlgorithm(timestepper)
-
-# Then we can set up the simulation and solve it:
-prob = SciMLBase.ODEProblem(
-    CTS.ClimaODEFunction(T_exp! = exp_tendency!, dss! = ClimaLand.dss!),
-    Y,
-    (t0, tf),
-    p,
-);
-
-# We need a callback to get and store the auxiliary fields, as they
-# are not stored by default. We also need a callback to update the
-# drivers (atmos and radiation)
-saveat = collect(t0:Δt:tf);
-saved_values = (;
-    t = Array{Float64}(undef, length(saveat)),
-    saveval = Array{NamedTuple}(undef, length(saveat)),
-);
-saving_cb = ClimaLand.NonInterpSavingCallback(saved_values, saveat);
-updateat = copy(saveat)
-model_drivers = ClimaLand.get_drivers(model)
-updatefunc = ClimaLand.make_update_drivers(model_drivers)
-driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
-cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
-
-sol = SciMLBase.solve(prob, ode_algo; dt = Δt, saveat = saveat, callback = cb);
+sol = solve!(simulation);
 
 # Extracting the solution from what is returned by the ODE.jl commands
 # is a bit clunky right now, but we are working on hiding some of this.
 # `parent` extracts the underlying data from the ClimaCore.Fields.Field object
 # and we loop over the solution `sol` because of how the data is stored
 # within solutions returned by ODE.jl - indexed by timestep.
-W = [parent(sol.u[k].bucket.W)[1] for k in 1:length(sol.t)];
-Ws = [parent(sol.u[k].bucket.Ws)[1] for k in 1:length(sol.t)];
-σS = [parent(sol.u[k].bucket.σS)[1] for k in 1:length(sol.t)];
+times = FT.(sol.t)
+W = [parent(sol.u[k].bucket.W)[1] for k in 1:length(times)];
+Ws = [parent(sol.u[k].bucket.Ws)[1] for k in 1:length(times)];
+σS = [parent(sol.u[k].bucket.σS)[1] for k in 1:length(times)];
 T_sfc =
-    [parent(saved_values.saveval[k].bucket.T_sfc)[1] for k in 1:length(sol.t)];
+    [parent(saved_values.saveval[k].bucket.T_sfc)[1] for k in 1:length(times)];
 evaporation = [
     parent(saved_values.saveval[k].bucket.turbulent_fluxes.vapor_flux)[1]
-    for k in 1:length(sol.t)
+    for k in 1:length(times)
 ];
-R_n = [parent(saved_values.saveval[k].bucket.R_n)[1] for k in 1:length(sol.t)];
+R_n = [parent(saved_values.saveval[k].bucket.R_n)[1] for k in 1:length(times)];
 # The turbulent energy flux is the sum of latent and sensible heat fluxes.
 LHF = [
     parent(saved_values.saveval[k].bucket.turbulent_fluxes.lhf)[1] for
-    k in 1:length(sol.t)
+    k in 1:length(times)
 ];
 SHF = [
     parent(saved_values.saveval[k].bucket.turbulent_fluxes.shf)[1] for
-    k in 1:length(sol.t)
+    k in 1:length(times)
 ];
 turbulent_energy_flux = SHF .+ LHF
 
 plot(
-    sol.t ./ 86400,
+    times ./ 86400,
     W,
     label = "",
     xlabel = "time (days)",
@@ -374,7 +374,7 @@ savefig("w.png")
 # ![](w.png)
 
 plot(
-    sol.t ./ 86400,
+    times ./ 86400,
     σS,
     label = "",
     xlabel = "time (days)",
@@ -385,20 +385,20 @@ savefig("swe.png")
 # ![](swe.png)
 
 plot(
-    sol.t ./ 86400,
-    snow_precip.(sol.t),
+    times ./ 86400,
+    snow_precip.(times),
     label = "Net precipitation",
     xlabel = "time (days)",
     ylabel = "Flux (m/s)",
     title = "Surface water fluxes",
     legend = :bottomright,
 )
-plot!(sol.t ./ 86400, evaporation, label = "Sublimation/Evaporation")
+plot!(times ./ 86400, evaporation, label = "Sublimation/Evaporation")
 savefig("water_f.png")
 # ![](water_f.png)
 
 plot(
-    sol.t ./ 86400,
+    times ./ 86400,
     T_sfc,
     title = "Surface Temperatures",
     label = "Ground temperature",
@@ -406,11 +406,11 @@ plot(
     ylabel = "T_sfc (K)",
     legend = :bottomright,
 )
-plot!(sol.t ./ 86400, T_atmos.(sol.t), label = "Atmospheric Temperature")
+plot!(times ./ 86400, T_atmos.(times), label = "Atmospheric Temperature")
 savefig("t.png")
 # ![](t.png)
 plot(
-    sol.t ./ 86400,
+    times ./ 86400,
     R_n,
     label = "Net radiative flux",
     xlabel = "time (days)",
@@ -418,8 +418,8 @@ plot(
     title = "Surface energy fluxes",
     legend = :bottomright,
 )
-plot!(sol.t ./ 86400, turbulent_energy_flux, label = "Turbulent fluxes")
-plot!(sol.t ./ 86400, R_n .+ turbulent_energy_flux, label = "Net flux")
+plot!(times ./ 86400, turbulent_energy_flux, label = "Turbulent fluxes")
+plot!(times ./ 86400, R_n .+ turbulent_energy_flux, label = "Net flux")
 savefig("energy_f.png")
 # ![](energy_f.png)
 
