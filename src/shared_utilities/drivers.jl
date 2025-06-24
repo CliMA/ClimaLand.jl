@@ -284,8 +284,12 @@ function default_zenith_angle(
     insol_params,
 ) where {T, LT}
     FT = eltype(latitude)
-    current_datetime =
-        T <: ITime ? date(t) : start_date + Dates.Second(round(t))
+    current_datetime = if T <: ITime
+        # use start_date if available. some fluxnet simulations use different driver and sim dates
+        isnothing(start_date) ? date(t) : start_date + t.counter * t.period
+    else
+        start_date + Dates.Second(round(t))
+    end
     d, δ, η_UTC =
         FT.(
             Insolation.helper_instantaneous_zenith_angle(
@@ -1831,7 +1835,10 @@ function empirical_diffuse_fraction(
     thermo_params,
 ) where {FT}
     if t isa ITime
-        DOY = Dates.dayofyear(date(t))
+        DOY = Dates.dayofyear(
+            isnothing(t.epoch) ?
+            start_date + Dates.Second(floor(Int64, float(t))) : date(t),
+        )
     else
         DOY = Dates.dayofyear(start_date + Dates.Second(floor(Int64, t)))
     end

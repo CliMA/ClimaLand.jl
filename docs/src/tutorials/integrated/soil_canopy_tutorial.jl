@@ -50,6 +50,7 @@ using ClimaLand.Soil
 using ClimaLand.Soil.Biogeochemistry
 using ClimaLand.Canopy
 using ClimaLand.Canopy.PlantHydraulics
+import ClimaLand.Simulations: LandSimulation, solve!
 import ClimaLand
 import ClimaLand.Parameters as LP
 using DelimitedFiles
@@ -317,50 +318,40 @@ land = SoilCanopyModel{FT}(;
     canopy_model_args = canopy_model_args,
 );
 
-# Now we can initialize the state vectors and model coordinates, and initialize
-# the explicit/implicit tendencies as usual. The Richard's equation time
-# stepping is done implicitly, while the canopy model may be explicitly stepped,
-# so we use an IMEX (implicit-explicit) scheme for the combined model.
-
-Y, p, coords = initialize(land);
-exp_tendency! = make_exp_tendency(land);
-imp_tendency! = make_imp_tendency(land);
-jacobian! = make_jacobian(land);
-jac_kwargs =
-    (; jac_prototype = ClimaLand.FieldMatrixWithSolver(Y), Wfact = jacobian!);
-
 # We need to provide initial conditions for the soil and canopy hydraulics
 # models:
-Y.soil.ϑ_l = FT(0.4)
-Y.soil.θ_i = FT(0.0)
-T_0 = FT(288.7)
-ρc_s =
-    volumetric_heat_capacity.(
-        Y.soil.ϑ_l,
-        Y.soil.θ_i,
-        land.soil.parameters.ρc_ds,
-        earth_param_set,
-    )
-Y.soil.ρe_int =
-    volumetric_internal_energy.(Y.soil.θ_i, ρc_s, T_0, earth_param_set)
+function set_ic!(Y, p, t_start, model)
+    Y.soil.ϑ_l = FT(0.4)
+    Y.soil.θ_i = FT(0.0)
+    T_0 = FT(288.7)
+    ρc_s =
+        volumetric_heat_capacity.(
+            Y.soil.ϑ_l,
+            Y.soil.θ_i,
+            land.soil.parameters.ρc_ds,
+            earth_param_set,
+        )
+    Y.soil.ρe_int =
+        volumetric_internal_energy.(Y.soil.θ_i, ρc_s, T_0, earth_param_set)
 
-Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
+    Y.soilco2.C .= FT(0.000412) # set to atmospheric co2, mol co2 per mol air
 
-ψ_stem_0 = FT(-1e5 / 9800)
-ψ_leaf_0 = FT(-2e5 / 9800)
+    ψ_stem_0 = FT(-1e5 / 9800)
+    ψ_leaf_0 = FT(-2e5 / 9800)
 
-S_l_ini =
-    inverse_water_retention_curve.(
-        retention_model,
-        [ψ_stem_0, ψ_leaf_0],
-        plant_ν,
-        plant_S_s,
-    )
+    S_l_ini =
+        inverse_water_retention_curve.(
+            retention_model,
+            [ψ_stem_0, ψ_leaf_0],
+            plant_ν,
+            plant_S_s,
+        )
 
-for i in 1:2
-    Y.canopy.hydraulics.ϑ_l.:($i) .=
-        augmented_liquid_fraction.(plant_ν, S_l_ini[i])
-end;
+    for i in 1:2
+        Y.canopy.hydraulics.ϑ_l.:($i) .=
+            augmented_liquid_fraction.(plant_ν, S_l_ini[i])
+    end
+end
 
 # Select the timestepper and solvers needed for the specific problem.
 
@@ -373,47 +364,37 @@ ode_algo = CTS.IMEXAlgorithm(
     ),
 );
 
-# Now set the initial values for the cache variables for the combined soil and plant model.
 
-set_initial_cache! = make_set_initial_cache(land)
-set_initial_cache!(p, Y, t0);
-
-# Set the callbacks, which govern
+# Set the callbacks update times, which govern
 # how often we save output, and how often we update
 # the forcing data ("drivers")
 
 n = 120
-saveat = Array(t0:(n * dt):tf)
+saveat = Array(t0:(n * dt):tf);
 sv = (;
     t = Array{Float64}(undef, length(saveat)),
     saveval = Array{NamedTuple}(undef, length(saveat)),
 )
 saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat)
-model_drivers = ClimaLand.get_drivers(land)
-updatefunc = ClimaLand.make_update_drivers(model_drivers)
-updateat = Array(t0:1800:tf)
-driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
-cb = SciMLBase.CallbackSet(driver_cb, saving_cb);
+updateat = Array(t0:1800:tf);
 
-# Carry out the simulation
-prob = SciMLBase.ODEProblem(
-    CTS.ClimaODEFunction(
-        T_exp! = exp_tendency!,
-        T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
-        dss! = ClimaLand.dss!,
-    ),
-    Y,
-    (t0, tf),
-    p,
+# Create the LandSimulation object, which will also create and initialize the state vectors,
+# the cache, the driver callbacks, and set the initial conditions.
+simulation = LandSimulation(
+    t0,
+    tf,
+    dt,
+    land;
+    start_date,
+    set_ic! = set_ic!,
+    updateat = updateat,
+    solver_kwargs = (; saveat = deepcopy(saveat)),
+    timestepper = ode_algo,
+    user_callbacks = (saving_cb,),
+    diagnostics = (),
 );
-sol = SciMLBase.solve(
-    prob,
-    ode_algo;
-    dt = dt,
-    callback = cb,
-    adaptive = false,
-    saveat = saveat,
-);
+
+sol = solve!(simulation);
 
 # # Plotting
 
@@ -422,7 +403,7 @@ sol = SciMLBase.solve(
 # each of these models. As before, we may plot the GPP of the system as well
 # as transpiration showing fluxes in the canopy.
 
-daily = sol.t ./ 3600 ./ 24
+daily = float.(sol.t) ./ 3600 ./ 24
 model_GPP = [
     parent(sv.saveval[k].canopy.photosynthesis.GPP)[1] for
     k in 1:length(sv.saveval)

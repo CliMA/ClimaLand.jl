@@ -18,6 +18,7 @@ using ClimaLand.Domains: Column
 using ClimaLand.Soil
 using ClimaLand.Snow
 import ClimaLand
+import ClimaLand.Simulations: LandSimulation, solve!
 import ClimaLand.Parameters as LP
 import ClimaParams
 
@@ -114,18 +115,16 @@ snow_model = Snow.SnowModel(
 )
 
 land = ClimaLand.SoilSnowModel{FT}(; snow = snow_model, soil = soil_model)
-Y, p, cds = initialize(land)
-exp_tendency! = make_exp_tendency(land)
-imp_tendency! = make_imp_tendency(land)
-jacobian! = ClimaLand.make_jacobian(land);
-jac_kwargs =
-    (; jac_prototype = ClimaLand.FieldMatrixWithSolver(Y), Wfact = jacobian!);
-set_initial_cache! = make_set_initial_cache(land)
 
 
 #Initial conditions
-FluxnetSimulations.set_fluxnet_ic!(Y, site_ID, start_date, time_offset, land)
-set_initial_cache!(p, Y, t0)
+set_ic!(Y, p, _, model) = FluxnetSimulations.set_fluxnet_ic!(
+    Y,
+    site_ID,
+    start_date,
+    time_offset,
+    model,
+)
 
 saveat = Array(t0:dt:tf)
 sv = (;
@@ -135,41 +134,21 @@ sv = (;
 saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat)
 
 updateat = deepcopy(saveat)
-model_drivers = ClimaLand.get_drivers(land)
-updatefunc = ClimaLand.make_update_drivers(model_drivers)
-driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
-cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
-# TIME STEPPING
-timestepper = CTS.ARS111();
-ode_algo = CTS.IMEXAlgorithm(
-    timestepper,
-    CTS.NewtonsMethod(
-        max_iters = 3,
-        update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
-    ),
-);
 
-# Problem definition and callbacks
-prob = SciMLBase.ODEProblem(
-    CTS.ClimaODEFunction(
-        T_exp! = exp_tendency!,
-        T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
-        dss! = ClimaLand.dss!,
-    ),
-    Y,
-    (t0, tf),
-    p,
-);
-sol = SciMLBase.solve(
-    prob,
-    ode_algo;
-    callback = cb,
-    dt = dt,
-    saveat = collect(t0:dt:tf),
-);
+simulation = LandSimulation(
+    t0,
+    tf,
+    dt,
+    land;
+    user_callbacks = (saving_cb,),
+    set_ic! = set_ic!,
+    updateat,
+    solver_kwargs = (; saveat = saveat),
+)
+sol = solve!(simulation)
 
 # Plotting
-daily = sol.t ./ 3600 ./ 24
+daily = float.(sol.t) ./ 3600 ./ 24
 savedir = joinpath(climaland_dir, "experiments/integrated/fluxnet/snow_soil")
 comparison_data = FluxnetSimulations.get_comparison_data(site_ID, time_offset)
 
@@ -181,7 +160,7 @@ ax1 = Axis(fig[2, 2], ylabel = "SWC", xlabel = "Days")
 lines!(
     ax1,
     daily,
-    [parent(sol.u[k].soil.ϑ_l)[end - 2] for k in 1:1:length(sol.t)],
+    [parent(sol.u[k].soil.ϑ_l)[end - 2] for k in 1:1:length(float.(sol.t))],
     label = "10cm",
 )
 lines!(
@@ -189,7 +168,7 @@ lines!(
     daily,
     [
         parent(sol.u[k].soil.θ_i .+ sol.u[k].soil.ϑ_l)[end - 2] for
-        k in 1:1:length(sol.t)
+        k in 1:1:length(float.(sol.t))
     ],
     label = "10cm, liq+ice",
 )
@@ -213,7 +192,11 @@ lines!(
 )
 axislegend(ax2, position = :rb)
 ax3 = Axis(fig[2, 1], ylabel = "SWE (m)", xlabel = "Days")
-lines!(ax3, daily, [parent(sol.u[k].snow.S)[1] for k in 1:1:length(sol.t)])
+lines!(
+    ax3,
+    daily,
+    [parent(sol.u[k].snow.S)[1] for k in 1:1:length(float.(sol.t))],
+)
 
 # Temp
 ax4 = Axis(fig[1, 1], ylabel = "T (K)")

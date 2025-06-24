@@ -199,13 +199,12 @@ land = SoilCanopyModel{FT}(;
     canopy_component_args = canopy_component_args,
     canopy_model_args = canopy_model_args,
 )
-exp_tendency! = make_exp_tendency(land)
-imp_tendency! = make_imp_tendency(land);
-jacobian! = make_jacobian(land);
-set_initial_cache! = make_set_initial_cache(land)
-Y, p, cds = initialize(land)
-jac_kwargs =
-    (; jac_prototype = ClimaLand.FieldMatrixWithSolver(Y), Wfact = jacobian!);
 
-FluxnetSimulations.set_fluxnet_ic!(Y, site_ID, start_date, time_offset, land)
-set_initial_cache!(p, Y, t0)
+set_ic! =
+    (Y, p, t0, model) -> FluxnetSimulations.set_fluxnet_ic!(
+        Y,
+        site_ID,
+        start_date,
+        time_offset,
+        model,
+    )

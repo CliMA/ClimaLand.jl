@@ -55,6 +55,7 @@ using ClimaLand.Domains: Point
 using ClimaLand.Canopy
 using ClimaLand.Canopy.PlantHydraulics
 import ClimaLand
+import ClimaLand.Simulations: LandSimulation, solve!
 import ClimaLand.Parameters as LP
 using DelimitedFiles
 import ClimaLand.FluxnetSimulations as FluxnetSimulations
@@ -199,11 +200,6 @@ canopy = ClimaLand.Canopy.CanopyModel{FT}(;
     ),
 );
 
-exp_tendency! = make_exp_tendency(canopy)
-imp_tendency! = make_imp_tendency(canopy)
-jacobian! = make_jacobian(canopy)
-drivers = ClimaLand.get_drivers(canopy)
-updatefunc = ClimaLand.make_update_drivers(drivers)
 
 ψ_leaf_0 = FT(-2e5 / 9800)
 ψ_stem_0 = FT(-1e5 / 9800)
@@ -215,8 +211,6 @@ S_l_ini =
         S_s,
     )
 
-set_initial_cache! = make_set_initial_cache(canopy)
-
 timestepper = CTS.ARS111();
 ode_algo = CTS.IMEXAlgorithm(
     timestepper,
@@ -225,7 +219,11 @@ ode_algo = CTS.IMEXAlgorithm(
         update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
     ),
 );
-
+function set_ic!(Y, p, t_start, model)
+    Y.canopy.hydraulics.ϑ_l.:1 .= augmented_liquid_fraction.(ν, S_l_ini[1])
+    Y.canopy.hydraulics.ϑ_l.:2 .= augmented_liquid_fraction.(ν, S_l_ini[2])
+    evaluate!(Y.canopy.energy.T, atmos.T, t0)
+end
 ref_dt = 6.0
 dts = [ref_dt, 12.0, 48.0, 225.0, 450.0, 900.0, 1800.0, 3600.0]
 
@@ -240,38 +238,22 @@ times = []
 for dt in dts
     @info dt
 
-    # Initialize model before each simulation
-    Y, p, coords = ClimaLand.initialize(canopy)
-    jac_kwargs = (;
-        jac_prototype = ClimaLand.FieldMatrixWithSolver(Y),
-        Wfact = jacobian!,
-    )
-
-    # Set initial conditions
-    Y.canopy.hydraulics.ϑ_l.:1 .= augmented_liquid_fraction.(ν, S_l_ini[1])
-    Y.canopy.hydraulics.ϑ_l.:2 .= augmented_liquid_fraction.(ν, S_l_ini[2])
-    evaluate!(Y.canopy.energy.T, atmos.T, t0)
-    set_initial_cache!(p, Y, t0)
-
-    # Create callback for driver updates
+    # Create update times for driver and saving callback
     saveat = vcat(Array(t0:(3 * 3600):tf), tf)
     updateat = vcat(Array(t0:(3 * 3600):tf), tf)
-    cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
-
-    # Solve simulation
-    prob = SciMLBase.ODEProblem(
-        CTS.ClimaODEFunction(
-            T_exp! = exp_tendency!,
-            T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
-            dss! = ClimaLand.dss!,
-        ),
-        Y,
-        (t0, tf),
-        p,
+    simulation = LandSimulation(
+        t0,
+        tf,
+        dt,
+        canopy;
+        start_date,
+        set_ic! = set_ic!,
+        updateat = updateat,
+        solver_kwargs = (; saveat = deepcopy(saveat)),
+        timestepper = ode_algo,
+        user_callbacks = (),
     )
-    @time sol =
-        SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb, saveat = saveat)
-
+    @time sol = solve!(simulation)
     # Save results for comparison
     if dt == ref_dt
         global ref_T =
@@ -285,7 +267,7 @@ for dt in dts
         push!(p99_err, FT(percentile(ΔT, 99)))
         push!(sol_err, ΔT[end])
         push!(T_states, T)
-        push!(times, sol.t)
+        push!(times, float.(sol.t))
     end
 end
 savedir = generate_output_path(

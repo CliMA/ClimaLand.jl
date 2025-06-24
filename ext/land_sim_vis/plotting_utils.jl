@@ -369,7 +369,7 @@ function LandSimVis.make_diurnal_timeseries(
                     dn,
                 )
             save_Δt = model_time[2] - model_time[1] # in seconds
-            model_dates = Second.(model_time) .+ start_date
+            model_dates = Second.(float.(model_time)) .+ start_date
             spinup_idx = findfirst(spinup_date .<= model_dates)
             hour_of_day, model_diurnal_cycle = compute_diurnal_cycle(
                 model_dates[spinup_idx:end],
@@ -486,7 +486,7 @@ function LandSimVis.make_timeseries(
                     dn,
                 )
             save_Δt = model_time[2] - model_time[1] # in seconds
-            model_dates = Second.(model_time) .+ start_date
+            model_dates = Second.(float.(model_time)) .+ start_date
             spinup_idx = findfirst(spinup_date .<= model_dates)
             hour_of_day, model_diurnal_cycle = compute_diurnal_cycle(
                 model_dates[spinup_idx:end],

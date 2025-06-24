@@ -50,6 +50,7 @@ using ClimaLand
 using ClimaLand.Domains: Point
 using ClimaLand.Canopy
 using ClimaLand.Canopy.PlantHydraulics
+import ClimaLand.Simulations: LandSimulation, solve!
 import ClimaLand
 import ClimaLand.Parameters as LP
 using DelimitedFiles
@@ -297,22 +298,18 @@ S_l_ini =
         ν,
         S_s,
     )
-
-for i in 1:2
-    Y.canopy.hydraulics.ϑ_l.:($i) .= augmented_liquid_fraction.(ν, S_l_ini[i])
-end;
-
-# Initialize the cache variables for the canopy using the initial
-# conditions and initial time.
-
-set_initial_cache! = make_set_initial_cache(canopy)
-set_initial_cache!(p, Y, t0);
+function set_ic!(Y, p, t_start, model)
+    for i in 1:2
+        Y.canopy.hydraulics.ϑ_l.:($i) .=
+            augmented_liquid_fraction.(ν, S_l_ini[i])
+    end
+end
 
 # Allocate the struct which stores the saved auxiliary state
 # and create the callback which saves it at each element in saveat.
 
 n = 16
-saveat = Array(t0:(n * dt):tf)
+saveat = Array(t0:(n * dt):tf);
 sv = (;
     t = Array{Float64}(undef, length(saveat)),
     saveval = Array{NamedTuple}(undef, length(saveat)),
@@ -321,11 +318,7 @@ saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat);
 
 # Create the callback function which updates the forcing variables,
 # or drivers.
-updateat = Array(t0:1800:tf)
-model_drivers = ClimaLand.get_drivers(canopy)
-updatefunc = ClimaLand.make_update_drivers(model_drivers)
-driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
-cb = SciMLBase.CallbackSet(driver_cb, saving_cb);
+updateat = Array(t0:1800:tf);
 
 
 # Select a timestepping algorithm and setup the ODE problem.
@@ -338,28 +331,28 @@ ode_algo = CTS.IMEXAlgorithm(
     ),
 );
 
-prob = SciMLBase.ODEProblem(
-    CTS.ClimaODEFunction(
-        T_exp! = exp_tendency!,
-        T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
-        dss! = ClimaLand.dss!,
-    ),
-    Y,
-    (t0, tf),
-    p,
+# Create the LandSimulation object, which will also create and initialize the state vectors,
+# the cache, the driver callbacks, and set the initial conditions.
+simulation = LandSimulation(
+    t0,
+    tf,
+    dt,
+    canopy;
+    start_date,
+    set_ic! = set_ic!,
+    updateat = updateat,
+    solver_kwargs = (; saveat = deepcopy(saveat)),
+    timestepper = ode_algo,
+    user_callbacks = (saving_cb,),
 );
 
-# Now, we can solve the problem and store the model data in the saveat array,
-# using [`SciMLBase.jl`](https://github.com/SciML/SciMLBase.jl) and
-# [`ClimaTimeSteppers.jl`](https://github.com/CliMA/ClimaTimeSteppers.jl).
-
-sol = SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb, saveat = saveat);
+sol = solve!(simulation);
 
 # # Create some plots
 
 # We can now plot the data produced in the simulation. For example, GPP:
 
-daily = sol.t ./ 3600 ./ 24
+daily = float.(sol.t) ./ 3600 ./ 24
 model_GPP = [
     parent(sv.saveval[k].canopy.photosynthesis.GPP)[1] for
     k in 1:length(sv.saveval)

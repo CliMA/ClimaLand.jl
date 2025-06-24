@@ -6,6 +6,7 @@ import ClimaAnalysis
 import ClimaAnalysis.Visualize as viz
 using CairoMakie
 import GeoMakie
+import ClimaUtilities.TimeManager: ITime
 using Dates
 import NCDatasets
 using ClimaLand
