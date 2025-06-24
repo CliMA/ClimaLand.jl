@@ -88,6 +88,7 @@ import ClimaParams as CP
 import ClimaTimeSteppers as CTS
 using ClimaLand
 using ClimaLand.Domains: Column
+import ClimaLand.Simulations: LandSimulation, solve!
 using ClimaLand.Soil
 
 import ClimaLand
@@ -180,27 +181,11 @@ soil = Soil.EnergyHydrology{FT}(;
     sources = sources,
 );
 
-# Here we create the explicit and implicit tendencies, which update prognostic
-# variable components that are stepped explicitly and implicitly, respectively.
-# We also create the function which is used to update our Jacobian.
-exp_tendency! = make_exp_tendency(soil);
-imp_tendency! = make_imp_tendency(soil);
-jacobian! = ClimaLand.make_jacobian(soil);
 
-# # Set up the simulation
-# We can now initialize the prognostic and auxiliary variable vectors, and take
-# a peek at what those variables are:
-Y, p, coords = initialize(soil);
-Y.soil |> propertynames
 
-p.soil |> propertynames
-
-coords |> propertynames
-
-# Note that the variables are nested into `Y` and `p` in a hierarchical way.
-# Since we have the vectors handy, we can now set them to the desired initial
-# conditions.
-function init_soil!(Y, z, params)
+function set_ic!(Y, p, t0, model)
+    params = model.parameters
+    z = model.domain.fields.z
     ν = params.ν
     θ_r = params.θ_r
     FT = eltype(Y.soil.ϑ_l)
@@ -237,16 +222,9 @@ function init_soil!(Y, z, params)
         )
 end
 
-init_soil!(Y, coords.subsurface.z, soil.parameters);
-
 # We choose the initial and final simulation times:
 t0 = Float64(0)
 tf = Float64(60 * 60 * 72);
-
-# We set the cache values corresponding to the initial conditions
-# of the state Y:
-set_initial_cache! = make_set_initial_cache(soil);
-set_initial_cache!(p, Y, t0);
 
 # We use [ClimaTimesteppers.jl](https://github.com/CliMA/ClimaTimesteppers.jl) for carrying out the time integration.
 
@@ -261,38 +239,35 @@ ode_algo = CTS.IMEXAlgorithm(
     ),
 );
 
-jac_kwargs =
-    (; jac_prototype = ClimaLand.FieldMatrixWithSolver(Y), Wfact = jacobian!);
-
-prob = SciMLBase.ODEProblem(
-    CTS.ClimaODEFunction(
-        T_exp! = exp_tendency!,
-        T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
-        dss! = ClimaLand.dss!,
-    ),
-    Y,
-    (t0, tf),
-    p,
-);
-
-
 # By default, it
 # only returns Y and t at each time we request output (`saveat`, below). We use
 # a callback in order to also get the auxiliary vector `p` back:
-saveat = collect(t0:FT(30000):tf)
+saveat = collect(t0:FT(30000):tf);
 saved_values = (;
     t = Array{Float64}(undef, length(saveat)),
     saveval = Array{NamedTuple}(undef, length(saveat)),
 );
 cb = ClimaLand.NonInterpSavingCallback(saved_values, saveat);
 
+simulation = LandSimulation(
+    t0,
+    tf,
+    dt,
+    soil;
+    set_ic! = set_ic!,
+    solver_kwargs = (; saveat = deepcopy(saveat)),
+    timestepper = ode_algo,
+    user_callbacks = (cb,),
+    diagnostics = (),
+);
+
 
 # Now we can solve the problem.
-sol = SciMLBase.solve(prob, ode_algo; dt = dt, saveat = saveat, callback = cb);
+sol = solve!(simulation);
 
 # Extract output
-z = parent(coords.subsurface.z)
-t = parent(sol.t)
+z = parent(soil.domain.fields.z)
+t = parent(FT.(sol.t))
 ϑ_l = [parent(sol.u[k].soil.ϑ_l) for k in 1:length(t)]
 T = [parent(saved_values.saveval[k].soil.T) for k in 1:length(t)];
 # Let's look at the initial and final times:

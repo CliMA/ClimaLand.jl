@@ -49,6 +49,23 @@ end
 
 include("standard_diagnostic_frequencies.jl")
 
+# The default diagnostics currently require a start date because they use Dates.Period.
+default_diagnostics(
+    model::ClimaLand.AbstractModel,
+    start_date::Union{Nothing, ITime{<:Any, <:Any, Nothing}},
+    outdir,
+) = []
+
+function default_diagnostics(model::ClimaLand.AbstractModel, start_date, outdir)
+    # a starting date is required for default diagnostics
+    domain = ClimaLand.get_domain(model)
+    default_diagnostic_domain =
+        haskey(domain.space, :subsurface) ? domain.space.subsurface :
+        domain.space.surface
+    output_writer = NetCDFWriter(default_diagnostic_domain, outdir; start_date)
+    return default_diagnostics(model, start_date; output_writer)
+end
+
 # Bucket
 function default_diagnostics(
     land_model::BucketModel{FT},
@@ -401,3 +418,11 @@ function default_diagnostics(
         )
     end
 end
+
+# fallback method if no default diagnostics are defined
+default_diagnostics(
+    land_model::ClimaLand.AbstractModel,
+    start_date;
+    output_writer,
+    average_period = nothing,
+) = []

@@ -359,7 +359,7 @@ function ClimaCalibrate.forward_model(iteration, member)
         calibrate_param_dict,
     )
 
-    simulation = LandSimulation(FT, start_date, stop_date, Δt, model; outdir)
+    simulation = LandSimulation(start_date, stop_date, Δt, model; outdir)
     @info "Run: Global Soil-Canopy-Snow Model"
     @info "Resolution: $nelements"
     @info "Timestep: $Δt s"

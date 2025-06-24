@@ -4,7 +4,8 @@ ClimaComms.@import_required_backends
 using ClimaCore: Spaces, Geometry, Fields
 using ClimaLand
 using ClimaLand: Domains, condition, SavingAffect, saving_initialize
-
+using Dates
+import ClimaUtilities.TimeManager: ITime, date
 ## Callback tests
 mutable struct Integrator{FT}
     t::Any
@@ -102,6 +103,66 @@ end
     saving_initialize(cb, 0, t2, integrator)
     @test cb.affect!.saved_values.t[1] == integrator.t[1]
     @test cb.affect!.saved_values.saveval[1] == integrator.p
+end
+
+@testset "NonInterpSavingCallback" begin
+    start_date = ITime(0, Dates.Second(1), DateTime(2020))
+    stop_date = start_date + ITime(60.0 * 60)
+    dt = ITime(60.0)
+    save_interval = ITime(60.0 * 20)
+
+    saveat_itime = collect(start_date:save_interval:stop_date)
+    sv_itime = (;
+        t = Array{Union{Nothing, eltype(saveat_itime)}}(
+            nothing,
+            length(saveat_itime),
+        ),
+        saveval = Array{Any}(undef, length(saveat_itime)),
+    )
+    saving_cb_itime = ClimaLand.NonInterpSavingCallback(sv_itime, saveat_itime)
+
+    saveat_ft = collect(0:float(save_interval):float(stop_date - start_date))
+    sv_ft = (;
+        t = Array{Union{Nothing, eltype(saveat_ft)}}(
+            nothing,
+            length(saveat_ft),
+        ),
+        saveval = Array{Any}(undef, length(saveat_ft)),
+    )
+    saving_cb_ft = ClimaLand.NonInterpSavingCallback(sv_ft, saveat_ft)
+
+    saveat_date = collect(
+        date(start_date):Dates.Second(float(save_interval)):date(stop_date),
+    )
+    sv_date = (;
+        t = Array{Union{Nothing, eltype(saveat_date)}}(
+            nothing,
+            length(saveat_date),
+        ),
+        saveval = Array{Any}(undef, length(saveat_date)),
+    )
+    saving_cb_date = ClimaLand.NonInterpSavingCallback(sv_date, saveat_date)
+
+    for t in start_date:dt:stop_date
+        saving_cb_itime.condition(nothing, t, nothing) &&
+            saving_cb_itime.affect!(Integrator(t, [t]))
+        saving_cb_ft.condition(nothing, t, nothing) &&
+            saving_cb_ft.affect!(Integrator(t, [float(t)]))
+        saving_cb_date.condition(nothing, t, nothing) &&
+            saving_cb_date.affect!(Integrator(t, [date(t)]))
+    end
+    for (i, t) in enumerate(saveat_itime)
+        @test sv_itime.t[i] == t
+        @test sv_itime.saveval[i] == [t]
+    end
+    for (i, t) in enumerate(saveat_ft)
+        @test sv_ft.t[i] == t
+        @test sv_ft.saveval[i] == [t]
+    end
+    for (i, t) in enumerate(saveat_date)
+        @test sv_date.t[i] == t
+        @test sv_date.saveval[i] == [t]
+    end
 end
 
 

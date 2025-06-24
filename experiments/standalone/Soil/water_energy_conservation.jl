@@ -11,6 +11,7 @@ import ClimaParams as CP
 using ClimaLand
 using ClimaLand.Soil
 using ClimaLand.Domains: Column
+import ClimaLand.Simulations: LandSimulation, solve!
 import ClimaUtilities.OutputPathGenerator: generate_output_path
 
 rmse(v1, v2) = sqrt(mean((v1 .- v2) .^ 2))
@@ -61,11 +62,6 @@ soil = Soil.EnergyHydrology{FT}(;
     sources = sources,
 );
 
-exp_tendency! = make_exp_tendency(soil);
-imp_tendency! = make_imp_tendency(soil);
-jacobian! = ClimaLand.make_jacobian(soil);
-
-
 function init_soil!(Y, z, Trange, params)
     ν = params.ν
     θ_r = params.θ_r
@@ -101,7 +97,12 @@ function init_soil!(Y, z, Trange, params)
             params.earth_param_set,
         )
 end
-set_initial_cache! = make_set_initial_cache(soil);
+function make_set_ic(z, Trange)
+    let z = z, Trange = Trange
+        (Y, p, t0, model) -> init_soil!(Y, z, Trange, model.parameters)
+    end
+end
+
 
 stepper = CTS.ARS111()
 err = (FT == Float64) ? 1e-8 : 1e-4
@@ -140,26 +141,17 @@ savedir = generate_output_path(
 
 for experiment in [no_phase_change, phase_change]
     (; t0, tf, dt_ref, Trange, dts, exp_name) = experiment
-    Y, p, coords = initialize(soil)
-    init_soil!(Y, coords.subsurface.z, Trange, soil.parameters)
-    set_initial_cache!(p, Y, t0)
-    jac_kwargs = (;
-        jac_prototype = ClimaLand.FieldMatrixWithSolver(Y),
-        Wfact = jacobian!,
+    set_ic! = make_set_ic(soil.domain.fields.z, Trange)
+    ref_simulation = LandSimulation(
+        t0,
+        tf,
+        dt_ref,
+        soil;
+        set_ic! = set_ic!,
+        timestepper = ode_algo,
+        solver_kwargs = (; saveat = [t0, tf]),
     )
-
-    prob = SciMLBase.ODEProblem(
-        CTS.ClimaODEFunction(
-            T_exp! = exp_tendency!,
-            T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
-            dss! = ClimaLand.dss!,
-        ),
-        Y,
-        (t0, tf),
-        p,
-    )
-    ref_sol = SciMLBase.solve(prob, ode_algo; dt = dt_ref, saveat = [t0, tf])
-
+    ref_sol = solve!(ref_simulation)
     # Now try several dts
     rmses_water = Array{FT}(undef, length(dts))
     rmses_energy = Array{FT}(undef, length(dts))
@@ -168,29 +160,23 @@ for experiment in [no_phase_change, phase_change]
     for i in eachindex(dts)
         dt = dts[i]
 
-        Y, p, coords = initialize(soil)
-        init_soil!(Y, coords.subsurface.z, Trange, soil.parameters)
-        set_initial_cache!(p, Y, t0)
+        simulation = LandSimulation(
+            t0,
+            tf,
+            dt,
+            soil;
+            set_ic! = set_ic!,
+            timestepper = ode_algo,
+            solver_kwargs = (; saveat = [t0, tf]),
+            user_callbacks = (),
+        )
+        p = simulation._integrator.p
         p_init = deepcopy(p)
         energy_start = Array(parent(p_init.soil.total_energy))[1]
         mass_start = Array(parent(p_init.soil.total_water))[1]
 
-        jac_kwargs = (;
-            jac_prototype = ClimaLand.FieldMatrixWithSolver(Y),
-            Wfact = jacobian!,
-        )
 
-        prob = SciMLBase.ODEProblem(
-            CTS.ClimaODEFunction(
-                T_exp! = exp_tendency!,
-                T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
-                dss! = ClimaLand.dss!,
-            ),
-            Y,
-            (t0, tf),
-            p,
-        )
-        sol = SciMLBase.solve(prob, ode_algo; dt = dt, saveat = [t0, tf])
+        sol = solve!(simulation)
         # Calculate water mass balance over entire simulation
         mass_end = Array(parent(p.soil.total_water))[1]
         t_sim = sol.t[end] - sol.t[1]

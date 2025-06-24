@@ -47,7 +47,7 @@ import ClimaComms
 ClimaComms.@import_required_backends
 import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
 import ClimaUtilities.OutputPathGenerator: generate_output_path
-
+import ClimaUtilities.TimeManager: date
 using ClimaLand
 using ClimaLand.Domains
 using ClimaLand.Soil
@@ -56,6 +56,7 @@ using ClimaLand.Canopy
 using ClimaLand.Canopy.PlantHydraulics
 import ClimaLand
 import ClimaLand.Parameters as LP
+import ClimaLand.Simulations: LandSimulation, solve!
 import ClimaParams
 
 
@@ -67,8 +68,7 @@ try
 catch
 end
 
-function set_initial_conditions(land, t0)
-    Y, p, cds = initialize(land)
+function set_ic!(Y, p, t0, model)
     FT = eltype(Y.soil.ϑ_l)
     set_initial_cache! = make_set_initial_cache(land)
 
@@ -110,8 +110,7 @@ function set_initial_conditions(land, t0)
     end
 
     Y.canopy.energy.T = FT(297.5)
-    set_initial_cache!(p, Y, t0)
-    return Y, p
+    return
 end
 
 context = ClimaComms.context()
@@ -303,14 +302,10 @@ canopy = Canopy.CanopyModel{FT}(
 # Integrated plant and soil model
 land = SoilCanopyModel{FT}(soilco2, soil, canopy)
 
-# Define explicit and implicit tendencies, and the jacobian
-exp_tendency! = make_exp_tendency(land)
-imp_tendency! = make_imp_tendency(land);
-jacobian! = make_jacobian(land);
-
 # Timestepping information
 N_hours = 8
 tf = Float64(t0 + N_hours * 3600.0)
+stop_date = start_date + Dates.Second(round(tf))
 sim_time = round((tf - t0) / 3600, digits = 2) # simulation length in hours
 
 timestepper = CTS.ARS111()
@@ -321,10 +316,6 @@ ode_algo = CTS.IMEXAlgorithm(
         update_j = CTS.UpdateEvery(CTS.NewNewtonIteration),
     ),
 );
-
-# Set up simulation callbacks
-drivers = ClimaLand.get_drivers(land)
-updatefunc = ClimaLand.make_update_drivers(drivers)
 
 # Choose timesteps and set up arrays to store information
 ref_dt = 50.0
@@ -340,36 +331,23 @@ times = []
 for dt in dts
     @info dt
     # Initialize model and set initial conditions before each simulation
-    Y, p = set_initial_conditions(land, t0)
-    jac_kwargs = (;
-        jac_prototype = ClimaLand.FieldMatrixWithSolver(Y),
-        Wfact = jacobian!,
-    )
-
-    # Create callback for driver updates
-    saveat = vcat(Array(t0:(3 * 3600):tf), tf)
-    updateat = vcat(Array(t0:(3 * 3600):tf), tf)
-    driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
-
-    # Solve simulation
-    prob = SciMLBase.ODEProblem(
-        CTS.ClimaODEFunction(
-            T_exp! = exp_tendency!,
-            T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
-            dss! = ClimaLand.dss!,
+    simulation = LandSimulation(
+        start_date,
+        stop_date,
+        dt,
+        land;
+        solver_kwargs = (;
+            saveat = vcat(
+                collect(start_date:Dates.Hour(3):stop_date),
+                stop_date,
+            )
         ),
-        Y,
-        (t0, tf),
-        p,
+        diagnostics = [],
+        updateat = vcat(collect(start_date:Dates.Hour(3):stop_date), stop_date),
+        timestepper = ode_algo,
+        set_ic!,
     )
-    @time sol = SciMLBase.solve(
-        prob,
-        ode_algo;
-        dt = dt,
-        callback = driver_cb,
-        saveat = saveat,
-    )
-
+    sol = ClimaLand.Simulations.solve!(simulation)
     # Save results for comparison
     if dt == ref_dt
         global ref_T =
@@ -430,9 +408,8 @@ ax3 = Axis(
     ylabel = "T (K)",
     title = "T throughout simulation; length = $(sim_time) hours, dts in [$(dts[1]), $(dts[end])]",
 )
-times = times ./ 3600.0 # hours
 for i in 1:length(times)
-    lines!(ax3, times[i], T_states[i], label = "dt $(dts[i]) s")
+    lines!(ax3, FT.(times[i]) ./ 3600.0, T_states[i], label = "dt $(dts[i]) s")
 end
 axislegend(ax3, position = :rt)
 save(joinpath(savedir, "states.png"), fig3)

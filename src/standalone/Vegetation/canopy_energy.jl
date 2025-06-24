@@ -190,7 +190,7 @@ function ClimaLand.make_compute_jacobian(
             Y.canopy.energy.T - _T_freeze,
         )# use atmos air pressure as approximation for surface air pressure
         @. ∂Tres∂T =
-            dtγ * MatrixFields.DiagonalMatrixRow(
+            float(dtγ) * MatrixFields.DiagonalMatrixRow(
                 (∂LW_n∂Tc - ∂SHF∂Tc - ∂LHF∂qc * ∂qc∂Tc) /
                 (ac_canopy * max(area_index.leaf + area_index.stem, eps(FT))),
             ) - (I,)
@@ -241,7 +241,7 @@ end
 A function which updates `surface_field` in place with the value of
 the big leaf model's energy.
 
-Note that this assumes that there is at most a single canopy and stem 
+Note that this assumes that there is at most a single canopy and stem
 component, and that the area index for them refers to the integrated
 area index (in height) - not the value per layer.
 """

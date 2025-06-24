@@ -8,6 +8,7 @@ using ClimaLand.Domains: Column
 using ClimaLand.Soil
 using ClimaLand.Soil.Biogeochemistry
 using ClimaLand.Soil.Biogeochemistry: MicrobeProduction
+import ClimaLand.Simulations: LandSimulation, solve!
 using Dates
 
 import ClimaLand.Parameters as LP
@@ -117,9 +118,6 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
         soilco2_args = soilco2_args,
     )
 
-    Y, p, coords = initialize(model)
-    set_initial_cache! = make_set_initial_cache(model)
-
     function init_soil!(Y, z, params)
         ν = params.ν
         FT = eltype(Y.soil.ϑ_l)
@@ -149,11 +147,11 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
         Y.soilco2.C .= CO2_profile.(z)
     end
 
-    z = coords.subsurface.z
-    init_soil!(Y, z, model.soil.parameters)
-    init_co2!(Y, z)
-    set_initial_cache!(p, Y, t0)
-    Soil_bio_exp_tendency! = make_exp_tendency(model)
+    function set_ic!(Y, p, t0, model)
+        z = model.soil.domain.fields.z
+        init_co2!(Y, z)
+        init_soil!(Y, z, model.soil.parameters)
+    end
 
     timestepper = CTS.RK4()
     ode_algo = CTS.ExplicitAlgorithm(timestepper)
@@ -165,18 +163,20 @@ for (FT, tf) in ((Float32, 2 * dt), (Float64, tf))
     )
     saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat)
     updateat = deepcopy(saveat)
-    drivers = ClimaLand.get_drivers(model)
-    updatefunc = ClimaLand.make_update_drivers(drivers)
-    driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
-    cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
 
-    prob = SciMLBase.ODEProblem(
-        CTS.ClimaODEFunction(T_exp! = Soil_bio_exp_tendency!),
-        Y,
-        (t0, tf),
-        p,
+    simulation = LandSimulation(
+        t0,
+        tf,
+        dt,
+        model;
+        diagnostics = [],
+        timestepper = ode_algo,
+        set_ic!,
+        user_callbacks = (saving_cb,),
+        updateat = updateat,
+        solver_kwargs = (; saveat = deepcopy(saveat)),
     )
-    sol = SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb)
+    sol = ClimaLand.Simulations.solve!(simulation)
 
     # Check that simulation still has correct float type
     @assert eltype(sol.u[end].soil) == FT

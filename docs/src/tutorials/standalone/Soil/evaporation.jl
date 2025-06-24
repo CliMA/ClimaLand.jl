@@ -17,6 +17,7 @@ using DelimitedFiles: readdlm
 
 using ClimaLand
 using ClimaLand.Domains: Column
+import ClimaLand.Simulations: LandSimulation, solve!
 using ClimaLand.Soil
 import ClimaLand
 import ClimaLand.Parameters as LP
@@ -39,7 +40,11 @@ thermo_params = LP.thermodynamic_parameters(earth_param_set);
 # Our assumption is that in the lab experiment there was no radiative heating
 # or cooling of the soil.
 
-start_date = DateTime(2005) # required argument, but not used in this case
+# Timestepping:
+start_date = DateTime(2005)
+end_date = start_date + Day(13)
+dt = Float64(900.0)
+
 SW_d = (t) -> 0
 LW_d = (t) -> 301.15^4 * 5.67e-8
 radiation = PrescribedRadiativeFluxes(
@@ -132,7 +137,9 @@ function hydrostatic_equilibrium(z, z_interface, params)
         return ν * (1 + (α * (z - z_interface))^n)^(-m)
     end
 end
-function init_soil!(Y, z, params)
+function set_ic!(Y, p, t0, model)
+    params = model.parameters
+    z = model.domain.fields.z
     FT = eltype(Y.soil.ϑ_l)
     Y.soil.ϑ_l .= hydrostatic_equilibrium.(z, FT(-0.001), params)
     Y.soil.θ_i .= 0
@@ -162,25 +169,7 @@ soil = Soil.EnergyHydrology{FT}(;
     sources = (),
 )
 
-Y, p, cds = initialize(soil);
-
-init_soil!(Y, z, soil.parameters);
-
 # Timestepping:
-t0 = Float64(0)
-tf = Float64(24 * 3600 * 13)
-dt = Float64(900.0)
-
-# We also set the initial conditions of the cache here:
-set_initial_cache! = make_set_initial_cache(soil)
-set_initial_cache!(p, Y, t0);
-
-# Define the tendency functions
-exp_tendency! = make_exp_tendency(soil)
-imp_tendency! = make_imp_tendency(soil);
-jacobian! = ClimaLand.make_jacobian(soil);
-jac_kwargs =
-    (; jac_prototype = ClimaLand.FieldMatrixWithSolver(Y), Wfact = jacobian!)
 
 timestepper = CTS.ARS111();
 ode_algo = CTS.IMEXAlgorithm(
@@ -191,32 +180,29 @@ ode_algo = CTS.IMEXAlgorithm(
     ),
 );
 
-# Define the problem and callbacks:
-prob = SciMLBase.ODEProblem(
-    CTS.ClimaODEFunction(
-        T_exp! = exp_tendency!,
-        T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
-        dss! = ClimaLand.dss!,
-    ),
-    Y,
-    (t0, tf),
-    p,
-);
-saveat = Array(t0:3600.0:tf)
+saveat = Array(start_date:Second(3600.0):end_date);
 sv_hr = (;
-    t = Array{Float64}(undef, length(saveat)),
+    t = Array{DateTime}(undef, length(saveat)),
     saveval = Array{NamedTuple}(undef, length(saveat)),
 )
 saving_cb = ClimaLand.NonInterpSavingCallback(sv_hr, saveat)
 updateat = deepcopy(saveat)
-model_drivers = ClimaLand.get_drivers(soil)
-updatefunc = ClimaLand.make_update_drivers(model_drivers)
-driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
-cb = SciMLBase.CallbackSet(driver_cb, saving_cb);
+
+simulation = LandSimulation(
+    start_date,
+    end_date,
+    dt,
+    soil;
+    set_ic! = set_ic!,
+    solver_kwargs = (; saveat = deepcopy(saveat)),
+    timestepper = ode_algo,
+    user_callbacks = (saving_cb,),
+    updateat = updateat,
+    diagnostics = (),
+);
 
 # Solve
-sol_hr =
-    SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb, saveat = saveat);
+sol_hr = solve!(simulation);
 
 # Repeat at lower resolution
 zmax = FT(0)
@@ -233,26 +219,7 @@ soil = Soil.EnergyHydrology{FT}(;
     sources = (),
 )
 
-Y, p, cds = initialize(soil);
-
-init_soil!(Y, z, soil.parameters);
-
 # Timestepping:
-t0 = Float64(0)
-tf = Float64(24 * 3600 * 13)
-dt = Float64(3600.0)
-
-# We also set the initial conditions of the cache here:
-set_initial_cache! = make_set_initial_cache(soil)
-set_initial_cache!(p, Y, t0);
-
-# Define the tendency functions
-exp_tendency! = make_exp_tendency(soil)
-imp_tendency! = make_imp_tendency(soil);
-jacobian! = ClimaLand.make_jacobian(soil);
-jac_kwargs =
-    (; jac_prototype = ClimaLand.FieldMatrixWithSolver(Y), Wfact = jacobian!);
-
 timestepper = CTS.ARS111();
 ode_algo = CTS.IMEXAlgorithm(
     timestepper,
@@ -262,32 +229,28 @@ ode_algo = CTS.IMEXAlgorithm(
     ),
 );
 
-# Define the problem and callbacks:
-prob = SciMLBase.ODEProblem(
-    CTS.ClimaODEFunction(
-        T_exp! = exp_tendency!,
-        T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
-        dss! = ClimaLand.dss!,
-    ),
-    Y,
-    (t0, tf),
-    p,
-);
-saveat = Array(t0:3600.0:tf)
+saveat = Array(start_date:Second(3600.0):end_date);
 sv_lr = (;
-    t = Array{Float64}(undef, length(saveat)),
+    t = Array{DateTime}(undef, length(saveat)),
     saveval = Array{NamedTuple}(undef, length(saveat)),
 )
 saving_cb = ClimaLand.NonInterpSavingCallback(sv_lr, saveat)
 updateat = deepcopy(saveat)
-model_drivers = ClimaLand.get_drivers(soil)
-updatefunc = ClimaLand.make_update_drivers(model_drivers)
-driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
-cb = SciMLBase.CallbackSet(driver_cb, saving_cb);
+simulation = LandSimulation(
+    start_date,
+    end_date,
+    dt,
+    soil;
+    set_ic! = set_ic!,
+    updateat = updateat,
+    solver_kwargs = (; saveat = deepcopy(saveat)),
+    timestepper = ode_algo,
+    user_callbacks = (saving_cb,),
+    diagnostics = (),
+);
 
 # Solve
-sol_lr =
-    SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb, saveat = saveat);
+sol_lr = solve!(simulation);
 
 # Figures
 
@@ -314,7 +277,7 @@ ax = Axis(
     xgridvisible = false,
     ygridvisible = false,
 )
-CairoMakie.xlims!(minimum(data_dates), maximum(sol_lr.t ./ 3600 ./ 24))
+CairoMakie.xlims!(minimum(data_dates), maximum(float.(sol_lr.t) ./ 3600 ./ 24))
 CairoMakie.lines!(
     ax,
     FT.(data_dates),
@@ -325,7 +288,7 @@ CairoMakie.lines!(
 )
 CairoMakie.lines!(
     ax,
-    sol_lr.t ./ 3600 ./ 24,
+    FT.(sol_lr.t) ./ 3600 ./ 24,
     evap_lr .* (1000 * 3600 * 24),
     label = "Model, 7 elements",
     color = :blue,
@@ -333,7 +296,7 @@ CairoMakie.lines!(
 )
 CairoMakie.lines!(
     ax,
-    sol_hr.t ./ 3600 ./ 24,
+    FT.(sol_hr.t) ./ 3600 ./ 24,
     evap_hr .* (1000 * 3600 * 24),
     label = "Model, 28 elements",
     color = :blue,

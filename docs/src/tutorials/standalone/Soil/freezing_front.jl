@@ -82,6 +82,7 @@ import ClimaParams as CP
 
 using ClimaLand
 using ClimaLand.Domains: Column
+import ClimaLand.Simulations: LandSimulation, solve!
 using ClimaLand.Soil
 
 import ClimaLand
@@ -169,15 +170,11 @@ soil = Soil.EnergyHydrology{FT}(;
 
 # # Running a simulation
 
-# Once we have the model, we can
-# [`initialize`](@ref ClimaLand.initialize)
-# the state vectors and obtain the coordinates
-Y, p, coords = initialize(soil);
+# We can specify the initial condition:
 
-# After which, we can specify the initial condition
-# function, and initialze the variables:
-
-function init_soil!(Ysoil, z, params)
+function set_ic!(Ysoil, p, t0, model)
+    params = model.parameters
+    z = model.domain.fields.z
     ν = params.ν
     FT = eltype(Ysoil.soil.ϑ_l)
     Ysoil.soil.ϑ_l .= FT(0.33)
@@ -198,22 +195,9 @@ function init_soil!(Ysoil, z, params)
         )
 end
 
-init_soil!(Y, coords.subsurface.z, soil.parameters);
-
 # We choose the initial and final simulation times:
 t0 = Float64(0)
 tf = Float64(60 * 60 * 50);
-
-# We set the cache values corresponding to the initial conditions
-# of the state Y:
-set_initial_cache! = make_set_initial_cache(soil);
-set_initial_cache!(p, Y, t0);
-# Create the tendency function, and choose a timestep, and timestepper:
-exp_tendency! = make_exp_tendency(soil)
-imp_tendency! = make_imp_tendency(soil);
-jacobian! = ClimaLand.make_jacobian(soil);
-jac_kwargs =
-    (; jac_prototype = ClimaLand.FieldMatrixWithSolver(Y), Wfact = jacobian!);
 
 dt = Float64(100)
 
@@ -226,20 +210,20 @@ ode_algo = CTS.IMEXAlgorithm(
     ),
 );
 
-# Problem definition and callbacks
-prob = SciMLBase.ODEProblem(
-    CTS.ClimaODEFunction(
-        T_exp! = exp_tendency!,
-        T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
-        dss! = ClimaLand.dss!,
-    ),
-    Y,
-    (t0, tf),
-    p,
+simulation = LandSimulation(
+    t0,
+    tf,
+    dt,
+    soil;
+    set_ic! = set_ic!,
+    solver_kwargs = (; save_everystep = true),
+    timestepper = ode_algo,
+    user_callbacks = (),
+    diagnostics = (),
 );
+sol = solve!(simulation);
 
-# Now we can solve the problem.
-sol = SciMLBase.solve(prob, ode_algo; dt = dt, saveat = collect(0:3600:tf));
+# Now we can create and solve the simulation.
 
 # # Comparison to data
 # This data was obtained by us from the figures of Hansson et al. (2004), but was originally obtained
@@ -289,7 +273,7 @@ ax3 = Axis(
 limits!(ax3, 0.2, 0.5, -0.2, 0.0)
 
 
-z = parent(coords.subsurface.z)[:];
+z = parent(soil.domain.fields.z)[:];
 
 scatter!(ax1, vwc[mask_12h], -depth[mask_12h], label = "", color = "orange")
 lines!(

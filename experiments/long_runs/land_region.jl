@@ -163,7 +163,7 @@ domain = ClimaLand.Domains.HybridBox(;
 )
 params = LP.LandParameters(FT)
 model = setup_model(FT, context, start_date, Δt, domain, params)
-simulation = LandSimulation(FT, start_date, stop_date, Δt, model; outdir)
+simulation = LandSimulation(start_date, stop_date, Δt, model; outdir)
 ClimaLand.Simulations.solve!(simulation)
 
 LandSimVis.make_heatmaps(simulation; savedir = root_path, date = stop_date)

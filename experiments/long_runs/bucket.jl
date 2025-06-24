@@ -138,7 +138,6 @@ timestepper = CTS.ExplicitAlgorithm(timestepper)
 
 # Create the simulation
 simulation = LandSimulation(
-    FT,
     start_date,
     stop_date,
     Δt,

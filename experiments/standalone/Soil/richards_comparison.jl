@@ -12,6 +12,7 @@ using ClimaLand
 using ClimaLand.Domains: Column
 using ClimaLand.Soil
 import ClimaUtilities.OutputPathGenerator: generate_output_path
+import ClimaLand.Simulations: LandSimulation, solve!
 
 import ClimaLand
 import ClimaLand.Parameters as LP
@@ -67,16 +68,11 @@ outdir = generate_output_path(
             boundary_conditions = boundary_states,
             sources = sources,
         )
-        set_initial_cache! = make_set_initial_cache(soil)
-
-        Y, p, coords = initialize(soil)
 
         # specify ICs
-        Y.soil.ϑ_l .= FT(0.24)
-        exp_tendency! = make_exp_tendency(soil)
-        imp_tendency! = ClimaLand.make_imp_tendency(soil)
-        jacobian! = ClimaLand.make_jacobian(soil)
-        set_initial_cache!(p, Y, t0)
+        function set_ic!(Y, p, t0, model)
+            Y.soil.ϑ_l .= FT(0.24)
+        end
 
         stepper = CTS.ARS111()
         norm_condition = CTS.MaximumError(FT(1e-8))
@@ -90,28 +86,18 @@ outdir = generate_output_path(
             ),
         )
 
-        # set up jacobian info
-        jac_kwargs = (;
-            jac_prototype = ClimaLand.FieldMatrixWithSolver(Y),
-            Wfact = jacobian!,
+        simulation = LandSimulation(
+            t0,
+            tf,
+            dt,
+            soil;
+            outdir,
+            set_ic!,
+            timestepper = ode_algo,
+            solver_kwargs = (; saveat = collect(t0:10000:tf)),
         )
 
-        prob = SciMLBase.ODEProblem(
-            CTS.ClimaODEFunction(
-                T_exp! = exp_tendency!,
-                T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
-                dss! = ClimaLand.dss!,
-            ),
-            Y,
-            (t0, tf),
-            p,
-        )
-        sol = SciMLBase.solve(
-            prob,
-            ode_algo;
-            dt = dt,
-            saveat = collect(t0:10000:tf),
-        )
+        sol = solve!(simulation)
 
         # Check that simulation still has correct float type
         @assert eltype(sol.u[end].soil) == FT
@@ -176,15 +162,11 @@ end
             sources = sources,
         )
 
-        Y, p, coords = initialize(soil)
-        set_initial_cache! = make_set_initial_cache(soil)
 
         # specify ICs
-        Y.soil.ϑ_l .= FT(0.1)
-        exp_tendency! = make_exp_tendency(soil)
-        imp_tendency! = ClimaLand.make_imp_tendency(soil)
-        jacobian! = ClimaLand.make_jacobian(soil)
-        set_initial_cache!(p, Y, t0)
+        function set_ic!(Y, p, t0, model)
+            Y.soil.ϑ_l .= FT(0.1)
+        end
 
         stepper = CTS.ARS111()
         norm_condition = CTS.MaximumError(FT(1e-8))
@@ -197,28 +179,18 @@ end
                 convergence_checker = conv_checker,
             ),
         )
-        # set up jacobian info
-        jac_kwargs = (;
-            jac_prototype = ClimaLand.FieldMatrixWithSolver(Y),
-            Wfact = jacobian!,
+        simulation = LandSimulation(
+            t0,
+            tf,
+            dt,
+            soil;
+            outdir,
+            set_ic!,
+            timestepper = ode_algo,
+            solver_kwargs = (; saveat = collect(t0:(60 * dt):tf)),
         )
 
-        prob = SciMLBase.ODEProblem(
-            CTS.ClimaODEFunction(
-                T_exp! = exp_tendency!,
-                T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
-                dss! = ClimaLand.dss!,
-            ),
-            Y,
-            (t0, tf),
-            p,
-        )
-        sol = SciMLBase.solve(
-            prob,
-            ode_algo;
-            dt = dt,
-            saveat = collect(t0:(60 * dt):tf),
-        )
+        sol = solve!(simulation)
 
         # Check that simulation still has correct float type
         @assert eltype(sol.u[end].soil) == FT

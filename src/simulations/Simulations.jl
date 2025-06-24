@@ -7,6 +7,7 @@ using Dates
 import ClimaUtilities.TimeManager: ITime, date
 import ClimaDiagnostics
 using ClimaLand
+import ClimaLand.Domains: SphericalShell, HybridBox, SphericalSurface
 export step!, solve!, LandSimulation
 include("initial_conditions.jl")
 
@@ -23,7 +24,7 @@ import ..Diagnostics: close_output_writers
         I <: SciMLBase.DEIntegrator,
     }
 
-the ClimaLand LandSimulation struct, which specifies 
+the ClimaLand LandSimulation struct, which specifies
 - the discrete set of equations to solve (defined by the `model`);
 - the timestepping algorithm;
 - user callbacks (passed as a tuple) to be executed at specific times in the simulations;
@@ -33,13 +34,13 @@ User callbacks are optional: examples currently include callbacks that estimate 
 to solution and SYPD of the simulation as it runs, checkpoint the state, or check the solution
 for NaNs. Others can be added here.
 
-Diagnostics are implemented as callbacks, and are also optional. 
-However, a default is provided. `diagnostics` is expected to be a 
+Diagnostics are implemented as callbacks, and are also optional.
+However, a default is provided. `diagnostics` is expected to be a
 list of `ClimaDiagnostics.ScheduledDiagnostics`.
 
 Finally, the private field _required_callbacks consists of callbacks that are required for the
 simulation to run correctly. Currently, this includes the callbacks which update the atmospheric
-forcing and update the LAI using prescribed data. 
+forcing and update the LAI using prescribed data.
 """
 struct LandSimulation{
     M <: ClimaLand.AbstractModel,
@@ -59,11 +60,57 @@ struct LandSimulation{
     _integrator::I
 end
 
+"""
+    LandSimulation(
+        t0::ITime,
+        tf::ITime,
+        Δt::ITime,
+        model;
+        outdir = ".",
+        set_ic! = make_set_initial_state_from_file(
+            ClimaLand.Artifacts.soil_ic_2008_50m_path(;
+                context = ClimaComms.context(model),
+            ),
+            model,
+        ),
+        timestepper = ClimaTimeSteppers.IMEXAlgorithm(
+            ClimaTimeSteppers.ARS111(),
+            ClimaTimeSteppers.NewtonsMethod(
+                max_iters = 3,
+                update_j = ClimaTimeSteppers.UpdateEvery(
+                    ClimaTimeSteppers.NewNewtonIteration,
+                ),
+            ),
+        ),
+        user_callbacks = (
+            ClimaLand.NaNCheckCallback(
+                isnothing(t0.epoch) ? Δt * 10000 : Dates.Month(1),
+                t0,
+                Δt;
+                mask = ClimaLand.Domains.landsea_mask(ClimaLand.get_domain(model)),
+            ),
+            ClimaLand.ReportCallback(1000),
+        ),
+        diagnostics = ClimaLand.default_diagnostics(model, t0, outdir),
+        updateat = [promote(t0:(ITime(3600 * 3)):tf...)...],
+        solver_kwargs = (;),
+    )
+
+Creates a `LandSimulation` object for `model` with the  `_integrator` field initialized
+with a problem from `t0` to `tf`, a time step of `Δt`, and with `timestepper` as the
+time-stepping algorithm. During the construction process, the initial conditions
+are set using `set_ic!`, the initial cache is set using `make_set_initial_cache(model)`,
+and driver and diagnostic callbacks are created. If `updateat` is a vector, the drivers
+will be updated at those times; if it is a single time, the drivers will be updated
+at that interval. The order the callbacks are called while stepping the simulation is:
+1. user_callbacks
+2. driver update callback
+3. diagnostics callback
+"""
 function LandSimulation(
-    FT,
-    start_date::Dates.DateTime,
-    stop_date::Dates.DateTime,
-    Δt::AbstractFloat,
+    t0::ITime,
+    tf::ITime,
+    Δt::ITime,
     model;
     outdir = ".",
     set_ic! = make_set_initial_state_from_file(
@@ -83,34 +130,27 @@ function LandSimulation(
     ),
     user_callbacks = (
         ClimaLand.NaNCheckCallback(
-            Dates.Month(1),
-            start_date,
-            ITime(Δt, epoch = start_date),
+            isnothing(t0.epoch) ? Δt * 10000 : Dates.Month(1),
+            t0,
+            Δt;
             mask = ClimaLand.Domains.landsea_mask(ClimaLand.get_domain(model)),
         ),
         ClimaLand.ReportCallback(1000),
     ),
-    diagnostics = ClimaLand.default_diagnostics(
-        model,
-        start_date;
-        output_writer = ClimaDiagnostics.Writers.NetCDFWriter(
-            ClimaLand.get_domain(model).space.subsurface,
-            outdir;
-            start_date,
-        ),
-    ),
+    diagnostics = ClimaLand.default_diagnostics(model, t0, outdir),
+    updateat = [promote(t0:(ITime(3600 * 3)):tf...)...],
+    solver_kwargs = (;),
 )
     if !isnothing(diagnostics) &&
        !isempty(diagnostics) &&
+       !(
+           first(diagnostics).output_writer isa
+           ClimaDiagnostics.Writers.DictWriter
+       ) &&
        first(diagnostics).output_writer.output_dir != outdir
         @warn "Note that the kwarg outdir and outdir used in diagnostics are inconsistent; using $(first(diagnostics).output_writer.output_dir)"
     end
 
-    domain = ClimaLand.get_domain(model)
-    t0 = ITime(0, Dates.Second(1), start_date)
-    tf = ITime(Dates.seconds(stop_date - start_date), epoch = start_date)
-    Δt = ITime(Δt, epoch = start_date)
-    t0, tf, Δt = promote(t0, tf, Δt)
 
     # set initial conditions
     Y, p, cds = initialize(model)
@@ -145,9 +185,10 @@ function LandSimulation(
     )
 
     # Required callbacks
-    updateat = [promote(t0:(ITime(3600 * 3)):tf...)...]
     drivers = ClimaLand.get_drivers(model)
     updatefunc = ClimaLand.make_update_drivers(drivers)
+    updateat =
+        updateat isa AbstractVector ? updateat : [promote(t0:updateat:tf...)...]
     driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
     required_callbacks = (driver_cb,) # TBD: can we update each step?
 
@@ -157,16 +198,16 @@ function LandSimulation(
     diag_cb = ClimaDiagnostics.DiagnosticsCallback(diagnostic_handler)
 
 
-    # Collect all callbacks
+    # Collect all callbacks #TODO: ordering can be confusing as the state can be saved
+    # in both user_cbs and diag_cbs, and the driver update happens between them
     callbacks =
         SciMLBase.CallbackSet(user_callbacks..., required_callbacks..., diag_cb)
-
     _integrator = SciMLBase.init(
         problem,
         timestepper;
         dt = Δt,
         callback = callbacks,
-        adaptive = false,
+        merge((; adaptive = false), solver_kwargs)...,
     )
     return LandSimulation(
         model,
@@ -177,6 +218,66 @@ function LandSimulation(
         callbacks,
         _integrator,
     )
+end
+
+"""
+    LandSimulation(
+        t0::AbstractFloat,
+        tf::AbstractFloat,
+        Δt::AbstractFloat,
+        args...;
+        start_date = nothing,
+        kwargs...,
+    )
+
+A convenience constructor for `LandSimulation` that converts `t0`, `tf`, `Δt` into `ITime`(s),
+using `start_date` as the epoch if provided. If the `kwargs` contain `updateat`, it will
+convert the update times to `ITime`(s) as well. The same applies to `saveat` in `solver_kwargs`.
+
+"""
+function LandSimulation(
+    t0::AbstractFloat,
+    tf::AbstractFloat,
+    Δt::AbstractFloat,
+    args...;
+    start_date = nothing,
+    kwargs...,
+)
+    t0_itime, tf_itime, Δt_itime =
+        promote(ITime.((t0, tf, Δt); epoch = start_date)...)
+    kwargs = convert_kwarg_updates(t0_itime, kwargs)
+    LandSimulation(t0_itime, tf_itime, Δt_itime, args...; kwargs...)
+end
+
+"""
+    LandSimulation(
+        start_date::Dates.DateTime,
+        stop_date::Dates.DateTime,
+        Δt::Union{AbstractFloat, Dates.Second},
+        args...;
+        kwargs...,
+    )
+
+A convenience constructor for `LandSimulation` that converts `start_date`, `stop_date`, and `Δt`
+into `ITime`(s), using `start_date` as the epoch. If the `kwargs` contain `updateat`, it will
+convert the update times to `ITime`(s) as well. The same applies to `saveat` in `solver_kwargs`.
+"""
+function LandSimulation(
+    start_date::Dates.DateTime,
+    stop_date::Dates.DateTime,
+    Δt::Union{AbstractFloat, Dates.Second},
+    args...;
+    kwargs...,
+)
+    t0 = ITime(0, Dates.Second(1), start_date)
+    tf = ITime(
+        Dates.value(convert(Dates.Second, stop_date - start_date)),
+        epoch = start_date,
+    )
+    Δt = ITime(Δt isa Dates.Second ? Δt.value : Δt, epoch = start_date)
+    t0_itime, tf_itime, Δt_itime = promote(t0, tf, Δt)
+    kwargs = convert_kwarg_updates(t0_itime, kwargs)
+    LandSimulation(t0_itime, tf_itime, Δt_itime, args...; kwargs...)
 end
 
 """
@@ -236,11 +337,59 @@ model, and current date of the simulation `landsim`.
 function Base.show(io::IO, landsim::LandSimulation)
     device_type = nameof(typeof(ClimaComms.device(landsim)))
     model_type = nameof(typeof(landsim.model))
+    t = landsim._integrator.t
+    final_line = if isnothing(t.epoch)
+        "└── Current simulation time: $(t)\n"
+    else
+        "└── Current date: $(date(t))\n"
+    end
     return print(
         io,
         "$(model_type) Simulation\n",
         "├── Running on: $(device_type)\n",
-        "└── Current date: $(date(landsim._integrator.t))\n",
+        final_line,
     )
 end
+
+"""
+    convert_kwarg_updates(t0::ITime, kwargs)
+
+Converts the below kwargs passed to the LandSimulation constructor, which are
+update vectors/intervals, into the same type as `t0`.
+- `updateat`: a vector of update times, or an update interval
+- `solver_kwargs[:updateat]`: a vector of update times, or an update interval
+"""
+function convert_kwarg_updates(t0::ITime, kwargs)
+    if haskey(kwargs, :solver_kwargs)
+        solver_kwargs =
+            convert_kwarg_updates(t0, kwargs[:solver_kwargs], :saveat)
+        kwargs = merge((; kwargs...), (; solver_kwargs,))
+    end
+    kwargs = convert_kwarg_updates(t0, kwargs, :updateat)
+    return kwargs
+end
+
+function convert_kwarg_updates(t0::ITime, kwargs, key::Symbol)
+    haskey(kwargs, key) || return kwargs # if the key is not present, return the original kwargs
+    updates = kwargs[key]
+    converted_updates = convert_updates.(t0, updates)
+    if converted_updates isa Tuple
+        converted_updates = collect(converted_updates)
+    end
+    return merge((; kwargs...), (; key => converted_updates))
+end
+
+convert_updates(t0::ITime, update_time::ITime) = promote(t0, update_time)[2]
+convert_updates(t0::ITime, update_time::Dates.DateTime) = promote(
+    t0,
+    ITime(
+        Dates.value(convert(Dates.Second, update_time - t0.epoch));
+        epoch = t0.epoch,
+    ),
+)[2]
+convert_updates(t0::ITime, update_time::Dates.Period) =
+    promote(t0, ITime(Dates.value(convert(Dates.Second, update_time));))[2]
+convert_updates(t0::ITime, update_time::AbstractFloat) =
+    promote(t0, ITime(update_time, epoch = t0.epoch))[2]
+
 end#module
