@@ -10,6 +10,7 @@ import ClimaUtilities.TimeManager: ITime, date
 import LinearAlgebra: I
 using ClimaLand: AbstractRadiativeDrivers, AbstractAtmosphericDrivers
 import ..Parameters as LP
+import LinearAlgebra: dot
 
 import ClimaLand:
     name,

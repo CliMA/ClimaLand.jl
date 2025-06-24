@@ -25,7 +25,12 @@ export canopy_sw_rt_beer_lambert,
     nitrogen_content,
     plant_respiration_maintenance,
     plant_respiration_growth,
-    enforce_albedo_constraint
+    enforce_albedo_constraint,
+    intrinsic_quantum_yield,
+    compute_viscosity_ratio,
+    compute_Kmm,
+    optimal_co2_ratio_c3,
+    pmodel_vcmax
 
 # 1. Radiative transfer
 
@@ -1189,19 +1194,19 @@ end
 function viscosity_h2o(T::FT, p::FT) where {FT}
     # Reference constants
     tk_ast  = 647.096    # K
-    rho_ast = 322.0      # kg/m^3
-    mu_ast  = 1e-6       # Pa s
+    ρ_ast = 322.0      # kg/m^3
+    μ_ast  = 1e-6       # Pa s
 
     # Get density of water [kg/m^3]
-    rho = density_h2o(T, p)
+    ρ = density_h2o(T, p)
 
     # Dimensionless variables
     tbar  = T / tk_ast
     tbarx = sqrt(tbar)
     tbar2 = tbar^2
     tbar3 = tbar^3
-    rbar  = rho / rho_ast
-
+    ρbar  = ρ / ρ_ast
+    
     # Calculate μ0 (Eq. 11 & Table 2)
     μ0 = 1.67752 + 2.20462 / tbar + 0.6366564 / tbar2 - 0.241605 / tbar3
     μ0 = 1e2 * tbarx / μ0
@@ -1224,11 +1229,11 @@ function viscosity_h2o(T::FT, p::FT) where {FT}
         coef1 = ctbar^(i - 1)
         coef2 = 0.0
         for j in 1:7
-            coef2 += h_array[j, i] * (rbar - 1.0)^(j - 1)
+            coef2 += h_array[j, i] * (ρbar - 1.0)^(j - 1)
         end
         μ1 += coef1 * coef2
     end
-    μ1 = exp(rbar * μ1)
+    μ1 = exp(ρbar * μ1)
 
     μ_bar = μ0 * μ1       # Eq. 2
     μ = μ_bar * μ_ast     # Eq. 1
@@ -1237,7 +1242,7 @@ end
 
 
 """
-    compute_ηstar(
+    compute_viscosity_ratio(
         T::FT, 
         p::FT
     ) where {FT}
@@ -1245,8 +1250,8 @@ end
     Computes η*, the ratio of the viscosity of water at temperature T and pressure p
     to the viscosity of water at STP. 
 """
-function compute_ηstar(T::FT, p::FT) where {FT} 
-    η25 = viscosity_h20(298.15, 101325)
+function compute_viscosity_ratio(T::FT, p::FT) where {FT} 
+    η25 = viscosity_h2o(298.15, 101325.0)
     ηstar = viscosity_h2o(T, p) / η25
     return ηstar
 end
@@ -1258,8 +1263,8 @@ end
     Computes the partial pressure of O2 in the air (Pa) given atmospheric pressure. Assumes a 
     constant mixing ratio of 21000 / 101325. 
 """
-function po2(P_air::FT) 
-    return 0.2095 * P_air 
+function po2(P_air::FT) where {FT} 
+    return FT(0.2095) * P_air 
 end
 
 """
@@ -1277,7 +1282,7 @@ function co2_compensation_p(
     p::FT,
     R::FT
 ) where {FT}
-    Γstar = po2(p) * exp(6.779 - 37.83/(T * R)) 
+    Γstar = po2(p) * exp(FT(6.779) - FT(37.83)/(T * R)) 
     return Γstar
 end
 
@@ -1312,42 +1317,53 @@ function compute_Kmm(
     Kc = MM_Kc(Kc25, ΔHkc, T, To, R)
     Ko = MM_Ko(Ko25, ΔHko, T, To, R)
 
-    return Kc * (1.0 + po2(p) / Ko) 
+    return Kc * (FT(1.0) + po2(p) / Ko) 
 end
 
+"""
+    optimal_co2_ratio_c3(
+        Kmm::FT,
+        Γstar::FT, 
+        ηstar::FT, 
+        ca::FT, 
+        VPD::FT, 
+        β::FT,
+        Drel::FT 
+    ) where {FT}
 
-function optimal_χ_c3(
+    The p-model assumptions, that 1) plants optimize the relative costs of transpiration per unit
+    carbon assimlated and costs of maintaining carboxylation capacity per unit carbon assimilated;
+    2) coordination hypothesis (assimilation is limited simultaneously by both light and Rubisco) 
+    are applied to compute the optimal ratio of intercellular to ambient CO2 concentration (`χ`)
+    and auxiliary variables ξ, mj, and mc. mj and mc represent capacities for light and Rubisco-
+    limited photosynthesis, respectively. 
+
+    Parameters: Kmm (effective Michaelis-Menten coefficient for Rubisco-limited photosynthesis, Pa),
+    Γstar (CO2 compensation point, Pa), ηstar (viscosity ratio), ca (ambient CO2 partial pressure, Pa),
+    VPD (vapor pressure deficit, Pa), β (moisture stress factor, unitless), Drel = 1.6 (relative 
+    diffusivity of water vapor with respect to CO2, unitless).
+"""
+function optimal_co2_ratio_c3(
     Kmm::FT,
     Γstar::FT, 
     ηstar::FT, 
     ca::FT, 
     VPD::FT, 
     β::FT,
-    Drel::FT 
+    Drel::FT = FT(1.6) 
 ) where {FT}
     ξ = sqrt(β * (Kmm + Γstar) / (Drel * ηstar))
-    χ = Γstar / ca + (1.0 - Γstar / ca) * ξ / (ξ + sqrt(VPD)) 
+    χ = Γstar / ca + (FT(1.0) - Γstar / ca) * ξ / (ξ + sqrt(VPD)) 
 
     # define some auxiliary variables 
     γ = Γstar / ca 
     κ = Kmm / ca 
 
-    mj = (χ - γ) / (χ + 2.0 * γ) # eqn 11 in Stocker et al. (2020)
+    mj = (χ - γ) / (χ + FT(2.0) * γ) # eqn 11 in Stocker et al. (2020)
     mc = (χ - γ) / (χ + κ) # eqn 7 in Stocker et al. (2020)
 
     return χ, ξ, mj, mc
 end 
-
-
-function pmodel_vcmax(
-    ϕ0::FT, 
-    I_abs::FT,
-    mj::FT,
-    mc::FT   
-) where {FT}
-    Vcmax = ϕ0 * I_abs * mj / mc 
-    return Vcmax
-end
 
 
 """
@@ -1358,6 +1374,8 @@ end
     ) where {FT}
 
     Computes the stomatal conductance (`gs`), in units of mol/m^2/s via Fick's law. 
+    Parameters are the ratio of intercellular to ambient CO2 concentration (`χ`),
+    the ambient CO2 concentration (`ca`), and the assimilation rate (`A`).
 """
 function compute_gs(
     χ::FT, 
@@ -1365,4 +1383,103 @@ function compute_gs(
     A::FT
 ) where {FT}
     return A / (ca * (1 - χ)) 
+end
+
+"""
+    compute_mj_with_jmax_limitation(
+        mj::FT,
+        cstar::FT
+    ) where {FT}
+
+    Computes m' such that Aj = ϕ0 I_abs * m' (a LUE model) by assuming that dA/dJmax = c
+    is constant. cstar is defined as 4c, a free parameter. Wang etal (2017) derive cstar = 0.412
+    at STP and using Vcmax/Jmax = 1.88. 
+"""
+# TODO: test if cstar should be made a free parameter? 
+function compute_mj_with_jmax_limitation(
+    mj::FT, 
+    cstar::FT = FT(0.412)
+) where {FT}
+    return mj * sqrt(FT(1.0) - (cstar / mj)^(2/3)) 
+end 
+
+
+"""
+    compute_LUE(
+        ϕ0::FT, 
+        β::FT,
+        mprime::FT
+    ) where {FT} 
+
+    Computes light use efficiency (LUE) in kg C/mol from intrinsic quantum yield (`ϕ0`),
+    moisture stress factor (`β`), and a Jmax modified capacity (`mprime`); see Eqn 17 and 19
+    in Stocker et al. (2020). 
+"""
+function compute_LUE(
+    ϕ0::FT, 
+    β::FT,
+    mprime::FT
+) where {FT} 
+    Mc = FT(0.0120107) # molar mass of carbon (kg/mol) 
+    return ϕ0 * β * mprime * Mc 
+end 
+
+
+"""
+    pmodel_vcmax(
+        ϕ0::FT,
+        I_abs::FT,
+        mprime::FT,
+        mc::FT
+    ) where {FT}
+
+    Computes the maximum rate of carboxylation assuming optimality and Aj = Ac using 
+    the intrinsic quantum yield (`ϕ0`), absorbed radiation (`I_abs`), Jmax-adjusted capacity
+    (`mprime`), and a Rubisco-limited capacity (`mc`). See Eqns 16 and 6 in Stocker et al. (2020). 
+"""
+function pmodel_vcmax(
+    ϕ0::FT, 
+    I_abs::FT,
+    mprime::FT,
+    mc::FT   
+) where {FT}
+    Vcmax = ϕ0 * I_abs * mprime / mc 
+    return Vcmax
+end
+
+
+"""
+    quadratic_soil_moisture_stress(
+        θ::FT,
+        meanalpha::FT = FT(1.0),
+        a_hat::FT = FT(0.0),
+        b_hat::FT = FT(0.685),
+        θ0::FT = FT(0.0),
+        θ1::FT = FT(0.6)
+    ) where {FT}
+
+    Computes an empirical soil moisture stress factor (`β`) according to the quadratic
+    functional form of Stocker et al. (2020), Eq 21, using the soil moisture (`θ`),
+    AET/PET (`meanalpha`), and parameters `a_hat`, `b_hat`, `θ0`, and `θ1`. Default values
+    are from the original paper. 
+"""
+function quadratic_soil_moisture_stress(
+    θ::FT,
+    meanalpha::FT = FT(1.0),
+    a_hat::FT = FT(0.0),
+    b_hat::FT = FT(0.685),
+    θ0::FT = FT(0.0),
+    θ1::FT = FT(0.6) 
+) where {FT}
+    β0 = a_hat + b_hat * meanalpha
+    q = (FT(1.0) - β0) / (θ0 - θ1)^2
+    β = FT(1.0) - q * (θ - θ1)^2
+
+    # Bound to [0,1]
+    β = clamp(β, FT(0.0), FT(1.0))
+
+    # Force 1.0 above the soil-moisture threshold θ1
+    β = ifelse(θ > θ1, FT(1.0), β)
+
+    return β
 end

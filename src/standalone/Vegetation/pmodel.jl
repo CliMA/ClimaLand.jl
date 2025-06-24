@@ -41,6 +41,8 @@ Base.@kwdef struct PModelParameters{
     β::FT 
     "Scaling parameter for intrinsic quantum yield (unitless)"
     ϕc::FT
+    "Use soil moisture stress in the photosynthesis model (default: true)"
+    use_soil_moisture_stress::Bool = true
 end
 
 Base.eltype(::PModelParameters{FT}) where {FT} = FT
@@ -125,10 +127,19 @@ function update_photosynthesis!(p, Y, model::PModelModel, canopy)
         Ko25,
         ΔHkc,
         ΔHko,
+        c,
+        β,
         ϕc,
+        use_soil_moisture_stress # TODO: ideally this should take different functional form options 
     ) = model.parameters
 
-    βm = @. lazy(moisture_stress(ψ.:($$i_end) * ρ_l * grav, sc, pc))
+    if use_soil_moisture_stress
+        βm = @. lazy(quadratic_soil_moisture_stress())
+    else
+        βm = 1.0
+    end
+
+    # βm = @. lazy(moisture_stress(ψ.:($$i_end) * ρ_l * grav, sc, pc))
 
     # TODO: merge with co2_compensation used in optimality_farquhar.jl
     Γstar = @. lazy(co2_compensation_p(T_canopy, P_air, R))
@@ -136,24 +147,27 @@ function update_photosynthesis!(p, Y, model::PModelModel, canopy)
     # amount of light absorbed [mol/m^2/s]
     I_abs = f_abs * par_d / energy_per_mole_photon_par
 
-    ϕ0 = @. lazy(intrinsic_quantum_yield(T_canopy, ϕc)) # note that \phi_c is called \hat{C}_L in Stocker et al. (2020)
-    ηstar = @. lazy(compute_ηstar(T_canopy, P_air))
+    # note that ϕc is called \hat{C}_L in Stocker et al. (2020) -- this is a calibratable parameter
+    ϕ0 = @. lazy(intrinsic_quantum_yield(T_canopy, ϕc)) 
+    ηstar = @. lazy(compute_viscosity_ratio(T_canopy, P_air))
 
     # compute effective Michaelis-Menten coefficient of Rubisco limited photosynthesis
     Kmm = @. lazy(compute_Kmm(T_canopy, P_air, Kc25, Ko25, ΔHkc, ΔHko, To, R)) 
 
     VPD = ClimaLand.vapor_pressure_deficit(T_air, P_air, q_air, thermo_params)
-    χ, ξ, mj, mc = @. lazy(optimal_χ_c3(Kmm, Γstar, ηstar, ca, VPD, β, Drel))
+    χ, ξ, mj, mc = @. lazy(optimal_co2_ratio_c3(Kmm, Γstar, ηstar, ca, VPD, β, Drel))
     ci = χ * ca
 
     # compute Vcmax assuming optimality and coordination Aj = Ac 
-    Vcmax = @. lazy(pmodel_vcmax(ϕ0, I_abs, mj, mc))
+    mprime = @. lazy(compute_mj_with_jmax_limitation(mj, 4.0 * c))
+    Vcmax = @. lazy(pmodel_vcmax(ϕ0, I_abs, mprime, mc))
 
     # Equation 6 in Stocker et al. (2020)
     Ac = Vcmax * mc 
 
     Aj = Ac # coordination hypothesis 
-    # TODO: explicitly compute Jmax and Aj and assert that Aj = Ac?
+
+    LUE =  @. lazy(compute_LUE(ϕ0, βm, mprime))
 
     @. Vcmax25 = Vcmax / arrhenius_function(T, To, R, ΔHVcmax)
     @. Rd = dark_respiration(is_c3, Vcmax25, βm, T, R, To, fC3, ΔHRd)
