@@ -26,7 +26,7 @@ include(
     ),
 )
 
-data_path = get_path(site_ID)
+data_path = ClimaLand.Artifacts.experiment_fluxnet_data_path(site_ID)
 driver_data = readdlm(data_path, ',')
 
 

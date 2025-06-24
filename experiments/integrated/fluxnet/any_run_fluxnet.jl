@@ -35,7 +35,7 @@ end
 
 site_ID = ARGS[1]
 
-# Read all site-specific domain parameters from the simulation file for the site
+# Read all site domain parameters from the generic simulation file
 include(
     joinpath(
         climaland_dir,
@@ -45,7 +45,7 @@ include(
 include(
     joinpath(climaland_dir, "experiments/integrated/fluxnet/fluxnet_domain.jl"),
 )
-# Read all site-specific parameters from the parameter file for the site
+# Read all site parameters from the generic parameter file
 include(
     joinpath(
         climaland_dir,
