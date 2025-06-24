@@ -438,7 +438,8 @@ function ClimaLand.make_compute_jacobian(model::RichardsModel{FT}) where {FT}
         end
         # Compute divergence matrix
         @. ∂ϑres∂ϑ =
-            -float(dtγ) *
+            FT(-1) *
+            float(dtγ) *
             (divf2c_matrix() ⋅ p.soil.full_bidiag_matrix_scratch) - (I,)
 
 

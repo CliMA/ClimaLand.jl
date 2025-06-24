@@ -536,7 +536,8 @@ function ClimaLand.make_compute_jacobian(model::EnergyHydrology{FT}) where {FT}
         end
         # dtγ can be an ITime or a float
         @. ∂ϑres∂ϑ =
-            -float(dtγ) *
+            FT(-1) *
+            float(dtγ) *
             (divf2c_matrix() ⋅ p.soil.full_bidiag_matrix_scratch) - (I,)
 
         # Now create the flux term for ∂ρe∂ϑ using bidiag_matrix_scratch
@@ -551,7 +552,8 @@ function ClimaLand.make_compute_jacobian(model::EnergyHydrology{FT}) where {FT}
                 ),
             ) ⋅ p.soil.bidiag_matrix_scratch
         @. ∂ρeres∂ϑ =
-            -float(dtγ) *
+            FT(-1) *
+            float(dtγ) *
             (divf2c_matrix() ⋅ p.soil.full_bidiag_matrix_scratch) - (I,)
 
         # Now overwrite bidiag_matrix_scratch and full_bidiag scratch for the ρe ρe bidiagonal
@@ -568,7 +570,8 @@ function ClimaLand.make_compute_jacobian(model::EnergyHydrology{FT}) where {FT}
             MatrixFields.DiagonalMatrixRow(interpc2f_op(-p.soil.κ)) ⋅
             p.soil.bidiag_matrix_scratch
         @. ∂ρeres∂ρe =
-            -float(dtγ) *
+            FT(-1) *
+            float(dtγ) *
             (divf2c_matrix() ⋅ p.soil.full_bidiag_matrix_scratch) - (I,)
     end
     return compute_jacobian!

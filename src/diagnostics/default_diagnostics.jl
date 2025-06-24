@@ -49,6 +49,20 @@ end
 
 include("standard_diagnostic_frequencies.jl")
 
+function default_diagnostics(
+    model::ClimaLand.AbstractModel,
+    start_date::T,
+    outdir,
+) where {T}
+    # a starting date is required for default diagnostics
+    T <: Nothing && return []
+    T <: ITime && isnothing(start_date.epoch) && return []
+    domain = ClimaLand.get_domain(model)
+    haskey(domain.space, :subsurface) || return []
+    output_writer = NetCDFWriter(domain.space.subsurface, outdir; start_date)
+    return default_diagnostics(model, start_date; output_writer)
+end
+default_diagnostics(model::ClimaLand.AbstractModel, start_date) = []
 # Bucket
 function default_diagnostics(
     land_model::BucketModel{FT},

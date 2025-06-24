@@ -11,6 +11,7 @@ import ClimaParams as CP
 using ClimaLand
 using ClimaLand.Soil
 using ClimaLand.Domains: Column
+import ClimaLand.Simulations: LandSimulation, solve!
 import ClimaUtilities.OutputPathGenerator: generate_output_path
 
 rmse(v1, v2) = sqrt(mean((v1 .- v2) .^ 2))
@@ -60,11 +61,6 @@ soil = Soil.EnergyHydrology{FT}(;
     boundary_conditions = boundary_fluxes,
     sources = sources,
 );
-
-exp_tendency! = make_exp_tendency(soil);
-imp_tendency! = make_imp_tendency(soil);
-jacobian! = ClimaLand.make_jacobian(soil);
-
 
 function init_soil!(Y, z, Trange, params)
     ν = params.ν

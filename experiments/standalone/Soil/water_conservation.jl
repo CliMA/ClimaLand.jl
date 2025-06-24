@@ -11,6 +11,7 @@ using ClimaLand
 using ClimaLand.Soil
 using ClimaLand.Domains: Column
 import ClimaUtilities.OutputPathGenerator: generate_output_path
+import ClimaLand.Simulations: LandSimulation, solve!
 
 rmse(v1, v2) = sqrt(mean((v1 .- v2) .^ 2))
 
@@ -81,43 +82,28 @@ for FT in (Float32, Float64)
         sources = sources,
     )
 
-    exp_tendency! = make_exp_tendency(soil)
-    set_initial_cache! = make_set_initial_cache(soil)
-    imp_tendency! = make_imp_tendency(soil)
-    jacobian! = make_jacobian(soil)
 
     rmses = Array{FT}(undef, length(dts))
     mass_errors = Array{FT}(undef, length(dts))
+    function set_ic!(Y, p, t0, model)
+        @. Y.soil.ϑ_l = FT(0.24)
+    end
     for i in eachindex(dts)
         dt = dts[i]
-
-        Y, p, coords = initialize(soil)
-        @. Y.soil.ϑ_l = FT(0.24)
-        set_initial_cache!(p, Y, FT(0.0))
+        simulation = LandSimulation(
+            t_start,
+            t_end,
+            dt,
+            soil;
+            set_ic! = set_ic!,
+            timestepper = ode_algo,
+            solver_kwargs = (; saveat = collect(t_start:dt:t_end)),
+        )
+        p = simulation._integrator.p
         p_init = deepcopy(p)
         mass_start = p_init.soil.total_water
-        jac_kwargs = (;
-            jac_prototype = ClimaLand.FieldMatrixWithSolver(Y),
-            Wfact = jacobian!,
-        )
+        sol = solve!(simulation)
 
-        prob = SciMLBase.ODEProblem(
-            CTS.ClimaODEFunction(
-                T_exp! = exp_tendency!,
-                T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
-                dss! = ClimaLand.dss!,
-            ),
-            Y,
-            (t_start, t_end),
-            p,
-        )
-
-        sol = SciMLBase.solve(
-            prob,
-            ode_algo;
-            dt = dt,
-            saveat = collect(t_start:dt:t_end),
-        )
         # Check that simulation still has correct float type
         @assert eltype(sol.u[end].soil) == FT
 
@@ -215,44 +201,27 @@ for FT in (Float32, Float64)
         sources = sources,
     )
 
-    exp_tendency! = make_exp_tendency(soil_dirichlet)
-    set_initial_cache! = make_set_initial_cache(soil_dirichlet)
-    imp_tendency! = make_imp_tendency(soil_dirichlet)
-    jacobian! = make_jacobian(soil_dirichlet)
-    update_aux! = make_update_aux(soil_dirichlet)
-
     rmses_dirichlet = Array{FT}(undef, length(dts))
     mass_errors_dirichlet = Array{FT}(undef, length(dts))
     for i in eachindex(dts)
         dt = dts[i]
 
-        Y, p, coords = initialize(soil_dirichlet)
-        @. Y.soil.ϑ_l = FT(0.24)
-        set_initial_cache!(p, Y, FT(0.0))
+        function set_ic!(Y, p, t0, model)
+            @. Y.soil.ϑ_l = FT(0.24)
+        end
+        simulation = LandSimulation(
+            t_start,
+            t_end,
+            dt,
+            soil_dirichlet;
+            set_ic! = set_ic!,
+            timestepper = ode_algo,
+            solver_kwargs = (; saveat = collect(t_start:dt:t_end)),
+        )
+        p = simulation._integrator.p
         p_init = deepcopy(p)
         mass_start = p_init.soil.total_water
-        jac_kwargs = (;
-            jac_prototype = ClimaLand.FieldMatrixWithSolver(Y),
-            Wfact = jacobian!,
-        )
-
-        prob = SciMLBase.ODEProblem(
-            CTS.ClimaODEFunction(
-                T_exp! = exp_tendency!,
-                T_imp! = SciMLBase.ODEFunction(imp_tendency!; jac_kwargs...),
-                dss! = ClimaLand.dss!,
-            ),
-            Y,
-            (t_start, t_end),
-            p,
-        )
-        sol = SciMLBase.solve(
-            prob,
-            ode_algo;
-            dt = dt,
-            adaptive = false,
-            saveat = Array(t_start:dt:t_end),
-        )
+        sol = solve!(simulation)
         # Check that simulation still has correct float type
         @assert eltype(sol.u[end].soil) == FT
 

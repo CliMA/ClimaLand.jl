@@ -10,6 +10,7 @@ using ClimaLand.Snow
 using ClimaLand.Domains
 using ClimaComms
 import ClimaLand
+import ClimaLand.Simulations: LandSimulation, solve!
 import ClimaLand.Parameters as LP
 using DataFrames
 using NCDatasets
@@ -26,7 +27,8 @@ NeuralSnow = Base.get_extension(ClimaLand, :NeuralSnowExt).NeuralSnow;
 # Site-specific quantities
 # Error if no site argument is provided
 if length(ARGS) < 1
-    @error("Please provide a site name as command line argument")
+    # @error("Please provide a site name as command line argument")
+    SITE_NAME = "cdp"
 else
     SITE_NAME = ARGS[1]
 end
@@ -67,15 +69,14 @@ model = ClimaLand.Snow.SnowModel(
 Y, p, coords = ClimaLand.initialize(model)
 
 # Set initial conditions
-Y.snow.S .= FT(SWE[1]) # first data point
-Y.snow.S_l .= 0 # this is a guess
-Y.snow.Z .= FT(depths[1]) #first depth value - comment out if using MinimumDensityModel instead of NeuralDepthModel 
-Y.snow.U .=
-    ClimaLand.Snow.energy_from_q_l_and_swe(FT(SWE[1]), FT(0), model.parameters) # with q_l = 0
+function set_ic!(Y, p, t0, model)
+    Y.snow.S .= FT(SWE[1]) # first data point
+    Y.snow.S_l .= 0 # this is a guess
+    Y.snow.Z .= FT(depths[1]) #first depth value - comment out if using MinimumDensityModel instead of NeuralDepthModel 
+    Y.snow.U .=
+        ClimaLand.Snow.energy_from_q_l_and_swe(FT(SWE[1]), FT(0), model.parameters) # with q_l = 0
+end
 
-set_initial_cache! = ClimaLand.make_set_initial_cache(model)
-set_initial_cache!(p, Y, t0)
-exp_tendency! = ClimaLand.make_exp_tendency(model)
 # We use ARS111 (equivalent to explicit Euler) here for ease of assessing conservation
 timestepper = CTS.ARS111()
 ode_algo = CTS.IMEXAlgorithm(
@@ -86,16 +87,6 @@ ode_algo = CTS.IMEXAlgorithm(
     ),
 );
 
-prob = SciMLBase.ODEProblem(
-    CTS.ClimaODEFunction(
-        T_exp! = exp_tendency!,
-        T_imp! = nothing,
-        dss! = ClimaLand.dss!,
-    ),
-    Y,
-    (t0, tf),
-    p,
-)
 saveat = FT.(collect(t0:Δt:tf))
 sv = (;
     t = Array{FT}(undef, length(saveat)),
@@ -103,42 +94,45 @@ sv = (;
 );
 saving_cb = ClimaLand.NonInterpSavingCallback(sv, saveat);
 updateat = copy(saveat)
-drivers = ClimaLand.get_drivers(model)
-updatefunc = ClimaLand.make_update_drivers(drivers)
-driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
-cb = SciMLBase.CallbackSet(driver_cb, saving_cb)
 
-sol = SciMLBase.solve(
-    prob,
-    ode_algo;
-    dt = Δt,
-    adaptive = false,
-    saveat = saveat,
-    callback = cb,
-);
+simulation = LandSimulation(
+    t0,
+    tf,
+    Δt,
+    model;
+    outdir = savedir,
+    updateat,
+    solver_kwargs = (; saveat = deepcopy(saveat)),
+    set_ic!,
+    timestepper = ode_algo,
+    diagnostics = nothing,
+    user_callbacks = (saving_cb,),
+)
+
+sol = ClimaLand.Simulations.solve!(simulation);
 
 # Plotting
-q_l = [parent(sv.saveval[k].snow.q_l)[1] for k in 1:length(sol.t)];
-T = [parent(sv.saveval[k].snow.T)[1] for k in 1:length(sol.t)];
+q_l = [parent(sv.saveval[k].snow.q_l)[1] for k in 1:length(sv.t)];
+T = [parent(sv.saveval[k].snow.T)[1] for k in 1:length(sv.t)];
 evaporation = [
     parent(sv.saveval[k].snow.turbulent_fluxes.vapor_flux)[1] for
-    k in 1:length(sol.t)
+    k in 1:length(sv.t)
 ];
-R_n = [parent(sv.saveval[k].snow.R_n)[1] for k in 1:length(sol.t)];
+R_n = [parent(sv.saveval[k].snow.R_n)[1] for k in 1:length(sv.t)];
 water_runoff =
-    [parent(sv.saveval[k].snow.water_runoff)[1] for k in 1:length(sol.t)];
+    [parent(sv.saveval[k].snow.water_runoff)[1] for k in 1:length(sv.t)];
 phase_change_flux =
-    [parent(sv.saveval[k].snow.phase_change_flux)[1] for k in 1:length(sol.t)];
+    [parent(sv.saveval[k].snow.phase_change_flux)[1] for k in 1:length(sv.t)];
 rain = [parent(sv.saveval[k].drivers.P_liq)[1] for k in 1:length(sv.t)];
 snow = [parent(sv.saveval[k].drivers.P_snow)[1] for k in 1:length(sv.t)];
 scf =
-    [parent(sv.saveval[k].snow.snow_cover_fraction)[1] for k in 1:length(sol.t)];
-ρ = [parent(sv.saveval[k].snow.ρ_snow)[1] for k in 1:length(sol.t)];
-z = [parent(sv.saveval[k].snow.z_snow)[1] for k in 1:length(sol.t)];
-S = [parent(sol.u[k].snow.S)[1] for k in 1:length(sol.t)];
-S_l = [parent(sol.u[k].snow.S_l)[1] for k in 1:length(sol.t)];
-U = [parent(sol.u[k].snow.U)[1] for k in 1:length(sol.t)];
-t = sol.t;
+    [parent(sv.saveval[k].snow.snow_cover_fraction)[1] for k in 1:length(sv.t)];
+ρ = [parent(sv.saveval[k].snow.ρ_snow)[1] for k in 1:length(sv.t)];
+z = [parent(sv.saveval[k].snow.z_snow)[1] for k in 1:length(sv.t)];
+S = [parent(sol.u[k].snow.S)[1] for k in 1:length(sv.t)];
+S_l = [parent(sol.u[k].snow.S_l)[1] for k in 1:length(sv.t)];
+U = [parent(sol.u[k].snow.U)[1] for k in 1:length(sv.t)];
+t = sv.t;
 
 start_day = 1
 days = start_day .+ floor.(t ./ 3600 ./ 24)
