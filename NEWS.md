@@ -4,6 +4,18 @@ ClimaLand.jl Release Notes
 main
 -------
 
+v0.16.3
+-------
+- Clip ERA5 wind speeds PR[#1166](https://github.com/CliMA/ClimaLand.jl/pull/1166)
+- Start and end simulations in March for seasonality PR[#1175](https://github.com/CliMA/ClimaLand.jl/pull/1175)
+- Remove some fields from the canopy radiation cache PR[#1172](https://github.com/CliMA/ClimaLand.jl/pull/1172)
+- Include energy of rain in snow energy fluxes PR[#1176](https://github.com/CliMA/ClimaLand.jl/pull/1176)
+- Remove atmos fluxes from cache PR[#1177](https://github.com/CliMA/ClimaLand.jl/pull/1177)
+- Run "longer" runs for 20 years PR[#1180](https://github.com/CliMA/ClimaLand.jl/pull/1180)
+- Remove 3 variables from canopy cache PR[#1179](https://github.com/CliMA/ClimaLand.jl/pull/1179)
+- Clean up canopy interfaces PR[#1181](https://github.com/CliMA/ClimaLand.jl/pull/1181)
+- Add energy from precipitation PR[#1164](https://github.com/CliMA/ClimaLand.jl/pull/1164)
+
 v0.16.2
 -------
 - Fix bug in reflected radiation PR[#1156](https://github.com/CliMA/ClimaLand.jl/pull/1156)
