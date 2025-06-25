@@ -58,6 +58,7 @@ struct LandSimulation{
     _integrator::I
 end
 
+# TODO: Add doc string
 function LandSimulation(
     FT,
     start_date::Dates.DateTime,
@@ -98,6 +99,7 @@ function LandSimulation(
             start_date,
         ),
     ),
+    sol_save_interval = nothing,
 )
     if !isnothing(diagnostics) &&
        !isempty(diagnostics) &&
@@ -105,7 +107,6 @@ function LandSimulation(
         @warn "Note that the kwarg outdir and outdir used in diagnostics are inconsistent; using $(first(diagnostics).output_writer.output_dir)"
     end
 
-    domain = ClimaLand.get_domain(model)
     t0 = ITime(0, Dates.Second(1), start_date)
     tf = ITime(
         Dates.value(convert(Dates.Second, stop_date - start_date)),
@@ -148,6 +149,9 @@ function LandSimulation(
 
     # Required callbacks
     updateat = [promote(t0:(ITime(3600 * 3)):tf...)...]
+    saveat =
+        isnothing(sol_save_interval) ? [] :
+        [promote(t0:(ITime(sol_save_interval)):tf...)...]
     drivers = ClimaLand.get_drivers(model)
     updatefunc = ClimaLand.make_update_drivers(drivers)
     driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
@@ -162,13 +166,13 @@ function LandSimulation(
     # Collect all callbacks
     callbacks =
         SciMLBase.CallbackSet(user_callbacks..., required_callbacks..., diag_cb)
-
     _integrator = SciMLBase.init(
         problem,
         timestepper;
         dt = Δt,
         callback = callbacks,
         adaptive = false,
+        saveat,
     )
     return LandSimulation(
         model,
