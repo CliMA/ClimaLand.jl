@@ -340,7 +340,7 @@ function default_diagnostics(
             "shf",
             "ghf",
             "iwc",
-            "snowc"
+            "snowc",
             "asnow",
         ]
     elseif output_vars == :short
