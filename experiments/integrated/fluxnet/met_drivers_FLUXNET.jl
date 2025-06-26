@@ -18,14 +18,6 @@ include(
     joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/pull_MODIS.jl"),
 )
 
-# Method for getting data file path on HPC
-include(
-    joinpath(
-        pkgdir(ClimaLand),
-        "experiments/integrated/fluxnet/path_to_data_file.jl",
-    ),
-)
-
 data_path = ClimaLand.Artifacts.experiment_fluxnet_data_path(site_ID)
 driver_data = readdlm(data_path, ',')
 
