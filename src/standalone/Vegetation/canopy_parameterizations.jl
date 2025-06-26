@@ -30,7 +30,11 @@ export canopy_sw_rt_beer_lambert,
     compute_viscosity_ratio,
     compute_Kmm,
     optimal_co2_ratio_c3,
-    pmodel_vcmax
+    pmodel_vcmax,
+    pmodel_jmax,
+    compute_LUE,
+    compute_mj_with_jmax_limitation,
+    co2_compensation_p
 
 # 1. Radiative transfer
 
@@ -1119,8 +1123,10 @@ enforce_albedo_constraint(α, τ) = 1 - α - τ > 0 ? α : 1 - τ
     et al. (2020) 
 """
 function intrinsic_quantum_yield(T::FT, c::FT) where {FT}
-    ϕ = c * (0.352 + 0.022 * T - 0.00034 * T^2)
-    return ϕ
+    # convert to C
+    T = T - FT(273.15)
+    ϕ = c * (FT(0.352) + FT(0.022) * T - FT(0.00034) * T^2)
+    return FT(ϕ)
 end
 
 
@@ -1138,27 +1144,27 @@ end
 """
 function density_h2o(T::FT, p::FT) where {FT}
     # Convert temperature to Celsius
-    T = T - 273.15 
+    T = T - FT(273.15) 
     # Convert pressure to bar (1 bar = 1e5 Pa)
-    pbar = 1e-5 * p
+    pbar = FT(1e-5) * p
 
     # λ(T): bar cm3/g
-    λ = 1788.316 +
-        21.55053 * T -
-        0.4695911 * T^2 +
-        3.096363e-3 * T^3 -
-        7.341182e-6 * T^4
+    λ = FT(1788.316) +
+        FT(21.55053) * T -
+        FT(0.4695911) * T^2 +
+        FT(3.096363e-3) * T^3 -
+        FT(7.341182e-6) * T^4
 
     # p0(T): bar
-    p0 = 5918.499 +
-         58.05267 * T -
-         1.1253317 * T^2 +
-         6.6123869e-3 * T^3 -
-         1.4661625e-5 * T^4
+    p0 = FT(5918.499) +
+         FT(58.05267) * T -
+         FT(1.1253317) * T^2 +
+         FT(6.6123869e-3) * T^3 -
+         FT(1.4661625e-5) * T^4
 
     # v_inf(T): cm3/g
     T_powers = (T .^ (0:9))  # T^0 to T^9
-    coeffs_vinf = [
+    coeffs_vinf = FT.([
         0.6980547,
        -7.435626e-4,
         3.704258e-5,
@@ -1169,14 +1175,14 @@ function density_h2o(T::FT, p::FT) where {FT}
        -5.437898e-15,
         1.69946e-17,
        -2.295063e-20
-    ]
+    ])
     v_inf = dot(coeffs_vinf, T_powers)
 
     # Specific volume [cm3/g]
     v = v_inf + λ / (p0 + pbar)
 
     # Convert to density [kg/m3]
-    return 1e3 / v
+    return FT(1e3) / v
 end
 
 
@@ -1193,9 +1199,9 @@ end
 """
 function viscosity_h2o(T::FT, p::FT) where {FT}
     # Reference constants
-    tk_ast  = 647.096    # K
-    ρ_ast = 322.0      # kg/m^3
-    μ_ast  = 1e-6       # Pa s
+    tk_ast  = FT(647.096)    # K
+    ρ_ast = FT(322.0)      # kg/m^3
+    μ_ast  = FT(1e-6)       # Pa s
 
     # Get density of water [kg/m^3]
     ρ = density_h2o(T, p)
@@ -1208,11 +1214,11 @@ function viscosity_h2o(T::FT, p::FT) where {FT}
     ρbar  = ρ / ρ_ast
     
     # Calculate μ0 (Eq. 11 & Table 2)
-    μ0 = 1.67752 + 2.20462 / tbar + 0.6366564 / tbar2 - 0.241605 / tbar3
-    μ0 = 1e2 * tbarx / μ0
+    μ0 = FT(1.67752) + FT(2.20462) / tbar + FT(0.6366564) / tbar2 - FT(0.241605) / tbar3
+    μ0 = FT(1e2) * tbarx / μ0
 
     # Coefficients h_array from Table 3
-    h_array = [
+    h_array = FT.([
         0.520094    0.0850895   -1.08374   -0.289555   0.0         0.0;
         0.222531    0.999115     1.88797    1.26613    0.0         0.120573;
        -0.281378   -0.906851    -0.772479  -0.489837  -0.257040    0.0;
@@ -1220,16 +1226,16 @@ function viscosity_h2o(T::FT, p::FT) where {FT}
        -0.0325372   0.0          0.0        0.0698452  0.0         0.0;
         0.0         0.0          0.0        0.0        0.00872102  0.0;
         0.0         0.0          0.0       -0.00435673 0.0        -0.000593264
-    ]
+    ])
 
     # Compute μ1 (Eq. 12 & Table 3)
-    μ1 = 0.0
-    ctbar = (1.0 / tbar) - 1.0
+    μ1 = FT(0.0)
+    ctbar = (FT(1.0) / tbar) - FT(1.0)
     for i in 1:6
         coef1 = ctbar^(i - 1)
-        coef2 = 0.0
+        coef2 = FT(0.0)
         for j in 1:7
-            coef2 += h_array[j, i] * (ρbar - 1.0)^(j - 1)
+            coef2 += h_array[j, i] * (ρbar - FT(1.0))^(j - 1)
         end
         μ1 += coef1 * coef2
     end
@@ -1237,7 +1243,7 @@ function viscosity_h2o(T::FT, p::FT) where {FT}
 
     μ_bar = μ0 * μ1       # Eq. 2
     μ = μ_bar * μ_ast     # Eq. 1
-    return μ              # Pa s
+    return FT(μ)          # Pa s
 end
 
 
@@ -1251,9 +1257,9 @@ end
     to the viscosity of water at STP. 
 """
 function compute_viscosity_ratio(T::FT, p::FT) where {FT} 
-    η25 = viscosity_h2o(298.15, 101325.0)
+    η25 = viscosity_h2o(FT(298.15), FT(101325.0))
     ηstar = viscosity_h2o(T, p) / η25
-    return ηstar
+    return FT(ηstar)
 end
 
 
@@ -1279,10 +1285,13 @@ end
 """
 function co2_compensation_p(
     T::FT,
+    To::FT,
     p::FT,
-    R::FT
+    R::FT, 
+    ΔHΓstar::FT = FT(37830),
+    Γstar25::FT = FT(4.332) 
 ) where {FT}
-    Γstar = po2(p) * exp(FT(6.779) - FT(37.83)/(T * R)) 
+    Γstar = Γstar25 * p / FT(101325.0) * arrhenius_function(T, To, R, ΔHΓstar)
     return Γstar
 end
 
@@ -1400,7 +1409,7 @@ function compute_mj_with_jmax_limitation(
     mj::FT, 
     cstar::FT = FT(0.412)
 ) where {FT}
-    return mj * sqrt(FT(1.0) - (cstar / mj)^(2/3)) 
+    return FT(mj * sqrt(FT(1.0) - (cstar / mj)^(FT(2/3))))
 end 
 
 
@@ -1447,6 +1456,15 @@ function pmodel_vcmax(
     return Vcmax
 end
 
+
+function pmodel_jmax(
+    ϕ0::FT,
+    I_abs::FT,
+    mprime::FT
+) where {FT}
+    Jmax = FT(4.0) * ϕ0 * I_abs * mprime / sqrt(FT(1.0) - mprime^2) 
+    return Jmax
+end
 
 """
     quadratic_soil_moisture_stress(
