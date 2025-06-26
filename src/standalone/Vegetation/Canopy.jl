@@ -388,16 +388,12 @@ function initialize_boundary_vars(model::CanopyModel{FT}, coords; nan_fill = tru
     )
     additional_aux = map(zip(types, domains)) do (T, D)
         zero_instance = ClimaCore.RecursiveApply.rzero(T)
+        f = map(_ -> zero_instance, getproperty(coords, D))
+        fill!(ClimaCore.Fields.field_values(f), zero_instance)
         if nan_fill
-            nan_instance::T = ClimaCore.RecursiveApply.radd(zero_instance, FT(NaN))
-            f = map(_ -> nan_instance, getproperty(coords, D))
-            fill!(ClimaCore.Fields.field_values(f), nan_instance)
-            f
-        else
-            f = map(_ -> zero_instance, getproperty(coords, D))
-            fill!(ClimaCore.Fields.field_values(f), zero_instance)
-            f
+            @. parent(f) = parent(f) * FT(NaN)
         end
+        f
     end
     return NamedTuple{vars}(additional_aux)
 end

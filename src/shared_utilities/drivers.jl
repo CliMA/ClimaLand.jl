@@ -1064,12 +1064,14 @@ end
 
 
 """
-    initialize_drivers(a::PrescribedAtmosphere{FT}, coords) where {FT}
+    initialize_drivers(a::PrescribedAtmosphere{FT}, coords; nan_fill=true) where {FT}
 
 Creates and returns a NamedTuple for the `PrescribedAtmosphere` driver,
 with variables `P_liq`, `P_snow`, and air temperature `T`, pressure `P`,
 horizontal wind speed `u`, specific humidity `q`, and CO2 concentration
 `c_co2`.
+
+If nan_fill=true, the values are set
 """
 function initialize_drivers(a::PrescribedAtmosphere{FT}, coords; nan_fill = true) where {FT}
     keys = (:P_liq, :P_snow, :T, :P, :u, :q, :c_co2, :thermal_state)

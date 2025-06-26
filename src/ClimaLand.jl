@@ -144,17 +144,13 @@ function initialize_lsm_aux(land::AbstractLandModel, land_coords; nan_fill = tru
     domains = lsm_aux_domain_names(land)
     additional_aux = map(zip(types, domains)) do (T, domain)
         zero_instance = ClimaCore.RecursiveApply.rzero(T)
+        FT = eltype(zero_instance)
+        f = map(_ -> zero_instance, getproperty(land_coords, domain))
+        fill!(ClimaCore.Fields.field_values(f), zero_instance)
         if nan_fill
-            FT = eltype(zero_instance)
-            nan_instance::T = ClimaCore.RecursiveApply.radd(zero_instance, FT(NaN))
-            f = map(_ -> nan_instance, getproperty(land_coords, domain))
-            fill!(ClimaCore.Fields.field_values(f), nan_instance)
-            f
-        else
-            f = map(_ -> zero_instance, getproperty(land_coords, domain))
-            fill!(ClimaCore.Fields.field_values(f), zero_instance)
-            f
+            @. parent(f) = parent(f) * FT(NaN)
         end
+        f
     end
     return NamedTuple{vars}(additional_aux)
 end

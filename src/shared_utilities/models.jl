@@ -315,7 +315,8 @@ end
     initialize_prognostic(model::AbstractModel, state::NamedTuple)
 
 Returns a FieldVector of prognostic variables for `model` with the required
-structure, with values equal to `similar(state)`. This assumes that all
+structure, with values equal to NaN if `nan_fill` is true, and 0 otherwise.
+This assumes that all
 prognostic variables are defined over the entire domain,
 and that all prognostic variables have the same dimension and type.
 
@@ -346,11 +347,11 @@ function initialize_prognostic(model::AbstractModel{FT}, state; nan_fill=true) w
 end
 
 """
-    initialize_auxiliary(model::AbstractModel, state::NamedTuple)
+    initialize_auxiliary(model::AbstractModel, state::NamedTuple; nan_fill = true)
 
 Returns a NamedTuple of auxiliary variables for `model` with the required
-structure, with values equal to `similar(state)`. This assumes that all
- auxiliary variables are defined over the entire domain,
+structure, with values equal to NaN if `nan_fill` is true, and 0 otherwise. 
+This assumes that all auxiliary variables are defined over the entire domain,
 and that all auxiliary variables have the same dimension and type. The auxiliary
 variables NamedTuple can also hold preallocated objects which are not Fields.
 
@@ -382,23 +383,26 @@ function initialize_auxiliary(model::AbstractModel{FT}, state; nan_fill = true) 
     return p
 end
 
+"""
+    rfill(::Type{T}, value) where {T}
+
+Creates and returns an instance of type `T` where all values are set to `value`. 
+"""
+rfill(::Type{T}, value) where {T} = ClimaCore.RecursiveApply.rmap(nan, ClimaCore.RecursiveApply.rzero(T))
+
 function initialize_vars(keys, types, domain_names, state, model_name; nan_fill = true)
     if length(keys) == 0
         return (; model_name => nothing)
     else
         init_states = map(zip(types, domain_names)) do (T, D)
             zero_instance = ClimaCore.RecursiveApply.rzero(T)
+            f = map(_ -> zero_instance, getproperty(state, D))
+            fill!(ClimaCore.Fields.field_values(f), zero_instance)
+            FT = eltype(zero_instance)
             if nan_fill
-                FT = eltype(zero_instance)
-                nan_instance::T = ClimaCore.RecursiveApply.radd(zero_instance, FT(NaN))
-                f = map(_ -> nan_instance, getproperty(state, D))
-                fill!(ClimaCore.Fields.field_values(f), nan_instance)
-                f
-            else
-                f = map(_ -> zero_instance, getproperty(state, D))
-                fill!(ClimaCore.Fields.field_values(f), zero_instance)
-                f
+                @. parent(f) = parent(f) * FT(NaN)
             end
+            f
         end
         return (; model_name => (; zip(keys, init_states)...))
     end
@@ -445,10 +449,11 @@ function get_drivers(model::AbstractModel)
 end
 
 """
-    initialize(model::AbstractModel)
+    initialize(model::AbstractModel; nan_fill = true)
 
-Creates the prognostic and auxiliary states structures, but with unset
-values; constructs and returns the coordinates for the `model` domain.
+Creates the prognostic and auxiliary states structures, but with
+values set to NaN if nan_fill is true and 0 otherwise; 
+constructs and returns the coordinates for the `model` domain.
 We may need to consider this default more as we add diverse components and
 `Simulations`.
 """
