@@ -1071,9 +1071,13 @@ with variables `P_liq`, `P_snow`, and air temperature `T`, pressure `P`,
 horizontal wind speed `u`, specific humidity `q`, and CO2 concentration
 `c_co2`.
 
-If nan_fill=true, the values are set
+If nan_fill=true, the values are set to NaN, otherwise they are set to zero.
 """
-function initialize_drivers(a::PrescribedAtmosphere{FT}, coords; nan_fill = true) where {FT}
+function initialize_drivers(
+    a::PrescribedAtmosphere{FT},
+    coords;
+    nan_fill = true,
+) where {FT}
     keys = (:P_liq, :P_snow, :T, :P, :u, :q, :c_co2, :thermal_state)
     # The thermal state is a different type
     types = ([FT for k in keys[1:(end - 1)]]..., Thermodynamics.PhaseEquil{FT})
@@ -1082,17 +1086,29 @@ function initialize_drivers(a::PrescribedAtmosphere{FT}, coords; nan_fill = true
     # intialize_vars packages the variables as a named tuple,
     # as part of a named tuple with `model_name` as the key.
     # Here we just want the variable named tuple itself
-    vars =
-        ClimaLand.initialize_vars(keys, types, domain_names, coords, model_name; nan_fill)
+    vars = ClimaLand.initialize_vars(
+        keys,
+        types,
+        domain_names,
+        coords,
+        model_name;
+        nan_fill,
+    )
     return vars.drivers
 end
 
 """
-    initialize_drivers(a::PrescribedPrecipitation{FT}, coords) where {FT}
+    initialize_drivers(a::PrescribedPrecipitation{FT}, coords; nan_fill = true) where {FT}
 Creates and returns a NamedTuple for the `PrescribedPrecipitation` driver,
 with variable `P_liq`.
+
+If nan_fill=true, the values are set to NaN, otherwise they are set to zero.
 """
-function initialize_drivers(a::PrescribedPrecipitation{FT}, coords; nan_fill=true) where {FT}
+function initialize_drivers(
+    a::PrescribedPrecipitation{FT},
+    coords;
+    nan_fill = true,
+) where {FT}
     keys = (:P_liq,)
     types = (FT,)
     domain_names = (:surface,)
@@ -1100,13 +1116,19 @@ function initialize_drivers(a::PrescribedPrecipitation{FT}, coords; nan_fill=tru
     # intialize_vars packages the variables as a named tuple,
     # as part of a named tuple with `model_name` as the key.
     # Here we just want the variable named tuple itself
-    vars =
-        ClimaLand.initialize_vars(keys, types, domain_names, coords, model_name; nan_fill)
+    vars = ClimaLand.initialize_vars(
+        keys,
+        types,
+        domain_names,
+        coords,
+        model_name;
+        nan_fill,
+    )
     return vars.drivers
 end
 
 """
-    initialize_drivers(r::AbstractRadiativeDrivers{FT}, coords) where {FT}
+    initialize_drivers(r::AbstractRadiativeDrivers{FT}, coords; nan_fill=true) where {FT}
 
 Creates and returns a NamedTuple for the radiative fluxes driver,
 with variables `SW_d`, `LW_d`, cosine of the zenith angle `cosθs`, and the
@@ -1114,8 +1136,14 @@ diffuse fraction of shortwave radiation `frac_diff`.
 
 We require the same variables for both prescribed and coupled radiative drivers,
 so we can use the same function for both of them.
+
+If nan_fill=true, the values are set to NaN, otherwise they are set to zero.
 """
-function initialize_drivers(r::AbstractRadiativeDrivers{FT}, coords; nan_fill = true) where {FT}
+function initialize_drivers(
+    r::AbstractRadiativeDrivers{FT},
+    coords;
+    nan_fill = true,
+) where {FT}
     keys = (:SW_d, :LW_d, :cosθs, :frac_diff)
     types = ([FT for k in keys]...,)
     domain_names = ([:surface for k in keys]...,)
@@ -1123,16 +1151,24 @@ function initialize_drivers(r::AbstractRadiativeDrivers{FT}, coords; nan_fill = 
     # intialize_vars packages the variables as a named tuple,
     # as part of a named tuple with `model_name` as the key.
     # Here we just want the variable named tuple itself
-    vars =
-        ClimaLand.initialize_vars(keys, types, domain_names, coords, model_name; nan_fill)
+    vars = ClimaLand.initialize_vars(
+        keys,
+        types,
+        domain_names,
+        coords,
+        model_name;
+        nan_fill,
+    )
     return vars.drivers
 end
 
 """
-    initialize_drivers(r::PrescribedSoilOrganicCarbon{FT}, coords) where {FT}
+    initialize_drivers(r::PrescribedSoilOrganicCarbon{FT}, coords; nan_fill=true) where {FT}
 
 Creates and returns a NamedTuple for the `PrescribedSoilOrganicCarbon` driver,
  with variable `soc`.
+
+If nan_fill=true, the values are set to NaN, otherwise they are set to zero.
 """
 function initialize_drivers(
     r::PrescribedSoilOrganicCarbon{FT},
@@ -1146,23 +1182,31 @@ function initialize_drivers(
     # intialize_vars packages the variables as a named tuple,
     # as part of a named tuple with `model_name` as the key.
     # Here we just want the variable named tuple itself
-    vars =
-        ClimaLand.initialize_vars(keys, types, domain_names, coords, model_name; nan_fill )
+    vars = ClimaLand.initialize_vars(
+        keys,
+        types,
+        domain_names,
+        coords,
+        model_name;
+        nan_fill,
+    )
     return vars.drivers
 end
 
 """
-    initialize_drivers(r::CoupledAtmosphere{FT}, coords) where {FT}
+    initialize_drivers(r::CoupledAtmosphere{FT}, coords; nan_fill=true) where {FT}
 
 Creates and returns a NamedTuple for the `CoupledAtmosphere` driver,
 with variables `P_liq`, `P_snow`, `c_co2`, `T`, `P`, and `q`.
 
-This is intended to be used in coupled simulations with ClimaCoupler.jl
+This is intended to be used in coupled simulations with ClimaCoupler.jl.
+
+If nan_fill=true, the values are set to NaN, otherwise they are set to zero.
 """
 function ClimaLand.initialize_drivers(
     a::CoupledAtmosphere{FT},
     coords;
-    nan_fill =true
+    nan_fill = true,
 ) where {FT}
     keys = (:P_liq, :P_snow, :c_co2, :T, :P, :q)
     types = ([FT for k in keys]...,)
@@ -1171,14 +1215,20 @@ function ClimaLand.initialize_drivers(
     # intialize_vars packages the variables as a named tuple,
     # as part of a named tuple with `model_name` as the key.
     # Here we just want the variable named tuple itself
-    vars =
-        ClimaLand.initialize_vars(keys, types, domain_names, coords, model_name; nan_fill)
+    vars = ClimaLand.initialize_vars(
+        keys,
+        types,
+        domain_names,
+        coords,
+        model_name;
+        nan_fill,
+    )
     return vars.drivers
 end
 
 """
     initialize_drivers(driver_tuple::Tuple,
-                       coords)
+                       coords); nan_fill=true
 
 Creates and returns a NamedTuple with the cache variables required by the
 model drivers.

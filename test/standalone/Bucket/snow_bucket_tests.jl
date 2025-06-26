@@ -109,7 +109,7 @@ for FT in (Float32, Float64)
         _T_freeze = LP.T_freeze(model.parameters.earth_param_set)
 
         # run for some time
-        Y, p, coords = initialize(model)
+        Y, p, coords = initialize(model; nan_fill = false)
         Y.bucket.T .= init_temp.(coords.subsurface.z, FT(274.0))
         Y.bucket.W .= -0.1 # small negative moisture
         Y.bucket.Ws .= 0.0 # no runoff
@@ -222,7 +222,7 @@ for FT in (Float32, Float64)
             )
 
             # run for some time
-            Y, p, coords = initialize(model)
+            Y, p, coords = initialize(model; nan_fill = false)
             Y.bucket.T .= init_temp.(coords.subsurface.z, FT(274.0))
             Y.bucket.W .= 0.0 # no moisture
             Y.bucket.Ws .= 0.0 # no runoff
@@ -336,7 +336,7 @@ for FT in (Float32, Float64)
             )
 
             # run for some time
-            Y, p, coords = initialize(model)
+            Y, p, coords = initialize(model; nan_fill = false)
             Y.bucket.T .= init_temp.(coords.subsurface.z, FT(274.0))
             Y.bucket.W .= 0.0 # no moisture
             Y.bucket.Ws .= 0.0 # no runoff
@@ -449,7 +449,7 @@ for FT in (Float32, Float64)
         )
 
         # run for some time
-        Y, p, coords = initialize(model)
+        Y, p, coords = initialize(model; nan_fill = false)
         Y.bucket.T .= init_temp.(coords.subsurface.z, FT(274.0))
         Y.bucket.W .= 0.0 # no moisture
         Y.bucket.Ws .= 0.0 # no runoff

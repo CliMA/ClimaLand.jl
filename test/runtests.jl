@@ -47,7 +47,7 @@ end
     include("standalone/Snow/snow.jl")
 end
 @safetestset "Neural Snow model tools tests" begin
-    include("standalone/Snow/tool_tests.jl")
+    include("standalone/Snow/tool_tests.jl") # fails
 end
 @safetestset "Snow integrated water and energy content" begin
     include("standalone/Snow/conservation.jl")
@@ -111,7 +111,7 @@ end
     include("integrated/lsms.jl")
 end
 @safetestset "Integrated soil/canopy unit tests" begin
-    include("integrated/soil_canopy_lsm.jl")
+    include("integrated/soil_canopy_lsm.jl") # fails 
 end
 @safetestset "Integrated pond/soil LSM tests" begin
     include("integrated/pond_soil_lsm.jl")
@@ -123,7 +123,7 @@ end
     include("integrated/soil_snow.jl")
 end
 @safetestset "Full land" begin
-    include("integrated/full_land.jl")
+    include("integrated/full_land.jl") #fails
 end
 
 # Simulations

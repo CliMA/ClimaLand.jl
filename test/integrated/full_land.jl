@@ -336,4 +336,28 @@ if pkgversion(ClimaCore) >= v"0.14.30"
         u = sol.u[end]
         check_ocean_values_Y(u, binary_mask)
     end
+    @testset "Mask of full land - check NaNs" begin
+        Y, p, cds = initialize(land)
+        surface_space = axes(Y.snow.U)
+        subsurface_space = axes(Y.soil.ϑ_l)
+        binary_mask = .~parent(surface_space.grid.mask.is_active)[:]
+        # Test that the cache is NaN over the ocean
+        @info("testing initial cache and state")
+        check_ocean_values_p(p, binary_mask; val = NaN)
+        check_ocean_values_Y(Y, binary_mask; val = NaN)
+        # Set initial conditions
+        ic_path = ClimaLand.Artifacts.soil_ic_2008_50m_path(; context = context)
+        set_initial_state! =
+            ClimaLand.Simulations.make_set_initial_state_from_file(
+                ic_path,
+                land,
+            )
+        set_initial_state!(Y, p, t0, land)
+        # Now, set the cache with physical values and make sure there are only NaNs over the ocean
+        set_initial_cache! = make_set_initial_cache(land)
+        set_initial_cache!(p, Y, t0)
+        @info("testing set cache and Y are still NaN over ocean")
+        check_ocean_values_p(p, binary_mask; NaN)
+        check_ocean_values_Y(Y, binary_mask; val = NaN)
+    end
 end

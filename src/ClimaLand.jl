@@ -95,12 +95,15 @@ end
 function initialize_prognostic(
     model::AbstractLandModel{FT},
     coords::NamedTuple;
-    nan_fill = true
+    nan_fill = true,
 ) where {FT}
     components = land_components(model)
     Y_state_list = map(components) do (component)
         submodel = getproperty(model, component)
-        getproperty(initialize_prognostic(submodel, coords; nan_fill), component)
+        getproperty(
+            initialize_prognostic(submodel, coords; nan_fill),
+            component,
+        )
     end
     Y = ClimaCore.Fields.FieldVector(; NamedTuple{components}(Y_state_list)...)
     return Y
@@ -109,7 +112,7 @@ end
 function initialize_auxiliary(
     model::AbstractLandModel{FT},
     coords::NamedTuple;
-    nan_fill = true
+    nan_fill = true,
 ) where {FT}
     components = land_components(model)
     p_state_list = map(components) do (component)
@@ -129,26 +132,30 @@ function initialize_auxiliary(
 end
 
 """
-    initialize_lsm_aux(land::AbstractLandModel) end
+    initialize_lsm_aux(land::AbstractLandModel, land_coords; nan_fill = true)
 
 Initializes additional auxiliary variables required in integrated models, and
-not existing in the individual component models auxiliary vars.
+not existing in the individual component models auxiliary vars; values are set to NaN
+unless nan_fill is set to false, in which case they are set to zero.
 
 Additional auxiliary variables are specified by `lsm_aux_vars`, their types
 by `lsm_aux_types`, and their domain names by `lsm_aux_domain_names`.
 This function should be called during `initialize_auxiliary` step.
 """
-function initialize_lsm_aux(land::AbstractLandModel, land_coords; nan_fill = true)
+function initialize_lsm_aux(
+    land::AbstractLandModel,
+    land_coords;
+    nan_fill = true,
+)
     vars = lsm_aux_vars(land)
     types = lsm_aux_types(land)
     domains = lsm_aux_domain_names(land)
     additional_aux = map(zip(types, domains)) do (T, domain)
         zero_instance = ClimaCore.RecursiveApply.rzero(T)
-        FT = eltype(zero_instance)
         f = map(_ -> zero_instance, getproperty(land_coords, domain))
         fill!(ClimaCore.Fields.field_values(f), zero_instance)
         if nan_fill
-            @. parent(f) = parent(f) * FT(NaN)
+            parent(f) .= parent(f) .* NaN
         end
         f
     end

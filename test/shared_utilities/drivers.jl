@@ -35,9 +35,9 @@ FT = Float32
     )
     coords = ClimaLand.Domains.coordinates(domain)
     zero_instance = ClimaCore.Fields.zeros(axes(coords.surface))
-    @test ClimaLand.initialize_drivers((pp,), coords) ==
+    @test ClimaLand.initialize_drivers((pp,), coords; nan_fill = false) ==
           NamedTuple{(:P_liq,)}((zero_instance,))
-    @test ClimaLand.initialize_drivers((), coords) == (;)
+    @test ClimaLand.initialize_drivers((), coords; nan_fill = false) == (;)
     pa_keys = (:P_liq, :P_snow, :T, :P, :u, :q, :c_co2)
     zero_thermal_state = ClimaCore.Fields.zeros(
         Thermodynamics.PhaseEquil{FT},
@@ -46,13 +46,13 @@ FT = Float32
     pa_vals = ([zero_instance for k in pa_keys]...,)
     all_pa_keys = (pa_keys..., :thermal_state)
     all_pa_vals = (pa_vals..., zero_thermal_state)
-    @test ClimaLand.initialize_drivers((pa,), coords) ==
+    @test ClimaLand.initialize_drivers((pa,), coords; nan_fill = false) ==
           NamedTuple{all_pa_keys}(all_pa_vals)
     pr_keys = (:SW_d, :LW_d, :cosθs, :frac_diff)
     pr_vals = ([zero_instance for k in pr_keys]...,)
     all_papr_keys = (pa_keys..., :thermal_state, pr_keys...)
     all_papr_vals = (pa_vals..., zero_thermal_state, pr_vals...)
-    @test ClimaLand.initialize_drivers((pa, pr), coords) ==
+    @test ClimaLand.initialize_drivers((pa, pr), coords; nan_fill = false) ==
           NamedTuple{all_papr_keys}(all_papr_vals)
 end
 
@@ -127,11 +127,13 @@ end
     )
     coords = ClimaLand.Domains.coordinates(domain)
     sfc_instance = ClimaCore.Fields.zeros(axes(coords.surface)) .+ 10
-    p = (; drivers = ClimaLand.initialize_drivers((), coords))
+    p = (; drivers = ClimaLand.initialize_drivers((), coords; nan_fill = false))
     nothing_update! = ClimaLand.make_update_drivers(())
     nothing_update!(p, 0.0)
     @test p.drivers == (;)
-    p = (; drivers = ClimaLand.initialize_drivers((pa,), coords))
+    p = (;
+        drivers = ClimaLand.initialize_drivers((pa,), coords; nan_fill = false)
+    )
     atmos_only_update! = ClimaLand.make_update_drivers((pa,))
     atmos_only_update!(p, 0.0)
     @test p.drivers.P_liq == sfc_instance
@@ -142,7 +144,13 @@ end
     @test p.drivers.u == sfc_instance
     @test p.drivers.c_co2 == (sfc_instance .* 0 .+ FT(4.2e-4))
 
-    p = (; drivers = ClimaLand.initialize_drivers((pa, pr), coords))
+    p = (;
+        drivers = ClimaLand.initialize_drivers(
+            (pa, pr),
+            coords;
+            nan_fill = false,
+        )
+    )
     update! = ClimaLand.make_update_drivers((pa, pr))
     update!(p, 0.0)
     @test p.drivers.P_liq == sfc_instance
@@ -157,7 +165,9 @@ end
     @test all(isnan.(parent(p.drivers.cosθs)))
     @test all(isnan.(parent(p.drivers.frac_diff)))
 
-    p = (; drivers = ClimaLand.initialize_drivers((pr,), coords))
+    p = (;
+        drivers = ClimaLand.initialize_drivers((pr,), coords; nan_fill = false)
+    )
     rad_only_update! = ClimaLand.make_update_drivers((pr,))
     rad_only_update!(p, 0.0)
     @test p.drivers.SW_d == sfc_instance
@@ -168,7 +178,9 @@ end
     liquid_precip = TimeVaryingInput((t) -> -1.0)
     pp = ClimaLand.PrescribedPrecipitation{FT}(liquid_precip)
     precip_update! = ClimaLand.make_update_drivers((pp,))
-    p = (; drivers = ClimaLand.initialize_drivers((pp,), coords))
+    p = (;
+        drivers = ClimaLand.initialize_drivers((pp,), coords; nan_fill = false)
+    )
     precip_update!(p, 0.0)
     @test p.drivers.P_liq == sfc_instance .* 0 .- FT(1)
 
@@ -177,7 +189,13 @@ end
     subsfc_instance = ClimaCore.Fields.zeros(axes(coords.subsurface)) .+ 1
     soc_driver = ClimaLand.PrescribedSoilOrganicCarbon{FT}(soc)
     soc_update! = ClimaLand.make_update_drivers((soc_driver,))
-    soc_p = (; drivers = ClimaLand.initialize_drivers((soc_driver,), coords))
+    soc_p = (;
+        drivers = ClimaLand.initialize_drivers(
+            (soc_driver,),
+            coords;
+            nan_fill = false,
+        )
+    )
     soc_update!(soc_p, 0.0)
     @test soc_p.drivers.soc == subsfc_instance
 end
@@ -215,7 +233,13 @@ end
 
     # test CoupledRadiativeFluxes with no start_date provided (will not update cosθs)
     crf_no_zenith = ClimaLand.CoupledRadiativeFluxes{FT}()
-    p = (; drivers = ClimaLand.initialize_drivers((crf_no_zenith,), coords))
+    p = (;
+        drivers = ClimaLand.initialize_drivers(
+            (crf_no_zenith,),
+            coords;
+            nan_fill = false,
+        )
+    )
     p.drivers.cosθs .= FT(0)
     no_update = ClimaLand.make_update_drivers((crf_no_zenith,))
     no_update(p, 0)
@@ -225,7 +249,13 @@ end
         latitude = coords.surface.lat,
         longitude = coords.surface.long,
     )
-    p = (; drivers = ClimaLand.initialize_drivers((crf,), coords))
+    p = (;
+        drivers = ClimaLand.initialize_drivers(
+            (crf,),
+            coords;
+            nan_fill = false,
+        )
+    )
     update_cosθs_only = ClimaLand.make_update_drivers((crf,))
     update_cosθs_only(p, 0) # populate cosθs with cos(zenith) at noon mid-summer at equator
     @test all(

@@ -148,6 +148,13 @@ set_initial_cache!(p, Y, t)
 @test all(parent(p.snow.total_energy_flux) .≈ 0)
 @test all(parent(p.snow.total_water_flux) .≈ 0)
 # Make sure the boundary conditions match bare soil result
+# Set snow specific cache to zero.
+p_soil_alone.snow.water_runoff .= 0
+p_soil_alone.snow.energy_runoff .= 0
+p_soil_alone.snow.snow_cover_fraction .= 0
+p_soil_alone.ground_heat_flux .= 0
+p_soil_alone.excess_heat_flux .= 0
+p_soil_alone.excess_water_flux .= 0
 set_soil_initial_cache! = make_set_initial_cache(land_model.soil)
 set_soil_initial_cache!(p_soil_alone, Y, t)
 @test p.soil.top_bc == p_soil_alone.soil.top_bc

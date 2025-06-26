@@ -329,7 +329,11 @@ ClimaCore Field or a Vector{FT}.
 Adjustments to this - for example because different prognostic variables
 have different dimensions - require defining a new method.
 """
-function initialize_prognostic(model::AbstractModel{FT}, state; nan_fill=true) where {FT}
+function initialize_prognostic(
+    model::AbstractModel{FT},
+    state;
+    nan_fill = true,
+) where {FT}
     if length(prognostic_vars(model)) == 0
         throw(
             AssertionError("Model must have at least one prognostic variable."),
@@ -341,7 +345,7 @@ function initialize_prognostic(model::AbstractModel{FT}, state; nan_fill=true) w
         prognostic_domain_names(model),
         state,
         name(model);
-        nan_fill
+        nan_fill,
     )
     return ClimaCore.Fields.FieldVector(; state_nt...)
 end
@@ -364,14 +368,18 @@ ClimaCore Field or a Vector{FT}.
 Adjustments to this - for example because different auxiliary variables
 have different dimensions - require defining a new method.
 """
-function initialize_auxiliary(model::AbstractModel{FT}, state; nan_fill = true) where {FT}
+function initialize_auxiliary(
+    model::AbstractModel{FT},
+    state;
+    nan_fill = true,
+) where {FT}
     p = initialize_vars(
         auxiliary_vars(model),
         auxiliary_types(model),
         auxiliary_domain_names(model),
         state,
         name(model);
-        nan_fill
+        nan_fill,
     )
     if :domain ∈ propertynames(model)
         p = add_dss_buffer_to_aux(p, model.domain)
@@ -388,9 +396,17 @@ end
 
 Creates and returns an instance of type `T` where all values are set to `value`. 
 """
-rfill(::Type{T}, value) where {T} = ClimaCore.RecursiveApply.rmap(nan, ClimaCore.RecursiveApply.rzero(T))
+rfill(::Type{T}, value) where {T} =
+    ClimaCore.RecursiveApply.rmap(nan, ClimaCore.RecursiveApply.rzero(T))
 
-function initialize_vars(keys, types, domain_names, state, model_name; nan_fill = true)
+function initialize_vars(
+    keys,
+    types,
+    domain_names,
+    state,
+    model_name;
+    nan_fill = true,
+)
     if length(keys) == 0
         return (; model_name => nothing)
     else
@@ -398,9 +414,8 @@ function initialize_vars(keys, types, domain_names, state, model_name; nan_fill 
             zero_instance = ClimaCore.RecursiveApply.rzero(T)
             f = map(_ -> zero_instance, getproperty(state, D))
             fill!(ClimaCore.Fields.field_values(f), zero_instance)
-            FT = eltype(zero_instance)
             if nan_fill
-                @. parent(f) = parent(f) * FT(NaN)
+                parent(f) .= parent(f) .* NaN
             end
             f
         end
@@ -417,7 +432,12 @@ Creates the driver variable NamedTuple (atmospheric and radiative forcing, etc),
 and merges it into `p` under the key `drivers`. If no driver variables
 are required, `p` is returned unchanged.
 """
-function add_drivers_to_cache(p::NamedTuple, model::AbstractModel, coords; nan_fill = true)
+function add_drivers_to_cache(
+    p::NamedTuple,
+    model::AbstractModel,
+    coords;
+    nan_fill = true,
+)
     drivers = get_drivers(model)
     if hasproperty(model, :parameters) &&
        hasproperty(model.parameters, :earth_param_set) &&
