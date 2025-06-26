@@ -414,7 +414,13 @@ if !isnothing(DataToolsExt)
                     FT(273.0),
                     Ref(model.parameters),
                 )
+            Y.snow.S_l = FT(0)
             Y.snow.Z .= FT(0.2)
+            Y.snow.P_avg = FT(0)
+            Y.snow.R_avg = FT(0)
+            Y.snow.u_avg = FT(0)
+            Y.snow.Qrel_avg = FT(0)
+            Y.snow.T_avg = FT(0)
             set_initial_cache! = ClimaLand.make_set_initial_cache(model)
             t0 = FT(0.0)
             set_initial_cache!(p, Y, t0)
