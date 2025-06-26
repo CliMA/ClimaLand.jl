@@ -1,4 +1,4 @@
-export PModelParameters, PModelModel
+export PModelParameters, PModelDrivers, PModelConstants, compute_pmodel_outputs, PModelModel
 
 """
     PModelParameters{FT<:AbstractFloat}
@@ -8,44 +8,81 @@ Currently, only C3 photosynthesis is supported.
 $(DocStringExtensions.FIELDS)
 """
 Base.@kwdef struct PModelParameters{
-    FT <: AbstractFloat,
-    MECH <: Union{FT, ClimaCore.Fields.Field},
+    FT <: AbstractFloat
 }
-    "Photosynthesis mechanism: C3 only"
-    is_c3::MECH
-    "Michaelis-Menten parameter for CO2 at 25 °C (mol/mol)"
-    Kc25::FT
-    "Michaelis-Menten parameter for O2 at 25 °C (mol/mol)"
-    Ko25::FT
-    "Energy of activation for CO2 (J/mol)"
-    ΔHkc::FT
-    "Energy of activation for oxygen (J/mol)"
-    ΔHko::FT
-    "Energy of activation for Vcmax (J/mol)"
-    ΔHVcmax::FT
-    "Energy of activation for Rd (J/mol)"
-    ΔHRd::FT
-    "Reference temperature equal to 25 degrees Celsius (K)"
-    To::FT
-    "Relative conductivity of water vapor compared to CO2 (unitless), equal to 1.6"
-    Drel::FT
-    "Constant factor appearing the dark respiration term for C3 plants, equal to 0.015."
-    fC3::FT
     "Fitting constant to compute the moisture stress factor (Pa^{-1})"
     sc::FT
     "Fitting constant to compute the moisture stress factor (Pa)"
     pc::FT
     "Constant describing cost of maintaining electron transport (unitless)"
-    c::FT
+    cstar::FT
     "Ratio of unit costs of transpiration and carboxylation (unitless)"
     β::FT 
-    "Scaling parameter for intrinsic quantum yield (unitless)"
+    "Scaling parameter for temp-dependent intrinsic quantum yield (unitless)"
     ϕc::FT
-    "Use soil moisture stress in the photosynthesis model (default: true)"
-    use_soil_moisture_stress::Bool = true
+    "Temp-independent intrinsic quantum yield (if provided, overrides ϕc)" 
+    ϕ0::FT 
+    # "Use soil moisture stress in the photosynthesis model (default: true)"
+    # use_soil_moisture_stress::Bool = true
 end
 
 Base.eltype(::PModelParameters{FT}) where {FT} = FT
+
+Base.@kwdef struct PModelDrivers{
+    FT <: AbstractFloat
+}
+    "Canopy temperature (K)"
+    T_canopy::FT
+    "Absorbed photosynthetically active radiation (PAR) (mol m^-2 s^-1)"
+    f_abs::FT
+    "Ambient CO2 partial pressure (Pa)"
+    ca::FT
+    "Ambient air pressure (Pa)"
+    P_air::FT
+    "Downwelling PAR (mol m^-2 s^-1)"
+    par_d::FT
+    "Vapor pressure deficit (Pa)"
+    VPD::FT
+end
+
+# TODO: add descriptions to these
+Base.@kwdef struct PModelConstants{FT}
+    R::FT
+    Kc25::FT
+    Ko25::FT
+    To::FT
+    ΔHkc::FT
+    ΔHko::FT
+    ΔHVcmax::FT
+    ΔHRd::FT
+    fC3::FT
+    Drel::FT
+    energy_per_mole_photon_par::FT
+end
+
+function create_pmodel_constants(canopy, FT)
+    earth_param_set = canopy.parameters.earth_param_set
+    lightspeed = LP.light_speed(earth_param_set)
+    planck_h = LP.planck_constant(earth_param_set)
+    N_a = LP.avogadro_constant(earth_param_set)
+    (; _, λ_γ_PAR, Ω) = canopy.radiative_transfer.parameters
+    energy_per_mole_photon_par = planck_h * lightspeed / λ_γ_PAR * N_a
+
+    return PModelConstants(
+        R = LP.gas_constant(earth_param_set),
+        Kc25 = FT(39.97),
+        Ko25 = FT(27480.0),
+        To = FT(298.15),
+        ΔHkc = FT(79430.0),
+        ΔHko = FT(36380.0),
+        ΔHVcmax = FT(58520.0),
+        ΔHRd = FT(46390.0),
+        fC3 = FT(0.015),
+        Drel = FT(1.6),
+        energy_per_mole_photon_par = FT(energy_per_mole_photon_par),
+        Ω = FT(Ω)
+    )
+end
 
 """
     PModelModel{FT,
@@ -76,104 +113,122 @@ ClimaLand.auxiliary_types(model::PModelModel{FT}) where {FT} =
 ClimaLand.auxiliary_domain_names(::PModelModel) =
     (:surface, :surface, :surface, :surface)
 
-"""
-    update_photosynthesis!(p, Y, model::PModelModel,canopy)
 
-Computes the net photosynthesis rate `An` (mol CO2/m^2/s)for the Optimality Farquhar model, along with the
-dark respiration `Rd` (mol CO2/m^2/s), the value of `Vcmax25`(mol CO2/m^2/s) , and the gross primary 
+"""
+    compute_pmodel_outputs(
+        parameters::PModelParameters, 
+        drivers::PModelDrivers, 
+        constants::PModelConstants
+    )
+
+Performs the P-model computations and returns a dictionary of outputs.
+"""
+function compute_pmodel_outputs(
+    parameters::PModelParameters{FT}, 
+    drivers::PModelDrivers{FT}, 
+    constants::PModelConstants{FT}
+) where {FT}
+    # Unpack parameters
+    (; sc, pc, cstar, β, ϕc, ϕ0) = parameters
+
+    # Unpack drivers
+    (; T_canopy, f_abs, ca, P_air, par_d, VPD) = drivers
+
+    # Unpack constants
+    (; R, Kc25, Ko25, To, ΔHkc, ΔHko, 
+        ΔHVcmax, ΔHRd, fC3, Drel, energy_per_mole_photon_par, Ω) = constants
+
+    # Compute intermediate values
+    ϕ0 = isnan(ϕ0) ? intrinsic_quantum_yield(T_canopy, ϕc) : ϕ0
+
+    Γstar = co2_compensation_p(T_canopy, P_air, R)
+    ηstar = compute_viscosity_ratio(T_canopy, P_air)
+    Kmm = compute_Kmm(T_canopy, P_air, Kc25, Ko25, ΔHkc, ΔHko, To, R)
+    I_abs = f_abs * par_d / energy_per_mole_photon_par
+    χ, ξ, mj, mc = optimal_co2_ratio_c3(Kmm, Γstar, ηstar, ca, VPD, β, Drel)
+    ci = χ * ca
+    mprime = compute_mj_with_jmax_limitation(mj, cstar)
+    Vcmax = pmodel_vcmax(ϕ0, I_abs, mprime, mc)
+    Ac = Vcmax * mc
+
+    Aj = Ac # Coordination hypothesis
+    LUE = compute_LUE(ϕ0, FT(1.0), mprime)
+    Vcmax25 = Vcmax / arrhenius_function(T_canopy, To, R, ΔHVcmax)
+    Rd = dark_respiration(FT(1.0), Vcmax25, FT(1.0), T_canopy, R, To, fC3, ΔHRd)
+    An = net_photosynthesis(Ac, Aj, Rd, FT(1.0))
+
+    # I noticed that the GPP definition in optimality_farquhar.jl is different from 
+    # the one in Stocker et al. (2020). It uses LAI, Ω, and extinction coefficients.
+    # Here, we use the simpler definition from Stocker et al. (2020). but TODO is 
+    # to figure out the discrepancy 
+    GPP = I_abs * LUE 
+
+    iWUE = (ca - ci) / Drel
+    gs = An / (ca - ci)
+    Jmax = pmodel_jmax(ϕ0, I_abs, mprime)
+
+    return Dict(
+        "gpp" => GPP,
+        "ca" => ca,
+        "gammastar" => Γstar,
+        "kmm" => Kmm,
+        "ns_star" => ηstar,
+        "chi" => χ,
+        "xi" => ξ,
+        "mj" => mj,
+        "mc" => mc,
+        "ci" => ci,
+        "iwue" => iWUE,
+        "gs" => gs,
+        "vcmax" => Vcmax,
+        "vcmax25" => Vcmax25,
+        "jmax" => Jmax,
+        "rd" => Rd,
+        "An" => An
+    )
+end
+
+
+"""
+    update_photosynthesis!(p, Y, model::PModelModel, canopy)
+
+Computes the net photosynthesis rate `An` (mol CO2/m^2/s) for the P-model, along with the
+dark respiration `Rd` (mol CO2/m^2/s), the value of `Vcmax25` (mol CO2/m^2/s), and the gross primary 
 productivity `GPP` (mol CO2/m^2/s), and updates them in place.
 """
 function update_photosynthesis!(p, Y, model::PModelModel, canopy)
-    # unpack a bunch of stuff from p and params
-    Rd = p.canopy.photosynthesis.Rd
-    An = p.canopy.photosynthesis.An
-    GPP = p.canopy.photosynthesis.GPP
-    Vcmax25 = p.canopy.photosynthesis.Vcmax25
+    # Unpack required fields from `p` and `canopy`
     T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
     f_abs = p.canopy.radiative_transfer.par.abs
-    ψ = p.canopy.hydraulics.ψ
     ca = p.drivers.c_co2
-    cosθs = p.drivers.cosθs
     P_air = p.drivers.P
-    T_air = p.drivers.T
-    q_air = p.drivers.q
-    earth_param_set = canopy.parameters.earth_param_set
-    lightspeed = LP.light_speed(earth_param_set)
-    planck_h = LP.planck_constant(earth_param_set)
-    N_a = LP.avogadro_constant(earth_param_set)
-    grav = LP.grav(earth_param_set)
-    ρ_l = LP.ρ_cloud_liq(earth_param_set)
-    R = LP.gas_constant(earth_param_set)
-    thermo_params = earth_param_set.thermo_params
-    (; G_Function, λ_γ_PAR, Ω) = canopy.radiative_transfer.parameters
-    energy_per_mole_photon_par = planck_h * lightspeed / λ_γ_PAR * N_a
-    (; sc, pc) = canopy.photosynthesis.parameters
-    # (; g1,) = canopy.conductance.parameters
-    n_stem = canopy.hydraulics.n_stem
-    n_leaf = canopy.hydraulics.n_leaf
-    i_end = n_stem + n_leaf
     par_d = p.canopy.radiative_transfer.par_d
-    area_index = p.canopy.hydraulics.area_index
-    LAI = area_index.leaf
+    VPD = ClimaLand.vapor_pressure_deficit(
+        p.drivers.T, p.drivers.P, p.drivers.q, canopy.parameters.earth_param_set.thermo_params
+    )
 
-    (;
-        ΔHVcmax,
-        ΔHRd,
-        fC3,
-        To,
-        Drel,
-        is_c3,
-        Kc25,
-        Ko25,
-        ΔHkc,
-        ΔHko,
-        c,
-        β,
-        ϕc,
-        use_soil_moisture_stress # TODO: ideally this should take different functional form options 
-    ) = model.parameters
+    # Create PModelDrivers
+    drivers = PModelDrivers(
+        T_canopy = T_canopy,
+        f_abs = f_abs,
+        ca = ca,
+        P_air = P_air,
+        par_d = par_d,
+        VPD = VPD
+    )
 
-    if use_soil_moisture_stress
-        βm = @. lazy(quadratic_soil_moisture_stress())
-    else
-        βm = 1.0
-    end
+    # Create PModelConstants
+    constants = create_pmodel_constants(canopy, eltype(p.canopy.photosynthesis.Rd))
 
-    # βm = @. lazy(moisture_stress(ψ.:($$i_end) * ρ_l * grav, sc, pc))
+    parameters = model.parameters
 
-    # TODO: merge with co2_compensation used in optimality_farquhar.jl
-    Γstar = @. lazy(co2_compensation_p(T_canopy, P_air, R))
+    outputs = compute_pmodel_outputs(parameters, drivers, constants)
 
-    # amount of light absorbed [mol/m^2/s]
-    I_abs = f_abs * par_d / energy_per_mole_photon_par
-
-    # note that ϕc is called \hat{C}_L in Stocker et al. (2020) -- this is a calibratable parameter
-    ϕ0 = @. lazy(intrinsic_quantum_yield(T_canopy, ϕc)) 
-    ηstar = @. lazy(compute_viscosity_ratio(T_canopy, P_air))
-
-    # compute effective Michaelis-Menten coefficient of Rubisco limited photosynthesis
-    Kmm = @. lazy(compute_Kmm(T_canopy, P_air, Kc25, Ko25, ΔHkc, ΔHko, To, R)) 
-
-    VPD = ClimaLand.vapor_pressure_deficit(T_air, P_air, q_air, thermo_params)
-    χ, ξ, mj, mc = @. lazy(optimal_co2_ratio_c3(Kmm, Γstar, ηstar, ca, VPD, β, Drel))
-    ci = χ * ca
-
-    # compute Vcmax assuming optimality and coordination Aj = Ac 
-    mprime = @. lazy(compute_mj_with_jmax_limitation(mj, 4.0 * c))
-    Vcmax = @. lazy(pmodel_vcmax(ϕ0, I_abs, mprime, mc))
-
-    # Equation 6 in Stocker et al. (2020)
-    Ac = Vcmax * mc 
-
-    Aj = Ac # coordination hypothesis 
-
-    LUE =  @. lazy(compute_LUE(ϕ0, βm, mprime))
-
-    @. Vcmax25 = Vcmax / arrhenius_function(T, To, R, ΔHVcmax)
-    @. Rd = dark_respiration(is_c3, Vcmax25, βm, T, R, To, fC3, ΔHRd)
-    @. An = net_photosynthesis(Ac, Aj, Rd, βm)
-    # # Compute GPP: TODO - move to diagnostics only
-    @. GPP = compute_GPP(An, extinction_coeff(G_Function, cosθs), LAI, Ω)
+    # Update the outputs in place
+    p.canopy.photosynthesis.Vcmax25 .= outputs["vcmax25"]
+    p.canopy.photosynthesis.Rd .= outputs["rd"]
+    p.canopy.photosynthesis.An .= outputs["An"]
+    p.canopy.photosynthesis.GPP .= outputs["gpp"]
 end
 
 get_Vcmax25(p, m::PModelParameters) =
