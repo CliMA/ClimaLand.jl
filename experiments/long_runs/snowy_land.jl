@@ -379,6 +379,7 @@ short_names = [
     "trans",
     "msf",
     "snowc",
+    "asnow"
 ]
 
 include(
