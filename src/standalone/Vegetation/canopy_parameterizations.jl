@@ -1276,9 +1276,12 @@ end
 """
     co2_compensation_p(
         T::FT,
-        R::FT,
-        p::FT
-    )
+        To::FT,
+        p::FT,
+        R::FT, 
+        ΔHΓstar::FT = FT(37830),
+        Γstar25::FT = FT(4.332) 
+    ) where {FT}
 
     Computes the CO2 compensation point (`Γstar`), in units Pa, as a function of temperature T (K)
     and pressure p (Pa). See Equation B5 of Stocker et al. (2020). 
@@ -1460,9 +1463,12 @@ end
 function pmodel_jmax(
     ϕ0::FT,
     I_abs::FT,
-    mprime::FT
+    cstar::FT,
+    ci::FT, 
+    Γstar::FT
 ) where {FT}
-    Jmax = FT(4.0) * ϕ0 * I_abs * mprime / sqrt(FT(1.0) - mprime^2) 
+    arg = FT(1.0) / (FT(1.0) - ((cstar * (ci + 2 * Γstar)) / (ci - Γstar))^FT(2/3)) - FT(1.0)
+    Jmax = FT(4.0) * ϕ0 * I_abs / sqrt(arg) 
     return Jmax
 end
 
