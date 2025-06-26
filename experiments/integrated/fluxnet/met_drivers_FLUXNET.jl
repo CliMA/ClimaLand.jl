@@ -12,6 +12,7 @@ import ClimaComms
 
 context = ClimaComms.context()
 
+
 # Methods for reading in the LAI data from MODIS data
 include(
     joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/pull_MODIS.jl"),
@@ -20,7 +21,9 @@ include(
 data_path = ClimaLand.Artifacts.experiment_fluxnet_data_path(site_ID)
 driver_data = readdlm(data_path, ',')
 
+
 LOCAL_DATETIME = DateTime.(format.(driver_data[2:end, 1]), "yyyymmddHHMM")
+time_offset = 5 # temporary testing
 UTC_DATETIME = LOCAL_DATETIME .+ Dates.Hour(time_offset)
 DATA_DT = Second(LOCAL_DATETIME[2] - LOCAL_DATETIME[1]).value # seconds
 

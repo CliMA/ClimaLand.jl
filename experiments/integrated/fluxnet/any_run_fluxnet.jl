@@ -28,92 +28,16 @@ climaland_dir = pkgdir(ClimaLand)
 include(joinpath(climaland_dir, "experiments/integrated/fluxnet/data_tools.jl"))
 include(joinpath(climaland_dir, "experiments/integrated/fluxnet/plot_utils.jl"))
 
-# Read in the site to be run from the command line
-#if length(ARGS) < 1
-#    error("Must provide site ID on command line")
-#end
-#
-site_ID = "US-MOz"
-params = Dict("g1" => 1.0, "Vcmax25" => 1.0)
-
-
-function zenith_angle(
-    t,
-    start_date;
-    latitude = lat,
-    longitude = long,
-    insol_params::Insolation.Parameters.InsolationParameters{FT} = earth_param_set.insol_params,
-) where {FT}
-    # This should be time in UTC
-    current_datetime = start_date + Dates.Second(round(t))
-
-    # Orbital Data uses Float64, so we need to convert to our sim FT
-    d, δ, η_UTC =
-        FT.(
-            Insolation.helper_instantaneous_zenith_angle(
-                current_datetime,
-                start_date,
-                insol_params,
-            )
-        )
-
-    FT(
-        Insolation.instantaneous_zenith_angle(
-            d,
-            δ,
-            η_UTC,
-            longitude,
-            latitude,
-        )[1],
-    )
+# # Read in the site to be run from the command line
+if length(ARGS) < 1
+    error("Must provide site ID on command line")
 end
 
-# Currently, site_ID can only be "US-MOz", "US-Var", "US-Ha1", "US-NR1"
-# But we want ALL fluxnet sites
-# to do: change the included files to read meta data, all same config otherwise
-# (same parameters, same domains, same resolution, etc.)
-# data files will be read directly from caltech hpc filepath
+site_ID = ARGS[1]
+params = Dict("g1" => 1.0, "Vcmax25" => 1.0)
 
-function run_single_site(params, site_ID) # e.g., run_single_site(params, "US-MOz")
-
-    # Read all site-specific domain parameters from the simulation file for the site
-    include(
-        joinpath(
-            climaland_dir,
-            "experiments/integrated/fluxnet/$site_ID/$(site_ID)_simulation.jl",
-        ),
-    )
-
-    include(
-        joinpath(
-            climaland_dir,
-            "experiments/integrated/fluxnet/fluxnet_domain.jl",
-        ),
-    )
-
-    # Read all site-specific parameters from the parameter file for the site
-    include(
-        joinpath(
-            climaland_dir,
-            "experiments/integrated/fluxnet/$site_ID/$(site_ID)_parameters.jl",
-        ),
-    )
-
-    # This reads in the data from the flux tower site and creates
-    # the atmospheric and radiative driver structs for the model
-    include(
-        joinpath(
-            climaland_dir,
-            "experiments/integrated/fluxnet/fluxnet_simulation.jl",
-        ),
-    )
-
-    include(
-        joinpath(
-            climaland_dir,
-            "experiments/integrated/fluxnet/met_drivers_FLUXNET.jl",
-        ),
-    )
+# helper wrapper function to invoke on latest runs
+function run_helper(site_ID, params)
 
     # Now we set up the model. For the soil model, we pick
     # a model type and model args:
@@ -135,11 +59,23 @@ function run_single_site(params, site_ID) # e.g., run_single_site(params, "US-MO
         NIR_albedo = soil_α_NIR,
     )
 
+    soil_args = (domain = soil_domain, parameters = soil_ps)
+    soil_model_type = Soil.EnergyHydrology{FT}
+
     # Soil microbes model
     soilco2_type = Soil.Biogeochemistry.SoilCO2Model{FT}
-    soilco2_ps = Soil.Biogeochemistry.SoilCO2ModelParameters(FT)
+
+    soilco2_ps = SoilCO2ModelParameters(FT)
+
     Csom = ClimaLand.PrescribedSoilOrganicCarbon{FT}(TimeVaryingInput((t) -> 5))
-    soilco2_args = (; domain = soil_domain, parameters = soilco2_ps)
+
+    # Set the soil CO2 BC to being atmospheric CO2
+    soilco2_top_bc = Soil.Biogeochemistry.AtmosCO2StateBC()
+    soilco2_bot_bc = Soil.Biogeochemistry.SoilCO2FluxBC((p, t) -> 0.0) # no flux
+    soilco2_sources = (MicrobeProduction{FT}(),)
+
+    soilco2_boundary_conditions =
+        (; top = soilco2_top_bc, bottom = soilco2_bot_bc)
 
     soilco2_args = (;
         boundary_conditions = soilco2_boundary_conditions,
@@ -347,4 +283,70 @@ function run_single_site(params, site_ID) # e.g., run_single_site(params, "US-MO
 
     sol = SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb)
     return sol
+end
+
+function run_single_site(site_ID, params, specific_flag::Bool = true)  # e.g., run_single_site("US-MOz", 
+    # Dict("g1" => 1.0, "Vcmax25" => 1.0))
+    # true
+
+    # specific_flag checks whether user wants site-specific parameters or generic
+    if (specific_flag == true)
+        # Read all site-specific domain parameters from the simulation file for the site
+        include(
+            joinpath(
+                climaland_dir,
+                "experiments/integrated/fluxnet/$site_ID/$(site_ID)_simulation.jl",
+            ),
+        )
+    else
+        # Read all site domain parameters from the generic simulation file
+        include(
+            joinpath(
+                climaland_dir,
+                "experiments/integrated/fluxnet/any_site/any_simulation.jl",
+            ),
+        )
+    end
+
+    include(
+        joinpath(
+            climaland_dir,
+            "experiments/integrated/fluxnet/fluxnet_domain.jl",
+        ),
+    )
+
+    if (specific_flag == true)
+        # Read all site-specific parameters from the parameter file for the site
+        include(
+            joinpath(
+                climaland_dir,
+                "experiments/integrated/fluxnet/$site_ID/$(site_ID)_parameters.jl",
+            ),
+        )
+    else
+        # Read all site parameters from the generic parameter file
+        include(
+            joinpath(
+                climaland_dir,
+                "experiments/integrated/fluxnet/any_site/any_parameters.jl",
+            ),
+        )
+    end
+
+    # This reads in the data from the flux tower site and creates
+    # the atmospheric and radiative driver structs for the model
+    include(
+        joinpath(
+            climaland_dir,
+            "experiments/integrated/fluxnet/fluxnet_simulation.jl",
+        ),
+    )
+    include(
+        joinpath(
+            climaland_dir,
+            "experiments/integrated/fluxnet/met_drivers_FLUXNET.jl",
+        ),
+    )
+
+    Base.invokelatest(run_helper, site_ID, params)
 end
