@@ -7,12 +7,11 @@ using DelimitedFiles
 using ClimaLand.Domains: Point
 import ClimaLand.Parameters as LP
 import ClimaParams
-using JSON3
-using Glob
 
-# Directory containing R-generated JSON test cases
+# Directory containing CSV test cases
 datadir = "/Users/yuchenli/Documents/CliMA Land (local)/testcases"
-json_files = Glob.glob("*.json", datadir)
+inputs_file = joinpath(datadir, "inputs.csv")
+outputs_file = joinpath(datadir, "outputs.csv")
 
 # Allowed relative error (can tighten for Float64)
 atol = 1e-3
@@ -26,16 +25,16 @@ function create_pmodel_drivers(inputs::Dict{String, Any}, FT)
     T_canopy = FT(inputs["tc"] + 273.15)  # Convert from Celsius to Kelvin
     VPD = FT(inputs["vpd"])
     ca = FT(inputs["co2"]) * FT(1e-6) * FT(101325.0)  # Convert ppm to Pa
-    f_abs = FT(inputs["fapar"])
-    par_d = FT(inputs["ppfd"])
     P_air = FT(get(inputs, "patm", 101325.0))
-
+    
+    # Calculate I_abs directly from fapar and ppfd
+    I_abs = FT(inputs["fapar"]) *  FT(inputs["ppfd"])
+    
     return PModelDrivers(
         T_canopy = T_canopy,
-        f_abs = f_abs,
+        I_abs = I_abs,
         ca = ca,
         P_air = P_air,
-        par_d = par_d,
         VPD = VPD
     )
 end
@@ -46,12 +45,12 @@ function create_pmodel_parameters(inputs::Dict{String, Any}, FT)
     sc = FT(0.0)  # placeholder since this isn't used
     pc = FT(0.0)  # placeholder since this isn't used
 
-    if inputs["do_ftemp_kphio"]
-        ϕ0 = NaN 
+    if Bool(inputs["do_ftemp_kphio"])
+        ϕ0 = FT(NaN) 
         ϕc = FT(1.0) 
     else
         ϕ0 = FT(inputs["kphio"])
-        ϕc = NaN
+        ϕc = FT(NaN)
     end
 
     return PModelParameters(
@@ -64,33 +63,89 @@ function create_pmodel_parameters(inputs::Dict{String, Any}, FT)
     )
 end
 
+
 @testset "P-model regression tests against R output" begin
-    for file in json_files
-        testcase = JSON3.read(read(file, String))
-        inputs = Dict{String, Any}(string(k) => v for (k, v) in testcase["inputs"])
+    # Read inputs and outputs CSV files
+    inputs_data, inputs_header = readdlm(inputs_file, ',', header=true)
+    outputs_data, outputs_header = readdlm(outputs_file, ',', header=true)
+    
+    inputs_header = vec(inputs_header)
+    outputs_header = vec(outputs_header)
+    
+    # Get testcase column indices
+    inputs_testcase_idx = findfirst(h -> string(h) == "testcase", inputs_header)
+    outputs_testcase_idx = findfirst(h -> string(h) == "testcase", outputs_header)
+    
+    # Process each test case
+    for row_idx in 1:size(inputs_data, 1)
+        testcase_name = inputs_data[row_idx, inputs_testcase_idx]
+        
+        # Find corresponding output row
+        output_row_idx = findfirst(r -> outputs_data[r, outputs_testcase_idx] == testcase_name, 1:size(outputs_data, 1))
+        
+        if output_row_idx === nothing
+            @warn "No output data found for testcase: $testcase_name"
+            continue
+        end
+        
+        # Create inputs dictionary
+        inputs = Dict{String, Any}()
+        for (col_idx, col_name) in enumerate(inputs_header)
+            col_name_str = string(col_name)
+            value = inputs_data[row_idx, col_idx]
+            
+            # Skip testcase column and missing values
+            if col_name_str == "testcase" || ismissing(value)
+                continue
+            end
+            
+            inputs[col_name_str] = value
+        end
+        
+        # Create expected outputs dictionary
+        ref_outputs = Dict{String, Any}()
+        for (col_idx, col_name) in enumerate(outputs_header)
+            col_name_str = string(col_name)
+            value = outputs_data[output_row_idx, col_idx]
+            
+            # Skip testcase column and missing values
+            if col_name_str == "testcase" || ismissing(value)
+                continue
+            end
+            
+            ref_outputs[col_name_str] = value
+        end
 
         for FT in (Float32, )
-            ref_outputs = Dict{String, FT}(string(k) => FT(v) for (k, v) in testcase["outputs"])  # Ensure ref_outputs is String -> FT
+            # Convert ref_outputs to the correct FT
+            ref_outputs_typed = Dict{String, FT}(k => FT(v) for (k, v) in ref_outputs)
 
-            @testset "Test $(basename(file)), FT = $FT" begin
+            @testset "Test $testcase_name, FT = $FT" begin
                 # Create constants, drivers, and parameters for the current FT
                 constants = create_pmodel_constants(FT)
                 drivers = create_pmodel_drivers(inputs, FT)
                 parameters = create_pmodel_parameters(inputs, FT)
-
+                
                 # Run the model
                 outputs = compute_pmodel_outputs(parameters, drivers, constants)
-                outputs = Dict(string(k) => v for (k, v) in outputs)  # Ensure outputs is String -> FT
+                
+                # Convert outputs dict keys to strings for comparison
+                outputs = Dict(string(k) => v for (k, v) in outputs)
 
                 # Compare each output field
-                for key in keys(ref_outputs)
+                for key in keys(ref_outputs_typed)
                     if haskey(outputs, key)
-                        r_out = ref_outputs[key]
+                        r_out = ref_outputs_typed[key]
+                        # convert gpp to kg/m^2/s   
+                        if key == "gpp"
+                            r_out = r_out / 1000.0 
+                        end
+
                         j_out = outputs[key]
                         diff = percent_difference(j_out, r_out)
 
                         # Verbose output
-                        println("Key: $key")
+                        println("Output: $key")
                         println("  Expected: $r_out")
                         println("  Computed: $j_out")
                         println("  Percent Difference: $diff%")
