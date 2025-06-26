@@ -1,4 +1,9 @@
-export PModelParameters, PModelDrivers, PModelConstants, compute_pmodel_outputs, PModelModel
+export PModelParameters, 
+    PModelDrivers, 
+    PModelConstants, 
+    create_pmodel_constants, 
+    compute_pmodel_outputs, 
+    PModelModel
 
 """
     PModelParameters{FT<:AbstractFloat}
@@ -33,14 +38,12 @@ Base.@kwdef struct PModelDrivers{
 }
     "Canopy temperature (K)"
     T_canopy::FT
-    "Absorbed photosynthetically active radiation (PAR) (mol m^-2 s^-1)"
-    f_abs::FT
+    "Absorbed PAR in moles of photons (mol m^-2 s^-1)"
+    I_abs::FT
     "Ambient CO2 partial pressure (Pa)"
     ca::FT
     "Ambient air pressure (Pa)"
     P_air::FT
-    "Downwelling PAR (mol m^-2 s^-1)"
-    par_d::FT
     "Vapor pressure deficit (Pa)"
     VPD::FT
 end
@@ -57,19 +60,13 @@ Base.@kwdef struct PModelConstants{FT}
     ΔHRd::FT
     fC3::FT
     Drel::FT
-    energy_per_mole_photon_par::FT
+    ΔHΓstar::FT
+    Γstar25::FT
 end
 
-function create_pmodel_constants(canopy, FT)
-    earth_param_set = canopy.parameters.earth_param_set
-    lightspeed = LP.light_speed(earth_param_set)
-    planck_h = LP.planck_constant(earth_param_set)
-    N_a = LP.avogadro_constant(earth_param_set)
-    (; _, λ_γ_PAR, Ω) = canopy.radiative_transfer.parameters
-    energy_per_mole_photon_par = planck_h * lightspeed / λ_γ_PAR * N_a
-
+function create_pmodel_constants(FT)
     return PModelConstants(
-        R = LP.gas_constant(earth_param_set),
+        R = LP.gas_constant(LP.LandParameters(FT)),
         Kc25 = FT(39.97),
         Ko25 = FT(27480.0),
         To = FT(298.15),
@@ -79,30 +76,35 @@ function create_pmodel_constants(canopy, FT)
         ΔHRd = FT(46390.0),
         fC3 = FT(0.015),
         Drel = FT(1.6),
-        energy_per_mole_photon_par = FT(energy_per_mole_photon_par),
-        Ω = FT(Ω)
+        ΔHΓstar = FT(37830),
+        Γstar25 = FT(4.332) 
     )
 end
 
 """
     PModelModel{FT,
-                OPFT <: PModelParameters{FT}
+                OPFT <: PModelParameters{FT},
+                OPCT <: PModelConstants{FT}
                 } <: AbstractPhotosynthesisModel{FT}
 
 Optimality model of Smith et al. (2019) for estimating Vcmax, based on the assumption that Aj = Ac.
 Smith et al. (2019). Global photosynthetic capacity is optimized to the environment. Ecology Letters, 22(3), 506–517. https://doi.org/10.1111/ele.13210
 """
-struct PModelModel{FT, OPFT <: PModelParameters{FT}} <:
+struct PModelModel{FT, OPFT <: PModelParameters{FT}, OPCT <: PModelConstants{FT}} <:
        AbstractPhotosynthesisModel{FT}
     "Required parameters for the P-model of Stocker et al. (2020)"
     parameters::OPFT
+    "Constants for the P-model"
+    constants::OPCT
 end
 
 function PModelModel{FT}(
     parameters::PModelParameters{FT},
+    constants::PModelConstants{FT} = create_pmodel_constants(FT),
 ) where {FT <: AbstractFloat}
-    return PModelModel{eltype(parameters), typeof(parameters)}(
+    return PModelModel{FT, typeof(parameters), typeof(constants)}(
         parameters,
+        constants,
     )
 end
 
@@ -132,19 +134,18 @@ function compute_pmodel_outputs(
     (; sc, pc, cstar, β, ϕc, ϕ0) = parameters
 
     # Unpack drivers
-    (; T_canopy, f_abs, ca, P_air, par_d, VPD) = drivers
+    (; T_canopy, I_abs, ca, P_air, VPD) = drivers
 
     # Unpack constants
     (; R, Kc25, Ko25, To, ΔHkc, ΔHko, 
-        ΔHVcmax, ΔHRd, fC3, Drel, energy_per_mole_photon_par, Ω) = constants
+        ΔHVcmax, ΔHRd, fC3, Drel, ΔHΓstar, Γstar25) = constants
 
     # Compute intermediate values
     ϕ0 = isnan(ϕ0) ? intrinsic_quantum_yield(T_canopy, ϕc) : ϕ0
 
-    Γstar = co2_compensation_p(T_canopy, P_air, R)
+    Γstar = co2_compensation_p(T_canopy, To, P_air, R, ΔHΓstar, Γstar25)
     ηstar = compute_viscosity_ratio(T_canopy, P_air)
     Kmm = compute_Kmm(T_canopy, P_air, Kc25, Ko25, ΔHkc, ΔHko, To, R)
-    I_abs = f_abs * par_d / energy_per_mole_photon_par
     χ, ξ, mj, mc = optimal_co2_ratio_c3(Kmm, Γstar, ηstar, ca, VPD, β, Drel)
     ci = χ * ca
     mprime = compute_mj_with_jmax_limitation(mj, cstar)
@@ -164,8 +165,8 @@ function compute_pmodel_outputs(
     GPP = I_abs * LUE 
 
     iWUE = (ca - ci) / Drel
-    gs = An / (ca - ci)
-    Jmax = pmodel_jmax(ϕ0, I_abs, mprime)
+    gs = Ac / (ca - ci)
+    Jmax = pmodel_jmax(ϕ0, I_abs, cstar, ci, Γstar)
 
     return Dict(
         "gpp" => GPP,
@@ -198,6 +199,13 @@ productivity `GPP` (mol CO2/m^2/s), and updates them in place.
 """
 function update_photosynthesis!(p, Y, model::PModelModel, canopy)
     # Unpack required fields from `p` and `canopy`
+    earth_param_set = canopy.parameters.earth_param_set
+    lightspeed = LP.light_speed(earth_param_set)
+    planck_h = LP.planck_constant(earth_param_set)
+    N_a = LP.avogadro_constant(earth_param_set)
+    (; _, λ_γ_PAR, Ω) = canopy.radiative_transfer.parameters
+    energy_per_mole_photon_par = planck_h * lightspeed / λ_γ_PAR * N_a
+
     T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
     f_abs = p.canopy.radiative_transfer.par.abs
     ca = p.drivers.c_co2
@@ -207,20 +215,21 @@ function update_photosynthesis!(p, Y, model::PModelModel, canopy)
         p.drivers.T, p.drivers.P, p.drivers.q, canopy.parameters.earth_param_set.thermo_params
     )
 
-    # Create PModelDrivers
+    # Calculate I_abs directly
+    I_abs = f_abs * par_d / energy_per_mole_photon_par
+
+    # Create PModelDrivers with I_abs
     drivers = PModelDrivers(
         T_canopy = T_canopy,
-        f_abs = f_abs,
+        I_abs = I_abs,
         ca = ca,
         P_air = P_air,
-        par_d = par_d,
         VPD = VPD
     )
 
-    # Create PModelConstants
-    constants = create_pmodel_constants(canopy, eltype(p.canopy.photosynthesis.Rd))
-
+    # Use model's parameters and constants
     parameters = model.parameters
+    constants = model.constants
 
     outputs = compute_pmodel_outputs(parameters, drivers, constants)
 
