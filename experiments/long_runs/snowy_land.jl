@@ -286,19 +286,18 @@ function setup_model(FT, start_date, stop_date, Δt, domain, earth_param_set)
     #    α_snow = Snow.ConstantAlbedoModel(FT(0.7))
     # Set β = 0 in order to regain model without density dependence
     α_snow = Snow.ZenithAngleAlbedoModel(
-        FT(0.64),
-        FT(0.06),
-        FT(2);
-        β = FT(0.4),
-        x0 = FT(0.2),
+        FT(0.6668302613872219),
+        FT(0.0),
+        FT(0);
     )
     horz_degree_res =
         sum(ClimaLand.Domains.average_horizontal_resolution_degrees(domain)) / 2 # mean of resolution in latitude and longitude, in degrees
     scf = Snow.WuWuSnowCoverFractionModel(
-        FT(0.08),
-        FT(1.77),
-        FT(1.0),
-        horz_degree_res,
+        FT(1e-4),
+        FT(1.5199906152621936),
+        FT(1e-4),
+        horz_degree_res;
+        z0 = FT(0.2435664718055079)
     )
     snow_parameters = SnowParameters{FT}(
         Δt;
@@ -339,10 +338,10 @@ function setup_simulation(; greet = false)
     # Note that since the Northern hemisphere's winter season is defined as DJF,
     # we simulate from and until the beginning of
     # March so that a full season is included in seasonal metrics.
-    start_date = LONGER_RUN ? DateTime("2000-03-01") : DateTime("2008-03-01")
-    stop_date = LONGER_RUN ? DateTime("2019-03-01") : DateTime("2010-03-01")
+    start_date = LONGER_RUN ? DateTime("2014-12-01") : DateTime("2008-03-01")
+    stop_date = LONGER_RUN ? DateTime("2017-01-01") : DateTime("2010-03-01")
     Δt = 450.0
-    nelements = (101, 15)
+    nelements = (50, 15)
     if greet
         @info "Run: Global Soil-Canopy-Snow Model"
         @info "Resolution: $nelements"
@@ -354,9 +353,9 @@ function setup_simulation(; greet = false)
     domain =
         ClimaLand.ModelSetup.global_domain(FT; comms_ctx = context, nelements)
     params = LP.LandParameters(FT)
-    model = setup_model(FT, start_date, stop_date, Δt, domain, params)
+    model = setup_model(FT, start_date, stop_date, Δt, domain, params);
 
-    simulation = LandSimulation(FT, start_date, stop_date, Δt, model; outdir)
+    simulation = LandSimulation(FT, start_date, stop_date, Δt, model; outdir);
     return simulation
 end
 
