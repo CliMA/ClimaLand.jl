@@ -69,7 +69,7 @@ land = global_land_model(
 @test ClimaLand.land_components(land) == (:soil, :snow, :soilco2, :canopy)
 
 @testset "Total energy and water" begin
-    Y, p, cds = initialize(land)
+    Y, p, cds = initialize(land; nan_fill = false)
     # Soil IC
     ϑ_l0 = land.soil.parameters.ν ./ 2
     θ_i0 = land.soil.parameters.ν ./ 5
@@ -178,7 +178,7 @@ end
 
 if pkgversion(ClimaCore) >= v"0.14.30"
     @testset "Column integral mask awareness" begin
-        Y, p, cds = initialize(land)
+        Y, p, cds = initialize(land; nan_fill = false)
         Y.soil.ϑ_l .= land.soil.parameters.ν .+ FT(1e-3)
         fill!(parent(p.soil.is_saturated), FT(0.5)) # integrand
         @test extrema(p.soil.h∇) == (0.0, 0.0) # integral (0,0)
@@ -196,7 +196,7 @@ if pkgversion(ClimaCore) >= v"0.14.30"
 
 
     @testset "Mask of full land" begin
-        Y, p, cds = initialize(land)
+        Y, p, cds = initialize(land; nan_fill = false)
         Y .= 0
         surface_space = axes(Y.snow.U)
         subsurface_space = axes(Y.soil.ϑ_l)

@@ -94,12 +94,13 @@ end
 
 function initialize_prognostic(
     model::AbstractLandModel{FT},
-    coords::NamedTuple,
+    coords::NamedTuple;
+    nan_fill = true
 ) where {FT}
     components = land_components(model)
     Y_state_list = map(components) do (component)
         submodel = getproperty(model, component)
-        getproperty(initialize_prognostic(submodel, coords), component)
+        getproperty(initialize_prognostic(submodel, coords; nan_fill), component)
     end
     Y = ClimaCore.Fields.FieldVector(; NamedTuple{components}(Y_state_list)...)
     return Y
@@ -107,14 +108,15 @@ end
 
 function initialize_auxiliary(
     model::AbstractLandModel{FT},
-    coords::NamedTuple,
+    coords::NamedTuple;
+    nan_fill = true
 ) where {FT}
     components = land_components(model)
     p_state_list = map(components) do (component)
         submodel = getproperty(model, component)
-        getproperty(initialize_auxiliary(submodel, coords), component)
+        getproperty(initialize_auxiliary(submodel, coords; nan_fill), component)
     end
-    p_additional_aux = initialize_lsm_aux(model, coords)
+    p_additional_aux = initialize_lsm_aux(model, coords; nan_fill)
     p = (; p_additional_aux..., NamedTuple{components}(p_state_list)...)
     domains_list = map(components) do (component)
         submodel = getproperty(model, component)
@@ -136,15 +138,23 @@ Additional auxiliary variables are specified by `lsm_aux_vars`, their types
 by `lsm_aux_types`, and their domain names by `lsm_aux_domain_names`.
 This function should be called during `initialize_auxiliary` step.
 """
-function initialize_lsm_aux(land::AbstractLandModel, land_coords)
+function initialize_lsm_aux(land::AbstractLandModel, land_coords; nan_fill = true)
     vars = lsm_aux_vars(land)
     types = lsm_aux_types(land)
     domains = lsm_aux_domain_names(land)
     additional_aux = map(zip(types, domains)) do (T, domain)
         zero_instance = ClimaCore.RecursiveApply.rzero(T)
-        f = map(_ -> zero_instance, getproperty(land_coords, domain))
-        fill!(ClimaCore.Fields.field_values(f), zero_instance)
-        f
+        if nan_fill
+            FT = eltype(zero_instance)
+            nan_instance::T = ClimaCore.RecursiveApply.radd(zero_instance, FT(NaN))
+            f = map(_ -> nan_instance, getproperty(land_coords, domain))
+            fill!(ClimaCore.Fields.field_values(f), nan_instance)
+            f
+        else
+            f = map(_ -> zero_instance, getproperty(land_coords, domain))
+            fill!(ClimaCore.Fields.field_values(f), zero_instance)
+            f
+        end
     end
     return NamedTuple{vars}(additional_aux)
 end

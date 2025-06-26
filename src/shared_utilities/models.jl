@@ -328,7 +328,7 @@ ClimaCore Field or a Vector{FT}.
 Adjustments to this - for example because different prognostic variables
 have different dimensions - require defining a new method.
 """
-function initialize_prognostic(model::AbstractModel{FT}, state) where {FT}
+function initialize_prognostic(model::AbstractModel{FT}, state; nan_fill=true) where {FT}
     if length(prognostic_vars(model)) == 0
         throw(
             AssertionError("Model must have at least one prognostic variable."),
@@ -339,7 +339,8 @@ function initialize_prognostic(model::AbstractModel{FT}, state) where {FT}
         prognostic_types(model),
         prognostic_domain_names(model),
         state,
-        name(model),
+        name(model);
+        nan_fill
     )
     return ClimaCore.Fields.FieldVector(; state_nt...)
 end
@@ -362,13 +363,14 @@ ClimaCore Field or a Vector{FT}.
 Adjustments to this - for example because different auxiliary variables
 have different dimensions - require defining a new method.
 """
-function initialize_auxiliary(model::AbstractModel{FT}, state) where {FT}
+function initialize_auxiliary(model::AbstractModel{FT}, state; nan_fill = true) where {FT}
     p = initialize_vars(
         auxiliary_vars(model),
         auxiliary_types(model),
         auxiliary_domain_names(model),
         state,
-        name(model),
+        name(model);
+        nan_fill
     )
     if :domain ∈ propertynames(model)
         p = add_dss_buffer_to_aux(p, model.domain)
@@ -380,18 +382,25 @@ function initialize_auxiliary(model::AbstractModel{FT}, state) where {FT}
     return p
 end
 
-function initialize_vars(keys, types, domain_names, state, model_name)
-    FT = eltype(state)
+function initialize_vars(keys, types, domain_names, state, model_name; nan_fill = true)
     if length(keys) == 0
         return (; model_name => nothing)
     else
-        zero_states = map(zip(types, domain_names)) do (T, D)
+        init_states = map(zip(types, domain_names)) do (T, D)
             zero_instance = ClimaCore.RecursiveApply.rzero(T)
-            f = map(_ -> zero_instance, getproperty(state, D))
-            fill!(ClimaCore.Fields.field_values(f), zero_instance)
-            f
+            if nan_fill
+                FT = eltype(zero_instance)
+                nan_instance::T = ClimaCore.RecursiveApply.radd(zero_instance, FT(NaN))
+                f = map(_ -> nan_instance, getproperty(state, D))
+                fill!(ClimaCore.Fields.field_values(f), nan_instance)
+                f
+            else
+                f = map(_ -> zero_instance, getproperty(state, D))
+                fill!(ClimaCore.Fields.field_values(f), zero_instance)
+                f
+            end
         end
-        return (; model_name => (; zip(keys, zero_states)...))
+        return (; model_name => (; zip(keys, init_states)...))
     end
 end
 
@@ -404,7 +413,7 @@ Creates the driver variable NamedTuple (atmospheric and radiative forcing, etc),
 and merges it into `p` under the key `drivers`. If no driver variables
 are required, `p` is returned unchanged.
 """
-function add_drivers_to_cache(p::NamedTuple, model::AbstractModel, coords)
+function add_drivers_to_cache(p::NamedTuple, model::AbstractModel, coords; nan_fill = true)
     drivers = get_drivers(model)
     if hasproperty(model, :parameters) &&
        hasproperty(model.parameters, :earth_param_set) &&
@@ -417,7 +426,7 @@ function add_drivers_to_cache(p::NamedTuple, model::AbstractModel, coords)
             )
         end
     end
-    driver_nt = initialize_drivers(drivers, coords)
+    driver_nt = initialize_drivers(drivers, coords; nan_fill)
     if driver_nt == (;)
         return p
     else
@@ -443,11 +452,11 @@ values; constructs and returns the coordinates for the `model` domain.
 We may need to consider this default more as we add diverse components and
 `Simulations`.
 """
-function initialize(model::AbstractModel)
+function initialize(model::AbstractModel; nan_fill = true)
     coords = Domains.coordinates(model)
-    Y = initialize_prognostic(model, coords)
-    p = initialize_auxiliary(model, coords)
-    p = add_drivers_to_cache(p, model, coords)
+    Y = initialize_prognostic(model, coords; nan_fill)
+    p = initialize_auxiliary(model, coords; nan_fill)
+    p = add_drivers_to_cache(p, model, coords; nan_fill)
     return Y, p, coords
 end
 

@@ -78,13 +78,14 @@ with the prognostic variables of the canopy component
 
 The input `state` is usually a ClimaCore Field object.
 """
-function initialize_prognostic(component::AbstractCanopyComponent, state)
+function initialize_prognostic(component::AbstractCanopyComponent, state; nan_fill = true)
     ClimaLand.initialize_vars(
         prognostic_vars(component),
         prognostic_types(component),
         prognostic_domain_names(component),
         state,
-        name(component),
+        name(component);
+        nan_fill
     )
 end
 
@@ -102,14 +103,16 @@ The input `state` is usually a ClimaCore Field object.
 """
 function initialize_auxiliary(
     component::AbstractCanopyComponent{FT},
-    state,
+    state;
+    nan_fill = true
 ) where {FT}
     ClimaLand.initialize_vars(
         auxiliary_vars(component),
         auxiliary_types(component),
         auxiliary_domain_names(component),
         state,
-        name(component),
+        name(component);
+        nan_fill
     )
 end
 

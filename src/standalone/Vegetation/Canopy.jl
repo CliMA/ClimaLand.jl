@@ -349,7 +349,7 @@ This function loops over the components of the `CanopyModel` and appends
 each component models auxiliary state vector into a single state vector,
 structured by component name.
 """
-function initialize_auxiliary(model::CanopyModel{FT}, coords) where {FT}
+function initialize_auxiliary(model::CanopyModel{FT}, coords; nan_fill = true) where {FT}
     components = canopy_components(model)
     p_state_list = map(components) do (component)
         submodel = getproperty(model, component)
@@ -361,7 +361,7 @@ function initialize_auxiliary(model::CanopyModel{FT}, coords) where {FT}
     p = (;
         name(model) => (;
             filter_nt(NamedTuple{components}(p_state_list))...,
-            initialize_boundary_vars(model, coords)...,
+            initialize_boundary_vars(model, coords; nan_fill)...,
         )
     )
     p = ClimaLand.add_dss_buffer_to_aux(p, model.domain)
@@ -375,7 +375,7 @@ Add boundary condition-related variables to the cache.
 This calls functions defined in canopy_boundary_fluxes.jl
 which dispatch on the boundary condition type to add the correct variables.
 """
-function initialize_boundary_vars(model::CanopyModel{FT}, coords) where {FT}
+function initialize_boundary_vars(model::CanopyModel{FT}, coords; nan_fill = true) where {FT}
     vars = boundary_vars(model.boundary_conditions, ClimaLand.TopBoundary())
     types = boundary_var_types(
         model,
@@ -386,11 +386,18 @@ function initialize_boundary_vars(model::CanopyModel{FT}, coords) where {FT}
         model.boundary_conditions,
         ClimaLand.TopBoundary(),
     )
-    additional_aux = map(zip(types, domains)) do (T, domain)
+    additional_aux = map(zip(types, domains)) do (T, D)
         zero_instance = ClimaCore.RecursiveApply.rzero(T)
-        f = map(_ -> zero_instance, getproperty(coords, domain))
-        fill!(ClimaCore.Fields.field_values(f), zero_instance)
-        f
+        if nan_fill
+            nan_instance::T = ClimaCore.RecursiveApply.radd(zero_instance, FT(NaN))
+            f = map(_ -> nan_instance, getproperty(coords, D))
+            fill!(ClimaCore.Fields.field_values(f), nan_instance)
+            f
+        else
+            f = map(_ -> zero_instance, getproperty(coords, D))
+            fill!(ClimaCore.Fields.field_values(f), zero_instance)
+            f
+        end
     end
     return NamedTuple{vars}(additional_aux)
 end
