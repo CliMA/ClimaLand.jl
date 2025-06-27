@@ -1461,19 +1461,6 @@ function pmodel_vcmax(
     return Vcmax
 end
 
-
-# function pmodel_jmax(
-#     ϕ0::FT,
-#     I_abs::FT,
-#     cstar::FT,
-#     ci::FT, 
-#     Γstar::FT
-# ) where {FT}
-#     arg = FT(1.0) / (FT(1.0) - ((cstar * (ci + 2 * Γstar)) / (ci - Γstar))^FT(2/3)) - FT(1.0)
-#     Jmax = FT(4.0) * ϕ0 * I_abs / sqrt(arg) 
-#     return Jmax
-# end
-
 """
     quadratic_soil_moisture_stress(
         θ::FT,
