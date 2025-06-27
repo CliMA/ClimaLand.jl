@@ -34,7 +34,8 @@ export canopy_sw_rt_beer_lambert,
     pmodel_jmax,
     compute_LUE,
     compute_mj_with_jmax_limitation,
-    co2_compensation_p
+    co2_compensation_p,
+    quadratic_soil_moisture_stress
 
 # 1. Radiative transfer
 
@@ -1453,24 +1454,25 @@ function pmodel_vcmax(
     ϕ0::FT, 
     I_abs::FT,
     mprime::FT,
-    mc::FT   
+    mc::FT,
+    βm::FT = FT(1.0)
 ) where {FT}
-    Vcmax = ϕ0 * I_abs * mprime / mc 
+    Vcmax = βm * ϕ0 * I_abs * mprime / mc 
     return Vcmax
 end
 
 
-function pmodel_jmax(
-    ϕ0::FT,
-    I_abs::FT,
-    cstar::FT,
-    ci::FT, 
-    Γstar::FT
-) where {FT}
-    arg = FT(1.0) / (FT(1.0) - ((cstar * (ci + 2 * Γstar)) / (ci - Γstar))^FT(2/3)) - FT(1.0)
-    Jmax = FT(4.0) * ϕ0 * I_abs / sqrt(arg) 
-    return Jmax
-end
+# function pmodel_jmax(
+#     ϕ0::FT,
+#     I_abs::FT,
+#     cstar::FT,
+#     ci::FT, 
+#     Γstar::FT
+# ) where {FT}
+#     arg = FT(1.0) / (FT(1.0) - ((cstar * (ci + 2 * Γstar)) / (ci - Γstar))^FT(2/3)) - FT(1.0)
+#     Jmax = FT(4.0) * ϕ0 * I_abs / sqrt(arg) 
+#     return Jmax
+# end
 
 """
     quadratic_soil_moisture_stress(
@@ -1506,4 +1508,73 @@ function quadratic_soil_moisture_stress(
     β = ifelse(θ > θ1, FT(1.0), β)
 
     return β
+end
+
+"""
+    electron_transport_pmodel(
+        ϕ0::FT,
+        I_abs::FT,
+        Jmax::FT 
+    ) where {FT}
+    
+    Computes the rate of electron transport (`J`) in mol/m^2/s for the pmodel.
+"""
+function electron_transport_pmodel(
+    ϕ0::FT,
+    I_abs::FT,
+    Jmax::FT 
+) where {FT}
+    J = FT(4) * ϕ0 * I_abs / sqrt(FT(1) + (FT(4) * ϕ0 * I_abs / Jmax)^2) 
+    return J
+end
+
+
+
+"""
+inst_temp_scaling(
+    T_canopy::FT;
+    T_acclim::FT = T_canopy,
+    To::FT,
+    Ha::FT,
+    Hd::FT,
+    aS::FT,
+    bS::FT,
+    R::FT
+) where {FT}
+
+Given Vcmax or Jmax that have acclimated according to T_acclim, this function computes
+the instantaneous temperature scaling factor f ∈ [0, ∞) for these maximum rates at the 
+instantaneous current temperature T_canopy. To is a reference temperature for the constants
+and should be set to 298.15 K (25 °C). By default we assume that T_acclim = T_canopy. 
+
+The parameters (`Ha`, `Hd`, `aS`, `bS`) come from Kattge & Knorr (2007)
+
+| Quantity | Ha (J/mol) | Hd (J/mol) | aS (J/mol/K) | bS (J/mol/K^2) |
+|----------|------------|------------|--------------|----------------|
+| Vcmax    |   71 513   | 200 000    |   668.39     | 1.07           |
+| Jmax     |   49 884   | 200 000    |   659.70     | 0.75           |
+
+"""
+function inst_temp_scaling(
+    T_canopy::FT,
+    T_acclim::FT,
+    To::FT,
+    Ha::FT,
+    Hd::FT,
+    aS::FT,
+    bS::FT,
+    R::FT
+ ) where {FT}
+    T_acclim = T_acclim - FT(273.15)    # °C for ΔS(T)
+    ΔS        = aS - bS * T_acclim      # entropy term (J mol⁻¹ K⁻¹)
+
+    # Arrhenius-type activation scaling factor
+    f_act = arrhenius_function(T_canopy, To, R, Ha)
+
+    # high temperature deactivation scaling factor
+    num = 1 + exp( (To * ΔS - Hd) / (R * To) )
+    den = 1 + exp( (T_canopy * ΔS - Hd) / (R * T_canopy) )
+    f_deact = num / den
+
+    return f_act * f_deact 
 end

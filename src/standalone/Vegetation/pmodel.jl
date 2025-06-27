@@ -46,38 +46,71 @@ Base.@kwdef struct PModelDrivers{
     P_air::FT
     "Vapor pressure deficit (Pa)"
     VPD::FT
+    """Soil moisture stress factor (unitless)"""
+    βm::FT
 end
 
-# TODO: add descriptions to these
 Base.@kwdef struct PModelConstants{FT}
+    """Gas constant (J mol^-1 K^-1)"""
     R::FT
+    """Michaelis-Menten parameter for carboxylation at 25°C (μmol mol^-1)"""
     Kc25::FT
+    """Michaelis-Menten parameter for oxygenation at 25°C (μmol mol^-1)"""
     Ko25::FT
+    """Reference temperature equal to 25˚C (K)"""
     To::FT
+    """Energy of activation for Kc (J mol^-1)"""
     ΔHkc::FT
+    """Energy of activation for Ko (J mol^-1)"""
     ΔHko::FT
+    """Effective energy of activation for Vcmax (J mol^-1)"""
     ΔHVcmax::FT
+    """Effective energy of activation for Jmax (J mol^-1)"""
+    ΔHJmax::FT
+    """Effective energy of activation for Rd (J mol^-1)"""
     ΔHRd::FT
+    """Constant factor appearing in the dark respiration term for C3 plants, equal to 0.015."""
     fC3::FT
+    """Relative diffusivity of CO2 in the stomatal pores, equal to 1.6."""
     Drel::FT
+    """Effective energy of activation for Γstar (J mol^-1)"""
     ΔHΓstar::FT
+    """Γstar at 25 °C (Pa)"""
     Γstar25::FT
+    Ha_Vcmax::FT
+    Hd_Vcmax::FT
+    aS_Vcmax::FT
+    bS_Vcmax::FT
+    Ha_Jmax::FT
+    Hd_Jmax::FT
+    aS_Jmax::FT
+    bS_Jmax::FT
+
 end
 
 function create_pmodel_constants(FT)
     return PModelConstants(
         R = LP.gas_constant(LP.LandParameters(FT)),
         Kc25 = FT(39.97),
-        Ko25 = FT(27480.0),
+        Ko25 = FT(27480),
         To = FT(298.15),
-        ΔHkc = FT(79430.0),
-        ΔHko = FT(36380.0),
-        ΔHVcmax = FT(58520.0),
-        ΔHRd = FT(46390.0),
+        ΔHkc = FT(79430),
+        ΔHko = FT(36380),
+        ΔHVcmax = FT(65330),
+        ΔHJmax = FT(43990),
+        ΔHRd = FT(46390),
         fC3 = FT(0.015),
         Drel = FT(1.6),
         ΔHΓstar = FT(37830),
-        Γstar25 = FT(4.332) 
+        Γstar25 = FT(4.332),
+        Ha_Vcmax = FT(71513),
+        Hd_Vcmax = FT(200000),
+        aS_Vcmax = FT(668.39),
+        bS_Vcmax = FT(1.07),
+        Ha_Jmax = FT(49884),
+        Hd_Jmax = FT(200000),
+        aS_Jmax = FT(659.70),
+        bS_Jmax = FT(0.75)
     )
 end
 
@@ -134,11 +167,13 @@ function compute_pmodel_outputs(
     (; sc, pc, cstar, β, ϕc, ϕ0) = parameters
 
     # Unpack drivers
-    (; T_canopy, I_abs, ca, P_air, VPD) = drivers
+    (; T_canopy, I_abs, ca, P_air, VPD, βm) = drivers
 
     # Unpack constants
     (; R, Kc25, Ko25, To, ΔHkc, ΔHko, 
-        ΔHVcmax, ΔHRd, fC3, Drel, ΔHΓstar, Γstar25) = constants
+        ΔHVcmax, ΔHJmax, ΔHRd, fC3, Drel, ΔHΓstar, Γstar25,
+        Ha_Vcmax, Hd_Vcmax, aS_Vcmax, bS_Vcmax, 
+        Ha_Jmax, Hd_Jmax, aS_Jmax, bS_Jmax) = constants
 
     # Compute intermediate values
     ϕ0 = isnan(ϕ0) ? intrinsic_quantum_yield(T_canopy, ϕc) : ϕ0
@@ -149,14 +184,21 @@ function compute_pmodel_outputs(
     χ, ξ, mj, mc = optimal_co2_ratio_c3(Kmm, Γstar, ηstar, ca, VPD, β, Drel)
     ci = χ * ca
     mprime = compute_mj_with_jmax_limitation(mj, cstar)
-    Vcmax = pmodel_vcmax(ϕ0, I_abs, mprime, mc)
-    Ac = Vcmax * mc
 
-    Aj = Ac # Coordination hypothesis
-    LUE = compute_LUE(ϕ0, FT(1.0), mprime)
-    Vcmax25 = Vcmax / arrhenius_function(T_canopy, To, R, ΔHVcmax)
-    Rd = dark_respiration(FT(1.0), Vcmax25, FT(1.0), T_canopy, R, To, fC3, ΔHRd)
-    An = net_photosynthesis(Ac, Aj, Rd, FT(1.0))
+    Vcmax = βm * ϕ0 * I_abs * mprime / mc
+    Vcmax25 = Vcmax / inst_temp_scaling(T_canopy, T_canopy, To, Ha_Vcmax, Hd_Vcmax, aS_Vcmax, bS_Vcmax, R)
+
+    Jmaxlim = Vcmax * (ci + FT(2) * Γstar) / (ϕ0 * I_abs * (ci + Kmm))
+    Jmax = FT(4) * ϕ0 * I_abs / sqrt((FT(1)/Jmaxlim)^2 - FT(1)) 
+    Jmax25 = Jmax / inst_temp_scaling(T_canopy, T_canopy, To, Ha_Jmax, Hd_Jmax, aS_Jmax, bS_Jmax, R)
+    J = electron_transport_pmodel(ϕ0, I_abs, Jmax)
+
+    Ac = Vcmax * mc
+    Aj = J * mj / FT(4)
+
+    @assert isapprox(Ac, Aj; atol=1e-6) "Ac and Aj are not approximately equal: Ac = $Ac, Aj = $Aj"
+
+    LUE = compute_LUE(ϕ0, βm, mprime)
 
     # I noticed that the GPP definition in optimality_farquhar.jl is different from 
     # the one in Stocker et al. (2020). It uses LAI, Ω, and extinction coefficients.
@@ -164,9 +206,9 @@ function compute_pmodel_outputs(
     # to figure out the discrepancy 
     GPP = I_abs * LUE 
 
+    # intrinsic water use efficiency (iWUE) and stomatal conductance (gs)
     iWUE = (ca - ci) / Drel
     gs = Ac / (ca - ci)
-    Jmax = pmodel_jmax(ϕ0, I_abs, cstar, ci, Γstar)
 
     return Dict(
         "gpp" => GPP,
@@ -184,8 +226,7 @@ function compute_pmodel_outputs(
         "vcmax" => Vcmax,
         "vcmax25" => Vcmax25,
         "jmax" => Jmax,
-        "rd" => Rd,
-        "An" => An
+        "jmax25" => Jmax25
     )
 end
 
@@ -224,7 +265,8 @@ function update_photosynthesis!(p, Y, model::PModelModel, canopy)
         I_abs = I_abs,
         ca = ca,
         P_air = P_air,
-        VPD = VPD
+        VPD = VPD,
+        βm = FT(1.0) # TODO: add a new file for soil moisture stress parameterizations
     )
 
     # Use model's parameters and constants

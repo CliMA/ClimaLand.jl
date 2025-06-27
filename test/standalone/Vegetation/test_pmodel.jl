@@ -8,6 +8,9 @@ using ClimaLand.Domains: Point
 import ClimaLand.Parameters as LP
 import ClimaParams
 
+# verbose output?
+verbose = true
+
 # Directory containing CSV test cases
 datadir = "/Users/yuchenli/Documents/CliMA Land (local)/testcases"
 inputs_file = joinpath(datadir, "inputs.csv")
@@ -15,7 +18,7 @@ outputs_file = joinpath(datadir, "outputs.csv")
 
 # Allowed relative error (can tighten for Float64)
 atol = 1e-3
-rtol = 1e-2
+rtol = 1e-3
 
 function percent_difference(a, b)
     return abs(a - b) / abs(b) * 100
@@ -29,13 +32,16 @@ function create_pmodel_drivers(inputs::Dict{String, Any}, FT)
     
     # Calculate I_abs directly from fapar and ppfd
     I_abs = FT(inputs["fapar"]) *  FT(inputs["ppfd"])
+
+    βm = Bool(inputs["do_soilmstress"]) ? quadratic_soil_moisture_stress(FT(inputs["soilm"])) : FT(1.0)
     
     return PModelDrivers(
         T_canopy = T_canopy,
         I_abs = I_abs,
         ca = ca,
         P_air = P_air,
-        VPD = VPD
+        VPD = VPD,
+        βm = βm
     )
 end
 
@@ -47,7 +53,7 @@ function create_pmodel_parameters(inputs::Dict{String, Any}, FT)
 
     if Bool(inputs["do_ftemp_kphio"])
         ϕ0 = FT(NaN) 
-        ϕc = FT(1.0) 
+        ϕc = FT(inputs["kphio"]) 
     else
         ϕ0 = FT(inputs["kphio"])
         ϕc = FT(NaN)
@@ -121,6 +127,9 @@ end
             ref_outputs_typed = Dict{String, FT}(k => FT(v) for (k, v) in ref_outputs)
 
             @testset "Test $testcase_name, FT = $FT" begin
+                if verbose
+                    println("Running test case: $testcase_name with FT = $FT")
+                end
                 # Create constants, drivers, and parameters for the current FT
                 constants = create_pmodel_constants(FT)
                 drivers = create_pmodel_drivers(inputs, FT)
@@ -145,11 +154,12 @@ end
                         diff = percent_difference(j_out, r_out)
 
                         # Verbose output
-                        println("Output: $key")
-                        println("  Expected: $r_out")
-                        println("  Computed: $j_out")
-                        println("  Percent Difference: $diff%")
-
+                        if verbose
+                            println("Output: $key")
+                            println("  Expected: $r_out")
+                            println("  Computed: $j_out")
+                            println("  Percent Difference: $diff%")
+                        end
                         # Test for approximate equality
                         @test isapprox(j_out, r_out, rtol=rtol, atol=atol)
                     else
