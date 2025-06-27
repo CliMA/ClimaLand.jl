@@ -9,7 +9,7 @@ import ClimaLand.Parameters as LP
 import ClimaParams
 
 # verbose output?
-verbose = true
+verbose = false
 
 # Directory containing CSV test cases
 datadir = "/Users/yuchenli/Documents/CliMA Land (local)/testcases"
@@ -48,8 +48,6 @@ end
 function create_pmodel_parameters(inputs::Dict{String, Any}, FT)
     β = FT(inputs["beta"])
     cstar = FT(0.41) 
-    sc = FT(0.0)  # placeholder since this isn't used
-    pc = FT(0.0)  # placeholder since this isn't used
 
     if Bool(inputs["do_ftemp_kphio"])
         ϕ0 = FT(NaN) 
@@ -60,8 +58,6 @@ function create_pmodel_parameters(inputs::Dict{String, Any}, FT)
     end
 
     return PModelParameters(
-        sc = sc,
-        pc = pc,
         cstar = cstar,
         β = β,
         ϕc = ϕc,
@@ -122,7 +118,7 @@ end
             ref_outputs[col_name_str] = value
         end
 
-        for FT in (Float32, )
+        for FT in (Float32, Float64)
             # Convert ref_outputs to the correct FT
             ref_outputs_typed = Dict{String, FT}(k => FT(v) for (k, v) in ref_outputs)
 

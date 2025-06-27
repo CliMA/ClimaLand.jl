@@ -1493,7 +1493,7 @@ function quadratic_soil_moisture_stress(
     θ::FT,
     meanalpha::FT = FT(1.0),
     a_hat::FT = FT(0.0),
-    b_hat::FT = FT(0.685),
+    b_hat::FT = FT(0.733),
     θ0::FT = FT(0.0),
     θ1::FT = FT(0.6) 
 ) where {FT}
