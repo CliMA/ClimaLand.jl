@@ -341,7 +341,6 @@ function default_diagnostics(
             "ghf",
             "iwc",
             "snowc",
-            "asnow",
         ]
     elseif output_vars == :short
         snowyland_diagnostics = [
@@ -364,7 +363,6 @@ function default_diagnostics(
             "swd",
             "lwd",
             "snowc",
-            "asnow"
         ]
     end
 

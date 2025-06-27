@@ -125,7 +125,8 @@ end
     cosθs = cos.(θs)
     α_leaf = [rand(N - 4)..., 0.0, 0.0, 1.0, 1.0]
     τ_leaf = (1.0 .- α_leaf) .* rand(N)
-    α_soil = [rand(N - 6)..., 0.0, 1.0, 0.2, 0.2, 0.2, 0.2]
+    τ_leaf[end - 2] = 0.0
+    α_soil = [rand(N - 6)..., 0.0, 1.0, 0.2, 0.99, 0.2, 0.2]
     G_Function = ConstantGFunction(0.5)
     K = ClimaLand.Canopy.extinction_coeff.(G_Function, cosθs)
     frac_diff = rand(N)
