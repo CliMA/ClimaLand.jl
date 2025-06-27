@@ -937,15 +937,4 @@ function define_diagnostics!(land_model)
         compute! = (out, Y, p, t) ->
             compute_snow_cover_fraction!(out, Y, p, t, land_model),
     )
-
-    # Snow albedo
-    add_diagnostic_variable!(
-        short_name = "asnow",
-        long_name = "Snow albedo",
-        standard_name = "snow_albedo",
-        units = "",
-        comments = "The snow albedo",
-        compute! = (out, Y, p, t) ->
-            compute_snow_albedo!(out, Y, p, t, land_model),
-    )
 end
