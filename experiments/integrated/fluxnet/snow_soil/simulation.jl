@@ -63,6 +63,10 @@ include(
 # Now we set up the model. For the soil model, we pick
 # a model type and model args:
 soil_domain = land_domain
+soil_albedo = Soil.ConstantTwoBandSoilAlbedo{FT}(;
+    PAR_albedo = soil_α_PAR,
+    NIR_albedo = soil_α_NIR,
+)
 soil_ps = Soil.EnergyHydrologyParameters(
     FT;
     ν = soil_ν,
@@ -76,8 +80,7 @@ soil_ps = Soil.EnergyHydrologyParameters(
     z_0m = z_0m_soil,
     z_0b = z_0b_soil,
     emissivity = soil_ϵ,
-    PAR_albedo = soil_α_PAR,
-    NIR_albedo = soil_α_NIR,
+    albedo = soil_albedo,
 )
 
 soil_args = (parameters = soil_ps,)
@@ -313,8 +316,8 @@ end
     cumsum(
         -1 .* [
             parent(
-                compute_atmos_energy_fluxes(sv.saveval[k]) #.- compute_energy_of_runoff(sv.saveval[k])
-                .-
+                compute_atmos_energy_fluxes(sv.saveval[k]) .-
+                compute_energy_of_runoff(sv.saveval[k]) .-
                 sv.saveval[k].soil.bottom_bc.heat,
             )[end] for k in 1:1:(length(sv.t) - 1)
         ],
