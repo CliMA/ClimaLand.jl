@@ -47,7 +47,7 @@ function setup_model(
     earth_param_set,
     calibration_params,
 )
-    (; α_0, beta_snow) = calibration_params
+    (; α_0, beta_snow_cover, z0_snow_cover) = calibration_params
 
     surface_space = domain.space.surface
     subsurface_space = domain.space.subsurface
@@ -251,15 +251,16 @@ function setup_model(
     )
 
     # Snow model
-    α_snow = Snow.ZenithAngleAlbedoModel(FT(α_0), FT(0), FT(0); β = FT(beta_snow))
+    α_snow = Snow.ZenithAngleAlbedoModel(FT(α_0), FT(0), FT(0))
 
     horz_degree_res =
         sum(ClimaLand.Domains.average_horizontal_resolution_degrees(domain)) / 2 # mean of resolution in latitude and longitude, in degrees
     scf = Snow.WuWuSnowCoverFractionModel(
-        FT(0.08),
-        FT(1.77),
-        FT(1.0),
-        horz_degree_res,
+        FT(1e-4),
+        beta_snow_cover,
+        FT(1e-4),
+        horz_degree_res;
+	z0 = z0_snow_cover
     )
     snow_parameters = SnowParameters{FT}(
         Δt;
@@ -339,6 +340,7 @@ function CAL.forward_model(iteration, member)
         sim_end,
         Δt,
         model;
+	user_callbacks = (),
         outdir = diagdir,
         diagnostics,
     )

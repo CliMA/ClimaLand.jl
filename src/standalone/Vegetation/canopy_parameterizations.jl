@@ -235,9 +235,9 @@ function canopy_sw_rt_two_stream(
     # Compute μ̄, the average inverse diffuse optical length per LAI
     μ̄ = 1 / max(2G, eps(FT))
 
-    # Clip this to eps(FT) to prevent dividing by zero; the sum must also be < 1
-    ω = min(max(α_leaf + τ_leaf, eps(FT)), 1 - eps(FT))
-
+    # Clip this to prevent dividing by zero; the sum must also be < 1. Note that using eps(FT)
+    # as the threshold leads to numerical errors, so we use 1e-4
+    ω = min(max(α_leaf + τ_leaf, FT(1e-4)), 1 - FT(1e-4))
     # Compute aₛ, the single scattering albedo
     aₛ =
         0.5 * ω * (1 - cosθs * log((abs(cosθs) + 1) / max(abs(cosθs), eps(FT))))

@@ -96,7 +96,7 @@ years_to_delete =
 valid_years = [y for y in unique(years) if !(y in years_to_delete)]
 
 
-diag_var_fun(variable; lat) = 10^2 ./ max(cosd(lat), 0.1)
+diag_var_fun(variable; lat) = 3^2 ./ max(cosd(lat), 0.1)
 # For clipped seasonal covariances, use:
 # diag_var_fun(variable; lat) = min(Statistics.var(variable), 100) ./ max(cosd(lat), 0.1)
 for (lon, lat) in training_locations

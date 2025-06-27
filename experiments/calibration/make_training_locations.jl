@@ -64,11 +64,12 @@ function make_training_locations(nelements)
     # Select only locations where the interpolated mask is equal to 1
     interpolated_mask =
         Array(ClimaCore.Remapping.interpolate(mask; target_hcoords))
-
+	# skip the exact pole at -90, 90 in latitude.
     training_locations = [
         (lon, lat) for (j, lon) in enumerate(longs) for
-        (i, lat) in enumerate(lats) if !iszero(interpolated_mask[i, j])
+        (i, lat) in enumerate(lats[2:end-1]) if !iszero(interpolated_mask[i+1, j])
     ]
+    @show training_locations
 
     return training_locations
 end
