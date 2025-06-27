@@ -359,6 +359,8 @@ function default_diagnostics(
             "trans",
             "msf",
             "lwp",
+            "tsoil",
+            "lai",
             "iwc",
             "swd",
             "lwd",

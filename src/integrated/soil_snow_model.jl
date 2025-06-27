@@ -200,7 +200,8 @@ see equation 24 and 25, with k=N, of Best et al, Geosci. Model Dev., 4, 677–69
 
 However, this is for a multi-layer snow model, with
 T_snow and Δz_snow related to the bottom layer.
-It's not clear this is ideal when we have a single layer snow model. We can revisit this.
+We only have a single layer snow model, and using Δz_snow = height of snow leads to a very small flux when the snow is deep. 
+Due to this, we cap Δz_snow at 10 cm.
 """
 function update_soil_snow_ground_heat_flux!(
     p,
@@ -215,7 +216,7 @@ function update_soil_snow_ground_heat_flux!(
     κ_soil = ClimaLand.Domains.top_center_to_surface(p.soil.κ)
 
     # Depths
-    Δz_snow = p.snow.z_snow
+    Δz_snow = @. lazy(max(p.snow.z_snow, FT(0.1)))
     Δz_soil = soil_domain.fields.Δz_top
 
     # Temperatures
