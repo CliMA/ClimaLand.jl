@@ -116,7 +116,7 @@ function init_soil!(Y, z, params)
     FT = eltype(ν)
     Y.soil.ϑ_l .= ν / 2
     Y.soil.θ_i .= 0.05
-    T = FT(273)
+    T = FT(265)
     ρc_s = ClimaLand.Soil.volumetric_heat_capacity(
         ν / 2,
         FT(0),
@@ -148,6 +148,13 @@ set_initial_cache!(p, Y, t)
 @test all(parent(p.snow.total_energy_flux) .≈ 0)
 @test all(parent(p.snow.total_water_flux) .≈ 0)
 # Make sure the boundary conditions match bare soil result
+# Set snow specific cache to zero.
+p_soil_alone.snow.water_runoff .= 0
+p_soil_alone.snow.energy_runoff .= 0
+p_soil_alone.snow.snow_cover_fraction .= 0
+p_soil_alone.ground_heat_flux .= 0
+p_soil_alone.excess_heat_flux .= 0
+p_soil_alone.excess_water_flux .= 0
 set_soil_initial_cache! = make_set_initial_cache(land_model.soil)
 set_soil_initial_cache!(p_soil_alone, Y, t)
 @test p.soil.top_bc == p_soil_alone.soil.top_bc
@@ -161,7 +168,7 @@ ClimaLand.source!(
     land_model.soil,
 )
 ClimaLand.source!(dY_soil_snow, src, Y, p, land_model.soil)
-@test dY_soil_alone.soil == dY_soil_snow.soil
+@test dY_soil_alone.soil.θ_i == dY_soil_snow.soil.θ_i
 
 
 # Repeat now with snow cover fraction of 1

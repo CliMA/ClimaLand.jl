@@ -69,7 +69,7 @@ land = global_land_model(
 @test ClimaLand.land_components(land) == (:soil, :snow, :soilco2, :canopy)
 
 @testset "Total energy and water" begin
-    Y, p, cds = initialize(land)
+    Y, p, cds = initialize(land; nan_fill = false)
     # Soil IC
     ϑ_l0 = land.soil.parameters.ν ./ 2
     θ_i0 = land.soil.parameters.ν ./ 5
@@ -178,7 +178,7 @@ end
 
 if pkgversion(ClimaCore) >= v"0.14.30"
     @testset "Column integral mask awareness" begin
-        Y, p, cds = initialize(land)
+        Y, p, cds = initialize(land; nan_fill = false)
         Y.soil.ϑ_l .= land.soil.parameters.ν .+ FT(1e-3)
         fill!(parent(p.soil.is_saturated), FT(0.5)) # integrand
         @test extrema(p.soil.h∇) == (0.0, 0.0) # integral (0,0)
@@ -196,7 +196,7 @@ if pkgversion(ClimaCore) >= v"0.14.30"
 
 
     @testset "Mask of full land" begin
-        Y, p, cds = initialize(land)
+        Y, p, cds = initialize(land; nan_fill = false)
         Y .= 0
         surface_space = axes(Y.snow.U)
         subsurface_space = axes(Y.soil.ϑ_l)
@@ -335,5 +335,47 @@ if pkgversion(ClimaCore) >= v"0.14.30"
         )
         u = sol.u[end]
         check_ocean_values_Y(u, binary_mask)
+    end
+    @testset "Mask of full land - check NaNs" begin
+        Y, p, cds = initialize(land)
+        surface_space = axes(Y.snow.U)
+        subsurface_space = axes(Y.soil.ϑ_l)
+        binary_mask = .~parent(surface_space.grid.mask.is_active)[:]
+        all_points_mask = deepcopy(binary_mask)
+        all_points_mask .= 1
+        # Test that Y and p are NaN everywhere
+        @info("testing initial cache and state")
+        check_nan_values_p(p, all_points_mask)
+        check_nan_values_Y(Y, all_points_mask)
+        # Set initial conditions
+        ic_path = ClimaLand.Artifacts.soil_ic_2008_50m_path(; context = context)
+        set_initial_state! =
+            ClimaLand.Simulations.make_set_initial_state_from_file(
+                ic_path,
+                land,
+            )
+        set_initial_state!(Y, p, t0, land)
+        # Now, set the cache with physical values and make sure there are only NaNs over the ocean
+        set_initial_cache! = make_set_initial_cache(land)
+        set_initial_cache!(p, Y, t0)
+        jacobian! = ClimaLand.make_jacobian(land)
+        jac_prototype = ClimaLand.FieldMatrixWithSolver(Y)
+        # Check that the jacobian update respects the mask
+        jacobian!(jac_prototype, Y, p, 1.0, 0.0)
+        # Note that some cache vars are set in tendencies
+        dY = similar(Y)
+        @. dY = 0
+        imp_tendency! = make_imp_tendency(land)
+        imp_tendency!(dY, Y, p, 0.0)
+        exp_tendency! = make_exp_tendency(land)
+        exp_tendency!(dY, Y, p, 0.0)
+
+        @info("testing set cache and Y are still NaN over ocean")
+        check_nan_values_p(p, binary_mask)
+        check_nan_values_Y(Y, binary_mask)
+
+        @info("testing set cache and Y are non NaN over land")
+        check_nan_values_p(p, .~binary_mask; nan = false)
+        check_nan_values_Y(Y, .~binary_mask; nan = false)
     end
 end

@@ -72,7 +72,11 @@ Y.snow.S_l .= 0 # this is a guess
 Y.snow.Z .= FT(depths[1]) #first depth value - comment out if using MinimumDensityModel instead of NeuralDepthModel 
 Y.snow.U .=
     ClimaLand.Snow.energy_from_q_l_and_swe(FT(SWE[1]), FT(0), parameters) # with q_l = 0
-
+Y.snow.P_avg .= 0
+Y.snow.R_avg .= 0
+Y.snow.u_avg .= 0
+Y.snow.Qrel_avg .= 0
+Y.snow.T_avg .= 0
 set_initial_cache! = ClimaLand.make_set_initial_cache(model)
 set_initial_cache!(p, Y, t0)
 exp_tendency! = ClimaLand.make_exp_tendency(model)

@@ -164,6 +164,8 @@ for FT in (Float32, Float64)
 
         # initialize model
         Y, p, coords = initialize(model)
+        Y.soil.ϑ_l .= model.soil.parameters.ν
+        Y.soil.θ_i = 0
         # check that albedos have been added to cache
         @test haskey(p.soil, :PAR_albedo)
         @test haskey(p.soil, :NIR_albedo)
@@ -171,31 +173,23 @@ for FT in (Float32, Float64)
         set_initial_cache! = make_set_initial_cache(model)
         set_initial_cache!(p, Y, 0.0)
         canopy_bc = model.canopy.boundary_conditions
-        @test all(
-            Array(
-                parent(
-                    Canopy.ground_albedo_PAR(
-                        Val(canopy_bc.prognostic_land_components),
-                        canopy_bc.ground,
-                        Y,
-                        p,
-                        0.0,
-                    ),
-                ),
-            ) .== PAR_albedo,
-        )
-        @test all(
-            Array(
-                parent(
-                    Canopy.ground_albedo_NIR(
-                        Val(canopy_bc.prognostic_land_components),
-                        canopy_bc.ground,
-                        Y,
-                        p,
-                        0.0,
-                    ),
-                ),
-            ) .== NIR_albedo,
-        )
+        albedo_field = ClimaCore.Fields.zeros(domain.space.surface)
+        albedo_field .= PAR_albedo
+        @test Canopy.ground_albedo_PAR(
+            Val(canopy_bc.prognostic_land_components),
+            canopy_bc.ground,
+            Y,
+            p,
+            0.0,
+        ) == albedo_field
+
+        albedo_field .= NIR_albedo
+        @test Canopy.ground_albedo_NIR(
+            Val(canopy_bc.prognostic_land_components),
+            canopy_bc.ground,
+            Y,
+            p,
+            0.0,
+        ) == albedo_field
     end
 end

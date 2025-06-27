@@ -72,7 +72,7 @@ for FT in (Float32, Float64)
                 radiation = bucket_rad,
             )
             # Initial conditions with no moisture
-            Y, p, coords = initialize(model)
+            Y, p, coords = initialize(model; nan_fill = false)
             @test propertynames(p.drivers) == (
                 :P_liq,
                 :P_snow,
@@ -153,7 +153,7 @@ for FT in (Float32, Float64)
             )
 
             # Initial conditions with no moisture
-            Y, p, coords = initialize(model)
+            Y, p, coords = initialize(model; nan_fill = false)
             Y.bucket.T .= init_temp.(coords.subsurface.z, FT(280.0))
             Y.bucket.W .= 0.149
             Y.bucket.Ws .= 0.0

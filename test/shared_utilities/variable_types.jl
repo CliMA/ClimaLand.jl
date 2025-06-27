@@ -139,7 +139,7 @@ end
 
     column = Column(; zlim = zlim, nelements = nelements)
     m = Foo{FT, typeof(column)}(column)
-    Y, p, coords = initialize(m)
+    Y, p, coords = initialize(m; nan_fill = false)
     @test Array(parent(Y.foo.a)) == zeros(FT, 1)
     @test Array(parent(Y.foo.b)) == zeros(FT, 2)
     @test Array(parent(p.foo.d)) == zeros(FT, 1)
