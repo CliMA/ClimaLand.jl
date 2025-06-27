@@ -105,7 +105,7 @@ function setup_model(FT, start_date, stop_date, domain, earth_param_set)
         NIR_albedo_wet,
         f_max,
     ) = spatially_varying_soil_params
-    albedo = Soil.CLMTwoBandSoilAlbedo{FT}(;
+    soil_albedo = Soil.CLMTwoBandSoilAlbedo{FT}(;
         PAR_albedo_dry,
         NIR_albedo_dry,
         PAR_albedo_wet,
@@ -121,7 +121,7 @@ function setup_model(FT, start_date, stop_date, domain, earth_param_set)
         K_sat,
         S_s,
         θ_r,
-        albedo,
+        soil_albedo,
     )
 
     f_over = FT(3.28) # 1/m

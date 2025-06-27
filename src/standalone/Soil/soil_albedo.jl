@@ -59,12 +59,9 @@ end
 A parameterization for soil albedo: the soil albedo is 
 defined in two bands (PAR and NIR), and can spatially vary or
 be set to scalar. However, it varies temporally due to a
-dependence on soil water content,
-θ_sfc, according to CLM:
-
-α = min(α_wet + Δ(θ_sfc), α_dry), where
-Δ(θ_sfc) = max(θ_int - dαdθ*θ_sfc,0),
-where θ_int = 0.11 and dαdθ = 0.4.
+dependence on soil water content at the surface,
+via the effective saturation S(θ_sfc):
+α = α_wet*S + α_dry*(1-S)
 
 We use a value for θ_sfc averaged over the depth `albedo_calc_top_thickness`.
 If the model resolution is such that the first layer is thicker than this depth,
@@ -85,10 +82,6 @@ struct CLMTwoBandSoilAlbedo{
     PAR_albedo_wet::SF
     "Soil NIR Albedo wet"
     NIR_albedo_wet::SF
-    "Slope of albedo vs moisture curve, dαdθ (unitless)"
-    dαdθ::FT
-    "Intercept parameter of slope of albedo vs moisture curve, θ_int (unitless)"
-    θ_int::FT
     "Thickness of top of soil used in albedo calculations (m)"
     albedo_calc_top_thickness::FT
 end
@@ -98,8 +91,6 @@ function CLMTwoBandSoilAlbedo{FT}(;
     NIR_albedo_dry,
     PAR_albedo_wet,
     NIR_albedo_wet,
-    dαdθ = FT(0.4),
-    θ_int = FT(0.11),
     albedo_calc_top_thickness = FT(0.02),
 ) where {FT}
     return CLMTwoBandSoilAlbedo{FT, typeof(PAR_albedo_dry)}(
@@ -107,15 +98,13 @@ function CLMTwoBandSoilAlbedo{FT}(;
         NIR_albedo_dry,
         PAR_albedo_wet,
         NIR_albedo_wet,
-        dαdθ,
-        θ_int,
         albedo_calc_top_thickness,
     )
 end
 
 
 """
-    albedo_from_moisture(θ_sfc::FT, θ_int::FT,dαdθ::FT,  albedo_dry::FT, albedo_wet::FT)
+    albedo_from_moisture(S_sfc::FT, θ_int::FT, albedo_wet::FT)
 
 Calculates pointwise albedo for any band as a function of soil surface moisture given
 the dry and wet albedo values for that band using the CLM parameterization.
@@ -124,14 +113,11 @@ CLM reference: Lawrence, P.J., and Chase, T.N. 2007. Representing a MODIS consis
 (CLM 3.0). J. Geophys. Res. 112:G01023. DOI:10.1029/2006JG000168.
 """
 function albedo_from_moisture(
-    θ_sfc::FT,
-    θ_int::FT,
-    dαdθ::FT,
+    S_sfc::FT,
     albedo_dry::FT,
     albedo_wet::FT,
 ) where {FT}
-    Δ = max(θ_int - dαdθ * θ_sfc, FT(0))
-    return min(albedo_wet + Δ, albedo_dry)
+    return (1 - S_sfc) * albedo_dry + S_sfc * albedo_wet
 end
 
 
@@ -140,7 +126,18 @@ end
 
 Calculates and updates PAR and NIR albedo as a function of volumetric soil water content at
 the top of the soil. If the soil layers are larger than the specified `albedo_calc_top_thickness`,
-the water content of the top layer is used in the calclulation. .The dry and wet
+the water content of the top layer is used in the calclulation. For the PAR and NIR bands,
+
+α_band = α_{band,dry} * (1 - S_e) +  α_{band,wet} * (S_e)
+
+where S_e is the relative soil wetness above some depth, `albedo_calc_top_thickness`. This
+is a modified version of Equation (1) of:
+
+Braghiere, R. K., Wang, Y., Gagné-Landmann, A., Brodrick, P. G., Bloom, A. A., Norton,
+A. J., et al. (2023). The importance of hyperspectral soil albedo information for improving
+Earth system model projections. AGU Advances, 4, e2023AV000910. https://doi.org/10.1029/2023AV000910
+
+where effective saturation is used in place of volumetric soil water content.The dry and wet
 albedo values come from a global soil color map and soil color to albedo map from CLM.
 
 CLM reference: Lawrence, P.J., and Chase, T.N. 2007. Representing a MODIS consistent land surface in the Community Land Model
@@ -158,8 +155,6 @@ function update_albedo!(
         NIR_albedo_dry,
         PAR_albedo_wet,
         NIR_albedo_wet,
-        dαdθ,
-        θ_int,
         albedo_calc_top_thickness,
     ) = albedo
     FT = eltype(soil_domain.fields.Δz_top)
@@ -192,10 +187,13 @@ function update_albedo!(
         # in the case where no layer is centered above boundary, use the values of the top layer
         θ_sfc = ClimaLand.Domains.top_center_to_surface(p.soil.θ_l)
     end
+    ν_sfc = ClimaLand.Domains.top_center_to_surface(model_parameters.ν)
+    θ_r_sfc = ClimaLand.Domains.top_center_to_surface(model_parameters.θ_r)
+    S_sfc = @. lazy(effective_saturation(ν_sfc, θ_sfc, θ_r_sfc))
     @. p.soil.PAR_albedo =
-        albedo_from_moisture(θ_sfc, θ_int, dαdθ, PAR_albedo_dry, PAR_albedo_wet)
+        albedo_from_moisture(S_sfc, PAR_albedo_dry, PAR_albedo_wet)
     @. p.soil.NIR_albedo =
-        albedo_from_moisture(θ_sfc, θ_int, dαdθ, NIR_albedo_dry, NIR_albedo_wet)
+        albedo_from_moisture(S_sfc, NIR_albedo_dry, NIR_albedo_wet)
 end
 
 """

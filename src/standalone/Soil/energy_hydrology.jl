@@ -59,7 +59,7 @@ Base.@kwdef struct EnergyHydrologyParameters{
     γ::FT
     "Reference temperature for the viscosity factor"
     γT_ref::FT
-    "Albedo Parameterization"
+    "Soil Albedo Parameterization"
     albedo::AP
     "Soil Emissivity"
     emissivity::FT
