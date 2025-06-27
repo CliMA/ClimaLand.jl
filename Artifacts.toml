@@ -20,10 +20,10 @@ git-tree-sha1 = "cbbc6b3752d9cb9b667ec33cfbeb46819f8db418"
     url = "https://caltech.box.com/shared/static/b3u4dv0dsoswvqgp8y63bzj7awbhwztd.gz"
 
 [soil_ic_2008_50m]
-git-tree-sha1 = "fd9cda235e203b4235136b6dcdcd07af788c00f6"
+git-tree-sha1 = "7b0f0572f4620a8ba2a7ae816a547d2dcfb9eb9b"
 
     [[soil_ic_2008_50m.download]]
-    sha256 = "22e3cee446ee3b34edd6956b305bace5f04d12b8c1f124c1891a93048bc91b34"
+    sha256 = "b0080d605585072b88871bc8987f615c9dfc35e64ad16e00a52087d879fc5c3a"
     url = "https://caltech.box.com/shared/static/atiztw8uu2i78g2vd02n8onb68cer9tn.gz"
 
 [soilgrids]
