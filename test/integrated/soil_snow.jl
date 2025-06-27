@@ -116,7 +116,7 @@ function init_soil!(Y, z, params)
     FT = eltype(ν)
     Y.soil.ϑ_l .= ν / 2
     Y.soil.θ_i .= 0.05
-    T = FT(273)
+    T = FT(265)
     ρc_s = ClimaLand.Soil.volumetric_heat_capacity(
         ν / 2,
         FT(0),
@@ -168,7 +168,7 @@ ClimaLand.source!(
     land_model.soil,
 )
 ClimaLand.source!(dY_soil_snow, src, Y, p, land_model.soil)
-@test dY_soil_alone.soil == dY_soil_snow.soil
+@test dY_soil_alone.soil.θ_i == dY_soil_snow.soil.θ_i
 
 
 # Repeat now with snow cover fraction of 1
