@@ -3,6 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 -------
+- Use new pun up initial conditions from 19 year run PR[#1196](https://github.com/CliMA/ClimaLand.jl/pull/1196)
 
 v0.16.3
 -------
