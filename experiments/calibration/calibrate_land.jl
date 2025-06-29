@@ -7,7 +7,7 @@ const spinup_period = Year(1)
 const start_date = DateTime(2008, 12, 01) # this is the start of the forward model spinup
 @assert month(start_date + spinup_period) == 12 "The start of your calibration period should be December."
 const nelements = (101, 15) # resolution - (horizontal elements (lon, lat), vertical elements (soil discretization))
-const dirname = "land_snow_constant_scf_hires" # ideally, describe your calibration in a few words
+const dirname = "land_snow_zenith_hires" # ideally, describe your calibration in a few words
 const caldir = joinpath("output", dirname) # you might want to save somewhere else than login
 import ClimaLand
 model_dir = joinpath(pkgdir(ClimaLand), "experiments", "calibration")
