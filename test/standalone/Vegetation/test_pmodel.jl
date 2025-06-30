@@ -1,3 +1,38 @@
+"""
+# P-Model Regression Tests
+
+This module tests the ClimaLand P-Model implementation against reference outputs 
+from the R-based P-Model package. The P-Model predicts photosynthetic carbon 
+assimilation and related variables based on environmental conditions.
+
+## Test Structure
+
+The tests load input and expected output data from CSV files provided by the
+`pmodel_unittests` artifact. Each test case includes:
+
+### Input Variables:
+- `tc`: Temperature in Celsius
+- `patm`: Atmospheric pressure in Pa
+- `vpd`: Vapor pressure deficit
+- `co2`: CO2 concentration in ppm
+- `fapar`: Fraction of absorbed photosynthetically active radiation
+- `ppfd`: Photosynthetic photon flux density
+- `soilm`: Soil moisture (when soil moisture stress is enabled)
+- `beta`: Beta parameter for CO2 limitation
+- `kphio`: intrinsic quantum yield parameter
+- `do_ftemp_kphio`: Flag for temperature-dependent intrinsic quantum yield
+- `do_soilmstress`: Flag for soil moisture stress
+
+### Expected Outputs:
+- `gpp`: Gross primary productivity
+- Additional photosynthetic variables as computed by the P-Model
+
+## Validation Criteria
+
+Tests use relative tolerance of 1e-3 and absolute tolerance of 1e-3 to account
+for numerical differences between implementations while ensuring scientific accuracy.
+"""
+
 using Test
 using ClimaLand
 import ClimaComms
@@ -12,17 +47,30 @@ import ClimaParams
 verbose = false
 
 # Directory containing CSV test cases
-datadir = ClimaLand.Artifacts.pmodel_unittests_path()
+include("../../Artifacts.jl")
+datadir = pmodel_unittests_path()
 inputs_file = joinpath(datadir, "inputs.csv")
 outputs_file = joinpath(datadir, "outputs.csv")
 
 atol = 1e-3
 rtol = 1e-3
 
+"""
+    percent_difference(a, b)
+
+Calculate the percentage difference between `a` and `b` (reference). 
+"""
 function percent_difference(a, b)
     return abs(a - b) / abs(b) * 100
 end
 
+"""
+    create_pmodel_drivers(inputs::Dict{String, Any}, FT)
+
+Create P-Model driver variables from test input data.
+Converts input data from the test CSV files into the appropriate driver structure
+for the P-Model, handling unit conversions and optional soil moisture stress.
+"""
 function create_pmodel_drivers(inputs::Dict{String, Any}, FT)
     T_canopy = FT(inputs["tc"] + 273.15)  # Convert from Celsius to Kelvin
     VPD = FT(inputs["vpd"])
@@ -44,10 +92,17 @@ function create_pmodel_drivers(inputs::Dict{String, Any}, FT)
     )
 end
 
+"""
+    create_pmodel_parameters(inputs::Dict{String, Any}, FT)
+
+Constructs the parameter structure for the P-Model
+"""
 function create_pmodel_parameters(inputs::Dict{String, Any}, FT)
+    # these are default values used in Stocker 2020
     β = FT(inputs["beta"])
     cstar = FT(0.41) 
 
+    # handle temperature-dependent quantum yield 
     if Bool(inputs["do_ftemp_kphio"])
         ϕ0 = FT(NaN) 
         ϕc = FT(inputs["kphio"]) 
@@ -158,7 +213,9 @@ end
                         # Test for approximate equality
                         @test isapprox(j_out, r_out, rtol=rtol, atol=atol)
                     else
-                        @warn "Missing key $key in Julia outputs"
+                        if verbose
+                            @warn "Missing key $key in Julia outputs"
+                        end
                     end
                 end
             end
