@@ -235,4 +235,8 @@ function Base.show(io::IO, landsim::LandSimulation)
         "└── Current date: $(date(landsim._integrator.t))\n",
     )
 end
+
+# Default plots
+include("visualization/default_visualization.jl")
+
 end#module

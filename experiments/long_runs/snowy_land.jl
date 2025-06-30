@@ -22,8 +22,6 @@ using ClimaUtilities.ClimaArtifacts
 import ClimaUtilities.TimeManager: ITime, date
 
 import ClimaDiagnostics
-import ClimaAnalysis
-import ClimaAnalysis.Visualize as viz
 import ClimaUtilities
 
 import ClimaUtilities.TimeVaryingInputs:
@@ -39,13 +37,7 @@ import ClimaLand
 import ClimaLand.Parameters as LP
 import ClimaLand.Simulations: LandSimulation, solve!
 
-using Statistics
-using CairoMakie
-import GeoMakie
 using Dates
-import NCDatasets
-
-using Poppler_jll: pdfunite
 
 const FT = Float64;
 # If you want to do a very long run locally, you can enter `export
@@ -364,49 +356,7 @@ function setup_simulation(; greet = false)
 end
 
 simulation = setup_simulation(; greet = true);
+
 ClimaLand.Simulations.solve!(simulation)
 
-# read in diagnostics and make some plots!
-#### ClimaAnalysis ####
-simdir = ClimaAnalysis.SimDir(outdir)
-short_names = [
-    "gpp",
-    "swc",
-    "et",
-    "shf",
-    "swu",
-    "lwu",
-    "swe",
-    "si",
-    "lwp",
-    "iwc",
-    "trans",
-    "msf",
-    "snowc",
-]
-
-include(
-    joinpath(
-        pkgdir(ClimaLand),
-        "experiments",
-        "long_runs",
-        "figures_function.jl",
-    ),
-)
-make_figures(root_path, outdir, short_names)
-
-include("leaderboard/leaderboard.jl")
-diagnostics_folder_path = outdir
-leaderboard_base_path = root_path
-for data_source in ("ERA5", "ILAMB")
-    compute_monthly_leaderboard(
-        leaderboard_base_path,
-        diagnostics_folder_path,
-        data_source,
-    )
-    compute_seasonal_leaderboard(
-        leaderboard_base_path,
-        diagnostics_folder_path,
-        data_source,
-    )
-end
+ClimaLand.Simulations.make_plots(simulation)

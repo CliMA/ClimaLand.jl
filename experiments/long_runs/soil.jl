@@ -20,8 +20,6 @@ import ClimaTimeSteppers as CTS
 using ClimaUtilities.ClimaArtifacts
 
 using ClimaDiagnostics
-using ClimaAnalysis
-import ClimaAnalysis.Visualize as viz
 using ClimaUtilities
 
 import ClimaUtilities.TimeVaryingInputs: LinearInterpolation, PeriodicCalendar
@@ -34,13 +32,7 @@ using ClimaLand.Soil
 import ClimaLand
 import ClimaLand.Parameters as LP
 import ClimaLand.Simulations: LandSimulation, solve!
-using Statistics
-import GeoMakie
-using CairoMakie
 using Dates
-import NCDatasets
-
-using Poppler_jll: pdfunite
 
 const FT = Float64;
 # If you want to do a very long run locally, you can enter `export
@@ -194,20 +186,7 @@ function setup_simulation(; greet = false)
 end
 
 simulation = setup_simulation(; greet = true);
+
 ClimaLand.Simulations.solve!(simulation)
 
-# read in diagnostics and make some plots!
-#### ClimaAnalysis ####
-short_names = ["swc", "si", "sie"]
-include(
-    joinpath(
-        pkgdir(ClimaLand),
-        "experiments",
-        "long_runs",
-        "figures_function.jl",
-    ),
-)
-make_figures(root_path, outdir, short_names)
-
-## Conservation
-check_conservation(root_path, outdir)
+ClimaLand.Simulations.make_plots(simulation)
