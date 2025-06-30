@@ -32,3 +32,10 @@ git-tree-sha1 = "135f148951f20f170c3a4896848911a37500d88b"
     [[water_conservation_test.download]]
     sha256 = "6f66eaf01fc8c796dfc7d879c4aec4412d06d02cba2cbf6b7ec283d4b3834838"
     url = "https://caltech.box.com/shared/static/sid7bo8at7nxirfgmd2o7pqq8vky71pb.gz"
+
+[pmodel_unittests]
+git-tree-sha1 = "8d542ddf8c33e5e1e6b293119b8231fe368f76a7"
+
+    [[pmodel_unittests.download]]
+    sha256 = "00a2a4fb0a6c6746f662d216f2db1a5874e4fcfe7c1294cf8e76d6d0aed2bc8a"
+    url = "https://caltech.box.com/shared/static/o1qa0e0e2sh2w4hig3miy1jwzd41lafx.gz"

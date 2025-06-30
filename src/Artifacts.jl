@@ -532,4 +532,10 @@ function era5_surface_data_1979_2024_path(; context = nothing)
     )
 end
 
+
+function pmodel_unittests_path(; context = nothing)
+    # Returns the path to the PModel unit tests data
+    return @clima_artifact("pmodel_unittests", context)
+end 
+
 end

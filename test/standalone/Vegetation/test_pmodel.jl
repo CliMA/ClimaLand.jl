@@ -12,11 +12,10 @@ import ClimaParams
 verbose = false
 
 # Directory containing CSV test cases
-datadir = "/Users/yuchenli/Documents/CliMA Land (local)/testcases"
+datadir = ClimaLand.Artifacts.pmodel_unittests_path()
 inputs_file = joinpath(datadir, "inputs.csv")
 outputs_file = joinpath(datadir, "outputs.csv")
 
-# Allowed relative error (can tighten for Float64)
 atol = 1e-3
 rtol = 1e-3
 
