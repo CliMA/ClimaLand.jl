@@ -3,7 +3,9 @@ ClimaLand.jl Release Notes
 
 main
 -------
-- Use new pun up initial conditions from 19 year run PR[#1196](https://github.com/CliMA/ClimaLand.jl/pull/1196)
+- ![breaking change][badge-💥breaking] Make soil albedo parameterization modular
+PR[#1184](https://github.com/CliMA/ClimaLand.jl/pull/1184)
+- Use new spun up initial conditions from 19 year run PR[#1196](https://github.com/CliMA/ClimaLand.jl/pull/1196)
 
 v0.16.3
 -------

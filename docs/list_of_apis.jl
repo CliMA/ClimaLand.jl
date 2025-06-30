@@ -10,6 +10,7 @@ apis = [
         "Soil" => [
             "Soil Energy and Hydrology" => "APIs/Soil.md",
             "Soil Biogeochemistry" => "APIs/SoilBiogeochemistry.md",
+            "Soil Albedo" => "APIs/SoilAlbedo.md",
         ],
         "Canopy" => [
             "Canopy Models" => "APIs/canopy/Canopy.md",

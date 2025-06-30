@@ -64,6 +64,14 @@ ClimaLand.Soil.subsurface_runoff_source
 ClimaLand.Soil.update_runoff!
 ```
 
+## Soil Albedo Types and Methods
+
+```@docs
+ClimaLand.Soil.CLMTwoBandSoilAlbedo
+ClimaLand.Soil.ConstantTwoBandSoilAlbedo
+ClimaLand.Soil.update_albedo!
+```
+
 ## Soil BC Methods and Types
 
 ```@docs
