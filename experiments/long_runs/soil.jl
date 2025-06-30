@@ -8,7 +8,7 @@
 # Simulation Setup
 # Number of spatial elements: 101 in horizontal, 15 in vertical
 # Soil depth: 50 m
-# Simulation duration: 2-10 years, based on LONGER_RUN setting
+# Simulation duration: 2-20 years, based on LONGER_RUN setting
 # Timestep: 450 s
 # Timestepper: ARS111
 # Fixed number of iterations: 3
