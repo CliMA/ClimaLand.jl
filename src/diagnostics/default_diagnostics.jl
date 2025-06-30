@@ -170,7 +170,6 @@ function default_diagnostics(
             "rn",
             "lhf",
             "shf",
-            "ghf",
             "salb",
         ]
     elseif output_vars == :short
@@ -338,7 +337,6 @@ function default_diagnostics(
             "rn",
             "lhf",
             "shf",
-            "ghf",
             "iwc",
             "snowc",
         ]

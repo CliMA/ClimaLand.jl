@@ -3,6 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 -------
+- Output NaNs in diagnostics where the ocean is PR[#1200](https://github.com/CliMA/ClimaLand.jl/pull/1200)
 - ![breaking change][badge-💥breaking] Make soil albedo parameterization modular
 PR[#1184](https://github.com/CliMA/ClimaLand.jl/pull/1184)
 - Use new spun up initial conditions from 19 year run PR[#1196](https://github.com/CliMA/ClimaLand.jl/pull/1196)

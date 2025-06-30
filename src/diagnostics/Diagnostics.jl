@@ -29,6 +29,7 @@ import ClimaDiagnostics.Schedules:
 import ClimaDiagnostics
 import ClimaDiagnostics.Writers: HDF5Writer, NetCDFWriter, DictWriter
 
+import ClimaCore.Fields: zeros, field_values
 import ClimaCore.Operators: column_integral_definite!
 
 include("diagnostic.jl")

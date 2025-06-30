@@ -13,11 +13,17 @@ generates the function
 
 function compute_soil_net_radiation!(out, Y, p, t, land_model::SoilCanopyModel)
     if isnothing(out)
-        return copy(p.soil.R_n)
+        out = zeros(axes(p.soil.R_n)) # Allocates
+        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
+        out .= p.soil.R_n # set the land values only since this type of broadcasting respects the mask
+        return out
     else
         out .= p.soil.R_n
     end
 end
+
+Please note that if a land/sea mask is employed, the values
+over the ocean are set to NaN.
 """
 macro diagnostic_compute(name, model, compute)
     function_name = Symbol("compute_", name, "!")
@@ -31,7 +37,10 @@ macro diagnostic_compute(name, model, compute)
                 land_model::$model,
             )
                 if isnothing(out)
-                    return copy($compute)
+                    out = zeros(axes($compute)) # Allocates
+                    fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
+                    out .= $compute # set the land values only since this type of broadcasting respects the mask
+                    return out
                 else
                     out .= $compute
                 end
@@ -95,7 +104,9 @@ function compute_stomatal_conductance!(
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
 
     if isnothing(out)
-        return medlyn_conductance.(
+        out = zeros(land_model.canopy.domain.space.surface) # Allocates
+        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
+        @. out = medlyn_conductance(
             g0,
             Drel,
             medlyn_term.(
@@ -108,8 +119,7 @@ function compute_stomatal_conductance!(
             p.canopy.photosynthesis.An,
             p.drivers.c_co2,
         )
-
-
+        return out
     else
         @. out = medlyn_conductance(
             g0,
@@ -137,7 +147,10 @@ function compute_canopy_transpiration!(
     # Convert to a mass flux by multiplying by the density of liquid
     # water
     if isnothing(out)
-        return p.canopy.turbulent_fluxes.transpiration .* 1000
+        out = zeros(land_model.canopy.domain.space.surface) # Allocates
+        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
+        @. out = p.canopy.turbulent_fluxes.transpiration * 1000
+        return out
     else
         @. out = p.canopy.turbulent_fluxes.transpiration * 1000
     end
@@ -163,7 +176,10 @@ function compute_leaf_water_potential!(
     n_leaf = hydraulics.n_leaf
     n = n_stem + n_leaf
     if isnothing(out)
-        return p.canopy.hydraulics.ψ.:($n)
+        out = zeros(land_model.canopy.domain.space.surface) # Allocates
+        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
+        out .= p.canopy.hydraulics.ψ.:($n)
+        return out
     else
         out .= p.canopy.hydraulics.ψ.:($n)
     end
@@ -196,7 +212,10 @@ function compute_moisture_stress_factor!(
     (; sc, pc) = canopy.photosynthesis.parameters
     ψ = p.canopy.hydraulics.ψ
     if isnothing(out)
-        return @. moisture_stress(ψ.:($$n) * ρ_l * grav, sc, pc)
+        out = zeros(land_model.canopy.domain.space.surface) # Allocates
+        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
+        @. out = moisture_stress(ψ.:($$n) * ρ_l * grav, sc, pc)
+        return out
     else
         @. out = moisture_stress(ψ.:($$n) * ρ_l * grav, sc, pc)
     end
@@ -301,7 +320,10 @@ function compute_10cm_water_mass!(
     column_integral_definite!(∫Hdz, H)
 
     if isnothing(out)
-        return ∫Hθdz ./ ∫Hdz .* FT(0.1)
+        out = zeros(land_model.soil.domain.space.surface) # Allocates
+        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
+        @. out = ∫Hθdz / ∫Hdz * FT(0.1)
+        return out
     else
         @. out = ∫Hθdz / ∫Hdz * FT(0.1)
     end
@@ -314,7 +336,10 @@ function compute_soil_albedo!(
     land_model::SoilCanopyModel{FT},
 ) where {FT}
     if isnothing(out)
-        return (p.soil.PAR_albedo .+ p.soil.NIR_albedo) ./ 2
+        out = zeros(land_model.soil.domain.space.surface) # Allocates
+        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
+        @. out = (p.soil.PAR_albedo + p.soil.NIR_albedo) / 2
+        return out
     else
         @. out = (p.soil.PAR_albedo + p.soil.NIR_albedo) / 2
     end
@@ -334,7 +359,10 @@ function compute_heterotrophic_respiration!(
     land_model::Union{SoilCanopyModel{FT}, LandModel{FT}},
 ) where {FT}
     if isnothing(out)
-        return p.soilco2.top_bc .* FT(83.26)
+        out = zeros(land_model.soil.domain.space.surface) # Allocates
+        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
+        @. out = p.soilco2.top_bc * FT(83.26)
+        return out
     else
         out .= p.soilco2.top_bc .* FT(83.26)
     end
@@ -360,11 +388,15 @@ function compute_evapotranspiration!(
     land_model::SoilCanopyModel{FT},
 ) where {FT}
     if isnothing(out)
-        return (
-            p.soil.turbulent_fluxes.vapor_flux_liq .+
-            p.soil.turbulent_fluxes.vapor_flux_ice .+
-            p.canopy.turbulent_fluxes.transpiration
-        ) .* 1000 # density of liquid water (1000kg/m^3)
+        out = zeros(land_model.soil.domain.space.surface) # Allocates
+        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
+        @. out =
+            (
+                p.soil.turbulent_fluxes.vapor_flux_liq +
+                p.soil.turbulent_fluxes.vapor_flux_ice +
+                p.canopy.turbulent_fluxes.transpiration
+            ) * 1000 # density of liquid water (1000kg/m^3)
+        return out
     else
         out .=
             (
@@ -383,14 +415,18 @@ function compute_evapotranspiration!(
     land_model::LandModel{FT},
 ) where {FT}
     if isnothing(out)
-        return @. (
-            (1 - p.snow.snow_cover_fraction) *
-            p.soil.turbulent_fluxes.vapor_flux_liq +
-            (1 - p.snow.snow_cover_fraction) *
-            p.soil.turbulent_fluxes.vapor_flux_ice +
-            p.canopy.turbulent_fluxes.transpiration +
-            p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.vapor_flux
-        ) * 1000 # density of liquid water (1000kg/m^3)
+        out = zeros(land_model.canopy.domain.space.surface) # Allocates
+        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
+        @. out =
+            (
+                (1 - p.snow.snow_cover_fraction) *
+                p.soil.turbulent_fluxes.vapor_flux_liq +
+                (1 - p.snow.snow_cover_fraction) *
+                p.soil.turbulent_fluxes.vapor_flux_ice +
+                p.canopy.turbulent_fluxes.transpiration +
+                p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.vapor_flux
+            ) * 1000 # density of liquid water (1000kg/m^3)
+        return out
     else
         @. out =
             (
@@ -412,8 +448,11 @@ function compute_total_respiration!(
     land_model::Union{SoilCanopyModel{FT}, LandModel{FT}},
 ) where {FT}
     if isnothing(out)
-        return p.soilco2.top_bc .* FT(83.26) .+ # [3.664 kg CO2/ kg C] x [10^3 g CO2/ kg CO2] x [1 mol CO2/44.009 g CO2] = 83.26 mol CO2/kg C
-               p.canopy.autotrophic_respiration.Ra
+        out = zeros(land_model.canopy.domain.space.surface) # Allocates
+        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
+        @. out =
+            p.soilco2.top_bc * FT(83.26) + p.canopy.autotrophic_respiration.Ra # [3.664 kg CO2/ kg C] x [10^3 g CO2/ kg CO2] x [1 mol CO2/44.009 g CO2] = 83.26 mol CO2/kg C
+        return out
     else
         out .=
             p.soilco2.top_bc .* FT(83.26) .+ p.canopy.autotrophic_respiration.Ra
@@ -428,7 +467,10 @@ function compute_latent_heat_flux!(
     land_model::SoilCanopyModel{FT},
 ) where {FT}
     if isnothing(out)
-        return p.soil.turbulent_fluxes.lhf .+ p.canopy.turbulent_fluxes.lhf
+        out = zeros(land_model.canopy.domain.space.surface) # Allocates
+        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
+        @. out = p.soil.turbulent_fluxes.lhf + p.canopy.turbulent_fluxes.lhf
+        return out
     else
         out .= p.soil.turbulent_fluxes.lhf .+ p.canopy.turbulent_fluxes.lhf
     end
@@ -442,7 +484,10 @@ function compute_sensible_heat_flux!(
     land_model::SoilCanopyModel{FT},
 ) where {FT}
     if isnothing(out)
-        return p.soil.turbulent_fluxes.shf .+ p.canopy.turbulent_fluxes.shf
+        out = zeros(land_model.canopy.domain.space.surface) # Allocates
+        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
+        @. out = p.soil.turbulent_fluxes.shf + p.canopy.turbulent_fluxes.shf
+        return out
     else
         out .= p.soil.turbulent_fluxes.shf .+ p.canopy.turbulent_fluxes.shf
     end
@@ -456,10 +501,13 @@ function compute_latent_heat_flux!(
     land_model::LandModel{FT},
 ) where {FT}
     if isnothing(out)
-        return @. p.soil.turbulent_fluxes.lhf *
-                  (1 - p.snow.snow_cover_fraction) +
-                  p.canopy.turbulent_fluxes.lhf +
-                  p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.lhf
+        out = zeros(land_model.canopy.domain.space.surface) # Allocates
+        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
+        @. out =
+            p.soil.turbulent_fluxes.lhf * (1 - p.snow.snow_cover_fraction) +
+            p.canopy.turbulent_fluxes.lhf +
+            p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.lhf
+        return out
     else
         @. out =
             p.soil.turbulent_fluxes.lhf * (1 - p.snow.snow_cover_fraction) +
@@ -476,10 +524,13 @@ function compute_sensible_heat_flux!(
     land_model::LandModel{FT},
 ) where {FT}
     if isnothing(out)
-        return @. p.soil.turbulent_fluxes.shf *
-                  (1 - p.snow.snow_cover_fraction) +
-                  p.canopy.turbulent_fluxes.shf +
-                  p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.shf
+        out = zeros(land_model.canopy.domain.space.surface) # Allocates
+        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
+        @. out =
+            p.soil.turbulent_fluxes.shf * (1 - p.snow.snow_cover_fraction) +
+            p.canopy.turbulent_fluxes.shf +
+            p.snow.snow_cover_fraction * p.snow.turbulent_fluxes.shf
+        return out
     else
         @. out =
             p.soil.turbulent_fluxes.shf * (1 - p.snow.snow_cover_fraction) +
@@ -496,28 +547,14 @@ function compute_net_radiation!(
     land_model::Union{SoilCanopyModel{FT}, LandModel{FT}},
 ) where {FT}
     if isnothing(out)
-        return p.drivers.LW_d .- p.LW_u .+ p.drivers.SW_d .- p.SW_u
+        out = zeros(land_model.canopy.domain.space.surface) # Allocates
+        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
+        @. out = p.drivers.LW_d - p.LW_u + p.drivers.SW_d - p.SW_u
+        return out
 
     else
         out .= p.drivers.LW_d .- p.LW_u .+ p.drivers.SW_d .- p.SW_u
 
-    end
-end
-
-function compute_ground_heat_flux!(
-    out,
-    Y,
-    p,
-    t,
-    land_model::Union{SoilCanopyModel{FT}, LandModel{FT}},
-) where {FT}
-    if isnothing(out)
-        return p.soil.turbulent_fluxes.shf .+ p.canopy.turbulent_fluxes.shf .-
-               p.soil.R_n
-    else
-        out .=
-            p.soil.turbulent_fluxes.shf .+ p.canopy.turbulent_fluxes.shf .-
-            p.soil.R_n
     end
 end
 
@@ -535,7 +572,10 @@ function compute_canopy_temperature!(
         p.canopy.hydraulics.area_index.leaf +
         p.canopy.hydraulics.area_index.stem
     if isnothing(out)
-        return nan_if_no_canopy.(Y.canopy.energy.T, AI)
+        out = zeros(land_model.canopy.domain.space.surface) # Allocates
+        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
+        @. out = nan_if_no_canopy(Y.canopy.energy.T, AI)
+        return out
     else
         out .= nan_if_no_canopy.(Y.canopy.energy.T, AI)
     end
