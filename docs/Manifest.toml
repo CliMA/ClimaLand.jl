@@ -1,6 +1,6 @@
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.10.9"
+julia_version = "1.10.10"
 manifest_format = "2.0"
 project_hash = "0e313427333375504d76ddc31cd582bee13918ac"
 
@@ -407,11 +407,25 @@ deps = ["ClimaComms", "ClimaCore", "ClimaDiagnostics", "ClimaTimeSteppers", "Cli
 path = ".."
 uuid = "08f4d4ce-cf43-44bb-ad95-9d2d5f413532"
 version = "0.17.1"
-weakdeps = ["BSON", "CSV", "ClimaParams", "DataFrames", "Flux", "HTTP", "StatsBase"]
 
     [deps.ClimaLand.extensions]
     CreateParametersExt = "ClimaParams"
+    LandSimulationVisualization = ["CairoMakie", "ClimaAnalysis", "GeoMakie", "Poppler_jll", "Printf", "StatsBase"]
     NeuralSnowExt = ["CSV", "DataFrames", "HTTP", "Flux", "StatsBase", "BSON"]
+
+    [deps.ClimaLand.weakdeps]
+    BSON = "fbb218c0-5317-5bc6-957e-2ee96dd4b1f0"
+    CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
+    CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
+    ClimaAnalysis = "29b5916a-a76c-4e73-9657-3c8fd22e65e6"
+    ClimaParams = "5c42b081-d73a-476f-9059-fd94b934656c"
+    DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+    Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
+    GeoMakie = "db073c08-6b98-4ee5-b6a4-5efafb3259c6"
+    HTTP = "cd3eb016-35fb-5094-929b-558a96fad6f3"
+    Poppler_jll = "9c32591e-4766-534b-9725-b71a8799265b"
+    Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+    StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 
 [[deps.ClimaLandSimulations]]
 deps = ["Bonito", "CairoMakie", "ClimaComms", "ClimaCore", "ClimaDiagnostics", "ClimaLand", "ClimaParams", "ClimaTimeSteppers", "ClimaUtilities", "DataFrames", "Dates", "DelimitedFiles", "Format", "HTTP", "Insolation", "Interpolations", "InverseFunctions", "JSON", "LaTeXStrings", "MutableArithmetics", "NLsolve", "PlotUtils", "RootSolvers", "SciMLBase", "StaticArrays", "Statistics", "StatsBase", "SurfaceFluxes", "Thermodynamics", "Unitful", "UnitfulMoles", "WGLMakie"]
@@ -2172,7 +2186,7 @@ version = "3.2.4+0"
 [[deps.OpenLibm_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "05823500-19ac-5b8b-9628-191a04bc5112"
-version = "0.8.1+4"
+version = "0.8.5+0"
 
 [[deps.OpenMPI_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "Hwloc_jll", "JLLWrappers", "LazyArtifacts", "Libdl", "MPIPreferences", "TOML", "Zlib_jll"]

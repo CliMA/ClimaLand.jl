@@ -2,7 +2,7 @@
 
 julia_version = "1.11.6"
 manifest_format = "2.0"
-project_hash = "acaaffaaac229b13d375a67bbaf146c0a0ce520e"
+project_hash = "55c55a1c8b475869d4bb069be5aa7bbf8ba540bb"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "be7ae030256b8ef14a441726c4c37766b90b93a3"
@@ -481,10 +481,11 @@ deps = ["ClimaComms", "ClimaCore", "ClimaDiagnostics", "ClimaTimeSteppers", "Cli
 path = ".."
 uuid = "08f4d4ce-cf43-44bb-ad95-9d2d5f413532"
 version = "0.17.1"
-weakdeps = ["BSON", "CSV", "ClimaParams", "DataFrames", "Flux", "HTTP", "StatsBase"]
+weakdeps = ["BSON", "CSV", "CairoMakie", "ClimaAnalysis", "ClimaParams", "DataFrames", "Flux", "GeoMakie", "HTTP", "Poppler_jll", "Printf", "StatsBase"]
 
     [deps.ClimaLand.extensions]
     CreateParametersExt = "ClimaParams"
+    LandSimulationVisualization = ["CairoMakie", "ClimaAnalysis", "GeoMakie", "Poppler_jll", "Printf", "StatsBase"]
     NeuralSnowExt = ["CSV", "DataFrames", "HTTP", "Flux", "StatsBase", "BSON"]
 
 [[deps.ClimaParams]]
