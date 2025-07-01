@@ -1,13 +1,11 @@
 agents:
   queue: clima
-  modules: climacommon/2025_03_18 nsight-systems/2024.6.1
+  modules: climacommon/2025_03_18
 
 env:
   JULIA_DEPOT_PATH: "${BUILDKITE_BUILD_PATH}/${BUILDKITE_PIPELINE_SLUG}/depot/default"
-  JULIA_NVTX_CALLBACKS: gc
   OPENBLAS_NUM_THREADS: 1
   SLURM_KILL_BAD_EXIT: 1
-  JULIA_CUDA_MEMORY_POOL: "cuda"
 
 steps:
   - label: "init environment :computer:"
@@ -23,7 +21,6 @@ steps:
       - "julia --project=.buildkite -e 'using Pkg; Pkg.develop(;path=\".\"); Pkg.instantiate(;verbose=true)'"
       - "julia --project=.buildkite -e 'using Pkg; Pkg.status()'"
     agents:
-      slurm_gpus: 1
       slurm_ntasks: 8
     env:
       JULIA_NUM_PRECOMPILE_TASKS: 8
@@ -33,76 +30,10 @@ steps:
 
   - group: "Target Benchmark"
     steps:
-      - label: ":bucket: Bucket"
-        command: "julia --color=yes --project=.buildkite experiments/benchmarks/bucket.jl"
-        artifact_paths:
-          - "bucket_benchmark_gpu/flame*html"
-        env:
-          CLIMACOMMS_DEVICE: CUDA
-        agents:
-          slurm_mem: 8GB
-          slurm_gpus: 1
-
-      - label: ":droplet: RichardsModel"
-        command: "julia --color=yes --project=.buildkite experiments/benchmarks/richards.jl"
-        artifact_paths:
-          - "richards_benchmark_gpu/flame*html"
-        env:
-          CLIMACOMMS_DEVICE: CUDA
-        agents:
-          slurm_mem: 8GB
-          slurm_gpus: 1
 
       - label: ":snow_capped_mountain: Snowy Land"
-        command: "julia --color=yes --project=.buildkite experiments/benchmarks/snowy_land.jl"
+        command: "julia --color=yes --project=.buildkite experiments/benchmarks/snowy_land.jl --profiler flamegraph"
         artifact_paths:
-          - "snowy_land_benchmark_gpu/flame*html"
-        env:
-          CLIMACOMMS_DEVICE: CUDA
+          - "snowy_land_benchmark_cpu/flame*html"
         agents:
           slurm_mem: 8GB
-          slurm_gpus: 1
-
-  - group: "Target Benchmark Nsight"
-    steps:
-      - label: ":bucket: Bucket"
-        command:
-          - mkdir -p bucket_benchmark_gpu
-          - >
-            nsys profile --trace=nvtx,mpi,cuda,osrt --output=bucket_benchmark_gpu/report
-            julia --color=yes --project=.buildkite experiments/benchmarks/bucket.jl --profiler nsight
-        artifact_paths:
-          - "bucket_benchmark_gpu/report*"
-        env:
-          CLIMACOMMS_DEVICE: CUDA
-        agents:
-          slurm_mem: 32G
-          slurm_gpus: 1
-
-      - label: ":droplet: RichardsModel"
-        command:
-          - mkdir -p richards_benchmark_gpu
-          - >
-            nsys profile --trace=nvtx,mpi,cuda,osrt --output=richards_benchmark_gpu/report
-            julia --color=yes --project=.buildkite experiments/benchmarks/richards.jl --profiler nsight
-        artifact_paths:
-          - "richards_benchmark_gpu/report*"
-        env:
-          CLIMACOMMS_DEVICE: CUDA
-        agents:
-          slurm_mem: 64G
-          slurm_gpus: 1
-
-      - label: ":snow_capped_mountain: Snowy Land"
-        command:
-          - mkdir -p snowy_land_benchmark_gpu
-          - >
-            nsys profile --delay 100 --trace=nvtx,mpi,cuda,osrt --output=snowy_land_benchmark_gpu/report
-            julia --color=yes --project=.buildkite experiments/benchmarks/snowy_land.jl --profiler nsight
-        artifact_paths:
-          - "snowy_land_benchmark_gpu/report*"
-        env:
-          CLIMACOMMS_DEVICE: CUDA
-        agents:
-          slurm_mem: 64G
-          slurm_gpus: 1
