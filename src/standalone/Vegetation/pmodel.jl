@@ -1,9 +1,8 @@
 export PModelParameters, 
     PModelDrivers, 
     PModelConstants, 
-    create_pmodel_constants, 
     compute_pmodel_outputs, 
-    PModelModel
+    PModel
 
 """
     PModelParameters{FT<:AbstractFloat}
@@ -24,7 +23,7 @@ Base.@kwdef struct PModelParameters{
     "Scaling parameter for temp-dependent intrinsic quantum yield (unitless)
     Typical value = 0.087"
     ϕc::FT
-    "Temp-independent intrinsic quantum yield (if provided, overrides ϕc)
+    "Temp-independent intrinsic quantum yield. If provided, overrides ϕc. (unitless)
     Typical value = 0.05" 
     ϕ0::FT 
 end
@@ -104,11 +103,11 @@ Base.eltype(::PModelConstants{FT}) where {FT} = FT
 
 
 """
-    create_pmodel_constants(FT)
+    PModelConstants(FT)
 
 Creates a `PModelConstants` object with default values for the P-model constants.
 """
-function create_pmodel_constants(FT)
+function PModelConstants(FT)
     return PModelConstants(
         R = LP.gas_constant(LP.LandParameters(FT)),
         Kc25 = FT(39.97),
@@ -131,12 +130,12 @@ function create_pmodel_constants(FT)
 end
 
 """
-    PModelModel{FT,
+    PModel{FT,
                 OPFT <: PModelParameters{FT},
                 OPCT <: PModelConstants{FT}
                 } <: AbstractPhotosynthesisModel{FT}
 """
-struct PModelModel{FT, OPFT <: PModelParameters{FT}, OPCT <: PModelConstants{FT}} <:
+struct PModel{FT, OPFT <: PModelParameters{FT}, OPCT <: PModelConstants{FT}} <:
        AbstractPhotosynthesisModel{FT}
     "Required parameters for the P-model of Stocker et al. (2020)"
     parameters::OPFT
@@ -144,21 +143,21 @@ struct PModelModel{FT, OPFT <: PModelParameters{FT}, OPCT <: PModelConstants{FT}
     constants::OPCT
 end
 
-function PModelModel{FT}(
+function PModel{FT}(
     parameters::PModelParameters{FT},
-    constants::PModelConstants{FT} = create_pmodel_constants(FT),
+    constants::PModelConstants{FT} = PModelConstants(FT),
 ) where {FT <: AbstractFloat}
-    return PModelModel{FT, typeof(parameters), typeof(constants)}(
+    return PModel{FT, typeof(parameters), typeof(constants)}(
         parameters,
         constants,
     )
 end
 
-ClimaLand.auxiliary_vars(model::PModelModel) =
+ClimaLand.auxiliary_vars(model::PModel) =
     (:An, :GPP, :Rd, :Vcmax25)
-ClimaLand.auxiliary_types(model::PModelModel{FT}) where {FT} =
+ClimaLand.auxiliary_types(model::PModel{FT}) where {FT} =
     (FT, FT, FT, FT)
-ClimaLand.auxiliary_domain_names(::PModelModel) =
+ClimaLand.auxiliary_domain_names(::PModel) =
     (:surface, :surface, :surface, :surface)
 
 
@@ -238,34 +237,34 @@ function compute_pmodel_outputs(
     iWUE = (ca - ci) / Drel
     gs = Ac / (ca - ci)
 
-    return Dict(
-        "gpp" => GPP,
-        "gammastar" => Γstar,
-        "kmm" => Kmm,
-        "ns_star" => ηstar,
-        "chi" => χ,
-        "xi" => ξ,
-        "mj" => mj,
-        "mc" => mc,
-        "ci" => ci,
-        "iwue" => iWUE,
-        "gs" => gs,
-        "vcmax" => Vcmax,
-        "vcmax25" => Vcmax25,
-        "jmax" => Jmax,
-        "jmax25" => Jmax25
+    return (;
+        gpp = GPP,
+        gammastar = Γstar,
+        kmm = Kmm,
+        ns_star = ηstar,
+        chi = χ,
+        xi = ξ,
+        mj = mj,
+        mc = mc,
+        ci = ci,
+        iwue = iWUE,
+        gs = gs,
+        vcmax = Vcmax,
+        vcmax25 = Vcmax25,
+        jmax = Jmax,
+        jmax25 = Jmax25
     )
 end
 
 
 """
-    update_photosynthesis!(p, Y, model::PModelModel, canopy)
+    update_photosynthesis!(p, Y, model::PModel, canopy)
 
 Computes the net photosynthesis rate `An` (mol CO2/m^2/s) for the P-model, along with the
 dark respiration `Rd` (mol CO2/m^2/s), the value of `Vcmax25` (mol CO2/m^2/s), and the gross primary 
 productivity `GPP` (mol CO2/m^2/s), and updates them in place.
 """
-function update_photosynthesis!(p, Y, model::PModelModel, canopy)
+function update_photosynthesis!(p, Y, model::PModel, canopy)
     # Unpack required fields from `p` and `canopy`
     earth_param_set = canopy.parameters.earth_param_set
     lightspeed = LP.light_speed(earth_param_set)
@@ -282,7 +281,7 @@ function update_photosynthesis!(p, Y, model::PModelModel, canopy)
     VPD = ClimaLand.vapor_pressure_deficit(
         p.drivers.T, p.drivers.P, p.drivers.q, canopy.parameters.earth_param_set.thermo_params
     )
-
+    
     # Calculate I_abs directly
     I_abs = f_abs * par_d / energy_per_mole_photon_par
 

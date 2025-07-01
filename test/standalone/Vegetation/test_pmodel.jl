@@ -43,17 +43,6 @@ using ClimaLand.Domains: Point
 import ClimaLand.Parameters as LP
 import ClimaParams
 
-# verbose output?
-verbose = false
-
-# Directory containing CSV test cases
-include("../../Artifacts.jl")
-datadir = pmodel_unittests_path()
-inputs_file = joinpath(datadir, "inputs.csv")
-outputs_file = joinpath(datadir, "outputs.csv")
-
-atol = 1e-3
-rtol = 1e-3
 
 """
     percent_difference(a, b)
@@ -71,7 +60,7 @@ Create P-Model driver variables from test input data.
 Converts input data from the test CSV files into the appropriate driver structure
 for the P-Model, handling unit conversions and optional soil moisture stress.
 """
-function create_pmodel_drivers(inputs::Dict{String, Any}, FT)
+function PModelDrivers(inputs::Dict{String, Any}, FT)
     T_canopy = FT(inputs["tc"] + 273.15)  # Convert from Celsius to Kelvin
     VPD = FT(inputs["vpd"])
     ca = FT(inputs["co2"]) * FT(1e-6) * FT(101325.0)  # Convert ppm to Pa
@@ -82,7 +71,7 @@ function create_pmodel_drivers(inputs::Dict{String, Any}, FT)
 
     βm = Bool(inputs["do_soilmstress"]) ? quadratic_soil_moisture_stress(FT(inputs["soilm"])) : FT(1.0)
     
-    return PModelDrivers(
+    return ClimaLand.Canopy.PModelDrivers(
         T_canopy = T_canopy,
         I_abs = I_abs,
         ca = ca,
@@ -97,7 +86,7 @@ end
 
 Constructs the parameter structure for the P-Model
 """
-function create_pmodel_parameters(inputs::Dict{String, Any}, FT)
+function PModelParameters(inputs::Dict{String, Any}, FT)
     # these are default values used in Stocker 2020
     β = FT(inputs["beta"])
     cstar = FT(0.41) 
@@ -111,7 +100,7 @@ function create_pmodel_parameters(inputs::Dict{String, Any}, FT)
         ϕc = FT(NaN)
     end
 
-    return PModelParameters(
+    return ClimaLand.Canopy.PModelParameters(
         cstar = cstar,
         β = β,
         ϕc = ϕc,
@@ -120,11 +109,42 @@ function create_pmodel_parameters(inputs::Dict{String, Any}, FT)
 end
 
 
+"""
+    csv_to_dict(data, header, row_idx)
+
+Convert a CSV row to a dictionary, skipping missing values and the testcase column.
+"""
+function csv_to_dict(data, header, row_idx)
+    dict = Dict{String, Any}()
+    for (col_idx, col_name) in enumerate(header)
+        col_name_str = string(col_name)
+        value = data[row_idx, col_idx]
+        
+        # Skip testcase column and missing values
+        if col_name_str != "testcase" && !ismissing(value)
+            dict[col_name_str] = value
+        end
+    end
+    return dict
+end
+
 @testset "P-model regression tests against R output" begin
-    # Read inputs and outputs CSV files
+    # verbose output?
+    verbose = false
+
+    # Directory containing CSV test cases
+    include("../../Artifacts.jl")
+    datadir = pmodel_unittests_path()
+    inputs_file = joinpath(datadir, "inputs.csv")
+    outputs_file = joinpath(datadir, "outputs.csv")
+
+    # tolerances
+    atol = 1e-3
+    rtol = 1e-3
+
+    # read inputs and outputs from CSV files
     inputs_data, inputs_header = readdlm(inputs_file, ',', header=true)
     outputs_data, outputs_header = readdlm(outputs_file, ',', header=true)
-    
     inputs_header = vec(inputs_header)
     outputs_header = vec(outputs_header)
     
@@ -144,63 +164,36 @@ end
             continue
         end
         
-        # Create inputs dictionary
-        inputs = Dict{String, Any}()
-        for (col_idx, col_name) in enumerate(inputs_header)
-            col_name_str = string(col_name)
-            value = inputs_data[row_idx, col_idx]
-            
-            # Skip testcase column and missing values
-            if col_name_str == "testcase" || ismissing(value)
-                continue
-            end
-            
-            inputs[col_name_str] = value
-        end
-        
-        # Create expected outputs dictionary
-        ref_outputs = Dict{String, Any}()
-        for (col_idx, col_name) in enumerate(outputs_header)
-            col_name_str = string(col_name)
-            value = outputs_data[output_row_idx, col_idx]
-            
-            # Skip testcase column and missing values
-            if col_name_str == "testcase" || ismissing(value)
-                continue
-            end
-            
-            ref_outputs[col_name_str] = value
-        end
+        # Create inputs and outputs dictionaries using helper function
+        inputs = csv_to_dict(inputs_data, inputs_header, row_idx)
+        ref_outputs = csv_to_dict(outputs_data, outputs_header, output_row_idx)
 
         for FT in (Float32, Float64)
             # Convert ref_outputs to the correct FT
             ref_outputs_typed = Dict{String, FT}(k => FT(v) for (k, v) in ref_outputs)
 
             @testset "Test $testcase_name, FT = $FT" begin
-                if verbose
-                    println("Running test case: $testcase_name with FT = $FT")
-                end
+                verbose && println("Running test case: $testcase_name with FT = $FT")
+
                 # Create constants, drivers, and parameters for the current FT
-                constants = create_pmodel_constants(FT)
-                drivers = create_pmodel_drivers(inputs, FT)
-                parameters = create_pmodel_parameters(inputs, FT)
+                constants = PModelConstants(FT)
+                drivers = PModelDrivers(inputs, FT)
+                parameters = PModelParameters(inputs, FT)
                 
                 # Run the model
                 outputs = compute_pmodel_outputs(parameters, drivers, constants)
-                
-                # Convert outputs dict keys to strings for comparison
-                outputs = Dict(string(k) => v for (k, v) in outputs)
 
                 # Compare each output field
                 for key in keys(ref_outputs_typed)
-                    if haskey(outputs, key)
+                    # Convert string key to symbol for named tuple access
+                    key_symbol = Symbol(key)
+                    
+                    if haskey(outputs, key_symbol)
                         r_out = ref_outputs_typed[key]
                         # convert gpp to kg/m^2/s   
-                        if key == "gpp"
-                            r_out = r_out / 1000.0 
-                        end
+                        r_out = key == "gpp" ? r_out / FT(1000.0) : r_out
 
-                        j_out = outputs[key]
+                        j_out = getproperty(outputs, key_symbol)
                         diff = percent_difference(j_out, r_out)
 
                         # Verbose output
@@ -213,9 +206,7 @@ end
                         # Test for approximate equality
                         @test isapprox(j_out, r_out, rtol=rtol, atol=atol)
                     else
-                        if verbose
-                            @warn "Missing key $key in Julia outputs"
-                        end
+                        verbose && @warn "Missing key $key in Julia outputs"
                     end
                 end
             end

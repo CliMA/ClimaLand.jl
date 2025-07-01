@@ -532,5 +532,4 @@ function era5_surface_data_1979_2024_path(; context = nothing)
     )
 end
 
-
 end

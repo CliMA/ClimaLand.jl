@@ -7,10 +7,9 @@ using ClimaCore
 using ClimaCore.MatrixFields
 import ClimaCore.MatrixFields: @name, ⋅
 import ClimaUtilities.TimeManager: ITime, date
-import LinearAlgebra: I
+import LinearAlgebra: I, dot
 using ClimaLand: AbstractRadiativeDrivers, AbstractAtmosphericDrivers
 import ..Parameters as LP
-import LinearAlgebra: dot
 
 import ClimaLand:
     name,
