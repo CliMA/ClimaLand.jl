@@ -279,6 +279,23 @@ end
 @diagnostic_compute "specific_humidity" Union{SoilCanopyModel, LandModel} p.drivers.q
 @diagnostic_compute "wind_speed" Union{SoilCanopyModel, LandModel} p.drivers.u
 
+function compute_precip!(
+    out,
+    Y,
+    p,
+    t,
+    land_model::SoilCanopyModel{FT},
+) where {FT}
+    if isnothing(out)
+        out = zeros(land_model.soil.domain.space.surface) # Allocates
+        fill!(field_values(out), NaN) # fill with NaNs, even over the ocean
+        @. out = (p.drivers.P_liq + p.drivers.P_snow) * 1000 # density of liquid water (1000kg/m^3)
+        return out
+    else
+        @. out = (p.drivers.P_liq + p.drivers.P_snow) * 1000# density of liquid water (1000kg/m^3)
+    end
+end
+
 ## Soil Module ##
 
 @diagnostic_compute "infiltration" Union{SoilCanopyModel, LandModel} p.soil.infiltration

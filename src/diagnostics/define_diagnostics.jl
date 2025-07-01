@@ -600,6 +600,16 @@ function define_diagnostics!(land_model)
             compute_snowfall!(out, Y, p, t, land_model),
     )
 
+    # Total precip (mass flux)
+    add_diagnostic_variable!(
+        short_name = "precip",
+        long_name = "Total precipitation",
+        standard_name = "total_precipitation",
+        units = "kg m^-2 s^-1",
+        comments = "The total flux from precipitation in kg of water per m^2 of ground per second).",
+        compute! = (out, Y, p, t) -> compute_precip!(out, Y, p, t, land_model),
+    )
+
     #Air temperature
     add_diagnostic_variable!(
         short_name = "tair",
