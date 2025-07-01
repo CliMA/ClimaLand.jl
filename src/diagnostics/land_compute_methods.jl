@@ -284,7 +284,7 @@ function compute_precip!(
     Y,
     p,
     t,
-    land_model::SoilCanopyModel{FT},
+    land_model::Union{SoilCanopyModel{FT}, LandModel{FT}},
 ) where {FT}
     if isnothing(out)
         out = zeros(land_model.soil.domain.space.surface) # Allocates
