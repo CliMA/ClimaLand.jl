@@ -600,6 +600,16 @@ function define_diagnostics!(land_model)
             compute_snowfall!(out, Y, p, t, land_model),
     )
 
+    #Air temperature
+    add_diagnostic_variable!(
+        short_name = "tair",
+        long_name = "Air Temperature (K)",
+        standard_name = "tair",
+        units = "K",
+        comments = "The air temperature at the lowest level of the atmosphere (coupled) or 2m level (prescribed).",
+        compute! = (out, Y, p, t) -> compute_tair!(out, Y, p, t, land_model),
+    )
+
     # Specific humidity
     add_diagnostic_variable!(
         short_name = "qsfc",

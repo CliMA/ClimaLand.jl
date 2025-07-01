@@ -275,6 +275,7 @@ end
 @diagnostic_compute "radiation_longwave_down" Union{SoilCanopyModel, LandModel} p.drivers.LW_d
 @diagnostic_compute "radiation_shortwave_down" Union{SoilCanopyModel, LandModel} p.drivers.SW_d
 @diagnostic_compute "snowfall" Union{SoilCanopyModel, LandModel} p.drivers.P_snow
+@diagnostic_compute "tair" Union{SoilCanopyModel, LandModel} p.drivers.T
 @diagnostic_compute "specific_humidity" Union{SoilCanopyModel, LandModel} p.drivers.q
 @diagnostic_compute "wind_speed" Union{SoilCanopyModel, LandModel} p.drivers.u
 
