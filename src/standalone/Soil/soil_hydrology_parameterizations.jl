@@ -60,7 +60,7 @@ van Genuchten formulation.
 """
 function matric_potential(cm::vanGenuchten{FT}, S::FT) where {FT}
     (; α, m, n) = cm
-    ψ = -((S^(-FT(1) / m) - FT(1)) * α^(-n))^(FT(1) / n)
+    ψ = -((S^(-FT(1) / m) - FT(1)))^(FT(1) / n) / α
     return ψ
 end
 
@@ -142,10 +142,11 @@ function dψdϑ(cm::vanGenuchten{FT}, ϑ, ν_eff, θ_r, S_s) where {FT}
     S = effective_saturation(ν_eff_safe, ϑ, θ_r)
     (; α, m, n) = cm
     if S < 1.0
+        pow_s = S^(-1 / m)
         return FT(
             1.0 / (α * m * n) / (ν_eff_safe - θ_r) *
-            (S^(-1 / m) - 1)^(1 / n - 1) *
-            S^(-1 / m - 1),
+            (pow_s - 1)^(1 / n - 1) *
+            pow_s / S,
         )
     else
         return 1 / S_s
