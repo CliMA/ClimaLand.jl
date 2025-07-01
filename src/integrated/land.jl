@@ -466,6 +466,9 @@ function make_update_boundary_fluxes(
 
     function update_boundary_fluxes!(p, Y, t)
         earth_param_set = land.soil.parameters.earth_param_set
+        # update root extraction
+        update_root_extraction!(p, Y, t, land) # defined in src/integrated/soil_canopy_root_interactions.jl
+
         # Radiation - updates Rn for soil and snow also
         lsm_radiant_energy_fluxes!(
             p,
@@ -480,6 +483,17 @@ function make_update_boundary_fluxes(
             p,
             land.soil.parameters.earth_param_set,
         )
+
+        # Compute the ground heat flux in place:
+        update_soil_snow_ground_heat_flux!(
+            p,
+            Y,
+            land.soil.parameters,
+            land.snow.parameters,
+            land.soil.domain,
+            FT,
+        )
+
         #Now update snow boundary conditions, which rely on the ground heat flux
         update_snow_bf!(p, Y, t)
 
