@@ -1227,7 +1227,6 @@ function make_update_drivers(a::PrescribedAtmosphere{FT}) where {FT}
     function update_drivers!(p, t)
         evaluate!(p.drivers.P_liq, a.liquid_precip, t)
         evaluate!(p.drivers.P_snow, a.snow_precip, t)
-        p.drivers.P_snow .*= 0
         evaluate!(p.drivers.T, a.T, t)
         evaluate!(p.drivers.P, a.P, t)
         evaluate!(p.drivers.u, a.u, t)

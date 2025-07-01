@@ -359,6 +359,7 @@ function soil_boundary_fluxes!(
         p.excess_heat_flux +
         p.snow.snow_cover_fraction * p.ground_heat_flux +
         infiltration_energy_flux
+
     return nothing
 end
 
