@@ -575,9 +575,9 @@ function make_compute_exp_tendency(
         components,
     )
     function compute_exp_tendency!(dY, Y, p, t)
-        for f! in compute_exp_tendency_list
-            f!(dY, Y, p, t)
-        end
+        # for f! in compute_exp_tendency_list
+        #     f!(dY, Y, p, t)
+        # end
 
     end
     return compute_exp_tendency!
@@ -605,9 +605,9 @@ function make_compute_imp_tendency(
         components,
     )
     function compute_imp_tendency!(dY, Y, p, t)
-        for f! in compute_imp_tendency_list
-            f!(dY, Y, p, t)
-        end
+        # for f! in compute_imp_tendency_list
+        #     f!(dY, Y, p, t)
+        # end
 
     end
     return compute_imp_tendency!
