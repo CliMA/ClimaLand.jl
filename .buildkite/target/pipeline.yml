@@ -35,5 +35,7 @@ steps:
         command: "julia --color=yes --project=.buildkite experiments/benchmarks/snowy_land.jl --profiler flamegraph"
         artifact_paths:
           - "snowy_land_benchmark_cpu/flame*html"
+        env:
+           CLIMACOMMS_DEVICE: CPU
         agents:
           slurm_mem: 8GB
