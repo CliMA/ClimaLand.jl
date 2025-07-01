@@ -269,7 +269,7 @@ function default_diagnostics(
     start_date;
     output_writer,
     output_vars = :short,
-    average_period = :monthly,
+    average_period = :daily,
     conservation = false,
     conservation_period = Day(10),
 ) where {FT}

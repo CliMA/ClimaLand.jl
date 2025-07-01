@@ -343,7 +343,7 @@ function setup_simulation(; greet = false)
     # we simulate from and until the beginning of
     # March so that a full season is included in seasonal metrics.
     start_date = LONGER_RUN ? DateTime("2000-03-01") : DateTime("2008-03-01")
-    stop_date = LONGER_RUN ? DateTime("2019-03-01") : DateTime("2010-03-01")
+    stop_date = LONGER_RUN ? DateTime("2019-03-01") : DateTime("2008-04-01")
     Δt = 450.0
     nelements = (101, 15)
     if greet
@@ -358,8 +358,26 @@ function setup_simulation(; greet = false)
         ClimaLand.ModelSetup.global_domain(FT; comms_ctx = context, nelements)
     params = LP.LandParameters(FT)
     model = setup_model(FT, start_date, stop_date, Δt, domain, params)
-
-    simulation = LandSimulation(FT, start_date, stop_date, Δt, model; outdir)
+    diagnostics = ClimaLand.default_diagnostics(
+        model,
+        start_date;
+        output_writer = ClimaDiagnostics.Writers.NetCDFWriter(
+            domain.space.subsurface,
+            outdir;
+            start_date,
+        ),
+        conservation = true,
+        conservation_period = Day(1),
+    )
+    simulation = LandSimulation(
+        FT,
+        start_date,
+        stop_date,
+        Δt,
+        model;
+        outdir,
+        diagnostics,
+    )
     return simulation
 end
 
@@ -393,20 +411,5 @@ include(
         "figures_function.jl",
     ),
 )
-make_figures(root_path, outdir, short_names)
-
-include("leaderboard/leaderboard.jl")
-diagnostics_folder_path = outdir
-leaderboard_base_path = root_path
-for data_source in ("ERA5", "ILAMB")
-    compute_monthly_leaderboard(
-        leaderboard_base_path,
-        diagnostics_folder_path,
-        data_source,
-    )
-    compute_seasonal_leaderboard(
-        leaderboard_base_path,
-        diagnostics_folder_path,
-        data_source,
-    )
-end
+## Conservation
+check_conservation(root_path, outdir)
