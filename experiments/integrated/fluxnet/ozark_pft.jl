@@ -338,7 +338,6 @@ short_names_1D = [
     "msf", # β
     "shf", # SHF
     "lhf", # LHF
-    "ghf", # G
     "rn", # Rn
 ]
 short_names_2D = [
@@ -354,7 +353,7 @@ hourly_diag_name_2D = short_names_2D .* "_1h_average"
 # diagnostic_as_vectors()[2] is a vector of a variable,
 # whereas diagnostic_as_vectors()[1] is a vector or time associated with that variable.
 # We index to only extract the period post-spinup.
-SIF, AR, g_stomata, GPP, canopy_T, SW_u, LW_u, ER, ET, β, SHF, LHF, G, Rn = [
+SIF, AR, g_stomata, GPP, canopy_T, SW_u, LW_u, ER, ET, β, SHF, LHF, Rn = [
     ClimaLand.Diagnostics.diagnostic_as_vectors(d_writer, diag_name)[2][(N_spinup_days * 24):end]
     for diag_name in hourly_diag_name
 ]
