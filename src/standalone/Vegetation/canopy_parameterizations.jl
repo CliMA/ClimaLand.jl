@@ -71,7 +71,7 @@ end
 Computes the PAR and NIR fractional absorbances, reflectances, and tranmittances
 for a canopy in the case of the
 Beer-Lambert model. The absorbances are a function of the radiative transfer
-model, as well as the leaf area index, the clumping index, 
+model, as well as the leaf area index, the clumping index,
 the cosine of the zenith angle, the leaf angle distribution,
 the extinction coefficient, and the
 soil albedo in the PAR and NIR bands. Returns a
@@ -116,7 +116,7 @@ end
 Computes the PAR and NIR fractional absorbances, reflectances, and tranmittances
 for a canopy in the case of the
 Two-stream model. The absorbances are a function of the radiative transfer
-model, as well as the leaf area index, the clumping index, 
+model, as well as the leaf area index, the clumping index,
 the cosine of the zenith angle, the leaf angle distribution,
 the extinction coefficient, and the
 soil albedo in the PAR and NIR bands.
@@ -136,28 +136,28 @@ function compute_fractional_absorbances!(
     RTP = RT.parameters
     cosθs = p.drivers.cosθs
     frac_diff = p.drivers.frac_diff
-    @. p.canopy.radiative_transfer.par = canopy_sw_rt_two_stream(
-        RTP.G_Function,
-        RTP.Ω,
-        RTP.n_layers,
-        RTP.α_PAR_leaf,
-        RTP.τ_PAR_leaf,
-        LAI,
-        cosθs,
-        α_soil_PAR,
-        frac_diff,
-    )
-    @. p.canopy.radiative_transfer.nir = canopy_sw_rt_two_stream(
-        RTP.G_Function,
-        RTP.Ω,
-        RTP.n_layers,
-        RTP.α_NIR_leaf,
-        RTP.τ_NIR_leaf,
-        LAI,
-        cosθs,
-        α_soil_NIR,
-        frac_diff,
-    )
+    # @. p.canopy.radiative_transfer.par = canopy_sw_rt_two_stream(
+    #     RTP.G_Function,
+    #     RTP.Ω,
+    #     RTP.n_layers,
+    #     RTP.α_PAR_leaf,
+    #     RTP.τ_PAR_leaf,
+    #     LAI,
+    #     cosθs,
+    #     α_soil_PAR,
+    #     frac_diff,
+    # )
+    # @. p.canopy.radiative_transfer.nir = canopy_sw_rt_two_stream(
+    #     RTP.G_Function,
+    #     RTP.Ω,
+    #     RTP.n_layers,
+    #     RTP.α_NIR_leaf,
+    #     RTP.τ_NIR_leaf,
+    #     LAI,
+    #     cosθs,
+    #     α_soil_NIR,
+    #     frac_diff,
+    # )
 end
 
 """
