@@ -222,6 +222,8 @@ lsm_aux_vars(m::LandModel) = (
     :ϵ_sfc,
     :α_sfc,
     :α_ground,
+    :total_energy,
+    :total_water,
 )
 
 """
@@ -249,6 +251,8 @@ lsm_aux_types(m::LandModel{FT}) where {FT} = (
     FT,
     FT,
     NamedTuple{(:PAR, :NIR), Tuple{FT, FT}},
+    FT,
+    FT,
 )
 
 """
@@ -276,7 +280,156 @@ lsm_aux_domain_names(m::LandModel) = (
     :surface,
     :surface,
     :surface,
+    :surface,
+    :surface,
 )
+
+function initialize_prognostic(
+    model::LandModel{FT},
+    coords::NamedTuple,
+) where {FT}
+    components = land_components(model)
+    Y_state_list = map(components) do (component)
+        submodel = getproperty(model, component)
+        getproperty(initialize_prognostic(submodel, coords), component)
+    end
+    conservation_vars = (:∫F_vol_liq_water_dt, :∫F_e_dt)
+    conservation_types = (FT, FT)
+    conservation_domain_names = (:surface, :surface)
+    conservation_state_list = initialize_vars(
+        conservation_vars,
+        conservation_types,
+        conservation_domain_names,
+        coords,
+        :conservation_check,
+    )
+    Y = ClimaCore.Fields.FieldVector(;
+        NamedTuple{(components..., conservation_vars...)}((
+            Y_state_list...,
+            conservation_state_list.conservation_check...,
+        ))...,
+    )
+    return Y
+end
+
+function make_update_aux(land::LandModel)
+    components = land_components(land)
+    update_aux_function_list =
+        map(x -> make_update_aux(getproperty(land, x)), components)
+    function update_aux!(p, Y, t)
+        for f! in update_aux_function_list
+            f!(p, Y, t)
+        end
+        sfc_cache = p.scratch1 .* 0
+        ClimaLand.total_liq_water_vol_per_area!(
+            p.total_water,
+            land,
+            Y,
+            p,
+            t,
+            sfc_cache,
+        )
+        ClimaLand.total_energy_per_area!(
+            p.total_energy,
+            land,
+            Y,
+            p,
+            t,
+            sfc_cache,
+        )
+    end
+    return update_aux!
+end
+
+function make_imp_tendency(land::LandModel)
+    components = land_components(land)
+    compute_imp_tendency_list =
+        map(x -> make_compute_imp_tendency(getproperty(land, x)), components)
+    update_aux! = make_update_aux(land)
+    update_boundary_fluxes! = make_update_boundary_fluxes(land)
+    function imp_tendency!(dY, Y, p, t)
+        update_aux!(p, Y, t)
+        update_boundary_fluxes!(p, Y, t)
+        for f! in compute_imp_tendency_list
+            f!(dY, Y, p, t)
+        end
+        atmos = land.snow.boundary_conditions.atmos
+        e_flux_falling_snow =
+            Snow.energy_flux_falling_snow(atmos, p, land.snow.parameters)
+        e_flux_falling_rain =
+            Snow.energy_flux_falling_rain(atmos, p, land.snow.parameters)
+        top_heat_flux = @. lazy(
+            e_flux_falling_snow +
+            e_flux_falling_rain +
+            (
+                p.snow.turbulent_fluxes.lhf +
+                p.snow.turbulent_fluxes.shf +
+                p.snow.R_n
+            ) * p.snow.snow_cover_fraction +
+            (1 - p.snow.snow_cover_fraction) * (
+                p.soil.R_n +
+                p.soil.turbulent_fluxes.lhf +
+                p.soil.turbulent_fluxes.shf
+            ) +
+            p.canopy.turbulent_fluxes.shf +
+            p.canopy.turbulent_fluxes.lhf -
+            p.canopy.radiative_transfer.SW_n -
+            p.canopy.radiative_transfer.LW_n,
+        )
+        bottom_heat_flux = p.soil.bottom_bc.heat
+        #runoff_energy_flux = ;
+        @. dY.∫F_e_dt = -(top_heat_flux - bottom_heat_flux)
+
+        top_water_flux = @. lazy(
+            p.drivers.P_liq +
+            p.drivers.P_snow +
+            p.snow.turbulent_fluxes.vapor_flux * p.snow.snow_cover_fraction +
+            (1 - p.snow.snow_cover_fraction) * (
+                p.soil.turbulent_fluxes.vapor_flux_liq +
+                p.soil.turbulent_fluxes.vapor_flux_ice
+            ) +
+            p.canopy.turbulent_fluxes.transpiration,
+        )
+        runoff_water_flux = @. lazy(p.soil.R_s + p.soil.R_ss)
+        bottom_water_flux = p.soil.bottom_bc.water
+        @. dY.∫F_vol_liq_water_dt =
+            -(top_water_flux + runoff_water_flux - bottom_water_flux)
+
+    end
+    return imp_tendency!
+end
+
+function make_exp_tendency(land::LandModel{FT}) where {FT}
+    components = land_components(land)
+    compute_exp_tendency_list =
+        map(x -> make_compute_exp_tendency(getproperty(land, x)), components)
+    update_aux! = make_update_aux(land)
+    update_boundary_fluxes! = make_update_boundary_fluxes(land)
+    function exp_tendency!(dY, Y, p, t)
+        update_aux!(p, Y, t)
+        # Treat the following terms explicitly!
+
+        # update root extraction
+        update_root_extraction!(p, Y, t, land) # defined in src/integrated/soil_canopy_root_interactions.jl
+
+        # Compute the ground heat flux in place:
+        update_soil_snow_ground_heat_flux!(
+            p,
+            Y,
+            land.soil.parameters,
+            land.snow.parameters,
+            land.soil.domain,
+            FT,
+        )
+        # Treat the following terms explicitly!
+        update_boundary_fluxes!(p, Y, t)
+        for f! in compute_exp_tendency_list
+            f!(dY, Y, p, t)
+        end
+    end
+    return exp_tendency!
+end
+
 
 """
     make_update_boundary_fluxes(
@@ -340,6 +493,7 @@ function make_update_boundary_fluxes(
             land.soil.domain,
             FT,
         )
+
         #Now update snow boundary conditions, which rely on the ground heat flux
         update_snow_bf!(p, Y, t)
 
@@ -527,7 +681,6 @@ function soil_boundary_fluxes!(
         p.excess_heat_flux +
         p.snow.snow_cover_fraction * p.ground_heat_flux +
         infiltration_energy_flux
-
     return nothing
 end
 
@@ -615,7 +768,7 @@ function snow_boundary_fluxes!(
     e_flux_falling_rain =
         Snow.energy_flux_falling_rain(bc.atmos, p, model.parameters)
 
-    # positive fluxes are TOWARDS atmos, but R_n positive if snow absorbs energy
+    # positive fluxes are TOWARDS atmos
     @. p.snow.total_energy_flux =
         e_flux_falling_snow +
         (
