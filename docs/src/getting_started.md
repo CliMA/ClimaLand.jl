@@ -1,17 +1,17 @@
 # Getting Started
 
-## For Users
+## Installation of Julia and ClimaLand
 
-### Installation
+ClimaLand is provided as a Julia package, so it requires having Julia installed. Information about Julia packages is available on the [Julia website](https://julialang.org/packages/).
 
 First, download and install Julia by following the instructions at [https://julialang.org/downloads/](https://julialang.org/downloads/).
-Then, you can install the ClimaLand package by doing:
+Then, you can launch a [Julia REPL](https://docs.julialang.org/en/v1/stdlib/REPL/) and install the
+ClimaLand.jl package by running:
 
 ```julia
-julia> ] # Enter Package REPL mode
-Pkg> add ClimaLand # Install ClimaLand
-Pkg> # Go back to Julia REPL mode
-Julia> using ClimaLand
+julia> using Pkg
+julia> Pkg.add(ClimaLand)
+julia> using ClimaLand
 ```
 
 A typical land simulation employs several different parameterizations to model the various land-surface processes. Let's start our journet into ClimaLand by looking at one of those.
@@ -59,4 +59,3 @@ Where modules are shown in red, functions are shown in blue, and types are shown
 
 To see the documentation about a particular module, function or type, you can use ? to go in help mode
 in the REPL, or `@doc` as in [Parameterization above](#Parameterization).
-
