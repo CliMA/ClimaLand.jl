@@ -431,28 +431,8 @@ if profiler == "flamegraph"
     @info "Standard deviation time: $(std_timing_s) s"
     @info "Done profiling"
 
-    if ClimaComms.device() isa ClimaComms.CUDADevice
-        import CUDA
-        lprob, lode_algo, lΔt, lcb = setup_simulation()
-        p = CUDA.@profile SciMLBase.solve(
-            lprob,
-            lode_algo;
-            dt = lΔt,
-            callback = lcb,
-        )
-        # use "COLUMNS" to set how many horizontal characters to crop:
-        # See https://github.com/ronisbr/PrettyTables.jl/issues/11#issuecomment-2145550354
-        envs = ("COLUMNS" => 120,)
-        withenv(envs...) do
-            io = IOContext(
-                stdout,
-                :crop => :horizontal,
-                :limit => true,
-                :displaysize => displaysize(),
-            )
-            show(io, p)
-        end
-        println()
+    if false && ClimaComms.device() isa ClimaComms.CUDADevice
+        @show ClimaComms.device()
     else # Flame graphs can be misleading on gpus, so we only create them on CPU
         prob, ode_algo, Δt, cb = setup_simulation()
         Profile.@profile SciMLBase.solve(prob, ode_algo; dt = Δt, callback = cb)
