@@ -55,7 +55,7 @@ ModelTools = Base.get_extension(ClimaLand, :NeuralSnowExt).ModelTools;
 # A similar `analysis_tools.jl` file exists alongside `display_tools.jl` for
 # some basic functions for analyzing/scoring the model, if desired.
 using ClimaLand
-code_dir = joinpath(pkgdir(ClimaLand), "docs/tutorials/standalone/Snow")
+code_dir = joinpath(pkgdir(ClimaLand), "docs/src/tutorials/standalone/Snow")
 include(joinpath(code_dir, "display_tools.jl"));
 
 # Next, we set up values of the network hyperparameters, including the

@@ -1,19 +1,19 @@
 # ClimaLand folder structure
 
-[ClimaLand](https://github.com/CliMA/ClimaLand.jl) home directory has 6 main folders:
+The [ClimaLand](https://github.com/CliMA/ClimaLand.jl) home directory has 6 main folders:
 
 - docs: contains files to generate [the documentation website](https://clima.github.io/ClimaLand.jl/stable/).
-- experiments: contains simple runs of `ClimaLand` models. Most of these experiments is run as part of our CI.
-- src: contains the code of `ClimaLand` models.
-- ext: contains a package extension for Neural Snow and an extension with constructors for model parameters
-- lib: contains two packages that extend ClimaLand functionality: ClimaLandSimulations and ClimaLandDashboards
-- test: contains [unit tests](https://en.wikipedia.org/wiki/Unit_testing), which are meant to ensure small pieces of ClimaLand source code work as intended before merging pull requests.
+- experiments: contains example simulations of `ClimaLand` models. Most of these experiments are run as part of our continuous integration (CI) pipeline.
+- ext: contains a package extension for the ML-based Neural Snow model and an extension for model parameters
+- lib: contains a package, ClimaLandSimulations, that extends ClimaLand functionality and is currently under development
+- src: contains the code that implements `ClimaLand` models.
+- test: contains [unit tests](https://en.wikipedia.org/wiki/Unit_testing) for the source code, which are meant to ensure individual pieces of the codebase work as intended before merging pull requests.
 
-and 3 GitHub actions folders. GitHub actions are `.yml` files that define workflows that are run at each pull request.
+The repo also has 3 CI-related folders, containing workflows that are run at each pull request.
 
-- .buildkite: contains a script building outputs such as figures from experiments and tests folders. These runs are carried out as part of CI and must run without error in order to merge a PR.
+- .buildkite: contains a script that runs a variety of ClimaLand simulations, largely from the experiments and tests folders. These runs are carried out as part of CI and must run without error in order to merge a PR.
 - .dev: contains useful tools for developers, such as a format checker for Julia (which is run as part of CI and must pass before a PR can be merged into main).
-- .github: contains various scripts, for example, this documentation website is built each time a change is push to `ClimaLand`.
+- .github: contains various Github Actions scripts, for example, this documentation website is built each time a change is push to `ClimaLand`.
 
 as well as 9 files:
 
@@ -33,7 +33,7 @@ Julia packages are recommended to have a `/docs` folder that builds a standardis
 
 The folder /docs contains:
 
-- a `/src` folder: It is recommended to put your markdown pages inside this folder. Each markdown file (.md extension text file) is a page accessible through the menu of the documentation. For example, `docs/src/Contributing.md` contains the text you can read on the documentation "contribution guide" menu. The path to this .md file and the name of the menu is set in the `docs/make.jl` file.
+- a `/src` folder: It is recommended to put your markdown pages inside this folder. Each markdown file (.md extension text file) is a page accessible through the menu of the documentation. For example, `docs/src/contributing.md` contains the text you can read on the documentation "contribution guide" menu. The path to this .md file and the name of the menu is set in the `docs/make.jl` file.
 - a `make.jl` file: This Julia file contains your documentation website structure. Running this file will build your website pages, you can run it locally, but it is commonly built remotely via .github/workflows/docs.yml to generate the github static page hosted on the [gh-pages branch](https://github.com/CliMA/ClimaLand.jl/tree/gh-pages).
 
 Note: the documentation can have submenu. For example, `APIs` have submenu `ClimaLand` which has many submenu... This structure is built in our current framework via a file `docs/list_of_apis.jl` in that example, which is then included in `docs/make.jl`.
