@@ -105,6 +105,12 @@ Base.@kwdef struct PModelConstants{FT}
     Mc::FT
     """Intercellular O2 mixing ratio (unitless)"""
     oi::FT
+    """First order coefficient for temp-dependent Rd (K^-1)"""
+    aRd::FT
+    """Second order coefficient for temp-dependent Rd (K^-2)"""
+    bRd::FT
+    """Constant factor appearing the dark respiration term for C3 plants (unitless)"""
+    fC3::FT
 end
 
 Base.eltype(::PModelParameters{FT}) where {FT} = FT
@@ -137,7 +143,10 @@ function PModelConstants(FT)
         aS_Jmax = FT(659.70),
         bS_Jmax = FT(0.75),
         Mc = FT(0.0120107),
-        oi = FT(0.2095) 
+        oi = FT(0.2095),
+        aRd = FT(0.1012),
+        bRd = FT(-0.0005),
+        fC3 = FT(0.015),
     )
 end
 
@@ -217,7 +226,7 @@ function compute_pmodel_outputs(
     (; R, Kc25, Ko25, To, ΔHkc, ΔHko, 
         Drel, ΔHΓstar, Γstar25,
         Ha_Vcmax, Hd_Vcmax, aS_Vcmax, bS_Vcmax, 
-        Ha_Jmax, Hd_Jmax, aS_Jmax, bS_Jmax, Mc, oi) = constants
+        Ha_Jmax, Hd_Jmax, aS_Jmax, bS_Jmax, Mc, oi, aRd, bRd, fC3) = constants
 
     # Compute intermediate values
     ϕ0 = isnan(ϕ0) ? intrinsic_quantum_yield(T_canopy, ϕc, ϕa0, ϕa1, ϕa2) : ϕ0
@@ -230,7 +239,8 @@ function compute_pmodel_outputs(
     mprime = compute_mj_with_jmax_limitation(mj, cstar)
 
     Vcmax = βm * ϕ0 * I_abs * mprime / mc
-    Vcmax25 = Vcmax / inst_temp_scaling(T_canopy, T_canopy, To, Ha_Vcmax, Hd_Vcmax, aS_Vcmax, bS_Vcmax, R)
+    inst_temp_scaling_vcmax25 = inst_temp_scaling(T_canopy, T_canopy, To, Ha_Vcmax, Hd_Vcmax, aS_Vcmax, bS_Vcmax, R)
+    Vcmax25 = Vcmax / inst_temp_scaling_vcmax25
 
     Jmaxlim = Vcmax * (ci + FT(2) * Γstar) / (ϕ0 * I_abs * (ci + Kmm))
     Jmax = FT(4) * ϕ0 * I_abs / sqrt((FT(1)/Jmaxlim)^2 - FT(1)) 
@@ -247,10 +257,14 @@ function compute_pmodel_outputs(
     iWUE = (ca - ci) / Drel
     gs = pmodel_gs(χ, ca, Ac) 
 
+    # dark respiration 
+    rd = fC3 * (inst_temp_scaling_rd(T_canopy, To, aRd, bRd) / inst_temp_scaling_vcmax25) * Vcmax
+
     return (;
         gpp = GPP,
         gammastar = Γstar,
         kmm = Kmm,
+        ca = ca,
         ns_star = ηstar,
         chi = χ,
         xi = ξ,
@@ -262,7 +276,8 @@ function compute_pmodel_outputs(
         vcmax = Vcmax,
         vcmax25 = Vcmax25,
         jmax = Jmax,
-        jmax25 = Jmax25
+        jmax25 = Jmax25,
+        rd = rd
     )
 end
 
