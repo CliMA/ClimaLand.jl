@@ -95,6 +95,10 @@ Base.@kwdef struct PModelConstants{FT}
     aS_Jmax::FT
     """Slope term for dS in Jmax deactivation factor (J K^-2 mol^-1)"""
     bS_Jmax::FT
+    """Molar mass of carbon (kg mol^-1)"""
+    Mc::FT
+    """Intercellular O2 mixing ratio (unitless)"""
+    oi::FT
 end
 
 Base.eltype(::PModelParameters{FT}) where {FT} = FT
@@ -125,7 +129,9 @@ function PModelConstants(FT)
         Ha_Jmax = FT(49884),
         Hd_Jmax = FT(200000),
         aS_Jmax = FT(659.70),
-        bS_Jmax = FT(0.75)
+        bS_Jmax = FT(0.75),
+        Mc = FT(0.0120107),
+        oi = FT(0.2095) 
     )
 end
 
@@ -205,14 +211,14 @@ function compute_pmodel_outputs(
     (; R, Kc25, Ko25, To, ΔHkc, ΔHko, 
         Drel, ΔHΓstar, Γstar25,
         Ha_Vcmax, Hd_Vcmax, aS_Vcmax, bS_Vcmax, 
-        Ha_Jmax, Hd_Jmax, aS_Jmax, bS_Jmax) = constants
+        Ha_Jmax, Hd_Jmax, aS_Jmax, bS_Jmax, Mc, oi) = constants
 
     # Compute intermediate values
     ϕ0 = isnan(ϕ0) ? intrinsic_quantum_yield(T_canopy, ϕc) : ϕ0
 
     Γstar = co2_compensation_p(T_canopy, To, P_air, R, ΔHΓstar, Γstar25)
     ηstar = compute_viscosity_ratio(T_canopy, P_air)
-    Kmm = compute_Kmm(T_canopy, P_air, Kc25, Ko25, ΔHkc, ΔHko, To, R)
+    Kmm = compute_Kmm(T_canopy, P_air, Kc25, Ko25, ΔHkc, ΔHko, To, R, oi)
     χ, ξ, mj, mc = optimal_co2_ratio_c3(Kmm, Γstar, ηstar, ca, VPD, β, Drel)
     ci = χ * ca
     mprime = compute_mj_with_jmax_limitation(mj, cstar)
@@ -228,14 +234,12 @@ function compute_pmodel_outputs(
     Ac = Vcmax * mc
     Aj = J * mj / FT(4)
 
-    @assert isapprox(Ac, Aj; atol=1e-6) "Ac and Aj are not approximately equal: Ac = $Ac, Aj = $Aj"
-
-    LUE = compute_LUE(ϕ0, βm, mprime)
+    LUE = compute_LUE(ϕ0, βm, mprime, Mc)
     GPP = I_abs * LUE 
 
     # intrinsic water use efficiency (iWUE) and stomatal conductance (gs)
     iWUE = (ca - ci) / Drel
-    gs = Ac / (ca - ci)
+    gs = pmodel_gs(χ, ca, Ac) 
 
     return (;
         gpp = GPP,

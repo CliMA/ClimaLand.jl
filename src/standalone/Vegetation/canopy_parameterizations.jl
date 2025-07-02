@@ -1264,13 +1264,16 @@ end
 
 
 """
-    po2(P_air::FT) 
+    po2(
+        P_air::FT, 
+        oi::FT
+    ) where {FT}
 
-    Computes the partial pressure of O2 in the air (Pa) given atmospheric pressure. Assumes a 
-    constant mixing ratio of 21000 / 101325. 
+    Computes the partial pressure of O2 in the air (Pa) given atmospheric pressure (`P_air`)
+    and a constant mixing ratio of O2 (`oi`), typically 0.209. 
 """
-function po2(P_air::FT) where {FT} 
-    return FT(0.2095) * P_air 
+function po2(P_air::FT, oi::FT) where {FT} 
+    return oi * P_air 
 end
 
 """
@@ -1279,8 +1282,8 @@ end
         To::FT,
         p::FT,
         R::FT, 
-        ΔHΓstar::FT = FT(37830),
-        Γstar25::FT = FT(4.332) 
+        ΔHΓstar::FT
+        Γstar25::FT
     ) where {FT}
 
     Computes the CO2 compensation point (`Γstar`), in units Pa, as a function of temperature T (K)
@@ -1291,8 +1294,8 @@ function co2_compensation_p(
     To::FT,
     p::FT,
     R::FT, 
-    ΔHΓstar::FT = FT(37830),
-    Γstar25::FT = FT(4.332) 
+    ΔHΓstar::FT,
+    Γstar25::FT 
 ) where {FT}
     Γstar = Γstar25 * p / FT(101325.0) * arrhenius_function(T, To, R, ΔHΓstar)
     return Γstar
@@ -1307,14 +1310,16 @@ end
         ΔHkc::FT, 
         ΔHko::FT, 
         To::FT, 
-        R::FT
+        R::FT,
+        oi::FT
     ) where {FT}
 
     Computes the effective Michaelis-Menten coefficient for Rubisco-limited photosynthesis (`Kmm`),
     in units Pa, as a function of temperature T (K), atmospheric pressure p (Pa), and constants:
     Kc25 (Michaelis-Menten coefficient for CO2 at 25 °C), Ko25 (Michaelis-Menten coefficient for O2 at 25 °C),
     ΔHkc (effective enthalpy of activation for Kc), ΔHko (effective enthalpy of activation for Ko),
-    To (reference temperature, typically 298.15 K), and R (universal gas constant).
+    To (reference temperature, typically 298.15 K), R (universal gas constant), and oi (O2 mixing ratio, 
+    typically 0.209).
 """
 function compute_Kmm(
     T::FT, 
@@ -1324,12 +1329,13 @@ function compute_Kmm(
     ΔHkc::FT, 
     ΔHko::FT, 
     To::FT, 
-    R::FT
+    R::FT,
+    oi::FT
 ) where {FT}
     Kc = MM_Kc(Kc25, ΔHkc, T, To, R)
     Ko = MM_Ko(Ko25, ΔHko, T, To, R)
 
-    return Kc * (FT(1.0) + po2(p) / Ko) 
+    return Kc * (1 + po2(p, oi) / Ko) 
 end
 
 """
@@ -1362,16 +1368,16 @@ function optimal_co2_ratio_c3(
     ca::FT, 
     VPD::FT, 
     β::FT,
-    Drel::FT = FT(1.6) 
+    Drel::FT 
 ) where {FT}
     ξ = sqrt(β * (Kmm + Γstar) / (Drel * ηstar))
-    χ = Γstar / ca + (FT(1.0) - Γstar / ca) * ξ / (ξ + sqrt(VPD)) 
+    χ = Γstar / ca + (1 - Γstar / ca) * ξ / (ξ + sqrt(VPD)) 
 
     # define some auxiliary variables 
     γ = Γstar / ca 
     κ = Kmm / ca 
 
-    mj = (χ - γ) / (χ + FT(2.0) * γ) # eqn 11 in Stocker et al. (2020)
+    mj = (χ - γ) / (χ + 2 * γ) # eqn 11 in Stocker et al. (2020)
     mc = (χ - γ) / (χ + κ) # eqn 7 in Stocker et al. (2020)
 
     return χ, ξ, mj, mc
@@ -1379,17 +1385,19 @@ end
 
 
 """
-    compute_gs(
+    pmodel_gs(
         χ::FT, 
         ca::FT,
         A::FT
     ) where {FT}
 
-    Computes the stomatal conductance (`gs`), in units of mol/m^2/s via Fick's law. 
-    Parameters are the ratio of intercellular to ambient CO2 concentration (`χ`),
-    the ambient CO2 concentration (`ca`), and the assimilation rate (`A`).
+    Computes the stomatal conductance of CO2 (`gs`), in units of mol CO2/m^2/s
+    via Fick's law. Parameters are the ratio of intercellular to ambient CO2 
+    concentration (`χ`), the ambient CO2 concentration (`ca`), and the 
+    assimilation rate (`A`). This is related to the conductance of H2O by a 
+    factor Drel = 1.6. 
 """
-function compute_gs(
+function pmodel_gs(
     χ::FT, 
     ca::FT,
     A::FT
@@ -1410,9 +1418,9 @@ end
 # TODO: test if cstar should be made a free parameter? 
 function compute_mj_with_jmax_limitation(
     mj::FT, 
-    cstar::FT = FT(0.412)
+    cstar::FT
 ) where {FT}
-    return FT(mj * sqrt(FT(1.0) - (cstar / mj)^(FT(2/3))))
+    return FT(mj * sqrt(1 - (cstar / mj)^(FT(2/3))))
 end 
 
 
@@ -1420,19 +1428,20 @@ end
     compute_LUE(
         ϕ0::FT, 
         β::FT,
-        mprime::FT
+        mprime::FT,
+        Mc::FT
     ) where {FT} 
 
     Computes light use efficiency (LUE) in kg C/mol from intrinsic quantum yield (`ϕ0`),
     moisture stress factor (`β`), and a Jmax modified capacity (`mprime`); see Eqn 17 and 19
-    in Stocker et al. (2020). 
+    in Stocker et al. (2020). Mc is the molar mass of carbon (kg/mol) = 0.0120107 kg/mol.
 """
 function compute_LUE(
     ϕ0::FT, 
     β::FT,
-    mprime::FT
+    mprime::FT,
+    Mc::FT 
 ) where {FT} 
-    Mc = FT(0.0120107) # molar mass of carbon (kg/mol) 
     return ϕ0 * β * mprime * Mc 
 end 
 
@@ -1443,18 +1452,20 @@ end
         I_abs::FT,
         mprime::FT,
         mc::FT
+        βm::FT
     ) where {FT}
 
     Computes the maximum rate of carboxylation assuming optimality and Aj = Ac using 
     the intrinsic quantum yield (`ϕ0`), absorbed radiation (`I_abs`), Jmax-adjusted capacity
-    (`mprime`), and a Rubisco-limited capacity (`mc`). See Eqns 16 and 6 in Stocker et al. (2020). 
+    (`mprime`), a Rubisco-limited capacity (`mc`), and empirical soil moisture stress factor
+    (`βm`). See Eqns 16 and 6 in Stocker et al. (2020). 
 """
 function pmodel_vcmax(
     ϕ0::FT, 
     I_abs::FT,
     mprime::FT,
     mc::FT,
-    βm::FT = FT(1.0)
+    βm::FT
 ) where {FT}
     Vcmax = βm * ϕ0 * I_abs * mprime / mc 
     return Vcmax
@@ -1503,7 +1514,7 @@ end
         Jmax::FT 
     ) where {FT}
     
-    Computes the rate of electron transport (`J`) in mol/m^2/s for the pmodel.
+    Computes the rate of electron transport (`J`) in mol electrons/m^2/s for the pmodel.
 """
 function electron_transport_pmodel(
     ϕ0::FT,
