@@ -1,4 +1,4 @@
-## Restarting Simulations
+# Restarting Simulations
 
 `ClimaLand` provides functionality to save and load simulation checkpoints,
 allowing you to restart simulations from a previous state. This is particularly
@@ -6,7 +6,7 @@ useful for long-running simulations or if you want to experiment with different
 configurations starting from a specific point in the simulation.
 
 
-### Saving Checkpoints
+## Saving Checkpoints
 
 To save a simulation checkpoint, you can use the `ClimaLand.save_checkpoint`
 function. This function takes the current state `Y`, the simulation time `t`,
@@ -58,7 +58,7 @@ If `dt` is passed, `CheckpointCallback` will also check that it is consistent
 with the checkpoint frequency.
 
 
-### Restarting from a Checkpoint
+## Restarting from a Checkpoint
 
 To restart a simulation from a checkpoint, you can use the
 `ClimaLand.find_restart` function to locate the most recent checkpoint file in
@@ -70,7 +70,7 @@ restart_file = ClimaLand.find_restart(output_dir)
 Y, t = ClimaLand.read_checkpoint(restart_file; model)
 ```
 
-### Output Structure
+## Output Structure
 
 `ClimaLand` utilizes the `OutputPathGenerator` from `ClimaUtilities` to manage
 the output directory structure. By default, it uses the `ActiveLinkStyle`, which
@@ -92,7 +92,7 @@ output/
 The output_active symbolic link always points to the most recent output
 subfolder, making it easy to access the latest simulation results.
 
-#### Checkpoint File Structure
+### Checkpoint File Structure
 
 When using the `CheckpointCallback`, the checkpoints are saved as HDF5 files
 within the numbered output subfolders. The files are named using the following
@@ -103,7 +103,7 @@ day<day_number>.<seconds_since_midnight>.hdf5
 For example, a checkpoint saved at day 10, 3600 seconds after midnight would be
 named `day10.3600.hdf5`.
 
-#### Checkpoints, drivers, and accumulated diagnostics
+### Checkpoints, drivers, and accumulated diagnostics
 
 At the moment, `ClimaLand` does not support working with accumulated diagnostics
 across restarts. The present limitations are best illustrated with an example.
@@ -128,6 +128,5 @@ checkpointing and updating the drivers are compatible.
 !!! note
 
     The reason why `ClimaLand` does not support these features (at the moment), is that
-    updating drivers and diagnostics are implemented as callbacks. Callbacks have some 
+    updating drivers and diagnostics are implemented as callbacks. Callbacks have some
     internal memory that is not saved in the restart files.
-
