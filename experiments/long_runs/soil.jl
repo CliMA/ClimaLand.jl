@@ -166,8 +166,7 @@ function setup_simulation(; greet = false)
         @info "Start Date: $start_date"
         @info "Stop Date: $stop_date"
     end
-    domain =
-        ClimaLand.ModelSetup.global_domain(FT; comms_ctx = context, nelements)
+    domain = ClimaLand.ModelSetup.global_domain(FT; context, nelements)
     params = LP.LandParameters(FT)
     model = setup_model(FT, start_date, stop_date, domain, params)
     diagnostics = ClimaLand.default_diagnostics(

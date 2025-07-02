@@ -109,7 +109,7 @@ function setup_simulation(; greet = false)
     dz_tuple = FT.((1.0, 0.05))
     domain = ClimaLand.ModelSetup.global_domain(
         FT;
-        comms_ctx = context,
+        context,
         nelements,
         depth,
         dz_tuple,

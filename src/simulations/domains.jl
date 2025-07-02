@@ -17,7 +17,7 @@ discretization, which is correlated to the spatial resolution of the domain.
 When `npolynomial` is zero, the element is equivalent to a single point. In this
 case, the resolution of the model is sqrt((360*180)/(101*101*6)). The factor of 6 arises
 because there are 101x101 elements per side of the cubed sphere, meaning 6*101*101 for the
-entire globe. 
+entire globe.
 
 When `npolynomial` is greater than 1, a Gauss-Legendre-Lobotto quadrature is
 used, with `npolynomial + 1` points along the element. In this case, there are
@@ -36,7 +36,7 @@ function global_domain(
     dz_tuple = (10.0, 0.05),
     depth = 50.0,
     npolynomial = 0,
-    comms_ctx = ClimaComms.context(),
+    context = ClimaComms.context(),
 )
     if pkgversion(ClimaCore) < v"0.14.30" && apply_mask
         @warn "The land mask cannot be applied with ClimaCore < v0.14.30. Update ClimaCore for significant performance gains."
@@ -52,7 +52,7 @@ function global_domain(
         nelements,
         npolynomial,
         dz_tuple,
-        comms_ctx,
+        context,
     )
     if apply_mask
         surface_space = domain.space.surface # 2d space
