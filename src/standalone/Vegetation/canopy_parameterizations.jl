@@ -1189,7 +1189,8 @@ end
 """
     viscosity_h20(
         T::FT, 
-        p::FT
+        p::FT,
+        constant_density::Bool
     ) where {FT}
 
     Computes the viscosity of water in Pa s given temperature T (K) and pressure p (Pa)
@@ -1197,14 +1198,16 @@ end
 
     Can consider simplifying if this level of precision is not needed
 """
-function viscosity_h2o(T::FT, p::FT) where {FT}
+function viscosity_h2o(T::FT, p::FT, constant_density::Bool) where {FT}
     # Reference constants
     tk_ast  = FT(647.096)    # K
     ρ_ast = FT(322.0)      # kg/m^3
     μ_ast  = FT(1e-6)       # Pa s
 
     # Get density of water [kg/m^3]
-    ρ = density_h2o(T, p)
+    earth_param_set = LP.LandParameters(FT)
+    ρ0 = LP.ρ_cloud_liq(earth_param_set)
+    constant_density ? ρ = ρ0 : ρ = density_h2o(T, p)
 
     # Dimensionless variables
     tbar  = T / tk_ast
@@ -1250,15 +1253,18 @@ end
 """
     compute_viscosity_ratio(
         T::FT, 
-        p::FT
+        p::FT,
+        constant_density::Bool
     ) where {FT}
 
     Computes η*, the ratio of the viscosity of water at temperature T and pressure p
-    to the viscosity of water at STP. 
+    to the viscosity of water at STP. If `constant_density` is true, the density of water
+    is taken to be constant (1000.0 kg/m^3). Otherwise we use an EOS to compute the density
+    at the given temperature and pressure. 
 """
-function compute_viscosity_ratio(T::FT, p::FT) where {FT} 
-    η25 = viscosity_h2o(FT(298.15), FT(101325.0))
-    ηstar = viscosity_h2o(T, p) / η25
+function compute_viscosity_ratio(T::FT, p::FT, constant_density::Bool) where {FT} 
+    η25 = viscosity_h2o(FT(298.15), FT(101325.0), constant_density)
+    ηstar = viscosity_h2o(T, p, constant_density) / η25
     return FT(ηstar)
 end
 

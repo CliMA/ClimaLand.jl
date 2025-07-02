@@ -217,7 +217,7 @@ function compute_pmodel_outputs(
     ϕ0 = isnan(ϕ0) ? intrinsic_quantum_yield(T_canopy, ϕc) : ϕ0
 
     Γstar = co2_compensation_p(T_canopy, To, P_air, R, ΔHΓstar, Γstar25)
-    ηstar = compute_viscosity_ratio(T_canopy, P_air)
+    ηstar = compute_viscosity_ratio(T_canopy, P_air, true)
     Kmm = compute_Kmm(T_canopy, P_air, Kc25, Ko25, ΔHkc, ΔHko, To, R, oi)
     χ, ξ, mj, mc = optimal_co2_ratio_c3(Kmm, Γstar, ηstar, ca, VPD, β, Drel)
     ci = χ * ca
