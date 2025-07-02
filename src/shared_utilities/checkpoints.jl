@@ -89,7 +89,7 @@ function _context_from_Y(Y)
 end
 
 """
-    ClimaLand.save_checkpoint(Y, t, output_dir; model = nothing, comms_ctx = ClimaComms.context(Y))
+    ClimaLand.save_checkpoint(Y, t, output_dir; model = nothing, context = ClimaComms.context(Y))
 
 Save a simulation checkpoint to an HDF5 file.
 
@@ -104,7 +104,7 @@ specified output directory.
 - `model` (Optional): The ClimaLand model object. If provided the hash of the model
   will be stored in the checkpoint file. Defaults to `nothing`. This is used
   to check for consistency.
-- `comms_ctx` (Optional): The ClimaComms context. This is used for distributed I/O
+- `context` (Optional): The ClimaComms context. This is used for distributed I/O
   operations. Defaults to the context extracted from the state vector `Y` or the `model`.
 """
 function save_checkpoint(
@@ -112,13 +112,12 @@ function save_checkpoint(
     t,
     output_dir;
     model = nothing,
-    comms_ctx = isnothing(model) ? _context_from_Y(Y) :
-                ClimaComms.context(model),
+    context = isnothing(model) ? _context_from_Y(Y) : ClimaComms.context(model),
 )
     day = floor(Int, t / (60 * 60 * 24))
     sec = floor(Int, t % (60 * 60 * 24))
     output_file = joinpath(output_dir, "day$day.$sec.hdf5")
-    hdfwriter = InputOutput.HDF5Writer(output_file, comms_ctx)
+    hdfwriter = InputOutput.HDF5Writer(output_file, context)
     # If model was passed, add its hash, otherwise add nothing
     hash_model = isnothing(model) ? "nothing" : hash(model)
     InputOutput.write_attributes!(
