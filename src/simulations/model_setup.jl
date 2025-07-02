@@ -1,16 +1,21 @@
 """
-    EnergyHydrology(FT, domain, earth_param_set, forcing, prognostic_land_components;
+    EnergyHydrology(FT, domain, forcing;
+                         prognostic_land_components = (:soil),
+                         earth_param_set = LP.LandParameters(FT),
+                         albedo = Soil.CLMTwoBandSoilAlbedo{FT}(; clm_soil_albedo_parameters(domain.space.surface, FT)...),
                          runoff =  ClimaLand.Soil.Runoff.TOPMODELRunoff{FT}(f_over = FT(3.28),
                                                                             R_sb = FT(1.484e-4 / 1000),
                                                                             f_max = topmodel_fmax(domain.space.surface,FT),
                                                                             ),
                          retention_parameters = soil_vangenuchten_parameters(domain.space.subsurface, FT),
                          composition_parameters = soil_composition_parameters(domain.space.subsurface, FT),
-                         albedo = Soil.CLMTwoBandSoilAlbedo{FT}(; clm_soil_albedo_parameters(domain.space.surface, FT)...),
                          S_s = ClimaCore.Fields.zeros(domain.space.subsurface) .+ 1e-3,
                          )
 
 Creates a ClimaLand.Soil.EnergyHydrology model with the given float type FT, domain, earth_param_set, forcing, and prognostic land components.
+
+When running the soil model in standalone mode, `prognostic_land_components = (:soil,)`, while for running integrated land models,
+this should be a list of the component models. This value of this argument must be the same across all components in the land model.
 
 Default spatially varying parameters (for retention curve parameters, composition, and specific storativity) are provided but can be
 changed with keyword arguments. 
@@ -22,9 +27,14 @@ TODO: Move scalar parameters to ClimaParams and obtain from earth_param_set, pos
 function EnergyHydrology(
     FT,
     domain,
-    earth_param_set,
-    forcing,
-    prognostic_land_components;
+    forcing;
+    prognostic_land_components = (:soil),
+    earth_param_set = LP.LandParameters(FT),
+    albedo::ClimaLand.Soil.AbstractSoilAlbedoParameterization = ClimaLand.Soil.CLMTwoBandSoilAlbedo{
+        FT,
+    }(;
+        clm_soil_albedo_parameters(domain.space.surface, FT)...,
+    ),
     runoff::ClimaLand.Soil.Runoff.AbstractRunoffModel = ClimaLand.Soil.Runoff.TOPMODELRunoff{
         FT,
     }(
@@ -39,9 +49,6 @@ function EnergyHydrology(
     composition_parameters = soil_composition_parameters(
         domain.space.subsurface,
         FT,
-    ),
-    albedo = ClimaLand.Soil.CLMTwoBandSoilAlbedo{FT}(;
-        clm_soil_albedo_parameters(domain.space.surface, FT)...,
     ),
     S_s = ClimaCore.Fields.zeros(domain.space.subsurface) .+ 1e-3,
 )

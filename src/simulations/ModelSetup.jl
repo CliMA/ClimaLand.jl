@@ -7,6 +7,7 @@ import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
 import ClimaUtilities.ClimaArtifacts: @clima_artifact
 using ClimaLand
 import ClimaLand.Soil: EnergyHydrology
+import ClimaLand.Parameters as LP
 
 regridder_type = :InterpolationsRegridder
 extrapolation_bc =
