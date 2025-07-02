@@ -25,7 +25,13 @@ Base.@kwdef struct PModelParameters{
     ϕc::FT
     "Temp-independent intrinsic quantum yield. If provided, overrides ϕc. (unitless)
     Typical value = 0.05" 
-    ϕ0::FT 
+    ϕ0::FT
+    """Constant term in temp-dependent intrinsic quantum yield (unitless)."""
+    ϕa0::FT 
+    """First order term in temp-dependent intrinsic quantum yield (K^-1)."""
+    ϕa1::FT
+    """Second order term in temp-dependent intrinsic quantum yield (K^-2)."""
+    ϕa2::FT
 end
 
 """
@@ -202,7 +208,7 @@ function compute_pmodel_outputs(
     constants::PModelConstants{FT}
 ) where {FT}
     # Unpack parameters
-    (; cstar, β, ϕc, ϕ0) = parameters
+    (; cstar, β, ϕc, ϕ0, ϕa0, ϕa1, ϕa2) = parameters
 
     # Unpack drivers
     (; T_canopy, I_abs, ca, P_air, VPD, βm) = drivers
@@ -214,7 +220,7 @@ function compute_pmodel_outputs(
         Ha_Jmax, Hd_Jmax, aS_Jmax, bS_Jmax, Mc, oi) = constants
 
     # Compute intermediate values
-    ϕ0 = isnan(ϕ0) ? intrinsic_quantum_yield(T_canopy, ϕc) : ϕ0
+    ϕ0 = isnan(ϕ0) ? intrinsic_quantum_yield(T_canopy, ϕc, ϕa0, ϕa1, ϕa2) : ϕ0
 
     Γstar = co2_compensation_p(T_canopy, To, P_air, R, ΔHΓstar, Γstar25)
     ηstar = compute_viscosity_ratio(T_canopy, P_air, true)

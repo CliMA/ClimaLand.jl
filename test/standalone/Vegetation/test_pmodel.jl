@@ -95,16 +95,23 @@ function PModelParameters(inputs::Dict{String, Any}, FT)
     if Bool(inputs["do_ftemp_kphio"])
         ϕ0 = FT(NaN) 
         ϕc = FT(inputs["kphio"]) 
+        # Eqn 20 from Stocker 2020
+        ϕa0 = FT(0.352)
+        ϕa1 = FT(0.022) 
+        ϕa2 = FT(-0.00034)
     else
         ϕ0 = FT(inputs["kphio"])
-        ϕc = FT(NaN)
+        ϕc, ϕa0, ϕa1, ϕa2 = FT(NaN), FT(NaN), FT(NaN), FT(NaN)
     end
 
     return ClimaLand.Canopy.PModelParameters(
         cstar = cstar,
         β = β,
         ϕc = ϕc,
-        ϕ0 = ϕ0
+        ϕ0 = ϕ0,
+        ϕa0 = ϕa0,
+        ϕa1 = ϕa1,
+        ϕa2 = ϕa2
     )
 end
 

@@ -1114,18 +1114,22 @@ enforce_albedo_constraint(α, τ) = 1 - α - τ > 0 ? α : 1 - τ
 """
     intrinsic_quantum_yield(
         T::FT, 
-        c::FT
+        c::FT,
+        ϕa0::FT,
+        ϕa1::FT,
+        ϕa2::FT
     ) where {FT}
 
     Computes the intrinsic quantum yield of photosynthesis ϕ (mol/mol) 
     as a function of temperature T (K) and a calibratable parameter c (unitless). 
-    The functional form is given in Bernacchi et al (2003) and is used in Stocker 
-    et al. (2020) 
+    The functional form given in Bernacchi et al (2003) and used in Stocker 
+    et al. (2020) is a second order polynomial in T (deg C) with coefficients ϕa0, 
+    ϕa1, and ϕa2.
 """
-function intrinsic_quantum_yield(T::FT, c::FT) where {FT}
+function intrinsic_quantum_yield(T::FT, c::FT, ϕa0::FT, ϕa1::FT, ϕa2::FT) where {FT}
     # convert to C
     T = T - FT(273.15)
-    ϕ = c * (FT(0.352) + FT(0.022) * T - FT(0.00034) * T^2)
+    ϕ = c * (ϕa0 + ϕa1 * T + ϕa2 * T^2)
     return FT(ϕ)
 end
 
