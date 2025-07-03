@@ -271,6 +271,7 @@ function update_ξ_opt(
     constants::PModelConstants{FT},
     T_canopy::FT,
     P_air::FT,
+    Γstar::FT, 
     ξ_opt::FT,
     local_noon_mask::Bool,
     α::FT 
@@ -286,7 +287,7 @@ function update_ξ_opt(
         
         return α * optimal_ξ_c3(
             compute_Kmm(T_canopy, P_air, Kc25, Ko25, ΔHkc, ΔHko, To, R, oi),
-            co2_compensation_p(T_canopy, To, P_air, R, ΔHΓstar, Γstar25),
+            Γstar,
             compute_viscosity_ratio(T_canopy, P_air, true),
             β, 
             Drel 
@@ -301,10 +302,13 @@ function update_Vcmax25_opt(
     constants::PModelConstants{FT},
     T_canopy::FT,
     P_air::FT,
-    ca::FT
+    ca::FT,
+    Γstar::FT,
     ξ_opt::FT, 
+    Kmm::FT,
     Vcmax25_opt::FT, 
-    local_noon_mask::Bool
+    local_noon_mask::Bool,
+    α::FT
 ) where {FT} 
     if local_noon_mask
         # Unpack parameters
@@ -327,7 +331,7 @@ function update_Vcmax25_opt(
             compute_mj_with_jmax_limitation(
                 compute_mj(
                     ξ_opt, 
-                    co2_compensation_p(T_canopy, To, P_air, R, ΔHΓstar, Γstar25),
+                    Γstar,
                     ca, 
                     VPD), 
                 cstar
@@ -335,8 +339,8 @@ function update_Vcmax25_opt(
 
             compute_mc(
                 ξ_opt,
-                compute_Kmm(T_canopy, P_air, Kc25, Ko25, ΔHkc, ΔHko, To, R, oi),
-                co2_compensation_p(T_canopy, To, P_air, R, ΔHΓstar, Γstar25),
+                Kmm,
+                Γstar,
                 ca,
             ),
 
@@ -392,33 +396,125 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
 
     outputs = compute_pmodel_outputs(parameters, drivers, constants)
 
-    
-
     local_noon_mask = get_local_noon_mask(p.canopy.photosynthesis.cosθs_diff1, p.canopy.photosynthesis.cosθs_diff2) 
     
-    # compute optimal parameters using EMA 
+    # lazy recipes for two repeated calculations
+    # currently, these will each be computed multiple times during the timestep  
+    Γstar = @. lazy(co2_compensation_p(
+                T_canopy, 
+                constants.To,
+                P_air, 
+                constants.R, 
+                constants.ΔHΓstar, 
+                constants.Γstar25))
+
+    Kmm = @. lazy(compute_Kmm(
+        T_canopy,
+        P_air,
+        constants.Kc25,
+        constants.Ko25,
+        constants.ΔHkc,
+        constants.ΔHko,
+        constants.To,
+        constants.R,
+        constants.oi
+    ))
+
+    # update optimal parameters using local noon mask (Mengoli 2022)
     @. p.canopy.photosynthesis.ξ_opt = update_ξ_opt(
         parameters, 
         constants, 
         T_canopy, 
         P_air, 
-        p.canopy.photosynthesis.ξ_opt, 
-        local_noon_mask
+        Γstar,
+        p.canopy.photosynthesis.ξ_opt,
+        local_noon_mask,
+        α
     )
 
     @. p.canopy.photosynthesis.Vcmax25_opt = update_Vcmax25_opt(
         parameters,
         constants,
+        T_canopy,
+        P_air,
+        ca,
+        Γstar,
+        Kmm,
         p.canopy.photosynthesis.ξ_opt,
-
+        p.canopy.photosynthesis.Vcmax25_opt,
+        local_noon_mask,
+        α
     )
-    # @. p.canopy.photosynthesis.Jmax25_opt 
 
-    # compute instantaneous assimilation rates
-    Ac = @. lazy()
-    Aj = @. lazy()
+    # @. p.canopy.photosynthesis.Jmax25_opt = ...
 
-    @. p.canopy.photosynthesis.Rd = outputs["rd"]
+    # compute instantaneous max photosynthetic rates and assimilation rates 
+    βm = FT(1.0) # TODO: replace this with soil moisture stress parameterization
+    ϕ0 = @. lazy(isnan(ϕ0) ? intrinsic_quantum_yield(
+        T_canopy, 
+        parameters.ϕc, 
+        parameters.ϕa0, 
+        parameters.ϕa1, 
+        parameters.ϕa2) : ϕ0)
+
+    Vcmax_inst = @. lazy(
+        p.canopy.photosynthesis.Vcmax25_opt * inst_temp_scaling(
+            T_canopy, 
+            T_canopy, 
+            constants.To, 
+            constants.Ha_Vcmax, 
+            constants.Hd_Vcmax, 
+            constants.aS_Vcmax, 
+            constants.bS_Vcmax, 
+            constants.R
+        ) * I_abs * βm * ϕ0
+    )
+
+    Jmax_inst = @. lazy(
+        p.canopy.photosynthesis.Jmax25_opt * inst_temp_scaling(
+            T_canopy, 
+            T_canopy, 
+            constants.To, 
+            constants.Ha_Jmax, 
+            constants.Hd_Jmax, 
+            constants.aS_Jmax, 
+            constants.bS_Jmax, 
+            constants.R
+        ) * I_abs * βm * ϕ0
+    )
+
+    ci_inst = @. lazy(
+        compute_ci(
+            p.canopy.photosynthesis.ξ_opt, 
+            ca, 
+            Γstar, 
+            VPD, 
+        )
+    )
+
+    # Note: this is different than the Smith 2019 formulation used in optimality_farquhar.jl
+    J_inst = @. lazy(
+        electron_transport_pmodel(
+            ϕ0, 
+            I_abs, 
+            Jmax_inst
+        )
+    )
+
+    Ac = @. lazy(c3_rubisco_assimilation(
+        Vcmax_inst,
+        ci_inst,
+        Γstar,
+        Kmm
+    ))
+    Aj = @. lazy(c3_light_assimilation(
+        J_inst, 
+        ci_inst,
+        Γstar
+    ))
+
+    Rd = @. 
+    @. p.canopy.photosynthesis.Rd = Rd
     @. p.canopy.photosynthesis.An = min(Aj, Ac) - p.canopy.photosynthesis.Rd 
     @. p.canopy.photosynthesis.GPP = compute_GPP(An, extinction_coeff(G_Function, cosθs), LAI, Ω)
 
