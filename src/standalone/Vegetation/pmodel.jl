@@ -105,6 +105,12 @@ Base.@kwdef struct PModelConstants{FT}
     Mc::FT
     """Intercellular O2 mixing ratio (unitless)"""
     oi::FT
+    """First order coefficient for temp-dependent Rd (K^-1)"""
+    aRd::FT
+    """Second order coefficient for temp-dependent Rd (K^-2)"""
+    bRd::FT
+    """Constant factor appearing the dark respiration term for C3 plants (unitless)"""
+    fC3::FT
 end
 
 Base.eltype(::PModelParameters{FT}) where {FT} = FT
@@ -137,7 +143,10 @@ function PModelConstants(FT)
         aS_Jmax = FT(659.70),
         bS_Jmax = FT(0.75),
         Mc = FT(0.0120107),
-        oi = FT(0.2095) 
+        oi = FT(0.2095),
+        aRd = FT(0.1012),
+        bRd = FT(-0.0005),
+        fC3 = FT(0.015),
     )
 end
 
@@ -166,11 +175,11 @@ function PModel{FT}(
 end
 
 ClimaLand.auxiliary_vars(model::PModel) =
-    (:An, :GPP, :Rd, :Vcmax25)
+    (:An, :GPP, :Rd, :Vcmax25, :OptξVcmaxJmax)
 ClimaLand.auxiliary_types(model::PModel{FT}) where {FT} =
-    (FT, FT, FT, FT)
+    (FT, FT, FT, FT, NamedTuple{(:ξ_opt, :Vcmax25_opt, :Jmax25_opt), Tuple{FT, FT, FT}})
 ClimaLand.auxiliary_domain_names(::PModel) =
-    (:surface, :surface, :surface, :surface)
+    (:surface, :surface, :surface, :surface, :surface)
 
 
 """
@@ -200,7 +209,7 @@ Output name      Description (units)
     "vcmax25"       Vcmax normalized to 25°C via modified-Arrhenius type function (mol m^-2 s^-1)
     "jmax"          Maximum rate of electron transport (mol m^-2 s^-1)
     "jmax25"        Jmax normalized to 25°C via modified-Arrhenius type function (mol m^-2 s^-1)
-
+    "Rd"            Dark respiration rate (mol m^-2 s^-1)
 """
 function compute_pmodel_outputs(
     parameters::PModelParameters{FT}, 
@@ -217,7 +226,7 @@ function compute_pmodel_outputs(
     (; R, Kc25, Ko25, To, ΔHkc, ΔHko, 
         Drel, ΔHΓstar, Γstar25,
         Ha_Vcmax, Hd_Vcmax, aS_Vcmax, bS_Vcmax, 
-        Ha_Jmax, Hd_Jmax, aS_Jmax, bS_Jmax, Mc, oi) = constants
+        Ha_Jmax, Hd_Jmax, aS_Jmax, bS_Jmax, Mc, oi, aRd, bRd, fC3) = constants
 
     # Compute intermediate values
     ϕ0 = isnan(ϕ0) ? intrinsic_quantum_yield(T_canopy, ϕc, ϕa0, ϕa1, ϕa2) : ϕ0
@@ -230,7 +239,8 @@ function compute_pmodel_outputs(
     mprime = compute_mj_with_jmax_limitation(mj, cstar)
 
     Vcmax = βm * ϕ0 * I_abs * mprime / mc
-    Vcmax25 = Vcmax / inst_temp_scaling(T_canopy, T_canopy, To, Ha_Vcmax, Hd_Vcmax, aS_Vcmax, bS_Vcmax, R)
+    inst_temp_scaling_vcmax25 = inst_temp_scaling(T_canopy, T_canopy, To, Ha_Vcmax, Hd_Vcmax, aS_Vcmax, bS_Vcmax, R)
+    Vcmax25 = Vcmax / inst_temp_scaling_vcmax25
 
     Jmaxlim = Vcmax * (ci + FT(2) * Γstar) / (ϕ0 * I_abs * (ci + Kmm))
     Jmax = FT(4) * ϕ0 * I_abs / sqrt((FT(1)/Jmaxlim)^2 - FT(1)) 
@@ -247,10 +257,14 @@ function compute_pmodel_outputs(
     iWUE = (ca - ci) / Drel
     gs = pmodel_gs(χ, ca, Ac) 
 
+    # dark respiration 
+    rd = fC3 * (inst_temp_scaling_rd(T_canopy, To, aRd, bRd) / inst_temp_scaling_vcmax25) * Vcmax
+
     return (;
         gpp = GPP,
         gammastar = Γstar,
         kmm = Kmm,
+        ca = ca,
         ns_star = ηstar,
         chi = χ,
         xi = ξ,
@@ -262,51 +276,18 @@ function compute_pmodel_outputs(
         vcmax = Vcmax,
         vcmax25 = Vcmax25,
         jmax = Jmax,
-        jmax25 = Jmax25
+        jmax25 = Jmax25,
+        rd = rd
     )
 end
 
-function update_ξ_opt(
+function compute_pmodel_outputs_(
     parameters::PModelParameters{FT}, 
     constants::PModelConstants{FT},
+    OptξVcmaxJmax::NamedTuple{(:ξ_opt, :Vcmax25_opt, :Jmax25_opt), Tuple{FT, FT, FT}},
     T_canopy::FT,
     P_air::FT,
-    Γstar::FT, 
-    ξ_opt::FT,
-    local_noon_mask::Bool,
-    α::FT 
-) where {FT}
-    if local_noon_mask
-        # Unpack parameters
-        (; _, β, _, _, _, _, _) = parameters
-
-        # Unpack constants
-        (; R, Kc25, Ko25, To, ΔHkc, ΔHko, 
-            Drel, ΔHΓstar, Γstar25,
-            _, _, _, _, _, _, _, _, _, oi) = constants
-        
-        return α * optimal_ξ_c3(
-            compute_Kmm(T_canopy, P_air, Kc25, Ko25, ΔHkc, ΔHko, To, R, oi),
-            Γstar,
-            compute_viscosity_ratio(T_canopy, P_air, true),
-            β, 
-            Drel 
-        ) + (1 - α) * ξ_opt
-    else
-        return ξ_opt
-    end
-end
-
-function update_Vcmax25_opt(
-    parameters::PModelParameters{FT}, 
-    constants::PModelConstants{FT},
-    T_canopy::FT,
-    P_air::FT,
-    ca::FT,
-    Γstar::FT,
-    ξ_opt::FT, 
-    Kmm::FT,
-    Vcmax25_opt::FT, 
+    ca::FT, 
     local_noon_mask::Bool,
     α::FT
 ) where {FT} 
@@ -314,43 +295,36 @@ function update_Vcmax25_opt(
         # Unpack parameters
         (; cstar, β, ϕc, ϕ0, ϕa0, ϕa1, ϕa2) = parameters
 
-        # Unpack drivers
-        (; T_canopy, I_abs, ca, P_air, VPD, βm) = drivers
-
         # Unpack constants
         (; R, Kc25, Ko25, To, ΔHkc, ΔHko, 
             Drel, ΔHΓstar, Γstar25,
             Ha_Vcmax, Hd_Vcmax, aS_Vcmax, bS_Vcmax, 
-            Ha_Jmax, Hd_Jmax, aS_Jmax, bS_Jmax, Mc, oi) = constants
+            Ha_Jmax, Hd_Jmax, aS_Jmax, bS_Jmax, Mc, oi, aRd, bRd, fC3) = constants
 
-        return α * pmodel_vcmax(
-            FT(1.0), 
+        # Compute intermediate values
+        ϕ0 = isnan(ϕ0) ? intrinsic_quantum_yield(T_canopy, ϕc, ϕa0, ϕa1, ϕa2) : ϕ0
 
-            FT(1.0), 
+        Γstar = co2_compensation_p(T_canopy, To, P_air, R, ΔHΓstar, Γstar25)
+        ηstar = compute_viscosity_ratio(T_canopy, P_air, true)
+        Kmm = compute_Kmm(T_canopy, P_air, Kc25, Ko25, ΔHkc, ΔHko, To, R, oi)
+        χ, ξ, mj, mc = optimal_co2_ratio_c3(Kmm, Γstar, ηstar, ca, VPD, β, Drel)
+        ci = χ * ca
+        mprime = compute_mj_with_jmax_limitation(mj, cstar)
 
-            compute_mj_with_jmax_limitation(
-                compute_mj(
-                    ξ_opt, 
-                    Γstar,
-                    ca, 
-                    VPD), 
-                cstar
-            ),
+        # compute Vcmax assuming βm = 1, \phi0 = 1, I_abs = 1
+        Vcmax = βm * ϕ0 * I_abs * mprime / mc
+        Vcmax25 = Vcmax / inst_temp_scaling(T_canopy, T_canopy, To, Ha_Vcmax, Hd_Vcmax, aS_Vcmax, bS_Vcmax, R)
 
-            compute_mc(
-                ξ_opt,
-                Kmm,
-                Γstar,
-                ca,
-            ),
+        Jmaxlim = Vcmax * (ci + FT(2) * Γstar) / (ϕ0 * I_abs * (ci + Kmm))
+        Jmax = FT(4) * ϕ0 * I_abs / sqrt((FT(1)/Jmaxlim)^2 - FT(1)) 
+        Jmax25 = Jmax / inst_temp_scaling(T_canopy, T_canopy, To, Ha_Jmax, Hd_Jmax, aS_Jmax, bS_Jmax, R)
 
-            FT(1.0)
-        ) / inst_temp_scaling(T_canopy, T_canopy, To, Ha_Vcmax, Hd_Vcmax, aS_Vcmax, bS_Vcmax, R) + 
-            (1 - α) * Vcmax25_opt
+        
     else 
-        return Vcmax25_opt
+        return OptξVcmaxJmax
     end
-end
+end 
+
 
 """
     update_photosynthesis!(p, Y, model::PModel, canopy)
@@ -394,7 +368,7 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
     parameters = model.parameters
     constants = model.constants
 
-    outputs = compute_pmodel_outputs(parameters, drivers, constants)
+    # outputs = compute_pmodel_outputs(parameters, drivers, constants)
 
     local_noon_mask = get_local_noon_mask(p.canopy.photosynthesis.cosθs_diff1, p.canopy.photosynthesis.cosθs_diff2) 
     
@@ -446,7 +420,9 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
         α
     )
 
-    # @. p.canopy.photosynthesis.Jmax25_opt = ...
+    @. p.canopy.photosynthesis.Jmax25_opt = update_Jmax25_opt(
+
+    )
 
     # compute instantaneous max photosynthetic rates and assimilation rates 
     βm = FT(1.0) # TODO: replace this with soil moisture stress parameterization
@@ -513,12 +489,29 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
         Γstar
     ))
 
-    Rd = @. 
+    Rd = @. lazy(
+        constants.fC3 * (
+            inst_temp_scaling_rd(
+                T_canopy, 
+                constants.To, 
+                constants.aRd,
+                constants.bRd) / 
+            inst_temp_scaling(
+                T_canopy, 
+                T_canopy, 
+                constants.To, 
+                constants.Ha_Vcmax, 
+                constants.Hd_Vcmax, 
+                constants.aS_Vcmax, 
+                constants.bS_Vcmax, 
+                constants.R
+            )) * Vcmax_inst
+    )
+
     @. p.canopy.photosynthesis.Rd = Rd
     @. p.canopy.photosynthesis.An = min(Aj, Ac) - p.canopy.photosynthesis.Rd 
     @. p.canopy.photosynthesis.GPP = compute_GPP(An, extinction_coeff(G_Function, cosθs), LAI, Ω)
 
-    # update 
 end
 
 get_Vcmax25(p, m::PModelParameters) =
