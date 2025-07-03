@@ -12,11 +12,6 @@ import ClimaComms
 
 context = ClimaComms.context()
 
-# Methods for reading in the LAI data from MODIS data
-include(
-    joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/pull_MODIS.jl"),
-)
-
 data_path = ClimaLand.Artifacts.experiment_fluxnet_data_path(site_ID)
 driver_data = readdlm(data_path, ',')
 
@@ -180,23 +175,25 @@ radiation = ClimaLand.PrescribedRadiativeFluxes(
     earth_param_set = earth_param_set,
 )
 
-# Start and end dates of data in MODIS format
-modis_start_date = "A$(Dates.year(UTC_DATETIME[1]))$(lpad(Dates.dayofyear(UTC_DATETIME[1]), 3, "0"))"
-modis_end_date = "A$(Dates.year(UTC_DATETIME[end]))$(lpad(Dates.dayofyear(UTC_DATETIME[end]), 3, "0"))"
-
-MODIS_LAI = single_col_data_matrix(
-    parse_response(
-        check_response(
-            send_get_subset(
-                "MCD15A2H",
-                modis_start_date,
-                modis_end_date,
-                site_ID,
-                band = "Lai_500m",
-            ),
-        ),
-    ),
+# Desired start and end dates of data in MODIS format
+modis_start_date = DateTime(
+    "$(Dates.year(UTC_DATETIME[1]))-$(Dates.month(UTC_DATETIME[1]))-$(Dates.day(UTC_DATETIME[1]))T00:00:00.0",
 )
+modis_end_date = DateTime(
+    "$(Dates.year(UTC_DATETIME[end]))-$(Dates.month(UTC_DATETIME[end]))-$(Dates.day(UTC_DATETIME[end]))T00:00:00.0",
+)
+
+MODIS_LAI_path = ClimaLand.Artifacts.get_modis_lai_fluxnet_data(site_ID)
+MODIS_LAI_raw, header = readdlm(MODIS_LAI_path, ',', header = true)
+dates = DateTime.(MODIS_LAI_raw[:, 1])
+
+# Trim MODIS_LAI to start_date and end_date
+indices = findall(d -> modis_start_date <= d <= modis_end_date, dates)
+filtered_rows = MODIS_LAI_raw[indices, :]
+filtered_dates = dates[indices]
+
+# Create final matrix with properly formatted data for computation
+MODIS_LAI = hcat(filtered_dates, filtered_rows[:, 2])
 
 LAI_dt = Second(MODIS_LAI[2, 1] - MODIS_LAI[1, 1]).value
 LAI_seconds = FT.(0:LAI_dt:((length(MODIS_LAI[:, 1]) - 1) * LAI_dt))
