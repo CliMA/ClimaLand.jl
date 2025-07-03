@@ -38,7 +38,7 @@ StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 [extensions]
 CreateParametersExt = "ClimaParams"
 NeuralSnowExt = ["CSV", "DataFrames", "HTTP", "Flux", "StatsBase", "BSON"]
-LandSimulationVisualization = ["CairoMakie", "ClimaAnalysis", "GeoMakie", "Popper_jll"]
+LandSimulationVisualization = ["CairoMakie", "ClimaAnalysis", "GeoMakie", "Poppler_jll"]
 
 [compat]
 BSON = "0.3.9"
