@@ -416,7 +416,9 @@ weakdeps = ["SparseArrays"]
 
 [[deps.ClimaAnalysis]]
 deps = ["Artifacts", "Dates", "Interpolations", "NCDatasets", "NaNStatistics", "OrderedCollections", "Reexport", "Statistics", "Unitful"]
-git-tree-sha1 = "79279dce43bac22423b5d7b83fdf8209bf00a331"
+git-tree-sha1 = "a9c31362bc7c0ba771fc3bc8f66ff5dc99e18ce1"
+repo-rev = "main"
+repo-url = "https://github.com/CliMA/ClimaAnalysis.jl.git"
 uuid = "29b5916a-a76c-4e73-9657-3c8fd22e65e6"
 version = "0.5.18"
 weakdeps = ["GeoMakie", "Makie"]
@@ -428,6 +430,8 @@ weakdeps = ["GeoMakie", "Makie"]
 [[deps.ClimaCalibrate]]
 deps = ["Dates", "Distributed", "Distributions", "EnsembleKalmanProcesses", "JLD2", "Logging", "Random", "TOML", "YAML"]
 git-tree-sha1 = "2408ba55a30ac0f67550ef9d87cebfc372af3cca"
+repo-rev = "main"
+repo-url = "https://github.com/CliMA/ClimaCalibrate.jl.git"
 uuid = "4347a170-ebd6-470c-89d3-5c705c0cacc2"
 version = "0.1.2"
 
@@ -505,7 +509,9 @@ weakdeps = ["BenchmarkTools", "CUDA", "OrderedCollections", "PrettyTables", "Sta
 
 [[deps.ClimaUtilities]]
 deps = ["Artifacts", "ClimaComms", "Dates"]
-git-tree-sha1 = "420fe76968208ac2eb2837e9e0f0974456ebec78"
+git-tree-sha1 = "5a1a32069c2e6ba68a8e41e049701d64f4f9996e"
+repo-rev = "main"
+repo-url = "https://github.com/CliMA/ClimaUtilities.jl.git"
 uuid = "b3f4f4ca-9299-4f7f-bd9b-81e1242a7513"
 version = "0.1.24"
 
@@ -886,7 +892,9 @@ version = "2.2.4+0"
 
 [[deps.EnsembleKalmanProcesses]]
 deps = ["Convex", "Distributions", "DocStringExtensions", "FFMPEG", "GaussianRandomFields", "Interpolations", "LinearAlgebra", "MathOptInterface", "Optim", "QuadGK", "Random", "RecipesBase", "SCS", "SparseArrays", "Statistics", "StatsBase", "TOML", "TSVD"]
-git-tree-sha1 = "938ba137333f7be93194cf5ffc4592b68b0efb36"
+git-tree-sha1 = "76302edb2f49426a703d0decebf3446e18c958c1"
+repo-rev = "main"
+repo-url = "https://github.com/CliMA/EnsembleKalmanProcesses.jl.git"
 uuid = "aa8a2aa5-91d8-4396-bcef-d4f2ec43552d"
 version = "2.4.2"
 weakdeps = ["Makie"]
