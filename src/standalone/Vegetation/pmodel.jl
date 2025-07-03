@@ -242,8 +242,7 @@ function compute_pmodel_outputs(
     inst_temp_scaling_vcmax25 = inst_temp_scaling(T_canopy, T_canopy, To, Ha_Vcmax, Hd_Vcmax, aS_Vcmax, bS_Vcmax, R)
     Vcmax25 = Vcmax / inst_temp_scaling_vcmax25
 
-    Jmaxlim = Vcmax * (ci + FT(2) * Γstar) / (ϕ0 * I_abs * (ci + Kmm))
-    Jmax = FT(4) * ϕ0 * I_abs / sqrt((FT(1)/Jmaxlim)^2 - FT(1)) 
+    Jmax = FT(4) * ϕ0 * I_abs / sqrt((mj / (βm * mprime))^2 - 1) 
     Jmax25 = Jmax / inst_temp_scaling(T_canopy, T_canopy, To, Ha_Jmax, Hd_Jmax, aS_Jmax, bS_Jmax, R)
     J = electron_transport_pmodel(ϕ0, I_abs, Jmax)
 
@@ -258,7 +257,7 @@ function compute_pmodel_outputs(
     gs = pmodel_gs(χ, ca, Ac) 
 
     # dark respiration 
-    rd = fC3 * (inst_temp_scaling_rd(T_canopy, To, aRd, bRd) / inst_temp_scaling_vcmax25) * Vcmax
+    rd = fC3 * inst_temp_scaling_rd(T_canopy, To, aRd, bRd) * Vcmax25
 
     return (;
         gpp = GPP,
