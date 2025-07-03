@@ -500,6 +500,17 @@ function c3_rubisco_assimilation(
     return Ac
 end
 
+
+function c3_rubisco_assimilation(
+    Vcmax::FT,
+    ci::FT,
+    Γstar::FT,
+    Kmm::FT
+) where {FT}
+    Ac = Vcmax * (ci - Γstar) / (ci + Kmm) 
+    return Ac
+end 
+
 """
     c4_rubisco_assimilation(Vcmax::FT,_...) where {FT}
 
@@ -1403,6 +1414,47 @@ function optimal_co2_ratio_c3(
     return χ, ξ, mj, mc
 end 
 
+function optimal_ξ_c3(
+    Kmm::FT,
+    Γstar::FT, 
+    ηstar::FT, 
+    β::FT,
+    Drel::FT 
+) where {FT}
+    return sqrt(β * (Kmm + Γstar) / (Drel * ηstar))
+end 
+
+function compute_mj(
+    ξ::FT,
+    Γstar::FT,
+    ca::FT,
+    VPD::FT
+) where {FT}
+    γ = Γstar / ca 
+    χ = Γstar / ca + (1 - Γstar / ca) * ξ / (ξ + sqrt(VPD)) 
+    return (χ - γ) / (χ + 2 * γ)
+end
+
+function compute_mc(
+    ξ::FT,
+    Kmm::FT,
+    Γstar::FT,
+    ca::FT
+) where {FT}
+    γ = Γstar / ca 
+    κ = Kmm / ca 
+    χ = Γstar / ca + (1 - Γstar / ca) * ξ / (ξ + sqrt(VPD)) 
+    return (χ - γ) / (χ + κ)
+end
+
+function compute_ci(
+    ξ::FT,
+    ca::FT, 
+    Γstar::FT,
+    VPD::FT
+) where {FT}
+    return (ca * ξ + Γstar * sqrt(VPD)) / (ξ + sqrt(VPD))
+end
 
 """
     pmodel_gs(
