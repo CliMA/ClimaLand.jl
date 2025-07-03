@@ -1,4 +1,5 @@
 module LandSimulationVisualization
+import ClimaLand
 import ClimaDiagnostics
 import ClimaAnalysis
 import ClimaAnalysis.Visualize as viz
@@ -6,6 +7,8 @@ using CairoMakie
 import GeoMakie
 using Dates
 import NCDatasets
+using Printf
+import StatsBase: mean
 
 using Poppler_jll: pdfunite
 
@@ -76,7 +79,8 @@ end
 
 function make_heatmaps(
     model,
-    domain::Union{SphericalShell, HybridBox}diagnostics;
+    domain::Union{SphericalShell, HybridBox},
+    diagnostics;
     outdir,
     short_names,
     date,

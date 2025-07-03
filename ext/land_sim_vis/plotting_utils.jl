@@ -1,4 +1,3 @@
-using Printf
 """
     make_heatmaps(
         outdir,
@@ -20,15 +19,15 @@ function make_heatmaps(
     diagdir,
     short_names,
     date;
-    levels = nothing
+    levels = nothing,
     plot! = viz.heatmap2D_on_globe!,
 )
     simdir = ClimaAnalysis.SimDir(diagdir)
     mktempdir(outdir) do tmpdir
         for short_name in short_names
             var = get(simdir; short_name)
-            avail_dates = ;
-            time = ;
+	    avail_dates = DateTime(var.attributes["start_date"]) .+ Second.(times(var))
+            idx = argmin(abs.(date .- avail_dates));
             if levels isa Nothing
                 plot_levels = [1,] # sfc
             else
@@ -39,14 +38,14 @@ function make_heatmaps(
                 fig = CairoMakie.Figure(size = (600, 400))
                 plot!(
                     fig,
-                    ClimaAnalysis.slice(var, time = time; kwarg_z...),
+                    ClimaAnalysis.slice(var, time = times(var)[idx]; kwarg_z...),
                     mask = viz.oceanmask(),
                     more_kwargs = Dict(
                         :mask => ClimaAnalysis.Utils.kwargs(color = :white),
                         :plot => ClimaAnalysis.Utils.kwargs(rasterize = true),
                     ),
                 )
-                CairoMakie.save(joinpath(tmpdir, "$(short_name)_$level_$t.pdf"), fig)
+                CairoMakie.save(joinpath(tmpdir, "$(short_name)_$level_$(avail_dates[idx]).pdf"), fig)
             end
         end
         figures = readdir(tmpdir, join = true)
