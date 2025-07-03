@@ -266,6 +266,87 @@ function compute_pmodel_outputs(
     )
 end
 
+function update_ξ_opt(
+    parameters::PModelParameters{FT}, 
+    constants::PModelConstants{FT},
+    T_canopy::FT,
+    P_air::FT,
+    ξ_opt::FT,
+    local_noon_mask::Bool,
+    α::FT 
+) where {FT}
+    if local_noon_mask
+        # Unpack parameters
+        (; _, β, _, _, _, _, _) = parameters
+
+        # Unpack constants
+        (; R, Kc25, Ko25, To, ΔHkc, ΔHko, 
+            Drel, ΔHΓstar, Γstar25,
+            _, _, _, _, _, _, _, _, _, oi) = constants
+        
+        return α * optimal_ξ_c3(
+            compute_Kmm(T_canopy, P_air, Kc25, Ko25, ΔHkc, ΔHko, To, R, oi),
+            co2_compensation_p(T_canopy, To, P_air, R, ΔHΓstar, Γstar25),
+            compute_viscosity_ratio(T_canopy, P_air, true),
+            β, 
+            Drel 
+        ) + (1 - α) * ξ_opt
+    else
+        return ξ_opt
+    end
+end
+
+function update_Vcmax25_opt(
+    parameters::PModelParameters{FT}, 
+    constants::PModelConstants{FT},
+    T_canopy::FT,
+    P_air::FT,
+    ca::FT
+    ξ_opt::FT, 
+    Vcmax25_opt::FT, 
+    local_noon_mask::Bool
+) where {FT} 
+    if local_noon_mask
+        # Unpack parameters
+        (; cstar, β, ϕc, ϕ0, ϕa0, ϕa1, ϕa2) = parameters
+
+        # Unpack drivers
+        (; T_canopy, I_abs, ca, P_air, VPD, βm) = drivers
+
+        # Unpack constants
+        (; R, Kc25, Ko25, To, ΔHkc, ΔHko, 
+            Drel, ΔHΓstar, Γstar25,
+            Ha_Vcmax, Hd_Vcmax, aS_Vcmax, bS_Vcmax, 
+            Ha_Jmax, Hd_Jmax, aS_Jmax, bS_Jmax, Mc, oi) = constants
+
+        return α * pmodel_vcmax(
+            FT(1.0), 
+
+            FT(1.0), 
+
+            compute_mj_with_jmax_limitation(
+                compute_mj(
+                    ξ_opt, 
+                    co2_compensation_p(T_canopy, To, P_air, R, ΔHΓstar, Γstar25),
+                    ca, 
+                    VPD), 
+                cstar
+            ),
+
+            compute_mc(
+                ξ_opt,
+                compute_Kmm(T_canopy, P_air, Kc25, Ko25, ΔHkc, ΔHko, To, R, oi),
+                co2_compensation_p(T_canopy, To, P_air, R, ΔHΓstar, Γstar25),
+                ca,
+            ),
+
+            FT(1.0)
+        ) / inst_temp_scaling(T_canopy, T_canopy, To, Ha_Vcmax, Hd_Vcmax, aS_Vcmax, bS_Vcmax, R) + 
+            (1 - α) * Vcmax25_opt
+    else 
+        return Vcmax25_opt
+    end
+end
 
 """
     update_photosynthesis!(p, Y, model::PModel, canopy)
@@ -311,11 +392,37 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
 
     outputs = compute_pmodel_outputs(parameters, drivers, constants)
 
-    # Update the outputs in place
-    p.canopy.photosynthesis.Vcmax25 .= outputs["vcmax25"]
-    p.canopy.photosynthesis.Rd .= outputs["rd"]
-    p.canopy.photosynthesis.An .= outputs["An"]
-    p.canopy.photosynthesis.GPP .= outputs["gpp"]
+    
+
+    local_noon_mask = get_local_noon_mask(p.canopy.photosynthesis.cosθs_diff1, p.canopy.photosynthesis.cosθs_diff2) 
+    
+    # compute optimal parameters using EMA 
+    @. p.canopy.photosynthesis.ξ_opt = update_ξ_opt(
+        parameters, 
+        constants, 
+        T_canopy, 
+        P_air, 
+        p.canopy.photosynthesis.ξ_opt, 
+        local_noon_mask
+    )
+
+    @. p.canopy.photosynthesis.Vcmax25_opt = update_Vcmax25_opt(
+        parameters,
+        constants,
+        p.canopy.photosynthesis.ξ_opt,
+
+    )
+    # @. p.canopy.photosynthesis.Jmax25_opt 
+
+    # compute instantaneous assimilation rates
+    Ac = @. lazy()
+    Aj = @. lazy()
+
+    @. p.canopy.photosynthesis.Rd = outputs["rd"]
+    @. p.canopy.photosynthesis.An = min(Aj, Ac) - p.canopy.photosynthesis.Rd 
+    @. p.canopy.photosynthesis.GPP = compute_GPP(An, extinction_coeff(G_Function, cosθs), LAI, Ω)
+
+    # update 
 end
 
 get_Vcmax25(p, m::PModelParameters) =
