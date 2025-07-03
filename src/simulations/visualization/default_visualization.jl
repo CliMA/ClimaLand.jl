@@ -10,33 +10,34 @@ using Poppler_jll: pdfunite
 include("plotting_utils.jl")
 include("leaderboard/data_sources.jl")
 include("leaderboard/leaderboard.jl")
+# How to handle if diagnostics -> held in memory (NonInterpSavingCallback)
 
-function make_plots(sim::LandSimulation; outdir = ".", kwargs)
-    make_plots(
+function make_leaderboard_plots(sim::LandSimulation; outdir = ".", kwargs)
+    make_leaderboard_plots(
         model,
         ClimaLand.get_domain(model),
-        simulation.diagnostics;
-        outdir,
+        simulation.diagnostics,
+        outdir;
         kwargs...,
     )
 end
 
-# How to handle if diagnostics -> held in memory (NonInterpSavingCallback)
-# Split up figures function into time series and heatmaps
-# Make a plot_var function that takes in time and level, use that
-# Pass in short names to plot?
-function make_plots(
+function make_leaderboard_plots(m, d, diag, outdir; _...)
+    @info "Leaderboard plots not configured for your model type and/or your model domain. Model type must be LandModel, and the domain must be global."
+end
+
+
+function make_leaderboard_plots(
     model::LandModel,
     domain::SphericalShell,
-    diagnostics;
-    outdir,
+    diagnostics,
+    outdir;
     leaderboard_data_sources = ["ERA5", "ILAMB"],
-    make_figures = true,
 )
+    # assert that data spans multiple years and is monthly output?
     diagdir = first(diagnostics).output_writer.output_dir
     simdir = ClimaAnalysis.SimDir(diagdir)
     short_names = [d.variable.short_name for d in diagnostics]
-    make_figures(outdir, diagdir, short_names)
     diagnostics_folder_path = diagdir
     leaderboard_base_path = outdir
     for data_source in leaderboard_data_sources
@@ -53,19 +54,92 @@ function make_plots(
     end
 end
 
-function make_plots(
-    model::EnergyHydrology,
-    domain::SphericalShelll,
-    diagnostics;
+function make_heatmaps(
+    sim::LandSimulation;
+    outdir = ".",
+    short_names = nothing,
+    date = nothing,
+    levels = nothing,
+)
+    make_heatmaps(
+        model,
+        ClimaLand.get_domain(model),
+        simulation.diagnostics;
+        outdir,
+        short_names,
+        date,
+        levels,
+    )
+end
+
+function make_heatmaps(
+    model,
+    domain::Union{SphericalShell, HybridBox}diagnostics;
     outdir,
-    check_conservation = false,
+    short_names,
+    date,
+    levels,
 )
     diagdir = first(diagnostics).output_writer.output_dir
-    short_names = [d.variable.short_name for d in diagnostics]
-    make_figures(outdir, diagdir, short_names)
-    ## Conservation
-    if check_conservation
-        check_conservation(outdir, diagdir)
+    simdir = ClimaAnalysis.SimDir(diagdir)
+    avail_short_names = [d.variable.short_name for d in diagnostics]
+    if short_names isa String
+        @assert short_names in avail_short_names
+        short_names = [short_name]
+    elseif short_names isa Nothing
+        short_names = avail_short_names
     end
+    make_heatmaps(outdir, diagdir, short_names, date; levels)
+end
+
+function make_annual_timeseries(
+    sim::LandSimulation;
+    outdir = ".",
+    short_names = nothing,
+)
+    make_annual_timeseries(
+        model,
+        ClimaLand.get_domain(model),
+        simulation.diagnostics;
+        outdir,
+        short_names,
+    )
+end
+
+function make_annual_timeseries(model, domain, diagnostics; outdir, short_names)
+    diagdir = first(diagnostics).output_writer.output_dir
+    simdir = ClimaAnalysis.SimDir(diagdir)
+    avail_short_names = [d.variable.short_name for d in diagnostics]
+    if short_names isa String
+        @assert short_names in avail_short_names
+        short_names = [short_names]
+    elseif short_names isa Nothing
+        short_names = avail_short_names
+    end
+    make_annual_timeseries(outdir, diagdir, short_names)
+end
+
+
+function check_conservation(sim::LandSimulation; outdir = ".")
+    check_conservation(
+        model,
+        ClimaLand.get_domain(model),
+        simulation.diagnostics,
+        outdir,
+    )
+end
+
+function check_conservation(m, d, diags, o)
+    @info "Conservation checks not configured for your model type and/or your model domain yet. Model type must be EnergyHydrology, and the domain must be global."
+end
+
+function check_conservation(
+    model::EnergyHydrology,
+    domain::SphericalShell,
+    diagnostics,
+    outdir,
+)
+    diagdir = first(diagnostics).output_writer.output_dir
+    check_conservation(outdir, diagdir)
 
 end

@@ -163,19 +163,11 @@ end
 
 simulation = setup_simulation(; greet = true);
 solve!(simulation);
-
-# Eventually replace the below with:
-#ClimaLand.Simulations.plot!(simulation, simulation.model, simulation.domain)
-
-# read in diagnostics and make some plots!
-#### ClimaAnalysis ####
 short_names = ["tsfc", "lhf", "shf", "wsoil"]
-include(
-    joinpath(
-        pkgdir(ClimaLand),
-        "experiments",
-        "long_runs",
-        "figures_function.jl",
-    ),
+ClimaLand.Simulations.make_annual_timeseries(simulation; outdir, short_names)
+ClimaLand.Simulations.make_heatmaps(
+    simulation;
+    outdir,
+    short_names,
+    date = stop_date,
 )
-make_figures(root_path, outdir, short_names)

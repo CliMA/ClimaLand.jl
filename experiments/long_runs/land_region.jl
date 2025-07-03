@@ -328,4 +328,5 @@ end
 
 simulation = setup_simulation(; greet = true);
 ClimaLand.Simulations.solve!(simulation)
-ClimaLand.Simulations.make_plots(simulation)
+ClimaLand.Simulations.make_annual_timeseries(simulation; outdir)
+ClimaLand.Simulations.make_heatmaps(simulation; outdir)
