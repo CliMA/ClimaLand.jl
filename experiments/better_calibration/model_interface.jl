@@ -40,14 +40,16 @@ import ClimaLand.Parameters as LP
 import ClimaLand.Simulations: LandSimulation, solve!
 
 using Statistics
-using CairoMakie
-import GeoMakie
 using Dates
-import NCDatasets
+using NCDatasets
 
-using Poppler_jll: pdfunite
+import ClimaCalibrate
+import TOML
 
 const FT = Float64;
+
+include("getters.jl")
+
 # If you want to do a very long run locally, you can enter `export
 # LONGER_RUN=""` in the terminal and run this script. If you want to do a very
 # long run on Buildkite manually, then make a new build and pass `LONGER_RUN=""`
@@ -59,11 +61,27 @@ ClimaComms.init(context)
 device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
 root_path = "snowy_land_longrun_$(device_suffix)"
-diagnostics_outdir = joinpath(root_path, "global_diagnostics")
-outdir =
-    ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_outdir)
 
-function setup_model(FT, start_date, stop_date, Δt, domain, earth_param_set)
+# TODO: When the land interface is cleaned up, there should be a better way of
+# passing in parameters instead of this hack
+function setup_model(
+    FT,
+    start_date,
+    stop_date,
+    Δt,
+    domain,
+    earth_param_set,
+    calibrate_param_dict,
+)
+    # TODO: This should be better when the interface improved
+    α_0 = FT(get(calibrate_param_dict, "α_0", 0.64))
+    Δα = FT(get(calibrate_param_dict, "Δα", 0.06))
+    k = FT(get(calibrate_param_dict, "k", 2))
+    beta_snow = FT(get(calibrate_param_dict, "beta_snow", 0.4))
+    x0_snow = FT(get(calibrate_param_dict, "x0_snow", 0.2))
+    gamma_snow = FT(get(calibrate_param_dict, "gamma_snow", 0.08))
+    beta_0 = FT(get(calibrate_param_dict, "beta_0", 1.77))
+
     time_interpolation_method =
         LONGER_RUN ? LinearInterpolation() :
         LinearInterpolation(PeriodicCalendar())
@@ -158,7 +176,7 @@ function setup_model(FT, start_date, stop_date, Δt, domain, earth_param_set)
     SAI = FT(0.0) # m2/m2
     f_root_to_shoot = FT(3.5)
     RAI = FT(1.0)
-    K_sat_plant = FT(7e-8) # m/s
+    K_sat_plant = FT(7e-8) # m/s 
     ψ63 = FT(-4 / 0.0098) # / MPa to m
     Weibull_param = FT(4) # unitless
     a = FT(0.2 * 0.0098) # 1/m
@@ -289,17 +307,17 @@ function setup_model(FT, start_date, stop_date, Δt, domain, earth_param_set)
     #    α_snow = Snow.ConstantAlbedoModel(FT(0.7))
     # Set β = 0 in order to regain model without density dependence
     α_snow = Snow.ZenithAngleAlbedoModel(
-        FT(0.64),
-        FT(0.06),
-        FT(2);
-        β = FT(0.4),
-        x0 = FT(0.2),
+        FT(α_0),
+        FT(Δα),
+        FT(k);
+        β = FT(beta_snow),
+        x0 = FT(x0_snow),
     )
     horz_degree_res =
         sum(ClimaLand.Domains.average_horizontal_resolution_degrees(domain)) / 2 # mean of resolution in latitude and longitude, in degrees
     scf = Snow.WuWuSnowCoverFractionModel(
-        FT(0.08),
-        FT(1.77),
+        FT(gamma_snow),
+        FT(beta_0),
         FT(1.0),
         horz_degree_res,
     )
@@ -336,76 +354,56 @@ function setup_model(FT, start_date, stop_date, Δt, domain, earth_param_set)
     return land
 end
 
-function setup_simulation(; greet = false)
-    # If not LONGER_RUN, run for 2 years; note that the forcing from 2008 is repeated.
-    # If LONGER run, run for 19 years, with the correct forcing each year.
-    # Note that since the Northern hemisphere's winter season is defined as DJF,
-    # we simulate from and until the beginning of
-    # March so that a full season is included in seasonal metrics.
-    start_date = LONGER_RUN ? DateTime("2000-03-01") : DateTime("2008-03-01")
-    stop_date = LONGER_RUN ? DateTime("2019-03-01") : DateTime("2010-03-01")
-    Δt = 450.0
-    nelements = (101, 15)
-    if greet
-        @info "Run: Global Soil-Canopy-Snow Model"
-        @info "Resolution: $nelements"
-        @info "Timestep: $Δt s"
-        @info "Start Date: $start_date"
-        @info "Stop Date: $stop_date"
-    end
+function ClimaCalibrate.forward_model(iteration, member)
+    (; output_dir, sample_date_ranges, nelements, spinup, extend) = get_config()
+    ensemble_member_path =
+        ClimaCalibrate.path_to_ensemble_member(output_dir, iteration, member)
 
-    domain = ClimaLand.ModelSetup.global_domain(FT; context, nelements)
+    eki = JLD2.load_object(ClimaCalibrate.ekp_path(output_dir, iteration))
+    minibatch = EKP.get_current_minibatch(eki)
+
+    # Determine start date and end date from the sample dates
+    start_date = first(sample_date_ranges[minimum(minibatch)]) - spinup
+    stop_date = last(sample_date_ranges[maximum(minibatch)]) + extend
+
+    diagnostics_dir = joinpath(ensemble_member_path, "global_diagnostics")
+    outdir =
+        ClimaUtilities.OutputPathGenerator.generate_output_path(diagnostics_dir)
+
+    Δt = 450.0
+
+    @info "Run: Global Soil-Canopy-Snow Model"
+    @info "Resolution: $nelements"
+    @info "Timestep: $Δt s"
+    @info "Start Date: $start_date"
+    @info "Stop Date: $stop_date"
+
+    domain =
+        ClimaLand.ModelSetup.global_domain(FT; context = context, nelements)
     params = LP.LandParameters(FT)
-    model = setup_model(FT, start_date, stop_date, Δt, domain, params)
+
+    # TODO: This code is a hack to get parameters loaded and can be improved
+    # once the interface improved
+    calibrate_params_path =
+        ClimaCalibrate.parameter_path(output_dir, iteration, member)
+    calibrate_param_dict = TOML.parsefile(calibrate_params_path)
+    calibrate_param_dict = Dict(
+        key => calibrate_param_dict[key]["value"] for
+        (key, value) in calibrate_param_dict
+    )
+
+    model = setup_model(
+        FT,
+        start_date,
+        stop_date,
+        Δt,
+        domain,
+        params,
+        calibrate_param_dict,
+    )
 
     simulation = LandSimulation(FT, start_date, stop_date, Δt, model; outdir)
-    return simulation
-end
-
-simulation = setup_simulation(; greet = true);
-ClimaLand.Simulations.solve!(simulation)
-
-# read in diagnostics and make some plots!
-#### ClimaAnalysis ####
-simdir = ClimaAnalysis.SimDir(outdir)
-short_names = [
-    "gpp",
-    "swc",
-    "et",
-    "shf",
-    "swu",
-    "lwu",
-    "swe",
-    "si",
-    "lwp",
-    "iwc",
-    "trans",
-    "msf",
-    "snowc",
-]
-
-include(
-    joinpath(
-        pkgdir(ClimaLand),
-        "experiments",
-        "long_runs",
-        "figures_function.jl",
-    ),
-)
-make_figures(root_path, outdir, short_names)
-
-include("leaderboard/leaderboard.jl")
-diagnostics_folder_path = outdir
-leaderboard_base_path = root_path
-for data_source in ("ERA5", "ILAMB")
-    compute_monthly_leaderboard(
-        leaderboard_base_path,
-        diagnostics_folder_path,
-        data_source,
-    )
-    compute_seasonal_leaderboard(
-        leaderboard_base_path,
-        diagnostics_folder_path,
-        data_source,
-    )
+    @info "Simulation is setted up. Going to solve the simulation."
+    ClimaLand.Simulations.solve!(simulation)
+    return nothing
 end
