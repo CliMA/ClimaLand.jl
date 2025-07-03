@@ -1647,3 +1647,30 @@ function inst_temp_scaling(
 
     return f_act * f_deact 
 end
+
+
+"""
+inst_temp_scaling_rd(
+    T_canopy::FT,
+    To::FT, 
+    aRd::FT, 
+    bRd::FT
+) where {FT}
+
+Computes the instantaneous temperature scaling factor for dark respiration (Rd) 
+at canopy temperature `T_canopy` given reference temperature `To`, the first order
+coefficient `aRd`, and the second order coefficient `bRd`. 
+
+Usees the log-quadratic functional form of Heskel et al. (2016) 
+https://www.pnas.org/doi/full/10.1073/pnas.1520282113
+"""
+function inst_temp_scaling_rd(
+    T_canopy::FT,
+    To::FT, 
+    aRd::FT, 
+    bRd::FT
+) where {FT}
+    return exp(
+        aRd * (T_canopy - To) + bRd * ((T_canopy - FT(273.15))^2 - (To - FT(273.15))^2)
+    )
+end
