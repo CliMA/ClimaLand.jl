@@ -3,6 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 -------
+- Create the extension LandSimulationsVisualization  PR[#1199](https://github.com/CliMA/ClimaLand.jl/pull/1199)
 - ![breaking change][badge-💥breaking] Make soil albedo parameterization modular
 PR[#1184](https://github.com/CliMA/ClimaLand.jl/pull/1184)
 - Use new spun up initial conditions from 19 year run PR[#1196](https://github.com/CliMA/ClimaLand.jl/pull/1196)
