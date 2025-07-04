@@ -19,8 +19,6 @@ import Interpolations
 import ClimaUtilities.TimeVaryingInputs:
     TimeVaryingInput, LinearInterpolation, PeriodicCalendar
 import ClimaUtilities.TimeManager: ITime
-using ClimaAnalysis
-import ClimaAnalysis.Visualize as viz
 using ClimaUtilities
 import ClimaUtilities.ClimaArtifacts: @clima_artifact
 import ClimaParams as CP
@@ -32,12 +30,15 @@ import ClimaLand.Parameters as LP
 
 import ClimaLand.Simulations: LandSimulation, solve!
 using Statistics
-import GeoMakie
-using CairoMakie
 using Dates
 import NCDatasets
 
-using Poppler_jll: pdfunite
+using CairoMakie, GeoMakie, Poppler_jll, ClimaAnalysis
+LandSimVis =
+    Base.get_extension(
+        ClimaLand,
+        :LandSimulationVisualization,
+    ).LandSimulationVisualization;
 
 const FT = Float64;
 time_interpolation_method = LinearInterpolation(PeriodicCalendar())
@@ -163,19 +164,6 @@ end
 
 simulation = setup_simulation(; greet = true);
 solve!(simulation);
-
-# Eventually replace the below with:
-#ClimaLand.Simulations.plot!(simulation, simulation.model, simulation.domain)
-
-# read in diagnostics and make some plots!
-#### ClimaAnalysis ####
 short_names = ["tsfc", "lhf", "shf", "wsoil"]
-include(
-    joinpath(
-        pkgdir(ClimaLand),
-        "experiments",
-        "long_runs",
-        "figures_function.jl",
-    ),
-)
-make_figures(root_path, outdir, short_names)
+LandSimVis.make_annual_timeseries(simulation; outdir, short_names)
+LandSimVis.make_heatmaps(simulation; outdir, short_names, date = stop_date)

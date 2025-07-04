@@ -19,9 +19,6 @@ import ClimaComms
 ClimaComms.@import_required_backends
 import ClimaTimeSteppers as CTS
 using ClimaUtilities.ClimaArtifacts
-
-import ClimaAnalysis
-import ClimaAnalysis.Visualize as viz
 import ClimaUtilities
 
 import ClimaUtilities.TimeVaryingInputs:
@@ -38,13 +35,14 @@ import ClimaLand
 import ClimaLand.Parameters as LP
 import ClimaLand.Simulations: LandSimulation, solve!
 
-using Statistics
-using GeoMakie
-using CairoMakie
 using Dates
-import NCDatasets
 
-using Poppler_jll: pdfunite
+using CairoMakie, GeoMakie, Poppler_jll, ClimaAnalysis
+LandSimVis =
+    Base.get_extension(
+        ClimaLand,
+        :LandSimulationVisualization,
+    ).LandSimulationVisualization;
 
 const FT = Float64;
 context = ClimaComms.context()
@@ -337,33 +335,5 @@ end
 
 simulation = setup_simulation(; greet = true);
 ClimaLand.Simulations.solve!(simulation)
-
-# read in diagnostics and make some plots!
-#### ClimaAnalysis ####
-simdir = ClimaAnalysis.SimDir(outdir)
-short_names = ["gpp", "swc", "si"]
-mktempdir(root_path) do tmpdir
-    for short_name in short_names
-        var = get(simdir; short_name)
-        times = [ClimaAnalysis.times(var)[1], ClimaAnalysis.times(var)[end]]
-        for t in times
-            fig = CairoMakie.Figure(size = (600, 400))
-            kwargs = ClimaAnalysis.has_altitude(var) ? Dict(:z => 1) : Dict()
-            tmp = ClimaAnalysis.slice(var, time = t; kwargs...)
-            if !all(isnan.(tmp.data))
-                viz.heatmap2D!(
-                    fig,
-                    tmp,
-                    more_kwargs = Dict(
-                        :plot => ClimaAnalysis.Utils.kwargs(rasterize = true),
-                    ),
-                )
-                CairoMakie.save(joinpath(tmpdir, "$(short_name)_$t.pdf"), fig)
-            end
-        end
-    end
-    figures = readdir(tmpdir, join = true)
-    pdfunite() do unite
-        run(Cmd([unite, figures..., joinpath(root_path, "figures.pdf")]))
-    end
-end
+LandSimVis.make_annual_timeseries(simulation; outdir)
+LandSimVis.make_heatmaps(simulation; outdir)

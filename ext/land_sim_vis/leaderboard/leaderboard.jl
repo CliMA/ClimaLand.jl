@@ -1,9 +1,3 @@
-import ClimaAnalysis
-import GeoMakie
-import CairoMakie
-import Dates
-import Statistics: mean
-
 include("data_sources.jl")
 
 """
