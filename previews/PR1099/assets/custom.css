@@ -1,0 +1,20 @@
+/* Override content width constraints */
+.docs-main {
+  max-width: 100% !important;
+}
+
+article.content {
+  max-width: 100% !important;
+}
+
+.content-wrapper {
+  max-width: 100% !important;
+  padding: 0 !important;
+}
+
+/* Make the iframe take full width */
+iframe {
+  width: 100%;
+  min-width: 100%;
+  border: none;
+}
