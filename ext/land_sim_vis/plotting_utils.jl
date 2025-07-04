@@ -26,26 +26,38 @@ function make_heatmaps(
     mktempdir(outdir) do tmpdir
         for short_name in short_names
             var = get(simdir; short_name)
-	    avail_dates = DateTime(var.attributes["start_date"]) .+ Second.(times(var))
-            idx = argmin(abs.(date .- avail_dates));
+            avail_dates =
+                DateTime(var.attributes["start_date"]) .+ Second.(times(var))
+            idx = argmin(abs.(date .- avail_dates))
             if levels isa Nothing
-                plot_levels = [1,] # sfc
+                plot_levels = [1] # sfc
             else
-                plot_levels = levels;
+                plot_levels = levels
             end
             for level in plot_levels
-                kwarg_z = ClimaAnalysis.has_altitude(var) ? Dict(:z => level) : Dict()
+                kwarg_z =
+                    ClimaAnalysis.has_altitude(var) ? Dict(:z => level) : Dict()
                 fig = CairoMakie.Figure(size = (600, 400))
                 plot!(
                     fig,
-                    ClimaAnalysis.slice(var, time = times(var)[idx]; kwarg_z...),
+                    ClimaAnalysis.slice(
+                        var,
+                        time = times(var)[idx];
+                        kwarg_z...,
+                    ),
                     mask = viz.oceanmask(),
                     more_kwargs = Dict(
                         :mask => ClimaAnalysis.Utils.kwargs(color = :white),
                         :plot => ClimaAnalysis.Utils.kwargs(rasterize = true),
                     ),
                 )
-                CairoMakie.save(joinpath(tmpdir, "$(short_name)_$level_$(avail_dates[idx]).pdf"), fig)
+                CairoMakie.save(
+                    joinpath(
+                        tmpdir,
+                        "$(short_name)_$level_$(avail_dates[idx]).pdf",
+                    ),
+                    fig,
+                )
             end
         end
         figures = readdir(tmpdir, join = true)
@@ -161,11 +173,7 @@ Generates one .pdf file called "annual_timeseries.pdf" in the provided outdir,
 this .pdf contains the timeseries for the global mean of the provided short_names variables
 contained in the provided outdir folder (see ClimaAnalysis documentation). 
 """
-function make_annual_timeseries(
-    outdir,
-    diagdir,
-    short_names
-)
+function make_annual_timeseries(outdir, diagdir, short_names)
     simdir = ClimaAnalysis.SimDir(outdir)
     mktempdir(root_path) do tmpdir
         for short_name in short_names
@@ -249,7 +257,13 @@ function make_annual_timeseries(
         end
         figures = readdir(tmpdir, join = true)
         pdfunite() do unite
-            run(Cmd([unite, figures..., joinpath(root_path, "annual_timeseries.pdf")]))
+            run(
+                Cmd([
+                    unite,
+                    figures...,
+                    joinpath(root_path, "annual_timeseries.pdf"),
+                ]),
+            )
         end
     end
     return nothing

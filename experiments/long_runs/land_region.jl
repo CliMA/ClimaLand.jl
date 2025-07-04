@@ -37,6 +37,13 @@ import ClimaLand.Simulations: LandSimulation, solve!
 
 using Dates
 
+using CairoMakie, GeoMakie, Poppler_jll, ClimaAnalysis
+LandSimVis =
+    Base.get_extension(
+        ClimaLand,
+        :LandSimulationVisualization,
+    ).LandSimulationVisualization;
+
 const FT = Float64;
 context = ClimaComms.context()
 ClimaComms.init(context)
@@ -328,5 +335,5 @@ end
 
 simulation = setup_simulation(; greet = true);
 ClimaLand.Simulations.solve!(simulation)
-ClimaLand.Simulations.make_annual_timeseries(simulation; outdir)
-ClimaLand.Simulations.make_heatmaps(simulation; outdir)
+LandSimVis.make_annual_timeseries(simulation; outdir)
+LandSimVis.make_heatmaps(simulation; outdir)

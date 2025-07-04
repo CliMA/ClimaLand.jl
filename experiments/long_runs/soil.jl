@@ -34,6 +34,13 @@ import ClimaLand.Parameters as LP
 import ClimaLand.Simulations: LandSimulation, solve!
 using Dates
 
+using CairoMakie, GeoMakie, Poppler_jll, ClimaAnalysis
+LandSimVis =
+    Base.get_extension(
+        ClimaLand,
+        :LandSimulationVisualization,
+    ).LandSimulationVisualization;
+
 const FT = Float64;
 # If you want to do a very long run locally, you can enter `export
 # LONGER_RUN=""` in the terminal and run this script. If you want to do a very
@@ -189,7 +196,7 @@ simulation = setup_simulation(; greet = true);
 
 ClimaLand.Simulations.solve!(simulation)
 
-ClimaLand.Simulations.make_leaderboard_plots(simulation; outdir)
-ClimaLand.Simulations.make_annual_timeseries(simulation; outdir)
-ClimaLand.Simulations.make_heatmaps(simulation; outdir, date = stop_date)
-ClimaLand.Simulations.check_conservation(simulation; outdir)
+LandSimVis.make_leaderboard_plots(simulation; outdir)
+LandSimVis.make_annual_timeseries(simulation; outdir)
+LandSimVis.make_heatmaps(simulation; outdir, date = stop_date)
+LandSimVis.check_conservation(simulation; outdir)
