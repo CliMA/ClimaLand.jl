@@ -91,7 +91,7 @@ function preprocess_single_era5_var(var::OutputVar, short_name, nelements)
     # Window to ensure that each season contain all three months
     # The dates are found by inspecting the ERA5 data and choosing
     # the earliest and latest dates that would contain full seasons
-    ClimaAnalysis.window(
+    var = ClimaAnalysis.window(
         var,
         "time",
         left = Dates.DateTime(1979, 3),
