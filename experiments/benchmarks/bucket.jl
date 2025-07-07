@@ -19,6 +19,7 @@ using Dates
 using Test
 import ClimaComms
 ClimaComms.@import_required_backends
+import CUDA
 import ClimaUtilities.TimeVaryingInputs: TimeVaryingInput
 
 import ClimaTimeSteppers as CTS
@@ -59,9 +60,7 @@ device = ClimaComms.device()
 device_suffix = device isa ClimaComms.CPUSingleThreaded ? "cpu" : "gpu"
 
 earth_param_set = ClimaLand.Parameters.LandParameters(FT);
-outdir = "bucket_benchmark_$(device_suffix)"
-@info "device: $device"
-!ispath(outdir) && mkpath(outdir)
+
 
 function setup_prob(t0, tf, Δt; nelements = (200, 7))
     # We set up the problem in a function so that we can make multiple copies (for profiling)
@@ -150,8 +149,7 @@ function setup_prob(t0, tf, Δt; nelements = (200, 7))
     updateat = collect(t0:(3Δt):tf)
     drivers = ClimaLand.get_drivers(model)
     updatefunc = ClimaLand.make_update_drivers(drivers)
-    driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
-    cb = SciMLBase.CallbackSet(driver_cb)
+    cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
 
     return prob, cb
 end
@@ -175,6 +173,9 @@ function setup_simulation(; greet = false)
 end
 parsed_args = parse_commandline()
 profiler = parsed_args["profiler"]
+outdir = "bucket_benchmark_$(device_suffix)"
+@info "device: $device"
+!ispath(outdir) && mkpath(outdir)
 prob, ode_algo, Δt, cb = setup_simulation(; greet = true)
 @info "Starting profiling with $profiler"
 if profiler == "flamegraph"
@@ -213,7 +214,6 @@ if profiler == "flamegraph"
     @info "Done profiling"
 
     if ClimaComms.device() isa ClimaComms.CUDADevice
-        import CUDA
         lprob, lode_algo, lΔt, lcb = setup_simulation()
         p = CUDA.@profile SciMLBase.solve(
             lprob,
@@ -256,7 +256,8 @@ if profiler == "flamegraph"
         @info "Saved allocation flame to $alloc_flame_file"
     end
 
-    if get(ENV, "BUILDKITE_PIPELINE_SLUG", nothing) == "climaland-benchmark"
+    if get(ENV, "BUILDKITE_PIPELINE_SLUG", nothing) == "climaland-benchmark" &&
+       ClimaComms.device() isa ClimaComms.CUDADevice
         PREVIOUS_BEST_TIME = 0.333
         if average_timing_s > PREVIOUS_BEST_TIME + std_timing_s
             @info "Possible performance regression, previous average time was $(PREVIOUS_BEST_TIME)"
