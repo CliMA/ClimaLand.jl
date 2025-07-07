@@ -184,7 +184,7 @@ function make_heatmaps(
         plot_name,
         levels,
         plot! = viz.heatmap2D!,
-        plot_mask = Dict(),
+        mask = nothing,
         plot_kwargs = Dict(
             :plot => ClimaAnalysis.Utils.kwargs(rasterize = true),
         ),
