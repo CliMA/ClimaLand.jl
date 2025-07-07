@@ -594,12 +594,12 @@ function count_nans_state(
     verbose = false,
 )
     # Note: this code uses `parent`; this pattern should not be replicated
-    num_nans = 0
-    ClimaComms.allowscalar(ClimaComms.device()) do
-        num_nans =
-            isnothing(mask) ? Int(sum(isnan.(parent(state)))) :
-            Int(sum(isnan.(parent(state)) .* parent(mask)))
+    if isnothing(mask)
+        num_nans = mapreduce(x -> isnan(x), +, parent(state))
+    else
+        num_nans = mapreduce((x, y) -> (isnan(x) || isnan(y)), +, parent(state), parent(mask))
     end
+
     if isapprox(num_nans, 0)
         verbose && @info "No NaNs found"
     else
