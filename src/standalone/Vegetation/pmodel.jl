@@ -176,16 +176,36 @@ function PModel{FT}(
     )
 end
 
+"""
+New cache variables:
+- `cosθs_diff`: if c[t] is cosθs at current timestep t, then cosθs_diff[t] = c[t-1] - c[t-2]
+- `cosθs_t_minus_1`: cosθs at the last timestep t-1
+- `OptVars`: a NamedTuple with keys `:ξ_opt`, `:Vcmax25_opt`, and `:Jmax25_opt` 
+    containing the acclimated optimal values of ξ, Vcmax25, and Jmax25, respectively. These are updated
+    using an exponential moving average (EMA) at local noon.
+- `IntVars`: a NamedTuple with keys `:Γstar`, `:Kmm`, and `:ci` containing the common intermediate variables
+    computed each timestep for instantaneous assimilation 
+"""
 ClimaLand.auxiliary_vars(model::PModel) =
-    (:An, :GPP, :Rd, :Vcmax25, 
-    :OptVars, 
+    (:An, 
+    :GPP, 
+    :Rd, 
+    :Vcmax25, 
+    :cosθs_diff, 
+    :cosθs_t_minus_1,
+    :OptVars,
     :IntVars)
 ClimaLand.auxiliary_types(model::PModel{FT}) where {FT} =
-    (FT, FT, FT, FT, 
+    (FT,
+    FT,
+    FT,
+    FT,
+    FT,
+    FT, 
     NamedTuple{(:ξ_opt, :Vcmax25_opt, :Jmax25_opt), Tuple{FT, FT, FT}},
     NamedTuple{(:Γstar, :Kmm, :ci), Tuple{FT, FT, FT}})
 ClimaLand.auxiliary_domain_names(::PModel) =
-    (:surface, :surface, :surface, :surface, :surface)
+    (:surface, :surface, :surface, :surface, :surface, :surface, :surface, :surface)
 
 
 """
@@ -365,6 +385,27 @@ function update_intermediate_vars(
     )
 end 
 
+"""
+get_local_noon_mask(
+    cosθs_diff::FT, 
+    cosθs_t_minus_1::FT,
+    cosθs_t::FT 
+) where {FT}
+
+This function returns true if the first derivative of the cosine of the solar zenith angle
+changes sign from positive to negative, indicating solar noon. If c[t] is cosθs at current timestep t,
+then cosθs_diff[t] = c[t-1] - c[t-2]. cosθs_t and cosθs_t_minus_1 are the values of cosθs at the current
+timestep and the previous timestep, respectively. 
+"""
+function get_local_noon_mask(
+    cosθs_diff::FT, 
+    cosθs_t_minus_1::FT,
+    cosθs_t::FT 
+) where {FT}
+    return cosθs_diff > 0 && (cosθs_t - cosθs_t_minus_1) < 0
+end
+
+
 
 """
     update_photosynthesis!(p, Y, model::PModel, canopy)
@@ -381,7 +422,8 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
     N_a = LP.avogadro_constant(earth_param_set)
     (; _, λ_γ_PAR, Ω) = canopy.radiative_transfer.parameters
     energy_per_mole_photon_par = planck_h * lightspeed / λ_γ_PAR * N_a
-
+    R = LP.gas_constant(earth_param_set)
+    
     T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
     f_abs = p.canopy.radiative_transfer.par.abs
     ca = p.drivers.c_co2
@@ -390,6 +432,7 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
     VPD = ClimaLand.vapor_pressure_deficit(
         p.drivers.T, p.drivers.P, p.drivers.q, canopy.parameters.earth_param_set.thermo_params
     )
+    LAI = p.canopy.hydraulics.area_index.leaf
     
     # Calculate I_abs directly
     I_abs = f_abs * par_d / energy_per_mole_photon_par
@@ -400,8 +443,11 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
 
     
     βm = FT(1.0) # TODO: replace this with soil moisture stress parameterization
-    # TODO: implement local_noon_mask logic
-    local_noon_mask = true #get_local_noon_mask(p.canopy.photosynthesis.cosθs_diff1, p.canopy.photosynthesis.cosθs_diff2) 
+    local_noon_mask = get_local_noon_mask(p.canopy.photosynthesis.cosθs_diff, p.canopy.photosynthesis.cosθs_t_minus_1, p.drivers.cosθs)
+
+    # update auxiliary zenith angle variables in place
+    @. p.canopy.photosynthesis.cosθs_diff = p.drivers.cosθs - p.canopy.photosynthesis.cosθs_t_minus_1
+    @. p.canopy.photosynthesis.cosθs_t_minus_1 = p.drivers.cosθs
     
     # update the acclimated Vcmax25, Jmax25, ξ using EMA 
     @. p.canopy.photosynthesis.OptVars = update_optimal_EMA(
@@ -506,6 +552,16 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
     @. p.canopy.photosynthesis.An = min(Aj, Ac) - p.canopy.photosynthesis.Rd 
     @. p.canopy.photosynthesis.GPP = compute_GPP(p.canopy.photosynthesis.An, extinction_coeff(G_Function, cosθs), LAI, Ω)
 
+    @. p.canopy.conductance.r_stomata_canopy =
+        1 / upscale_leaf_conductance(
+            pmodel_gs(p.canopy.photosynthesis.IntVars.ci / ca, 
+                ca, 
+                p.canopy.photosynthesis.An) * Drel, # leaf level conductance in mol H2O Pa^-1
+            LAI,
+            T_air,
+            R,
+            P_air,
+        )
 end
 
 get_Vcmax25(p, m::PModelParameters) =
