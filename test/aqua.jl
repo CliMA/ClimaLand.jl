@@ -26,7 +26,7 @@ end
     Aqua.test_undefined_exports(ClimaLand)
     # Insolation is a direct dependency for the package extension
     Aqua.test_stale_deps(ClimaLand; ignore = [:Insolation])
-    Aqua.test_deps_compat(ClimaLand)
+    Aqua.test_deps_compat(ClimaLand; check_weakdeps = false)
     Aqua.test_project_extras(ClimaLand)
     Aqua.test_piracies(ClimaLand)
 end

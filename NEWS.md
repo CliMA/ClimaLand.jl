@@ -3,6 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 -------
+- Create the extension LandSimulationsVisualization  PR[#1199](https://github.com/CliMA/ClimaLand.jl/pull/1199)
 - ![breaking change][badge-💥breaking] Rename all `comms_ctx` to `context` PR[#1207](https://github.com/CliMA/ClimaLand.jl/pull/1207)
 - Output NaNs in diagnostics where the ocean is PR[#1200](https://github.com/CliMA/ClimaLand.jl/pull/1200)
 - ![breaking change][badge-💥breaking] Make soil albedo parameterization modular
