@@ -6,6 +6,7 @@ using ClimaLand
 using LazyBroadcast: lazy
 using ClimaCore
 using ClimaCore.MatrixFields
+using NVTX
 import ClimaCore.MatrixFields: @name, ⋅
 import ClimaUtilities.TimeVaryingInputs: AbstractTimeVaryingInput
 import ClimaUtilities.TimeManager: ITime, date
@@ -912,7 +913,7 @@ function ClimaLand.make_update_aux(
         <:AbstractCanopyEnergyModel,
     },
 ) where {FT}
-    function update_aux!(p, Y, t)
+    NVTX.@annotate function update_aux!(p, Y, t)
 
         # Extend to other fields when necessary
         # Update the prescribed fields to the current time `t`,
@@ -1057,7 +1058,7 @@ function make_compute_exp_tendency(
         x -> make_compute_exp_tendency(getproperty(canopy, x), canopy),
         components,
     )
-    function compute_exp_tendency!(dY, Y, p, t)
+    NVTX.@annotate function compute_exp_tendency!(dY, Y, p, t)
         for f! in compute_exp_tendency_list
             f!(dY, Y, p, t)
         end
@@ -1087,7 +1088,7 @@ function make_compute_imp_tendency(
         x -> make_compute_imp_tendency(getproperty(canopy, x), canopy),
         components,
     )
-    function compute_imp_tendency!(dY, Y, p, t)
+    NVTX.@annotate function compute_imp_tendency!(dY, Y, p, t)
         for f! in compute_imp_tendency_list
             f!(dY, Y, p, t)
         end
@@ -1117,7 +1118,7 @@ function ClimaLand.make_compute_jacobian(
         x -> make_compute_jacobian(getproperty(canopy, x), canopy),
         components,
     )
-    function compute_jacobian!(W, Y, p, dtγ, t)
+    NVTX.@annotate function compute_jacobian!(W, Y, p, dtγ, t)
         for f! in update_jacobian_list
             f!(W, Y, p, dtγ, t)
         end
