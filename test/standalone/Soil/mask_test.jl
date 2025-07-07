@@ -5,7 +5,7 @@ using Test
 
 if pkgversion(ClimaCore) >= v"0.14.30"
     FT = Float64
-    domain = ClimaLand.ModelSetup.global_domain(FT)
+    domain = ClimaLand.Domains.global_domain(FT)
 
     # Soil model setup
     ν = FT(0.495)

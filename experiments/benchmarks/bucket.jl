@@ -70,7 +70,7 @@ function setup_prob(t0, tf, Δt; nelements = (200, 7))
     dz_tuple = FT.((1.0, 0.05))
     depth = FT(3.5)
     bucket_domain =
-        ClimaLand.ModelSetup.global_domain(FT; nelements, dz_tuple, depth)
+        ClimaLand.Domains.global_domain(FT; nelements, dz_tuple, depth)
     start_date = DateTime(2005)
 
     # Initialize parameters

@@ -51,7 +51,7 @@ scalar_canopy_params = (;
     h_leaf,
 );
 
-domain = ClimaLand.ModelSetup.global_domain(FT; nelements = nelements);
+domain = ClimaLand.Domains.global_domain(FT; nelements = nelements);
 surface_space = domain.space.surface;
 start_date = DateTime(2008);
 land = global_land_model(

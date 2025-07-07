@@ -107,13 +107,8 @@ function setup_simulation(; greet = false)
     # Domain
     depth = FT(3.5)
     dz_tuple = FT.((1.0, 0.05))
-    domain = ClimaLand.ModelSetup.global_domain(
-        FT;
-        context,
-        nelements,
-        depth,
-        dz_tuple,
-    )
+    domain =
+        ClimaLand.Domains.global_domain(FT; context, nelements, depth, dz_tuple)
 
     # Parameters
     params = LP.LandParameters(FT)

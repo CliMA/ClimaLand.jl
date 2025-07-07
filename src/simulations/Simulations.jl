@@ -8,7 +8,6 @@ import ClimaUtilities.TimeManager: ITime, date
 import ClimaDiagnostics
 using ClimaLand
 export step!, solve!, LandSimulation
-using ClimaLand.ModelSetup
 include("initial_conditions.jl")
 
 """

@@ -1,10 +1,15 @@
 module Domains
 
 import ..compat_add_mask, ..compat_set_mask!
+import ..Artifacts.landseamask_file_path
+
 
 using ClimaCore
 using ClimaComms
 using DocStringExtensions
+using Interpolations
+import ClimaUtilities.Regridders: InterpolationsRegridder
+import ClimaUtilities.SpaceVaryingInputs: SpaceVaryingInput
 
 import ClimaCore: Meshes, Spaces, Topologies, Geometry
 import ClimaCore.Meshes: Uniform
@@ -1039,6 +1044,174 @@ function average_horizontal_resolution_degrees(domain::Union{Plane, HybridBox})
     )
 end
 
+apply_threshold(field, value) =
+    field > value ? eltype(field)(1) : eltype(field)(0)
+
+"""
+    landsea_mask(
+        surface_space;
+        filepath = ClimaLand.Artifacts.landseamask_file_path(;
+                 context = ClimaComms.context(surface_space),
+                 ),
+        threshold = 0.5,
+        regridder_type = :InterpolationsRegridder,
+        extrapolation_bc = (
+            Interpolations.Periodic(),
+            Interpolations.Flat(),
+            Interpolations.Flat(),
+        ),
+    )
+
+Reads in the default Clima land/sea mask, regrids to the `surface_space`, and
+treats any point with a land fraction < threshold as ocean.
+"""
+function landsea_mask(
+    surface_space;
+    filepath = landseamask_file_path(;
+        context = ClimaComms.context(surface_space),
+    ),
+    threshold = 0.5,
+    regridder_type = :InterpolationsRegridder,
+    extrapolation_bc = (
+        Interpolations.Periodic(),
+        Interpolations.Flat(),
+        Interpolations.Flat(),
+    ),
+)
+    mask = SpaceVaryingInput(
+        filepath,
+        "landsea",
+        surface_space;
+        regridder_type,
+        regridder_kwargs = (; extrapolation_bc,),
+    )
+    binary_mask = apply_threshold.(mask, threshold)
+    return binary_mask
+end
+
+function landsea_mask(domain::Domains.AbstractDomain; kwargs...)
+    # average_horizontal_resolution_degrees returns a tuple with the resolution
+    # along the two directions, so we take the minimum
+    resolution_degrees = minimum(average_horizontal_resolution_degrees(domain))
+    if resolution_degrees > 1
+        resolution = "1deg"
+    else
+        resolution_arcsec = 3600resolution_degrees
+        # Pick the landsea mask at 60 arcseconds if the nodal distance is more than
+        # 120", otherwise pick the higher resolution
+        resolution = resolution_arcsec > 120 ? "60arcs" : "30arcs"
+    end
+
+    filepath = landseamask_file_path(;
+        resolution,
+        context = ClimaComms.context(domain.space.surface),
+    )
+    return landsea_mask(domain.space.surface; filepath, kwargs...)
+end
+
+
+"""
+    global_domain(
+    FT;
+    nelements = (101, 15),
+    dz_tuple = (10.0, 0.05),
+    depth = 50.0,
+    npolynomial = 0,
+)
+
+Helper function to create a SphericalShell domain with (101,15) elements, a
+depth of 50m, vertical layering ranging from 0.05m in depth at the surface to
+10m at the bottom of the domain, with npolynomial = 0 and GL quadrature.
+
+`npolynomial` determines the order of polynomial base to use for the spatial
+discretization, which is correlated to the spatial resolution of the domain.
+
+When `npolynomial` is zero, the element is equivalent to a single point. In this
+case, the resolution of the model is sqrt((360*180)/(101*101*6)). The factor of 6 arises
+because there are 101x101 elements per side of the cubed sphere, meaning 6*101*101 for the
+entire globe.
+
+When `npolynomial` is greater than 1, a Gauss-Legendre-Lobotto quadrature is
+used, with `npolynomial + 1` points along the element. In this case, there are
+always points two points on the boundaries for each direction with the other
+points in the interior. These points are not equally spaced.
+
+In practice, there is no reason to use `npolynomial` greater than 1 in the current
+version of ClimaLand. To increase resolution, we recommend increasing the number of elements
+rather than increasing the polynomial order.
+"""
+function global_domain(
+    FT;
+    apply_mask = true,
+    mask_threshold = 0.5,
+    nelements = (101, 15),
+    dz_tuple = (10.0, 0.05),
+    depth = 50.0,
+    npolynomial = 0,
+    context = ClimaComms.context(),
+)
+    if pkgversion(ClimaCore) < v"0.14.30" && apply_mask
+        @warn "The land mask cannot be applied with ClimaCore < v0.14.30. Update ClimaCore for significant performance gains."
+        apply_mask = false
+    end
+
+    radius = FT(6378.1e3)
+    dz_tuple = FT.(dz_tuple)
+    depth = FT(depth)
+    domain = SphericalShell(;
+        radius,
+        depth,
+        nelements,
+        npolynomial,
+        dz_tuple,
+        context,
+    )
+    if apply_mask
+        surface_space = domain.space.surface # 2d space
+        binary_mask = landsea_mask(domain; threshold = mask_threshold)
+        Spaces.set_mask!(surface_space, binary_mask)
+    end
+
+    return domain
+end
+
+
+"""
+    use_lowres_clm(space)
+
+Returns true if the simulation space is closer in resolution to the low 
+resolution  CLM data (at 0.9x1.25 degree lat/long) compared with the 
+high resolution CLM data ( 0.125x0.125 degree lat/long). 
+
+If the simulation space is closer to the low resolution CLM data,
+that data will be used, and vice versa. The high resolution data
+takes longer to process and so using lower resolution data when it
+suffices is desirable.
+"""
+function use_lowres_clm(
+    surface_space::ClimaCore.Spaces.AbstractSpectralElementSpace,
+)
+    node_scale = ClimaCore.Spaces.node_horizontal_length_scale(surface_space)
+    surface_mesh = ClimaCore.Spaces.topology(surface_space).mesh
+    if surface_mesh isa ClimaCore.Meshes.AbstractCubedSphere
+        # in this case, node_scale is in meters
+        sphere_radius = surface_mesh.domain.radius
+        horizontal_length_scale(lat_res, long_res) = sqrt(
+            4 * pi * sphere_radius^2 / ((360 / long_res) * (180 / lat_res)),
+        )
+        highres_scale = horizontal_length_scale(0.125, 0.125)
+        lowres_scale = horizontal_length_scale(0.9, 1.25)
+    elseif surface_mesh isa ClimaCore.Meshes.RectilinearMesh
+        # in this case, node_scale is in degrees
+        highres_scale = 0.125
+        lowres_scale = sqrt(1.25 * 0.9)
+    else
+        return false
+    end
+    return abs(lowres_scale - node_scale) < abs(highres_scale - node_scale)
+end
+
+
 
 export AbstractDomain
 export Column, Plane, HybridBox, Point, SphericalShell, SphericalSurface
@@ -1050,5 +1223,7 @@ export coordinates,
     obtain_surface_domain,
     linear_interpolation_to_surface!,
     get_Δz,
-    average_horizontal_resolution_degrees
+    average_horizontal_resolution_degrees,
+    use_lowres_clm,
+    global_domain
 end

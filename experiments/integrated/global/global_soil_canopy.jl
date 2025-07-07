@@ -38,7 +38,7 @@ FT = Float64
 earth_param_set = LP.LandParameters(FT)
 nelements = (50, 10)
 dz_tuple = (10.0, 0.1)
-domain = ClimaLand.ModelSetup.global_domain(FT; nelements, dz_tuple)
+domain = ClimaLand.Domains.global_domain(FT; nelements, dz_tuple)
 surface_space = domain.space.surface
 subsurface_space = domain.space.subsurface
 

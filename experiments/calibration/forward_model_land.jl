@@ -74,7 +74,7 @@ function setup_prob(
         z0_snow,
     ) = params
 
-    domain = ClimaLand.ModelSetup.global_domain(FT; nelements = nelements)
+    domain = ClimaLand.Domains.global_domain(FT; nelements = nelements)
     surface_space = domain.space.surface
     subsurface_space = domain.space.subsurface
 
@@ -90,42 +90,14 @@ function setup_prob(
         time_interpolation_method = time_interpolation_method,
     )
 
-
-    spatially_varying_soil_params =
-        ClimaLand.ModelSetup.default_spatially_varying_soil_parameters(
-            subsurface_space,
-            surface_space,
-            FT,
-        )
-    (;
-        ν,
-        ν_ss_om,
-        ν_ss_quartz,
-        ν_ss_gravel,
-        hydrology_cm,
-        K_sat,
-        S_s,
-        θ_r,
-        PAR_albedo_dry,
-        NIR_albedo_dry,
-        PAR_albedo_wet,
-        NIR_albedo_wet,
-        f_max,
-    ) = spatially_varying_soil_params
-
-    # We need to ensure that the α < 1
-    #    PAR_albedo_dry .=
-    #        min.(PAR_albedo_dry .* α_soil_dry_scaler .* α_soil_scaler, FT(1))
-    #    NIR_albedo_dry .=
-    #        min.(NIR_albedo_dry .* α_soil_dry_scaler .* α_soil_scaler, FT(1))
-    #    PAR_albedo_wet .= min.(PAR_albedo_wet .* α_soil_scaler, FT(1))
-    #    NIR_albedo_wet .= min.(NIR_albedo_wet .* α_soil_scaler, FT(1))
-    albedo = Soil.CLMTwoBandSoilAlbedo{FT}(;
-        PAR_albedo_dry,
-        NIR_albedo_dry,
-        PAR_albedo_wet,
-        NIR_albedo_wet,
+    (; ν_ss_om, ν_ss_quartz, ν_ss_gravel) =
+        ClimaLand.Soil.soil_composition_parameters(subsurface_space, FT)
+    (; ν, hydrology_cm, K_sat, θ_r) =
+        ClimaLand.Soil.soil_vangenuchten_parameters(subsurface_space, FT)
+    soil_albedo = Soil.CLMTwoBandSoilAlbedo{FT}(;
+        ClimaLand.Soil.clm_soil_albedo_parameters(surface_space)...,
     )
+    S_s = ClimaCore.Fields.zeros(subsurface_space) .+ FT(1e-3)
     soil_params = Soil.EnergyHydrologyParameters(
         FT;
         ν,
@@ -136,30 +108,23 @@ function setup_prob(
         K_sat,
         S_s,
         θ_r,
-        albedo,
+        albedo = soil_albedo,
     )
     f_over = FT(3.28) # 1/m
     R_sb = FT(1.484e-4 / 1000) # m/s
     runoff_model = ClimaLand.Soil.Runoff.TOPMODELRunoff{FT}(;
         f_over = f_over,
-        f_max = f_max,
+        f_max = ClimaLand.Soil.topmodel_fmax(surface_space, FT),
         R_sb = R_sb,
     )
 
     # Spatially varying canopy parameters from CLM
-    clm_parameters = ClimaLand.ModelSetup.clm_canopy_parameters(surface_space)
-    (;
-        Ω,
-        rooting_depth,
-        is_c3,
-        Vcmax25,
-        g1,
-        G_Function,
-        α_PAR_leaf,
-        τ_PAR_leaf,
-        α_NIR_leaf,
-        τ_NIR_leaf,
-    ) = clm_parameters
+    g1 = ClimaLand.Canopy.clm_medlyn_g1(surface_space)
+    rooting_depth = ClimaLand.Canopy.clm_rooting_depth(surface_space)
+    (; is_c3, Vcmax25) =
+        ClimaLand.Canopy.clm_photosynthesis_parameters(surface_space)
+    (; Ω, G_Function, α_PAR_leaf, τ_PAR_leaf, α_NIR_leaf, τ_NIR_leaf) =
+        ClimaLand.Canopy.clm_canopy_radiation_parameters(surface_space)
 
     #α <= 1
     #    α_PAR_leaf .= min.(α_leaf_scaler .* α_PAR_leaf, FT(1))
