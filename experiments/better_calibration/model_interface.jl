@@ -79,8 +79,9 @@ function setup_model(
     k = FT(get(calibrate_param_dict, "k", 2))
     beta_snow = FT(get(calibrate_param_dict, "beta_snow", 0.4))
     x0_snow = FT(get(calibrate_param_dict, "x0_snow", 0.2))
-    gamma_snow = FT(get(calibrate_param_dict, "gamma_snow", 0.08))
-    beta_0 = FT(get(calibrate_param_dict, "beta_0", 1.77))
+    beta_snow_cover = FT(get(calibrate_param_dict, "beta_snow_cover", 0.2))
+    z0_snow_cover = FT(get(calibrate_param_dict, "z0_snow_cover", 0.2))
+    Δα = FT(get(calibrate_param_dict, "Δα", 0.2))
 
     time_interpolation_method =
         LONGER_RUN ? LinearInterpolation() :
@@ -316,10 +317,11 @@ function setup_model(
     horz_degree_res =
         sum(ClimaLand.Domains.average_horizontal_resolution_degrees(domain)) / 2 # mean of resolution in latitude and longitude, in degrees
     scf = Snow.WuWuSnowCoverFractionModel(
-        FT(gamma_snow),
-        FT(beta_0),
-        FT(1.0),
-        horz_degree_res,
+        FT(1e-4),
+        beta_snow_cover,
+        FT(1e-4),
+        horz_degree_res;
+        z0 = z0_snow_cover
     )
     snow_parameters = SnowParameters{FT}(
         Δt;

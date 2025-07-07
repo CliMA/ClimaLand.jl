@@ -75,7 +75,7 @@ Return a named tuple consisting of
 function get_calibration_config()
     rng_seed = 42
     rng = Random.MersenneTwister(rng_seed)
-    return (; minibatch_size = 1, n_iterations = 1, rng = rng)
+    return (; minibatch_size = 3, n_iterations = 7, rng = rng) # TODO Change this!
 end
 
 """
@@ -86,20 +86,20 @@ Return an `EnsembleKalmanProcess` object for calibration.
 function get_ekp()
     (; sample_date_ranges) = get_config()
     (; minibatch_size, rng) = get_calibration_config()
-    ensemble_size = 1
+    # ensemble_size = 1
     obs_series = get_observation(sample_date_ranges, minibatch_size)
-    eki = EKP.EnsembleKalmanProcess(
-        EKP.construct_initial_ensemble(rng, prior, ensemble_size),
-        obs_series,
-        EKP.TransformInversion(),
-        verbose = true,
-        scheduler = EKP.DataMisfitController(terminate_at = 100),
-    )
+    # eki = EKP.EnsembleKalmanProcess(
+    #     EKP.construct_initial_ensemble(rng, prior, ensemble_size),
+    #     obs_series,
+    #     EKP.TransformInversion(),
+    #     verbose = true,
+    #     scheduler = EKP.DataMisfitController(terminate_at = 100),
+    # )
 
     # TODO: I feel like the constructor should be consistent, but they
     # are not :(
-    # eki = EKP.EnsembleKalmanProcess(obs_series, EKP.TransformUnscented(prior, impose_prior = true), verbose = true, rng = rng, scheduler = EKP.DataMisfitController(terminate_at = 100))
-    # ensemble_size = EKP.get_N_ens(eki)
+    eki = EKP.EnsembleKalmanProcess(obs_series, EKP.TransformUnscented(prior, impose_prior = true), verbose = true, rng = rng, scheduler = EKP.DataMisfitController(terminate_at = 100))
+    ensemble_size = EKP.get_N_ens(eki)
     return eki
 end
 
@@ -124,8 +124,9 @@ function get_prior()
         # EKP.constrained_gaussian("k", 10, 5, 2, 25),
         # EKP.constrained_gaussian("beta_snow", 0.4, 0.2, 0.1, 0.8),
         # EKP.constrained_gaussian("x0_snow", 0.4, 0.2, 0.1, 0.8),
-        EKP.constrained_gaussian("gamma_snow", 0.1, 0.05, 0.01, 0.2),
-        EKP.constrained_gaussian("beta_0", 1.8, 0.1, 1.0, 2.0),
+        EKP.constrained_gaussian("beta_snow_cover", 1.77, 0.2, 0.1, 2.5);
+        EKP.constrained_gaussian("z0_snow_cover", 0.106, 0.03, 0.0, 0.3);
+        EKP.constrained_gaussian("Δα", 0.7, 0.2, 0.0, 1.0);
         # EKP.constrained_gaussian("z0_snow", 0.106, 0.05, 0.01, 0.3),
     ]
     return EKP.combine_distributions(priors)

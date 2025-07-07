@@ -32,7 +32,8 @@ function ClimaCalibrate.observation_map(iteration)
     current_minibatch = EKP.get_current_minibatch(ekp)
     obs = EKP.get_obs(ekp)
     single_obs_len = sum(length(obs))
-    single_member_len = single_obs_len * length(current_minibatch)
+    @info "The length of the member is $single_obs_len"
+    # @info single_member_len
     ensemble_size = EKP.get_N_ens(ekp)
     # Name of observation is determined by short names of OutputVars
     # TODO: I am not sure how I feel about using short names like this
@@ -40,7 +41,7 @@ function ClimaCalibrate.observation_map(iteration)
     obs_series = EKP.get_observation_series(ekp)
     short_names = split(obs_series.observations[1].names[1], ";")
 
-    G_ensemble = Array{Float64}(undef, single_member_len, ensemble_size)
+    G_ensemble = Array{Float64}(undef, single_obs_len, ensemble_size)
     for m in 1:ensemble_size
         member_path =
             ClimaCalibrate.path_to_ensemble_member(output_dir, iteration, m)
@@ -73,6 +74,7 @@ function process_member_data(
     current_minibatch,
 )
     (; sample_date_ranges, nelements) = get_config()
+    @info "Short names: $short_names"
     for short_name in short_names
         short_name in ("lhf", "shf", "swu", "lwu") || error(
             "Do not know how to process member data with variable with the short name $short_name",
@@ -96,7 +98,7 @@ function process_member_data(
         # Replace all NaNs on land with the mean value
         # This is needed to stop small NaN values from stopping the calibration
         nanmean_land_val = mean(filter(!isnan, var.data))
-        ClimaAnalysis.replace(val -> isnan(val) ? nanmean_land_val : val, var)
+        var = ClimaAnalysis.replace(val -> isnan(val) ? nanmean_land_val : val, var)
         var = ocean_mask(var)
 
 
@@ -119,9 +121,10 @@ function process_member_data(
     end
     # Flatten and concatenate the data for each minibatch
     # Note that we implicitly remove spinup when windowing is done
+    @info "Current minibatch is $current_minibatch"
     flattened_data = map(current_minibatch) do idx
         start_date, end_date = sample_date_ranges[idx]
-        map(vars) do var
+        flat_data = map(vars) do var
             var = ClimaAnalysis.window(
                 var,
                 "time",
@@ -131,8 +134,11 @@ function process_member_data(
             )
             ClimaAnalysis.flatten(var).data
         end
+        flat_data
     end
-    return vcat(vcat(flattened_data...)...)
+    member = vcat(vcat(flattened_data...)...)
+    @info "Size of member is $(length(member))"
+    return member
 end
 
 """
@@ -166,16 +172,16 @@ function ClimaCalibrate.analyze_iteration(
     # EKP.TransformUnscented
     diagnostics_folder_path = joinpath(output_path, "global_diagnostics")
     try
-        compute_monthly_leaderboard(
-            output_path,
-            diagnostics_folder_path,
-            "ERA5",
-        )
-        compute_seasonal_leaderboard(
-            output_path,
-            diagnostics_folder_path,
-            "ERA5",
-        )
+        # compute_monthly_leaderboard(
+        #     output_path,
+        #     diagnostics_folder_path,
+        #     "ERA5",
+        # )
+        # compute_seasonal_leaderboard(
+        #     output_path,
+        #     diagnostics_folder_path,
+        #     "ERA5",
+        # )
     catch e
         @error "Error in `analyze_iteration`" error = e
     end
