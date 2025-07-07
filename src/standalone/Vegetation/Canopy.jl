@@ -175,6 +175,10 @@ function CanopyModel{FT}(;
         @assert typeof(boundary_conditions.atmos) <: PrescribedAtmosphere{FT}
     end
 
+    if typeof(photosynthesis) <: PModel{FT}
+        @assert typeof(conductance) <: PModelConductance{FT} "When using PModel for photosynthesis, you must also use PModelConductance for stomatal conductance"
+    end
+
     args = (
         autotrophic_respiration,
         radiative_transfer,
@@ -424,8 +428,8 @@ function ClimaLand.make_update_aux(
         FT,
         <:AutotrophicRespirationModel,
         <:Union{BeerLambertModel, TwoStreamModel},
-        <:Union{FarquharModel, OptimalityFarquharModel},
-        <:MedlynConductanceModel,
+        <:Union{FarquharModel, OptimalityFarquharModel, PModel},
+        <:Union{MedlynConductanceModel, PModelConductance},
         <:PlantHydraulicsModel,
         <:AbstractCanopyEnergyModel,
     },
@@ -564,8 +568,8 @@ function make_compute_exp_tendency(
         FT,
         <:AutotrophicRespirationModel,
         <:Union{BeerLambertModel, TwoStreamModel},
-        <:Union{FarquharModel, OptimalityFarquharModel},
-        <:MedlynConductanceModel,
+        <:Union{FarquharModel, OptimalityFarquharModel, PModel},
+        <:Union{MedlynConductanceModel, PModelConductance},
         <:PlantHydraulicsModel,
         <:Union{PrescribedCanopyTempModel, BigLeafEnergyModel},
     },
@@ -594,8 +598,8 @@ function make_compute_imp_tendency(
         FT,
         <:AutotrophicRespirationModel,
         <:Union{BeerLambertModel, TwoStreamModel},
-        <:Union{FarquharModel, OptimalityFarquharModel},
-        <:MedlynConductanceModel,
+        <:Union{FarquharModel, OptimalityFarquharModel, PModel},
+        <:Union{MedlynConductanceModel, PModelConductance},
         <:PlantHydraulicsModel,
         <:Union{PrescribedCanopyTempModel, BigLeafEnergyModel},
     },
@@ -624,8 +628,8 @@ function ClimaLand.make_compute_jacobian(
         FT,
         <:AutotrophicRespirationModel,
         <:Union{BeerLambertModel, TwoStreamModel},
-        <:Union{FarquharModel, OptimalityFarquharModel},
-        <:MedlynConductanceModel,
+        <:Union{FarquharModel, OptimalityFarquharModel, PModel},
+        <:Union{MedlynConductanceModel, PModelConductance},
         <:PlantHydraulicsModel,
         <:Union{PrescribedCanopyTempModel, BigLeafEnergyModel},
     },
