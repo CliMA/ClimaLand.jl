@@ -150,6 +150,22 @@ function diagnostic_as_vectors(writer::DictWriter, diagnostic; layer = 1)
     return times, vector_layer_n
 end
 
+"""
+    close_output_writers(diagnostics)
+
+Close the output writers in the `diagnostics`, an iterable of
+`ClimaDiagnostics.ScheduledDiagnostic` or `nothing`.
+
+This function should be called at the end of every simulation.
+"""
+function close_output_writers(diagnostics)
+    isnothing(diagnostics) && return nothing
+    for diagnostic in diagnostics
+        close(diagnostic.output_writer)
+    end
+    return nothing
+end
+
 # Do you want to define more diagnostics? Add them here
 include("land_compute_methods.jl")
 

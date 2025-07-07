@@ -193,6 +193,8 @@ sol = ClimaComms.@time ClimaComms.device() SciMLBase.solve(
     callback = SciMLBase.CallbackSet(driver_cb, diag_cb),
 )
 
+ClimaLand.Diagnostics.close_output_writers(diags)
+
 #### ClimaAnalysis ####
 
 # all
