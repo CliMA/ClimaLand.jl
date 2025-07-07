@@ -329,4 +329,4 @@ model = setup_model(FT, context, start_date, Δt, domain, params)
 simulation = LandSimulation(FT, start_date, stop_date, Δt, model; outdir)
 ClimaLand.Simulations.solve!(simulation)
 
-LandSimVis.make_heatmaps(simulation; outdir)
+LandSimVis.make_heatmaps(simulation; outdir, date = stop_date)

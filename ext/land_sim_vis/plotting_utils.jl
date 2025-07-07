@@ -30,7 +30,7 @@ function make_heatmaps(
     plot_name = "figures.pdf",
     levels = nothing,
     plot! = viz.heatmap2D_on_globe!,
-    plot_mask = Dict(:mask => viz.oceanmask()),
+    mask = viz.oceanmask(),
     plot_kwargs = Dict(
         :mask => ClimaAnalysis.Utils.kwargs(color = :white),
         :plot => ClimaAnalysis.Utils.kwargs(rasterize = true),
@@ -44,12 +44,10 @@ function make_heatmaps(
                 DateTime(var.attributes["start_date"]) .+
                 Second.(ClimaAnalysis.times(var))
             idx = argmin(abs.(date .- avail_dates))
-            if levels isa Nothing
-                plot_zvals = [ClimaAnalysis.altitudes(var)[end]] # sfc
-            else
-                plot_zvals = ClimaAnalysis.altitudes(var)[levels]
-            end
             if ClimaAnalysis.has_altitude(var)
+                plot_zvals =
+                    levels isa Nothing ? [ClimaAnalysis.altitudes(var)[end]] :
+                    ClimaAnalysis.altitudes(var)[levels] # sfc or levels chosen
                 for zval in plot_zvals
                     kwarg_z = Dict(:z => zval)
                     fig = CairoMakie.Figure(size = (600, 400))
@@ -60,7 +58,7 @@ function make_heatmaps(
                             time = ClimaAnalysis.times(var)[idx];
                             kwarg_z...,
                         ),
-                        plot_mask...,
+                        mask = mask,
                         more_kwargs = plot_kwargs,
                     )
                     CairoMakie.save(
@@ -81,7 +79,7 @@ function make_heatmaps(
                         time = ClimaAnalysis.times(var)[idx];
                         kwarg_z...,
                     ),
-                    plot_mask...,
+                    mask = mask,
                     more_kwargs = plot_kwargs,
                 )
                 CairoMakie.save(
