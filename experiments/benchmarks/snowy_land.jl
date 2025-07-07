@@ -29,6 +29,7 @@ delete!(ENV, "JULIA_CUDA_MEMORY_POOL")
 import SciMLBase
 import ClimaComms
 ClimaComms.@import_required_backends
+import CUDA
 import ClimaTimeSteppers as CTS
 import ClimaCore
 @show pkgversion(ClimaCore)
@@ -432,7 +433,6 @@ if profiler == "flamegraph"
     @info "Done profiling"
 
     if ClimaComms.device() isa ClimaComms.CUDADevice
-        import CUDA
         lprob, lode_algo, lΔt, lcb = setup_simulation()
         p = CUDA.@profile SciMLBase.solve(
             lprob,
@@ -474,7 +474,8 @@ if profiler == "flamegraph"
         ProfileCanvas.html_file(alloc_flame_file, profile)
         @info "Saved allocation flame to $alloc_flame_file"
     end
-    if get(ENV, "BUILDKITE_PIPELINE_SLUG", nothing) == "climaland-benchmark"
+    if get(ENV, "BUILDKITE_PIPELINE_SLUG", nothing) == "climaland-benchmark" &&
+       ClimaComms.device() isa ClimaComms.CUDADevice
         PREVIOUS_BEST_TIME = 0.74
         if average_timing_s > PREVIOUS_BEST_TIME + std_timing_s
             @info "Possible performance regression, previous average time was $(PREVIOUS_BEST_TIME)"

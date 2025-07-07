@@ -22,7 +22,7 @@ include("initial_conditions.jl")
         I <: SciMLBase.DEIntegrator,
     }
 
-the ClimaLand LandSimulation struct, which specifies 
+the ClimaLand LandSimulation struct, which specifies
 - the discrete set of equations to solve (defined by the `model`);
 - the timestepping algorithm;
 - user callbacks (passed as a tuple) to be executed at specific times in the simulations;
@@ -32,13 +32,13 @@ User callbacks are optional: examples currently include callbacks that estimate 
 to solution and SYPD of the simulation as it runs, checkpoint the state, or check the solution
 for NaNs. Others can be added here.
 
-Diagnostics are implemented as callbacks, and are also optional. 
-However, a default is provided. `diagnostics` is expected to be a 
+Diagnostics are implemented as callbacks, and are also optional.
+However, a default is provided. `diagnostics` is expected to be a
 list of `ClimaDiagnostics.ScheduledDiagnostics`.
 
 Finally, the private field _required_callbacks consists of callbacks that are required for the
 simulation to run correctly. Currently, this includes the callbacks which update the atmospheric
-forcing and update the LAI using prescribed data. 
+forcing and update the LAI using prescribed data.
 """
 struct LandSimulation{
     M <: ClimaLand.AbstractModel,
