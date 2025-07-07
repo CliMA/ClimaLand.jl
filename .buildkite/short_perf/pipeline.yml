@@ -1,0 +1,106 @@
+# This pipeline is designed as an alternative to the full benchmarking pipeline.
+# It does not run cpu benchmarks, or generate nsys reports.
+# Benchmark tests are conditionally triggered by changes to specific files/directories
+# in comparison to the branch point from main.
+
+# If a file in src/simulations/ or src/shared_utilities is modified, then
+# both the snowy land an bucket model will be tested for performance regression.
+
+# If a file in src/standalone/Bucket is modified, the bucket model is tested. The soil model
+# is only tested if no snow or canopy model files are modified, and if no shared_utilities
+# or simulations files are modified. If the canopy model, snow model, land model, shared_utilities,
+# or simulations files are modified, then the snowy land model is tested
+
+# This will not catch all changes, as it relies on changes to specific directories, and
+# methods could be defined in other locations.
+
+
+agents:
+  queue: clima
+  modules: climacommon/2025_03_18 nsight-systems/2024.6.1
+
+env:
+  JULIA_DEPOT_PATH: "${BUILDKITE_BUILD_PATH}/${BUILDKITE_PIPELINE_SLUG}/depot/default"
+  OPENBLAS_NUM_THREADS: 1
+  SLURM_KILL_BAD_EXIT: 1
+  JULIA_CUDA_MEMORY_POOL: "cuda"
+  JULIA_MAX_NUM_PRECOMPILE_FILES: 100
+
+steps:
+  - label: "init environment :computer:"
+    key: "init_env"
+    concurrency: 1
+    concurrency_group: "depot/climaland-perf-regression"
+    command:
+      - "echo $$JULIA_DEPOT_PATH"
+
+      - echo "--- Instantiate project"
+      - "julia --project -e 'using Pkg; Pkg.instantiate(;verbose=true)'"
+      - "julia --project -e 'using Pkg; Pkg.status()'"
+
+      - echo "--- Instantiate experiments"
+      - 'julia --project=.buildkite -e ''using Pkg; Pkg.develop(;path="."); Pkg.instantiate(;verbose=true)'''
+      - "julia --project=.buildkite -e 'using Pkg; Pkg.status()'"
+    agents:
+      slurm_gpus: 1
+      slurm_nodes: 1
+      slurm_ntasks: 8
+    env:
+      JULIA_NUM_PRECOMPILE_TASKS: 8
+
+  - wait
+
+  - group: "Benchmark (GPU)"
+    steps:
+      - label: "Triggering based on changes"
+        plugins:
+          - monorepo-diff#v1.5.1:
+              diff: ./.buildkite/short_perf/diff_from_branch_point.sh
+              env:
+                  - CLIMACOMMS_DEVICE=CUDA
+              watch:
+                - path:
+                    - "src/standalone/Bucket/*"
+                    - "src/simulations/*"
+                    - "src/shared_utilities/*"
+                  config:
+                    command: "julia --color=yes --project=.buildkite experiments/benchmarks/bucket.jl"
+                    agents:
+                      slurm_mem: 8GB
+                      slurm_gpus: 1
+                    concurrency: 1
+                    concurrency_group: "depot/climaland-perf-regression-tests"
+                    artifact_paths:
+                      - "bucket_benchmark_gpu/*"
+                - path:
+                    - "src/standalone/Vegetation/*"
+                    - "src/standalone/Snow/*"
+                    - "src/simulations/*"
+                    - "src/shared_utilities/*"
+                    - "src/integrated/land*"
+                  config:
+                    command: "julia --color=yes --project=.buildkite experiments/benchmarks/snowy_land.jl"
+                    concurrency: 1
+                    concurrency_group: "depot/climaland-perf-regression-tests"
+                    agents:
+                      slurm_mem: 24GB
+                      slurm_gpus: 1
+                    artifact_paths:
+                      - "snowy_land_benchmark_gpu/*"
+                - path:
+                    - "src/standalone/Soil/*"
+                  except_path:
+                    - "src/standalone/Vegetation/*"
+                    - "src/standalone/Snow/*"
+                    - "src/simulations/*"
+                    - "src/shared_utilities/*"
+                    - "src/integrated/land*"
+                  config:
+                    command: "julia --color=yes --project=.buildkite experiments/benchmarks/soil.jl"
+                    concurrency: 1
+                    concurrency_group: "depot/climaland-perf-regression-tests"
+                    agents:
+                      slurm_mem: 16GB
+                      slurm_gpus: 1
+                    artifact_paths:
+                      - "soil_benchmark_gpu/*"
