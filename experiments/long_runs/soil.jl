@@ -181,6 +181,6 @@ simulation =
 @info "Stop Date: $stop_date"
 ClimaLand.Simulations.solve!(simulation)
 
-LandSimVis.make_annual_timeseries(simulation; outdir)
-LandSimVis.make_heatmaps(simulation; outdir, date = stop_date)
-LandSimVis.check_conservation(simulation; outdir)
+LandSimVis.make_annual_timeseries(simulation; savedir = root_path)
+LandSimVis.make_heatmaps(simulation; savedir = root_path, date = stop_date)
+LandSimVis.check_conservation(simulation; savedir = root_path)

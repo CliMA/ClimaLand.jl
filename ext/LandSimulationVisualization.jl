@@ -16,7 +16,7 @@ include("land_sim_vis/leaderboard/data_sources.jl")
 include("land_sim_vis/leaderboard/leaderboard.jl")
 
 """
-    make_leaderboard_plots(sim::ClimaLand.Simulations.LandSimulation; outdir = ".",  leaderboard_data_sources = ["ERA5", "ILAMB"])
+    make_leaderboard_plots(sim::ClimaLand.Simulations.LandSimulation; savedir = ".",  leaderboard_data_sources = ["ERA5", "ILAMB"])
 
 
 Uses the diagnostic output of the `sim` to create leaderboard plots, comparing the output of the simulation to the ``observations"
@@ -24,7 +24,7 @@ from ERA5 or ILAMB. In the future, other observations can be included - see the 
 """
 function make_leaderboard_plots(
     sim::ClimaLand.Simulations.LandSimulation;
-    outdir = ".",
+    savedir = ".",
     leaderboard_data_sources = ["ERA5", "ILAMB"],
 )
     model = sim.model
@@ -32,7 +32,7 @@ function make_leaderboard_plots(
         model,
         ClimaLand.get_domain(model),
         sim.diagnostics;
-        outdir,
+        savedir,
         leaderboard_data_sources,
     )
 end
@@ -51,13 +51,13 @@ end
         model::ClimaLand.LandModel,
         domain::ClimaLand.Domains.SphericalShell,
         diagnostics;
-        outdir,
+        savedir,
         leaderboard_data_sources = ["ERA5", "ILAMB"],
 )
 
 Creates the leaderboard plots a global LandModel simulations with diagnostics output
 as defined by `diagnostics` using `leaderboard_data_sources` as the source of truth; 
-saves the output to files in `outdir`.
+saves the output to files in `savedir`.
 
 The first two arguments are used for dispatch only.
 """
@@ -65,7 +65,7 @@ function make_leaderboard_plots(
     model::ClimaLand.LandModel,
     domain::ClimaLand.Domains.SphericalShell,
     diagnostics;
-    outdir = ".",
+    savedir = ".",
     leaderboard_data_sources = ["ERA5", "ILAMB"],
 )
     # assert that data spans multiple years and is monthly output?
@@ -73,7 +73,7 @@ function make_leaderboard_plots(
     diagdir = first(diagnostics).output_writer.output_dir
     short_names = [d.variable.short_name for d in diagnostics]
     diagnostics_folder_path = diagdir
-    leaderboard_base_path = outdir
+    leaderboard_base_path = savedir
     for data_source in leaderboard_data_sources
         compute_monthly_leaderboard(
             leaderboard_base_path,
@@ -91,7 +91,7 @@ end
 """
      make_heatmaps(
         sim::ClimaLand.Simulations.LandSimulation;
-        outdir = ".",
+        savedir = ".",
         short_names = nothing,
         date = nothing,
         levels = nothing,
@@ -101,7 +101,7 @@ end
 Makes heatmaps using the diagnostics output of the `sim` simulation,
 specifically for the list of variables `short_names`, at the date
 given by `date`, and at the layers defined by `levels`; the output
-plots are saved in `outdir`.
+plots are saved in `savedir`.
 
 Please note that 
 - `date` must be a DateTime, and the output closest to this date will be used 
@@ -115,7 +115,7 @@ Passing levels = nothing defaults to plotting surface values of 3D fields.
 """
 function make_heatmaps(
     sim::ClimaLand.Simulations.LandSimulation;
-    outdir = ".",
+    savedir = ".",
     short_names = nothing,
     date = nothing,
     levels = nothing,
@@ -127,7 +127,7 @@ function make_heatmaps(
         ClimaLand.get_domain(model),
         sim.diagnostics;
         plot_name,
-        outdir,
+        savedir,
         short_names,
         date,
         levels,
@@ -142,7 +142,7 @@ function make_heatmaps(
     },
     diagnostics;
     plot_name = "figures.pdf",
-    outdir,
+    savedir,
     short_names,
     date,
     levels,
@@ -155,7 +155,7 @@ function make_heatmaps(
     elseif short_names isa Nothing
         short_names = avail_short_names
     end
-    make_heatmaps(outdir, diagdir, short_names, date; plot_name, levels)
+    make_heatmaps(savedir, diagdir, short_names, date; plot_name, levels)
 end
 
 function make_heatmaps(
@@ -163,7 +163,7 @@ function make_heatmaps(
     domain::Union{ClimaLand.Domains.HybridBox, ClimaLand.Domains.Plane},
     diagnostics;
     plot_name = "figures.pdf",
-    outdir,
+    savedir,
     short_names,
     date,
     levels,
@@ -177,14 +177,14 @@ function make_heatmaps(
         short_names = avail_short_names
     end
     make_heatmaps(
-        outdir,
+        savedir,
         diagdir,
         short_names,
         date;
         plot_name,
         levels,
         plot! = viz.heatmap2D!,
-        mask = nothing,
+        plot_mask = Dict(),
         plot_kwargs = Dict(
             :plot => ClimaAnalysis.Utils.kwargs(rasterize = true),
         ),
@@ -197,7 +197,7 @@ function make_heatmaps(
     domain::Union{ClimaLand.Domains.Point, ClimaLand.Domains.Column},
     diagnostics;
     plot_name,
-    outdir,
+    savedir,
     short_names,
     date,
     levels,
@@ -208,7 +208,7 @@ end
 """
      make_annual_timeseries(
         sim::ClimaLand.Simulations.LandSimulation;
-        outdir = ".",
+        savedir = ".",
         short_names = nothing,
 	plot_name = "annual_timeseries.pdf",
 )
@@ -216,7 +216,7 @@ end
 Makes timeseries of the domain-averaged variable, 
  using the diagnostics output of the `sim` simulation,
 specifically for the list of variables `short_names; the output
-plots are saved in `outdir`.
+plots are saved in `savedir`.
 
 Please note that 
 - `short_names` can be a string (single variable), a list, or `nothing`, in which
@@ -225,7 +225,7 @@ case all possible variables will be plotted
 """
 function make_annual_timeseries(
     sim::ClimaLand.Simulations.LandSimulation;
-    outdir = ".",
+    savedir = ".",
     short_names = nothing,
     plot_name = "annual_timeseries.pdf",
 )
@@ -234,7 +234,7 @@ function make_annual_timeseries(
         ClimaLand.get_domain(model),
         sim.diagnostics;
         plot_name,
-        outdir,
+        savedir,
         short_names,
     )
 end
@@ -243,7 +243,7 @@ function make_annual_timeseries(
     domain::ClimaLand.Domains.AbstractDomain,
     diagnostics;
     plot_name = "annual_timeseries.pdf",
-    outdir = ".",
+    savedir = ".",
     short_names = nothing,
 )
     @info "No method matching make_annual_timeseries for $domain."
@@ -256,7 +256,7 @@ function make_annual_timeseries(
     },
     diagnostics;
     plot_name = "annual_timeseries.pdf",
-    outdir = ".",
+    savedir = ".",
     short_names = nothing,
 )
     diagdir = first(diagnostics).output_writer.output_dir
@@ -267,18 +267,23 @@ function make_annual_timeseries(
     elseif short_names isa Nothing
         short_names = avail_short_names
     end
-    make_ocean_masked_annual_timeseries(outdir, diagdir, short_names; plot_name)
+    make_ocean_masked_annual_timeseries(
+        savedir,
+        diagdir,
+        short_names;
+        plot_name,
+    )
 end
 
 """
-    check_conservation(sim::ClimaLand.Simulations.LandSimulation; outdir = ".", plot_name = "conservation_figures.pdf")
+    check_conservation(sim::ClimaLand.Simulations.LandSimulation; savedir = ".", plot_name = "conservation_figures.pdf")
 
 Creates a plot which assess conservation of energy and water by the simulation;
-the outut is saved in `outdir`.
+the outut is saved in `savedir`.
 """
 function check_conservation(
     sim::ClimaLand.Simulations.LandSimulation;
-    outdir = ".",
+    savedir = ".",
     plot_name = "conservation_figures.pdf",
 )
     model = sim.model
@@ -286,7 +291,7 @@ function check_conservation(
         model,
         ClimaLand.get_domain(model),
         sim.diagnostics,
-        outdir,
+        savedir,
         plot_name,
     )
 end
@@ -299,11 +304,11 @@ function check_conservation(
     model::ClimaLand.Soil.EnergyHydrology,
     domain::ClimaLand.Domains.SphericalShell,
     diagnostics,
-    outdir,
+    savedir,
     plot_name,
 )
     diagdir = first(diagnostics).output_writer.output_dir
-    check_conservation(outdir, diagdir; plot_name)
+    check_conservation(savedir, diagdir; plot_name)
 
 end
 

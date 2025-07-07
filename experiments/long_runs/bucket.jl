@@ -159,5 +159,10 @@ simulation = LandSimulation(
 solve!(simulation);
 
 short_names = ["tsfc", "lhf", "shf", "wsoil"]
-LandSimVis.make_annual_timeseries(simulation; outdir, short_names)
-LandSimVis.make_heatmaps(simulation; outdir, short_names, date = stop_date)
+LandSimVis.make_annual_timeseries(simulation; savedir = root_path, short_names)
+LandSimVis.make_heatmaps(
+    simulation;
+    savedir = root_path,
+    short_names,
+    date = stop_date,
+)

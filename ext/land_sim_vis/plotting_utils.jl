@@ -1,6 +1,6 @@
 """
     make_heatmaps(
-        outdir,
+        savedir,
         diagdir,
         short_names,
         date;
@@ -14,30 +14,30 @@
         ),
     )
 
-Generates one .pdf file called `plot_name` in the provided outdir,
+Generates one .pdf file called `plot_name` in the provided savedir,
 this .pdf contains global maps for the provided short_names variables
-contained in the provided outdir folder (see ClimaAnalysis documentation),
+contained in the provided savedir folder (see ClimaAnalysis documentation),
 at the date provided. Variables with multiple levels are plotted at each level
 in levels; if levels is nothing, the surface is plotted by default.
 
 The plotting defaults are set for global plots with an ocean mask.
 """
 function make_heatmaps(
-    outdir,
+    savedir,
     diagdir,
     short_names,
     date;
     plot_name = "figures.pdf",
     levels = nothing,
     plot! = viz.heatmap2D_on_globe!,
-    mask = viz.oceanmask(),
+    plot_mask = Dict(:mask => viz.oceanmask()),
     plot_kwargs = Dict(
         :mask => ClimaAnalysis.Utils.kwargs(color = :white),
         :plot => ClimaAnalysis.Utils.kwargs(rasterize = true),
     ),
 )
     simdir = ClimaAnalysis.SimDir(diagdir)
-    mktempdir(outdir) do tmpdir
+    mktempdir(savedir) do tmpdir
         for short_name in short_names
             var = get(simdir; short_name)
             avail_dates =
@@ -58,8 +58,8 @@ function make_heatmaps(
                             time = ClimaAnalysis.times(var)[idx];
                             kwarg_z...,
                         ),
-                        mask = mask,
                         more_kwargs = plot_kwargs,
+                        plot_mask...,
                     )
                     CairoMakie.save(
                         joinpath(
@@ -79,8 +79,8 @@ function make_heatmaps(
                         time = ClimaAnalysis.times(var)[idx];
                         kwarg_z...,
                     ),
-                    mask = mask,
                     more_kwargs = plot_kwargs,
+                    plot_mask...,
                 )
                 CairoMakie.save(
                     joinpath(tmpdir, "$(short_name)_$(avail_dates[idx]).pdf"),
@@ -90,24 +90,24 @@ function make_heatmaps(
         end
         figures = readdir(tmpdir, join = true)
         pdfunite() do unite
-            run(Cmd([unite, figures..., joinpath(outdir, plot_name)]))
+            run(Cmd([unite, figures..., joinpath(savedir, plot_name)]))
         end
     end
     return nothing
 end
 
 """
-    check_conservation(outdir, diagdir; plot_name = "conservation_figures.pdf")
+    check_conservation(savedir, diagdir; plot_name = "conservation_figures.pdf")
 
 Generates one .pdf file called `plot_name`" in the provided 
-outdir.
+savedir.
 
 The resulting .pdf contains a time series of the global mean 
 (area-weighted) energy and water volume error, in units of 
 `J/m^2` and `m`. Only continents are included in the global average. 
 """
 function check_conservation(
-    outdir,
+    savedir,
     diagdir;
     plot_name = "conservation_figures.pdf",
 )
@@ -168,7 +168,7 @@ function check_conservation(
     typical_value =
         [@sprintf("%1.2le", mean_energy), @sprintf("%1.2le", mean_water_volume)]
     units = ["J/m²", "m³/m²"]
-    mktempdir(outdir) do tmpdir
+    mktempdir(savedir) do tmpdir
         for i in 1:2
             fig_cycle = CairoMakie.Figure(size = (600, 400))
             ax = Axis(
@@ -182,7 +182,7 @@ function check_conservation(
         end
         figures = readdir(tmpdir, join = true)
         pdfunite() do unite
-            run(Cmd([unite, figures..., joinpath(outdir, plot_name)]))
+            run(Cmd([unite, figures..., joinpath(savedir, plot_name)]))
         end
     end
     return nothing
@@ -190,24 +190,24 @@ end
 
 """
     make_ocean_masked_annual_timeseries(
-        outdir,
+        savedir,
         diagdir,
         short_names;
 	plot_name = "annual_timeseries.pdf"
     )
 
-Generates one .pdf file called `plot_name` in the provided outdir,
+Generates one .pdf file called `plot_name` in the provided savedir,
 this .pdf contains the timeseries for the global mean of the provided short_names variables
-contained in the provided outdir folder (see ClimaAnalysis documentation). 
+contained in the provided savedir folder (see ClimaAnalysis documentation). 
 """
 function make_ocean_masked_annual_timeseries(
-    outdir,
+    savedir,
     diagdir,
     short_names;
     plot_name = "annual_timeseries.pdf",
 )
     simdir = ClimaAnalysis.SimDir(diagdir)
-    mktempdir(outdir) do tmpdir
+    mktempdir(savedir) do tmpdir
         for short_name in short_names
             var = get(simdir; short_name)
             kwarg_z = ClimaAnalysis.has_altitude(var) ? Dict(:z => 1) : Dict() # if has altitude, take first layer
@@ -289,7 +289,7 @@ function make_ocean_masked_annual_timeseries(
         end
         figures = readdir(tmpdir, join = true)
         pdfunite() do unite
-            run(Cmd([unite, figures..., joinpath(outdir, plot_name)]))
+            run(Cmd([unite, figures..., joinpath(savedir, plot_name)]))
         end
     end
     return nothing
