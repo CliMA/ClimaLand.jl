@@ -5,6 +5,7 @@ import ...Parameters as LP
 using ClimaCore
 using LazyBroadcast: lazy
 using Thermodynamics
+using NVTX
 using ClimaLand
 using ClimaLand:
     AbstractAtmosphericDrivers,
@@ -661,7 +662,7 @@ auxiliary_domain_names(snow::SnowModel) = (
 ClimaLand.name(::SnowModel) = :snow
 
 function ClimaLand.make_update_aux(model::SnowModel{FT}) where {FT}
-    function update_aux!(p, Y, t)
+    NVTX.@annotate function update_aux!(p, Y, t)
         parameters = model.parameters
         # The ordering is important here
         @. p.snow.q_l = liquid_mass_fraction(Y.snow.S, Y.snow.S_l)
@@ -715,7 +716,7 @@ function ClimaLand.make_update_aux(model::SnowModel{FT}) where {FT}
 end
 
 function ClimaLand.make_update_boundary_fluxes(model::SnowModel{FT}) where {FT}
-    function update_boundary_fluxes!(p, Y, t)
+    NVTX.@annotate function update_boundary_fluxes!(p, Y, t)
         # First compute the boundary fluxes
         snow_boundary_fluxes!(model.boundary_conditions, model, Y, p, t)
         # Next, clip them in case the snow will melt in this timestep
@@ -754,7 +755,7 @@ function ClimaLand.make_update_boundary_fluxes(model::SnowModel{FT}) where {FT}
 end
 
 function ClimaLand.make_compute_exp_tendency(model::SnowModel{FT}) where {FT}
-    function compute_exp_tendency!(dY, Y, p, t)
+    NVTX.@annotate function compute_exp_tendency!(dY, Y, p, t)
         # positive fluxes are TOWARDS atmos; negative fluxes increase quantity in snow
         @. dY.snow.S = -p.snow.applied_water_flux
         @. dY.snow.S_l = -p.snow.liquid_water_flux
