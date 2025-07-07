@@ -4,7 +4,7 @@
         diagdir,
         short_names,
         date;
-        plot_name = "figures_$date.pdf",
+        plot_name = "figures.pdf",
         levels = nothing,
         plot! = viz.heatmap2D_on_globe!,
         plot_mask = Dict(:mask => viz.oceanmask()),
@@ -27,7 +27,7 @@ function make_heatmaps(
     diagdir,
     short_names,
     date;
-    plot_name = "figures_$date.pdf",
+    plot_name = "figures.pdf",
     levels = nothing,
     plot! = viz.heatmap2D_on_globe!,
     plot_mask = Dict(:mask => viz.oceanmask()),

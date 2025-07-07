@@ -355,6 +355,6 @@ simulation = LandSimulation(FT, start_date, stop_date, Δt, model; outdir)
 @info "Stop Date: $stop_date"
 ClimaLand.Simulations.solve!(simulation)
 
-LandSimVis.make_leaderboard_plots(simulation; outdir)
 LandSimVis.make_annual_timeseries(simulation; outdir)
 LandSimVis.make_heatmaps(simulation; outdir, date = stop_date)
+LandSimVis.make_leaderboard_plots(simulation; outdir)
