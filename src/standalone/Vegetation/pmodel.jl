@@ -423,7 +423,7 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
     (; _, λ_γ_PAR, Ω) = canopy.radiative_transfer.parameters
     energy_per_mole_photon_par = planck_h * lightspeed / λ_γ_PAR * N_a
     R = LP.gas_constant(earth_param_set)
-    
+
     T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
     f_abs = p.canopy.radiative_transfer.par.abs
     ca = p.drivers.c_co2
@@ -551,17 +551,6 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
     @. p.canopy.photosynthesis.Rd = Rd
     @. p.canopy.photosynthesis.An = min(Aj, Ac) - p.canopy.photosynthesis.Rd 
     @. p.canopy.photosynthesis.GPP = compute_GPP(p.canopy.photosynthesis.An, extinction_coeff(G_Function, cosθs), LAI, Ω)
-
-    @. p.canopy.conductance.r_stomata_canopy =
-        1 / upscale_leaf_conductance(
-            pmodel_gs(p.canopy.photosynthesis.IntVars.ci / ca, 
-                ca, 
-                p.canopy.photosynthesis.An) * Drel, # leaf level conductance in mol H2O Pa^-1
-            LAI,
-            T_air,
-            R,
-            P_air,
-        )
 end
 
 get_Vcmax25(p, m::PModelParameters) =
