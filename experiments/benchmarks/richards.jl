@@ -80,24 +80,6 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
     subsurface_space = domain.space.subsurface
 
     start_date = DateTime(2008)
-    (; ν, hydrology_cm, K_sat, θ_r) =
-        ClimaLand.Soil.soil_vangenuchten_parameters(subsurface_space, FT)
-    S_s = ClimaCore.Fields.zeros(subsurface_space) .+ FT(1e-3)
-    f_over = FT(3.28) # 1/m
-    R_sb = FT(1.484e-4 / 1000) # m/s
-    runoff_model = ClimaLand.Soil.Runoff.TOPMODELRunoff{FT}(;
-        f_over = f_over,
-        f_max = ClimaLand.Soil.topmodel_fmax(surface_space, FT),
-        R_sb = R_sb,
-    )
-    soil_params = ClimaLand.Soil.RichardsParameters(;
-        hydrology_cm = hydrology_cm,
-        ν = ν,
-        K_sat = K_sat,
-        S_s = S_s,
-        θ_r = θ_r,
-    )
-
     era5_ncdata_path =
         ClimaLand.Artifacts.era5_land_forcing_data2008_path(; context)
 
@@ -113,19 +95,11 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
         regridder_type,
         file_reader_kwargs = (; preprocess_func = (data) -> -data / 1000),
     )
-    atmos = ClimaLand.PrescribedPrecipitation{FT, typeof(precip)}(precip)
-    bottom_bc = ClimaLand.Soil.WaterFluxBC((p, t) -> 0.0)
-    bc = (;
-        top = ClimaLand.Soil.RichardsAtmosDrivenFluxBC(atmos, runoff_model),
-        bottom = bottom_bc,
+    forcing = (;
+        atmos = ClimaLand.PrescribedPrecipitation{FT, typeof(precip)}(precip),
     )
-    model = ClimaLand.Soil.RichardsModel{FT}(;
-        parameters = soil_params,
-        domain = domain,
-        boundary_conditions = bc,
-        sources = (),
-        lateral_flow = false,
-    )
+
+    model = ClimaLand.Soil.RichardsModel(FT, domain, forcing)
 
     Y, p, cds = initialize(model)
     z = ClimaCore.Fields.coordinate_field(cds.subsurface).z

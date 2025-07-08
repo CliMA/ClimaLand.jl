@@ -96,7 +96,7 @@ function setup_simulation(; greet = false)
         max_wind_speed = 25.0,
         time_interpolation_method,
     )
-    model = ClimaLand.Soil.EnergyHydrology(FT, domain, forcing; earth_param_set)
+    model = ClimaLand.Soil.EnergyHydrology(FT, domain, forcing, earth_param_set)
     diagnostics = ClimaLand.default_diagnostics(
         model,
         start_date;
