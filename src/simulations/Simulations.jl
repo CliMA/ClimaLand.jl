@@ -21,7 +21,7 @@ include("initial_conditions.jl")
         I <: SciMLBase.DEIntegrator,
     }
 
-the ClimaLand LandSimulation struct, which specifies 
+the ClimaLand LandSimulation struct, which specifies
 - the discrete set of equations to solve (defined by the `model`);
 - the timestepping algorithm;
 - user callbacks (passed as a tuple) to be executed at specific times in the simulations;
@@ -31,13 +31,13 @@ User callbacks are optional: examples currently include callbacks that estimate 
 to solution and SYPD of the simulation as it runs, checkpoint the state, or check the solution
 for NaNs. Others can be added here.
 
-Diagnostics are implemented as callbacks, and are also optional. 
-However, a default is provided. `diagnostics` is expected to be a 
+Diagnostics are implemented as callbacks, and are also optional.
+However, a default is provided. `diagnostics` is expected to be a
 list of `ClimaDiagnostics.ScheduledDiagnostics`.
 
 Finally, the private field _required_callbacks consists of callbacks that are required for the
 simulation to run correctly. Currently, this includes the callbacks which update the atmospheric
-forcing and update the LAI using prescribed data. 
+forcing and update the LAI using prescribed data.
 """
 struct LandSimulation{
     M <: ClimaLand.AbstractModel,
@@ -57,6 +57,7 @@ struct LandSimulation{
     _integrator::I
 end
 
+# TODO: Add doc string
 function LandSimulation(
     FT,
     start_date::Dates.DateTime,
@@ -97,6 +98,7 @@ function LandSimulation(
             start_date,
         ),
     ),
+    sol_save_interval = nothing,
 )
     if !isnothing(diagnostics) &&
        !isempty(diagnostics) &&
@@ -104,9 +106,11 @@ function LandSimulation(
         @warn "Note that the kwarg outdir and outdir used in diagnostics are inconsistent; using $(first(diagnostics).output_writer.output_dir)"
     end
 
-    domain = ClimaLand.get_domain(model)
     t0 = ITime(0, Dates.Second(1), start_date)
-    tf = ITime(Dates.seconds(stop_date - start_date), epoch = start_date)
+    tf = ITime(
+        Dates.value(convert(Dates.Second, stop_date - start_date)),
+        epoch = start_date,
+    )
     Δt = ITime(Δt, epoch = start_date)
     t0, tf, Δt = promote(t0, tf, Δt)
 
@@ -144,6 +148,9 @@ function LandSimulation(
 
     # Required callbacks
     updateat = [promote(t0:(ITime(3600 * 3)):tf...)...]
+    saveat =
+        isnothing(sol_save_interval) ? [] :
+        [promote(t0:(ITime(sol_save_interval)):tf...)...]
     drivers = ClimaLand.get_drivers(model)
     updatefunc = ClimaLand.make_update_drivers(drivers)
     driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
@@ -158,13 +165,13 @@ function LandSimulation(
     # Collect all callbacks
     callbacks =
         SciMLBase.CallbackSet(user_callbacks..., required_callbacks..., diag_cb)
-
     _integrator = SciMLBase.init(
         problem,
         timestepper;
         dt = Δt,
         callback = callbacks,
         adaptive = false,
+        saveat,
     )
     return LandSimulation(
         model,
