@@ -3,6 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 -------
+- Fix texure norm bug (soil composition) PR[#1217](https://github.com/CliMA/ClimaLand.jl/pull/1217)
 - ![breaking change][badge-💥breaking] Remove ModelSetup.jl and split spatial parameter functions up PR[#1211](https://github.com/CliMA/ClimaLand.jl/pull/1211)
 - ![breaking change][badge-💥breaking] Rename all `comms_ctx` to `context` PR[#1207](https://github.com/CliMA/ClimaLand.jl/pull/1207)
 - Output NaNs in diagnostics where the ocean is PR[#1200](https://github.com/CliMA/ClimaLand.jl/pull/1200)
