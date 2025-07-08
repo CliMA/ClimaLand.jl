@@ -594,19 +594,22 @@ function count_nans_state(
     verbose = false,
 )
     if isnothing(mask)
-        num_nans = sum(@. ifelse(isnan(state), 1, 0))
+        num_nans = count(isnan, parent(state))
     else
-        num_nans = sum(@. ifelse(isnan(state), mask, 0))
-    end
-    num_nans = Int(num_nans)
-    if isapprox(num_nans, 0)
+        num_nans = mapreduce(
+            (s, m) -> m != 0 && isnan(s), 
+            Base.add_sum, 
+            parent(state), 
+            parent(mask)
+        )
+    end    
+    if num_nans == 0 
         verbose && @info "No NaNs found"
     else
         @warn "$num_nans NaNs found"
     end
     return nothing
 end
-
 """
     NaNCheckCallback(nancheck_frequency::Union{AbstractFloat, Dates.Period},
                         start_date, dt)
