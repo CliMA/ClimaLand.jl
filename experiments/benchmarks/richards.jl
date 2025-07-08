@@ -112,13 +112,12 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
         α::FT,
         n::FT,
         S_s::FT,
-        fmax,
     ) where {FT}
         m = 1 - 1 / n
         zmin = FT(-50.0)
         zmax = FT(0.0)
 
-        z_∇ = FT(zmin / 5.0 + (zmax - zmin) / 2.5 * (fmax - 0.35) / 0.7)
+        z_∇ = FT(zmin / 5.0 + (zmax - zmin) / 2.5)
         if z > z_∇
             S = FT((FT(1) + (α * (z - z_∇))^n)^(-m))
             ϑ_l = S * (ν - θ_r) + θ_r
@@ -128,10 +127,14 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
         return FT(ϑ_l)
     end
 
+    hydrology_cm = model.parameters.hydrology_cm
+    ν = model.parameters.ν
+    θ_r = model.parameters.S_s
+    S_s = model.parameters.θ_r
     # Set initial state values
     vg_α = hydrology_cm.α
     vg_n = hydrology_cm.n
-    Y.soil.ϑ_l .= hydrostatic_profile.(lat, z, ν, θ_r, vg_α, vg_n, S_s, f_max)
+    Y.soil.ϑ_l .= hydrostatic_profile.(lat, z, ν, θ_r, vg_α, vg_n, S_s)
     # Create model update functions
     set_initial_cache! = make_set_initial_cache(model)
     exp_tendency! = make_exp_tendency(model)

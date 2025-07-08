@@ -96,8 +96,7 @@ import ClimaLand:
     turbulent_fluxes!,
     get_drivers,
     total_liq_water_vol_per_area!,
-    total_energy_per_area!,
-    RootExtraction
+    total_energy_per_area!
 export RichardsModel,
     RichardsParameters,
     EnergyHydrology,
@@ -196,7 +195,7 @@ using .Biogeochemistry
 """
     EnergyHydrology(FT, domain, forcing, earth_param_set;
                          prognostic_land_components = (:soil),
-                         albedo = Soil.CLMTwoBandSoilAlbedo{FT}(; clm_soil_albedo_parameters(domain.space.surface, FT)...),
+                         albedo = Soil.CLMTwoBandSoilAlbedo{FT}(; clm_soil_albedo_parameters(domain.space.surface)...),
                          runoff =  ClimaLand.Soil.Runoff.TOPMODELRunoff{FT}(f_over = FT(3.28),
                                                                             R_sb = FT(1.484e-4 / 1000),
                                                                             f_max = topmodel_fmax(domain.space.surface,FT),
@@ -204,6 +203,7 @@ using .Biogeochemistry
                          retention_parameters = soil_vangenuchten_parameters(domain.space.subsurface, FT),
                          composition_parameters = soil_composition_parameters(domain.space.subsurface, FT),
                          S_s = ClimaCore.Fields.zeros(domain.space.subsurface) .+ 1e-3,
+                         additional_sources = (),
                          )
 
 Creates a EnergyHydrology model with the given float type FT, domain, earth_param_set, forcing, and prognostic land components.
@@ -214,7 +214,9 @@ this should be a list of the component models. This value of this argument must 
 Default spatially varying parameters (for retention curve parameters, composition, and specific storativity) are provided but can be
 changed with keyword arguments. 
 
-The runoff and albedo parameterizations are also provided and can be changed via keyword argument.
+The runoff and albedo parameterizations are also provided and can be changed via keyword argument; 
+additional sources may be required in your model if the soil model will be composed with other 
+component models.
 
 TODO: Move scalar parameters to ClimaParams and obtain from earth_param_set, possibly use types in retention and composition arguments.
 """
@@ -223,9 +225,9 @@ function EnergyHydrology(
     domain,
     forcing,
     earth_param_set;
-    prognostic_land_components = (:soil),
+    prognostic_land_components = (:soil,),
     albedo::AbstractSoilAlbedoParameterization = CLMTwoBandSoilAlbedo{FT}(;
-        clm_soil_albedo_parameters(domain.space.surface, FT)...,
+        clm_soil_albedo_parameters(domain.space.surface)...,
     ),
     runoff::Runoff.AbstractRunoffModel = Runoff.TOPMODELRunoff{FT}(
         f_over = FT(3.28), # extract from EPS
@@ -241,21 +243,18 @@ function EnergyHydrology(
         FT,
     ),
     S_s = ClimaCore.Fields.zeros(domain.space.subsurface) .+ 1e-3,
+    additional_sources = (),
 )
     top_bc = AtmosDrivenFluxBC(
         forcing.atmos,
         forcing.radiation,
-        runoff,
+        runoff;
         prognostic_land_components,
     )
     bottom_bc = EnergyWaterFreeDrainage()
     boundary_conditions = (; top = top_bc, bottom = bottom_bc)
     # sublimation and subsurface runoff are added automatically
-    if :canopy ∈ prognostic_land_components
-        sources = (RootExtraction{FT}(), PhaseChange{FT}())
-    else
-        sources = (PhaseChange{FT}(),)
-    end
+    sources = (additional_sources..., PhaseChange{FT}())
     parameters = EnergyHydrologyParameters(
         FT;
         retention_parameters...,
@@ -309,7 +308,7 @@ function RichardsModel(
     top_bc = RichardsAtmosDrivenFluxBC(forcing.atmos, runoff)
     bottom_bc = WaterFluxBC((p, t) -> 0.0)
     boundary_conditions = (; top = top_bc, bottom = bottom_bc)
-    parameters = RichardsParameters(FT; retention_parameters..., S_s)
+    parameters = RichardsParameters(retention_parameters..., S_s)
     return RichardsModel{FT}(;
         parameters,
         domain,
