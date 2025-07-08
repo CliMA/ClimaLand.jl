@@ -39,7 +39,7 @@ mkpath(GENERATED_DIR)
 end
 tutorials_jl = flatten_to_array_of_strings(get_second(tutorials))
 println("Building literate tutorials...")
-tutorials_dir = joinpath(@__DIR__, "tutorials")
+tutorials_dir = joinpath(@__DIR__, "src", "tutorials")
 tutorials_jl = map(x -> joinpath(tutorials_dir, x), tutorials_jl)
 pmap(t -> generate_tutorial(tutorials_dir, t), tutorials_jl)
 
@@ -51,18 +51,28 @@ include("list_standalone_models.jl")
 include("list_diagnostics.jl")
 pages = Any[
     "Home" => "index.md",
-    "Getting Started" => "getting_started.md",
-    "Repository structure" => "folderstructure.md",
+    "Running your first simulation" => "getting_started.md",
+    "ClimaLand structure" => [
+        "Model structure" => "model_structure.md",
+        "Repository structure" => "repo_structure.md",
+    ],
     "Tutorials" => tutorials,
     "Standalone models" => standalone_models,
-    "Diagnostics" => diagnostics,
+    "Analyzing model output" => [
+        "Diagnostics" => diagnostics,
+        "Leaderboard" => "leaderboard/leaderboard.md",
+    ],
+    "Running on GPU or with MPI" => "architectures.md",
     "Calibration" => "calibration.md",
-    "Leaderboard" => "leaderboard/leaderboard.md",
-    "Restarts" => "restarts.md",
-    "Time type" => "timemanager.md",
-    "Misc. utilities" => "shared_utilities.md",
+    "Restarting a simulation" => "restarts.md",
+    "Software utilities" => [
+        "ITime type" => "itime.md",
+        "Shared utilities" => "shared_utilities.md",
+    ],
+    "Physical units" => "physical_units.md",
+    "Julia background" => "julia.md",
     "APIs" => apis,
-    "Contribution guide" => "Contributing.md",
+    "Contributor guide" => "contributing.md",
 ]
 
 mathengine = MathJax(
