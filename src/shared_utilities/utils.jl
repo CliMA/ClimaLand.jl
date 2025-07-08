@@ -593,13 +593,12 @@ function count_nans_state(
     mask = nothing,
     verbose = false,
 )
-    # Note: this code uses `parent`; this pattern should not be replicated
-    num_nans = 0
-    ClimaComms.allowscalar(ClimaComms.device()) do
-        num_nans =
-            isnothing(mask) ? Int(sum(isnan.(parent(state)))) :
-            Int(sum(isnan.(parent(state)) .* parent(mask)))
+    if isnothing(mask)
+        num_nans = sum(@. ifelse(isnan(state), 1, 0))
+    else
+        num_nans = sum(@. ifelse(isnan(state), mask, 0))
     end
+    num_nans = Int(num_nans)
     if isapprox(num_nans, 0)
         verbose && @info "No NaNs found"
     else
@@ -607,7 +606,6 @@ function count_nans_state(
     end
     return nothing
 end
-
 
 """
     NaNCheckCallback(nancheck_frequency::Union{AbstractFloat, Dates.Period},
