@@ -75,23 +75,19 @@ outdir = "richards_benchmark_$(device_suffix)"
 
 function setup_prob(t0, tf, Δt; nelements = (101, 15))
     dz_tuple = (10.0, 0.1)
-    domain = ClimaLand.ModelSetup.global_domain(FT; nelements, dz_tuple)
+    domain = ClimaLand.Domains.global_domain(FT; nelements, dz_tuple)
     surface_space = domain.space.surface
     subsurface_space = domain.space.subsurface
 
     start_date = DateTime(2008)
-    spatially_varying_soil_params =
-        ClimaLand.ModelSetup.default_spatially_varying_soil_parameters(
-            subsurface_space,
-            surface_space,
-            FT,
-        )
-    (; ν, hydrology_cm, K_sat, S_s, θ_r, f_max) = spatially_varying_soil_params
+    (; ν, hydrology_cm, K_sat, θ_r) =
+        ClimaLand.Soil.soil_vangenuchten_parameters(subsurface_space, FT)
+    S_s = ClimaCore.Fields.zeros(subsurface_space) .+ FT(1e-3)
     f_over = FT(3.28) # 1/m
     R_sb = FT(1.484e-4 / 1000) # m/s
     runoff_model = ClimaLand.Soil.Runoff.TOPMODELRunoff{FT}(;
         f_over = f_over,
-        f_max = f_max,
+        f_max = ClimaLand.Soil.topmodel_fmax(surface_space, FT),
         R_sb = R_sb,
     )
     soil_params = ClimaLand.Soil.RichardsParameters(;

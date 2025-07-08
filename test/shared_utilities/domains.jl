@@ -329,3 +329,43 @@ end
     @test Array(parent(ClimaCore.Fields.field_values(coords)))[] ==
           ClimaCore.Geometry.ZPoint(zmin).z[]
 end
+
+@testset "use_clm_lowres" begin
+    FT = Float64
+    # test `use_lowres_clm` on the sphere domain, and then again with a sphere domain with 2x
+    # the horizontal resolution. Then repeat with plane domains.
+    radius = FT(6378.1e3)
+    depth = FT(50)
+    domain = ClimaLand.Domains.SphericalShell(;
+        radius = radius,
+        depth = depth,
+        nelements = (101, 15),
+        dz_tuple = FT.((10.0, 0.05)),
+    )
+    surface_space = domain.space.surface
+    @test ClimaLand.Domains.use_lowres_clm(surface_space)
+    domain = ClimaLand.Domains.SphericalShell(;
+        radius = radius,
+        depth = depth,
+        nelements = (202, 2),
+    )
+    surface_space = domain.space.surface
+    @test !ClimaLand.Domains.use_lowres_clm(surface_space)
+    domain = ClimaLand.Domains.Plane(;
+        longlat = (-117.0, 34.0),
+        xlim = (0.0, FT(2e6)),
+        ylim = (0.0, FT(2e6)),
+        nelements = (10, 10),
+    )
+    surface_space = domain.space.surface
+    @test ClimaLand.Domains.use_lowres_clm(surface_space)
+    domain = ClimaLand.Domains.Plane(;
+        longlat = (-117.0, 34.0),
+        xlim = (0.0, FT(2e5)),
+        ylim = (0.0, FT(2e5)),
+        nelements = (10, 10),
+    )
+    surface_space = domain.space.surface
+    @test !ClimaLand.Domains.use_lowres_clm(surface_space)
+
+end

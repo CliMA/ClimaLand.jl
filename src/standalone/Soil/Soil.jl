@@ -185,6 +185,7 @@ using .Runoff
 include("./boundary_conditions.jl")
 include("./soil_albedo.jl")
 include("./soil_hydrology_parameterizations.jl")
+include("./spatially_varying_parameters.jl")
 include("Biogeochemistry/Biogeochemistry.jl")
 using .Biogeochemistry
 end

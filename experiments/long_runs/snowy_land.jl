@@ -90,33 +90,14 @@ function setup_model(FT, start_date, stop_date, Δt, domain, earth_param_set)
         time_interpolation_method,
     )
 
-    spatially_varying_soil_params =
-        ClimaLand.ModelSetup.default_spatially_varying_soil_parameters(
-            subsurface_space,
-            surface_space,
-            FT,
-        )
-    (;
-        ν,
-        ν_ss_om,
-        ν_ss_quartz,
-        ν_ss_gravel,
-        hydrology_cm,
-        K_sat,
-        S_s,
-        θ_r,
-        PAR_albedo_dry,
-        NIR_albedo_dry,
-        PAR_albedo_wet,
-        NIR_albedo_wet,
-        f_max,
-    ) = spatially_varying_soil_params
+    (; ν_ss_om, ν_ss_quartz, ν_ss_gravel) =
+        ClimaLand.Soil.soil_composition_parameters(subsurface_space, FT)
+    (; ν, hydrology_cm, K_sat, θ_r) =
+        ClimaLand.Soil.soil_vangenuchten_parameters(subsurface_space, FT)
     soil_albedo = Soil.CLMTwoBandSoilAlbedo{FT}(;
-        PAR_albedo_dry,
-        NIR_albedo_dry,
-        PAR_albedo_wet,
-        NIR_albedo_wet,
+        ClimaLand.Soil.clm_soil_albedo_parameters(surface_space)...,
     )
+    S_s = ClimaCore.Fields.zeros(subsurface_space) .+ FT(1e-3)
     soil_params = Soil.EnergyHydrologyParameters(
         FT;
         ν,
@@ -133,24 +114,17 @@ function setup_model(FT, start_date, stop_date, Δt, domain, earth_param_set)
     R_sb = FT(1.484e-4 / 1000) # m/s
     runoff_model = ClimaLand.Soil.Runoff.TOPMODELRunoff{FT}(;
         f_over = f_over,
-        f_max = f_max,
+        f_max = ClimaLand.Soil.topmodel_fmax(surface_space, FT),
         R_sb = R_sb,
     )
 
     # Spatially varying canopy parameters from CLM
-    clm_parameters = ClimaLand.ModelSetup.clm_canopy_parameters(surface_space)
-    (;
-        Ω,
-        rooting_depth,
-        is_c3,
-        Vcmax25,
-        g1,
-        G_Function,
-        α_PAR_leaf,
-        τ_PAR_leaf,
-        α_NIR_leaf,
-        τ_NIR_leaf,
-    ) = clm_parameters
+    g1 = ClimaLand.Canopy.clm_medlyn_g1(surface_space)
+    rooting_depth = ClimaLand.Canopy.clm_rooting_depth(surface_space)
+    (; is_c3, Vcmax25) =
+        ClimaLand.Canopy.clm_photosynthesis_parameters(surface_space)
+    (; Ω, G_Function, α_PAR_leaf, τ_PAR_leaf, α_NIR_leaf, τ_NIR_leaf) =
+        ClimaLand.Canopy.clm_canopy_radiation_parameters(surface_space)
 
     # Energy Balance model
     ac_canopy = FT(2.5e3)
@@ -354,7 +328,7 @@ function setup_simulation(; greet = false)
         @info "Stop Date: $stop_date"
     end
 
-    domain = ClimaLand.ModelSetup.global_domain(FT; context, nelements)
+    domain = ClimaLand.Domains.global_domain(FT; context, nelements)
     params = LP.LandParameters(FT)
     model = setup_model(FT, start_date, stop_date, Δt, domain, params)
 

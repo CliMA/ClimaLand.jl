@@ -45,7 +45,7 @@ include("./canopy_energy.jl")
 include("./canopy_parameterizations.jl")
 using Dates
 include("./autotrophic_respiration.jl")
-
+include("./spatially_varying_parameters.jl")
 """
     SharedCanopyParameters{FT <: AbstractFloat, PSE}
 
