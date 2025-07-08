@@ -126,7 +126,7 @@ end
 
 Base.eltype(::PModelConductanceParameters{FT}) where {FT} = FT
 
-struct PModelConductanceParameters{FT, PMCP <: PModelConductanceParameters{FT}} <:
+struct PModelConductance{FT, PMCP <: PModelConductanceParameters{FT}} <:
        AbstractStomatalConductanceModel{FT}
     parameters::PMCP
 end

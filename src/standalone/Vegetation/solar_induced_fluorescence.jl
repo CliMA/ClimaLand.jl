@@ -72,23 +72,65 @@ function update_SIF!(p, Y, sif_model::Lee2015SIFModel, canopy)
     T_freeze = LP.T_freeze(earth_param_set)
     R = LP.gas_constant(earth_param_set)
 
-    (; ΔHJmax, To, θj, ϕ) = canopy.photosynthesis.parameters
     sif_parameters = sif_model.parameters
-    @. SIF = compute_SIF_at_a_point(
-        par_d * f_abs_par / energy_per_mole_photon_par,
-        T_canopy,
-        Vcmax25,
-        R,
-        T_freeze,
-        ΔHJmax,
-        To,
-        θj,
-        ϕ,
-        sif_parameters,
-    )
+    
+    # Check if photosynthesis model is PModel and use cached Jmax and J values
+    if isa(canopy.photosynthesis, PModel)
+        Jmax = p.canopy.photosynthesis.Jmax
+        J = p.canopy.photosynthesis.J
+        @. SIF = compute_SIF_at_a_point(
+            par_d * f_abs_par / energy_per_mole_photon_par,
+            T_canopy,
+            Vcmax25,
+            Jmax,
+            J,
+            T_freeze,
+            sif_parameters,
+        )
+    else
+        # Use original computation for other photosynthesis models
+        (; ΔHJmax, To, θj, ϕ) = canopy.photosynthesis.parameters
+        @. SIF = compute_SIF_at_a_point(
+            par_d * f_abs_par / energy_per_mole_photon_par,
+            T_canopy,
+            Vcmax25,
+            R,
+            T_freeze,
+            ΔHJmax,
+            To,
+            θj,
+            ϕ,
+            sif_parameters,
+        )
+    end
 end
 
 Base.broadcastable(m::SIFParameters) = tuple(m)
+
+function compute_SIF_at_a_point(
+    APAR::FT,
+    Tc::FT,
+    Vcmax25::FT,
+    Jmax::FT,
+    J::FT,
+    T_freeze::FT,
+    sif_parameters::SIFParameters{FT},
+) where {FT}
+    (; kf, kd_p1, kd_p2, min_kd, kn_p1, kn_p2, kp, kappa_p1, kappa_p2) =
+        sif_parameters
+    kd = max(kd_p1 * (Tc - T_freeze) + kd_p2, min_kd)
+    x = 1 - J / max(Jmax, eps(FT))
+    kn = (kn_p1 * x - kn_p2) * x
+    ϕp0 = kp / max(kf + kp + kn, eps(FT))
+    ϕp = J / max(Jmax, eps(FT)) * ϕp0
+    ϕf = kf / max(kf + kd + kn, eps(FT)) * (1 - ϕp)
+    κ = kappa_p1 * Vcmax25 * FT(1e6) + kappa_p2 # formula expects Vcmax25 in μmol/m^2/s
+    F = APAR * ϕf
+    SIF_755 = F / max(κ, eps(FT))
+
+    return SIF_755
+end
+
 function compute_SIF_at_a_point(
     APAR::FT,
     Tc::FT,

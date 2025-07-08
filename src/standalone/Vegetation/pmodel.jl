@@ -2,6 +2,7 @@ export PModelParameters,
     PModelDrivers, 
     PModelConstants, 
     compute_pmodel_outputs, 
+    set_historical_cache!,
     PModel
 
 """
@@ -32,8 +33,11 @@ Base.@kwdef struct PModelParameters{
     ϕa1::FT
     """Second order term in temp-dependent intrinsic quantum yield (K^-2)."""
     ϕa2::FT
-    
+    """Timescale parameter used in EMA for acclimation of optimal photosynthetic capacities (unitless)."""
     α::FT 
+
+    sc::FT
+    pc::FT 
 end
 
 """
@@ -119,6 +123,9 @@ Base.eltype(::PModelParameters{FT}) where {FT} = FT
 Base.eltype(::PModelDrivers{FT}) where {FT} = FT
 Base.eltype(::PModelConstants{FT}) where {FT} = FT
 
+Base.broadcastable(x::PModelParameters) = tuple(x)
+Base.broadcastable(x::PModelDrivers) = tuple(x)
+Base.broadcastable(x::PModelConstants) = tuple(x)
 
 """
     PModelConstants(FT)
@@ -185,27 +192,31 @@ New cache variables:
     using an exponential moving average (EMA) at local noon.
 - `IntVars`: a NamedTuple with keys `:Γstar`, `:Kmm`, and `:ci` containing the common intermediate variables
     computed each timestep for instantaneous assimilation 
+- `Jmax`: the instantaneous (temperature-adjusted) maximum electron transport rate (mol m^-2 s^-1)
+- `J`: the instantaneous electron transport rate (mol m^-2 s^-1)
 """
 ClimaLand.auxiliary_vars(model::PModel) =
     (:An, 
     :GPP, 
     :Rd, 
-    :Vcmax25, 
     :cosθs_diff, 
     :cosθs_t_minus_1,
     :OptVars,
-    :IntVars)
+    :IntVars,
+    :Jmax,
+    :J)
 ClimaLand.auxiliary_types(model::PModel{FT}) where {FT} =
     (FT,
     FT,
     FT,
     FT,
-    FT,
     FT, 
     NamedTuple{(:ξ_opt, :Vcmax25_opt, :Jmax25_opt), Tuple{FT, FT, FT}},
-    NamedTuple{(:Γstar, :Kmm, :ci), Tuple{FT, FT, FT}})
+    NamedTuple{(:Γstar, :Kmm, :ci), Tuple{FT, FT, FT}},
+    FT,
+    FT)
 ClimaLand.auxiliary_domain_names(::PModel) =
-    (:surface, :surface, :surface, :surface, :surface, :surface, :surface, :surface)
+    (:surface, :surface, :surface, :surface, :surface, :surface, :surface, :surface, :surface)
 
 
 """
@@ -317,9 +328,10 @@ function update_optimal_EMA(
     VPD::FT,
     ca::FT, 
     βm::FT,
-    local_noon_mask::Bool,
+    I_abs::FT,
+    local_noon_mask::FT,
 ) where {FT} 
-    if local_noon_mask
+    if local_noon_mask == FT(1.0)
         # Unpack parameters
         (; cstar, β, ϕc, ϕ0, ϕa0, ϕa1, ϕa2, α) = parameters
 
@@ -336,11 +348,18 @@ function update_optimal_EMA(
         ηstar = compute_viscosity_ratio(T_canopy, P_air, true)
         Kmm = compute_Kmm(T_canopy, P_air, Kc25, Ko25, ΔHkc, ΔHko, To, R, oi)
         
+        # print intermediate values 
+        print("Intermediate values:\n",
+            "Γstar: $Γstar, Kmm: $Kmm, ηstar: $ηstar, ca: $ca\n"
+        )
+
         ξ = sqrt(β * (Kmm + Γstar) / (Drel * ηstar))
         χ = Γstar / ca + (1 - Γstar / ca) * ξ / (ξ + sqrt(VPD)) 
         γ = Γstar / ca 
         κ = Kmm / ca 
-
+        print(
+            "ξ: $ξ, χ: $χ, γ: $γ, κ: $κ\n"
+        )
         mj = (χ - γ) / (χ + 2 * γ) # eqn 11 in Stocker et al. (2020)
         mc = (χ - γ) / (χ + κ) # eqn 7 in Stocker et al. (2020)
 
@@ -372,8 +391,10 @@ function update_intermediate_vars(
     ca::FT,
 ) where {FT}
     # Unpack constants
-    (; R, Kc25, Ko25, To, ΔHkc, ΔHko, _, ΔHΓstar, Γstar25, _, _, _, 
-        _, _, _, _, _, _, oi, _, _, _) = constants
+    (; R, Kc25, Ko25, To, ΔHkc, ΔHko, 
+        Drel, ΔHΓstar, Γstar25,
+        Ha_Vcmax, Hd_Vcmax, aS_Vcmax, bS_Vcmax, 
+        Ha_Jmax, Hd_Jmax, aS_Jmax, bS_Jmax, Mc, oi, aRd, bRd, fC3) = constants
 
     Γstar = co2_compensation_p(T_canopy, To, P_air, R, ΔHΓstar, Γstar25)
     ci = (ξ_opt * ca + Γstar * sqrt(VPD)) / (ξ_opt + sqrt(VPD))
@@ -392,7 +413,7 @@ get_local_noon_mask(
     cosθs_t::FT 
 ) where {FT}
 
-This function returns true if the first derivative of the cosine of the solar zenith angle
+This function returns 1 if the first derivative of the cosine of the solar zenith angle
 changes sign from positive to negative, indicating solar noon. If c[t] is cosθs at current timestep t,
 then cosθs_diff[t] = c[t-1] - c[t-2]. cosθs_t and cosθs_t_minus_1 are the values of cosθs at the current
 timestep and the previous timestep, respectively. 
@@ -402,9 +423,93 @@ function get_local_noon_mask(
     cosθs_t_minus_1::FT,
     cosθs_t::FT 
 ) where {FT}
-    return cosθs_diff > 0 && (cosθs_t - cosθs_t_minus_1) < 0
+    return FT(cosθs_diff > 0 && (cosθs_t - cosθs_t_minus_1) < 0)
 end
 
+"""
+function set_historical_cache_pmodel!(p, Y0, model::PModel, canopy) 
+
+The P-model requires a cache of optimal Vcmax25, Jmax25, and ξ that represent past acclimated values.
+To set the initial condition, we assume that the acclimation is to the initial conditions of the simulation.
+"""
+function set_historical_cache!(p, Y0, model::PModel, canopy) 
+    print("setting historical cache for p model\n")
+
+    # Unpack required fields from `p` and `canopy`
+    earth_param_set = canopy.parameters.earth_param_set
+    lightspeed = LP.light_speed(earth_param_set)
+    planck_h = LP.planck_constant(earth_param_set)
+    N_a = LP.avogadro_constant(earth_param_set)
+    (; G_Function, λ_γ_PAR, Ω) = canopy.radiative_transfer.parameters
+    energy_per_mole_photon_par = planck_h * lightspeed / λ_γ_PAR * N_a
+
+    i_end = canopy.hydraulics.n_stem + canopy.hydraulics.n_leaf
+    ψ = p.canopy.hydraulics.ψ
+    ρ_l = LP.ρ_cloud_liq(earth_param_set)
+    grav = LP.grav(earth_param_set)
+
+    # to initialize, assume canopy temperature is the same as the air temperature
+    T_canopy = p.drivers.T
+    f_abs = p.canopy.radiative_transfer.par.abs
+    ca = p.drivers.c_co2 .* p.drivers.P 
+    P_air = p.drivers.P
+    par_d = p.canopy.radiative_transfer.par_d
+    thermo_params = LP.thermodynamic_parameters(earth_param_set)
+    VPD = @. lazy(ClimaLand.vapor_pressure_deficit(
+        p.drivers.T, p.drivers.P, p.drivers.q, thermo_params
+    ))
+    
+    print("VPD: $VPD\n")
+
+    # Calculate I_abs directly
+    I_abs = @. lazy(f_abs * par_d / energy_per_mole_photon_par)
+    
+    print("I_abs: $I_abs\n")
+
+    parameters = model.parameters
+    constants = model.constants
+    FT = eltype(parameters)
+
+    # TODO: replace this with modular soil moisture stress parameterization
+    βm = @. lazy(moisture_stress(ψ.:($$i_end) * ρ_l * grav, parameters.sc, parameters.pc)) 
+
+    # # Initialize OptVars with dummy values (will be overwritten since α=0)
+    fill!(p.canopy.photosynthesis.OptVars, (;
+        ξ_opt = FT(0),
+        Vcmax25_opt = FT(0), 
+        Jmax25_opt = FT(0)
+    ))
+
+    parameters_init = PModelParameters(
+        cstar = parameters.cstar,
+        β = parameters.β,
+        ϕc = parameters.ϕc,
+        ϕ0 = parameters.ϕ0,
+        ϕa0 = parameters.ϕa0,
+        ϕa1 = parameters.ϕa1,
+        ϕa2 = parameters.ϕa2,
+        α = FT(0),  # Override α to 0
+        sc = parameters.sc,
+        pc = parameters.pc
+    )
+    
+    local_noon_mask = FT(1)  # Force update for initialization
+
+    @. p.canopy.photosynthesis.OptVars = update_optimal_EMA(
+        parameters_init, 
+        constants, 
+        p.canopy.photosynthesis.OptVars, 
+        T_canopy, 
+        P_air, 
+        VPD,
+        ca, 
+        βm,
+        I_abs,
+        local_noon_mask,
+    )
+
+    print(p.canopy.photosynthesis.OptVars)
+end
 
 
 """
@@ -420,30 +525,36 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
     lightspeed = LP.light_speed(earth_param_set)
     planck_h = LP.planck_constant(earth_param_set)
     N_a = LP.avogadro_constant(earth_param_set)
-    (; _, λ_γ_PAR, Ω) = canopy.radiative_transfer.parameters
+    (; G_Function, λ_γ_PAR, Ω) = canopy.radiative_transfer.parameters
     energy_per_mole_photon_par = planck_h * lightspeed / λ_γ_PAR * N_a
-    R = LP.gas_constant(earth_param_set)
+
+    i_end = canopy.hydraulics.n_stem + canopy.hydraulics.n_leaf
+    ψ = p.canopy.hydraulics.ψ
+    ρ_l = LP.ρ_cloud_liq(earth_param_set)
+    grav = LP.grav(earth_param_set)
 
     T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
     f_abs = p.canopy.radiative_transfer.par.abs
     ca = p.drivers.c_co2
     P_air = p.drivers.P
     par_d = p.canopy.radiative_transfer.par_d
-    VPD = ClimaLand.vapor_pressure_deficit(
-        p.drivers.T, p.drivers.P, p.drivers.q, canopy.parameters.earth_param_set.thermo_params
-    )
+    thermo_params = LP.thermodynamic_parameters(earth_param_set)
+    VPD = @. lazy(ClimaLand.vapor_pressure_deficit(
+        p.drivers.T, p.drivers.P, p.drivers.q, thermo_params
+    ))
     LAI = p.canopy.hydraulics.area_index.leaf
     
     # Calculate I_abs directly
-    I_abs = f_abs * par_d / energy_per_mole_photon_par
+    I_abs = @. lazy(f_abs * par_d / energy_per_mole_photon_par)
 
     # Use model's parameters and constants
     parameters = model.parameters
     constants = model.constants
 
-    
-    βm = FT(1.0) # TODO: replace this with soil moisture stress parameterization
-    local_noon_mask = get_local_noon_mask(p.canopy.photosynthesis.cosθs_diff, p.canopy.photosynthesis.cosθs_t_minus_1, p.drivers.cosθs)
+    # TODO: replace this with modular soil moisture stress parameterization
+    βm = @. lazy(moisture_stress(ψ.:($$i_end) * ρ_l * grav, parameters.sc, parameters.pc)) 
+
+    local_noon_mask = @. lazy(get_local_noon_mask(p.canopy.photosynthesis.cosθs_diff, p.canopy.photosynthesis.cosθs_t_minus_1, p.drivers.cosθs))
 
     # update auxiliary zenith angle variables in place
     @. p.canopy.photosynthesis.cosθs_diff = p.drivers.cosθs - p.canopy.photosynthesis.cosθs_t_minus_1
@@ -459,12 +570,13 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
         VPD,
         ca, 
         βm,
+        I_abs,
         local_noon_mask,
     )
 
     # compute instantaneous max photosynthetic rates and assimilation rates 
     Vcmax_inst = @. lazy(
-        p.canopy.photosynthesis.OptEMA.Vcmax25_opt * inst_temp_scaling(
+        p.canopy.photosynthesis.OptVars.Vcmax25_opt * inst_temp_scaling(
             T_canopy, 
             T_canopy, 
             constants.To, 
@@ -477,7 +589,7 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
     )
 
     Jmax_inst = @. lazy(
-        p.canopy.photosynthesis.OptEMA.Jmax25_opt * inst_temp_scaling(
+        p.canopy.photosynthesis.OptVars.Jmax25_opt * inst_temp_scaling(
             T_canopy, 
             T_canopy, 
             constants.To, 
@@ -547,12 +659,12 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
             )) * Vcmax_inst
     )
 
-    @. p.canopy.photosynthesis.Vcmax25 = p.canopy.photosynthesis.OptEMA.Vcmax25_opt 
     @. p.canopy.photosynthesis.Rd = Rd
     @. p.canopy.photosynthesis.An = min(Aj, Ac) - p.canopy.photosynthesis.Rd 
-    @. p.canopy.photosynthesis.GPP = compute_GPP(p.canopy.photosynthesis.An, extinction_coeff(G_Function, cosθs), LAI, Ω)
+    @. p.canopy.photosynthesis.GPP = compute_GPP(p.canopy.photosynthesis.An, extinction_coeff(G_Function, p.drivers.cosθs), LAI, Ω)
+    @. p.canopy.photosynthesis.Jmax = Jmax_inst
+    @. p.canopy.photosynthesis.J = J_inst
 end
 
-get_Vcmax25(p, m::PModelParameters) =
-    p.canopy.photosynthesis.Vcmax25
-Base.broadcastable(m::PModelParameters) = tuple(m)
+get_Vcmax25(p, m::PModel) =
+    p.canopy.photosynthesis.OptVars.Vcmax25_opt

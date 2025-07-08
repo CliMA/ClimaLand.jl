@@ -997,4 +997,18 @@ function ClimaLand.total_liq_water_vol_per_area!(
     )
 end
 
+function ClimaLand.make_set_initial_cache(model::CanopyModel)
+    update_cache! = make_update_cache(model)
+    function set_initial_cache!(p, Y0, t0)
+        print("setting initial cache for canopy model\n")
+        update_cache!(p, Y0, t0)
+        set_historical_cache!(p, Y0, model.photosynthesis, model)
+    end
+    return set_initial_cache!
+end
+
+function set_historical_cache!(p, Y0, m::AbstractPhotosynthesisModel, canopy) 
+    return 
+end
+
 end

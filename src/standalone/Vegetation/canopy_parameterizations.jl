@@ -1492,7 +1492,9 @@ function compute_mj_with_jmax_limitation(
     mj::FT, 
     cstar::FT
 ) where {FT}
-    return FT(mj * sqrt(1 - (cstar / mj)^(FT(2/3))))
+    arg = 1 - (cstar / mj)^(FT(2/3))
+    sqrt_arg = ifelse(arg < 0, FT(0.0), sqrt(arg)) # avoid complex numbers
+    return FT(mj * sqrt_arg)
 end 
 
 
