@@ -84,7 +84,7 @@ function LandSimulation(
             Dates.Month(1),
             start_date,
             ITime(Δt, epoch = start_date),
-            mask = ClimaLand.landsea_mask(ClimaLand.get_domain(model)),
+            mask = ClimaLand.Domains.landsea_mask(ClimaLand.get_domain(model)),
         ),
         ClimaLand.ReportCallback(1000),
     ),

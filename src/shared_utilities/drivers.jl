@@ -1506,7 +1506,7 @@ function prescribed_forcing_era5(
         earth_param_set = earth_param_set,
         frac_diff = frac_diff,
     )
-    return atmos, radiation
+    return (; atmos, radiation)
 end
 
 

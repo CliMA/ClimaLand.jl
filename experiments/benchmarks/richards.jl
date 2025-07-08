@@ -80,24 +80,6 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
     subsurface_space = domain.space.subsurface
 
     start_date = DateTime(2008)
-    (; ν, hydrology_cm, K_sat, θ_r) =
-        ClimaLand.Soil.soil_vangenuchten_parameters(subsurface_space, FT)
-    S_s = ClimaCore.Fields.zeros(subsurface_space) .+ FT(1e-3)
-    f_over = FT(3.28) # 1/m
-    R_sb = FT(1.484e-4 / 1000) # m/s
-    runoff_model = ClimaLand.Soil.Runoff.TOPMODELRunoff{FT}(;
-        f_over = f_over,
-        f_max = ClimaLand.Soil.topmodel_fmax(surface_space, FT),
-        R_sb = R_sb,
-    )
-    soil_params = ClimaLand.Soil.RichardsParameters(;
-        hydrology_cm = hydrology_cm,
-        ν = ν,
-        K_sat = K_sat,
-        S_s = S_s,
-        θ_r = θ_r,
-    )
-
     era5_ncdata_path =
         ClimaLand.Artifacts.era5_land_forcing_data2008_path(; context)
 
@@ -113,19 +95,11 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
         regridder_type,
         file_reader_kwargs = (; preprocess_func = (data) -> -data / 1000),
     )
-    atmos = ClimaLand.PrescribedPrecipitation{FT, typeof(precip)}(precip)
-    bottom_bc = ClimaLand.Soil.WaterFluxBC((p, t) -> 0.0)
-    bc = (;
-        top = ClimaLand.Soil.RichardsAtmosDrivenFluxBC(atmos, runoff_model),
-        bottom = bottom_bc,
+    forcing = (;
+        atmos = ClimaLand.PrescribedPrecipitation{FT, typeof(precip)}(precip),
     )
-    model = ClimaLand.Soil.RichardsModel{FT}(;
-        parameters = soil_params,
-        domain = domain,
-        boundary_conditions = bc,
-        sources = (),
-        lateral_flow = false,
-    )
+
+    model = ClimaLand.Soil.RichardsModel(FT, domain, forcing)
 
     Y, p, cds = initialize(model)
     z = ClimaCore.Fields.coordinate_field(cds.subsurface).z
@@ -138,13 +112,12 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
         α::FT,
         n::FT,
         S_s::FT,
-        fmax,
     ) where {FT}
         m = 1 - 1 / n
         zmin = FT(-50.0)
         zmax = FT(0.0)
 
-        z_∇ = FT(zmin / 5.0 + (zmax - zmin) / 2.5 * (fmax - 0.35) / 0.7)
+        z_∇ = FT(zmin / 5.0 + (zmax - zmin) / 2.5)
         if z > z_∇
             S = FT((FT(1) + (α * (z - z_∇))^n)^(-m))
             ϑ_l = S * (ν - θ_r) + θ_r
@@ -154,10 +127,14 @@ function setup_prob(t0, tf, Δt; nelements = (101, 15))
         return FT(ϑ_l)
     end
 
+    hydrology_cm = model.parameters.hydrology_cm
+    ν = model.parameters.ν
+    θ_r = model.parameters.S_s
+    S_s = model.parameters.θ_r
     # Set initial state values
     vg_α = hydrology_cm.α
     vg_n = hydrology_cm.n
-    Y.soil.ϑ_l .= hydrostatic_profile.(lat, z, ν, θ_r, vg_α, vg_n, S_s, f_max)
+    Y.soil.ϑ_l .= hydrostatic_profile.(lat, z, ν, θ_r, vg_α, vg_n, S_s)
     # Create model update functions
     set_initial_cache! = make_set_initial_cache(model)
     exp_tendency! = make_exp_tendency(model)
