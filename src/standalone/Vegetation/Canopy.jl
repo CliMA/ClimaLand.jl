@@ -47,6 +47,44 @@ include("./canopy_parameterizations.jl")
 using Dates
 include("./autotrophic_respiration.jl")
 include("./spatially_varying_parameters.jl")
+
+########################################################
+# Convenience constructors for Canopy model components
+########################################################
+
+"""
+    TwoStreamModel{FT}(surface_space)
+
+Radiative transfer
+TODO fill out
+"""
+function TwoStreamModel{FT}(
+    surface_space,
+    scalar_params = (; ϵ_canopy, λ_γ_PAR, n_layers), # TODO add default values here if we want them to be controllable
+) where {FT <: AbstractFloat}
+    parameters = TwoStreamParameters{FT}(
+        clm_canopy_radiation_parameters(surface_space)...,
+    )
+    return TwoStreamModel{FT, typeof(parameters)}(parameters)
+end
+
+"""
+
+    BeerLambertModel{FT}(surface_space)
+
+Radiative transfer part 2
+TODO fill out
+"""
+function BeerLambertModel{FT}(
+    surface_space;
+    scalar_params = (; ϵ_canopy, λ_γ_PAR), # TODO add default values here if we want them to be controllable
+) where {FT <: AbstractFloat}
+    parameters = BeerLambertParameters{FT}(
+        clm_canopy_radiation_parameters(surface_space)...,
+    )
+    return BeerLambertModel{FT, typeof(parameters)}(parameters)
+end
+
 """
     SharedCanopyParameters{FT <: AbstractFloat, PSE}
 
