@@ -224,7 +224,7 @@ import ClimaParams
                 :cosθs,
                 :frac_diff,
             )
-            # Check that structure of Y is value (will error if not)
+            # Check that structure of Y is valid (will error if not)
             @test !isnothing(zero(Y))
             @test typeof(canopy.energy) == PrescribedCanopyTempModel{FT}
             @test propertynames(p) == (:canopy, :drivers)
@@ -778,7 +778,7 @@ end
             @test canopy.energy.parameters.ac_canopy == FT(2.0e3)
             Y, p, coords = ClimaLand.initialize(canopy)
 
-            # Check that structure of Y is value (will error if not)
+            # Check that structure of Y is valid (will error if not)
             @test !isnothing(zero(Y))
             @test propertynames(p) == (:canopy, :drivers)
             for component in ClimaLand.Canopy.canopy_components(canopy)
@@ -1412,6 +1412,120 @@ end
                     Array(parent(p.canopy.autotrophic_respiration.Ra)) .==
                     FT(0),
                 )
+            end
+        end
+    end
+end
+
+@testset "CanopyModel using convenience constructors" begin
+    for FT in (Float32, Float64)
+        domain = ClimaLand.Domains.SphericalSurface(;
+            radius = FT(100.0),
+            nelements = 10,
+        )
+
+        # Create a field with both 1.0s and 0.0s
+        mechanism_field = ClimaCore.Fields.Field(FT, domain.space.surface)
+        ClimaCore.Fields.set!(
+            x -> x.coordinates.lat > 0 ? 0.0 : 1.0,
+            mechanism_field,
+        )
+
+        # Create a simple forcing function for LAI
+        forcing = (; LAI = TimeVaryingInput(t -> FT(8)))
+
+        # Set up component models
+        autotrophic_respiration = Canopy.AutotrophicRespirationModel{FT}()
+        radiative_transfer_models = (
+            Canopy.TwoStreamModel{FT}(domain),
+            Canopy.BeerLambertModel{FT}(domain),
+        )
+        photosynthesis = Canopy.FarquharModel{FT}(domain)
+        conductance = Canopy.MedlynConductanceModel{FT}(domain)
+        hydraulics = Canopy.PlantHydraulicsModel{FT}(domain, forcing)
+        energy = Canopy.BigLeafEnergyModel{FT}()
+        sif = Canopy.Lee2015SIFModel{FT}()
+
+        # Use simple analytic forcing for atmosphere and radiation
+        atmos, radiation = prescribed_analytic_forcing(FT)
+        soil_driver = PrescribedGroundConditions(FT)
+        boundary_conditions =
+            Canopy.AtmosDrivenCanopyBC(atmos, radiation, soil_driver)
+
+        earth_param_set = LP.LandParameters(FT)
+        parameters = Canopy.SharedCanopyParameters{FT, typeof(earth_param_set)}(
+            FT(2.0), # z_0m
+            FT(0.1), # z_0b
+            earth_param_set,
+        )
+
+        for radiative_transfer in radiative_transfer_models
+            args = (
+                autotrophic_respiration,
+                radiative_transfer,
+                photosynthesis,
+                conductance,
+                hydraulics,
+                energy,
+                sif,
+                boundary_conditions,
+                parameters,
+                domain,
+            )
+
+            canopy = Canopy.CanopyModel{FT, typeof.(args)...}(args...)
+
+            # Check that the canopy model was created correctly
+            @test ClimaComms.context(canopy) == ClimaComms.context()
+            @test ClimaComms.device(canopy) == ClimaComms.device()
+            @test ClimaLand.get_drivers(canopy) == (atmos, radiation)
+            Y, p, coords = ClimaLand.initialize(canopy)
+            @test propertynames(p.drivers) == (
+                :P_liq,
+                :P_snow,
+                :T,
+                :P,
+                :u,
+                :q,
+                :c_co2,
+                :thermal_state,
+                :SW_d,
+                :LW_d,
+                :cosθs,
+                :frac_diff,
+            )
+            # Check that structure of Y is valid (will error if not)
+            @test !isnothing(zero(Y))
+            @test typeof(canopy.energy) == typeof(energy)
+            @test propertynames(p) == (:canopy, :drivers)
+            @test propertynames(p.canopy) == (
+                :hydraulics,
+                :conductance,
+                :photosynthesis,
+                :radiative_transfer,
+                :autotrophic_respiration,
+                :energy,
+                :sif,
+                :turbulent_fluxes,
+            )
+            for component in ClimaLand.Canopy.canopy_components(canopy)
+                # Only hydraulics has a prognostic variable
+                if component == :hydraulics
+                    @test propertynames(getproperty(Y.canopy, component)) ==
+                          ClimaLand.prognostic_vars(
+                        getproperty(canopy, component),
+                    )
+                end
+                @test propertynames(getproperty(p.canopy, component)) ==
+                      ClimaLand.auxiliary_vars(getproperty(canopy, component))
+                @test getproperty(auxiliary_types(canopy), component) ==
+                      auxiliary_types(getproperty(canopy, component))
+                @test getproperty(auxiliary_vars(canopy), component) ==
+                      auxiliary_vars(getproperty(canopy, component))
+                @test getproperty(prognostic_types(canopy), component) ==
+                      prognostic_types(getproperty(canopy, component))
+                @test getproperty(prognostic_types(canopy), component) ==
+                      prognostic_types(getproperty(canopy, component))
             end
         end
     end

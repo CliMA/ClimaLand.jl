@@ -3,6 +3,7 @@ ClimaLand.jl Release Notes
 
 main
 -------
+- Add constructors with default values for Canopy components PR[#1233](https://github.com/CliMA/ClimaLand.jl/pull/1233)
 
 v0.17.2
 -------
