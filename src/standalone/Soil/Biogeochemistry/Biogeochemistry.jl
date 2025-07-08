@@ -95,6 +95,30 @@ struct SoilCO2Model{FT, PS, D, BC, S, DT} <:
     drivers::DT
 end
 
+function SoilCO2Model(
+    FT,
+    domain,
+    earth_param_set,
+    forcing;
+    soil_driver,
+    parameters = Soil.Biogeochemistry.SoilCO2ModelParameters(FT),
+)
+    top_bc = Soil.Biogeochemistry.AtmosCO2StateBC()
+    bottom_bc = Soil.Biogeochemistry.SoilCO2FluxBC((p, t) -> 0.0)
+    drivers = Soil.Biogeochemistry.SoilDrivers(
+        soil_driver,
+        forcing.soil_organic_carbon,
+        forcing.atmos,
+    )
+    boundary_conditions = (; top = top_bc, bottom = bot_bc)
+    return SoilCO2Model{FT}(;
+        boundary_conditions,
+        sources,
+        domain,
+        parameters,
+        drivers,
+    )
+end
 
 """
 SoilCO2Model{FT}(;

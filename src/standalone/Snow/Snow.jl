@@ -363,6 +363,23 @@ function SnowModel(;
     SnowModel{FT, typeof.(args)...}(args...)
 end
 
+function SnowModel(
+    FT,
+    domain,
+    earth_param_set,
+    forcing,
+    Δt;
+    prognostic_land_components = (:snow,),
+    parameters = SnowParameters{FT}(Δt; earth_param_set = earth_param_set),
+)
+    boundary_conditions = AtmosDrivenSnowBC(
+        forcing.atmos,
+        forcing.radiation;
+        prognostic_land_components,
+    )
+    return SnowModel{FT}(; boundary_conditions, domain, parameters)
+end
+
 """
     prognostic_vars(::SnowModel)
 
@@ -748,4 +765,5 @@ function ClimaLand.total_energy_per_area!(
     surface_field .= Y.snow.U
     return nothing
 end
+
 end
