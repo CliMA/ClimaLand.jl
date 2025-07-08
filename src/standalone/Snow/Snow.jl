@@ -366,12 +366,29 @@ end
 function SnowModel(
     FT,
     domain,
-    earth_param_set,
     forcing,
+    earth_param_set,
     Δt;
-    prognostic_land_components = (:snow,),
-    parameters = SnowParameters{FT}(Δt; earth_param_set = earth_param_set),
+    prognostic_land_components = (:snow,)
+    α_snow = ConstantAlbedo(FT(0.8)),
+    density = MinimumDensityModel(FT(200)),
+    scf = WuWuSnowCoverFractionModel(
+        FT(0.106),
+        FT(1.81),
+        FT(0.08),
+        FT(1.77),
+        FT(1),
+        FT(1),
+    )
+    roughness_lengths = (; z_0m = FT(0.0024), z_0b =FT(0.0024)),
+    ϵ_snow = FT(0.99),
+    θ_r = FT(0.08),
+    Ksat = FT(1e-3),
+    κ_ice = FT(2.21),
+    ΔS = FT(0.1)
 )
+    parameters = SnowParameters{FT}(Δt; earth_param_set = earth_param_set, scf, α_snow, ϵ_snow, density, roughness_lengths...,
+                                    θ_r, Ksat, κ_ice, ΔS)
     boundary_conditions = AtmosDrivenSnowBC(
         forcing.atmos,
         forcing.radiation;

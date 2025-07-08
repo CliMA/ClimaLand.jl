@@ -243,6 +243,8 @@ function EnergyHydrology(
         FT,
     ),
     S_s = ClimaCore.Fields.zeros(domain.space.subsurface) .+ 1e-3,
+    emissivity = ,
+    roughness_lengths = (; z_0m, z_0b),
     additional_sources = (),
 )
     top_bc = AtmosDrivenFluxBC(
@@ -261,6 +263,8 @@ function EnergyHydrology(
         composition_parameters...,
         albedo,
         S_s,
+        emissivity,
+        roughness_lengths...
     )
     return EnergyHydrology{FT}(;
         parameters,
