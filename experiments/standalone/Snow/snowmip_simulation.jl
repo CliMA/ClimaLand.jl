@@ -53,17 +53,8 @@ domain = ClimaLand.Domains.Point(; z_sfc = FT(0))
 density_model = NeuralSnow.NeuralDepthModel(FT)
 #density_model = Snow.MinimumDensityModel(ρ)
 
-parameters = SnowParameters{FT}(
-    Δt;
-    α_snow = Snow.ConstantAlbedoModel(α),
-    density = density_model,
-    earth_param_set = param_set,
-)
-model = ClimaLand.Snow.SnowModel(
-    parameters = parameters,
-    domain = domain,
-    boundary_conditions = ClimaLand.Snow.AtmosDrivenSnowBC(atmos, radiation),
-)
+model = ClimaLand.Snow.SnowModel(FT, domain, forcing, earth_param_set, Δt; density)
+
 Y, p, coords = ClimaLand.initialize(model)
 
 # Set initial conditions

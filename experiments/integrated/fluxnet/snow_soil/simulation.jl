@@ -1,3 +1,11 @@
+## Some site parameters have been taken from
+## Ma, S., Baldocchi, D. D., Xu, L., Hehn, T. (2007)
+## Inter-Annual Variability In Carbon Dioxide Exchange Of An
+## Oak/Grass Savanna And Open Grassland In California, Agricultural
+## And Forest Meteorology, 147(3-4), 157-171. https://doi.org/10.1016/j.agrformet.2007.07.008 
+## CLM 5.0 Tech Note: https://www2.cesm.ucar.edu/models/cesm2/land/CLM50_Tech_Note.pdf
+# Bonan, G. Climate change and terrestrial ecosystem modeling. Cambridge University Press, 2019.
+
 import SciMLBase
 import ClimaTimeSteppers as CTS
 import ClimaComms
@@ -19,6 +27,11 @@ import ClimaParams
 climaland_dir = pkgdir(ClimaLand)
 
 FT = Float64
+site_ID = "US-MOz"
+time_offset = 7 # offset from UTC in hrs
+lat = FT(38.7441) # degree
+long = FT(-92.2000) # degree
+
 earth_param_set = LP.LandParameters(FT)
 # Utility functions for reading in and filling fluxnet data
 include(joinpath(climaland_dir, "experiments/integrated/fluxnet/data_tools.jl"))
@@ -30,7 +43,7 @@ zmax = FT(0)
 dz_bottom = FT(1.0)
 dz_top = FT(0.04)
 
-land_domain = Column(;
+domain = Column(;
     zlim = (zmin, zmax),
     nelements = nelements,
     dz_tuple = (dz_bottom, dz_top),
@@ -43,13 +56,16 @@ N_days = N_days_spinup + 360
 dt = FT(900)
 tf = t0 + FT(3600 * 24 * N_days)
 
-# Read in the parameters for the site
-include(
-    joinpath(
-        climaland_dir,
-        "experiments/integrated/fluxnet/snow_soil/parameters_fluxnet.jl",
-    ),
-)
+
+data_link = "https://caltech.box.com/shared/static/7r0ci9pacsnwyo0o9c25mhhcjhsu6d72.csv"
+# Height of sensor on flux tower
+atmos_h = FT(32)
+
+# Required to use the same met_drivers_FLUXNET script, even though we currently have no canopy
+h_leaf = FT(0)
+f_root_to_shoot = FT(0)
+plant_ν = FT(0)
+
 # This reads in the data from the flux tower site and creates
 # the atmospheric and radiative driver structs for the model
 include(
@@ -60,31 +76,20 @@ include(
 )
 
 
-# Now we set up the model. For the soil model, we pick
-# a model type and model args:
-soil_domain = land_domain
-soil_albedo = Soil.ConstantTwoBandSoilAlbedo{FT}(;
-    PAR_albedo = soil_α_PAR,
-    NIR_albedo = soil_α_NIR,
-)
-soil_ps = Soil.EnergyHydrologyParameters(
-    FT;
-    ν = soil_ν,
-    ν_ss_om,
-    ν_ss_quartz,
-    ν_ss_gravel,
-    hydrology_cm = vanGenuchten{FT}(; α = soil_vg_α, n = soil_vg_n),
-    K_sat = soil_K_sat,
-    S_s = soil_S_s,
-    θ_r,
-    z_0m = z_0m_soil,
-    z_0b = z_0b_soil,
-    emissivity = soil_ϵ,
-    albedo = soil_albedo,
-)
-
-soil_args = (parameters = soil_ps,)
-soil_model_type = Soil.EnergyHydrology
+# Soil Model
+albedo = Soil.ConstantTwoBandSoilAlbedo{FT}(;
+    PAR_albedo = FT(0.25),
+    NIR_albedo = FT(0.25)
+                                            )
+runoff = ClimaLand.Soil.SurfaceRunoff()
+retention_params = (; ν = FT(0.5), K_sat = FT(0.45 / 3600 / 100),    hydrology_cm = vanGenuchten{FT}(; α = FT(2), n = FT(2)),
+                    θ_r = FT(0.09))
+S_s = FT(1e-3)
+composition_params = (;ν_ss_quartz = FT(0.2), ν_ss_om = FT(0.0), ν_ss_gravel = FT(0.4))
+z_0m = FT(0.01)
+z_0b = FT(0.001)
+emissivity = FT(0.98)
+soil_model = Soil.EnergyHydrology(
 
 ρ = 300.0
 α = 0.8
@@ -100,7 +105,7 @@ land_input = (
     atmos = atmos,
     radiation = radiation,
     domain = land_domain,
-    runoff = ClimaLand.Soil.SurfaceRunoff(),
+
 )
 land = ClimaLand.SoilSnowModel{FT}(;
     land_args = land_input,
