@@ -1,6 +1,5 @@
 module Biogeochemistry
 using ClimaLand
-import ClimaParams as CP
 using DocStringExtensions
 using ClimaCore
 import ...Parameters as LP
@@ -67,41 +66,6 @@ Base.@kwdef struct SoilCO2ModelParameters{FT <: AbstractFloat, PSE}
     earth_param_set::PSE
 end
 
-## For interfacting with ClimaParams
-
-
-"""
-    SoilCO2ModelParameters(FT; kwargs...)
-    SoilCO2ModelParameters(toml_dict; kwargs...)
-
-SoilCO2ModelParameters has two constructors: float-type and toml dict based.
-Keywords arguments can be used to directly override any parameters.
-"""
-SoilCO2ModelParameters(::Type{FT}; kwargs...) where {FT <: AbstractFloat} =
-    SoilCO2ModelParameters(CP.create_toml_dict(FT); kwargs...)
-
-function SoilCO2ModelParameters(toml_dict::CP.AbstractTOMLDict; kwargs...)
-    name_map = (;
-        :CO2_diffusion_coefficient => :D_ref,
-        :soil_C_substrate_diffusivity => :D_liq,
-        :soilCO2_pre_expontential_factor => :α_sx,
-        :soilCO2_activation_energy => :Ea_sx,
-        :michaelis_constant => :kM_sx,
-        :O2_michaelis_constant => :kM_o2,
-        :O2_volume_fraction => :O2_a,
-        :oxygen_diffusion_coefficient => :D_oa,
-        :soluble_soil_carbon_fraction => :p_sx,
-    )
-    parameters = CP.get_parameter_values(toml_dict, name_map, "Land")
-    FT = CP.float_type(toml_dict)
-    earth_param_set = LP.LandParameters(toml_dict)
-    return SoilCO2ModelParameters{FT, typeof(earth_param_set)}(;
-        earth_param_set,
-        parameters...,
-        kwargs...,
-    )
-end
-
 """
     AbstractSoilBiogeochemistryModel{FT} <: ClimaLand.AbstractExpModel{FT}
 
@@ -131,30 +95,6 @@ struct SoilCO2Model{FT, PS, D, BC, S, DT} <:
     drivers::DT
 end
 
-function SoilCO2Model(
-    FT,
-    domain,
-    earth_param_set,
-    forcing;
-    soil_driver,
-    parameters = Soil.Biogeochemistry.SoilCO2ModelParameters(FT),
-)
-    top_bc = Soil.Biogeochemistry.AtmosCO2StateBC()
-    bottom_bc = Soil.Biogeochemistry.SoilCO2FluxBC((p, t) -> 0.0)
-    drivers = Soil.Biogeochemistry.SoilDrivers(
-        soil_driver,
-        forcing.soil_organic_carbon,
-        forcing.atmos,
-    )
-    boundary_conditions = (; top = top_bc, bottom = bot_bc)
-    return SoilCO2Model{FT}(;
-        boundary_conditions,
-        sources,
-        domain,
-        parameters,
-        drivers,
-    )
-end
 
 """
 SoilCO2Model{FT}(;
