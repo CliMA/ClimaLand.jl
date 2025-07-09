@@ -196,14 +196,16 @@ using .Biogeochemistry
 """
     EnergyHydrology(FT, domain, forcing, earth_param_set;
                          prognostic_land_components = (:soil),
-                         albedo = Soil.CLMTwoBandSoilAlbedo{FT}(; clm_soil_albedo_parameters(domain.space.surface)...),
-                         runoff =  ClimaLand.Soil.Runoff.TOPMODELRunoff{FT}(f_over = FT(3.28),
+                         albedo = CLMTwoBandSoilAlbedo{FT}(; clm_soil_albedo_parameters(domain.space.surface)...),
+                         runoff =  Runoff.TOPMODELRunoff{FT}(f_over = FT(3.28),
                                                                             R_sb = FT(1.484e-4 / 1000),
                                                                             f_max = topmodel_fmax(domain.space.surface,FT),
                                                                             ),
                          retention_parameters = soil_vangenuchten_parameters(domain.space.subsurface, FT),
                          composition_parameters = soil_composition_parameters(domain.space.subsurface, FT),
                          S_s = ClimaCore.Fields.zeros(domain.space.subsurface) .+ 1e-3,
+                         emissivity = SoilEmissivity(FT),
+                         roughness = SoilRoughnessParameters(FT),
                          additional_sources = (),
                          )
 
@@ -219,13 +221,18 @@ The runoff and albedo parameterizations are also provided and can be changed via
 additional sources may be required in your model if the soil model will be composed with other 
 component models.
 
-TODO: Move scalar parameters to ClimaParams and obtain from earth_param_set, possibly use types in retention and composition arguments.
+Roughness lengths and soil emissivity are currently treated as constants; these can be passed in as NamedTuples
+emissivity = (; emissivity = 0.99), roughness = (; z_0m = 0.001, z_0b = 0.001), for example, or
+the default kwarg returns NamedTuples with the default values.
+
+TODO: Move runoff scalar parameters to ClimaParams, possibly use types in retention, composition,
+roughness, and emissivity.
 """
 function EnergyHydrology(
     FT,
     domain,
-    forcing;
-    earth_param_set =  LP.LandParameters(FT),
+    forcing,
+    earth_param_set;
     prognostic_land_components = (:soil,),
     albedo::AbstractSoilAlbedoParameterization = CLMTwoBandSoilAlbedo{FT}(;
         clm_soil_albedo_parameters(domain.space.surface)...,
@@ -244,9 +251,8 @@ function EnergyHydrology(
         FT,
     ),
     S_s = ClimaCore.Fields.zeros(domain.space.subsurface) .+ 1e-3,
-    emissivity = earth_param_set.emissivity_bare_soil;
-    roughness_lengths = (;z_0m = earth_param_set.soil_momentum_roughness_length,
-                          z_0b = earth_param_set.soil_scalar_roughness_length),
+    emissivity = SoilEmissivity(FT),
+    roughness = SoilSurfaceRoughness(FT),
     additional_sources = (),
 )
     top_bc = AtmosDrivenFluxBC(
@@ -265,8 +271,8 @@ function EnergyHydrology(
         composition_parameters...,
         albedo,
         S_s,
-        emissivity,
-        roughness_lengths...
+        roughness...,
+        emissivity...,
     )
     return EnergyHydrology{FT}(;
         parameters,

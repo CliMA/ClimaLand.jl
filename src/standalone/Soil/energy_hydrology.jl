@@ -77,6 +77,30 @@ Base.broadcastable(ps::EnergyHydrologyParameters) = tuple(ps)
 
 
 ### Interfacing with ClimaParams
+
+SoilSurfaceRoughness(::Type{FT}) where {FT <: AbstractFloat} =
+    SoilSurfaceRoughness(CP.create_toml_dict(FT))
+
+function SoilSurfaceRoughness(td::CP.AbstractTOMLDict)
+    name_map = (;
+        :soil_momentum_roughness_length => :z_0m,
+        :soil_scalar_roughness_length => :z_0b,
+    )
+    parameters = CP.get_parameter_values(td, name_map, "Land")
+    FT = CP.float_type(td)
+    return (; parameters...)
+end
+
+SoilEmissivity(::Type{FT}) where {FT <: AbstractFloat} =
+    SoilEmissivity(CP.create_toml_dict(FT))
+
+function SoilEmissivity(td::CP.AbstractTOMLDict)
+    name_map = (; :emissivity_bare_soil => :emissivity)
+    parameters = CP.get_parameter_values(td, name_map, "Land")
+    FT = CP.float_type(td)
+    return (; parameters...)
+end
+
 """
     EnergyHydrologyParameters(
         ::Type{FT};
@@ -209,12 +233,11 @@ function EnergyHydrologyParameters(
         :ice_impedance_omega => :Ω,
         :temperature_factor_soil_hydraulic_conductivity => :γ,
         :temperature_reference_soil_hydraulic_conductivity => :γT_ref,
-        :emissivity_bare_soil => :emissivity,
         :maximum_dry_soil_layer_depth => :d_ds,
-        :soil_momentum_roughness_length => :z_0m,
-        :soil_scalar_roughness_length => :z_0b,
     )
     parameters = CP.get_parameter_values(toml_dict, name_map, "Land")
+    roughness_parameters = SoilSurfaceRoughness(toml_dict)
+    emissivity_parameters = SoilEmissivity(toml_dict)
     PSE = typeof(earth_param_set)
     FT = CP.float_type(toml_dict)
     EnergyHydrologyParameters{FT, F, typeof(albedo), C, PSE}(;
@@ -233,6 +256,8 @@ function EnergyHydrologyParameters(
         ρc_ds,
         earth_param_set,
         parameters...,
+        emissivity_parameters...,
+        roughness_parameters...,
         kwargs...,
     )
 end
