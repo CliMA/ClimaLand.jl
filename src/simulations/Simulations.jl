@@ -10,6 +10,8 @@ using ClimaLand
 export step!, solve!, LandSimulation
 include("initial_conditions.jl")
 
+import ..Diagnostics: close_output_writers
+
 """
     LandSimulation{
         M <: ClimaLand.AbstractModel,
@@ -194,7 +196,14 @@ Advances the land simulation `landsim` forward from the initial to final time,
 updating `landsim` in place.
 """
 function solve!(landsim::LandSimulation)
-    SciMLBase.solve!(landsim._integrator)
+    try
+        SciMLBase.solve!(landsim._integrator)
+    catch ret_code
+        @error "ClimaLand simulation crashed. Stacktrace for failed simulation" exception =
+            (ret_code, catch_backtrace())
+    finally
+        close_output_writers(landsim.diagnostics)
+    end
 end
 
 
