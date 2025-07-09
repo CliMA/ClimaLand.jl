@@ -1465,7 +1465,7 @@ end
 
     Computes the stomatal conductance of CO2 (`gs`), in units of mol CO2/m^2/s
     via Fick's law. Parameters are the ratio of intercellular to ambient CO2 
-    concentration (`χ`), the ambient CO2 concentration (`ca`), and the 
+    concentration (`χ`), the ambient CO2 partial pressure (`ca`, in Pa), and the 
     assimilation rate (`A`). This is related to the conductance of H2O by a 
     factor Drel = 1.6. 
 """

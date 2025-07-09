@@ -153,6 +153,7 @@ The moisture stress factor is applied to `An` already.
 function update_canopy_conductance!(p, Y, model::PModelConductance, canopy)
     c_co2_air = p.drivers.c_co2
     P_air = p.drivers.P
+    ca_pp = @. lazy(c_co2_air * P_air) # partial pressure of CO2 in Pa
     T_air = p.drivers.T
     earth_param_set = canopy.parameters.earth_param_set
     (; Drel) = canopy.conductance.parameters
@@ -164,8 +165,8 @@ function update_canopy_conductance!(p, Y, model::PModelConductance, canopy)
 
     @. p.canopy.conductance.r_stomata_canopy =
         1 / upscale_leaf_conductance(
-            pmodel_gs(ci / c_co2_air, 
-                c_co2_air, 
+            pmodel_gs(ci / ca_pp, 
+                ca_pp, 
                 An) * Drel, # leaf level conductance in mol H2O Pa^-1
             LAI,
             T_air,

@@ -172,3 +172,47 @@ function transform_column(
 )
     return DataColumn(transform.(column.values), units, column.status)
 end
+
+
+"""
+extract_variables(sv, variable_paths::Vector{String})
+
+Extract multiple variables from saved simulation results.
+
+Args:
+    sv: Saved values from simulation 
+    variable_paths: Vector of strings in format "module.variable" or "module.submodule.variable" 
+                    (e.g., ["photosynthesis.GPP", "photosynthesis.OptVars.Vcmax25_opt"])
+
+Returns:
+    NamedTuple with variable names as keys and extracted time series as values
+"""
+function extract_variables(sv, variable_paths::Vector{String})
+    results = NamedTuple()
+    
+    for path in variable_paths
+        # Split the path into parts
+        parts = split(path, ".")
+        
+        variable_data = []
+        for k in 1:length(sv.saveval)
+            try
+                obj = sv.saveval[k]
+                # Navigate through all parts of the path
+                for part in parts
+                    obj = getproperty(obj, Symbol(part))
+                end
+                push!(variable_data, parent(obj)[1])
+            catch e
+                # If extraction fails, push NaN
+                push!(variable_data, NaN)
+                println("Warning: Could not extract $path at timestep $k: $e")
+            end
+        end
+        
+        result_name = Symbol(parts[end])
+        results = merge(results, NamedTuple{(result_name,)}((variable_data,)))
+    end
+    
+    return results
+end
