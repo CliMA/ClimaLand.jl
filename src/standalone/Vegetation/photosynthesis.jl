@@ -271,3 +271,93 @@ Base.broadcastable(m::FarquharParameters) = tuple(m)
 
 get_Vcmax25(p, m::FarquharModel) = m.parameters.Vcmax25
 include("./optimality_farquhar.jl")
+
+## For interfacing with ClimaParams
+
+"""
+    function FarquharParameters(
+        FT,
+        is_c3::Union{FT, ClimaCore.Fields.Field};
+        Vcmax25 = FT(5e-5),
+        kwargs...  # For individual parameter overrides
+    )
+
+    function FarquharParameters(
+        toml_dict::CP.AbstractTOMLDict,
+        is_c3::Union{AbstractFloat, ClimaCore.Fields.Field};
+        Vcmax25 = FT(5e-5),
+        kwargs...  # For individual parameter overrides
+    )
+
+Constructors for the FarquharParameters struct. Two variants:
+1. Pass in the float-type and retrieve parameter values from the default TOML dict.
+2. Pass in a TOML dictionary to retrieve parameter values.Possible calls:
+```julia
+ClimaLand.Canopy.FarquharParameters(Float64, 1.0)
+# Kwarg overrides
+ClimaLand.Canopy.FarquharParameters(Float64, 1.0; Vcmax25 = 99999999, pc = 444444444)
+# TOML Dictionary:
+import ClimaParams as CP
+toml_dict = CP.create_toml_dict(Float32);
+ClimaLand.Canopy.FarquharParameters(toml_dict, 1.0f0; Vcmax25 = 99999999, pc = 444444444)
+```
+"""
+FarquharParameters(
+    ::Type{FT},
+    is_c3::Union{FT, ClimaCore.Fields.Field};
+    kwargs...,
+) where {FT <: AbstractFloat} =
+    FarquharParameters(CP.create_toml_dict(FT), is_c3; kwargs...)
+
+function FarquharParameters(
+    toml_dict::CP.AbstractTOMLDict,
+    is_c3::Union{AbstractFloat, ClimaCore.Fields.Field};
+    Vcmax25 = 5e-5,
+    kwargs...,
+)
+    name_map = (;
+        :Jmax_activation_energy => :ΔHJmax,
+        :intercellular_O2_concentration => :oi,
+        :CO2_compensation_point_25c => :Γstar25,
+        :Farquhar_curvature_parameter => :θj,
+        :kelvin_25C => :To,
+        :photosystem_II_quantum_yield => :ϕ,
+        :O2_michaelis_menten => :Ko25,
+        :CO2_michaelis_menten => :Kc25,
+        :dark_respiration_factor => :fC3,
+        :O2_activation_energy => :ΔHko,
+        :low_water_pressure_sensitivity => :sc,
+        :Rd_activation_energy => :ΔHRd,
+        :Vcmax_activation_energy => :ΔHVcmax,
+        :Γstar_activation_energy => :ΔHΓstar,
+        :CO2_activation_energy => :ΔHkc,
+        :moisture_stress_ref_water_pressure => :pc,
+    )
+    parameters = CP.get_parameter_values(toml_dict, name_map, "Land")
+    FT = CP.float_type(toml_dict)
+    C4_parameters = (
+        :fC4 => FT(0.025),
+        :Q10 => FT(2),
+        :s1 => FT(0.3),
+        :s2 => FT(313.15),
+        :s3 => FT(0.2),
+        :s4 => FT(288.15),
+        :s5 => FT(1.3),
+        :s6 => FT(328.15),
+        :E => FT(0.05),
+    )
+    # if is_c3 is a field, is_c3 may contain values between 0.0 and 1.0 after regridding
+    # this deals with that possibility by rounding to the closest int
+    is_c3 = max.(min.(is_c3, FT(1)), FT(0)) # placeholder
+    is_c3 = round.(is_c3)
+    MECH = typeof(is_c3)
+    Vcmax25 = FT.(Vcmax25)
+    VC = typeof(Vcmax25)
+    return FarquharParameters{FT, MECH, VC}(;
+        is_c3,
+        Vcmax25,
+        parameters...,
+        C4_parameters...,
+        kwargs...,
+    )
+end
