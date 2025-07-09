@@ -334,8 +334,7 @@ end
 
 ## For interfacing with ClimaParams
 
-SnowParameters(::Type{FT}, Δt; kwargs...) where {FT <: AbstractFloat} =
-    SnowParameters(CP.create_toml_dict(FT), Δt; kwargs...)
+SnowParameters(::Type{FT},Δt;kwargs...) where {FT <: AbstractFloat} = SnowParameters(CP.create_toml_dict(FT), Δt; kwargs...)
 
 function SnowParameters(toml_dict::CP.AbstractTOMLDict, Δt; kwargs...)
     name_map = (;
@@ -343,23 +342,38 @@ function SnowParameters(toml_dict::CP.AbstractTOMLDict, Δt; kwargs...)
         :snow_scalar_roughness_length => :z_0b,
         :thermal_conductivity_of_water_ice => :κ_ice,
         :snow_density => :ρ_snow,
-        :snow_albedo => :α_snow,
-        :snow_emissivity => :ϵ_snow,
         :holding_capacity_of_water_in_snow => :θ_r,
         :wet_snow_hydraulic_conductivity => :Ksat,
         :snow_cover_fraction_crit_threshold => :fS_c,
     )
+        :snow_albedo => :α_snow,
+        :snow_emissivity => :ϵ_snow,
 
     parameters = CP.get_parameter_values(toml_dict, name_map, "Land")
+    density::DM = MinimumDensityModel(FT(200)),
+    α_snow::AM = ConstantAlbedoModel(parameters.α_snow),
+    ΔS = FT(0.1),
+    scf::SCFM = WuWuSnowCoverFractionModel(
+        FT(0.106),
+        FT(1.81),
+        FT(0.08),
+        FT(1.77),
+        FT(1),
+        FT(1),
+    ),
     FT = CP.float_type(toml_dict)
     earth_param_set = LP.LandParameters(toml_dict)
     PSE = typeof(earth_param_set)
     return SnowParameters{FT, PSE}(;
-        Δt,
-        earth_param_set,
-        parameters...,
-        kwargs...,
-    )
+                                   Δt,
+                                   density,
+                                   α_snow,
+                                   scf,
+                                   ΔS,
+                                   earth_param_set,
+                                   parameters...,
+                                   kwargs...,
+                                   )
 end
 
 Base.broadcastable(ps::SnowParameters) = tuple(ps)
