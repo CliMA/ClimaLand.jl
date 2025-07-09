@@ -205,11 +205,6 @@ canopy = ClimaLand.Canopy.CanopyModel{FT}(;
 # variables that are stepped explicitly.
 
 Y, p, coords = ClimaLand.initialize(canopy)
-
-print("initial Y: $Y \n\n\n")
-
-print("initial p: $p \n\n\n")
-
 exp_tendency! = make_exp_tendency(canopy);
 imp_tendency! = make_imp_tendency(canopy)
 jacobian! = make_jacobian(canopy);
@@ -233,25 +228,15 @@ for i in 1:2
     Y.canopy.hydraulics.ϑ_l.:($i) .= augmented_liquid_fraction.(ν, S_l_ini[i])
 end;
 
-# Select a time range to perform time stepping over, and a dt. Also create the
-# saveat Array to contain the data from the model at each time step. As usual,
-# the timestep depends on the problem you are solving, the accuracy of the
-# solution required, and the timestepping algorithm you are using.
-
+# Run the simulation for 10 days with a timestep of 10 minutes 
 t0 = FT(0.0)
 N_days = 10
 tf = t0 + 3600 * 24 * N_days
 dt = FT(600.0);
-
-# Initialize the cache variables for the canopy using the initial
-# conditions and initial time.
-
 set_initial_cache! = make_set_initial_cache(canopy)
 set_initial_cache!(p, Y, t0);
 
-# Allocate the struct which stores the saved auxiliary state
-# and create the callback which saves it at each element in saveat.
-
+# Save every 16 timesteps 
 n = 16
 saveat = Array(t0:(n * dt):tf)
 sv = (;
@@ -300,100 +285,121 @@ prob = SciMLBase.ODEProblem(
 
 sol = SciMLBase.solve(prob, ode_algo; dt = dt, callback = cb, saveat = saveat);
 
-# # Create some plots
+pmodel_vars = [
+    "canopy.photosynthesis.GPP",
+    "canopy.photosynthesis.OptVars.Vcmax25_opt", 
+    "canopy.photosynthesis.OptVars.Jmax25_opt", 
+    "canopy.photosynthesis.OptVars.ξ_opt", 
+    "canopy.photosynthesis.IntVars.ci",
+    "canopy.photosynthesis.Jmax",
+    "canopy.photosynthesis.J",
+    "canopy.conductance.r_stomata_canopy"
+]
 
-# We can now plot the data produced in the simulation. For example, GPP:
 
+# get the pmodel variables and drivers
+extracted_vars = extract_variables(sv, pmodel_vars)
+
+# Create time array for plotting
 daily = sol.t ./ 3600 ./ 24
-model_GPP = [
-    parent(sv.saveval[k].canopy.photosynthesis.GPP)[1] for
-    k in 1:length(sv.saveval)
-]
 
-plt1 = Plots.plot(size = (600, 700));
-Plots.plot!(
-    plt1,
+# Create plots for all extracted variables
+plots_array = []
+
+# GPP plot (convert to μmol/mol)
+plt_gpp = Plots.plot(
+    daily, 
+    extracted_vars.GPP .* 1e6,
+    title = "GPP",
+    xlabel = "Days",
+    ylabel = "GPP",
+    linewidth = 2
+)
+push!(plots_array, plt_gpp)
+
+# Vcmax25_opt plot
+plt_vcmax = Plots.plot(
+    daily, 
+    extracted_vars.Vcmax25_opt,
+    title = "Optimal Vcmax25",
+    xlabel = "Days", 
+    ylabel = "Vcmax25",
+    linewidth = 2
+)
+push!(plots_array, plt_vcmax)
+
+# Jmax25_opt plot
+plt_jmax = Plots.plot(
+    daily, 
+    extracted_vars.Jmax25_opt,
+    title = "Optimal Jmax25",
+    xlabel = "Days",
+    ylabel = "Jmax25", 
+    linewidth = 2
+)
+push!(plots_array, plt_jmax)
+
+# ξ_opt plot
+plt_xi = Plots.plot(
+    daily, 
+    extracted_vars.ξ_opt,
+    title = "Optimal ξ",
+    xlabel = "Days",
+    ylabel = "ξ",
+    linewidth = 2
+)
+push!(plots_array, plt_xi)
+
+# ci plot
+plt_ci = Plots.plot(
+    daily, 
+    extracted_vars.ci,
+    title = "Internal CO2 Concentration",
+    xlabel = "Days",
+    ylabel = "ci [Pa]",
+    linewidth = 2
+)
+push!(plots_array, plt_ci)
+
+# Jmax plot  
+plt_jmax_current = Plots.plot(
     daily,
-    model_GPP .* 1e6,
-    label = "Model",
-    xlim = [minimum(daily), maximum(daily)],
-    xlabel = "days",
-    ylabel = "GPP [μmol/mol]",
-);
+    extracted_vars.Jmax,
+    title = "instantaneous Jmax",
+    xlabel = "Days",
+    ylabel = "Jmax",
+    linewidth = 2
+)
+push!(plots_array, plt_jmax_current)
 
-# Transpiration plot:
-
-T = [
-    parent(sv.saveval[k].canopy.turbulent_fluxes.transpiration)[1] for
-    k in 1:length(sv.saveval)
-]
-T = T .* (1e3 * 24 * 3600)
-
-plt2 = Plots.plot(size = (500, 700));
-Plots.plot!(
-    plt2,
+# J plot
+plt_j = Plots.plot(
     daily,
-    T,
+    extracted_vars.J,
+    title = "instantaneous electron transport rate",
+    xlabel = "Days", 
+    ylabel = "J",
     label = "Model",
-    xlim = [minimum(daily), maximum(daily)],
-    xlabel = "days",
-    ylabel = "Vapor Flux [mm/day]",
-);
+    linewidth = 2
+)
+push!(plots_array, plt_j)
 
-# Show the two plots together:
+# Stomatal resistance plot
+plt_resistance = Plots.plot(
+    daily,
+    extracted_vars.r_stomata_canopy,
+    title = "Stomatal resistance",
+    xlabel = "Days",
+    ylabel = "Resistance [s/m]",
+    linewidth = 2
+)
+push!(plots_array, plt_resistance)
 
-Plots.plot(plt1, plt2, layout = (2, 1));
+# Combine all plots in a grid layout
+final_plot = Plots.plot(plots_array..., layout = (4, 2), size = (1200, 1600))
 
-# Save the output:
-savefig("ozark_standalone_canopy_test.png");
-# ![](ozark_standalone_canopy_test.png)
+# Save the output
+savefig("ozark_standalone_canopy_test.png")
 
-
-# Function to extract variables from saved results
-function extract_variables(sv, variable_paths::Vector{String})
-    """
-    Extract multiple variables from saved simulation results.
-    
-    Args:
-        sv: Saved values structure from simulation
-        variable_paths: Vector of strings in format "module.variable" (e.g., ["photosynthesis.GPP", "turbulent_fluxes.transpiration"])
-    
-    Returns:
-        NamedTuple with variable names as keys and extracted time series as values
-    """
-    results = NamedTuple()
-    
-    for path in variable_paths
-        # Split the path into module and variable parts
-        parts = split(path, ".")
-        if length(parts) != 2
-            error("Variable path must be in format 'module.variable', got: $path")
-        end
-        
-        module_name = Symbol(parts[1])
-        variable_name = Symbol(parts[2])
-        
-        # Extract the variable using the same pattern as the existing code
-        variable_data = [
-            parent(getproperty(getproperty(sv.saveval[k].canopy, module_name), variable_name))[1] 
-            for k in 1:length(sv.saveval)
-        ]
-        
-        # Create a valid symbol name for the result (replace dots with underscores)
-        result_name = Symbol(replace(path, "." => "_"))
-        
-        # Add to results tuple
-        results = merge(results, NamedTuple{(result_name,)}((variable_data,)))
-    end
-    
-    return results
-end
-
-vars = [
-    "photosynthesis.GPP",
-    "photosynthesis.cosθs_t_minus_2", 
-    "photosynthesis.cosθs_t_minus_1", 
-]
-
-# Extract all variables at once
-extracted_vars = extract_variables(sv, vars)
+# Display the plot
+display(final_plot)
