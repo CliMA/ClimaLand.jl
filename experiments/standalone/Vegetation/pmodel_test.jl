@@ -31,7 +31,6 @@ h_stem = FT(9)
 h_leaf = FT(9.5)
 compartment_midpoints = [h_stem / 2, h_stem + h_leaf / 2]
 compartment_surfaces = [zmax, h_stem, h_stem + h_leaf]
-land_domain = Point(; z_sfc = FT(0.0))
 
 include(
     joinpath(pkgdir(ClimaLand), "experiments/integrated/fluxnet/data_tools.jl"),
@@ -44,6 +43,7 @@ time_offset = 7
 # Site latitude and longitude
 lat = FT(38.7441) # degree
 long = FT(-92.2000) # degree
+land_domain = Point(; z_sfc = FT(0.0))
 
 # Height of the sensor at the site
 atmos_h = FT(32)
@@ -205,6 +205,11 @@ canopy = ClimaLand.Canopy.CanopyModel{FT}(;
 # variables that are stepped explicitly.
 
 Y, p, coords = ClimaLand.initialize(canopy)
+
+print("initial Y: $Y \n\n\n")
+
+print("initial p: $p \n\n\n")
+
 exp_tendency! = make_exp_tendency(canopy);
 imp_tendency! = make_imp_tendency(canopy)
 jacobian! = make_jacobian(canopy);
@@ -233,10 +238,10 @@ end;
 # the timestep depends on the problem you are solving, the accuracy of the
 # solution required, and the timestepping algorithm you are using.
 
-t0 = 0.0
-N_days = 364
+t0 = FT(0.0)
+N_days = 10
 tf = t0 + 3600 * 24 * N_days
-dt = 225.0;
+dt = FT(600.0);
 
 # Initialize the cache variables for the canopy using the initial
 # conditions and initial time.
@@ -261,7 +266,11 @@ updateat = Array(t0:1800:tf)
 model_drivers = ClimaLand.get_drivers(canopy)
 updatefunc = ClimaLand.make_update_drivers(model_drivers)
 driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
-cb = SciMLBase.CallbackSet(driver_cb, saving_cb);
+
+# p model specific callback. Eventually we will need to make this automatically applied
+# if we are using the Pmodel 
+pmodel_cb = ClimaLand.make_PModel_callback(FT, UTC_DATETIME[1], dt, canopy, long)
+cb = SciMLBase.CallbackSet(driver_cb, saving_cb, pmodel_cb);
 
 
 # Select a timestepping algorithm and setup the ODE problem.
@@ -338,3 +347,53 @@ Plots.plot(plt1, plt2, layout = (2, 1));
 # Save the output:
 savefig("ozark_standalone_canopy_test.png");
 # ![](ozark_standalone_canopy_test.png)
+
+
+# Function to extract variables from saved results
+function extract_variables(sv, variable_paths::Vector{String})
+    """
+    Extract multiple variables from saved simulation results.
+    
+    Args:
+        sv: Saved values structure from simulation
+        variable_paths: Vector of strings in format "module.variable" (e.g., ["photosynthesis.GPP", "turbulent_fluxes.transpiration"])
+    
+    Returns:
+        NamedTuple with variable names as keys and extracted time series as values
+    """
+    results = NamedTuple()
+    
+    for path in variable_paths
+        # Split the path into module and variable parts
+        parts = split(path, ".")
+        if length(parts) != 2
+            error("Variable path must be in format 'module.variable', got: $path")
+        end
+        
+        module_name = Symbol(parts[1])
+        variable_name = Symbol(parts[2])
+        
+        # Extract the variable using the same pattern as the existing code
+        variable_data = [
+            parent(getproperty(getproperty(sv.saveval[k].canopy, module_name), variable_name))[1] 
+            for k in 1:length(sv.saveval)
+        ]
+        
+        # Create a valid symbol name for the result (replace dots with underscores)
+        result_name = Symbol(replace(path, "." => "_"))
+        
+        # Add to results tuple
+        results = merge(results, NamedTuple{(result_name,)}((variable_data,)))
+    end
+    
+    return results
+end
+
+vars = [
+    "photosynthesis.GPP",
+    "photosynthesis.cosθs_t_minus_2", 
+    "photosynthesis.cosθs_t_minus_1", 
+]
+
+# Extract all variables at once
+extracted_vars = extract_variables(sv, vars)

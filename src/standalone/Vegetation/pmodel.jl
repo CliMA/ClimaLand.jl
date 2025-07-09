@@ -3,7 +3,8 @@ export PModelParameters,
     PModelConstants, 
     compute_pmodel_outputs, 
     set_historical_cache!,
-    PModel
+    PModel,
+    make_PModel_callback
 
 """
     PModelParameters{FT<:AbstractFloat}
@@ -185,8 +186,8 @@ end
 
 """
 New cache variables:
-- `cosθs_diff`: if c[t] is cosθs at current timestep t, then cosθs_diff[t] = c[t-1] - c[t-2]
 - `cosθs_t_minus_1`: cosθs at the last timestep t-1
+- `cosθs_t_minus_2`: cosθs at timestep t-2
 - `OptVars`: a NamedTuple with keys `:ξ_opt`, `:Vcmax25_opt`, and `:Jmax25_opt` 
     containing the acclimated optimal values of ξ, Vcmax25, and Jmax25, respectively. These are updated
     using an exponential moving average (EMA) at local noon.
@@ -199,8 +200,8 @@ ClimaLand.auxiliary_vars(model::PModel) =
     (:An, 
     :GPP, 
     :Rd, 
-    :cosθs_diff, 
     :cosθs_t_minus_1,
+    :cosθs_t_minus_2,
     :OptVars,
     :IntVars,
     :Jmax,
@@ -209,8 +210,8 @@ ClimaLand.auxiliary_types(model::PModel{FT}) where {FT} =
     (FT,
     FT,
     FT,
-    FT,
     FT, 
+    FT,
     NamedTuple{(:ξ_opt, :Vcmax25_opt, :Jmax25_opt), Tuple{FT, FT, FT}},
     NamedTuple{(:Γstar, :Kmm, :ci), Tuple{FT, FT, FT}},
     FT,
@@ -332,6 +333,7 @@ function update_optimal_EMA(
     local_noon_mask::FT,
 ) where {FT} 
     if local_noon_mask == FT(1.0)
+        print("local noon!")
         # Unpack parameters
         (; cstar, β, ϕc, ϕ0, ϕa0, ϕa1, ϕa2, α) = parameters
 
@@ -353,10 +355,13 @@ function update_optimal_EMA(
             "Γstar: $Γstar, Kmm: $Kmm, ηstar: $ηstar, ca: $ca\n"
         )
 
+        # convert ca from mol/mol to Pa 
+        ca_pp = ca * P_air 
+
         ξ = sqrt(β * (Kmm + Γstar) / (Drel * ηstar))
-        χ = Γstar / ca + (1 - Γstar / ca) * ξ / (ξ + sqrt(VPD)) 
-        γ = Γstar / ca 
-        κ = Kmm / ca 
+        χ = Γstar / ca_pp + (1 - Γstar / ca_pp) * ξ / (ξ + sqrt(VPD)) 
+        γ = Γstar / ca_pp 
+        κ = Kmm / ca_pp 
         print(
             "ξ: $ξ, χ: $χ, γ: $γ, κ: $κ\n"
         )
@@ -396,8 +401,10 @@ function update_intermediate_vars(
         Ha_Vcmax, Hd_Vcmax, aS_Vcmax, bS_Vcmax, 
         Ha_Jmax, Hd_Jmax, aS_Jmax, bS_Jmax, Mc, oi, aRd, bRd, fC3) = constants
 
+    # convert ca from ppm to Pa 
+    ca_pp = ca * P_air 
     Γstar = co2_compensation_p(T_canopy, To, P_air, R, ΔHΓstar, Γstar25)
-    ci = (ξ_opt * ca + Γstar * sqrt(VPD)) / (ξ_opt + sqrt(VPD))
+    ci = (ξ_opt * ca_pp + Γstar * sqrt(VPD)) / (ξ_opt + sqrt(VPD))
 
     return (;
         Γstar = Γstar,
@@ -407,23 +414,28 @@ function update_intermediate_vars(
 end 
 
 """
-get_local_noon_mask(
-    cosθs_diff::FT, 
-    cosθs_t_minus_1::FT,
-    cosθs_t::FT 
-) where {FT}
+function get_local_noon_mask(
+    t::FT,
+    dt::FT, 
+    lon::FT 
+) where {FT}    
 
-This function returns 1 if the first derivative of the cosine of the solar zenith angle
-changes sign from positive to negative, indicating solar noon. If c[t] is cosθs at current timestep t,
-then cosθs_diff[t] = c[t-1] - c[t-2]. cosθs_t and cosθs_t_minus_1 are the values of cosθs at the current
-timestep and the previous timestep, respectively. 
+This function determines whether the current time `t` (seconds UTC) is within a local noon window of width 
+`dt` (seconds) centered around the local noon time for a given longitude `lon` (degrees, -180 to 180). 
+Currently we neglect the correction due to obliquity and eccentricity. 
+
+See https://clima.github.io/Insolation.jl/dev/ZenithAngleEquations/#Hour-Angle 
 """
 function get_local_noon_mask(
-    cosθs_diff::FT, 
-    cosθs_t_minus_1::FT,
-    cosθs_t::FT 
-) where {FT}
-    return FT(cosθs_diff > 0 && (cosθs_t - cosθs_t_minus_1) < 0)
+    t,
+    dt, 
+    lon::FT
+) where {FT}    
+    day = IP.day(IP.InsolationParameters(FT)) 
+
+    # local noon in seconds UTC 
+    local_noon = day * (1/2 - lon/360)
+    return FT(FT(t) >= local_noon - FT(dt) / 2 && FT(t) <= local_noon + FT(dt) / 2) 
 end
 
 """
@@ -449,22 +461,18 @@ function set_historical_cache!(p, Y0, model::PModel, canopy)
     grav = LP.grav(earth_param_set)
 
     # to initialize, assume canopy temperature is the same as the air temperature
-    T_canopy = p.drivers.T
+    T_canopy = canopy_temperature(canopy.energy, canopy, Y0, p)
     f_abs = p.canopy.radiative_transfer.par.abs
-    ca = p.drivers.c_co2 .* p.drivers.P 
+    ca = p.drivers.c_co2 
     P_air = p.drivers.P
     par_d = p.canopy.radiative_transfer.par_d
     thermo_params = LP.thermodynamic_parameters(earth_param_set)
-    VPD = @. lazy(ClimaLand.vapor_pressure_deficit(
+    VPD = ClimaLand.vapor_pressure_deficit.(
         p.drivers.T, p.drivers.P, p.drivers.q, thermo_params
-    ))
+    )
     
-    print("VPD: $VPD\n")
-
     # Calculate I_abs directly
-    I_abs = @. lazy(f_abs * par_d / energy_per_mole_photon_par)
-    
-    print("I_abs: $I_abs\n")
+    I_abs = @. (f_abs * par_d / energy_per_mole_photon_par)
 
     parameters = model.parameters
     constants = model.constants
@@ -508,7 +516,101 @@ function set_historical_cache!(p, Y0, model::PModel, canopy)
         local_noon_mask,
     )
 
-    print(p.canopy.photosynthesis.OptVars)
+    @. p.canopy.photosynthesis.cosθs_t_minus_1 = p.drivers.cosθs
+    @. p.canopy.photosynthesis.cosθs_t_minus_2 = p.drivers.cosθs
+end
+
+# TODO: reduce all of the common parameter unpacking and driver preparation 
+
+function call_update_optimal_EMA(p, Y, t; canopy, dt, longitude=nothing) 
+    # update local noon mask 
+    if isnothing(longitude) 
+        longitude = ClimaCore.Fields.coorindate_field(axes(p.drivers.T)) 
+    end 
+    local_noon_mask = @. lazy(get_local_noon_mask(t, dt, longitude))
+    
+    # update the acclimated Vcmax25, Jmax25, ξ using EMA 
+    earth_param_set = canopy.parameters.earth_param_set
+    lightspeed = LP.light_speed(earth_param_set)
+    planck_h = LP.planck_constant(earth_param_set)
+    N_a = LP.avogadro_constant(earth_param_set)
+    (; G_Function, λ_γ_PAR, Ω) = canopy.radiative_transfer.parameters
+    energy_per_mole_photon_par = planck_h * lightspeed / λ_γ_PAR * N_a
+
+    i_end = canopy.hydraulics.n_stem + canopy.hydraulics.n_leaf
+    ψ = p.canopy.hydraulics.ψ
+    ρ_l = LP.ρ_cloud_liq(earth_param_set)
+    grav = LP.grav(earth_param_set)
+
+    T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
+    f_abs = p.canopy.radiative_transfer.par.abs
+    ca = p.drivers.c_co2
+    P_air = p.drivers.P
+    par_d = p.canopy.radiative_transfer.par_d
+    thermo_params = LP.thermodynamic_parameters(earth_param_set)
+    VPD = @. lazy(ClimaLand.vapor_pressure_deficit(
+        p.drivers.T, p.drivers.P, p.drivers.q, thermo_params
+    ))
+    LAI = p.canopy.hydraulics.area_index.leaf
+    I_abs = @. lazy(f_abs * par_d / energy_per_mole_photon_par)
+
+    parameters = canopy.photosynthesis.parameters
+    constants = canopy.photosynthesis.constants
+
+    # TODO: replace this with modular soil moisture stress parameterization
+    βm = @. lazy(moisture_stress(ψ.:($$i_end) * ρ_l * grav, parameters.sc, parameters.pc)) 
+
+
+    @. p.canopy.photosynthesis.OptVars = update_optimal_EMA(
+        parameters, 
+        constants, 
+        p.canopy.photosynthesis.OptVars, 
+        T_canopy, 
+        P_air, 
+        VPD,
+        ca, 
+        βm,
+        I_abs,
+        local_noon_mask,
+    )
+end 
+
+"""
+function make_PModel_callback(FT, start_date, dt, canopy, longitude=nothing) 
+
+This constructs a FrequencyBasedCallback for the P-model that updates the optimal photosynthetic capacities
+using the EMA equation at local noon every 10 minutes. 
+
+Args
+- `FT`: The floating-point type used in the model (e.g., `Float32`, `Float64`).
+- `start_date`: datetime object for the start of the simulation (UTC).
+- `dt`: timestep in seconds (this will get cast to type FT)
+- `canopy`: the canopy object containing the P-model parameters and constants.
+- `longitude`: optional longitude in degrees for local noon calculation (default is `nothing`). If we are on 
+    a ClimaLand.Domains.Point, this will need to be supplied explicitly. Otherwise, if we are on a field, then 
+    the longitude at each point can be automatically extracted from the field axes (THIS STILL NEEDS TO BE TESTED)
+"""
+function make_PModel_callback(FT, start_date, dt, canopy, longitude=nothing) 
+
+    function seconds_after_midnight(t::DateTime)
+        return Hour(t).value * 3600 +
+            Minute(t).value * 60
+    end 
+
+    day = IP.day(IP.InsolationParameters(FT)) 
+    start_t = FT(seconds_after_midnight(start_date))
+
+    return FrequencyBasedCallback(
+        FT(600.0), # 10 minutes
+        start_date, # start datetime, UTC 
+        dt; # timestep, in seconds
+        func = (integrator; ) -> call_update_optimal_EMA(
+            integrator.p, 
+            integrator.u,
+            (integrator.t + start_t) % (day), # current time in seconds UTC; 
+            canopy=canopy, dt=dt, longitude=longitude
+        ),
+    )
 end
 
 
@@ -550,29 +652,6 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
     # Use model's parameters and constants
     parameters = model.parameters
     constants = model.constants
-
-    # TODO: replace this with modular soil moisture stress parameterization
-    βm = @. lazy(moisture_stress(ψ.:($$i_end) * ρ_l * grav, parameters.sc, parameters.pc)) 
-
-    local_noon_mask = @. lazy(get_local_noon_mask(p.canopy.photosynthesis.cosθs_diff, p.canopy.photosynthesis.cosθs_t_minus_1, p.drivers.cosθs))
-
-    # update auxiliary zenith angle variables in place
-    @. p.canopy.photosynthesis.cosθs_diff = p.drivers.cosθs - p.canopy.photosynthesis.cosθs_t_minus_1
-    @. p.canopy.photosynthesis.cosθs_t_minus_1 = p.drivers.cosθs
-    
-    # update the acclimated Vcmax25, Jmax25, ξ using EMA 
-    @. p.canopy.photosynthesis.OptVars = update_optimal_EMA(
-        parameters, 
-        constants, 
-        p.canopy.photosynthesis.OptVars, 
-        T_canopy, 
-        P_air, 
-        VPD,
-        ca, 
-        βm,
-        I_abs,
-        local_noon_mask,
-    )
 
     # compute instantaneous max photosynthetic rates and assimilation rates 
     Vcmax_inst = @. lazy(

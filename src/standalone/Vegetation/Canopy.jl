@@ -11,6 +11,7 @@ import ClimaUtilities.TimeManager: ITime, date
 import LinearAlgebra: I, dot
 using ClimaLand: AbstractRadiativeDrivers, AbstractAtmosphericDrivers
 import ..Parameters as LP
+import Insolation.Parameters as IP
 
 import ClimaLand:
     name,
@@ -29,7 +30,8 @@ import ClimaLand:
     make_compute_jacobian,
     get_drivers,
     total_liq_water_vol_per_area!,
-    total_energy_per_area!
+    total_energy_per_area!,
+    FrequencyBasedCallback
 using ClimaLand: PrescribedGroundConditions, AbstractGroundConditions
 using ClimaLand.Domains: Point, Plane, SphericalSurface
 export SharedCanopyParameters, CanopyModel, set_canopy_prescribed_field!
