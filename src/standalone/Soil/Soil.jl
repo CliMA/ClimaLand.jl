@@ -65,6 +65,7 @@ import ClimaCore.MatrixFields: @name, ⋅
 import ..Parameters as LP
 import ClimaCore: Fields, Operators, Geometry, Spaces
 using Thermodynamics
+import ClimaParams as CP
 using SurfaceFluxes
 using StaticArrays
 import SurfaceFluxes.Parameters as SFP
@@ -223,8 +224,8 @@ TODO: Move scalar parameters to ClimaParams and obtain from earth_param_set, pos
 function EnergyHydrology(
     FT,
     domain,
-    forcing,
-    earth_param_set;
+    forcing;
+    earth_param_set =  LP.LandParameters(FT),
     prognostic_land_components = (:soil,),
     albedo::AbstractSoilAlbedoParameterization = CLMTwoBandSoilAlbedo{FT}(;
         clm_soil_albedo_parameters(domain.space.surface)...,
@@ -243,6 +244,9 @@ function EnergyHydrology(
         FT,
     ),
     S_s = ClimaCore.Fields.zeros(domain.space.subsurface) .+ 1e-3,
+    emissivity = earth_param_set.emissivity_bare_soil;
+    roughness_lengths = (;z_0m = earth_param_set.soil_momentum_roughness_length,
+                          z_0b = earth_param_set.soil_scalar_roughness_length),
     additional_sources = (),
 )
     top_bc = AtmosDrivenFluxBC(
@@ -261,6 +265,8 @@ function EnergyHydrology(
         composition_parameters...,
         albedo,
         S_s,
+        emissivity,
+        roughness_lengths...
     )
     return EnergyHydrology{FT}(;
         parameters,
