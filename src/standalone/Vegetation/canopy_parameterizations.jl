@@ -1151,7 +1151,7 @@ function intrinsic_quantum_yield(T::FT, c::FT, ϕa0::FT, ϕa1::FT, ϕa2::FT) whe
     # convert to C
     T = T - FT(273.15)
     ϕ = c * (ϕa0 + ϕa1 * T + ϕa2 * T^2)
-    return FT(ϕ)
+    return max(ϕ, FT(0)) # Ensure non-negative quantum yield
 end
 
 
@@ -1595,7 +1595,7 @@ function electron_transport_pmodel(
     I_abs::FT,
     Jmax::FT 
 ) where {FT}
-    J = FT(4) * ϕ0 * I_abs / sqrt(FT(1) + (FT(4) * ϕ0 * I_abs / Jmax)^2) 
+    J = FT(4) * ϕ0 * I_abs / sqrt(FT(1) + (FT(4) * ϕ0 * I_abs / max(Jmax, eps(FT)))^2) 
     return J
 end
 
