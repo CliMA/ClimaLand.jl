@@ -263,11 +263,11 @@ function setup_model(FT, start_date, stop_date, Δt, domain, earth_param_set)
     #    α_snow = Snow.ConstantAlbedoModel(FT(0.7))
     # Set β = 0 in order to regain model without density dependence
     α_snow = Snow.ZenithAngleAlbedoModel(
-        FT(0.64),
-        FT(0.06),
-        FT(2);
-        β = FT(0.4),
-        x0 = FT(0.2),
+        FT(0.7899), # Calibrated
+        FT(0.06575), # Calibrated
+        FT(17.92); # Calibrated
+        β = FT(0.7875), # Calibrated
+        x0 = FT(0.1046), # Calibrated
     )
     horz_degree_res =
         sum(ClimaLand.Domains.average_horizontal_resolution_degrees(domain)) / 2 # mean of resolution in latitude and longitude, in degrees
