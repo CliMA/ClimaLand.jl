@@ -325,9 +325,9 @@ function update_optimal_EMA(
     βm::FT,
     I_abs::FT,
     local_noon_mask::FT,
+    verbose::Bool = false, 
 ) where {FT} 
     if local_noon_mask == FT(1.0)
-        print("local noon!")
         # Unpack parameters
         (; cstar, β, ϕc, ϕ0, ϕa0, ϕa1, ϕa2, α) = parameters
 
@@ -344,6 +344,9 @@ function update_optimal_EMA(
         ηstar = compute_viscosity_ratio(T_canopy, P_air, true)
         Kmm = compute_Kmm(T_canopy, P_air, Kc25, Ko25, ΔHkc, ΔHko, To, R, oi)
         
+        verbose && print("Drivers: \n",
+            "T_canopy: $T_canopy, P_air: $P_air, VPD: $VPD, ca: $ca, βm: $βm, I_abs: $I_abs\n\n"
+        )
         # convert ca from mol/mol to Pa 
         ca_pp = ca * P_air 
 
@@ -356,12 +359,11 @@ function update_optimal_EMA(
         mprime = compute_mj_with_jmax_limitation(mj, cstar)
 
         # print intermediate values 
-        print("Intermediate values:\n",
+        verbose && print("Intermediate values:\n",
             "Γstar: $Γstar, Kmm: $Kmm, ηstar: $ηstar, ca (Pa): $ca_pp\n",
             "ξ: $ξ, χ: $χ, γ: $γ, κ: $κ\n",
             "mprime: $mprime, mc: $mc, mj: $mj\n",
-            "βm: $βm, ϕ0: $ϕ0, I_abs: $I_abs\n
-            ----------------------------------\n"
+            "βm: $βm, ϕ0: $ϕ0, I_abs: $I_abs\n\n"
         )
 
         Vcmax = βm * ϕ0 * I_abs * mprime / mc
@@ -369,8 +371,9 @@ function update_optimal_EMA(
 
         Jmax = 4 * ϕ0 * I_abs / sqrt((mj / (βm * mprime)^2) - 1)
         Jmax25 = Jmax / inst_temp_scaling(T_canopy, T_canopy, To, Ha_Jmax, Hd_Jmax, aS_Jmax, bS_Jmax, R)
-        print(
-            "Vcmax: $Vcmax, Vcmax25: $Vcmax25, Jmax: $Jmax, Jmax25: $Jmax25\n"
+        verbose && print(
+            "Vcmax: $Vcmax, Vcmax25: $Vcmax25, Jmax: $Jmax, Jmax25: $Jmax25\n
+            ----------------------------------\n"
         )
         return (;
             ξ_opt = α * OptVars.ξ_opt + (1 - α) * ξ,
@@ -491,7 +494,12 @@ end
 function call_update_optimal_EMA(p, Y, t; canopy, dt, longitude=nothing) 
     # update local noon mask 
     if isnothing(longitude) 
-        longitude = ClimaCore.Fields.coorindate_field(axes(p.drivers.T)) 
+        try 
+            longitude = ClimaCore.Fields.coordinate_field(axes(p.drivers.T)).long
+        catch e
+            error("Longitude must be provided explicitly if the domain you are working on does not \
+                    have axes that specify longitude $e")
+        end
     end 
     local_noon_mask = @. lazy(get_local_noon_mask(t, dt, longitude))
     
@@ -503,7 +511,6 @@ function call_update_optimal_EMA(p, Y, t; canopy, dt, longitude=nothing)
     FT = eltype(parameters)
     # TODO: replace this with modular soil moisture stress parameterization
     βm = FT(1.0) # @. lazy(moisture_stress(ψ.:($$i_end) * ρ_l * grav, parameters.sc, parameters.pc)) 
-
 
     @. p.canopy.photosynthesis.OptVars = update_optimal_EMA(
         parameters, 

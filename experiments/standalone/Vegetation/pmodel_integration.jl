@@ -230,7 +230,7 @@ end;
 
 # Run the simulation for 10 days with a timestep of 10 minutes 
 t0 = FT(0.0)
-N_days = 10
+N_days = 364
 tf = t0 + 3600 * 24 * N_days
 dt = FT(600.0);
 set_initial_cache! = make_set_initial_cache(canopy)
@@ -255,6 +255,60 @@ driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
 # p model specific callback. Eventually we will need to make this automatically applied
 # if we are using the Pmodel 
 pmodel_cb = ClimaLand.make_PModel_callback(FT, UTC_DATETIME[1], dt, canopy, long)
+
+# TODO: add test using compute_pmodel_outputs
+# function check_optimal_outputs(p, Y, t; canopy, dt, longitude) 
+#     # update local noon mask 
+#     local_noon_mask = @. lazy(get_local_noon_mask(t, dt, longitude))
+    
+#     # update the acclimated Vcmax25, Jmax25, ξ using EMA 
+#     drivers = extract_pmodel_drivers(p, Y, canopy)
+#     parameters = canopy.photosynthesis.parameters
+#     constants = canopy.photosynthesis.constants
+    
+#     FT = eltype(parameters)
+#     # TODO: replace this with modular soil moisture stress parameterization
+#     βm = FT(1.0) # @. lazy(moisture_stress(ψ.:($$i_end) * ρ_l * grav, parameters.sc, parameters.pc)) 
+
+#     @. p.canopy.photosynthesis.OptVars = update_optimal_EMA(
+#         parameters, 
+#         constants, 
+#         p.canopy.photosynthesis.OptVars, 
+#         drivers.T_canopy, 
+#         drivers.P_air, 
+#         drivers.VPD,
+#         drivers.ca, 
+#         βm,
+#         drivers.I_abs,
+#         local_noon_mask,
+#     )
+# end 
+
+# function make_PModel_callback(FT, start_date, dt, canopy, longitude=nothing) 
+
+#     function seconds_after_midnight(t)
+#         return Hour(t).value * 3600 +
+#             Minute(t).value * 60
+#     end 
+
+#     day = IP.day(IP.InsolationParameters(FT)) 
+#     start_t = FT(seconds_after_midnight(start_date))
+
+#     return FrequencyBasedCallback(
+#         FT(600.0), # 10 minutes
+#         start_date, # start datetime, UTC 
+#         dt; # timestep, in seconds
+#         func = (integrator; ) -> call_update_optimal_EMA(
+#             integrator.p, 
+#             integrator.u,
+#             (integrator.t + start_t) % (day), # current time in seconds UTC; 
+#             canopy=canopy, dt=dt, longitude=longitude
+#         ),
+#     )
+# end
+
+
+# unify callbacks 
 cb = SciMLBase.CallbackSet(driver_cb, saving_cb, pmodel_cb);
 
 
@@ -293,12 +347,17 @@ pmodel_vars = [
     "canopy.photosynthesis.IntVars.ci",
     "canopy.photosynthesis.Jmax",
     "canopy.photosynthesis.J",
-    "canopy.conductance.r_stomata_canopy"
+    "canopy.conductance.r_stomata_canopy",
+    "canopy.radiative_transfer.par.abs",
+    "canopy.radiative_transfer.par_d"
 ]
 
 
 # get the pmodel variables and drivers
 extracted_vars = extract_variables(sv, pmodel_vars)
+
+# This is the true GPP from fluxnet
+fluxnet_gpp = drivers.GPP.values # type DataColumn
 
 # Create time array for plotting
 daily = sol.t ./ 3600 ./ 24
@@ -339,61 +398,6 @@ plt_jmax = Plots.plot(
 )
 push!(plots_array, plt_jmax)
 
-# ξ_opt plot
-plt_xi = Plots.plot(
-    daily, 
-    extracted_vars.ξ_opt,
-    title = "Optimal ξ",
-    xlabel = "Days",
-    ylabel = "ξ",
-    linewidth = 2
-)
-push!(plots_array, plt_xi)
-
-# ci plot
-plt_ci = Plots.plot(
-    daily, 
-    extracted_vars.ci,
-    title = "Internal CO2 Concentration",
-    xlabel = "Days",
-    ylabel = "ci [Pa]",
-    linewidth = 2
-)
-push!(plots_array, plt_ci)
-
-# Jmax plot  
-plt_jmax_current = Plots.plot(
-    daily,
-    extracted_vars.Jmax,
-    title = "instantaneous Jmax",
-    xlabel = "Days",
-    ylabel = "Jmax",
-    linewidth = 2
-)
-push!(plots_array, plt_jmax_current)
-
-# J plot
-plt_j = Plots.plot(
-    daily,
-    extracted_vars.J,
-    title = "instantaneous electron transport rate",
-    xlabel = "Days", 
-    ylabel = "J",
-    label = "Model",
-    linewidth = 2
-)
-push!(plots_array, plt_j)
-
-# Stomatal resistance plot
-plt_resistance = Plots.plot(
-    daily,
-    extracted_vars.r_stomata_canopy,
-    title = "Stomatal resistance",
-    xlabel = "Days",
-    ylabel = "Resistance [s/m]",
-    linewidth = 2
-)
-push!(plots_array, plt_resistance)
 
 # Combine all plots in a grid layout
 final_plot = Plots.plot(plots_array..., layout = (4, 2), size = (1200, 1600))
