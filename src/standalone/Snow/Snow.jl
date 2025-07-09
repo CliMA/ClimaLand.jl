@@ -1,5 +1,5 @@
 module Snow
-
+import ClimaParams as CP
 using DocStringExtensions
 import ...Parameters as LP
 using ClimaCore
@@ -329,6 +329,36 @@ function SnowParameters{FT}(
         ΔS,
         scf,
         earth_param_set,
+    )
+end
+
+## For interfacing with ClimaParams
+
+SnowParameters(::Type{FT}, Δt; kwargs...) where {FT <: AbstractFloat} =
+    SnowParameters(CP.create_toml_dict(FT), Δt; kwargs...)
+
+function SnowParameters(toml_dict::CP.AbstractTOMLDict, Δt; kwargs...)
+    name_map = (;
+        :snow_momentum_roughness_length => :z_0m,
+        :snow_scalar_roughness_length => :z_0b,
+        :thermal_conductivity_of_water_ice => :κ_ice,
+        :snow_density => :ρ_snow,
+        :snow_albedo => :α_snow,
+        :snow_emissivity => :ϵ_snow,
+        :holding_capacity_of_water_in_snow => :θ_r,
+        :wet_snow_hydraulic_conductivity => :Ksat,
+        :snow_cover_fraction_crit_threshold => :fS_c,
+    )
+
+    parameters = CP.get_parameter_values(toml_dict, name_map, "Land")
+    FT = CP.float_type(toml_dict)
+    earth_param_set = LP.LandParameters(toml_dict)
+    PSE = typeof(earth_param_set)
+    return SnowParameters{FT, PSE}(;
+        Δt,
+        earth_param_set,
+        parameters...,
+        kwargs...,
     )
 end
 
