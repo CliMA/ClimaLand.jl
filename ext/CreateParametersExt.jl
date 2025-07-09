@@ -603,7 +603,7 @@ function TwoStreamParameters(
     α_NIR_leaf::F = 0.4,
     τ_NIR_leaf::F = 0.25,
     Ω = 1,
-    n_layers = UInt64(20),
+    n_layers = UInt64(1),
     kwargs...,
 ) where {F}
     name_map = (;
