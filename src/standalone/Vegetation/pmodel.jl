@@ -1,7 +1,7 @@
 export PModelParameters, 
     PModelDrivers, 
     PModelConstants, 
-    compute_pmodel_outputs, 
+    compute_full_pmodel_outputs, 
     PModel
 
 """
@@ -117,6 +117,9 @@ Base.eltype(::PModelParameters{FT}) where {FT} = FT
 Base.eltype(::PModelDrivers{FT}) where {FT} = FT
 Base.eltype(::PModelConstants{FT}) where {FT} = FT
 
+Base.broadcastable(m::PModelParameters) = tuple(m)
+Base.broadcastable(m::PModelDrivers) = tuple(m)
+Base.broadcastable(m::PModelConstants) = tuple(m)
 
 """
     PModelConstants(FT)
@@ -183,7 +186,7 @@ ClimaLand.auxiliary_domain_names(::PModel) =
 
 
 """
-    compute_pmodel_outputs(
+    compute_full_pmodel_outputs(
         parameters::PModelParameters, 
         drivers::PModelDrivers, 
         constants::PModelConstants
@@ -194,7 +197,7 @@ and returns a dictionary of outputs. See https://github.com/geco-bern/rpmodel
 for a code reference.
 
 Output name      Description (units)
-    "gpp"           Gross primary productivity (kg m^-2 s^-1)
+    "gpp"           Gross primary productivity per leaf area (kg C m^-2 s^-1)
     "gammastar"     CO2 compensation point (Pa)
     "kmm"           Effective MM coefficient for Rubisco-limited photosynthesis (Pa)
     "ns_star"       Viscosity of water normalized to 25 deg C (unitless)
@@ -211,7 +214,7 @@ Output name      Description (units)
     "jmax25"        Jmax normalized to 25°C via modified-Arrhenius type function (mol m^-2 s^-1)
 
 """
-function compute_pmodel_outputs(
+function compute_full_pmodel_outputs(
     parameters::PModelParameters{FT}, 
     drivers::PModelDrivers{FT}, 
     constants::PModelConstants{FT}
@@ -281,57 +284,5 @@ function compute_pmodel_outputs(
 end
 
 
-"""
-    update_photosynthesis!(p, Y, model::PModel, canopy)
-
-Computes the net photosynthesis rate `An` (mol CO2/m^2/s) for the P-model, along with the
-dark respiration `Rd` (mol CO2/m^2/s), the value of `Vcmax25` (mol CO2/m^2/s), and the gross primary 
-productivity `GPP` (mol CO2/m^2/s), and updates them in place.
-"""
-function update_photosynthesis!(p, Y, model::PModel, canopy)
-    # Unpack required fields from `p` and `canopy`
-    earth_param_set = canopy.parameters.earth_param_set
-    lightspeed = LP.light_speed(earth_param_set)
-    planck_h = LP.planck_constant(earth_param_set)
-    N_a = LP.avogadro_constant(earth_param_set)
-    (; _, λ_γ_PAR, Ω) = canopy.radiative_transfer.parameters
-    energy_per_mole_photon_par = planck_h * lightspeed / λ_γ_PAR * N_a
-
-    T_canopy = canopy_temperature(canopy.energy, canopy, Y, p)
-    f_abs = p.canopy.radiative_transfer.par.abs
-    ca = p.drivers.c_co2
-    P_air = p.drivers.P
-    par_d = p.canopy.radiative_transfer.par_d
-    VPD = ClimaLand.vapor_pressure_deficit(
-        p.drivers.T, p.drivers.P, p.drivers.q, canopy.parameters.earth_param_set.thermo_params
-    )
-    
-    # Calculate I_abs directly
-    I_abs = f_abs * par_d / energy_per_mole_photon_par
-
-    # Create PModelDrivers with I_abs
-    drivers = PModelDrivers(
-        T_canopy = T_canopy,
-        I_abs = I_abs,
-        ca = ca,
-        P_air = P_air,
-        VPD = VPD,
-        βm = FT(1.0) # TODO: add a new file for soil moisture stress parameterizations
-    )
-
-    # Use model's parameters and constants
-    parameters = model.parameters
-    constants = model.constants
-
-    outputs = compute_pmodel_outputs(parameters, drivers, constants)
-
-    # Update the outputs in place
-    p.canopy.photosynthesis.Vcmax25 .= outputs["vcmax25"]
-    p.canopy.photosynthesis.Rd .= outputs["rd"]
-    p.canopy.photosynthesis.An .= outputs["An"]
-    p.canopy.photosynthesis.GPP .= outputs["gpp"]
-end
-
 get_Vcmax25(p, m::PModelParameters) =
     p.canopy.photosynthesis.Vcmax25
-Base.broadcastable(m::PModelParameters) = tuple(m)

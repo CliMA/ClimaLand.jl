@@ -188,7 +188,7 @@ end
                 parameters = PModelParameters(inputs, FT)
                 
                 # Run the model
-                outputs = compute_pmodel_outputs(parameters, drivers, constants)
+                outputs = compute_full_pmodel_outputs(parameters, drivers, constants)
 
                 # Compare each output field
                 for key in keys(ref_outputs_typed)
