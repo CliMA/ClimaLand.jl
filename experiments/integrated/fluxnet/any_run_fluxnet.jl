@@ -661,6 +661,7 @@ function run_single_site(  # e.g., run_single_site(
     params::Union{Nothing, Dict{Symbol, Any}} = nothing, # Dict("g1" => 1.0, "Vcmax25" => 1.0))
     specific_flag::Bool = true, # true
 )
+    Main.site_ID = site_ID
 
     # specific_flag checks whether user wants site-specific parameters or generic
     if (specific_flag == true)
