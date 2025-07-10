@@ -95,6 +95,7 @@ atmos = PrescribedAtmosphere(
     h_atmos,
     earth_param_set,
 )
+forcing = (; atmos, radiation)
 # Snow data
 snow_data = NCDataset(joinpath(path, obs_filename))
 

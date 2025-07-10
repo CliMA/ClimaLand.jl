@@ -1,5 +1,5 @@
 module Snow
-
+import ClimaParams as CP
 using DocStringExtensions
 import ...Parameters as LP
 using ClimaCore
@@ -332,6 +332,50 @@ function SnowParameters{FT}(
     )
 end
 
+## For interfacing with ClimaParams
+
+SnowParameters(::Type{FT},Δt;kwargs...) where {FT <: AbstractFloat} = SnowParameters(CP.create_toml_dict(FT), Δt; kwargs...)
+
+function SnowParameters(toml_dict::CP.AbstractTOMLDict, Δt; kwargs...)
+    name_map = (;
+        :snow_momentum_roughness_length => :z_0m,
+        :snow_scalar_roughness_length => :z_0b,
+        :thermal_conductivity_of_water_ice => :κ_ice,
+        :snow_density => :ρ_snow,
+        :holding_capacity_of_water_in_snow => :θ_r,
+        :wet_snow_hydraulic_conductivity => :Ksat,
+        :snow_cover_fraction_crit_threshold => :fS_c,
+    )
+        :snow_albedo => :α_snow,
+        :snow_emissivity => :ϵ_snow,
+
+    parameters = CP.get_parameter_values(toml_dict, name_map, "Land")
+    density::DM = MinimumDensityModel(FT(200)),
+    α_snow::AM = ConstantAlbedoModel(parameters.α_snow),
+    ΔS = FT(0.1),
+    scf::SCFM = WuWuSnowCoverFractionModel(
+        FT(0.106),
+        FT(1.81),
+        FT(0.08),
+        FT(1.77),
+        FT(1),
+        FT(1),
+    ),
+    FT = CP.float_type(toml_dict)
+    earth_param_set = LP.LandParameters(toml_dict)
+    PSE = typeof(earth_param_set)
+    return SnowParameters{FT, PSE}(;
+                                   Δt,
+                                   density,
+                                   α_snow,
+                                   scf,
+                                   ΔS,
+                                   earth_param_set,
+                                   parameters...,
+                                   kwargs...,
+                                   )
+end
+
 Base.broadcastable(ps::SnowParameters) = tuple(ps)
 
 """
@@ -361,6 +405,40 @@ function SnowModel(;
 ) where {FT, DM, PSE, BC}
     args = (parameters, boundary_conditions, domain)
     SnowModel{FT, typeof.(args)...}(args...)
+end
+
+function SnowModel(
+    FT,
+    domain,
+    forcing,
+    earth_param_set,
+    Δt;
+    prognostic_land_components = (:snow,)
+    α_snow = ConstantAlbedo(FT(0.8)),
+    density = MinimumDensityModel(FT(200)),
+    scf = WuWuSnowCoverFractionModel(
+        FT(0.106),
+        FT(1.81),
+        FT(0.08),
+        FT(1.77),
+        FT(1),
+        FT(1),
+    )
+    roughness_lengths = (; z_0m = FT(0.0024), z_0b =FT(0.0024)),
+    ϵ_snow = FT(0.99),
+    θ_r = FT(0.08),
+    Ksat = FT(1e-3),
+    κ_ice = FT(2.21),
+    ΔS = FT(0.1)
+)
+    parameters = SnowParameters{FT}(Δt; earth_param_set = earth_param_set, scf, α_snow, ϵ_snow, density, roughness_lengths...,
+                                    θ_r, Ksat, κ_ice, ΔS)
+    boundary_conditions = AtmosDrivenSnowBC(
+        forcing.atmos,
+        forcing.radiation;
+        prognostic_land_components,
+    )
+    return SnowModel{FT}(; boundary_conditions, domain, parameters)
 end
 
 """
@@ -748,4 +826,5 @@ function ClimaLand.total_energy_per_area!(
     surface_field .= Y.snow.U
     return nothing
 end
+
 end

@@ -72,3 +72,39 @@ function update_canopy_conductance!(p, Y, model::MedlynConductanceModel, canopy)
             P_air,
         )
 end
+
+# For interfacing with ClimaParams
+
+"""
+    function MedlynConductanceParameters(FT::AbstractFloat;
+        g1 = 790,
+        kwargs...
+    )
+    function MedlynConductanceParameters(toml_dict;
+        g1 = 790,
+        kwargs...
+    )
+
+Floating-point and toml dict based constructor supplying default values
+for the MedlynConductanceParameters struct.
+Additional parameter values can be directly set via kwargs.
+"""
+MedlynConductanceParameters(::Type{FT}; kwargs...) where {FT <: AbstractFloat} =
+    MedlynConductanceParameters(CP.create_toml_dict(FT); kwargs...)
+
+function MedlynConductanceParameters(
+    toml_dict::CP.AbstractTOMLDict;
+    g1 = 790,
+    kwargs...,
+)
+    name_map = (;
+        :relative_diffusivity_of_water_vapor => :Drel,
+        :min_stomatal_conductance => :g0,
+    )
+
+    parameters = CP.get_parameter_values(toml_dict, name_map, "Land")
+    FT = CP.float_type(toml_dict)
+    g1 = FT.(g1)
+    G1 = typeof(g1)
+    return MedlynConductanceParameters{FT, G1}(; g1, parameters..., kwargs...)
+end

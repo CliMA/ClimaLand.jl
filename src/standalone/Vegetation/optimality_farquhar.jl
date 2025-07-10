@@ -189,3 +189,62 @@ end
 get_Vcmax25(p, m::OptimalityFarquharParameters) =
     p.canopy.photosynthesis.Vcmax25
 Base.broadcastable(m::OptimalityFarquharParameters) = tuple(m)
+
+## For interfacing with ClimaParams
+
+"""
+    function OptimalityFarquharParameters(
+        FT,
+        kwargs...  # For individual parameter overrides
+    )
+
+    function OptimalityFarquharParameters(
+        toml_dict::CP.AbstractTOMLDict,
+        kwargs...  # For individual parameter overrides
+    )
+
+Constructors for the OptimalityFarquharParameters struct. Two variants:
+1. Pass in the float-type and retrieve parameter values from the default TOML dict.
+2. Pass in a TOML dictionary to retrieve parameter values.Possible calls:
+```julia
+ClimaLand.Canopy.OptimalityFarquharParameters(Float64)
+# Kwarg overrides
+ClimaLand.Canopy.OptimalityFarquharParameters(Float64; pc = 444444444)
+# Toml Dictionary:
+import ClimaParams as CP
+toml_dict = CP.create_toml_dict(Float32);
+ClimaLand.Canopy.OptimalityFarquharParameters(toml_dict; pc = 444444444)
+```
+"""
+OptimalityFarquharParameters(
+    ::Type{FT};
+    kwargs...,
+) where {FT <: AbstractFloat} =
+    OptimalityFarquharParameters(CP.create_toml_dict(FT); kwargs...)
+
+function OptimalityFarquharParameters(toml_dict; kwargs...)
+    name_map = (;
+        :Jmax_activation_energy => :ΔHJmax,
+        :intercellular_O2_concentration => :oi,
+        :CO2_compensation_point_25c => :Γstar25,
+        :Farquhar_curvature_parameter => :θj,
+        :kelvin_25C => :To,
+        :photosystem_II_quantum_yield => :ϕ,
+        :O2_michaelis_menten => :Ko25,
+        :CO2_michaelis_menten => :Kc25,
+        :dark_respiration_factor => :fC3,
+        :O2_activation_energy => :ΔHko,
+        :low_water_pressure_sensitivity => :sc,
+        :Rd_activation_energy => :ΔHRd,
+        :Vcmax_activation_energy => :ΔHVcmax,
+        :electron_transport_maintenance => :c,
+        :Γstar_activation_energy => :ΔHΓstar,
+        :CO2_activation_energy => :ΔHkc,
+        :moisture_stress_ref_water_pressure => :pc,
+    )
+
+    params = CP.get_parameter_values(toml_dict, name_map, "Land")
+    FT = CP.float_type(toml_dict)
+    is_c3 = FT(1)
+    return OptimalityFarquharParameters{FT, FT}(; params..., kwargs..., is_c3)
+end

@@ -19,7 +19,7 @@ import ClimaComms
 ClimaComms.@import_required_backends
 import ClimaTimeSteppers as CTS
 using ClimaUtilities.ClimaArtifacts
-
+using ClimaCore
 import ClimaAnalysis
 import ClimaAnalysis.Visualize as viz
 import ClimaUtilities
