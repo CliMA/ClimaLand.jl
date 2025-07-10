@@ -49,11 +49,6 @@ function parse_commandline()
         arg_type = String
         default = "flamegraph"
     end
-    @add_arg_table s begin
-        "--nan_cb"
-        help = "enable NaN check callback"
-        nargs = 0
-    end
     return parse_args(s)
 end
 
@@ -154,18 +149,7 @@ function setup_prob(t0, tf, Δt; nelements = (200, 7))
     updateat = collect(t0:(3Δt):tf)
     drivers = ClimaLand.get_drivers(model)
     updatefunc = ClimaLand.make_update_drivers(drivers)
-    driver_cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
-    nan_cb =
-        enable_nan_cb ?
-        (
-            ClimaLand.NaNCheckCallback(
-                Dates.Hour(1),
-                start_date,
-                3600.0,
-                mask = ClimaLand.landsea_mask(bucket_domain),
-            ),
-        ) : ()
-    cb = SciMLBase.CallbackSet(driver_cb, nan_cb...)
+    cb = ClimaLand.DriverUpdateCallback(updateat, updatefunc)
 
     return prob, cb
 end
@@ -188,11 +172,8 @@ function setup_simulation(; greet = false)
     return prob, ode_algo, Δt, cb
 end
 parsed_args = parse_commandline()
-enable_nan_cb = parsed_args["nan_cb"]
 profiler = parsed_args["profiler"]
-outdir =
-    enable_nan_cb ? "bucket_nan_cb_benchmark_$(device_suffix)" :
-    "bucket_benchmark_$(device_suffix)"
+outdir = "bucket_benchmark_$(device_suffix)"
 @info "device: $device"
 !ispath(outdir) && mkpath(outdir)
 prob, ode_algo, Δt, cb = setup_simulation(; greet = true)
@@ -276,8 +257,7 @@ if profiler == "flamegraph"
     end
 
     if get(ENV, "BUILDKITE_PIPELINE_SLUG", nothing) == "climaland-benchmark" &&
-       ClimaComms.device() isa ClimaComms.CUDADevice &&
-       !enable_nan_cb
+       ClimaComms.device() isa ClimaComms.CUDADevice
         PREVIOUS_BEST_TIME = 0.333
         if average_timing_s > PREVIOUS_BEST_TIME + std_timing_s
             @info "Possible performance regression, previous average time was $(PREVIOUS_BEST_TIME)"

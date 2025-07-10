@@ -6,6 +6,7 @@ using ClimaLand
 using LazyBroadcast: lazy
 using ClimaCore
 using ClimaCore.MatrixFields
+using NVTX
 import ClimaCore.MatrixFields: @name, ⋅
 import ClimaUtilities.TimeVaryingInputs: AbstractTimeVaryingInput
 import ClimaUtilities.TimeManager: ITime, date
@@ -828,7 +829,7 @@ function ClimaLand.make_update_aux(
         <:AbstractCanopyEnergyModel,
     },
 ) where {FT}
-    function update_aux!(p, Y, t)
+    NVTX.@annotate function update_aux!(p, Y, t)
 
         # Extend to other fields when necessary
         # Update the prescribed fields to the current time `t`,
@@ -851,103 +852,117 @@ function ClimaLand.make_update_aux(
         bc = canopy.boundary_conditions
 
         # update radiative transfer
-        (; G_Function, Ω, λ_γ_PAR) = canopy.radiative_transfer.parameters
-        @. p.canopy.radiative_transfer.ϵ =
-            canopy.radiative_transfer.parameters.ϵ_canopy *
-            (1 - exp(-(LAI + SAI))) #from CLM 5.0, Tech note 4.20
-        RT = canopy.radiative_transfer
-        compute_PAR!(par_d, RT, bc.radiation, p, t)
-        compute_NIR!(nir_d, RT, bc.radiation, p, t)
+        NVTX.@range "radiative transfer" begin
+            (; G_Function, Ω, λ_γ_PAR) = canopy.radiative_transfer.parameters
+            @. p.canopy.radiative_transfer.ϵ =
+                canopy.radiative_transfer.parameters.ϵ_canopy *
+                (1 - exp(-(LAI + SAI))) #from CLM 5.0, Tech note 4.20
+            RT = canopy.radiative_transfer
+            compute_PAR!(par_d, RT, bc.radiation, p, t)
+            compute_NIR!(nir_d, RT, bc.radiation, p, t)
 
-        compute_fractional_absorbances!(
-            p,
-            RT,
-            LAI,
-            ground_albedo_PAR(
-                Val(bc.prognostic_land_components),
-                bc.ground,
-                Y,
+            compute_fractional_absorbances!(
                 p,
-                t,
-            ),
-            ground_albedo_NIR(
-                Val(bc.prognostic_land_components),
-                bc.ground,
-                Y,
-                p,
-                t,
-            ),
-        )
+                RT,
+                LAI,
+                ground_albedo_PAR(
+                    Val(bc.prognostic_land_components),
+                    bc.ground,
+                    Y,
+                    p,
+                    t,
+                ),
+                ground_albedo_NIR(
+                    Val(bc.prognostic_land_components),
+                    bc.ground,
+                    Y,
+                    p,
+                    t,
+                ),
+            )
+        end
 
         # update plant hydraulics aux
-        hydraulics = canopy.hydraulics
-        n_stem = hydraulics.n_stem
-        n_leaf = hydraulics.n_leaf
-        PlantHydraulics.lai_consistency_check.(n_stem, n_leaf, area_index)
-        (; retention_model, conductivity_model, S_s, ν) = hydraulics.parameters
-        # We can index into a field of Tuple{FT} to extract a field of FT
-        # using the following notation: field.:index
-        @inbounds @. ψ.:1 = PlantHydraulics.water_retention_curve(
-            retention_model,
-            PlantHydraulics.effective_saturation(ν, ϑ_l.:1),
-            ν,
-            S_s,
-        )
-        # Inside of a loop, we need to use a single dollar sign
-        # for indexing into Fields of Tuples in non broadcasted
-        # expressions, and two dollar signs for
-        # for broadcasted expressions using the macro @.
-        # field.:($index) .= value # works
-        # @ field.:($$index) = value # works
-        @inbounds for i in 1:(n_stem + n_leaf - 1)
-            ip1 = i + 1
-            @. ψ.:($$ip1) = PlantHydraulics.water_retention_curve(
+        NVTX.@range "plant hydraulics aux" begin
+            hydraulics = canopy.hydraulics
+            n_stem = hydraulics.n_stem
+            n_leaf = hydraulics.n_leaf
+            PlantHydraulics.lai_consistency_check.(n_stem, n_leaf, area_index)
+            (; retention_model, conductivity_model, S_s, ν) =
+                hydraulics.parameters
+            # We can index into a field of Tuple{FT} to extract a field of FT
+            # using the following notation: field.:index
+            @inbounds @. ψ.:1 = PlantHydraulics.water_retention_curve(
                 retention_model,
-                PlantHydraulics.effective_saturation(ν, ϑ_l.:($$ip1)),
+                PlantHydraulics.effective_saturation(ν, ϑ_l.:1),
                 ν,
                 S_s,
             )
+            # Inside of a loop, we need to use a single dollar sign
+            # for indexing into Fields of Tuples in non broadcasted
+            # expressions, and two dollar signs for
+            # for broadcasted expressions using the macro @.
+            # field.:($index) .= value # works
+            # @ field.:($$index) = value # works
+            @inbounds for i in 1:(n_stem + n_leaf - 1)
+                ip1 = i + 1
+                @. ψ.:($$ip1) = PlantHydraulics.water_retention_curve(
+                    retention_model,
+                    PlantHydraulics.effective_saturation(ν, ϑ_l.:($$ip1)),
+                    ν,
+                    S_s,
+                )
 
-            areai = getproperty(area_index, hydraulics.compartment_labels[i])
-            areaip1 =
-                getproperty(area_index, hydraulics.compartment_labels[ip1])
+                areai =
+                    getproperty(area_index, hydraulics.compartment_labels[i])
+                areaip1 =
+                    getproperty(area_index, hydraulics.compartment_labels[ip1])
 
-            # Compute the flux*area between the current compartment `i`
-            # and the compartment above.
-            @. fa.:($$i) =
-                PlantHydraulics.water_flux(
-                    hydraulics.compartment_midpoints[i],
-                    hydraulics.compartment_midpoints[ip1],
-                    ψ.:($$i),
-                    ψ.:($$ip1),
-                    PlantHydraulics.hydraulic_conductivity(
-                        conductivity_model,
+                # Compute the flux*area between the current compartment `i`
+                # and the compartment above.
+                @. fa.:($$i) =
+                    PlantHydraulics.water_flux(
+                        hydraulics.compartment_midpoints[i],
+                        hydraulics.compartment_midpoints[ip1],
                         ψ.:($$i),
-                    ),
-                    PlantHydraulics.hydraulic_conductivity(
-                        conductivity_model,
                         ψ.:($$ip1),
-                    ),
-                ) * PlantHydraulics.harmonic_mean(areaip1, areai)
+                        PlantHydraulics.hydraulic_conductivity(
+                            conductivity_model,
+                            ψ.:($$i),
+                        ),
+                        PlantHydraulics.hydraulic_conductivity(
+                            conductivity_model,
+                            ψ.:($$ip1),
+                        ),
+                    ) * PlantHydraulics.harmonic_mean(areaip1, areai)
+            end
         end
         # We update the fa[n_stem+n_leaf] element once we have computed transpiration
 
         # Update Rd, An, Vcmax25 (if applicable to model) in place, GPP
-        update_photosynthesis!(p, Y, canopy.photosynthesis, canopy)
+        NVTX.@range "photosynthesis" begin
+            update_photosynthesis!(p, Y, canopy.photosynthesis, canopy)
+        end
 
         # update SIF
-        update_SIF!(p, Y, canopy.sif, canopy)
+        NVTX.@range "SIF" begin
+            update_SIF!(p, Y, canopy.sif, canopy)
+        end
 
         # update stomatal conductance
-        update_canopy_conductance!(p, Y, canopy.conductance, canopy)
+        NVTX.@range "canopy conductance" begin
+            update_canopy_conductance!(p, Y, canopy.conductance, canopy)
+        end
 
         # update autotrophic respiration
-        update_autotrophic_respiration!(
-            p,
-            Y,
-            canopy.autotrophic_respiration,
-            canopy,
-        )
+        NVTX.@range "autotrophic respiration" begin
+            update_autotrophic_respiration!(
+                p,
+                Y,
+                canopy.autotrophic_respiration,
+                canopy,
+            )
+        end
     end
     return update_aux!
 end
@@ -973,7 +988,7 @@ function make_compute_exp_tendency(
         x -> make_compute_exp_tendency(getproperty(canopy, x), canopy),
         components,
     )
-    function compute_exp_tendency!(dY, Y, p, t)
+    NVTX.@annotate function compute_exp_tendency!(dY, Y, p, t)
         for f! in compute_exp_tendency_list
             f!(dY, Y, p, t)
         end
@@ -1003,7 +1018,7 @@ function make_compute_imp_tendency(
         x -> make_compute_imp_tendency(getproperty(canopy, x), canopy),
         components,
     )
-    function compute_imp_tendency!(dY, Y, p, t)
+    NVTX.@annotate function compute_imp_tendency!(dY, Y, p, t)
         for f! in compute_imp_tendency_list
             f!(dY, Y, p, t)
         end
@@ -1033,7 +1048,7 @@ function ClimaLand.make_compute_jacobian(
         x -> make_compute_jacobian(getproperty(canopy, x), canopy),
         components,
     )
-    function compute_jacobian!(W, Y, p, dtγ, t)
+    NVTX.@annotate function compute_jacobian!(W, Y, p, dtγ, t)
         for f! in update_jacobian_list
             f!(W, Y, p, dtγ, t)
         end

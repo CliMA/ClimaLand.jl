@@ -135,7 +135,7 @@ Returns a
 NamedTuple of NamedTuple, of the form:
 (; par = (; refl = , trans = , abs = ),  nir = (; refl = , trans = , abs = ))
 """
-function compute_fractional_absorbances!(
+NVTX.@annotate function compute_fractional_absorbances!(
     p,
     RT::TwoStreamModel{FT},
     LAI,
