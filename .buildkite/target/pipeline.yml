@@ -30,6 +30,16 @@ steps:
 
   - wait
 
+  - group: "Target Benchmark (GPU)"
+    steps:
+
+      - label: ":snow_capped_mountain: Snowy Land"
+        command: "julia --color=yes --project=.buildkite experiments/benchmarks/snowy_land.jl"
+        env:
+          CLIMACOMMS_DEVICE: CUDA
+        agents:
+          slurm_mem: 8GB
+          slurm_gpus: 1
 
   - group: "Target Benchmark Nsight"
     steps:
