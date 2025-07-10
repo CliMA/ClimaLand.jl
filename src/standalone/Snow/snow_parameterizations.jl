@@ -48,9 +48,12 @@ function update_snow_albedo!(
 )
     FT = eltype(earth_param_set)
     _ρ_liq = LP.ρ_cloud_liq(earth_param_set)
+    lat = ClimaCore.Fields.coordinate_field(axes(α)).lat
+    cos_lat = @. lazy(cosd(lat))
+
     @. α =
         min(1 - m.β * (p.snow.ρ_snow / _ρ_liq - m.x0), 1) *
-        (m.α_0 + m.Δα * exp(-m.k * max(p.drivers.cosθs, eps(FT))))
+        (m.α_0 + m.Δα * exp(-m.k * max(cos_lat, eps(FT))))
     @. α = max(min(α, 1), 0)
 end
 """
