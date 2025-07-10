@@ -84,10 +84,6 @@ end
     include("standalone/Soil/conservation.jl")
 end
 
-@safetestset "Soil spatial parameters" begin
-    include("standalone/Soil/spatial_parameters.jl")
-end
-
 # Standalone Surface Water model tests
 @safetestset "Pond module tests" begin
     include("standalone/SurfaceWater/pond_test.jl")
@@ -109,9 +105,8 @@ end
 @safetestset "Canopy integrated water and energy content" begin
     include("standalone/Vegetation/conservation.jl")
 end
-
-@safetestset "Canopy spatial parameters" begin
-    include("standalone/Vegetation/spatial_parameters.jl")
+@safetestset "P model tests" begin
+    include("standalone/Vegetation/test_pmodel.jl")
 end
 
 # Integrated LSM tests
@@ -132,6 +127,11 @@ end
 end
 @safetestset "Full land" begin
     include("integrated/full_land.jl")
+end
+
+# Simulations
+@safetestset "Default parameters" begin
+    include("simulations/spatial_parameters.jl")
 end
 
 # Diagnostics
