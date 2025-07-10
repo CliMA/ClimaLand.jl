@@ -90,10 +90,13 @@ function process_member_data(
     vars = map(short_names) do short_name
         var = sim_var_dict[short_name]()
         var =
-            ClimaAnalysis.average_season_across_time(var, ignore_nan = true)
+            ClimaAnalysis.average_season_across_time(var, ignore_nan = false)
 
         ocean_mask = make_ocean_mask(nelements)
         var = ocean_mask(var)
+
+        initial_count = count(isnan, var.data)
+        @info initial_count
 
         # Replace all NaNs on land with the mean value
         # This is needed to stop small NaN values from stopping the calibration
@@ -101,6 +104,16 @@ function process_member_data(
         var = ClimaAnalysis.replace(val -> isnan(val) ? nanmean_land_val : val, var)
         var = ocean_mask(var)
 
+        after_count = count(isnan, var.data)
+        @info after_count
+
+        # TODO: Change this!
+        # There are 8 seasons in 2 years, so if there are more than 3 NaNs in
+        # each season, then throw an error
+        # Note: This is not accurate since it doesn't account for spinup
+        if initial_count - after_count > 24
+            error("Too many NaNs! ($(initial_count - after_count))")
+        end
 
         lons = ClimaAnalysis.longitudes(var)
         var = ClimaAnalysis.window(
@@ -172,16 +185,16 @@ function ClimaCalibrate.analyze_iteration(
     # EKP.TransformUnscented
     diagnostics_folder_path = joinpath(output_path, "global_diagnostics")
     try
-        # compute_monthly_leaderboard(
-        #     output_path,
-        #     diagnostics_folder_path,
-        #     "ERA5",
-        # )
-        # compute_seasonal_leaderboard(
-        #     output_path,
-        #     diagnostics_folder_path,
-        #     "ERA5",
-        # )
+        compute_monthly_leaderboard(
+            output_path,
+            diagnostics_folder_path,
+            "ERA5",
+        )
+        compute_seasonal_leaderboard(
+            output_path,
+            diagnostics_folder_path,
+            "ERA5",
+        )
     catch e
         @error "Error in `analyze_iteration`" error = e
     end
