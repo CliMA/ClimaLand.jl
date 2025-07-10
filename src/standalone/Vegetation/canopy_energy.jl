@@ -97,7 +97,12 @@ function make_compute_imp_tendency(
     model::BigLeafEnergyModel{FT},
     canopy,
 ) where {FT}
-    function compute_imp_tendency!(dY, Y, p, t)
+    NVTX.@annotate "canopy en imp tend" function compute_imp_tendency!(
+        dY,
+        Y,
+        p,
+        t,
+    )
         area_index = p.canopy.hydraulics.area_index
         ac_canopy = model.parameters.ac_canopy
         # Energy Equation:
@@ -241,7 +246,7 @@ end
 A function which updates `surface_field` in place with the value of
 the big leaf model's energy.
 
-Note that this assumes that there is at most a single canopy and stem 
+Note that this assumes that there is at most a single canopy and stem
 component, and that the area index for them refers to the integrated
 area index (in height) - not the value per layer.
 """

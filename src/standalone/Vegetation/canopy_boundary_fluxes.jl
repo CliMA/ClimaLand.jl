@@ -137,7 +137,7 @@ function ClimaLand.surface_height(model::CanopyModel{FT}, _...) where {FT}
 end
 
 function make_update_boundary_fluxes(canopy::CanopyModel)
-    function update_boundary_fluxes!(p, Y, t)
+    NVTX.@annotate "canopy fluxes" function update_boundary_fluxes!(p, Y, t)
         canopy_boundary_fluxes!(p, canopy, Y, t)
     end
     return update_boundary_fluxes!

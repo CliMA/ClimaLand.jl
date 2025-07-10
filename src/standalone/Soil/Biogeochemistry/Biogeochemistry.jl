@@ -3,6 +3,7 @@ using ClimaLand
 using DocStringExtensions
 using ClimaCore
 import ...Parameters as LP
+using NVTX
 import ClimaCore: Fields, Operators, Geometry, Spaces
 
 import ClimaLand.Domains: AbstractDomain
@@ -385,7 +386,7 @@ variables `p.soil.variable` in place.
 This has been written so as to work with Differential Equations.jl.
 """
 function ClimaLand.make_update_aux(model::SoilCO2Model)
-    function update_aux!(p, Y, t)
+    NVTX.@annotate "update_aux biogeo" function update_aux!(p, Y, t)
         params = model.parameters
         z = model.domain.fields.z
         T_soil = soil_temperature(model.drivers.met, p, Y, t, z)
