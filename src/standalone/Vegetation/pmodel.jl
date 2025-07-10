@@ -119,6 +119,12 @@ Base.@kwdef struct PModelConstants{FT}
     bRd::FT
     """Constant factor appearing the dark respiration term for C3 plants (unitless)"""
     fC3::FT
+    """Planck constant (J s)"""
+    planck_h::FT
+    """Speed of light (m s^-1)"""
+    lightspeed::FT
+    """Avogadro constant (mol^-1)"""
+    N_a::FT
 end
 
 Base.eltype(::PModelParameters{FT}) where {FT} = FT
@@ -136,8 +142,9 @@ Base.broadcastable(x::PModelConstants) = tuple(x)
 Creates a `PModelConstants` object with default values for the P-model constants.
 """
 function PModelConstants(FT)
+    earth_param_set = LP.LandParameters(FT)
     return PModelConstants(
-        R = LP.gas_constant(LP.LandParameters(FT)),
+        R = LP.gas_constant(earth_param_set),
         Kc25 = FT(39.97),
         Ko25 = FT(27480),
         To = FT(298.15),
@@ -159,6 +166,9 @@ function PModelConstants(FT)
         aRd = FT(0.1012),
         bRd = FT(-0.0005),
         fC3 = FT(0.015),
+        planck_h = LP.planck_constant(earth_param_set),
+        lightspeed = LP.light_speed(earth_param_set),
+        N_a = LP.avogadro_constant(earth_param_set),
     )
 end
 
@@ -178,6 +188,16 @@ end
 
 Base.eltype(::PModel{FT, OPFT, OPCT}) where {FT, OPFT, OPCT} = FT
 
+"""
+PModel{FT}(
+    parameters::PModelParameters{FT},
+    constants::PModelConstants{FT} = PModelConstants(FT),
+)
+
+Outer constructor for the PModel struct. This takes a PModelParameters struct which includes
+parameters with considerable uncertainty. PModelConstants is constructed by default to the 
+default values, but if you know what you are doing, you can override with your own constants.
+"""
 function PModel{FT}(
     parameters::PModelParameters{FT},
     constants::PModelConstants{FT} = PModelConstants(FT),
@@ -277,10 +297,9 @@ function compute_full_pmodel_outputs(
     (; cstar, β, ϕc, ϕ0, ϕa0, ϕa1, ϕa2) = parameters
 
     # Unpack constants
-    (; R, Kc25, Ko25, To, ΔHkc, ΔHko, 
-        Drel, ΔHΓstar, Γstar25,
-        Ha_Vcmax, Hd_Vcmax, aS_Vcmax, bS_Vcmax, 
-        Ha_Jmax, Hd_Jmax, aS_Jmax, bS_Jmax, Mc, oi, aRd, bRd, fC3) = constants
+    (; R, Kc25, Ko25, To, ΔHkc, ΔHko, Drel, ΔHΓstar, Γstar25, Ha_Vcmax, Hd_Vcmax, 
+    aS_Vcmax, bS_Vcmax, Ha_Jmax, Hd_Jmax, aS_Jmax, bS_Jmax, Mc, oi, aRd, bRd, fC3,
+    planck_h, lightspeed, N_a) = constants
 
     # Compute intermediate values
     ϕ0 = isnan(ϕ0) ? intrinsic_quantum_yield(T_canopy, ϕc, ϕa0, ϕa1, ϕa2) : ϕ0
@@ -387,17 +406,16 @@ function update_optimal_EMA(
     βm::FT,
     I_abs::FT,
     local_noon_mask::FT,
-    verbose::Bool = true, 
+    verbose::Bool = false, 
 ) where {FT} 
     if local_noon_mask == FT(1.0)
         # Unpack parameters
         (; cstar, β, ϕc, ϕ0, ϕa0, ϕa1, ϕa2, α) = parameters
         
         # Unpack constants
-        (; R, Kc25, Ko25, To, ΔHkc, ΔHko, 
-            Drel, ΔHΓstar, Γstar25,
-            Ha_Vcmax, Hd_Vcmax, aS_Vcmax, bS_Vcmax, 
-            Ha_Jmax, Hd_Jmax, aS_Jmax, bS_Jmax, Mc, oi, aRd, bRd, fC3) = constants
+        (; R, Kc25, Ko25, To, ΔHkc, ΔHko, Drel, ΔHΓstar, Γstar25, Ha_Vcmax, Hd_Vcmax, 
+        aS_Vcmax, bS_Vcmax, Ha_Jmax, Hd_Jmax, aS_Jmax, bS_Jmax, Mc, oi, aRd, bRd, fC3,
+        planck_h, lightspeed, N_a) = constants
 
         # Compute intermediate values
         ϕ0 = isnan(ϕ0) ? intrinsic_quantum_yield(T_canopy, ϕc, ϕa0, ϕa1, ϕa2) : ϕ0
@@ -457,10 +475,9 @@ function update_intermediate_vars(
     ca::FT,
 ) where {FT}
     # Unpack constants
-    (; R, Kc25, Ko25, To, ΔHkc, ΔHko, 
-        Drel, ΔHΓstar, Γstar25,
-        Ha_Vcmax, Hd_Vcmax, aS_Vcmax, bS_Vcmax, 
-        Ha_Jmax, Hd_Jmax, aS_Jmax, bS_Jmax, Mc, oi, aRd, bRd, fC3) = constants
+    (; R, Kc25, Ko25, To, ΔHkc, ΔHko, Drel, ΔHΓstar, Γstar25, Ha_Vcmax, Hd_Vcmax, 
+    aS_Vcmax, bS_Vcmax, Ha_Jmax, Hd_Jmax, aS_Jmax, bS_Jmax, Mc, oi, aRd, bRd, fC3,
+    planck_h, lightspeed, N_a) = constants
 
     # convert ca from ppm to Pa 
     ca_pp = ca * P_air 
@@ -521,7 +538,7 @@ function set_historical_cache!(p, Y0, model::PModel, canopy)
     VPD = @. lazy(ClimaLand.vapor_pressure_deficit(p.drivers.T, p.drivers.P, p.drivers.q, 
         LP.thermodynamic_parameters(canopy.parameters.earth_param_set)))
     I_abs = @. lazy(compute_I_abs(p.canopy.radiative_transfer.par.abs, p.canopy.radiative_transfer.par_d,
-        canopy.radiative_transfer.parameters.λ_γ_PAR))
+        canopy.radiative_transfer.parameters.λ_γ_PAR, constants.lightspeed, constants.planck_h, constants.N_a))
 
     # Initialize OptVars with dummy values (will be overwritten since α=0)
     fill!(p.canopy.photosynthesis.OptVars, (;
@@ -583,7 +600,7 @@ function call_update_optimal_EMA(p, Y, t; canopy, dt, longitude=nothing)
     VPD = @. lazy(ClimaLand.vapor_pressure_deficit(p.drivers.T, p.drivers.P, p.drivers.q, 
         LP.thermodynamic_parameters(canopy.parameters.earth_param_set)))
     I_abs = @. lazy(compute_I_abs(p.canopy.radiative_transfer.par.abs, p.canopy.radiative_transfer.par_d,
-        canopy.radiative_transfer.parameters.λ_γ_PAR))
+        canopy.radiative_transfer.parameters.λ_γ_PAR, constants.lightspeed, constants.planck_h, constants.N_a))
 
     @. p.canopy.photosynthesis.OptVars = update_optimal_EMA(
         parameters, 
@@ -654,7 +671,7 @@ function update_photosynthesis!(p, Y, model::PModel, canopy)
     VPD = @. lazy(ClimaLand.vapor_pressure_deficit(p.drivers.T, p.drivers.P, p.drivers.q, 
         LP.thermodynamic_parameters(canopy.parameters.earth_param_set)))
     I_abs = @. lazy(compute_I_abs(p.canopy.radiative_transfer.par.abs, p.canopy.radiative_transfer.par_d,
-        canopy.radiative_transfer.parameters.λ_γ_PAR))
+        canopy.radiative_transfer.parameters.λ_γ_PAR, constants.lightspeed, constants.planck_h, constants.N_a))
 
     # compute instantaneous max photosynthetic rates and assimilation rates 
     Vcmax_inst = @. lazy(
